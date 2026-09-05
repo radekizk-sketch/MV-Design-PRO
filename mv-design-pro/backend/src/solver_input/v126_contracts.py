@@ -470,7 +470,9 @@ def build_v126_input_from_enm(
                     filter_l_pu=_card_float("filter_l_pu"),
                     filter_r_pu=_card_float("filter_r_pu"),
                     p_mw=generator.p_mw,
-                    q_mvar=generator.q_mvar,
+                    # Q przeksztaltnika z TEGO SAMEGO zrodla prawdy co agregat szyny
+                    # (jawne Q albo Q-set-point karty); None = nieznane (brama SSCI w API).
+                    q_mvar=wynik_q.q_mvar,
                 )
             )
             # Prad bazowy z napiecia SZYNY PRZYLACZENIA (dana modelu), nie z

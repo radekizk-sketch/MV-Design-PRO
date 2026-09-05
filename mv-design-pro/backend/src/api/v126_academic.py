@@ -155,6 +155,23 @@ def run_v126_analysis(
                     f"generatory bez mocy biernej: {', '.join(bez_mocy_biernej)}"
                 ),
             )
+    # Karta FAB-H (domkniecie, B-01): `_z_conv_components` w solverze FROZEN liczy
+    # punkt pracy z `converter.q_mvar or 0.0` — Q nieznane weszloby jako 0,0. Solver
+    # nie jest edytowany (B-01), wiec analiza SSCI jest blokowana TUTAJ dla
+    # przeksztaltnika, ktory solver by wybral (`_ssci_select_converter` — ta sama
+    # regula wyboru, bez duplikatu), gdy jego Q jest nieznane (ten sam predykat
+    # `moc_bierna_wytworcy` co wyzej, przeniesiony do `V126ConverterInput.q_mvar`).
+    if analysis_type == V126AnalysisType.SSCI_IMPEDANCE:
+        przeksztaltnik = _solver._ssci_select_converter(model)
+        if przeksztaltnik is not None and przeksztaltnik.q_mvar is None:
+            spec = READINESS_CODES["generator.q_missing"]
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"{spec.message_pl} (generator.q_missing) — przeksztaltnik analizy "
+                    f"SSCI bez mocy biernej: {przeksztaltnik.ref}"
+                ),
+            )
     result = _solver.run(analysis_type, model)
     run_id = UUID(hex=result["deterministic_hash"][:32])
     run_record = {

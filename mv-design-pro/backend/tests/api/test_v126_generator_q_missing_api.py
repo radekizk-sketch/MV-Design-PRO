@@ -21,9 +21,8 @@ Q-set-pointu karty katalogowej też przechodzi (test 5).
 
 from __future__ import annotations
 
-from uuid import UUID
-
 from api.main import app
+from enm.klucz_twin import klucz_twin_projektu
 from enm.models import EnergyNetworkModel, ENMHeader
 from enm.store import reset_enm_store, set_enm
 from fastapi.testclient import TestClient
@@ -66,20 +65,29 @@ _GENERATOR_BEZ_Q = {
 }
 
 
-def _seed_case(case_id: UUID, model: EnergyNetworkModel) -> None:
+def _seed_case(client: TestClient, model: EnergyNetworkModel) -> str:
+    """Realny projekt + przypadek przez API, model pod kluczem PROJEKTU (CV-1-W:
+    koncowka tlumaczy `case_id` na klucz twin; przypadek spoza bazy = 404)."""
     reset_enm_store()
-    set_enm(str(case_id), model)
+    project_resp = client.post("/api/projects", json={"name": "V12.6 Q generatora - test"})
+    assert project_resp.status_code == 201, project_resp.text
+    project_id = project_resp.json()["id"]
+    case_resp = client.post(
+        "/api/study-cases", json={"project_id": project_id, "name": "Przypadek testu"}
+    )
+    assert case_resp.status_code == 201, case_resp.text
+    set_enm(klucz_twin_projektu(project_id), model)
+    return str(case_resp.json()["id"])
 
 
 def test_reliability_contingency_bez_q_generatora_zwraca_422_nie_liczy_po_cichu() -> None:
     """PIN NA DEFEKT: przed naprawą brak Q wchodziłby do solvera jako 0,0."""
-    case_id = UUID("44444444-4444-4444-4444-444444444441")
-    _seed_case(case_id, _model(generator=_GENERATOR_BEZ_Q))
-    client = TestClient(app)
-    resp = client.post(
-        f"/api/cases/{case_id}/runs/v126/reliability_contingency",
-        json={"parameters": {}},
-    )
+    with TestClient(app) as client:
+        case_id = _seed_case(client, _model(generator=_GENERATOR_BEZ_Q))
+        resp = client.post(
+            f"/api/cases/{case_id}/runs/v126/reliability_contingency",
+            json={"parameters": {}},
+        )
     assert resp.status_code == 422, resp.text
     assert "generator.q_missing" in resp.text
     assert "GEN-1" in resp.text
@@ -87,26 +95,24 @@ def test_reliability_contingency_bez_q_generatora_zwraca_422_nie_liczy_po_cichu(
 
 def test_opf_loss_lcc_bez_q_generatora_zwraca_422_nie_liczy_po_cichu() -> None:
     """Ta sama bramka, druga analiza, która też czyta `_branch_current_a`."""
-    case_id = UUID("44444444-4444-4444-4444-444444444442")
-    _seed_case(case_id, _model(generator=_GENERATOR_BEZ_Q))
-    client = TestClient(app)
-    resp = client.post(
-        f"/api/cases/{case_id}/runs/v126/opf_loss_lcc",
-        json={"parameters": {}},
-    )
+    with TestClient(app) as client:
+        case_id = _seed_case(client, _model(generator=_GENERATOR_BEZ_Q))
+        resp = client.post(
+            f"/api/cases/{case_id}/runs/v126/opf_loss_lcc",
+            json={"parameters": {}},
+        )
     assert resp.status_code == 422, resp.text
     assert "generator.q_missing" in resp.text
 
 
 def test_reliability_contingency_z_jawnym_q_liczy_normalnie() -> None:
     """Kontrola dwustronna: Q jawne (nawet gdyby było 0.0) przechodzi."""
-    case_id = UUID("44444444-4444-4444-4444-444444444443")
-    _seed_case(case_id, _model(generator={**_GENERATOR_BEZ_Q, "q_mvar": 0.0}))
-    client = TestClient(app)
-    resp = client.post(
-        f"/api/cases/{case_id}/runs/v126/reliability_contingency",
-        json={"parameters": {}},
-    )
+    with TestClient(app) as client:
+        case_id = _seed_case(client, _model(generator={**_GENERATOR_BEZ_Q, "q_mvar": 0.0}))
+        resp = client.post(
+            f"/api/cases/{case_id}/runs/v126/reliability_contingency",
+            json={"parameters": {}},
+        )
     assert resp.status_code == 200, resp.text
     result = client.get(resp.json()["result_url"])
     assert result.status_code == 200
@@ -116,13 +122,12 @@ def test_inna_analiza_v126_nie_jest_blokowana_brakiem_q_generatora() -> None:
     """Bramka jest WĄSKA: `hosting_capacity` nie czyta `generation_mvar` przez
     `_branch_current_a`, więc brak Q generatora nie może jej zablokować (inaczej
     byłaby szersza niż trzeba)."""
-    case_id = UUID("44444444-4444-4444-4444-444444444444")
-    _seed_case(case_id, _model(generator=_GENERATOR_BEZ_Q))
-    client = TestClient(app)
-    resp = client.post(
-        f"/api/cases/{case_id}/runs/v126/hosting_capacity",
-        json={"parameters": {}},
-    )
+    with TestClient(app) as client:
+        case_id = _seed_case(client, _model(generator=_GENERATOR_BEZ_Q))
+        resp = client.post(
+            f"/api/cases/{case_id}/runs/v126/hosting_capacity",
+            json={"parameters": {}},
+        )
     assert resp.status_code == 200, resp.text
 
 
@@ -130,15 +135,66 @@ def test_reliability_contingency_z_q_set_pointem_karty_liczy_normalnie() -> None
     """Q nieznane wprost, ale wyprowadzalne z jawnego Q-set-pointu karty
     katalogowej (`qmin_mvar == qmax_mvar`) — TA SAMA funkcja co bramka gotowości
     (`moc_bierna_wytworcy`), więc nie blokuje."""
-    case_id = UUID("44444444-4444-4444-4444-444444444445")
     generator = {
         **_GENERATOR_BEZ_Q,
         "materialized_params": {"qmin_mvar": 0.3, "qmax_mvar": 0.3},
     }
-    _seed_case(case_id, _model(generator=generator))
-    client = TestClient(app)
-    resp = client.post(
-        f"/api/cases/{case_id}/runs/v126/reliability_contingency",
-        json={"parameters": {}},
-    )
+    with TestClient(app) as client:
+        case_id = _seed_case(client, _model(generator=generator))
+        resp = client.post(
+            f"/api/cases/{case_id}/runs/v126/reliability_contingency",
+            json={"parameters": {}},
+        )
     assert resp.status_code == 200, resp.text
+
+
+_PRZEKSZTALTNIK_BEZ_Q = {
+    "ref_id": "PV-1",
+    "name": "Falownik PV",
+    "bus_ref": _SZYNA_A,
+    "p_mw": 1.0,
+    "gen_type": "pv_inverter",
+    "materialized_params": {
+        "current_loop_bandwidth_hz": 300.0,
+        "pll_bandwidth_hz": 20.0,
+        "filter_l_pu": 0.1,
+        "filter_r_pu": 0.01,
+        "un_kv": 15.0,
+    },
+}
+
+
+def test_ssci_impedance_bez_q_przeksztaltnika_zwraca_422_nie_liczy_po_cichu() -> None:
+    """Domkniecie FAB-H (B-01): `_z_conv_components` solvera FROZEN liczy punkt pracy
+    z `q_mvar or 0.0` — brak Q wybranego przeksztaltnika blokuje analize SSCI w API,
+    zanim payload trafi do solvera (ta sama regula wyboru przeksztaltnika co solver)."""
+    with TestClient(app) as client:
+        case_id = _seed_case(client, _model(generator=_PRZEKSZTALTNIK_BEZ_Q))
+        resp = client.post(
+            f"/api/cases/{case_id}/runs/v126/ssci_impedance",
+            json={"parameters": {}},
+        )
+    assert resp.status_code == 422, resp.text
+    assert "generator.q_missing" in resp.text
+    assert "PV-1" in resp.text
+
+
+def test_ssci_impedance_z_q_set_pointem_karty_nie_jest_blokowana() -> None:
+    """Q wyprowadzalne z karty (`qmin == qmax`) trafia do `V126ConverterInput.q_mvar`
+    tym samym zrodlem prawdy co agregat szyny — brama nie blokuje."""
+    przeksztaltnik = {
+        **_PRZEKSZTALTNIK_BEZ_Q,
+        "materialized_params": {
+            **_PRZEKSZTALTNIK_BEZ_Q["materialized_params"],
+            "qmin_mvar": 0.2,
+            "qmax_mvar": 0.2,
+        },
+    }
+    with TestClient(app) as client:
+        case_id = _seed_case(client, _model(generator=przeksztaltnik))
+        resp = client.post(
+            f"/api/cases/{case_id}/runs/v126/ssci_impedance",
+            json={"parameters": {}},
+        )
+    assert resp.status_code == 200, resp.text
+    assert "generator.q_missing" not in resp.text
