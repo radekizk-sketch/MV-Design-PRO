@@ -30,10 +30,17 @@ from application.stability.voltage_trajectory import (
 )
 from enm.element_kind import rodzaj_elementu, zbuduj_indeks_rodzajow
 from enm.envelope import RevisionEnvelope, zbuduj_koperte
-from enm.hash import compute_enm_hash
 from enm.klucz_twin import czy_klucz_projektu, project_id_z_klucza
 from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
+from enm.scenariusze import (
+    SCENARIUSZ_NORMALNY,
+    EffectiveNetworkSnapshot,
+    OperatingScenario,
+    apply_scenario,
+    opcje_biegu_ze_scenariusza,
+    referencja_koperty,
+)
 from enm.store import get_enm
 from enm.validator import ENMValidator
 from infrastructure.persistence.repositories.canonical_run_repository import (
@@ -536,6 +543,7 @@ def create_run(
     analysis_type: str,
     project_id: str | None = None,
     options: dict[str, Any] | None = None,
+    scenariusz: OperatingScenario | None = None,
 ) -> CanonicalRun:
     """Utworz CanonicalRun z BIEZACEGO modelu projektu.
 
@@ -545,10 +553,22 @@ def create_run(
     (`enm.klucz_twin.klucz_twin_projektu`), przetlumaczony przez wolajacego
     (`application.twin_key.klucz_twin_dla_przypadku` na granicy API — JEDYNE
     miejsce tlumaczenia, patrz `api/klucz_twin_dep.py`).
+
+    CV-3.1: migawka biegu = `apply_scenario(HEAD, scenariusz)` (`enm/scenariusze.py`).
+    Brak scenariusza = stan normalny: migawka, hash, walidacja i koperta sa
+    DOKLADNIE takie jak przed CV-3.1. Scenariusz z nadpisaniami modelu jest
+    walidowany jako MODEL, KTORY JEST LICZONY (migawka efektywna), a jego
+    projekcja na opcje biegu (`opcje_biegu_ze_scenariusza`) jest podkladem, na
+    ktory jawne `options` wolajacego nakladaja sie z pierwszenstwem.
     """
     enm = get_enm(klucz_twin)
+    scenariusz_biegu = scenariusz if scenariusz is not None else SCENARIUSZ_NORMALNY
+    efektywna = apply_scenario(enm, scenariusz_biegu)
+    enm_liczony = (
+        enm if efektywna.tozsama_z_baza else EnergyNetworkModel.model_validate(efektywna.snapshot)
+    )
     validator = ENMValidator()
-    validation = validator.validate(enm)
+    validation = validator.validate(enm_liczony)
     readiness = validator.readiness(validation)
 
     if validation.status == "FAIL":
@@ -558,9 +578,9 @@ def create_run(
     availability = validation.analysis_available
     if analysis_type == "PF" and not availability.load_flow:
         raise ValueError("Analiza rozpływu mocy nie jest dostepna dla biezacego snapshotu ENM")
-    snapshot = enm.model_dump(mode="json")
-    enm_hash = compute_enm_hash(enm)
-    normalized_options = dict(options or {})
+    snapshot = efektywna.snapshot
+    enm_hash = efektywna.snapshot_hash
+    normalized_options = {**opcje_biegu_ze_scenariusza(scenariusz_biegu), **dict(options or {})}
     # CV-2: tozsamosc projektu w kopercie — z parametru albo z klucza twin
     # (klucz surowy w testach magazynu nie niesie projektu → None, uczciwie).
     project_id_koperty = project_id or (
@@ -579,11 +599,11 @@ def create_run(
             and not availability.short_circuit_1f
         ):
             raise ValueError("Zwarcie 1F/2F+Z wymaga kompletnej skladowej zerowej Z0 w ENM")
-    if analysis_type == "phase_state_sn" and not enm.buses:
+    if analysis_type == "phase_state_sn" and not enm_liczony.buses:
         raise ValueError("Stan fazowy SN wymaga co najmniej jednej szyny w ENM")
-    if analysis_type == "dynamic_stability" and not (enm.sources or enm.generators):
+    if analysis_type == "dynamic_stability" and not (enm_liczony.sources or enm_liczony.generators):
         raise ValueError("Stabilnosc dynamiczna wymaga co najmniej jednego zrodla w ENM")
-    if analysis_type == "source_compliance" and not (enm.sources or enm.generators):
+    if analysis_type == "source_compliance" and not (enm_liczony.sources or enm_liczony.generators):
         raise ValueError("Ocena zgodnosci zrodla wymaga co najmniej jednego zrodla w ENM")
     input_hash = _compute_input_hash(
         case_id=case_id,
@@ -591,12 +611,17 @@ def create_run(
         enm_hash=enm_hash,
         options=normalized_options,
     )
+    scenario_ref, scenario_hash = referencja_koperty(efektywna)
     koperta = zbuduj_koperte(
         project_id=project_id_koperty,
-        model_revision=enm.header.revision,
-        snapshot_hash=enm_hash,
+        model_revision=efektywna.base_revision,
+        # Koperta identyfikuje BAZE (model HEAD w rewizji) + scenariusz; hash
+        # migawki efektywnej niesie `CanonicalRun.snapshot_hash` (`enm/envelope.py`).
+        snapshot_hash=efektywna.base_hash,
         catalog_fingerprint=odcisk_katalogu_domyslnego(),
         options_hash=input_hash,
+        scenario_ref=scenario_ref,
+        scenario_hash=scenario_hash,
     )
     run = CanonicalRun(
         id=uuid4(),
@@ -656,6 +681,72 @@ def wykonaj_bieg_w_pamieci(run: CanonicalRun) -> None:
     obiektu; magazyn biegow pozostaje nietkniety.
     """
     _wykonaj_analize_biegu(run)
+
+
+def bieg_wariantu(
+    bazowy: CanonicalRun,
+    migawka: EffectiveNetworkSnapshot,
+    *,
+    analysis_type: str,
+    options: dict[str, Any] | None = None,
+) -> CanonicalRun:
+    """JEDYNA fabryka biegu WARIANTU w pamieci (CV-3.1; rodziny D1–D6).
+
+    Wariant to bieg bazowy policzony NA MIGAWCE EFEKTYWNEJ scenariusza
+    (`enm.scenariusze.apply_scenario`) — bez persystencji i bez cyklu zycia
+    statusu (`FINISHED` od razu, bo czytelnicy widokow wymagaja biegu
+    zakonczonego; wykonanie idzie przez `wykonaj_bieg_w_pamieci`). Bieg mowi
+    prawde o tym, co liczy: `snapshot_hash` = hash migawki efektywnej,
+    `input_hash` policzony z niej i z opcji, koperta z referencja scenariusza
+    (wersja 2) — o ile bieg bazowy MA koperte (odcisk katalogu w chwili biegu
+    bazowego nie jest do odgadniecia; bez koperty bazy wariant tez jej nie ma).
+    `options=None` = opcje biegu bazowego.
+    """
+    opcje = dict(bazowy.options if options is None else options)
+    input_hash = _compute_input_hash(
+        case_id=bazowy.case_id,
+        analysis_type=analysis_type,
+        enm_hash=migawka.snapshot_hash,
+        options=opcje,
+    )
+    koperta_bazy = bazowy.koperta
+    envelope: dict[str, Any] | None = None
+    if koperta_bazy is not None:
+        if koperta_bazy.snapshot_hash != bazowy.snapshot_hash:
+            # Bieg bazowy sam policzono na migawce z nadpisaniami scenariusza —
+            # wariant wariantu (skladanie scenariuszy) nie jest modelowany
+            # (koperta niesie JEDNA referencje scenariusza). Odmowa z nazwa,
+            # nie koperta udajaca, ze baza byla stanem normalnym.
+            raise ValueError(
+                "Bieg bazowy wariantu zostal policzony na scenariuszu z nadpisaniami "
+                f"modelu ({koperta_bazy.scenario_ref}); skladanie scenariuszy nie jest "
+                "modelowane — wariant buduje sie na biegu stanu normalnego."
+            )
+        scenario_ref, scenario_hash = referencja_koperty(migawka)
+        envelope = zbuduj_koperte(
+            project_id=koperta_bazy.project_id,
+            model_revision=migawka.base_revision,
+            snapshot_hash=koperta_bazy.snapshot_hash,
+            catalog_fingerprint=koperta_bazy.catalog_fingerprint,
+            options_hash=input_hash,
+            scenario_ref=scenario_ref,
+            scenario_hash=scenario_hash,
+        ).to_dict()
+    return CanonicalRun(
+        id=bazowy.id,
+        case_id=bazowy.case_id,
+        project_id=bazowy.project_id,
+        analysis_type=analysis_type,
+        status="FINISHED",
+        created_at=bazowy.created_at,
+        snapshot_hash=migawka.snapshot_hash,
+        input_hash=input_hash,
+        snapshot=migawka.snapshot,
+        validation={},
+        readiness={},
+        options=opcje,
+        envelope=envelope,
+    )
 
 
 def execute_run(run_id: UUID) -> CanonicalRun:

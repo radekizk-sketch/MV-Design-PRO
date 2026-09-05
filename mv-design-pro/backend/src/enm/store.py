@@ -55,6 +55,12 @@ from enm.rewizje import (
     wczytaj_rewizje,
     zapewnij_migawke,
 )
+from enm.scenariusze import (
+    ma_scenariusze,
+    przenies_katalog_scenariuszy,
+    przenies_katalog_scenariuszy_pod_klucz,
+    usun_wszystkie_scenariusze,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -596,6 +602,8 @@ def reset_enm_store(*, remove_persisted: bool = True) -> None:
                 path.unlink(missing_ok=True)
     # CV-2: migawki rewizji (`<digest>.rev/`) sa czescia magazynu.
     usun_wszystkie_migawki()
+    # CV-3.1: scenariusze nazwane (`<digest>.scen/`) sa czescia magazynu.
+    usun_wszystkie_scenariusze()
 
 
 # ---------------------------------------------------------------------------
@@ -618,6 +626,11 @@ class WynikMigracjiKlucza:
     klucz projektu RAZEM z modelem (możliwe wyłącznie przy `PRZENIESIONY` i tylko
     wtedy, gdy projekt nie miał jeszcze własnej historii). `False` znaczy, że
     dziennik został odłożony do `legacy_przypadki/` razem z modelem przypadku.
+
+    `scenariusze_przeniesione` (CV-3.1): czy katalog scenariuszy nazwanych
+    przypadku przeszedł pod klucz projektu (tylko przy `PRZENIESIONY` i tylko gdy
+    projekt nie miał własnych scenariuszy — predykat `enm.scenariusze.ma_scenariusze`,
+    ten sam, którego używa zabezpieczenie w `przenies_katalog_scenariuszy_pod_klucz`).
     """
 
     case_id: str
@@ -627,6 +640,7 @@ class WynikMigracjiKlucza:
     hash_projektu: str | None
     rewizja_legacy: int | None
     dziennik_przeniesiony: bool = False
+    scenariusze_przeniesione: bool = False
 
 
 def hash_tresci_modelu(enm: EnergyNetworkModel) -> str:
@@ -676,6 +690,14 @@ def _odloz_do_legacy(case_id: str, wynik: WynikMigracjiKlucza) -> None:
         stan_dziennika = "BRAK"
     # Migawki, ktore nie przeszly pod klucz projektu, ida za plikami przypadku.
     przenies_katalog_rewizji(case_id, katalog)
+    # CV-3.1: scenariusze nazwane — ta sama zasada, osobna decyzja (para
+    # predykatow `scenariusze_przeniesione` / odlozenie), nazwana w manifescie.
+    if wynik.scenariusze_przeniesione:
+        stan_scenariuszy = "ZA_MODELEM"
+    elif przenies_katalog_scenariuszy(case_id, katalog):
+        stan_scenariuszy = "ODLOZONE"
+    else:
+        stan_scenariuszy = "BRAK"
     manifest = katalog / MANIFEST_LEGACY
     wiersz = json.dumps(
         {
@@ -686,6 +708,7 @@ def _odloz_do_legacy(case_id: str, wynik: WynikMigracjiKlucza) -> None:
             "hash_projektu": wynik.hash_projektu,
             "rewizja_legacy": wynik.rewizja_legacy,
             "dziennik": stan_dziennika,
+            "scenariusze": stan_scenariuszy,
             "plik": zrodlo.name,
             "czas": datetime.now(UTC).isoformat(),
         },
@@ -742,6 +765,13 @@ def migruj_klucz_przypadku_do_projektu(
             if not historia_projektu:
                 dziennik_przeniesiony = przenies_dziennik(case_id, klucz_projektu)
                 przenies_katalog_rewizji_pod_klucz(case_id, klucz_projektu)
+            # CV-3.1: scenariusze nazwane ida za modelem, chyba ze projekt ma juz
+            # wlasne (wtedy scenariusze przypadku laduja w `legacy_przypadki/`).
+            scenariusze_przeniesione = False
+            if not ma_scenariusze(klucz_projektu):
+                scenariusze_przeniesione = przenies_katalog_scenariuszy_pod_klucz(
+                    case_id, klucz_projektu
+                )
             hash_tresci = compute_enm_hash(legacy)
             zapewnij_migawke(klucz_projektu, legacy, hash_sha256=hash_tresci)
             if wpis_rewizji(klucz_projektu, legacy.header.revision) is None:
@@ -764,6 +794,7 @@ def migruj_klucz_przypadku_do_projektu(
                 hash_legacy,
                 legacy.header.revision,
                 dziennik_przeniesiony=dziennik_przeniesiony,
+                scenariusze_przeniesione=scenariusze_przeniesione,
             )
         else:
             hash_projektu = hash_tresci_modelu(projekt) if projekt is not None else None

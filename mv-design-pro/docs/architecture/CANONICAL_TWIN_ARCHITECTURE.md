@@ -167,17 +167,27 @@ class NetworkVariation:       # delta strukturalna
     status: DRAFT | PROPOSED | ACCEPTED | MERGED | REJECTED   # agent tworzy tylko PROPOSED (§24, I-10)
     hash: str                               # sha(base_hash, commands)
 
-class OperatingScenario:      # nadpisania stanu, typowane, bez komend
-    scenario_id: str; name: str; revision: int; kind: ScenarioKind   # NORMAL | MAX_LOAD | MIN_LOAD | MAX_GEN | N_1 | MAINTENANCE | ISLAND | TIME_STEP | FAULT_STUDY | CUSTOM
-    switch_states: dict[ref_id, OPEN|CLOSED|EARTHED]
-    in_service: dict[ref_id, bool]                    # wyłączenie elementu (kontyngencja)
-    load_scaling: dict[ref_id|"*", float]; gen_scaling: dict[ref_id|"*", float]
-    profiles: dict[ref_id, ProfileRef]; time_index: TimeIndex | None   # QSTS/horyzont
-    der_modes: dict[ref_id, DerControlMode]; bess_modes: dict[ref_id, BessMode]
-    tap_positions: dict[ref_id, int]; source_modes: dict[ref_id, SourceMode]
-    fault_spec: list[FaultSpec]                       # z C6: typ, lokalizacja, Z_f, konfiguracja SC
-    contingency_set: list[list[ref_id]] | None       # generator scenariuszy N-1 / N-2
-    hash: str
+class OperatingScenario:      # nadpisania stanu, typowane, bez komend — RDZEŃ ZREALIZOWANY w CV-3.1 (`enm/scenariusze.py`, 2026-09-05)
+    scenario_id: str; name: str; revision: int; kind: ScenarioKind   # ZREALIZOWANE: NORMAL | MAX_LOAD | MIN_LOAD | MAX_GEN | N_1 | MAINTENANCE | FAULT_STUDY | SIZING | CUSTOM
+                                                                     # (ISLAND / TIME_STEP — bez dostawcy, nie wchodzą do czasu konsumenta)
+    out_of_service: tuple[ref_id, ...]                # ZREALIZOWANE (= dawne `in_service=False`): element NIEOBECNY w migawce efektywnej — semantyka N-1 (D1) i biegu nastaw (D6)
+    setpoints: dict[ref_id, Nastawa(p_mw?, q_mvar?)]  # ZREALIZOWANE: nadpisanie nastawy generatora (D4 odpowiedź OSD)
+    gen_scaling: dict[ref_id|"*", float]              # ZREALIZOWANE: mnożnik P generatorów (D5 „noc” = {"*": 0.0}); `load_scaling` — bez dostawcy, nie wchodzi
+    injections: tuple[Wstrzyk, ...]                   # ZREALIZOWANE: generator-sonda z deterministycznym `id` (uuid5 z jawnego ziarna) — D2 hosting, D3 obszar P-Q
+    probe_shunts: tuple[SondaKondensatora, ...]       # ZREALIZOWANE: bateria z katalogu (catalog-first) — D5 dobór kompensacji
+    fault_spec: FaultScenario | None                  # ZREALIZOWANE: JEDEN scenariusz zwarciowy C6 (ten sam obiekt domenowy); projekcja na opcje biegu: `opcje_biegu_ze_scenariusza`
+    switch_states / tap_positions / source_modes / profiles / time_index / der_modes / bess_modes / contingency_set   # BEZ DOSTAWCY — nie deklarowane (OW-9: pole bez konsumenta = fantom)
+    hash: str                                         # ZREALIZOWANE: SHA-256 nad kanoniczną treścią nadpisań (bez nazwy/id/rewizji — tożsamość treści)
+    # apply_scenario(enm, scenariusz) -> EffectiveNetworkSnapshot(snapshot, snapshot_hash, base_hash, base_revision, scenario_ref, scenario_hash, nadpisania)
+    # kolejność nadpisań STAŁA: out_of_service → setpoints → gen_scaling → injections → probe_shunts; ref_id spoza modelu = `ScenariuszNieprzystajeError` (nigdy cichy skip)
+    # tożsamość: scenariusz bez nadpisań → snapshot_hash == compute_enm_hash(enm) (pin: `tests/enm/test_scenariusze.py`, `tests/invariants/test_scenariusz_i_bieg.py`)
+    # magazyn scenariuszy NAZWANYCH per projekt: `<digest>.scen/<scenario_id>.json`, rejestr rewizji append-only + nagrobek; przejściowe (`__…`) nigdy nie zapisywane;
+    # migracja klucza CV-1 przenosi `.scen` za modelem (manifest `scenariusze`: ZA_MODELEM/ODLOZONE/BRAK)
+    # bieg: `create_run(..., scenariusz=)` liczy migawkę efektywną i WALIDUJE ją; koperta v2 (`scenario_ref`, `scenario_hash`; `snapshot_hash` koperty = hash BAZY);
+    # koperta v1 = stan normalny (bit w bit jak przed CV-3.1); świeżość: `SCENARIUSZ_ZMIENIONY` / `SCENARIUSZ_USUNIETY` z rewizji scenariusza w magazynie
+    # wariant w pamięci: `enm.canonical_analysis.bieg_wariantu(bazowy, migawka_efektywna, analysis_type=, options=)` + `wykonaj_bieg_w_pamieci`
+    # guard `scripts/scenario_copy_guard.py` (R1 import prywatnego wykonawcy, R2 `CanonicalRun(...)` poza fabryką, R3 deepcopy migawki, R4 dict(migawka) + zapis):
+    # zapadka 19 zastanych trafień w 6 rodzinach (D1–D6) — obniżana kartami migracji CV-3-W z parytetem bit w bit (`tests/golden/parytet_scenariuszy/`)
 
 class StudyCase:              # C1 rozszerzony
     case_id: str; project_id: str
@@ -187,7 +197,7 @@ class StudyCase:              # C1 rozszerzony
     protection_settings_revision: int      # rewizja nastaw (ownership w modelu — ADR-022)
 
 class RevisionEnvelope:        # niesiony przez KAŻDY artefakt inżynierski (§9) — CV-2: `enm/envelope.py`, kolumna `canonical_runs.envelope_json`
-    project_id; model_revision; variation_ref; scenario_ref          # CV-2 niesie `project_id`, `model_revision`, `snapshot_hash`; `variation_ref`/`scenario_ref` — CV-3 (bez pola bez dostawcy)
+    project_id; model_revision; variation_ref; scenario_ref          # CV-2 niesie `project_id`, `model_revision`, `snapshot_hash` (= hash BAZY w rewizji); CV-3.1: `scenario_ref` + `scenario_hash` (koperta v2; v1 = stan normalny); `variation_ref` — bez dostawcy
     protection_settings_revision; catalog_revision_set: dict[catalog_id, revision]   # CV-2: `catalog_fingerprint` = odcisk biblioteki typów z kodu
                                                                                      # (`network_model/catalog/odcisk.py`); rewizje per katalog — po konwergencji katalogów (P1-5)
     assumptions_revision; standards_profile_ref                     # CV-2: `options_hash` (odcisk opcji biegu); reszta — CV-3/CV-5

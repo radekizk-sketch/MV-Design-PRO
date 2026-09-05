@@ -59,6 +59,8 @@ from enm.dziennik_zmian import WpisDziennika, wpisy_od
 from enm.envelope import RevisionEnvelope
 from enm.hash import compute_enm_hash
 from enm.klucz_twin import PrzypadekBezProjektuError
+from enm.scenariusze import StanScenariusza, czy_scenariusz_przejsciowy
+from enm.scenariusze import stan_scenariusza as stan_scenariusza_z_magazynu
 from enm.store import get_enm, has_enm
 from network_model.catalog.odcisk import odcisk_katalogu_domyslnego
 
@@ -81,6 +83,8 @@ class FreshnessReason(StrEnum):
     MODEL_NIEZMIENIONY = "model-niezmieniony"
     KATALOG_ZMIENIONY = "katalog-zmieniony"
     KOPERTA_NIESPOJNA = "koperta-rewizji-niespojna"
+    SCENARIUSZ_ZMIENIONY = "scenariusz-zmieniony"
+    SCENARIUSZ_USUNIETY = "scenariusz-usuniety"
 
 
 # Zdanie dla projektanta — po polsku, JEDNO na kod przyczyny. Kazdy kod ma tu
@@ -109,6 +113,14 @@ REASON_TEXTS_PL: dict[FreshnessReason, str] = {
     FreshnessReason.KOPERTA_NIESPOJNA: (
         "Koperta rewizji przebiegu jest niespójna z własnym odciskiem — zapis "
         "przebiegu został zmieniony poza systemem; wyniku nie da się uznać za aktualny."
+    ),
+    FreshnessReason.SCENARIUSZ_ZMIENIONY: (
+        "Scenariusz roboczy przebiegu ma nowszą rewizję — wynik opisuje poprzednią "
+        "postać scenariusza."
+    ),
+    FreshnessReason.SCENARIUSZ_USUNIETY: (
+        "Scenariusz roboczy przebiegu został usunięty z projektu — wynik nie ma "
+        "już swojego scenariusza."
     ),
 }
 
@@ -236,6 +248,7 @@ def evaluate_envelope_freshness(
     odcisk_katalogu_biezacy: str,
     zmiany: Iterable[WpisDziennika] = (),
     kotwice_hashowe: Sequence[str | None] = (),
+    stan_scenariusza: StanScenariusza | None = None,
 ) -> FreshnessVerdict:
     """Werdykt z KOPERTY REWIZJI — funkcja czysta (wejscia podaje wolajacy).
 
@@ -245,7 +258,12 @@ def evaluate_envelope_freshness(
     koperta niespojna z wlasnym odciskiem → OUTDATED; rewizja modelu inna →
     OUTDATED + lista zmian; hash modelu inny przy tej samej rewizji (rewizja bez
     podbicia = niemozliwe przez `set_enm`, mozliwe przez ingerencje w plik) →
-    OUTDATED; odcisk katalogu inny → OUTDATED (katalog); inaczej FRESH.
+    OUTDATED; odcisk katalogu inny → OUTDATED (katalog); scenariusz NAZWANY biegu
+    (CV-3.1) usuniety albo nieobecny w magazynie → OUTDATED (scenariusz usuniety),
+    w nowszej rewizji → OUTDATED (scenariusz zmieniony); inaczej FRESH.
+    `stan_scenariusza` podaje wolajacy z magazynu (`enm.scenariusze.stan_scenariusza`)
+    dla scenariusza nazwanego z koperty; scenariusz przejsciowy nie ma rewizji w
+    magazynie i nie jest sprawdzany.
     """
     if not has_result:
         return FreshnessVerdict(ResultFreshness.NONE, FreshnessReason.BRAK_WYNIKU)
@@ -280,6 +298,23 @@ def evaluate_envelope_freshness(
             rewizja_biegu=envelope.model_revision,
             rewizja_biezaca=rewizja_biezaca,
         )
+    if envelope.scenario_ref is not None and not czy_scenariusz_przejsciowy(
+        envelope.scenario_ref[0]
+    ):
+        if stan_scenariusza is None or stan_scenariusza.usuniety:
+            return FreshnessVerdict(
+                ResultFreshness.OUTDATED,
+                FreshnessReason.SCENARIUSZ_USUNIETY,
+                rewizja_biegu=envelope.model_revision,
+                rewizja_biezaca=rewizja_biezaca,
+            )
+        if stan_scenariusza.rewizja != envelope.scenario_ref[1]:
+            return FreshnessVerdict(
+                ResultFreshness.OUTDATED,
+                FreshnessReason.SCENARIUSZ_ZMIENIONY,
+                rewizja_biegu=envelope.model_revision,
+                rewizja_biezaca=rewizja_biezaca,
+            )
     return FreshnessVerdict(
         ResultFreshness.FRESH,
         FreshnessReason.MODEL_NIEZMIENIONY,
@@ -328,9 +363,14 @@ def swiezosc_biegu_kanonicznego(
     """
     koperta = RevisionEnvelope.from_dict(getattr(run, "envelope", None))
     zmiany: list[WpisDziennika] = []
+    stan_scenariusza: StanScenariusza | None = None
     if koperta is not None and stan.klucz is not None and stan.rewizja is not None:
         if koperta.model_revision != stan.rewizja:
             zmiany = wpisy_od(stan.klucz, koperta.model_revision)
+        if koperta.scenario_ref is not None and not czy_scenariusz_przejsciowy(
+            koperta.scenario_ref[0]
+        ):
+            stan_scenariusza = stan_scenariusza_z_magazynu(stan.klucz, koperta.scenario_ref[0])
     return evaluate_envelope_freshness(
         has_result=run.status == "FINISHED" and bool(run.raw_result),
         envelope=koperta,
@@ -339,6 +379,7 @@ def swiezosc_biegu_kanonicznego(
         odcisk_katalogu_biezacy=stan.odcisk_katalogu,
         zmiany=zmiany,
         kotwice_hashowe=(run.snapshot_hash, *kotwice_hashowe),
+        stan_scenariusza=stan_scenariusza,
     )
 
 

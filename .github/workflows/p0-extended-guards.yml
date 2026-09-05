@@ -167,6 +167,9 @@ jobs:
       - name: Magazyn ENM — klucz projektu, nie surowy case_id (CV-1)
         run: $GUARD_PY scripts/enm_store_key_guard.py
 
+      - name: Scenariusz roboczy — jedna kopia migawki i jedna fabryka wariantu (CV-3.1)
+        run: $GUARD_PY scripts/scenario_copy_guard.py
+
       - name: Legacy public path
         run: $GUARD_PY scripts/legacy_public_path_guard.py
 
