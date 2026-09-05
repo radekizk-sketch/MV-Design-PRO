@@ -705,6 +705,48 @@ def wczytaj_scenariusz(
     raise ScenariuszNieistniejeError(klucz, scenario_id, rewizja)
 
 
+def znajdz_klucz_scenariusza(scenario_id: str) -> str | None:
+    """Klucz magazynu (projektu), ktory przechowuje scenariusz o tym identyfikatorze
+    — BEZ indeksu drugiej prawdy (karta C6-PERSIST).
+
+    Konczowki API adresowane WYLACZNIE `scenario_id` (bez `case_id` w sciezce:
+    `GET/PUT/DELETE .../fault-scenarios/{scenario_id}`, `.../eligibility`,
+    `.../sld-overlay`, `.../runs`) potrzebuja klucza magazynu, zeby w ogole
+    wolac `wczytaj_scenariusz`/`zapisz_scenariusz`/`usun_scenariusz` — a klucz
+    zalezy od PROJEKTU, ktorego adres nie jest czescia sciezki. Zamiast osobnego
+    pliku indeksu (`scenario_id -> klucz`), ktory moglby sie rozjechac z
+    rzeczywistymi plikami po awarii zapisu, PRZEGLADAMY magazyn: kazdy plik
+    scenariusza jest juz nazwany `<scenario_id>.json` (patrz `_sciezka_
+    scenariusza`) i jego WLASNY rejestr niesie pole `"klucz"` (patrz
+    `zapisz_scenariusz`) — jedno zrodlo prawdy, ten sam plik, ktory i tak trzeba
+    by odczytac.
+
+    Zwraca `None`, gdy zaden projekt nie ma pliku o tej nazwie (scenariusz
+    nigdy nie istnial, albo zyje wylacznie w `legacy_przypadki/` po migracji
+    klucza — CV-1); wolajacy tlumaczy to na `FaultScenarioNotFoundError`
+    (uczciwy 404, nieodrozniny od „scenariusz nigdy nie istnial" — z perspektywy
+    API to ten sam brak).
+
+    Wiele trafien jest teoretycznie niemozliwe (identyfikator scenariusza to
+    `uuid4()` nadany raz przy tworzeniu) — gdyby jednak wystapilo, wybor jest
+    DETERMINISTYCZNY (posortowane sciezki, pierwsza wygrywa), nie przypadkowy.
+    """
+    korzen = _store_dir()
+    if not korzen.is_dir():
+        return None
+    dopasowania = sorted(korzen.glob(f"*{SUFIKS_KATALOGU_SCENARIUSZY}/{scenario_id}.json"))
+    if not dopasowania:
+        return None
+    plik = dopasowania[0]
+    try:
+        rejestr = json.loads(plik.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise ScenariuszUszkodzonyError(f"{plik}: {exc}") from exc
+    if not isinstance(rejestr, dict) or not rejestr.get("klucz"):
+        raise ScenariuszUszkodzonyError(f"{plik}: brak pola 'klucz' w rejestrze")
+    return str(rejestr["klucz"])
+
+
 def lista_scenariuszy(klucz: str) -> list[OperatingScenario]:
     """Najnowsze, nieusuniete rewizje wszystkich scenariuszy projektu (po identyfikatorze)."""
     katalog = katalog_scenariuszy(klucz)

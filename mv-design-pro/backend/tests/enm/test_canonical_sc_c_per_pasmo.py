@@ -491,3 +491,197 @@ def test_single_phase_fault_with_min_scenario_uses_c_min_and_does_not_crash():
         # dowod, ze solve_graph (R_theta skorygowany) i z0_bus (zbudowany z
         # ORYGINALNEGO grafu) maja zgodne wymiary/kolejnosc wezlow.
         assert row["ikss_a"] > 0.0, bus_ref
+
+
+# =============================================================================
+# 8. Karta C6-PERSIST — lokalizacja zwarcia ze scenariusza HONOROWANA
+# =============================================================================
+
+
+def _stripped_rows_by_node(run) -> dict:
+    """`_rows_by_node`, ale bez pól zależnych od TEGO, ile węzłów liczy dany
+    bieg (nie od fizyki): `proof_ref` (run-scoped — patrz `_strip_run_scoped_
+    proof_refs`) oraz `proof_binding.trace_step_refs` (indeksy do WŁASNEJ listy
+    kroków biegu — bieg liczący 1 węzeł ma inne indeksy niż bieg liczący 4,
+    nawet dla identycznej fizyki tego samego węzła). Parytet fizyki (karta
+    C6-PERSIST, test (d)) dotyczy WIELKOŚCI, nie pozycji w liście śladu."""
+    stripped = _strip_run_scoped_proof_refs(run.raw_result)
+    wynik = {}
+    for row in stripped["results"]:
+        row = dict(row)
+        if isinstance(row.get("proof_binding"), dict):
+            row["proof_binding"] = {
+                k: v for k, v in row["proof_binding"].items() if k != "trace_step_refs"
+            }
+        wynik[row["fault_node_id"]] = row
+    return wynik
+
+
+def test_location_bus_restricts_to_single_node_with_identical_physics():
+    """(d) Lokalizacja BUS -> dokładnie JEDEN wiersz wyniku dla wskazanego
+    węzła, wartości identyczne z wierszem TEGO SAMEGO węzła w biegu bez
+    lokalizacji (parytet fizyki — ten sam solver, ta sama sieć, inny podzbiór
+    węzłów raportowalnych)."""
+    case_id = "c6-location-bus"
+    set_enm(case_id, _build_mv_lv_enm("Siec MV+LV — lokalizacja BUS"))
+
+    result_all = execute_run(
+        create_run(case_id=case_id, klucz_twin=case_id, analysis_type="short_circuit_sn").id
+    )
+    assert result_all.status == "FINISHED", result_all.error_message
+    rows_all = _stripped_rows_by_node(result_all)
+
+    result_located = execute_run(
+        create_run(
+            case_id=case_id,
+            klucz_twin=case_id,
+            analysis_type="short_circuit_sn",
+            options={"location": {"element_ref": N2, "location_type": "BUS", "position": None}},
+        ).id
+    )
+    assert result_located.status == "FINISHED", result_located.error_message
+    rows_located = _stripped_rows_by_node(result_located)
+
+    assert set(rows_located.keys()) == {ref_to_graph_id(N2)}
+    assert rows_located[ref_to_graph_id(N2)] == rows_all[ref_to_graph_id(N2)]
+
+
+def test_location_node_type_behaves_like_bus():
+    """`location_type=NODE` jest równoważny `BUS` (v2, PR-25) — ta sama
+    restrykcja do jednego węzła."""
+    case_id = "c6-location-node"
+    set_enm(case_id, _build_mv_lv_enm("Siec MV+LV — lokalizacja NODE"))
+
+    result = execute_run(
+        create_run(
+            case_id=case_id,
+            klucz_twin=case_id,
+            analysis_type="short_circuit_sn",
+            options={"location": {"element_ref": N1, "location_type": "NODE", "position": None}},
+        ).id
+    )
+    assert result.status == "FINISHED", result.error_message
+    rows = _rows_by_node(result)
+    assert set(rows.keys()) == {ref_to_graph_id(N1)}
+
+
+def test_location_unknown_element_ref_is_explicit_refusal():
+    """Węzeł wskazany przez scenariusz, którego nie ma w modelu -> błąd z
+    nazwą elementu (zero cichego domysłu, zero pustej listy wyników)."""
+    case_id = "c6-location-unknown"
+    set_enm(case_id, _build_mv_lv_enm("Siec MV+LV — lokalizacja nieznana"))
+
+    result = execute_run(
+        create_run(
+            case_id=case_id,
+            klucz_twin=case_id,
+            analysis_type="short_circuit_sn",
+            options={
+                "location": {
+                    "element_ref": "nie-ma-takiego-wezla",
+                    "location_type": "BUS",
+                    "position": None,
+                }
+            },
+        ).id
+    )
+    assert result.status == "FAILED"
+    assert "nie-ma-takiego-wezla" in (result.error_message or "")
+
+
+def test_location_helper_bus_is_explicit_refusal():
+    """Węzeł istniejący, ale POMOCNICZY (`skip_short_circuit_target`) — scenariusz
+    wskazujący go dostaje odmowę z nazwą, nie cichy brak wyników."""
+    case_id = "c6-location-helper-bus"
+    snapshot = _build_mv_lv_enm("Siec MV+LV — lokalizacja pomocnicza").model_dump(mode="json")
+    for bus in snapshot["buses"]:
+        if bus["ref_id"] == N2:
+            bus["tags"] = ["helper_bus"]
+    set_enm(case_id, EnergyNetworkModel.model_validate(snapshot))
+
+    result = execute_run(
+        create_run(
+            case_id=case_id,
+            klucz_twin=case_id,
+            analysis_type="short_circuit_sn",
+            options={"location": {"element_ref": N2, "location_type": "BUS", "position": None}},
+        ).id
+    )
+    assert result.status == "FAILED"
+    assert N2 in (result.error_message or "")
+    assert "pomocniczym" in (result.error_message or "")
+
+
+def test_location_branch_point_is_explicit_refusal_defense_in_depth():
+    """(e, druga linia obrony) BRANCH/BRANCH_POINT — `_execute_short_circuit`
+    odmawia jawnie, GDYBY ktoś ominął eligibility (`FaultScenarioService.
+    check_scenario_eligibility` blokuje to samo wcześniej, przez API)."""
+    case_id = "c6-location-branch-point"
+    set_enm(case_id, _build_mv_lv_enm("Siec MV+LV — lokalizacja BRANCH_POINT"))
+
+    result = execute_run(
+        create_run(
+            case_id=case_id,
+            klucz_twin=case_id,
+            analysis_type="short_circuit_sn",
+            options={
+                "location": {
+                    "element_ref": "C_SN",
+                    "location_type": "BRANCH_POINT",
+                    "position": 0.5,
+                }
+            },
+        ).id
+    )
+    assert result.status == "FAILED"
+    assert "adapter obliczeniowy" in (result.error_message or "")
+
+
+def test_location_branch_is_explicit_refusal_same_code_as_branch_point():
+    """`location_type=BRANCH` (v1) dostaje DOKŁADNIE ten sam komunikat co
+    BRANCH_POINT — jeden kod kanonu dla całej klasy ograniczenia (KLASA, NIE
+    INSTANCJA), nie dwa niezależne teksty dla dwóch nazw tego samego problemu."""
+    case_id = "c6-location-branch"
+    set_enm(case_id, _build_mv_lv_enm("Siec MV+LV — lokalizacja BRANCH"))
+
+    wynik_branch = execute_run(
+        create_run(
+            case_id=case_id,
+            klucz_twin=case_id,
+            analysis_type="short_circuit_sn",
+            options={
+                "location": {"element_ref": "C_SN", "location_type": "BRANCH", "position": 0.5}
+            },
+        ).id
+    )
+    wynik_branch_point = execute_run(
+        create_run(
+            case_id=case_id,
+            klucz_twin=case_id,
+            analysis_type="short_circuit_sn",
+            options={
+                "location": {
+                    "element_ref": "C_SN",
+                    "location_type": "BRANCH_POINT",
+                    "position": 0.5,
+                }
+            },
+        ).id
+    )
+    assert wynik_branch.status == wynik_branch_point.status == "FAILED"
+    assert "adapter obliczeniowy" in (wynik_branch.error_message or "")
+    assert "adapter obliczeniowy" in (wynik_branch_point.error_message or "")
+
+
+def test_location_absent_keeps_all_nodes_parity():
+    """Brak `location` w opcjach — zachowanie BEZ ZMIAN (wszystkie węzły
+    raportowalne), parytet z biegiem sprzed karty C6-PERSIST."""
+    case_id = "c6-location-absent"
+    set_enm(case_id, _build_mv_lv_enm("Siec MV+LV — brak lokalizacji"))
+
+    result = execute_run(
+        create_run(case_id=case_id, klucz_twin=case_id, analysis_type="short_circuit_sn").id
+    )
+    assert result.status == "FINISHED", result.error_message
+    rows = _rows_by_node(result)
+    assert set(rows.keys()) == {ref_to_graph_id(ref) for ref in (N0, N1, N2, N3)}

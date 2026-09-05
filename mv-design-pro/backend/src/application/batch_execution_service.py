@@ -48,6 +48,7 @@ from domain.fault_scenario import FaultScenario, compute_scenario_content_hash
 from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import create_run as _create_canonical_run
 from enm.canonical_analysis import execute_run as _execute_canonical_run
+from enm.scenariusze import OperatingScenario
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +111,7 @@ class BatchExecutionService:
     def create_batch(
         self,
         *,
+        klucz: str,
         study_case_id: UUID,
         scenario_ids: list[UUID],
     ) -> BatchJob:
@@ -125,13 +127,18 @@ class BatchExecutionService:
         Odcisk treści każdego scenariusza jest przypinany TERAZ i stanowi
         warunek wykonania (przewidywalność: seria wykonuje dokładnie tę
         treść, którą widział projektant przy jej tworzeniu).
+
+        `klucz` — klucz magazynu scenariuszy (Canonical Project Twin) przypadku
+        serii, przetłumaczony przez wołającego (`api/batch_execution.py`,
+        `klucz_twin_dep.klucz_twin_z_sciezki` — karta C6-PERSIST: serwis
+        scenariuszy jest bezstanowy i wymaga klucza na każde wywołanie).
         """
         if not scenario_ids:
             raise ValueError("Seria przebiegów wymaga co najmniej jednego scenariusza")
 
         scenarios: list[FaultScenario] = []
         for scenario_id in scenario_ids:
-            scenario = self._scenario_service.get_scenario(scenario_id)
+            scenario = self._scenario_service.get_scenario(klucz, scenario_id)
             if scenario.study_case_id != study_case_id:
                 raise ValueError(
                     f"Scenariusz {scenario_id} nie należy do przypadku {study_case_id}"
@@ -182,10 +189,11 @@ class BatchExecutionService:
            przy tworzeniu serii (usunięty/zmieniony scenariusz = odmowa),
         2. brama uprawnień scenariusza (`check_scenario_eligibility` — ta sama
            brama co pojedynczy bieg),
-        3. utwórz bieg kanoniczny (`create_run` — walidacja ENM u źródła),
-        4. wykonaj bieg (`execute_run` — realny solver, WHITE BOX),
-        5. powiąż bieg ze scenariuszem (`register_run` — parytet z pojedynczym
-           biegiem).
+        3. utwórz bieg kanoniczny (`create_run(scenariusz=...)` — walidacja ENM
+           u źródła, koperta niesie referencję scenariusza — TEN SAM mechanizm,
+           co pojedynczy bieg, karta C6-PERSIST, KLASA NIE INSTANCJA: „ma
+           powiązane biegi" jest wyprowadzane z koperty dla OBU ścieżek),
+        4. wykonaj bieg (`execute_run` — realny solver, WHITE BOX).
 
         `klucz_twin` — klucz magazynu ENM (Canonical Project Twin) projektu
         przypadku serii (CV-1-W). Serwis jest bezstanowy wobec bazy danych
@@ -208,14 +216,23 @@ class BatchExecutionService:
 
         for scenario_id in batch.scenario_ids:
             try:
-                scenario = self._pobierz_zweryfikowany_scenariusz(scenario_id, pinned)
-                self._brama_uprawnien(scenario)
+                wpis = self._pobierz_zweryfikowany_scenariusz(klucz_twin, scenario_id, pinned)
+                scenario = wpis.fault_spec
+                assert scenario is not None  # gwarantowane przez get_scenario_ze_wpisem
+                self._brama_uprawnien(klucz_twin, scenario_id)
                 run = self._create_canonical_run(
                     case_id=str(batch.study_case_id),
                     klucz_twin=klucz_twin,
                     project_id=None,
                     analysis_type="short_circuit_sn",
                     options=solver_input_for_scenario(scenario),
+                    # Koperta niesie `scenario_ref=(scenario_id, revision)` —
+                    # BEZ tego `FaultScenarioService.has_associated_runs`
+                    # (wyprowadzone z koperty, karta C6-PERSIST) nie widziałby
+                    # biegów serii i pozwoliłby usunąć scenariusz z aktywnym
+                    # biegiem serii (regresja względem `register_run` sprzed
+                    # tej karty, który rejestrował OBIE ścieżki jednakowo).
+                    scenariusz=wpis,
                 )
                 run = self._execute_canonical_run(run.id)
                 if run.status != "FINISHED":
@@ -223,7 +240,6 @@ class BatchExecutionService:
                     raise BatchExecutionError(
                         run.error_message or "Bieg zakończył się niepowodzeniem"
                     )
-                self._scenario_service.register_run(scenario_id, run.id)
                 collected_run_ids.append(run.id)
             except Exception as exc:
                 komunikat = f"Scenariusz {scenario_id}: {exc}"
@@ -247,25 +263,28 @@ class BatchExecutionService:
         return batch
 
     def _pobierz_zweryfikowany_scenariusz(
-        self, scenario_id: UUID, pinned: dict[UUID, str]
-    ) -> FaultScenario:
-        """Scenariusz o treści IDENTYCZNEJ z przypiętą przy tworzeniu serii."""
+        self, klucz: str, scenario_id: UUID, pinned: dict[UUID, str]
+    ) -> OperatingScenario:
+        """Scenariusz (KOMPLETNY wpis magazynu) o treści IDENTYCZNEJ z przypiętą
+        przy tworzeniu serii."""
         try:
-            scenario = self._scenario_service.get_scenario(scenario_id)
+            wpis = self._scenario_service.get_scenario_ze_wpisem(klucz, scenario_id)
         except FaultScenarioNotFoundError as exc:
             raise BatchExecutionError(
                 "Scenariusz został usunięty po utworzeniu serii — utwórz serię ponownie"
             ) from exc
+        scenario = wpis.fault_spec
+        assert scenario is not None  # gwarantowane przez get_scenario_ze_wpisem
         przypiety = pinned.get(scenario_id)
         if przypiety is not None and compute_scenario_content_hash(scenario) != przypiety:
             raise BatchExecutionError(
                 "Scenariusz został zmieniony po utworzeniu serii — utwórz serię ponownie"
             )
-        return scenario
+        return wpis
 
-    def _brama_uprawnien(self, scenario: FaultScenario) -> None:
+    def _brama_uprawnien(self, klucz: str, scenario_id: UUID) -> None:
         """Ta sama brama uprawnień, którą przechodzi pojedynczy bieg."""
-        eligibility = self._scenario_service.check_scenario_eligibility(scenario.scenario_id)
+        eligibility = self._scenario_service.check_scenario_eligibility(klucz, scenario_id)
         if eligibility.status.value == "INELIGIBLE":
             blokady = "; ".join(b.message_pl for b in eligibility.blockers)
             raise BatchExecutionError(f"Analiza zablokowana: {blokady}")

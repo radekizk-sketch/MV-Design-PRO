@@ -115,7 +115,9 @@ def _parse_uuid(value: str, field_name: str = "id") -> UUID:
     status_code=status.HTTP_201_CREATED,
     summary="Utwórz serię przebiegów ze scenariuszy zwarciowych",
 )
-def create_batch(case_id: str, request: CreateBatchRequest) -> dict[str, Any]:
+def create_batch(
+    case_id: str, request: CreateBatchRequest, http_request: Request
+) -> dict[str, Any]:
     """Utwórz serię przebiegów (PENDING) nad scenariuszami przypadku.
 
     Odcisk treści każdego scenariusza jest przypinany przy tworzeniu serii;
@@ -123,14 +125,26 @@ def create_batch(case_id: str, request: CreateBatchRequest) -> dict[str, Any]:
     lub usunięty (jedno źródło prawdy o treści serii).
 
     Zwraca 404 dla nieznanego scenariusza, 400 dla listy pustej, duplikatów,
-    scenariusza spoza przypadku albo mieszanych typów analizy.
+    scenariusza spoza przypadku albo mieszanych typów analizy. Klucz magazynu
+    scenariuszy (Canonical Project Twin) jest tłumaczony z `case_id` DOPIERO PO
+    walidacji kształtu żądania (lista niepusta, UUID-y poprawne) — karta
+    C6-PERSIST: serwis scenariuszy jest bezstanowy i wymaga klucza na każde
+    wywołanie, ale kolejność walidacji zostaje TAKA SAMA jak przed migracją
+    (przypadek nieznany w bazie nie ma przewagi nad prostszym błędem żądania).
     """
     parsed_case_id = _parse_uuid(case_id, "case_id")
+    if not request.scenario_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Seria przebiegów wymaga co najmniej jednego scenariusza",
+        )
     scenario_ids = [_parse_uuid(sid, "scenario_id") for sid in request.scenario_ids]
+    klucz = klucz_twin_z_sciezki(case_id, http_request)
     service = get_batch_service()
 
     try:
         batch = service.create_batch(
+            klucz=klucz,
             study_case_id=parsed_case_id,
             scenario_ids=scenario_ids,
         )

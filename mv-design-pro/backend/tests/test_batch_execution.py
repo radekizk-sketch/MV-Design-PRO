@@ -69,19 +69,38 @@ def _nowy_przypadek() -> str:
     return str(case_resp.json()["id"])
 
 
+def _dwa_przypadki_w_jednym_projekcie() -> tuple[str, str]:
+    """Dwa przypadki JEDNEGO projektu — magazyn scenariuszy jest kluczowany
+    projektem (Canonical Project Twin), więc oba przypadki dzielą klucz."""
+    project_resp = client.post("/api/projects", json={"name": "Batch execution — cross-case"})
+    assert project_resp.status_code == 201, project_resp.text
+    project_id = project_resp.json()["id"]
+
+    def _przypadek(nazwa: str) -> str:
+        resp = client.post(
+            "/api/study-cases",
+            json={"project_id": project_id, "name": nazwa},
+        )
+        assert resp.status_code == 201, resp.text
+        return str(resp.json()["id"])
+
+    return _przypadek("Przypadek A"), _przypadek("Przypadek B")
+
+
 @pytest.fixture(autouse=True)
 def _reset_services():
-    """Izolacja stanu serwisów pamięciowych i biegów kanonicznych."""
+    """Izolacja stanu serwisów pamięciowych i biegów kanonicznych.
+
+    Scenariusze zwarciowe żyją odtąd w magazynie na dysku (karta C6-PERSIST,
+    `enm/scenariusze.py`) — `reset_enm_store()` czyści JE RÓWNIEŻ
+    (`usun_wszystkie_scenariusze` wołane wewnątrz), więc `FaultScenarioService`
+    (bezstanowy) nie ma już własnego stanu do czyszczenia.
+    """
     from api.batch_execution import get_batch_service
-    from api.fault_scenarios import get_fault_scenario_service
     from enm.canonical_analysis import reset_canonical_runs
     from enm.store import reset_enm_store
 
     def _wyczysc() -> None:
-        scenario_service = get_fault_scenario_service()
-        scenario_service._scenarios.clear()
-        scenario_service._case_scenarios.clear()
-        scenario_service._scenario_runs.clear()
         get_batch_service().reset()
         reset_canonical_runs()
         reset_enm_store()
@@ -266,8 +285,11 @@ class TestCreateBatch:
         assert response.status_code == 404
 
     def test_scenariusz_spoza_przypadku_400(self):
-        case_a = str(uuid4())
-        case_b = str(uuid4())
+        """Scenariusz istnieje (RZECZYWISTY projekt), ale należy do INNEGO
+        przypadku TEGO SAMEGO projektu — magazyn scenariuszy jest kluczowany
+        projektem (karta C6-PERSIST), więc „spoza przypadku" wymaga dwóch
+        przypadków WSPÓLNEGO projektu, nie dwóch dowolnych UUID-ów."""
+        case_a, case_b = _dwa_przypadki_w_jednym_projekcie()
         s_obcy = _create_scenario(case_a)
         response = client.post(
             f"{BASE_URL}/study-cases/{case_b}/batches",
@@ -609,3 +631,55 @@ class TestSolverInputJednoZrodlo:
 
         bieg_serii = client.get(f"{BASE_URL}/runs/{done['run_ids'][0]}").json()
         assert bieg_serii["solver_input_hash"] == pojedynczy.json()["solver_input_hash"]
+
+
+# =============================================================================
+# Karta C6-PERSIST — „ma powiązane biegi" wyprowadzone z koperty DLA OBU
+# ścieżek (pojedynczy bieg I seria — reguła KLASA, NIE INSTANCJA: naprawa
+# tylko ścieżki pojedynczego biegu zostawiałaby serię jako drugą, niewidoczną
+# dla `has_associated_runs`, drogę do tego samego stanu).
+# =============================================================================
+
+
+class TestBiegSeriiMaKoperteZeScenariuszem:
+    def test_bieg_serii_ma_koperte_wersji_2_ze_scenario_ref(self):
+        from uuid import UUID as _UUID
+
+        from enm.canonical_analysis import get_run
+
+        case_id = _nowy_przypadek()
+        _seed_valid_enm(case_id)
+        s1 = _create_scenario(case_id, name="A", element_ref="bus-main")
+
+        batch = client.post(
+            f"{BASE_URL}/study-cases/{case_id}/batches",
+            json={"scenario_ids": [s1["scenario_id"]]},
+        ).json()
+        done = client.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute").json()
+        assert done["status"] == "DONE"
+
+        run = get_run(_UUID(done["run_ids"][0]))
+        assert run is not None
+        koperta = run.koperta
+        assert koperta is not None
+        assert koperta.wersja == 2
+        assert koperta.scenario_ref == (s1["scenario_id"], 1)
+
+    def test_usuniecie_scenariusza_zablokowane_po_biegu_serii(self):
+        """Bieg utworzony PRZEZ SERIĘ blokuje usunięcie scenariusza dokładnie
+        tak samo, jak bieg utworzony pojedynczo — jedno źródło prawdy
+        (koperta), nie dwa niezależne mechanizmy rejestracji."""
+        case_id = _nowy_przypadek()
+        _seed_valid_enm(case_id)
+        s1 = _create_scenario(case_id, name="A", element_ref="bus-main")
+
+        batch = client.post(
+            f"{BASE_URL}/study-cases/{case_id}/batches",
+            json={"scenario_ids": [s1["scenario_id"]]},
+        ).json()
+        done = client.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute").json()
+        assert done["status"] == "DONE"
+
+        delete_resp = client.delete(f"{BASE_URL}/fault-scenarios/{s1['scenario_id']}")
+        assert delete_resp.status_code == 409
+        assert "powiązanymi przebiegami" in delete_resp.json()["detail"]

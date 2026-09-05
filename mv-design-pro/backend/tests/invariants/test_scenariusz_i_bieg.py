@@ -270,6 +270,48 @@ def test_is3_swiezosc_biegu_wynika_z_rewizji_scenariusza_nazwanego() -> None:
     )
 
 
+def test_is3_update_serwisu_scenariusza_zwarciowego_daje_swiezosc_zmieniony() -> None:
+    """Karta C6-PERSIST (b): `FaultScenarioService.update_scenario` (nie tylko
+    `zapisz_scenariusz` wprost) tworzy NOWĄ rewizję, która unieważnia bieg
+    utworzony na rewizji wcześniejszej — ta sama reguła świeżości (I-S3), teraz
+    przez publiczne API serwisu scenariuszy zwarciowych. `analysis_type="PF"`
+    celowo (fizyka zwarciowa nie jest tu pod testem — mechanizm koperty/rewizji
+    jest niezależny od typu analizy)."""
+    from application.fault_scenario_service import FaultScenarioService
+
+    enm = _model()
+    szyna = enm.buses[0].ref_id
+    service = FaultScenarioService()
+    scenario = service.create_scenario(
+        klucz=KLUCZ,
+        study_case_id=uuid4(),
+        name="Zwarcie serwisu",
+        fault_type="SC_3F",
+        location={"element_ref": szyna, "location_type": "BUS"},
+    )
+    wpis = OperatingScenario(
+        scenario_id=str(scenario.scenario_id),
+        name=scenario.name,
+        kind=RodzajScenariusza.FAULT_STUDY,
+        fault_spec=scenario,
+    )
+    run = execute_run(
+        create_run(case_id=CASE, klucz_twin=KLUCZ, analysis_type="PF", scenariusz=wpis).id
+    )
+    assert run.status == "FINISHED", run.error_message
+    assert run.koperta is not None
+    assert run.koperta.scenario_ref == (str(scenario.scenario_id), 1)
+    stan = _stan(enm)
+    assert swiezosc_biegu_kanonicznego(run, stan).status == ResultFreshness.FRESH
+
+    service.update_scenario(KLUCZ, scenario.scenario_id, name="Zwarcie serwisu — po zmianie")
+    werdykt = swiezosc_biegu_kanonicznego(run, stan)
+    assert (werdykt.status, werdykt.reason) == (
+        ResultFreshness.OUTDATED,
+        FreshnessReason.SCENARIUSZ_ZMIENIONY,
+    )
+
+
 def test_is3_scenariusz_nieobecny_w_magazynie_to_scenariusz_usuniety() -> None:
     enm = _model()
     galaz = _linia_do_wylaczenia(enm)

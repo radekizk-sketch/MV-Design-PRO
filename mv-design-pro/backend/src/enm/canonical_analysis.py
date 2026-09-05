@@ -28,6 +28,7 @@ from application.stability.voltage_trajectory import (
     TrajectoryGenerationParams,
     generate_voltage_trajectory,
 )
+from domain.canonical_operations import READINESS_CODES
 from enm.element_kind import rodzaj_elementu, zbuduj_indeks_rodzajow
 from enm.envelope import RevisionEnvelope, zbuduj_koperte
 from enm.klucz_twin import czy_klucz_projektu, project_id_z_klucza
@@ -1314,6 +1315,48 @@ def _execute_short_circuit(run: CanonicalRun) -> None:
         for node_id in sorted(graph.nodes.keys())
         if not graph_nodes.get(node_id, {}).get("skip_short_circuit_target", False)
     ]
+
+    # Karta C6-PERSIST: lokalizacja zwarcia ze scenariusza HONOROWANA. Brak
+    # `location` w opcjach = zachowanie bez zmian (wszystkie węzły raportowalne,
+    # parytet z biegiem bez scenariusza). `location_type` BUS/NODE zawęża zbiór
+    # do JEDNEGO wskazanego węzła (parytet fizyki z biegiem bez lokalizacji —
+    # ten sam solver, ten sam c_factor/tk_s, tylko inny podzbiór węzłów).
+    # BRANCH/BRANCH_POINT to JAWNA ODMOWA: adapter obliczeniowy liczy zwarcie
+    # wyłącznie w węźle grafu, a punkt pośredni na gałęzi wymagałby rozdzielenia
+    # jej na dwie impedancje w miejscu zwarcia (assembler), którego solver
+    # FROZEN nie ma — druga linia obrony, gdyby ktoś ominął eligibility
+    # (`FaultScenarioService.check_scenario_eligibility` blokuje to samo przed
+    # utworzeniem biegu, tym samym kodem gotowości — jedno źródło komunikatu).
+    location_raw = run.options.get("location")
+    if location_raw is not None:
+        if not isinstance(location_raw, dict):
+            raise ValueError("Lokalizacja zwarcia w opcjach biegu musi być słownikiem")
+        location_type = location_raw.get("location_type")
+        element_ref = str(location_raw.get("element_ref") or "")
+        if location_type in ("BUS", "NODE"):
+            if not element_ref:
+                raise ValueError(
+                    "Lokalizacja zwarcia scenariusza nie wskazuje elementu (element_ref)"
+                )
+            target_node_id = _graph_id_from_ref(element_ref)
+            if target_node_id not in graph.nodes:
+                raise ValueError(
+                    f"Węzeł zwarcia {element_ref!r} ze scenariusza nie istnieje w modelu sieci"
+                )
+            if target_node_id not in reportable_fault_node_ids:
+                raise ValueError(
+                    f"Węzeł zwarcia {element_ref!r} jest węzłem pomocniczym "
+                    "(skip_short_circuit_target) — nie jest raportowalnym punktem zwarcia"
+                )
+            reportable_fault_node_ids = [target_node_id]
+        elif location_type in ("BRANCH", "BRANCH_POINT"):
+            spec = READINESS_CODES["fault.location_on_branch_requires_assembler"]
+            raise ValueError(
+                f"{spec.message_pl} (element_ref={element_ref!r}, "
+                f"location_type={location_type!r})"
+            )
+        else:
+            raise ValueError(f"Nieznany typ lokalizacji zwarcia: {location_type!r}")
 
     for node_id in reportable_fault_node_ids:
         # AUTO: c z pasma napięciowego WŁASNEGO węzła zwarcia (IEC 60909 Tab. 1);

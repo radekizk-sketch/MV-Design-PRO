@@ -4579,7 +4579,7 @@
     "type": "object"
    },
    "FaultScenarioResponse": {
-    "description": "Fault scenario response model (v1 + v2).",
+    "description": "Fault scenario response model (v1 + v2 + C6-PERSIST).",
     "properties": {
      "analysis_type": {
       "title": "Analysis Type",
@@ -4644,6 +4644,10 @@
       "title": "Name",
       "type": "string"
      },
+     "revision": {
+      "title": "Revision",
+      "type": "integer"
+     },
      "scenario_id": {
       "title": "Scenario Id",
       "type": "string"
@@ -4680,7 +4684,8 @@
      "fault_impedance_type",
      "created_at",
      "updated_at",
-     "content_hash"
+     "content_hash",
+     "revision"
     ],
     "title": "FaultScenarioResponse",
     "type": "object"
@@ -18500,7 +18505,7 @@
   },
   "/api/execution/fault-scenarios/{scenario_id}": {
    "delete": {
-    "description": "Usuń scenariusz zwarcia.\n\nBlokada usunięcia jeśli scenariusz ma powiązane przebiegi.",
+    "description": "Usuń scenariusz zwarcia.\n\nBlokada usunięcia jeśli scenariusz ma powiązane przebiegi (wyprowadzone\nz koperty biegu — karta C6-PERSIST).",
     "operationId": "delete_fault_scenario_api_execution_fault_scenarios__scenario_id__delete",
     "parameters": [
      {
@@ -18575,7 +18580,7 @@
     ]
    },
    "put": {
-    "description": "Zaktualizuj scenariusz zwarcia (copy-on-write).\n\nWaliduje invarianty po aktualizacji. Przelicza content_hash.",
+    "description": "Zaktualizuj scenariusz zwarcia (copy-on-write, nowa rewizja w magazynie).\n\nWaliduje invarianty po aktualizacji. Przelicza content_hash.",
     "operationId": "update_fault_scenario_api_execution_fault_scenarios__scenario_id__put",
     "parameters": [
      {
@@ -19035,7 +19040,7 @@
     ]
    },
    "post": {
-    "description": "Utwórz serię przebiegów (PENDING) nad scenariuszami przypadku.\n\nOdcisk treści każdego scenariusza jest przypinany przy tworzeniu serii;\nwykonanie odmówi biegu, jeśli scenariusz został w międzyczasie zmieniony\nlub usunięty (jedno źródło prawdy o treści serii).\n\nZwraca 404 dla nieznanego scenariusza, 400 dla listy pustej, duplikatów,\nscenariusza spoza przypadku albo mieszanych typów analizy.",
+    "description": "Utwórz serię przebiegów (PENDING) nad scenariuszami przypadku.\n\nOdcisk treści każdego scenariusza jest przypinany przy tworzeniu serii;\nwykonanie odmówi biegu, jeśli scenariusz został w międzyczasie zmieniony\nlub usunięty (jedno źródło prawdy o treści serii).\n\nZwraca 404 dla nieznanego scenariusza, 400 dla listy pustej, duplikatów,\nscenariusza spoza przypadku albo mieszanych typów analizy. Klucz magazynu\nscenariuszy (Canonical Project Twin) jest tłumaczony z `case_id` DOPIERO PO\nwalidacji kształtu żądania (lista niepusta, UUID-y poprawne) — karta\nC6-PERSIST: serwis scenariuszy jest bezstanowy i wymaga klucza na każde\nwywołanie, ale kolejność walidacji zostaje TAKA SAMA jak przed migracją\n(przypadek nieznany w bazie nie ma przewagi nad prostszym błędem żądania).",
     "operationId": "create_batch_api_execution_study_cases__case_id__batches_post",
     "parameters": [
      {

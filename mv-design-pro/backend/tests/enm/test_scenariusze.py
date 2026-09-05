@@ -53,6 +53,7 @@ from enm.scenariusze import (
     usun_scenariusz,
     wczytaj_scenariusz,
     zapisz_scenariusz,
+    znajdz_klucz_scenariusza,
 )
 from enm.store import (
     migruj_klucz_przypadku_do_projektu,
@@ -598,6 +599,31 @@ def test_awaria_zapisu_nie_zostawia_pliku_roboczego_ani_pol_rewizji(monkeypatch)
     assert (katalog_scenariuszy(KLUCZ) / "n1.json").read_bytes() == przed
     assert not list(katalog_scenariuszy(KLUCZ).glob("*.tmp"))
     assert stan_scenariusza(KLUCZ, "n1") == scenariusze.StanScenariusza(1, False)
+
+
+def test_znajdz_klucz_scenariusza_przeglada_magazyn_bez_indeksu() -> None:
+    """Karta C6-PERSIST: `scenario_id -> klucz` przez przeglądanie plików
+    (rejestr niesie własny `klucz`), nie przez osobny plik indeksu."""
+    zapisz_scenariusz(KLUCZ, _scenariusz(scenario_id="n1"))
+    assert znajdz_klucz_scenariusza("n1") == KLUCZ
+    assert znajdz_klucz_scenariusza("nigdy-nie-istnial") is None
+
+
+def test_znajdz_klucz_scenariusza_po_migracji_wskazuje_nowy_klucz() -> None:
+    """Scenariusz przeniesiony razem z modelem (CV-1) jest znajdywany pod
+    NOWYM kluczem — plik niesie klucz AKTUALNY, nie ten sprzed migracji."""
+    set_enm("case-1", _pierscien())
+    zapisz_scenariusz("case-1", _scenariusz(scenario_id="n1"))
+    migruj_klucz_przypadku_do_projektu("case-1", KLUCZ, przyjmij_jako_model_projektu=True)
+    assert znajdz_klucz_scenariusza("n1") == KLUCZ
+
+
+def test_znajdz_klucz_scenariusza_plik_uszkodzony_to_jawny_blad() -> None:
+    zapisz_scenariusz(KLUCZ, _scenariusz(scenario_id="n1"))
+    plik = katalog_scenariuszy(KLUCZ) / "n1.json"
+    plik.write_text("{to nie jest json", encoding="utf-8")
+    with pytest.raises(ScenariuszUszkodzonyError):
+        znajdz_klucz_scenariusza("n1")
 
 
 def test_reset_magazynu_kasuje_scenariusze() -> None:

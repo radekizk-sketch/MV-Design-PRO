@@ -1477,6 +1477,24 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         fix_action_id=None,
         fix_navigation={"panel": "readiness"},
     ),
+    # Lokalizacja zwarcia scenariusza NA GAŁĘZI (BRANCH/BRANCH_POINT) — adapter
+    # obliczeniowy dziś liczy zwarcie WYŁĄCZNIE dla POJEDYNCZEGO węzła grafu; punkt
+    # pośredni na gałęzi wymagałby rozdzielenia jej na dwie impedancje w miejscu
+    # zwarcia (assembler), którego solver FROZEN nie ma (karta C6-PERSIST). Jeden
+    # kod dla OBU typów lokalizacji gałęziowej — to ta sama klasa ograniczenia
+    # bindingu, nie dwa niezależne warunki.
+    "fault.location_on_branch_requires_assembler": ReadinessCodeSpec(
+        code="fault.location_on_branch_requires_assembler",
+        area=ReadinessArea.ANALYSIS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Zwarcie w punkcie na gałęzi wymaga rozdzielenia modelu w miejscu zwarcia "
+            "(adapter obliczeniowy) — nieobsługiwane; wybierz lokalizację na węźle"
+        ),
+        fix_action_id="fix_fault_location_to_node",
+        fix_navigation={"panel": "analizy", "tab": "zwarciowa"},
+    ),
     # Werdykt projektowy (karta F-K3) — powody braku oceny kryterium. Trzeci stan
     # („niesprawdzone") musi nieść PRZYCZYNĘ, inaczej jest nie do odróżnienia od
     # spełnienia kryterium.
