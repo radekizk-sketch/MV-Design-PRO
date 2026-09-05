@@ -181,7 +181,7 @@ def test_execute_run_uses_frozen_snapshot_not_post_creation_enm_mutation():
     case_id = "draft-isolation-sc"
     set_enm(case_id, EnergyNetworkModel.model_validate(_valid_enm_payload("Siec pierwotna")))
 
-    run = create_run(case_id=case_id, analysis_type="short_circuit_sn")
+    run = create_run(case_id=case_id, klucz_twin=case_id, analysis_type="short_circuit_sn")
     frozen_hash = run.snapshot_hash
     frozen_name = run.snapshot["header"]["name"]
 
@@ -209,7 +209,7 @@ def test_short_circuit_does_not_report_helper_field_terminals():
         ),
     )
 
-    run = create_run(case_id=case_id, analysis_type="short_circuit_sn")
+    run = create_run(case_id=case_id, klucz_twin=case_id, analysis_type="short_circuit_sn")
     result = execute_run(run.id)
 
     assert result.status == "FINISHED", result.error_message
@@ -234,6 +234,7 @@ def test_execute_run_supports_1f_when_z0_is_committed_in_enm():
 
     run = create_run(
         case_id=case_id,
+        klucz_twin=case_id,
         analysis_type="short_circuit_sn",
         options={"fault_type": "1F"},
     )
@@ -285,6 +286,7 @@ def test_execute_run_supports_2fg_when_z0_is_committed_in_enm():
 
     run = create_run(
         case_id=case_id,
+        klucz_twin=case_id,
         analysis_type="short_circuit_sn",
         options={"fault_type": "2F+Z"},
     )
@@ -324,6 +326,7 @@ def test_create_1f_run_blocks_without_committed_z0():
     with pytest.raises(ValueError, match="skladowej zerowej Z0"):
         create_run(
             case_id=case_id,
+            klucz_twin=case_id,
             analysis_type="short_circuit_sn",
             options={"fault_type": "1F"},
         )

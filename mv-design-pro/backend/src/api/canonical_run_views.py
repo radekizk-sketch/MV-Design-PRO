@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from math import radians
 from typing import Any
 from uuid import UUID
@@ -176,7 +177,9 @@ def build_result_items(run: CanonicalRun) -> dict[str, Any]:
     }
 
 
-def build_run_freshness(run: CanonicalRun) -> FreshnessVerdict:
+def build_run_freshness(
+    run: CanonicalRun, uow_factory: Callable[[], Any] | None
+) -> FreshnessVerdict:
     """Swiezosc wyniku biegu kanonicznego wzgledem BIEZACEGO modelu przypadku.
 
     DLUG ZAMKNIETY (K-S, klasa). Nakladka oddawala tu `run.result_status`, czyli
@@ -184,12 +187,13 @@ def build_run_freshness(run: CanonicalRun) -> FreshnessVerdict:
     — do tego w slowniku nieznanym konsumentowi (`SldOverlay.tsx` porownuje z
     `'OUTDATED'`). Status jest teraz liczony z POROWNANIA odcisku modelu biegu
     (`CanonicalRun.snapshot_hash`) z odciskiem modelu biezacego, tym samym
-    mechanizmem co nakladka zabezpieczen.
+    mechanizmem co nakladka zabezpieczen. `uow_factory` (CV-1-W) tlumaczy
+    `run.case_id` na klucz magazynu ENM w `current_model_hash` — patrz tam.
     """
     return evaluate_result_freshness(
         has_result=run.status == "FINISHED" and bool(run.raw_result),
         run_model_hashes=(run.snapshot_hash,),
-        current_hash=current_model_hash(run.case_id),
+        current_hash=current_model_hash(run.case_id, uow_factory),
     )
 
 
@@ -198,6 +202,7 @@ def build_sld_overlay(
     *,
     diagram_id: UUID,
     sld_payload: dict[str, Any],
+    uow_factory: Callable[[], Any] | None,
 ) -> dict[str, Any]:
     bus_rows = {row["bus_id"]: row for row in build_bus_results(run).get("rows", [])}
     branch_rows = {row["branch_id"]: row for row in build_branch_results(run).get("rows", [])}
@@ -273,7 +278,7 @@ def build_sld_overlay(
     return {
         "diagram_id": str(diagram_id),
         "run_id": str(run.id),
-        **build_run_freshness(run).to_overlay_fields(),
+        **build_run_freshness(run, uow_factory).to_overlay_fields(),
         "nodes": nodes,
         "buses": nodes,
         "branches": branches,

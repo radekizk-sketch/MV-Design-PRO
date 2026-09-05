@@ -208,7 +208,7 @@ def test_scenario_max_default_uses_c_per_band_for_every_node():
     case_id = "p03b-max-default"
     set_enm(case_id, _build_mv_lv_enm("Siec MV+LV — MAX domyslny"))
 
-    run = create_run(case_id=case_id, analysis_type="short_circuit_sn")
+    run = create_run(case_id=case_id, klucz_twin=case_id, analysis_type="short_circuit_sn")
     result = execute_run(run.id)
 
     assert result.status == "FINISHED", result.error_message
@@ -244,12 +244,15 @@ def test_scenario_min_uses_c_min_per_band_and_temperature_correction():
     enm = _build_mv_lv_enm("Siec MV+LV — MIN")
     set_enm(case_id, enm)
 
-    run_max = create_run(case_id=case_id, analysis_type="short_circuit_sn")
+    run_max = create_run(case_id=case_id, klucz_twin=case_id, analysis_type="short_circuit_sn")
     result_max = execute_run(run_max.id)
     assert result_max.status == "FINISHED", result_max.error_message
 
     run_min = create_run(
-        case_id=case_id, analysis_type="short_circuit_sn", options={"scenario": "min"}
+        case_id=case_id,
+        klucz_twin=case_id,
+        analysis_type="short_circuit_sn",
+        options={"scenario": "min"},
     )
     result_min = execute_run(run_min.id)
     assert result_min.status == "FINISHED", result_min.error_message
@@ -301,7 +304,12 @@ def test_explicit_c_factor_overrides_auto_for_every_node():
     case_id = "p03b-override"
     set_enm(case_id, _build_mv_lv_enm("Siec MV+LV — override"))
 
-    run = create_run(case_id=case_id, analysis_type="short_circuit_sn", options={"c_factor": 1.2})
+    run = create_run(
+        case_id=case_id,
+        klucz_twin=case_id,
+        analysis_type="short_circuit_sn",
+        options={"c_factor": 1.2},
+    )
     result = execute_run(run.id)
 
     assert result.status == "FINISHED", result.error_message
@@ -328,7 +336,7 @@ def test_backward_determinism_pure_mv_network_matches_flat_c_110():
     enm = _build_sn_only_enm("Siec czysto SN")
     set_enm(case_id, enm)
 
-    run = create_run(case_id=case_id, analysis_type="short_circuit_sn")
+    run = create_run(case_id=case_id, klucz_twin=case_id, analysis_type="short_circuit_sn")
     result = execute_run(run.id)
 
     assert result.status == "FINISHED", result.error_message
@@ -398,13 +406,19 @@ def test_determinism_two_identical_runs_produce_identical_raw_result():
     set_enm(case_id, enm)
 
     run_a = create_run(
-        case_id=case_id, analysis_type="short_circuit_sn", options={"scenario": "min"}
+        case_id=case_id,
+        klucz_twin=case_id,
+        analysis_type="short_circuit_sn",
+        options={"scenario": "min"},
     )
     result_a = execute_run(run_a.id)
 
     set_enm(case_id, enm)
     run_b = create_run(
-        case_id=case_id, analysis_type="short_circuit_sn", options={"scenario": "min"}
+        case_id=case_id,
+        klucz_twin=case_id,
+        analysis_type="short_circuit_sn",
+        options={"scenario": "min"},
     )
     result_b = execute_run(run_b.id)
 
@@ -430,6 +444,7 @@ def test_unknown_scenario_raises_explicit_error():
 
     run = create_run(
         case_id=case_id,
+        klucz_twin=case_id,
         analysis_type="short_circuit_sn",
         options={"scenario": "nominal"},
     )
@@ -454,6 +469,7 @@ def test_single_phase_fault_with_min_scenario_uses_c_min_and_does_not_crash():
 
     run = create_run(
         case_id=case_id,
+        klucz_twin=case_id,
         analysis_type="short_circuit_sn",
         options={"scenario": "min", "fault_type": "1F"},
     )

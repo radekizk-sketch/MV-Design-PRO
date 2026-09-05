@@ -258,13 +258,36 @@ PRZYPADKI = [
 
 
 @pytest.fixture()
-def klient(tmp_path, monkeypatch) -> TestClient:
+def klient(tmp_path, monkeypatch, uow_factory) -> TestClient:
+    from api.dependencies import get_uow_factory
+
     monkeypatch.setenv("ENM_STORE_DIR", str(tmp_path))
     reset_enm_store()
     wyczysc_dziennik()
+    app.dependency_overrides[get_uow_factory] = lambda: uow_factory
+    app.state.uow_factory = uow_factory
     yield TestClient(app)
+    app.dependency_overrides.pop(get_uow_factory, None)
+    app.state.uow_factory = None
     reset_enm_store()
     wyczysc_dziennik()
+
+
+def _nowy_przypadek(klient: TestClient) -> str:
+    """Utwórz REALNY projekt + przypadek przez API; zwróć `case_id`.
+
+    CV-1-W: przypadek bez wiersza w bazie dostaje teraz 404 z magazynu ENM
+    (inwariant I-2) — testy bramy katalogowej potrzebują prawdziwej pary
+    projekt+przypadek zamiast dowolnego napisu.
+    """
+    project_resp = klient.post("/api/projects", json={"name": "Brama katalogowa — test"})
+    assert project_resp.status_code == 201, project_resp.text
+    project_id = project_resp.json()["id"]
+    case_resp = klient.post(
+        "/api/study-cases", json={"project_id": project_id, "name": "Przypadek testu"}
+    )
+    assert case_resp.status_code == 201, case_resp.text
+    return str(case_resp.json()["id"])
 
 
 # ---------------------------------------------------------------------------
@@ -385,7 +408,7 @@ def test_literowka_odrzucona_w_torze_payloadu(
 ) -> None:
     """Tor payloadu (brama API): 422 `catalog.item_not_found` dla KAŻDEJ referencji."""
     snapshot, endpoint_bus_ref, segment_ref = _ciag_sn()
-    case_id = f"tor-payload-{abs(hash((pozycja.sciezka, operacja)))}"
+    case_id = _nowy_przypadek(klient)
     klient.post(
         f"/api/cases/{case_id}/enm/domain-ops",
         json={

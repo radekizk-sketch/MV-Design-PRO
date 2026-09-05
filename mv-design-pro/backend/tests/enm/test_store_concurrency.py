@@ -177,8 +177,7 @@ class TestWyscigZastosowaniaSzablonu:
         """
         szablon = get_template(SZABLON)
         assert szablon is not None
-        case_id = uuid.uuid4()
-        case_key = str(case_id)
+        case_key = str(uuid.uuid4())
         segmenty = _zbuduj_magistrale(case_key, 4)
 
         model_przed = get_enm(case_key)
@@ -192,7 +191,7 @@ class TestWyscigZastosowaniaSzablonu:
             def wykonaj() -> None:
                 wynik = apply_template_to_case(
                     template=szablon,
-                    case_id=case_id,
+                    klucz_twin=case_key,
                     target_segment_id=segment_ref,
                     insert_at_ratio=0.5,
                     params_override={},
@@ -236,8 +235,7 @@ class TestWyscigZastosowaniaSzablonu:
         """
         szablon = get_template(SZABLON)
         assert szablon is not None
-        case_id = uuid.uuid4()
-        case_key = str(case_id)
+        case_key = str(uuid.uuid4())
         segmenty = _zbuduj_magistrale(case_key, 3)
         rewizja_przed = get_enm(case_key).header.revision
         rewizje_przed = [wpis.rewizja for wpis in wszystkie_wpisy(case_key)]
@@ -246,7 +244,7 @@ class TestWyscigZastosowaniaSzablonu:
             def wykonaj() -> None:
                 apply_template_to_case(
                     template=szablon,
-                    case_id=case_id,
+                    klucz_twin=case_key,
                     target_segment_id=segment_ref,
                     insert_at_ratio=0.5,
                     params_override={},

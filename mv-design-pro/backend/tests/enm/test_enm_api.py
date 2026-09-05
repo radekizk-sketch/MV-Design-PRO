@@ -1,18 +1,52 @@
 """Tests for ENM API read/validate/run/domain-ops endpoints."""
 
+from uuid import uuid4
+
 import pytest
 from api.enm import router as enm_router
+from domain.models import Project
+from domain.study_case import StudyCase
 from enm.canonical_analysis import reset_canonical_runs
-from enm.models import EnergyNetworkModel
-from enm.store import reset_enm_store, set_enm
+from enm.store import reset_enm_store
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from tests.catalog_test_helpers import gpz_payload, gpz_source_record
 
 
-def _seed_enm(case_id: str, payload: dict) -> None:
-    set_enm(case_id, EnergyNetworkModel.model_validate(payload))
+def _seed_enm(client: TestClient, case_id: str, payload: dict) -> None:
+    """Zasiej ENM przez REALNA koncowke `PUT /enm` (jedyna droga zapisu z API).
+
+    CV-1-W: magazyn jest kluczowany kluczem projektu, nie surowym `case_id` —
+    pisanie wprost przez `enm.store.set_enm(case_id, ...)` ladowalo dane pod
+    klucz, ktorego zaden odczyt API juz nie widzi. `PUT /api/cases/{case_id}/enm`
+    przechodzi przez to samo tlumaczenie `KluczTwin`, co kazdy odczyt.
+    """
+    resp = client.put(f"/api/cases/{case_id}/enm", json=payload)
+    assert resp.status_code == 200, resp.text
+
+
+def _nowy_przypadek(client: TestClient) -> str:
+    """Utworz REALNY projekt + przypadek wprost przez UoW; zwroc `case_id`.
+
+    CV-1-W: przypadek bez wiersza w bazie dostaje teraz 404 z magazynu ENM
+    (inwariant I-2, `application/twin_key.py`). Ta aplikacja testowa montuje
+    WYLACZNIE `enm_router` (bez tras projektow/przypadkow), wiec pary nie da
+    sie utworzyc przez HTTP — tworzymy ja tak samo jak
+    `tests/invariants/test_wlasnosc_modelu_projektu.py::_projekt_z_przypadkami`,
+    wprost przez `uow_factory` zawieszony na `client.app.state`.
+    """
+    uow_factory = client.app.state.uow_factory
+    project_id = uuid4()
+    case_id = uuid4()
+    with uow_factory() as uow:
+        uow.projects.add(Project(id=project_id, name="Test ENM API"), commit=False)
+        uow.cases.add_study_case(
+            StudyCase(id=case_id, project_id=project_id, name="Przypadek testu"),
+            commit=False,
+        )
+        uow.commit()
+    return str(case_id)
 
 
 @pytest.fixture(autouse=True)
@@ -25,10 +59,11 @@ def reset_state():
 
 
 @pytest.fixture
-def client():
-    """Lightweight app with only ENM router."""
+def client(uow_factory):
+    """Lightweight app with only ENM router, wired to a real uow_factory (CV-1)."""
     test_app = FastAPI()
     test_app.include_router(enm_router)
+    test_app.state.uow_factory = uow_factory
     return TestClient(test_app)
 
 
@@ -150,7 +185,8 @@ def _valid_enm_with_legacy_bay(name: str) -> dict:
 
 class TestENMRead:
     def test_get_default_enm(self, client):
-        response = client.get("/api/cases/test-case-1/enm")
+        case_id = _nowy_przypadek(client)
+        response = client.get(f"/api/cases/{case_id}/enm")
         assert response.status_code == 200
         data = response.json()
         assert "header" in data
@@ -158,16 +194,17 @@ class TestENMRead:
         assert data["buses"] == []
 
     def test_get_returns_seeded_enm(self, client):
-        _seed_enm("test-case-2", _valid_enm_payload("Updated"))
-        response = client.get("/api/cases/test-case-2/enm")
+        case_id = _nowy_przypadek(client)
+        _seed_enm(client, case_id, _valid_enm_payload("Updated"))
+        response = client.get(f"/api/cases/{case_id}/enm")
         assert response.status_code == 200
         assert response.json()["header"]["name"] == "Updated"
 
 
 class TestENMV2Projection:
     def test_v2_projection_returns_read_only_m1_contract(self, client):
-        case_id = "test-case-v2-projection"
-        _seed_enm(case_id, _valid_enm_payload("V2 Projection"))
+        case_id = _nowy_przypadek(client)
+        _seed_enm(client, case_id, _valid_enm_payload("V2 Projection"))
 
         response = client.get(f"/api/cases/{case_id}/enm/v2-projection")
 
@@ -186,8 +223,8 @@ class TestENMV2Projection:
         assert stored["header"]["enm_version"] == "1.0"
 
     def test_v2_projection_hash_is_deterministic(self, client):
-        case_id = "test-case-v2-projection-deterministic"
-        _seed_enm(case_id, _valid_enm_payload("V2 Deterministic"))
+        case_id = _nowy_przypadek(client)
+        _seed_enm(client, case_id, _valid_enm_payload("V2 Deterministic"))
 
         first = client.get(f"/api/cases/{case_id}/enm/v2-projection").json()
         second = client.get(f"/api/cases/{case_id}/enm/v2-projection").json()
@@ -197,8 +234,9 @@ class TestENMV2Projection:
 
 class TestENMValidate:
     def test_empty_enm_fails_validation(self, client):
-        client.get("/api/cases/test-case-5/enm")
-        response = client.get("/api/cases/test-case-5/enm/validate")
+        case_id = _nowy_przypadek(client)
+        client.get(f"/api/cases/{case_id}/enm")
+        response = client.get(f"/api/cases/{case_id}/enm/validate")
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "FAIL"
@@ -207,8 +245,9 @@ class TestENMValidate:
         assert "E002" in codes
 
     def test_valid_enm_passes(self, client):
-        _seed_enm("test-case-6", _valid_enm_payload("Test"))
-        response = client.get("/api/cases/test-case-6/enm/validate")
+        case_id = _nowy_przypadek(client)
+        _seed_enm(client, case_id, _valid_enm_payload("Test"))
+        response = client.get(f"/api/cases/{case_id}/enm/validate")
         data = response.json()
         assert data["status"] in ("OK", "WARN")
         assert data["analysis_available"]["short_circuit_3f"] is True
@@ -216,13 +255,15 @@ class TestENMValidate:
 
 class TestRunDispatch:
     def test_run_fails_on_empty_enm(self, client):
-        client.get("/api/cases/test-case-7/enm")
-        response = client.post("/api/cases/test-case-7/runs/short-circuit")
+        case_id = _nowy_przypadek(client)
+        client.get(f"/api/cases/{case_id}/enm")
+        response = client.post(f"/api/cases/{case_id}/runs/short-circuit")
         assert response.status_code == 422
 
     def test_run_succeeds_on_valid_enm(self, client):
-        _seed_enm("test-case-8", _valid_enm_payload("SC Test"))
-        response = client.post("/api/cases/test-case-8/runs/short-circuit")
+        case_id = _nowy_przypadek(client)
+        _seed_enm(client, case_id, _valid_enm_payload("SC Test"))
+        response = client.post(f"/api/cases/{case_id}/runs/short-circuit")
         assert response.status_code == 200
         data = response.json()
         assert data["analysis_type"] == "short_circuit_3f"
@@ -230,8 +271,8 @@ class TestRunDispatch:
         assert data["results"][0]["ikss_a"] > 0
 
     def test_run_dispatch_ignores_client_snapshot_body(self, client):
-        case_id = "test-case-run-draft-isolation"
-        _seed_enm(case_id, _valid_enm_payload("Committed ENM"))
+        case_id = _nowy_przypadek(client)
+        _seed_enm(client, case_id, _valid_enm_payload("Committed ENM"))
 
         response = client.post(
             f"/api/cases/{case_id}/runs/short-circuit",
@@ -250,8 +291,8 @@ class TestRunDispatch:
         assert data["results"][0]["ikss_a"] > 0
 
     def test_run_dispatch_accepts_fault_type_1f_without_accepting_enm_draft(self, client):
-        case_id = "test-case-run-sc-1f"
-        _seed_enm(case_id, _valid_enm_payload_with_z0("Committed ENM Z0"))
+        case_id = _nowy_przypadek(client)
+        _seed_enm(client, case_id, _valid_enm_payload_with_z0("Committed ENM Z0"))
 
         response = client.post(
             f"/api/cases/{case_id}/runs/short-circuit",
@@ -274,8 +315,8 @@ class TestRunDispatch:
         assert "z0_ohm" in data["results"][0]["white_box_trace"][0]["inputs"]
 
     def test_run_dispatch_accepts_fault_type_2fg_with_reportable_proof(self, client):
-        case_id = "test-case-run-sc-2fg"
-        _seed_enm(case_id, _valid_enm_payload_with_z0("Committed ENM Z0"))
+        case_id = _nowy_przypadek(client)
+        _seed_enm(client, case_id, _valid_enm_payload_with_z0("Committed ENM Z0"))
 
         response = client.post(
             f"/api/cases/{case_id}/runs/short-circuit",
@@ -303,8 +344,8 @@ class TestRunDispatch:
         HTTP i przypina skutek obserwowalny: c_min=1,00 dla sieci SN (>1 kV,
         IEC 60909 Tab. 1) zamiast domyślnego c_max=1,10.
         """
-        case_id = "test-case-run-sc-scenario-min"
-        _seed_enm(case_id, _valid_enm_payload("Committed ENM scenariusz"))
+        case_id = _nowy_przypadek(client)
+        _seed_enm(client, case_id, _valid_enm_payload("Committed ENM scenariusz"))
 
         response_max = client.post(f"/api/cases/{case_id}/runs/short-circuit")
         assert response_max.status_code == 200
@@ -326,8 +367,8 @@ class TestRunDispatch:
         Rozpływ gałęziowy (iloczyn źródło×gałąź per punkt zwarcia) jest treścią
         na żądanie — odpowiedź POST niesie wyłącznie informację, że istnieje.
         """
-        case_id = "test-case-run-slim"
-        _seed_enm(case_id, _valid_enm_payload("SC slim"))
+        case_id = _nowy_przypadek(client)
+        _seed_enm(client, case_id, _valid_enm_payload("SC slim"))
 
         response = client.post(f"/api/cases/{case_id}/runs/short-circuit")
 
@@ -340,7 +381,7 @@ class TestRunDispatch:
             # Wielkości zwarciowe wiersza pozostają nietknięte.
             assert wiersz["ikss_a"] > 0
 
-    def test_branch_flows_available_on_demand_for_fresh_run(self):
+    def test_branch_flows_available_on_demand_for_fresh_run(self, uow_factory):
         """Rozpływ świeżego biegu pobierany końcówką „na żądanie" (parytet treści).
 
         Bramka trasy: to, czego POST już nie niesie, MUSI być osiągalne przez
@@ -353,14 +394,15 @@ class TestRunDispatch:
             KLUCZE_ROZPLYWU,
         )
 
-        case_id = "test-case-run-slim-rozplyw"
-        _seed_enm(case_id, _valid_enm_payload("SC slim rozplyw"))
-
         test_app = FastAPI()
         test_app.include_router(enm_router)
         # Ten sam prefiks co w aplikacji produkcyjnej (`api/main.py`).
         test_app.include_router(analysis_runs_router, prefix="/api")
+        test_app.state.uow_factory = uow_factory
         klient = TestClient(test_app)
+
+        case_id = _nowy_przypadek(klient)
+        _seed_enm(klient, case_id, _valid_enm_payload("SC slim rozplyw"))
 
         response = klient.post(f"/api/cases/{case_id}/runs/short-circuit")
         assert response.status_code == 200
@@ -385,7 +427,7 @@ class TestRunDispatch:
 
 class TestDomainOpsCatalogPolicy:
     def test_domain_ops_rejects_missing_catalog_binding_and_keeps_snapshot(self, client):
-        case_id = "test-case-domain-ops-1"
+        case_id = _nowy_przypadek(client)
 
         add_source = client.post(
             f"/api/cases/{case_id}/enm/domain-ops",
@@ -423,8 +465,8 @@ class TestDomainOpsCatalogPolicy:
         assert after["branches"] == before["branches"]
 
     def test_domain_ops_add_ct_persists_measurement_for_field_spec(self, client):
-        case_id = "test-case-domain-ops-ct-adapter"
-        _seed_enm(case_id, _valid_enm_with_field_specs("Field Adapter"))
+        case_id = _nowy_przypadek(client)
+        _seed_enm(client, case_id, _valid_enm_with_field_specs("Field Adapter"))
 
         response = client.post(
             f"/api/cases/{case_id}/enm/domain-ops",
@@ -462,7 +504,7 @@ class TestDomainOpsCatalogPolicy:
         assert measurement["source_mode"] == "KATALOG"
 
     def test_domain_ops_add_relay_persists_protection_for_field_spec(self, client):
-        case_id = "test-case-domain-ops-relay-adapter"
+        case_id = _nowy_przypadek(client)
         payload = _valid_enm_with_field_specs("Relay Adapter")
         payload["buses"].append(
             {
@@ -489,7 +531,7 @@ class TestDomainOpsCatalogPolicy:
             }
         )
         payload["substations"][0]["meta"]["field_specs"][0]["equipment_refs"] = ["brk_1"]
-        _seed_enm(case_id, payload)
+        _seed_enm(client, case_id, payload)
 
         add_ct = client.post(
             f"/api/cases/{case_id}/enm/domain-ops",
@@ -541,8 +583,8 @@ class TestDomainOpsCatalogPolicy:
         assert field_spec["protection_ref"] == assignment["ref_id"]
 
     def test_domain_ops_rejects_legacy_bay_parameter_update_without_persisting(self, client):
-        case_id = "test-case-domain-ops-legacy-bay"
-        _seed_enm(case_id, _valid_enm_with_legacy_bay("Legacy Bay"))
+        case_id = _nowy_przypadek(client)
+        _seed_enm(client, case_id, _valid_enm_with_legacy_bay("Legacy Bay"))
 
         before = client.get(f"/api/cases/{case_id}/enm").json()
 
@@ -567,7 +609,7 @@ class TestDomainOpsCatalogPolicy:
         assert after == before
 
     def test_domain_ops_rejects_malformed_catalog_binding_and_keeps_snapshot(self, client):
-        case_id = "test-case-domain-ops-2"
+        case_id = _nowy_przypadek(client)
 
         add_source = client.post(
             f"/api/cases/{case_id}/enm/domain-ops",

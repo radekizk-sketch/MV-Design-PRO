@@ -41,6 +41,7 @@ from application.network_wizard.dtos import (
 )
 from domain.analysis_kind import AnalysisKind, analysis_type_to_kind, kind_to_analysis_type
 from domain.project_design_mode import ProjectDesignMode
+from enm.klucz_twin import klucz_twin_projektu
 from enm.models import (
     Bus,
     Cable,
@@ -172,9 +173,13 @@ def _setup_sc_project(wizard):
 def _setup_nn_project(wizard):
     """Projekt + JEDEN OperatingCase — bez sieci w warstwie Wizard/NetworkGraph
     (karta G-22): model nN, na którym operuje FAULT_LOOP_NN/SWZ_NN, żyje w
-    `enm.store` kluczowanym `str(case.id)` — CAŁKOWICIE OSOBNA przestrzeń od
+    `enm.store` kluczowanym kluczem PROJEKTU (`enm.klucz_twin.
+    klucz_twin_projektu(project.id)`, CV-1-W) — CAŁKOWICIE OSOBNA przestrzeń od
     NetworkGraph budowanej przez `NetworkWizardService` (zob. docstring
-    `AnalysisDispatchService._dispatch_fault_loop_nn`). Jeden przypadek
+    `AnalysisDispatchService._dispatch_fault_loop_nn`). `case.id` jest
+    identyfikatorem OperatingCase, NIE StudyCase (dwie oddzielne tabele) — dispatch
+    buduje klucz magazynu WPROST z `project_id`, bez zapytania o `case.id` do bazy,
+    więc ten test NIE zakłada istnienia wiersza StudyCase. Jeden przypadek
     tworzony tu staje się AKTYWNY automatycznie (`create_operating_case`
     aktywuje pierwszy przypadek projektu), więc `_resolve_case_id` działa
     bez dodatkowego wywołania `ActiveCaseService`.
@@ -688,7 +693,7 @@ class TestDispatchFaultLoopNn:
     def test_point_ok(self):
         wizard, _, dispatch_svc, _ = _build_services()
         project, case = _setup_nn_project(wizard)
-        set_enm(str(case.id), _nn_ready_enm())
+        set_enm(klucz_twin_projektu(project.id), _nn_ready_enm())
 
         summary = dispatch_svc.dispatch(
             analysis_kind=AnalysisKind.FAULT_LOOP_NN,
@@ -709,7 +714,7 @@ class TestDispatchFaultLoopNn:
         nie widok pojedynczego punktu — inny endpoint, inna funkcja P0.6."""
         wizard, _, dispatch_svc, _ = _build_services()
         project, case = _setup_nn_project(wizard)
-        set_enm(str(case.id), _nn_ready_enm())
+        set_enm(klucz_twin_projektu(project.id), _nn_ready_enm())
 
         summary = dispatch_svc.dispatch(
             analysis_kind=AnalysisKind.FAULT_LOOP_NN,
@@ -724,7 +729,7 @@ class TestDispatchFaultLoopNn:
     def test_missing_station_ref_raises(self):
         wizard, _, dispatch_svc, _ = _build_services()
         project, case = _setup_nn_project(wizard)
-        set_enm(str(case.id), _nn_ready_enm())
+        set_enm(klucz_twin_projektu(project.id), _nn_ready_enm())
 
         with pytest.raises(ValueError, match="station_ref"):
             dispatch_svc.dispatch(
@@ -740,7 +745,7 @@ class TestDispatchFaultLoopNn:
         WOŁANY naprawdę, nie zaślepiony na zawsze-OK)."""
         wizard, _, dispatch_svc, _ = _build_services()
         project, case = _setup_nn_project(wizard)
-        set_enm(str(case.id), _nn_ready_enm())
+        set_enm(klucz_twin_projektu(project.id), _nn_ready_enm())
 
         summary = dispatch_svc.dispatch(
             analysis_kind=AnalysisKind.FAULT_LOOP_NN,
@@ -762,7 +767,7 @@ class TestDispatchFaultLoopNn:
         wizard, _, dispatch_svc, _ = _build_services()
         project, case = _setup_nn_project(wizard)
         enm = _nn_ready_enm()
-        set_enm(str(case.id), enm)
+        set_enm(klucz_twin_projektu(project.id), enm)
 
         summary = dispatch_svc.dispatch(
             analysis_kind=AnalysisKind.FAULT_LOOP_NN,
@@ -772,13 +777,15 @@ class TestDispatchFaultLoopNn:
         )
         assert summary.status == "FINISHED"
 
-        direct = build_fault_loop_view_at_point(get_enm(str(case.id)), "stn", "b1")
+        direct = build_fault_loop_view_at_point(
+            get_enm(klucz_twin_projektu(project.id)), "stn", "b1"
+        )
         assert direct["status"] == "OK"
 
     def test_determinism_same_input_same_run_id(self):
         wizard, _, dispatch_svc, _ = _build_services()
         project, case = _setup_nn_project(wizard)
-        set_enm(str(case.id), _nn_ready_enm())
+        set_enm(klucz_twin_projektu(project.id), _nn_ready_enm())
 
         s1 = dispatch_svc.dispatch(
             analysis_kind=AnalysisKind.FAULT_LOOP_NN,
@@ -798,7 +805,7 @@ class TestDispatchFaultLoopNn:
     def test_different_bus_ref_different_run_id(self):
         wizard, _, dispatch_svc, _ = _build_services()
         project, case = _setup_nn_project(wizard)
-        set_enm(str(case.id), _nn_ready_enm())
+        set_enm(klucz_twin_projektu(project.id), _nn_ready_enm())
 
         s1 = dispatch_svc.dispatch(
             analysis_kind=AnalysisKind.FAULT_LOOP_NN,
@@ -822,7 +829,7 @@ class TestDispatchSwzNn:
     def test_ok(self):
         wizard, _, dispatch_svc, _ = _build_services()
         project, case = _setup_nn_project(wizard)
-        set_enm(str(case.id), _nn_ready_enm())
+        set_enm(klucz_twin_projektu(project.id), _nn_ready_enm())
 
         summary = dispatch_svc.dispatch(
             analysis_kind=AnalysisKind.SWZ_NN,
@@ -839,7 +846,7 @@ class TestDispatchSwzNn:
     def test_missing_breaker_ref_raises(self):
         wizard, _, dispatch_svc, _ = _build_services()
         project, case = _setup_nn_project(wizard)
-        set_enm(str(case.id), _nn_ready_enm())
+        set_enm(klucz_twin_projektu(project.id), _nn_ready_enm())
 
         with pytest.raises(ValueError, match="breaker_ref"):
             dispatch_svc.dispatch(
@@ -852,7 +859,7 @@ class TestDispatchSwzNn:
     def test_missing_bus_ref_raises(self):
         wizard, _, dispatch_svc, _ = _build_services()
         project, case = _setup_nn_project(wizard)
-        set_enm(str(case.id), _nn_ready_enm())
+        set_enm(klucz_twin_projektu(project.id), _nn_ready_enm())
 
         with pytest.raises(ValueError, match="bus_ref"):
             dispatch_svc.dispatch(
@@ -865,7 +872,7 @@ class TestDispatchSwzNn:
     def test_honest_failure_for_unknown_breaker(self):
         wizard, _, dispatch_svc, _ = _build_services()
         project, case = _setup_nn_project(wizard)
-        set_enm(str(case.id), _nn_ready_enm())
+        set_enm(klucz_twin_projektu(project.id), _nn_ready_enm())
 
         summary = dispatch_svc.dispatch(
             analysis_kind=AnalysisKind.SWZ_NN,
@@ -881,7 +888,7 @@ class TestDispatchSwzNn:
     def test_determinism_same_input_same_run_id(self):
         wizard, _, dispatch_svc, _ = _build_services()
         project, case = _setup_nn_project(wizard)
-        set_enm(str(case.id), _nn_ready_enm())
+        set_enm(klucz_twin_projektu(project.id), _nn_ready_enm())
 
         s1 = dispatch_svc.dispatch(
             analysis_kind=AnalysisKind.SWZ_NN,
@@ -933,7 +940,7 @@ class TestEligibilityDispatchSprzezenie:
         wizard, _, dispatch_svc, _ = _build_services()
         project, case = _setup_nn_project(wizard)
         enm = _nn_ready_enm()
-        set_enm(str(case.id), enm)
+        set_enm(klucz_twin_projektu(project.id), enm)
 
         validator = ENMValidator()
         readiness = validator.readiness(validator.validate(enm))

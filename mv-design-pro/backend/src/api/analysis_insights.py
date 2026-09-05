@@ -34,6 +34,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from api.klucz_twin_dep import KluczTwin
 from application.analyses.granice_sieci import build_granice_view
 from application.analyses.kontyngencje_n1 import (
     build_kontyngencje_n1_view,
@@ -82,9 +83,9 @@ def get_analysis_coverage(case_id: str = Query(...)) -> dict[str, Any]:
 
 
 @router.get("/api/insights/network-boundary")
-def get_network_boundary(case_id: str = Query(...)) -> dict[str, Any]:
+def get_network_boundary(klucz: KluczTwin, case_id: str = Query(...)) -> dict[str, Any]:
     try:
-        return build_granice_view(case_id)
+        return build_granice_view(case_id, klucz)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

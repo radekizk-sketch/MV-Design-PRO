@@ -342,7 +342,9 @@ def test_real_short_circuit_run_produces_scr_with_white_box() -> None:
     )
     enm = enm.model_copy(update={"generators": gens})
     set_enm("c1", enm)
-    run = execute_run(create_run(case_id="c1", analysis_type="short_circuit_sn").id)
+    run = execute_run(
+        create_run(case_id="c1", klucz_twin="c1", analysis_type="short_circuit_sn").id
+    )
     assert run.status == "FINISHED", run.error_message
 
     view = build_grid_strength_view(run)

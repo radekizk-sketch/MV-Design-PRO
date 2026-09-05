@@ -207,7 +207,9 @@ def _run(case_id: str, payload: dict):
     ]
     set_enm(case_id, enm)
     run = execute_run(
-        create_run(case_id=case_id, analysis_type="PF", options={"base_mva": BASE_MVA}).id
+        create_run(
+            case_id=case_id, klucz_twin=case_id, analysis_type="PF", options={"base_mva": BASE_MVA}
+        ).id
     )
     assert run.status == "FINISHED", run.error_message
     return run
@@ -349,6 +351,7 @@ def test_parytet_metod_rozplywu_na_szynie_zip_z_generacja(metoda: str) -> None:
     run = execute_run(
         create_run(
             case_id=f"zip-parytet-{metoda}",
+            klucz_twin=f"zip-parytet-{metoda}",
             analysis_type="PF",
             options={"base_mva": BASE_MVA, "solver_method": metoda},
         ).id
@@ -449,6 +452,7 @@ def test_parytet_metod_na_szynie_tylko_czestotliwosciowej(metoda: str) -> None:
     run = execute_run(
         create_run(
             case_id=f"a1-parytet-{metoda}",
+            klucz_twin=f"a1-parytet-{metoda}",
             analysis_type="PF",
             options={"base_mva": BASE_MVA, "solver_method": metoda},
         ).id
@@ -507,7 +511,9 @@ def test_zwarcie_nie_pada_przez_wspolczynniki_modelu_rozplywowego() -> None:
     """
     case_id = "a2-zwarcie"
     set_enm(case_id, EnergyNetworkModel.model_validate(_payload_z_odbiorem_pojemnosciowym()))
-    run = execute_run(create_run(case_id=case_id, analysis_type="short_circuit_sn").id)
+    run = execute_run(
+        create_run(case_id=case_id, klucz_twin=case_id, analysis_type="short_circuit_sn").id
+    )
     assert run.status == "FINISHED", run.error_message
     assert "ZIP" not in (run.error_message or "")
 

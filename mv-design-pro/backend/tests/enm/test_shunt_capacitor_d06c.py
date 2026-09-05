@@ -253,9 +253,15 @@ def test_power_flow_capacitor_raises_bus_voltage():
     payload_large["shunt_capacitors"] = [_capacitor_record(rated_mvar=5.0, rated_kv=15.0)]
     set_enm(case_large, EnergyNetworkModel.model_validate(payload_large))
 
-    run_no_cap = execute_run(create_run(case_id=case_no_cap, analysis_type="PF").id)
-    run_small = execute_run(create_run(case_id=case_small, analysis_type="PF").id)
-    run_large = execute_run(create_run(case_id=case_large, analysis_type="PF").id)
+    run_no_cap = execute_run(
+        create_run(case_id=case_no_cap, klucz_twin=case_no_cap, analysis_type="PF").id
+    )
+    run_small = execute_run(
+        create_run(case_id=case_small, klucz_twin=case_small, analysis_type="PF").id
+    )
+    run_large = execute_run(
+        create_run(case_id=case_large, klucz_twin=case_large, analysis_type="PF").id
+    )
 
     assert run_no_cap.status == "FINISHED", run_no_cap.error_message
     assert run_small.status == "FINISHED", run_small.error_message
@@ -292,8 +298,12 @@ def test_power_flow_open_capacitor_has_no_effect():
     payload_open["shunt_capacitors"] = [_capacitor_record(status="open")]
     set_enm(case_open, EnergyNetworkModel.model_validate(payload_open))
 
-    run_none = execute_run(create_run(case_id=case_none, analysis_type="PF").id)
-    run_open = execute_run(create_run(case_id=case_open, analysis_type="PF").id)
+    run_none = execute_run(
+        create_run(case_id=case_none, klucz_twin=case_none, analysis_type="PF").id
+    )
+    run_open = execute_run(
+        create_run(case_id=case_open, klucz_twin=case_open, analysis_type="PF").id
+    )
 
     assert run_none.status == "FINISHED", run_none.error_message
     assert run_open.status == "FINISHED", run_open.error_message
@@ -309,8 +319,8 @@ def test_power_flow_is_deterministic_with_capacitor():
     set_enm("pf-det-1", EnergyNetworkModel.model_validate(payload))
     set_enm("pf-det-2", EnergyNetworkModel.model_validate(payload))
 
-    run1 = execute_run(create_run(case_id="pf-det-1", analysis_type="PF").id)
-    run2 = execute_run(create_run(case_id="pf-det-2", analysis_type="PF").id)
+    run1 = execute_run(create_run(case_id="pf-det-1", klucz_twin="pf-det-1", analysis_type="PF").id)
+    run2 = execute_run(create_run(case_id="pf-det-2", klucz_twin="pf-det-2", analysis_type="PF").id)
 
     assert math.isclose(
         _voltage_pu_at(run1, "b2"), _voltage_pu_at(run2, "b2"), rel_tol=0.0, abs_tol=1e-12

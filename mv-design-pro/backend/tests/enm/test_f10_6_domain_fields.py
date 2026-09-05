@@ -18,6 +18,8 @@ korutynę. Intencja testów bez zmian: sprawdzają TREŚĆ modelu odczytu pól.
 
 from __future__ import annotations
 
+from uuid import uuid4
+
 import pytest
 from api.enm import get_enm_field_view
 from enm.canonical_analysis import reset_canonical_runs
@@ -228,37 +230,72 @@ def _enm_with_ct(*, ct_arrangement: str | None) -> dict:
     }
 
 
-def _seed(case_id: str, payload: dict) -> None:
-    set_enm(case_id, EnergyNetworkModel.model_validate(payload))
+def _seed(case_id: str, payload: dict, uow_factory) -> None:
+    set_enm(_klucz(case_id, uow_factory), EnergyNetworkModel.model_validate(payload))
+
+
+def _nowy_przypadek(uow_factory) -> str:
+    """Utworz REALNY projekt + przypadek wprost przez UoW; zwroc `case_id`.
+
+    CV-1-W: `get_enm_field_view` jest wolane TU bezposrednio (bez HTTP) i
+    wymaga `klucz` juz przetlumaczonego — a przypadek bez wiersza w bazie
+    dostaje `PrzypadekBezProjektuError` (inwariant I-2), wiec potrzebujemy
+    prawdziwej pary projekt+przypadek, dokladnie jak `tests/invariants/
+    test_wlasnosc_modelu_projektu.py::_projekt_z_przypadkami`.
+    """
+    from domain.models import Project
+    from domain.study_case import StudyCase
+
+    project_id = uuid4()
+    case_id = uuid4()
+    with uow_factory() as uow:
+        uow.projects.add(Project(id=project_id, name="Test F10.6"), commit=False)
+        uow.cases.add_study_case(
+            StudyCase(id=case_id, project_id=project_id, name="Przypadek testu"),
+            commit=False,
+        )
+        uow.commit()
+    return str(case_id)
+
+
+def _klucz(case_id: str, uow_factory) -> str:
+    """Klucz magazynu ENM dla `case_id` — TO SAMO tlumaczenie co warstwa API (CV-1)."""
+    from application.twin_key import klucz_twin_dla_przypadku
+
+    return klucz_twin_dla_przypadku(case_id, uow_factory)
 
 
 class TestZeroSequenceCurrentSourceHeuristicFix:
-    def test_no_ct_arrangement_data_gives_honest_brak_not_suma_ct(self):
+    def test_no_ct_arrangement_data_gives_honest_brak_not_suma_ct(self, uow_factory):
         """Rdzeń wyczyszczenia: PRZED F10.6 KAŻDY CT dawał "suma_ct" (zgadywanie).
         PO F10.6: brak danych o układzie ⇒ "brak" (WHITE BOX, zero domysłu)."""
-        _seed("f10_6-no-arrangement", _enm_with_ct(ct_arrangement=None))
-        data = get_enm_field_view("f10_6-no-arrangement")
+        case_id = _nowy_przypadek(uow_factory)
+        _seed(case_id, _enm_with_ct(ct_arrangement=None), uow_factory)
+        data = get_enm_field_view(case_id, _klucz(case_id, uow_factory))
         chain = data["fields"][0]["canonical_model"]["base_model"]["measurement_chain"]
         assert chain["ct_refs"] == ["ct_in_1"]
         assert chain["zero_sequence_current_source"] == "brak"
 
-    def test_3xct_arrangement_gives_suma_ct(self):
-        _seed("f10_6-3xct", _enm_with_ct(ct_arrangement="3xCT"))
-        data = get_enm_field_view("f10_6-3xct")
+    def test_3xct_arrangement_gives_suma_ct(self, uow_factory):
+        case_id = _nowy_przypadek(uow_factory)
+        _seed(case_id, _enm_with_ct(ct_arrangement="3xCT"), uow_factory)
+        data = get_enm_field_view(case_id, _klucz(case_id, uow_factory))
         chain = data["fields"][0]["canonical_model"]["base_model"]["measurement_chain"]
         assert chain["zero_sequence_current_source"] == "suma_ct"
 
-    def test_ferranti_arrangement_gives_przekladnik_ferrantiego(self):
-        _seed("f10_6-ferranti", _enm_with_ct(ct_arrangement="ferranti"))
-        data = get_enm_field_view("f10_6-ferranti")
+    def test_ferranti_arrangement_gives_przekladnik_ferrantiego(self, uow_factory):
+        case_id = _nowy_przypadek(uow_factory)
+        _seed(case_id, _enm_with_ct(ct_arrangement="ferranti"), uow_factory)
+        data = get_enm_field_view(case_id, _klucz(case_id, uow_factory))
         chain = data["fields"][0]["canonical_model"]["base_model"]["measurement_chain"]
         assert chain["zero_sequence_current_source"] == "przekladnik_ferrantiego"
 
-    def test_earth_fault_path_inherits_fixed_derivation(self):
+    def test_earth_fault_path_inherits_fixed_derivation(self, uow_factory):
         """`_build_earth_fault_path` pass-through — regresja: nie duplikuje
         starej heurystyki gdzie indziej."""
-        _seed("f10_6-earth-fault-path", _enm_with_ct(ct_arrangement=None))
-        data = get_enm_field_view("f10_6-earth-fault-path")
+        case_id = _nowy_przypadek(uow_factory)
+        _seed(case_id, _enm_with_ct(ct_arrangement=None), uow_factory)
+        data = get_enm_field_view(case_id, _klucz(case_id, uow_factory))
         earth_fault_path = data["fields"][0]["canonical_model"]["base_model"].get(
             "earth_fault_path"
         )

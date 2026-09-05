@@ -23,6 +23,7 @@ from api.canonical_run_views import (
     get_power_flow_trace as get_canonical_power_flow_trace,
 )
 from api.dependencies import get_uow_factory
+from api.klucz_twin_dep import klucz_twin_z_uow
 from application.analysis_run.read_model import canonicalize_json
 from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import create_run as create_canonical_run
@@ -378,8 +379,10 @@ def create_power_flow_run(
             request.study_case_id,
             uow_factory,
         )
+        klucz = klucz_twin_z_uow(case_id, uow_factory)
         run = create_canonical_run(
             case_id=case_id,
+            klucz_twin=klucz,
             project_id=str(project_id),
             analysis_type="PF",
             options=options,

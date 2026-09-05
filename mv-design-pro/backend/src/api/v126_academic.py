@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+from api.klucz_twin_dep import KluczTwin
 from application.analyses.ssci_stability import build_ssci_stability_view
 from application.v126_artifacts import build_v126_proof_artifact, build_v126_report_artifact
 from domain.canonical_operations import READINESS_CODES
@@ -95,10 +96,11 @@ def _with_parameter_payloads(
 @router.post("/cases/{case_id}/runs/v126/{analysis_type}", response_model=V126RunResponse)
 def run_v126_analysis(
     case_id: UUID,
+    klucz: KluczTwin,
     analysis_type: V126AnalysisType,
     request: V126RunRequest,
 ) -> V126RunResponse:
-    enm = get_enm(str(case_id))
+    enm = get_enm(klucz)
     if not enm.buses:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

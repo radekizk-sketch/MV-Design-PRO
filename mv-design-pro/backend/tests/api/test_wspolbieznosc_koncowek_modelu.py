@@ -49,7 +49,7 @@ JEDNEGO przypadku w JEDNYM przebiegu automigracji
 (`enm/migrations/nn_field_specs_promocja.py`), ktora — jak kazda automigracja
 tej rodziny — PODNOSI REWIZJE, gdy cos zmienila (ten sam wzorzec co migracja
 punktu przylaczenia w `enm/store.py::_get_enm_pod_blokada`). Kazdy odczyt modelu
-(`_model(case_id)`, czyli `get_enm`) miedzy dwoma zapisami — WLASNY na starcie
+(`_model(app_client, case_id)`, czyli `get_enm`) miedzy dwoma zapisami — WLASNY na starcie
 kazdej zablokowanej koncowki i KONCOWY w asercji ponizej — moze wiec dolozyc
 WLASNA rewizje promocji, ponad „1 zapis = 1 rewizja" tego testu. Formuly ponizej
 sa WYPROWADZONE (nie zgadywane) z tej mechaniki dla KAZDEGO wariantu wyscigu
@@ -226,10 +226,17 @@ def _utworz_wytworce(
 # ---------------------------------------------------------------------------
 
 
-def _model(case_id: str) -> Any:
+def _klucz(app_client, case_id: str) -> str:
+    """Klucz magazynu ENM dla `case_id` — TO SAMO tłumaczenie co warstwa API (CV-1)."""
+    from application.twin_key import klucz_twin_dla_przypadku
+
+    return klucz_twin_dla_przypadku(case_id, app_client.app.state.uow_factory)
+
+
+def _model(app_client, case_id: str) -> Any:
     from enm.store import get_enm
 
-    return get_enm(case_id)
+    return get_enm(_klucz(app_client, case_id))
 
 
 # Klucze, pod ktorymi model trzyma TOZSAMOSC elementu. Elementy kolekcji glownych
@@ -240,7 +247,7 @@ def _model(case_id: str) -> Any:
 KLUCZE_TOZSAMOSCI = ("ref_id", "field_ref")
 
 
-def _refy_modelu(case_id: str) -> set[str]:
+def _refy_modelu(app_client, case_id: str) -> set[str]:
     """Rekurencyjny zbior WSZYSTKICH identyfikatorow elementow zapisanej migawki.
 
     Sluzy do wykrycia fabrykacji: kazdy identyfikator, ktory koncowka zwrocila
@@ -260,7 +267,7 @@ def _refy_modelu(case_id: str) -> set[str]:
             for podwezel in wezel:
                 przejdz(podwezel)
 
-    przejdz(_model(case_id).model_dump(mode="json"))
+    przejdz(_model(app_client, case_id).model_dump(mode="json"))
     return zebrane
 
 
@@ -275,8 +282,8 @@ def _utworzone_refy(tresc: dict[str, Any]) -> list[str]:
     return refy
 
 
-def _bez_pokrycia_w_modelu(case_id: str, oglaszane: list[str]) -> list[str]:
-    obecne = _refy_modelu(case_id)
+def _bez_pokrycia_w_modelu(app_client, case_id: str, oglaszane: list[str]) -> list[str]:
+    obecne = _refy_modelu(app_client, case_id)
     return [ref for ref in oglaszane if ref not in obecne]
 
 
@@ -406,7 +413,7 @@ class TestWyscigOperacjiDomenowych:
         _, case_id = _projekt_i_przypadek(app_client)
         _zbuduj_magistrale(app_client, case_id, 1)
 
-        model_przed = _model(case_id)
+        model_przed = _model(app_client, case_id)
         rewizja_przed = model_przed.header.revision
         odcinkow_przed = len(model_przed.branches)
 
@@ -432,7 +439,7 @@ class TestWyscigOperacjiDomenowych:
         assert bledy == [], f"Rownolegle operacje zglosily blad: {bledy}"
         assert len(odpowiedzi) == 4
 
-        model_po = _model(case_id)
+        model_po = _model(app_client, case_id)
         assert model_po.header.revision == rewizja_przed + 4, (
             "Rownolegle operacje domenowe zgubily zapis: rewizja "
             f"{model_po.header.revision} zamiast {rewizja_przed + 4}"
@@ -444,7 +451,7 @@ class TestWyscigOperacjiDomenowych:
 
         oglaszane = [ref for tresc in odpowiedzi for ref in _utworzone_refy(tresc)]
         assert oglaszane, "Operacje nie oglosily zadnego utworzonego elementu"
-        brakujace = _bez_pokrycia_w_modelu(case_id, oglaszane)
+        brakujace = _bez_pokrycia_w_modelu(app_client, case_id, oglaszane)
         assert brakujace == [], (
             "Koncowka zwrocila identyfikatory elementow, ktorych nie ma w zapisanej "
             f"migawce (fabrykacja wyniku): {brakujace}"
@@ -462,7 +469,7 @@ class TestWyscigOperacjiDomenowych:
         _, case_id = _projekt_i_przypadek(app_client)
         segmenty = _zbuduj_magistrale(app_client, case_id, 1)
 
-        model_przed = _model(case_id)
+        model_przed = _model(app_client, case_id)
         rewizja_przed = model_przed.header.revision
         stacji_przed = len(model_przed.substations)
         odcinkow_przed = len(model_przed.branches)
@@ -490,7 +497,7 @@ class TestWyscigOperacjiDomenowych:
             zadanie_szablonu=szablon,
         )
 
-        model_po = _model(case_id)
+        model_po = _model(app_client, case_id)
         # +2 wlasne zapisy (operacja + szablon) + 1 promocja pola nN pozostawionego
         # przez szablon, wychwycona dopiero TYM odczytem (patrz nota na gorze pliku).
         assert model_po.header.revision == rewizja_przed + 3, (
@@ -507,7 +514,7 @@ class TestWyscigOperacjiDomenowych:
         )
 
         oglaszane = _utworzone_refy(wyniki["operacja"]) + _utworzone_refy(wyniki["szablon"])
-        brakujace = _bez_pokrycia_w_modelu(case_id, oglaszane)
+        brakujace = _bez_pokrycia_w_modelu(app_client, case_id, oglaszane)
         assert brakujace == [], (
             "Koncowki zwrocily identyfikatory elementow, ktorych nie ma w zapisanej "
             f"migawce (fabrykacja wyniku): {brakujace}"
@@ -548,7 +555,7 @@ class TestWyscigTworzeniaWytworcy:
 
         project_id, case_id, station_ref, _ = _przypadek_ze_stacja(app_client)
 
-        model_przed = _model(case_id)
+        model_przed = _model(app_client, case_id)
         rewizja_przed = model_przed.header.revision
         wytworcow_przed = len(model_przed.generators)
 
@@ -572,7 +579,7 @@ class TestWyscigTworzeniaWytworcy:
         assert bledy == [], f"Rownolegle zadania DER zglosily blad: {bledy}"
         assert len(odpowiedzi) == 3
 
-        model_po = _model(case_id)
+        model_po = _model(app_client, case_id)
         assert model_po.header.revision == rewizja_przed + 2 * 3, (
             "Rownolegle zadania DER zgubily zapis: rewizja "
             f"{model_po.header.revision} zamiast {rewizja_przed + 2 * 3}"
@@ -584,7 +591,7 @@ class TestWyscigTworzeniaWytworcy:
 
         oglaszane = [ref for tresc in odpowiedzi for ref in _utworzone_refy(tresc)]
         assert oglaszane, "Koncowka nie oglosila zadnego utworzonego elementu"
-        brakujace = _bez_pokrycia_w_modelu(case_id, oglaszane)
+        brakujace = _bez_pokrycia_w_modelu(app_client, case_id, oglaszane)
         assert brakujace == [], (
             "Koncowka DER zwrocila identyfikatory elementow, ktorych nie ma w "
             f"zapisanej migawce (fabrykacja wyniku): {brakujace}"
@@ -600,7 +607,7 @@ class TestWyscigTworzeniaWytworcy:
 
         project_id, case_id, station_ref, wolne = _przypadek_ze_stacja(app_client)
 
-        model_przed = _model(case_id)
+        model_przed = _model(app_client, case_id)
         rewizja_przed = model_przed.header.revision
         stacji_przed = len(model_przed.substations)
         wytworcow_przed = len(model_przed.generators)
@@ -626,7 +633,7 @@ class TestWyscigTworzeniaWytworcy:
             zadanie_szablonu=szablon,
         )
 
-        model_po = _model(case_id)
+        model_po = _model(app_client, case_id)
         assert model_po.header.revision == rewizja_przed + 4, (
             "Jeden z dwoch zapisow przepadl: rewizja "
             f"{model_po.header.revision} zamiast {rewizja_przed + 4}"
@@ -641,7 +648,7 @@ class TestWyscigTworzeniaWytworcy:
         )
 
         oglaszane = _utworzone_refy(wyniki["wytworca"]) + _utworzone_refy(wyniki["szablon"])
-        brakujace = _bez_pokrycia_w_modelu(case_id, oglaszane)
+        brakujace = _bez_pokrycia_w_modelu(app_client, case_id, oglaszane)
         assert brakujace == [], (
             "Koncowki zwrocily identyfikatory elementow, ktorych nie ma w zapisanej "
             f"migawce (fabrykacja wyniku): {brakujace}"
@@ -661,8 +668,8 @@ def _wytworca_do_wiazan(app_client) -> tuple[str, str, str, list[str]]:
     return project_id, case_id, generator_ref, wolne
 
 
-def _wiazania_z_modelu(case_id: str, generator_ref: str) -> dict[str, Any]:
-    for generator in _model(case_id).model_dump(mode="json")["generators"]:
+def _wiazania_z_modelu(app_client, case_id: str, generator_ref: str) -> dict[str, Any]:
+    for generator in _model(app_client, case_id).model_dump(mode="json")["generators"]:
         if generator.get("ref_id") == generator_ref:
             return dict(generator.get("materialized_params") or {})
     raise AssertionError(f"Wytworca {generator_ref} zniknal z modelu")
@@ -682,7 +689,7 @@ class TestWyscigWiazanWytworcy:
         project_id, case_id, generator_ref, _ = _wytworca_do_wiazan(app_client)
         baza = f"/api/projects/{project_id}/cases/{case_id}/generators/{generator_ref}/bindings"
 
-        rewizja_przed = _model(case_id).header.revision
+        rewizja_przed = _model(app_client, case_id).header.revision
         pola = {
             "protection_catalog_ref": "REF-OC-200",
             "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
@@ -701,13 +708,13 @@ class TestWyscigWiazanWytworcy:
 
         assert bledy == [], f"Rownolegle zadania wiazan zglosily blad: {bledy}"
 
-        model_po = _model(case_id)
+        model_po = _model(app_client, case_id)
         assert model_po.header.revision == rewizja_przed + len(pola), (
             "Rownolegle zadania wiazan zgubily zapis: rewizja "
             f"{model_po.header.revision} zamiast {rewizja_przed + len(pola)}"
         )
 
-        zapisane = _wiazania_z_modelu(case_id, generator_ref)
+        zapisane = _wiazania_z_modelu(app_client, case_id, generator_ref)
         zgubione = {
             pole: wartosc for pole, wartosc in pola.items() if zapisane.get(pole) != wartosc
         }
@@ -727,7 +734,7 @@ class TestWyscigWiazanWytworcy:
         project_id, case_id, generator_ref, wolne = _wytworca_do_wiazan(app_client)
         baza = f"/api/projects/{project_id}/cases/{case_id}/generators/{generator_ref}/bindings"
 
-        model_przed = _model(case_id)
+        model_przed = _model(app_client, case_id)
         rewizja_przed = model_przed.header.revision
         stacji_przed = len(model_przed.substations)
 
@@ -749,7 +756,7 @@ class TestWyscigWiazanWytworcy:
             zadanie_szablonu=szablon,
         )
 
-        model_po = _model(case_id)
+        model_po = _model(app_client, case_id)
         assert model_po.header.revision == rewizja_przed + 3, (
             "Jeden z dwoch zapisow przepadl: rewizja "
             f"{model_po.header.revision} zamiast {rewizja_przed + 3}"
@@ -758,13 +765,15 @@ class TestWyscigWiazanWytworcy:
             "Praca kreatora stacji przepadla mimo HTTP 200 — stacji "
             f"{len(model_po.substations)} zamiast {stacji_przed + 1}"
         )
-        zapisane = _wiazania_z_modelu(case_id, generator_ref)
+        zapisane = _wiazania_z_modelu(app_client, case_id, generator_ref)
         assert zapisane.get("protection_catalog_ref") == "REF-OC-200", (
             "Wiazanie zabezpieczenia przepadlo mimo HTTP 200 — w modelu: "
             f"{zapisane.get('protection_catalog_ref')!r}"
         )
 
-        brakujace = _bez_pokrycia_w_modelu(case_id, _utworzone_refy(wynik_szablonu["szablon"]))
+        brakujace = _bez_pokrycia_w_modelu(
+            app_client, case_id, _utworzone_refy(wynik_szablonu["szablon"])
+        )
         assert brakujace == [], (
             "Szablon zwrocil identyfikatory elementow, ktorych nie ma w zapisanej "
             f"migawce (fabrykacja wyniku): {brakujace}"
@@ -796,7 +805,7 @@ class TestBrakZakleszczenia:
         _, case_id = _projekt_i_przypadek(app_client)
         segmenty = _zbuduj_magistrale(app_client, case_id, 2)
 
-        model_przed = _model(case_id)
+        model_przed = _model(app_client, case_id)
         rewizja_przed = model_przed.header.revision
         stacji_przed = len(model_przed.substations)
 
@@ -818,7 +827,7 @@ class TestBrakZakleszczenia:
 
         assert bledy == [], f"Rownolegle zadania zglosily blad: {bledy}"
 
-        model_po = _model(case_id)
+        model_po = _model(app_client, case_id)
         assert model_po.header.revision == rewizja_przed + 5, (
             "Zapis przepadl przy trzech rownoleglych zadaniach: rewizja "
             f"{model_po.header.revision} zamiast {rewizja_przed + 5}"

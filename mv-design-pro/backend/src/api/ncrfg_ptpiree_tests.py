@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from api.klucz_twin_dep import KluczTwin, klucz_twin_z_sciezki
 from application.analyses.dowod_certyfikatu import (
     NcRfgCertificateEvidence,
     dowody_certyfikatu,
@@ -13,7 +14,7 @@ from application.ncrfg_compliance import (
 )
 from catalog.profiles.nc_rfg import list_available_operators, load_nc_rfg_profile
 from enm.store import get_enm
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from network_model.solvers.ncrfg_ptpiree import (
     NcRfgPtpireeRunRequest,
     NcRfgPtpireeRunResult,
@@ -51,7 +52,9 @@ def get_ncrfg_test_catalog() -> dict[str, object]:
 
 
 @router.get("/cases/{case_id}/compliance")
-def run_ncrfg_compliance_from_model(case_id: UUID, operator_id: str) -> dict[str, Any]:
+def run_ncrfg_compliance_from_model(
+    case_id: UUID, klucz: KluczTwin, operator_id: str
+) -> dict[str, Any]:
     """Zgodność NC RfG liczona z MODELU (V12K-087, G-OZE-B2).
 
     Buduje wejścia DER z committed ENM przypadku (most
@@ -65,7 +68,7 @@ def run_ncrfg_compliance_from_model(case_id: UUID, operator_id: str) -> dict[str
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Nieznany operator NC RfG: {operator_id}.",
         )
-    enm = get_enm(str(case_id))
+    enm = get_enm(klucz)
     der_inputs = build_der_compliance_list_from_enm(enm)
     reports = [_compliance_checker.check(operator_id, der) for der in der_inputs]
     return {
@@ -99,6 +102,7 @@ class NcRfgPtpireeRunResponse(NcRfgPtpireeRunResult):
 @router.post("/run", response_model=NcRfgPtpireeRunResponse)
 def run_ncrfg_ptpiree_tests(
     request: NcRfgPtpireeRunRequest,
+    http_request: Request,
     case_id: UUID | None = None,
 ) -> NcRfgPtpireeRunResponse:
     try:
@@ -108,9 +112,10 @@ def run_ncrfg_ptpiree_tests(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
         ) from exc
+    klucz_twin = None if case_id is None else klucz_twin_z_sciezki(str(case_id), http_request)
     return NcRfgPtpireeRunResponse(
         **result.model_dump(),
         certificate_evidence=dowody_certyfikatu(
-            case_id, [module.der_ref for module in result.modules]
+            klucz_twin, [module.der_ref for module in result.modules]
         ),
     )

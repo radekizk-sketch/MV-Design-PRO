@@ -28,13 +28,14 @@ from typing import Any
 from uuid import UUID
 
 from api.fault_scenarios import get_fault_scenario_service
+from api.klucz_twin_dep import klucz_twin_z_sciezki
 from application.batch_execution_service import (
     BatchExecutionService,
     BatchNotFoundError,
     BatchNotPendingError,
 )
 from application.fault_scenario_service import FaultScenarioNotFoundError
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 router = APIRouter(tags=["batch-execution"])
@@ -151,20 +152,33 @@ def create_batch(case_id: str, request: CreateBatchRequest) -> dict[str, Any]:
     response_model=BatchResponse,
     summary="Wykonaj serię przebiegów",
 )
-def execute_batch(batch_id: str) -> dict[str, Any]:
+def execute_batch(batch_id: str, http_request: Request) -> dict[str, Any]:
     """Wykonaj serię sekwencyjnie torem kanonicznym (realny solver).
 
     Zero ponowień, zero częściowego sukcesu: pierwsza awaria kończy serię
     stanem FAILED z polskim komunikatem; biegi ukończone wcześniej pozostają
     dostępne jak zwykłe biegi kanoniczne.
 
-    Zwraca 404 dla nieznanej serii, 409 dla serii w stanie innym niż PENDING.
+    Zwraca 404 dla nieznanej serii, 409 dla serii w stanie innym niż PENDING,
+    404 gdy przypadek serii nie należy do żadnego projektu (CV-1-W — klucz
+    magazynu ENM tłumaczony TU, bo `BatchExecutionService` nie ma dostępu do
+    bazy danych — patrz `application/batch_execution_service.py`).
     """
     parsed_batch_id = _parse_uuid(batch_id, "batch_id")
     service = get_batch_service()
 
     try:
-        batch = service.execute_batch(parsed_batch_id)
+        batch_przed = service.get_batch(parsed_batch_id)
+    except BatchNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+    klucz = klucz_twin_z_sciezki(str(batch_przed.study_case_id), http_request)
+
+    try:
+        batch = service.execute_batch(parsed_batch_id, klucz_twin=klucz)
         return batch.to_dict()
     except BatchNotFoundError as exc:
         raise HTTPException(

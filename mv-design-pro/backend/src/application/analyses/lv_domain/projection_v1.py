@@ -13,7 +13,9 @@ odczytów pochodzących z różnych rewizji modelu.
 
 ATOMOWOŚĆ — CO DOKŁADNIE OBIECUJEMY (karta B-02, §0.5). Projekcja jest atomowa
 względem JEDNEGO obiektu ``EnergyNetworkModel``, pobranego RAZ na początku
-obsługi żądania (``_get_enm(case_id)`` w końcówce ``api/enm.py``) i przekazanego
+obsługi żądania (``_get_enm(klucz)`` w końcówce ``api/enm.py`` — ``klucz``
+to klucz magazynu ENM projektu, przetłumaczony z ``case_id`` zależnością
+``KluczTwin``, CV-1-W) i przekazanego
 tutaj jako argument. Wszystkie składowe odpowiedzi — graf domeny, energizacja,
 kotwice SN, nakładka wyniku, SWZ per transformator — liczą się z TEGO SAMEGO
 obiektu w pamięci, a ``model_snapshot.model_hash`` jest odciskiem dokładnie tego

@@ -27,7 +27,31 @@ from enm.models import (
 from enm.store import set_enm
 
 
-def _seed_enm(case_id: str) -> None:
+def _nowy_przypadek(client) -> str:
+    """Utwórz REALNY projekt + przypadek przez API; zwróć `case_id`.
+
+    CV-1-W: przypadek bez wiersza w bazie dostaje teraz 404 z magazynu ENM
+    (inwariant I-2) — testy tego pliku potrzebują prawdziwej pary
+    projekt+przypadek zamiast dowolnego UUID-a.
+    """
+    project_resp = client.post("/api/projects", json={"name": "Arkusz nN — test"})
+    assert project_resp.status_code == 201, project_resp.text
+    project_id = project_resp.json()["id"]
+    case_resp = client.post(
+        "/api/study-cases", json={"project_id": project_id, "name": "Przypadek testu"}
+    )
+    assert case_resp.status_code == 201, case_resp.text
+    return str(case_resp.json()["id"])
+
+
+def _klucz(client, case_id: str) -> str:
+    """Klucz magazynu ENM dla `case_id` — TO SAMO tłumaczenie co warstwa API (CV-1)."""
+    from application.twin_key import klucz_twin_dla_przypadku
+
+    return klucz_twin_dla_przypadku(case_id, client.app.state.uow_factory)
+
+
+def _seed_enm(client, case_id: str) -> None:
     enm = EnergyNetworkModel(
         header=ENMHeader(name="t", defaults=ENMDefaults(sn_nominal_kv=15.0)),
         buses=[
@@ -102,12 +126,12 @@ def _seed_enm(case_id: str) -> None:
             )
         ],
     )
-    set_enm(case_id, enm)
+    set_enm(_klucz(client, case_id), enm)
 
 
 def test_sukces_zwraca_jeden_wiersz(app_client) -> None:
-    case_id = str(uuid4())
-    _seed_enm(case_id)
+    case_id = _nowy_przypadek(app_client)
+    _seed_enm(app_client, case_id)
     resp = app_client.get(
         f"/api/cases/{case_id}/enm/nn-circuit-sheet", params={"station_ref": "stn"}
     )
@@ -120,8 +144,8 @@ def test_sukces_zwraca_jeden_wiersz(app_client) -> None:
 
 
 def test_stacja_nieznana_daje_200_z_uczciwym_brak_danych(app_client) -> None:
-    case_id = str(uuid4())
-    _seed_enm(case_id)
+    case_id = _nowy_przypadek(app_client)
+    _seed_enm(app_client, case_id)
     resp = app_client.get(
         f"/api/cases/{case_id}/enm/nn-circuit-sheet", params={"station_ref": "nieistniejaca"}
     )
@@ -131,15 +155,15 @@ def test_stacja_nieznana_daje_200_z_uczciwym_brak_danych(app_client) -> None:
 
 
 def test_brak_station_ref_daje_422(app_client) -> None:
-    case_id = str(uuid4())
-    _seed_enm(case_id)
+    case_id = _nowy_przypadek(app_client)
+    _seed_enm(app_client, case_id)
     resp = app_client.get(f"/api/cases/{case_id}/enm/nn-circuit-sheet")
     assert resp.status_code == 422
 
 
 def test_load_flow_run_id_niepoprawny_uuid_daje_422(app_client) -> None:
-    case_id = str(uuid4())
-    _seed_enm(case_id)
+    case_id = _nowy_przypadek(app_client)
+    _seed_enm(app_client, case_id)
     resp = app_client.get(
         f"/api/cases/{case_id}/enm/nn-circuit-sheet",
         params={"station_ref": "stn", "load_flow_run_id": "nie-uuid"},
@@ -148,8 +172,8 @@ def test_load_flow_run_id_niepoprawny_uuid_daje_422(app_client) -> None:
 
 
 def test_load_flow_run_id_nieistniejacy_daje_404(app_client) -> None:
-    case_id = str(uuid4())
-    _seed_enm(case_id)
+    case_id = _nowy_przypadek(app_client)
+    _seed_enm(app_client, case_id)
     resp = app_client.get(
         f"/api/cases/{case_id}/enm/nn-circuit-sheet",
         params={"station_ref": "stn", "load_flow_run_id": str(uuid4())},
@@ -158,11 +182,17 @@ def test_load_flow_run_id_nieistniejacy_daje_404(app_client) -> None:
 
 
 def test_load_flow_run_id_innego_case_daje_422(app_client) -> None:
-    case_id = str(uuid4())
-    inny_case_id = str(uuid4())
-    _seed_enm(case_id)
-    _seed_enm(inny_case_id)
-    run = execute_run(create_run(case_id=inny_case_id, analysis_type="PF").id)
+    case_id = _nowy_przypadek(app_client)
+    inny_case_id = _nowy_przypadek(app_client)
+    _seed_enm(app_client, case_id)
+    _seed_enm(app_client, inny_case_id)
+    run = execute_run(
+        create_run(
+            case_id=inny_case_id,
+            klucz_twin=_klucz(app_client, inny_case_id),
+            analysis_type="PF",
+        ).id
+    )
     resp = app_client.get(
         f"/api/cases/{case_id}/enm/nn-circuit-sheet",
         params={"station_ref": "stn", "load_flow_run_id": str(run.id)},
@@ -171,9 +201,11 @@ def test_load_flow_run_id_innego_case_daje_422(app_client) -> None:
 
 
 def test_short_circuit_run_id_zlego_rodzaju_daje_422(app_client) -> None:
-    case_id = str(uuid4())
-    _seed_enm(case_id)
-    pf_run = execute_run(create_run(case_id=case_id, analysis_type="PF").id)
+    case_id = _nowy_przypadek(app_client)
+    _seed_enm(app_client, case_id)
+    pf_run = execute_run(
+        create_run(case_id=case_id, klucz_twin=_klucz(app_client, case_id), analysis_type="PF").id
+    )
     resp = app_client.get(
         f"/api/cases/{case_id}/enm/nn-circuit-sheet",
         params={"station_ref": "stn", "short_circuit_run_id": str(pf_run.id)},
@@ -182,9 +214,11 @@ def test_short_circuit_run_id_zlego_rodzaju_daje_422(app_client) -> None:
 
 
 def test_load_flow_run_id_poprawny_daje_ib_z_biegu(app_client) -> None:
-    case_id = str(uuid4())
-    _seed_enm(case_id)
-    run = execute_run(create_run(case_id=case_id, analysis_type="PF").id)
+    case_id = _nowy_przypadek(app_client)
+    _seed_enm(app_client, case_id)
+    run = execute_run(
+        create_run(case_id=case_id, klucz_twin=_klucz(app_client, case_id), analysis_type="PF").id
+    )
     resp = app_client.get(
         f"/api/cases/{case_id}/enm/nn-circuit-sheet",
         params={"station_ref": "stn", "load_flow_run_id": str(run.id)},
@@ -195,8 +229,8 @@ def test_load_flow_run_id_poprawny_daje_ib_z_biegu(app_client) -> None:
 
 
 def test_determinizm_dwa_odczyty_identyczne(app_client) -> None:
-    case_id = str(uuid4())
-    _seed_enm(case_id)
+    case_id = _nowy_przypadek(app_client)
+    _seed_enm(app_client, case_id)
     resp1 = app_client.get(
         f"/api/cases/{case_id}/enm/nn-circuit-sheet", params={"station_ref": "stn"}
     )

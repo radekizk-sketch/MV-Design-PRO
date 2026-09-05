@@ -96,9 +96,15 @@ def _case_params_z_enm(enm: EnergyNetworkModel) -> dict[str, Any]:
     return {"sources": sources, "loads": loads}
 
 
-def build_granice_view(case_id: str) -> dict[str, Any]:
-    """Zbuduj widok granicy sieci (węzła przyłączenia) dla przypadku."""
-    enm = get_enm(case_id)
+def build_granice_view(case_id: str, klucz_twin: str) -> dict[str, Any]:
+    """Zbuduj widok granicy sieci (węzła przyłączenia) dla przypadku.
+
+    `klucz_twin` — klucz magazynu ENM (Canonical Project Twin, CV-1-W),
+    przetłumaczony z `case_id` na granicy API (`api/klucz_twin_dep.py`);
+    `case_id` samo w sobie zostaje TYLKO jako identyfikator echowany
+    w odpowiedzi (`"case_id"` niżej).
+    """
+    enm = get_enm(klucz_twin)
     graph = map_enm_to_network_graph(enm)
     snapshot = NetworkSnapshot(
         meta=SnapshotMeta.create(network_model_id=graph.network_model_id),

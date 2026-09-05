@@ -537,10 +537,11 @@ class TestEligibilityDeterminism:
 
 
 @pytest.fixture
-def client():
+def client(uow_factory):
     """Lightweight app with ENM router."""
     test_app = FastAPI()
     test_app.include_router(enm_router)
+    test_app.state.uow_factory = uow_factory
     return TestClient(test_app)
 
 
@@ -551,16 +552,50 @@ def reset_enm_runtime_state():
     reset_enm_store()
 
 
+def _nowy_przypadek(uow_factory) -> str:
+    """Utworz REALNY projekt + przypadek wprost przez UoW; zwroc `case_id`.
+
+    CV-1-W: `analysis-eligibility` tlumaczy `case_id` na klucz magazynu ENM
+    (`KluczTwin`) — przypadek bez wiersza w bazie dostaje 404 (inwariant I-2),
+    a ta aplikacja testowa niesie tylko `enm_router` (brak endpointow
+    `/api/projects`/`/api/study-cases`), wiec wstawiamy wprost przez UoW.
+    """
+    from uuid import uuid4
+
+    from domain.models import Project
+    from domain.study_case import StudyCase
+
+    project_id = uuid4()
+    case_id = uuid4()
+    with uow_factory() as uow:
+        uow.projects.add(Project(id=project_id, name="Analysis Eligibility — test"), commit=False)
+        uow.cases.add_study_case(
+            StudyCase(id=case_id, project_id=project_id, name="Przypadek testu"),
+            commit=False,
+        )
+        uow.commit()
+    return str(case_id)
+
+
+def _klucz(case_id: str, uow_factory) -> str:
+    """Klucz magazynu ENM dla `case_id` — TO SAMO tłumaczenie co warstwa API (CV-1)."""
+    from application.twin_key import klucz_twin_dla_przypadku
+
+    return klucz_twin_dla_przypadku(case_id, uow_factory)
+
+
 class TestEligibilityAPI:
-    def test_endpoint_returns_200(self, client):
+    def test_endpoint_returns_200(self, client, uow_factory):
+        case_id = _nowy_przypadek(uow_factory)
         # Ensure ENM exists
-        client.get("/api/cases/elig-test-1/enm")
-        resp = client.get("/api/cases/elig-test-1/analysis-eligibility")
+        client.get(f"/api/cases/{case_id}/enm")
+        resp = client.get(f"/api/cases/{case_id}/analysis-eligibility")
         assert resp.status_code == 200
 
-    def test_response_shape(self, client):
-        client.get("/api/cases/elig-test-2/enm")
-        resp = client.get("/api/cases/elig-test-2/analysis-eligibility")
+    def test_response_shape(self, client, uow_factory):
+        case_id = _nowy_przypadek(uow_factory)
+        client.get(f"/api/cases/{case_id}/enm")
+        resp = client.get(f"/api/cases/{case_id}/analysis-eligibility")
         data = resp.json()
 
         # Top-level keys
@@ -589,15 +624,21 @@ class TestEligibilityAPI:
             assert "by_severity" in entry
             assert "content_hash" in entry
 
-    def test_determinism_same_enm_same_hash(self, client):
-        client.get("/api/cases/elig-test-3/enm")
+    def test_determinism_same_enm_same_hash(self, client, uow_factory):
+        case_id = _nowy_przypadek(uow_factory)
+        client.get(f"/api/cases/{case_id}/enm")
 
-        resp1 = client.get("/api/cases/elig-test-3/analysis-eligibility")
-        resp2 = client.get("/api/cases/elig-test-3/analysis-eligibility")
+        resp1 = client.get(f"/api/cases/{case_id}/analysis-eligibility")
+        resp2 = client.get(f"/api/cases/{case_id}/analysis-eligibility")
 
+        # Przypina status PRZED porownaniem hashy — dwie identyczne odpowiedzi
+        # bledu (np. 404 tlumaczenia case_id) rownie chetnie przeszlyby ten
+        # test (test maskujacy defekt).
+        assert resp1.status_code == 200, resp1.text
+        assert resp2.status_code == 200, resp2.text
         assert resp1.json()["content_hash"] == resp2.json()["content_hash"]
 
-    def test_valid_enm_sc3f_eligible(self, client):
+    def test_valid_enm_sc3f_eligible(self, client, uow_factory):
         enm = {
             "header": {
                 "name": "Elig Test",
@@ -639,25 +680,28 @@ class TestEligibilityAPI:
             "loads": [],
             "generators": [],
         }
-        set_enm("elig-test-4", EnergyNetworkModel.model_validate(enm))
-        resp = client.get("/api/cases/elig-test-4/analysis-eligibility")
+        case_id = _nowy_przypadek(uow_factory)
+        set_enm(_klucz(case_id, uow_factory), EnergyNetworkModel.model_validate(enm))
+        resp = client.get(f"/api/cases/{case_id}/analysis-eligibility")
         data = resp.json()
 
         sc3f = next(e for e in data["matrix"] if e["analysis_type"] == "SC_3F")
         assert sc3f["status"] == "ELIGIBLE"
 
-    def test_empty_enm_all_ineligible(self, client):
-        client.get("/api/cases/elig-test-5/enm")
-        resp = client.get("/api/cases/elig-test-5/analysis-eligibility")
+    def test_empty_enm_all_ineligible(self, client, uow_factory):
+        case_id = _nowy_przypadek(uow_factory)
+        client.get(f"/api/cases/{case_id}/enm")
+        resp = client.get(f"/api/cases/{case_id}/analysis-eligibility")
         data = resp.json()
 
         assert data["overall"]["eligible_all"] is False
         for entry in data["matrix"]:
             assert entry["status"] == "INELIGIBLE"
 
-    def test_all_analysis_types_present(self, client):
-        client.get("/api/cases/elig-test-6/enm")
-        resp = client.get("/api/cases/elig-test-6/analysis-eligibility")
+    def test_all_analysis_types_present(self, client, uow_factory):
+        case_id = _nowy_przypadek(uow_factory)
+        client.get(f"/api/cases/{case_id}/enm")
+        resp = client.get(f"/api/cases/{case_id}/analysis-eligibility")
         data = resp.json()
 
         types = {e["analysis_type"] for e in data["matrix"]}

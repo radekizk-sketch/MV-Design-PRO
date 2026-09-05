@@ -131,7 +131,7 @@ def _minimal_net(*, load_q_mvar: float, cap_mvar: float | None = None) -> Energy
 
 def _result_v1(load_q_mvar: float, cap_mvar: float | None) -> dict[str, Any]:
     set_enm("c", _minimal_net(load_q_mvar=load_q_mvar, cap_mvar=cap_mvar))
-    result = execute_run(create_run(case_id="c", analysis_type="PF").id)
+    result = execute_run(create_run(case_id="c", klucz_twin="c", analysis_type="PF").id)
     rv: dict[str, Any] = (result.raw_result or {}).get("result_v1") or {}
     assert rv.get("converged") is True
     return rv

@@ -29,12 +29,36 @@ def _reset_backend_state() -> None:
     reset_enm_store()
 
 
+def _nowy_przypadek(client: TestClient) -> str:
+    """Utwórz REALNY projekt + przypadek przez API; zwróć `case_id`.
+
+    CV-1-W: przypadek bez wiersza w bazie dostaje teraz 404 z magazynu ENM
+    (inwariant I-2) — testy tego pliku potrzebują prawdziwej pary
+    projekt+przypadek zamiast dowolnego UUID-a.
+    """
+    project_resp = client.post("/api/projects", json={"name": "Canonical analysis API — test"})
+    assert project_resp.status_code == 201, project_resp.text
+    project_id = project_resp.json()["id"]
+    case_resp = client.post(
+        "/api/study-cases", json={"project_id": project_id, "name": "Przypadek testu"}
+    )
+    assert case_resp.status_code == 201, case_resp.text
+    return str(case_resp.json()["id"])
+
+
+def _klucz(client: TestClient, case_id: str) -> str:
+    """Klucz magazynu ENM dla `case_id` — TO SAMO tłumaczenie co warstwa API (CV-1)."""
+    from application.twin_key import klucz_twin_dla_przypadku
+
+    return klucz_twin_dla_przypadku(case_id, client.app.state.uow_factory)
+
+
 def _seed_power_flow_enm(client: TestClient, case_id: str) -> None:
     from enm.models import EnergyNetworkModel
     from enm.store import set_enm
 
     set_enm(
-        case_id,
+        _klucz(client, case_id),
         EnergyNetworkModel.model_validate(
             {
                 "header": {
@@ -137,7 +161,7 @@ def client() -> TestClient:
 
 
 def test_domain_operation_snapshot_feeds_analysis_result_and_trace(client: TestClient) -> None:
-    case_id = str(uuid4())
+    case_id = _nowy_przypadek(client)
 
     domain_op = client.post(
         f"/api/cases/{case_id}/enm/domain-ops",
@@ -389,7 +413,7 @@ def test_analysis_run_snapshot_completes_legacy_station_catalog_loads(
     assert {load["parameter_source"] for load in loads} == {"CATALOG"}
 
 
-def _seed_short_circuit_enm_with_inverter(case_id: str) -> None:
+def _seed_short_circuit_enm_with_inverter(client: TestClient, case_id: str) -> None:
     """ENM: GPZ na szynie głównej + falownik PV na szynie odbioru (kabel między).
 
     Zwarcie na szynie głównej → wkład falownika płynie kablem (branch flow),
@@ -399,7 +423,7 @@ def _seed_short_circuit_enm_with_inverter(case_id: str) -> None:
     from enm.store import set_enm
 
     set_enm(
-        case_id,
+        _klucz(client, case_id),
         EnergyNetworkModel.model_validate(
             {
                 "header": {
@@ -506,8 +530,8 @@ def test_short_circuit_rows_carry_branch_flow_contributions(client: TestClient) 
     rozpływ per wiersz dawał odpowiedź 730 MB dla 50 stacji); dane JEDNEGO
     punktu zwraca endpoint `/results/short-circuit/rozplyw?target_id=...`.
     """
-    case_id = str(uuid4())
-    _seed_short_circuit_enm_with_inverter(case_id)
+    case_id = _nowy_przypadek(client)
+    _seed_short_circuit_enm_with_inverter(client, case_id)
 
     create_run = client.post(
         f"/api/execution/study-cases/{case_id}/runs",
@@ -584,7 +608,7 @@ def test_short_circuit_rows_carry_branch_flow_contributions(client: TestClient) 
 
 
 def test_analysis_creation_requires_canonical_enm_snapshot(client: TestClient) -> None:
-    case_id = str(uuid4())
+    case_id = _nowy_przypadek(client)
 
     response = client.post(
         f"/api/execution/study-cases/{case_id}/runs",
@@ -599,7 +623,7 @@ def test_analysis_creation_requires_canonical_enm_snapshot(client: TestClient) -
 
 
 def test_power_flow_read_and_export_endpoints_use_canonical_run(client: TestClient) -> None:
-    case_id = str(uuid4())
+    case_id = _nowy_przypadek(client)
     _seed_power_flow_enm(client, case_id)
 
     run_response = client.post(f"/api/cases/{case_id}/runs/power-flow")
@@ -707,7 +731,7 @@ def test_resultset_v1_includes_branch_elements_for_load_flow(client: TestClient)
     galeziowych i nakladka przeplywu mocy (F9.5, spec Sec14.2) buduje sie pusta
     na kazdym realnym przebiegu. Sieć referencyjna: `bus-main` (zrodlo) ->
     `branch-load` (kabel, from_bus_ref=bus-main) -> `bus-load` (odbior)."""
-    case_id = str(uuid4())
+    case_id = _nowy_przypadek(client)
     _seed_power_flow_enm(client, case_id)
 
     run_response = client.post(f"/api/cases/{case_id}/runs/power-flow")
@@ -779,7 +803,7 @@ def test_resultset_v1_load_flow_direction_and_voltage_drop_are_physically_correc
     depend on re-deriving the PQSpec sign convention — it only uses the
     physical fact that a load sink cannot be a net source.
     """
-    case_id = str(uuid4())
+    case_id = _nowy_przypadek(client)
     _seed_power_flow_enm(client, case_id)
 
     run_response = client.post(f"/api/cases/{case_id}/runs/power-flow")
@@ -831,7 +855,7 @@ def test_resultset_v1_load_flow_emits_source_injection_and_derived_branch_metric
       (c) gałąź niesie straty czynne (LOSSES_P_MW) oraz pochodne ΔU% i cosφ,
           a ΔU% = (u_from − u_to)·100 z napięć węzłów wyniku solvera.
     """
-    case_id = str(uuid4())
+    case_id = _nowy_przypadek(client)
     _seed_power_flow_enm(client, case_id)
 
     run_response = client.post(f"/api/cases/{case_id}/runs/power-flow")
@@ -889,7 +913,7 @@ def test_resultset_v1_load_flow_source_and_branch_metrics_are_deterministic(
     powtarzalnosci)."""
     values_by_run = []
     for _ in range(2):
-        case_id = str(uuid4())
+        case_id = _nowy_przypadek(client)
         _seed_power_flow_enm(client, case_id)
         run_id = client.post(f"/api/cases/{case_id}/runs/power-flow").json()["run_id"]
         payload = client.get(f"/api/execution/runs/{run_id}/results/v1").json()
@@ -903,7 +927,7 @@ def test_resultset_v1_load_flow_source_and_branch_metrics_are_deterministic(
 
 
 def test_canonical_run_persists_outside_process_memory(client: TestClient) -> None:
-    case_id = str(uuid4())
+    case_id = _nowy_przypadek(client)
     _seed_power_flow_enm(client, case_id)
 
     from enm.canonical_analysis import create_run, execute_run, reset_canonical_runs
@@ -911,7 +935,7 @@ def test_canonical_run_persists_outside_process_memory(client: TestClient) -> No
         canonical_run_repository_scope,
     )
 
-    run = create_run(case_id=case_id, analysis_type="PF")
+    run = create_run(case_id=case_id, klucz_twin=_klucz(client, case_id), analysis_type="PF")
 
     with canonical_run_repository_scope() as repository:
         stored_created = repository.get(run.id)
@@ -938,7 +962,7 @@ def test_canonical_run_persists_outside_process_memory(client: TestClient) -> No
 
 
 def test_phase_state_sn_run_exposes_canonical_results_and_trace(client: TestClient) -> None:
-    case_id = str(uuid4())
+    case_id = _nowy_przypadek(client)
     _seed_power_flow_enm(client, case_id)
 
     create_run = client.post(
@@ -987,7 +1011,7 @@ def test_phase_state_sn_run_exposes_canonical_results_and_trace(client: TestClie
 
 
 def test_dynamic_stability_run_exposes_results_and_automation_trace(client: TestClient) -> None:
-    case_id = str(uuid4())
+    case_id = _nowy_przypadek(client)
     _seed_power_flow_enm(client, case_id)
 
     create_run = client.post(
@@ -1055,7 +1079,7 @@ def test_dynamic_stability_run_exposes_results_and_automation_trace(client: Test
 
 
 def test_source_compliance_run_exposes_reportable_statuses(client: TestClient) -> None:
-    case_id = str(uuid4())
+    case_id = _nowy_przypadek(client)
     _seed_power_flow_enm(client, case_id)
 
     operator_profile = {

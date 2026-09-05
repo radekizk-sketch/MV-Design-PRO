@@ -227,19 +227,118 @@ REF_BESS = "conv-bess-nn-0p5mw-0p4kv"
 #: słownik żyje dokładnie tak długo jak sesja testowa.
 _STAN: dict[str, Any] = {}
 _REFS: dict[str, Any] = {}
-_CASE_ID = f"nn-e2e-fullchain-{uuid4()}"
+#: CV-1-W: przypadek musi należeć do REALNEGO projektu w bazie (inwariant I-2,
+#: `application/twin_key.py`) — wartości ostateczne nadaje fixture
+#: `_przypadek_lancucha` (scope="module", autouse) PRZED pierwszym testem tego
+#: pliku; puste stringi tu to wyłącznie placeholdery typu. `_KLUCZ` jest
+#: kluczem magazynu ENM dla `_CASE_ID` (stały przez cały plik — jeden projekt,
+#: jeden case_id) — kroki BEZ `app_client` w sygnaturze (04, 05, 05b, 07, 07b)
+#: potrzebują go do wywołań solvera wprost i nie mają skąd wziąć
+#: `uow_factory` inaczej niż z tego modułowego globala.
+_CASE_ID: str = ""
+_KLUCZ: str = ""
+
+
+# ---------------------------------------------------------------------------
+# Baza + para projekt/przypadek WSPÓLNE dla całego pliku (CV-1-W): magazyn ENM
+# jest teraz kluczowany kluczem PROJEKTU, tłumaczonym z `case_id` zapytaniem do
+# bazy (`application/twin_key.py::klucz_twin_dla_przypadku`) — a kroki 0-10c
+# dzielą JEDEN model (`enm.store` global, resetowany raz w KROKU 0) pod JEDNYM
+# `case_id`, więc potrzebują JEDNEJ bazy żywej przez CAŁY plik, nie
+# fabrykowanej od nowa (pustej) przy każdym `app_client`. Stąd własny, modułowy
+# `uow_factory` — zamiast funkcyjnego z korzenia `tests/conftest.py`.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def _modul_uow_factory(tmp_path_factory):
+    if not SQLALCHEMY_AVAILABLE:
+        pytest.skip("sqlalchemy nie jest dostępne w środowisku testowym")
+
+    from infrastructure.persistence.db import (
+        create_engine_from_url,
+        create_session_factory,
+        init_db,
+    )
+    from infrastructure.persistence.unit_of_work import build_uow_factory
+
+    db_path = tmp_path_factory.mktemp("nn-full-chain") / "test.db"
+    engine = create_engine_from_url(f"sqlite+pysqlite:///{db_path}")
+    init_db(engine)
+    session_factory = create_session_factory(engine)
+    yield build_uow_factory(session_factory)
+    engine.dispose()
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _przypadek_lancucha(_modul_uow_factory):
+    """Utwórz REALNY projekt + przypadek RAZ dla całego pliku (CV-1-W).
+
+    Kroki 0-10c dzielą JEDEN `case_id` (`_CASE_ID`, moduł-global) — dokładnie
+    tak samo jak dzielą JEDEN model `enm.store` (reset tylko w KROKU 0).
+    """
+    global _CASE_ID, _KLUCZ
+    from domain.models import Project
+    from domain.study_case import StudyCase
+    from enm.klucz_twin import klucz_twin_projektu
+
+    project_id = uuid4()
+    case_id = uuid4()
+    with _modul_uow_factory() as uow:
+        uow.projects.add(Project(id=project_id, name="nN pełny łańcuch E2E"), commit=False)
+        uow.cases.add_study_case(
+            StudyCase(id=case_id, project_id=project_id, name="Przypadek łańcucha"),
+            commit=False,
+        )
+        uow.commit()
+    _CASE_ID = str(case_id)
+    _KLUCZ = klucz_twin_projektu(project_id)
+    yield
+
+
+def _nowy_przypadek(client) -> str:
+    """Utwórz DODATKOWY projekt + przypadek NIEZALEŻNY od `_CASE_ID`.
+
+    KROK 11 (determinizm) buduje DWA NIEZALEŻNE modele od zera — CV-1 wiąże
+    model z PROJEKTEM, więc dwa niezależne `case_id` muszą wskazywać DWA RÓŻNE
+    projekty (ten sam projekt oznaczałby TEN SAM model — druga budowa
+    dokładałaby się do pierwszej zamiast dać niezależną kopię).
+    """
+    from domain.models import Project
+    from domain.study_case import StudyCase
+
+    uow_factory = client.app.state.uow_factory
+    project_id = uuid4()
+    case_id = uuid4()
+    with uow_factory() as uow:
+        uow.projects.add(Project(id=project_id, name="nN łańcuch — determinizm"), commit=False)
+        uow.cases.add_study_case(
+            StudyCase(id=case_id, project_id=project_id, name="Przypadek determinizmu"),
+            commit=False,
+        )
+        uow.commit()
+    return str(case_id)
+
+
+def _klucz(client, case_id: str) -> str:
+    """Klucz magazynu ENM dla `case_id` — TO SAMO tłumaczenie co warstwa API (CV-1)."""
+    from application.twin_key import klucz_twin_dla_przypadku
+
+    return klucz_twin_dla_przypadku(case_id, client.app.state.uow_factory)
 
 
 # ---------------------------------------------------------------------------
 # Fixture TestClient — lokalna kopia wzorca `tests/api/conftest.py::app_client`
 # (ten katalog to `tests/e2e/`, więc fixture sąsiada nie jest widoczna przez
-# łańcuch conftest — `uow_factory` pochodzi z korzenia `tests/conftest.py`,
-# dostępnego wszędzie).
+# łańcuch conftest). CV-1-W: `uow_factory` to `_modul_uow_factory` MODUŁOWY
+# powyżej (WSPÓLNY dla całego pliku), nie funkcyjny root
+# `tests/conftest.py::uow_factory` — patrz uzasadnienie przy
+# `_modul_uow_factory`.
 # ---------------------------------------------------------------------------
 
 
 @pytest.fixture()
-def app_client(uow_factory):
+def app_client(_modul_uow_factory):
     if not FASTAPI_AVAILABLE:
         pytest.skip("fastapi nie jest dostępne w środowisku testowym")
     if not SQLALCHEMY_AVAILABLE:
@@ -250,10 +349,10 @@ def app_client(uow_factory):
     from fastapi.testclient import TestClient
 
     def _override_get_uow_factory():
-        return uow_factory
+        return _modul_uow_factory
 
     app.dependency_overrides[get_uow_factory] = _override_get_uow_factory
-    app.state.uow_factory = uow_factory
+    app.state.uow_factory = _modul_uow_factory
     client = TestClient(app)
     try:
         yield client
@@ -298,6 +397,7 @@ def _build_substrate(client, case_id: str) -> dict[str, Any]:
     M1 i Odbiór K3 pojawiają się DOKŁADNIE RAZ mimo braku usuwania — dowód
     naprawy weryfikowany wprost w `test_krok_00_substrat_buduje_sie_bez_bledow`.
     """
+    klucz = _klucz(client, case_id)
     _op(
         client,
         case_id,
@@ -324,7 +424,7 @@ def _build_substrate(client, case_id: str) -> dict[str, Any]:
         },
     )
 
-    enm = get_enm(case_id)
+    enm = get_enm(klucz)
     corridors = enm.corridors
     assert corridors, "Brak korytarza magistrali SN po continue_trunk_segment_sn"
     seg_ref = corridors[0].ordered_segment_refs[0]
@@ -349,7 +449,7 @@ def _build_substrate(client, case_id: str) -> dict[str, Any]:
         },
     )
 
-    enm = get_enm(case_id)
+    enm = get_enm(klucz)
     station = next(s for s in enm.substations if s.name == "ST-03")
     station_ref = station.ref_id
     rgnn_bus = next(
@@ -379,7 +479,7 @@ def _build_substrate(client, case_id: str) -> dict[str, Any]:
             },
         },
     )
-    enm = get_enm(case_id)
+    enm = get_enm(klucz)
     r1_station = next(s for s in enm.substations if s.name == "R1")
     r1_ref = r1_station.ref_id
     r1_bus = r1_station.bus_refs[0]
@@ -392,7 +492,7 @@ def _build_substrate(client, case_id: str) -> dict[str, Any]:
     # (add_nn_distribution_board — jedyna operacja P0.1 mintująca gołą szynę
     # nN bez kabla), a nie fabrykacją nowego typu operacji.
     _op(client, case_id, "add_nn_distribution_board", {"voltage_kv": 0.4, "name": "Skrzynka K2"})
-    enm = get_enm(case_id)
+    enm = get_enm(klucz)
     skrzynka = next(s for s in enm.substations if s.name == "Skrzynka K2")
     skrzynka_ref = skrzynka.ref_id
     skrzynka_bus = skrzynka.bus_refs[0]
@@ -433,7 +533,7 @@ def _build_substrate(client, case_id: str) -> dict[str, Any]:
         },
     )
     k2_cable_ref = r_k2_cable["snapshot"]["branches"][-1]["ref_id"]
-    enm = get_enm(case_id)
+    enm = get_enm(klucz)
     k2_cable = next(b for b in enm.branches if b.ref_id == k2_cable_ref)
     leaf_silnik_bus = k2_cable.to_bus_ref
 
@@ -701,7 +801,7 @@ class TestNnFullChain:
         refs = _build_substrate(app_client, _CASE_ID)
         _REFS.update(refs)
 
-        enm = get_enm(_CASE_ID)
+        enm = get_enm(_KLUCZ)
 
         # DOWÓD NAPRAWY NAPRAWA-B: Silnik M1 i Odbiór K3 pojawiają się
         # DOKŁADNIE RAZ, mimo że substrat NIE wywołał żadnego usuwania —
@@ -787,7 +887,9 @@ class TestNnFullChain:
     def test_krok_01_rozplyw_mocy_sn_nn_zbiega(self, app_client) -> None:
         """Rozpływ mocy (Newton-Raphson) przez kanoniczny serwis
         `run_power_flow_now` — TA SAMA funkcja, którą woła `POST /runs/power-flow`."""
-        pf_run = run_power_flow_now(case_id=_CASE_ID, project_id=None, options={})
+        pf_run = run_power_flow_now(
+            case_id=_CASE_ID, klucz_twin=_KLUCZ, project_id=None, options={}
+        )
         assert pf_run.status == "FINISHED", f"PF run nie zakończony: {pf_run.error_message}"
         result_v1 = (pf_run.raw_result or {}).get("result_v1") or {}
         assert result_v1.get("converged") is True, f"PF nie zbieżny: {result_v1}"
@@ -795,7 +897,7 @@ class TestNnFullChain:
 
         bus_results = result_v1.get("bus_results") or []
         assert len(bus_results) == len(
-            get_enm(_CASE_ID).buses
+            get_enm(_KLUCZ).buses
         ), "Liczba rozwiązanych szyn PF nie zgadza się z liczbą szyn ENM"
         for row in bus_results:
             assert row.get("status") == "solved", f"Szyna nierozwiązana: {row}"
@@ -811,7 +913,7 @@ class TestNnFullChain:
         # to wywołanie pomocnicze świadomie NIE odtwarza (potrzebuje tylko
         # typowanego `PowerFlowResultV1` dla dekompozycji ΔU, nie regulacji
         # OZE) — tolerancja 2% obejmuje ten legalny rozjazd Q na węzłach PV/BESS.
-        model = get_enm(_CASE_ID)
+        model = get_enm(_KLUCZ)
         graph, result_v1_direct = _typed_pf_result(model)
         canonical_by_id = {row["bus_id"]: row["v_pu"] for row in bus_results}
         for bus in result_v1_direct.bus_results:
@@ -916,10 +1018,16 @@ class TestNnFullChain:
         `POST /runs/short-circuit`. c per pasmo napięcia (IEC 60909 Tab. 1):
         nN → c_max=1,05, c_min=0,95 — AUTO, bez override."""
         sc_max = run_short_circuit_now(
-            case_id=_CASE_ID, project_id=None, options={"fault_type": "3F", "scenario": "max"}
+            case_id=_CASE_ID,
+            klucz_twin=_KLUCZ,
+            project_id=None,
+            options={"fault_type": "3F", "scenario": "max"},
         )
         sc_min = run_short_circuit_now(
-            case_id=_CASE_ID, project_id=None, options={"fault_type": "3F", "scenario": "min"}
+            case_id=_CASE_ID,
+            klucz_twin=_KLUCZ,
+            project_id=None,
+            options={"fault_type": "3F", "scenario": "min"},
         )
         assert sc_max.status == "FINISHED", sc_max.error_message
         assert sc_min.status == "FINISHED", sc_min.error_message
@@ -981,7 +1089,7 @@ class TestNnFullChain:
         """Pętla zwarcia u źródła (szyna nN transformatora, trasa
         zerodługościowa) — MECHANIZM DZIAŁA w pełni (dowód pozytywny przed
         znaleziskiem bramki w kolejnym teście)."""
-        model = get_enm(_CASE_ID)
+        model = get_enm(_KLUCZ)
         view = build_station_fault_loop_view(model, _REFS["station_ref"])
         assert view["status"] == "OK", view
         fl = view["fault_loop"]
@@ -1010,7 +1118,7 @@ class TestNnFullChain:
         stronę: teraz liczy PEŁNY wynik, bo dane są kompletne). BYŁO:
         `view["status"] == "brak danych"` (fail-closed, żyła powrotna brak).
         JEST: `view["status"] == "OK"` z pełnym śladem White Box."""
-        model = get_enm(_CASE_ID)
+        model = get_enm(_KLUCZ)
         view = build_fault_loop_view_at_point(model, _REFS["station_ref"], _REFS["leaf_silnik_bus"])
         assert view["status"] == "OK", view
         assert view["hop_count"] == 3, "Trasa Silnik M1 = K1 + aparat K2 (0 Ω) + K2 = 3 hopy"
@@ -1082,7 +1190,7 @@ class TestNnFullChain:
                 },
             },
         )
-        model = get_enm(_CASE_ID)
+        model = get_enm(_KLUCZ)
         k2_cable = next(b for b in model.branches if b.ref_id == _REFS["k2_cable_ref"])
         warunki = k2_cable.meta["cable_laying_conditions"]
         assert warunki["environment"] == "grunt"
@@ -1159,7 +1267,7 @@ class TestNnFullChain:
         — Ik″max u RGnń przekracza NAWET nową rodzinę 10 kA (NAPRAWA-A) —
         ten wniosek fizyczny jest NIEZMIENIONY względem stanu przed kartą D1
         (nie jest artefaktem zmiany Iz′: Icu nie zależy od Iz′)."""
-        model = get_enm(_CASE_ID)
+        model = get_enm(_KLUCZ)
         trafo = next(t for t in model.transformers if t.lv_bus_ref == _REFS["rgnn_bus"])
         iz_prime_a_rgnn = trafo.sn_mva * 1000.0 / (math.sqrt(3.0) * trafo.ulv_kv)
         assert iz_prime_a_rgnn == pytest.approx(
@@ -1291,7 +1399,7 @@ class TestNnFullChain:
         B40 (In=40 A) WYGRYWA ranking (najmniejsze In wśród kwalifikujących
         się) niezależnie od tego, czy MCCB też się kwalifikuje na tym
         obwodzie."""
-        model = get_enm(_CASE_ID)
+        model = get_enm(_KLUCZ)
         wynik = wybierz_aparat_dla_obwodu_nn(
             enm=model,
             station_ref=_REFS["station_ref"],
@@ -1347,10 +1455,13 @@ class TestNnFullChain:
         # (`set_nn_cable_laying_conditions`), więc bieg z KROK 4 jest już
         # nieświeży z INNEGO powodu niż zmiana kabla poniżej; bramka
         # świeżości musi mieć jednoznaczny punkt odniesienia).
-        model_przed = get_enm(_CASE_ID)
+        model_przed = get_enm(_KLUCZ)
         hash_przed = compute_enm_hash(model_przed)
         sc_max_run = run_short_circuit_now(
-            case_id=_CASE_ID, project_id=None, options={"fault_type": "3F", "scenario": "max"}
+            case_id=_CASE_ID,
+            klucz_twin=_KLUCZ,
+            project_id=None,
+            options={"fault_type": "3F", "scenario": "max"},
         )
         assert (
             sc_max_run.snapshot_hash == hash_przed
@@ -1367,7 +1478,7 @@ class TestNnFullChain:
             },
         )
 
-        model_po = get_enm(_CASE_ID)
+        model_po = get_enm(_KLUCZ)
         hash_po = compute_enm_hash(model_po)
         assert hash_po != hash_przed, "Hash modelu musi się zmienić po zmianie kabla K2"
 
@@ -1387,7 +1498,10 @@ class TestNnFullChain:
         # PRZELICZENIE: nowy bieg SC MAX daje GENUINE INNY wynik (mniejszy
         # przekrój → większa impedancja → mniejszy Ikss na tej samej szynie).
         sc_max_po = run_short_circuit_now(
-            case_id=_CASE_ID, project_id=None, options={"fault_type": "3F", "scenario": "max"}
+            case_id=_CASE_ID,
+            klucz_twin=_KLUCZ,
+            project_id=None,
+            options={"fault_type": "3F", "scenario": "max"},
         )
         assert sc_max_po.status == "FINISHED"
         assert sc_max_po.snapshot_hash == hash_po, "Nowy bieg musi być liczony na BIEŻĄCYM modelu"
@@ -1585,7 +1699,7 @@ class TestNnFullChain:
                 "bus_ref": _REFS["leaf_silnik_bus"],
                 "breaker_ref": _REFS["aparat_k2_ref"],
                 "run_id": str(_STAN["sc_max_run_po_zmianie"].id),
-                "revision_id": str(get_enm(_CASE_ID).header.revision),
+                "revision_id": str(get_enm(_KLUCZ).header.revision),
                 "przypadek_decydujacy": "TR",
                 "ib_a": 40.0,
                 "iz_prime_a": _STAN["iz_prime_a_k2"],
@@ -1606,7 +1720,7 @@ class TestNnFullChain:
                 "bus_ref": _REFS["rgnn_bus"],
                 "breaker_ref": _REFS["aparat_k2_ref"],
                 "run_id": str(_STAN["sc_max_run_po_zmianie"].id),
-                "revision_id": str(get_enm(_CASE_ID).header.revision),
+                "revision_id": str(get_enm(_KLUCZ).header.revision),
                 "przypadek_decydujacy": "TR",
                 "ib_a": 40.0,
                 "iz_prime_a": _STAN["iz_prime_a_rgnn"],
@@ -1668,8 +1782,14 @@ class TestNnFullChain:
         identyczny wynik SC MAX na Silniku M1 — dowód determinizmu end-to-end
         (seed stały: wszystkie dane wejściowe w `_build_substrate` są stałymi
         literałami, zero losowości)."""
-        case_id_a = f"{_CASE_ID}-det-a"
-        case_id_b = f"{_CASE_ID}-det-b"
+        # CV-1-W: model jest wlasnoscia PROJEKTU, nie case_id — dwie
+        # "niezalezne" budowy wymagaja wiec DWOCH ROZNYCH projektow (wspolny
+        # projekt dolozylby drugi substrat do pierwszego zamiast dac
+        # niezalezna kopie, patrz docstring `_nowy_przypadek`).
+        case_id_a = _nowy_przypadek(app_client)
+        case_id_b = _nowy_przypadek(app_client)
+        klucz_a = _klucz(app_client, case_id_a)
+        klucz_b = _klucz(app_client, case_id_b)
         refs_a = _build_substrate(app_client, case_id_a)
         refs_b = _build_substrate(app_client, case_id_b)
 
@@ -1682,17 +1802,23 @@ class TestNnFullChain:
         # fałszywy alarm niedeterminizmu na polu, które nigdy nie miało być
         # stabilne — nie duplikujemy tej reguły drugi raz, tylko wołamy JEDNO
         # źródło prawdy.
-        hash_a = compute_enm_hash(get_enm(case_id_a))
-        hash_b = compute_enm_hash(get_enm(case_id_b))
+        hash_a = compute_enm_hash(get_enm(klucz_a))
+        hash_b = compute_enm_hash(get_enm(klucz_b))
         assert (
             hash_a == hash_b
         ), "Dwie niezależne budowy tego samego substratu dają RÓŻNY hash kanoniczny"
 
         sc_a = run_short_circuit_now(
-            case_id=case_id_a, project_id=None, options={"fault_type": "3F", "scenario": "max"}
+            case_id=case_id_a,
+            klucz_twin=klucz_a,
+            project_id=None,
+            options={"fault_type": "3F", "scenario": "max"},
         )
         sc_b = run_short_circuit_now(
-            case_id=case_id_b, project_id=None, options={"fault_type": "3F", "scenario": "max"}
+            case_id=case_id_b,
+            klucz_twin=klucz_b,
+            project_id=None,
+            options={"fault_type": "3F", "scenario": "max"},
         )
         leaf_a = ref_to_graph_id(refs_a["leaf_silnik_bus"])
         leaf_b = ref_to_graph_id(refs_b["leaf_silnik_bus"])

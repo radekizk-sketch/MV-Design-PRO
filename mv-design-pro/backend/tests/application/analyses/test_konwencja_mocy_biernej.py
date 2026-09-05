@@ -154,7 +154,7 @@ _NODE_SLACK = _graph_id_from_ref("bus_slack")
 
 def _result_v1(net: EnergyNetworkModel) -> dict[str, Any]:
     set_enm("c", net)
-    result = execute_run(create_run(case_id="c", analysis_type="PF").id)
+    result = execute_run(create_run(case_id="c", klucz_twin="c", analysis_type="PF").id)
     rv: dict[str, Any] = (result.raw_result or {}).get("result_v1") or {}
     assert rv.get("converged") is True
     return rv

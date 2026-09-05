@@ -8,6 +8,7 @@ from typing import Any, Literal
 from uuid import UUID
 
 from api.domain_ops_policy import validate_and_materialize_catalog_binding
+from api.klucz_twin_dep import KluczTwin
 from application.analyses.protection.catalog.catalog_store import list_devices
 from application.field_read_model import build_field_read_model
 from domain.canonical_operations import resolve_operation_name
@@ -32,7 +33,6 @@ from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
 from enm.store import blokada_twin
 from enm.store import get_enm as _get_enm
-from enm.store import has_enm as _has_enm
 from enm.store import set_enm as _set_enm
 from fastapi import APIRouter, HTTPException, Request, status
 from network_model.catalog.audit2_catalogs import get_block_transformer
@@ -150,6 +150,18 @@ def _catalog_namespace(technology: DerKind) -> str:
 
 
 def _validate_project_case_context(request: Request, project_id: str, case_id: str) -> None:
+    """Sprawdz, ze `case_id` istnieje w bazie i nalezy do `project_id`.
+
+    CV-1-W: przypadek BEZ wiersza w bazie (`study_case is None`) jest zawsze
+    404 — magazyn ENM nie ma juz wlasnego modelu per przypadek (inwariant
+    I-2, `enm.klucz_twin.PrzypadekBezProjektuError`), wiec „przypadek ma
+    materialized ENM pod raw case_id, ale nie ma go w bazie" przestalo byc
+    legalnym stanem. Dawny fallback (`_has_enm(case_id)`) tolerowal DOKLADNIE
+    ten stan i po CV-1-W dawal odpowiedz sprzeczna z dalsza czescia zadania:
+    ta funkcja przepuszczalaby request, a tlumacz klucza (`KluczTwin`,
+    wolany przez handler) i tak odrzucalby go 404 — walidacja i rzeczywisty
+    dostep do magazynu mowilyby co innego.
+    """
     try:
         parsed_project_id = UUID(project_id)
         parsed_case_id = UUID(case_id)
@@ -170,8 +182,6 @@ def _validate_project_case_context(request: Request, project_id: str, case_id: s
         study_case = uow.cases.get_study_case(parsed_case_id)
 
     if study_case is None:
-        if _has_enm(case_id):
-            return
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
@@ -439,6 +449,7 @@ def _build_domain_payload(
 def create_der_generator(
     project_id: str,
     case_id: str,
+    klucz: KluczTwin,
     req: DerGeneratorCreateRequest,
     request: Request,
 ) -> dict[str, Any]:
@@ -458,12 +469,12 @@ def create_der_generator(
 
     _validate_project_case_context(request, project_id, case_id)
 
-    with blokada_twin(case_id):
-        return _utworz_wytworce_pod_blokada(case_id, req)
+    with blokada_twin(klucz):
+        return _utworz_wytworce_pod_blokada(klucz, req)
 
 
-def _utworz_wytworce_pod_blokada(case_id: str, req: DerGeneratorCreateRequest) -> dict[str, Any]:
-    enm = _get_enm(case_id)
+def _utworz_wytworce_pod_blokada(klucz: str, req: DerGeneratorCreateRequest) -> dict[str, Any]:
+    enm = _get_enm(klucz)
     enm_dict = enm.model_dump(mode="json")
     payload = _build_domain_payload(enm_dict, req)
 
@@ -495,7 +506,7 @@ def _utworz_wytworce_pod_blokada(case_id: str, req: DerGeneratorCreateRequest) -
 
     if result.get("snapshot"):
         try:
-            saved = _set_enm(case_id, EnergyNetworkModel.model_validate(result["snapshot"]))
+            saved = _set_enm(klucz, EnergyNetworkModel.model_validate(result["snapshot"]))
             result["snapshot"] = saved.model_dump(mode="json")
         except Exception as exc:  # pragma: no cover - defensive validation guard
             logger.exception("Zapis modelu ENM po konfiguracji DER nie powiódł się")
@@ -518,6 +529,7 @@ def _utworz_wytworce_pod_blokada(case_id: str, req: DerGeneratorCreateRequest) -
 def set_der_bindings(
     project_id: str,
     case_id: str,
+    klucz: KluczTwin,
     generator_ref: str,
     req: DerCatalogBindingsRequest,
     request: Request,
@@ -540,12 +552,12 @@ def set_der_bindings(
     for pole in req.model_fields_set:
         payload[pole] = getattr(req, pole)
 
-    with blokada_twin(case_id):
-        return _zapisz_wiazania_pod_blokada(case_id, payload)
+    with blokada_twin(klucz):
+        return _zapisz_wiazania_pod_blokada(klucz, payload)
 
 
-def _zapisz_wiazania_pod_blokada(case_id: str, payload: dict[str, Any]) -> dict[str, Any]:
-    enm = _get_enm(case_id)
+def _zapisz_wiazania_pod_blokada(klucz: str, payload: dict[str, Any]) -> dict[str, Any]:
+    enm = _get_enm(klucz)
     resolved_name = resolve_operation_name("set_der_catalog_bindings")
     result = execute_domain_operation(
         enm_dict=enm.model_dump(mode="json"),
@@ -563,7 +575,7 @@ def _zapisz_wiazania_pod_blokada(case_id: str, payload: dict[str, Any]) -> dict[
 
     if result.get("snapshot"):
         try:
-            saved = _set_enm(case_id, EnergyNetworkModel.model_validate(result["snapshot"]))
+            saved = _set_enm(klucz, EnergyNetworkModel.model_validate(result["snapshot"]))
             result["snapshot"] = saved.model_dump(mode="json")
         except Exception as exc:  # pragma: no cover - defensive validation guard
             logger.exception("Zapis modelu ENM po konfiguracji DER nie powiódł się")
@@ -668,6 +680,7 @@ def _funkcje_urzadzenia(protection_ref: str | None) -> tuple[tuple[str, ...] | N
 def get_der_protection_functions(
     project_id: str,
     case_id: str,
+    klucz: KluczTwin,
     generator_ref: str,
     request: Request,
 ) -> dict[str, Any]:
@@ -678,7 +691,7 @@ def get_der_protection_functions(
     """
 
     _validate_project_case_context(request, project_id, case_id)
-    enm = _get_enm(case_id)
+    enm = _get_enm(klucz)
     dane = enm.model_dump(mode="json")
 
     generator = next(
@@ -737,6 +750,7 @@ def get_der_protection_functions(
 def get_der_readiness(
     project_id: str,
     case_id: str,
+    klucz: KluczTwin,
     generator_ref: str,
     request: Request,
 ) -> dict[str, Any]:
@@ -757,7 +771,7 @@ def get_der_readiness(
     """
 
     _validate_project_case_context(request, project_id, case_id)
-    enm = _get_enm(case_id)
+    enm = _get_enm(klucz)
     dane = enm.model_dump(mode="json")
 
     generatory = dane.get("generators", [])
@@ -799,6 +813,7 @@ def get_der_readiness(
 def get_der_instrument_transformers(
     project_id: str,
     case_id: str,
+    klucz: KluczTwin,
     generator_ref: str,
     request: Request,
 ) -> dict[str, Any]:
@@ -819,7 +834,7 @@ def get_der_instrument_transformers(
     """
 
     _validate_project_case_context(request, project_id, case_id)
-    enm = _get_enm(case_id)
+    enm = _get_enm(klucz)
     dane = enm.model_dump(mode="json")
 
     generator = next(

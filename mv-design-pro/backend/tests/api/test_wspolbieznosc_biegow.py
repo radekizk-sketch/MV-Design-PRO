@@ -49,7 +49,6 @@ import json
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-from uuid import uuid4
 
 import pytest
 from api.main import app
@@ -185,7 +184,33 @@ def _model_sn(nazwa: str) -> dict:
     }
 
 
+def _nowy_przypadek(client: TestClient) -> str:
+    """Utwórz REALNY projekt + przypadek przez API; zwróć `case_id`.
+
+    CV-1-W: przypadek bez wiersza w bazie dostaje teraz 404 z magazynu ENM
+    (inwariant I-2) — testy tego pliku potrzebują prawdziwej pary
+    projekt+przypadek zamiast dowolnego UUID-a.
+    """
+    project_resp = client.post("/api/projects", json={"name": "Wspolbieznosc biegow — test"})
+    assert project_resp.status_code == 201, project_resp.text
+    project_id = project_resp.json()["id"]
+    case_resp = client.post(
+        "/api/study-cases", json={"project_id": project_id, "name": "Przypadek testu"}
+    )
+    assert case_resp.status_code == 201, case_resp.text
+    return str(case_resp.json()["id"])
+
+
 def _zasiej(case_id: str, nazwa: str) -> None:
+    """Zasiej model pod SUROWYM kluczem `case_id`.
+
+    CV-1-W: `case_id` przekazany tu musi nalezec do REALNEGO przypadku
+    (`_nowy_przypadek`) — pierwsze przetlumaczone dotkniecie (pierwsze
+    `_uruchom_bieg`/HTTP dla tego przypadku) migruje ten wpis pod klucz
+    projektu (`migruj_projekt_z_legacy`, `application/twin_key.py`), wiec
+    zasiew surowym kluczem PRZED tym dotknieciem jest poprawny i nie wymaga
+    tlumaczenia w tym miejscu.
+    """
     from enm.models import EnergyNetworkModel
     from enm.store import set_enm
 
@@ -317,7 +342,7 @@ def test_biegi_rownolegle_sa_deterministyczne(client: TestClient) -> None:
     zostal stad usuniety zamiast udawac bramke. Wspolbieznosc mierzy sonda w
     `test_lekkie_zadanie_przechodzi_w_trakcie_biegow`.
     """
-    przypadki = [str(uuid4()) for _ in range(K_ROWNOLEGLYCH)]
+    przypadki = [_nowy_przypadek(client) for _ in range(K_ROWNOLEGLYCH)]
     for i, case_id in enumerate(przypadki):
         _zasiej(case_id, f"Siec SN {i}")
 
@@ -448,7 +473,7 @@ def test_lekkie_zadanie_przechodzi_w_trakcie_biegow(
     z `def` na `async def`): 57 z 60 pomiarow dalo ZERO obsluzonych w locie,
     najgorszy 3, wobec najgorszego 8 na kodzie poprawnym.
     """
-    przypadki = [str(uuid4()) for _ in range(K_ROWNOLEGLYCH)]
+    przypadki = [_nowy_przypadek(client) for _ in range(K_ROWNOLEGLYCH)]
     for i, case_id in enumerate(przypadki):
         _zasiej(case_id, f"Siec SN {rodzaj} {i}")
         # Rozgrzewka: pierwszy odczyt modelu wykonuje migracje i uzupelnia dane
@@ -543,7 +568,7 @@ def test_odczyt_nie_czeka_na_bieg_analizy(client: TestClient, rodzaj: str, sciez
     przeliczona odtwarzalaby te sama dziure — usunieto ja razem z pojedyncza
     proba, a jej role (odpornosc na szum krotkich zdarzen) przejela czestosc.
     """
-    case_id = str(uuid4())
+    case_id = _nowy_przypadek(client)
     _zasiej(case_id, f"Siec SN — responsywnosc {rodzaj}")
     # Rozgrzewka poza pomiarem (migracje + dane katalogowe przy pierwszym odczycie).
     assert client.get(f"/api/cases/{case_id}/enm/readiness").status_code == 200

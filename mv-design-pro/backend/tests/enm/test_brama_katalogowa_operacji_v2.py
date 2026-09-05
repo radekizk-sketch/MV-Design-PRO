@@ -709,6 +709,23 @@ POKRYCIE_POZA_INIEKCJAMI: dict[str, str] = {
 }
 
 
+def _nowy_przypadek(klient: TestClient) -> str:
+    """Utwórz REALNY projekt + przypadek przez API; zwróć `case_id`.
+
+    CV-1-W: przypadek bez wiersza w bazie dostaje teraz 404 z magazynu ENM
+    (inwariant I-2), więc testy bramy katalogowej potrzebują prawdziwej pary
+    projekt+przypadek zamiast dowolnego napisu.
+    """
+    project_resp = klient.post("/api/projects", json={"name": "Brama katalogowa — test"})
+    assert project_resp.status_code == 201, project_resp.text
+    project_id = project_resp.json()["id"]
+    case_resp = klient.post(
+        "/api/study-cases", json={"project_id": project_id, "name": "Przypadek testu"}
+    )
+    assert case_resp.status_code == 201, case_resp.text
+    return str(case_resp.json()["id"])
+
+
 def _operacja_api(
     klient: TestClient, case_id: str, nazwa: str, payload: dict[str, Any]
 ) -> dict[str, Any]:
@@ -750,11 +767,17 @@ def _zasiej_siec_przez_api(klient: TestClient, case_id: str) -> dict[str, Any]:
 
 
 @pytest.fixture()
-def klient(tmp_path, monkeypatch) -> TestClient:
+def klient(tmp_path, monkeypatch, uow_factory) -> TestClient:
+    from api.dependencies import get_uow_factory
+
     monkeypatch.setenv("ENM_STORE_DIR", str(tmp_path))
     reset_enm_store()
     wyczysc_dziennik()
+    app.dependency_overrides[get_uow_factory] = lambda: uow_factory
+    app.state.uow_factory = uow_factory
     yield TestClient(app)
+    app.dependency_overrides.pop(get_uow_factory, None)
+    app.state.uow_factory = None
     reset_enm_store()
     wyczysc_dziennik()
 
@@ -974,7 +997,7 @@ def test_literowka_odrzucona_w_torze_payloadu(
     `der_bindings.catalog_ref_unknown`) zostaje kodem WARSTWY DOMENOWEJ i jest
     pilnowany osobnym testem wyżej.
     """
-    case_id = f"v2-brama-{abs(hash((przypadek.operacja, przypadek.sciezka)))}"
+    case_id = _nowy_przypadek(klient)
     snapshot = _zasiej_siec_przez_api(klient, case_id)
     if przypadek.wymaga_ct:
         snapshot = _operacja_api(klient, case_id, "add_ct", _payload_ct(snapshot))
@@ -1304,7 +1327,7 @@ def test_koncowka_domain_ops_odrzuca_rozjazd_bramy_i_modelu(
     stan, przed którym kontrola ma bronić; reszta drogi (operacja, zapis, migawka)
     jest prawdziwa.
     """
-    case_id = "v2-brama-rozjazd"
+    case_id = _nowy_przypadek(klient)
     snapshot = _zasiej_siec_przez_api(klient, case_id)
     hash_przed = klient.get(f"/api/cases/{case_id}/enm").json()["header"]["hash_sha256"]
 
@@ -1344,7 +1367,7 @@ def test_koncowka_domain_ops_odrzuca_rozjazd_bramy_i_modelu(
 
 def test_produkcyjna_droga_zapisu_utrwala_tabliczke_katalogowa(klient: TestClient) -> None:
     """`POST /enm/domain-ops` — jedyna produkcyjna droga zapisu — zapisuje katalog."""
-    case_id = "v2-brama-produkcyjna"
+    case_id = _nowy_przypadek(klient)
     snapshot = _zasiej_siec_przez_api(klient, case_id)
 
     odpowiedz = klient.post(

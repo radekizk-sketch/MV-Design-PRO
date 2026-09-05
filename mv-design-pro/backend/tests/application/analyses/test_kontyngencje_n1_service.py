@@ -494,7 +494,7 @@ def test_brak_obciazalnosci_pomija_kryterium_pradowe_jawnie() -> None:
 
 def test_enumeracja_nie_mutuje_modelu_ani_migawki_biegu() -> None:
     set_enm("c-n1", build_golden_enm())
-    bieg = execute_run(create_run(case_id="c-n1", analysis_type="PF").id)
+    bieg = execute_run(create_run(case_id="c-n1", klucz_twin="c-n1", analysis_type="PF").id)
     hash_przed = compute_enm_hash(get_enm("c-n1"))
     migawka_przed = copy.deepcopy(bieg.snapshot)
 

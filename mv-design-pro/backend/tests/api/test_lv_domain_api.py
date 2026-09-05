@@ -32,7 +32,46 @@ def _reset_stan_przypadkow():
     reset_enm_store()
 
 
-def _seed_enm(case_id: str) -> None:
+def _nowy_przypadek(client) -> str:
+    """Utwórz REALNY projekt + przypadek przez API; zwróć `case_id`.
+
+    CV-1-W: przypadek bez wiersza w bazie dostaje teraz 404 z magazynu ENM
+    (inwariant I-2) — testy tego pliku potrzebują prawdziwej pary
+    projekt+przypadek zamiast dowolnego UUID-a.
+    """
+    project_resp = client.post("/api/projects", json={"name": "LV domain API — test"})
+    assert project_resp.status_code == 201, project_resp.text
+    project_id = project_resp.json()["id"]
+    case_resp = client.post(
+        "/api/study-cases", json={"project_id": project_id, "name": "Przypadek testu"}
+    )
+    assert case_resp.status_code == 201, case_resp.text
+    return str(case_resp.json()["id"])
+
+
+def _klucz(client, case_id: str) -> str:
+    """Klucz magazynu ENM dla `case_id` — TO SAMO tłumaczenie co warstwa API (CV-1)."""
+    from application.twin_key import klucz_twin_dla_przypadku
+
+    return klucz_twin_dla_przypadku(case_id, client.app.state.uow_factory)
+
+
+def _zasiej(client, case_id: str, enm: EnergyNetworkModel) -> None:
+    """Zasiej ENM wprost do magazynu, pod kluczem TŁUMACZONYM z `case_id` (CV-1).
+
+    `PUT /api/cases/{case_id}/enm` jest wyłączone w `production_router`
+    (`api/enm.py::_PRODUCTION_DISABLED_ROUTE_KEYS`) — jedyny produkcyjny tor
+    zapisu to `POST .../enm/domain-ops`, niepraktyczny do budowy dowolnego
+    kształtu modelu w testach kontraktu API. Piszemy więc wprost do magazynu,
+    pod kluczem PROJEKTU (nie surowym `case_id`, którego żaden odczyt API już
+    nie widzi — magazyn jest kluczowany kluczem PROJEKTU,
+    `application/twin_key.py`), żeby odczyt przez REALNĄ końcówkę widział
+    dokładnie ten model.
+    """
+    set_enm(_klucz(client, case_id), enm)
+
+
+def _seed_enm(client, case_id: str) -> None:
     enm = EnergyNetworkModel(
         header=ENMHeader(name="t5b-api", defaults=ENMDefaults(sn_nominal_kv=15.0)),
         buses=[
@@ -66,13 +105,13 @@ def _seed_enm(case_id: str) -> None:
             )
         ],
     )
-    set_enm(case_id, enm)
+    _zasiej(client, case_id, enm)
 
 
 class TestLvDomainViewEndpoint:
     def test_success_returns_domain_graph(self, app_client) -> None:
-        case_id = str(uuid4())
-        _seed_enm(case_id)
+        case_id = _nowy_przypadek(app_client)
+        _seed_enm(app_client, case_id)
         resp = app_client.get(f"/api/cases/{case_id}/enm/lv-domain/stn")
         assert resp.status_code == 200
         body = resp.json()
@@ -83,8 +122,8 @@ class TestLvDomainViewEndpoint:
         assert body["boundary_links"] == []
 
     def test_unknown_station_returns_200_with_honest_brak_danych(self, app_client) -> None:
-        case_id = str(uuid4())
-        _seed_enm(case_id)
+        case_id = _nowy_przypadek(app_client)
+        _seed_enm(app_client, case_id)
         resp = app_client.get(f"/api/cases/{case_id}/enm/lv-domain/nieistniejaca")
         assert resp.status_code == 200
         body = resp.json()
@@ -93,8 +132,8 @@ class TestLvDomainViewEndpoint:
 
 class TestUpstreamEquivalentEndpoint:
     def test_success_returns_snapshot(self, app_client) -> None:
-        case_id = str(uuid4())
-        _seed_enm(case_id)
+        case_id = _nowy_przypadek(app_client)
+        _seed_enm(app_client, case_id)
         resp = app_client.get(f"/api/cases/{case_id}/enm/lv-domain/stn/upstream-equivalent")
         assert resp.status_code == 200
         body = resp.json()
@@ -106,8 +145,8 @@ class TestUpstreamEquivalentEndpoint:
         assert body["calculation_run_id"] is not None
 
     def test_scenario_query_param_selects_min(self, app_client) -> None:
-        case_id = str(uuid4())
-        _seed_enm(case_id)
+        case_id = _nowy_przypadek(app_client)
+        _seed_enm(app_client, case_id)
         resp = app_client.get(
             f"/api/cases/{case_id}/enm/lv-domain/stn/upstream-equivalent",
             params={"scenario": "MIN"},
@@ -118,8 +157,8 @@ class TestUpstreamEquivalentEndpoint:
         assert body["c_factor"] == 1.00
 
     def test_invalid_scenario_value_returns_422(self, app_client) -> None:
-        case_id = str(uuid4())
-        _seed_enm(case_id)
+        case_id = _nowy_przypadek(app_client)
+        _seed_enm(app_client, case_id)
         resp = app_client.get(
             f"/api/cases/{case_id}/enm/lv-domain/stn/upstream-equivalent",
             params={"scenario": "NIEPOPRAWNY"},
@@ -127,8 +166,8 @@ class TestUpstreamEquivalentEndpoint:
         assert resp.status_code == 422
 
     def test_unknown_station_returns_200_with_honest_brak_danych(self, app_client) -> None:
-        case_id = str(uuid4())
-        _seed_enm(case_id)
+        case_id = _nowy_przypadek(app_client)
+        _seed_enm(app_client, case_id)
         resp = app_client.get(
             f"/api/cases/{case_id}/enm/lv-domain/nieistniejaca/upstream-equivalent"
         )
@@ -137,17 +176,21 @@ class TestUpstreamEquivalentEndpoint:
         assert body["status"] == "brak danych"
 
     def test_two_calls_are_deterministic(self, app_client) -> None:
-        case_id = str(uuid4())
-        _seed_enm(case_id)
+        case_id = _nowy_przypadek(app_client)
+        _seed_enm(app_client, case_id)
         resp1 = app_client.get(f"/api/cases/{case_id}/enm/lv-domain/stn/upstream-equivalent")
         resp2 = app_client.get(f"/api/cases/{case_id}/enm/lv-domain/stn/upstream-equivalent")
+        # Asercja statusu ZANIM porówna treść — bez niej dwie identyczne
+        # odpowiedzi błędu (np. 404 przy nieprzetłumaczalnym `case_id`)
+        # "zdałyby" ten test z niewłaściwego powodu (test maskujący defekt).
+        assert resp1.status_code == 200, resp1.text
         assert resp1.json() == resp2.json()
 
 
 class TestLvDomainProjectionV1Endpoint:
     def test_returns_one_versioned_atomic_snapshot(self, app_client) -> None:
-        case_id = str(uuid4())
-        _seed_enm(case_id)
+        case_id = _nowy_przypadek(app_client)
+        _seed_enm(app_client, case_id)
 
         resp = app_client.get(f"/api/cases/{case_id}/enm/lv-domain/stn/projection/v1")
 
@@ -165,8 +208,8 @@ class TestLvDomainProjectionV1Endpoint:
         assert {row["transformer_ref"] for row in body["upstream_equivalents"]} == {"tr"}
 
     def test_snapshot_identity_is_shared_and_projection_is_deterministic(self, app_client) -> None:
-        case_id = str(uuid4())
-        _seed_enm(case_id)
+        case_id = _nowy_przypadek(app_client)
+        _seed_enm(app_client, case_id)
         url = f"/api/cases/{case_id}/enm/lv-domain/stn/projection/v1"
 
         first = app_client.get(url).json()
@@ -191,8 +234,8 @@ class TestLvDomainProjectionV1Endpoint:
 
     def test_model_snapshot_carries_request_identity(self, app_client) -> None:
         """§0.4: klient porównuje tożsamość odpowiedzi z tym, o co prosił."""
-        case_id = str(uuid4())
-        _seed_enm(case_id)
+        case_id = _nowy_przypadek(app_client)
+        _seed_enm(app_client, case_id)
 
         body = app_client.get(
             f"/api/cases/{case_id}/enm/lv-domain/stn/projection/v1",
@@ -208,8 +251,8 @@ class TestLvDomainProjectionV1Endpoint:
         assert snapshot["operating_state_id"]
 
     def test_graph_buses_carry_energization_and_islands(self, app_client) -> None:
-        case_id = str(uuid4())
-        _seed_enm(case_id)
+        case_id = _nowy_przypadek(app_client)
+        _seed_enm(app_client, case_id)
 
         body = app_client.get(f"/api/cases/{case_id}/enm/lv-domain/stn/projection/v1").json()
 
@@ -236,8 +279,8 @@ class TestLvDomainProjectionV1Endpoint:
     def test_two_transformer_station_returns_two_swz_positions(self, app_client) -> None:
         """Stacja 2×TR: dwie pozycje `swz_snapshot.transformers`, każdy odpływ
         pod swoim transformatorem (karta B-02 §0.2)."""
-        case_id = str(uuid4())
-        set_enm(case_id, zbuduj_stacje_nn(transformatory=2, sprzeglo="closed"))
+        case_id = _nowy_przypadek(app_client)
+        _zasiej(app_client, case_id, zbuduj_stacje_nn(transformatory=2, sprzeglo="closed"))
 
         body = app_client.get(f"/api/cases/{case_id}/enm/lv-domain/stn/projection/v1").json()
 
@@ -256,8 +299,8 @@ class TestLvDomainProjectionV1Endpoint:
                 assert feeder["swz"]["transformer_ref"] == row["transformer_ref"]
 
     def test_unknown_run_is_not_silently_replaced(self, app_client) -> None:
-        case_id = str(uuid4())
-        _seed_enm(case_id)
+        case_id = _nowy_przypadek(app_client)
+        _seed_enm(app_client, case_id)
 
         resp = app_client.get(
             f"/api/cases/{case_id}/enm/lv-domain/stn/projection/v1",
@@ -267,11 +310,17 @@ class TestLvDomainProjectionV1Endpoint:
         assert resp.status_code == 404
 
     def test_run_from_another_case_is_rejected_with_409(self, app_client) -> None:
-        case_id = str(uuid4())
-        obcy_case_id = str(uuid4())
-        set_enm(case_id, zbuduj_stacje_nn())
-        set_enm(obcy_case_id, zbuduj_stacje_nn())
-        run = execute_run(create_run(case_id=obcy_case_id, analysis_type="PF").id)
+        case_id = _nowy_przypadek(app_client)
+        obcy_case_id = _nowy_przypadek(app_client)
+        _zasiej(app_client, case_id, zbuduj_stacje_nn())
+        _zasiej(app_client, obcy_case_id, zbuduj_stacje_nn())
+        run = execute_run(
+            create_run(
+                case_id=obcy_case_id,
+                klucz_twin=_klucz(app_client, obcy_case_id),
+                analysis_type="PF",
+            ).id
+        )
 
         resp = app_client.get(
             f"/api/cases/{case_id}/enm/lv-domain/stn/projection/v1",
@@ -282,9 +331,11 @@ class TestLvDomainProjectionV1Endpoint:
         assert obcy_case_id in resp.json()["detail"]
 
     def test_unfinished_run_is_rejected_with_409(self, app_client) -> None:
-        case_id = str(uuid4())
-        set_enm(case_id, zbuduj_stacje_nn())
-        run = create_run(case_id=case_id, analysis_type="PF")
+        case_id = _nowy_przypadek(app_client)
+        _zasiej(app_client, case_id, zbuduj_stacje_nn())
+        run = create_run(
+            case_id=case_id, klucz_twin=_klucz(app_client, case_id), analysis_type="PF"
+        )
         assert run.status != "FINISHED"
 
         resp = app_client.get(
@@ -296,9 +347,13 @@ class TestLvDomainProjectionV1Endpoint:
         assert str(run.id) in resp.json()["detail"]
 
     def test_finished_run_of_this_case_is_fresh_and_identity_matches(self, app_client) -> None:
-        case_id = str(uuid4())
-        set_enm(case_id, zbuduj_stacje_nn())
-        run = execute_run(create_run(case_id=case_id, analysis_type="PF").id)
+        case_id = _nowy_przypadek(app_client)
+        _zasiej(app_client, case_id, zbuduj_stacje_nn())
+        run = execute_run(
+            create_run(
+                case_id=case_id, klucz_twin=_klucz(app_client, case_id), analysis_type="PF"
+            ).id
+        )
 
         body = app_client.get(
             f"/api/cases/{case_id}/enm/lv-domain/stn/projection/v1",
@@ -318,8 +373,9 @@ class TestLvDomainProjectionV1Endpoint:
         nie może przemieszać w jednej odpowiedzi dwóch rewizji."""
         from application.analyses.lv_domain import projection_v1
 
-        case_id = str(uuid4())
-        set_enm(case_id, zbuduj_stacje_nn())
+        case_id = _nowy_przypadek(app_client)
+        _zasiej(app_client, case_id, zbuduj_stacje_nn())
+        klucz = _klucz(app_client, case_id)
         url = f"/api/cases/{case_id}/enm/lv-domain/stn/projection/v1"
         wzorzec = app_client.get(url).json()
 
@@ -327,7 +383,10 @@ class TestLvDomainProjectionV1Endpoint:
         podmieniony = zbuduj_stacje_nn(transformatory=2, sprzeglo="closed")
 
         def _graf_z_zapisem_wspolbieznym(model, station_ref):
-            set_enm(case_id, podmieniony)
+            # Zapis "wspolbiezny" pod TYM SAMYM kluczem magazynu, ktory ta
+            # odpowiedz juz przeczytala (CV-1: klucz projektu, nie surowy
+            # case_id) — symuluje realny wyscig, nie zapis pod sierocy klucz.
+            set_enm(klucz, podmieniony)
             return prawdziwy_graf(model, station_ref)
 
         monkeypatch.setattr(projection_v1, "build_lv_domain_view", _graf_z_zapisem_wspolbieznym)

@@ -11,6 +11,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+from api.klucz_twin_dep import KluczTwin
 from application.execution_engine import ExecutionEngineService
 from domain.execution import ExecutionAnalysisType
 from domain.study_case import StudyCaseResult
@@ -217,13 +218,16 @@ def _oznacz_wyniki_przypadku(run: CanonicalRun, request: Request) -> None:
     response_model=RunResponse,
     status_code=status.HTTP_201_CREATED,
 )
-def create_run(case_id: str, request: CreateRunRequest, http_request: Request) -> dict[str, Any]:
+def create_run(
+    case_id: str, klucz: KluczTwin, request: CreateRunRequest, http_request: Request
+) -> dict[str, Any]:
     _parse_uuid(case_id, "case_id")
     analysis_type = _parse_analysis_type(request.analysis_type)
 
     try:
         run = create_canonical_run(
             case_id=case_id,
+            klucz_twin=klucz,
             project_id=_resolve_project_id(case_id, http_request),
             analysis_type=_canonical_analysis_type(analysis_type),
             options=_normalize_solver_input(analysis_type, request.solver_input),

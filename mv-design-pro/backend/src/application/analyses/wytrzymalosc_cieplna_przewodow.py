@@ -62,7 +62,7 @@ w tresci wyniku.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -75,8 +75,10 @@ from application.analyses.protection.czas_wylaczenia_galezi import (
     podsumowanie_czasow,
     slad_czasu,
 )
+from application.twin_key import klucz_twin_dla_przypadku
 from enm.canonical_analysis import CanonicalRun, pobierz_rozplyw_biegu
 from enm.hash import compute_enm_hash
+from enm.klucz_twin import PrzypadekBezProjektuError
 from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
 from enm.store import get_enm
@@ -404,14 +406,29 @@ def _odtworz_wklady_galeziowe(
     return wklady
 
 
-def _aktualnosc_wobec_modelu(run: CanonicalRun) -> dict[str, Any]:
+def _aktualnosc_wobec_modelu(
+    run: CanonicalRun, uow_factory: Callable[[], Any] | None
+) -> dict[str, Any]:
     """Czy bieg zostal policzony dla BIEZACEJ wersji modelu (regula 4 kanonu).
 
     Ta sama zasada, ktorej uzywa agregat werdyktu projektowego: porownanie hasha
     snapshotu biegu z hashem modelu przypadku. Brak modelu w rejestrze nie jest
-    „nieaktualnoscia" — to brak podstawy do porownania i mowimy o tym wprost.
+    „nieaktualnoscia" — to brak podstawy do porownania i mowimy o tym wprost;
+    ten sam uczciwy brak obejmuje TERAZ (CV-1-W) przypadek, ktory nie nalezy
+    juz do zadnego projektu (`PrzypadekBezProjektuError`) — porownanie po
+    prostu nie ma z czym pracowac, dokladnie jak model niezaladowany.
+    `application.twin_key.klucz_twin_dla_przypadku` woluje sie TU (zgodnie z
+    wyjatkiem SS0 pkt 3 dla „freshness" — funkcja jest wolana z `uow_factory`
+    w zasiegu wolajacego, `api/quality_analysis_runs.py`).
     """
-    model = get_enm(run.case_id)
+    model = None
+    if uow_factory is not None:
+        try:
+            klucz = klucz_twin_dla_przypadku(run.case_id, uow_factory)
+        except PrzypadekBezProjektuError:
+            model = None
+        else:
+            model = get_enm(klucz)
     if model is None:
         return {
             "aktualny": None,
@@ -521,11 +538,17 @@ def _ocena_dla_przebiegu(
     return sc_result, widok, slad
 
 
-def build_wytrzymalosc_cieplna_view(run: CanonicalRun) -> dict[str, Any]:
+def build_wytrzymalosc_cieplna_view(
+    run: CanonicalRun, uow_factory: Callable[[], Any] | None = None
+) -> dict[str, Any]:
     """Widok wytrzymalosci cieplnej przewodow dla przebiegu zwarciowego (karta F-K1 faza 3).
 
     Konsument analizy — bez niego kryterium liczyloby sie, a projektant by go nie
     widzial (czyli byloby wyspa, przed ktora ostrzega audyt FLOW).
+
+    `uow_factory` — patrz `_aktualnosc_wobec_modelu`; `None` daje uczciwy stan
+    „nie da sie potwierdzic aktualnosci" zamiast bledu (parytet z brakiem
+    modelu w rejestrze sprzed CV-1-W).
 
     Raises:
         ValueError: gdy przebieg nie jest zwarciowy albo nie jest zakonczony —
@@ -538,7 +561,7 @@ def build_wytrzymalosc_cieplna_view(run: CanonicalRun) -> dict[str, Any]:
         # BIEZACEGO modelu. Zmiana przekroju, nastawy albo topologii unieważnia bieg,
         # a wynik sprzed zmiany wyglada identycznie — bez tej informacji projektant
         # moglby odebrac projekt na nieaktualnym dowodzie.
-        "aktualnosc": _aktualnosc_wobec_modelu(run),
+        "aktualnosc": _aktualnosc_wobec_modelu(run, uow_factory),
         "case_id": run.case_id,
         "analysis_type": run.analysis_type,
         "fault_node_id": sc_result.fault_node_id,

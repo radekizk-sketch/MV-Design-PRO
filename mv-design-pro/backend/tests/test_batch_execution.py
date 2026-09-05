@@ -33,9 +33,40 @@ from fastapi.testclient import TestClient
 
 from tests.catalog_test_helpers import gpz_source_record
 
-client = TestClient(app)
-
+client: TestClient
 BASE_URL = "/api/execution"
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _lifespan():
+    """Zwiąż modułowy `client` z realnym `uow_factory` (CV-1-W).
+
+    `POST /study-cases/{case_id}/batches` tłumaczy `case_id` na klucz magazynu
+    ENM (`api/batch_execution.py`, `klucz_twin_z_sciezki`) — bez `with`
+    (lifespan) `app.state.uow_factory` nie byłby wiązany i tłumaczenie
+    kończyłoby się 404 „brak warstwy bazy danych" niezależnie od przypadku.
+    """
+    global client
+    with TestClient(app) as test_client:
+        client = test_client
+        yield
+
+
+def _nowy_przypadek() -> str:
+    """Utwórz REALNY projekt + przypadek przez API; zwróć `case_id`.
+
+    CV-1-W: przypadek bez wiersza w bazie dostaje teraz 404 z magazynu ENM
+    (inwariant I-2) — testy tego pliku potrzebują prawdziwej pary
+    projekt+przypadek zamiast dowolnego UUID-a.
+    """
+    project_resp = client.post("/api/projects", json={"name": "Batch execution — test"})
+    assert project_resp.status_code == 201, project_resp.text
+    case_resp = client.post(
+        "/api/study-cases",
+        json={"project_id": project_resp.json()["id"], "name": "Przypadek testu"},
+    )
+    assert case_resp.status_code == 201, case_resp.text
+    return str(case_resp.json()["id"])
 
 
 @pytest.fixture(autouse=True)
@@ -182,7 +213,7 @@ def _create_scenario(
 
 class TestCreateBatch:
     def test_tworzy_serie_pending_z_posortowanymi_scenariuszami(self):
-        case_id = str(uuid4())
+        case_id = _nowy_przypadek()
         s1 = _create_scenario(case_id, name="A", element_ref="bus-main")
         s2 = _create_scenario(case_id, name="B", element_ref="bus-1")
 
@@ -209,7 +240,7 @@ class TestCreateBatch:
         assert "co najmniej jednego scenariusza" in response.json()["detail"]
 
     def test_duplikaty_scenariuszy_400(self):
-        case_id = str(uuid4())
+        case_id = _nowy_przypadek()
         s1 = _create_scenario(case_id)
         response = client.post(
             f"{BASE_URL}/study-cases/{case_id}/batches",
@@ -237,7 +268,7 @@ class TestCreateBatch:
         assert "nie należy do przypadku" in response.json()["detail"]
 
     def test_mieszane_typy_analizy_400(self):
-        case_id = str(uuid4())
+        case_id = _nowy_przypadek()
         s3f = _create_scenario(case_id, name="3F", fault_type="SC_3F")
         s2f = _create_scenario(case_id, name="2F", fault_type="SC_2F")
         response = client.post(
@@ -264,7 +295,7 @@ class TestCreateBatch:
 class TestBatchHashDeterminism:
     def test_ten_sam_zbior_scenariuszy_ten_sam_odcisk(self):
         """Dwie serie nad tym samym zbiorem → identyczny batch_input_hash."""
-        case_id = str(uuid4())
+        case_id = _nowy_przypadek()
         s1 = _create_scenario(case_id, name="A", element_ref="bus-main")
         s2 = _create_scenario(case_id, name="B", element_ref="bus-1")
 
@@ -310,7 +341,7 @@ class TestBatchHashDeterminism:
 class TestExecuteBatch:
     def test_wykonanie_konczy_serie_done_a_biegi_maja_wyniki(self):
         """Iloczyn: wykonanie × realny solver × wyniki dostępne końcówką biegów."""
-        case_id = str(uuid4())
+        case_id = _nowy_przypadek()
         _seed_valid_enm(case_id)
         s1 = _create_scenario(case_id, name="A", element_ref="bus-main")
         s2 = _create_scenario(case_id, name="B", element_ref="bus-1")
@@ -343,7 +374,7 @@ class TestExecuteBatch:
 
     def test_wykonanie_sekwencyjne_w_porzadku_posortowanym(self):
         """Porządek biegów = porządek posortowanych identyfikatorów scenariuszy."""
-        case_id = str(uuid4())
+        case_id = _nowy_przypadek()
         _seed_valid_enm(case_id)
         s1 = _create_scenario(case_id, name="A", element_ref="bus-main")
         s2 = _create_scenario(case_id, name="B", element_ref="bus-1")
@@ -374,7 +405,7 @@ class TestExecuteBatch:
 
     def test_brama_uprawnien_jak_pojedynczy_bieg(self):
         """SC_2F bez danych Z2 → seria FAILED z polskim komunikatem blokady."""
-        case_id = str(uuid4())
+        case_id = _nowy_przypadek()
         _seed_valid_enm(case_id)
         s2f = _create_scenario(case_id, name="2F", fault_type="SC_2F")
 
@@ -390,7 +421,7 @@ class TestExecuteBatch:
 
     def test_scenariusz_usuniety_po_utworzeniu_serii_failed(self):
         """Predykaty parami: usunięcie scenariusza unieważnia serię przy wykonaniu."""
-        case_id = str(uuid4())
+        case_id = _nowy_przypadek()
         _seed_valid_enm(case_id)
         s1 = _create_scenario(case_id)
 
@@ -409,7 +440,7 @@ class TestExecuteBatch:
         """Predykaty parami: zmiana treści scenariusza unieważnia serię (odcisk
         przypięty przy tworzeniu i weryfikowany przy wykonaniu z JEDNEGO źródła
         — `compute_scenario_content_hash`)."""
-        case_id = str(uuid4())
+        case_id = _nowy_przypadek()
         _seed_valid_enm(case_id)
         s1 = _create_scenario(case_id)
 
@@ -429,7 +460,7 @@ class TestExecuteBatch:
 
     def test_awaria_w_srodku_serii_zachowuje_wczesniejsze_biegi(self):
         """Iloczyn: awaria × pozycja w serii — biegi sprzed awarii pozostają."""
-        case_id = str(uuid4())
+        case_id = _nowy_przypadek()
         _seed_valid_enm(case_id)
         s1 = _create_scenario(case_id, name="A", element_ref="bus-main")
         s2 = _create_scenario(case_id, name="B", element_ref="bus-1")
@@ -450,7 +481,7 @@ class TestExecuteBatch:
         assert run["status"] == "DONE"
 
     def test_wykonanie_nie_pending_409(self):
-        case_id = str(uuid4())
+        case_id = _nowy_przypadek()
         _seed_valid_enm(case_id)
         s1 = _create_scenario(case_id, element_ref="bus-main")
         batch = client.post(
@@ -480,7 +511,7 @@ class TestListAndGetBatch:
         assert response.json() == {"batches": [], "count": 0}
 
     def test_lista_najnowsze_pierwsze(self):
-        case_id = str(uuid4())
+        case_id = _nowy_przypadek()
         s1 = _create_scenario(case_id, name="A", element_ref="bus-main")
         pierwsza = client.post(
             f"{BASE_URL}/study-cases/{case_id}/batches",
@@ -499,7 +530,7 @@ class TestListAndGetBatch:
         ]
 
     def test_szczegoly_serii(self):
-        case_id = str(uuid4())
+        case_id = _nowy_przypadek()
         s1 = _create_scenario(case_id)
         batch = client.post(
             f"{BASE_URL}/study-cases/{case_id}/batches",
@@ -553,7 +584,7 @@ class TestSolverInputJednoZrodlo:
     def test_pojedynczy_bieg_i_seria_maja_ten_sam_odcisk_wejscia(self):
         """Pojedynczy bieg ze scenariusza i bieg tej samej treści w serii mają
         IDENTYCZNY `solver_input_hash` — dowód jednego źródła wejścia."""
-        case_id = str(uuid4())
+        case_id = _nowy_przypadek()
         _seed_valid_enm(case_id)
         s1 = _create_scenario(case_id, element_ref="bus-main")
 

@@ -13,10 +13,35 @@ from fastapi.testclient import TestClient
 
 from tests.catalog_test_helpers import gpz_source_record
 
-client = TestClient(app)
-
-CASE_ID = str(uuid4())
+client: TestClient
+CASE_ID: str
 BASE_URL = "/api/execution"
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _lifespan_i_przypadek():
+    """Zwiąż `client`/`CASE_ID` z realnym `uow_factory` i realnym StudyCase.
+
+    CV-1-W: `create_run_from_scenario` (`POST /fault-scenarios/{id}/runs`)
+    tłumaczy `scenario.study_case_id` na klucz magazynu ENM (`klucz_twin_z_
+    sciezki`), więc bez wiersza StudyCase w bazie dostaje 404 z magazynu ENM
+    (inwariant I-2). Bez `with` (lifespan) `app.state.uow_factory` też nie
+    byłby wiązany. `client`/`CASE_ID` zostają modułowymi globalami (styl
+    pliku sprzed karty) — ta fikstura tylko wiąże je RAZ, zamiast tworzyć je
+    przy imporcie modułu, poza cyklem życia testów.
+    """
+    global client, CASE_ID
+    with TestClient(app) as test_client:
+        client = test_client
+        project_resp = client.post("/api/projects", json={"name": "Scenariusze zwarciowe — test"})
+        assert project_resp.status_code == 201, project_resp.text
+        case_resp = client.post(
+            "/api/study-cases",
+            json={"project_id": project_resp.json()["id"], "name": "Przypadek testu"},
+        )
+        assert case_resp.status_code == 201, case_resp.text
+        CASE_ID = str(case_resp.json()["id"])
+        yield
 
 
 @pytest.fixture(autouse=True)
@@ -24,6 +49,7 @@ def _reset_services():
     """Reset legacy and canonical in-memory services between tests."""
     from api.execution_runs import get_engine
     from api.fault_scenarios import get_fault_scenario_service
+    from application.twin_key import zapomnij_migracje
     from enm.canonical_analysis import reset_canonical_runs
     from enm.store import reset_enm_store
 
@@ -40,6 +66,11 @@ def _reset_services():
 
     reset_canonical_runs()
     reset_enm_store()
+    # `CASE_ID` (i jego projekt) są modułowe — bez `zapomnij_migracje` drugi i
+    # kolejny test tej klasy widziałby projekt jako JUŻ zmigrowany (pamięć
+    # migracji przeżywa `reset_enm_store`, `application/twin_key.py`) i nie
+    # adoptowałby świeżo zasianego wpisu `_seed_valid_enm` pod surowym kluczem.
+    zapomnij_migracje()
     yield
 
 

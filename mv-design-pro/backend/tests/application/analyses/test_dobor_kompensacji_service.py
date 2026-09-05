@@ -149,12 +149,12 @@ def _compensation_enm(*, load_q_mvar: float, gen_p_mw: float | None) -> EnergyNe
 
 def _run(enm: EnergyNetworkModel) -> CanonicalRun:
     set_enm("c", enm)
-    return execute_run(create_run(case_id="c", analysis_type="PF").id)
+    return execute_run(create_run(case_id="c", klucz_twin="c", analysis_type="PF").id)
 
 
 def _golden_run() -> CanonicalRun:
     set_enm("c-golden", build_golden_enm())
-    return execute_run(create_run(case_id="c-golden", analysis_type="PF").id)
+    return execute_run(create_run(case_id="c-golden", klucz_twin="c-golden", analysis_type="PF").id)
 
 
 def _synthetic_run(*, status: str = "FINISHED", analysis_type: str = "PF") -> CanonicalRun:

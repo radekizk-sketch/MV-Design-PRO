@@ -42,7 +42,8 @@ from domain.project_archive import (
     dict_to_archive,
     verify_archive_integrity,
 )
-from enm.store import get_enm, has_enm, restore_enm
+from enm.klucz_twin import klucz_twin_projektu
+from enm.store import get_enm, has_enm, migruj_klucz_przypadku_do_projektu, restore_enm
 from network_model.catalog.governance import wymaga_referencji_katalogowej
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -180,8 +181,8 @@ class ProjectArchiveService:
         # Issues (placeholder - generowane dynamicznie)
         issues_dict: dict[str, Any] = {"snapshot": []}
 
-        # ENM (modele EnergyNetworkModel per przypadek — N-D1)
-        enm_dict = self._collect_enm(cases_dict)
+        # ENM (model EnergyNetworkModel projektu, wpis per przypadek — N-D1, CV-1-W)
+        enm_dict = self._collect_enm(project_id, cases_dict)
 
         # Oblicz fingerprints
         fingerprints = compute_archive_fingerprints(
@@ -258,14 +259,19 @@ class ProjectArchiveService:
             fingerprints=fingerprints,
         )
 
-    def _collect_enm(self, cases_dict: dict[str, Any]) -> dict[str, Any]:
-        """Zbierz modele ENM dla wszystkich przypadków projektu (N-D1).
+    def _collect_enm(self, project_id: UUID, cases_dict: dict[str, Any]) -> dict[str, Any]:
+        """Zbierz model ENM projektu i zapisz go pod KAŻDYM jego przypadkiem (N-D1, CV-1-W).
 
-        ENM żyje we flat-file store keyed by case_id (enm/store.py), poza ORM —
-        bez tej sekcji stacje/transformatory/strona nN znikały przy round-tripie
-        archiwum. Zbieramy wyłącznie przypadki z ISTNIEJĄCYM snapshotem
-        (has_enm) — zero fabrykacji pustych modeli. Sortowanie po case_id dla
-        determinizmu.
+        CV-1-W: magazyn ENM (enm/store.py) jest kluczowany kluczem Canonical
+        Project Twin (`projekt:<uuid>`) — WSZYSTKIE przypadki jednego projektu
+        czytają JEDEN model, więc model czytamy RAZ, pod kluczem PROJEKTU (nie
+        per przypadek). Kontrakt sekcji `EnmSection` (`domain/project_archive.
+        py`) i test round-trip (`tests/application/project_archive/
+        test_enm_archive_section.py`) niosą jednak WPIS PER `case_id` — ten
+        kształt zostaje NIETKNIĘTY (addytywny import/eksport, zero migracji
+        schematu archiwum): każdy przypadek dostaje wpis z TĄ SAMĄ treścią
+        modelu projektu. Brak modelu (projekt jeszcze bez ENM) → pusta lista,
+        zero fabrykacji.
         """
         case_ids: set[str] = set()
         for case_data in cases_dict.get("study_cases", []):
@@ -273,17 +279,12 @@ class ProjectArchiveService:
         for case_data in cases_dict.get("operating_cases", []):
             case_ids.add(str(case_data["id"]))
 
+        klucz_projektu = klucz_twin_projektu(project_id)
         models: list[dict[str, Any]] = []
-        for case_id in sorted(case_ids):
-            if not has_enm(case_id):
-                continue
-            enm = get_enm(case_id)
-            models.append(
-                {
-                    "case_id": case_id,
-                    "snapshot": enm.model_dump(mode="json"),
-                }
-            )
+        if has_enm(klucz_projektu):
+            snapshot = get_enm(klucz_projektu).model_dump(mode="json")
+            for case_id in sorted(case_ids):
+                models.append({"case_id": case_id, "snapshot": snapshot})
         return {"models": models}
 
     def _collect_network_model(self, project_id: UUID) -> dict[str, Any]:
@@ -1320,15 +1321,57 @@ class ProjectArchiveService:
         # flush to ensure IDs are available; commit handled by UnitOfWork
         self._session.flush()
 
-        # 22. Modele ENM per przypadek (N-D1) — przywrócenie 1:1 pod NOWE id
-        # przypadków (id_map), bez bumpu rewizji (round-trip zachowuje hashe).
-        for enm_entry in archive.enm.models:
-            old_case_id = str(enm_entry.get("case_id") or "")
-            snapshot = enm_entry.get("snapshot")
-            new_case_id = id_map.get(old_case_id)
-            if new_case_id is None or not isinstance(snapshot, dict):
-                continue
-            restore_enm(str(new_case_id), snapshot)
+        # 22. Model(e) ENM (N-D1, CV-1-W) — magazyn jest kluczowany kluczem
+        # PROJEKTU, więc przywracamy JEDEN model projektu, nie po jednym per
+        # przypadek. Archiwa wyeksportowane PO tej karcie niosą IDENTYCZNĄ
+        # treść pod każdym `case_id` (jeden odczyt przy eksporcie — patrz
+        # `_collect_enm`), więc "pierwszy" i "reszta" są bajtowo tym samym
+        # modelem. Archiwa SPRZED tej karty mogły nieść RÓŻNE snapshoty per
+        # przypadek (każdy przypadek miał wtedy własny model) — nic nie może
+        # zniknąć: pierwszy wpis (aktywny przypadek archiwum, w jego braku
+        # pierwszy w porządku `case_id` — ta sama reguła co migracja legacy w
+        # `application/twin_key.migruj_projekt_z_legacy`) staje się modelem
+        # PROJEKTU pod jego kluczem twin bez bumpu rewizji (round-trip
+        # zachowuje hashe); pozostałe wpisy idą przez `store.migruj_klucz_
+        # przypadku_do_projektu` do `legacy_przypadki/` z wierszem manifestu
+        # (ZGODNY dla duplikatu treści, ROZBIEZNY dla realnej rozbieżności).
+        entries_by_old_case: dict[str, dict[str, Any]] = {
+            str(entry.get("case_id") or ""): entry["snapshot"]
+            for entry in archive.enm.models
+            if isinstance(entry.get("snapshot"), dict)
+        }
+        if entries_by_old_case:
+            old_active_case_id = next(
+                (
+                    str(sc["id"])
+                    for sc in archive.cases.study_cases
+                    if sc.get("is_active") and str(sc["id"]) in entries_by_old_case
+                ),
+                None,
+            )
+            kolejnosc_starych = [old_active_case_id] if old_active_case_id else []
+            kolejnosc_starych.extend(
+                cid for cid in sorted(entries_by_old_case) if cid not in kolejnosc_starych
+            )
+            klucz_projektu_docelowy = klucz_twin_projektu(new_project_id)
+            for indeks, old_case_id in enumerate(kolejnosc_starych):
+                new_case_id = id_map.get(old_case_id)
+                if new_case_id is None:
+                    continue
+                snapshot = entries_by_old_case[old_case_id]
+                if indeks == 0:
+                    restore_enm(klucz_projektu_docelowy, snapshot)
+                else:
+                    # Zapis TYMCZASOWY pod kluczem nowego przypadku — jedyny
+                    # sposób, żeby `migruj_klucz_przypadku_do_projektu` (który
+                    # czyta model spod klucza przypadku) mógł porównać hashem
+                    # i odłożyć bez utraty danych.
+                    restore_enm(str(new_case_id), snapshot)
+                    migruj_klucz_przypadku_do_projektu(
+                        str(new_case_id),
+                        klucz_projektu_docelowy,
+                        przyjmij_jako_model_projektu=False,
+                    )
 
         return new_project_id
 

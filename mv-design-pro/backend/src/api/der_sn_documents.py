@@ -22,6 +22,7 @@ import json
 from typing import Any
 
 from api.document_store import store_generated_document
+from api.klucz_twin_dep import KluczTwin
 from application.analyses.der_sn_track import extract_der_sn_track, sum_apparent_power_mva
 from application.analyses.lista_materialowa import build_bom_view
 from application.analyses.raport_zgodnosci import build_compliance_report_from_track
@@ -31,13 +32,13 @@ from fastapi import APIRouter, HTTPException, Query, status
 router = APIRouter(tags=["der-sn-documents"])
 
 
-def _require_enm(case_id: str) -> dict[str, Any]:
-    if not has_enm(case_id):
+def _require_enm(case_id: str, klucz: str) -> dict[str, Any]:
+    if not has_enm(klucz):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Przypadek {case_id} nie ma dokumentu ENM.",
         )
-    return get_enm(case_id).model_dump(mode="json")
+    return get_enm(klucz).model_dump(mode="json")
 
 
 def _json_bytes(view: dict[str, Any]) -> bytes:
@@ -192,6 +193,7 @@ def _compute_d2_deviations(track: Any) -> list[dict[str, Any]] | None:
 @router.get("/api/der-sn/{case_id}/compliance-report")
 def get_der_sn_compliance_report(
     case_id: str,
+    klucz: KluczTwin,
     generator_ref: str | None = Query(default=None),
     run_status: str | None = Query(default=None),
     readiness_codes: list[str] | None = Query(default=None),
@@ -199,7 +201,7 @@ def get_der_sn_compliance_report(
     zapisz_do_magazynu: bool = Query(default=False),
 ) -> dict[str, Any]:
     """Raport zgodności ✓/⚠/❌ toru DER-SN (wymaganie 13). 404 gdy brak toru."""
-    enm = _require_enm(case_id)
+    enm = _require_enm(case_id, klucz)
     track = extract_der_sn_track(enm, generator_ref)
     if track is None:
         raise HTTPException(
@@ -227,12 +229,13 @@ def get_der_sn_compliance_report(
 @router.get("/api/der-sn/{case_id}/bom")
 def get_der_sn_bom(
     case_id: str,
+    klucz: KluczTwin,
     generator_ref: str | None = Query(default=None),
     project_id: str | None = Query(default=None),
     zapisz_do_magazynu: bool = Query(default=False),
 ) -> dict[str, Any]:
     """Lista materiałowa (BOM) toru DER-SN. 404 gdy brak toru."""
-    enm = _require_enm(case_id)
+    enm = _require_enm(case_id, klucz)
     view = build_bom_view(enm, generator_ref)
     if view is None:
         raise HTTPException(

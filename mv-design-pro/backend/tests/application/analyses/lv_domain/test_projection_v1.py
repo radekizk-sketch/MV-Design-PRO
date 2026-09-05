@@ -307,7 +307,9 @@ class TestTozsamoscOdpowiedzi:
     def test_run_snapshot_hash_pochodzi_z_przebiegu(self) -> None:
         enm = zbuduj_stacje_nn()
         set_enm("case-run", enm)
-        run = execute_run(create_run(case_id="case-run", analysis_type="PF").id)
+        run = execute_run(
+            create_run(case_id="case-run", klucz_twin="case-run", analysis_type="PF").id
+        )
         projekcja = build_lv_domain_projection_v1(enm, "case-run", "stn", run=run)
         assert projekcja["model_snapshot"]["run_snapshot_hash"] == run.snapshot_hash
 
@@ -321,7 +323,9 @@ class TestPrzebiegIWynik:
     def test_przebieg_na_biezacym_modelu_jest_fresh(self) -> None:
         enm = zbuduj_stacje_nn()
         set_enm("case-fresh", enm)
-        run = execute_run(create_run(case_id="case-fresh", analysis_type="PF").id)
+        run = execute_run(
+            create_run(case_id="case-fresh", klucz_twin="case-fresh", analysis_type="PF").id
+        )
         projekcja = build_lv_domain_projection_v1(enm, "case-fresh", "stn", run=run)
         assert projekcja["result_snapshot"]["status"] == "FRESH"
         assert projekcja["result_snapshot"]["run_id"] == str(run.id)
@@ -334,7 +338,9 @@ class TestPrzebiegIWynik:
         (nie UUID węzła solvera) — inaczej nakładka spadków napięcia jest pusta."""
         enm = zbuduj_stacje_nn()
         set_enm("case-profil", enm)
-        run = execute_run(create_run(case_id="case-profil", analysis_type="PF").id)
+        run = execute_run(
+            create_run(case_id="case-profil", klucz_twin="case-profil", analysis_type="PF").id
+        )
         projekcja = build_lv_domain_projection_v1(enm, "case-profil", "stn", run=run)
         profil = projekcja["result_snapshot"]["voltage_profile"]
         assert profil is not None
@@ -354,7 +360,11 @@ class TestPrzebiegIWynik:
         nie ukrywany — wiersze profilu zostają, zmienia się tylko status."""
         enm = zbuduj_stacje_nn()
         set_enm("case-profil-stale", enm)
-        run = execute_run(create_run(case_id="case-profil-stale", analysis_type="PF").id)
+        run = execute_run(
+            create_run(
+                case_id="case-profil-stale", klucz_twin="case-profil-stale", analysis_type="PF"
+            ).id
+        )
         enm.loads.append(
             Load(ref_id="load_extra", name="Nowy odbiór", bus_ref="a1", p_mw=0.01, q_mvar=0.0)
         )
@@ -365,7 +375,9 @@ class TestPrzebiegIWynik:
     def test_model_zmieniony_po_przebiegu_daje_outdated(self) -> None:
         enm = zbuduj_stacje_nn()
         set_enm("case-outdated", enm)
-        run = execute_run(create_run(case_id="case-outdated", analysis_type="PF").id)
+        run = execute_run(
+            create_run(case_id="case-outdated", klucz_twin="case-outdated", analysis_type="PF").id
+        )
         enm.loads.append(
             Load(ref_id="load_extra", name="Nowy odbiór", bus_ref="a1", p_mw=0.01, q_mvar=0.0)
         )
@@ -378,14 +390,16 @@ class TestPrzebiegIWynik:
     def test_przebieg_z_innego_przypadku_jest_odrzucony(self) -> None:
         enm = zbuduj_stacje_nn()
         set_enm("case-obcy", enm)
-        run = execute_run(create_run(case_id="case-obcy", analysis_type="PF").id)
+        run = execute_run(
+            create_run(case_id="case-obcy", klucz_twin="case-obcy", analysis_type="PF").id
+        )
         with pytest.raises(LvDomainProjectionRunMismatch):
             build_lv_domain_projection_v1(enm, "case-nn", "stn", run=run)
 
     def test_przebieg_niezakonczony_jest_odrzucony(self) -> None:
         enm = zbuduj_stacje_nn()
         set_enm("case-pending", enm)
-        run = create_run(case_id="case-pending", analysis_type="PF")
+        run = create_run(case_id="case-pending", klucz_twin="case-pending", analysis_type="PF")
         assert run.status != "FINISHED"
         with pytest.raises(LvDomainProjectionRunUnavailable):
             build_lv_domain_projection_v1(enm, "case-pending", "stn", run=run)

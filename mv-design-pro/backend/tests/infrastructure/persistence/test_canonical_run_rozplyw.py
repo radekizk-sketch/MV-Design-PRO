@@ -177,9 +177,12 @@ def _kanonicznie(value: Any) -> str:
 
 
 def _swiezy_bieg():
+    # `_seed_enm` zasiewa model wprost pod SUROWYM `case_id` (bez bazy danych w
+    # zasięgu tego modułu) — `klucz_twin` musi więc być TYM SAMYM napisem, żeby
+    # solver czytał wpis, który faktycznie istnieje w magazynie (CV-1-W).
     case_id = str(uuid4())
     _seed_enm(case_id)
-    return run_short_circuit_now(case_id=case_id, project_id="projekt-k14")
+    return run_short_circuit_now(case_id=case_id, klucz_twin=case_id, project_id="projekt-k14")
 
 
 def test_zapis_biegu_rozdziela_rozplyw_od_artefaktu() -> None:

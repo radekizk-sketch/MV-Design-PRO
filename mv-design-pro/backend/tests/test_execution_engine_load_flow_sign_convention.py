@@ -458,7 +458,12 @@ def test_parytet_znaku_ze_sciezka_kanoniczna(monkeypatch: pytest.MonkeyPatch) ->
             EnergyNetworkModel.model_validate(_payload_enm_dwie_szyny(p_mw=p_mw, q_mvar=q_mvar)),
         )
         run = execute_run(
-            create_run(case_id=case_id, analysis_type="PF", options={"base_mva": BASE_MVA}).id
+            create_run(
+                case_id=case_id,
+                klucz_twin=case_id,
+                analysis_type="PF",
+                options={"base_mva": BASE_MVA},
+            ).id
         )
         assert run.status == "FINISHED", run.error_message
         kanoniczne = {
@@ -581,7 +586,12 @@ def test_parytet_z_wezlem_tranzytowym_ze_sciezka_kanoniczna(
             EnergyNetworkModel.model_validate(_payload_enm_z_tranzytem(p_mw=p_mw, q_mvar=q_mvar)),
         )
         run = execute_run(
-            create_run(case_id=case_id, analysis_type="PF", options={"base_mva": BASE_MVA}).id
+            create_run(
+                case_id=case_id,
+                klucz_twin=case_id,
+                analysis_type="PF",
+                options={"base_mva": BASE_MVA},
+            ).id
         )
         assert run.status == "FINISHED", run.error_message
         # V12K-320: sciezka kanoniczna eksponuje przelaczenia PV->PQ w wyniku

@@ -27,6 +27,7 @@ from uuid import UUID
 from application.analysis_dispatch.summary import AnalysisRunSummary
 from domain.analysis_kind import AnalysisKind
 from domain.analysis_run import AnalysisRun
+from enm.klucz_twin import klucz_twin_projektu
 from infrastructure.persistence.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)
@@ -353,7 +354,22 @@ class AnalysisDispatchService:
 
         resolved_case_id = self._resolve_case_id(project_id, study_case_id)
         case_id_str = str(resolved_case_id)
-        enm = get_enm(case_id_str)
+        # CV-1-W: model ENM zyje pod kluczem projektu, nie surowym case_id.
+        # `project_id` jest juz jawnym, zweryfikowanym argumentem `dispatch()`
+        # (`_resolve_case_id` powyzej odrzuca `study_case_id` nienalezacy do
+        # `project_id`), wiec klucz magazynu budujemy WPROST z `project_id`
+        # (`klucz_twin_projektu`, czysta funkcja bez zapytania do bazy) —
+        # BEZ posredniego `klucz_twin_dla_przypadku` (zapytanie o StudyCase).
+        # `resolved_case_id` jest identyfikatorem OperatingCase (ta sama
+        # przestrzen, ktorej uzywaja `_resolve_case_id`/`_get_enm_hash` dla
+        # WSZYSTKICH rodzajow analiz w tej klasie — `uow.cases.get_operating_case`),
+        # NIE StudyCase: zapytanie o StudyCase o tym id zawsze zwroci `None`
+        # (dwie oddzielne tabele, `infrastructure/persistence/repositories/
+        # case_repository.py`), wiec `klucz_twin_dla_przypadku` tutaj zawsze
+        # konczyloby sie `PrzypadekBezProjektuError`, niezaleznie od tego, czy
+        # przypadek istnieje.
+        klucz_twin = klucz_twin_projektu(project_id)
+        enm = get_enm(klucz_twin)
 
         if bus_ref:
             result = build_fault_loop_view_at_point(enm, station_ref, bus_ref)
@@ -415,7 +431,11 @@ class AnalysisDispatchService:
 
         resolved_case_id = self._resolve_case_id(project_id, study_case_id)
         case_id_str = str(resolved_case_id)
-        enm = get_enm(case_id_str)
+        # CV-1-W: model ENM zyje pod kluczem projektu — patrz uzasadnienie
+        # przy `_dispatch_fault_loop_nn` (ten sam mechanizm, `resolved_case_id`
+        # jest identyfikatorem OperatingCase, nie StudyCase).
+        klucz_twin = klucz_twin_projektu(project_id)
+        enm = get_enm(klucz_twin)
 
         result = build_swz_view(enm, station_ref, bus_ref, breaker_ref)
         result_location = (

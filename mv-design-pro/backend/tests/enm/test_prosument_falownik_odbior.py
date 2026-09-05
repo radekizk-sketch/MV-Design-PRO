@@ -187,7 +187,9 @@ def _run(case_id: str, payload: dict):
     ]
     set_enm(case_id, enm)
     run = execute_run(
-        create_run(case_id=case_id, analysis_type="PF", options={"base_mva": BASE_MVA}).id
+        create_run(
+            case_id=case_id, klucz_twin=case_id, analysis_type="PF", options={"base_mva": BASE_MVA}
+        ).id
     )
     assert run.status == "FINISHED", run.error_message
     return run
@@ -352,7 +354,12 @@ def test_dwa_regulowane_zrodla_na_jednej_szynie_sa_odrzucane() -> None:
     enm = EnergyNetworkModel.model_validate(payload)
     set_enm("prosument-dwa", enm)
     run = execute_run(
-        create_run(case_id="prosument-dwa", analysis_type="PF", options={"base_mva": BASE_MVA}).id
+        create_run(
+            case_id="prosument-dwa",
+            klucz_twin="prosument-dwa",
+            analysis_type="PF",
+            options={"base_mva": BASE_MVA},
+        ).id
     )
     assert run.status == "FAILED"
     assert "wiecej niz jedno zrodlo z aktywna regulacja" in (run.error_message or "")

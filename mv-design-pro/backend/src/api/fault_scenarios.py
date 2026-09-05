@@ -22,6 +22,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from api.klucz_twin_dep import klucz_twin_z_sciezki
 from application.fault_scenario_service import (
     FaultScenarioDuplicateError,
     FaultScenarioHasRunsError,
@@ -34,7 +35,7 @@ from domain.fault_scenario import (
     FaultScenarioValidationError,
     FaultType,
 )
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 router = APIRouter(tags=["fault-scenarios"])
@@ -480,6 +481,7 @@ def get_scenario_sld_overlay(scenario_id: str) -> dict[str, Any]:
 )
 def create_run_from_scenario(
     scenario_id: str,
+    http_request: Request,
     request: CreateRunFromScenarioRequest | None = None,
 ) -> dict[str, Any]:
     """
@@ -527,10 +529,13 @@ def create_run_from_scenario(
     from enm.canonical_analysis import create_run as create_canonical_run
     from enm.store import get_enm
 
+    klucz = klucz_twin_z_sciezki(str(scenario.study_case_id), http_request)
+
     try:
-        get_enm(str(scenario.study_case_id))
+        get_enm(klucz)
         run = create_canonical_run(
             case_id=str(scenario.study_case_id),
+            klucz_twin=klucz,
             project_id=None,
             analysis_type="short_circuit_sn",
             options=solver_input,

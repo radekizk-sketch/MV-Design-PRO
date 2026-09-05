@@ -56,7 +56,9 @@ def _reset():
 
 def _bieg(case_id: str, analysis_type: str):
     set_enm(case_id, build_golden_enm())
-    return execute_run(create_run(case_id=case_id, analysis_type=analysis_type).id)
+    return execute_run(
+        create_run(case_id=case_id, klucz_twin=case_id, analysis_type=analysis_type).id
+    )
 
 
 def _pozycje_po_id(werdykt) -> dict:
@@ -359,10 +361,12 @@ def test_widok_niesie_jawny_zakres_kryteriow_poza_automatem() -> None:
 def test_serwis_liczy_werdykt_dla_przypadku_z_realnymi_biegami() -> None:
     """Sciezka produkcyjna: model + biegi z magazynu, bez podawania ich recznie."""
     set_enm("c-all", build_golden_enm())
-    execute_run(create_run(case_id="c-all", analysis_type="PF").id)
-    execute_run(create_run(case_id="c-all", analysis_type="short_circuit_sn").id)
+    execute_run(create_run(case_id="c-all", klucz_twin="c-all", analysis_type="PF").id)
+    execute_run(
+        create_run(case_id="c-all", klucz_twin="c-all", analysis_type="short_circuit_sn").id
+    )
 
-    widok = build_werdykt_projektowy_view("c-all")
+    widok = build_werdykt_projektowy_view("c-all", klucz_twin="c-all")
 
     assert widok["case_id"] == "c-all"
     assert widok["model_hash"] == compute_enm_hash(get_enm("c-all"))
@@ -376,16 +380,18 @@ def test_serwis_liczy_werdykt_dla_przypadku_z_realnymi_biegami() -> None:
 
 def test_serwis_jest_deterministyczny() -> None:
     set_enm("c-det", build_golden_enm())
-    execute_run(create_run(case_id="c-det", analysis_type="PF").id)
+    execute_run(create_run(case_id="c-det", klucz_twin="c-det", analysis_type="PF").id)
 
-    assert build_werdykt_projektowy_view("c-det") == build_werdykt_projektowy_view("c-det")
+    assert build_werdykt_projektowy_view(
+        "c-det", klucz_twin="c-det"
+    ) == build_werdykt_projektowy_view("c-det", klucz_twin="c-det")
 
 
 def test_zmiana_modelu_po_biegu_uniewaznia_werdykt() -> None:
     """Pomiar reguly 4 kanonu na sciezce produkcyjnej, nie na atrapie."""
     set_enm("c-stale", build_golden_enm())
-    execute_run(create_run(case_id="c-stale", analysis_type="PF").id)
-    przed = build_werdykt_projektowy_view("c-stale")
+    execute_run(create_run(case_id="c-stale", klucz_twin="c-stale", analysis_type="PF").id)
+    przed = build_werdykt_projektowy_view("c-stale", klucz_twin="c-stale")
     ocenione_przed = [p for p in przed["pozycje"] if p["stan"] != STAN_NIESPRAWDZONE]
     assert ocenione_przed, "przed zmiana modelu musza byc kryteria ocenione"
 
@@ -393,7 +399,7 @@ def test_zmiana_modelu_po_biegu_uniewaznia_werdykt() -> None:
     zmieniony.header.name = "Model po zmianie"
     set_enm("c-stale", zmieniony)
 
-    po = build_werdykt_projektowy_view("c-stale")
+    po = build_werdykt_projektowy_view("c-stale", klucz_twin="c-stale")
 
     assert po["model_hash"] != przed["model_hash"]
     zrodlo_pf = next(z for z in po["zrodla"] if z["rodzaj"] == ZRODLO_PF)

@@ -296,7 +296,9 @@ def test_rozplyw_na_sieci_referencyjnej_daje_pelny_spadek_napiecia_nn() -> None:
     bus_nn = _szyna_nn(completed)
     set_enm("case-d7-pf", completed)
 
-    run = execute_run(create_run(case_id="case-d7-pf", analysis_type="PF").id)
+    run = execute_run(
+        create_run(case_id="case-d7-pf", klucz_twin="case-d7-pf", analysis_type="PF").id
+    )
     v_pu = _v_pu(run, bus_nn)
 
     assert v_pu == pytest.approx(V_PU_SZYNY_NN_OCZEKIWANE, abs=TOLERANCJA_V_PU)
@@ -309,7 +311,9 @@ def test_szyna_nn_pobiera_moc_bierna_odbiorow() -> None:
     completed = _model_z_odbiorami("rozplyw-moc-bierna")
     set_enm("case-d7-q", completed)
 
-    run = execute_run(create_run(case_id="case-d7-q", analysis_type="PF").id)
+    run = execute_run(
+        create_run(case_id="case-d7-q", klucz_twin="case-d7-q", analysis_type="PF").id
+    )
     wyniki = {b["bus_id"]: b for b in run.raw_result["result_v1"]["bus_results"]}
 
     # P0.1 nN (LV-INV-12): `create_run` czyta model przez `get_enm`, który
@@ -352,8 +356,14 @@ def test_dwukrotny_bieg_sc_i_pf_daje_identyczne_odciski() -> None:
 
     odciski: list[tuple[str, str]] = []
     for _ in range(2):
-        pf = execute_run(create_run(case_id="case-d7-det", analysis_type="PF").id)
-        sc = execute_run(create_run(case_id="case-d7-det", analysis_type="short_circuit_sn").id)
+        pf = execute_run(
+            create_run(case_id="case-d7-det", klucz_twin="case-d7-det", analysis_type="PF").id
+        )
+        sc = execute_run(
+            create_run(
+                case_id="case-d7-det", klucz_twin="case-d7-det", analysis_type="short_circuit_sn"
+            ).id
+        )
         assert pf.status == "FINISHED", pf.error_message
         assert sc.status == "FINISHED", sc.error_message
         odciski.append(

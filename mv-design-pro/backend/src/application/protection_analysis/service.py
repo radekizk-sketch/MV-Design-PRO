@@ -149,7 +149,9 @@ class ProtectionAnalysisService:
                 protection_case_id=protection_case_id,
                 input_snapshot=snapshot,
                 input_hash=input_hash,
-                network_snapshot_hash=current_model_hash(str(protection_case_id)),
+                network_snapshot_hash=current_model_hash(
+                    str(protection_case_id), self._uow_factory
+                ),
                 sc_network_snapshot_hash=sc_run_data.get("network_snapshot_hash"),
             )
 
@@ -276,7 +278,7 @@ class ProtectionAnalysisService:
         return evaluate_result_freshness(
             has_result=has_result,
             run_model_hashes=(run.network_snapshot_hash, run.sc_network_snapshot_hash),
-            current_hash=current_model_hash(str(run.protection_case_id)),
+            current_hash=current_model_hash(str(run.protection_case_id), self._uow_factory),
         )
 
     def get_trace(self, run_id: UUID) -> ProtectionTrace | None:

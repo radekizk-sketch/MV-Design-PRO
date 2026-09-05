@@ -43,17 +43,41 @@ MAGISTRALA = {
 
 
 @pytest.fixture()
-def klient(tmp_path, monkeypatch) -> TestClient:
+def klient(tmp_path, monkeypatch, uow_factory) -> TestClient:
+    from api.dependencies import get_uow_factory
+
     monkeypatch.setenv("ENM_STORE_DIR", str(tmp_path))
     reset_enm_store()
     wyczysc_dziennik()
+    app.dependency_overrides[get_uow_factory] = lambda: uow_factory
+    app.state.uow_factory = uow_factory
     yield TestClient(app)
+    app.dependency_overrides.pop(get_uow_factory, None)
+    app.state.uow_factory = None
     reset_enm_store()
     wyczysc_dziennik()
 
 
+def _nowy_przypadek(klient: TestClient) -> str:
+    """Utwórz REALNY projekt + przypadek przez API; zwróć `case_id`.
+
+    CV-1-W: przypadek bez wiersza w bazie dostaje teraz 404 z magazynu ENM
+    (inwariant I-2) — testy tego pliku potrzebują prawdziwej pary
+    projekt+przypadek zamiast dowolnego napisu.
+    """
+    project_resp = klient.post("/api/projects", json={"name": "Dziennik zmian — test"})
+    assert project_resp.status_code == 201, project_resp.text
+    project_id = project_resp.json()["id"]
+    case_resp = klient.post(
+        "/api/study-cases", json={"project_id": project_id, "name": "Przypadek testu"}
+    )
+    assert case_resp.status_code == 201, case_resp.text
+    return str(case_resp.json()["id"])
+
+
 def test_dziennik_pustego_przypadku_nie_klamie(klient: TestClient):
-    odp = klient.get("/api/cases/pusty/enm/dziennik-zmian?od_rewizji=0")
+    case_id = _nowy_przypadek(klient)
+    odp = klient.get(f"/api/cases/{case_id}/enm/dziennik-zmian?od_rewizji=0")
     assert odp.status_code == 200
     dane = odp.json()
     assert dane["wpisy"] == []
@@ -61,17 +85,18 @@ def test_dziennik_pustego_przypadku_nie_klamie(klient: TestClient):
 
 
 def test_operacja_domenowa_zostawia_przyczyne_w_dzienniku(klient: TestClient):
-    utworzenie = klient.post("/api/cases/c1/enm/domain-ops", json=GPZ)
+    case_id = _nowy_przypadek(klient)
+    utworzenie = klient.post(f"/api/cases/{case_id}/enm/domain-ops", json=GPZ)
     assert utworzenie.status_code == 200
     assert not utworzenie.json().get("error")
     rewizja_wyniku = utworzenie.json()["snapshot"]["header"]["revision"]
 
     # Projektant zmienia model PO policzeniu wyniku.
-    zmiana = klient.post("/api/cases/c1/enm/domain-ops", json=MAGISTRALA)
+    zmiana = klient.post(f"/api/cases/{case_id}/enm/domain-ops", json=MAGISTRALA)
     assert zmiana.status_code == 200
     assert not zmiana.json().get("error")
 
-    dane = klient.get(f"/api/cases/c1/enm/dziennik-zmian?od_rewizji={rewizja_wyniku}").json()
+    dane = klient.get(f"/api/cases/{case_id}/enm/dziennik-zmian?od_rewizji={rewizja_wyniku}").json()
 
     assert dane["aktualny"] is False
     assert len(dane["wpisy"]) == 1
@@ -86,23 +111,25 @@ def test_operacja_domenowa_zostawia_przyczyne_w_dzienniku(klient: TestClient):
 
 
 def test_wynik_na_biezacej_rewizji_nie_ma_czym_byc_uniewazniony(klient: TestClient):
-    klient.post("/api/cases/c1/enm/domain-ops", json=GPZ)
-    biezaca = klient.get("/api/cases/c1/enm").json()["header"]["revision"]
+    case_id = _nowy_przypadek(klient)
+    klient.post(f"/api/cases/{case_id}/enm/domain-ops", json=GPZ)
+    biezaca = klient.get(f"/api/cases/{case_id}/enm").json()["header"]["revision"]
 
-    dane = klient.get(f"/api/cases/c1/enm/dziennik-zmian?od_rewizji={biezaca}").json()
+    dane = klient.get(f"/api/cases/{case_id}/enm/dziennik-zmian?od_rewizji={biezaca}").json()
     assert dane["aktualny"] is True
     assert dane["wpisy"] == []
 
 
 def test_kolejne_zmiany_daja_UPORZADKOWANA_liste_przyczyn(klient: TestClient):
-    klient.post("/api/cases/c1/enm/domain-ops", json=GPZ)
-    rewizja_wyniku = klient.get("/api/cases/c1/enm").json()["header"]["revision"]
-    klient.post("/api/cases/c1/enm/domain-ops", json=MAGISTRALA)
-    klient.post("/api/cases/c1/enm/domain-ops", json=MAGISTRALA)
+    case_id = _nowy_przypadek(klient)
+    klient.post(f"/api/cases/{case_id}/enm/domain-ops", json=GPZ)
+    rewizja_wyniku = klient.get(f"/api/cases/{case_id}/enm").json()["header"]["revision"]
+    klient.post(f"/api/cases/{case_id}/enm/domain-ops", json=MAGISTRALA)
+    klient.post(f"/api/cases/{case_id}/enm/domain-ops", json=MAGISTRALA)
 
-    wpisy = klient.get(f"/api/cases/c1/enm/dziennik-zmian?od_rewizji={rewizja_wyniku}").json()[
-        "wpisy"
-    ]
+    wpisy = klient.get(
+        f"/api/cases/{case_id}/enm/dziennik-zmian?od_rewizji={rewizja_wyniku}"
+    ).json()["wpisy"]
 
     assert len(wpisy) == 2
     # Kolejnosc rosnaca po rewizji — projektant czyta historie od najstarszej zmiany.

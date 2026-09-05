@@ -37,11 +37,14 @@ Brak wyniku to osobny stan (NONE), niezalezny od modelu.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import Any
 
+from application.twin_key import klucz_twin_dla_przypadku
 from enm.hash import compute_enm_hash
+from enm.klucz_twin import PrzypadekBezProjektuError
 from enm.store import get_enm, has_enm
 
 
@@ -105,20 +108,31 @@ class FreshnessVerdict:
         }
 
 
-def current_model_hash(case_ref: str | None) -> str | None:
+def current_model_hash(case_ref: str | None, uow_factory: Callable[[], Any] | None) -> str | None:
     """Odcisk BIEZACEGO modelu przypadku — jedyne wejscie do tej wartosci.
 
     `None` gdy przypadek nie ma jeszcze materializowanego modelu ENM: to jest
     uczciwy brak wiedzy, nie „model pusty". Swiadomie NIE wolamy `get_enm` dla
     przypadku bez snapshotu, bo ta funkcja TWORZY model domyslny i zapisuje go —
     ocena swiezosci (czysty odczyt) nie moze zakladac modelu, ktorego uzytkownik
-    nie zbudowal.
+    nie zbudowal. Ten sam uczciwy brak obejmuje TERAZ (CV-1-W) przypadek, ktory
+    nie nalezy juz do zadnego projektu (`PrzypadekBezProjektuError`) — nie da sie
+    potwierdzic swiezosci wobec modelu, ktorego nie da sie zidentyfikowac.
+
+    `case_ref` jest tu SUROWYM `case_id` (np. `CanonicalRun.case_id`);
+    `klucz_twin_dla_przypadku` tlumaczy go na klucz magazynu ENM. Wolane TU
+    (nie na granicy API), bo `uow_factory` jest przekazywany z wolajacego —
+    wyjatek SS0 pkt 3 dla „freshness".
     """
-    if not case_ref:
+    if not case_ref or uow_factory is None:
         return None
-    if not has_enm(case_ref):
+    try:
+        klucz = klucz_twin_dla_przypadku(case_ref, uow_factory)
+    except PrzypadekBezProjektuError:
         return None
-    return compute_enm_hash(get_enm(case_ref))
+    if not has_enm(klucz):
+        return None
+    return compute_enm_hash(get_enm(klucz))
 
 
 def evaluate_result_freshness(

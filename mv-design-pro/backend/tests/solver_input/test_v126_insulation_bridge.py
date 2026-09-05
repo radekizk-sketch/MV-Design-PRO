@@ -163,25 +163,36 @@ def test_bridge_is_deterministic() -> None:
 def test_insulation_coordination_run_reads_arresters_from_model() -> None:
     """Łańcuch end-to-end: aparat SURGE_ARRESTER modelu → analiza IEC 60071
     bez żadnych ręcznych parametrów (pusty ``parameters``)."""
-    from uuid import UUID
-
     from api.main import app
+    from application.twin_key import klucz_twin_dla_przypadku
     from enm.store import reset_enm_store, set_enm
     from fastapi.testclient import TestClient
 
     reset_enm_store()
-    case_id = UUID("22222222-2222-2222-2222-222222222222")
-    set_enm(str(case_id), _model(devices=[_arrester_device("QA1", _ARRESTER_ID)]))
+    # CV-1-W: przypadek bez wiersza w bazie dostaje 404 z magazynu ENM
+    # (inwariant I-2) — realny projekt+przypadek zamiast dowolnego UUID-a,
+    # `with` uruchamia lifespan (realne `uow_factory`, wymagane do tłumaczenia).
+    with TestClient(app) as client:
+        project_resp = client.post("/api/projects", json={"name": "V12.6 izolacja — test"})
+        assert project_resp.status_code == 201, project_resp.text
+        project_id = project_resp.json()["id"]
+        case_resp = client.post(
+            "/api/study-cases", json={"project_id": project_id, "name": "Przypadek testu"}
+        )
+        assert case_resp.status_code == 201, case_resp.text
+        case_id = case_resp.json()["id"]
 
-    client = TestClient(app)
-    created = client.post(
-        f"/api/cases/{case_id}/runs/v126/insulation_coordination",
-        json={"parameters": {}},
-    )
-    assert created.status_code == 200, created.text
-    result = client.get(created.json()["result_url"])
-    assert result.status_code == 200
-    arresters = result.json()["result"]["result"]["arresters"]
-    assert len(arresters) == 1
-    assert arresters[0]["location_bus_ref"] == "BUS_SN"
-    assert arresters[0]["bil_margin_percent"] is not None
+        klucz = klucz_twin_dla_przypadku(case_id, client.app.state.uow_factory)
+        set_enm(klucz, _model(devices=[_arrester_device("QA1", _ARRESTER_ID)]))
+
+        created = client.post(
+            f"/api/cases/{case_id}/runs/v126/insulation_coordination",
+            json={"parameters": {}},
+        )
+        assert created.status_code == 200, created.text
+        result = client.get(created.json()["result_url"])
+        assert result.status_code == 200
+        arresters = result.json()["result"]["result"]["arresters"]
+        assert len(arresters) == 1
+        assert arresters[0]["location_bus_ref"] == "BUS_SN"
+        assert arresters[0]["bil_margin_percent"] is not None

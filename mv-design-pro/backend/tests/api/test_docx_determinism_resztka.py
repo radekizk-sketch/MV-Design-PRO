@@ -38,13 +38,16 @@ import dataclasses
 import hashlib
 import time
 from typing import Any
-from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
 
 from tests.api.test_analysis_run_report_exports import _build_pf_run
-from tests.test_canonical_analysis_api import _reset_backend_state, _seed_power_flow_enm
+from tests.test_canonical_analysis_api import (
+    _nowy_przypadek,
+    _reset_backend_state,
+    _seed_power_flow_enm,
+)
 
 
 def _sha256(data: bytes) -> str:
@@ -187,7 +190,7 @@ def test_power_flow_run_export_docx_endpoint_is_byte_deterministic(
 ) -> None:
     """`api/power_flow_runs.py::export_power_flow_run_docx` — 2x eksport
     tego samego biegu z odstepem >2s -> identyczne bajty."""
-    case_id = str(uuid4())
+    case_id = _nowy_przypadek(canonical_client)
     _seed_power_flow_enm(canonical_client, case_id)
 
     run_response = canonical_client.post(f"/api/cases/{case_id}/runs/power-flow")

@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from api.klucz_twin_dep import klucz_twin_z_sciezki
 from application.station_templates import (
     StationTemplate,
     TemplateCategory,
@@ -33,37 +34,34 @@ from application.station_templates.user_store import (
 from application.station_templates.user_store import (
     zapisz_szablon_uzytkownika as save_user_template,
 )
-from fastapi import APIRouter, Body, HTTPException, Query
+from fastapi import APIRouter, Body, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/station-templates", tags=["station-templates"])
 
 
 def klucz_przypadku(case_id: str) -> str:
-    """JEDYNE źródło prawdy o kluczu magazynu ENM dla końcówek szablonów.
+    """Waliduj postać KANONICZNĄ `case_id` — WYŁĄCZNIE format wejścia.
 
-    ROZSTRZYGNIĘCIE (dług 2 z V12K-315, rozjazd normalizacji klucza przypadku).
-    Wygrywa **surowy łańcuch z adresu**, bo TAK klucz wyprowadza magazyn ENM
-    (`enm.store._case_path` liczy SHA-256 z tekstu identyfikatora, a blokada
-    `blokada_twin` indeksuje słownik tym samym tekstem) i tak samo robią
-    WSZYSTKIE pozostałe końcówki (`/api/cases/{case_id}/enm/**` przekazuje
-    `case_id` wprost). Normalizacja mogła zostać tylko wtedy, gdyby objęła też
-    magazyn — a magazynu ta karta nie zmienia, więc normalizacja znika.
+    HISTORIA (dług 2 z V12K-315, rozjazd normalizacji klucza przypadku).
+    Zanim magazyn ENM przeszedł na klucz Canonical Project Twin (CV-1-W,
+    `enm.klucz_twin.klucz_twin_projektu`), tekst `case_id` z adresu BYŁ
+    bajtowo kluczem magazynu — funkcja pilnowała wtedy, żeby ta końcówka nie
+    normalizowała `case_id` przez `str(UUID(...))` inaczej niż reszta API,
+    bo dwie postacie tego samego identyfikatora trafiałyby w DWA różne wpisy
+    magazynu.
 
-    Ta końcówka normalizowała klucz przez `str(UUID(...))`, czyli sprowadzała
-    identyfikator do postaci kanonicznej (małe litery, myślniki, bez klamer i
-    prefiksu `urn:uuid:`). Dopóki identyfikatory pochodzą z backendu, obie
-    postacie są identyczne — ale dla postaci NIEKANONICZNEJ zastosowanie
-    szablonu operowałoby na INNYM wpisie magazynu niż operacje domenowe: praca
-    lądowałaby pod kluczem `str(UUID(x))`, a `GET /api/cases/{x}/enm` czytałby
-    pusty model spod `x`. Blokada współbieżności też brałaby wtedy inny zamek,
-    więc szablon i operacje domenowe biegłyby równolegle po jednym modelu.
-
-    Funkcja jest ZWRACAJĄCĄ TOŻSAMOŚĆ z jawną walidacją formatu: identyfikator
-    musi być poprawnym UUID (kontrakt `case_id` całego API), ale wynik nigdy nie
-    jest przekształceniem wejścia. Postać niekanoniczna jest ODRZUCANA, a nie
-    po cichu tłumaczona — inaczej wróciłby ten sam rozjazd, tylko w innym
-    miejscu.
+    PO CV-1-W. Klucz magazynu ENM to `projekt:<uuid>`, wyprowadzany przez
+    `application.twin_key.klucz_twin_dla_przypadku` (JEDYNE miejsce
+    tłumaczenia `case_id -> klucz`, wołane w `apply_station_template`
+    poniżej) — bajtowa tożsamość `case_id` PRZESTAŁA być kluczem magazynu,
+    więc ryzyko rozjazdu, dla którego ta funkcja powstała, już nie istnieje
+    (obie postacie tego samego UUID tłumaczą się na TEN SAM klucz projektu,
+    bo tłumacz sam parsuje `case_id` przez `UUID(...)`). Funkcja zostaje jako
+    walidacja FORMATU wejścia API — identyfikator musi być poprawnym UUID w
+    postaci kanonicznej (kontrakt `case_id` całego API); wynik nigdy nie jest
+    przekształceniem wejścia, postać niekanoniczna jest ODRZUCANA jawnym
+    błędem, nigdy po cichu naprawiana.
 
     Podnosi ``ValueError`` dla identyfikatora spoza kontraktu.
     """
@@ -216,6 +214,7 @@ def preview_station_template(
 @router.post("/{template_id}/apply")
 def apply_station_template(
     template_id: str,
+    http_request: Request,
     request: ApplyTemplateRequest = Body(...),
 ) -> dict[str, Any]:
     """K30-20: apply station template do live case ENM.
@@ -240,18 +239,19 @@ def apply_station_template(
         raise HTTPException(status_code=404, detail=f"Template '{template_id}' not found")
 
     try:
-        # JEDNO ŹRÓDŁO PRAWDY o kluczu magazynu — patrz `klucz_przypadku`.
-        # `UUID(...)` niżej jest bezskutkowe co do treści klucza: funkcja gwarantuje
-        # `str(UUID(klucz)) == klucz`, więc `apply_template_to_case` trafia w TEN SAM
-        # wpis magazynu, w który trafiają operacje domenowe pod tym samym adresem.
-        klucz = klucz_przypadku(request.case_id)
+        # Walidacja FORMATU (postac kanoniczna UUID) — patrz `klucz_przypadku`.
+        case_id_kanoniczny = klucz_przypadku(request.case_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=f"Invalid case_id: {exc}") from exc
+
+    # JEDYNE miejsce tlumaczenia case_id -> klucz magazynu ENM (CV-1-W) — 404
+    # gdy przypadek nie nalezy do zadnego projektu.
+    klucz_twin = klucz_twin_z_sciezki(case_id_kanoniczny, http_request)
 
     try:
         result = apply_template_to_case(
             template=template,
-            case_id=UUID(klucz),
+            klucz_twin=klucz_twin,
             target_segment_id=request.target_segment_id,
             insert_at_ratio=request.insert_at_ratio,
             params_override=request.params_override,

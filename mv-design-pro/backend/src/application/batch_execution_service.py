@@ -174,7 +174,7 @@ class BatchExecutionService:
     # Wykonanie serii
     # ------------------------------------------------------------------
 
-    def execute_batch(self, batch_id: UUID) -> BatchJob:
+    def execute_batch(self, batch_id: UUID, *, klucz_twin: str) -> BatchJob:
         """Wykonaj serię sekwencyjnie torem kanonicznym.
 
         Dla każdego scenariusza (w porządku posortowanych identyfikatorów):
@@ -186,6 +186,12 @@ class BatchExecutionService:
         4. wykonaj bieg (`execute_run` — realny solver, WHITE BOX),
         5. powiąż bieg ze scenariuszem (`register_run` — parytet z pojedynczym
            biegiem).
+
+        `klucz_twin` — klucz magazynu ENM (Canonical Project Twin) projektu
+        przypadku serii (CV-1-W). Serwis jest bezstanowy wobec bazy danych
+        (brak `uow_factory` w zasięgu — patrz `__init__`), więc tłumaczenie
+        `case_id -> klucz` dzieje się WYŁĄCZNIE u wołającego (`api/batch_
+        execution.py`, granica API, `klucz_twin_dep.klucz_twin_z_sciezki`).
 
         Pierwsza awaria kończy serię stanem FAILED z polskim komunikatem;
         biegi ukończone wcześniej pozostają dostępne jak zwykłe biegi.
@@ -206,6 +212,7 @@ class BatchExecutionService:
                 self._brama_uprawnien(scenario)
                 run = self._create_canonical_run(
                     case_id=str(batch.study_case_id),
+                    klucz_twin=klucz_twin,
                     project_id=None,
                     analysis_type="short_circuit_sn",
                     options=solver_input_for_scenario(scenario),

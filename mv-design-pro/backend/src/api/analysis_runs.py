@@ -171,6 +171,7 @@ def get_analysis_run_overlay(
         canonical_run,
         diagram_id=diagram_id,
         sld_payload=diagram.get("payload", {}),
+        uow_factory=uow_factory,
     )
     # Status swiezosci WCHODZI do odpowiedzi (K-S). Wczesniej byl tu budowany i
     # WYRZUCANY, wiec klient (`ui/results-inspector/api.ts`) dopisywal sobie

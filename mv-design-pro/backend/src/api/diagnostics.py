@@ -22,7 +22,9 @@ pre-flight zwracały ZAWSZE 404, a diff ZAWSZE 500 — niezależnie od danych.
 Defekt przetrwał, bo moduł nie miał ANI JEDNEGO testu trasy (były wyłącznie
 testy silnika i diff-a). Model przypadku rozwiązujemy teraz tak, jak robi to
 żywa ścieżka tworzenia biegu (`enm/canonical_analysis.py::create_run`):
-`enm.store.get_enm(case_id)` + `map_enm_to_network_graph`.
+`enm.store.get_enm(klucz)` + `map_enm_to_network_graph` — `klucz` to klucz
+magazynu ENM projektu, przetłumaczony z `case_id` zależnością `KluczTwin`
+(CV-1-W, `api/klucz_twin_dep.py`).
 """
 
 from __future__ import annotations
@@ -31,6 +33,7 @@ import logging
 from typing import Any
 from uuid import UUID
 
+from api.klucz_twin_dep import KluczTwin
 from application.analyses.diagnoza_przebiegu import zbuduj_diagnoze_dla_biegu
 from diagnostics.diff import compute_enm_diff
 from diagnostics.engine import DiagnosticEngine
@@ -45,52 +48,56 @@ logger = logging.getLogger("mv_design_pro.api.diagnostics")
 router = APIRouter(prefix="/api", tags=["diagnostics"])
 
 
-def _get_graph_for_case(case_id: str) -> NetworkGraph:
+def _get_graph_for_case(klucz: str) -> NetworkGraph:
     """
     Zbuduj graf sieci dla przypadku z BIEŻĄCEGO modelu ENM.
 
     Jedno źródło prawdy wspólne ze ścieżką liczenia: `create_run` bierze model
-    tą samą funkcją `get_enm(case_id)`, więc diagnostyka opisuje dokładnie ten
-    model, który pójdzie do solvera.
+    tą samą funkcją `get_enm`, więc diagnostyka opisuje dokładnie ten model,
+    który pójdzie do solvera. `klucz` to klucz magazynu ENM (Canonical
+    Project Twin, CV-1-W) — tłumaczenie `case_id -> klucz` (404 gdy przypadek
+    nie należy do żadnego projektu) już się odbyło w zależności `KluczTwin`
+    handlera, więc `get_enm` poniżej realnie nie ma już czego odrzucić; blok
+    zostaje jako obrona w głąb dla innych, nienazwanych awarii odczytu.
     """
     try:
-        enm = get_enm(case_id)
+        enm = get_enm(klucz)
     except Exception as exc:
         logger.warning(
-            "Nie udało się wczytać modelu ENM dla case_id=%s: %s",
-            case_id,
+            "Nie udało się wczytać modelu ENM dla klucza=%s: %s",
+            klucz,
             exc,
         )
         raise HTTPException(
             status_code=404,
-            detail=f"Nie znaleziono modelu sieci dla przypadku '{case_id}'",
+            detail=f"Nie znaleziono modelu sieci dla przypadku '{klucz}'",
         ) from exc
     return map_enm_to_network_graph(enm)
 
 
 @router.get("/cases/{case_id}/diagnostics")
-def get_diagnostics(case_id: str) -> dict[str, Any]:
+def get_diagnostics(case_id: str, klucz: KluczTwin) -> dict[str, Any]:
     """
     Uruchom diagnostykę inżynierską ENM dla danego przypadku.
 
     Returns:
         DiagnosticReport jako JSON z listą problemów i macierzą analiz.
     """
-    graph = _get_graph_for_case(case_id)
+    graph = _get_graph_for_case(klucz)
     engine = DiagnosticEngine()
     report = engine.run(graph)
     return report.to_dict()
 
 
 @router.get("/cases/{case_id}/diagnostics/preflight")
-def get_preflight(case_id: str) -> dict[str, Any]:
+def get_preflight(case_id: str, klucz: KluczTwin) -> dict[str, Any]:
     """
     Uruchom pre-flight checks — macierz dostępności analiz przed RUN.
 
     Returns:
         PreflightReport jako JSON z tabelą analiz i ich statusami.
     """
-    graph = _get_graph_for_case(case_id)
+    graph = _get_graph_for_case(klucz)
     engine = DiagnosticEngine()
     report = engine.run(graph)
     preflight = build_preflight_from_diagnostic_report(report)

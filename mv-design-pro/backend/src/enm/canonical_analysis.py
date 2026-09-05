@@ -519,11 +519,21 @@ def list_runs_for_project(
 def create_run(
     *,
     case_id: str,
+    klucz_twin: str,
     analysis_type: str,
     project_id: str | None = None,
     options: dict[str, Any] | None = None,
 ) -> CanonicalRun:
-    enm = get_enm(case_id)
+    """Utworz CanonicalRun z BIEZACEGO modelu projektu.
+
+    `case_id` jest tozsamoscia przypadku (bookkeeping: `CanonicalRun.case_id`,
+    `input_hash`, filtrowanie `list_runs_for_case`) i NIE jest kluczem magazynu
+    ENM (CV-1-W). Model czyta `klucz_twin` — klucz Canonical Project Twin
+    (`enm.klucz_twin.klucz_twin_projektu`), przetlumaczony przez wolajacego
+    (`application.twin_key.klucz_twin_dla_przypadku` na granicy API — JEDYNE
+    miejsce tlumaczenia, patrz `api/klucz_twin_dep.py`).
+    """
+    enm = get_enm(klucz_twin)
     validator = ENMValidator()
     validation = validator.validate(enm)
     readiness = validator.readiness(validation)
@@ -648,10 +658,15 @@ def execute_run(run_id: UUID) -> CanonicalRun:
 
 
 def run_short_circuit_now(
-    *, case_id: str, project_id: str | None = None, options: dict[str, Any] | None = None
+    *,
+    case_id: str,
+    klucz_twin: str,
+    project_id: str | None = None,
+    options: dict[str, Any] | None = None,
 ) -> CanonicalRun:
     run = create_run(
         case_id=case_id,
+        klucz_twin=klucz_twin,
         analysis_type="short_circuit_sn",
         project_id=project_id,
         options=options,
@@ -660,10 +675,15 @@ def run_short_circuit_now(
 
 
 def run_power_flow_now(
-    *, case_id: str, project_id: str | None = None, options: dict[str, Any] | None = None
+    *,
+    case_id: str,
+    klucz_twin: str,
+    project_id: str | None = None,
+    options: dict[str, Any] | None = None,
 ) -> CanonicalRun:
     run = create_run(
         case_id=case_id,
+        klucz_twin=klucz_twin,
         analysis_type="PF",
         project_id=project_id,
         options=options,
@@ -672,10 +692,15 @@ def run_power_flow_now(
 
 
 def run_phase_state_now(
-    *, case_id: str, project_id: str | None = None, options: dict[str, Any] | None = None
+    *,
+    case_id: str,
+    klucz_twin: str,
+    project_id: str | None = None,
+    options: dict[str, Any] | None = None,
 ) -> CanonicalRun:
     run = create_run(
         case_id=case_id,
+        klucz_twin=klucz_twin,
         analysis_type="phase_state_sn",
         project_id=project_id,
         options=options,
@@ -684,10 +709,15 @@ def run_phase_state_now(
 
 
 def run_dynamic_stability_now(
-    *, case_id: str, project_id: str | None = None, options: dict[str, Any] | None = None
+    *,
+    case_id: str,
+    klucz_twin: str,
+    project_id: str | None = None,
+    options: dict[str, Any] | None = None,
 ) -> CanonicalRun:
     run = create_run(
         case_id=case_id,
+        klucz_twin=klucz_twin,
         analysis_type="dynamic_stability",
         project_id=project_id,
         options=options,
@@ -696,10 +726,15 @@ def run_dynamic_stability_now(
 
 
 def run_source_compliance_now(
-    *, case_id: str, project_id: str | None = None, options: dict[str, Any] | None = None
+    *,
+    case_id: str,
+    klucz_twin: str,
+    project_id: str | None = None,
+    options: dict[str, Any] | None = None,
 ) -> CanonicalRun:
     run = create_run(
         case_id=case_id,
+        klucz_twin=klucz_twin,
         analysis_type="source_compliance",
         project_id=project_id,
         options=options,

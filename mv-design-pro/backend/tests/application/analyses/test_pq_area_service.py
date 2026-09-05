@@ -56,7 +56,7 @@ def _reset() -> None:
 
 def _golden_pf_run() -> CanonicalRun:
     set_enm("c-pf", build_golden_enm())
-    return execute_run(create_run(case_id="c-pf", analysis_type="PF").id)
+    return execute_run(create_run(case_id="c-pf", klucz_twin="c-pf", analysis_type="PF").id)
 
 
 def _synthetic_pf_run(

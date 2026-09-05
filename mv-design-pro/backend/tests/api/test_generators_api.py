@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from uuid import uuid4
-
 import pytest
 
 pytest.importorskip("fastapi")
@@ -229,10 +227,18 @@ def test_create_der_generator_prefers_explicit_block_transformer_catalog(app_cli
     assert generator["blocking_transformer_ref"]
 
 
-def test_create_der_generator_accepts_materialized_enm_without_study_case(app_client) -> None:
-    """Browser-built networks may start from ENM domain ops before DB case hydration."""
-    project_id = str(uuid4())
-    case_id = str(uuid4())
+def test_create_der_generator_accepts_materialized_enm_seeded_directly(app_client) -> None:
+    """ENM zasiane wprost do magazynu (nie przez `POST .../enm/domain-ops`) —
+    tor tworzenia wytwórcy MUSI czytać model, a nie zakładać, że jedyną drogą
+    zapisu ENM jest operacja domenowa.
+
+    CV-1-W: przypadek MUSI należeć do realnego projektu w bazie (inwariant
+    I-2) — poprzednia wersja tego testu ("Browser-built networks may start
+    from ENM domain ops before DB case hydration") zakładała przypadek BEZ
+    wiersza w bazie; ten stan już nie istnieje w architekturze (PROJECT
+    posiada ENM, `docs/architecture/CANONICAL_DIGITAL_TWIN.md` §2).
+    """
+    project_id, case_id = _create_project_and_case(app_client)
     _seed_station_enm(case_id)
 
     response = app_client.post(
@@ -255,8 +261,7 @@ def test_create_der_generator_accepts_materialized_enm_without_study_case(app_cl
 
 def _utworz_wytworce(app_client) -> tuple[str, str, str]:
     """Projekt + przypadek + wytwórca PV w modelu; zwraca (project_id, case_id, ref)."""
-    project_id = str(uuid4())
-    case_id = str(uuid4())
+    project_id, case_id = _create_project_and_case(app_client)
     _seed_station_enm(case_id)
 
     response = app_client.post(

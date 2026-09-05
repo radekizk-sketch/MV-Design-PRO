@@ -39,6 +39,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
+from api.klucz_twin_dep import KluczTwin
 from application.analyses.arc_flash_view import build_arc_flash_view
 from application.analyses.energy_validation.service import build_energy_validation_view
 from application.analyses.migotanie import build_migotanie_view
@@ -60,7 +61,7 @@ from application.analyses.zgodnosc_powykonawcza import (
 )
 from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import get_run as get_canonical_run
-from fastapi import APIRouter, HTTPException, Query, Response, status
+from fastapi import APIRouter, HTTPException, Query, Request, Response, status
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
@@ -211,7 +212,7 @@ def get_flicker(run_id: UUID = Query(...)) -> dict[str, Any]:
 
 
 @router.get("/api/quality/conductor-thermal-withstand")
-def get_conductor_thermal_withstand(run_id: UUID = Query(...)) -> dict[str, Any]:
+def get_conductor_thermal_withstand(request: Request, run_id: UUID = Query(...)) -> dict[str, Any]:
     """Wytrzymalosc zwarciowa przewodow dla przebiegu zwarciowego (karta F-K1 faza 3).
 
     Kryterium IEC 60949 (I_th <= I_th(1s)/sqrt(t)) per galaz: czy przekroj wytrzyma
@@ -219,8 +220,9 @@ def get_conductor_thermal_withstand(run_id: UUID = Query(...)) -> dict[str, Any]
     kodem gotowosci — nigdy milczacego PASS.
     """
     run = _require_run(run_id)
+    uow_factory = getattr(request.app.state, "uow_factory", None)
     try:
-        return build_wytrzymalosc_cieplna_view(run)
+        return build_wytrzymalosc_cieplna_view(run, uow_factory)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -453,7 +455,7 @@ def post_arc_flash_report_docx(zadanie: ArcFlashReportZadanie) -> Response:
 
 
 @router.get("/api/quality/design-verdict")
-def get_design_verdict(case_id: str = Query(...)) -> dict[str, Any]:
+def get_design_verdict(klucz: KluczTwin, case_id: str = Query(...)) -> dict[str, Any]:
     """Agregat werdyktu projektowego dla przypadku obliczeniowego (karta F-K3).
 
     JEDYNA koncowka tej rodziny parametryzowana PRZYPADKIEM, nie przebiegiem — i
@@ -464,4 +466,4 @@ def get_design_verdict(case_id: str = Query(...)) -> dict[str, Any]:
     zakres kryteriow, ktorych system NIE sprawdza automatycznie. Bieg nieaktualny
     wobec biezacego modelu daje NIESPRAWDZONE (regula 4 kanonu), nigdy spelnienie.
     """
-    return build_werdykt_projektowy_view(case_id)
+    return build_werdykt_projektowy_view(case_id, klucz)

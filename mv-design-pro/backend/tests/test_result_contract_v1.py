@@ -726,11 +726,28 @@ class TestResultContractV1Api:
         from fastapi.testclient import TestClient
 
         _reset_canonical_backend_state()
-        return TestClient(app)
+        # CV-1-W wymaga realnego `uow_factory` (tlumaczenie case_id -> klucz
+        # magazynu ENM) — `with` uruchamia lifespan aplikacji, ktory go wiaze;
+        # bez niego `case_id` ponizej nie mialby jak dostac 201.
+        with TestClient(app) as test_client:
+            yield test_client
 
     @pytest.fixture
-    def case_id(self) -> str:
-        return str(uuid4())
+    def case_id(self, client) -> str:
+        """Utworz REALNY projekt + przypadek przez API; zwroc `case_id`.
+
+        CV-1-W: przypadek bez wiersza w bazie dostaje teraz 404 z magazynu
+        ENM (inwariant I-2) — testy tej klasy potrzebuja prawdziwej pary
+        projekt+przypadek zamiast dowolnego UUID-a.
+        """
+        project_resp = client.post("/api/projects", json={"name": "Result Contract V1 — test"})
+        assert project_resp.status_code == 201, project_resp.text
+        case_resp = client.post(
+            "/api/study-cases",
+            json={"project_id": project_resp.json()["id"], "name": "Przypadek testu"},
+        )
+        assert case_resp.status_code == 201, case_resp.text
+        return str(case_resp.json()["id"])
 
     def test_get_resultset_v1_success(self, client, case_id):
         """GET /api/execution/runs/{id}/results/v1 returns ResultSetV1."""
