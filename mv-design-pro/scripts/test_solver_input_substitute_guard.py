@@ -70,11 +70,13 @@ def _uruchom(
     capsys,
     pliki: dict[str, str],
     zapadka: dict[str, dict[str, int]] | None = None,
+    wykluczenia: dict[str, dict[str, int]] | None = None,
 ) -> tuple[int, str]:
     root = _drzewo(tmp_path, pliki)
     monkeypatch.setattr(guard, "BACKEND_SRC", root)
     monkeypatch.setattr(guard, "CONTRACT_SOURCES", ("solver_input",))
     monkeypatch.setattr(guard, "ZASTANE_ZASTEPNIKI", zapadka or {})
+    monkeypatch.setattr(guard, "WYKLUCZENIA_SKANERA", wykluczenia or {})
     kod = guard.main()
     return kod, capsys.readouterr().out
 
@@ -661,7 +663,192 @@ def test_martwy_wpis_zapadki_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> 
         zapadka={"network_model/solvers/zniknal.py": {"A:or:x.nominal_kv": 1}},
     )
     assert kod == 1, wyjscie
-    assert "zapadka wskazuje pliki, ktorych nie ma" in wyjscie
+    assert "zapadka/wykluczenia wskazuja pliki, ktorych nie ma" in wyjscie
+
+
+# ---------------------------------------------------------------------------
+# WYKLUCZENIA SKANERA — karta GUARD-SUB (2026-09-05), §0.2. Mechanizm
+# ODDZIELNY od zapadki dlugu: pozycja tu NIE jest fizycznym zastepnikiem —
+# skaner zlapal OCZYWISTY falszywy alarm skladniowy (licznik/indeks, nie
+# wielkosc fizyczna). Testy nizej cwicza DOKLADNIE te sama pare wlasciwosci,
+# co zapadka dlugu (gryzie w obie strony, wymaga powodu, martwy wpis to
+# blad) — bo mechanizm jest bit-w-bit tym samym ksztaltem, tylko inaczej
+# nazwanym i inaczej raportowanym.
+# ---------------------------------------------------------------------------
+
+
+def test_wykluczenie_przepuszcza_zastany_budzet(tmp_path, monkeypatch, capsys) -> None:
+    """Sygnatura w WYKLUCZENIA_SKANERA nie jest naruszeniem, gdy liczba sie zgadza."""
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "application/raport.py": (
+                "def podsumowanie(dane):\n" '    return dane.get("nominal_kv", 0)\n'
+            )
+        },
+        wykluczenia={"application/raport.py": {"F:dictget:dane.nominal_kv": 1}},
+    )
+    assert kod == 0, wyjscie
+
+
+def test_nadwyzka_ponad_wykluczenie_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
+    """NOWE wystapienie tej samej formy w PLIKU Z WYKLUCZENIEM zapala bramke.
+
+    Wykluczenie NIE jest cicha, rosnaca zgoda (§0.5 ZAKAZY: „obnizanie
+    czulosci skanera") — dziala jak zapadka dlugu, tylko z innym powodem.
+    """
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "application/raport.py": (
+                "def podsumowanie(dane):\n"
+                '    a = dane.get("nominal_kv", 0)\n'
+                '    b = dane.get("nominal_kv", 0)\n'
+                "    return a + b\n"
+            )
+        },
+        wykluczenia={"application/raport.py": {"F:dictget:dane.nominal_kv": 1}},
+    )
+    assert kod == 1, wyjscie
+    assert "wykluczenie skanera" in wyjscie
+    assert "budzet 1, znaleziono 2" in wyjscie
+
+
+def test_niedobor_wobec_wykluczenia_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
+    """Zapadka wykluczen dziala W OBIE STRONY — zniknięcie wzorca zada obnizenia."""
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {"application/naprawiony.py": "def f():\n    return 1.0\n"},
+        wykluczenia={"application/naprawiony.py": {"F:dictget:dane.nominal_kv": 1}},
+    )
+    assert kod == 1, wyjscie
+    assert "Wykluczenie ZMALALO" in wyjscie
+
+
+def test_martwy_wpis_wykluczen_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
+    """Wpis WYKLUCZENIA wskazujacy plik, ktorego nie ma, to tez martwy budzet."""
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {"application/istniejacy.py": "def f():\n    return 1.0\n"},
+        wykluczenia={"application/zniknal.py": {"F:dictget:dane.nominal_kv": 1}},
+    )
+    assert kod == 1, wyjscie
+    assert "zapadka/wykluczenia wskazuja pliki, ktorych nie ma" in wyjscie
+    assert "WYKLUCZENIA_SKANERA" in wyjscie
+
+
+def test_dlug_i_wykluczenie_razem_w_jednym_pliku_dzialaja_niezaleznie(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    """Jeden plik moze miec RAZEM dlug fizyczny i wykluczenie niefizyczne.
+
+    Kazdy budzet dziala na WLASNYCH sygnaturach — dlug na `dane.load_mvar`,
+    wykluczenie na `dane.nominal_kv` — bez wzajemnej ingerencji.
+    """
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "application/mieszany.py": (
+                "def f(dane):\n"
+                '    fizyka = dane.get("load_mvar", 0.35)\n'
+                '    licznik = dane.get("nominal_kv", 0)\n'
+                "    return fizyka, licznik\n"
+            )
+        },
+        zapadka={"application/mieszany.py": {"F:dictget:dane.load_mvar": 1}},
+        wykluczenia={"application/mieszany.py": {"F:dictget:dane.nominal_kv": 1}},
+    )
+    assert kod == 0, wyjscie
+
+
+def test_sygnatura_nieprzypisana_w_pliku_ze_znanym_budzetem_jest_naruszeniem(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    """Trzecia, NIEPRZYPISANA sygnatura w pliku z dlugiem i wykluczeniem nadal gryzie.
+
+    Plik „znany" (ma choc jeden z dwoch budzetow) nie moze stac sie przez to
+    bezpiecznym schronieniem dla KAZDEGO nowego podstawienia.
+    """
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "application/mieszany.py": (
+                "def f(dane):\n"
+                '    fizyka = dane.get("load_mvar", 0.35)\n'
+                '    licznik = dane.get("nominal_kv", 0)\n'
+                '    nowa = dane.get("fault_level_mva", 25.0)\n'
+                "    return fizyka, licznik, nowa\n"
+            )
+        },
+        zapadka={"application/mieszany.py": {"F:dictget:dane.load_mvar": 1}},
+        wykluczenia={"application/mieszany.py": {"F:dictget:dane.nominal_kv": 1}},
+    )
+    assert kod == 1, wyjscie
+    assert "F:dictget:dane.fault_level_mva" in wyjscie
+    assert "podstawienie liczby za nieobecna dana wejsciowa" in wyjscie
+
+
+def test_wykluczenie_niesie_powod_przy_kazdym_pliku() -> None:
+    """Analogon `test_zapadka_niesie_powod_przy_kazdym_pliku` dla wykluczen.
+
+    Budzet bez powodow bylby cichym wykluczeniem w przebraniu jawnego
+    rozstrzygniecia — dokladnie to, czego zakazuje §0.2 karty.
+    """
+    zrodlo = Path(guard.__file__).read_text(encoding="utf-8")
+    blok = zrodlo.split("WYKLUCZENIA_SKANERA: dict[str, dict[str, int]] = {", 1)[1]
+    blok = blok.split("\n}\n", 1)[0]
+    assert guard.WYKLUCZENIA_SKANERA, "Budzet wykluczen pusty — parser albo lista do poprawy."
+    for rel in guard.WYKLUCZENIA_SKANERA:
+        przed = blok.split(f'"{rel}":', 1)[0]
+        komentarz = [w for w in przed.splitlines() if w.strip().startswith("#")]
+        assert komentarz, f"{rel}: wpis wykluczenia bez powodu merytorycznego"
+        assert len("".join(komentarz)) > 60, f"{rel}: powod haslowy"
+
+
+def test_kazdy_wpis_zapadki_lezy_pod_scan_roots() -> None:
+    """Wpis zapadki NA PLIK spoza SCAN_ROOTS bylby martwym budzetem — nigdy
+    nieporownanym, bo `check_file` jest wolywane WYLACZNIE dla plikow
+    znalezionych przez `root.rglob(...)` startujac z korzeni skanowania.
+    """
+    for rel in guard.ZASTANE_ZASTEPNIKI:
+        assert any(
+            rel == korzen or rel.startswith(f"{korzen}/") for korzen in guard.SCAN_ROOTS
+        ), f"{rel}: wpis zapadki lezy POZA SCAN_ROOTS — nigdy nie zostanie porownany."
+
+
+def test_kazdy_wpis_wykluczen_lezy_pod_scan_roots() -> None:
+    """Analogon powyzszego testu dla `WYKLUCZENIA_SKANERA`."""
+    for rel in guard.WYKLUCZENIA_SKANERA:
+        assert any(
+            rel == korzen or rel.startswith(f"{korzen}/") for korzen in guard.SCAN_ROOTS
+        ), f"{rel}: wpis wykluczenia lezy POZA SCAN_ROOTS — nigdy nie zostanie porownany."
+
+
+def test_dlug_i_wykluczenie_sie_nie_pokrywaja() -> None:
+    """Jedna sygnatura NIE MOZE byc jednoczesnie dlugiem fizycznym i wykluczeniem
+    niefizycznym w TYM SAMYM pliku — dwie sprzeczne decyzje o tym samym
+    miejscu w kodzie sa bledem konstrukcji rejestru, nie osobna klasyfikacja.
+    """
+    for rel, dlug_budzet in guard.ZASTANE_ZASTEPNIKI.items():
+        wykl_budzet = guard.WYKLUCZENIA_SKANERA.get(rel)
+        if wykl_budzet is None:
+            continue
+        wspolne = set(dlug_budzet) & set(wykl_budzet)
+        assert (
+            not wspolne
+        ), f"{rel}: sygnatury {sorted(wspolne)} sa jednoczesnie dlugiem i wykluczeniem"
 
 
 # ---------------------------------------------------------------------------
@@ -676,15 +863,20 @@ def test_brak_korzenia_skanowania_jest_bledem(tmp_path, monkeypatch, capsys) -> 
 
 
 def test_brak_jednego_z_zakresow_jest_bledem(tmp_path, monkeypatch, capsys) -> None:
-    """Zmiana ukladu katalogow nie moze po cichu wylaczyc czesci zakresu."""
+    """Zmiana ukladu katalogow nie moze po cichu wylaczyc czesci zakresu.
+
+    Drzewo ma TYLKO `solver_input` — brakuje `network_model` (pierwszy korzen w
+    `SCAN_ROOTS` po karcie GUARD-SUB), wiec to jego nazwa pojawia sie w komunikacie.
+    """
     root = tmp_path / "src"
     (root / "solver_input").mkdir(parents=True)
     (root / "solver_input" / "kontrakty.py").write_text(KONTRAKT, encoding="utf-8")
     monkeypatch.setattr(guard, "BACKEND_SRC", root)
     monkeypatch.setattr(guard, "CONTRACT_SOURCES", ("solver_input",))
     monkeypatch.setattr(guard, "ZASTANE_ZASTEPNIKI", {})
+    monkeypatch.setattr(guard, "WYKLUCZENIA_SKANERA", {})
     assert guard.main() == 1
-    assert "korzen skanowania 'network_model/solvers' nie istnieje" in capsys.readouterr().out
+    assert "korzen skanowania 'network_model' nie istnieje" in capsys.readouterr().out
 
 
 def test_pusta_mapa_pol_kontraktu_jest_bledem(tmp_path, monkeypatch, capsys) -> None:
@@ -693,6 +885,7 @@ def test_pusta_mapa_pol_kontraktu_jest_bledem(tmp_path, monkeypatch, capsys) -> 
     monkeypatch.setattr(guard, "BACKEND_SRC", root)
     monkeypatch.setattr(guard, "CONTRACT_SOURCES", ("katalog_ktorego_nie_ma",))
     monkeypatch.setattr(guard, "ZASTANE_ZASTEPNIKI", {})
+    monkeypatch.setattr(guard, "WYKLUCZENIA_SKANERA", {})
     assert guard.main() == 1
     assert "zbior pol kontraktow wejsciowych jest PUSTY" in capsys.readouterr().out
 
@@ -714,9 +907,55 @@ def test_czysty_zakres_daje_zielen(tmp_path, monkeypatch, capsys) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_biezacy_stan_repozytorium_jest_zielony() -> None:
-    """Bramka na PRAWDZIWYM drzewie — budzet odpowiada pomiarowi, nie zyczeniu."""
-    assert guard.main() == 0
+def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -> None:
+    """Bramka na PRAWDZIWYM drzewie: RC=0, zero naruszen, sumy przypiete PER KORZEN.
+
+    Historia tego testu (uczciwie): karta GUARD-SUB (2026-09-05) pinowala tu
+    DOKLADNIE trzy naruszenia odsloniete przez FAB-H (`enm/canonical_analysis.py`
+    `B:ifexp:wynik_q.q_mvar`, `enm/mapping.py` `A:or:wynik_q.q_mvar`,
+    `solver_input/v126_contracts.py` `A:or:moc_bierna_wytworcy.q_mvar`), swiadomie
+    NIE wpisane do zapadki, zeby budzet 1 nie zamaskowal naprawy oczekujacej
+    u zrodla. Domkniecie FAB-H (`d58b949e`, `54cb5356`: Q nieznane = wklad
+    POMINIETY, nie 0,0; brama SSCI 422) usunelo te sygnatury z drzewa, wiec pin
+    trojki poszedl na czerwono zgodnie z zamierzeniem i zostal przepisany na stan
+    faktyczny: brak naruszen.
+
+    Sumy per korzen (nie tylko globalny RC) pilnuja, zeby cichy dryf w JEDNYM
+    korzeniu nie schowal sie za poprawnym wynikiem calosciowym. Liczby to POMIAR
+    z biezacego drzewa: kazda zmiana zbioru plikow w zakresie skanu (nowy modul,
+    kasacja) ma tu swiadomie zaktualizowac pin razem z uzasadnieniem w commicie.
+    """
+    kod = guard.main()
+    wyjscie = capsys.readouterr().out
+    assert "Pol kontraktow wejsciowych: 3633." in wyjscie, wyjscie
+    assert (
+        "Przeskanowano 597 plikow w zakresie: network_model, solver_input, enm, "
+        "application, api." in wyjscie
+    ), wyjscie
+    assert "Zapadka dlugu (fizyczne): 89 plikow, suma 592." in wyjscie, wyjscie
+    assert "Wykluczenia skanera (niefizyczne): 24 plikow, suma 64." in wyjscie, wyjscie
+    per_korzen = [
+        "  network_model: pliki_skanowane=143, dlug=19 plikow/suma 101, "
+        "wykluczenia=6 plikow/suma 8",
+        "  solver_input: pliki_skanowane=10, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
+        "  enm: pliki_skanowane=35, dlug=7 plikow/suma 81, wykluczenia=0 plikow/suma 0",
+        "  application: pliki_skanowane=343, dlug=53 plikow/suma 348, "
+        "wykluczenia=11 plikow/suma 30",
+        "  api: pliki_skanowane=66, dlug=8 plikow/suma 54, wykluczenia=7 plikow/suma 26",
+    ]
+    for linia in per_korzen:
+        assert linia in wyjscie, f"Brak pinowanej sumy per korzen: {linia!r}\n{wyjscie}"
+
+    # Sygnatury FAB-H nie wystepuja w drzewie — brak wpisu w zapadce jest pomiarem.
+    for sygnatura in (
+        "B:ifexp:wynik_q.q_mvar",
+        "A:or:wynik_q.q_mvar",
+        "A:or:moc_bierna_wytworcy.q_mvar",
+    ):
+        assert sygnatura not in wyjscie, f"Sygnatura FAB-H wrocila do drzewa: {sygnatura!r}"
+    assert "naruszen." not in wyjscie, wyjscie
+    assert "PASS: zadnego nowego podstawienia" in wyjscie, wyjscie
+    assert kod == 0, wyjscie
 
 
 def test_zapadka_niesie_powod_przy_kazdym_pliku() -> None:
@@ -784,6 +1023,7 @@ def test_iniekcja_cos_phi_w_modelu_domenowym_jest_naruszeniem(
 
     monkeypatch.setattr(guard, "BACKEND_SRC", root)
     monkeypatch.setattr(guard, "ZASTANE_ZASTEPNIKI", {})
+    monkeypatch.setattr(guard, "WYKLUCZENIA_SKANERA", {})
     monkeypatch.setattr(guard, "MODEL_ROOTS_POZA_MAPA", {})
 
     # Kontrola dwustronna: ze zbiorem pol BEZ modelu domenowego bramka MILCZY —
@@ -926,6 +1166,7 @@ def test_kontrakt_zadeklarowany_w_skanowanej_warstwie_jest_w_mapie(
 
     monkeypatch.setattr(guard, "BACKEND_SRC", root)
     monkeypatch.setattr(guard, "ZASTANE_ZASTEPNIKI", {})
+    monkeypatch.setattr(guard, "WYKLUCZENIA_SKANERA", {})
     monkeypatch.setattr(guard, "MODEL_ROOTS_POZA_MAPA", {})
     monkeypatch.setattr(guard, "SCAN_ROOTS", ("network_model/solvers", "solver_input"))
 
@@ -1029,7 +1270,10 @@ def test_nieskonczonosc_nie_jest_meldunkiem_braku() -> None:
 
     Zawezenie kosztowalo ZERO nowych pozycji budzetu: zadne zywe
     `<pole kontraktu> or float("inf")` w zakresie nie istnieje (stan repo
-    przypiety `test_zapadka_odpowiada_stanowi_repo`).
+    przypiety `test_biezacy_stan_repozytorium_ma_wylacznie_trzy_oczekujace_
+    naruszenia_fab_h` — nazwa skorygowana karta GUARD-SUB 2026-09-05; ta
+    dokumentacja odwolywala sie wczesniej do testu, ktory nigdy nie istnial
+    pod tamta nazwa).
     """
     import math
 
