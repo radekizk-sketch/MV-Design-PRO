@@ -143,11 +143,13 @@ def test_zasieg_pomija_dom_apply_scenario_i_fabryk() -> None:
 
 
 def test_stan_repozytorium_jest_zielony_i_przypiety() -> None:
-    """Pin zastanych trafien: 3 rodziny, 9 trafien (2026-09-05, po migracji D4/D5/D6
-    karta CV-3-W: 19 - 10 = 9; D1-D3 migruje rownolegle inny wykonawca — hosting_capacity.py,
-    kontyngencje_n1.py, pq_area.py). Migracja rodziny obniza wpis w `ZASTANE` i ten
-    pin (dlug ma malec jawnie)."""
+    """Pin stanu: ZERO zastanych trafien (2026-09-05, po kartach CV-3-W A i B).
+
+    Stan sprzed CV-3-W: 6 rodzin, 19 trafien (D1 R1+R2+R4=3, D2 3, D3 3, D4 3,
+    D5 3, D6 R2 2 + R3 2). Wszystkie rodziny przeszly na apply_scenario/
+    bieg_wariantu/wykonaj_bieg_w_pamieci z parytetem bit w bit
+    (`tests/golden/parytet_scenariuszy`). Kazde nowe trafienie = czerwone CI."""
     pomiar = guard.zmierz()
-    assert pomiar == guard.ZASTANE
-    assert sum(sum(v.values()) for v in pomiar.values()) == 9
+    assert pomiar == guard.ZASTANE == {}
+    assert sum(sum(v.values()) for v in pomiar.values()) == 0
     assert guard.main([]) == 0

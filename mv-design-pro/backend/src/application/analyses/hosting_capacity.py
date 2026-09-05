@@ -4,11 +4,14 @@ Warstwa APPLICATION (orkiestracja, NIE fizyka). Odpowiada na pytanie „ile jesz
 mocy czynnej OZE zmieści wskazany węzeł sieci" jako DETERMINISTYCZNY przegląd
 scenariuszy rozpływu:
 
-1. dla węzła-kandydata wstrzykuje dodatkową moc czynną (generator próbny) rosnącą
-   krokiem deterministycznym,
+1. dla węzła-kandydata buduje scenariusz roboczy (``enm.scenariusze.OperatingScenario``)
+   z generatorem próbnym rosnącym krokiem deterministycznym (``Wstrzyk``), nałożony
+   na model bazowy przez ``enm.scenariusze.apply_scenario`` — JEDYNE miejsce kopii
+   migawki z nadpisaniami (rdzeń CV-3.1; migracja CV-3-W, 2026-09-05),
 2. uruchamia ISTNIEJĄCY solver rozpływu przez ISTNIEJĄCĄ ścieżkę wykonania
-   (``enm.canonical_analysis._execute_power_flow`` — ta sama funkcja, której używa
-   kanoniczny przebieg PF; ZERO nowej fizyki, ZERO wołania klas solvera na skróty),
+   (``enm.canonical_analysis.wykonaj_bieg_w_pamieci`` — ten sam dyspozytor, którego
+   używa kanoniczny przebieg PF; ZERO nowej fizyki, ZERO wołania klas solvera na
+   skróty), na biegu zbudowanym JEDYNĄ fabryką wariantu (``bieg_wariantu``),
 3. ocenia dopuszczalność REUŻYWAJĄC serwisu walidacji energetycznej D2
    (``build_energy_validation_view`` → ``EnergyValidationBuilder`` z domyślnymi
    progami W-607: napięcia w paśmie, obciążenia ≤ 100 %).
@@ -35,17 +38,16 @@ Założenia domyślne (parametry z jawnymi wartościami, udokumentowane):
 
 from __future__ import annotations
 
-import copy
 import hashlib
 import json
 import logging
 from typing import Any
-from uuid import NAMESPACE_URL, uuid5
 
 from application.analyses.energy_validation.service import build_energy_validation_view
 from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
-from enm.canonical_analysis import CanonicalRun, _execute_power_flow
-from enm.models import Generator
+from enm.canonical_analysis import CanonicalRun, bieg_wariantu, wykonaj_bieg_w_pamieci
+from enm.models import EnergyNetworkModel
+from enm.scenariusze import OperatingScenario, RodzajScenariusza, Wstrzyk, apply_scenario
 
 DEFAULT_STEP_MW = 0.5
 DEFAULT_MAX_STEPS = 40
@@ -69,48 +71,32 @@ def _round6(value: float | None) -> float | None:
     return round(float(value), 6) if value is not None else None
 
 
-def _probe_generator(bus_ref: str, added_mw: float) -> dict[str, Any]:
-    """Deterministyczny generator próbny (OZE) na wskazanej szynie.
+def _hc_scenario(bus_ref: str, added_mw: float, krok: int) -> OperatingScenario:
+    """Scenariusz próbnego przyłączenia OZE (deterministyczny, per krok siatki).
 
-    ``id`` pochodzi z ``uuid5`` (stały dla danej szyny), więc snapshot scenariusza
-    jest w pełni deterministyczny.
+    ``added_mw == 0.0`` → scenariusz BEZ wstrzyku (krok 0 = stan bazowy, jak przed
+    migracją CV-3-W). ``id`` elementu próbnego pochodzi z ``uuid5`` przez jawne
+    ``id_seed`` (stały dla danej szyny — patrz ``enm.scenariusze.Wstrzyk``), więc
+    migawka scenariusza jest w pełni deterministyczna i bit w bit taka sama, jaką
+    budował usunięty pomocnik ``_probe_generator``.
     """
-    return Generator(
-        id=uuid5(NAMESPACE_URL, f"hosting-capacity-probe:{bus_ref}"),
-        ref_id=f"__hc_probe__{bus_ref}",
-        name="Próbne przyłączenie OZE",
-        bus_ref=bus_ref,
-        p_mw=added_mw,
-        q_mvar=0.0,
-    ).model_dump(mode="json")
-
-
-def _snapshot_with_injection(
-    base_snapshot: dict[str, Any], bus_ref: str, added_mw: float
-) -> dict[str, Any]:
-    snapshot = copy.deepcopy(base_snapshot)
-    generators = list(snapshot.get("generators") or [])
+    injections: tuple[Wstrzyk, ...] = ()
     if added_mw != 0.0:
-        generators.append(_probe_generator(bus_ref, added_mw))
-    snapshot["generators"] = generators
-    return snapshot
-
-
-def _scenario_run(base_run: CanonicalRun, snapshot: dict[str, Any]) -> CanonicalRun:
-    """Przebieg PF w pamięci (bez persystencji) z podmienionym snapshotem."""
-    return CanonicalRun(
-        id=base_run.id,
-        case_id=base_run.case_id,
-        project_id=base_run.project_id,
-        analysis_type="PF",
-        status="FINISHED",
-        created_at=base_run.created_at,
-        snapshot_hash=base_run.snapshot_hash,
-        input_hash=base_run.input_hash,
-        snapshot=snapshot,
-        validation={},
-        readiness={},
-        options=dict(base_run.options),
+        injections = (
+            Wstrzyk(
+                bus_ref=bus_ref,
+                ref_id=f"__hc_probe__{bus_ref}",
+                name="Próbne przyłączenie OZE",
+                p_mw=added_mw,
+                q_mvar=0.0,
+                id_seed=f"hosting-capacity-probe:{bus_ref}",
+            ),
+        )
+    return OperatingScenario(
+        scenario_id=f"__hc__{bus_ref}__{krok}",
+        name="Próbne przyłączenie OZE",
+        kind=RodzajScenariusza.SIZING,
+        injections=injections,
     )
 
 
@@ -156,17 +142,21 @@ def _scenario_measurements(raw_result: dict[str, Any]) -> dict[str, float | None
 
 
 def _evaluate_scenario(
-    base_run: CanonicalRun, bus_ref: str, added_mw: float
+    base_run: CanonicalRun,
+    enm_bazowy: EnergyNetworkModel,
+    bus_ref: str,
+    added_mw: float,
+    krok: int,
 ) -> tuple[bool, dict[str, Any]]:
     """Uruchom rozpływ dla scenariusza i oceń dopuszczalność.
 
     Zwraca ``(acceptable, scenario_record)``. Niezbieżność lub błąd solvera →
     scenariusz niedopuszczalny z kryterium ``non_convergence``.
     """
-    snapshot = _snapshot_with_injection(base_run.snapshot, bus_ref, added_mw)
-    run = _scenario_run(base_run, snapshot)
+    migawka = apply_scenario(enm_bazowy, _hc_scenario(bus_ref, added_mw, krok))
+    run = bieg_wariantu(base_run, migawka, analysis_type="PF")
     try:
-        _execute_power_flow(run)
+        wykonaj_bieg_w_pamieci(run)
     except Exception:  # noqa: BLE001 — niezbieżność/osobliwość = twardy koniec pasma
         record = {
             "added_power_mw": _round_power(added_mw),
@@ -238,14 +228,19 @@ def _losses_at_limit(scenarios: list[dict[str, Any]]) -> float | None:
 
 
 def _candidate_capacity(
-    base_run: CanonicalRun, bus_ref: str, bus_name: str | None, step_mw: float, max_steps: int
+    base_run: CanonicalRun,
+    enm_bazowy: EnergyNetworkModel,
+    bus_ref: str,
+    bus_name: str | None,
+    step_mw: float,
+    max_steps: int,
 ) -> dict[str, Any]:
     scenarios: list[dict[str, Any]] = []
     max_hosting_mw = 0.0
     binding: dict[str, Any] = {"kind": "none"}
     for step_index in range(max_steps + 1):
         added_mw = _round_power(step_index * step_mw)
-        acceptable, record = _evaluate_scenario(base_run, bus_ref, added_mw)
+        acceptable, record = _evaluate_scenario(base_run, enm_bazowy, bus_ref, added_mw, step_index)
         scenarios.append(record)
         if acceptable:
             max_hosting_mw = added_mw
@@ -339,8 +334,11 @@ def build_hosting_capacity_view(
         if unknown:
             raise ValueError("Wskazane węzły nie istnieją w modelu: " + ", ".join(unknown) + ".")
 
+    # JEDNA walidacja modelu bazowego na CAŁY widok (nie na scenariusz) —
+    # `apply_scenario` przyjmuje obiekt `EnergyNetworkModel`, nie słownik migawki.
+    enm_bazowy = EnergyNetworkModel.model_validate(snapshot)
     nodes = [
-        _candidate_capacity(run, bus_ref, bus_names.get(bus_ref), step_mw, max_steps)
+        _candidate_capacity(run, enm_bazowy, bus_ref, bus_names.get(bus_ref), step_mw, max_steps)
         for bus_ref in candidates
     ]
 

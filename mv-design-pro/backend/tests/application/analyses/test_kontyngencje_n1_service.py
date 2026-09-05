@@ -349,20 +349,29 @@ def test_enumeruje_wszystkie_kwalifikowane_elementy_po_sortowanym_ref() -> None:
 def test_kazdy_rodzaj_elementu_znika_z_grafu_wariantu() -> None:
     """Warunek WYJŚCIA wariantu jest jeden dla wszystkich rodzajów elementu.
 
-    Gałąź i transformator schodzą z ruchu tym samym mechanizmem, więc test
-    sprawdza oba: krawędź elementu jest w grafie bazowym i nie ma jej w grafie
-    wariantu. Bez tej pary rozjazd mechanizmów byłby niewidoczny.
+    Gałąź i transformator schodzą z ruchu tym samym mechanizmem —
+    ``enm.scenariusze.apply_scenario`` ze scenariuszem
+    ``out_of_service=(element.ref,)`` (karta CV-3-W, 2026-09-05; przed migracją:
+    prywatny pomocnik ``_wariant_bez_elementu``, USUNIĘTY) — więc test sprawdza
+    oba: krawędź elementu jest w grafie bazowym i nie ma jej w grafie wariantu.
+    Bez tej pary rozjazd mechanizmów byłby niewidoczny.
     """
     from application.analyses.kontyngencje_n1 import (  # noqa: PLC0415 — szczegół wewnętrzny
         _inwentarz_elementow,
-        _wariant_bez_elementu,
     )
+    from enm.scenariusze import OperatingScenario, RodzajScenariusza, apply_scenario
 
     enm = _promien_z_transformatorem()
     snapshot = enm.model_dump(mode="json")
     graf_bazowy = map_enm_to_network_graph(enm)
     for element in _inwentarz_elementow(snapshot):
-        wariant = _wariant_bez_elementu(snapshot, element)
+        scenariusz = OperatingScenario(
+            scenario_id=f"__test_n1__{element.ref}",
+            name="Test wariantu N-1",
+            kind=RodzajScenariusza.N_1,
+            out_of_service=(element.ref,),
+        )
+        wariant = apply_scenario(enm, scenariusz).snapshot
         graf_wariantu = map_enm_to_network_graph(EnergyNetworkModel.model_validate(wariant))
         id_elementu = ref_to_graph_id(element.ref)
         assert id_elementu in graf_bazowy.branches, element.ref
@@ -971,18 +980,19 @@ def test_zakres_nie_uruchamia_solvera() -> None:
 
     Gdyby zapowiedź liczyła cokolwiek rozpływem, ekran płaciłby pełny koszt N-1
     zanim inżynier zdecydował o biegu — czyli dokładnie ten koszt, przed którym
-    ma go chronić. Pin: podmieniona ścieżka wykonania rozpływu nie może zostać
-    wywołana ani razu.
+    ma go chronić. Pin: podmieniona ścieżka wykonania rozpływu
+    (``enm.canonical_analysis.wykonaj_bieg_w_pamieci``, karta CV-3-W; przed
+    migracją: prywatny ``_execute_power_flow``) nie może zostać wywołana ani razu.
     """
     import application.analyses.kontyngencje_n1 as modul
 
     wywolania: list[object] = []
-    oryginal = modul._execute_power_flow
-    modul._execute_power_flow = lambda bieg: wywolania.append(bieg)  # type: ignore[assignment]
+    oryginal = modul.wykonaj_bieg_w_pamieci
+    modul.wykonaj_bieg_w_pamieci = lambda bieg: wywolania.append(bieg)  # type: ignore[assignment]
     try:
         build_kontyngencje_n1_zakres_view(_bieg(_pierscien()))
     finally:
-        modul._execute_power_flow = oryginal  # type: ignore[assignment]
+        modul.wykonaj_bieg_w_pamieci = oryginal  # type: ignore[assignment]
 
     assert wywolania == []
 

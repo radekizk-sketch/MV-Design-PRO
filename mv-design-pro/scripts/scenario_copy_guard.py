@@ -71,17 +71,11 @@ OPISY = {
     R4: "plytka kopia migawki (dict) pod mutacje — uzyj enm.scenariusze.apply_scenario",
 }
 
-#: ZAPADKA zastanych trafien (pomiar 2026-09-05, przed migracja rodzin D1-D6;
-#: karta CV-3-W obnizyla ja o rodziny D4/D5/D6 — dobor_kompensacji.py,
-#: odpowiedz_osd.py i protection_settings/batch_run.py migrowaly na
-#: apply_scenario/bieg_wariantu, wpisy USUNIETE, nie wyzerowane).
+#: ZAPADKA zastanych trafien. Pomiar 2026-09-05 przed migracja rodzin D1–D6:
+#: 19 trafien w 6 rodzinach; po kartach CV-3-W (A: D1–D3, B: D4–D6) — ZERO.
 #: Klucz: sciezka wzgledem `backend/src`; wartosc: liczba trafien per regula.
-#: Obniz wpis, gdy rodzina przechodzi na apply_scenario; wpis zerowy usun.
-ZASTANE: dict[str, dict[str, int]] = {
-    "application/analyses/hosting_capacity.py": {R1: 1, R2: 1, R3: 1},
-    "application/analyses/kontyngencje_n1.py": {R1: 1, R2: 1, R4: 1},
-    "application/analyses/pq_area.py": {R1: 1, R2: 1, R3: 1},
-}
+#: Kazde nowe trafienie = czerwone CI (siodma prywatna droga kopii migawki).
+ZASTANE: dict[str, dict[str, int]] = {}
 
 
 def _sciezka_kropkowana(expr: ast.expr) -> str:

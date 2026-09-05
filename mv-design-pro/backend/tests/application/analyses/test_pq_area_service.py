@@ -7,7 +7,7 @@ determinizm dwóch wywołań, węzeł nieznany, parametry brzegowe, limit biegó
 błędy rodzaju/statusu przebiegu.
 
 ZERO nowej fizyki: rozpływ liczy istniejący solver przez istniejącą ścieżkę
-wykonania (``_execute_power_flow``), oceny przez istniejący builder walidacji D2.
+wykonania (``wykonaj_bieg_w_pamieci``), oceny przez istniejący builder walidacji D2.
 Q generatora próbnego wpływa na rozpływ (recon: ``enm/mapping.py:201``).
 """
 
@@ -43,6 +43,7 @@ from enm.models import (
     Source,
 )
 from enm.store import reset_enm_store, set_enm
+from pydantic import ValidationError
 
 from tests.cgmes.golden_enm import build_golden_enm
 
@@ -219,20 +220,32 @@ def test_existing_generation_reported() -> None:
     assert view["existing_generation"] == {"p_mw": 2.0, "q_mvar": 0.6}
 
 
-def test_existing_generation_skips_generator_missing_p_mw_not_zero() -> None:
-    """FAB-E (E1): generator bez pola ``p_mw`` w migawce (rekord uszkodzony) jest
-    POMIJANY z sumy generacji istniejącej — nie liczony jako 0 MW, co inaczej
-    cicho zaniżyłoby zgłaszaną generację istniejącą w węźle."""
+def test_existing_generation_missing_p_mw_rejects_model_not_fabricated_zero() -> None:
+    """FAB-E (E1), zaktualizowane migracją CV-3-W (2026-09-05): generator bez pola
+    ``p_mw`` w migawce (rekord uszkodzony) NIE jest cicho fabrykowany jako 0 MW.
+
+    Intencja PRZED migracją: „pomiń uszkodzony rekord z sumy generacji, policz
+    RESZTĘ widoku normalnie" — ``_existing_generation`` samo w sobie nadal działa
+    tak dla pola GENUINIE opcjonalnego (patrz
+    ``test_existing_generation_missing_q_mvar_matches_solver_bridge_convention``
+    obok). Ale ``p_mw`` jest polem WYMAGANYM modelu ``Generator``
+    (``enm/models.py``) — migawka bez niego nie jest prawidłowym
+    ``EnergyNetworkModel``. Od CV-3-W scenariusz roboczy nakłada się na
+    ZWALIDOWANY obiekt ``EnergyNetworkModel`` (``enm.scenariusze.apply_scenario``),
+    więc CAŁY widok odmawia policzenia CZYTELNYM błędem walidacji, zamiast
+    liczyć dalszą część analizy na modelu, który już wie o sobie, że jest
+    niekompletny — silniejsza forma tej samej uczciwości (rekord uszkodzony nie
+    jest ani fabrykowany jako 0 MW, ani cicho pomijany przy analizie liczonej
+    dalej na niepełnym modelu).
+    """
     run = _golden_pf_run()
     snapshot = copy.deepcopy(run.snapshot)
     for gen in snapshot["generators"]:
         if gen.get("bus_ref") == "bus_sn_c":
             del gen["p_mw"]
     zmieniony_run = dataclasses.replace(run, snapshot=snapshot)
-    view = build_pq_area_view(zmieniony_run, bus_ref="bus_sn_c", max_steps_p=1, max_steps_q=1)
-    # Jedyny generator węzła pominięty w całości (uszkodzony rekord) — 0.0, nie
-    # fabrykacja z fragmentu rekordu.
-    assert view["existing_generation"] == {"p_mw": 0.0, "q_mvar": 0.0}
+    with pytest.raises(ValidationError, match="p_mw"):
+        build_pq_area_view(zmieniony_run, bus_ref="bus_sn_c", max_steps_p=1, max_steps_q=1)
 
 
 def test_existing_generation_missing_q_mvar_matches_solver_bridge_convention() -> None:

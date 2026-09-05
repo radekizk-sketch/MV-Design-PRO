@@ -6,7 +6,7 @@ obciążeniowa, determinizm dwóch wywołań, węzeł bez możliwości (0 MW), p
 brzegowe oraz błędy rodzaju/statusu przebiegu i węzłów-kandydatów.
 
 ZERO nowej fizyki: rozpływ liczy istniejący solver przez istniejącą ścieżkę
-wykonania (``_execute_power_flow``), oceny przez istniejący builder walidacji D2.
+wykonania (``wykonaj_bieg_w_pamieci``), oceny przez istniejący builder walidacji D2.
 """
 
 from __future__ import annotations
