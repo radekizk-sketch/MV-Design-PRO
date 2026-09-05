@@ -179,8 +179,12 @@ ALLOWLIST: dict[tuple[str, int], str] = {
         2633,
     ): "b: opis analizy w katalogu ekranów ('IEC 60909, Ik″/ip/Ith z śladem Y-bus') — napis",
     (
+        # Karta WB-ROZPLYW: numer wiersza zdryfował po dopisaniu kontraktu
+        # `branch_flow_trace`/hooka `useRozplywZwarciowy` WCZEŚNIEJ w pliku
+        # (ślad WHITE BOX podziału prądu zwarciowego, TH-1). Wpis dotyczy TEGO
+        # SAMEGO napisu (skalowanie A→kA), tylko pod aktualnym wierszem.
         "frontend/src/ui2/wyniki/zwarcia/api.ts",
-        77,
+        81,
     ): "b: przeliczenie jednostki A→kA wartości otrzymanej z backendu (ikss_partial_a / 1000) — wprost dozwolone skalowanie jednostek",
 }
 

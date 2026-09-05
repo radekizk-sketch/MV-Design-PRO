@@ -104,6 +104,21 @@ export const ZWARCIA_STRINGS = {
   rozplywBrakWkladowOpis:
     'Policzono rozpływ, ale żadna gałąź nie niesie prądu zwarciowego dla tego punktu — sieć bez źródła zastępczego (nieskończonej szyny / sieci nadrzędnej) i bez falowników zasilających to zwarcie.',
 
+  // Sekcja śladu WHITE BOX podziału prądu zwarciowego (karta WB-ROZPLYW, TH-1)
+  sladRozplywuTytul: 'Podział prądu zwarciowego — ślad obliczeń',
+  sladRozplywuOpis:
+    'Kroki podziału prądu zwarciowego od źródła zastępczego (sieć nadrzędna, Thevenin) na gałęzie — iniekcja jednostkowa w węźle zwarcia, współczynniki podziału z macierzy Z-bus, bilans kontrolny KCL. Wyłącznie odczyt śladu WHITE BOX solvera IEC 60909, zero obliczeń w interfejsie.',
+  sladRozplywuNiedostepny:
+    'Ślad podziału niedostępny dla tego biegu (bieg sprzed zapisu śladu albo bez wkładów).',
+  sladRozplywuNiedostepnyOpis:
+    'Starszy wynik nie niesie śladu podziału prądu zwarciowego. Uruchom ponownie obliczenie zwarciowe, aby go uzyskać.',
+  sladRozplywuPusty: 'Brak kroków podziału dla tego punktu zwarcia.',
+  sladRozplywuPustyOpis:
+    'Rozpływ policzony, ale ślad WHITE BOX dokumentuje wyłącznie podział prądu od sieci zastępczej (Thevenina) — ten punkt zwarcia nie ma wkładu z tego źródła.',
+  sladRozplywuBlad: 'Nie udało się pobrać śladu podziału prądu zwarciowego.',
+  sladRozplywuBladOpis:
+    'Błąd pobrania z serwera (sieć albo backend). Spróbuj ponownie później albo odśwież przebieg.',
+
   // Akcja synchronizacji ze schematem (karta W-C, pkt 6)
   pokazNaSchemacie: 'Pokaż na schemacie',
 
