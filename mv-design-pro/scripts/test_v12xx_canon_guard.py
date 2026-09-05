@@ -372,7 +372,10 @@ def test_playwright_webserver_lifecycle_accepts_cwd_backend_handoff(tmp_path, mo
         "playwright.config.ts",
         """
 const backendCwd = fileURLToPath(new URL('../backend/', import.meta.url));
-const backendServerCommand = 'poetry run python -m uvicorn src.api.main:app --host 127.0.0.1 --port 8000';
+const backendPort = new URL(backendUrl).port || '8000';
+const backendPython = process.env.PLAYWRIGHT_BACKEND_PYTHON ?? 'poetry run python';
+const backendServerCommand =
+  `${backendPython} -m uvicorn src.api.main:app --host 127.0.0.1 --port ${backendPort}`;
 export default defineConfig({
   webServer: [{
     command: backendServerCommand,
