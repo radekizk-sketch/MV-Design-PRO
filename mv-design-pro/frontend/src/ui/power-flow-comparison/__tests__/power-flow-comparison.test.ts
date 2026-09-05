@@ -22,8 +22,26 @@ import {
   type IssueSeverity,
   type PowerFlowComparisonResult,
   type PowerFlowRankingIssue,
-  type PowerFlowComparisonTab,
+  type RunProvenance,
 } from '../types';
+
+/**
+ * Proweniencja biegu R1 minimalna do testu kształtu typu (B1, karta CV-3.3-B).
+ * `PowerFlowComparisonResult.provenance_a/b` jest polem WYMAGANYM (dowód CO
+ * było porównywane) — ten fixture istnieje wyłącznie po to, by literał niżej
+ * pozostał zgodny z kontraktem, nie testuje treści proweniencji.
+ */
+function provenanceFixture(runId: string): RunProvenance {
+  return {
+    run_id: runId,
+    analysis_type: 'PF',
+    status: 'FINISHED',
+    snapshot_hash: 'snap-hash',
+    input_hash: 'hash',
+    finished_at: '2024-01-01T00:00:00Z',
+    envelope: null,
+  };
+}
 
 describe('P20c Power Flow Comparison Types', () => {
   describe('ISSUE_CODE_LABELS', () => {
@@ -134,6 +152,8 @@ describe('P20c Power Flow Comparison Types', () => {
           minor_issues: 0,
         },
         input_hash: 'hash',
+        provenance_a: provenanceFixture('run-a'),
+        provenance_b: provenanceFixture('run-b'),
         created_at: '2024-01-01T00:00:00Z',
       };
 

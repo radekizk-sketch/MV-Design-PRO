@@ -104,6 +104,18 @@ export const POROWNANIE_STRINGS = {
   szczegolWaga: 'Waga',
   szczegolRodzaj: 'Rodzaj',
 
+  // Proweniencja biegów A/B (B1/B5, karta CV-3.3-B) — dowód CO było porównywane,
+  // widoczny WYŁĄCZNIE w trybie eksperckim (identyfikatory i odciski techniczne).
+  proweniencjaTytul: 'Proweniencja porównywanych biegów',
+  proweniencjaA: 'Bieg A',
+  proweniencjaB: 'Bieg B',
+  proweniencjaRodzaj: 'Rodzaj analizy',
+  proweniencjaStatus: 'Status',
+  proweniencjaRewizja: 'Rewizja / scenariusz',
+  proweniencjaOdciskModelu: 'Odcisk migawki modelu',
+  proweniencjaOdciskWejscia: 'Odcisk wejścia',
+  kopertaBrak: 'brak koperty (bieg sprzed CV-2)',
+
   // Jednostki
   jednPu: 'pu',
   jednStopnie: '°',

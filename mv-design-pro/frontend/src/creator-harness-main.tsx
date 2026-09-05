@@ -1370,8 +1370,8 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     return new Response(
       JSON.stringify({
         runs: [
-          { id: 'run-a', project_id: 'proj-demo', study_case_id: 'K1', status: 'FINISHED', result_status: 'FRESH', created_at: '2026-07-21T10:00:00Z', finished_at: '2026-07-21T10:00:04Z', input_hash: 'hash-a', converged: true, iterations: 5 },
-          { id: 'run-b', project_id: 'proj-demo', study_case_id: 'K2', status: 'FINISHED', result_status: 'FRESH', created_at: '2026-07-21T11:00:00Z', finished_at: '2026-07-21T11:00:05Z', input_hash: 'hash-b', converged: true, iterations: 6 },
+          { id: 'run-a', project_id: 'proj-demo', study_case_id: 'K1', status: 'FINISHED', result_status: 'FRESH', created_at: '2026-07-21T10:00:00Z', finished_at: '2026-07-21T10:00:04Z', input_hash: 'hash-a', snapshot_hash: 'snap-run-a', model_revision: 1, scenario_ref: null, converged: true, iterations: 5 },
+          { id: 'run-b', project_id: 'proj-demo', study_case_id: 'K2', status: 'FINISHED', result_status: 'FRESH', created_at: '2026-07-21T11:00:00Z', finished_at: '2026-07-21T11:00:05Z', input_hash: 'hash-b', snapshot_hash: 'snap-run-b', model_revision: 2, scenario_ref: null, converged: true, iterations: 6 },
         ],
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
@@ -1400,6 +1400,25 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
         ],
         summary: { total_buses: 4, total_branches: 2, converged_a: true, converged_b: true, total_losses_p_mw_a: 0.052, total_losses_p_mw_b: 0.028, delta_total_losses_p_mw: -0.024, max_delta_v_pu: 0.031, max_delta_angle_deg: 0.8, total_issues: 2, critical_issues: 0, major_issues: 1, moderate_issues: 0, minor_issues: 1 },
         input_hash: 'hash-cmp-demo', created_at: '2026-07-22T09:00:00Z',
+        // B1 (karta CV-3.3-B): proweniencja obu biegow — pole WYMAGANE przez
+        // `PowerFlowComparisonResult`, panel eksperckiego trybu (`mvd-por-
+        // proweniencja`) czyta je bezposrednio, bez ochrony na `undefined`.
+        provenance_a: {
+          run_id: 'run-a', analysis_type: 'PF', status: 'FINISHED',
+          snapshot_hash: 'snap-run-a', input_hash: 'hash-a', finished_at: '2026-07-21T10:00:04Z',
+          envelope: {
+            wersja: 1, project_id: 'proj-demo', model_revision: 1, snapshot_hash: 'snap-run-a',
+            catalog_fingerprint: 'cat-demo', options_hash: 'opt-demo', semantic_fingerprint: 'sem-run-a',
+          },
+        },
+        provenance_b: {
+          run_id: 'run-b', analysis_type: 'PF', status: 'FINISHED',
+          snapshot_hash: 'snap-run-b', input_hash: 'hash-b', finished_at: '2026-07-21T11:00:05Z',
+          envelope: {
+            wersja: 1, project_id: 'proj-demo', model_revision: 2, snapshot_hash: 'snap-run-b',
+            catalog_fingerprint: 'cat-demo', options_hash: 'opt-demo', semantic_fingerprint: 'sem-run-b',
+          },
+        },
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );

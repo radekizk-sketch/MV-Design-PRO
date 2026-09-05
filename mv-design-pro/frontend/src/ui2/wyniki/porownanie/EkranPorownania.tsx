@@ -39,6 +39,7 @@ import { useStudyCasesStore } from '../../../ui/study-cases/store';
 import type {
   PowerFlowComparisonResult,
   PowerFlowRunItem,
+  RunProvenance,
 } from '../../../ui/power-flow-comparison/types';
 import { POROWNANIE_STRINGS, ZWARCIA_POROWNANIE_STRINGS, rodzajProblemuPL, wagaPL } from './strings';
 import { TrybZwarciowy } from './TrybZwarciowy';
@@ -49,6 +50,7 @@ import {
   KOLUMNY_SZYN_DIFF,
   etykietaPrzebiegu,
   mapaWagElementow,
+  naLinieProweniencji,
   naWierszeGalezi,
   naWierszeRankingu,
   naWierszeSzynDiff,
@@ -327,6 +329,24 @@ function TrybRozplywu({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
         <div className="mvd-wyn" data-testid="mvd-por-wynik">
           <SekcjaZalozen zalozenia={naZalozeniaPorownania(wynik.summary)} />
 
+          {/* B1/B5 (karta CV-3.3-B): dowód CO było porównywane — proweniencja
+              obu biegów R1 (rodzaj, status, rewizja/scenariusz koperty, odciski).
+              Wyłącznie tryb ekspercki: te same surowe identyfikatory techniczne,
+              co `comparison_id` w nagłówku i `run.id`/`study_case_id` selektora. */}
+          {trybEkspercki && (
+            <section
+              className="mvd-por-proweniencja"
+              data-testid="mvd-por-proweniencja"
+              aria-label={POROWNANIE_STRINGS.proweniencjaTytul}
+            >
+              <h3 className="mvd-por-proweniencja-tytul">{POROWNANIE_STRINGS.proweniencjaTytul}</h3>
+              <div className="mvd-por-proweniencja-kolumny">
+                <PanelProweniencji etykieta={POROWNANIE_STRINGS.proweniencjaA} dane={wynik.provenance_a} />
+                <PanelProweniencji etykieta={POROWNANIE_STRINGS.proweniencjaB} dane={wynik.provenance_b} />
+              </div>
+            </section>
+          )}
+
           <div className="mvd-por-zakladki" role="tablist" data-testid="mvd-por-zakladki">
             {ZAKLADKI.map((z) => (
               <button
@@ -443,6 +463,26 @@ function TrybRozplywu({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
         </div>
       )}
     </div>
+  );
+}
+
+interface PanelProweniencjiProps {
+  etykieta: string;
+  dane: RunProvenance;
+}
+
+/** Panel proweniencji jednego biegu (A albo B) — karta CV-3.3-B, B1/B5. */
+function PanelProweniencji({ etykieta, dane }: PanelProweniencjiProps) {
+  return (
+    <dl className="mvd-por-proweniencja-panel" data-testid="mvd-por-proweniencja-panel">
+      <div className="mvd-por-proweniencja-naglowek">{etykieta}</div>
+      {naLinieProweniencji(dane).map((linia) => (
+        <div key={linia.etykieta} className="mvd-por-szczegol-poz">
+          <dt>{linia.etykieta}</dt>
+          <dd className="mvd-num">{linia.wartosc}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 

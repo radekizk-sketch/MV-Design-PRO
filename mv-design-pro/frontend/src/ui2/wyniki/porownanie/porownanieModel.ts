@@ -39,6 +39,7 @@ import type {
   PowerFlowComparisonSummary,
   PowerFlowRankingIssue,
   PowerFlowRunItem,
+  RunProvenance,
 } from '../../../ui/power-flow-comparison/types';
 import type { DefinicjaKolumny, WartoscKomorki, WierszTabeli, WierszZalozenia } from '../wzorzec';
 import { refDowoduPorownania } from './dowodPorownania';
@@ -361,15 +362,70 @@ export function naZalozeniaPorownania(summary: PowerFlowComparisonSummary): Wier
 }
 
 // ---------------------------------------------------------------------------
+// Proweniencja biegów A/B (karta CV-3.3-B, B1/B5) — dowód CO było porównywane.
+// Wyłącznie odczyt pól `RunProvenance` z odpowiedzi backendu; zero wyliczeń,
+// zero interpretacji koperty — surowe wartości do panelu eksperckiego.
+// ---------------------------------------------------------------------------
+
+/** Jedna linia proweniencji do wyświetlenia w panelu eksperckim. */
+export interface LiniaProweniencji {
+  etykieta: string;
+  wartosc: string;
+}
+
+function skrotHash(hash: string): string {
+  return hash ? hash.slice(0, 12) : POROWNANIE_STRINGS.kreska;
+}
+
+/**
+ * Rewizja/scenariusz z koperty biegu (`RunProvenance.envelope`) — surowy
+ * odczyt bez interpretacji fizycznej. Koperta bywa `null` dla biegów sprzed
+ * CV-2 (uczciwy brak, nie zero/domysł); kształt `scenario_ref` wewnątrz
+ * koperty to `{scenario_id, revision}` (`enm/envelope.py::RevisionEnvelope.
+ * to_dict`), inny niż krotka `[id, rewizja]` na płaskim polu listy biegów.
+ */
+function rewizjaZKoperty(envelope: Record<string, unknown> | null): string {
+  if (!envelope) return POROWNANIE_STRINGS.kopertaBrak;
+  const scenariusz = envelope['scenario_ref'];
+  if (scenariusz && typeof scenariusz === 'object') {
+    const rekord = scenariusz as Record<string, unknown>;
+    const id = rekord['scenario_id'];
+    const rewizja = rekord['revision'];
+    if (typeof id === 'string' && typeof rewizja === 'number') {
+      return `scenariusz ${id} rew. ${rewizja}`;
+    }
+  }
+  const modelRev = envelope['model_revision'];
+  return typeof modelRev === 'number' ? `rew. ${modelRev}` : POROWNANIE_STRINGS.kreska;
+}
+
+/**
+ * `RunProvenance` → linie panelu eksperckiego (B1: dowód CO było porównywane —
+ * rodzaj analizy, status, rewizja/scenariusz koperty, odciski migawki i wejścia).
+ */
+export function naLinieProweniencji(p: RunProvenance): LiniaProweniencji[] {
+  return [
+    { etykieta: POROWNANIE_STRINGS.proweniencjaRodzaj, wartosc: p.analysis_type },
+    { etykieta: POROWNANIE_STRINGS.proweniencjaStatus, wartosc: p.status },
+    { etykieta: POROWNANIE_STRINGS.proweniencjaRewizja, wartosc: rewizjaZKoperty(p.envelope) },
+    { etykieta: POROWNANIE_STRINGS.proweniencjaOdciskModelu, wartosc: skrotHash(p.snapshot_hash) },
+    { etykieta: POROWNANIE_STRINGS.proweniencjaOdciskWejscia, wartosc: skrotHash(p.input_hash) },
+  ];
+}
+
+// ---------------------------------------------------------------------------
 // Etykieta przebiegu do wyboru A/B (data + zbieżność; id tylko w eksperckim)
 // ---------------------------------------------------------------------------
 
 /**
- * Buduje polską etykietę przebiegu rozpływu dla selektora A/B. Pierwszy plan:
- * analiza (rozpływ) + data + (nazwa przypadku, gdy znana) + zbieżność.
- * `nazwaPrzypadku` pochodzi ze store'u przypadków po `study_case_id`; jej brak
- * (`null`/pominięta) daje dzisiejszą etykietę — zero zgadywania. Identyfikatory
- * (id przebiegu, id przypadku) dopisywane WYŁĄCZNIE w trybie eksperckim.
+ * Buduje polską etykietę przebiegu rozpływu dla selektora A/B (karta E12.1,
+ * rozszerzona B5/CV-3.3-B). Pierwszy plan: analiza (rozpływ) + rewizja modelu
+ * albo scenariusz + krótki odcisk migawki (`snapshot_hash`) — dowód KTÓRY
+ * stan modelu bieg opisuje, nie sam UUID — dalej data + (nazwa przypadku,
+ * gdy znana) + zbieżność. `nazwaPrzypadku` pochodzi ze store'u przypadków po
+ * `study_case_id`; jej brak (`null`/pominięta) daje etykietę bez niej — zero
+ * zgadywania. Identyfikatory (id przebiegu, id przypadku) dopisywane
+ * WYŁĄCZNIE w trybie eksperckim.
  */
 export function etykietaPrzebiegu(
   run: PowerFlowRunItem,
@@ -380,7 +436,20 @@ export function etykietaPrzebiegu(
     run.converged === null
       ? POROWNANIE_STRINGS.kreska
       : zbieznoscPL(run.converged);
-  const czlony = [POROWNANIE_STRINGS.analizaRozplyw, fmtData(run.created_at)];
+  const rewizjaLubScenariusz = run.scenario_ref
+    ? `scenariusz ${run.scenario_ref[0]} rew. ${run.scenario_ref[1]}`
+    : typeof run.model_revision === 'number'
+      ? `rew. ${run.model_revision}`
+      : POROWNANIE_STRINGS.kreska;
+  const skrotOdcisku = run.snapshot_hash
+    ? run.snapshot_hash.slice(0, 8)
+    : POROWNANIE_STRINGS.kreska;
+  const czlony = [
+    POROWNANIE_STRINGS.analizaRozplyw,
+    rewizjaLubScenariusz,
+    skrotOdcisku,
+    fmtData(run.created_at),
+  ];
   if (nazwaPrzypadku) czlony.push(nazwaPrzypadku);
   czlony.push(zbieznosc);
   const podstawa = czlony.join(' · ');

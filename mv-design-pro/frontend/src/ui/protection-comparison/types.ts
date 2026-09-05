@@ -185,7 +185,28 @@ export interface ProtectionComparisonResult {
   ranking: RankingIssue[];
   summary: ProtectionComparisonSummary;
   input_hash: string;
+  /**
+   * B1/B5 (karta CV-3.3-B): proweniencja biegu A/B — dowód CO było
+   * porównywane (`snapshot_hash`/`input_hash`/`envelope` biegu R1). Backend:
+   * `api/protection_comparisons.py::RunProvenanceResponse`.
+   */
+  provenance_a: RunProvenance;
+  provenance_b: RunProvenance;
   created_at: string;
+}
+
+/**
+ * Proweniencja jednego biegu R1 wewnątrz odpowiedzi porównania (B1).
+ * Backend: `api/protection_comparisons.py::RunProvenanceResponse`.
+ */
+export interface RunProvenance {
+  run_id: string;
+  analysis_type: string;
+  status: string;
+  snapshot_hash: string;
+  input_hash: string;
+  finished_at: string | null;
+  envelope: Record<string, unknown> | null;
 }
 
 // =============================================================================
@@ -223,13 +244,25 @@ export interface ProtectionComparisonTrace {
 
 /**
  * Protection run item for selector dropdowns.
+ * Backend: `api/protection_runs.py::ProtectionRunListItemResponse`
+ * (`GET /projects/{project_id}/protection-runs`, karta CV-3.3-B).
  */
 export interface ProtectionRunItem {
-  run_id: string;
-  project_id: string;
-  sc_run_id: string;
-  protection_case_id: string;
+  id: string;
+  project_id: string | null;
+  study_case_id: string;
+  analysis_type: string;
   status: string;
   created_at: string;
+  finished_at: string | null;
   input_hash: string;
+  /**
+   * B5 (karta CV-3.3-B): dowód KTÓRY stan modelu opisuje bieg — etykieta
+   * wyboru w porównaniu A/B niesie rodzaj + rewizja/scenariusz + krótki
+   * `snapshot_hash`, nie sam UUID biegu.
+   */
+  snapshot_hash: string;
+  model_revision: number | null;
+  /** `[identyfikator_scenariusza, rewizja_scenariusza]` albo `null` = stan normalny. */
+  scenario_ref: [string, number] | null;
 }

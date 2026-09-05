@@ -177,9 +177,19 @@ function RunSelector({ label, runs, selectedRunId, onChange }: RunSelectorProps)
         {runs.map((run) => {
           const date = new Date(run.created_at).toLocaleString('pl-PL');
           const convergence = run.converged ? 'Zbiezny' : 'Niezbiezny';
+          // B5 (karta CV-3.3-B): etykieta niesie dowod KTORY stan modelu bieg
+          // opisuje (rewizja/scenariusz + krotki snapshot_hash), nie tylko
+          // UUID przypadku — porownanie bez tego jest porownaniem bez dowodu.
+          const rewizja = run.scenario_ref
+            ? `scenariusz ${run.scenario_ref[0]} rew. ${run.scenario_ref[1]}`
+            : typeof run.model_revision === 'number'
+              ? `rew. ${run.model_revision}`
+              : '—';
+          const skrotOdcisku = run.snapshot_hash ? run.snapshot_hash.slice(0, 8) : '—';
           return (
             <option key={run.id} value={run.id}>
-              PF [{truncateId(run.study_case_id)}] — {date} — {convergence}
+              PF [{truncateId(run.study_case_id)}] — {rewizja} — {skrotOdcisku} — {date} —{' '}
+              {convergence}
             </option>
           );
         })}
