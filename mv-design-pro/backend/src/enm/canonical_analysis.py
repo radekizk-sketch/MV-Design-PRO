@@ -2026,6 +2026,14 @@ def _execute_power_flow(run: CanonicalRun, graph: NetworkGraph | None = None) ->
             },
         },
     }
+    # Karta CV-4.2: ślad zastosowanych korekt audit2 (tap/droop/impedancja
+    # transformatora blokowego) — additive, tylko gdy audit2 było żądane
+    # (`options.audit2_project_id`/`audit2_station_id`); żadna sieć rejestru
+    # golden PF ich nie używa, więc parytet `parytet_assemblera` jest bit w
+    # bit nietknięty dla wszystkich istniejących wpisów.
+    if wejscie.audit2_applied is not None:
+        run.raw_result["audit2_applied"] = wejscie.audit2_applied
+
     # V12K-045 (OLTC F2): surface the regulator decision trace only when the
     # OLTC control loop actually ran (additive — non-OLTC runs unchanged).
     if oltc_trace is not None:
@@ -3258,14 +3266,16 @@ def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
             "applicability_status": raw_result.get("applicability_status"),
             "dopuszczalnosc_raportowa": raw_result.get("dopuszczalnosc_raportowa", False),
         }
-        # V12K-045/046 (OLTC H2): surface the regulator trace and study results so
-        # the UI can read them from the run result set. Additive — each key is
-        # present only when the corresponding feature ran (determinism preserved).
+        # V12K-045/046 (OLTC H2) + karta CV-4.2 (audit2_applied): surface the
+        # regulator trace, study results and audit2 apply trail so the UI can
+        # read them from the run result set. Additive — each key is present
+        # only when the corresponding feature ran (determinism preserved).
         for oltc_key in (
             "oltc_control",
             "oltc_sweep",
             "oltc_annual_profile",
             "oltc_optimization",
+            "audit2_applied",
         ):
             if raw_result.get(oltc_key) is not None:
                 global_results[oltc_key] = raw_result[oltc_key]

@@ -71,6 +71,15 @@ FORBIDDEN_NAMES = {
     "BatchJob",
     "BatchJobStatus",
     "new_batch_job",
+    # Karta CV-4.2 (2026-09-05): P12 (`run_audit2_power_flow`/`Audit2PowerFlowRequest`/
+    # `Audit2PowerFlowResponse`, fabrykacja wejscia — `pq=[]`, `slack_node_id or
+    # "slack-stub"`, zawsze pusty graf) usuniete z `api/solver_input.py` — zadna
+    # aktywna trasa /api nie moze ich wskrzesic. Konsument FE przepiety na bieg
+    # kanoniczny (`ui/study-cases/api.ts::createRun` + opcje `audit2_project_id`/
+    # `audit2_station_id` czytane przez `enm.assembler.zloz_wejscie_rozplywu`).
+    "run_audit2_power_flow",
+    "Audit2PowerFlowRequest",
+    "Audit2PowerFlowResponse",
 }
 
 # CV-3.2 (kasacja C2/C3, karta CV-3.2) — bramka wskrzeszenia. C2
@@ -121,6 +130,35 @@ FORBIDDEN_C4_DIRECTORIES = {
 #: gdziekolwiek w `src`, nie jako dowolne wystąpienie identyfikatora.
 FORBIDDEN_C4_CLASS_NAMES = {"ScenarioComparisonBuilder"}
 FORBIDDEN_C4_FUNCTION_NAMES = {"export_p24_plus_report_pdf"}
+
+# Karta CV-4.2 (2026-09-05) — bramka wskrzeszenia. Kasacja procedurą 7 kroków:
+# P2/S4 kreator (`NetworkWizardService.build_power_flow_input`/
+# `build_short_circuit_input` + wyłączni pomocnicy — 0 wywołań produkcyjnych,
+# DTO `ShortCircuitInput` z `network_wizard/dtos.py`), P5 (`application/
+# power_flow_input_builder.py`, cały plik — konsument P2 skasowany razem z nim),
+# P13 (`domain/load_flow_input.py` + `domain/load_flow_validation.py`, tylko
+# testy — 0 konsumentów produkcyjnych). Sprawdza WYŁĄCZNIE DEFINICJE
+# (ast.ClassDef/FunctionDef) gdziekolwiek w `backend/src`, nie dowolne
+# wystąpienie identyfikatora — `network_wizard/dtos.py::InverterSetpoint`/
+# `ConverterSetpoint` i edycyjne operacje kreatora ZOSTAJĄ (poza mandatem karty).
+FORBIDDEN_CV42_FILES = {
+    BACKEND_SRC_DIR / "application" / "power_flow_input_builder.py": (
+        "application/power_flow_input_builder.py (P5) usunięty procedurą w CV-4.2"
+    ),
+    BACKEND_SRC_DIR / "domain" / "load_flow_input.py": (
+        "domain/load_flow_input.py (P13) usunięty procedurą w CV-4.2"
+    ),
+    BACKEND_SRC_DIR / "domain" / "load_flow_validation.py": (
+        "domain/load_flow_validation.py (P13) usunięty procedurą w CV-4.2"
+    ),
+}
+FORBIDDEN_CV42_CLASS_NAMES = {"ShortCircuitInput", "LoadFlowRunInput"}
+FORBIDDEN_CV42_FUNCTION_NAMES = {
+    "build_power_flow_input",
+    "build_short_circuit_input",
+    "merge_bus_components",
+    "validate_load_flow_input",
+}
 
 
 def read_text(path: Path) -> str:
@@ -260,12 +298,42 @@ def check_c4_and_p24_plus_resurrection() -> list[str]:
     return violations
 
 
+def check_cv42_resurrection() -> list[str]:
+    """CV-4.2 (2026-09-05): kreator P2/S4, P5, P13 nie mogą wrócić — żaden miał
+    konsumenta produkcyjnego w chwili kasacji (pomiar w meldunku karty), a fizyka
+    „szyny złożonej" i wejścia rozpływu/zwarcia żyje wyłącznie w torze kanonicznym
+    (`enm/assembler.py::zloz_wejscie_rozplywu`/`zloz_wejscie_zwarcia`)."""
+    violations: list[str] = []
+    for path, label in FORBIDDEN_CV42_FILES.items():
+        if path.exists():
+            rel_path = path.relative_to(ROOT).as_posix()
+            violations.append(f"[resurrected-module] {rel_path}: {label}")
+    if not BACKEND_SRC_DIR.exists():
+        return violations
+    for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        rel_path = py_file.relative_to(ROOT).as_posix()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_CV42_CLASS_NAMES:
+                violations.append(
+                    f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
+                    "(usunięty procedurą w CV-4.2) nie może wrócić"
+                )
+            if isinstance(node, ast.FunctionDef) and node.name in FORBIDDEN_CV42_FUNCTION_NAMES:
+                violations.append(
+                    f"[resurrected-function] {rel_path}:{node.lineno}: def {node.name} "
+                    "(usunięty procedurą w CV-4.2) nie może wrócić"
+                )
+    return violations
+
+
 def main() -> int:
     violations = (
         check_legacy_public_paths()
         + check_study_case_engine_resurrection()
         + check_domain_op_registry_resurrection()
         + check_c4_and_p24_plus_resurrection()
+        + check_cv42_resurrection()
     )
     if violations:
         print("legacy-public-path-guard: FAILED")

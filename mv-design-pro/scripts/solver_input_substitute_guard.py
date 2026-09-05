@@ -1263,18 +1263,13 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "F:dictget:result_v1.tolerance_used": 1,
     },
     "application/network_wizard/service.py": {
-        "B:ifexp:setpoint.cosphi": 2,
-        "F:dictget:case.base_mva": 1,
-        "F:dictget:case_payload.base_mva": 1,
-        "F:dictget:data.p_mw": 2,
+        # Karta CV-4.2: `build_power_flow_input`/`build_short_circuit_input`
+        # (jedyny dom `B:ifexp:setpoint.cosphi`, `case.base_mva`,
+        # `case_payload.base_mva`, `data.p_mw`, `payload.p_mw/q_*/u_pu`,
+        # `slack_data.voltage_*`) skasowane — kreator P2/S4 (0 wywołań
+        # produkcyjnych). `node_data.base_kv` zostaje: inna funkcja
+        # (`_upsert_node`, import CSV/JSON), poza zakresem tej karty.
         "F:dictget:node_data.base_kv": 1,
-        "F:dictget:payload.p_mw": 2,
-        "F:dictget:payload.q_max_mvar": 1,
-        "F:dictget:payload.q_min_mvar": 1,
-        "F:dictget:payload.q_mvar": 1,
-        "F:dictget:payload.u_pu": 1,
-        "F:dictget:slack_data.voltage_angle": 1,
-        "F:dictget:slack_data.voltage_magnitude": 1,
     },
     "application/network_wizard/step_controller.py": {
         "F:dictget:data.rx_ratio": 1,
@@ -1294,15 +1289,6 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "F:dictget:summary_a.total_losses_p_mw": 2,
         "F:dictget:summary_b.slack_p_mw": 1,
         "F:dictget:summary_b.total_losses_p_mw": 2,
-    },
-    "application/power_flow_input_builder.py": {
-        "F:dictget:slack.angle_rad": 1,
-        "F:dictget:slack.u_pu": 1,
-        "F:dictget:spec.p_mw": 2,
-        "F:dictget:spec.q_max_mvar": 1,
-        "F:dictget:spec.q_min_mvar": 1,
-        "F:dictget:spec.q_mvar": 1,
-        "F:dictget:spec.u_pu": 1,
     },
     "network_model/proof/power_flow_proof_builder.py": {
         "F:dictget:deltas.delta_v_pu": 1,

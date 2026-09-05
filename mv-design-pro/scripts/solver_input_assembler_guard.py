@@ -51,29 +51,30 @@ ALLOWLIST: dict[str, str] = {
         "rdzeń FROZEN (B-01): fallback GS→NR buduje PowerFlowInput z pól istniejącego "
         "pf_input podanego przez assembler, nie z modelu"
     ),
+    # Karta CV-4.2 (K5, K6): P11/S7, kontrakt LOCKED v1.1 (`solver_input/contracts.py`).
+    # `build_solver_input` nie składa już WŁASNEGO grafu/slacka/PQ/PV równolegle do
+    # assemblera — wywołujący (`api/solver_input.py::_graph_for_analysis`) buduje graf
+    # PRZEZ `enm.assembler.zloz_wejscie_rozplywu`/`zloz_wejscie_zwarcia` (ten sam tor co
+    # bieg kanoniczny), a ta funkcja WYPEŁNIA kontrakt `LoadFlowPayload`/`ShortCircuitPayload`
+    # z JUŻ ZMONTOWANEGO przez assembler grafu — dokładnie ten sam wzorzec co
+    # `power_flow_gauss_seidel.py` wyżej (konstrukcja z pól podanych przez assembler, nie
+    # z modelu). Kontrakt sam pozostaje odrębny od `PowerFlowInput`/`ShortCircuitPayload`
+    # (rodziny `network_model.solvers.power_flow_types`) z definicji — LOCKED, FROZEN,
+    # zmiana kształtu wymaga bumpu wersji, więc konstruktor nie może przenieść się DO
+    # `enm/assembler.py` bez naruszenia tej granicy (i bez konfliktu z równoległą kartą
+    # A3-04 edytującą ten sam plik — K7).
+    "solver_input/builder.py": (
+        "kontrakt LOCKED v1.1 (P11/S7) wypełniany z grafu zmontowanego PRZEZ "
+        "zloz_wejscie_rozplywu/zloz_wejscie_zwarcia (wywołane przez api/solver_input.py), "
+        "nie z modelu równolegle do assemblera"
+    ),
 }
 
 #: Zapadka w OBIE strony — pomiar 2026-09-05 na stanie po wycięciu assemblera
-#: (CV-4.1 krok 1). Każdy wpis to budowniczy RÓWNOLEGŁY do assemblera, do kasacji
-#: albo przepięcia kartami CV-4.2 (kreator P2/S4, P5, P12 audit2, substraty
-#: referencyjne, `frozen_solver_input` D-14) i CV-4.3 (benchmarki), z osobnym
-#: uzasadnieniem w konstytucji C.2.3. `solver_input/builder.py` (P11/S7) zostaje
-#: KONTRAKTEM (LOCKED v1.1) wypełnianym przez assembler — wpis znika, gdy budowa
-#: payloadu przejdzie na `zloz_wejscie_*`.
+#: (CV-4.1 krok 1) i po kasacji kreatora/P5/P12 + przepięciu P11 na assembler
+#: (CV-4.2). Jedyne pozostałe wpisy: substraty sieci referencyjnych
+#: (`application/reference_networks/**`, CV-4.3 — benchmarki jako ENM).
 ZASTANE: dict[str, dict[str, int]] = {
-    "api/solver_input.py": {"PowerFlowInput": 1, "SlackSpec": 1},
-    "application/network_wizard/service.py": {
-        "PQSpec": 3,
-        "PVSpec": 1,
-        "PowerFlowInput": 1,
-        "SlackSpec": 1,
-    },
-    "application/power_flow_input_builder.py": {
-        "PQSpec": 2,
-        "PVSpec": 1,
-        "PowerFlowInput": 1,
-        "SlackSpec": 1,
-    },
     "application/reference_networks/frozen_solver_input.py": {
         "PQSpec": 2,
         "PVSpec": 1,
@@ -91,7 +92,6 @@ ZASTANE: dict[str, dict[str, int]] = {
         "PowerFlowInput": 2,
         "SlackSpec": 2,
     },
-    "solver_input/builder.py": {"LoadFlowPayload": 1, "ShortCircuitPayload": 1},
 }
 
 

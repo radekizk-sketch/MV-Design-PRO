@@ -506,3 +506,112 @@ def test_guard_accepts_clean_tree_without_c4_or_p24_plus(tmp_path, monkeypatch) 
     _patch_c4_dirs(monkeypatch, tmp_path)
 
     assert guard.check_c4_and_p24_plus_resurrection() == []
+
+
+# ---------------------------------------------------------------------------
+# CV-4.2 (2026-09-05) — kasacja kreatora P2/S4, P5, P13.
+# ---------------------------------------------------------------------------
+
+
+def _patch_cv42_files(monkeypatch, tmp_path, **files) -> None:
+    """Podmien wszystkie trzy pliki CV-4.2 na podane sciezki (domyslnie:
+    nieistniejace w tmp_path — czysty stan)."""
+    mapping = {
+        (files.get("power_flow_input_builder") or (tmp_path / "missing_pfib.py")): (
+            "application/power_flow_input_builder.py (P5) usunięty procedurą w CV-4.2"
+        ),
+        (files.get("load_flow_input") or (tmp_path / "missing_lfi.py")): (
+            "domain/load_flow_input.py (P13) usunięty procedurą w CV-4.2"
+        ),
+        (files.get("load_flow_validation") or (tmp_path / "missing_lfv.py")): (
+            "domain/load_flow_validation.py (P13) usunięty procedurą w CV-4.2"
+        ),
+    }
+    monkeypatch.setattr(guard, "FORBIDDEN_CV42_FILES", mapping)
+
+
+def test_guard_rejects_resurrected_power_flow_input_builder_module(tmp_path, monkeypatch) -> None:
+    resurrected = tmp_path / "backend" / "src" / "application" / "power_flow_input_builder.py"
+    resurrected.parent.mkdir(parents=True)
+    resurrected.write_text("def build_power_flow_input():\n    pass\n", encoding="utf-8")
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", tmp_path / "backend" / "src")
+    _patch_cv42_files(monkeypatch, tmp_path, power_flow_input_builder=resurrected)
+
+    violations = guard.check_cv42_resurrection()
+
+    assert any(
+        "[resurrected-module]" in v and "application/power_flow_input_builder.py" in v
+        for v in violations
+    )
+    assert any(
+        "[resurrected-function]" in v and "build_power_flow_input" in v for v in violations
+    )
+
+
+def test_guard_rejects_resurrected_load_flow_input_module(tmp_path, monkeypatch) -> None:
+    resurrected = tmp_path / "backend" / "src" / "domain" / "load_flow_input.py"
+    resurrected.parent.mkdir(parents=True)
+    resurrected.write_text("class LoadFlowRunInput:\n    pass\n", encoding="utf-8")
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", tmp_path / "backend" / "src")
+    _patch_cv42_files(monkeypatch, tmp_path, load_flow_input=resurrected)
+
+    violations = guard.check_cv42_resurrection()
+
+    assert any(
+        "[resurrected-module]" in v and "domain/load_flow_input.py" in v for v in violations
+    )
+    assert any("[resurrected-class]" in v and "LoadFlowRunInput" in v for v in violations)
+
+
+def test_guard_rejects_resurrected_cv42_class_or_function_under_other_path(
+    tmp_path, monkeypatch
+) -> None:
+    """Klasa/funkcja moze wrocic pod INNYM plikiem — guard skanuje caly `src`,
+    nie tylko trzy nazwane pliki."""
+    src_dir = tmp_path / "backend" / "src" / "somewhere"
+    src_dir.mkdir(parents=True)
+    (src_dir / "sneaky.py").write_text(
+        "class ShortCircuitInput:\n    pass\n\n\n"
+        "def build_short_circuit_input():\n    pass\n\n\n"
+        "def merge_bus_components():\n    pass\n\n\n"
+        "def validate_load_flow_input():\n    pass\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", tmp_path / "backend" / "src")
+    _patch_cv42_files(monkeypatch, tmp_path)
+
+    violations = guard.check_cv42_resurrection()
+
+    assert any("[resurrected-class]" in v and "ShortCircuitInput" in v for v in violations)
+    assert any(
+        "[resurrected-function]" in v and "build_short_circuit_input" in v for v in violations
+    )
+    assert any(
+        "[resurrected-function]" in v and "merge_bus_components" in v for v in violations
+    )
+    assert any(
+        "[resurrected-function]" in v and "validate_load_flow_input" in v for v in violations
+    )
+
+
+def test_guard_accepts_clean_tree_without_cv42_resurrection(tmp_path, monkeypatch) -> None:
+    src_dir = tmp_path / "backend" / "src" / "application" / "network_wizard"
+    src_dir.mkdir(parents=True)
+    (src_dir / "service.py").write_text(
+        "class NetworkWizardService:\n    def add_node(self, *a, **kw):\n        pass\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", tmp_path / "backend" / "src")
+    _patch_cv42_files(monkeypatch, tmp_path)
+
+    assert guard.check_cv42_resurrection() == []
+
+
+def test_guard_accepts_current_repo_state_cv42() -> None:
+    """Stan repozytorium PO karcie CV-4.2 jest zielony na tej bramce —
+    prawdziwe drzewo `backend/src`, nie sztuczne `tmp_path`."""
+    assert guard.check_cv42_resurrection() == []

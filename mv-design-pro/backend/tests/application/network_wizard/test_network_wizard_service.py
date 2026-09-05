@@ -195,28 +195,6 @@ def test_network_wizard_export_determinism() -> None:
     assert json.dumps(payload_first, sort_keys=True) == json.dumps(payload_second, sort_keys=True)
 
 
-def test_build_short_circuit_input_fault_spec() -> None:
-    service = _build_service()
-    project = service.create_project("FaultSpec")
-    slack_node, _ = _create_basic_network(service, project.id)
-    service.set_connection_node(project.id, slack_node["id"])
-    service.add_source(
-        project.id,
-        SourcePayload(
-            name="Utility",
-            node_id=slack_node["id"],
-            source_type="GRID",
-            payload={"name": "Utility", "grid_supply": True, "u_pu": 1.0},
-        ),
-    )
-    case = service.create_operating_case(project.id, "Normal", {"base_mva": 100.0})
-
-    fault_spec = {"fault_type": "3F", "node_id": str(slack_node["id"])}
-    sc_input = service.build_short_circuit_input(project.id, case.id, fault_spec)
-
-    assert sc_input.connection_node_id == str(slack_node["id"])
-
-
 def test_case_switching_state_overrides_branch() -> None:
     service = _build_service()
     project = service.create_project("Switching")

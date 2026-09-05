@@ -72,9 +72,11 @@ def test_dom_i_allowlist_wylaczone_z_pomiaru_ale_dom_naprawde_buduje(tmp_path: P
 
 
 def test_pin_stanu_repozytorium() -> None:
-    """Pin: pomiar == ZASTANE (2026-09-05, po CV-4.1 krok 1). Każde nowe trafienie =
-    czerwone CI; każda kasacja budowniczego (CV-4.2/4.3) = obniż zapadkę."""
+    """Pin: pomiar == ZASTANE (2026-09-05, po CV-4.2 — kasacja kreatora P2/S4, P5,
+    P12 audit2 + przepięcie P11 na assembler przez ALLOWLIST). Każde nowe trafienie =
+    czerwone CI; każda kasacja budowniczego (CV-4.3 — benchmarki referencyjne) = obniż
+    zapadkę."""
     pomiar = guard.zmierz()
     assert pomiar == guard.ZASTANE
-    assert sum(sum(v.values()) for v in pomiar.values()) == 31
+    assert sum(sum(v.values()) for v in pomiar.values()) == 16
     assert guard.main([]) == 0

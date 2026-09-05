@@ -8,16 +8,8 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4, uuid5
 
-from analysis.power_flow.types import (
-    PowerFlowInput,
-    PowerFlowOptions,
-    PQSpec,
-    PVSpec,
-    SlackSpec,
-)
 from application.analysis_run.result_invalidator import ResultInvalidator
 from application.network_model import build_network_graph, network_model_id_for_project
-from application.power_flow_input_builder import merge_bus_components
 from application.sld.layout import build_auto_layout_diagram
 from domain.models import (
     OperatingCase,
@@ -35,8 +27,6 @@ from network_model.catalog import CatalogRepository
 from network_model.catalog.types import ConverterKind
 from network_model.core import NetworkGraph
 from network_model.core.branch import Branch, LineBranch, TransformerBranch
-from network_model.solvers.power_flow_inverter import inverter_control_from_params
-from network_model.solvers.power_flow_zip import zip_coeffs_from_materialized_params
 
 from .dtos import (
     BranchPayload,
@@ -47,7 +37,6 @@ from .dtos import (
     LimitsPayload,
     LoadPayload,
     NodePayload,
-    ShortCircuitInput,
     SourcePayload,
     TypePayload,
 )
@@ -970,182 +959,6 @@ class NetworkWizardService:
             node_payload_builder=self._node_to_graph_payload,
             branch_payload_builder=lambda branch: self._branch_to_graph_payload(branch, catalog),
             network_model_id=network_model_id_for_project(project_id),
-        )
-
-    def build_power_flow_input(
-        self, project_id: UUID, case_id: UUID, options: dict | None = None
-    ) -> PowerFlowInput:
-        graph = self.build_network_graph(project_id, case_id)
-        with self._uow_factory() as uow:
-            case = uow.cases.get_operating_case(case_id)
-            if case is None or case.project_id != project_id:
-                raise NotFound(f"OperatingCase {case_id} not found")
-            settings = uow.wizard.get_settings(project_id)
-            loads = uow.wizard.list_loads(project_id)
-            sources = uow.wizard.list_sources(project_id)
-
-        case_payload = case.case_payload
-        base_mva = float(case_payload.get("base_mva", 100.0))
-        inverter_setpoints = self._normalize_inverter_setpoints(
-            case_payload.get("inverter_setpoints", {})
-        )
-        converter_setpoints = self._normalize_converter_setpoints(
-            case_payload.get("converter_setpoints", {})
-        )
-
-        slack_node_id = settings.get("connection_node_id") or self._select_slack_node_id(project_id)
-        slack_data = self._lookup_node_attrs(project_id, slack_node_id)
-        slack_spec = SlackSpec(
-            node_id=str(slack_node_id),
-            u_pu=slack_data.get("voltage_magnitude", 1.0) or 1.0,
-            angle_rad=slack_data.get("voltage_angle", 0.0) or 0.0,
-        )
-
-        pq_specs: list[PQSpec] = []
-        for load in loads:
-            if not load.get("in_service", True):
-                continue
-            payload = load.get("payload", {})
-            # ADR-011 (Z-ZIP-04): build ZIP coefficients from the load payload
-            # if it carries them (None => constant power, no change).
-            pq_specs.append(
-                PQSpec(
-                    node_id=str(load["node_id"]),
-                    p_mw=float(payload.get("p_mw", 0.0)),
-                    q_mvar=float(payload.get("q_mvar", 0.0)),
-                    zip_coeffs=zip_coeffs_from_materialized_params(payload),
-                )
-            )
-
-        pv_specs: list[PVSpec] = []
-        for source in sources:
-            if not source.get("in_service", True):
-                continue
-            payload = source.get("payload", {})
-            if source.get("source_type") == "GRID":
-                continue
-            if source.get("source_type") == "INVERTER":
-                setpoint = inverter_setpoints.get(str(source.get("id")))
-                if setpoint is None:
-                    continue
-                # ADR-011 §5b: build the U/f-control characteristic from the
-                # source's materialized params (None => constant-PQ, reduce-to-NR).
-                pq_specs.append(
-                    PQSpec(
-                        node_id=str(source["node_id"]),
-                        p_mw=setpoint.p_mw,
-                        q_mvar=self._resolve_inverter_q_mvar(setpoint),
-                        inverter_control=inverter_control_from_params(
-                            payload, base_mva, payload.get("sn_mva")
-                        ),
-                    )
-                )
-                continue
-            if source.get("source_type") == "CONVERTER":
-                conv_setpoint = converter_setpoints.get(str(source.get("id")))
-                if conv_setpoint is None:
-                    continue
-                pq_specs.append(
-                    PQSpec(
-                        node_id=str(source["node_id"]),
-                        p_mw=conv_setpoint.p_mw,
-                        q_mvar=self._resolve_converter_q_mvar(conv_setpoint),
-                        inverter_control=inverter_control_from_params(
-                            payload, base_mva, payload.get("sn_mva")
-                        ),
-                    )
-                )
-                continue
-            pv_specs.append(
-                PVSpec(
-                    node_id=str(source["node_id"]),
-                    p_mw=float(payload.get("p_mw", 0.0)),
-                    u_pu=float(payload.get("u_pu", 1.0)),
-                    q_min_mvar=float(payload.get("q_min_mvar", -1e6)),
-                    q_max_mvar=float(payload.get("q_max_mvar", 1e6)),
-                )
-            )
-
-        options_data = options or {}
-        return PowerFlowInput(
-            graph=graph,
-            base_mva=base_mva,
-            slack=slack_spec,
-            # V12K-313/V12K-316: the loop above emits one entry per COMPONENT (a
-            # load and an inverter on one bus are two entries), while the solver
-            # contract holds exactly one `PQSpec` per BUS — `validate_input` refuses
-            # a duplicate `node_id` and `build_power_spec_v2` ASSIGNS. Without the
-            # fold the wizard REFUSED the ordinary prosumer model (a bus carrying a
-            # load and a regulated source at once) instead of computing it. The fold
-            # is the one shared with the other power flow input builders: it
-            # accumulates the bus power and keeps the source's own power and the
-            # load base recoverable next to it (single implementation, never a
-            # second one here).
-            pq=merge_bus_components(pq_specs),
-            pv=pv_specs,
-            options=PowerFlowOptions(**options_data),
-        )
-
-    def build_short_circuit_input(
-        self,
-        project_id: UUID,
-        case_id: UUID,
-        fault_spec: dict,
-        options: dict | None = None,
-    ) -> ShortCircuitInput:
-        graph = self.build_network_graph(project_id, case_id)
-        with self._uow_factory() as uow:
-            case = uow.cases.get_operating_case(case_id)
-            if case is None or case.project_id != project_id:
-                raise NotFound(f"OperatingCase {case_id} not found")
-            settings = uow.wizard.get_settings(project_id)
-            connection_node_id = settings.get("connection_node_id")
-            grounding = settings.get("grounding") or {}
-            limits = settings.get("limits") or {}
-            sources = uow.wizard.list_sources(project_id)
-            loads = uow.wizard.list_loads(project_id)
-
-        if connection_node_id is None:
-            report = ValidationReport().with_error(
-                ValidationIssue(
-                    code="connection_node.missing",
-                    message="BoundaryNode – węzeł przyłączenia must be defined",
-                )
-            )
-            raise ValidationFailed(report)
-
-        fault_node_id = fault_spec.get("node_id")
-        fault_branch_id = fault_spec.get("branch_id")
-        if fault_node_id is None and fault_branch_id is None:
-            report = ValidationReport().with_error(
-                ValidationIssue(
-                    code="fault.missing_location",
-                    message="FaultSpec requires node_id or branch_id",
-                )
-            )
-            raise ValidationFailed(report)
-
-        with self._uow_factory() as uow:
-            if fault_node_id is not None:
-                node = uow.network.get_node(UUID(str(fault_node_id)))
-                if node is None or node["project_id"] != project_id:
-                    raise NotFound("Fault node not found")
-            if fault_branch_id is not None:
-                branch = uow.network.get_branch(UUID(str(fault_branch_id)))
-                if branch is None or branch["project_id"] != project_id:
-                    raise NotFound("Fault branch not found")
-
-        base_mva = float(case.case_payload.get("base_mva", 100.0))
-        return ShortCircuitInput(
-            graph=graph,
-            base_mva=base_mva,
-            connection_node_id=str(connection_node_id),
-            sources=self._normalize_source_dicts(sources),
-            loads=self._normalize_load_dicts(loads),
-            grounding=grounding,
-            limits=limits,
-            fault_spec=fault_spec,
-            options=options or {},
         )
 
     def export_network(self, project_id: UUID) -> dict:
@@ -2328,30 +2141,6 @@ class NetworkWizardService:
         if setpoint.mode == "Cosphi" and not has_cosphi:
             raise ValueError("Inverter Cosphi mode requires cosphi")
 
-    def _normalize_inverter_setpoints(
-        self, payload: dict[str, Any] | None
-    ) -> dict[str, InverterSetpoint]:
-        normalized: dict[str, InverterSetpoint] = {}
-        for source_id, data in (payload or {}).items():
-            if "p_mw" not in data:
-                raise ValueError("Inverter setpoint requires p_mw")
-            setpoint = InverterSetpoint(
-                p_mw=float(data.get("p_mw", 0.0)),
-                q_mvar=(float(data.get("q_mvar")) if data.get("q_mvar") is not None else None),
-                cosphi=(float(data.get("cosphi")) if data.get("cosphi") is not None else None),
-                mode=str(data.get("mode", "PQ")),
-            )
-            self._validate_inverter_setpoint(setpoint)
-            normalized[str(source_id)] = setpoint
-        return normalized
-
-    def _resolve_inverter_q_mvar(self, setpoint: InverterSetpoint) -> float:
-        if setpoint.q_mvar is not None:
-            return setpoint.q_mvar
-        cosphi = setpoint.cosphi if setpoint.cosphi is not None else 1.0
-        cosphi = min(1.0, max(-1.0, cosphi))
-        return setpoint.p_mw * math.tan(math.acos(cosphi))
-
     def _build_converter_setpoint(
         self,
         *,
@@ -2396,30 +2185,6 @@ class NetworkWizardService:
         if setpoint.mode == "Cosphi" and not has_cosphi:
             raise ValueError("Converter Cosphi mode requires cosphi")
 
-    def _normalize_converter_setpoints(
-        self, payload: dict[str, Any] | None
-    ) -> dict[str, ConverterSetpoint]:
-        normalized: dict[str, ConverterSetpoint] = {}
-        for source_id, data in (payload or {}).items():
-            if "p_mw" not in data:
-                raise ValueError("Converter setpoint requires p_mw")
-            setpoint = ConverterSetpoint(
-                p_mw=float(data.get("p_mw", 0.0)),
-                q_mvar=(float(data.get("q_mvar")) if data.get("q_mvar") is not None else None),
-                cosphi=(float(data.get("cosphi")) if data.get("cosphi") is not None else None),
-                mode=str(data.get("mode", "PQ")),
-            )
-            self._validate_converter_setpoint(setpoint)
-            normalized[str(source_id)] = setpoint
-        return normalized
-
-    def _resolve_converter_q_mvar(self, setpoint: ConverterSetpoint) -> float:
-        if setpoint.q_mvar is not None:
-            return setpoint.q_mvar
-        cosphi = setpoint.cosphi if setpoint.cosphi is not None else 1.0
-        cosphi = min(1.0, max(-1.0, cosphi))
-        return setpoint.p_mw * math.tan(math.acos(cosphi))
-
     def _normalize_converter_kind(self, kind: ConverterKind | str) -> ConverterKind:
         if isinstance(kind, ConverterKind):
             return kind
@@ -2446,24 +2211,6 @@ class NetworkWizardService:
         node = uow.network.get_node(node_id)
         if node is None or node["project_id"] != project_id:
             raise NotFound(f"Node {node_id} not found")
-
-    def _select_slack_node_id(self, project_id: UUID) -> UUID:
-        with self._uow_factory() as uow:
-            nodes = uow.network.list_nodes(project_id)
-        slack_nodes = [
-            node for node in nodes if self._normalize_node_type(node["node_type"]) == "SLACK"
-        ]
-        if not slack_nodes:
-            raise NotFound("No SLACK node found")
-        slack_nodes.sort(key=lambda node: str(node["id"]))
-        return slack_nodes[0]["id"]
-
-    def _lookup_node_attrs(self, project_id: UUID, node_id: UUID) -> dict[str, Any]:
-        with self._uow_factory() as uow:
-            node = uow.network.get_node(node_id)
-        if node is None or node["project_id"] != project_id:
-            raise NotFound(f"Node {node_id} not found")
-        return self._node_attrs_from_node(node)
 
     def _iter_nodes_by_type(self, project_id: UUID) -> dict[UUID, dict]:
         with self._uow_factory() as uow:

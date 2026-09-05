@@ -1042,19 +1042,35 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # 3609 - 5 = 3604 (na szczycie po FAB-K i CV-4.1) zamyka sie bez reszty. Plik `results_workspace_projection.py`
     # (martwy, skasowany razem z domena) ubral 1 plik ze skanu `application`
     # (320 -> 319); dlug/wykluczenia bez zmian (nie mial wlasnego wpisu w zadnym).
-    assert "Pol kontraktow wejsciowych: 3604." in wyjscie, wyjscie
+    # 3597 pol / 575 plikow / application 318, dlug 36 plikow suma 115 (CV-4.2,
+    # 2026-09-05; 3604 - 7 pol, 576 - 1 plik): kasacja kreatora P2/S4
+    # (`build_power_flow_input`/`build_short_circuit_input` + wylacznych pomocnikow
+    # `_select_slack_node_id`/`_lookup_node_attrs`/`_normalize_inverter_setpoints`/
+    # `_resolve_inverter_q_mvar`/`_normalize_converter_setpoints`/`_resolve_converter_q_mvar`
+    # w `application/network_wizard/service.py`, 0 wywolan produkcyjnych — pomiar,
+    # nie zalozenie) i calego pliku P5 `application/power_flow_input_builder.py`
+    # (DTO `ShortCircuitInput` skasowane z `network_wizard/dtos.py` — poza SCAN_ROOTS,
+    # `enm`/`network_model`/`api` bez zmian pol). Dlug: `network_wizard/service.py`
+    # traci 11 z 12 pozycji (zapadka zmalala do jednej — `node_data.base_kv`, INNA
+    # funkcja `_upsert_node`/import CSV-JSON, poza zakresem karty); `power_flow_
+    # input_builder.py` traci caly wpis (8 pozycji, plik skasowany). -1 plik w
+    # zakresie skanu `application` (320 -> 319 juz po CV-3.3-C; teraz 319 -> 318).
+    # Suma 137 -> 115 jest POMIAREM tego biegu (`--pomiar`), nie recznym
+    # zsumowaniem usunietych pozycji — pin idzie z wyjscia guarda, jak wymaga
+    # naglowek tej sekcji ("wyrocznia chodzi po tym samym zbiorze co kod").
+    assert "Pol kontraktow wejsciowych: 3597." in wyjscie, wyjscie
     assert (
-        "Przeskanowano 576 plikow w zakresie: network_model, solver_input, enm, "
+        "Przeskanowano 575 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
-    assert "Zapadka dlugu (fizyczne): 64 plikow, suma 312." in wyjscie, wyjscie
+    assert "Zapadka dlugu (fizyczne): 63 plikow, suma 290." in wyjscie, wyjscie
     assert "Wykluczenia skanera (niefizyczne): 17 plikow, suma 49." in wyjscie, wyjscie
     per_korzen = [
         "  network_model: pliki_skanowane=145, dlug=14 plikow/suma 77, "
         "wykluczenia=4 plikow/suma 7",
         "  solver_input: pliki_skanowane=10, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
         "  enm: pliki_skanowane=37, dlug=8 plikow/suma 84, wykluczenia=0 plikow/suma 0",
-        "  application: pliki_skanowane=319, dlug=37 plikow/suma 137, "
+        "  application: pliki_skanowane=318, dlug=36 plikow/suma 115, "
         "wykluczenia=7 plikow/suma 19",
         "  api: pliki_skanowane=65, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 23",
     ]

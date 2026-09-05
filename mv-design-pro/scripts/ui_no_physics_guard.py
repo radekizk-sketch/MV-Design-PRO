@@ -175,8 +175,11 @@ ALLOWLIST: dict[tuple[str, int], str] = {
         # KD-1 (2026-07-31): numer wiersza zdryfował po wcześniejszych edycjach
         # pliku — guard był CZERWONY na gałęzi bazowej. Wpis dotyczy TEGO SAMEGO
         # napisu (opis analizy w katalogu ekranów), tylko pod aktualnym wierszem.
+        # CV-4.2 (2026-09-05): kolejny dryf o 1 wiersz (dodanie `activeCaseId`
+        # z `useAppStateStore` WCZEŚNIEJ w pliku, przy przepięciu P12 na bieg
+        # kanoniczny) — TEN SAM napis, wiersz 2633 → 2632.
         "frontend/src/ui/workspace/WorkspaceSurfaceRouter.tsx",
-        2633,
+        2632,
     ): "b: opis analizy w katalogu ekranów ('IEC 60909, Ik″/ip/Ith z śladem Y-bus') — napis",
     (
         # Karta WB-ROZPLYW: numer wiersza zdryfował po dopisaniu kontraktu

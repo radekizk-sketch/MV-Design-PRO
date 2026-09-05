@@ -37,7 +37,7 @@ import {
   type BramkaModelu,
   useGenerateAudit2ProofPack,
   useGenerateAudit2Report,
-  useRunAudit2PowerFlow,
+  useRunExtendedPowerFlow,
   useStationAudit2ConfigList,
   validateHostingCapacityExport,
 } from '../network-build/station-der';
@@ -2335,9 +2335,11 @@ function CatalogHelperSurface({ surface }: { surface: WorkspaceSurfaceDescriptor
 
 function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const activeRunId = useAppStateStore((state) => state.activeRunId);
+  const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const executionRuns = useExecutionRunsStore((state) => state.runs);
   const projectId = useAppStateStore((state) => state.activeProjectId);
-  // Phase 39: auto-pull snapshot_id z aktywnego snapshot store (real graph).
+  // Wskaźnik "wersja układu wczytana" — niezależny od bramkowania biegu (poniżej),
+  // informuje wyłącznie o stanie lokalnego store'u schematu.
   const snapshotId = useSnapshotStore((state) => state.snapshot?.header?.hash_sha256 ?? null);
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const selectedElement = useSelectionStore((state) => state.selectedElement);
@@ -2347,8 +2349,8 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   // Phase 10: integracja audit2 ProofPack.
   const generateProofPack = useGenerateAudit2ProofPack();
   const stationConfigList = useStationAudit2ConfigList(projectId);
-  // Integracja rozszerzonego rozpływu mocy.
-  const runPowerFlow = useRunAudit2PowerFlow();
+  // Integracja rozszerzonego rozpływu mocy — bieg kanoniczny na przypadku aktywnym.
+  const runPowerFlow = useRunExtendedPowerFlow();
   const proofCandidateRefs = useMemo(
     () => selectedElement ? [selectedElement.id, selectedElement.name ?? ''] : [],
     [selectedElement],
@@ -2531,21 +2533,17 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         <button
           type="button"
           data-testid="audit2-power-flow-run"
-          disabled={!projectId || !activeRunId || runPowerFlow.isPending || (stationConfigList.data ?? []).length === 0}
+          disabled={!activeCaseId || runPowerFlow.isPending || (stationConfigList.data ?? []).length === 0}
           onClick={() => {
-            if (!projectId || !activeRunId) return;
+            if (!projectId || !activeCaseId) return;
             const configs = stationConfigList.data ?? [];
             const stationId = configs[0]?.station_id ?? '';
             if (!stationId) return;
             runPowerFlow.mutate({
-              case_id: activeRunId,
-              project_id: projectId,
-              station_id: stationId,
-              base_mva: 100.0,
-              slack_node_id: 'slack',
-              // Phase 39: auto-inject snapshot_id z aktywnego snapshot store
-              // — backend laduje real NetworkGraph zamiast empty stub.
-              snapshot_id: snapshotId ?? undefined,
+              caseId: activeCaseId,
+              audit2ProjectId: projectId,
+              audit2StationId: stationId,
+              baseMva: 100.0,
             });
           }}
           className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
@@ -2555,22 +2553,23 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         {runPowerFlow.data && (
           <div data-testid="audit2-power-flow-result" className="mt-3 space-y-2 rounded border border-blue-300 bg-blue-50 p-3 text-xs text-blue-900">
             <div className="font-semibold">
-              Wynik dla wybranej stacji
+              Wynik rozszerzonego rozpływu mocy
             </div>
             <div>
-              Obliczenie serwerowe: {runPowerFlow.data.solver_attempted ? 'uruchomione' : 'nieuruchomione'}
-              {runPowerFlow.data.solver_error && (
-                <span className="ml-2 text-rose-700">(błąd: {runPowerFlow.data.solver_error.slice(0, 80)})</span>
+              Obliczenie serwerowe: {runPowerFlow.data.status === 'DONE' ? 'uruchomione' : 'nieuruchomione'}
+              {runPowerFlow.data.errorMessage && (
+                <span className="ml-2 text-rose-700">(błąd: {runPowerFlow.data.errorMessage.slice(0, 80)})</span>
               )}
             </div>
             <div>
-              Model obliczeniowy: {runPowerFlow.data.graph_node_count} węzłów,{' '}
-              {runPowerFlow.data.graph_branch_count} gałęzi,{' '}
-              {runPowerFlow.data.graph_inverter_source_count} źródeł.
+              Model obliczeniowy: {runPowerFlow.data.busCount} węzłów,{' '}
+              {runPowerFlow.data.branchCount} gałęzi,{' '}
+              {runPowerFlow.data.sourceCount} źródeł.
             </div>
             <div className="text-[11px]">
-              Zastosowane moduły walidacji:{' '}
-              {runPowerFlow.data.audit2_extensions_keys.map(publicAuditExtensionLabel).join(', ')}
+              Konfiguracja stacji: {runPowerFlow.data.audit2Applied
+                ? 'zastosowana (zaczepy, statyzm P(f), impedancja bloku)'
+                : 'brak zapisanej konfiguracji dla wybranej stacji'}
             </div>
             <details>
               <summary className="cursor-pointer">Ślad zastosowanych danych katalogowych</summary>

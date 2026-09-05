@@ -301,6 +301,12 @@ INWENTARZ_KLUCZA_PRZYPADKU: dict[str, str] = {
     "fault_scenarios.py": KLUCZ_Z_REKORDU,
     "ncrfg_ptpiree_tests.py": KLUCZ_UUID_Z_TRASY,
     "v126_academic.py": KLUCZ_UUID_Z_TRASY,
+    # Karta CV-4.2 (P11 rewiring): `get_solver_input`/`get_eligibility` przestały
+    # fabrykować graf pusty (`_get_graph_for_case`, usunięty) i biorą model tą samą
+    # drogą co `GET /api/cases/{case_id}/enm` — trasa deklaruje `case_id: str` obok
+    # `klucz: KluczTwin`, oba rozwiązywane z TEGO SAMEGO segmentu `{case_id}` adresu
+    # (bez `UUID(...)`/`str(...)` pomiędzy) — wzorzec identyczny z `diagnostics.py`.
+    "solver_input.py": KLUCZ_SUROWY,
 }
 
 #: Dług ZGŁOSZONY, nie naprawiony (pliki poza torem karty U1). Zbiór jest zamknięty:

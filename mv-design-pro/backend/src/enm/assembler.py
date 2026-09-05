@@ -460,6 +460,14 @@ class WejscieRozplywu:
     slack_node_id: str
     requested_solver_method: str
     audit2_extensions: dict[str, object] | None
+    #: Ślad zastosowanych korekt audit2 na grafie (karta CV-4.2, pole addytywne):
+    #: `None`, gdy audit2 nie było żądane (`audit2_extensions is None`); w
+    #: przeciwnym razie zwrot `apply_audit2_to_network_model` (zawsze te same
+    #: trzy klucze — `tap_position_changes`/`block_transformer_z_changes`/
+    #: `pf_droop_changes` — możliwie puste). Wykonawca dokłada je do
+    #: `raw_result` WYŁĄCZNIE, gdy nie jest `None` — parytet golden PF (żadna
+    #: sieć rejestru nie używa audit2) zostaje bit w bit.
+    audit2_applied: dict[str, Any] | None
     graph_nodes: dict[str, dict[str, Any]]
     graph_branches: dict[str, dict[str, Any]]
 
@@ -592,10 +600,13 @@ def zloz_wejscie_rozplywu(
         project_id_str=options.get("audit2_project_id"),
         station_id=options.get("audit2_station_id"),
     )
+    audit2_applied: dict[str, Any] | None = None
     if audit2_extensions is not None:
         from solver_input.audit2_solver_adjuster import apply_audit2_to_network_model
 
-        apply_audit2_to_network_model(graph=graph, audit2_extensions=audit2_extensions)
+        audit2_applied = apply_audit2_to_network_model(
+            graph=graph, audit2_extensions=audit2_extensions
+        )
 
     # D-06c: fixed shunt capacitor banks → existing solver shunt mechanism.
     # ENM ShuntCapacitor -> ShuntSpec(b_pu = Q_rated / S_base). Solver untouched.
@@ -624,6 +635,7 @@ def zloz_wejscie_rozplywu(
         slack_node_id=slack_node_id,
         requested_solver_method=requested_solver_method,
         audit2_extensions=audit2_extensions,
+        audit2_applied=audit2_applied,
         graph_nodes=graph_nodes,
         graph_branches=graph_branches,
     )

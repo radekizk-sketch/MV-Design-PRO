@@ -265,137 +265,6 @@
     "title": "ArchiveSummary",
     "type": "object"
    },
-   "Audit2PowerFlowRequest": {
-    "description": "Request dla POST /api/cases/audit2-power-flow.",
-    "properties": {
-     "base_mva": {
-      "default": 100.0,
-      "title": "Base Mva",
-      "type": "number"
-     },
-     "case_id": {
-      "title": "Case Id",
-      "type": "string"
-     },
-     "project_id": {
-      "title": "Project Id",
-      "type": "string"
-     },
-     "slack_node_id": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Slack Node Id"
-     },
-     "snapshot_id": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Snapshot Id"
-     },
-     "station_id": {
-      "title": "Station Id",
-      "type": "string"
-     }
-    },
-    "required": [
-     "case_id",
-     "project_id",
-     "station_id"
-    ],
-    "title": "Audit2PowerFlowRequest",
-    "type": "object"
-   },
-   "Audit2PowerFlowResponse": {
-    "description": "Response z applied audit trail + (optional) solution metadata.",
-    "properties": {
-     "audit2_applied": {
-      "additionalProperties": true,
-      "default": {},
-      "title": "Audit2 Applied",
-      "type": "object"
-     },
-     "audit2_extensions_keys": {
-      "default": [],
-      "items": {
-       "type": "string"
-      },
-      "title": "Audit2 Extensions Keys",
-      "type": "array"
-     },
-     "case_id": {
-      "title": "Case Id",
-      "type": "string"
-     },
-     "graph_branch_count": {
-      "default": 0,
-      "title": "Graph Branch Count",
-      "type": "integer"
-     },
-     "graph_inverter_source_count": {
-      "default": 0,
-      "title": "Graph Inverter Source Count",
-      "type": "integer"
-     },
-     "graph_node_count": {
-      "default": 0,
-      "title": "Graph Node Count",
-      "type": "integer"
-     },
-     "project_id": {
-      "title": "Project Id",
-      "type": "string"
-     },
-     "snapshot_id_loaded": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Snapshot Id Loaded"
-     },
-     "solver_attempted": {
-      "default": false,
-      "title": "Solver Attempted",
-      "type": "boolean"
-     },
-     "solver_error": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Solver Error"
-     },
-     "station_id": {
-      "title": "Station Id",
-      "type": "string"
-     }
-    },
-    "required": [
-     "case_id",
-     "project_id",
-     "station_id"
-    ],
-    "title": "Audit2PowerFlowResponse",
-    "type": "object"
-   },
    "AutoPopulateRequest": {
     "description": "K30-23 user demand: 'dane mają się maksymalnie podczytywać'.",
     "properties": {
@@ -14662,48 +14531,6 @@
     "summary": "Get Analysis Run Trace Summary"
    }
   },
-  "/api/cases/audit2-power-flow": {
-   "post": {
-    "description": "Wczytuje audit2 config z DB (project_id + station_id), buduje PowerFlowInput z audit2_extensions, aplikuje przez Audit2PowerFlowWrapper i zwraca audit trail + solver result.",
-    "operationId": "run_audit2_power_flow_api_cases_audit2_power_flow_post",
-    "requestBody": {
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/Audit2PowerFlowRequest"
-       }
-      }
-     },
-     "required": true
-    },
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/Audit2PowerFlowResponse"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Phase 33: Power flow z audit2 adjustments z DB station config",
-    "tags": [
-     "solver-input"
-    ]
-   }
-  },
   "/api/cases/{case_id}/analysis-eligibility": {
    "get": {
     "description": "Macierz zdolności uruchomienia analiz (eligibility).\n\nDla każdego typu analizy (SC_3F, SC_2F, SC_1F, LOAD_FLOW) zwraca:\n- status: ELIGIBLE / INELIGIBLE\n- blockers, warnings, info\n- fix_actions (deklaratywne sugestie naprawcze)\n- content_hash (deterministyczny SHA-256)\n\nNiezależna od walidacji i readiness — osobna warstwa.\nDeterministyczny: identyczny ENM -> identyczny wynik.",
@@ -14755,12 +14582,10 @@
     "operationId": "get_eligibility_api_cases__case_id__analysis_eligibility_get",
     "parameters": [
      {
-      "description": "Study case ID",
       "in": "path",
       "name": "case_id",
       "required": true,
       "schema": {
-       "description": "Study case ID",
        "title": "Case Id",
        "type": "string"
       }
@@ -14800,12 +14625,10 @@
     "operationId": "get_solver_input_api_cases__case_id__analysis_solver_input__analysis_type__get",
     "parameters": [
      {
-      "description": "Study case ID",
       "in": "path",
       "name": "case_id",
       "required": true,
       "schema": {
-       "description": "Study case ID",
        "title": "Case Id",
        "type": "string"
       }
