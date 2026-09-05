@@ -29,6 +29,14 @@
  */
 import { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+// Ten sam dostawca React Query co `main.tsx` (jeden klient z `./query-client`):
+// komponenty montowane w harnessie czytają katalogi backendu przez `useQuery`
+// (od karty FAB-J m.in. kreator OZE i snapshot audytu 2) — bez dostawcy strona
+// harnessu padała przy montażu i korzeń z `data-status` nigdy nie powstawał
+// (5 czerwonych specyfikacji `creator-screenshot` w CI). Klasa: KAŻDE wejście
+// `*-harness-main.tsx`, nie tylko kreatora.
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './query-client';
 import { SldCanvasV3 } from './ui/sld/v3/canvas/SldCanvasV3';
 import type { ThemeMode } from './ui2/theme/themeMode';
 import type { SldV3Overlay, SegmentFlowOverlay } from './ui/sld/v3/canvas/overlay';
@@ -325,4 +333,8 @@ function SubstrateHarness(): JSX.Element {
 
 const rootEl = document.getElementById('root');
 if (!rootEl) throw new Error('screenshot-harness: brak elementu #root');
-createRoot(rootEl).render(<SubstrateHarness />);
+createRoot(rootEl).render(
+  <QueryClientProvider client={queryClient}>
+    <SubstrateHarness />
+  </QueryClientProvider>,
+);

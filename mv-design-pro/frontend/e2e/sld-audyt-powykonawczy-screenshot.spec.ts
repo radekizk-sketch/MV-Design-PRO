@@ -24,9 +24,10 @@ import { test, expect, type Page } from '@playwright/test';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { adresHarnessu } from './adresHarnessu';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
-const HARNESS_URL = 'http://127.0.0.1:5173/screenshot-harness.html';
+const HARNESS_URL = adresHarnessu('screenshot-harness.html');
 const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/sld_audyt');
 
 const POZIOMY = [0, 1, 2] as const;

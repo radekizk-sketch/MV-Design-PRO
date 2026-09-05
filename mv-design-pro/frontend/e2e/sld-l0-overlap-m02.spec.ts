@@ -19,8 +19,9 @@
  * Blocks: queryable via `[data-testid^="sld-v2-station-overview-block-"]`.
  */
 import { test, expect } from '@playwright/test';
+import { adresHarnessu } from './adresHarnessu';
 
-const HARNESS_URL = 'http://127.0.0.1:5173/screenshot-harness.html';
+const HARNESS_URL = adresHarnessu('screenshot-harness.html');
 
 interface Box {
   readonly id: string;

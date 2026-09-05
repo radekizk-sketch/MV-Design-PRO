@@ -25,9 +25,10 @@ import { test, expect, type Page } from '@playwright/test';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { adresHarnessu } from './adresHarnessu';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
-const BAZA = process.env.HARNESS_URL ?? 'http://127.0.0.1:5173/creator-harness.html';
+const BAZA = adresHarnessu('creator-harness.html');
 const OUTPUT_DIR = path.resolve(_dirname, '../../docs/sld/audyt-2026-08');
 const FAZA = process.env.FAZA === 'przed' ? 'przed' : 'po';
 const MOTYWY = [

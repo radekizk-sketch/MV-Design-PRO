@@ -15,6 +15,14 @@
  */
 
 import { createRoot } from 'react-dom/client';
+// Ten sam dostawca React Query co `main.tsx` (jeden klient z `./query-client`):
+// komponenty montowane w harnessie czytają katalogi backendu przez `useQuery`
+// (od karty FAB-J m.in. kreator OZE i snapshot audytu 2) — bez dostawcy strona
+// harnessu padała przy montażu i korzeń z `data-status` nigdy nie powstawał
+// (5 czerwonych specyfikacji `creator-screenshot` w CI). Klasa: KAŻDE wejście
+// `*-harness-main.tsx`, nie tylko kreatora.
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './query-client';
 import './ui2/theme/tokens.css';
 // Warstwa `ui/**` (powierzchnie E-2x) stoi na Tailwindzie z `index.css`; bez tego
 // arkusza scena renderuje sie BEZ STYLOW i zrzut nie pokazuje tego, co widzi projektant.
@@ -2957,35 +2965,15 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
   }
-  if (url.includes('/api/ncrfg-tests/catalog')) {
-    // Sceny "frt"/"macierz": katalog wymogow NC RfG — ksztalt 1:1 z
-    // `api/ncrfg_ptpiree_tests.py::get_ncrfg_test_catalog` (operators z progami
-    // klas `NcRfgModuleType` + testy z `TEST_CATALOG` silnika ncrfg_ptpiree).
-    const modulTypy = [
-      { id: 'A', threshold_kw_min: 0.8, threshold_kw_max: 200, voltage_kv_max: 110, description_pl: 'Modul typu A (0,8 kW - 200 kW)' },
-      { id: 'B', threshold_kw_min: 200, threshold_kw_max: 10000, voltage_kv_max: 110, description_pl: 'Modul typu B (200 kW - 10 MW)' },
-      { id: 'C', threshold_kw_min: 10000, threshold_kw_max: 75000, voltage_kv_max: 110, description_pl: 'Modul typu C (10 MW - 75 MW)' },
-      { id: 'D', threshold_kw_min: 75000, threshold_kw_max: null, voltage_kv_max: null, description_pl: 'Modul typu D (>= 75 MW lub >= 110 kV)' },
-    ];
-    return new Response(
-      JSON.stringify({
-        procedure_version: 'PTPiREE Procedura testowania v3.0',
-        source_ref: 'https://ptpiree.pl/kodeksy-sieci/procedura-testowania/',
-        operators: [
-          { operator_id: 'enea', operator_name_pl: 'Enea Operator', last_revision: '2024-01', module_types: modulTypy },
-          { operator_id: 'pse', operator_name_pl: 'PSE — Polskie Sieci Elektroenergetyczne', last_revision: '2024-03', module_types: modulTypy },
-        ],
-        tests: [
-          { test_id: 'T05', ability_pl: 'Możliwość regulacji mocy czynnej', procedure_basis_pl: 'Program ramowy testów PPM oraz sprawdzenia dodatkowe dla regulacji P.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
-          { test_id: 'T09', ability_pl: 'Zdolność do generacji mocy biernej', procedure_basis_pl: 'Zakres testów zgodności PPM typu B, C i D.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
-          { test_id: 'T10', ability_pl: 'Potwierdzenie mocy maksymalnej PMAX', procedure_basis_pl: 'Sprawdzenia dodatkowe procedury PTPiREE dla typu B, C i D.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
-          { test_id: 'T14', ability_pl: 'LVRT - pozostanie w pracy przy zapadzie napięcia', procedure_basis_pl: 'Test FRT dla modułów B/C/D oraz profili operatora.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
-          { test_id: 'T16', ability_pl: 'Odbudowa mocy czynnej po zakłóceniu', procedure_basis_pl: 'Wymaganie profilu operatora dla modułów B/C/D.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
-        ],
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
-  }
+  // `/api/ncrfg-tests/catalog` NIE jest tu mockowany (2026-09-05, odbiór E2E-FULL-FIX):
+  // katalog operatorów NC RfG (progi modułów, odpowiedź częstotliwościowa, zakres Q,
+  // odbudowa P, krzywe LVRT/HVRT) idzie do REALNEGO backendu przez proxy Vite — tak
+  // samo jak snapshot audytu 2 (`/api/audit2-catalogs/snapshot`). Ręczna kopia payloadu
+  // zdryfowała DWA razy (progi klas sprzed decyzji OD-5: 200 kW/10 MW zamiast 1 MW/50 MW;
+  // brak pól `reactive_power`/`ride_through`/`frequency_response`/`p_recovery_after_fault`
+  // dodanych kartą FAB-J) i wywracała sceny „wiazania" (DerSurfaceShell) oraz „oze"
+  // (krok zgodności czyta `ride_through`). Katalog jest bezstanowy i deterministyczny,
+  // więc druga prawda w harnessie nie ma uzasadnienia — backend jest jedynym źródłem.
   if (url.includes('/api/ncrfg-tests/run')) {
     // Scena "macierz": wynik biegu zgodnosci — ksztalt 1:1 z
     // `NcRfgPtpireeSolver.run` (engine.py): moduly (kolejnosc = selectAllDers,
@@ -4436,4 +4424,8 @@ function Harness() {
   );
 }
 
-createRoot(document.getElementById('root')!).render(<Harness />);
+createRoot(document.getElementById('root')!).render(
+  <QueryClientProvider client={queryClient}>
+    <Harness />
+  </QueryClientProvider>,
+);
