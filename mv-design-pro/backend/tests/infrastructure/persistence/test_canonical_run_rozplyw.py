@@ -22,17 +22,21 @@ from enm.canonical_analysis import (  # noqa: E402
     build_short_circuit_rozplyw,
     get_run,
     pobierz_rozplyw_biegu,
+    pobierz_slad_rozplywu_biegu,
     reset_canonical_runs,
     run_short_circuit_now,
+    wiersze_swiezego_biegu_bez_rozplywu,
 )
 from enm.models import EnergyNetworkModel  # noqa: E402
 from enm.store import reset_enm_store, set_enm  # noqa: E402
+from infrastructure.persistence.db import create_engine_from_url, init_db  # noqa: E402
 from infrastructure.persistence.models import CanonicalRunBranchFlowORM  # noqa: E402
 from infrastructure.persistence.repositories.canonical_run_repository import (  # noqa: E402
+    KLUCZE_ROZPLYWU,
     canonical_run_repository_scope,
     get_canonical_run_session_factory,
 )
-from sqlalchemy import select  # noqa: E402
+from sqlalchemy import inspect, select, text  # noqa: E402
 
 from tests.catalog_test_helpers import gpz_source_record  # noqa: E402
 
@@ -151,6 +155,18 @@ def _wiersze_rozplywu(run_id: UUID) -> dict[str, Any]:
             select(
                 CanonicalRunBranchFlowORM.fault_node_id,
                 CanonicalRunBranchFlowORM.contributions_json,
+            ).where(CanonicalRunBranchFlowORM.run_id == run_id)
+        ).all()
+    return dict(rows)
+
+
+def _slady_rozplywu(run_id: UUID) -> dict[str, Any]:
+    session_factory = get_canonical_run_session_factory()
+    with session_factory() as session:
+        rows = session.execute(
+            select(
+                CanonicalRunBranchFlowORM.fault_node_id,
+                CanonicalRunBranchFlowORM.branch_flow_trace_json,
             ).where(CanonicalRunBranchFlowORM.run_id == run_id)
         ).all()
     return dict(rows)
@@ -381,3 +397,173 @@ def test_czyszczenie_biegow_usuwa_rozplyw() -> None:
 
     assert _wiersze_rozplywu(bieg.id) == {}
     assert get_run(bieg.id) is None
+
+
+# ---------------------------------------------------------------------------
+# KLASA, NIE INSTANCJA (2026-09-05): ładunek per gałąź punktu zwarcia to DWA klucze
+# — wkłady `branch_contributions` (V12K-281/284, K14) i ich ślad WHITE BOX
+# `branch_flow_trace` (TH-1). Mechanizmy „wytnij z wiersza / oddaj na żądanie"
+# działają na całej klasie `KLUCZE_ROZPLYWU`; poniżej iloczyn cech: klucz klasy ×
+# (zapis rozdzielony | świeże wiersze POST | widok punktu | jedna prawda dostępu |
+# baza sprzed kolumny).
+# ---------------------------------------------------------------------------
+
+
+def test_klasa_rozplywu_ma_dwa_klucze() -> None:
+    """Deklaracja klasy jest przypięta testem (zmiana zbioru = świadoma decyzja)."""
+    assert KLUCZE_ROZPLYWU == ("branch_contributions", "branch_flow_trace")
+
+
+def test_slad_solvera_towarzyszy_wkladom() -> None:
+    """Predykaty parami: ślad podziału prądu istnieje TYLKO tam, gdzie są wkłady.
+
+    Rozdzielenie artefaktu adresuje ślad przez wiersz z wkładami; gdyby solver
+    emitował ślad bez wkładów, ślad zostałby inline (i klasa byłaby dziurawa).
+    """
+    bieg = _swiezy_bieg()
+    wiersze_ze_sladem = [
+        item for item in bieg.raw_result["results"] if item.get("branch_flow_trace") is not None
+    ]
+    assert wiersze_ze_sladem, "sieć testowa musi dać ślad podziału w co najmniej 1 punkcie"
+    for item in wiersze_ze_sladem:
+        assert item.get("branch_contributions") is not None
+
+
+def test_zapis_biegu_rozdziela_cala_klase_rozplywu_od_artefaktu() -> None:
+    """Zapisany artefakt nie niesie ŻADNEGO klucza klasy; ślad leży w tabeli BAJTOWO."""
+    bieg = _swiezy_bieg()
+    slady_w_pamieci = {
+        item["fault_node_id"]: item["branch_flow_trace"]
+        for item in bieg.raw_result["results"]
+        if item.get("branch_flow_trace") is not None
+    }
+    assert slady_w_pamieci
+    zapisany = get_run(bieg.id)
+    assert zapisany is not None
+    for item in zapisany.raw_result["results"]:
+        for klucz in KLUCZE_ROZPLYWU:
+            assert klucz not in item, f"artefakt nie może nieść {klucz} inline"
+        assert item["branch_contributions_available"] is True
+    w_tabeli = _slady_rozplywu(bieg.id)
+    assert set(w_tabeli) == set(slady_w_pamieci)
+    for fault_node_id, slad in slady_w_pamieci.items():
+        assert _kanonicznie(w_tabeli[fault_node_id]) == _kanonicznie(slad)
+
+
+def test_pobierz_slad_rozplywu_biegu_zwraca_to_samo_co_tor_w_pamieci() -> None:
+    """Jedna prawda dostępu do śladu: pamięć i zapis dają identyczną treść."""
+    bieg = _swiezy_bieg()
+    zapisany = get_run(bieg.id)
+    assert zapisany is not None
+    for item in bieg.raw_result["results"]:
+        fault_node_id = item["fault_node_id"]
+        oczekiwany = item.get("branch_flow_trace")
+        assert _kanonicznie(pobierz_slad_rozplywu_biegu(bieg, fault_node_id)) == _kanonicznie(
+            oczekiwany
+        )
+        assert _kanonicznie(pobierz_slad_rozplywu_biegu(zapisany, fault_node_id)) == _kanonicznie(
+            oczekiwany
+        )
+    punkt = bieg.raw_result["results"][0]["fault_node_id"]
+    widok = build_short_circuit_rozplyw(zapisany, punkt)
+    assert _kanonicznie(widok["branch_flow_trace"]) == _kanonicznie(
+        bieg.raw_result["results"][0]["branch_flow_trace"]
+    )
+    assert build_short_circuit_rozplyw(zapisany, punkt) == build_short_circuit_rozplyw(bieg, punkt)
+    assert pobierz_slad_rozplywu_biegu(zapisany, "nie-ma-takiego-punktu") is None
+
+
+def test_swieze_wiersze_odpowiedzi_nie_niosa_zadnego_klucza_klasy() -> None:
+    """Odpowiedź POST świeżego biegu: zero ładunku per gałąź, flaga dostępności zostaje."""
+    bieg = _swiezy_bieg()
+    wiersze = wiersze_swiezego_biegu_bez_rozplywu(bieg)
+    assert wiersze
+    for wiersz in wiersze:
+        for klucz in KLUCZE_ROZPLYWU:
+            assert klucz not in wiersz, f"świeży wiersz nie może nieść {klucz}"
+        assert wiersz["branch_contributions_available"] is True
+        # Ślad WHITE BOX samego punktu (nie podziału w gałęziach) ZOSTAJE — jawność.
+        assert "white_box_trace" in wiersz
+
+
+def test_zapis_sprzed_kolumny_sladu_daje_uczciwy_brak() -> None:
+    """Wiersz tabeli rozpływu bez śladu (baza sprzed kolumny) → `None`, nie pusta lista."""
+    bieg = _swiezy_bieg()
+    punkt = bieg.raw_result["results"][0]["fault_node_id"]
+    session_factory = get_canonical_run_session_factory()
+    with session_factory() as session:
+        wiersz = session.execute(
+            select(CanonicalRunBranchFlowORM).where(
+                CanonicalRunBranchFlowORM.run_id == bieg.id,
+                CanonicalRunBranchFlowORM.fault_node_id == punkt,
+            )
+        ).scalar_one()
+        wiersz.branch_flow_trace_json = None
+        session.commit()
+    zapisany = get_run(bieg.id)
+    assert zapisany is not None
+    assert pobierz_slad_rozplywu_biegu(zapisany, punkt) is None
+    assert build_short_circuit_rozplyw(zapisany, punkt)["branch_flow_trace"] is None
+    # Wkłady tego samego punktu są nietknięte — brak śladu nie kasuje rozpływu.
+    assert pobierz_rozplyw_biegu(zapisany, punkt) is not None
+
+
+def _kolumny(engine: Any, tabela: str) -> set[str]:
+    return {kolumna["name"] for kolumna in inspect(engine).get_columns(tabela)}
+
+
+def test_init_db_doklada_kolumne_addytywna_do_istniejacej_bazy(tmp_path: Any) -> None:
+    """Baza z tabelą sprzed dodania kolumny: `init_db` dokłada kolumnę, dane zostają.
+
+    `create_all` tworzy tylko brakujące TABELE — bez tego kroku pierwszy zapis
+    rozpływu kończył się `OperationalError: no column named branch_flow_trace_json`
+    na każdej istniejącej bazie deweloperskiej/e2e.
+    """
+    import sqlite3
+
+    assert tuple(int(x) for x in sqlite3.sqlite_version.split(".")[:2]) >= (3, 35), (
+        "test wymaga SQLite z ALTER TABLE DROP COLUMN (>= 3.35): " + sqlite3.sqlite_version
+    )
+    engine = create_engine_from_url(f"sqlite+pysqlite:///{tmp_path / 'stara.db'}")
+    init_db(engine)
+    with engine.begin() as polaczenie:
+        polaczenie.execute(
+            text("ALTER TABLE canonical_run_branch_flows DROP COLUMN branch_flow_trace_json")
+        )
+        # Wiersz tabeli rozpływu bez wiersza biegu: SQLite nie egzekwuje kluczy
+        # obcych bez `PRAGMA foreign_keys=ON` (silnik go nie włącza), a test
+        # sprawdza WYŁĄCZNIE dołożenie kolumny i przetrwanie danych w tej tabeli.
+        polaczenie.execute(
+            text(
+                "INSERT INTO canonical_run_branch_flows (run_id, fault_node_id, "
+                "contributions_json) VALUES ('00000000000000000000000000000abc', 'bus-1', '[]')"
+            )
+        )
+    assert "branch_flow_trace_json" not in _kolumny(engine, "canonical_run_branch_flows")
+
+    init_db(engine)
+    assert "branch_flow_trace_json" in _kolumny(engine, "canonical_run_branch_flows")
+    # Idempotencja: kolejne wywołanie niczego nie dokłada i nie psuje.
+    init_db(engine)
+    with engine.connect() as polaczenie:
+        wiersze = polaczenie.execute(
+            text("SELECT fault_node_id, branch_flow_trace_json FROM canonical_run_branch_flows")
+        ).all()
+    assert wiersze == [("bus-1", None)]
+    engine.dispose()
+
+
+def test_init_db_odmawia_kolumny_not_null_bez_domyslnej(tmp_path: Any) -> None:
+    """Brakująca kolumna NOT NULL bez domyślnej to zmiana schematu — jawny błąd, nie cisza."""
+    import sqlite3
+
+    assert tuple(int(x) for x in sqlite3.sqlite_version.split(".")[:2]) >= (3, 35)
+    engine = create_engine_from_url(f"sqlite+pysqlite:///{tmp_path / 'niepelna.db'}")
+    init_db(engine)
+    with engine.begin() as polaczenie:
+        polaczenie.execute(
+            text("ALTER TABLE canonical_run_branch_flows DROP COLUMN contributions_json")
+        )
+    with pytest.raises(RuntimeError, match="contributions_json"):
+        init_db(engine)
+    engine.dispose()

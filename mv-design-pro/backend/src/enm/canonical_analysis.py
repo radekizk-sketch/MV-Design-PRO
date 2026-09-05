@@ -37,6 +37,8 @@ from enm.validator import ENMValidator
 from infrastructure.persistence.repositories.canonical_run_repository import (
     KLUCZ_DOSTEPNOSCI_ROZPLYWU,
     KLUCZ_ROZPLYWU,
+    KLUCZ_SLADU_ROZPLYWU,
+    KLUCZE_ROZPLYWU,
     canonical_run_repository_scope,
 )
 from network_model.core.graph import NetworkGraph
@@ -476,6 +478,29 @@ def pobierz_rozplyw_biegu(run: CanonicalRun, fault_node_id: str) -> list[dict[st
             return None
         with canonical_run_repository_scope() as repository:
             return repository.get_branch_flows(run.id, fault_node_id)
+    return None
+
+
+def pobierz_slad_rozplywu_biegu(
+    run: CanonicalRun, fault_node_id: str
+) -> list[dict[str, Any]] | None:
+    """Ślad WHITE BOX podziału prądu zwarciowego punktu (`branch_flow_trace`, TH-1).
+
+    Ta sama klasa ładunku i ta sama kolejność źródeł co `pobierz_rozplyw_biegu`:
+    (1) inline w artefakcie w pamięci, (2) osobna tabela (zapis rozdzielony).
+    Brak → ``None``: bieg policzony bez wkładów, punkt nieznany albo zapis sprzed
+    dodania kolumny śladu — nigdy pusta lista udająca „ślad pusty".
+    """
+    for item in (run.raw_result or {}).get("results", []):
+        if not isinstance(item, dict) or item.get("fault_node_id") != fault_node_id:
+            continue
+        inline = item.get(KLUCZ_SLADU_ROZPLYWU)
+        if inline is not None:
+            return list(inline)
+        if not item.get(KLUCZ_DOSTEPNOSCI_ROZPLYWU):
+            return None
+        with canonical_run_repository_scope() as repository:
+            return repository.get_branch_flow_trace(run.id, fault_node_id)
     return None
 
 
@@ -2499,6 +2524,11 @@ def build_short_circuit_rozplyw(run: CanonicalRun, target_id: str) -> dict[str, 
                 "branch_contributions": _sc_rozplyw_galeziowy(
                     pobierz_rozplyw_biegu(run, target_id), graph_nodes, graph_branches
                 ),
+                # Ślad WHITE BOX podziału prądu tego punktu (TH-1) — ta sama klasa
+                # ładunku co wkłady, więc oddawany w tym samym miejscu na żądanie;
+                # kroki solvera bez projekcji. `None` = uczciwy brak (patrz
+                # `pobierz_slad_rozplywu_biegu`).
+                "branch_flow_trace": pobierz_slad_rozplywu_biegu(run, target_id),
             }
     raise KeyError(f"Brak punktu zwarcia {target_id} w wynikach przebiegu {run.id}")
 
@@ -2522,6 +2552,12 @@ def wiersze_swiezego_biegu_bez_rozplywu(run: CanonicalRun) -> list[dict[str, Any
     Rozpływ jest NIETKNIĘTY: solver liczy go jak dotąd, zapis biegu przenosi go
     bajtowo do osobnej tabeli (K14). Zmienia się WYŁĄCZNIE treść odpowiedzi POST.
     Wiersz nie będący słownikiem przechodzi bez zmian (zero zgadywania).
+
+    KLASA, NIE INSTANCJA (2026-09-05): wycinana jest CAŁA klasa `KLUCZE_ROZPLYWU`
+    — wkłady ORAZ ich ślad WHITE BOX `branch_flow_trace` (TH-1), który rośnie tak
+    samo z liczbą gałęzi i punktów; z samym `branch_contributions` odpowiedź na
+    sieci 50 stacji miała 105 MB przy bramce 60 MB (E2E full). Ślad punktu
+    oddaje `build_short_circuit_rozplyw` razem z wkładami.
     """
     wiersze: list[dict[str, Any]] = []
     for item in (run.raw_result or {}).get("results", []):
@@ -2530,7 +2566,11 @@ def wiersze_swiezego_biegu_bez_rozplywu(run: CanonicalRun) -> list[dict[str, Any
             continue
         wiersze.append(
             {
-                **{klucz: wartosc for klucz, wartosc in item.items() if klucz != KLUCZ_ROZPLYWU},
+                **{
+                    klucz: wartosc
+                    for klucz, wartosc in item.items()
+                    if klucz not in KLUCZE_ROZPLYWU
+                },
                 KLUCZ_DOSTEPNOSCI_ROZPLYWU: _rozplyw_dostepny(item),
             }
         )

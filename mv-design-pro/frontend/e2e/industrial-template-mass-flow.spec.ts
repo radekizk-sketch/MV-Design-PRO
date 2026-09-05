@@ -415,6 +415,14 @@ test('pełny przepływ przemysłowy: 50 szablonów stacji, OZE, analizy, dowody 
   // wstrzykniętą na tej samej sieci), więc 60 MB odróżnia stan poprawny od
   // defektu z zapasem w obie strony: powrót rozpływu do odpowiedzi POST jest
   // CZERWONY (zweryfikowane — 355 787 873 B > limitu).
+  //
+  // KLASA, NIE INSTANCJA (2026-09-05): po odchudzeniu z samego
+  // `branch_contributions` odpowiedź urosła do 105 289 825 B (E2E full czerwony
+  // na 930f1ada), bo ślad WHITE BOX podziału prądu `branch_flow_trace` (TH-1) —
+  // ten sam ładunek per gałąź, ~5× większy od wkładów — został w wierszu. Odtąd
+  // z wiersza wycinana jest CAŁA klasa `KLUCZE_ROZPLYWU` (backend
+  // `canonical_run_repository.py`), a ślad punktu oddaje ta sama końcówka
+  // rozpływu co wkłady.
   const swiezyBiegStart = Date.now();
   const swiezyBiegResponse = await request.post(
     `${BACKEND_BASE}/api/cases/${seed.caseId}/runs/short-circuit`,
