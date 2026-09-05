@@ -74,6 +74,12 @@ def _wartosci_select(source: str, testid: str) -> set[str]:
     return set(wzorzec.findall(source))
 
 
+def _identyfikatory_porownan(source: str) -> set[str]:
+    """Identyfikatory porownywane w specu e2e wprost: `t.id === '...'` (wybor pozycji
+    REALNEGO katalogu po odpowiedzi backendu — E2E-FULL-FIX-2, karta FAB-L L6)."""
+    return set(re.findall(r"\.id\s*===\s*'([^']+)'", source))
+
+
 def _der_kind_i_device_ref_pary(source: str) -> list[tuple[str, str]]:
     """Pary (der_kind, device_catalog_ref) z blokow `derDemo({...})` harnessu.
 
@@ -234,6 +240,16 @@ class TestE2eSpecyPickeryKatalogu:
             assert (
                 ref in vt_ids
             ), f"'mvd-kreator-oze-aparatura-vt' wybiera '{ref}', ktorego nie ma w vt-types."
+        for ref in _identyfikatory_porownan(source):
+            if ref.startswith("vt_"):
+                assert ref in vt_ids, (
+                    f"spec porownuje `.id === '{ref}'`, ktorego nie ma w vt-types — spec "
+                    "cytuje identyfikator spoza realnego katalogu."
+                )
+        assert any(ref.startswith("vt_") for ref in _identyfikatory_porownan(source)), (
+            "spec ma wybierac pozycje VT po identyfikatorze z odpowiedzi backendu "
+            "(E2E-FULL-FIX-2) — wzorzec `.id === 'vt_...'` zniknal."
+        )
 
         vendor_ids = {d.device_id for d in list_devices()}
         katalog = get_default_mv_catalog()

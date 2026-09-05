@@ -360,9 +360,19 @@ test.describe('kreatory:screenshot', () => {
     const root = page.locator('[data-testid="creator-harness-root"]').first();
     await root.screenshot({ path: path.join(OUTPUT_DIR, 'wiazania_oze.png') });
 
-    // Picker otwiera się realnym klikiem i pokazuje typy z katalogu.
+    // Picker otwiera się realnym klikiem i pokazuje typy z REALNEGO katalogu.
+    // Nazwa pobrana z backendu (`/api/catalog/vt-types` przez proxy harnessu), nie
+    // przepisana do specu: literał „VT 10/0,1 kV kl. 0.5" był kopią DAWNEGO mocka
+    // harnessu (FAB-L zdjęła mock, backend nazywa tę pozycję „VT 10 kV / 100 V kl. 0.5")
+    // — spec, który cytuje etykietę z mocka, jest tą samą klasą co sam mock (druga
+    // prawda o urządzeniu) i zapalił E2E full (run 345) po zdjęciu kopii.
+    const odpowiedzVt = await page.request.get(new URL('/api/catalog/vt-types', HARNESS_URL).toString());
+    expect(odpowiedzVt.ok(), 'katalog VT backendu musi być dostępny przez proxy harnessu').toBe(true);
+    const typyVt = (await odpowiedzVt.json()) as ReadonlyArray<{ readonly id: string; readonly name: string }>;
+    const vtAbb = typyVt.find((t) => t.id === 'vt_10kv_100v_05_abb');
+    expect(vtAbb, 'katalog VT backendu musi nieść pozycję vt_10kv_100v_05_abb').toBeDefined();
     await page.getByTestId('der-wiazanie-wybierz-vt_catalog_ref').click();
-    await expect(page.getByText('VT 10/0,1 kV kl. 0.5')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(vtAbb!.name)).toBeVisible({ timeout: 15000 });
     await page.screenshot({ path: path.join(OUTPUT_DIR, 'wiazania_oze_picker.png') });
 
     if (errs.length > 0) console.log(`[wiazania] errors:\n${errs.join('\n')}`);
