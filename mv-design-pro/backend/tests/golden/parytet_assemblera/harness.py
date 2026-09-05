@@ -10,7 +10,10 @@ sieci ENM rejestru (``tests/golden/registry.py``) torem kanonicznym
 (``_execute_power_flow`` / ``_execute_short_circuit`` na ``CanonicalRun`` w
 pamięci) i hashuje ``raw_result`` tą samą funkcją, co harness parytetu
 scenariuszy (``hash_widoku``: kwantyzacja kontraktu liczb, klucze lotne
-wykluczone). Odmowa (wyjątek) TEŻ jest wynikiem i też jest pinowana —
+wykluczone) na WIDOKU PARYTETU (``widok_parytetu``: dodatkowo 9 miejsc
+dziesiętnych — surowy wynik solvera niesie szum zmiennoprzecinkowy wartości
+fizycznie zerowych, którego 9 cyfr znaczących nie jest przenośne między
+maszynami; patrz ``_liczba_widoku``). Odmowa (wyjątek) TEŻ jest wynikiem i też jest pinowana —
 parytet odmowy jest częścią parytetu.
 
 Decyzje:
@@ -27,6 +30,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+from application.analyses.kontrakt_liczb import kanoniczna_liczba
 from enm.canonical_analysis import CanonicalRun, _execute_power_flow, _execute_short_circuit
 from enm.models import EnergyNetworkModel
 
@@ -83,12 +87,61 @@ def _bieg(
     )
 
 
+#: Próg bezwzględny widoku parytetu (miejsca dziesiętne w jednostkach kontraktu:
+#: MW, Mvar, kV, kA, A, pu, s). Uzasadnienie w ``widok_parytetu``.
+MIEJSCA_DZIESIETNE_WIDOKU = 9
+
+
+def _liczba_widoku(wartosc: float) -> float:
+    """9 cyfr znaczących ORAZ 9 miejsc dziesiętnych; zero bez znaku.
+
+    Sama kwantyzacja do cyfr znaczących (``kanoniczna_liczba``) jest stabilna
+    między maszynami tylko dla wartości, których błąd względny jest rzędu
+    epsilona maszynowego. Surowy wynik solvera niesie też liczby, które
+    FIZYCZNIE są zerem albo resztą poniżej tolerancji (np. ``p_from_mw``
+    -6.9e-16, ``branch_current_ka`` 2.7e-17, ``i_contrib_a`` 9e-14,
+    ``p_injected_mw`` 4.7e-8 na szynie PQ po zbieżności NR) — ich „9 cyfr
+    znaczących" to w całości szum sumowania BLAS/CPU, inny na każdej maszynie
+    (CI run 4871 na ``3d47c275``: 252/252 hashy inne niż lokalnie, zero różnic
+    w odmowach). Drugi próg — bezwzględny — zeruje ten szum, a dla wartości
+    dużych nic nie zmienia (kA/MW rzędu 1e0–1e4 mają po kroku cyfr znaczących
+    mniej niż 9 miejsc dziesiętnych). Parametry kontraktu w rodzaju
+    ``tolerance_used = 1e-8`` zostają nietknięte (1e-8 > 1e-9).
+    """
+    skwantyzowana = kanoniczna_liczba(wartosc)
+    zaokraglona = round(skwantyzowana, MIEJSCA_DZIESIETNE_WIDOKU)
+    return 0.0 if zaokraglona == 0.0 else zaokraglona
+
+
+def widok_parytetu(wartosc: Any) -> Any:
+    """Widok surowego wyniku do hasha parytetu — rekurencyjnie ``_liczba_widoku``.
+
+    ``bool`` zostaje ``bool`` (nie jest liczbą kontraktu); ``int`` zostaje
+    ``int`` (identyfikatory, liczniki iteracji); ``float`` przez ``_liczba_widoku``.
+    Klucze i kolejność list bez zmian — to samo, co zobaczy ``hash_widoku``.
+    """
+    if isinstance(wartosc, bool):
+        return wartosc
+    if isinstance(wartosc, float):
+        return _liczba_widoku(wartosc)
+    if isinstance(wartosc, dict):
+        return {klucz: widok_parytetu(element) for klucz, element in wartosc.items()}
+    if isinstance(wartosc, list | tuple):
+        return [widok_parytetu(element) for element in wartosc]
+    return wartosc
+
+
+def hash_parytetu(raw_result: Any) -> str:
+    """``hash_widoku`` na widoku parytetu (kwantyzacja znacząca ∧ bezwzględna)."""
+    return hash_widoku(widok_parytetu(raw_result))
+
+
 def _wynik_lub_odmowa(wykonaj: Any, run: CanonicalRun) -> dict[str, Any]:
     try:
         wykonaj(run)
     except Exception as exc:  # noqa: BLE001 — odmowa jest wynikiem pinowanym
         return {"sha256": None, "odmowa": f"{type(exc).__name__}: {exc}"}
-    return {"sha256": hash_widoku(run.raw_result), "odmowa": None}
+    return {"sha256": hash_parytetu(run.raw_result), "odmowa": None}
 
 
 def zbierz_hashe(
