@@ -44,6 +44,7 @@ class TestCatalogNamespace:
             "OBCIAZENIE",
             "ZRODLO_NN_PV",
             "ZRODLO_NN_BESS",
+            "BATERIA_BESS",  # karta FAB-J — pakiet baterii, oddzielny od PCS
             "ZRODLO_SN",
             "ZABEZPIECZENIE",
             "NASTAWY_ZABEZPIECZEN",

@@ -104,6 +104,7 @@ _NAMESPACE_ACCESSOR: dict[str, str] = {
     CatalogNamespace.ZRODLO_SN.value: "get_source_system_type",
     CatalogNamespace.ZRODLO_NN_PV.value: "get_pv_inverter_type",
     CatalogNamespace.ZRODLO_NN_BESS.value: "get_bess_inverter_type",
+    CatalogNamespace.BATERIA_BESS.value: "get_bess_battery_type",
     CatalogNamespace.ZABEZPIECZENIE.value: "get_protection_device_type",
     CatalogNamespace.NASTAWY_ZABEZPIECZEN.value: "get_protection_setting_template",
     CatalogNamespace.PTPIREE_CERTYFIKAT_GENERATORA.value: "get_ptpiree_generator_certificate",

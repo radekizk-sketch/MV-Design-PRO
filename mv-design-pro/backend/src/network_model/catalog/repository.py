@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 
 from .types import (
+    BESSBatteryType,
     BESSInverterType,
     CableType,
     ConverterKind,
@@ -289,6 +290,7 @@ class CatalogRepository:
     source_system_types: dict[str, SourceSystemType] = field(default_factory=dict)
     pv_inverter_types: dict[str, PVInverterType] = field(default_factory=dict)
     bess_inverter_types: dict[str, BESSInverterType] = field(default_factory=dict)
+    bess_battery_types: dict[str, BESSBatteryType] = field(default_factory=dict)
     surge_arrester_types: dict[str, SurgeArresterType] = field(default_factory=dict)
     shunt_capacitor_types: dict[str, ShuntCapacitorType] = field(default_factory=dict)
     ptpiree_generator_certificates: dict[str, PtpireeGeneratorCertificate] = field(
@@ -319,6 +321,7 @@ class CatalogRepository:
         source_system_types: Iterable[dict] | None = None,
         pv_inverter_types: Iterable[dict] | None = None,
         bess_inverter_types: Iterable[dict] | None = None,
+        bess_battery_types: Iterable[dict] | None = None,
         surge_arrester_types: Iterable[dict] | None = None,
         shunt_capacitor_types: Iterable[dict] | None = None,
         ptpiree_generator_certificates: Iterable[dict] | None = None,
@@ -423,6 +426,11 @@ class CatalogRepository:
             data.update(record.get("params") or {})
             return BESSInverterType.from_dict(data)
 
+        def _build_bess_battery_type(record: dict) -> BESSBatteryType:
+            data = {"id": record.get("id"), "name": record.get("name")}
+            data.update(record.get("params") or {})
+            return BESSBatteryType.from_dict(data)
+
         def _build_surge_arrester_type(record: dict) -> SurgeArresterType:
             data = {"id": record.get("id"), "name": record.get("name")}
             data.update(record.get("params") or {})
@@ -457,6 +465,7 @@ class CatalogRepository:
         bess_records = list(bess_inverter_types or [])
         if not bess_records and converter_records:
             bess_records = _derive_bess_records(converter_records)
+        bess_battery_records = list(bess_battery_types or [])
         return cls(
             line_types={str(item.id): item for item in map(_build_line_type, line_types)},
             cable_types={str(item.id): item for item in map(_build_cable_type, cable_types)},
@@ -518,6 +527,9 @@ class CatalogRepository:
             },
             bess_inverter_types={
                 str(item.id): item for item in map(_build_bess_inverter_type, bess_records)
+            },
+            bess_battery_types={
+                str(item.id): item for item in map(_build_bess_battery_type, bess_battery_records)
             },
             surge_arrester_types={
                 str(item.id): item
@@ -661,6 +673,12 @@ class CatalogRepository:
     def get_bess_inverter_type(self, type_id: str) -> BESSInverterType | None:
         return self.bess_inverter_types.get(str(type_id))
 
+    def list_bess_battery_types(self) -> list[BESSBatteryType]:
+        return self._sorted(self.bess_battery_types.values())
+
+    def get_bess_battery_type(self, type_id: str) -> BESSBatteryType | None:
+        return self.bess_battery_types.get(str(type_id))
+
     def list_surge_arrester_types(self) -> list[SurgeArresterType]:
         return self._sorted(self.surge_arrester_types.values())
 
@@ -734,6 +752,7 @@ def get_default_mv_catalog() -> CatalogRepository:
         get_all_protection_setting_templates,
         get_all_vt_types,
     )
+    from .mv_bess_battery_catalog import get_all_bess_battery_types
     from .mv_cable_line_catalog import get_all_cable_types, get_all_line_types
     from .mv_converter_catalog import get_all_converter_types
     from .mv_ptpiree_catalog import get_all_ptpiree_generator_certificates
@@ -750,6 +769,7 @@ def get_default_mv_catalog() -> CatalogRepository:
         switch_equipment_types=get_all_switch_equipment_types(),
         converter_types=get_all_converter_types(),
         inverter_types=[],
+        bess_battery_types=get_all_bess_battery_types(),
         protection_device_types=get_all_protection_device_types(),
         protection_curves=get_all_protection_curves(),
         protection_setting_templates=get_all_protection_setting_templates(),

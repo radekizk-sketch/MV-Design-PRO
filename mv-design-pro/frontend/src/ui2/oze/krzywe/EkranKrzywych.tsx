@@ -22,11 +22,13 @@ import { SladAnalizy } from '../pulpit';
 import { useAppStateStore } from '../../../ui/app-state';
 import { notify } from '../../../ui/notifications/store';
 import {
-  HVRT_CURVE_CATALOG,
-  LVRT_CURVE_CATALOG,
-  PF_CURVE_CATALOG,
+  fetchAudit2CatalogSnapshot,
+  fetchNcRfgOperators,
+  getNcRfgOperator,
   selectAllDers,
   useStationDerStore,
+  type NcRfgOperatorItem,
+  type PfCurveItem,
 } from '../../../ui/network-build/station-der';
 import {
   DerPersistenceApiError,
@@ -215,11 +217,19 @@ function WynikPokrycia({
 }
 
 // ---------------------------------------------------------------------------
-// K5-B (H-3 pkt 2): akcja wyjściowa — przypisanie krzywych zgodności (P(f) /
-// LVRT / HVRT) do wiązań modułu DER w modelu sieci. Zapis kanoniczną operacją
-// `set_der_catalog_bindings` (PATCH .../generators/{ref}/bindings), pominięcie
-// ≠ null: wysyłane są WYŁĄCZNIE pola z wybraną krzywą. Katalogi krzywych to
-// REUŻYCIE list kreatora DER (station-der/catalogs) — jedna prawda wyboru.
+// K5-B (H-3 pkt 2): akcja wyjściowa — przypisanie krzywej P(f) do wiązań
+// modułu DER w modelu sieci. Zapis kanoniczną operacją `set_der_catalog_bindings`
+// (PATCH .../generators/{ref}/bindings), pominięcie ≠ null: wysyłane są
+// WYŁĄCZNIE pola z wybraną krzywą.
+//
+// Karta FAB-J: P(f) WYŁĄCZNIE ze snapshotu audytu 2 (`GET /api/v1/catalog/
+// audit2/snapshot`) — zero drugiej kopii katalogu w froncie. LVRT/HVRT NIE SĄ
+// tu już niezależnie wybieralne: backend niesie JEDNĄ parę krzywych
+// ride-through na operatora NC RfG (`GET /api/ncrfg-tests/catalog`), więc
+// `lvrt_curve_ref`/`hvrt_curve_ref` są tożsamościowo związane z
+// `nc_rfg_profile_ref` już przypisanym modułowi (ten sam operator) — ten
+// ekran je pokazuje jako dowód White Box, nie oferuje wyboru niespójnego z
+// profilem. Zmiana operatora dzieje się w kreatorze DER / szufladzie SLD.
 // ---------------------------------------------------------------------------
 
 function SekcjaWiazanKrzywych() {
@@ -230,20 +240,46 @@ function SekcjaWiazanKrzywych() {
 
   const [wybranyModul, setWybranyModul] = useState('');
   const [pfRef, setPfRef] = useState('');
-  const [lvrtRef, setLvrtRef] = useState('');
-  const [hvrtRef, setHvrtRef] = useState('');
   const [zapisywanie, setZapisywanie] = useState(false);
   const [blad, setBlad] = useState<string | null>(null);
+  const [katalogKrzywych, setKatalogKrzywych] = useState<
+    StanZasobu<{ readonly operatorzy: readonly NcRfgOperatorItem[]; readonly pfKrzywe: readonly PfCurveItem[] }>
+  >({ rodzaj: 'idle' });
+
+  useEffect(() => {
+    let aktywny = true;
+    setKatalogKrzywych({ rodzaj: 'ladowanie' });
+    Promise.all([fetchNcRfgOperators(), fetchAudit2CatalogSnapshot()])
+      .then(([operatorzy, snapshot]) => {
+        if (!aktywny) return;
+        setKatalogKrzywych({
+          rodzaj: 'gotowe',
+          dane: { operatorzy, pfKrzywe: snapshot.pf_curves },
+        });
+      })
+      .catch((err: unknown) => {
+        if (!aktywny) return;
+        setKatalogKrzywych({
+          rodzaj: 'blad',
+          komunikat: err instanceof Error ? err.message : KRZYWE_STRINGS.wiazaniaBladZapisu,
+        });
+      });
+    return () => {
+      aktywny = false;
+    };
+  }, []);
+
+  const ncRfgOperatorzy = katalogKrzywych.rodzaj === 'gotowe' ? katalogKrzywych.dane.operatorzy : [];
+  const pfKrzywe = katalogKrzywych.rodzaj === 'gotowe' ? katalogKrzywych.dane.pfKrzywe : [];
 
   const modul = ders.find((d) => d.id === wybranyModul) ?? null;
+  const modulProfil = getNcRfgOperator(ncRfgOperatorzy, modul?.profiles.nc_rfg_profile_ref ?? null);
   const kontekstKompletny = Boolean(projectId && caseId);
 
   const zapisz = async () => {
     if (!modul || !projectId || !caseId) return;
     const zmiany: DerCatalogBindingsRequest = {
       ...(pfRef ? { pf_curve_ref: pfRef } : {}),
-      ...(lvrtRef ? { lvrt_curve_ref: lvrtRef } : {}),
-      ...(hvrtRef ? { hvrt_curve_ref: hvrtRef } : {}),
     };
     if (Object.keys(zmiany).length === 0) {
       setBlad(KRZYWE_STRINGS.wiazaniaZadnaZmiana);
@@ -257,8 +293,6 @@ function SekcjaWiazanKrzywych() {
       // widzą nowe krzywe bez odświeżania strony (wzorzec DerSurfaces.poZapisie).
       updateDerProfiles(modul.id, {
         ...(pfRef ? { pf_curve_ref: pfRef } : {}),
-        ...(lvrtRef ? { lvrt_curve_ref: lvrtRef } : {}),
-        ...(hvrtRef ? { hvrt_curve_ref: hvrtRef } : {}),
       });
       notify(KRZYWE_STRINGS.wiazaniaZapisano, 'success');
     } catch (err) {
@@ -312,47 +346,39 @@ function SekcjaWiazanKrzywych() {
                   id="mvd-krzywe-wiazania-pf"
                   value={pfRef}
                   onChange={(e) => setPfRef(e.target.value)}
+                  disabled={katalogKrzywych.rodzaj === 'ladowanie'}
                   data-testid="mvd-krzywe-wiazania-pf"
                 >
                   <option value="">{KRZYWE_STRINGS.wiazaniaBezZmiany}</option>
-                  {PF_CURVE_CATALOG.map((c) => (
+                  {pfKrzywe.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.label_pl}
                     </option>
                   ))}
                 </select>
               </div>
-              <div className="mvd-krzywe-pole">
-                <label htmlFor="mvd-krzywe-wiazania-lvrt">{KRZYWE_STRINGS.wiazaniaKrzywaLvrt}</label>
-                <select
-                  id="mvd-krzywe-wiazania-lvrt"
-                  value={lvrtRef}
-                  onChange={(e) => setLvrtRef(e.target.value)}
-                  data-testid="mvd-krzywe-wiazania-lvrt"
-                >
-                  <option value="">{KRZYWE_STRINGS.wiazaniaBezZmiany}</option>
-                  {LVRT_CURVE_CATALOG.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.label_pl}
-                    </option>
-                  ))}
-                </select>
+              {/* Karta FAB-J: backend niesie JEDNĄ krzywą LVRT/HVRT na operatora
+                  NC RfG już przypisanego modułowi — pokazywana jako dowód White
+                  Box, nie jako niezależny wybór (zero niespójności profil↔krzywa). */}
+              <div className="mvd-krzywe-pole" data-testid="mvd-krzywe-wiazania-lvrt">
+                <label>{KRZYWE_STRINGS.wiazaniaKrzywaLvrt}</label>
+                <p className="mvd-krzywe-pole-opis">
+                  {modulProfil
+                    ? modulProfil.ride_through.lvrt
+                      .map((p) => `${p.time_s.toFixed(2)} s / ${p.voltage_pu.toFixed(2)} pu`)
+                      .join(' → ')
+                    : KRZYWE_STRINGS.wiazaniaBrakProfiluOperatora}
+                </p>
               </div>
-              <div className="mvd-krzywe-pole">
-                <label htmlFor="mvd-krzywe-wiazania-hvrt">{KRZYWE_STRINGS.wiazaniaKrzywaHvrt}</label>
-                <select
-                  id="mvd-krzywe-wiazania-hvrt"
-                  value={hvrtRef}
-                  onChange={(e) => setHvrtRef(e.target.value)}
-                  data-testid="mvd-krzywe-wiazania-hvrt"
-                >
-                  <option value="">{KRZYWE_STRINGS.wiazaniaBezZmiany}</option>
-                  {HVRT_CURVE_CATALOG.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.label_pl}
-                    </option>
-                  ))}
-                </select>
+              <div className="mvd-krzywe-pole" data-testid="mvd-krzywe-wiazania-hvrt">
+                <label>{KRZYWE_STRINGS.wiazaniaKrzywaHvrt}</label>
+                <p className="mvd-krzywe-pole-opis">
+                  {modulProfil
+                    ? modulProfil.ride_through.hvrt
+                      .map((p) => `${p.time_s.toFixed(2)} s / ${p.voltage_pu.toFixed(2)} pu`)
+                      .join(' → ')
+                    : KRZYWE_STRINGS.wiazaniaBrakProfiluOperatora}
+                </p>
               </div>
 
               {!kontekstKompletny && (

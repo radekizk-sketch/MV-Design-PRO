@@ -47,7 +47,9 @@ export function derFixture(over: DerFixtureOverrides): StationDerConnection {
     connection_node_ref: over.connection_node_ref ?? null,
     internal_cable_ref: over.internal_cable_ref ?? null,
     // Uwaga: rozróżniamy jawny `null` (brak danej) od „nie podano" (undefined → domyślna).
-    voltage_level_ref: 'voltage_level_ref' in over ? over.voltage_level_ref! : 'lv_0_4kV',
+    // Karta FAB-J: referencja JEST wartością kV jako łańcuch (`getLvVoltageLevel`
+    // parsuje `Number(ref)`), nie identyfikatorem katalogowym `"lv_0_4kV"`.
+    voltage_level_ref: 'voltage_level_ref' in over ? over.voltage_level_ref! : '0.4',
     catalogs: { ...EMPTY_DER_CATALOGS, ...(over.catalogs ?? {}) },
     profiles: { ...EMPTY_DER_PROFILES, ...(over.profiles ?? {}) },
     nominal_power_kw: 'nominal_power_kw' in over ? over.nominal_power_kw! : 500,

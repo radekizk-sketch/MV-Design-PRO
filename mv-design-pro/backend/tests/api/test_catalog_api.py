@@ -182,6 +182,25 @@ def test_source_and_converter_catalog_api_expose_quality_metadata(
     assert all(item["source_reference"] for item in wind_payload)
 
 
+def test_bess_battery_types_endpoint_exposes_pack_catalog(client: TestClient) -> None:
+    """Karta FAB-J: pakiet baterii BESS — sprzęt oddzielny od PCS/inwertera
+    (`/bess-inverter-types` powyżej), backend nie miał tego katalogu wcale."""
+    response = client.get("/api/catalog/bess-battery-types")
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload) >= 2
+
+    for item in payload:
+        assert item["chemistry"] in ("LFP", "NMC", "LTO")
+        assert item["capacity_kwh"] > 0
+        assert item["nominal_voltage_dc_v"] > 0
+        assert item["c_rate"] > 0
+        assert item["verification_status"]
+        assert item["source_reference"].strip()
+        assert item["catalog_status"]
+        assert item["contract_version"] == "2.0"
+
+
 # ---------------------------------------------------------------------------
 # Wykaz certyfikatow PTPiREE — filtr i wycinek (dlug 5 z rejestru V12K-321).
 # Pelny wykaz ma ~6887 pozycji (~3 MB); parametry search/limit/offset sa

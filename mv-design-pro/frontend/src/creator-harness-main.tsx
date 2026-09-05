@@ -3539,7 +3539,7 @@ function derDemo(
     lv_busbar_ref: 'szyna-nn',
     connection_node_ref: null,
     internal_cable_ref: null,
-    voltage_level_ref: 'lv_0_4kV',
+    voltage_level_ref: '0.4',
     catalogs: EMPTY_DER_CATALOGS,
     profiles: EMPTY_DER_PROFILES,
     nominal_power_kw: null,

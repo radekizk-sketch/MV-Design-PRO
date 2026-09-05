@@ -26,7 +26,7 @@ import type {
   EnergyNetworkModel,
   Generator as EnmGenerator,
 } from '../../../types/enm';
-import { BLOCK_TRANSFORMER_CATALOG } from './catalogs';
+import type { BlockTransformerItem } from './audit2-api';
 import {
   EMPTY_DER_CATALOGS,
   EMPTY_DER_PROFILES,
@@ -91,9 +91,16 @@ export function generatorDisplayName(generator: EnmGenerator, kind: DerKindUnifi
   return `${kind} ${ordinal} - ${label}`;
 }
 
+/**
+ * Karta FAB-J: `blockTransformers` przychodzi ze snapshotu audytu 2
+ * (`useAudit2CatalogSnapshot`) — bez niego (lista pusta, jeszcze nie
+ * pobrana) inferencja uczciwie zwraca `null` zamiast zgadywać z pustego
+ * katalogu.
+ */
 export function inferBlockTransformerCatalogRef(
   snapshot: EnergyNetworkModel | null,
   transformerRef: string | null | undefined,
+  blockTransformers: readonly BlockTransformerItem[] = [],
 ): string | null {
   if (!snapshot || !transformerRef) return null;
   const transformer = (snapshot.transformers ?? []).find(
@@ -102,7 +109,7 @@ export function inferBlockTransformerCatalogRef(
   if (!transformer) return null;
   const snKva = Math.round(transformer.sn_mva * 1000);
   const vectorGroup = transformer.vector_group ?? null;
-  const match = BLOCK_TRANSFORMER_CATALOG.find((candidate) =>
+  const match = blockTransformers.find((candidate) =>
     candidate.sn_kva === snKva
     && Math.abs(candidate.hv_kv - transformer.uhv_kv) < 0.01
     && Math.abs(candidate.lv_kv - transformer.ulv_kv) < 0.01
@@ -135,6 +142,7 @@ function derZGeneratora(
   stationRef: string,
   projectId: string | null,
   timestamp: string,
+  blockTransformers: readonly BlockTransformerItem[] = [],
 ): StationDerConnection | null {
   const kind = derKindFromGenerator(generator);
   if (!kind) return null;
@@ -142,7 +150,7 @@ function derZGeneratora(
   const connectionSide = connectionSideFromGenerator(generator);
   const transformerRef = generator.blocking_transformer_ref ?? null;
   const blockTransformerCatalogRef = readString(meta.block_transformer_catalog_ref)
-    ?? inferBlockTransformerCatalogRef(snapshot, transformerRef);
+    ?? inferBlockTransformerCatalogRef(snapshot, transformerRef, blockTransformers);
   const catalogs = {
     ...EMPTY_DER_CATALOGS,
     device_catalog_ref: generator.catalog_ref ?? null,
@@ -203,10 +211,18 @@ function derZGeneratora(
   };
 }
 
-/** Wszyscy wytwórcy DER z migawki (kolejność deterministyczna: sort po `id`). */
+/**
+ * Wszyscy wytwórcy DER z migawki (kolejność deterministyczna: sort po `id`).
+ *
+ * `blockTransformers` (opcjonalne, karta FAB-J): snapshot audytu 2, żeby
+ * inferencja transformatora dedykowanego dla wytwórców bez jawnego
+ * `meta.block_transformer_catalog_ref` czytała z realnego katalogu. Pominięcie
+ * nie jest błędem — inferencja po prostu nie znajdzie dopasowania (`null`).
+ */
 export function deryZModelu(
   snapshot: EnergyNetworkModel | null,
   projectId: string | null,
+  blockTransformers: readonly BlockTransformerItem[] = [],
 ): readonly StationDerConnection[] {
   if (!snapshot) return [];
   const timestamp = snapshot.header.updated_at || snapshot.header.created_at || '1970-01-01T00:00:00Z';
@@ -214,7 +230,7 @@ export function deryZModelu(
     .map((generator) => {
       const stationRef = stationRefForGenerator(snapshot, generator);
       if (!stationRef) return null;
-      return derZGeneratora(snapshot, generator, stationRef, projectId, timestamp);
+      return derZGeneratora(snapshot, generator, stationRef, projectId, timestamp, blockTransformers);
     })
     .filter((der): der is StationDerConnection => der !== null)
     .sort((left, right) => left.id.localeCompare(right.id));
@@ -225,12 +241,13 @@ export function deryStacjiZModelu(
   snapshot: EnergyNetworkModel | null,
   stationRef: string | null,
   projectId: string | null,
+  blockTransformers: readonly BlockTransformerItem[] = [],
 ): readonly StationDerConnection[] {
   if (!snapshot || !stationRef) return [];
   const timestamp = snapshot.header.updated_at || snapshot.header.created_at || '1970-01-01T00:00:00Z';
   return (snapshot.generators ?? [])
     .filter((generator) => isGeneratorAttachedToStation(generator, stationRef))
-    .map((generator) => derZGeneratora(snapshot, generator, stationRef, projectId, timestamp))
+    .map((generator) => derZGeneratora(snapshot, generator, stationRef, projectId, timestamp, blockTransformers))
     .filter((der): der is StationDerConnection => der !== null)
     .sort((left, right) => left.id.localeCompare(right.id));
 }

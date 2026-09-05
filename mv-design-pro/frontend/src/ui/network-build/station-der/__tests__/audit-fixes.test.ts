@@ -9,11 +9,9 @@ import {
   // Naprawa A
   DER_FAULT_CURRENT_DATA_CATALOG,
   DER_DYNAMIC_MODEL_CATALOG,
-  NC_RFG_PROFILE_CATALOG,
   computeKappa,
   getFaultCurrentDataForDevice,
   getDynamicModelForDevice,
-  validateMinSkAtPcc,
   // Naprawa B
   CONNECTION_VARIANT_CATALOG,
   MV_NEUTRAL_GROUNDING_CATALOG,
@@ -104,23 +102,15 @@ describe('Naprawa A.1 — składowe symetryczne (R₀/X₀/Z₀Z₁)', () => {
   });
 });
 
-describe('Naprawa A.2 — c_max/c_min IEC 60909', () => {
-  it('każdy NC RfG profil ma c_max=1.10, c_min=0.95 (IEC 60909-0 Tab.1)', () => {
-    for (const profile of NC_RFG_PROFILE_CATALOG) {
-      expect(profile.c_max).toBe(1.10);
-      expect(profile.c_min).toBe(0.95);
-    }
-  });
-
-  it('NC RfG profile mają sk_min_to_p_ratio_by_module dla A/B/C/D', () => {
-    for (const profile of NC_RFG_PROFILE_CATALOG) {
-      expect(profile.sk_min_to_p_ratio_by_module.A).toBeNull();
-      expect(profile.sk_min_to_p_ratio_by_module.B).toBe(5);
-      expect(profile.sk_min_to_p_ratio_by_module.C).toBe(10);
-      expect(profile.sk_min_to_p_ratio_by_module.D).toBe(25);
-    }
-  });
-});
+// USUNIĘTE (karta FAB-J, 2026-09-05) — „Naprawa A.2 — c_max/c_min IEC 60909".
+// Testowała `NC_RFG_PROFILE_CATALOG.c_max`/`.c_min`/`.sk_min_to_p_ratio_by_module` —
+// drugą kopię profilu operatora, którego jedyne źródło jest dziś backend
+// (`GET /api/ncrfg-tests/catalog`). c_max/c_min IEC 60909-0 Tab.1 to STAŁA
+// normy używana bezpośrednio przez solver zwarciowy (`network_model/solvers/
+// short_circuit_iec60909.py`), nie dana katalogowa operatora — front jej nie
+// duplikuje. `sk_min_to_p_ratio_by_module` (NC RfG Art.17, Naprawa B.4 poniżej)
+// backend nie niesie wcale (sprawdzone u źródła rozporządzenia), więc pole i
+// katalog, którego jedynym celem było jej karmienie, zniknęły razem.
 
 describe('Naprawa A.3 — kappa (peak SC factor IEC 60909)', () => {
   it('computeKappa(0) = 2.0 (R/X = 0, najsilniejszy peak)', () => {
@@ -139,59 +129,30 @@ describe('Naprawa A.3 — kappa (peak SC factor IEC 60909)', () => {
   });
 });
 
-describe('Karta K-Q — graniczny prąd zwarciowy nie jest już daną katalogową', () => {
-  // INTENCJA POPRZEDNICH TESTÓW (Naprawa A.4): pilnowały, że każda pozycja PCS
-  // i turbiny NIESIE `fault_current_capability_pu` w przedziale 1,0-1,5 oraz że
-  // DFIG niesie `transient_short_circuit_pu` ≥ 4. Utrwalały więc liczby wpisane
-  // z ręki: taki limit podaje wyłącznie karta katalogowa konkretnego wyrobu,
-  // backend go nie ma, a kreator dokładał własną fabrykację (BESS → 1,2).
-  // Nowe piny idą po WSZYSTKICH pozycjach WSZYSTKICH czterech katalogów.
+describe('Karta K-Q → FAB-J — katalogi urządzeń mirrorowane z frontu USUNIĘTE', () => {
+  // INTENCJA POPRZEDNICH TESTÓW (Naprawa A.4, potem Karta K-Q): pilnowały, że
+  // pozycje mirrorowanych katalogów PV/BESS/FW NIE niosą wartości wpisanych z
+  // ręki bez karty producenta (graniczny prąd zwarciowy, dane mechaniczne
+  // turbiny, producent baterii). Karta FAB-J usuwa OSTATNI powód takiej
+  // kontroli: front przestał mieć WŁASNĄ kopię tych katalogów w ogóle —
+  // `PV_INVERTER_CATALOG`/`BESS_PCS_CATALOG`/`BESS_BATTERY_CATALOG`/
+  // `WIND_TURBINE_CATALOG` są usunięte z `catalogs.ts` (pin niżej), więc nie ma
+  // już DRUGIEGO miejsca, w którym taka fabrykacja mogłaby się schować.
+  // Jedyne źródło jest dziś backend (`GET /api/catalog/converter-types`,
+  // `GET /api/catalog/bess-battery-types`) — dyscyplinę „bez wartości z ręki"
+  // pilnują testy backendu tych katalogów, nie ten plik.
+  it('catalogs.ts NIE MA już mirrorowanych katalogów urządzeń PV/BESS/FW/baterii', async () => {
+    const modul = (await import('../catalogs')) as Record<string, unknown>;
+    expect(modul.PV_INVERTER_CATALOG).toBeUndefined();
+    expect(modul.BESS_PCS_CATALOG).toBeUndefined();
+    expect(modul.BESS_BATTERY_CATALOG).toBeUndefined();
+    expect(modul.WIND_TURBINE_CATALOG).toBeUndefined();
+  });
 
-  it('żadna pozycja urządzenia nie deklaruje granicznego prądu zwarciowego', async () => {
-    const {
-      PV_INVERTER_CATALOG,
-      BESS_PCS_CATALOG,
-      BESS_BATTERY_CATALOG,
-      WIND_TURBINE_CATALOG,
-      DER_FAULT_CURRENT_DATA_CATALOG,
-    } = await import('../catalogs');
-    const wszystkie: ReadonlyArray<Record<string, unknown>> = [
-      ...PV_INVERTER_CATALOG,
-      ...BESS_PCS_CATALOG,
-      ...BESS_BATTERY_CATALOG,
-      ...WIND_TURBINE_CATALOG,
-      ...DER_FAULT_CURRENT_DATA_CATALOG,
-    ] as unknown as ReadonlyArray<Record<string, unknown>>;
-    expect(wszystkie.length).toBeGreaterThanOrEqual(18);
-    for (const pozycja of wszystkie) {
+  it('DER_FAULT_CURRENT_DATA_CATALOG (zostaje — wariant modelu, nie karta wyrobu) nie deklaruje granicznego prądu zwarciowego', () => {
+    for (const pozycja of DER_FAULT_CURRENT_DATA_CATALOG as unknown as ReadonlyArray<Record<string, unknown>>) {
       expect(pozycja).not.toHaveProperty('fault_current_capability_pu');
       expect(pozycja).not.toHaveProperty('transient_short_circuit_pu');
-    }
-  });
-
-  it('żadna pozycja turbiny nie deklaruje danych mechanicznych bez karty producenta', async () => {
-    const { WIND_TURBINE_CATALOG } = await import('../catalogs');
-    for (const wt of WIND_TURBINE_CATALOG as unknown as ReadonlyArray<Record<string, unknown>>) {
-      expect(wt).not.toHaveProperty('hub_height_m');
-      expect(wt).not.toHaveProperty('rotor_diameter_m');
-      expect(wt).not.toHaveProperty('generator_type');
-    }
-  });
-
-  it('żadna pozycja baterii nie przypisuje danych imiennemu producentowi', async () => {
-    const { BESS_BATTERY_CATALOG } = await import('../catalogs');
-    for (const bat of BESS_BATTERY_CATALOG as unknown as ReadonlyArray<Record<string, unknown>>) {
-      expect(bat).not.toHaveProperty('manufacturer');
-      expect(bat).not.toHaveProperty('cycle_life');
-      expect(String(bat.label_pl)).not.toMatch(/BYD|CATL/);
-    }
-  });
-
-  it('pozycje mirrorowane z backendu niosą jego status i źródło', async () => {
-    const { PV_INVERTER_CATALOG, BESS_PCS_CATALOG, WIND_TURBINE_CATALOG } = await import('../catalogs');
-    for (const item of [...PV_INVERTER_CATALOG, ...BESS_PCS_CATALOG, ...WIND_TURBINE_CATALOG]) {
-      expect(item.verification_status).toBe('REFERENCYJNY');
-      expect(item.source_reference).toContain('MV-DESIGN-PRO');
     }
   });
 });
@@ -222,40 +183,14 @@ describe('Naprawa A.5 — modele dynamiczne DER', () => {
   });
 });
 
-describe('Naprawa B.4 — validateMinSkAtPcc (NC RfG Art.17)', () => {
-  it('moduł A nie ma wymogu Sk', () => {
-    const result = validateMinSkAtPcc({
-      profileRef: 'ncrfg_pse',
-      moduleType: 'A',
-      p_der_mw: 0.5,
-      available_sk_mva: 5,
-    });
-    expect(result.required_sk_mva).toBeNull();
-    expect(result.ok).toBe(true);
-  });
-
-  it('moduł B wymaga Sk ≥ 5×P', () => {
-    const result = validateMinSkAtPcc({
-      profileRef: 'ncrfg_pse',
-      moduleType: 'B',
-      p_der_mw: 1.0,
-      available_sk_mva: 5,
-    });
-    expect(result.required_sk_mva).toBe(5);
-    expect(result.ok).toBe(true);
-  });
-
-  it('moduł D wymaga Sk ≥ 25×P (zwraca exceeded gdy Sk < required)', () => {
-    const result = validateMinSkAtPcc({
-      profileRef: 'ncrfg_pse',
-      moduleType: 'D',
-      p_der_mw: 50.0,
-      available_sk_mva: 1000, // wymagane = 25×50 = 1250 MVA
-    });
-    expect(result.required_sk_mva).toBe(1250);
-    expect(result.ok).toBe(false);
-  });
-});
+// USUNIĘTE (karta FAB-J, 2026-09-05) — „Naprawa B.4 — validateMinSkAtPcc (NC RfG
+// Art.17)". Zależała wyłącznie od `sk_min_to_p_ratio_by_module` usuniętego profilu
+// NC RfG (patrz komentarz przy „Naprawa A.2" powyżej) i nie miała konsumenta
+// produkcyjnego poza własnym testem — backend nie niesie tego pola (sprawdzone na
+// tekście rozporządzenia (UE) 2016/631: nie definiuje ono minimalnej mocy zwarciowej
+// w PCC jako funkcji typu modułu w sposób, który dałoby się zredukować do jednej
+// stałej ratio na typ), więc funkcja zniknęła razem z katalogiem, którego jedynym
+// celem było jej karmienie.
 
 // =============================================================================
 // Naprawa B — projektant SN

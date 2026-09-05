@@ -23,7 +23,6 @@ import type { ReactElement } from 'react';
 import { useAppStateStore } from '../../../app-state/store';
 import { useSnapshotStore } from '../../../topology/snapshotStore';
 import { AddDerWizard } from '../AddDerWizard';
-import { PV_INVERTER_CATALOG, BESS_PCS_CATALOG, WIND_TURBINE_CATALOG } from '../catalogs';
 import { useStationDerStore, selectDersOfStation } from '../store';
 
 type ConverterKind = 'PV' | 'BESS' | 'WIND';
@@ -36,17 +35,121 @@ interface ConverterFixture {
   readonly sn_mva?: number;
   readonly manufacturer?: string;
   readonly control_mode?: string;
+  readonly qmin_mvar?: number;
+  readonly qmax_mvar?: number;
 }
+
+// Karta FAB-J: krzywe P(f) fikstury reprezentują ich REALNY zapis (audit2
+// snapshot) — kreator je czyta stamtąd, nie z lokalnego katalogu (usuniętego).
+const PF_CURVE_FIXTURES = [
+  {
+    id: 'pf_droop_5', catalog_namespace: 'pf_curve', catalog_version: '1.0',
+    label_pl: 'P(f) statyzm 5%', f_ref_hz: 50, droop_percent: 5,
+    f_min_hz: 47.5, f_max_hz: 51.5, deadband_hz: 0.2, zrodlo_pl: 'Fikstura testowa',
+  },
+  {
+    id: 'pf_droop_12', catalog_namespace: 'pf_curve', catalog_version: '1.0',
+    label_pl: 'P(f) statyzm 12%', f_ref_hz: 50, droop_percent: 12,
+    f_min_hz: 47.5, f_max_hz: 51.5, deadband_hz: 0.2, zrodlo_pl: 'Fikstura testowa',
+  },
+];
+
+// Karta FAB-J: transformatory dedykowane DER — kształt 1:1 z backendu
+// (`audit2_catalogs.py::BlockTransformerItem.to_dict`). Typoszereg 15/0,69 kV
+// odtwarza scenariusz z komentarza źródła (`selectAutoBlockTransformerForDevice`):
+// PV 1000 kW wymaga ≥1111 kVA i dobiera 1250 kVA z typoszeregu, nie 2500 kVA.
+function blockTransformerFixture(
+  id: string, snKva: number, hvKv: number, lvKv: number,
+): Record<string, unknown> {
+  return {
+    id, catalog_namespace: 'block_transformer', catalog_version: '1.0',
+    label_pl: `Transformator dedykowany ${hvKv}/${lvKv} kV · ${snKva} kVA · Dyn11`,
+    transformer_type_ref: `tr-test-${id}`,
+    sn_kva: snKva, hv_kv: hvKv, lv_kv: lvKv,
+    uk_percent: 6, pk_kw: snKva * 0.01, p0_kw: snKva * 0.002, i0_percent: 0.5,
+    vector_group: 'Dyn11', is_mv_to_mv: lvKv > 1,
+    applicable_der_kinds: ['PV', 'BESS', 'FW'],
+    galvanic_isolation: true, source_reference: 'Fikstura testowa', verification_status: 'VERIFIED',
+  };
+}
+const BLOCK_TRANSFORMER_FIXTURES = [
+  blockTransformerFixture('btr_pv_15_069_800', 800, 15, 0.69),
+  blockTransformerFixture('btr_pv_15_069_1000', 1000, 15, 0.69),
+  blockTransformerFixture('btr_pv_15_069_1250', 1250, 15, 0.69),
+  blockTransformerFixture('btr_pv_15_069_2500', 2500, 15, 0.69),
+];
 
 const AUDIT2_SNAPSHOT_BODY = {
   bess_operation_modes: [],
   tap_changers: [],
   hv_fuses: [],
   device_withstand: [],
-  pf_curves: [],
-  block_transformers: [],
+  pf_curves: PF_CURVE_FIXTURES,
+  block_transformers: BLOCK_TRANSFORMER_FIXTURES,
   mv_neutral_groundings: [],
 };
+
+// Karta FAB-J: operatorzy NC RfG — identyfikatory REALNE (`pse`/`enea`, nie
+// `ncrfg_pse` wymyślone przez front), backend niesie JEDNĄ parę krzywych
+// ride-through na operatora (`GET /api/ncrfg-tests/catalog`).
+interface NcRfgOperatorFixture {
+  readonly operator_id: string;
+  readonly operator_name_pl: string;
+  readonly last_revision: string;
+  readonly reactive_power: {
+    readonly q_range_pct_pn_min: number;
+    readonly q_range_pct_pn_max: number;
+    readonly cos_phi_min: number;
+    readonly voltage_control_modes: readonly string[];
+  };
+  readonly ride_through: {
+    readonly lvrt: ReadonlyArray<{ readonly time_s: number; readonly voltage_pu: number }>;
+    readonly hvrt: ReadonlyArray<{ readonly time_s: number; readonly voltage_pu: number }>;
+  };
+}
+const NC_RFG_OPERATOR_FIXTURES: readonly NcRfgOperatorFixture[] = [
+  {
+    operator_id: 'pse', operator_name_pl: 'PSE — Polskie Sieci Elektroenergetyczne', last_revision: '2024-Q4',
+    reactive_power: { q_range_pct_pn_min: -0.33, q_range_pct_pn_max: 0.33, cos_phi_min: 0.95, voltage_control_modes: [] },
+    ride_through: {
+      lvrt: [{ time_s: 0, voltage_pu: 0.05 }, { time_s: 1.5, voltage_pu: 0.85 }],
+      hvrt: [{ time_s: 0, voltage_pu: 1.3 }],
+    },
+  },
+  {
+    operator_id: 'enea', operator_name_pl: 'Enea Operator', last_revision: '2024-Q4',
+    reactive_power: { q_range_pct_pn_min: -0.33, q_range_pct_pn_max: 0.33, cos_phi_min: 0.95, voltage_control_modes: [] },
+    ride_through: {
+      lvrt: [{ time_s: 0, voltage_pu: 0.05 }],
+      hvrt: [{ time_s: 0, voltage_pu: 1.3 }, { time_s: 60, voltage_pu: 1.1 }],
+    },
+  },
+];
+
+// Karta FAB-J: pakiety baterii BESS — backend nie miał żadnego katalogu
+// baterii przed tą kartą (`GET /api/catalog/bess-battery-types`).
+const BESS_BATTERY_FIXTURES = [
+  {
+    id: 'bess_bat_test_2880kwh', name: 'Pakiet bateryjny LFP 2880 kWh', chemistry: 'LFP',
+    capacity_kwh: 2880, nominal_voltage_dc_v: 1230, c_rate: 0.5,
+    verification_status: 'VERIFIED', source_reference: 'Fikstura testowa',
+    catalog_status: 'PUBLISHED', contract_version: '1.0',
+  },
+];
+
+/**
+ * Mirror TESTOWY klasyfikacji modułu NC RfG — jedyne źródło progów zostaje
+ * `compliance/nc_rfg_modul.py` (`GET /api/ncrfg-tests/modul`); ten mirror tylko
+ * UDAJE backend w teście, jak `klasyfikujModulNcRfgDlaTestu` w `SldDetailDrawer.test.tsx`.
+ */
+function klasyfikujModulNcRfgDlaTestu(pMaxMw: number, napiecieKv: number): 'A' | 'B' | 'C' | 'D' {
+  if (napiecieKv >= 110) return 'D';
+  const pMaxKw = pMaxMw * 1000;
+  if (pMaxKw >= 75_000) return 'D';
+  if (pMaxKw >= 10_000) return 'C';
+  if (pMaxKw >= 200) return 'B';
+  return 'A';
+}
 
 // Identyfikatory i wartości liczbowe PRZENIESIONE 1:1 z `PV_INVERTER_CATALOG`/
 // `BESS_PCS_CATALOG` (katalog lokalny zostaje w `catalogs.ts` — konsument
@@ -58,9 +161,12 @@ const PV_CONVERTER_FIXTURES: readonly ConverterFixture[] = [
   { id: 'pv_inv_system_1000', name: 'Pakiet katalogowy PV 1000', kind: 'PV', un_kv: 0.69, pmax_mw: 1, sn_mva: 1, manufacturer: 'MV-DESIGN-PRO' },
   { id: 'pv_inv_sma_2500', name: 'SMA Sunny Central 2500-EV', kind: 'PV', un_kv: 0.69, pmax_mw: 2.5, sn_mva: 2.5, manufacturer: 'SMA' },
 ];
+// Karta FAB-J: qmin/qmax realne (nie zerowe) — jedyny dowód zdolności do pracy
+// w czterech ćwiartkach (decyzja #6, `deviceFourQuadrantCapable`); bez nich
+// tryby BESS wymagające tej zdolności (np. FCR-N) nie pojawiłyby się wcale.
 const BESS_CONVERTER_FIXTURES: readonly ConverterFixture[] = [
-  { id: 'bess_pcs_abb_500', name: 'ABB PCS100 ESS', kind: 'BESS', un_kv: 0.4, pmax_mw: 0.5, sn_mva: 0.5, manufacturer: 'ABB' },
-  { id: 'bess_pcs_sma_2200', name: 'SMA Sunny Central Storage 2200', kind: 'BESS', un_kv: 0.69, pmax_mw: 2.2, sn_mva: 2.2, manufacturer: 'SMA' },
+  { id: 'bess_pcs_abb_500', name: 'ABB PCS100 ESS', kind: 'BESS', un_kv: 0.4, pmax_mw: 0.5, sn_mva: 0.5, manufacturer: 'ABB', qmin_mvar: -0.5, qmax_mvar: 0.5 },
+  { id: 'bess_pcs_sma_2200', name: 'SMA Sunny Central Storage 2200', kind: 'BESS', un_kv: 0.69, pmax_mw: 2.2, sn_mva: 2.2, manufacturer: 'SMA', qmin_mvar: -2.2, qmax_mvar: 2.2 },
 ];
 const DEFAULT_CONVERTERS: Readonly<Record<ConverterKind, readonly ConverterFixture[]>> = {
   PV: PV_CONVERTER_FIXTURES,
@@ -68,11 +174,28 @@ const DEFAULT_CONVERTERS: Readonly<Record<ConverterKind, readonly ConverterFixtu
   WIND: [],
 };
 
+/** Poziomy napięcia nN wyprowadzone z `DEFAULT_CONVERTERS` — te same reguły
+ *  co `derRemoteCatalogs.ts::fetchLvVoltageLevelsKv` (un_kv < 1, deduplikacja,
+ *  sortowanie), więc test nie zaszywa liczby domysłem. */
+function lvVoltageLevelsFromFixtures(
+  converters: Readonly<Partial<Record<ConverterKind, readonly ConverterFixture[]>>>,
+): readonly number[] {
+  const poziomy = new Set<number>();
+  for (const records of Object.values(converters)) {
+    for (const record of records ?? []) {
+      if (record.un_kv > 0 && record.un_kv < 1) poziomy.add(record.un_kv);
+    }
+  }
+  return [...poziomy].sort((a, b) => a - b);
+}
+
 /**
  * Mockuje granicę `fetch` — NIE listę opcji renderowaną przez kreator (wzorzec
  * `mockConverterCatalogFetch` z `SldDetailDrawer.test.tsx`). `/api/catalog/
- * converter-types?kind=…` odpowiada fikstywnym `ConverterType[]`; wszystko
- * inne (audit2 snapshot, `POST …/generators`, `assign_catalog_to_element`)
+ * converter-types?kind=…` odpowiada fikstywnym `ConverterType[]`; bez `kind`
+ * (poziomy napięcia nN) — unią WSZYSTKICH technologii. `/api/ncrfg-tests/*`,
+ * `/api/catalog/bess-battery-types` odpowiadają realnym kształtem backendu;
+ * wszystko inne (audit2 snapshot, `POST …/generators`, `assign_catalog_to_element`)
  * dostaje neutralny kształt audit2 — zachowanie tożsame z dawnym stubem.
  */
 function mockDerWizardFetch(
@@ -82,10 +205,37 @@ function mockDerWizardFetch(
   // rozwiazuje sie do `Mock<any[], unknown>` i nie przyjmuje mocka o konkretnej sygnaturze.
   const mock = vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input);
+    if (url.includes('/api/ncrfg-tests/modul')) {
+      const params = new URL(url, 'http://localhost').searchParams;
+      const modul = klasyfikujModulNcRfgDlaTestu(
+        Number(params.get('p_max_mw')), Number(params.get('napiecie_kv')),
+      );
+      return new Response(JSON.stringify({ modul }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (url.includes('/api/ncrfg-tests/catalog')) {
+      return new Response(
+        JSON.stringify({
+          procedure_version: 'test', source_ref: 'test', tests: [],
+          operators: NC_RFG_OPERATOR_FIXTURES,
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    if (url.includes('/api/catalog/bess-battery-types')) {
+      return new Response(JSON.stringify(BESS_BATTERY_FIXTURES), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
     if (url.includes('/api/catalog/converter-types')) {
       const match = /[?&]kind=([^&]+)/.exec(url);
       const kind = match ? (decodeURIComponent(match[1]) as ConverterKind) : null;
-      const records = (kind && converters[kind]) ?? [];
+      const records = kind
+        ? (converters[kind] ?? [])
+        : Object.values(converters).flatMap((list) => list ?? []);
       return new Response(JSON.stringify(records), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -215,10 +365,9 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     fireEvent.change(screen.getByTestId('add-der-device'), { target: { value: 'pv_inv_sma_2500' } });
     fireEvent.click(screen.getByTestId('add-der-next'));
 
-    // Krok 4: profile
-    fireEvent.change(screen.getByTestId('add-der-ncrfg'), { target: { value: 'ncrfg_pse' } });
-    fireEvent.change(screen.getByTestId('add-der-lvrt'), { target: { value: 'lvrt_pse_b' } });
-    fireEvent.change(screen.getByTestId('add-der-hvrt'), { target: { value: 'hvrt_pse_b' } });
+    // Krok 4: profile — operator jest jedynym wyborem; LVRT/HVRT to teraz
+    // dowód read-only tego samego profilu (karta FAB-J), nie osobny wybór.
+    fireEvent.change(screen.getByTestId('add-der-ncrfg'), { target: { value: 'pse' } });
     fireEvent.click(screen.getByTestId('add-der-next'));
 
     // Krok 5: review + utworz
@@ -234,25 +383,29 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     expect(ders[0].bus_przylaczenia_ref).toContain('PCC-01');
     expect(ders[0].bay_ref).toContain('Pole-PV-01');
     expect(ders[0].catalogs.device_catalog_ref).toBe('pv_inv_sma_2500');
-    expect(ders[0].profiles.nc_rfg_profile_ref).toBe('ncrfg_pse');
-    expect(ders[0].profiles.lvrt_curve_ref).toBe('lvrt_pse_b');
-    expect(ders[0].profiles.hvrt_curve_ref).toBe('hvrt_pse_b');
+    expect(ders[0].profiles.nc_rfg_profile_ref).toBe('pse');
+    expect(ders[0].profiles.lvrt_curve_ref).toBe('pse');
+    expect(ders[0].profiles.hvrt_curve_ref).toBe('pse');
     expect(ders[0].nominal_power_kw).toBe(2500);
     expect(ders[0].completeness).toBe('complete');
   });
 
-  it('po nN: krok 2 pokazuje wybór poziomu napięcia z katalogu (5 opcji + placeholder)', () => {
+  it('po nN: krok 2 pokazuje wybór poziomu napięcia wyprowadzony z katalogu przekształtników', async () => {
     render(
       <AddDerWizard isOpen stationId="s" stationName="S" derKind="BESS" projectId="p" onClose={vi.fn()} />,
     );
     fireEvent.click(screen.getByTestId('variant-nN'));
     fireEvent.click(screen.getByTestId('add-der-next'));
-    const select = screen.getByTestId('add-der-voltage-level') as HTMLSelectElement;
-    // 5 poziomów + 1 placeholder = 6 opcji
-    expect(select.options.length).toBe(6);
+    // Poziomy WYPROWADZONE z katalogu przekształtników (karta FAB-J) — zero
+    // katalogu statycznego, więc liczba opcji wynika z fikstur, nie z domysłu.
+    const oczekiwanePoziomy = lvVoltageLevelsFromFixtures(DEFAULT_CONVERTERS);
+    await waitFor(() => {
+      const select = screen.getByTestId('add-der-voltage-level') as HTMLSelectElement;
+      expect(select.options.length).toBe(oczekiwanePoziomy.length + 1);
+    });
   });
 
-  it('po nN: podpowiada gotowy punkt PCC, nazwę DER i napięcie z katalogu', () => {
+  it('po nN: podpowiada gotowy punkt PCC, nazwę DER i napięcie z katalogu', async () => {
     render(
       <AddDerWizard
         isOpen
@@ -268,7 +421,11 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
 
     expect((screen.getByTestId('add-der-name') as HTMLInputElement).value).toBe('PV S15');
     expect((screen.getByTestId('add-der-pcc-label') as HTMLInputElement).value).toBe('PCC-PV-S15');
-    expect((screen.getByTestId('add-der-voltage-level') as HTMLSelectElement).value).toBe('lv_0_4kV');
+    // Domyślny poziom napięcia nN to najniższy poziom faktycznie niesiony
+    // przez katalog przekształtników (karta FAB-J) — dla fikstur PV/BESS 0,4 kV.
+    await waitFor(() => {
+      expect((screen.getByTestId('add-der-voltage-level') as HTMLSelectElement).value).toBe('0.4');
+    });
     expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false);
   });
 
@@ -281,7 +438,15 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
 
     fireEvent.change(screen.getByTestId('add-der-name'), { target: { value: 'BESS-1' } });
     fireEvent.change(screen.getByTestId('add-der-pcc-label'), { target: { value: 'PCC-1' } });
-    fireEvent.change(screen.getByTestId('add-der-voltage-level'), { target: { value: 'lv_0_4kV' } });
+    // Poziomy napięcia nN są wyprowadzone asynchronicznie z katalogu
+    // przekształtników (karta FAB-J) — czekamy, aż opcja naprawdę istnieje.
+    await waitFor(() => {
+      const opcje = Array.from(
+        (screen.getByTestId('add-der-voltage-level') as HTMLSelectElement).options,
+      ).map((o) => o.value);
+      expect(opcje).toContain('0.4');
+    });
+    fireEvent.change(screen.getByTestId('add-der-voltage-level'), { target: { value: '0.4' } });
     fireEvent.click(screen.getByTestId('add-der-next'));
 
     // Krok 3: musi pokazac wybor baterii i trybow pracy.
@@ -291,7 +456,8 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     fireEvent.change(screen.getByTestId('add-der-device'), { target: { value: 'bess_pcs_abb_500' } });
     // Bez baterii i trybu pracy: Dalej zablokowany.
     expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.change(screen.getByTestId('add-der-battery'), { target: { value: 'bess_bat_byd_2880' } });
+    await waitFor(() => expect(screen.getByTestId('add-der-battery')).not.toBeDisabled());
+    fireEvent.change(screen.getByTestId('add-der-battery'), { target: { value: 'bess_bat_test_2880kwh' } });
     // Sama bateria nie wystarcza, bo tryb BESS zasila pozniejsze analizy NC RfG/PTPiREE.
     expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByTestId('add-der-bess-mode-fcr_n'));
@@ -334,6 +500,11 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
 
     fireEvent.click(screen.getByTestId('variant-nN'));
     fireEvent.click(screen.getByTestId('add-der-next'));
+    // Domyślny poziom napięcia nN wypełnia się dopiero po rozstrzygnięciu
+    // asynchronicznego zapytania o katalog przekształtników (karta FAB-J) —
+    // czekamy na niego, zanim spróbujemy przejść dalej z kroku „Punkt".
+    await waitFor(() =>
+      expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByTestId('add-der-next'));
     await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
     expect(
@@ -411,6 +582,10 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
 
     fireEvent.click(screen.getByTestId('variant-nN'));
     fireEvent.click(screen.getByTestId('add-der-next'));
+    // Domyślny poziom napięcia nN wypełnia się dopiero po rozstrzygnięciu
+    // asynchronicznego zapytania o katalog przekształtników (karta FAB-J).
+    await waitFor(() =>
+      expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByTestId('add-der-next'));
 
     const summary = screen.getByTestId('add-der-compatible-device-summary');
@@ -449,7 +624,7 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it('profil Enea automatycznie wybiera dostepne krzywe LVRT/HVRT i odblokowuje Dalej', async () => {
+  it('profil Enea pokazuje jego krzywe LVRT/HVRT (read-only, z backendu) i odblokowuje Dalej', async () => {
     render(
       <AddDerWizard isOpen stationId="s" stationName="S" derKind="PV" projectId="p" onClose={vi.fn()} />,
     );
@@ -464,13 +639,17 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     fireEvent.change(screen.getByTestId('add-der-device'), { target: { value: 'pv_inv_sma_2500' } });
     fireEvent.click(screen.getByTestId('add-der-next'));
 
-    fireEvent.change(screen.getByTestId('add-der-ncrfg'), { target: { value: 'ncrfg_enea' } });
+    await waitFor(() => expect(screen.getByTestId('add-der-ncrfg')).not.toBeDisabled());
+    fireEvent.change(screen.getByTestId('add-der-ncrfg'), { target: { value: 'enea' } });
 
-    expect((screen.getByTestId('add-der-lvrt') as HTMLSelectElement).value).toBe('lvrt_enea_b');
-    expect((screen.getByTestId('add-der-hvrt') as HTMLSelectElement).value).toBe('hvrt_enea_b');
+    // Karta FAB-J: backend niesie JEDNĄ krzywą LVRT/HVRT na operatora (nie
+    // katalog wariantów) — pokazywana jako dowód White Box, nie jako select.
+    expect(screen.getByTestId('add-der-lvrt')).toHaveTextContent('0.05 pu');
+    expect(screen.getByTestId('add-der-hvrt')).toHaveTextContent('1.30 pu');
     // Karta K-Q: nastawa P(f) NIE jest juz przypisana operatorowi (rozporzadzenie
     // 2016/631 art. 13 ust. 2 podaje przedzial nastawialny, a nie wartosc „dla
     // Enei"), wiec wybor profilu jej nie podstawia i nie zaweza listy wariantow.
+    await waitFor(() => expect(screen.getByTestId('add-der-pf-curve')).not.toBeDisabled());
     const pf = screen.getByTestId('add-der-pf-curve') as HTMLSelectElement;
     expect(pf.value).toBe('');
     const wariantyPf = Array.from(pf.options).map((o) => o.value).filter(Boolean);
@@ -517,6 +696,10 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
 
     fireEvent.click(screen.getByTestId('variant-nN'));
     fireEvent.click(screen.getByTestId('add-der-next'));
+    // Domyślny poziom napięcia nN wypełnia się dopiero po rozstrzygnięciu
+    // asynchronicznego zapytania o katalog przekształtników (karta FAB-J).
+    await waitFor(() =>
+      expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByTestId('add-der-next'));
     await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
     fireEvent.change(screen.getByTestId('add-der-device'), {
@@ -538,7 +721,8 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false);
 
     fireEvent.click(screen.getByTestId('add-der-next'));
-    fireEvent.change(screen.getByTestId('add-der-ncrfg'), { target: { value: 'ncrfg_enea' } });
+    await waitFor(() => expect(screen.getByTestId('add-der-ncrfg')).not.toBeDisabled());
+    fireEvent.change(screen.getByTestId('add-der-ncrfg'), { target: { value: 'enea' } });
     fireEvent.click(screen.getByTestId('add-der-next'));
 
     expect(screen.getByTestId('add-der-step-content-review')).toHaveTextContent('Transformator blokowy');
@@ -598,6 +782,10 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
 
       fireEvent.click(screen.getByTestId('variant-nN'));
       fireEvent.click(screen.getByTestId('add-der-next'));
+      // Domyślny poziom napięcia nN wypełnia się dopiero po rozstrzygnięciu
+      // asynchronicznego zapytania o katalog przekształtników (karta FAB-J).
+      await waitFor(() =>
+        expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false));
       fireEvent.click(screen.getByTestId('add-der-next'));
       await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
       fireEvent.change(screen.getByTestId('add-der-device'), {
@@ -688,16 +876,14 @@ describe('Katalog urządzeń DER — wyłącznie z backendu, zero listy zastępc
       expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(true);
       expect((screen.getByTestId('add-der-device') as HTMLSelectElement).disabled).toBe(true);
 
-      // ZERO LISTY ZASTĘPCZEJ: żaden identyfikator z lokalnych katalogów statycznych
-      // (PV/BESS/FW) nie może wyciec do DOM, niezależnie od technologii kreatora.
-      const statyczneId = [
-        ...PV_INVERTER_CATALOG.map((d) => d.id),
-        ...BESS_PCS_CATALOG.map((d) => d.id),
-        ...WIND_TURBINE_CATALOG.map((d) => d.id),
-      ];
-      for (const id of statyczneId) {
-        expect(container.innerHTML).not.toContain(id);
-      }
+      // ZERO LISTY ZASTĘPCZEJ: `PV_INVERTER_CATALOG`/`BESS_PCS_CATALOG`/
+      // `WIND_TURBINE_CATALOG` USUNIĘTE z `catalogs.ts` (karta FAB-J — jedyny
+      // pozostały konsument, `DerSurfaces.tsx`, czyta ten sam `fetchDerConverterTypes`
+      // co kreator) — rozjazd jest strukturalnie niemożliwy (nie ma już drugiej
+      // kopii do wycieku), nie tylko pilnowany testem przeszukującym DOM.
+      expect(container.innerHTML).not.toContain('pv_inv_');
+      expect(container.innerHTML).not.toContain('bess_pcs_');
+      expect(container.innerHTML).not.toContain('wind_turbine_');
     },
   );
 
@@ -760,9 +946,9 @@ describe('Katalog urządzeń DER — wyłącznie z backendu, zero listy zastępc
       .sort();
     // Dokładnie te dwa identyfikatory z backendu — nic więcej, nic mniej.
     expect(options).toEqual(['conv-pv-test-a', 'conv-pv-test-b']);
-    for (const id of PV_INVERTER_CATALOG.map((d) => d.id)) {
-      expect(container.innerHTML).not.toContain(id);
-    }
+    // `PV_INVERTER_CATALOG` USUNIĘTY z `catalogs.ts` (karta FAB-J) — rozjazd
+    // strukturalnie niemożliwy; sprawdzamy mimo to prefiks jego dawnych id.
+    expect(container.innerHTML).not.toContain('pv_inv_');
   });
 
   it('zmiana technologii po wyborze urządzenia: wybór wyczyszczony, lista nowej technologii, zero wycieku poprzedniej', async () => {

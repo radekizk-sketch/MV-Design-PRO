@@ -16401,6 +16401,33 @@
     ]
    }
   },
+  "/api/catalog/bess-battery-types": {
+   "get": {
+    "description": "List all BESS battery PACK types (karta FAB-J) — sprzęt oddzielny od PCS.\n\nKatalog pojemności [kWh] / napięcia DC / C-rate / chemii pakietu baterii;\ntyp przekształtnika magazynu (moc, Q, cosφ) niesie `/bess-inverter-types`\npowyżej.",
+    "operationId": "list_bess_battery_types_api_catalog_bess_battery_types_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "additionalProperties": true,
+          "type": "object"
+         },
+         "title": "Response List Bess Battery Types Api Catalog Bess Battery Types Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "List Bess Battery Types",
+    "tags": [
+     "Type Catalog"
+    ]
+   }
+  },
   "/api/catalog/bess-inverter-types": {
    "get": {
     "description": "List all BESS inverter types from the canonical MV catalog.",
@@ -19611,6 +19638,62 @@
      }
     },
     "summary": "Get Ncrfg Test Catalog",
+    "tags": [
+     "ncrfg-ptpiree-tests"
+    ]
+   }
+  },
+  "/api/ncrfg-tests/modul": {
+   "get": {
+    "description": "Klasyfikacja modułu wytwórczego NC RfG (karta FAB-J).\n\nPunkt wejścia dla kreatora DER i szuflady SLD: oba miejsca pytają o\nOCZEKIWANY moduł dla mocy i napięcia przyłączenia PRZED zapisem, żeby\npokazać go projektantowi jako wartość jawnie wybieraną (nie domyślną).\nJedyne źródło progów: `compliance.nc_rfg_modul.modul_nc_rfg`.",
+    "operationId": "klasyfikuj_modul_ncrfg_api_ncrfg_tests_modul_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "p_max_mw",
+      "required": true,
+      "schema": {
+       "title": "P Max Mw",
+       "type": "number"
+      }
+     },
+     {
+      "in": "query",
+      "name": "napiecie_kv",
+      "required": true,
+      "schema": {
+       "title": "Napiecie Kv",
+       "type": "number"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": {
+          "type": "string"
+         },
+         "title": "Response Klasyfikuj Modul Ncrfg Api Ncrfg Tests Modul Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Klasyfikuj Modul Ncrfg",
     "tags": [
      "ncrfg-ptpiree-tests"
     ]

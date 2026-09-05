@@ -6,13 +6,59 @@
  * pozostaja jako fallback (gdy backend niedostepny lub w testach).
  */
 
-interface AuditCatalogSnapshot {
+/**
+ * Krzywa P(f) (eng.9, NC RfG art. 13/15) — kształt 1:1 z backendu
+ * (`network_model/catalog/audit2_catalogs.py::PfCurveItem.to_dict`).
+ * Karta FAB-J: JEDYNE źródło — front nie ma już własnej kopii (`PF_CURVE_CATALOG`
+ * usunięty z `catalogs.ts`).
+ */
+export interface PfCurveItem {
+  readonly id: string;
+  readonly catalog_namespace: string;
+  readonly catalog_version: string;
+  readonly label_pl: string;
+  readonly f_ref_hz: number;
+  readonly droop_percent: number;
+  readonly f_min_hz: number;
+  readonly f_max_hz: number;
+  readonly deadband_hz: number;
+  readonly zrodlo_pl: string;
+}
+
+/**
+ * Transformator dedykowany DER (B.5) — kształt 1:1 z backendu
+ * (`network_model/catalog/audit2_catalogs.py::BlockTransformerItem.to_dict`).
+ * Karta FAB-J: JEDYNE źródło — front nie ma już własnej kopii
+ * (`BLOCK_TRANSFORMER_CATALOG` usunięty z `catalogs.ts`).
+ */
+export interface BlockTransformerItem {
+  readonly id: string;
+  readonly catalog_namespace: string;
+  readonly catalog_version: string;
+  readonly label_pl: string;
+  readonly transformer_type_ref: string;
+  readonly sn_kva: number;
+  readonly hv_kv: number;
+  readonly lv_kv: number;
+  readonly uk_percent: number;
+  readonly pk_kw: number;
+  readonly p0_kw: number;
+  readonly i0_percent: number;
+  readonly vector_group: string;
+  readonly is_mv_to_mv: boolean;
+  readonly applicable_der_kinds: readonly string[];
+  readonly galvanic_isolation: boolean;
+  readonly source_reference: string;
+  readonly verification_status: string;
+}
+
+export interface AuditCatalogSnapshot {
   readonly bess_operation_modes: ReadonlyArray<unknown>;
   readonly tap_changers: ReadonlyArray<unknown>;
   readonly hv_fuses: ReadonlyArray<unknown>;
   readonly device_withstand: ReadonlyArray<unknown>;
-  readonly pf_curves: ReadonlyArray<unknown>;
-  readonly block_transformers: ReadonlyArray<unknown>;
+  readonly pf_curves: readonly PfCurveItem[];
+  readonly block_transformers: readonly BlockTransformerItem[];
   readonly mv_neutral_groundings: ReadonlyArray<unknown>;
 }
 

@@ -19,11 +19,11 @@ import {
 } from '../../../ui/catalog/api';
 import type { CTCatalogType, ProtectionDeviceType, VTCatalogType } from '../../../ui/catalog/types';
 import {
-  NC_RFG_PROFILE_CATALOG,
-  PF_CURVE_CATALOG,
-  getNcRfgProfile,
-  selectHvrtCurvesForProfile,
-  selectLvrtCurvesForProfile,
+  fetchAudit2CatalogSnapshot,
+  fetchNcRfgOperators,
+  getNcRfgOperator,
+  type NcRfgOperatorItem,
+  type PfCurveItem,
 } from '../../../ui/network-build/station-der';
 import {
   KreatorInfo,
@@ -171,54 +171,67 @@ export function KrokAparatura({ dane, zmien, testid = 'mvd-kreator-oze-aparatura
   );
 }
 
-/** Krok „Zgodność przyłączeniowa" — profil operatora + krzywe graniczne NC RfG. */
+/**
+ * Krok „Zgodność przyłączeniowa" — profil operatora + krzywe graniczne NC RfG.
+ *
+ * Karta FAB-J: profil operatora i krzywe LVRT/HVRT WYŁĄCZNIE z backendu
+ * (`GET /api/ncrfg-tests/catalog`) i P(f) ze snapshotu audytu 2
+ * (`GET /api/v1/catalog/audit2/snapshot`) — zero drugiej kopii katalogu w
+ * froncie. Backend niesie JEDNĄ parę krzywych ride-through na operatora (nie
+ * katalog wariantów), więc `lvrt_curve_ref`/`hvrt_curve_ref` są tożsamościowo
+ * związane z `nc_rfg_profile_ref` (ten sam operator), a nie osobnym wyborem —
+ * wyświetlane jako dowód White Box, nie jako pola do wypełnienia.
+ */
 export function KrokZgodnosc({ dane, zmien, testid = 'mvd-kreator-oze-zgodnosc' }: KrokAparaturaZgodnoscProps) {
-  const profil = dane.nc_rfg_profile_ref ? getNcRfgProfile(dane.nc_rfg_profile_ref) : null;
+  const [ncRfgOperatorzy, setNcRfgOperatorzy] = useState<NcRfgOperatorItem[]>([]);
+  const [pfKrzywe, setPfKrzywe] = useState<PfCurveItem[]>([]);
+  const [status, setStatus] = useState<StatusPobrania>('loading');
+  const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setStatus('loading');
+    setBladKatalogu(null);
+    Promise.all([fetchNcRfgOperators(), fetchAudit2CatalogSnapshot()])
+      .then(([operatorzy, snapshot]) => {
+        if (cancelled) return;
+        setNcRfgOperatorzy(Array.isArray(operatorzy) ? [...operatorzy] : []);
+        setPfKrzywe(Array.isArray(snapshot.pf_curves) ? [...snapshot.pf_curves] : []);
+        setStatus('ready');
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return;
+        setNcRfgOperatorzy([]);
+        setPfKrzywe([]);
+        setStatus('error');
+        setBladKatalogu(getCatalogErrorMessage(e));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const profil = getNcRfgOperator(ncRfgOperatorzy, dane.nc_rfg_profile_ref);
 
   const opcjeProfili = useMemo(
-    () => NC_RFG_PROFILE_CATALOG.map((p) => ({ id: p.id, etykieta: p.label_pl })),
-    [],
-  );
-  const opcjeLvrt = useMemo(
-    () =>
-      (dane.nc_rfg_profile_ref
-        ? selectLvrtCurvesForProfile(dane.nc_rfg_profile_ref)
-        : []
-      ).map((c) => ({ id: c.id, etykieta: c.label_pl })),
-    [dane.nc_rfg_profile_ref],
-  );
-  const opcjeHvrt = useMemo(
-    () =>
-      (dane.nc_rfg_profile_ref
-        ? selectHvrtCurvesForProfile(dane.nc_rfg_profile_ref)
-        : []
-      ).map((c) => ({ id: c.id, etykieta: c.label_pl })),
-    [dane.nc_rfg_profile_ref],
+    () => ncRfgOperatorzy.map((o) => ({ id: o.operator_id, etykieta: o.operator_name_pl })),
+    [ncRfgOperatorzy],
   );
   // Warianty nastawy P(f) nie zależą od operatora (karta K-Q): rozporządzenie
   // (UE) 2016/631 art. 13 ust. 2 podaje statyzm jako nastawialny w przedziale
   // 2-12%, a nie jako wartość „dla PSE / Energi / Tauronu". Lista jest pełna.
   const opcjePf = useMemo(
-    () => PF_CURVE_CATALOG.map((c) => ({ id: c.id, etykieta: c.label_pl })),
-    [],
+    () => pfKrzywe.map((c) => ({ id: c.id, etykieta: c.label_pl })),
+    [pfKrzywe],
   );
 
-  // Zmiana profilu zawęża krzywe do operatora — wybory spoza nowego profilu czyścimy,
-  // żeby do modelu nie trafiła krzywa niespójna z profilem.
+  // Zmiana profilu ustawia krzywe LVRT/HVRT na tego samego operatora (1:1,
+  // patrz nota nad komponentem) — bez tego DER wysłałby do modelu krzywą
+  // niespójną z profilem.
   const wybierzProfil = (ref: string | null) => {
     zmien('nc_rfg_profile_ref', ref);
-    if (
-      dane.lvrt_curve_ref
-      && !(ref ? selectLvrtCurvesForProfile(ref) : []).some((c) => c.id === dane.lvrt_curve_ref)
-    ) {
-      zmien('lvrt_curve_ref', null);
-    }
-    if (
-      dane.hvrt_curve_ref
-      && !(ref ? selectHvrtCurvesForProfile(ref) : []).some((c) => c.id === dane.hvrt_curve_ref)
-    ) {
-      zmien('hvrt_curve_ref', null);
-    }
+    zmien('lvrt_curve_ref', ref);
+    zmien('hvrt_curve_ref', ref);
     // Nastawa P(f) NIE jest zawężana profilem operatora — patrz nota nad
     // `opcjePf`. Zmiana profilu nie czyści więc tego wyboru.
   };
@@ -231,42 +244,44 @@ export function KrokZgodnosc({ dane, zmien, testid = 'mvd-kreator-oze-zgodnosc' 
         wartosc={dane.nc_rfg_profile_ref}
         onZmiana={wybierzProfil}
         opcje={opcjeProfili}
-        status="ready"
+        status={status}
         placeholder={T.zgodnoscProfilPlaceholder}
+        komunikatBledu={bladKatalogu ?? undefined}
         pomoc={T.zgodnoscProfilPomoc}
         testid={`${testid}-profil`}
       />
-      {profil ? <KreatorInfo>{profil.description_pl}</KreatorInfo> : null}
       {dane.nc_rfg_profile_ref ? (
         <>
           <KreatorSiatka kolumny={2}>
-            <PoleKatalogu
-              etykieta={T.zgodnoscLvrt}
-              wartosc={dane.lvrt_curve_ref}
-              onZmiana={(v) => zmien('lvrt_curve_ref', v)}
-              opcje={opcjeLvrt}
-              status="ready"
-              placeholder={T.zgodnoscKrzywaPlaceholder}
-              pomoc={T.zgodnoscKrzywePomoc}
-              testid={`${testid}-lvrt`}
-            />
-            <PoleKatalogu
-              etykieta={T.zgodnoscHvrt}
-              wartosc={dane.hvrt_curve_ref}
-              onZmiana={(v) => zmien('hvrt_curve_ref', v)}
-              opcje={opcjeHvrt}
-              status="ready"
-              placeholder={T.zgodnoscKrzywaPlaceholder}
-              testid={`${testid}-hvrt`}
-            />
+            <div>
+              <strong>{T.zgodnoscLvrt}</strong>
+              <KreatorInfo testid={`${testid}-lvrt`}>
+                {profil
+                  ? profil.ride_through.lvrt
+                    .map((p) => `${p.time_s.toFixed(2)} s / ${p.voltage_pu.toFixed(2)} pu`)
+                    .join(' → ')
+                  : T.zgodnoscKrzywaPlaceholder}
+              </KreatorInfo>
+            </div>
+            <div>
+              <strong>{T.zgodnoscHvrt}</strong>
+              <KreatorInfo testid={`${testid}-hvrt`}>
+                {profil
+                  ? profil.ride_through.hvrt
+                    .map((p) => `${p.time_s.toFixed(2)} s / ${p.voltage_pu.toFixed(2)} pu`)
+                    .join(' → ')
+                  : T.zgodnoscKrzywaPlaceholder}
+              </KreatorInfo>
+            </div>
           </KreatorSiatka>
           <PoleKatalogu
             etykieta={T.zgodnoscPf}
             wartosc={dane.pf_curve_ref}
             onZmiana={(v) => zmien('pf_curve_ref', v)}
             opcje={opcjePf}
-            status="ready"
+            status={status}
             placeholder={T.zgodnoscKrzywaPlaceholder}
+            komunikatBledu={bladKatalogu ?? undefined}
             pomoc={T.zgodnoscPfPomoc}
             testid={`${testid}-pf`}
           />

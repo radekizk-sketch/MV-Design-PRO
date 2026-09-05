@@ -31,10 +31,8 @@ from pathlib import Path
 import pytest
 from network_model.catalog.audit2_catalogs import (
     BESS_OPERATION_MODE_CATALOG,
-    BLOCK_TRANSFORMER_CATALOG,
     HV_FUSE_CATALOG,
     MV_NEUTRAL_GROUNDING_CATALOG,
-    PF_CURVE_CATALOG,
     TAP_CHANGER_CATALOG,
 )
 
@@ -103,13 +101,21 @@ IMIONA_ZAKAZANE_W_KATALOGACH_AUDYTU2 = (
 
 
 def test_kazdy_katalog_lustrzany_ma_te_same_pozycje_po_obu_stronach() -> None:
+    """Karta FAB-J: `BLOCK_TRANSFORMER_CATALOG`/`PF_CURVE_CATALOG` USUNIĘTE z tej
+    listy — nie dlatego, że przestały istnieć, tylko dlatego, że przestały mieć
+    DRUGĄ KOPIĘ do porównania. Kreator czyta je dziś WYŁĄCZNIE ze snapshotu
+    audytu 2 (`useAudit2CatalogSnapshot`, `frontend/.../audit2-api.ts`), więc w
+    `catalogs.ts` nie ma już bloku `export const BLOCK_TRANSFORMER_CATALOG`/
+    `PF_CURVE_CATALOG` do sparsowania — rozjazd jest strukturalnie niemożliwy
+    (jedno źródło danych), a nie tylko pilnowany testem. Pozostałe trzy katalogi
+    NADAL mają lokalny mirror we froncie (poza zakresem karty FAB-J) i parytet
+    dla nich zostaje.
+    """
     front = _front_source(_FRONT_CATALOGS_TS)
     pary = {
         "MV_NEUTRAL_GROUNDING_CATALOG": {g.id for g in MV_NEUTRAL_GROUNDING_CATALOG},
         "BESS_OPERATION_MODE_CATALOG": {m.id for m in BESS_OPERATION_MODE_CATALOG},
         "TAP_CHANGER_CATALOG": {t.id for t in TAP_CHANGER_CATALOG},
-        "BLOCK_TRANSFORMER_CATALOG": {b.id for b in BLOCK_TRANSFORMER_CATALOG},
-        "PF_CURVE_CATALOG": {c.id for c in PF_CURVE_CATALOG},
     }
     for const_name, backend_ids in pary.items():
         front_ids = _ids_in_block(front, const_name)

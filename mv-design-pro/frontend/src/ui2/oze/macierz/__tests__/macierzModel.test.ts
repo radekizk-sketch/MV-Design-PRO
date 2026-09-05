@@ -12,7 +12,7 @@ import { derFixture, katalogFixture, wynikFixture } from './fixtures';
 
 describe('rozwiazNapiecieKv — napięcie WYŁĄCZNIE z modelu (ZAKAZ zgadywania)', () => {
   it('rozwiązuje 0,4 kV z poziomu napięcia przyłączenia (voltage_level_ref)', () => {
-    expect(rozwiazNapiecieKv(derFixture({ id: 'pv-1', voltage_level_ref: 'lv_0_4kV' }))).toBe(0.4);
+    expect(rozwiazNapiecieKv(derFixture({ id: 'pv-1', voltage_level_ref: '0.4' }))).toBe(0.4);
   });
 
   it('zwraca null gdy brak poziomu napięcia — NIE zgaduje 15 kV', () => {
@@ -71,7 +71,7 @@ describe('zbudujWejscieModulu — wejście biegu', () => {
 
   it('składa NcRfgModuleInput z napięciem z modelu, mocą i operatorem', () => {
     const [modul] = zbudujModuly([
-      derFixture({ id: 'pv-1', nominal_power_kw: 500, voltage_level_ref: 'lv_0_4kV' }),
+      derFixture({ id: 'pv-1', nominal_power_kw: 500, voltage_level_ref: '0.4' }),
     ]);
     const wejscie = zbudujWejscieModulu(modul, 'pge');
     expect(wejscie).not.toBeNull();

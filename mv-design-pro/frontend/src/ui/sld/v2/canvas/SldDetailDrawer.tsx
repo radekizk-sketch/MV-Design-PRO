@@ -31,6 +31,7 @@ import { useProtectionAssignment, type ElementProtectionAssignment } from '../..
 import { formatProtectionFunction } from '../../../inspector/formatProtection';
 import { fetchDerConverterTypes } from '../../../catalog/api';
 import type { ConverterType } from '../../../catalog/types';
+import { fetchNcRfgModuleClassification } from '../../../network-build/station-der/derRemoteCatalogs';
 
 export type SldDetailKind =
   | 'station'
@@ -443,6 +444,45 @@ function useDerConverterCatalog(
   return state.key === key ? state.value : DER_CATALOG_STATE_LOADING;
 }
 
+/**
+ * Klasyfikacja modułu NC RfG (karta FAB-J, decyzja #5) — WYŁĄCZNIE z backendu
+ * (`compliance/nc_rfg_modul.py` przez `GET /api/ncrfg-tests/modul`), zero
+ * duplikacji progów ustawowych w froncie. `enabled` odracza zapytanie do
+ * zakładki „NC RfG" — ten sam wzorzec co `useDerConverterCatalog` powyżej
+ * (zero fetchu przy każdym renderze szuflady niezależnie od zakładki).
+ */
+function useNcRfgModuleClassificationState(
+  powerMw: number,
+  pointVoltageKv: number,
+  enabled: boolean,
+): { readonly status: 'loading' | 'ready' | 'error'; readonly modul: SldNcRfgModule | null } {
+  const [state, setState] = useState<{
+    status: 'loading' | 'ready' | 'error';
+    modul: SldNcRfgModule | null;
+  }>({ status: 'loading', modul: null });
+
+  useEffect(() => {
+    if (!enabled || !(powerMw > 0) || !(pointVoltageKv > 0)) {
+      setState({ status: 'loading', modul: null });
+      return undefined;
+    }
+    let active = true;
+    setState({ status: 'loading', modul: null });
+    void fetchNcRfgModuleClassification({ pMaxMw: powerMw, napiecieKv: pointVoltageKv })
+      .then((modul) => {
+        if (active) setState({ status: 'ready', modul });
+      })
+      .catch(() => {
+        if (active) setState({ status: 'error', modul: null });
+      });
+    return () => {
+      active = false;
+    };
+  }, [enabled, powerMw, pointVoltageKv]);
+
+  return state;
+}
+
 /** Etykieta pozycji zastępczej listy przekształtników — wybór jest jawny, więc
  *  lista zaczyna się od pustej pozycji, a nie od pierwszego typu z katalogu. */
 const DER_INVERTER_PLACEHOLDER_LABEL = '— wybierz z katalogu —';
@@ -550,6 +590,11 @@ function makeDefaultDerFormValues(data: SldDetailDrawerData | null): SldDerConfi
     // podstawia. Formularz odrzuca zapis z pustym `inverterCatalogRef`
     // (schemat zod poniżej) i przełącza szufladę na tę zakładkę.
     inverterCatalogRef: '',
+    // Wartość WSTĘPNA i PROWIZORYCZNA — `useNcRfgModuleClassificationState`
+    // nadpisuje ją realną klasyfikacją backendu (moc × napięcie przyłączenia)
+    // w chwili, gdy zakładka „NC RfG" jest oglądana (karta FAB-J, decyzja #5).
+    // Zero duplikacji progów ustawowych w froncie — to jedyne miejsce, gdzie
+    // literał 'A' w ogóle występuje, i nie jest on progiem, tylko placeholderem.
     ncRfgModule: 'A',
   };
 }
@@ -609,11 +654,31 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
   });
   const watchedDerKind = derForm.watch('derKind');
   const watchedConnectionVariant = derForm.watch('connectionVariant');
+  const watchedPowerMw = derForm.watch('powerMw');
+  const watchedPointVoltageKv = derForm.watch('pointVoltageKv');
   const derCatalog = useDerConverterCatalog(
     watchedDerKind,
     watchedConnectionVariant,
     data?.kind === 'der' && resolvedTab === 'inverter',
   );
+  // Karta FAB-J: NIE odraczamy do zakładki „NC RfG" (inaczej niż katalog
+  // przekształtników powyżej) — moduł jest częścią payloadu zapisu niezależnie
+  // od tego, którą zakładkę projektant akurat ogląda. Odroczenie do zakładki
+  // pozwoliłoby zapisać z zakładki „Moc"/„Falownik" wartość niespójną z realną
+  // (mocą, napięciem) — gwarantowany 422 backendu bez ostrzeżenia w UI.
+  const ncRfgClassification = useNcRfgModuleClassificationState(
+    Number(watchedPowerMw),
+    Number(watchedPointVoltageKv),
+    data?.kind === 'der',
+  );
+  // Moduł NC RfG jest DERYWOWANY z (moc, napięcie), nie wolnym wyborem — gdy
+  // backend rozstrzygnie klasyfikację, wartość formularza zawsze ją odzwierciedla
+  // (karta FAB-J, decyzja #5: „ten sam kontrakt, ta sama weryfikacja" co kreator DER).
+  useEffect(() => {
+    if (ncRfgClassification.status !== 'ready' || !ncRfgClassification.modul) return;
+    if (derForm.getValues('ncRfgModule') === ncRfgClassification.modul) return;
+    derForm.setValue('ncRfgModule', ncRfgClassification.modul, { shouldValidate: true });
+  }, [derForm, ncRfgClassification.modul, ncRfgClassification.status]);
   const saveError = data?.kind === 'der' ? firstDerFormError(derForm.formState.errors) : null;
   // K30-96: auto-focus close button when drawer opens (ARIA dialog pattern)
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -672,10 +737,26 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
     if (data.kind === 'der') {
       void derForm.handleSubmit(
         async (values) => {
+          // Naprawa (2026-09-05, ta sama klasa co decyzja #5 powyżej): moduł
+          // NC RfG w `values.ncRfgModule` pochodzi z efektu synchronizującego
+          // się z `ncRfgClassification` W TLE — po zmianie mocy/napięcia
+          // (np. na zakładce „Moc" tuż przed zapisem) klasyfikacja liczy się
+          // NA NOWO, a klik „Zapisz" nie czeka na jej rozstrzygnięcie. Zamiast
+          // BLOKOWAĆ przycisk (co złamałoby zapis natychmiast po otwarciu
+          // szuflady, zanim jakakolwiek klasyfikacja zdąży się policzyć),
+          // pobieramy klasyfikację ŚWIEŻO tu, dla DOKŁADNIE mocy/napięcia
+          // wysyłanych w tym zapisie — jedyne źródło prawdy w chwili wysyłki,
+          // niezależne od tego, czy efekt w tle już zdążył zaktualizować pole
+          // formularza. Błąd pobrania nie blokuje zapisu: zostaje ostatnia
+          // znana wartość formularza, a backend i tak zweryfikuje ją ponownie.
+          const freshModul = await fetchNcRfgModuleClassification({
+            pMaxMw: values.powerMw,
+            napiecieKv: values.pointVoltageKv,
+          }).catch(() => null);
           await onSave({
             kind: data.kind,
             elementId: data.elementId,
-            derConfig: values,
+            derConfig: freshModul ? { ...values, ncRfgModule: freshModul } : values,
           });
         },
         (errors) => {
@@ -996,6 +1077,7 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
           data={data}
           derForm={derForm}
           derCatalog={derCatalog}
+          ncRfgClassification={ncRfgClassification}
           onOpenConfiguration={onOpenConfiguration}
         />
       </div>
@@ -1115,10 +1197,16 @@ interface TabContentProps {
   readonly data: SldDetailDrawerData;
   readonly derForm: UseFormReturn<SldDerConfigFormValues>;
   readonly derCatalog: DerConverterCatalogState;
+  readonly ncRfgClassification: {
+    readonly status: 'loading' | 'ready' | 'error';
+    readonly modul: SldNcRfgModule | null;
+  };
   readonly onOpenConfiguration?: () => void;
 }
 
-function TabContent({ kind, tab, data, derForm, derCatalog, onOpenConfiguration }: TabContentProps): JSX.Element {
+function TabContent({
+  kind, tab, data, derForm, derCatalog, ncRfgClassification, onOpenConfiguration,
+}: TabContentProps): JSX.Element {
   return (
     <div data-testid={`sld-v2-detail-drawer-tab-content-${tab}`}>
       <div style={{ color: 'rgb(var(--scada-muted))', fontStyle: 'italic', marginBottom: 12 }}>
@@ -1140,6 +1228,7 @@ function TabContent({ kind, tab, data, derForm, derCatalog, onOpenConfiguration 
         apparatusState={data.apparatusState ?? null}
         derForm={derForm}
         derCatalog={derCatalog}
+        ncRfgClassification={ncRfgClassification}
         onOpenConfiguration={onOpenConfiguration}
       />
     </div>
@@ -1613,6 +1702,7 @@ function PlaceholderTabBody({
   apparatusState,
   derForm,
   derCatalog,
+  ncRfgClassification,
   onOpenConfiguration,
 }: {
   kind: SldDetailKind;
@@ -1678,6 +1768,10 @@ function PlaceholderTabBody({
   } | null;
   derForm: UseFormReturn<SldDerConfigFormValues>;
   derCatalog: DerConverterCatalogState;
+  ncRfgClassification: {
+    readonly status: 'loading' | 'ready' | 'error';
+    readonly modul: SldNcRfgModule | null;
+  };
   onOpenConfiguration?: () => void;
 }): JSX.Element {
   // Tab-specific scaffolding — actual editor forms wired w K30-72+
@@ -1904,29 +1998,37 @@ function PlaceholderTabBody({
     );
   }
   if (kind === 'der' && tab === 'rfg') {
+    // Karta FAB-J (decyzja #5): moduł NC RfG jest klasyfikacją normatywną z
+    // (mocy, napięcia przyłączenia) — JEDYNE źródło progów to backend
+    // (`compliance/nc_rfg_modul.py`). Poprzednio 4 przyciski radio pozwalały
+    // wybrać DOWOLNY moduł niezależnie od mocy/napięcia; `POST .../generators`
+    // teraz weryfikuje zgodność (422 przy rozjeździe), więc wolny wybór byłby
+    // gwarantowanym błędem zapisu dla 3 z 4 opcji. Pole jest więc dowodem
+    // White Box, nie kontrolką do wypełnienia.
     const selectedModule = derForm.watch('ncRfgModule');
-    const rfgRegister = derForm.register('ncRfgModule');
     return (
       <div data-testid="drawer-der-rfg">
-        <label style={{ display: 'block', marginBottom: 6, color: 'rgb(var(--scada-muted))' }}>NC RfG typ</label>
-        <div data-testid="drawer-der-rfg-types" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {['A', 'B', 'C', 'D'].map((t) => (
-            <label key={t} style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'rgb(var(--scada-text))' }}>
-              <input
-                type="radio"
-                name={rfgRegister.name}
-                ref={rfgRegister.ref}
-                onBlur={rfgRegister.onBlur}
-                value={t}
-                checked={selectedModule === t}
-                onChange={() => derForm.setValue('ncRfgModule', t as SldNcRfgModule, {
-                  shouldDirty: true,
-                  shouldValidate: true,
-                })}
-              />
-              {`Typ ${t}`}
-            </label>
-          ))}
+        <label style={{ display: 'block', marginBottom: 6, color: 'rgb(var(--scada-muted))' }}>
+          Moduł NC RfG (klasyfikacja backendu wg mocy i napięcia przyłączenia)
+        </label>
+        <div
+          data-testid="drawer-der-rfg-types"
+          style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}
+        >
+          <span data-testid="drawer-der-rfg-selected" style={{ color: 'rgb(var(--scada-text))', fontWeight: 700 }}>
+            {`Typ ${selectedModule}`}
+          </span>
+          {ncRfgClassification.status === 'loading' && (
+            <span style={{ color: 'rgb(var(--scada-muted))', fontSize: 10 }}>(wyznaczam z backendu…)</span>
+          )}
+          {ncRfgClassification.status === 'error' && (
+            <span
+              data-testid="drawer-der-rfg-error"
+              style={{ color: 'rgb(var(--scada-status-err))', fontSize: 10 }}
+            >
+              Nie udało się wyznaczyć modułu z katalogu backendu — zapis zweryfikuje go ponownie.
+            </span>
+          )}
         </div>
         <div style={{ marginTop: 12, color: 'rgb(var(--scada-muted))', fontSize: 10 }}>
           Grid code: PN-EN 50549 / IEEE 1547 / IEC 61400-21 (FW)

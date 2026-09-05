@@ -113,6 +113,48 @@ vi.mock('../../../../ui/catalog/api', () => ({
     Promise.resolve([{ id: 'zab-1', name: 'Zabezpieczenie testowe', model: 'ZAB-TEST-1' }]),
 }));
 
+// Karta FAB-J: profil NC RfG + krzywe ride-through i P(f) WYŁĄCZNIE z backendu
+// (`derRemoteCatalogs.ts` / `audit2-api.ts`) — mock na granicy modułu klienta,
+// ten sam wzorzec co `ui/catalog/api` powyżej. Identyfikator operatora jest
+// REALNY (`pse`, nie wymyślone przez front `ncrfg_pse`).
+vi.mock('../../../../ui/network-build/station-der/derRemoteCatalogs', () => ({
+  fetchNcRfgOperators: () =>
+    Promise.resolve([
+      {
+        operator_id: 'pse',
+        operator_name_pl: 'PSE — Polskie Sieci Elektroenergetyczne',
+        last_revision: '2024-Q4',
+        reactive_power: { q_range_pct_pn_min: -0.33, q_range_pct_pn_max: 0.33, cos_phi_min: 0.95, voltage_control_modes: [] },
+        ride_through: {
+          lvrt: [{ time_s: 0, voltage_pu: 0.05 }],
+          hvrt: [{ time_s: 0, voltage_pu: 1.3 }],
+        },
+      },
+    ]),
+  getNcRfgOperator: (
+    operators: ReadonlyArray<{ operator_id: string }>,
+    operatorId: string | null,
+  ) => (operatorId ? operators.find((o) => o.operator_id === operatorId) ?? null : null),
+}));
+vi.mock('../../../../ui/network-build/station-der/audit2-api', () => ({
+  fetchAudit2CatalogSnapshot: () =>
+    Promise.resolve({
+      bess_operation_modes: [],
+      tap_changers: [],
+      hv_fuses: [],
+      device_withstand: [],
+      pf_curves: [
+        {
+          id: 'pf_droop_5', catalog_namespace: 'pf_curve', catalog_version: '1.0',
+          label_pl: 'P(f) statyzm 5%', f_ref_hz: 50, droop_percent: 5,
+          f_min_hz: 47.5, f_max_hz: 51.5, deadband_hz: 0.2, zrodlo_pl: 'Fikstura testowa',
+        },
+      ],
+      block_transformers: [],
+      mv_neutral_groundings: [],
+    }),
+}));
+
 describe('KreatorZrodlaOze — realna ścieżka', () => {
   beforeEach(() => {
     appState.activeCaseId = 'case-1';
@@ -389,9 +431,13 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     // zgodność: profil operatora + krzywe.
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
     await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-zgodnosc')).toBeInTheDocument());
-    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-zgodnosc-profil'), 'ncrfg_pse');
-    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-zgodnosc-lvrt'), 'lvrt_pse_b');
-    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-zgodnosc-hvrt'), 'hvrt_pse_b');
+    // Karta FAB-J: LVRT/HVRT nie są już niezależnie wybieralne (read-only,
+    // tożsamościowo związane z profilem operatora) — jedyny wybór to profil + P(f).
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-oze-zgodnosc-profil')).not.toBeDisabled());
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-zgodnosc-profil'), 'pse');
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-oze-zgodnosc-pf')).not.toBeDisabled());
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-zgodnosc-pf'), 'pf_droop_5');
     // regulacja: tryb pracy + limity Q.
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
@@ -412,9 +458,12 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
         vt_catalog_ref: 'vt-1',
         protection_catalog_ref: 'zab-1',
         fault_current_data_ref: 'DOK-ZW-1',
-        nc_rfg_profile_ref: 'ncrfg_pse',
-        lvrt_curve_ref: 'lvrt_pse_b',
-        hvrt_curve_ref: 'hvrt_pse_b',
+        // Karta FAB-J: LVRT/HVRT tożsamościowo związane z operatorem (ten sam
+        // `pse`) — backend niesie jedną parę krzywych na operatora, nie
+        // niezależny wybór (patrz `KrokiAparaturaZgodnosc.tsx::wybierzProfil`).
+        nc_rfg_profile_ref: 'pse',
+        lvrt_curve_ref: 'pse',
+        hvrt_curve_ref: 'pse',
         pf_curve_ref: 'pf_droop_5',
       });
     });

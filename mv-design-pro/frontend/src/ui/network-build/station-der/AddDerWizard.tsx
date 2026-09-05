@@ -25,24 +25,25 @@ import {
   DerPersistenceApiError,
   postDerGeneratorConfig,
   type DerConnectionVariant,
-  type NcRfgModule,
 } from '../../sld/v2/canvas/derPersistenceApi';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useAudit2CatalogSnapshot } from './audit2-hooks';
+import type { BlockTransformerItem } from './audit2-api';
+import {
+  formatLvVoltageLabelPl,
+  getNcRfgOperator,
+  useBessBatteryTypes,
+  useLvVoltageLevelsKv,
+  useNcRfgModuleClassification,
+  useNcRfgOperatorCatalog,
+} from './derRemoteCatalogs';
 import { generateDeterministicDerId, validateWizardSelections } from './wizard-validation';
 import {
-  BESS_BATTERY_CATALOG,
-  HVRT_CURVE_CATALOG,
-  LV_VOLTAGE_LEVEL_CATALOG,
-  LVRT_CURVE_CATALOG,
-  NC_RFG_PROFILE_CATALOG,
-  PF_CURVE_CATALOG,
   getBlockTransformer,
+  getLvVoltageLevel,
   selectBessModesForPcs,
   selectBlockTransformersForDer,
   selectConnectionVariantsForKind,
-  selectHvrtCurvesForProfile,
-  selectLvrtCurvesForProfile,
 } from './catalogs';
 import {
   PTPIREE_CERTIFIED_INVERTERS,
@@ -100,8 +101,15 @@ type DerDeviceCatalogItem = {
   readonly source_reference?: string | null;
   readonly verification_status?: string | null;
   readonly catalog_status?: string | null;
-  readonly applicable_module_types?: readonly ('A' | 'B' | 'C' | 'D')[];
-  readonly four_quadrant?: boolean;
+  /**
+   * Karta FAB-J: zdolność do pracy w czterech ćwiartkach WYŁĄCZNIE z realnych
+   * granic mocy biernej katalogu (`qmin_mvar`/`qmax_mvar`) — `null`, gdy katalog
+   * ich nie niesie ("brak danych w katalogu"), nigdy domysł "każdy BESS jest
+   * czterokwadrantowy" (usunięty tą kartą razem z `applicable_module_types`,
+   * który udawał klasyfikację NC RfG na podstawie samej mocy — patrz
+   * `useNcRfgModuleClassification`, jedyne źródło tej klasyfikacji).
+   */
+  readonly four_quadrant?: boolean | null;
   readonly grid_forming_capable?: boolean;
 };
 
@@ -139,11 +147,6 @@ const DER_KIND_LABELS: Record<DerKindUnified, string> = {
 
 function toBackendConnectionVariant(connectionSide: ConnectionSide): DerConnectionVariant {
   return connectionSide === 'nN' ? 'nn_side' : 'dedicated';
-}
-
-function resolveNcRfgModule(selections: WizardSelections): NcRfgModule {
-  const curve = LVRT_CURVE_CATALOG.find((entry) => entry.id === selections.lvrtCurveRef);
-  return curve?.module_type ?? 'B';
 }
 
 function formatConnectionSideForReview(
@@ -198,7 +201,6 @@ const EMPTY_SELECTIONS: WizardSelections = {
   pfCurveRef: null,
 };
 
-const DEFAULT_LV_VOLTAGE_LEVEL_REF = 'lv_0_4kV';
 // ZERO PRESELEKCJI OPERATORA (V12K-245). Krok „profil" podstawial wczesniej zestaw ENEA
 // (profil + krzywe LVRT/HVRT + P(f)), wiec projektant mogl przejsc dalej JEDNYM klikiem,
 // nie podejmujac decyzji — a wybor OSD wynika z lokalizacji przylaczenia i determinuje
@@ -258,6 +260,8 @@ function applyPointDefaults(
   connectionSide: ConnectionSide,
   derKind: DerKindUnified,
   stationName: string,
+  lvVoltageLevelsKv: readonly number[],
+  blockTransformers: readonly BlockTransformerItem[],
 ): WizardSelections {
   const next: WizardSelections = {
     ...selections,
@@ -266,7 +270,12 @@ function applyPointDefaults(
     pccLabel: selections.pccLabel.trim() || defaultPccLabel(derKind, stationName),
   };
   if (connectionSide === 'nN') {
-    next.voltageLevelRef = selections.voltageLevelRef ?? DEFAULT_LV_VOLTAGE_LEVEL_REF;
+    // Karta FAB-J: domyślny poziom napięcia nN to najniższy poziom faktycznie
+    // niesiony przez katalog przekształtników — brak listy (jeszcze nie
+    // wczytana / katalog pusty) zostawia pole puste, nie zgaduje wartości,
+    // której katalog nie potwierdza.
+    next.voltageLevelRef = selections.voltageLevelRef
+      ?? (lvVoltageLevelsKv.length > 0 ? String(lvVoltageLevelsKv[0]) : null);
   }
   if (connectionSide === 'SN' || connectionSide === 'at_zksn'
       || connectionSide === 'at_branch_pole' || connectionSide === 'at_cable_joint') {
@@ -274,7 +283,8 @@ function applyPointDefaults(
       || defaultConnectionPointLabel(connectionSide, derKind, stationName);
   }
   if (connectionSide === 'dedicated_transformer' && !selections.blockTransformerCatalogRef) {
-    next.blockTransformerCatalogRef = selectBlockTransformersForDer({ derKind })[0]?.id ?? null;
+    next.blockTransformerCatalogRef =
+      selectBlockTransformersForDer(blockTransformers, { derKind })[0]?.id ?? null;
   }
   return next;
 }
@@ -382,13 +392,6 @@ function toConverterKind(derKind: DerKindUnified): ConverterType['kind'] {
   return derKind === 'FW' ? 'WIND' : derKind;
 }
 
-function deriveModuleTypesForPowerKw(powerKw: number): readonly ('A' | 'B' | 'C' | 'D')[] {
-  if (powerKw <= 200) return ['A'];
-  if (powerKw < 10_000) return ['B'];
-  if (powerKw < 50_000) return ['C'];
-  return ['D'];
-}
-
 function mapBackendConverterToDerDevice(item: ConverterType): DerDeviceCatalogItem {
   const pmaxMw = Number.isFinite(item.pmax_mw) ? item.pmax_mw : 0;
   const snMva = Number.isFinite(item.sn_mva) ? item.sn_mva : pmaxMw;
@@ -423,8 +426,14 @@ function mapBackendConverterToDerDevice(item: ConverterType): DerDeviceCatalogIt
     source_reference: item.source_reference ?? null,
     verification_status: item.verification_status ?? null,
     catalog_status: item.catalog_status ?? null,
-    applicable_module_types: deriveModuleTypesForPowerKw(nominalPowerKw),
-    four_quadrant: item.kind === 'BESS',
+    // Karta FAB-J: cztery ćwiartki WYŁĄCZNIE z granic mocy biernej katalogu —
+    // qmin ujemny i qmax dodatni to jedyny realny dowód zdolności do pracy w
+    // czterech ćwiartkach. Brak obu granic w katalogu = `null` ("brak danych"),
+    // nigdy założenie "każdy BESS jest czterokwadrantowy".
+    four_quadrant:
+      typeof item.qmin_mvar === 'number' && typeof item.qmax_mvar === 'number'
+        ? item.qmin_mvar < 0 && item.qmax_mvar > 0
+        : null,
     grid_forming_capable: item.control_mode === 'GRID_FORMING',
   };
 }
@@ -448,8 +457,14 @@ function deviceSearchHaystack(device: DerDeviceCatalogItem): string {
     .toLowerCase();
 }
 
-function deviceFourQuadrantCapable(device: DerDeviceCatalogItem | null): boolean {
-  return device?.four_quadrant ?? device?.catalog_kind === 'BESS';
+/**
+ * `null` = katalog nie niesie granic mocy biernej — "brak danych", nie "nie".
+ * Wołający decyduje, jak potraktować nieznaną zdolność (patrz `selectBessModesForPcs`:
+ * nieznane traktujemy jak `false`, żeby nie zaoferować usługi, której nie da się
+ * potwierdzić — karta FAB-J, decyzja #6).
+ */
+function deviceFourQuadrantCapable(device: DerDeviceCatalogItem | null): boolean | null {
+  return device?.four_quadrant ?? null;
 }
 
 function deviceGridFormingCapable(device: DerDeviceCatalogItem | null): boolean {
@@ -513,7 +528,7 @@ function fitsSelectedLvVoltage(
   if (connectionSide !== 'nN' || !voltageLevelRef) return true;
   const deviceKv = getDeviceNominalVoltageKv(device);
   if (deviceKv === null) return true;
-  const lvLevel = LV_VOLTAGE_LEVEL_CATALOG.find((l) => l.id === voltageLevelRef);
+  const lvLevel = getLvVoltageLevel(voltageLevelRef);
   return !lvLevel || Math.abs(deviceKv - lvLevel.nominal_kv) <= 0.01;
 }
 
@@ -536,6 +551,7 @@ function selectAutoBlockTransformerForDevice(
   derKind: DerKindUnified,
   device: DerDeviceCatalogItem | null,
   stationTransformer: StationTransformerInfo | null,
+  blockTransformers: readonly BlockTransformerItem[],
 ) {
   const deviceKv = getDeviceNominalVoltageKv(device);
   if (!device || deviceKv === null) return null;
@@ -544,7 +560,7 @@ function selectAutoBlockTransformerForDevice(
   // Dla automatycznego doboru przyjmujemy minimalny cosφ=0,90, więc PV 1000 kW
   // wymaga co najmniej 1111 kVA i dobiera 1250 kVA z typoszeregu, nie 2500 kVA.
   const requiredTransformerKva = requiredTransformerKvaForDerPowerKw(device.nominal_power_kw);
-  const candidates = selectBlockTransformersForDer({
+  const candidates = selectBlockTransformersForDer(blockTransformers, {
     derKind,
     hvKv,
     lvKv: deviceKv,
@@ -576,10 +592,24 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
   const [deviceSearch, setDeviceSearch] = useState('');
   const [deviceVoltageFilter, setDeviceVoltageFilter] = useState('all');
   const [deviceModeFilter, setDeviceModeFilter] = useState('all');
-  // Phase 9: pre-fetch backend catalog snapshot — lokalne staticki sluzą jako
-  // fallback, ale snapshot z backendu warm-cache'uje React Query dla stations
-  // pobierajacych je dalej. Hook sam zarzadza cache'em i refetch'em.
-  useAudit2CatalogSnapshot();
+  // Karta FAB-J: PF curves + transformatory dedykowane WYŁĄCZNIE ze snapshotu
+  // audytu 2 już pobieranego przez kreator — zero drugiego zapytania sieciowego
+  // dla danych, które i tak przychodzą (decyzja #1/#7 karty).
+  const auditCatalogSnapshotQuery = useAudit2CatalogSnapshot();
+  const pfCurves = auditCatalogSnapshotQuery.data?.pf_curves ?? [];
+  const blockTransformers = auditCatalogSnapshotQuery.data?.block_transformers ?? [];
+  // Karta FAB-J: operatorzy NC RfG (profil + ride-through LVRT/HVRT 1:1 na
+  // operatora) — `GET /api/ncrfg-tests/catalog` (decyzja #2).
+  const ncRfgOperatorsQuery = useNcRfgOperatorCatalog();
+  const ncRfgOperators = ncRfgOperatorsQuery.data ?? [];
+  // Karta FAB-J: pakiety baterii BESS — `GET /api/catalog/bess-battery-types`
+  // (decyzja #4). Backend nie miał żadnego katalogu baterii przed tą kartą.
+  const bessBatteryTypesQuery = useBessBatteryTypes();
+  const bessBatteries = bessBatteryTypesQuery.data ?? [];
+  // Karta FAB-J: poziomy napięcia nN wyprowadzone z katalogu przekształtników
+  // (`un_kv` < 1 kV) — zero nowej końcówki, zero katalogu lokalnego (decyzja #3).
+  const lvVoltageLevelsQuery = useLvVoltageLevelsKv();
+  const lvVoltageLevelsKv = lvVoltageLevelsQuery.data ?? [];
 
   useEffect(() => {
     let active = true;
@@ -665,13 +695,15 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     ? snapshotCaseId
     : activeCaseId;
 
-  const lvrtCurves = useMemo(() =>
-    selections.ncRfgProfileRef ? selectLvrtCurvesForProfile(selections.ncRfgProfileRef) : [],
-  [selections.ncRfgProfileRef]);
-
-  const hvrtCurves = useMemo(() =>
-    selections.ncRfgProfileRef ? selectHvrtCurvesForProfile(selections.ncRfgProfileRef) : [],
-  [selections.ncRfgProfileRef]);
+  // Karta FAB-J: backend niesie JEDNĄ parę krzywych ride-through (LVRT/HVRT) na
+  // operatora (`NcRfgOperatorItem.ride_through`) — nie różnicuje ich wg modułu,
+  // więc front przestaje udawać wybór, którego backend nie oferuje. Krzywa jest
+  // pochodną wyboru operatora (`selections.lvrtCurveRef === selections.ncRfgProfileRef`,
+  // patrz `wizard-validation.ts`), nie niezależną decyzją projektanta.
+  const selectedNcRfgOperator = useMemo(
+    () => getNcRfgOperator(ncRfgOperators, selections.ncRfgProfileRef),
+    [ncRfgOperators, selections.ncRfgProfileRef],
+  );
 
   // ZERO LISTY ZASTĘPCZEJ (FAB-I). Katalog urządzeń DER (PV/BESS/FW) pochodzi
   // WYŁĄCZNIE z backendu — brak/błąd odpowiedzi backendu to uczciwy stan pusty,
@@ -805,7 +837,9 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
   const availableBessModes = useMemo(
     () => derKind === 'BESS' && selectedDevice
       ? selectBessModesForPcs({
-        fourQuadrant: deviceFourQuadrantCapable(selectedDevice),
+        // Nieznana zdolność (katalog bez qmin/qmax) = `false`: nie oferujemy
+        // usługi, której nie potwierdza katalog (karta FAB-J, decyzja #6).
+        fourQuadrant: deviceFourQuadrantCapable(selectedDevice) ?? false,
         gridFormingCapable: deviceGridFormingCapable(selectedDevice),
       })
       : [],
@@ -818,8 +852,10 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
   );
 
   const autoBlockTransformer = useMemo(
-    () => selectAutoBlockTransformerForDevice(derKind, selectedDevice, primaryStationTransformer),
-    [derKind, primaryStationTransformer, selectedDevice],
+    () => selectAutoBlockTransformerForDevice(
+      derKind, selectedDevice, primaryStationTransformer, blockTransformers,
+    ),
+    [blockTransformers, derKind, primaryStationTransformer, selectedDevice],
   );
 
   const effectiveBlockTransformerCatalogRef = useMemo(() => {
@@ -829,15 +865,52 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     return (
       autoBlockTransformer?.id
       ?? selections.blockTransformerCatalogRef
-      ?? selectBlockTransformersForDer({ derKind })[0]?.id
+      ?? selectBlockTransformersForDer(blockTransformers, { derKind })[0]?.id
       ?? null
     );
   }, [
     autoBlockTransformer,
+    blockTransformers,
     derKind,
     selections.blockTransformerCatalogRef,
     selections.connectionSide,
   ]);
+
+  // Karta FAB-J (decyzja #5): napięcie w punkcie przyłączenia — WYPROWADZONE tą
+  // samą regułą, co backend (`api/generators.py::_napiecie_przylaczenia_kv`):
+  // dla nN to poziom napięcia szyny nN, dla każdego innego wariantu — strona
+  // górna (SN) transformatora dedykowanego. Bez tego napięcia klasyfikacji nie
+  // da się policzyć uczciwie, więc zostaje `null` (backend i tak weryfikuje
+  // moduł tylko wtedy, gdy klient go zadeklarował — brak deklaracji nie blokuje
+  // zapisu, patrz `_weryfikuj_modul_ncrfg`).
+  const napiecicPrzylaczeniaKv = useMemo(() => {
+    if (selections.connectionSide === 'nN') {
+      return getLvVoltageLevel(selections.voltageLevelRef)?.nominal_kv ?? null;
+    }
+    return getBlockTransformer(blockTransformers, effectiveBlockTransformerCatalogRef)?.hv_kv ?? null;
+  }, [
+    blockTransformers,
+    effectiveBlockTransformerCatalogRef,
+    selections.connectionSide,
+    selections.voltageLevelRef,
+  ]);
+
+  const liczbaJednostekWybranych = Math.max(1, Math.round(selections.unitCount || 1));
+  const mocGrupyKwLive =
+    selectedDevice && selectedDevice.nominal_power_kw > 0
+      ? selectedDevice.nominal_power_kw * liczbaJednostekWybranych
+      : null;
+
+  // Karta FAB-J (decyzja #5): JEDYNE źródło klasyfikacji modułu NC RfG —
+  // `compliance/nc_rfg_modul.py` przez `GET /api/ncrfg-tests/modul`. Kreator
+  // POKAZUJE oczekiwany moduł projektantowi i wysyła go jawnie w
+  // `POST .../generators`, gdzie backend weryfikuje go NIEZALEŻNIE (422 przy
+  // rozjeździe) — zero duplikacji progów ustawowych w froncie.
+  const ncRfgModuleQuery = useNcRfgModuleClassification(
+    mocGrupyKwLive !== null ? mocGrupyKwLive / 1000 : null,
+    napiecicPrzylaczeniaKv,
+  );
+  const expectedNcRfgModule = ncRfgModuleQuery.data ?? null;
 
   const transformerUpgradeOptions = useMemo(
     () => selectTransformerUpgradeOptions(
@@ -851,7 +924,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     if (selections.connectionSide !== 'nN' || !selections.voltageLevelRef || !selectedDevice) {
       return null;
     }
-    const lvLevel = LV_VOLTAGE_LEVEL_CATALOG.find((l) => l.id === selections.voltageLevelRef);
+    const lvLevel = getLvVoltageLevel(selections.voltageLevelRef);
     if (!lvLevel || !('nominal_voltage_kv' in selectedDevice)) return null;
     const deviceKv = selectedDevice.nominal_voltage_kv as number;
     if (Math.abs(deviceKv - lvLevel.nominal_kv) > 0.01) {
@@ -953,9 +1026,11 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
   const selectConnectionSide = useCallback(
     (connectionSide: ConnectionSide) => {
       setSelections((current) =>
-        applyPointDefaults(current, connectionSide, derKind, stationName));
+        applyPointDefaults(
+          current, connectionSide, derKind, stationName, lvVoltageLevelsKv, blockTransformers,
+        ));
     },
-    [derKind, stationName],
+    [blockTransformers, derKind, lvVoltageLevelsKv, stationName],
   );
 
   useEffect(() => {
@@ -987,17 +1062,39 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     selections.connectionSide,
   ]);
 
+  // Karta FAB-J: domyślny poziom napięcia nN wpisuje `applyPointDefaults` w
+  // chwili wyboru wariantu, ale poziomy z katalogu przekształtników mogą
+  // jeszcze wtedy ładować się asynchronicznie (lista pusta w tamtym momencie)
+  // — bez tego efektu domyślny wybór zostawałby trwale pusty, mimo że katalog
+  // chwilę później faktycznie odpowiedział. Ten sam wzorzec co auto-dobór
+  // transformatora dedykowanego powyżej.
+  useEffect(() => {
+    if (
+      selections.connectionSide !== 'nN'
+      || selections.voltageLevelRef !== null
+      || lvVoltageLevelsKv.length === 0
+    ) {
+      return;
+    }
+    setSelections((current) => ({
+      ...current,
+      voltageLevelRef: String(lvVoltageLevelsKv[0]),
+    }));
+  }, [lvVoltageLevelsKv, selections.connectionSide, selections.voltageLevelRef]);
+
   const handleSwitchToDedicatedTransformer = useCallback(() => {
     if (!autoBlockTransformer) {
       notify('Brak dopasowanego transformatora blokowego w katalogu dla wybranego urządzenia.', 'error');
       return;
     }
     setSelections((current) => ({
-      ...applyPointDefaults(current, 'dedicated_transformer', derKind, stationName),
+      ...applyPointDefaults(
+        current, 'dedicated_transformer', derKind, stationName, lvVoltageLevelsKv, blockTransformers,
+      ),
       blockTransformerCatalogRef: autoBlockTransformer.id,
     }));
     notify('Przełączono wariant przyłączenia na transformator dedykowany.', 'success');
-  }, [autoBlockTransformer, derKind, notify, stationName]);
+  }, [autoBlockTransformer, blockTransformers, derKind, lvVoltageLevelsKv, notify, stationName]);
 
   const handleChooseOtherDevice = useCallback(() => {
     setSelections((current) => ({ ...current, deviceCatalogRef: null }));
@@ -1071,6 +1168,9 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     // (chroni przed manipulacją selections w devtools).
     const validation = validateWizardSelections(selections, derKind, {
       allowedDeviceCatalogIds: deviceCatalog.map((device) => device.id),
+      allowedLvVoltageLevelRefs: lvVoltageLevelsKv.map((kv) => String(kv)),
+      allowedBatteryCatalogIds: bessBatteries.map((battery) => battery.id),
+      allowedNcRfgOperatorIds: ncRfgOperators.map((operator) => operator.operator_id),
     });
     if (!validation.ok) {
       notify(
@@ -1152,7 +1252,15 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
             : null,
         source_name: selections.derName,
         quantity: liczbaJednostek,
-        nc_rfg_module: resolveNcRfgModule(selections),
+        // Karta FAB-J (decyzja #5): moduł wyliczony PRZEZ BACKEND dla (moc,
+        // napięcie przyłączenia) — `expectedNcRfgModule`. Gdy napięcia nie da
+        // się wyznaczyć po stronie kreatora (np. wariant bez rozpoznanego
+        // transformatora dedykowanego), pole zostaje pominięte: backend
+        // weryfikuje `nc_rfg_module` tylko wtedy, gdy klient go zadeklarował
+        // (`_weryfikuj_modul_ncrfg`), więc brak deklaracji nigdy nie blokuje
+        // zapisu — a zgadywanie modułu byłoby tą samą fabrykacją, którą ta
+        // karta usuwa wszędzie indziej.
+        nc_rfg_module: expectedNcRfgModule ?? undefined,
       });
 
       if (response.snapshot) {
@@ -1216,12 +1324,16 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     }
   }, [
     attachDer,
+    bessBatteries,
     deviceCatalog,
     derKind,
     effectiveBlockTransformerCatalogRef,
     effectiveCaseId,
+    expectedNcRfgModule,
     nowIso,
     handleClose,
+    lvVoltageLevelsKv,
+    ncRfgOperators,
     projectId,
     selections,
     setSnapshot,
@@ -1386,21 +1498,39 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                 />
               )}
               {selections.connectionSide === 'nN' && (
-                <Select
-                  label="Poziom napięcia nN (z katalogu)"
-                  required
-                  value={selections.voltageLevelRef ?? ''}
-                  onChange={(v) => setSelections((s) => ({ ...s, voltageLevelRef: v }))}
-                  options={[
-                    { id: '', label: '— wybierz —' },
-                    ...LV_VOLTAGE_LEVEL_CATALOG.map((l) => ({ id: l.id, label: l.label_pl })),
-                  ]}
-                  testId="add-der-voltage-level"
-                />
+                <>
+                  <Select
+                    label="Poziom napięcia nN (z katalogu przekształtników)"
+                    required
+                    disabled={lvVoltageLevelsQuery.isLoading}
+                    value={selections.voltageLevelRef ?? ''}
+                    onChange={(v) => setSelections((s) => ({ ...s, voltageLevelRef: v }))}
+                    options={[
+                      {
+                        id: '',
+                        label: lvVoltageLevelsQuery.isLoading ? '— ładowanie —' : '— wybierz —',
+                      },
+                      ...lvVoltageLevelsKv.map((kv) => ({
+                        id: String(kv),
+                        label: formatLvVoltageLabelPl(kv),
+                      })),
+                    ]}
+                    testId="add-der-voltage-level"
+                  />
+                  {!lvVoltageLevelsQuery.isLoading && lvVoltageLevelsKv.length === 0 && (
+                    <div
+                      data-testid="add-der-voltage-level-empty"
+                      className="rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-2 text-[11px] text-sygnal-uwaga-tusz"
+                    >
+                      Katalog przekształtników nie niesie żadnego urządzenia poniżej 1 kV — brak
+                      poziomów napięcia nN do wyboru. Uzupełnij katalog przekształtników.
+                    </div>
+                  )}
+                </>
               )}
               {/* Pakiet H: transformator dedykowany dla dedicated_transformer. */}
               {selections.connectionSide === 'dedicated_transformer' && (() => {
-                const candidates = selectBlockTransformersForDer({ derKind });
+                const candidates = selectBlockTransformersForDer(blockTransformers, { derKind });
                 return (
                   <Select
                     label="Transformator dedykowany z katalogu"
@@ -1725,7 +1855,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                       <span className="truncate">{device.manufacturer || '-'}</span>
                       <span className="text-scada-text">{formatKw(device.nominal_power_kw)}</span>
                       <span>{formatKv(getDeviceNominalVoltageKv(device))}</span>
-                      <span>{device.grid_code ?? device.applicable_module_types?.join('/') ?? 'NC RfG'}</span>
+                      <span>{device.grid_code ?? 'NC RfG'}</span>
                       <span className="flex flex-wrap gap-1">
                         <span className={`rounded border px-1.5 py-0.5 text-[10px] ${eligibilityClass}`}>
                           {eligibilityText}
@@ -1772,7 +1902,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                     <CatalogMetric label="Q min/max" value={`${formatMvar(selectedDevice.qmin_mvar)} / ${formatMvar(selectedDevice.qmax_mvar)}`} />
                     <CatalogMetric label="cos phi" value={`${selectedDevice.cosphi_min ?? '-'} / ${selectedDevice.cosphi_max ?? '-'}`} />
                     <CatalogMetric label="Sterowanie" value={selectedDevice.control_mode ?? '-'} />
-                    <CatalogMetric label="NC RfG" value={selectedDevice.grid_code ?? selectedDevice.applicable_module_types?.join('/') ?? '-'} />
+                    <CatalogMetric label="NC RfG" value={selectedDevice.grid_code ?? '-'} />
                     <CatalogMetric
                       label="PTPiREE"
                       value={resolvePtpireeDocument(selectedDevice, selectedDevicePtpireeCertificate)}
@@ -1785,13 +1915,20 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
               )}
               {derKind === 'BESS' && (
                 <Select
-                  label="Bateria BESS"
+                  label="Bateria BESS (z katalogu backendu)"
                   required
+                  disabled={bessBatteryTypesQuery.isLoading}
                   value={selections.batteryCatalogRef ?? ''}
                   onChange={(v) => setSelections((s) => ({ ...s, batteryCatalogRef: v }))}
                   options={[
-                    { id: '', label: '— wybierz —' },
-                    ...BESS_BATTERY_CATALOG.map((b) => ({ id: b.id, label: b.label_pl })),
+                    {
+                      id: '',
+                      label: bessBatteryTypesQuery.isLoading ? '— ładowanie —' : '— wybierz —',
+                    },
+                    ...bessBatteries.map((b) => ({
+                      id: b.id,
+                      label: `${b.name} · ${b.capacity_kwh} kWh · ${b.chemistry}`,
+                    })),
                   ]}
                   testId="add-der-battery"
                 />
@@ -1857,13 +1994,17 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
               <Select
                 label="Profil NC RfG (operator)"
                 required
+                disabled={ncRfgOperatorsQuery.isLoading}
                 value={selections.ncRfgProfileRef ?? ''}
                 onChange={(v) =>
                   setSelections((s) => ({
                     ...s,
                     ncRfgProfileRef: v || null,
-                    lvrtCurveRef: v ? selectLvrtCurvesForProfile(v)[0]?.id ?? null : null,
-                    hvrtCurveRef: v ? selectHvrtCurvesForProfile(v)[0]?.id ?? null : null,
+                    // Karta FAB-J: backend niesie JEDNĄ parę krzywych ride-through
+                    // (LVRT/HVRT) na operatora — krzywa jest tożsamościowo związana
+                    // z operatorem, nie osobną decyzją (patrz `wizard-validation.ts`).
+                    lvrtCurveRef: v || null,
+                    hvrtCurveRef: v || null,
                     // Warianty nastawy P(f) nie zależą od operatora (karta K-Q):
                     // rozporządzenie 2016/631 podaje przedział nastawialny, a nie
                     // wartość „dla PSE / Energi". Wybór zostaje projektantowi.
@@ -1871,46 +2012,85 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                   }))
                 }
                 options={[
-                  { id: '', label: '— wybierz —' },
-                  ...NC_RFG_PROFILE_CATALOG.map((p) => ({ id: p.id, label: p.label_pl })),
+                  {
+                    id: '',
+                    label: ncRfgOperatorsQuery.isLoading ? '— ładowanie —' : '— wybierz —',
+                  },
+                  ...ncRfgOperators.map((o) => ({ id: o.operator_id, label: o.operator_name_pl })),
                 ]}
                 testId="add-der-ncrfg"
               />
-              <Select
-                label="Krzywa LVRT"
-                required
-                disabled={!selections.ncRfgProfileRef}
-                value={selections.lvrtCurveRef ?? ''}
-                onChange={(v) => setSelections((s) => ({ ...s, lvrtCurveRef: v }))}
-                options={[
-                  { id: '', label: '— wybierz —' },
-                  ...lvrtCurves.map((c) => ({ id: c.id, label: c.label_pl })),
-                ]}
-                testId="add-der-lvrt"
-              />
-              <Select
-                label="Krzywa HVRT"
-                required
-                disabled={!selections.ncRfgProfileRef}
-                value={selections.hvrtCurveRef ?? ''}
-                onChange={(v) => setSelections((s) => ({ ...s, hvrtCurveRef: v }))}
-                options={[
-                  { id: '', label: '— wybierz —' },
-                  ...hvrtCurves.map((c) => ({ id: c.id, label: c.label_pl })),
-                ]}
-                testId="add-der-hvrt"
-              />
+              {!ncRfgOperatorsQuery.isLoading && ncRfgOperators.length === 0 && (
+                <div
+                  data-testid="add-der-ncrfg-empty"
+                  className="rounded border border-sygnal-blokada bg-sygnal-blokada-tlo p-2 text-[11px] text-sygnal-blokada-tusz"
+                >
+                  Katalog operatorów NC RfG jest niedostępny z backendu — krok „Profil" jest
+                  zablokowany do czasu jego wczytania.
+                </div>
+              )}
+              {/* Karta FAB-J: backend niesie JEDNĄ krzywą LVRT/HVRT na operatora —
+                  wyświetlana jako dowód White Box, nie jako niezależny wybór. */}
+              <div
+                data-testid="add-der-lvrt"
+                className="rounded border border-scada-border bg-scada-bg p-2 text-[11px] text-scada-muted"
+              >
+                <div className="mb-1 text-[10px] font-bold uppercase tracking-widest">
+                  Krzywa LVRT (t–U/Un wg profilu operatora)
+                </div>
+                {selectedNcRfgOperator ? (
+                  <span className="text-scada-text">
+                    {selectedNcRfgOperator.ride_through.lvrt
+                      .map((p) => `${p.time_s.toFixed(2)} s / ${p.voltage_pu.toFixed(2)} pu`)
+                      .join(' → ')}
+                  </span>
+                ) : (
+                  <span>Wybierz profil NC RfG operatora, aby zobaczyć krzywą LVRT.</span>
+                )}
+              </div>
+              <div
+                data-testid="add-der-hvrt"
+                className="rounded border border-scada-border bg-scada-bg p-2 text-[11px] text-scada-muted"
+              >
+                <div className="mb-1 text-[10px] font-bold uppercase tracking-widest">
+                  Krzywa HVRT (t–U/Un wg profilu operatora)
+                </div>
+                {selectedNcRfgOperator ? (
+                  <span className="text-scada-text">
+                    {selectedNcRfgOperator.ride_through.hvrt
+                      .map((p) => `${p.time_s.toFixed(2)} s / ${p.voltage_pu.toFixed(2)} pu`)
+                      .join(' → ')}
+                  </span>
+                ) : (
+                  <span>Wybierz profil NC RfG operatora, aby zobaczyć krzywą HVRT.</span>
+                )}
+              </div>
               {/* Pakiet H: P(f) krzywa regulacji częstotliwości (NC RfG Art. 13/15). */}
               <Select
                 label="Nastawa P(f) — statyzm regulacji częstotliwości (NC RfG art. 13 ust. 2)"
+                disabled={auditCatalogSnapshotQuery.isLoading}
                 value={selections.pfCurveRef ?? ''}
                 onChange={(v) => setSelections((s) => ({ ...s, pfCurveRef: v || null }))}
                 options={[
-                  { id: '', label: '— wybierz (opcjonalnie) —' },
-                  ...PF_CURVE_CATALOG.map((c) => ({ id: c.id, label: c.label_pl })),
+                  {
+                    id: '',
+                    label: auditCatalogSnapshotQuery.isLoading
+                      ? '— ładowanie —'
+                      : '— wybierz (opcjonalnie) —',
+                  },
+                  ...pfCurves.map((c) => ({ id: c.id, label: c.label_pl })),
                 ]}
                 testId="add-der-pf-curve"
               />
+              {/* Karta FAB-J (decyzja #5): moduł NC RfG WYŁĄCZNIE z klasyfikacji
+                  backendu — pokazany projektantowi jako fakt, nie pole edytowalne. */}
+              <div
+                data-testid="add-der-expected-module"
+                className="rounded border border-scada-sn/70 bg-scada-sn/10 p-2 text-[11px] text-scada-text"
+              >
+                <span className="font-semibold">Oczekiwany moduł NC RfG: </span>
+                <span>{expectedNcRfgModule ?? 'nie można wyznaczyć (brak mocy lub napięcia przyłączenia)'}</span>
+              </div>
             </div>
           )}
 
@@ -1933,7 +2113,10 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                   <ReviewRow
                     label="Poziom napięcia nN"
                     value={
-                      LV_VOLTAGE_LEVEL_CATALOG.find((l) => l.id === selections.voltageLevelRef)?.label_pl ?? ''
+                      (() => {
+                        const lvl = getLvVoltageLevel(selections.voltageLevelRef);
+                        return lvl ? formatLvVoltageLabelPl(lvl.nominal_kv) : '';
+                      })()
                     }
                   />
                 )}
@@ -1946,35 +2129,38 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                 {selections.connectionSide === 'dedicated_transformer' && (
                   <ReviewRow
                     label="Transformator blokowy"
-                    value={getBlockTransformer(effectiveBlockTransformerCatalogRef ?? '')?.label_pl ?? ''}
+                    value={getBlockTransformer(blockTransformers, effectiveBlockTransformerCatalogRef)?.label_pl ?? ''}
                   />
                 )}
                 {derKind === 'BESS' && (
                   <ReviewRow
                     label="Bateria (katalog)"
                     value={
-                      BESS_BATTERY_CATALOG.find((b) => b.id === selections.batteryCatalogRef)?.label_pl ?? ''
+                      bessBatteries.find((b) => b.id === selections.batteryCatalogRef)?.name ?? ''
                     }
                   />
                 )}
                 <ReviewRow
                   label="Profil NC RfG"
-                  value={
-                    NC_RFG_PROFILE_CATALOG.find((p) => p.id === selections.ncRfgProfileRef)?.label_pl ?? ''
-                  }
+                  value={selectedNcRfgOperator?.operator_name_pl ?? ''}
                 />
                 <ReviewRow
                   label="Krzywa LVRT"
                   value={
-                    LVRT_CURVE_CATALOG.find((c) => c.id === selections.lvrtCurveRef)?.label_pl ?? ''
+                    selectedNcRfgOperator
+                      ? `${selectedNcRfgOperator.ride_through.lvrt.length} punktów t-U/Un`
+                      : ''
                   }
                 />
                 <ReviewRow
                   label="Krzywa HVRT"
                   value={
-                    HVRT_CURVE_CATALOG.find((c) => c.id === selections.hvrtCurveRef)?.label_pl ?? ''
+                    selectedNcRfgOperator
+                      ? `${selectedNcRfgOperator.ride_through.hvrt.length} punktów t-U/Un`
+                      : ''
                   }
                 />
+                <ReviewRow label="Moduł NC RfG (oczekiwany przez backend)" value={expectedNcRfgModule ?? ''} />
               </ul>
             </div>
           )}

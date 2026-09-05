@@ -29,6 +29,8 @@ import {
   AddDerWizard,
   deryStacjiZModelu,
   mergeStationDers,
+  useAudit2CatalogSnapshot,
+  useNcRfgOperatorCatalog,
   useStationAudit2Config,
   useStationDerStore,
   useUpdateStationAudit2Config,
@@ -651,9 +653,14 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const activeRunId = useAppStateStore((state) => state.activeRunId);
   const defaultCard = useMemo(() => stationDefaultCard(surface), [surface]);
+  // Karta FAB-J: snapshot audytu 2 dla inferencji transformatora dedykowanego
+  // (`inferBlockTransformerCatalogRef`) — bez niego wytwórcy legacy bez
+  // `meta.block_transformer_catalog_ref` nie dostaną wywnioskowanej pozycji.
+  const blockTransformers = useAudit2CatalogSnapshot().data?.block_transformers ?? [];
+  const ncRfgOperators = useNcRfgOperatorCatalog().data ?? [];
   const snapshotDers = useMemo(
-    () => deryStacjiZModelu(snapshot, stationRef, projectId),
-    [snapshot, stationRef, projectId],
+    () => deryStacjiZModelu(snapshot, stationRef, projectId, blockTransformers),
+    [snapshot, stationRef, projectId, blockTransformers],
   );
   const ders = useMemo(
     () => mergeStationDers(snapshotDers, localDers),
@@ -1152,6 +1159,8 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
         onAddDer: handleAddDer,
         onDetachDer: requestDetach,
         canDetachDer: (derId: string) => localDers.some((der) => der.id === derId),
+        blockTransformers,
+        ncRfgOperators,
       },
     };
   }, [
@@ -1177,6 +1186,8 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     mutateAudit2,
     transformerCatalogError,
     transformerCatalogLoading,
+    blockTransformers,
+    ncRfgOperators,
   ]);
 
   return (

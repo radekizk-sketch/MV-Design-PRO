@@ -123,9 +123,10 @@ test.describe('kreatory:screenshot', () => {
       // wpisuje w polu „statyzm".
       await page.getByTestId('mvd-kreator-oze-dalej').click();
       await expect(page.getByTestId('mvd-kreator-oze-zgodnosc')).toBeVisible();
-      await page.getByTestId('mvd-kreator-oze-zgodnosc-profil').selectOption('ncrfg_pse');
-      await page.getByTestId('mvd-kreator-oze-zgodnosc-lvrt').selectOption('lvrt_pse_b');
-      await page.getByTestId('mvd-kreator-oze-zgodnosc-hvrt').selectOption('hvrt_pse_b');
+      // Karta FAB-J: profil operatora WYŁĄCZNIE z backendu — identyfikator
+      // realny (`pse`), nie wymyślony przez front. LVRT/HVRT NIE SĄ już
+      // niezależnie wybieralne (read-only, tożsamościowo związane z profilem).
+      await page.getByTestId('mvd-kreator-oze-zgodnosc-profil').selectOption('pse');
       await page.getByTestId('mvd-kreator-oze-zgodnosc-pf').selectOption('pf_droop_5');
       await shot(4);
 

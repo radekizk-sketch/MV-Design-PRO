@@ -5,100 +5,59 @@
 import { describe, it, expect } from 'vitest';
 
 import {
-  NC_RFG_PROFILE_CATALOG,
-  LVRT_CURVE_CATALOG,
-  HVRT_CURVE_CATALOG,
-  LV_VOLTAGE_LEVEL_CATALOG,
   CONNECTION_VARIANT_CATALOG,
   STATION_TEMPLATE_CATALOG,
-  PV_INVERTER_CATALOG,
-  BESS_PCS_CATALOG,
-  BESS_BATTERY_CATALOG,
-  WIND_TURBINE_CATALOG,
-  selectLvrtCurvesForProfile,
-  selectHvrtCurvesForProfile,
   selectConnectionVariantsForKind,
-  selectPvInvertersForVoltage,
-  selectBessPcsForVoltage,
-  getNcRfgProfile,
   getLvVoltageLevel,
   getConnectionSideLabelPl,
 } from '../catalogs';
 
-describe('NC RfG profile catalog', () => {
-  it('zawiera 5 profili (PSE/Energa/Tauron/Enea/PGE)', () => {
-    expect(NC_RFG_PROFILE_CATALOG).toHaveLength(5);
-    const operators = NC_RFG_PROFILE_CATALOG.map((p) => p.operator_code);
-    expect(operators).toEqual(['PSE', 'Energa', 'Tauron', 'Enea', 'PGE']);
-  });
-
-  it('każdy profil ma catalog_namespace=nc_rfg_profile + version + label_pl', () => {
-    for (const profile of NC_RFG_PROFILE_CATALOG) {
-      expect(profile.catalog_namespace).toBe('nc_rfg_profile');
-      expect(profile.catalog_version).toBeTruthy();
-      expect(profile.label_pl.length).toBeGreaterThan(0);
-      expect(profile.status).toBe('active');
-    }
-  });
-
-  it('getNcRfgProfile zwraca profil albo null', () => {
-    expect(getNcRfgProfile('ncrfg_pse')?.operator_code).toBe('PSE');
-    expect(getNcRfgProfile('unknown')).toBeNull();
-  });
-});
-
-describe('LVRT/HVRT curve catalog', () => {
-  it('LVRT zawiera krzywe z envelope (5 punktów po 0-3s)', () => {
-    expect(LVRT_CURVE_CATALOG.length).toBeGreaterThanOrEqual(4);
-    for (const curve of LVRT_CURVE_CATALOG) {
-      expect(curve.envelope.length).toBe(5);
-      expect(curve.envelope[0].time_s).toBe(0);
-      // U_min na początku ≤ U_min na końcu (krzywa rośnie).
-      expect(curve.envelope[0].voltage_pu).toBeLessThanOrEqual(
-        curve.envelope[curve.envelope.length - 1].voltage_pu,
-      );
-    }
-  });
-
-  it('HVRT zawiera krzywe z envelope opadającym', () => {
-    for (const curve of HVRT_CURVE_CATALOG) {
-      expect(curve.envelope.length).toBe(5);
-      // U_max na początku ≥ U_max na końcu (krzywa opada).
-      expect(curve.envelope[0].voltage_pu).toBeGreaterThanOrEqual(
-        curve.envelope[curve.envelope.length - 1].voltage_pu,
-      );
-    }
-  });
-
-  it('selectLvrtCurvesForProfile filtruje po operatorze', () => {
-    const curves = selectLvrtCurvesForProfile('ncrfg_pse');
-    expect(curves.length).toBeGreaterThan(0);
-    expect(curves.every((c) => c.operator_code === 'PSE')).toBe(true);
-  });
-
-  it('selectHvrtCurvesForProfile filtruje po operatorze', () => {
-    const curves = selectHvrtCurvesForProfile('ncrfg_energa');
-    expect(curves.every((c) => c.operator_code === 'Energa')).toBe(true);
-  });
-
-  it('kazdy profil operatora daje co najmniej jedna krzywa LVRT i HVRT', () => {
-    for (const profile of NC_RFG_PROFILE_CATALOG) {
-      expect(selectLvrtCurvesForProfile(profile.id).length).toBeGreaterThan(0);
-      expect(selectHvrtCurvesForProfile(profile.id).length).toBeGreaterThan(0);
-    }
+// USUNIĘTE (karta FAB-J, 2026-09-05) — `NC_RFG_PROFILE_CATALOG`, `LVRT_CURVE_CATALOG`,
+// `HVRT_CURVE_CATALOG`, `PV_INVERTER_CATALOG`, `BESS_PCS_CATALOG`, `BESS_BATTERY_CATALOG`,
+// `WIND_TURBINE_CATALOG` — druga kopia danych, dla których backend jest jedynym źródłem
+// prawdy (patrz nagłówek `catalogs.ts` dla pełnej prowenincji per pozycja). Pokrycie:
+//   - NC RfG profil/operator + LVRT/HVRT ride-through: backend `GET /api/ncrfg-tests/catalog`,
+//     testy `derRemoteCatalogs.test.ts` + fikstury `AddDerWizard.test.tsx`/`Etap5Der.test.tsx`.
+//   - Urządzenia PV/BESS/FW: backend `GET /api/catalog/converter-types`
+//     (`network_model/catalog/mv_converter_catalog.py` + jego testy).
+//   - Baterie BESS: backend `GET /api/catalog/bess-battery-types`
+//     (`network_model/catalog/mv_bess_battery_catalog.py` + `test_bess_battery_catalog.py`).
+describe('Katalogi urządzeń/profili — usunięte z frontu (karta FAB-J)', () => {
+  it('catalogs.ts NIE MA już własnej kopii katalogów backendu', async () => {
+    const modul = (await import('../catalogs')) as Record<string, unknown>;
+    expect(modul.NC_RFG_PROFILE_CATALOG).toBeUndefined();
+    expect(modul.LVRT_CURVE_CATALOG).toBeUndefined();
+    expect(modul.HVRT_CURVE_CATALOG).toBeUndefined();
+    expect(modul.LV_VOLTAGE_LEVEL_CATALOG).toBeUndefined();
+    expect(modul.PV_INVERTER_CATALOG).toBeUndefined();
+    expect(modul.BESS_PCS_CATALOG).toBeUndefined();
+    expect(modul.BESS_BATTERY_CATALOG).toBeUndefined();
+    expect(modul.WIND_TURBINE_CATALOG).toBeUndefined();
+    expect(modul.validateMinSkAtPcc).toBeUndefined();
+    expect(modul.getNcRfgProfile).toBeUndefined();
+    expect(modul.selectLvrtCurvesForProfile).toBeUndefined();
+    expect(modul.selectHvrtCurvesForProfile).toBeUndefined();
+    expect(modul.selectPvInvertersForVoltage).toBeUndefined();
+    expect(modul.selectBessPcsForVoltage).toBeUndefined();
   });
 });
 
-describe('LvVoltageLevelCatalog', () => {
-  it('zawiera 5 poziomów napięć nN', () => {
-    expect(LV_VOLTAGE_LEVEL_CATALOG.length).toBe(5);
-    const voltages = LV_VOLTAGE_LEVEL_CATALOG.map((l) => l.nominal_kv).sort();
-    expect(voltages).toEqual([0.23, 0.4, 0.69, 1.0, 6.0]);
+describe('LvVoltageLevelCatalog — getLvVoltageLevel parsuje wartość-referencję', () => {
+  it('getLvVoltageLevel zwraca poziom napięcia parsując referencję jako liczbę kV', () => {
+    // Karta FAB-J: referencja JEST wartością kV jako łańcuch (wyprowadzoną z
+    // `derRemoteCatalogs.ts::useLvVoltageLevelsKv`, `un_kv` katalogu przekształtników
+    // backendu) — nie identyfikatorem katalogowym typu `"lv_0_4kV"`.
+    expect(getLvVoltageLevel('0.4')?.nominal_kv).toBe(0.4);
+    expect(getLvVoltageLevel('0.69')?.nominal_kv).toBe(0.69);
+    expect(getLvVoltageLevel('6')?.nominal_kv).toBe(6);
   });
 
-  it('getLvVoltageLevel zwraca konkretny poziom albo null', () => {
-    expect(getLvVoltageLevel('lv_0_4kV')?.nominal_kv).toBe(0.4);
-    expect(getLvVoltageLevel('lv_unknown')).toBeNull();
+  it('getLvVoltageLevel zwraca null dla braku referencji albo wartości nie-liczbowej', () => {
+    expect(getLvVoltageLevel(null)).toBeNull();
+    expect(getLvVoltageLevel('')).toBeNull();
+    expect(getLvVoltageLevel('lv_0_4kV')).toBeNull();
+    expect(getLvVoltageLevel('0')).toBeNull();
+    expect(getLvVoltageLevel('-0.4')).toBeNull();
   });
 });
 
@@ -158,43 +117,5 @@ describe('StationTemplateCatalog', () => {
     const labels = STATION_TEMPLATE_CATALOG.map((t) => t.label_pl).join(' ');
     expect(labels).toContain('PV');
     expect(labels).toContain('BESS');
-  });
-});
-
-describe('Device catalogs (PV/BESS/FW)', () => {
-  it('PV inverter catalog ma ≥3 pozycje z różnymi mocami', () => {
-    expect(PV_INVERTER_CATALOG.length).toBeGreaterThanOrEqual(3);
-    const powers = PV_INVERTER_CATALOG.map((p) => p.nominal_power_kw);
-    expect(new Set(powers).size).toBeGreaterThanOrEqual(2);
-  });
-
-  it('BESS PCS catalog ma ≥2 pozycje', () => {
-    expect(BESS_PCS_CATALOG.length).toBeGreaterThanOrEqual(2);
-  });
-
-  it('BESS battery catalog ma ≥2 pozycje', () => {
-    expect(BESS_BATTERY_CATALOG.length).toBeGreaterThanOrEqual(2);
-  });
-
-  it('Wind turbine catalog ma ≥3 pozycje z mocą znamionową', () => {
-    // Karta K-Q: `generator_type` (PMSG/DFIG) znikł razem z danymi mechanicznymi
-    // turbiny — backend go nie niesie, karty producenta w repo nie ma, a w UI nie
-    // miał konsumenta. Pozycja opisuje to, co mirroruje z backendu: wyrób i moc.
-    expect(WIND_TURBINE_CATALOG.length).toBeGreaterThanOrEqual(3);
-    for (const wt of WIND_TURBINE_CATALOG) {
-      expect(wt.nominal_power_kw).toBeGreaterThan(0);
-      expect(wt.model_code.length).toBeGreaterThan(0);
-    }
-  });
-
-  it('selectPvInvertersForVoltage filtruje po napięciu', () => {
-    const inv0_69 = selectPvInvertersForVoltage(0.69);
-    expect(inv0_69.length).toBeGreaterThan(0);
-    expect(inv0_69.every((i) => Math.abs(i.nominal_voltage_kv - 0.69) < 0.01)).toBe(true);
-  });
-
-  it('selectBessPcsForVoltage filtruje po napięciu', () => {
-    const pcs0_4 = selectBessPcsForVoltage(0.4);
-    expect(pcs0_4.length).toBeGreaterThan(0);
   });
 });

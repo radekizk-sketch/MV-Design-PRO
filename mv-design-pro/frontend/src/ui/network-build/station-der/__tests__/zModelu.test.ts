@@ -206,9 +206,11 @@ describe('synchronizujZModelu — model wygrywa, praca lokalna nie ginie', () =>
 
 describe('rozwiazNapiecieKv — dwie realne dane modelowe, zero domysłu', () => {
   it('referencja poziomu napięcia ma pierwszeństwo', () => {
+    // Karta FAB-J: referencja JEST wartością kV jako łańcuch (`getLvVoltageLevel`
+    // parsuje `Number(ref)`), nie identyfikatorem katalogowym `"lv_0_4kV"`.
     expect(
       rozwiazNapiecieKv(
-        rekordLokalny({ voltage_level_ref: 'lv_0_4kV', connection_voltage_kv: 0.8 }),
+        rekordLokalny({ voltage_level_ref: '0.4', connection_voltage_kv: 0.8 }),
       ),
     ).toBe(0.4);
   });

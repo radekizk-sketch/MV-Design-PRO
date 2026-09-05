@@ -209,6 +209,10 @@ def _zastosuj_szablon(app_client, case_id: str, segment_ref: str) -> Any:
 def _utworz_wytworce(
     app_client, project_id: str, case_id: str, station_ref: str, nazwa: str
 ) -> Any:
+    # Karta FAB-J (naprawa 2026-09-05): 500 kW klasyfikuje się jako moduł „A"
+    # wg profilu YAML solvera PTPiREE (`modul_nc_rfg` deleguje do niego;
+    # próg A/B tego profilu to 1 000 kW, nie 200 kW jak w usuniętej tabeli
+    # URE) — `POST .../generators` odrzuca niezgodność 422.
     return app_client.post(
         f"/api/projects/{project_id}/cases/{case_id}/generators",
         json={

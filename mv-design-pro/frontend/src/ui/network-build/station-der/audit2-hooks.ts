@@ -19,6 +19,7 @@ import {
   listStationAudit2Configs,
   putStationAudit2Config,
   runAudit2PowerFlow,
+  type AuditCatalogSnapshot,
   type Audit2PowerFlowRequest,
   type Audit2PowerFlowResponse,
   type Audit2ProofPackRequest,
@@ -33,7 +34,7 @@ import {
 // Catalog snapshot — immutable, cache forever
 // =============================================================================
 
-export function useAudit2CatalogSnapshot(): UseQueryResult<unknown, Error> {
+export function useAudit2CatalogSnapshot(): UseQueryResult<AuditCatalogSnapshot, Error> {
   return useQuery({
     queryKey: audit2QueryKeys.catalogSnapshot(),
     queryFn: fetchAudit2CatalogSnapshot,

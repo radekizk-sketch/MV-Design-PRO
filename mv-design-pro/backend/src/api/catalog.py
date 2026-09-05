@@ -343,6 +343,17 @@ def list_bess_inverter_types() -> list[dict[str, Any]]:
     return [item.to_dict() for item in get_default_mv_catalog().list_bess_inverter_types()]
 
 
+@router.get("/bess-battery-types")
+def list_bess_battery_types() -> list[dict[str, Any]]:
+    """List all BESS battery PACK types (karta FAB-J) — sprzęt oddzielny od PCS.
+
+    Katalog pojemności [kWh] / napięcia DC / C-rate / chemii pakietu baterii;
+    typ przekształtnika magazynu (moc, Q, cosφ) niesie `/bess-inverter-types`
+    powyżej.
+    """
+    return [item.to_dict() for item in get_default_mv_catalog().list_bess_battery_types()]
+
+
 @router.get("/inverter-types")
 def list_inverter_types() -> list[dict[str, Any]]:
     """List all generic inverter/converter catalog entries from the canonical MV catalog."""

@@ -189,7 +189,7 @@ describe('eng.11 — Anti-islanding dla DER po nN/ZK/słupie/mufie', () => {
     const der = makeDer({
       connection_side: 'nN',
       lv_busbar_ref: 'busbar_station-test_main',
-      voltage_level_ref: 'lv_0_4kV',
+      voltage_level_ref: '0.4',
       catalogs: {
         ...makeDer().catalogs,
         protection_catalog_ref: null, // BRAK protection

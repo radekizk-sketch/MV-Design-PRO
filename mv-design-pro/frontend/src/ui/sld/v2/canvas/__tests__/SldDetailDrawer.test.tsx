@@ -13,12 +13,42 @@
  * 9. data-testid coverage dla DOM audit
  */
 
-import { describe, expect, it, vi, afterEach } from 'vitest';
+import { describe, expect, it, vi, afterEach, beforeEach } from 'vitest';
 import { render, fireEvent, cleanup, waitFor } from '@testing-library/react';
 
 import { SldDetailDrawer, type SldDetailDrawerData } from '../SldDetailDrawer';
 import { useAppStateStore } from '../../../../app-state/store';
 import { EMPTY_PROTECTION_VIEW, type ProtectionViewResponse } from '../../../../protection';
+
+/**
+ * Karta FAB-J: mirror TESTOWY wyłącznie na potrzeby mocka granicy `fetch` —
+ * jedyne ŹRÓDŁO progów zostaje `compliance/nc_rfg_modul.py`
+ * (`GET /api/ncrfg-tests/modul`), ten mirror tylko UDAJE backend w teście,
+ * dokładnie jak `mockConverterCatalogFetch` udaje katalog przekształtników.
+ * Każda zmiana progów w backendzie wymaga zmiany też tutaj (test by inaczej
+ * cicho fałszował klasyfikację, którą sam sprawdza).
+ */
+function klasyfikujModulNcRfgDlaTestu(pMaxMw: number, napiecieKv: number): 'A' | 'B' | 'C' | 'D' {
+  if (napiecieKv >= 110) return 'D';
+  const pMaxKw = pMaxMw * 1000;
+  if (pMaxKw >= 75_000) return 'D';
+  if (pMaxKw >= 10_000) return 'C';
+  if (pMaxKw >= 200) return 'B';
+  return 'A';
+}
+
+/** Odpowiada na `GET /api/ncrfg-tests/modul?…`, jeśli URL do niego pasuje — `null` gdy nie. */
+function respondNcRfgModulIfMatches(url: string): Response | null {
+  if (!url.includes('/api/ncrfg-tests/modul')) return null;
+  const params = new URL(url, 'http://localhost').searchParams;
+  const pMaxMw = Number(params.get('p_max_mw'));
+  const napiecieKv = Number(params.get('napiecie_kv'));
+  const modul = klasyfikujModulNcRfgDlaTestu(pMaxMw, napiecieKv);
+  return new Response(JSON.stringify({ modul }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
 
 /**
  * FAB-B (fantom nastaw, M0): mock granicy `fetch` dla realnej ścieżki danych
@@ -28,11 +58,15 @@ import { EMPTY_PROTECTION_VIEW, type ProtectionViewResponse } from '../../../../
  * `useProtectionView` → `GET /api/cases/{caseId}/enm/protection-view`).
  */
 function mockProtectionViewFetchOk(payload: ProtectionViewResponse): void {
-  global.fetch = vi.fn(async () => ({
-    ok: true,
-    statusText: 'OK',
-    json: async () => payload,
-  })) as unknown as typeof fetch;
+  global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+    const modulResponse = respondNcRfgModulIfMatches(String(input));
+    if (modulResponse) return modulResponse;
+    return {
+      ok: true,
+      statusText: 'OK',
+      json: async () => payload,
+    };
+  }) as unknown as typeof fetch;
 }
 
 /**
@@ -45,6 +79,8 @@ function mockProtectionViewFetchOk(payload: ProtectionViewResponse): void {
 function mockConverterCatalogFetch(byKind: Partial<Record<'PV' | 'BESS' | 'WIND', unknown[]>>): void {
   global.fetch = vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input);
+    const modulResponse = respondNcRfgModulIfMatches(url);
+    if (modulResponse) return modulResponse;
     const match = /[?&]kind=([^&]+)/.exec(url);
     const kind = match ? decodeURIComponent(match[1]) : null;
     const records = (kind && byKind[kind as 'PV' | 'BESS' | 'WIND']) ?? [];
@@ -122,6 +158,18 @@ describe('SldDetailDrawer — right-side detail panel', () => {
   // go ustawił) — zero wycieku stanu store'a między testami tego pliku.
   afterEach(() => {
     useAppStateStore.setState({ activeCaseId: null });
+  });
+
+  // Karta FAB-J: zakładka „rfg" DER pyta backend o klasyfikację modułu NC RfG
+  // ZAWSZE, gdy otwarta jest szuflada DER (nie tylko na jej własnej zakładce —
+  // wartość jest potrzebna przy zapisie niezależnie od oglądanej zakładki), więc
+  // każdy test renderujący `kind: 'der'` musi mieć odpowiedź na ten fetch —
+  // domyślna tutaj, nadpisywana przez `mockConverterCatalogFetch`/
+  // `mockProtectionViewFetchOk` w testach, które i tak mockują `fetch` dla
+  // innych granic.
+  beforeEach(() => {
+    global.fetch = vi.fn(async (input: RequestInfo | URL) => respondNcRfgModulIfMatches(String(input))
+      ?? new Response(JSON.stringify({}), { status: 200 })) as unknown as typeof fetch;
   });
 
   it('open=false → null', () => {
@@ -242,13 +290,19 @@ describe('SldDetailDrawer — right-side detail panel', () => {
     cleanup();
   });
 
-  it('DER rfg tab renders 4 radio buttons (typ A/B/C/D)', () => {
+  it('DER rfg tab pokazuje moduł wyznaczony przez backend (moc 0,5 MW / 0,4 kV → typ B)', async () => {
+    // Karta FAB-J (decyzja #5): moduł NC RfG nie jest już 4 wolnymi przyciskami
+    // radio — to klasyfikacja backendu z (mocy, napięcia przyłączenia).
+    // Domyślne dane (PV, nN, 0,5 MW / 0,4 kV) klasyfikują się jako moduł B
+    // (0,8 kW ≤ P < 200 kW → A; 200 kW ≤ P < 10 MW → B), nie A.
     const data: SldDetailDrawerData = { kind: 'der', elementId: 'pv-1', label: 'PV-15' };
     const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
     fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-rfg"]') as Element);
     expect(container.querySelector('[data-testid="drawer-der-rfg"]')).toBeTruthy();
-    const radios = container.querySelectorAll('[data-testid="drawer-der-rfg-types"] input[type="radio"]');
-    expect(radios).toHaveLength(4);
+    await waitFor(() => {
+      expect(container.querySelector('[data-testid="drawer-der-rfg-selected"]')?.textContent).toBe('Typ B');
+    });
+    expect(container.querySelector('[data-testid="drawer-der-rfg-types"] input[type="radio"]')).toBeNull();
     cleanup();
   });
 
@@ -837,9 +891,31 @@ describe('SldDetailDrawer — right-side detail panel', () => {
     expect(container.querySelector('[data-testid="drawer-der-inverter-error"]')?.textContent)
       .toContain('Wybierz typ przekształtnika');
 
+    // Karta FAB-J: moduł NC RfG dla (1,2 MW, 15 kV) klasyfikuje się jako typ B
+    // (0,8 kW ≤ P < 200 kW → A; 200 kW ≤ P < 10 MW → B) — zaglądamy do zakładki
+    // „NC RfG", żeby dowieść, że klasyfikacja backendu się ustaliła PRZED
+    // drugim zapisem (bez tego test łapałby wyścig z prowizoryczną wartością
+    // startową 'A').
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-rfg"]') as Element);
+    await waitFor(() => {
+      expect(container.querySelector('[data-testid="drawer-der-rfg-selected"]')?.textContent).toBe('Typ B');
+    });
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-inverter"]') as Element);
+
+    // Karta wróciła na „Falownik" — poprzedni węzeł DOM `select` odpiął się przy
+    // wyjściu na „NC RfG" (zakładki są renderowane warunkowo), a `useDerConverterCatalog`
+    // odpala fetch od nowa (odroczenie do zakładki „Falownik" — `enabled`
+    // przełączyło się false→true), więc czekamy, aż lista znów będzie gotowa.
+    // Wartość formularza (react-hook-form) przetrwała przełączenie.
+    await waitFor(() => {
+      expect(container.querySelector('[data-testid="drawer-der-inverter-select"]')).toBeTruthy();
+    });
+    const inverterSelectAfterRfg =
+      container.querySelector('[data-testid="drawer-der-inverter-select"]') as HTMLSelectElement;
+
     // Jawny wybór — realna pozycja z odpowiedzi backendu, nie pierwsza z listy.
-    fireEvent.change(select, { target: { value: 'conv-pv-1mw-15kv' } });
-    expect(select.value).toBe('conv-pv-1mw-15kv');
+    fireEvent.change(inverterSelectAfterRfg, { target: { value: 'conv-pv-1mw-15kv' } });
+    expect(inverterSelectAfterRfg.value).toBe('conv-pv-1mw-15kv');
     fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-save"]') as Element);
 
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
@@ -852,7 +928,7 @@ describe('SldDetailDrawer — right-side detail panel', () => {
         connectionVariant: 'sn_side',
         pointVoltageKv: 15,
         inverterCatalogRef: 'conv-pv-1mw-15kv',
-        ncRfgModule: 'A',
+        ncRfgModule: 'B',
       },
     });
     cleanup();

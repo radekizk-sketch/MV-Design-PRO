@@ -5,13 +5,6 @@
  *  - validateWizardSelections: catalog_refs muszą istnieć w katalogu
  */
 
-import {
-  BESS_BATTERY_CATALOG,
-  HVRT_CURVE_CATALOG,
-  LV_VOLTAGE_LEVEL_CATALOG,
-  LVRT_CURVE_CATALOG,
-  NC_RFG_PROFILE_CATALOG,
-} from './catalogs';
 import type { DerKindUnified } from './types';
 
 /**
@@ -72,6 +65,17 @@ export interface WizardValidationContext {
    * już w kreatorze.
    */
   readonly allowedDeviceCatalogIds?: readonly string[];
+  /**
+   * Karta FAB-J: poziomy napięcia nN wyprowadzone z katalogu przekształtników
+   * (`derRemoteCatalogs.ts::useLvVoltageLevelsKv`) — referencje to same
+   * wartości kV jako łańcuchy (`"0.4"`, nie `"lv_0_4kV"`), bez katalogu
+   * lokalnego do sprawdzenia.
+   */
+  readonly allowedLvVoltageLevelRefs?: readonly string[];
+  /** Karta FAB-J: identyfikatory pakietów baterii BESS z `/api/catalog/bess-battery-types`. */
+  readonly allowedBatteryCatalogIds?: readonly string[];
+  /** Karta FAB-J: `operator_id` z `GET /api/ncrfg-tests/catalog` (pse/energa/tauron/enea/pge). */
+  readonly allowedNcRfgOperatorIds?: readonly string[];
 }
 
 /**
@@ -95,10 +99,12 @@ export function validateWizardSelections(
     errors.push('Etykieta PCC nie może być pusta.');
   }
 
-  // Voltage level (tylko nN)
+  // Voltage level (tylko nN) — WYŁĄCZNIE poziomy wyprowadzone z katalogu
+  // przekształtników backendu (karta FAB-J); brak listy zastępczej.
   if (selections.connectionSide === 'nN') {
-    if (!selections.voltageLevelRef || !LV_VOLTAGE_LEVEL_CATALOG.find((l) => l.id === selections.voltageLevelRef)) {
-      errors.push('Wybrany poziom napięcia nN nie istnieje w katalogu LvVoltageLevelCatalog.');
+    const allowedLvVoltageLevelRefs = new Set(context.allowedLvVoltageLevelRefs ?? []);
+    if (!selections.voltageLevelRef || !allowedLvVoltageLevelRefs.has(selections.voltageLevelRef)) {
+      errors.push('Wybrany poziom napięcia nN nie istnieje wśród urządzeń w katalogu backendu.');
     }
   }
 
@@ -117,34 +123,38 @@ export function validateWizardSelections(
     }
   }
 
-  // Bateria BESS
+  // Bateria BESS — WYŁĄCZNIE `/api/catalog/bess-battery-types` (karta FAB-J).
   if (derKind === 'BESS') {
+    const allowedBatteryCatalogIds = new Set(context.allowedBatteryCatalogIds ?? []);
     if (!selections.batteryCatalogRef) {
       errors.push('BESS wymaga wyboru baterii z katalogu.');
-    } else if (!BESS_BATTERY_CATALOG.find((b) => b.id === selections.batteryCatalogRef)) {
-      errors.push(`Bateria "${selections.batteryCatalogRef}" nie istnieje w katalogu.`);
+    } else if (!allowedBatteryCatalogIds.has(selections.batteryCatalogRef)) {
+      errors.push(`Bateria "${selections.batteryCatalogRef}" nie istnieje w katalogu backendu.`);
     }
   }
 
-  // Profil NC RfG
+  // Profil NC RfG — WYŁĄCZNIE operatorzy z `GET /api/ncrfg-tests/catalog` (karta FAB-J).
+  const allowedNcRfgOperatorIds = new Set(context.allowedNcRfgOperatorIds ?? []);
   if (!selections.ncRfgProfileRef) {
     errors.push('Profil NC RfG operatora jest wymagany.');
-  } else if (!NC_RFG_PROFILE_CATALOG.find((p) => p.id === selections.ncRfgProfileRef)) {
-    errors.push(`Profil NC RfG "${selections.ncRfgProfileRef}" nie istnieje w katalogu.`);
+  } else if (!allowedNcRfgOperatorIds.has(selections.ncRfgProfileRef)) {
+    errors.push(`Profil NC RfG "${selections.ncRfgProfileRef}" nie istnieje w katalogu backendu.`);
   }
 
-  // LVRT curve
+  // LVRT / HVRT — karta FAB-J: backend niesie JEDNĄ parę krzywych ride-through
+  // na operatora (`NcRfgOperatorItem.ride_through`), więc krzywa wybrana NIE
+  // JEST niezależną decyzją — musi być tym samym operatorem, co profil NC RfG
+  // (kreator ustawia ją automatycznie razem z profilem, patrz AddDerWizard).
   if (!selections.lvrtCurveRef) {
     errors.push('Krzywa LVRT jest wymagana.');
-  } else if (!LVRT_CURVE_CATALOG.find((c) => c.id === selections.lvrtCurveRef)) {
-    errors.push(`Krzywa LVRT "${selections.lvrtCurveRef}" nie istnieje w katalogu.`);
+  } else if (selections.lvrtCurveRef !== selections.ncRfgProfileRef) {
+    errors.push('Krzywa LVRT musi pochodzić z tego samego operatora co profil NC RfG.');
   }
 
-  // HVRT curve
   if (!selections.hvrtCurveRef) {
     errors.push('Krzywa HVRT jest wymagana.');
-  } else if (!HVRT_CURVE_CATALOG.find((c) => c.id === selections.hvrtCurveRef)) {
-    errors.push(`Krzywa HVRT "${selections.hvrtCurveRef}" nie istnieje w katalogu.`);
+  } else if (selections.hvrtCurveRef !== selections.ncRfgProfileRef) {
+    errors.push('Krzywa HVRT musi pochodzić z tego samego operatora co profil NC RfG.');
   }
 
   return { ok: errors.length === 0, errors };

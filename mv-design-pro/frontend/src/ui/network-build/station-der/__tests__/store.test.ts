@@ -26,7 +26,7 @@ const SAMPLE_PV: Parameters<typeof useStationDerStore.getState>[0] extends never
   connection_side: 'SN',
   bus_przylaczenia_ref: 'pcc_001',
   bay_ref: 'bay_001',
-  voltage_level_ref: 'lv_0_69kV',
+  voltage_level_ref: '0.69',
   catalogs: {
     device_catalog_ref: 'pv_inv_sma_2500',
   },

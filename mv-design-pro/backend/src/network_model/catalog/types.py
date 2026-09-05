@@ -64,6 +64,10 @@ class CatalogNamespace(Enum):
     ZRODLO_SN = "ZRODLO_SN"
     ZRODLO_NN_PV = "ZRODLO_NN_PV"
     ZRODLO_NN_BESS = "ZRODLO_NN_BESS"
+    #: Karta FAB-J: pakiet baterii magazynu BESS — sprzęt ODDZIELNY od PCS/
+    #: przekształtnika (`ZRODLO_NN_BESS`/`ConverterType`): pojemność [kWh],
+    #: napięcie DC, C-rate, chemia. Backend nie miał tego katalogu wcale.
+    BATERIA_BESS = "BATERIA_BESS"
     ZABEZPIECZENIE = "ZABEZPIECZENIE"
     NASTAWY_ZABEZPIECZEN = "NASTAWY_ZABEZPIECZEN"
     PTPIREE_CERTYFIKAT_GENERATORA = "PTPIREE_CERTYFIKAT_GENERATORA"
@@ -1425,6 +1429,97 @@ class ConverterType:
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog przeksztaltnikow MV-DESIGN-PRO / profile typowe OZE i BESS",
+                default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
+                default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
+            ),
+        )
+
+
+BESSChemistry = Literal["LFP", "NMC", "LTO"]
+
+
+@dataclass(frozen=True)
+class BESSBatteryType:
+    """Immutable BESS battery PACK type definition (karta FAB-J).
+
+    Sprzęt ODDZIELNY od przekształtnika/PCS (`ConverterType`/`ZRODLO_NN_BESS`):
+    magazyn BESS to zawsze DWIE pozycje zakupowe — przekształtnik (moc, Q,
+    cosφ — niesie `ConverterType`) i pakiet baterii (energia, napięcie DC,
+    C-rate, chemia — niesie ta klasa). Backend NIE MIAŁ tego katalogu wcale;
+    front trzymał dwie pozycje w statycznej liście frontendowej
+    (`station-der/catalogs.ts::BESS_BATTERY_CATALOG`) — jedyne źródło jest
+    teraz tutaj.
+
+    Attributes:
+        id: Unique identifier (bez marki producenta — profil referencyjny).
+        name: Type name.
+        chemistry: Chemia ogniwa (LFP / NMC / LTO).
+        capacity_kwh: Pojemność znamionowa pakietu [kWh].
+        nominal_voltage_dc_v: Napięcie znamionowe szyny DC [V].
+        c_rate: Szybkość ładowania/rozładowania jako wielokrotność pojemności
+            [1/h] (0.5 = pełne naładowanie/rozładowanie w 2 h).
+    """
+
+    id: str
+    name: str
+    chemistry: BESSChemistry
+    capacity_kwh: float
+    nominal_voltage_dc_v: float
+    c_rate: float
+    verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
+    source_reference: str = "Katalog przeksztaltnikow MV-DESIGN-PRO / profil przemyslowy V1"
+    catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
+    contract_version: str = CATALOG_CONTRACT_VERSION
+    verification_note: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.capacity_kwh <= 0:
+            raise ValueError(f"{self.id}: capacity_kwh musi być > 0 (jest {self.capacity_kwh}).")
+        if self.nominal_voltage_dc_v <= 0:
+            raise ValueError(
+                f"{self.id}: nominal_voltage_dc_v musi być > 0 (jest {self.nominal_voltage_dc_v})."
+            )
+        if self.c_rate <= 0:
+            raise ValueError(f"{self.id}: c_rate musi być > 0 (jest {self.c_rate}).")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "chemistry": self.chemistry,
+            "capacity_kwh": self.capacity_kwh,
+            "nominal_voltage_dc_v": self.nominal_voltage_dc_v,
+            "c_rate": self.c_rate,
+            **_catalog_metadata_to_dict(
+                verification_status=self.verification_status,
+                source_reference=self.source_reference,
+                catalog_status=self.catalog_status,
+                contract_version=self.contract_version,
+                verification_note=self.verification_note,
+            ),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "BESSBatteryType":
+        chemistry = str(data.get("chemistry", "LFP")).upper()
+        if chemistry not in ("LFP", "NMC", "LTO"):
+            raise ValueError(
+                f"Nierozpoznana chemia baterii BESS: {chemistry!r}. Dozwolone: LFP, NMC, LTO."
+            )
+        return cls(
+            id=str(data.get("id", str(uuid4()))),
+            name=str(data.get("name", "")),
+            chemistry=chemistry,  # type: ignore[arg-type]
+            capacity_kwh=wymagany_float(data, "capacity_kwh", context="BESSBatteryType"),
+            nominal_voltage_dc_v=wymagany_float(
+                data, "nominal_voltage_dc_v", context="BESSBatteryType"
+            ),
+            c_rate=wymagany_float(data, "c_rate", context="BESSBatteryType"),
+            **_catalog_metadata_kwargs(
+                data,
+                default_source_reference=(
+                    "Katalog przeksztaltnikow MV-DESIGN-PRO / profil przemyslowy V1"
+                ),
                 default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
                 default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
             ),
@@ -3980,6 +4075,21 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             ("p_discharge_kw", "Prozł [kW]", "kW"),
             ("e_kwh", "E [kWh]", "kWh"),
             ("k_sc", "k_sc (udział zwarciowy)", ""),
+        ),
+    ),
+    CatalogNamespace.BATERIA_BESS.value: MaterializationContract(
+        namespace=CatalogNamespace.BATERIA_BESS.value,
+        # Karta FAB-J: pakiet baterii — sprzęt oddzielny od PCS (ZRODLO_NN_BESS
+        # powyżej). Zero konsumentów solverowych dziś (żaden solver w tym
+        # repo nie modeluje elektrochemii pakietu) — kontrakt deklaruje, co
+        # BYŁOBY materializowane, gdyby element domenowy referencjonował tę
+        # pozycję (dziś: wyłącznie prezentacja/dobór w warsztacie DER).
+        solver_fields=("capacity_kwh", "nominal_voltage_dc_v", "c_rate", "chemistry"),
+        ui_fields=(
+            ("capacity_kwh", "Pojemność [kWh]", "kWh"),
+            ("nominal_voltage_dc_v", "Napięcie DC [V]", "V"),
+            ("c_rate", "C-rate", "1/h"),
+            ("chemistry", "Chemia", ""),
         ),
     ),
     CatalogNamespace.ZABEZPIECZENIE.value: MaterializationContract(

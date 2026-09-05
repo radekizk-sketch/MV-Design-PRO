@@ -1,7 +1,17 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render as rtlRender, screen } from '@testing-library/react';
+import type { ReactElement } from 'react';
 import { InspectorEngineeringView } from '../InspectorEngineeringView';
 import { readinessZListy } from '../../../test/gotowoscTestUtils';
+
+/** Karta FAB-J: patrz komentarz w `InspectorEngineeringView.test.tsx`. */
+function render(ui: ReactElement) {
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return rtlRender(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
+}
 
 const openOperationForm = vi.fn();
 const openRouteSurface = vi.fn();
@@ -74,10 +84,18 @@ const snapshot = {
       connection_variant: 'nn_side',
       materialized_params: {
         station_transformer_ref: 'tr-st-001',
+        // Karta FAB-J: katalog falowników PV (PV_INVERTER_CATALOG) usunięty z
+        // frontu (FAB-I) — etykieta/producent/moc/napięcie są dziś TYLKO tym, co
+        // backend zmaterializował przy tworzeniu generatora, nie drugą lokalną
+        // kopią katalogu, więc fikstura musi je nieść wprost.
+        catalog_label: 'Huawei SUN2000-185KTL (185 kW · 0,4 kV)',
+        manufacturer: 'Huawei',
+        nominal_power_kw: 185,
+        nominal_voltage_kv: 0.4,
         profiles: {
-          nc_rfg_profile_ref: 'ncrfg_pse',
-          lvrt_curve_ref: 'lvrt_pse_b',
-          hvrt_curve_ref: 'hvrt_pse_b',
+          nc_rfg_profile_ref: 'pse',
+          lvrt_curve_ref: 'pse',
+          hvrt_curve_ref: 'pse',
           pf_curve_ref: 'pf_pse_2024',
         },
       },
@@ -157,6 +175,35 @@ vi.mock('../../app-state', () => ({
   useAppStateStore: (selector: (state: { activeMode: string; activeCaseId: string }) => unknown) =>
     selector({ activeMode: 'MODEL_EDIT', activeCaseId: 'case-1' }),
 }));
+
+// Karta FAB-J: profil NC RfG (`useNcRfgOperatorCatalog`) czyta katalog operatorów
+// z backendu przez React Query — mockujemy hook SYNCHRONICZNIE (spójnie z
+// pozostałymi zależnościami tego pliku powyżej), zamiast podstawiać `fetch` i
+// czekać na rozstrzygnięcie zapytania asynchronicznie w każdym teście z osobna.
+// `getNcRfgOperator` zostaje prawdziwą implementacją (`importOriginal`).
+vi.mock('../station-der/derRemoteCatalogs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../station-der/derRemoteCatalogs')>();
+  return {
+    ...actual,
+    useNcRfgOperatorCatalog: () => ({
+      data: [{
+        operator_id: 'pse',
+        operator_name_pl: 'PSE — Polskie Sieci Elektroenergetyczne',
+        last_revision: '2024-Q4',
+        reactive_power: {
+          q_range_pct_pn_min: -0.33, q_range_pct_pn_max: 0.33, cos_phi_min: 0.95, voltage_control_modes: [],
+        },
+        ride_through: {
+          lvrt: [{ time_s: 0, voltage_pu: 0.05 }],
+          hvrt: [{ time_s: 0, voltage_pu: 1.3 }],
+        },
+      }],
+      status: 'success',
+      isLoading: false,
+      error: null,
+    }),
+  };
+});
 
 describe('InspectorEngineeringView - PV za transformatorem SN/nN', () => {
   beforeEach(() => {

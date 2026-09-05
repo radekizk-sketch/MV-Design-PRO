@@ -433,11 +433,12 @@ test('K9-A: kreator OZE MAX — aparatura i zgodność w jednym przepływie, wi�
   // ------------------------------------------------------------------
   await page.getByTestId('mvd-kreator-oze-dalej').click();
   await expect(page.getByTestId('mvd-kreator-oze-zgodnosc')).toBeVisible();
-  await page.getByTestId('mvd-kreator-oze-zgodnosc-profil').selectOption('ncrfg_pse');
-  // LVRT/HVRT pozostają krzywymi OPERATORA (obwiednia FRT jest cechą profilu
-  // przyłączeniowego), więc referencje są tu realnym kontraktem katalogu.
-  await page.getByTestId('mvd-kreator-oze-zgodnosc-lvrt').selectOption('lvrt_pse_b');
-  await page.getByTestId('mvd-kreator-oze-zgodnosc-hvrt').selectOption('hvrt_pse_b');
+  // Karta FAB-J: profil operatora WYŁĄCZNIE z backendu (`GET /api/ncrfg-tests/
+  // catalog`) — identyfikator jest teraz REALNY (`pse`, operator_id backendu),
+  // nie wymyślony przez front (`ncrfg_pse`). LVRT/HVRT NIE SĄ już niezależnie
+  // wybieralne: backend niesie jedną parę krzywych ride-through na operatora,
+  // więc są pokazywane read-only, tożsamościowo związane z profilem.
+  await page.getByTestId('mvd-kreator-oze-zgodnosc-profil').selectOption('pse');
   // NASTAWA P(f) — kanon po karcie K-Q (2026-08-14): katalog NIE dzieli już
   // krzywych po operatorze i typie modułu (`pf_pse_b`), bo statyzm per typ
   // modułu był zgadnięty — rozporządzenie (UE) 2016/631 art. 13 ust. 2 podaje
@@ -500,9 +501,12 @@ test('K9-A: kreator OZE MAX — aparatura i zgodność w jednym przepływie, wi�
   expect(zmaterializowane['protection_catalog_ref']).toBe(zabRef);
   expect(zmaterializowane['fault_current_data_ref']).toBe('KARTA-ZW-2026-01');
   const profile = (zmaterializowane['profiles'] ?? {}) as Record<string, unknown>;
-  expect(profile['nc_rfg_profile_ref']).toBe('ncrfg_pse');
-  expect(profile['lvrt_curve_ref']).toBe('lvrt_pse_b');
-  expect(profile['hvrt_curve_ref']).toBe('hvrt_pse_b');
+  // Karta FAB-J: LVRT/HVRT tożsamościowo związane z operatorem (ten sam `pse`)
+  // — backend niesie jedną parę krzywych ride-through na operatora, nie
+  // niezależny wybór (patrz `KrokiAparaturaZgodnosc.tsx::wybierzProfil`).
+  expect(profile['nc_rfg_profile_ref']).toBe('pse');
+  expect(profile['lvrt_curve_ref']).toBe('pse');
+  expect(profile['hvrt_curve_ref']).toBe('pse');
   expect(profile['pf_curve_ref']).toBe(pfCurveRef);
   expect((wytworca!.meta ?? {})['operating_mode']).toBe('praca_sieciowa');
   const limity = (wytworca!.limits ?? {}) as Record<string, unknown>;

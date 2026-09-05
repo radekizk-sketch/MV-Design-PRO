@@ -2,8 +2,10 @@
  * Testy E-21/E-22/E-23: powierzchnie konfiguracji PV/BESS/FW z useStationDerStore.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useAppStateStore } from '../../../app-state/store';
@@ -13,6 +15,106 @@ import { useSnapshotStore } from '../../../topology/snapshotStore';
 import { BessSurface, FwSurface, PvSourceSurface } from '../DerSurfaces';
 
 const FROZEN_NOW = '2026-05-06T10:00:00Z';
+
+/**
+ * Karta FAB-J: `DerSurfaceShell` czyta katalogi audytu 2 / NC RfG / baterii BESS
+ * przez React Query (`useAudit2CatalogSnapshot` i sąsiedzi) — bez providera
+ * `useQueryClient()` rzuca "No QueryClient set". Brak jawnego podstawienia
+ * `fetch` jest zamierzony: te zapytania mają ten sam bezpieczny fallback co
+ * istniejące `fetchDerConverterTypes` (`.data?.x ?? []`), więc odrzucone
+ * żądanie w środowisku testowym po prostu zostawia katalog pusty.
+ */
+function render(ui: ReactElement) {
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return rtlRender(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
+}
+
+/**
+ * Karta FAB-J: nazwa/producent urządzenia DER pochodzi teraz WYŁĄCZNIE z
+ * `GET /api/catalog/converter-types` (`fetchDerConverterTypes`, to samo
+ * pobranie, którego kreator już używa) — testy, które sprawdzają nazwę
+ * konkretnego urządzenia, muszą ją podać fiksturą zamiast liczyć na usunięty
+ * `PV_INVERTER_CATALOG` statyczny.
+ */
+const CONVERTER_FIXTURES = [
+  { id: 'pv_inv_sma_2500', name: 'SMA Sunny Central 2500-EV', kind: 'PV', un_kv: 0.69, pmax_mw: 2.5, manufacturer: 'SMA' },
+  { id: 'pv_inv_huawei_185', name: 'Huawei SUN2000-185KTL', kind: 'PV', un_kv: 0.4, pmax_mw: 0.185, manufacturer: 'Huawei' },
+  { id: 'pv_inv_system_1000', name: 'Pakiet katalogowy PV 1000', kind: 'PV', un_kv: 0.69, pmax_mw: 1, manufacturer: 'MV-DESIGN-PRO' },
+];
+
+/**
+ * Karta FAB-J: profil NC RfG / ride-through pochodzi z `GET /api/ncrfg-tests/catalog`
+ * (`useNcRfgOperatorCatalog`) — `operator_id` jest identyfikatorem REALNYM
+ * (`energa`, nie `ncrfg_energa` wymyślone przez front sprzed karty).
+ */
+const NC_RFG_OPERATOR_FIXTURES = [
+  {
+    operator_id: 'energa', operator_name_pl: 'Energa-Operator', last_revision: '2024-Q4',
+    reactive_power: { q_range_pct_pn_min: -0.33, q_range_pct_pn_max: 0.33, cos_phi_min: 0.95, voltage_control_modes: [] },
+    ride_through: {
+      lvrt: [{ time_s: 0, voltage_pu: 0.05 }],
+      hvrt: [{ time_s: 0, voltage_pu: 1.3 }],
+    },
+  },
+  {
+    operator_id: 'pse', operator_name_pl: 'PSE — Polskie Sieci Elektroenergetyczne', last_revision: '2024-Q4',
+    reactive_power: { q_range_pct_pn_min: -0.33, q_range_pct_pn_max: 0.33, cos_phi_min: 0.95, voltage_control_modes: [] },
+    ride_through: {
+      lvrt: [{ time_s: 0, voltage_pu: 0.05 }, { time_s: 1.5, voltage_pu: 0.85 }],
+      hvrt: [{ time_s: 0, voltage_pu: 1.3 }],
+    },
+  },
+];
+
+/**
+ * Karta FAB-J: transformator dedykowany PV S02 (test „pokazuje transformator
+ * blokowy...") pochodzi ze snapshotu ENM (sn_mva=1,25 / 15/0,69 kV / Dyn11) —
+ * `inferBlockTransformerCatalogRef` dopasowuje go do pozycji snapshotu audytu 2
+ * po tych samych parametrach, więc fikstura musi się z nimi zgadzać.
+ */
+const BLOCK_TRANSFORMER_FIXTURES = [
+  {
+    id: 'btr_pv_15_069_1250', catalog_namespace: 'block_transformer', catalog_version: '1.0',
+    label_pl: 'Transformator dedykowany 15/0,69 kV · 1250 kVA · Dyn11',
+    transformer_type_ref: 'tr-test-btr_pv_15_069_1250',
+    sn_kva: 1250, hv_kv: 15, lv_kv: 0.69,
+    uk_percent: 6, pk_kw: 12.5, p0_kw: 2.5, i0_percent: 0.5,
+    vector_group: 'Dyn11', is_mv_to_mv: false,
+    applicable_der_kinds: ['PV', 'BESS', 'FW'],
+    galvanic_isolation: true, source_reference: 'Fikstura testowa', verification_status: 'VERIFIED',
+  },
+];
+
+/**
+ * Podstawia `fetch` katalogów DER (converter-types, ncrfg-tests/catalog,
+ * snapshot audytu 2) fiksturami powyżej.
+ */
+function stubCatalogFetch(): void {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      const href = String(url);
+      if (href.includes('/api/catalog/converter-types')) {
+        return { ok: true, json: async () => CONVERTER_FIXTURES } as unknown as Response;
+      }
+      if (href.includes('/api/ncrfg-tests/catalog')) {
+        return { ok: true, json: async () => ({ operators: NC_RFG_OPERATOR_FIXTURES }) } as unknown as Response;
+      }
+      if (href.includes('/api/v1/catalog/audit2/snapshot')) {
+        return {
+          ok: true,
+          json: async () => ({
+            bess_operation_modes: [], tap_changers: [], hv_fuses: [], device_withstand: [],
+            pf_curves: [], block_transformers: BLOCK_TRANSFORMER_FIXTURES, mv_neutral_groundings: [],
+          }),
+        } as unknown as Response;
+      }
+      return { ok: true, json: async () => [] } as unknown as Response;
+    }),
+  );
+}
 
 function makeSurface(entityRef: string | null, payload: Record<string, unknown> = {}) {
   return {
@@ -53,7 +155,8 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     expect(screen.getByText(/Wybierz układ PV\/BESS\/FW/)).toBeInTheDocument();
   });
 
-  it('PvSourceSurface pokazuje zaawansowaną konfigurację falownika i profili', () => {
+  it('PvSourceSurface pokazuje zaawansowaną konfigurację falownika i profili', async () => {
+    stubCatalogFetch();
     useStationDerStore.getState().attachDer({
       id: 'der_pv_1',
       project_id: 'p',
@@ -70,9 +173,9 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
         vt_catalog_ref: 'vt_15kv_100v_3p',
       },
       profiles: {
-        nc_rfg_profile_ref: 'ncrfg_pse',
-        lvrt_curve_ref: 'lvrt_pse_b',
-        hvrt_curve_ref: 'hvrt_pse_b',
+        nc_rfg_profile_ref: 'pse',
+        lvrt_curve_ref: 'pse',
+        hvrt_curve_ref: 'pse',
         pf_curve_ref: 'pf_pse_2024',
       },
       nominal_power_kw: 2500,
@@ -98,10 +201,15 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     expect(screen.getAllByText('PV Centralna 1').length).toBeGreaterThan(0);
     expect(screen.getByText(/Konfigurator falownika PV/)).toBeInTheDocument();
     expect(screen.getByText('Falownik z katalogu')).toBeInTheDocument();
-    expect(screen.getAllByText(/SMA Sunny Central 2500-EV/).length).toBeGreaterThan(0);
+    // Nazwa urządzenia przychodzi asynchronicznie z `fetchDerConverterTypes` —
+    // `findAllByText` czeka na rozwiązanie zapytania zamiast łapać stan sprzed niego.
+    expect((await screen.findAllByText(/SMA Sunny Central 2500-EV/)).length).toBeGreaterThan(0);
     expect(screen.getAllByText('po stronie SN').length).toBeGreaterThan(0);
     expect(screen.getAllByText('2500 kW').length).toBeGreaterThan(0);
-    expect(screen.getByText(/PSE/)).toBeInTheDocument();
+    // Nazwa operatora (useNcRfgOperatorCatalog) jest osobnym zapytaniem od
+    // konwerterów powyżej — czekamy na nią z osobna zamiast zakładać, że oba
+    // zdążą się rozstrzygnąć w tym samym mikrotasku.
+    expect(await screen.findByText(/PSE/, {}, { timeout: 3000 })).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('der-card-tab-inverters'));
     expect(screen.getByText('Certyfikowane falowniki PTPiREE')).toBeInTheDocument();
@@ -137,7 +245,8 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     expect(screen.queryByText('Funkcje ANSI wymagane')).toBeNull();
   });
 
-  it('PvSourceSurface odtwarza DER z ENM snapshot po odświeżeniu lokalnego store', () => {
+  it('PvSourceSurface odtwarza DER z ENM snapshot po odświeżeniu lokalnego store', async () => {
+    stubCatalogFetch();
     useAppStateStore
       .getState()
       .setActiveProject('70a99b32-abb8-4249-bf17-96f6d85183b9', '70a99b32-abb8-4249-bf17-96f6d85183b9');
@@ -172,9 +281,9 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
             connection_variant: 'nn_side',
             materialized_params: {
               profiles: {
-                nc_rfg_profile_ref: 'ncrfg_pse',
-                lvrt_curve_ref: 'lvrt_pse_b',
-                hvrt_curve_ref: 'hvrt_pse_b',
+                nc_rfg_profile_ref: 'pse',
+                lvrt_curve_ref: 'pse',
+                hvrt_curve_ref: 'pse',
                 pf_curve_ref: 'pf_pse_2024',
               },
             },
@@ -207,14 +316,16 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     expect(screen.getByTestId('der-breadcrumb')).toBeInTheDocument();
     expect(screen.queryByText('0.5 MW')).not.toBeInTheDocument();
     expect(screen.getAllByText('500 kW').length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Huawei SUN2000-185KTL/).length).toBeGreaterThan(0);
+    // Nazwa urządzenia przychodzi asynchronicznie z `fetchDerConverterTypes`.
+    expect((await screen.findAllByText(/Huawei SUN2000-185KTL/, {}, { timeout: 3000 })).length).toBeGreaterThan(0);
     expect(screen.queryByText('pv_inv_huawei_185')).not.toBeInTheDocument();
     expect(screen.getByTestId('der-breadcrumb')).toHaveTextContent('S01 · stacja przelotowa');
     expect(screen.getByTestId('der-breadcrumb')).not.toHaveTextContent('Stacja inline');
     expect(screen.getByTestId('der-breadcrumb')).not.toHaveTextContent('70a99b32');
   });
 
-  it('PvSourceSurface pokazuje transformator blokowy dla przyłączenia dedykowanego ze snapshotu', () => {
+  it('PvSourceSurface pokazuje transformator blokowy dla przyłączenia dedykowanego ze snapshotu', async () => {
+    stubCatalogFetch();
     useSnapshotStore.setState({
       snapshot: {
         header: {
@@ -267,9 +378,9 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
             blocking_transformer_ref: 'tr_block_pv',
             materialized_params: {
               profiles: {
-                nc_rfg_profile_ref: 'ncrfg_pse',
-                lvrt_curve_ref: 'lvrt_pse_b',
-                hvrt_curve_ref: 'hvrt_pse_b',
+                nc_rfg_profile_ref: 'pse',
+                lvrt_curve_ref: 'pse',
+                hvrt_curve_ref: 'pse',
                 pf_curve_ref: 'pf_pse_2024',
               },
             },
@@ -297,6 +408,14 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
 
     render(<PvSourceSurface surface={makeSurface('gen_pv_block')} />);
 
+    // Nazwa urządzenia (fetchDerConverterTypes) i transformator blokowy (snapshot
+    // audytu 2) przychodzą asynchronicznie — czekamy na OBA, zanim czytamy
+    // `textContent` całej karty (dwa niezależne zapytania, dwa niezależne `await`).
+    await screen.findByText(/Pakiet katalogowy PV 1000/);
+    // Cztery zapytania katalogowe (converter-types, snapshot audytu 2 ×2, ncrfg-tests,
+    // bess-battery-types) rozstrzygają się w komponencie równolegle — czas do
+    // ustabilizowania WSZYSTKICH bywa dłuższy niż domyślny timeout `findByText`.
+    await screen.findAllByText(/TR blokowy 15\/0,69 kV 1250 kVA Dyn11/, {}, { timeout: 3000 });
     const text = screen.getByTestId('pv-source-surface').textContent ?? '';
     expect(text).toContain('PV S02');
     expect(text).toContain('Pakiet katalogowy PV 1000');
@@ -422,7 +541,8 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     expect(screen.getByText('Zakres obliczeń')).toBeInTheDocument();
   });
 
-  it('BessSurface (E-22) renderuje konfigurator PCS BESS z katalogiem i profilem', () => {
+  it('BessSurface (E-22) renderuje konfigurator PCS BESS z katalogiem i profilem', async () => {
+    stubCatalogFetch();
     useStationDerStore.getState().attachDer({
       id: 'der_bess_1',
       project_id: 'p',
@@ -431,12 +551,12 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
       name: 'BESS-1',
       connection_side: 'nN',
       bus_przylaczenia_ref: 'pcc_002',
-      voltage_level_ref: 'lv_0_4kV',
+      voltage_level_ref: '0.4',
       catalogs: {
         device_catalog_ref: 'bess_pcs_abb_500',
         battery_catalog_ref: 'bess_bat_byd_2880',
       },
-      profiles: { nc_rfg_profile_ref: 'ncrfg_energa' },
+      profiles: { nc_rfg_profile_ref: 'energa' },
       nominal_power_kw: 500,
       created_at: FROZEN_NOW,
     });
@@ -447,7 +567,8 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     expect(screen.getByText('PCS / falowniki')).toBeInTheDocument();
     expect(screen.getByText('Bateria i tryby pracy')).toBeInTheDocument();
     expect(screen.getAllByText('po stronie nN').length).toBeGreaterThan(0);
-    expect(screen.getByText(/Energa-Operator/)).toBeInTheDocument();
+    // Nazwa operatora przychodzi asynchronicznie z `useNcRfgOperatorCatalog`.
+    expect(await screen.findByText(/Energa-Operator/, {}, { timeout: 3000 })).toBeInTheDocument();
   });
 
   it('FwSurface (E-23) renderuje konfigurator FW', () => {
@@ -461,7 +582,7 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
       bus_przylaczenia_ref: 'pcc_003',
       transformer_ref: 'tr_dedicated_fw',
       catalogs: { device_catalog_ref: 'wt_vestas_v117_3450' },
-      profiles: { nc_rfg_profile_ref: 'ncrfg_pse' },
+      profiles: { nc_rfg_profile_ref: 'pse' },
       nominal_power_kw: 3450,
       created_at: FROZEN_NOW,
     });
@@ -484,7 +605,7 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
       connection_side: 'SN',
       bus_przylaczenia_ref: 'pcc_x',
       catalogs: { device_catalog_ref: 'pv_inv_sma_2500' },
-      profiles: { nc_rfg_profile_ref: 'ncrfg_pse' },
+      profiles: { nc_rfg_profile_ref: 'pse' },
       created_at: FROZEN_NOW,
     });
 

@@ -11,6 +11,7 @@ from api.domain_ops_policy import validate_and_materialize_catalog_binding
 from api.klucz_twin_dep import KluczTwin
 from application.analyses.protection.catalog.catalog_store import list_devices
 from application.field_read_model import build_field_read_model
+from compliance.nc_rfg_modul import modul_nc_rfg
 from domain.canonical_operations import resolve_operation_name
 from domain.der_protection_functions import (
     FaktyPolaWytworcy,
@@ -392,6 +393,87 @@ def _resolve_nn_bus_ref(enm: dict[str, Any], station: dict[str, Any]) -> str | N
     return None
 
 
+def _napiecie_przylaczenia_kv(
+    enm_dict: dict[str, Any],
+    req: DerGeneratorCreateRequest,
+    payload: dict[str, Any],
+    canonical_variant: str,
+) -> float | None:
+    """Napięcie w punkcie przyłączenia DER do sieci — wejście klasyfikacji NC RfG.
+
+    Karta FAB-J: `POST .../generators` weryfikuje `nc_rfg_module` względem
+    klasyfikacji (moc × napięcie punktu przyłączenia), więc potrzebuje tego
+    napięcia z MODELU, nie z deklaracji klienta.
+
+    Dla wariantu z transformatorem dedykowanym (`block_transformer`) punktem
+    przyłączenia do sieci OSD/OSP jest strona SN (górna) transformatora
+    dedykowanego — `payload["bus_nn_ref"]` w tym wariancie to szyna PO
+    transformatorze, WEWNĄTRZ pakietu DER (0,4-6,3 kV), a nie napięcie
+    przyłączenia. Jawnie podana `bus_ref` (kreator/szuflada wskazały konkretną
+    szynę wprost) ma pierwszeństwo przed obiema regułami wyprowadzonymi.
+    """
+    voltages = _bus_voltage_index(enm_dict)
+    if req.bus_ref:
+        return voltages.get(req.bus_ref)
+    if canonical_variant == "block_transformer":
+        if req.block_transformer_catalog_ref:
+            block_transformer = get_block_transformer(req.block_transformer_catalog_ref)
+            if block_transformer is not None:
+                return float(block_transformer.hv_kv)
+        if req.blocking_transformer_ref:
+            transformer = next(
+                (
+                    t
+                    for t in enm_dict.get("transformers", [])
+                    if t.get("ref_id") == req.blocking_transformer_ref
+                    or t.get("id") == req.blocking_transformer_ref
+                ),
+                None,
+            )
+            if transformer is not None and isinstance(transformer.get("uhv_kv"), int | float):
+                return float(transformer["uhv_kv"])
+        return None
+    bus_nn_ref = payload.get("bus_nn_ref")
+    return voltages.get(bus_nn_ref) if isinstance(bus_nn_ref, str) else None
+
+
+def _weryfikuj_modul_ncrfg(
+    enm_dict: dict[str, Any],
+    req: DerGeneratorCreateRequest,
+    payload: dict[str, Any],
+    canonical_variant: str,
+) -> None:
+    """422 przy niezgodności `nc_rfg_module` z klasyfikacją — nigdy cicha korekta.
+
+    Brak `nc_rfg_module` w żądaniu NIE jest błędem (pole opcjonalne, patrz
+    `DerGeneratorCreateRequest`) — weryfikujemy tylko wtedy, gdy klient
+    zadeklarował konkretny moduł. Brak rozpoznanego napięcia przyłączenia
+    (model bez szyny o znanym napięciu) też nie blokuje zapisu — nie ma z
+    czym porównać deklaracji, a domysł napięcia byłby tą samą klasą fabrykacji,
+    którą ta karta usuwa gdzie indziej.
+    """
+    if req.nc_rfg_module is None:
+        return
+    napiecie_kv = _napiecie_przylaczenia_kv(enm_dict, req, payload, canonical_variant)
+    if napiecie_kv is None:
+        return
+    oczekiwany_modul = modul_nc_rfg(req.power_mw, napiecie_kv)
+    if oczekiwany_modul == req.nc_rfg_module:
+        return
+    raise HTTPException(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        detail={
+            "code": "generator.nc_rfg_module_mismatch",
+            "message_pl": (
+                f"Moduł NC RfG „{req.nc_rfg_module}” nie zgadza się z klasyfikacją: "
+                f"przy mocy {req.power_mw:g} MW i napięciu przyłączenia "
+                f"{napiecie_kv:g} kV oczekiwany moduł to „{oczekiwany_modul}”."
+            ),
+            "expected_module": oczekiwany_modul,
+        },
+    )
+
+
 def _build_domain_payload(
     enm_dict: dict[str, Any],
     req: DerGeneratorCreateRequest,
@@ -450,6 +532,8 @@ def _build_domain_payload(
                 },
             )
         payload["bus_nn_ref"] = nn_bus_ref
+
+    _weryfikuj_modul_ncrfg(enm_dict, req, payload, canonical_variant)
 
     return payload
 
