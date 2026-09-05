@@ -48,7 +48,12 @@ def _build_inverter_network(service: NetworkWizardService, project_id: UUID) -> 
             branch_type="LINE",
             from_node_id=slack["id"],
             to_node_id=inverter_node["id"],
-            params={"r_ohm_per_km": 0.1, "x_ohm_per_km": 0.2, "length_km": 1.0},
+            params={
+                "r_ohm_per_km": 0.1,
+                "x_ohm_per_km": 0.2,
+                "length_km": 1.0,
+                "rated_current_a": 400.0,
+            },
         ),
     )
     service.set_connection_node(project_id, slack["id"])

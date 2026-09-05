@@ -506,9 +506,18 @@
       "title": "Catalog Ref",
       "type": "string"
      },
-     "confidence": {
-      "title": "Confidence",
-      "type": "number"
+     "certyfikat_ptpiree": {
+      "default": false,
+      "title": "Certyfikat Ptpiree",
+      "type": "boolean"
+     },
+     "dopasowanie": {
+      "enum": [
+       "PELNE",
+       "CZESCIOWE"
+      ],
+      "title": "Dopasowanie",
+      "type": "string"
      },
      "label_pl": {
       "title": "Label Pl",
@@ -533,7 +542,7 @@
     "required": [
      "catalog_ref",
      "label_pl",
-     "confidence",
+     "dopasowanie",
      "rationale_pl"
     ],
     "title": "AutoPopulateSuggestion",
@@ -15941,7 +15950,7 @@
   },
   "/api/catalog/auto-populate/{element_type}": {
    "post": {
-    "description": "K30-23: Return ranked catalog suggestions for element context.\n\nElement types supported: transformer, cable, switch, branch_point, der.\nLogic: filter by voltage compatibility + power/current range + manufacturer\ncascade. PTPiRE-certified prefer (boost +0.2 confidence).",
+    "description": "K30-23: Return ranked catalog suggestions for element context.\n\nElement types supported: transformer, cable, switch, branch_point, der.\nLogic: filter by voltage compatibility + power/current range + manufacturer\ncascade. Dopasowanie kategoryczne (PELNE/CZĘŚCIOWE) + osobna flaga\ncertyfikatu PTPiREE — sortowanie deterministyczne\n(dopasowanie, certyfikat, catalog_ref); karta FAB-D2 (D9).",
     "operationId": "auto_populate_catalog_suggestions_api_catalog_auto_populate__element_type__post",
     "parameters": [
      {

@@ -258,7 +258,10 @@ def _build_sample_snapshot() -> NetworkSnapshot:
             "branch_type": BranchType.LINE,
             "from_node_id": "node-a",
             "to_node_id": "node-b",
+            "r_ohm_per_km": 0.1,
+            "x_ohm_per_km": 0.2,
             "length_km": 1.0,
+            "rated_current_a": 400.0,
         }
     )
     graph.add_branch(branch)

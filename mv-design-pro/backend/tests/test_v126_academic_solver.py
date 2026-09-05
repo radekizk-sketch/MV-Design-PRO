@@ -56,6 +56,7 @@ def _academic_input() -> V126AcademicInput:
                 ulv_kv=15.0,
                 uk_percent=10.5,
                 pk_kw=90.0,
+                p0_kw=18.0,
             )
         ],
         harmonic_sources=[

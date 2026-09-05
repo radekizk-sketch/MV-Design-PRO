@@ -12,7 +12,7 @@ All assign/clear endpoints return 204 No Content.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from api.dependencies import get_uow_factory
@@ -979,13 +979,34 @@ class AutoPopulateRequest(BaseModel):
     """K30-23: prefer Polish PTPiRE-certified entries by default."""
 
 
+#: Dopasowanie sugestii auto-populate — kategoryczne, nie liczba bez definicji
+#: (karta FAB-D2, D9). "PELNE" = producent z żądania znaleziony w rekordzie
+#: katalogowym; "CZĘŚCIOWE" = rekord przeszedł filtry (napięcie/moc/prąd), ale
+#: bez dopasowania producenta. Certyfikat PTPiREE jest osobną, jawną flagą —
+#: nie jest już zmieszany w jedną liczbę z dopasowaniem producenta.
+Dopasowanie = Literal["PELNE", "CZESCIOWE"]
+
+#: Ranga sortowania — PELNE przed CZĘŚCIOWE; jedno źródło prawdy dla klucza
+#: sortującego, żeby porządek na liście i porządek w teście nie mogły się rozjechać.
+_RANGA_DOPASOWANIA: dict[Dopasowanie, int] = {"PELNE": 0, "CZESCIOWE": 1}
+
+
 class AutoPopulateSuggestion(BaseModel):
     catalog_ref: str
     label_pl: str
     manufacturer: str | None = None
-    confidence: float  # 0.0..1.0 — how well it matches request context
+    dopasowanie: Dopasowanie
+    certyfikat_ptpiree: bool = False
     badge_pl: str | None = None  # 'PTPiRE certyfikat' jeśli applicable
     rationale_pl: str  # Why this suggestion ranked
+
+    def klucz_sortowania(self) -> tuple[int, bool, str]:
+        """Deterministyczny klucz sortowania (dopasowanie, certyfikat, catalog_ref)."""
+        return (
+            _RANGA_DOPASOWANIA[self.dopasowanie],
+            not self.certyfikat_ptpiree,
+            self.catalog_ref,
+        )
 
 
 class AutoPopulateResponse(BaseModel):
@@ -1003,7 +1024,9 @@ def auto_populate_catalog_suggestions(
 
     Element types supported: transformer, cable, switch, branch_point, der.
     Logic: filter by voltage compatibility + power/current range + manufacturer
-    cascade. PTPiRE-certified prefer (boost +0.2 confidence).
+    cascade. Dopasowanie kategoryczne (PELNE/CZĘŚCIOWE) + osobna flaga
+    certyfikatu PTPiREE — sortowanie deterministyczne
+    (dopasowanie, certyfikat, catalog_ref); karta FAB-D2 (D9).
     """
     normalized = element_type.lower().strip()
 
@@ -1027,12 +1050,6 @@ def auto_populate_catalog_suggestions(
             "switch, protection, surge_arrester, inverter."
         ),
     )
-
-
-def _confidence_with_ptpire(base: float, is_ptpire: bool, prefer: bool) -> float:
-    if not prefer:
-        return base
-    return min(1.0, base + 0.2) if is_ptpire else base
 
 
 def _auto_populate_transformers(req: AutoPopulateRequest) -> AutoPopulateResponse:
@@ -1062,11 +1079,12 @@ def _auto_populate_transformers(req: AutoPopulateRequest) -> AutoPopulateRespons
             if rated_mva < req.expected_power_mva * 0.5 or rated_mva > req.expected_power_mva * 2.0:
                 continue
 
-        # Manufacturer cascade
-        confidence = 0.6
+        # Manufacturer cascade — dopasowanie PELNE tylko gdy producent z żądania
+        # znaleziony w rekordzie; w przeciwnym razie CZĘŚCIOWE (przeszedł filtry
+        # napięcia/mocy, ale bez trafienia producenta).
+        dopasowanie: Dopasowanie = "CZESCIOWE"
         if req.prefer_manufacturer and req.prefer_manufacturer.lower() in manufacturer.lower():
-            confidence = 0.9
-        confidence = _confidence_with_ptpire(confidence, is_ptpire, req.prefer_ptpire_certified)
+            dopasowanie = "PELNE"
 
         rationale = (
             f"Sn={rated_mva*1000:.0f} kVA, U_HV={v_hv} kV, " f"U_LV={v_lv} kV ({manufacturer})"
@@ -1077,13 +1095,14 @@ def _auto_populate_transformers(req: AutoPopulateRequest) -> AutoPopulateRespons
                 catalog_ref=entry["id"],
                 label_pl=entry.get("name", entry["id"]),
                 manufacturer=manufacturer or None,
-                confidence=confidence,
+                dopasowanie=dopasowanie,
+                certyfikat_ptpiree=is_ptpire,
                 badge_pl="PTPiRE" if is_ptpire else None,
                 rationale_pl=rationale,
             )
         )
 
-    suggestions.sort(key=lambda s: (-s.confidence, s.catalog_ref))
+    suggestions.sort(key=lambda s: s.klucz_sortowania())
     return AutoPopulateResponse(
         element_type="transformer",
         suggestions=suggestions[:20],
@@ -1115,23 +1134,23 @@ def _auto_populate_cables(req: AutoPopulateRequest) -> AutoPopulateResponse:
             if rated_i < req.expected_current_a * 0.9:
                 continue
 
-        confidence = 0.5
+        dopasowanie: Dopasowanie = "CZESCIOWE"
         if req.prefer_manufacturer and req.prefer_manufacturer.lower() in manufacturer.lower():
-            confidence = 0.85
-        confidence = _confidence_with_ptpire(confidence, is_ptpire, req.prefer_ptpire_certified)
+            dopasowanie = "PELNE"
 
         suggestions.append(
             AutoPopulateSuggestion(
                 catalog_ref=entry["id"],
                 label_pl=entry.get("name", entry["id"]),
                 manufacturer=manufacturer or None,
-                confidence=confidence,
+                dopasowanie=dopasowanie,
+                certyfikat_ptpiree=is_ptpire,
                 badge_pl="PTPiRE PN-HD 620" if is_ptpire else None,
                 rationale_pl=f"{int(cross)} mm² {v_kv} kV, In={int(rated_i)} A ({manufacturer})",
             )
         )
 
-    suggestions.sort(key=lambda s: (-s.confidence, s.catalog_ref))
+    suggestions.sort(key=lambda s: s.klucz_sortowania())
     return AutoPopulateResponse(
         element_type="cable",
         suggestions=suggestions[:20],
@@ -1166,23 +1185,23 @@ def _auto_populate_switches(req: AutoPopulateRequest, kind_filter: str) -> AutoP
             if rated_i < req.expected_current_a * 0.9:
                 continue
 
-        confidence = 0.55
+        dopasowanie: Dopasowanie = "CZESCIOWE"
         if req.prefer_manufacturer and req.prefer_manufacturer.lower() in manufacturer.lower():
-            confidence = 0.88
-        confidence = _confidence_with_ptpire(confidence, is_ptpire, req.prefer_ptpire_certified)
+            dopasowanie = "PELNE"
 
         suggestions.append(
             AutoPopulateSuggestion(
                 catalog_ref=entry["id"],
                 label_pl=entry.get("name", entry["id"]),
                 manufacturer=manufacturer or None,
-                confidence=confidence,
+                dopasowanie=dopasowanie,
+                certyfikat_ptpiree=is_ptpire,
                 badge_pl="PTPiRE" if is_ptpire else None,
                 rationale_pl=(f"{int(v_kv)} kV / {int(rated_i)} A ({manufacturer})"),
             )
         )
 
-    suggestions.sort(key=lambda s: (-s.confidence, s.catalog_ref))
+    suggestions.sort(key=lambda s: s.klucz_sortowania())
     return AutoPopulateResponse(
         element_type="switch",
         suggestions=suggestions[:20],
@@ -1198,16 +1217,15 @@ def _auto_populate_protection(req: AutoPopulateRequest) -> AutoPopulateResponse:
     for d in devices:
         manufacturer = d.vendor
         rated = d.meta.get("rated") if isinstance(d.meta, dict) else None
-        confidence = 0.5
+        dopasowanie: Dopasowanie = "CZESCIOWE"
         if (
             req.prefer_manufacturer
             and manufacturer
             and req.prefer_manufacturer.lower() in manufacturer.lower()
         ):
-            confidence = 0.85
+            dopasowanie = "PELNE"
         # PTPiRE = Polish vendors (Elektrometal, ZPAS, Elester, Energotest, ZIAD)
         is_polish = manufacturer in {"ELEKTROMETAL", "ZPAS", "ELESTER", "ENERGOTEST", "ZIAD"}
-        confidence = _confidence_with_ptpire(confidence, is_polish, req.prefer_ptpire_certified)
         # Current match
         if req.expected_current_a is not None and isinstance(rated, int | float):
             if rated < req.expected_current_a * 0.8:
@@ -1225,7 +1243,8 @@ def _auto_populate_protection(req: AutoPopulateRequest) -> AutoPopulateResponse:
                 catalog_ref=d.device_id,
                 label_pl=label_pl,
                 manufacturer=manufacturer,
-                confidence=confidence,
+                dopasowanie=dopasowanie,
+                certyfikat_ptpiree=is_polish,
                 badge_pl=(
                     "Polski producent"
                     if is_polish
@@ -1235,7 +1254,7 @@ def _auto_populate_protection(req: AutoPopulateRequest) -> AutoPopulateResponse:
             )
         )
 
-    suggestions.sort(key=lambda s: (-s.confidence, s.catalog_ref))
+    suggestions.sort(key=lambda s: s.klucz_sortowania())
     return AutoPopulateResponse(
         element_type="protection",
         suggestions=suggestions[:20],
@@ -1254,18 +1273,19 @@ def _auto_populate_surge_arresters(req: AutoPopulateRequest) -> AutoPopulateResp
             if abs(v_kv - req.voltage_kv) / max(req.voltage_kv, 0.001) > 0.3:
                 continue
 
-        confidence = 0.6
-        if item.bil_protected_kv >= 125.0:
-            confidence += 0.05
+        dopasowanie: Dopasowanie = "CZESCIOWE"
         if req.prefer_manufacturer and req.prefer_manufacturer.lower() in manufacturer.lower():
-            confidence = 0.9
+            dopasowanie = "PELNE"
 
         suggestions.append(
             AutoPopulateSuggestion(
                 catalog_ref=item.id,
                 label_pl=item.name,
                 manufacturer=manufacturer or None,
-                confidence=min(1.0, confidence),
+                dopasowanie=dopasowanie,
+                # Katalog ograniczników nie niesie statusu certyfikatu PTPiREE
+                # (namespace OGRANICZNIK_SN — brak pola w rekordzie źródłowym).
+                certyfikat_ptpiree=False,
                 badge_pl=f"IEC 60099-4, klasa {item.energy_class}",
                 rationale_pl=(
                     f"Um={item.u_m_kv:g} kV, MCOV={item.mcov_kv:g} kV, "
@@ -1275,7 +1295,7 @@ def _auto_populate_surge_arresters(req: AutoPopulateRequest) -> AutoPopulateResp
             )
         )
 
-    suggestions.sort(key=lambda s: (-s.confidence, s.catalog_ref))
+    suggestions.sort(key=lambda s: s.klucz_sortowania())
     return AutoPopulateResponse(
         element_type="surge_arrester",
         suggestions=suggestions[:20],
@@ -1311,10 +1331,9 @@ def _auto_populate_inverters(
 
         manufacturer = item.manufacturer or ""
         is_ptpiree = item.ptpiree_status == "POWIAZANY"
-        confidence = 0.55
+        dopasowanie: Dopasowanie = "CZESCIOWE"
         if req.prefer_manufacturer and req.prefer_manufacturer.lower() in manufacturer.lower():
-            confidence = 0.85
-        confidence = _confidence_with_ptpire(confidence, is_ptpiree, req.prefer_ptpire_certified)
+            dopasowanie = "PELNE"
         badge = None
         if is_ptpiree:
             badge = f"PTPiREE {item.ptpiree_wipwc_version or ''}".strip()
@@ -1324,7 +1343,8 @@ def _auto_populate_inverters(
                 catalog_ref=item.id,
                 label_pl=item.name,
                 manufacturer=manufacturer or None,
-                confidence=confidence,
+                dopasowanie=dopasowanie,
+                certyfikat_ptpiree=is_ptpiree,
                 badge_pl=badge,
                 rationale_pl=(
                     f"{kind}, Un={item.un_kv:g} kV, Sn={item.sn_mva:g} MVA, "
@@ -1333,7 +1353,7 @@ def _auto_populate_inverters(
             )
         )
 
-    suggestions.sort(key=lambda s: (-s.confidence, s.catalog_ref))
+    suggestions.sort(key=lambda s: s.klucz_sortowania())
     return AutoPopulateResponse(
         element_type="inverter",
         suggestions=suggestions[:20],

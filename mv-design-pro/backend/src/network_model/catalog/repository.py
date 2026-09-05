@@ -38,6 +38,22 @@ def _converter_kind_value(record: dict) -> str:
     return str(raw_kind).upper()
 
 
+def _wymagana_moc_znamionowa(params: dict, field: str, *, type_id: object) -> float:
+    """Odczytaj pole znamionowe wymagane do derywacji falownika z ConverterType.
+
+    Karta FAB-D2 (D6): brak `sn_mva`/`pmax_mw`/`e_kwh` w rekordzie konwertera
+    ODRZUCA derywację (wyjątek nazwany) zamiast fabrykować "0 kVA"/"0 kWh" —
+    zerowa moc znamionowa to fikcyjny falownik, nie legalny wynik.
+    """
+    wartosc = params.get(field)
+    if wartosc is None:
+        raise ValueError(
+            f"catalog.type_incomplete: brak pola '{field}' w rekordzie konwertera "
+            f"id={type_id!r} — derywacja typu falownika odrzucona (nie 0)."
+        )
+    return float(wartosc)  # type: ignore[arg-type]
+
+
 def _copy_catalog_quality(record: dict) -> dict:
     params = record.get("params") or {}
     quality: dict[str, object] = {}
@@ -166,11 +182,20 @@ def _derive_pv_records(converter_records: Iterable[dict]) -> list[dict]:
                 "name": record.get("name"),
                 "params": {
                     "un_kv": params.get("un_kv"),
-                    "s_n_kva": float(params.get("sn_mva", 0.0)) * 1000.0,
-                    "p_max_kw": float(params.get("pmax_mw", 0.0)) * 1000.0,
+                    "s_n_kva": _wymagana_moc_znamionowa(params, "sn_mva", type_id=record.get("id"))
+                    * 1000.0,
+                    "p_max_kw": _wymagana_moc_znamionowa(
+                        params, "pmax_mw", type_id=record.get("id")
+                    )
+                    * 1000.0,
                     "cos_phi_min": params.get("cosphi_min"),
                     "cos_phi_max": params.get("cosphi_max"),
-                    "control_mode": params.get("control_mode") or "STALY_COS_PHI",
+                    # `None` = tryb sterowania nieznany (nie "STALY_COS_PHI" —
+                    # to byłoby zmyślenie KONKRETNEGO trybu regulacji, ktory
+                    # dla Q(U)/P(f) zmienia wynik rozplywu jakosciowo).
+                    # Konsument trybu przy `None` zglasza BLOCKER
+                    # `inverter.control_mode_missing` (D6).
+                    "control_mode": params.get("control_mode"),
                     "grid_code": params.get("grid_code"),
                     "manufacturer": params.get("manufacturer"),
                     "dynamic_profile_id": params.get("dynamic_profile_id"),
@@ -187,7 +212,7 @@ def _derive_bess_records(converter_records: Iterable[dict]) -> list[dict]:
         if _converter_kind_value(record) != "BESS":
             continue
         params = dict(record.get("params") or {})
-        p_max_kw = float(params.get("pmax_mw", 0.0)) * 1000.0
+        p_max_kw = _wymagana_moc_znamionowa(params, "pmax_mw", type_id=record.get("id")) * 1000.0
         derived.append(
             {
                 "id": record.get("id"),
@@ -196,8 +221,9 @@ def _derive_bess_records(converter_records: Iterable[dict]) -> list[dict]:
                     "un_kv": params.get("un_kv"),
                     "p_charge_kw": p_max_kw,
                     "p_discharge_kw": p_max_kw,
-                    "e_kwh": float(params.get("e_kwh", 0.0)),
-                    "s_n_kva": float(params.get("sn_mva", 0.0)) * 1000.0,
+                    "e_kwh": _wymagana_moc_znamionowa(params, "e_kwh", type_id=record.get("id")),
+                    "s_n_kva": _wymagana_moc_znamionowa(params, "sn_mva", type_id=record.get("id"))
+                    * 1000.0,
                     "manufacturer": params.get("manufacturer"),
                     "dynamic_profile_id": params.get("dynamic_profile_id"),
                     **_copy_catalog_quality(record),

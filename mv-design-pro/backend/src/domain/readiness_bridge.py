@@ -169,7 +169,12 @@ KODY_KANONU_ZAREZERWOWANE: dict[str, str] = {
     "nn.source.catalog_missing": _POWOD_NN,
     "nn.source.parameters_missing": _POWOD_NN,
     "nn.voltage_missing": _POWOD_NN,
-    "pv.control_mode_missing": _POWOD_NN,
+    # "pv.control_mode_missing" USUNIETE z rezerwacji (karta FAB-D2, D6):
+    # emiter jest teraz w application/calculation_readiness/service.py
+    # (`_check_power_flow`) — falownik PV bez `control_mode` w
+    # zmaterializowanych parametrach zglasza ten kod jako BLOCKER. Kod ma
+    # droge do projektanta, wiec rezerwacja bylaby od tej chwili falszywa
+    # (por. `readiness_consumption_guard.py`, niezmiennik (a)).
     "bess.energy_module_missing": _POWOD_NN,
     "bess.soc_limits_invalid": _POWOD_NN,
     "ups.backup_time_invalid": _POWOD_NN,

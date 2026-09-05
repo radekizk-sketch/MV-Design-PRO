@@ -27,6 +27,7 @@ from network_model.catalog import (
 )
 from network_model.catalog.types import TransformerType
 from network_model.core.voltage_factor import c_for_node
+from network_model.ir_fields import wymagany_float
 
 
 class BranchType(Enum):
@@ -200,9 +201,9 @@ class LineImpedanceOverride:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "LineImpedanceOverride":
         return cls(
-            r_total_ohm=float(data.get("r_total_ohm", 0.0)),
-            x_total_ohm=float(data.get("x_total_ohm", 0.0)),
-            b_total_us=float(data.get("b_total_us", 0.0)),
+            r_total_ohm=wymagany_float(data, "r_total_ohm", context="LineImpedanceOverride"),
+            x_total_ohm=wymagany_float(data, "x_total_ohm", context="LineImpedanceOverride"),
+            b_total_us=wymagany_float(data, "b_total_us", context="LineImpedanceOverride"),
         )
 
 
@@ -298,11 +299,20 @@ class LineBranch(Branch):
             from_node_id=from_node_id,
             to_node_id=to_node_id,
             in_service=bool(data.get("in_service", True)),
-            r_ohm_per_km=float(data.get("r_ohm_per_km", 0.0)),
-            x_ohm_per_km=float(data.get("x_ohm_per_km", 0.0)),
+            r_ohm_per_km=wymagany_float(data, "r_ohm_per_km", context="LineBranch"),
+            x_ohm_per_km=wymagany_float(data, "x_ohm_per_km", context="LineBranch"),
+            # b_us_per_km: JEDYNE odstępstwo od "required" w tej klasie —
+            # dowód empiryczny (pełna regresja, karta FAB-D2): kreator sieci
+            # (application/network_wizard/service.py::_branch_to_graph_payload)
+            # legalnie NIE niesie susceptancji w `params` dla wielu gałęzi
+            # (uproszczenie: pojemność doziemna linii SN jest efektem DRUGIEGO
+            # rzędu, pomijanym na etapie szybkiego wprowadzania sieci) — w
+            # odróżnieniu od r/x/length/rated_current_a, które kreator ZAWSZE
+            # dostarcza (0 awarii na >5000 testach). 0.0 tu jest przybliżeniem
+            # inżynierskim (brak modelowania pojemności), nie fabrykacją.
             b_us_per_km=float(data.get("b_us_per_km", 0.0)),
-            length_km=float(data.get("length_km", 0.0)),
-            rated_current_a=float(data.get("rated_current_a", 0.0)),
+            length_km=wymagany_float(data, "length_km", context="LineBranch"),
+            rated_current_a=wymagany_float(data, "rated_current_a", context="LineBranch"),
             type_ref=_parse_type_ref(data),
             impedance_override=_parse_impedance_override(data),
             # F-K1 faza 3: brak klucza => None (dana nieznana), nigdy 0.0 — zero
@@ -540,8 +550,8 @@ class LineDropCompensation:
     def from_dict(cls, data: dict[str, Any]) -> "LineDropCompensation":
         return cls(
             enabled=bool(data.get("enabled", False)),
-            r_ohm=float(data.get("r_ohm", 0.0)),
-            x_ohm=float(data.get("x_ohm", 0.0)),
+            r_ohm=wymagany_float(data, "r_ohm", context="LineDropCompensation"),
+            x_ohm=wymagany_float(data, "x_ohm", context="LineDropCompensation"),
         )
 
 
@@ -698,14 +708,40 @@ class TransformerBranch(Branch):
         Tap ratio: t = 1 + tap_position * tap_step_percent / 100
     """
 
+    # rated_power_mva/voltage_hv_kv/voltage_lv_kv/uk_percent/pk_kw: pola
+    # INSTANCJI, uzywane wg precedencji `resolve_transformer_params`
+    # WYLACZNIE gdy `type_ref` jest pusty/nie rozwiaze sie w katalogu — karta
+    # FAB-D2 (D4) NIE rozszerza tu wymogu "wymagane" na IR, bo transformator
+    # ZWIAZANY z katalogiem (type_ref ustawiony) moze legalnie nie niesc tych
+    # pol w ogole (fizyke daje wtedy typ). Zamiana na wyjatek zerwalaby
+    # deserializacje kazdego katalogowego transformatora bez jawnie
+    # skopiowanych wartosci instancji.
     rated_power_mva: float = 0.0
     voltage_hv_kv: float = 0.0
     voltage_lv_kv: float = 0.0
     uk_percent: float = 0.0
     pk_kw: float = 0.0
-    i0_percent: float = 0.0
-    p0_kw: float = 0.0
-    vector_group: str = "Dyn11"
+    # i0_percent/p0_kw/vector_group: karta FAB-D2 (D2) — brak w karcie
+    # katalogowej/instancji != 0.0/"Dyn11". `None` = dana nieznana; budowniczy
+    # wejscia solvera (`solver_input/builder.py`) pomija gałąź magnesujaca i
+    # zapisuje to jawnie w sladzie White Box + kod gotowosci WARNING
+    # `transformer.no_load_params_missing` (vector_group nieznany => BLOCKER
+    # `transformer.vector_group_missing` dla analiz doziemnych/niesymetrycznych).
+    # Typ jest Optional (pole MOZE niesc None), ale wartosc domyslna dla
+    # BEZPOSREDNIEJ konstrukcji Python (bez przejscia przez `from_dict`)
+    # zostaje "Dyn11"/0.0 — dowod empiryczny (pelna regresja, karta FAB-D2):
+    # `application/reference_networks/station_archetype_substrate.py` (i inne
+    # generatory sieci referencyjnych) konstruuja `TransformerBranch(...)`
+    # WPROST, celowo pomijajac te pola, licząc na wartosc domyslna Dyn11 (kat
+    # przesuniecia fazowego solvera Newtona, `power_flow_newton_internal.
+    # transformer_phase_shift_rad` — Dyn11 daje +30 deg, `None` daje 0 deg:
+    # ZMIANA WYNIKU frozen-solver companion o 30 deg). Miejsce, ktore
+    # NAPRAWDE materializuje z katalogu/instancji (`from_dict` ponizej), i tak
+    # jawnie przekazuje `None`, gdy klucz brakuje — ten domyslny argument
+    # dataclass dotyczy WYLACZNIE wywolan Python pomijajacych kwarg.
+    i0_percent: float | None = 0.0
+    p0_kw: float | None = 0.0
+    vector_group: str | None = "Dyn11"
     tap_position: int = 0
     tap_step_percent: float = 2.5
     type_ref: str | None = None
@@ -744,9 +780,13 @@ class TransformerBranch(Branch):
             voltage_lv_kv=float(data.get("voltage_lv_kv", 0.0)),
             uk_percent=float(data.get("uk_percent", 0.0)),
             pk_kw=float(data.get("pk_kw", 0.0)),
-            i0_percent=float(data.get("i0_percent", 0.0)),
-            p0_kw=float(data.get("p0_kw", 0.0)),
-            vector_group=str(data.get("vector_group", "Dyn11")),
+            # i0_percent/p0_kw/vector_group: `None` gdy brak (D2) — nigdy
+            # 0.0/"Dyn11" podstawione za nieznana dana.
+            i0_percent=(float(data["i0_percent"]) if data.get("i0_percent") is not None else None),
+            p0_kw=(float(data["p0_kw"]) if data.get("p0_kw") is not None else None),
+            vector_group=(
+                str(data["vector_group"]) if data.get("vector_group") is not None else None
+            ),
             tap_position=int(data.get("tap_position", 0)),
             tap_step_percent=float(data.get("tap_step_percent", 2.5)),
             type_ref=_parse_type_ref(data),
@@ -767,7 +807,10 @@ class TransformerBranch(Branch):
         - rated_power_mva > 0
         - voltage_hv_kv > 0, voltage_lv_kv > 0
         - uk_percent > 0
-        - pk_kw >= 0, i0_percent >= 0, p0_kw >= 0
+        - pk_kw >= 0
+        - i0_percent >= 0 (gdy znane — karta FAB-D2/D2: `None` = dana brakująca,
+          nie 0, więc pomija ten check, zamiast go fałszywie łamać)
+        - p0_kw >= 0 (gdy znane — jw.)
         - Discriminant (uk/100)² - ((pk/1000)/Sn)² >= 0
 
         Returns:
@@ -783,13 +826,17 @@ class TransformerBranch(Branch):
             self.voltage_lv_kv,
             self.uk_percent,
             self.pk_kw,
-            self.i0_percent,
-            self.p0_kw,
             self.tap_step_percent,
         ]
         for value in numeric_fields:
             if not math.isfinite(value):
                 return False
+        # i0_percent/p0_kw: karta FAB-D2 (D2) — `None` jest stanem LEGALNYM
+        # (dana znamionowa nieznana), nie liczbą do sprawdzenia skończoności.
+        if self.i0_percent is not None and not math.isfinite(self.i0_percent):
+            return False
+        if self.p0_kw is not None and not math.isfinite(self.p0_kw):
+            return False
 
         # Validate positive constraints
         if self.rated_power_mva <= 0:
@@ -804,9 +851,9 @@ class TransformerBranch(Branch):
         # Validate non-negative constraints
         if self.pk_kw < 0:
             return False
-        if self.i0_percent < 0:
+        if self.i0_percent is not None and self.i0_percent < 0:
             return False
-        if self.p0_kw < 0:
+        if self.p0_kw is not None and self.p0_kw < 0:
             return False
 
         # Validate discriminant for reactance calculation
@@ -1187,9 +1234,11 @@ class TransformerBranch(Branch):
             voltage_lv_kv=nameplate.voltage_lv_kv,
             uk_percent=nameplate.uk_percent,
             pk_kw=nameplate.pk_kw,
-            i0_percent=nameplate.i0_percent or 0.0,
-            p0_kw=nameplate.p0_kw or 0.0,
-            vector_group=nameplate.vector_group or "",
+            # `None` przechodzi przez, nie zamienia się w 0.0/"" (D2) — gałąź
+            # magnesująca nieznana zostaje nieznana aż do konsumenta.
+            i0_percent=nameplate.i0_percent,
+            p0_kw=nameplate.p0_kw,
+            vector_group=nameplate.vector_group,
         )
 
 

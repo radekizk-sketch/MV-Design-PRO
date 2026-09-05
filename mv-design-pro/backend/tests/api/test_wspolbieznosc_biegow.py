@@ -572,8 +572,8 @@ def test_odczyt_nie_czeka_na_bieg_analizy(client: TestClient, rodzaj: str, sciez
             przyszly_odczyt = pula.submit(odczyt)
             assert przyszly_bieg.result() == 200
             assert przyszly_odczyt.result() == 200
-        (_, koniec_biegu) = znaczniki["bieg"]
-        (poczatek_odczytu, koniec_odczytu) = znaczniki["odczyt"]
+        _, koniec_biegu = znaczniki["bieg"]
+        poczatek_odczytu, koniec_odczytu = znaczniki["odczyt"]
         return poczatek_odczytu <= koniec_biegu, koniec_odczytu < koniec_biegu
 
     proby = [probka() for _ in range(PROB_PORZADKU)]

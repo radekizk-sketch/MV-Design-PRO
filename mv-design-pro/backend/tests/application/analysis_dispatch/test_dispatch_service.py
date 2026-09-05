@@ -107,6 +107,7 @@ def _create_basic_network(wizard, project_id):
                 "x_ohm_per_km": 0.2,
                 "b_us_per_km": 1.0,
                 "length_km": 1.0,
+                "rated_current_a": 400.0,
             },
         ),
     )

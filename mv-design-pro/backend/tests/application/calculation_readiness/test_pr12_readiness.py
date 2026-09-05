@@ -104,6 +104,94 @@ class TestCalculationReadinessService:
         assert pf is not None
         assert pf.status == "ready"
 
+    def test_power_flow_partial_when_generator_q_unknown(self) -> None:
+        """Karta FAB-D2 (D3): Q generatora nieznany (brak jawnej wartości i
+        brak Q-set-pointu w karcie katalogowej) => BLOCKER generator.q_missing,
+        nie ciche 0 Mvar."""
+        enm = _minimal_enm_with_pf_data()
+        enm.generators.append(
+            Generator(ref_id="gen_1", name="Gen-01", bus_ref="bus_lv", p_mw=1.0, q_mvar=None)
+        )
+        svc = CalculationReadinessService()
+        pf = svc.evaluate_single(enm, "power_flow")
+        assert pf.status == "partial"
+        assert any("generator.q_missing" in m for m in pf.missing_fields_pl)
+        assert "gen_1" in pf.blocking_object_refs
+
+    def test_power_flow_ready_when_generator_q_explicit(self) -> None:
+        """Predykaty parami — ta sama kontrola, dana JAWNA: Q podany wprost
+        (nawet 0.0) zostaje przyjęty bez zastrzeżeń, bo 0 Mvar tu jest DANĄ,
+        nie brakiem."""
+        enm = _minimal_enm_with_pf_data()
+        enm.generators.append(
+            Generator(ref_id="gen_1", name="Gen-01", bus_ref="bus_lv", p_mw=1.0, q_mvar=0.0)
+        )
+        svc = CalculationReadinessService()
+        pf = svc.evaluate_single(enm, "power_flow")
+        assert pf.status == "ready"
+
+    def test_power_flow_ready_when_generator_q_derived_from_fixed_setpoint(self) -> None:
+        """Q-set-point WPROST w karcie katalogowej (qmin_mvar == qmax_mvar, tryb
+        stałego Q) jest ODCZYTEM liczby już obecnej w danych — dozwolone bez
+        BLOCKER-a (odróżnij od derywacji trygonometrycznej Q=P·tanφ, która
+        NALEŻY do solvera, nie do tej bramki — patrz docstring
+        `_generator_q_mvar_jawne`)."""
+        enm = _minimal_enm_with_pf_data()
+        enm.generators.append(
+            Generator(
+                ref_id="gen_1",
+                name="Gen-01",
+                bus_ref="bus_lv",
+                p_mw=1.0,
+                q_mvar=None,
+                materialized_params={"qmin_mvar": 0.3, "qmax_mvar": 0.3},
+            )
+        )
+        svc = CalculationReadinessService()
+        pf = svc.evaluate_single(enm, "power_flow")
+        assert pf.status == "ready"
+
+    def test_power_flow_partial_when_pv_control_mode_missing(self) -> None:
+        """Karta FAB-D2 (D6): falownik PV bez control_mode w karcie katalogowej
+        => BLOCKER pv.control_mode_missing (kod kanonu juz istniejacy w
+        READINESS_CODES, wczesniej zarezerwowany bez emitera — reużyty zamiast
+        tworzenia rownoleglego kodu; Q jawnie podany, żeby odizolować tę
+        kontrolę od D3 powyżej — jedna zmienna na test)."""
+        enm = _minimal_enm_with_pf_data()
+        enm.generators.append(
+            Generator(
+                ref_id="pv_1",
+                name="PV-01",
+                bus_ref="bus_lv",
+                gen_type="pv_inverter",
+                p_mw=1.0,
+                q_mvar=0.0,
+                materialized_params={},
+            )
+        )
+        svc = CalculationReadinessService()
+        pf = svc.evaluate_single(enm, "power_flow")
+        assert pf.status == "partial"
+        assert any("pv.control_mode_missing" in m for m in pf.missing_fields_pl)
+
+    def test_power_flow_ready_when_pv_control_mode_present(self) -> None:
+        """Predykaty parami — dana JAWNA: control_mode obecny nie blokuje."""
+        enm = _minimal_enm_with_pf_data()
+        enm.generators.append(
+            Generator(
+                ref_id="pv_1",
+                name="PV-01",
+                bus_ref="bus_lv",
+                gen_type="pv_inverter",
+                p_mw=1.0,
+                q_mvar=0.0,
+                materialized_params={"control_mode": "STALY_COS_PHI"},
+            )
+        )
+        svc = CalculationReadinessService()
+        pf = svc.evaluate_single(enm, "power_flow")
+        assert pf.status == "ready"
+
     def test_short_circuit_partial_when_missing_uk(self) -> None:
         enm = _minimal_enm_with_pf_data()
         # Wyzeruj uk_percent
@@ -113,8 +201,12 @@ class TestCalculationReadinessService:
         assert sc.status in ("partial", "blocked")
         assert any("u_k" in m for m in sc.missing_fields_pl)
 
-    def test_stability_ready_with_der_after_pr15_impl(self) -> None:
-        """Po PR-15-impl: stabilność jest 'ready' przy DER (solver podpięty)."""
+    def test_stability_partial_with_der_default_profile_after_pr15_impl(self) -> None:
+        """Po PR-15-impl: stabilność ROZWIĄZUJE profil DER (solver podpięty), ale
+        bez jawnego dynamic_profile_id profil pochodzi z DOMYŚLNEJ wartości
+        katalogu — karta FAB-D2 (D8): to WARNING/założenie
+        `der.dynamic_profile_default`, nie ciche 'ready' (przepisane z
+        zachowaniem intencji: DER dostaje model, nie blokadę/n_a)."""
         enm = _minimal_enm_with_pf_data()
         enm.generators.append(
             Generator(
@@ -127,8 +219,9 @@ class TestCalculationReadinessService:
         )
         svc = CalculationReadinessService()
         stab = svc.evaluate_single(enm, "stability")
-        assert stab.status == "ready"
+        assert stab.status == "partial"
         assert "PR-15-impl" in (stab.recommended_action_pl or "")
+        assert "der.dynamic_profile_default" in (stab.recommended_action_pl or "")
 
     def test_stability_n_a_without_der(self) -> None:
         enm = _minimal_enm_with_pf_data()
@@ -136,8 +229,10 @@ class TestCalculationReadinessService:
         stab = svc.evaluate_single(enm, "stability")
         assert stab.status == "n_a"
 
-    def test_frt_hvrt_ready_with_der_after_pr16_impl(self) -> None:
-        """Po PR-16-impl: FRT/HVRT jest 'ready' przy DER (solver podpięty)."""
+    def test_frt_hvrt_partial_with_der_default_profile_after_pr16_impl(self) -> None:
+        """Po PR-16-impl: FRT/HVRT ROZWIĄZUJE profil DER, ale bez jawnego
+        dynamic_profile_id to profil DOMYŚLNY katalogu — karta FAB-D2 (D8):
+        WARNING/założenie `der.dynamic_profile_default`, nie ciche 'ready'."""
         enm = _minimal_enm_with_pf_data()
         enm.generators.append(
             Generator(
@@ -150,8 +245,60 @@ class TestCalculationReadinessService:
         )
         svc = CalculationReadinessService()
         frt = svc.evaluate_single(enm, "frt_hvrt")
-        assert frt.status == "ready"
+        assert frt.status == "partial"
         assert "PR-16-impl" in (frt.recommended_action_pl or "")
+        assert "der.dynamic_profile_default" in (frt.recommended_action_pl or "")
+
+    def test_stability_ready_with_der_explicit_profile_no_default_warning(self) -> None:
+        """Kontrast z powyższym (predykaty parami — ta sama funkcja, dwie ścieżki):
+        DER z JAWNIE wskazanym `dynamic_profile_id` rozwiązuje się BEZ założenia
+        domyślnego — status 'ready', żadnej wzmianki o der.dynamic_profile_default.
+
+        `enm.models.Generator` nie niesie dziś pola `dynamic_profile_id` (ENM —
+        poza zakresem tej karty, `enm/**` jest terytorium równoległej karty
+        FAB-D1), więc "jawny wybór" jest tu symulowany przez obiekt kaczkowy z
+        atrybutem, który `_resolve_der_dynamic_for_generator` już dziś czyta
+        (`getattr(gen, "dynamic_profile_id", None)`) — to dokładnie ta sama
+        ścieżka kodu, jaką przejdzie prawdziwy Generator, gdy ENM doda to pole.
+        """
+        from types import SimpleNamespace
+
+        from application.calculation_readiness.service import (
+            _rozstrzygnij_profile_der,
+        )
+
+        jawny_pv = SimpleNamespace(
+            ref_id="pv_1",
+            gen_type="pv_inverter",
+            dynamic_profile_id="default_pv_gfm",
+        )
+        domyslny_pv = SimpleNamespace(
+            ref_id="pv_2",
+            gen_type="pv_inverter",
+            dynamic_profile_id=None,
+        )
+        rozwiazane, nieznane, domyslne = _rozstrzygnij_profile_der([jawny_pv, domyslny_pv])
+        assert nieznane == []
+        assert domyslne == ["pv_2"]
+        assert rozwiazane["pv_1"].source == "explicit_profile_id"
+        assert rozwiazane["pv_2"].source == "default_per_kind"
+
+    def test_resolve_der_dynamic_returns_none_for_unknown_gen_type(self) -> None:
+        """Karta FAB-D2 (D8): rodzaj DER spoza mapowania => `None`, NIGDY
+        cichy fallback do profilu PV. `Generator.gen_type` jest dziś Literal
+        zamknięty (nie da się skonstruować "nieznanego" ENM Generatora), więc
+        broni to KLASY defektu na wypadek przyszłego rodzaju DER dodanego do
+        Literal bez odpowiadającej gałęzi tutaj (reguła KLASA, NIE INSTANCJA
+        §3 — dwa niezależne warunki, `_DER_GEN_TYPES` i to mapowanie, nie mogą
+        się cicho rozjechać)."""
+        from types import SimpleNamespace
+
+        from application.calculation_readiness.service import (
+            _resolve_der_dynamic_for_generator,
+        )
+
+        nieznany = SimpleNamespace(gen_type="future_der_kind", dynamic_profile_id=None)
+        assert _resolve_der_dynamic_for_generator(nieznany) is None
 
     def test_ncrfg_ready_with_der_after_pr16_impl(self) -> None:
         """Po PR-16-impl: NC RfG jest 'ready' przy DER (testbench podpięty)."""

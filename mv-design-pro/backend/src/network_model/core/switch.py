@@ -15,6 +15,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
+from network_model.ir_fields import wymagany_float
+
 
 class SwitchType(Enum):
     """
@@ -238,8 +240,8 @@ class Switch:
             switch_type=switch_type,
             state=state,
             in_service=bool(data.get("in_service", True)),
-            rated_current_a=float(data.get("rated_current_a", 0.0)),
-            rated_voltage_kv=float(data.get("rated_voltage_kv", 0.0)),
+            rated_current_a=wymagany_float(data, "rated_current_a", context="Switch"),
+            rated_voltage_kv=wymagany_float(data, "rated_voltage_kv", context="Switch"),
             equipment_type_ref=(
                 str(data.get("equipment_type_ref"))
                 if data.get("equipment_type_ref") is not None

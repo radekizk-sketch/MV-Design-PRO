@@ -9,7 +9,8 @@ from infrastructure.persistence.db import (
 )
 from infrastructure.persistence.models import _canonicalize
 from infrastructure.persistence.repositories import SnapshotRepository
-from network_model.core import Branch, BranchType, NetworkGraph, Node, NodeType
+from network_model.core import BranchType, NetworkGraph, Node, NodeType
+from network_model.core.branch import LineBranch
 from network_model.core.snapshot import NetworkSnapshot, SnapshotMeta, create_network_snapshot
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -45,13 +46,17 @@ def _build_snapshot(*, snapshot_id: str, parent_snapshot_id: str | None = None) 
     graph.add_node(node_a)
     graph.add_node(node_b)
     graph.add_branch(
-        Branch(
+        LineBranch(
             id="branch-1",
             name="Line 1",
             branch_type=BranchType.LINE,
             from_node_id=node_a.id,
             to_node_id=node_b.id,
             in_service=True,
+            r_ohm_per_km=0.206,
+            x_ohm_per_km=0.118,
+            length_km=2.5,
+            rated_current_a=300.0,
         )
     )
     # NOTE: connection_node_id was removed from NetworkGraph.

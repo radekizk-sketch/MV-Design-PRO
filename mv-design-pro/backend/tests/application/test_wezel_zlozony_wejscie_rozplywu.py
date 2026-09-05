@@ -91,6 +91,7 @@ KV = 15.0
 LEN_KM = 12.0
 R_OHM_KM = 0.4
 X_OHM_KM = 0.8
+RATED_CURRENT_A = 400.0
 
 LOAD_P_MW = 3.0
 LOAD_Q_MVAR = 1.5
@@ -318,6 +319,7 @@ def _build_wizard_model(
                 "x_ohm_per_km": X_OHM_KM,
                 "b_us_per_km": 0.0,
                 "length_km": LEN_KM,
+                "rated_current_a": RATED_CURRENT_A,
             },
         ),
     )
@@ -377,6 +379,7 @@ def _build_wizard_model(
                     "x_ohm_per_km": X_OHM_KM,
                     "b_us_per_km": 0.0,
                     "length_km": LEN_KM,
+                    "rated_current_a": RATED_CURRENT_A,
                 },
             ),
         )

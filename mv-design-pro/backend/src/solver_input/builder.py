@@ -235,6 +235,16 @@ def _build_transformer_payloads(
             source_kind = SourceKind.DERIVED
             source_ref = SourceRef(derivation_rule="instance_parameters")
 
+        # D2: brak i0_percent/p0_kw => gałąź magnesująca NIEUWZGLĘDNIONA w
+        # rozpływie — zapisane jawnie w śladzie White Box jako założenie (nie
+        # cichy 0.0). Eligibility (`transformer.no_load_params_missing`,
+        # WARNING) melduje to samo dla projektanta osobnym kanałem.
+        zalozenie_i0_p0 = (
+            "Brak i0_percent/p0_kw — gałąź magnesująca transformatora NIE jest "
+            "uwzględniona w tym wejściu rozpływu (transformer.no_load_params_missing)."
+            if i0 is None or p0 is None
+            else None
+        )
         for field_name, value, unit in [
             ("rated_power_mva", rated_power, "MVA"),
             ("voltage_hv_kv", v_hv, "kV"),
@@ -255,6 +265,7 @@ def _build_transformer_payloads(
                     source_ref=source_ref,
                     value_hash=compute_value_hash(value),
                     unit=unit,
+                    note=zalozenie_i0_p0 if field_name in ("i0_percent", "p0_kw") else None,
                 )
             )
 

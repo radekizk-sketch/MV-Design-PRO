@@ -6,6 +6,7 @@ from uuid import UUID
 
 from application.analyses.ssci_stability import build_ssci_stability_view
 from application.v126_artifacts import build_v126_proof_artifact, build_v126_report_artifact
+from domain.canonical_operations import READINESS_CODES
 from enm.store import get_enm
 from fastapi import APIRouter, HTTPException, status
 from network_model.solvers.v126_academic import V126AcademicSolver
@@ -106,6 +107,25 @@ def run_v126_analysis(
     model = _with_parameter_payloads(
         build_v126_input_from_enm(enm, parameters=request.parameters), request.parameters
     )
+    # Karta FAB-D2 (D2): `_opf_loss_lcc` (network_model/solvers/v126_academic.py)
+    # sumuje straty jałowe transformatorów wprost (`p0_kw + pk_kw*0.45**2`) i nie
+    # ma własnej ścieżki "brak danej = niedostępne" (solver FROZEN — B-01, nie
+    # edytujemy go z tej karty). Brak p0_kw (odkąd `V126TransformerInput.p0_kw`
+    # niesie `None` zamiast cichego 0.0) musi więc zablokować URUCHOMIENIE tej
+    # jednej analizy tutaj, zanim payload trafi do solvera — inne typy analizy
+    # V12.6 (SSCI, uziemienie, izolacja, rozruch silnika...) nie czytają p0_kw
+    # i pozostają dostępne bez zmian.
+    if analysis_type == V126AnalysisType.OPF_LOSS_LCC:
+        bez_strat_jalowych = [t.ref for t in model.transformers if t.p0_kw is None]
+        if bez_strat_jalowych:
+            spec = READINESS_CODES["transformer.loss_data_missing"]
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"{spec.message_pl} (transformer.loss_data_missing) — "
+                    f"transformatory bez strat jałowych: {', '.join(bez_strat_jalowych)}"
+                ),
+            )
     result = _solver.run(analysis_type, model)
     run_id = UUID(hex=result["deterministic_hash"][:32])
     run_record = {

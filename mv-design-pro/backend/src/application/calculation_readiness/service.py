@@ -17,7 +17,7 @@ Każdy item zwraca: status + brakujące pola + obiekty blokujące + zalecaną ak
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from enm.models import EnergyNetworkModel
 from pydantic import BaseModel, Field
@@ -95,6 +95,27 @@ class ReadinessReport(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+def _generator_q_mvar_jawne(gen: Any) -> float | None:  # type: ignore[no-untyped-def]
+    """Jawny Q generatora [Mvar] — z pola albo z KONKRETNEGO Q-set-pointu karty.
+
+    Karta FAB-D2 (D3): `generator.q_mvar` bywa `None` (nieznane), ale karta
+    katalogowa falownika może nieść Q-set-point WPROST (`qmin_mvar == qmax_mvar`
+    w `materialized_params` — tryb stałego Q, nie zakres). To ODCZYT liczby już
+    obecnej w danych, NIE wyprowadzenie trygonometryczne z cos φ (Q = P·tan(φ))
+    — TA derywacja jest fizyką i należy do warstwy solvera
+    (`network_model/solvers/power_flow_inverter.py`), nie do bramki gotowości
+    (reguła NOT-A-SOLVER — warstwa aplikacji nie liczy fizyki).
+    """
+    if gen.q_mvar is not None:
+        return gen.q_mvar
+    card = getattr(gen, "materialized_params", None) or {}
+    qmin = card.get("qmin_mvar")
+    qmax = card.get("qmax_mvar")
+    if qmin is not None and qmax is not None and qmin == qmax:
+        return float(qmin)
+    return None
+
+
 def _check_power_flow(enm: EnergyNetworkModel) -> ReadinessTypeReport:
     missing: list[str] = []
     blockers: list[str] = []
@@ -120,6 +141,30 @@ def _check_power_flow(enm: EnergyNetworkModel) -> ReadinessTypeReport:
             ):
                 missing.append(f"impedancja '{branch.name}'")
                 blockers.append(branch.ref_id)
+    # D3: Q generatora nieznany i niewyprowadzalny z jawnego Q-set-pointu karty
+    # katalogowej => BLOCKER `generator.q_missing` — 0 Mvar podstawione za brak
+    # byłoby WYNIKIEM (generator bezbiernościowy), nie brakiem danej.
+    for gen in enm.generators:
+        if _generator_q_mvar_jawne(gen) is None:
+            missing.append(f"Q generatora '{gen.ref_id}' (kod 'generator.q_missing')")
+            blockers.append(gen.ref_id)
+    # D6: falownik PV bez trybu sterowania (control_mode) => BLOCKER
+    # `pv.control_mode_missing`. Kod kanonu JUŻ istniał w READINESS_CODES,
+    # zarezerwowany w readiness_bridge.py bez emitera ("emiter w walidatorze
+    # ENM do wpięcia osobną kartą") — reużywamy GO zamiast tworzyć drugi,
+    # równoległy kod o tej samej treści (Reużycie zamiast duplikacji).
+    # Ten blok JEST tym emiterem: solver mocy biernej (power_flow_inverter)
+    # nie wie, JAK regulować Q bez trybu sterowania; rezerwacja w
+    # readiness_bridge.py::KODY_KANONU_ZAREZERWOWANE usunięta w tym samym
+    # commicie (kod przestał być bez drogi do projektanta).
+    for gen in enm.generators:
+        if gen.gen_type == "pv_inverter":
+            card = getattr(gen, "materialized_params", None) or {}
+            if card.get("control_mode") is None:
+                missing.append(
+                    f"tryb sterowania falownika '{gen.ref_id}' (kod 'pv.control_mode_missing')"
+                )
+                blockers.append(gen.ref_id)
 
     if blockers:
         status: ReadinessStatus = (
@@ -273,17 +318,35 @@ _DER_GEN_TYPES = (
 )
 
 
-def _resolve_der_dynamic_for_generator(gen) -> str:  # type: ignore[no-untyped-def]
-    """Resolve profilu dynamicznego dla pojedynczego DER w ENM.
+#: Źródła rozwiązania `DerDynamicResolution` uznawane za "domyślne katalogu"
+#: (nie jawny wybór projektanta/karty) — D8: taki wynik jest dozwolony
+#: wyłącznie z WARNING `der.dynamic_profile_default` (proweniencja widoczna).
+_ZRODLA_DOMYSLNE_KATALOGU = frozenset({"default_per_kind", "default_per_converter_type"})
 
-    Domyślnie używa default per kind/converter — żaden DER nie zostaje bez
-    modelu. Mapping `gen_type` → resolver args:
+
+def _resolve_der_dynamic_for_generator(gen):  # type: ignore[no-untyped-def]
+    """Rozwiąż profil dynamiczny pojedynczego DER w ENM — albo zgłoś, że rodzaj jest nieznany.
+
+    Mapping `gen_type` → resolver args:
         pv_inverter → PV grid_following
         bess        → BESS grid_following
         fw_scig     → FW SCIG (type 1)
         fw_dfig     → FW DFIG (type 3)
         fw_pmsg     → FW full_converter (type 4)
         wind_inverter → FW full_converter (type 4) — generic
+
+    Karta FAB-D2 (D8): rodzaj DER spoza tego mapowania zwraca `None` — NIE
+    "bezpieczny fallback" do PV. Podstawienie profilu PV dla nieznanego rodzaju
+    (np. syncmasz albo przyszły rodzaj DER jeszcze niezmapowany) fałszowałoby
+    model dynamiczny cichym zmyśleniem technologii źródła. Wywołujący
+    (`_check_stability`/`_check_frt_hvrt`) zgłasza to jako BLOCKER
+    `der.dynamic_profile_missing`.
+
+    Zwrócony `DerDynamicResolution.source` niesie proweniencję: gdy jest w
+    `_ZRODLA_DOMYSLNE_KATALOGU`, profil pochodzi z DOMYŚLNEJ wartości katalogu
+    (nie jawnego wyboru) i wywołujący zgłasza to jako WARNING/założenie
+    `der.dynamic_profile_default` — to jedyny dozwolony przypadek, w którym
+    "domyślny profil" nie jest cichym podstawieniem: proweniencja go ujawnia.
     """
     from network_model.catalog.der_dynamic import resolve_der_dynamic_profile
 
@@ -291,27 +354,56 @@ def _resolve_der_dynamic_for_generator(gen) -> str:  # type: ignore[no-untyped-d
     explicit = getattr(gen, "dynamic_profile_id", None)
 
     if gen_type == "pv_inverter":
-        result = resolve_der_dynamic_profile(der_kind="PV", explicit_profile_id=explicit)
-    elif gen_type == "bess":
-        result = resolve_der_dynamic_profile(der_kind="BESS", explicit_profile_id=explicit)
-    elif gen_type == "fw_scig":
-        result = resolve_der_dynamic_profile(
+        return resolve_der_dynamic_profile(der_kind="PV", explicit_profile_id=explicit)
+    if gen_type == "bess":
+        return resolve_der_dynamic_profile(der_kind="BESS", explicit_profile_id=explicit)
+    if gen_type == "fw_scig":
+        return resolve_der_dynamic_profile(
             der_kind="FW", explicit_profile_id=explicit, converter_type="SCIG"
         )
-    elif gen_type == "fw_dfig":
-        result = resolve_der_dynamic_profile(
+    if gen_type == "fw_dfig":
+        return resolve_der_dynamic_profile(
             der_kind="FW", explicit_profile_id=explicit, converter_type="DFIG"
         )
-    elif gen_type in ("fw_pmsg", "wind_inverter"):
-        result = resolve_der_dynamic_profile(
+    if gen_type in ("fw_pmsg", "wind_inverter"):
+        return resolve_der_dynamic_profile(
             der_kind="FW",
             explicit_profile_id=explicit,
             converter_type="full_converter",
         )
-    else:
-        # Bezpieczny fallback dla nieznanych dynamicznych źródeł
-        result = resolve_der_dynamic_profile(der_kind="PV")
-    return result.profile_id
+    return None
+
+
+def _rozstrzygnij_profile_der(
+    der_generators: list[Any],
+) -> tuple[dict[str, Any], list[str], list[str]]:
+    """Rozwiąż profile dynamiczne DLA WSZYSTKICH DER — jeden przebieg, jedna reguła.
+
+    Karta FAB-D2 (D8), użyte przez `_check_stability` i `_check_frt_hvrt`
+    (KLASA, NIE INSTANCJA: ta sama reguła w obu miejscach, nie dwie kopie).
+
+    Zwraca (rozwiazane, nieznane_refs, domyslne_refs):
+        rozwiazane      — ref -> DerDynamicResolution, dla DER z profilem.
+        nieznane_refs   — ref dla DER, których rodzaj nie ma mapowania w ogóle
+                           (BLOCKER `der.dynamic_profile_missing` — brak profilu,
+                           nie fallback do PV).
+        domyslne_refs   — ref dla DER rozwiązanych, ale z DOMYŚLNEJ wartości
+                           katalogu, nie jawnego wyboru (WARNING/założenie
+                           `der.dynamic_profile_default`).
+    """
+    rozwiazane: dict[str, Any] = {}
+    nieznane_refs: list[str] = []
+    domyslne_refs: list[str] = []
+    for gen in der_generators:
+        ref = getattr(gen, "ref_id", getattr(gen, "id", "?"))
+        result = _resolve_der_dynamic_for_generator(gen)
+        if result is None:
+            nieznane_refs.append(ref)
+            continue
+        rozwiazane[ref] = result
+        if result.source in _ZRODLA_DOMYSLNE_KATALOGU:
+            domyslne_refs.append(ref)
+    return rozwiazane, nieznane_refs, domyslne_refs
 
 
 def _check_stability(enm: EnergyNetworkModel) -> ReadinessTypeReport:
@@ -326,20 +418,40 @@ def _check_stability(enm: EnergyNetworkModel) -> ReadinessTypeReport:
                 "Brak źródeł dynamicznych (PV/BESS/FW). Stabilność RMS nie dotyczy projektu."
             ),
         )
-    resolved = {
-        getattr(g, "ref_id", getattr(g, "id", "?")): _resolve_der_dynamic_for_generator(g)
-        for g in der_generators
-    }
+    resolved, nieznane_refs, domyslne_refs = _rozstrzygnij_profile_der(der_generators)
+    if nieznane_refs:
+        return ReadinessTypeReport(
+            calculation_type="stability",
+            label_pl=CALCULATION_LABEL_PL["stability"],
+            status="blocked",
+            missing_fields_pl=[
+                f"profil dynamiczny DER '{ref}' (kod 'der.dynamic_profile_missing')"
+                for ref in nieznane_refs
+            ],
+            blocking_object_refs=nieznane_refs,
+            recommended_action_pl=(
+                "Rodzaj DER nieznany dla stabilności RMS — przypisz obsługiwany rodzaj "
+                "(PV/BESS/turbina wiatrowa) albo profil dynamiczny wprost."
+            ),
+        )
+    status: ReadinessStatus = "partial" if domyslne_refs else "ready"
+    zalozenie = (
+        f" Założenie: {len(domyslne_refs)} DER dostało profil DOMYŚLNY katalogu "
+        "(kod 'der.dynamic_profile_default'), nie jawnie wskazany — sprawdź, czy pasuje."
+        if domyslne_refs
+        else ""
+    )
     return ReadinessTypeReport(
         calculation_type="stability",
         label_pl=CALCULATION_LABEL_PL["stability"],
-        status="ready",
+        status=status,
         recommended_action_pl=(
             f"Solver stabilności RMS dostępny (PR-15-impl). "
             f"{len(der_generators)} DER z modelami dynamicznymi rozwiązanymi: "
-            + ", ".join(f"{ref}={pid}" for ref, pid in sorted(resolved.items())[:3])
+            + ", ".join(f"{ref}={res.profile_id}" for ref, res in sorted(resolved.items())[:3])
             + ("..." if len(resolved) > 3 else "")
             + ". Można uruchomić obliczenia."
+            + zalozenie
         ),
     )
 
@@ -354,16 +466,38 @@ def _check_frt_hvrt(enm: EnergyNetworkModel) -> ReadinessTypeReport:
             status="n_a",
             recommended_action_pl="Brak DER w projekcie. FRT/HVRT nie dotyczy.",
         )
-    resolved_count = sum(1 for g in der_generators if _resolve_der_dynamic_for_generator(g))
+    resolved, nieznane_refs, domyslne_refs = _rozstrzygnij_profile_der(der_generators)
+    if nieznane_refs:
+        return ReadinessTypeReport(
+            calculation_type="frt_hvrt",
+            label_pl=CALCULATION_LABEL_PL["frt_hvrt"],
+            status="blocked",
+            missing_fields_pl=[
+                f"profil FRT/HVRT DER '{ref}' (kod 'der.dynamic_profile_missing')"
+                for ref in nieznane_refs
+            ],
+            blocking_object_refs=nieznane_refs,
+            recommended_action_pl=(
+                "Rodzaj DER nieznany dla FRT/HVRT — przypisz obsługiwany rodzaj "
+                "(PV/BESS/turbina wiatrowa) albo profil dynamiczny wprost."
+            ),
+        )
+    status: ReadinessStatus = "partial" if domyslne_refs else "ready"
+    zalozenie = (
+        f" Założenie: {len(domyslne_refs)} DER dostało profil DOMYŚLNY katalogu "
+        "(kod 'der.dynamic_profile_default')."
+        if domyslne_refs
+        else ""
+    )
     return ReadinessTypeReport(
         calculation_type="frt_hvrt",
         label_pl=CALCULATION_LABEL_PL["frt_hvrt"],
-        status="ready",
+        status=status,
         recommended_action_pl=(
             f"Solver FRT/HVRT RMS dostępny (PR-16-impl). "
-            f"{resolved_count}/{len(der_generators)} DER z profilami FRT/HVRT "
+            f"{len(resolved)}/{len(der_generators)} DER z profilami FRT/HVRT "
             "rozwiązanymi (catalog → operator profile → IEEE/IEC default). "
-            "Można uruchomić testbench."
+            "Można uruchomić testbench." + zalozenie
         ),
     )
 

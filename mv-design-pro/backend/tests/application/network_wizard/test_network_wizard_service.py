@@ -63,6 +63,7 @@ def _create_basic_network(service: NetworkWizardService, project_id: UUID) -> tu
                 "r_ohm_per_km": 0.1,
                 "x_ohm_per_km": 0.2,
                 "length_km": 1.0,
+                "rated_current_a": 400.0,
             },
         ),
     )

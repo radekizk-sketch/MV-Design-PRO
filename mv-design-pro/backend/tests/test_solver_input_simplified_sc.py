@@ -88,6 +88,9 @@ def _make_catalog() -> CatalogRepository:
                     "x_ohm_per_km": 0.377,
                     "b_us_per_km": 2.84,
                     "rated_current_a": 210.0,
+                    "max_temperature_c": 80.0,
+                    "voltage_rating_kv": 15.0,
+                    "cross_section_mm2": 70.0,
                 },
             }
         ],

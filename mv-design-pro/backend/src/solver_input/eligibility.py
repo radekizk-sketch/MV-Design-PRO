@@ -10,6 +10,8 @@ NO physics calculations. NO heuristics. NO default values.
 
 from __future__ import annotations
 
+from typing import Any
+
 from network_model.catalog.repository import CatalogRepository
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
@@ -23,6 +25,54 @@ from solver_input.contracts import (
     SolverInputIssue,
     SolverInputIssueSeverity,
 )
+
+
+def _resolve_transformer_nameplate_source(
+    branch: TransformerBranch, catalog: CatalogRepository | None
+) -> TransformerBranch | Any | None:
+    """Skąd czytać i0_percent/p0_kw/vector_group dla TEGO transformatora.
+
+    Zwraca `branch` samą siebie (brak `type_ref` — dane instancji rządzą),
+    rozwiązany `TransformerType` (`type_ref` trafia w katalog), albo `None`
+    gdy transformator jest JUŻ zablokowany gdzie indziej (brak `type_ref` i
+    nieprawidłowe znamiona instancji — SI-004; `type_ref` nie trafia w katalog
+    — SI-006) — sprawdzanie i0/p0/vector_group takiego transformatora
+    dokładałoby drugi komunikat do czegoś, co i tak nie policzy się w ogóle.
+    """
+    if branch.type_ref is None:
+        if branch.rated_power_mva <= 0 or branch.uk_percent <= 0:
+            return None
+        return branch
+    if catalog is None:
+        return None
+    return catalog.get_transformer_type(branch.type_ref)
+
+
+def _check_transformer_no_load_params(
+    branch: TransformerBranch,
+    source: TransformerBranch | Any,
+    warnings: list[SolverInputIssue],
+) -> None:
+    """D2: gałąź magnesująca (i0/p0) nieznana != cichy 0.0 — WARNING, nie blokada.
+
+    Dotyczy WSZYSTKICH typów analizy jednakowo (IEC 60909 zwarć jej nie
+    potrzebuje; rozpływ traci wyłącznie dokładność strat jałowych) — w
+    odróżnieniu od `vector_group`, który blokuje TYLKO analizy zależne od
+    składowej zerowej (patrz `check_eligibility`, SHORT_CIRCUIT_1F).
+    """
+    if source.i0_percent is None or source.p0_kw is None:
+        warnings.append(
+            SolverInputIssue(
+                code="transformer.no_load_params_missing",
+                severity=SolverInputIssueSeverity.WARNING,
+                message=(
+                    f"Transformer '{branch.id}' has no i0_percent/p0_kw — "
+                    "magnetizing branch is not represented in the load-flow input"
+                ),
+                element_ref=branch.id,
+                field_path=f"transformers[ref_id={branch.id}].i0_percent",
+            )
+        )
 
 
 def _check_common_blockers(
@@ -141,6 +191,13 @@ def _check_common_blockers(
                         )
                     )
 
+            # D2: gałąź magnesująca nieznana — jednakowo dla wszystkich typów
+            # analizy (WARNING, nie blokada). Pomijana, gdy transformator jest
+            # już zablokowany powyżej (SI-004/SI-006) — patrz docstring resolvera.
+            nameplate_source = _resolve_transformer_nameplate_source(branch, catalog)
+            if nameplate_source is not None:
+                _check_transformer_no_load_params(branch, nameplate_source, warnings)
+
     # Check connectivity
     if graph.nodes and not graph.is_connected():
         warnings.append(
@@ -165,6 +222,29 @@ def check_eligibility(
     Returns EligibilityResult with eligible=True only if no BLOCKER issues exist.
     """
     blockers, warnings = _check_common_blockers(graph, catalog)
+
+    if analysis_type == SolverAnalysisType.SHORT_CIRCUIT_1F:
+        # D2: grupa połączeń transformatora BLOKUJE wyłącznie analizy zależne
+        # od składowej zerowej (zwarcie 1-fazowe doziemne) — SHORT_CIRCUIT_3F
+        # (skladowa zgodna, zbalansowana) i LOAD_FLOW jej nie potrzebują.
+        for branch in sorted(graph.branches.values(), key=lambda b: b.id):
+            if not isinstance(branch, TransformerBranch):
+                continue
+            source = _resolve_transformer_nameplate_source(branch, catalog)
+            if source is not None and source.vector_group is None:
+                blockers.append(
+                    SolverInputIssue(
+                        code="transformer.vector_group_missing",
+                        severity=SolverInputIssueSeverity.BLOCKER,
+                        message=(
+                            f"Transformer '{branch.id}' has no vector_group — "
+                            "1-phase (earth fault) short circuit cannot determine "
+                            "zero-sequence behaviour"
+                        ),
+                        element_ref=branch.id,
+                        field_path=f"transformers[ref_id={branch.id}].vector_group",
+                    )
+                )
 
     if analysis_type == SolverAnalysisType.PROTECTION:
         # Protection analysis (overcurrent v1, IEC 60255 IDMT) consumes SC results

@@ -6,6 +6,7 @@ import uuid
 from dataclasses import dataclass, field
 
 from network_model.catalog.types import ConverterKind
+from network_model.ir_fields import wymagany_float
 
 
 @dataclass
@@ -67,8 +68,8 @@ class InverterSource:
                 if data.get("converter_kind") is not None
                 else None
             ),
-            in_rated_a=float(data.get("in_rated_a", 0.0)),
-            k_sc=float(data.get("k_sc", 1.1)),
+            in_rated_a=wymagany_float(data, "in_rated_a", context="InverterSource"),
+            k_sc=wymagany_float(data, "k_sc", context="InverterSource"),
             contributes_negative_sequence=bool(data.get("contributes_negative_sequence", False)),
             contributes_zero_sequence=bool(data.get("contributes_zero_sequence", False)),
             in_service=bool(data.get("in_service", True)),

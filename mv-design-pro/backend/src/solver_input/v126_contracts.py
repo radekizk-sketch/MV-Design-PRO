@@ -77,7 +77,16 @@ class V126TransformerInput(BaseModel):
     ulv_kv: float = Field(gt=0)
     uk_percent: float = Field(gt=0)
     pk_kw: float = Field(default=0.0, ge=0)
-    p0_kw: float = Field(default=0.0, ge=0)
+    # `None` = strata jałowa NIEZNANA (karta FAB-D2, D2) — ENM `Transformer.p0_kw`
+    # jest `float | None` (brak w katalogu jest legalny, IEC 60909 tego pola nie
+    # wymaga). Podstawienie 0.0 za brak fałszowałoby wynik OPF/LCC (`_opf_loss_lcc`
+    # w `network_model/solvers/v126_academic.py`) — zero strat jałowych to WYNIK,
+    # nie nieznana dana. Ten solver nie ma dziś własnej ścieżki "brak = niedostępne"
+    # (w odróżnieniu od `equipment_checks/transformer_losses.py`, który reużywa
+    # `transformer.loss_data_missing`), więc konsument (endpoint API `run_v126_analysis`)
+    # odmawia uruchomienia analizy OPF_LOSS_LCC tym samym kodem, zamiast liczyć na
+    # milczącym zerze — solver pozostaje nietknięty (B-01, `network_model/solvers/**`).
+    p0_kw: float | None = Field(default=None, ge=0)
     vector_group: str | None = None
 
 
@@ -545,7 +554,10 @@ def build_v126_input_from_enm(
             ulv_kv=transformer.ulv_kv,
             uk_percent=transformer.uk_percent,
             pk_kw=transformer.pk_kw,
-            p0_kw=transformer.p0_kw or 0.0,
+            # Karta FAB-D2 (D2): brak strat jałowych w ENM zostaje `None`, nie 0.0
+            # (zero strat jest wynikiem, nie nieznaną daną) — patrz komentarz przy
+            # definicji pola `V126TransformerInput.p0_kw` powyżej.
+            p0_kw=transformer.p0_kw,
             vector_group=transformer.vector_group,
         )
         for transformer in enm.transformers

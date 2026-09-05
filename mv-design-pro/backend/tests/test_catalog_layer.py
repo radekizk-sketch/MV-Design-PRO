@@ -71,12 +71,62 @@ def test_catalog_types_are_frozen() -> None:
 def test_catalog_repository_lists_deterministically() -> None:
     repo = CatalogRepository.from_records(
         line_types=[
-            {"id": "b", "name": "Zeta", "params": {"r_ohm_per_km": 0.2, "x_ohm_per_km": 0.3}},
-            {"id": "a", "name": "Alpha", "params": {"r_ohm_per_km": 0.1, "x_ohm_per_km": 0.2}},
+            {
+                "id": "b",
+                "name": "Zeta",
+                "params": {
+                    "r_ohm_per_km": 0.2,
+                    "x_ohm_per_km": 0.3,
+                    "b_us_per_km": 2.7,
+                    "rated_current_a": 300.0,
+                    "max_temperature_c": 80.0,
+                    "voltage_rating_kv": 15.0,
+                    "cross_section_mm2": 70.0,
+                },
+            },
+            {
+                "id": "a",
+                "name": "Alpha",
+                "params": {
+                    "r_ohm_per_km": 0.1,
+                    "x_ohm_per_km": 0.2,
+                    "b_us_per_km": 2.8,
+                    "rated_current_a": 350.0,
+                    "max_temperature_c": 80.0,
+                    "voltage_rating_kv": 15.0,
+                    "cross_section_mm2": 95.0,
+                },
+            },
         ],
         cable_types=[
-            {"id": "2", "name": "Cable B", "params": {"r_ohm_per_km": 0.2, "x_ohm_per_km": 0.3}},
-            {"id": "1", "name": "Cable A", "params": {"r_ohm_per_km": 0.1, "x_ohm_per_km": 0.2}},
+            {
+                "id": "2",
+                "name": "Cable B",
+                "params": {
+                    "r_ohm_per_km": 0.2,
+                    "x_ohm_per_km": 0.3,
+                    "c_nf_per_km": 250.0,
+                    "rated_current_a": 300.0,
+                    "voltage_rating_kv": 15.0,
+                    "cross_section_mm2": 70.0,
+                    "max_temperature_c": 90.0,
+                    "number_of_cores": 3,
+                },
+            },
+            {
+                "id": "1",
+                "name": "Cable A",
+                "params": {
+                    "r_ohm_per_km": 0.1,
+                    "x_ohm_per_km": 0.2,
+                    "c_nf_per_km": 280.0,
+                    "rated_current_a": 350.0,
+                    "voltage_rating_kv": 15.0,
+                    "cross_section_mm2": 95.0,
+                    "max_temperature_c": 90.0,
+                    "number_of_cores": 3,
+                },
+            },
         ],
         transformer_types=[
             {
@@ -87,6 +137,10 @@ def test_catalog_repository_lists_deterministically() -> None:
                     "voltage_hv_kv": 110.0,
                     "voltage_lv_kv": 20.0,
                     "uk_percent": 6.0,
+                    "pk_kw": 100.0,
+                    "tap_min": -5,
+                    "tap_max": 5,
+                    "tap_step_percent": 2.5,
                 },
             },
             {
@@ -97,18 +151,48 @@ def test_catalog_repository_lists_deterministically() -> None:
                     "voltage_hv_kv": 110.0,
                     "voltage_lv_kv": 20.0,
                     "uk_percent": 6.0,
+                    "pk_kw": 60.0,
+                    "tap_min": -5,
+                    "tap_max": 5,
+                    "tap_step_percent": 2.5,
                 },
             },
         ],
         switch_equipment_types=[
-            {"id": "s2", "name": "Switch B", "params": {"equipment_kind": "DISCONNECTOR"}},
-            {"id": "s1", "name": "Switch A", "params": {"equipment_kind": "CIRCUIT_BREAKER"}},
+            {
+                "id": "s2",
+                "name": "Switch B",
+                "params": {
+                    "equipment_kind": "DISCONNECTOR",
+                    "un_kv": 15.0,
+                    "in_a": 630.0,
+                    "ik_ka": 20.0,
+                    "icw_ka": 20.0,
+                },
+            },
+            {
+                "id": "s1",
+                "name": "Switch A",
+                "params": {
+                    "equipment_kind": "CIRCUIT_BREAKER",
+                    "un_kv": 15.0,
+                    "in_a": 630.0,
+                    "ik_ka": 25.0,
+                    "icw_ka": 25.0,
+                },
+            },
         ],
         converter_types=[
             {
                 "id": "c2",
                 "name": "BESS B",
-                "params": {"kind": "BESS", "un_kv": 15.0, "sn_mva": 2.0, "pmax_mw": 1.5},
+                "params": {
+                    "kind": "BESS",
+                    "un_kv": 15.0,
+                    "sn_mva": 2.0,
+                    "pmax_mw": 1.5,
+                    "e_kwh": 4000.0,
+                },
             },
             {
                 "id": "c1",
@@ -137,7 +221,15 @@ def test_line_branch_resolve_precedence() -> None:
             {
                 "id": "type-1",
                 "name": "Type 1",
-                "params": {"r_ohm_per_km": 1.0, "x_ohm_per_km": 2.0, "b_us_per_km": 3.0},
+                "params": {
+                    "r_ohm_per_km": 1.0,
+                    "x_ohm_per_km": 2.0,
+                    "b_us_per_km": 3.0,
+                    "rated_current_a": 300.0,
+                    "max_temperature_c": 80.0,
+                    "voltage_rating_kv": 15.0,
+                    "cross_section_mm2": 70.0,
+                },
             }
         ],
         cable_types=[],
@@ -219,6 +311,9 @@ def test_transformer_equivalent_from_catalog() -> None:
                     "voltage_lv_kv": 20.0,
                     "uk_percent": 6.0,
                     "pk_kw": 60.0,
+                    "tap_min": -5,
+                    "tap_max": 5,
+                    "tap_step_percent": 2.5,
                 },
             }
         ],

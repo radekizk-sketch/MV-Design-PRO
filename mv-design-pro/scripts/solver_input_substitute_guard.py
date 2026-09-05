@@ -529,12 +529,24 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "A:or:enm.frequency_hz": 1,
         "B:ifexp:enm.frequency_hz": 1,
         # Moc bierna wytworcy nieokreslona -> 0 Mvar (praca przy cos φ = 1).
-        # DLUG NAZWANY: to zalozenie o trybie regulacji, nie pomiar.
+        # DLUG NAZWANY: to zalozenie o trybie regulacji, nie pomiar. Karta
+        # FAB-D2 (D3) NIE naprawia tej pozycji: konsument (`gen_by_bus` ->
+        # `V126BusInput.generation_mvar`) zasila WIELE rodzajow analizy V12.6
+        # (nie jeden waski konsument jak przy p0_kw nizej), a jego arytmetyka
+        # zyje w `network_model/solvers/v126_academic.py` (FROZEN, B-01) —
+        # naprawa wymagalaby edycji solvera w wielu miejscach na raz, bez zgody
+        # wlasciciela. Zatrzymane TYLKO tutaj, opisane w meldunku karty.
         "A:or:generator.q_mvar": 1,
-        # Straty jalowe transformatora nieokreslone -> 0 kW. DLUG NAZWANY: brak
-        # danej tabliczkowej udaje transformator bezstratny w stanie jalowym.
-        "A:or:transformer.p0_kw": 1,
     },
+    # "A:or:transformer.p0_kw" USUNIETE z zapadki (karta FAB-D2, D2): straty
+    # jalowe transformatora nieokreslone zostaja teraz `None` (pole
+    # `V126TransformerInput.p0_kw` jest `float | None`), nie ciche 0 kW.
+    # Jedyny konsument arytmetyki (`_opf_loss_lcc` w
+    # `network_model/solvers/v126_academic.py`, FROZEN — B-01) jest bramkowany
+    # PRZED wejsciem do solvera w `api/v126_academic.py::run_v126_analysis`
+    # (kod gotowosci `transformer.loss_data_missing`, reużyty z
+    # `equipment_checks/transformer_losses.py`) — patrz
+    # `tests/api/test_v126_opf_loss_lcc_api.py`.
     # --- korzen `enm` dolozony do zakresu karta MOST-WEJSCIA-V126 (2026-08-08) ---
     # Pomiar dolozenia: +17 trafien, WSZYSTKIE w `enm/**`, zero kolateralnych w
     # warstwie skanowanej wczesniej. Nadzorca podawal wczesniej liczbe 33 dla

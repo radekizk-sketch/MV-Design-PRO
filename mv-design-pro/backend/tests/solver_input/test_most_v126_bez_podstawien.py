@@ -256,14 +256,30 @@ def _transformator(**nadpisania: object) -> dict:
 
 @pytest.mark.parametrize(
     ("podane", "oczekiwane"),
-    [(12.5, 12.5), (0.0, 0.0), (None, 0.0)],
-    ids=["obecne", "jawnie-zerowe", "nieobecne"],
+    [(12.5, 12.5), (0.0, 0.0)],
+    ids=["obecne", "jawnie-zerowe"],
 )
-def test_straty_jalowe_transformatora(podane: float | None, oczekiwane: float) -> None:
+def test_straty_jalowe_transformatora(podane: float, oczekiwane: float) -> None:
     """Straty jałowe: wartość podana przechodzi, także jawne zero."""
-    nadpisania: dict = {} if podane is None else {"p0_kw": podane}
-    wejscie = build_v126_input_from_enm(_model(transformers=[_transformator(**nadpisania)]))
+    wejscie = build_v126_input_from_enm(_model(transformers=[_transformator(p0_kw=podane)]))
     assert wejscie.transformers[0].p0_kw == pytest.approx(oczekiwane)
+
+
+def test_straty_jalowe_transformatora_nieobecne_nie_dostaja_liczby() -> None:
+    """PIN NA DEFEKT (karta FAB-D2, D2): przed naprawą brak p0_kw dostawał 0.0.
+
+    Zero strat jałowych JEST wynikiem fizycznym (transformator idealny), nie
+    synonimem „nie wiadomo" — most `transformer.p0_kw or 0.0` (ENM ma to pole
+    jako `float | None`) mylił te dwa stany identycznie jak defekty pinowane
+    wyżej w tym pliku dla obciążalności/susceptancji/skoku zaczepu. Tu drobna
+    różnica: solver `_opf_loss_lcc` (`network_model/solvers/v126_academic.py`)
+    NIE ma dziś własnej ścieżki „brak = niedostępne" (FROZEN, B-01) — więc
+    zamiast cichej liczby brak musi zablokować URUCHOMIENIE tej jednej analizy
+    w warstwie API (patrz `tests/api/test_v126_opf_loss_lcc_api.py`), nie
+    wejść do solvera jako 0.0.
+    """
+    wejscie = build_v126_input_from_enm(_model(transformers=[_transformator()]))
+    assert wejscie.transformers[0].p0_kw is None
 
 
 @pytest.mark.parametrize(

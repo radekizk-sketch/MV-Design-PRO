@@ -40,11 +40,12 @@ def test_auto_populate_transformer_ptpire_priority() -> None:
     )
     assert response.status_code == 200
     data = response.json()
-    # First suggestion should be PTPiRE-certified (Polish manufacturer)
+    # First suggestion should be PTPiRE-certified (Polish manufacturer) and carry
+    # a categorical match (karta FAB-D2, D9 — dopasowanie zamiast confidence).
     if len(data["suggestions"]) > 0:
         top = data["suggestions"][0]
-        # Polish manufacturers boost confidence
-        assert top["confidence"] >= 0.5
+        assert top["dopasowanie"] in ("PELNE", "CZESCIOWE")
+        assert isinstance(top["certyfikat_ptpiree"], bool)
 
 
 def test_auto_populate_cable_cross_section() -> None:

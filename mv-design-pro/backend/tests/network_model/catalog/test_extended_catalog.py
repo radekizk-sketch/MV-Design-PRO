@@ -9,6 +9,7 @@ Validates:
 5. Deterministic sorting for new types
 """
 
+import pytest
 from network_model.catalog.repository import CatalogRepository
 from network_model.catalog.types import (
     MATERIALIZATION_CONTRACTS,
@@ -112,6 +113,9 @@ class TestLVCableType:
                 "u_n_kv": 0.4,
                 "r_ohm_per_km": 0.1,
                 "x_ohm_per_km": 0.05,
+                "i_max_a": 200.0,
+                "cross_section_mm2": 95.0,
+                "number_of_cores": 4,
             }
         )
         assert t.name == "Test LV Cable"
@@ -262,6 +266,120 @@ class TestMaterializationContracts:
         assert all("field" in uf and "label_pl" in uf for uf in d["ui_fields"])
 
 
+class TestConverterDerivationCompleteness:
+    """Karta FAB-D2 (D6): derywacja PVInverterType/BESSInverterType z rekordu
+    ConverterType odrzuca brak sn_mva/pmax_mw/e_kwh (catalog.type_incomplete),
+    zamiast fabrykować 0 kVA/0 kWh; control_mode nieznany zostaje `None`
+    (nie "STALY_COS_PHI")."""
+
+    def test_pv_derivation_rejects_missing_sn_mva(self):
+        with pytest.raises(ValueError, match="catalog.type_incomplete"):
+            CatalogRepository.from_records(
+                line_types=[],
+                cable_types=[],
+                transformer_types=[],
+                converter_types=[
+                    {
+                        "id": "pv_bad",
+                        "name": "PV bez sn_mva",
+                        "params": {"kind": "PV", "pmax_mw": 0.05},
+                    }
+                ],
+            )
+
+    def test_pv_derivation_rejects_missing_pmax_mw(self):
+        with pytest.raises(ValueError, match="catalog.type_incomplete"):
+            CatalogRepository.from_records(
+                line_types=[],
+                cable_types=[],
+                transformer_types=[],
+                converter_types=[
+                    {
+                        "id": "pv_bad",
+                        "name": "PV bez pmax_mw",
+                        "params": {"kind": "PV", "sn_mva": 0.05},
+                    }
+                ],
+            )
+
+    def test_bess_derivation_rejects_missing_e_kwh(self):
+        with pytest.raises(ValueError, match="catalog.type_incomplete"):
+            CatalogRepository.from_records(
+                line_types=[],
+                cable_types=[],
+                transformer_types=[],
+                converter_types=[
+                    {
+                        "id": "bess_bad",
+                        "name": "BESS bez e_kwh",
+                        "params": {"kind": "BESS", "sn_mva": 0.05, "pmax_mw": 0.05},
+                    }
+                ],
+            )
+
+    def test_pv_derivation_succeeds_with_complete_data(self):
+        """Predykaty parami — dana JAWNA: komplet pól, derywacja się udaje."""
+        repo = CatalogRepository.from_records(
+            line_types=[],
+            cable_types=[],
+            transformer_types=[],
+            converter_types=[
+                {
+                    "id": "pv_ok",
+                    "name": "PV kompletny",
+                    "params": {"kind": "PV", "sn_mva": 0.05, "pmax_mw": 0.05, "un_kv": 0.4},
+                }
+            ],
+        )
+        pv = repo.get_pv_inverter_type("pv_ok")
+        assert pv is not None
+        assert pv.s_n_kva == 50.0
+        assert pv.p_max_kw == 50.0
+
+    def test_pv_derivation_control_mode_unknown_is_none_not_staly_cos_phi(self):
+        """Karta FAB-D2 (D6): control_mode nieznany -> None, nie
+        "STALY_COS_PHI" — zmyślenie KONKRETNEGO trybu regulacji."""
+        repo = CatalogRepository.from_records(
+            line_types=[],
+            cable_types=[],
+            transformer_types=[],
+            converter_types=[
+                {
+                    "id": "pv_no_mode",
+                    "name": "PV bez control_mode",
+                    "params": {"kind": "PV", "sn_mva": 0.05, "pmax_mw": 0.05, "un_kv": 0.4},
+                }
+            ],
+        )
+        pv = repo.get_pv_inverter_type("pv_no_mode")
+        assert pv is not None
+        assert pv.control_mode is None
+
+    def test_pv_derivation_control_mode_explicit_preserved(self):
+        """Predykaty parami — dana JAWNA: control_mode podany wprost przechodzi."""
+        repo = CatalogRepository.from_records(
+            line_types=[],
+            cable_types=[],
+            transformer_types=[],
+            converter_types=[
+                {
+                    "id": "pv_with_mode",
+                    "name": "PV z control_mode",
+                    "params": {
+                        "kind": "PV",
+                        "sn_mva": 0.05,
+                        "pmax_mw": 0.05,
+                        "un_kv": 0.4,
+                        "control_mode": "Q_OD_U",
+                    },
+                }
+            ],
+        )
+        pv = repo.get_pv_inverter_type("pv_with_mode")
+        assert pv is not None
+        assert pv.control_mode == "Q_OD_U"
+
+
 class TestExtendedCatalogRepository:
     def test_empty_extended_collections(self):
         """CatalogRepository can be created with empty extended collections."""
@@ -293,6 +411,9 @@ class TestExtendedCatalogRepository:
                         "u_n_kv": 0.4,
                         "r_ohm_per_km": 0.253,
                         "x_ohm_per_km": 0.069,
+                        "i_max_a": 240.0,
+                        "cross_section_mm2": 120.0,
+                        "number_of_cores": 4,
                     },
                 },
             ],
@@ -350,6 +471,7 @@ class TestExtendedCatalogRepository:
                     "params": {
                         "s_n_kva": 50.0,
                         "p_max_kw": 50.0,
+                        "un_kv": 0.4,
                     },
                 },
             ],
@@ -368,17 +490,38 @@ class TestExtendedCatalogRepository:
                 {
                     "id": "c",
                     "name": "Zebra",
-                    "params": {"u_n_kv": 0.4, "r_ohm_per_km": 0.1, "x_ohm_per_km": 0.05},
+                    "params": {
+                        "u_n_kv": 0.4,
+                        "r_ohm_per_km": 0.1,
+                        "x_ohm_per_km": 0.05,
+                        "i_max_a": 200.0,
+                        "cross_section_mm2": 95.0,
+                        "number_of_cores": 4,
+                    },
                 },
                 {
                     "id": "a",
                     "name": "Alpha",
-                    "params": {"u_n_kv": 0.4, "r_ohm_per_km": 0.2, "x_ohm_per_km": 0.06},
+                    "params": {
+                        "u_n_kv": 0.4,
+                        "r_ohm_per_km": 0.2,
+                        "x_ohm_per_km": 0.06,
+                        "i_max_a": 180.0,
+                        "cross_section_mm2": 70.0,
+                        "number_of_cores": 4,
+                    },
                 },
                 {
                     "id": "b",
                     "name": "Alpha",
-                    "params": {"u_n_kv": 0.4, "r_ohm_per_km": 0.3, "x_ohm_per_km": 0.07},
+                    "params": {
+                        "u_n_kv": 0.4,
+                        "r_ohm_per_km": 0.3,
+                        "x_ohm_per_km": 0.07,
+                        "i_max_a": 160.0,
+                        "cross_section_mm2": 50.0,
+                        "number_of_cores": 4,
+                    },
                 },
             ],
         )

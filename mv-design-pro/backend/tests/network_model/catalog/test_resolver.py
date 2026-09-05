@@ -116,6 +116,34 @@ def test_line_precedence_override_wins(catalog_with_types):
     assert result.rated_current_a == 250.0  # instance value
 
 
+@pytest.mark.parametrize(
+    "override",
+    [
+        {"r_total_ohm": 1.0, "x_total_ohm": 2.0},  # brak b_total_us
+        {"r_total_ohm": 1.0, "b_total_us": 3.0},  # brak x_total_ohm
+        {"x_total_ohm": 2.0, "b_total_us": 3.0},  # brak r_total_ohm
+        {"r_total_ohm": 1.0, "x_total_ohm": 2.0, "b_total_us": None},  # jawny None
+        {},
+    ],
+)
+def test_line_incomplete_override_rejected(catalog_with_types, override):
+    """Karta FAB-D2 (D5): nadpisanie impedancji musi nieść KOMPLET (r, x, b)
+    albo jest odrzucone — częściowy override nie fabrykuje brakujących
+    składowych jako 0.0."""
+    with pytest.raises(ValueError, match="impedance_override.incomplete"):
+        resolve_line_params(
+            type_ref="line_100",
+            is_cable=False,
+            impedance_override=override,
+            length_km=10.0,
+            instance_r_ohm_per_km=0.5,
+            instance_x_ohm_per_km=0.6,
+            instance_b_us_per_km=1.0,
+            instance_rated_current_a=250.0,
+            catalog=catalog_with_types,
+        )
+
+
 def test_line_precedence_type_ref_wins(catalog_with_types):
     """Test: type_ref has precedence over instance params for Line."""
     result = resolve_line_params(

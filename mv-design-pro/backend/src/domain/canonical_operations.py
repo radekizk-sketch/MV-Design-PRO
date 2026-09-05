@@ -996,6 +996,52 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         fix_action_id=None,
         fix_navigation={"panel": "inspector", "tab": "katalog"},
     ),
+    # Karta FAB-D2 (D8): rodzaj DER spoza mapowania resolvera profili
+    # dynamicznych (`network_model/catalog/der_dynamic/resolver.py`) — BLOKUJE
+    # stabilność RMS/FRT-HVRT, bo solver nie ma z czego zbudować modelu
+    # dynamicznego. Zastępuje dawny cichy fallback do profilu PV.
+    "der.dynamic_profile_missing": ReadinessCodeSpec(
+        code="der.dynamic_profile_missing",
+        area=ReadinessArea.GENERATORS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Rodzaj źródła DER nie ma mapowania na profil dynamiczny — stabilność "
+            "RMS i FRT/LVRT/HVRT nie mogą zbudować modelu tego generatora"
+        ),
+        fix_action_id="fix_der_gen_type",
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "gen_type"},
+    ),
+    # Profil ROZWIĄZANY, ale z domyślnej wartości katalogu (nie jawnego wyboru
+    # projektanta/karty katalogowej) — WARNING z proweniencją, nie blokada:
+    # solver ma z czego liczyć, ale założenie jest widoczne do weryfikacji.
+    "der.dynamic_profile_default": ReadinessCodeSpec(
+        code="der.dynamic_profile_default",
+        area=ReadinessArea.GENERATORS,
+        priority=4,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Profil dynamiczny źródła DER pochodzi z wartości domyślnej katalogu "
+            "(nie z jawnego wskazania) — sprawdź, czy pasuje do rzeczywistego urządzenia"
+        ),
+        fix_action_id=None,
+        fix_navigation={"panel": "inspector", "tab": "katalog"},
+    ),
+    # Karta FAB-D2 (D3): Q generatora nieznany i niewyprowadzalny z jawnego
+    # Q-set-pointu karty katalogowej — 0 Mvar podstawione za brak byłoby
+    # WYNIKIEM (generator bezbiernościowy), nie brakiem danej.
+    "generator.q_missing": ReadinessCodeSpec(
+        code="generator.q_missing",
+        area=ReadinessArea.GENERATORS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Moc bierna generatora (Q) nie jest znana ani wyprowadzalna z karty "
+            "katalogowej — rozpływ mocy nie może przyjąć jej za zero"
+        ),
+        fix_action_id="fix_generator_q",
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "q_mvar"},
+    ),
     # Ring
     "ring.endpoints_missing": ReadinessCodeSpec(
         code="ring.endpoints_missing",
@@ -1290,6 +1336,39 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_action_id="fix_transformer_loss_data",
         fix_navigation={"panel": "katalog", "tab": "transformatory", "focus": "p0_kw"},
+    ),
+    # Karta FAB-D2 (D2) — konsument RÓŻNY od `transformer.loss_data_missing`
+    # powyżej (tamten karmi analizę ekonomiczną β_opt, p0+pk; ten — budowniczy
+    # wejścia solvera rozpływu, `solver_input/builder.py`): brak i0_percent
+    # LUB p0_kw => gałąź magnesująca transformatora NIEUWZGLĘDNIONA w
+    # rozpływie (zapisane jawnie w śladzie White Box), nie BLOCKER — IEC 60909
+    # (zwarcia) jej nie potrzebuje, traci wyłącznie dokładność strat jałowych.
+    "transformer.no_load_params_missing": ReadinessCodeSpec(
+        code="transformer.no_load_params_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=4,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Brak prądu jałowego (I0) lub strat jałowych (P0) transformatora — "
+            "gałąź magnesująca nie jest uwzględniona w rozpływie mocy"
+        ),
+        fix_action_id="fix_transformer_no_load_params",
+        fix_navigation={"panel": "katalog", "tab": "transformatory", "focus": "i0_percent"},
+    ),
+    # Grupa połączeń nieznana => BLOCKER dla analiz doziemnych/niesymetrycznych
+    # (składowa zerowa zależy JAKOŚCIOWO od układu połączeń, nie tylko
+    # ilościowo) — nigdy nie zgadywana jako "Dyn11" w materializacji.
+    "transformer.vector_group_missing": ReadinessCodeSpec(
+        code="transformer.vector_group_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Grupa połączeń transformatora nieznana — analizy doziemne/niesymetryczne "
+            "(składowa zerowa) nie mogą wyznaczyć układu bez tej danej"
+        ),
+        fix_action_id="fix_transformer_vector_group",
+        fix_navigation={"panel": "katalog", "tab": "transformatory", "focus": "vector_group"},
     ),
     "transformer.loading_factor_missing": ReadinessCodeSpec(
         code="transformer.loading_factor_missing",
