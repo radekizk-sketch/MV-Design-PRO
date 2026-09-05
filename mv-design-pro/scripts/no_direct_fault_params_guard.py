@@ -130,7 +130,6 @@ FAULT_NODE_PARAM = "fault_node_id"
 WHITELISTED_PATHS = {
     "domain/fault_scenario.py",
     "application/solvers/short_circuit_binding.py",
-    "application/execution_engine/service.py",
     "application/result_mapping/short_circuit_to_resultset_v1.py",
     "application/fault_scenario_service.py",
 }

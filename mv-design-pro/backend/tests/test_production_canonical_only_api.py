@@ -14,16 +14,10 @@ from tests.catalog_test_helpers import gpz_payload
 
 
 def _reset_runtime_state() -> None:
-    from api.execution_runs import get_engine
     from api.power_flow_runs import _interpretation_cache
     from enm.canonical_analysis import reset_canonical_runs
     from enm.store import reset_enm_store
 
-    engine = get_engine()
-    engine._runs.clear()
-    engine._result_sets.clear()
-    engine._study_cases.clear()
-    engine._case_runs.clear()
     _interpretation_cache.clear()
     reset_canonical_runs()
     reset_enm_store()

@@ -62,6 +62,71 @@ def read_run(run_id: str):
     assert any("[legacy-public-string]" in violation for violation in violations)
 
 
+def test_guard_rejects_public_router_importing_deleted_e3_engine(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    """Karta CV-3.3-A (2026-09-05): E3 (`ExecutionEngineService`, zero
+    konsumenta produkcyjnego) skasowany — zadna aktywna trasa nie moze go
+    wskrzesic, ani przez import modulu, ani przez sama nazwe klasy."""
+    module_path = write_module(
+        tmp_path,
+        "resurrected_e3_router.py",
+        """
+from application.execution_engine.service import ExecutionEngineService
+from fastapi import APIRouter
+
+router = APIRouter(prefix="/api/legacy-e3")
+
+@router.get("/{run_id}")
+def read_run(run_id: str):
+    engine = ExecutionEngineService()
+    return {"run_id": run_id, "engine": engine}
+""",
+    )
+    monkeypatch.setattr(guard, "active_api_module_paths", lambda: [module_path])
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+
+    violations = guard.check_legacy_public_paths()
+
+    assert any("[legacy-public-import]" in v and "execution_engine" in v for v in violations)
+    assert any("[legacy-public-name]" in v and "ExecutionEngineService" in v for v in violations)
+
+
+def test_guard_rejects_public_router_importing_deleted_unified_runs_and_r2(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    """Karta CV-3.3-A: E2-widmo (`unified_runs`/`unified_run_dispatch`) i
+    podmoduly martwe R2 (`AnalysisRunExportService`, `ResultsInspectorService`,
+    `AnalysisOrchestrator`) skasowane — ta sama zapadka pilnuje calego
+    klastra, nie jednej nazwy z karty."""
+    module_path = write_module(
+        tmp_path,
+        "resurrected_e2_r2_router.py",
+        """
+from application.analysis_run.orchestrator import AnalysisOrchestrator
+from application.unified_run_dispatch import UnifiedRunDispatchService
+from fastapi import APIRouter
+
+router = APIRouter(prefix="/api/legacy-e2")
+
+@router.get("/{run_id}")
+def read_run(run_id: str):
+    orch = AnalysisOrchestrator()
+    return {"run_id": run_id, "orch": orch, "dispatch": UnifiedRunDispatchService}
+""",
+    )
+    monkeypatch.setattr(guard, "active_api_module_paths", lambda: [module_path])
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+
+    violations = guard.check_legacy_public_paths()
+
+    assert any("orchestrator" in v for v in violations)
+    assert any("unified_run_dispatch" in v for v in violations)
+    assert any("AnalysisOrchestrator" in v for v in violations)
+
+
 def test_guard_accepts_canonical_public_router(tmp_path, monkeypatch) -> None:
     module_path = write_module(
         tmp_path,

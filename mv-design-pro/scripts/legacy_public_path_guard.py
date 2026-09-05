@@ -22,12 +22,33 @@ FORBIDDEN_IMPORTS = {
     "application.analysis_dispatch",
     "application.analysis_run.service",
     "domain.analysis_run",
+    # Karta CV-3.3-A (2026-09-05): E3 (drugi tor wykonania biegow, zero
+    # konsumenta produkcyjnego), E2-widmo (unified_runs + jego dyspozytor) i
+    # martwe podmoduly R2 skasowane. Zadna aktywna trasa /api nie moze ich
+    # wskrzesic.
+    "application.execution_engine",
+    "application.execution_engine.service",
+    "application.execution_engine.errors",
+    "application.execution_engine.load_flow_run_input",
+    "api.unified_runs",
+    "application.unified_run_dispatch",
+    "application.analysis_run.export_service",
+    "application.analysis_run.results_inspector",
+    "application.analysis_run.orchestrator",
+    "application.analysis_run.catalog_context",
+    "application.analysis_run.dtos",
 }
 FORBIDDEN_NAMES = {
     "AnalysisRun",
     "OperatingCase",
     "get_operating_case",
     "operating_case_id",
+    # Karta CV-3.3-A (2026-09-05).
+    "ExecutionEngineService",
+    "AnalysisRunExportService",
+    "ResultsInspectorService",
+    "AnalysisOrchestrator",
+    "AnalysisDispatchService",
 }
 
 # CV-3.2 (kasacja C2/C3, karta CV-3.2) — bramka wskrzeszenia. C2

@@ -19,6 +19,12 @@ I-6  Dziennik zmian idzie ZA modelem przy promocji przypadku na model projektu �
 I-7  Ścieżka projektowa nie FABRYKUJE modelu domyślnego, gdy istnieją pliki zastane
      (inaczej realny model projektanta ląduje w `legacy_przypadki/` jako ROZBIEZNY,
      a projekt dostaje pustą sieć). [BYŁ CZERWONY — `analysis_dispatch/service.py`]
+     USUNIĘTY (karta CV-3.3-A, 2026-09-05): jedyny wywoływacz tego scenariusza
+     (`AnalysisDispatchService.dispatch(..., project_id=...)`) skasowany razem z
+     `analysis_dispatch`/`api/unified_runs.py` (E2-widmo, zero konsumenta
+     produkcyjnego) — ścieżka, którą ten test próbował obalić, już nie istnieje.
+     Klasa defektu (ścieżka adresowana projektem fabrykuje pusty model) pozostaje
+     pod strażą I-5 przez żywy, produkcyjny wpis: `project_archive/service.py`.
 I-8  Równoległe pierwsze tłumaczenie dwóch przypadków tego samego projektu daje
      DOKŁADNIE jedną promocję i model przypadku aktywnego. [zielony od początku]
 I-9  Dwa równoległe cykle odczyt→zapis adresowane przez dwa RÓŻNE przypadki TEGO
@@ -251,61 +257,17 @@ def test_i6_promocja_nie_nadpisuje_istniejacego_dziennika_projektu(uow_factory) 
 
 # ---------------------------------------------------------------------------
 # I-7: ścieżka projektowa nie fabrykuje modelu domyślnego
+#
+# `test_i7_dispatch_nn_nie_fabrykuje_pustego_modelu_projektu` wołał
+# `AnalysisDispatchService(uow_factory).dispatch(AnalysisKind.FAULT_LOOP_NN,
+# project_id, ...)` — JEDYNY produkcyjny wywoływacz tego scenariusza. Karta
+# CV-3.3-A (2026-09-05) skasowała `analysis_dispatch` razem z
+# `api/unified_runs.py` (E2-widmo: zero konsumenta produkcyjnego), więc próba
+# obalenia nie ma już żadnej ścieżki do wykonania — usunięta razem z modułem,
+# nie zamaskowana. Klasa defektu (ścieżka adresowana projektem fabrykuje pusty
+# model zamiast migrować plik zastany) pozostaje pod strażą I-5 przez żywy,
+# produkcyjny wpis: `project_archive/service.py::_collect_enm`.
 # ---------------------------------------------------------------------------
-
-
-def test_i7_dispatch_nn_nie_fabrykuje_pustego_modelu_projektu(uow_factory) -> None:
-    """Dispatch analizy nN (adresowany PROJEKTEM) widzi model zastany, nie pustkę.
-
-    OBALENIE, KTÓRE SIĘ UDAŁO (naprawione w tej karcie). `_dispatch_fault_loop_nn`
-    i `_dispatch_swz_nn` budowały klucz przez `klucz_twin_projektu(project_id)` i
-    wołały `get_enm` — a `get_enm` TWORZY i ZAPISUJE model domyślny dla klucza, pod
-    którym nic nie leży. Skutek dla projektanta: projekt dostawał PUSTĄ sieć, a jego
-    realny model przy pierwszym wejściu przez `/api/cases/...` był porównywany hashem
-    z tą pustką i lądował w `legacy_przypadki/` ze statusem ROZBIEZNY.
-    """
-    from domain.models import OperatingCase
-
-    project_id, case_ids = _projekt_z_przypadkami(uow_factory, 1, aktywny=0)
-    operating_case_id = uuid4()
-    with uow_factory() as uow:
-        uow.cases.add_operating_case(
-            OperatingCase(
-                id=operating_case_id,
-                project_id=project_id,
-                name="Przypadek pracy",
-                case_payload={},
-            ),
-            commit=False,
-        )
-        uow.wizard.set_active_case_id(project_id, operating_case_id, commit=False)
-        uow.commit()
-
-    store.set_enm(str(case_ids[0]), _model("model zastany", ("SZYNA-ZASTANA",)))
-    _swiezy_proces()
-
-    from application.analysis_dispatch.service import AnalysisDispatchService
-    from domain.analysis_kind import AnalysisKind
-
-    # Widok pętli zwarcia nN na modelu bez stacji nN zgłosi błąd — i dobrze. Przedmiotem
-    # tego testu jest KLUCZ magazynu i migracja, a nie wynik widoku nN, więc błąd widoku
-    # nie może przesądzać o werdykcie; sprawdzamy STAN MAGAZYNU po próbie.
-    try:
-        AnalysisDispatchService(uow_factory).dispatch(
-            AnalysisKind.FAULT_LOOP_NN,
-            project_id,
-            None,
-            {"station_ref": "STACJA-NIEISTNIEJACA"},
-        )
-    except Exception:  # noqa: BLE001 - patrz komentarz wyżej
-        pass
-
-    klucz = klucz_twin_projektu(project_id)
-    assert store.has_enm(klucz)
-    refy = [bus.ref_id for bus in store.get_enm(klucz).buses]
-    assert refy == ["SZYNA-ZASTANA"], "ścieżka projektowa podmieniła model na domyślny"
-    statusy = {w["status"] for w in store.wiersze_manifestu_legacy()}
-    assert "ROZBIEZNY" not in statusy
 
 
 # ---------------------------------------------------------------------------

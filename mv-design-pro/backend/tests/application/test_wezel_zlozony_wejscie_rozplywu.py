@@ -16,20 +16,27 @@ stoi odbior i zrodlo naraz:
    odrzucane jako sprzecznosc.
 
 Naprawa jest w warstwie budowania wejscia (`merge_bus_components`), wspolna dla
-WSZYSTKICH CZTERECH budowniczych: moc szyny AKUMULUJE sie, a skladniki zostaja
+TRZECH budowniczych: moc szyny AKUMULUJE sie, a skladniki zostaja
 odzyskiwalne — wlasna moc zrodla laduje w `inverter_p_mw`/`inverter_q_mvar`
 (konwencja generatorowa), baza odbiorowa w `zip_base_p_mw`/`zip_base_q_mvar`.
 
-Czwarty budowniczy — `NetworkWizardService.build_power_flow_input` — zostal
+Trzeci budowniczy — `NetworkWizardService.build_power_flow_input` — zostal
 domkniety osobno (tor W1). Do tego czasu KREATOR, czyli jedyna droga, ktora ma
 uzytkownik, odrzucal legalny model prosumencki bledem `duplicate PQSpec.node_id
 entries`: odbior i regulowany falownik na jednej szynie dawaly dwa wpisy o tym
-samym `node_id`. Parytet CZTERECH budowniczych (`test_czterej_budowniczowie_
+samym `node_id`. Parytet TRZECH budowniczych (`test_trzej_budowniczowie_
 mowia_jednym_glosem`) jest dowodem, ze klasa defektu jest ZAMKNIETA — nie ze
 naprawiono kolejna instancje.
 
+(Karta CV-3.3-A, 2026-09-05: czwarty budowniczy z tego czasu —
+`application.execution_engine.load_flow_run_input.LoadFlowRunInput`,
+"budowniczy_silnika_biegow" — zostal skasowany razem z calym
+`ExecutionEngineService` (E3, drugi tor wykonania biegow bez konsumenta
+produkcyjnego). Parytet zwezony do trzech budowniczych zywych produkcyjnie;
+fizyka skladania szyny zlozonej pozostaje pokryta przez pozostale trzy.)
+
 Testy sa ILOCZYNEM CECH, nie przykladem z karty: {brak odbioru, odbior
-stalomocowy, odbior ZIP} × {zrodlo z regulacja, zrodlo bez} × {czterej
+stalomocowy, odbior ZIP} × {zrodlo z regulacja, zrodlo bez} × {trzej
 budowniczowie}. Liczby rozplywu sedziuje NIEZALEZNY Newton napisany w tescie —
 zaden wynik solvera nie jest porownywany wylacznie z innym wynikiem solvera.
 """
@@ -49,12 +56,6 @@ backend_src = Path(__file__).parents[2] / "src"
 sys.path.insert(0, str(backend_src))
 
 from application.analysis_run import AnalysisRunService
-from application.execution_engine.load_flow_run_input import (
-    LoadFlowBranchInput,
-    LoadFlowLoadInput,
-    LoadFlowNodeInput,
-    LoadFlowRunInput,
-)
 from application.network_wizard import NetworkWizardService
 from application.network_wizard.dtos import (
     BranchPayload,
@@ -84,7 +85,7 @@ from network_model.solvers.power_flow_zip import ZipCoeffs
 
 # --------------------------------------------------------------------------
 # Wspolny scenariusz: slack A -- linia -- szyna B (ta sama siec u kazdego z
-# czterech budowniczych, zeby parytet dotyczyl kontraktu, a nie topologii).
+# trzech budowniczych, zeby parytet dotyczyl kontraktu, a nie topologii).
 # --------------------------------------------------------------------------
 BASE_MVA = 10.0
 KV = 15.0
@@ -183,9 +184,8 @@ def _options() -> PowerFlowOptions:
 
 
 # --------------------------------------------------------------------------
-# Czterej budowniczowie — kazdy dostaje TEN SAM opis szyny zlozonej, w swoim
-# wlasnym ksztalcie danych (dict / wpis kanoniczny / model kreatora / migawka
-# biegu).
+# Trzej budowniczowie — kazdy dostaje TEN SAM opis szyny zlozonej, w swoim
+# wlasnym ksztalcie danych (dict / model kreatora / migawka biegu).
 # --------------------------------------------------------------------------
 
 
@@ -216,45 +216,6 @@ def _via_generic_builder(load_kind: str, source_kind: str) -> PowerFlowInput:
         pq=entries,
         options=_options(),
     )
-
-
-def _via_execution_engine(load_kind: str, source_kind: str) -> PowerFlowInput:
-    """Budowniczy 2: `application.execution_engine.load_flow_run_input.LoadFlowRunInput`."""
-    loads: list[LoadFlowLoadInput] = []
-    load_p, load_q = _load_power(load_kind)
-    if load_kind != "brak_odbioru":
-        loads.append(
-            LoadFlowLoadInput(
-                node_id="B",
-                p_mw=load_p,
-                q_mvar=load_q,
-                zip_coeffs=ZIP_Z if load_kind == "odbior_zip" else None,
-            )
-        )
-    loads.append(
-        LoadFlowLoadInput(
-            node_id="B",
-            p_mw=-SRC_P_MW,
-            q_mvar=-SRC_Q_MVAR,
-            inverter_control_params=(
-                dict(CONTROL_PARAMS) if source_kind == "zrodlo_regulowane" else None
-            ),
-        )
-    )
-    run_input = LoadFlowRunInput(
-        base_mva=BASE_MVA,
-        slack_node_id="A",
-        slack_u_pu=1.0,
-        slack_angle_rad=0.0,
-        nodes=(
-            LoadFlowNodeInput("A", "SLACK", KV),
-            LoadFlowNodeInput("B", "PQ", KV),
-        ),
-        branches=(LoadFlowBranchInput("L", "A", "B", R_OHM_KM, X_OHM_KM, 0.0, LEN_KM),),
-        loads=tuple(loads),
-        options=_options(),
-    )
-    return run_input.to_power_flow_input()
 
 
 def _analysis_run_services() -> tuple[NetworkWizardService, AnalysisRunService]:
@@ -451,7 +412,6 @@ def _via_wizard(load_kind: str, source_kind: str) -> tuple[PowerFlowInput, str]:
 
 BUILDERS = (
     "budowniczy_generyczny",
-    "budowniczy_silnika_biegow",
     "budowniczy_kreatora",
     "budowniczy_analysis_run",
 )
@@ -461,9 +421,6 @@ def _bus_spec(builder: str, load_kind: str, source_kind: str) -> PQSpec:
     """Zwrocony `PQSpec` szyny zlozonej od wskazanego budowniczego."""
     if builder == "budowniczy_generyczny":
         pf_input = _via_generic_builder(load_kind, source_kind)
-        bus_id = "B"
-    elif builder == "budowniczy_silnika_biegow":
-        pf_input = _via_execution_engine(load_kind, source_kind)
         bus_id = "B"
     elif builder == "budowniczy_kreatora":
         pf_input, bus_id = _via_wizard(load_kind, source_kind)
@@ -475,7 +432,7 @@ def _bus_spec(builder: str, load_kind: str, source_kind: str) -> PQSpec:
 
 
 # --------------------------------------------------------------------------
-# (a) ILOCZYN CECH: {brak, stalomocowy, ZIP} × {z regulacja, bez} × 4 budowniczych
+# (a) ILOCZYN CECH: {brak, stalomocowy, ZIP} × {z regulacja, bez} × 3 budowniczych
 # --------------------------------------------------------------------------
 
 
@@ -523,8 +480,8 @@ def test_wezel_zlozony_niesie_skladniki_a_nie_sume(
 
 @pytest.mark.parametrize("source_kind", SOURCE_KINDS)
 @pytest.mark.parametrize("load_kind", LOAD_KINDS)
-def test_czterej_budowniczowie_mowia_jednym_glosem(load_kind: str, source_kind: str) -> None:
-    """Parytet: ten sam scenariusz daje z KAZDEGO z czterech budowniczych TEN SAM
+def test_trzej_budowniczowie_mowia_jednym_glosem(load_kind: str, source_kind: str) -> None:
+    """Parytet: ten sam scenariusz daje z KAZDEGO z trzech budowniczych TEN SAM
     ksztalt szyny.
 
     To jest dowod, ze klasa defektu jest ZAMKNIETA, a nie ze naprawiono kolejna
@@ -680,27 +637,6 @@ def _aggregated_bus_spec(builder: str, load_kind: str) -> PQSpec:
             options=_options(),
         )
         return pf_input.pq[0]
-    if builder == "budowniczy_silnika_biegow":
-        run_input = LoadFlowRunInput(
-            base_mva=BASE_MVA,
-            slack_node_id="A",
-            slack_u_pu=1.0,
-            slack_angle_rad=0.0,
-            nodes=(LoadFlowNodeInput("A", "SLACK", KV), LoadFlowNodeInput("B", "PQ", KV)),
-            branches=(LoadFlowBranchInput("L", "A", "B", R_OHM_KM, X_OHM_KM, 0.0, LEN_KM),),
-            loads=(
-                LoadFlowLoadInput(
-                    node_id="B",
-                    p_mw=net_p,
-                    q_mvar=net_q,
-                    inverter_control_params=dict(CONTROL_PARAMS),
-                    inverter_p_mw=SRC_P_MW,
-                    inverter_q_mvar=SRC_Q_MVAR,
-                ),
-            ),
-            options=_options(),
-        )
-        return run_input.to_power_flow_input().pq[0]
     service, run, bus_id = _build_analysis_run(load_kind, "zrodlo_regulowane")
     pozostale = [item for item in run.input_snapshot["pq"] if item["node_id"] != bus_id]
     kontrola = next(
@@ -724,11 +660,10 @@ def _aggregated_bus_spec(builder: str, load_kind: str) -> PQSpec:
 # Kreator jest tu SWIADOMIE poza zbiorem, i nie „bo poza zakresem": jego wejsciem
 # jest MODEL (tabele odbiorow i zrodel), a nie payload, wiec ksztalt „jeden wpis o
 # mocy wypadkowej deklarujacy wlasna moc zrodla" jest w nim NIEWYRAZALNY — kreator
-# zawsze zna skladniki z osobna. Pozostali trzej czytaja payload/migawke, ktore
+# zawsze zna skladniki z osobna. Pozostali dwaj czytaja payload/migawke, ktore
 # moga przyjsc juz zagregowane, i dlatego musza umiec ten drugi ksztalt.
 BUILDERS_Z_WPISEM_ZAGREGOWANYM = (
     "budowniczy_generyczny",
-    "budowniczy_silnika_biegow",
     "budowniczy_analysis_run",
 )
 
@@ -750,29 +685,6 @@ def test_wpis_zagregowany_deklaruje_wlasna_moc_zrodla(builder: str, load_kind: s
     assert zagregowany.inverter_p_mw == pytest.approx(SRC_P_MW, abs=1e-12)
     assert zagregowany.inverter_q_mvar == pytest.approx(SRC_Q_MVAR, abs=1e-12)
     assert zagregowany.zip_coeffs == skladnikowy.zip_coeffs
-
-
-def test_zadeklarowana_moc_zrodla_wchodzi_do_odcisku_kanonicznego() -> None:
-    """Addytywne NIE znaczy ignorowane: gdy wpis deklaruje wlasna moc zrodla,
-    odcisk kanoniczny MUSI sie zmienic (inaczej dwa rozne modele mialyby jedna
-    tozsamosc biegu)."""
-    common: dict[str, object] = {
-        "base_mva": BASE_MVA,
-        "slack_node_id": "A",
-        "slack_u_pu": 1.0,
-        "slack_angle_rad": 0.0,
-        "nodes": (LoadFlowNodeInput("A", "SLACK", KV), LoadFlowNodeInput("B", "PQ", KV)),
-        "branches": (LoadFlowBranchInput("L", "A", "B", R_OHM_KM, X_OHM_KM, 0.0, LEN_KM),),
-    }
-    bez_pola = LoadFlowRunInput(
-        **common, loads=(LoadFlowLoadInput(node_id="B", p_mw=1.0, q_mvar=0.5),)
-    )
-    z_polem = LoadFlowRunInput(
-        **common,
-        loads=(LoadFlowLoadInput(node_id="B", p_mw=1.0, q_mvar=0.5, inverter_p_mw=2.0),),
-    )
-    assert bez_pola.canonical_hash() != z_polem.canonical_hash()
-    assert "inverter_p_mw" in z_polem.canonical_dict()["loads"][0]
 
 
 # --------------------------------------------------------------------------
@@ -947,30 +859,6 @@ def test_model_kreatora_bez_szyny_zlozonej_liczy_sie_bajtowo_jak_dotad(load_kind
     )
 
 
-def test_wpis_bez_nowych_pol_nie_zmienia_odcisku_kanonicznego() -> None:
-    """Pole ADDYTYWNE: klucze `inverter_p_mw`/`inverter_q_mvar` pojawiaja sie w
-    kanonicznym slowniku dopiero, gdy wpis je deklaruje, wiec kazdy payload
-    zapisany przed ich istnieniem hashuje sie identycznie. Odcisk przypiety
-    literalem — inaczej zmiana kolejnosci kluczy przeszla by niezauwazona."""
-    historyczny = LoadFlowRunInput(
-        base_mva=100.0,
-        slack_node_id="A",
-        slack_u_pu=1.0,
-        slack_angle_rad=0.0,
-        nodes=(LoadFlowNodeInput("A", "SLACK", KV), LoadFlowNodeInput("B", "PQ", KV)),
-        branches=(LoadFlowBranchInput("L", "A", "B", 0.1, 0.2, 0.0, 1.0),),
-        loads=(LoadFlowLoadInput(node_id="B", p_mw=2.0, q_mvar=0.8),),
-    )
-    canonical_load = historyczny.canonical_dict()["loads"][0]
-    assert set(canonical_load) == {"node_id", "p_mw", "q_mvar"}
-    # Literal zmierzony na wersji SPRZED naprawy (baza V12K-316) i po niej —
-    # identyczny.
-    assert (
-        historyczny.canonical_hash()
-        == "050e954d16102af2da5ffe0134e2f2baa9cf3cbbb21302310294be212d4681cc"
-    )
-
-
 def test_migawka_odbioru_stalomocowego_nie_zyskuje_nowych_kluczy() -> None:
     """Migawka biegu `AnalysisRunService` niesie model napieciowy odbioru tylko
     wtedy, gdy odbior go ma; odbior stalomocowy zachowuje swoja migawke — a wiec i
@@ -1027,7 +915,7 @@ def _judge(p_of_v, q_of_v) -> tuple[float, float, float]:
 def test_szyna_prosumencka_liczy_sie_zgodnie_z_niezaleznym_newtonem(
     builder: str, load_kind: str
 ) -> None:
-    """Kazdy z CZTERECH budowniczych daje wejscie, na ktorym rozplyw ZGADZA SIE z
+    """Kazdy z TRZECH budowniczych daje wejscie, na ktorym rozplyw ZGADZA SIE z
     niezaleznym Newtonem — takze dla wariantu, ktory przed naprawa albo wywracal
     bieg (duplikat / brak rozdzielenia ZIP), albo liczyl moc bierna zrodla z mocy
     ODBIORU (brak znacznika szyny prosumenckiej)."""

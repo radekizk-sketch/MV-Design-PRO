@@ -11,7 +11,6 @@ from typing import Any
 from uuid import UUID
 
 from api.klucz_twin_dep import KluczTwin
-from application.execution_engine import ExecutionEngineService
 from domain.execution import ExecutionAnalysisType
 from enm.canonical_analysis import (
     build_execution_result_set,
@@ -32,13 +31,6 @@ from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 router = APIRouter(tags=["execution-runs"])
-
-# Retained only for compatibility with modules/tests importing get_engine().
-_engine = ExecutionEngineService()
-
-
-def get_engine() -> ExecutionEngineService:
-    return _engine
 
 
 class CreateRunRequest(BaseModel):

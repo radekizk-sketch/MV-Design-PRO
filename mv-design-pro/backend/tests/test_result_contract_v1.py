@@ -126,15 +126,9 @@ def sample_global_results() -> dict:
 
 
 def _reset_canonical_backend_state() -> None:
-    from api.execution_runs import get_engine
     from enm.canonical_analysis import reset_canonical_runs
     from enm.store import reset_enm_store
 
-    engine = get_engine()
-    engine._runs.clear()
-    engine._result_sets.clear()
-    engine._study_cases.clear()
-    engine._case_runs.clear()
     reset_canonical_runs()
     reset_enm_store()
 

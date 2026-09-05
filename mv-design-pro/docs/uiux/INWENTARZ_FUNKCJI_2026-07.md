@@ -121,7 +121,11 @@ odstawiony z uzasadnieniem; zapadka działa w obie strony).
 - **USUNIĘTE 2026-08-08** jako cienie zdolności wystawionych żywą trasą albo sieroty bez
   konsumenta: analysis_runs_index, analysis_runs_read, cases, design_synth,
   domain_operations, protection_engine_v1 (sam router HTTP; `domain/protection_engine_v1.py`
-  zostaje — jest żywy przez `application/execution_engine`), snapshots, topology_links.
+  zostaje — SPROSTOWANIE 2026-09-05 (karta CV-3.3-A): `application/execution_engine`
+  skasowany razem z całym E3 (zero konsumenta produkcyjnego), `protection_engine_v1.py`
+  pozostaje żywy przez `solver_input/eligibility.py`,
+  `application/result_mapping/{protection_to_overlay_v1,protection_to_resultset_v1}.py`,
+  `application/protection_current_resolver.py`), snapshots, topology_links.
   Uzasadnienie per moduł w komunikacie commitu kasacji.
 - **ŚWIADOMIE ODSTAWIONE** (moduł zostaje, router niewpięty, decyzja o ZDOLNOŚCI należy do
   osobnej karty — uzasadnienia merytoryczne w `SWIADOMIE_ODSTAWIONE` w guardzie):

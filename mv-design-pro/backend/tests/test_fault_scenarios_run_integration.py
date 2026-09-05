@@ -53,17 +53,15 @@ def _reset_services():
     magazynu ENM (`reset_enm_store`) czyści JE RÓWNIEŻ (`usun_wszystkie_
     scenariusze` wołane wewnątrz), więc osobny wpis serwisu nie jest już
     potrzebny.
+
+    Reset silnika E3 (`api.execution_runs.get_engine`) zdjęty karta CV-3.3-A
+    (2026-09-05): `ExecutionEngineService` skasowany (zero konsumenta
+    produkcyjnego), tor tego pliku od zawsze idzie przez `enm.canonical_
+    analysis`, który resetuje `reset_canonical_runs`.
     """
-    from api.execution_runs import get_engine
     from application.twin_key import zapomnij_migracje
     from enm.canonical_analysis import reset_canonical_runs
     from enm.store import reset_enm_store
-
-    engine = get_engine()
-    engine._runs.clear()
-    engine._result_sets.clear()
-    engine._study_cases.clear()
-    engine._case_runs.clear()
 
     reset_canonical_runs()
     reset_enm_store()

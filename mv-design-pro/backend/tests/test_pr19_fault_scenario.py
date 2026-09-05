@@ -25,9 +25,7 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-import numpy as np
 import pytest
-from application.execution_engine.service import ExecutionEngineService
 from application.fault_scenario_service import (
     FaultScenarioDuplicateError,
     FaultScenarioHasRunsError,
@@ -37,7 +35,6 @@ from application.fault_scenario_service import (
 from domain.execution import (
     ExecutionAnalysisType,
     ResultSet,
-    RunStatus,
 )
 from domain.fault_scenario import (
     FAULT_TYPE_TO_ANALYSIS,
@@ -49,18 +46,11 @@ from domain.fault_scenario import (
     compute_scenario_content_hash,
     new_fault_scenario,
 )
-from domain.study_case import StudyCaseConfig, new_study_case
-from network_model.core.branch import BranchType, LineBranch, TransformerBranch
-from network_model.core.graph import NetworkGraph
-from network_model.core.inverter import InverterSource
-from network_model.core.node import Node, NodeType
-from network_model.core.ybus import AdmittanceMatrixBuilder
 
 # =============================================================================
 # Fixtures
 # =============================================================================
 
-MOCK_PROJECT_ID = uuid4()
 MOCK_CASE_ID = uuid4()
 
 # Default test scenario name (Polish, user-facing).
@@ -75,132 +65,16 @@ def _klucz() -> str:
     return f"pr19-fault-svc-{uuid4()}"
 
 
-def _create_golden_graph() -> NetworkGraph:
-    """Golden MV network for testing (same as PR-18)."""
-    graph = NetworkGraph()
-
-    graph.add_node(
-        Node(
-            id="SLACK",
-            name="Stacja 110kV",
-            node_type=NodeType.PQ,
-            voltage_level=110.0,
-            active_power=0.0,
-            reactive_power=0.0,
-        )
-    )
-    graph.add_node(
-        Node(
-            id="BUS_MV",
-            name="Szyna SN 20kV",
-            node_type=NodeType.PQ,
-            voltage_level=20.0,
-            active_power=5.0,
-            reactive_power=2.0,
-        )
-    )
-    graph.add_node(
-        Node(
-            id="BUS_LOAD",
-            name="Szyna odbiorcza 20kV",
-            node_type=NodeType.PQ,
-            voltage_level=20.0,
-            active_power=10.0,
-            reactive_power=4.0,
-        )
-    )
-    graph.add_node(
-        Node(
-            id="GND",
-            name="Uziemienie",
-            node_type=NodeType.PQ,
-            voltage_level=20.0,
-            active_power=0.0,
-            reactive_power=0.0,
-        )
-    )
-
-    graph.add_branch(
-        TransformerBranch(
-            id="T1",
-            name="Transformator T1",
-            branch_type=BranchType.TRANSFORMER,
-            from_node_id="SLACK",
-            to_node_id="BUS_MV",
-            in_service=True,
-            rated_power_mva=25.0,
-            voltage_hv_kv=110.0,
-            voltage_lv_kv=20.0,
-            uk_percent=10.0,
-            pk_kw=120.0,
-            i0_percent=0.5,
-            p0_kw=25.0,
-            vector_group="Dyn11",
-            tap_position=0,
-            tap_step_percent=2.5,
-            type_ref="TRAFO_110_20_25MVA",
-        )
-    )
-
-    graph.add_branch(
-        LineBranch(
-            id="C1",
-            name="Kabel C1",
-            branch_type=BranchType.CABLE,
-            from_node_id="BUS_MV",
-            to_node_id="BUS_LOAD",
-            in_service=True,
-            r_ohm_per_km=0.125,
-            x_ohm_per_km=0.08,
-            b_us_per_km=260.0,
-            length_km=5.0,
-            rated_current_a=400.0,
-            type_ref="YAKY_3x240",
-        )
-    )
-
-    graph.add_branch(
-        LineBranch(
-            id="REF",
-            name="Ref GND",
-            branch_type=BranchType.LINE,
-            from_node_id="BUS_LOAD",
-            to_node_id="GND",
-            in_service=True,
-            r_ohm_per_km=1e9,
-            x_ohm_per_km=0.0,
-            b_us_per_km=0.0,
-            length_km=1.0,
-            rated_current_a=1.0,
-        )
-    )
-
-    graph.add_inverter_source(
-        InverterSource(
-            id="INV1",
-            name="Falownik PV 1",
-            node_id="BUS_LOAD",
-            in_rated_a=100.0,
-            k_sc=1.1,
-            contributes_negative_sequence=False,
-            contributes_zero_sequence=False,
-            in_service=True,
-        )
-    )
-
-    return graph
-
-
-def _create_engine_with_case():
-    """Create ExecutionEngineService with registered study case."""
-    engine = ExecutionEngineService()
-    case = new_study_case(
-        project_id=MOCK_PROJECT_ID,
-        name="PR-19 test case",
-        config=StudyCaseConfig(c_factor_max=1.10, thermal_time_seconds=1.0),
-    )
-    engine.register_study_case(case)
-    return engine, case
+# Historia: golden graf `_create_golden_graph()` i pomocnik silnika
+# `_create_engine_with_case()` (surowy `network_model.core.graph.NetworkGraph`
+# + `ExecutionEngineService.execute_run_by_scenario`) zdjete karta CV-3.3-A
+# (2026-09-05) razem z E3 (`application/execution_engine/**`, zero konsumenta
+# produkcyjnego) — jedyny konsument obu pomocnikow, klasa
+# `TestExecutionEngineScenarioIntegration`, tez zdjeta (patrz sekcja 5 nizej).
+# Fizyka (SC3F/SC2F/SC1F przez scenariusz zwarciowy, determinizm, 3F>2F) ma
+# rownowazny dowod na torze kanonicznym: `tests/test_fault_scenarios_run_integration.py`
+# (`create_run_from_scenario`, karta CV-1-W/C6-PERSIST, POST /fault-scenarios/{id}/runs)
+# oraz `tests/enm/test_short_circuit_migracja_e3_golden.py` (migracja E3, ta karta).
 
 
 # =============================================================================
@@ -770,197 +644,13 @@ class TestFaultScenarioService:
 
 
 # =============================================================================
-# 5. EXECUTION ENGINE INTEGRATION (execute_run_by_scenario)
+# 5. EXECUTION ENGINE INTEGRATION (execute_run_by_scenario) — USUNIETA
 # =============================================================================
-
-
-class TestExecutionEngineScenarioIntegration:
-    """Test execute_run_by_scenario via FaultScenario."""
-
-    def test_sc_3f_via_scenario(self):
-        """SC_3F execution via FaultScenario produces DONE + ResultSet."""
-        graph = _create_golden_graph()
-        engine, case = _create_engine_with_case()
-
-        scenario = new_fault_scenario(
-            study_case_id=case.id,
-            name="Zwarcie 3F — BUS_MV",
-            fault_type=FaultType.SC_3F,
-            location=FaultLocation(element_ref="BUS_MV", location_type="BUS"),
-        )
-
-        run = engine.create_run(
-            study_case_id=case.id,
-            analysis_type=ExecutionAnalysisType.SC_3F,
-            solver_input={"scenario_hash": scenario.content_hash},
-        )
-
-        done_run, rs = engine.execute_run_by_scenario(
-            run.id,
-            fault_scenario=scenario,
-            graph=graph,
-            readiness_snapshot={"ready": True},
-            validation_snapshot={"is_valid": True},
-        )
-
-        assert done_run.status == RunStatus.DONE
-        assert rs.analysis_type == ExecutionAnalysisType.SC_3F
-        assert rs.global_results["ikss_a"] > 0
-        assert rs.global_results["ip_a"] > 0
-
-    def test_sc_2f_via_scenario(self):
-        """SC_2F execution via FaultScenario produces DONE."""
-        graph = _create_golden_graph()
-        engine, case = _create_engine_with_case()
-
-        scenario = new_fault_scenario(
-            study_case_id=case.id,
-            name="Zwarcie 2F — BUS_MV",
-            fault_type=FaultType.SC_2F,
-            location=FaultLocation(element_ref="BUS_MV", location_type="BUS"),
-        )
-
-        run = engine.create_run(
-            study_case_id=case.id,
-            analysis_type=ExecutionAnalysisType.SC_2F,
-            solver_input={"scenario_hash": scenario.content_hash},
-        )
-
-        done_run, rs = engine.execute_run_by_scenario(
-            run.id,
-            fault_scenario=scenario,
-            graph=graph,
-            readiness_snapshot={"ready": True},
-            validation_snapshot={"is_valid": True},
-        )
-
-        assert done_run.status == RunStatus.DONE
-        assert rs.global_results["ikss_a"] > 0
-
-    def test_sc_1f_via_scenario_with_z0(self):
-        """SC_1F execution via FaultScenario with Z0 produces DONE."""
-        graph = _create_golden_graph()
-        engine, case = _create_engine_with_case()
-
-        builder = AdmittanceMatrixBuilder(graph)
-        y_bus = builder.build()
-        z1_bus = np.linalg.inv(y_bus)
-        z0_bus = z1_bus * 3.0
-
-        scenario = new_fault_scenario(
-            study_case_id=case.id,
-            name="Zwarcie 1F — BUS_MV",
-            fault_type=FaultType.SC_1F,
-            location=FaultLocation(element_ref="BUS_MV", location_type="BUS"),
-            z0_bus_data={"placeholder": True},
-        )
-
-        run = engine.create_run(
-            study_case_id=case.id,
-            analysis_type=ExecutionAnalysisType.SC_1F,
-            solver_input={"scenario_hash": scenario.content_hash},
-        )
-
-        done_run, rs = engine.execute_run_by_scenario(
-            run.id,
-            fault_scenario=scenario,
-            graph=graph,
-            readiness_snapshot={"ready": True},
-            validation_snapshot={"is_valid": True},
-            z0_bus=z0_bus,
-        )
-
-        assert done_run.status == RunStatus.DONE
-        assert rs.global_results["ikss_a"] > 0
-
-    def test_scenario_determinism(self):
-        """Two runs via same scenario produce identical results."""
-        graph = _create_golden_graph()
-        scenario = new_fault_scenario(
-            study_case_id=MOCK_CASE_ID,
-            name="Determinizm — BUS_MV",
-            fault_type=FaultType.SC_3F,
-            location=FaultLocation(element_ref="BUS_MV", location_type="BUS"),
-        )
-
-        engine_a, case_a = _create_engine_with_case()
-        engine_b, case_b = _create_engine_with_case()
-
-        run_a = engine_a.create_run(
-            study_case_id=case_a.id,
-            analysis_type=ExecutionAnalysisType.SC_3F,
-            solver_input={"hash": scenario.content_hash},
-        )
-        run_b = engine_b.create_run(
-            study_case_id=case_b.id,
-            analysis_type=ExecutionAnalysisType.SC_3F,
-            solver_input={"hash": scenario.content_hash},
-        )
-
-        _, rs_a = engine_a.execute_run_by_scenario(
-            run_a.id,
-            fault_scenario=scenario,
-            graph=graph,
-            readiness_snapshot={"ready": True},
-            validation_snapshot={"is_valid": True},
-        )
-        _, rs_b = engine_b.execute_run_by_scenario(
-            run_b.id,
-            fault_scenario=scenario,
-            graph=graph,
-            readiness_snapshot={"ready": True},
-            validation_snapshot={"is_valid": True},
-        )
-
-        assert rs_a.global_results == rs_b.global_results
-
-    def test_3f_gt_2f_via_scenario(self):
-        """IEC 60909: I_3F > I_2F at same fault node via scenarios."""
-        graph = _create_golden_graph()
-
-        scenario_3f = new_fault_scenario(
-            study_case_id=MOCK_CASE_ID,
-            name="Porównanie 3F",
-            fault_type=FaultType.SC_3F,
-            location=FaultLocation(element_ref="BUS_MV", location_type="BUS"),
-        )
-        scenario_2f = new_fault_scenario(
-            study_case_id=MOCK_CASE_ID,
-            name="Porównanie 2F",
-            fault_type=FaultType.SC_2F,
-            location=FaultLocation(element_ref="BUS_MV", location_type="BUS"),
-        )
-
-        engine_3f, case_3f = _create_engine_with_case()
-        engine_2f, case_2f = _create_engine_with_case()
-
-        run_3f = engine_3f.create_run(
-            study_case_id=case_3f.id,
-            analysis_type=ExecutionAnalysisType.SC_3F,
-            solver_input={"hash": scenario_3f.content_hash},
-        )
-        run_2f = engine_2f.create_run(
-            study_case_id=case_2f.id,
-            analysis_type=ExecutionAnalysisType.SC_2F,
-            solver_input={"hash": scenario_2f.content_hash},
-        )
-
-        _, rs_3f = engine_3f.execute_run_by_scenario(
-            run_3f.id,
-            fault_scenario=scenario_3f,
-            graph=graph,
-            readiness_snapshot={"ready": True},
-            validation_snapshot={"is_valid": True},
-        )
-        _, rs_2f = engine_2f.execute_run_by_scenario(
-            run_2f.id,
-            fault_scenario=scenario_2f,
-            graph=graph,
-            readiness_snapshot={"ready": True},
-            validation_snapshot={"is_valid": True},
-        )
-
-        assert rs_3f.global_results["ikss_a"] > rs_2f.global_results["ikss_a"]
+# Klasa `TestExecutionEngineScenarioIntegration` (SC3F/SC2F/SC1F/determinizm/
+# 3F>2F przez `ExecutionEngineService.execute_run_by_scenario`) skasowana
+# karta CV-3.3-A (2026-09-05) razem z E3. Uzasadnienie i wskazanie dowodu
+# zastepczego — patrz uwaga historyczna przy dawnych pomocnikach
+# `_create_golden_graph`/`_create_engine_with_case` (poczatek pliku).
 
 
 # =============================================================================

@@ -47,14 +47,17 @@ def test_protection_config_update_persists_without_500(app_client) -> None:
     assert persisted.json()["template_fingerprint"] == "template_ref_oc_ef_500:2024.1"
 
 
-def test_protection_and_unified_run_routes_are_registered(app_client) -> None:
+def test_protection_run_routes_are_registered(app_client) -> None:
+    """Byla `test_protection_and_unified_run_routes_are_registered`: trasy
+    `/api/runs/{short-circuit,power-flow,protection}` (`api/unified_runs.py`,
+    E2-widmo) skasowane kartą CV-3.3-A (2026-09-05) — zero konsumenta
+    frontendu, zweryfikowane grepem. Tor kanoniczny biegow zabezpieczen
+    (`/api/projects/{project_id}/protection-runs`) zostaje, wiec ta czesc
+    asercji zostaje jako pin."""
     route_paths = {route.path for route in app_client.app.routes}
 
     assert "/api/projects/{project_id}/protection-runs" in route_paths
     assert "/api/protection-runs/{run_id}/execute" in route_paths
-    assert "/api/runs/short-circuit" in route_paths
-    assert "/api/runs/power-flow" in route_paths
-    assert "/api/runs/protection" in route_paths
 
 
 def test_protection_run_read_uses_latest_status_entry() -> None:
