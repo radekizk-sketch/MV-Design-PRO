@@ -67,17 +67,6 @@ export const OPERATION_SUCCESS_MESSAGES: Record<string, string> = {
   link_relay_to_field: 'Powiązano przekaźnik z polem',
   calculate_tcc_curve: 'Obliczono krzywą TCC',
   validate_selectivity: 'Zwalidowano selektywność',
-  // Study cases
-  create_study_case: 'Utworzono przypadek obliczeniowy',
-  set_case_switch_state: 'Ustawiono stan łącznika w przypadku',
-  set_case_normal_state: 'Ustawiono stan normalny w przypadku',
-  set_case_source_mode: 'Ustawiono tryb źródła w przypadku',
-  set_case_time_profile: 'Ustawiono profil czasowy w przypadku',
-  // Runs
-  run_short_circuit: 'Uruchomiono obliczenia zwarciowe',
-  run_power_flow: 'Uruchomiono rozpływ mocy',
-  run_time_series_power_flow: 'Uruchomiono serię rozpływów mocy',
-  compare_study_cases: 'Porównano przypadki obliczeniowe',
   // Editing
   delete_element: 'Usunięto element',
   rename_element: 'Zmieniono nazwę elementu',

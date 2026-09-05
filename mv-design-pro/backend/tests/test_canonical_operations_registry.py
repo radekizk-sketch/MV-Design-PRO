@@ -70,16 +70,6 @@ class TestCanonicalOperationsRegistry:
         for op in prot_ops:
             assert op in CANONICAL_OP_NAMES, f"Missing protection operation: {op}"
 
-    def test_all_study_case_operations_present(self):
-        case_ops = {
-            "create_study_case",
-            "run_short_circuit",
-            "run_power_flow",
-            "compare_study_cases",
-        }
-        for op in case_ops:
-            assert op in CANONICAL_OP_NAMES, f"Missing study case operation: {op}"
-
     def test_all_universal_operations_present(self):
         universal_ops = {
             "assign_catalog_to_element",

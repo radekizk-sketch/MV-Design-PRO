@@ -177,10 +177,11 @@ def _find_any_annotations_in_file(filepath: Path) -> list[tuple[int, str]]:
     - canonicalize family (recursive canonicalizer/hash-of-arbitrary-structure
       by definition uses Any): _canonicalize_value, _canonicalize,
       _canonicalize_for_hash, canonicalize, compute_hash — five names, one
-      class, across domain/project_archive.py, domain/study_case_engine.py,
-      domain/trace_v2/artifact.py, domain/execution.py,
-      domain/load_flow_input.py, domain/result_contract_v1.py,
-      domain/analysis_run.py, enm/canonical_analysis.py
+      class, across domain/project_archive.py, domain/trace_v2/artifact.py,
+      domain/execution.py, domain/load_flow_input.py,
+      domain/result_contract_v1.py, domain/analysis_run.py,
+      enm/canonical_analysis.py (domain/study_case_engine.py removed CV-3.2 —
+      was a listed user of this same allowlisted name set, not a separate one)
     - stable sort key (heterogeneous item → deterministic sort key, by
       definition uses Any): _stable_sort_key
     - protection interop (domain layer reads a protection-analysis result

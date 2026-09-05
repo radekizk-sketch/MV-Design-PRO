@@ -1331,58 +1331,6 @@ class AddNNLoadPayload(_FrozenBase):
     load_label: str | None = None
 
 
-# ===========================================================================
-# 6. CANONICAL OPERATION NAMES — kanoniczne nazwy operacji
-# ===========================================================================
-
-
-CANONICAL_OPS: set[str] = {
-    # V1 — budowa SN
-    "add_grid_source_sn",
-    "add_sn_bay",
-    "add_sn_bay_from_catalog",
-    "continue_trunk_segment_sn",
-    "insert_station_on_segment_sn",
-    "start_branch_segment_sn",
-    "insert_section_switch_sn",
-    "connect_secondary_ring_sn",
-    "set_normal_open_point",
-    "add_transformer_sn_nn",
-    "assign_catalog_to_element",
-    "update_element_parameters",
-    "add_converter_source",
-    "add_genset_nn",
-    "add_ups_nn",
-    "add_nn_load",
-    # V2 — ochrona
-    "add_ct",
-    "add_vt",
-    "add_relay",
-    "update_relay_settings",
-    "link_relay_to_field",
-    "calculate_tcc_curve",
-    "validate_selectivity",
-    # V2 — Study Case
-    "create_study_case",
-    "set_case_switch_state",
-    "set_case_normal_state",
-    "set_case_source_mode",
-    "set_case_time_profile",
-    "run_short_circuit",
-    "run_power_flow",
-    "run_time_series_power_flow",
-    "compare_study_cases",
-    # V2 — nN
-    "add_nn_outgoing_field",
-    "set_source_operating_mode",
-    "set_dynamic_profile",
-    # V2 — uniwersalne
-    "rename_element",
-    "set_label",
-}
-"""Zbiór kanonicznych nazw operacji domenowych."""
-
-
 DOMAIN_EVENT_TYPES: list[str] = [
     "SEGMENT_SPLIT",
     "CUT_NODE_CREATED",

@@ -15,6 +15,14 @@ I-S4: scenariusz przejsciowy NIGDY nie trafia do magazynu ani do modelu projektu
 I-S5: `bieg_wariantu` mowi prawde o tym, co liczy (hash migawki efektywnej, hash
       wejscia z niej, koperta wariantu z rewizja bazy i odciskiem katalogu bazy),
       a wykonanie w pamieci nie dotyka biegu bazowego ani modelu w magazynie.
+I-S6: dwa biegi zbudowane z TEGO SAMEGO scenariusza sa identyczne (ten sam hash
+      migawki, hash wejscia i raw_result solvera) — scenariusz roboczy jest
+      DETERMINISTYCZNY; dwa biegi na ROZNYCH scenariuszach dają wykrywalna,
+      konkretna delte (rozny hash migawki, rozny zbior galezi, rozny wynik
+      solvera) — scenariusz roboczy jest POROWNYWALNY. Intencja przeniesiona
+      z usunietego `domain/study_case_engine.py` (CV-3.2, karta CV-3.2, testy
+      `test_compare_runs_identical`/`test_compare_runs_different`) — rdzen
+      CV-3.1 nie mial dotad testu tej konkretnej intencji.
 """
 
 from __future__ import annotations
@@ -429,3 +437,65 @@ def test_is5_wariant_bazy_bez_koperty_nie_zgaduje_koperty() -> None:
     wariant = bieg_wariantu(baza, migawka, analysis_type="PF", options={"base_mva": 100.0})
     assert wariant.envelope is None and wariant.options == {"base_mva": 100.0}
     assert wariant.snapshot_hash == migawka.snapshot_hash
+
+
+# ---------------------------------------------------------------------------
+# I-S6
+# ---------------------------------------------------------------------------
+
+
+def test_is6_dwa_biegi_tego_samego_scenariusza_sa_identyczne() -> None:
+    """Ten sam scenariusz policzony dwa razy daje IDENTYCZNY bieg — determinizm.
+
+    Intencja przeniesiona z usunietego C2 (`test_compare_runs_identical`,
+    karta CV-3.2): dwa niezalezne biegi zbudowane z tego samego scenariusza
+    musza dac ten sam hash migawki, hash wejscia, migawke i wynik solvera.
+    """
+    enm = _model()
+    galaz = _linia_do_wylaczenia(enm)
+    scenariusz = _scenariusz("__n1_powtorka__", out_of_service=(galaz,))
+    pierwszy = execute_run(
+        create_run(case_id=CASE, klucz_twin=KLUCZ, analysis_type="PF", scenariusz=scenariusz).id
+    )
+    drugi = execute_run(
+        create_run(case_id=CASE, klucz_twin=KLUCZ, analysis_type="PF", scenariusz=scenariusz).id
+    )
+    assert pierwszy.status == "FINISHED" and drugi.status == "FINISHED"
+    assert pierwszy.snapshot_hash == drugi.snapshot_hash
+    assert pierwszy.input_hash == drugi.input_hash
+    assert pierwszy.snapshot == drugi.snapshot
+    # `proof_ref` niesie tozsamosc KONKRETNEGO biegu (nie fizyki) — jedyne pole
+    # raw_result, ktore ma prawo roznic sie miedzy dwoma identycznymi biegami.
+    assert pierwszy.raw_result and drugi.raw_result
+    assert pierwszy.raw_result["proof_ref"] and drugi.raw_result["proof_ref"]
+    bez_dowodu_1 = {k: v for k, v in pierwszy.raw_result.items() if k != "proof_ref"}
+    bez_dowodu_2 = {k: v for k, v in drugi.raw_result.items() if k != "proof_ref"}
+    assert bez_dowodu_1 == bez_dowodu_2, "identyczny bieg = identyczny wynik solvera"
+    assert pierwszy.raw_result["result_v1"] == drugi.raw_result["result_v1"]
+
+
+def test_is6_dwa_biegi_roznych_scenariuszy_daja_wykrywalna_delte() -> None:
+    """Bieg bazowy i bieg na scenariuszu N-1 daja WYKRYWALNA, konkretna roznice.
+
+    Intencja przeniesiona z usunietego C2 (`test_compare_runs_different`,
+    karta CV-3.2): rozny scenariusz = rozny hash migawki + konkretna,
+    nazwana delta (dokladnie wylaczona galaz) + rozny wynik solvera — nie
+    tylko rozny znacznik czasu czy identyfikator biegu.
+    """
+    enm = _model()
+    galaz = _linia_do_wylaczenia(enm)
+    bazowy = execute_run(create_run(case_id=CASE, klucz_twin=KLUCZ, analysis_type="PF").id)
+    n1 = execute_run(
+        create_run(
+            case_id=CASE,
+            klucz_twin=KLUCZ,
+            analysis_type="PF",
+            scenariusz=_scenariusz("__n1_delta__", out_of_service=(galaz,)),
+        ).id
+    )
+    assert bazowy.status == "FINISHED" and n1.status == "FINISHED"
+    assert bazowy.snapshot_hash != n1.snapshot_hash
+    galezie_bazowe = {b["ref_id"] for b in bazowy.snapshot["branches"]}
+    galezie_n1 = {b["ref_id"] for b in n1.snapshot["branches"]}
+    assert galezie_bazowe - galezie_n1 == {galaz}, "delta = dokladnie wylaczona galaz, nic wiecej"
+    assert bazowy.raw_result != n1.raw_result, "rozny model liczony = rozny wynik solvera"
