@@ -127,20 +127,31 @@ vi.mock('../../../../ui/catalog/api', () => ({
 // (`derRemoteCatalogs.ts` / `audit2-api.ts`) — mock na granicy modułu klienta,
 // ten sam wzorzec co `ui/catalog/api` powyżej. Identyfikator operatora jest
 // REALNY (`pse`, nie wymyślone przez front `ncrfg_pse`).
-vi.mock('../../../../ui/network-build/station-der/derRemoteCatalogs', () => ({
-  fetchNcRfgOperators: () =>
-    Promise.resolve([
-      {
-        operator_id: 'pse',
-        operator_name_pl: 'PSE — Polskie Sieci Elektroenergetyczne',
-        last_revision: '2024-Q4',
-        reactive_power: { q_range_pct_pn_min: -0.33, q_range_pct_pn_max: 0.33, cos_phi_min: 0.95, voltage_control_modes: [] },
-        ride_through: {
-          lvrt: [{ time_s: 0, voltage_pu: 0.05 }],
-          hvrt: [{ time_s: 0, voltage_pu: 1.3 }],
-        },
+// Karta CV-4.1b (A3-04): `voltage_control_modes` 1:1 z profilami realnymi backendu
+// (`backend/src/catalog/profiles/nc_rfg/*.yaml` — wszystkich 5 operatorów niesie
+// `voltage_control`) — `vi.fn()` (nie funkcja literałowa), żeby pojedynczy test
+// mógł nadpisać `.mockResolvedValueOnce` dla profilu BEZ tej zdolności.
+const fetchNcRfgOperatorsMock = vi.fn(() =>
+  Promise.resolve([
+    {
+      operator_id: 'pse',
+      operator_name_pl: 'PSE — Polskie Sieci Elektroenergetyczne',
+      last_revision: '2024-Q4',
+      reactive_power: {
+        q_range_pct_pn_min: -0.33,
+        q_range_pct_pn_max: 0.33,
+        cos_phi_min: 0.95,
+        voltage_control_modes: ['cos_phi_constant', 'q_constant', 'q_of_u', 'voltage_control'],
       },
-    ]),
+      ride_through: {
+        lvrt: [{ time_s: 0, voltage_pu: 0.05 }],
+        hvrt: [{ time_s: 0, voltage_pu: 1.3 }],
+      },
+    },
+  ]),
+);
+vi.mock('../../../../ui/network-build/station-der/derRemoteCatalogs', () => ({
+  fetchNcRfgOperators: () => fetchNcRfgOperatorsMock(),
   getNcRfgOperator: (
     operators: ReadonlyArray<{ operator_id: string }>,
     operatorId: string | null,
@@ -187,6 +198,24 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     fetchConverterTypesMock.mockResolvedValue(DOMYSLNE_KONWERTERY);
     fetchLvApparatusTypesMock.mockReset();
     fetchLvApparatusTypesMock.mockResolvedValue(DOMYSLNE_APARATY);
+    fetchNcRfgOperatorsMock.mockReset();
+    fetchNcRfgOperatorsMock.mockResolvedValue([
+      {
+        operator_id: 'pse',
+        operator_name_pl: 'PSE — Polskie Sieci Elektroenergetyczne',
+        last_revision: '2024-Q4',
+        reactive_power: {
+          q_range_pct_pn_min: -0.33,
+          q_range_pct_pn_max: 0.33,
+          cos_phi_min: 0.95,
+          voltage_control_modes: ['cos_phi_constant', 'q_constant', 'q_of_u', 'voltage_control'],
+        },
+        ride_through: {
+          lvrt: [{ time_s: 0, voltage_pu: 0.05 }],
+          hvrt: [{ time_s: 0, voltage_pu: 1.3 }],
+        },
+      },
+    ]);
     // Readout osi gotowości wytwórcy pobiera dane z modelu przez fetch.
     vi.stubGlobal(
       'fetch',
@@ -418,6 +447,131 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     expect(wzory.length).toBeGreaterThanOrEqual(2);
     expect(wzory.some((w) => (w.getAttribute('data-latex') ?? '').includes('Q = 0'))).toBe(true);
     expect(screen.queryByTestId('math-fallback')).toBeNull();
+  });
+
+  it('krok regulacji: "regulacja napięcia" bramkowana profilem operatora NC RfG — iloczyn cech: brak profilu / profil bez zdolności / profil ze zdolnością (karta CV-4.1b, A3-04)', async () => {
+    render(<KreatorZrodlaOze />);
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-konwerter')).toBeInTheDocument());
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-oze-zgodnosc-profil')).toBeInTheDocument(),
+    );
+
+    // Cecha 1: BRAK wybranego profilu operatora — zdolność nie może być domniemana,
+    // opcja musi być ukryta (fail-closed), niezależnie od tego, co niosą operatorzy katalogu.
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-tryb')).toBeInTheDocument());
+    expect(
+      (screen.getByTestId('mvd-kreator-oze-tryb') as HTMLSelectElement).querySelector(
+        'option[value="REGULACJA_NAPIECIA"]',
+      ),
+    ).toBeNull();
+
+    // Cecha 2: profil WYBRANY, ale bez `voltage_control` w `voltage_control_modes`
+    // (nadpisanie mocka dla tego jednego przypadku, jak zakłada komentarz nad mockiem) —
+    // opcja nadal ukryta.
+    fetchNcRfgOperatorsMock.mockReset();
+    fetchNcRfgOperatorsMock.mockResolvedValueOnce([
+      {
+        operator_id: 'bez-regulacji',
+        operator_name_pl: 'Operator bez regulacji napięcia',
+        last_revision: '2024-Q4',
+        reactive_power: {
+          q_range_pct_pn_min: -0.33,
+          q_range_pct_pn_max: 0.33,
+          cos_phi_min: 0.95,
+          voltage_control_modes: ['cos_phi_constant', 'q_constant', 'q_of_u'],
+        },
+        ride_through: {
+          lvrt: [{ time_s: 0, voltage_pu: 0.05 }],
+          hvrt: [{ time_s: 0, voltage_pu: 1.3 }],
+        },
+      },
+    ]);
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-wstecz'));
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-oze-zgodnosc-profil')).toBeInTheDocument(),
+    );
+    await userEvent.selectOptions(
+      screen.getByTestId('mvd-kreator-oze-zgodnosc-profil'),
+      'bez-regulacji',
+    );
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-tryb')).toBeInTheDocument());
+    expect(
+      (screen.getByTestId('mvd-kreator-oze-tryb') as HTMLSelectElement).querySelector(
+        'option[value="REGULACJA_NAPIECIA"]',
+      ),
+    ).toBeNull();
+
+    // Cecha 3: profil WYBRANY, Z `voltage_control` (PSE, mock domyślny) — opcja widoczna
+    // i wybieralna; pole nastawy U pojawia się po wyborze.
+    fetchNcRfgOperatorsMock.mockResolvedValue([
+      {
+        operator_id: 'pse',
+        operator_name_pl: 'PSE — Polskie Sieci Elektroenergetyczne',
+        last_revision: '2024-Q4',
+        reactive_power: {
+          q_range_pct_pn_min: -0.33,
+          q_range_pct_pn_max: 0.33,
+          cos_phi_min: 0.95,
+          voltage_control_modes: ['cos_phi_constant', 'q_constant', 'q_of_u', 'voltage_control'],
+        },
+        ride_through: {
+          lvrt: [{ time_s: 0, voltage_pu: 0.05 }],
+          hvrt: [{ time_s: 0, voltage_pu: 1.3 }],
+        },
+      },
+    ]);
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-wstecz'));
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-oze-zgodnosc-profil')).toBeInTheDocument(),
+    );
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-zgodnosc-profil'), 'pse');
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-tryb')).toBeInTheDocument());
+    const trybSelect = screen.getByTestId('mvd-kreator-oze-tryb') as HTMLSelectElement;
+    expect(trybSelect.querySelector('option[value="REGULACJA_NAPIECIA"]')).not.toBeNull();
+    await userEvent.selectOptions(trybSelect, 'REGULACJA_NAPIECIA');
+    expect(screen.getByTestId('mvd-kreator-oze-u-set-pu')).toBeInTheDocument();
+
+    // Predykat PAROWY (reguła KLASA NIE INSTANCJA §3): cofnięcie zdolności operatora
+    // PO wybraniu trybu cofa wybór na bezpieczny stan, nie zostawia ukrytej pozycji
+    // fantomowej wybranej wcześniej (ten sam warunek `regulacjaNapieciaDostepna`
+    // rządzi WEJŚCIEM do trybu i WYJŚCIEM z niego).
+    fetchNcRfgOperatorsMock.mockResolvedValueOnce([
+      {
+        operator_id: 'bez-regulacji',
+        operator_name_pl: 'Operator bez regulacji napięcia',
+        last_revision: '2024-Q4',
+        reactive_power: {
+          q_range_pct_pn_min: -0.33,
+          q_range_pct_pn_max: 0.33,
+          cos_phi_min: 0.95,
+          voltage_control_modes: ['cos_phi_constant', 'q_constant', 'q_of_u'],
+        },
+        ride_through: {
+          lvrt: [{ time_s: 0, voltage_pu: 0.05 }],
+          hvrt: [{ time_s: 0, voltage_pu: 1.3 }],
+        },
+      },
+    ]);
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-wstecz'));
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-oze-zgodnosc-profil')).toBeInTheDocument(),
+    );
+    await userEvent.selectOptions(
+      screen.getByTestId('mvd-kreator-oze-zgodnosc-profil'),
+      'bez-regulacji',
+    );
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-tryb')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-oze-tryb')).toHaveValue('WYLACZONE'),
+    );
+    expect(screen.queryByTestId('mvd-kreator-oze-u-set-pu')).not.toBeInTheDocument();
   });
 
   it('K9-A: sekwencja zapisu — wiązania aparaturowe, profile, tryb pracy i limity Q idą do modelu', async () => {

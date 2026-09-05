@@ -454,13 +454,23 @@ test('K9-A: kreator OZE MAX — aparatura i zgodność w jednym przepływie, wi�
   expect(pfCurveRef, 'katalog musi oferować nastawę P(f)').toMatch(/^pf_droop_/);
 
   // ------------------------------------------------------------------
-  // Krok 6 (regulacja): tryb pracy źródła + limity mocy biernej.
+  // Krok 6 (regulacja): tryb pracy źródła + limity mocy biernej + tryb
+  // regulacji Q. Karta CV-4.1b (A3-04): profil operatora wybrany w kroku
+  // ZGODNOŚĆ (PSE — `voltage_control_modes` niesie `voltage_control` w
+  // realnym katalogu backendu) odbramkowuje pozycję „regulacja napięcia
+  // (U = const)"; wybieramy ją i wypełniamy nastawę U, żeby łańcuch
+  // ENM meta -> walidator -> IR (węzeł PV) -> assembler -> wynik ćwiczyć na
+  // ŻYWEJ aplikacji, nie tylko w testach jednostkowych.
   // ------------------------------------------------------------------
   await page.getByTestId('mvd-kreator-oze-dalej').click();
   await expect(page.getByTestId('mvd-kreator-oze-tryb-pracy')).toBeVisible();
   await page.getByTestId('mvd-kreator-oze-tryb-pracy').selectOption('praca_sieciowa');
   await page.getByTestId('mvd-kreator-oze-qmin').fill('-0.05');
   await page.getByTestId('mvd-kreator-oze-qmax').fill('0.05');
+  const trybRegulacjiSelect = page.getByTestId('mvd-kreator-oze-tryb');
+  await expect(trybRegulacjiSelect.locator('option[value="REGULACJA_NAPIECIA"]')).toBeAttached();
+  await trybRegulacjiSelect.selectOption('REGULACJA_NAPIECIA');
+  await page.getByTestId('mvd-kreator-oze-u-set-pu').fill('1.02');
 
   // ------------------------------------------------------------------
   // Krok 7 (zapis): bez auto-biegu (sekwencja mierzalna szybko) → Zapisz.
@@ -512,4 +522,12 @@ test('K9-A: kreator OZE MAX — aparatura i zgodność w jednym przepływie, wi�
   const limity = (wytworca!.limits ?? {}) as Record<string, unknown>;
   expect(limity['q_min_mvar']).toBe(-0.05);
   expect(limity['q_max_mvar']).toBe(0.05);
+  // Karta CV-4.1b (A3-04): tryb regulacji napięcia i jego nastawa utrwalone w
+  // modelu — łańcuch ENM (meta) domyka się tu; IR/assembler/solver dowiedzione
+  // niezależnie w tests/enm/test_generator_voltage_control_e2e.py (backend).
+  const meta = (wytworca!.meta ?? {}) as Record<string, unknown>;
+  expect(meta['control_mode']).toBe('REGULACJA_NAPIECIA');
+  expect(meta['u_set_pu']).toBe(1.02);
+  expect(meta['q_min_mvar']).toBe(-0.05);
+  expect(meta['q_max_mvar']).toBe(0.05);
 });

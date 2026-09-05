@@ -146,6 +146,19 @@ const GEN_TYPE_TO_DER_KIND: Readonly<Record<string, 'PV' | 'BESS' | 'FW'>> = {
   fw_scig: 'FW',
 };
 
+/** Etykiety PL trybu regulacji mocy biernej — WYŁĄCZNIE prezentacyjne (dowolna wartość
+ *  spoza tej mapy pokazuje się dosłownie: brak → cichej utraty informacji). Wartości
+ *  1:1 z `ui2/kreatory/zrodlo-oze/zrodloOzeModel.ts::REGULACJA_OPCJE` (kontrakt
+ *  backendu `meta.control_mode`); duplikat świadomy — jak `derKindPublicName` powyżej,
+ *  ten moduł nie importuje z `ui2` (granica warstw prezentacji). */
+const CONTROL_MODE_LABEL_PL: Readonly<Record<string, string>> = {
+  STALY_COS_PHI: 'Stały współczynnik mocy cosφ',
+  Q_OD_U: 'Regulacja Q(U)',
+  P_OD_U: 'Regulacja P(U)',
+  REGULACJA_NAPIECIA: 'Regulacja napięcia (U = const)',
+  WYLACZONE: 'Bez regulacji',
+};
+
 /**
  * Buduje `SldDetailDrawerData` dla kliku w STACJĘ (kind='station', K30-72).
  * Odpowiednik gałęzi `drawerKind === 'station'` w
@@ -248,12 +261,22 @@ export function buildStationDetailDrawerData(
   const dersOnStation = snapshot ? (snapshot.generators ?? []).filter(
     (g) => g.station_ref === substationRef,
   ) : [];
-  const existingDers: SldDetailDrawerData['existingDers'] = dersOnStation.map((g) => ({
-    id: g.ref_id ?? g.id,
-    kind: g.gen_type ? GEN_TYPE_TO_DER_KIND[g.gen_type] ?? null : null,
-    name: g.name ?? null,
-    pMw: typeof g.p_mw === 'number' ? g.p_mw : null,
-  }));
+  const existingDers: SldDetailDrawerData['existingDers'] = dersOnStation.map((g) => {
+    // Karta CV-4.1b (A3-04): tryb regulacji mocy biernej — etykieta polska WYŁĄCZNIE
+    // gdy generator go deklaruje (`meta.control_mode`); zero drugiej kopii logiki
+    // domenowej — etykiety tu są WYŁĄCZNIE prezentacyjne (ten sam wzorzec jak
+    // `derKindPublicName` obok), liczbę i decyzję o regulacji daje zawsze backend.
+    const controlMode = typeof g.meta?.control_mode === 'string' ? g.meta.control_mode : null;
+    const uSetPu = typeof g.meta?.u_set_pu === 'number' ? g.meta.u_set_pu : null;
+    return {
+      id: g.ref_id ?? g.id,
+      kind: g.gen_type ? GEN_TYPE_TO_DER_KIND[g.gen_type] ?? null : null,
+      name: g.name ?? null,
+      pMw: typeof g.p_mw === 'number' ? g.p_mw : null,
+      controlModePl: controlMode ? CONTROL_MODE_LABEL_PL[controlMode] ?? controlMode : null,
+      voltageSetpointPu: controlMode === 'REGULACJA_NAPIECIA' ? uSetPu : null,
+    };
+  });
 
   return {
     kind: 'station',

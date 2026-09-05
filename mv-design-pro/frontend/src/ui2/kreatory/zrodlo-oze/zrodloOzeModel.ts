@@ -41,7 +41,7 @@ import type { DerCatalogBindingsRequest } from '../../../ui/sld/v2/canvas/derPer
 export type TechnologiaOze = 'PV' | 'BESS' | 'FW';
 export type WariantPrzylaczenia = 'nn_side' | 'block_transformer';
 export type UmiejscowieniePola = 'NEW_FIELD' | 'EXISTING_FIELD';
-export type TrybRegulacji = 'STALY_COS_PHI' | 'Q_OD_U' | 'P_OD_U' | 'WYLACZONE';
+export type TrybRegulacji = 'STALY_COS_PHI' | 'Q_OD_U' | 'P_OD_U' | 'REGULACJA_NAPIECIA' | 'WYLACZONE';
 export type TrybBess = 'PEAK_SHAVING' | 'ARBITRAGE' | 'BACKUP' | 'GRID_SERVICES';
 export type ConverterCatalogNamespace = 'ZRODLO_NN_PV' | 'ZRODLO_NN_BESS' | 'CONVERTER';
 
@@ -76,6 +76,13 @@ export const REGULACJA_OPCJE: ReadonlyArray<{ value: TrybRegulacji; label: strin
   { value: 'STALY_COS_PHI', label: 'Stały współczynnik mocy cosφ' },
   { value: 'Q_OD_U', label: 'Regulacja Q(U) — napięciowo-jałowa' },
   { value: 'P_OD_U', label: 'Regulacja P(U) — ograniczanie mocy od napięcia' },
+  // Karta CV-4.1b (A3-04): węzeł PV w kanonicznym rozpływie — napięcie zadane
+  // (nastawa u_set_pu), moc bierna WYNIKIEM solvera w granicach q_min/q_max_mvar
+  // (przełączenie na PQ przy nasyceniu, `pv_to_pq_switches`). Widoczność tej
+  // pozycji w kreatorze jest bramkowana profilem operatora NC RfG
+  // (`reactive_power.voltage_control_modes` musi zawierać `"voltage_control"`) —
+  // patrz `OPCJE_REGULACJA_DOSTEPNE` w `KreatorZrodlaOze.tsx`.
+  { value: 'REGULACJA_NAPIECIA', label: 'Regulacja napięcia (U = const)' },
   { value: 'WYLACZONE', label: 'Bez regulacji (źródło pasywne)' },
 ];
 
@@ -139,6 +146,9 @@ export interface OzeFormData {
   // Bez niego charakterystyka Q(U) reagowała natychmiast (punkt 1.0/1.0) — forward-phantom.
   qu_deadband_low_pu: number | null;
   qu_deadband_high_pu: number | null;
+  // Karta CV-4.1b (A3-04): nastawa napięcia [pu] dla REGULACJA_NAPIECIA — bez niej
+  // tryb jest niekompletny (walidator ENM blokuje: `generators.voltage_control_incomplete`).
+  u_set_pu: number | null;
   power_setpoint_mw: number | null;
   q_min_mvar: number | null;
   q_max_mvar: number | null;
@@ -196,6 +206,7 @@ export const DANE_DOMYSLNE: OzeFormData = {
   qu_slope_pu_per_pu: null,
   qu_deadband_low_pu: null,
   qu_deadband_high_pu: null,
+  u_set_pu: null,
   power_setpoint_mw: null,
   q_min_mvar: null,
   q_max_mvar: null,
@@ -286,6 +297,27 @@ export function walidujFormularz(
     const dbHigh = data.qu_deadband_high_pu ?? 1.0;
     if (dbLow > dbHigh) {
       errors.push({ field: 'qu_deadband_high_pu', message: 'Pasmo Q(U): napięcie dolne nie może przekraczać górnego.' });
+    }
+  }
+  // Karta CV-4.1b (A3-04): tryb regulacji napięcia wymaga nastawy U w paśmie [0,9; 1,1] pu
+  // oraz granic Q ŚCIŚLE q_min < q_max (walidator ENM blokuje `generators.voltage_control_incomplete`
+  // — kontrolka wypełnia dokładnie ten sam warunek PRZED wysłaniem żądania).
+  if (data.control_mode === 'REGULACJA_NAPIECIA') {
+    if (data.u_set_pu === null) {
+      errors.push({ field: 'u_set_pu', message: 'Podaj nastawę napięcia U (pu) trybu regulacji napięcia.' });
+    } else if (data.u_set_pu < 0.9 || data.u_set_pu > 1.1) {
+      errors.push({ field: 'u_set_pu', message: 'Nastawa napięcia musi mieścić się w paśmie [0,9; 1,1] pu.' });
+    }
+    if (qMin === null || qMax === null) {
+      errors.push({
+        field: 'q_max_mvar',
+        message: 'Tryb regulacji napięcia wymaga obu granic mocy biernej (Q min i Q max).',
+      });
+    } else if (qMin >= qMax) {
+      errors.push({
+        field: 'q_max_mvar',
+        message: 'Tryb regulacji napięcia wymaga Q min ściśle mniejszego od Q max.',
+      });
     }
   }
   if (data.source_technology === 'BESS') {
@@ -381,6 +413,10 @@ export function zbudujPayload(
       data.control_mode === 'Q_OD_U' ? data.qu_deadband_low_pu ?? undefined : undefined,
     qu_deadband_high_pu:
       data.control_mode === 'Q_OD_U' ? data.qu_deadband_high_pu ?? undefined : undefined,
+    // Karta CV-4.1b (A3-04): nastawa napięcia [pu] TYLKO dla REGULACJA_NAPIECIA
+    // (zero fabrykacji — backend czyta `u_set_pu` z `meta` wyłącznie w tym trybie).
+    u_set_pu:
+      data.control_mode === 'REGULACJA_NAPIECIA' ? data.u_set_pu ?? undefined : undefined,
     power_setpoint_mw: pSetpoint,
     q_min_mvar: qMin,
     q_max_mvar: qMax,

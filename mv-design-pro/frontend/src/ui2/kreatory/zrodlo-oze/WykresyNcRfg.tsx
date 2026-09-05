@@ -188,8 +188,8 @@ export function CharakterystykaNcRfg(props: CharakterystykaNcRfgProps) {
       ? TT.cosPhi
       : mode === 'Q_OD_U'
       ? TT.qu
-      : mode === 'WYLACZONE' || mode === 'P_OD_U'
-      ? TT.wylaczone
+      : mode === 'REGULACJA_NAPIECIA'
+      ? TT.regulacjaNapiecia
       : TT.wylaczone;
 
   let wykres: JSX.Element | null = null;

@@ -115,6 +115,11 @@ export interface SldDetailDrawerData {
     readonly kind: 'PV' | 'BESS' | 'FW' | null;
     readonly name: string | null;
     readonly pMw: number | null;
+    /** Karta CV-4.1b (A3-04): tryb regulacji mocy biernej — etykieta polska, gdy
+     *  generator go deklaruje (`meta.control_mode`); `null` = brak wskazania. */
+    readonly controlModePl?: string | null;
+    /** Nastawa napięcia [pu] — WYŁĄCZNIE dla trybu regulacji napięcia (`meta.u_set_pu`). */
+    readonly voltageSetpointPu?: number | null;
   }>;
   /** K30-83: bay apparatus list (kind='bay' apparatus tab). */
   readonly apparatusSpec?: ReadonlyArray<{
@@ -1744,6 +1749,8 @@ function PlaceholderTabBody({
     readonly kind: 'PV' | 'BESS' | 'FW' | null;
     readonly name: string | null;
     readonly pMw: number | null;
+    readonly controlModePl?: string | null;
+    readonly voltageSetpointPu?: number | null;
   }>;
   apparatusSpec?: ReadonlyArray<{
     readonly id: string;
@@ -2288,18 +2295,31 @@ function PlaceholderTabBody({
                   borderRadius: 3,
                   padding: '6px 8px',
                   display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
+                  flexDirection: 'column',
+                  gap: 2,
                   fontSize: 11,
                 }}
               >
-                <div>
-                  <span style={{ color: colorFor(der.kind), fontWeight: 700 }}>{der.kind ?? 'DER'}</span>
-                  <span style={{ color: 'rgb(var(--scada-text))', marginLeft: 6 }}>{formatExistingDerName(der, derIndex)}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <span style={{ color: colorFor(der.kind), fontWeight: 700 }}>{der.kind ?? 'DER'}</span>
+                    <span style={{ color: 'rgb(var(--scada-text))', marginLeft: 6 }}>{formatExistingDerName(der, derIndex)}</span>
+                  </div>
+                  <span style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace', fontSize: 10 }}>
+                    {der.pMw != null ? formatMwPl(der.pMw) : '—'}
+                  </span>
                 </div>
-                <span style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace', fontSize: 10 }}>
-                  {der.pMw != null ? formatMwPl(der.pMw) : '—'}
-                </span>
+                {/* Karta CV-4.1b (A3-04): tryb regulacji + nastawa — WYŁĄCZNIE gdy generator
+                   go deklaruje (`meta.control_mode`); zero fabrykacji dla źródeł pasywnych. */}
+                {der.controlModePl ? (
+                  <div
+                    data-testid={`drawer-station-der-${der.id}-regulacja`}
+                    style={{ color: 'rgb(var(--scada-muted))', fontSize: 10 }}
+                  >
+                    {der.controlModePl}
+                    {der.voltageSetpointPu != null ? ` · U = ${der.voltageSetpointPu} pu` : ''}
+                  </div>
+                ) : null}
               </li>
             ))}
           </ul>

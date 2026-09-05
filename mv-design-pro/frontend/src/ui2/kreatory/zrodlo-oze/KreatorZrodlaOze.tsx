@@ -78,6 +78,11 @@ import {
   type TrybRegulacji,
   type WariantPrzylaczenia,
 } from './zrodloOzeModel';
+import {
+  fetchNcRfgOperators,
+  getNcRfgOperator,
+  type NcRfgOperatorItem,
+} from '../../../ui/network-build/station-der';
 import { DoborToruSn } from './DoborToruSn';
 import { KrokAparatura, KrokZgodnosc } from './KrokiAparaturaZgodnosc';
 import { GotowoscDer } from './GotowoscDer';
@@ -120,7 +125,8 @@ function zbudujKroki(zTorem: boolean): readonly KrokKreatora[] {
 
 const OPCJE_TECH = TECHNOLOGIA_OPCJE.map((o) => ({ id: o.value, etykieta: o.label }));
 const OPCJE_WARIANT = WARIANT_OPCJE.map((o) => ({ id: o.value, etykieta: o.label }));
-const OPCJE_REGULACJA = REGULACJA_OPCJE.map((o) => ({ id: o.value, etykieta: o.label }));
+// Karta CV-4.1b (A3-04): pełna lista `REGULACJA_OPCJE` (import zamiast stałej modułowej)
+// jest bramkowana profilem NC RfG per-render — patrz `opcjeRegulacjaDostepne` w komponencie.
 const OPCJE_BESS = BESS_OPCJE.map((o) => ({ id: o.value, etykieta: o.label }));
 const OPCJE_UMIEJSCOWIENIE = [
   { id: 'NEW_FIELD', etykieta: T.umiejscowienieNowe },
@@ -272,6 +278,60 @@ export function KreatorZrodlaOze() {
 
   const isBlock = dane.connection_variant === 'block_transformer';
   const KROKI = useMemo(() => zbudujKroki(isBlock), [isBlock]);
+
+  // Karta CV-4.1b (A3-04): pozycja „regulacja napięcia (U = const)" widoczna WYŁĄCZNIE,
+  // gdy profil operatora (krok „Zgodność przyłączeniowa", `dane.nc_rfg_profile_ref`)
+  // dopuszcza `voltage_control` w `reactive_power.voltage_control_modes` — kontrakt
+  // backendu (`GET /api/ncrfg-tests/catalog`), zero drugiej kopii katalogu w froncie.
+  // Pobranie WPROST (nie hak React Query `useNcRfgOperatorCatalog`) — ten sam wzorzec
+  // co `KrokZgodnosc` (`KrokiAparaturaZgodnosc.tsx`): kreator nie jest osadzony pod
+  // `QueryClientProvider` we wszystkich miejscach montowania. Pobranie BRAMKOWANE
+  // dotarciem do kroku „zgodność"/„regulacja" (nie na starcie kreatora) — `KrokZgodnosc`
+  // bramkuje swoje IDENTYCZNE pobranie samym montowaniem warunkowym (`krok === 'zgodnosc'
+  // ? <KrokZgodnosc/> : null`); tu dane są potrzebne na poziomie rodzica (opcje selecta
+  // trybu), więc bramka jest jawna w zależnościach efektu, nie w montowaniu. Bez tej
+  // bramki efekt odpalał się na KAŻDYM montowaniu kreatora (także testy, które nigdy nie
+  // docierają do kroku regulacji) i zostawiał nierozstrzygniętą aktualizację stanu poza
+  // `act()` w testach synchronicznych renderujących tylko krok początkowy.
+  const potrzebujeKatalNcRfgRegulacji =
+    krok === 'zgodnosc' || krok === 'regulacja' || krok === 'zapis';
+  const [ncRfgOperatorzyRegulacja, setNcRfgOperatorzyRegulacja] = useState<NcRfgOperatorItem[]>([]);
+  useEffect(() => {
+    if (!potrzebujeKatalNcRfgRegulacji) return;
+    let cancelled = false;
+    fetchNcRfgOperators()
+      .then((operatorzy) => {
+        if (!cancelled) setNcRfgOperatorzyRegulacja(Array.isArray(operatorzy) ? [...operatorzy] : []);
+      })
+      .catch(() => {
+        if (!cancelled) setNcRfgOperatorzyRegulacja([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [potrzebujeKatalNcRfgRegulacji]);
+  const profilNcRfgRegulacja = useMemo(
+    () => getNcRfgOperator(ncRfgOperatorzyRegulacja, dane.nc_rfg_profile_ref),
+    [ncRfgOperatorzyRegulacja, dane.nc_rfg_profile_ref],
+  );
+  const regulacjaNapieciaDostepna = Boolean(
+    profilNcRfgRegulacja?.reactive_power.voltage_control_modes.includes('voltage_control'),
+  );
+  const opcjeRegulacjaDostepne = useMemo(
+    () =>
+      REGULACJA_OPCJE.filter((o) => o.value !== 'REGULACJA_NAPIECIA' || regulacjaNapieciaDostepna).map(
+        (o) => ({ id: o.value, etykieta: o.label }),
+      ),
+    [regulacjaNapieciaDostepna],
+  );
+  // Bez profilu (albo profil, który cofnął dopuszczenie) tryb REGULACJA_NAPIECIA
+  // przestaje być wyborem możliwym do zapisania — cofamy na bezpieczny stan zamiast
+  // zostawiać ukrytą, wybraną wcześniej pozycję (zero stanu fantomowego).
+  useEffect(() => {
+    if (dane.control_mode === 'REGULACJA_NAPIECIA' && !regulacjaNapieciaDostepna) {
+      setDane((d) => ({ ...d, control_mode: 'WYLACZONE', u_set_pu: null }));
+    }
+  }, [dane.control_mode, regulacjaNapieciaDostepna]);
 
   // Szyna SN stacji (punkt przyłączenia toru DER-SN) + jej napięcie — z realnego snapshotu.
   const snBusRef = useMemo(
@@ -872,7 +932,7 @@ export function KreatorZrodlaOze() {
               etykieta={T.regulacja}
               wartosc={dane.control_mode}
               onZmiana={(v) => zmien('control_mode', v as TrybRegulacji)}
-              opcje={OPCJE_REGULACJA}
+              opcje={opcjeRegulacjaDostepne}
               testid="mvd-kreator-oze-tryb"
             />
             {dane.control_mode === 'STALY_COS_PHI' ? (
@@ -926,6 +986,20 @@ export function KreatorZrodlaOze() {
                   />
                 </KreatorSiatka>
               </>
+            ) : null}
+            {dane.control_mode === 'REGULACJA_NAPIECIA' ? (
+              <PoleLiczbowe
+                etykieta={T.uSetPu}
+                jednostka="pu"
+                wartosc={dane.u_set_pu}
+                onZmiana={(v) => zmien('u_set_pu', v)}
+                krok={0.001}
+                min={0.9}
+                max={1.1}
+                pomoc={T.uSetPuPomoc}
+                blad={bladDlaPola('u_set_pu')}
+                testid="mvd-kreator-oze-u-set-pu"
+              />
             ) : null}
             {trybQWymagaWartosci(dane) ? (
               <KreatorInfo><TekstZWzorami tekst={T.regulacjaPasywnaOstrzezenie} /></KreatorInfo>
@@ -1052,6 +1126,12 @@ export function KreatorZrodlaOze() {
               <RzadWartosci etykieta={T.wierszTechnologia} wartosc={technologiaLabel(dane.source_technology)} />
               <RzadWartosci etykieta={T.wierszPrzylaczenie} wartosc={wariantLabel(dane.connection_variant)} />
               <RzadWartosci etykieta={T.wierszRegulacja} wartosc={regulacjaLabel(dane.control_mode)} />
+              {dane.control_mode === 'REGULACJA_NAPIECIA' ? (
+                <RzadWartosci
+                  etykieta={T.uSetPu}
+                  wartosc={dane.u_set_pu !== null ? `${dane.u_set_pu} pu` : T.doKonfiguracji}
+                />
+              ) : null}
               {dane.source_technology === 'BESS' ? (
                 <RzadWartosci etykieta={T.bessTryb} wartosc={bessLabel(dane.bess_mode)} />
               ) : null}
