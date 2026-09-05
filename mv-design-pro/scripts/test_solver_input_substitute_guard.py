@@ -957,7 +957,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `application/study_scenario/**` (5 plikow: __init__, models, orchestration,
     # repository, serializer) usuniete razem z 15 polami kontraktu scenariusza P23
     # (byt bez konsumenta produkcyjnego); dlug/wykluczenia bez zmian.
-    assert "Pol kontraktow wejsciowych: 3637." in wyjscie, wyjscie
+    # 3636 pol (FIX-ACTION-KASACJA, 2026-09-05): fantomowy identyfikator akcji
+    # naprawczej usuniety z ladunku prezentacji nastaw (application) — -1 pole
+    # kontraktu; pliki/dlug/wykluczenia bez zmian.
+    assert "Pol kontraktow wejsciowych: 3636." in wyjscie, wyjscie
     assert (
         "Przeskanowano 597 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
