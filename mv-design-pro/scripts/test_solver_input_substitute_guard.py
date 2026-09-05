@@ -950,9 +950,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # 3653 pol / 601 plikow / enm 36 (CV-3.1 rdzen, 2026-09-05): nowy modul
     # `enm/scenariusze.py` (Nastawa 2 + Wstrzyk 6 + SondaKondensatora 8 = 16 pol
     # kontraktu scenariusza); dlug i wykluczenia bez zmian.
-    assert "Pol kontraktow wejsciowych: 3653." in wyjscie, wyjscie
+    # 3652 pol / 602 plikow / application 346 (CV-2-W, 2026-09-05): nowy modul
+    # `application/study_case/status_wynikow.py` (+1 plik), pole `result_status`
+    # przypadku skasowane z kontraktu aplikacji (-1 pole); dlug/wykluczenia bez zmian.
+    assert "Pol kontraktow wejsciowych: 3652." in wyjscie, wyjscie
     assert (
-        "Przeskanowano 601 plikow w zakresie: network_model, solver_input, enm, "
+        "Przeskanowano 602 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     assert "Zapadka dlugu (fizyczne): 66 plikow, suma 346." in wyjscie, wyjscie
@@ -962,7 +965,7 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         "wykluczenia=4 plikow/suma 7",
         "  solver_input: pliki_skanowane=10, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
         "  enm: pliki_skanowane=36, dlug=7 plikow/suma 84, wykluczenia=0 plikow/suma 0",
-        "  application: pliki_skanowane=345, dlug=40 plikow/suma 171, "
+        "  application: pliki_skanowane=346, dlug=40 plikow/suma 171, "
         "wykluczenia=8 plikow/suma 20",
         "  api: pliki_skanowane=66, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 23",
     ]

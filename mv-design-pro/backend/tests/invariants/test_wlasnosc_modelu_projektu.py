@@ -157,3 +157,29 @@ def test_migracja_bez_aktywnego_przypadku_bierze_pierwszy_w_porzadku_listy(uow_f
     assert len(store.get_enm(klucz).buses) == 2
     statusy = {w["case_id"]: w["status"] for w in store.wiersze_manifestu_legacy()}
     assert statusy[kolejnosc[0]] == "PRZENIESIONY" and statusy[kolejnosc[1]] == "ROZBIEZNY"
+
+
+def test_migracja_aktywny_bez_modelu_zastanego_nie_blokuje_promocji_nastepnego(uow_factory) -> None:
+    """Pułapka kolejności (przegląd CV-2-W): przypadek AKTYWNY bez modelu zastanego
+    (`BRAK_LEGACY`) nie może zostawić projektu bez modelu, gdy inny przypadek
+    projektu model MA — ten następny w kolejności promocji przyjmuje rolę modelu
+    projektu, a jego plik nie ląduje w `legacy_przypadki/` jako `ROZBIEZNY`."""
+    project_id, case_ids = _projekt_z_przypadkami(uow_factory, 3, aktywny=0)
+    model_drugiego = _model("drugi", 2)
+    store.set_enm(str(case_ids[1]), model_drugiego)
+    store.set_enm(str(case_ids[2]), _model("trzeci", 3))
+
+    wynik = twin_key.migruj_projekt_z_legacy(project_id, uow_factory)
+
+    statusy = {w.case_id: w.status for w in wynik.wyniki}
+    assert statusy == {
+        str(case_ids[0]): "BRAK_LEGACY",
+        str(case_ids[1]): "PRZENIESIONY",
+        str(case_ids[2]): "ROZBIEZNY",
+    }
+    klucz = klucz_twin_projektu(project_id)
+    assert store.has_enm(klucz)
+    assert store.hash_tresci_modelu(store.get_enm(klucz)) == store.hash_tresci_modelu(
+        model_drugiego
+    )
+    assert [w["status"] for w in store.wiersze_manifestu_legacy()] == ["PRZENIESIONY", "ROZBIEZNY"]

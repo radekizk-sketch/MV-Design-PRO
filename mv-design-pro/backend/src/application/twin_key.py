@@ -95,10 +95,19 @@ def migruj_projekt_z_legacy_z_repozytorium(
     aktywny = przypadki_repo.get_active_study_case(project_id)
     kolejnosc = kolejnosc_promocji(przypadki, str(aktywny.id) if aktywny is not None else None)
     wyniki: list[store.WynikMigracjiKlucza] = []
-    for indeks, case_id in enumerate(kolejnosc):
+    for case_id in kolejnosc:
+        # KAZDY przypadek w kolejnosci promocji UBIEGA SIE o role modelu projektu;
+        # magazyn promuje pierwszy, ktory MA model zastany, gdy projekt modelu
+        # jeszcze nie ma (`projekt is None`), a kazdy nastepny porownuje hashem.
+        # Dawne `przyjmij=(indeks == 0)` dopuszczalo do promocji WYLACZNIE pierwszy
+        # przypadek (aktywny): gdy ten nie mial modelu zastanego (`BRAK_LEGACY`),
+        # modele pozostalych przypadkow byly porownywane z NIEISTNIEJACYM modelem
+        # projektu (`ROZBIEZNY`) i odkladane do `legacy_przypadki/` bez promocji —
+        # projekt zostawal bez modelu mimo ze przypadek go mial (znalezisko
+        # przegladu CV-2-W; pin: `tests/invariants/test_wlasnosc_modelu_projektu.py`).
         wyniki.append(
             store.migruj_klucz_przypadku_do_projektu(
-                case_id, klucz, przyjmij_jako_model_projektu=(indeks == 0)
+                case_id, klucz, przyjmij_jako_model_projektu=True
             )
         )
     _zmigrowane_projekty.add(klucz)
@@ -111,9 +120,10 @@ def migruj_projekt_z_legacy(
     """Przenieś modele zastane pod kluczami przypadków projektu pod klucz projektu.
 
     Kolejność jest deterministyczna i jawna: najpierw przypadek AKTYWNY projektu
-    (`uow.cases.get_active_study_case`), a gdy go nie ma — pierwszy przypadek w
-    porządku `list_study_cases`; ten jeden przyjmuje rolę modelu projektu
-    (`przyjmij_jako_model_projektu=True`). Pozostałe są porównywane hashem.
+    (`uow.cases.get_active_study_case`), potem pozostałe w porządku
+    `list_study_cases`; rolę modelu projektu przyjmuje PIERWSZY w tej kolejności,
+    który MA model zastany (przypadek bez modelu nie blokuje promocji następnych).
+    Pozostałe są porównywane hashem z modelem projektu.
     """
     klucz = klucz_twin_projektu(project_id)
     if klucz in _zmigrowane_projekty:
