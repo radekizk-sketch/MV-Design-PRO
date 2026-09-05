@@ -57,6 +57,10 @@ export const OGRANICZNIK_STRINGS = {
   anuluj: 'Anuluj',
   brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem ogranicznika.',
   walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać ogranicznik.',
+  // S9-5 (klasa: bramka enable bez sygnału gotowości, `karta_e2e_s95.md`) —
+  // katalog ograniczników ładuje się asynchronicznie; zapis bez niego byłby
+  // cichym no-op na pustym `catalog_ref`, więc blokujemy JAWNIE.
+  katalogLadowanieStopka: 'Ładowanie katalogu ograniczników przepięć SN — zapis będzie dostępny po wczytaniu.',
 
   // Panel teorii (V12K-066: standard „must-have").
   teoriaTytul: 'Teoria: koordynacja izolacji i ochrona przepięciowa (IEC 60071)',

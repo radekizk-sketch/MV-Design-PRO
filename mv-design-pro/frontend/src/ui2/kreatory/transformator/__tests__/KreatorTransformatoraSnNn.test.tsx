@@ -67,9 +67,10 @@ vi.mock('../../../../ui/selection', () => ({
   ) => selector({ selectElement: selectElementMock, centerSldOnElement: centerSldOnElementMock }),
 }));
 
-vi.mock('../../../../ui/catalog/api', () => ({
-  getCatalogErrorMessage: () => 'błąd katalogu',
-  fetchTransformerTypes: () =>
+// `vi.hoisted` + `vi.fn()` (S9-5): pozwala nadpisać implementację per test
+// (`mockReturnValueOnce`), żeby symulować katalog W TRAKCIE ładowania.
+const { fetchTransformerTypesMock } = vi.hoisted(() => ({
+  fetchTransformerTypesMock: vi.fn(() =>
     Promise.resolve([
       {
         id: 'energen-tonr-1000-15-04',
@@ -87,6 +88,12 @@ vi.mock('../../../../ui/catalog/api', () => ({
         tap_step_percent: 2.5,
       },
     ]),
+  ),
+}));
+
+vi.mock('../../../../ui/catalog/api', () => ({
+  getCatalogErrorMessage: () => 'błąd katalogu',
+  fetchTransformerTypes: () => fetchTransformerTypesMock(),
 }));
 
 vi.mock('../../../../ui/network-build/forms/transformerRatedCurrentsApi', () => ({
@@ -117,6 +124,7 @@ describe('KreatorTransformatoraSnNn — realna ścieżka', () => {
     navigateToSldMock.mockReset();
     selectElementMock.mockReset();
     centerSldOnElementMock.mockReset();
+    fetchTransformerTypesMock.mockClear();
   });
 
   afterEach(() => cleanup());
@@ -209,6 +217,7 @@ describe('KreatorTransformatoraSnNn — realna ścieżka', () => {
     await screen.findByRole('option', { name: /TONR 1000/ });
     expect(screen.getByTestId('mvd-kreator-transformator-brak')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-kreator-transformator-zapisz')).toBeDisabled();
+    expect(screen.getByTestId('mvd-kreator-transformator')).toHaveAttribute('data-status', 'zablokowany');
     // przywróć snapshot dla kolejnych testów
     snapshotState.snapshot = {
       buses: [
@@ -223,6 +232,21 @@ describe('KreatorTransformatoraSnNn — realna ścieżka', () => {
     render(<KreatorTransformatoraSnNn />);
     await pickType();
     expect(screen.getByTestId('mvd-kreator-transformator-zapisz')).toBeDisabled();
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  /**
+   * S9-5 (`karta_e2e_s95.md`, klasa: bramka enable bez sygnału gotowości) —
+   * TEN SAM mechanizm jak w `KreatorMagistralaSn.tsx`, powtórzony w tym pliku:
+   * `zapisZablokowany` nie sprawdzał, czy katalog transformatorów już doszedł.
+   */
+  it('iloczyn cech: katalog jeszcze się ładuje × kontekst stacji dostępny → zapis zablokowany z komunikatem', async () => {
+    fetchTransformerTypesMock.mockReturnValueOnce(new Promise(() => {}));
+    render(<KreatorTransformatoraSnNn />);
+
+    expect(screen.getByTestId('mvd-kreator-transformator-zapisz')).toBeDisabled();
+    expect(screen.getByTestId('mvd-kreator-transformator')).toHaveAttribute('data-status', 'ladowanie');
+    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/[Łł]adowanie katalogu/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 });

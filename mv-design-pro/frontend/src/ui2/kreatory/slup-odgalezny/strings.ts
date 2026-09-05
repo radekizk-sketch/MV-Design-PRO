@@ -48,6 +48,10 @@ export const SLUP_STRINGS = {
   anuluj: 'Anuluj',
   brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem słupa.',
   walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać słup rozgałęźny.',
+  // S9-5 (klasa: bramka enable bez sygnału gotowości, `karta_e2e_s95.md`) —
+  // katalog słupów rozgałęźnych ładuje się asynchronicznie; zapis bez niego
+  // byłby cichym no-op na pustym `catalog_ref`, więc blokujemy JAWNIE.
+  katalogLadowanieStopka: 'Ładowanie katalogu słupów rozgałęźnych — zapis będzie dostępny po wczytaniu.',
 
   // Panel teorii (V12K-066)
   teoriaTytul: 'Teoria: słup rozgałęźny i odczep linii napowietrznej',

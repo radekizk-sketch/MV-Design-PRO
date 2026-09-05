@@ -48,16 +48,25 @@ vi.mock('../../../../ui/selection', () => ({
     selector({ selectElement: selectElementMock, centerSldOnElement: centerMock }),
 }));
 
-vi.mock('../../../../ui/catalog/api', () => ({
-  getCatalogErrorMessage: () => 'błąd katalogu',
-  fetchCableTypes: () =>
+// `vi.hoisted` + `vi.fn()` (S9-5): pozwala nadpisać implementację per test
+// (`mockReturnValueOnce`), żeby symulować katalog W TRAKCIE ładowania.
+const { fetchCableTypesMock, fetchLineTypesMock } = vi.hoisted(() => ({
+  fetchCableTypesMock: vi.fn(() =>
     Promise.resolve([
       { id: 'cab-1', name: 'XRUHAKXS 3x120', cross_section_mm2: 120, rated_current_a: 280, voltage_rating_kv: 20 },
     ]),
-  fetchLineTypes: () =>
+  ),
+  fetchLineTypesMock: vi.fn(() =>
     Promise.resolve([
       { id: 'line-1', name: 'AFL-6 70', cross_section_mm2: 70, rated_current_a: 290, voltage_rating_kv: 20 },
     ]),
+  ),
+}));
+
+vi.mock('../../../../ui/catalog/api', () => ({
+  getCatalogErrorMessage: () => 'błąd katalogu',
+  fetchCableTypes: () => fetchCableTypesMock(),
+  fetchLineTypes: () => fetchLineTypesMock(),
 }));
 
 async function pickCable() {
@@ -77,6 +86,8 @@ describe('KreatorOdgalezienia — realna ścieżka', () => {
     navigateToSldMock.mockReset();
     selectElementMock.mockReset();
     centerMock.mockReset();
+    fetchCableTypesMock.mockClear();
+    fetchLineTypesMock.mockClear();
   });
 
   afterEach(() => cleanup());
@@ -132,6 +143,22 @@ describe('KreatorOdgalezienia — realna ścieżka', () => {
     render(<KreatorOdgalezienia />);
     await pickCable();
     expect(screen.getByTestId('mvd-kreator-odgalezienie-zapisz')).toBeDisabled();
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  /**
+   * S9-5 (`karta_e2e_s95.md`, klasa: bramka enable bez sygnału gotowości) —
+   * TEN SAM mechanizm jak w `KreatorMagistralaSn.tsx`, powtórzony w tym pliku:
+   * `zapisMozliwy` nie sprawdzał, czy katalog kabli/linii już doszedł.
+   */
+  it('iloczyn cech: katalog jeszcze się ładuje × źródło dostępne → zapis zablokowany z komunikatem', async () => {
+    fetchCableTypesMock.mockReturnValueOnce(new Promise(() => {}));
+    fetchLineTypesMock.mockReturnValueOnce(new Promise(() => {}));
+    render(<KreatorOdgalezienia />);
+
+    expect(screen.getByTestId('mvd-kreator-odgalezienie-zapisz')).toBeDisabled();
+    expect(screen.getByTestId('mvd-kreator-odgalezienie')).toHaveAttribute('data-status', 'ladowanie');
+    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/[Łł]adowanie katalogu/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 });

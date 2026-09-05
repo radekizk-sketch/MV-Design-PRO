@@ -60,6 +60,7 @@ import {
   fmtDlugosc,
   fmtPct,
   fmtV,
+  isPositive,
   kontekstKontynuacji,
   lacznaDlugosc,
   lacznySpadekPct,
@@ -200,6 +201,15 @@ export function KreatorMagistralaSn() {
   const [kable, setKable] = useState<CableType[]>([]);
   const [linie, setLinie] = useState<LineType[]>([]);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
+  // S9-5 (klasa: bramka enable bez sygnału gotowości). Katalog kabli/linii
+  // ładuje się asynchronicznie z backendu (efekt niżej); wcześniejsza wersja
+  // zapisu w OGÓLE nie sprawdzała tego stanu — „Zapisz" był klikalny, zanim
+  // katalog doszedł, więc pole typu bywało puste w chwili kliknięcia (cichy,
+  // nieuczciwy stan). Jawny znacznik ładowania — TRUE do rozstrzygnięcia
+  // Promise (sukces LUB błąd), nigdy domyślnie z długości tablic (pusty,
+  // ale ZAŁADOWANY katalog wygląda tak samo jak katalog W TRAKCIE ładowania,
+  // gdyby stan wyprowadzać z `kable.length === 0`).
+  const [katalogLadowanie, setKatalogLadowanie] = useState(true);
 
   const [podglad, setPodglad] = useState<CableVoltageDropResponse | null>(null);
   const [bladPodgladu, setBladPodgladu] = useState<string | null>(null);
@@ -208,6 +218,7 @@ export function KreatorMagistralaSn() {
   useEffect(() => {
     let cancelled = false;
     setBladKatalogu(null);
+    setKatalogLadowanie(true);
     Promise.all([fetchCableTypes(), fetchLineTypes()])
       .then(([c, l]) => {
         if (cancelled) return;
@@ -219,6 +230,10 @@ export function KreatorMagistralaSn() {
         setKable([]);
         setLinie([]);
         setBladKatalogu(getCatalogErrorMessage(e));
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setKatalogLadowanie(false);
       });
     return () => {
       cancelled = true;
@@ -562,7 +577,37 @@ export function KreatorMagistralaSn() {
   ) : null;
 
   const krokIndex = KROKI.findIndex((k) => k.id === krok);
-  const zapisZablokowany = !hasStart || !activeCaseId;
+  /**
+   * S9-5 (klasa: bramka enable bez sygnału gotowości, `karta_e2e_s95.md`).
+   * JEDNO źródło prawdy dla DWÓCH obserwowalnych powierzchni — `disabled`
+   * przycisku zapisu ORAZ `data-status` korzenia kreatora (KreatorRama) —
+   * żeby te dwie powierzchnie nie mogły rozjechać się w dwa niezależne
+   * warunki (reguła KLASA NIE INSTANCJA, „Predykaty parami"). Kolejność:
+   *   1. `zablokowany`  — brak miejsca startu ciągu, brak aktywnego zakresu
+   *      obliczeń, ALBO długość odcinka bez dodatniej wartości: PRZYCZYNA
+   *      nazwana w kodzie (poprzednia wersja `zapisZablokowany` sprawdzała
+   *      WYŁĄCZNIE `hasStart`/`activeCaseId` — przycisk był klikalny od
+   *      pierwszego renderu niezależnie od tego, co (i czy cokolwiek)
+   *      wpisano w polu długości; e2e/spec, który zakłada realną przyczynowość
+   *      „wypełnij pole → włącz zapis" (`s95-budowa-z-kanwy.spec.ts`), badał
+   *      więc stan, którego produkt NIGDY jawnie nie deklarował).
+   *   2. `ladowanie`    — katalog kabli/linii (GET /api/catalog/...) jeszcze
+   *      w locie: bez niego pole typu jest puste, więc zapis byłby cichym
+   *      no-op na pustym `catalog_ref` — zamiast tego blokujemy JAWNIE,
+   *      z komunikatem (`katalogLadowanieStopka` niżej), nie w ciszy.
+   *   3. `gotowy`       — obie bramki rozstrzygnięte i długość dodatnia;
+   *      zapis klikalny (pełna walidacja — `walidujFormularz`, w tym
+   *      `catalog_ref`/cosφ/`next_step` — biegnie NADAL na klik, jak
+   *      dotychczas, i pokazuje błędy pól bez zamykania okna).
+   */
+  const dlugoscPoprawna = isPositive(dane.dlugosc_m);
+  const stanGotowosci: 'ladowanie' | 'zablokowany' | 'gotowy' =
+    !hasStart || !activeCaseId || !dlugoscPoprawna
+      ? 'zablokowany'
+      : katalogLadowanie
+        ? 'ladowanie'
+        : 'gotowy';
+  const zapisZablokowany = stanGotowosci !== 'gotowy';
 
   return (
     <KreatorRama
@@ -576,7 +621,18 @@ export function KreatorMagistralaSn() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={bledy.length > 0 ? T.walidacjaStopka : !hasStart ? brakStartuReason : null}
+      walidacja={
+        stanGotowosci === 'ladowanie'
+          ? T.katalogLadowanieStopka
+          : bledy.length > 0
+            ? T.walidacjaStopka
+            : !hasStart
+              ? brakStartuReason
+              : !dlugoscPoprawna
+                ? T.dlugoscWymaganaStopka
+                : null
+      }
+      status={stanGotowosci}
       akcjaGlowna={{
         etykieta: zbudowane.length > 0 ? T.builderDodaj : T.zapisz,
         onClick: onZapisz,

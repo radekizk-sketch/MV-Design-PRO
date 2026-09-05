@@ -37,9 +37,10 @@ vi.mock('../../../../ui/navigation/routes', () => ({
   navigateToSld: () => navigateToSldMock(),
 }));
 
-vi.mock('../../../../ui/catalog/api', () => ({
-  getCatalogErrorMessage: () => 'błąd katalogu',
-  fetchLoadTypes: () =>
+// `vi.hoisted` + `vi.fn()` (S9-5): pozwala nadpisać implementację per test
+// (`mockReturnValueOnce`), żeby symulować katalog W TRAKCIE ładowania.
+const { fetchLoadTypesMock } = vi.hoisted(() => ({
+  fetchLoadTypesMock: vi.fn(() =>
     Promise.resolve([
       { id: 'L1', name: 'Odbiór biurowy', model: 'pq', p_kw: 80, q_kvar: 30, cos_phi: 0.94, cos_phi_mode: 'fixed' },
       {
@@ -57,6 +58,12 @@ vi.mock('../../../../ui/catalog/api', () => ({
         c_q: 0,
       },
     ]),
+  ),
+}));
+
+vi.mock('../../../../ui/catalog/api', () => ({
+  getCatalogErrorMessage: () => 'błąd katalogu',
+  fetchLoadTypes: () => fetchLoadTypesMock(),
 }));
 
 /**
@@ -87,6 +94,7 @@ describe('KreatorOdbioruNn — realna ścieżka', () => {
     closeFormMock.mockReset();
     executeDomainOperationMock.mockReset();
     navigateToSldMock.mockReset();
+    fetchLoadTypesMock.mockClear();
   });
 
   afterEach(() => cleanup());
@@ -282,5 +290,35 @@ describe('KreatorOdbioruNn — realna ścieżka', () => {
     await fill();
     expect(screen.getByTestId('mvd-kreator-odbior-zapisz')).toBeDisabled();
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  /**
+   * S9-5 (`karta_e2e_s95.md`, klasa: bramka enable bez sygnału gotowości) —
+   * TEN SAM mechanizm jak w `KreatorMagistralaSn.tsx`, powtórzony w tym pliku:
+   * zapis nie sprawdzał, czy katalog odbiorów już doszedł (ścieżka katalogowa).
+   */
+  it('iloczyn cech: katalog jeszcze się ładuje × odpływ dostępny (tryb katalogowy) → zapis zablokowany z komunikatem', async () => {
+    fetchLoadTypesMock.mockReturnValueOnce(new Promise(() => {}));
+    render(<KreatorOdbioruNn />);
+
+    expect(screen.getByTestId('mvd-kreator-odbior-zapisz')).toBeDisabled();
+    expect(screen.getByTestId('mvd-kreator-odbior')).toHaveAttribute('data-status', 'ladowanie');
+    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/[Łł]adowanie katalogu/);
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  /**
+   * S9-5 — PREDYKATY PARAMI (KLASA NIE INSTANCJA): odbiór ma DWIE ścieżki
+   * pochodzenia (katalog ALBO `manual_mode`); bramka ładowania katalogu MUSI
+   * pomijać tryb ręczny, inaczej user, który świadomie NIE używa katalogu,
+   * czekałby na zasób, którego nie potrzebuje.
+   */
+  it('iloczyn cech: katalog jeszcze się ładuje × tryb ręczny → zapis NIE jest blokowany przez katalog', async () => {
+    fetchLoadTypesMock.mockReturnValueOnce(new Promise(() => {}));
+    render(<KreatorOdbioruNn />);
+    await userEvent.click(screen.getByTestId('mvd-kreator-odbior-tryb-przel-reczny'));
+
+    expect(screen.getByTestId('mvd-kreator-odbior')).toHaveAttribute('data-status', 'gotowy');
+    expect(screen.getByTestId('mvd-kreator-odbior-zapisz')).toBeEnabled();
   });
 });
