@@ -46,7 +46,7 @@ from domain.project_archive import (
     dict_to_archive,
     verify_archive_integrity,
 )
-from enm.canonical_analysis import CanonicalRun
+from enm.canonical_analysis import odtworz_bieg_z_archiwum
 from enm.store import get_enm, has_enm, migruj_klucz_przypadku_do_projektu, restore_enm
 from infrastructure.persistence.repositories.canonical_run_repository import (
     CanonicalRunRepository,
@@ -1170,35 +1170,12 @@ class ProjectArchiveService:
                 options["sc_run_id"] = str(
                     canonical_run_id_map.get(str(options["sc_run_id"]), options["sc_run_id"])
                 )
-            run = CanonicalRun(
-                id=new_run_id,
+            run = odtworz_bieg_z_archiwum(
+                cr_data,
+                run_id=new_run_id,
                 case_id=str(id_map.get(cr_data["case_id"], cr_data["case_id"])),
                 project_id=str(new_project_id),
-                analysis_type=cr_data["analysis_type"],
-                status=cr_data["status"],
-                created_at=datetime.fromisoformat(cr_data["created_at"]),
-                snapshot_hash=cr_data["snapshot_hash"],
-                input_hash=cr_data["input_hash"],
-                snapshot=cr_data["snapshot"],
-                validation=cr_data["validation"],
-                readiness=cr_data["readiness"],
                 options=options,
-                started_at=(
-                    datetime.fromisoformat(cr_data["started_at"])
-                    if cr_data.get("started_at")
-                    else None
-                ),
-                finished_at=(
-                    datetime.fromisoformat(cr_data["finished_at"])
-                    if cr_data.get("finished_at")
-                    else None
-                ),
-                error_message=cr_data.get("error_message"),
-                result_status=cr_data.get("result_status", "VALID"),
-                raw_result=cr_data.get("raw_result"),
-                white_box_trace=cr_data.get("white_box_trace") or [],
-                power_flow_trace=cr_data.get("power_flow_trace"),
-                envelope=cr_data.get("envelope"),
             )
             canonical_run_repo.create(run)
             id_map[cr_data["id"]] = new_run_id

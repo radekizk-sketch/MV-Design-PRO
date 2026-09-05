@@ -143,17 +143,15 @@ def test_zasieg_pomija_dom_apply_scenario_i_fabryk() -> None:
 
 
 def test_stan_repozytorium_jest_zielony_i_przypiety() -> None:
-    """Pin stanu (2026-09-05, po kartach CV-3-W A i B, +1 wyjatek CV-3.3-B).
+    """Pin stanu: ZERO zastanych trafien (2026-09-05, po kartach CV-3-W A i B
+    oraz odbiorze CV-3.3-B).
 
-    Stan sprzed CV-3-W: 6 rodzin, 19 trafien (D1 R1+R2+R4=3, D2 3, D3 3, D4 3,
-    D5 3, D6 R2 2 + R3 2). Wszystkie rodziny przeszly na apply_scenario/
-    bieg_wariantu/wykonaj_bieg_w_pamieci z parytetem bit w bit
-    (`tests/golden/parytet_scenariuszy`). Karta CV-3.3-B dopisala JEDYNY
-    dopuszczony wyjatek: `application/project_archive/service.py` (R2×1) —
-    deserializacja historycznego biegu z archiwum ZIP przy imporcie projektu,
-    INNA KLASA niz dlug scenariuszy (uzasadnienie w komentarzu przy `ZASTANE`
-    w module guarda). Kazde KOLEJNE nowe trafienie = czerwone CI."""
+    Klasa dlugu zamknieta i pilnowana parytetem zlotych hashy
+    (`tests/golden/parytet_scenariuszy`). Import archiwum projektu odtwarza
+    historyczne biegi fabryka `enm.canonical_analysis.odtworz_bieg_z_archiwum`
+    (jeden dom deserializacji w module fabryk) — dlatego zapadka zostaje na
+    zerze. Kazde nowe trafienie = czerwone CI."""
     pomiar = guard.zmierz()
-    assert pomiar == guard.ZASTANE == {"application/project_archive/service.py": {"R2": 1}}
-    assert sum(sum(v.values()) for v in pomiar.values()) == 1
+    assert pomiar == guard.ZASTANE == {}
+    assert sum(sum(v.values()) for v in pomiar.values()) == 0
     assert guard.main([]) == 0

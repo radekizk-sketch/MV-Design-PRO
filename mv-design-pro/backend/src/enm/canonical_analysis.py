@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, cast
@@ -839,6 +839,58 @@ def bieg_wariantu(
         readiness={},
         options=opcje,
         envelope=envelope,
+    )
+
+
+def odtworz_bieg_z_archiwum(
+    dane: Mapping[str, Any],
+    *,
+    run_id: UUID,
+    case_id: str,
+    project_id: str,
+    options: dict[str, Any],
+) -> CanonicalRun:
+    """Odtwórz ZAKOŃCZONY bieg z zapisu archiwum projektu (import ZIP, CV-3.3-B).
+
+    Trzecia fabryka biegu obok `create_run` (nowy bieg na bieżącym modelu) i
+    `bieg_wariantu` (wariant w pamięci): NICZEGO nie liczy — przepisuje
+    historyczny wynik 1:1 (status, wynik surowy, ślad, walidacja, gotowość,
+    koperta, migawka, odciski) pod NOWE identyfikatory biegu/przypadku/projektu
+    nadane przy imporcie; `options` podaje wołający już po przemapowaniu
+    odwołań między biegami (`sc_run_id`). `envelope`/`snapshot` NIE są
+    przemapowywane — to zapis historyczny stanu modelu z chwili eksportu
+    (przemapowanie `project_id` w kopercie złamałoby `RevisionEnvelope.spojna`
+    i zameldowałoby OUTDATED z przyczyną „koperta niespójna" zamiast uczciwego
+    porównania z bieżącym modelem po imporcie). Jedyny dom konstrukcji
+    `CanonicalRun` poza `create_run`/`bieg_wariantu` — poza tym modułem
+    konstrukcja jest naruszeniem R2 `scripts/scenario_copy_guard.py`.
+    """
+
+    def _czas(klucz: str) -> datetime | None:
+        wartosc = dane.get(klucz)
+        return datetime.fromisoformat(str(wartosc)) if wartosc else None
+
+    return CanonicalRun(
+        id=run_id,
+        case_id=case_id,
+        project_id=project_id,
+        analysis_type=str(dane["analysis_type"]),
+        status=str(dane["status"]),
+        created_at=datetime.fromisoformat(str(dane["created_at"])),
+        snapshot_hash=str(dane["snapshot_hash"]),
+        input_hash=str(dane["input_hash"]),
+        snapshot=dict(dane["snapshot"]),
+        validation=dict(dane["validation"]),
+        readiness=dict(dane["readiness"]),
+        options=options,
+        started_at=_czas("started_at"),
+        finished_at=_czas("finished_at"),
+        error_message=dane.get("error_message"),
+        result_status=str(dane.get("result_status", "VALID")),
+        raw_result=dane.get("raw_result"),
+        white_box_trace=list(dane.get("white_box_trace") or []),
+        power_flow_trace=dane.get("power_flow_trace"),
+        envelope=dane.get("envelope"),
     )
 
 

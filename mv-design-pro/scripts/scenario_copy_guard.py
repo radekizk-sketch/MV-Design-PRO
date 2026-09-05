@@ -76,20 +76,11 @@ OPISY = {
 #: Klucz: sciezka wzgledem `backend/src`; wartosc: liczba trafien per regula.
 #: Kazde nowe trafienie = czerwone CI (siodma prywatna droga kopii migawki).
 #:
-#: WYJATEK (karta CV-3.3-B, 2026-09-05): `application/project_archive/
-#: service.py` — 1× R2 (`CanonicalRun(...)` poza fabryka). INNA KLASA niz
-#: dlug, ktory ta zapadka opisuje: to nie duplikacja scenariusza (obejscie
-#: `bieg_wariantu`/`apply_scenario` przy LICZENIU wariantu na biezacym
-#: modelu), tylko DESERIALIZACJA historycznego biegu z archiwum ZIP przy
-#: imporcie projektu — odtworzenie JUZ ZAKONCZONEGO biegu (status/raw_result/
-#: white_box_trace/validation/readiness/envelope 1:1 z danych archiwum, z
-#: przemapowanym id/case_id/project_id). Obie fabryki (`create_run`,
-#: `bieg_wariantu`) czytaja BIEZACY model projektu (`get_enm(klucz_twin)`) i
-#: licza NOWY wynik — strukturalnie niezdolne odtworzyc gotowy wynik z pliku
-#: importu. Trasa przez fabryke bylaby fikcja zgodnosci, nie naprawa.
-ZASTANE: dict[str, dict[str, int]] = {
-    "application/project_archive/service.py": {R2: 1},
-}
+#: Import archiwum projektu (`application/project_archive/service.py`) odtwarza
+#: historyczne biegi przez fabryke `enm.canonical_analysis.odtworz_bieg_z_archiwum`
+#: (CV-3.3-B, odbior 2026-09-05) — deserializacja ma JEDEN dom w module fabryk,
+#: wiec zapadka pozostaje na ZERZE (wyjatek per plik bylby druga droga).
+ZASTANE: dict[str, dict[str, int]] = {}
 
 
 def _sciezka_kropkowana(expr: ast.expr) -> str:
