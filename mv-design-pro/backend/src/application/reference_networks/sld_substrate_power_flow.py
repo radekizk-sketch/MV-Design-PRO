@@ -291,7 +291,7 @@ def compute_substrate_power_flow(
 # ---------------------------------------------------------------------------
 
 
-def _energization_graph(dumped_enm: dict[str, Any]) -> nx.Graph:
+def _energization_graph(dumped_enm: dict[str, Any]) -> nx.MultiGraph:
     """Bus reachability graph mirroring the frozen solver's own slack-island
     definition (``solve_power_flow_physics``'s ``slack_island_nodes``): CLOSED
     branches (cable/line/switch/breaker — anything in the ``branches``
@@ -301,7 +301,7 @@ def _energization_graph(dumped_enm: dict[str, Any]) -> nx.Graph:
     itself only ever targets ``branches`` entries (``out_of_service`` — the
     card's "galezie", never a transformer).
     """
-    graph = nx.Graph()
+    graph = nx.MultiGraph()  # galezie rownolegle licza sie OSOBNO, jak w solverze
     bus_refs = {bus["ref_id"] for bus in dumped_enm.get("buses", [])}
     graph.add_nodes_from(bus_refs)
     for branch in dumped_enm.get("branches", []):
@@ -330,7 +330,7 @@ def _station_sn_bus_ref(
     return None
 
 
-def _incident_branch_refs(graph: nx.Graph, sn_bus: str) -> tuple[str, ...]:
+def _incident_branch_refs(graph: nx.MultiGraph, sn_bus: str) -> tuple[str, ...]:
     """Sorted ref_ids of CLOSED branches (never transformers) touching ``sn_bus``."""
     return tuple(
         sorted(
@@ -339,6 +339,54 @@ def _incident_branch_refs(graph: nx.Graph, sn_bus: str) -> tuple[str, ...]:
             if data["kind"] == "branch"
         )
     )
+
+
+#: Prefiks identyfikatora (przejsciowego, `__`) scenariusza konserwacji — po nim
+#: `compute_substrate_power_flow_maintenance` odczytuje, KTORA stacje wybrano.
+_PREFIKS_SCENARIUSZA_KONSERWACJI = "__maintenance__"
+
+
+def _sprawdz_odlaczenie_stacji(
+    enm: EnergyNetworkModel,
+    scenario: OperatingScenario,
+    de_energized_bus_refs: list[str],
+) -> None:
+    """Predykaty parami (KLASA NIE INSTANCJA): wybor stacji jest PROGNOZA z grafu
+    galezi (`select_ring_maintenance_scenario`), a prawda o zasilaniu nalezy do
+    solvera (wyspa bez zrodla -> szyna `not_solved` -> `de_energized_bus_refs`).
+    Companion konserwacyjny, w ktorym szyna SN wybranej stacji POZOSTALA zasilona,
+    nie jest „druga migawka z odlaczona stacja" — to rozjazd prognozy z solverem
+    (np. galaz rownolegla, ktorej prognoza nie policzyla, albo scenariusz
+    odlaczajacy tylko terminale pol). Taki rozjazd ma byc JAWNYM bledem generatora,
+    nie cichym companionem bez przyciemnionej stacji (sam warunek „de_energized
+    niepuste" tego nie lapie — odlaczone terminale pol tez sa niepustym zbiorem).
+    """
+    station_ref = scenario.scenario_id.removeprefix(_PREFIKS_SCENARIUSZA_KONSERWACJI)
+    if station_ref == scenario.scenario_id:
+        raise ValueError(
+            "Scenariusz konserwacji bez prefiksu "
+            f"{_PREFIKS_SCENARIUSZA_KONSERWACJI!r}: {scenario.scenario_id!r}"
+        )
+    dumped = enm.model_dump(mode="json")
+    station = next(
+        (s for s in dumped.get("substations", []) if s.get("ref_id") == station_ref), None
+    )
+    if station is None:
+        raise ValueError(f"Scenariusz konserwacji wskazuje nieznana stacje {station_ref!r}")
+    bus_voltage_kv: dict[str, float | None] = {
+        bus["ref_id"]: bus.get("voltage_kv") for bus in dumped.get("buses", [])
+    }
+    sn_bus = _station_sn_bus_ref(frozenset(station.get("bus_refs", [])), bus_voltage_kv)
+    if sn_bus is None:
+        raise ValueError(f"Stacja {station_ref!r} scenariusza konserwacji nie ma szyny SN")
+    if sn_bus not in set(de_energized_bus_refs):
+        raise ValueError(
+            "Scenariusz konserwacji nie odlaczyl wybranej stacji od zasilania: szyna SN "
+            f"{sn_bus!r} stacji {station_ref!r} pozostala zasilona po biegu solvera "
+            f"(odlaczonych szyn: {len(de_energized_bus_refs)}, wylaczone galezie: "
+            f"{list(scenario.out_of_service)!r}) — prognoza wyboru z grafu galezi "
+            "rozjechala sie z prawda solvera."
+        )
 
 
 def select_ring_maintenance_scenario(enm: EnergyNetworkModel) -> OperatingScenario:
@@ -406,8 +454,8 @@ def select_ring_maintenance_scenario(enm: EnergyNetworkModel) -> OperatingScenar
         probe = graph.copy()
         probe.remove_edges_from(
             [
-                (u, v)
-                for u, v, data in graph.edges(sn_bus, data=True)
+                (u, v, key)
+                for u, v, key, data in graph.edges(sn_bus, keys=True, data=True)
                 if data["kind"] == "branch" and data["ref_id"] in branch_ref_ids
             ]
         )
@@ -422,7 +470,7 @@ def select_ring_maintenance_scenario(enm: EnergyNetworkModel) -> OperatingScenar
         station_ref: str, branch_ref_ids: tuple[str, ...], *, reason: str
     ) -> OperatingScenario:
         return OperatingScenario(
-            scenario_id=f"__maintenance__{station_ref}",
+            scenario_id=f"{_PREFIKS_SCENARIUSZA_KONSERWACJI}{station_ref}",
             name=f"Wylaczenie stacji {station_name_by_ref[station_ref]} do konserwacji ({reason})",
             kind=RodzajScenariusza.MAINTENANCE,
             out_of_service=branch_ref_ids,
@@ -497,6 +545,7 @@ def compute_substrate_power_flow_maintenance(
         case_label=case_label,
         enm_hash=effective.snapshot_hash,
     )
+    _sprawdz_odlaczenie_stacji(enm, scenario, companion["de_energized_bus_refs"])
     companion["scenario"] = {
         "scenario_id": scenario.scenario_id,
         "out_of_service": list(scenario.out_of_service),

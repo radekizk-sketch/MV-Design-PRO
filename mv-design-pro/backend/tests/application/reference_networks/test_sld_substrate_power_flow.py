@@ -34,6 +34,7 @@ from application.reference_networks.sld_substrate_power_flow import (
     select_ring_maintenance_scenario,
 )
 from enm.models import Bus, Cable, EnergyNetworkModel, ENMHeader, Load, Source
+from enm.scenariusze import OperatingScenario
 from network_model.solvers.power_flow_newton import solve_power_flow_physics
 
 from tests.reference_networks.sld_substrate_52s import build_sld_substrate_52s
@@ -399,3 +400,36 @@ def test_maintenance_scenario_picker_is_a_pure_function_of_the_enm(substrate: di
     assert scenario_a.scenario_id == scenario_b.scenario_id
     assert scenario_a.out_of_service == scenario_b.out_of_service
     assert scenario_a.hash == scenario_b.hash
+
+
+@pytest.mark.parametrize("wariant", ["bez_nadpisan", "tylko_wylaczniki_pol"])
+def test_maintenance_refuses_scenario_that_leaves_the_station_energized(
+    substrate: dict, monkeypatch: pytest.MonkeyPatch, wariant: str
+) -> None:
+    """Predykaty parami: wybór stacji (prognoza z grafu gałęzi) i prawda solvera
+    (wyspy bez źródła) muszą się zgadzać — rozjazd jest jawnym błędem generatora,
+    nie cichym companionem bez przyciemnionej stacji. Dwa warianty rozjazdu:
+    scenariusz bez nadpisań (nic nie odłączone — złapałby to sam warunek
+    „de_energized niepuste") oraz scenariusz wyłączający WYŁĄCZNIE wyłączniki pól
+    tej stacji (odłącza terminale pól, więc `de_energized` jest NIEPUSTE, a szyna
+    SN stacji pozostaje zasilona — warunek „niepuste" by to przepuścił)."""
+    import application.reference_networks.sld_substrate_power_flow as modul
+
+    enm = EnergyNetworkModel.model_validate(substrate["enm"])
+    pelny = select_ring_maintenance_scenario(enm)
+    if wariant == "bez_nadpisan":
+        nadpisania: tuple[str, ...] = ()
+    else:
+        nadpisania = tuple(ref for ref in pelny.out_of_service if "/sn_field_breaker/" in ref)
+        assert nadpisania, "wybrana stacja substratu ma wyłączniki pól SN"
+    rozjechany = OperatingScenario(
+        scenario_id=pelny.scenario_id,
+        name=pelny.name,
+        kind=pelny.kind,
+        out_of_service=nadpisania,
+    )
+    monkeypatch.setattr(modul, "select_ring_maintenance_scenario", lambda _enm: rozjechany)
+    with pytest.raises(ValueError, match="nie odlaczyl wybranej stacji"):
+        compute_substrate_power_flow_maintenance(
+            enm, case_ref=_CASE_REF_MAINT, case_label=_CASE_LABEL_MAINT
+        )
