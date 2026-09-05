@@ -179,27 +179,6 @@ describe('ProtectionLibraryBrowser', () => {
     });
   });
 
-  it.skip('shows analytical warning for unverified device entries', async () => {
-    const user = userEvent.setup();
-    render(<ProtectionLibraryBrowser />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Przekaźnik Sepam 20')).toBeInTheDocument();
-    });
-
-    expect(screen.getByText(/dane analityczne - wymagaja weryfikacji/i)).toBeInTheDocument();
-
-    await user.click(screen.getByText('Przekaźnik Sepam 20'));
-
-    await waitFor(() => {
-      expect(screen.getByText(/rekord analityczny/i)).toBeInTheDocument();
-      expect(screen.getByText('Status weryfikacji:')).toBeInTheDocument();
-      expect(screen.getByText('NIEZWERYFIKOWANY')).toBeInTheDocument();
-      expect(screen.getByText('Zrodlo danych:')).toBeInTheDocument();
-      expect(screen.getByText(/devices_v0\.json/i)).toBeInTheDocument();
-    });
-  });
-
   it('shows analytical warning for unverified device entries with stable matcher', async () => {
     const user = userEvent.setup();
     render(<ProtectionLibraryBrowser />);
