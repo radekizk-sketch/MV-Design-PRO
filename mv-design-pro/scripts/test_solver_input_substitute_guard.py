@@ -998,7 +998,13 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # zdjete z zapadki/wykluczen jako Dlug/Wykluczenie ZMALALO; pozostale 4
     # pozycje tego pliku (`summary_a/b.slack_p_mw`/`summary_a/b.total_losses_p_mw`)
     # ZOSTAJA — te same nazwy pol i te same liczby odczytow w przepisanym kodzie.
-    assert "Pol kontraktow wejsciowych: 3599." in wyjscie, wyjscie
+    # 3601 pol (FAB-K, 2026-09-05): +2 pola kontraktu = `battery_catalog_ref`
+    # (wiazanie katalogowe BESS wpiete end-to-end, DER_BINDING_KEYS) oraz
+    # `sn_connection_bus_ref` (punkt przylaczenia SN jako element modelu) w
+    # `enm/domain_operations_v2.py` — pomiar roznicy zbiorow contract_fields()
+    # wobec szczytu fd7cc0e5 (koordynator), nie wyliczenie z pamieci; pliki,
+    # dlug i wykluczenia bez zmian.
+    assert "Pol kontraktow wejsciowych: 3601." in wyjscie, wyjscie
     assert (
         "Przeskanowano 576 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
