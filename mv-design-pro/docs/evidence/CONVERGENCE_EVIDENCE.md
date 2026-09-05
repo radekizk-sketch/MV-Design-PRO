@@ -66,6 +66,8 @@ Zakazy respektowane: brak `skip`, brak podnoszenia tolerancji, brak aktualizacji
 
 **Stan bieżący (2026-09-05 ~14:20 UTC, szczyt wypchnięty `51cdb9df`):** na `1fdeec44` Python tests, Frontend checks, P0 Extended, Arch, Docs, Physics Label, SLD Determinism zielone (E2E smoke/full bez biegu — commity `24b045ce`/`1fdeec44` tylko dokumentacja); **Frontend E2E full czerwony w runach 325–330** (`7732c8be` → `92b63674`; ostatni zielony run 324 na `9b78d322`): 5 testów `creator-screenshot` (oze light/dark, wiazania ×3) — trzy klasy naprawione w `51cdb9df` (wiersz E2E-FULL-FIX w §E; lokalnie 99/99 na własnych portach), bieg CI na `51cdb9df` w toku.
 
+**Stan bieżący (2026-09-05 ~15:05 UTC): 9/9 zielone na `51cdb9df`** — Python tests (`33971230192`), Frontend checks (`33971230324`), **Frontend E2E full (`33971230270`, run 331 — pierwszy zielony po naprawie E2E-FULL-FIX, czerwony w runach 325–330)**, E2E smoke (`33971230289`), Docs (`33971230174`), Physics Label (`33971230215`), Arch (`33971230305`), P0 Extended (`33971230274`), SLD Determinism (`33971230188`); na `f85ef79f` (tylko dokumentacja) 7/7 zielone (`33971282500`, `33971282499`, `33971282583`, `33971282555`, `33971282540`, `33971282564`, `33971282572`).
+
 ## B. Ochrona gałęzi `main` (§36) — **OWNER ACTION P0**
 
 Pomiar (GitHub API `list_branches`, 2026-09-04): `main` → `protected: false`; łącznie ponad 400 gałęzi (`claude/*`, `codex/*`, `kopia/*`), żadna chroniona. Sesja agenta nie ma uprawnień administracyjnych do włączenia ochrony (brak narzędzia w MCP; wymaga roli admin repozytorium).
