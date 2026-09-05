@@ -1,5 +1,18 @@
 ﻿/**
  * Testy AddDerWizard (Faza D) — 5-krokowy guided flow dodawania DER.
+ *
+ * Naprawa FAB-I (2026-09-05): katalog urządzeń DER (PV/BESS/FW) w kroku 3
+ * pochodzi WYŁĄCZNIE z backendu (`GET /api/catalog/converter-types?kind=…`).
+ * Poprzednio te same testy przechodziły dzięki CICHEMU podstawieniu statycznej
+ * listy `catalogs.ts` (`fallbackDeviceCatalog`), gdy mock `fetch` poniżej nie
+ * zwracał kształtu, którego oczekiwał `fetchDerConverterTypes` — DOWÓD: mock
+ * zwracał ten sam obiekt audit2-snapshot dla KAŻDEGO adresu, więc konwertery
+ * zawsze kończyły w gałęzi błędu, a wybieralne identyfikatory (`pv_inv_*`,
+ * `bess_pcs_*`) pochodziły z lokalnego pliku, nie z tego mocka. Teraz mock
+ * granicy `fetch` odpowiada realnym kształtem `ConverterType[]` per `kind`
+ * (wzorzec `mockConverterCatalogFetch` z `SldDetailDrawer.test.tsx`), a
+ * identyfikatory testowe zostały PRZENIESIONE z `catalogs.ts` (liczbowo bez
+ * zmian — moc/napięcie/producent 1:1) do fikstur poniżej.
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -10,27 +23,87 @@ import type { ReactElement } from 'react';
 import { useAppStateStore } from '../../../app-state/store';
 import { useSnapshotStore } from '../../../topology/snapshotStore';
 import { AddDerWizard } from '../AddDerWizard';
+import { PV_INVERTER_CATALOG, BESS_PCS_CATALOG, WIND_TURBINE_CATALOG } from '../catalogs';
 import { useStationDerStore, selectDersOfStation } from '../store';
 
+type ConverterKind = 'PV' | 'BESS' | 'WIND';
+interface ConverterFixture {
+  readonly id: string;
+  readonly name: string;
+  readonly kind: ConverterKind;
+  readonly un_kv: number;
+  readonly pmax_mw: number;
+  readonly sn_mva?: number;
+  readonly manufacturer?: string;
+  readonly control_mode?: string;
+}
+
+const AUDIT2_SNAPSHOT_BODY = {
+  bess_operation_modes: [],
+  tap_changers: [],
+  hv_fuses: [],
+  device_withstand: [],
+  pf_curves: [],
+  block_transformers: [],
+  mv_neutral_groundings: [],
+};
+
+// Identyfikatory i wartości liczbowe PRZENIESIONE 1:1 z `PV_INVERTER_CATALOG`/
+// `BESS_PCS_CATALOG` (katalog lokalny zostaje w `catalogs.ts` — konsument
+// produkcyjny: `DerSurfaces.tsx`/`InspectorEngineeringView.tsx` — ale kreator
+// DER go już nie czyta, więc scenariusze testowe muszą przyjść z backendu).
+const PV_CONVERTER_FIXTURES: readonly ConverterFixture[] = [
+  { id: 'pv_inv_catalog_50', name: 'Pakiet katalogowy PV 50', kind: 'PV', un_kv: 0.4, pmax_mw: 0.05, sn_mva: 0.05, manufacturer: 'MV-DESIGN-PRO' },
+  { id: 'pv_inv_huawei_185', name: 'Huawei SUN2000-185KTL', kind: 'PV', un_kv: 0.4, pmax_mw: 0.185, sn_mva: 0.185, manufacturer: 'Huawei' },
+  { id: 'pv_inv_system_1000', name: 'Pakiet katalogowy PV 1000', kind: 'PV', un_kv: 0.69, pmax_mw: 1, sn_mva: 1, manufacturer: 'MV-DESIGN-PRO' },
+  { id: 'pv_inv_sma_2500', name: 'SMA Sunny Central 2500-EV', kind: 'PV', un_kv: 0.69, pmax_mw: 2.5, sn_mva: 2.5, manufacturer: 'SMA' },
+];
+const BESS_CONVERTER_FIXTURES: readonly ConverterFixture[] = [
+  { id: 'bess_pcs_abb_500', name: 'ABB PCS100 ESS', kind: 'BESS', un_kv: 0.4, pmax_mw: 0.5, sn_mva: 0.5, manufacturer: 'ABB' },
+  { id: 'bess_pcs_sma_2200', name: 'SMA Sunny Central Storage 2200', kind: 'BESS', un_kv: 0.69, pmax_mw: 2.2, sn_mva: 2.2, manufacturer: 'SMA' },
+];
+const DEFAULT_CONVERTERS: Readonly<Record<ConverterKind, readonly ConverterFixture[]>> = {
+  PV: PV_CONVERTER_FIXTURES,
+  BESS: BESS_CONVERTER_FIXTURES,
+  WIND: [],
+};
+
+/**
+ * Mockuje granicę `fetch` — NIE listę opcji renderowaną przez kreator (wzorzec
+ * `mockConverterCatalogFetch` z `SldDetailDrawer.test.tsx`). `/api/catalog/
+ * converter-types?kind=…` odpowiada fikstywnym `ConverterType[]`; wszystko
+ * inne (audit2 snapshot, `POST …/generators`, `assign_catalog_to_element`)
+ * dostaje neutralny kształt audit2 — zachowanie tożsame z dawnym stubem.
+ */
+function mockDerWizardFetch(
+  converters: Readonly<Partial<Record<ConverterKind, readonly ConverterFixture[]>>> = DEFAULT_CONVERTERS,
+): ReturnType<typeof vi.fn> {
+  const mock = vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes('/api/catalog/converter-types')) {
+      const match = /[?&]kind=([^&]+)/.exec(url);
+      const kind = match ? (decodeURIComponent(match[1]) as ConverterKind) : null;
+      const records = (kind && converters[kind]) ?? [];
+      return new Response(JSON.stringify(records), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    return new Response(JSON.stringify(AUDIT2_SNAPSHOT_BODY), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  });
+  global.fetch = mock as unknown as typeof fetch;
+  return mock;
+}
+
 // Phase 8: Wizard pulls catalog snapshot via React Query — need QueryClient.
-function render(ui: ReactElement) {
-  // Stub fetch dla useAudit2CatalogSnapshot (Wizard pre-fetcher).
-  if (!(global as { fetch?: unknown }).fetch || (global.fetch as { _isStub?: boolean })._isStub !== true) {
-    const stub = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        bess_operation_modes: [],
-        tap_changers: [],
-        hv_fuses: [],
-        device_withstand: [],
-        pf_curves: [],
-        block_transformers: [],
-        mv_neutral_groundings: [],
-      }),
-    }) as unknown as typeof fetch & { _isStub: boolean };
-    (stub as unknown as { _isStub: boolean })._isStub = true;
-    global.fetch = stub;
-  }
+function render(
+  ui: ReactElement,
+  converters: Readonly<Partial<Record<ConverterKind, readonly ConverterFixture[]>>> = DEFAULT_CONVERTERS,
+) {
+  mockDerWizardFetch(converters);
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
@@ -134,7 +207,9 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     fireEvent.change(screen.getByTestId('add-der-bay-name'), { target: { value: 'Pole-PV-01' } });
     fireEvent.click(screen.getByTestId('add-der-next'));
 
-    // Krok 3: device
+    // Krok 3: device — katalog backendu jest ASYNCHRONICZNY (zero listy statycznej,
+    // zero natychmiastowego fallbacku), więc czekamy na jego wczytanie przed wyborem.
+    await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
     fireEvent.change(screen.getByTestId('add-der-device'), { target: { value: 'pv_inv_sma_2500' } });
     fireEvent.click(screen.getByTestId('add-der-next'));
 
@@ -195,7 +270,7 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false);
   });
 
-  it('BESS wymaga baterii oraz jawnego trybu pracy (Krok 3)', () => {
+  it('BESS wymaga baterii oraz jawnego trybu pracy (Krok 3)', async () => {
     render(
       <AddDerWizard isOpen stationId="s" stationName="S" derKind="BESS" projectId="p" onClose={vi.fn()} />,
     );
@@ -210,6 +285,7 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     // Krok 3: musi pokazac wybor baterii i trybow pracy.
     expect(screen.getByTestId('add-der-battery')).toBeInTheDocument();
 
+    await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
     fireEvent.change(screen.getByTestId('add-der-device'), { target: { value: 'bess_pcs_abb_500' } });
     // Bez baterii i trybu pracy: Dalej zablokowany.
     expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(true);
@@ -220,7 +296,7 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false);
   });
 
-  it('blokuje DER po nN, gdy moc katalogowa przekracza moc transformatora stacji', () => {
+  it('blokuje DER po nN, gdy moc katalogowa przekracza moc transformatora stacji', async () => {
     useSnapshotStore.setState({
       caseId: 'case_test',
       snapshot: {
@@ -257,6 +333,7 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     fireEvent.click(screen.getByTestId('variant-nN'));
     fireEvent.click(screen.getByTestId('add-der-next'));
     fireEvent.click(screen.getByTestId('add-der-next'));
+    await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
     expect(
       Array.from((screen.getByTestId('add-der-device') as HTMLSelectElement).options)
         .some((option) => option.value === 'pv_inv_catalog_50'),
@@ -271,7 +348,7 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it('po nN liczy tylko transformator SN/nN stacji, a nie transformator blokowy DER na tej samej szynie', () => {
+  it('po nN liczy tylko transformator SN/nN stacji, a nie transformator blokowy DER na tej samej szynie', async () => {
     useSnapshotStore.setState({
       caseId: 'case_test',
       snapshot: {
@@ -339,6 +416,7 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     expect(summary).not.toHaveTextContent('1.50 MVA');
     expect(summary).not.toHaveTextContent('1.5 MVA');
 
+    await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
     fireEvent.change(screen.getByTestId('add-der-device'), {
       target: { value: 'pv_inv_huawei_185' },
     });
@@ -346,7 +424,7 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false);
   });
 
-  it('krok profilu NIE preselekcjonuje operatora — Dalej zablokowane do wyboru', () => {
+  it('krok profilu NIE preselekcjonuje operatora — Dalej zablokowane do wyboru', async () => {
     render(
       <AddDerWizard isOpen stationId="s" stationName="S" derKind="PV" projectId="p" onClose={vi.fn()} />,
     );
@@ -357,6 +435,7 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     fireEvent.change(screen.getByTestId('add-der-pcc-label'), { target: { value: 'P' } });
     fireEvent.change(screen.getByTestId('add-der-bay-name'), { target: { value: 'P' } });
     fireEvent.click(screen.getByTestId('add-der-next'));
+    await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
     fireEvent.change(screen.getByTestId('add-der-device'), { target: { value: 'pv_inv_sma_2500' } });
     fireEvent.click(screen.getByTestId('add-der-next'));
 
@@ -368,7 +447,7 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it('profil Enea automatycznie wybiera dostepne krzywe LVRT/HVRT i odblokowuje Dalej', () => {
+  it('profil Enea automatycznie wybiera dostepne krzywe LVRT/HVRT i odblokowuje Dalej', async () => {
     render(
       <AddDerWizard isOpen stationId="s" stationName="S" derKind="PV" projectId="p" onClose={vi.fn()} />,
     );
@@ -379,6 +458,7 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     fireEvent.change(screen.getByTestId('add-der-pcc-label'), { target: { value: 'PCC-PV' } });
     fireEvent.change(screen.getByTestId('add-der-bay-name'), { target: { value: 'Pole PV' } });
     fireEvent.click(screen.getByTestId('add-der-next'));
+    await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
     fireEvent.change(screen.getByTestId('add-der-device'), { target: { value: 'pv_inv_sma_2500' } });
     fireEvent.click(screen.getByTestId('add-der-next'));
 
@@ -436,6 +516,7 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     fireEvent.click(screen.getByTestId('variant-nN'));
     fireEvent.click(screen.getByTestId('add-der-next'));
     fireEvent.click(screen.getByTestId('add-der-next'));
+    await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
     fireEvent.change(screen.getByTestId('add-der-device'), {
       target: { value: 'pv_inv_system_1000' },
     });
@@ -516,6 +597,7 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
       fireEvent.click(screen.getByTestId('variant-nN'));
       fireEvent.click(screen.getByTestId('add-der-next'));
       fireEvent.click(screen.getByTestId('add-der-next'));
+      await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
       fireEvent.change(screen.getByTestId('add-der-device'), {
         target: { value: 'pv_inv_huawei_185' },
       });
@@ -565,5 +647,159 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
       <AddDerWizard isOpen stationId="s" stationName="S" derKind="PV" projectId="p" onClose={vi.fn()} />,
     );
     expect((screen.getByTestId('add-der-prev') as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+describe('Katalog urządzeń DER — wyłącznie z backendu, zero listy zastępczej (FAB-I)', () => {
+  beforeEach(() => {
+    useStationDerStore.getState().reset();
+    useAppStateStore.getState().reset();
+    useSnapshotStore.getState().reset();
+    useAppStateStore.getState().setActiveProject('proj_test', 'Projekt testowy');
+    useAppStateStore.getState().setActiveCase('case_test', 'Zakres testowy', 'ShortCircuitCase', 'NONE');
+  });
+
+  it.each([
+    ['PV', 'variant-SN'],
+    ['BESS', 'variant-SN'],
+    ['FW', 'variant-SN'],
+  ] as const)(
+    'katalog pusty dla %s: stan zerowy uczciwy + krok zablokowany + zero identyfikatorów statycznych w DOM',
+    async (derKind, variantTestId) => {
+      const { container } = render(
+        <AddDerWizard isOpen stationId="s" stationName="S" derKind={derKind} projectId="p" onClose={vi.fn()} />,
+        { PV: [], BESS: [], WIND: [] },
+      );
+      fireEvent.click(screen.getByTestId(variantTestId));
+      fireEvent.click(screen.getByTestId('add-der-next'));
+      fireEvent.click(screen.getByTestId('add-der-next'));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('add-der-device-catalog-error')).toBeInTheDocument());
+      expect(screen.getByTestId('add-der-device-catalog-error')).toHaveTextContent(
+        'Katalog konwerterów nie zawiera pozycji dla wybranego typu DER.',
+      );
+      expect(screen.getByTestId('add-der-device-catalog-error')).toHaveTextContent(
+        'krok „Urządzenie” jest',
+      );
+      // Krok zablokowany — brak wyboru = brak zapisu, bez wyjątku dla żadnej technologii.
+      expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(true);
+      expect((screen.getByTestId('add-der-device') as HTMLSelectElement).disabled).toBe(true);
+
+      // ZERO LISTY ZASTĘPCZEJ: żaden identyfikator z lokalnych katalogów statycznych
+      // (PV/BESS/FW) nie może wyciec do DOM, niezależnie od technologii kreatora.
+      const statyczneId = [
+        ...PV_INVERTER_CATALOG.map((d) => d.id),
+        ...BESS_PCS_CATALOG.map((d) => d.id),
+        ...WIND_TURBINE_CATALOG.map((d) => d.id),
+      ];
+      for (const id of statyczneId) {
+        expect(container.innerHTML).not.toContain(id);
+      }
+    },
+  );
+
+  it('błąd HTTP backendu (503): komunikat z treścią błędu backendu + krok zablokowany', async () => {
+    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/api/catalog/converter-types')) {
+        return new Response(
+          JSON.stringify({ detail: 'Katalog konwerterów PV jest chwilowo w konserwacji.' }),
+          { status: 503, statusText: 'Service Unavailable', headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+      return new Response(JSON.stringify(AUDIT2_SNAPSHOT_BODY), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }) as unknown as typeof fetch;
+
+    const qc = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    rtlRender(
+      <QueryClientProvider client={qc}>
+        <AddDerWizard isOpen stationId="s" stationName="S" derKind="PV" projectId="p" onClose={vi.fn()} />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(screen.getByTestId('variant-SN'));
+    fireEvent.click(screen.getByTestId('add-der-next'));
+    fireEvent.click(screen.getByTestId('add-der-next'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('add-der-device-catalog-error')).toBeInTheDocument());
+    expect(screen.getByTestId('add-der-device-catalog-error')).toHaveTextContent(
+      'Katalog konwerterów PV jest chwilowo w konserwacji.',
+    );
+    expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByTestId('add-der-device') as HTMLSelectElement).disabled).toBe(true);
+  });
+
+  it('katalog OK: lista urządzeń pochodzi WYŁĄCZNIE z backendu — zero pozycji z lokalnego katalogu statycznego', async () => {
+    // Identyfikatory CELOWO różne od `PV_INVERTER_CATALOG`, żeby dowieść, że
+    // opcje w Select pochodzą z tego mocka backendu, a nie z pliku statycznego.
+    const backendOnly = [
+      { id: 'conv-pv-test-a', name: 'Konwerter testowy A', kind: 'PV' as const, un_kv: 0.4, pmax_mw: 0.1, manufacturer: 'TestCo' },
+      { id: 'conv-pv-test-b', name: 'Konwerter testowy B', kind: 'PV' as const, un_kv: 15, pmax_mw: 3, manufacturer: 'TestCo' },
+    ];
+    const { container } = render(
+      <AddDerWizard isOpen stationId="s" stationName="S" derKind="PV" projectId="p" onClose={vi.fn()} />,
+      { PV: backendOnly, BESS: [], WIND: [] },
+    );
+    fireEvent.click(screen.getByTestId('variant-SN'));
+    fireEvent.click(screen.getByTestId('add-der-next'));
+    fireEvent.click(screen.getByTestId('add-der-next'));
+    await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
+
+    const options = Array.from((screen.getByTestId('add-der-device') as HTMLSelectElement).options)
+      .map((o) => o.value)
+      .filter(Boolean)
+      .sort();
+    // Dokładnie te dwa identyfikatory z backendu — nic więcej, nic mniej.
+    expect(options).toEqual(['conv-pv-test-a', 'conv-pv-test-b']);
+    for (const id of PV_INVERTER_CATALOG.map((d) => d.id)) {
+      expect(container.innerHTML).not.toContain(id);
+    }
+  });
+
+  it('zmiana technologii po wyborze urządzenia: wybór wyczyszczony, lista nowej technologii, zero wycieku poprzedniej', async () => {
+    mockDerWizardFetch({ PV: PV_CONVERTER_FIXTURES, BESS: BESS_CONVERTER_FIXTURES, WIND: [] });
+    const qc = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const { rerender } = rtlRender(
+      <QueryClientProvider client={qc}>
+        <AddDerWizard isOpen stationId="s" stationName="S" derKind="PV" projectId="p" onClose={vi.fn()} />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(screen.getByTestId('variant-SN'));
+    fireEvent.click(screen.getByTestId('add-der-next'));
+    fireEvent.click(screen.getByTestId('add-der-next'));
+    await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
+    fireEvent.change(screen.getByTestId('add-der-device'), { target: { value: 'pv_inv_sma_2500' } });
+    expect((screen.getByTestId('add-der-device') as HTMLSelectElement).value).toBe('pv_inv_sma_2500');
+
+    rerender(
+      <QueryClientProvider client={qc}>
+        <AddDerWizard isOpen stationId="s" stationName="S" derKind="BESS" projectId="p" onClose={vi.fn()} />
+      </QueryClientProvider>,
+    );
+
+    // Reset stanu kreatora przy zmianie technologii (derKind) — wraca do kroku 1,
+    // bez śladu wyboru zrobionego dla poprzedniej technologii.
+    await waitFor(() =>
+      expect(screen.getByTestId('add-der-step-content-variant')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('variant-SN'));
+    fireEvent.click(screen.getByTestId('add-der-next'));
+    fireEvent.click(screen.getByTestId('add-der-next'));
+    await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
+
+    const select = screen.getByTestId('add-der-device') as HTMLSelectElement;
+    expect(select.value).toBe('');
+    const options = Array.from(select.options).map((o) => o.value).filter(Boolean);
+    expect(options).toEqual(expect.arrayContaining(['bess_pcs_abb_500', 'bess_pcs_sma_2200']));
+    expect(options).not.toContain('pv_inv_sma_2500');
   });
 });

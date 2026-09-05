@@ -18,19 +18,72 @@ import { useAppStateStore } from '../../../app-state/store';
 import { useSnapshotStore } from '../../../topology/snapshotStore';
 import { AddDerWizard } from '../AddDerWizard';
 
-function render(ui: ReactElement) {
-  global.fetch = vi.fn().mockResolvedValue({
-    ok: true,
-    json: async () => ({
-      bess_operation_modes: [],
-      tap_changers: [],
-      hv_fuses: [],
-      device_withstand: [],
-      pf_curves: [],
-      block_transformers: [],
-      mv_neutral_groundings: [],
-    }),
-  }) as never;
+type ConverterKind = 'PV' | 'BESS' | 'WIND';
+interface ConverterFixture {
+  readonly id: string;
+  readonly name: string;
+  readonly kind: ConverterKind;
+  readonly un_kv: number;
+  readonly pmax_mw: number;
+  readonly sn_mva?: number;
+  readonly manufacturer?: string;
+}
+
+const AUDIT2_SNAPSHOT_BODY = {
+  bess_operation_modes: [],
+  tap_changers: [],
+  hv_fuses: [],
+  device_withstand: [],
+  pf_curves: [],
+  block_transformers: [],
+  mv_neutral_groundings: [],
+};
+
+// Naprawa FAB-I (2026-09-05): katalog urządzeń DER pochodzi WYŁĄCZNIE z backendu
+// — kreator nie ma już listy zastępczej `catalogs.ts`, więc identyfikatory tego
+// pliku (przeniesione 1:1, liczbowo bez zmian z `PV_INVERTER_CATALOG`/
+// `BESS_PCS_CATALOG`) muszą przyjść z mocka granicy `fetch`, nie z importu.
+const PV_CONVERTER_FIXTURES: readonly ConverterFixture[] = [
+  { id: 'pv_inv_catalog_50', name: 'Pakiet katalogowy PV 50', kind: 'PV', un_kv: 0.4, pmax_mw: 0.05, sn_mva: 0.05, manufacturer: 'MV-DESIGN-PRO' },
+  { id: 'pv_inv_huawei_185', name: 'Huawei SUN2000-185KTL', kind: 'PV', un_kv: 0.4, pmax_mw: 0.185, sn_mva: 0.185, manufacturer: 'Huawei' },
+  { id: 'pv_inv_sma_2500', name: 'SMA Sunny Central 2500-EV', kind: 'PV', un_kv: 0.69, pmax_mw: 2.5, sn_mva: 2.5, manufacturer: 'SMA' },
+];
+const BESS_CONVERTER_FIXTURES: readonly ConverterFixture[] = [
+  { id: 'bess_pcs_sma_2200', name: 'SMA Sunny Central Storage 2200', kind: 'BESS', un_kv: 0.69, pmax_mw: 2.2, sn_mva: 2.2, manufacturer: 'SMA' },
+];
+const DEFAULT_CONVERTERS: Readonly<Record<ConverterKind, readonly ConverterFixture[]>> = {
+  PV: PV_CONVERTER_FIXTURES,
+  BESS: BESS_CONVERTER_FIXTURES,
+  WIND: [],
+};
+
+/** Mockuje granicę `fetch` (wzorzec `mockConverterCatalogFetch` z `SldDetailDrawer.test.tsx`). */
+function mockDerWizardFetch(
+  converters: Readonly<Partial<Record<ConverterKind, readonly ConverterFixture[]>>> = DEFAULT_CONVERTERS,
+): void {
+  global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes('/api/catalog/converter-types')) {
+      const match = /[?&]kind=([^&]+)/.exec(url);
+      const kind = match ? (decodeURIComponent(match[1]) as ConverterKind) : null;
+      const records = (kind && converters[kind]) ?? [];
+      return new Response(JSON.stringify(records), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    return new Response(JSON.stringify(AUDIT2_SNAPSHOT_BODY), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }) as unknown as typeof fetch;
+}
+
+function render(
+  ui: ReactElement,
+  converters: Readonly<Partial<Record<ConverterKind, readonly ConverterFixture[]>>> = DEFAULT_CONVERTERS,
+) {
+  mockDerWizardFetch(converters);
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
@@ -72,7 +125,8 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     });
     fireEvent.click(screen.getByTestId('add-der-next'));
 
-    // Krok 3: device.
+    // Krok 3: device — katalog backendu jest asynchroniczny (zero listy zastępczej).
+    await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
     fireEvent.change(screen.getByTestId('add-der-device'), {
       target: { value: 'pv_inv_sma_2500' },
     });
@@ -127,6 +181,7 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     fireEvent.change(screen.getByTestId('add-der-bay-name'), { target: { value: 'POLE-BESS-01' } });
     fireEvent.click(screen.getByTestId('add-der-next'));
 
+    await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
     fireEvent.change(screen.getByTestId('add-der-device'), {
       target: { value: 'bess_pcs_sma_2200' },
     });
@@ -188,6 +243,7 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     fireEvent.change(screen.getByTestId('add-der-pcc-label'), { target: { value: 'PCC-01' } });
     fireEvent.change(screen.getByTestId('add-der-voltage-level'), { target: { value: 'lv_0_4kV' } });
     fireEvent.click(screen.getByTestId('add-der-next'));
+    await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
     fireEvent.change(screen.getByTestId('add-der-device'), {
       target: { value: 'pv_inv_huawei_185' },
     });
@@ -231,6 +287,7 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     fireEvent.click(screen.getByTestId('variant-nN'));
     fireEvent.click(screen.getByTestId('add-der-next'));
     fireEvent.click(screen.getByTestId('add-der-next'));
+    await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
     fireEvent.change(screen.getByTestId('add-der-device'), {
       target: { value: 'pv_inv_catalog_50' },
     });
@@ -272,6 +329,7 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     fireEvent.click(screen.getByTestId('variant-nN'));
     fireEvent.click(screen.getByTestId('add-der-next'));
     fireEvent.click(screen.getByTestId('add-der-next'));
+    await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
     fireEvent.change(screen.getByTestId('add-der-device'), {
       target: { value: 'pv_inv_catalog_50' },
     });

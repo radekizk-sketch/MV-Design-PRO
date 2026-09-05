@@ -32,14 +32,11 @@ import { useAudit2CatalogSnapshot } from './audit2-hooks';
 import { generateDeterministicDerId, validateWizardSelections } from './wizard-validation';
 import {
   BESS_BATTERY_CATALOG,
-  BESS_PCS_CATALOG,
   HVRT_CURVE_CATALOG,
   LV_VOLTAGE_LEVEL_CATALOG,
   LVRT_CURVE_CATALOG,
   NC_RFG_PROFILE_CATALOG,
   PF_CURVE_CATALOG,
-  PV_INVERTER_CATALOG,
-  WIND_TURBINE_CATALOG,
   getBlockTransformer,
   selectBessModesForPcs,
   selectBlockTransformersForDer,
@@ -75,7 +72,12 @@ type DerDeviceCatalogItem = {
   readonly label_pl: string;
   readonly nominal_power_kw: number;
   readonly nominal_voltage_kv?: number;
-  readonly catalog_source?: 'backend' | 'local';
+  /**
+   * Katalog urządzeń DER (PV/BESS/FW) ma WYŁĄCZNIE jedno źródło — backend
+   * (karta FAB-I). Pole zostaje jako dowód pochodzenia w White Box wyświetlanym
+   * projektantowi, nie jako przełącznik między źródłami.
+   */
+  readonly catalog_source: 'backend';
   readonly catalog_kind?: 'PV' | 'BESS' | 'WIND';
   readonly manufacturer?: string | null;
   readonly model?: string | null;
@@ -427,19 +429,6 @@ function mapBackendConverterToDerDevice(item: ConverterType): DerDeviceCatalogIt
   };
 }
 
-function normalizeLocalDerDevice(
-  item: DerDeviceCatalogItem,
-  derKind: DerKindUnified,
-): DerDeviceCatalogItem {
-  return {
-    ...item,
-    catalog_source: 'local',
-    catalog_kind: toConverterKind(derKind) === 'WIND' ? 'WIND' : toConverterKind(derKind),
-    applicable_module_types: item.applicable_module_types
-      ?? deriveModuleTypesForPowerKw(item.nominal_power_kw),
-  };
-}
-
 function deviceSearchHaystack(device: DerDeviceCatalogItem): string {
   return [
     device.id,
@@ -582,7 +571,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
   const [backendDeviceCatalog, setBackendDeviceCatalog] =
     useState<DerDeviceCatalogItem[] | null>(null);
   const [deviceCatalogStatus, setDeviceCatalogStatus] =
-    useState<'fallback' | 'loading' | 'backend' | 'error'>('fallback');
+    useState<'loading' | 'backend' | 'error'>('loading');
   const [deviceCatalogError, setDeviceCatalogError] = useState<string | null>(null);
   const [deviceSearch, setDeviceSearch] = useState('');
   const [deviceVoltageFilter, setDeviceVoltageFilter] = useState('all');
@@ -684,17 +673,14 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     selections.ncRfgProfileRef ? selectHvrtCurvesForProfile(selections.ncRfgProfileRef) : [],
   [selections.ncRfgProfileRef]);
 
-  const fallbackDeviceCatalog = useMemo<readonly DerDeviceCatalogItem[]>(() => {
-    const localCatalog =
-      derKind === 'PV' ? PV_INVERTER_CATALOG
-      : derKind === 'BESS' ? BESS_PCS_CATALOG
-      : WIND_TURBINE_CATALOG;
-    return localCatalog.map((device) => normalizeLocalDerDevice(device, derKind));
-  }, [derKind]);
-
+  // ZERO LISTY ZASTĘPCZEJ (FAB-I). Katalog urządzeń DER (PV/BESS/FW) pochodzi
+  // WYŁĄCZNIE z backendu — brak/błąd odpowiedzi backendu to uczciwy stan pusty,
+  // NIE podstawienie statycznej listy `catalogs.ts`. Użytkownik nie może wybrać
+  // urządzenia, którego backend nie zna, więc zapis nigdy nie odbije się od
+  // walidacji 422 z powodu urządzenia widocznego tylko lokalnie.
   const deviceCatalog = useMemo<readonly DerDeviceCatalogItem[]>(
-    () => backendDeviceCatalog?.length ? backendDeviceCatalog : fallbackDeviceCatalog,
-    [backendDeviceCatalog, fallbackDeviceCatalog],
+    () => backendDeviceCatalog ?? [],
+    [backendDeviceCatalog],
   );
 
   const stationTransformers = useMemo(
@@ -914,7 +900,10 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
           )
         );
       case 'device':
-        return selections.deviceCatalogRef !== null
+        // Katalog niegotowy (ładowanie/pusty/błąd backendu) BLOKUJE krok — bez
+        // wyjątku dla ewentualnej resztki wyboru sprzed zmiany technologii.
+        return deviceCatalogStatus === 'backend'
+          && selections.deviceCatalogRef !== null
           && voltageMismatchWarning === null
           && transformerPowerWarning === null
           && (
@@ -938,6 +927,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     }
   }, [
     derKind,
+    deviceCatalogStatus,
     effectiveBlockTransformerCatalogRef,
     selections,
     step,
@@ -1472,13 +1462,27 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                 <CatalogMetric label="PTPiREE" value={`${deviceCatalogCounters.ptpiree}`} />
                 <CatalogMetric label="GFM" value={`${deviceCatalogCounters.gfm}`} />
               </div>
+              {deviceCatalogStatus === 'loading' && (
+                <div
+                  data-testid="add-der-device-catalog-loading"
+                  className="rounded border border-scada-border bg-scada-bg p-3 text-[11px] text-scada-muted"
+                >
+                  Pobieram katalog urządzeń {DER_KIND_LABELS[derKind]} z backendu…
+                </div>
+              )}
               {deviceCatalogStatus === 'error' && (
                 <div
                   data-testid="add-der-device-catalog-error"
                   className="space-y-2 rounded border border-sygnal-blokada bg-sygnal-blokada-tlo p-3 text-[11px] text-sygnal-blokada-tusz"
                 >
-                  Katalog backendowy jest niedostępny, używam awaryjnych pozycji lokalnych.
-                  {deviceCatalogError ? ` Przyczyna: ${deviceCatalogError}` : ''}
+                  <div className="font-semibold">
+                    Katalog urządzeń {DER_KIND_LABELS[derKind]} jest niedostępny — krok „Urządzenie” jest
+                    zablokowany. Katalog urządzeń DER pochodzi wyłącznie z backendu, więc kreator NIE
+                    podstawia listy zastępczej.
+                  </div>
+                  <div>
+                    {deviceCatalogError ?? 'Backend nie zwrócił katalogu konwerterów DER.'}
+                  </div>
                 </div>
               )}
               <div
@@ -1629,10 +1633,14 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
               <Select
                 label={derKind === 'PV' ? 'Falownik PV' : derKind === 'BESS' ? 'PCS BESS' : 'Turbina wiatrowa'}
                 required
+                disabled={deviceCatalogStatus !== 'backend'}
                 value={selections.deviceCatalogRef ?? ''}
                 onChange={(v) => setSelections((s) => ({ ...s, deviceCatalogRef: v }))}
                 options={[
-                  { id: '', label: '— wybierz —' },
+                  {
+                    id: '',
+                    label: deviceCatalogStatus === 'backend' ? '— wybierz —' : '— katalog niedostępny —',
+                  },
                   ...deviceSelectOptions,
                 ]}
                 testId="add-der-device"
@@ -1754,7 +1762,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                       <div className="text-sm font-semibold text-scada-text">{selectedDevice.label_pl}</div>
                     </div>
                     <span className="rounded border border-scada-border bg-scada-bg px-2 py-1 text-[10px] text-scada-muted">
-                      {selectedDevice.catalog_source === 'backend' ? 'katalog backendowy' : 'fallback lokalny'}
+                      katalog backendowy
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-2 md:grid-cols-4">

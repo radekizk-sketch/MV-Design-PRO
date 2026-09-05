@@ -306,7 +306,7 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     expect(text).not.toMatch(/\b250 kVA[\s\S]{0,140}1000 kW|1000 kW[\s\S]{0,140}\b250 kVA/);
   });
 
-  it('PvSourceSurface migruje legacy generator bez catalog_ref do pakietu katalogowego', () => {
+  it('PvSourceSurface pokazuje SUROWĄ referencję katalogową, gdy urządzenie jest nieznane lokalnie — zero fabrykacji zastępczego urządzenia (naprawa FAB-I)', () => {
     useSnapshotStore.setState({
       snapshot: {
         header: {
@@ -361,10 +361,29 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
 
     render(<PvSourceSurface surface={makeSurface('gen_pv_legacy')} />);
 
+    // NAPRAWA FAB-I (2026-09-05, ta sama klasa co fallback `AddDerWizard`):
+    // ten test przed naprawą nazywał się „migruje legacy generator bez catalog_ref
+    // do pakietu katalogowego" i asercją `toContain('Pakiet katalogowy PV 1000')`
+    // dowodził, że ekran POKAZUJE ZMYŚLONE urządzenie — falownik SMA/Huawei/pakiet
+    // katalogowy dobrany WYŁĄCZNIE po najbliższej mocy (1 MW), mimo że model niesie
+    // realną referencję `legacy_unknown_catalog_ref`, której lokalny indeks
+    // (`PV_INVERTER_CATALOG`) po prostu nie zna. Test MASKOWAŁ defekt produktu
+    // (`resolveDeviceCatalogRef`/`defaultDeviceCatalogRef` w `DerSurfaces.tsx`
+    // podstawiały inne urządzenie, gdy referencja z modelu nie pasowała do
+    // lokalnej listy — DOKŁADNIE ta sama klasa co fallback lokalny w kreatorze
+    // DER). INTENCJA ZACHOWANA (ekran ma pokazać COŚ sensownego dla starego
+    // rekordu), ale „sensowne" znaczy dziś UCZCIWE: surowa referencja z modelu,
+    // nie fabrykowana nazwa producenta/modelu, której w stacji nie ma.
     expect(screen.getAllByText('Blok PV legacy').length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Pakiet katalogowy PV 1000/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/legacy_unknown_catalog_ref/).length).toBeGreaterThan(0);
     expect(screen.getByText('certyfikat PTPiREE z pakietu katalogowego')).toBeInTheDocument();
-    expect(document.body.textContent ?? '').not.toMatch(/wybierz wariant katalogowy|wybierz certyfikat PTPiREE|wymaga wariantu katalogowego/i);
+    // Zero fabrykacji: ani stary domyślny tekst „wybierz wariant katalogowy" (mylący,
+    // bo referencja JEST przypisana — tylko lokalnie nierozpoznana), ani JAKAKOLWIEK
+    // nazwa/producent z lokalnego katalogu statycznego (PV/BESS/FW) nie mogą się
+    // pojawić — dowód, że nic nie zostało podstawione zamiast surowej referencji.
+    const tresc = document.body.textContent ?? '';
+    expect(tresc).not.toMatch(/wybierz wariant katalogowy|wybierz certyfikat PTPiREE|wymaga wariantu katalogowego/i);
+    expect(tresc).not.toMatch(/Pakiet katalogowy|SMA Sunny Central|Huawei SUN2000|ABB PCS100|Vestas V\d|Siemens SWT/);
 
     fireEvent.click(screen.getByTestId('der-card-tab-readiness'));
     // INTENCJA TESTU bez zmian: legacy generator BEZ rozpoznawalnego `catalog_ref`

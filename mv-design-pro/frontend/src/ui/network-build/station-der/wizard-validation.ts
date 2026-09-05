@@ -7,13 +7,10 @@
 
 import {
   BESS_BATTERY_CATALOG,
-  BESS_PCS_CATALOG,
   HVRT_CURVE_CATALOG,
   LV_VOLTAGE_LEVEL_CATALOG,
   LVRT_CURVE_CATALOG,
   NC_RFG_PROFILE_CATALOG,
-  PV_INVERTER_CATALOG,
-  WIND_TURBINE_CATALOG,
 } from './catalogs';
 import type { DerKindUnified } from './types';
 
@@ -67,6 +64,13 @@ export interface ValidationResult {
 }
 
 export interface WizardValidationContext {
+  /**
+   * Katalog urządzeń DER (PV/BESS/FW) pochodzi WYŁĄCZNIE z backendu (karta FAB-I)
+   * — wołający MUSI przekazać identyfikatory faktycznie zaoferowane projektantowi
+   * (lista z `fetchDerConverterTypes`). Bez tego pola żaden `deviceCatalogRef` nie
+   * przejdzie walidacji: brak listy zastępczej w tym module, tak jak nie ma jej
+   * już w kreatorze.
+   */
   readonly allowedDeviceCatalogIds?: readonly string[];
 }
 
@@ -98,21 +102,17 @@ export function validateWizardSelections(
     }
   }
 
-  // Device catalog (per kind)
+  // Device catalog (per kind) — WYŁĄCZNIE backend (karta FAB-I). Katalog lokalny
+  // (`catalogs.ts`) NIE jest już drugim źródłem prawdy o poprawności wyboru: ten
+  // sam mechanizm, który dawał kreatorowi fabrykowaną listę zastępczą, tu dawałby
+  // przejście walidacji dla urządzenia, którego backend nigdy nie zaoferował.
   if (!selections.deviceCatalogRef) {
     errors.push('Wybór urządzenia z katalogu jest wymagany.');
   } else {
-    const deviceCatalog =
-      derKind === 'PV' ? PV_INVERTER_CATALOG
-      : derKind === 'BESS' ? BESS_PCS_CATALOG
-      : WIND_TURBINE_CATALOG;
-    const allowedDeviceCatalogIds = new Set([
-      ...deviceCatalog.map((device) => device.id),
-      ...(context.allowedDeviceCatalogIds ?? []),
-    ]);
+    const allowedDeviceCatalogIds = new Set(context.allowedDeviceCatalogIds ?? []);
     if (!allowedDeviceCatalogIds.has(selections.deviceCatalogRef)) {
       errors.push(
-        `Urządzenie "${selections.deviceCatalogRef}" nie istnieje w katalogu dla DER ${derKind}.`,
+        `Urządzenie "${selections.deviceCatalogRef}" nie istnieje w katalogu backendu dla DER ${derKind}.`,
       );
     }
   }

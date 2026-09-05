@@ -95,10 +95,6 @@ type CatalogItem = {
   readonly label_pl: string;
 };
 
-type PowerCatalogItem = CatalogItem & {
-  readonly nominal_power_kw: number;
-};
-
 // ZERO DOMYSLNEGO OPERATORA (V12K-236). Nie ma tu żadnego „profilu domyślnego":
 // wcześniej brak profilu w modelu był zastępowany zestawem ENEA
 // (`ncrfg_enea`/`lvrt_enea_b`/`hvrt_enea_b`/`pf_enea_b`), co fabrykowało OPERATORA —
@@ -251,48 +247,27 @@ function stringFromRecord(
   return null;
 }
 
-function selectPowerCatalogItem<T extends PowerCatalogItem>(
-  catalog: readonly T[],
-  nominalPowerKw: number | null,
-): T | null {
-  if (catalog.length === 0) return null;
-  if (nominalPowerKw === null || !Number.isFinite(nominalPowerKw) || nominalPowerKw <= 0) {
-    return catalog[0] ?? null;
-  }
-  const exact = catalog.find((item) =>
-    Math.abs(item.nominal_power_kw - nominalPowerKw) / nominalPowerKw <= 0.1,
-  );
-  if (exact) return exact;
-  const above = catalog
-    .filter((item) => item.nominal_power_kw >= nominalPowerKw)
-    .sort((a, b) => a.nominal_power_kw - b.nominal_power_kw)[0];
-  if (above) return above;
-  return [...catalog].sort((a, b) => b.nominal_power_kw - a.nominal_power_kw)[0] ?? null;
-}
-
-function defaultDeviceCatalogRef(
-  derKind: DerKind,
-  nominalPowerKw: number | null,
-): string | null {
-  if (derKind === 'PV') return selectPowerCatalogItem(PV_INVERTER_CATALOG, nominalPowerKw)?.id ?? null;
-  if (derKind === 'BESS') return selectPowerCatalogItem(BESS_PCS_CATALOG, nominalPowerKw)?.id ?? null;
-  return selectPowerCatalogItem(WIND_TURBINE_CATALOG, nominalPowerKw)?.id ?? null;
-}
-
-function hasKnownDeviceCatalogRef(derKind: DerKind, ref: string | null): boolean {
-  if (!ref) return false;
-  if (derKind === 'PV') return PV_INVERTER_CATALOG.some((item) => item.id === ref);
-  if (derKind === 'BESS') return BESS_PCS_CATALOG.some((item) => item.id === ref);
-  return WIND_TURBINE_CATALOG.some((item) => item.id === ref);
-}
-
-function resolveDeviceCatalogRef(
-  derKind: DerKind,
-  explicitRef: string | null,
-  nominalPowerKw: number | null,
-): string | null {
-  if (hasKnownDeviceCatalogRef(derKind, explicitRef)) return explicitRef;
-  return defaultDeviceCatalogRef(derKind, nominalPowerKw);
+/**
+ * Referencja katalogowa urządzenia z modelu — BEZ podstawiania (naprawa FAB-I,
+ * ta sama klasa co fallback `AddDerWizard`/`wizard-validation`).
+ *
+ * POMIAR PRZED NAPRAWĄ: gdy `explicitRef` (zapisany przez kreator, dziś zawsze
+ * identyfikator z backendu) nie pasował do ŻADNEJ pozycji lokalnych katalogów
+ * `PV_INVERTER_CATALOG`/`BESS_PCS_CATALOG`/`WIND_TURBINE_CATALOG` — co jest
+ * ścieżką NORMALNĄ, nie brzegową, odkąd kreator DER wybiera urządzenie z
+ * backendu — funkcja podstawiała inne urządzenie z lokalnej listy, dobrane
+ * WYŁĄCZNIE po najbliższej mocy znamionowej. Karta inżynierska pokazywała więc
+ * producenta, model i napięcie urządzenia, którego w stacji NIE MA. Dokładnie
+ * ten sam mechanizm, jaki `catalogLabel` miał dla CT/VT przed V12K-239/242
+ * (patrz komentarz przy `KatalogiWiazan` niżej) — tam już naprawiony,
+ * tu nie. Naprawa: referencja z modelu wraca 1:1, `null` zostaje `null`.
+ * Brak dopasowania w lokalnym katalogu jest teraz widoczny WPROST — `catalogLabel`
+ * i wyszukiwania `PV_INVERTER_CATALOG.find(...)` niżej już honorują `null` z
+ * wyszukiwania (dash/„wybierz wariant katalogowy"), więc nie trzeba nic dalej
+ * fabrykować.
+ */
+function resolveDeviceCatalogRef(explicitRef: string | null): string | null {
+  return explicitRef && explicitRef.trim().length > 0 ? explicitRef : null;
 }
 
 function connectionSideFromGenerator(generator: Generator): ConnectionSide {
@@ -357,9 +332,7 @@ function buildDerFromGenerator(
   const unitCount = numberFromRecord(materialized, ['quantity', 'n_parallel'])
     ?? numberFromRecord(meta, ['quantity', 'n_parallel']);
   const catalogRef = resolveDeviceCatalogRef(
-    fallbackKind,
     generator.catalog_ref ?? stringFromRecord(materialized, ['device_catalog_ref']),
-    nominalPowerKw,
   );
   const completeness: DerCompleteness = !busPrzylaczeniaRef
     ? 'no_pcc'
@@ -493,10 +466,26 @@ function inferBlockTransformerCatalogRef(
   return match?.id ?? null;
 }
 
+/**
+ * Etykieta urządzenia z katalogu — WYRÓŻNIA „brak wyboru" od „wybór spoza
+ * lokalnego indeksu" (naprawa FAB-I).
+ *
+ * `catalogLabel` (dzielona z bateriami/CT/VT) traktuje obie sytuacje tak samo
+ * i zwraca „wybierz wariant katalogowy" — komunikat prawdziwy, gdy referencja
+ * jest pusta, ale MYLĄCY, gdy projektant już wybrał urządzenie w kreatorze
+ * (backend), a tutejszy indeks lokalny go po prostu nie zna. Dokładnie ten
+ * błąd słownictwa miał `catalogLabel` dla CT/VT przed V12K-239/242 (patrz
+ * komentarz przy `KatalogiWiazan` niżej) — tu wraca surowa referencja zamiast
+ * fałszywego „nic nie wybrano", bez fabrykowania nazwy/producenta.
+ */
 function findDeviceLabel(der: StationDerConnection): string {
-  if (der.der_kind === 'PV') return catalogLabel(PV_INVERTER_CATALOG, der.catalogs.device_catalog_ref);
-  if (der.der_kind === 'BESS') return catalogLabel(BESS_PCS_CATALOG, der.catalogs.device_catalog_ref);
-  return catalogLabel(WIND_TURBINE_CATALOG, der.catalogs.device_catalog_ref);
+  const catalog = der.der_kind === 'PV' ? PV_INVERTER_CATALOG
+    : der.der_kind === 'BESS' ? BESS_PCS_CATALOG
+    : WIND_TURBINE_CATALOG;
+  const ref = der.catalogs.device_catalog_ref;
+  if (!ref) return 'wybierz wariant katalogowy';
+  const item = catalog.find((entry) => entry.id === ref);
+  return item ? cleanCatalogText(item.label_pl) : ref;
 }
 
 function findPvInverter(der: StationDerConnection) {
