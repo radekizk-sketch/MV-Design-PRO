@@ -404,8 +404,13 @@ test('K9-A: kreator OZE MAX — aparatura i zgodność w jednym przepływie, wi�
   await expect(page.getByTestId('mvd-kreator-oze-dobor-rezerwa-pole')).toBeVisible();
 
   // ------------------------------------------------------------------
-  // Krok 4 (APARATURA — NOWY): CT, VT, zabezpieczenie z realnych katalogów
-  // + referencja danych zwarciowych (pole jawnie bez walidacji katalogowej).
+  // Krok 4 (APARATURA — NOWY): CT, VT, zabezpieczenie i model dynamiczny
+  // z realnych katalogów backendu (żadne pole nie jest już wolnym tekstem).
+  // Karta FAB-L (§0 L2/L3, 2026-09-05): `fault_current_data_ref` USUNIĘTE
+  // (solver IEC 60909 nigdy go nie czytał — κ liczy z modelu, nie z deklaracji
+  // urządzenia); `dane-zwarciowe` zastąpione picker'em modelu dynamicznego
+  // (`dynamic_model_ref`, `GET /api/catalog/der-dynamic-profiles`), jedynym
+  // źródłem konsumowanym przez solvery RMS/FRT-HVRT.
   // ------------------------------------------------------------------
   await page.getByTestId('mvd-kreator-oze-dalej').click();
   await expect(page.getByTestId('mvd-kreator-oze-aparatura')).toBeVisible();
@@ -426,7 +431,11 @@ test('K9-A: kreator OZE MAX — aparatura i zgodność w jednym przepływie, wi�
   const zabRef = await zabSelect.inputValue();
   expect(zabRef.length).toBeGreaterThan(0);
 
-  await page.getByTestId('mvd-kreator-oze-aparatura-dane-zwarciowe').fill('KARTA-ZW-2026-01');
+  const dynSelect = page.getByTestId('mvd-kreator-oze-aparatura-model-dynamiczny');
+  await expect(dynSelect.locator('option').nth(1)).toBeAttached({ timeout: 20000 });
+  await dynSelect.selectOption({ index: 1 });
+  const dynRef = await dynSelect.inputValue();
+  expect(dynRef.length).toBeGreaterThan(0);
 
   // ------------------------------------------------------------------
   // Krok 5 (ZGODNOŚĆ — NOWY): profil operatora + krzywe LVRT/HVRT/P(f).
@@ -509,7 +518,7 @@ test('K9-A: kreator OZE MAX — aparatura i zgodność w jednym przepływie, wi�
   expect(zmaterializowane['ct_catalog_ref']).toBe(ctRef);
   expect(zmaterializowane['vt_catalog_ref']).toBe(vtRef);
   expect(zmaterializowane['protection_catalog_ref']).toBe(zabRef);
-  expect(zmaterializowane['fault_current_data_ref']).toBe('KARTA-ZW-2026-01');
+  expect(zmaterializowane['dynamic_model_ref']).toBe(dynRef);
   const profile = (zmaterializowane['profiles'] ?? {}) as Record<string, unknown>;
   // Karta FAB-J: LVRT/HVRT tożsamościowo związane z operatorem (ten sam `pse`)
   // — backend niesie jedną parę krzywych ride-through na operatora, nie

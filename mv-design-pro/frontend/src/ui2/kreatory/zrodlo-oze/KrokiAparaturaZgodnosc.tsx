@@ -2,11 +2,13 @@
  * K9-A: kroki „Aparatura pola" i „Zgodność przyłączeniowa" kreatora źródła OZE.
  *
  * Wybory zapisują się do modelu PO utworzeniu wytwórcy (sekwencja zapisu kreatora,
- * wiązania katalogowe + profile zgodności). Walidację katalogową mają WYŁĄCZNIE
- * przekładniki i zabezpieczenie; dane zwarciowe i model dynamiczny są polami
- * jawnie bez walidacji katalogowej (system nie ma dla nich katalogu — dług nazwany,
- * pola tekstowe mówią to wprost). Profile NC RfG pochodzą z katalogów profili
- * i krzywych operatorów (te same, których używa warsztat wytwórcy).
+ * wiązania katalogowe + profile zgodności). Walidacja katalogowa: przekładniki,
+ * zabezpieczenie i model dynamiczny (karta FAB-L: `GET /api/catalog/der-dynamic-profiles`,
+ * `network_model.catalog.der_dynamic` — konsumowany przez solvery RMS/FRT-HVRT).
+ * Dawne dane zwarciowe (`fault_current_data_ref`) USUNIĘTE z kontraktu razem z tą kartą:
+ * pole nie miało ŻADNEGO konsumenta solvera (κ i składowe symetryczne liczy IEC 60909
+ * z modelu sieci, nie z deklaracji urządzenia). Profile NC RfG pochodzą z katalogów
+ * profili i krzywych operatorów (te same, których używa warsztat wytwórcy).
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -20,8 +22,12 @@ import {
 import type { CTCatalogType, ProtectionDeviceType, VTCatalogType } from '../../../ui/catalog/types';
 import {
   fetchAudit2CatalogSnapshot,
+  fetchDerDynamicProfiles,
   fetchNcRfgOperators,
+  formatDerDynamicProfileLabelPl,
   getNcRfgOperator,
+  selectDerDynamicProfilesForKind,
+  type DerDynamicProfileItem,
   type NcRfgOperatorItem,
   type PfCurveItem,
 } from '../../../ui/network-build/station-der';
@@ -31,7 +37,6 @@ import {
   KreatorSiatka,
   PanelTeorii,
   PoleKatalogu,
-  PoleTekstowe,
   type StatusPobrania,
 } from '../rama';
 import { OZE_STRINGS as T } from './strings';
@@ -43,11 +48,12 @@ export interface KrokAparaturaZgodnoscProps {
   testid?: string;
 }
 
-/** Krok „Aparatura pola" — CT, VT, zabezpieczenie z katalogu + dane bez katalogu. */
+/** Krok „Aparatura pola" — CT, VT, zabezpieczenie i model dynamiczny, wszystkie z katalogu. */
 export function KrokAparatura({ dane, zmien, testid = 'mvd-kreator-oze-aparatura' }: KrokAparaturaZgodnoscProps) {
   const [ctTypy, setCtTypy] = useState<CTCatalogType[]>([]);
   const [vtTypy, setVtTypy] = useState<VTCatalogType[]>([]);
   const [zabTypy, setZabTypy] = useState<ProtectionDeviceType[]>([]);
+  const [dynProfile, setDynProfile] = useState<DerDynamicProfileItem[]>([]);
   const [status, setStatus] = useState<StatusPobrania>('loading');
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
 
@@ -55,12 +61,13 @@ export function KrokAparatura({ dane, zmien, testid = 'mvd-kreator-oze-aparatura
     let cancelled = false;
     setStatus('loading');
     setBladKatalogu(null);
-    Promise.all([fetchCtTypes(), fetchVtTypes(), fetchProtectionDeviceTypes()])
-      .then(([ct, vt, zab]) => {
+    Promise.all([fetchCtTypes(), fetchVtTypes(), fetchProtectionDeviceTypes(), fetchDerDynamicProfiles()])
+      .then(([ct, vt, zab, dyn]) => {
         if (cancelled) return;
         setCtTypy(Array.isArray(ct) ? ct : []);
         setVtTypy(Array.isArray(vt) ? vt : []);
         setZabTypy(Array.isArray(zab) ? zab : []);
+        setDynProfile(Array.isArray(dyn) ? dyn : []);
         setStatus('ready');
       })
       .catch((e: unknown) => {
@@ -68,6 +75,7 @@ export function KrokAparatura({ dane, zmien, testid = 'mvd-kreator-oze-aparatura
         setCtTypy([]);
         setVtTypy([]);
         setZabTypy([]);
+        setDynProfile([]);
         setStatus('error');
         setBladKatalogu(getCatalogErrorMessage(e));
       });
@@ -99,6 +107,17 @@ export function KrokAparatura({ dane, zmien, testid = 'mvd-kreator-oze-aparatura
         etykieta: t.vendor ? `${t.vendor} · ${t.model ?? t.name}` : t.name,
       })),
     [zabTypy],
+  );
+  // Karta FAB-L: profile filtrowane po rodzaju DER — falownik PV/BESS i turbina
+  // wiatrowa mają rozłączne katalogi (`der_kind`), więc lista pokazuje WYŁĄCZNIE
+  // profile pasujące do wybranej technologii źródła.
+  const opcjeDynModel = useMemo(
+    () =>
+      selectDerDynamicProfilesForKind(dynProfile, dane.source_technology).map((p) => ({
+        id: p.profile_id,
+        etykieta: formatDerDynamicProfileLabelPl(p),
+      })),
+    [dynProfile, dane.source_technology],
   );
 
   return (
@@ -139,27 +158,17 @@ export function KrokAparatura({ dane, zmien, testid = 'mvd-kreator-oze-aparatura
         pomoc={T.aparaturaZabezpieczeniePomoc}
         testid={`${testid}-zabezpieczenie`}
       />
-      <KreatorInfo>
-        <strong>{T.aparaturaBezKataloguTytul}.</strong> {T.aparaturaBezKatalogu}
-      </KreatorInfo>
-      <KreatorSiatka kolumny={2}>
-        <PoleTekstowe
-          etykieta={T.aparaturaDaneZwarciowe}
-          wartosc={dane.fault_current_data_ref ?? ''}
-          onZmiana={(v) => zmien('fault_current_data_ref', v || null)}
-          placeholder={T.aparaturaRefPlaceholder}
-          pomoc={T.aparaturaDaneZwarciowePomoc}
-          testid={`${testid}-dane-zwarciowe`}
-        />
-        <PoleTekstowe
-          etykieta={T.aparaturaModelDynamiczny}
-          wartosc={dane.dynamic_model_ref ?? ''}
-          onZmiana={(v) => zmien('dynamic_model_ref', v || null)}
-          placeholder={T.aparaturaRefPlaceholder}
-          pomoc={T.aparaturaModelDynamicznyPomoc}
-          testid={`${testid}-model-dynamiczny`}
-        />
-      </KreatorSiatka>
+      <PoleKatalogu
+        etykieta={T.aparaturaModelDynamiczny}
+        wartosc={dane.dynamic_model_ref}
+        onZmiana={(v) => zmien('dynamic_model_ref', v)}
+        opcje={opcjeDynModel}
+        status={status}
+        placeholder={T.aparaturaKatalogPlaceholder}
+        komunikatBledu={bladKatalogu ?? T.aparaturaKatalogBlad}
+        pomoc={T.aparaturaModelDynamicznyPomoc}
+        testid={`${testid}-model-dynamiczny`}
+      />
       <PanelTeorii
         tytul={T.teoriaAparaturaTytul}
         opis={T.teoriaAparaturaOpis}

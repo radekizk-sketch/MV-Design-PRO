@@ -66,12 +66,15 @@ import { findOperationalBus } from '../shared/enmVisibility';
 import { TypePicker } from '../catalog/TypePicker';
 import { buildCatalogBinding } from '../catalog/catalogBinding';
 import type { CatalogNamespace, TypeCategory } from '../catalog/types';
-import { DER_DYNAMIC_MODEL_CATALOG } from './station-der/catalogs';
 import { useAudit2CatalogSnapshot } from './station-der/audit2-hooks';
 import type { PfCurveItem } from './station-der/audit2-api';
 import {
+  formatDerDynamicProfileLabelPl,
+  getDerDynamicProfile,
   getNcRfgOperator,
+  useDerDynamicProfiles,
   useNcRfgOperatorCatalog,
+  type DerDynamicProfileItem,
   type NcRfgOperatorItem,
 } from './station-der/derRemoteCatalogs';
 import type { WorkspaceSurfaceCode } from '../workspace/types';
@@ -749,16 +752,19 @@ function catalogLabelById<T extends { id: string; label_pl: string }>(
   return catalog.find((entry) => entry.id === id)?.label_pl ?? null;
 }
 
-function dynamicModelLabel(generator: Generator | null | undefined): string | null {
+function dynamicModelLabel(
+  generator: Generator | null | undefined,
+  dynamicProfiles: readonly DerDynamicProfileItem[],
+): string | null {
+  // Karta FAB-L: profil dynamiczny WYŁĄCZNIE z `GET /api/catalog/der-dynamic-profiles`
+  // (resolver `network_model/catalog/der_dynamic`, realny dostawca RMS/FRT-HVRT).
+  // Auto-dobór „po urządzeniu" (dawne `applicable_device_ids`) usunięty — backend
+  // nie wyraża takiej operacji, więc wybór jest jawny (`dynamic_model_ref`) albo
+  // brak (do konfiguracji), nigdy cichy domyślny.
   const explicit = generatorProfileRef(generator, 'dynamic_model_ref');
-  if (explicit) {
-    return DER_DYNAMIC_MODEL_CATALOG.find((entry) => entry.id === explicit)?.label_pl ?? explicit;
-  }
-  const catalogRef = generator?.catalog_ref ?? null;
-  if (!catalogRef) return null;
-  return DER_DYNAMIC_MODEL_CATALOG.find((entry) =>
-    entry.applicable_device_ids.includes(catalogRef),
-  )?.label_pl ?? null;
+  if (!explicit) return null;
+  const profile = getDerDynamicProfile(dynamicProfiles, explicit);
+  return profile ? formatDerDynamicProfileLabelPl(profile) : explicit;
 }
 
 function readinessText(ready: boolean, pendingText = 'do konfiguracji'): string {
@@ -1484,6 +1490,7 @@ function buildAdvancedConverterSections(
   readinessIssues: ReadinessIssue[],
   ncRfgOperators: readonly NcRfgOperatorItem[] = [],
   pfCurves: readonly PfCurveItem[] = [],
+  dynamicProfiles: readonly DerDynamicProfileItem[] = [],
 ): { sections: PropertySection[]; elementType: string; elementName: string; actions: QuickAction[] } {
   const generator = findGeneratorForSelectedConverter(selectedElement, snapshot);
   const role = converterRoleForGenerator(selectedElement, generator);
@@ -1501,7 +1508,7 @@ function buildAdvancedConverterSections(
   const hvrtRef = generatorProfileRef(generator, 'hvrt_curve_ref');
   const pfCurveRef = generatorProfileRef(generator, 'pf_curve_ref');
   const ncRfgProfile = ncRfgRef ? getNcRfgOperator(ncRfgOperators, ncRfgRef) : null;
-  const dynamicModel = dynamicModelLabel(generator);
+  const dynamicModel = dynamicModelLabel(generator, dynamicProfiles);
   const catalogPowerKw = pvCatalogPower(generator);
   const catalogVoltageKv = pvCatalogVoltage(generator);
   const faultContributionPu = pvCatalogFaultContribution(generator);
@@ -1838,6 +1845,7 @@ function buildSemanticSectionsForElement(
   fieldItems: readonly FieldReadModelItem[],
   ncRfgOperators: readonly NcRfgOperatorItem[] = [],
   pfCurves: readonly PfCurveItem[] = [],
+  dynamicProfiles: readonly DerDynamicProfileItem[] = [],
 ): { sections: PropertySection[]; elementType: string; elementName: string; actions: QuickAction[] } {
   if (isSemanticMvSegment(selectedElement)) {
     return buildSemanticSegmentSections(
@@ -1850,7 +1858,7 @@ function buildSemanticSectionsForElement(
 
   if (isSemanticConverterSource(selectedElement)) {
     return buildAdvancedConverterSections(
-      selectedElement, snapshot, readinessIssues, ncRfgOperators, pfCurves,
+      selectedElement, snapshot, readinessIssues, ncRfgOperators, pfCurves, dynamicProfiles,
     );
   }
 
@@ -1956,6 +1964,7 @@ function buildSectionsForElement(
   selectedElement?: SelectedElement | null,
   ncRfgOperators: readonly NcRfgOperatorItem[] = [],
   pfCurves: readonly PfCurveItem[] = [],
+  dynamicProfiles: readonly DerDynamicProfileItem[] = [],
 ): { sections: PropertySection[]; elementType: string; elementName: string; actions: QuickAction[] } {
   if (!snapshot) return { sections: [], elementType: '', elementName: '', actions: [] };
 
@@ -1977,7 +1986,7 @@ function buildSectionsForElement(
       const converter = findGeneratorForSelectedConverter(selectedElement, snapshot);
       if (converter || selectedElement.type === 'PVInverter' || selectedElement.type === 'BESSInverter') {
         return buildAdvancedConverterSections(
-          selectedElement, snapshot, readinessIssues, ncRfgOperators, pfCurves,
+          selectedElement, snapshot, readinessIssues, ncRfgOperators, pfCurves, dynamicProfiles,
         );
       }
     }
@@ -1991,6 +2000,7 @@ function buildSectionsForElement(
       fieldItems,
       ncRfgOperators,
       pfCurves,
+      dynamicProfiles,
     );
   }
 
@@ -2455,6 +2465,10 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
   // `pvCatalogLabel`/`buildAdvancedConverterSections` niżej).
   const ncRfgOperators = useNcRfgOperatorCatalog().data ?? [];
   const pfCurves = useAudit2CatalogSnapshot().data?.pf_curves ?? [];
+  // Karta FAB-L: profil dynamiczny DER WYŁĄCZNIE z `GET /api/catalog/der-dynamic-profiles`
+  // (patrz `dynamicModelLabel`/`buildAdvancedConverterSections` niżej) — zero
+  // katalogu statycznego w tym module.
+  const dynamicProfiles = useDerDynamicProfiles().data ?? [];
 
   const elementId = selectedElements.length > 0 ? selectedElements[0].id : null;
   const selectedBaySnapshot = useMemo(
@@ -2524,6 +2538,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
         selectedElement,
         ncRfgOperators,
         pfCurves,
+        dynamicProfiles,
       );
     },
     [
@@ -2535,6 +2550,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
       logicalViews,
       ncRfgOperators,
       pfCurves,
+      dynamicProfiles,
       readinessIssues,
       selectedBayField,
       selectedBayName,

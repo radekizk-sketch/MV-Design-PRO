@@ -2,8 +2,15 @@
  * API client dla katalogow audytu 2 (Phase 2 backend integration).
  *
  * Pobiera katalogi z backendu (`/api/v1/catalog/audit2/*`) zamiast uzywac
- * frontendowych staticow. Lokalne staticki w `catalogs.ts` / `protection-catalogs.ts`
- * pozostaja jako fallback (gdy backend niedostepny lub w testach).
+ * frontendowych staticow.
+ *
+ * Karta FAB-L: `bess_operation_modes`/`tap_changers`/`mv_neutral_groundings`
+ * dopisane jako typy 1:1 z backendem (dotad `ReadonlyArray<unknown>`) — front
+ * czyta je WYLACZNIE stad, statyczne mirrory (`BESS_OPERATION_MODE_CATALOG`,
+ * `TAP_CHANGER_CATALOG`, `MV_NEUTRAL_GROUNDING_CATALOG`) skasowane z
+ * `catalogs.ts`. Zero fallbacku lokalnego — backend jest jedynym zrodlem;
+ * niedostepnosc backendu jest stanem bledu/ladowania widocznym w UI, nie
+ * cichym podstawieniem drugiej kopii danych.
  */
 
 /**
@@ -52,14 +59,89 @@ export interface BlockTransformerItem {
   readonly verification_status: string;
 }
 
+/**
+ * Tryb pracy magazynu (BESS) — kształt 1:1 z backendu
+ * (`network_model/catalog/audit2_catalogs.py::BessOperationModeItem.to_dict`).
+ * Karta FAB-L: JEDYNE źródło — front nie ma już własnej kopii
+ * (`BESS_OPERATION_MODE_CATALOG` usunięty z `catalogs.ts`).
+ */
+export interface BessOperationModeItem {
+  readonly id: string;
+  readonly catalog_namespace: string;
+  readonly catalog_version: string;
+  readonly label_pl: string;
+  readonly description_pl: string;
+  readonly mode_code:
+    | 'peak_shaving'
+    | 'arbitrage'
+    | 'fcr_n'
+    | 'fcr_d_up'
+    | 'fcr_d_down'
+    | 'afrr'
+    | 'mfrr'
+    | 'voltage_support'
+    | 'island_backup'
+    | 'self_consumption';
+  readonly requires_four_quadrant: boolean;
+  readonly requires_grid_forming: boolean;
+}
+
+/**
+ * Przełącznik zaczepów transformatora — kształt 1:1 z backendu
+ * (`network_model/catalog/audit2_catalogs.py::TapChangerItem.to_dict`).
+ * Karta FAB-L: JEDYNE źródło — front nie ma już własnej kopii
+ * (`TAP_CHANGER_CATALOG` usunięty z `catalogs.ts`).
+ */
+export interface TapChangerItem {
+  readonly id: string;
+  readonly catalog_namespace: string;
+  readonly catalog_version: string;
+  readonly label_pl: string;
+  readonly type: 'oltc' | 'detc';
+  readonly neutral_position: number;
+  readonly tap_count: number;
+  readonly step_percent: number;
+  readonly range_percent: number;
+  readonly regulated_side: 'hv' | 'lv';
+  readonly supports_avr: boolean;
+  readonly applicable_to: readonly string[];
+}
+
+/**
+ * Wariant uziemienia punktu neutralnego SN — kształt 1:1 z backendu
+ * (`network_model/catalog/audit2_catalogs.py::MvNeutralGroundingItem.to_dict`).
+ * Karta FAB-L: JEDYNE źródło — front nie ma już własnej kopii
+ * (`MV_NEUTRAL_GROUNDING_CATALOG` usunięty z `catalogs.ts`).
+ */
+export interface MvNeutralGroundingItem {
+  readonly id: string;
+  readonly catalog_namespace: string;
+  readonly catalog_version: string;
+  readonly grounding_type: 'isolated' | 'petersen_coil' | 'resistor_grounded' | 'directly_grounded';
+  readonly label_pl: string;
+  readonly description_pl: string;
+  readonly r_ohm: number | null;
+  readonly x_ohm: number | null;
+}
+
+/**
+ * `hv_fuses`/`device_withstand` NIE typowane tu: `device_withstand` ma już
+ * konsumenta typowany osobno (`DeviceWithstandCatalogItem` niżej, przez
+ * `fetchDeviceWithstandCatalog`, nie przez snapshot), a `hv_fuses` ma jedynego
+ * konsumenta w `protection-catalogs.ts::HV_FUSE_CATALOG` — DRUGIEJ kopii tych
+ * samych 4 pozycji (identyczne identyfikatory `fuse_15kv_50a_full` i in.),
+ * poza zakresem karty FAB-L (§0 nazwał WYŁĄCZNIE `catalogs.ts`) — zgłoszone w
+ * meldunku jako znalezisko tej samej klasy dla osobnej karty. Typowanie tego
+ * pola bez migracji konsumenta byłoby dekoracją bez skutku.
+ */
 export interface AuditCatalogSnapshot {
-  readonly bess_operation_modes: ReadonlyArray<unknown>;
-  readonly tap_changers: ReadonlyArray<unknown>;
+  readonly bess_operation_modes: readonly BessOperationModeItem[];
+  readonly tap_changers: readonly TapChangerItem[];
   readonly hv_fuses: ReadonlyArray<unknown>;
   readonly device_withstand: ReadonlyArray<unknown>;
   readonly pf_curves: readonly PfCurveItem[];
   readonly block_transformers: readonly BlockTransformerItem[];
-  readonly mv_neutral_groundings: ReadonlyArray<unknown>;
+  readonly mv_neutral_groundings: readonly MvNeutralGroundingItem[];
 }
 
 const BASE = '/api/v1/catalog/audit2';

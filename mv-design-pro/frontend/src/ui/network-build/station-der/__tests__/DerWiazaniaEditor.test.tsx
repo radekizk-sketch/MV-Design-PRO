@@ -224,13 +224,20 @@ describe('DerWiazaniaEditor — wybór wiązań katalogowych wytwórcy', () => {
     // ją wziąć — bez nich komunikat jest ślepym zaułkiem.
     renderEditor();
     const sekcja = screen.getByTestId('der-wiazania-editor');
-    expect(sekcja.textContent).toContain('Model zwarciowy urządzenia');
     expect(sekcja.textContent).toContain('Model dynamiczny urządzenia');
-    expect(sekcja.textContent).toContain('IEC 60909-3');
+    expect(sekcja.textContent).toContain('FRT');
     expect(sekcja.textContent).toContain('Zależne analizy:');
     expect(sekcja.textContent).toContain('Źródło danych:');
     expect(sekcja.textContent).not.toContain('backend');
-    expect(screen.queryByTestId('der-wiazanie-wybierz-fault_current_data_ref')).toBeNull();
     expect(screen.queryByTestId('der-wiazanie-wybierz-dynamic_model_ref')).toBeNull();
+  });
+
+  it('karta FAB-L: `fault_current_data_ref` USUNIĘTE — solver IEC 60909 nigdy go nie '
+    + 'czytał (κ i składowe symetryczne liczy z modelu, nie z deklaracji urządzenia); '
+    + 'ekran nie opisuje już tego pola jako brakującego', () => {
+    renderEditor();
+    const sekcja = screen.getByTestId('der-wiazania-editor');
+    expect(sekcja.textContent).not.toContain('Model zwarciowy urządzenia');
+    expect(screen.queryByTestId('der-wiazanie-wybierz-fault_current_data_ref')).toBeNull();
   });
 });

@@ -691,6 +691,9 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
   const auditCatalogSnapshotQuery = useAudit2CatalogSnapshot();
   const pfCurves = auditCatalogSnapshotQuery.data?.pf_curves ?? [];
   const blockTransformers = auditCatalogSnapshotQuery.data?.block_transformers ?? [];
+  // Karta FAB-L: tryby pracy BESS WYŁĄCZNIE ze snapshotu audytu 2 — zero
+  // statyku modułowego usuniętego z `catalogs.ts` (`BESS_OPERATION_MODE_CATALOG`).
+  const bessOperationModes = auditCatalogSnapshotQuery.data?.bess_operation_modes ?? [];
   // Karta FAB-J: operatorzy NC RfG (profil + ride-through LVRT/HVRT 1:1 na
   // operatora) — `GET /api/ncrfg-tests/catalog` (decyzja #2).
   const ncRfgOperatorsQuery = useNcRfgOperatorCatalog();
@@ -942,14 +945,14 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
 
   const availableBessModes = useMemo(
     () => derKind === 'BESS' && selectedDevice
-      ? selectBessModesForPcs({
+      ? selectBessModesForPcs(bessOperationModes, {
         // Nieznana zdolność (katalog bez qmin/qmax) = `false`: nie oferujemy
         // usługi, której nie potwierdza katalog (karta FAB-J, decyzja #6).
         fourQuadrant: deviceFourQuadrantCapable(selectedDevice) ?? false,
         gridFormingCapable: deviceGridFormingCapable(selectedDevice),
       })
       : [],
-    [derKind, selectedDevice],
+    [derKind, selectedDevice, bessOperationModes],
   );
 
   const availableBessModeIds = useMemo(

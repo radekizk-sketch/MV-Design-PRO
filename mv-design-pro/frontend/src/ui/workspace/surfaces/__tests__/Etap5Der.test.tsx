@@ -111,6 +111,25 @@ function stubCatalogFetch(): void {
           }),
         } as unknown as Response;
       }
+      // Karta FAB-L: model dynamiczny WYŁĄCZNIE z `GET /api/catalog/der-dynamic-profiles`
+      // (`network_model.catalog.der_dynamic`) — kształt 1:1 z `InverterDynamicProfile.model_dump()`.
+      if (href.includes('/api/catalog/der-dynamic-profiles')) {
+        return {
+          ok: true,
+          json: async () => [
+            {
+              profile_id: 'default_pv_gfl', profile_name_pl: 'PV grid-following typowy',
+              der_kind: 'PV', control_mode: 'grid_following',
+              tp_s: 0.02, tq_s: 0.02, p_f_droop_pu: 0.05, p_f_dead_band_hz: 0.2,
+              q_u_droop_pu: 4.0, q_u_dead_band_pu: 0.02, i_max_pu: 1.2,
+              v_min_continuous_pu: 0.9, v_max_continuous_pu: 1.1, frt_response_time_ms: 20,
+              iq_max_during_fault_pu: 1.0, iq_priority_during_fault: true,
+              p_recovery_rate_pu_per_s: 0.2, p_recovery_delay_ms: 0, virtual_inertia_h_s: null,
+              source_reference: 'Fikstura testowa', standard_compliance: ['IEC 61400-27'],
+            },
+          ],
+        } as unknown as Response;
+      }
       return { ok: true, json: async () => [] } as unknown as Response;
     }),
   );
@@ -175,6 +194,9 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
         device_catalog_ref: 'pv_inv_sma_2500',
         ct_catalog_ref: 'ct_500_5_10p20',
         vt_catalog_ref: 'vt_15kv_100v_3p',
+        // Karta FAB-L: wybór jawny z katalogu backendu — auto-dobór „po urządzeniu"
+        // (dawne `applicable_device_ids`) USUNIĘTY, bo backend go nie wyraża.
+        dynamic_model_ref: 'default_pv_gfl',
       },
       profiles: {
         nc_rfg_profile_ref: 'pse',

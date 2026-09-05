@@ -1,11 +1,15 @@
 /**
  * Karta 1 — Dane podstawowe (PR-8a, brief 2 §8 karta 1).
  *
- * Pakiet H: wybór typu uziemienia neutralnego SN z `MV_NEUTRAL_GROUNDING_CATALOG`
+ * Pakiet H: wybór typu uziemienia neutralnego SN z katalogu audytu 2
  * (Naprawa B.1 — wymagane do walidacji 67N i SC1F oraz VT voltage_factor eng.20).
+ *
+ * Karta FAB-L: katalog WYŁĄCZNIE ze snapshotu audytu 2 (`mvNeutralGroundings`
+ * prop, dostarczony przez `StationConfiguratorSurface.tsx`) — zero statyku
+ * modułowego (`MV_NEUTRAL_GROUNDING_CATALOG` usunięty z `catalogs.ts`).
  */
 
-import { MV_NEUTRAL_GROUNDING_CATALOG } from '../../station-der/catalogs';
+import type { MvNeutralGroundingItem } from '../../station-der/audit2-api';
 import type { CompletenessStatus } from '../../../inspector/v2/InspectorStickyHeader';
 
 export type StationTopologicalType = 'końcowa' | 'przelotowa' | 'odgałęźna' | 'sekcyjna';
@@ -23,6 +27,8 @@ export interface StationConfigBasicCardProps {
   readonly completeness: CompletenessStatus;
   /** Pakiet H: catalog_ref do typu uziemienia neutralnego SN. */
   readonly mvNeutralGroundingRef?: string | null;
+  /** Karta FAB-L: katalog wariantów uziemienia — ze snapshotu audytu 2. */
+  readonly mvNeutralGroundings: readonly MvNeutralGroundingItem[];
   readonly onChange?: (changes: Partial<{
     stationName: string;
     designation: string;
@@ -44,7 +50,7 @@ const CONSTRUCTION_LABEL_PL: Record<StationConstructionType, string> = {
 export function StationConfigBasicCard(props: StationConfigBasicCardProps): JSX.Element {
   const {
     stationName, designation, topologicalType, constructionType,
-    snVoltageKv, nnVoltageLevels, owner, location, mvNeutralGroundingRef, onChange,
+    snVoltageKv, nnVoltageLevels, owner, location, mvNeutralGroundingRef, mvNeutralGroundings, onChange,
   } = props;
 
   return (
@@ -106,12 +112,12 @@ export function StationConfigBasicCard(props: StationConfigBasicCardProps): JSX.
             className="rounded border border-scada-border bg-scada-bg px-2 py-1 text-scada-text"
           >
             <option value="">— wybierz —</option>
-            {MV_NEUTRAL_GROUNDING_CATALOG.map((g) => (
+            {mvNeutralGroundings.map((g) => (
               <option key={g.id} value={g.id}>{g.label_pl}</option>
             ))}
           </select>
           {mvNeutralGroundingRef && (() => {
-            const g = MV_NEUTRAL_GROUNDING_CATALOG.find((x) => x.id === mvNeutralGroundingRef);
+            const g = mvNeutralGroundings.find((x) => x.id === mvNeutralGroundingRef);
             if (!g) return null;
             const requires67N = g.grounding_type === 'isolated' || g.grounding_type === 'petersen_coil';
             // Karta K-O: nie pokazujemy „typowego" zakresu I_k1 z tabeli — ta liczba

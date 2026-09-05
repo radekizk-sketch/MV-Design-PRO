@@ -6149,30 +6149,48 @@ def set_dynamic_profile(enm: dict[str, Any], payload: dict[str, Any]) -> dict[st
 #: Wiązania wytwórcy wybierane PO jego utworzeniu — nazwy kluczy są te same, których
 #: odczyt ENM (`buildDerFromGenerator`) już szuka w ``materialized_params``, więc ścieżka
 #: powrotna nie wymaga tłumaczenia nazw (V12K-238).
+#:
+#: Karta FAB-L: `fault_current_data_ref` USUNIĘTE. Pole wskazywało pozycję
+#: frontowego `DER_FAULT_CURRENT_DATA_CATALOG` (R₁/X₁/R₂/X₂/R₀/X₀/Z₀·Z₁⁻¹/κ) —
+#: żaden solver ani `solver_input` nigdy tej pozycji nie czytał (inwentarz:
+#: `network_model/solvers/short_circuit_iec60909.py` i `enm/mapping.py` biorą
+#: WYŁĄCZNIE `materialized_params["k_sc"]`; wkład składowej ujemnej falownika
+#: jest STAŁĄ solvera `contributes_negative_sequence=True`, składowej zerowej —
+#: STAŁĄ `contributes_zero_sequence=False`, niezależnie od jakiejkolwiek karty
+#: katalogowej). Pole było więc referencją bez dostawcy fizyki — druga prawda
+#: o urządzeniu, którą solver ignorował.
 DER_BINDING_KEYS: tuple[str, ...] = (
     "protection_catalog_ref",
     "ct_catalog_ref",
     "vt_catalog_ref",
-    "fault_current_data_ref",
     "dynamic_model_ref",
 )
 
 #: Referencje profili zgodności przyłączeniowej — trzymane w podsłowniku ``profiles``,
 #: bo tam ich szuka odczyt (i tam trafiają z kreatora OZE).
+#:
+#: Karta FAB-L: `bess_operation_mode_refs` dopisane — dotąd wybór trybów pracy
+#: magazynu (`AddDerWizard`) trafiał WYŁĄCZNIE do `station_audit2_configs`
+#: (per-stacja, poza wytwórcą), nie do modelu wytwórcy — pole żyło tylko w
+#: Zustand frontu i znikało po odświeżeniu/reimporcie. Lista (nie pojedynczy
+#: ref) — walidowana OSOBNO w `_nieznane_referencje_katalogowe` (każdy wpis
+#: wobec `get_bess_operation_mode`), bo `_KATALOGI_WIAZAN_DER` niżej zakłada
+#: wartość skalarną.
 DER_PROFILE_KEYS: tuple[str, ...] = (
     "nc_rfg_profile_ref",
     "lvrt_curve_ref",
     "hvrt_curve_ref",
     "pf_curve_ref",
+    "bess_operation_mode_refs",
 )
 
 
 #: Wiazania, dla ktorych backend MA katalog i moze sprawdzic istnienie typu poprzez
-#: metode `get_default_mv_catalog()`. `fault_current_data_ref` NIE jest tu wymienione,
-#: bo backend nie ma dla niej dostawcy danych — udawanie walidacji bylo by gorsze niz
-#: jej brak (jawny dlug, karta w rejestrze). `dynamic_model_ref` walidowany jest
-#: OSOBNO (patrz `_nieznane_referencje_katalogowe` nizej) — jego dostawca
+#: metode `get_default_mv_catalog()`. `dynamic_model_ref` walidowany jest OSOBNO
+#: (patrz `_nieznane_referencje_katalogowe` nizej) — jego dostawca
 #: (`network_model.catalog.der_dynamic`) nie jest metoda `get_default_mv_catalog()`.
+#: `bess_operation_mode_refs` walidowany OSOBNO z tego samego powodu (lista, nie
+#: skalar; dostawca `network_model.catalog.audit2_catalogs.get_bess_operation_mode`).
 _KATALOGI_WIAZAN_DER: tuple[tuple[str, str], ...] = (
     ("ct_catalog_ref", "get_ct_type"),
     ("vt_catalog_ref", "get_vt_type"),
@@ -6230,6 +6248,25 @@ def _nieznane_referencje_katalogowe(wiazania: dict[str, Any]) -> list[str]:
         if str(dynamic_ref) not in list_all_profile_ids():
             nieznane.append(f"dynamic_model_ref={dynamic_ref}")
 
+    # Karta FAB-L: `bess_operation_mode_refs` — LISTA referencji (nie skalar),
+    # każda zwalidowana wobec `get_bess_operation_mode`
+    # (`network_model.catalog.audit2_catalogs`, ten sam katalog, który wystawia
+    # `GET /api/v1/catalog/audit2/bess-operation-modes`). Wartość spoza listy
+    # (np. `None` sprzed tej karty, albo zły typ) nie jest iterowana znakami —
+    # `list`/`tuple` sprawdzane jawnie, inaczej pojedynczy string iterowałby się
+    # po literach i fałszywie zgłaszał każdą literę jako nieznaną referencję.
+    bess_mode_refs = wiazania.get("bess_operation_mode_refs")
+    if (
+        bess_mode_refs is not None
+        and "bess_operation_mode_refs" in wiazania
+        and isinstance(bess_mode_refs, list | tuple)
+    ):
+        from network_model.catalog.audit2_catalogs import get_bess_operation_mode
+
+        for tryb_ref in bess_mode_refs:
+            if get_bess_operation_mode(str(tryb_ref)) is None:
+                nieznane.append(f"bess_operation_mode_refs={tryb_ref}")
+
     return nieznane
 
 
@@ -6263,7 +6300,11 @@ def set_der_catalog_bindings(enm: dict[str, Any], payload: dict[str, Any]) -> di
             "Żadne wiązanie ani profil nie zostały podane.", "der_bindings.payload_empty"
         )
 
-    nieznane = _nieznane_referencje_katalogowe(obecne_wiazania)
+    # Karta FAB-L: profile (`obecne_profile`) dołączone do wejścia obok wiązań —
+    # `_nieznane_referencje_katalogowe` sama rozstrzyga, które klucze ma czym
+    # sprawdzić (dziś: `bess_operation_mode_refs`; pozostałe profile bez dostawcy
+    # przechodzą bez zmian, jak dotąd).
+    nieznane = _nieznane_referencje_katalogowe({**obecne_wiazania, **obecne_profile})
     if nieznane:
         return _error_response(
             "Referencje katalogowe nie istnieja w katalogu: " + ", ".join(nieznane) + ".",

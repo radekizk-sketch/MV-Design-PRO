@@ -11,6 +11,24 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { StationConfigTransformerCard } from '../StationConfigTransformerCard';
 import { StationConfigBaysCard } from '../StationConfigBaysCard';
 import { StationConfigProtectionCard } from '../StationConfigProtectionCard';
+import type { TapChangerItem } from '../../../station-der/audit2-api';
+
+// Karta FAB-L: katalog WYŁĄCZNIE ze snapshotu audytu 2 — kształt 1:1 z backendu
+// (`audit2_catalogs.py::TapChangerItem.to_dict`), nie statyk modułowy.
+const TAP_CHANGER_FIXTURES: readonly TapChangerItem[] = [
+  {
+    id: 'tc_oltc_110sn_19_125', catalog_namespace: 'tap_changer', catalog_version: '2026-08-14',
+    label_pl: 'OLTC 110/SN 19 zaczepów', type: 'oltc', neutral_position: 0, tap_count: 19,
+    step_percent: 1.25, range_percent: 11.25, regulated_side: 'hv', supports_avr: true,
+    applicable_to: ['transformer_110_15', 'transformer_110_20'],
+  },
+  {
+    id: 'tc_oltc_110sn_17_125', catalog_namespace: 'tap_changer', catalog_version: '2026-08-14',
+    label_pl: 'OLTC 110/SN 17 zaczepów', type: 'oltc', neutral_position: 0, tap_count: 17,
+    step_percent: 1.25, range_percent: 10.0, regulated_side: 'hv', supports_avr: true,
+    applicable_to: ['transformer_110_15', 'transformer_110_20'],
+  },
+];
 
 describe('Pakiet G — wiring katalogów do UI cards', () => {
   describe('TransformerCard wire eng.13 (TAP_CHANGER_CATALOG)', () => {
@@ -30,6 +48,7 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
             },
           ]}
           availableLvVoltages={[15]}
+          tapChangers={TAP_CHANGER_FIXTURES}
         />,
       );
 
@@ -62,6 +81,7 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
             },
           ]}
           availableLvVoltages={[15]}
+          tapChangers={TAP_CHANGER_FIXTURES}
           onChange={(_id, changes) => {
             lastChange = changes as never;
           }}

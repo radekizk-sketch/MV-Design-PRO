@@ -19,6 +19,13 @@
  * czyta się ze snapshotu audytu 2 już pobieranego przez kreator
  * (`useAudit2CatalogSnapshot`, `audit2-hooks.ts`), zgodnie z decyzją karty
  * (zero nowego zapytania sieciowego dla danych, które i tak już przychodzą).
+ *
+ * Karta FAB-L dopisuje:
+ *  - `DER_DYNAMIC_MODEL_CATALOG` → `GET /api/catalog/der-dynamic-profiles`
+ *    (`network_model.catalog.der_dynamic`, jedyne źródło konsumowane przez
+ *    solvery `stability_rms`/`frt_hvrt`; dawny katalog frontu niósł pola
+ *    ZMYŚLONE — `k_factor_iq_over_du`, `voltage_drop_detection_time_ms` — bez
+ *    odpowiednika w realnym profilu).
  */
 
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
@@ -188,4 +195,109 @@ export function useLvVoltageLevelsKv(): UseQueryResult<readonly number[], Error>
  *  wymyślonego przez UI (dawne `typical_use_pl` katalogu statycznego). */
 export function formatLvVoltageLabelPl(kv: number): string {
   return `${kv.toString().replace('.', ',')} kV`;
+}
+
+// =============================================================================
+// Modele dynamiczne DER (PV/BESS/FW) — karta FAB-L.
+// Kontrakt: `api/catalog.py::list_der_dynamic_profiles` →
+// `network_model.catalog.der_dynamic` (konsumowany przez solvery RMS/FRT-HVRT).
+// =============================================================================
+
+/** Profil falownika (PV/BESS) — pola 1:1 z `InverterDynamicProfile.model_dump()`. */
+export interface DerInverterDynamicProfileItem {
+  readonly profile_id: string;
+  readonly profile_name_pl: string;
+  readonly der_kind: 'PV' | 'BESS';
+  readonly control_mode: 'grid_following' | 'grid_forming';
+  readonly tp_s: number;
+  readonly tq_s: number;
+  readonly p_f_droop_pu: number;
+  readonly p_f_dead_band_hz: number;
+  readonly q_u_droop_pu: number;
+  readonly q_u_dead_band_pu: number;
+  readonly i_max_pu: number;
+  readonly v_min_continuous_pu: number;
+  readonly v_max_continuous_pu: number;
+  readonly frt_response_time_ms: number;
+  readonly iq_max_during_fault_pu: number;
+  readonly iq_priority_during_fault: boolean;
+  readonly p_recovery_rate_pu_per_s: number;
+  readonly p_recovery_delay_ms: number;
+  readonly virtual_inertia_h_s: number | null;
+  readonly source_reference: string;
+  readonly standard_compliance: readonly string[];
+}
+
+/** Profil turbiny wiatrowej — pola 1:1 z `WindTurbineDynamicProfile.model_dump()`. */
+export interface DerWindDynamicProfileItem {
+  readonly profile_id: string;
+  readonly profile_name_pl: string;
+  readonly der_kind: 'FW';
+  readonly iec_type: 'type_1' | 'type_2' | 'type_3' | 'type_4';
+  readonly h_total_s: number;
+  readonly drive_train_stiffness_pu: number;
+  readonly tp_s: number;
+  readonly tq_s: number;
+  readonly pitch_rate_deg_per_s: number;
+  readonly pitch_min_deg: number;
+  readonly pitch_max_deg: number;
+  readonly frt_response_time_ms: number;
+  readonly iq_max_during_fault_pu: number;
+  readonly p_recovery_rate_pu_per_s: number;
+  readonly p_recovery_delay_ms: number;
+  readonly slip_steady_pu: number;
+  readonly v_min_continuous_pu: number;
+  readonly v_max_continuous_pu: number;
+  readonly source_reference: string;
+  readonly standard_compliance: readonly string[];
+}
+
+export type DerDynamicProfileItem = DerInverterDynamicProfileItem | DerWindDynamicProfileItem;
+
+export async function fetchDerDynamicProfiles(): Promise<readonly DerDynamicProfileItem[]> {
+  const payload = await getJson<readonly DerDynamicProfileItem[]>(
+    '/api/catalog/der-dynamic-profiles',
+  );
+  return Array.isArray(payload) ? payload : [];
+}
+
+export function useDerDynamicProfiles(): UseQueryResult<readonly DerDynamicProfileItem[], Error> {
+  return useQuery({
+    queryKey: ['catalog', 'der-dynamic-profiles'],
+    queryFn: fetchDerDynamicProfiles,
+    staleTime: Infinity,
+    gcTime: 60 * 60_000,
+  });
+}
+
+/** Pobiera profil dynamiczny po `profile_id` z katalogu podanego przez wołającego. */
+export function getDerDynamicProfile(
+  profiles: readonly DerDynamicProfileItem[],
+  profileId: string | null,
+): DerDynamicProfileItem | null {
+  if (!profileId) return null;
+  return profiles.find((p) => p.profile_id === profileId) ?? null;
+}
+
+/** Profile dostępne dla danego rodzaju DER (PV/BESS/FW) — wybór jawny z listy. */
+export function selectDerDynamicProfilesForKind(
+  profiles: readonly DerDynamicProfileItem[],
+  kind: 'PV' | 'BESS' | 'FW',
+): readonly DerDynamicProfileItem[] {
+  return profiles.filter((p) => p.der_kind === kind);
+}
+
+/**
+ * Etykieta zwięzła profilu dynamicznego — parametry White Box widoczne wprost
+ * (dawny katalog frontu pokazywał WYMYŚLONE `k_factor_iq_over_du`; ten label
+ * czyta REALNE pola resolvera: droop P/f dla falowników, typ IEC dla turbin).
+ */
+export function formatDerDynamicProfileLabelPl(profile: DerDynamicProfileItem): string {
+  if (profile.der_kind === 'FW') {
+    return `${profile.profile_name_pl} (IEC ${profile.iec_type.replace('type_', 'typu ')}, `
+      + `H=${profile.h_total_s.toFixed(1)} s, FRT ${profile.frt_response_time_ms.toFixed(0)} ms)`;
+  }
+  const tryb = profile.control_mode === 'grid_forming' ? 'grid-forming' : 'grid-following';
+  return `${profile.profile_name_pl} (${tryb}, droop P/f=${(profile.p_f_droop_pu * 100).toFixed(0)}%, `
+    + `t_odp=${profile.tp_s.toFixed(2)} s)`;
 }

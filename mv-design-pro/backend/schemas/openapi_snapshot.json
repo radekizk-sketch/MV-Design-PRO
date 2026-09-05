@@ -3405,6 +3405,20 @@
    "DerCatalogBindingsRequest": {
     "description": "Wiązania katalogowe i profile zgodności wytwórcy wybierane PO jego utworzeniu.\n\nV12K-238 (pomiar: V12K-237). Kreator DER wysyła przy tworzeniu katalog urządzenia,\nbaterii i transformatora blokowego. Katalog zabezpieczeń, przekładniki CT/VT, dane\nprądu zwarciowego, model dynamiczny i profile zgodności są wybierane później — i do\ntej pory nie miały GDZIE spłynąć, bo konfigurator pisał wyłącznie do store\nprzeglądarki. Sześć osi gotowości opierało więc werdykt na danych, których model nie\nzna, a które przepadały po odświeżeniu strony.\n\nKAŻDE pole jest opcjonalne, ale ich brak i jawne ``null`` znaczą CO INNEGO: pole\npominięte zostawia wiązanie w modelu bez zmian, a ``null`` je USUWA (reguła gotowości\nznów widzi brak danej). Dlatego pola nie mają wartości domyślnych podstawianych po\ncichu — o rozróżnienie dba ``model_fields_set``.\n\nUWAGA: samo ``model_fields_set`` chroni tylko przed kasowaniem pól przez KSZTAŁT\nżądania. Przed kasowaniem ich przez WYŚCIG (dwa równoległe żądania czytające ten\nsam model przed zapisem) chroni dopiero blokada całego cyklu w końcówce.",
     "properties": {
+     "bess_operation_mode_refs": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Bess Operation Mode Refs"
+     },
      "ct_catalog_ref": {
       "anyOf": [
        {
@@ -3426,17 +3440,6 @@
        }
       ],
       "title": "Dynamic Model Ref"
-     },
-     "fault_current_data_ref": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Fault Current Data Ref"
      },
      "hvrt_curve_ref": {
       "anyOf": [
@@ -16879,6 +16882,33 @@
      }
     },
     "summary": "List Ct Types",
+    "tags": [
+     "Type Catalog"
+    ]
+   }
+  },
+  "/api/catalog/der-dynamic-profiles": {
+   "get": {
+    "description": "Profile dynamiczne DER (PV/BESS/FW) — karta FAB-L.\n\nJedyne źródło prawdy o modelach dynamicznych konsumowanych przez solvery\n`network_model.solvers.stability_rms` i `network_model.solvers.frt_hvrt`\n(`network_model.catalog.der_dynamic`, resolver `resolve_der_dynamic_profile`).\nFront pokazuje parametry WHITE BOX wprost (Tp/Tq/droop/FRT/inercja) —\nzero drugiej kopii pod zmyślonymi nazwami pól.\n\n`der_kind` jest dopisywane w tej serializacji (\"FW\" dla turbin) — model\nkatalogowy turbiny niesie tylko `iec_type`, ale front potrzebuje jednego\npola rodzaju DER dla obu kształtów profilu.",
+    "operationId": "list_der_dynamic_profiles_api_catalog_der_dynamic_profiles_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "additionalProperties": true,
+          "type": "object"
+         },
+         "title": "Response List Der Dynamic Profiles Api Catalog Der Dynamic Profiles Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "List Der Dynamic Profiles",
     "tags": [
      "Type Catalog"
     ]

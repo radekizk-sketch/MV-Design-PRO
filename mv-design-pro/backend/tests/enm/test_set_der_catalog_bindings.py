@@ -62,7 +62,6 @@ class TestWiazaniaTrafiajaDoModelu:
                 "protection_catalog_ref": "REF-OC-200",
                 "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
                 "vt_catalog_ref": "vt_10kv_100v_05_abb",
-                "fault_current_data_ref": "fc_pv_500",
                 # Karta FAB-K: `dynamic_model_ref` MA teraz katalog (der_dynamic) —
                 # musi byc identyfikatorem realnym, nie dowolnym lancuchem.
                 "dynamic_model_ref": "default_pv_gfl",
@@ -74,7 +73,6 @@ class TestWiazaniaTrafiajaDoModelu:
         assert params["protection_catalog_ref"] == "REF-OC-200"
         assert params["ct_catalog_ref"] == "ct_200_5_5p10_10va_abb"
         assert params["vt_catalog_ref"] == "vt_10kv_100v_05_abb"
-        assert params["fault_current_data_ref"] == "fc_pv_500"
         assert params["dynamic_model_ref"] == "default_pv_gfl"
         # Dane materializacji katalogowej urządzenia zostają nietknięte.
         assert params["un_kv"] == 0.4
@@ -83,6 +81,8 @@ class TestWiazaniaTrafiajaDoModelu:
     def test_profile_zgodnosci_ida_do_podslownika_profiles(self) -> None:
         # Odczyt frontu szuka profili w `materialized_params.profiles` — zapis musi trafić
         # dokładnie tam, inaczej dana istnieje w modelu i nadal nie dociera do reguły.
+        # Karta FAB-L: `bess_operation_mode_refs` dołączone — TEN SAM podsłownik,
+        # nie osobna ścieżka zapisu (lista, nie skalar jak pozostałe profile).
         wynik = _wykonaj(
             {
                 "generator_ref": "gen_pv_1",
@@ -90,6 +90,7 @@ class TestWiazaniaTrafiajaDoModelu:
                 "lvrt_curve_ref": "lvrt_pse_b",
                 "hvrt_curve_ref": "hvrt_pse_b",
                 "pf_curve_ref": "pf_pse_2024",
+                "bess_operation_mode_refs": ["mode_peak_shaving", "mode_self_consumption"],
             }
         )
 
@@ -100,6 +101,7 @@ class TestWiazaniaTrafiajaDoModelu:
             "lvrt_curve_ref": "lvrt_pse_b",
             "hvrt_curve_ref": "hvrt_pse_b",
             "pf_curve_ref": "pf_pse_2024",
+            "bess_operation_mode_refs": ["mode_peak_shaving", "mode_self_consumption"],
         }
 
     def test_wytworca_wskazany_przez_id_a_nie_ref_id(self) -> None:
@@ -124,7 +126,6 @@ class TestZeroFabrykacji:
         for klucz in (
             "protection_catalog_ref",
             "vt_catalog_ref",
-            "fault_current_data_ref",
             "dynamic_model_ref",
             "profiles",
         ):
@@ -216,21 +217,6 @@ class TestWiazanieMusiIstniecWKatalogu:
         assert wynik.get("error") is None
         assert "ct_catalog_ref" not in _params(wynik)
 
-    def test_fault_current_data_ref_bez_katalogu_w_backendzie_przechodzi_z_zapisanym_dlugiem(
-        self,
-    ) -> None:
-        # `fault_current_data_ref` NIE MA katalogu po stronie backendu (jawny dlug,
-        # rejestr V12K), wiec NIE jest sprawdzany. Udawanie walidacji byloby gorsze
-        # niz jej brak — ten test utrwala granice, zeby nie zniknela po cichu.
-        wynik = _wykonaj(
-            {
-                "generator_ref": "gen_pv_1",
-                "fault_current_data_ref": "fc_dowolne",
-            }
-        )
-
-        assert wynik.get("error") is None
-
     def test_dynamic_model_ref_MA_katalog_od_karty_fab_k_dowolny_string_odrzucony(
         self,
     ) -> None:
@@ -266,6 +252,58 @@ class TestWiazanieMusiIstniecWKatalogu:
 
         assert wynik.get("error") is None
         assert "dynamic_model_ref" not in _params(wynik)
+
+    def test_bess_operation_mode_refs_MA_katalog_lista_z_jednym_nieznanym_odrzucona(
+        self,
+    ) -> None:
+        # Karta FAB-L: `bess_operation_mode_refs` dostał dostawcę
+        # (`network_model.catalog.audit2_catalogs.get_bess_operation_mode`) —
+        # KAŻDY element listy jest sprawdzany, nie tylko pierwszy/ostatni (iloczyn
+        # cech: jeden dobry + jeden zły element w tej samej liście).
+        wynik = _wykonaj(
+            {
+                "generator_ref": "gen_pv_1",
+                "bess_operation_mode_refs": ["mode_peak_shaving", "mode_KTORY_NIE_ISTNIEJE"],
+            }
+        )
+
+        assert wynik.get("error_code") == "der_bindings.catalog_ref_unknown"
+        assert "bess_operation_mode_refs=mode_KTORY_NIE_ISTNIEJE" in (wynik.get("error") or "")
+        assert wynik.get("snapshot") is None
+
+    def test_bess_operation_mode_refs_realne_tryby_przechodza(self) -> None:
+        wynik = _wykonaj(
+            {
+                "generator_ref": "gen_pv_1",
+                "bess_operation_mode_refs": ["mode_peak_shaving", "mode_self_consumption"],
+            }
+        )
+
+        assert wynik.get("error") is None
+        assert _params(wynik)["profiles"]["bess_operation_mode_refs"] == [
+            "mode_peak_shaving",
+            "mode_self_consumption",
+        ]
+
+    def test_bess_operation_mode_refs_pusta_lista_jest_wartoscia_nie_brakiem(self) -> None:
+        # `[]` znaczy „świadomie zero trybów" (np. odznaczono ostatni checkbox) —
+        # INNY fakt niż pominięcie pola. Zapisywana jak każda inna wartość profilu.
+        wynik = _wykonaj({"generator_ref": "gen_pv_1", "bess_operation_mode_refs": []})
+
+        assert wynik.get("error") is None
+        assert _params(wynik)["profiles"]["bess_operation_mode_refs"] == []
+
+    def test_bess_operation_mode_refs_jawny_null_NIE_jest_walidowany_bo_usuwa_dana(
+        self,
+    ) -> None:
+        enm = _enm_z_wytworca()
+        enm["generators"][0]["materialized_params"]["profiles"] = {
+            "bess_operation_mode_refs": ["mode_peak_shaving"]
+        }
+        wynik = _wykonaj({"generator_ref": "gen_pv_1", "bess_operation_mode_refs": None}, enm)
+
+        assert wynik.get("error") is None
+        assert "profiles" not in _params(wynik)
 
 
 def test_urzadzenie_z_listy_pickera_daje_sie_ZAPISAC(tmp_path=None) -> None:
@@ -315,7 +353,6 @@ def test_der_binding_profile_keys_pin_parytet_fe_be() -> None:
         "protection_catalog_ref",
         "ct_catalog_ref",
         "vt_catalog_ref",
-        "fault_current_data_ref",
         "dynamic_model_ref",
     )
     assert DER_PROFILE_KEYS == (
@@ -323,23 +360,26 @@ def test_der_binding_profile_keys_pin_parytet_fe_be() -> None:
         "lvrt_curve_ref",
         "hvrt_curve_ref",
         "pf_curve_ref",
+        "bess_operation_mode_refs",
     )
 
 
 #: Wartości REALNE (te same, którymi posługują się testy wyżej w tym pliku) —
-#: `ct`/`vt`/`protection`/`dynamic_model_ref` są WALIDOWANE względem katalogu
-#: backendu (`_KATALOGI_WIAZAN_DER` + walidacja osobna dla `dynamic_model_ref`),
-#: więc wartość musi być realną pozycją, nie dowolnym łańcuchem.
-_WARTOSC_DLA_KLUCZA: dict[str, str] = {
+#: `ct`/`vt`/`protection`/`dynamic_model_ref`/`bess_operation_mode_refs` są
+#: WALIDOWANE względem katalogu backendu (`_KATALOGI_WIAZAN_DER` + walidacje
+#: osobne w `_nieznane_referencje_katalogowe`), więc wartość musi być realną
+#: pozycją, nie dowolnym łańcuchem. `bess_operation_mode_refs` jest LISTĄ, nie
+#: skalarem — jedyne pole tego kształtu w obu zbiorach kluczy.
+_WARTOSC_DLA_KLUCZA: dict[str, str | list[str]] = {
     "protection_catalog_ref": "REF-OC-200",
     "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
     "vt_catalog_ref": "vt_10kv_100v_05_abb",
-    "fault_current_data_ref": "fc_pv_500",
     "dynamic_model_ref": "default_pv_gfl",
     "nc_rfg_profile_ref": "pse",
     "lvrt_curve_ref": "lvrt_pse_b",
     "hvrt_curve_ref": "hvrt_pse_b",
     "pf_curve_ref": "pf_pse_2024",
+    "bess_operation_mode_refs": ["mode_peak_shaving", "mode_self_consumption"],
 }
 
 

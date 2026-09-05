@@ -147,18 +147,21 @@ class DerCatalogBindingsRequest(BaseModel):
     protection_catalog_ref: str | None = None
     ct_catalog_ref: str | None = None
     vt_catalog_ref: str | None = None
-    fault_current_data_ref: str | None = None
     dynamic_model_ref: str | None = None
     nc_rfg_profile_ref: str | None = None
     lvrt_curve_ref: str | None = None
     hvrt_curve_ref: str | None = None
     pf_curve_ref: str | None = None
+    #: Karta FAB-L: tryby pracy magazynu (lista, nie skalar — patrz
+    #: `enm.domain_operations_v2.DER_PROFILE_KEYS`). `null` usuwa wiązanie jak
+    #: pozostałe pola; `[]` jest wartością (świadomie zero trybów wybranych),
+    #: nie kasowaniem — rozróżnienie jak przy każdym innym polu tego kontraktu.
+    bess_operation_mode_refs: list[str] | None = None
 
     @field_validator(
         "protection_catalog_ref",
         "ct_catalog_ref",
         "vt_catalog_ref",
-        "fault_current_data_ref",
         "dynamic_model_ref",
         "nc_rfg_profile_ref",
         "lvrt_curve_ref",
@@ -171,6 +174,13 @@ class DerCatalogBindingsRequest(BaseModel):
             return None
         stripped = value.strip()
         return stripped or None
+
+    @field_validator("bess_operation_mode_refs")
+    @classmethod
+    def _strip_list_or_none(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
+        return [item.strip() for item in value if item and item.strip()]
 
 
 def _catalog_namespace(technology: DerKind) -> str:

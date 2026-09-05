@@ -156,6 +156,30 @@ vi.mock('../../../../ui/network-build/station-der/derRemoteCatalogs', () => ({
     operators: ReadonlyArray<{ operator_id: string }>,
     operatorId: string | null,
   ) => (operatorId ? operators.find((o) => o.operator_id === operatorId) ?? null : null),
+  // Karta FAB-L: model dynamiczny WYŁĄCZNIE z `GET /api/catalog/der-dynamic-profiles`
+  // (`network_model.catalog.der_dynamic`) — mock na granicy modułu klienta, ten sam
+  // wzorzec co profil NC RfG powyżej. Identyfikator jest REALNY (`default_pv_gfl`,
+  // konwencja `network_model/catalog/der_dynamic/defaults.py`).
+  fetchDerDynamicProfiles: () =>
+    Promise.resolve([
+      {
+        profile_id: 'default_pv_gfl',
+        profile_name_pl: 'PV grid-following domyślny',
+        der_kind: 'PV',
+        control_mode: 'grid_following',
+        tp_s: 0.02,
+        p_f_droop_pu: 0.05,
+      },
+    ]),
+  getDerDynamicProfile: (
+    profiles: ReadonlyArray<{ profile_id: string }>,
+    profileId: string | null,
+  ) => (profileId ? profiles.find((p) => p.profile_id === profileId) ?? null : null),
+  selectDerDynamicProfilesForKind: (
+    profiles: ReadonlyArray<{ der_kind: string }>,
+    kind: string,
+  ) => profiles.filter((p) => p.der_kind === kind),
+  formatDerDynamicProfileLabelPl: (profile: { profile_name_pl: string }) => profile.profile_name_pl,
 }));
 vi.mock('../../../../ui/network-build/station-der/audit2-api', () => ({
   fetchAudit2CatalogSnapshot: () =>
@@ -698,14 +722,14 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
     await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-konwerter')).toBeInTheDocument());
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-konwerter'), 'conv-pv-1');
-    // aparatura: CT, VT, zabezpieczenie + referencja danych zwarciowych (bez katalogu).
+    // aparatura: CT, VT, zabezpieczenie (katalog) + model dynamiczny (katalog, karta FAB-L).
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
     await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-aparatura')).toBeInTheDocument());
     await screen.findByRole('option', { name: /CT 100\/5/ });
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-aparatura-ct'), 'ct-1');
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-aparatura-vt'), 'vt-1');
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-aparatura-zabezpieczenie'), 'zab-1');
-    await userEvent.type(screen.getByTestId('mvd-kreator-oze-aparatura-dane-zwarciowe'), 'DOK-ZW-1');
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-aparatura-model-dynamiczny'), 'default_pv_gfl');
     // zgodność: profil operatora + krzywe.
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
     await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-zgodnosc')).toBeInTheDocument());
@@ -735,7 +759,11 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
         ct_catalog_ref: 'ct-1',
         vt_catalog_ref: 'vt-1',
         protection_catalog_ref: 'zab-1',
-        fault_current_data_ref: 'DOK-ZW-1',
+        // Karta FAB-L: model dynamiczny WYŁĄCZNIE z katalogu backendu
+        // (`GET /api/catalog/der-dynamic-profiles`) — pole wyboru, nie referencja
+        // wpisana ręcznie (dawne `fault_current_data_ref` USUNIĘTE z kontraktu:
+        // solver IEC 60909 nigdy go nie czytał).
+        dynamic_model_ref: 'default_pv_gfl',
         // Karta FAB-J: LVRT/HVRT tożsamościowo związane z operatorem (ten sam
         // `pse`) — backend niesie jedną parę krzywych na operatora, nie
         // niezależny wybór (patrz `KrokiAparaturaZgodnosc.tsx::wybierzProfil`).

@@ -83,6 +83,9 @@ function buildBaseStationProps(stationName: string, localConfig: StationLocalCon
       nnVoltageLevels: [0.4],
       completeness: 'missing' as const,
       mvNeutralGroundingRef: localConfig.mvNeutralGroundingRef,
+      // Karta FAB-L: nadpisane niżej danymi ze snapshotu audytu 2 — pusta
+      // lista jest stanem PRZED pobraniem, nie brakiem katalogu.
+      mvNeutralGroundings: [],
     },
     topology: {
       externalPorts: [],
@@ -102,7 +105,8 @@ function buildBaseStationProps(stationName: string, localConfig: StationLocalCon
       readinessLabelPl: 'do konfiguracji',
     },
     bays: { bays: [] },
-    transformer: { transformers: [], availableLvVoltages: [0.4] },
+    // Karta FAB-L: `tapChangers` nadpisane niżej danymi ze snapshotu audytu 2.
+    transformer: { transformers: [], availableLvVoltages: [0.4], tapChangers: [] },
     // Krok "Strona nN" zawiera rozdzielnice nN i odbiory techniczne.
     nnSwitchgear: { switchgears: [], loads: [] },
     protection: {
@@ -656,7 +660,13 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
   // Karta FAB-J: snapshot audytu 2 dla inferencji transformatora dedykowanego
   // (`inferBlockTransformerCatalogRef`) — bez niego wytwórcy legacy bez
   // `meta.block_transformer_catalog_ref` nie dostaną wywnioskowanej pozycji.
-  const blockTransformers = useAudit2CatalogSnapshot().data?.block_transformers ?? [];
+  // Karta FAB-L: TEN SAM snapshot niesie też `mv_neutral_groundings`/
+  // `tap_changers` — zero drugiego zapytania sieciowego dla katalogów, które
+  // konfigurator już potrzebuje (Karta 1/Uziemienie, Karta 5 transformatora).
+  const audit2CatalogSnapshotQuery = useAudit2CatalogSnapshot();
+  const blockTransformers = audit2CatalogSnapshotQuery.data?.block_transformers ?? [];
+  const mvNeutralGroundings = audit2CatalogSnapshotQuery.data?.mv_neutral_groundings ?? [];
+  const tapChangers = audit2CatalogSnapshotQuery.data?.tap_changers ?? [];
   const ncRfgOperators = useNcRfgOperatorCatalog().data ?? [];
   const snapshotDers = useMemo(
     () => deryStacjiZModelu(snapshot, stationRef, projectId, blockTransformers),
@@ -1062,6 +1072,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
           stationBays.length > 0 && stationTransformers.length > 0
             ? 'complete' as const
             : 'partial' as const,
+        mvNeutralGroundings,
         onChange: (changes: { mvNeutralGroundingRef?: string | null }) => {
           if ('mvNeutralGroundingRef' in changes) {
             mutateAudit2({ mv_neutral_grounding_ref: changes.mvNeutralGroundingRef ?? null });
@@ -1099,6 +1110,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
         transformerCatalogOptions: stationTransformerCatalogOptions,
         transformerCatalogLoading,
         transformerCatalogError,
+        tapChangers,
         onAddTransformer: handleAddTransformer,
         onChange: (transformerId: string, changes: Partial<StationConfigTransformerRow>) => {
           if ('catalogRef' in changes) {
@@ -1187,6 +1199,8 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     transformerCatalogError,
     transformerCatalogLoading,
     blockTransformers,
+    mvNeutralGroundings,
+    tapChangers,
     ncRfgOperators,
   ]);
 

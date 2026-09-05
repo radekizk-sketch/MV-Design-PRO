@@ -100,7 +100,10 @@ test.describe('kreatory:screenshot', () => {
       // Krok 2 — falownik i moc (wybór z katalogu + liczba → tabliczka).
       await page.getByTestId('mvd-kreator-oze-dalej').click();
       await expect(page.getByTestId('mvd-kreator-oze-konwerter')).toBeVisible();
-      await page.getByTestId('mvd-kreator-oze-konwerter').selectOption('pv-1');
+      // Karta FAB-L (§0 L6): dawne zmyślone `pv-1`/`vt-1`/`rel-1` → realne
+      // identyfikatory katalogu backendu (picker idzie dziś do REALNEGO
+      // backendu, więc zmyślona wartość nie istnieje wśród opcji `<select>`).
+      await page.getByTestId('mvd-kreator-oze-konwerter').selectOption('conv-pv-1mw-15kv');
       await page.getByTestId('mvd-kreator-oze-liczba').fill('12');
       await shot(2);
 
@@ -110,8 +113,8 @@ test.describe('kreatory:screenshot', () => {
       const ctWybor = page.getByTestId('mvd-kreator-oze-aparatura-ct');
       await expect(ctWybor.locator('option').nth(1)).toBeAttached({ timeout: 15000 });
       await ctWybor.selectOption('ct_200_5_5p10_10va_abb');
-      await page.getByTestId('mvd-kreator-oze-aparatura-vt').selectOption('vt-1');
-      await page.getByTestId('mvd-kreator-oze-aparatura-zabezpieczenie').selectOption('rel-1');
+      await page.getByTestId('mvd-kreator-oze-aparatura-vt').selectOption('vt_15kv_100v_05_abb');
+      await page.getByTestId('mvd-kreator-oze-aparatura-zabezpieczenie').selectOption('ABB_REB670');
       await shot(3);
 
       // Krok 4 — zgodność przyłączeniowa (K9-A): profile NC RfG/LVRT/HVRT/PF.
@@ -221,7 +224,11 @@ test.describe('kreatory:screenshot', () => {
         // Magistrala: wybierz kabel z katalogu (krok „typ", 1) → parametry normowe;
         // panel teorii jest na kroku „parametry" (2). Kompensator: teoria na „typ" (1).
         if (c === 'magistrala') {
-          await page.getByTestId('mvd-kreator-magistrala-katalog').selectOption('kab-120');
+          // Karta FAB-L (§0 L6): dawne zmyślone `kab-120` → realny identyfikator
+          // katalogu kabli SN backendu (`cable-base-epr-al-1c-120`, 120 mm²,
+          // In=255 A — 300 A wpisane niżej nadal przekracza obciążalność, więc
+          // ostrzeżenie M3 dalej się wywołuje).
+          await page.getByTestId('mvd-kreator-magistrala-katalog').selectOption('cable-base-epr-al-1c-120');
           await page.getByTestId('mvd-kreator-magistrala-dalej').click();
           // Prąd roboczy > obciążalności → asystent doboru pokazuje ostrzeżenie (M3).
           await page.getByTestId('mvd-kreator-magistrala-prad').fill('300');

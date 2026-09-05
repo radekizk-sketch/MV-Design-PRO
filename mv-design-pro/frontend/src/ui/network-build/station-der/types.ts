@@ -66,6 +66,17 @@ export type DerCompleteness =
  *   * `cable_catalog_ref` (kabel wewnętrzny od PCC do urządzenia) — ŻADNA operacja
  *     domenowa go nie zapisuje, żaden kreator go nie zbiera; jedyny „konsument"
  *     był etykietą w panelu OZE, która nigdy nie miała czego wyświetlić.
+ *
+ * PROWENIENCJA (karta FAB-L, 2026-09-05) — usunięto TRZECIE pole tej samej
+ * klasy: `fault_current_data_ref` (model zwarciowy urządzenia — R₁/X₁/R₂/X₂/
+ * R₀/X₀/Z₀·Z₁⁻¹). Inwentarz solvera IEC 60909 (`network_model/solvers/
+ * short_circuit_iec60909.py` + `enm/mapping.py`) wykazał, że solver CZYTA
+ * WYŁĄCZNIE `k_sc` z katalogu konwertera — te dane nigdy nie zasilały żadnego
+ * obliczenia (wkład składowej ujemnej/zerowej falownika jest STAŁĄ solvera,
+ * niezależną od jakiejkolwiek karty katalogowej). Pole nie było fantomem bez
+ * konsumenta — było RÓWNOLEGŁĄ FIZYKĄ obok solvera (naruszenie NOT-A-SOLVER,
+ * `computeKappa` w `catalogs.ts` liczyło κ tym samym wzorem co solver, z danych,
+ * których solver nie widział).
  */
 export interface DerCatalogSelections {
   /** Katalog falownika PV / PCS BESS / turbiny FW. */
@@ -89,12 +100,6 @@ export interface DerCatalogSelections {
   /** Przekładniki CT/VT. */
   readonly ct_catalog_ref: string | null;
   readonly vt_catalog_ref: string | null;
-  /**
-   * Naprawa A (audyt profesora): dane składowych symetrycznych z katalogu
-   * urządzenia. Wymagane dla obliczeń SC1F/SC2FG (IEC 60909-3) + asymetrii.
-   * Format ref: `der_fault_current_data_{device_id}` z polami R0/X0/Z0Z1.
-   */
-  readonly fault_current_data_ref: string | null;
   /**
    * Naprawa A (audyt profesora): model dynamiczny (PMSG/DFIG/SCIG dla FW,
    * grid-following/forming dla PV/BESS) — wymagane dla solvera RMS i FRT/HVRT.
@@ -120,7 +125,6 @@ export const EMPTY_DER_CATALOGS: DerCatalogSelections = Object.freeze({
   protection_catalog_ref: null,
   ct_catalog_ref: null,
   vt_catalog_ref: null,
-  fault_current_data_ref: null,
   dynamic_model_ref: null,
   block_transformer_catalog_ref: null,
 });

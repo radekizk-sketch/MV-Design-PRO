@@ -21,6 +21,7 @@ const minimalProps = {
     snVoltageKv: 15,
     nnVoltageLevels: [0.4],
     completeness: 'complete' as const,
+    mvNeutralGroundings: [],
   },
   topology: {
     externalPorts: [],
@@ -40,7 +41,7 @@ const minimalProps = {
     readinessLabelPl: 'gotowe',
   },
   bays: { bays: [] },
-  transformer: { transformers: [], availableLvVoltages: [0.4] },
+  transformer: { transformers: [], availableLvVoltages: [0.4], tapChangers: [] },
   nnSwitchgear: { switchgears: [] },
   derSources: { stationId: 'station_test', ders: [] },
   loads: { loads: [] },
@@ -115,6 +116,7 @@ describe('StationConfigBasicCard', () => {
         snVoltageKv={15}
         nnVoltageLevels={[0.4, 0.69, 6.0]}
         completeness="partial"
+        mvNeutralGroundings={[]}
       />,
     );
     expect(screen.getByTestId('station-topological-type')).toHaveTextContent('przelotowa');
@@ -132,6 +134,7 @@ describe('StationConfigBasicCard', () => {
         snVoltageKv={15}
         nnVoltageLevels={[0.4]}
         completeness="complete"
+        mvNeutralGroundings={[]}
         onChange={onChange}
       />,
     );
@@ -231,6 +234,7 @@ describe('StationConfigTransformerCard — multi-voltage nN', () => {
       <StationConfigTransformerCard
         transformers={[]}
         availableLvVoltages={[0.4, 0.69, 6.0]}
+        tapChangers={[]}
       />,
     );
     expect(screen.getByTestId('multi-voltage-info')).toHaveTextContent(/0\.4 \/ 0\.69 \/ 6 kV/);
@@ -241,6 +245,7 @@ describe('StationConfigTransformerCard — multi-voltage nN', () => {
       <StationConfigTransformerCard
         transformers={[]}
         availableLvVoltages={[0.4]}
+        tapChangers={[]}
       />,
     );
     expect(screen.queryByTestId('multi-voltage-info')).not.toBeInTheDocument();
@@ -252,6 +257,7 @@ describe('StationConfigTransformerCard — multi-voltage nN', () => {
       <StationConfigTransformerCard
         transformers={[]}
         availableLvVoltages={[0.4]}
+        tapChangers={[]}
         onAddTransformer={onAddTransformer}
       />,
     );
@@ -284,6 +290,7 @@ describe('StationConfigTransformerCard — multi-voltage nN', () => {
           },
         ]}
         availableLvVoltages={[0.4, 0.69, 6.0]}
+        tapChangers={[]}
         onChange={onChange}
       />,
     );
@@ -310,6 +317,7 @@ describe('StationConfigTransformerCard — multi-voltage nN', () => {
           },
         ]}
         availableLvVoltages={[0.4]}
+        tapChangers={[]}
         transformerCatalogOptions={{
           tr1: [
             {

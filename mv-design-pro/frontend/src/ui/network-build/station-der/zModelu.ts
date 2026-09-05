@@ -56,18 +56,29 @@ import {
  * (`enm/domain_operations_v2.py`). JEDYNA definicja po stronie frontu: testy
  * i odczyt (`derZGeneratora` niżej) czytają z TEJ listy, nie z ręcznie
  * wypisanych kluczy w dwóch miejscach.
+ *
+ * Karta FAB-L: `fault_current_data_ref` USUNIĘTE — solver IEC 60909 (inwentarz
+ * `network_model/solvers/short_circuit_iec60909.py` + `enm/mapping.py`) nigdy
+ * nie czytał tego pola; była to równoległa fizyka w UI (κ liczone drugi raz),
+ * nie brakujące wiązanie.
  */
 export const DER_MATERIALIZED_BINDING_KEYS = [
   'protection_catalog_ref',
   'ct_catalog_ref',
   'vt_catalog_ref',
-  'fault_current_data_ref',
   'dynamic_model_ref',
 ] as const;
 
 /**
- * Profile zgodności przyłączeniowej — nazwy 1:1 z backendowym `DER_PROFILE_KEYS`.
- * Trzymane przez backend w podsłowniku `materialized_params.profiles`.
+ * Profile zgodności przyłączeniowej (wartość SKALARNA) — nazwy 1:1 z
+ * backendowym `DER_PROFILE_KEYS`. Trzymane przez backend w podsłowniku
+ * `materialized_params.profiles`.
+ *
+ * `bess_operation_mode_refs` NIE jest tu — backendowe `DER_PROFILE_KEYS` niesie
+ * tę nazwę w TYM SAMYM podsłowniku, ale wartość jest LISTĄ, nie skalarem
+ * (jedyne pole tego kształtu w obu zbiorach); czyta ją osobno
+ * `bessOperationModeRefsZMaterializowanych` niżej, żeby ta stała i pętla po
+ * niej (`derZGeneratora`) mogły zostać jednorodne (string → string | null).
  */
 export const DER_MATERIALIZED_PROFILE_KEYS = [
   'nc_rfg_profile_ref',
@@ -82,6 +93,15 @@ function readString(value: unknown): string | null {
 
 function readNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+/**
+ * Karta FAB-L: `profiles.bess_operation_mode_refs` — lista, filtruje wpisy
+ * spoza kształtu kontraktu (nie-string, string pusty) zamiast rzutować `as`.
+ */
+function readStringArray(value: unknown): readonly string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0);
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -267,6 +287,10 @@ function derZGeneratora(
   const materializedProfiles = Object.fromEntries(
     DER_MATERIALIZED_PROFILE_KEYS.map((key) => [key, readString(asRecord(materialized.profiles)[key])]),
   ) as Record<(typeof DER_MATERIALIZED_PROFILE_KEYS)[number], string | null>;
+  // Karta FAB-L: `bess_operation_mode_refs` — lista, tego samego podsłownika
+  // `materialized_params.profiles`, poza pętlą skalarów wyżej (patrz komentarz
+  // przy `DER_MATERIALIZED_PROFILE_KEYS`).
+  const bessOperationModeRefs = readStringArray(asRecord(materialized.profiles).bess_operation_mode_refs);
 
   const catalogs = {
     ...EMPTY_DER_CATALOGS,
@@ -282,6 +306,7 @@ function derZGeneratora(
   const profiles = {
     ...EMPTY_DER_PROFILES,
     ...materializedProfiles,
+    bess_operation_mode_refs: bessOperationModeRefs,
   };
   const busPrzylaczeniaRef = readString(meta.bus_przylaczenia_ref) ?? generator.bus_ref;
   // Napięcie przyłączenia WPROST z modelu (szyna wytwórcy) — patrz komentarz przy

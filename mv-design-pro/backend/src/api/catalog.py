@@ -28,6 +28,8 @@ from application.network_wizard import NetworkWizardService
 from application.network_wizard.service import NotFound
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
+from network_model.catalog.der_dynamic import get_profile, list_all_profile_ids
+from network_model.catalog.der_dynamic.models import WindTurbineDynamicProfile
 from network_model.catalog.governance import ImportMode
 from network_model.catalog.mv_branch_point_catalog import get_all_branch_point_types
 from network_model.catalog.mv_ptpiree_catalog import get_ptpiree_catalog_manifest
@@ -384,6 +386,30 @@ def list_wind_inverter_types() -> list[dict[str, Any]]:
 def list_source_system_types() -> list[dict[str, Any]]:
     """List all MV system source types for GPZ / zasilanie systemowe."""
     return [item.to_dict() for item in get_default_mv_catalog().list_source_system_types()]
+
+
+@router.get("/der-dynamic-profiles")
+def list_der_dynamic_profiles() -> list[dict[str, Any]]:
+    """Profile dynamiczne DER (PV/BESS/FW) — karta FAB-L.
+
+    Jedyne źródło prawdy o modelach dynamicznych konsumowanych przez solvery
+    `network_model.solvers.stability_rms` i `network_model.solvers.frt_hvrt`
+    (`network_model.catalog.der_dynamic`, resolver `resolve_der_dynamic_profile`).
+    Front pokazuje parametry WHITE BOX wprost (Tp/Tq/droop/FRT/inercja) —
+    zero drugiej kopii pod zmyślonymi nazwami pól.
+
+    `der_kind` jest dopisywane w tej serializacji ("FW" dla turbin) — model
+    katalogowy turbiny niesie tylko `iec_type`, ale front potrzebuje jednego
+    pola rodzaju DER dla obu kształtów profilu.
+    """
+    wyniki: list[dict[str, Any]] = []
+    for profile_id in list_all_profile_ids():
+        profil = get_profile(profile_id)
+        dane = profil.model_dump(mode="json")
+        if isinstance(profil, WindTurbineDynamicProfile):
+            dane["der_kind"] = "FW"
+        wyniki.append(dane)
+    return wyniki
 
 
 @router.get("/ptpiree/manifest")

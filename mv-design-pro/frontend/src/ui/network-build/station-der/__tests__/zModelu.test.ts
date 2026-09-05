@@ -249,11 +249,15 @@ describe('rozwiazNapiecieKv — JEDNO realne źródło (szyna modelu), zero domy
  */
 describe('DER_MATERIALIZED_BINDING_KEYS / DER_MATERIALIZED_PROFILE_KEYS — parytet z backendem', () => {
   it('nazwy kluczy 1:1 z backendowym DER_BINDING_KEYS/DER_PROFILE_KEYS (enm/domain_operations_v2.py)', () => {
+    // Karta FAB-L: `fault_current_data_ref` USUNIĘTE z obu stron (solver nigdy
+    // go nie czytał — inwentarz `short_circuit_iec60909.py`/`enm/mapping.py`).
+    // Backendowe `DER_PROFILE_KEYS` zyskało piąty klucz, `bess_operation_mode_
+    // refs` — NIE tutaj, bo jest listą, nie skalarem (patrz opis przy stałej
+    // i test dedykowany `bess_operation_mode_refs` niżej).
     expect(DER_MATERIALIZED_BINDING_KEYS).toEqual([
       'protection_catalog_ref',
       'ct_catalog_ref',
       'vt_catalog_ref',
-      'fault_current_data_ref',
       'dynamic_model_ref',
     ]);
     expect(DER_MATERIALIZED_PROFILE_KEYS).toEqual([
@@ -272,7 +276,6 @@ describe('DER_MATERIALIZED_BINDING_KEYS / DER_MATERIALIZED_PROFILE_KEYS — pary
     protection_catalog_ref: 'REF-OC-200',
     ct_catalog_ref: 'ct_200_5_5p10_10va_abb',
     vt_catalog_ref: 'vt_10kv_100v_05_abb',
-    fault_current_data_ref: 'fc_pv_500',
     dynamic_model_ref: 'default_pv_gfl',
     nc_rfg_profile_ref: 'pse',
     lvrt_curve_ref: 'lvrt_pse_b',
@@ -323,4 +326,63 @@ describe('DER_MATERIALIZED_BINDING_KEYS / DER_MATERIALIZED_PROFILE_KEYS — pary
       expect(bezWartosci[0].profiles[klucz]).toBeNull();
     },
   );
+
+  describe('bess_operation_mode_refs — profil w KSZTAŁCIE LISTY (karta FAB-L)', () => {
+    it('obecny w materialized_params.profiles → lista w profiles, brak → pusta tablica', () => {
+      const zWartoscia = deryZModelu(
+        migawka({
+          generators: [
+            generatorPv({
+              materialized_params: {
+                profiles: { bess_operation_mode_refs: ['mode_peak_shaving', 'mode_self_consumption'] },
+              },
+            }),
+          ] as never,
+        }),
+        null,
+      );
+      expect(zWartoscia[0].profiles.bess_operation_mode_refs).toEqual([
+        'mode_peak_shaving',
+        'mode_self_consumption',
+      ]);
+
+      const bezWartosci = deryZModelu(
+        migawka({ generators: [generatorPv({ materialized_params: { profiles: {} } })] as never }),
+        null,
+      );
+      expect(bezWartosci[0].profiles.bess_operation_mode_refs).toEqual([]);
+    });
+
+    it('wartość spoza kształtu kontraktu (string zamiast listy) daje pustą tablicę, nie iteruje znaków', () => {
+      // Iloczyn cech (KLASA NIE INSTANCJA pkt 2): zapis sprzed karty FAB-L albo
+      // dana uszkodzona nie może zamienić się w listę jednoznakowych "trybów".
+      const wynik = deryZModelu(
+        migawka({
+          generators: [
+            generatorPv({
+              materialized_params: { profiles: { bess_operation_mode_refs: 'mode_peak_shaving' } },
+            }),
+          ] as never,
+        }),
+        null,
+      );
+      expect(wynik[0].profiles.bess_operation_mode_refs).toEqual([]);
+    });
+
+    it('elementy nie-tekstowe albo puste w liście są odfiltrowane', () => {
+      const wynik = deryZModelu(
+        migawka({
+          generators: [
+            generatorPv({
+              materialized_params: {
+                profiles: { bess_operation_mode_refs: ['mode_peak_shaving', '', '  ', 7, null] },
+              },
+            }),
+          ] as never,
+        }),
+        null,
+      );
+      expect(wynik[0].profiles.bess_operation_mode_refs).toEqual(['mode_peak_shaving']);
+    });
+  });
 });

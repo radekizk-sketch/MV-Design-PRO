@@ -173,21 +173,13 @@ export const OZE_STRINGS = {
     + '„Zabezpieczenia" i ocenę doboru funkcji.',
   aparaturaKatalogPlaceholder: '— wybierz typ z katalogu —',
   aparaturaKatalogBlad: 'Nie udało się pobrać katalogu aparatury.',
-  // Dane bez katalogu w systemie — pola jawnie bez walidacji katalogowej (dług nazwany).
-  aparaturaBezKataloguTytul: 'Dane producenta bez walidacji katalogowej',
-  aparaturaBezKatalogu:
-    'System nie ma katalogu danych zwarciowych ani modeli dynamicznych falowników — poniższe '
-    + 'referencje są zapisywane bez sprawdzenia w katalogu (odpowiedzialność projektanta). '
-    + 'Źródło danych: karta katalogowa albo protokół badań producenta.',
-  aparaturaDaneZwarciowe: 'Referencja danych zwarciowych urządzenia',
-  aparaturaDaneZwarciowePomoc:
-    'Składowe symetryczne urządzenia — bez nich zwarcia niesymetryczne (1-fazowe, '
-    + '2-fazowe z ziemią) pozostają zablokowane (IEC 60909-3).',
-  aparaturaModelDynamiczny: 'Referencja modelu dynamicznego urządzenia',
+  // Karta FAB-L: model dynamiczny ma już katalog backendu (`der_dynamic`) — pole jest
+  // pickerem jak CT/VT/zabezpieczenie powyżej, nie referencją wpisaną ręcznie. Dawne
+  // dane zwarciowe (`fault_current_data_ref`) USUNIĘTE z kontraktu w tej samej karcie.
+  aparaturaModelDynamiczny: 'Model dynamiczny urządzenia',
   aparaturaModelDynamicznyPomoc:
     'Opis zachowania przekształtnika w stanach przejściowych — wymagany do badań '
     + 'przejścia przez zapad (LVRT) i wzrost napięcia (HVRT).',
-  aparaturaRefPlaceholder: 'np. oznaczenie dokumentu producenta',
   teoriaAparaturaTytul: 'Teoria: aparatura pola wytwórcy',
   teoriaAparaturaOpis:
     'Pole wytwórcy wymaga toru pomiarowego (przekładnik prądowy i napięciowy) oraz '

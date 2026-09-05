@@ -27,14 +27,14 @@ import { buildAggregatedReadiness } from '../../network-build/station-der/readin
 import { useExecutionRunsStore } from '../../study-cases/runStore';
 import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
 import {
-  DER_DYNAMIC_MODEL_CATALOG,
-  DER_FAULT_CURRENT_DATA_CATALOG,
   EMPTY_DER_CATALOGS,
   EMPTY_DER_PROFILES,
   EMPTY_DER_READINESS,
   computeDerCompleteness,
   computeDerReadinessMatrix,
+  formatDerDynamicProfileLabelPl,
   getBlockTransformer,
+  getDerDynamicProfile,
   getNcRfgOperator,
   getSnConnectionPointKindLabelPl,
   selectAllDers,
@@ -42,11 +42,13 @@ import {
   snPointKindForBus,
   useAudit2CatalogSnapshot,
   useBessBatteryTypes,
+  useDerDynamicProfiles,
   useNcRfgModuleClassification,
   useNcRfgOperatorCatalog,
   useStationDerStore,
   type BessBatteryItem,
   type BlockTransformerItem,
+  type DerDynamicProfileItem,
   type NcRfgOperatorItem,
   type PfCurveItem,
   type SnConnectionPointKind,
@@ -384,8 +386,6 @@ function buildDerFromGenerator(
       vt_catalog_ref: stringFromRecord(materialized, ['vt_catalog_ref']) ?? stringFromRecord(meta, ['vt_catalog_ref']),
       dynamic_model_ref: stringFromRecord(materialized, ['dynamic_model_ref'])
         ?? stringFromRecord(meta, ['dynamic_model_ref']),
-      fault_current_data_ref: stringFromRecord(materialized, ['fault_current_data_ref'])
-        ?? stringFromRecord(meta, ['fault_current_data_ref']),
       block_transformer_catalog_ref: blockTransformerCatalogRef,
     },
     profiles: {
@@ -550,28 +550,32 @@ function blockTransformerLabel(
   return `TR blokowy ${voltage} ${power} ${transformer.vector_group}`;
 }
 
-function dynamicModelLabel(der: StationDerConnection): string {
-  const selected = DER_DYNAMIC_MODEL_CATALOG.find((item) => item.id === der.catalogs.dynamic_model_ref)
-    ?? DER_DYNAMIC_MODEL_CATALOG.find((item) =>
-      der.catalogs.device_catalog_ref ? item.applicable_device_ids.includes(der.catalogs.device_catalog_ref) : false,
-    );
-  return selected ? cleanCatalogText(selected.label_pl) : 'model dynamiczny z wariantu katalogowego';
+/**
+ * Karta FAB-L: katalog WYŁĄCZNIE z backendu (`GET /api/catalog/der-dynamic-profiles`,
+ * `useDerDynamicProfiles`) — dawny `DER_DYNAMIC_MODEL_CATALOG` niósł pola ZMYŚLONE
+ * (`k_factor_iq_over_du`, `voltage_drop_detection_time_ms`) bez odpowiednika w
+ * realnym resolverze (`network_model.catalog.der_dynamic`). Dobór PO URZĄDZENIU
+ * (`applicable_device_ids`) skasowany bez zamiennika: backend nie wyraża mapowania
+ * „to urządzenie → ten profil" żadną końcówką — wybór jest dziś JAWNY
+ * (`dynamic_model_ref` wybrany przez projektanta w konfiguratorze), nigdy cichym
+ * domyślnym po dopasowaniu urządzenia.
+ */
+function dynamicModelLabel(der: StationDerConnection, profiles: readonly DerDynamicProfileItem[]): string {
+  const selected = getDerDynamicProfile(profiles, der.catalogs.dynamic_model_ref);
+  return selected ? cleanCatalogText(formatDerDynamicProfileLabelPl(selected)) : 'model dynamiczny z wariantu katalogowego';
 }
 
 /**
  * Stan braku granicznego prądu zwarciowego falownika (karta K-Q, 2026-08-14).
  * Wzorzec `BRAK_PASMA_BEZPIECZNIKA`: pole nie znika z karty (ciche zniknięcie to
  * inne kłamstwo), tylko mówi wprost, czego brakuje i skąd to wziąć.
+ *
+ * Karta FAB-L: JEDYNY komunikat dla „model zwarciowy" na całym ekranie (dawny
+ * `faultCurrentLabel` czytał drugi, sfabrykowany katalog `DER_FAULT_CURRENT_
+ * DATA_CATALOG` — inwentarz solvera IEC 60909 wykazał zero konsumentów tych
+ * danych; ten sam komunikat zastępuje oba miejsca, patrz `buildDerCards`).
  */
 const BRAK_PRADU_ZWARCIOWEGO_FALOWNIKA_PL = 'wymaga karty katalogowej wyrobu (wynik zwarciowy: SC3F/SC1F)';
-
-function faultCurrentLabel(der: StationDerConnection): string {
-  const selected = DER_FAULT_CURRENT_DATA_CATALOG.find((item) => item.id === der.catalogs.fault_current_data_ref)
-    ?? DER_FAULT_CURRENT_DATA_CATALOG.find((item) =>
-      der.catalogs.device_catalog_ref ? item.applicable_device_ids.includes(der.catalogs.device_catalog_ref) : false,
-    );
-  return selected ? cleanCatalogText(selected.label_pl) : 'dane zwarciowe z wariantu katalogowego';
-}
 
 /**
  * Karta FAB-J: `ref` jest teraz `operator_id` (pse/energa/...), bo backend
@@ -725,11 +729,15 @@ function buildDerCards(
     readonly ncRfgOperators: readonly NcRfgOperatorItem[];
     readonly pfCurves: readonly PfCurveItem[];
     readonly bessBatteries: readonly BessBatteryItem[];
+    /** Karta FAB-L: profile dynamiczne DER — `GET /api/catalog/der-dynamic-profiles`. */
+    readonly dynamicProfiles: readonly DerDynamicProfileItem[];
     /** Moduł NC RfG oczekiwany dla (moc, napięcie) tego wytwórcy — z backendu. */
     readonly moduleType: string | null;
   },
 ): Partial<Record<DerCardId, JSX.Element>> {
-  const { converters, blockTransformers, ncRfgOperators, pfCurves, bessBatteries, moduleType } = katalogi;
+  const {
+    converters, blockTransformers, ncRfgOperators, pfCurves, bessBatteries, dynamicProfiles, moduleType,
+  } = katalogi;
   const ncRfg = getNcRfgOperator(ncRfgOperators, der.profiles.nc_rfg_profile_ref);
   const inverter = findConverter(der, converters);
   const ptpireeCertificate = getPtpireeCertifiedInverter(der.catalogs.ptpiree_certificate_ref);
@@ -830,7 +838,7 @@ function buildDerCards(
         <dl>
           <FieldRow label="LVRT" value={rideThroughLabel('LVRT', der.profiles.lvrt_curve_ref, ncRfgOperators)} />
           <FieldRow label="HVRT" value={rideThroughLabel('HVRT', der.profiles.hvrt_curve_ref, ncRfgOperators)} />
-          <FieldRow label="Model dynamiczny" value={dynamicModelLabel(der)} />
+          <FieldRow label="Model dynamiczny" value={dynamicModelLabel(der, dynamicProfiles)} />
           <FieldRow label="Status FRT" value={readinessPl(gotowosc.frt)} />
           <FieldRow label="Status HVRT" value={readinessPl(gotowosc.hvrt)} />
         </dl>
@@ -844,7 +852,7 @@ function buildDerCards(
             value={ncRfg ? cleanCatalogText(ncRfg.operator_name_pl) : 'wybierz profil zgodności przyłączeniowej'}
           />
           <FieldRow label="P(f)" value={pfCurveLabel(der.profiles.pf_curve_ref, pfCurves)} />
-          <FieldRow label="Model zwarciowy" value={faultCurrentLabel(der)} />
+          <FieldRow label="Model zwarciowy" value={BRAK_PRADU_ZWARCIOWEGO_FALOWNIKA_PL} />
           <FieldRow
             label="Minimalna moc zwarciowa PCC"
             value={ncRfg ? `${moduleTypeLabel(moduleType)}: wg profilu ${ncRfg.operator_name_pl}` : 'wg profilu operatora'}
@@ -1141,6 +1149,9 @@ function DerSurfaceShell({
   const pfCurves = useAudit2CatalogSnapshot().data?.pf_curves ?? [];
   const ncRfgOperators = useNcRfgOperatorCatalog().data ?? [];
   const bessBatteries = useBessBatteryTypes().data ?? [];
+  // Karta FAB-L: profile dynamiczne DER — WYŁĄCZNIE z backendu, zero statyku
+  // modułowego usuniętego z `catalogs.ts` (`DER_DYNAMIC_MODEL_CATALOG`).
+  const dynamicProfiles = useDerDynamicProfiles().data ?? [];
   const projectName = useAppStateStore((state) => state.activeProjectName);
   const activeProjectId = useAppStateStore((state) => state.activeProjectId);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
@@ -1362,7 +1373,7 @@ function DerSurfaceShell({
                 sekcjaFunkcji,
                 sekcjaMacierzy,
                 sekcjaDoboru,
-                { converters, blockTransformers, ncRfgOperators, pfCurves, bessBatteries, moduleType },
+                { converters, blockTransformers, ncRfgOperators, pfCurves, bessBatteries, dynamicProfiles, moduleType },
               ) : undefined}
         />
       </div>

@@ -50,7 +50,6 @@ function der(over: Partial<StationDerConnection> = {}): StationDerConnection {
       protection_catalog_ref: 'REL-1',
       ct_catalog_ref: 'ct_200_5_5p10_10va_abb',
       vt_catalog_ref: 'VT-1',
-      fault_current_data_ref: 'FC-1',
       dynamic_model_ref: null,
     },
     profiles: { nc_rfg_profile_ref: null, lvrt_curve_ref: null, hvrt_curve_ref: null },

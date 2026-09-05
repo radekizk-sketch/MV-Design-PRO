@@ -79,8 +79,25 @@ const BLOCK_TRANSFORMER_FIXTURES = [
   blockTransformerFixture('btr_pv_15_069_2500', 2500, 15, 0.69),
 ];
 
+// Karta FAB-L: tryby pracy magazynu — kształt 1:1 z backendu
+// (`audit2_catalogs.py::BessOperationModeItem.to_dict`). FCR-N i wsparcie
+// napięciowe wymagają 4Q (oba testowe PCS mają symetryczny qmin/qmax < 0 < qmax,
+// więc `deviceFourQuadrantCapable` w `AddDerWizard.tsx` rozpoznaje je jako 4Q).
+const BESS_OPERATION_MODE_FIXTURES = [
+  {
+    id: 'mode_fcr_n', catalog_namespace: 'bess_operation_mode', catalog_version: '1.0',
+    label_pl: 'FCR-N (rezerwa pierwotna symetryczna)', description_pl: 'Fikstura testowa.',
+    mode_code: 'fcr_n', requires_four_quadrant: true, requires_grid_forming: false,
+  },
+  {
+    id: 'mode_voltage_support', catalog_namespace: 'bess_operation_mode', catalog_version: '1.0',
+    label_pl: 'Wsparcie napięciowe Q(U)', description_pl: 'Fikstura testowa.',
+    mode_code: 'voltage_support', requires_four_quadrant: true, requires_grid_forming: false,
+  },
+];
+
 const AUDIT2_SNAPSHOT_BODY = {
-  bess_operation_modes: [],
+  bess_operation_modes: BESS_OPERATION_MODE_FIXTURES,
   tap_changers: [],
   hv_fuses: [],
   device_withstand: [],

@@ -13,12 +13,6 @@ import { describe, it, expect } from 'vitest';
 import {
   computeDerReadinessMatrix,
   buildAggregatedReadiness,
-  // Pakiet D
-  BESS_OPERATION_MODE_CATALOG,
-  selectBessModesForPcs,
-  TAP_CHANGER_CATALOG,
-  selectTapChangersForTransformer,
-  getTapChanger,
   validateHostingCapacityExport,
 } from '..';
 import {
@@ -61,7 +55,6 @@ function makeDer(overrides: Partial<StationDerConnection> = {}): StationDerConne
       protection_catalog_ref: 'protection_der_basic',
       ct_catalog_ref: 'ct_400_5_5p20_15va_abb',
       vt_catalog_ref: 'vt_15kv_100v_3p',
-      fault_current_data_ref: null,
       dynamic_model_ref: null,
     },
     profiles: {
@@ -255,59 +248,19 @@ describe('eng.11 — Anti-islanding dla DER po nN/ZK/słupie/odgałęzieniu', ()
 // Pakiet D — eng.10 (BESS operation modes)
 // =============================================================================
 
-describe('eng.10 — BessOperationModeCatalog', () => {
-  it('katalog ma ≥9 trybów obejmujących peak shaving / arbitraż / FCR / aFRR / mFRR / Q(U) / island / self-consumption', () => {
-    expect(BESS_OPERATION_MODE_CATALOG.length).toBeGreaterThanOrEqual(9);
-    const codes = BESS_OPERATION_MODE_CATALOG.map((m) => m.mode_code);
-    expect(codes).toContain('peak_shaving');
-    expect(codes).toContain('arbitrage');
-    expect(codes).toContain('fcr_n');
-    expect(codes).toContain('fcr_d_up');
-    expect(codes).toContain('afrr');
-    expect(codes).toContain('mfrr');
-    expect(codes).toContain('voltage_support');
-    expect(codes).toContain('island_backup');
-    expect(codes).toContain('self_consumption');
-  });
-
-  it('FCR-N wymaga 4Q, a katalog nie deklaruje czasu reakcji bez źródła', () => {
-    // INTENCJA POPRZEDNIEGO TESTU: pilnował pary „czas reakcji ≤ 30 s + 4Q".
-    // Czas reakcji określa regulamin rynku bilansującego operatora systemu
-    // przesyłowego, a nie ten katalog — pole usunięto w karcie K-Q (backend jest
-    // autorytetem). Zostaje ta część, która wynika z definicji usługi.
-    const fcrN = BESS_OPERATION_MODE_CATALOG.find((m) => m.mode_code === 'fcr_n');
-    expect(fcrN).toBeDefined();
-    expect(fcrN!.requires_four_quadrant).toBe(true);
-    for (const mode of BESS_OPERATION_MODE_CATALOG as unknown as ReadonlyArray<Record<string, unknown>>) {
-      expect(mode).not.toHaveProperty('response_time_s');
-      expect(mode).not.toHaveProperty('max_duration_h');
-      expect(mode).not.toHaveProperty('reserved_capacity_percent');
-      expect(mode).not.toHaveProperty('required_for_nc_rfg_modules');
-    }
-  });
-
-  it('Island backup wymaga grid-forming PCS', () => {
-    const island = BESS_OPERATION_MODE_CATALOG.find((m) => m.mode_code === 'island_backup');
-    expect(island).toBeDefined();
-    expect(island!.requires_grid_forming).toBe(true);
-  });
-
-  it('selectBessModesForPcs filtruje po 4Q + grid-forming', () => {
-    const grid_forming = selectBessModesForPcs({
-      fourQuadrant: true,
-      gridFormingCapable: true,
-    });
-    expect(grid_forming.length).toBe(BESS_OPERATION_MODE_CATALOG.length);
-
-    const grid_following_only = selectBessModesForPcs({
-      fourQuadrant: true,
-      gridFormingCapable: false,
-    });
-    expect(grid_following_only.every((m) => !m.requires_grid_forming)).toBe(true);
-    // island_backup powinien być wykluczony
-    expect(grid_following_only.find((m) => m.mode_code === 'island_backup')).toBeUndefined();
-  });
-
+// USUNIĘTE (karta FAB-L, 2026-09-05) — „katalog ma ≥9 trybów…"/„FCR-N wymaga
+// 4Q…"/„Island backup wymaga grid-forming PCS"/„selectBessModesForPcs filtruje
+// po 4Q + grid-forming". `BESS_OPERATION_MODE_CATALOG` USUNIĘTY z `catalogs.ts`
+// jako blok statyczny (front czyta go WYŁĄCZNIE ze snapshotu audytu 2), a
+// `selectBessModesForPcs` przyjmuje dziś katalog jako PARAMETR. Pokrycie:
+//   - zawartość katalogu (≥9 pozycji, kody, `requires_four_quadrant`/
+//     `requires_grid_forming` per kod, zero pól bez proweniencji):
+//     `backend/tests/api/test_audit2_catalogs_api.py::test_list_bess_operation_modes`
+//     + `backend/tests/network_model/test_audit2_katalogi_parytet.py`
+//     (`response_time_s` dopisany do `POLA_BEZ_PROWENIENCJI_ZAKAZANE`).
+//   - zachowanie selektora na PODANYM katalogu:
+//     `__tests__/catalogs.test.ts` („Selektory snapshotu audytu 2").
+describe('eng.10 — BessOperationModeCatalog (selektor przeniesiony do catalogs.test.ts)', () => {
   it('nie ma już selektora trybów rzekomo wymaganych przez NC RfG', async () => {
     // INTENCJA POPRZEDNIEGO TESTU: pilnował, że moduł C „wymaga" FCR-N i Q(U).
     // Sprawdzone na tekście rozporządzenia (UE) 2016/631: ono nie nakazuje
@@ -322,51 +275,16 @@ describe('eng.10 — BessOperationModeCatalog', () => {
 // Pakiet D — eng.13 (Tap changers)
 // =============================================================================
 
-describe('eng.13 — TapChangerCatalog', () => {
-  it('katalog zawiera OLTC dla 110/SN i DETC dla SN/nN', () => {
-    expect(TAP_CHANGER_CATALOG.length).toBeGreaterThanOrEqual(4);
-    const oltcs = TAP_CHANGER_CATALOG.filter((tc) => tc.type === 'oltc');
-    const detcs = TAP_CHANGER_CATALOG.filter((tc) => tc.type === 'detc');
-    expect(oltcs.length).toBeGreaterThan(0);
-    expect(detcs.length).toBeGreaterThan(0);
-  });
-
-  it('OLTC 110/SN ma 17 lub 19 zaczepów ze step 1.25%', () => {
-    const oltc110 = TAP_CHANGER_CATALOG.find(
-      (tc) => tc.applicable_to.includes('transformer_110_15') && tc.type === 'oltc',
-    );
-    expect(oltc110).toBeDefined();
-    expect([17, 19]).toContain(oltc110!.tap_count);
-    expect(oltc110!.step_percent).toBe(1.25);
-    expect(oltc110!.supports_avr).toBe(true);
-  });
-
-  it('DETC SN/nN nie obsługuje AVR (off-load)', () => {
-    const detc = TAP_CHANGER_CATALOG.find((tc) => tc.type === 'detc');
-    expect(detc).toBeDefined();
-    expect(detc!.supports_avr).toBe(false);
-    // Karta K-Q: czas przełączenia i resurs między przeglądami to dane wyrobu
-    // bez źródła — usunięte po obu stronach. O tym, że DETC przełącza się bez
-    // obciążenia, mówi jego typ i nazwa, a nie zgadnięta liczba sekund.
-    for (const tc of TAP_CHANGER_CATALOG as unknown as ReadonlyArray<Record<string, unknown>>) {
-      expect(tc).not.toHaveProperty('switching_time_s');
-      expect(tc).not.toHaveProperty('operations_before_maintenance_thousand');
-    }
-  });
-
-  it('selectTapChangersForTransformer filtruje po typie', () => {
-    const for110 = selectTapChangersForTransformer('transformer_110_15');
-    expect(for110.length).toBeGreaterThan(0);
-    expect(for110.every((tc) => tc.applicable_to.includes('transformer_110_15'))).toBe(true);
-  });
-
-  it('getTapChanger zwraca null dla nieznanego ID', () => {
-    expect(getTapChanger('tc_unknown')).toBeNull();
-    const valid = getTapChanger('tc_oltc_110sn_19_125');
-    expect(valid).not.toBeNull();
-    expect(valid!.tap_count).toBe(19);
-  });
-});
+// USUNIĘTE (karta FAB-L, 2026-09-05) — całe „eng.13 — TapChangerCatalog":
+// `TAP_CHANGER_CATALOG` USUNIĘTY z `catalogs.ts` jako blok statyczny (front
+// czyta go WYŁĄCZNIE ze snapshotu audytu 2), a `selectTapChangersForTransformer`/
+// `getTapChanger` przyjmują dziś katalog jako PARAMETR. Pokrycie:
+//   - zawartość katalogu (≥4 pozycje, typy oltc/detc, tap_count 17/19,
+//     step_percent=1.25, supports_avr, zero pól bez proweniencji):
+//     `backend/tests/api/test_audit2_catalogs_api.py::test_list_tap_changers`
+//     + `backend/tests/network_model/test_audit2_katalogi_parytet.py`.
+//   - zachowanie selektorów na PODANYM katalogu:
+//     `__tests__/catalogs.test.ts` („Selektory snapshotu audytu 2").
 
 // =============================================================================
 // Pakiet D — eng.15 (Hosting capacity export check)

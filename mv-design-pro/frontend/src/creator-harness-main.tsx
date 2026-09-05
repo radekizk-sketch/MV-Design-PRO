@@ -116,180 +116,25 @@ const theme = new URLSearchParams(window.location.search).get('theme') === 'ligh
 document.documentElement.setAttribute('data-theme', theme);
 document.body.style.background = theme === 'light_technical' ? '#f5f7fa' : '#07111c';
 
-// --- Podmiana fetch: dane katalogowe (bez backendu) ----------------------
-const CATALOG_FIXTURES: Record<string, unknown> = {
-  // KOMPLETNOSC-POLA-TR: `device_kind` w REALNYM kształcie kanonicznego katalogu
-  // (`catalog/repository.py` `kind_map` → WYLACZNIK/ROZLACZNIK/…). Wcześniej scena
-  // serwowała warianty angielskie (BREAKER/LOAD_SWITCH), których żywy backend nie
-  // zwraca — zrzut pokazywałby wtedy inne dane niż aplikacja, a zawężenie pickera
-  // rolą pola (readout `/bay-apparatus-kinds`) nie miałoby czego dopasować.
-  '/api/catalog/mv-apparatus-types': [
-    // REALNE pozycje katalogu APARAT_SN (`mv_switch_catalog.py`) — identyfikatory,
-    // nazwy i znamiona 1:1 z kartami producentów. Wcześniej scena serwowała
-    // wymyślone `ap-1`…`ap-4`: zrzut wyglądał poprawnie, ale walidator backendu
-    // odrzucał każdą taką konfigurację (pozycja spoza katalogu), więc werdykt na
-    // zrzucie dowodowym nie znaczył nic. Atrapa ma odwzorowywać katalog, nie go
-    // udawać.
-    { id: 'sw-cb-abb-vd4-17kv-630a', name: 'ABB VD4 17.5 kV 630 A', device_kind: 'WYLACZNIK', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 20 },
-    { id: 'sw-ls-schneider-rm6-17kv-400a', name: 'Schneider RM6 17.5 kV 400 A', device_kind: 'ROZLACZNIK', u_n_kv: 17.5, i_n_a: 400, breaking_capacity_ka: 20 },
-    { id: 'sw-fuse-eti-vv-17kv-63a', name: 'ETI VV 17.5 kV 63 A', device_kind: 'ROZLACZNIK_BEZPIECZNIKOWY', u_n_kv: 17.5, i_n_a: 63 },
-    { id: 'sw-ds-abb-ojs-17kv-630a', name: 'ABB OJS 17.5 kV 630 A', device_kind: 'ODLACZNIK', u_n_kv: 17.5, i_n_a: 630 },
-    // MINI-RMU-CAD: REKLOZER — rodzaj dopuszczony przez backend dla pól liniowych
-    // (`BAY_PRIMARY_APPARATUS_KINDS_BY_ROLE`: IN/OUT/FEEDER), którego scena NIE
-    // serwowała: zawężenie roli je przepuszczało, ale lista była pusta z tego
-    // rodzaju, więc zrzut nie mógł pokazać pola liniowego z reklozerem. Pozycja
-    // odwzorowuje realny wpis katalogu (`mv_switch_catalog.py` SWITCH_RECLOSERS).
-    { id: 'sw-rec-abb-rec615-17kv-630a', name: 'ABB REC615 17,5 kV 630 A', device_kind: 'REKLOZER', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 12.5 },
-  ],
-  // Zawężenie rodzaju aparatu per rola pola — lustro `BAY_PRIMARY_APPARATUS_KINDS_BY_ROLE`.
-  '/api/catalog/bay-apparatus-kinds': {
-    IN: ['WYLACZNIK', 'ROZLACZNIK', 'REKLOZER'],
-    OUT: ['WYLACZNIK', 'ROZLACZNIK', 'REKLOZER'],
-    FEEDER: ['WYLACZNIK', 'ROZLACZNIK', 'REKLOZER'],
-    TR: ['ROZLACZNIK_BEZPIECZNIKOWY', 'WYLACZNIK'],
-    COUPLER: ['WYLACZNIK', 'ROZLACZNIK'],
-    MEASUREMENT: ['ODLACZNIK'],
-    OZE: ['WYLACZNIK', 'ROZLACZNIK'],
-  },
-  '/api/catalog/bay-protection-codes': {
-    IN: ['51', '50', '51N'],
-    OUT: ['51', '50', '51N', '67N'],
-    FEEDER: ['51', '50', '51N', '67N'],
-    TR: ['87T', '51', '50', '49', '63', '26'],
-    COUPLER: ['51', '50'],
-    MEASUREMENT: [],
-  },
-  '/api/catalog/manufacturers': [
-    { manufacturer_ref: 'ZPUE_WLOSZCZOWA', name: 'ZPUE Włoszczowa', country: 'PL', status: 'verified', source_refs: ['katalog'], notes_pl: null },
-    // ABB — producent z kanonu katalogu (`switchgear/manufacturer.py`), status
-    // `requires_catalog`. W ŻYWEJ aplikacji jest wybieralny, bo ma kompletne
-    // szablony pól (13 rekordów), a nie dzięki statusowi producenta; atrapa niżej
-    // niesie dwa z nich, żeby scena zachowywała się jak aplikacja.
-    { manufacturer_ref: 'ABB', name: 'ABB Ltd.', country: 'CH', status: 'requires_catalog', source_refs: [], notes_pl: null },
-  ],
-  '/api/catalog/mv-protection-device-types': [
-    { id: 'rel-mv-1', name: 'Zabezpieczenie nadprądowe SN', vendor: 'ABB' },
-  ],
-  '/api/catalog/transformer-types': [
-    { id: 'tr-sn-nn-15-04-630kva-dyn11', name: 'Transformator 630 kVA 15/0,4 kV Dyn11', rated_power_mva: 0.63, voltage_hv_kv: 15, voltage_lv_kv: 0.4, uk_percent: 4.5, pk_kw: 6.5, vector_group: 'Dyn11' },
-    { id: 'tr-sn-nn-15-04-400kva-dyn11', name: 'Transformator 400 kVA 15/0,4 kV Dyn11', rated_power_mva: 0.4, voltage_hv_kv: 15, voltage_lv_kv: 0.4, uk_percent: 4.0, pk_kw: 4.6, vector_group: 'Dyn11' },
-  ],
-  '/api/catalog/switchgear-families': [
-    // DWA REKORDY CELOWO NIEKOMPLETNE (V12K-259, rozszerzone karta K-J). Rekord
-    // ponizej niesie TYLKO napiecia sieci — brakuje mu drugiego pola napieciowego;
-    // kolejny nie niesie ZADNEGO. To sa przypadki GRANICZNE, ktore wywracaly caly
-    // kreator bialym ekranem (`.length` na `undefined`). Po rozdzieleniu pola na
-    // dwa scena musi cwiczyc OBIE polowy normalizacji osobno — inaczej usuniecie
-    // domkniecia jednego pola przechodziloby na zielono.
-    { switchgear_family_ref: 'zpue_rotoblok', family_name: 'Rotoblok SVS', manufacturer_ref: 'ZPUE', network_voltages_kv: [15, 20] },
-    { switchgear_family_ref: 'abb_unigear', family_name: 'UniGear ZS1', manufacturer_ref: 'ABB' },
-    // KONFIGURATOR-POL-RMU (S3): rodziny producenta w KSZTAŁCIE REALNEJ ODPOWIEDZI
-    // `GET /api/catalog/switchgear-families` — refy kanonu (`ZPUE_WLOSZCZOWA__*`),
-    // klasy znamionowe z kart producenta i WYLICZANY `tor_konfiguracji`. Atrapa
-    // musi nieść to pole, bo krok pól rozgałęzia się właśnie na nim; poprzedni
-    // rekord opisywał Rotoblok jako RMU w izolacji SF₆ (karta ZPUE mówi:
-    // rozdzielnica wnętrzowa, izolacja powietrzna), więc scena ćwiczyła tor,
-    // którego ta rodzina nie ma.
-    { switchgear_family_ref: 'ZPUE_WLOSZCZOWA__ROTOBLOK', family_name: 'Rotoblok', manufacturer_ref: 'ZPUE_WLOSZCZOWA', network_voltages_kv: [15, 20], um_classes_kv: [17.5, 24], rated_current_options: [630], short_time_current_options: [16], status: 'repo_verified', source_refs: ['https://zpue.pl/rozdzielnice-sn/rotoblok'], insulation_type: 'air', construction_type: 'wnetrzowa', tor_konfiguracji: 'MODULARNY', series_name: null, notes_pl: null },
-    { switchgear_family_ref: 'ZPUE_WLOSZCZOWA__TPM_AIR', family_name: 'TPM Air', manufacturer_ref: 'ZPUE_WLOSZCZOWA', network_voltages_kv: [], um_classes_kv: [24], rated_current_options: [630], short_time_current_options: [20], status: 'repo_verified', source_refs: ['https://zpue.pl/rozdzielnice-sn/tpm-air'], insulation_type: 'air', construction_type: 'RMU', tor_konfiguracji: 'BLOK_RMU', series_name: null, notes_pl: null },
-    // Rodzina RMU BEZ transkrybowanych bloków — UCZCIWY STAN ZEROWY oferty.
-    //
-    // BYŁA TU RODZINA ZPUE TPM z pustym subzasobem konfiguracji. To przestało być
-    // prawdą: katalog niesie dla TPM 18 bloków fabrycznych (karta S3), a jej karta
-    // deklaruje napięcie sieci 20 kV, więc na szynie 15 kV tej sceny rodzina jest
-    // widoczna, ale NIEWYBIERALNA — scena „stanu zerowego" opierała się na rodzinie,
-    // której nie da się wskazać, i na nieistniejącym braku danych.
-    // ABB SafePlus to rodzina, dla której katalog REALNIE nie ma ani jednego bloku
-    // (0 konfiguracji), a jej klasy Um 12/17,5/24 kV obejmują szynę 15 kV.
-    { switchgear_family_ref: 'ABB__SAFEPLUS', family_name: 'SafePlus', manufacturer_ref: 'ABB', network_voltages_kv: [], um_classes_kv: [12, 17.5, 24], rated_current_options: [630, 1250], short_time_current_options: [20, 25], status: 'repo_verified', source_refs: ['https://www.abb.com/global/en/areas/electrification/medium-voltage/switchgear/gas-insulated/safering-safeplus'], insulation_type: 'sf6', construction_type: 'RMU', tor_konfiguracji: 'BLOK_RMU', series_name: 'SafePlus', notes_pl: null },
-    // Rodzina bez potwierdzonej karty — WIDOCZNA, ale niewybieralna. Producentem
-    // UniSec jest ABB (kanon `families.py`), nie ZPUE: atrapa przypisywała wyrób
-    // jednego producenta drugiemu, czyli podawała na ekranie nieprawdziwą ofertę.
-    { switchgear_family_ref: 'ABB__UNISEC', family_name: 'UniSec', manufacturer_ref: 'ABB', network_voltages_kv: [], um_classes_kv: [24], rated_current_options: [], short_time_current_options: [], status: 'requires_catalog', source_refs: [], insulation_type: 'air', construction_type: 'wnetrzowa', tor_konfiguracji: 'MODULARNY', series_name: null, notes_pl: null },
-  ],
-  // Subzasób konfiguracji fabrycznych: bloki ZPUE TPM Air w nomenklaturze
-  // PRODUCENTA (L — rozłącznik liniowy 630 A, T — rozłącznik z bezpiecznikami
-  // 250 A, W — wyłącznik 630 A). Szerokości nie ma na stronie produktowej, więc
-  // `total_width_mm` zostaje `null` — atrapa nie zmyśla milimetra.
-  '/api/catalog/switchgear-families/ZPUE_WLOSZCZOWA__TPM_AIR/factory-configurations': [
-    {
-      configuration_ref: 'ZPUE_WLOSZCZOWA__TPM_AIR__LLT',
-      switchgear_family_ref: 'ZPUE_WLOSZCZOWA__TPM_AIR',
-      code: 'LLT',
-      name_pl: 'Blok kabel-kabel-transformator',
-      units: [
-        { unit_code: 'L', unit_name_pl: 'Jednostka liniowa (rozłącznik 630 A)', bay_kind: 'liniowe_odplywowe', apparatus_kinds: ['switch_disconnector'], width_mm: null },
-        { unit_code: 'L', unit_name_pl: 'Jednostka liniowa (rozłącznik 630 A)', bay_kind: 'liniowe_odplywowe', apparatus_kinds: ['switch_disconnector'], width_mm: null },
-        { unit_code: 'T', unit_name_pl: 'Jednostka transformatorowa (rozłącznik z bezpiecznikami 250 A)', bay_kind: 'transformatorowe', apparatus_kinds: ['switch_disconnector', 'fuse_set'], width_mm: null },
-      ],
-      unit_sequence: 'L-L-T',
-      total_width_mm: null,
-      source_refs: ['https://zpue.pl/rozdzielnice-sn/tpm-air'],
-      notes_pl: null,
-    },
-    {
-      configuration_ref: 'ZPUE_WLOSZCZOWA__TPM_AIR__LL',
-      switchgear_family_ref: 'ZPUE_WLOSZCZOWA__TPM_AIR',
-      code: 'LL',
-      name_pl: 'Blok kabel-kabel',
-      units: [
-        { unit_code: 'L', unit_name_pl: 'Jednostka liniowa (rozłącznik 630 A)', bay_kind: 'liniowe_odplywowe', apparatus_kinds: ['switch_disconnector'], width_mm: null },
-        { unit_code: 'L', unit_name_pl: 'Jednostka liniowa (rozłącznik 630 A)', bay_kind: 'liniowe_odplywowe', apparatus_kinds: ['switch_disconnector'], width_mm: null },
-      ],
-      unit_sequence: 'L-L',
-      total_width_mm: null,
-      source_refs: ['https://zpue.pl/rozdzielnice-sn/tpm-air'],
-      notes_pl: null,
-    },
-  ],
-  // Rodzina RMU, dla której katalog NIE MA ANI JEDNEGO bloku — pusta lista jest tu
-  // odwzorowaniem stanu katalogu (`GET .../ABB__SAFEPLUS/factory-configurations`
-  // zwraca 0 pozycji), a nie wygodą sceny.
-  '/api/catalog/switchgear-families/ABB__SAFEPLUS/factory-configurations': [],
-  '/api/catalog/lv-apparatus-types': [
-    { id: 'lv-1', name: 'Wyłącznik nN 630A', u_n_kv: 0.4, i_n_a: 630 },
-  ],
-  '/api/catalog/pv-inverter-types': [
-    { id: 'pv-1', name: 'Falownik PV 900 kVA', manufacturer: 'SMA', un_kv: 0.4, s_n_kva: 1000, p_max_kw: 900, cos_phi_min: 0.9, cos_phi_max: 1.0, ptpiree_status: 'POWIAZANY', ptpiree_certificate_ref: 'WOŚ/2024/PV-900', ptpiree_document_number: 'DOC-PV-900', ptpiree_wos_version: '2.1', ptpiree_source_url: 'https://ptpiree.pl' },
-  ],
-  '/api/catalog/bess-inverter-types': [
-    { id: 'bess-1', name: 'Magazyn 1 MW / 2 MWh', manufacturer: 'Tesla', un_kv: 0.4, s_n_kva: 1100, p_charge_kw: 1000, p_discharge_kw: 1000, e_kwh: 2000, ptpiree_status: 'POWIAZANY', ptpiree_certificate_ref: 'WOŚ/2024/BESS-1M' },
-  ],
-  '/api/catalog/wind-inverter-types': [
-    { id: 'fw-1', name: 'Turbina wiatrowa 2 MW', manufacturer: 'Vestas', kind: 'WIND', un_kv: 0.69, sn_mva: 2.2, pmax_mw: 2.0, qmin_mvar: -0.7, qmax_mvar: 0.7 },
-  ],
-  '/api/catalog/cable-types': [
-    { id: 'kab-120', name: 'XRUHAKXS 1×120', r_ohm_per_km: 0.253, x_ohm_per_km: 0.118, c_nf_per_km: 230, rated_current_a: 255, voltage_rating_kv: 15, cross_section_mm2: 120, conductor_material: 'AL', insulation_type: 'XLPE', standard: 'HD 620 S1', max_temperature_c: 90, number_of_cores: 1, return_conductor_ith_1s_a: 12000 },
-    { id: 'kab-240', name: 'XRUHAKXS 1×240', r_ohm_per_km: 0.125, x_ohm_per_km: 0.105, c_nf_per_km: 300, rated_current_a: 400, voltage_rating_kv: 15, cross_section_mm2: 240, conductor_material: 'AL', insulation_type: 'XLPE', standard: 'HD 620 S1', max_temperature_c: 90, number_of_cores: 1, return_conductor_ith_1s_a: 16000 },
-  ],
-  '/api/catalog/line-types': [
-    { id: 'lin-70', name: 'AFL-6 70', r_ohm_per_km: 0.443, x_ohm_per_km: 0.36, b_us_per_km: 2.7, rated_current_a: 290, voltage_rating_kv: 15, cross_section_mm2: 70, conductor_material: 'AFL', standard: 'PN-EN 50182', max_temperature_c: 80 },
-    { id: 'lin-120', name: 'AFL-6 120', r_ohm_per_km: 0.258, x_ohm_per_km: 0.35, b_us_per_km: 2.8, rated_current_a: 410, voltage_rating_kv: 15, cross_section_mm2: 120, conductor_material: 'AFL', standard: 'PN-EN 50182', max_temperature_c: 80 },
-  ],
-  // Fala P-4/P-5 (karta Z-2) — katalogi dla 9 nowych kreatorów ui2.
-  '/api/catalog/source-system-types': [
-    { id: 'sys-agr-1', name: 'Agregat prądotwórczy 200 kVA', manufacturer: 'SDMO', voltage_rating_kv: 0.4, sk3_mva: 1.2, ik3_ka: 1.73 },
-  ],
-  '/api/catalog/branch-point-types': [
-    { id: 'bp-slup-1', name: 'Słup rozgałęźny SN z rozłącznikiem', kind: 'BRANCH_POLE', medium: 'LINE_OVERHEAD', switch_device_kind: 'ROZLACZNIK', switch_rated_current_a: 400, branch_ports_count: 2 },
-    { id: 'bp-zksn-1', name: 'ZKSN 2-polowe', kind: 'ZKSN', medium: 'CABLE', switch_device_kind: 'ROZLACZNIK', switch_rated_current_a: 630, branch_ports_count: 2 },
-  ],
-  '/api/catalog/protection/device-types': [
-    { id: 'rel-1', name_pl: 'Zabezpieczenie nadprądowe uniwersalne', vendor: 'SEL', model: '751A', rated_current_a: 5 },
-    { id: 'ABB_REB670', name_pl: 'ABB Relion REB670', params: { vendor: 'ABB', model: 'Relion REB670' } },
-  ],
-  '/api/catalog/ct-types': [
-    { id: 'ct-1', name: 'CT 300/5', ratio_primary_a: 300, ratio_secondary_a: 5, accuracy_class: '5P20', burden_va: 15 },
-    // REALNE wpisy katalogu backendu (V12K-242) — scena „wiazania" pokazuje nazwy,
-    // ktore projektant zobaczy w zywej aplikacji, a nie etykiete zmyslona na potrzeby zrzutu.
-    { id: 'ct_200_5_5p10_10va_abb', name: 'CT 200/5 A kl. 5P10 10 VA', manufacturer: 'ABB', ratio_primary_a: 200, ratio_secondary_a: 5, accuracy_class: '5P10', burden_va: 10, application: 'protection', accuracy_limit_factor: 10 },
-    { id: 'ct_150_1_0_5_10va_abb', name: 'CT 150/1 A kl. 0.5 10 VA', manufacturer: 'ABB', ratio_primary_a: 150, ratio_secondary_a: 1, accuracy_class: '0.5', burden_va: 10, application: 'metering', accuracy_limit_factor: null },
-  ],
-  '/api/catalog/vt-types': [
-    { id: 'vt-1', name: 'VT 15/0,1 kV', ratio_primary_v: 15000, ratio_secondary_v: 100, accuracy_class: '0.5' },
-    { id: 'vt_10kv_100v_05_abb', name: 'VT 10/0,1 kV kl. 0.5', manufacturer: 'ABB', ratio_primary_v: 10000, ratio_secondary_v: 100, accuracy_class: '0.5' },
-  ],
-};
+// --- Podmiana fetch: dane katalogowe -------------------------------------
+// Karta FAB-L (§0 L6, 2026-09-05): USUNIĘTE — `CATALOG_FIXTURES` mockowało 18
+// tras katalogowych bezstanowych/deterministycznych (mv-apparatus-types,
+// bay-apparatus-kinds, bay-protection-codes, manufacturers,
+// mv-protection-device-types, transformer-types, switchgear-families +
+// factory-configurations, lv-apparatus-types, pv/bess/wind-inverter-types,
+// cable-types, line-types, source-system-types, branch-point-types,
+// protection/device-types, ct-types, vt-types) — częściowo REALNYMI danymi
+// (1:1 z backendem), częściowo identyfikatorami ZMYŚLONYMI (`pv-1`, `bess-1`,
+// `fw-1`, `rel-1`, `ct-1`, `vt-1`, `lv-1`, `kab-120`…), które walidator
+// backendu odrzucał, gdy scena próbowała je faktycznie zapisać. Druga kopia
+// katalogu, który backend i tak serwuje deterministycznie — ten sam defekt
+// klasy, który E2E-FULL-FIX (2026-09-05) zamknął dla `/api/ncrfg-tests/catalog`
+// (patrz komentarz przy `originalFetch` niżej). Trasy idą dziś do REALNEGO
+// backendu przez proxy Vite (`vite.config.ts`) — brak wpisu w tej funkcji
+// oznacza właśnie to (fallthrough do `originalFetch` na końcu pliku).
+// Dane scen, które odwoływały się do zmyślonych identyfikatorów, przepisane na
+// identyfikatory realne (patrz historia zmian tej karty) — parytet pilnowany
+// testem `backend/tests/e2e/test_creator_harness_katalogi_parytet.py`.
 
 // --- Fixture'y scen dowodowych E-29..E-32 (karta Z-1) ----------------------
 // Wartości przepisane 1:1 z kontraktów backendu (te same kształty, co w testach
@@ -1164,18 +1009,6 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     });
   }
 
-  // Dopasowanie NAJDŁUŻSZYM pasującym kluczem, nie pierwszym z brzegu.
-  // Trasa i jej SUBZASÓB dzielą prefiks (`/switchgear-families` vs
-  // `/switchgear-families/{ref}/factory-configurations`), więc kolejność wpisów
-  // decydowałaby o tym, którą odpowiedź dostaje ekran — subzasób byłby
-  // przesłonięty listą rodzin i scena pokazywałaby bloki, których nie ma.
-  const dopasowane = Object.entries(CATALOG_FIXTURES)
-    .filter(([key]) => url.includes(key))
-    .sort(([a], [b]) => b.length - a.length);
-  if (dopasowane.length > 0) {
-    const [, body] = dopasowane[0];
-    return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
-  }
   if (url.includes('/api/quality/energy-validation')) {
     // Scena „walidacja" (R2-D): odpowiedz 1:1 z kontraktem backendu, w tym
     // slad WHITE BOX per pozycja (R2-A) — ksztalt jak builder energy_validation.
@@ -1594,6 +1427,21 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     // Liczby spojne (P=1.2 MW, Q_load=0.84 Mvar, V=0.98 pu -> V²=0.96):
     // baseline cosφ = 1.2/√(1.44+0.7056) = 0.82; kandydat 0.6 Mvar: Q_cap_eff =
     // 0.6·0.96 = 0.58 -> Q_netto = 0.26 -> cosφ punktu = 0.98 ≥ 0.95 (DOBOR).
+    //
+    // Karta FAB-L (§0 L6, audyt): `catalog_ref` kandydatow (`cap-0v3`/`cap-0v6`/
+    // `cap-0v9`) NIE jest tu podmieniany na realny `KOMP_SN_*` z
+    // `GET /api/catalog/shunt-capacitor-types` (ta trasa nie jest i nigdy nie
+    // byla mockowana — idzie do realnego backendu juz dzis). To WYNIK ANALIZY
+    // (kategoria wyjatku (a) karty: solver/analysis result, terminalny,
+    // tylko-do-odczytu — nikt go nie odsyla z powrotem do pickera katalogu).
+    // Drabinka 0,3/0,6/0,9 Mvar demonstruje CELOWO trzy rozne werdykty (obie
+    // miary <prog, tylko punktowa ≥prog — V12K-040 B, prawie-jednostkowy
+    // wspolczynnik mocy z nadkompensacja) i nie ma odpowiednika w realnym
+    // katalogu (ktory ma tylko 0,6/1,2/1,8/2,4/3,6 Mvar) bez przeliczenia całej
+    // trójki na nowo — poza zakresem tej karty (dane katalogowe DER, nie
+    // kompensacja). Namiary faktycznie zapisywane do modelu (device_catalog_ref/
+    // battery_catalog_ref/dynamic_model_ref/protection_catalog_ref/ct_catalog_ref/
+    // ptpiree_certificate_ref) SĄ realne — patrz test parytetu.
     return new Response(
       JSON.stringify({
         analysis: 'compensation_sizing',
@@ -2131,103 +1979,12 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
   }
-  if (url.includes('/api/catalog/complete-bay-templates')) {
-    // KOMPLETNOSC-POLA-TR: kompletne szablony pól producenta — bez nich krok
-    // „Pola rozdzielnicy SN" nie ma czego pokazać (pusta lista = ekran, którego
-    // projektant nigdy nie zobaczy). Kształt 1:1 z `CompleteMvBayTemplateSummary`.
-    // KONFIGURATOR-POL-RMU (S3): szablon niesie KOMPOZYCJĘ APARATÓW
-    // (`device_instances` ze `status_wyposazenia`), bo karta pola i mini-SLD
-    // rysują pole właśnie z niej. Szablon bez składu pokazywałby pole puste,
-    // czyli scenę, której projektant w żywej aplikacji nie zobaczy.
-    const aparat = (
-      ref: string,
-      kind: string,
-      label: string,
-      pozycja: number,
-      strona: string,
-      status: 'FABRYCZNY' | 'OPCJA' = 'FABRYCZNY',
-    ) => ({
-      device_template_ref: ref,
-      apparatus_kind: kind,
-      label,
-      position_in_bay: pozycja,
-      electrical_side: strona,
-      status_wyposazenia: status,
-    });
-    // PRODUCENT JEST PARAMETREM, nie stałą: lista producentów kroku pól wynika
-    // z dostępności KOMPLETNYCH szablonów (`producenciUzywalni`), więc szablon
-    // przypisany na sztywno jednemu producentowi przesądzał, kogo w ogóle widać
-    // na ekranie — i zamykał scenę na jedną firmę, choć katalog niesie pięć.
-    const szablon = (
-      ref: string,
-      kind: string,
-      nazwa: string,
-      rodzina: string,
-      instancje: ReturnType<typeof aparat>[],
-      producent = 'ZPUE_WLOSZCZOWA',
-      zrodla: string[] = ['https://zpue.pl'],
-    ) => ({
-      template_ref: ref,
-      bay_kind: kind,
-      bay_role: kind === 'transformatorowe' ? 'TR' : 'OUT',
-      manufacturer_ref: producent,
-      switchgear_family_ref: rodzina,
-      source_status: 'repo_verified',
-      source_refs: zrodla,
-      name_pl: nazwa,
-      template_name_pl: nazwa,
-      device_instances: instancje,
-    });
-    const polePolaczeniowe = (prefiks: string) => [
-      aparat(`${prefiks}__DS`, 'switch_disconnector', 'Q1', 1, 'busbar_side'),
-      aparat(`${prefiks}__ES`, 'earthing_switch', 'Q9 (E)', 2, 'earthing_branch'),
-      aparat(`${prefiks}__CH`, 'cable_head', 'GK', 3, 'line_side'),
-    ];
-    const poleTransformatorowe = (prefiks: string) => [
-      aparat(`${prefiks}__DS`, 'switch_disconnector', 'Q1', 1, 'busbar_side'),
-      aparat(`${prefiks}__FUSE`, 'fuse_set', 'F1', 2, 'transformer_side'),
-      aparat(`${prefiks}__ES`, 'earthing_switch', 'Q9 (E)', 3, 'earthing_branch'),
-    ];
-    return new Response(
-      JSON.stringify([
-        szablon('ZPUE__ROTOBLOK__LINE_IN', 'liniowe_doplywowe', 'Pole liniowe dopływowe', 'ZPUE_WLOSZCZOWA__ROTOBLOK', [
-          aparat('ZPUE__ROTOBLOK__LINE_IN__DS', 'disconnector_busbar', 'Q1', 1, 'busbar_side'),
-          aparat('ZPUE__ROTOBLOK__LINE_IN__CB', 'circuit_breaker', 'Q0', 2, 'line_side'),
-          aparat('ZPUE__ROTOBLOK__LINE_IN__CT', 'current_transformer', 'T1', 3, 'line_side'),
-          aparat('ZPUE__ROTOBLOK__LINE_IN__ES', 'earthing_switch', 'Q9 (E)', 4, 'earthing_branch'),
-          aparat('ZPUE__ROTOBLOK__LINE_IN__CH', 'cable_head', 'GK', 5, 'line_side'),
-        ]),
-        szablon('ZPUE__ROTOBLOK__LINE_OUT', 'liniowe_odplywowe', 'Pole liniowe odpływowe', 'ZPUE_WLOSZCZOWA__ROTOBLOK', polePolaczeniowe('ZPUE__ROTOBLOK__LINE_OUT')),
-        szablon('ZPUE__ROTOBLOK__TRANSFORMER', 'transformatorowe', 'Pole transformatorowe', 'ZPUE_WLOSZCZOWA__ROTOBLOK', poleTransformatorowe('ZPUE__ROTOBLOK__TRANSFORMER')),
-        szablon('ZPUE__ROTOBLOK__COUPLER', 'sprzeglowe_poprzeczne', 'Pole sprzęgłowe', 'ZPUE_WLOSZCZOWA__ROTOBLOK', [
-          aparat('ZPUE__ROTOBLOK__COUPLER__CB', 'circuit_breaker', 'Q0', 1, 'busbar_side'),
-        ]),
-        // Pakiet rodziny RMU — jednostki bloku dobierają z niego swoje karty.
-        szablon('ZPUE__TPM_AIR__LINE_OUT', 'liniowe_odplywowe', 'Jednostka liniowa L', 'ZPUE_WLOSZCZOWA__TPM_AIR', polePolaczeniowe('ZPUE__TPM_AIR__LINE_OUT')),
-        szablon('ZPUE__TPM_AIR__TRANSFORMER', 'transformatorowe', 'Jednostka transformatorowa T', 'ZPUE_WLOSZCZOWA__TPM_AIR', poleTransformatorowe('ZPUE__TPM_AIR__TRANSFORMER')),
-        // ABB SafePlus — dwa z trzynastu kompletnych szablonów ABB w katalogu,
-        // przepisane ze składu rekordu (`ABB__SAFEPLUS__{LINE_OUT,TRANSFORMER}`).
-        // W żywej aplikacji to WŁAŚNIE one czynią ABB producentem wybieralnym
-        // (status producenta to `requires_catalog`), więc bez nich scena RMU nie
-        // dawałaby dojść do rodziny bez bloków fabrycznych.
-        szablon('ABB__SAFEPLUS__LINE_OUT', 'liniowe_odplywowe', 'Pole liniowe odpływowe', 'ABB__SAFEPLUS', [
-          aparat('ABB__SAFEPLUS__LINE_OUT__DS_BUS__00', 'disconnector_busbar', 'Q1', 1, 'busbar_side'),
-          aparat('ABB__SAFEPLUS__LINE_OUT__CB__01', 'circuit_breaker', 'Q0', 2, 'line_side'),
-          aparat('ABB__SAFEPLUS__LINE_OUT__DS_LINE__03', 'disconnector_line', 'Q2', 4, 'line_side'),
-          aparat('ABB__SAFEPLUS__LINE_OUT__ES__04', 'earthing_switch', 'Q9', 5, 'earthing_branch'),
-          aparat('ABB__SAFEPLUS__LINE_OUT__CABLE_HEAD__05', 'cable_head', 'GK', 6, 'line_side'),
-        ], 'ABB', ['https://www.abb.com/global/en/areas/electrification/medium-voltage/switchgear/gas-insulated/safering-safeplus']),
-        szablon('ABB__SAFEPLUS__TRANSFORMER', 'transformatorowe', 'Pole transformatorowe', 'ABB__SAFEPLUS', [
-          aparat('ABB__SAFEPLUS__TRANSFORMER__DS_BUS__00', 'disconnector_busbar', 'Q1', 1, 'busbar_side'),
-          aparat('ABB__SAFEPLUS__TRANSFORMER__CB__01', 'circuit_breaker', 'Q0', 2, 'line_side'),
-          aparat('ABB__SAFEPLUS__TRANSFORMER__DS_LINE__03', 'disconnector_line', 'Q2', 4, 'line_side'),
-          aparat('ABB__SAFEPLUS__TRANSFORMER__ES__04', 'earthing_switch', 'Q9', 5, 'earthing_branch'),
-          aparat('ABB__SAFEPLUS__TRANSFORMER__TRANSFORMER_DEVICE__05', 'transformer', 'TR', 6, 'transformer_side'),
-        ], 'ABB', ['https://www.abb.com/global/en/areas/electrification/medium-voltage/switchgear/gas-insulated/safering-safeplus']),
-      ]),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
-  }
+  // Karta FAB-L (§0 L6): USUNIĘTA kompozycja `/api/catalog/complete-bay-templates`
+  // budowana w harnessie (refy szablonów niezgodne z konwencją backendu —
+  // `ZPUE__ROTOBLOK__*` zamiast realnego `ZPUE_WLOSZCZOWA__ROTOBLOK__*`).
+  // Backend jest stateless/deterministyczny (`list_complete_bay_templates_endpoint`,
+  // zero zależności DB) i zwraca bogatszy, realny skład (44 szablony dla ZPUE
+  // Włoszczowa, 13 dla ABB — zweryfikowane pomiarem) — trasa idzie do niego.
   if (url.includes('/api/station-templates')) {
     // Biblioteka szablonów stacji — krok 0 kreatora. Pusta lista = uczciwy stan
     // „brak szablonów", ekran działa dalej (ścieżka „od zera").
@@ -3977,7 +3734,9 @@ if (creator === 'arcflash') {
         nominal_power_kw: 1000,
         catalogs: {
           ...EMPTY_DER_CATALOGS,
-          device_catalog_ref: 'pv-1',
+          // Karta FAB-L (§0 L6): dawne zmyślone `pv-1` → realny identyfikator
+          // katalogu backendu (`conv-pv-1mw-15kv`, `GET /api/catalog/pv-inverter-types`).
+          device_catalog_ref: 'conv-pv-1mw-15kv',
           protection_catalog_ref: 'ABB_REB670',
           ct_catalog_ref: 'ct_200_5_5p10_10va_abb',
         },
@@ -4003,7 +3762,10 @@ if (creator === 'arcflash') {
         catalogs: {
           ...EMPTY_DER_CATALOGS,
           device_catalog_ref: 'conv-pv-1mw-15kv',
-          dynamic_model_ref: 'dyn-grid-following-pv',
+          // Karta FAB-L (§0 L6): dawny zmyślony `dyn-grid-following-pv` →
+          // realny profil dynamiczny backendu (`default_pv_gfl`,
+          // `GET /api/catalog/der-dynamic-profiles`).
+          dynamic_model_ref: 'default_pv_gfl',
         },
         profiles: { ...EMPTY_DER_PROFILES, nc_rfg_profile_ref: 'pse', lvrt_curve_ref: 'pse' },
       }),
@@ -4030,8 +3792,11 @@ if (creator === 'arcflash') {
         nominal_power_kw: 800,
         catalogs: {
           ...EMPTY_DER_CATALOGS,
-          device_catalog_ref: 'bess-pcs-800',
-          battery_catalog_ref: 'bess-bat-1600',
+          // Karta FAB-L (§0 L6): dawne zmyślone `bess-pcs-800`/`bess-bat-1600`
+          // → realne identyfikatory katalogu backendu
+          // (`GET /api/catalog/bess-inverter-types`, `.../bess-battery-types`).
+          device_catalog_ref: 'bess_pcs_abb_500',
+          battery_catalog_ref: 'bess_bat_lfp_2880kwh_1230vdc',
         },
         profiles: { ...EMPTY_DER_PROFILES, nc_rfg_profile_ref: 'enea' },
       }),
@@ -4042,9 +3807,14 @@ if (creator === 'arcflash') {
         nominal_power_kw: 500,
         catalogs: {
           ...EMPTY_DER_CATALOGS,
-          device_catalog_ref: 'pv-falownik-500-ptpiree',
-          ptpiree_certificate_ref: 'WOŚ/2024/PV-500',
-          dynamic_model_ref: 'dyn-grid-following-pv',
+          // Karta FAB-L (§0 L6): dawne zmyślone `pv-falownik-500-ptpiree` /
+          // `WOŚ/2024/PV-500` / `dyn-grid-following-pv` → jedyny realny
+          // falownik PV z powiązanym certyfikatem PTPiREE w katalogu backendu
+          // (`GET /api/catalog/pv-inverter-types`) i realny profil dynamiczny.
+          device_catalog_ref: 'conv-pv-card-huawei-sun2000-215ktl',
+          ptpiree_certificate_ref:
+            'ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3',
+          dynamic_model_ref: 'default_pv_gfl',
         },
         profiles: {
           ...EMPTY_DER_PROFILES,

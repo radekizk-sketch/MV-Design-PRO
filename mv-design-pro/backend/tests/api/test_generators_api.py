@@ -830,11 +830,13 @@ def test_wiazania_wytworcy_trafiaja_do_modelu_przez_endpoint(app_client) -> None
             "protection_catalog_ref": "REF-OC-200",
             "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
             "vt_catalog_ref": "vt_10kv_100v_05_abb",
-            "fault_current_data_ref": "fc_pv_500",
             # Karta FAB-K: `dynamic_model_ref` MA katalog (der_dynamic) od tej karty —
             # identyfikator realny, nie dowolny lancuch (`dyn_pv_wecc` nie istnieje).
             "dynamic_model_ref": "default_pv_gfl",
             "nc_rfg_profile_ref": "pse",
+            # Karta FAB-L: tryby pracy BESS trafiają teraz do tego samego wiązania
+            # (DER_PROFILE_KEYS), nie tylko do `station_audit2_configs`.
+            "bess_operation_mode_refs": ["mode_peak_shaving", "mode_self_consumption"],
         },
     )
 
@@ -843,9 +845,37 @@ def test_wiazania_wytworcy_trafiaja_do_modelu_przez_endpoint(app_client) -> None
     assert params["protection_catalog_ref"] == "REF-OC-200"
     assert params["ct_catalog_ref"] == "ct_200_5_5p10_10va_abb"
     assert params["vt_catalog_ref"] == "vt_10kv_100v_05_abb"
-    assert params["fault_current_data_ref"] == "fc_pv_500"
     assert params["dynamic_model_ref"] == "default_pv_gfl"
     assert params["profiles"]["nc_rfg_profile_ref"] == "pse"
+    assert params["profiles"]["bess_operation_mode_refs"] == [
+        "mode_peak_shaving",
+        "mode_self_consumption",
+    ]
+
+
+def test_bess_operation_mode_refs_nieznany_tryb_jest_422(app_client) -> None:
+    """Karta FAB-L: lista trybów BESS jest walidowana wobec katalogu backendu —
+    tak samo jak ct/vt/protection/dynamic_model_ref (parytet klasy). Ta droga
+    zapisu (`PATCH .../generators/{ref}/bindings`) nie przechodzi przez bramę
+    API `/enm/domain-ops` (`_blad_wiazan_der`) — woła operację domenową wprost i
+    tłumaczy JEJ kod na 422, więc kod jest domenowym `der_bindings.catalog_ref_
+    unknown` (patrz też `test_set_der_catalog_bindings.py`, ten sam kod na
+    torze `execute_domain_operation` wprost)."""
+    project_id, case_id, ref = _utworz_wytworce(app_client)
+
+    response = app_client.patch(
+        f"/api/projects/{project_id}/cases/{case_id}/generators/{ref}/bindings",
+        json={"bess_operation_mode_refs": ["mode_peak_shaving", "mode_KTORY_NIE_ISTNIEJE"]},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "der_bindings.catalog_ref_unknown"
+    assert (
+        "bess_operation_mode_refs=mode_KTORY_NIE_ISTNIEJE"
+        in response.json()["detail"]["message_pl"]
+    )
+    # Model bez zmian — literówka w JEDNYM elemencie listy odrzuca całe żądanie.
+    assert "profiles" not in _wiazania_z_modelu(app_client, case_id)
 
 
 def test_pole_pominiete_w_zadaniu_nie_kasuje_wiazania_z_modelu(app_client) -> None:

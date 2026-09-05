@@ -1064,7 +1064,6 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # = 3598; zapadka 290 + 1 (`A:or:node.active_power` 1 -> 2) = 291; enm 84 + 1
     # = 85; application po kasacji P5 318 / 36 / 115. Pin z wyjscia guarda na
     # scalonym drzewie, nie z arytmetyki (arytmetyka jest tu tylko kontrola).
-    assert "Pol kontraktow wejsciowych: 3598." in wyjscie, wyjscie
     # 3610 pol / suma 313 (karta CV-4.1b, A3-04, 2026-09-05): +1 pole kontraktu =
     # `AddConverterSourcePayload.u_set_pu` (nastawa napiecia trybu regulacji
     # napiecia, `enm/domain_ops_models.py`) — pomiar roznicy zbiorow contract_fields()
@@ -1074,6 +1073,20 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # PQ i PV, wiec `or 0.0` jest tym samym mostem powtorzonym dla nowego typu
     # wezla) — pliki bez zmian (64), plik enm bez zmian (8), suma per korzen enm
     # 84 -> 85.
+    # 3600 pol (FAB-L, 2026-09-05): `contract_fields()` jest ZBIOREM nazw (nie
+    # suma per-klase), wiec -1 NIE jest -2+1: usuniecie `fault_current_data_ref`
+    # z `api/generators.py::DerCatalogBindingsRequest` (jedyne wystapienie tej
+    # nazwy w CONTRACT_SOURCES — pole DRUGIEJ fizyki, ktorej zaden solver nie
+    # czytal, karta FAB-L) zmniejsza zbior o 1; dopisanie `bess_operation_mode_
+    # refs` do TEGO SAMEGO modelu NIE zwieksza zbioru, bo ta nazwa juz istnieje
+    # w `api/audit2_catalogs.py::DerAudit2Spec` i `api/audit2_station_config.py`
+    # (oba w CONTRACT_SOURCES) — dodanie zbiega sie z istniejacym elementem
+    # zbioru. Zapadka dlugu i wykluczenia bez zmian (pole nie bylo w zadnym z
+    # dwoch zbiorow).
+    # 3597 pol (scalenie FAB-L na szczycie po CV-4.2 + CV-4.1b, 2026-09-05): 3598
+    # (scalenie wyzej) - 1 (`fault_current_data_ref`, FAB-L) = 3597; zapadka i
+    # wykluczenia bez zmian wobec scalenia (pomiar guarda na scalonym drzewie).
+    assert "Pol kontraktow wejsciowych: 3597." in wyjscie, wyjscie
     assert (
         "Przeskanowano 575 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie

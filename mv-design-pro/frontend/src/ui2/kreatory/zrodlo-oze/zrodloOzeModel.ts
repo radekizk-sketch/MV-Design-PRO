@@ -171,12 +171,14 @@ export interface OzeFormData {
   // null = bez wskazania (operacja pomijana, odczyt pola przyjmuje gotowość).
   operating_mode: SourceOperatingMode | null;
   // K9-A O2/O3 (krok „Aparatura pola"): wiązania katalogowe wytwórcy — zapis
-  // po utworzeniu elementu (walidacja katalogowa TYLKO dla ct/vt/zabezpieczenia;
-  // dane zwarciowe i model dynamiczny jawnie bez walidacji katalogowej).
+  // po utworzeniu elementu. Walidacja katalogowa: ct/vt/zabezpieczenie wobec
+  // katalogu aparatury, model dynamiczny wobec `network_model.catalog.der_dynamic`
+  // (`GET /api/catalog/der-dynamic-profiles`, karta FAB-L). Dawne
+  // `fault_current_data_ref` USUNIĘTE z kontraktu (karta FAB-L) — solver IEC 60909
+  // nigdy go nie czytał.
   ct_catalog_ref: string | null;
   vt_catalog_ref: string | null;
   protection_catalog_ref: string | null;
-  fault_current_data_ref: string | null;
   dynamic_model_ref: string | null;
   // K9-A O4 (krok „Zgodność przyłączeniowa"): profile NC RfG — podsłownik
   // profili wytwórcy w modelu.
@@ -222,7 +224,6 @@ export const DANE_DOMYSLNE: OzeFormData = {
   ct_catalog_ref: null,
   vt_catalog_ref: null,
   protection_catalog_ref: null,
-  fault_current_data_ref: null,
   dynamic_model_ref: null,
   nc_rfg_profile_ref: null,
   lvrt_curve_ref: null,
@@ -470,9 +471,6 @@ export function zbudujWiazaniaDer(data: OzeFormData): DerCatalogBindingsRequest 
     ...(data.vt_catalog_ref?.trim() ? { vt_catalog_ref: data.vt_catalog_ref.trim() } : {}),
     ...(data.protection_catalog_ref?.trim()
       ? { protection_catalog_ref: data.protection_catalog_ref.trim() }
-      : {}),
-    ...(data.fault_current_data_ref?.trim()
-      ? { fault_current_data_ref: data.fault_current_data_ref.trim() }
       : {}),
     ...(data.dynamic_model_ref?.trim() ? { dynamic_model_ref: data.dynamic_model_ref.trim() } : {}),
     ...(data.nc_rfg_profile_ref?.trim() ? { nc_rfg_profile_ref: data.nc_rfg_profile_ref.trim() } : {}),

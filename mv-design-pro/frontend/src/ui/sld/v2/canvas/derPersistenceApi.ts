@@ -117,17 +117,25 @@ export async function postDerGeneratorConfig(
  * a jawne `null` je USUWA (reguła gotowości znów widzi brak danej). Dlatego nie wolno
  * wysyłać tu pełnego obiektu z `null`-ami dla pól, których użytkownik nie dotknął —
  * skasowałoby to jego wcześniejsze wybory.
+ *
+ * Karta FAB-L: `fault_current_data_ref` USUNIĘTE z tego kontraktu (mirror 1:1 backendowego
+ * `DerCatalogBindingsRequest`, `api/generators.py`) — pole nie miało ŻADNEGO konsumenta
+ * solvera (κ i składowe symetryczne liczy WYŁĄCZNIE IEC 60909; front duplikował ten sam
+ * wzór κ bez wpięcia do solvera). Wysłanie tego pola dziś jest po prostu ignorowane przez
+ * backend (Pydantic `extra="ignore"`) — usunięte tutaj, żeby TS nie pozwalał budować
+ * atrapy, którą backend i tak odrzuca po cichu.
  */
 export interface DerCatalogBindingsRequest {
   readonly protection_catalog_ref?: string | null;
   readonly ct_catalog_ref?: string | null;
   readonly vt_catalog_ref?: string | null;
-  readonly fault_current_data_ref?: string | null;
   readonly dynamic_model_ref?: string | null;
   readonly nc_rfg_profile_ref?: string | null;
   readonly lvrt_curve_ref?: string | null;
   readonly hvrt_curve_ref?: string | null;
   readonly pf_curve_ref?: string | null;
+  /** Karta FAB-L: tryby pracy magazynu — lista, nie skalar (jak backendowe pole). */
+  readonly bess_operation_mode_refs?: readonly string[] | null;
 }
 
 /** Zapisz wiązania wytwórcy w modelu (kanoniczna operacja `set_der_catalog_bindings`). */

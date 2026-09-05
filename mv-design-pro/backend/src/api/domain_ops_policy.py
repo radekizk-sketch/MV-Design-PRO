@@ -1027,13 +1027,28 @@ def _blad_wiazan_der(operation: str, payload: dict[str, Any]) -> CatalogPolicyEr
     odrzucałaby 39 z 51 urządzeń widocznych dla projektanta. Dlatego pyta TĄ SAMĄ
     funkcją, co warstwa domenowa — dwa niezależne predykaty „dziś zgodne" są
     defektem oczekującym na dane brzegowe.
+
+    Karta FAB-L: `DER_PROFILE_KEYS` dołączone do wejścia (obok `DER_BINDING_KEYS`)
+    — `_nieznane_referencje_katalogowe` sama rozstrzyga, które z tych kluczy mają
+    dostawcę do sprawdzenia (dziś: `bess_operation_mode_refs`; pozostałe profile —
+    `nc_rfg_profile_ref`/`lvrt_curve_ref`/`hvrt_curve_ref`/`pf_curve_ref` — nie mają
+    tu odpowiednika i przechodzą bez zmian, jak dotąd). Jedno źródło predykatu dla
+    obu warstw (API i domenowej) zamiast dwóch zbiorów kluczy utrzymywanych osobno.
     """
     if operation != "set_der_catalog_bindings":
         return None
 
-    from enm.domain_operations_v2 import DER_BINDING_KEYS, _nieznane_referencje_katalogowe
+    from enm.domain_operations_v2 import (
+        DER_BINDING_KEYS,
+        DER_PROFILE_KEYS,
+        _nieznane_referencje_katalogowe,
+    )
 
-    wiazania = {klucz: payload[klucz] for klucz in DER_BINDING_KEYS if klucz in payload}
+    wiazania = {
+        klucz: payload[klucz]
+        for klucz in (*DER_BINDING_KEYS, *DER_PROFILE_KEYS)
+        if klucz in payload
+    }
     nieznane = _nieznane_referencje_katalogowe(wiazania)
     if not nieznane:
         return None

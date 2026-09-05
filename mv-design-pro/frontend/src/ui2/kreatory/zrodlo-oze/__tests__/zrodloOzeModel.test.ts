@@ -576,15 +576,30 @@ describe('sekwencja zapisu K9-A', () => {
       ...DANE_DOMYSLNE,
       ct_catalog_ref: 'ct-1',
       nc_rfg_profile_ref: 'ncrfg_pse',
-      fault_current_data_ref: '  DOK-1  ',
+      dynamic_model_ref: '  DOK-1  ',
     });
     expect(wiazania).toEqual({
       ct_catalog_ref: 'ct-1',
       nc_rfg_profile_ref: 'ncrfg_pse',
-      fault_current_data_ref: 'DOK-1',
+      dynamic_model_ref: 'DOK-1',
     });
     // Żadnych null-i dla pól niedotkniętych — null kasowałby wcześniejsze wiązania.
     expect(Object.values(wiazania ?? {})).not.toContain(null);
+  });
+
+  it('karta FAB-L: `fault_current_data_ref` USUNIĘTE z `OzeFormData` i z wyjścia '
+    + '`zbudujWiazaniaDer` — pole nie miało ŻADNEGO konsumenta solvera (κ i składowe '
+    + 'symetryczne liczy IEC 60909 z modelu, nie z deklaracji urządzenia)', () => {
+    expect('fault_current_data_ref' in DANE_DOMYSLNE).toBe(false);
+    // Rzutowanie celowe: dowodzi, że nawet gdyby ktoś PODAŁ to pole (np. stary
+    // fixture), `zbudujWiazaniaDer` go nie odczyta — kontrakt `OzeFormData` już
+    // go nie zna, więc typowo takie wywołanie nie powstanie.
+    const daneZeStaregoPola = {
+      ...DANE_DOMYSLNE,
+      fault_current_data_ref: 'DOK-JUZ-NIE-ISTNIEJE',
+      ct_catalog_ref: 'ct-1',
+    } as unknown as OzeFormData;
+    expect(zbudujWiazaniaDer(daneZeStaregoPola)).toEqual({ ct_catalog_ref: 'ct-1' });
   });
 
   it('zbudujLimityBierne zwraca limity Q tylko przy podanych wartościach (bez limitów P — brak konsumenta)', () => {

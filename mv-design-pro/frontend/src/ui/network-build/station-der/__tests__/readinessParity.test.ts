@@ -76,7 +76,6 @@ function derZPrzypadku(wejscie: Record<string, unknown>): StationDerConnection {
       protection_catalog_ref: tekst('protection_catalog_ref'),
       ct_catalog_ref: tekst('ct_catalog_ref'),
       vt_catalog_ref: tekst('vt_catalog_ref'),
-      fault_current_data_ref: tekst('fault_current_data_ref'),
       dynamic_model_ref: tekst('dynamic_model_ref'),
     },
     profiles: {

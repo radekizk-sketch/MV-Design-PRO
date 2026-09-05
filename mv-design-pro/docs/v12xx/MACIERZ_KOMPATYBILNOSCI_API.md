@@ -85,6 +85,7 @@ Data wylaczenia dla deprecated: koniec M2, o ile wiersz nie wskazuje inaczej.
 | `GET /api/catalog/branch-point-types` | v12xx | aktywny | 2026-04-24 | - | Katalog punktow rozgaleznych. | catalog tests | Administrator katalogow |
 | `GET /api/catalog/cable-types` | v12xx | aktywny | 2026-04-24 | - | Katalog kabli SN. | catalog tests | Administrator katalogow |
 | `GET /api/catalog/ct-types` | v12xx | aktywny | 2026-04-24 | - | Katalog przekladnikow pradowych. | catalog tests | Administrator katalogow |
+| `GET /api/catalog/der-dynamic-profiles` | v12xx | aktywny | 2026-09-05 | - | Profile dynamiczne DER (PV/BESS/FW) z `network_model.catalog.der_dynamic` - grid-following/grid-forming falownikow i typy IEC 61400-27 turbin wiatrowych; jedyne zrodlo `dynamic_model_ref`, konsumowane przez solvery RMS/FRT-HVRT (karta FAB-L, zastapienie usunietego katalogu frontu `DER_DYNAMIC_MODEL_CATALOG`). | catalog api tests | Administrator katalogow |
 | `GET /api/catalog/export` | v12xx | aktywny | 2026-04-24 | - | Eksport katalogow. | catalog export tests | Administrator katalogow |
 | `GET /api/catalog/line-types` | v12xx | aktywny | 2026-04-24 | - | Katalog linii napowietrznych SN. | catalog tests | Administrator katalogow |
 | `GET /api/catalog/load-types` | v12xx | aktywny | 2026-04-24 | - | Katalog obciazen. | catalog tests | Administrator katalogow |

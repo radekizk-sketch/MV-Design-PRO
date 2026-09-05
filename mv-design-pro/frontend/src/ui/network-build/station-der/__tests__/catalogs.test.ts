@@ -4,14 +4,21 @@
 
 import { describe, it, expect } from 'vitest';
 
+import type {
+  BessOperationModeItem,
+  MvNeutralGroundingItem,
+  TapChangerItem,
+} from '../audit2-api';
 import {
   CONNECTION_LEVEL_CATALOG,
   SN_CONNECTION_POINT_KIND_CATALOG,
-  STATION_TEMPLATE_CATALOG,
-  selectConnectionLevelsForKind,
-  getLvVoltageLevel,
   getConnectionSideLabelPl,
+  getMvNeutralGrounding,
   getSnConnectionPointKindLabelPl,
+  getTapChanger,
+  selectBessModesForPcs,
+  selectConnectionLevelsForKind,
+  selectTapChangersForTransformer,
 } from '../catalogs';
 
 // USUNIĘTE (karta FAB-J, 2026-09-05) — `NC_RFG_PROFILE_CATALOG`, `LVRT_CURVE_CATALOG`,
@@ -24,9 +31,21 @@ import {
 //     (`network_model/catalog/mv_converter_catalog.py` + jego testy).
 //   - Baterie BESS: backend `GET /api/catalog/bess-battery-types`
 //     (`network_model/catalog/mv_bess_battery_catalog.py` + `test_bess_battery_catalog.py`).
-describe('Katalogi urządzeń/profili — usunięte z frontu (karta FAB-J)', () => {
-  it('catalogs.ts NIE MA już własnej kopii katalogów backendu', async () => {
+//
+// USUNIĘTE (karta FAB-L, 2026-09-05) — `MV_NEUTRAL_GROUNDING_CATALOG`,
+// `BESS_OPERATION_MODE_CATALOG`, `TAP_CHANGER_CATALOG` (→ snapshot audytu 2,
+// selektory poniżej przyjmują katalog jako parametr), `DER_FAULT_CURRENT_DATA_
+// CATALOG` + `computeKappa` + `getFaultCurrentDataForDevice` (fizyka bez
+// konsumenta solvera — usunięte bez zamiennika, κ pochodzi z
+// `ShortCircuitResult.kappa`), `DER_DYNAMIC_MODEL_CATALOG` +
+// `getDynamicModelForDevice` (→ `GET /api/catalog/der-dynamic-profiles`,
+// `derRemoteCatalogs.ts`), `STATION_TEMPLATE_CATALOG` (zero konsumentów
+// produkcyjnych), `getLvVoltageLevel` (zero konsumentów — `connection_voltage_kv`
+// jest dziś liczbą czytaną wprost z modelu, karta FAB-K).
+describe('Katalogi usunięte z frontu (karty FAB-J/K/L)', () => {
+  it('catalogs.ts NIE MA już własnej kopii katalogów backendu ani fizyki liczonej w UI', async () => {
     const modul = (await import('../catalogs')) as Record<string, unknown>;
+    // FAB-J
     expect(modul.NC_RFG_PROFILE_CATALOG).toBeUndefined();
     expect(modul.LVRT_CURVE_CATALOG).toBeUndefined();
     expect(modul.HVRT_CURVE_CATALOG).toBeUndefined();
@@ -41,25 +60,20 @@ describe('Katalogi urządzeń/profili — usunięte z frontu (karta FAB-J)', () 
     expect(modul.selectHvrtCurvesForProfile).toBeUndefined();
     expect(modul.selectPvInvertersForVoltage).toBeUndefined();
     expect(modul.selectBessPcsForVoltage).toBeUndefined();
-  });
-});
-
-describe('LvVoltageLevelCatalog — getLvVoltageLevel parsuje wartość-referencję', () => {
-  it('getLvVoltageLevel zwraca poziom napięcia parsując referencję jako liczbę kV', () => {
-    // Karta FAB-J: referencja JEST wartością kV jako łańcuch (wyprowadzoną z
-    // `derRemoteCatalogs.ts::useLvVoltageLevelsKv`, `un_kv` katalogu przekształtników
-    // backendu) — nie identyfikatorem katalogowym typu `"lv_0_4kV"`.
-    expect(getLvVoltageLevel('0.4')?.nominal_kv).toBe(0.4);
-    expect(getLvVoltageLevel('0.69')?.nominal_kv).toBe(0.69);
-    expect(getLvVoltageLevel('6')?.nominal_kv).toBe(6);
-  });
-
-  it('getLvVoltageLevel zwraca null dla braku referencji albo wartości nie-liczbowej', () => {
-    expect(getLvVoltageLevel(null)).toBeNull();
-    expect(getLvVoltageLevel('')).toBeNull();
-    expect(getLvVoltageLevel('lv_0_4kV')).toBeNull();
-    expect(getLvVoltageLevel('0')).toBeNull();
-    expect(getLvVoltageLevel('-0.4')).toBeNull();
+    // FAB-L: mirrory backendu → snapshot audytu 2
+    expect(modul.MV_NEUTRAL_GROUNDING_CATALOG).toBeUndefined();
+    expect(modul.BESS_OPERATION_MODE_CATALOG).toBeUndefined();
+    expect(modul.TAP_CHANGER_CATALOG).toBeUndefined();
+    // FAB-L: fizyka bez konsumenta solvera
+    expect(modul.DER_FAULT_CURRENT_DATA_CATALOG).toBeUndefined();
+    expect(modul.computeKappa).toBeUndefined();
+    expect(modul.getFaultCurrentDataForDevice).toBeUndefined();
+    // FAB-L: model dynamiczny → backend
+    expect(modul.DER_DYNAMIC_MODEL_CATALOG).toBeUndefined();
+    expect(modul.getDynamicModelForDevice).toBeUndefined();
+    // FAB-L: martwe eksporty
+    expect(modul.STATION_TEMPLATE_CATALOG).toBeUndefined();
+    expect(modul.getLvVoltageLevel).toBeUndefined();
   });
 });
 
@@ -123,27 +137,86 @@ describe('SnConnectionPointKindCatalog', () => {
   });
 });
 
-describe('StationTemplateCatalog', () => {
-  it('zawiera ≥10 szablonów stacji', () => {
-    expect(STATION_TEMPLATE_CATALOG.length).toBeGreaterThanOrEqual(10);
+/**
+ * Karta FAB-L: `getMvNeutralGrounding`/`selectBessModesForPcs`/
+ * `selectTapChangersForTransformer`/`getTapChanger` przyjmują katalog jako
+ * PARAMETR (snapshot audytu 2), zamiast czytać statyk modułowy — fikstury
+ * poniżej są kształtem 1:1 z backendowym `to_dict()` (`audit2_catalogs.py`),
+ * nie wymyślonymi wartościami.
+ */
+describe('Selektory snapshotu audytu 2 (parametryzowane, karta FAB-L)', () => {
+  const groundings: readonly MvNeutralGroundingItem[] = [
+    {
+      id: 'mng_isolated', catalog_namespace: 'mv_neutral_grounding', catalog_version: '2026-08-14',
+      grounding_type: 'isolated', label_pl: 'Sieć izolowana', description_pl: 'x',
+      r_ohm: null, x_ohm: null,
+    },
+    {
+      id: 'mng_resistor_low', catalog_namespace: 'mv_neutral_grounding', catalog_version: '2026-08-14',
+      grounding_type: 'resistor_grounded', label_pl: 'Rezystor 7 Ω', description_pl: 'x',
+      r_ohm: 7, x_ohm: null,
+    },
+  ];
+
+  it('getMvNeutralGrounding zwraca pozycję po id z PODANEGO katalogu, null dla braku/nieznanego', () => {
+    expect(getMvNeutralGrounding(groundings, 'mng_resistor_low')?.r_ohm).toBe(7);
+    expect(getMvNeutralGrounding(groundings, null)).toBeNull();
+    expect(getMvNeutralGrounding(groundings, 'mng_nieznany')).toBeNull();
+    expect(getMvNeutralGrounding([], 'mng_isolated')).toBeNull();
   });
 
-  it('każdy szablon ma topological_type i transformer_count', () => {
-    for (const tmpl of STATION_TEMPLATE_CATALOG) {
-      expect(['końcowa', 'przelotowa', 'odgałęźna', 'sekcyjna']).toContain(tmpl.topological_type);
-      expect(tmpl.transformer_count).toBeGreaterThanOrEqual(1);
-      expect(tmpl.nn_voltage_level_refs.length).toBeGreaterThanOrEqual(1);
-    }
+  const bessModes: readonly BessOperationModeItem[] = [
+    {
+      id: 'mode_peak_shaving', catalog_namespace: 'bess_operation_mode', catalog_version: '2026-08-14',
+      label_pl: 'Peak shaving', description_pl: 'x', mode_code: 'peak_shaving',
+      requires_four_quadrant: false, requires_grid_forming: false,
+    },
+    {
+      id: 'mode_fcr_n', catalog_namespace: 'bess_operation_mode', catalog_version: '2026-08-14',
+      label_pl: 'FCR-N', description_pl: 'x', mode_code: 'fcr_n',
+      requires_four_quadrant: true, requires_grid_forming: false,
+    },
+    {
+      id: 'mode_island_backup', catalog_namespace: 'bess_operation_mode', catalog_version: '2026-08-14',
+      label_pl: 'Praca wyspowa', description_pl: 'x', mode_code: 'island_backup',
+      requires_four_quadrant: true, requires_grid_forming: true,
+    },
+  ];
+
+  it('selectBessModesForPcs filtruje wg zdolności PODANEGO przekształtnika (iloczyn cech)', () => {
+    expect(selectBessModesForPcs(bessModes, { fourQuadrant: false, gridFormingCapable: false }))
+      .toEqual([bessModes[0]]);
+    expect(selectBessModesForPcs(bessModes, { fourQuadrant: true, gridFormingCapable: false }).map((m) => m.id))
+      .toEqual(['mode_peak_shaving', 'mode_fcr_n']);
+    expect(selectBessModesForPcs(bessModes, { fourQuadrant: true, gridFormingCapable: true }))
+      .toHaveLength(3);
+    expect(selectBessModesForPcs([], { fourQuadrant: true, gridFormingCapable: true })).toEqual([]);
   });
 
-  it('zawiera co najmniej jeden multi-voltage szablon (>1 poziom nN)', () => {
-    const multi = STATION_TEMPLATE_CATALOG.filter((t) => t.nn_voltage_level_refs.length > 1);
-    expect(multi.length).toBeGreaterThan(0);
+  const tapChangers: readonly TapChangerItem[] = [
+    {
+      id: 'tc_oltc_110sn_19_125', catalog_namespace: 'tap_changer', catalog_version: '2026-08-14',
+      label_pl: 'OLTC 110/SN 19 zaczepów', type: 'oltc', neutral_position: 0, tap_count: 19,
+      step_percent: 1.25, range_percent: 11.25, regulated_side: 'hv', supports_avr: true,
+      applicable_to: ['transformer_110_15', 'transformer_110_20'],
+    },
+    {
+      id: 'tc_detc_snnn_5_25', catalog_namespace: 'tap_changer', catalog_version: '2026-08-14',
+      label_pl: 'DETC SN/nN 5 zaczepów', type: 'detc', neutral_position: 0, tap_count: 5,
+      step_percent: 2.5, range_percent: 5, regulated_side: 'hv', supports_avr: false,
+      applicable_to: ['transformer_15_04', 'block_transformer'],
+    },
+  ];
+
+  it('selectTapChangersForTransformer filtruje wg typu transformatora z PODANEGO katalogu', () => {
+    expect(selectTapChangersForTransformer(tapChangers, 'transformer_110_15')).toEqual([tapChangers[0]]);
+    expect(selectTapChangersForTransformer(tapChangers, 'transformer_15_04')).toEqual([tapChangers[1]]);
+    expect(selectTapChangersForTransformer([], 'transformer_110_15')).toEqual([]);
   });
 
-  it('zawiera szablony z PV/BESS', () => {
-    const labels = STATION_TEMPLATE_CATALOG.map((t) => t.label_pl).join(' ');
-    expect(labels).toContain('PV');
-    expect(labels).toContain('BESS');
+  it('getTapChanger zwraca pozycję po id z PODANEGO katalogu, null dla braku/nieznanego', () => {
+    expect(getTapChanger(tapChangers, 'tc_detc_snnn_5_25')?.tap_count).toBe(5);
+    expect(getTapChanger(tapChangers, null)).toBeNull();
+    expect(getTapChanger(tapChangers, 'tc_nieznany')).toBeNull();
   });
 });
