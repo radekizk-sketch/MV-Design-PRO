@@ -708,9 +708,13 @@ describe('SldDetailDrawer — right-side detail panel', () => {
       expect(container.querySelector('[data-testid="drawer-der-inverter-select"]')).toBeTruthy();
     });
     const select = container.querySelector('[data-testid="drawer-der-inverter-select"]') as HTMLSelectElement;
-    expect(select.value).toBe('conv-pv-0.5mw-15kv');
-    expect(Array.from(select.options).map((o) => o.value)).toEqual(['conv-pv-0.5mw-15kv', 'conv-pv-1mw-15kv']);
-    expect(Array.from(select.options).map((o) => o.label)).toEqual([
+    // Wybór jest JAWNY: lista zaczyna się od pustej pozycji zastępczej i NIC nie
+    // jest podstawione — typ przekształtnika to dana projektowa, nie ustawienie UI.
+    expect(select.value).toBe('');
+    expect(select.options[0].value).toBe('');
+    expect(select.options[0].label).toBe('— wybierz z katalogu —');
+    expect(Array.from(select.options).slice(1).map((o) => o.value)).toEqual(['conv-pv-0.5mw-15kv', 'conv-pv-1mw-15kv']);
+    expect(Array.from(select.options).slice(1).map((o) => o.label)).toEqual([
       'Farma PV 0.5 MW / 15 kV',
       'Farma PV 1 MW / 15 kV',
     ]);
@@ -732,14 +736,17 @@ describe('SldDetailDrawer — right-side detail panel', () => {
       expect(container.querySelector('[data-testid="drawer-der-inverter-select"]')).toBeTruthy();
     });
     const select = container.querySelector('[data-testid="drawer-der-inverter-select"]') as HTMLSelectElement;
-    expect(select.value).toBe('conv-bess-0.5mw-1mwh-15kv');
+    expect(select.value).toBe('');
+    expect(Array.from(select.options).slice(1).map((o) => o.value)).toEqual(['conv-bess-0.5mw-1mwh-15kv']);
+    expect(container.innerHTML).not.toContain('conv-pv-');
     cleanup();
   });
 
-  it('zakładka DER "Falownik" — katalog nN pusty (backend nie ma przekształtników poniżej 1 kV) → stan zerowy uczciwy, ZERO listy zastępczej', async () => {
-    // Rzeczywisty stan katalogu backendu (mv_converter_catalog.py): WSZYSTKIE
-    // pozycje sa >= 15 kV — nN nigdy nie zwraca wynikow. Mock oddaje to wprost
-    // (kind=PV zwraca SN, filtr nN odsiewa wszystko na froncie).
+  it('zakładka DER "Falownik" — katalog bez pozycji nN dla technologii → stan zerowy uczciwy, ZERO listy zastępczej', async () => {
+    // Scenariusz: backend zwraca dla technologii wyłącznie typy SN (>= 1 kV),
+    // filtr nN odsiewa wszystko na froncie. UWAGA (korekta 2026-09-05): realny
+    // katalog backendu MA przekształtniki nN (`conv-pv-nn-*-0p4kv`…); ten test
+    // pilnuje uczciwego stanu zerowego, a nie stanu katalogu.
     mockConverterCatalogFetch({
       PV: [{ id: 'conv-pv-0.5mw-15kv', name: 'Farma PV 0.5 MW / 15 kV', kind: 'PV', un_kv: 15, sn_mva: 0.5, pmax_mw: 0.5 }],
     });
@@ -787,9 +794,17 @@ describe('SldDetailDrawer — right-side detail panel', () => {
     cleanup();
   });
 
-  it('DER save returns validated payload in MW and catalog ref (katalog SN — jedyny poziom z realnymi przekształtnikami)', async () => {
+  it('zapis DER bez jawnego wyboru przekształtnika: brak zapisu, komunikat i przełączenie na „Falownik"; po wyborze zapis niesie wybrany ref', async () => {
+    // Ścieżka użytkownika z E2E `critical-der-config` (regresja CI po FAB-F):
+    // Moc → Zapisz BEZ odwiedzania zakładki „Falownik". Poprzednia wersja tego
+    // testu klikała „Falownik" PRZED zapisem i czekała na podstawioną wartość —
+    // maskowała defekt produktu (zapis z zakładki „Moc" nigdy nie wysyłał
+    // żądania). Test maskujący defekt = dwa defekty; tu ćwiczymy realną drogę.
     mockConverterCatalogFetch({
-      PV: [{ id: 'conv-pv-1mw-15kv', name: 'Farma PV 1 MW / 15 kV', kind: 'PV', un_kv: 15, sn_mva: 1, pmax_mw: 1 }],
+      PV: [
+        { id: 'conv-pv-0.5mw-15kv', name: 'Farma PV 0.5 MW / 15 kV', kind: 'PV', un_kv: 15, sn_mva: 0.5, pmax_mw: 0.5 },
+        { id: 'conv-pv-1mw-15kv', name: 'Farma PV 1 MW / 15 kV', kind: 'PV', un_kv: 15, sn_mva: 1, pmax_mw: 1 },
+      ],
     });
     const onSave = vi.fn();
     const data: SldDetailDrawerData = {
@@ -802,20 +817,29 @@ describe('SldDetailDrawer — right-side detail panel', () => {
     };
     const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} onSave={onSave} />);
 
-    // Katalog SN odpowiada asynchronicznie (efekt w SldDetailDrawer wypełnia
-    // inverterCatalogRef niezależnie od aktywnej zakładki) — poczekaj, aż
-    // zakładka Falownik pokaże realną wartość z backendu, zanim spróbujemy
-    // zapisać (inaczej zapis trafiłby na pustą wartość, którą walidacja
-    // uczciwie blokuje — ale to nie jest to, co ten test sprawdza).
-    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-inverter"]') as Element);
-    await waitFor(() => {
-      const select = container.querySelector('[data-testid="drawer-der-inverter-select"]') as HTMLSelectElement | null;
-      expect(select?.value).toBe('conv-pv-1mw-15kv');
-    });
-
     fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-moc"]') as Element);
     const powerInput = container.querySelector('[data-testid="drawer-der-power-input"]') as HTMLInputElement;
     fireEvent.change(powerInput, { target: { value: '1.2' } });
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-save"]') as Element);
+
+    // Bez wyboru: zapis zablokowany, komunikat nazywa zakładkę, szuflada ją pokazuje.
+    await waitFor(() => {
+      expect(container.querySelector('[data-testid="sld-v2-detail-drawer-save-error"]')?.textContent)
+        .toContain('Wybierz typ przekształtnika z katalogu (zakładka „Falownik")');
+    });
+    expect(onSave).not.toHaveBeenCalled();
+    expect(container.querySelector('[data-testid="sld-v2-detail-drawer-content-inverter"]')).toBeTruthy();
+    await waitFor(() => {
+      expect(container.querySelector('[data-testid="drawer-der-inverter-select"]')).toBeTruthy();
+    });
+    const select = container.querySelector('[data-testid="drawer-der-inverter-select"]') as HTMLSelectElement;
+    expect(select.value).toBe('');
+    expect(container.querySelector('[data-testid="drawer-der-inverter-error"]')?.textContent)
+      .toContain('Wybierz typ przekształtnika');
+
+    // Jawny wybór — realna pozycja z odpowiedzi backendu, nie pierwsza z listy.
+    fireEvent.change(select, { target: { value: 'conv-pv-1mw-15kv' } });
+    expect(select.value).toBe('conv-pv-1mw-15kv');
     fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-save"]') as Element);
 
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
@@ -831,6 +855,59 @@ describe('SldDetailDrawer — right-side detail panel', () => {
         ncRfgModule: 'A',
       },
     });
+    cleanup();
+  });
+
+  it('zmiana technologii po wyborze przekształtnika czyści wybór: ref PV nie przechodzi do BESS, lista PV nie jest „aktualna" dla BESS', async () => {
+    // Iloczyn cech: jawny wybór × zmiana pary (technologia, wariant) × leniwe
+    // pobieranie katalogu. Stan haka jest kluczowany parą, więc lista PV
+    // („ready") nie może uzasadnić zapisu identyfikatora PV dla BESS.
+    mockConverterCatalogFetch({
+      PV: [{ id: 'conv-pv-1mw-15kv', name: 'Farma PV 1 MW / 15 kV', kind: 'PV', un_kv: 15, sn_mva: 1, pmax_mw: 1 }],
+      BESS: [{ id: 'conv-bess-1mw-2mwh-15kv', name: 'BESS 1 MW / 2 MWh / 15 kV', kind: 'BESS', un_kv: 15, sn_mva: 1, pmax_mw: 1, e_kwh: 2000 }],
+    });
+    const onSave = vi.fn();
+    const data: SldDetailDrawerData = {
+      kind: 'der',
+      elementId: 'station/1',
+      label: 'Stacja 1',
+      voltageKv: 15,
+      derKind: 'PV',
+      derConnectionVariant: 'sn_side',
+    };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} onSave={onSave} />);
+
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-inverter"]') as Element);
+    await waitFor(() => {
+      expect(container.querySelector('[data-testid="drawer-der-inverter-select"]')).toBeTruthy();
+    });
+    const pvSelect = container.querySelector('[data-testid="drawer-der-inverter-select"]') as HTMLSelectElement;
+    fireEvent.change(pvSelect, { target: { value: 'conv-pv-1mw-15kv' } });
+    expect(pvSelect.value).toBe('conv-pv-1mw-15kv');
+
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-typ"]') as Element);
+    const typeSelect = container.querySelector('[data-testid="drawer-der-type-select"]') as HTMLSelectElement;
+    fireEvent.change(typeSelect, { target: { value: 'BESS' } });
+    expect(typeSelect.value).toBe('BESS');
+
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-moc"]') as Element);
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-save"]') as Element);
+    await waitFor(() => {
+      expect(container.querySelector('[data-testid="sld-v2-detail-drawer-save-error"]')?.textContent)
+        .toContain('Wybierz typ przekształtnika');
+    });
+    expect(onSave).not.toHaveBeenCalled();
+
+    // Szuflada przełączyła się na „Falownik": lista BESS z katalogu, wybór pusty,
+    // identyfikator PV nigdzie nie występuje.
+    await waitFor(() => {
+      const select = container.querySelector('[data-testid="drawer-der-inverter-select"]') as HTMLSelectElement | null;
+      expect(select).toBeTruthy();
+      expect(Array.from(select!.options).slice(1).map((o) => o.value)).toEqual(['conv-bess-1mw-2mwh-15kv']);
+    });
+    const bessSelect = container.querySelector('[data-testid="drawer-der-inverter-select"]') as HTMLSelectElement;
+    expect(bessSelect.value).toBe('');
+    expect(container.innerHTML).not.toContain('conv-pv-1mw-15kv');
     cleanup();
   });
 

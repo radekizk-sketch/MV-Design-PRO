@@ -3296,7 +3296,7 @@
     "type": "object"
    },
    "DerGeneratorCreateRequest": {
-    "description": "Payload formularza DER z drawera SLD.",
+    "description": "Payload formularza DER z drawera SLD i kreatora DER.\n\n`catalog_ref` jest WYMAGANY. Typ przekształtnika to dana projektowa (moc\npozorna, k_sc, zakres cos φ, napięcie znamionowe), od której zależą wyniki\nzwarciowe i rozpływowe — nie ustawienie interfejsu. Dawna mapa\n`_DEFAULT_CATALOG_BY_VARIANT` podstawiała ją PO CICHU, gdy klient pominął\npole (ta sama klasa co „ciche podstawienia\" FAB-D1): model dostawał typ,\nktórego nikt nie wybrał, a odpowiedź HTTP 201 wyglądała jak zapis wyboru\nużytkownika. Brak albo pusty `catalog_ref` = 422 (usunięto 2026-09-05).",
     "properties": {
      "block_transformer_catalog_ref": {
       "anyOf": [
@@ -3335,16 +3335,9 @@
       "title": "Bus Ref"
      },
      "catalog_ref": {
-      "anyOf": [
-       {
-        "minLength": 1,
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Catalog Ref"
+      "minLength": 1,
+      "title": "Catalog Ref",
+      "type": "string"
      },
      "connection_variant": {
       "default": "nn_side",
@@ -3417,7 +3410,8 @@
     "required": [
      "station_ref",
      "der_kind",
-     "power_mw"
+     "power_mw",
+     "catalog_ref"
     ],
     "title": "DerGeneratorCreateRequest",
     "type": "object"

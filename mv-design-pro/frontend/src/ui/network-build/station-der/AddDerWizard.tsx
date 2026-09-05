@@ -139,23 +139,6 @@ function toBackendConnectionVariant(connectionSide: ConnectionSide): DerConnecti
   return connectionSide === 'nN' ? 'nn_side' : 'dedicated';
 }
 
-function resolveBackendCatalogRef(
-  derKind: DerKindUnified,
-  connectionSide: ConnectionSide,
-  deviceCatalogRef: string | null,
-): string {
-  if (deviceCatalogRef) return deviceCatalogRef;
-  if (derKind === 'PV') {
-    return connectionSide === 'nN' ? 'conv-pv-nn-0p5mw-0p4kv' : 'conv-pv-0.5mw-15kv';
-  }
-  if (derKind === 'BESS') {
-    return connectionSide === 'nN'
-      ? 'conv-bess-nn-0p5mw-0p4kv'
-      : 'conv-bess-0.5mw-1mwh-15kv';
-  }
-  return connectionSide === 'nN' ? 'conv-wind-nn-2mw-0p4kv' : 'conv-wind-2mw-15kv';
-}
-
 function resolveNcRfgModule(selections: WizardSelections): NcRfgModule {
   const curve = LVRT_CURVE_CATALOG.find((entry) => entry.id === selections.lvrtCurveRef);
   return curve?.module_type ?? 'B';
@@ -1144,11 +1127,16 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     // Model trzyma moc CAŁEJ pozycji (backend mnoży moc katalogową przez liczbę sztuk,
     // gdy nie dostanie mocy jawnej) — wysyłamy iloczyn, żeby obie strony mówiły to samo.
     const mocGrupyKw = nominalPowerKw * liczbaJednostek;
-    const backendCatalogRef = resolveBackendCatalogRef(
-      derKind,
-      selections.connectionSide,
-      selections.deviceCatalogRef,
-    );
+    // Typ urządzenia to dana projektowa wybrana JAWNIE w kroku „Urządzenie"
+    // (`validateWizardSelections` wyżej odrzuca brak). Dawna mapa zapasowych
+    // identyfikatorów per (technologia, strona przyłączenia) podstawiała typ,
+    // którego nikt nie wybrał — ta sama klasa co `_DEFAULT_CATALOG_BY_VARIANT`
+    // na backendzie (usunięta 2026-09-05); backend odrzuca pusty `catalog_ref` 422.
+    const backendCatalogRef = selections.deviceCatalogRef;
+    if (!backendCatalogRef) {
+      notify('Wybierz urządzenie z katalogu — bez pozycji katalogowej zapis DER jest niemożliwy.', 'error');
+      return;
+    }
 
     // Naprawa B.2: connection_node_ref dla pozastacjonarnych wariantów.
     let connectionNodeRef: string | null = null;

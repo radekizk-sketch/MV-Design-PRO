@@ -215,6 +215,16 @@ test('krytyczny DER flow: paleta PV -> stacja -> drawer -> zapis -> generator w 
 
   await expect(page.getByTestId('sld-v2-detail-drawer')).toBeVisible();
   await expect(page.getByTestId('drawer-der-type-select')).toHaveValue('PV');
+  // Typ przekształtnika wybiera się JAWNIE na zakładce „Falownik" z listy
+  // pobranej z katalogu backendu (wybór nie jest podstawiany; zapis z pustym
+  // wyborem jest blokowany i przełącza szufladę na tę zakładkę). Lista dla
+  // wariantu nN zawiera typy `un_kv` < 1 kV z `/api/catalog/converter-types`.
+  await page.getByTestId('sld-v2-detail-drawer-tab-inverter').click();
+  const inverterSelect = page.getByTestId('drawer-der-inverter-select');
+  await expect(inverterSelect).toBeVisible();
+  await expect(inverterSelect).toHaveValue('');
+  await inverterSelect.selectOption('conv-pv-nn-0p5mw-0p4kv');
+  await expect(inverterSelect).toHaveValue('conv-pv-nn-0p5mw-0p4kv');
   await page.getByTestId('sld-v2-detail-drawer-tab-moc').click();
   await page.getByTestId('drawer-der-power-input').fill('0.5');
 

@@ -45,24 +45,24 @@ router = APIRouter(prefix="/api/projects", tags=["generators"])
 DerKind = Literal["PV", "BESS", "FW"]
 DerConnectionVariant = Literal["nn_side", "sn_side", "dedicated", "block_transformer"]
 
-_DEFAULT_CATALOG_BY_VARIANT: dict[tuple[str, str], str] = {
-    ("PV", "nn_side"): "conv-pv-nn-0p5mw-0p4kv",
-    ("PV", "block_transformer"): "conv-pv-0.5mw-15kv",
-    ("BESS", "nn_side"): "conv-bess-nn-0p5mw-0p4kv",
-    ("BESS", "block_transformer"): "conv-bess-0.5mw-1mwh-15kv",
-    ("FW", "nn_side"): "conv-wind-nn-2mw-0p4kv",
-    ("FW", "block_transformer"): "conv-wind-2mw-15kv",
-}
-
 
 class DerGeneratorCreateRequest(BaseModel):
-    """Payload formularza DER z drawera SLD."""
+    """Payload formularza DER z drawera SLD i kreatora DER.
+
+    `catalog_ref` jest WYMAGANY. Typ przekształtnika to dana projektowa (moc
+    pozorna, k_sc, zakres cos φ, napięcie znamionowe), od której zależą wyniki
+    zwarciowe i rozpływowe — nie ustawienie interfejsu. Dawna mapa
+    `_DEFAULT_CATALOG_BY_VARIANT` podstawiała ją PO CICHU, gdy klient pominął
+    pole (ta sama klasa co „ciche podstawienia" FAB-D1): model dostawał typ,
+    którego nikt nie wybrał, a odpowiedź HTTP 201 wyglądała jak zapis wyboru
+    użytkownika. Brak albo pusty `catalog_ref` = 422 (usunięto 2026-09-05).
+    """
 
     station_ref: str = Field(..., min_length=1)
     der_kind: DerKind
     power_mw: float = Field(..., gt=0.0, le=10.0)
     connection_variant: DerConnectionVariant = "nn_side"
-    catalog_ref: str | None = Field(default=None, min_length=1)
+    catalog_ref: str = Field(..., min_length=1)
     bus_ref: str | None = Field(default=None, min_length=1)
     blocking_transformer_ref: str | None = Field(default=None, min_length=1)
     block_transformer_catalog_ref: str | None = Field(default=None, min_length=1)
@@ -70,9 +70,21 @@ class DerGeneratorCreateRequest(BaseModel):
     quantity: int = Field(default=1, ge=1, le=100)
     nc_rfg_module: Literal["A", "B", "C", "D"] | None = None
 
+    @field_validator("station_ref", "catalog_ref")
+    @classmethod
+    def _strip_required_strings(cls, value: str) -> str:
+        """Pole wymagane złożone z samych białych znaków jest brakiem, nie wartością.
+
+        Wcześniej wspólny walidator zamieniał je na `None` już PO sprawdzeniu
+        `min_length`, więc `"  "` przechodziło jako „obecne", a handler dostawał
+        `None` w polu zadeklarowanym jako `str`.
+        """
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("pole wymagane nie może być puste")
+        return stripped
+
     @field_validator(
-        "station_ref",
-        "catalog_ref",
         "bus_ref",
         "blocking_transformer_ref",
         "block_transformer_catalog_ref",
@@ -397,7 +409,7 @@ def _build_domain_payload(
     canonical_variant = _canonical_variant(req.connection_variant)
     if req.block_transformer_catalog_ref:
         canonical_variant = "block_transformer"
-    catalog_ref = req.catalog_ref or _DEFAULT_CATALOG_BY_VARIANT[(req.der_kind, canonical_variant)]
+    catalog_ref = req.catalog_ref
     payload: dict[str, Any] = {
         "source_technology": req.der_kind,
         "connection_variant": canonical_variant,

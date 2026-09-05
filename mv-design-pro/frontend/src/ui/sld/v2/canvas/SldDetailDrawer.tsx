@@ -299,15 +299,33 @@ function formatKvarPl(value: number): string {
 }
 
 /**
- * Opcje przekształtnika DER — WYŁĄCZNIE z katalogu backendu (FAB-F: usunięta
- * fabrykacja `DER_CATALOG_OPTIONS`, 18 zaszytych `catalog_ref` — 9/18 nie
- * istniało w katalogu backendu wcale, „nN" połowa listy była fantomem, bo
- * backend nie ma ŻADNEGO przekształtnika poniżej 1 kV). Reużywa istniejący
- * klient `fetchDerConverterTypes` (`ui/catalog/api.ts`, ten sam, którego
- * używa `AddDerWizard`) zamiast duplikować integrację z `/api/catalog/
- * converter-types`. Filtr nN/SN po `un_kv` TYPU Z KATALOGU (rzeczywiste
- * napięcie znamionowe), nie po sufiksie nazwy — zgodnie z rozstrzygnięciem
- * karty.
+ * Opcje przekształtnika DER — WYŁĄCZNIE z katalogu backendu (FAB-F usunęła
+ * zaszytą listę `DER_CATALOG_OPTIONS`: 18 identyfikatorów utrzymywanych
+ * ręcznie obok katalogu, czyli drugie źródło prawdy o tym, co wolno wybrać).
+ *
+ * KOREKTA 2026-09-05 (pomiar `get_default_mv_catalog()` na backendzie):
+ * wszystkie 18 dawnych identyfikatorów ISTNIEJE w katalogu, a katalog MA
+ * przekształtniki nN (`conv-*-nn-*-0p4kv`…, `un_kv` 0,4–0,8 kV). Wcześniejszy
+ * komentarz twierdził, że „9/18 nie istniało" i że „backend nie ma żadnego
+ * przekształtnika poniżej 1 kV" — oba zdania były nieprawdziwe. Powodem
+ * usunięcia listy jest duplikacja katalogu, nie fantomy.
+ *
+ * Reużywa istniejący klient `fetchDerConverterTypes` (`ui/catalog/api.ts`,
+ * `/api/catalog/converter-types?kind=…`). Ten sam zbiór identyfikatorów backend
+ * wiąże w przestrzeniach `ZRODLO_NN_PV` / `ZRODLO_NN_BESS` / `CONVERTER`
+ * (`api/generators.py::_catalog_namespace`; zmierzone: zbiory PV i BESS są
+ * identyczne z `pv-inverter-types` / `bess-inverter-types`). Filtr nN/SN po
+ * `un_kv` TYPU Z KATALOGU (rzeczywiste napięcie znamionowe), nie po sufiksie
+ * nazwy.
+ *
+ * WYBÓR JEST JAWNY. Typ przekształtnika to dana projektowa (moc pozorna,
+ * k_sc, zakres cos φ, napięcie znamionowe), nie ustawienie interfejsu —
+ * szuflada NIE podstawia pierwszej pozycji katalogu. Pusty wybór blokuje zapis
+ * (schemat zod) i przełącza szufladę na zakładkę „Falownik". Regresja
+ * 2026-09-05 (E2E `critical-der-config`, CI od FAB-F): przy leniwym pobieraniu
+ * katalogu I cichym podstawianiu pierwszej pozycji zapis z zakładki „Moc"
+ * nigdy nie wysyłał żądania — wartość była pusta, a błąd walidacji wskazywał
+ * zakładkę, której użytkownik nie oglądał.
  */
 interface DerConverterCatalogState {
   readonly status: 'loading' | 'ready' | 'empty' | 'error';
@@ -340,25 +358,44 @@ const DER_KIND_LABEL_PL: Readonly<Record<SldDerKind, string>> = {
   FW: 'FW',
 };
 
+/** Klucz pary (technologia, wariant przyłączenia), dla której lista opcji
+ *  przekształtnika jest ważna — JEDNO źródło prawdy dla haka katalogu i dla
+ *  efektu czyszczącego wybór w formularzu (predykaty parami). */
+function derCatalogKey(derKind: SldDerKind, connectionVariant: SldDerConnectionVariant): string {
+  return `${derKind}|${connectionVariant}`;
+}
+
 /** Pobiera opcje przekształtnika z katalogu backendu dla (rodzaj DER, wariant
  *  przyłączenia). Stan pusty (katalog nie zwrócił typów dla tego poziomu
  *  napięcia) i błąd (zapytanie nie powiodło się) są UCZCIWE — bez listy
- *  zastępczej. `enabled` odracza zapytanie do chwili, gdy zakładka „Falownik"
- *  jest faktycznie oglądana (regresja zmierzona przy weryfikacji end-to-end:
- *  bez tej bramki hak odpalał `fetch` przy KAŻDYM renderze szuflady z danymi
- *  DER, niezależnie od aktywnej zakładki i nawet dla elementów innych niż DER,
- *  co łamało asercje liczby wywołań `fetch` w testach portalu nN L0-L2). */
+ *  zastępczej.
+ *
+ *  `enabled` odracza zapytanie do chwili, gdy zakładka „Falownik" jest
+ *  faktycznie oglądana — wybór jest jawny, więc lista jest potrzebna dopiero
+ *  tam (a bez tej bramki hak odpalał `fetch` przy KAŻDYM renderze szuflady
+ *  z danymi DER, niezależnie od zakładki, co łamało asercje liczby wywołań
+ *  `fetch` w testach portalu nN L0-L2).
+ *
+ *  Stan jest KLUCZOWANY parą (technologia, wariant): wynik pobrany dla PV nie
+ *  jest nigdy raportowany jako aktualny po zmianie technologii na BESS —
+ *  dopóki zakładka „Falownik" nie pobierze listy dla nowej pary, hak zgłasza
+ *  `loading`. Bez klucza stara lista „ready" uzasadniałaby wybór z innej
+ *  przestrzeni katalogu. */
 function useDerConverterCatalog(
   derKind: SldDerKind,
   connectionVariant: SldDerConnectionVariant,
   enabled: boolean,
 ): DerConverterCatalogState {
-  const [state, setState] = useState<DerConverterCatalogState>(DER_CATALOG_STATE_LOADING);
+  const key = derCatalogKey(derKind, connectionVariant);
+  const [state, setState] = useState<{ key: string; value: DerConverterCatalogState }>({
+    key,
+    value: DER_CATALOG_STATE_LOADING,
+  });
 
   useEffect(() => {
     if (!enabled) return;
     let active = true;
-    setState(DER_CATALOG_STATE_LOADING);
+    setState({ key, value: DER_CATALOG_STATE_LOADING });
     const isNn = connectionVariant === 'nn_side';
     void fetchDerConverterTypes(toConverterKind(derKind))
       .then((records) => {
@@ -372,33 +409,54 @@ function useDerConverterCatalog(
           label: converterOptionLabel(item),
         }));
         if (options.length > 0) {
-          setState({ status: 'ready', options, errorMessage: null });
+          setState({ key, value: { status: 'ready', options, errorMessage: null } });
         } else {
           setState({
-            status: 'empty',
-            options: [],
-            errorMessage:
-              `Katalog nie zawiera przekształtników ${isNn ? 'nN' : 'SN'} dla technologii ` +
-              `${DER_KIND_LABEL_PL[derKind]}.`,
+            key,
+            value: {
+              status: 'empty',
+              options: [],
+              errorMessage:
+                `Katalog nie zawiera przekształtników ${isNn ? 'nN' : 'SN'} dla technologii ` +
+                `${DER_KIND_LABEL_PL[derKind]}.`,
+            },
           });
         }
       })
       .catch((error: unknown) => {
         if (!active) return;
         setState({
-          status: 'error',
-          options: [],
-          errorMessage:
-            error instanceof Error ? error.message : 'Nie udało się pobrać katalogu przekształtników.',
+          key,
+          value: {
+            status: 'error',
+            options: [],
+            errorMessage:
+              error instanceof Error ? error.message : 'Nie udało się pobrać katalogu przekształtników.',
+          },
         });
       });
     return () => {
       active = false;
     };
-  }, [derKind, connectionVariant, enabled]);
+  }, [derKind, connectionVariant, enabled, key]);
 
-  return state;
+  return state.key === key ? state.value : DER_CATALOG_STATE_LOADING;
 }
+
+/** Etykieta pozycji zastępczej listy przekształtników — wybór jest jawny, więc
+ *  lista zaczyna się od pustej pozycji, a nie od pierwszego typu z katalogu. */
+const DER_INVERTER_PLACEHOLDER_LABEL = '— wybierz z katalogu —';
+
+/** Zakładka, na której edytuje się dane pole formularza DER — żeby błąd
+ *  walidacji zawsze prowadził do miejsca, gdzie da się go naprawić. */
+const DER_FIELD_TAB: Readonly<Record<keyof SldDerConfigFormValues, string>> = {
+  derKind: 'typ',
+  powerMw: 'moc',
+  connectionVariant: 'punkt',
+  pointVoltageKv: 'punkt',
+  inverterCatalogRef: 'inverter',
+  ncRfgModule: 'rfg',
+};
 
 const sldDerConfigSchema = z.object({
   derKind: z.enum(['PV', 'BESS', 'FW']),
@@ -408,7 +466,7 @@ const sldDerConfigSchema = z.object({
     .max(10, 'Moc czynna DER musi być nie większa niż 10 MW.'),
   connectionVariant: z.enum(['nn_side', 'sn_side', 'dedicated']),
   pointVoltageKv: z.coerce.number().positive('Napięcie punktu przyłączenia musi być dodatnie.'),
-  inverterCatalogRef: z.string().min(1, 'Wybierz typ przekształtnika z katalogu.'),
+  inverterCatalogRef: z.string().min(1, 'Wybierz typ przekształtnika z katalogu (zakładka „Falownik").'),
   ncRfgModule: z.enum(['A', 'B', 'C', 'D']),
 }).superRefine((value, ctx) => {
   if (value.connectionVariant === 'nn_side' && value.pointVoltageKv >= 1) {
@@ -487,10 +545,10 @@ function makeDefaultDerFormValues(data: SldDetailDrawerData | null): SldDerConfi
     powerMw: defaultDerPowerMw(derKind),
     connectionVariant,
     pointVoltageKv: pointVoltageForVariant(connectionVariant, data?.voltageKv),
-    // Katalog przekształtników jest ASYNCHRONICZNY (backend, FAB-F) — wartość
-    // wstępna zostaje pusta; `useDerConverterCatalog` + efekt w
-    // `SldDetailDrawer` uzupełniają ją, gdy katalog odpowie. Formularz
-    // odrzuca zapis z pustym `inverterCatalogRef` (schemat zod poniżej).
+    // Wybór typu przekształtnika jest JAWNY (zakładka „Falownik", lista z
+    // katalogu backendu) — wartość wstępna zostaje pusta i nikt jej nie
+    // podstawia. Formularz odrzuca zapis z pustym `inverterCatalogRef`
+    // (schemat zod poniżej) i przełącza szufladę na tę zakładkę.
     inverterCatalogRef: '',
     ncRfgModule: 'A',
   };
@@ -580,36 +638,60 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
     if (derForm.getValues('pointVoltageKv') !== nextPointVoltage) {
       derForm.setValue('pointVoltageKv', nextPointVoltage, { shouldValidate: true });
     }
+  }, [open, data?.kind, data?.voltageKv, watchedConnectionVariant, derForm]);
 
-    // Katalog asynchroniczny (FAB-F): dopóki trwa zapytanie, NIE nadpisuj
-    // dotychczasowego wyboru — inaczej każdy re-render czyściłby pole na
-    // ułamek sekundy przed odpowiedzią backendu.
+  // Zmiana pary (technologia, wariant) unieważnia wybrany typ przekształtnika:
+  // identyfikator PV nie może „przejść" do BESS ani typ SN do wariantu nN.
+  // Ten sam klucz co w `useDerConverterCatalog` (predykaty parami). Czyścimy
+  // na PUSTO, nie na pierwszą pozycję nowej listy — wybór jest jawny.
+  const derCatalogKeyValue = derCatalogKey(watchedDerKind, watchedConnectionVariant);
+  const previousDerCatalogKeyRef = useRef(derCatalogKeyValue);
+  useEffect(() => {
+    if (previousDerCatalogKeyRef.current === derCatalogKeyValue) return;
+    previousDerCatalogKeyRef.current = derCatalogKeyValue;
+    if (!open || data?.kind !== 'der') return;
+    if (derForm.getValues('inverterCatalogRef') !== '') {
+      derForm.setValue('inverterCatalogRef', '', { shouldValidate: false });
+    }
+  }, [derCatalogKeyValue, open, data?.kind, derForm]);
+
+  // Wybór, którego nie ma na aktualnej liście z katalogu (katalog zmienił się
+  // między otwarciami, pozycja zniknęła), też jest unieważniany — na pusto.
+  // Dopóki zapytanie trwa, nie ruszamy wartości (lista nie jest jeszcze znana).
+  useEffect(() => {
+    if (!open || data?.kind !== 'der') return;
     if (derCatalog.status === 'loading') return;
     const currentCatalogRef = derForm.getValues('inverterCatalogRef');
-    if (!derCatalog.options.some((option) => option.value === currentCatalogRef)) {
-      derForm.setValue('inverterCatalogRef', derCatalog.options[0]?.value ?? '', { shouldValidate: true });
+    if (currentCatalogRef !== '' && !derCatalog.options.some((option) => option.value === currentCatalogRef)) {
+      derForm.setValue('inverterCatalogRef', '', { shouldValidate: true });
     }
-  }, [
-    open,
-    data?.kind,
-    data?.voltageKv,
-    watchedDerKind,
-    watchedConnectionVariant,
-    derForm,
-    derCatalog.status,
-    derCatalog.options,
-  ]);
+  }, [open, data?.kind, derForm, derCatalog.status, derCatalog.options]);
 
   const handleSaveClick = useCallback(() => {
     if (!onSave || !data) return;
     if (data.kind === 'der') {
-      void derForm.handleSubmit(async (values) => {
-        await onSave({
-          kind: data.kind,
-          elementId: data.elementId,
-          derConfig: values,
-        });
-      })();
+      void derForm.handleSubmit(
+        async (values) => {
+          await onSave({
+            kind: data.kind,
+            elementId: data.elementId,
+            derConfig: values,
+          });
+        },
+        (errors) => {
+          // Błąd pola z NIEWIDOCZNEJ zakładki był dla użytkownika ślepym
+          // zaułkiem (regresja E2E 2026-09-05: pusty wybór przekształtnika na
+          // zakładce „Falownik" blokował zapis z zakładki „Moc"). Reguła dla
+          // całej klasy pól, nie jednego: jeśli oglądana zakładka sama ma błąd,
+          // zostajemy na niej; inaczej pokazujemy pierwszą zakładkę z błędem.
+          const fieldsWithErrors = Object.keys(errors) as (keyof SldDerConfigFormValues)[];
+          const tabsWithErrors: string[] = DER_TABS
+            .map((tab): string => tab.id)
+            .filter((tabId) => fieldsWithErrors.some((field) => DER_FIELD_TAB[field] === tabId));
+          if (tabsWithErrors.length === 0) return;
+          setActiveTab((current) => (tabsWithErrors.includes(current) ? current : tabsWithErrors[0]));
+        },
+      )();
       return;
     }
 
@@ -1683,6 +1765,7 @@ function PlaceholderTabBody({
               fontFamily: 'monospace',
             }}
           >
+            <option value="">{DER_INVERTER_PLACEHOLDER_LABEL}</option>
             {derCatalog.options.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}

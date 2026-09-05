@@ -85,6 +85,40 @@ def _seed_station_enm(case_id: str, *, transformer_sn_mva: float = 0.63) -> None
     set_enm(case_id, enm)
 
 
+def test_der_bez_catalog_ref_to_422_bez_cichego_podstawienia(app_client) -> None:
+    """Typ przekształtnika jest daną projektową: brak wyboru = 422, nie mapa domyślna.
+
+    Klasa „ciche podstawienia" (FAB-D1): do 2026-09-05 pominięty `catalog_ref`
+    dostawał typ z `_DEFAULT_CATALOG_BY_VARIANT` i odpowiedź 201 udawała zapis
+    wyboru użytkownika. Iloczyn cech: pole pominięte × pole z samych białych
+    znaków × wariant z transformatorem blokowym × puste pole wymagane `station_ref`.
+    """
+    project_id, case_id = _create_project_and_case(app_client)
+    _seed_station_enm(case_id)
+    baza = {"station_ref": "station/1", "der_kind": "PV", "power_mw": 0.5}
+    odrzucane = (
+        {**baza, "connection_variant": "nn_side"},
+        {**baza, "connection_variant": "nn_side", "catalog_ref": "   "},
+        {
+            **baza,
+            "der_kind": "BESS",
+            "connection_variant": "sn_side",
+            "block_transformer_catalog_ref": "btr_pv_15_069_1250",
+        },
+        {**baza, "station_ref": "   ", "catalog_ref": "conv-pv-nn-0p5mw-0p4kv"},
+    )
+    for payload in odrzucane:
+        response = app_client.post(
+            f"/api/projects/{project_id}/cases/{case_id}/generators",
+            json=payload,
+        )
+        assert response.status_code == 422, payload
+
+    persisted = app_client.get(f"/api/cases/{case_id}/enm")
+    assert persisted.status_code == 200
+    assert persisted.json()["generators"] == []
+
+
 def test_create_der_generator_persists_in_case_enm(app_client) -> None:
     project_id, case_id = _create_project_and_case(app_client)
     _seed_station_enm(case_id)
