@@ -330,17 +330,27 @@ class TestExportPdfErrorHandling:
 # -----------------------------------------------------------------------------
 # Tests for ImportError when reportlab is NOT available
 # -----------------------------------------------------------------------------
-@pytest.mark.skipif(_PDF_AVAILABLE, reason="reportlab IS installed, skip unavailable test")
 class TestExportPdfWhenReportlabUnavailable:
-    """Tests for behavior when reportlab is not installed."""
+    """Tests for behavior when reportlab is not installed.
 
-    def test_import_error_raised_when_reportlab_missing(self, tmp_path: Path) -> None:
+    Reportlab is a dev dependency (pyproject.toml) that is always present in
+    a correctly provisioned environment, so gating this test on the real
+    ``_PDF_AVAILABLE`` flag (``skipif(_PDF_AVAILABLE, ...)``) meant it never
+    ran in CI/regression — the "library missing" branch had zero coverage.
+    Simulating absence via monkeypatch on the module's own flag exercises the
+    real ImportError-raising code path unconditionally, in any environment.
+    """
+
+    def test_import_error_raised_when_reportlab_missing(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Verify that ImportError with clear message is raised when reportlab missing."""
-        # This test only runs when reportlab is NOT available
-        # We need to import the module and test directly
+        from network_model.reporting import short_circuit_report_pdf
         from network_model.reporting.short_circuit_report_pdf import (
             export_short_circuit_result_to_pdf,
         )
+
+        monkeypatch.setattr(short_circuit_report_pdf, "_PDF_AVAILABLE", False)
 
         class DummyResult:
             def to_dict(self) -> dict:
