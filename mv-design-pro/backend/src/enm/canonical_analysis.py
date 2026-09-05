@@ -258,6 +258,8 @@ def _execution_analysis_type_for_run(run: CanonicalRun) -> str:
         return "DYNAMIC_STABILITY"
     if run.analysis_type == "source_compliance":
         return "SOURCE_COMPLIANCE"
+    if run.analysis_type == "protection_sn":
+        return "PROTECTION"
     raise ValueError(f"Unsupported canonical analysis type: {run.analysis_type}")
 
 
@@ -537,6 +539,51 @@ def list_runs_for_project(
         return repository.list_by_project(project_id, analysis_type=analysis_type)
 
 
+def _validate_protection_sc_reference(
+    *, normalized_options: dict[str, Any], project_id_koperty: str | None
+) -> None:
+    """Bieg zabezpieczen istnieje TYLKO wobec zakonczonego biegu zwarciowego z
+    TEGO SAMEGO projektu — walidacja PRZED utworzeniem biegu (B2, karta
+    CV-3.3-B), zeby `execute_run` nie odkrywal braku dopiero przy wykonaniu.
+
+    Naprawiony przy okazji wobec (usunietego) `ProtectionAnalysisService`:
+    tamten serwis NIGDY nie porownywal projektu biegu zrodlowego z projektem
+    zadania — sprawdzal wylacznie `case.project_id == project_id` z URL, wiec
+    biegow zwarciowych INNEGO projektu dalo sie uzyc jako zrodla oceny
+    zabezpieczen. Ostatni warunek ponizej zamyka te luke.
+    """
+    sc_run_id_raw = normalized_options.get("sc_run_id")
+    if not sc_run_id_raw:
+        raise ValueError(
+            "Analiza zabezpieczen wymaga options.sc_run_id (identyfikator "
+            "zakonczonego biegu zwarciowego, ktorego prad Ik'' interpretuje ocena)"
+        )
+    try:
+        sc_run_uuid = UUID(str(sc_run_id_raw))
+    except ValueError as exc:
+        raise ValueError(f"sc_run_id nie jest poprawnym UUID: {sc_run_id_raw!r}") from exc
+    sc_run = get_run(sc_run_uuid)
+    if sc_run is None:
+        raise ValueError(f"Bieg zwarciowy '{sc_run_id_raw}' nie istnieje")
+    if sc_run.analysis_type != "short_circuit_sn":
+        raise ValueError(
+            f"Bieg '{sc_run_id_raw}' nie jest biegiem zwarciowym (rodzaj: {sc_run.analysis_type})"
+        )
+    if sc_run.status != "FINISHED":
+        raise ValueError(
+            f"Bieg zwarciowy '{sc_run_id_raw}' nie jest zakonczony (status: {sc_run.status})"
+        )
+    if (
+        project_id_koperty is not None
+        and sc_run.project_id is not None
+        and sc_run.project_id != project_id_koperty
+    ):
+        raise ValueError(
+            f"Bieg zwarciowy '{sc_run_id_raw}' nalezy do innego projektu — analiza "
+            "zabezpieczen nie moze interpretowac wyniku spoza wlasnego projektu"
+        )
+
+
 def create_run(
     *,
     case_id: str,
@@ -606,6 +653,11 @@ def create_run(
         raise ValueError("Stabilnosc dynamiczna wymaga co najmniej jednego zrodla w ENM")
     if analysis_type == "source_compliance" and not (enm_liczony.sources or enm_liczony.generators):
         raise ValueError("Ocena zgodnosci zrodla wymaga co najmniej jednego zrodla w ENM")
+    if analysis_type == "protection_sn":
+        _validate_protection_sc_reference(
+            normalized_options=normalized_options,
+            project_id_koperty=project_id_koperty,
+        )
     input_hash = _compute_input_hash(
         case_id=case_id,
         analysis_type=analysis_type,
@@ -644,7 +696,11 @@ def create_run(
     return run
 
 
-def _wykonaj_analize_biegu(run: CanonicalRun, graf: NetworkGraph | None = None) -> None:
+def _wykonaj_analize_biegu(
+    run: CanonicalRun,
+    graf: NetworkGraph | None = None,
+    uow_factory: Callable[[], Any] | None = None,
+) -> None:
     """JEDYNY dyspozytor typu analizy do wykonania solvera dla CanonicalRun.
 
     Wspolny dla `execute_run` (biegi persystowane) i `wykonaj_bieg_w_pamieci`
@@ -659,11 +715,28 @@ def _wykonaj_analize_biegu(run: CanonicalRun, graf: NetworkGraph | None = None) 
     dostawce wylacznie w rozplywie; dla innego typu analizy podanie grafu jest
     bledem kontraktu (zwarcie buduje wlasny graf i jego kopie MIN), nie cicho
     ignorowanym argumentem.
+
+    `uow_factory` — fabryka `UnitOfWork` WOLAJACEGO (np. `Depends(get_uow_factory)`
+    warstwy API, `app.state.uow_factory`), przekazywana wylacznie do
+    `_execute_protection` (jedyny typ analizy czytajacy `StudyCase.protection_
+    config` spoza ENM). CV-3.3-B: bez tego parametru `_execute_protection`
+    budowalby WLASNY silnik/sesje z `DATABASE_URL` (`_uow_factory_biezacy`) —
+    inny niz ten, ktorego uzywa reszta zadania/procesu (kazdy test i kazde
+    wdrozenie inne niz pojedynczy plik SQLite pod `DATABASE_URL` majaby
+    przypadek NIEZNALEZIONY, mimo ze naprawde istnieje). Ma dostawce wylacznie
+    w zabezpieczeniach; dla innego typu analizy podanie fabryki jest bledem
+    kontraktu z tego samego powodu co `graf` — nie cichym ignorowaniem.
     """
     if graf is not None and run.analysis_type != "PF":
         raise ValueError(
             "Gotowy graf sieci przyjmuje wylacznie rozplyw mocy (analysis_type='PF'); "
             f"dla {run.analysis_type!r} graf buduje wykonawca z migawki biegu."
+        )
+    if uow_factory is not None and run.analysis_type != "protection_sn":
+        raise ValueError(
+            "Fabryke UnitOfWork przyjmuje wylacznie bieg zabezpieczen "
+            f"(analysis_type='protection_sn'); dla {run.analysis_type!r} nie ma "
+            "zastosowania."
         )
     if run.analysis_type == "PF":
         _execute_power_flow(run, graf)
@@ -675,6 +748,8 @@ def _wykonaj_analize_biegu(run: CanonicalRun, graf: NetworkGraph | None = None) 
         _execute_dynamic_stability(run)
     elif run.analysis_type == "source_compliance":
         _execute_source_compliance(run)
+    elif run.analysis_type == "protection_sn":
+        _execute_protection(run, uow_factory)
     else:
         raise ValueError(f"Unsupported analysis type: {run.analysis_type}")
 
@@ -767,7 +842,16 @@ def bieg_wariantu(
     )
 
 
-def execute_run(run_id: UUID) -> CanonicalRun:
+def execute_run(run_id: UUID, uow_factory: Callable[[], Any] | None = None) -> CanonicalRun:
+    """Wykonaj bieg persystowany (dyspozycja fizyki: `_wykonaj_analize_biegu`).
+
+    `uow_factory` (opcjonalna, wyłącznie dla `analysis_type="protection_sn"`):
+    fabryka `UnitOfWork` WOŁAJĄCEGO (routera API), którą trzeba przekazać w
+    dół do `_execute_protection` — patrz `_wykonaj_analize_biegu` docstring.
+    Pominięcie dla biegu zabezpieczeń cofa do `_uow_factory_biezacy()`
+    (samodzielnej fabryki z `DATABASE_URL`) — zachowane dla wywołań spoza
+    granicy API (skrypty, `run_*_now` bez routera).
+    """
     run = get_run(run_id)
     if run is None:
         raise ValueError(f"Run {run_id} not found")
@@ -780,7 +864,7 @@ def execute_run(run_id: UUID) -> CanonicalRun:
     _save_run(run)
 
     try:
-        _wykonaj_analize_biegu(run)
+        _wykonaj_analize_biegu(run, uow_factory=uow_factory)
         run.status = "FINISHED"
         run.finished_at = datetime.now(UTC)
         _save_run(run)
@@ -1249,6 +1333,144 @@ def _execute_source_compliance(run: CanonicalRun) -> None:
     run.power_flow_trace = None
 
 
+def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None = None) -> None:
+    """Bieg zabezpieczen (P15a/P15b) — INTERPRETACJA wylacznie, zero fizyki:
+    ocena zadzialania jednego urzadzenia wobec pradu zwarciowego biegu
+    zrodlowego (`options["sc_run_id"]`). Silnik oceny (`ProtectionEvaluationEngine`,
+    IEC 60255) jest nietkniety — przeniesiona zostala WYLACZNIE orkiestracja
+    (dawniej `application.protection_analysis.service.ProtectionAnalysisService`,
+    usunieta karta CV-3.3-B razem z zapisem do R3 `study_results`).
+
+    `create_run` juz zwalidowal istnienie/rodzaj/status/projekt biegu
+    zrodlowego (`_validate_protection_sc_reference`) — miedzy utworzeniem a
+    wykonaniem bieg zrodlowy nie moze zniknac (biegi R1 sa append-only), wiec
+    tu odczyt jest bezwarunkowy. Konfiguracja zabezpieczen zyje na
+    `StudyCase.protection_config` (SQL), nie w ENM — to JEDYNE miejsce w tym
+    module, gdzie analiza inna niz katalog/audit2 siega po `UnitOfWork`.
+
+    `uow_factory`: fabryka WOLAJACEGO (routera API) — patrz
+    `_wykonaj_analize_biegu` docstring. `None` (wywolanie spoza granicy API)
+    cofa do `_uow_factory_biezacy()`, WLASNEJ fabryki z `DATABASE_URL` — inny
+    silnik/sesja niz reszta procesu, wiec przypadek istniejacy naprawde
+    potrafi wygladac jak nieistniejacy (bug znaleziony i naprawiony przy tej
+    karcie: patrz test `test_bieg_zakonczony_model_zmieniony_daje_outdated`
+    i siostrzane w `tests/api/test_protection_overlay_swiezosc.py`).
+    """
+    from application.protection_analysis.catalog_lookup import (
+        get_protection_curve,
+        get_protection_device_type,
+        get_protection_template,
+    )
+    from application.protection_analysis.engine import (
+        ProtectionEvaluationEngine,
+        ProtectionEvaluationInput,
+        build_device_from_template,
+        build_fault_from_sc_result,
+    )
+
+    sc_run_id = UUID(str(run.options["sc_run_id"]))
+    sc_run = get_run(sc_run_id)
+    if sc_run is None or sc_run.status != "FINISHED":
+        raise ValueError(
+            f"Bieg zwarciowy zrodlowy '{sc_run_id}' nie jest juz dostepny albo "
+            "przestal byc zakonczony"
+        )
+
+    if uow_factory is None:
+        uow_factory = _uow_factory_biezacy()
+    if uow_factory is None:
+        raise ValueError(
+            "Warstwa persystencji niedostepna — nie da sie odczytac konfiguracji "
+            "zabezpieczen przypadku"
+        )
+
+    case_uuid = UUID(run.case_id)
+    with uow_factory() as uow:
+        case = uow.cases.get_study_case(case_uuid)
+        if case is None:
+            raise ValueError(f"Przypadek '{run.case_id}' nie istnieje")
+        protection_config = case.protection_config
+        if protection_config.template_ref is None:
+            raise ValueError("Konfiguracja zabezpieczen przypadku nie ma template_ref")
+        template = get_protection_template(uow, protection_config.template_ref)
+        if template is None:
+            raise ValueError(
+                f"Szablon nastaw '{protection_config.template_ref}' nie istnieje w katalogu"
+            )
+        curve = get_protection_curve(uow, template.curve_ref) if template.curve_ref else None
+        device_type = (
+            get_protection_device_type(uow, template.device_type_ref)
+            if template.device_type_ref
+            else None
+        )
+        snapshot_id = case.network_snapshot_id
+        template_ref = protection_config.template_ref
+        template_fingerprint = protection_config.template_fingerprint
+        library_manifest_ref = protection_config.library_manifest_ref
+        overrides = protection_config.overrides
+
+    # Prad zwarciowy Ik'' interpretowany przez ocene: pierwszy (deterministycznie
+    # posortowany po fault_node_id) wpis biegu zrodlowego z policzonym Ik'' —
+    # ta sama regula wyboru co (usuniety) `ProtectionAnalysisService._get_sc_result`.
+    sc_results = list((sc_run.raw_result or {}).get("results") or [])
+    fault_row = next(
+        (
+            item
+            for item in sorted(sc_results, key=lambda row: str(row.get("fault_node_id") or ""))
+            if item.get("ikss_a") is not None
+        ),
+        None,
+    )
+    if fault_row is None:
+        raise ValueError(
+            f"Bieg zwarciowy '{sc_run_id}' nie ma zadnego wyniku z pradem zwarciowym "
+            "Ik'' — nie ma na czym oprzec oceny zabezpieczenia"
+        )
+    fault_node_id = str(fault_row.get("fault_node_id"))
+    ikss_a = float(fault_row.get("ikss_a"))
+    short_circuit_type = str(
+        fault_row.get("short_circuit_type")
+        or (sc_run.raw_result or {}).get("short_circuit_type")
+        or "3F"
+    )
+
+    device = build_device_from_template(
+        device_id=f"device_{fault_node_id}",
+        protected_element_ref=fault_node_id,
+        template=template,
+        curve=curve,
+        device_type=device_type,
+        overrides=overrides,
+    )
+    fault = build_fault_from_sc_result(
+        fault_node_id=fault_node_id,
+        ikss_a=ikss_a,
+        short_circuit_type=short_circuit_type,
+    )
+    evaluation_input = ProtectionEvaluationInput(
+        run_id=str(run.id),
+        sc_run_id=str(sc_run.id),
+        protection_case_id=run.case_id,
+        template_ref=template_ref,
+        template_fingerprint=template_fingerprint,
+        library_manifest_ref=library_manifest_ref,
+        devices=(device,),
+        faults=(fault,),
+        snapshot_id=snapshot_id,
+        overrides=overrides,
+    )
+    result, trace = ProtectionEvaluationEngine().evaluate(evaluation_input)
+
+    run.raw_result = {
+        "analysis_type": "protection",
+        "sc_run_id": str(sc_run.id),
+        "protection_result": result.to_dict(),
+        "protection_trace": trace.to_dict(),
+    }
+    run.white_box_trace = [step.to_dict() for step in trace.steps]
+    run.power_flow_trace = None
+
+
 def _execute_short_circuit(run: CanonicalRun) -> None:
     enm = EnergyNetworkModel.model_validate(run.snapshot)
     graph = map_enm_to_network_graph(enm)
@@ -1645,6 +1867,37 @@ def _run_oltc_study(
     return None
 
 
+def _uow_factory_biezacy() -> Callable[[], Any] | None:
+    """Fabryka `UnitOfWork` dla odczytow spoza granicy API (katalog, przypadek).
+
+    JEDNO miejsce budowy silnika/sesji z `DATABASE_URL` — reuzywane przez
+    `_maybe_load_audit2_extensions` i `_execute_protection`, zamiast dwoch
+    niezaleznych kopii tej samej sekwencji import/silnik/sesja (KLASA, NIE
+    INSTANCJA). `None`, gdy warstwa persystencji jest niedostepna (import) albo
+    silnik nie da sie zbudowac — co znaczy brak decyduje wolajacy (audit2:
+    cicho pomin rozszerzenie; protection: jawny blad, bo bez przypadku nie ma
+    configu zabezpieczen do odczytania).
+    """
+    try:
+        from infrastructure.persistence.db import (
+            create_engine_from_url,
+            create_session_factory,
+        )
+        from infrastructure.persistence.unit_of_work import build_uow_factory
+    except ImportError:
+        return None
+
+    import os
+
+    db_url = os.getenv("DATABASE_URL", "sqlite+pysqlite:///./mv_design_pro.db")
+    try:
+        engine = create_engine_from_url(db_url)
+        session_factory = create_session_factory(engine)
+        return build_uow_factory(session_factory)
+    except Exception:
+        return None
+
+
 def _maybe_load_audit2_extensions(
     *, project_id_str: str | None, station_id: str | None
 ) -> dict[str, object] | None:
@@ -1662,23 +1915,12 @@ def _maybe_load_audit2_extensions(
         return None
 
     try:
-        from infrastructure.persistence.db import (
-            create_engine_from_url,
-            create_session_factory,
-        )
         from infrastructure.persistence.models import StationAudit2ConfigORM
-        from infrastructure.persistence.unit_of_work import build_uow_factory
     except ImportError:
         return None
 
-    import os
-
-    db_url = os.getenv("DATABASE_URL", "sqlite+pysqlite:///./mv_design_pro.db")
-    try:
-        engine = create_engine_from_url(db_url)
-        session_factory = create_session_factory(engine)
-        uow_factory = build_uow_factory(session_factory)
-    except Exception:
+    uow_factory = _uow_factory_biezacy()
+    if uow_factory is None:
         return None
 
     with uow_factory() as uow:
@@ -3299,6 +3541,19 @@ def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
                         "proof_status": item.get("proof_status"),
                         "proof_ref": item.get("proof_ref"),
                         "dopuszczalnosc_raportowa": item.get("dopuszczalnosc_raportowa"),
+                        # CV-3.3-B: pelny bilans (juz policzony przez
+                        # `_sc_pelny_bilans` w `build_short_circuit_results`, ale
+                        # dotad NIE kopiowany do element_results.values) —
+                        # potrzebny porownaniu ogolnemu R1 (Zth/X-R/I2t) bez
+                        # drugiego parsowania raw_result. Zero nowej fizyki —
+                        # te same wartosci, ktore juz nosi wiersz White Box.
+                        "rk_ohm": item.get("rk_ohm"),
+                        "xk_ohm": item.get("xk_ohm"),
+                        "zk_ohm": item.get("zk_ohm"),
+                        "rx_ratio": item.get("rx_ratio"),
+                        "xr_ratio": item.get("xr_ratio"),
+                        "tk_s": item.get("tk_s"),
+                        "i2t_ka2s": item.get("i2t_ka2s"),
                     },
                     "proof_ref": item.get("proof_ref"),
                     "proof_status": item.get("proof_status"),
@@ -3428,6 +3683,13 @@ def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
         element_results.extend(_source_rows)
         global_results = {
             **(result_v1.get("summary", {}) or {}),
+            # CV-3.3-B: `PowerFlowResultV1.converged` jest polem TOP-LEVEL (poza
+            # `summary`) — spread powyzej go nie niosl, wiec projekcja ResultSetV1
+            # dla PF nigdy nie mowila, czy rozplyw zbiegl (dziura wykryta przy
+            # przepinaniu porownan PF na R1: bez tego pola porownanie nie ma jak
+            # ocenic reguly „zmiana zbieznosci" bez wlasnego, drugiego parsowania
+            # raw_result). Zero nowej fizyki — pole juz policzone przez solver.
+            "converged": result_v1.get("converged"),
             "analysis_type": "load_flow",
             "solver_method": raw_result.get("solver_method"),
             "proof_ref": raw_result.get("proof_ref"),
@@ -3508,6 +3770,27 @@ def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
             "analysis_type": "source_compliance",
             "proof_status": (run.raw_result or {}).get("proof_status"),
             "reporting_status": (run.raw_result or {}).get("reporting_status"),
+        }
+    elif run.analysis_type == "protection_sn":
+        protection_raw = (run.raw_result or {}).get("protection_result") or {}
+        for evaluation in protection_raw.get("evaluations", []):
+            element_results.append(
+                {
+                    "element_ref": evaluation.get("protected_element_ref"),
+                    "element_type": "ProtectionDevice",
+                    "solver_ref": evaluation.get("fault_target_id"),
+                    "values": evaluation,
+                }
+            )
+        element_results.sort(key=lambda row: str(row.get("element_ref") or ""))
+        summary = protection_raw.get("summary") or {}
+        global_results = {
+            "count": len(element_results),
+            "analysis_type": "protection",
+            "sc_run_id": (run.raw_result or {}).get("sc_run_id"),
+            "template_ref": protection_raw.get("template_ref"),
+            "template_fingerprint": protection_raw.get("template_fingerprint"),
+            **summary,
         }
 
     signature_payload = json.dumps(

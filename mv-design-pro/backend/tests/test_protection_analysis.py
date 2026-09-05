@@ -1665,8 +1665,9 @@ class TestOverridesAffectRunResult:
     """K5-B (H-2): nadpisana nastawa z `ProtectionConfig.overrides` REALNIE
     zmienia wynik biegu analizy zabezpieczeń.
 
-    Konsument overrides przy wykonaniu biegu:
-    `ProtectionAnalysisService._build_evaluation_input` →
+    Konsument overrides przy wykonaniu biegu (CV-3.3-B: tor kanoniczny,
+    dawniej `ProtectionAnalysisService._build_evaluation_input`):
+    `enm.canonical_analysis._execute_protection` →
     `build_device_from_template(..., overrides=protection_config.overrides)` →
     `_resolve_effective_settings` (override > default szablonu > min pola).
     Ten test ćwiczy dokładnie tę ścieżkę: ten sam szablon i ten sam prąd

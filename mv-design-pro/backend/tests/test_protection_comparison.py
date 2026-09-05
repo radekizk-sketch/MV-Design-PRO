@@ -522,7 +522,15 @@ class TestComparisonLogic:
 class TestMatchEvaluationsElementOnlyOnOneSide:
     """FAB-E (E1): element (protected_element_ref, fault_target_id) obecny
     tylko w run A LUB run B -> i_fault_a_a/i_fault_a_b/delta_i_fault_a None,
-    nigdy fabrykowane 0.0 A (wygladaloby jak realny zanik pradu zwarciowego)."""
+    nigdy fabrykowane 0.0 A (wygladaloby jak realny zanik pradu zwarciowego).
+
+    CV-3.3-B: `_match_evaluations` czyta odtąd listę `dict` — kształt
+    `ResultSetV1.element_results[].values` dla `element_type="ProtectionDevice"`
+    (`enm/canonical_analysis.py::build_execution_result_set`, gałąź
+    `protection_sn`: `values=evaluation` z zapisanego `protection_result`, czyli
+    dokładnie `ProtectionEvaluation.to_dict()`), nie `ProtectionEvaluation`
+    jako obiekt (B1: serwis czyta wyłącznie `ResultSetV1`, zero własnego
+    parsowania domenowych dataclassów)."""
 
     @staticmethod
     def _service():
@@ -541,7 +549,7 @@ class TestMatchEvaluationsElementOnlyOnOneSide:
             t_trip_s=0.5,
             trip_state=TripState.TRIPS,
         )
-        rows, matched_count = service._match_evaluations((eval_only_a,), ())
+        rows, matched_count = service._match_evaluations([eval_only_a.to_dict()], [])
 
         assert matched_count == 0
         row = rows[0]
@@ -560,7 +568,7 @@ class TestMatchEvaluationsElementOnlyOnOneSide:
             t_trip_s=0.4,
             trip_state=TripState.TRIPS,
         )
-        rows, matched_count = service._match_evaluations((), (eval_only_b,))
+        rows, matched_count = service._match_evaluations([], [eval_only_b.to_dict()])
 
         assert matched_count == 0
         row = rows[0]
@@ -589,7 +597,7 @@ class TestMatchEvaluationsElementOnlyOnOneSide:
             t_trip_s=0.48,
             trip_state=TripState.TRIPS,
         )
-        rows, matched_count = service._match_evaluations((eval_a,), (eval_b,))
+        rows, matched_count = service._match_evaluations([eval_a.to_dict()], [eval_b.to_dict()])
 
         assert matched_count == 1
         row = rows[0]

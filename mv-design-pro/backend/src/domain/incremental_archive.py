@@ -456,11 +456,10 @@ def _empty_section_data(section_name: str) -> dict[str, Any]:
             "settings": None,
         },
         "runs": {
-            "analysis_runs": [],
+            "canonical_runs": [],
             "analysis_runs_index": [],
-            "study_runs": [],
         },
-        "results": {"study_results": []},
+        "results": {},
         "proofs": {
             "design_specs": [],
             "design_proposals": [],

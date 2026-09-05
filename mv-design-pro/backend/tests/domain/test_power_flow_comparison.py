@@ -9,7 +9,6 @@ Tests for:
 """
 
 from datetime import UTC, datetime
-from uuid import uuid4
 
 import pytest
 from application.power_flow_comparison import PowerFlowComparisonService
@@ -20,9 +19,7 @@ from domain.power_flow_comparison import (
     VOLTAGE_DELTA_THRESHOLD_PU,
     PowerFlowBranchDiffRow,
     PowerFlowBusDiffRow,
-    PowerFlowComparisonError,
     PowerFlowComparisonResult,
-    PowerFlowComparisonStatus,
     PowerFlowComparisonSummary,
     PowerFlowComparisonTrace,
     PowerFlowComparisonTraceStep,
@@ -31,7 +28,6 @@ from domain.power_flow_comparison import (
     PowerFlowRankingIssue,
     compute_pf_comparison_input_hash,
     get_ranking_thresholds,
-    new_power_flow_comparison,
     procent_roznicy,
 )
 
@@ -258,8 +254,8 @@ class TestPowerFlowComparisonTrace:
             comparison_id="trace-test",
             run_a_id="run-a",
             run_b_id="run-b",
-            snapshot_id_a="snap-a",
-            snapshot_id_b="snap-b",
+            snapshot_hash_a="snap-a",
+            snapshot_hash_b="snap-b",
             input_hash_a="hash-a",
             input_hash_b="hash-b",
             solver_version="1.0.0",
@@ -358,33 +354,12 @@ class TestThresholds:
         assert "top_n_for_ranking" in thresholds
 
 
-class TestNewPowerFlowComparison:
-    """Tests for factory function."""
-
-    def test_creates_with_created_status(self):
-        """Factory must create comparison in CREATED status."""
-        from uuid import uuid4
-
-        comparison = new_power_flow_comparison(
-            project_id=uuid4(),
-            run_a_id="run-a",
-            run_b_id="run-b",
-        )
-
-        assert comparison.status == PowerFlowComparisonStatus.CREATED
-
-    def test_computes_input_hash(self):
-        """Factory must compute input hash."""
-        from uuid import uuid4
-
-        comparison = new_power_flow_comparison(
-            project_id=uuid4(),
-            run_a_id="run-a",
-            run_b_id="run-b",
-        )
-
-        expected_hash = compute_pf_comparison_input_hash("run-a", "run-b")
-        assert comparison.input_hash == expected_hash
+# CV-3.3-B: `TestNewPowerFlowComparison` usunięta razem z fabryką
+# `new_power_flow_comparison`/`PowerFlowComparisonStatus` — porównanie jest
+# odtąd BEZSTANOWE (zero bytu trwałości R3 do utworzenia w statusie CREATED),
+# patrz `domain/power_flow_comparison.py` nagłówek sekcji „HELPER FUNCTIONS".
+# `compute_pf_comparison_input_hash` pozostaje pokryty przez
+# `TestComputePfComparisonInputHash` powyżej.
 
 
 class TestDeterminismContract:
@@ -565,37 +540,47 @@ class TestRoznicaWzglednaL13:
         assert "delta_p_from_percent" not in row.to_dict()
 
     def test_serwis_liczy_procenty_dla_szyn_galezi_i_podsumowania(self):
-        """Ścieżka produkcyjna: te same metody, które woła `compare()`."""
+        """Ścieżka produkcyjna: te same metody, które woła `compare()`.
+
+        CV-3.3-B: wejście to `dict[element_ref, values]` — kształt
+        `ResultSetV1.element_results` po indeksacji `_values_by_ref`
+        (`application/power_flow_comparison/service.py`), nie surowy payload
+        R2/R3. Klucz napięcia to `u_pu` (zgodny z `build_bus_results` w
+        `enm/canonical_analysis.py`), nie `v_pu` sprzed przepięcia na R1.
+        """
         service = PowerFlowComparisonService(lambda: None)
 
-        buses_a = [
-            {
-                "bus_id": "BUS_1",
-                "v_pu": 1.0,
+        buses_a = {
+            "BUS_1": {
+                "u_pu": 1.0,
                 "angle_deg": 2.0,
                 "p_injected_mw": 4.0,
                 "q_injected_mvar": 0.0,
             }
-        ]
-        buses_b = [
-            {
-                "bus_id": "BUS_1",
-                "v_pu": 0.9,
+        }
+        buses_b = {
+            "BUS_1": {
+                "u_pu": 0.9,
                 "angle_deg": 1.0,
                 "p_injected_mw": 5.0,
                 "q_injected_mvar": 1.0,
             }
-        ]
+        }
         bus_diffs = service._compute_bus_diffs(buses_a, buses_b)
         assert bus_diffs[0].delta_v_percent == pytest.approx(-10.0)
         assert bus_diffs[0].delta_angle_percent == pytest.approx(-50.0)
-        assert bus_diffs[0].delta_p_percent == pytest.approx(25.0)
-        # q_a = 0 → różnica względna nie istnieje.
+        # p_injected_mw/q_injected_mvar PER SZYNA są 0.0 stałe (dług
+        # architektoniczny udokumentowany w serwisie — FROZEN
+        # `PowerFlowResultV1.bus_results` nie niesie mocy wstrzykniętej per
+        # węzeł), więc delta_p/delta_q liczone są od 0.0, nie od pól
+        # `p_injected_mw`/`q_injected_mvar` powyżej (te pola są tu ignorowane
+        # przez `_compute_bus_diffs` — pozostawione w fixture, by pokazać, że
+        # NIE wpływają na wynik, nie po to, by być odczytane).
+        assert bus_diffs[0].delta_p_percent is None
         assert bus_diffs[0].delta_q_percent is None
 
-        branches_a = [
-            {
-                "branch_id": "BR_1",
+        branches_a = {
+            "BR_1": {
                 "p_from_mw": 2.0,
                 "q_from_mvar": 1.0,
                 "p_to_mw": 2.0,
@@ -603,10 +588,9 @@ class TestRoznicaWzglednaL13:
                 "losses_p_mw": 0.2,
                 "losses_q_mvar": 0.1,
             }
-        ]
-        branches_b = [
-            {
-                "branch_id": "BR_1",
+        }
+        branches_b = {
+            "BR_1": {
                 "p_from_mw": 3.0,
                 "q_from_mvar": 1.5,
                 "p_to_mw": 1.0,
@@ -614,7 +598,7 @@ class TestRoznicaWzglednaL13:
                 "losses_p_mw": 0.3,
                 "losses_q_mvar": 0.2,
             }
-        ]
+        }
         branch_diffs = service._compute_branch_diffs(branches_a, branches_b)
         assert branch_diffs[0].delta_p_from_percent == pytest.approx(50.0)
         assert branch_diffs[0].delta_q_from_percent == pytest.approx(50.0)
@@ -662,11 +646,11 @@ class TestBusOrBranchOnlyOnOneSideIsNoneNotZero:
 
     def test_bus_only_in_run_a_gives_none_voltage_and_angle_deltas(self):
         service = self._service()
-        buses_a = [
-            {"bus_id": "BUS_ONLY_A", "v_pu": 1.0, "angle_deg": 2.0},
-            {"bus_id": "BUS_BOTH", "v_pu": 1.0, "angle_deg": 0.0},
-        ]
-        buses_b = [{"bus_id": "BUS_BOTH", "v_pu": 0.99, "angle_deg": 0.1}]
+        buses_a = {
+            "BUS_ONLY_A": {"u_pu": 1.0, "angle_deg": 2.0},
+            "BUS_BOTH": {"u_pu": 1.0, "angle_deg": 0.0},
+        }
+        buses_b = {"BUS_BOTH": {"u_pu": 0.99, "angle_deg": 0.1}}
 
         bus_diffs = service._compute_bus_diffs(buses_a, buses_b)
         only_a = next(b for b in bus_diffs if b.bus_id == "BUS_ONLY_A")
@@ -682,21 +666,18 @@ class TestBusOrBranchOnlyOnOneSideIsNoneNotZero:
 
     def test_branch_only_in_run_b_gives_none_power_deltas(self):
         service = self._service()
-        branches_a = [
-            {
-                "branch_id": "BR_BOTH",
-                "p_from_mw": 1.0,
-                "q_from_mvar": 0.0,
-                "p_to_mw": 1.0,
-                "q_to_mvar": 0.0,
-                "losses_p_mw": 0.1,
-                "losses_q_mvar": 0.0,
-            }
-        ]
-        branches_b = [
-            branches_a[0],
-            {
-                "branch_id": "BR_ONLY_B",
+        branch_both = {
+            "p_from_mw": 1.0,
+            "q_from_mvar": 0.0,
+            "p_to_mw": 1.0,
+            "q_to_mvar": 0.0,
+            "losses_p_mw": 0.1,
+            "losses_q_mvar": 0.0,
+        }
+        branches_a = {"BR_BOTH": branch_both}
+        branches_b = {
+            "BR_BOTH": branch_both,
+            "BR_ONLY_B": {
                 "p_from_mw": 2.0,
                 "q_from_mvar": 0.5,
                 "p_to_mw": 1.8,
@@ -704,7 +685,7 @@ class TestBusOrBranchOnlyOnOneSideIsNoneNotZero:
                 "losses_p_mw": 0.2,
                 "losses_q_mvar": 0.1,
             },
-        ]
+        }
 
         branch_diffs = service._compute_branch_diffs(branches_a, branches_b)
         only_b = next(b for b in branch_diffs if b.branch_id == "BR_ONLY_B")
@@ -718,8 +699,8 @@ class TestBusOrBranchOnlyOnOneSideIsNoneNotZero:
     def test_ranking_skips_buses_with_none_delta_without_crashing(self):
         """FAB-E: ranking (Rule 2/3) MUSI pominac szyny bez delty, nie abs(None)."""
         service = self._service()
-        buses_a = [{"bus_id": "BUS_ONLY_A", "v_pu": 1.0, "angle_deg": 5.0}]
-        buses_b: list[dict] = []
+        buses_a = {"BUS_ONLY_A": {"u_pu": 1.0, "angle_deg": 5.0}}
+        buses_b: dict[str, dict] = {}
         bus_diffs = service._compute_bus_diffs(buses_a, buses_b)
         assert bus_diffs[0].delta_v_pu is None
 
@@ -741,8 +722,8 @@ class TestBusOrBranchOnlyOnOneSideIsNoneNotZero:
         """FAB-E: zero wspolnych szyn -> max_delta_v_pu/angle_deg None, nie 0.0
         (co wygladaloby jak "brak zmian napiecia w calej sieci")."""
         service = self._service()
-        buses_a = [{"bus_id": "ONLY_A", "v_pu": 1.0, "angle_deg": 0.0}]
-        buses_b = [{"bus_id": "ONLY_B", "v_pu": 1.0, "angle_deg": 0.0}]
+        buses_a = {"ONLY_A": {"u_pu": 1.0, "angle_deg": 0.0}}
+        buses_b = {"ONLY_B": {"u_pu": 1.0, "angle_deg": 0.0}}
         bus_diffs = service._compute_bus_diffs(buses_a, buses_b)
         assert all(b.delta_v_pu is None for b in bus_diffs)
 
@@ -762,11 +743,11 @@ class TestBusOrBranchOnlyOnOneSideIsNoneNotZero:
         """Mieszanka: jedna szyna bez pary, jedna wspolna -> max liczony z RESZTY,
         nie None (to nie jest przypadek "zero danych")."""
         service = self._service()
-        buses_a = [
-            {"bus_id": "ONLY_A", "v_pu": 1.0, "angle_deg": 0.0},
-            {"bus_id": "BOTH", "v_pu": 1.0, "angle_deg": 0.0},
-        ]
-        buses_b = [{"bus_id": "BOTH", "v_pu": 0.95, "angle_deg": 2.0}]
+        buses_a = {
+            "ONLY_A": {"u_pu": 1.0, "angle_deg": 0.0},
+            "BOTH": {"u_pu": 1.0, "angle_deg": 0.0},
+        }
+        buses_b = {"BOTH": {"u_pu": 0.95, "angle_deg": 2.0}}
         bus_diffs = service._compute_bus_diffs(buses_a, buses_b)
 
         summary = service._build_summary(
@@ -782,20 +763,16 @@ class TestBusOrBranchOnlyOnOneSideIsNoneNotZero:
         assert summary.max_delta_angle_deg == pytest.approx(2.0)
 
 
-class TestMissingBaseMvaRaisesNotFabricatedDefault:
-    """FAB-E (E1): base_mva SKALUJE total_losses/slack_p/slack_q — brak tego
-    pola to uszkodzony zapis biegu; milczace 100.0 dawaloby fikcyjnie
-    przeskalowane MW/Mvar (gorsze niz odmowa)."""
-
-    def test_missing_base_mva_raises_power_flow_comparison_error(self):
-        service = PowerFlowComparisonService(lambda: None)
-        payload = {
-            "slack_node_id": "BUS_SLACK",
-            "node_u_mag_pu": {},
-            "node_angle_rad": {},
-            "branch_s_from_mva": {},
-            "branch_s_to_mva": {},
-            # "base_mva" celowo pominiete.
-        }
-        with pytest.raises(PowerFlowComparisonError, match="base_mva"):
-            service._build_pf_result_from_payload(payload, uuid4(), uow=None)
+# CV-3.3-B: `TestMissingBaseMvaRaisesNotFabricatedDefault` usunięta —
+# testowała `_build_pf_result_from_payload`, metodę parsującą surowy payload
+# R2/R3 z zapisanego biegu (i broniącą się przed brakiem `base_mva` w TYM
+# payloadzie). B1 zabrania takiego parsowania: serwis czyta odtąd WYŁĄCZNIE
+# `ResultSetV1.element_results[].values` przez `_values_by_ref` — gotowe,
+# już przeliczone wartości fizyczne (u_pu, p_from_mw, ...), nie surowy
+# słownik solvera wymagający skalowania przez `base_mva`. Metoda, którą ten
+# test wołał, nie istnieje w przepisanym serwisie
+# (`application/power_flow_comparison/service.py`) — nie ma czego bronić na
+# TYM poziomie. Ogólna zasada „brak pola -> None, nigdy fabrykowany
+# default" dla NOWEGO wejścia (dict-by-ref z `ResultSetV1`) jest pokryta
+# przez `TestBusOrBranchOnlyOnOneSideIsNoneNotZero` powyżej (te same metody
+# `_compute_bus_diffs`/`_compute_branch_diffs`, ten sam serwis).

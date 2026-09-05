@@ -978,20 +978,40 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `sc_binding_meta.py` + `*_to_resultset_v1.py` SC/Protection ZOSTAJA
     # (zamrozone przez `resultset_v1_schema_guard.PROTECTED_FILES`, B-01);
     # dlug/wykluczenia bez zmian.
-    assert "Pol kontraktow wejsciowych: 3608." in wyjscie, wyjscie
+    # 3599 pol / 576 plikow / application 320 / dlug 63 plikow suma 312 /
+    # wykluczenia 17 plikow suma 49 (CV-3.3-B, 2026-09-05): porownania A/B
+    # (rozplyw/zabezpieczenia/ogolne) przepiete na R1, R2 `AnalysisRunService`
+    # + R3 `study_runs`/`study_results` skasowane procedura. -9 pol kontraktu:
+    # spadek pomierzony (3608 -> 3599), przypisany klasom trwalosci R2/R3
+    # skasowanym razem z torem (m.in. `PowerFlowComparison`/`ProtectionComparison`
+    # — byty R3 z polami liczbowymi delt/statystyk, `ProtectionAnalysisRun` — R2),
+    # bez recznego wypisania KAZDEGO pola z osobna (deklaracja bez testu tego
+    # rozbicia bylaby falszywa pewnoscia — sam SPADEK jest zmierzony ponizej).
+    # -6 plikow w zakresie skanu: `application/analysis_run/
+    # service.py`, `application/protection_analysis/service.py` (oba skasowane
+    # — martwy wpis zapadki zdjety: -1 plik/-27 sum i -1 plik/-1 sum), oraz
+    # `application/active_case/**`+`application/lifecycle/**` (skasowane, poza
+    # ZASTANE_ZASTEPNIKI — nie mialy wpisu). `application/power_flow_comparison/
+    # service.py` PRZEPISANY na `ResultSetV1` (B1) — 4 pozycje dlugu zniklo razem
+    # ze starym ksztaltem odczytu (`bus_a/bus_b.p_injected_mw/q_injected_mvar`,
+    # -4 sum) i 1 pozycja wykluczenia (`result_summary.iterations`, -1 sum) —
+    # zdjete z zapadki/wykluczen jako Dlug/Wykluczenie ZMALALO; pozostale 4
+    # pozycje tego pliku (`summary_a/b.slack_p_mw`/`summary_a/b.total_losses_p_mw`)
+    # ZOSTAJA — te same nazwy pol i te same liczby odczytow w przepisanym kodzie.
+    assert "Pol kontraktow wejsciowych: 3599." in wyjscie, wyjscie
     assert (
-        "Przeskanowano 582 plikow w zakresie: network_model, solver_input, enm, "
+        "Przeskanowano 576 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
-    assert "Zapadka dlugu (fizyczne): 65 plikow, suma 345." in wyjscie, wyjscie
-    assert "Wykluczenia skanera (niefizyczne): 18 plikow, suma 50." in wyjscie, wyjscie
+    assert "Zapadka dlugu (fizyczne): 63 plikow, suma 312." in wyjscie, wyjscie
+    assert "Wykluczenia skanera (niefizyczne): 17 plikow, suma 49." in wyjscie, wyjscie
     per_korzen = [
         "  network_model: pliki_skanowane=145, dlug=14 plikow/suma 77, "
         "wykluczenia=4 plikow/suma 7",
         "  solver_input: pliki_skanowane=10, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
         "  enm: pliki_skanowane=36, dlug=7 plikow/suma 84, wykluczenia=0 plikow/suma 0",
-        "  application: pliki_skanowane=326, dlug=39 plikow/suma 170, "
-        "wykluczenia=8 plikow/suma 20",
+        "  application: pliki_skanowane=320, dlug=37 plikow/suma 137, "
+        "wykluczenia=7 plikow/suma 19",
         "  api: pliki_skanowane=65, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 23",
     ]
     for linia in per_korzen:

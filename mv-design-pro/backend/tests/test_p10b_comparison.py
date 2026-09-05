@@ -12,9 +12,11 @@ TESTS:
 """
 
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
+from domain.result_contract_v1 import ElementResultV1
 from domain.results import (
     AnalysisTypeMismatchError,
     BusVoltageComparison,
@@ -28,6 +30,30 @@ from domain.results import (
     RunResultState,
     ShortCircuitComparison,
 )
+
+
+def _result_set(
+    element_rows: list[tuple[str, str, dict]],
+    global_results: dict | None = None,
+) -> SimpleNamespace:
+    """Namiastka `ResultSetV1` do testów jednostkowych `ComparisonService`.
+
+    CV-3.3-B: serwis czyta WYŁĄCZNIE `.element_results` (element_ref/
+    element_type/values) i `.global_results` przez
+    `ComparisonService._values_by_ref` (`application/comparison/service.py`)
+    — ten sam kształt bez pełnej konstrukcji `ResultSetV1` (FROZEN kontrakt z
+    wieloma innymi wymaganymi polami niezwiązanymi z arytmetyką porównania,
+    np. `contract_version`/`deterministic_signature`/`overlay_payload`).
+    `ElementResultV1` jest PRAWDZIWYM kontraktowym typem (nie fikcja) —
+    tylko kontener wokół niego jest lekką namiastką.
+    """
+    return SimpleNamespace(
+        element_results=[
+            ElementResultV1(element_ref=ref, element_type=element_type, values=values)
+            for ref, element_type, values in element_rows
+        ],
+        global_results=global_results or {},
+    )
 
 
 class TestRunResultState:
@@ -205,33 +231,37 @@ class TestShortCircuitFullBalanceDeltas:
 
         return ComparisonService(uow_factory=lambda: None)
 
-    @staticmethod
-    def _results(payload):
-        return [{"result_type": "short_circuit", "payload": payload}]
-
     def test_full_payloads_produce_xr_and_i2t_deltas(self):
         service = self._service()
-        payload_a = {
-            "ikss_a": 10000.0,
+        # CV-3.3-B: `_compare_short_circuit` czyta odtąd `ResultSetV1` (wartości
+        # PO projekcji `enm/canonical_analysis.py::_sc_pelny_bilans` — ikss/ip/ith
+        # w kA, rk_ohm/xk_ohm zamiast zkk_ohm{re,im}, xr_ratio JUŻ odwrócone
+        # z rx_ratio solvera (1/(R/X) — patrz komentarz przy tej funkcji),
+        # i2t_ka2s JUŻ policzone z ith_a/tk_s), nie surowy payload R2/R3.
+        values_a = {
+            "ikss_ka": 10.0,
             "sk_mva": 100.0,
-            "ip_a": 25000.0,
-            "ith_a": 11000.0,
-            "tk_s": 1.0,
-            "rx_ratio": 0.25,
-            "zkk_ohm": {"re": 0.3, "im": 0.4},
+            "ip_ka": 25.0,
+            "ith_ka": 11.0,
+            "rk_ohm": 0.3,
+            "xk_ohm": 0.4,
+            "xr_ratio": 4.0,
+            "i2t_ka2s": 121.0,
         }
-        payload_b = {
-            "ikss_a": 12000.0,
+        values_b = {
+            "ikss_ka": 12.0,
             "sk_mva": 120.0,
-            "ip_a": 30000.0,
-            "ith_a": 22000.0,
-            "tk_s": 1.0,
-            "rx_ratio": 0.5,
-            "zkk_ohm": {"re": 0.6, "im": 0.8},
+            "ip_ka": 30.0,
+            "ith_ka": 22.0,
+            "rk_ohm": 0.6,
+            "xk_ohm": 0.8,
+            "xr_ratio": 2.0,
+            "i2t_ka2s": 484.0,
         }
 
         comp = service._compare_short_circuit(
-            self._results(payload_a), self._results(payload_b), uuid4(), uuid4()
+            _result_set([("BUS_1", "Bus", values_a)]),
+            _result_set([("BUS_1", "Bus", values_b)]),
         )
 
         assert comp.xr_ratio_delta is not None
@@ -247,19 +277,21 @@ class TestShortCircuitFullBalanceDeltas:
 
     def test_older_payload_without_sources_gives_none(self):
         service = self._service()
-        older = {"ikss_a": 10000.0, "sk_mva": 100.0, "ip_a": 25000.0, "ith_a": 11000.0}
+        older = {"ikss_ka": 10.0, "sk_mva": 100.0, "ip_ka": 25.0, "ith_ka": 11.0}
         newer = {
-            "ikss_a": 12000.0,
+            "ikss_ka": 12.0,
             "sk_mva": 120.0,
-            "ip_a": 30000.0,
-            "ith_a": 22000.0,
-            "tk_s": 1.0,
-            "rx_ratio": 0.5,
-            "zkk_ohm": {"re": 0.6, "im": 0.8},
+            "ip_ka": 30.0,
+            "ith_ka": 22.0,
+            "rk_ohm": 0.6,
+            "xk_ohm": 0.8,
+            "xr_ratio": 2.0,
+            "i2t_ka2s": 484.0,
         }
 
         comp = service._compare_short_circuit(
-            self._results(older), self._results(newer), uuid4(), uuid4()
+            _result_set([("BUS_1", "Bus", older)]),
+            _result_set([("BUS_1", "Bus", newer)]),
         )
 
         # Uczciwy brak: jedna strona bez pól źródłowych → delta None.
@@ -271,10 +303,17 @@ class TestShortCircuitFullBalanceDeltas:
 
 
 class TestShortCircuitComparisonMissingCoreFields:
-    """FAB-E (E1): brak pola RDZENIA (ikss_a/sk_mva/zkk_ohm/ip_a/ith_a) w
-    KTORYMKOLWIEK payloadzie -> odpowiednia delta None, nigdy fabrykowana od
+    """FAB-E (E1): brak pola RDZENIA (ikss_ka/sk_mva/rk_ohm/xk_ohm/ip_ka/ith_ka)
+    w KTORYMKOLWIEK payloadzie -> odpowiednia delta None, nigdy fabrykowana od
     milczącego 0 (ShortCircuitResult FROZEN nie ma tu odpowiednika "naprawdę
-    zero" — patrz `network_model/solvers/short_circuit_iec60909.py`)."""
+    zero" — patrz `network_model/solvers/short_circuit_iec60909.py`).
+
+    CV-3.3-B — KLASA NIE INSTANCJA: stary kontrakt niósł Rk/Xk jako JEDNO pole
+    `zkk_ohm={re,im}`; `ResultSetV1` niesie je jako DWA niezależne klucze
+    (`rk_ohm`/`xk_ohm`, patrz `enm/canonical_analysis.py`) — jedna ablacja
+    „brak zkk_ohm" rozpada się na DWIE niezależne ablacje (brak SAMEGO rk_ohm
+    przy obecnym xk_ohm i odwrotnie), obie pokryte niżej zamiast schowane pod
+    jednym starym przypadkiem."""
 
     @staticmethod
     def _service():
@@ -282,35 +321,34 @@ class TestShortCircuitComparisonMissingCoreFields:
 
         return ComparisonService(uow_factory=lambda: None)
 
-    @staticmethod
-    def _results(payload):
-        return [{"result_type": "short_circuit", "payload": payload}]
-
     _KOMPLETNY = {
-        "ikss_a": 10000.0,
+        "ikss_ka": 10.0,
         "sk_mva": 100.0,
-        "ip_a": 25000.0,
-        "ith_a": 11000.0,
-        "zkk_ohm": {"re": 0.3, "im": 0.4},
+        "ip_ka": 25.0,
+        "ith_ka": 11.0,
+        "rk_ohm": 0.3,
+        "xk_ohm": 0.4,
     }
 
     @pytest.mark.parametrize(
         "brakujace_pole,nazwa_delty",
         [
-            ("ikss_a", "ikss_delta"),
+            ("ikss_ka", "ikss_delta"),
             ("sk_mva", "sk_delta"),
-            ("zkk_ohm", "zth_delta"),
-            ("ip_a", "ip_delta"),
-            ("ith_a", "ith_delta"),
+            ("rk_ohm", "zth_delta"),
+            ("xk_ohm", "zth_delta"),
+            ("ip_ka", "ip_delta"),
+            ("ith_ka", "ith_delta"),
         ],
     )
     def test_missing_field_on_either_side_gives_none_not_zero(self, brakujace_pole, nazwa_delty):
         service = self._service()
-        payload_b = dict(self._KOMPLETNY)
-        del payload_b[brakujace_pole]
+        values_b = dict(self._KOMPLETNY)
+        del values_b[brakujace_pole]
 
         comp = service._compare_short_circuit(
-            self._results(self._KOMPLETNY), self._results(payload_b), uuid4(), uuid4()
+            _result_set([("BUS_1", "Bus", self._KOMPLETNY)]),
+            _result_set([("BUS_1", "Bus", values_b)]),
         )
         assert getattr(comp, nazwa_delty) is None
         assert comp.to_dict()[nazwa_delty] is None
@@ -318,10 +356,11 @@ class TestShortCircuitComparisonMissingCoreFields:
     def test_complete_payloads_regression_all_deltas_present(self):
         """Regresja: komplet danych po obu stronach -> te same liczby co dziś."""
         service = self._service()
-        payload_b = {**self._KOMPLETNY, "ikss_a": 12000.0}
+        values_b = {**self._KOMPLETNY, "ikss_ka": 12.0}
 
         comp = service._compare_short_circuit(
-            self._results(self._KOMPLETNY), self._results(payload_b), uuid4(), uuid4()
+            _result_set([("BUS_1", "Bus", self._KOMPLETNY)]),
+            _result_set([("BUS_1", "Bus", values_b)]),
         )
         assert comp.ikss_delta is not None
         assert comp.ikss_delta.value_a == pytest.approx(10000.0)
@@ -343,20 +382,24 @@ class TestPowerFlowComparisonMissingFields:
 
         return ComparisonService(uow_factory=lambda: None)
 
-    @staticmethod
-    def _results(payload):
-        return [{"result_type": "power_flow", "payload": payload}]
-
     def test_missing_losses_total_pu_gives_none_not_zero(self):
         service = self._service()
-        payload_a = {
-            "losses_total_pu": {"re": 0.01, "im": 0.02},
-            "slack_power_pu": {"re": 1.0, "im": 0.5},
+        # CV-3.3-B: `_compare_power_flow` czyta odtąd `global_results` z
+        # `ResultSetV1` — spread `PowerFlowResultV1.summary` (FROZEN, klucze
+        # `total_losses_p_mw`/`total_losses_q_mvar`/`slack_p_mw`/`slack_q_mvar`
+        # w MW/Mvar wprost, nie zespolone `losses_total_pu`/`slack_power_pu`
+        # sprzed przepięcia na R1).
+        global_a = {
+            "total_losses_p_mw": 0.01,
+            "total_losses_q_mvar": 0.02,
+            "slack_p_mw": 1.0,
+            "slack_q_mvar": 0.5,
         }
-        payload_b = {"slack_power_pu": {"re": 1.05, "im": 0.55}}  # brak losses_total_pu
+        global_b = {"slack_p_mw": 1.05, "slack_q_mvar": 0.55}  # brak total_losses_*
 
         comp = service._compare_power_flow(
-            self._results(payload_a), self._results(payload_b), uuid4(), uuid4()
+            _result_set([], global_a),
+            _result_set([], global_b),
         )
         assert comp.total_losses_p_delta is None
         assert comp.total_losses_q_delta is None
@@ -366,14 +409,17 @@ class TestPowerFlowComparisonMissingFields:
 
     def test_missing_slack_power_pu_gives_none_not_zero(self):
         service = self._service()
-        payload_a = {
-            "losses_total_pu": {"re": 0.01, "im": 0.02},
-            "slack_power_pu": {"re": 1.0, "im": 0.5},
+        global_a = {
+            "total_losses_p_mw": 0.01,
+            "total_losses_q_mvar": 0.02,
+            "slack_p_mw": 1.0,
+            "slack_q_mvar": 0.5,
         }
-        payload_b = {"losses_total_pu": {"re": 0.012, "im": 0.025}}  # brak slack_power_pu
+        global_b = {"total_losses_p_mw": 0.012, "total_losses_q_mvar": 0.025}  # brak slack_*
 
         comp = service._compare_power_flow(
-            self._results(payload_a), self._results(payload_b), uuid4(), uuid4()
+            _result_set([], global_a),
+            _result_set([], global_b),
         )
         assert comp.slack_p_delta is None
         assert comp.slack_q_delta is None
@@ -381,17 +427,16 @@ class TestPowerFlowComparisonMissingFields:
 
     def test_node_present_only_on_one_side_gives_none_voltage_delta(self):
         service = self._service()
-        payload_a = {
-            "node_voltage_kv": {"bus-1": 20.0, "bus-2": 20.1},
-            "node_u_mag_pu": {"bus-1": 1.0, "bus-2": 1.005},
-        }
-        payload_b = {
-            "node_voltage_kv": {"bus-1": 19.8},
-            "node_u_mag_pu": {"bus-1": 0.99},
-        }  # brak bus-2
-
+        # Bus `values` w kształcie `build_bus_results` (`u_kv`/`u_pu`), nie
+        # słowniki-po-bus_id sprzed przepięcia na R1.
         comp = service._compare_power_flow(
-            self._results(payload_a), self._results(payload_b), uuid4(), uuid4()
+            _result_set(
+                [
+                    ("bus-1", "Bus", {"u_kv": 20.0, "u_pu": 1.0}),
+                    ("bus-2", "Bus", {"u_kv": 20.1, "u_pu": 1.005}),
+                ]
+            ),
+            _result_set([("bus-1", "Bus", {"u_kv": 19.8, "u_pu": 0.99})]),  # brak bus-2
         )
         by_bus = {nv.bus_id: nv for nv in comp.node_voltages}
         assert by_bus["bus-2"].u_kv_delta is None
@@ -401,13 +446,16 @@ class TestPowerFlowComparisonMissingFields:
 
     def test_branch_present_only_on_one_side_gives_none_power_delta(self):
         service = self._service()
-        payload_a = {
-            "branch_s_from_mva": {"br-1": {"re": 1.0, "im": 0.2}, "br-2": {"re": 2.0, "im": 0.3}}
-        }
-        payload_b = {"branch_s_from_mva": {"br-1": {"re": 1.1, "im": 0.25}}}  # brak br-2
-
+        # Branch `values` w kształcie po aliasowaniu `p_from_mw`/`q_from_mvar`
+        # (`enm/canonical_analysis.py`), nie zespolone `branch_s_from_mva`.
         comp = service._compare_power_flow(
-            self._results(payload_a), self._results(payload_b), uuid4(), uuid4()
+            _result_set(
+                [
+                    ("br-1", "Branch", {"p_from_mw": 1.0, "q_from_mvar": 0.2}),
+                    ("br-2", "Branch", {"p_from_mw": 2.0, "q_from_mvar": 0.3}),
+                ]
+            ),
+            _result_set([("br-1", "Branch", {"p_from_mw": 1.1, "q_from_mvar": 0.25})]),  # brak br-2
         )
         by_branch = {bp.branch_id: bp for bp in comp.branch_powers}
         assert by_branch["br-2"].p_mw_delta is None
@@ -426,27 +474,26 @@ class TestProtectionComparisonMissingFields:
 
         return ComparisonService(uow_factory=lambda: None)
 
-    @staticmethod
-    def _results(payload):
-        return [{"result_type": "protection", "payload": payload}]
-
     def test_trips_without_t_trip_s_gives_none_not_zero(self):
         service = self._service()
-        payload_a = {
-            "evaluations": [
-                {"protected_element_ref": "f1", "trip_state": "TRIPS", "t_trip_s": 0.5}
-            ],
-            "summary": {"trips_count": 1, "no_trip_count": 0, "invalid_count": 0},
-        }
-        payload_b = {
-            "evaluations": [
-                {"protected_element_ref": "f1", "trip_state": "TRIPS"}  # brak t_trip_s
-            ],
-            "summary": {"trips_count": 1, "no_trip_count": 0, "invalid_count": 0},
-        }
+        # CV-3.3-B: `_compare_protection` czyta odtąd element_results typu
+        # "ProtectionDevice" (`element_ref` = `protected_element_ref`, `values`
+        # = `ProtectionEvaluation.to_dict()`, patrz
+        # `enm/canonical_analysis.py::build_execution_result_set`, gałąź
+        # `protection_sn`) i `global_results` = `ProtectionResultSummary`
+        # (te same klucze `trips_count`/`no_trip_count`/`invalid_count`), nie
+        # surowy payload `{"evaluations": [...], "summary": {...}}` R2/R3.
+        global_counts = {"trips_count": 1, "no_trip_count": 0, "invalid_count": 0}
 
         comp = service._compare_protection(
-            self._results(payload_a), self._results(payload_b), uuid4(), uuid4()
+            _result_set(
+                [("f1", "ProtectionDevice", {"trip_state": "TRIPS", "t_trip_s": 0.5})],
+                global_counts,
+            ),
+            _result_set(
+                [("f1", "ProtectionDevice", {"trip_state": "TRIPS"})],  # brak t_trip_s
+                global_counts,
+            ),
         )
         assert comp.evaluations[0].t_trip_delta is None
         # count-delty (summary kompletne po obu stronach) nadal licza sie normalnie.
@@ -454,14 +501,12 @@ class TestProtectionComparisonMissingFields:
 
     def test_missing_summary_gives_none_counts_not_zero(self):
         service = self._service()
-        payload_a = {
-            "evaluations": [],
-            "summary": {"trips_count": 2, "no_trip_count": 3, "invalid_count": 0},
-        }
-        payload_b = {"evaluations": []}  # brak "summary" w ogole
+        global_a = {"trips_count": 2, "no_trip_count": 3, "invalid_count": 0}
+        global_b: dict = {}  # brak "summary" w ogole -> global_results pusty
 
         comp = service._compare_protection(
-            self._results(payload_a), self._results(payload_b), uuid4(), uuid4()
+            _result_set([], global_a),
+            _result_set([], global_b),
         )
         assert comp.trip_count_delta is None
         assert comp.no_trip_count_delta is None
@@ -750,19 +795,37 @@ class TestComparisonApiResponseModelsAcceptMissingDeltas:
         from application.comparison.service import ComparisonService
 
         service = ComparisonService(uow_factory=lambda: None)
-        payload_a = {"ikss_a": 10000.0, "sk_mva": 100.0, "ip_a": 25000.0, "ith_a": 11000.0}
-        payload_b = {"sk_mva": 120.0, "ip_a": 30000.0, "ith_a": 22000.0}  # brak ikss_a
-        results_a = [{"result_type": "short_circuit", "payload": payload_a}]
-        results_b = [{"result_type": "short_circuit", "payload": payload_b}]
+        values_a = {"ikss_ka": 10.0, "sk_mva": 100.0, "ip_ka": 25.0, "ith_ka": 11.0}
+        values_b = {"sk_mva": 120.0, "ip_ka": 30.0, "ith_ka": 22.0}  # brak ikss_ka
         run_a_id, run_b_id = uuid4(), uuid4()
 
-        sc_comparison = service._compare_short_circuit(results_a, results_b, run_a_id, run_b_id)
+        sc_comparison = service._compare_short_circuit(
+            _result_set([("BUS_1", "Bus", values_a)]),
+            _result_set([("BUS_1", "Bus", values_b)]),
+        )
+        # CV-3.3-B: provenance_a/b — proweniencja OBU biegów R1 (B1) — pole
+        # WYMAGANE odtąd w `RunComparisonResponse` (nie samo `dict[str, Any]`
+        # bez kontraktu); ten sam kształt co `RunProvenance.to_dict()`
+        # (`analysis/comparison_diffs/diffs.py`), bo w produkcji TO wprost
+        # niesie ta funkcja — test nie fabrykuje własnego, innego kształtu.
+        proweniencja_a = {
+            "run_id": str(run_a_id),
+            "analysis_type": "short_circuit_sn",
+            "status": "FINISHED",
+            "snapshot_hash": "hash-a",
+            "input_hash": "input-hash-a",
+            "finished_at": None,
+            "envelope": None,
+        }
+        proweniencja_b = {**proweniencja_a, "run_id": str(run_b_id), "snapshot_hash": "hash-b"}
         full = RunComparisonResult(
             run_a_id=run_a_id,
             run_b_id=run_b_id,
             project_id=uuid4(),
             analysis_type="short_circuit",
             short_circuit=sc_comparison,
+            provenance_a=proweniencja_a,
+            provenance_b=proweniencja_b,
         )
 
         # To NIE moze podniesc pydantic ValidationError — to byla by regresja

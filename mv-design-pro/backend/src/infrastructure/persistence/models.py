@@ -589,43 +589,12 @@ class AnalysisRunIndexORM(Base):
     meta_json: Mapped[dict[str, Any] | None] = mapped_column(DeterministicJSON(), nullable=True)
 
 
-class StudyRunORM(Base):
-    """
-    Study Run ORM model — P10a immutable calculation execution.
-
-    P10a ADDITIONS:
-    - network_snapshot_id: BINDING reference to specific snapshot
-    - solver_version_hash: Ensures reproducibility
-    - result_state: VALID / OUTDATED validity tracking
-    """
-
-    __tablename__ = "study_runs"
-
-    id: Mapped[UUID] = mapped_column(GUID(), primary_key=True)
-    project_id: Mapped[UUID] = mapped_column(GUID(), ForeignKey("projects.id"), nullable=False)
-    case_id: Mapped[UUID] = mapped_column(GUID(), ForeignKey("study_cases.id"), nullable=False)
-    analysis_type: Mapped[str] = mapped_column(String(100), nullable=False)
-    input_hash: Mapped[str] = mapped_column(String(128), nullable=False)
-    # P10a: BINDING reference to specific network snapshot
-    network_snapshot_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    # P10a: Hash of solver version for reproducibility
-    solver_version_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    # P10a: Result validity state (VALID, OUTDATED)
-    result_state: Mapped[str] = mapped_column(String(20), nullable=False, default="VALID")
-    status: Mapped[str] = mapped_column(String(50), nullable=False)
-    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-
-
-class StudyResultORM(Base):
-    __tablename__ = "study_results"
-
-    id: Mapped[UUID] = mapped_column(GUID(), primary_key=True)
-    run_id: Mapped[UUID] = mapped_column(GUID(), ForeignKey("study_runs.id"), nullable=False)
-    project_id: Mapped[UUID] = mapped_column(GUID(), ForeignKey("projects.id"), nullable=False)
-    result_type: Mapped[str] = mapped_column(String(100), nullable=False)
-    result_jsonb: Mapped[dict[str, Any]] = mapped_column(DeterministicJSON(), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+# CV-3.3-B: `StudyRunORM` (`study_runs`, R3) i `StudyResultORM` (`study_results`,
+# R3) usunięte — zero konsumentów po przepięciu porównań (`comparison`,
+# `power_flow_comparison`, `protection_comparison`) i biegów zabezpieczeń
+# (`enm.canonical_analysis`, `analysis_type="protection_sn"`) na R1
+# (`canonical_runs`, `CanonicalRunORM`). Tabele same (bez ORM) usunięte w
+# `infrastructure/migrations/` — patrz wpis tam.
 
 
 class SldDiagramORM(Base):

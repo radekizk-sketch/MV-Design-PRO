@@ -22,6 +22,7 @@ from domain.results import (
     AnalysisTypeMismatchError,
     ProjectMismatchError,
     ResultNotFoundError,
+    RunNotFinishedError,
     RunNotFoundError,
 )
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -152,6 +153,20 @@ class ProtectionComparisonResponse(BaseModel):
     invalid_count_delta: NumericDeltaResponse | None = None
 
 
+class RunProvenanceResponse(BaseModel):
+    """Proweniencja jednego biegu R1 wewnątrz odpowiedzi porównania (B1, karta
+    CV-3.3-B): porównanie bez tego jest porównaniem bez dowodu CO było
+    porównywane. `envelope` bywa `None` dla biegów sprzed CV-2 (uczciwy brak)."""
+
+    run_id: str
+    analysis_type: str
+    status: str
+    snapshot_hash: str
+    input_hash: str
+    finished_at: str | None
+    envelope: dict[str, Any] | None
+
+
 class RunComparisonResponse(BaseModel):
     """
     Full run comparison response.
@@ -164,6 +179,8 @@ class RunComparisonResponse(BaseModel):
     project_id: str
     analysis_type: str
     compared_at: str
+    provenance_a: RunProvenanceResponse
+    provenance_b: RunProvenanceResponse
     short_circuit: ShortCircuitComparisonResponse | None = None
     power_flow: PowerFlowComparisonResponse | None = None
     protection: ProtectionComparisonResponse | None = None
@@ -225,13 +242,18 @@ def compare_runs(
         )
     except ProjectMismatchError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Runs należą do różnych projektów: {e.run_a_project} vs {e.run_b_project}",
         )
     except AnalysisTypeMismatchError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Runs mają różne typy analiz: {e.type_a} vs {e.type_b}",
+        )
+    except RunNotFinishedError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Run nie zakończony (status: {e.status}): {e.run_id}",
         )
     except ResultNotFoundError as e:
         raise HTTPException(

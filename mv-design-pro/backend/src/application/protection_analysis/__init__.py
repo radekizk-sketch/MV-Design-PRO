@@ -9,6 +9,12 @@ Vendor Extension (P15a-EXT-VENDORS):
 - Multi-manufacturer curve support
 - IEC-mapped and vendor-native curves
 - Full audit trail with manufacturer info
+
+CV-3.3-B: `ProtectionAnalysisService` (orkiestracja biegu na R3 `study_results`)
+usunięty — bieg zabezpieczeń jest odtąd `CanonicalRun` (R1, `analysis_type=
+"protection_sn"`, `enm.canonical_analysis._execute_protection`), reużywający
+TEN SAM silnik (`ProtectionEvaluationEngine`) i TEN SAM odczyt katalogu
+(`catalog_lookup`, wydzielony z usuniętej klasy serwisu).
 """
 
 from application.protection_analysis.engine import (
@@ -24,9 +30,6 @@ from application.protection_analysis.engine import (
     compute_margin_percent,
     list_supported_vendor_curves,
 )
-from application.protection_analysis.service import (
-    ProtectionAnalysisService,
-)
 
 __all__ = [
     # Engine
@@ -41,6 +44,4 @@ __all__ = [
     "compute_iec_inverse_time",
     "compute_margin_percent",
     "list_supported_vendor_curves",
-    # Service
-    "ProtectionAnalysisService",
 ]

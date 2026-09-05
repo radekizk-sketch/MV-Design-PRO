@@ -75,7 +75,21 @@ OPISY = {
 #: 19 trafien w 6 rodzinach; po kartach CV-3-W (A: D1–D3, B: D4–D6) — ZERO.
 #: Klucz: sciezka wzgledem `backend/src`; wartosc: liczba trafien per regula.
 #: Kazde nowe trafienie = czerwone CI (siodma prywatna droga kopii migawki).
-ZASTANE: dict[str, dict[str, int]] = {}
+#:
+#: WYJATEK (karta CV-3.3-B, 2026-09-05): `application/project_archive/
+#: service.py` — 1× R2 (`CanonicalRun(...)` poza fabryka). INNA KLASA niz
+#: dlug, ktory ta zapadka opisuje: to nie duplikacja scenariusza (obejscie
+#: `bieg_wariantu`/`apply_scenario` przy LICZENIU wariantu na biezacym
+#: modelu), tylko DESERIALIZACJA historycznego biegu z archiwum ZIP przy
+#: imporcie projektu — odtworzenie JUZ ZAKONCZONEGO biegu (status/raw_result/
+#: white_box_trace/validation/readiness/envelope 1:1 z danych archiwum, z
+#: przemapowanym id/case_id/project_id). Obie fabryki (`create_run`,
+#: `bieg_wariantu`) czytaja BIEZACY model projektu (`get_enm(klucz_twin)`) i
+#: licza NOWY wynik — strukturalnie niezdolne odtworzyc gotowy wynik z pliku
+#: importu. Trasa przez fabryke bylaby fikcja zgodnosci, nie naprawa.
+ZASTANE: dict[str, dict[str, int]] = {
+    "application/project_archive/service.py": {R2: 1},
+}
 
 
 def _sciezka_kropkowana(expr: ast.expr) -> str:

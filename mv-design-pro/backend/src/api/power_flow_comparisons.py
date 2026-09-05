@@ -31,9 +31,9 @@ from domain.power_flow_comparison import (
     PowerFlowComparisonError,
     PowerFlowComparisonNotFoundError,
     PowerFlowProjectMismatchError,
-    PowerFlowResultNotFoundError,
     PowerFlowRunNotFinishedError,
     PowerFlowRunNotFoundError,
+    PowerFlowRunWrongTypeError,
 )
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
@@ -169,6 +169,20 @@ class ComparisonSummaryResponse(BaseModel):
     delta_total_losses_p_percent: float | None = None
 
 
+class RunProvenanceResponse(BaseModel):
+    """Proweniencja jednego biegu R1 wewnątrz odpowiedzi porównania (B1, karta
+    CV-3.3-B): porównanie bez tego jest porównaniem bez dowodu CO było
+    porównywane. `envelope` bywa `None` dla biegów sprzed CV-2 (uczciwy brak)."""
+
+    run_id: str
+    analysis_type: str
+    status: str
+    snapshot_hash: str
+    input_hash: str
+    finished_at: str | None
+    envelope: dict[str, Any] | None
+
+
 class PowerFlowComparisonResultResponse(BaseModel):
     """Full comparison result response."""
 
@@ -181,6 +195,8 @@ class PowerFlowComparisonResultResponse(BaseModel):
     ranking: list[RankingIssueResponse]
     summary: ComparisonSummaryResponse
     input_hash: str
+    provenance_a: RunProvenanceResponse
+    provenance_b: RunProvenanceResponse
     created_at: str
 
 
@@ -194,13 +210,18 @@ class TraceStepResponse(BaseModel):
 
 
 class PowerFlowComparisonTraceResponse(BaseModel):
-    """Full comparison trace response."""
+    """Full comparison trace response.
+
+    CV-3.3-B: `snapshot_hash_a`/`snapshot_hash_b` (dawniej `snapshot_id_a/b`) —
+    odcisk migawki modelu biegu R1 (`CanonicalRun.snapshot_hash`), zastępuje
+    R2 `snapshot_id`, którego R1 nie niesie.
+    """
 
     comparison_id: str
     run_a_id: str
     run_b_id: str
-    snapshot_id_a: str | None
-    snapshot_id_b: str | None
+    snapshot_hash_a: str | None
+    snapshot_hash_b: str | None
     input_hash_a: str
     input_hash_b: str
     solver_version: str
@@ -292,6 +313,11 @@ def create_power_flow_comparison(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Power flow run nie znaleziony: {e.run_id}",
         ) from e
+    except PowerFlowRunWrongTypeError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Bieg {e.run_id} nie jest biegiem rozplywu mocy (rodzaj: {e.analysis_type})",
+        ) from e
     except PowerFlowRunNotFinishedError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -299,13 +325,8 @@ def create_power_flow_comparison(
         ) from e
     except PowerFlowProjectMismatchError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Runs naleza do roznych projektow: {e.run_a_project} vs {e.run_b_project}",
-        ) from e
-    except PowerFlowResultNotFoundError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Wyniki power flow nie znalezione dla run: {e.run_id}",
         ) from e
     except PowerFlowComparisonError as e:
         raise HTTPException(

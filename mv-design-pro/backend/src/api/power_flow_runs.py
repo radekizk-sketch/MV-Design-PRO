@@ -351,11 +351,19 @@ def list_power_flow_runs(
             "id": str(run.id),
             "project_id": run.project_id,
             "study_case_id": run.case_id,
+            "analysis_type": run.analysis_type,
             "status": run.status,
             "result_status": run.result_status,
             "created_at": run.created_at.isoformat(),
             "finished_at": run.finished_at.isoformat() if run.finished_at else None,
             "input_hash": run.input_hash,
+            # B5 (karta CV-3.3-B): etykieta wyboru biegu w porownaniu A/B —
+            # rodzaj + rewizja/scenariusz + krotki snapshot_hash — czyta te
+            # same trzy pola co koperta rewizji (`enm/envelope.py`), zamiast
+            # samego UUID biegu bez dowodu KTORY stan modelu opisuje.
+            "snapshot_hash": run.snapshot_hash,
+            "model_revision": (run.envelope or {}).get("model_revision"),
+            "scenario_ref": (run.envelope or {}).get("scenario_ref"),
             "converged": ((run.raw_result or {}).get("result_v1") or {}).get("converged"),
             "iterations": ((run.raw_result or {}).get("result_v1") or {}).get("iterations_count"),
         }

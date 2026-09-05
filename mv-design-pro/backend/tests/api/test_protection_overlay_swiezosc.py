@@ -190,31 +190,18 @@ def test_bieg_bez_wyniku_model_zmieniony_dalej_daje_none(app_client) -> None:
 # =============================================================================
 
 
-def test_stary_bieg_bez_odcisku_nie_udaje_aktualnego(app_client, uow_factory) -> None:
-    """Bieg zapisany zanim odcisk byl utrwalany NIE MOZE meldowac sie jako aktualny."""
-    project_id, case_id = _projekt_i_przypadek(app_client)
-    sc_run_id = _bieg_zwarciowy(app_client, case_id)
-    run_id = _bieg_zabezpieczen(app_client, project_id, case_id, sc_run_id)
-    _wykonaj_bieg_zabezpieczen(app_client, run_id)
-
-    # Zapis biegu w postaci SPRZED naprawy: bez kluczy kotwic.
-    with uow_factory() as uow:
-        zapisy = uow.results.list_results(UUID(run_id))
-        biegi = [z for z in zapisy if z.get("result_type") == "protection_analysis_run"]
-        assert biegi, "bieg musi byc zapisany jako wynik"
-        stary = dict(biegi[-1]["payload"])
-        stary.pop("network_snapshot_hash", None)
-        stary.pop("sc_network_snapshot_hash", None)
-        uow.results.add_result(
-            run_id=UUID(run_id),
-            project_id=UUID(project_id),
-            result_type="protection_analysis_run",
-            payload=stary,
-        )
-
-    nakladka = _nakladka_zabezpieczen(app_client, project_id, run_id)
-    assert nakladka["result_status"] == "OUTDATED"
-    assert nakladka["result_status_reason"] == FreshnessReason.BRAK_ODCISKU_W_BIEGU.value
+# CV-3.3-B: `test_stary_bieg_bez_odcisku_nie_udaje_aktualnego` usunięty —
+# testował ROĘCZNĄ mutację zapisu R3 `study_results` (usuwał klucze kotwic z
+# payloadu wynikowego), symulując bieg zapisany PRZED wprowadzeniem odcisku.
+# Bieg zabezpieczeń jest odtąd `CanonicalRun` (R1): `create_run` BUDUJE kopertę
+# BEZWARUNKOWO dla KAŻDEGO biegu (patrz `enm.canonical_analysis.create_run`),
+# więc `envelope=None` (jedyny sposób na `BRAK_ODCISKU_W_BIEGU` w
+# `evaluate_envelope_freshness`) nie jest już produkowalny przez żywe API —
+# tylko przez bieg zapisany, zanim ten mechanizm istniał w bazie (dane
+# historyczne, nie coś, co da się zainscenizować przez wywołanie endpointu).
+# Gwarancja "kotwica nieznana = OUTDATED/BRAK_ODCISKU_W_BIEGU, nigdy fałszywe
+# FRESH" ma NIEZALEŻNE pokrycie funkcją czystą, niżej w tym samym pliku:
+# `test_kotwica_nieznana_jest_pomijana_a_nie_liczona_jako_zgodna`.
 
 
 def test_nakladka_odrzuca_bieg_z_innego_projektu(app_client) -> None:
@@ -227,6 +214,74 @@ def test_nakladka_odrzuca_bieg_z_innego_projektu(app_client) -> None:
         params={"run_id": run_id},
     )
     assert odpowiedz.status_code == 400
+
+
+# =============================================================================
+# ILOCZYN CECH (CV-3.3-B): WLASNA koperta x koperta BIEGU ZRODLOWEGO (SC)
+# =============================================================================
+
+
+def test_bieg_wlasny_swiezy_ale_zrodlo_zwarciowe_nieaktualne_daje_outdated(app_client) -> None:
+    """`biegi_zrodlowe` (`application/result_freshness.py`): bieg zabezpieczen
+    utworzony PO zmianie modelu ma WLASNA koperte swieza, ale odwoluje sie do
+    biegu zwarciowego policzonego PRZED ta zmiana — jego koperta juz
+    nieaktualna. Ocena interpretuje prad zwarciowy sprzed zmiany modelu, wiec
+    werdykt MUSI byc OUTDATED mimo swiezej wlasnej koperty (pierwszenstwo
+    FRESH-wlasny nie wystarcza — to jest dokladnie przypadek, dla ktorego
+    `biegi_zrodlowe` powstalo)."""
+    project_id, case_id = _projekt_i_przypadek(app_client)
+    sc_run_id = _bieg_zwarciowy(app_client, case_id)
+
+    _zmien_model(app_client, case_id)
+
+    run_id = _bieg_zabezpieczen(app_client, project_id, case_id, sc_run_id)
+    _wykonaj_bieg_zabezpieczen(app_client, run_id)
+
+    nakladka = _nakladka_zabezpieczen(app_client, project_id, run_id)
+    assert nakladka["result_status"] == "OUTDATED"
+    assert nakladka["result_status_reason"] == FreshnessReason.ZRODLO_NIEAKTUALNE.value
+    assert nakladka["result_status_reason_pl"]
+    # Elementy zostaja — nakladka ma czym narysowac ocene, status mowi, ze
+    # zrodlowy prad zwarciowy jest sprzed zmiany.
+    assert nakladka["elements"]
+
+
+def test_bieg_wlasny_i_zrodlo_oba_swieze_daje_fresh(app_client) -> None:
+    """Regresja pary: brak zmiany modelu miedzy zwarciem a zabezpieczeniami ->
+    obie koperty swieze -> FRESH (nie kazde `biegi_zrodlowe` daje OUTDATED)."""
+    project_id, case_id = _projekt_i_przypadek(app_client)
+    sc_run_id = _bieg_zwarciowy(app_client, case_id)
+    run_id = _bieg_zabezpieczen(app_client, project_id, case_id, sc_run_id)
+    _wykonaj_bieg_zabezpieczen(app_client, run_id)
+
+    nakladka = _nakladka_zabezpieczen(app_client, project_id, run_id)
+    assert nakladka["result_status"] == "FRESH"
+    assert nakladka["result_status_reason"] == FreshnessReason.MODEL_NIEZMIENIONY.value
+
+
+# =============================================================================
+# WALIDACJA PRZY TWORZENIU: ZRODLO Z INNEGO PROJEKTU (naprawione przy okazji)
+# =============================================================================
+
+
+def test_tworzenie_biegu_zabezpieczen_odrzuca_zrodlo_z_innego_projektu(app_client) -> None:
+    """FAB-E naprawiony przy okazji (`_validate_protection_sc_reference`,
+    `enm/canonical_analysis.py`): (usuniety) `ProtectionAnalysisService`
+    sprawdzal WYLACZNIE `case.project_id == project_id` z URL — bieg
+    zwarciowy INNEGO projektu przechodzil jako zrodlo oceny. Walidacja PRZY
+    TWORZENIU (nie dopiero przy wykonaniu) porownuje projekt biegu
+    zrodlowego z projektem zadania."""
+    project_a, case_a = _projekt_i_przypadek(app_client)
+    project_b, case_b = _projekt_i_przypadek(app_client)
+
+    sc_run_obcy = _bieg_zwarciowy(app_client, case_b)
+
+    utworzenie = app_client.post(
+        f"/api/projects/{project_a}/protection-runs",
+        json={"sc_run_id": sc_run_obcy, "protection_case_id": case_a},
+    )
+    assert utworzenie.status_code == 400, utworzenie.text
+    assert "innego projektu" in utworzenie.json()["detail"]
 
 
 # =============================================================================

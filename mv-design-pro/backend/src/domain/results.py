@@ -436,6 +436,9 @@ class RunComparisonResult:
     - short_circuit: SC comparison (if applicable)
     - power_flow: PF comparison (if applicable)
     - protection: Protection comparison (if applicable)
+    - provenance_a: proweniencja biegu A (B1, karta CV-3.3-B:
+        `RunProvenance.to_dict()` — snapshot_hash/input_hash/koperta biegu R1)
+    - provenance_b: proweniencja biegu B — jak wyżej
 
     INVARIANT: 100% read-only, no mutations, no physics.
     """
@@ -448,6 +451,8 @@ class RunComparisonResult:
     short_circuit: ShortCircuitComparison | None = None
     power_flow: PowerFlowComparison | None = None
     protection: ProtectionComparison | None = None
+    provenance_a: dict[str, Any] = field(default_factory=dict)
+    provenance_b: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary for API responses."""
@@ -457,6 +462,8 @@ class RunComparisonResult:
             "project_id": str(self.project_id),
             "analysis_type": self.analysis_type,
             "compared_at": self.compared_at.isoformat(),
+            "provenance_a": self.provenance_a,
+            "provenance_b": self.provenance_b,
         }
         if self.short_circuit is not None:
             result["short_circuit"] = self.short_circuit.to_dict()
@@ -497,6 +504,19 @@ class RunNotFoundError(ComparisonError):
     def __init__(self, run_id: UUID):
         self.run_id = run_id
         super().__init__(f"Run not found: {run_id}")
+
+
+class RunNotFinishedError(ComparisonError):
+    """CV-3.3-B: raised when a run (R1 `CanonicalRun`) is not FINISHED yet.
+
+    Osobny błąd od `RunNotFoundError` — bieg NAPRAWDĘ istnieje, tylko nie ma
+    jeszcze wyniku do porównania.
+    """
+
+    def __init__(self, run_id: UUID, status: str):
+        self.run_id = run_id
+        self.status = status
+        super().__init__(f"Run not finished (status: {status}): {run_id}")
 
 
 class ResultNotFoundError(ComparisonError):

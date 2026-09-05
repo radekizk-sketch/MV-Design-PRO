@@ -85,6 +85,7 @@ class FreshnessReason(StrEnum):
     KOPERTA_NIESPOJNA = "koperta-rewizji-niespojna"
     SCENARIUSZ_ZMIENIONY = "scenariusz-zmieniony"
     SCENARIUSZ_USUNIETY = "scenariusz-usuniety"
+    ZRODLO_NIEAKTUALNE = "zrodlo-biegu-nieaktualne"
 
 
 # Zdanie dla projektanta — po polsku, JEDNO na kod przyczyny. Kazdy kod ma tu
@@ -121,6 +122,11 @@ REASON_TEXTS_PL: dict[FreshnessReason, str] = {
     FreshnessReason.SCENARIUSZ_USUNIETY: (
         "Scenariusz roboczy przebiegu został usunięty z projektu — wynik nie ma "
         "już swojego scenariusza."
+    ),
+    FreshnessReason.ZRODLO_NIEAKTUALNE: (
+        "Przebieg źródłowy (np. zwarciowy), z którego pochodzi ten wynik, jest "
+        "nieaktualny wobec bieżącego modelu — interpretacja opiera się na "
+        "wartościach sprzed zmiany."
     ),
 }
 
@@ -353,13 +359,25 @@ class StanBiezacyModelu:
 
 
 def swiezosc_biegu_kanonicznego(
-    run: Any, stan: StanBiezacyModelu, *, kotwice_hashowe: Sequence[str | None] = ()
+    run: Any,
+    stan: StanBiezacyModelu,
+    *,
+    kotwice_hashowe: Sequence[str | None] = (),
+    biegi_zrodlowe: Sequence[Any] = (),
 ) -> FreshnessVerdict:
     """Werdykt dla biegu kanonicznego (`CanonicalRun`) z koperty rewizji.
 
     `run` musi miec `status`, `raw_result`, `envelope` (slownik lub None) i
     `snapshot_hash`. `kotwice_hashowe` uzupelniaja `snapshot_hash` dla biegow bez
     koperty (np. odcisk modelu biegu zwarciowego, z ktorego wynik pochodzi).
+
+    `biegi_zrodlowe` (CV-3.3-B): biegi R1, KTORYCH WYNIK ten bieg interpretuje
+    (np. bieg zwarciowy pod ocena zabezpieczen — `options["sc_run_id"]`).
+    Wlasna koperta biegu potrafi byc aktualna, gdy koperta biegu zrodlowego juz
+    nie jest (bieg zabezpieczen utworzony PO edycji modelu, odwolujacy sie do
+    biegu zwarciowego sprzed tej edycji) — interpretacja jest wtedy rowniez
+    NIEAKTUALNA, mimo ze wlasny bieg zgadza sie z biezacym modelem. Sprawdzane
+    DOPIERO gdy wlasny werdykt jest FRESH (pierwsza rozbieznosc rozstrzyga).
     """
     koperta = RevisionEnvelope.from_dict(getattr(run, "envelope", None))
     zmiany: list[WpisDziennika] = []
@@ -371,7 +389,7 @@ def swiezosc_biegu_kanonicznego(
             koperta.scenario_ref[0]
         ):
             stan_scenariusza = stan_scenariusza_z_magazynu(stan.klucz, koperta.scenario_ref[0])
-    return evaluate_envelope_freshness(
+    werdykt = evaluate_envelope_freshness(
         has_result=run.status == "FINISHED" and bool(run.raw_result),
         envelope=koperta,
         rewizja_biezaca=stan.rewizja,
@@ -381,6 +399,19 @@ def swiezosc_biegu_kanonicznego(
         kotwice_hashowe=(run.snapshot_hash, *kotwice_hashowe),
         stan_scenariusza=stan_scenariusza,
     )
+    if werdykt.status != ResultFreshness.FRESH:
+        return werdykt
+    for zrodlo in biegi_zrodlowe:
+        werdykt_zrodla = swiezosc_biegu_kanonicznego(zrodlo, stan)
+        if werdykt_zrodla.status != ResultFreshness.FRESH:
+            return FreshnessVerdict(
+                ResultFreshness.OUTDATED,
+                FreshnessReason.ZRODLO_NIEAKTUALNE,
+                rewizja_biegu=werdykt.rewizja_biegu,
+                rewizja_biezaca=werdykt.rewizja_biezaca,
+                zmiany=werdykt_zrodla.zmiany,
+            )
+    return werdykt
 
 
 def status_wynikow_przypadku(

@@ -6,10 +6,8 @@ from .design_spec_repository import DesignSpecRepository
 from .network_repository import NetworkRepository
 from .network_wizard_repository import NetworkWizardRepository
 from .project_repository import ProjectRepository
-from .result_repository import ResultRepository
 from .sld_repository import SldRepository
 from .snapshot_repository import SnapshotRepository
-from .study_run_repository import StudyRunRepository
 
 __all__ = [
     "CaseRepository",
@@ -20,8 +18,6 @@ __all__ = [
     "NetworkRepository",
     "NetworkWizardRepository",
     "ProjectRepository",
-    "ResultRepository",
     "SnapshotRepository",
     "SldRepository",
-    "StudyRunRepository",
 ]

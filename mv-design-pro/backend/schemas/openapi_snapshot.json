@@ -7590,6 +7590,12 @@
       "title": "Project Id",
       "type": "string"
      },
+     "provenance_a": {
+      "$ref": "#/components/schemas/RunProvenanceResponse"
+     },
+     "provenance_b": {
+      "$ref": "#/components/schemas/RunProvenanceResponse"
+     },
      "ranking": {
       "items": {
        "$ref": "#/components/schemas/api__power_flow_comparisons__RankingIssueResponse"
@@ -7619,13 +7625,15 @@
      "ranking",
      "summary",
      "input_hash",
+     "provenance_a",
+     "provenance_b",
      "created_at"
     ],
     "title": "PowerFlowComparisonResultResponse",
     "type": "object"
    },
    "PowerFlowComparisonTraceResponse": {
-    "description": "Full comparison trace response.",
+    "description": "Full comparison trace response.\n\nCV-3.3-B: `snapshot_hash_a`/`snapshot_hash_b` (dawniej `snapshot_id_a/b`) —\nodcisk migawki modelu biegu R1 (`CanonicalRun.snapshot_hash`), zastępuje\nR2 `snapshot_id`, którego R1 nie niesie.",
     "properties": {
      "comparison_id": {
       "title": "Comparison Id",
@@ -7658,7 +7666,7 @@
       "title": "Run B Id",
       "type": "string"
      },
-     "snapshot_id_a": {
+     "snapshot_hash_a": {
       "anyOf": [
        {
         "type": "string"
@@ -7667,9 +7675,9 @@
         "type": "null"
        }
       ],
-      "title": "Snapshot Id A"
+      "title": "Snapshot Hash A"
      },
-     "snapshot_id_b": {
+     "snapshot_hash_b": {
       "anyOf": [
        {
         "type": "string"
@@ -7678,7 +7686,7 @@
         "type": "null"
        }
       ],
-      "title": "Snapshot Id B"
+      "title": "Snapshot Hash B"
      },
      "solver_version": {
       "title": "Solver Version",
@@ -7696,8 +7704,8 @@
      "comparison_id",
      "run_a_id",
      "run_b_id",
-     "snapshot_id_a",
-     "snapshot_id_b",
+     "snapshot_hash_a",
+     "snapshot_hash_b",
      "input_hash_a",
      "input_hash_b",
      "solver_version",
@@ -8233,6 +8241,12 @@
       "title": "Project Id",
       "type": "string"
      },
+     "provenance_a": {
+      "$ref": "#/components/schemas/RunProvenanceResponse"
+     },
+     "provenance_b": {
+      "$ref": "#/components/schemas/RunProvenanceResponse"
+     },
      "ranking": {
       "items": {
        "$ref": "#/components/schemas/api__protection_comparisons__RankingIssueResponse"
@@ -8268,6 +8282,8 @@
      "ranking",
      "summary",
      "input_hash",
+     "provenance_a",
+     "provenance_b",
      "created_at"
     ],
     "title": "ProtectionComparisonResultResponse",
@@ -8563,6 +8579,130 @@
      "created_at"
     ],
     "title": "ProtectionResultResponse",
+    "type": "object"
+   },
+   "ProtectionRunListItemResponse": {
+    "description": "Wpis listy biegów zabezpieczeń projektu (B5, karta CV-3.3-B).\n\nNiesie te same trzy pola co koperta rewizji biegu (`snapshot_hash`,\n`model_revision`, `scenario_ref`) — etykieta wyboru w porównaniu A/B\n(rodzaj + rewizja/scenariusz + krótki `snapshot_hash`) nie może pokazywać\nsamego UUID biegu bez dowodu, KTÓRY stan modelu opisuje.",
+    "properties": {
+     "analysis_type": {
+      "title": "Analysis Type",
+      "type": "string"
+     },
+     "created_at": {
+      "title": "Created At",
+      "type": "string"
+     },
+     "finished_at": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Finished At"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "input_hash": {
+      "title": "Input Hash",
+      "type": "string"
+     },
+     "model_revision": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Model Revision"
+     },
+     "project_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Project Id"
+     },
+     "scenario_ref": {
+      "anyOf": [
+       {
+        "maxItems": 2,
+        "minItems": 2,
+        "prefixItems": [
+         {
+          "type": "string"
+         },
+         {
+          "type": "integer"
+         }
+        ],
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Scenario Ref"
+     },
+     "snapshot_hash": {
+      "title": "Snapshot Hash",
+      "type": "string"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     },
+     "study_case_id": {
+      "title": "Study Case Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "project_id",
+     "study_case_id",
+     "analysis_type",
+     "status",
+     "created_at",
+     "finished_at",
+     "input_hash",
+     "snapshot_hash",
+     "model_revision",
+     "scenario_ref"
+    ],
+    "title": "ProtectionRunListItemResponse",
+    "type": "object"
+   },
+   "ProtectionRunListResponse": {
+    "description": "Lista biegów zabezpieczeń projektu.",
+    "properties": {
+     "runs": {
+      "items": {
+       "$ref": "#/components/schemas/ProtectionRunListItemResponse"
+      },
+      "title": "Runs",
+      "type": "array"
+     },
+     "total": {
+      "title": "Total",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "runs",
+     "total"
+    ],
+    "title": "ProtectionRunListResponse",
     "type": "object"
    },
    "ProtectionRunResponse": {
@@ -9501,6 +9641,12 @@
        }
       ]
      },
+     "provenance_a": {
+      "$ref": "#/components/schemas/RunProvenanceResponse"
+     },
+     "provenance_b": {
+      "$ref": "#/components/schemas/RunProvenanceResponse"
+     },
      "run_a_id": {
       "title": "Run A Id",
       "type": "string"
@@ -9525,7 +9671,9 @@
      "run_b_id",
      "project_id",
      "analysis_type",
-     "compared_at"
+     "compared_at",
+     "provenance_a",
+     "provenance_b"
     ],
     "title": "RunComparisonResponse",
     "type": "object"
@@ -9614,6 +9762,65 @@
      "count"
     ],
     "title": "RunListResponse",
+    "type": "object"
+   },
+   "RunProvenanceResponse": {
+    "description": "Proweniencja jednego biegu R1 wewnątrz odpowiedzi porównania (B1, karta\nCV-3.3-B): porównanie bez tego jest porównaniem bez dowodu CO było\nporównywane. `envelope` bywa `None` dla biegów sprzed CV-2 (uczciwy brak).",
+    "properties": {
+     "analysis_type": {
+      "title": "Analysis Type",
+      "type": "string"
+     },
+     "envelope": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Envelope"
+     },
+     "finished_at": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Finished At"
+     },
+     "input_hash": {
+      "title": "Input Hash",
+      "type": "string"
+     },
+     "run_id": {
+      "title": "Run Id",
+      "type": "string"
+     },
+     "snapshot_hash": {
+      "title": "Snapshot Hash",
+      "type": "string"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     }
+    },
+    "required": [
+     "run_id",
+     "analysis_type",
+     "status",
+     "snapshot_hash",
+     "input_hash",
+     "finished_at",
+     "envelope"
+    ],
+    "title": "RunProvenanceResponse",
     "type": "object"
    },
    "SC3FPackRequest": {
@@ -22991,8 +23198,68 @@
    }
   },
   "/api/projects/{project_id}/protection-runs": {
+   "get": {
+    "description": "List protection analysis runs for a project (B5, karta CV-3.3-B).\n\nZero R2/R3 list — jedyne źródło to R1 `CanonicalRun`\n(`analysis_type=\"protection_sn\"`), ten sam wzorzec co\n`GET /projects/{project_id}/power-flow-runs`\n(`api/power_flow_runs.py::list_power_flow_runs`).",
+    "operationId": "list_protection_runs_api_projects__project_id__protection_runs_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Project Id",
+       "type": "string"
+      }
+     },
+     {
+      "description": "Filtruj po statusie (CREATED, RUNNING, FINISHED, FAILED)",
+      "in": "query",
+      "name": "status",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Filtruj po statusie (CREATED, RUNNING, FINISHED, FAILED)",
+       "title": "Status"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ProtectionRunListResponse"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "List Protection Runs",
+    "tags": [
+     "protection-analysis"
+    ]
+   },
    "post": {
-    "description": "Create a new protection analysis run.\n\nRequires:\n- A finished short-circuit run (sc_run_id)\n- A study case with ProtectionConfig (protection_case_id)\n\nReturns:\n- Protection run metadata with status CREATED",
+    "description": "Create a new protection analysis run.\n\nRequires:\n- A finished short-circuit run (sc_run_id), tego samego projektu\n- A study case with ProtectionConfig (protection_case_id)\n\nReturns:\n- Protection run metadata with status CREATED",
     "operationId": "create_protection_run_api_projects__project_id__protection_runs_post",
     "parameters": [
      {
@@ -23110,7 +23377,7 @@
   },
   "/api/projects/{project_id}/sld/{diagram_id}/protection-overlay": {
    "get": {
-    "description": "P15c: Get SLD overlay for protection analysis results.\n\nMaps protection evaluation states to SLD symbols for visualization.\nThis is READ-ONLY - does not mutate model or diagram.\n\nArgs:\n    project_id: Project UUID\n    diagram_id: SLD diagram UUID\n    run_id: Protection run UUID to get results from\n\nReturns:\n    Protection overlay with element states mapped to SLD symbols.\n\nOverlay contains:\n- elements: List of protection elements with trip_state, t_trip_s, margin_percent\n- result_status: FRESH/OUTDATED/NONE — swiezosc wyniku wzgledem modelu\n- result_status_reason (+ _pl): PRZYCZYNA statusu, nigdy domysl\n\nSTATUS Z POROWNANIA ODCISKOW (K-S). Do 2026-08-14 ta koncowka meldowala\n`\"FRESH\"` LITERALEM („For now, assume FRESH if run is FINISHED\") — wynik\npoliczony przed edycja modelu wygladal na aktualny. Teraz status pochodzi z\nporownania odciskow modelu zapisanych przy biegu z odciskiem modelu\nbiezacego (`application/result_freshness`), a bieg bez zapisanego odcisku\nNIE MOZE zameldowac sie jako aktualny.\n\nBRAK WYNIKU TO NIE BLAD. Przebieg istniejacy, ale niezakonczony albo bez\nzapisanego wyniku, oddaje `result_status = NONE` z pusta lista elementow —\ndokladnie to, o co pyta warstwa rysujaca („czy jest co nalozyc\"). Bledem\n(404) pozostaje wylacznie przebieg NIEISTNIEJACY, a niezgodnosc projektu\ndalej konczy sie 400.\n\nPRZESTRZEN REFOW. `symbol_id` == `element_id` == `protected_element_ref`,\nbo kanaly nakladek tego systemu adresuja symbole refami elementow modelu\n(ENM `ref_id`) — patrz naglowek `ui/sld/v3/canvas/resultLabels.ts`. Wczesniej\nstal tu znacznik „TODO: Map to actual symbol\" sugerujacy osobna przestrzen\nidentyfikatorow symboli; taka przestrzen w tym systemie nie istnieje.",
+    "description": "P15c: Get SLD overlay for protection analysis results.\n\nMaps protection evaluation states to SLD symbols for visualization.\nThis is READ-ONLY - does not mutate model or diagram.\n\nArgs:\n    project_id: Project UUID\n    diagram_id: SLD diagram UUID\n    run_id: Protection run UUID to get results from\n\nReturns:\n    Protection overlay with element states mapped to SLD symbols.\n\nOverlay contains:\n- elements: List of protection elements with trip_state, t_trip_s, margin_percent\n- result_status: FRESH/OUTDATED/NONE — swiezosc wyniku wzgledem modelu\n- result_status_reason (+ _pl): PRZYCZYNA statusu, nigdy domysl\n\nSTATUS Z POROWNANIA KOPERT (CV-2/CV-3.3-B). Bieg zabezpieczen jest odtad\n`CanonicalRun` z kopertą rewizji — swiezosc wyprowadza `swiezosc_biegu_\nkanonicznego` (jak dla PF/SC), z DODATKOWYM sprawdzeniem: bieg zrodlowy\n(zwarciowy, `options[\"sc_run_id\"]`) musi RÓWNIEZ byc aktualny, bo ocena\ninterpretuje JEGO prad zwarciowy — wlasna koperta biegu zabezpieczen\npotrafi byc aktualna, gdy koperta biegu zrodlowego juz nie jest.\n\nBRAK WYNIKU TO NIE BLAD. Przebieg istniejacy, ale niezakonczony albo bez\nzapisanego wyniku, oddaje `result_status = NONE` z pusta lista elementow —\ndokladnie to, o co pyta warstwa rysujaca („czy jest co nalozyc\"). Bledem\n(404) pozostaje wylacznie przebieg NIEISTNIEJACY, a niezgodnosc projektu\ndalej konczy sie 400.\n\nPRZESTRZEN REFOW. `symbol_id` == `element_id` == `protected_element_ref`,\nbo kanaly nakladek tego systemu adresuja symbole refami elementow modelu\n(ENM `ref_id`) — patrz naglowek `ui/sld/v3/canvas/resultLabels.ts`.",
     "operationId": "get_protection_sld_overlay_api_projects__project_id__sld__diagram_id__protection_overlay_get",
     "parameters": [
      {
@@ -23990,7 +24257,7 @@
   },
   "/api/protection-runs/{run_id}/execute": {
    "post": {
-    "description": "Execute a protection analysis run.\n\nThe run must be in CREATED status. This endpoint:\n1. Validates inputs\n2. Runs the protection evaluation engine\n3. Stores results and trace\n\nReturns:\n- Updated run metadata with status FINISHED or FAILED",
+    "description": "Execute a protection analysis run.\n\nThe run must be in CREATED status. This endpoint:\n1. Runs the protection evaluation engine (interpretation, zero physics)\n2. Stores the result on the CanonicalRun (R1)\n\nReturns:\n- Updated run metadata with status FINISHED or FAILED\n\n`uow_factory` — przekazana WPROST do `execute_canonical_run` (CV-3.3-B):\nwykonanie biegu zabezpieczeń czyta `StudyCase.protection_config` przez\n`UnitOfWork` TEGO żądania (`app.state.uow_factory`), nie samodzielną\nfabrykę zbudowaną z `DATABASE_URL` — inaczej przypadek istniejący naprawdę\nzgłaszałby się jako nieznaleziony w każdym wdrożeniu, którego\n`app.state.uow_factory` nie pochodzi z tego env var (każdy test).",
     "operationId": "execute_protection_run_api_protection_runs__run_id__execute_post",
     "parameters": [
      {

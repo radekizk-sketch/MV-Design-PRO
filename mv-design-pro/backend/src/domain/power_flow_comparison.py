@@ -26,7 +26,6 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum, StrEnum
 from typing import Any
-from uuid import UUID, uuid4
 
 # =============================================================================
 # ENUMS AND TYPES
@@ -534,6 +533,9 @@ class PowerFlowComparisonResult:
         ranking: Tuple of ranking issues (sorted by severity DESC)
         summary: Summary statistics
         input_hash: SHA-256 hash of inputs for caching
+        provenance_a: proweniencja biegu A (B1: `RunProvenance.to_dict()` —
+            snapshot_hash/input_hash/koperta biegu R1)
+        provenance_b: proweniencja biegu B — jak wyżej
         created_at: Comparison timestamp
     """
 
@@ -546,6 +548,8 @@ class PowerFlowComparisonResult:
     ranking: tuple[PowerFlowRankingIssue, ...]
     summary: PowerFlowComparisonSummary
     input_hash: str
+    provenance_a: dict[str, Any] = field(default_factory=dict)
+    provenance_b: dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
@@ -560,6 +564,8 @@ class PowerFlowComparisonResult:
             "ranking": [i.to_dict() for i in self.ranking],
             "summary": self.summary.to_dict(),
             "input_hash": self.input_hash,
+            "provenance_a": self.provenance_a,
+            "provenance_b": self.provenance_b,
             "created_at": self.created_at.isoformat(),
         }
 
@@ -578,6 +584,8 @@ class PowerFlowComparisonResult:
             ranking=tuple(PowerFlowRankingIssue.from_dict(i) for i in data.get("ranking", [])),
             summary=PowerFlowComparisonSummary.from_dict(data["summary"]),
             input_hash=str(data["input_hash"]),
+            provenance_a=data.get("provenance_a", {}),
+            provenance_b=data.get("provenance_b", {}),
             created_at=(
                 datetime.fromisoformat(data["created_at"])
                 if "created_at" in data
@@ -635,8 +643,9 @@ class PowerFlowComparisonTrace:
         comparison_id: ID of the comparison
         run_a_id: First power flow run ID
         run_b_id: Second power flow run ID
-        snapshot_id_a: Snapshot ID from Run A
-        snapshot_id_b: Snapshot ID from Run B
+        snapshot_hash_a: Model snapshot hash from Run A (B1: R1 `CanonicalRun.
+            snapshot_hash` — zastępuje R2 `snapshot_id`, którego R1 nie niesie)
+        snapshot_hash_b: Model snapshot hash from Run B
         input_hash_a: Input hash from Run A
         input_hash_b: Input hash from Run B
         solver_version: Solver version used
@@ -648,8 +657,8 @@ class PowerFlowComparisonTrace:
     comparison_id: str
     run_a_id: str
     run_b_id: str
-    snapshot_id_a: str | None
-    snapshot_id_b: str | None
+    snapshot_hash_a: str | None
+    snapshot_hash_b: str | None
     input_hash_a: str
     input_hash_b: str
     solver_version: str
@@ -663,8 +672,8 @@ class PowerFlowComparisonTrace:
             "comparison_id": self.comparison_id,
             "run_a_id": self.run_a_id,
             "run_b_id": self.run_b_id,
-            "snapshot_id_a": self.snapshot_id_a,
-            "snapshot_id_b": self.snapshot_id_b,
+            "snapshot_hash_a": self.snapshot_hash_a,
+            "snapshot_hash_b": self.snapshot_hash_b,
             "input_hash_a": self.input_hash_a,
             "input_hash_b": self.input_hash_b,
             "solver_version": self.solver_version,
@@ -680,8 +689,8 @@ class PowerFlowComparisonTrace:
             comparison_id=str(data["comparison_id"]),
             run_a_id=str(data["run_a_id"]),
             run_b_id=str(data["run_b_id"]),
-            snapshot_id_a=data.get("snapshot_id_a"),
-            snapshot_id_b=data.get("snapshot_id_b"),
+            snapshot_hash_a=data.get("snapshot_hash_a"),
+            snapshot_hash_b=data.get("snapshot_hash_b"),
             input_hash_a=str(data.get("input_hash_a", "")),
             input_hash_b=str(data.get("input_hash_b", "")),
             solver_version=str(data.get("solver_version", "")),
@@ -696,96 +705,15 @@ class PowerFlowComparisonTrace:
 
 
 # =============================================================================
-# COMPARISON ENTITY (FOR PERSISTENCE)
-# =============================================================================
-
-
-class PowerFlowComparisonStatus(StrEnum):
-    """Status of a power flow comparison."""
-
-    CREATED = "CREATED"
-    COMPUTING = "COMPUTING"
-    FINISHED = "FINISHED"
-    FAILED = "FAILED"
-
-
-@dataclass(frozen=True)
-class PowerFlowComparison:
-    """
-    Power flow comparison entity.
-
-    Tracks the lifecycle of a power flow comparison from creation to completion.
-    Supports caching: same (run_a_id, run_b_id) pair returns cached result.
-
-    Attributes:
-        id: Unique comparison identifier (UUID)
-        project_id: Parent project ID
-        run_a_id: First power flow run ID
-        run_b_id: Second power flow run ID
-        status: Comparison lifecycle status
-        input_hash: SHA-256 hash for deduplication/caching
-        result_json: Full comparison result (after FINISHED)
-        trace_json: Full trace data (after FINISHED)
-        error_message: Error details (after FAILED)
-        created_at: Creation timestamp
-        finished_at: Completion timestamp
-    """
-
-    id: UUID
-    project_id: UUID
-    run_a_id: str
-    run_b_id: str
-    status: PowerFlowComparisonStatus
-    input_hash: str = ""
-    result_json: dict[str, Any] | None = None
-    trace_json: dict[str, Any] | None = None
-    error_message: str | None = None
-    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
-    finished_at: datetime | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        """Serialize to JSON-compatible dict."""
-        return {
-            "id": str(self.id),
-            "project_id": str(self.project_id),
-            "run_a_id": self.run_a_id,
-            "run_b_id": self.run_b_id,
-            "status": self.status.value,
-            "input_hash": self.input_hash,
-            "result_json": self.result_json,
-            "trace_json": self.trace_json,
-            "error_message": self.error_message,
-            "created_at": self.created_at.isoformat(),
-            "finished_at": self.finished_at.isoformat() if self.finished_at else None,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> PowerFlowComparison:
-        """Deserialize from dict."""
-        return cls(
-            id=UUID(data["id"]),
-            project_id=UUID(data["project_id"]),
-            run_a_id=str(data["run_a_id"]),
-            run_b_id=str(data["run_b_id"]),
-            status=PowerFlowComparisonStatus(data["status"]),
-            input_hash=data.get("input_hash", ""),
-            result_json=data.get("result_json"),
-            trace_json=data.get("trace_json"),
-            error_message=data.get("error_message"),
-            created_at=(
-                datetime.fromisoformat(data["created_at"])
-                if "created_at" in data
-                else datetime.now(UTC)
-            ),
-            finished_at=(
-                datetime.fromisoformat(data["finished_at"]) if data.get("finished_at") else None
-            ),
-        )
-
-
-# =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
+#
+# CV-3.3-B: `PowerFlowComparisonStatus` + `PowerFlowComparison` (byt trwałości
+# dla cache'a R3 `study_results`) usunięte — porównanie jest odtąd BEZSTANOWE
+# (żadna trwałość poza dwoma biegami R1, które i tak są append-only): ten sam
+# `comparison_id` zawsze przelicza się identycznie, więc nie ma czego
+# cache'ować ani czyjego statusu utrzymywać (`compare()` w
+# `application/power_flow_comparison/service.py`).
 
 
 def compute_pf_comparison_input_hash(run_a_id: str, run_b_id: str) -> str:
@@ -807,34 +735,6 @@ def compute_pf_comparison_input_hash(run_a_id: str, run_b_id: str) -> str:
         sort_keys=True,
     )
     return hashlib.sha256(canonical_input.encode()).hexdigest()
-
-
-def new_power_flow_comparison(
-    *,
-    project_id: UUID,
-    run_a_id: str,
-    run_b_id: str,
-) -> PowerFlowComparison:
-    """
-    Factory function to create a new PowerFlowComparison.
-
-    Args:
-        project_id: ID of the project
-        run_a_id: ID of the first power flow run
-        run_b_id: ID of the second power flow run
-
-    Returns:
-        New PowerFlowComparison in CREATED status
-    """
-    input_hash = compute_pf_comparison_input_hash(run_a_id, run_b_id)
-    return PowerFlowComparison(
-        id=uuid4(),
-        project_id=project_id,
-        run_a_id=run_a_id,
-        run_b_id=run_b_id,
-        status=PowerFlowComparisonStatus.CREATED,
-        input_hash=input_hash,
-    )
 
 
 def get_ranking_thresholds() -> dict[str, float]:
@@ -873,6 +773,20 @@ class PowerFlowRunNotFoundError(PowerFlowComparisonError):
         super().__init__(f"Power flow run nie znaleziony: {run_id}")
 
 
+class PowerFlowRunWrongTypeError(PowerFlowComparisonError):
+    """CV-3.3-B: bieg R1 istnieje, ale nie jest biegiem rozpływu mocy (PF).
+
+    Osobny błąd od `PowerFlowRunNotFoundError` — 422, nie 404: bieg NAPRAWDĘ
+    istnieje, tylko porównanie PF nie może go zinterpretować (inny rodzaj
+    analizy). Router mapuje to na `422 Unprocessable Entity`.
+    """
+
+    def __init__(self, run_id: str, analysis_type: str):
+        self.run_id = run_id
+        self.analysis_type = analysis_type
+        super().__init__(f"Bieg {run_id} nie jest biegiem rozpływu mocy (rodzaj: {analysis_type})")
+
+
 class PowerFlowRunNotFinishedError(PowerFlowComparisonError):
     """Raised when a power flow run is not finished."""
 
@@ -897,11 +811,3 @@ class PowerFlowComparisonNotFoundError(PowerFlowComparisonError):
     def __init__(self, comparison_id: str):
         self.comparison_id = comparison_id
         super().__init__(f"Power flow comparison nie znalezione: {comparison_id}")
-
-
-class PowerFlowResultNotFoundError(PowerFlowComparisonError):
-    """Raised when power flow results are not found for a run."""
-
-    def __init__(self, run_id: str):
-        self.run_id = run_id
-        super().__init__(f"Wyniki power flow nie znalezione dla run: {run_id}")

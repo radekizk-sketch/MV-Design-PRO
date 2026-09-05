@@ -179,7 +179,18 @@ POMIJANE_KATALOGI = {
 #     `Array.prototype.at()` niedostepne pod zamrozonym `lib: ES2020` (20
 #     wystapien w 8 plikach — nowy `src/test/arrayAt.ts`, rownowaznik `at()`
 #     dla testow, zamiast luzowania `lib` calego projektu).
-BUDZET_BLEDOW_POZA_BRAMKA = 137
+#   * Karta CV-3.3-B (pomiar 2026-09-05): 137 -> 139 przy dopisaniu
+#     `provenance_a`/`provenance_b` (pole WYMAGANE, B1) do
+#     `PowerFlowComparisonResult`/`ProtectionComparisonResult` bez aktualizacji
+#     WSZYSTKICH fikstur budujacych te typy literalem — `src/ui/power-flow-
+#     comparison/__tests__/power-flow-comparison.test.ts` i `src/ui/protection-
+#     comparison/__tests__/protection-comparison.test.ts` (osobne od
+#     `ui2/wyniki/porownanie/__tests__/fixtures.ts`, ktore juz mialo poprawke).
+#     Naprawione U ZRODLA (fixture proweniencji w obu plikach) + przy okazji
+#     zdjety 1 pre-existing martwy import `PowerFlowComparisonTab`
+#     (`power-flow-comparison.test.ts`, TS6133, napotkany w tym samym imporcie
+#     — Zero-Debt). Sprowadzone do 136.
+BUDZET_BLEDOW_POZA_BRAMKA = 136
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

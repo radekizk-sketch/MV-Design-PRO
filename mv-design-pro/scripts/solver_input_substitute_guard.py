@@ -626,7 +626,6 @@ WYKLUCZENIA_SKANERA: dict[str, dict[str, int]] = {
         "F:dictget:summary.total_devices": 1,
     },
     "application/analyses/voltage_profile_view.py": {"F:dictget:result_v1.iterations_count": 1},
-    "application/power_flow_comparison/service.py": {"F:dictget:result_summary.iterations": 1},
     # Zliczenie WYNIKOW walidacji wniosku OSD (ile spelnione/ostrzezenia/
     # niespelnione/nieobliczone) — bookkeeping raportu, nie dana fizyki.
     # `installed_by_bus.values` to KOLIZJA NAZW: wywolanie wbudowanej metody
@@ -1247,29 +1246,6 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "F:dictget:result_v1.base_mva": 1,
         "F:dictget:result_v1.tolerance_used": 1,
     },
-    "application/analysis_run/service.py": {
-        "B:ifexp:setpoint.cosphi": 2,
-        "F:dictget:<dict>.p_mw": 1,
-        "F:dictget:<dict>.q_mvar": 1,
-        "F:dictget:case.base_mva": 2,
-        "F:dictget:data.p_mw": 2,
-        "F:dictget:item.p_mw": 2,
-        "F:dictget:item.q_max_mvar": 1,
-        "F:dictget:item.q_min_mvar": 1,
-        "F:dictget:item.q_mvar": 1,
-        "F:dictget:item.u_pu": 1,
-        "F:dictget:payload.in_rated_a": 2,
-        "F:dictget:payload.k_sc": 2,
-        "F:dictget:payload.p_mw": 1,
-        "F:dictget:payload.q_max_mvar": 1,
-        "F:dictget:payload.q_min_mvar": 1,
-        "F:dictget:payload.u_pu": 1,
-        "F:dictget:slack_attrs.voltage_angle": 1,
-        "F:dictget:slack_attrs.voltage_magnitude": 1,
-        "F:dictget:slack_data.angle_rad": 1,
-        "F:dictget:slack_data.u_pu": 1,
-        "F:dictget:snapshot.base_mva": 2,
-    },
     "application/network_wizard/service.py": {
         "B:ifexp:setpoint.cosphi": 2,
         "F:dictget:case.base_mva": 1,
@@ -1298,10 +1274,6 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "F:dictget:t.uk_percent": 1,
     },
     "application/power_flow_comparison/service.py": {
-        "F:dictget:bus_a.p_injected_mw": 1,
-        "F:dictget:bus_a.q_injected_mvar": 1,
-        "F:dictget:bus_b.p_injected_mw": 1,
-        "F:dictget:bus_b.q_injected_mvar": 1,
         "F:dictget:summary_a.slack_p_mw": 1,
         "F:dictget:summary_a.total_losses_p_mw": 2,
         "F:dictget:summary_b.slack_p_mw": 1,
@@ -1429,9 +1401,6 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     "application/proof_engine/serialization.py": {
         "F:dictget:payload.step_number": 1,
         "F:dictget:payload.total_steps": 1,
-    },
-    "application/protection_analysis/service.py": {
-        "F:dictget:sc_result.ikss_a": 1,
     },
     "application/protection_read_model.py": {
         "A:or:setting.threshold_a": 2,
