@@ -4,7 +4,13 @@ Pandapower bridge — opcjonalny offline cross-check + topology import.
 LAZY IMPORT: `import pandapower` jest wewnątrz funkcji aby uniknąć dependency
 podczas runtime API. Pandapower wymagane TYLKO dla:
 - scripts/regenerate_expected_values.py (offline expected JSON generation)
-- testów cross-validation w CI (z pytest.importorskip)
+- testów cross-validation oznaczonych markerem `pandapower` (pyproject.toml),
+  uruchamianych WYŁĄCZNIE w izolowanym środowisku (job CI
+  `pandapower-cross-validation` w .github/workflows/python-tests.yml), bo
+  pandapower<3.6 wymaga scipy<1.17 — niezgodne z pinem scipy 1.17.0 głównego
+  venv solverów. Główny bieg CI deselekcjonuje ten marker (`-m "not
+  pandapower"`); brak pandapower w głównym venv jest tam stanem stałym, nie
+  warunkowym — stąd brak `is_pandapower_available`/`importorskip` w testach.
 
 Pliki ENM-like dict ↔ pandapower dict konwersja.
 """
@@ -63,13 +69,25 @@ def enm_to_pandapower_dict(enm: dict[str, Any]) -> dict[str, Any]:
         if bus_ref not in bus_idx_map:
             continue
         opis_zrodla = f"zrodlo bilansujace na szynie {bus_ref!r}"
-        pp.create_ext_grid(
-            net,
-            bus=bus_idx_map[bus_ref],
-            vm_pu=float(pole_wymagane(source, "v_pu", opis=opis_zrodla)),
-            s_sc_max_mva=float(pole_wymagane(source, "sk_max_mva", opis=opis_zrodla)),
-            rx_max=float(pole_wymagane(source, "rx_ratio", opis=opis_zrodla)),
-        )
+        ext_grid_kwargs: dict[str, Any] = {
+            "bus": bus_idx_map[bus_ref],
+            "vm_pu": float(pole_wymagane(source, "v_pu", opis=opis_zrodla)),
+        }
+        # sk_max_mva/rx_ratio (moc zwarciowa i R/X zrodla bilansujacego) sa w
+        # pandapower.create_ext_grid OPCJONALNE (domyslnie NaN) — dotycza
+        # WYLACZNIE pp.shortcircuit(), ktorego ten most nie wywoluje;
+        # run_pandapower_powerflow() liczy tylko pp.runpp() (przeplyw mocy).
+        # Siec referencyjna walidujaca WYLACZNIE rozplyw (np. IEEE 4-bus
+        # Stevenson, pp_simple_four_bus) prawidlowo ich nie definiuje — to NIE
+        # jest brak danych fikstury, tylko dana spoza zakresu tego obliczenia.
+        # Wymuszanie ich przez pole_wymagane() bylo bledem MOSTU (fikstura
+        # zwarciowa, np. iec60909_example.py, nadal je przekazuje, gdy sa
+        # obecne — ponizej to zachowanie zachowane bez zmian).
+        if source.get("sk_max_mva") is not None:
+            ext_grid_kwargs["s_sc_max_mva"] = float(source["sk_max_mva"])
+        if source.get("rx_ratio") is not None:
+            ext_grid_kwargs["rx_max"] = float(source["rx_ratio"])
+        pp.create_ext_grid(net, **ext_grid_kwargs)
 
     # Lines
     for branch in enm.get("branches", []):
@@ -194,13 +212,3 @@ def run_pandapower_powerflow(enm: dict[str, Any]) -> dict[str, dict[str, float]]
             "angle_deg": float(row["va_degree"]),
         }
     return results
-
-
-def is_pandapower_available() -> bool:
-    """Sprawdza czy pandapower jest dostępne (do conditional features)."""
-    try:
-        import pandapower  # type: ignore[import-not-found]  # noqa: F401
-
-        return True
-    except ImportError:
-        return False

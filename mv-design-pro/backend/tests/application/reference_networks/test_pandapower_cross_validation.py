@@ -6,21 +6,48 @@ ABB, Siemens, badaniach naukowych). Jeśli nasz solver daje wyniki identyczne
 z pandapower (różnica < 0.5%), to jest to matematyczny dowód poprawności.
 
 Wymaganie: różnica |v_ours - v_pandapower| / v_pandapower < 0.5% (faktycznie << 0.005%).
+
+Marker `pandapower` (zarejestrowany w pyproject.toml): moduł wymaga realnie
+zainstalowanego pandapower i biegnie WYŁĄCZNIE w izolowanym środowisku (job CI
+`pandapower-cross-validation`, patrz `.github/workflows/python-tests.yml`) —
+główny venv solverów (scipy 1.17.0, złote hashe) nigdy nie instaluje
+pandapower (konflikt zależności: pandapower<3.6 wymaga scipy<1.17 na Pythonie
+3.11). Główny bieg deselekcjonuje ten marker jawnie (`-m "not pandapower"`).
+
+WAŻNE (kolekcja pytest): `import pandapower` NIE stoi na poziomie modułu.
+Import na poziomie modułu, gdy pandapower jest nieobecne, wywala KOLEKCJĘ
+CAŁEGO biegu pytest (błąd importu przerywa sesję, zanim `-m` zdąży cokolwiek
+odselekcjonować — zweryfikowane empirycznie). Import jest więc leniwy, przez
+fixture `pp` — dotykany dopiero gdy test faktycznie się wykonuje, czyli nigdy
+w głównym venv (marker odselekcjonowany), zawsze w izolowanym venv (marker
+wybrany, pandapower zainstalowane). Brak pandapower mimo wybrania markera to
+wtedy zwykły, czytelny `ModuleNotFoundError` z konkretnego testu — błąd, nie
+skip.
 """
 
 from __future__ import annotations
 
 import math
+from typing import Any
 
 import pytest
-
-pp = pytest.importorskip("pandapower")
-
 from application.reference_networks.builders.ieee_4bus import build_ieee_4bus_network
 from application.reference_networks.computation import _power_flow_newton_raphson
 
+pytestmark = pytest.mark.pandapower
 
-def _build_pandapower_4bus():
+
+@pytest.fixture()
+def pp() -> Any:
+    """Leniwy import pandapower — dotykany tylko gdy test z markerem `pandapower`
+    faktycznie się wykonuje (nigdy w głównym venv, bo tam marker jest
+    odselekcjonowany przez `-m "not pandapower"` zanim ta fixture się odpali)."""
+    import pandapower
+
+    return pandapower
+
+
+def _build_pandapower_4bus(pp: Any) -> Any:
     """Identical 4-bus network in pandapower."""
     net = pp.create_empty_network(sn_mva=100.0)
     buses = [pp.create_bus(net, vn_kv=132.0, name=f"BUS-{i+1}") for i in range(4)]
@@ -54,9 +81,9 @@ def _build_pandapower_4bus():
 class TestIeee4BusCrossValidatePandapower:
     """DOWÓD: nasz NR solver = pandapower NR, różnica << 0.5%."""
 
-    def test_all_voltages_within_0_5_pct_of_pandapower(self) -> None:
+    def test_all_voltages_within_0_5_pct_of_pandapower(self, pp: Any) -> None:
         """Każda magnitude voltage różni się od pandapower o < 0.5%."""
-        net = _build_pandapower_4bus()
+        net = _build_pandapower_4bus(pp)
         pp.runpp(net, algorithm="nr", tolerance_mva=1e-9)
         result = _power_flow_newton_raphson(build_ieee_4bus_network(), tolerance=1e-9)
 
@@ -69,9 +96,9 @@ class TestIeee4BusCrossValidatePandapower:
                 f"(rel.diff={rel_diff*100:.4f}% >= 0.5%)"
             )
 
-    def test_all_voltages_bit_identical_to_pandapower(self) -> None:
+    def test_all_voltages_bit_identical_to_pandapower(self, pp: Any) -> None:
         """Stronger: różnica < 1e-5 (effectively bit-identical do tolerancji float)."""
-        net = _build_pandapower_4bus()
+        net = _build_pandapower_4bus(pp)
         pp.runpp(net, algorithm="nr", tolerance_mva=1e-9)
         result = _power_flow_newton_raphson(build_ieee_4bus_network(), tolerance=1e-9)
 
@@ -82,9 +109,9 @@ class TestIeee4BusCrossValidatePandapower:
                 abs(v_pp - v_ours) < 1e-5
             ), f"{bus_id}: differ by {abs(v_pp - v_ours):.2e} (target < 1e-5)"
 
-    def test_all_angles_within_0_5_degrees_of_pandapower(self) -> None:
+    def test_all_angles_within_0_5_degrees_of_pandapower(self, pp: Any) -> None:
         """Każdy kąt różni się od pandapower o < 0.5°."""
-        net = _build_pandapower_4bus()
+        net = _build_pandapower_4bus(pp)
         pp.runpp(net, algorithm="nr", tolerance_mva=1e-9)
         result = _power_flow_newton_raphson(build_ieee_4bus_network(), tolerance=1e-9)
 
@@ -96,9 +123,9 @@ class TestIeee4BusCrossValidatePandapower:
                 f"(diff={abs(a_pp - a_ours):.4f}° >= 0.5°)"
             )
 
-    def test_both_solvers_converge(self) -> None:
+    def test_both_solvers_converge(self, pp: Any) -> None:
         """Sanity: oba solvery muszą zbiec."""
-        net = _build_pandapower_4bus()
+        net = _build_pandapower_4bus(pp)
         pp.runpp(net, algorithm="nr", tolerance_mva=1e-9)
         # pandapower converged jeśli runpp nie wyrzucił exception
         result = _power_flow_newton_raphson(build_ieee_4bus_network(), tolerance=1e-9)
@@ -112,8 +139,8 @@ class TestSolverEqualsPandapowerNumerically:
     (z tolerancją numeryczną floating-point arithmetic).
     """
 
-    def test_voltage_magnitudes_match_to_5_decimal_places(self) -> None:
-        net = _build_pandapower_4bus()
+    def test_voltage_magnitudes_match_to_5_decimal_places(self, pp: Any) -> None:
+        net = _build_pandapower_4bus(pp)
         pp.runpp(net, algorithm="nr", tolerance_mva=1e-9)
         result = _power_flow_newton_raphson(build_ieee_4bus_network(), tolerance=1e-9)
 
@@ -124,8 +151,8 @@ class TestSolverEqualsPandapowerNumerically:
                 v_pp == v_ours
             ), f"{bus_id}: nasz={v_ours} vs pandapower={v_pp} (mismatch in 5 decimal places)"
 
-    def test_angles_match_to_3_decimal_places(self) -> None:
-        net = _build_pandapower_4bus()
+    def test_angles_match_to_3_decimal_places(self, pp: Any) -> None:
+        net = _build_pandapower_4bus(pp)
         pp.runpp(net, algorithm="nr", tolerance_mva=1e-9)
         result = _power_flow_newton_raphson(build_ieee_4bus_network(), tolerance=1e-9)
 
