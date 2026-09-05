@@ -18,7 +18,7 @@ import pytest
 from application import twin_key
 from domain.models import Project
 from domain.study_case import StudyCase
-from enm import store
+from enm import dziennik_zmian, store
 from enm.klucz_twin import PrzypadekBezProjektuError, klucz_twin_projektu
 from enm.models import Bus, EnergyNetworkModel, ENMDefaults, ENMHeader
 
@@ -119,9 +119,21 @@ def test_migracja_aktywny_przypadek_staje_sie_modelem_projektu_a_reszta_trafia_d
     legacy = store._store_dir() / store.KATALOG_LEGACY
     snapshoty = [p for p in legacy.glob("*.json") if not p.name.endswith(".dziennik.json")]
     dzienniki = list(legacy.glob("*.dziennik.json"))
-    assert (
-        len(snapshoty) == 3 and len(dzienniki) == 3
-    )  # snapshot + dziennik kazdego przypadku odlozone razem
+    # INTENCJA (bez zmian): nic nie ginie — snapshot KAŻDEGO przypadku ląduje w
+    # `legacy_przypadki/`. KANON DZIENNIKA (przegląd adwersaryjny CV-1, korekta):
+    # dziennik idzie ZA MODELEM, więc historia przypadku PRZENIESIONEGO żyje odtąd
+    # pod kluczem projektu (model zachował jego licznik rewizji — dziennik odłożony
+    # razem z odrzuconymi zostawiałby projekt z dziurą w historii). Odkładane są
+    # więc dzienniki DWÓCH przypadków, których modele nie zostały modelem projektu.
+    assert len(snapshoty) == 3
+    assert len(dzienniki) == 2
+    stan_dziennika = {w["case_id"]: w["dziennik"] for w in store.wiersze_manifestu_legacy()}
+    assert stan_dziennika == {
+        str(case_ids[1]): "ZA_MODELEM",
+        str(case_ids[0]): "ODLOZONY",
+        str(case_ids[2]): "ODLOZONY",
+    }
+    assert [w.rewizja for w in dziennik_zmian.wszystkie_wpisy(klucz)] == [1, 2]
     # Idempotencja: powtórne tłumaczenie nie skanuje ponownie i nie dopisuje manifestu.
     twin_key.klucz_twin_dla_przypadku(str(case_ids[2]), uow_factory)
     assert len(store.wiersze_manifestu_legacy()) == 3

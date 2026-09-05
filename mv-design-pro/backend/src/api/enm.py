@@ -154,9 +154,14 @@ def _invaliduj_wyniki_po_operacji(case_id: str, resolved_name: str, request: Req
     - w tym środowisku nie ma warstwy DB (`uow_factory=None` — testy jednostkowe
       operacji domenowych wołają `execute_domain_operation` wprost, z pominięciem
       tej końcówki API, i nie mają czego unieważniać),
-    - `case_id` nie jest UUID albo nie ma odpowiadającego `StudyCase` w DB — ENM
-      istnieje NIEZALEŻNIE od DB (`enm/store.py` tworzy domyślny model dla
-      dowolnego `case_id`), więc brak wiersza nie jest błędem tej funkcji.
+    - `case_id` nie jest UUID albo nie ma odpowiadającego `StudyCase` w DB.
+      KOREKTA CV-1: ten ostatni układ nie jest już osiągalny z tej końcówki —
+      zależność `KluczTwin` (`api/klucz_twin_dep.py`) tłumaczy `case_id` na klucz
+      projektu PRZED wejściem w handler i oddaje 404, gdy przypadku nie ma w
+      bazie (inwariant I-2). Dawne uzasadnienie („ENM istnieje niezależnie od DB,
+      magazyn tworzy model domyślny dla dowolnego `case_id`") opisywało stan
+      sprzed CV-1 i przestało być prawdą. Warunek zostaje jako obrona przed
+      wołaniem tej funkcji spoza końcówki, nie jako opis ścieżki produkcyjnej.
     """
     spec = CANONICAL_OPERATIONS.get(resolved_name)
     if spec is not None and not spec.mutates_model:

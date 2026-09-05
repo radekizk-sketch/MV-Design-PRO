@@ -33,9 +33,11 @@ from enm.dziennik_zmian import (
     OPIS_PRZYWROCENIA_Z_ARCHIWUM,
     OPIS_WPISU_ODTWORZONEGO,
     PrzygotowanyWpis,
+    ma_historie,
+    przenies_dziennik,
     sciezka_tymczasowa,
-    skopiuj_dziennik,
     wpis_rewizji,
+    wyczysc_dziennik,
 )
 from enm.dziennik_zmian import przygotuj_dopisanie as przygotuj_wpis_dziennika
 from enm.hash import compute_enm_hash
@@ -44,9 +46,10 @@ from enm.migrations.punkt_przylaczenia_der import migruj as migruj_punkt_przylac
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from enm.rewizje import (
     PrzygotowanaRewizja,
+    dostepne_rewizje,
     przenies_katalog_rewizji,
+    przenies_katalog_rewizji_pod_klucz,
     przygotuj_rewizje,
-    skopiuj_katalog_rewizji,
     usun_wszystkie_migawki,
     uzgodnij_indeks,
     wczytaj_rewizje,
@@ -566,6 +569,13 @@ def reset_enm_store(*, remove_persisted: bool = True) -> None:
     # przywracalaby dokladnie ten wyscig, ktory blokada usuwa. Wpis to jeden
     # obiekt `RLock` na przypadek.
     _enm_store.clear()
+    # DZIENNIK RESETUJE SIE RAZEM Z MODELEM (przeglad adwersaryjny CV-1). Reset
+    # kasowal pliki dziennika (`*.dziennik.json` lapie sie w `*.json` nizej), ale
+    # NIE jego pamiec — wiec wolajacy, ktory nie wiedzial o drugim module, dostawal
+    # magazyn pusty i dziennik pelen wpisow z poprzedniego zycia. To ta sama klasa,
+    # ktora zamyka `_wycofaj_nieudany_zapis` („wycofywano model, ale nie dziennik"):
+    # dwa zapisy towarzyszace jednemu modelowi maja jeden cykl zycia.
+    wyczysc_dziennik(usun_pliki=False)
     if not remove_persisted:
         return
     store_dir = _store_dir()
@@ -603,6 +613,11 @@ class WynikMigracjiKlucza:
     `ROZBIEZNY` (projekt miał model o INNYM hashu — plik odłożony do
     `legacy_przypadki/` i oznaczony w manifeście; wymaga decyzji projektanta:
     wariant sieci). Żaden status nie kasuje danych.
+
+    `dziennik_przeniesiony`: czy historia rewizji tego przypadku przeszła pod
+    klucz projektu RAZEM z modelem (możliwe wyłącznie przy `PRZENIESIONY` i tylko
+    wtedy, gdy projekt nie miał jeszcze własnej historii). `False` znaczy, że
+    dziennik został odłożony do `legacy_przypadki/` razem z modelem przypadku.
     """
 
     case_id: str
@@ -611,6 +626,7 @@ class WynikMigracjiKlucza:
     hash_legacy: str | None
     hash_projektu: str | None
     rewizja_legacy: int | None
+    dziennik_przeniesiony: bool = False
 
 
 def hash_tresci_modelu(enm: EnergyNetworkModel) -> str:
@@ -633,16 +649,32 @@ def _katalog_legacy() -> Path:
 
 
 def _odloz_do_legacy(case_id: str, wynik: WynikMigracjiKlucza) -> None:
-    """Przenieś plik snapshotu (i dziennika, jeśli jest) przypadku do `legacy_przypadki/`
-    i dopisz wiersz manifestu. Zapis manifestu przez plik roboczy + `replace`."""
+    """Przenieś pliki przypadku, które ZOSTAŁY przy przypadku (snapshot HEAD,
+    dziennik, migawki rewizji), do `legacy_przypadki/` i dopisz wiersz manifestu.
+
+    HISTORIA IDZIE ZA MODELEM (CV-2 + przegląd adwersaryjny CV-1). Gdy model
+    przypadku ZOSTAŁ modelem projektu, jego dziennik i migawki przeszły już pod
+    klucz projektu w `migruj_klucz_przypadku_do_projektu` — decyzja podjęta tam w
+    JEDNYM miejscu (`wynik.dziennik_przeniesiony`) i tylko odczytana tutaj:
+    warunek „model promowany", „dziennik promowany" i „migawki promowane" nie
+    mogą być trzema niezależnymi warunkami, które „dziś się zgadzają". Odkładamy
+    wyłącznie to, co ZOSTAŁO przy przypadku. Manifest nazywa los historii wprost
+    (`ZA_MODELEM` / `ODLOZONY` / `BRAK`) — inaczej „nic nie ginie" byłoby
+    obietnicą, której nie da się sprawdzić po fakcie.
+    """
     katalog = _katalog_legacy()
     zrodlo = _case_path(case_id)
     if zrodlo.exists():
         zrodlo.replace(katalog / zrodlo.name)
     dziennik = _store_dir() / f"{zrodlo.stem}.dziennik.json"
-    if dziennik.exists():
+    if wynik.dziennik_przeniesiony:
+        stan_dziennika = "ZA_MODELEM"
+    elif dziennik.exists():
         dziennik.replace(katalog / dziennik.name)
-    # CV-2: migawki rewizji przypadku ida za jego plikami — nic nie ginie.
+        stan_dziennika = "ODLOZONY"
+    else:
+        stan_dziennika = "BRAK"
+    # Migawki, ktore nie przeszly pod klucz projektu, ida za plikami przypadku.
     przenies_katalog_rewizji(case_id, katalog)
     manifest = katalog / MANIFEST_LEGACY
     wiersz = json.dumps(
@@ -653,6 +685,7 @@ def _odloz_do_legacy(case_id: str, wynik: WynikMigracjiKlucza) -> None:
             "hash_legacy": wynik.hash_legacy,
             "hash_projektu": wynik.hash_projektu,
             "rewizja_legacy": wynik.rewizja_legacy,
+            "dziennik": stan_dziennika,
             "plik": zrodlo.name,
             "czas": datetime.now(UTC).isoformat(),
         },
@@ -692,23 +725,37 @@ def migruj_klucz_przypadku_do_projektu(
         if projekt is None and przyjmij_jako_model_projektu:
             _enm_store[klucz_projektu] = legacy
             _persist_enm(klucz_projektu, legacy)
-            # CV-2: historia przypadku promowanego na model projektu idzie z nim —
-            # dziennik i migawki sa KOPIOWANE pod klucz projektu PRZED odlozeniem
-            # plikow przypadku do `legacy_przypadki/` (wczesniej dziennik wedrowal
-            # do legacy i projekt zaczynal bez historii — utrata odpowiedzi „ktora
-            # zmiana uniewaznila wynik" dla biegow sprzed migracji).
-            skopiuj_dziennik(case_id, klucz_projektu)
-            skopiuj_katalog_rewizji(case_id, klucz_projektu)
+            # HISTORIA IDZIE ZA MODELEM (CV-2 + przeglad adwersaryjny CV-1). Model
+            # zachowuje licznik rewizji przypadku (bez bumpu, jak `restore_enm`),
+            # wiec dziennik I migawki przechodza pod klucz projektu RAZEM z nim —
+            # inaczej projekt startuje z historia pusta przy modelu w rewizji N
+            # i kolejne wpisy tworza dziure. JEDNA decyzja dla obu zapisow
+            # (predykaty parami): projekt, ktory MA juz wlasna historie (dziennik
+            # albo migawki — np. plik modelu usuniety recznie przy zachowanej
+            # historii), NIE dostaje cudzej; oba zapisy przypadku ida wtedy do
+            # `legacy_przypadki/` z wierszem manifestu (`_odloz_do_legacy`), a HEAD
+            # projektu i tak dostaje migawke oraz wpis nazywajacy przeniesienie.
+            historia_projektu = ma_historie(klucz_projektu) or bool(
+                dostepne_rewizje(klucz_projektu)
+            )
+            dziennik_przeniesiony = False
+            if not historia_projektu:
+                dziennik_przeniesiony = przenies_dziennik(case_id, klucz_projektu)
+                przenies_katalog_rewizji_pod_klucz(case_id, klucz_projektu)
             hash_tresci = compute_enm_hash(legacy)
             zapewnij_migawke(klucz_projektu, legacy, hash_sha256=hash_tresci)
-            przygotuj_wpis_dziennika(
-                klucz_projektu,
-                rewizja=legacy.header.revision,
-                operacja=None,
-                opis_pl=OPIS_PRZENIESIENIA_Z_PRZYPADKU,
-                znacznik_czasu=legacy.header.updated_at,
-                hash_sha256=hash_tresci,
-            ).zatwierdz()
+            if wpis_rewizji(klucz_projektu, legacy.header.revision) is None:
+                # Przypadek bez dziennika (magazyn sprzed rejestru) albo historia
+                # zostawiona przy przypadku: rewizja HEAD dostaje wpis nazywajacy
+                # przeniesienie, nie zgadnieta operacje.
+                przygotuj_wpis_dziennika(
+                    klucz_projektu,
+                    rewizja=legacy.header.revision,
+                    operacja=None,
+                    opis_pl=OPIS_PRZENIESIENIA_Z_PRZYPADKU,
+                    znacznik_czasu=legacy.header.updated_at,
+                    hash_sha256=hash_tresci,
+                ).zatwierdz()
             wynik = WynikMigracjiKlucza(
                 case_id,
                 klucz_projektu,
@@ -716,6 +763,7 @@ def migruj_klucz_przypadku_do_projektu(
                 hash_legacy,
                 hash_legacy,
                 legacy.header.revision,
+                dziennik_przeniesiony=dziennik_przeniesiony,
             )
         else:
             hash_projektu = hash_tresci_modelu(projekt) if projekt is not None else None

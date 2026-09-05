@@ -370,27 +370,67 @@ def najwyzsza_rewizja(case_id: str) -> int | None:
     return max((w.rewizja for w in wpisy), default=None)
 
 
-def skopiuj_dziennik(klucz_zrodla: str, klucz_celu: str) -> int:
-    """Skopiuj wpisy dziennika spod klucza zrodlowego pod klucz celu (migracja
-    CV-1: model przypadku staje sie modelem projektu — jego historia idzie z nim).
+def ma_historie(klucz: str) -> bool:
+    """Czy klucz MA historie rewizji — predykat „cel ma historie" migracji CV-1.
 
-    Wpisy celu o tej samej rewizji NIE sa nadpisywane (cel juz zna te rewizje).
-    Zapis przez plik roboczy + atomowa podmiana, jak kazdy zapis dziennika.
-    Zwraca liczbe dopisanych wpisow.
+    Predykat jest „ma plik dziennika ALBO ma wpisy w pamieci", a NIE „ma wpis w
+    pamieci": `_wczytaj` cachuje PUSTY dziennik przy kazdym odczycie, wiec sam
+    odczyt klucza nie moze go zamienic w klucz „z historia". Jedno zrodlo dla
+    decyzji o przeniesieniu dziennika i migawek (`store.migruj_klucz_przypadku_
+    do_projektu`) oraz dla zabezpieczenia w `przenies_dziennik`.
     """
-    zrodlo = _wczytaj(klucz_zrodla).wpisy
-    if not zrodlo:
-        return 0
-    cel = _wczytaj(klucz_celu)
-    znane = {w.rewizja for w in cel.wpisy}
-    nowe = [w for w in zrodlo if w.rewizja not in znane]
-    if not nowe:
-        return 0
-    wpisy_po = sorted([*cel.wpisy, *nowe], key=lambda w: w.rewizja)
-    zapis = _zapisz_roboczo(klucz_celu, wpisy_po)
-    zapis.tmp.replace(zapis.docelowa)
-    cel.wpisy = list(zapis.wpisy_po)
-    return len(nowe)
+    if _sciezka(klucz).exists():
+        return True
+    dziennik = _dzienniki.get(klucz)
+    return dziennik is not None and bool(dziennik.wpisy)
+
+
+def przenies_dziennik(z_klucza: str, do_klucza: str) -> bool:
+    """Przenies historie rewizji pod NOWY klucz — dziennik idzie ZA modelem (CV-1).
+
+    DLUG, KTORY TO ZAMYKA (przeglad adwersaryjny CV-1). Migracja zastanych plikow
+    per przypadek promuje model przypadku aktywnego na model PROJEKTU BEZ podbicia
+    rewizji (`store.migruj_klucz_przypadku_do_projektu`) — model zachowuje wiec
+    licznik rewizji N. Dziennik tego samego przypadku byl przy tym odkladany do
+    `legacy_przypadki/` razem z dziennikami przypadkow ODRZUCONYCH, wiec projekt
+    startowal z historia PUSTA przy modelu w rewizji N. Nastepny zapis dopisywal
+    rewizje N+1, a `GET /enm/dziennik-zmian?od_rewizji=R` (odpowiedz na „ktora
+    zmiana uniewaznila moj wynik") oddawal liste Z DZIURA — wygladajaca na
+    kompletna. To jest dokladnie stan, ktorego naglowek tego modulu zabrania:
+    „z dziurami nie odpowiada".
+
+    Zwraca `True`, gdy historia faktycznie przeszla pod nowy klucz. `False`, gdy
+    nie bylo czego przenosic ALBO gdy klucz docelowy MA JUZ wlasna historie
+    (`ma_historie`) — nadpisanie cudzej historii byloby utrata danych, wiec
+    dziennik zrodlowy zostaje na miejscu (wolajacy odklada go wtedy do
+    `legacy_przypadki/` z wpisem manifestu, dokladnie tak jak odklada model).
+
+    KOLEJNOSC jest odporna na awarie nosnika: najpierw powstaje plik DOCELOWY
+    (zapis roboczy + atomowa podmiana), a dopiero potem znika zrodlowy. Przerwanie
+    w srodku zostawia OBIE kopie (stan nadmiarowy, odtwarzalny), nigdy zadnej.
+    """
+    if z_klucza == do_klucza:
+        return False
+    if ma_historie(do_klucza):
+        return False
+    zrodlo = _sciezka(z_klucza)
+    if not zrodlo.exists() and z_klucza not in _dzienniki:
+        return False
+    wpisy = list(_wczytaj(z_klucza).wpisy)
+    if not wpisy:
+        # Pusta historia nie jest historia — nie tworzymy pliku „na wszelki wypadek".
+        _dzienniki.pop(z_klucza, None)
+        return False
+    zapis = _zapisz_roboczo(do_klucza, wpisy)
+    try:
+        zapis.tmp.replace(zapis.docelowa)
+    except OSError:
+        zapis.tmp.unlink(missing_ok=True)
+        raise
+    _dzienniki[do_klucza] = _Dziennik(wpisy=list(wpisy))
+    _dzienniki.pop(z_klucza, None)
+    zrodlo.unlink(missing_ok=True)
+    return True
 
 
 def wyczysc_dziennik(*, usun_pliki: bool = True) -> None:

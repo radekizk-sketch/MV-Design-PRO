@@ -24,7 +24,15 @@ ostrzezenia, a dlug rosnie zamiast malec.
 
 CO WYKRYWA (analiza skladni, nie dopasowanie tekstu)
 -----------------------------------------------------
-Trafieniem jest WYWOLANIE funkcji magazynu `get_enm`, `set_enm`, `has_enm`,
+Bramka ma DWIE reguly, bo klucz magazynu da sie ominac z DWOCH stron:
+REGULA 1 (nizej) - adres PRZYPADKU: `get_enm(case_id)` zamiast klucza projektu.
+REGULA 2 (`naruszenia_klucza_projektu`) - adres PROJEKTU z pominieciem migracji:
+`enm.klucz_twin.klucz_twin_projektu` jest czysta funkcja klucza i NIE uruchamia
+migracji zastanych plikow per przypadek, wiec w `api/**`/`application/**` klucz
+projektu wolno wyprowadzic wylacznie przez `application/twin_key.py`. Pelne
+uzasadnienie i zmierzony skutek pominiecia - w docstringu tamtej funkcji.
+
+REGULA 1. Trafieniem jest WYWOLANIE funkcji magazynu `get_enm`, `set_enm`, `has_enm`,
 `restore_enm`, `blokada_twin` (zaimportowanej z `enm.store` pod DOWOLNA
 lokalna nazwa), ktorego PIERWSZY argument jest "adresem przypadku":
 
@@ -66,11 +74,19 @@ WYMUSZAC, a nie karac:
 
 ZAKRES SKANU
 ------------
-`api/**` i `application/**` pod `backend/src`, Z WYJATKIEM
-`application/twin_key.py` - to JEDYNE miejsce, w ktorym tlumaczenie
-`case_id -> klucz projektu` smie sie odbywac, wiec ten plik z natury rzeczy
-przyjmuje surowy `case_id` jako WEJSCIE swojej wlasnej funkcji tlumaczacej
-(patrz jego wlasny naglowek: "JEDYNE miejsce tlumaczenia").
+`api/**`, `application/**` i `enm/**` pod `backend/src`, Z WYJATKIEM DWOCH
+plikow, ktore z natury rzeczy niosa to, czego bramka zabrania reszcie:
+`application/twin_key.py` (JEDYNE miejsce tlumaczenia `case_id -> klucz
+projektu`, wiec przyjmuje surowy `case_id` jako WEJSCIE wlasnej funkcji) i
+`enm/klucz_twin.py` (DEFINICJA `klucz_twin_projektu`).
+
+`enm/**` doszlo 2026-09-05 (przeglad adwersaryjny CV-1) i weszlo CZYSTE -
+zero naruszen obu regul, zapadka bez zmian. Bez tego korzenia REGULA 2
+pilnowalaby tylko dwoch z trzech warstw, ktore wolaja magazyn: `enm/**` jest
+warstwa, w ktorej magazyn i klucz MIESZKAJA, a `enm/canonical_analysis.py`
+juz dzis wola `get_enm` (dostaje klucz z gory) - nowe miejsce budujace klucz
+na miejscu byloby dokladnie tym defektem, ktory ta karta naprawila w
+`analysis_dispatch` i `project_archive`.
 
 ZAPADKA (`ZASTANE_KLUCZE_PRZYPADKU`)
 -------------------------------------
@@ -78,7 +94,9 @@ Konwencja `solver_input_substitute_guard.py` / `no_direct_fault_params_guard.py`
 budzet wiaze KONKRETNA, zmierzona liczbe zastanych wywolan surowym `case_id`
 NA PLIK (nie na sygnature - dlug tej karty jest jednorodny: "ten plik
 jeszcze nie przeszedl na klucz projektu", a nie zbior odrebnych wzorcow).
-Liczba zmierzona 2026-09-04 (uruchomieniem tego skanu z pusta zapadka).
+Liczba zmierzona 2026-09-05 (uruchomieniem tego skanu z pusta zapadka na
+stanie po karcie CV-1-W; poprzedni pomiar 2026-09-04 zestarzal sie razem z
+ta karta - patrz komentarz przy samej zapadce).
 
 Zapadka dziala W OBIE STRONY: NADWYZKA ponad budzet to naruszenie (nowe
 uzycie surowego `case_id` zamiast klucza projektu), a NIEDOBOR tez jest
@@ -98,11 +116,15 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 BACKEND_SRC = PROJECT_ROOT / "backend" / "src"
 
 #: Korzenie skanowania (wzgledem BACKEND_SRC) - patrz "ZAKRES SKANU" wyzej.
-SCAN_ROOTS: tuple[str, ...] = ("api", "application")
+SCAN_ROOTS: tuple[str, ...] = ("api", "application", "enm")
 
-#: Jedyny plik w zakresie WOLNY od reguly - tlumacz `case_id` -> klucz projektu.
+#: Pliki w zakresie WOLNE od reguly - z definicji, nie z ulgi:
+#:   * `application/twin_key.py` - tlumacz `case_id` -> klucz projektu, jedyne
+#:     miejsce, w ktorym surowy `case_id` jest legalnym WEJSCIEM,
+#:   * `enm/klucz_twin.py` - DEFINICJA `klucz_twin_projektu`; plik, ktory funkcje
+#:     tworzy, nie moze byc karany za jej wystapienie (REGULA 2).
 #: Sciezki wzgledem BACKEND_SRC.
-WYLACZONE_PLIKI: frozenset[str] = frozenset({"application/twin_key.py"})
+WYLACZONE_PLIKI: frozenset[str] = frozenset({"application/twin_key.py", "enm/klucz_twin.py"})
 
 #: Funkcje magazynu objete regula (docs/architecture/CANONICAL_TWIN_ARCHITECTURE.md §A.2).
 FUNKCJE_MAGAZYNU: frozenset[str] = frozenset(
@@ -111,7 +133,16 @@ FUNKCJE_MAGAZYNU: frozenset[str] = frozenset(
 
 #: Funkcje tlumacza - argument POCHODZACY z ich wywolania nie jest naruszeniem
 #: (patrz "WYJATEK - DROGA PRZEZ TLUMACZA" wyzej).
-FUNKCJE_TLUMACZA: frozenset[str] = frozenset({"klucz_twin_dla_przypadku", "klucz_twin_projektu"})
+FUNKCJE_TLUMACZA: frozenset[str] = frozenset(
+    {"klucz_twin_dla_przypadku", "klucz_twin_dla_projektu", "klucz_twin_projektu"}
+)
+
+#: REGULA 2 (patrz `naruszenia_klucza_projektu`): modul i funkcja czystego klucza
+#: projektu. W `api/**` i `application/**` klucz projektu wolno wyprowadzic tylko
+#: przez `application/twin_key.py` (jedyny plik poza skanem), bo tylko tamta droga
+#: uruchamia migracje zastanych plikow per przypadek.
+MODUL_KLUCZA_PROJEKTU = "enm.klucz_twin"
+FUNKCJA_KLUCZA_PROJEKTU = "klucz_twin_projektu"
 
 _TOKEN_CASE = "case"
 _TOKEN_KLUCZ = "klucz"
@@ -235,10 +266,12 @@ def _moze_byc_mostem_reeksportu(dotted: str) -> bool:
     pisaniu tej karty). Bez tej granicy rozwiazywanie eksportu schodzilo
     KAZDYM importem az do korzenia `backend/src` (798 plikow, gesty graf
     zaleznosci miedzy warstwami solverow/domeny/ENM) - most reeksportu
-    ZDEFINIOWANY poza `api/**`/`application/**` (np. w
+    ZDEFINIOWANY poza skanowanymi warstwami (np. w
     `network_model/solvers/**`) nie ma tez uzasadnienia MERYTORYCZNEGO: karta
-    ograniczyla ZAKRES SKANU do tych dwoch warstw wlasnie dlatego, ze tam
-    zyje dlug migracji stranglerowej.
+    ograniczyla ZAKRES SKANU do warstw, w ktorych zyje dlug migracji
+    stranglerowej i sam magazyn. Predykat czyta `SCAN_ROOTS`, wiec rozszerzenie
+    zakresu (2026-09-05: `enm/**`) rozszerza go RAZEM z nim - bez drugiej listy
+    do pilnowania.
     """
     return any(dotted == root or dotted.startswith(f"{root}.") for root in SCAN_ROOTS)
 
@@ -358,6 +391,61 @@ def _kanoniczna_funkcja_wywolania(
     return None
 
 
+def naruszenia_klucza_projektu(tree: ast.AST) -> list[tuple[str, int]]:
+    """Uzycia `enm.klucz_twin.klucz_twin_projektu` w skanowanym pliku (REGULA 2).
+
+    PO CO TA REGULA (przeglad adwersaryjny CV-1, 2026-09-05). Regula 1 wyzej
+    pilnuje ADRESU PRZYPADKU. Zmierzony defekt siedzial jednak po drugiej
+    stronie: sciezki adresowane PROJEKTEM (`application/analysis_dispatch/
+    service.py` — dispatch analiz nN, `application/project_archive/service.py` —
+    eksport archiwum) budowaly klucz przez `klucz_twin_projektu`, czysta funkcje
+    z `enm/klucz_twin.py`, ktora NIC nie wie o migracji zastanych plikow per
+    przypadek (ta wisi na `application/twin_key.py`). W swiezym procesie
+    (restart uvicorna, worker zadan w tle) taka sciezka byla PIERWSZYM dostepem
+    do magazynu i trafiala na klucz projektu, pod ktorym nic nie lezalo:
+      * `get_enm` TWORZY tam model domyslny i go ZAPISUJE — realny model
+        projektanta (nadal pod kluczem przypadku) przy pierwszym wejsciu przez
+        `/api/cases/...` byl porownywany hashem z ta pustka i ladowal w
+        `legacy_przypadki/` ze statusem ROZBIEZNY;
+      * `has_enm` oddawal `False` — eksport ZIP wychodzil BEZ SIECI.
+    Dlatego w `api/**` i `application/**` klucz projektu wolno wyprowadzic
+    WYLACZNIE przez `application/twin_key.py` (`klucz_twin_dla_projektu` /
+    `klucz_twin_dla_przypadku` / `migruj_projekt_z_legacy_z_repozytorium`), a
+    sam `klucz_twin_projektu` jest tam NIEDOSTEPNY. Lista wyjatkow jest PUSTA
+    z rozmyslu: „tu akurat nie ma czego migrowac" jest rozumowaniem, ktore
+    przestaje byc prawdziwe po pierwszej zmianie funkcji, w ktorej stoi.
+
+    Wykrywane sa OBIE drogi: `from enm.klucz_twin import klucz_twin_projektu`
+    (import nazwy, dowolny alias) oraz `from enm import klucz_twin` +
+    `klucz_twin.klucz_twin_projektu(...)` (dostep przez modul). Wzmianka w
+    komentarzu albo docstringu NIE jest uzyciem — skan idzie po AST, nie po
+    tekscie.
+    """
+    naruszenia: list[tuple[str, int]] = []
+    nazwy_modulu: set[str] = set()
+    for node in instrukcje_importu(tree):
+        if isinstance(node, ast.ImportFrom) and not node.level:
+            if node.module == MODUL_KLUCZA_PROJEKTU:
+                for alias in node.names:
+                    if alias.name == FUNKCJA_KLUCZA_PROJEKTU:
+                        naruszenia.append((f"import:{alias.asname or alias.name}", node.lineno))
+            elif node.module == "enm":
+                for alias in node.names:
+                    if alias.name == "klucz_twin":
+                        nazwy_modulu.add(alias.asname or alias.name)
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == MODUL_KLUCZA_PROJEKTU:
+                    nazwy_modulu.add(alias.asname or "klucz_twin")
+    if nazwy_modulu:
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Attribute) or node.attr != FUNKCJA_KLUCZA_PROJEKTU:
+                continue
+            if isinstance(node.value, ast.Name) and node.value.id in nazwy_modulu:
+                naruszenia.append((f"modul:{node.value.id}.{node.attr}", node.lineno))
+    return naruszenia
+
+
 def zbierz_naruszenia(tree: ast.AST, nazwy_funkcji: dict[str, str]) -> list[tuple[str, int]]:
     """Lista (`<funkcja>:<forma>:<cel>`, wiersz) dla jednego pliku."""
     nazwy_modulu = nazwy_modulu_magazynu(tree)
@@ -415,27 +503,41 @@ def check_file(
     """
     rel = path.relative_to(BACKEND_SRC).as_posix()
     naruszenia = zbierz_naruszenia(tree, nazwy_funkcji)
-    return apply_ratchet(rel, naruszenia, budzet.get(rel, 0))
+    komunikaty = apply_ratchet(rel, naruszenia, budzet.get(rel, 0))
+    for sygnatura, linia in naruszenia_klucza_projektu(tree):
+        komunikaty.append(
+            f"  {rel}:{linia}: {sygnatura} - `{FUNKCJA_KLUCZA_PROJEKTU}` jest czysta "
+            "funkcja klucza i NIE uruchamia migracji zastanych plikow per przypadek. "
+            "Adresuj magazyn przez application/twin_key.py "
+            "(klucz_twin_dla_projektu / klucz_twin_dla_przypadku / "
+            "migruj_projekt_z_legacy_z_repozytorium)."
+        )
+    return komunikaty
 
 
 # ---------------------------------------------------------------------------
-# ZAPADKA - zmierzona 2026-09-04 (karta CV-1-G) skanem tego guarda z pusta
-# zapadka na stanie repo w chwili wprowadzenia bramki. Kazdy wpis to DLUG
-# MIGRACJI STRANGLEROWEJ (docs/architecture/CANONICAL_TWIN_ARCHITECTURE.md §A.2):
-# miejsce jeszcze wola magazyn ENM surowym `case_id` zamiast przez
+# ZAPADKA - zmierzona 2026-09-05 (przeglad adwersaryjny CV-1) skanem tego guarda
+# na stanie repo PO karcie wiring CV-1-W. Kazdy wpis to DLUG MIGRACJI
+# STRANGLEROWEJ (docs/architecture/CANONICAL_TWIN_ARCHITECTURE.md §A.2): miejsce
+# jeszcze wola magazyn ENM surowym `case_id` zamiast przez
 # `application/twin_key.py::klucz_twin_dla_przypadku`. Zero nie jest tu
 # powodem merytorycznym (jak w solver_input_substitute_guard) - kazdy wpis
 # MA MALEC do zera migracja, nie zostac zamrozony na stale.
+#
+# POMIAR 2026-09-05 (obnizenie z 18 plikow / sumy 74). Karta CV-1-W przepisala
+# WSZYSTKICH konsumentow API i aplikacji na klucz projektu, ale NIE obnizyla tej
+# zapadki - guard byl wiec CZERWONY na HEAD ("Dlug ZMALAL - obniz budzet") w 18
+# plikach, czyli krok CI `p0-extended-guards.yml` przewracal sie na wlasnej
+# naprawie. Zostaje JEDEN wpis, opisany nizej.
 # ---------------------------------------------------------------------------
 ZASTANE_KLUCZE_PRZYPADKU: dict[str, int] = {
-    # CV-1-W (a71bd91c): 17 plikow zeszlo do ZERA (wszystkie koncowki API i uslugi
-    # aplikacji tlumacza `case_id` przez `api/klucz_twin_dep.py` /
-    # `klucz_twin_dla_przypadku`). Jedyny zastany wyjatek: import archiwum ZIP
-    # z wieloma snapshotami per przypadek — `restore_enm(str(new_case_id), ...)`
-    # jest zapisem TYMCZASOWYM pod kluczem nowego przypadku, po ktorym
-    # `migruj_klucz_przypadku_do_projektu` porownuje hashem i odklada model do
-    # `legacy_przypadki/` z manifestem (nic nie ginie). Znika razem z legacy
-    # postacia archiwum (procedura kasacji, CV-4).
+    # `restore_enm(str(new_case_id), snapshot)` w `import_project` - zapis
+    # TYMCZASOWY pod kluczem nowego przypadku, jedyny sposob, zeby
+    # `migruj_klucz_przypadku_do_projektu` (ktory czyta model SPOD klucza
+    # przypadku) mogl porownac hashem archiwa sprzed CV-1, niosace ROZNE
+    # snapshoty per przypadek, i odlozyc rozbiezne do `legacy_przypadki/` bez
+    # utraty danych. Ten jeden zapis znika dopiero razem z obsluga archiwow
+    # legacy - dopoki ona zyje, jest to droga POPRAWNA, a nie zaniedbana.
     "application/project_archive/service.py": 1,
 }
 
@@ -502,7 +604,8 @@ def main() -> int:
 
     if naruszenia:
         print(
-            "FAIL: wywolanie magazynu ENM surowym case_id zamiast kluczem projektu "
+            "FAIL: adres magazynu ENM z pominieciem tlumacza - surowy case_id albo "
+            "czysty klucz projektu bez migracji "
             "(docs/architecture/CANONICAL_TWIN_ARCHITECTURE.md §A.2 - PROJECT owns ENM):"
         )
         for naruszenie in sorted(naruszenia):
@@ -512,7 +615,8 @@ def main() -> int:
 
     suma = sum(ZASTANE_KLUCZE_PRZYPADKU.values())
     print(
-        "PASS: zero nowych wywolan magazynu ENM surowym case_id "
+        "PASS: zero nowych wywolan magazynu ENM surowym case_id i zero uzyc "
+        f"{FUNKCJA_KLUCZA_PROJEKTU} poza tlumaczem "
         f"(zapadka: {len(ZASTANE_KLUCZE_PRZYPADKU)} plikow, suma {suma})."
     )
     return 0

@@ -333,12 +333,30 @@ def przenies_katalog_rewizji(klucz: str, katalog_docelowy: Path) -> bool:
     return True
 
 
-def skopiuj_katalog_rewizji(klucz_zrodla: str, klucz_celu: str) -> int:
-    """Skopiuj migawki spod klucza zrodlowego pod klucz celu (bez nadpisywania
-    istniejacych). Zwraca liczbe skopiowanych migawek."""
+def przenies_katalog_rewizji_pod_klucz(klucz_zrodla: str, klucz_celu: str) -> bool:
+    """Przenies migawki spod klucza zrodlowego pod klucz celu — historia idzie ZA
+    modelem (migracja CV-1: model przypadku staje sie modelem projektu).
+
+    Odmawia (`False`), gdy cel MA juz migawki: nadpisanie cudzej historii byloby
+    utrata danych. Decyzja „czy przenosic" zapada w JEDNYM miejscu w `store`
+    (predykat wspolny dla dziennika i migawek) — tu jest tylko zabezpieczenie.
+    KOLEJNOSC odporna na awarie nosnika: najpierw pelna kopia pod celem (kazdy
+    plik przez plik roboczy + atomowa podmiana, z przepisanym polem `klucz`),
+    dopiero potem znika katalog zrodla; przerwanie zostawia obie kopie, nigdy zadnej.
+    """
     zrodlo = katalog_rewizji(klucz_zrodla)
     if not zrodlo.is_dir():
-        return 0
+        return False
+    if dostepne_rewizje(klucz_celu):
+        return False
+    przeniesione = _skopiuj_migawki(zrodlo, klucz_celu)
+    shutil.rmtree(zrodlo)
+    return przeniesione > 0
+
+
+def _skopiuj_migawki(zrodlo: Path, klucz_celu: str) -> int:
+    """Skopiuj migawki z katalogu `zrodlo` pod klucz celu (bez nadpisywania
+    istniejacych). Zwraca liczbe skopiowanych migawek."""
     cel = katalog_rewizji(klucz_celu)
     cel.mkdir(parents=True, exist_ok=True)
     skopiowane = 0

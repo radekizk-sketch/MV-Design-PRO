@@ -16,8 +16,9 @@ zwracany wołającemu i zapisany w manifeście — nic nie ginie po cichu.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from typing import Any
 from uuid import UUID
 
 from enm import store
@@ -54,6 +55,56 @@ def _project_id_przypadku(case_id: str, uow_factory: Callable[[], object]) -> UU
     return UUID(str(study_case.project_id))
 
 
+def kolejnosc_promocji(przypadki: Sequence[str], aktywny: str | None) -> list[str]:
+    """Kolejność, w jakiej przypadki ubiegają się o rolę modelu projektu — JEDNA reguła.
+
+    Pierwszy w kolejności jest przypadek AKTYWNY (to on odpowiada temu, co projektant
+    ostatnio widział na ekranie), a po nim pozostałe w porządku, w jakim podał je
+    wołający. Reguła siedzi tutaj, bo listę przypadków dostarczają TRZY różne źródła:
+    baza (`migruj_projekt_z_legacy_z_repozytorium`), zestaw przypadków eksportu
+    archiwum (`project_archive/service.py::_collect_enm`) i wpisy wewnątrz archiwum
+    przy imporcie (`…::import_project`). Trzy kopie tej samej reguły byłyby trzema
+    okazjami do rozjazdu — kolejność decyduje o tym, CZYJ model zostaje modelem
+    projektu, więc rozjazd byłby cichą podmianą sieci.
+    """
+    kolejnosc: list[str] = []
+    if aktywny:
+        kolejnosc.append(aktywny)
+    kolejnosc.extend(c for c in przypadki if c not in kolejnosc)
+    return kolejnosc
+
+
+def migruj_projekt_z_legacy_z_repozytorium(
+    project_id: UUID, przypadki_repo: Any
+) -> WynikMigracjiProjektu:
+    """Migracja projektu — RDZEŃ; wołający podaje repozytorium przypadków.
+
+    Wariant dla konsumenta, który ma repozytorium, ale nie `uow_factory`: eksport i
+    import archiwum projektu (`ProjectArchiveService` trzyma sesję, nie fabrykę
+    jednostek pracy). Wersja z `uow_factory` (niżej) otwiera jednostkę pracy i
+    deleguje TUTAJ, więc źródło listy przypadków i kolejność promocji są w obu
+    drogach te same.
+
+    Idempotentne w procesie (`_zmigrowane_projekty`): powtórne wywołanie dla tego
+    samego projektu nie skanuje przypadków ponownie.
+    """
+    klucz = klucz_twin_projektu(project_id)
+    if klucz in _zmigrowane_projekty:
+        return WynikMigracjiProjektu(klucz, ())
+    przypadki = [str(c.id) for c in przypadki_repo.list_study_cases(project_id)]
+    aktywny = przypadki_repo.get_active_study_case(project_id)
+    kolejnosc = kolejnosc_promocji(przypadki, str(aktywny.id) if aktywny is not None else None)
+    wyniki: list[store.WynikMigracjiKlucza] = []
+    for indeks, case_id in enumerate(kolejnosc):
+        wyniki.append(
+            store.migruj_klucz_przypadku_do_projektu(
+                case_id, klucz, przyjmij_jako_model_projektu=(indeks == 0)
+            )
+        )
+    _zmigrowane_projekty.add(klucz)
+    return WynikMigracjiProjektu(klucz, tuple(wyniki))
+
+
 def migruj_projekt_z_legacy(
     project_id: UUID, uow_factory: Callable[[], object]
 ) -> WynikMigracjiProjektu:
@@ -68,21 +119,7 @@ def migruj_projekt_z_legacy(
     if klucz in _zmigrowane_projekty:
         return WynikMigracjiProjektu(klucz, ())
     with uow_factory() as uow:  # type: ignore[attr-defined]
-        przypadki = list(uow.cases.list_study_cases(project_id))  # type: ignore[attr-defined]
-        aktywny = uow.cases.get_active_study_case(project_id)  # type: ignore[attr-defined]
-    kolejnosc: list[str] = []
-    if aktywny is not None:
-        kolejnosc.append(str(aktywny.id))
-    kolejnosc.extend(str(c.id) for c in przypadki if str(c.id) not in kolejnosc)
-    wyniki: list[store.WynikMigracjiKlucza] = []
-    for indeks, case_id in enumerate(kolejnosc):
-        wyniki.append(
-            store.migruj_klucz_przypadku_do_projektu(
-                case_id, klucz, przyjmij_jako_model_projektu=(indeks == 0)
-            )
-        )
-    _zmigrowane_projekty.add(klucz)
-    return WynikMigracjiProjektu(klucz, tuple(wyniki))
+        return migruj_projekt_z_legacy_z_repozytorium(project_id, uow.cases)  # type: ignore[attr-defined]
 
 
 def klucz_twin_dla_przypadku(case_id: str, uow_factory: Callable[[], object] | None) -> str:
@@ -97,6 +134,25 @@ def klucz_twin_dla_przypadku(case_id: str, uow_factory: Callable[[], object] | N
             "brak warstwy bazy danych — nie da się ustalić projektu przypadku"
         )
     project_id = _project_id_przypadku(case_id, uow_factory)
+    migruj_projekt_z_legacy(project_id, uow_factory)
+    return klucz_twin_projektu(project_id)
+
+
+def klucz_twin_dla_projektu(project_id: UUID, uow_factory: Callable[[], object]) -> str:
+    """Klucz magazynu ENM dla PROJEKTU — z migracją zastanych plików per przypadek.
+
+    ŚCIEŻKA ADRESOWANA PROJEKTEM (przegląd adwersaryjny CV-1). Nie każdy konsument
+    magazynu wchodzi przez `/api/cases/{case_id}/...`: rozdział analiz nN
+    (`application/analysis_dispatch/service.py`) i eksport archiwum projektu mają
+    `project_id` wprost. Budowały więc klucz przez `enm.klucz_twin.klucz_twin_projektu`
+    — czystą funkcję, która NIC nie wie o migracji — i w świeżym procesie trafiały na
+    klucz projektu, pod którym jeszcze nic nie leżało. `get_enm` TWORZY tam model
+    domyślny i go ZAPISUJE, więc realny model projektanta (nadal pod kluczem
+    przypadku) przy pierwszym wejściu przez API był porównywany hashem z tą pustką i
+    lądował w `legacy_przypadki/` jako ROZBIEZNY; `has_enm` z kolei oddawał `False`,
+    czyli archiwum ZIP bez sieci. Ta funkcja jest jedynym poprawnym adresem projektu
+    do magazynu: najpierw migracja, potem klucz.
+    """
     migruj_projekt_z_legacy(project_id, uow_factory)
     return klucz_twin_projektu(project_id)
 

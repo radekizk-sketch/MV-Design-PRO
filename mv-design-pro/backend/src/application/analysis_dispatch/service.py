@@ -25,9 +25,9 @@ from typing import Any
 from uuid import UUID
 
 from application.analysis_dispatch.summary import AnalysisRunSummary
+from application.twin_key import klucz_twin_dla_projektu
 from domain.analysis_kind import AnalysisKind
 from domain.analysis_run import AnalysisRun
-from enm.klucz_twin import klucz_twin_projektu
 from infrastructure.persistence.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)
@@ -357,8 +357,7 @@ class AnalysisDispatchService:
         # CV-1-W: model ENM zyje pod kluczem projektu, nie surowym case_id.
         # `project_id` jest juz jawnym, zweryfikowanym argumentem `dispatch()`
         # (`_resolve_case_id` powyzej odrzuca `study_case_id` nienalezacy do
-        # `project_id`), wiec klucz magazynu budujemy WPROST z `project_id`
-        # (`klucz_twin_projektu`, czysta funkcja bez zapytania do bazy) —
+        # `project_id`), wiec klucz magazynu budujemy WPROST z `project_id` —
         # BEZ posredniego `klucz_twin_dla_przypadku` (zapytanie o StudyCase).
         # `resolved_case_id` jest identyfikatorem OperatingCase (ta sama
         # przestrzen, ktorej uzywaja `_resolve_case_id`/`_get_enm_hash` dla
@@ -368,7 +367,13 @@ class AnalysisDispatchService:
         # case_repository.py`), wiec `klucz_twin_dla_przypadku` tutaj zawsze
         # konczyloby sie `PrzypadekBezProjektuError`, niezaleznie od tego, czy
         # przypadek istnieje.
-        klucz_twin = klucz_twin_projektu(project_id)
+        # ADRES PROJEKTU IDZIE PRZEZ `klucz_twin_dla_projektu`, nie przez czysty
+        # `klucz_twin_projektu` (przeglad adwersaryjny CV-1): ta sciezka bywa
+        # PIERWSZYM dostepem do magazynu w procesie, a czysta funkcja klucza nie
+        # uruchamia migracji zastanych plikow per przypadek — `get_enm` tworzylby
+        # wtedy PUSTY model domyslny i realny model projektanta ladowalby pozniej
+        # w `legacy_przypadki/` jako ROZBIEZNY.
+        klucz_twin = klucz_twin_dla_projektu(project_id, self._uow_factory)
         enm = get_enm(klucz_twin)
 
         if bus_ref:
@@ -433,8 +438,10 @@ class AnalysisDispatchService:
         case_id_str = str(resolved_case_id)
         # CV-1-W: model ENM zyje pod kluczem projektu — patrz uzasadnienie
         # przy `_dispatch_fault_loop_nn` (ten sam mechanizm, `resolved_case_id`
-        # jest identyfikatorem OperatingCase, nie StudyCase).
-        klucz_twin = klucz_twin_projektu(project_id)
+        # jest identyfikatorem OperatingCase, nie StudyCase; adres projektu idzie
+        # przez `klucz_twin_dla_projektu`, zeby migracja plikow zastanych nie
+        # zostala pominieta).
+        klucz_twin = klucz_twin_dla_projektu(project_id, self._uow_factory)
         enm = get_enm(klucz_twin)
 
         result = build_swz_view(enm, station_ref, bus_ref, breaker_ref)

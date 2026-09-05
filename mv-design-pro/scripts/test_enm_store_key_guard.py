@@ -382,8 +382,17 @@ def test_wywolanie_tlumacza_wprost_jako_argument_nie_jest_naruszeniem(
     assert kod == 0, wyjscie
 
 
-def test_argument_z_klucz_twin_projektu_nie_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
-    """`klucz_twin_projektu(project_id)` - druga funkcja tlumacza (bez przypadku)."""
+def test_argument_z_klucz_twin_dla_projektu_nie_jest_naruszeniem(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    """`klucz_twin_dla_projektu(project_id, uow_factory)` - tlumacz adresu PROJEKTU.
+
+    KOREKTA KANONU (przeglad adwersaryjny CV-1). Wczesniej ten test stal na
+    `klucz_twin_projektu` - czystej funkcji klucza, ktora NIE uruchamia migracji
+    zastanych plikow per przypadek i wlasnie dlatego zostala objeta REGULA 2.
+    Intencja testu jest bez zmian: droga PRZEZ TLUMACZA nie moze byc karana; to
+    tlumacz adresu projektu zmienil nazwe na taki, ktory faktycznie migruje.
+    """
     kod, wyjscie = _uruchom(
         tmp_path,
         monkeypatch,
@@ -391,9 +400,105 @@ def test_argument_z_klucz_twin_projektu_nie_jest_naruszeniem(tmp_path, monkeypat
         {
             "application/most.py": (
                 "from enm.store import get_enm\n"
-                "from enm.klucz_twin import klucz_twin_projektu\n\n\n"
+                "from application.twin_key import klucz_twin_dla_projektu\n\n\n"
+                "def wczytaj(project_id, uow_factory):\n"
+                "    return get_enm(klucz_twin_dla_projektu(project_id, uow_factory))\n"
+            )
+        },
+    )
+    assert kod == 0, wyjscie
+
+
+# ---------------------------------------------------------------------------
+# REGULA 2 - czysty klucz projektu poza tlumaczem
+# ---------------------------------------------------------------------------
+
+
+def test_import_klucz_twin_projektu_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
+    """`from enm.klucz_twin import klucz_twin_projektu` w warstwie API/aplikacji.
+
+    Zmierzony defekt: sciezki adresowane projektem (dispatch nN, eksport archiwum)
+    budowaly tak klucz i omijaly migracje plikow zastanych - w swiezym procesie
+    `get_enm` fabrykowal PUSTY model domyslny, a `has_enm` oddawal `False`
+    (archiwum ZIP bez sieci).
+    """
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "application/dispatch.py": (
+                "from enm.klucz_twin import klucz_twin_projektu\n"
+                "from enm.store import get_enm\n\n\n"
                 "def wczytaj(project_id):\n"
                 "    return get_enm(klucz_twin_projektu(project_id))\n"
+            )
+        },
+    )
+    assert kod == 1, wyjscie
+    assert "import:klucz_twin_projektu" in wyjscie
+    assert "NIE uruchamia migracji" in wyjscie
+
+
+def test_alias_importu_klucza_projektu_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
+    """Alias nie chowa uzycia - liczy sie NAZWA IMPORTOWANA, nie lokalna."""
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "api/most.py": (
+                "from enm.klucz_twin import klucz_twin_projektu as _klucz\n\n\n"
+                "def klucz_projektu(project_id):\n"
+                "    return _klucz(project_id)\n"
+            )
+        },
+    )
+    assert kod == 1, wyjscie
+    assert "import:_klucz" in wyjscie
+
+
+def test_droga_przez_modul_klucza_projektu_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
+    """`from enm import klucz_twin` + `klucz_twin.klucz_twin_projektu(...)`.
+
+    Druga droga importu tej samej funkcji - bez niej regula lapalaby wylacznie
+    forme, ktora ktos akurat przewidzial (regula KLASA-NIE-INSTANCJA, punkt 2).
+    """
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "application/most.py": (
+                "from enm import klucz_twin\n\n\n"
+                "def klucz_projektu(project_id):\n"
+                "    return klucz_twin.klucz_twin_projektu(project_id)\n"
+            )
+        },
+    )
+    assert kod == 1, wyjscie
+    assert "modul:klucz_twin.klucz_twin_projektu" in wyjscie
+
+
+def test_wzmianka_o_kluczu_projektu_w_komentarzu_nie_jest_naruszeniem(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    """Skan idzie po AST, nie po tekscie - docstring i komentarz sa wolne.
+
+    Kontrola dodatnia dla REGULY 2: bez niej bramka karalaby KAZDY plik, ktory
+    tlumaczy w komentarzu, dlaczego NIE uzywa tej funkcji - czyli dokladnie te,
+    ktore robia to poprawnie.
+    """
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "application/most.py": (
+                '"""Klucz projektu wyprowadza `klucz_twin_projektu` - patrz twin_key."""\n\n'
+                "# klucz_twin_projektu(project_id) bylby tu naruszeniem REGULY 2\n"
+                "def f(x):\n"
+                "    return x\n"
             )
         },
     )
@@ -461,6 +566,35 @@ def test_wylaczony_plik_tlumacza_nie_jest_skanowany(tmp_path, monkeypatch, capsy
         },
     )
     assert kod == 0, wyjscie
+
+
+def test_definicja_klucza_projektu_jest_poza_zakresem(tmp_path, monkeypatch, capsys) -> None:
+    """`enm/klucz_twin.py` DEFINIUJE `klucz_twin_projektu` - nie moze byc karany
+    REGULA 2 za wystapienie funkcji, ktora sam tworzy."""
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "enm/klucz_twin.py": (
+                "PREFIKS_PROJEKTU = 'projekt:'\n\n\n"
+                "def klucz_twin_projektu(project_id):\n"
+                "    return f'{PREFIKS_PROJEKTU}{project_id}'\n"
+            )
+        },
+    )
+    assert kod == 0, wyjscie
+
+
+def test_zakres_skanu_obejmuje_warstwe_enm() -> None:
+    """`enm/**` NALEZY do zakresu (rozszerzenie 2026-09-05).
+
+    To tam mieszka magazyn i definicja klucza, i to tam `enm/canonical_analysis.py`
+    wola `get_enm`. Ciche zwezenie zakresu z powrotem do dwoch warstw wylaczyloby
+    REGULE 2 dokladnie w miejscu, w ktorym klucz jest najlatwiej zbudowac na miejscu.
+    """
+    assert "enm" in guard.SCAN_ROOTS
+    assert "enm/klucz_twin.py" in guard.WYLACZONE_PLIKI
 
 
 # ---------------------------------------------------------------------------
@@ -586,12 +720,16 @@ def test_czysty_zakres_daje_zielen(tmp_path, monkeypatch, capsys) -> None:
 
 
 def test_biezacy_stan_repozytorium_jest_zielony(capsys) -> None:
-    """Bramka na PRAWDZIWYM drzewie repo - budzet odpowiada pomiarowi, nie
-    zyczeniu: 2026-09-04 (karta CV-1-G) 18 plikow / suma 74; 2026-09-05 po
-    CV-1-W (a71bd91c) 1 plik / suma 1 (zapis tymczasowy importu archiwum).
-    Pinuje TEZ dokladna sume plikow i wywolan, zeby cichy dryf zapadki (np.
-    literowka w liczbie przy recznej edycji, ktora przypadkiem nadal "zgadza
-    sie" per-plik) nie schowal sie za RC=0 z innego powodu.
+    """Bramka na PRAWDZIWYM drzewie repo - budzet odpowiada pomiarowi z
+    2026-09-05 (przeglad adwersaryjny CV-1), nie zyczeniu. Pinuje TEZ dokladna
+    sume plikow i wywolan, zeby cichy dryf zapadki (np. literowka w liczbie przy
+    recznej edycji, ktora przypadkiem nadal "zgadza sie" per-plik) nie schowal
+    sie za RC=0 z innego powodu.
+
+    HISTORIA LICZBY: 18 plikow / suma 74 to pomiar sprzed karty CV-1-W, ktora
+    przepisala konsumentow na klucz projektu, ale zapadki NIE obnizyla - guard
+    byl przez to CZERWONY na HEAD ("Dlug ZMALAL") we wszystkich 18 plikach.
+    Zostal JEDEN zapis tymczasowy pod kluczem przypadku, w imporcie archiwum.
     """
     assert guard.main() == 0
     wyjscie = capsys.readouterr().out

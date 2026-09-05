@@ -19,6 +19,10 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
+from application.twin_key import (
+    kolejnosc_promocji,
+    migruj_projekt_z_legacy_z_repozytorium,
+)
 from domain.project_archive import (
     ARCHIVE_FORMAT_ID,
     ARCHIVE_SCHEMA_VERSION,
@@ -42,8 +46,8 @@ from domain.project_archive import (
     dict_to_archive,
     verify_archive_integrity,
 )
-from enm.klucz_twin import klucz_twin_projektu
 from enm.store import get_enm, has_enm, migruj_klucz_przypadku_do_projektu, restore_enm
+from infrastructure.persistence.repositories.case_repository import CaseRepository
 from network_model.catalog.governance import wymaga_referencji_katalogowej
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -279,7 +283,18 @@ class ProjectArchiveService:
         for case_data in cases_dict.get("operating_cases", []):
             case_ids.add(str(case_data["id"]))
 
-        klucz_projektu = klucz_twin_projektu(project_id)
+        # MIGRACJA PRZED ODCZYTEM (przegląd adwersaryjny CV-1). Eksport bywa
+        # PIERWSZYM dostępem do magazynu w procesie (restart backendu, worker
+        # zadań w tle) — a modele projektów sprzed CV-1 leżą wtedy jeszcze pod
+        # kluczami przypadków. Samo `klucz_twin_projektu(project_id)` niczego nie
+        # migruje, więc `has_enm` oddawało `False` i archiwum ZIP wychodziło BEZ
+        # SIECI: import takiego archiwum tworzył projekt bez modelu, a projektant
+        # nie dostawał żadnego sygnału. Lista przypadków i kolejność promocji idą
+        # z repozytorium przypadków — tego samego źródła, co migracja wołana z
+        # `klucz_twin_dla_przypadku`.
+        klucz_projektu = migruj_projekt_z_legacy_z_repozytorium(
+            project_id, CaseRepository(self._session)
+        ).klucz_projektu
         models: list[dict[str, Any]] = []
         if has_enm(klucz_projektu):
             snapshot = get_enm(klucz_projektu).model_dump(mode="json")
@@ -1349,11 +1364,19 @@ class ProjectArchiveService:
                 ),
                 None,
             )
-            kolejnosc_starych = [old_active_case_id] if old_active_case_id else []
-            kolejnosc_starych.extend(
-                cid for cid in sorted(entries_by_old_case) if cid not in kolejnosc_starych
-            )
-            klucz_projektu_docelowy = klucz_twin_projektu(new_project_id)
+            # Ta sama reguła kolejności co migracja plików zastanych
+            # (`application/twin_key.kolejnosc_promocji`) — jedna reguła, trzy
+            # źródła listy przypadków (baza, eksport, wpisy archiwum).
+            kolejnosc_starych = kolejnosc_promocji(sorted(entries_by_old_case), old_active_case_id)
+            # Klucz docelowy budujemy tą samą drogą co eksport — przez migrację, a
+            # nie przez czystą funkcję klucza. Dla ŚWIEŻEGO projektu migracja jest
+            # pustym przebiegiem (żaden z nowo utworzonych przypadków nie ma jeszcze
+            # pliku w magazynie), ale droga do magazynu ma być JEDNA: „czysty klucz
+            # projektu, bo akurat tutaj nie ma czego migrować" jest rozumowaniem,
+            # które przestaje być prawdziwe po pierwszej zmianie tej funkcji.
+            klucz_projektu_docelowy = migruj_projekt_z_legacy_z_repozytorium(
+                new_project_id, CaseRepository(self._session)
+            ).klucz_projektu
             for indeks, old_case_id in enumerate(kolejnosc_starych):
                 new_case_id = id_map.get(old_case_id)
                 if new_case_id is None:

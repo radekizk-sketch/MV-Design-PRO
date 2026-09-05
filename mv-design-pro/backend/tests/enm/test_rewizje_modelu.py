@@ -440,13 +440,23 @@ class TestZapisyBezPodniesieniaRewizji:
             assert pod_projektem.hash_sha256 == wpis.hash_sha256
             assert pod_projektem.operacja == wpis.operacja
             assert compute_enm_hash(checkout(klucz_projektu, wpis.rewizja)) == wpis.hash_sha256
-        # Pliki przypadku (HEAD, dziennik, migawki) leza w legacy — nic nie zginelo.
+        # Historia PRZESZLA pod klucz projektu (nie zostala skopiowana): w legacy
+        # lezy tylko plik HEAD przypadku, a manifest nazywa los historii wprost.
+        assert wynik.dziennik_przeniesiony is True
         legacy = store._store_dir() / store.KATALOG_LEGACY
         digest = rewizje.digest_klucza(case_id)
         assert (legacy / f"{digest}.json").exists()
-        assert (legacy / f"{digest}.dziennik.json").exists()
-        assert (legacy / f"{digest}.rev").is_dir()
+        assert not (legacy / f"{digest}.dziennik.json").exists()
+        assert not (legacy / f"{digest}.rev").exists()
         assert not katalog_rewizji(case_id).exists()
+        assert wszystkie_wpisy(case_id) == []
+        wiersz = store.wiersze_manifestu_legacy()[-1]
+        assert wiersz["case_id"] == case_id
+        assert wiersz["dziennik"] == "ZA_MODELEM"
+        # Bez dublowania wpisu rewizji HEAD: przeniesiona historia jest kompletna.
+        assert [w.rewizja for w in wszystkie_wpisy(klucz_projektu)] == [
+            w.rewizja for w in wpisy_przypadku
+        ]
 
     def test_migracja_rozbieznego_przypadku_odklada_migawki_do_legacy(self) -> None:
         case_id = str(uuid.uuid4())
