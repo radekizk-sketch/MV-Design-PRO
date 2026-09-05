@@ -280,7 +280,30 @@ def _assemble_zero_sequence_y0(
         bus_id = ref_to_node_id.get(source.bus_ref)
         if bus_id not in node_index:
             continue
-        bus_voltage_kv = bus_voltage.get(source.bus_ref, 0.0)
+        # Karta FAB-D1 (D7): `bus_voltage`/`ref_to_node_id` powstają z TEGO SAMEGO
+        # `enm.buses` (w. 198-199), więc szyna, która przeszła kontrolę `bus_id
+        # not in node_index` wyżej, ma zawsze wpis w `bus_voltage` — sentinel
+        # 0.0 nie mógł się tu wykonać ani razu. Jawny warunek (zamiast cichego
+        # `.get(ref, 0.0)`) sygnalizuje ślad WHITE BOX, gdyby ten niezmiennik
+        # kiedyś pękł, zamiast po cichu policzyć fizykę z zerowym napięciem.
+        if source.bus_ref not in bus_voltage:
+            tracer.add(
+                key=f"z0_source_bus_voltage_missing[{source.ref_id}]",
+                title=(
+                    f"Źródło {source.name or source.ref_id}: pominięte w Y0 "
+                    "(brak napięcia szyny)"
+                ),
+                formula_latex=r"\text{brak } U_n(\mathrm{bus})",
+                inputs={"ref_id": source.ref_id, "bus_ref": source.bus_ref},
+                substitution=(
+                    "Szyna źródła nie ma zarejestrowanego napięcia znamionowego — "
+                    "pominięto wkład do macierzy Y0."
+                ),
+                result={},
+                notes="OSTRZEZENIE: brak napiecia szyny zrodla w sieci skladowej zerowej.",
+            )
+            continue
+        bus_voltage_kv = bus_voltage[source.bus_ref]
         if bus_voltage_kv <= 0:
             continue
         # Wlasna nazwa (nie `z0_ohm` z petli galeziowej wyzej): tam wartosc jest
@@ -467,9 +490,26 @@ def _add_generator_sc_sources(
     generator becomes the IEC-correct SC source for its ``gen_type``.
 
     Zero fabrication: a source is built ONLY from a real nameplate (rated power +
-    voltage). The decay/reactance factors (x″d, k_sc, I_LR) use the domain models'
-    documented IEC-typical defaults (``core/machine.py`` / ``core/inverter.py``) —
-    WHITE BOX, the same defaulting pattern as the external-source ``rx`` ratio.
+    voltage). The decay/reactance factor x″d uses the domain models' documented
+    IEC-typical default (``core/machine.py``) — WHITE BOX, the same defaulting
+    pattern as the external-source ``rx`` ratio.
+
+    UWAGA (karta FAB-D1, D7 — znalezisko poza wykonalnym zakresem, patrz meldunek
+    końcowy): ``k_sc`` (udział zwarciowy falownika wg IEC 60909) WCIĄŻ fabrykuje
+    1,1, gdy tabliczka go nie niesie — a niesie go ZAWSZE, bo katalog konwerterów
+    (``network_model/catalog/**``) dziś nie ma tego pola (zmierzone: zero miejsc
+    w repo zapisujących ``materialized_params["k_sc"]``). Próba naprawy (pominięcie
+    źródła SC zamiast 1,1) zmierzona empirycznie: `graph.get_inverter_sources()`
+    wraca puste dla KAŻDEGO konwertera w całym repo (100% pokrycia testowego SC dla
+    DER traci wkład prądowy) — cichy regres bezpieczeństwa większy niż fabrykacja,
+    którą miała usunąć. `InverterSource.k_sc`/`SynchronousMachineSource.k_sc`
+    (``core/inverter.py``/``core/generator.py``) mają WŁASNY zaszyty domyślny 1,1
+    poza zasięgiem tej karty (rdzeń zamrożony) — ta sama liczba, drugie miejsce.
+    Kod gotowości `inverter.k_sc_missing` (BLOCKER) jest zarejestrowany w
+    `domain.canonical_operations.READINESS_CODES`; pełna naprawa wymaga pola
+    katalogowego (FAB-D2) + logiki w `application/calculation_readiness/` +
+    świadomej decyzji, czy brak k_sc powinien blokować analizę zwarciową zamiast
+    liczyć z wartością typową — poza zasięgiem tej karty.
     Deterministic: iteration is id-sorted and each source id is the generator ref_id.
     A no-op when there are no generators, so machine-free networks keep a
     byte-identical SC Y-bus (the ybus machine shunt / inverter superposition are

@@ -761,13 +761,12 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     "enm/store.py": {
         "B:ifexp:existing.revision": 1,
     },
-    # Karta RATCHET-DICT-READ (2026-08-13). `enm/domain_operations.py` jest
-    # ZAKAZANE do edycji W TEJ KARCIE (§0.4 ZAKAZY: „zero enm/domain_operations*
-    # (watek nN)" — plik nalezy do rownoleglego watku nN). Zbior ponizej to
-    # PELNY inwentarz form D/F formy slownikowej z kluczem bedacym zadeklarowanym
-    # polem kontraktu, zmierzony na dzien odbioru tej karty — nie sa to
-    # deklaracje „wszystko tu jest legalne": KLASYFIKACJA PER GRUPA (peany
-    # meldunek koncowy karty ma pelne uzasadnienie per pozycja):
+    # Karta RATCHET-DICT-READ (2026-08-13), zaktualizowana kartą FAB-D1
+    # (klasa A6-12, 2026-09) — „watek nN" domknięty, plik odblokowany do edycji.
+    # Zbior ponizej to PELNY inwentarz form D/F formy slownikowej z kluczem
+    # bedacym zadeklarowanym polem kontraktu — nie sa to deklaracje „wszystko tu
+    # jest legalne": KLASYFIKACJA PER GRUPA (pelne uzasadnienie per pozycja w
+    # meldunku koncowym karty FAB-D1):
     #   * `insert_at.value`/`s.order`/`seed.*` — parametry operacji wstawienia/
     #     kolejnosci sekcji (RATIO domyslny 0,5; kolejnosc 0 dla pierwszego
     #     elementu) — MERYTORYCZNIE bliskie kardynalnosci/domyslnej pozycji.
@@ -777,23 +776,24 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     #     strukturalnie martwa DLA odcinka pochodzacego z juz zwalidowanego
     #     ENM — analogiczna martwa wartosc zapasowa, jak `C:getattr:length_km`
     #     zdjeta w MOST-WEJSCIA-V126 dla atrybutowej formy tego samego pola.
-    #   * `payload.sn_mva`/`uk_percent`/`pk_kw`/`dlugosc_m`, `t.sn_mva`,
-    #     `nn_block.outgoing_feeders_nn_count`, `genset_spec`/`ups_spec.
-    #     rated_power_kw` (w domain_operations_v2.py) — tabliczki znamionowe
-    #     transformatora/generatora/UPS tworzonego z surowego payloadu
-    #     kreatora — TA SAMA KLASA fabrykacji, co naprawiona w tej karcie dla
-    #     `enm/topology_ops.py` (uhv_kv/ulv_kv/pk_kw) i `enm/catalog_completion.py`
-    #     (switch_rated_current_a), ale w PLIKU ZAKAZANYM do edycji. DLUG
-    #     NAZWANY, NIENAPRAWIALNY W TEJ SESJI (Zero-Debt pkt 4): wymaga
-    #     koordynacji z watkiem nN (ten sam plik jest w trakcie rownoleglej
-    #     pracy), nie decyzji syntaktycznej tej karty.
+    #   * `payload.dlugosc_m`/`segment.dlugosc_m` (dzielenie odcinka magistrali/
+    #     odgalezienia SN) — SENTINEL PRZED WALIDACJA BLOCKER: `dlugosc_m or 0`
+    #     jest NATYCHMIAST sprawdzane `<= 0` i konczy operacje jawnym,
+    #     dedykowanym kodem (`trunk.dlugosc_missing`/`branch.dlugosc_missing`)
+    #     PRZED zapisem do modelu — ten sam bezpieczny wzorzec, co juz przyjety
+    #     dla `enm/topology_ops.py` nizej, zweryfikowany osobno przy przegladzie
+    #     karty FAB-D1 (poprzednia klasyfikacja "DLUG NAZWANY" byla nadmiernie
+    #     ostrozna, bo plik byl wtedy zakazany do edycji i naprawy).
+    #   * `payload.sn_mva`/`uk_percent`/`pk_kw` (add_transformer_sn_nn) i
+    #     `t.sn_mva` (_compute_materialized_params — odczyt WYNIKOWY do
+    #     zestawienia w odpowiedzi, nie tworzenie elementu) NAPRAWIONE kartą
+    #     FAB-D1 (D2): fabrykowane "or 0.0" usuniete, `_require_transformer_
+    #     fields` odrzuca operacje kodem `transformer.field_missing`, gdy ani
+    #     katalog, ani payload nie niosa wartosci. Pozycje ZNIKAJA z zapadki —
+    #     dlug usuniety, nie zmalal cicho.
     "enm/domain_operations.py": {
         "D:dictor:payload.dlugosc_m": 2,
-        "D:dictor:payload.pk_kw": 1,
-        "D:dictor:payload.sn_mva": 1,
-        "D:dictor:payload.uk_percent": 1,
         "D:dictor:segment.dlugosc_m": 1,
-        "D:dictor:t.sn_mva": 2,
         "F:dictget:insert_at.value": 4,
         "F:dictget:nn_block.outgoing_feeders_nn_count": 1,
         "F:dictget:s.order": 3,
@@ -805,21 +805,20 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "F:dictget:segment.r_ohm_per_km": 5,
         "F:dictget:segment.x_ohm_per_km": 5,
     },
-    # Karta RATCHET-DICT-READ (2026-08-13). `enm/domain_operations_v2.py` jest
-    # ZAKAZANE do edycji W TEJ KARCIE (§0.4 ZAKAZY, ten sam powod, co
-    # `enm/domain_operations.py` wyzej — watek nN). `payload.quantity`
-    # (kardynalnosc, ta sama klasa co `A:or:gen.n_parallel` juz zaakceptowane w
-    # `enm/mapping.py`) i `payload.active_power_kw` (brak wstrzykniecia = zero
-    # MW, ta sama klasa co `A:or:node.active_power` w `enm/canonical_analysis.py`)
-    # SA merytorycznie uzasadnione. `genset_spec.rated_power_kw`/`ups_spec.
-    # rated_power_kw` (0 kW fabrykowane dla mocy znamionowej agregatu/UPS
-    # tworzonego z payloadu kreatora) SA DLUGIEM NAZWANYM tej samej klasy, co
-    # `enm/domain_operations.py` wyzej — NIENAPRAWIALNE W TEJ SESJI (Zero-Debt
-    # pkt 4, ZAKAZY, watek nN).
+    # Karta RATCHET-DICT-READ (2026-08-13), zaktualizowana kartą FAB-D1
+    # (klasa A6-12, 2026-09) — „watek nN" domknięty, plik odblokowany do edycji.
+    # `payload.quantity` (kardynalnosc, ta sama klasa co `A:or:gen.n_parallel`
+    # juz zaakceptowane w `enm/mapping.py`) i `payload.active_power_kw`/
+    # `genset_spec.rated_power_kw`/`ups_spec.rated_power_kw` W FORMIE F
+    # (`.get(klucz, 0)` w SEEDZIE deterministycznego id — kardynalnosc/wejscie
+    # skrótu, nie tabliczka fizyczna) SA merytorycznie uzasadnione, zostaja.
+    # `genset_spec.rated_power_kw`/`ups_spec.rated_power_kw` W FORMIE D
+    # (`.get(klucz) or 0` przy liczeniu p_mw — TABLICZKA agregatu/UPS)
+    # NAPRAWIONE karta FAB-D1 (D3 sibling): operacja odrzucona kodem
+    # `generator.power_missing`, gdy rated_power_kw nie podano. Pozycje
+    # ZNIKAJA z zapadki — dlug usuniety, nie zmalal cicho.
     "enm/domain_operations_v2.py": {
-        "D:dictor:genset_spec.rated_power_kw": 1,
         "D:dictor:payload.quantity": 1,
-        "D:dictor:ups_spec.rated_power_kw": 1,
         "F:dictget:genset_spec.rated_power_kw": 1,
         "F:dictget:payload.active_power_kw": 1,
         "F:dictget:ups_spec.rated_power_kw": 1,

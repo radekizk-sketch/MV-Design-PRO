@@ -71,12 +71,18 @@ def test_explicit_reactive_power_is_not_overridden() -> None:
     assert load["q_mvar"] == pytest.approx(0.02)
 
 
-def test_no_cos_phi_no_reactive_gives_zero() -> None:
+def test_no_cos_phi_no_reactive_rejects_with_q_missing() -> None:
+    """Karta FAB-D1 (D5 sibling): brak Q i brak cosφ NIE fabrykuje Q=0 (praca
+    przy cosφ=1 jest TWIERDZENIEM o odbiorze, nie brakiem danej) — `Load.q_mvar`
+    jest polem WYMAGANYM kontraktu, więc operacja jest ODRZUCONA, nie milcząco
+    zapisana z zerową mocą bierną (poprzednia wersja tego testu, `test_no_cos_
+    phi_no_reactive_gives_zero`, asertowała dokładnie tę fabrykację)."""
     snapshot, feeder_ref = _enm_with_feeder()
     result = execute_domain_operation(
         snapshot,
         "add_nn_load",
         {"feeder_ref": feeder_ref, "bus_nn_ref": "bus-nn", "active_power_kw": 50.0},
     )
-    load = _load(result["snapshot"])
-    assert load["q_mvar"] == pytest.approx(0.0)
+    assert result.get("error")
+    assert result.get("error_code") == "load.q_missing"
+    assert result.get("snapshot") is None

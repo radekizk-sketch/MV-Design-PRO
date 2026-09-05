@@ -450,3 +450,26 @@ def test_add_grid_source_sn_materializuje_oltc_na_kazdym_transformatorze():
     for reg in regs:
         assert reg.tap_changer.is_automatic()
         assert reg.tap_changer.controlled_bus_id is not None
+
+
+def test_add_grid_source_sn_ldc_bez_r_x_zostaje_nieskonfigurowane():
+    """Karta FAB-D1 (D4): transformer_ldc_enabled=True BEZ jawnych r_ohm/x_ohm nie
+    fabrykuje 0 Ω (impedancja kompensacji udająca pomiar) — blok LDC zostaje
+    NIESKONFIGUROWANY (nieobecny), zamiast zapisać zerową impedancję."""
+    result = execute_domain_operation(
+        enm_dict=_empty_enm(),
+        op_name="add_grid_source_sn",
+        payload={
+            "source_name": "GPZ z OLTC bez LDC",
+            "voltage_kv": 15.0,
+            "catalog_ref": CATALOG_ZRODLO_SN,
+            "transformer_regulation_type": "OLTC",
+            "transformer_tap_changer_catalog_ref": "tc_oltc_110sn_19_125",
+            "transformer_ldc_enabled": True,
+            # transformer_ldc_r_ohm / transformer_ldc_x_ohm CELOWO pominięte.
+        },
+    )
+    assert result.get("error") in (None, "")
+    trafo = result["snapshot"]["transformers"][0]
+    tc = trafo["tap_changer"]
+    assert tc.get("line_drop_compensation") in (None, {})

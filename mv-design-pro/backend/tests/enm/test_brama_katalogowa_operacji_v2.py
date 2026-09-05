@@ -327,6 +327,9 @@ def _payload_nn_load(snapshot: dict[str, Any]) -> dict[str, Any]:
     return {
         "feeder_ref": _pole_nn_ref(snapshot),
         "active_power_kw": 30.0,
+        # cos_phi jawny: `add_nn_load` wymaga rozstrzygalnej mocy biernej
+        # (FAB-D1 D5) — ten test sprawdza bramę katalogową, nie moc bierną.
+        "cos_phi": 0.9,
         "catalog_ref": REF_ODBIOR,
     }
 

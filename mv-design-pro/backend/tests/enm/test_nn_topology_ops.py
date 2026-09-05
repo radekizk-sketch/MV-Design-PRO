@@ -113,7 +113,14 @@ def test_lancuch_rgnn_kabel_podrozdzielnica_odbior() -> None:
     wynik = _wykonaj(
         snap,
         "add_nn_load",
-        {"feeder_ref": field_ref, "active_power_kw": 12.0, "load_name": "Odbiór K1"},
+        {
+            "feeder_ref": field_ref,
+            "active_power_kw": 12.0,
+            "load_name": "Odbiór K1",
+            # cos_phi jawny: `add_nn_load` wymaga rozstrzygalnej mocy biernej
+            # (FAB-D1 D5) — ten test sprawdza łańcuch RGnN, nie moc bierną.
+            "cos_phi": 0.9,
+        },
     )
     snap = wynik["snapshot"]
     odbior = snap["loads"][-1]
@@ -145,6 +152,41 @@ def test_add_nn_cable_segment_odrzuca_nieistniejaca_pozycje_katalogowa() -> None
         {"from_bus_ref": bus1, "length_m": 10.0, "catalog_ref": REF_KABEL_NN + LITEROWKA},
     )
     assert wynik["error_code"] == "catalog.item_not_found"
+
+
+def test_add_nn_cable_segment_brak_length_m_odrzucony_kodem_pola_brakujacego() -> None:
+    """Karta FAB-D1 (D6): brak length_m nie fabrykuje 0 m (zerowa impedancja) —
+    reużycie `_wymagane_pola_odcinka` z karty CI-A, ten sam kod błędu."""
+    snap = _board()
+    bus1 = _stacja(snap)["bus_refs"][0]
+    wynik = _blad(snap, "add_nn_cable_segment", {"from_bus_ref": bus1})
+    assert wynik["error_code"] == "nn.segment_field_missing"
+
+
+def test_add_nn_cable_segment_length_m_zero_odrzucony_kodem_wartosci_niepoprawnej() -> None:
+    """Dana JAWNA, ale niepoprawna (<=0), zostaje osobnym, już istniejącym kodem —
+    nie jest to ten sam przypadek co brak danej."""
+    snap = _board()
+    bus1 = _stacja(snap)["bus_refs"][0]
+    wynik = _blad(
+        snap,
+        "add_nn_cable_segment",
+        {"from_bus_ref": bus1, "length_m": 0.0, "catalog_ref": REF_KABEL_NN},
+    )
+    assert wynik["error_code"] == "nn.cable_length_invalid"
+
+
+def test_add_nn_cable_segment_length_m_jawne_przechodzi_bez_zmian() -> None:
+    """Dana JAWNA (length_m > 0) przechodzi bez zmian — regresja przeciw D6."""
+    snap = _board()
+    bus1 = _stacja(snap)["bus_refs"][0]
+    wynik = _wykonaj(
+        snap,
+        "add_nn_cable_segment",
+        {"from_bus_ref": bus1, "length_m": 42.5, "catalog_ref": REF_KABEL_NN},
+    )
+    kabel = wynik["snapshot"]["branches"][-1]
+    assert kabel["length_km"] == pytest.approx(0.0425)
 
 
 def test_add_nn_cable_segment_tworzy_nowa_szyne_gdy_brak_to_bus_ref() -> None:
@@ -941,7 +983,13 @@ def test_remove_nn_element_usuwa_odbior() -> None:
     wynik = _wykonaj(snap, "add_nn_outgoing_field", {"bus_nn_ref": bus1, "field_name": "Odpływ"})
     snap = wynik["snapshot"]
     field_ref = wynik["changes"]["created_element_ids"][0]
-    wynik = _wykonaj(snap, "add_nn_load", {"feeder_ref": field_ref, "active_power_kw": 2.0})
+    wynik = _wykonaj(
+        snap,
+        "add_nn_load",
+        # cos_phi jawny: `add_nn_load` wymaga rozstrzygalnej mocy biernej
+        # (FAB-D1 D5) — ten test sprawdza usuwanie odbioru, nie moc bierną.
+        {"feeder_ref": field_ref, "active_power_kw": 2.0, "cos_phi": 0.9},
+    )
     snap = wynik["snapshot"]
     load_ref = snap["loads"][-1]["ref_id"]
 

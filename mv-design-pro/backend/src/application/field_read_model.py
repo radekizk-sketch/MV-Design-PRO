@@ -13,8 +13,6 @@ from enm.models import (
     BayEnergizationSafetyState,
     BayInterlockSet,
     BayMeasurementChain,
-    BayMeasurements,
-    BayMeasurementSet,
     BayOperatingState,
     BayPowerFlowSourceContribution,
     BayPrimaryDevice,
@@ -679,6 +677,13 @@ def _build_measurement_chain(
         zero_sequence_current_source = "suma_ct"
     else:
         zero_sequence_current_source = "brak"
+    # Karta FAB-D1 (D9): brak realnej integracji telemetrii w tym budowniczym —
+    # funkcja opisuje TOPOLOGIĘ łańcucha pomiarowego (które CT/VT są podłączone),
+    # nie ODCZYT z encji `Measurement`. `BayMeasurements(frequency_hz=50.0)`
+    # twierdziło "pomiar 50 Hz", którego nikt nie wykonał (POMIAR sfabrykowany).
+    # Zestaw pomiarowy zostaje PUSTY (kontrakt `BayMeasurementChain.
+    # measurement_sets` domyślnie `[]`) — UI pokazuje brak danych, zamiast
+    # fabrykowanej wartości.
     return BayMeasurementChain(
         chain_ref=f"measurement-chain:{bay.ref_id}",
         ct_refs=ct_refs,
@@ -688,14 +693,6 @@ def _build_measurement_chain(
         zero_sequence_current_source=zero_sequence_current_source,
         zero_sequence_voltage_source="otwarty_trojkat_vt" if uses_3u0 else "brak",
         topology=topology,
-        measurement_sets=[
-            BayMeasurementSet(
-                side="pole",
-                values=BayMeasurements(
-                    frequency_hz=50.0,
-                ),
-            )
-        ],
     )
 
 

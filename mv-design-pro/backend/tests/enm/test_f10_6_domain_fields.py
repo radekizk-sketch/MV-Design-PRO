@@ -265,6 +265,17 @@ class TestZeroSequenceCurrentSourceHeuristicFix:
         if earth_fault_path is not None:
             assert earth_fault_path["zero_sequence_current_source"] == "brak"
 
+    def test_measurement_chain_nie_fabrykuje_pomiaru_czestotliwosci(self):
+        """Karta FAB-D1 (D9): `_build_measurement_chain` opisuje TOPOLOGIĘ łańcucha
+        pomiarowego (CT/VT podłączone), nie ODCZYT z encji `Measurement` — brak
+        realnej integracji telemetrii nie może twierdzić „pomiar 50 Hz"
+        (`BayMeasurements(frequency_hz=50.0)`, którego nikt nie wykonał).
+        `measurement_sets` zostaje PUSTY, zamiast fabrykowanej wartości."""
+        _seed("f10_6-brak-fabrykacji-pomiaru", _enm_with_ct(ct_arrangement="3xCT"))
+        data = get_enm_field_view("f10_6-brak-fabrykacji-pomiaru")
+        chain = data["fields"][0]["canonical_model"]["base_model"]["measurement_chain"]
+        assert chain["measurement_sets"] == []
+
 
 # ---------------------------------------------------------------------------
 # 5. Determinism (CLAUDE.md rule 7) — nowe pola ADDYTYWNE (default None/[])

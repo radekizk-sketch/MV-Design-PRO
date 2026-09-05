@@ -1309,6 +1309,10 @@ def test_add_nn_load_ekspercki_reczny_znacznik_przez_pelne_api(klient: TestClien
                     "feeder_ref": feeder_ref,
                     "active_power_kw": 12.0,
                     "source_mode": "EKSPERCKI_RECZNY",
+                    # cos_phi jawny: `add_nn_load` wymaga rozstrzygalnej mocy
+                    # biernej (FAB-D1 D5) — ten test sprawdza znacznik trybu
+                    # eksperckiego przez pełne API, nie moc bierną.
+                    "cos_phi": 0.9,
                 },
             }
         },

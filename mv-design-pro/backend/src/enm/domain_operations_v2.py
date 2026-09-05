@@ -55,6 +55,7 @@ from .domain_operations import (
     _materialize_catalog_payload,
     _opt_float_any,
     _require_catalog_ref,
+    _require_transformer_fields,
     _response,
     _rodzaj_aparatu_sn_z_katalogu,
     _station_has_transformer,
@@ -2763,6 +2764,17 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     if blad_zip is not None:
         return _error_response(blad_zip, KOD_BLEDU_ZIP)
 
+    # Karta FAB-D1 (D5 sibling): `Load.q_mvar` jest polem WYMAGANYM kontraktu
+    # (`enm/models.py`) — bez jawnej mocy biernej i bez cosφ, z którego dałoby
+    # się ją wyprowadzić, operacja NIE fabrykuje 0 Mvar (praca przy cosφ=1 to
+    # TWIERDZENIE o odbiorze, nie brak danej).
+    if reactive_power_kvar is None:
+        return _error_response(
+            "Odbiór nN: brak mocy biernej (reactive_power_kvar) i brak cosφ, z "
+            "którego dałoby się ją wyprowadzić. Podaj jedno z nich.",
+            "load.q_missing",
+        )
+
     seed = _compute_seed({"op": "nn_load", "feeder": feeder_ref, "p": active_power_kw})
     load_ref = _make_id("nn", seed, "load")
 
@@ -2771,7 +2783,7 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         "name": payload.get("load_name") or "Odbiór nN",
         "bus_ref": feeder_bus_ref,
         "p_mw": active_power_kw / 1000.0,
-        "q_mvar": (reactive_power_kvar or 0) / 1000.0,
+        "q_mvar": reactive_power_kvar / 1000.0,
         # Load.model akceptuje 'pq' | 'zip' — 'pq' = constant power (klasyczny PQ).
         "model": "zip" if zip_odbioru else "pq",
         "catalog_ref": catalog_ref,
@@ -2858,7 +2870,16 @@ def _add_nn_cable_segment_internal(
             "nn.cable_from_bus_not_nn",
         )
 
-    length_m = _opt_float_any(payload.get("length_m")) or 0.0
+    # Karta FAB-D1 (D6): brak length_m NIE jest 0 m (fabrykacja impedancji zero) —
+    # reużycie `_wymagane_pola_odcinka` z karty CI-A (ten sam kod błędu
+    # `nn.segment_field_missing`, jedna funkcja zamiast drugiej kopii). Wartość
+    # PODANA, ale <=0, zostaje osobnym, już istniejącym kodem (dana jawna
+    # niepoprawna, nie dana nieobecna).
+    try:
+        pola_odcinka_nn = _wymagane_pola_odcinka(payload, "length_m", op="add_nn_cable_segment")
+    except DomainInvariantError as blad:
+        return _error_response(blad.message_pl, blad.code)
+    length_m = pola_odcinka_nn["length_m"]
     if length_m <= 0:
         return _error_response(
             "Długość odcinka nN (length_m) musi być > 0.", "nn.cable_length_invalid"
@@ -4430,7 +4451,15 @@ def _resolve_converter_defaults(
     technology: str,
     payload: dict[str, Any],
     materialized_params: dict[str, Any],
-) -> tuple[str, str, str, dict[str, Any], float]:
+) -> tuple[str, str, str, dict[str, Any], float | None]:
+    """Wywnioskuj tabliczkę i moc źródła przekształtnikowego (PV/BESS/FW).
+
+    Karta FAB-D1 (D3): ostatni element krotki (moc, MW) jest `None`, gdy ani
+    payload (`power_setpoint_mw`), ani katalog (`pmax_mw`/`max_power_kw`/...)
+    nie niosą mocy — wołający ODRZUCA operację kodem `generator.power_missing`
+    zamiast zapisać generator z fabrykowanym 0 MW (0 MW jest WYNIKIEM tylko
+    wtedy, gdy dana jest jawna).
+    """
     quantity = int(payload.get("quantity") or 1)
     quantity = max(quantity, 1)
     explicit_power_mw = _as_float(payload.get("power_setpoint_mw"))
@@ -4475,7 +4504,7 @@ def _resolve_converter_defaults(
             (
                 explicit_power_mw
                 if explicit_power_mw is not None
-                else (default_power or 0.0) * quantity
+                else (default_power * quantity if default_power is not None else None)
             ),
         )
 
@@ -4516,7 +4545,7 @@ def _resolve_converter_defaults(
             (
                 explicit_power_mw
                 if explicit_power_mw is not None
-                else (default_power or 0.0) * quantity
+                else (default_power * quantity if default_power is not None else None)
             ),
         )
 
@@ -4551,7 +4580,11 @@ def _resolve_converter_defaults(
             "has_hvrt_curve": _as_bool(payload.get("has_hvrt_curve")),
             "quantity": quantity,
         },
-        explicit_power_mw if explicit_power_mw is not None else (default_power or 0.0) * quantity,
+        (
+            explicit_power_mw
+            if explicit_power_mw is not None
+            else (default_power * quantity if default_power is not None else None)
+        ),
     )
 
 
@@ -4691,11 +4724,20 @@ def _materialize_der_block_transformer(
         "name": name,
         "hv_bus_ref": hv_bus_ref,
         "lv_bus_ref": lv_bus_ref,
-        "sn_mva": _as_float(spec.get("rated_power_mva")) or 0.0,
+        # Karta FAB-D1 (D2, KLASA sibling z `add_transformer_sn_nn`): sn_mva/
+        # uk_percent/pk_kw NIE dostają fabrykowanego "or 0.0" — materializacja
+        # katalogowa poniżej je uzupełnia, a `_require_transformer_fields`
+        # odrzuca operację, gdy ani katalog, ani spec nie niosą wartości.
+        # Literał "pk_kw": 0.0 (fabrykacja strat obciążeniowych) usunięty.
+        "sn_mva": _as_float(spec.get("rated_power_mva")),
         "uhv_kv": _as_float(spec.get("primary_voltage_kv")) or hv_voltage_kv,
         "ulv_kv": _as_float(spec.get("secondary_voltage_kv")) or lv_voltage_kv,
-        "uk_percent": _as_float(spec.get("uk_percent")) or 0.0,
-        "pk_kw": 0.0,
+        "uk_percent": _as_float(spec.get("uk_percent")),
+        # `DerBlockTransformerSpec` (enm/domain_ops_models.py) nie deklaruje pola
+        # `pk_kw` — TR blokowy DER nie ma payloadowego nadpisania strat
+        # obciążeniowych (w odróżnieniu od sn_mva/uk_percent), więc jedynym
+        # źródłem jest materializacja katalogowa poniżej.
+        "pk_kw": None,
         "vector_group": spec.get("vector_group"),
         "source_mode": "KATALOG",
         "catalog_namespace": przestrzen_katalogu,
@@ -4728,6 +4770,9 @@ def _materialize_der_block_transformer(
     tr_data["catalog_ref"] = catalog_ref
     _apply_catalog_metadata(tr_data, binding_payload, default_namespace=przestrzen_katalogu)
     _apply_materialized_transformer_fields(tr_data, materialized_params)
+    brak_pol_tr_der = _require_transformer_fields(tr_data, ref_id)
+    if brak_pol_tr_der is not None:
+        return None, brak_pol_tr_der
     # Rola DER musi przetrwać materializację katalogu (odróżnienie od TR stacji).
     tr_data.setdefault("meta", {})
     tr_data["meta"]["catalog_role"] = "TRANSFORMATOR_BLOKOWY_DER"
@@ -5102,7 +5147,17 @@ def _add_converter_source_der_sn(
     name, gen_type, event_type, gen_meta, p_mw = _resolve_converter_defaults(
         technology, payload, materialized_params
     )
-    q_mvar = _first_number(payload.get("q_min_mvar"), 0.0)
+    if p_mw is None:
+        return _error_response(
+            f"Źródło {technology}: brak mocy (power_setpoint_mw) i brak wartości "
+            "mocy znamionowej w katalogu.",
+            "generator.power_missing",
+        )
+    # Karta FAB-D1 (D3 cleanup): brak `q_min_mvar` w payloadzie NIE jest 0 Mvar —
+    # `Generator.q_mvar` jest OPCJONALNE w kontrakcie (enm/models.py), więc
+    # nieobecność zostaje `None` (brak jawnego celu Q), zamiast twierdzenia
+    # "generator ustawiony na dokładnie 0 Mvar".
+    q_mvar = _first_number(payload.get("q_min_mvar"))
 
     # Deterministyczny seed z refów (kolejny numer powtarzalnego DER na tej szynie SN).
     source_sequence = _next_der_sn_sequence(
@@ -5366,13 +5421,26 @@ def _add_converter_source_der_sn(
         return tr_error
     assert tr_data is not None
 
+    # Karta FAB-D1 (D2 cleanup): `_materialize_der_block_transformer` już
+    # odrzuciła operację kodem `transformer.field_missing`, gdy `sn_mva` nie
+    # dało się ustalić — więc tr_data["sn_mva"] jest tu GWARANTOWANE realną
+    # liczbą, nie `None`. Odczyt wprost (bez zapasowego "or 0.0") zamiast
+    # cichego podstawienia, na wypadek gdyby ten niezmiennik kiedyś pękł.
+    tr_sn_mva_raw = tr_data.get("sn_mva")
+    if not isinstance(tr_sn_mva_raw, int | float):
+        return _error_response(
+            f"Transformator blokowy {block_tr_ref}: brak mocy znamionowej (sn_mva) "
+            "po materializacji.",
+            "transformer.field_missing",
+        )
+    tr_sn_mva = float(tr_sn_mva_raw)
+
     # D1 wymaganie 5: moc TR blokowego — ΣS falowników ≤ Sn_TR · dopuszczalne obciążenie
     # (z uwzgl. współczynnika jednoczesności). Sn_TR = wartość ZMATERIALIZOWANA z katalogu
     # (autorytatywna — ta sama, którą widzi solver i kaskada prądowa); ΣS z mocy czynnej
     # falowników przez cosφ znamionowy (inaczej P=S konserwatywnie).
     cos_phi = _first_number(payload.get("cos_phi"), materialized_params.get("cosphi"))
     sum_apparent_mva = der_val.converter_apparent_power_mva(p_mw, cos_phi)
-    tr_sn_mva = _as_float(tr_data.get("sn_mva")) or 0.0
     power_error = der_val.validate_transformer_power(
         sum_apparent_power_mva=sum_apparent_mva,
         transformer_sn_mva=tr_sn_mva,
@@ -5443,9 +5511,7 @@ def _add_converter_source_der_sn(
     # Ogniwo bez danych jest POMIJANE Z JAWNYM OSTRZEŻENIEM (nie cichy skip). Prąd
     # znamionowy TR z tabliczki (Sn, U_SN); Iz kabla z materializacji katalogu kabla;
     # In pola z katalogu aparatu głównego (best-effort — brak → pominięcie).
-    transformer_current_a = der_val.rated_current_a(
-        _as_float(tr_data.get("sn_mva")) or 0.0, block_primary_kv
-    )
+    transformer_current_a = der_val.rated_current_a(tr_sn_mva, block_primary_kv)
     cable_ampacity_a = _as_float((cable_data.get("rating") or {}).get("in_a"))
     field_rated_current_a = _resolve_apparatus_rated_current_a(apparatus_binding)
     cascade_warnings = der_val.build_current_cascade_warnings(
@@ -5694,7 +5760,14 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
         payload,
         materialized_params,
     )
-    q_mvar = _first_number(payload.get("q_min_mvar"), 0.0)
+    if p_mw is None:
+        return _error_response(
+            f"Źródło {technology}: brak mocy (power_setpoint_mw) i brak wartości "
+            "mocy znamionowej w katalogu.",
+            "generator.power_missing",
+        )
+    # Karta FAB-D1 (D3 cleanup) — patrz uzasadnienie przy pierwszym wywołaniu wyżej.
+    q_mvar = _first_number(payload.get("q_min_mvar"))
     source_sequence = _next_converter_source_sequence(
         enm,
         station_ref=station_ref,
@@ -5848,11 +5921,38 @@ def add_genset_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any
     # Tabliczka SC do materialized_params (sr=P/cosφ, un=napięcie znamionowe/szyny, cosφ);
     # x″d = domyślne IEC modelu SynchronousMachineSource (§6.3). Wpina agregat w łańcuch
     # zwarciowy maszyn wirujących (F1 → SynchronousMachineSource, F2 → rozbicie μ/q/i_b).
-    p_mw = (genset_spec.get("rated_power_kw") or 0) / 1000.0
-    cos_phi = genset_spec.get("power_factor")
-    cos_phi = float(cos_phi) if isinstance(cos_phi, int | float) and 0 < cos_phi <= 1 else 0.8
+    #
+    # Karta FAB-D1 (D3 sibling): `rated_power_kw`/`power_factor` są polami
+    # WYMAGANYMI kontraktu `GensetSpec` (enm/domain_ops_models.py, dokumentacja
+    # "jawnie"/">0") — brak żadnego z nich NIE fabrykuje 0 kW ani cosφ=0,8
+    # (typowa wartość ≠ pomiar TEGO agregatu). `rated_voltage_kv` zachowuje
+    # topologiczny fallback na napięcie szyny (dana realna, nie zmyślona).
+    rated_power_kw = _as_float(genset_spec.get("rated_power_kw"))
+    power_factor_jawny = _as_float(genset_spec.get("power_factor"))
+    brakujace_pola_agregatu = [
+        etykieta
+        for wartosc, etykieta in (
+            (rated_power_kw, "moc znamionowa (rated_power_kw)"),
+            (power_factor_jawny, "współczynnik mocy (power_factor)"),
+        )
+        if wartosc is None
+    ]
+    if brakujace_pola_agregatu:
+        return _error_response(
+            "Agregat prądotwórczy: brak wymaganych parametrów tabliczki: "
+            + ", ".join(brakujace_pola_agregatu)
+            + ".",
+            "generator.power_missing",
+        )
+    if not (0 < power_factor_jawny <= 1):
+        return _error_response(
+            "Agregat prądotwórczy: współczynnik mocy (power_factor) musi być w przedziale (0, 1].",
+            "generator.power_factor_invalid",
+        )
+    p_mw = rated_power_kw / 1000.0
+    cos_phi = power_factor_jawny
     un_kv = genset_spec.get("rated_voltage_kv") or _bus_voltage_kv(enm, bus_nn_ref)
-    sn_mva = (p_mw / cos_phi) if p_mw > 0 else 0.0
+    sn_mva = p_mw / cos_phi
     genset_meta: dict[str, Any] = {
         "sn_mva": sn_mva,
         "cos_phi": cos_phi,
@@ -5902,7 +6002,16 @@ def add_ups_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     # ENM); zwarciowo modelowany jako ograniczone źródło prądowe (InverterSource, §6.7),
     # co jest fizycznie poprawne dla double-conversion UPS. Tożsamość zachowana w `name`
     # + `meta.source_kind="UPS"`. Tabliczka: sn_mva=P, un=napięcie szyny nN.
-    p_mw = (ups_spec.get("rated_power_kw") or 0) / 1000.0
+    #
+    # Karta FAB-D1 (D3 sibling): `rated_power_kw` jest polem WYMAGANYM kontraktu
+    # `UPSSpec` (enm/domain_ops_models.py, ">0") — brak nie fabrykuje 0 kW.
+    ups_rated_power_kw = _as_float(ups_spec.get("rated_power_kw"))
+    if ups_rated_power_kw is None:
+        return _error_response(
+            "UPS: brak mocy znamionowej (rated_power_kw).",
+            "generator.power_missing",
+        )
+    p_mw = ups_rated_power_kw / 1000.0
     un_kv = _bus_voltage_kv(enm, bus_nn_ref)
     ups_meta: dict[str, Any] = {"sn_mva": p_mw}
     if un_kv:

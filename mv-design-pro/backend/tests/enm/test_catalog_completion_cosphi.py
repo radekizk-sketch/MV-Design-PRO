@@ -230,6 +230,31 @@ def test_odbior_nie_powstaje_gdy_katalog_nie_rozstrzyga_mocy_biernej(
     assert completed.loads == []
 
 
+def test_odbior_nie_powstaje_gdy_katalog_nie_rozstrzyga_mocy_czynnej(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Karta FAB-D1 (D8): usunięta fabrykacja `DEFAULT_LOAD_KW` jako ŹRÓDŁO mocy
+    czynnej. Gdy pozycja katalogowa nie niesie rozstrzygalnego p_kw (<=0), migracja
+    NIE dokłada odbioru w ogóle — ta sama reguła, co już obowiązująca dla mocy
+    biernej powyżej (`test_odbior_nie_powstaje_gdy_katalog_nie_rozstrzyga_mocy_
+    biernej`), teraz też dla P."""
+    enm = EnergyNetworkModel.model_validate(_siec_referencyjna("bez-mocy-czynnej"))
+    assert not enm.loads
+
+    bez_mocy_czynnej = LoadType(
+        id=DEFAULT_LOAD_CATALOG_REF, name="Bez P", p_kw=0.0, cos_phi=0.92, cos_phi_mode="IND"
+    )
+    katalog = get_default_mv_catalog()
+    monkeypatch.setattr(
+        type(katalog), "get_load_type", lambda self, type_id: bez_mocy_czynnej, raising=True
+    )
+
+    completed, changed = complete_station_loads_from_nn_feeders(enm)
+
+    assert changed is False
+    assert completed.loads == []
+
+
 def test_odbiory_stacji_dostaja_moc_bierna_z_katalogu() -> None:
     """Trzy odpływy nN ⇒ trzy odbiory, każdy z Q wyprowadzonym z cosφ 0,92."""
     completed = _model_z_odbiorami("odbiory-stacji")

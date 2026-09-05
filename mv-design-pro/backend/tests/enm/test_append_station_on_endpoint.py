@@ -861,6 +861,29 @@ def test_endpoint_append_station_auxiliary_materializes_nn_load() -> None:
     assert abs(load["q_mvar"] - 0.0075) < 1e-6
 
 
+def test_endpoint_append_station_auxiliary_bez_q_i_cosphi_odrzucone() -> None:
+    """Karta FAB-D1 (D5): station_auxiliary bez reactive_power_kvar i bez cosφ NIE
+    fabrykuje Q=0 (praca przy cosφ=1 jest twierdzeniem o odbiorze, nie brakiem
+    danej) — operacja jest ODRZUCONA kodem `load.q_missing`."""
+    snap, endpoint = _build_gpz_with_endpoint()
+    response = append_station_on_endpoint(
+        snap,
+        {
+            "endpoint_bus_ref": endpoint,
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+            "station": {"name": "Stacja PW append bez cosphi", "station_type": "terminal"},
+            "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
+            "nn_voltage_kv": 0.4,
+            "nn_block": {"nn_configuration": "LOAD_NN", "outgoing_feeders_nn_count": 1},
+            # Ani reactive_power_kvar, ani cos_phi — moc bierna nierozstrzygalna.
+            "station_auxiliary": {"active_power_kw": 10.0},
+        },
+    )
+    assert response.get("error")
+    assert response.get("error_code") == "load.q_missing"
+    assert response.get("snapshot") is None
+
+
 def test_endpoint_append_parallel_transformers_aggregate_impedance() -> None:
     """transformer.n_parallel=2 → n_parallel na modelu + agregacja Sn×2 w grafie (G-STK-6).
 

@@ -270,7 +270,14 @@ def test_add_nn_load_po_promocji_wpina_odbior_za_aparatem() -> None:
     wynik = execute_domain_operation(
         snap,
         "add_nn_load",
-        {"feeder_ref": "nn/legacy/outgoing-1", "active_power_kw": 5.0, "load_name": "Nowy odbiór"},
+        {
+            "feeder_ref": "nn/legacy/outgoing-1",
+            "active_power_kw": 5.0,
+            "load_name": "Nowy odbiór",
+            # cos_phi jawny: `add_nn_load` wymaga rozstrzygalnej mocy biernej
+            # (FAB-D1 D5) — ten test sprawdza promocję pola, nie moc bierną.
+            "cos_phi": 0.9,
+        },
     )
     assert not wynik.get("error"), wynik.get("error")
     nowy = wynik["snapshot"]["loads"][-1]
