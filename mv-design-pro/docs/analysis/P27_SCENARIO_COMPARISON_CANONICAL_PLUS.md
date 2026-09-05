@@ -10,7 +10,7 @@
 > tras HTTP (ten sam byt, „raport bez trasy"). Kod usunięty procedurą kasacji
 > razem z P24+ w całości. Dokument zachowany jako materiał HISTORYCZNY
 > (wymagany przez `docs_archive_guard.py::MIGRATION_MAP` jako istniejący
-> następca `P27_SCENARIO_COMPARISON_ETAP_PLUS.md`); NIE jest źródłem
+> następca dawnego dokumentu etapowego o tej samej nazwie bazowej (mapa migracji w `scripts/docs_archive_guard.py`)); NIE jest źródłem
 > kanonicznym, nie opisuje niczego istniejącego w kodzie. Terminologia w §7
 > poniżej („BoundaryNode") jest historyczna i NIE obowiązuje — zakazana w
 > rdzeniu modelu (`CLAUDE.md`, Forbidden Terms).
