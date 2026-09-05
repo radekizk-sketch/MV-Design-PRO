@@ -160,8 +160,9 @@ describe('Karta K-Q → FAB-J — katalogi urządzeń mirrorowane z frontu USUNI
 // (`test_pole_bez_proweniencji_nie_wraca_do_zadnej_z_warstw`,
 // `test_cudze_imie_nie_wraca_do_danych_katalogow_audytu2` — rozszerzony o PGE/PSE,
 // `test_zadna_pozycja_uziemienia_sn_nie_podaje_liczbowego_ik1_w_etykiecie_ani_opisie`
-// — nowy). Parametryzowane zachowanie selektora (`getMvNeutralGrounding` na
-// PODANYM katalogu) ma osobny, aktualny test w `__tests__/catalogs.test.ts`.
+// — nowy). Selektor `getMvNeutralGrounding` skasowany przy odbiorze FAB-L: zero
+// konsumentów produktu (karta czyta uziemienie wprost z listy snapshotu w
+// `StationConfigBasicCard`), a test bez produktu to dług (L4), nie pokrycie.
 
 /**
  * Karta FAB-K (§0 R3, KLASA NIE INSTANCJA): `CONNECTION_VARIANT_CATALOG`

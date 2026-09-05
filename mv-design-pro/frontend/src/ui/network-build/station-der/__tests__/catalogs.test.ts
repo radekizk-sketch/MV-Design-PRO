@@ -6,14 +6,12 @@ import { describe, it, expect } from 'vitest';
 
 import type {
   BessOperationModeItem,
-  MvNeutralGroundingItem,
   TapChangerItem,
 } from '../audit2-api';
 import {
   CONNECTION_LEVEL_CATALOG,
   SN_CONNECTION_POINT_KIND_CATALOG,
   getConnectionSideLabelPl,
-  getMvNeutralGrounding,
   getSnConnectionPointKindLabelPl,
   getTapChanger,
   selectBessModesForPcs,
@@ -138,32 +136,13 @@ describe('SnConnectionPointKindCatalog', () => {
 });
 
 /**
- * Karta FAB-L: `getMvNeutralGrounding`/`selectBessModesForPcs`/
+ * Karta FAB-L: `selectBessModesForPcs`/
  * `selectTapChangersForTransformer`/`getTapChanger` przyjmują katalog jako
  * PARAMETR (snapshot audytu 2), zamiast czytać statyk modułowy — fikstury
  * poniżej są kształtem 1:1 z backendowym `to_dict()` (`audit2_catalogs.py`),
  * nie wymyślonymi wartościami.
  */
 describe('Selektory snapshotu audytu 2 (parametryzowane, karta FAB-L)', () => {
-  const groundings: readonly MvNeutralGroundingItem[] = [
-    {
-      id: 'mng_isolated', catalog_namespace: 'mv_neutral_grounding', catalog_version: '2026-08-14',
-      grounding_type: 'isolated', label_pl: 'Sieć izolowana', description_pl: 'x',
-      r_ohm: null, x_ohm: null,
-    },
-    {
-      id: 'mng_resistor_low', catalog_namespace: 'mv_neutral_grounding', catalog_version: '2026-08-14',
-      grounding_type: 'resistor_grounded', label_pl: 'Rezystor 7 Ω', description_pl: 'x',
-      r_ohm: 7, x_ohm: null,
-    },
-  ];
-
-  it('getMvNeutralGrounding zwraca pozycję po id z PODANEGO katalogu, null dla braku/nieznanego', () => {
-    expect(getMvNeutralGrounding(groundings, 'mng_resistor_low')?.r_ohm).toBe(7);
-    expect(getMvNeutralGrounding(groundings, null)).toBeNull();
-    expect(getMvNeutralGrounding(groundings, 'mng_nieznany')).toBeNull();
-    expect(getMvNeutralGrounding([], 'mng_isolated')).toBeNull();
-  });
 
   const bessModes: readonly BessOperationModeItem[] = [
     {

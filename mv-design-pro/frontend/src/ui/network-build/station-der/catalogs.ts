@@ -87,7 +87,6 @@
 import type {
   BessOperationModeItem,
   BlockTransformerItem,
-  MvNeutralGroundingItem,
   TapChangerItem,
 } from './audit2-api';
 
@@ -219,18 +218,6 @@ export function getSnConnectionPointKindLabelPl(
   if (kind === null) return '—';
   const item = SN_CONNECTION_POINT_KIND_CATALOG.find((v) => v.kind === kind);
   return item?.label_pl ?? kind;
-}
-
-/**
- * Naprawa B.1 (karta FAB-L: katalog ze snapshotu audytu 2, parametr zamiast
- * statyku modułowego) — pobiera szczegóły uziemienia neutralnego stacji.
- */
-export function getMvNeutralGrounding(
-  groundings: readonly MvNeutralGroundingItem[],
-  id: string | null,
-): MvNeutralGroundingItem | null {
-  if (!id) return null;
-  return groundings.find((g) => g.id === id) ?? null;
 }
 
 /**
