@@ -1,0 +1,1010 @@
+{
+  "G00/00:SLD Substrate 52 stacji/PF": {
+    "odmowa": null,
+    "sha256": "5ee54203830e3bf2213db4e6e61b7f7fa01e820657e73acc25f7c74a223354f1"
+  },
+  "G00/00:SLD Substrate 52 stacji/SC_1F_max": {
+    "odmowa": "ValueError: Zero-sequence Y-bus is singular; cannot compute Z0-bus (sieć bez drogi powrotu prądu zerowego do ziemi — brak uziemienia punktu neutralnego i brak pojemności doziemnej B0 na liniach/kablach; dla sieci izolowanej podaj b0_siemens_per_km, by uwzględnić prąd pojemnościowy doziemienia)",
+    "sha256": null
+  },
+  "G00/00:SLD Substrate 52 stacji/SC_2FG_max": {
+    "odmowa": "ValueError: Zero-sequence Y-bus is singular; cannot compute Z0-bus (sieć bez drogi powrotu prądu zerowego do ziemi — brak uziemienia punktu neutralnego i brak pojemności doziemnej B0 na liniach/kablach; dla sieci izolowanej podaj b0_siemens_per_km, by uwzględnić prąd pojemnościowy doziemienia)",
+    "sha256": null
+  },
+  "G00/00:SLD Substrate 52 stacji/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "2fcae99306929f12046dd36e1d7effb0610ba3e8f53402504dfe7c499e42556a"
+  },
+  "G00/00:SLD Substrate 52 stacji/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "8067d9b327edbf657288ba0a50a059ce1d4e7e85abae9ecd7c6e427ae35d8f78"
+  },
+  "G00/00:SLD Substrate 52 stacji/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "32072491dd1f2abe980514bf51a06fd764004a277e232108d5cd39deea28ac83"
+  },
+  "G02/00:Golden Network Test/PF": {
+    "odmowa": null,
+    "sha256": "7a9c07d509b5765cb2663ff76e32cdb70630005905af3df03112b2d758936a32"
+  },
+  "G02/00:Golden Network Test/SC_1F_max": {
+    "odmowa": "ValueError: Zero-sequence Y-bus is singular; cannot compute Z0-bus (sieć bez drogi powrotu prądu zerowego do ziemi — brak uziemienia punktu neutralnego i brak pojemności doziemnej B0 na liniach/kablach; dla sieci izolowanej podaj b0_siemens_per_km, by uwzględnić prąd pojemnościowy doziemienia)",
+    "sha256": null
+  },
+  "G02/00:Golden Network Test/SC_2FG_max": {
+    "odmowa": "ValueError: Zero-sequence Y-bus is singular; cannot compute Z0-bus (sieć bez drogi powrotu prądu zerowego do ziemi — brak uziemienia punktu neutralnego i brak pojemności doziemnej B0 na liniach/kablach; dla sieci izolowanej podaj b0_siemens_per_km, by uwzględnić prąd pojemnościowy doziemienia)",
+    "sha256": null
+  },
+  "G02/00:Golden Network Test/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "cd68e15592a0351d11e6402afacb48d1705e14b4e243e1142d22fd8f5bd3171e"
+  },
+  "G02/00:Golden Network Test/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "ab954556b238602ad542883bd5df4244ffd9bd089d058105f206587ae35b7c1c"
+  },
+  "G02/00:Golden Network Test/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "69ba36fca45df849215fa57a966d0caa93952821f7b6296c9252fc0cb9eb5eae"
+  },
+  "G02/01:Golden Network Test/PF": {
+    "odmowa": null,
+    "sha256": "26088b8dbeb780d0a6d5c5cc8ca06c99e672cd42429ba9fec3682ca3266ad732"
+  },
+  "G02/01:Golden Network Test/SC_1F_max": {
+    "odmowa": "ValueError: Zero-sequence Y-bus is singular; cannot compute Z0-bus (sieć bez drogi powrotu prądu zerowego do ziemi — brak uziemienia punktu neutralnego i brak pojemności doziemnej B0 na liniach/kablach; dla sieci izolowanej podaj b0_siemens_per_km, by uwzględnić prąd pojemnościowy doziemienia)",
+    "sha256": null
+  },
+  "G02/01:Golden Network Test/SC_2FG_max": {
+    "odmowa": "ValueError: Zero-sequence Y-bus is singular; cannot compute Z0-bus (sieć bez drogi powrotu prądu zerowego do ziemi — brak uziemienia punktu neutralnego i brak pojemności doziemnej B0 na liniach/kablach; dla sieci izolowanej podaj b0_siemens_per_km, by uwzględnić prąd pojemnościowy doziemienia)",
+    "sha256": null
+  },
+  "G02/01:Golden Network Test/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "7ef2f6ab144ab9d0054725bb657e94cf6a9b5c05d9a252171530835bdb937239"
+  },
+  "G02/01:Golden Network Test/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "0ada3ae35d3b7a76988579370580656d64c8d44beb0611f48e8c0195fb10781a"
+  },
+  "G02/01:Golden Network Test/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "7e02ad82edf3864fe7ab49dd447a1414bb29b7d4f52710ea96355a911cbe44af"
+  },
+  "G03/00:Golden Network Test/PF": {
+    "odmowa": null,
+    "sha256": "99c559d72cb597ed7328e7db97145262f9fe0f7eddb83c68cf0aea98aee5b310"
+  },
+  "G03/00:Golden Network Test/SC_1F_max": {
+    "odmowa": "ValueError: Zero-sequence Y-bus is singular; cannot compute Z0-bus (sieć bez drogi powrotu prądu zerowego do ziemi — brak uziemienia punktu neutralnego i brak pojemności doziemnej B0 na liniach/kablach; dla sieci izolowanej podaj b0_siemens_per_km, by uwzględnić prąd pojemnościowy doziemienia)",
+    "sha256": null
+  },
+  "G03/00:Golden Network Test/SC_2FG_max": {
+    "odmowa": "ValueError: Zero-sequence Y-bus is singular; cannot compute Z0-bus (sieć bez drogi powrotu prądu zerowego do ziemi — brak uziemienia punktu neutralnego i brak pojemności doziemnej B0 na liniach/kablach; dla sieci izolowanej podaj b0_siemens_per_km, by uwzględnić prąd pojemnościowy doziemienia)",
+    "sha256": null
+  },
+  "G03/00:Golden Network Test/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "6398b884931aca3aef79e00870842ca3064074ca6288153c19841753badd6ea5"
+  },
+  "G03/00:Golden Network Test/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "5b25f0e1173a17fb0300bbe94fda43c804738dcbed5d7f21dffef9935d91b33d"
+  },
+  "G03/00:Golden Network Test/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "280a7b990a27188d4af65942c4f8ba183bc4435a59e73ad20228348e2a6de00c"
+  },
+  "G04/00:scenariusz-stC/PF": {
+    "odmowa": null,
+    "sha256": "8e809e5cafd1fc3dd31c841117e74bdc8317e30e91ccbb0341bebe832a06aae7"
+  },
+  "G04/00:scenariusz-stC/SC_1F_max": {
+    "odmowa": null,
+    "sha256": "acb845918b362c9a98f7278ebebd51a556366e62ba10c96d55d0f1ed578e48c8"
+  },
+  "G04/00:scenariusz-stC/SC_2FG_max": {
+    "odmowa": null,
+    "sha256": "1527f25880938da7e5baa18329dd972d51ec579dd6d1f1d94f0c504670309995"
+  },
+  "G04/00:scenariusz-stC/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "f08185fba88bef461e5a3b9999b00f6d9dc99d7318a14f6fee5f414067af0334"
+  },
+  "G04/00:scenariusz-stC/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "bfc326940674d29753b0c2d65ee500b9a55c4bd1a5862fef981b96efbdd67901"
+  },
+  "G04/00:scenariusz-stC/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "b5c7da4922ca7f146651690d9a957e47cc3575aedf2baaabc64763a5c2e7b083"
+  },
+  "G04/01:scenariusz-stAB/PF": {
+    "odmowa": null,
+    "sha256": "88ec93787e9474c1ae9894b7b2fa2e0c4fc260ace293b48de0fc625f83ccfd61"
+  },
+  "G04/01:scenariusz-stAB/SC_1F_max": {
+    "odmowa": null,
+    "sha256": "418874fd0748a43f5e05ececa943f84c49337605f3bf19fafcc9e85edb3ac83f"
+  },
+  "G04/01:scenariusz-stAB/SC_2FG_max": {
+    "odmowa": null,
+    "sha256": "115348a5a6af25e3f11fd27a66d7ea917e273cbe2c8d98824bb841575c8ace2a"
+  },
+  "G04/01:scenariusz-stAB/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "44506cce3b114af4030e2cee68b948a5f2eb972bb3f2fd1b88410eec1b9dfa47"
+  },
+  "G04/01:scenariusz-stAB/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "942d2d05623a42b164e23417413046489732d645ec8f8e22907fb59db12e72f7"
+  },
+  "G04/01:scenariusz-stAB/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "a4f406703041ad860187eb4782110ca1dc12b120218e6d9fb6ff5a77a3cc7600"
+  },
+  "G04/02:scenariusz-stAB/PF": {
+    "odmowa": null,
+    "sha256": "6651d36de0cee10188263d2e3a9a521ba7f692f6d8c0cb8dab42d8b69e92c75e"
+  },
+  "G04/02:scenariusz-stAB/SC_1F_max": {
+    "odmowa": null,
+    "sha256": "7c57fd0ea5a062c6e44592bc543a4692c49d6c7a72dbc3d8ba869a7fd683234f"
+  },
+  "G04/02:scenariusz-stAB/SC_2FG_max": {
+    "odmowa": null,
+    "sha256": "cf428b0150dca9ece47144a1687e40243ffc48ab6c3d8eda46b30460407152ce"
+  },
+  "G04/02:scenariusz-stAB/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "ff71cbf02ed446668bf313afaec668a69c2e5adb41187d9d05f779ea8f75c5ab"
+  },
+  "G04/02:scenariusz-stAB/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "a2f56c1f0203aa978ee69a76b2bc8f7e6bd093f66c02ee21ecd9685d2390be51"
+  },
+  "G04/02:scenariusz-stAB/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "6c60c82d8516d0dcc68ff57540bcc1c13cb8f6a7bc5ffc8123e07c7f0bd82c04"
+  },
+  "G04/03:scenariusz-stAB/PF": {
+    "odmowa": null,
+    "sha256": "abc249ecf1490238692fdb81bca29b03b1de9f2ecc443ec24df1824c9a7a6eac"
+  },
+  "G04/03:scenariusz-stAB/SC_1F_max": {
+    "odmowa": null,
+    "sha256": "ad18ca2163ae87225cb6f3c5da20459122aa6a729ed8f61cfd8a5c7f985e61ed"
+  },
+  "G04/03:scenariusz-stAB/SC_2FG_max": {
+    "odmowa": null,
+    "sha256": "ea122bc26a4059caf78e250d08b9b9bf7e9c9d8dc88217e5cce084608ca4007d"
+  },
+  "G04/03:scenariusz-stAB/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "85a1cd540ac3b7b90ee4529a031945451497439fbffc44359c33240bc9c03979"
+  },
+  "G04/03:scenariusz-stAB/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "534c51892967ee41906c336837147c179d3f09a5a29f09f22a36d04369c81fa7"
+  },
+  "G04/03:scenariusz-stAB/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "2a8827e05d7a2b213ea7aa8f8c9308d27a810267432849daab07f941eb7d26b4"
+  },
+  "G04/04:scenariusz-stAB/PF": {
+    "odmowa": "ValueError: W sieci może być maksymalnie jeden węzeł SLACK, aktualnie jest 2.",
+    "sha256": null
+  },
+  "G04/04:scenariusz-stAB/SC_1F_max": {
+    "odmowa": "ValueError: W sieci może być maksymalnie jeden węzeł SLACK, aktualnie jest 2.",
+    "sha256": null
+  },
+  "G04/04:scenariusz-stAB/SC_2FG_max": {
+    "odmowa": "ValueError: W sieci może być maksymalnie jeden węzeł SLACK, aktualnie jest 2.",
+    "sha256": null
+  },
+  "G04/04:scenariusz-stAB/SC_2F_max": {
+    "odmowa": "ValueError: W sieci może być maksymalnie jeden węzeł SLACK, aktualnie jest 2.",
+    "sha256": null
+  },
+  "G04/04:scenariusz-stAB/SC_3F_max": {
+    "odmowa": "ValueError: W sieci może być maksymalnie jeden węzeł SLACK, aktualnie jest 2.",
+    "sha256": null
+  },
+  "G04/04:scenariusz-stAB/SC_3F_min": {
+    "odmowa": "ValueError: W sieci może być maksymalnie jeden węzeł SLACK, aktualnie jest 2.",
+    "sha256": null
+  },
+  "G04/05:scenariusz-stAB/PF": {
+    "odmowa": "ValueError: W sieci może być maksymalnie jeden węzeł SLACK, aktualnie jest 2.",
+    "sha256": null
+  },
+  "G04/05:scenariusz-stAB/SC_1F_max": {
+    "odmowa": "ValueError: W sieci może być maksymalnie jeden węzeł SLACK, aktualnie jest 2.",
+    "sha256": null
+  },
+  "G04/05:scenariusz-stAB/SC_2FG_max": {
+    "odmowa": "ValueError: W sieci może być maksymalnie jeden węzeł SLACK, aktualnie jest 2.",
+    "sha256": null
+  },
+  "G04/05:scenariusz-stAB/SC_2F_max": {
+    "odmowa": "ValueError: W sieci może być maksymalnie jeden węzeł SLACK, aktualnie jest 2.",
+    "sha256": null
+  },
+  "G04/05:scenariusz-stAB/SC_3F_max": {
+    "odmowa": "ValueError: W sieci może być maksymalnie jeden węzeł SLACK, aktualnie jest 2.",
+    "sha256": null
+  },
+  "G04/05:scenariusz-stAB/SC_3F_min": {
+    "odmowa": "ValueError: W sieci może być maksymalnie jeden węzeł SLACK, aktualnie jest 2.",
+    "sha256": null
+  },
+  "G04/06:scenariusz-stW/PF": {
+    "odmowa": null,
+    "sha256": "b694c091ee315f4519cdcd2f23bd0b61eef4f3b3b4ebdb610d0488950d118d63"
+  },
+  "G04/06:scenariusz-stW/SC_1F_max": {
+    "odmowa": null,
+    "sha256": "36e5e2ae85fd55321f0722438bb2d9c677b279913bec83d7de3ac6c4dc20d479"
+  },
+  "G04/06:scenariusz-stW/SC_2FG_max": {
+    "odmowa": null,
+    "sha256": "d6b06cdc8dc3a2684fa45682ec5dc545887ddfa9993a8c1cc32fad3b18e111ca"
+  },
+  "G04/06:scenariusz-stW/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "107a4d75dc4f0ba7a31984f39bdd97ccef53dfda2b8b6779406ae5a53f309508"
+  },
+  "G04/06:scenariusz-stW/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "18d6a89a3fd0200b8d047c7a809ef2f9a07f56741acaae9e1c797e5cbc26cbe1"
+  },
+  "G04/06:scenariusz-stW/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "a916924b1980c2514e6ebdc568c6ee47c3ca0399f14cf427141e1f903745c787"
+  },
+  "G04/07:scenariusz-stW/PF": {
+    "odmowa": null,
+    "sha256": "06dadddb095a448b939cbd9ccbb93508bdf6b23f32ed92d47980b3d09fcd90a5"
+  },
+  "G04/07:scenariusz-stW/SC_1F_max": {
+    "odmowa": null,
+    "sha256": "1109c94274fc38f250af3ef483b1cd83174384e8909c33fc6c0f7a2f7f542479"
+  },
+  "G04/07:scenariusz-stW/SC_2FG_max": {
+    "odmowa": null,
+    "sha256": "68181b0c2862da21ba5d463f34e389ed34e4a82f31199ebbb5f98d45961bb1bd"
+  },
+  "G04/07:scenariusz-stW/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "28c78a8598725be81192d9e82d0c204e426e8849af6c5ea93afa39f2bc981d8c"
+  },
+  "G04/07:scenariusz-stW/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "839bbded1e5bfe1d1c57469355417ff17665f2c398e6dd2b9dbbe70e2f63dd86"
+  },
+  "G04/07:scenariusz-stW/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "53bb4f557cf7e9bcd6302d0783f253fbec9bdb0e52756162447ad4c3be069e0a"
+  },
+  "G04/08:scenariusz-stW/PF": {
+    "odmowa": null,
+    "sha256": "962368b5556328d017e41e53437619ee5f9e8a7a8282947c7ea626ab080f3cfa"
+  },
+  "G04/08:scenariusz-stW/SC_1F_max": {
+    "odmowa": null,
+    "sha256": "8e2a9abea3afcb61fb84ef85465bd6fb03a46ed7a6eac3fd043389acfd830c94"
+  },
+  "G04/08:scenariusz-stW/SC_2FG_max": {
+    "odmowa": null,
+    "sha256": "3f1271a59a2a9c962ba14ae062f434c63d75c8f1ea95913b79712806b175a6fe"
+  },
+  "G04/08:scenariusz-stW/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "102c071814a84bb1b22fd69e1e151a279a48754ea28248f3ab0d344f0efa5daa"
+  },
+  "G04/08:scenariusz-stW/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "232cf1ed1550a407866338770ce754041ab604831651e8dfc9dfff84b6bca3ad"
+  },
+  "G04/08:scenariusz-stW/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "12711d8d487248ff4cf6f56b57049348a79117374cbfc2a06271524f0c4eaddb"
+  },
+  "G04/09:scenariusz-stAB/PF": {
+    "odmowa": null,
+    "sha256": "da9091afbec6b8fd844a160b823eefc150c163b77eed3417db468ea968ec880a"
+  },
+  "G04/09:scenariusz-stAB/SC_1F_max": {
+    "odmowa": "ValueError: Y-bus is singular; cannot compute Z-bus for short-circuit",
+    "sha256": null
+  },
+  "G04/09:scenariusz-stAB/SC_2FG_max": {
+    "odmowa": "ValueError: Y-bus is singular; cannot compute Z-bus for short-circuit",
+    "sha256": null
+  },
+  "G04/09:scenariusz-stAB/SC_2F_max": {
+    "odmowa": "ValueError: Y-bus is singular; cannot compute Z-bus for short-circuit",
+    "sha256": null
+  },
+  "G04/09:scenariusz-stAB/SC_3F_max": {
+    "odmowa": "ValueError: Y-bus is singular; cannot compute Z-bus for short-circuit",
+    "sha256": null
+  },
+  "G04/09:scenariusz-stAB/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "499580eb0e3844d05b952abdc761c4b2d44f990052372440233edfec39069f89"
+  },
+  "G04/10:scenariusz-stAB/PF": {
+    "odmowa": null,
+    "sha256": "03c54212628140aada3388f64e2fb5e637a8fac0d4a991b9f9c8ac907ab3b1f7"
+  },
+  "G04/10:scenariusz-stAB/SC_1F_max": {
+    "odmowa": null,
+    "sha256": "1f7a6937243cbffdebccbf54d123329ae487edd7323afdc59b4833e3b852b9fe"
+  },
+  "G04/10:scenariusz-stAB/SC_2FG_max": {
+    "odmowa": null,
+    "sha256": "02a5727ac2eb5dde2ba9912114895fef2769b6274d01e291600c708556842cb2"
+  },
+  "G04/10:scenariusz-stAB/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "cd6564d9a08598022445ef01e4818c5a42978a2eaf46608f052cf8e7deeef063"
+  },
+  "G04/10:scenariusz-stAB/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "a5ba9723131e0e7d17a28952f5e109f997b13b64e466d6a4b488a5a4becda947"
+  },
+  "G04/10:scenariusz-stAB/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "dff659d2929c0b5990b3cc9f9076b3ab926ba83449ff35d2020f858da2ca4eb9"
+  },
+  "G04/11:scenariusz-stDER/PF": {
+    "odmowa": null,
+    "sha256": "97f976a81ddf300aa1f5aa8120ba2d6b746fb7b4d38d822ec0b4b850d27c0bc7"
+  },
+  "G04/11:scenariusz-stDER/SC_1F_max": {
+    "odmowa": null,
+    "sha256": "6297fc9700787c917ded069377dd58ab145e15d43929b3fcc5c63976555ff045"
+  },
+  "G04/11:scenariusz-stDER/SC_2FG_max": {
+    "odmowa": null,
+    "sha256": "adbeb716cc32e61b84f11a3e292a91e8f8b3b95f6c295cc7619896825c72852a"
+  },
+  "G04/11:scenariusz-stDER/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "736623f102761d04cd3ba4932b3ce199df17fda0cd7839ac7b15ddb4f100577f"
+  },
+  "G04/11:scenariusz-stDER/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "6385b950b6c4ad7dc05ab226e3b8e3b739fc0e576678cac77b366b887afb8201"
+  },
+  "G04/11:scenariusz-stDER/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "09ab4d4d4ab49648c9fe2c520f2c754b5af353419915edfee8780c3300e2f56c"
+  },
+  "G04/12:scenariusz-stODB/PF": {
+    "odmowa": null,
+    "sha256": "315c30a1c853fe4104a0cbcfa43121679e1ea45cf7ec2f8cdafd036f4b6a3500"
+  },
+  "G04/12:scenariusz-stODB/SC_1F_max": {
+    "odmowa": null,
+    "sha256": "6b20c4c5d533dfcfa62acdcff395eebfe52b08d24d3a1b68e31db64c256a9ab5"
+  },
+  "G04/12:scenariusz-stODB/SC_2FG_max": {
+    "odmowa": null,
+    "sha256": "711f7efdec45a4783a98365dfa16046094eac1c0fe100a6baac4cc77c05f6328"
+  },
+  "G04/12:scenariusz-stODB/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "71793d5781bbc79f427d957d61162ed3cdc2be9eb0fc7a3adbb69a48687ed9ed"
+  },
+  "G04/12:scenariusz-stODB/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "d2ffaa840d39103fb1ea9fed265f36e77ea63092ebb94be83ab5f41fb62e1223"
+  },
+  "G04/12:scenariusz-stODB/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "cee7e372dd67e518dca2ac3d46ce479d9d0f3a4fcf9aaa22a1ef175950f82911"
+  },
+  "G04/13:scenariusz-stSUB/PF": {
+    "odmowa": null,
+    "sha256": "87fe8d3141d70d06838c67df4c1af00d6ee35e3a996ad881607f1165369a846b"
+  },
+  "G04/13:scenariusz-stSUB/SC_1F_max": {
+    "odmowa": null,
+    "sha256": "33f0bd16e2cb959287467b52396ef680062f1d65d833e82b24c6c8e7305e9161"
+  },
+  "G04/13:scenariusz-stSUB/SC_2FG_max": {
+    "odmowa": null,
+    "sha256": "717bf34893d31ba6779a8c83f4bc44ab48c36a9ffedace15d0dbd0951ab63e9f"
+  },
+  "G04/13:scenariusz-stSUB/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "1f7104c6b39b660079deb7343382787b369ecf4707de596c8745bcc4ba67aa19"
+  },
+  "G04/13:scenariusz-stSUB/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "0b060669ffa00febb0bf30642d032c8fcb85dfe1144efb0cc0db6d7671fa0f03"
+  },
+  "G04/13:scenariusz-stSUB/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "71086b3d71fd9da880ab74c657ee7560d368e54ddb39034e9f170b9031a30733"
+  },
+  "G04/14:scenariusz-stWIELE/PF": {
+    "odmowa": null,
+    "sha256": "6fe52b44c22bdc9ea05c135c27929014ab1e938622d799ceb79d3f4942aadb87"
+  },
+  "G04/14:scenariusz-stWIELE/SC_1F_max": {
+    "odmowa": null,
+    "sha256": "6432a0021b340bce43eaad1fde72dd79e00d7ce8583a61414bf2966fa89b87f5"
+  },
+  "G04/14:scenariusz-stWIELE/SC_2FG_max": {
+    "odmowa": null,
+    "sha256": "0fa85d1f4be2316bc92dd5fad6e3d7da405d4a52b35b1bcade19485072f986b9"
+  },
+  "G04/14:scenariusz-stWIELE/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "0a5e6c8917f5d92c5384d901fff9743941e70c1d8ad765535ea18c49125ba733"
+  },
+  "G04/14:scenariusz-stWIELE/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "c8d1bfd7920b4d629e4db41a8642a5bba0eeb3710c78ed9c117a1e2e6192d344"
+  },
+  "G04/14:scenariusz-stWIELE/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "fd454b455b118a7b4893a6678588c83670c62269efc46f88cadcd74a8eeb3016"
+  },
+  "G04/15:scenariusz-stC/PF": {
+    "odmowa": null,
+    "sha256": "ee2388809190df4ea56f7afa859e75b1fad14016fe20f7d68ef1249a06d43d81"
+  },
+  "G04/15:scenariusz-stC/SC_1F_max": {
+    "odmowa": null,
+    "sha256": "9571d55e0bcb064cb767326b37fc260b77da37d7e366aa6b97b5fa08552d111d"
+  },
+  "G04/15:scenariusz-stC/SC_2FG_max": {
+    "odmowa": null,
+    "sha256": "cd369106df2f44f1c7b9c7c20bdebd6158321445ac09cbec86bda1d57d28632d"
+  },
+  "G04/15:scenariusz-stC/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "3b52768786307d5bda9b1ad4ef50bebd679f37b8167d16282ae04d3e7fa40c34"
+  },
+  "G04/15:scenariusz-stC/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "1464a2a9fe91184559ff9a40bf7cd4a0796e39db7177b006df0c553119456339"
+  },
+  "G04/15:scenariusz-stC/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "a17690da53280a2131532711a18772d8dbbe4d9b30480fcece035dcf152d19ca"
+  },
+  "G04/16:scenariusz-stC/PF": {
+    "odmowa": null,
+    "sha256": "e1a08f3e1ce46220c5bc4802086ddfa3e932b976712e18d462abd02171a71778"
+  },
+  "G04/16:scenariusz-stC/SC_1F_max": {
+    "odmowa": null,
+    "sha256": "d86788d699fea809330b327ed97c02ad90053c36654b3618708d0ff0aabb2eed"
+  },
+  "G04/16:scenariusz-stC/SC_2FG_max": {
+    "odmowa": null,
+    "sha256": "78d2d1651e2c6e2f6f5ddc0ea9f3769698bbcd65550c3236f114d98d6ddd1843"
+  },
+  "G04/16:scenariusz-stC/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "97b4c9269744f1fbb02478544bbedc4ea2d1b2cdeda63750cdc45743524a7af5"
+  },
+  "G04/16:scenariusz-stC/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "04faf6c8b076d3a93135654f3d9317bf11f19d3a5aa109e48ebb8401716a7fbf"
+  },
+  "G04/16:scenariusz-stC/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "d17e8393f7da282178cdb4ce4e08fea8e25e7fbc1e7c7cc11c354938ecdadc69"
+  },
+  "G04/17:scenariusz-stSWZ/PF": {
+    "odmowa": null,
+    "sha256": "1523e62e8068efea65ed7953d397ca9ce41e4f3efb9525ba6f7a96d3f741d923"
+  },
+  "G04/17:scenariusz-stSWZ/SC_1F_max": {
+    "odmowa": null,
+    "sha256": "63f89e4ba0c5af65cc86e86248082d8da54a67ab9337c7a29ba948e9635a1f2c"
+  },
+  "G04/17:scenariusz-stSWZ/SC_2FG_max": {
+    "odmowa": null,
+    "sha256": "76c55643aa0ee98f975a6f1e32458653c32bd1282e1bc8b6463d1638c80b5f77"
+  },
+  "G04/17:scenariusz-stSWZ/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "4cb830f7cfb920e1e65e0eb836b3e2a84367ea68383a29280840ce1b1d13e98e"
+  },
+  "G04/17:scenariusz-stSWZ/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "151d1082edd4dd4ce68aba66991751d8be15e46c31ac6d7561f2a07cbaf1a479"
+  },
+  "G04/17:scenariusz-stSWZ/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "6470273f6cfa5263df7d494bfc07286812f89feef8205a4e861d96124caa7d46"
+  },
+  "G05/00:scenariusz-stC/PF": {
+    "odmowa": null,
+    "sha256": "fc59fa4fd1df20da3fa5413c30dc32619bb68ab106c0b6ece14e4ad85e5618bb"
+  },
+  "G05/00:scenariusz-stC/SC_1F_max": {
+    "odmowa": null,
+    "sha256": "692c6454c7a7b008ccb902a8826fbaa132716bc270a9df7a98cd5110fefb56a1"
+  },
+  "G05/00:scenariusz-stC/SC_2FG_max": {
+    "odmowa": null,
+    "sha256": "288b4c307ec08461b73c14ff85cd0326948e95497441cafd255648aa8aaa63e1"
+  },
+  "G05/00:scenariusz-stC/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "9049de5f4adf27149015a8aed326d26422d2a0e38f709cc64d39945caa8cf36c"
+  },
+  "G05/00:scenariusz-stC/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "9cd3bbcb8eec2525ff60dbd43b7ca02097e5ee9f98304195fa138eb743a5aaaa"
+  },
+  "G05/00:scenariusz-stC/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "6708961111d87d530cef1fc2d886cc3db38c97e41a55daeaaa818803feb63c21"
+  },
+  "G05/01:scenariusz-stAB/PF": {
+    "odmowa": null,
+    "sha256": "f5eb8aa225250d0cf51dd56e82b40a472778608527f13b687c60c4ce5212cfdf"
+  },
+  "G05/01:scenariusz-stAB/SC_1F_max": {
+    "odmowa": null,
+    "sha256": "788b97047a67572cdee739862ade8de6cf65513b0e466eee867d3a17f7589e28"
+  },
+  "G05/01:scenariusz-stAB/SC_2FG_max": {
+    "odmowa": null,
+    "sha256": "f00c90be31b88d8f10c4cc0be7466c2cc66b395bc29b837893441a08f0ab1d9a"
+  },
+  "G05/01:scenariusz-stAB/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "e5f2d357bf598c6c895b423d904f7491ac46336156e7231584325f6ce4852ae6"
+  },
+  "G05/01:scenariusz-stAB/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "1f0f0f9bef8963f95af0770767bba45a99df161d714325959a7d6d17fbfc80e3"
+  },
+  "G05/01:scenariusz-stAB/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "a5e7ff6417e6158ba7c137f69b0231ba17defbb18abfe48c3b5106a7b1ee4577"
+  },
+  "G05/02:scenariusz-stAB/PF": {
+    "odmowa": null,
+    "sha256": "6e882e8126838526cd3cc3d186c17443c6ec3432d4698b6e25a83320ea98ecdf"
+  },
+  "G05/02:scenariusz-stAB/SC_1F_max": {
+    "odmowa": null,
+    "sha256": "d923b30c77596259c91df3813e275b9ecfc83db52022cf9d0f985495acfe2f2f"
+  },
+  "G05/02:scenariusz-stAB/SC_2FG_max": {
+    "odmowa": null,
+    "sha256": "a48099271dbc31b4fd10bda4a576f26d9565ce4f1fbddc77f7be8a7749f95eb4"
+  },
+  "G05/02:scenariusz-stAB/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "aca3d10b9f84b6148502d6602e092c54a54a9be20d59b44aa0c8c69bacd7cd9b"
+  },
+  "G05/02:scenariusz-stAB/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "2516fb9c73ef2abd278e7231aa306fb0c9df7403dab69ad18af4446ba56961f4"
+  },
+  "G05/02:scenariusz-stAB/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "7c9e77b785619d0c282ad732712170591fbfbeba923dd2c698c361b59ee5d987"
+  },
+  "G05/03:scenariusz-stAB/PF": {
+    "odmowa": null,
+    "sha256": "b4e2a693522b041e41ee72f17c627243c04f3625c4df6a36115ee118744b3ec1"
+  },
+  "G05/03:scenariusz-stAB/SC_1F_max": {
+    "odmowa": null,
+    "sha256": "205021d5c0f7d4bcb0cf6cd9fe2360455e8c4811a6b43f172e9ac9ad172fa355"
+  },
+  "G05/03:scenariusz-stAB/SC_2FG_max": {
+    "odmowa": null,
+    "sha256": "334ace912387bc7f7f13e57babfa0c90922af8f0e9872bcfc480716c8d2a3c24"
+  },
+  "G05/03:scenariusz-stAB/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "17202e622d34da01277b09accfa4b0a2d1a7cd8f5f8d1d99a24eec9b2a9db180"
+  },
+  "G05/03:scenariusz-stAB/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "8ccef77a0ec1b7486244ea7765a54dd1f43b2aeaaeb1c784cfd77bec0f287ccd"
+  },
+  "G05/03:scenariusz-stAB/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "58362cec7625d569e818a3ac0ade9cf46d0cf6db53ca3b039306f40697bfc5d4"
+  },
+  "G05/04:scenariusz-stAB/PF": {
+    "odmowa": "ValueError: W sieci może być maksymalnie jeden węzeł SLACK, aktualnie jest 2.",
+    "sha256": null
+  },
+  "G05/04:scenariusz-stAB/SC_1F_max": {
+    "odmowa": "ValueError: W sieci może być maksymalnie jeden węzeł SLACK, aktualnie jest 2.",
+    "sha256": null
+  },
+  "G05/04:scenariusz-stAB/SC_2FG_max": {
+    "odmowa": "ValueError: W sieci może być maksymalnie jeden węzeł SLACK, aktualnie jest 2.",
+    "sha256": null
+  },
+  "G05/04:scenariusz-stAB/SC_2F_max": {
+    "odmowa": "ValueError: W sieci może być maksymalnie jeden węzeł SLACK, aktualnie jest 2.",
+    "sha256": null
+  },
+  "G05/04:scenariusz-stAB/SC_3F_max": {
+    "odmowa": "ValueError: W sieci może być maksymalnie jeden węzeł SLACK, aktualnie jest 2.",
+    "sha256": null
+  },
+  "G05/04:scenariusz-stAB/SC_3F_min": {
+    "odmowa": "ValueError: W sieci może być maksymalnie jeden węzeł SLACK, aktualnie jest 2.",
+    "sha256": null
+  },
+  "G05/05:scenariusz-stAB/PF": {
+    "odmowa": "ValueError: W sieci może być maksymalnie jeden węzeł SLACK, aktualnie jest 2.",
+    "sha256": null
+  },
+  "G05/05:scenariusz-stAB/SC_1F_max": {
+    "odmowa": "ValueError: W sieci może być maksymalnie jeden węzeł SLACK, aktualnie jest 2.",
+    "sha256": null
+  },
+  "G05/05:scenariusz-stAB/SC_2FG_max": {
+    "odmowa": "ValueError: W sieci może być maksymalnie jeden węzeł SLACK, aktualnie jest 2.",
+    "sha256": null
+  },
+  "G05/05:scenariusz-stAB/SC_2F_max": {
+    "odmowa": "ValueError: W sieci może być maksymalnie jeden węzeł SLACK, aktualnie jest 2.",
+    "sha256": null
+  },
+  "G05/05:scenariusz-stAB/SC_3F_max": {
+    "odmowa": "ValueError: W sieci może być maksymalnie jeden węzeł SLACK, aktualnie jest 2.",
+    "sha256": null
+  },
+  "G05/05:scenariusz-stAB/SC_3F_min": {
+    "odmowa": "ValueError: W sieci może być maksymalnie jeden węzeł SLACK, aktualnie jest 2.",
+    "sha256": null
+  },
+  "G05/06:scenariusz-stW/PF": {
+    "odmowa": null,
+    "sha256": "b7b65808f8c4bc7c47dedf9037d93275d2c44e015cdfa15e788ba7d03ef31857"
+  },
+  "G05/06:scenariusz-stW/SC_1F_max": {
+    "odmowa": null,
+    "sha256": "7169fc8dbfb6718567058a86c757143e267afc09b222a172a73b8890021cfedb"
+  },
+  "G05/06:scenariusz-stW/SC_2FG_max": {
+    "odmowa": null,
+    "sha256": "f6c62e8cfddde0203b624c093ab86046bfdb4c9d83faa49dc7f1c4641c661561"
+  },
+  "G05/06:scenariusz-stW/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "77d0dcb4e01809c1feb73700a62fe92552440c8c52ed27c15275b624d0c0b48e"
+  },
+  "G05/06:scenariusz-stW/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "15dc3bd4c5b425d8e68c059798a2197d9207d6939736944bd94031022bdae904"
+  },
+  "G05/06:scenariusz-stW/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "6a6b0cdb9e0617d403f5ce4038d76c2acf5763c650471d79e262186522796328"
+  },
+  "G05/07:scenariusz-stW/PF": {
+    "odmowa": null,
+    "sha256": "5129b19f6fb948d3fde81f03f854b42b965d6be09319ea3bf59223014816bfca"
+  },
+  "G05/07:scenariusz-stW/SC_1F_max": {
+    "odmowa": null,
+    "sha256": "2c427f1a84cf270b9a3b77aae78b1ec739849c0d5ea54afeeb34e894cfa8aca3"
+  },
+  "G05/07:scenariusz-stW/SC_2FG_max": {
+    "odmowa": null,
+    "sha256": "41d1382a1f445cf6fc432a46146e02652ec827028b8d1daa2bda3258b3de1dd3"
+  },
+  "G05/07:scenariusz-stW/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "ba232544008bfee70fe67b770f7bd04c5dd6926b3d67e2cecc32d76df1b5a193"
+  },
+  "G05/07:scenariusz-stW/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "0a223dac89db22f1f8da176d1d5d9d4a1a355362fc13f1263b7655586a87f4a4"
+  },
+  "G05/07:scenariusz-stW/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "dd972ed587d550f5969bd306da5fca78e5204b7e982c1ba5bc25732ee7e717df"
+  },
+  "G05/08:scenariusz-stW/PF": {
+    "odmowa": null,
+    "sha256": "8be2c948b1d877d179cfc148075ff3c1d7cdd4d96c13ec42aa3b1cddff926460"
+  },
+  "G05/08:scenariusz-stW/SC_1F_max": {
+    "odmowa": null,
+    "sha256": "4428b9d95d34d9dff74d0a0e1258fe03180c42413d5bade894795bd81e42c965"
+  },
+  "G05/08:scenariusz-stW/SC_2FG_max": {
+    "odmowa": null,
+    "sha256": "3b31c4c431750c013d5a2963bfc349d1a1deca049efe283e2872e59d1c4da1da"
+  },
+  "G05/08:scenariusz-stW/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "d3f3b7a5fc599ce355c0f3a4c2fa5934e7a9369723269c63e07b628340f55609"
+  },
+  "G05/08:scenariusz-stW/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "e478c2bf8fa548de932d7eda627eefbb3a490cb1bfcea69e384817d5895a9c89"
+  },
+  "G05/08:scenariusz-stW/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "000576314063d87431e8f408ac53295ff4fcdfc1602be4608e6bd4c70aaa2b09"
+  },
+  "G05/09:scenariusz-stAB/PF": {
+    "odmowa": null,
+    "sha256": "44704a7adc69166de8921f7f05bb86916674467a8b95fc0faaaa0d5e79259e76"
+  },
+  "G05/09:scenariusz-stAB/SC_1F_max": {
+    "odmowa": "ValueError: Y-bus is singular; cannot compute Z-bus for short-circuit",
+    "sha256": null
+  },
+  "G05/09:scenariusz-stAB/SC_2FG_max": {
+    "odmowa": "ValueError: Y-bus is singular; cannot compute Z-bus for short-circuit",
+    "sha256": null
+  },
+  "G05/09:scenariusz-stAB/SC_2F_max": {
+    "odmowa": "ValueError: Y-bus is singular; cannot compute Z-bus for short-circuit",
+    "sha256": null
+  },
+  "G05/09:scenariusz-stAB/SC_3F_max": {
+    "odmowa": "ValueError: Y-bus is singular; cannot compute Z-bus for short-circuit",
+    "sha256": null
+  },
+  "G05/09:scenariusz-stAB/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "e2fe6170ba32d1cc1ce2b992861d2aaa07a82e517ffecce5e4c79347639354a3"
+  },
+  "G05/10:scenariusz-stAB/PF": {
+    "odmowa": null,
+    "sha256": "b46f1d5910e4393bb41ce43a39b8b83910bc8f4cb097787e9fd4d1139185517a"
+  },
+  "G05/10:scenariusz-stAB/SC_1F_max": {
+    "odmowa": null,
+    "sha256": "16c08dddbdf43de232fee169125fbccaa3d6b821dde1152cbc815385a50d33e0"
+  },
+  "G05/10:scenariusz-stAB/SC_2FG_max": {
+    "odmowa": null,
+    "sha256": "ec88224d3a0cf8c901a64638c05feaa3b2434c0f273a8006c1a36bb496074f68"
+  },
+  "G05/10:scenariusz-stAB/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "c520aea40cb899693dfc4237c7cc081b86ef3efbd50862df7aa8f1502c430b91"
+  },
+  "G05/10:scenariusz-stAB/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "381260f789ca9888d31016e9191f2085576d445fb0805dba96a3919114c1baca"
+  },
+  "G05/10:scenariusz-stAB/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "efa8a2bf83b3eda51deb7efef36578feca79d7ae96bbd1b755bc89f71ef4aa74"
+  },
+  "G05/11:scenariusz-stDER/PF": {
+    "odmowa": null,
+    "sha256": "6000bab6728c3effd952d15a6d3ee1de667536a64967fa48753e0c433aa05200"
+  },
+  "G05/11:scenariusz-stDER/SC_1F_max": {
+    "odmowa": null,
+    "sha256": "c375ba04f9b23fdd2c8ad0c1e2828b7da4e50b88de6cb6863976d182458ed55e"
+  },
+  "G05/11:scenariusz-stDER/SC_2FG_max": {
+    "odmowa": null,
+    "sha256": "1a2651fd6a9f353ac778869af7f97cb1ecc81f1c9e0e3cdfaf42279a831ffa9c"
+  },
+  "G05/11:scenariusz-stDER/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "822e48864e21bb461f8042c10eb43be97f4b49cf5f27d2e22d6cfea0010e4ad6"
+  },
+  "G05/11:scenariusz-stDER/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "a3aac7904e1b8d744e8c7d2efc6919ebab669030642cd11bce464367db4103d9"
+  },
+  "G05/11:scenariusz-stDER/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "9279b6107f91294c5e213e14833676496b80d493e40208570751beac95dfe584"
+  },
+  "G05/12:scenariusz-stODB/PF": {
+    "odmowa": null,
+    "sha256": "63c0439e8d9d13eaca8c3f4a92f425bb678df7047a3c7d959a4314f20b1fc9b7"
+  },
+  "G05/12:scenariusz-stODB/SC_1F_max": {
+    "odmowa": null,
+    "sha256": "33256158028f6757ce77d9c996ed08bbd1827726f9f12d5f2cd741cf2b5be1d4"
+  },
+  "G05/12:scenariusz-stODB/SC_2FG_max": {
+    "odmowa": null,
+    "sha256": "60892b1a42057737c3af11b1e8b4a06414986aafda3ef5b02990ed6a21728fd9"
+  },
+  "G05/12:scenariusz-stODB/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "fa0183cfbbe63b75fbe83e69d7fc19e78820811df9660f821dffd4abba9949e4"
+  },
+  "G05/12:scenariusz-stODB/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "968de9f42def4bfe875e58488d654f241ac7490aaa99ab35813cd021360fdfca"
+  },
+  "G05/12:scenariusz-stODB/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "3a53fad7a1c6ae7f399fc8e446688b214f6c507226ee21fa9ec13953aac9532d"
+  },
+  "G05/13:scenariusz-stSUB/PF": {
+    "odmowa": null,
+    "sha256": "1a09632b0754c6a7b62444029d8b802d7d96d51d4b5d62556790b2dd30a35ad9"
+  },
+  "G05/13:scenariusz-stSUB/SC_1F_max": {
+    "odmowa": null,
+    "sha256": "96988913c20487b1046d106a79a771f489ecffe740ae70ddc77ef0d111cd4718"
+  },
+  "G05/13:scenariusz-stSUB/SC_2FG_max": {
+    "odmowa": null,
+    "sha256": "aa88d1b065b308e7997b59314ef5b0562a7cd92a4989e9d4d920cd8789c48e15"
+  },
+  "G05/13:scenariusz-stSUB/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "4002c7d98539f802df5f89b2460131c565e9a8f5d005c5112c7a0c6aafcd1a27"
+  },
+  "G05/13:scenariusz-stSUB/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "e042fdbc5a78892f7e5a36bfccf7c8d05f209b78eb7e161909cdba867138167d"
+  },
+  "G05/13:scenariusz-stSUB/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "6993646b9a9139463bd4cf7c61f15c14f26017e19522f75104cd1a18363a7102"
+  },
+  "G05/14:scenariusz-stWIELE/PF": {
+    "odmowa": null,
+    "sha256": "155d26532a3658c29144480ea967ff8931ff5f90c764e064cf6bceacc4675e57"
+  },
+  "G05/14:scenariusz-stWIELE/SC_1F_max": {
+    "odmowa": null,
+    "sha256": "2bdd9a4bf52a612ddfd5d20e913f20b436b470b27d0ad5542f120cd585cad73f"
+  },
+  "G05/14:scenariusz-stWIELE/SC_2FG_max": {
+    "odmowa": null,
+    "sha256": "a4d3c0d32f7b4df32da0244334059952017dec9b9ab9fee774f8ba5af13314ee"
+  },
+  "G05/14:scenariusz-stWIELE/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "7737ef8f4089df42bd2c1ca89b80cb6a9780091a02dd13ea72d544d8bdef2726"
+  },
+  "G05/14:scenariusz-stWIELE/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "1351b563c39cd4ea75a70b453876b6f54dda3b2857e03646d90cc3f51e6193cb"
+  },
+  "G05/14:scenariusz-stWIELE/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "cba98074925e33aca0cb14f06ac89f1758c0fdb8a2b516e593a2e62eaf680642"
+  },
+  "G05/15:scenariusz-stC/PF": {
+    "odmowa": null,
+    "sha256": "c109eb30b6a1f5fc408d458417bfdf2a36f93ba5f237be14ac5983289a93ed91"
+  },
+  "G05/15:scenariusz-stC/SC_1F_max": {
+    "odmowa": null,
+    "sha256": "bb18ba091d0613dd3b400e0fe6f0b7c74a95bddb69713394cf8efc0e5ad35ffb"
+  },
+  "G05/15:scenariusz-stC/SC_2FG_max": {
+    "odmowa": null,
+    "sha256": "4ccaa85e4f6c485f211f39fdc98a0a0b9ed752965aed9e9572641e675f0dd65c"
+  },
+  "G05/15:scenariusz-stC/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "57311d16d7c431f262a85595004c46138e49e81625cf1c72ea5c972c7d6e613f"
+  },
+  "G05/15:scenariusz-stC/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "091fc1d532f1af8e9de8ae27470322aeaf3fff633dc058830ec8d9a0313430e6"
+  },
+  "G05/15:scenariusz-stC/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "5a475b2fe24918584e0138d0dee569e3e1792518e594019e6b7e4b91d109cd9f"
+  },
+  "G05/16:scenariusz-stC/PF": {
+    "odmowa": null,
+    "sha256": "e38eae705f063213a28b2725f46c89f43364ce37286410bb346c4410c327ce12"
+  },
+  "G05/16:scenariusz-stC/SC_1F_max": {
+    "odmowa": null,
+    "sha256": "bf82fb8b0285ecb0801e3a49d6b5c97a1c22124817d6955f9998652e0b012fc8"
+  },
+  "G05/16:scenariusz-stC/SC_2FG_max": {
+    "odmowa": null,
+    "sha256": "1f6b4ab8089d87b1260513580b0b9c3c7d6ef58d61e69e05cd90b612e93c02d5"
+  },
+  "G05/16:scenariusz-stC/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "308a134c1569661b3497603f86b000027079de0cb5145f7826e82bafd5121bdd"
+  },
+  "G05/16:scenariusz-stC/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "91cac511e9c99a983e59447aeb1b4840cb31076dae7ac49f49eb7eacf97e749b"
+  },
+  "G05/16:scenariusz-stC/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "fa23706708011431cb145a459ed7313a73ceec98850748bfa128240e0b768286"
+  },
+  "G05/17:scenariusz-stSWZ/PF": {
+    "odmowa": null,
+    "sha256": "61887dcadd20e70beddb7d96482b61dcaa5aec1be866423787ef418668055574"
+  },
+  "G05/17:scenariusz-stSWZ/SC_1F_max": {
+    "odmowa": null,
+    "sha256": "c7f5c2e1524edc869570820f7e8df2a64677aa23562fa1cf5db2ea0ee4082841"
+  },
+  "G05/17:scenariusz-stSWZ/SC_2FG_max": {
+    "odmowa": null,
+    "sha256": "bf3d1416ba5ba31dfcb391368ccc1f6c9a486ab06f36bac940252db3c54f17ff"
+  },
+  "G05/17:scenariusz-stSWZ/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "081367135c59b173c59ae07ea76807cf6c414921c0758eddd1e8590023de2434"
+  },
+  "G05/17:scenariusz-stSWZ/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "3a3356de62d193f349841390a0abae50746d40b1f83f128bb18276bb6667a67c"
+  },
+  "G05/17:scenariusz-stSWZ/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "c17e9cdf5a431b55c7f6113a589b6a65e2aecb0c9e54843eb9721cb4731b6c0d"
+  },
+  "G08/00:Golden Network Test/PF": {
+    "odmowa": null,
+    "sha256": "7fbb7c9c7ec11d1b4db35194b342daa96aff075a3c084be889647852cb47cdb7"
+  },
+  "G08/00:Golden Network Test/SC_1F_max": {
+    "odmowa": "ValueError: Zero-sequence Y-bus is singular; cannot compute Z0-bus (sieć bez drogi powrotu prądu zerowego do ziemi — brak uziemienia punktu neutralnego i brak pojemności doziemnej B0 na liniach/kablach; dla sieci izolowanej podaj b0_siemens_per_km, by uwzględnić prąd pojemnościowy doziemienia)",
+    "sha256": null
+  },
+  "G08/00:Golden Network Test/SC_2FG_max": {
+    "odmowa": "ValueError: Zero-sequence Y-bus is singular; cannot compute Z0-bus (sieć bez drogi powrotu prądu zerowego do ziemi — brak uziemienia punktu neutralnego i brak pojemności doziemnej B0 na liniach/kablach; dla sieci izolowanej podaj b0_siemens_per_km, by uwzględnić prąd pojemnościowy doziemienia)",
+    "sha256": null
+  },
+  "G08/00:Golden Network Test/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "c1188d27bb5017941ae851d200c173a0f376594b0f002b4c16091f53452e662e"
+  },
+  "G08/00:Golden Network Test/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "696deadf1d55372ff46a1cd66ea82bd93dfbe2e6c8e3d70bef942b76e31183bc"
+  },
+  "G08/00:Golden Network Test/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "abb9cc26c83bdf414bb124aa07bedfaf7ca19b89a48aa9334087e7fa2f982cf9"
+  },
+  "G13/00:CGMES Golden Net/PF": {
+    "odmowa": null,
+    "sha256": "33b11f42887df6ab2d79245118a840f89a16d4a2ac2979279ec8833d6c0d1cbe"
+  },
+  "G13/00:CGMES Golden Net/SC_1F_max": {
+    "odmowa": null,
+    "sha256": "07dada507517597cfe72a6d854107d90b96ec308e6e971366fab46edc1b672eb"
+  },
+  "G13/00:CGMES Golden Net/SC_2FG_max": {
+    "odmowa": null,
+    "sha256": "9bedd39b28ff4bef7e16357884f28c1e6b081748b323655d1c83f300cd4283da"
+  },
+  "G13/00:CGMES Golden Net/SC_2F_max": {
+    "odmowa": null,
+    "sha256": "484d86109a9f89672a1a4a8b7b2ed84f8dd5e9ed6e10228ec2b83f603ee3b656"
+  },
+  "G13/00:CGMES Golden Net/SC_3F_max": {
+    "odmowa": null,
+    "sha256": "12767ee71ec416a7fa33d885a44214a75602df435528cb6a1e01360377b3fc23"
+  },
+  "G13/00:CGMES Golden Net/SC_3F_min": {
+    "odmowa": null,
+    "sha256": "49717a3d01c8376202b7198383ece53b34cabc4f78e8965fe7bbdf88d0073c01"
+  }
+}

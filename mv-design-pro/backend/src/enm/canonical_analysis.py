@@ -111,6 +111,82 @@ def _compute_input_hash(
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
+#: IEC 60909-0 §4.3.1.1: κ = 1,02 + 0,98·e^(−3R/X) — dla R/X ≥ 0 zawsze w [1,02; 2,0].
+#: Wartość spoza pasma oznacza impedancję zastępczą o ujemnym R albo X (węzeł bez
+#: galwanicznego toru do źródła, macierz Y bliska osobliwości) — wynik solvera jest
+#: wtedy artefaktem numerycznym, nie fizyką (pomiar 2026-09-05: κ ≈ 3·10¹²,
+#: i_p ≈ 2·10¹⁴ A, I_th = inf dla węzła wyspy nN bez zasilania).
+_KAPPA_MIN = 1.02
+_KAPPA_MAX = 2.0
+OGRANICZENIE_WYNIK_NIEFIZYCZNY = "solver_result_non_physical"
+
+
+def _niefinitowe_na_none(obiekt: Any, _sciezka: str = "$") -> tuple[Any, list[str]]:
+    """Kopia struktury JSON z NaN/±inf zamienionymi na ``None`` + ścieżki podmian.
+
+    Polityka §35 (``kontrakt_liczb``): kontrakt wyjściowy biegu musi być poprawnym
+    JSON-em o wartościach finitowych — NaN/inf nie ma reprezentacji w JSON, a
+    „liczba" w polu wyniku bez znaczenia fizycznego jest fabrykacją. Podmiana
+    NIE jest cicha: każda ścieżka wraca do wołającego, który oznacza wynik jako
+    nieraportowalny i wypisuje podmienione pola.
+    """
+    if isinstance(obiekt, bool):
+        return obiekt, []
+    if isinstance(obiekt, float):
+        if math.isfinite(obiekt):
+            return obiekt, []
+        return None, [_sciezka]
+    if isinstance(obiekt, dict):
+        kopia: dict[Any, Any] = {}
+        sciezki: list[str] = []
+        for klucz, wartosc in obiekt.items():
+            nowa, sc = _niefinitowe_na_none(wartosc, f"{_sciezka}.{klucz}")
+            kopia[klucz] = nowa
+            sciezki.extend(sc)
+        return kopia, sciezki
+    if isinstance(obiekt, list | tuple):
+        elementy: list[Any] = []
+        sciezki = []
+        for indeks, wartosc in enumerate(obiekt):
+            nowa, sc = _niefinitowe_na_none(wartosc, f"{_sciezka}[{indeks}]")
+            elementy.append(nowa)
+            sciezki.extend(sc)
+        return elementy, sciezki
+    return obiekt, []
+
+
+def _oznacz_wiersz_zwarcia_niefizyczny(payload: dict[str, Any]) -> dict[str, Any]:
+    """Wiersz wyniku zwarcia z podmianą wartości niefinitowych i bramką κ.
+
+    Zwraca NOWY wiersz. Gdy solver (FROZEN, B-01) oddał wartość niefinitową
+    albo κ spoza pasma IEC 60909-0, wiersz jest NIERAPORTOWALNY z ograniczeniem
+    ``solver_result_non_physical`` i listą pól ``non_physical_fields`` — projektant
+    widzi, że to nie jest prąd zwarciowy, a nie liczbę 2·10¹⁴ A. Wiersz bez
+    takich wartości wraca bez zmian (parytet bit w bit dla sieci zdrowych).
+    """
+    wiersz, niefinitowe = _niefinitowe_na_none(payload)
+    kappa = wiersz.get("kappa")
+    kappa_poza = isinstance(kappa, int | float) and not (_KAPPA_MIN <= float(kappa) <= _KAPPA_MAX)
+    if not niefinitowe and not kappa_poza:
+        return payload
+    pola = sorted(set(niefinitowe) | ({"$.kappa"} if kappa_poza else set()))
+    ograniczenia = list(wiersz.get("reporting_limitations") or [])
+    if OGRANICZENIE_WYNIK_NIEFIZYCZNY not in ograniczenia:
+        ograniczenia.append(OGRANICZENIE_WYNIK_NIEFIZYCZNY)
+    wiersz.update(
+        {
+            "reporting_status": "not_reportable",
+            "reporting_status_pl": "nieraportowalny",
+            "proof_status": "partial",
+            "proof_status_pl": "czesciowy",
+            "dopuszczalnosc_raportowa": False,
+            "reporting_limitations": ograniczenia,
+            "non_physical_fields": pola,
+        }
+    )
+    return wiersz
+
+
 def _short_circuit_type_from_options(options: dict[str, Any]) -> ShortCircuitType:
     raw = options.get("fault_type") or options.get("short_circuit_type") or "3F"
     mapping = {
@@ -1732,10 +1808,19 @@ def _execute_short_circuit(run: CanonicalRun) -> None:
                 "c_factor_override": c_factor_override,
             }
         )
-        rows.append(payload)
+        rows.append(_oznacz_wiersz_zwarcia_niefizyczny(payload))
 
     if not rows:
         raise ValueError("Nie udalo sie obliczyc wynikow zwarciowych dla zadnego wezla")
+
+    # Ślad White Box biegu dzieli słowniki kroków z wierszami (kopie płytkie) —
+    # ta sama podmiana wartości niefinitowych, ten sam wykaz ścieżek.
+    trace_steps, _niefinitowe_w_sladzie = _niefinitowe_na_none(trace_steps)
+    wiersze_niefizyczne = sorted(
+        str(row.get("fault_node_id"))
+        for row in rows
+        if OGRANICZENIE_WYNIK_NIEFIZYCZNY in (row.get("reporting_limitations") or [])
+    )
 
     run.raw_result = {
         "analysis_type": _result_analysis_type_for_fault(short_circuit_type),
@@ -1750,7 +1835,8 @@ def _execute_short_circuit(run: CanonicalRun) -> None:
         "z0_source": (
             "ENM_COMMITTED" if _short_circuit_requires_z0(short_circuit_type) else "NOT_APPLICABLE"
         ),
-        "reporting_limitations": [],
+        "reporting_limitations": ([OGRANICZENIE_WYNIK_NIEFIZYCZNY] if wiersze_niefizyczne else []),
+        **({"non_reportable_fault_node_ids": wiersze_niefizyczne} if wiersze_niefizyczne else {}),
         "case_id": run.case_id,
         "enm_hash": run.snapshot_hash,
         # Karta P0.3b: metadane bindingu c/scenariusz na poziomie biegu (addytywne,
@@ -2383,6 +2469,19 @@ def _execute_power_flow(run: CanonicalRun, graph: NetworkGraph | None = None) ->
         unsolved_node_ids=tuple(solution.not_solved_nodes),
     )
 
+    nierozwiazane = set(solution.not_solved_nodes)
+    node_voltage_kv_finite, niefinitowe_u = _niefinitowe_na_none(
+        {
+            node_id: (None if node_id in nierozwiazane else value)
+            for node_id, value in solution.node_voltage_kv.items()
+        },
+        "$.node_voltage_kv",
+    )
+    branch_current_ka_finite, niefinitowe_i = _niefinitowe_na_none(
+        dict(solution.branch_current_ka), "$.branch_current_ka"
+    )
+    pola_niefinitowe = sorted(niefinitowe_u + niefinitowe_i)
+
     run.raw_result = {
         "analysis_type": "load_flow",
         "solver_method": solver_method,
@@ -2420,8 +2519,14 @@ def _execute_power_flow(run: CanonicalRun, graph: NetworkGraph | None = None) ->
         # bez zagladania w iteracje. Addytywnie (dict), lista z solvera w
         # porzadku wykrycia (deterministyczna — iteracje sa deterministyczne).
         "pv_to_pq_switches": solution.pv_to_pq_switches,
-        "node_voltage_kv": solution.node_voltage_kv,
-        "branch_current_ka": solution.branch_current_ka,
+        # Polityka §35: węzły spoza wyspy slacka (``unsolved_node_ids``) nie mają
+        # napięcia — solver oddaje NaN, kontrakt wyjściowy niesie ``None`` (jawny
+        # brak, nie liczba). Każda INNA wartość niefinitowa jest wypisana w
+        # ``non_finite_fields`` (predykaty parami: NaN ⇔ węzeł nierozwiązany;
+        # rozjazd ma być widoczny, nie cicho wygładzony).
+        "node_voltage_kv": node_voltage_kv_finite,
+        "branch_current_ka": branch_current_ka_finite,
+        **({"non_finite_fields": pola_niefinitowe} if pola_niefinitowe else {}),
         "graph": {
             "nodes": {
                 node_id: {
