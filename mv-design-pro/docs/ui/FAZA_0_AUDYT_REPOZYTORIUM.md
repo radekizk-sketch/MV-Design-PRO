@@ -29,7 +29,7 @@
 | `backend/src/domain/canonical_operations.py:34` | `OperationSpec` (frozen dataclass) | Specyfikacja operacji: kategoria, required/optional fields |
 | `backend/src/domain/canonical_operations.py:388` | `ALIAS_MAP` | Mapowanie aliasow na nazwy kanoniczne |
 | `backend/src/domain/canonical_operations.py:405` | `resolve_operation_name()` | Rozwiaz alias do nazwy kanonicznej |
-| `backend/src/domain/canonical_operations.py:449` | `READINESS_CODES` (40+ kodow) | Kody gotowosci po polsku z fix_action_id |
+| `backend/src/domain/canonical_operations.py:449` | `READINESS_CODES` (40+ kodow) | Kody gotowosci po polsku z nawigacja naprawcza (`fix_action_id` usuniety 2026-09-05, karta FIX-ACTION-KASACJA, REJESTR_KONFLIKTOW.md V12K-338) |
 
 ### 1.3 Operacje ENM (V1 — budowa sieci)
 
@@ -81,7 +81,7 @@
 | Plik | Klasa/Funkcja | Opis |
 |------|---------------|------|
 | `backend/src/domain/canonical_operations.py:420` | `ReadinessLevel` (enum) | BLOCKER, WARNING, INFO |
-| `backend/src/domain/canonical_operations.py:436` | `ReadinessCodeSpec` | Kod: area, priority, level, message_pl, fix_action_id, fix_navigation |
+| `backend/src/domain/canonical_operations.py:436` | `ReadinessCodeSpec` | Kod: area, priority, level, message_pl, fix_navigation (`fix_action_id` usuniety 2026-09-05, karta FIX-ACTION-KASACJA, REJESTR_KONFLIKTOW.md V12K-338) |
 | `backend/src/domain/canonical_operations.py:449` | `READINESS_CODES` | 40+ kodow: trunk.catalog_missing, transformer.catalog_missing, ... |
 | `backend/src/enm/domain_operations.py:156` | `_build_readiness()` | Oblicza gotowosc + fix_actions z ENMValidator |
 | `backend/src/enm/validator.py` | `ENMValidator` | Walidator ENM (issues + readiness) |

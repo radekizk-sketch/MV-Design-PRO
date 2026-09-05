@@ -225,6 +225,12 @@ pojawia, to właśnie ten odczyt właściwości.
 
 ## D. KODY GOTOWOŚCI (`READINESS_CODES`) W UI
 
+> **Nota (2026-09-05, karta FIX-ACTION-KASACJA, `docs/v12xx/REJESTR_KONFLIKTOW.md`
+> V12K-338):** pole `fix_action_id` opisane niżej jako fantom bez konsumenta zostało
+> odtąd USUNIĘTE z `ReadinessCodeSpec` — `fix_navigation` jest jedyną realną ścieżką
+> naprawczą. Treść tej sekcji pozostaje zapisem stanu z 2026-07 (42 kody) i nie opisuje
+> obecnego kontraktu.
+
 `READINESS_CODES` (`backend/src/domain/canonical_operations.py:487-930`) ma **42 kody**
 (zweryfikowano programowo — nie 37 jak wstępnie zakładano w poleceniu zadania), każdy z
 polami `fix_action_id` i `fix_navigation`.

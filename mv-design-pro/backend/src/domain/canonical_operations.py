@@ -652,7 +652,6 @@ class ReadinessCodeSpec:
     priority: int  # 1 = highest
     level: ReadinessLevel
     message_pl: str
-    fix_action_id: str | None
     fix_navigation: dict[str, str] | None
 
 
@@ -665,7 +664,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=1,
         level=ReadinessLevel.BLOCKER,
         message_pl="Nieprawidłowe napięcie źródła zasilania",
-        fix_action_id="fix_source_voltage",
         fix_navigation={
             "panel": "inspector",
             "tab": "parametry",
@@ -678,7 +676,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=1,
         level=ReadinessLevel.BLOCKER,
         message_pl="Nieprawidłowa moc zwarciowa źródła Sk3",
-        fix_action_id="fix_source_sk3",
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "sk3_mva"},
     ),
     "source.grid_supply_missing": ReadinessCodeSpec(
@@ -687,7 +684,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=1,
         level=ReadinessLevel.BLOCKER,
         message_pl="Brak źródła zasilania sieciowego (GPZ)",
-        fix_action_id="fix_add_source",
         fix_navigation={"panel": "wizard", "modal": "add_grid_source"},
     ),
     "source.connection_missing": ReadinessCodeSpec(
@@ -696,7 +692,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=2,
         level=ReadinessLevel.BLOCKER,
         message_pl="Źródło zasilania nie jest podłączone do szyny",
-        fix_action_id="fix_source_connection",
         fix_navigation={"panel": "inspector", "tab": "polaczenia"},
     ),
     # Topology
@@ -706,7 +701,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=2,
         level=ReadinessLevel.BLOCKER,
         message_pl="Magistrala nie ma terminala końcowego",
-        fix_action_id="fix_trunk_terminal",
         fix_navigation={"panel": "sld"},
     ),
     "trunk.segment_missing": ReadinessCodeSpec(
@@ -715,7 +709,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=2,
         level=ReadinessLevel.BLOCKER,
         message_pl="Magistrala nie ma żadnego segmentu",
-        fix_action_id="fix_trunk_segment",
         fix_navigation={"panel": "sld"},
     ),
     "trunk.segment_length_missing": ReadinessCodeSpec(
@@ -724,7 +717,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=3,
         level=ReadinessLevel.BLOCKER,
         message_pl="Odcinek nie ma zdefiniowanej długości",
-        fix_action_id="fix_segment_length",
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "length_m"},
     ),
     "trunk.segment_length_invalid": ReadinessCodeSpec(
@@ -733,7 +725,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=3,
         level=ReadinessLevel.BLOCKER,
         message_pl="Nieprawidłowa długość odcinka (musi być > 0)",
-        fix_action_id="fix_segment_length",
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "length_m"},
     ),
     "trunk.catalog_missing": ReadinessCodeSpec(
@@ -742,7 +733,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=3,
         level=ReadinessLevel.BLOCKER,
         message_pl="Odcinek SN nie ma przypisanego katalogu",
-        fix_action_id="fix_line_catalog",
         fix_navigation={
             "panel": "inspector",
             "tab": "katalog",
@@ -756,7 +746,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=2,
         level=ReadinessLevel.BLOCKER,
         message_pl="Nieprawidłowy typ stacji",
-        fix_action_id="fix_station_type",
         fix_navigation={"panel": "inspector", "tab": "parametry"},
     ),
     "station.voltage_missing": ReadinessCodeSpec(
@@ -765,7 +754,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=2,
         level=ReadinessLevel.BLOCKER,
         message_pl="Stacja nie ma zdefiniowanego napięcia",
-        fix_action_id="fix_station_voltage",
         fix_navigation={
             "panel": "inspector",
             "tab": "parametry",
@@ -778,7 +766,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=4,
         level=ReadinessLevel.WARNING,
         message_pl="Stacja powinna mieć co najmniej 1 odpływ nN",
-        fix_action_id="fix_station_outgoing",
         fix_navigation={"panel": "inspector", "tab": "nn", "modal": "add_nn_outgoing"},
     ),
     "station.required_field_missing": ReadinessCodeSpec(
@@ -787,7 +774,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=3,
         level=ReadinessLevel.BLOCKER,
         message_pl="Stacja nie ma wymaganego pola SN",
-        fix_action_id="fix_station_field",
         fix_navigation={"panel": "inspector", "tab": "pola"},
     ),
     # Transformer
@@ -797,7 +783,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=3,
         level=ReadinessLevel.BLOCKER,
         message_pl="Transformator nie ma przypisanego katalogu",
-        fix_action_id="fix_transformer_catalog",
         fix_navigation={
             "panel": "inspector",
             "tab": "katalog",
@@ -817,7 +802,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Transformator jest połączony elektrycznie z szyną SN, lecz nie posiada "
             "kompletnej konfiguracji pola transformatorowego po stronie SN"
         ),
-        fix_action_id="fix_station_field",
         fix_navigation={"panel": "inspector", "tab": "pola"},
     ),
     "transformer.connection_missing": ReadinessCodeSpec(
@@ -826,7 +810,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=2,
         level=ReadinessLevel.BLOCKER,
         message_pl="Transformator nie ma zdefiniowanego połączenia",
-        fix_action_id="fix_transformer_connection",
         fix_navigation={"panel": "inspector", "tab": "polaczenia"},
     ),
     # nN
@@ -836,7 +819,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=2,
         level=ReadinessLevel.BLOCKER,
         message_pl="Stacja wymaga szyny nN",
-        fix_action_id="fix_nn_bus",
         fix_navigation={"panel": "inspector", "tab": "nn"},
     ),
     "nn.main_breaker_missing": ReadinessCodeSpec(
@@ -845,7 +827,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=3,
         level=ReadinessLevel.BLOCKER,
         message_pl="Szyna nN wymaga wyłącznika głównego",
-        fix_action_id="fix_nn_breaker",
         fix_navigation={"panel": "inspector", "tab": "nn"},
     ),
     # OZE
@@ -855,7 +836,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=1,
         level=ReadinessLevel.BLOCKER,
         message_pl="Źródło OZE wymaga transformatora w ścieżce zasilania",
-        fix_action_id="fix_oze_transformer",
         fix_navigation={"panel": "inspector", "tab": "transformator"},
     ),
     "oze.nn_bus_required": ReadinessCodeSpec(
@@ -864,7 +844,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=1,
         level=ReadinessLevel.BLOCKER,
         message_pl="Źródło OZE wymaga szyny nN w stacji",
-        fix_action_id="fix_oze_nn_bus",
         fix_navigation={"panel": "inspector", "tab": "nn"},
     ),
     "oze.card_field_not_accepted": ReadinessCodeSpec(
@@ -876,7 +855,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Pole karty falownika ma wartość oszacowaną lub domyślną i wymaga "
             "świadomej akceptacji inżyniera przed dołączeniem do pakietu OSD"
         ),
-        fix_action_id="fix_oze_card_field_acceptance",
         fix_navigation={"panel": "inspector", "tab": "karta_falownika"},
     ),
     # Certyfikacja PTPiREE przetwornicy DER (karta P2).
@@ -902,7 +880,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "wniosek do OSD może zostać odrzucony. Ostateczna akceptacja "
             "przyłączeniowa pozostaje po stronie właściwego OSD"
         ),
-        fix_action_id=None,
         fix_navigation={"panel": "inspector", "tab": "katalog"},
     ),
     "der.inverter_certificate_conditional": ReadinessCodeSpec(
@@ -915,7 +892,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "rekord wykazu niesie notę o warunkach, którą trzeba potwierdzić "
             "przed warunkami przyłączenia"
         ),
-        fix_action_id=None,
         fix_navigation={"panel": "inspector", "tab": "katalog"},
     ),
     # Karta FAB-D2 (D8): rodzaj DER spoza mapowania resolvera profili
@@ -931,7 +907,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Rodzaj źródła DER nie ma mapowania na profil dynamiczny — stabilność "
             "RMS i FRT/LVRT/HVRT nie mogą zbudować modelu tego generatora"
         ),
-        fix_action_id="fix_der_gen_type",
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "gen_type"},
     ),
     # Profil ROZWIĄZANY, ale z domyślnej wartości katalogu (nie jawnego wyboru
@@ -946,7 +921,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Profil dynamiczny źródła DER pochodzi z wartości domyślnej katalogu "
             "(nie z jawnego wskazania) — sprawdź, czy pasuje do rzeczywistego urządzenia"
         ),
-        fix_action_id=None,
         fix_navigation={"panel": "inspector", "tab": "katalog"},
     ),
     # Karta FAB-D2 (D3): Q generatora nieznany i niewyprowadzalny z jawnego
@@ -961,7 +935,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Moc bierna generatora (Q) nie jest znana ani wyprowadzalna z karty "
             "katalogowej — rozpływ mocy nie może przyjąć jej za zero"
         ),
-        fix_action_id="fix_generator_q",
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "q_mvar"},
     ),
     # Karta FAB-H: udział zwarciowy falownika k_sc (Ik = k_sc*In, IEC 60909-0) —
@@ -979,7 +952,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Udział zwarciowy falownika (k_sc) nie jest podany w karcie katalogowej "
             "konwertera — przyjęto wartość domyślną IEC 60909 (1,1) zamiast zmierzonej"
         ),
-        fix_action_id=None,
         fix_navigation={"panel": "inspector", "tab": "katalog"},
     ),
     # Karta FAB-H: konwerter BEZ ŻADNEGO katalogu (catalog_ref=None) — brama
@@ -998,7 +970,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Konwerter (PV/BESS/wiatrowy) nie ma żadnej referencji katalogowej — "
             "zwarcia nie mogą zweryfikować tabliczki znamionowej źródła"
         ),
-        fix_action_id="fix_generator_catalog_ref",
         fix_navigation={"panel": "inspector", "tab": "katalog"},
     ),
     # Ring
@@ -1008,7 +979,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=2,
         level=ReadinessLevel.BLOCKER,
         message_pl="Pierścień nie ma zdefiniowanych punktów końcowych",
-        fix_action_id="fix_ring_endpoints",
         fix_navigation={"panel": "sld"},
     ),
     "ring.nop_required": ReadinessCodeSpec(
@@ -1017,7 +987,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=3,
         level=ReadinessLevel.BLOCKER,
         message_pl="Pierścień SN wymaga punktu normalnie otwartego (NOP)",
-        fix_action_id="fix_ring_nop",
         fix_navigation={"panel": "sld", "modal": "set_normal_open_point"},
     ),
     # Protection
@@ -1027,7 +996,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=3,
         level=ReadinessLevel.BLOCKER,
         message_pl="Przekaźnik wymaga przekładnika prądowego (CT)",
-        fix_action_id="fix_protection_ct",
         fix_navigation={"panel": "inspector", "tab": "zabezpieczenia"},
     ),
     "protection.vt_required": ReadinessCodeSpec(
@@ -1036,7 +1004,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=3,
         level=ReadinessLevel.BLOCKER,
         message_pl="Pole wymaga przekładnika napięciowego (VT)",
-        fix_action_id="fix_protection_vt",
         fix_navigation={"panel": "inspector", "tab": "zabezpieczenia"},
     ),
     "protection.settings_incomplete": ReadinessCodeSpec(
@@ -1045,7 +1012,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=4,
         level=ReadinessLevel.WARNING,
         message_pl="Nastawy przekaźnika niekompletne",
-        fix_action_id="fix_protection_settings",
         fix_navigation={"panel": "inspector", "tab": "nastawy"},
     ),
     # V12K-189 (decyzja właściciela: „nastawa bez danych powinna być niedostępna").
@@ -1058,7 +1024,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=3,
         level=ReadinessLevel.WARNING,
         message_pl="Brak prądu znamionowego pola — uzupełnij, by wyznaczyć nastawę rozruchową I> (51)",
-        fix_action_id="fix_protection_nominal_current",
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "in_a"},
     ),
     "protection.fault_current_missing": ReadinessCodeSpec(
@@ -1070,7 +1035,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Brak prądu zwarciowego z biegu SC — uruchom analizę zwarciową, "
             "by wyznaczyć nastawy bezzwłoczne I>> (50/50N) i ziemnozwarciowe (51N)"
         ),
-        fix_action_id="fix_protection_run_short_circuit",
         fix_navigation={"panel": "analizy", "tab": "zwarciowa"},
     ),
     # Warunki przyłączenia OSD jako kryterium (karta F-K2, znalezisko Z2 audytu FLOW).
@@ -1085,7 +1049,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Brak mocy przyłączeniowej z warunków OSD — uzupełnij, by ocenić moc "
             "w punkcie przyłączenia"
         ),
-        fix_action_id="fix_connection_power_limit",
         fix_navigation={
             "panel": "projekt",
             "tab": "przylaczenie",
@@ -1101,7 +1064,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Brak wymaganego cosφ z warunków OSD — uzupełnij, by ocenić współczynnik "
             "mocy w punkcie przyłączenia"
         ),
-        fix_action_id="fix_connection_cos_phi",
         fix_navigation={
             "panel": "projekt",
             "tab": "przylaczenie",
@@ -1117,7 +1079,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Brak zbieżnego biegu rozpływu — uruchom analizę rozpływu mocy, by ocenić "
             "warunki przyłączenia"
         ),
-        fix_action_id="fix_connection_run_power_flow",
         fix_navigation={"panel": "analizy", "tab": "rozplyw"},
     ),
     # Wytrzymałość zwarciowa przewodu (karta F-K1, IEC 60949). Kryterium wymaga TRZECH
@@ -1134,7 +1095,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Brak prądu cieplnego z biegu SC — uruchom analizę zwarciową, by sprawdzić "
             "wytrzymałość zwarciową przekroju"
         ),
-        fix_action_id="fix_conductor_run_short_circuit",
         fix_navigation={"panel": "analizy", "tab": "zwarciowa"},
     ),
     "conductor.fault_duration_missing": ReadinessCodeSpec(
@@ -1146,7 +1106,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Brak czasu wyłączenia zabezpieczenia — bez niego nie da się sprawdzić, "
             "czy przekrój wytrzyma zwarcie"
         ),
-        fix_action_id="fix_conductor_fault_duration",
         fix_navigation={"panel": "analizy", "tab": "zabezpieczenia"},
     ),
     "conductor.thermal_data_missing": ReadinessCodeSpec(
@@ -1158,7 +1117,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Brak wytrzymałości cieplnej przewodu w katalogu (Ith/Jth dla 1 s) — "
             "uzupełnij pozycję katalogową"
         ),
-        fix_action_id="fix_conductor_thermal_data",
         fix_navigation={"panel": "katalog", "tab": "kable", "focus": "ith_1s_a"},
     ),
     # Kryteria WYPOSAŻENIA stacji (karta KD-3, dług §7.4 „zdolności bez dostawcy").
@@ -1174,7 +1132,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — "
             "uzupełnij, by policzyć bilans mocy wtórnej"
         ),
-        fix_action_id="fix_ct_secondary_circuit",
         fix_navigation={"panel": "wizard", "tab": "pomiary", "focus": "ct_obwod_wtorny"},
     ),
     "ct.rated_burden_missing": ReadinessCodeSpec(
@@ -1186,7 +1143,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Brak mocy znamionowej przekładnika prądowego w katalogu — "
             "uzupełnij pozycję katalogową"
         ),
-        fix_action_id="fix_ct_rated_burden",
         fix_navigation={"panel": "katalog", "tab": "ct", "focus": "burden_va"},
     ),
     "ct.accuracy_limit_missing": ReadinessCodeSpec(
@@ -1198,7 +1154,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Klasa przekładnika prądowego nie niesie współczynnika granicznego (rdzeń "
             "pomiarowy albo klasa nierozpoznana) — kryterium nasycenia nie ma zastosowania"
         ),
-        fix_action_id="fix_ct_accuracy_class",
         fix_navigation={"panel": "katalog", "tab": "ct", "focus": "accuracy_class"},
     ),
     "ct.winding_resistance_missing": ReadinessCodeSpec(
@@ -1210,7 +1165,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Brak rezystancji uzwojenia wtórnego przekładnika — współczynnik graniczny "
             "policzono wariantem uproszczonym (wynik optymistyczny)"
         ),
-        fix_action_id="fix_ct_winding_resistance",
         fix_navigation={"panel": "katalog", "tab": "ct", "focus": "rct_ohm"},
     ),
     "ct.required_alf_missing": ReadinessCodeSpec(
@@ -1222,7 +1176,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Brak wymaganego współczynnika granicznego z funkcji zabezpieczeniowych pola — "
             "bez niego kryterium nasycenia nie ma odniesienia"
         ),
-        fix_action_id="fix_ct_required_alf",
         fix_navigation={"panel": "analizy", "tab": "zabezpieczenia"},
     ),
     "vt.secondary_circuit_missing": ReadinessCodeSpec(
@@ -1234,7 +1187,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Brak danych obwodu wtórnego przekładnika napięciowego (długość, przekrój) — "
             "uzupełnij, by policzyć zmianę napięcia obwodu"
         ),
-        fix_action_id="fix_vt_secondary_circuit",
         fix_navigation={"panel": "wizard", "tab": "pomiary", "focus": "vt_obwod_wtorny"},
     ),
     "vt.rated_burden_missing": ReadinessCodeSpec(
@@ -1246,7 +1198,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Brak mocy znamionowej uzwojenia przekładnika napięciowego w katalogu — "
             "uzupełnij pozycję katalogową"
         ),
-        fix_action_id="fix_vt_rated_burden",
         fix_navigation={"panel": "katalog", "tab": "vt", "focus": "burden_va"},
     ),
     "vt.winding_category_missing": ReadinessCodeSpec(
@@ -1258,7 +1209,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Nierozpoznana klasa uzwojenia przekładnika napięciowego — bez kategorii "
             "(pomiarowe/zabezpieczeniowe) nie ma limitu zmiany napięcia"
         ),
-        fix_action_id="fix_vt_winding_category",
         fix_navigation={"panel": "katalog", "tab": "vt", "focus": "accuracy_class"},
     ),
     "cable.insulation_data_missing": ReadinessCodeSpec(
@@ -1270,7 +1220,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Brak typu izolacji lub temperatury znamionowej kabla w katalogu — "
             "bez nich nie da się ocenić starzenia izolacji"
         ),
-        fix_action_id="fix_cable_insulation_data",
         fix_navigation={"panel": "katalog", "tab": "kable", "focus": "insulation_type"},
     ),
     "cable.operating_temperature_missing": ReadinessCodeSpec(
@@ -1281,7 +1230,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         message_pl=(
             "Brak temperatury pracy żyły — podaj ją, by ocenić względne starzenie izolacji"
         ),
-        fix_action_id="fix_cable_operating_temperature",
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "temperatura_pracy_c"},
     ),
     "transformer.loss_data_missing": ReadinessCodeSpec(
@@ -1293,7 +1241,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Brak strat jałowych lub obciążeniowych transformatora w katalogu — "
             "uzupełnij pozycję katalogową"
         ),
-        fix_action_id="fix_transformer_loss_data",
         fix_navigation={"panel": "katalog", "tab": "transformatory", "focus": "p0_kw"},
     ),
     # Karta FAB-D2 (D2) — konsument RÓŻNY od `transformer.loss_data_missing`
@@ -1311,7 +1258,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Brak prądu jałowego (I0) lub strat jałowych (P0) transformatora — "
             "gałąź magnesująca nie jest uwzględniona w rozpływie mocy"
         ),
-        fix_action_id="fix_transformer_no_load_params",
         fix_navigation={"panel": "katalog", "tab": "transformatory", "focus": "i0_percent"},
     ),
     # Grupa połączeń nieznana => BLOCKER dla analiz doziemnych/niesymetrycznych
@@ -1326,7 +1272,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Grupa połączeń transformatora nieznana — analizy doziemne/niesymetryczne "
             "(składowa zerowa) nie mogą wyznaczyć układu bez tej danej"
         ),
-        fix_action_id="fix_transformer_vector_group",
         fix_navigation={"panel": "katalog", "tab": "transformatory", "focus": "vector_group"},
     ),
     "transformer.loading_factor_missing": ReadinessCodeSpec(
@@ -1338,7 +1283,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Brak współczynnika obciążenia transformatora — bez niego nie da się policzyć "
             "strat w punkcie pracy"
         ),
-        fix_action_id="fix_transformer_loading_factor",
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "beta"},
     ),
     # Powiązanie katalogu kanonicznego z biblioteką krzywych (karta KD-3, poz. 9).
@@ -1351,7 +1295,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Ta pozycja katalogowa zabezpieczenia nie ma odpowiednika w bibliotece "
             "charakterystyk czasowo-prądowych — koordynacja wymaga wyrobu z biblioteki"
         ),
-        fix_action_id="fix_protection_curve_library",
         fix_navigation={"panel": "katalog", "tab": "zabezpieczenia"},
     ),
     "protection.curve_library_ref_broken": ReadinessCodeSpec(
@@ -1363,7 +1306,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Powiązanie pozycji katalogowej z biblioteką charakterystyk wskazuje wpis, "
             "którego w bibliotece nie ma — dane katalogu wymagają poprawy"
         ),
-        fix_action_id="fix_protection_curve_library",
         fix_navigation={"panel": "katalog", "tab": "zabezpieczenia"},
     ),
     # Earthing / Ground fault (EARTHING-1: most SC_1F -> napięcia dotykowe/krokowe)
@@ -1373,7 +1315,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=3,
         level=ReadinessLevel.WARNING,
         message_pl="Brak danych uziomu (Z_E, r) — uzupełnij, by policzyć napięcia dotykowe/krokowe",
-        fix_action_id="fix_earthing_electrode",
         fix_navigation={
             "panel": "inspector",
             "tab": "uziemienie",
@@ -1387,7 +1328,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=1,
         level=ReadinessLevel.BLOCKER,
         message_pl="Przypadek obliczeniowy nie ma bazowego zrzutu stanu",
-        fix_action_id="fix_case_snapshot",
         fix_navigation={"panel": "case_manager"},
     ),
     "analysis.blocked_by_readiness": ReadinessCodeSpec(
@@ -1396,7 +1336,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=1,
         level=ReadinessLevel.BLOCKER,
         message_pl="Analiza zablokowana przez niezaspokojone wymagania gotowości",
-        fix_action_id=None,
         fix_navigation={"panel": "readiness"},
     ),
     # Lokalizacja zwarcia scenariusza NA GAŁĘZI (BRANCH/BRANCH_POINT) — adapter
@@ -1414,7 +1353,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Zwarcie w punkcie na gałęzi wymaga rozdzielenia modelu w miejscu zwarcia "
             "(adapter obliczeniowy) — nieobsługiwane; wybierz lokalizację na węźle"
         ),
-        fix_action_id="fix_fault_location_to_node",
         fix_navigation={"panel": "analizy", "tab": "zwarciowa"},
     ),
     # Werdykt projektowy (karta F-K3) — powody braku oceny kryterium. Trzeci stan
@@ -1429,7 +1367,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Brak zakończonego biegu wymaganego przez kryterium — uruchom obliczenia, "
             "by je ocenić"
         ),
-        fix_action_id="fix_verdict_run_analysis",
         fix_navigation={"panel": "analizy"},
     ),
     "verdict.run_stale": ReadinessCodeSpec(
@@ -1441,7 +1378,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Model zmienił się po biegu — wynik nie opisuje bieżącego modelu; "
             "uruchom obliczenia ponownie"
         ),
-        fix_action_id="fix_verdict_rerun_analysis",
         fix_navigation={"panel": "analizy"},
     ),
     "verdict.run_failed": ReadinessCodeSpec(
@@ -1450,7 +1386,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=2,
         level=ReadinessLevel.WARNING,
         message_pl="Bieg zakończył się błędem — kryterium nie ma na czym się oprzeć",
-        fix_action_id="fix_verdict_rerun_analysis",
         fix_navigation={"panel": "analizy"},
     ),
     "verdict.input_data_missing": ReadinessCodeSpec(
@@ -1459,7 +1394,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=2,
         level=ReadinessLevel.WARNING,
         message_pl="Brak danych wejściowych kryterium — uzupełnij dane wskazane w pozycji werdyktu",
-        fix_action_id="fix_verdict_input_data",
         fix_navigation={"panel": "gotowosc"},
     ),
     # Badanie doboru zaczepów (OLTC §17) — powody, dla których kryterium
@@ -1475,7 +1409,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Przełącznik zaczepów nie ma pasma nieczułości regulatora — bez niego nie "
             "wiadomo, jaka odchyłka napięcia jest jeszcze dopuszczalna"
         ),
-        fix_action_id="fix_oltc_deadband",
         fix_navigation={"panel": "inspector", "tab": "regulacja", "focus": "deadband_kv"},
     ),
     "oltc.target_voltage_missing": ReadinessCodeSpec(
@@ -1487,7 +1420,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Badanie doboru zaczepów nie ma napięcia docelowego — podaj napięcie, "
             "które ma być utrzymywane na szynie regulowanej"
         ),
-        fix_action_id="fix_oltc_target_voltage",
         fix_navigation={"panel": "analizy", "tab": "oltc", "focus": "napiecie_cel"},
     ),
     # Catalog gate — input validation (NOT readiness, blocks operation execution)
@@ -1497,7 +1429,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=1,
         level=ReadinessLevel.BLOCKER,
         message_pl="Segment lub transformator wymaga referencji katalogowej przed utworzeniem",
-        fix_action_id="fix_catalog_select",
         fix_navigation={
             "panel": "inspector",
             "tab": "katalog",
@@ -1514,7 +1445,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Import wymaga mapowania katalogowego: elementy bez przypisanego katalogu "
             "muszą zostać zmapowane przed dalszą edycją"
         ),
-        fix_action_id="fix_import_catalog_mapping",
         fix_navigation={"panel": "catalog_mapper", "modal": "IMPORT_CATALOG_MAPPING"},
     ),
     # Phase 8 — Extended validation codes for catalog materialization
@@ -1524,7 +1454,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=1,
         level=ReadinessLevel.BLOCKER,
         message_pl="Brak wersji katalogu w wiązaniu elementu obliczeniowego",
-        fix_action_id="fix_catalog_version",
         fix_navigation={
             "panel": "inspector",
             "tab": "katalog",
@@ -1537,7 +1466,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=2,
         level=ReadinessLevel.BLOCKER,
         message_pl="Element obliczeniowy nie ma przypisanego katalogu",
-        fix_action_id="fix_catalog_binding",
         fix_navigation={
             "panel": "inspector",
             "tab": "katalog",
@@ -1550,7 +1478,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=2,
         level=ReadinessLevel.BLOCKER,
         message_pl="Materializacja parametrów z katalogu nie powiodła się",
-        fix_action_id="fix_catalog_rematerialize",
         fix_navigation={"panel": "inspector", "tab": "katalog"},
     ),
     # ------------------------------------------------------------------
@@ -1580,7 +1507,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "istniejącą albo uzupełnij rekord katalogowy; operacja nie przyjmie "
             "tabliczki z formularza"
         ),
-        fix_action_id="fix_catalog_select",
         fix_navigation={
             "panel": "inspector",
             "tab": "katalog",
@@ -1593,7 +1519,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=1,
         level=ReadinessLevel.BLOCKER,
         message_pl="Element nie ma wskazanej referencji katalogowej",
-        fix_action_id="fix_catalog_select",
         fix_navigation={
             "panel": "inspector",
             "tab": "katalog",
@@ -1606,7 +1531,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=1,
         level=ReadinessLevel.BLOCKER,
         message_pl="Przypisanie katalogu nie wskazało pozycji katalogowej",
-        fix_action_id="fix_catalog_select",
         fix_navigation={
             "panel": "inspector",
             "tab": "katalog",
@@ -1619,7 +1543,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=1,
         level=ReadinessLevel.BLOCKER,
         message_pl="Brak identyfikatora rekordu katalogu w wiązaniu elementu",
-        fix_action_id="fix_catalog_select",
         fix_navigation={
             "panel": "inspector",
             "tab": "katalog",
@@ -1632,7 +1555,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=1,
         level=ReadinessLevel.BLOCKER,
         message_pl="Element techniczny wymaga wiązania z katalogiem",
-        fix_action_id="fix_catalog_binding",
         fix_navigation={
             "panel": "inspector",
             "tab": "katalog",
@@ -1648,7 +1570,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Wiązanie katalogowe ma niewłaściwą postać albo nie niesie "
             "identyfikatora pozycji katalogowej"
         ),
-        fix_action_id="fix_catalog_binding",
         fix_navigation={
             "panel": "inspector",
             "tab": "katalog",
@@ -1661,7 +1582,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=1,
         level=ReadinessLevel.BLOCKER,
         message_pl="Brak kategorii katalogu w wiązaniu elementu",
-        fix_action_id="fix_catalog_select",
         fix_navigation={
             "panel": "inspector",
             "tab": "katalog",
@@ -1678,7 +1598,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "czego sprawdzić w katalogu, więc element nie może deklarować pochodzenia "
             "katalogowego"
         ),
-        fix_action_id="fix_catalog_select",
         fix_navigation={
             "panel": "inspector",
             "tab": "katalog",
@@ -1694,7 +1613,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Nieznana kategoria katalogu — brama nie dobiera kategorii za projektanta; "
             "wskaż kategorię, która istnieje w katalogu"
         ),
-        fix_action_id="fix_catalog_select",
         fix_navigation={
             "panel": "inspector",
             "tab": "katalog",
@@ -1710,7 +1628,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Kategoria katalogu nie pasuje do rodzaju elementu — wskaż pozycję "
             "właściwej kategorii"
         ),
-        fix_action_id="fix_catalog_select",
         fix_navigation={
             "panel": "inspector",
             "tab": "katalog",
@@ -1723,7 +1640,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=1,
         level=ReadinessLevel.BLOCKER,
         message_pl="Przypisanie katalogu nie wskazało elementu modelu",
-        fix_action_id="fix_catalog_element_ref",
         fix_navigation={"panel": "inspector", "tab": "katalog"},
     ),
     "catalog.element_not_found": ReadinessCodeSpec(
@@ -1732,7 +1648,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=1,
         level=ReadinessLevel.BLOCKER,
         message_pl="Element wskazany do przypisania katalogu nie istnieje w modelu",
-        fix_action_id="fix_catalog_element_ref",
         fix_navigation={"panel": "inspector", "tab": "katalog"},
     ),
     "catalog.clear_forbidden": ReadinessCodeSpec(
@@ -1744,7 +1659,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Element techniczny nie może istnieć bez przypięcia katalogowego — zamiast "
             "czyścić wiązanie wskaż pozycję zastępczą"
         ),
-        fix_action_id="fix_catalog_select",
         fix_navigation={
             "panel": "inspector",
             "tab": "katalog",
@@ -1760,7 +1674,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Wiązanie wyłącza materializację, a element techniczny musi brać parametry "
             "z katalogu"
         ),
-        fix_action_id="fix_catalog_rematerialize",
         fix_navigation={"panel": "inspector", "tab": "katalog"},
     ),
     "catalog.materialization_incomplete": ReadinessCodeSpec(
@@ -1772,7 +1685,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Materializacja katalogu nie dała wszystkich parametrów wymaganych przez "
             "solver — uzupełnij rekord katalogowy albo wskaż pozycję kompletną"
         ),
-        fix_action_id="fix_catalog_rematerialize",
         fix_navigation={"panel": "inspector", "tab": "katalog"},
     ),
     "catalog.nameplate_mismatch": ReadinessCodeSpec(
@@ -1784,7 +1696,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Dane tabliczki z formularza przeczą pozycji katalogowej — liczby pochodzą "
             "z katalogu, więc wybierz pozycję o właściwych parametrach"
         ),
-        fix_action_id="fix_catalog_select",
         fix_navigation={
             "panel": "inspector",
             "tab": "katalog",
@@ -1800,7 +1711,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Model zapisałby dla wskazanej pozycji katalogowej inne wartości niż "
             "zmaterializowane przez bramę katalogową — operacja odrzucona, model bez zmian"
         ),
-        fix_action_id="fix_catalog_rematerialize",
         fix_navigation={"panel": "inspector", "tab": "katalog"},
     ),
     # OZE — PV/BESS transformer rule
@@ -1810,7 +1720,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=1,
         level=ReadinessLevel.BLOCKER,
         message_pl="Źródło PV nie ma transformatora w ścieżce zasilania (zakaz przyłączenia do SN bez transformatora)",
-        fix_action_id="fix_pv_transformer",
         fix_navigation={
             "panel": "inspector",
             "tab": "transformator",
@@ -1823,7 +1732,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=1,
         level=ReadinessLevel.BLOCKER,
         message_pl="Źródło BESS nie ma transformatora w ścieżce zasilania (zakaz przyłączenia do SN bez transformatora)",
-        fix_action_id="fix_bess_transformer",
         fix_navigation={
             "panel": "inspector",
             "tab": "transformator",
@@ -1837,7 +1745,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=3,
         level=ReadinessLevel.BLOCKER,
         message_pl="Aparat SN nie ma przypisanego katalogu",
-        fix_action_id="fix_apparatus_sn_catalog",
         fix_navigation={
             "panel": "inspector",
             "tab": "katalog",
@@ -1850,7 +1757,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=3,
         level=ReadinessLevel.BLOCKER,
         message_pl="Aparat nN nie ma przypisanego katalogu",
-        fix_action_id="fix_apparatus_nn_catalog",
         fix_navigation={
             "panel": "inspector",
             "tab": "katalog",
@@ -1864,7 +1770,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=3,
         level=ReadinessLevel.WARNING,
         message_pl="Obciążenie nie ma przypisanego katalogu",
-        fix_action_id="fix_load_catalog",
         fix_navigation={
             "panel": "inspector",
             "tab": "katalog",
@@ -1877,7 +1782,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=3,
         level=ReadinessLevel.WARNING,
         message_pl="Moc czynna obciążenia wynosi 0 kW",
-        fix_action_id="fix_load_power",
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "p_kw"},
     ),
     # LV cable
@@ -1887,7 +1791,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=3,
         level=ReadinessLevel.WARNING,
         message_pl="Kabel nN nie ma przypisanego katalogu",
-        fix_action_id="fix_nn_cable_catalog",
         fix_navigation={
             "panel": "inspector",
             "tab": "katalog",
@@ -1911,7 +1814,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=1,
         level=ReadinessLevel.BLOCKER,
         message_pl="Zrodlo nN nie jest przypiete do pola zrodlowego",
-        fix_action_id="fix_nn_source_field",
         fix_navigation={"panel": "inspector", "tab": "pole", "focus": "field_ref"},
     ),
     "nn.source.switch_missing": ReadinessCodeSpec(
@@ -1920,7 +1822,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=1,
         level=ReadinessLevel.BLOCKER,
         message_pl="Pole zrodlowe nN nie posiada aparatu laczeniowego",
-        fix_action_id="fix_nn_source_switch",
         fix_navigation={"panel": "inspector", "tab": "pole", "focus": "switch_kind"},
     ),
     "nn.source.catalog_missing": ReadinessCodeSpec(
@@ -1929,7 +1830,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=1,
         level=ReadinessLevel.BLOCKER,
         message_pl="Zrodlo nN nie ma przypisanego katalogu urzadzenia",
-        fix_action_id="fix_nn_source_catalog",
         fix_navigation={
             "panel": "inspector",
             "tab": "katalog",
@@ -1942,7 +1842,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=1,
         level=ReadinessLevel.BLOCKER,
         message_pl="Zrodlo nN nie ma wymaganych parametrow elektrycznych",
-        fix_action_id="fix_nn_source_parameters",
         fix_navigation={
             "panel": "inspector",
             "tab": "parametry",
@@ -1955,7 +1854,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=1,
         level=ReadinessLevel.BLOCKER,
         message_pl="Napiecie szyny nN nie jest okreslone",
-        fix_action_id="fix_nn_bus_voltage",
         fix_navigation={
             "panel": "inspector",
             "tab": "parametry",
@@ -1968,7 +1866,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=2,
         level=ReadinessLevel.BLOCKER,
         message_pl="Falownik PV nie ma okreslonego trybu regulacji",
-        fix_action_id="fix_pv_control_mode",
         fix_navigation={
             "panel": "inspector",
             "tab": "regulacja",
@@ -1981,7 +1878,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=2,
         level=ReadinessLevel.BLOCKER,
         message_pl="Falownik BESS nie ma przypisanego modulu magazynu energii",
-        fix_action_id="fix_bess_storage_catalog",
         fix_navigation={
             "panel": "inspector",
             "tab": "katalog",
@@ -1997,7 +1893,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Ograniczenia SOC magazynu BESS sa nieprawidlowe "
             "(min >= max albo poza zakresem 0-100%)"
         ),
-        fix_action_id="fix_bess_soc_limits",
         fix_navigation={
             "panel": "inspector",
             "tab": "parametry",
@@ -2010,7 +1905,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=2,
         level=ReadinessLevel.BLOCKER,
         message_pl="Czas podtrzymania UPS jest nieprawidlowy (musi byc > 0)",
-        fix_action_id="fix_ups_backup_time",
         fix_navigation={
             "panel": "inspector",
             "tab": "parametry",
@@ -2023,7 +1917,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=3,
         level=ReadinessLevel.WARNING,
         message_pl="Aparat laczeniowy pola nN nie ma przypisanego katalogu",
-        fix_action_id="fix_nn_switch_catalog",
         fix_navigation={
             "panel": "inspector",
             "tab": "katalog",
@@ -2036,7 +1929,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=3,
         level=ReadinessLevel.WARNING,
         message_pl="Zrodlo nN nie ma przypisanego punktu pomiaru energii",
-        fix_action_id="fix_nn_source_measurement",
         fix_navigation={
             "panel": "inspector",
             "tab": "pomiary",
@@ -2049,7 +1941,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=4,
         level=ReadinessLevel.INFO,
         message_pl="Agregat nie ma okreslonego rodzaju paliwa",
-        fix_action_id="fix_genset_fuel_type",
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "fuel_type"},
     ),
 }

@@ -4,8 +4,9 @@ ROZSTRZYGNIECIE ZNALEZISKA Z8 audytu FLOW. Do tej pory w systemie zylo CZTERY re
 kodow gotowosci, prawie rozlaczne:
 
   1. `READINESS_CODES` (`domain/canonical_operations.py`) — kanon tresci: komunikat PL,
-     poziom, priorytet, `fix_action_id`, nawigacja naprawcza. Do V12K-204 nie mial
-     ZADNEGO konsumenta w czasie dzialania.
+     poziom, priorytet, nawigacja naprawcza (jedyna REALNA sciezka naprawcza — kasacja
+     fantoma bez wykonawcy opisana w `docs/v12xx/REJESTR_KONFLIKTOW.md` V12K-338).
+     Do V12K-204 nie mial ZADNEGO konsumenta w czasie dzialania.
   2. `ValidationIssue` walidatora ENM (`enm/validator.py`, kody E001..W040 i kilka
      kropkowanych) — JEDYNY realny dostawca sygnalu do UI, bo tylko walidator zna stan
      modelu. Kodow wspolnych z kanonem: ZERO.
@@ -280,7 +281,6 @@ def opis_kanoniczny(kod_zgloszenia: str) -> dict[str, Any] | None:
         "canonical_priority": spec.priority,
         "canonical_area": spec.area.value,
         "canonical_message_pl": spec.message_pl,
-        "canonical_fix_action_id": spec.fix_action_id,
         "canonical_fix_navigation": spec.fix_navigation,
     }
 
@@ -308,7 +308,6 @@ def widok_rejestru() -> dict[str, Any]:
             "level": spec.level.value,
             "priority": spec.priority,
             "message_pl": spec.message_pl,
-            "fix_action_id": spec.fix_action_id,
             "fix_navigation": spec.fix_navigation,
             "reserved_reason": KODY_KANONU_ZAREZERWOWANE.get(spec.code),
         }

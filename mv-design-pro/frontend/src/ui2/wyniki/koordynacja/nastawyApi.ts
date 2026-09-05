@@ -22,7 +22,6 @@ export interface PozycjaNastawy {
   readonly stan: StanNastawy;
   readonly komunikat_pl: string | null;
   readonly powod_pl: string | null;
-  readonly fix_action_id: string | null;
   readonly fix_navigation: Record<string, string> | null;
 }
 

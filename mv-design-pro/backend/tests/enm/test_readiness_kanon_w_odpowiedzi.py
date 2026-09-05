@@ -25,7 +25,6 @@ KLUCZE_KANONU = {
     "canonical_priority",
     "canonical_area",
     "canonical_message_pl",
-    "canonical_fix_action_id",
     "canonical_fix_navigation",
 }
 

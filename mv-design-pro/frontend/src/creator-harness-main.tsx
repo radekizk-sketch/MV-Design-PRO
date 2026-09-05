@@ -1034,12 +1034,12 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
             {
               klucz: 'i_inst_50', etykieta: 'Prąd zadziałania stopnia bezzwłocznego (50)',
               jednostka: 'A', wartosc: 2480, stan: 'DOSTEPNA',
-              komunikat_pl: null, powod_pl: null, fix_action_id: null, fix_navigation: null,
+              komunikat_pl: null, powod_pl: null, fix_navigation: null,
             },
             {
               klucz: 'tms_51', etykieta: 'Mnożnik czasowy stopnia zwłocznego (51)',
               jednostka: '-', wartosc: 0.3, stan: 'DOSTEPNA',
-              komunikat_pl: null, powod_pl: null, fix_action_id: null, fix_navigation: null,
+              komunikat_pl: null, powod_pl: null, fix_navigation: null,
             },
             {
               klucz: 'i_pickup_51', etykieta: 'Prąd rozruchowy stopnia zwłocznego (51)',
@@ -1047,8 +1047,8 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
               komunikat_pl: 'Niedostepna — uzupelnij dane wejsciowe',
               powod_pl: 'Brak prądu roboczego toru — uzupełnij rozpływ mocy dla tego wariantu.',
               // `panel` — tego klucza czyta `przestrzenDlaPanelu`; `space` bylo
-              // wymyslona nazwa i akcja naprawcza w ogole by sie nie pojawila.
-              fix_action_id: 'uruchom_rozplyw', fix_navigation: { panel: 'analizy' },
+              // wymyslona nazwa i droga naprawcza w ogole by sie nie pojawila.
+              fix_navigation: { panel: 'analizy' },
             },
           ],
         },

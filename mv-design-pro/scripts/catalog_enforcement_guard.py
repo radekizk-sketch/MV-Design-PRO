@@ -7,7 +7,9 @@ Validates that:
 2. API policy can extract catalog bindings from canonical payload shapes
 3. CatalogBinding model has all required fields
 4. MaterializationContract exists for every CatalogNamespace
-5. Every BLOCKER readiness code related to catalog has a fix_action
+5. Every BLOCKER readiness code related to catalog has a real remediation
+   navigation target (fix_navigation.panel) — see check_readiness_codes_coverage
+   docstring for why this replaced the removed remediation-action identifier
 6. Technical elements cannot be "cleared" from catalog binding without backend ban
 
 EXIT 0 = pass, EXIT 1 = fail
@@ -216,7 +218,18 @@ def check_materialization_contracts() -> list[str]:
 
 
 def check_readiness_codes_coverage() -> list[str]:
-    """Check that catalog-related BLOCKER codes have fix_actions."""
+    """Check that catalog-related BLOCKER codes have a real remediation path.
+
+    Do kasacji fantomu (karta FIX-ACTION-KASACJA, `docs/v12xx/REJESTR_KONFLIKTOW.md`
+    V12K-338) ta kontrola sprawdzala obecnosc identyfikatora akcji naprawczej, ktorego
+    NIKT w systemie nie wykonywal (zero dyspozytorow FE/BE). Jedyna REALNA sciezka
+    naprawcza kodu gotowosci to `fix_navigation` (prowadzi projektanta do wlasciwego
+    panelu/zakladki/pola) — ta kontrola weryfikuje WLASNIE ja, z tym samym poziomem
+    rygoru co poprzednio (obecnosc + niepustosc), tylko na polu, ktore realnie ma
+    odbiorce. Nie jest to duplikat `readiness_codes_guard.py` (ktory pilnuje TEGO
+    SAMEGO wymogu globalnie, dla wszystkich 108 kodow): ten guard chroni podzbior
+    katalogowy NIEZALEZNIE, wlasnym importem i wlasnym uruchomieniem CI.
+    """
     errors: list[str] = []
 
     from domain.canonical_operations import READINESS_CODES, ReadinessLevel
@@ -228,8 +241,13 @@ def check_readiness_codes_coverage() -> list[str]:
     ]
 
     for code, spec in catalog_blockers:
-        if not spec.fix_action_id:
-            errors.append(f"FAIL: Catalog BLOCKER '{code}' has no fix_action_id")
+        nawigacja = spec.fix_navigation
+        panel = nawigacja.get("panel") if isinstance(nawigacja, dict) else None
+        if not isinstance(panel, str) or not panel.strip():
+            errors.append(
+                f"FAIL: Catalog BLOCKER '{code}' has no fix_navigation.panel "
+                "(no remediation path for the designer)"
+            )
 
     return errors
 

@@ -182,7 +182,7 @@ def test_overcurrent_v0_settings_unavailable_without_input_data(uow_factory) -> 
 
 
 def test_readiness_codes_are_canonical() -> None:
-    """Kody gotowości muszą istnieć w kanonicznym rejestrze (z akcją naprawczą)."""
+    """Kody gotowości muszą istnieć w kanonicznym rejestrze (z nawigacją naprawczą)."""
     from application.analyses.protection.overcurrent.calculator import (
         READINESS_FAULT_CURRENT_MISSING,
         READINESS_NOMINAL_CURRENT_MISSING,
@@ -191,4 +191,4 @@ def test_readiness_codes_are_canonical() -> None:
 
     for code in (READINESS_NOMINAL_CURRENT_MISSING, READINESS_FAULT_CURRENT_MISSING):
         assert code in READINESS_CODES, f"kod {code} spoza kanonicznego rejestru"
-        assert READINESS_CODES[code].fix_action_id
+        assert READINESS_CODES[code].fix_navigation
