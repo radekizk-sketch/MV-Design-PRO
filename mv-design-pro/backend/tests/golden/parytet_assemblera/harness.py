@@ -224,12 +224,46 @@ def skroty_szkieletu(szkielet: Any) -> dict[str, str]:
     return skroty
 
 
+BRAK_PODDRZEWA = "<brak po tej stronie>"
+
+
 def poddrzewo(szkielet: Any, sciezka: str) -> Any:
-    """Poddrzewo szkieletu pod ścieżką ``$.klucz[3].klucz`` (do meldunku testu)."""
+    """Poddrzewo szkieletu pod ścieżką ``$.klucz[3].klucz`` (do meldunku testu).
+
+    Ścieżka z mapy skrótów może istnieć TYLKO po stronie złotej (klucz obecny
+    lokalnie, nieobecny na CI — CI run 4877: ``$.non_reportable_fault_node_ids``),
+    wtedy wraca ``BRAK_PODDRZEWA`` zamiast wyjątku, który zasłaniałby diagnozę.
+    """
     w = szkielet
     for klucz, indeks in _TOKEN_SCIEZKI.findall(sciezka):
-        w = w[int(indeks)] if indeks else w[klucz]
+        try:
+            w = w[int(indeks)] if indeks else w[klucz]
+        except (KeyError, IndexError, TypeError):
+            return BRAK_PODDRZEWA
     return w
+
+
+def streszczenie_wierszy(szkielet: Any, limit: int = 120) -> str:
+    """Jedna linia na wiersz ``results[i]`` szkieletu: węzeł, status, powód, liczba pól.
+
+    Diagnostyka klasy „kwalifikacja wiersza różni się między maszynami" (CI run 4877):
+    z samego hasha nie widać, KTÓRE wiersze są nieraportowalne po stronie bieżącej.
+    """
+    wiersze = szkielet.get("results") if isinstance(szkielet, dict) else None
+    if not isinstance(wiersze, list):
+        return "(brak listy results)"
+    linie = []
+    for i, w in enumerate(wiersze[:limit]):
+        if not isinstance(w, dict):
+            continue
+        pola = w.get("non_physical_fields") or []
+        linie.append(
+            f"[{i}] {str(w.get('fault_node_id'))[:8]} {w.get('reporting_status')} "
+            f"{w.get('non_physical_reason') or '-'} pola={len(pola)}"
+        )
+    if len(wiersze) > limit:
+        linie.append(f"... ({len(wiersze) - limit} wierszy więcej)")
+    return "\n".join(linie)
 
 
 def zapis_liczby(wartosc: float) -> float:

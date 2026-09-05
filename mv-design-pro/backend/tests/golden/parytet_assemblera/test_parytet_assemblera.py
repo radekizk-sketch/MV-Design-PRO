@@ -17,6 +17,7 @@ import pytest
 
 from tests.golden.parytet_assemblera.harness import (
     ATOL_PARYTETU,
+    BRAK_PODDRZEWA,
     GLEBOKOSC_SKROTOW,
     POLA_TYLKO_W_PAMIECI,
     RTOL_PARYTETU,
@@ -28,6 +29,7 @@ from tests.golden.parytet_assemblera.harness import (
     sciezki_rozbieznosci_szkieletu,
     sieci_enm_rejestru,
     skroty_szkieletu,
+    streszczenie_wierszy,
     widok_parytetu,
     wpis_do_zapisu,
     wpis_z_wyniku,
@@ -75,6 +77,7 @@ def test_parytet_struktury_dokladnie_i_liczb_w_tolerancji(zebrane: dict[str, dic
             meldunek += (
                 f"\n  szkielet {klucz} {sciezki[0]} (teraz): "
                 f"{fragment[:_LIMIT_MELDUNKU_PODDRZEWA]}"
+                f"\n  wiersze {klucz} (teraz):\n{streszczenie_wierszy(zebrane[klucz]['szkielet'])}"
             )
             break
     assert not zle, "Parytet assemblera złamany:\n" + meldunek
@@ -144,6 +147,10 @@ def test_widok_parytetu_rozdziela_szkielet_od_liczb_kontraktu() -> None:
     assert max(p.count(".") + p.count("[") for p in skroty) == GLEBOKOSC_SKROTOW
     assert poddrzewo(szkielet, "$.results[0].proof_binding") == wynik["proof_binding"]
     assert poddrzewo(szkielet, "$") is szkielet
+    assert poddrzewo(szkielet, "$.non_reportable_fault_node_ids[0]") == BRAK_PODDRZEWA
+    assert poddrzewo(szkielet, "$.results[7]") == BRAK_PODDRZEWA
+    assert streszczenie_wierszy(szkielet) == "[0] n1 None - pola=0"
+    assert streszczenie_wierszy({"graph": {}}) == "(brak listy results)"
 
 
 def _baza_wyniku() -> dict:

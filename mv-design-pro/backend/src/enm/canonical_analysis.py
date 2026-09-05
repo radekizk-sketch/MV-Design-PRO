@@ -152,6 +152,128 @@ def _niefinitowe_na_none(obiekt: Any, _sciezka: str = "$") -> tuple[Any, list[st
     return obiekt, []
 
 
+#: Powód nieraportowalności wiersza zwarcia ustalony z TOPOLOGII (nie z liczb):
+#: węzeł zwarcia leży w wyspie bez żadnego elementu z impedancją do odniesienia.
+POWOD_WEZEL_BEZ_ODNIESIENIA = "fault_node_without_reference_impedance"
+#: Pola wiersza zwarcia będące DANYMI WEJŚCIOWYMI biegu (nie wynikiem solvera) —
+#: jedyne liczby, które zostają w wierszu węzła bez impedancji do odniesienia.
+_KLUCZE_WEJSCIOWE_WIERSZA_ZWARCIA: frozenset[str] = frozenset({"c_factor", "un_v", "tk_s", "tb_s"})
+#: Poddrzewa śladu White Box wiersza — zerowane bez wykazu ścieżek (setki wpisów bez
+#: wartości diagnostycznej; wykaz `non_physical_fields` nazywa pola KONTRAKTU).
+_KLUCZE_SLADU_WIERSZA_ZWARCIA: frozenset[str] = frozenset(
+    {"white_box_trace", "branch_contributions", "branch_flow_trace"}
+)
+
+
+def _wezly_bez_impedancji_do_odniesienia(graph: NetworkGraph) -> frozenset[str]:
+    """Węzły, których wyspa nie ma ŻADNEGO elementu z impedancją do odniesienia.
+
+    Wyspa = komponent spójności aktywnych gałęzi i zamkniętych łączników
+    (``NetworkGraph.find_islands``); element z impedancją do odniesienia = źródło
+    sieciowe (``grid_sc_sources``), maszyna synchroniczna albo asynchroniczna w
+    ruchu. Metoda równoważnego źródła napięciowego (IEC 60909-0 §4.2) wymaga
+    skończonej impedancji Z_kk widzianej z węzła zwarcia do odniesienia; falownik
+    jest źródłem prądowym bez impedancji (§6.8), więc wyspa zasilana wyłącznie
+    falownikami ma Y-bus osobliwą — ``np.linalg.inv`` w solverze (FROZEN, B-01)
+    oddaje wtedy liczby zależne od biblioteki algebry liniowej, nie od sieci.
+    Pomiar 2026-09-05 (CI run 4877 vs lokalnie, sieć G04/06 rejestru): lokalnie
+    R/X = −32 dokładnie, κ ≈ 5·10⁴¹ (wiersz „niefizyczny" po paśmie κ), na CI inne
+    śmieci mieszczące się w paśmie — kwalifikacja po LICZBACH była funkcją
+    maszyny. Wyspa jest funkcją WEJŚCIA, więc kwalifikacja po niej jest
+    deterministyczna i przenośna.
+    """
+    wezly_odniesienia: set[str] = set()
+    for zrodla in (
+        graph.grid_sc_sources,
+        graph.synchronous_machine_sources,
+        graph.asynchronous_machine_sources,
+    ):
+        wezly_odniesienia.update(
+            s.node_id for s in zrodla.values() if getattr(s, "in_service", True)
+        )
+    bez_odniesienia: set[str] = set()
+    for wyspa in graph.find_islands():
+        if not any(wezel in wezly_odniesienia for wezel in wyspa):
+            bez_odniesienia.update(wyspa)
+    return frozenset(bez_odniesienia)
+
+
+def _zeruj_liczby_wyniku(
+    obiekt: Any,
+    _sciezka: str = "$",
+    *,
+    zachowaj: frozenset[str] = frozenset(),
+    _wykaz: bool = True,
+) -> tuple[Any, list[str]]:
+    """Kopia struktury z KAŻDĄ liczbą zmiennoprzecinkową zamienioną na ``None``.
+
+    Klucze ``zachowaj`` na szczycie zostają (dane wejściowe). Ścieżki podmian są
+    wykazywane poza poddrzewami ``_KLUCZE_SLADU_WIERSZA_ZWARCIA`` (ślad zerowany
+    bez wykazu). ``int``/``bool``/napisy zostają — to struktura, nie wynik solvera.
+    """
+    if isinstance(obiekt, bool):
+        return obiekt, []
+    if isinstance(obiekt, float):
+        return None, ([_sciezka] if _wykaz else [])
+    if isinstance(obiekt, dict):
+        kopia: dict[Any, Any] = {}
+        sciezki: list[str] = []
+        for klucz, wartosc in obiekt.items():
+            if _sciezka == "$" and klucz in zachowaj:
+                kopia[klucz] = wartosc
+                continue
+            nowa, sc = _zeruj_liczby_wyniku(
+                wartosc,
+                f"{_sciezka}.{klucz}",
+                zachowaj=zachowaj,
+                _wykaz=_wykaz and klucz not in _KLUCZE_SLADU_WIERSZA_ZWARCIA,
+            )
+            kopia[klucz] = nowa
+            sciezki.extend(sc)
+        return kopia, sciezki
+    if isinstance(obiekt, list | tuple):
+        elementy: list[Any] = []
+        sciezki = []
+        for indeks, wartosc in enumerate(obiekt):
+            nowa, sc = _zeruj_liczby_wyniku(
+                wartosc, f"{_sciezka}[{indeks}]", zachowaj=zachowaj, _wykaz=_wykaz
+            )
+            elementy.append(nowa)
+            sciezki.extend(sc)
+        return elementy, sciezki
+    return obiekt, []
+
+
+def _oznacz_wiersz_bez_odniesienia(payload: dict[str, Any]) -> dict[str, Any]:
+    """Wiersz zwarcia węzła bez impedancji do odniesienia: NIERAPORTOWALNY z topologii.
+
+    Zwraca NOWY wiersz: każda liczba wyniku solvera → ``None`` (zostają wyłącznie dane
+    wejściowe ``_KLUCZE_WEJSCIOWE_WIERSZA_ZWARCIA``), ograniczenie
+    ``solver_result_non_physical`` + wykaz pól kontraktu w ``non_physical_fields`` +
+    ``non_physical_reason`` (addytywne pole: DLACZEGO). Zero liczb solvera w takim
+    wierszu to nie strata informacji — IEC 60909 nie definiuje dla niego Z_kk, a
+    wartości oddane przez odwrócenie osobliwej macierzy są szumem biblioteki, nie
+    prądem zwarciowym (patrz ``_wezly_bez_impedancji_do_odniesienia``).
+    """
+    wiersz, pola = _zeruj_liczby_wyniku(payload, zachowaj=_KLUCZE_WEJSCIOWE_WIERSZA_ZWARCIA)
+    ograniczenia = list(wiersz.get("reporting_limitations") or [])
+    if OGRANICZENIE_WYNIK_NIEFIZYCZNY not in ograniczenia:
+        ograniczenia.append(OGRANICZENIE_WYNIK_NIEFIZYCZNY)
+    wiersz.update(
+        {
+            "reporting_status": "not_reportable",
+            "reporting_status_pl": "nieraportowalny",
+            "proof_status": "partial",
+            "proof_status_pl": "czesciowy",
+            "dopuszczalnosc_raportowa": False,
+            "reporting_limitations": ograniczenia,
+            "non_physical_fields": sorted(set(pola)),
+            "non_physical_reason": POWOD_WEZEL_BEZ_ODNIESIENIA,
+        }
+    )
+    return wiersz
+
+
 def _oznacz_wiersz_zwarcia_niefizyczny(payload: dict[str, Any]) -> dict[str, Any]:
     """Wiersz wyniku zwarcia z podmianą wartości niefinitowych i bramką κ.
 
@@ -1568,6 +1690,9 @@ def _execute_short_circuit(run: CanonicalRun) -> None:
     rows: list[dict[str, Any]] = []
     trace_steps: list[dict[str, Any]] = []
 
+    # CI-PARYTET-5: węzły bez impedancji do odniesienia ustalone z TOPOLOGII przed
+    # biegiem (funkcja wejścia, nie liczb solvera — patrz docstring pomocnika).
+    wezly_bez_odniesienia = _wezly_bez_impedancji_do_odniesienia(solve_graph)
     for node_id in reportable_fault_node_ids:
         # AUTO: c z pasma napięciowego WŁASNEGO węzła zwarcia (IEC 60909 Tab. 1);
         # OVERRIDE: wartość jawna z options, płasko dla wszystkich węzłów.
@@ -1668,6 +1793,8 @@ def _execute_short_circuit(run: CanonicalRun) -> None:
                 "c_factor_override": c_factor_override,
             }
         )
+        if node_id in wezly_bez_odniesienia:
+            payload = _oznacz_wiersz_bez_odniesienia(payload)
         rows.append(_oznacz_wiersz_zwarcia_niefizyczny(payload))
 
     if not rows:
@@ -1675,6 +1802,17 @@ def _execute_short_circuit(run: CanonicalRun) -> None:
 
     # Ślad White Box biegu dzieli słowniki kroków z wierszami (kopie płytkie) —
     # ta sama podmiana wartości niefinitowych, ten sam wykaz ścieżek.
+    # Kroki śladu węzłów bez impedancji do odniesienia — te same śmieci algebry
+    # liniowej co w wierszu: zerowane bez wykazu (wiersz niesie powód i wykaz pól).
+    if wezly_bez_odniesienia:
+        trace_steps = [
+            (
+                _zeruj_liczby_wyniku(krok, _wykaz=False)[0]
+                if krok.get("target_id") in wezly_bez_odniesienia
+                else krok
+            )
+            for krok in trace_steps
+        ]
     trace_steps, _niefinitowe_w_sladzie = _niefinitowe_na_none(trace_steps)
     wiersze_niefizyczne = sorted(
         str(row.get("fault_node_id"))
