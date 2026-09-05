@@ -13,7 +13,13 @@ TRUTH for power-flow direction + energization:
   - per-branch ``flow_direction`` equals ``sign(Re(branch_s_from))`` of the solver;
   - the substrate is genuinely BIDIRECTIONAL (some segments forward, some reverse
     where DER backfeeds upstream);
-  - determinism: same ENM -> identical companion.
+  - determinism: same ENM -> identical companion;
+  - the SECOND (maintenance) companion (E2E-FIX, 2026-09-05): a deterministically
+    picked station taken out of service via ``OperatingScenario(kind=MAINTENANCE)``
+    (``enm.scenariusze.apply_scenario`` — the one snapshot-with-overrides factory)
+    genuinely de-energises that station (and only the stations its
+    ``out_of_service`` branches strand); same frozen solver, same schema,
+    determinism holds for this second companion too.
 """
 
 from __future__ import annotations
@@ -24,6 +30,8 @@ import pytest
 from application.reference_networks.sld_substrate_power_flow import (
     _build_power_flow_input,
     compute_substrate_power_flow,
+    compute_substrate_power_flow_maintenance,
+    select_ring_maintenance_scenario,
 )
 from enm.models import Bus, Cable, EnergyNetworkModel, ENMHeader, Load, Source
 from network_model.solvers.power_flow_newton import solve_power_flow_physics
@@ -32,6 +40,8 @@ from tests.reference_networks.sld_substrate_52s import build_sld_substrate_52s
 
 _CASE_REF = "case/test-radial"
 _CASE_LABEL = "Test radialny"
+_CASE_REF_MAINT = "case/sld-substrate-maintenance-isolated-station"
+_CASE_LABEL_MAINT = "Test konserwacji"
 
 
 @pytest.fixture(scope="module")
@@ -47,6 +57,14 @@ def companion(substrate: dict) -> dict:
         case_ref=_CASE_REF,
         case_label=_CASE_LABEL,
         enm_hash=substrate["snapshot_hash"],
+    )
+
+
+@pytest.fixture(scope="module")
+def companion_maintenance(substrate: dict) -> dict:
+    enm = EnergyNetworkModel.model_validate(substrate["enm"])
+    return compute_substrate_power_flow_maintenance(
+        enm, case_ref=_CASE_REF_MAINT, case_label=_CASE_LABEL_MAINT
     )
 
 
@@ -134,6 +152,17 @@ def test_energized_and_de_energized_partition() -> None:
     assert de_energized == {"b3"}
     assert energized.isdisjoint(de_energized), "a bus cannot be both energized and not"
     assert companion["branch_flow"]["cbl-b2-b3"]["direction"] == "none"
+
+
+def test_committed_substrate_has_zero_de_energized_buses(companion: dict) -> None:
+    """Pin of the SUB-52s fix (2026-09-04): the committed substrate's NOP is
+    ring-tied (``sld_substrate_52s.py`` step 5d), so the STATE-NORMAL companion
+    has ZERO de-energized buses — a topologically stranded stub would be
+    ENMValidator E003, a defect. E2E-FIX (2026-09-05) added a SECOND
+    (maintenance) companion precisely because this invariant means the
+    normal-state render has no genuine de-energized station to point at
+    (``companion_maintenance`` fixture, below, covers that case)."""
+    assert companion["de_energized_bus_refs"] == []
 
 
 def test_open_point_present(companion: dict) -> None:
@@ -249,3 +278,124 @@ def test_zip_split_is_carried_by_the_twin_builder() -> None:
     assert solution.node_p_spec_effective_pu[spec.node_id] * pf_input.base_mva == pytest.approx(
         -1.0, abs=1e-9
     )
+
+
+# ---- E2E-FIX: druga (konserwacyjna) migawka towarzysza rozplywu -------------
+
+
+def test_maintenance_schema_and_case_ref(companion_maintenance: dict) -> None:
+    assert companion_maintenance["schema"] == "sld_power_flow_companion_v1"
+    assert companion_maintenance["case_ref"] == _CASE_REF_MAINT
+    assert companion_maintenance["case_label"] == _CASE_LABEL_MAINT
+
+
+def test_maintenance_converged(companion_maintenance: dict) -> None:
+    assert companion_maintenance["converged"] is True
+    assert companion_maintenance["iterations"] > 0
+
+
+def test_maintenance_scenario_field_documents_what_was_taken_out(
+    companion_maintenance: dict,
+) -> None:
+    """WHITE BOX: a de-energised station on this companion must be traceable to
+    a NAMED scenario (id + disabled branches + content hash), not left as an
+    unexplained topology defect."""
+    scenario = companion_maintenance["scenario"]
+    assert scenario["scenario_id"].startswith("__maintenance__")
+    assert isinstance(scenario["out_of_service"], list)
+    assert scenario["out_of_service"], "scenario must disable at least one branch"
+    assert len(scenario["out_of_service"]) == len(
+        set(scenario["out_of_service"])
+    ), "out_of_service must not repeat a branch ref_id"
+    assert isinstance(scenario["scenario_hash"], str) and len(scenario["scenario_hash"]) == 64
+
+
+def test_maintenance_de_energized_is_non_empty(companion_maintenance: dict) -> None:
+    """The whole point of the second companion: unlike the state-normal one
+    (``test_committed_substrate_has_zero_de_energized_buses``), it MUST carry
+    a genuine de-energized set for the render path to point at."""
+    assert companion_maintenance[
+        "de_energized_bus_refs"
+    ], "maintenance companion must de-energise at least one bus"
+
+
+def test_maintenance_isolated_station_matches_out_of_service(
+    substrate: dict, companion_maintenance: dict
+) -> None:
+    """The station(s) actually de-energized are EXACTLY the ones reachable
+    (in the substrate's own topology) only through the scenario's
+    ``out_of_service`` branches — proving the picker's own prediction
+    (``select_ring_maintenance_scenario``) against the REAL frozen-solver
+    result, not just against itself."""
+    substations = substrate["enm"]["substations"]
+    bus_to_station: dict[str, str] = {}
+    for station in substations:
+        if "/station" not in station.get("ref_id", ""):
+            continue
+        for bus_ref in station.get("bus_refs", []):
+            bus_to_station[bus_ref] = station["ref_id"]
+
+    de_energized_stations = {
+        bus_to_station[ref]
+        for ref in companion_maintenance["de_energized_bus_refs"]
+        if ref in bus_to_station
+    }
+    assert de_energized_stations, "de-energized buses must belong to at least one real station"
+
+    disabled_refs = set(companion_maintenance["scenario"]["out_of_service"])
+    branches = substrate["enm"]["branches"]
+    disabled_endpoint_stations: set[str] = set()
+    for branch in branches:
+        if branch["ref_id"] not in disabled_refs:
+            continue
+        for endpoint in (branch.get("from_bus_ref"), branch.get("to_bus_ref")):
+            station_ref = bus_to_station.get(endpoint)
+            if station_ref:
+                disabled_endpoint_stations.add(station_ref)
+    # Every station touched by a disabled branch is actually de-energized —
+    # the solver's own result confirms the picker's topology-only prediction.
+    assert disabled_endpoint_stations, "disabled branches must touch a real station"
+    assert disabled_endpoint_stations <= de_energized_stations
+
+
+def test_maintenance_normal_companion_unaffected(
+    companion: dict, companion_maintenance: dict
+) -> None:
+    """The maintenance companion is a SEPARATE snapshot (``apply_scenario`` on a
+    FRESH ``model_dump`` — never a mutation of the committed ENM): computing it
+    must not perturb the already-built normal-state companion (module-scoped
+    fixture, built once)."""
+    assert companion["de_energized_bus_refs"] == []
+    assert "scenario" not in companion
+    assert companion["case_ref"] == _CASE_REF
+    assert companion_maintenance["case_ref"] == _CASE_REF_MAINT
+
+
+def test_maintenance_determinism() -> None:
+    """DET-9 intention (mirrors ``test_determinism`` above): TWO independent
+    full builds (substrate + scenario pick + scenario apply + solver) give an
+    IDENTICAL maintenance companion, including the picked station/branches."""
+    s1 = build_sld_substrate_52s()
+    enm1 = EnergyNetworkModel.model_validate(s1["enm"])
+    c1 = compute_substrate_power_flow_maintenance(
+        enm1, case_ref=_CASE_REF_MAINT, case_label=_CASE_LABEL_MAINT
+    )
+    s2 = build_sld_substrate_52s()
+    enm2 = EnergyNetworkModel.model_validate(s2["enm"])
+    c2 = compute_substrate_power_flow_maintenance(
+        enm2, case_ref=_CASE_REF_MAINT, case_label=_CASE_LABEL_MAINT
+    )
+    assert c1 == c2
+
+
+def test_maintenance_scenario_picker_is_a_pure_function_of_the_enm(substrate: dict) -> None:
+    """``select_ring_maintenance_scenario`` on its own (no solver run) is
+    deterministic given the same ENM — pinned separately from the full
+    companion so a future regression localises to the picker or the solver
+    path, not just "something in maintenance changed"."""
+    enm = EnergyNetworkModel.model_validate(substrate["enm"])
+    scenario_a = select_ring_maintenance_scenario(enm)
+    scenario_b = select_ring_maintenance_scenario(enm)
+    assert scenario_a.scenario_id == scenario_b.scenario_id
+    assert scenario_a.out_of_service == scenario_b.out_of_service
+    assert scenario_a.hash == scenario_b.hash

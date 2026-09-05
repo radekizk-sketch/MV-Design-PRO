@@ -95,9 +95,22 @@ function overlayModeFromQuery(): OverlayMode {
   return raw === 'pf' || raw === 'faultflow' ? raw : null;
 }
 
+/** Przypadek towarzysza rozpływu z `?case=` (E2E-FIX) — `normal` (domyślny,
+ *  stan radialny) albo `maintenance` (druga migawka: stacja wyłączona do
+ *  konserwacji, `select_ring_maintenance_scenario` / `compute_substrate_
+ *  power_flow_maintenance`, backend). Nazwa pliku fixtury niesie sufiks
+ *  `.maintenance` — SAME dwie lokalizacje co companion normalny. */
+type PowerFlowCase = 'normal' | 'maintenance';
+
+function powerFlowCaseFromQuery(): PowerFlowCase {
+  const raw = new URLSearchParams(window.location.search).get('case');
+  return raw === 'maintenance' ? 'maintenance' : 'normal';
+}
+
 async function loadPowerFlowCompanion(mode: OverlayMode): Promise<PowerFlowCompanion | null> {
   if (mode !== 'pf') return null; // rysunek bazowy / inny tryb nakładki
-  const resp = await fetch('/test-fixtures/sldSubstrate52s.powerflow.json');
+  const suffix = powerFlowCaseFromQuery() === 'maintenance' ? '.maintenance' : '';
+  const resp = await fetch(`/test-fixtures/sldSubstrate52s.powerflow${suffix}.json`);
   if (!resp.ok) return null; // brak companion = rysunek bazowy bez nakładki
   return await resp.json() as PowerFlowCompanion;
 }

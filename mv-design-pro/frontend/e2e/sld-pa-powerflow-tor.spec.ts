@@ -13,7 +13,15 @@
  *                    block/GPZ port (zero free ends); zero unconnected blocks.
  *  N-2 ENERGIZED   — the rendered energized-set (per-segment `data-energized` read
  *                    from the DOM) EQUALS the solver `energized_branch_refs`
- *                    (set-equality on the render). De-energized stations dimmed.
+ *                    (set-equality on the render). The set of DIMMED station
+ *                    blocks EQUALS the set of stations `companion.de_energized_
+ *                    bus_refs` maps to (same station membership rule the render
+ *                    itself uses — ALL of a station's own buses de-energised).
+ *                    Run for BOTH cases (E2E-FIX, 2026-09-05): `normal` (SUB-52s
+ *                    ring-closed the substrate's only NOP — both sets are EMPTY,
+ *                    an equality, not a "≥1" floor) and `maintenance` (a second,
+ *                    scenario-driven companion — one ring station taken out of
+ *                    service — where the equality is non-trivial).
  *  N-3 DIRECTION   — the rendered direction per branch (per-segment
  *                    `data-flow-direction`, sourced `solver`) EQUALS the solver
  *                    sign(P) — including reversed OZE-backfeed branches. The single
@@ -38,6 +46,21 @@ const COMPANION_PATH = path.resolve(
   _dirname,
   '../public/test-fixtures/sldSubstrate52s.powerflow.json',
 );
+// Second companion (E2E-FIX): one ring station taken out of service for
+// maintenance (`select_ring_maintenance_scenario` / `compute_substrate_
+// power_flow_maintenance`, backend) — a genuine de-energized set to point at,
+// since the normal-state companion above now has zero (SUB-52s fix).
+const MAINTENANCE_COMPANION_PATH = path.resolve(
+  _dirname,
+  '../public/test-fixtures/sldSubstrate52s.powerflow.maintenance.json',
+);
+// The committed substrate ENM — read here ONLY for its `substations[].bus_refs`
+// (bus -> station membership), to compute the EXPECTED dimmed-station set from
+// the companion the same way the render itself does (`overlayFromCompanion`,
+// `screenshot-harness-main.tsx`: a station is dimmed iff ALL its own buses are
+// de-energized). No physics, no topology recomputation — a plain membership
+// lookup mirrored from the render's own rule.
+const ENM_PATH = path.resolve(_dirname, '../public/test-fixtures/sldSubstrate52s.enm.json');
 
 interface Companion {
   readonly case_ref: string;
@@ -50,9 +73,82 @@ interface Companion {
   readonly open_point_branch_refs: string[];
 }
 
-function loadCompanion(): Companion {
-  return JSON.parse(fs.readFileSync(COMPANION_PATH, 'utf-8')) as Companion;
+function loadCompanion(companionPath: string): Companion {
+  return JSON.parse(fs.readFileSync(companionPath, 'utf-8')) as Companion;
 }
+
+interface EnmSubstation {
+  readonly ref_id: string;
+  readonly bus_refs: readonly string[];
+}
+
+function loadEnmSubstations(): readonly EnmSubstation[] {
+  const raw = JSON.parse(fs.readFileSync(ENM_PATH, 'utf-8')) as {
+    enm: { substations: readonly EnmSubstation[] };
+  };
+  return raw.enm.substations;
+}
+
+/** The station ref_ids the companion's `de_energized_bus_refs` de-energizes —
+ *  a station counts iff ALL of its own bus_refs are in that set (mirrors
+ *  `overlayFromCompanion` in `screenshot-harness-main.tsx` exactly: the render
+ *  dims a station only when EVERY one of its buses lost supply, not just one). */
+function expectedDimmedStations(
+  companion: Companion,
+  substations: readonly EnmSubstation[],
+): Set<string> {
+  const deEnergized = new Set(companion.de_energized_bus_refs);
+  const dimmed = new Set<string>();
+  for (const station of substations) {
+    if (station.bus_refs.length > 0 && station.bus_refs.every((ref) => deEnergized.has(ref))) {
+      dimmed.add(station.ref_id);
+    }
+  }
+  return dimmed;
+}
+
+/** The station ref_ids ACTUALLY rendered dimmed — read from `data-owner-ref`
+ *  on each `data-energized="false"` L0 block (the SAME attribute the segment
+ *  reader above uses for branches; GPZ blocks share the `sld-v3-l0-` testid
+ *  prefix but their ownerRef is never a station ref_id, so they drop out of
+ *  set-equality against `expectedDimmedStations` on their own — no separate
+ *  exclusion needed here). */
+async function readDimmedStationOwnerRefs(
+  page: import('@playwright/test').Page,
+): Promise<Set<string>> {
+  const loc = page.locator('[data-testid^="sld-v3-l0-"][data-energized="false"]');
+  const count = await loc.count();
+  const refs = new Set<string>();
+  for (let i = 0; i < count; i += 1) {
+    const ownerRef = await loc.nth(i).getAttribute('data-owner-ref');
+    if (ownerRef) refs.add(ownerRef);
+  }
+  return refs;
+}
+
+/** The two render-based cases this file asserts against (E2E-FIX): `normal`
+ *  (state-normal companion, zero de-energized buses by design — SUB-52s) and
+ *  `maintenance` (second, scenario-driven companion — one ring station out of
+ *  service, a genuine non-empty de-energized set). */
+interface PowerFlowCase {
+  readonly name: 'normal' | 'maintenance';
+  readonly companionPath: string;
+  /** `?case=` value for the harness URL; `undefined` = omit the param (the
+   *  harness's own default is already `normal` — existing single-case tests
+   *  below keep calling `gotoL0(page)` unchanged). */
+  readonly queryCase: 'maintenance' | undefined;
+  readonly pngSuffix: string;
+}
+
+const CASES: readonly PowerFlowCase[] = [
+  { name: 'normal', companionPath: COMPANION_PATH, queryCase: undefined, pngSuffix: 'normal' },
+  {
+    name: 'maintenance',
+    companionPath: MAINTENANCE_COMPANION_PATH,
+    queryCase: 'maintenance',
+    pngSuffix: 'maintenance',
+  },
+];
 
 interface SegmentRender {
   readonly ref: string;
@@ -86,11 +182,18 @@ async function readSegments(page: import('@playwright/test').Page): Promise<Segm
   return out;
 }
 
-async function gotoL0(page: import('@playwright/test').Page): Promise<void> {
+async function gotoL0(
+  page: import('@playwright/test').Page,
+  queryCase?: 'maintenance',
+): Promise<void> {
   await page.setViewportSize({ width: 1920, height: 1080 });
   // `overlay=pf` — nakładka P-A na żądanie (rendery bazowe innych spec
   // pozostają rysunkiem bazowym; patrz `overlayRequested` w harnessie).
-  await page.goto(`${HARNESS_URL}?lod=0&overlay=pf`);
+  // `case=maintenance` (E2E-FIX) — drugi companion (stacja wyłączona do
+  // konserwacji); pominięty parametr = harness ładuje companion normalny
+  // (domyślne zachowanie, bez zmian dla wywołań bez argumentu).
+  const caseParam = queryCase ? `&case=${queryCase}` : '';
+  await page.goto(`${HARNESS_URL}?lod=0&overlay=pf${caseParam}`);
   const root = page.locator('[data-testid="sld-harness-root"]').first();
   await expect(root).toHaveAttribute('data-status', 'ready', { timeout: 20000 });
   const canvas = page.locator('[data-testid="sld-canvas-v3"]').first();
@@ -100,7 +203,7 @@ async function gotoL0(page: import('@playwright/test').Page): Promise<void> {
 
 test.describe('sld:P-A:power-flow-tor (render-based, solver = one truth)', () => {
   test('case_ref state declaration is rendered on the canvas', async ({ page }) => {
-    const companion = loadCompanion();
+    const companion = loadCompanion(COMPANION_PATH);
     await gotoL0(page);
     const badge = page.locator('[data-testid="sld-v3-overlay-provenance"]').first();
     await expect(badge).toBeVisible();
@@ -198,56 +301,80 @@ test.describe('sld:P-A:power-flow-tor (render-based, solver = one truth)', () =>
     ).toBe(0);
   });
 
-  test('N-2: rendered energized-set EQUALS the solver energized-set (set-equality on the render)', async ({ page }) => {
-    const companion = loadCompanion();
-    await gotoL0(page);
+  for (const powerFlowCase of CASES) {
+    test(`N-2 (${powerFlowCase.name}): rendered energized-set EQUALS the solver energized-set (set-equality on the render)`, async ({ page }) => {
+      const companion = loadCompanion(powerFlowCase.companionPath);
+      const substations = loadEnmSubstations();
+      await gotoL0(page, powerFlowCase.queryCase);
 
-    const segments = await readSegments(page);
-    expect(segments.length, 'expected rendered segments').toBeGreaterThan(20);
+      const segments = await readSegments(page);
+      expect(segments.length, 'expected rendered segments').toBeGreaterThan(20);
 
-    // The rendered energized set = segment refs whose DOM data-energized="true".
-    // EVERY segment that declares a flow direction must carry the solver source
-    // (no geometric fallback leaked in). Segments with NO flow (solver "none")
-    // carry neither attribute — absence == solver's zero-flow, by contract.
-    for (const seg of segments) {
-      if (seg.direction !== null) {
-        expect(seg.source, `segment ${seg.ref} must be solver-sourced`).toBe('solver');
+      // The rendered energized set = segment refs whose DOM data-energized="true".
+      // EVERY segment that declares a flow direction must carry the solver source
+      // (no geometric fallback leaked in). Segments with NO flow (solver "none")
+      // carry neither attribute — absence == solver's zero-flow, by contract.
+      for (const seg of segments) {
+        if (seg.direction !== null) {
+          expect(seg.source, `segment ${seg.ref} must be solver-sourced`).toBe('solver');
+        }
       }
-    }
-    const renderedEnergized = new Set(
-      segments.filter((s) => s.energized === 'true').map((s) => s.ref),
-    );
-    const solverEnergized = new Set(
-      companion.energized_branch_refs.filter((ref) =>
-        segments.some((s) => s.ref === ref),
-      ),
-    );
+      const renderedEnergized = new Set(
+        segments.filter((s) => s.energized === 'true').map((s) => s.ref),
+      );
+      const solverEnergized = new Set(
+        companion.energized_branch_refs.filter((ref) =>
+          segments.some((s) => s.ref === ref),
+        ),
+      );
 
-    // Set-equality, asserted on the render. (Restrict the solver set to refs that
-    // are actually drawn as cable-run segments — switch/transformer branches are
-    // energized too but are not cable-run hitboxes.)
-    const missingInRender = [...solverEnergized].filter((r) => !renderedEnergized.has(r));
-    const extraInRender = [...renderedEnergized].filter((r) => !solverEnergized.has(r));
-    expect(
-      missingInRender.length,
-      `solver-energized segments NOT rendered energized: ${missingInRender.slice(0, 12).join('; ')}`,
-    ).toBe(0);
-    expect(
-      extraInRender.length,
-      `segments rendered energized but NOT solver-energized: ${extraInRender.slice(0, 12).join('; ')}`,
-    ).toBe(0);
+      // Set-equality, asserted on the render. (Restrict the solver set to refs that
+      // are actually drawn as cable-run segments — switch/transformer branches are
+      // energized too but are not cable-run hitboxes.)
+      const missingInRender = [...solverEnergized].filter((r) => !renderedEnergized.has(r));
+      const extraInRender = [...renderedEnergized].filter((r) => !solverEnergized.has(r));
+      expect(
+        missingInRender.length,
+        `solver-energized segments NOT rendered energized: ${missingInRender.slice(0, 12).join('; ')}`,
+      ).toBe(0);
+      expect(
+        extraInRender.length,
+        `segments rendered energized but NOT solver-energized: ${extraInRender.slice(0, 12).join('; ')}`,
+      ).toBe(0);
 
-    // The de-energized stub MUST be visible as ≥1 dimmed station block (the solver
-    // reported a non-empty de-energized bus set).
-    expect(companion.de_energized_bus_refs.length).toBeGreaterThan(0);
-    const dimmed = await page
-      .locator('[data-testid^="sld-v3-l0-"][data-energized="false"]')
-      .count();
-    expect(dimmed, 'the open NOP must render ≥1 de-energized (dimmed) station block').toBeGreaterThanOrEqual(1);
-  });
+      // Dimmed-station set EQUALS the station set the companion's own
+      // `de_energized_bus_refs` maps to (E2E-FIX) — for `normal` both sides are
+      // EMPTY (SUB-52s ring-closed the substrate's only NOP: an equality, not a
+      // "≥1" floor); for `maintenance` the scenario's isolated station(s) give a
+      // genuinely non-empty set on BOTH sides.
+      if (powerFlowCase.name === 'maintenance') {
+        expect(
+          companion.de_energized_bus_refs.length,
+          'maintenance companion must de-energize at least one bus',
+        ).toBeGreaterThan(0);
+      } else {
+        expect(
+          companion.de_energized_bus_refs.length,
+          'normal companion must have ZERO de-energized buses (SUB-52s: ring-closed NOP)',
+        ).toBe(0);
+      }
+      const expectedDimmed = expectedDimmedStations(companion, substations);
+      const renderedDimmed = await readDimmedStationOwnerRefs(page);
+      const missingDimmed = [...expectedDimmed].filter((ref) => !renderedDimmed.has(ref));
+      const extraDimmed = [...renderedDimmed].filter((ref) => !expectedDimmed.has(ref));
+      expect(
+        missingDimmed.length,
+        `stations the companion de-energizes but NOT rendered dimmed: ${missingDimmed.slice(0, 12).join('; ')}`,
+      ).toBe(0);
+      expect(
+        extraDimmed.length,
+        `stations rendered dimmed but the companion does NOT de-energize: ${extraDimmed.slice(0, 12).join('; ')}`,
+      ).toBe(0);
+    });
+  }
 
   test('N-3: rendered direction per branch EQUALS solver sign(P) (incl. reversed OZE branches)', async ({ page }) => {
-    const companion = loadCompanion();
+    const companion = loadCompanion(COMPANION_PATH);
     await gotoL0(page);
 
     const segments = await readSegments(page);
@@ -416,30 +543,38 @@ test.describe('sld:P-A:power-flow-tor (render-based, solver = one truth)', () =>
     expect(h2, 'L0 tor geometry+state must be deterministic across reloads').toBe(h1);
   });
 
-  test('screenshot: L0 oddalony view WITH the power-flow tor → save PNG', async ({ page }) => {
-    await gotoL0(page);
+  for (const powerFlowCase of CASES) {
+    test(`screenshot (${powerFlowCase.name}): L0 oddalony view WITH the power-flow tor → save PNG`, async ({ page }) => {
+      await gotoL0(page, powerFlowCase.queryCase);
 
-    // The tor must be visible: case badge + energized segments + ≥1 reverse arrow
-    // + a de-energized (dimmed) station beyond the NOP.
-    await expect(page.locator('[data-testid="sld-v3-overlay-provenance"]').first()).toBeVisible();
-    const energizedSegs = await page
-      .locator('path[data-owner-ref^="seg/"][data-energized="true"]')
-      .count();
-    expect(energizedSegs, 'tor must render energized segments').toBeGreaterThan(20);
-    const reverseSegs = await page
-      .locator('path[data-owner-ref^="seg/"][data-flow-direction="reverse"]')
-      .count();
-    expect(reverseSegs, 'tor must render reverse (OZE backfeed) segments').toBeGreaterThan(0);
-    const dimmedStations = await page
-      .locator('[data-testid^="sld-v3-l0-"][data-energized="false"]')
-      .count();
-    expect(dimmedStations, 'tor must render the de-energized stub beyond the NOP').toBeGreaterThanOrEqual(1);
+      // The tor must be visible: case badge + energized segments + ≥1 reverse arrow.
+      await expect(page.locator('[data-testid="sld-v3-overlay-provenance"]').first()).toBeVisible();
+      const energizedSegs = await page
+        .locator('path[data-owner-ref^="seg/"][data-energized="true"]')
+        .count();
+      expect(energizedSegs, 'tor must render energized segments').toBeGreaterThan(20);
+      const reverseSegs = await page
+        .locator('path[data-owner-ref^="seg/"][data-flow-direction="reverse"]')
+        .count();
+      expect(reverseSegs, 'tor must render reverse (OZE backfeed) segments').toBeGreaterThan(0);
+      const dimmedStations = await page
+        .locator('[data-testid^="sld-v3-l0-"][data-energized="false"]')
+        .count();
+      // E2E-FIX: `normal` has ZERO dimmed stations by design (SUB-52s ring-closed
+      // the substrate's only NOP); `maintenance` (second companion — a station
+      // taken out of service) must render ≥1 genuinely dimmed station.
+      if (powerFlowCase.name === 'maintenance') {
+        expect(dimmedStations, 'maintenance tor must render ≥1 de-energized station').toBeGreaterThanOrEqual(1);
+      } else {
+        expect(dimmedStations, 'normal tor has zero de-energized stations (SUB-52s)').toBe(0);
+      }
 
-    const outDir = path.resolve(_dirname, '../../docs/audit/visual');
-    fs.mkdirSync(outDir, { recursive: true });
-    const outPath = path.join(outDir, 'sld_substrate_53_PA_tor.png');
-    await page.screenshot({ path: outPath, fullPage: false });
-    expect(fs.existsSync(outPath)).toBe(true);
-    console.log(`Saved P-A tor screenshot: ${outPath} (energized=${energizedSegs} reverse=${reverseSegs} dimmed_stations=${dimmedStations})`);
-  });
+      const outDir = path.resolve(_dirname, '../../docs/audit/visual');
+      fs.mkdirSync(outDir, { recursive: true });
+      const outPath = path.join(outDir, `sld_substrate_53_PA_tor_${powerFlowCase.pngSuffix}.png`);
+      await page.screenshot({ path: outPath, fullPage: false });
+      expect(fs.existsSync(outPath)).toBe(true);
+      console.log(`Saved P-A tor screenshot: ${outPath} (energized=${energizedSegs} reverse=${reverseSegs} dimmed_stations=${dimmedStations})`);
+    });
+  }
 });
