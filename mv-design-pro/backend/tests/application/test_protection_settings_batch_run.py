@@ -16,6 +16,7 @@ istniejaca sciezke wykonania (`enm.canonical_analysis`).
 
 from __future__ import annotations
 
+import copy
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
@@ -36,6 +37,7 @@ from enm.models import (
     OverheadLine,
     Source,
 )
+from enm.scenariusze import SCENARIUSZ_NORMALNY, apply_scenario
 
 
 def _zrodlo(bus_ref: str = "b_src") -> Source:
@@ -333,29 +335,44 @@ def test_nastepna_szyna_bez_zwarcia_odmawia() -> None:
         zbuduj_wejscie_nastaw(kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0)
 
 
-def test_kazdy_wariant_niesie_snapshot_hash_kotwicy_pin_spojnosci() -> None:
-    """Pin deklaracji architektonicznej karty PACK-NASTAWY (dopisany w odbiorze).
+def test_zbuduj_wejscie_nastaw_nie_mutuje_migawki_kotwicy_pin_spojnosci() -> None:
+    """Pin architektoniczny karty PACK-NASTAWY, PRZEPISANY na kanon CV-3-W
+    (karta CV-3-W, 2026-09-05 — zmiana kanonu, nie regresja testu, zob. Zero-Debt
+    pkt 2 CLAUDE.md).
 
     Znalezisko nadzoru (2026-08-14, czwarta instancja klasy deklaracja-bez-testu
-    w tej fali): docstring i meldunek twierdza, ze trzy warianty sa GWARANTOWANIE
-    spojne z ta sama migawka kotwicy (ten sam snapshot_hash), ale podmiana hasha
-    wariantu na obcy nie czerwienila ZADNEGO z 25 testow. Ten pin przypina
-    spojnosc WPROST na konstruktorach wariantow — kazdy wariant musi niesc
-    snapshot_hash i input_hash kotwicy oraz kopie (nie referencje) jej migawki.
-    """
-    from application.protection_settings.batch_run import (
-        _wariant_rozplywu,
-        _wariant_zwarciowy,
-    )
+    w tej fali): docstring i meldunek twierdzily, ze trzy warianty w pamieci sa
+    GWARANTOWANIE spojne z ta sama migawka kotwicy, ale podmiana migawki wariantu
+    na obca nie czerwienila ZADNEGO z 25 testow. Ten pin przypinal spojnosc WPROST
+    na konstruktorach wariantow `_wariant_zwarciowy`/`_wariant_rozplywu`
+    (rekonstruowanych bezposrednio w tescie) — CV-3-W USUNELA te prywatne
+    konstruktory: trzy warianty (SC 3F@c_min, SC 2F@c_min, PF) powstaja dzis
+    WYLACZNIE przez fabryke rdzenia CV-3.1 `enm.canonical_analysis.bieg_wariantu`
+    na migawce `enm.scenariusze.apply_scenario(model_kotwicy, SCENARIUSZ_NORMALNY)`.
 
+    INTENCJA oryginalnego pinu BEZ ZMIAN: trzy warianty licza sie na TEJ SAMEJ
+    tresci modelu co kotwica, z KOPII (nie referencji) — wywolanie
+    `zbuduj_wejscie_nastaw` NIE mutuje snapshotu/wyniku kotwicy w pamieci (Case
+    Immutability). Literalna rownosc `snapshot_hash`/`input_hash` wariantu z
+    kotwica PRZESTAJE byc kontraktem po migracji: `bieg_wariantu` liczy OBA
+    hashe uczciwie z migawki i WLASNYCH opcji wariantu (inny `fault_type`/
+    `c_factor` per wariant daje inny, poprawny `input_hash` — to POPRAWA
+    architektoniczna, nie regresja), wiec ten pin sprawdza TRESC migawki, nie
+    bookkeeping biegu.
+    """
     kotwica = _kotwica(_siec_promieniowa())
-    warianty = [
-        _wariant_zwarciowy(kotwica, fault_type="LLL", c_factor=0.95),
-        _wariant_zwarciowy(kotwica, fault_type="LL", c_factor=0.95),
-        _wariant_rozplywu(kotwica),
-    ]
-    for wariant in warianty:
-        assert wariant.snapshot_hash == kotwica.snapshot_hash
-        assert wariant.input_hash == kotwica.input_hash
-        assert wariant.snapshot == kotwica.snapshot
-        assert wariant.snapshot is not kotwica.snapshot
+    snapshot_przed = copy.deepcopy(kotwica.snapshot)
+    raw_result_przed = copy.deepcopy(kotwica.raw_result)
+
+    # Ta sama fabryka migawki, ktorej `zbuduj_wejscie_nastaw` uzywa WEWNATRZ dla
+    # wszystkich trzech wariantow — dowod, ze wariant liczy sie na TRESCI kotwicy.
+    enm_kotwicy = EnergyNetworkModel.model_validate(kotwica.snapshot)
+    migawka = apply_scenario(enm_kotwicy, SCENARIUSZ_NORMALNY)
+    assert migawka.snapshot == kotwica.snapshot, "wariant liczy sie na tej samej tresci co kotwica"
+    assert migawka.snapshot is not kotwica.snapshot, "migawka wariantu to KOPIA, nie referencja"
+
+    wejscie = zbuduj_wejscie_nastaw(kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0)
+
+    assert wejscie.engine_input.ik3_min_beginning_a > 0  # dowod, ze warianty faktycznie policzono
+    assert kotwica.snapshot == snapshot_przed, "kotwica bazowa NIETKNIETA (Case Immutability)"
+    assert kotwica.raw_result == raw_result_przed, "zamrozony wynik kotwicy NIETKNIETY"

@@ -71,16 +71,16 @@ OPISY = {
     R4: "plytka kopia migawki (dict) pod mutacje — uzyj enm.scenariusze.apply_scenario",
 }
 
-#: ZAPADKA zastanych trafien (pomiar 2026-09-05, przed migracja rodzin D1–D6).
+#: ZAPADKA zastanych trafien (pomiar 2026-09-05, przed migracja rodzin D1-D6;
+#: karta CV-3-W obnizyla ja o rodziny D4/D5/D6 — dobor_kompensacji.py,
+#: odpowiedz_osd.py i protection_settings/batch_run.py migrowaly na
+#: apply_scenario/bieg_wariantu, wpisy USUNIETE, nie wyzerowane).
 #: Klucz: sciezka wzgledem `backend/src`; wartosc: liczba trafien per regula.
 #: Obniz wpis, gdy rodzina przechodzi na apply_scenario; wpis zerowy usun.
 ZASTANE: dict[str, dict[str, int]] = {
-    "application/analyses/dobor_kompensacji.py": {R1: 1, R2: 1, R3: 1},
     "application/analyses/hosting_capacity.py": {R1: 1, R2: 1, R3: 1},
     "application/analyses/kontyngencje_n1.py": {R1: 1, R2: 1, R4: 1},
-    "application/analyses/odpowiedz_osd.py": {R1: 1, R2: 1, R3: 1},
     "application/analyses/pq_area.py": {R1: 1, R2: 1, R3: 1},
-    "application/protection_settings/batch_run.py": {R2: 2, R3: 2},
 }
 
 

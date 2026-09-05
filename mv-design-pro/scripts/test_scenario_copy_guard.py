@@ -1,5 +1,6 @@
 """Testy wlasne `scenario_copy_guard.py` (CV-3.1) — kazda regula × trafienie / nie-trafienie,
-zapadka w obie strony, oraz pin stanu repozytorium (zielony, 19 zastanych trafien)."""
+zapadka w obie strony, oraz pin stanu repozytorium (zielony, 9 zastanych trafien po
+migracji D4/D5/D6 karta CV-3-W; D1-D3 migruje rownolegle inny wykonawca)."""
 
 from __future__ import annotations
 
@@ -142,9 +143,11 @@ def test_zasieg_pomija_dom_apply_scenario_i_fabryk() -> None:
 
 
 def test_stan_repozytorium_jest_zielony_i_przypiety() -> None:
-    """Pin zastanych trafien: 6 rodzin, 19 trafien (2026-09-05, przed migracja D1-D6).
-    Migracja rodziny obniza wpis w `ZASTANE` i ten pin (dlug ma malec jawnie)."""
+    """Pin zastanych trafien: 3 rodziny, 9 trafien (2026-09-05, po migracji D4/D5/D6
+    karta CV-3-W: 19 - 10 = 9; D1-D3 migruje rownolegle inny wykonawca — hosting_capacity.py,
+    kontyngencje_n1.py, pq_area.py). Migracja rodziny obniza wpis w `ZASTANE` i ten
+    pin (dlug ma malec jawnie)."""
     pomiar = guard.zmierz()
     assert pomiar == guard.ZASTANE
-    assert sum(sum(v.values()) for v in pomiar.values()) == 19
+    assert sum(sum(v.values()) for v in pomiar.values()) == 9
     assert guard.main([]) == 0

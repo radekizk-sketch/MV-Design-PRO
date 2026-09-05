@@ -19,13 +19,17 @@ PRZY c_min (czułość I>>) i zwarcia dwufazowego przy c_min (czułość I>), or
 nadprądowy `application/analyses/protection/overcurrent/input_adapter.py::_build_fault_levels`
 dokumentuje to wprost (klucz gałęzi min ALBO max, drugi zostaje `None`).
 
-MECHANIZM WARIANTOWANIA (ta sama reguła Case Immutability, ten sam wzorzec co
-`application/analyses/kontyngencje_n1.py`, `pq_area.py`, `hosting_capacity.py`).
+MECHANIZM WARIANTOWANIA (CV-3-W: JEDYNA fabryka kopii migawki z nadpisaniami
+`enm.scenariusze.apply_scenario` + JEDYNA fabryka biegu wariantu w pamięci
+`enm.canonical_analysis.bieg_wariantu` — ten sam mechanizm, którego po migracji
+używają `application/analyses/kontyngencje_n1.py`, `pq_area.py`,
+`hosting_capacity.py`, `odpowiedz_osd.py`, `dobor_kompensacji.py`).
 Bazą jest ISTNIEJĄCY, PERSYSTOWANY, zakończony bieg zwarcia trójfazowego przy c_max
 („kotwica") — z jego zamrożonego wyniku CZYTAMY (bez przeliczania) prądy c_max na
 początku, końcu odcinka i na sąsiedniej szynie (te trzy pola JUŻ miały dostawcę —
 kotwica liczy zwarcie na WSZYSTKICH szynach jednym biegiem). Gałąź c_min i rozpływ
-to WARIANTY WEJŚCIA na kopii migawki kotwicy (`copy.deepcopy` — model w magazynie
+to WARIANTY WEJŚCIA na migawce `apply_scenario(model_kotwicy, SCENARIUSZ_NORMALNY)`
+(model kotwicy walidowany RAZ, migawka bez nadpisań — model w magazynie
 nietknięty), uruchamiane ISTNIEJĄCYM solverem przez ISTNIEJĄCĄ ścieżkę wykonania
 (`enm.canonical_analysis.wykonaj_bieg_w_pamieci` — ta sama dyspozycja, której
 używa bieg kanoniczny `execute_run`), W PAMIĘCI, bez persystencji — dokładnie jak
@@ -59,15 +63,16 @@ kodu (ten sam princyp co wybór odcinka w `voltage_drop_binding.py`).
 
 from __future__ import annotations
 
-import copy
 import math
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
 from application.protection_settings.engine import ProtectionSettingsInput
-from enm.canonical_analysis import CanonicalRun, wykonaj_bieg_w_pamieci
+from enm.canonical_analysis import CanonicalRun, bieg_wariantu, wykonaj_bieg_w_pamieci
 from enm.mapping import ref_to_graph_id
+from enm.models import EnergyNetworkModel
+from enm.scenariusze import SCENARIUSZ_NORMALNY, apply_scenario
 
 #: Rodzaje gałęzi ENM kwalifikowane jako "linia chroniona" — mają impedancję
 #: jednostkową, długość i mogą nieść dane katalogowe cieplne (F-K1). Aparat
@@ -202,48 +207,16 @@ def _opcjonalna_liczba(wartosc: Any) -> float | None:
     return liczba if math.isfinite(liczba) else None
 
 
-def _wariant_zwarciowy(kotwica: CanonicalRun, *, fault_type: str, c_factor: float) -> CanonicalRun:
-    """Wariant zwarciowy w pamięci: kopia migawki kotwicy, INNY c_factor/rodzaj.
-
-    Wzorzec `kontyngencje_n1.py::_bieg_wariantu` — bez persystencji, model w
-    magazynie i kotwica bazowa nietknięte.
-    """
-    return CanonicalRun(
-        id=kotwica.id,
-        case_id=kotwica.case_id,
-        project_id=kotwica.project_id,
-        analysis_type="short_circuit_sn",
-        status="FINISHED",
-        created_at=kotwica.created_at,
-        snapshot_hash=kotwica.snapshot_hash,
-        input_hash=kotwica.input_hash,
-        snapshot=copy.deepcopy(kotwica.snapshot or {}),
-        validation={},
-        readiness={},
-        options={
-            "fault_type": fault_type,
-            "c_factor": c_factor,
-            "thermal_time_seconds": float(kotwica.options.get("thermal_time_seconds", 1.0)),
-        },
-    )
-
-
-def _wariant_rozplywu(kotwica: CanonicalRun) -> CanonicalRun:
-    """Wariant rozpływu w pamięci na TEJ SAMEJ migawce co kotwica (spójność)."""
-    return CanonicalRun(
-        id=kotwica.id,
-        case_id=kotwica.case_id,
-        project_id=kotwica.project_id,
-        analysis_type="PF",
-        status="FINISHED",
-        created_at=kotwica.created_at,
-        snapshot_hash=kotwica.snapshot_hash,
-        input_hash=kotwica.input_hash,
-        snapshot=copy.deepcopy(kotwica.snapshot or {}),
-        validation={},
-        readiness={},
-        options={},
-    )
+def _opcje_wariantu_zwarciowego(
+    kotwica: CanonicalRun, *, fault_type: str, c_factor: float
+) -> dict[str, Any]:
+    """Opcje wariantu zwarciowego (CV-3-W): `fault_type`/`c_factor` WŁASNE wariantu,
+    `thermal_time_seconds` przejęty z opcji kotwicy (SC nie zna innej wartości)."""
+    return {
+        "fault_type": fault_type,
+        "c_factor": c_factor,
+        "thermal_time_seconds": float(kotwica.options.get("thermal_time_seconds", 1.0)),
+    }
 
 
 def _prad_zwarciowy_w_wezle(raw_result: dict[str, Any] | None, graph_node_id: str) -> float | None:
@@ -338,7 +311,19 @@ def zbuduj_wejscie_nastaw(
             "wszystkie trzy szyny są w migawce kotwicy raportowalnymi punktami zwarcia."
         )
 
-    wariant_3f_cmin = _wariant_zwarciowy(kotwica, fault_type="3F", c_factor=c_min)
+    # CV-3-W: model kotwicy walidowany RAZ, migawka bez nadpisań (SCENARIUSZ_NORMALNY)
+    # zbudowana RAZ i dzielona przez WSZYSTKIE trzy warianty — jedyna fabryka
+    # kopii migawki (`apply_scenario`) i jedyna fabryka biegu wariantu w pamięci
+    # (`bieg_wariantu`); model w magazynie i kotwica bazowa nietknięte.
+    enm_kotwicy = EnergyNetworkModel.model_validate(kotwica.snapshot or {})
+    migawka_kotwicy = apply_scenario(enm_kotwicy, SCENARIUSZ_NORMALNY)
+
+    wariant_3f_cmin = bieg_wariantu(
+        kotwica,
+        migawka_kotwicy,
+        analysis_type="short_circuit_sn",
+        options=_opcje_wariantu_zwarciowego(kotwica, fault_type="3F", c_factor=c_min),
+    )
     try:
         wykonaj_bieg_w_pamieci(wariant_3f_cmin)
     except Exception as exc:  # noqa: BLE001 — niezbieznosc/blad solvera = odmowa z powodem
@@ -354,7 +339,12 @@ def zbuduj_wejscie_nastaw(
             "na początku albo końcu chronionego odcinka."
         )
 
-    wariant_2f_cmin = _wariant_zwarciowy(kotwica, fault_type="2F", c_factor=c_min)
+    wariant_2f_cmin = bieg_wariantu(
+        kotwica,
+        migawka_kotwicy,
+        analysis_type="short_circuit_sn",
+        options=_opcje_wariantu_zwarciowego(kotwica, fault_type="2F", c_factor=c_min),
+    )
     try:
         wykonaj_bieg_w_pamieci(wariant_2f_cmin)
     except Exception as exc:  # noqa: BLE001 — jak wyzej
@@ -369,7 +359,7 @@ def zbuduj_wejscie_nastaw(
             "na końcu chronionego odcinka."
         )
 
-    wariant_pf = _wariant_rozplywu(kotwica)
+    wariant_pf = bieg_wariantu(kotwica, migawka_kotwicy, analysis_type="PF", options={})
     try:
         wykonaj_bieg_w_pamieci(wariant_pf)
     except Exception as exc:  # noqa: BLE001 — niezbieznosc rozplywu = odmowa z powodem

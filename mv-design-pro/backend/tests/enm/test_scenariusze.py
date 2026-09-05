@@ -19,7 +19,6 @@ from typing import Any
 from uuid import NAMESPACE_URL, uuid4, uuid5
 
 import pytest
-from application.analyses.dobor_kompensacji import _probe_capacitor
 from application.analyses.hosting_capacity import _probe_generator as _sonda_hosting
 from application.analyses.pq_area import _probe_generator as _sonda_pq
 from domain.fault_scenario import FaultLocation, FaultType, ShortCircuitConfig, new_fault_scenario
@@ -279,7 +278,22 @@ def test_gen_scaling_gwiazdka_i_pojedynczy_oraz_zero_bez_minus_zera() -> None:
 
 
 def test_sondy_scenariusza_sa_tymi_samymi_elementami_co_pomocniki_rodzin() -> None:
-    """Parytet migawki: sonda z `Wstrzyk`/`SondaKondensatora` == element z pomocnika rodziny."""
+    """Parytet migawki: sonda z `Wstrzyk`/`SondaKondensatora` == element z pomocnika rodziny.
+
+    Czesc D5 (bateria kondensatorow, `dobor_kompensacji.py`) PRZEPISANA na kanon
+    CV-3-W (2026-09-05): pomocnik `_probe_capacitor`, ktory byl tu WYROCZNIA,
+    zostal USUNIETY razem z migracja rodziny D5 na `apply_scenario`. Wyrocznia
+    D5 jest teraz jawny slownik literalny (`oczekiwana_bateria` nizej) — pola i
+    wartosci PRZEPISANE bez zmian z dawnego pomocnika: `ShuntCapacitor(id=uuid5(
+    NAMESPACE_URL, sonda.id_seed), ref_id=sonda.ref_id, name=sonda.name,
+    bus_ref=sonda.bus_ref, rated_mvar=sonda.rated_mvar, rated_kv=sonda.rated_kv,
+    status="closed", catalog_ref=sonda.catalog_ref, catalog_namespace=sonda.
+    catalog_namespace, parameter_source="CATALOG", source_mode="KATALOG",
+    ).model_dump(mode="json")` (identyczna konstrukcja, ktorej dzis uzywa
+    `enm.scenariusze._bateria_sondy` — rdzen CV-3.1, nie do zmiany w tej karcie).
+    Czesc D2/D3 (`_sonda_hosting`/`_sonda_pq`) NIETKNIETA (inny wykonawca, rodziny
+    D1-D3).
+    """
     enm = _pierscien()
     hosting = Wstrzyk(
         bus_ref="b_a",
@@ -302,20 +316,42 @@ def test_sondy_scenariusza_sa_tymi_samymi_elementami_co_pomocniki_rodzin() -> No
         "name": "Bateria 0,6 Mvar",
         "params": {"rated_mvar": 0.6, "rated_kv": 15.0},
     }
+    # `bateria` zbudowana Z `rekord` DOKLADNIE tak, jak usuniety `_probe_capacitor`
+    # budowal SondaKondensatore z rekordu katalogu (zero powtorzonych literalow).
     bateria = SondaKondensatora(
         bus_ref="b_a",
-        ref_id="__komp_probe__b_a__kond-15kv-0p6",
-        name="Bateria 0,6 Mvar",
-        rated_mvar=0.6,
-        rated_kv=15.0,
-        catalog_ref="kond-15kv-0p6",
-        id_seed="compensation-probe:b_a:kond-15kv-0p6",
+        ref_id=f"__komp_probe__b_a__{rekord['id']}",
+        name=str(rekord["name"]),
+        rated_mvar=float(rekord["params"]["rated_mvar"]),
+        rated_kv=float(rekord["params"]["rated_kv"]),
+        catalog_ref=str(rekord["id"]),
+        id_seed=f"compensation-probe:b_a:{rekord['id']}",
     )
+    # Wyrocznia D5 (literalna, karta CV-3-W — patrz docstring testu): pola i
+    # wartosci z usunietego pomocnika `dobor_kompensacji._probe_capacitor`, tu
+    # skladane ze STAŁYCH pol `bateria` powyzej (zero powtorzonych literalow).
+    oczekiwana_bateria = {
+        "id": str(uuid5(NAMESPACE_URL, bateria.id_seed)),
+        "ref_id": bateria.ref_id,
+        "name": bateria.name,
+        "tags": [],
+        "meta": {},
+        "bus_ref": bateria.bus_ref,
+        "rated_mvar": bateria.rated_mvar,
+        "rated_kv": bateria.rated_kv,
+        "status": "closed",
+        "catalog_ref": bateria.catalog_ref,
+        "catalog_namespace": bateria.catalog_namespace,
+        "parameter_source": "CATALOG",
+        "source_mode": "KATALOG",
+        "materialized_params": None,
+        "overrides": [],
+    }
     efektywna = apply_scenario(enm, _scenariusz(injections=(hosting, pq), probe_shunts=(bateria,)))
     generatory = efektywna.snapshot["generators"]
     assert generatory[-2] == _sonda_hosting("b_a", 1.5)
     assert generatory[-1] == _sonda_pq("b_b", 0.7, -0.2)
-    assert efektywna.snapshot["shunt_capacitors"][-1] == _probe_capacitor("b_a", rekord)
+    assert efektywna.snapshot["shunt_capacitors"][-1] == oczekiwana_bateria
     assert _refy(efektywna.snapshot, "generators")[:2] == ["gen_a", "gen_b"], "istniejace bez zmian"
     assert [n.pole for n in efektywna.nadpisania] == ["injections", "injections", "probe_shunts"]
 

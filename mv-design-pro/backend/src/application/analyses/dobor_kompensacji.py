@@ -10,9 +10,11 @@ OSD (D7, ``odpowiedz_osd.py``):
 1. dla każdego kandydata (rekord katalogu ``mv_shunt_capacitor_catalog``) dopisuje
    próbną baterię ShuntCapacitor do KOPII snapshotu przy wskazanej szynie (jak
    generator próbny w D3) — ZERO mutacji modelu/persystencji,
-2. uruchamia ISTNIEJĄCY solver rozpływu przez ISTNIEJĄCĄ ścieżkę wykonania
-   (``enm.canonical_analysis._execute_power_flow`` — ta sama funkcja, której używa
-   kanoniczny przebieg PF; ZERO nowej fizyki, ZERO wołania klas solvera na skróty),
+2. uruchamia ISTNIEJĄCY solver rozpływu przez ISTNIEJĄCĄ kanoniczną fabrykę
+   wariantu w pamięci (CV-3-W: ``enm.scenariusze.apply_scenario`` →
+   ``enm.canonical_analysis.bieg_wariantu`` → ``wykonaj_bieg_w_pamieci`` — ta
+   sama ścieżka, której używa kanoniczny przebieg PF; ZERO nowej fizyki, ZERO
+   wołania klas solvera na skróty),
 3. odczytuje P/Q wymieniane z siecią w punkcie przyłączenia Z WYNIKU solvera,
    przekłada je na KANONICZNĄ konwencję znaku przez adapter
    (``application/analyses/konwencja_mocy.py``, rozstrzygnięcie V12K-040, opcja B)
@@ -71,31 +73,36 @@ innego napięcia znamionowego nie jest instalowalna w punkcie (ograniczenie
 poprawnościowe doboru z katalogu, NIE heurystyka). Brak zgodnego rekordu → brak
 kandydatów, dobór ``null`` z uczciwym powodem.
 
-Scenariusz nocny (opcjonalny, ``uwzglednij_noc``): drugi przegląd na KOPII
-snapshotu z mocą czynną wszystkich generatorów ustawioną na 0 (moc bierna źródeł
-bez zmian; generacja Q kabli ujawnia się w rozpływie). Werdykt per scenariusz
-(dzień/noc); dobór musi spełniać OBA scenariusze, jeśli noc jest włączona.
+Scenariusz nocny (opcjonalny, ``uwzglednij_noc``): drugi przegląd na migawce
+scenariusza z mocą czynną wszystkich generatorów ustawioną na 0
+(``gen_scaling={"*": 0.0}`` — moc bierna źródeł bez zmian; generacja Q kabli
+ujawnia się w rozpływie). Werdykt per scenariusz (dzień/noc); dobór musi
+spełniać OBA scenariusze, jeśli noc jest włączona.
 
 Zaokrąglenia jawne: moce do 6 miejsc, cosφ do 6 miejsc.
 """
 
 from __future__ import annotations
 
-import copy
 import hashlib
 import json
 import logging
 import math
 from typing import Any
-from uuid import NAMESPACE_URL, uuid5
 
 from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
 from application.analyses.konwencja_mocy import (
     moc_kanoniczna_punktu,
     q_netto_po_kompensacji,
 )
-from enm.canonical_analysis import CanonicalRun, _execute_power_flow, _graph_id_from_ref
-from enm.models import ShuntCapacitor
+from enm.canonical_analysis import (
+    CanonicalRun,
+    _graph_id_from_ref,
+    bieg_wariantu,
+    wykonaj_bieg_w_pamieci,
+)
+from enm.models import EnergyNetworkModel
+from enm.scenariusze import OperatingScenario, RodzajScenariusza, SondaKondensatora, apply_scenario
 from network_model.catalog.mv_shunt_capacitor_catalog import get_all_shunt_capacitor_records
 
 _KV_TOLERANCE = 0.001
@@ -126,72 +133,38 @@ def _sorted_candidates(bus_kv: float) -> list[dict[str, Any]]:
     return sorted(matching, key=lambda r: (float(r["params"]["rated_mvar"]), str(r["id"])))
 
 
-def _probe_capacitor(bus_ref: str, record: dict[str, Any]) -> dict[str, Any]:
-    """Deterministyczna próbna bateria kondensatorów na wskazanej szynie.
-
-    ``id`` z ``uuid5`` (stały dla szyny+rekordu) → snapshot scenariusza jest w pełni
-    deterministyczny. ``catalog_ref`` wiąże element z rekordem katalogu (catalog-first).
+def _scenariusz_probki(
+    *, bus_ref: str, night: bool, record: dict[str, Any] | None
+) -> OperatingScenario:
+    """Scenariusz PRZEJŚCIOWY doboru kompensacji (CV-3-W): opcjonalna noc
+    (moc czynna WSZYSTKICH generatorów = 0, moc bierna bez zmian) + opcjonalna
+    sonda baterii z katalogu na wskazanej szynie — ten sam kształt migawki, jaki
+    dotąd budowały usunięte pomocniki `_night_generators`/`_probe_capacitor`.
     """
-    type_id = str(record["id"])
-    params = record["params"]
-    return ShuntCapacitor(
-        id=uuid5(NAMESPACE_URL, f"compensation-probe:{bus_ref}:{type_id}"),
-        ref_id=f"__komp_probe__{bus_ref}__{type_id}",
-        name=str(record["name"]),
-        bus_ref=bus_ref,
-        rated_mvar=float(params["rated_mvar"]),
-        rated_kv=float(params["rated_kv"]),
-        status="closed",
-        catalog_ref=type_id,
-        catalog_namespace="KOMPENSATOR_SN",
-        parameter_source="CATALOG",
-        source_mode="KATALOG",
-    ).model_dump(mode="json")
-
-
-def _night_generators(generators: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Kopia listy generatorów z mocą czynną = 0 (moc bierna bez zmian)."""
-    night: list[dict[str, Any]] = []
-    for gen in generators:
-        clone = copy.deepcopy(gen)
-        clone["p_mw"] = 0.0
-        night.append(clone)
-    return night
-
-
-def _scenario_snapshot(
-    base_snapshot: dict[str, Any],
-    *,
-    record: dict[str, Any] | None,
-    bus_ref: str,
-    night: bool,
-) -> dict[str, Any]:
-    """KOPIA snapshotu: opcjonalnie noc (P generatorów = 0) + opcjonalna bateria próbna."""
-    snapshot = copy.deepcopy(base_snapshot)
-    if night:
-        snapshot["generators"] = _night_generators(list(snapshot.get("generators") or []))
+    probe_shunts: tuple[SondaKondensatora, ...] = ()
+    identyfikator_rekordu = "baza"
     if record is not None:
-        banks = list(snapshot.get("shunt_capacitors") or [])
-        banks.append(_probe_capacitor(bus_ref, record))
-        snapshot["shunt_capacitors"] = banks
-    return snapshot
-
-
-def _scenario_run(base_run: CanonicalRun, snapshot: dict[str, Any]) -> CanonicalRun:
-    """Przebieg PF w pamięci (bez persystencji) z podmienionym snapshotem."""
-    return CanonicalRun(
-        id=base_run.id,
-        case_id=base_run.case_id,
-        project_id=base_run.project_id,
-        analysis_type="PF",
-        status="FINISHED",
-        created_at=base_run.created_at,
-        snapshot_hash=base_run.snapshot_hash,
-        input_hash=base_run.input_hash,
-        snapshot=snapshot,
-        validation={},
-        readiness={},
-        options=dict(base_run.options),
+        type_id = str(record["id"])
+        params = record["params"]
+        identyfikator_rekordu = type_id
+        probe_shunts = (
+            SondaKondensatora(
+                bus_ref=bus_ref,
+                ref_id=f"__komp_probe__{bus_ref}__{type_id}",
+                name=str(record["name"]),
+                rated_mvar=float(params["rated_mvar"]),
+                rated_kv=float(params["rated_kv"]),
+                catalog_ref=type_id,
+                catalog_namespace="KOMPENSATOR_SN",
+                id_seed=f"compensation-probe:{bus_ref}:{type_id}",
+            ),
+        )
+    return OperatingScenario(
+        scenario_id=f"__komp__{bus_ref}__{'noc' if night else 'dzien'}__{identyfikator_rekordu}",
+        name="Dobór kompensacji — sonda",
+        kind=RodzajScenariusza.SIZING,
+        gen_scaling={"*": 0.0} if night else {},
+        probe_shunts=probe_shunts,
     )
 
 
@@ -290,12 +263,19 @@ def _q_kompensacji_znamionowa_mvar(snapshot: dict[str, Any], bus_ref: str) -> fl
 
 def _point_cos_phi(
     base_run: CanonicalRun,
+    enm: EnergyNetworkModel,
     *,
     record: dict[str, Any] | None,
     bus_ref: str,
     night: bool,
 ) -> dict[str, Any]:
     """Uruchom rozpływ scenariusza i zwróć DWA cosφ w punkcie (V12K-040, opcja B).
+
+    Migawka wariantu (CV-3-W) powstaje przez JEDYNĄ fabrykę nadpisań
+    (``enm.scenariusze.apply_scenario`` na ``enm`` — model bazowy walidowany RAZ
+    przez wołającego, dzielony przez WSZYSTKIE warianty tego wywołania) i jest
+    liczona JEDYNĄ fabryką biegu wariantu w pamięci (``enm.canonical_analysis.
+    bieg_wariantu`` + ``wykonaj_bieg_w_pamieci``).
 
     Przepływ gałęzi incydentnych z punktem odczytany na końcu przy punkcie i
     przełożony na znak kanoniczny przez adapter ``moc_kanoniczna_punktu``
@@ -312,12 +292,11 @@ def _point_cos_phi(
     Niezbieżność / punkt poza topologią → ``converged=False`` i cosφ=``None`` (bez
     zgadywania).
     """
-    snapshot = _scenario_snapshot(
-        base_run.snapshot or {}, record=record, bus_ref=bus_ref, night=night
-    )
-    run = _scenario_run(base_run, snapshot)
+    scenariusz = _scenariusz_probki(bus_ref=bus_ref, night=night, record=record)
+    migawka = apply_scenario(enm, scenariusz)
+    run = bieg_wariantu(base_run, migawka, analysis_type="PF")
     try:
-        _execute_power_flow(run)
+        wykonaj_bieg_w_pamieci(run)
     except Exception:  # noqa: BLE001 — niezbieżność/osobliwość = scenariusz nieoceniony
         return _pusty_pomiar()
 
@@ -325,6 +304,7 @@ def _point_cos_phi(
     if not bool(result_v1.get("converged", False)):
         return _pusty_pomiar()
 
+    snapshot = migawka.snapshot
     point_node = _graph_id_from_ref(bus_ref)
     kanon = moc_kanoniczna_punktu(
         branch_results=result_v1.get("branch_results") or [],
@@ -367,15 +347,16 @@ def _meets(cos_phi: float | None, cos_phi_min: float) -> bool:
 
 def _candidate_verdict(
     base_run: CanonicalRun,
+    enm: EnergyNetworkModel,
     *,
     record: dict[str, Any],
     bus_ref: str,
     cos_phi_min: float,
     uwzglednij_noc: bool,
 ) -> dict[str, Any]:
-    day = _point_cos_phi(base_run, record=record, bus_ref=bus_ref, night=False)
+    day = _point_cos_phi(base_run, enm, record=record, bus_ref=bus_ref, night=False)
     night = (
-        _point_cos_phi(base_run, record=record, bus_ref=bus_ref, night=True)
+        _point_cos_phi(base_run, enm, record=record, bus_ref=bus_ref, night=True)
         if uwzglednij_noc
         else None
     )
@@ -471,9 +452,16 @@ def build_compensation_sizing_view(
     bus_kv = float(voltage_kv_raw)
     records = _sorted_candidates(bus_kv)
 
-    baseline_day = _point_cos_phi(run, record=None, bus_ref=bus_ref, night=False)
+    # CV-3-W: model bazowy walidowany RAZ (rdzeń CV-3.1: `enm.scenariusze.
+    # apply_scenario`/`enm.canonical_analysis.bieg_wariantu`), użyty dla baseline
+    # I dla wszystkich kandydatów — zero powtórnej walidacji na wariant.
+    enm = EnergyNetworkModel.model_validate(snapshot)
+
+    baseline_day = _point_cos_phi(run, enm, record=None, bus_ref=bus_ref, night=False)
     baseline_night = (
-        _point_cos_phi(run, record=None, bus_ref=bus_ref, night=True) if uwzglednij_noc else None
+        _point_cos_phi(run, enm, record=None, bus_ref=bus_ref, night=True)
+        if uwzglednij_noc
+        else None
     )
     # Bez baterii (Q_cap_eff=0) cosφ przekroju == cosφ punktu; oba pola wystawiamy jawnie.
     baseline = {
@@ -488,6 +476,7 @@ def build_compensation_sizing_view(
     candidates = [
         _candidate_verdict(
             run,
+            enm,
             record=record,
             bus_ref=bus_ref,
             cos_phi_min=cos_phi_min,

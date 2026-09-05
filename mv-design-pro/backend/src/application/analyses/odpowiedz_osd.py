@@ -11,12 +11,14 @@ używa zdolność przyłączeniowa (D3, ``hosting_capacity.py``) i obszar pracy 
    moc czynną/bierną WSKAZANEGO źródła (jak generator próbny w D3, tu modyfikacja
    ISTNIEJĄCEGO źródła); ZERO mutacji modelu/persystencji,
 
-oba biegi uruchamiają ISTNIEJĄCY solver rozpływu przez ISTNIEJĄCĄ ścieżkę
-wykonania (``enm.canonical_analysis._execute_power_flow``); ZERO nowej fizyki,
-ZERO wołania klas solvera na skróty.
+oba biegi uruchamiają ISTNIEJĄCY solver rozpływu przez ISTNIEJĄCĄ kanoniczną
+fabrykę wariantu w pamięci (CV-3-W: ``enm.scenariusze.apply_scenario`` →
+``enm.canonical_analysis.bieg_wariantu`` → ``wykonaj_bieg_w_pamieci``); ZERO
+nowej fizyki, ZERO wołania klas solvera na skróty.
 
 RECON WIĄŻĄCY (jak nastawy trafiają do biegu — plik:linia):
-``_execute_power_flow`` buduje ``PQSpec`` wyłącznie z ``p_mw``/``q_mvar``/
+Kanoniczny wykonawca rozpływu (wołany wewnątrz ``wykonaj_bieg_w_pamieci``)
+buduje ``PQSpec`` wyłącznie z ``p_mw``/``q_mvar``/
 ``zip_coeffs`` węzła (``enm/canonical_analysis.py:1182-1193``), a
 ``map_enm_to_network_graph`` agreguje moc generatorów do ``active_power``/
 ``reactive_power`` szyny (``enm/mapping.py:199-201``). ``PQSpec.inverter_control``
@@ -49,14 +51,26 @@ Zaokrąglenia jawne: moce/współczynniki do 6 miejsc, napięcia do 6 miejsc.
 
 from __future__ import annotations
 
-import copy
 import hashlib
 import json
 import math
 from typing import Any
 
 from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
-from enm.canonical_analysis import CanonicalRun, _execute_power_flow, _graph_id_from_ref
+from enm.canonical_analysis import (
+    CanonicalRun,
+    _graph_id_from_ref,
+    bieg_wariantu,
+    wykonaj_bieg_w_pamieci,
+)
+from enm.models import EnergyNetworkModel
+from enm.scenariusze import (
+    SCENARIUSZ_NORMALNY,
+    Nastawa,
+    OperatingScenario,
+    RodzajScenariusza,
+    apply_scenario,
+)
 from network_model.solvers.power_flow_inverter import InverterControl, lfsm_factor
 
 DEFAULT_F0_HZ = 50.0
@@ -166,41 +180,11 @@ def _resolve_setpoint(
     )
 
 
-def _snapshot_with_setpoint(
-    base_snapshot: dict[str, Any], source_ref: str, p_after_mw: float, q_after_mvar: float
-) -> dict[str, Any]:
-    """KOPIA snapshotu z nadpisanym nastawem WSKAZANEGO źródła (zero mutacji modelu)."""
-    snapshot = copy.deepcopy(base_snapshot)
-    for gen in snapshot.get("generators") or []:
-        if str(gen.get("ref_id")) == source_ref:
-            gen["p_mw"] = p_after_mw
-            gen["q_mvar"] = q_after_mvar
-            break
-    return snapshot
-
-
-def _scenario_run(base_run: CanonicalRun, snapshot: dict[str, Any]) -> CanonicalRun:
-    """Przebieg PF w pamięci (bez persystencji) z podmienionym snapshotem."""
-    return CanonicalRun(
-        id=base_run.id,
-        case_id=base_run.case_id,
-        project_id=base_run.project_id,
-        analysis_type="PF",
-        status="FINISHED",
-        created_at=base_run.created_at,
-        snapshot_hash=base_run.snapshot_hash,
-        input_hash=base_run.input_hash,
-        snapshot=snapshot,
-        validation={},
-        readiness={},
-        options=dict(base_run.options),
-    )
-
-
-def _run_power_flow(base_run: CanonicalRun, snapshot: dict[str, Any], label: str) -> dict[str, Any]:
-    run = _scenario_run(base_run, snapshot)
+def _run_power_flow(run: CanonicalRun, label: str) -> dict[str, Any]:
+    """Wykonaj wariant PF w pamięci (kanoniczna dyspozycja `wykonaj_bieg_w_pamieci`,
+    CV-3-W) i zwróć jego wynik surowy."""
     try:
-        _execute_power_flow(run)
+        wykonaj_bieg_w_pamieci(run)
     except Exception as exc:  # noqa: BLE001 — niezbieżność/osobliwość = twardy błąd wejścia
         raise ValueError(f"Rozpływ mocy ({label}) nie mógł zostać policzony: {exc}.") from exc
     return run.raw_result or {}
@@ -302,7 +286,8 @@ def _wymagana_moc_zrodla(source: dict[str, Any], klucz: str, source_ref: str) ->
 
     Obie wielkości są tu PUNKTEM BAZOWYM symulacji polecenia OSD: dla poleceń
     ``ograniczenie_p``/``lfsm_o``/``lfsm_u`` wartość ``q_base_mvar`` przechodzi
-    BEZ ZMIAN do migawki biegu „z poleceniem" (``_snapshot_with_setpoint``), więc
+    BEZ ZMIAN do migawki biegu „z poleceniem" (nastawa ``Nastawa(q_mvar=q_base_mvar)``
+    nakładana przez ``enm.scenariusze.apply_scenario``), więc
     fabrykowane zero fizycznie zmieniłoby nastaw źródła jako SKUTEK UBOCZNY
     polecenia dotyczącego wyłącznie mocy czynnej — nie tylko błędny odczyt do
     wyświetlenia, ale błędne wejście kolejnego biegu rozpływu.
@@ -396,9 +381,24 @@ def build_osd_response_view(
     p_after_mw = round(float(p_after_mw), 6)
     q_after_mvar = round(float(q_after_mvar), 6)
 
-    base_raw = _run_power_flow(run, snapshot, "bieg bazowy")
-    commanded_snapshot = _snapshot_with_setpoint(snapshot, source_ref, p_after_mw, q_after_mvar)
-    commanded_raw = _run_power_flow(run, commanded_snapshot, "bieg z poleceniem")
+    # CV-3-W: oba warianty (bazowy/z poleceniem) przez JEDYNĄ fabrykę kopii migawki
+    # z nadpisaniami (`apply_scenario`) i JEDYNĄ fabrykę biegu wariantu w pamięci
+    # (`bieg_wariantu`) — model bazowy walidowany RAZ, użyty dla obu wariantów.
+    enm = EnergyNetworkModel.model_validate(snapshot)
+
+    migawka_bazowa = apply_scenario(enm, SCENARIUSZ_NORMALNY)
+    bieg_bazowy = bieg_wariantu(run, migawka_bazowa, analysis_type="PF")
+    base_raw = _run_power_flow(bieg_bazowy, "bieg bazowy")
+
+    scenariusz_polecenia = OperatingScenario(
+        scenario_id=f"__osd__{source_ref}__{command}",
+        name="Polecenie OSD",
+        kind=RodzajScenariusza.CUSTOM,
+        setpoints={source_ref: Nastawa(p_mw=p_after_mw, q_mvar=q_after_mvar)},
+    )
+    migawka_polecenia = apply_scenario(enm, scenariusz_polecenia)
+    bieg_polecenia = bieg_wariantu(run, migawka_polecenia, analysis_type="PF")
+    commanded_raw = _run_power_flow(bieg_polecenia, "bieg z poleceniem")
 
     bus_p_before, bus_q_before = _bus_injection(base_raw, bus_ref)
     bus_p_after, bus_q_after = _bus_injection(commanded_raw, bus_ref)
