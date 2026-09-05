@@ -10,11 +10,16 @@ sieci ENM rejestru (``tests/golden/registry.py``) torem kanonicznym
 (``_execute_power_flow`` / ``_execute_short_circuit`` na ``CanonicalRun`` w
 pamięci) i hashuje ``raw_result`` tą samą funkcją, co harness parytetu
 scenariuszy (``hash_widoku``: kwantyzacja kontraktu liczb, klucze lotne
-wykluczone) — ale WYŁĄCZNIE dla SZKIELETU wyniku (struktura bez liczb);
-liczby kontraktu są zapisywane w złotym pliku i porównywane z tolerancją
-(``widok_parytetu``, ``porownaj_wpis``: surowy wynik solvera nie jest przenośny
-między maszynami przy żadnej kwantyzacji do cyfr — pomiar CI runy 4871/4873). Odmowa (wyjątek) TEŻ jest wynikiem i też jest pinowana —
-parytet odmowy jest częścią parytetu.
+wykluczone) — ale WYŁĄCZNIE dla SZKIELETU wyniku (struktura kontraktu bez
+liczb i bez poddrzew śladu White Box); liczby kontraktu są zapisywane w złotym
+pliku i porównywane z tolerancją, poddrzewa śladu nie są porównywane między
+maszynami w ogóle (``widok_parytetu``, ``porownaj_wpis``: surowy wynik solvera
+nie jest przenośny między maszynami przy żadnej kwantyzacji do cyfr — pomiar CI
+runy 4871/4873; struktura śladu też nie — run 4876). Skróty poddrzew szkieletu
+do głębokości ``GLEBOKOSC_SKROTOW`` (``skroty_szkieletu``) są w złotym pliku po
+to, żeby czerwony CI nazwał ŚCIEŻKĘ rozbieżności, a nie tylko hash. Odmowa
+(wyjątek) TEŻ jest wynikiem i też jest pinowana — parytet odmowy jest częścią
+parytetu.
 
 Decyzje:
 - sieci z rejestru budowane ``registry.zbuduj_wszystkie`` (tylko ``PostacSieci.ENM``;
@@ -87,16 +92,26 @@ def _bieg(
     )
 
 
-#: Klucze śladu White Box per węzeł zwarcia (``results[i].*``) — ich LICZBY nie
-#: wchodzą do porównania liczbowego (struktura, klucze i długości list zostają w
-#: szkielecie). Pomiar (sieć G00/00, 52 stacje, SC 3F): per węzeł zwarcia
-#: ``branch_contributions`` 2 906 liczb / 0,8 MB, ``branch_flow_trace`` 1 579,
-#: ``white_box_trace`` 628 — razem 549 k liczb / 108 MB JSON na JEDEN bieg;
-#: liczby kontraktu (``ikss_a``, ``ip_a``, ``ith_a``, ``ib_a``, ``sk_mva``, ``kappa``,
-#: ``zkk_ohm``, ``contributions``…) to ~64 na węzeł. Ślad jest funkcją TYCH SAMYCH
-#: wielkości, które kontrakt niesie w agregatach — parytet agregatów + parytet
-#: struktury śladu to dowód wystarczający dla CI; lokalnie (ta sama maszyna)
-#: ``test_harness_jest_deterministyczny`` nadal wymaga równości DOKŁADNEJ.
+#: Klucze poddrzew śladu White Box per węzeł zwarcia (``results[i].*``). Poddrzewo
+#: śladu NIE wchodzi do porównania między maszynami W OGÓLE — ani liczby, ani
+#: struktura. Solver (FROZEN, B-01) buduje listy śladu progiem zerowym na liczbie
+#: (``if i_a <= 0: continue`` / ``if i_mag <= 0: continue`` w
+#: ``_build_branch_contributions_for_*``), więc gałąź o prądzie DOKŁADNIE 0 na
+#: jednej maszynie i 10⁻¹⁷ na drugiej wchodzi do listy albo nie — długość listy,
+#: pozycja wpisu bilansu KCL i obecność notatek (``notes``: ``None``/napis) są
+#: funkcją szumu. Pomiar: CI run 4876 na ``40e49c22`` — 155 wpisów SC
+#: (G00/G03/G04/G05/G08) z innym szkieletem przy ZEROWEJ rozbieżności liczb
+#: kontraktu; sonda lokalna (szum 10⁻¹² na ``np.linalg.inv``) odtwarza klasę:
+#: G04/00 ``branch_contributions`` 9 vs 10, ``branch_flow_trace`` 6 vs 7. Rozmiar
+#: (sieć G00/00, 52 stacje, SC 3F): per węzeł zwarcia ``branch_contributions``
+#: 2 906 liczb / 0,8 MB, ``branch_flow_trace`` 1 579, ``white_box_trace`` 628 —
+#: razem 549 k liczb / 108 MB JSON na JEDEN bieg; liczby kontraktu (``ikss_a``,
+#: ``ip_a``, ``ith_a``, ``ib_a``, ``sk_mva``, ``kappa``, ``zkk_ohm``,
+#: ``contributions``…) to ~64 na węzeł. Ślad jest funkcją TYCH SAMYCH wielkości,
+#: które kontrakt niesie w agregatach — parytet agregatów + obecność śladu to
+#: dowód dla CI; lokalnie (ta sama maszyna) ``test_harness_jest_deterministyczny``
+#: wymaga równości DOKŁADNEJ także śladu (``slad_sha256`` — skrót pełnych
+#: poddrzew śladu, liczony tylko w pamięci, nie w złotym pliku).
 KLUCZE_SLADU_LICZBOWEGO: frozenset[str] = frozenset(
     {"branch_contributions", "branch_flow_trace", "white_box_trace"}
 )
@@ -110,14 +125,22 @@ RTOL_PARYTETU = 2e-6
 ATOL_PARYTETU = 1e-6
 #: Cyfry znaczące zapisu wartości w złotym pliku (błąd zapisu ≤ 5·10⁻⁷ < RTOL).
 CYFRY_ZAPISU = 7
+#: Głębokość mapy skrótów poddrzew szkieletu (``skroty_szkieletu``): 2 = klucze
+#: szczytu (``$.results``, ``$.graph``…) i ich bezpośrednie dzieci
+#: (``$.results[7]``, ``$.graph.nodes``) — czerwony CI wskazuje węzeł zwarcia,
+#: a test dopisuje szkielet tego poddrzewa do meldunku. Głębiej (klucze wiersza
+#: wyniku × ~100 węzłów) mapa rosłaby do tysięcy wpisów na bieg.
+GLEBOKOSC_SKROTOW = 2
+DLUGOSC_SKROTU = 16
 ZNACZNIK_LICZBY = "<f>"
-ZNACZNIK_NAPISU = "<s>"
+ZNACZNIK_SLADU = "<slad>"
 ZNACZNIK_SKROTU = "<sha256>"
 _SKROT_HEX = re.compile(r"[0-9a-f]{64}")
+_TOKEN_SCIEZKI = re.compile(r"\.([^.\[]+)|\[(\d+)\]")
 
 
-def widok_parytetu(wartosc: Any) -> tuple[Any, list[tuple[str, float]]]:
-    r"""Szkielet (porównywany DOKŁADNIE) + liczby kontraktu (porównywane z tolerancją).
+def widok_parytetu(wartosc: Any) -> tuple[Any, list[tuple[str, float]], list[Any]]:
+    r"""Szkielet (porównywany DOKŁADNIE), liczby kontraktu (z tolerancją), ślady (lokalnie).
 
     Dlaczego nie jeden hash: surowy wynik solvera nie jest przenośny między
     maszynami przy ŻADNEJ kwantyzacji do cyfr — CI (run 4871 na ``3d47c275``:
@@ -127,52 +150,86 @@ def widok_parytetu(wartosc: Any) -> tuple[Any, list[tuple[str, float]]]:
     (Ybus/Zbus sieci z bardzo małymi impedancjami) wzmacniają szum sumowania
     BLAS/CPU do 10⁻⁸…10⁻⁹ względnie, a każde zaokrąglenie do siatki ma granice
     — przy tysiącach wartości na bieg jakaś zawsze leży przy granicy. Hash jest
-    więc właściwy TYLKO dla części dyskretnej wyniku; liczby wymagają
-    porównania z tolerancją względem ZAPISANYCH wartości.
+    więc właściwy TYLKO dla części dyskretnej wyniku, która jest funkcją WEJŚCIA,
+    nie liczb solvera; liczby wymagają porównania z tolerancją względem
+    ZAPISANYCH wartości.
 
-    Szkielet: cały ``raw_result`` (klucze posortowane, listy w kolejności) z każdą
+    Szkielet: ``raw_result`` (klucze posortowane, listy w kolejności) z każdą
     liczbą zmiennoprzecinkową zastąpioną znacznikiem ``"<f>"``; ``bool``/``int``/
     ``str``/``None`` zostają — statusy, ograniczenia raportowe, identyfikatory
-    węzłów, długości list (liczba węzłów zwarcia, wkładów, kroków śladu) są
-    porównywane DOKŁADNIE, z dwoma wyjątkami zmierzonymi na CI (run 4875 na
-    ``158d9831``: SC — każdy szkielet inny niż lokalnie): (1) w poddrzewach
-    ``KLUCZE_SLADU_LICZBOWEGO`` napisy niosą liczby sformatowane do 6 cyfr
-    (``substitution_latex``: ``0.6 \cdot 0.0483606``, ``z_tk_formula_latex``) —
-    ten sam szum, inna postać; w śladzie napis → ``"<s>"`` (klucze, ``int``,
-    ``bool`` i długości list zostają); (2) skróty SHA-256 pochodne od WYNIKU
-    (``proof_ref = "proof:short-circuit:<64 hex>"``, ``proof_binding.proof_ref``)
-    różnią się między maszynami dokładnie dlatego, że wynik różni się szumem —
-    64-znakowy heks w napisie → ``"<sha256>"`` (prefiks zostaje, więc rodzaj
-    dowodu i jego obecność są porównywane). Liczby: wszystkie liczby
-    zmiennoprzecinkowe poza poddrzewami ``KLUCZE_SLADU_LICZBOWEGO``, jako pary
-    (ścieżka, wartość) w deterministycznej kolejności obejścia szkieletu.
+    węzłów, długości list kontraktu (liczba węzłów zwarcia, wkładów źródeł) są
+    porównywane DOKŁADNIE, z dwoma wyjątkami zmierzonymi na CI: (1) poddrzewa
+    ``KLUCZE_SLADU_LICZBOWEGO`` → ``"<slad>"`` (``None`` zostaje ``None`` — obecność
+    śladu jest funkcją opcji biegu): ich struktura powstaje progiem zerowym na
+    liczbie solvera (run 4876, patrz komentarz przy stałej), a wcześniej (run
+    4875) napisy w nich niosły liczby sformatowane do 6 cyfr (``substitution_latex``
+    ``0.6 \cdot 0.0483606``) — ten sam szum w innej postaci; (2) skróty SHA-256
+    pochodne od WYNIKU (``proof_ref = "proof:short-circuit:<64 hex>"``,
+    ``proof_binding.proof_ref``) różnią się między maszynami dokładnie dlatego, że
+    wynik różni się szumem — 64-znakowy heks w napisie → ``"<sha256>"`` (prefiks
+    zostaje, więc rodzaj dowodu i jego obecność są porównywane). Liczby: wszystkie
+    liczby zmiennoprzecinkowe poza poddrzewami śladu, jako pary (ścieżka, wartość)
+    w deterministycznej kolejności obejścia szkieletu. Ślady: pełne poddrzewa
+    śladu w kolejności obejścia — do skrótu ``slad_sha256`` (tylko ta sama maszyna).
     """
     liczby: list[tuple[str, float]] = []
+    slady: list[Any] = []
 
-    def _odwiedz(w: Any, sciezka: str, w_sladzie: bool) -> Any:
+    def _odwiedz(w: Any, sciezka: str) -> Any:
         if isinstance(w, bool) or w is None or isinstance(w, int):
             return w
         if isinstance(w, str):
-            if w_sladzie:
-                return ZNACZNIK_NAPISU
             return _SKROT_HEX.sub(ZNACZNIK_SKROTU, w)
         if isinstance(w, float):
-            if not w_sladzie:
-                liczby.append((sciezka, w))
+            liczby.append((sciezka, w))
             return ZNACZNIK_LICZBY
         if isinstance(w, dict):
-            return {
-                klucz: _odwiedz(
-                    w[klucz], f"{sciezka}.{klucz}", w_sladzie or klucz in KLUCZE_SLADU_LICZBOWEGO
-                )
-                for klucz in sorted(w)
-            }
+            widok: dict[str, Any] = {}
+            for klucz in sorted(w):
+                if klucz in KLUCZE_SLADU_LICZBOWEGO and w[klucz] is not None:
+                    slady.append(w[klucz])
+                    widok[klucz] = ZNACZNIK_SLADU
+                else:
+                    widok[klucz] = _odwiedz(w[klucz], f"{sciezka}.{klucz}")
+            return widok
         if isinstance(w, list | tuple):
-            return [_odwiedz(x, f"{sciezka}[{i}]", w_sladzie) for i, x in enumerate(w)]
+            return [_odwiedz(x, f"{sciezka}[{i}]") for i, x in enumerate(w)]
         return w
 
-    szkielet = _odwiedz(_do_postaci_json(wartosc), "$", False)
-    return szkielet, liczby
+    szkielet = _odwiedz(_do_postaci_json(wartosc), "$")
+    return szkielet, liczby, slady
+
+
+def skroty_szkieletu(szkielet: Any) -> dict[str, str]:
+    """Skróty poddrzew szkieletu do głębokości ``GLEBOKOSC_SKROTOW`` (bez korzenia).
+
+    Diagnostyka czerwonego CI: ``porownaj_wpis`` nazywa ścieżki, których skrót
+    różni się od złotego (liście — rodzic różni się, bo różni się dziecko).
+    """
+    skroty: dict[str, str] = {}
+
+    def _zejdz(w: Any, sciezka: str, glebokosc: int) -> None:
+        if glebokosc > 0:
+            skroty[sciezka] = hash_widoku(w)[:DLUGOSC_SKROTU]
+        if glebokosc >= GLEBOKOSC_SKROTOW:
+            return
+        if isinstance(w, dict):
+            for klucz, v in w.items():
+                _zejdz(v, f"{sciezka}.{klucz}", glebokosc + 1)
+        elif isinstance(w, list):
+            for i, v in enumerate(w):
+                _zejdz(v, f"{sciezka}[{i}]", glebokosc + 1)
+
+    _zejdz(szkielet, "$", 0)
+    return skroty
+
+
+def poddrzewo(szkielet: Any, sciezka: str) -> Any:
+    """Poddrzewo szkieletu pod ścieżką ``$.klucz[3].klucz`` (do meldunku testu)."""
+    w = szkielet
+    for klucz, indeks in _TOKEN_SCIEZKI.findall(sciezka):
+        w = w[int(indeks)] if indeks else w[klucz]
+    return w
 
 
 def zapis_liczby(wartosc: float) -> float:
@@ -182,20 +239,36 @@ def zapis_liczby(wartosc: float) -> float:
     return float(f"{wartosc:.{CYFRY_ZAPISU - 1}e}")
 
 
+def sciezki_rozbieznosci_szkieletu(zloty: dict[str, Any], teraz: dict[str, Any]) -> list[str]:
+    """Liście mapy skrótów, które różnią się między złotym a bieżącym wpisem.
+
+    Bez mapy po którejś stronie (wpis sprzed mapy) — pusta lista: każda ścieżka
+    „różniłaby się", a to nie jest diagnoza.
+    """
+    zl, te = zloty.get("szkielet_skroty") or {}, teraz.get("szkielet_skroty") or {}
+    if not zl or not te:
+        return []
+    rozne = sorted(p for p in set(zl) | set(te) if zl.get(p) != te.get(p))
+    return [p for p in rozne if not any(q.startswith((p + ".", p + "[")) for q in rozne if q != p)]
+
+
 def porownaj_wpis(zloty: dict[str, Any], teraz: dict[str, Any]) -> list[str]:
     """Rozbieżności złoty↔teraz (pusta lista = parytet).
 
-    Odmowa: tekst DOKŁADNIE. Szkielet: hash DOKŁADNIE. Liczby: ta sama długość i
-    ``|a − b| ≤ ATOL + RTOL·|a|`` dla każdej pary; meldunek podaje ścieżki z
-    ``teraz["sciezki"]`` (jeśli są), żeby rozbieżność dało się wskazać w wyniku.
+    Odmowa: tekst DOKŁADNIE. Szkielet: hash DOKŁADNIE, meldunek nazywa ścieżki
+    z mapy skrótów. Liczby: ta sama długość i ``|a − b| ≤ ATOL + RTOL·|a|`` dla
+    każdej pary; meldunek podaje ścieżki z ``teraz["sciezki"]`` (jeśli są), żeby
+    rozbieżność dało się wskazać w wyniku.
     """
     if zloty.get("odmowa") != teraz.get("odmowa"):
         return [f"odmowa: złoty={zloty.get('odmowa')!r} teraz={teraz.get('odmowa')!r}"]
     if zloty.get("odmowa") is not None:
         return []
     if zloty.get("szkielet_sha256") != teraz.get("szkielet_sha256"):
+        sciezki = sciezki_rozbieznosci_szkieletu(zloty, teraz)
         return [
             f"szkielet: złoty={zloty.get('szkielet_sha256')} teraz={teraz.get('szkielet_sha256')}"
+            f"; ścieżki ({len(sciezki)}): {', '.join(sciezki[:8]) or 'brak mapy skrótów'}"
         ]
     zl, te = zloty.get("liczby") or [], teraz.get("liczby") or []
     if len(zl) != len(te):
@@ -215,9 +288,28 @@ def porownaj_wpis(zloty: dict[str, Any], teraz: dict[str, Any]) -> list[str]:
     return [f"liczby: {len(rozbieznosci)} rozbieżności ponad tolerancję, np. {przyklady}"]
 
 
+#: Pola wpisu liczone tylko w pamięci (odtwarzalne z bieżącego wyniku, tylko ta
+#: sama maszyna) — nie trafiają do złotego pliku.
+POLA_TYLKO_W_PAMIECI: frozenset[str] = frozenset({"sciezki", "szkielet", "slad_sha256"})
+
+
 def wpis_do_zapisu(wpis: dict[str, Any]) -> dict[str, Any]:
-    """Wpis złotego pliku: bez ścieżek (są odtwarzalne z bieżącego wyniku)."""
-    return {k: v for k, v in wpis.items() if k != "sciezki"}
+    """Wpis złotego pliku: bez pól ``POLA_TYLKO_W_PAMIECI``."""
+    return {k: v for k, v in wpis.items() if k not in POLA_TYLKO_W_PAMIECI}
+
+
+def wpis_z_wyniku(raw_result: Any) -> dict[str, Any]:
+    """Wpis parytetu z surowego wyniku biegu (bez odmowy)."""
+    szkielet, liczby, slady = widok_parytetu(raw_result)
+    return {
+        "odmowa": None,
+        "szkielet_sha256": hash_widoku(szkielet),
+        "szkielet_skroty": skroty_szkieletu(szkielet),
+        "liczby": [zapis_liczby(x) for _, x in liczby],
+        "sciezki": [sciezka for sciezka, _ in liczby],
+        "szkielet": szkielet,
+        "slad_sha256": hash_widoku(slady),
+    }
 
 
 def _wynik_lub_odmowa(wykonaj: Any, run: CanonicalRun) -> dict[str, Any]:
@@ -227,16 +319,13 @@ def _wynik_lub_odmowa(wykonaj: Any, run: CanonicalRun) -> dict[str, Any]:
         return {
             "odmowa": f"{type(exc).__name__}: {exc}",
             "szkielet_sha256": None,
+            "szkielet_skroty": None,
             "liczby": None,
             "sciezki": None,
+            "szkielet": None,
+            "slad_sha256": None,
         }
-    szkielet, liczby = widok_parytetu(run.raw_result)
-    return {
-        "odmowa": None,
-        "szkielet_sha256": hash_widoku(szkielet),
-        "liczby": [zapis_liczby(x) for _, x in liczby],
-        "sciezki": [sciezka for sciezka, _ in liczby],
-    }
+    return wpis_z_wyniku(run.raw_result)
 
 
 def zbierz_hashe(
