@@ -153,6 +153,7 @@ Do czasu wykonania: każdy merge do `main` bez zielonego kompletu bramek jest na
 | OD-1 | Ochrona `main` (§B) | wymaga uprawnień administratora |
 | OD-2 | Czy istnieją projekty użytkowników w legacy ORM `network_*` (XLSX/wizard) wymagające eksportu przed kasacją (D-03 krok 3) | dane produkcyjne poza repozytorium |
 | OD-3 | Publikowane wyrocznie dla G01 (sieć kompensowana): wskazanie źródła literaturowego/normowego akceptowanego przez właściciela jako `PUBLISHED_BENCHMARK` | wybór źródła normatywnego/literaturowego jest decyzją właściciela produktu |
+| OD-4 | Retencja rewizji modelu (CV-2): rewizje są append-only, każda z pełną migawką (gzip ≈ 80 kB przy 54 stacjach); rewizje referowane przez bieg lub przypadek są nieusuwalne; pytanie właściciela: czy dopuścić operację pruningu rewizji NIEREFEROWANYCH (jawną, na żądanie, z manifestem) czy trzymać pełną historię bez wyjątku | polityka retencji danych projektu (koszt nośnika vs kompletność audytu) |
 
 ## J. Następny vertical slice
 **CV-1 — Project owns ENM** (`docs/architecture/CANONICAL_TWIN_ARCHITECTURE.md` §2): magazyn per projekt, fasada `case_id → project_id`, migracja per-case ENM → warianty, guard przeciw zapisowi kluczem przypadku, inwarianty I-1…I-4 w `tests/invariants/`.
