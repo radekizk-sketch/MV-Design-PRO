@@ -51,6 +51,9 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     "W041": "transformer.bay_missing",
     # „Magistrala nie ma segmentow" == brak segmentu magistrali.
     "I004": "trunk.segment_missing",
+    # „Zrodlo nie jest podlaczone do istniejacej szyny" == zrodlo bez polaczenia
+    # (odbior CV-3.3-B: jedyny dawny emiter kanonu byl w skasowanym torze R2).
+    "sources.bus_missing": "source.connection_missing",
     # „Magistrala pierscieniowa nie ma punktu normalnie otwartego" == wymog NOP.
     "I005": "ring.nop_required",
 }

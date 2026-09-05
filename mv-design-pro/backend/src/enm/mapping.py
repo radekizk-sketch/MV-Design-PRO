@@ -55,6 +55,22 @@ from .models import (
 from .models import TapChanger as EnmTapChanger
 
 
+def _odmowa_zrodla_bez_szyny(source_ref: str, bus_ref: str) -> str:
+    """Odmowa assemblera dla źródła wskazującego nieistniejącą szynę (odbiór CV-3.3-B).
+
+    Do tej karty oba miejsca składania źródeł (Z_Q składowej zgodnej i Y0)
+    POMIJAŁY takie źródło cichym `continue` — sieć liczyła się bez zasilania,
+    bez śladu i bez kodu gotowości (klasa cichych podstawień A6-12). Walidator
+    ENM zgłasza to jako BLOKADĘ `sources.bus_missing` (kanon
+    `source.connection_missing`); assembler odmawia z nazwą, gdyby ktoś ominął
+    walidację.
+    """
+    return (
+        f"Źródło '{source_ref}' wskazuje nieistniejącą szynę '{bus_ref}' — "
+        "walidator ENM zgłasza `sources.bus_missing`; assembler nie pomija źródeł po cichu."
+    )
+
+
 def ref_to_graph_id(ref_id: str) -> str:
     """Identyfikator elementu w grafie domenowym dla ``ref_id`` modelu ENM.
 
@@ -280,7 +296,7 @@ def _assemble_zero_sequence_y0(
     for source in sorted(enm.sources, key=lambda s: s.ref_id):
         bus_id = ref_to_node_id.get(source.bus_ref)
         if bus_id not in node_index:
-            continue
+            raise ValueError(_odmowa_zrodla_bez_szyny(source.ref_id, source.bus_ref))
         # Karta FAB-D1 (D7): `bus_voltage`/`ref_to_node_id` powstają z TEGO SAMEGO
         # `enm.buses` (w. 198-199), więc szyna, która przeszła kontrolę `bus_id
         # not in node_index` wyżej, ma zawsze wpis w `bus_voltage` — sentinel
@@ -931,7 +947,7 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
     for source in sorted(enm.sources, key=lambda s: s.ref_id):
         bus_node_id = ref_to_node_id.get(source.bus_ref)
         if bus_node_id is None:
-            continue
+            raise ValueError(_odmowa_zrodla_bez_szyny(source.ref_id, source.bus_ref))
 
         # Find bus voltage
         bus_voltage_kv = 0.0

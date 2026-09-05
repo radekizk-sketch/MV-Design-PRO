@@ -570,3 +570,39 @@ class TestE030EndpointPorts:
             assert _strict_port_binding_enabled() is False
         os.environ.pop("ENM_STRICT_PORT_BINDING", None)
         assert _strict_port_binding_enabled() is False
+
+
+class TestSourcesBusMissing:
+    """`sources.bus_missing` (odbiór CV-3.3-B): źródło bez istniejącej szyny.
+
+    Iloczyn cech: bus_ref wskazujący nieistniejącą szynę × pusty bus_ref × źródło
+    poprawnie podłączone (brak kodu). Kod jest odwzorowany mostem na kanoniczny
+    `source.connection_missing` (test w `test_readiness_kanon_w_odpowiedzi.py`).
+    """
+
+    @staticmethod
+    def _kody(enm: EnergyNetworkModel) -> list[str]:
+        return [issue.code for issue in ENMValidator().validate(enm).issues]
+
+    def test_bus_ref_wskazujacy_nieistniejaca_szyne_blokuje(self):
+        enm = _minimal_enm()
+        zrodlo = enm.sources[0].model_copy(update={"bus_ref": "bus_widmo"})
+        enm = enm.model_copy(update={"sources": [zrodlo]})
+        raport = ENMValidator().validate(enm)
+        trafienia = [i for i in raport.issues if i.code == "sources.bus_missing"]
+        assert len(trafienia) == 1
+        assert trafienia[0].severity == SEVERITY_BLOCKER
+        assert "bus_widmo" in trafienia[0].message_pl
+        assert trafienia[0].element_refs == ["src_1"]
+        assert trafienia[0].fix_action is not None
+        assert trafienia[0].fix_action.modal_type == "SourceModal"
+        assert is_blocking_severity(trafienia[0].severity) is True
+
+    def test_pusty_bus_ref_blokuje(self):
+        enm = _minimal_enm()
+        zrodlo = enm.sources[0].model_copy(update={"bus_ref": ""})
+        enm = enm.model_copy(update={"sources": [zrodlo]})
+        assert self._kody(enm).count("sources.bus_missing") == 1
+
+    def test_zrodlo_podlaczone_nie_daje_kodu(self):
+        assert "sources.bus_missing" not in self._kody(_minimal_enm())

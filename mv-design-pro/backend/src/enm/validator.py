@@ -288,6 +288,36 @@ class ENMValidator:
                     )
                 )
 
+        # sources.bus_missing: Źródło bez istniejącej szyny (odbiór CV-3.3-B).
+        # Jedyny emiter kanonicznego `source.connection_missing` był w skasowanym
+        # torze R2 (`analysis_run/service.py`), a assembler kanoniczny
+        # (`enm/mapping.py`) POMIJAŁ takie źródło bez śladu — sieć liczyła się
+        # bez zasilania, którego projektant nie widział. Most gotowości odwzorowuje
+        # ten kod na kanon (`domain/readiness_bridge.py`).
+        bus_refs_zrodel = {b.ref_id for b in enm.buses}
+        for source in enm.sources:
+            if source.bus_ref and source.bus_ref in bus_refs_zrodel:
+                continue
+            issues.append(
+                ValidationIssue(
+                    code="sources.bus_missing",
+                    severity=SEVERITY_BLOCKER,
+                    message_pl=(
+                        f"Źródło '{source.ref_id}' nie jest podłączone do istniejącej "
+                        f"szyny (bus_ref='{source.bus_ref}')."
+                    ),
+                    element_refs=[source.ref_id],
+                    wizard_step_hint="K2",
+                    suggested_fix="Podłącz źródło do istniejącej szyny.",
+                    fix_action=FixAction(
+                        action_type="OPEN_MODAL",
+                        element_ref=source.ref_id,
+                        modal_type="SourceModal",
+                        payload_hint={"required": "bus_assignment"},
+                    ),
+                )
+            )
+
         # E008: Źródło bez parametrów zwarciowych
         for source in enm.sources:
             has_sk = source.sk3_mva is not None and source.sk3_mva > 0

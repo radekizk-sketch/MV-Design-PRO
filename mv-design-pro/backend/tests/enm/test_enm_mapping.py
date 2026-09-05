@@ -789,3 +789,28 @@ class TestObciazalnoscGalezi:
         assert [i.status for i in pozycje] == [EnergyValidationStatus.NOT_COMPUTED]
         assert pozycje[0].why_pl == "Brak pradu znamionowego galezi."
         assert pozycje[0].observed_value is None
+
+
+class TestZrodloBezSzyny:
+    """Odbiór CV-3.3-B: źródło wskazujące nieistniejącą szynę NIE jest cicho pomijane.
+
+    Do tej karty assembler przechodził nad takim źródłem `continue` — graf
+    powstawał bez zasilania, bez śladu i bez kodu gotowości. Teraz odmowa z nazwą
+    źródła i szyny (walidator ENM zgłasza to wcześniej jako `sources.bus_missing`).
+    """
+
+    def test_assembler_odmawia_z_nazwa_zrodla_i_szyny(self):
+        enm = _make_enm(
+            buses=[Bus(ref_id="b1", name="Bus 1", voltage_kv=15)],
+            sources=[
+                Source(
+                    ref_id="s1",
+                    name="Grid",
+                    bus_ref="b_widmo",
+                    model="short_circuit_power",
+                    sk3_mva=200,
+                )
+            ],
+        )
+        with pytest.raises(ValueError, match=r"'s1'.*'b_widmo'"):
+            map_enm_to_network_graph(enm)
