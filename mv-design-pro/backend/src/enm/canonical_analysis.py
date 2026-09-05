@@ -1603,7 +1603,11 @@ class _ConverterBinding:
 
     control: InverterControl
     p_mw: float
-    q_mvar: float
+    #: Q wytworcy z JEDNEGO zrodla prawdy (`moc_bierna_wytworcy`); `None` = Q nieznane
+    #: (nie wyprowadzalne z jawnego Q ani Q-set-pointu karty) — rozplyw jest wtedy
+    #: zablokowany BLOCKER-em `generator.q_missing` PRZED tym punktem; tu NIE wolno
+    #: podstawiac 0,0 (guard `solver_input_substitute_guard`, karta FAB-H, domkniecie).
+    q_mvar: float | None
 
 
 def _build_converter_control_by_node(
@@ -1709,7 +1713,7 @@ def _build_converter_control_by_node(
             control=control,
             # Konwencja generatorowa (>0 = wstrzyk), jak Generator.p_mw w ENM.
             p_mw=_oze_opt_float(gen.get("p_mw")) or 0.0,
-            q_mvar=wynik_q.q_mvar if wynik_q.q_mvar is not None else 0.0,
+            q_mvar=wynik_q.q_mvar,
         )
     return out
 

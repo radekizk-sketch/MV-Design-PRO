@@ -432,9 +432,14 @@ def build_v126_input_from_enm(
         # (RELIABILITY_CONTINGENCY, OPF_LOSS_LCC — via `_branch_current_a`) są
         # zablokowane PRZED uruchomieniem solvera przez `api/v126_academic.py`
         # (kod gotowości `generator.q_missing`), gdy Q jest naprawdę nieznane.
-        q_mvar = moc_bierna_wytworcy(generator, generator.materialized_params).q_mvar or 0.0
+        wynik_q = moc_bierna_wytworcy(generator, generator.materialized_params)
         p, q = gen_by_bus.get(generator.bus_ref, (0.0, 0.0))
-        gen_by_bus[generator.bus_ref] = (p + generator.p_mw, q + q_mvar)
+        # Q nieznane = wklad POMINIETY w agregacie szyny (nie 0,0); analizy czytajace
+        # Q sa zablokowane przed solverem (`generator.q_missing`), pozostale Q nie czytaja.
+        gen_by_bus[generator.bus_ref] = (
+            p + generator.p_mw,
+            q + wynik_q.q_mvar if wynik_q.q_mvar is not None else q,
+        )
         if generator.gen_type in {"pv_inverter", "bess", "fw_pmsg", "fw_dfig", "fw_scig"}:
             rated = max(abs(generator.p_mw), 0.1)
             mode = "GFL" if generator.gen_type != "bess" else "GFM_droop"

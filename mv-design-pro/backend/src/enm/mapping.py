@@ -690,7 +690,10 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
     for gen in enm.generators:
         bus_p[gen.bus_ref] = bus_p.get(gen.bus_ref, 0.0) + gen.p_mw
         wynik_q = moc_bierna_wytworcy(gen, gen.materialized_params)
-        bus_q[gen.bus_ref] = bus_q.get(gen.bus_ref, 0.0) + (wynik_q.q_mvar or 0.0)
+        # Q nieznane = wklad POMINIETY, nie 0,0 (ten sam predykat co BLOCKER
+        # `generator.q_missing` w bramce gotowosci — jedno zrodlo prawdy).
+        if wynik_q.q_mvar is not None:
+            bus_q[gen.bus_ref] = bus_q.get(gen.bus_ref, 0.0) + wynik_q.q_mvar
 
     # Map ref_id → node_id for cross-referencing
     ref_to_node_id: dict[str, str] = {}

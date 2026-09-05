@@ -536,7 +536,7 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         # zyje w `network_model/solvers/v126_academic.py` (FROZEN, B-01) —
         # naprawa wymagalaby edycji solvera w wielu miejscach na raz, bez zgody
         # wlasciciela. Zatrzymane TYLKO tutaj, opisane w meldunku karty.
-        "A:or:generator.q_mvar": 1,
+        "A:or:generator.q_mvar": 0,
     },
     # "A:or:transformer.p0_kw" USUNIETE z zapadki (karta FAB-D2, D2): straty
     # jalowe transformatora nieokreslone zostaja teraz `None` (pole
@@ -578,7 +578,7 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         # budzetu tu utrwala poprawe — zapadka dziala w obie strony.
         # Moc bierna wytworcy -> 0 Mvar. Ta sama pozycja, co w moscie V12.6 wyzej
         # (jeden defekt, dwa mosty) — DLUG NAZWANY, do rozstrzygniecia razem.
-        "A:or:gen.q_mvar": 1,
+        "A:or:gen.q_mvar": 0,
         # Stosunek R/X zasilania systemowego wg IEC 60909-0 §3.2 dla sieci WN.
         # Wartosc NORMOWA z przypisem, nie wymyslona; karta sprowadzila ja do
         # JEDNEJ stalej modulu (byly DWIE niezalezne kopie tego obliczenia).
