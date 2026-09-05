@@ -643,7 +643,7 @@ def create_run(
     return run
 
 
-def _wykonaj_analize_biegu(run: CanonicalRun) -> None:
+def _wykonaj_analize_biegu(run: CanonicalRun, graf: NetworkGraph | None = None) -> None:
     """JEDYNY dyspozytor typu analizy do wykonania solvera dla CanonicalRun.
 
     Wspolny dla `execute_run` (biegi persystowane) i `wykonaj_bieg_w_pamieci`
@@ -652,9 +652,20 @@ def _wykonaj_analize_biegu(run: CanonicalRun) -> None:
     `no_direct_fault_params_guard` (`B:_execute_short_circuit: 1`) pozostaje
     dokladnie 1:1; rozgalezianie dyspozycji w drugim miejscu byloby druga
     sciezka tej samej fizyki.
+
+    `graf` — GOTOWY graf zbudowany z `run.snapshot` (patrz `_execute_power_flow`):
+    oszczedza POWTORNA budowe tego samego obiektu, nie podmienia wejscia. Ma
+    dostawce wylacznie w rozplywie; dla innego typu analizy podanie grafu jest
+    bledem kontraktu (zwarcie buduje wlasny graf i jego kopie MIN), nie cicho
+    ignorowanym argumentem.
     """
+    if graf is not None and run.analysis_type != "PF":
+        raise ValueError(
+            "Gotowy graf sieci przyjmuje wylacznie rozplyw mocy (analysis_type='PF'); "
+            f"dla {run.analysis_type!r} graf buduje wykonawca z migawki biegu."
+        )
     if run.analysis_type == "PF":
-        _execute_power_flow(run)
+        _execute_power_flow(run, graf)
     elif run.analysis_type == "short_circuit_sn":
         _execute_short_circuit(run)
     elif run.analysis_type == "phase_state_sn":
@@ -667,20 +678,26 @@ def _wykonaj_analize_biegu(run: CanonicalRun) -> None:
         raise ValueError(f"Unsupported analysis type: {run.analysis_type}")
 
 
-def wykonaj_bieg_w_pamieci(run: CanonicalRun) -> None:
+def wykonaj_bieg_w_pamieci(run: CanonicalRun, graf: NetworkGraph | None = None) -> None:
     """Wykonaj bieg WARIANTU w pamieci — bez persystencji i bez zmiany statusu.
 
     Kanoniczne wejscie dla wzorca wariantow migawki (kontyngencje N-1, bieg
-    zbiorczy nastaw): wolajacy buduje `CanonicalRun` z kopia migawki kotwicy
-    i zmienionymi opcjami, a wykonanie idzie DOKLADNIE ta sama dyspozycja co
-    `execute_run` — zadnej rownoleglej sciezki fizyki, zadnych surowych
-    parametrow zwarcia poza tym modulem (inwariant
-    `no_direct_fault_params_guard`; konsolidacja tego modulu z warstwa
-    wiazania to osobny dlug architektoniczny w rejestrze, nie do zamykania
-    tutaj). Wynik trafia w pola `raw_result`/`result_summary` przekazanego
-    obiektu; magazyn biegow pozostaje nietkniety.
+    zbiorczy nastaw, sondy zdolnosci przylaczeniowej): wolajacy buduje bieg
+    fabryka `bieg_wariantu` na migawce efektywnej `apply_scenario`, a wykonanie
+    idzie DOKLADNIE ta sama dyspozycja co `execute_run` — zadnej rownoleglej
+    sciezki fizyki, zadnych surowych parametrow zwarcia poza tym modulem
+    (inwariant `no_direct_fault_params_guard`; konsolidacja tego modulu z
+    warstwa wiazania to osobny dlug architektoniczny w rejestrze, nie do
+    zamykania tutaj). Wynik trafia w pola `raw_result`/`result_summary`
+    przekazanego obiektu; magazyn biegow pozostaje nietkniety.
+
+    `graf` (tylko rozplyw): graf ZBUDOWANY Z `run.snapshot`, ktory wolajacy juz
+    ma — np. kontyngencja N-1 czyta z niego topologie zasilania PRZED rozplywem
+    i oddaje TEN SAM obiekt do rozplywu zamiast budowac go drugi raz z tej samej
+    migawki (wynik identyczny co do bitu: graf jest funkcja migawki). Wolajacy
+    ODDAJE graf na wlasnosc (regulator zaczepow moze go zmodyfikowac).
     """
-    _wykonaj_analize_biegu(run)
+    _wykonaj_analize_biegu(run, graf)
 
 
 def bieg_wariantu(

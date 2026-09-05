@@ -988,7 +988,7 @@ def test_zakres_nie_uruchamia_solvera() -> None:
 
     wywolania: list[object] = []
     oryginal = modul.wykonaj_bieg_w_pamieci
-    modul.wykonaj_bieg_w_pamieci = lambda bieg: wywolania.append(bieg)  # type: ignore[assignment]
+    modul.wykonaj_bieg_w_pamieci = lambda bieg, graf=None: wywolania.append(bieg)  # type: ignore[assignment]
     try:
         build_kontyngencje_n1_zakres_view(_bieg(_pierscien()))
     finally:
@@ -1005,3 +1005,34 @@ def test_zakres_nie_mutuje_migawki_biegu() -> None:
     build_kontyngencje_n1_zakres_view(bieg)
 
     assert json.dumps(bieg.snapshot, sort_keys=True, ensure_ascii=False) == przed
+
+
+def test_jedna_budowa_grafu_na_kontyngencje(monkeypatch) -> None:
+    """Pin optymalizacji #2 (nagłówek modułu): graf wariantu budowany RAZ na
+    kontyngencję — odczyt topologii zasilania i rozpływ dzielą ten sam obiekt
+    (`wykonaj_bieg_w_pamieci(bieg, graf=)`), zamiast budować go dwa razy z tej
+    samej migawki. Liczymy wywołania mostu ENM→graf: jedno na kontyngencję plus
+    jedno na przypadek bazowy."""
+    import application.analyses.kontyngencje_n1 as modul
+
+    budowy: list[object] = []
+    oryginal = modul.map_enm_to_network_graph
+
+    def _liczony(enm):  # type: ignore[no-untyped-def]
+        budowy.append(enm)
+        return oryginal(enm)
+
+    monkeypatch.setattr(modul, "map_enm_to_network_graph", _liczony)
+    grafy_rozplywu: list[object] = []
+    oryginal_bieg = modul.wykonaj_bieg_w_pamieci
+
+    def _z_grafem(bieg, graf=None):  # type: ignore[no-untyped-def]
+        grafy_rozplywu.append(graf)
+        return oryginal_bieg(bieg, graf=graf)
+
+    monkeypatch.setattr(modul, "wykonaj_bieg_w_pamieci", _z_grafem)
+    widok = build_kontyngencje_n1_view(_bieg(_pierscien()))
+    liczba_kontyngencji = len(widok["kontyngencje"])
+    assert liczba_kontyngencji >= 3
+    assert len(budowy) == liczba_kontyngencji + 1, "graf budowany raz na kontyngencję + raz na bazę"
+    assert all(graf is not None for graf in grafy_rozplywu), "rozpływ dostaje gotowy graf"

@@ -93,20 +93,18 @@ kwalifikowane). Karta N1-WYDAJNOSC, pomiar na jednej maszynie:
 3. (STAN SPRZED CV-3-W) płytka kopia migawki wariantu zamiast głębokiej.
 
 AKTUALIZACJA UCZCIWOŚCI (CV-3-W, 2026-09-05, migracja na ``apply_scenario`` —
-patrz „MECHANIZM WARIANTOWANIA" wyżej): źródła #2 i #3 opisują mechanizm
-SPRZED tej migracji i już NIE obowiązują dosłownie. Po CV-3-W ``_graf_migawki``
-nadal buduje JEDEN graf do odczytu topologii zasilania (``_zasilanie``), ale
-``wykonaj_bieg_w_pamieci`` buduje WŁASNY, DRUGI graf z tej samej migawki dla
-rozpływu — kanoniczny dyspozytor nie przyjmuje gotowego grafu, więc optymalizacja
-#2 (jedna budowa) nie ma dziś nosiciela; wynik pozostaje identyczny co do bitu,
-bo graf jest czystą funkcją migawki (przypięte złotym hashem
-``tests/golden/parytet_scenariuszy``). Migawka wariantu to dziś świeży, PEŁNY
-``model_dump()`` scenariusza (``apply_scenario``), nie płytka kopia słownika —
-optymalizacja #3 również nie ma dziś nosiciela. Ponowny pomiar wydajności NIE
-był częścią karty CV-3-W (zakres = WYŁĄCZNIE parytet bit w bit wyniku, nie
-czas wykonania) — liczby w akapicie GRANICA poniżej opisują stan SPRZED tej
-migracji i wymagają nowego pomiaru, jeśli wydajność ścieżki N-1 stanie się
-przedmiotem osobnej karty; nie są tu zgadywane na nowo.
+patrz „MECHANIZM WARIANTOWANIA" wyżej): źródło #3 opisuje mechanizm SPRZED tej
+migracji i już NIE obowiązuje dosłownie — migawka wariantu to dziś świeży, PEŁNY
+``model_dump()`` scenariusza (``apply_scenario``), nie płytka kopia słownika.
+Źródło #2 (jedna budowa grafu na kontyngencję) OBOWIĄZUJE: ``_graf_migawki``
+buduje JEDEN graf do odczytu topologii zasilania (``_zasilanie``) i TEN SAM
+obiekt idzie do rozpływu przez kanoniczny dyspozytor
+(``wykonaj_bieg_w_pamieci(bieg, graf=…)`` — parametr dodany przy domknięciu
+CV-3-W, żeby migracja nie kosztowała drugiej budowy grafu na każdą kontyngencję;
+pin: ``test_jedna_budowa_grafu_na_kontyngencje``). Ponowny pomiar wydajności NIE
+był częścią karty CV-3-W (zakres = parytet bit w bit wyniku, nie czas) — liczby
+w akapicie GRANICA poniżej opisują stan SPRZED migracji i wymagają nowego
+pomiaru, jeśli wydajność ścieżki N-1 stanie się
 
 GRANICA (zmierzona, nie oszacowana, STAN SPRZED CV-3-W): po zmianach karty
 N1-WYDAJNOSC 83 % czasu kontyngencji to
@@ -519,18 +517,16 @@ def _kontyngencja(
     )
     migawka = apply_scenario(enm_bazowy, scenariusz)
     wariant = migawka.snapshot
-    # Odczyt topologii zasilania (stan sprzed rozpływu) buduje WŁASNY graf z tej
-    # samej migawki efektywnej; `wykonaj_bieg_w_pamieci` buduje DRUGI, WŁASNY graf
-    # dla rozpływu (kanoniczny dyspozytor nie przyjmuje gotowego grafu — patrz
-    # „AKTUALIZACJA UCZCIWOŚCI" w nagłówku modułu). Graf jest czystą funkcją
-    # migawki, więc wynik jest identyczny co do bitu niezależnie od tego, że jest
-    # budowany dwa razy — przypięte złotym hashem (tests/golden/parytet_scenariuszy).
+    # JEDNA budowa grafu wariantu na dwa odczyty: najpierw topologia zasilania
+    # (stan sprzed rozpływu, wyłącznie odczyt), potem TEN SAM obiekt idzie do
+    # rozpływu przez kanoniczny dyspozytor (`wykonaj_bieg_w_pamieci(bieg, graf=)`).
+    # Kolejności nie wolno odwrócić: rozpływ może graf zmodyfikować (zaczepy).
     graf_wariantu = _graf_migawki(wariant)
     zasilanie = _zasilanie(wariant, graf_wariantu)
     bieg = bieg_wariantu(bazowy, migawka, analysis_type="PF")
     blad: str | None = None
     try:
-        wykonaj_bieg_w_pamieci(bieg)
+        wykonaj_bieg_w_pamieci(bieg, graf=graf_wariantu)
     except Exception as exc:  # noqa: BLE001 — niezbieżność/osobliwość = STATUS, nie wyjątek
         blad = f"{type(exc).__name__}: {exc}"
 
@@ -605,7 +601,7 @@ def _przypadek_bazowy(bazowy: CanonicalRun, enm_bazowy: EnergyNetworkModel) -> d
     bieg = bieg_wariantu(bazowy, migawka, analysis_type="PF")
     blad: str | None = None
     try:
-        wykonaj_bieg_w_pamieci(bieg)
+        wykonaj_bieg_w_pamieci(bieg, graf=graf_bazowy)
     except Exception as exc:  # noqa: BLE001 — jak wyżej: stan bazowy to WYNIK, nie wyjątek
         blad = f"{type(exc).__name__}: {exc}"
     dane_biegu = _pusty_bieg() if blad is not None else _dane_biegu(bieg)

@@ -187,7 +187,7 @@ class OperatingScenario:      # nadpisania stanu, typowane, bez komend — RDZE�
     # koperta v1 = stan normalny (bit w bit jak przed CV-3.1); świeżość: `SCENARIUSZ_ZMIENIONY` / `SCENARIUSZ_USUNIETY` z rewizji scenariusza w magazynie
     # wariant w pamięci: `enm.canonical_analysis.bieg_wariantu(bazowy, migawka_efektywna, analysis_type=, options=)` + `wykonaj_bieg_w_pamieci`
     # guard `scripts/scenario_copy_guard.py` (R1 import prywatnego wykonawcy, R2 `CanonicalRun(...)` poza fabryką, R3 deepcopy migawki, R4 dict(migawka) + zapis):
-    # zapadka 19 zastanych trafień w 6 rodzinach (D1–D6) — obniżana kartami migracji CV-3-W z parytetem bit w bit (`tests/golden/parytet_scenariuszy/`)
+    # zapadka: 19 zastanych trafień w 6 rodzinach (D1–D6) → 0 po kartach CV-3-W (2026-09-05) z parytetem bit w bit (`tests/golden/parytet_scenariuszy/`, 28 złotych hashy)
 
 class StudyCase:              # C1 rozszerzony
     case_id: str; project_id: str
