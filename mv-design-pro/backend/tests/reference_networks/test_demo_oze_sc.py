@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import uuid
 
-from enm.canonical_analysis import _build_snapshot_graph_element_context
+from enm.assembler import _build_snapshot_graph_element_context
 from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver

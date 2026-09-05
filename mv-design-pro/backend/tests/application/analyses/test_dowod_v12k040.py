@@ -33,8 +33,10 @@ from application.analyses.konwencja_mocy import (
     moc_kanoniczna_punktu,
     q_netto_po_kompensacji,
 )
-from enm.canonical_analysis import (
+from enm.assembler import (
     _graph_id_from_ref,
+)
+from enm.canonical_analysis import (
     create_run,
     execute_run,
     reset_canonical_runs,

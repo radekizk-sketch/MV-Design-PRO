@@ -20,8 +20,10 @@ import math
 from typing import Any
 
 import pytest
-from enm.canonical_analysis import (
+from enm.assembler import (
     _graph_id_from_ref,
+)
+from enm.canonical_analysis import (
     create_run,
     execute_run,
     reset_canonical_runs,

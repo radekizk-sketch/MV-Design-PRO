@@ -1,8 +1,10 @@
 """Guards for V12.xx draft UI vs committed ENM isolation."""
 
 import pytest
-from enm.canonical_analysis import (
+from enm.assembler import (
     _short_circuit_type_from_options,
+)
+from enm.canonical_analysis import (
     build_execution_result_set,
     build_short_circuit_results,
     create_run,

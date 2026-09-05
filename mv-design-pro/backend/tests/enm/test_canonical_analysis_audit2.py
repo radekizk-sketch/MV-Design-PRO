@@ -20,7 +20,7 @@ pytest.importorskip("pydantic")
 
 def test_maybe_load_audit2_extensions_none_for_missing_ids():
     """Phase 41: brak project/station IDs -> None."""
-    from enm.canonical_analysis import _maybe_load_audit2_extensions
+    from enm.assembler import _maybe_load_audit2_extensions
 
     assert _maybe_load_audit2_extensions(project_id_str=None, station_id="s1") is None
     assert _maybe_load_audit2_extensions(project_id_str="some-uuid", station_id=None) is None
@@ -29,7 +29,7 @@ def test_maybe_load_audit2_extensions_none_for_missing_ids():
 
 def test_maybe_load_audit2_extensions_none_for_invalid_uuid():
     """Phase 41: invalid UUID -> None (nie crashuje)."""
-    from enm.canonical_analysis import _maybe_load_audit2_extensions
+    from enm.assembler import _maybe_load_audit2_extensions
 
     assert _maybe_load_audit2_extensions(project_id_str="not-a-uuid", station_id="s1") is None
 
@@ -38,7 +38,7 @@ def test_maybe_load_audit2_extensions_returns_extensions_for_existing_config(tmp
     """Phase 41: istniejacy config -> extensions dict z kluczami SC/PF/Protection."""
     import os
 
-    from enm.canonical_analysis import _maybe_load_audit2_extensions
+    from enm.assembler import _maybe_load_audit2_extensions
     from infrastructure.persistence.db import (
         create_engine_from_url,
         create_session_factory,
@@ -112,7 +112,7 @@ def test_canonical_run_pf_options_propagate_to_audit2():
     # Smoke test: importy + sygnatura. Pelny test wymaga skomplikowanego setup'u
     # CanonicalRun + ENM model — tu weryfikujemy ze hook istnieje i akceptuje
     # options.audit2_project_id / audit2_station_id bez crash.
-    from enm.canonical_analysis import _maybe_load_audit2_extensions
+    from enm.assembler import _maybe_load_audit2_extensions
 
     # Z run.options.get("audit2_project_id") = None (default) -> None.
     assert (
@@ -129,10 +129,13 @@ def test_canonical_run_sc_options_propagate_to_audit2():
     # Smoke: sprawdza ze SC i PF uzywaja tego samego helper'a.
     import inspect
 
-    from enm import canonical_analysis
+    # CV-4.1: skladanie wejscia (w tym rozszerzenia audit2) mieszka w JEDNYM
+    # assemblerze (`enm/assembler.py`); wykonawcy biegu tylko je wolaja — intencja
+    # testu (PF i SC uzywaja TEGO SAMEGO helpera i tego samego adjustera) bez zmian.
+    from enm import assembler, canonical_analysis
 
-    pf_source = inspect.getsource(canonical_analysis._execute_power_flow)
-    sc_source = inspect.getsource(canonical_analysis._execute_short_circuit)
+    pf_source = inspect.getsource(assembler.zloz_wejscie_rozplywu)
+    sc_source = inspect.getsource(assembler.zloz_wejscie_zwarcia)
 
     # Oba uzywaja _maybe_load_audit2_extensions.
     assert "_maybe_load_audit2_extensions" in pf_source
@@ -140,6 +143,9 @@ def test_canonical_run_sc_options_propagate_to_audit2():
     # Oba uzywaja apply_audit2_to_network_model.
     assert "apply_audit2_to_network_model" in pf_source
     assert "apply_audit2_to_network_model" in sc_source
+    # Wykonawcy NIE skladaja wejscia sami — jedna droga do kontraktu solvera.
+    assert "zloz_wejscie_rozplywu(" in inspect.getsource(canonical_analysis._execute_power_flow)
+    assert "zloz_wejscie_zwarcia(" in inspect.getsource(canonical_analysis._execute_short_circuit)
 
 
 # Stan fazowy SN a katalog uziemienia (karta K-Q, 2026-08-14)

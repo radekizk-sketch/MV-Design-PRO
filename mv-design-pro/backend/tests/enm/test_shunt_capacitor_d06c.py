@@ -15,8 +15,10 @@ from __future__ import annotations
 import math
 
 import pytest
-from enm.canonical_analysis import (
+from enm.assembler import (
     _build_shunt_specs_from_snapshot,
+)
+from enm.canonical_analysis import (
     create_run,
     execute_run,
     reset_canonical_runs,
@@ -165,7 +167,7 @@ def _voltage_pu_at(result, ref_id: str) -> float:
     assert result.raw_result is not None
     result_v1 = result.raw_result["result_v1"]
     # node ids in result_v1 are the graph uuid5(ref_id) ids
-    from enm.canonical_analysis import _graph_id_from_ref
+    from enm.assembler import _graph_id_from_ref
 
     node_id = _graph_id_from_ref(ref_id)
     buses = result_v1["bus_results"]
@@ -190,7 +192,7 @@ def test_build_shunt_specs_b_pu_from_first_principles():
     assert spec.b_pu > 0.0
     assert math.isclose(spec.b_pu, 2.4 / BASE_MVA, rel_tol=1e-12)
 
-    from enm.canonical_analysis import _graph_id_from_ref
+    from enm.assembler import _graph_id_from_ref
 
     assert spec.node_id == _graph_id_from_ref("b2")
 

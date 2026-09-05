@@ -9,7 +9,7 @@ InverterControl do węzłów OZE, ale WYŁĄCZNIE dla realnie aktywnych regulacj
 from __future__ import annotations
 
 import pytest
-from enm.canonical_analysis import _build_converter_control_by_node, _graph_id_from_ref
+from enm.assembler import _build_converter_control_by_node, _graph_id_from_ref
 from network_model.solvers.power_flow_inverter import (
     InverterMode,
     inverter_control_from_params,

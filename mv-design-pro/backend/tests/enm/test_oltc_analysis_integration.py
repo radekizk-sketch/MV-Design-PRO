@@ -11,8 +11,10 @@ trace, final positions and switch counts are surfaced on the run result.
 from __future__ import annotations
 
 import pytest
-from enm.canonical_analysis import (
+from enm.assembler import (
     _graph_id_from_ref,
+)
+from enm.canonical_analysis import (
     create_run,
     execute_run,
     reset_canonical_runs,
