@@ -18,6 +18,8 @@ from tests.golden.parytet_assemblera.harness import (
     ATOL_PARYTETU,
     RTOL_PARYTETU,
     ZNACZNIK_LICZBY,
+    ZNACZNIK_NAPISU,
+    ZNACZNIK_SKROTU,
     porownaj_wpis,
     sieci_enm_rejestru,
     widok_parytetu,
@@ -69,8 +71,19 @@ def test_widok_parytetu_rozdziela_szkielet_od_liczb_kontraktu() -> None:
                     "ikss_a": 1234.5678,
                     "kappa": 1.6,
                     "branch_contributions": [{"i_contrib_a": 9e-14, "branch_id": "b1"}],
-                    "white_box_trace": [{"krok": "Zk", "wartosc": 0.123}],
+                    "white_box_trace": [
+                        {
+                            "krok": "Zk",
+                            "wartosc": 0.123,
+                            "substitution_latex": "0.6 \\cdot 0.0483606",
+                        }
+                    ],
                     "fault_node_id": "n1",
+                    "proof_ref": "proof:short-circuit:" + "a" * 64,
+                    "proof_binding": {
+                        "proof_ref": "proof:short-circuit:" + "b" * 64,
+                        "kind": "wbt",
+                    },
                     "iteracje": 3,
                     "requires_z0": False,
                     "z0_source": None,
@@ -82,6 +95,14 @@ def test_widok_parytetu_rozdziela_szkielet_od_liczb_kontraktu() -> None:
     assert szkielet["results"][0]["ikss_a"] == ZNACZNIK_LICZBY
     assert szkielet["results"][0]["branch_contributions"][0]["i_contrib_a"] == ZNACZNIK_LICZBY
     assert szkielet["results"][0]["white_box_trace"][0]["wartosc"] == ZNACZNIK_LICZBY
+    assert szkielet["results"][0]["white_box_trace"][0]["substitution_latex"] == ZNACZNIK_NAPISU
+    assert szkielet["results"][0]["white_box_trace"][0]["krok"] == ZNACZNIK_NAPISU
+    assert szkielet["results"][0]["proof_ref"] == "proof:short-circuit:" + ZNACZNIK_SKROTU
+    assert (
+        szkielet["results"][0]["proof_binding"]["proof_ref"]
+        == "proof:short-circuit:" + ZNACZNIK_SKROTU
+    )
+    assert szkielet["results"][0]["proof_binding"]["kind"] == "wbt"
     assert szkielet["results"][0]["iteracje"] == 3
     assert szkielet["results"][0]["requires_z0"] is False
     assert szkielet["results"][0]["z0_source"] is None
@@ -117,7 +138,7 @@ def test_porownanie_wykrywa_zmiane_fizyczna_a_toleruje_szum_platformy() -> None:
 
     szum = json.loads(json.dumps(baza_raw))
     szum["results"][0]["ikss_a"] *= 1 + 1e-8
-    szum["results"][0]["reszta"] = 1e-17
+    szum["results"][0]["reszta"] = 3e-14  # przeplyw galezi nieobciazonej: szum 1e-14 vs 0
     szum["graph"]["nodes"][0]["voltage_kv"] *= 1 - 1e-8
     assert porownaj_wpis(zloty, wpis(szum)) == []
 
@@ -135,11 +156,16 @@ def test_porownanie_wykrywa_zmiane_fizyczna_a_toleruje_szum_platformy() -> None:
     assert porownaj_wpis(odmowa, dict(odmowa)) == []
     assert porownaj_wpis(odmowa, wpis(baza_raw))[0].startswith("odmowa:")
 
-    # Granica tolerancji jest jawna: ATOL + RTOL·|a| — dokładnie na granicy przechodzi.
+    # Granica tolerancji jest jawna: ATOL + RTOL·|a| — 99 % marginesu przechodzi,
+    # 101 % nie (dokładna granica jest źle uwarunkowana numerycznie: |a − b| z
+    # kasowaniem cyfr, więc test nie stoi na jednym ulp).
     a = 1234.568
-    granica = {
-        "odmowa": None,
-        "szkielet_sha256": zloty["szkielet_sha256"],
-        "liczby": [15.0, a + ATOL_PARYTETU + RTOL_PARYTETU * a, 1.6, 0.0, 15000.0],
-    }
-    assert porownaj_wpis(zloty, granica) == []
+    margines = ATOL_PARYTETU + RTOL_PARYTETU * a
+    for mnoznik, oczekiwane in ((0.99, []), (1.01, ["liczby"])):
+        granica = {
+            "odmowa": None,
+            "szkielet_sha256": zloty["szkielet_sha256"],
+            "liczby": [15.0, a + mnoznik * margines, 1.6, 0.0, 15000.0],
+        }
+        wynik = porownaj_wpis(zloty, granica)
+        assert [w.split(":")[0] for w in wynik] == oczekiwane, (mnoznik, wynik)

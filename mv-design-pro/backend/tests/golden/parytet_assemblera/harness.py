@@ -26,6 +26,7 @@ Decyzje:
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
@@ -100,16 +101,23 @@ KLUCZE_SLADU_LICZBOWEGO: frozenset[str] = frozenset(
     {"branch_contributions", "branch_flow_trace", "white_box_trace"}
 )
 #: Tolerancja porównania liczb kontraktu między maszynami (jednostki kontraktu:
-#: MW, Mvar, kV, kA, A, pu, Ω, s). Uzasadnienie w ``widok_parytetu``.
+#: MW, Mvar, kV, kA, A, pu, Ω, s). ATOL = 10⁻⁶ jednostki (1 W, 1 mV, 1 mA):
+#: pomiar CI run 4875 (52 stacje, PF) — 324 wartości gałęzi rzędu 10⁻¹⁴…10⁻⁶
+#: (przepływy gałęzi nieobciążonych) to czysty szum zaokrągleń, przy ATOL 10⁻⁹
+#: 14 z nich przekraczało tolerancję między maszynami. Uzasadnienie w
+#: ``widok_parytetu``.
 RTOL_PARYTETU = 2e-6
-ATOL_PARYTETU = 1e-9
+ATOL_PARYTETU = 1e-6
 #: Cyfry znaczące zapisu wartości w złotym pliku (błąd zapisu ≤ 5·10⁻⁷ < RTOL).
 CYFRY_ZAPISU = 7
 ZNACZNIK_LICZBY = "<f>"
+ZNACZNIK_NAPISU = "<s>"
+ZNACZNIK_SKROTU = "<sha256>"
+_SKROT_HEX = re.compile(r"[0-9a-f]{64}")
 
 
 def widok_parytetu(wartosc: Any) -> tuple[Any, list[tuple[str, float]]]:
-    """Szkielet (porównywany DOKŁADNIE) + liczby kontraktu (porównywane z tolerancją).
+    r"""Szkielet (porównywany DOKŁADNIE) + liczby kontraktu (porównywane z tolerancją).
 
     Dlaczego nie jeden hash: surowy wynik solvera nie jest przenośny między
     maszynami przy ŻADNEJ kwantyzacji do cyfr — CI (run 4871 na ``3d47c275``:
@@ -125,16 +133,29 @@ def widok_parytetu(wartosc: Any) -> tuple[Any, list[tuple[str, float]]]:
     Szkielet: cały ``raw_result`` (klucze posortowane, listy w kolejności) z każdą
     liczbą zmiennoprzecinkową zastąpioną znacznikiem ``"<f>"``; ``bool``/``int``/
     ``str``/``None`` zostają — statusy, ograniczenia raportowe, identyfikatory
-    węzłów, ``proof_ref``, długości list (liczba węzłów zwarcia, wkładów, kroków
-    śladu) są porównywane DOKŁADNIE. Liczby: wszystkie liczby zmiennoprzecinkowe
-    poza poddrzewami ``KLUCZE_SLADU_LICZBOWEGO``, jako pary (ścieżka, wartość) w
-    deterministycznej kolejności obejścia szkieletu.
+    węzłów, długości list (liczba węzłów zwarcia, wkładów, kroków śladu) są
+    porównywane DOKŁADNIE, z dwoma wyjątkami zmierzonymi na CI (run 4875 na
+    ``158d9831``: SC — każdy szkielet inny niż lokalnie): (1) w poddrzewach
+    ``KLUCZE_SLADU_LICZBOWEGO`` napisy niosą liczby sformatowane do 6 cyfr
+    (``substitution_latex``: ``0.6 \cdot 0.0483606``, ``z_tk_formula_latex``) —
+    ten sam szum, inna postać; w śladzie napis → ``"<s>"`` (klucze, ``int``,
+    ``bool`` i długości list zostają); (2) skróty SHA-256 pochodne od WYNIKU
+    (``proof_ref = "proof:short-circuit:<64 hex>"``, ``proof_binding.proof_ref``)
+    różnią się między maszynami dokładnie dlatego, że wynik różni się szumem —
+    64-znakowy heks w napisie → ``"<sha256>"`` (prefiks zostaje, więc rodzaj
+    dowodu i jego obecność są porównywane). Liczby: wszystkie liczby
+    zmiennoprzecinkowe poza poddrzewami ``KLUCZE_SLADU_LICZBOWEGO``, jako pary
+    (ścieżka, wartość) w deterministycznej kolejności obejścia szkieletu.
     """
     liczby: list[tuple[str, float]] = []
 
     def _odwiedz(w: Any, sciezka: str, w_sladzie: bool) -> Any:
-        if isinstance(w, bool) or w is None or isinstance(w, int | str):
+        if isinstance(w, bool) or w is None or isinstance(w, int):
             return w
+        if isinstance(w, str):
+            if w_sladzie:
+                return ZNACZNIK_NAPISU
+            return _SKROT_HEX.sub(ZNACZNIK_SKROTU, w)
         if isinstance(w, float):
             if not w_sladzie:
                 liczby.append((sciezka, w))
