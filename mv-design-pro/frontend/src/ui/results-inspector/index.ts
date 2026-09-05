@@ -9,6 +9,9 @@
 // Types
 export * from './types';
 
+// Rozpakowanie wartosci kroku sladu WHITE BOX (WB-2 — jedno miejsce dla calego frontu)
+export * from './traceValue';
+
 // API
 export * from './api';
 

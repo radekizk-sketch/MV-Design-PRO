@@ -20,18 +20,24 @@
  * wersja tego adaptera zakładała WYŁĄCZNIE opakowany kształt `TraceValue`, przez co
  * KAŻDA wartość realnego śladu (SC/PF `white_box_trace`, `branch_flow_trace`)
  * renderowała się jako pusta kreska — defekt wykryty i naprawiony przy wpinaniu
- * `branch_flow_trace` (ślad podziału prądu zwarciowego) w ekran zwarć. Naprawa:
- * `rozpakujWartosc` odróżnia oba kształty (duck-typing) — TEN SAM kontrakt i TEN
- * SAM sposób odpakowania co już działający
- * `ui/proof/ElementCalculationProofPanel.tsx::unwrapTraceValue` (jeden mechanizm
- * w całym froncie, nie druga, niezależna interpretacja tego samego śladu).
- * Opakowany `TraceValue` ({value, unit, label}) nadal obsługiwany (zgodność
- * wsteczna ze starszymi/testowymi fiksturami) — obie ścieżki pokryte testem
+ * `branch_flow_trace` (ślad podziału prądu zwarciowego) w ekran zwarć.
+ *
+ * ROZPAKOWANIE (karta WB-2) — duck-typing obu kształtów (opakowany/wprost) NIE
+ * jest już własną kopią tego pliku: `rozpakujWartosc` woła JEDYNE miejsce tego
+ * mechanizmu w całym froncie, `ui/results-inspector/traceValue.ts::rozpakujWartoscSladu`
+ * (poprzednio trzy niezależne kopie — ta, `ElementCalculationProofPanel.tsx::unwrapTraceValue`,
+ * `TraceStepView.tsx::formatValue` — duck-typingowały ten sam rozjazd kształtu
+ * osobno). Ten plik zostawia sobie WYŁĄCZNIE formatowanie do napisu prezentacyjnego
+ * (przecinek dziesiętny PL, zapis „R znak jIm", złączenie elementów listy) —
+ * operuje na WYNIKU wspólnej funkcji, nie na surowym kształcie. Opakowany
+ * `TraceValue` ({value, unit, label}) nadal obsługiwany (zgodność wsteczna ze
+ * starszymi/testowymi fiksturami) — obie ścieżki pokryte testem
  * (`__tests__/dowodModel.test.ts`).
  */
 
 import type { TraceStep, TraceValue } from '../../../ui/results-inspector/types';
 import { TRACE_VALUE_LABELS } from '../../../ui/results-inspector/types';
+import { rozpakujWartoscSladu } from '../../../ui/results-inspector/traceValue';
 
 /**
  * Pojedyncza wielkość (dana wejściowa lub wynik) w kroku dowodu.
@@ -95,25 +101,21 @@ function formatujZespolona(re: number, im: number): string {
   return `${formatujLiczbe(re)} ${znak} j${formatujLiczbe(Math.abs(im))}`;
 }
 
-function jestZespolona(x: object): x is { re: number; im: number } {
-  return typeof (x as Record<string, unknown>).re === 'number'
-    && typeof (x as Record<string, unknown>).im === 'number';
-}
-
 /**
  * Tekst prezentacyjny SUROWEJ (nieopakowanej) wartości kroku WHITE BOX: skalar,
  * liczba zespolona `{re, im}` albo lista takich wartości (np. `v_nodes_pu` —
  * jeden wpis per szyna sieci; solver nie zagnieżdża list w śladzie, więc element
- * listy sam nie jest listą). Obiekt spoza tych kształtów (ani zespolona, ani
- * opakowana `TraceValue` — ta gałąź obsłużona wcześniej w `rozpakujWartosc`) →
- * uczciwa kreska zamiast `[object Object]`.
+ * listy sam nie jest listą). Rozpakowanie kształtu (skalar / zespolona /
+ * opakowany `TraceValue`) idzie przez WSPÓLNĄ funkcję (`rozpakujWartoscSladu`,
+ * patrz nagłówek pliku) — tu zostaje wyłącznie formatowanie do napisu, w tym
+ * kształt nierozpoznany (ani zespolona, ani wartość) → uczciwa kreska zamiast
+ * `[object Object]`.
  */
 function tekstSurowejWartosci(surowa: unknown): string {
   if (Array.isArray(surowa)) return surowa.map(tekstSurowejWartosci).join('; ');
-  if (surowa !== null && typeof surowa === 'object') {
-    return jestZespolona(surowa) ? formatujZespolona(surowa.re, surowa.im) : '—';
-  }
-  return formatujWartosc(surowa as TraceValue['value']);
+  const { wartosc, re, im } = rozpakujWartoscSladu(surowa);
+  if (typeof re === 'number' && typeof im === 'number') return formatujZespolona(re, im);
+  return formatujWartosc(wartosc);
 }
 
 /** Wynik odpakowania jednego wpisu `inputs`/`result` — tekst gotowy do wyświetlenia. */
@@ -126,30 +128,23 @@ interface WartoscOdpakowana {
 /**
  * Odpakowuje JEDEN wpis `inputs`/`result` kroku WHITE BOX solvera
  * (`network_model/whitebox/tracer.py::WhiteBoxStep`) do jednolitej postaci
- * tekst/jednostka/etykieta. Dwa REALNE kształty na wejściu (oba potwierdzone
- * w solverze — patrz komentarz nagłówkowy pliku): (1) opakowany `TraceValue`
- * `{value, unit, label}` — duck-typing `'value' in x && !('re'|'im' in x)`,
- * TEN SAM warunek co `ui/proof/ElementCalculationProofPanel.tsx::unwrapTraceValue`;
- * (2) skalar/zespolona/lista WPROST — kształt realnie emitowany przez
- * `WhiteBoxTracer.add` (żaden krok w repo nie opakowuje wartości).
+ * tekst/jednostka/etykieta. Rozpoznanie kształtu (opakowany `TraceValue`
+ * `{value, unit, label}` — zgodność wsteczna ze starszymi/testowymi
+ * fixture'ami — kontra skalar/zespolona/lista WPROST, realnie emitowane przez
+ * `WhiteBoxTracer.add`, patrz nagłówek pliku) idzie przez WSPÓLNĄ funkcję
+ * `rozpakujWartoscSladu` — tablica jest jedynym kształtem, który ta funkcja
+ * zostawia lokalnie (złączenie elementów listy to formatowanie, nie
+ * rozpakowanie).
  */
 function rozpakujWartosc(wartoscSurowa: unknown): WartoscOdpakowana {
-  if (
-    wartoscSurowa !== null
-    && typeof wartoscSurowa === 'object'
-    && !Array.isArray(wartoscSurowa)
-    && 'value' in wartoscSurowa
-    && !('re' in wartoscSurowa)
-    && !('im' in wartoscSurowa)
-  ) {
-    const rekord = wartoscSurowa as TraceValue;
-    return {
-      tekst: formatujWartosc(rekord.value),
-      jednostka: rekord.unit,
-      etykietaZWartosci: rekord.label,
-    };
+  if (Array.isArray(wartoscSurowa)) {
+    return { tekst: wartoscSurowa.map(tekstSurowejWartosci).join('; ') };
   }
-  return { tekst: tekstSurowejWartosci(wartoscSurowa) };
+  const { wartosc, re, im, unit, label } = rozpakujWartoscSladu(wartoscSurowa);
+  if (typeof re === 'number' && typeof im === 'number') {
+    return { tekst: formatujZespolona(re, im), jednostka: unit, etykietaZWartosci: label };
+  }
+  return { tekst: formatujWartosc(wartosc), jednostka: unit, etykietaZWartosci: label };
 }
 
 /** Mapuje `Record<string, wartość kroku>` na listę wielkości (kolejność źródłowa). */
