@@ -37,6 +37,14 @@ FORBIDDEN_IMPORTS = {
     "application.analysis_run.orchestrator",
     "application.analysis_run.catalog_context",
     "application.analysis_run.dtos",
+    # Karta CV-3.3-A2 (2026-09-05): klaster osierocony kasacja E3/E2-widmo
+    # (jedyny wolajacy w src/) domkniety osobno. sc_binding_meta.py i
+    # short_circuit_to_resultset_v1.py / protection_to_resultset_v1.py
+    # ZOSTAJA — zamrozone przez resultset_v1_schema_guard.py, decyzja
+    # wlasciciela (B-01), NIE kasowane.
+    "application.result_mapping.load_flow_to_resultset_v1",
+    "application.result_mapping.protection_to_overlay_v1",
+    "domain.analysis_kind",
 }
 FORBIDDEN_NAMES = {
     "AnalysisRun",
@@ -49,6 +57,11 @@ FORBIDDEN_NAMES = {
     "ResultsInspectorService",
     "AnalysisOrchestrator",
     "AnalysisDispatchService",
+    # Karta CV-3.3-A2 (2026-09-05).
+    "LoadFlowResultSetV1",
+    "map_power_flow_to_resultset_v1",
+    "map_protection_to_overlay_v1",
+    "AnalysisKind",
 }
 
 # CV-3.2 (kasacja C2/C3, karta CV-3.2) — bramka wskrzeszenia. C2

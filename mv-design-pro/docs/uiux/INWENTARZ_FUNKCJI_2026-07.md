@@ -124,7 +124,11 @@ odstawiony z uzasadnieniem; zapadka działa w obie strony).
   zostaje — SPROSTOWANIE 2026-09-05 (karta CV-3.3-A): `application/execution_engine`
   skasowany razem z całym E3 (zero konsumenta produkcyjnego), `protection_engine_v1.py`
   pozostaje żywy przez `solver_input/eligibility.py`,
-  `application/result_mapping/{protection_to_overlay_v1,protection_to_resultset_v1}.py`,
+  `application/result_mapping/protection_to_resultset_v1.py` (KOREKTA 2026-09-05,
+  karta CV-3.3-A2: `protection_to_overlay_v1.py` z tej listy skasowany — zero
+  konsumenta, żywa końcówka nakładki w `api/protection_runs.py` buduje ją
+  inline, bez tego mappera; `protection_to_resultset_v1.py` zostaje ZAMROŻONY
+  przez `resultset_v1_schema_guard.py`, mimo zera importerów — B-01),
   `application/protection_current_resolver.py`), snapshots, topology_links.
   Uzasadnienie per moduł w komunikacie commitu kasacji.
 - **ŚWIADOMIE ODSTAWIONE** (moduł zostaje, router niewpięty, decyzja o ZDOLNOŚCI należy do

@@ -127,6 +127,44 @@ def read_run(run_id: str):
     assert any("AnalysisOrchestrator" in v for v in violations)
 
 
+def test_guard_rejects_public_router_importing_orphaned_result_mapping_cluster(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    """Karta CV-3.3-A2 (2026-09-05): `load_flow_to_resultset_v1.py`,
+    `protection_to_overlay_v1.py` i `domain/analysis_kind.py` skasowane —
+    jedyny wolajacy w `src/` byl E3/E2-widmo, oba skasowane karta CV-3.3-A.
+    `sc_binding_meta.py` i `short_circuit_to_resultset_v1.py`/
+    `protection_to_resultset_v1.py` NIE sa w tej liscie — zostaja, zamrozone
+    przez `resultset_v1_schema_guard.py` (decyzja wlasciciela, B-01)."""
+    module_path = write_module(
+        tmp_path,
+        "resurrected_result_mapping_router.py",
+        """
+from application.result_mapping.load_flow_to_resultset_v1 import map_power_flow_to_resultset_v1
+from application.result_mapping.protection_to_overlay_v1 import map_protection_to_overlay_v1
+from domain.analysis_kind import AnalysisKind
+from fastapi import APIRouter
+
+router = APIRouter(prefix="/api/legacy-result-mapping")
+
+@router.get("/{run_id}")
+def read_run(run_id: str):
+    kind = AnalysisKind.SHORT_CIRCUIT
+    return {"run_id": run_id, "kind": kind, "pf": map_power_flow_to_resultset_v1, "ov": map_protection_to_overlay_v1}
+""",
+    )
+    monkeypatch.setattr(guard, "active_api_module_paths", lambda: [module_path])
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+
+    violations = guard.check_legacy_public_paths()
+
+    assert any("load_flow_to_resultset_v1" in v for v in violations)
+    assert any("protection_to_overlay_v1" in v for v in violations)
+    assert any("analysis_kind" in v for v in violations)
+    assert any("AnalysisKind" in v for v in violations)
+
+
 def test_guard_accepts_canonical_public_router(tmp_path, monkeypatch) -> None:
     module_path = write_module(
         tmp_path,

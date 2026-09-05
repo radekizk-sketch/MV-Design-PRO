@@ -10,18 +10,23 @@ Coverage:
 - TestPointOrderInvariance: test point permutation → same result
 - TestPairOrderInvariance: coordination pair permutation → same result
 - TestCoordinationSign: swap upstream/downstream → flipped margin sign
-- TestOverlayDeterminism: overlay token stability + element ordering
 - TestReportDeterminism: report signature stability + float format
-- TestEndToEndPipeline: full pipeline determinism
+- TestEndToEndPipeline: full pipeline determinism (engine → coordination → report)
+
+Karta CV-3.3-A2 (2026-09-05): `TestOverlayDeterminism` skasowana razem z
+`application/result_mapping/protection_to_overlay_v1.py` (zero konsumenta
+produkcyjnego — żywa końcówka `GET .../protection-overlay` w
+`api/protection_runs.py` buduje nakładkę WŁASNYM, prostszym mechanizmem
+inline, nie przez ten mapper; własna regresja tej końcówki:
+`tests/api/test_protection_overlay_swiezosc.py`). Krok nakładki wycięty też
+z `TestEndToEndPipeline` — determinizm silnika/koordynacji/raportu zostaje
+dowiedziony bez niego.
 """
 
 from __future__ import annotations
 
 from uuid import uuid4
 
-from application.result_mapping.protection_to_overlay_v1 import (
-    map_protection_to_overlay_v1,
-)
 from domain.protection_coordination_v1 import (
     ProtectionSelectivityPair,
     compute_coordination_v1,
@@ -301,62 +306,6 @@ class TestCoordinationSign:
 
 
 # =============================================================================
-# TEST: OVERLAY DETERMINISM
-# =============================================================================
-
-
-class TestOverlayDeterminism:
-    """Overlay produces deterministic output."""
-
-    def test_same_input_same_hash(self):
-        r1 = _relay("r1", "cb1", tms=0.1)
-        r2 = _relay("r2", "cb2", tms=0.3)
-        tps = _tps(2000.0)
-        result = _run((r1, r2), tps)
-        run_id = uuid4()
-
-        h1 = map_protection_to_overlay_v1(
-            protection_result=result,
-            run_id=run_id,
-        ).content_hash()
-        h2 = map_protection_to_overlay_v1(
-            protection_result=result,
-            run_id=run_id,
-        ).content_hash()
-        assert h1 == h2
-
-    def test_element_ordering(self):
-        r1 = _relay("r1", "cb-ZZZ", tms=0.1)
-        r2 = _relay("r2", "cb-AAA", tms=0.3)
-        r3 = _relay("r3", "cb-MMM", tms=0.5)
-        tps = _tps(2000.0)
-        result = _run((r1, r2, r3), tps)
-
-        overlay = map_protection_to_overlay_v1(
-            protection_result=result,
-            run_id=uuid4(),
-        )
-        refs = [e.element_ref for e in overlay.elements]
-        assert refs == sorted(refs)
-
-    def test_relay_order_does_not_affect_overlay(self):
-        r1 = _relay("r1", "cb1")
-        r2 = _relay("r2", "cb2")
-        tps = _tps(2000.0)
-        run_id = uuid4()
-
-        h_fwd = map_protection_to_overlay_v1(
-            protection_result=_run((r1, r2), tps),
-            run_id=run_id,
-        ).content_hash()
-        h_rev = map_protection_to_overlay_v1(
-            protection_result=_run((r2, r1), tps),
-            run_id=run_id,
-        ).content_hash()
-        assert h_fwd == h_rev
-
-
-# =============================================================================
 # TEST: REPORT DETERMINISM
 # =============================================================================
 
@@ -410,7 +359,7 @@ class TestReportDeterminism:
 
 
 class TestEndToEndPipeline:
-    """Full pipeline determinism: engine → coordination → overlay → report."""
+    """Full pipeline determinism: engine → coordination → report."""
 
     def test_full_pipeline_determinism(self):
         r1 = _relay("r1", "cb1", tms=0.1, f50=True, f50_pickup=5.0)
@@ -427,11 +376,6 @@ class TestEndToEndPipeline:
             ProtectionSelectivityPair("p2", "r3", "r2"),
         )
         coord1 = compute_coordination_v1(pairs=pairs, protection_result=prot1)
-        overlay1 = map_protection_to_overlay_v1(
-            protection_result=prot1,
-            run_id=run_id,
-            coordination_result=coord1,
-        )
         report1 = build_protection_report(
             run_id=str(run_id),
             protection_result=prot1,
@@ -446,11 +390,6 @@ class TestEndToEndPipeline:
             ProtectionSelectivityPair("p1", "r2", "r1"),
         )
         coord2 = compute_coordination_v1(pairs=pairs_rev, protection_result=prot2)
-        overlay2 = map_protection_to_overlay_v1(
-            protection_result=prot2,
-            run_id=run_id,
-            coordination_result=coord2,
-        )
         report2 = build_protection_report(
             run_id=str(run_id),
             protection_result=prot2,
@@ -461,5 +400,4 @@ class TestEndToEndPipeline:
         # All signatures must match
         assert prot1.deterministic_signature == prot2.deterministic_signature
         assert coord1.deterministic_signature == coord2.deterministic_signature
-        assert overlay1.content_hash() == overlay2.content_hash()
         assert report1.deterministic_signature == report2.deterministic_signature

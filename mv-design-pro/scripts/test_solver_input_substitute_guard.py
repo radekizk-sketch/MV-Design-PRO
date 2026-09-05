@@ -970,9 +970,17 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # (+1 plik) i kontrakt `BESSBatteryType` w `catalog/types.py` (chemistry,
     # capacity_kwh, nominal_voltage_dc_v, c_rate + metadane = +5 pol);
     # dlug/wykluczenia bez zmian.
-    assert "Pol kontraktow wejsciowych: 3614." in wyjscie, wyjscie
+    # 3608 pol / 582 plikow / application 326 (CV-3.3-A2, 2026-09-05): kasacja
+    # klastra osieroconego po E3 — `application/result_mapping/
+    # {load_flow_to_resultset_v1,protection_to_overlay_v1}.py` (-2 pliki,
+    # -6 pol: `LoadFlowResultSetV1`/`LoadFlowNodeResult`/`LoadFlowBranchResult`/
+    # `LoadFlowTotals`) i `domain/analysis_kind.py` (poza zakresem skanu);
+    # `sc_binding_meta.py` + `*_to_resultset_v1.py` SC/Protection ZOSTAJA
+    # (zamrozone przez `resultset_v1_schema_guard.PROTECTED_FILES`, B-01);
+    # dlug/wykluczenia bez zmian.
+    assert "Pol kontraktow wejsciowych: 3608." in wyjscie, wyjscie
     assert (
-        "Przeskanowano 584 plikow w zakresie: network_model, solver_input, enm, "
+        "Przeskanowano 582 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     assert "Zapadka dlugu (fizyczne): 65 plikow, suma 345." in wyjscie, wyjscie
@@ -982,7 +990,7 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         "wykluczenia=4 plikow/suma 7",
         "  solver_input: pliki_skanowane=10, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
         "  enm: pliki_skanowane=36, dlug=7 plikow/suma 84, wykluczenia=0 plikow/suma 0",
-        "  application: pliki_skanowane=328, dlug=39 plikow/suma 170, "
+        "  application: pliki_skanowane=326, dlug=39 plikow/suma 170, "
         "wykluczenia=8 plikow/suma 20",
         "  api: pliki_skanowane=65, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 23",
     ]

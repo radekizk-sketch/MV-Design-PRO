@@ -1,6 +1,11 @@
 # TRACE AS-IS MAP — MV-Design-PRO
 
-**Status**: BINDING (Commit 1 — RUN #2B)
+**KOREKTA 2026-09-05 (karta CV-3.3-A2):** dokument sprzed kanonu V12.xx, poza
+hierarchią `CLAUDE.md`. `load_flow_to_resultset_v1.py` (wzmiankowany niżej)
+skasowany — zero konsumenta produkcyjnego. Szczegóły →
+`docs/architecture/CONVERGENCE_ROADMAP.md` CV-3.3-A2.
+
+**Status (pierwotny)**: BINDING (Commit 1 — RUN #2B)
 **Data**: Pełny skan repozytorium z dnia 2026-02-13
 **Cel**: Dokumentacja stanu zastanego warstwy trace/white-box przed implementacją Trace v2
 

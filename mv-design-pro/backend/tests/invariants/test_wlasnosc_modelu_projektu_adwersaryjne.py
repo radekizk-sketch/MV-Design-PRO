@@ -267,6 +267,12 @@ def test_i6_promocja_nie_nadpisuje_istniejacego_dziennika_projektu(uow_factory) 
 # nie zamaskowana. Klasa defektu (ścieżka adresowana projektem fabrykuje pusty
 # model zamiast migrować plik zastany) pozostaje pod strażą I-5 przez żywy,
 # produkcyjny wpis: `project_archive/service.py::_collect_enm`.
+#
+# Karta CV-3.3-A2 (2026-09-05): `domain/analysis_kind.py::AnalysisKind` (typ
+# argumentu powyższego wywołania) skasowany osobno — po kasacji
+# `AnalysisDispatchService` miał zero konsumentów w `src/` i `tests/` (własny
+# docstring: „Used by AnalysisDispatchService to unify dispatch"), zero
+# testów własnych.
 # ---------------------------------------------------------------------------
 
 

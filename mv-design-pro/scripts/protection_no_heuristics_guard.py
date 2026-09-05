@@ -11,8 +11,11 @@ SCAN FILES:
   backend/src/domain/protection_current_source.py
   backend/src/domain/protection_report_model.py
   backend/src/application/protection_current_resolver.py
-  backend/src/application/result_mapping/protection_to_overlay_v1.py
   backend/src/application/result_mapping/protection_to_resultset_v1.py
+
+  Karta CV-3.3-A2 (2026-09-05): protection_to_overlay_v1.py zdjęty z zakresu —
+  skasowany (zero konsumenta produkcyjnego; żywa końcówka nakładki w
+  api/protection_runs.py buduje ją inline, bez tego mappera).
 
 FORBIDDEN PATTERNS:
   auto_select, auto_map, fallback, default_target,
@@ -44,7 +47,6 @@ SCAN_FILES = [
     "backend/src/domain/protection_current_source.py",
     "backend/src/domain/protection_report_model.py",
     "backend/src/application/protection_current_resolver.py",
-    "backend/src/application/result_mapping/protection_to_overlay_v1.py",
     "backend/src/application/result_mapping/protection_to_resultset_v1.py",
 ]
 
