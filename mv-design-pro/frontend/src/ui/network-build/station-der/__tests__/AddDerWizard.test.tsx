@@ -77,7 +77,9 @@ const DEFAULT_CONVERTERS: Readonly<Record<ConverterKind, readonly ConverterFixtu
  */
 function mockDerWizardFetch(
   converters: Readonly<Partial<Record<ConverterKind, readonly ConverterFixture[]>>> = DEFAULT_CONVERTERS,
-): ReturnType<typeof vi.fn> {
+) {
+  // Typ zwracany wnioskowany z `vi.fn(...)`: jawna adnotacja `ReturnType<typeof vi.fn>`
+  // rozwiazuje sie do `Mock<any[], unknown>` i nie przyjmuje mocka o konkretnej sygnaturze.
   const mock = vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input);
     if (url.includes('/api/catalog/converter-types')) {
