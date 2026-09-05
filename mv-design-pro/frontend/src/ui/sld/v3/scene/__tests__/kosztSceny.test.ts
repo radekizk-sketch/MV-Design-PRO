@@ -301,87 +301,134 @@ interface OdciskiLod {
  * Każda karta regenerująca tę fixturę odziedziczy (13), dopóki katalog/
  * materializacja transformatora GPZ nie zostaną ujednolicone osobną kartą —
  * poza zakresem SUB-52s (walidator E063/E003, nie katalog transformatorów WN).
+ *
+ * AKTUALIZACJA ŚWIADOMA (SLD-LOC, 2026-09-05) — WSZYSTKIE odciski przeliczone
+ * ponownie (sceny, declutter, plany; obie sieci × L0/L1/L2). PRZYCZYNA:
+ * naprawa lokalności pionowej kotwic stacji (karta SLD-LOC — defekt: dopisanie
+ * stacji na ogonie JEDNEGO ciągu magistrali przesuwało pionowo kotwice
+ * WSZYSTKICH innych, niepowiązanych stacji, bo fallback-numeracja stacji bez
+ * jawnej nazwy [`stationCodeFromName`, WSZYSTKIE 54 stacje tej fixtury — żadna
+ * nie pasuje do regexów jawnego kodu] dzieliła JEDEN licznik GLOBALNY między
+ * WSZYSTKIMI ciągami sieci). Naprawa (`enmToSldAdapter.ts`
+ * `fallbackSequenceBaseByRunId`, `buildStations`, pełny docstring tam z
+ * trzema zbadanymi wariantami rozmiaru bloku): baza numeracji KAŻDEGO ciągu
+ * = jego INDEKS w `sortedRuns` (kolejność UKŁADU, `compareLineRunsForLayout`
+ * — STRUKTURALNA właściwość ciągu: prefiks syntetyczny id, `run_kind`, id
+ * jako remis — NIE zależy od liczby stacji ciągu) × rozmiar bloku
+ * (`Math.max` liczby stacji najliczniejszego ciągu TEJ sieci, policzony PER
+ * BUDOWA — jedyny z trzech wariantów, który na PEŁNEJ regresji katalogu
+ * testów SLD v3 nie łamie ŻADNEGO z trzech niezależnych niezmienników
+ * geometrycznych spoza kart tej naprawy). Jednoznaczna Z KONSTRUKCJI (zero
+ * kolizji kodów) i LOKALNA (dopisanie stacji do ciągu A nie zmienia indeksu
+ * ani rangi ciągu B w `sortedRuns` — jego `run_kind`/id, jedyne kryteria
+ * sortowania, są niezależne od LICZBY stacji, które niesie). Magistrala
+ * (`gpz/<hash>/corridor_01`, 12 stacji T1..T12, `run_kind=main_trunk`)
+ * PRZETWARZANA JEST ZAWSZE PIERWSZA w `sortedRuns` (kindRank 0), więc jej
+ * baza = `0×BLOK+1 = 1` NIEZALEŻNIE od rozmiaru bloku — kody „S01".."S12"
+ * ZOSTAJĄ BEZ ZMIAN względem dawnego licznika globalnego. Delta odcisków
+ * pochodzi z INNYCH (nie-magistrala) ciągów: ich baza = indeks×12 (block=12,
+ * zmierzone maksimum stacji w jednym ciągu tej sieci) zamiast ciągłego
+ * zliczania globalnego licznika — te same DWUCYFROWE szerokości kodu, ale
+ * inne KONKRETNE wartości (np. „S25" zamiast „S16"). Kod fallback jest
+ * TREŚCIĄ pasma nazw stacji na KAŻDYM LOD (`scene/buildScene.ts:1105`),
+ * więc zmienia się scena na każdym LOD, a przez nią declutter i plan. Pełny
+ * pomiar i uzasadnienie mechanizmu: `buildScene.test.ts` (F9.7 `vertical_
+ * length_probe`, ta sama fixtura, `totalVerticalSegmentLength`
+ * 20936/43912/43912 → 21040/44016/44016, delta jednolita +104 na L0/L1/L2 —
+ * dowód, że to JEDEN mechanizm, nie kilka). Zero nowych kolizji: macierz
+ * lokalności (`buildScene.p1Recenzja.test.ts`, karta SLD-LOC L4 — 9/9
+ * kombinacji topologia×edycja `pionowe=0`); `busbar_label_probe`
+ * (`buildScene.test.ts`) — 53 etykiety, 53 UNIKALNE teksty (dawny globalny
+ * licznik dawał tu tylko 12 unikalnych — regresja odwrotna wobec defektu,
+ * nie nowa); `crossings.test.ts` junction_dot_probe, `buildScene.
+ * w3Labels.test.ts` anty-dryf, `obszarBezpieczny.contract.test.tsx`,
+ * `buildScene.sheetRows.test.ts` S9-1 — wszystkie BEZ ZMIAN (dwie odrzucone
+ * próby rozmiaru bloku — stała mała=10, stała duża=1000 — łamały te same
+ * niezmienniki, patrz docstring w adapterze); `npm run accept:sld-v3` ALL
+ * PASS (sufit `VERTICAL_LENGTH_BASELINE`/`VERTICAL_LENGTH_BY_CAUSE_BASELINE`,
+ * ery LV DOMAIN PROJECTION, nigdy nie obniżony przy SUB-52s, pochłania
+ * deltę bez zmiany progu).
  */
 const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly OdciskiLod[]>> = {
   referencyjna: [
     {
-      scena: '5e21b3783479f53bf24865353b3039f9',
-      declutter: '7d91c9d82be60afebad119a6613214f1',
+      scena: 'a701991c79abcc0306239b4cb80fd513',
+      declutter: '00eb03eda1bc39c491cc280d6f6a9c3a',
       plany: [
-        '864628e39c5e7f7d39866b9f96f72df7',
-        '592ce95ac3ec762039bb6343e1980bbe',
-        '51332014af52785cef1ea80502b48079',
-        'dc2427d0450613e194fa1ca87df5e465',
-        '6e1c72374037309d98f66930923ca4ed',
-        'bc8a53c5cb2e82bc49d816490ac9ada1',
-        'bc8a53c5cb2e82bc49d816490ac9ada1',
+        'c65fb4356ef44da5307ed55358ebf1b4',
+        '2ed95578f5f403ab6227bc9ee59f505f',
+        '1973b6089ddb8e818df4d64ae7ca6991',
+        '0e60d57d6c3e1e94e6c205377be042d9',
+        '08211a61c49b1f5b7171458039376022',
+        '88bb8ac8cbf89618b5ef8df6bec4d668',
+        '88bb8ac8cbf89618b5ef8df6bec4d668',
       ],
     },
     {
-      scena: '72006d9806cd10a3d5affcbbdf255087',
-      declutter: '4f5d6db8e5de9cce1efb5e60a5da641c',
+      scena: 'bdc075cb55899e7b1f1b9b2decf2084f',
+      declutter: 'a0dc919370db047c3f81222f8dd9311a',
       plany: [
-        '701d452c45dc483b77a3d3dbc7e929e8',
-        '3a6471f9deb945c1950446273e081e16',
-        '48ab9be216762654758f0d0380c41549',
-        '4092bb300d5fef3600ce719d821bcf41',
-        '4da29c3c7372bcbb6da249702bc00021',
-        'a1934438b0de91701cc3dd78f7feb734',
-        'a1934438b0de91701cc3dd78f7feb734',
+        '76c8b7d64f0cdcc1a49067f7b005bedb',
+        '0567de88219b44faae550b95c0a64ab8',
+        'edca883a0c9722fa821df7043cc61b3d',
+        'd82559dec4bcb649fd831f35a4d0e511',
+        '99ac527d93a6dc8d3cb4b6215eb6f47c',
+        '28c505637eab0a69ca9fe20f1b5e6276',
+        '28c505637eab0a69ca9fe20f1b5e6276',
       ],
     },
     {
-      scena: 'b3b6a81ea7e7167da0cd9cbdca2f40c7',
-      declutter: 'f4fafb0a333677561d87e3bae33779b3',
+      scena: '365814fa0978d7130b930040690824ea',
+      declutter: 'ffc8d354abd8d2c2f01a0a32d9298c58',
       plany: [
-        'fab4ad5d52269cfd7069e9ac450d4a1c',
-        'aeda12152422307e0d07423082a1c89f',
-        'c9c17668e15643f2f4ca25e94ebb3d23',
-        'fc3e5b1b8dff42e0a6ba35e2e8664caa',
-        '5fbb17bdc76d6e774c533b548e7fff49',
-        '11011b29a97542187bbe74eb5374dc26',
-        '11011b29a97542187bbe74eb5374dc26',
+        'af5b1cc0f94952e5313e8b903070d56f',
+        '8c84b4497a1de90b2e6de3d9c0076f8a',
+        '417ae859ca0e6f33823441b1f3b186b6',
+        'b22911c6444e88bd4012788595ee162b',
+        '0ce4f6d8bbb6659b8038722e421c2ae5',
+        '146506e476133ffe0ed75e4a4fa8de56',
+        '146506e476133ffe0ed75e4a4fa8de56',
       ],
     },
   ],
   podwojona: [
     {
-      scena: '36bef2d9f0e094b0bd9af1c588f307ca',
-      declutter: '82aefe98f3ba04a482e8064a64d52018',
+      scena: 'c362feda72f652e3e91a55c3704f59ee',
+      declutter: '96a6141a779dc70afefc853a7480be12',
       plany: [
-        '007cc650810069daa6f1f0f3d63b53aa',
-        'e779c5b0ae7e1246a08ca200f5776c78',
-        'c98ba76f3738a3e0029435fdba244ff0',
-        'aabf4d4246f0d8bc2724688bfb1af872',
-        '976b0c7f7d9e301f8362dd47b91f76d7',
-        '6bb532edb0d9f796c8955203f7619c97',
-        '6bb532edb0d9f796c8955203f7619c97',
+        '26be52c61f133278c997f834d8c05fc2',
+        '7b5a5fcf4b26999c3ce9e76d22917233',
+        'f71bd00477056245ff42b60e11ec632a',
+        '0b17ea8fbf77c8f7abf2edde6dd9bb01',
+        '2dc4641839d0666d6b722129486b91bd',
+        '29d42d24bfbdb273fdef233a499f09a0',
+        '29d42d24bfbdb273fdef233a499f09a0',
       ],
     },
     {
-      scena: '0367b6eee395a712b13ab28f57474a86',
-      declutter: '773557c807e0f251d6be9da08be8bf4d',
+      scena: 'e81cc97b7eac93312ab9548c562d85dd',
+      declutter: '235de096da9cb53dffe633ed6381bbb4',
       plany: [
-        '764adc3abf82f6f75e4ee484f23c8ef5',
-        '961b9f90b1a1967425f0c8dc8527ebf0',
-        'c474f0d3685803850adf8c9564c5eb21',
-        '1a12d5206149fce498f19d0f8f4bfe3e',
-        '1ce0e1a8dd211540317fa2a87f128a95',
-        '1f342302285b841e8b1076ee979e8c9f',
-        '1f342302285b841e8b1076ee979e8c9f',
+        '27582e5dd94d1f5b124cdb394e125476',
+        '85f568dbdeb499f41084651a84993181',
+        '2bfa11a60f2cfcbf6158aa812410412d',
+        'de79ade39ca2d2bd9543514ae4d43739',
+        '77794d2d858a8129a9ae8ea0e922a7c8',
+        'e9bc15dbccc8ac3507b8d72777cee808',
+        'e9bc15dbccc8ac3507b8d72777cee808',
       ],
     },
     {
-      scena: '843ab7a7f81a6117cb3c3623a5e834b1',
-      declutter: '462555a6804e09a9fa1167ef59f7fdaf',
+      scena: 'c26590fb30a25dd2a6f19ee4766d6bf5',
+      declutter: 'd3554a0688a066a1801642379018678f',
       plany: [
-        '0cb03dd5aa09dc6d59bb3997bf8204ba',
-        'cc59b08c98c788bb930ef20d99500850',
-        'b3f5333bda61171d7fb75d4ed69dd47f',
-        '6541bd0da176ed89189f20dbc071caab',
-        '71ba4e2132ced4c0c1cea60a3b6a9649',
-        '77c2d726d002282336992f77498a4537',
-        '77c2d726d002282336992f77498a4537',
+        '5355b948dca2bbcea54ac9bd7ce3c413',
+        '70b25ad61cb96c731597c0c50bdc1270',
+        '43d8f6bf85f609086df7e7078027ff93',
+        'bc7a771c792915639fd90d5848a1d964',
+        '561a9ce4dad19abcb71d5d3d27d99a54',
+        '572958f56d57bb2efb36ebb016b9f9cc',
+        '572958f56d57bb2efb36ebb016b9f9cc',
       ],
     },
   ],

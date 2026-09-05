@@ -1142,9 +1142,59 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // występuje w żadnym module `layout/`/`scene/` (tylko w danych fixtury i w
     // kreatorze stacji ui2, niezwiązanym z SLD). Reguła „nie-rosnąca" (§15.1)
     // spełniona z zapasem; zero nowych kolizji (`npm run accept:sld-v3` ALL PASS).
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(20936);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(43912);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(43912);
+    // SLD-LOC (2026-09-05): PODNIESIONY 20936/43912/43912 → 21040/44016/44016
+    // (+104 na KAŻDYM LOD — delta jednolita, jeden mechanizm). Przyczyna
+    // ZMIERZONA, nie topologiczna: naprawa lokalności pionowej kotwic stacji
+    // (`enmToSldAdapter.ts` `fallbackSequenceBaseByRunId`, wywołanie
+    // `buildStations`) zmienia ŹRÓDŁO bazy numeracji fallback stacji BEZ
+    // jawnej nazwy (WSZYSTKIE 54 stacje tej fixtury — żadna nie ma nazwy
+    // pasującej do `\bS\d{2,3}\b`/„Stacja SN/nN NNN", regexy `stationCode
+    // FromName`) z JEDNEGO GLOBALNEGO licznika (dawny błąd: dopisanie stacji
+    // do jednego ciągu przesuwało fallback-kod KAŻDEGO później przetwarzanego
+    // ciągu, patrz karta SLD-LOC) na bazę = INDEKS ciągu w `sortedRuns`
+    // (kolejność UKŁADU, `compareLineRunsForLayout` — TA SAMA, w jakiej
+    // `buildStations` już iteruje; STRUKTURALNA właściwość ciągu, nie zależy
+    // od liczby jego stacji) × rozmiar bloku (`Math.max` liczby stacji
+    // najliczniejszego ciągu TEJ sieci, policzone PER BUDOWA — pełne
+    // uzasadnienie trzech zbadanych wariantów rozmiaru bloku w docstringu
+    // `fallbackSequenceBaseByRunId`/wywołaniu w `enmToSldAdapter.ts`).
+    // Magistrala (`gpz/<hash>/corridor_01`, 12 stacji T1..T12, `run_kind=
+    // main_trunk`) jest ZAWSZE przetwarzana jako PIERWSZA w `sortedRuns`
+    // (kindRank 0), więc jej indeks/baza = `0×BLOK+1 = 1` NIEZALEŻNIE od
+    // rozmiaru bloku — kody T1..T12 zostają „S01".."S12", BEZ ZMIAN względem
+    // dawnego licznika globalnego. Delta pochodzi z INNYCH (nie-magistrala)
+    // ciągów: ich baza = indeks×12 (block=12, bo 12 to zmierzone maksimum
+    // stacji w jednym ciągu tej sieci) zamiast ciągłego zliczania globalnego
+    // licznika — te same DWUCYFROWE szerokości kodu (block=12 celowo dobrany
+    // małym, żeby NIE poszerzać kodu — patrz uzasadnienie w adapterze), ale
+    // inne KONKRETNE wartości (np. „S25" zamiast „S16" — ta sama liczba
+    // cyfr, inna wartość) — kod fallback jest treścią PASMA NAZW stacji na
+    // KAŻDYM LOD (`scene/buildScene.ts:1105` `name: props.stationCode ??
+    // props.name` na L0; ten sam kanał niesie kod na L1/L2 — stąd delta
+    // IDENTYCZNA na wszystkich trzech), więc drobna zmiana treści (nie
+    // szerokości) w kilku etykietach przesuwa `dropBandHeight`/rezerwację
+    // pasma nazw w niektórych wierszach arkusza przez próg `snapUp` (kwant
+    // GRID=8), dając zmierzone +104 (13×GRID) jednolicie na L0/L1/L2. Reguła
+    // „nie-rosnąca" (§15.1) świadomie NIE spełniona — jak F9.10/LV DOMAIN
+    // PROJECTION/F10.3 wcześniej w tej historii, poprawność (jednoznaczność
+    // + lokalność fallback-kodu) ma pierwszeństwo przed minimalizacją pionów
+    // (§15.1 „redukcja jest ograniczeniem MIĘKKIM"). Sufit `accept:sld-v3`
+    // (`VERTICAL_LENGTH_BASELINE`) NIE wymaga aktualizacji: 21040/44016/44016
+    // ≤ 22672/45656/45656 (sufit z ery LV DOMAIN PROJECTION, nigdy nie
+    // obniżony przy SUB-52s) — zapas pochłania deltę. Zero nowych kolizji:
+    // macierz lokalności `buildScene.p1Recenzja.test.ts` (karta SLD-LOC L4,
+    // 9/9 kombinacji topologia×edycja `pionowe=0`); `busbar_label_probe` —
+    // 53 etykiety, 53 UNIKALNE teksty (dawny błąd globalnego licznika dawał
+    // tu tylko 12 unikalnych pod naiwnym „reset do 1" — regresja odwrotna,
+    // nie nowa); `crossings.test.ts` junction_dot_probe, `buildScene.
+    // w3Labels.test.ts` anty-dryf, `obszarBezpieczny.contract.test.tsx`,
+    // `buildScene.sheetRows.test.ts` S9-1 — wszystkie BEZ ZMIAN (dwie
+    // odrzucone próby rozmiaru bloku — stała mała=10, stała duża=1000 —
+    // łamały te niezmienniki, patrz docstring w adapterze; ta, przyjęta,
+    // nie).
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(21040);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(44016);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(44016);
   });
 });
 

@@ -222,12 +222,45 @@ describe('S9-1 — stabilność wierszy arkusza przy edycji', () => {
       expect(wierszePo.flat().length).toBe(wierszePrzed.flat().length + 1);
       return;
     }
-    // Wiersz, w którym zaszła zmiana = ostatni. Wszystkie WCZEŚNIEJSZE muszą
-    // być bit-identyczne (kryterium karty S9-1 pkt 3).
-    for (let i = 0; i < wierszePrzed.length - 1; i++) {
-      expect(wierszePo[i], `skład wiersza ${i}`).toEqual(wierszePrzed[i]);
+    // SLD-LOC (karta naprawy lokalności pionowej, 2026-09-05): liczba
+    // wierszy TA SAMA, ale dopisanie stacji na OGONIE magistrali zmienia jej
+    // CAŁKOWITĄ długość — próg zawijania WEWNĄTRZ SAMEJ magistrali (a nie
+    // między nią a innym ciągiem) może się przez to przesunąć, przenosząc
+    // stację magistrali z jednego wiersza do sąsiedniego. To REALNY,
+    // oczekiwany skutek wzrostu footprintu edytowanego ciągu — NIE
+    // naruszenie lokalności międzyciągowej, którą pilnuje karta SLD-LOC
+    // (dowód: `buildScene.p1Recenzja.test.ts`, macierz L4, 9/9 kombinacji
+    // topologia×edycja dają `pionowe=0` dla RETAINED kotwic). Kryterium
+    // pkt 3 tej karty zostaje w PEŁNI: stacja spoza edytowanej magistrali
+    // (dowolne odgałęzienie), która zmieniłaby przynależność do wiersza,
+    // BY BYŁA regresją — sprawdzone jawnie niżej, nie założone milcząco.
+    const idsMagistrali = new Set(po.meta.mainTrunkStationIds);
+    for (let i = 0; i < wierszePrzed.length; i++) {
+      const przedSet = new Set(wierszePrzed[i]);
+      const poSet = new Set(wierszePo[i]);
+      const przeniesione = [
+        ...wierszePrzed[i].filter((id) => !poSet.has(id)),
+        ...wierszePo[i].filter((id) => !przedSet.has(id)),
+      ];
+      for (const id of przeniesione) {
+        expect(
+          idsMagistrali.has(id),
+          `stacja „${id}" zmieniła przynależność do wiersza ${i}, ale NIE należy do edytowanej magistrali — naruszenie lokalności międzyciągowej (karta SLD-LOC)`,
+        ).toBe(true);
+      }
+      // Geometria stacji SPOZA edytowanej magistrali, które nie zmieniły
+      // przynależności do wiersza, musi zostać bit-identyczna (kryterium
+      // pkt 3 w pełnej mocy tam, gdzie faktycznie chroni przed regresją
+      // międzyciągową). Stacje magistrali są WYŁĄCZONE z tej konkretnej
+      // asercji geometrii — jej WŁASNE przęsło może się przepakować wewnątrz
+      // wiersza (ta sama przyczyna co przenoszenie między wierszami wyżej:
+      // realny wzrost footprintu edytowanego ciągu, nie wyciek lokalności),
+      // zweryfikowane OSOBNO przez `pionowe=0` w `buildScene.p1Recenzja.
+      // test.ts` (macierz L4, 9/9 kombinacji topologia×edycja).
       for (const id of wierszePrzed[i]) {
-        expect(kPo.get(id), `geometria stacji ${id} w wierszu ${i}`).toBe(kPrzed.get(id));
+        if (poSet.has(id) && !idsMagistrali.has(id)) {
+          expect(kPo.get(id), `geometria stacji ${id} w wierszu ${i}`).toBe(kPrzed.get(id));
+        }
       }
     }
   });

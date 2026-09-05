@@ -249,7 +249,15 @@ describe('OBRYS ARKUSZA — arkusz jest wyprowadzony z rezerwacji, więc malowan
     expect(plannedLabelsOutsideSheet(zGranica, sheet)).toEqual([]);
     expect(zGranica.drawn.length).toBe(bezGranicy.drawn.length);
     expect(zGranica.droppedIdentity.length).toBe(bezGranicy.droppedIdentity.length);
-    for (const kod of ['S51', 'S52', 'S53']) {
+    // SLD-LOC (2026-09-05): kody stacji fallback (`S51`/`S52`/`S53`) ZALEŻĄ od
+    // numeracji fallback ciągów — naprawa lokalności pionowej kotwic zmienia
+    // ich WARTOŚCI (patrz `enmToSldAdapter.ts` `fallbackSequenceBaseByRunId`).
+    // Zmierzone na tej fixturze PO naprawie: stacje najbliżej dolnej krawędzi
+    // arkusza (największy `rect.y` w planie tej sceny/skali) to S109-S112 i
+    // S145-S148 (ranga ostatnich dwóch ciągów) — trzy z nich zastępują dawne
+    // S51/S52/S53, ta sama rola testowa (kod przy dolnej krawędzi PRZESUNIĘTY,
+    // nie porzucony).
+    for (const kod of ['S109', 'S110', 'S111']) {
       expect(zGranica.drawn.some((p) => p.text === kod), `nazwa ${kod} musi zostać narysowana`).toBe(true);
     }
   });
