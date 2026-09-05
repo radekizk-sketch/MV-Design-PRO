@@ -5929,15 +5929,17 @@ def add_genset_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any
     # topologiczny fallback na napięcie szyny (dana realna, nie zmyślona).
     rated_power_kw = _as_float(genset_spec.get("rated_power_kw"))
     power_factor_jawny = _as_float(genset_spec.get("power_factor"))
-    brakujace_pola_agregatu = [
-        etykieta
-        for wartosc, etykieta in (
-            (rated_power_kw, "moc znamionowa (rated_power_kw)"),
-            (power_factor_jawny, "współczynnik mocy (power_factor)"),
-        )
-        if wartosc is None
-    ]
-    if brakujace_pola_agregatu:
+    if rated_power_kw is None or power_factor_jawny is None:
+        # Jawne zawężenie typów (mypy nie zawęża przez listę składaną) — ten sam
+        # komunikat z listą brakujących pól.
+        brakujace_pola_agregatu = [
+            etykieta
+            for wartosc, etykieta in (
+                (rated_power_kw, "moc znamionowa (rated_power_kw)"),
+                (power_factor_jawny, "współczynnik mocy (power_factor)"),
+            )
+            if wartosc is None
+        ]
         return _error_response(
             "Agregat prądotwórczy: brak wymaganych parametrów tabliczki: "
             + ", ".join(brakujace_pola_agregatu)
