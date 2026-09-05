@@ -99,16 +99,19 @@ def test_binding_reads_q_set_point_from_catalog_card_when_q_mvar_unknown() -> No
     assert binding.q_mvar == pytest.approx(0.3)
 
 
-def test_binding_q_brak_jest_wylacznie_strukturalnym_zerem() -> None:
-    """Q naprawdę nieznane (brak pola, brak Q-set-pointu karty) => 0,0 jako
-    WYŁĄCZNIE strukturalne wypełnienie (rozpływ jest zablokowany PRZED tym
-    punktem przez BLOCKER `generator.q_missing`, gdy Q jest naprawdę nieznane)."""
+def test_binding_q_brak_jest_nazwanym_brakiem_nie_zerem() -> None:
+    """Q naprawdę nieznane (brak pola, brak Q-set-pointu karty) => `None` w
+    powiązaniu, NIE 0,0 (domknięcie FAB-H: „strukturalne zero" było drugim,
+    niezależnym predykatem obok BLOCKER-a `generator.q_missing` — guard podstawień
+    wykrył je jako nowe podstawienie liczby za nieobecną daną). Rozpływ z Q
+    nieznanym jest blokowany PRZED tym punktem tym samym predykatem
+    (`moc_bierna_wytworcy`), a powiązanie mówi prawdę: Q nieznane."""
     snapshot = _snapshot({"control_mode": "STALY_COS_PHI", "cos_phi": 0.9})
     snapshot["generators"][0]["q_mvar"] = None
     binding = _build_converter_control_by_node(snapshot, base_mva=100.0)[
         _graph_id_from_ref("bus-oze")
     ]
-    assert binding.q_mvar == 0.0
+    assert binding.q_mvar is None
 
 
 def test_two_regulated_sources_on_one_bus_are_refused() -> None:
