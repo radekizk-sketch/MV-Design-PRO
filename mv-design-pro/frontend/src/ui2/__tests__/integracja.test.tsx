@@ -7,7 +7,6 @@
 import { screen, act, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { renderWithQueryClient as render } from '../../test/queryClientTestUtils';
 import type { EnergyNetworkModel, TopologyGraphSummary } from '../../types/enm';
 import { useAppStateStore } from '../../ui/app-state';
 import { useSnapshotStore } from '../../ui/topology/snapshotStore';

@@ -11,7 +11,6 @@ import { screen, cleanup, act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { App } from '../App';
-import { renderWithQueryClient as render } from '../test/queryClientTestUtils';
 import type { EnergyNetworkModel } from '../types/enm';
 import { useSnapshotStore } from '../ui/topology/snapshotStore';
 import { useThemeModeStore } from '../ui2/theme/themeMode';

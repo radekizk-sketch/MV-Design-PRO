@@ -208,7 +208,15 @@ POMIJANE_KATALOGI = {
 #     ktorej juz uzywaly komunikaty blokerow gotowosci), zamiast dwoch kopii tej
 #     samej fizyki. Dlug NIE ROSL — zmalal jako SKUTEK UBOCZNY naprawy klasy pol
 #     DER (karta FAB-K), nie osobnej sesji sprzatania tego pliku.
-BUDZET_BLEDOW_POZA_BRAMKA = 129
+#   * Scalenie FAB-K z CV-3.3-B (koordynator, pomiar 2026-09-05): 129 -> 128.
+#     Po scaleniu bylo 130: dwa pliki testow korzenia aplikacji (`App.test`,
+#     `ui2/__tests__/integracja.test`) niosly DWA importy tego samego helpera
+#     (`renderWithQueryClient as render` z b40e1778 i `renderWithQueryClient`
+#     z FAB-K, ktory zamienil wywolania) — alias zostal bez uzycia (TS6133).
+#     Usuniety alias, nie prog. Do tego FAB-K skasowala martwy import
+#     `PowerFlowComparisonTab` niezaleznie od CV-3.3-B (ta sama naprawa w obu
+#     kartach) — laczny stan po scaleniu: 128.
+BUDZET_BLEDOW_POZA_BRAMKA = 128
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,
