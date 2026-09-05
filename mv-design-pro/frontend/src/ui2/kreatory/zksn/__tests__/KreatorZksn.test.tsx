@@ -49,7 +49,7 @@ vi.mock('../../../../ui/selection', () => ({
 // `vi.hoisted` + `vi.fn()` (S9-5): pozwala nadpisać implementację per test
 // (`mockReturnValueOnce`), żeby symulować katalog W TRAKCIE ładowania.
 const { fetchBranchPointTypesMock } = vi.hoisted(() => ({
-  fetchBranchPointTypesMock: vi.fn(() =>
+  fetchBranchPointTypesMock: vi.fn((_kind: string) =>
     Promise.resolve([
       { id: 'zk-1', name: 'ZK przelotowe', kind: 'ZKSN', medium: 'CABLE', branch_ports_count: 1, switch_device_kind: 'ROZLACZNIK' },
       { id: 'zk-2', name: 'ZK odgałęźne', kind: 'ZKSN', medium: 'CABLE', branch_ports_count: 2, switch_device_kind: 'ROZLACZNIK' },

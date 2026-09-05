@@ -49,7 +49,7 @@ vi.mock('../../../../ui/selection', () => ({
 // `vi.hoisted` + `vi.fn()` (S9-5): pozwala nadpisać implementację per test
 // (`mockReturnValueOnce`), żeby symulować katalog W TRAKCIE ładowania.
 const { fetchBranchPointTypesMock } = vi.hoisted(() => ({
-  fetchBranchPointTypesMock: vi.fn(() =>
+  fetchBranchPointTypesMock: vi.fn((_kind: string) =>
     Promise.resolve([
       { id: 'bp-1', name: 'Słup odczepowy', kind: 'BRANCH_POLE', medium: 'LINE_OVERHEAD', branch_ports_count: 1, switch_device_kind: 'ROZLACZNIK', switch_rated_current_a: 400 },
     ]),

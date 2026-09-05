@@ -76,7 +76,7 @@ vi.mock('../../../../ui/navigation/routes', () => ({
 // (Promise, który świadomie NIE rozstrzyga się w obrębie testu) — wymaga
 // realnych `vi.fn()` dostępnych już w chwili ewaluacji hoistowanej fabryki
 // `vi.mock` niżej, nie samej konwencji nazewniczej.
-const { KABLE_DOMYSLNE, LINIE_DOMYSLNE, fetchCableTypesMock, fetchLineTypesMock } = vi.hoisted(() => {
+const { fetchCableTypesMock, fetchLineTypesMock } = vi.hoisted(() => {
   const KABLE_DOMYSLNE = [
     {
       id: 'kab-120',
@@ -100,8 +100,6 @@ const { KABLE_DOMYSLNE, LINIE_DOMYSLNE, fetchCableTypesMock, fetchLineTypesMock 
     },
   ];
   return {
-    KABLE_DOMYSLNE,
-    LINIE_DOMYSLNE,
     fetchCableTypesMock: vi.fn(() => Promise.resolve(KABLE_DOMYSLNE)),
     fetchLineTypesMock: vi.fn(() => Promise.resolve(LINIE_DOMYSLNE)),
   };
