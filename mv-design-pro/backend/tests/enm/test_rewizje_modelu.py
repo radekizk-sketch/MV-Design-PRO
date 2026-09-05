@@ -92,6 +92,10 @@ def _komendy_magistrali(liczba_odcinkow: int) -> list[tuple[str, dict[str, Any]]
                 "voltage_kv": 15.0,
                 "sk3_mva": 250.0,
                 "rx_ratio": 0.1,
+                # FAB-G: tabliczka transformatora GPZ WN/SN wylacznie z typu
+                # katalogowego — para (kV, MVA) wskazuje pozycje jednoznacznie.
+                "hv_voltage_kv": 110.0,
+                "transformer_sn_mva": 25.0,
                 "catalog_binding": _binding("ZRODLO_SN", SOURCE_ID),
             },
         )

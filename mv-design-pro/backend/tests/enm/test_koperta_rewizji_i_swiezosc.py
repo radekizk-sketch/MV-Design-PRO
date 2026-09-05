@@ -337,6 +337,9 @@ class TestKopertaNaBieguKanonicznym:
                 "voltage_kv": 15.0,
                 "sk3_mva": 250.0,
                 "rx_ratio": 0.1,
+                # FAB-G: para (kV, MVA) wskazuje typ transformatora GPZ z katalogu.
+                "hv_voltage_kv": 110.0,
+                "transformer_sn_mva": 25.0,
                 "catalog_binding": {
                     "catalog_namespace": "ZRODLO_SN",
                     "catalog_item_id": "src-gpz-15kv-250mva-rx010",
