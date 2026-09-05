@@ -712,6 +712,19 @@ POKRYCIE_POZA_INIEKCJAMI: dict[str, str] = {
         "pozycja NIEBRAMKOWANA — brak kategorii katalogu dla UPS; "
         "uzasadnienie pilnowane testem `pozycje_niebramkowane_maja_uzasadnienie`"
     ),
+    "add_converter_source|battery_catalog_ref": (
+        "karta FAB-K (R2): bramkowana w WARSTWIE DOMENOWEJ "
+        "(`_materializuj_bateria_bess`), CELOWO NIE w bramie API — kod "
+        "`converter.battery_catalog_ref_unknown`/`_not_applicable` jest bogatszy "
+        "od generycznego `catalog.item_not_found` (rozróżnia nieznaną pozycję od "
+        "pola użytego dla PV/FW) i to JEGO pilnuje "
+        "`test_generators_api.py::TestBateriaBess` (materializacja tabliczki, "
+        "nieznany ref → 422, PV → 422) — droga produkcyjna "
+        "`POST …/generators` i tak kończy każdy błąd domeny kodem 422 "
+        "(`api/generators.py`), więc nie ma tu luki PARYTETU KONTRAKTU HTTP, "
+        "którą ta brama naprawia; iniekcja przez `/enm/domain-ops` dublowałaby "
+        "dowód, zastępując bogatszy kod ogólnym."
+    ),
 }
 
 

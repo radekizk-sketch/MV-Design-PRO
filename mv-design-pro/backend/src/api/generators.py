@@ -44,7 +44,14 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/projects", tags=["generators"])
 
 DerKind = Literal["PV", "BESS", "FW"]
-DerConnectionVariant = Literal["nn_side", "sn_side", "dedicated", "block_transformer"]
+
+#: Karta FAB-K: DOKŁADNIE dwie decyzje fizyczne — poziom przyłączenia (szyna nN
+#: stacji, albo sieć SN przez transformator dedykowany). Aliasy `sn_side`/`dedicated`
+#: (i `_canonical_variant`, który je tłumaczył) SKASOWANE bez kompatybilności wstecznej:
+#: mieszały poziom przyłączenia z punktem przyłączenia SN (szyna stacji / ZK SN / słup
+#: rozgałęźny / odgałęzienie) — DWIE ortogonalne decyzje w jednym polu enum. Punkt
+#: przyłączenia SN wjeżdża teraz jawnym `sn_connection_bus_ref` (patrz niżej).
+DerConnectionVariant = Literal["nn_side", "block_transformer"]
 
 
 class DerGeneratorCreateRequest(BaseModel):
@@ -57,6 +64,12 @@ class DerGeneratorCreateRequest(BaseModel):
     pole (ta sama klasa co „ciche podstawienia" FAB-D1): model dostawał typ,
     którego nikt nie wybrał, a odpowiedź HTTP 201 wyglądała jak zapis wyboru
     użytkownika. Brak albo pusty `catalog_ref` = 422 (usunięto 2026-09-05).
+
+    `bus_ref` (karta FAB-K) jest WYŁĄCZNIE jawną szyną urządzenia dla wariantu
+    `nn_side` — dla `block_transformer` punkt przyłączenia do sieci OSD/OSP jest
+    `sn_connection_bus_ref`, a `bus_ref` jest ignorowany (usunięcie dwuznaczności
+    V12K: `_napiecie_przylaczenia_kv` czytała `bus_ref` niezależnie od wariantu,
+    więc szyna nN/DC urządzenia potrafiła podszyć się pod napięcie przyłączenia).
     """
 
     station_ref: str = Field(..., min_length=1)
@@ -67,6 +80,16 @@ class DerGeneratorCreateRequest(BaseModel):
     bus_ref: str | None = Field(default=None, min_length=1)
     blocking_transformer_ref: str | None = Field(default=None, min_length=1)
     block_transformer_catalog_ref: str | None = Field(default=None, min_length=1)
+    # Karta FAB-K: punkt przyłączenia SN — szyna ISTNIEJĄCA w modelu (szyna SN stacji,
+    # BranchPointSN.bus_ref, albo szyna Junction/T-node), wymagana gdy `block_transformer`
+    # materializuje NOWY transformator dedykowany z `block_transformer_catalog_ref`
+    # (nie wymagana, gdy klient poda już istniejący `blocking_transformer_ref` —
+    # jego szyna HV jest wtedy stała, bez wyboru).
+    sn_connection_bus_ref: str | None = Field(default=None, min_length=1)
+    # Karta FAB-K (R2): pakiet baterii BESS — katalog `BATERIA_BESS` istnieje od FAB-J
+    # (`GET /api/catalog/bess-battery-types`), ale kreator go nie wysyłał. Dotyczy
+    # WYŁĄCZNIE `der_kind="BESS"` — dla PV/FW pole musi zostać puste.
+    battery_catalog_ref: str | None = Field(default=None, min_length=1)
     source_name: str | None = Field(default=None, min_length=1)
     quantity: int = Field(default=1, ge=1, le=100)
     nc_rfg_module: Literal["A", "B", "C", "D"] | None = None
@@ -89,6 +112,8 @@ class DerGeneratorCreateRequest(BaseModel):
         "bus_ref",
         "blocking_transformer_ref",
         "block_transformer_catalog_ref",
+        "sn_connection_bus_ref",
+        "battery_catalog_ref",
         "source_name",
     )
     @classmethod
@@ -146,12 +171,6 @@ class DerCatalogBindingsRequest(BaseModel):
             return None
         stripped = value.strip()
         return stripped or None
-
-
-def _canonical_variant(variant: DerConnectionVariant) -> Literal["nn_side", "block_transformer"]:
-    if variant == "nn_side":
-        return "nn_side"
-    return "block_transformer"
 
 
 def _catalog_namespace(technology: DerKind) -> str:
@@ -252,22 +271,56 @@ def _stable_ref_token(*parts: str | None) -> str:
     return hashlib.sha1(source.encode("utf-8")).hexdigest()[:12]
 
 
-def _station_bus_ref_for_voltage(
+def _resolve_sn_connection_bus(
     enm: dict[str, Any],
-    station: dict[str, Any],
-    voltage_kv: float,
-) -> str | None:
-    voltages = _bus_voltage_index(enm)
-    candidates = [ref for ref in station.get("bus_refs", []) if isinstance(ref, str)]
-    for bus_ref in candidates:
-        bus_voltage = voltages.get(bus_ref)
-        if bus_voltage is not None and abs(bus_voltage - voltage_kv) <= 0.05:
-            return bus_ref
-    for bus_ref in candidates:
-        bus_voltage = voltages.get(bus_ref)
-        if bus_voltage is not None and bus_voltage > 1.0:
-            return bus_ref
-    return None
+    req: DerGeneratorCreateRequest,
+    hv_kv: float,
+) -> str:
+    """Punkt przyłączenia SN dla transformatora dedykowanego — szyna ISTNIEJĄCA
+    w modelu, wskazana WPROST przez klienta (`sn_connection_bus_ref`).
+
+    Karta FAB-K: zastępuje dawne wyszukiwanie „najbliższej szyny SN stacji po
+    napięciu" (`_station_bus_ref_for_voltage`) — ta heurystyka fabrykowała punkt
+    przyłączenia zamiast czytać wybór projektanta i nie dawała żadnego sposobu
+    wskazania punktu SPOZA stacji (BranchPointSN — ZK SN/słup rozgałęźny —
+    albo Junction/odgałęzienie). Front wybiera go z listy ISTNIEJĄCYCH elementów
+    modelu (migawka), więc referencja musi istnieć i mieć zgodne napięcie —
+    obie kontrole tu, jawnym kodem, nigdy cichym dopasowaniem „najbliższej".
+    """
+    bus_ref = req.sn_connection_bus_ref
+    if not bus_ref:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "generator.sn_connection_bus_missing",
+                "message_pl": (
+                    "Wariant z transformatorem dedykowanym wymaga wskazania punktu "
+                    "przyłączenia SN — istniejącej szyny SN stacji, ZK SN, słupa "
+                    "rozgałęźnego albo odgałęzienia."
+                ),
+            },
+        )
+    bus_voltage = _bus_voltage_index(enm).get(bus_ref)
+    if bus_voltage is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "generator.sn_connection_bus_unknown",
+                "message_pl": f"Punkt przyłączenia SN '{bus_ref}' nie istnieje w modelu sieci.",
+            },
+        )
+    if abs(bus_voltage - hv_kv) > 0.05:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "generator.sn_bus_voltage_mismatch",
+                "message_pl": (
+                    f"Napięcie punktu przyłączenia SN ({bus_voltage:g} kV) nie zgadza się "
+                    f"z napięciem górnym transformatora dedykowanego ({hv_kv:g} kV)."
+                ),
+            },
+        )
+    return bus_ref
 
 
 def _ensure_catalog_block_transformer(
@@ -305,15 +358,7 @@ def _ensure_catalog_block_transformer(
             },
         )
 
-    hv_bus_ref = _station_bus_ref_for_voltage(enm, station, float(block_transformer.hv_kv))
-    if hv_bus_ref is None:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={
-                "code": "station.sn_bus_missing_for_block_transformer",
-                "message_pl": "Stacja nie ma szyny SN zgodnej z transformatorem dedykowanym.",
-            },
-        )
+    hv_bus_ref = _resolve_sn_connection_bus(enm, req, float(block_transformer.hv_kv))
 
     station_ref = str(station.get("ref_id") or station.get("id") or req.station_ref)
     token = _stable_ref_token(
@@ -409,12 +454,17 @@ def _napiecie_przylaczenia_kv(
     przyłączenia do sieci OSD/OSP jest strona SN (górna) transformatora
     dedykowanego — `payload["bus_nn_ref"]` w tym wariancie to szyna PO
     transformatorze, WEWNĄTRZ pakietu DER (0,4-6,3 kV), a nie napięcie
-    przyłączenia. Jawnie podana `bus_ref` (kreator/szuflada wskazały konkretną
-    szynę wprost) ma pierwszeństwo przed obiema regułami wyprowadzonymi.
+    przyłączenia.
+
+    Karta FAB-K: `bus_ref` NIE jest już czytany dla `block_transformer` — to
+    pole jest wyłącznie jawną szyną URZĄDZENIA dla `nn_side` (kontrakt
+    `DerGeneratorCreateRequest`). Wcześniejszy jawny priorytet `bus_ref` przed
+    napięciem transformatora dedykowanego dawał dwuznaczność: szyna nN/DC
+    urządzenia (0,4-6,3 kV) mogła podszyć się pod napięcie przyłączenia do
+    sieci OSD/OSP (kilkanaście–kilkadziesiąt kV) — dwie różne wielkości fizyczne
+    czytane z jednego pola przy różnych wariantach.
     """
     voltages = _bus_voltage_index(enm_dict)
-    if req.bus_ref:
-        return voltages.get(req.bus_ref)
     if canonical_variant == "block_transformer":
         if req.block_transformer_catalog_ref:
             block_transformer = get_block_transformer(req.block_transformer_catalog_ref)
@@ -433,6 +483,8 @@ def _napiecie_przylaczenia_kv(
             if transformer is not None and isinstance(transformer.get("uhv_kv"), int | float):
                 return float(transformer["uhv_kv"])
         return None
+    if req.bus_ref:
+        return voltages.get(req.bus_ref)
     bus_nn_ref = payload.get("bus_nn_ref")
     return voltages.get(bus_nn_ref) if isinstance(bus_nn_ref, str) else None
 
@@ -488,9 +540,10 @@ def _build_domain_payload(
             },
         )
 
-    canonical_variant = _canonical_variant(req.connection_variant)
-    if req.block_transformer_catalog_ref:
-        canonical_variant = "block_transformer"
+    # Karta FAB-K: `connection_variant` jest już kanoniczny (Literal kontraktu,
+    # bez aliasów `sn_side`/`dedicated`) — zero tłumaczenia, zero domysłu z
+    # obecności `block_transformer_catalog_ref`.
+    canonical_variant = req.connection_variant
     catalog_ref = req.catalog_ref
     payload: dict[str, Any] = {
         "source_technology": req.der_kind,
@@ -510,28 +563,35 @@ def _build_domain_payload(
 
     if req.nc_rfg_module is not None:
         payload["nc_rfg_module"] = req.nc_rfg_module
-    if req.blocking_transformer_ref:
-        payload["blocking_transformer_ref"] = req.blocking_transformer_ref
-    elif canonical_variant == "block_transformer":
-        transformer_ref, converter_bus_ref = _ensure_catalog_block_transformer(
-            enm_dict, station, req
-        )
-        payload["blocking_transformer_ref"] = transformer_ref
-        payload["bus_nn_ref"] = converter_bus_ref
+    if req.battery_catalog_ref:
+        payload["battery_catalog_ref"] = req.battery_catalog_ref
 
-    if req.bus_ref:
-        payload["bus_nn_ref"] = req.bus_ref
-    elif canonical_variant == "nn_side":
-        nn_bus_ref = _resolve_nn_bus_ref(enm_dict, station)
-        if nn_bus_ref is None:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail={
-                    "code": "station.nn_bus_missing",
-                    "message_pl": "Stacja nie ma rozpoznanej szyny nN dla przyłączenia DER.",
-                },
+    # Karta FAB-K: `bus_ref` i `sn_connection_bus_ref` są SCOPED do dokładnie
+    # jednego wariantu każdy — zero pola dzielonego między dwie fizycznie różne
+    # szyny (patrz `_napiecie_przylaczenia_kv`).
+    if canonical_variant == "block_transformer":
+        if req.blocking_transformer_ref:
+            payload["blocking_transformer_ref"] = req.blocking_transformer_ref
+        else:
+            transformer_ref, converter_bus_ref = _ensure_catalog_block_transformer(
+                enm_dict, station, req
             )
-        payload["bus_nn_ref"] = nn_bus_ref
+            payload["blocking_transformer_ref"] = transformer_ref
+            payload["bus_nn_ref"] = converter_bus_ref
+    else:
+        if req.bus_ref:
+            payload["bus_nn_ref"] = req.bus_ref
+        else:
+            nn_bus_ref = _resolve_nn_bus_ref(enm_dict, station)
+            if nn_bus_ref is None:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail={
+                        "code": "station.nn_bus_missing",
+                        "message_pl": "Stacja nie ma rozpoznanej szyny nN dla przyłączenia DER.",
+                    },
+                )
+            payload["bus_nn_ref"] = nn_bus_ref
 
     _weryfikuj_modul_ncrfg(enm_dict, req, payload, canonical_variant)
 

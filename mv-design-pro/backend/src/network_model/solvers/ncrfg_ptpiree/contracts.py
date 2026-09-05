@@ -107,6 +107,14 @@ class NcRfgPtpireeModuleResult(BaseModel):
     module_family: PtpireeModuleFamily
     p_max_kw: float
     voltage_kv: float
+    # Karta FAB-K: pole ADDYTYWNE (kontrakt "…V1" bez zmiany), domyślne "unknown"
+    # jak wejście — istniejące odpowiedzi/testy porównujące `.model_dump()` z
+    # literałem sprzed tego pola dostają dokładnie tę samą wartość domyślną.
+    # Bez tej daty na WYNIKU `zbierz_braki` (certyfikat_zgodnosci.py) nie
+    # potrafiłby odróżnić modułu z realnym certyfikatem PTPiREE (0 wymaganych
+    # testów NC RfG jest WYSTARCZAJĄCĄ podstawą — dowodem jest certyfikat, nie
+    # bieg testów) od modułu bez żadnej podstawy do certyfikacji.
+    certificate_status: PtpireeCertificateStatus = "unknown"
     required_count: int
     pass_count: int
     fail_count: int

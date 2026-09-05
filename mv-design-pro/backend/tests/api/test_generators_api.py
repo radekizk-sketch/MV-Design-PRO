@@ -118,8 +118,9 @@ def test_der_bez_catalog_ref_to_422_bez_cichego_podstawienia(app_client) -> None
         {
             **baza,
             "der_kind": "BESS",
-            "connection_variant": "sn_side",
+            "connection_variant": "block_transformer",
             "block_transformer_catalog_ref": "btr_pv_15_069_1250",
+            "sn_connection_bus_ref": "station/1/sn_bus",
         },
         {**baza, "station_ref": "   ", "catalog_ref": "conv-pv-nn-0p5mw-0p4kv"},
     )
@@ -222,9 +223,13 @@ def test_create_der_generator_materializes_catalog_block_transformer(app_client)
             "station_ref": "station/1",
             "der_kind": "PV",
             "power_mw": 1.0,
-            "connection_variant": "dedicated",
+            "connection_variant": "block_transformer",
             "catalog_ref": "pv_inv_system_1000",
             "block_transformer_catalog_ref": "btr_pv_15_069_1250",
+            # Karta FAB-K: punkt przyłączenia SN JEST WYMAGANY — szyna ISTNIEJĄCA
+            # w modelu (tu: szyna SN stacji zasianej przez `_seed_station_enm`),
+            # zamiast dawnego wyszukiwania „najbliższej szyny SN po napięciu".
+            "sn_connection_bus_ref": "station/1/sn_bus",
             "source_name": "PV 1000 z transformatorem dedykowanym",
             "nc_rfg_module": "B",
         },
@@ -245,6 +250,7 @@ def test_create_der_generator_materializes_catalog_block_transformer(app_client)
     assert block_transformer["catalog_ref"] == "btr_pv_15_069_1250"
     assert block_transformer["sn_mva"] == 1.25
     assert block_transformer["ulv_kv"] == 0.69
+    assert block_transformer["hv_bus_ref"] == "station/1/sn_bus"
 
     generator_bus = next(
         item for item in snapshot["buses"] if item["ref_id"] == generator["bus_ref"]
@@ -253,9 +259,12 @@ def test_create_der_generator_materializes_catalog_block_transformer(app_client)
     assert generator["bus_ref"] == block_transformer["lv_bus_ref"]
 
 
-def test_create_der_generator_prefers_explicit_block_transformer_catalog(app_client) -> None:
+def test_create_der_generator_sn_connection_bus_ref_missing_is_422(app_client) -> None:
+    """Karta FAB-K: `block_transformer` bez `sn_connection_bus_ref` (i bez
+    `blocking_transformer_ref` istniejącego) jest 422 — bez punktu przyłączenia
+    materializacja transformatora dedykowanego nie ma dokąd wpiąć strony SN."""
     project_id, case_id = _create_project_and_case(app_client)
-    _seed_station_enm(case_id, transformer_sn_mva=0.8)
+    _seed_station_enm(case_id, transformer_sn_mva=0.063)
 
     response = app_client.post(
         f"/api/projects/{project_id}/cases/{case_id}/generators",
@@ -263,18 +272,109 @@ def test_create_der_generator_prefers_explicit_block_transformer_catalog(app_cli
             "station_ref": "station/1",
             "der_kind": "PV",
             "power_mw": 1.0,
-            "connection_variant": "nn_side",
+            "connection_variant": "block_transformer",
             "catalog_ref": "pv_inv_system_1000",
             "block_transformer_catalog_ref": "btr_pv_15_069_1250",
-            "source_name": "PV 1000 przez transformator katalogowy",
-            "nc_rfg_module": "B",
         },
     )
 
-    assert response.status_code == 201
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "generator.sn_connection_bus_missing"
+
+
+def test_create_der_generator_sn_connection_bus_ref_unknown_is_422(app_client) -> None:
+    project_id, case_id = _create_project_and_case(app_client)
+    _seed_station_enm(case_id, transformer_sn_mva=0.063)
+
+    response = app_client.post(
+        f"/api/projects/{project_id}/cases/{case_id}/generators",
+        json={
+            "station_ref": "station/1",
+            "der_kind": "PV",
+            "power_mw": 1.0,
+            "connection_variant": "block_transformer",
+            "catalog_ref": "pv_inv_system_1000",
+            "block_transformer_catalog_ref": "btr_pv_15_069_1250",
+            "sn_connection_bus_ref": "station/1/szyna_ktorej_nie_ma",
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "generator.sn_connection_bus_unknown"
+
+
+def test_create_der_generator_sn_connection_bus_ref_voltage_mismatch_is_422(app_client) -> None:
+    """Punkt przyłączenia ISTNIEJE, ale jego napięcie nie zgadza się z HV
+    transformatora dedykowanego (tu: szyna nN 0,4 kV vs HV katalogu 15 kV)."""
+    project_id, case_id = _create_project_and_case(app_client)
+    _seed_station_enm(case_id, transformer_sn_mva=0.063)
+
+    response = app_client.post(
+        f"/api/projects/{project_id}/cases/{case_id}/generators",
+        json={
+            "station_ref": "station/1",
+            "der_kind": "PV",
+            "power_mw": 1.0,
+            "connection_variant": "block_transformer",
+            "catalog_ref": "pv_inv_system_1000",
+            "block_transformer_catalog_ref": "btr_pv_15_069_1250",
+            "sn_connection_bus_ref": "station/1/nn_bus",
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "generator.sn_bus_voltage_mismatch"
+
+
+def test_create_der_generator_nn_side_ignores_stray_block_transformer_catalog_ref(
+    app_client,
+) -> None:
+    """Karta FAB-K: `connection_variant` jest JEDYNYM źródłem prawdy o wariancie —
+    zero domysłu z obecności `block_transformer_catalog_ref`. Poprzednia wersja
+    kontraktu NADPISYWAŁA jawny `nn_side` na `block_transformer`, gdy to pole było
+    obecne — dwie ortogonalne decyzje (poziom / punkt przyłączenia) mieszały się
+    w jednym enumie. Dziś pole nieużywane dla `nn_side` jest po prostu ignorowane."""
+    project_id, case_id = _create_project_and_case(app_client)
+    _seed_station_enm(case_id)
+
+    response = app_client.post(
+        f"/api/projects/{project_id}/cases/{case_id}/generators",
+        json={
+            "station_ref": "station/1",
+            "der_kind": "PV",
+            "power_mw": 0.5,
+            "connection_variant": "nn_side",
+            "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
+            "block_transformer_catalog_ref": "btr_pv_15_069_1250",
+            "source_name": "PV po stronie nN",
+        },
+    )
+
+    assert response.status_code == 201, response.text
     generator = response.json()["snapshot"]["generators"][0]
-    assert generator["connection_variant"] == "block_transformer"
-    assert generator["blocking_transformer_ref"]
+    assert generator["connection_variant"] == "nn_side"
+    assert generator["bus_ref"] == "station/1/nn_bus"
+    assert not generator.get("blocking_transformer_ref")
+
+
+def test_create_der_generator_rejects_legacy_variant_aliases(app_client) -> None:
+    """Karta FAB-K: aliasy `sn_side`/`dedicated` SKASOWANE bez kompatybilności
+    wstecznej — kontrakt przyjmuje WYŁĄCZNIE `nn_side`/`block_transformer`."""
+    project_id, case_id = _create_project_and_case(app_client)
+    _seed_station_enm(case_id)
+
+    for legacy_variant in ("sn_side", "dedicated"):
+        response = app_client.post(
+            f"/api/projects/{project_id}/cases/{case_id}/generators",
+            json={
+                "station_ref": "station/1",
+                "der_kind": "PV",
+                "power_mw": 0.5,
+                "connection_variant": legacy_variant,
+                "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
+            },
+        )
+        assert response.status_code == 422, legacy_variant
 
 
 def test_create_der_generator_accepts_materialized_enm_seeded_directly(app_client) -> None:
@@ -307,6 +407,96 @@ def test_create_der_generator_accepts_materialized_enm_seeded_directly(app_clien
     assert response.status_code == 201
     payload = response.json()
     assert payload["snapshot"]["generators"][0]["station_ref"] == "station/1"
+
+
+class TestBateriaBess:
+    """Karta FAB-K (R2): `battery_catalog_ref` — katalog `BATERIA_BESS` istnieje
+    od FAB-J, ale kreator wybierał pakiet BEZ wysłania referencji do backendu.
+    Iloczyn cech: obecność pola × der_kind (BESS/PV) × istnienie w katalogu."""
+
+    def test_battery_catalog_ref_bess_materializuje_tabliczke_pakietu(self, app_client) -> None:
+        project_id, case_id = _create_project_and_case(app_client)
+        _seed_station_enm(case_id)
+
+        response = app_client.post(
+            f"/api/projects/{project_id}/cases/{case_id}/generators",
+            json={
+                "station_ref": "station/1",
+                "der_kind": "BESS",
+                "power_mw": 0.5,
+                "connection_variant": "nn_side",
+                "catalog_ref": "conv-bess-nn-0p5mw-0p4kv",
+                "battery_catalog_ref": "bess_bat_lfp_2880kwh_1230vdc",
+                "source_name": "BESS z pakietem baterii",
+            },
+        )
+
+        assert response.status_code == 201, response.text
+        generator = response.json()["snapshot"]["generators"][0]
+        params = generator["materialized_params"]
+        assert params["battery_catalog_ref"] == "bess_bat_lfp_2880kwh_1230vdc"
+        assert params["battery"]["capacity_kwh"] == 2880.0
+        assert params["battery"]["nominal_voltage_dc_v"] == 1230.0
+        assert params["battery"]["chemistry"] == "LFP"
+
+    def test_battery_catalog_ref_nieznany_jest_422(self, app_client) -> None:
+        project_id, case_id = _create_project_and_case(app_client)
+        _seed_station_enm(case_id)
+
+        response = app_client.post(
+            f"/api/projects/{project_id}/cases/{case_id}/generators",
+            json={
+                "station_ref": "station/1",
+                "der_kind": "BESS",
+                "power_mw": 0.5,
+                "connection_variant": "nn_side",
+                "catalog_ref": "conv-bess-nn-0p5mw-0p4kv",
+                "battery_catalog_ref": "bess_bat_ktorego_nie_ma",
+            },
+        )
+
+        assert response.status_code == 422
+        assert response.json()["detail"]["code"] == "converter.battery_catalog_ref_unknown"
+
+    def test_battery_catalog_ref_dla_pv_jest_422(self, app_client) -> None:
+        """Bateria dotyczy WYŁĄCZNIE BESS — dla PV/FW pole nie ma zastosowania."""
+        project_id, case_id = _create_project_and_case(app_client)
+        _seed_station_enm(case_id)
+
+        response = app_client.post(
+            f"/api/projects/{project_id}/cases/{case_id}/generators",
+            json={
+                "station_ref": "station/1",
+                "der_kind": "PV",
+                "power_mw": 0.5,
+                "connection_variant": "nn_side",
+                "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
+                "battery_catalog_ref": "bess_bat_lfp_2880kwh_1230vdc",
+            },
+        )
+
+        assert response.status_code == 422
+        assert response.json()["detail"]["code"] == "converter.battery_catalog_not_applicable"
+
+    def test_battery_catalog_ref_pominiety_nie_blokuje_zapisu_bess(self, app_client) -> None:
+        """Pole opcjonalne — pakiet może zostać dobrany później (bindings)."""
+        project_id, case_id = _create_project_and_case(app_client)
+        _seed_station_enm(case_id)
+
+        response = app_client.post(
+            f"/api/projects/{project_id}/cases/{case_id}/generators",
+            json={
+                "station_ref": "station/1",
+                "der_kind": "BESS",
+                "power_mw": 0.5,
+                "connection_variant": "nn_side",
+                "catalog_ref": "conv-bess-nn-0p5mw-0p4kv",
+            },
+        )
+
+        assert response.status_code == 201, response.text
+        params = response.json()["snapshot"]["generators"][0]["materialized_params"]
+        assert "battery_catalog_ref" not in params
 
 
 def _seed_station_z_szyna_110kv(case_id: str) -> None:
@@ -468,9 +658,10 @@ class TestWeryfikacjaModuluNcRfgPrzyTworzeniuGeneratora:
                 "station_ref": "station/1",
                 "der_kind": "PV",
                 "power_mw": 1.0,
-                "connection_variant": "dedicated",
+                "connection_variant": "block_transformer",
                 "catalog_ref": "pv_inv_system_1000",
                 "block_transformer_catalog_ref": "btr_pv_15_069_1250",
+                "sn_connection_bus_ref": "station/1/sn_bus",
                 "nc_rfg_module": "C",
             },
         )
@@ -557,7 +748,8 @@ class TestNapiecicPrzylaczeniaKv:
         from api.generators import _napiecie_przylaczenia_kv
 
         req = self._req(
-            connection_variant="dedicated", block_transformer_catalog_ref="btr_pv_15_069_1250"
+            connection_variant="block_transformer",
+            block_transformer_catalog_ref="btr_pv_15_069_1250",
         )
         assert _napiecie_przylaczenia_kv({}, req, {}, "block_transformer") == 15.0
 
@@ -572,14 +764,14 @@ class TestNapiecicPrzylaczeniaKv:
             ],
         }
         req = self._req(
-            connection_variant="dedicated", blocking_transformer_ref="station/1/tr_wn_sn"
+            connection_variant="block_transformer", blocking_transformer_ref="station/1/tr_wn_sn"
         )
         assert _napiecie_przylaczenia_kv(enm_dict, req, {}, "block_transformer") == 110.0
 
     def test_transformator_blokowy_bez_zadnej_referencji_daje_none(self) -> None:
         from api.generators import _napiecie_przylaczenia_kv
 
-        req = self._req(connection_variant="dedicated")
+        req = self._req(connection_variant="block_transformer")
         assert _napiecie_przylaczenia_kv({}, req, {}, "block_transformer") is None
 
     def test_nn_side_czyta_wolt_bus_nn_ref_z_payloadu(self) -> None:
@@ -639,7 +831,9 @@ def test_wiazania_wytworcy_trafiaja_do_modelu_przez_endpoint(app_client) -> None
             "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
             "vt_catalog_ref": "vt_10kv_100v_05_abb",
             "fault_current_data_ref": "fc_pv_500",
-            "dynamic_model_ref": "dyn_pv_wecc",
+            # Karta FAB-K: `dynamic_model_ref` MA katalog (der_dynamic) od tej karty —
+            # identyfikator realny, nie dowolny lancuch (`dyn_pv_wecc` nie istnieje).
+            "dynamic_model_ref": "default_pv_gfl",
             "nc_rfg_profile_ref": "pse",
         },
     )
@@ -650,7 +844,7 @@ def test_wiazania_wytworcy_trafiaja_do_modelu_przez_endpoint(app_client) -> None
     assert params["ct_catalog_ref"] == "ct_200_5_5p10_10va_abb"
     assert params["vt_catalog_ref"] == "vt_10kv_100v_05_abb"
     assert params["fault_current_data_ref"] == "fc_pv_500"
-    assert params["dynamic_model_ref"] == "dyn_pv_wecc"
+    assert params["dynamic_model_ref"] == "default_pv_gfl"
     assert params["profiles"]["nc_rfg_profile_ref"] == "pse"
 
 

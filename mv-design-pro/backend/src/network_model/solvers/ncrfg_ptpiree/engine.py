@@ -258,6 +258,7 @@ class NcRfgPtpireeSolver:
             module_family=module.module_family,
             p_max_kw=_round(module.p_max_kw, 3),
             voltage_kv=_round(module.voltage_kv, 3),
+            certificate_status=module.certificate_status,
             required_count=len(required_tests),
             pass_count=pass_count,
             fail_count=fail_count,

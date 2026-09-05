@@ -719,6 +719,20 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
         "APARAT_SN",
         True,
     ),
+    PozycjaBramyApi(
+        "add_converter_source",
+        "battery_catalog_ref",
+        "",
+        False,
+        "karta FAB-K (R2): pole OPCJONALNE (pakiet BESS może zostać dobrany później), "
+        "istnienie i zastosowanie (WYŁĄCZNIE BESS) waliduje domena "
+        "(`_materializuj_bateria_bess`) z WŁASNYMI kodami 422 "
+        "(`converter.battery_catalog_ref_unknown`/`_not_applicable`) — obiema drogami "
+        "HTTPException 422 przez `api/generators.py`, nie `HTTP 200` z kodem w treści "
+        "(test `TestBateriaBess::test_battery_catalog_ref_nieznany_jest_422` pilnuje "
+        "TEGO kodu). Bramkowanie tu dublowałoby kontrolę i ZASTĄPIŁOBY bogatszy kod "
+        "domeny ogólnym `catalog.item_not_found` przed jej uruchomieniem.",
+    ),
     # --- Kompensacja, ograniczniki, wiązania DER (V2) -----------------------
     PozycjaBramyApi("add_shunt_compensator_sn", "catalog_binding", "KOMPENSATOR_SN", True),
     PozycjaBramyApi("add_surge_arrester_sn", "catalog_binding", "OGRANICZNIK_SN", True),
@@ -778,6 +792,7 @@ API_CATALOG_REF_PAYLOAD_KEYS: frozenset[str] = frozenset(
     {
         "catalog_ref",
         "apparatus_catalog_ref",
+        "battery_catalog_ref",
         "cable_catalog_ref",
         "ct_catalog_ref",
         "device_catalog_ref",

@@ -4071,6 +4071,51 @@ def _certyfikat_ptpiree_z_katalogu(namespace: str, catalog_ref: str) -> dict[str
     return {pole: zrodlo[pole] for pole in _POLA_CERTYFIKATU_PTPIREE if zrodlo.get(pole)}
 
 
+def _materializuj_bateria_bess(
+    payload: dict[str, Any], technology: str
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    """Pakiet baterii BESS (`battery_catalog_ref`) — walidacja istnienia + tabliczka.
+
+    Karta FAB-K (R2): katalog `BATERIA_BESS` istnieje od FAB-J
+    (`GET /api/catalog/bess-battery-types`), ale kreator wybierał pakiet BEZ
+    wysłania referencji do backendu — wybór ginął, a karta techniczna/gotowość
+    BESS nie miały skąd wziąć danych pakietu (energia, napięcie DC, C-rate,
+    chemia — sprzęt ODDZIELNY od przekształtnika/PCS, patrz `BESSBatteryType`).
+
+    Pole jest OPCJONALNE (pakiet może zostać dobrany później) — brak w
+    payloadzie zwraca `({}, None)`, zero fabrykacji. Podana referencja MUSI
+    dotyczyć `der_kind="BESS"` (bateria nie ma zastosowania dla PV/FW) i MUSI
+    istnieć w katalogu — obie kontrole 422, nigdy ciche pominięcie.
+    """
+    ref = payload.get("battery_catalog_ref")
+    if not isinstance(ref, str) or not ref.strip():
+        return {}, None
+    ref = ref.strip()
+    if technology != "BESS":
+        return {}, _error_response(
+            "Pakiet baterii (battery_catalog_ref) dotyczy wyłącznie źródeł BESS.",
+            "converter.battery_catalog_not_applicable",
+        )
+    from network_model.catalog import get_default_mv_catalog
+
+    typ = get_default_mv_catalog().get_bess_battery_type(ref)
+    if typ is None:
+        return {}, _error_response(
+            f"Pakiet baterii '{ref}' nie istnieje w katalogu BATERIA_BESS. "
+            f"{_AKCJA_NAPRAWCZA_KATALOG_PL}",
+            "converter.battery_catalog_ref_unknown",
+        )
+    return {
+        "battery_catalog_ref": ref,
+        "battery": {
+            "chemistry": typ.chemistry,
+            "capacity_kwh": typ.capacity_kwh,
+            "nominal_voltage_dc_v": typ.nominal_voltage_dc_v,
+            "c_rate": typ.c_rate,
+        },
+    }, None
+
+
 def _build_converter_materialized_params(
     *,
     technology: str,
@@ -4844,6 +4889,10 @@ def _add_converter_source_der_sn(
     )
     if materialization_error is not None:
         return materialization_error
+    bateria, blad_baterii = _materializuj_bateria_bess(payload, technology)
+    if blad_baterii is not None:
+        return blad_baterii
+    materialized_params.update(bateria)
     converter_un_kv = _as_float(materialized_params.get("un_kv"))
     if converter_un_kv is None or converter_un_kv <= 0:
         return _error_response(
@@ -5473,6 +5522,10 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
     )
     if materialization_error is not None:
         return materialization_error
+    bateria, blad_baterii = _materializuj_bateria_bess(payload, technology)
+    if blad_baterii is not None:
+        return blad_baterii
+    materialized_params.update(bateria)
 
     converter_voltage_kv = _as_float(materialized_params.get("un_kv"))
     if converter_voltage_kv is None or converter_voltage_kv <= 0:
@@ -6078,10 +6131,12 @@ DER_PROFILE_KEYS: tuple[str, ...] = (
 )
 
 
-#: Wiazania, dla ktorych backend MA katalog i moze sprawdzic istnienie typu.
-#: `fault_current_data_ref` i `dynamic_model_ref` NIE sa tu wymienione, bo backend nie
-#: ma dla nich katalogu — ich sprawdzenie wymaga najpierw dostawcy danych, a udawanie
-#: walidacji bylo by gorsze niz jej brak (jawny dlug, karta w rejestrze).
+#: Wiazania, dla ktorych backend MA katalog i moze sprawdzic istnienie typu poprzez
+#: metode `get_default_mv_catalog()`. `fault_current_data_ref` NIE jest tu wymienione,
+#: bo backend nie ma dla niej dostawcy danych — udawanie walidacji bylo by gorsze niz
+#: jej brak (jawny dlug, karta w rejestrze). `dynamic_model_ref` walidowany jest
+#: OSOBNO (patrz `_nieznane_referencje_katalogowe` nizej) — jego dostawca
+#: (`network_model.catalog.der_dynamic`) nie jest metoda `get_default_mv_catalog()`.
 _KATALOGI_WIAZAN_DER: tuple[tuple[str, str], ...] = (
     ("ct_catalog_ref", "get_ct_type"),
     ("vt_catalog_ref", "get_vt_type"),
@@ -6126,6 +6181,19 @@ def _nieznane_referencje_katalogowe(wiazania: dict[str, Any]) -> list[str]:
         ):
             continue
         nieznane.append(f"{pole}={wartosc}")
+
+    # Karta FAB-K (R2): `dynamic_model_ref` MA dostawcę od tej karty
+    # (`network_model.catalog.der_dynamic`, profile grid-following/forming PV/BESS
+    # + IEC 61400-27 typu 1-4 wiatru — konsumowane przez solvery RMS/FRT-HVRT).
+    # Dostawca nie jest metoda `get_default_mv_catalog()`, więc walidacja idzie
+    # osobnym torem, tym samym wzorcem „jawny brak zamiast cichej zgody".
+    dynamic_ref = wiazania.get("dynamic_model_ref")
+    if dynamic_ref is not None and "dynamic_model_ref" in wiazania:
+        from network_model.catalog.der_dynamic import list_all_profile_ids
+
+        if str(dynamic_ref) not in list_all_profile_ids():
+            nieznane.append(f"dynamic_model_ref={dynamic_ref}")
+
     return nieznane
 
 
@@ -6427,6 +6495,14 @@ V2_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyKatalogowejV2, ...] = (
         True,
     ),
     PozycjaBramyKatalogowejV2(
+        "add_converter_source",
+        "battery_catalog_ref",
+        "BATERIA_BESS",
+        True,
+        "materializacja przez `_materializuj_bateria_bess` — "
+        "`converter.battery_catalog_ref_unknown`/`_not_applicable`",
+    ),
+    PozycjaBramyKatalogowejV2(
         "add_shunt_compensator_sn", "catalog_binding", "KOMPENSATOR_SN", True
     ),
     PozycjaBramyKatalogowejV2("add_surge_arrester_sn", "catalog_binding", "OGRANICZNIK_SN", True),
@@ -6492,6 +6568,7 @@ V2_CATALOG_REF_PAYLOAD_KEYS: frozenset[str] = frozenset(
     {
         "catalog_ref",
         "apparatus_catalog_ref",
+        "battery_catalog_ref",
         "cable_catalog_ref",
         "protection_catalog_ref",
         "ct_catalog_ref",

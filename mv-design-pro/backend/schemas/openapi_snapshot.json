@@ -3509,8 +3509,20 @@
     "type": "object"
    },
    "DerGeneratorCreateRequest": {
-    "description": "Payload formularza DER z drawera SLD i kreatora DER.\n\n`catalog_ref` jest WYMAGANY. Typ przekształtnika to dana projektowa (moc\npozorna, k_sc, zakres cos φ, napięcie znamionowe), od której zależą wyniki\nzwarciowe i rozpływowe — nie ustawienie interfejsu. Dawna mapa\n`_DEFAULT_CATALOG_BY_VARIANT` podstawiała ją PO CICHU, gdy klient pominął\npole (ta sama klasa co „ciche podstawienia\" FAB-D1): model dostawał typ,\nktórego nikt nie wybrał, a odpowiedź HTTP 201 wyglądała jak zapis wyboru\nużytkownika. Brak albo pusty `catalog_ref` = 422 (usunięto 2026-09-05).",
+    "description": "Payload formularza DER z drawera SLD i kreatora DER.\n\n`catalog_ref` jest WYMAGANY. Typ przekształtnika to dana projektowa (moc\npozorna, k_sc, zakres cos φ, napięcie znamionowe), od której zależą wyniki\nzwarciowe i rozpływowe — nie ustawienie interfejsu. Dawna mapa\n`_DEFAULT_CATALOG_BY_VARIANT` podstawiała ją PO CICHU, gdy klient pominął\npole (ta sama klasa co „ciche podstawienia\" FAB-D1): model dostawał typ,\nktórego nikt nie wybrał, a odpowiedź HTTP 201 wyglądała jak zapis wyboru\nużytkownika. Brak albo pusty `catalog_ref` = 422 (usunięto 2026-09-05).\n\n`bus_ref` (karta FAB-K) jest WYŁĄCZNIE jawną szyną urządzenia dla wariantu\n`nn_side` — dla `block_transformer` punkt przyłączenia do sieci OSD/OSP jest\n`sn_connection_bus_ref`, a `bus_ref` jest ignorowany (usunięcie dwuznaczności\nV12K: `_napiecie_przylaczenia_kv` czytała `bus_ref` niezależnie od wariantu,\nwięc szyna nN/DC urządzenia potrafiła podszyć się pod napięcie przyłączenia).",
     "properties": {
+     "battery_catalog_ref": {
+      "anyOf": [
+       {
+        "minLength": 1,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Battery Catalog Ref"
+     },
      "block_transformer_catalog_ref": {
       "anyOf": [
        {
@@ -3556,8 +3568,6 @@
       "default": "nn_side",
       "enum": [
        "nn_side",
-       "sn_side",
-       "dedicated",
        "block_transformer"
       ],
       "title": "Connection Variant",
@@ -3601,6 +3611,18 @@
       "minimum": 1.0,
       "title": "Quantity",
       "type": "integer"
+     },
+     "sn_connection_bus_ref": {
+      "anyOf": [
+       {
+        "minLength": 1,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sn Connection Bus Ref"
      },
      "source_name": {
       "anyOf": [
@@ -6367,6 +6389,17 @@
    },
    "NcRfgPtpireeModuleResult": {
     "properties": {
+     "certificate_status": {
+      "default": "unknown",
+      "enum": [
+       "ptpiree_verified",
+       "none",
+       "expired",
+       "unknown"
+      ],
+      "title": "Certificate Status",
+      "type": "string"
+     },
      "der_name": {
       "anyOf": [
        {
