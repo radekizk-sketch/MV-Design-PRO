@@ -136,6 +136,7 @@ Do czasu wykonania: każdy merge do `main` bez zielonego kompletu bramek jest na
 - 2026-09-04: PERF-0 (`47d809a9`): pełny bieg `benchmark_baseline.py --powtorzenia 5 --sieci S,M` 435,6 s, RC=0; `tests/perf` 7 passed (bieg dymny na sieciach S, 1 powtórzenie); mtime bazy `mv_design_pro.db` niezmieniony (izolacja środowiska pomiaru).
 - 2026-09-05: klasa `KLUCZE_ROZPLYWU` (wkłady + ślad podziału prądu): `tests/infrastructure/persistence/test_canonical_run_rozplyw.py` 15 passed (8 nowych), `test_enm_api` świeży bieg + końcówka rozpływu, `test_canonical_analysis_api` — 17 passed celowanych; guardy trace_ui_leak/resultset_v1/audit_contract/api_lifecycle/arch/vulture/solver_boundary/severity_contract RC=0; mypy_ratchet 0 błędów; regresja backendu (infrastructure, enm, api, e2e, analyses, proof_engine): **4206 passed, 2 skipped** (239 s) na `1e9f21c5`.
 - 2026-09-05: lokalny komplet 82/82 guardów wołanych przez CI zielony na `f3b634d6` (`guardy_z_ci.py` interpreterem poetry) + 396 testów własnych guardów.
+- 2026-09-05: FAB-D1 na gałęzi (`ab0c5e93`): pytest enm/api/application/invariants/golden **4804 passed, 5 skipped** (328 s); ruff/black (src, tests, scripts) RC=0; 11 guardów RC=0 (catalog_metadata/enforcement pod interpreterem poetry — pod systemowym python3 czerwone wyłącznie z braku `networkx`, artefakt środowiska); testy własne guarda podstawień 44 passed; vitest konsumentów `sldNetwork53.ts` 11 passed.
 
 ## G. Ustalenia adwersaryjne (§38) — po każdej granicy
 | Data | Granica | Próba obalenia | Wynik |
