@@ -920,6 +920,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     trojki poszedl na czerwono zgodnie z zamierzeniem i zostal przepisany na stan
     faktyczny: brak naruszen.
 
+    Stan po FAB-E (`27e8a44b`/`0d549d4a`, 2026-09-05): zapadka fizyczna 89 plikow /
+    592 -> 61 / 320 (256 wpisow obnizonych do zera, 37 plikow bez dlugu), wykluczenia
+    24 / 64 -> 15 / 46 (wzorce usuniete razem z podstawieniami); trzy nowe pliki w
+    zakresie (`network_model/reporting/missing_value.py`, `application/trace_emitters/
+    wynik.py`, `application/reference_networks/wymagane.py`).
+
     Sumy per korzen (nie tylko globalny RC) pilnuja, zeby cichy dryf w JEDNYM
     korzeniu nie schowal sie za poprawnym wynikiem calosciowym. Liczby to POMIAR
     z biezacego drzewa: kazda zmiana zbioru plikow w zakresie skanu (nowy modul,
@@ -927,21 +933,21 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     """
     kod = guard.main()
     wyjscie = capsys.readouterr().out
-    assert "Pol kontraktow wejsciowych: 3633." in wyjscie, wyjscie
+    assert "Pol kontraktow wejsciowych: 3637." in wyjscie, wyjscie
     assert (
-        "Przeskanowano 597 plikow w zakresie: network_model, solver_input, enm, "
+        "Przeskanowano 600 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
-    assert "Zapadka dlugu (fizyczne): 89 plikow, suma 592." in wyjscie, wyjscie
-    assert "Wykluczenia skanera (niefizyczne): 24 plikow, suma 64." in wyjscie, wyjscie
+    assert "Zapadka dlugu (fizyczne): 61 plikow, suma 320." in wyjscie, wyjscie
+    assert "Wykluczenia skanera (niefizyczne): 15 plikow, suma 46." in wyjscie, wyjscie
     per_korzen = [
-        "  network_model: pliki_skanowane=143, dlug=19 plikow/suma 101, "
-        "wykluczenia=6 plikow/suma 8",
+        "  network_model: pliki_skanowane=144, dlug=14 plikow/suma 77, "
+        "wykluczenia=2 plikow/suma 4",
         "  solver_input: pliki_skanowane=10, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
         "  enm: pliki_skanowane=35, dlug=7 plikow/suma 81, wykluczenia=0 plikow/suma 0",
-        "  application: pliki_skanowane=343, dlug=53 plikow/suma 348, "
-        "wykluczenia=11 plikow/suma 30",
-        "  api: pliki_skanowane=66, dlug=8 plikow/suma 54, wykluczenia=7 plikow/suma 26",
+        "  application: pliki_skanowane=345, dlug=35 plikow/suma 148, "
+        "wykluczenia=7 plikow/suma 19",
+        "  api: pliki_skanowane=66, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 23",
     ]
     for linia in per_korzen:
         assert linia in wyjscie, f"Brak pinowanej sumy per korzen: {linia!r}\n{wyjscie}"

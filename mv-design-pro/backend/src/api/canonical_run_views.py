@@ -25,6 +25,10 @@ from application.result_freshness import (
     StanBiezacyModelu,
     swiezosc_biegu_kanonicznego,
 )
+from application.solvers.power_flow_binding import (
+    max_mismatch_ze_sladu_lub_brak,
+    skalary_wyniku_rozplywu,
+)
 from enm.canonical_analysis import (
     CanonicalRun,
     build_automation_trace_results,
@@ -381,12 +385,16 @@ def build_power_flow_interpretation(run: CanonicalRun) -> dict[str, Any]:
     bus_results = result_v1.get("bus_results", [])
     branch_results = result_v1.get("branch_results", [])
 
+    # Skalary biegu WYLACZNIE z artefaktu (kontrakt FROZEN serializuje je zawsze;
+    # brak = odmowa z nazwa pola), koncowe niedopasowanie ze sladu White Box albo
+    # jawny brak — bez `or 0` / `or 100.0` / `0.0` (FAB-E, klasa „brak = zero").
+    skalary = skalary_wyniku_rozplywu(result_v1)
     power_flow_result = PowerFlowResult(
         converged=bool(result_v1.get("converged", False)),
-        iterations=int(result_v1.get("iterations_count") or 0),
-        tolerance=float(result_v1.get("tolerance_used") or 0.0),
-        max_mismatch_pu=0.0,
-        base_mva=float(result_v1.get("base_mva") or 100.0),
+        iterations=skalary.iterations_count,
+        tolerance=skalary.tolerance_used,
+        max_mismatch_pu=max_mismatch_ze_sladu_lub_brak(run.white_box_trace),
+        base_mva=skalary.base_mva,
         slack_node_id=str(result_v1.get("slack_bus_id", "")),
         node_u_mag_pu=_pf_bus_scalar(bus_results, "v_pu"),
         node_angle_rad={

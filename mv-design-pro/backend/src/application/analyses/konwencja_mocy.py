@@ -78,9 +78,9 @@ def _wymagana_moc_galezi(br: Mapping[str, Any], klucz: str) -> float:
     wartosc = br.get(klucz)
     if wartosc is None:
         raise ValueError(
-            f"Brak pola {klucz!r} w rekordzie branch_results (branch_id="
-            f"{br.get('branch_id')!r}) — wynik solvera niekompletny, adapter "
-            "konwencji mocy nie może przeliczyć znaku punktu bez tej wartości."
+            f"Brak pola {klucz!r} w wyniku gałęzi {br.get('branch_id')!r} — wynik "
+            "solvera niekompletny, adapter konwencji mocy nie może przeliczyć znaku "
+            "punktu bez tej wartości."
         )
     return float(wartosc)
 

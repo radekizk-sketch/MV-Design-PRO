@@ -28,6 +28,10 @@ from analysis.energy_validation.models import (
     EnergyValidationContext,
 )
 from analysis.power_flow.result import PowerFlowResult
+from application.solvers.power_flow_binding import (
+    max_mismatch_ze_sladu_lub_brak,
+    skalary_wyniku_rozplywu_lub_brak,
+)
 from enm.canonical_analysis import CanonicalRun
 from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
@@ -83,20 +87,19 @@ def _reconstruct_power_flow_result(run: CanonicalRun) -> PowerFlowResult:
     wiec brak zgloszony jest przez propagacje NIEZNANEGO (`None`/NaN) do
     wielkosci faktycznie INTERPRETOWANYCH przez builder (`losses_total_pu`,
     `slack_power_pu`, `branch_s_from_mva`, `branch_s_to_mva`) — NIE przez
-    wyjatek. `iterations`/`tolerance`/`converged` zasilaja pola PowerFlowResult,
-    ktorych ZADEN z czterech builderow tej rodziny (energy_validation,
-    power_flow_interpretation, voltage_profile, sld/overlay_builder — sprawdzone
-    grepem) nie odczytuje, wiec placeholder nie moze nikogo wprowadzic w blad;
-    czytamy je jednak bez zaszytego `0`, zeby prawdziwa wartosc (gdy jest) zawsze
-    wygrywala z placeholderem.
+    wyjatek. `iterations`/`tolerance`/`base_mva` pochodza z JEDNEGO odczytu
+    artefaktu (`skalary_wyniku_rozplywu_lub_brak`, kontrakt FROZEN serializuje je
+    zawsze; brak = jawnie nieznane, pozycje NIE OBLICZONE bez wyjatku), a `max_mismatch_pu` ze sladu White Box albo jest
+    jawnym brakiem (`None`) — nigdy `0`, `0.0` ani `100.0` MVA (FAB-E, domkniecie
+    2026-09-05: wczesniejsza wersja tej funkcji tlumaczyla placeholdery tym, ze
+    „nikt ich nie czyta" — to nie jest dowod, tylko zalozenie o konsumentach).
     """
     raw_result = run.raw_result or {}
     result_v1 = raw_result.get("result_v1") or {}
-    base_mva_raw = result_v1.get("base_mva")
-    base_mva_znane = (
-        float(base_mva_raw) if base_mva_raw is not None and float(base_mva_raw) > 0 else None
-    )
-    base_mva = base_mva_znane if base_mva_znane is not None else 100.0
+    # Skalary biegu z artefaktu przez JEDEN odczyt (`skalary_wyniku_rozplywu_lub_brak`):
+    # brak = jawnie nieznane (None), nie `100.0` MVA ani „zero iteracji" (FAB-E).
+    skalary = skalary_wyniku_rozplywu_lub_brak(result_v1)
+    base_mva_znane: float | None = skalary.base_mva if skalary is not None else None
     branch_results = result_v1.get("branch_results", [])
     summary = result_v1.get("summary", {})
 
@@ -124,14 +127,12 @@ def _reconstruct_power_flow_result(run: CanonicalRun) -> PowerFlowResult:
         for branch_id, value in (raw_result.get("branch_current_ka") or {}).items()
         if value is not None
     }
-    iterations_raw = result_v1.get("iterations_count")
-    tolerance_raw = result_v1.get("tolerance_used")
     return PowerFlowResult(
         converged=bool(result_v1.get("converged", False)),
-        iterations=int(iterations_raw) if iterations_raw is not None else 0,
-        tolerance=float(tolerance_raw) if tolerance_raw is not None else 0.0,
-        max_mismatch_pu=0.0,
-        base_mva=base_mva,
+        iterations=skalary.iterations_count if skalary is not None else None,
+        tolerance=skalary.tolerance_used if skalary is not None else None,
+        max_mismatch_pu=max_mismatch_ze_sladu_lub_brak(run.white_box_trace),
+        base_mva=base_mva_znane,
         slack_node_id=str(result_v1.get("slack_bus_id", "")),
         node_voltage_kv=node_voltage_kv,
         branch_current_ka=branch_current_ka,

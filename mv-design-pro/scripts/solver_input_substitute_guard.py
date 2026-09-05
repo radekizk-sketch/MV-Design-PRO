@@ -549,11 +549,6 @@ WYKLUCZENIA_SKANERA: dict[str, dict[str, int]] = {
     # `build_trace_summary`).
     "api/analysis_run_exports.py": {"F:dictget:summary.count": 1},
     "api/analysis_runs.py": {"F:dictget:summary.count": 1},
-    # Liczba OSIAGNIETYCH iteracji Newtona (metryka procesu, bez jednostki
-    # fizycznej) do wyswietlenia w widoku uruchomienia — w odroznieniu od
-    # `max_mismatch_pu`/`tolerance` (WIELKOSC fizyczna bledu zbieznosci w pu),
-    # ktore zostaja w `ZASTANE_ZASTEPNIKI` tego samego pliku/rodziny.
-    "api/canonical_run_views.py": {"F:dictget:result_v1.iterations_count": 1},
     # Liczba PROBLEMOW rankingu (`total_issues`) i ranga waznosci problemu
     # (`issue.severity`, skala 1-5 do etykiety "Info".."Krytyczny" — patrz
     # `severity_labels` w zrodle) — oba to KLASYFIKACJA/RANKING zdarzenia
@@ -561,11 +556,8 @@ WYKLUCZENIA_SKANERA: dict[str, dict[str, int]] = {
     # sieci. Ten sam wzorzec `issue.severity` powtorzony w dwoch raportach
     # DOCX/PDF ponizej (`network_model/reporting/power_flow_report_{docx,pdf}.py`).
     "api/power_flow_comparisons.py": {
-        "F:dictget:issue.severity": 2,
         "F:dictget:summary.total_issues": 1,
     },
-    "network_model/reporting/power_flow_report_docx.py": {"F:dictget:issue.severity": 1},
-    "network_model/reporting/power_flow_report_pdf.py": {"F:dictget:issue.severity": 1},
     # Liczba URZADZEN i liczba SPRAWDZEN koordynacji zabezpieczen — bookkeeping
     # raportu (ile pozycji zestawiono), nie nastawa/prad/czas zabezpieczenia
     # (te zostaja fizyczne gdzie indziej). Ten sam wzorzec w API i w dwoch
@@ -582,34 +574,8 @@ WYKLUCZENIA_SKANERA: dict[str, dict[str, int]] = {
         "F:dictget:summary.total_checks": 1,
         "F:dictget:summary.total_devices": 1,
     },
-    # Liczba OSIAGNIETYCH iteracji rozplywu — jak `canonical_run_views.py`
-    # wyzej, metryka procesu bez jednostki fizycznej. `energy_validation` i
-    # `voltage_profile_view` czytaja TEN SAM `result_v1` co
-    # `api/canonical_run_views.py` (trzecia niezalezna kopia tego samego
-    # odczytu wyniku rozplywu do widoku).
-    "application/analyses/energy_validation/service.py": {
-        "F:dictget:result_v1.iterations_count": 1
-    },
     "application/analyses/voltage_profile_view.py": {"F:dictget:result_v1.iterations_count": 1},
     "application/power_flow_comparison/service.py": {"F:dictget:result_summary.iterations": 1},
-    "application/reference_networks/computation.py": {"F:dictget:result.iterations": 1},
-    "application/trace_emitters/load_flow_emitter.py": {
-        "F:dictget:result.iterations_count": 1,
-        "F:dictget:trace.final_iterations_count": 1,
-    },
-    # Zliczenie WYNIKOW oceny testu koordynacji (ile probek zadzialalo/nie
-    # zadzialalo/bylo niepoprawnych) w porownaniu A/B ustawien zabezpieczen —
-    # bookkeeping wyniku porownania (`ProtectionComparison`), nie nastawa
-    # zabezpieczenia (te zostaja fizyczne w tym samym pliku, patrz
-    # `ZASTANE_ZASTEPNIKI`). Zweryfikowane w zrodle w. 387-394.
-    "application/comparison/service.py": {
-        "F:dictget:summary_a.invalid_count": 1,
-        "F:dictget:summary_a.no_trip_count": 1,
-        "F:dictget:summary_a.trips_count": 1,
-        "F:dictget:summary_b.invalid_count": 1,
-        "F:dictget:summary_b.no_trip_count": 1,
-        "F:dictget:summary_b.trips_count": 1,
-    },
     # Zliczenie WYNIKOW walidacji wniosku OSD (ile spelnione/ostrzezenia/
     # niespelnione/nieobliczone) — bookkeeping raportu, nie dana fizyki.
     # `installed_by_bus.values` to KOLIZJA NAZW: wywolanie wbudowanej metody
@@ -619,7 +585,6 @@ WYKLUCZENIA_SKANERA: dict[str, dict[str, int]] = {
     # w `MODEL_ROOTS_POZA_MAPA`, tylko na poziomie POJEDYNCZEGO odczytu, nie
     # calego modulu, wiec wykluczenie jest tu, nie tam).
     "application/analyses/wniosek_osd.py": {
-        "B:ifexp:installed_by_bus.values": 1,
         "F:dictget:summary.fail_count": 1,
         "F:dictget:summary.not_computed_count": 1,
         "F:dictget:summary.pass_count": 1,
@@ -634,11 +599,6 @@ WYKLUCZENIA_SKANERA: dict[str, dict[str, int]] = {
         "F:dictget:skipped.operating_cases": 1,
         "F:dictget:skipped.study_cases": 1,
     },
-    # Liczba galezi (`branch_count`) w naglowku sekcji nakladki wynikow do
-    # raportu DOCX/PDF — bookkeeping wyswietlenia ("Nodes: N | Branches: M"),
-    # nie dana fizyki.
-    "network_model/reporting/analysis_run_report_docx.py": {"F:dictget:summary.branch_count": 1},
-    "network_model/reporting/analysis_run_report_pdf.py": {"F:dictget:summary.branch_count": 1},
     # Automatyzacja Symphony (kolejka zadan agentowych, `WorkflowDefinition`/
     # `tracker.kind == "linear"`) — CALKOWICIE POZA DOMENA ELEKTRYCZNA. Ranga
     # priorytetu ZADANIA (nie elementu sieci) w kolejce dyspozytora oraz
@@ -1162,105 +1122,12 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "F:dictget:us_settings.time_dial": 1,
         "F:dictget:ups_spec.rated_power_kw": 1,
     },
-    # =========================================================================
-    # KARTA GUARD-SUB (2026-09-05) — pierwszy pomiar NOWEGO terenu po
-    # rozszerzeniu SCAN_ROOTS z trzech korzeni (`network_model/solvers`,
-    # `solver_input`, `enm`) na piec (dolozone: cale `network_model`, `application`,
-    # `api` — patrz komentarz przy SCAN_ROOTS). W TEJ KARCIE NIE NAPRAWIANO KODU
-    # PRODUKCYJNEGO — pomiar jest produktem (§0.2 karty): kazda pozycja ponizej
-    # jest ZMIERZONYM zastanym podstawieniem, zamrozonym w budzecie do dalszej,
-    # oddzielnej naprawy. Klasyfikacja fizyczne/niefizyczne jest OPISANA, nie
-    # zgadywana: kazda pozycja przeszla przez pytanie „czy podstawiona `0` MOZE
-    # zniksztalcic wynik obliczen ELEKTRYCZNYCH?" — TAK ladowalo tutaj, NIE
-    # ladowalo do `WYKLUCZENIA_SKANERA` (patrz tamtejszy docstring).
-    #
-    # GRUPA 1 — WYNIK/PORuWNANIE/EKSPORT/RAPORT ROZPLYWU MOCY. Jedenascie
-    # niezaleznych miejsc czyta TEN SAM ksztalt payloadu rozplywu (szyna: v_pu/
-    # angle_deg/p_injected_mw/q_injected_mvar; galaz: p_from_mw/q_from_mvar/
-    # p_to_mw/q_to_mvar/losses_p_mw/losses_q_mvar; podsumowanie: total_losses_p_mw/
-    # total_losses_q_mvar/min_v_pu/max_v_pu/slack_p_mw/slack_q_mvar/base_mva) i
-    # KAZDE z osobna podstawia 0,0 gdy pole brakuje — TA SAMA KLASA fabrykacji,
-    # co jej siostrzane wystapienia juz zamrozone w `enm/canonical_analysis.py`
-    # wyzej, tylko powielona po stronie API/raportowania zamiast rozplywu ENM.
-    # CZTERY z tych plikow to „legacy budowniczowie wejscia" nazwani w fakcie
-    # karty (pomiar 2026-09-05 na calym `backend/src`): `power_flow_input_
-    # builder.py`, `network_wizard/service.py`, `analysis_run/service.py`,
-    # `analysis_run/results_inspector.py` — budowuja WEJSCIE do rozplywu z
-    # surowego payloadu (slack/generator/load setpoints), nie tylko czytaja
-    # WYNIK; pozostale pliki grupy CZYTAJA juz POLICZONY wynik do wyswietlenia/
-    # porownania/eksportu (API viewy, generatory raportow DOCX/PDF, proof
-    # engine power flow). `setpoint.cosphi`/`payload.k_sc`/`payload.in_rated_a`
-    # w `analysis_run/service.py` i `network_wizard/service.py` buduja
-    # nastawe falownika/aparatu wprost z payloadu wywolania API — TA SAMA
-    # klasa, co juz zamrozone `k_sc`/nastawy Q w rodzinie V12.6. `it.norm_
-    # mismatch`/`it.max_mismatch_pu` w czterech generatorach raportow to
-    # ODCZYT WARTOSCI sladu solvera do raportu (klasa (b) juz ustalona w
-    # `enm/canonical_analysis.py` wyzej — WIELKOSC fizyczna bledu zbieznosci w
-    # pu, w odroznieniu od WYKLUCZONEGO `iterations_count`, ktory jest samym
-    # LICZNIKIEM iteracji bez jednostki).
-    "api/analysis_run_exports.py": {
-        "F:dictget:bus.angle_deg": 2,
-        "F:dictget:bus.p_injected_mw": 1,
-        "F:dictget:bus.q_injected_mvar": 1,
-        "F:dictget:bus.v_pu": 2,
-        "F:dictget:summary.max_v_pu": 2,
-        "F:dictget:summary.min_v_pu": 2,
-        "F:dictget:summary.total_losses_p_mw": 2,
-        "F:dictget:summary.total_losses_q_mvar": 2,
-    },
-    "api/canonical_run_views.py": {
-        "F:dictget:result_v1.base_mva": 1,
-        "F:dictget:result_v1.tolerance_used": 1,
-        "F:dictget:row.angle_deg": 1,
-        "F:dictget:row.p_from_mw": 1,
-        "F:dictget:row.p_to_mw": 1,
-        "F:dictget:row.q_from_mvar": 1,
-        "F:dictget:row.q_to_mvar": 1,
-        "F:dictget:row.v_pu": 1,
-    },
     "api/power_flow_comparisons.py": {
         "F:dictget:summary.delta_total_losses_p_mw": 2,
-        "F:dictget:summary.max_delta_v_pu": 1,
-    },
-    "api/power_flow_runs.py": {
-        "F:dictget:bus.angle_deg": 2,
-        "F:dictget:bus.p_injected_mw": 1,
-        "F:dictget:bus.q_injected_mvar": 1,
-        "F:dictget:bus.v_pu": 2,
-        "F:dictget:summary.max_v_pu": 2,
-        "F:dictget:summary.min_v_pu": 2,
-        "F:dictget:summary.total_losses_p_mw": 2,
-        "F:dictget:summary.total_losses_q_mvar": 2,
-    },
-    "application/analyses/energy_validation/service.py": {
-        "F:dictget:result_v1.base_mva": 1,
-        "F:dictget:result_v1.tolerance_used": 1,
-        "F:dictget:row.p_from_mw": 1,
-        "F:dictget:row.p_to_mw": 1,
-        "F:dictget:row.q_from_mvar": 1,
-        "F:dictget:row.q_to_mvar": 1,
-        "F:dictget:summary.slack_p_mw": 1,
-        "F:dictget:summary.slack_q_mvar": 1,
-        "F:dictget:summary.total_losses_p_mw": 1,
-        "F:dictget:summary.total_losses_q_mvar": 1,
     },
     "application/analyses/voltage_profile_view.py": {
-        "D:dictor:row.p_injected_mw": 1,
-        "D:dictor:row.q_injected_mvar": 1,
         "F:dictget:result_v1.base_mva": 1,
         "F:dictget:result_v1.tolerance_used": 1,
-        "F:dictget:row.losses_p_mw": 1,
-        "F:dictget:row.losses_q_mvar": 1,
-        "F:dictget:row.p_from_mw": 1,
-        "F:dictget:row.p_to_mw": 1,
-        "F:dictget:row.q_from_mvar": 1,
-        "F:dictget:row.q_to_mvar": 1,
-        "F:dictget:summary_raw.max_v_pu": 1,
-        "F:dictget:summary_raw.min_v_pu": 1,
-        "F:dictget:summary_raw.slack_p_mw": 1,
-        "F:dictget:summary_raw.slack_q_mvar": 1,
-        "F:dictget:summary_raw.total_losses_p_mw": 1,
-        "F:dictget:summary_raw.total_losses_q_mvar": 1,
     },
     "application/analysis_run/results_inspector.py": {
         "F:dictget:node.base_kv": 1,
@@ -1287,18 +1154,6 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "F:dictget:slack_data.angle_rad": 1,
         "F:dictget:slack_data.u_pu": 1,
         "F:dictget:snapshot.base_mva": 2,
-    },
-    "application/comparison/service.py": {
-        "F:dictget:ev_a.t_trip_s": 1,
-        "F:dictget:ev_b.t_trip_s": 1,
-        "F:dictget:payload_a.ikss_a": 1,
-        "F:dictget:payload_a.ip_a": 1,
-        "F:dictget:payload_a.ith_a": 1,
-        "F:dictget:payload_a.sk_mva": 1,
-        "F:dictget:payload_b.ikss_a": 1,
-        "F:dictget:payload_b.ip_a": 1,
-        "F:dictget:payload_b.ith_a": 1,
-        "F:dictget:payload_b.sk_mva": 1,
     },
     "application/network_wizard/service.py": {
         "B:ifexp:setpoint.cosphi": 2,
@@ -1328,27 +1183,10 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "F:dictget:t.uk_percent": 1,
     },
     "application/power_flow_comparison/service.py": {
-        "F:dictget:br_a.losses_p_mw": 1,
-        "F:dictget:br_a.losses_q_mvar": 1,
-        "F:dictget:br_a.p_from_mw": 1,
-        "F:dictget:br_a.p_to_mw": 1,
-        "F:dictget:br_a.q_from_mvar": 1,
-        "F:dictget:br_a.q_to_mvar": 1,
-        "F:dictget:br_b.losses_p_mw": 1,
-        "F:dictget:br_b.losses_q_mvar": 1,
-        "F:dictget:br_b.p_from_mw": 1,
-        "F:dictget:br_b.p_to_mw": 1,
-        "F:dictget:br_b.q_from_mvar": 1,
-        "F:dictget:br_b.q_to_mvar": 1,
-        "F:dictget:bus_a.angle_deg": 1,
         "F:dictget:bus_a.p_injected_mw": 1,
         "F:dictget:bus_a.q_injected_mvar": 1,
-        "F:dictget:bus_a.v_pu": 1,
-        "F:dictget:bus_b.angle_deg": 1,
         "F:dictget:bus_b.p_injected_mw": 1,
         "F:dictget:bus_b.q_injected_mvar": 1,
-        "F:dictget:bus_b.v_pu": 1,
-        "F:dictget:payload.base_mva": 1,
         "F:dictget:summary_a.slack_p_mw": 1,
         "F:dictget:summary_a.total_losses_p_mw": 2,
         "F:dictget:summary_b.slack_p_mw": 1,
@@ -1363,60 +1201,8 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "F:dictget:spec.q_mvar": 1,
         "F:dictget:spec.u_pu": 1,
     },
-    "application/trace_emitters/load_flow_emitter.py": {
-        "F:dictget:br.losses_p_mw": 1,
-        "F:dictget:br.losses_q_mvar": 1,
-        "F:dictget:br.p_from_mw": 1,
-        "F:dictget:br.p_to_mw": 1,
-        "F:dictget:br.q_from_mvar": 1,
-        "F:dictget:br.q_to_mvar": 1,
-        "F:dictget:bus.angle_deg": 1,
-        "F:dictget:bus.v_pu": 1,
-        "F:dictget:last_iter.norm_mismatch": 1,
-        "F:dictget:summary.max_v_pu": 1,
-        "F:dictget:summary.min_v_pu": 1,
-        "F:dictget:summary.slack_p_mw": 1,
-        "F:dictget:summary.slack_q_mvar": 1,
-        "F:dictget:summary.total_losses_p_mw": 2,
-        "F:dictget:summary.total_losses_q_mvar": 2,
-        "F:dictget:trace.base_mva": 1,
-        "F:dictget:trace.max_iterations": 1,
-        "F:dictget:trace.tolerance": 2,
-    },
     "network_model/proof/power_flow_proof_builder.py": {
         "F:dictget:deltas.delta_v_pu": 1,
-        "F:dictget:state.v_pu": 2,
-    },
-    "network_model/proof/power_flow_proof_export.py": {
-        "F:dictget:balance.slack_p_mw": 1,
-        "F:dictget:balance.slack_q_mvar": 1,
-        "F:dictget:balance.total_losses_p_mw": 1,
-        "F:dictget:balance.total_losses_q_mvar": 1,
-        "F:dictget:state.p_mw": 1,
-        "F:dictget:state.q_mvar": 1,
-        "F:dictget:state.v_pu": 2,
-    },
-    "network_model/reporting/export_docx.py": {
-        "F:dictget:bus.v_pu": 1,
-        "F:dictget:data.base_mva": 1,
-        "F:dictget:it.max_mismatch_pu": 1,
-        "F:dictget:it.norm_mismatch": 1,
-    },
-    "network_model/reporting/export_pdf.py": {
-        "F:dictget:data.base_mva": 1,
-        "F:dictget:it.max_mismatch_pu": 1,
-        "F:dictget:it.norm_mismatch": 1,
-    },
-    "network_model/reporting/power_flow_report_docx.py": {
-        "F:dictget:data.base_mva": 1,
-        "F:dictget:it.max_mismatch_pu": 1,
-        "F:dictget:it.norm_mismatch": 1,
-        "F:dictget:x.delta_v_pu": 1,
-    },
-    "network_model/reporting/power_flow_report_pdf.py": {
-        "F:dictget:data.base_mva": 1,
-        "F:dictget:it.max_mismatch_pu": 1,
-        "F:dictget:it.norm_mismatch": 1,
     },
     # GRUPA 2 — PLATFORMA ZWARCIOWA/ZABEZPIECZENIOWA. Rodzina powtorzonego
     # mostu „wynik zwarcia (ikss_a/ip_a/ith_a/sk_mva/rx_ratio/kappa) -> wejscie
@@ -1442,42 +1228,15 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "F:dictget:spec.i_thermal_calculated_ka": 1,
         "F:dictget:spec.t_clearing_s": 1,
     },
-    "api/catalog.py": {
-        "F:dictget:params.cross_section_mm2": 1,
-        "F:dictget:params.in_a": 1,
-        "F:dictget:params.rated_current_a": 1,
-        "F:dictget:params.rated_power_mva": 1,
-        "F:dictget:params.un_kv": 1,
-        "F:dictget:params.voltage_hv_kv": 1,
-        "F:dictget:params.voltage_lv_kv": 1,
-        "F:dictget:params.voltage_rating_kv": 1,
-    },
-    "api/der_sn_documents.py": {
-        "D:dictor:cable.cross_section_mm2": 1,
-        "D:dictor:tr.sn_mva": 2,
-    },
     "api/grid_source_preview.py": {
         "B:ifexp:request.cos_phi": 1,
-    },
-    "application/analyses/dobor_kompensacji.py": {
-        "D:dictor:bus.voltage_kv": 1,
-        "D:dictor:cap.rated_mvar": 1,
     },
     "application/analyses/fault_loop/route.py": {
         "A:or:branch.r_ohm": 1,
         "A:or:branch.x_ohm": 1,
     },
-    "application/analyses/hosting_capacity.py": {
-        "F:dictget:gen.p_mw": 1,
-    },
     "application/analyses/kontyngencje_n1.py": {
         "D:dictor:pozycja.p_mw": 1,
-    },
-    "application/analyses/konwencja_mocy.py": {
-        "D:dictor:br.p_from_mw": 1,
-        "D:dictor:br.p_to_mw": 1,
-        "D:dictor:br.q_from_mvar": 1,
-        "D:dictor:br.q_to_mvar": 1,
     },
     "application/analyses/lista_materialowa.py": {
         "D:dictor:gen.n_parallel": 1,
@@ -1486,13 +1245,8 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "D:dictor:seg.delta_u_kv": 1,
         "D:dictor:seg.delta_u_percent": 1,
     },
-    "application/analyses/odpowiedz_osd.py": {
-        "D:dictor:source.q_mvar": 1,
-        "F:dictget:source.p_mw": 1,
-    },
     "application/analyses/pq_area.py": {
         "D:dictor:gen.q_mvar": 1,
-        "F:dictget:gen.p_mw": 1,
     },
     "application/analyses/protection/catalog/catalog_store.py": {
         "F:dictget:payload.i_inst_50_a_max": 1,
@@ -1512,41 +1266,11 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "F:dictget:settings.tms_51": 1,
         "F:dictget:settings.tms_51n": 1,
     },
-    "application/analyses/protection/overcurrent/pipeline.py": {
-        "F:dictget:payload.c_factor": 1,
-        "F:dictget:payload.ib_a": 1,
-        "F:dictget:payload.ik_inverters_a": 1,
-        "F:dictget:payload.ik_thevenin_a": 1,
-        "F:dictget:payload.ik_total_a": 1,
-        "F:dictget:payload.ikss_a": 1,
-        "F:dictget:payload.ip_a": 1,
-        "F:dictget:payload.ith_a": 1,
-        "F:dictget:payload.kappa": 1,
-        "F:dictget:payload.rx_ratio": 1,
-        "F:dictget:payload.sk_mva": 1,
-        "F:dictget:payload.tb_s": 1,
-        "F:dictget:payload.tk_s": 1,
-        "F:dictget:payload.un_v": 1,
-    },
     "application/analyses/state_estimation/service.py": {
         "F:dictget:run.base_mva": 1,
     },
     "application/analyses/swz/werdykt.py": {
         "B:ifexp:bramka_konwencjonalna.inf_a": 1,
-    },
-    "application/analyses/wytrzymalosc_cieplna_przewodow.py": {
-        "F:dictget:payload.c_factor": 1,
-        "F:dictget:payload.ib_a": 1,
-        "F:dictget:payload.ikss_a": 1,
-        "F:dictget:payload.ip_a": 1,
-        "F:dictget:payload.ith_a": 1,
-        "F:dictget:payload.kappa": 1,
-        "F:dictget:payload.rx_ratio": 1,
-        "F:dictget:payload.sk_mva": 1,
-        "F:dictget:payload.tb_s": 1,
-        "F:dictget:payload.tk_s": 1,
-        "F:dictget:payload.un_v": 1,
-        "F:dictget:wpis.i_contrib_a": 1,
     },
     "application/proof_engine/packs/lv_circuit_verification.py": {
         "B:ifexp:th.i2t_a2s": 1,
@@ -1558,10 +1282,6 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     "application/proof_engine/packs/protection_settings.py": {
         "B:ifexp:data.cross_section_mm2": 1,
         "B:ifexp:data.ik2_min_end_a": 1,
-    },
-    "application/proof_engine/packs/qu_regulation.py": {
-        "B:ifexp:data.q_injected_mvar": 1,
-        "B:ifexp:data.voltages_at_oze_pu": 1,
     },
     "application/proof_engine/packs/sc_asymmetrical.py": {
         "B:ifexp:result.m_factor": 1,
@@ -1588,10 +1308,6 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     "application/protection_analysis/service.py": {
         "F:dictget:sc_result.ikss_a": 1,
     },
-    "application/protection_comparison/service.py": {
-        "B:ifexp:eval_a.i_fault_a": 2,
-        "B:ifexp:eval_b.i_fault_a": 2,
-    },
     "application/protection_read_model.py": {
         "A:or:setting.threshold_a": 2,
     },
@@ -1606,116 +1322,13 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     "application/trace_emitters/protection_emitter.py": {
         "F:dictget:tp.i_a_primary": 1,
         "F:dictget:tp.i_a_secondary": 1,
-        "F:dictget:trace.A": 1,
-        "F:dictget:trace.B": 1,
-        "F:dictget:trace.M_power_B": 1,
-        "F:dictget:trace.base_time_s": 1,
-        "F:dictget:trace.denominator": 1,
-        "F:dictget:trace.pickup_a_secondary": 1,
-        "F:dictget:trace.t_trip_s": 1,
-    },
-    "application/trace_emitters/sc_emitter.py": {
-        "F:dictget:r.ikss_a": 1,
-        "F:dictget:r.ip_a": 2,
     },
     "application/xlsx_import/service.py": {
         "F:dictget:wezel.voltage_angle_rad": 1,
         "F:dictget:wezel.voltage_magnitude_pu": 1,
     },
-    # GRUPA 3 — SIECI/WZORCE ODNIESIENIA (`reference_networks`/
-    # `reference_patterns`). Funkcja PRODUKCYJNA (nie testowa — fikstury
-    # testowe zyja osobno w `backend/tests/reference_networks/`): buduje i
-    # porownuje siec wzgledem zewnetrznego silnika (pandapower) oraz wzgledem
-    # oczekiwanych wartosci golden. KAZDE pole sieci (napiecie, moc, impedancja
-    # galezi, dane transformatora) czytane z surowego slownika wzorca z
-    # zapasem liczbowym — ten sam ksztalt fabrykacji, co w moscie ENM->solver,
-    # tylko po stronie budowniczego SIECI ODNIESIENIA. `item.rtol` (tolerancja
-    # porownania oczekiwanej wartosci) i `sec.order`/`gpz_tr`/`transformers.*`
-    # w `sld_network_model.py` sa CZESCIA TEJ SAMEJ rodziny (budowa fikstury),
-    # `node.active_power`/`reactive_power` to identyczna sygnatura, juz
-    # zaakceptowana w `enm/canonical_analysis.py` (brak wstrzykniecia = zero).
-    # `rated_current_a` w `station_archetype_substrate.py` jest odczytana
-    # PRZEZ `getattr` i NATYCHMIAST oslonieta `if rated_a > 0 else None` —
-    # ten sam wzorzec „zabezpieczenie dzielenia" co `trafo.sn_mva` w
-    # `enm/zero_sequence_transformer.py`.
-    "application/reference_networks/comparator.py": {
-        "F:dictget:actual.angle_deg": 1,
-        "F:dictget:actual.v_pu": 1,
-    },
-    "application/reference_networks/computation.py": {
-        "F:dictget:branch.b_pu": 1,
-        "F:dictget:branch.b_us_per_km": 1,
-        "F:dictget:branch.length_km": 2,
-        "F:dictget:branch.r_ohm_per_km": 1,
-        "F:dictget:branch.rated_current_a": 1,
-        "F:dictget:branch.x_ohm_per_km": 1,
-        "F:dictget:bus.v_pu": 1,
-        "F:dictget:enm.base_kv": 2,
-        "F:dictget:enm.base_mva": 2,
-        "F:dictget:gen.p_mw": 2,
-        "F:dictget:gen.v_pu": 1,
-        "F:dictget:header.base_kv": 1,
-        "F:dictget:header.base_mva": 1,
-        "F:dictget:load.p_mw": 3,
-        "F:dictget:load.q_mvar": 3,
-        "F:dictget:shunt.b_pu": 1,
-        "F:dictget:shunt.g_pu": 1,
-        "F:dictget:source.v_pu": 1,
-        "F:dictget:transformer.i0_percent": 1,
-        "F:dictget:transformer.p0_kw": 1,
-        "F:dictget:transformer.primary_kv": 1,
-        "F:dictget:transformer.secondary_kv": 1,
-        "F:dictget:transformer.sn_mva": 1,
-        "F:dictget:transformer.tap_position": 1,
-        "F:dictget:transformer.tap_step_percent": 1,
-    },
     "application/reference_networks/expected_values.py": {
-        "F:dictget:item.angle_deg": 1,
-        "F:dictget:item.ip_a": 1,
-        "F:dictget:item.ith_a": 1,
-        "F:dictget:item.losses_p_mw": 1,
-        "F:dictget:item.p_from_mw": 1,
-        "F:dictget:item.q_from_mvar": 1,
         "F:dictget:item.rtol": 3,
-        "F:dictget:item.sk_mva": 1,
-        "F:dictget:item.voltage_pu_max": 1,
-    },
-    "application/reference_networks/frozen_solver_input.py": {
-        "F:dictget:branch.b_pu": 1,
-        "F:dictget:gen.p_mw": 1,
-        "F:dictget:gen.v_pu": 2,
-        "F:dictget:load.p_mw": 1,
-        "F:dictget:load.q_mvar": 1,
-        "F:dictget:shunt.b_pu": 1,
-        "F:dictget:shunt.g_pu": 1,
-        "F:dictget:source.v_pu": 1,
-    },
-    "application/reference_networks/pandapower_bridge.py": {
-        "F:dictget:branch.b_pu": 1,
-        "F:dictget:branch.length_km": 1,
-        "F:dictget:bus.u_n_kv": 1,
-        "F:dictget:gen.p_mw": 3,
-        "F:dictget:gen.v_pu": 1,
-        "F:dictget:load.p_mw": 1,
-        "F:dictget:load.q_mvar": 1,
-        "F:dictget:source.rx_ratio": 1,
-        "F:dictget:source.v_pu": 1,
-        "F:dictget:tr.primary_kv": 1,
-        "F:dictget:tr.secondary_kv": 1,
-        "F:dictget:tr.sn_mva": 1,
-    },
-    "application/reference_networks/sld_network_model.py": {
-        "F:dictget:b.voltage_kv": 1,
-        "F:dictget:gpz_tr.uhv_kv": 1,
-        "F:dictget:sec.order": 2,
-        "F:dictget:t.sn_mva": 1,
-        "F:dictget:transformers.sn_mva": 1,
-        "F:dictget:transformers.uhv_kv": 1,
-        "F:dictget:transformers.ulv_kv": 1,
-    },
-    "application/reference_networks/sld_substrate_power_flow.py": {
-        "A:or:node.active_power": 1,
-        "A:or:node.reactive_power": 1,
     },
     "application/reference_networks/station_archetype_substrate.py": {
         "B:ifexp:rmax.ikss_a": 1,
