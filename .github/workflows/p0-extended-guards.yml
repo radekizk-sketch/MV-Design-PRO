@@ -170,6 +170,9 @@ jobs:
       - name: Scenariusz roboczy — jedna kopia migawki i jedna fabryka wariantu (CV-3.1)
         run: $GUARD_PY scripts/scenario_copy_guard.py
 
+      - name: Jeden assembler wejścia solvera — zapadka konstrukcji poza enm/assembler.py (CV-4.1)
+        run: $GUARD_PY scripts/solver_input_assembler_guard.py
+
       - name: Legacy public path
         run: $GUARD_PY scripts/legacy_public_path_guard.py
 

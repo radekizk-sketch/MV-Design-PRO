@@ -1031,28 +1031,44 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # enm/models.py) przy odczycie surowego (niewalidowanego) JSON tego
     # samego pola — granica nr 4 modulu (domyslna w sygnaturze modelu to
     # swiadoma decyzja kontraktu, nie fabrykacja w kodzie liczacym).
-    "enm/canonical_analysis.py": {
+    # Karta CV-4.1 (2026-09-05): zlozenie wejscia rozplywu i zwarcia WYCIETE
+    # 1:1 z `_execute_power_flow`/`_execute_short_circuit` do `enm/assembler.py`
+    # (`zloz_wejscie_rozplywu`/`zloz_wejscie_zwarcia`, parytet 252 zlotych
+    # hashy bit w bit). Siedem pozycji ponizej to TE SAME odczyty, ktore do tej
+    # karty siedzialy w bloku `enm/canonical_analysis.py` — przeniesione razem
+    # z kodem, dlug BEZ ZMIAN (suma zapadki nie rosnie). Klucze `options.*`
+    # zamiast `run.*`: assembler nie importuje `CanonicalRun` i dostaje worek
+    # opcji przypadku jako parametr `options` (ten sam slownik `run.options`),
+    # wiec lewy skrajny identyfikator odczytu zmienil nazwe. Uzasadnienie
+    # merytoryczne klas bez zmian: (a) konfiguracja przypadku obliczeniowego
+    # (`base_mva`, `tolerance`, `max_iter`, `thermal_time_seconds` — strojenie
+    # analizy, nie dana fizyczna elementu), (b) brak wstrzykniecia = zero
+    # (`node.active_power`/`reactive_power`), granica nr 4
+    # (`defaults.frequency_hz` powtarza domyslna z sygnatury `ENMDefaults`).
+    "enm/assembler.py": {
         "A:or:node.active_power": 1,
         "A:or:node.reactive_power": 1,
+        "F:dictget:defaults.frequency_hz": 1,
+        "F:dictget:options.base_mva": 1,
+        "F:dictget:options.max_iter": 1,
+        "F:dictget:options.thermal_time_seconds": 1,
+        "F:dictget:options.tolerance": 1,
+    },
+    "enm/canonical_analysis.py": {
         "D:dictor:run_options.angle_damping": 1,
         "D:dictor:run_options.rebuild_matrices_every": 1,
         "D:dictor:run_options.voltage_damping": 1,
-        "F:dictget:defaults.frequency_hz": 1,
         "F:dictget:item.p_from_mw": 1,
         "F:dictget:item.q_from_mvar": 1,
         "F:dictget:iteration.max_mismatch_pu": 2,
         "F:dictget:p.load_scale": 1,
         "F:dictget:row.event_seq": 1,
-        "F:dictget:run.base_mva": 1,
         "F:dictget:run.clearing_time_ms": 1,
         "F:dictget:run.during_fault_angle_deg": 1,
-        "F:dictget:run.max_iter": 1,
         "F:dictget:run.post_fault_angle_deg": 1,
         "F:dictget:run.post_fault_frequency_pu": 1,
         "F:dictget:run.post_fault_voltage_pu": 1,
         "F:dictget:run.pre_fault_angle_deg": 1,
-        "F:dictget:run.thermal_time_seconds": 1,
-        "F:dictget:run.tolerance": 1,
         "F:dictget:run.unbalance_alert_percent": 1,
         "F:dictget:step.max_mismatch_pu": 2,
     },

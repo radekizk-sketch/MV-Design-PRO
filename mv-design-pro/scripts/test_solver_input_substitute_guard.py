@@ -1004,18 +1004,30 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `enm/domain_operations_v2.py` — pomiar roznicy zbiorow contract_fields()
     # wobec szczytu fd7cc0e5 (koordynator), nie wyliczenie z pamieci; pliki,
     # dlug i wykluczenia bez zmian.
-    assert "Pol kontraktow wejsciowych: 3601." in wyjscie, wyjscie
+    # 3609 pol / 577 plikow / enm 37 plikow, dlug 8 plikow suma 84 / zapadka
+    # 64 plikow suma 312 (CV-4.1 na szczycie po FAB-K, 2026-09-05; 3601 + 8):
+    # zlozenie wejscia rozplywu i
+    # zwarcia wyciete 1:1 z `enm/canonical_analysis.py` do NOWEGO pliku
+    # `enm/assembler.py` (+1 plik w zakresie skanu). +8 pol kontraktu =
+    # nazwy pol dataclass wyniku assemblera (`WejscieRozplywu`/`WejscieZwarcia`),
+    # ktorych nie bylo dotad w zadnym kontrakcie zadeklarowanym w skanowanej
+    # warstwie (skaner czyta dataclassy warstwy jako kontrakt — pomiar roznicy
+    # zbiorow wzgledem szczytu sprzed karty, nie wyliczenie z pamieci). Dlug:
+    # 7 pozycji PRZENIESIONYCH z bloku `enm/canonical_analysis.py` do bloku
+    # `enm/assembler.py` (suma per korzen `enm` bez zmian: 84; +1 plik dlugu,
+    # bo ten sam dlug siedzi teraz w dwoch plikach zamiast jednego).
+    assert "Pol kontraktow wejsciowych: 3609." in wyjscie, wyjscie
     assert (
-        "Przeskanowano 576 plikow w zakresie: network_model, solver_input, enm, "
+        "Przeskanowano 577 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
-    assert "Zapadka dlugu (fizyczne): 63 plikow, suma 312." in wyjscie, wyjscie
+    assert "Zapadka dlugu (fizyczne): 64 plikow, suma 312." in wyjscie, wyjscie
     assert "Wykluczenia skanera (niefizyczne): 17 plikow, suma 49." in wyjscie, wyjscie
     per_korzen = [
         "  network_model: pliki_skanowane=145, dlug=14 plikow/suma 77, "
         "wykluczenia=4 plikow/suma 7",
         "  solver_input: pliki_skanowane=10, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
-        "  enm: pliki_skanowane=36, dlug=7 plikow/suma 84, wykluczenia=0 plikow/suma 0",
+        "  enm: pliki_skanowane=37, dlug=8 plikow/suma 84, wykluczenia=0 plikow/suma 0",
         "  application: pliki_skanowane=320, dlug=37 plikow/suma 137, "
         "wykluczenia=7 plikow/suma 19",
         "  api: pliki_skanowane=65, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 23",
