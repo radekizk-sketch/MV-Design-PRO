@@ -9,7 +9,7 @@
 | G03 | SN pierścień / punkt podziału (NOP) / N-1 | PARTIAL | ENM | REGRESSION_ONLY | — | `tests.reference_networks.builders:build_gn03_sn_pierscien` | solver |
 | G04 | stacja dwutransformatorowa ze sprzęgłem szyn | PARTIAL | ENM | REGRESSION_ONLY | — | `tests.application.analyses.lv_domain.scenariusze_nn:SCENARIUSZE` | projekcja nN, SLD nN (fixtury generowane) |
 | G05 | nN ABCN / N / PEN / SWZ | PARTIAL | ENM | REGRESSION_ONLY | — | `tests.application.analyses.lv_domain.scenariusze_nn:SCENARIUSZE` | fault_loop, swz, projekcja nN |
-| G06 | PV w punkcie przyłączenia / RfG | PARTIAL | ENM | REGRESSION_ONLY | — | — | ncrfg, source_compliance |
+| G06 | PV w punkcie przyłączenia / RfG | PARTIAL | ENM | INDEPENDENTLY_VERIFIED | LF | `tests.reference_networks.builders:build_gn06_pv_regulacja_napiecia`<br>`tests.reference_networks.builders:build_gn06_pv_regulacja_napiecia_nasycenie` | ncrfg, source_compliance, solver |
 | G07 | BESS ładowanie / rozładowanie | PARTIAL | BENCHMARK_DICT | REGRESSION_ONLY | — | `application.reference_networks.builders.oze_pv_bess:build_oze_pv_bess_network` | solver |
 | G08 | koordynacja zabezpieczeń / TCC | PARTIAL | ENM | NORMATIVE | PROTECTION | `tests.reference_networks.builders:build_gn05_sn_nn_oze_ochrona` | protection_iec60255 |
 | G09 | CT/VT + zabezpieczenia kierunkowe | NOT_BUILT | ENM | REGRESSION_ONLY | — | — | — |

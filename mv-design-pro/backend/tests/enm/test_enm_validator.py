@@ -9,6 +9,7 @@ from enm.models import (
     Cable,
     EnergyNetworkModel,
     ENMHeader,
+    Generator,
     OverheadLine,
     Port,
     Source,
@@ -606,3 +607,142 @@ class TestSourcesBusMissing:
 
     def test_zrodlo_podlaczone_nie_daje_kodu(self):
         assert "sources.bus_missing" not in self._kody(_minimal_enm())
+
+
+class TestGeneratorVoltageControlIncomplete:
+    """`generators.voltage_control_incomplete` (karta CV-4.1b, A3-04).
+
+    Generator w trybie regulacji napięcia (`meta.control_mode ==
+    "REGULACJA_NAPIECIA"`) bez nastawy napięcia (`u_set_pu` w [0,9; 1,1] pu) albo
+    bez spójnych granic mocy biernej (`q_min_mvar < q_max_mvar`) blokuje bieg —
+    tor kanoniczny (`enm/mapping.py`) buduje z tych danych węzeł PV i solver FROZEN
+    wymaga ich jako danej wejściowej, nigdy jako wartości domyślnej.
+
+    Iloczyn cech: tryb (nie ustawiony / inny tryb / REGULACJA_NAPIECIA) ×
+    obecność/zakres u_set_pu × obecność/spójność granic Q.
+    """
+
+    @staticmethod
+    def _kody(meta: dict) -> list[str]:
+        enm = _minimal_enm()
+        gen = Generator(ref_id="gen_1", name="Generator", bus_ref="bus_2", p_mw=0.1, meta=meta)
+        enm = enm.model_copy(update={"generators": [gen]})
+        return [issue.code for issue in ENMValidator().validate(enm).issues]
+
+    @pytest.mark.parametrize(
+        ("meta", "oczekiwany_kod"),
+        [
+            pytest.param({}, False, id="brak-control_mode"),
+            pytest.param(
+                {"control_mode": "STALY_COS_PHI", "cos_phi": 0.95},
+                False,
+                id="inny-tryb-stary_cos_phi",
+            ),
+            pytest.param(
+                {
+                    "control_mode": "REGULACJA_NAPIECIA",
+                    "u_set_pu": 1.0,
+                    "q_min_mvar": -0.02,
+                    "q_max_mvar": 0.02,
+                },
+                False,
+                id="kompletny-poprawny",
+            ),
+            pytest.param(
+                {"control_mode": "REGULACJA_NAPIECIA", "q_min_mvar": -0.02, "q_max_mvar": 0.02},
+                True,
+                id="brak-u_set_pu",
+            ),
+            pytest.param(
+                {
+                    "control_mode": "REGULACJA_NAPIECIA",
+                    "u_set_pu": 0.85,
+                    "q_min_mvar": -0.02,
+                    "q_max_mvar": 0.02,
+                },
+                True,
+                id="u_set_pu-ponizej-pasma",
+            ),
+            pytest.param(
+                {
+                    "control_mode": "REGULACJA_NAPIECIA",
+                    "u_set_pu": 1.15,
+                    "q_min_mvar": -0.02,
+                    "q_max_mvar": 0.02,
+                },
+                True,
+                id="u_set_pu-powyzej-pasma",
+            ),
+            pytest.param(
+                {"control_mode": "REGULACJA_NAPIECIA", "u_set_pu": 1.0},
+                True,
+                id="brak-granic-Q",
+            ),
+            pytest.param(
+                {
+                    "control_mode": "REGULACJA_NAPIECIA",
+                    "u_set_pu": 1.0,
+                    "q_min_mvar": 0.01,
+                    "q_max_mvar": 0.01,
+                },
+                True,
+                id="q_min-rowne-q_max",
+            ),
+            pytest.param(
+                {
+                    "control_mode": "REGULACJA_NAPIECIA",
+                    "u_set_pu": 1.0,
+                    "q_min_mvar": 0.02,
+                    "q_max_mvar": 0.01,
+                },
+                True,
+                id="q_min-wiekszy-niz-q_max",
+            ),
+            pytest.param(
+                {
+                    "control_mode": "REGULACJA_NAPIECIA",
+                    "u_set_pu": 0.9,
+                    "q_min_mvar": -0.02,
+                    "q_max_mvar": 0.02,
+                },
+                False,
+                id="u_set_pu-dolna-granica-pasma-wlacznie",
+            ),
+            pytest.param(
+                {
+                    "control_mode": "REGULACJA_NAPIECIA",
+                    "u_set_pu": 1.1,
+                    "q_min_mvar": -0.02,
+                    "q_max_mvar": 0.02,
+                },
+                False,
+                id="u_set_pu-gorna-granica-pasma-wlacznie",
+            ),
+        ],
+    )
+    def test_iloczyn_cech(self, meta: dict, oczekiwany_kod: bool):
+        kody = self._kody(meta)
+        assert ("generators.voltage_control_incomplete" in kody) is oczekiwany_kod
+
+    def test_komunikat_i_nawigacja_naprawcza(self):
+        enm = _minimal_enm()
+        gen = Generator(
+            ref_id="gen_1",
+            name="Falownik PV",
+            bus_ref="bus_2",
+            p_mw=0.1,
+            meta={"control_mode": "REGULACJA_NAPIECIA"},
+        )
+        enm = enm.model_copy(update={"generators": [gen]})
+        raport = ENMValidator().validate(enm)
+        trafienia = [i for i in raport.issues if i.code == "generators.voltage_control_incomplete"]
+        assert len(trafienia) == 1
+        issue = trafienia[0]
+        assert issue.severity == SEVERITY_BLOCKER
+        assert is_blocking_severity(issue.severity) is True
+        assert issue.element_refs == ["gen_1"]
+        assert "u_set_pu" in issue.message_pl
+        assert "q_min_mvar" in issue.message_pl
+        assert issue.fix_action is not None
+        assert issue.fix_action.modal_type == "GeneratorModal"
+        assert raport.status == STATUS_FAIL

@@ -1250,6 +1250,10 @@ class AddConverterSourcePayload(_FrozenBase):
     # V12K-063 (G-OZE-B3): nachylenie Q(U) [pu Q na pu U] — wartość rządząca trybem Q_OD_U;
     # bez niej wybór trybu Q(U) był pasywny (phantom). Konsumowany przez kanoniczny PF.
     qu_slope_pu_per_pu: float | None = None
+    # Karta CV-4.1b (A3-04): nastawa napięcia [pu] rządząca trybem REGULACJA_NAPIECIA
+    # (węzeł PV w rozpływie — napięcie zadane, moc bierna wynikiem solvera w paśmie
+    # q_min_mvar/q_max_mvar powyżej). Brak → tryb niekompletny (walidator ENM blokuje).
+    u_set_pu: float | None = None
     # V12K-064 (G-OZE-B4): napięciowe pasmo nieczułości charakterystyki Q(U) [pu U] —
     # zakres napięcia, w którym Q=0 (NC RfG). Brak → domyślnie punkt 1.0/1.0 (reakcja
     # natychmiastowa). Konsumowany przez kanoniczny PF falownika (q_from_voltage).

@@ -453,6 +453,62 @@ class ENMValidator:
                     )
                 )
 
+        # generators.voltage_control_incomplete (karta CV-4.1b, A3-04): generator w
+        # trybie regulacji napięcia — DOWOLNY gen_type (AVR generatora synchronicznego
+        # reguluje napięcie tak samo jak falownik w tym trybie; ten tryb nie jest
+        # ograniczony do DER, w przeciwieństwie do E028/E029 wyżej) — bez kompletnej
+        # nastawy. Bez tej blokady tor kanoniczny (`enm/mapping.py`) budowałby węzeł
+        # PV z brakującą albo niefizyczną nastawą napięcia, którą solver FROZEN
+        # (węzeł PV) wymaga jako DANEJ WEJŚCIOWEJ — nigdy jako wartości domyślnej.
+        for gen in enm.generators:
+            meta = getattr(gen, "meta", None) or {}
+            if str(meta.get("control_mode") or "").strip() != "REGULACJA_NAPIECIA":
+                continue
+            u_set_pu = meta.get("u_set_pu")
+            u_set_valid = (
+                isinstance(u_set_pu, int | float)
+                and not isinstance(u_set_pu, bool)
+                and 0.9 <= float(u_set_pu) <= 1.1
+            )
+            q_min_mvar = meta.get("q_min_mvar")
+            q_max_mvar = meta.get("q_max_mvar")
+            q_bounds_valid = (
+                isinstance(q_min_mvar, int | float)
+                and not isinstance(q_min_mvar, bool)
+                and isinstance(q_max_mvar, int | float)
+                and not isinstance(q_max_mvar, bool)
+                and float(q_min_mvar) < float(q_max_mvar)
+            )
+            if u_set_valid and q_bounds_valid:
+                continue
+            braki: list[str] = []
+            if not u_set_valid:
+                braki.append("nastawa napięcia u_set_pu w paśmie [0,9; 1,1] pu")
+            if not q_bounds_valid:
+                braki.append("granice mocy biernej q_min_mvar < q_max_mvar")
+            issues.append(
+                ValidationIssue(
+                    code="generators.voltage_control_incomplete",
+                    severity=SEVERITY_BLOCKER,
+                    message_pl=(
+                        f"Generator '{gen.ref_id}' w trybie regulacji napięcia "
+                        f"(REGULACJA_NAPIECIA) nie ma: {'; '.join(braki)}."
+                    ),
+                    element_refs=[gen.ref_id],
+                    wizard_step_hint="K6",
+                    suggested_fix=(
+                        f"Uzupełnij nastawę napięcia (u_set_pu) i granice mocy biernej "
+                        f"(q_min_mvar/q_max_mvar) generatora '{gen.name or gen.ref_id}'."
+                    ),
+                    fix_action=FixAction(
+                        action_type="OPEN_MODAL",
+                        element_ref=gen.ref_id,
+                        modal_type="GeneratorModal",
+                        payload_hint={"required": "voltage_setpoint"},
+                    ),
+                )
+            )
+
         # E009: Brak referencji katalogowej (CATALOG-FIRST)
         for branch in enm.branches:
             if isinstance(branch, OverheadLine | Cable) and not branch.catalog_ref:

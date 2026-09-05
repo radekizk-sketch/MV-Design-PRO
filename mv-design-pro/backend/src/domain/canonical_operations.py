@@ -937,6 +937,23 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "q_mvar"},
     ),
+    # Karta CV-4.1b (A3-04): generator w trybie regulacji napięcia
+    # (`meta.control_mode == "REGULACJA_NAPIECIA"`) bez nastawy napięcia (`u_set_pu`)
+    # albo bez kompletnych/spójnych granic mocy biernej (`q_min_mvar < q_max_mvar`) —
+    # tor kanoniczny (`enm/mapping.py`) nie może zbudować węzła PV bez tych danych
+    # (solver FROZEN wymaga |U| zadanego i granic Q, nie zgaduje ich).
+    "generator.voltage_setpoint_missing": ReadinessCodeSpec(
+        code="generator.voltage_setpoint_missing",
+        area=ReadinessArea.GENERATORS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Generator w trybie regulacji napięcia nie ma kompletnej nastawy — "
+            "wymagana nastawa napięcia u_set_pu w paśmie [0,9; 1,1] pu oraz granice "
+            "mocy biernej q_min_mvar < q_max_mvar"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "u_set_pu"},
+    ),
     # Karta FAB-H: udział zwarciowy falownika k_sc (Ik = k_sc*In, IEC 60909-0) —
     # karta katalogowa konwertera nie niesie k_sc, więc enm/mapping.py przyjmuje
     # 1,1 jako ZAREJESTROWANE ZAŁOŻENIE (ślad WHITE BOX + ta proweniencja), nie

@@ -711,6 +711,36 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
         if wynik_q.q_mvar is not None:
             bus_q[gen.bus_ref] = bus_q.get(gen.bus_ref, 0.0) + wynik_q.q_mvar
 
+    # Karta CV-4.1b (A3-04): generator w trybie regulacji napięcia
+    # (`meta.control_mode == "REGULACJA_NAPIECIA"`) czyni swoją szynę węzłem PV
+    # (napięcie zadane, moc bierna wynikiem solvera) zamiast PQ — konstytucja A3-04
+    # ("pv_bus_ids=[] zawsze" był defektem: generator z regulacją napięcia był
+    # liczony jak węzeł obciążeniowy). JEDNA CHARAKTERYSTYKA NA WĘZEŁ (jak
+    # `_build_converter_control_by_node` w `enm/assembler.py` dla cosφ/Q(U)): dwa
+    # generatory z aktywną regulacją napięcia na tej samej szynie są nieprzedstawialne
+    # w kontrakcie solvera (`PowerFlowInput.pv` niesie jedną nastawę na węzeł) —
+    # odrzucane jawnym błędem, nigdy po cichu (ostatni wygrywa).
+    bus_voltage_control: dict[str, float | None] = {}
+    bus_voltage_control_gen_ref: dict[str, str] = {}
+    for gen in sorted(enm.generators, key=lambda g: g.ref_id):
+        meta = gen.meta or {}
+        if str(meta.get("control_mode") or "").strip() != "REGULACJA_NAPIECIA":
+            continue
+        if gen.bus_ref in bus_voltage_control_gen_ref:
+            raise ValueError(
+                f"Szyna '{gen.bus_ref}' ma więcej niż jeden generator w trybie "
+                f"regulacji napięcia ('{bus_voltage_control_gen_ref[gen.bus_ref]}' i "
+                f"'{gen.ref_id}') — kontrakt rozpływu dopuszcza jedną nastawę "
+                "napięcia na węzeł."
+            )
+        u_set_raw = meta.get("u_set_pu")
+        bus_voltage_control[gen.bus_ref] = (
+            float(u_set_raw)
+            if isinstance(u_set_raw, int | float) and not isinstance(u_set_raw, bool)
+            else None
+        )
+        bus_voltage_control_gen_ref[gen.bus_ref] = gen.ref_id
+
     # Map ref_id → node_id for cross-referencing
     ref_to_node_id: dict[str, str] = {}
 
@@ -731,8 +761,19 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
         # scale, so nothing is carried (historical path, unchanged).
         zip_load_p = bus_load_p.get(bus.ref_id, 0.0) if bus_zip is not None else None
         zip_load_q = bus_load_q.get(bus.ref_id, 0.0) if bus_zip is not None else None
+        has_voltage_control = bus.ref_id in bus_voltage_control
 
         if is_slack:
+            # Karta CV-4.1b (A3-04): szyna bilansująca (SLACK) ma już zadane napięcie
+            # (moduł I kąt) — nie może JEDNOCZEŚNIE być węzłem PV regulowanym przez
+            # generator (dwie sprzeczne nastawy modułu napięcia tej samej szyny).
+            if has_voltage_control:
+                raise ValueError(
+                    f"Szyna bilansująca '{bus.ref_id}' nie może być jednocześnie "
+                    f"węzłem regulacji napięcia generatora "
+                    f"'{bus_voltage_control_gen_ref[bus.ref_id]}' — szyna SLACK ma "
+                    "już zadane napięcie źródła zasilania."
+                )
             node = Node(
                 id=node_id,
                 name=bus.name,
@@ -745,6 +786,23 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
                 zip_coeffs=bus_zip,
                 zip_load_active_power=zip_load_p,
                 zip_load_reactive_power=zip_load_q,
+            )
+        elif has_voltage_control:
+            # Karta CV-4.1b (A3-04): węzeł PV — napięcie ZADANE (nastawa generatora
+            # z regulacją), moc bierna WYNIKIEM solvera (nie jest tu deklarowana —
+            # tak jak na szynie SLACK powyżej). `voltage_magnitude=None` (nastawa
+            # niekompletna, np. bieg z pominięciem walidatora ENM) daje jawny błąd
+            # KONSTRUKCJI węzła (Node.__post_init__: „Węzeł PV wymaga zdefiniowanej
+            # amplitudy napięcia") — solver FROZEN nigdy nie dostaje fabrykowanej
+            # nastawy 1,0 pu za brakującą.
+            node = Node(
+                id=node_id,
+                name=bus.name,
+                node_type=NodeType.PV,
+                voltage_level=bus.voltage_kv,
+                voltage_magnitude=bus_voltage_control[bus.ref_id],
+                active_power=p,
+                reactive_power=q if q != 0.0 else None,
             )
         else:
             node = Node(

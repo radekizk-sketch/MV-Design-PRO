@@ -2066,7 +2066,11 @@ def _execute_power_flow(run: CanonicalRun, graph: NetworkGraph | None = None) ->
         "base_mva": base_mva,
         "slack_bus_id": slack_node_id,
         "pq_bus_ids": [spec.node_id for spec in pf_input.pq],
-        "pv_bus_ids": [],
+        # Karta CV-4.1b (A3-04): dawniej ZAWSZE pusta lista (konstytucja A3-04:
+        # "pv_bus_ids=[] zawsze" — generator z regulacją napięcia liczony jak PQ).
+        # `pf_input.pv` jest teraz wypełniane przez assembler dla generatorów w
+        # trybie regulacji napięcia (`enm/mapping.py` -> `NodeType.PV`).
+        "pv_bus_ids": [spec.node_id for spec in pf_input.pv],
         "ybus_trace": solution.ybus_trace,
         "iterations": [
             {

@@ -190,18 +190,37 @@ REJESTR: tuple[WpisRejestru, ...] = (
     WpisRejestru(
         id="G06",
         klasa_przypadku="PV w punkcie przyłączenia / RfG",
-        cel="zgodność przyłączeniowa DER, FRT, Q(U)",
+        cel="zgodność przyłączeniowa DER, FRT, Q(U); regulacja napięcia (A3-04)",
         topologia="SN z DER przez TR",
         poziomy_napiec="15/0,4 kV",
         uziemienie="wg builderów",
-        scenariusz="MAX GEN; FRT",
+        scenariusz="MAX GEN; FRT; PV w regulacji napięcia (osiągalna nastawa / nasycenie Q)",
         analizy=("LF", "RfG", "FRT"),
-        inwarianty=(),
-        wyrocznie=(),
-        budowniczowie=(),
-        konsumenci=("ncrfg", "source_compliance"),
+        inwarianty=(
+            "PV w trybie regulacji napięcia: |U| szyny PV = nastawa, gdy w granicach Q "
+            "(karta CV-4.1b, A3-04)",
+        ),
+        wyrocznie=(
+            Wyrocznia(
+                KlasaWyroczni.INDEPENDENTLY_VERIFIED,
+                "pandapower create_gen(vm_pu=...) — węzeł PV, cross-validation |V|",
+                (RodzinaSolvera.LF,),
+                "pandapower (tests/application/reference_networks/test_pandapower_cross_validation.py)",
+            ),
+        ),
+        # Karta CV-4.1b (A3-04): 2 warianty (osiągalna nastawa / nasycenie Q) —
+        # reużywają topologię `build_gn04_sn_nn_oze` (KLASA NIE INSTANCJA: jeden
+        # budowniczy topologii, nie druga kopia sieci).
+        budowniczowie=(
+            "tests.reference_networks.builders:build_gn06_pv_regulacja_napiecia",
+            "tests.reference_networks.builders:build_gn06_pv_regulacja_napiecia_nasycenie",
+        ),
+        konsumenci=("ncrfg", "source_compliance", "solver"),
         status=StatusSieci.PARTIAL,
-        proweniencja="V12-GN-004; tests/reference_networks/test_pv1mw_g1_physics.py (własne dane, nie builder rejestru)",
+        proweniencja=(
+            "V12-GN-004; tests/reference_networks/test_pv1mw_g1_physics.py (własne dane, nie "
+            "builder rejestru); warianty regulacji napięcia — karta CV-4.1b (A3-04), 2026-09-05"
+        ),
     ),
     WpisRejestru(
         id="G07",

@@ -593,6 +593,73 @@ def build_gn05_sn_nn_oze_ochrona() -> dict[str, Any]:
     }
 
 
+def _gn06_pv_regulacja_napiecia(
+    *, u_set_pu: float, q_min_mvar: float, q_max_mvar: float, wariant_nazwa: str, opis: str
+) -> dict[str, Any]:
+    """GN_06: jak GN_04 (SN+nN+PV+BESS), z falownikiem PV w trybie regulacji
+    napięcia (karta CV-4.1b, A3-04 — rejestr `docs/reference-networks/REGISTRY_TABLE.md`,
+    wpis G06 "PV w punkcie przyłączenia / RfG").
+
+    Reużywa 1:1 topologię `build_gn04_sn_nn_oze` (GPZ -> kabel -> stacja B z TR SN/nN ->
+    PV_01 + BESS_01 na szynie nN) i podmienia WYŁĄCZNIE tryb regulacji generatora
+    PV_01 z domyślnego `STALY_COS_PHI` (bez cosφ, bez aktywnej regulacji) na
+    `REGULACJA_NAPIECIA` — to samo źródło elektryczne, inna nastawa regulacji.
+    """
+    baza = build_gn04_sn_nn_oze()
+    enm = baza["enm"]
+    pv = next(g for g in enm["generators"] if g["name"] == "PV_01")
+    pv["meta"]["control_mode"] = "REGULACJA_NAPIECIA"
+    pv["meta"]["u_set_pu"] = u_set_pu
+    pv["meta"]["q_min_mvar"] = q_min_mvar
+    pv["meta"]["q_max_mvar"] = q_max_mvar
+    return {
+        "name": f"GN_06_PV_REGULACJA_NAPIECIA_{wariant_nazwa}",
+        "description": opis,
+        "enm": enm,
+        "snapshot_hash": _snapshot_hash(enm),
+        "operations_count": baza["operations_count"],
+    }
+
+
+def build_gn06_pv_regulacja_napiecia() -> dict[str, Any]:
+    """GN_06 wariant PODSTAWOWY: nastawa napięcia OSIĄGALNA w granicach mocy
+    biernej falownika (dowód semantyczny A3-04: |U| na szynie PV = nastawa,
+    `pv_to_pq_switches` puste — regulacja napięcia trzyma zadany moduł).
+
+    Granice Q (±0,03 Mvar) — plauzybilny zakres dla falownika PV klasy ~50 kVA
+    (S_n ≈ 1,1·P_n przy P_n = 50 kW z karty `build_gn04_sn_nn_oze`); nastawa
+    1,002 pu zmierzona jako OSIĄGALNA tymi granicami (dowód: test
+    `tests/reference_networks/test_pv_voltage_control.py`).
+    """
+    return _gn06_pv_regulacja_napiecia(
+        u_set_pu=1.002,
+        q_min_mvar=-0.03,
+        q_max_mvar=0.03,
+        wariant_nazwa="OSIAGALNA",
+        opis="SN+nN+PV+BESS, PV w regulacji napięcia (nastawa osiągalna, bez nasycenia Q)",
+    )
+
+
+def build_gn06_pv_regulacja_napiecia_nasycenie() -> dict[str, Any]:
+    """GN_06 wariant NASYCENIE: nastawa napięcia POZA zasięgiem granic mocy
+    biernej falownika (dowód semantyczny A3-04: `pv_to_pq_switches` niepuste,
+    |U| na szynie PV ≠ nastawa — falownik traci regulację napięcia na granicy Q
+    i pracuje dalej jako źródło PQ o stałej, granicznej mocy biernej).
+
+    Te same granice Q (±0,03 Mvar) co wariant podstawowy; nastawa 1,01 pu
+    wymaga (zmierzone) ok. 0,25 Mvar na tej szynie — poza zasięgiem falownika
+    50 kVA, więc solver PRZEŁĄCZA węzeł na PQ (IEEE PV→PQ switching, kontrakt
+    już istniejący w `power_flow_newton_internal.py`).
+    """
+    return _gn06_pv_regulacja_napiecia(
+        u_set_pu=1.01,
+        q_min_mvar=-0.03,
+        q_max_mvar=0.03,
+        wariant_nazwa="NASYCENIE",
+        opis="SN+nN+PV+BESS, PV w regulacji napięcia (nastawa poza zasięgiem, nasycenie Q)",
+    )
+
+
 # Convenience function to build all 5
 def build_all_golden_networks() -> list[dict[str, Any]]:
     """Build all 5 golden reference networks."""

@@ -37,6 +37,7 @@ from network_model.solvers.power_flow_types import (
     PowerFlowInput,
     PowerFlowOptions,
     PQSpec,
+    PVSpec,
     ShuntSpec,
     SlackSpec,
 )
@@ -543,6 +544,36 @@ def zloz_wejscie_rozplywu(
         binding = converter_control_by_node.get(node_id)
         return None if binding is None else binding.q_mvar
 
+    # Karta CV-4.1b (A3-04): granice mocy biernej (q_min_mvar/q_max_mvar) węzła PV —
+    # `Node` (IR) nie niesie tych pól (tylko `voltage_magnitude`, ustawiony przez
+    # `enm/mapping.py` z tej samej `meta.u_set_pu`), więc czytane są WPROST ze
+    # snapshotu (te same klucze meta co `_build_converter_control_by_node` wyżej).
+    # Brak/niekompletność jest tu BŁĘDEM KONSTRUKCJI (walidator ENM blokuje ten stan
+    # wcześniej kodem `generators.voltage_control_incomplete` — jeśli assembler mimo
+    # to dostał taki snapshot, np. bieg z pominięciem walidatora, odmowa jest jawna,
+    # nie ciche podstawienie 0,0).
+    pv_bounds_by_node: dict[str, tuple[float, float]] = {}
+    for gen in snapshot.get("generators") or []:
+        if not isinstance(gen, dict):
+            continue
+        meta_raw = gen.get("meta")
+        meta: dict[str, Any] = meta_raw if isinstance(meta_raw, dict) else {}
+        if str(meta.get("control_mode") or "").strip() != "REGULACJA_NAPIECIA":
+            continue
+        bus_ref = gen.get("bus_ref")
+        if not isinstance(bus_ref, str) or not bus_ref.strip():
+            continue
+        qmin = _oze_opt_float(meta.get("q_min_mvar"))
+        qmax = _oze_opt_float(meta.get("q_max_mvar"))
+        if qmin is None or qmax is None or qmin >= qmax:
+            raise ValueError(
+                f"Generator '{gen.get('ref_id')}' w trybie regulacji napięcia nie ma "
+                "kompletnych/spójnych granic mocy biernej (q_min_mvar < q_max_mvar) — "
+                "walidator ENM powinien odrzucić ten stan kodem "
+                "'generators.voltage_control_incomplete' przed uruchomieniem rozpływu."
+            )
+        pv_bounds_by_node[_graph_id_from_ref(bus_ref.strip())] = (qmin, qmax)
+
     pq_specs = [
         PQSpec(
             node_id=node_id,
@@ -587,6 +618,53 @@ def zloz_wejscie_rozplywu(
         if node.node_type == NodeType.PQ and node_id != slack_node_id
     ]
 
+    # Karta CV-4.1b (A3-04): węzły PV (`enm/mapping.py` — generator w trybie
+    # regulacji napięcia) — DOTĄD `pv=[]` zawsze, więc solver liczył je jak PQ
+    # (napięcie NIE trzymane na nastawie). `u_pu`/`p_mw` z GRAFU (IR), nie ze
+    # snapshotu: `node.voltage_magnitude` jest TĄ SAMĄ nastawą `meta.u_set_pu`,
+    # którą `enm/mapping.py` już zwalidował przez konstrukcję `Node` (PV bez
+    # `voltage_magnitude` nie istnieje — `Node.__post_init__` odmawia wcześniej).
+    # Konwencja `p_mw` OBCIĄŻENIOWA jak `PQSpec.p_mw` (komentarz F9.8 wyżej;
+    # `build_power_spec_v2` neguje oba tak samo).
+    pv_specs: list[PVSpec] = []
+    for node_id, node in sorted(graph.nodes.items()):
+        if node.node_type != NodeType.PV:
+            continue
+        bounds = pv_bounds_by_node.get(node_id)
+        if bounds is None:
+            raise ValueError(
+                f"Węzeł PV '{node_id}' nie ma granic mocy biernej w migawce — graf "
+                "podany assemblerowi nie odpowiada migawce ENM (niespójne wejście)."
+            )
+        pv_specs.append(
+            PVSpec(
+                node_id=node_id,
+                p_mw=-float(node.active_power or 0.0),
+                u_pu=float(node.voltage_magnitude),
+                q_min_mvar=bounds[0],
+                q_max_mvar=bounds[1],
+            )
+        )
+
+    # Znalezisko przy wdrożeniu A3-04 (KLASA NIE INSTANCJA — ten sam błąd, który
+    # `_build_converter_control_by_node` już zakazuje "jedna charakterystyka na
+    # węzeł" dla dwóch źródeł regulowanych, powstaje TU jako NOWA kombinacja: węzeł
+    # PV (regulacja napięcia) niesie WŁASNĄ nastawę |U|, więc pętla PQSpec wyżej go
+    # pomija — binding kształtowania falownika (cosφ/Q(U)/LFSM) INNEGO generatora
+    # na TEJ SAMEJ szynie zostałby po cichu ZGUBIONY (obliczony, nigdy nieużyty),
+    # zamiast jawnej odmowy. Przed CV-4.1b ta kolizja nie mogła zajść (PV nigdy nie
+    # istniało), więc to kombinacja NOWA, wprowadzona przez ten węzeł PV — bramkowana
+    # tu, w JEDYNYM miejscu, gdzie oba zbiory (węzły PV, węzły z bindingiem
+    # kształtowania) są już policzone.
+    for pv_spec in pv_specs:
+        if pv_spec.node_id in converter_control_by_node:
+            raise ValueError(
+                f"Szyna węzła PV '{pv_spec.node_id}' ma dodatkowo generator z aktywną "
+                "regulacją falownika (cosφ/Q(U)/statyzm P(f)) — węzeł PV niesie "
+                "WYŁĄCZNIE własną nastawę napięcia, kontrakt rozpływu nie ma miejsca "
+                "na drugą, niezależną charakterystykę regulacji na tym samym węźle."
+            )
+
     options_solvera = PowerFlowOptions(
         tolerance=float(options.get("tolerance", 1e-8)),
         max_iter=int(options.get("max_iterations", options.get("max_iter", 30))),
@@ -617,6 +695,7 @@ def zloz_wejscie_rozplywu(
         base_mva=base_mva,
         slack=SlackSpec(node_id=slack_node_id, u_pu=1.0, angle_rad=0.0),
         pq=pq_specs,
+        pv=pv_specs,
         shunts=shunt_specs,
         options=options_solvera,
         # ADR-011 (Z-ZIP-04): study frequency from the ENM header defaults

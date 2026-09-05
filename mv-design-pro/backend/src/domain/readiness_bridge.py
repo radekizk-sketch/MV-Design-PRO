@@ -56,6 +56,10 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     "sources.bus_missing": "source.connection_missing",
     # „Magistrala pierscieniowa nie ma punktu normalnie otwartego" == wymog NOP.
     "I005": "ring.nop_required",
+    # Karta CV-4.1b (A3-04): generator w trybie regulacji napiecia bez nastawy U
+    # albo bez granic Q == generator w trybie regulacji napiecia bez kompletnej
+    # nastawy (ten sam warunek, `enm/validator.py` -> `domain/canonical_operations.py`).
+    "generators.voltage_control_incomplete": "generator.voltage_setpoint_missing",
 }
 
 # ---------------------------------------------------------------------------

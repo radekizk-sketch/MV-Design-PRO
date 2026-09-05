@@ -1045,8 +1045,16 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # analizy, nie dana fizyczna elementu), (b) brak wstrzykniecia = zero
     # (`node.active_power`/`reactive_power`), granica nr 4
     # (`defaults.frequency_hz` powtarza domyslna z sygnatury `ENMDefaults`).
+    # Karta CV-4.1b (2026-09-05, A3-04): `A:or:node.active_power` 1 -> 2. Drugie
+    # wystapienie to budowa `PVSpec.p_mw` (petla wezlow PV) — TA SAMA klasa (b)
+    # co istniejace wystapienie w petli PQSpec wyzej w tym samym pliku: mapping.py
+    # ustawia `active_power` BEZWARUNKOWO dla obu typow wezla (PQ i PV), wiec
+    # `or 0.0` jest defensywnym powtorzeniem tego samego mostu pola na nowy typ
+    # wezla, nie nowa klasa fabrykacji. `reactive_power` bez zmian: PVSpec nie ma
+    # pola mocy biernej (Q jest WYNIKIEM solvera w granicach q_min/q_max, nie
+    # wielkoscia zadana), wiec petla PV nie czyta `node.reactive_power` wcale.
     "enm/assembler.py": {
-        "A:or:node.active_power": 1,
+        "A:or:node.active_power": 2,
         "A:or:node.reactive_power": 1,
         "F:dictget:defaults.frequency_hz": 1,
         "F:dictget:options.base_mva": 1,

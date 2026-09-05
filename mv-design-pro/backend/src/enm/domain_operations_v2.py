@@ -4287,6 +4287,10 @@ def _resolve_converter_defaults(
                 # brak → unity/0 → brak wpływu na PF (determinizm zachowany).
                 "cos_phi": _first_number(payload.get("cos_phi"), materialized_params.get("cosphi")),
                 "qu_slope_pu_per_pu": _as_float(payload.get("qu_slope_pu_per_pu")),
+                # Karta CV-4.1b (A3-04): nastawa napięcia [pu] trybu REGULACJA_NAPIECIA
+                # (węzeł PV w rozpływie) — brak → tryb niekompletny, blokowany walidatorem
+                # ENM (`generators.voltage_control_incomplete`) przed uruchomieniem biegu.
+                "u_set_pu": _as_float(payload.get("u_set_pu")),
                 # V12K-064 (G-OZE-B4): napięciowe pasmo nieczułości Q(U) [pu U]; brak → 1.0/1.0.
                 "qu_deadband_low_pu": _as_float(payload.get("qu_deadband_low_pu")),
                 "qu_deadband_high_pu": _as_float(payload.get("qu_deadband_high_pu")),
@@ -4325,8 +4329,38 @@ def _resolve_converter_defaults(
                 "usable_capacity_kwh": _first_number(
                     materialized_params.get("usable_capacity_kwh"),
                 ),
+                # Znalezisko KLASA NIE INSTANCJA (karta CV-4.1b, przy okazji A3-04):
+                # gałąź BESS nie niosła `control_mode` (PV/FW niżej/wyżej niosą) —
+                # `cos_phi`/`qu_slope_pu_per_pu` BYŁY zapisywane, ale bez `control_mode`
+                # w `meta` asembler (`_build_converter_control_by_node`) nigdy nie
+                # aktywował kształtowania (mode="" nie pasuje do żadnej gałęzi trybu) —
+                # regulacja Q kreatora OZE dla BESS była forward-phantomem (wartości
+                # w modelu, zero wpływu na rozpływ). Naprawione u źródła — ten sam
+                # zapis co PV/FW.
+                "control_mode": payload.get("control_mode")
+                or materialized_params.get("control_mode"),
+                # DRUGIE znalezisko TEJ SAMEJ KLASY w tej samej gałęzi (przegląd przy
+                # wdrożeniu REGULACJA_NAPIECIA, karta CV-4.1b): `q_min_mvar`/`q_max_mvar`
+                # w `meta` — PV/FW je niosą (patrz gałęzie wyżej/niżej), BESS nie niósł
+                # ŻADNEGO. Walidator ENM (`generators.voltage_control_incomplete`) i
+                # assembler (`enm/assembler.py::zloz_wejscie_rozplywu`) czytają granice Q
+                # trybu regulacji napięcia WYŁĄCZNIE z `meta` — bez tego pola BESS w tym
+                # trybie miałby granice Q wypełnione w UI (krok „regulacja"), zero w
+                # modelu (`generator.limits.q_min_mvar` to ODDZIELNY zapis, druga
+                # operacja `update_element_parameters` sekwencji K9-A — nie ten sam
+                # magazyn) — walidator blokowałby bieg mimo poprawnie wypełnionego
+                # formularza. Ten sam zapis co PV/FW (fallback do `materialized_params`
+                # katalogu — falownik BESS też ma nameplate `qmin_mvar`/`qmax_mvar`).
+                "q_min_mvar": _first_number(
+                    payload.get("q_min_mvar"), materialized_params.get("qmin_mvar")
+                ),
+                "q_max_mvar": _first_number(
+                    payload.get("q_max_mvar"), materialized_params.get("qmax_mvar")
+                ),
                 "cos_phi": _first_number(payload.get("cos_phi"), materialized_params.get("cosphi")),
                 "qu_slope_pu_per_pu": _as_float(payload.get("qu_slope_pu_per_pu")),
+                # Karta CV-4.1b (A3-04): nastawa napięcia [pu] trybu REGULACJA_NAPIECIA.
+                "u_set_pu": _as_float(payload.get("u_set_pu")),
                 # V12K-064 (G-OZE-B4): napięciowe pasmo nieczułości Q(U) [pu U]; brak → 1.0/1.0.
                 "qu_deadband_low_pu": _as_float(payload.get("qu_deadband_low_pu")),
                 "qu_deadband_high_pu": _as_float(payload.get("qu_deadband_high_pu")),
@@ -4367,6 +4401,8 @@ def _resolve_converter_defaults(
             # V12K-051 (G-OZE-PF): docelowy cosφ + nachylenie Q(U); brak → brak wpływu.
             "cos_phi": _first_number(payload.get("cos_phi"), materialized_params.get("cosphi")),
             "qu_slope_pu_per_pu": _as_float(payload.get("qu_slope_pu_per_pu")),
+            # Karta CV-4.1b (A3-04): nastawa napięcia [pu] trybu REGULACJA_NAPIECIA.
+            "u_set_pu": _as_float(payload.get("u_set_pu")),
             # V12K-064 (G-OZE-B4): napięciowe pasmo nieczułości Q(U) [pu U]; brak → 1.0/1.0.
             "qu_deadband_low_pu": _as_float(payload.get("qu_deadband_low_pu")),
             "qu_deadband_high_pu": _as_float(payload.get("qu_deadband_high_pu")),

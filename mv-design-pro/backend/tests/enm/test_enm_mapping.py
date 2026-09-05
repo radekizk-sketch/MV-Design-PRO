@@ -716,6 +716,114 @@ class TestGeneratorShortCircuitSources:
         assert snap_a.meta.fingerprint == snap_b.meta.fingerprint
 
 
+class TestGeneratorVoltageControlPV:
+    """Karta CV-4.1b (A3-04): generator w trybie regulacji napięcia
+    (`meta.control_mode == "REGULACJA_NAPIECIA"`) czyni swoją szynę węzłem PV
+    (napięcie zadane) zamiast PQ.
+
+    Iloczyn cech: pojedynczy generator regulujący × dwa generatory regulujące na
+    tej samej szynie (odmowa) × szyna bilansująca jako węzeł regulowany (odmowa) ×
+    nastawa niekompletna (odmowa Node) × inny tryb na tej samej szynie (bez zmian).
+    """
+
+    @staticmethod
+    def _enm_pv(**gen_fields) -> EnergyNetworkModel:
+        return _make_enm(
+            buses=[
+                Bus(ref_id="bus_sn", name="Szyna SN", voltage_kv=15),
+                Bus(ref_id="bus_oze", name="Szyna OZE", voltage_kv=15),
+            ],
+            sources=[
+                Source(
+                    ref_id="src_grid",
+                    name="Sieć",
+                    bus_ref="bus_sn",
+                    model="short_circuit_power",
+                    sk3_mva=220,
+                ),
+            ],
+            branches=[
+                OverheadLine(
+                    ref_id="ln_1",
+                    name="L1",
+                    from_bus_ref="bus_sn",
+                    to_bus_ref="bus_oze",
+                    length_km=2.0,
+                    r_ohm_per_km=0.25,
+                    x_ohm_per_km=0.32,
+                ),
+            ],
+            generators=[Generator(bus_ref="bus_oze", **gen_fields)],
+        )
+
+    def test_generator_regulujacy_napiecie_daje_wezel_pv(self):
+        enm = self._enm_pv(
+            ref_id="gen_1",
+            name="Falownik PV",
+            p_mw=0.5,
+            meta={"control_mode": "REGULACJA_NAPIECIA", "u_set_pu": 1.02},
+        )
+        graph = map_enm_to_network_graph(enm)
+        node = next(n for n in graph.nodes.values() if n.name == "Szyna OZE")
+        assert node.node_type == NodeType.PV
+        assert node.voltage_magnitude == pytest.approx(1.02)
+        assert node.active_power == pytest.approx(0.5)
+
+    def test_inny_tryb_na_tej_samej_szynie_zostaje_pq(self):
+        """Regresja: STALY_COS_PHI/Q_OD_U/brak trybu nie zmieniają typu węzła."""
+        enm = self._enm_pv(
+            ref_id="gen_1",
+            name="Falownik PV",
+            p_mw=0.5,
+            meta={"control_mode": "STALY_COS_PHI", "cos_phi": 0.95},
+        )
+        graph = map_enm_to_network_graph(enm)
+        node = next(n for n in graph.nodes.values() if n.name == "Szyna OZE")
+        assert node.node_type == NodeType.PQ
+
+    def test_dwa_generatory_regulujace_napiecie_na_jednej_szynie_jest_odmowa(self):
+        enm = self._enm_pv(
+            ref_id="gen_1",
+            name="Falownik PV 1",
+            p_mw=0.3,
+            meta={"control_mode": "REGULACJA_NAPIECIA", "u_set_pu": 1.02},
+        )
+        drugi = Generator(
+            ref_id="gen_2",
+            name="Falownik PV 2",
+            bus_ref="bus_oze",
+            p_mw=0.2,
+            meta={"control_mode": "REGULACJA_NAPIECIA", "u_set_pu": 1.01},
+        )
+        enm = enm.model_copy(update={"generators": [*enm.generators, drugi]})
+        with pytest.raises(ValueError, match="więcej niż jeden generator"):
+            map_enm_to_network_graph(enm)
+
+    def test_szyna_bilansujaca_nie_moze_byc_wezlem_pv(self):
+        enm = self._enm_pv(
+            ref_id="gen_1",
+            name="Falownik na GPZ",
+            p_mw=0.5,
+            meta={"control_mode": "REGULACJA_NAPIECIA", "u_set_pu": 1.02},
+        )
+        gen_na_slacku = enm.generators[0].model_copy(update={"bus_ref": "bus_sn"})
+        enm = enm.model_copy(update={"generators": [gen_na_slacku]})
+        with pytest.raises(ValueError, match="[Ss]zyna bilansująca"):
+            map_enm_to_network_graph(enm)
+
+    def test_nastawa_niekompletna_odmawia_przez_konstrukcje_wezla(self):
+        """Brak `u_set_pu` w meta -> `Node.__post_init__` odmawia (PV bez |U| nie
+        istnieje) — druga linia obrony niezależna od walidatora ENM."""
+        enm = self._enm_pv(
+            ref_id="gen_1",
+            name="Falownik PV",
+            p_mw=0.5,
+            meta={"control_mode": "REGULACJA_NAPIECIA"},
+        )
+        with pytest.raises(ValueError, match="amplitudy napięcia"):
+            map_enm_to_network_graph(enm)
+
+
 class TestObciazalnoscGalezi:
     """Brak obciazalnosci dlugotrwalej ZOSTAJE BRAKIEM (karta N-1-BACKEND).
 

@@ -1058,18 +1058,33 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # Suma 137 -> 115 jest POMIAREM tego biegu (`--pomiar`), nie recznym
     # zsumowaniem usunietych pozycji — pin idzie z wyjscia guarda, jak wymaga
     # naglowek tej sekcji ("wyrocznia chodzi po tym samym zbiorze co kod").
-    assert "Pol kontraktow wejsciowych: 3597." in wyjscie, wyjscie
+    # 3598 pol / 575 plikow / zapadka 63 plikow suma 291 / enm 85 / application 318
+    # (scalenie CV-4.2 + CV-4.1b na szczycie po CI-PARYTET-4, 2026-09-05): oba
+    # bloki wyzej sumuja sie bez reszty — 3597 (CV-4.2) + 1 (`u_set_pu`, CV-4.1b)
+    # = 3598; zapadka 290 + 1 (`A:or:node.active_power` 1 -> 2) = 291; enm 84 + 1
+    # = 85; application po kasacji P5 318 / 36 / 115. Pin z wyjscia guarda na
+    # scalonym drzewie, nie z arytmetyki (arytmetyka jest tu tylko kontrola).
+    assert "Pol kontraktow wejsciowych: 3598." in wyjscie, wyjscie
+    # 3610 pol / suma 313 (karta CV-4.1b, A3-04, 2026-09-05): +1 pole kontraktu =
+    # `AddConverterSourcePayload.u_set_pu` (nastawa napiecia trybu regulacji
+    # napiecia, `enm/domain_ops_models.py`) — pomiar roznicy zbiorow contract_fields()
+    # wobec szczytu sprzed karty. +1 do zapadki `enm/assembler.py::A:or:node.active_power`
+    # (1 -> 2): drugie wystapienie tej samej klasy (b) „brak wstrzykniecia = zero"
+    # w petli PVSpec (mapping.py ustawia `active_power` bezwarunkowo dla wezlow
+    # PQ i PV, wiec `or 0.0` jest tym samym mostem powtorzonym dla nowego typu
+    # wezla) — pliki bez zmian (64), plik enm bez zmian (8), suma per korzen enm
+    # 84 -> 85.
     assert (
         "Przeskanowano 575 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
-    assert "Zapadka dlugu (fizyczne): 63 plikow, suma 290." in wyjscie, wyjscie
+    assert "Zapadka dlugu (fizyczne): 63 plikow, suma 291." in wyjscie, wyjscie
     assert "Wykluczenia skanera (niefizyczne): 17 plikow, suma 49." in wyjscie, wyjscie
     per_korzen = [
         "  network_model: pliki_skanowane=145, dlug=14 plikow/suma 77, "
         "wykluczenia=4 plikow/suma 7",
         "  solver_input: pliki_skanowane=10, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
-        "  enm: pliki_skanowane=37, dlug=8 plikow/suma 84, wykluczenia=0 plikow/suma 0",
+        "  enm: pliki_skanowane=37, dlug=8 plikow/suma 85, wykluczenia=0 plikow/suma 0",
         "  application: pliki_skanowane=318, dlug=36 plikow/suma 115, "
         "wykluczenia=7 plikow/suma 19",
         "  api: pliki_skanowane=65, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 23",
