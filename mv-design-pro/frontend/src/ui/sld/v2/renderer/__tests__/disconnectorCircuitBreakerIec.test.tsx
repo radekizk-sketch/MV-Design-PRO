@@ -8,7 +8,7 @@ import { ApparatusDsCircle, ApparatusCbSquare } from '../GpzApparatusSymbols';
 
 afterEach(() => cleanup());
 
-describe('ApparatusDsCircle — K30-109 IEC 60617-7-13-02', () => {
+describe('ApparatusDsCircle — IEC 60617-7-13-02', () => {
   it('closed: vertical lever + 2 contact dots', () => {
     const { container } = render(
       <svg>
@@ -51,7 +51,7 @@ describe('ApparatusDsCircle — K30-109 IEC 60617-7-13-02', () => {
   });
 });
 
-describe('ApparatusCbSquare — K30-110 IEC 60617-7-13-08', () => {
+describe('ApparatusCbSquare — IEC 60617-7-13-08', () => {
   it('closed: vertical contact line + 2 contact dots wewnątrz kwadratu', () => {
     const { container } = render(
       <svg>

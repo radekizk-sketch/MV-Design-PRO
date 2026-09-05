@@ -41,8 +41,15 @@ export interface MeasurementRating {
 }
 
 export interface ProtectionSetting {
+  /**
+   * FAB-F (2026-09-05): lustro pomijało 4 literały D10 (funkcje ochrony od
+   * pracy wyspowej / Loss of Mains — dodane addytywnie w backendzie, patrz
+   * `enm/models.py::ProtectionSetting.function_type`), niewidoczne dla
+   * guarda parytetu, bo sprawdzał obecność POLA, nie zbiór wartości unii.
+   */
   function_type: 'overcurrent_50' | 'overcurrent_51' | 'earth_fault_50N'
-    | 'earth_fault_51N' | 'directional_67' | 'directional_67N';
+    | 'earth_fault_51N' | 'directional_67' | 'directional_67N'
+    | 'rocof_81R' | 'vector_shift_78' | 'underfrequency_81U' | 'overfrequency_81O';
   threshold_a?: number | null;
   time_delay_s?: number | null;
   curve_type?: 'DT' | 'IEC_SI' | 'IEC_VI' | 'IEC_EI' | 'IEC_LI' | null;
@@ -63,6 +70,17 @@ export interface ProtectionSetting {
 // ---------------------------------------------------------------------------
 
 export type ParameterSource = 'CATALOG' | 'OVERRIDE';
+/**
+ * FAB-F (2026-09-05): `parameter_source` NIE ma jednej unii w backendzie —
+ * `BranchBase`, `Source` i `ShuntCapacitor` (enm/models.py) dopuszczają
+ * dodatkowo `MANUAL_EQUIVALENT` ("zastępczy ręczny" — wartość wpisana
+ * ręcznie jako odpowiednik danej katalogowej, bez `catalog_ref`); pozostałe
+ * encje (`Transformer`, `Load`, `Generator`, `Measurement`,
+ * `ProtectionAssignment`) mają WYŁĄCZNIE `CATALOG`/`OVERRIDE` — parytet
+ * literałów unii jest per-pole, nie globalny (patrz
+ * `scripts/enm_contract_parity_guard.py`, sekcja literałów).
+ */
+export type ParameterSourceWithManualEquivalent = ParameterSource | 'MANUAL_EQUIVALENT';
 export type CatalogSourceMode = 'KATALOG' | 'MIGRACJA' | 'EKSPERCKI_RECZNY';
 
 export interface ParameterOverride {
@@ -146,7 +164,7 @@ export interface BranchBase extends ENMElement {
   status: 'closed' | 'open';
   catalog_ref?: string | null;
   catalog_namespace?: string | null;
-  parameter_source?: ParameterSource | null;
+  parameter_source?: ParameterSourceWithManualEquivalent | null;
   source_mode?: CatalogSourceMode | null;
   materialized_params?: Record<string, unknown> | null;
   overrides?: ParameterOverride[] | null;
@@ -367,7 +385,7 @@ export interface Source extends ENMElement {
   c_min?: number | null;
   catalog_ref?: string | null;
   catalog_namespace?: string | null;
-  parameter_source?: ParameterSource | null;
+  parameter_source?: ParameterSourceWithManualEquivalent | null;
   source_mode?: CatalogSourceMode | null;
   materialized_params?: Record<string, unknown> | null;
   overrides?: ParameterOverride[] | null;
@@ -1159,12 +1177,27 @@ export interface ConnectionNode {
   parent_ref: string;
 }
 
-/** Bateria kondensatorow rownoleglych (kompensacja mocy biernej). */
+/**
+ * Bateria kondensatorow rownoleglych (kompensacja mocy biernej).
+ *
+ * FAB-F (2026-09-05): lustro pomijalo 6 pol katalogowych, ktore
+ * `ShuntCapacitor` (enm/models.py) ma jako WLASNE (nie dziedziczone z
+ * `BranchBase` — ten element rozszerza wylacznie `ENMElement`). Guard
+ * parytetu (`enm_contract_parity_guard.py`) tego nie lapal: liczyl pola
+ * `BranchBase` jako "widoczne" dla KAZDEJ sprawdzanej encji, niezaleznie od
+ * tego, czy faktycznie po niej dziedziczy — poprawione tą samą kartą.
+ */
 export interface ShuntCapacitor extends ENMElement {
   bus_ref: string;
   rated_mvar: number;
   rated_kv: number;
   status?: 'closed' | 'open';
+  catalog_ref?: string | null;
+  catalog_namespace?: string | null;
+  parameter_source?: ParameterSourceWithManualEquivalent | null;
+  source_mode?: CatalogSourceMode | null;
+  materialized_params?: Record<string, unknown> | null;
+  overrides?: ParameterOverride[] | null;
 }
 
 /** Kompensacja spadku napiecia w linii (regulacja OLTC wg punktu zdalnego). */

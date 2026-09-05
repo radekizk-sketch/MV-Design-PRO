@@ -11,7 +11,7 @@ afterEach(() => cleanup());
 
 const wrap = (children: React.ReactNode) => <svg>{children}</svg>;
 
-describe('K30-120 — MEASUREMENT apparatus stack (per BAY_DEVICE_ORDER_POLICY)', () => {
+describe('MEASUREMENT apparatus stack (per BAY_DEVICE_ORDER_POLICY)', () => {
   it('MEASUREMENT zwraca [DS, VT, CT, ES] (nie tylko [VT, CT])', () => {
     expect(apparatusStackForRole(FIELD_ROLE.MEASUREMENT)).toEqual(['DS', 'VT', 'CT', 'ES']);
   });
@@ -25,7 +25,7 @@ describe('K30-120 — MEASUREMENT apparatus stack (per BAY_DEVICE_ORDER_POLICY)'
   });
 });
 
-describe('K30-121 — Designation label anti-collision z DS lever', () => {
+describe('Designation label anti-collision z DS lever', () => {
   it('DS w stack → label offset x+8 + anchor start (anti-collision)', () => {
     const { container } = render(
       wrap(
@@ -67,7 +67,7 @@ describe('K30-121 — Designation label anti-collision z DS lever', () => {
   });
 });
 
-describe('K30-124 — Designation label LOD scaling', () => {
+describe('Designation label LOD scaling', () => {
   it('overview variant → fontSize 7', () => {
     const { container } = render(
       wrap(

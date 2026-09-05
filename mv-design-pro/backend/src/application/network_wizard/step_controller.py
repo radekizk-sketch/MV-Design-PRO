@@ -37,6 +37,23 @@ STEP_ORDER: list[str] = ["K1", "K2", "K3", "K4", "K5", "K6", "K7", "K8", "K9", "
 
 _STEP_INDEX: dict[str, int] = {s: i for i, s in enumerate(STEP_ORDER)}
 
+#: Etykieta PL kroku — WYŁĄCZNIE do komunikatów czytanych przez projektanta
+#: (`message_pl`). Identyfikator kroku (K1-K10) zostaje w `wizard_step_hint`
+#: (pole maszynowe, patrz `WizardIssue.wizard_step_hint`); komunikat tekstowy
+#: MUSI nazwać krok po polsku, nie kryptonimem (BINDING powyżej w tym module).
+_STEP_LABELS_PL: dict[str, str] = {
+    "K1": "Nazwa projektu",
+    "K2": "Punkt zasilania",
+    "K3": "Szyny",
+    "K4": "Gałęzie",
+    "K5": "Transformatory",
+    "K6": "Odbiory i generatory",
+    "K7": "Przegląd",
+    "K8": "Walidacja",
+    "K9": "Podgląd schematu",
+    "K10": "Zakończenie",
+}
+
 
 def _step_index(step_id: str) -> int:
     idx = _STEP_INDEX.get(step_id)
@@ -95,7 +112,7 @@ def _preconditions_k2(enm: dict[str, Any]) -> list[WizardIssue]:
             WizardIssue(
                 code="PRE_K2_NAME_MISSING",
                 severity=IssueSeverity.BLOCKER,
-                message_pl="Uzupełnij nazwę projektu (K1) przed konfiguracją zasilania",
+                message_pl="Uzupełnij nazwę projektu przed konfiguracją zasilania",
                 wizard_step_hint="K1",
             )
         )
@@ -112,7 +129,7 @@ def _preconditions_k3(enm: dict[str, Any]) -> list[WizardIssue]:
             WizardIssue(
                 code="PRE_K3_NO_SOURCE_BUS",
                 severity=IssueSeverity.BLOCKER,
-                message_pl="Zdefiniuj punkt zasilania (K2) przed dodaniem szyn",
+                message_pl="Zdefiniuj punkt zasilania przed dodaniem szyn",
                 wizard_step_hint="K2",
             )
         )
@@ -127,7 +144,7 @@ def _preconditions_k4(enm: dict[str, Any]) -> list[WizardIssue]:
             WizardIssue(
                 code="PRE_K4_NO_BUSES",
                 severity=IssueSeverity.BLOCKER,
-                message_pl="Dodaj szyny (K3) przed definiowaniem gałęzi",
+                message_pl="Dodaj szyny przed definiowaniem gałęzi",
                 wizard_step_hint="K3",
             )
         )
@@ -158,7 +175,7 @@ def _preconditions_k6(enm: dict[str, Any]) -> list[WizardIssue]:
             WizardIssue(
                 code="PRE_K6_NO_BUSES",
                 severity=IssueSeverity.BLOCKER,
-                message_pl="Dodaj szyny (K3) przed definiowaniem odbiorów",
+                message_pl="Dodaj szyny przed definiowaniem odbiorów",
                 wizard_step_hint="K3",
             )
         )
@@ -192,7 +209,10 @@ def _preconditions_k10(enm: dict[str, Any]) -> list[WizardIssue]:
             WizardIssue(
                 code="PRE_K10_HAS_BLOCKERS",
                 severity=IssueSeverity.BLOCKER,
-                message_pl=f"Napraw blokery w krokach: {', '.join(s.step_id for s in blocker_steps)}",
+                message_pl=(
+                    "Napraw blokery w krokach: "
+                    f"{', '.join(_STEP_LABELS_PL.get(s.step_id, s.step_id) for s in blocker_steps)}"
+                ),
                 wizard_step_hint="K8",
             )
         )

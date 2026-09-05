@@ -9,7 +9,7 @@ import { MiniBlockRmuRenderer } from '../MiniBlockRmuRenderer';
 
 afterEach(() => cleanup());
 
-describe('K30-117 — ApparatusVtThreePhase phase flexibility', () => {
+describe('ApparatusVtThreePhase phase flexibility', () => {
   it('default phaseCount=3 → 3 okręgi w trójkącie + L1/L2/L3 labels', () => {
     const { container, getByText } = render(
       <svg>
@@ -48,7 +48,7 @@ describe('K30-117 — ApparatusVtThreePhase phase flexibility', () => {
   });
 });
 
-describe('K30-118 — MiniBlockRmuRenderer bus topology marker', () => {
+describe('MiniBlockRmuRenderer bus topology marker', () => {
   const baseProps = {
     id: 'st-1',
     x: 0,

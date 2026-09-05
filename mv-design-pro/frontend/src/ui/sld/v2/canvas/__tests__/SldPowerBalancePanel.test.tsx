@@ -7,7 +7,7 @@ import { SldPowerBalancePanel } from '../SldPowerBalancePanel';
 
 afterEach(() => cleanup());
 
-describe('SldPowerBalancePanel — K30-101 bilans mocy OSD', () => {
+describe('SldPowerBalancePanel — bilans mocy OSD', () => {
   it('renderuje empty values gdy data=null', () => {
     const { container } = render(<svg><SldPowerBalancePanel /></svg>);
     expect(container.querySelector('[data-testid="sld-v2-power-balance-panel"]')).toBeTruthy();

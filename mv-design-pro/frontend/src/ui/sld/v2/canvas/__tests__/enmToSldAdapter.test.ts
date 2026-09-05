@@ -1109,7 +1109,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(station.footprintType).toBe('der_station');
   });
 
-  it('K30-37: adapter propaguje busVoltageKv z snapshot.buses (najwyższe > 0.5 kV)', () => {
+  it('adapter propaguje busVoltageKv z snapshot.buses (najwyższe > 0.5 kV)', () => {
     const snap = buildEmptySnapshot();
     snap.substations = [
       { id: 'st', ref_id: 'ST-V', name: 'Stacja SN', tags: [], meta: {}, station_type: 'inline', bus_refs: ['b-sn', 'b-nn'], transformer_refs: [] } as never,
@@ -1124,7 +1124,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(r.stations[0].busVoltageKv).toBe(15);
   });
 
-  it('K30-37: adapter zwraca busVoltageKv=null gdy stacja nie ma SN buses (LV-only excluded)', () => {
+  it('adapter zwraca busVoltageKv=null gdy stacja nie ma SN buses (LV-only excluded)', () => {
     const snap = buildEmptySnapshot();
     snap.substations = [
       { id: 'st', ref_id: 'ST-LV', name: 'Stacja LV-only', tags: [], meta: {}, station_type: 'inline', bus_refs: ['b-nn'], transformer_refs: [] } as never,
@@ -1138,7 +1138,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(r.stations[0].busVoltageKv).toBeNull();
   });
 
-  it('K30-41: adapter propaguje voltageKv ciągów kabli z `from_bus` voltage_kv', () => {
+  it('adapter propaguje voltageKv ciągów kabli z `from_bus` voltage_kv', () => {
     const snap = buildEmptySnapshot();
     snap.substations = [
       { id: 'g', ref_id: 'GPZ', name: 'GPZ', tags: [], meta: {}, station_type: 'gpz', bus_refs: ['b15'], transformer_refs: [] } as never,
@@ -1165,7 +1165,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     }
   });
 
-  it('K30-41: voltageKv=null gdy from_bus.voltage_kv niedostępne', () => {
+  it('voltageKv=null gdy from_bus.voltage_kv niedostępne', () => {
     const snap = buildEmptySnapshot();
     snap.substations = [
       { id: 'g', ref_id: 'GPZ', name: 'GPZ', tags: [], meta: {}, station_type: 'gpz', bus_refs: ['b-empty'], transformer_refs: [] } as never,
@@ -2503,7 +2503,7 @@ describe('buildStations — konsumuje line_runs.stations[] z explicit order', ()
 
   // K30 audit loop: synthetic snapshot z 30 stacji + 2 GPZ + 2 line_runs (A/B)
   // weryfikuje że adapter skaluje się do K30 bez backendu (no-op safety net).
-  it('K30 synthetic: 30 stations + 2 GPZ + 2 line_runs → 32 stations, 2 lineRuns, cumulative km', () => {
+  it('synthetic: 30 stations + 2 GPZ + 2 line_runs → 32 stations, 2 lineRuns, cumulative km', () => {
     const snap = buildEmptySnapshot();
     // 2 GPZ
     snap.substations = [
@@ -2568,7 +2568,7 @@ describe('buildStations — konsumuje line_runs.stations[] z explicit order', ()
 
   // K30 audit loop: weryfikacja że adapter syntezuje main_trunk z łańcucha
   // branches gdy brak jawnych line_runs (K30 live seed case).
-  it('K30 synthetic: 5 cables w łańcuchu GPZ→S2→S3→S4→S5 bez line_runs → 1 syntetyczny main_trunk', () => {
+  it('synthetic: 5 cables w łańcuchu GPZ→S2→S3→S4→S5 bez line_runs → 1 syntetyczny main_trunk', () => {
     const snap = buildEmptySnapshot();
     snap.buses = [
       { id: 'gpz_bus', ref_id: 'gpz/abc/section/001/bus_sn', name: 'GPZ Sec1', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
@@ -2606,7 +2606,7 @@ describe('buildStations — konsumuje line_runs.stations[] z explicit order', ()
 
   // K30 audit loop: weryfikacja że adapter nie crashes z runtime errors na
   // dużych snapshot (30 stacji = 30+ buses + 30+ transformers + DERs).
-  it('K30 synthetic: deterministic output 3× pod rząd (no flaky behavior)', () => {
+  it('synthetic: deterministic output 3× pod rząd (no flaky behavior)', () => {
     const snap = buildEmptySnapshot();
     snap.substations = [
       { id: 'gpz-a', ref_id: 'GPZ-A', name: 'GPZ-A', tags: [], meta: {}, station_type: 'gpz', bus_refs: ['busA'], transformer_refs: [], gpz_sections: [{ section_id: 'A', order: 1, bus_ref: 'busA' }] } as never,
@@ -3362,7 +3362,7 @@ describe('enmToSldAdapter — kontrakt topologii terenowej SLD', () => {
 });
 
 
-describe('K30-19 countNnFeedersFromMeta — adapter respects station.meta.nn_field_specs', () => {
+describe('countNnFeedersFromMeta — adapter respects station.meta.nn_field_specs', () => {
   function buildStationFixture(meta: Record<string, unknown>) {
     const snapshot = buildEmptySnapshot();
     (snapshot as { substations: unknown[] }).substations = [

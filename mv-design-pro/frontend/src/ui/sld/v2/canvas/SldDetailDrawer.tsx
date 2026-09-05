@@ -29,6 +29,8 @@ import { useForm, type FieldError, type FieldErrors, type Resolver, type UseForm
 import { z } from 'zod';
 import { useProtectionAssignment, type ElementProtectionAssignment } from '../../../protection';
 import { formatProtectionFunction } from '../../../inspector/formatProtection';
+import { fetchDerConverterTypes } from '../../../catalog/api';
+import type { ConverterType } from '../../../catalog/types';
 
 export type SldDetailKind =
   | 'station'
@@ -296,46 +298,107 @@ function formatKvarPl(value: number): string {
   return `${formatTechnicalNumberPl(value, 1)} kvar`;
 }
 
-const DER_CATALOG_OPTIONS: Readonly<
-  Record<SldDerKind, Record<'nn' | 'sn', ReadonlyArray<{ value: string; label: string }>>>
-> = {
-  PV: {
-    nn: [
-      { value: 'conv-pv-nn-0p5mw-0p4kv', label: 'Falownik PV 0,5 MW / 0,4 kV nN' },
-      { value: 'conv-pv-nn-1mw-0p4kv', label: 'Falownik PV 1 MW / 0,4 kV nN' },
-      { value: 'conv-pv-nn-2mw-0p4kv', label: 'Falownik PV 2 MW / 0,4 kV nN' },
-    ],
-    sn: [
-      { value: 'conv-pv-0.5mw-15kv', label: 'Farma PV 0,5 MW / 15 kV' },
-      { value: 'conv-pv-1mw-15kv', label: 'Farma PV 1 MW / 15 kV' },
-      { value: 'conv-pv-2mw-15kv', label: 'Farma PV 2 MW / 15 kV' },
-    ],
-  },
-  BESS: {
-    nn: [
-      { value: 'conv-bess-nn-0p5mw-0p4kv', label: 'PCS BESS 0,5 MW / 0,4 kV nN' },
-      { value: 'conv-bess-nn-1mw-0p4kv', label: 'PCS BESS 1 MW / 0,4 kV nN' },
-      { value: 'conv-bess-nn-2mw-0p4kv', label: 'PCS BESS 2 MW / 0,4 kV nN' },
-    ],
-    sn: [
-      { value: 'conv-bess-0.5mw-1mwh-15kv', label: 'BESS 0,5 MW / 1 MWh / 15 kV' },
-      { value: 'conv-bess-1mw-2mwh-15kv', label: 'BESS 1 MW / 2 MWh / 15 kV' },
-      { value: 'conv-bess-2mw-4mwh-15kv', label: 'BESS 2 MW / 4 MWh / 15 kV' },
-    ],
-  },
-  FW: {
-    nn: [
-      { value: 'conv-wind-nn-2mw-0p4kv', label: 'Falownik FW 2 MW / 0,4 kV nN' },
-      { value: 'conv-wind-nn-3mw-0p4kv', label: 'Falownik FW 3 MW / 0,4 kV nN' },
-      { value: 'conv-wind-nn-5mw-0p4kv', label: 'Falownik FW 5 MW / 0,4 kV nN' },
-    ],
-    sn: [
-      { value: 'conv-wind-2mw-15kv', label: 'Turbina wiatrowa 2 MW / 15 kV' },
-      { value: 'conv-wind-3mw-15kv', label: 'Turbina wiatrowa 3 MW / 15 kV' },
-      { value: 'conv-wind-4mw-20kv', label: 'Turbina wiatrowa 4 MW / 20 kV' },
-    ],
-  },
+/**
+ * Opcje przekształtnika DER — WYŁĄCZNIE z katalogu backendu (FAB-F: usunięta
+ * fabrykacja `DER_CATALOG_OPTIONS`, 18 zaszytych `catalog_ref` — 9/18 nie
+ * istniało w katalogu backendu wcale, „nN" połowa listy była fantomem, bo
+ * backend nie ma ŻADNEGO przekształtnika poniżej 1 kV). Reużywa istniejący
+ * klient `fetchDerConverterTypes` (`ui/catalog/api.ts`, ten sam, którego
+ * używa `AddDerWizard`) zamiast duplikować integrację z `/api/catalog/
+ * converter-types`. Filtr nN/SN po `un_kv` TYPU Z KATALOGU (rzeczywiste
+ * napięcie znamionowe), nie po sufiksie nazwy — zgodnie z rozstrzygnięciem
+ * karty.
+ */
+interface DerConverterCatalogState {
+  readonly status: 'loading' | 'ready' | 'empty' | 'error';
+  readonly options: ReadonlyArray<{ value: string; label: string }>;
+  readonly errorMessage: string | null;
+}
+
+const DER_CATALOG_STATE_LOADING: DerConverterCatalogState = {
+  status: 'loading',
+  options: [],
+  errorMessage: null,
 };
+
+function toConverterKind(kind: SldDerKind): ConverterType['kind'] {
+  return kind === 'FW' ? 'WIND' : kind;
+}
+
+/** Etykieta = pola katalogu (nazwa, a w jej braku producent+model, a w ich
+ *  braku identyfikator) — NIGDY literał zaszyty w UI. */
+function converterOptionLabel(item: ConverterType): string {
+  const name = item.name?.trim();
+  if (name) return name;
+  const manufacturerModel = [item.manufacturer, item.model].filter(Boolean).join(' ');
+  return manufacturerModel || item.id;
+}
+
+const DER_KIND_LABEL_PL: Readonly<Record<SldDerKind, string>> = {
+  PV: 'PV',
+  BESS: 'BESS',
+  FW: 'FW',
+};
+
+/** Pobiera opcje przekształtnika z katalogu backendu dla (rodzaj DER, wariant
+ *  przyłączenia). Stan pusty (katalog nie zwrócił typów dla tego poziomu
+ *  napięcia) i błąd (zapytanie nie powiodło się) są UCZCIWE — bez listy
+ *  zastępczej. `enabled` odracza zapytanie do chwili, gdy zakładka „Falownik"
+ *  jest faktycznie oglądana (regresja zmierzona przy weryfikacji end-to-end:
+ *  bez tej bramki hak odpalał `fetch` przy KAŻDYM renderze szuflady z danymi
+ *  DER, niezależnie od aktywnej zakładki i nawet dla elementów innych niż DER,
+ *  co łamało asercje liczby wywołań `fetch` w testach portalu nN L0-L2). */
+function useDerConverterCatalog(
+  derKind: SldDerKind,
+  connectionVariant: SldDerConnectionVariant,
+  enabled: boolean,
+): DerConverterCatalogState {
+  const [state, setState] = useState<DerConverterCatalogState>(DER_CATALOG_STATE_LOADING);
+
+  useEffect(() => {
+    if (!enabled) return;
+    let active = true;
+    setState(DER_CATALOG_STATE_LOADING);
+    const isNn = connectionVariant === 'nn_side';
+    void fetchDerConverterTypes(toConverterKind(derKind))
+      .then((records) => {
+        if (!active) return;
+        if (!Array.isArray(records)) {
+          throw new Error('Backend nie zwrócił listy przekształtników z katalogu.');
+        }
+        const filtered = records.filter((item) => (isNn ? item.un_kv < 1 : item.un_kv >= 1));
+        const options = filtered.map((item) => ({
+          value: item.id,
+          label: converterOptionLabel(item),
+        }));
+        if (options.length > 0) {
+          setState({ status: 'ready', options, errorMessage: null });
+        } else {
+          setState({
+            status: 'empty',
+            options: [],
+            errorMessage:
+              `Katalog nie zawiera przekształtników ${isNn ? 'nN' : 'SN'} dla technologii ` +
+              `${DER_KIND_LABEL_PL[derKind]}.`,
+          });
+        }
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setState({
+          status: 'error',
+          options: [],
+          errorMessage:
+            error instanceof Error ? error.message : 'Nie udało się pobrać katalogu przekształtników.',
+        });
+      });
+    return () => {
+      active = false;
+    };
+  }, [derKind, connectionVariant, enabled]);
+
+  return state;
+}
 
 const sldDerConfigSchema = z.object({
   derKind: z.enum(['PV', 'BESS', 'FW']),
@@ -410,17 +473,6 @@ function pointVoltageForVariant(
   return stationVoltageKv != null && stationVoltageKv >= 1 ? stationVoltageKv : 15;
 }
 
-function catalogSideForVariant(variant: SldDerConnectionVariant): 'nn' | 'sn' {
-  return variant === 'nn_side' ? 'nn' : 'sn';
-}
-
-function getDerCatalogOptions(
-  kind: SldDerKind,
-  variant: SldDerConnectionVariant,
-): ReadonlyArray<{ value: string; label: string }> {
-  return DER_CATALOG_OPTIONS[kind][catalogSideForVariant(variant)];
-}
-
 function defaultDerPowerMw(kind: SldDerKind): number {
   if (kind === 'BESS') return 0.5;
   if (kind === 'FW') return 2.0;
@@ -435,7 +487,11 @@ function makeDefaultDerFormValues(data: SldDetailDrawerData | null): SldDerConfi
     powerMw: defaultDerPowerMw(derKind),
     connectionVariant,
     pointVoltageKv: pointVoltageForVariant(connectionVariant, data?.voltageKv),
-    inverterCatalogRef: getDerCatalogOptions(derKind, connectionVariant)[0]?.value ?? '',
+    // Katalog przekształtników jest ASYNCHRONICZNY (backend, FAB-F) — wartość
+    // wstępna zostaje pusta; `useDerConverterCatalog` + efekt w
+    // `SldDetailDrawer` uzupełniają ją, gdy katalog odpowie. Formularz
+    // odrzuca zapis z pustym `inverterCatalogRef` (schemat zod poniżej).
+    inverterCatalogRef: '',
     ncRfgModule: 'A',
   };
 }
@@ -483,6 +539,11 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
   } = props;
   const tabs = tabsForKind(data);
   const [activeTab, setActiveTab] = useState<string>(tabs[0]?.id ?? '');
+  // Ten sam wynik co `currentTab` niżej (po wczesnym `return`) — JEDNO źródło
+  // prawdy o aktywnej zakładce, policzone też PRZED hakami (zasada hooków),
+  // żeby `useDerConverterCatalog` mogło odroczyć zapytanie do chwili, gdy
+  // zakładka „Falownik" jest faktycznie oglądana.
+  const resolvedTab = tabs.find((t) => t.id === activeTab)?.id ?? tabs[0]?.id ?? '';
   const derForm = useForm<SldDerConfigFormValues>({
     resolver: sldDerConfigResolver,
     mode: 'onChange',
@@ -490,6 +551,11 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
   });
   const watchedDerKind = derForm.watch('derKind');
   const watchedConnectionVariant = derForm.watch('connectionVariant');
+  const derCatalog = useDerConverterCatalog(
+    watchedDerKind,
+    watchedConnectionVariant,
+    data?.kind === 'der' && resolvedTab === 'inverter',
+  );
   const saveError = data?.kind === 'der' ? firstDerFormError(derForm.formState.errors) : null;
   // K30-96: auto-focus close button when drawer opens (ARIA dialog pattern)
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -515,12 +581,24 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
       derForm.setValue('pointVoltageKv', nextPointVoltage, { shouldValidate: true });
     }
 
-    const options = getDerCatalogOptions(watchedDerKind, watchedConnectionVariant);
+    // Katalog asynchroniczny (FAB-F): dopóki trwa zapytanie, NIE nadpisuj
+    // dotychczasowego wyboru — inaczej każdy re-render czyściłby pole na
+    // ułamek sekundy przed odpowiedzią backendu.
+    if (derCatalog.status === 'loading') return;
     const currentCatalogRef = derForm.getValues('inverterCatalogRef');
-    if (!options.some((option) => option.value === currentCatalogRef)) {
-      derForm.setValue('inverterCatalogRef', options[0]?.value ?? '', { shouldValidate: true });
+    if (!derCatalog.options.some((option) => option.value === currentCatalogRef)) {
+      derForm.setValue('inverterCatalogRef', derCatalog.options[0]?.value ?? '', { shouldValidate: true });
     }
-  }, [open, data?.kind, data?.voltageKv, watchedDerKind, watchedConnectionVariant, derForm]);
+  }, [
+    open,
+    data?.kind,
+    data?.voltageKv,
+    watchedDerKind,
+    watchedConnectionVariant,
+    derForm,
+    derCatalog.status,
+    derCatalog.options,
+  ]);
 
   const handleSaveClick = useCallback(() => {
     if (!onSave || !data) return;
@@ -569,8 +647,9 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
 
   if (!open || !data || data.kind === null || tabs.length === 0) return null;
 
-  // Reset active tab when data.kind changes
-  const currentTab = tabs.find((t) => t.id === activeTab) ? activeTab : tabs[0].id;
+  // Reset active tab when data.kind changes (resolvedTab — policzone wyżej,
+  // przed hakami — jest tym samym źródłem prawdy).
+  const currentTab = resolvedTab;
   const showFooter = Boolean(onSave && data.kind === 'der');
   const showActionToolbar = Boolean(onOpenFullView || onOpenConfiguration || actions.length > 0);
 
@@ -834,6 +913,7 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
           tab={currentTab}
           data={data}
           derForm={derForm}
+          derCatalog={derCatalog}
           onOpenConfiguration={onOpenConfiguration}
         />
       </div>
@@ -952,10 +1032,11 @@ interface TabContentProps {
   readonly tab: string;
   readonly data: SldDetailDrawerData;
   readonly derForm: UseFormReturn<SldDerConfigFormValues>;
+  readonly derCatalog: DerConverterCatalogState;
   readonly onOpenConfiguration?: () => void;
 }
 
-function TabContent({ kind, tab, data, derForm, onOpenConfiguration }: TabContentProps): JSX.Element {
+function TabContent({ kind, tab, data, derForm, derCatalog, onOpenConfiguration }: TabContentProps): JSX.Element {
   return (
     <div data-testid={`sld-v2-detail-drawer-tab-content-${tab}`}>
       <div style={{ color: 'rgb(var(--scada-muted))', fontStyle: 'italic', marginBottom: 12 }}>
@@ -976,6 +1057,7 @@ function TabContent({ kind, tab, data, derForm, onOpenConfiguration }: TabConten
         nodeSpec={data.nodeSpec ?? null}
         apparatusState={data.apparatusState ?? null}
         derForm={derForm}
+        derCatalog={derCatalog}
         onOpenConfiguration={onOpenConfiguration}
       />
     </div>
@@ -1448,6 +1530,7 @@ function PlaceholderTabBody({
   nodeSpec,
   apparatusState,
   derForm,
+  derCatalog,
   onOpenConfiguration,
 }: {
   kind: SldDetailKind;
@@ -1512,6 +1595,7 @@ function PlaceholderTabBody({
     readonly lastChangeAt: string | null;
   } | null;
   derForm: UseFormReturn<SldDerConfigFormValues>;
+  derCatalog: DerConverterCatalogState;
   onOpenConfiguration?: () => void;
 }): JSX.Element {
   // Tab-specific scaffolding — actual editor forms wired w K30-72+
@@ -1568,37 +1652,49 @@ function PlaceholderTabBody({
   if (kind === 'der' && tab === 'inverter') {
     const currentDerKind = derForm.watch('derKind');
     const currentConnectionVariant = derForm.watch('connectionVariant');
-    const options = getDerCatalogOptions(currentDerKind, currentConnectionVariant);
+    const wariantLabel = currentConnectionVariant === 'nn_side' ? 'nN' : 'SN';
     return (
       <div data-testid="drawer-der-inverter">
         <label style={{ display: 'block', marginBottom: 6, color: 'rgb(var(--scada-muted))', fontSize: 10, fontWeight: 700 }}>
           Przekształtnik z katalogu
         </label>
-        <select
-          data-testid="drawer-der-inverter-select"
-          {...derForm.register('inverterCatalogRef')}
-          style={{
-            background: 'rgb(var(--scada-surface))',
-            color: 'rgb(var(--scada-text))',
-            border: '1px solid rgb(var(--scada-border))',
-            padding: 6,
-            borderRadius: 3,
-            width: '100%',
-            fontSize: 11,
-            fontFamily: 'monospace',
-          }}
-        >
-          {options.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
+        {derCatalog.status === 'loading' && (
+          <div data-testid="drawer-der-inverter-loading" style={{ color: 'rgb(var(--scada-muted))', fontSize: 11 }}>
+            Wczytywanie katalogu przekształtników…
+          </div>
+        )}
+        {(derCatalog.status === 'empty' || derCatalog.status === 'error') && (
+          <div data-testid="drawer-der-inverter-empty" style={{ color: 'rgb(var(--scada-status-warn))', fontSize: 11 }}>
+            {derCatalog.errorMessage ?? 'Katalog przekształtników jest niedostępny.'}
+          </div>
+        )}
+        {derCatalog.status === 'ready' && (
+          <select
+            data-testid="drawer-der-inverter-select"
+            {...derForm.register('inverterCatalogRef')}
+            style={{
+              background: 'rgb(var(--scada-surface))',
+              color: 'rgb(var(--scada-text))',
+              border: '1px solid rgb(var(--scada-border))',
+              padding: 6,
+              borderRadius: 3,
+              width: '100%',
+              fontSize: 11,
+              fontFamily: 'monospace',
+            }}
+          >
+            {derCatalog.options.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        )}
         {derForm.formState.errors.inverterCatalogRef?.message && (
           <div data-testid="drawer-der-inverter-error" style={{ marginTop: 6, color: 'rgb(var(--scada-status-err))', fontSize: 10 }}>
             {derForm.formState.errors.inverterCatalogRef.message}
           </div>
         )}
         <div style={{ marginTop: 8, fontSize: 9, color: 'rgb(var(--scada-muted))' }}>
-          Powiązanie katalogowe dla {currentDerKind}; lista jest dopasowana do wariantu {currentConnectionVariant === 'nn_side' ? 'nN' : 'SN'}.
+          Powiązanie katalogowe dla {currentDerKind}; lista jest dopasowana do wariantu {wariantLabel}.
         </div>
       </div>
     );

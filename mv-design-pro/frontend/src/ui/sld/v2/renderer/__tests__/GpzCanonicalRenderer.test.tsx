@@ -608,7 +608,7 @@ describe('GpzCanonicalRenderer — replica GPZ-5 PST (Mikronika MIKRA reference)
           sectionId: 's2', order: 2, label: 'S2', busVoltageKv: 15,
           bays: [
             bay('b-rmaya', 'LINE_OUT', { bayNumber: '7', feederName: 'R.MAYA', destinationLabel: '→ 510178' }),
-            bay('b-mpk', 'LINE_OUT', { bayNumber: '12', feederName: 'MPK STAROŁ.', destinationLabel: '→ 01-K147' }),
+            bay('b-mpk', 'LINE_OUT', { bayNumber: '12', feederName: 'MPK STAROŁ.', destinationLabel: '→ 01-147' }),
             bay('b-aluplast', 'LINE_OUT', { bayNumber: '11', feederName: 'ALUPLAST', destinationLabel: '→ ZKSN 6009' }),
           ],
         },

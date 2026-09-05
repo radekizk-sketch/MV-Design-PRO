@@ -349,9 +349,41 @@ function functionCodeForSetting(setting: ProtectionSetting): string {
     earth_fault_51N: '51N',
     directional_67: '67',
     directional_67N: '67N',
+    // D10 (FAB-F): funkcje ochrony od pracy wyspowej (Loss of Mains) — patrz
+    // `enm/models.py::ProtectionSetting.function_type`.
+    rocof_81R: '81R',
+    vector_shift_78: '78',
+    underfrequency_81U: '81U',
+    overfrequency_81O: '81O',
   };
   return map[setting.function_type] ?? setting.function_type;
 }
+
+/**
+ * Wymagane wejścia pomiarowe per funkcja ochrony (IEC 60255 numery ANSI).
+ * FAB-F (2026-09-05): zastępuje binarną heurystykę
+ * `startsWith('overcurrent') ? ['ct'] : ['3i0']`, która milcząco przypisywała
+ * `3i0` (prąd składowej zerowej) FUNKCJOM CZĘSTOTLIWOŚCIOWYM (81O/81U/81R/78 —
+ * D10, ochrona od pracy wyspowej), mierzącym napięcie, nie prąd — oraz
+ * kierunkowym (67/67N), którym brakowało referencji napięciowej `vt`.
+ * Wyczerpujące (Record wymusza obsłużenie KAŻDEJ wartości unii).
+ */
+const REQUIRED_INPUTS_BY_FUNCTION: Record<
+  ProtectionSetting['function_type'],
+  ('ct' | 'vt' | '3i0' | '3u0')[]
+> = {
+  overcurrent_50: ['ct'],
+  overcurrent_51: ['ct'],
+  earth_fault_50N: ['3i0'],
+  earth_fault_51N: ['3i0'],
+  directional_67: ['ct', 'vt'],
+  directional_67N: ['3i0', '3u0'],
+  // D10: funkcje częstotliwościowe (Loss of Mains) — mierzą napięcie, nie prąd.
+  rocof_81R: ['vt'],
+  vector_shift_78: ['vt'],
+  underfrequency_81U: ['vt'],
+  overfrequency_81O: ['vt'],
+};
 
 function buildProtectionConfig(
   record: SnapshotFieldRecord,
@@ -376,7 +408,7 @@ function buildProtectionConfig(
       picked_up: false,
       tripped: false,
       blocked: false,
-      required_inputs: setting.function_type.startsWith('overcurrent') ? ['ct'] : ['3i0'],
+      required_inputs: REQUIRED_INPUTS_BY_FUNCTION[setting.function_type],
       optional_inputs: [],
       missing_input_policy: 'ostrzezenie',
       settings_ref: `setting:${setting.function_type}`,

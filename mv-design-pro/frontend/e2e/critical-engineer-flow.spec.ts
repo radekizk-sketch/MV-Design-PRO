@@ -17,7 +17,7 @@ import { test, expect } from '@playwright/test';
 
 const API_BASE = process.env.API_BASE ?? 'http://127.0.0.1:8000';
 
-test.describe('K30-28 critical engineer flow — station templates end-to-end', () => {
+test.describe('critical engineer flow — station templates end-to-end', () => {
   test('GET /api/station-templates returns 57+ templates across 10 categories', async ({ request }) => {
     const response = await request.get(`${API_BASE}/api/station-templates`);
     expect(response.ok()).toBe(true);

@@ -8,7 +8,7 @@ import { BayColumnSn } from '../BayColumnSn';
 
 afterEach(() => cleanup());
 
-describe('K30-119 — BayColumnSn LOD downsampling', () => {
+describe('BayColumnSn LOD downsampling', () => {
   const baseProps = {
     x: 100,
     busY: 50,

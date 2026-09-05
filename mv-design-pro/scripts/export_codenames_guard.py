@@ -3,8 +3,8 @@
 EXPORT-CODENAMES GUARD — kody projektowe won z treści eksportów (K7-A, 2026-07-29)
 
 REGUŁA WIĄŻĄCA (CLAUDE.md "No Codenames in UI/Exports"):
-- Kody projektowe (P7, P11, P14, P20, P24+, ...) oraz porównawcze nazwy
-  produktowe (ETAP+, ETAP++) NIGDY nie mogą trafiać do TREŚCI dokumentów
+- Kody projektowe (P7, P11, P14, P20, P24+, K30, K30-38, ...) oraz porównawcze
+  nazwy produktowe (ETAP+, ETAP++) NIGDY nie mogą trafiać do TREŚCI dokumentów
   eksportowych (PDF/DOCX/LaTeX/SVG). W treści obowiązują polskie etykiety
   inżynierskie.
 
@@ -76,7 +76,22 @@ SCAN_TARGETS = [
 # Kody projektowe: P<liczba> (opcjonalny sufiks "+", np. P24+). P0 wyłączone
 # (parametr techniczny strat jałowych transformatora). Granice: znak słowa
 # przed/po wyklucza identyfikatory typu NR_P20_001 i p0_kw.
-CODENAME_PATTERN = re.compile(r"(?<![\w])[pP](?!0\b)\d+\+?(?![\w])")
+#
+# ROZSZERZENIE `K` (FAB-F, 2026-09-05): klasa kryptonimów obejmuje też
+# `K<cyfry>` (np. `K30`, `K30-38` — usunięte tą samą kartą z
+# `SldTitleBlock.tsx` v2, gdzie `DEFAULTS.revision` fabrykował nazwę fazy
+# jako dane projektu). WYŁĄCZNIE wielka litera (jak w `no_codenames_guard.py`
+# — patrz uzasadnienie tam): małe `k<cyfry>` w tym repo to fizyka/metrologia
+# (I_k1/I_k2/I_k3 wg IEC 60909, współczynniki k1..k4 wg IEC 60364-5-52,
+# współczynnik rozszerzenia niepewności k=2), nie kryptonim. K0 NIE wyłączone
+# (brak zmierzonego odpowiednika technicznego, w przeciwieństwie do P0) — stąd
+# lookahead "nie 0" siedzi WYŁĄCZNIE w gałęzi `[pP]`, nie jest współdzielony
+# (współdzielony wykluczałby K0 "przy okazji" — złapane własnym testem
+# `test_guard_k0_nie_jest_wylaczony`, patrz KLASA §4: deklaracja bez testu).
+# POMIAR (2026-09-05): 0 wystąpień P i K w SCAN_TARGETS — renderery eksportów
+# były już czyste, to rozszerzenie zamyka KLASĘ zanim ktoś ją naruszy, nie
+# naprawia zastanego naruszenia.
+CODENAME_PATTERN = re.compile(r"(?<![\w])(?:[pP](?!0\b)|K)\d+\+?(?![\w])")
 # Porównawcze nazwy produktowe w treści eksportu (ETAP, ETAP+, ETAP++).
 PRODUCT_PATTERN = re.compile(r"\bETAP\+{0,2}(?![\w])")
 

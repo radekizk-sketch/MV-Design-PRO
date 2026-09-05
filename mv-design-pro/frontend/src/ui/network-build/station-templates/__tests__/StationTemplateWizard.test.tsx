@@ -279,7 +279,7 @@ describe('StationTemplateWizard', () => {
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
-  it('K30-21: applies template via backend when caseId + targetSegment provided', async () => {
+  it('applies template via backend when caseId + targetSegment provided', async () => {
     const applyMock = {
       template_id: 'tpl_sn_nn_630kva',
       template_name_pl: 'Stacja SN/nN 630 kVA',
