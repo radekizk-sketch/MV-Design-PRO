@@ -4,8 +4,12 @@ Verifies the FROZEN-solver companion that the SLD render path reads as the ONE
 TRUTH for power-flow direction + energization:
 
   - the production load-flow path runs on the committed substrate ENM and converges;
-  - the companion separates the energized set (solver slack-island) from the
-    de-energized set (solver not_solved — the stub beyond the open NOP);
+  - the companion correctly separates an energized set (solver slack-island)
+    from a de-energized set (solver not_solved) when one genuinely exists —
+    verified on a small dedicated fixture, since the committed substrate's own
+    NOP is ring-tied (SUB-52s, 2026-09-04: a topologically stranded stub is
+    ENMValidator E003, a defect — the substrate now has ZERO de-energized buses
+    by design; see ``sld_substrate_52s.py`` step 5d);
   - per-branch ``flow_direction`` equals ``sign(Re(branch_s_from))`` of the solver;
   - the substrate is genuinely BIDIRECTIONAL (some segments forward, some reverse
     where DER backfeeds upstream);
@@ -21,7 +25,7 @@ from application.reference_networks.sld_substrate_power_flow import (
     _build_power_flow_input,
     compute_substrate_power_flow,
 )
-from enm.models import EnergyNetworkModel
+from enm.models import Bus, Cable, EnergyNetworkModel, ENMHeader, Load, Source
 from network_model.solvers.power_flow_newton import solve_power_flow_physics
 
 from tests.reference_networks.sld_substrate_52s import build_sld_substrate_52s
@@ -63,13 +67,73 @@ def test_converged(companion: dict) -> None:
     assert companion["iterations"] > 0
 
 
-def test_energized_and_de_energized_partition(companion: dict) -> None:
-    """The NOP must produce a non-empty de-energized set (solver not_solved)."""
+def test_energized_and_de_energized_partition() -> None:
+    """The companion must correctly partition energized vs de-energized buses.
+
+    ZMIANA KANONU (SUB-52s, 2026-09-04): this used to read the shared 53-station
+    ``companion`` fixture, whose NOP left a downstream stub with NO OTHER path to
+    source — that stub was ENMValidator E003 (island, BLOCKER): a defect, not a
+    fixture feature (see ``sld_substrate_52s.py`` step 5d — the NOP's lateral is
+    now ring-tied to an adjacent feeder, so the substrate has zero de-energized
+    buses by design). INTENCJA PRESERVED: verify ``compute_substrate_power_flow``
+    still correctly separates energized from de-energized buses when a
+    de-energized set genuinely exists (e.g. a switch left open with no ring on
+    the far side) — exercised here on a small, dedicated 3-bus ENM built for
+    exactly that purpose, decoupled from the substrate's own topology contract.
+    """
+    enm = EnergyNetworkModel(
+        header=ENMHeader(name="Partycja energizacji — test dedykowany"),
+        buses=[
+            Bus(ref_id="b1", name="GPZ", voltage_kv=15.0),
+            Bus(ref_id="b2", name="Stacja zasilana", voltage_kv=15.0),
+            Bus(ref_id="b3", name="Stacja za otwartym NO", voltage_kv=15.0),
+        ],
+        sources=[
+            Source(
+                ref_id="src1",
+                name="Zrodlo",
+                bus_ref="b1",
+                model="short_circuit_power",
+                sk3_mva=250.0,
+                rx_ratio=0.1,
+            ),
+        ],
+        branches=[
+            Cable(
+                ref_id="cbl-b1-b2",
+                name="b1-b2",
+                from_bus_ref="b1",
+                to_bus_ref="b2",
+                length_km=0.2,
+                r_ohm_per_km=0.2,
+                x_ohm_per_km=0.1,
+                status="closed",
+            ),
+            Cable(
+                ref_id="cbl-b2-b3",
+                name="b2-b3 (NO)",
+                from_bus_ref="b2",
+                to_bus_ref="b3",
+                length_km=0.2,
+                r_ohm_per_km=0.2,
+                x_ohm_per_km=0.1,
+                status="open",
+            ),
+        ],
+        loads=[
+            Load(ref_id="ld-b2", name="Odbior b2", bus_ref="b2", p_mw=0.5, q_mvar=0.15),
+            Load(ref_id="ld-b3", name="Odbior b3", bus_ref="b3", p_mw=0.3, q_mvar=0.1),
+        ],
+    )
+    companion = compute_substrate_power_flow(
+        enm, case_ref="case/test-island", case_label="Test wyspy"
+    )
     energized = set(companion["energized_bus_refs"])
     de_energized = set(companion["de_energized_bus_refs"])
-    assert energized, "expected a non-empty energized set"
-    assert de_energized, "the open NOP must de-energize a downstream stub"
+    assert energized == {"b1", "b2"}
+    assert de_energized == {"b3"}
     assert energized.isdisjoint(de_energized), "a bus cannot be both energized and not"
+    assert companion["branch_flow"]["cbl-b2-b3"]["direction"] == "none"
 
 
 def test_open_point_present(companion: dict) -> None:

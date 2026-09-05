@@ -97,9 +97,13 @@ BENCHMARK_DICT_ZASTANE: dict[str, int] = {"G07": 1, "B-BENCH": 12}
 
 #: Pomiar 2026-09-04: liczba problemów BLOCKER walidatora ENM per wpis (suma po sieciach wpisu).
 #: G04/G05: 18 scenariuszy nN celowo obejmuje stany konfliktowe (źródła równoległe, sekcja bez
-#: zasilania) — BLOCKER jest tam treścią scenariusza; G00: substrat 52 stacji NIEOBLICZALNY (A10)
-#: — 21 blokerów do usunięcia u źródła. Zapadka w obie strony.
-BLOKERY_ZASTANE: dict[str, int] = {"G04": 15, "G05": 15, "G00": 21}
+#: zasilania) — BLOCKER jest tam treścią scenariusza. G00 (substrat 52 stacji, SUB-52s, naprawa
+#: 2026-09-04): było 21 blokerów (20× E063 — stacje bez deklaracji układu sieci nN, 1× E003 —
+#: wyspa za łącznikiem NOP bez toru do źródła); naprawione u źródła w
+#: `tests/reference_networks/sld_substrate_52s.py` (deklaracja `nn_earthing.lv_system=TN-C-S`
+#: przy budowie stacji + zamknięcie pierścienia do sąsiedniego odgałęzienia zamiast martwego
+#: końca za NOP) — 0 pozostałych blokerów. Zapadka w obie strony.
+BLOKERY_ZASTANE: dict[str, int] = {"G04": 15, "G05": 15, "G00": 0}
 
 #: Wpisy, których determinizm budowy (dwie budowy → ten sam hash) pomijamy tu ze względu na koszt
 #: budowy (G00: ok. 40 s) — determinizm substratu pilnuje `tests/reference_networks/sld_substrate_52s.py`.

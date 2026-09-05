@@ -1121,9 +1121,30 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // jawny portal ma pierwszeństwo przed minimalizacją pionów (spec §15.1
     // „redukcja jest ograniczeniem MIĘKKIM"); zero nowych kolizji
     // (`kosztSceny`, `sceneConformance`, `junction_dot_probe` 0 luk).
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(22672);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(45656);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(45656);
+    // SUB-52s (2026-09-04): OBNIŻONY 22672/45656/45656 → 20936/43912/43912
+    // (−1736 na L0, −1744 na L1/L2). Przyczyna TOPOLOGICZNA, nie kosmetyczna:
+    // fixtura miała stację (`stn/a99b8720.../station`, „Stacja L6-3") odciętą
+    // od źródła za otwartym łącznikiem NO — ENMValidator E003 (wyspa,
+    // BLOCKER), nie funkcja fixtury. Naprawa (`sld_substrate_52s.py` krok 5d)
+    // spina koniec tego odgałęzienia z końcem SĄSIEDNIEGO odgałęzienia
+    // (dawna „Stacja L7-4") nową gałęzią kablową — łącznik NO zostaje otwarty
+    // (rezerwa), ale odgałęzienie ma teraz DRUGĄ drogę do źródła. To zmienia
+    // przydział rodzic/głębokość drzewa BFS dla stacji tego rejonu (dowód:
+    // `sldNetwork53.ts` po regeneracji — S52/S53 zamieniają się identyfikatorem
+    // i rodzicem: „Stacja L7-4" rodzic S51→S49, „Stacja L7-3" rodzic S52→S51,
+    // głębokość S53 38→37), więc inaczej wypada rezerwacja kanału pionowego
+    // między wierszami — SPADEK, nie wzrost. Atrybucja per przyczyna
+    // (`accept:sld-v3`, `vertical_length_by_cause_probe`, karta CI-C): CAŁA
+    // delta w „rezerwacja-kanalu" (L0 22264→20528, L1/L2 43672→41936) i
+    // „footprint" (L0/L1/L2 88→80 / 1688→1680); „jog-trasy" i
+    // „slupek-terminalny" BEZ zmian. Metadane E063 (`nn_earthing_system`,
+    // 20 stacji) NIE wpływają na geometrię — potwierdzone grepem: pole nie
+    // występuje w żadnym module `layout/`/`scene/` (tylko w danych fixtury i w
+    // kreatorze stacji ui2, niezwiązanym z SLD). Reguła „nie-rosnąca" (§15.1)
+    // spełniona z zapasem; zero nowych kolizji (`npm run accept:sld-v3` ALL PASS).
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(20936);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(43912);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(43912);
   });
 });
 

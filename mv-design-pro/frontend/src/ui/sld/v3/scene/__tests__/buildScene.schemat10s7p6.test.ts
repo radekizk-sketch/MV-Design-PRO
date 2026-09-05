@@ -148,9 +148,13 @@ describe('SCHEMAT-10 S7.6 — kontraktowe minimum światła pasm (Z1 KOMPRESJA)'
     // rezerwacja B4 strony nN obejmująca portal; pełne uzasadnienie i
     // pomiar w `buildScene.test.ts` (vertical_length_probe). Kompresja Z1
     // nadal działa (asercje względne niżej).
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(22672);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(45656);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(45656);
+    // SUB-52s (2026-09-04): OBNIŻONY 22672/45656/45656 → 20936/43912/43912 —
+    // naprawa wyspy E003 (stacja odcięta za łącznikiem NO ring-tied do
+    // sąsiedniego odgałęzienia); pełne uzasadnienie i pomiar w
+    // `buildScene.test.ts` (vertical_length_probe), ta sama fixtura.
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(20936);
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(43912);
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(43912);
   });
 
   it('determinizm: rekordy pasm identyczne w dwóch biegach (fixtura referencyjna, L2)', () => {

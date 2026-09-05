@@ -366,7 +366,12 @@ REJESTR: tuple[WpisRejestru, ...] = (
         budowniczowie=("tests.reference_networks.sld_substrate_52s:build_sld_substrate_52s",),
         konsumenci=("SLD v2/v3", "jacobian", "kopia graniczna"),
         status=StatusSieci.PARTIAL,
-        proweniencja="substrat 52 stacji NIEOBLICZALNY (A10) — do naprawy u źródła; generator L nie istnieje",
+        proweniencja=(
+            "substrat 52 stacji naprawiony u źródła 2026-09-04 (SUB-52s: 21 blokerów "
+            "walidatora ENM -> 0 — 20x E063 uzupełnione deklaracją nn_earthing, 1x E003 "
+            "zamknięciem pierścienia do sąsiedniego odgałęzienia); generator L "
+            "(≈2 000 szyn) nie istnieje — PARTIAL do czasu jego dodania"
+        ),
     ),
     WpisRejestru(
         id="B-BENCH",

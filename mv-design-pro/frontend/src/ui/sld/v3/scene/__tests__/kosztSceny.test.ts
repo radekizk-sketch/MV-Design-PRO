@@ -267,87 +267,121 @@ interface OdciskiLod {
  * 22672/45656/45656 (`buildScene.test.ts`, uzasadnienie tamże); zero nowych
  * kolizji (sekcja „budżet" tego pliku, `sceneConformance`, `w1cMatrixGen`).
  * Kolejność `plany` odpowiada `SKALE`.
+ *
+ * AKTUALIZACJA ŚWIADOMA (SUB-52s, 2026-09-04) — WSZYSTKIE odciski przeliczone
+ * ponownie (sceny, declutter, plany; obie sieci × L0/L1/L2). DWIE NIEZALEŻNE
+ * przyczyny w regenerowanej fixturze `sldSubstrate52s.enm.json`:
+ *   (12) TOPOLOGIA — substrat miał stację (dawna „Stacja L6-3") odciętą od
+ *        źródła za otwartym łącznikiem NO: ENMValidator E003 (wyspa, BLOCKER),
+ *        nie funkcja fixtury. Naprawa (`sld_substrate_52s.py` krok 5d) spina
+ *        koniec tego odgałęzienia z końcem SĄSIEDNIEGO („Stacja L7-4") nową
+ *        gałęzią kablową — łącznik NO zostaje otwarty (rezerwa), ale
+ *        odgałęzienie ma teraz DRUGĄ drogę do źródła. To zmienia przydział
+ *        rodzic/głębokość drzewa BFS dla stacji tego rejonu (dowód:
+ *        `sldNetwork53.ts` po regeneracji — S52/S53 zamieniają się
+ *        identyfikatorem i rodzicem), więc inaczej wypada rezerwacja kanału
+ *        pionowego między wierszami (`totalVerticalSegmentLength` 22672/45656/
+ *        45656 → 20936/43912/43912, SPADEK — `buildScene.test.ts`, uzasadnienie
+ *        tamże) — zmienia się scena, a przez nią declutter i plan.
+ *   (13) DRYF NIEZALEŻNY OD TEJ KARTY — transformator GPZ (katalog
+ *        `tr-wn-sn-110-15-25mva-yd11`): `hv_neutral` {type:directly_grounded}
+ *        → null, `i0_percent` 0,2 → 0,35 (dowód: `git show HEAD:<stara
+ *        fixtura>` vs regenerowana, pola transformatora GPZ id-stripped —
+ *        WSZYSTKO inne na GPZ identyczne). Materializacja katalogu tego
+ *        transformatora (`_materialize_catalog_payload`/dane katalogowe SN/WN)
+ *        zmieniła się MIĘDZY ostatnim zatwierdzeniem fixtury (LV DOMAIN
+ *        PROJECTION, 2026-09-01) a dniem dzisiejszym, NIEZALEŻNIE od tej karty
+ *        (SUB-52s dotyka wyłącznie `insert_station_on_segment_sn` — stacje SN/
+ *        nN — i `connect_secondary_ring_sn`; `git diff` na `sld_substrate_52s.py`
+ *        nie rusza wywołania `add_grid_source_sn`, jedynego miejsca budowy GPZ;
+ *        `_apply_station_neutral_grounding`, jedyny setter `hv_neutral`, nigdy
+ *        nie jest wołany z `add_grid_source_sn`). Usunięcie symbolu
+ *        `neutralEarthing` z bloku GPZ na L1/L2 (`buildScene.gpzCollapsed.
+ *        test.ts`, uzasadnienie tamże) pochodzi WYŁĄCZNIE stąd, nie z (12).
+ * Każda karta regenerująca tę fixturę odziedziczy (13), dopóki katalog/
+ * materializacja transformatora GPZ nie zostaną ujednolicone osobną kartą —
+ * poza zakresem SUB-52s (walidator E063/E003, nie katalog transformatorów WN).
  */
 const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly OdciskiLod[]>> = {
   referencyjna: [
     {
-      scena: 'a7c566690bc47f43e7c6494b68a5eb09',
-      declutter: '8715508fce9e188144ed82cc2ee11348',
+      scena: '5e21b3783479f53bf24865353b3039f9',
+      declutter: '7d91c9d82be60afebad119a6613214f1',
       plany: [
-        '632c1a54eb61195cf6c9624ead7bbfa7',
-        'eab5d3278e6ee1e81d6ddb500261347c',
-        '7cbc3b66a2d6ba3b09932c1c3b95f88b',
-        'ddc7214f70617056c1913bf41030bac7',
-        '2090840c41e45bcbe3e1173badf1ce5a',
-        'a0b09a5af0017d1b5673c4f6b198d547',
-        'a0b09a5af0017d1b5673c4f6b198d547',
+        '864628e39c5e7f7d39866b9f96f72df7',
+        '592ce95ac3ec762039bb6343e1980bbe',
+        '51332014af52785cef1ea80502b48079',
+        'dc2427d0450613e194fa1ca87df5e465',
+        '6e1c72374037309d98f66930923ca4ed',
+        'bc8a53c5cb2e82bc49d816490ac9ada1',
+        'bc8a53c5cb2e82bc49d816490ac9ada1',
       ],
     },
     {
-      scena: 'bbfbe78396089ff687565b75ff7f6c55',
-      declutter: '3acb01e2f33122f9d38b28e537cd01f2',
+      scena: '72006d9806cd10a3d5affcbbdf255087',
+      declutter: '4f5d6db8e5de9cce1efb5e60a5da641c',
       plany: [
-        '37994213b2c575807453514ffecdea40',
-        '52bacb1e52b7dbffcf8a6229426d192b',
-        'ac93c57d28112d73cb029bd6073b2a89',
-        'c24a5a89cae0e4b18e343648b174d543',
-        '1a0b254edcd693c1b747dc18f8eb3b00',
-        '547f5ea3a5d3693a6e952e82c686e717',
-        '547f5ea3a5d3693a6e952e82c686e717',
+        '701d452c45dc483b77a3d3dbc7e929e8',
+        '3a6471f9deb945c1950446273e081e16',
+        '48ab9be216762654758f0d0380c41549',
+        '4092bb300d5fef3600ce719d821bcf41',
+        '4da29c3c7372bcbb6da249702bc00021',
+        'a1934438b0de91701cc3dd78f7feb734',
+        'a1934438b0de91701cc3dd78f7feb734',
       ],
     },
     {
-      scena: 'af1dac6d0644171f95adbab8b82f20ac',
-      declutter: '07c11089d7c932c5245b2c0ab07f208c',
+      scena: 'b3b6a81ea7e7167da0cd9cbdca2f40c7',
+      declutter: 'f4fafb0a333677561d87e3bae33779b3',
       plany: [
-        'b2f045922746e328f00bcaa2f97a368d',
-        'a0687b60110dac560e5c1a388974c273',
-        'a0abfe0f841f3ee6b7b80e3bb878e305',
-        '03d06ff336d573695d2c41529639ec7f',
-        'a804315e42a65dde65cd165714e62490',
-        '32bbf23bcf18400985551c04c328d0b1',
-        '32bbf23bcf18400985551c04c328d0b1',
+        'fab4ad5d52269cfd7069e9ac450d4a1c',
+        'aeda12152422307e0d07423082a1c89f',
+        'c9c17668e15643f2f4ca25e94ebb3d23',
+        'fc3e5b1b8dff42e0a6ba35e2e8664caa',
+        '5fbb17bdc76d6e774c533b548e7fff49',
+        '11011b29a97542187bbe74eb5374dc26',
+        '11011b29a97542187bbe74eb5374dc26',
       ],
     },
   ],
   podwojona: [
     {
-      scena: '161f9762f835fe0a20f07ffd41216cc6',
-      declutter: '83af32526845ee87c15a904f4967ef62',
+      scena: '36bef2d9f0e094b0bd9af1c588f307ca',
+      declutter: '82aefe98f3ba04a482e8064a64d52018',
       plany: [
-        '167339a75e4cca2fe570dbced978415f',
-        'b0939ff8a3c8638ad8de5b6fee2b57d7',
-        '53ccd7d7a2f5a2c8b94e467e6fa3fba4',
-        'c8328cec63152de3c1f22445df47f3fd',
-        'd8d78a8e2c9d9fc08b17ceea60e863f8',
-        'cecec226759adfa890cd204361806a2a',
-        'cecec226759adfa890cd204361806a2a',
+        '007cc650810069daa6f1f0f3d63b53aa',
+        'e779c5b0ae7e1246a08ca200f5776c78',
+        'c98ba76f3738a3e0029435fdba244ff0',
+        'aabf4d4246f0d8bc2724688bfb1af872',
+        '976b0c7f7d9e301f8362dd47b91f76d7',
+        '6bb532edb0d9f796c8955203f7619c97',
+        '6bb532edb0d9f796c8955203f7619c97',
       ],
     },
     {
-      scena: '374c98d9f7cde5438e1638edf3ca443d',
-      declutter: '74c389320f53a6cc48137f9a02dbf8db',
+      scena: '0367b6eee395a712b13ab28f57474a86',
+      declutter: '773557c807e0f251d6be9da08be8bf4d',
       plany: [
-        'd6bbe75ddbd4279b2b24b85d98dc9e0d',
-        'b5f1255f161e2c3e4c96640bd3580ab1',
-        '1aae6d6ab2d74ae15b00893c013b878d',
-        'b1ddeeafe5b3520437ba166f4cbf17f9',
-        'ed2dbc339a378acfeb8e1d3f02ff2adc',
-        '1c86ee2bc8220bb7155433381a6ebae6',
-        '1c86ee2bc8220bb7155433381a6ebae6',
+        '764adc3abf82f6f75e4ee484f23c8ef5',
+        '961b9f90b1a1967425f0c8dc8527ebf0',
+        'c474f0d3685803850adf8c9564c5eb21',
+        '1a12d5206149fce498f19d0f8f4bfe3e',
+        '1ce0e1a8dd211540317fa2a87f128a95',
+        '1f342302285b841e8b1076ee979e8c9f',
+        '1f342302285b841e8b1076ee979e8c9f',
       ],
     },
     {
-      scena: '1a1ec3e4774b224fe363273668542c3f',
-      declutter: '610e7bc0b840db2f50bbd6700b938125',
+      scena: '843ab7a7f81a6117cb3c3623a5e834b1',
+      declutter: '462555a6804e09a9fa1167ef59f7fdaf',
       plany: [
-        'bb63776976c8776e27d78f490fa9487f',
-        '285d204e220a07c8da379c209f26a9cd',
-        '5d13cdf2316ed73d289d9ee56d715c53',
-        '4f9ff672374e80e4fecacd6f825570fd',
-        'ba2e688913d41b65c4f330562bc79045',
-        '24bb366572f2a47bdc197d8d8408054f',
-        '24bb366572f2a47bdc197d8d8408054f',
+        '0cb03dd5aa09dc6d59bb3997bf8204ba',
+        'cc59b08c98c788bb930ef20d99500850',
+        'b3f5333bda61171d7fb75d4ed69dd47f',
+        '6541bd0da176ed89189f20dbc071caab',
+        '71ba4e2132ced4c0c1cea60a3b6a9649',
+        '77c2d726d002282336992f77498a4537',
+        '77c2d726d002282336992f77498a4537',
       ],
     },
   ],
