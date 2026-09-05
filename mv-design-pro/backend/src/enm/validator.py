@@ -11,6 +11,7 @@ import math
 import os
 
 import networkx as nx
+from catalog.profiles.nc_rfg import load_nc_rfg_profile
 from pydantic import BaseModel
 
 from .fix_actions import FixAction
@@ -508,6 +509,104 @@ class ENMValidator:
                     ),
                 )
             )
+
+        # generators.voltage_control_profile_missing / generators.voltage_control_not_permitted
+        # (domknięcie CV-4.1b przy odbiorze, 2026-09-05): kreator OZE bramkuje tryb
+        # REGULACJA_NAPIECIA profilem NC RfG operatora (`reactive_power.
+        # voltage_control_modes` zawiera `voltage_control`). Bramka WYŁĄCZNIE w UI
+        # byłaby fantomem: model przyjmowałby stan, którego UI nie pokazuje (reguła
+        # zero fabrykacji — każda kontrolka UI ma odpowiednik w backendzie). Tryb i
+        # profil trafiają do modelu DWIEMA operacjami (`add_converter_source` →
+        # `update_der_bindings`), więc jedynym miejscem, które widzi oba naraz, jest
+        # walidator modelu — nie operacja zapisu. Profil czytany z tego samego
+        # magazynu, do którego pisze `update_der_bindings` (`materialized_params.
+        # profiles.nc_rfg_profile_ref` — nie `meta`). Pomiar katalogu 2026-09-05:
+        # wszystkie 5 profili operatorów (enea/energa/pge/pse/tauron) dopuszcza
+        # `voltage_control`, więc dziś blokuje wyłącznie brak/nieznany profil — reguła
+        # jest funkcją danych katalogu, nie zaszytej listy.
+        for gen in enm.generators:
+            meta = getattr(gen, "meta", None) or {}
+            if str(meta.get("control_mode") or "").strip() != "REGULACJA_NAPIECIA":
+                continue
+            materialized = getattr(gen, "materialized_params", None) or {}
+            profile = materialized.get("profiles") if isinstance(materialized, dict) else None
+            profile_ref_raw = (
+                profile.get("nc_rfg_profile_ref") if isinstance(profile, dict) else None
+            )
+            profile_ref = str(profile_ref_raw or "").strip()
+            fix_action = FixAction(
+                action_type="OPEN_MODAL",
+                element_ref=gen.ref_id,
+                modal_type="GeneratorModal",
+                payload_hint={"required": "nc_rfg_profile_ref"},
+            )
+            if not profile_ref:
+                issues.append(
+                    ValidationIssue(
+                        code="generators.voltage_control_profile_missing",
+                        severity=SEVERITY_BLOCKER,
+                        message_pl=(
+                            f"Generator '{gen.ref_id}' w trybie regulacji napięcia "
+                            "(REGULACJA_NAPIECIA) nie ma profilu NC RfG operatora — tryb "
+                            "wymaga profilu dopuszczającego regulację napięcia "
+                            "(voltage_control)."
+                        ),
+                        element_refs=[gen.ref_id],
+                        wizard_step_hint="K6",
+                        suggested_fix=(
+                            f"Wybierz profil NC RfG operatora dla generatora "
+                            f"'{gen.name or gen.ref_id}' (krok „zgodność” kreatora OZE)."
+                        ),
+                        fix_action=fix_action,
+                    )
+                )
+                continue
+            try:
+                nc_rfg_profile = load_nc_rfg_profile(profile_ref)
+            except FileNotFoundError:
+                issues.append(
+                    ValidationIssue(
+                        code="generators.voltage_control_profile_missing",
+                        severity=SEVERITY_BLOCKER,
+                        message_pl=(
+                            f"Generator '{gen.ref_id}' w trybie regulacji napięcia wskazuje "
+                            f"profil NC RfG '{profile_ref}', którego nie ma w katalogu "
+                            "operatorów."
+                        ),
+                        element_refs=[gen.ref_id],
+                        wizard_step_hint="K6",
+                        suggested_fix=(
+                            f"Wybierz istniejący profil NC RfG operatora dla generatora "
+                            f"'{gen.name or gen.ref_id}'."
+                        ),
+                        fix_action=fix_action,
+                    )
+                )
+                continue
+            if "voltage_control" not in nc_rfg_profile.reactive_power.voltage_control_modes:
+                issues.append(
+                    ValidationIssue(
+                        code="generators.voltage_control_not_permitted",
+                        severity=SEVERITY_BLOCKER,
+                        message_pl=(
+                            f"Profil NC RfG operatora '{profile_ref}' nie dopuszcza trybu "
+                            f"regulacji napięcia (voltage_control) dla generatora "
+                            f"'{gen.ref_id}'."
+                        ),
+                        element_refs=[gen.ref_id],
+                        wizard_step_hint="K6",
+                        suggested_fix=(
+                            f"Zmień tryb regulacji generatora '{gen.name or gen.ref_id}' "
+                            "albo wybierz profil operatora dopuszczający regulację napięcia."
+                        ),
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=gen.ref_id,
+                            modal_type="GeneratorModal",
+                            payload_hint={"required": "control_mode"},
+                        ),
+                    )
+                )
 
         # E009: Brak referencji katalogowej (CATALOG-FIRST)
         for branch in enm.branches:

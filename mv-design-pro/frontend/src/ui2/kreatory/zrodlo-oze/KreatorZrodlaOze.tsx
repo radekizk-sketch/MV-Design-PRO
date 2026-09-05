@@ -140,6 +140,9 @@ function trimmed(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+type StanKataloguNcRfg = 'ladowanie' | 'gotowy' | 'blad';
+type DostepnoscTrybu = 'tak' | 'nie' | 'nieznana';
+
 export function KreatorZrodlaOze() {
   const context = useActiveOperationContext() as Record<string, unknown> | null;
   const snapshot = useSnapshotStore((s) => s.snapshot);
@@ -296,15 +299,21 @@ export function KreatorZrodlaOze() {
   const potrzebujeKatalNcRfgRegulacji =
     krok === 'zgodnosc' || krok === 'regulacja' || krok === 'zapis';
   const [ncRfgOperatorzyRegulacja, setNcRfgOperatorzyRegulacja] = useState<NcRfgOperatorItem[]>([]);
+  const [stanKataloguNcRfg, setStanKataloguNcRfg] = useState<StanKataloguNcRfg>('ladowanie');
   useEffect(() => {
     if (!potrzebujeKatalNcRfgRegulacji) return;
     let cancelled = false;
+    setStanKataloguNcRfg('ladowanie');
     fetchNcRfgOperators()
       .then((operatorzy) => {
-        if (!cancelled) setNcRfgOperatorzyRegulacja(Array.isArray(operatorzy) ? [...operatorzy] : []);
+        if (cancelled) return;
+        setNcRfgOperatorzyRegulacja(Array.isArray(operatorzy) ? [...operatorzy] : []);
+        setStanKataloguNcRfg('gotowy');
       })
       .catch(() => {
-        if (!cancelled) setNcRfgOperatorzyRegulacja([]);
+        if (cancelled) return;
+        setNcRfgOperatorzyRegulacja([]);
+        setStanKataloguNcRfg('blad');
       });
     return () => {
       cancelled = true;
@@ -314,24 +323,46 @@ export function KreatorZrodlaOze() {
     () => getNcRfgOperator(ncRfgOperatorzyRegulacja, dane.nc_rfg_profile_ref),
     [ncRfgOperatorzyRegulacja, dane.nc_rfg_profile_ref],
   );
-  const regulacjaNapieciaDostepna = Boolean(
-    profilNcRfgRegulacja?.reactive_power.voltage_control_modes.includes('voltage_control'),
-  );
+  // Dopuszczalność trybu REGULACJA_NAPIECIA jest ZNANA wyłącznie, gdy katalog operatorów
+  // NC RfG jest pobrany I profil wybrany; katalog w trakcie pobierania, błąd pobrania
+  // albo brak profilu = 'nieznana'. Stan nieznany NIE zmienia danych użytkownika —
+  // poprzedni cichy reset przy pustej liście operatorów był fallbackiem klasy A6-12
+  // (wybrany tryb znikał przed nadejściem odpowiedzi katalogu albo po jej błędzie).
+  // Wyrocznią dopuszczalności dla MODELU jest walidator ENM
+  // (`generators.voltage_control_profile_missing` / `..._not_permitted`), nie UI.
+  const dostepnoscRegulacjiNapiecia: DostepnoscTrybu = useMemo(() => {
+    if (stanKataloguNcRfg !== 'gotowy' || !profilNcRfgRegulacja) return 'nieznana';
+    return profilNcRfgRegulacja.reactive_power.voltage_control_modes.includes('voltage_control')
+      ? 'tak'
+      : 'nie';
+  }, [stanKataloguNcRfg, profilNcRfgRegulacja]);
+  // Opcja widoczna, gdy dopuszczalność jest znana i dodatnia (fail-closed bez profilu)
+  // ALBO gdy jest już wybrana przy dopuszczalności nieznanej — select nigdy nie pokazuje
+  // wartości spoza listy (zero stanu fantomowego w obie strony).
   const opcjeRegulacjaDostepne = useMemo(
     () =>
-      REGULACJA_OPCJE.filter((o) => o.value !== 'REGULACJA_NAPIECIA' || regulacjaNapieciaDostepna).map(
-        (o) => ({ id: o.value, etykieta: o.label }),
-      ),
-    [regulacjaNapieciaDostepna],
+      REGULACJA_OPCJE.filter(
+        (o) =>
+          o.value !== 'REGULACJA_NAPIECIA' ||
+          dostepnoscRegulacjiNapiecia === 'tak' ||
+          (dostepnoscRegulacjiNapiecia === 'nieznana' && dane.control_mode === 'REGULACJA_NAPIECIA'),
+      ).map((o) => ({ id: o.value, etykieta: o.label })),
+    [dostepnoscRegulacjiNapiecia, dane.control_mode],
   );
-  // Bez profilu (albo profil, który cofnął dopuszczenie) tryb REGULACJA_NAPIECIA
-  // przestaje być wyborem możliwym do zapisania — cofamy na bezpieczny stan zamiast
-  // zostawiać ukrytą, wybraną wcześniej pozycję (zero stanu fantomowego).
+  const [komunikatRegulacjiNapiecia, setKomunikatRegulacjiNapiecia] = useState<string | null>(null);
+  // Predykat PAROWY: ten sam warunek 'nie' rządzi zniknięciem opcji i cofnięciem wyboru —
+  // profil, który cofnął dopuszczenie, cofa tryb na „Bez regulacji" Z WIDOCZNYM
+  // komunikatem (nigdy po cichu); stan nieznany zostawia wybór użytkownika nietknięty.
   useEffect(() => {
-    if (dane.control_mode === 'REGULACJA_NAPIECIA' && !regulacjaNapieciaDostepna) {
+    if (dane.control_mode === 'REGULACJA_NAPIECIA' && dostepnoscRegulacjiNapiecia === 'nie') {
       setDane((d) => ({ ...d, control_mode: 'WYLACZONE', u_set_pu: null }));
+      setKomunikatRegulacjiNapiecia(
+        T.regulacjaNapieciaCofnieta(
+          profilNcRfgRegulacja?.operator_name_pl ?? dane.nc_rfg_profile_ref ?? '',
+        ),
+      );
     }
-  }, [dane.control_mode, regulacjaNapieciaDostepna]);
+  }, [dane.control_mode, dostepnoscRegulacjiNapiecia, profilNcRfgRegulacja, dane.nc_rfg_profile_ref]);
 
   // Szyna SN stacji (punkt przyłączenia toru DER-SN) + jej napięcie — z realnego snapshotu.
   const snBusRef = useMemo(
@@ -931,10 +962,23 @@ export function KreatorZrodlaOze() {
             <PoleWyboru
               etykieta={T.regulacja}
               wartosc={dane.control_mode}
-              onZmiana={(v) => zmien('control_mode', v as TrybRegulacji)}
+              onZmiana={(v) => {
+                setKomunikatRegulacjiNapiecia(null);
+                zmien('control_mode', v as TrybRegulacji);
+              }}
               opcje={opcjeRegulacjaDostepne}
               testid="mvd-kreator-oze-tryb"
             />
+            {stanKataloguNcRfg === 'blad' ? (
+              <KreatorInfo testid="mvd-kreator-oze-regulacja-katalog-blad">
+                {T.regulacjaNapieciaKatalogNiedostepny}
+              </KreatorInfo>
+            ) : null}
+            {komunikatRegulacjiNapiecia ? (
+              <KreatorInfo testid="mvd-kreator-oze-regulacja-cofnieta">
+                {komunikatRegulacjiNapiecia}
+              </KreatorInfo>
+            ) : null}
             {dane.control_mode === 'STALY_COS_PHI' ? (
               <PoleLiczbowe
                 etykieta={T.cosPhiCel}

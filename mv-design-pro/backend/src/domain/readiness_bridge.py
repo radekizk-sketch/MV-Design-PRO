@@ -60,6 +60,11 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     # albo bez granic Q == generator w trybie regulacji napiecia bez kompletnej
     # nastawy (ten sam warunek, `enm/validator.py` -> `domain/canonical_operations.py`).
     "generators.voltage_control_incomplete": "generator.voltage_setpoint_missing",
+    # Domkniecie CV-4.1b (odbior): tryb regulacji napiecia bez profilu NC RfG operatora
+    # / z profilem nieznanym == brak profilu; profil bez zdolnosci voltage_control ==
+    # tryb niedopuszczony (ten sam warunek co bramka kreatora OZE, `enm/validator.py`).
+    "generators.voltage_control_profile_missing": "generator.voltage_control_profile_missing",
+    "generators.voltage_control_not_permitted": "generator.voltage_control_not_permitted",
 }
 
 # ---------------------------------------------------------------------------

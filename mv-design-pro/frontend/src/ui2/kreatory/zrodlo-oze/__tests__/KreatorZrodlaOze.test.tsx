@@ -538,10 +538,14 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     expect(screen.getByTestId('mvd-kreator-oze-u-set-pu')).toBeInTheDocument();
 
     // Predykat PAROWY (reguła KLASA NIE INSTANCJA §3): cofnięcie zdolności operatora
-    // PO wybraniu trybu cofa wybór na bezpieczny stan, nie zostawia ukrytej pozycji
-    // fantomowej wybranej wcześniej (ten sam warunek `regulacjaNapieciaDostepna`
-    // rządzi WEJŚCIEM do trybu i WYJŚCIEM z niego).
-    fetchNcRfgOperatorsMock.mockResolvedValueOnce([
+    // PO wybraniu trybu cofa wybór na bezpieczny stan Z WIDOCZNYM komunikatem, nie
+    // zostawia ukrytej pozycji fantomowej (ten sam warunek `dostepnoscRegulacjiNapiecia
+    // === 'nie'` rządzi WEJŚCIEM do trybu i WYJŚCIEM z niego). Dopuszczalność jest
+    // ZNANA tylko z listy operatorów RODZICA (nie kroku zgodności), więc test podaje
+    // TĘ SAMĄ listę obu pobraniom (`mockResolvedValue`, nie `...Once`) i wraca do kroku
+    // aparatury, żeby rodzic pobrał katalog ponownie — stan NIEZNANY (lista rodzica bez
+    // wybranego profilu) NIE cofa wyboru (domknięcie CV-4.1b, test klasy A6-12 niżej).
+    fetchNcRfgOperatorsMock.mockResolvedValue([
       {
         operator_id: 'bez-regulacji',
         operator_name_pl: 'Operator bez regulacji napięcia',
@@ -559,8 +563,18 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
       },
     ]);
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-wstecz'));
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-wstecz'));
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-aparatura')).toBeInTheDocument());
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
     await waitFor(() =>
       expect(screen.getByTestId('mvd-kreator-oze-zgodnosc-profil')).toBeInTheDocument(),
+    );
+    await waitFor(() =>
+      expect(
+        (screen.getByTestId('mvd-kreator-oze-zgodnosc-profil') as HTMLSelectElement).querySelector(
+          'option[value="bez-regulacji"]',
+        ),
+      ).not.toBeNull(),
     );
     await userEvent.selectOptions(
       screen.getByTestId('mvd-kreator-oze-zgodnosc-profil'),
@@ -572,6 +586,102 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
       expect(screen.getByTestId('mvd-kreator-oze-tryb')).toHaveValue('WYLACZONE'),
     );
     expect(screen.queryByTestId('mvd-kreator-oze-u-set-pu')).not.toBeInTheDocument();
+    expect(screen.getByTestId('mvd-kreator-oze-regulacja-cofnieta')).toHaveTextContent(
+      'Operator bez regulacji napięcia',
+    );
+  });
+
+  it('krok regulacji: dopuszczalność NIEZNANA (błąd pobrania katalogu NC RfG / pobieranie w toku) nie cofa wybranego trybu regulacji napięcia; cofnięcie przy profilu bez zdolności ma widoczny komunikat (domknięcie CV-4.1b, klasa A6-12)', async () => {
+    const domyslniOperatorzy = await fetchNcRfgOperatorsMock();
+    const dojdzDoRegulacjiPrzezZgodnosc = async (profil?: string) => {
+      await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+      await waitFor(() =>
+        expect(screen.getByTestId('mvd-kreator-oze-zgodnosc-profil')).toBeInTheDocument(),
+      );
+      if (profil) {
+        await waitFor(() =>
+          expect(
+            (screen.getByTestId('mvd-kreator-oze-zgodnosc-profil') as HTMLSelectElement).querySelector(
+              `option[value="${profil}"]`,
+            ),
+          ).not.toBeNull(),
+        );
+        await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-zgodnosc-profil'), profil);
+      }
+      await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+      await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-tryb')).toBeInTheDocument());
+    };
+    const cofnijDoAparatury = async () => {
+      await userEvent.click(screen.getByTestId('mvd-kreator-oze-wstecz'));
+      await userEvent.click(screen.getByTestId('mvd-kreator-oze-wstecz'));
+      await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-aparatura')).toBeInTheDocument());
+    };
+
+    render(<KreatorZrodlaOze />);
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-konwerter')).toBeInTheDocument());
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-aparatura')).toBeInTheDocument());
+    await dojdzDoRegulacjiPrzezZgodnosc('pse');
+    const trybSelect = screen.getByTestId('mvd-kreator-oze-tryb') as HTMLSelectElement;
+    await waitFor(() =>
+      expect(trybSelect.querySelector('option[value="REGULACJA_NAPIECIA"]')).not.toBeNull(),
+    );
+    await userEvent.selectOptions(trybSelect, 'REGULACJA_NAPIECIA');
+    expect(screen.getByTestId('mvd-kreator-oze-u-set-pu')).toBeInTheDocument();
+
+    // Cecha A: BŁĄD pobrania katalogu przy ponownym wejściu w krok zgodności — dopuszczalność
+    // nieznana: wybór zostaje, opcja nadal widoczna (select nie pokazuje wartości spoza listy),
+    // komunikat o niedostępnym katalogu, ZERO komunikatu o cofnięciu.
+    fetchNcRfgOperatorsMock.mockRejectedValue(new Error('503'));
+    await cofnijDoAparatury();
+    await dojdzDoRegulacjiPrzezZgodnosc();
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-oze-regulacja-katalog-blad')).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId('mvd-kreator-oze-tryb')).toHaveValue('REGULACJA_NAPIECIA');
+    expect(
+      (screen.getByTestId('mvd-kreator-oze-tryb') as HTMLSelectElement).querySelector(
+        'option[value="REGULACJA_NAPIECIA"]',
+      ),
+    ).not.toBeNull();
+    expect(screen.getByTestId('mvd-kreator-oze-u-set-pu')).toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-kreator-oze-regulacja-cofnieta')).toBeNull();
+
+    // Cecha B: pobieranie W TOKU (odpowiedź nigdy nie nadchodzi) — dopuszczalność nieznana,
+    // wybór nietknięty, żadnego komunikatu.
+    fetchNcRfgOperatorsMock.mockReturnValue(new Promise(() => {}));
+    await cofnijDoAparatury();
+    await dojdzDoRegulacjiPrzezZgodnosc();
+    expect(screen.getByTestId('mvd-kreator-oze-tryb')).toHaveValue('REGULACJA_NAPIECIA');
+    expect(screen.getByTestId('mvd-kreator-oze-u-set-pu')).toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-kreator-oze-regulacja-katalog-blad')).toBeNull();
+    expect(screen.queryByTestId('mvd-kreator-oze-regulacja-cofnieta')).toBeNull();
+
+    // Cecha C: dopuszczalność ZNANA i ujemna (profil bez `voltage_control`) — cofnięcie
+    // na „Bez regulacji" z WIDOCZNYM komunikatem nazywającym operatora; komunikat znika
+    // po świadomej zmianie trybu przez użytkownika.
+    fetchNcRfgOperatorsMock.mockResolvedValue([
+      {
+        ...domyslniOperatorzy[0],
+        operator_id: 'bez-regulacji',
+        operator_name_pl: 'Operator bez regulacji napięcia',
+        reactive_power: {
+          ...domyslniOperatorzy[0].reactive_power,
+          voltage_control_modes: ['cos_phi_constant', 'q_constant', 'q_of_u'],
+        },
+      },
+    ]);
+    await cofnijDoAparatury();
+    await dojdzDoRegulacjiPrzezZgodnosc('bez-regulacji');
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-tryb')).toHaveValue('WYLACZONE'));
+    expect(screen.getByTestId('mvd-kreator-oze-regulacja-cofnieta')).toHaveTextContent(
+      'Operator bez regulacji napięcia',
+    );
+    expect(screen.queryByTestId('mvd-kreator-oze-u-set-pu')).not.toBeInTheDocument();
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-tryb'), 'STALY_COS_PHI');
+    expect(screen.queryByTestId('mvd-kreator-oze-regulacja-cofnieta')).toBeNull();
+    fetchNcRfgOperatorsMock.mockResolvedValue(domyslniOperatorzy);
   });
 
   it('K9-A: sekwencja zapisu — wiązania aparaturowe, profile, tryb pracy i limity Q idą do modelu', async () => {

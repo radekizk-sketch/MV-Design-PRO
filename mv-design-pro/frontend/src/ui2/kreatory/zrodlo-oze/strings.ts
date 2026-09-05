@@ -140,6 +140,13 @@ export const OZE_STRINGS = {
     { id: 'nie', etykieta: 'Nie / brak danych' },
     { id: 'tak', etykieta: 'Tak — zaprogramowana' },
   ],
+  regulacjaNapieciaKatalogNiedostepny:
+    'Nie udało się pobrać katalogu operatorów NC RfG — dopuszczalność trybu regulacji napięcia '
+    + 'dla wybranego profilu jest nieznana. Wybór pozostaje bez zmian; przed uruchomieniem biegu '
+    + 'sprawdzi go walidator modelu.',
+  regulacjaNapieciaCofnieta: (operator: string) =>
+    `Profil operatora „${operator}” nie dopuszcza regulacji napięcia (U = const) — tryb `
+    + 'przywrócono na „Bez regulacji”.',
   regulacjaPasywnaOstrzezenie:
     'Wybrany tryb regulacji jest nieaktywny — uzupełnij wartość rządzącą (cosφ albo nachylenie '
     + 'Q(U)), inaczej źródło pracuje pasywnie ($Q = 0$) i wybór trybu nie wpływa na rozpływ.',

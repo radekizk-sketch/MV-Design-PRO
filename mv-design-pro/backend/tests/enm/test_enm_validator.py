@@ -746,3 +746,119 @@ class TestGeneratorVoltageControlIncomplete:
         assert issue.fix_action is not None
         assert issue.fix_action.modal_type == "GeneratorModal"
         assert raport.status == STATUS_FAIL
+
+
+class TestGeneratorVoltageControlProfile:
+    """`generators.voltage_control_profile_missing` / `..._not_permitted` (domknięcie CV-4.1b).
+
+    Kreator OZE bramkuje tryb REGULACJA_NAPIECIA profilem NC RfG operatora
+    (`reactive_power.voltage_control_modes` zawiera `voltage_control`) — bramka tylko
+    w UI byłaby fantomem, więc model ma tę samą regułę w walidatorze. Profil czytany
+    z `materialized_params.profiles.nc_rfg_profile_ref` (magazyn `update_der_bindings`).
+
+    Iloczyn cech: tryb (inny / REGULACJA_NAPIECIA) × profil (brak / nieznany /
+    realny dopuszczający / dopuszczenie cofnięte w danych katalogu).
+    """
+
+    _META_KOMPLETNA = {
+        "control_mode": "REGULACJA_NAPIECIA",
+        "u_set_pu": 1.02,
+        "q_min_mvar": -1.0,
+        "q_max_mvar": 1.0,
+    }
+    _KODY_PROFILU = {
+        "generators.voltage_control_profile_missing",
+        "generators.voltage_control_not_permitted",
+    }
+
+    @staticmethod
+    def _raport(meta: dict, materialized_params: dict | None):
+        enm = _minimal_enm()
+        gen = Generator(
+            ref_id="gen_1",
+            name="Generator",
+            bus_ref="bus_2",
+            p_mw=0.1,
+            meta=meta,
+            materialized_params=materialized_params,
+        )
+        return ENMValidator().validate(enm.model_copy(update={"generators": [gen]}))
+
+    def _kody_profilu(self, meta: dict, materialized_params: dict | None) -> list[str]:
+        return [
+            i.code
+            for i in self._raport(meta, materialized_params).issues
+            if i.code in self._KODY_PROFILU
+        ]
+
+    @pytest.mark.parametrize(
+        ("materialized_params", "oczekiwany"),
+        [
+            pytest.param(
+                None, "generators.voltage_control_profile_missing", id="brak-materialized"
+            ),
+            pytest.param({}, "generators.voltage_control_profile_missing", id="brak-profiles"),
+            pytest.param(
+                {"profiles": {}}, "generators.voltage_control_profile_missing", id="brak-ref"
+            ),
+            pytest.param(
+                {"profiles": {"nc_rfg_profile_ref": "   "}},
+                "generators.voltage_control_profile_missing",
+                id="pusty-ref",
+            ),
+            pytest.param(
+                {"profiles": {"nc_rfg_profile_ref": "operator-widmo"}},
+                "generators.voltage_control_profile_missing",
+                id="nieznany-profil",
+            ),
+            pytest.param({"profiles": {"nc_rfg_profile_ref": "pse"}}, None, id="pse-dopuszcza"),
+        ],
+    )
+    def test_profil_brak_nieznany_albo_dopuszczajacy(self, materialized_params, oczekiwany):
+        kody = self._kody_profilu(dict(self._META_KOMPLETNA), materialized_params)
+        assert kody == ([oczekiwany] if oczekiwany else [])
+
+    def test_profil_bez_zdolnosci_blokuje_z_nawigacja(self, monkeypatch):
+        from types import SimpleNamespace
+
+        from enm import validator as modul_walidatora
+
+        monkeypatch.setattr(
+            modul_walidatora,
+            "load_nc_rfg_profile",
+            lambda ref: SimpleNamespace(
+                reactive_power=SimpleNamespace(
+                    voltage_control_modes=["cos_phi_constant", "q_constant", "q_of_u"]
+                )
+            ),
+        )
+        raport = self._raport(
+            dict(self._META_KOMPLETNA), {"profiles": {"nc_rfg_profile_ref": "pse"}}
+        )
+        trafienia = [
+            i for i in raport.issues if i.code == "generators.voltage_control_not_permitted"
+        ]
+        assert len(trafienia) == 1
+        assert trafienia[0].severity == SEVERITY_BLOCKER
+        assert trafienia[0].element_refs == ["gen_1"]
+        assert "'pse'" in trafienia[0].message_pl
+        assert trafienia[0].fix_action is not None
+        assert trafienia[0].fix_action.modal_type == "GeneratorModal"
+        assert trafienia[0].fix_action.payload_hint == {"required": "control_mode"}
+        assert "generators.voltage_control_profile_missing" not in [i.code for i in raport.issues]
+
+    def test_inny_tryb_nie_wymaga_profilu(self):
+        meta = {"control_mode": "STALY_COS_PHI", "cos_phi": 0.95}
+        assert self._kody_profilu(meta, None) == []
+        assert (
+            self._kody_profilu(meta, {"profiles": {"nc_rfg_profile_ref": "operator-widmo"}}) == []
+        )
+
+    def test_brak_profilu_nie_dubluje_kodu_niekompletnej_nastawy(self):
+        raport = self._raport(dict(self._META_KOMPLETNA), None)
+        kody = [i.code for i in raport.issues]
+        assert kody.count("generators.voltage_control_profile_missing") == 1
+        assert "generators.voltage_control_incomplete" not in kody
+        (trafienie,) = (i for i in raport.issues if i.code in self._KODY_PROFILU)
+        assert trafienie.fix_action is not None
+        assert trafienie.fix_action.payload_hint == {"required": "nc_rfg_profile_ref"}

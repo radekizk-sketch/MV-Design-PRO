@@ -954,6 +954,35 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "u_set_pu"},
     ),
+    # Domknięcie CV-4.1b (odbiór, 2026-09-05): tryb regulacji napięcia jest w kreatorze
+    # OZE bramkowany profilem NC RfG operatora (`reactive_power.voltage_control_modes`
+    # zawiera `voltage_control`); model bez profilu / z profilem nieznanym albo bez
+    # tej zdolności jest stanem, którego UI nie pokazuje — blokada w kanonie zamiast
+    # bramki tylko w UI (zero fabrykacji). Emiter: `enm/validator.py`
+    # (`generators.voltage_control_profile_missing`/`..._not_permitted`).
+    "generator.voltage_control_profile_missing": ReadinessCodeSpec(
+        code="generator.voltage_control_profile_missing",
+        area=ReadinessArea.GENERATORS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Generator w trybie regulacji napięcia nie ma profilu NC RfG operatora "
+            "(albo wskazany profil nie istnieje w katalogu) — tryb wymaga profilu "
+            "dopuszczającego regulację napięcia"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "nc_rfg_profile_ref"},
+    ),
+    "generator.voltage_control_not_permitted": ReadinessCodeSpec(
+        code="generator.voltage_control_not_permitted",
+        area=ReadinessArea.GENERATORS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Profil NC RfG operatora nie dopuszcza trybu regulacji napięcia "
+            "(voltage_control) — zmień tryb regulacji albo profil operatora"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "control_mode"},
+    ),
     # Karta FAB-H: udział zwarciowy falownika k_sc (Ik = k_sc*In, IEC 60909-0) —
     # karta katalogowa konwertera nie niesie k_sc, więc enm/mapping.py przyjmuje
     # 1,1 jako ZAREJESTROWANE ZAŁOŻENIE (ślad WHITE BOX + ta proweniencja), nie
