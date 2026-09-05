@@ -135,12 +135,20 @@ test.describe('critical engineer flow — station templates end-to-end', () => {
     expect(refs.some((r) => r.includes('yhakxs') || r.includes('150'))).toBe(true);
   });
 
+  // Endpoint zweryfikowany jako WPIĘTY (karta FE-HIGIENA, 2026-09-05):
+  // `backend/src/api/catalog.py::list_protection_device_types`
+  // (`@router.get("/protection/device-types")`) odpowiada 200 na żywym
+  // backendzie i — gdy aktywna biblioteka jest pusta — spada na katalog
+  // analityczny `backend/src/application/analyses/protection/catalog/
+  // catalog_store.py::list_devices` (źródło danych: `data/devices_v0.json`,
+  // 51 urządzeń / 10 nazwanych producentów + 1 profil referencyjny bez marki
+  // = 11 unikalnych wartości `vendor` łącznie z `None`). Dawny bezwarunkowy
+  // skip wewnątrz testu (gałąź „if (!response.ok())") maskował to na stałe
+  // niezależnie od realnej odpowiedzi backendu — usunięty; test wywołuje
+  // końcówkę naprawdę.
   test('protection database covers 51+ devices / 10 vendors', async ({ request }) => {
     const response = await request.get(`${API_BASE}/api/catalog/protection/device-types`);
-    if (!response.ok()) {
-      test.skip(true, 'Protection device-types endpoint not exposed; skipping (covered by unit tests)');
-      return;
-    }
+    expect(response.ok()).toBe(true);
     const data = await response.json();
     expect(data.length).toBeGreaterThanOrEqual(51);
     const vendors = new Set(data.map((d: { vendor?: string; params?: { vendor?: string } }) =>
