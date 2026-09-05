@@ -7,7 +7,7 @@ Bieg kanoniczny (`enm/canonical_analysis.CanonicalRun`) niosl dotad `snapshot_ha
 semantycznego, po ktorym dwa biegi mozna uznac za TEN SAM bieg. Koperta zamyka to
 jednym, zamrozonym rekordem zapisywanym addytywnie na biegu (`envelope_json`).
 
-Swiezosc wyniku jest odtad WYPROWADZANA z koperty (`enm/swiezosc.py`), nie
+Swiezosc wyniku jest odtad WYPROWADZANA z koperty (`application/result_freshness.py`), nie
 zapisywana przez „unieważniacze" — porownanie `model_revision` i
 `catalog_fingerprint` z biezacym stanem projektu jest jedynym zrodlem prawdy.
 

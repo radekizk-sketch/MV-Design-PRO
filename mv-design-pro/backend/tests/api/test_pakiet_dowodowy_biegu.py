@@ -1133,7 +1133,7 @@ def test_spadek_z_dowodu_zgadza_sie_ze_spadkiem_policzonym_przez_solver(
     większy rozjazd znaczyłby, że dowód opisuje inny przebieg niż tabela wyników.
     """
     klucz, case_id = _nowy_przypadek(client)
-    globals()[seed](case_id)
+    globals()[seed](klucz)
     run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW")
 
     pakiet = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
@@ -1190,7 +1190,7 @@ def test_napiecie_konca_z_dowodu_zgadza_sie_z_napieciem_biegu_karta_podstawa_vdr
     ``element_id`` (dowolna długość łańcucha), nie po „dokładnie jednej gałęzi".
     """
     klucz, case_id = _nowy_przypadek(client)
-    globals()[seed](case_id)
+    globals()[seed](klucz)
     run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW")
 
     pakiet = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")

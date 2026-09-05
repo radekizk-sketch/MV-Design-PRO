@@ -31,7 +31,10 @@ class RunResultState(StrEnum):
     """
     Result state for a Study Run (industrial-grade).
 
-    P10b: Canonical states aligned with StudyCaseResultStatus.
+    P10b: slownik zgodny ze slownikiem statusu wynikow przypadku w kontrakcie HTTP
+    (`ResultFreshness` w `application/result_freshness.py` — CV-2-W: status
+    przypadku jest WYPROWADZANY, a nie przechowywany, wiec typ domenowy
+    `StudyCaseResultStatus` zostal skasowany).
     """
 
     NONE = "NONE"  # No results computed

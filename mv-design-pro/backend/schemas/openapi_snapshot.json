@@ -10695,21 +10695,63 @@
       "title": "Result Status",
       "type": "string"
      },
+     "result_status_reason": {
+      "title": "Result Status Reason",
+      "type": "string"
+     },
+     "result_status_reason_pl": {
+      "title": "Result Status Reason Pl",
+      "type": "string"
+     },
      "results_valid": {
       "title": "Results Valid",
       "type": "boolean"
      },
+     "rewizja_biegu": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rewizja Biegu"
+     },
+     "rewizja_biezaca": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rewizja Biezaca"
+     },
      "updated_at": {
       "title": "Updated At",
       "type": "string"
+     },
+     "zmiany_od_biegu": {
+      "items": {
+       "$ref": "#/components/schemas/ZmianaOdBieguResponse"
+      },
+      "title": "Zmiany Od Biegu",
+      "type": "array"
      }
     },
     "required": [
+     "result_status",
+     "results_valid",
+     "result_status_reason",
+     "result_status_reason_pl",
+     "rewizja_biegu",
+     "rewizja_biezaca",
+     "zmiany_od_biegu",
      "id",
      "name",
      "description",
-     "result_status",
-     "results_valid",
      "is_active",
      "updated_at"
     ],
@@ -10752,6 +10794,14 @@
       "title": "Result Status",
       "type": "string"
      },
+     "result_status_reason": {
+      "title": "Result Status Reason",
+      "type": "string"
+     },
+     "result_status_reason_pl": {
+      "title": "Result Status Reason Pl",
+      "type": "string"
+     },
      "results_valid": {
       "title": "Results Valid",
       "type": "boolean"
@@ -10760,19 +10810,53 @@
       "title": "Revision",
       "type": "integer"
      },
+     "rewizja_biegu": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rewizja Biegu"
+     },
+     "rewizja_biezaca": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rewizja Biezaca"
+     },
      "updated_at": {
       "title": "Updated At",
       "type": "string"
+     },
+     "zmiany_od_biegu": {
+      "items": {
+       "$ref": "#/components/schemas/ZmianaOdBieguResponse"
+      },
+      "title": "Zmiany Od Biegu",
+      "type": "array"
      }
     },
     "required": [
+     "result_status",
+     "results_valid",
+     "result_status_reason",
+     "result_status_reason_pl",
+     "rewizja_biegu",
+     "rewizja_biezaca",
+     "zmiany_od_biegu",
      "id",
      "project_id",
      "name",
      "description",
      "config",
-     "result_status",
-     "results_valid",
      "is_active",
      "revision",
      "created_at",
@@ -11999,6 +12083,45 @@
      "run_id"
     ],
     "title": "ZgodnoscZadanie",
+    "type": "object"
+   },
+   "ZmianaOdBieguResponse": {
+    "description": "Jedna rewizja modelu powstala PO rewizji biegu — przyczyna nieaktualnosci.",
+    "properties": {
+     "elementy": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Elementy",
+      "type": "array"
+     },
+     "operacja": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Operacja"
+     },
+     "opis_pl": {
+      "title": "Opis Pl",
+      "type": "string"
+     },
+     "rewizja": {
+      "title": "Rewizja",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "rewizja",
+     "operacja",
+     "opis_pl",
+     "elementy"
+    ],
+    "title": "ZmianaOdBieguResponse",
     "type": "object"
    },
    "ZwarciaPorownanieResponse": {
@@ -15549,6 +15672,60 @@
      }
     },
     "summary": "Get Enm Readiness",
+    "tags": [
+     "enm"
+    ]
+   }
+  },
+  "/api/cases/{case_id}/enm/rewizje/{rewizja}": {
+   "get": {
+    "description": "Model DOKLADNIE w rewizji `rewizja` — tresc adresu, ktory niesie bieg (CV-2).\n\nKoperta rewizji biegu (`RevisionEnvelope.model_revision`) wskazywala dotad\nrewizje, ktorej NIE DALO SIE odczytac: system znal wylacznie model biezacy,\nwiec „wynik policzono na rewizji 7\" bylo adresem bez tresci — nie dalo sie ani\nobejrzec tamtego modelu, ani potwierdzic, ze bieg opisuje to, co deklaruje.\nTa koncowka zamyka luke: `enm.store.checkout` oddaje migawke rewizji\nzweryfikowana hashem tresci.\n\n404 — rewizja nie ma migawki (rewizja sprzed rejestru rewizji albo numer,\nktory nigdy nie powstal). 409 — migawka istnieje, ale jej tresc nie zgadza sie\nz zapisanym odciskiem: to uszkodzenie nosnika albo reczna ingerencja, wiec\nodpowiedz nazywa stan wprost, zamiast oddawac model, ktoremu nie mozna ufac.",
+    "operationId": "get_rewizja_modelu_api_cases__case_id__enm_rewizje__rewizja__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "case_id",
+      "required": true,
+      "schema": {
+       "title": "Case Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "rewizja",
+      "required": true,
+      "schema": {
+       "title": "Rewizja",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Get Rewizja Modelu Api Cases  Case Id  Enm Rewizje  Rewizja  Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Rewizja Modelu",
     "tags": [
      "enm"
     ]
@@ -26523,51 +26700,6 @@
     ]
    }
   },
-  "/api/study-cases/project/{project_id}/invalidate-all": {
-   "post": {
-    "description": "Oznacz wszystkie przypadki jako OUTDATED.\n\nWywoływane po zmianie NetworkModel.\n\nPOST /api/study-cases/project/{project_id}/invalidate-all",
-    "operationId": "invalidate_all_cases_api_study_cases_project__project_id__invalidate_all_post",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "project_id",
-      "required": true,
-      "schema": {
-       "title": "Project Id",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "title": "Response Invalidate All Cases Api Study Cases Project  Project Id  Invalidate All Post",
-         "type": "object"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Invalidate All Cases",
-    "tags": [
-     "study-cases"
-    ]
-   }
-  },
   "/api/study-cases/{case_id}": {
    "delete": {
     "description": "Usuń przypadek obliczeniowy.\n\nDELETE /api/study-cases/{case_id}",
@@ -26645,7 +26777,7 @@
     ]
    },
    "patch": {
-    "description": "Aktualizuj przypadek obliczeniowy.\n\nZmiana konfiguracji oznacza wyniki jako OUTDATED.\n\nPATCH /api/study-cases/{case_id}",
+    "description": "Aktualizuj przypadek obliczeniowy.\n\nPATCH /api/study-cases/{case_id}",
     "operationId": "update_study_case_api_study_cases__case_id__patch",
     "parameters": [
      {
@@ -26796,51 +26928,6 @@
      }
     },
     "summary": "Clone Study Case",
-    "tags": [
-     "study-cases"
-    ]
-   }
-  },
-  "/api/study-cases/{case_id}/invalidate": {
-   "post": {
-    "description": "Oznacz przypadek jako OUTDATED.\n\nWywoływane po zmianie konfiguracji przypadku.\n\nPOST /api/study-cases/{case_id}/invalidate",
-    "operationId": "invalidate_case_api_study_cases__case_id__invalidate_post",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "case_id",
-      "required": true,
-      "schema": {
-       "title": "Case Id",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "title": "Response Invalidate Case Api Study Cases  Case Id  Invalidate Post",
-         "type": "object"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Invalidate Case",
     "tags": [
      "study-cases"
     ]

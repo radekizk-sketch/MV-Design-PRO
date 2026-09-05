@@ -71,29 +71,50 @@ export interface StudyCaseConfig {
 }
 
 /**
- * Study case result reference.
+ * Jedna rewizja modelu powstała PO rewizji wyniku — to ona go unieważniła.
+ * Wszystkie pola pochodzą z backendu (kanon operacji + `changes` operacji
+ * domenowej); UI ich nie tłumaczy i nie uzupełnia.
  */
-export interface StudyCaseResultRef {
-  analysis_run_id: string;
-  analysis_type: string;
-  calculated_at: string;
-  input_hash: string;
+export interface ZmianaOdBiegu {
+  rewizja: number;
+  /** Kanoniczna nazwa operacji; `null` = rewizja bez zarejestrowanej operacji. */
+  operacja: string | null;
+  opis_pl: string;
+  elementy: string[];
+}
+
+/**
+ * Status wyników przypadku — WYPROWADZANY po stronie backendu z biegów przypadku
+ * i koperty rewizji (`application/study_case/status_wynikow.py`). UI wyłącznie go
+ * pokazuje: zero własnych tekstów tłumaczących i zero porównywania rewizji na
+ * własną rękę.
+ */
+export interface StatusWynikowPrzypadku {
+  result_status: StudyCaseResultStatus;
+  /** Explicit flag — true only when result_status === 'FRESH'. */
+  results_valid: boolean;
+  /** Kod maszynowy przyczyny (stabilny, bez diakrytyków). */
+  result_status_reason: string;
+  /** Zdanie dla projektanta — JEDYNE źródło tekstu przyczyny w UI. */
+  result_status_reason_pl: string;
+  /** Rewizja modelu, na której policzono wynik (`null` = brak wyniku). */
+  rewizja_biegu: number | null;
+  /** Bieżąca rewizja modelu (`null` = model przypadku niedostępny). */
+  rewizja_biezaca: number | null;
+  /** Które zmiany unieważniły wynik (puste dla FRESH i NONE). */
+  zmiany_od_biegu: ZmianaOdBiegu[];
 }
 
 /**
  * Study case entity.
  */
-export interface StudyCase {
+export interface StudyCase extends StatusWynikowPrzypadku {
   id: string;
   project_id: string;
   name: string;
   description: string;
   config: StudyCaseConfig;
-  result_status: StudyCaseResultStatus;
-  /** PR-4: Explicit flag — true only when result_status === 'FRESH'. */
-  results_valid: boolean;
   is_active: boolean;
-  result_refs: StudyCaseResultRef[];
   revision: number;
   created_at: string;
   updated_at: string;
@@ -102,13 +123,10 @@ export interface StudyCase {
 /**
  * Study case list item (summary).
  */
-export interface StudyCaseListItem {
+export interface StudyCaseListItem extends StatusWynikowPrzypadku {
   id: string;
   name: string;
   description: string;
-  result_status: StudyCaseResultStatus;
-  /** PR-4: Explicit flag — true only when result_status === 'FRESH'. */
-  results_valid: boolean;
   is_active: boolean;
   updated_at: string;
 }
@@ -177,16 +195,14 @@ export const RESULT_STATUS_LABELS: Record<StudyCaseResultStatus, string> = {
   OUTDATED: 'Wyniki nieaktualne',
 };
 
-/**
- * Polish tooltips for result status (expanded descriptions).
- * UI-09: Rozbudowane tooltips statusów przypadków.
+/*
+ * RESULT_STATUS_TOOLTIPS USUNIĘTE (CV-2-W). Był to WŁASNY tekst UI tłumaczący
+ * status („model został zmieniony po ostatnim obliczeniu") — zgadywany, bo UI
+ * nie znał przyczyny. Backend wyprowadza status z biegów przypadku i podaje
+ * PRZYCZYNĘ zdaniem po polsku (`result_status_reason_pl`), także dla przypadków,
+ * których UI nie umiał nazwać (zmiana biblioteki typów katalogowych, koperta
+ * rewizji niespójna). Ekrany pokazują ten tekst; nie piszą własnego.
  */
-export const RESULT_STATUS_TOOLTIPS: Record<StudyCaseResultStatus, string> = {
-  NONE: 'Wyniki do obliczenia — obliczenia nie zostały jeszcze wykonane',
-  FRESH: 'Wyniki aktualne — obliczenia wykonane po ostatniej zmianie modelu',
-  OUTDATED:
-    'Wyniki nieaktualne — model został zmieniony po ostatnim obliczeniu. Zalecenie: wykonaj obliczenia ponownie.',
-};
 
 /**
  * Polish labels for configuration fields.

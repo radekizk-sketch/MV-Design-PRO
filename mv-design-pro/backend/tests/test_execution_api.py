@@ -25,12 +25,30 @@ def _reset_backend_state() -> None:
     reset_enm_store()
 
 
+def _klucz_modelu(case_id: str) -> str:
+    """Klucz magazynu ENM przypadku — model zyje pod kluczem PROJEKTU (CV-1).
+
+    Zasiewanie surowym `case_id` bylo poprawne tylko przy zalozeniu, ze PIERWSZE
+    przetlumaczone dotkniecie przypadku nastapi PO zasiewie (migracja
+    `migruj_projekt_z_legacy` adoptowala wtedy plik przypadku). Zalozenie padlo w
+    CV-2-W: kazda odpowiedz API z przypadkiem (juz samo `POST /api/study-cases`)
+    wylicza status wynikow, wiec tlumaczy `case_id` na klucz projektu i ZNACZY
+    projekt jako zmigrowany — pozniejszy zasiew pod surowym kluczem trafial w
+    prozne miejsce, a bieg dostawal model domyslny (pusty). Zasiewamy wiec tam,
+    gdzie model naprawde mieszka, zamiast liczyc na kolejnosc wywolan.
+    """
+    from api.main import app
+    from application.twin_key import klucz_twin_dla_przypadku
+
+    return klucz_twin_dla_przypadku(case_id, app.state.uow_factory)
+
+
 def _seed_valid_enm(case_id: str) -> None:
     from enm.models import EnergyNetworkModel
     from enm.store import set_enm
 
     set_enm(
-        case_id,
+        _klucz_modelu(case_id),
         EnergyNetworkModel.model_validate(
             {
                 "header": {
@@ -148,10 +166,8 @@ def registered_case(client) -> str:
     """Utworz REALNY projekt + przypadek przez API i zasiej model ENM.
 
     CV-1-W: przypadek bez wiersza w bazie dostaje teraz 404 z magazynu ENM
-    (inwariant I-2). `_seed_valid_enm` zasiewa surowym kluczem `case_id` —
-    poprawne, bo pierwsze przetlumaczone dotkniecie (pierwsze wywolanie API
-    ponizej w kazdym tescie) migruje ten wpis pod klucz projektu
-    (`migruj_projekt_z_legacy`, `application/twin_key.py`).
+    (inwariant I-2). CV-2-W: `_seed_valid_enm` zasiewa model pod KLUCZEM PROJEKTU
+    (`_klucz_modelu`), a nie pod surowym `case_id` — patrz docstring `_klucz_modelu`.
     """
     project_resp = client.post("/api/projects", json={"name": "Execution API — test"})
     assert project_resp.status_code == 201, project_resp.text

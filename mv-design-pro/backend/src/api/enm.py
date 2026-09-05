@@ -15,6 +15,9 @@ Routes:
                                               → graf domeny nN (LOD L2, karta T5b)
   GET  /api/cases/{case_id}/enm/lv-domain/{station_ref}/upstream-equivalent
                                               → UpstreamEquivalentSnapshot (kotwica SN, karta T5b)
+  GET  /api/cases/{case_id}/enm/dziennik-zmian → wpisy dziennika PO wskazanej rewizji
+  GET  /api/cases/{case_id}/enm/rewizje/{rewizja}
+                                              → migawka modelu DOKLADNIE w tej rewizji
 """
 
 from __future__ import annotations
@@ -54,11 +57,10 @@ from application.analyses.swz.service import build_swz_view
 from application.analyses.wytrzymalosc_aparatury_pol import (
     zbuduj_widok_wytrzymalosci_aparatury,
 )
-from application.analysis_run.result_invalidator import ResultInvalidator
 from application.eligibility_service import EligibilityService
 from application.field_read_model import build_field_read_model
 from application.protection_read_model import build_protection_read_model
-from domain.canonical_operations import CANONICAL_OPERATIONS, resolve_operation_name
+from domain.canonical_operations import resolve_operation_name
 from domain.readiness_bridge import opis_kanoniczny
 from enm.canonical_analysis import (
     get_run as _get_canonical_run,
@@ -71,8 +73,10 @@ from enm.canonical_analysis import (
 from enm.dziennik_zmian import wpisy_od as wpisy_dziennika_od
 from enm.hash import compute_enm_hash
 from enm.models import EnergyNetworkModel
+from enm.rewizje import RewizjaNieistniejeError, RewizjaUszkodzonaError
 from enm.severity import empty_severity_counts, is_failed_status
 from enm.store import ZrodloZmiany, blokada_twin
+from enm.store import checkout as _checkout_rewizji
 from enm.store import get_enm as _get_enm
 from enm.store import set_enm as _set_enm
 from enm.topology_ops import (
@@ -136,50 +140,6 @@ def _resolve_project_id(case_id: str, request: Request) -> str | None:
     return None
 
 
-def _invaliduj_wyniki_po_operacji(case_id: str, resolved_name: str, request: Request) -> None:
-    """Unieważnij wyniki projektu po udanej operacji MUTUJĄCEJ model (D §6.2, karta P0.1).
-
-    Dispatcher operacji domenowych (`POST /domain-ops`, JEDYNY produkcyjny tor
-    zapisu ENM — `/enm/ops`/`/enm/ops/batch` są wyłączone w
-    `_PRODUCTION_DISABLED_ROUTE_KEYS`) był drugim — obok legacy wizardu,
-    `network_wizard/service.py:1590` — miejscem mutującym model, które NIE
-    wywoływało `ResultInvalidator`. Bez tego plakietki świeżości UI
-    (`StudyCase.result_status`) kłamały po KAŻDEJ operacji domenowej — nie
-    tylko po nowej rodzinie `NN_NETWORK` (P0.1): luka była KLASĄ (dispatcher),
-    nie instancją (jedna operacja), więc naprawa siedzi na poziomie dispatchera,
-    nie w pojedynczym handlerze.
-
-    Bezskutkowe (nigdy nie podnosi wyjątku), gdy:
-    - operacja nie mutuje modelu (`mutates_model=False`, np. `refresh_snapshot`),
-    - w tym środowisku nie ma warstwy DB (`uow_factory=None` — testy jednostkowe
-      operacji domenowych wołają `execute_domain_operation` wprost, z pominięciem
-      tej końcówki API, i nie mają czego unieważniać),
-    - `case_id` nie jest UUID albo nie ma odpowiadającego `StudyCase` w DB.
-      KOREKTA CV-1: ten ostatni układ nie jest już osiągalny z tej końcówki —
-      zależność `KluczTwin` (`api/klucz_twin_dep.py`) tłumaczy `case_id` na klucz
-      projektu PRZED wejściem w handler i oddaje 404, gdy przypadku nie ma w
-      bazie (inwariant I-2). Dawne uzasadnienie („ENM istnieje niezależnie od DB,
-      magazyn tworzy model domyślny dla dowolnego `case_id`") opisywało stan
-      sprzed CV-1 i przestało być prawdą. Warunek zostaje jako obrona przed
-      wołaniem tej funkcji spoza końcówki, nie jako opis ścieżki produkcyjnej.
-    """
-    spec = CANONICAL_OPERATIONS.get(resolved_name)
-    if spec is not None and not spec.mutates_model:
-        return
-    uow_factory = getattr(request.app.state, "uow_factory", None)
-    if uow_factory is None:
-        return
-    project_id = _resolve_project_id(case_id, request)
-    if project_id is None:
-        return
-    try:
-        parsed_project_id = UUID(project_id)
-    except ValueError:
-        return
-    with uow_factory() as uow:
-        ResultInvalidator().invalidate_project_results(uow, parsed_project_id)
-
-
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
@@ -224,7 +184,54 @@ def get_dziennik_zmian(case_id: str, klucz: KluczTwin, od_rewizji: int = 0) -> d
         "rewizja_biezaca": enm.header.revision,
         "od_rewizji": od_rewizji,
         "aktualny": enm.header.revision <= od_rewizji,
+        # CV-2: `WpisDziennika.to_dict` niesie takze `hash_sha256` (odcisk migawki
+        # tej rewizji), `rodzic` (rewizja, z ktorej powstala) i `ladunek` (PELNA
+        # komende, ktora ja wytworzyla). Zadne pole nie jest tu filtrowane —
+        # dziennik oddaje dokladnie to, co zapisal (pin: test kontraktu koncowki).
         "wpisy": [w.to_dict() for w in wpisy],
+    }
+
+
+@router.get("/{case_id}/enm/rewizje/{rewizja}")
+def get_rewizja_modelu(case_id: str, klucz: KluczTwin, rewizja: int) -> dict[str, Any]:
+    """Model DOKLADNIE w rewizji `rewizja` — tresc adresu, ktory niesie bieg (CV-2).
+
+    Koperta rewizji biegu (`RevisionEnvelope.model_revision`) wskazywala dotad
+    rewizje, ktorej NIE DALO SIE odczytac: system znal wylacznie model biezacy,
+    wiec „wynik policzono na rewizji 7" bylo adresem bez tresci — nie dalo sie ani
+    obejrzec tamtego modelu, ani potwierdzic, ze bieg opisuje to, co deklaruje.
+    Ta koncowka zamyka luke: `enm.store.checkout` oddaje migawke rewizji
+    zweryfikowana hashem tresci.
+
+    404 — rewizja nie ma migawki (rewizja sprzed rejestru rewizji albo numer,
+    ktory nigdy nie powstal). 409 — migawka istnieje, ale jej tresc nie zgadza sie
+    z zapisanym odciskiem: to uszkodzenie nosnika albo reczna ingerencja, wiec
+    odpowiedz nazywa stan wprost, zamiast oddawac model, ktoremu nie mozna ufac.
+    """
+    try:
+        model = _checkout_rewizji(klucz, rewizja)
+    except RewizjaNieistniejeError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                f"Rewizja {rewizja} modelu tego przypadku nie ma zapisanej migawki — "
+                "powstala przed wprowadzeniem rejestru rewizji albo nigdy nie istniala."
+            ),
+        ) from exc
+    except RewizjaUszkodzonaError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Migawka rewizji {rewizja} jest niespójna z własnym odciskiem — "
+                "zapis został zmieniony poza systemem i nie da się go uznać za "
+                "wiarygodny model."
+            ),
+        ) from exc
+    return {
+        "case_id": case_id,
+        "rewizja": rewizja,
+        "hash_sha256": compute_enm_hash(model),
+        "snapshot": model.model_dump(mode="json"),
     }
 
 
@@ -1327,9 +1334,7 @@ def rozbieznosc_wobec_bramy(
 
 
 @router.post("/{case_id}/enm/domain-ops")
-def domain_ops(
-    case_id: str, klucz: KluczTwin, req: DomainOpEnvelopeModel, request: Request
-) -> dict[str, Any]:
+def domain_ops(case_id: str, klucz: KluczTwin, req: DomainOpEnvelopeModel) -> dict[str, Any]:
     """Kanoniczny endpoint operacji domenowych V1.
 
     Wspólny kontrakt dla wszystkich operacji budowy sieci SN:
@@ -1360,12 +1365,10 @@ def domain_ops(
     RÓŻNYCH przypadkach nadal biegną równolegle.
     """
     with blokada_twin(klucz):
-        return _domain_ops_pod_blokada(case_id, klucz, req, request)
+        return _domain_ops_pod_blokada(case_id, klucz, req)
 
 
-def _domain_ops_pod_blokada(
-    case_id: str, klucz: str, req: DomainOpEnvelopeModel, request: Request
-) -> dict[str, Any]:
+def _domain_ops_pod_blokada(case_id: str, klucz: str, req: DomainOpEnvelopeModel) -> dict[str, Any]:
     from enm.domain_operations import execute_domain_operation
 
     enm = _get_enm(klucz)
@@ -1431,12 +1434,18 @@ def _domain_ops_pod_blokada(
             # snapshotem. Nazwa operacji jest KANONICZNA (`resolve_operation_name`
             # rozwiazuje aliasy), a listy elementow pochodza wprost z `changes`
             # zwroconych przez operacje — nic tu nie jest wyliczane ani zgadywane.
+            # CV-2: dziennik niesie takze PELNY ladunek komendy — dokladnie to, co
+            # przyszlo w zadaniu operacji, bez przepisywania i bez wyboru pol.
+            # Nazwa operacji i listy elementow nie wystarczaly, zeby odtworzyc, CO
+            # projektant zrobil (dwie operacje o tej samej nazwie na tym samym
+            # elemencie roznia sie wylacznie ladunkiem).
             zmiany = result.get("changes") or {}
             zrodlo = ZrodloZmiany(
                 operacja=resolved_name,
                 utworzone=tuple(zmiany.get("created_element_ids") or ()),
                 zmienione=tuple(zmiany.get("updated_element_ids") or ()),
                 usuniete=tuple(zmiany.get("deleted_element_ids") or ()),
+                ladunek=req.operation.payload,
             )
             saved = _set_enm(klucz, new_enm, zrodlo_zmiany=zrodlo)
             result["snapshot"] = saved.model_dump(mode="json")
@@ -1452,19 +1461,14 @@ def _domain_ops_pod_blokada(
             )
             result["error_code"] = "api.snapshot_validation_failed"
             result["snapshot"] = None
-        else:
-            # D §6.2 (karta P0.1): unieważnienie wyników PO udanym zapisie —
-            # tylko wtedy model faktycznie się zmienił. Awaria unieważnienia
-            # (DB niedostępna, brak StudyCase) NIE cofa raportowanego sukcesu
-            # zapisu modelu — plakietka świeżości pozostaje wtedy nieaktualna
-            # (znany, nazwany dług tej awarii), ale model jest zapisany poprawnie.
-            try:
-                _invaliduj_wyniki_po_operacji(case_id, resolved_name, request)
-            except Exception:
-                logger.exception(
-                    "Unieważnienie wyników po operacji domenowej nie powiodło się "
-                    "(model zapisany poprawnie — plakietki świeżości mogą być nieaktualne)."
-                )
+
+    # CV-2-W: po udanym zapisie NIE unieważniamy niczego. Nowa rewizja modelu
+    # SAMA czyni wyniki nieaktualnymi, bo świeżość jest WYPROWADZANA z koperty
+    # rewizji biegu (`application/result_freshness.py`), a nie z osobnego stanu,
+    # który ktoś musiał pamiętać przestawić. Poprzednia wersja wołała tu
+    # `ResultInvalidator` — i była to jedyna obrona przed „plakietką, która
+    # kłamie", więc każda ścieżka zapisu pominięta w tym wywołaniu (kreator,
+    # zmiana typu katalogowego) zostawiała wynik oznaczony jako aktualny.
 
     return result
 

@@ -3,13 +3,16 @@ Study Case Lifecycle Tests — P10 FULL MAX
 
 CANONICAL TEST COVERAGE:
 1. CRUD operations (create, read, update, delete)
-2. Clone operation (config copied, results NOT copied)
+2. Clone operation (config copied, no results of its own)
 3. Active case management (exactly one per project)
-4. Result status lifecycle (NONE → FRESH → OUTDATED)
-5. Invalidation rules:
-   - Model change → ALL cases OUTDATED
-   - Config change → ONLY that case OUTDATED
-6. Compare operation (read-only)
+4. Compare operation (read-only)
+
+STATUS WYNIKOW NIE JEST TU TESTOWANY, BO PRZYPADEK GO NIE PRZECHOWUJE (CV-2-W).
+Dawne testy przejsc NONE → FRESH → OUTDATED sprawdzaly, ze setter ustawia to, co
+ustawil — nie mialy jak wykryc defektu, ktory naprawde bolal: sciezke mutujaca
+model, ktora zapomniala zawolac uniewazniacza. Ta sama INTENCJA („wynik policzony
+przed zmiana modelu nie moze udawac aktualnego”) jest sprawdzana na REALNEJ
+sciezce HTTP w `tests/api/test_status_wynikow_przypadku.py`.
 
 All tests use Polish error messages per P10 requirements.
 """
@@ -23,8 +26,6 @@ import pytest
 from domain.study_case import (
     StudyCase,
     StudyCaseConfig,
-    StudyCaseResult,
-    StudyCaseResultStatus,
     compare_study_cases,
     new_study_case,
 )
@@ -49,13 +50,15 @@ from network_model.sld_projection import project_snapshot_to_sld
 class TestStudyCaseModel:
     """Test StudyCase domain model."""
 
-    def test_new_study_case_has_none_status(self):
-        """New case should have NONE result status."""
+    def test_new_study_case_nie_przechowuje_statusu_wynikow(self):
+        """Nowy przypadek NIE niesie pola statusu — status jest funkcja biegow."""
         case = new_study_case(
             project_id=uuid4(),
             name="Test Case",
         )
-        assert case.result_status == StudyCaseResultStatus.NONE
+        assert not hasattr(case, "result_status")
+        assert not hasattr(case, "results_valid")
+        assert not hasattr(case, "result_refs")
 
     def test_new_study_case_not_active_by_default(self):
         """New case should not be active by default."""
@@ -104,68 +107,29 @@ class TestStudyCaseModel:
         assert case.config.base_mva == 50.0
 
 
-class TestStudyCaseStatusTransitions:
-    """Test result status lifecycle transitions."""
+class TestStudyCaseEdycja:
+    """Edycja przypadku zmienia KONFIGURACJE i nic poza nia (CV-2-W)."""
 
-    def test_mark_as_outdated_from_fresh(self):
-        """FRESH → OUTDATED on model/config change."""
+    def test_zmiana_konfiguracji_nie_dotyka_statusu(self):
+        """Po zmianie konfiguracji przypadek nadal nie ma pola statusu.
+
+        Wersja sprzed CV-2-W przestawiala tu FRESH → OUTDATED; to bylo DRUGIE
+        zrodlo prawdy o swiezosci obok rewizji modelu i odcisku katalogu.
+        """
         case = new_study_case(uuid4(), "Test")
-        # Simulate successful calculation
-        result_ref = StudyCaseResult(
-            analysis_run_id=uuid4(),
-            analysis_type="short_circuit_sn",
-            calculated_at=case.created_at,
-            input_hash="abc123",
-        )
-        fresh_case = case.mark_as_fresh(result_ref)
-        assert fresh_case.result_status == StudyCaseResultStatus.FRESH
+        updated = case.with_updated_config(StudyCaseConfig(c_factor_max=1.05))
 
-        # Mark as outdated
-        outdated_case = fresh_case.mark_as_outdated()
-        assert outdated_case.result_status == StudyCaseResultStatus.OUTDATED
+        assert updated.config.c_factor_max == 1.05
+        assert updated.revision == case.revision + 1
+        assert not hasattr(updated, "result_status")
 
-    def test_mark_as_outdated_from_none_stays_none(self):
-        """NONE stays NONE when marking outdated (no results to invalidate)."""
-        case = new_study_case(uuid4(), "Test")
-        assert case.result_status == StudyCaseResultStatus.NONE
+    def test_zmiana_nazwy_zachowuje_konfiguracje(self):
+        case = new_study_case(uuid4(), "Test", config=StudyCaseConfig(c_factor_max=1.05))
+        renamed = case.with_name("New Name")
 
-        outdated_case = case.mark_as_outdated()
-        # Should stay NONE, not become OUTDATED
-        assert outdated_case.result_status == StudyCaseResultStatus.NONE
-
-    def test_config_change_marks_fresh_as_outdated(self):
-        """Changing config marks FRESH case as OUTDATED."""
-        case = new_study_case(uuid4(), "Test")
-        result_ref = StudyCaseResult(
-            analysis_run_id=uuid4(),
-            analysis_type="short_circuit_sn",
-            calculated_at=case.created_at,
-            input_hash="abc123",
-        )
-        fresh_case = case.mark_as_fresh(result_ref)
-        assert fresh_case.result_status == StudyCaseResultStatus.FRESH
-
-        # Update config
-        new_config = StudyCaseConfig(c_factor_max=1.05)
-        updated = fresh_case.with_updated_config(new_config)
-
-        assert updated.result_status == StudyCaseResultStatus.OUTDATED
-
-    def test_name_change_does_not_affect_status(self):
-        """Changing name should not affect result status."""
-        case = new_study_case(uuid4(), "Test")
-        result_ref = StudyCaseResult(
-            analysis_run_id=uuid4(),
-            analysis_type="short_circuit_sn",
-            calculated_at=case.created_at,
-            input_hash="abc123",
-        )
-        fresh_case = case.mark_as_fresh(result_ref)
-        assert fresh_case.result_status == StudyCaseResultStatus.FRESH
-
-        renamed = fresh_case.with_name("New Name")
-        # Status should remain FRESH
-        assert renamed.result_status == StudyCaseResultStatus.FRESH
+        assert renamed.name == "New Name"
+        assert renamed.config == case.config
+        assert not hasattr(renamed, "result_status")
 
 
 class TestStudyCaseClone:
@@ -182,23 +146,20 @@ class TestStudyCaseClone:
 
         assert cloned.config.c_factor_max == original.config.c_factor_max
 
-    def test_clone_does_not_copy_results(self):
-        """Clone should NOT copy results (status = NONE)."""
+    def test_clone_nie_dziedziczy_wynikow(self):
+        """Klon nie przejmuje zadnych wynikow.
+
+        Nie ma juz czego "nie kopiowac": klon to NOWY przypadek, wiec nie ma
+        wlasnych biegow, a jego status wychodzi NONE z derywacji (pin przez HTTP:
+        `tests/api/test_status_wynikow_przypadku.py`). Tu sprawdzamy strukture:
+        klon nie niesie zadnego pola wynikowego, ktore moglby odziedziczyc.
+        """
         original = new_study_case(uuid4(), "Original")
-        result_ref = StudyCaseResult(
-            analysis_run_id=uuid4(),
-            analysis_type="short_circuit_sn",
-            calculated_at=original.created_at,
-            input_hash="abc123",
-        )
-        original_with_results = original.mark_as_fresh(result_ref)
-        assert original_with_results.result_status == StudyCaseResultStatus.FRESH
+        cloned = original.clone()
 
-        cloned = original_with_results.clone()
-
-        # Clone should have NONE status, not FRESH
-        assert cloned.result_status == StudyCaseResultStatus.NONE
-        assert len(cloned.result_refs) == 0
+        assert not hasattr(cloned, "result_refs")
+        assert not hasattr(cloned, "result_status")
+        assert cloned.id != original.id
 
     def test_clone_is_not_active(self):
         """Clone should NOT be active."""
@@ -332,23 +293,20 @@ class TestStudyCaseCompare:
         diff_fields = [d[0] for d in comparison.config_differences]
         assert "c_factor_max" in diff_fields
 
-    def test_compare_shows_status_difference(self):
-        """Comparison shows status of both cases."""
+    def test_compare_nie_orzeka_o_statusie_wynikow(self):
+        """Porownanie domenowe nie niesie statusow — dokleja je warstwa API z
+        derywacji (pin: `tests/api/test_status_wynikow_przypadku.py::
+        test_wszystkie_odpowiedzi_z_przypadkiem_daja_ten_sam_werdykt`). Dwa
+        niezalezne zrodla statusu w jednej odpowiedzi to defekt czekajacy na dane
+        brzegowe, a nie wygoda."""
         project_id = uuid4()
-        case_a = new_study_case(project_id, "Case A")
-        case_b = new_study_case(project_id, "Case B")
-        result_ref = StudyCaseResult(
-            analysis_run_id=uuid4(),
-            analysis_type="short_circuit_sn",
-            calculated_at=case_b.created_at,
-            input_hash="abc123",
+        comparison = compare_study_cases(
+            new_study_case(project_id, "Case A"), new_study_case(project_id, "Case B")
         )
-        case_b_fresh = case_b.mark_as_fresh(result_ref)
 
-        comparison = compare_study_cases(case_a, case_b_fresh)
-
-        assert comparison.status_a == StudyCaseResultStatus.NONE
-        assert comparison.status_b == StudyCaseResultStatus.FRESH
+        assert not hasattr(comparison, "status_a")
+        assert "status_a" not in comparison.to_dict()
+        assert "status_b" not in comparison.to_dict()
 
     def test_compare_is_readonly(self):
         """Comparison does not modify original cases."""
@@ -433,9 +391,11 @@ class TestStudyCaseSerialization:
 
         assert data["name"] == "Test Case"
         assert data["description"] == "Test description"
-        assert data["result_status"] == "NONE"
         assert data["is_active"] is False
         assert "config" in data
+        # Serializacja domenowa NIE orzeka o statusie wynikow — dokleja go API.
+        assert "result_status" not in data
+        assert "results_valid" not in data
 
     def test_from_dict(self):
         """Case can be deserialized from dict."""
@@ -446,7 +406,7 @@ class TestStudyCaseSerialization:
 
         assert restored.id == original.id
         assert restored.name == original.name
-        assert restored.result_status == original.result_status
+        assert restored.config == original.config
 
 
 # =============================================================================
@@ -470,15 +430,13 @@ class TestStudyCaseInvariants:
         assert not hasattr(case, "branches")
         assert not hasattr(case, "network_graph")
 
-    def test_case_result_status_is_enum(self):
-        """Result status uses enum values."""
+    def test_case_nie_przechowuje_wynikow_ani_ich_statusu(self):
+        """Przypadek to KONFIGURACJA: ani wynikow, ani plakietki o nich (CV-2-W)."""
         case = new_study_case(uuid4(), "Test")
 
-        assert case.result_status in [
-            StudyCaseResultStatus.NONE,
-            StudyCaseResultStatus.FRESH,
-            StudyCaseResultStatus.OUTDATED,
-        ]
+        assert not hasattr(case, "result_status")
+        assert not hasattr(case, "results_valid")
+        assert not hasattr(case, "result_refs")
 
     def test_case_is_immutable(self):
         """Case is frozen (immutable)."""

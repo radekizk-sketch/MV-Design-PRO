@@ -16,7 +16,12 @@
  *    PRZEBIEGU — porównanie z nią wychodziło „aktualne" zawsze, niezależnie od
  *    tego, jak daleko pojechał żywy model, i przeczyło chipowi paska przypadku
  *    („trzy prawdy stanu" z pomiaru audytu). Ta sama konwencja co
- *    `useSwiezoscWynikow` i chip (`shellStatus.useRewizjeSwiezosci`).
+ *    `useSwiezoscWynikow`. CV-2-W: chip PASKA PRZYPADKU nie liczy już świeżości
+ *    sam — pokazuje werdykt, który backend wyprowadza z biegów przypadku i
+ *    koperty rewizji (`ui2/shell/znacznikSwiezosci.ts`). Tutaj podmiotem jest
+ *    JEDEN PRZEBIEG, więc porównanie rewizji zostaje; że oba wskaźniki nigdy nie
+ *    mówią rzeczy przeciwnych, pilnuje
+ *    `freshness/__tests__/jednaPrawdaStanuWynikow.test.tsx`.
  *  - `rewizjaDanych` — rewizja, NA KTÓREJ policzono bieg, z kontraktu przebiegu
  *    (`analysisCaseContext.rewizjaModelu`, backend: `analysis_case_context`).
  *    Do V12K-264 kontrakt tej liczby NIE NIÓSŁ, więc znacznik świeżości był

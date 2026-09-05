@@ -92,12 +92,21 @@ def _reset_services():
 
 
 def _seed_valid_enm(case_id: str) -> None:
-    """Minimalna, poprawna sieć SN (GPZ + kabel + szyna odpływu)."""
+    """Minimalna, poprawna sieć SN (GPZ + kabel + szyna odpływu).
+
+    CV-2-W: zasiew idzie pod KLUCZ PROJEKTU (`_klucz_modelu`), bo tam mieszka
+    model. Wcześniejszy zasiew surowym `case_id` działał tylko dopóki żadna
+    wcześniejsza odpowiedź API nie przetłumaczyła przypadku na klucz projektu —
+    a odkąd każda odpowiedź z przypadkiem wylicza status wyników, tłumaczenie
+    następuje już przy `POST /api/study-cases`.
+    """
     from enm.models import EnergyNetworkModel
     from enm.store import set_enm
 
+    from tests.test_execution_api import _klucz_modelu
+
     set_enm(
-        case_id,
+        _klucz_modelu(case_id),
         EnergyNetworkModel.model_validate(
             {
                 "header": {

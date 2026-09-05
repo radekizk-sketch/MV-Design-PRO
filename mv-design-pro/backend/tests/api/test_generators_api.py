@@ -22,6 +22,8 @@ def _seed_station_enm(case_id: str, *, transformer_sn_mva: float = 0.63) -> None
     from enm.models import EnergyNetworkModel
     from enm.store import set_enm
 
+    from tests.test_execution_api import _klucz_modelu
+
     enm = EnergyNetworkModel.model_validate(
         {
             "header": {
@@ -82,7 +84,9 @@ def _seed_station_enm(case_id: str, *, transformer_sn_mva: float = 0.63) -> None
             "branch_points": [],
         }
     )
-    set_enm(case_id, enm)
+    # CV-2-W: model zyje pod kluczem PROJEKTU; zasiew surowym `case_id` dzialal
+    # tylko dopoki zadna wczesniejsza odpowiedz API nie przetlumaczyla przypadku.
+    set_enm(_klucz_modelu(case_id), enm)
 
 
 def test_der_bez_catalog_ref_to_422_bez_cichego_podstawienia(app_client) -> None:

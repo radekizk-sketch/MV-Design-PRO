@@ -202,19 +202,20 @@ def _nowy_przypadek(client: TestClient) -> str:
 
 
 def _zasiej(case_id: str, nazwa: str) -> None:
-    """Zasiej model pod SUROWYM kluczem `case_id`.
+    """Zasiej model pod kluczem PROJEKTU przypadku (CV-1: tam mieszka model).
 
-    CV-1-W: `case_id` przekazany tu musi nalezec do REALNEGO przypadku
-    (`_nowy_przypadek`) — pierwsze przetlumaczone dotkniecie (pierwsze
-    `_uruchom_bieg`/HTTP dla tego przypadku) migruje ten wpis pod klucz
-    projektu (`migruj_projekt_z_legacy`, `application/twin_key.py`), wiec
-    zasiew surowym kluczem PRZED tym dotknieciem jest poprawny i nie wymaga
-    tlumaczenia w tym miejscu.
+    CV-2-W: wczesniejsza wersja zasiewala surowym kluczem `case_id` i liczyla na
+    to, ze PIERWSZE przetlumaczone dotkniecie przypadku nastapi POZNIEJ (migracja
+    `migruj_projekt_z_legacy` adoptowala wtedy plik przypadku). Zalozenie padlo:
+    kazda odpowiedz API z przypadkiem wylicza status wynikow, wiec tlumaczy
+    `case_id` juz przy `POST /api/study-cases`.
     """
     from enm.models import EnergyNetworkModel
     from enm.store import set_enm
 
-    set_enm(case_id, EnergyNetworkModel.model_validate(_model_sn(nazwa)))
+    from tests.test_execution_api import _klucz_modelu
+
+    set_enm(_klucz_modelu(case_id), EnergyNetworkModel.model_validate(_model_sn(nazwa)))
 
 
 @pytest.fixture

@@ -117,8 +117,11 @@ def test_study_case_clone_copies_protection_config():
     assert cloned_case.protection_config.template_fingerprint == "abc123"
     assert cloned_case.protection_config.overrides == {"I>": {"value": 100, "unit": "A"}}
 
-    # But result status should be NONE
-    assert cloned_case.result_status.value == "NONE"
+    # Klon nie niesie zadnego wlasnego wyniku ani plakietki o nim (CV-2-W):
+    # status wynikow wychodzi NONE z derywacji, bo klon nie ma wlasnych biegow
+    # (pin przez HTTP: tests/api/test_status_wynikow_przypadku.py).
+    assert not hasattr(cloned_case, "result_status")
+    assert cloned_case.id != case_with_protection.id
 
 
 def test_study_case_serialization_with_protection_config():

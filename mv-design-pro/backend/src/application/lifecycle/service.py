@@ -1,14 +1,24 @@
 """
-P10a Lifecycle Service — Result Invalidation and Snapshot Binding
+P10a Lifecycle Service — Snapshot Binding (legacy P2–P12, kasacja CV-4)
+
+CO STĄD ZNIKŁO I DLACZEGO (CV-2-W). Usługa unieważniała PRZYPADKI obliczeniowe
+przy każdej nowej migawce sieci (`invalidate_cases_for_snapshot`,
+`mark_all_cases_outdated`). To był jeden z siedmiu pisarzy statusu wyników
+przypadku — a status jest odtąd WYPROWADZANY z biegów kanonicznych i koperty
+rewizji (`application/study_case/status_wynikow.py`), więc pisarz nie ma czego
+pisać. Została wyłącznie część biegów LEGACY (`study_runs`), która żyje razem z
+torem P2–P12 i znika razem z nim w CV-4.
+
+STAN FAKTYCZNY (uczciwie): po tej kasacji `LifecycleService` NIE MA żadnego
+konsumenta w `src/` ani w testach — jest kandydatem do skasowania w całości
+razem z torem legacy (CV-4), a nie żywym ogniwem łańcucha.
 
 CANONICAL ALIGNMENT:
-- Project → StudyCase → Run → Snapshot lifecycle management
-- Result invalidation when network model changes (new snapshot)
+- Project → Run → Snapshot lifecycle (tor legacy)
 - Deterministic fingerprint-based change detection
 
 INVARIANTS:
-- When snapshot changes, ALL cases bound to old snapshot become OUTDATED
-- When snapshot changes, ALL runs bound to old snapshot become OUTDATED
+- When snapshot changes, ALL legacy runs bound to old snapshot become OUTDATED
 - Project.active_network_snapshot_id is updated atomically with invalidation
 """
 
@@ -29,7 +39,6 @@ class InvalidationResult:
     project_id: UUID
     old_snapshot_id: str | None
     new_snapshot_id: str
-    cases_invalidated: int
     runs_invalidated: int
     timestamp: datetime
 
@@ -58,9 +67,11 @@ class LifecycleService:
         old_snapshot_id: str | None = None,
     ) -> InvalidationResult:
         """
-        Handle new snapshot creation — invalidate results and update bindings.
+        Handle new snapshot creation — invalidate LEGACY runs and update bindings.
 
         P10a: This is the main entry point for lifecycle management.
+        PRZYPADKI OBLICZENIOWE NIE SĄ TU DOTYKANE (CV-2-W) — ich status wynika
+        z biegów kanonicznych, nie z zapisu.
 
         Args:
             project_id: ID of the project
@@ -68,27 +79,19 @@ class LifecycleService:
             old_snapshot_id: ID of the previous active snapshot (if any)
 
         Returns:
-            InvalidationResult with counts of invalidated cases and runs
+            InvalidationResult with the count of invalidated legacy runs
         """
         with self._uow_factory() as uow:
             # 1. Update project's active snapshot
             uow.projects.set_active_snapshot_id(project_id, new_snapshot_id, commit=False)
 
-            cases_invalidated = 0
             runs_invalidated = 0
 
-            # 2. If there was an old snapshot, invalidate its results
-            if old_snapshot_id is not None:
-                # Mark all cases bound to old snapshot as OUTDATED
-                cases_invalidated = uow.cases.invalidate_cases_for_snapshot(
+            # 2. If there was an old snapshot, invalidate its legacy runs
+            if old_snapshot_id is not None and uow.study_runs is not None:
+                runs_invalidated = uow.study_runs.invalidate_runs_for_snapshot(
                     old_snapshot_id, commit=False
                 )
-
-                # Mark all runs bound to old snapshot as OUTDATED
-                if uow.study_runs is not None:
-                    runs_invalidated = uow.study_runs.invalidate_runs_for_snapshot(
-                        old_snapshot_id, commit=False
-                    )
 
             # 3. Commit all changes atomically
             uow.session.commit()
@@ -97,23 +100,9 @@ class LifecycleService:
             project_id=project_id,
             old_snapshot_id=old_snapshot_id,
             new_snapshot_id=new_snapshot_id,
-            cases_invalidated=cases_invalidated,
             runs_invalidated=runs_invalidated,
             timestamp=datetime.now(UTC),
         )
-
-    def invalidate_project_results(self, project_id: UUID) -> int:
-        """
-        Invalidate all results for a project.
-
-        P10a: Called when model changes require global invalidation.
-
-        Returns:
-            Number of cases invalidated
-        """
-        with self._uow_factory() as uow:
-            count = uow.cases.mark_all_cases_outdated(project_id, commit=True)
-        return count
 
     def bind_case_to_snapshot(
         self,

@@ -140,12 +140,22 @@ def _reset_canonical_backend_state() -> None:
 
 
 def _seed_valid_sc_enm(client, case_id: str) -> None:
+    """Zasiew modelu pod KLUCZEM PROJEKTU przypadku (CV-1/CV-2-W).
+
+    Zasiew surowym `case_id` dzialal tylko dopoki zadna wczesniejsza odpowiedz API
+    nie przetlumaczyla przypadku na klucz projektu (migracja `migruj_projekt_z_legacy`
+    dzieje sie RAZ na projekt). Odkad kazda odpowiedz z przypadkiem wylicza status
+    wynikow, tlumaczenie nastepuje juz przy `POST /api/study-cases` — zasiewamy tam,
+    gdzie model naprawde mieszka.
+    """
     from enm.models import EnergyNetworkModel
     from enm.store import set_enm
 
+    from tests.test_execution_api import _klucz_modelu
+
     _ = client
     set_enm(
-        case_id,
+        _klucz_modelu(case_id),
         EnergyNetworkModel.model_validate(
             {
                 "header": {

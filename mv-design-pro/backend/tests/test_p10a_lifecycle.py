@@ -4,7 +4,7 @@ P10a Lifecycle Tests — Deterministic Fingerprint and Result Invalidation
 TESTS:
 1. Fingerprint determinism - same network = same hash
 2. Fingerprint changes when network changes
-3. StudyCase invalidation when snapshot changes
+3. StudyCase snapshot binding (status wynikow: WYPROWADZANY, patrz tests/api/test_status_wynikow_przypadku.py)
 4. Run invalidation when snapshot changes
 5. Project active snapshot tracking
 """
@@ -14,8 +14,6 @@ from uuid import uuid4
 import pytest
 from domain.models import new_project, new_study_run
 from domain.study_case import (
-    StudyCase,
-    StudyCaseResultStatus,
     new_study_case,
 )
 from network_model.core.graph import NetworkGraph
@@ -251,44 +249,32 @@ class TestStudyCaseWithSnapshot:
         assert case.network_snapshot_id == "snapshot-old"
         assert updated.network_snapshot_id == "snapshot-new"
 
-    def test_with_network_snapshot_id_invalidates_fresh_results(self):
-        """Changing snapshot must invalidate FRESH results."""
+    def test_with_network_snapshot_id_zmienia_wylacznie_przypiecie(self):
+        """Przypiecie migawki NIE przestawia zadnego statusu (CV-2-W).
+
+        INTENCJA POPRZEDNIEJ WERSJI (zachowana): "zmiana migawki uniewaznia wynik".
+        Regula OUTDATED zyla tu jako DRUGIE zrodlo prawdy o swiezosci obok rewizji
+        modelu; teraz swiezosc wynika z koperty rewizji biegu, wiec przypiecie ma
+        zmieniac WYLACZNIE `network_snapshot_id` (i rewizje zapisu przypadku) —
+        i nic poza tym. Dowod tej samej intencji na realnej sciezce (model jedzie
+        dalej -> wynik OUTDATED bez pisarza):
+        `tests/api/test_status_wynikow_przypadku.py::test_operacja_domenowa_po_biegu_daje_outdated_z_lista_zmian`.
+        """
         case = new_study_case(
             project_id=uuid4(),
             name="Test Case",
             network_snapshot_id="snapshot-old",
         )
-        # Manually set to FRESH
-        case = StudyCase(
-            id=case.id,
-            project_id=case.project_id,
-            name=case.name,
-            network_snapshot_id=case.network_snapshot_id,
-            config=case.config,
-            result_status=StudyCaseResultStatus.FRESH,
-            is_active=case.is_active,
-            result_refs=case.result_refs,
-            revision=case.revision,
-            created_at=case.created_at,
-            updated_at=case.updated_at,
-            study_payload=case.study_payload,
-        )
 
         updated = case.with_network_snapshot_id("snapshot-new")
 
-        assert updated.result_status == StudyCaseResultStatus.OUTDATED
-
-    def test_with_network_snapshot_id_keeps_none_status(self):
-        """Changing snapshot must keep NONE status as NONE."""
-        case = new_study_case(
-            project_id=uuid4(),
-            name="Test Case",
-        )
-        assert case.result_status == StudyCaseResultStatus.NONE
-
-        updated = case.with_network_snapshot_id("snapshot-new")
-
-        assert updated.result_status == StudyCaseResultStatus.NONE
+        assert updated.network_snapshot_id == "snapshot-new"
+        assert updated.revision == case.revision + 1
+        assert updated.config == case.config
+        assert updated.is_active == case.is_active
+        assert not hasattr(
+            updated, "result_status"
+        ), "przypadek nie moze znowu przechowywac statusu wynikow"
 
     def test_clone_preserves_snapshot_binding(self):
         """Clone must preserve snapshot binding."""
@@ -300,7 +286,6 @@ class TestStudyCaseWithSnapshot:
         cloned = case.clone("Cloned")
 
         assert cloned.network_snapshot_id == "snapshot-123"
-        assert cloned.result_status == StudyCaseResultStatus.NONE
 
 
 class TestStudyRunWithSnapshot:

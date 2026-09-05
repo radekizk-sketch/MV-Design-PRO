@@ -15,7 +15,11 @@ OPERATIONS:
 - Clone: Copy config, no results
 - Activate: Set as active (deactivates others)
 - Compare: Read-only diff between two cases
-- Invalidate: Mark as OUTDATED on model/config change
+
+STATUS WYNIKOW NIE JEST TU ZARZADZANY (CV-2-W): serwis nie ma zadnego
+`mark_*_outdated` / `mark_case_fresh`, bo status przypadku jest FUNKCJA jego
+biegow i biezacej rewizji modelu — liczy go `application/study_case/status_wynikow.py`
+na zadanie, a doklada do odpowiedzi warstwa API.
 """
 
 from __future__ import annotations
@@ -31,7 +35,6 @@ from domain.study_case import (
     StudyCase,
     StudyCaseComparison,
     StudyCaseConfig,
-    StudyCaseResult,
     compare_study_cases,
     new_study_case,
 )
@@ -45,13 +48,15 @@ from .errors import (
 
 @dataclass
 class StudyCaseListItem:
-    """Summary item for listing study cases."""
+    """Summary item for listing study cases.
+
+    BEZ statusu wynikow: `result_status` / `results_valid` dokleja warstwa API z
+    werdyktu wyprowadzonego z biegow przypadku (CV-2-W).
+    """
 
     id: str
     name: str
     description: str
-    result_status: str
-    results_valid: bool  # PR-4: explicit validity flag
     is_active: bool
     updated_at: str
 
@@ -60,8 +65,6 @@ class StudyCaseListItem:
             "id": self.id,
             "name": self.name,
             "description": self.description,
-            "result_status": self.result_status,
-            "results_valid": self.results_valid,
             "is_active": self.is_active,
             "updated_at": self.updated_at,
         }
@@ -170,8 +173,6 @@ class StudyCaseService:
                     id=str(case.id),
                     name=case.name,
                     description=case.description,
-                    result_status=case.result_status.value,
-                    results_valid=case.results_valid,
                     is_active=case.is_active,
                     updated_at=case.updated_at.isoformat(),
                 )
@@ -361,79 +362,6 @@ class StudyCaseService:
                 raise StudyCaseNotFoundError(str(case_b_id))
 
             return compare_study_cases(case_a, case_b)
-
-    # =========================================================================
-    # Result Status Management
-    # =========================================================================
-
-    def mark_all_outdated(self, project_id: UUID) -> int:
-        """
-        Mark all study cases in a project as OUTDATED.
-
-        Called when NetworkModel changes.
-        Only affects cases with FRESH status.
-
-        Args:
-            project_id: Project ID
-
-        Returns:
-            Number of cases marked as OUTDATED
-        """
-        with self._uow_factory() as uow:
-            repo = uow.cases
-            if repo is None:
-                raise CaseConfigurationError("Repozytorium przypadków jest niedostępne")
-            return repo.mark_all_cases_outdated(project_id)
-
-    def mark_case_outdated(self, case_id: UUID) -> bool:
-        """
-        Mark a single study case as OUTDATED.
-
-        Called when case configuration changes.
-
-        Args:
-            case_id: Case ID
-
-        Returns:
-            True if case was marked, False if not found or already OUTDATED/NONE
-        """
-        with self._uow_factory() as uow:
-            repo = uow.cases
-            if repo is None:
-                raise CaseConfigurationError("Repozytorium przypadków jest niedostępne")
-            return repo.mark_case_outdated(case_id)
-
-    def mark_case_fresh(
-        self,
-        case_id: UUID,
-        analysis_run_id: UUID,
-        analysis_type: str,
-        input_hash: str,
-    ) -> bool:
-        """
-        Mark a study case as FRESH after successful calculation.
-
-        Args:
-            case_id: Case ID
-            analysis_run_id: ID of the analysis run with results
-            analysis_type: Type of analysis (e.g., "short_circuit_sn")
-            input_hash: Hash of the input for cache invalidation
-
-        Returns:
-            True if case was marked, False if not found
-        """
-        with self._uow_factory() as uow:
-            repo = uow.cases
-            if repo is None:
-                raise CaseConfigurationError("Repozytorium przypadków jest niedostępne")
-
-            result_ref = StudyCaseResult(
-                analysis_run_id=analysis_run_id,
-                analysis_type=analysis_type,
-                calculated_at=datetime.now(UTC),
-                input_hash=input_hash,
-            )
-            return repo.mark_case_fresh(case_id, result_ref)
 
     # =========================================================================
     # Validation Helpers

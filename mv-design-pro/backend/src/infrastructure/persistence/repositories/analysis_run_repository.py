@@ -189,31 +189,6 @@ class AnalysisRunRepository:
             self._session.commit()
         return int(result.rowcount or 0)
 
-    def mark_results_outdated_for_case(
-        self, project_id: UUID, case_id: UUID, *, commit: bool = True
-    ) -> int:
-        """
-        PR-4: Mark all AnalysisRuns for a specific case as OUTDATED.
-
-        Called when case configuration or protection config changes.
-        Only invalidates VALID runs bound to this case (via operating_case_id).
-        """
-        stmt = (
-            update(AnalysisRunORM)
-            .where(AnalysisRunORM.project_id == project_id)
-            .where(AnalysisRunORM.operating_case_id == case_id)
-            .where(AnalysisRunORM.result_status == "VALID")
-            .values(result_status="OUTDATED")
-        )
-        # `Session.execute` jest typowane ogolnym `Result[Any]`, ale dla instrukcji DML
-        # (`update()`) SQLAlchemy ZAWSZE zwraca `CursorResult` — i tylko on niesie
-        # `rowcount`. Jawne zawezenie zamiast siegania po atrybut, ktorego deklarowany
-        # typ nie ma.
-        result = cast(CursorResult[Any], self._session.execute(stmt))
-        if commit:
-            self._session.commit()
-        return int(result.rowcount or 0)
-
     def _to_domain(self, row: AnalysisRunORM) -> AnalysisRun:
         return AnalysisRun(
             id=row.id,

@@ -37,7 +37,6 @@ export {
   useCanCreateCase,
   useCanManageCases,
   useCanEditCaseConfig,
-  useNotifyModelChange,
   useCaseModeConstraints,
   useCanActivateCase,
 } from './modeGating';

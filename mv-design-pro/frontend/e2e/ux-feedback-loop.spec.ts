@@ -126,7 +126,7 @@ async function mockBackend(page: Page, options: MockOptions = {}): Promise<void>
       caseCreated = true;
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
         id: 'case-ux', project_id: 'proj-ux', name: 'Wariant 1', description: '',
-        case_type: 'ShortCircuitCase', is_active: true, result_status: 'NONE',
+        case_type: 'ShortCircuitCase', is_active: true, result_status: 'NONE', results_valid: false, result_status_reason: 'brak-wyniku', result_status_reason_pl: 'Brak zapisanego wyniku dla tego przebiegu — nie ma czego nałożyć na schemat.', rewizja_biegu: null, rewizja_biezaca: 1, zmiany_od_biegu: [],
         created_at: '2026-05-23T10:00:01Z', updated_at: '2026-05-23T10:00:01Z', config: {},
       }) });
       return;
@@ -135,7 +135,7 @@ async function mockBackend(page: Page, options: MockOptions = {}): Promise<void>
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(
         caseCreated ? [{
           id: 'case-ux', name: 'Wariant 1', description: '', case_type: 'ShortCircuitCase',
-          is_active: true, result_status: 'NONE', updated_at: '2026-05-23T10:00:01Z',
+          is_active: true, result_status: 'NONE', results_valid: false, result_status_reason: 'brak-wyniku', result_status_reason_pl: 'Brak zapisanego wyniku dla tego przebiegu — nie ma czego nałożyć na schemat.', rewizja_biegu: null, rewizja_biezaca: 1, zmiany_od_biegu: [], updated_at: '2026-05-23T10:00:01Z',
         }] : [],
       ) });
       return;
@@ -146,7 +146,7 @@ async function mockBackend(page: Page, options: MockOptions = {}): Promise<void>
         contentType: 'application/json',
         body: projectCreated && caseCreated ? JSON.stringify({
           id: 'case-ux', project_id: 'proj-ux', name: 'Wariant 1', description: '',
-          case_type: 'ShortCircuitCase', is_active: true, result_status: 'NONE',
+          case_type: 'ShortCircuitCase', is_active: true, result_status: 'NONE', results_valid: false, result_status_reason: 'brak-wyniku', result_status_reason_pl: 'Brak zapisanego wyniku dla tego przebiegu — nie ma czego nałożyć na schemat.', rewizja_biegu: null, rewizja_biezaca: 1, zmiany_od_biegu: [],
           created_at: '2026-05-23T10:00:01Z', updated_at: '2026-05-23T10:00:01Z', config: {},
         }) : '',
       });

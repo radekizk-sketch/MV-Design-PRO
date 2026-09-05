@@ -79,6 +79,12 @@ jobs:
       - name: Readiness Codes Guard
         working-directory: mv-design-pro
         run: python scripts/readiness_codes_guard.py
+      # CV-2-W: status wynikow PRZYPADKU jest wyprowadzany z jego biegow i koperty
+      # rewizji (application/study_case/status_wynikow.py). Kolumna
+      # `study_cases.result_status` to dane zastane — zaden kod jej nie pisze.
+      - name: Result Status Writer Guard
+        working-directory: mv-design-pro
+        run: python scripts/result_status_writer_guard.py
       # CV-2 (H2/H3): pole proweniencji biegu (wersja solvera, tozsamosc katalogu,
       # wariant, migawka lacznikowa) nie moze byc literalem bez zrodla — wartosc
       # pochodzi z koperty rewizji, sladu solvera albo opcji biegu, inaczej jest None.

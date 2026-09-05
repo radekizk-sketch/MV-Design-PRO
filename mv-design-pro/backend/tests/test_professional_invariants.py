@@ -783,7 +783,6 @@ def test_case_immutability_enforcement():
 
     from domain.study_case import (
         StudyCaseConfig,
-        StudyCaseResultStatus,
         new_study_case,
     )
 
@@ -805,9 +804,6 @@ def test_case_immutability_enforcement():
         case.name = "Mutated!"  # type: ignore[misc]
 
     with pytest.raises((FrozenInstanceError, AttributeError)):
-        case.result_status = StudyCaseResultStatus.FRESH  # type: ignore[misc]
-
-    with pytest.raises((FrozenInstanceError, AttributeError)):
         case.is_active = True  # type: ignore[misc]
 
     # Verify that modification methods return NEW instances (not mutate)
@@ -816,10 +812,12 @@ def test_case_immutability_enforcement():
     assert updated_case.name == "Updated Name"
     assert case.name == "Test Case", "Original case must be unchanged"
 
-    # Clone must have NONE status and new ID
+    # Clone must have a new ID and no results of its own. Status wynikow klonu nie
+    # jest tu POLEM (CV-2-W) — klon nie ma wlasnych biegow, wiec wychodzi NONE z
+    # derywacji; pin tego zachowania przez HTTP:
+    # `tests/api/test_status_wynikow_przypadku.py::test_wszystkie_odpowiedzi_z_przypadkiem_daja_ten_sam_werdykt`.
     cloned = case.clone("Cloned Case")
     assert cloned.id != case.id, "Clone must have new ID"
-    assert cloned.result_status == StudyCaseResultStatus.NONE, "Clone must have NONE status"
     assert cloned.is_active is False, "Clone must not be active"
 
 
