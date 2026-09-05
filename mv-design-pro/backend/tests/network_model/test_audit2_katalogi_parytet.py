@@ -32,6 +32,21 @@ CZEGO PILNUJE TEN PLIK:
 
 Test czyta plik frontu jako TEKST (nie uruchamia TypeScriptu) — to swiadomy
 wybor: parytet ma dzialac w zwyklym biegu pytest, bez node'a w petli.
+
+KARTA FAB-M (2026-09-05) zamyka DRUGA KOPIE `HV_FUSE_CATALOG`: front czytal
+dotad WLASNY mirror w `protection-catalogs.ts` (4 pozycje identyczne z
+backendem), ktory `test_wkladki_sn_maja_te_same_pozycje_po_obu_stronach`
+porownywal 1:1. Ten mirror zostal USUNIETY (front czyta katalog WYLACZNIE ze
+snapshotu audytu 2, `useAudit2CatalogSnapshot`), wiec test zmienia ksztalt z
+"te same pozycje po obu stronach" na "front NIE MA juz bloku mirrora" —
+pozytywne potwierdzenie nieobecnosci, wzorem `test_trzy_katalogi_nie_maja_juz_
+bloku_mirrora_w_froncie` (karta FAB-L, `MV_NEUTRAL_GROUNDING_CATALOG`/
+`BESS_OPERATION_MODE_CATALOG`/`TAP_CHANGER_CATALOG` w `catalogs.ts` — inny
+plik frontu, poza zakresem tej karty, NIETKNIETE tutaj). Nowy test dolozony
+przez FAB-M pilnuje KLASY inaczej: identyfikatory bezpiecznikow uzyte w
+fikstarach/testach frontu (gdziekolwiek w `frontend/src`/`frontend/e2e`) MUSZA
+istniec w katalogu backendu — fikstura z identyfikatorem zmyslonym zapala
+test, zamiast cicho przechodzic obok nieistniejacej pozycji.
 """
 
 from __future__ import annotations
@@ -148,10 +163,68 @@ def test_trzy_katalogi_nie_maja_juz_bloku_mirrora_w_froncie() -> None:
     assert len(TAP_CHANGER_CATALOG) > 0
 
 
-def test_wkladki_sn_maja_te_same_pozycje_po_obu_stronach() -> None:
-    """Mirror wkladek SN mieszka w `protection-catalogs.ts` (karta K-O)."""
-    front_ids = _ids_in_block(_front_source(_FRONT_PROTECTION_CATALOGS_TS), "HV_FUSE_CATALOG")
-    assert front_ids == {f.id for f in HV_FUSE_CATALOG}
+def test_wkladki_sn_nie_maja_juz_bloku_mirrora_w_froncie() -> None:
+    """Karta FAB-M: `HV_FUSE_CATALOG` (mirror wkladek SN w `protection-catalogs.ts`,
+    karta K-O) USUNIETY jako blok `export const` — front czyta katalog WYLACZNIE
+    ze snapshotu audytu 2 (`useAudit2CatalogSnapshot`), a jedyny konsument
+    produkcyjny (`StationConfigBaysCard.tsx`) dostaje go jako prop `hvFuses`.
+    Test potwierdza NIEOBECNOSC wprost (wzorem FAB-L) — sam brak wyjatku przy
+    parsowaniu nie odrozniałby "katalog usuniety celowo" od "test sie zepsul".
+    """
+    front = _front_source(_FRONT_PROTECTION_CATALOGS_TS)
+    assert "export const HV_FUSE_CATALOG" not in front, (
+        "HV_FUSE_CATALOG: mirror wrocil do protection-catalogs.ts — karta FAB-M "
+        "wymaga czytania WYLACZNIE ze snapshotu audytu 2 (useAudit2CatalogSnapshot), "
+        "nie drugiej kopii statycznej."
+    )
+    # Katalog wciaz realny w backendzie (autorytet, serwowany przez snapshot) —
+    # samo jego USUNIECIE stad byloby falszywym alarmem.
+    assert len(HV_FUSE_CATALOG) > 0
+
+
+#: Wzorzec identyfikatora bezpiecznika SN katalogu audytu 2, np.
+#: `fuse_15kv_50a_full` / `fuse_20kv_25a_gp` — odrozniony od NIEPOWIAZANEGO
+#: literalu `fuse_set` (rodzaj aparatu pola, `konfiguratorRozdzielnicy.ts`) i od
+#: identyfikatorow z myslnikami rodziny ETI VV (`sw-fuse-eti-vv-17kv-63a`,
+#: `mv_switch_catalog.py::SWITCH_FUSES` — INNY katalog, realna proweniencja).
+_WZORZEC_ID_BEZPIECZNIKA_SN = re.compile(r"\bfuse_\d+kv_\d+a_[a-z]+\b")
+
+#: Katalogi frontu przeszukiwane pod katem identyfikatorow bezpiecznikow w
+#: fikstarach/testach/e2e (karta FAB-M, M2). Cale drzewo `src`/`e2e` — nie
+#: pojedynczy plik — zeby fikstura DODANA GDZIEKOLWIEK indziej w przyszlosci
+#: byla rowniez zlapana, nie tylko dzisiejszy jeden plik.
+_FRONT_SRC_ROOT = _FRONT_CATALOGS_TS.parents[4] / "src"
+_FRONT_E2E_ROOT = _FRONT_CATALOGS_TS.parents[4] / "e2e"
+
+
+def test_kazdy_identyfikator_bezpiecznika_uzyty_w_froncie_istnieje_w_backendzie() -> None:
+    """Karta FAB-M (M2): kazdy identyfikator bezpiecznika SN uzyty w
+    fikstarach/testach/e2e frontu istnieje w katalogu backendu (backend jest
+    prawda). Fikstury frontu z identyfikatorami ZMYSLONYMI przechodza na
+    realne — ten test nie pozwala wrocic do stanu sprzed tej karty.
+    """
+    backend_ids = {f.id for f in HV_FUSE_CATALOG}
+    assert backend_ids, "katalog bezpiecznikow SN backendu nie moze byc pusty"
+
+    znalezione: dict[str, list[str]] = {}
+    for korzen in (_FRONT_SRC_ROOT, _FRONT_E2E_ROOT):
+        assert korzen.is_dir(), f"Brak katalogu frontu pod {korzen}"
+        for plik in sorted(korzen.rglob("*.ts")) + sorted(korzen.rglob("*.tsx")):
+            tekst = plik.read_text(encoding="utf-8")
+            for dopasowanie in _WZORZEC_ID_BEZPIECZNIKA_SN.findall(tekst):
+                znalezione.setdefault(dopasowanie, []).append(str(plik))
+
+    assert znalezione, (
+        "Zero identyfikatorow bezpiecznikow SN znalezionych we froncie — "
+        "wzorzec regex albo sciezki korzeni wymagaja poprawy (test musial "
+        "znalezc co najmniej fikstury audit-round3-wiring.test.tsx)."
+    )
+    for identyfikator, pliki in znalezione.items():
+        assert identyfikator in backend_ids, (
+            f"Identyfikator bezpiecznika '{identyfikator}' uzyty we froncie "
+            f"({', '.join(pliki)}) NIE ISTNIEJE w katalogu backendu "
+            f"({sorted(backend_ids)}) — fikstura z identyfikatorem zmyslonym."
+        )
 
 
 def _wszystkie_pozycje_backendu() -> list[tuple[str, dict]]:

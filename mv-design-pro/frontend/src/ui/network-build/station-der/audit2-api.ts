@@ -11,6 +11,14 @@
  * `catalogs.ts`. Zero fallbacku lokalnego — backend jest jedynym zrodlem;
  * niedostepnosc backendu jest stanem bledu/ladowania widocznym w UI, nie
  * cichym podstawieniem drugiej kopii danych.
+ *
+ * Karta FAB-M: `hv_fuses` dopisane jako typ 1:1 z backendem (dotad
+ * `ReadonlyArray<unknown>`) — front czyta je WYLACZNIE stad, statyczny mirror
+ * (`HV_FUSE_CATALOG` w `protection-catalogs.ts`, 4 pozycje identyczne z
+ * backendowym `audit2_catalogs.HV_FUSE_CATALOG`) skasowany. Zero fallbacku
+ * lokalnego — backend jest jedynym zrodlem; niedostepnosc backendu jest
+ * stanem bledu/ladowania widocznym w UI, nie cichym podstawieniem drugiej
+ * kopii danych.
  */
 
 /**
@@ -125,19 +133,49 @@ export interface MvNeutralGroundingItem {
 }
 
 /**
- * `hv_fuses`/`device_withstand` NIE typowane tu: `device_withstand` ma już
- * konsumenta typowany osobno (`DeviceWithstandCatalogItem` niżej, przez
- * `fetchDeviceWithstandCatalog`, nie przez snapshot), a `hv_fuses` ma jedynego
- * konsumenta w `protection-catalogs.ts::HV_FUSE_CATALOG` — DRUGIEJ kopii tych
- * samych 4 pozycji (identyczne identyfikatory `fuse_15kv_50a_full` i in.),
- * poza zakresem karty FAB-L (§0 nazwał WYŁĄCZNIE `catalogs.ts`) — zgłoszone w
- * meldunku jako znalezisko tej samej klasy dla osobnej karty. Typowanie tego
- * pola bez migracji konsumenta byłoby dekoracją bez skutku.
+ * Pasmo czasowo-prądowe wkładki SN — kształt 1:1 z backendu
+ * (`network_model/catalog/audit2_catalogs.py::HvFusePasmoTcc.to_dict`).
+ */
+export interface HvFusePasmoTcc {
+  readonly zrodlo_url: string;
+  readonly punkty: ReadonlyArray<{ readonly prad_a: number; readonly czas_s: number }>;
+}
+
+/**
+ * Bezpiecznik SN/HV (eng.17) — kształt 1:1 z backendu
+ * (`network_model/catalog/audit2_catalogs.py::HvFuseItem.to_dict`).
+ * Karta FAB-M: JEDYNE źródło — front nie ma już własnej kopii
+ * (`HV_FUSE_CATALOG` usunięty z `protection-catalogs.ts`, gdzie był DRUGĄ
+ * kopią tych samych 4 pozycji, identyczne identyfikatory `fuse_15kv_50a_full`
+ * i in.). `pasmo_brak_powod_pl`/`pasmo_brak_etykieta_pl` liczone przez backend
+ * per pozycja (`None` gdy `pasmo_tcc` istnieje) — front czyta je wprost,
+ * zamiast trzymać własną kopię tych samych dwóch zdań PL.
+ */
+export interface HvFuseItem {
+  readonly id: string;
+  readonly catalog_namespace: string;
+  readonly catalog_version: string;
+  readonly label_pl: string;
+  readonly nominal_voltage_kv: number;
+  readonly nominal_current_a: number;
+  readonly class: 'general_purpose' | 'full_range' | 'back_up';
+  readonly application: 'transformer' | 'feeder' | 'motor' | 'capacitor';
+  readonly pasmo_tcc: HvFusePasmoTcc | null;
+  readonly pasmo_brak_powod_pl: string | null;
+  readonly pasmo_brak_etykieta_pl: string | null;
+}
+
+/**
+ * `device_withstand` NIE typowane tu: ma już konsumenta typowanego osobno
+ * (`DeviceWithstandCatalogItem` niżej, przez `fetchDeviceWithstandCatalog`, nie
+ * przez snapshot). Karty FAB-L/FAB-M: `bess_operation_modes`/`tap_changers`/
+ * `mv_neutral_groundings`/`hv_fuses` typowane 1:1 z backendem — ZERO `unknown`
+ * tam, gdzie front te dane konsumuje.
  */
 export interface AuditCatalogSnapshot {
   readonly bess_operation_modes: readonly BessOperationModeItem[];
   readonly tap_changers: readonly TapChangerItem[];
-  readonly hv_fuses: ReadonlyArray<unknown>;
+  readonly hv_fuses: readonly HvFuseItem[];
   readonly device_withstand: ReadonlyArray<unknown>;
   readonly pf_curves: readonly PfCurveItem[];
   readonly block_transformers: readonly BlockTransformerItem[];

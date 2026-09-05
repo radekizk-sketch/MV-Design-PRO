@@ -15,12 +15,6 @@ import {
   buildAggregatedReadiness,
   validateHostingCapacityExport,
 } from '..';
-import {
-  // Pakiet F
-  HV_FUSE_CATALOG,
-  SPZ_CATALOG,
-  selectHvFusesForRating,
-} from '../protection-catalogs';
 import type { StationDerConnection } from '../types';
 
 // =============================================================================
@@ -332,108 +326,45 @@ describe('eng.15 — Hosting capacity export check', () => {
 });
 
 // =============================================================================
-// Pakiet F — eng.17 (HV fuses)
+// Pakiet F — eng.17: katalog PRZENIESIONY DO BACKENDU (karta FAB-M)
 // =============================================================================
-
-describe('eng.17 — HvFuseCatalog', () => {
-  it('katalog ma ≥4 bezpieczniki SN', () => {
-    expect(HV_FUSE_CATALOG.length).toBeGreaterThanOrEqual(4);
-  });
-
-  it('Wszystkie pozycje mają napięcie 6-36 kV', () => {
-    for (const f of HV_FUSE_CATALOG) {
-      expect(f.nominal_voltage_kv).toBeGreaterThanOrEqual(6);
-      expect(f.nominal_voltage_kv).toBeLessThanOrEqual(36);
-    }
-  });
-
-  it('selectHvFusesForRating filtruje po napięciu i prądzie', () => {
-    const fuses_15kv = selectHvFusesForRating({
-      voltageKv: 15,
-      minCurrentA: 50,
-    });
-    expect(fuses_15kv.length).toBeGreaterThan(0);
-    expect(fuses_15kv.every((f) => Math.abs(f.nominal_voltage_kv - 15) <= 1.0)).toBe(true);
-    expect(fuses_15kv.every((f) => f.nominal_current_a >= 50)).toBe(true);
-  });
-
-  // ===========================================================================
-  // KARTA K-O — PINY KLASY: wartość bez źródła NIE ISTNIEJE
-  // ===========================================================================
-  //
-  // Poprzednik tych pinów sprawdzał, że „pre-arcing < total clearing" — czyli
-  // WEWNĘTRZNĄ SPÓJNOŚĆ dwóch WYMYŚLONYCH liczb. Test przechodził i przez to
-  // uwiarygadniał fabrykację. Piny poniżej pytają o proweniencję, nie o spójność,
-  // i chodzą po WSZYSTKICH pozycjach (klasa), nie po przykładzie z karty.
-
-  /** Zbiór ZAMKNIĘTY: każde pole spoza listy = pole bez proweniencji. */
-  const DOZWOLONE_POLA_POZYCJI = new Set([
-    'id',
-    'catalog_namespace',
-    'catalog_version',
-    'label_pl',
-    'nominal_voltage_kv',
-    'nominal_current_a',
-    'class',
-    'pasmo_tcc',
-    'application',
-  ]);
-
-  it('KLASA: żadna pozycja nie niesie pola wyrobu bez źródła (lista zamknięta)', () => {
-    for (const f of HV_FUSE_CATALOG) {
-      for (const pole of Object.keys(f)) {
-        expect(
-          DOZWOLONE_POLA_POZYCJI.has(pole),
-          `Pozycja ${f.id} niesie pole "${pole}" bez proweniencji. `
-            + 'Dane wyrobu (producent, prądy przerywania, I²t, punkty pasma) wolno '
-            + 'dodać WYŁĄCZNIE razem z adresem tabeli producenta.',
-        ).toBe(true);
-      }
-    }
-  });
-
-  it('KLASA: żadna pozycja nie przypisuje wkładki imiennemu producentowi bez źródła', () => {
-    for (const f of HV_FUSE_CATALOG) {
-      expect(f).not.toHaveProperty('manufacturer');
-    }
-  });
-
-  it('KLASA: żadna pozycja nie niesie punktów pasma przy 6×In (fabrykacja K-O)', () => {
-    for (const f of HV_FUSE_CATALOG) {
-      expect(f).not.toHaveProperty('pre_arcing_time_at_6in_ms');
-      expect(f).not.toHaveProperty('total_clearing_time_at_6in_ms');
-      expect(f).not.toHaveProperty('i2t_total_a2s');
-      expect(f).not.toHaveProperty('i_min_breaking_a');
-      expect(f).not.toHaveProperty('i_max_breaking_ka');
-    }
-  });
-
-  it('PARA PREDYKATÓW: pasmo istnieje wyłącznie razem z URL tabeli producenta', () => {
-    for (const f of HV_FUSE_CATALOG) {
-      if (f.pasmo_tcc === null) continue;
-      // Gdy ktoś kiedyś dopisze pasmo — musi przyjść z adresem i z punktami.
-      expect(f.pasmo_tcc.zrodlo_url).toMatch(/^https?:\/\//);
-      expect(f.pasmo_tcc.punkty.length).toBeGreaterThan(0);
-      for (const p of f.pasmo_tcc.punkty) {
-        expect(Number.isFinite(p.prad_a)).toBe(true);
-        expect(Number.isFinite(p.czas_s)).toBe(true);
-      }
-    }
-  });
-
-  it('Stan faktyczny: KAŻDA pozycja deklaruje brak pasma (brak kart producenta)', () => {
-    expect(HV_FUSE_CATALOG.length).toBeGreaterThan(0);
-    for (const f of HV_FUSE_CATALOG) {
-      expect(f.pasmo_tcc).toBeNull();
-    }
-  });
-
-  it('KLASA: SPZ nie przypisuje praktyki ruchowej imiennym operatorom bez źródła', () => {
-    for (const s of SPZ_CATALOG) {
-      expect(s).not.toHaveProperty('typical_operators_pl');
-    }
-  });
-});
+//
+// Tu stał komplet asercji na `HV_FUSE_CATALOG` — DRUGIEJ kopii tych samych 4
+// pozycji już serwowanych przez backend (`network_model/catalog/audit2_catalogs
+// .py::HV_FUSE_CATALOG`, identyczne identyfikatory `fuse_15kv_50a_full` i in.),
+// zgłoszonej jako znalezisko poza zakresem karty FAB-L (§0 nazwał WYŁĄCZNIE
+// `catalogs.ts`; ten katalog mieszkał w `protection-catalogs.ts`, patrz jej
+// nota proweniencji). `HV_FUSE_CATALOG` USUNIĘTY z `protection-catalogs.ts`:
+// front czyta go WYŁĄCZNIE ze snapshotu audytu 2 (`useAudit2CatalogSnapshot`,
+// typowane 1:1 w `audit2-api.ts::HvFuseItem`) — karta pola (`StationConfig
+// BaysCard.tsx`) dostaje katalog jako prop `hvFuses` z `StationConfigurator
+// Surface.tsx`. `selectHvFusesForRating` (jedyny selektor tego katalogu) NIE
+// MIAŁ żadnego konsumenta produkcyjnego (karta pola czytała `HV_FUSE_CATALOG`
+// wprost przez `.map`/`.find`, zmierzone grepem) — usunięty z testem, nie
+// migrowany do przyjmowania katalogu jako parametru (ten wzorzec dotyczy
+// wyłącznie selektorów z realnym konsumentem, np. `selectTapChangersFor
+// Transformer` w `catalogs.ts`).
+//
+// Osobne znalezisko tej samej klasy w TYM PLIKU (zero konsumenta produktu,
+// wzorzec L4 z FAB-L): `SPZ_CATALOG` (import usunięty razem z HV_FUSE powyżej)
+// nie miał ŻADNEGO konsumenta produkcyjnego — usunięty z `protection-
+// catalogs.ts` w tej samej karcie (backendowy `spz_lookup.py` to INNA
+// zdolność — progi blokady SPZ wg prądu/czasu zwarcia, nie katalog profili
+// cykli — nie ma tu duplikatu do migracji).
+//
+// Pokrycie:
+//   - zawartość katalogu HV_FUSE (≥4 pozycje, napięcie 6-36 kV, lista pól
+//     ZAMKNIĘTA, brak `manufacturer`/punktów pasma bez źródła, `pasmo_tcc`
+//     PARA z URL, każda pozycja dziś `pasmo_tcc: null`):
+//     `backend/tests/api/test_audit2_catalogs_api.py::test_list_hv_fuses` +
+//     `backend/tests/network_model/test_audit2_katalogi_parytet.py`
+//     (`POLA_BEZ_PROWENIENCJI_ZAKAZANE` pilnuje pól wyrobu bez źródła, nowy
+//     test identyfikatorów bezpieczników użytych w froncie).
+//   - zero cudzej tożsamości w SPZ (dawny operator bez źródła): ten sam
+//     katalog `test_audit2_katalogi_parytet.py::
+//     test_cudze_imie_nie_wraca_do_danych_katalogow_audytu2` — a skoro
+//     `SPZ_CATALOG` usunięty CAŁKOWICIE (nie migrowany), sam katalog, którego
+//     dotyczył ten pin, już nie istnieje po żadnej stronie.
 
 // =============================================================================
 // Pakiet F — eng.18: rachunek PRZENIESIONY DO BACKENDU (karta K7-B)

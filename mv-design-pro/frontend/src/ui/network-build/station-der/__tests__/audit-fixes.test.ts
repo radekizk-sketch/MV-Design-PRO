@@ -16,15 +16,7 @@ import {
   // Naprawa B
   SN_CONNECTION_POINT_KIND_CATALOG,
   // Naprawa C
-  PROTECTION_FUNCTION_CATALOG,
-  SPZ_CATALOG,
-  SZR_CATALOG,
-  selectRequiredProtectionFunctionsForDer,
-  selectRequiredProtectionFunctionsForGrounding,
-  getProtectionFunctionByAnsiCode,
-  selectSpzCompatibleWithDer,
   isCtClassValidForProtection,
-  isCtClassValidForMetering,
   // Naprawa D
   validateHostingCapacity,
   computeDerReadinessMatrix,
@@ -200,45 +192,20 @@ describe('SnConnectionPointKindCatalog (dawna Naprawa B.2 — punkt przyłączen
 // Naprawa C — specjalista zabezpieczeń
 // =============================================================================
 
-describe('Naprawa C.1 — ANSI function catalog', () => {
-  it('katalog ma ≥17 funkcji ANSI (50/51/50N/51N/67/67N/87T/27/59/81U/81O/79/86/25/32/46/49)', () => {
-    expect(PROTECTION_FUNCTION_CATALOG.length).toBeGreaterThanOrEqual(17);
-    const codes = PROTECTION_FUNCTION_CATALOG.map((f) => f.ansi_code);
-    for (const required of ['50', '51', '50N', '51N', '67', '67N', '87T', '27', '59', '81U', '81O', '79', '86', '25', '32', '46', '49']) {
-      expect(codes).toContain(required);
-    }
-  });
-
-  it('selectRequiredProtectionFunctionsForDer zwraca 27/59/81U/81O + nadprądowe', () => {
-    const required = selectRequiredProtectionFunctionsForDer();
-    const codes = required.map((f) => f.ansi_code);
-    expect(codes).toContain('27');
-    expect(codes).toContain('59');
-    expect(codes).toContain('81U');
-    expect(codes).toContain('81O');
-    expect(codes).toContain('51');
-    expect(codes).toContain('67'); // kierunkowe wymagane dla DER
-  });
-
-  it('selectRequiredProtectionFunctionsForGrounding(petersen) → 67N (Naprawa C.2)', () => {
-    const required = selectRequiredProtectionFunctionsForGrounding('petersen_coil');
-    const codes = required.map((f) => f.ansi_code);
-    expect(codes).toContain('67N');
-  });
-
-  it('selectRequiredProtectionFunctionsForGrounding(resistor) → 50N/51N', () => {
-    const required = selectRequiredProtectionFunctionsForGrounding('resistor_grounded');
-    const codes = required.map((f) => f.ansi_code);
-    expect(codes).toContain('50N');
-    expect(codes).toContain('51N');
-  });
-
-  it('getProtectionFunctionByAnsiCode mapuje code → polish description', () => {
-    expect(getProtectionFunctionByAnsiCode('87T')?.label_pl).toContain('różnicowe');
-    expect(getProtectionFunctionByAnsiCode('79')?.label_pl).toContain('SPZ');
-    expect(getProtectionFunctionByAnsiCode('25')?.label_pl).toContain('Synchrocheck');
-  });
-});
+// USUNIĘTE (karta FAB-M, 2026-09-05) — całe „Naprawa C.1 — ANSI function
+// catalog": `PROTECTION_FUNCTION_CATALOG` (+ typy `ProtectionFunctionItem`/
+// `AnsiFunctionCode` + selektory `selectRequiredProtectionFunctionsForDer`/
+// `selectRequiredProtectionFunctionsForGrounding`/
+// `getProtectionFunctionByAnsiCode`) USUNIĘTE z `protection-catalogs.ts` —
+// ZERO konsumentów produkcyjnych (zmierzone grepem: jedyny importer był ten
+// plik). Historyczny konsument `derProtectionSummary()` (defekt P7,
+// `docs/uiux/AUDYT_E21_KONFIGURATOR_FALOWNIKA_2026-07.md` — jedna,
+// uniwersalna lista ANSI dla KAŻDEJ instalacji, bez uzasadnienia wg topologii/
+// uziemienia/wymagań OSD) już nie istnieje w repo; dług widniał otwarty w
+// `docs/v12xx/REJESTR_KONFLIKTOW.md` (wiersz K-O) i `docs/plan/
+// PLAN_DOKONCZENIA_100_2026-08-14.md` (punkt 3 po K-O) — FAB-M go zamyka.
+// Eksport bez konsumenta produktu = dług L4 (wzorzec FAB-L) — kasacja z
+// testem, bez migracji (nie ma czego migrować — nikt tego nie woła).
 
 describe('Naprawa C.6 — klasy CT (reguly normowe, bez katalogu syntetycznego)', () => {
   // V12K-239: `CT_CATALOG` (5 wpisow syntetycznych) USUNIETY — po wpieciu klasy jako
@@ -255,11 +222,13 @@ describe('Naprawa C.6 — klasy CT (reguly normowe, bez katalogu syntetycznego)'
     expect(isCtClassValidForProtection('1.0')).toBe(false);
   });
 
-  it('isCtClassValidForMetering rozpoznaje 0.2/0.5/1.0', () => {
-    expect(isCtClassValidForMetering('0.5')).toBe(true);
-    expect(isCtClassValidForMetering('0.2')).toBe(true);
-    expect(isCtClassValidForMetering('5P10')).toBe(false);
-  });
+  // USUNIĘTE (karta FAB-M, 2026-09-05) — „isCtClassValidForMetering rozpoznaje
+  // 0.2/0.5/1.0": funkcja ZERO konsumentów produkcyjnych (zmierzone grepem —
+  // jedyny importer był ten test; `readiness.ts` czyta wyłącznie
+  // `isCtClassValidForProtection`, który zostaje). Kasacja z testem (wzorzec
+  // L4 FAB-L), bez migracji. Test rozłączności niżej przepisany, żeby nie
+  // czytać już usuniętej funkcji, z zachowaniem intencji (klasy pomiarowe
+  // WPROST z unii `CtClass`, nie z drugiego predykatu).
 
   it('front NIE MA wlasnego katalogu VT ani wlasnej reguly wspolczynnika (V12K-257)', async () => {
     // Te dwa testy sprawdzaly wczesniej zawartosc `VT_CATALOG` i `selectVtForVoltage`
@@ -277,49 +246,31 @@ describe('Naprawa C.6 — klasy CT (reguly normowe, bez katalogu syntetycznego)'
     expect(modul.isVtVoltageFactorValidForGrounding).toBeUndefined();
   });
 
-  it('rozlacznosc: zadna klasa nie jest jednoczesnie zabezpieczeniowa i pomiarowa', () => {
-    // Kontrola odwrotna do obu regul naraz — bez niej mozna by je „naprawic" tak, ze
-    // obie zwracaja true i os zabezpieczen przechodzi na przekladniku pomiarowym.
-    for (const klasa of ['0.2', '0.5', '1.0', '5P10', '5P20', '10P10', '10P20'] as const) {
-      expect(isCtClassValidForProtection(klasa) && isCtClassValidForMetering(klasa)).toBe(false);
+  it('rozlacznosc: zadna klasa pomiarowa (0.2/0.5/1.0) nie jest jednoczesnie zabezpieczeniowa', () => {
+    // Karta FAB-M: `isCtClassValidForMetering` usunięty (zero konsumenta
+    // produktu) — klasy pomiarowe wypisane WPROST z zamrożonej unii `CtClass`
+    // (jedyne trzy, które NIE zaczynają się od „5P"/„10P"), nie z drugiego
+    // predykatu. Intencja bez zmian: żadna klasa nie jest jednocześnie
+    // zabezpieczeniowa i pomiarowa.
+    for (const klasa of ['0.2', '0.5', '1.0'] as const) {
+      expect(isCtClassValidForProtection(klasa)).toBe(false);
     }
   });
 });
 
-describe('Naprawa C.3 — SPZ catalog', () => {
-  it('SPZ_CATALOG ma 1-cykl, 2-cykle, 3-cykle', () => {
-    expect(SPZ_CATALOG.length).toBe(3);
-    const cycles = SPZ_CATALOG.map((s) => s.cycles);
-    expect(cycles).toEqual(expect.arrayContaining([1, 2, 3]));
-  });
-
-  it('selectSpzCompatibleWithDer pomija SPZ 3-cykle (typowo niekompatybilny)', () => {
-    const compatible = selectSpzCompatibleWithDer();
-    expect(compatible.every((s) => s.compatible_with_der)).toBe(true);
-    expect(compatible.find((s) => s.cycles === 3)).toBeUndefined();
-  });
-
-  it('SPZ wymaga synchrocheck dla wielocyklowych', () => {
-    const multi = SPZ_CATALOG.filter((s) => s.cycles > 1);
-    expect(multi.every((s) => s.requires_synchrocheck)).toBe(true);
-  });
-});
-
-describe('Naprawa C.4 — SZR catalog', () => {
-  it('SZR_CATALOG ma 3 tryby (fast/synchrocheck/live)', () => {
-    expect(SZR_CATALOG.length).toBe(3);
-    const modes = SZR_CATALOG.map((s) => s.mode);
-    expect(modes).toContain('fast_break_before_make');
-    expect(modes).toContain('slow_with_synchrocheck');
-    expect(modes).toContain('live_transfer');
-  });
-
-  it('każdy SZR wymaga ≥2 transformatorów', () => {
-    for (const szr of SZR_CATALOG) {
-      expect(szr.requires_min_transformers).toBeGreaterThanOrEqual(2);
-    }
-  });
-});
+// USUNIĘTE (karta FAB-M, 2026-09-05) — całe „Naprawa C.3 — SPZ catalog" i
+// „Naprawa C.4 — SZR catalog": `SPZ_CATALOG`/`SzrCatalogItem`+`SZR_CATALOG`
+// (+ selektor `selectSpzCompatibleWithDer`) USUNIĘTE z `protection-
+// catalogs.ts` — ZERO konsumentów produkcyjnych (zmierzone grepem: jedyny
+// importer SPZ_CATALOG poza definicją to ten plik i `audit-round2-fixes.
+// test.ts`; SZR_CATALOG tylko ten plik). Backendowy `application/analyses/
+// protection/line_overcurrent_setting/spz_lookup.py` jest INNĄ zdolnością
+// (progi blokady SPZ wg prądu/czasu zwarcia), nie katalogiem profili cykli —
+// nie ma tu duplikatu do migracji. Dług widniał otwarty w `docs/v12xx/
+// REJESTR_KONFLIKTOW.md` (wiersz K-O) i `docs/plan/
+// PLAN_DOKONCZENIA_100_2026-08-14.md` (punkt 3 po K-O) — FAB-M go zamyka.
+// Eksport bez konsumenta produktu = dług L4 (wzorzec FAB-L) — kasacja z
+// testem, bez migracji.
 
 // =============================================================================
 // Naprawa D — readiness aware grounding + hosting capacity

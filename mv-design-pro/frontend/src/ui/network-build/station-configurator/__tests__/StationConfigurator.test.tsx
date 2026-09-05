@@ -40,7 +40,7 @@ const minimalProps = {
     reservesCount: 1,
     readinessLabelPl: 'gotowe',
   },
-  bays: { bays: [] },
+  bays: { bays: [], hvFuses: [] },
   transformer: { transformers: [], availableLvVoltages: [0.4], tapChangers: [] },
   nnSwitchgear: { switchgears: [] },
   derSources: { stationId: 'station_test', ders: [] },
@@ -216,6 +216,7 @@ describe('StationConfigBaysCard', () => {
             statusPl: 'częściowe',
           },
         ]}
+        hvFuses={[]}
         onOpenBay={onOpen}
         onShowOnSld={onShow}
       />,

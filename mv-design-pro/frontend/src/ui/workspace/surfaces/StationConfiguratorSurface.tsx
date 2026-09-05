@@ -104,7 +104,9 @@ function buildBaseStationProps(stationName: string, localConfig: StationLocalCon
       reservesCount: 0,
       readinessLabelPl: 'do konfiguracji',
     },
-    bays: { bays: [] },
+    // Karta FAB-M: `hvFuses` nadpisane niżej danymi ze snapshotu audytu 2 —
+    // pusta lista jest stanem PRZED pobraniem, nie brakiem katalogu.
+    bays: { bays: [], hvFuses: [] },
     // Karta FAB-L: `tapChangers` nadpisane niżej danymi ze snapshotu audytu 2.
     transformer: { transformers: [], availableLvVoltages: [0.4], tapChangers: [] },
     // Krok "Strona nN" zawiera rozdzielnice nN i odbiory techniczne.
@@ -667,6 +669,10 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
   const blockTransformers = audit2CatalogSnapshotQuery.data?.block_transformers ?? [];
   const mvNeutralGroundings = audit2CatalogSnapshotQuery.data?.mv_neutral_groundings ?? [];
   const tapChangers = audit2CatalogSnapshotQuery.data?.tap_changers ?? [];
+  // Karta FAB-M: katalog bezpieczników HV (eng.17) — ten sam snapshot audytu 2
+  // (zero nowego zapytania sieciowego); front nie ma już własnej kopii
+  // (`HV_FUSE_CATALOG` usunięty z `protection-catalogs.ts`).
+  const hvFuses = audit2CatalogSnapshotQuery.data?.hv_fuses ?? [];
   const ncRfgOperators = useNcRfgOperatorCatalog().data ?? [];
   const snapshotDers = useMemo(
     () => deryStacjiZModelu(snapshot, stationRef, projectId, blockTransformers),
@@ -1133,6 +1139,8 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
           ...b,
           hvFuseCatalogRef: bayFuses[b.bayId] ?? null,
         })),
+        // Karta FAB-M: katalog bezpieczników HV — ze snapshotu audytu 2.
+        hvFuses,
         // Phase 18: HV fuse onChange propaguje do mutateAudit2.
         onChangeHvFuse: (bayId: string, fuseId: string | null) => {
           mutateAudit2({
@@ -1201,6 +1209,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     blockTransformers,
     mvNeutralGroundings,
     tapChangers,
+    hvFuses,
     ncRfgOperators,
   ]);
 
