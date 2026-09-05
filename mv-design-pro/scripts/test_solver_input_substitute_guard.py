@@ -926,6 +926,20 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     zakresie (`network_model/reporting/missing_value.py`, `application/trace_emitters/
     wynik.py`, `application/reference_networks/wymagane.py`).
 
+    Stan po GUARD-SUB-2 (2026-09-05): forma H (nosnik lokalny — zmienna
+    przypisana z odczytu pola, podstawienie liczby w NASTEPNEJ instrukcji tej
+    samej funkcji) odslonila 30 zywych trafien w 12 plikach na realnym drzewie.
+    KLASYFIKACJA per trafienie: 26 fizycznych (dzielenie przez wielkosc
+    elektryczna/margines/kardynalnosc oslonione `> 0`/`is not None` — 5 NOWYCH
+    plikow w zapadce + dopisane do 4 juz obecnych) i 4 niefizyczne (sort key
+    strukturalnie obojetny na wynik, prog walidacji WARNING, wynik dopasowania
+    wzorca — 3 NOWE pliki w wykluczeniach). Zapadka fizyczna 61/320 -> 66/346
+    (+5 plikow/+26), wykluczenia 15/46 -> 18/50 (+3 plikow/+4). Zero napraw
+    kodu produkcyjnego w tej karcie — zaden z 12 plikow nie jest jednym z trzech
+    plikow rodziny odtwarzaczy wyniku rozplywu (`energy_validation/service.py`,
+    `api/canonical_run_views.py`, `voltage_profile_view.py`), ktore po `98ad6b6a`
+    juz nie mialy zadnego trafienia H (zweryfikowane pomiarem, nie zalozeniem).
+
     Sumy per korzen (nie tylko globalny RC) pilnuja, zeby cichy dryf w JEDNYM
     korzeniu nie schowal sie za poprawnym wynikiem calosciowym. Liczby to POMIAR
     z biezacego drzewa: kazda zmiana zbioru plikow w zakresie skanu (nowy modul,
@@ -938,15 +952,15 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         "Przeskanowano 600 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
-    assert "Zapadka dlugu (fizyczne): 61 plikow, suma 320." in wyjscie, wyjscie
-    assert "Wykluczenia skanera (niefizyczne): 15 plikow, suma 46." in wyjscie, wyjscie
+    assert "Zapadka dlugu (fizyczne): 66 plikow, suma 346." in wyjscie, wyjscie
+    assert "Wykluczenia skanera (niefizyczne): 18 plikow, suma 50." in wyjscie, wyjscie
     per_korzen = [
         "  network_model: pliki_skanowane=144, dlug=14 plikow/suma 77, "
-        "wykluczenia=2 plikow/suma 4",
+        "wykluczenia=4 plikow/suma 7",
         "  solver_input: pliki_skanowane=10, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
-        "  enm: pliki_skanowane=35, dlug=7 plikow/suma 81, wykluczenia=0 plikow/suma 0",
-        "  application: pliki_skanowane=345, dlug=35 plikow/suma 148, "
-        "wykluczenia=7 plikow/suma 19",
+        "  enm: pliki_skanowane=35, dlug=7 plikow/suma 84, wykluczenia=0 plikow/suma 0",
+        "  application: pliki_skanowane=345, dlug=40 plikow/suma 171, "
+        "wykluczenia=8 plikow/suma 20",
         "  api: pliki_skanowane=66, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 23",
     ]
     for linia in per_korzen:
@@ -1295,3 +1309,309 @@ def test_nieskonczonosc_nie_jest_meldunkiem_braku() -> None:
     # NaN w kazdym zapisie ZOSTAJE uczciwym meldunkiem braku (druga polowa pary).
     for zapis in ('float("nan")', 'float("NaN")', 'float(" nan ")'):
         assert not guard.is_numeric(ast.parse(zapis, mode="eval").body), zapis
+
+
+# ---------------------------------------------------------------------------
+# FORMA H — ZMIENNA LOKALNA JAKO NOSNIK POLA (karta GUARD-SUB-2, 2026-09-05)
+# ---------------------------------------------------------------------------
+#
+# ZNALEZISKO, KTORE TO WYMUSILO (§0 karty): `iterations_raw = result_v1.get(
+# "iterations_count")` ... `iterations = int(iterations_raw) if iterations_raw
+# is not None else 0` w `application/analyses/energy_validation/service.py`
+# PRZED naprawa `98ad6b6a`. Formy A-G patrza na POJEDYNCZY wezel skladni — ten
+# defekt rozklada sie na DWA wezly w DWOCH instrukcjach, wiec byl dla nich
+# niewidzialny z konstrukcji.
+#
+# ILOCZYN CECH (regula KLASA §2), nie przyklad z karty: (odczyt `.attr` ×
+# `.get` × `[..]`) × (podstawienie `or` × `ifexp` × `int()/float()`
+# opakowanie) — dziewiec testow ponizej pokrywa KAZDA z dziewieciu kombinacji
+# (sprawdzalne grepem: kazda para odczyt/podstawienie ma WLASNY test, zaden
+# nie jest pominiety). Do tego trzy testy NEGATYWNE z §0 pkt 2/5 karty:
+# nadpisanie przed uzyciem, zasieg funkcyjny, pole spoza kontraktu — oraz
+# jeden test regresyjny na FALSZYWY ALARM znaleziony i naprawiony w TEJ SAMEJ
+# karcie (nosnik uzyty jako BAZA dalszej dereferencji nie dubluje formy B).
+
+
+def test_forma_h_odczyt_atrybutu_i_lub_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
+    """Odczyt `.attr` × podstawienie `or` — dokladnie przyklad `ia = aparat.ii_a
+    ... margines = ik1_min_a / ia if ia > 0 else float("inf")` (`werdykt.py`),
+    tu w najprostszej postaci `or`."""
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "network_model/solvers/jakosc_h1.py": (
+                "def licz(model):\n"
+                "    poziom = model.fault_level_mva\n"
+                "    return poziom or 50.0\n"
+            )
+        },
+    )
+    assert kod == 1, wyjscie
+    assert "H:local:model.fault_level_mva" in wyjscie, wyjscie
+
+
+def test_forma_h_odczyt_atrybutu_i_wyrazenia_warunkowego_jest_naruszeniem(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    """Odczyt `.attr` × podstawienie `ifexp` bezposrednie (`x if x is not None
+    else <liczba>`, jeden z trzech przykladow §0 karty wprost)."""
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "network_model/solvers/jakosc_h2.py": (
+                "def licz(model):\n"
+                "    poziom = model.fault_level_mva\n"
+                "    return poziom if poziom is not None else 25.0\n"
+            )
+        },
+    )
+    assert kod == 1, wyjscie
+    assert "H:local:model.fault_level_mva" in wyjscie, wyjscie
+
+
+def test_forma_h_odczyt_atrybutu_i_opakowania_int_jest_naruszeniem(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    """Odczyt `.attr` × podstawienie `ifexp` z opakowaniem `int(x)` — drugi z
+    trzech przykladow §0 karty wprost (`int(x) if x is not None else 0`)."""
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "network_model/solvers/jakosc_h3.py": (
+                "def licz(model):\n"
+                "    poziom = model.fault_level_mva\n"
+                "    return int(poziom) if poziom is not None else 0\n"
+            )
+        },
+    )
+    assert kod == 1, wyjscie
+    assert "H:local:model.fault_level_mva" in wyjscie, wyjscie
+
+
+def test_forma_h_odczytu_dict_get_i_lub_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
+    """Odczyt `.get("pole")` (BEZ zapasu — inaczej byloby juz forma F na tej
+    samej linii) × podstawienie `or`."""
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "network_model/solvers/jakosc_h4.py": (
+                "def licz(dane):\n"
+                '    poziom = dane.get("fault_level_mva")\n'
+                "    return poziom or 50.0\n"
+            )
+        },
+    )
+    assert kod == 1, wyjscie
+    assert "H:local:dane.fault_level_mva" in wyjscie, wyjscie
+
+
+def test_forma_h_odczytu_dict_get_i_wyrazenia_warunkowego_jest_naruszeniem(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    """Odczyt `.get("pole")` × podstawienie `ifexp` bezposrednie."""
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "network_model/solvers/jakosc_h5.py": (
+                "def licz(dane):\n"
+                '    poziom = dane.get("fault_level_mva")\n'
+                "    return poziom if poziom is not None else 25.0\n"
+            )
+        },
+    )
+    assert kod == 1, wyjscie
+    assert "H:local:dane.fault_level_mva" in wyjscie, wyjscie
+
+
+def test_forma_h_odczytu_dict_get_i_opakowania_float_jest_naruszeniem(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    """Odczyt `.get("pole")` × podstawienie `ifexp` z opakowaniem `float(x)` —
+    trzeci z trzech przykladow §0 karty wprost (`x if x is not None else
+    0.0`, tu dodatkowo opakowany)."""
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "network_model/solvers/jakosc_h6.py": (
+                "def licz(dane):\n"
+                '    poziom = dane.get("fault_level_mva")\n'
+                "    return float(poziom) if poziom is not None else 0.0\n"
+            )
+        },
+    )
+    assert kod == 1, wyjscie
+    assert "H:local:dane.fault_level_mva" in wyjscie, wyjscie
+
+
+def test_forma_h_odczytu_subskrypcji_i_lub_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
+    """Odczyt `["pole"]` (subskrypcja, rodzina D/G) × podstawienie `or`."""
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "network_model/solvers/jakosc_h7.py": (
+                "def licz(dane):\n"
+                '    poziom = dane["fault_level_mva"]\n'
+                "    return poziom or 50.0\n"
+            )
+        },
+    )
+    assert kod == 1, wyjscie
+    assert "H:local:dane.fault_level_mva" in wyjscie, wyjscie
+
+
+def test_forma_h_odczytu_subskrypcji_i_wyrazenia_warunkowego_jest_naruszeniem(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    """Odczyt `["pole"]` × podstawienie `ifexp` bezposrednie."""
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "network_model/solvers/jakosc_h8.py": (
+                "def licz(dane):\n"
+                '    poziom = dane["fault_level_mva"]\n'
+                "    return poziom if poziom is not None else 25.0\n"
+            )
+        },
+    )
+    assert kod == 1, wyjscie
+    assert "H:local:dane.fault_level_mva" in wyjscie, wyjscie
+
+
+def test_forma_h_odczytu_subskrypcji_i_opakowania_jest_naruszeniem(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    """Odczyt `["pole"]` × podstawienie `ifexp` z opakowaniem `int(x)` —
+    domyka iloczyn 3×3 (dziewiata i ostatnia kombinacja)."""
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "network_model/solvers/jakosc_h9.py": (
+                "def licz(dane):\n"
+                '    poziom = dane["fault_level_mva"]\n'
+                "    return int(poziom) if poziom is not None else 0\n"
+            )
+        },
+    )
+    assert kod == 1, wyjscie
+    assert "H:local:dane.fault_level_mva" in wyjscie, wyjscie
+
+
+def test_forma_h_nadpisanie_przed_uzyciem_nie_jest_naruszeniem(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    """Nazwa NADPISANA inna wartoscia PRZED uzyciem kasuje status nosnika (§0
+    pkt 2 karty: „ponowne przypisanie innej wartosci kasuje status nosnika").
+
+    Bez tego kazdy PRAWDZIWY refaktoring zmiennej lokalnej (przypisanie jej
+    STALEJ konfiguracyjnej po odczycie pola przy wczesnym `return`/walidacji)
+    zapalalby bramke na kodzie, ktory juz nie czyta pola w tym miejscu.
+    """
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "network_model/solvers/jakosc_h10.py": (
+                "def licz(model):\n"
+                "    poziom = model.fault_level_mva\n"
+                "    poziom = 5.0\n"
+                "    return poziom or 10.0\n"
+            )
+        },
+    )
+    assert kod == 0, wyjscie
+    assert "H:local:" not in wyjscie, wyjscie
+
+
+def test_forma_h_nosnik_z_innej_funkcji_nie_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
+    """ZASIEG FUNKCYJNY (§0 pkt 2): nosnik ustanowiony w JEDNEJ funkcji nie
+    przenika do INNEJ funkcji o tej samej nazwie zmiennej lokalnej — druga
+    funkcja czyta `poziom` jako PARAMETR (nigdy nie odczytany z pola w JEJ
+    WLASNYM ciele), wiec nie jest nosnikiem w TYM zasiegu."""
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "network_model/solvers/jakosc_h11.py": (
+                "def buduj(model):\n"
+                "    poziom = model.fault_level_mva\n"
+                "    return poziom\n"
+                "\n"
+                "\n"
+                "def inny(poziom):\n"
+                "    return poziom or 10.0\n"
+            )
+        },
+    )
+    assert kod == 0, wyjscie
+    assert "H:local:" not in wyjscie, wyjscie
+
+
+def test_forma_h_pole_spoza_kontraktu_nie_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
+    """Pole NIEZADEKLAROWANE w kontrakcie (nie ma go w `KONTRAKT` — analogon
+    `model.parameters.get(...)` z formy A/D) nie ustanawia nosnika, wiec
+    pozniejsze `or <liczba>` na tej nazwie NIE jest trafieniem."""
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "network_model/solvers/jakosc_h12.py": (
+                "def licz(model):\n"
+                "    wartosc = model.jakies_pole_spoza_kontraktu\n"
+                "    return wartosc or 10.0\n"
+            )
+        },
+    )
+    assert kod == 0, wyjscie
+    assert "H:local:" not in wyjscie, wyjscie
+
+
+def test_forma_h_nosnik_jako_baza_dereferencji_nie_dubluje_formy_b(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    """REGRESJA na falszywy alarm znaleziony I NAPRAWIONY w tej samej karcie
+    (iniekcja nadzorcy: `th = data.thermal` ... `th.i2t_a2s if th.i2t_a2s is
+    not None else 0.0` w `lv_circuit_verification.py` melodowalo BLEDNIE
+    `H:local:data.thermal`, zamiast poprawnego, JUZ ISTNIEJACEGO
+    `B:ifexp:th.i2t_a2s`).
+
+    Nosnik uzyty jako BAZA dalszej dereferencji (`stan.load_mvar`) to odczyt
+    INNEGO pola (`load_mvar`, ktore ma WLASNE poprawne wykrycie w formie B),
+    nie uzycie WARTOSCI nosnika — forma H nie moze tego dublowac pod ZLA
+    nazwa pola.
+    """
+    kod, wyjscie = _uruchom(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        {
+            "network_model/solvers/jakosc_h13.py": (
+                "def diagnostyka(model):\n"
+                "    stan = model.fault_level_mva\n"
+                "    return stan.load_mvar if stan.load_mvar is not None else 50.0\n"
+            )
+        },
+    )
+    assert kod == 1, wyjscie
+    assert "B:ifexp:stan.load_mvar" in wyjscie, wyjscie
+    assert "H:local:model.fault_level_mva" not in wyjscie, wyjscie

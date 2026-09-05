@@ -35,6 +35,11 @@ Trafieniem jest ODCZYT POLA KONTRAKTU WEJSCIOWEGO z GALEZIA ZAPASOWA LICZBOWA:
   D. `<slownik>["<pole>"] or <wyrazenie liczbowe>` / `<slownik>.get("<pole>") or <wyrazenie liczbowe>`
   F. `<slownik>.get("<pole>", <wyrazenie liczbowe>)`
   G. `... <slownik>["<pole>"]/.get("<pole>") ... if <warunek> else <wyrazenie liczbowe>`
+  H. zmienna LOKALNA przypisana z odczytu pola (`x = <obiekt>.<pole>` /
+     `x = <slownik>.get("<pole>")` / `x = <slownik>["<pole>"]`, takze przez
+     `float(...)`/`int(...)`), gdy PO tym przypisaniu, w TEJ SAMEJ funkcji,
+     `x` samo trafia w galaz zapasowa liczbowa (`x or <liczba>` / `... x ...
+     if <warunek> else <liczba>`) — patrz „FORMA H" nizej.
 
 ODCZYT PRZEZ `getattr` LICZY SIE TAK SAMO, CO PRZEZ KROPKE (2026-08-08, karta
 MOST-WEJSCIA-V126): w formach A i B `<obiekt>.<pole>` obejmuje rowniez
@@ -53,6 +58,51 @@ jest juz forma F i nie liczy sie ponownie jako D/G (`reads_contract_dict_field`)
 Szczegoly pomiaru, historia OBALONEJ probki (73/79 falszywych trafien w rundzie
 QU-FABRYKACJA) i uzasadnienie warunku 1. ponizej dla tej formy — patrz docstring
 `reads_contract_dict_field`.
+
+FORMA H — ZMIENNA LOKALNA JAKO NOSNIK POLA (2026-09-05, karta GUARD-SUB-2).
+Piata droga do tego samego pola — tym razem nie przez SPOSOB odczytu (atrybut/
+`getattr`/slownik, jak A-G), tylko przez ODROCZENIE go o JEDNA INSTRUKCJE: kod
+NAJPIERW czyta pole do zmiennej lokalnej BEZ WLASNEJ galezi zapasowej (z galezia
+na tej samej linii bylaby to juz forma A/B/C/D/F/G), a DOPIERO w KOLEJNEJ
+instrukcji podstawia liczbe za TA ZMIENNA, gdy okazuje sie `None`. Formy A-G
+patrza na POJEDYNCZY wezel skladni (`BoolOp`/`IfExp`/wywolanie) — ten sam
+defekt rozlozony na DWA wezly w DWOCH instrukcjach byl dla nich niewidzialny
+z konstrukcji, mimo identycznego skutku (liczba wchodzi do arytmetyki jako
+pomiar, ktorego solver nie zrobil).
+
+ZNALEZISKO, KTORE TO WYMUSILO (FAB-E, 2026-09-05,
+`application/analyses/energy_validation/service.py` PRZED naprawa `98ad6b6a`):
+
+    iterations_raw = result_v1.get("iterations_count")
+    ...
+    iterations=int(iterations_raw) if iterations_raw is not None else 0
+
+oraz analogicznie dla `base_mva` (`base_mva_znane if base_mva_znane is not
+None else 100.0`). Bramka deklarowala zakres — „odczyt pola kontraktu z galezia
+zapasowa liczbowa" — ktorego jej wlasna wyrocznia (analiza WEZLA, nie STANU
+zmiennej) nie obejmowala. Ta sama klasa metodyczna, ktora runda 3 naprawila dla
+modelu domenowego (patrz „GRANICE BRAMKI" p.5 wyzej): deklarowany zakres i
+faktycznie wykrywany zakres rozjezdzaly sie.
+
+ZASIEG: FUNKCYJNY, SEKWENCYJNY, BEZ ANALIZY PRZEPLYWU STEROWANIA. Nosnik zyje
+od przypisania do (a) konca funkcji, (b) PONOWNEGO przypisania tej samej
+nazwie inna wartoscia — kasuje status BEZ SPRAWDZANIA, czy to przypisanie
+faktycznie wykona sie na sciezce runtime (patrz nizej), lub (c) granicy
+zagniezdzonej funkcji/lambdy/klasy (WLASNY zasieg — ten sam nosnik w dwoch
+roznych funkcjach to DWA rozne zjawiska, nie jedno; `test_forma_h_nosnik_z_
+innej_funkcji_nie_jest_naruszeniem`). Galezie `if`/`else` i `try`/`except` sa
+odwiedzane SEKWENCYJNIE (kolejnosc zapisu w zrodle), NIE jako alternatywy
+wykluczajace — nosnik ustanowiony w jednej galezi bedzie (niepoprawnie
+optymistycznie) wciaz „zywy" w sasiedniej. To NAZWANE OGRANICZENIE, tej samej
+klasy co „Podstawienie o dwa kroki dalej" wyzej w tym pliku: pelna analiza
+przeplywu sterowania (i alias jednej nazwy przez druga, `y = x`) jest poza
+zakresem tej karty. Test negatywny (`test_forma_h_nadpisanie_przed_uzyciem_
+nie_jest_naruszeniem`) pokrywa przypadek WYMAGANY przez karte: liniowe
+nadpisanie inna wartoscia PRZED uzyciem, w TEJ SAMEJ galezi, kasuje nosnik.
+
+SYGNATURA: `H:local:<pole_zrodlowe>` (np. `H:local:result_v1.base_mva`) — CEL
+jest polem, Z KTOREGO nosnik zostal ustanowiony, NIE nazwa zmiennej lokalnej
+(ktora jest szczegolem implementacji funkcji, a nie istota defektu).
 
 WYRAZENIEM LICZBOWYM JEST TEZ STALA MODULU zwiazana z literalem liczbowym
 (`numeric_module_constants`). Bez tego kazdy zastepnik chowal sie jednym ruchem —
@@ -208,6 +258,7 @@ from __future__ import annotations
 import ast
 import sys
 from collections import Counter
+from collections.abc import Iterator
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -619,6 +670,46 @@ WYKLUCZENIA_SKANERA: dict[str, dict[str, int]] = {
     "application/sld/layout.py": {
         "F:dictget:annotation.x": 1,
         "F:dictget:annotation.y": 1,
+    },
+    # KARTA GUARD-SUB-2 (2026-09-05) — TRZY NOWE KLASY, WSZYSTKIE odslonione
+    # przez forme H (nosnik lokalny), zero fizyki w kazdej.
+    #
+    # (d) SORT KEY STRUKTURALNIE OBOJETNY na wynik sortowania. `_klucz_
+    # sortowania_delty` zwraca KROTKE `(delta is not None, abs(delta) if ...
+    # else 0.0)` — PIERWSZY element (flaga logiczna) ROZSTRZYGA porownanie
+    # kazdej pary krotek, w ktorej jedna strona ma brakujacy `delta_v_pu`, a
+    # druga nie (`True`/`False` roznia sie ZAWSZE w takim przypadku, wiec
+    # DRUGI element krotki nigdy nie jest w takiej parze porownywany) —
+    # zweryfikowane w zrodle, komentarz FAB-E wprost: „nie traktujemy None
+    # jako 0 pu". Sam zwracany klucz jest wewnetrzny dla `sorted(...)`
+    # (Python odrzuca go po posortowaniu) — `0.0` nigdy nie trafia do
+    # zadnego pola wyniku ani do arytmetyki elektrycznej.
+    "network_model/reporting/power_flow_report_docx.py": {
+        "H:local:wiersz.delta_v_pu": 1,
+    },
+    # (e) REGULA WALIDACJI (nie solver), ktora CELOWO traktuje BRAK mocy
+    # odbioru jak jej JAWNE zero — `rule_zero_power_load` (docstring wprost:
+    # „najprawdopodobniej placeholder LUB BRAK MATERIALIZACJI KATALOGU")
+    # ostrzega w OBU przypadkach identycznie, bo dla warstwy Validation
+    # (ARCHITECTURE.md: „NO physics calculations") skutek jest ten sam:
+    # element nie wplywa na rozplyw. Wartosc `p`/`q` liczona tu SLUZY
+    # WYLACZNIE progowi `abs(p) < 1e-9 and abs(q) < 1e-9` decydujacemu o
+    # emisji komunikatu WARNING — nigdy nie wchodzi do zadnego solvera.
+    "network_model/validation/semantic_rules.py": {
+        "H:local:load.p_kw": 1,
+        "H:local:load.q_kvar": 1,
+    },
+    # (f) ZAWEZENIE TYPU DLA TYPE-CHECKERA na galezi STRUKTURALNIE MARTWEJ.
+    # `_confidence_pct`'s wlasny docstring: „confidence_pct is ALWAYS a float
+    # (built via round(...) above); narrowed explicitly because the dict's
+    # value type is object" — `isinstance` nie odsiewa braku danych (danej
+    # brakujacej nigdy nie ma), tylko dowodzi typ mypy dla slownika
+    # `dict[str, object]`; galaz `else 0.0` nie wykona sie NIGDY w praktyce.
+    # `confidence_pct` jest tez WYNIKIEM DOPASOWANIA WZORCA (ranking
+    # podobienstwa sieci referencyjnej), nie wielkoscia elektryczna — ta sama
+    # klasa, co `issue.priority`/`summary.total_issues` wyzej w tym slowniku.
+    "application/reference_networks/similarity_matcher.py": {
+        "H:local:match.confidence_pct": 1,
     },
 }
 
@@ -1090,6 +1181,24 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "F:dictget:segment.length_km": 3,
         "F:dictget:segment.r_ohm_per_km": 5,
         "F:dictget:segment.x_ohm_per_km": 5,
+        # Karta GUARD-SUB-2 (2026-09-05), forma H, dwa niezalezne miejsca
+        # (10012-wierszowy plik, wiele operacji CRUD ENM):
+        # `rated_power_mva = materialized.get("rated_power_mva")` ... `s_n_kva
+        # = float(rated_power_mva)*1000 if rated_power_mva is not None else
+        # float(t["sn_mva"])*1000 if t.get("sn_mva") else None` — LANCUCH
+        # trzech zrodel (materializacja katalogu -> surowe sn_mva -> None), nie
+        # zmyslona liczba na koncu (patrz komentarz zrodlowy FAB-D1 obok) —
+        # ale forma jest SKLADNIOWO nieodroznialna dla skanera od podstawienia
+        # (zagniezdzony `IfExp` w galezi zapasowej jest TEZ liczbowy). DLUG
+        # NAZWANY jako pomiar, nie jako blad: moc znamionowa transformatora.
+        # `nn_voltage_raw = station_payload.get("nn_voltage_kv"); if ... is
+        # None: nn_voltage_raw = payload.get("nn_voltage_kv"); nn_voltage_kv =
+        # nn_voltage_raw if ... is not None else 0.4` (kreator stacji SN/nN) —
+        # 0,4 kV to STANDARDOWE napiecie znamionowe nN, ale nadal ZALOZENIE
+        # dla NOWEJ stacji, gdy zadne z dwoch zrodel go nie poda — DLUG
+        # NAZWANY, ta sama klasa co typowe wartosci domyslne w `enm/mapping.py`.
+        "H:local:materialized.rated_power_mva": 1,
+        "H:local:payload.nn_voltage_kv": 1,
     },
     # Karta RATCHET-DICT-READ (2026-08-13), zaktualizowana kartą FAB-D1
     # (klasa A6-12, 2026-09) — „watek nN" domknięty, plik odblokowany do edycji.
@@ -1105,6 +1214,15 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # ZNIKAJA z zapadki — dlug usuniety, nie zmalal cicho.
     "enm/domain_operations_v2.py": {
         "D:dictor:payload.quantity": 1,
+        # Karta GUARD-SUB-2 (2026-09-05), forma H: `quantity_raw = payload.get
+        # ("quantity")` ... `quantity = int(quantity_raw) if isinstance(
+        # quantity_raw, int | float) else 1` w `_converter_required_apparent_
+        # power_mva`, gdzie `quantity` mnozy WPROST moc pozorna (`return max(
+        # candidates) * quantity`, w. 1543) — TA SAMA klasa kardynalnosci, co
+        # `D:dictor:payload.quantity` obok (jedynka = brak redukcji liczba
+        # jednostek), tylko przez nosnik lokalny w INNEJ funkcji tego samego
+        # pliku. Zostaje w budzecie z tym samym powodem merytorycznym.
+        "H:local:payload.quantity": 1,
         # Karta GUARD-SUB (2026-09-05): `ds_settings.get("time_dial", 1.0)` /
         # `us_settings.get("time_dial", 1.0)` w `calculate_tcc_curve`/
         # `validate_selectivity` (w. 1153-1154) — NOWO WIDOCZNE dopiero po
@@ -1269,8 +1387,18 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     "application/analyses/state_estimation/service.py": {
         "F:dictget:run.base_mva": 1,
     },
+    # Karta GUARD-SUB-2 (2026-09-05), forma H: `ia = aparat.ii_a` (nastawa
+    # zwarciowa wyzwalacza elektronicznego MCCB, IEC 60947-2) ... `margines =
+    # ik1_min_a / ia if ia > 0 else float("inf")`. TRZECIA droga do TEJ SAMEJ
+    # klasy, co juz zaakceptowane `B:ifexp:bramka_konwencjonalna.inf_a` w tym
+    # samym pliku (GRUPA 2 wyzej: prad progowy aparatu jako mianownik marginesu
+    # bezpieczenstwa, oslonione `> 0`) — tylko odczytany przez NOSNIK LOKALNY,
+    # nie bezposrednio. DLUG NAZWANY: `ii_a<=0` jest DANA NIEPOPRAWNA (nastawa
+    # zwarciowa nie moze byc zerowa/ujemna), nie brakiem — margines=inf
+    # UDAJE nieskonczony zapas bezpieczenstwa zamiast zgloszenia bledu wejscia.
     "application/analyses/swz/werdykt.py": {
         "B:ifexp:bramka_konwencjonalna.inf_a": 1,
+        "H:local:aparat.ii_a": 1,
     },
     "application/proof_engine/packs/lv_circuit_verification.py": {
         "B:ifexp:th.i2t_a2s": 1,
@@ -1315,9 +1443,18 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "F:dictget:kotwica.c_factor": 1,
         "F:dictget:kotwica.thermal_time_seconds": 1,
     },
+    # Karta GUARD-SUB-2 (2026-09-05), forma H: `ik_max = inp.ik3_max_beginning_a`
+    # ... `margin = ((i_th_dop - ik_max) / i_th_dop * 100) if i_th_dop > 0 else
+    # 0.0` (nosnik `ik_max` zagniezdzony w liczniku dzielenia). TA SAMA klasa,
+    # co dwa juz zaakceptowane wpisy obok (dzielenie przez wielkosc cieplna/
+    # zwarciowa oslonione `> 0`) — `margin` (margines wytrzymalosci cieplnej,
+    # %) trafia wprost do `trace["result"]["margin_percent"]`. DLUG NAZWANY:
+    # `i_th_dop<=0` jest DANA NIEPOPRAWNA (przekroj/material przewodu
+    # brakujacy), nie brakiem marginesu — 0,0% zamiast odmowy.
     "application/protection_settings/engine.py": {
         "B:ifexp:inp.cross_section_mm2": 1,
         "B:ifexp:inp.ik2_min_end_a": 1,
+        "H:local:inp.ik3_max_beginning_a": 1,
     },
     "application/trace_emitters/protection_emitter.py": {
         "F:dictget:tp.i_a_primary": 1,
@@ -1403,6 +1540,96 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # wyzej.
     "application/station_templates/apply.py": {
         "D:dictor:station_spec.nn_voltage_kv": 1,
+    },
+    # GRUPA 6 — KARTA GUARD-SUB-2 (2026-09-05), forma H. Piec plikow DOTAD
+    # CZYSTYCH (bez wpisu w zapadce/wykluczeniach) — luka zamknieta przez
+    # rozszerzenie wyroczni o sledzenie ZMIENNYCH LOKALNYCH w obrebie funkcji
+    # (patrz „FORMA H" w docstringu modulu). WSZYSTKIE ponizej sa DZIELENIEM
+    # PRZEZ WIELKOSC ELEKTRYCZNA oslonionym warunkiem `> 0`/`is not None`
+    # (rodzina „przeksztalcenie strona pierwotna -> wtorna przekladnika",
+    # „margines selektywnosci/czulosci zabezpieczenia", „udzial pradu zwarcia
+    # generacji lokalnej") — TA SAMA klasa, co juz zaakceptowane wpisy formy B
+    # w innych plikach tego rejestru (np. `bramka_konwencjonalna.inf_a`,
+    # `inp.cross_section_mm2` wyzej), tylko odczytana przez nosnik lokalny,
+    # a nie bezposrednio. DLUG NAZWANY dla kazdego: dana <= 0 jest bledem
+    # WEJSCIA (przekladnik/prog/prad zwarciowy nie moze byc zerowy/ujemny w
+    # realnej sieci), nie brakiem — wynikowy margines/prad wtorny=0 UDAJE
+    # pomiar zamiast zglosic odmowe z powodem.
+    #
+    # `application/analyses/protection/line_overcurrent_setting/analyzer.py`:
+    # TRZY NIEZALEZNE funkcje (`_check_selectivity`/`_check_sensitivity`/
+    # `_check_thermal`) powtarzaja IDENTYCZNY idiom „przelicz prad strony
+    # pierwotnej na wtorna dzielac przez `ct_ratio`, oslaniajac `> 0`" —
+    # KLASA NIE INSTANCJA: TRZY miejsca tego samego mostu CT, nie jedno.
+    # Wynik (`i_min_secondary_a`/`i_max_secondary_a`) trafia wprost do
+    # `SelectivityCriterionResult`/`SensitivityCriterionResult`/
+    # `ThermalCriterionResult` — nastawy przekaznika w amperach. `kc`
+    # (wspolczynnik czulosci) jest mianownikiem `ik_min/kc` w tej samej
+    # funkcji sensitivity. `ik_max_busbars_a` (prad zwarciowy na szynach,
+    # `_check_local_generation`) jest mianownikiem stosunku wkladu generacji
+    # lokalnej `el_ratio = ik_el/ik_total`, uzywanego do progu ryzyka blokady
+    # ZSZ (>=30%) — DWA niezalezne odczyty tej samej wielkosci w tej samej
+    # funkcji (raz do `notes_pl`, raz zduplikowane w `trace["calculation"]`).
+    "application/analyses/protection/line_overcurrent_setting/analyzer.py": {
+        "H:local:input_data.ct_ratio": 3,
+        "H:local:input_data.ik_max_busbars_a": 2,
+        "H:local:input_data.kc": 1,
+    },
+    # `application/analyses/werdykt_projektowy.py`: DWIE funkcje klucza
+    # sortowania (`_wiodacy_wiersz_walidacji`/`_wiodaca_galaz`) wybierajace
+    # „NAJGORSZY" wiersz walidacji do zaraportowania w podsumowaniu werdyktu
+    # projektowego. W ODROZNIENIU od wykluczenia `power_flow_report_docx.py`
+    # wyzej (gdzie flaga logiczna w krotce strukturalnie gwarantuje obojetnosc
+    # zapasu na wynik), TU zapas (`float("inf")`/`-1.0`) jest JEDYNYM
+    # czynnikiem decydujacym o pozycji — wiersz z BRAKUJACYM `margin_pct`/
+    # `utilization` (analiza nie policzyla wartosci) dostaje sztucznie
+    # „najbezpieczniejsza" pozycje i NIGDY nie zostanie wskazany jako wiodacy
+    # problem, nawet jesli faktycznie jest najgorszy — zapas MOZE ukryc
+    # rzeczywiscie krytyczny przypadek w podsumowaniu werdyktu.
+    "application/analyses/werdykt_projektowy.py": {
+        "H:local:wiersz.margin_pct": 1,
+        "H:local:wiersz.utilization": 1,
+    },
+    # `application/proof_engine/latex_renderer.py`: `_render_losses_energy_
+    # section` przenosi `current_delta_t` (czas trwania kroku energii strat,
+    # sekundy) MIEDZY iteracjami petli po krokach dowodu (EQ_LE_001 ustawia,
+    # EQ_LE_002 czyta) do wiersza tabeli LaTeX. Brak wczesniejszego kroku
+    # EQ_LE_001 w danym przebiegu daje `delta_t=0,0 s` w RENDEROWANYM DOWODZIE
+    # formalnym — Proof Engine (CLAUDE.md, „ZERO FABRYKACJI") traktuje
+    # podstawiona wartosc w dowodzie jako gorsza niz jego brak, nawet gdy
+    # renderowanie samo nie liczy fizyki.
+    "application/proof_engine/latex_renderer.py": {
+        "H:local:step.value": 1,
+    },
+    # `application/proof_engine/proof_inspector/inspector.py`: SZESC odczytow
+    # `kr[<klucz>].value` (Q_cmd/U kontrfaktycznego porownania A/B: moc bierna
+    # Mvar, napiecie kV) w `_counterfactual_view`, kazdy z tym samym
+    # opakowaniem `float(x) if isinstance(x, int | float) else 0.0` przed
+    # zlozeniem `CounterfactualRow`. Proof Inspector istnieje do AUDYTU White
+    # Box — pokazanie 0,0 zamiast anomalii w wartosci sladu ukrywa dokladnie
+    # to, co narzedzie ma ujawniac.
+    "application/proof_engine/proof_inspector/inspector.py": {
+        "H:local:kr.value": 6,
+    },
+    # `application/reference_patterns/wzorzec_c_generacja_lokalna.py`: CZTERY
+    # pola w TRZECH niezaleznych funkcjach sprawdzajacych wplyw generacji
+    # lokalnej (E-L) na koordynacje zabezpieczen — ta sama rodzina „dzielenie
+    # przez prog/prad zwarciowy oslonione `> 0`, wynik trafia do werdyktu
+    # PASS/FAIL selektywnosci", co `analyzer.py` wyzej (KLASA NIE INSTANCJA,
+    # inny plik tej samej domeny — koordynacja zabezpieczen z DER). `prog_
+    # blokady_szyn_a` (prog blokady zabezpieczenia szyn) jest mianownikiem
+    # stosunku procentowego DWA razy w tej samej funkcji (opis tekstowy i
+    # `details` slownika). `i_wyzszy_stopien_a` (nastawa wyzszego stopnia) —
+    # mianownik rezerwy selektywnosci, DWA razy (bez generacji / z generacja
+    # maksymalna). `ik_za_nastepnym_zabezpieczeniem_a` — mianownik marginesu
+    # selektywnosci wobec kolejnego zabezpieczenia (`float("inf")` gdy brak).
+    # `ik_3f_a` (prad zwarciowy 3-fazowy, z/bez generacji) — mianownik zmiany
+    # procentowej wplywu generacji na prad zwarciowy w budowie artefaktow.
+    "application/reference_patterns/wzorzec_c_generacja_lokalna.py": {
+        "H:local:input_data.i_wyzszy_stopien_a": 2,
+        "H:local:input_data.ik_3f_a": 1,
+        "H:local:input_data.ik_za_nastepnym_zabezpieczeniem_a": 1,
+        "H:local:input_data.prog_blokady_szyn_a": 2,
     },
 }
 
@@ -1798,11 +2025,361 @@ def is_numeric(expr: ast.expr, stale: set[str] | None = None) -> bool:
     return False
 
 
+#: Granica ZASIEGU FUNKCYJNEGO formy H (karta GUARD-SUB-2) — wezly, ktore
+#: wprowadzaja WLASNA przestrzen nazw. Przy skanowaniu instrukcji biezacej
+#: funkcji NIE wchodzimy w cialo zadnego z nich: kazdy ma WLASNE zmienne
+#: lokalne, wiec ten sam nosnik w dwoch takich zasiegach to DWA rozne zjawiska.
+_SCOPE_BOUNDARY: tuple[type[ast.AST], ...] = (
+    ast.FunctionDef,
+    ast.AsyncFunctionDef,
+    ast.Lambda,
+    ast.ClassDef,
+)
+
+
+def _iter_expr_nodes(node: ast.AST) -> Iterator[ast.AST]:
+    """Jak `ast.walk(node)`, ale NIE schodzi w cialo zagniezdzonej funkcji/
+    lambdy/klasy (`_SCOPE_BOUNDARY`) — te maja WLASNY zasieg zmiennych formy H.
+
+    Wezel STARTOWY jest zawsze w pelni odwiedzony (granica jest sprawdzana
+    WYLACZNIE na jego DZIECIACH), wiec wywolanie na calej instrukcji zlozonej
+    (np. `ast.If`) nadal schodzi w jej `test`/`body`/`orelse` — granica dziala
+    dopiero, gdy w tych galeziach pojawi sie WLASNA definicja funkcji/klasy/
+    lambdy.
+    """
+    stack = [node]
+    while stack:
+        current = stack.pop()
+        yield current
+        for child in ast.iter_child_nodes(current):
+            if isinstance(child, _SCOPE_BOUNDARY):
+                continue
+            stack.append(child)
+
+
+def local_carrier_target(expr: ast.expr, fields: set[str]) -> str | None:
+    """Etykieta pola, gdy `expr` jest CZYSTYM (bez WLASNEJ galezi zapasowej)
+    odczytem zadeklarowanego pola kontraktu — kwalifikuje NAZWE, do ktorej
+    zostanie przypisany, jako NOSNIK DANEJ (forma H, karta GUARD-SUB-2).
+
+    Trzy rownowazne drogi odczytu — te same, ktore formy A/B/C (atrybut/
+    `getattr`) i D/F/G (slownik) juz rozpoznaja jako „odczyt pola", tylko TU
+    BEZ wlasnej galezi zapasowej: Z galezia odczyt jest JUZ zliczony w miejscu,
+    w ktorym stoi (forma A/B/C/D/F/G na TEJ SAMEJ linii) — zaliczenie go DRUGI
+    RAZ jako nosnika, ktory „znow podstawia" przy pierwszym uzyciu, rozdmuchaloby
+    budzet o pozycje-widmo (ten sam warunek dedupu, ktory `getattr_read` i
+    `reads_contract_dict_field` stosuja dla form C i F):
+      * `<obiekt>.<pole>` LUB `getattr(<obiekt>, "<pole>")` (2-argumentowy, BEZ
+        zapasu) — rodzina atrybutowa (A/B/C);
+      * `<slownik>["<pole>"]` — subskrypcja (rodzina D/G);
+      * `<slownik>.get("<pole>")` (1-argumentowy, BEZ zapasu) — rodzina F.
+    Dopuszczalne opakowanie `float(...)`/`int(...)` WOKOL ktoregokolwiek z nich:
+    `x = float(obj.dana)` jest tak samo nosnikiem, jak `x = obj.dana`.
+
+    NIE OBSLUGUJE ALIASOWANIA (`y = x`, gdzie `x` jest juz nosnikiem) — to
+    DRUGI HOP, ktorego karta GUARD-SUB-2 nie zada (§0 pkt 2: „odczyt pola
+    kontraktu", nie „nazwa juz bedaca nosnikiem"); nazwane ograniczenie, nie
+    przeoczenie.
+    """
+    inner = expr
+    if (
+        isinstance(inner, ast.Call)
+        and isinstance(inner.func, ast.Name)
+        and inner.func.id in ("float", "int")
+        and len(inner.args) == 1
+    ):
+        inner = inner.args[0]
+    if isinstance(inner, ast.Attribute) and inner.attr in fields:
+        return f"{leftmost_name(inner) or '<obj>'}.{inner.attr}"
+    if (
+        isinstance(inner, ast.Call)
+        and isinstance(inner.func, ast.Name)
+        and inner.func.id == "getattr"
+        and len(inner.args) == 2
+    ):
+        klucz_getattr = inner.args[1]
+        if (
+            isinstance(klucz_getattr, ast.Constant)
+            and isinstance(klucz_getattr.value, str)
+            and klucz_getattr.value in fields
+        ):
+            return f"{leftmost_name(inner.args[0]) or 'getattr'}.{klucz_getattr.value}"
+    sub = dict_key_read(inner)
+    if sub is not None and sub[0] in fields:
+        klucz_sub, baza_sub = sub
+        return f"{baza_sub or '<dict>'}.{klucz_sub}"
+    get = dict_get_read(inner)
+    if get is not None and get[2] is None and get[0] in fields:
+        klucz_get, baza_get, _ = get
+        return f"{baza_get or '<dict>'}.{klucz_get}"
+    return None
+
+
+#: Pola instrukcji zlozonych niosace ZAGNIEZDZONE LISTY INSTRUKCJI. Splaszczajaca
+#: rekursja formy H (`_walk_local_carrier_body`) odwiedza je OSOBNO, wiec
+#: sprawdzenie uzycia na poziomie STATEMENTU (`_check_local_carrier_usage`)
+#: musi je pominac — inaczej ten sam wezel `BoolOp`/`IfExp` zostalby policzony
+#: DWA RAZY: raz tutaj (przy pelnym przejsciu drzewa instrukcji), raz przy
+#: rekursji w nizszej instrukcji.
+_NESTED_BODY_FIELDS: dict[type[ast.AST], tuple[str, ...]] = {
+    ast.If: ("body", "orelse"),
+    ast.For: ("body", "orelse"),
+    ast.AsyncFor: ("body", "orelse"),
+    ast.While: ("body", "orelse"),
+    ast.With: ("body",),
+    ast.AsyncWith: ("body",),
+}
+
+
+def _iter_own_expr_nodes(stmt: ast.stmt) -> Iterator[ast.AST]:
+    """Wezly wyrazen NALEZACE BEZPOSREDNIO do tej instrukcji, z pominieciem
+    zagniezdzonych LIST INSTRUKCJI (`body`/`orelse`/`finalbody`/cialo handlera)
+    — te splaszczajaca rekursja formy H odwiedzi OSOBNO (patrz
+    `_NESTED_BODY_FIELDS`). Instrukcja PROSTA (bez wlasnych zagniezdzonych list
+    instrukcji — jedyna mozliwa WLASNA przestrzen nazw wewnatrz niej to
+    `Lambda`, ktora `_iter_expr_nodes` juz traktuje jako granice) jest
+    odwiedzana W CALOSCI.
+    """
+    if isinstance(stmt, ast.If | ast.While):
+        yield from _iter_expr_nodes(stmt.test)
+        return
+    if isinstance(stmt, ast.For | ast.AsyncFor):
+        yield from _iter_expr_nodes(stmt.iter)
+        return
+    if isinstance(stmt, ast.Try):
+        for handler in stmt.handlers:
+            if handler.type is not None:
+                yield from _iter_expr_nodes(handler.type)
+        return
+    if isinstance(stmt, ast.With | ast.AsyncWith):
+        for item in stmt.items:
+            yield from _iter_expr_nodes(item.context_expr)
+        return
+    if isinstance(stmt, ast.Match):
+        yield from _iter_expr_nodes(stmt.subject)
+        for case in stmt.cases:
+            if case.guard is not None:
+                yield from _iter_expr_nodes(case.guard)
+        return
+    yield from _iter_expr_nodes(stmt)
+
+
+def _iter_carrier_probe_nodes(expr: ast.expr) -> Iterator[ast.AST]:
+    """Jak `_iter_expr_nodes`, ale NIE schodzi w `.value` (baze dereferencji)
+    `ast.Attribute`/`ast.Subscript` — pozostale pola (np. `slice` subskrypcji)
+    sa nadal przeszukiwane.
+
+    PO CO TO OGRANICZENIE (iniekcja nadzorcy na tej karcie,
+    `lv_circuit_verification.py`: `th = data.thermal` ... `th.i2t_a2s if
+    th.i2t_a2s is not None else 0.0`). Bez niego przeszukanie subtree
+    znajduje `th` ZAGNIEZDZONE wewnatrz `th.i2t_a2s` i forma H melduje
+    `H:local:data.thermal` — NAZYWAJAC ZLE POLE: to nie „data.thermal" (caly
+    obiekt-nosnik) jest tu podstawiane, tylko jego WLASNY atrybut `i2t_a2s`,
+    ktory ma juz POPRAWNE, bezposrednie wykrycie w formie B
+    (`reads_contract_field` na `th.i2t_a2s` samym, bo `i2t_a2s` jest polem).
+    Uzycie nosnika jako BAZY dalszej dereferencji (`carrier.pole`/
+    `carrier["klucz"]`/`carrier.metoda(...)`) to odczyt INNEGO pola (majacego
+    WLASNE, poprawne wykrycie w formie A/B/D/G, gdy samo jest polem
+    kontraktu) — nie uzycie WARTOSCI nosnika, wiec forma H go NIE lapie
+    (dedup z forma A/B/D/G, ta sama zasada „jedno miejsce w kodzie = jedna
+    pozycja budzetu", co `getattr_read` stosuje dla C kontra A).
+
+    POZA TYM WYJATKIEM przeszukanie jest TAK SAME szerokie, jak
+    `nested_contract_field` dla formy B — nosnik zagniezdzony w dzialaniu
+    arytmetycznym (`i_min_primary / ct_ratio`), porownaniu czy argumencie
+    wywolania NADAL trafia, zgodnie z zapisem „... x ..." w §0 karty
+    GUARD-SUB-2 (ten sam konwencja elipsy, co forma B w docstringu modulu).
+    """
+    stack: list[ast.AST] = [expr]
+    while stack:
+        current = stack.pop()
+        yield current
+        if isinstance(current, _SCOPE_BOUNDARY):
+            continue
+        if isinstance(current, ast.Attribute):
+            continue
+        if isinstance(current, ast.Subscript):
+            stack.append(current.slice)
+            continue
+        for child in ast.iter_child_nodes(current):
+            stack.append(child)
+
+
+def _carrier_name_in(expr: ast.expr, live: dict[str, str]) -> str | None:
+    """Pierwsza (najplytsza, potem najwczesniejsza) nazwa ZYWEGO nosnika w
+    drzewie wyrazenia, z pominieciem baz dereferencji atrybutu/subskrypcji —
+    analogon `nested_contract_field` dla formy H (patrz `_iter_carrier_probe_
+    nodes` dla uzasadnienia wylaczenia)."""
+    for node in _iter_carrier_probe_nodes(expr):
+        if isinstance(node, ast.Name) and node.id in live:
+            return node.id
+    return None
+
+
+def _check_local_carrier_usage(
+    stmt: ast.stmt, live: dict[str, str], stale: set[str], findings: list[tuple[str, int]]
+) -> None:
+    """Forma H: `<nosnik> or <liczba>` / `... <nosnik> ... if <warunek> else
+    <liczba>` — analogon form A i B, z NAZWA zamiast bezposredniego odczytu
+    pola. Dokladnie sytuacja, ktorej poprzednia wersja bramki nie widziala
+    (§0 pkt 1 karty GUARD-SUB-2): `iterations_raw = result_v1.get(
+    "iterations_count")` ... `iterations = int(iterations_raw) if
+    iterations_raw is not None else 0`.
+    """
+    for node in _iter_own_expr_nodes(stmt):
+        if isinstance(node, ast.BoolOp) and isinstance(node.op, ast.Or):
+            for index, value in enumerate(node.values[:-1]):
+                if (
+                    isinstance(value, ast.Name)
+                    and value.id in live
+                    and is_numeric(node.values[index + 1], stale)
+                ):
+                    findings.append((f"H:local:{live[value.id]}", node.lineno))
+        if isinstance(node, ast.IfExp):
+            carrier = _carrier_name_in(node.body, live)
+            if (
+                carrier is not None
+                and is_numeric(node.orelse, stale)
+                and _carrier_name_in(node.orelse, live) is None
+            ):
+                findings.append((f"H:local:{live[carrier]}", node.lineno))
+
+
+def _update_local_carriers(stmt: ast.stmt, fields: set[str], live: dict[str, str]) -> None:
+    """Ustanow/uniewaznij nosniki formy H po przetworzeniu jednej instrukcji.
+
+    Ustanowienie dziala WYLACZNIE na przypisaniu POJEDYNCZEJ nazwy
+    (`ast.Assign` z jednym celem-`Name`, albo `ast.AnnAssign` z wartoscia) — to
+    JEDYNY ksztalt przypisania, ktory `local_carrier_target` rozpoznaje jako
+    „czysty odczyt". Kazda INNA nazwa, ktora ta instrukcja WIAZE (`_bound_names`
+    — tuple unpacking, `for`, `with ... as`, `+=`, ponowne przypisanie inna
+    wartoscia), traci status nosnika, jesli go miala — „ponowne przypisanie
+    inna wartoscia kasuje status nosnika" (karta GUARD-SUB-2, §0 pkt 2).
+    """
+    established: str | None = None
+    target: str | None = None
+    if (
+        isinstance(stmt, ast.Assign)
+        and len(stmt.targets) == 1
+        and isinstance(stmt.targets[0], ast.Name)
+    ):
+        established = stmt.targets[0].id
+        target = local_carrier_target(stmt.value, fields)
+    elif (
+        isinstance(stmt, ast.AnnAssign)
+        and isinstance(stmt.target, ast.Name)
+        and stmt.value is not None
+    ):
+        established = stmt.target.id
+        target = local_carrier_target(stmt.value, fields)
+
+    for name in _bound_names(stmt):
+        if name == established and target is not None:
+            continue
+        live.pop(name, None)
+    if established is not None and target is not None:
+        live[established] = target
+
+
+def _bound_names(stmt: ast.stmt) -> set[str]:
+    """Nazwy BEZPOSREDNIO wiazane (przypisywane) przez ta instrukcje.
+
+    Uzywane WYLACZNIE do INWALIDACJI nosnika formy H w `_update_local_carriers`
+    — ustanowienie nosnika idzie WYLACZNIE przez `local_carrier_target` na
+    prostym przypisaniu pojedynczej nazwy. Kazda inna nazwa, ktora ta
+    instrukcja wiaze (tuple unpacking, `for`, `with ... as`, `+=`), KASUJE
+    status nosnika, jesli byla nim wczesniej.
+    """
+    targets: list[ast.expr] = []
+    if isinstance(stmt, ast.Assign):
+        targets = list(stmt.targets)
+    elif isinstance(stmt, ast.AnnAssign | ast.AugAssign):
+        targets = [stmt.target]
+    elif isinstance(stmt, ast.For | ast.AsyncFor):
+        targets = [stmt.target]
+    elif isinstance(stmt, ast.With | ast.AsyncWith):
+        targets = [item.optional_vars for item in stmt.items if item.optional_vars is not None]
+    names: set[str] = set()
+    for target in targets:
+        for node in ast.walk(target):
+            if isinstance(node, ast.Name):
+                names.add(node.id)
+    return names
+
+
+def _walk_local_carrier_body(
+    body: list[ast.stmt],
+    fields: set[str],
+    stale: set[str],
+    live: dict[str, str],
+    findings: list[tuple[str, int]],
+) -> None:
+    """Splaszcz cialo instrukcji zlozonych w kolejnosci TEKSTOWEJ (bez wchodzenia
+    w zagniezdzone definicje funkcji/klas — WLASNY zasieg, patrz `_SCOPE_
+    BOUNDARY`), aktualizujac WSPOLNY stan `live` sekwencyjnie, jedna instrukcja
+    na raz: najpierw sprawdz UZYCIE (przeciwko stanowi SPRZED tej instrukcji),
+    potem zaktualizuj NOSNIKI (ustanow/uniewaznij) — w tej kolejnosci, zeby
+    `x = x or 5.0` poprawnie zaliczylo uzycie STAREGO `x`, zanim samo `x`
+    straci status nosnika (bo `x or 5.0` nie jest juz „czystym odczytem").
+
+    BEZ ANALIZY PRZEPLYWU STEROWANIA (celowe uproszczenie, §0 pkt 2 karty
+    GUARD-SUB-2): galaz `else`/`except` jest odwiedzana PO galezi `if`/`try`, W
+    TEJ SAMEJ kolejnosci co w zrodle, NIE jako alternatywa wykluczajaca. Nosnik
+    ustanowiony w jednej galezi `if` bedzie wiec (niepoprawnie optymistycznie)
+    „zywy" w jej `else` — ta sama klasa uproszczenia, co „Podstawienie o dwa
+    kroki dalej" w GRANICACH BRAMKI wyzej w tym pliku. Test negatywny
+    (`test_forma_h_nadpisanie_przed_uzyciem_nie_jest_naruszeniem`) pokrywa
+    jedyny przypadek WYMAGANY przez karte: liniowe nadpisanie PRZED uzyciem w
+    TEJ SAMEJ galezi kasuje nosnik.
+    """
+    for stmt in body:
+        _check_local_carrier_usage(stmt, live, stale, findings)
+        _update_local_carriers(stmt, fields, live)
+        if isinstance(stmt, ast.If):
+            _walk_local_carrier_body(stmt.body, fields, stale, live, findings)
+            _walk_local_carrier_body(stmt.orelse, fields, stale, live, findings)
+        elif isinstance(stmt, ast.For | ast.AsyncFor | ast.While):
+            _walk_local_carrier_body(stmt.body, fields, stale, live, findings)
+            _walk_local_carrier_body(stmt.orelse, fields, stale, live, findings)
+        elif isinstance(stmt, ast.Try):
+            _walk_local_carrier_body(stmt.body, fields, stale, live, findings)
+            for handler in stmt.handlers:
+                _walk_local_carrier_body(handler.body, fields, stale, live, findings)
+            _walk_local_carrier_body(stmt.orelse, fields, stale, live, findings)
+            _walk_local_carrier_body(stmt.finalbody, fields, stale, live, findings)
+        elif isinstance(stmt, ast.With | ast.AsyncWith):
+            _walk_local_carrier_body(stmt.body, fields, stale, live, findings)
+        elif isinstance(stmt, ast.Match):
+            for case in stmt.cases:
+                _walk_local_carrier_body(case.body, fields, stale, live, findings)
+
+
+def collect_local_carrier_findings(
+    func: ast.FunctionDef | ast.AsyncFunctionDef, fields: set[str], stale: set[str]
+) -> list[tuple[str, int]]:
+    """Forma H (karta GUARD-SUB-2): ZMIENNA LOKALNA jako nosnik odczytanego
+    pola kontraktu, podstawiona liczba w NASTEPNEJ instrukcji tej samej
+    funkcji — patrz „FORMA H" w docstringu modulu dla pelnego uzasadnienia i
+    nazwanych ograniczen (zasieg funkcyjny, sekwencyjny, bez analizy przeplywu
+    sterowania, bez aliasowania `y = x`).
+    """
+    live: dict[str, str] = {}
+    findings: list[tuple[str, int]] = []
+    _walk_local_carrier_body(func.body, fields, stale, live, findings)
+    return findings
+
+
 def collect_findings(tree: ast.AST, fields: set[str]) -> list[tuple[str, int]]:
     """Lista (`<forma>:<cel>`, wiersz) dla jednego pliku."""
     findings: list[tuple[str, int]] = []
     stale = numeric_module_constants(tree)
     for node in ast.walk(tree):
+        # H. zmienna lokalna jako nosnik pola (karta GUARD-SUB-2) — patrz
+        # `collect_local_carrier_findings`. Zasieg jest FUNKCYJNY, wiec liczony
+        # RAZ na kazda definicje funkcji (w tym zagniezdzona) napotkana przy
+        # tym samym przejsciu drzewa, ktore juz obsluguje formy A-G ponizej.
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+            findings.extend(collect_local_carrier_findings(node, fields, stale))
         # A. dana or <liczba>
         if isinstance(node, ast.BoolOp) and isinstance(node.op, ast.Or):
             for index, value in enumerate(node.values[:-1]):
