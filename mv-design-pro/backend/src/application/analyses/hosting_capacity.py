@@ -41,6 +41,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+from collections.abc import Callable
 from typing import Any
 
 from application.analyses.energy_validation.service import build_energy_validation_view
@@ -147,6 +148,7 @@ def _evaluate_scenario(
     bus_ref: str,
     added_mw: float,
     krok: int,
+    uow_factory: Callable[[], Any] | None,
 ) -> tuple[bool, dict[str, Any]]:
     """Uruchom rozpływ dla scenariusza i oceń dopuszczalność.
 
@@ -156,7 +158,7 @@ def _evaluate_scenario(
     migawka = apply_scenario(enm_bazowy, _hc_scenario(bus_ref, added_mw, krok))
     run = bieg_wariantu(base_run, migawka, analysis_type="PF")
     try:
-        wykonaj_bieg_w_pamieci(run)
+        wykonaj_bieg_w_pamieci(run, uow_factory=uow_factory)
     except Exception:  # noqa: BLE001 — niezbieżność/osobliwość = twardy koniec pasma
         record = {
             "added_power_mw": _round_power(added_mw),
@@ -234,13 +236,16 @@ def _candidate_capacity(
     bus_name: str | None,
     step_mw: float,
     max_steps: int,
+    uow_factory: Callable[[], Any] | None,
 ) -> dict[str, Any]:
     scenarios: list[dict[str, Any]] = []
     max_hosting_mw = 0.0
     binding: dict[str, Any] = {"kind": "none"}
     for step_index in range(max_steps + 1):
         added_mw = _round_power(step_index * step_mw)
-        acceptable, record = _evaluate_scenario(base_run, enm_bazowy, bus_ref, added_mw, step_index)
+        acceptable, record = _evaluate_scenario(
+            base_run, enm_bazowy, bus_ref, added_mw, step_index, uow_factory
+        )
         scenarios.append(record)
         if acceptable:
             max_hosting_mw = added_mw
@@ -293,8 +298,13 @@ def build_hosting_capacity_view(
     candidate_bus_refs: list[str] | None = None,
     step_mw: float = DEFAULT_STEP_MW,
     max_steps: int = DEFAULT_MAX_STEPS,
+    uow_factory: Callable[[], Any] | None = None,
 ) -> dict[str, Any]:
     """Zbuduj widok zdolności przyłączeniowej dla przebiegu rozpływu.
+
+    ``uow_factory`` (CV-4.2b): fabryka ``UnitOfWork`` wołającego — warianty
+    dziedziczą opcje biegu bazowego, więc bieg z konfiguracją audytu 2 stacji
+    wymaga jej do odczytu tej konfiguracji (patrz ``wykonaj_bieg_w_pamieci``).
 
     Raises:
         ValueError: gdy przebieg nie jest rozpływem (``PF``) lub nie został
@@ -338,7 +348,9 @@ def build_hosting_capacity_view(
     # `apply_scenario` przyjmuje obiekt `EnergyNetworkModel`, nie słownik migawki.
     enm_bazowy = EnergyNetworkModel.model_validate(snapshot)
     nodes = [
-        _candidate_capacity(run, enm_bazowy, bus_ref, bus_names.get(bus_ref), step_mw, max_steps)
+        _candidate_capacity(
+            run, enm_bazowy, bus_ref, bus_names.get(bus_ref), step_mw, max_steps, uow_factory
+        )
         for bus_ref in candidates
     ]
 

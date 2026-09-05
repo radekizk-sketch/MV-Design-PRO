@@ -142,13 +142,17 @@ FORBIDDEN_C4_FUNCTION_NAMES = {"export_p24_plus_report_pdf"}
 # wystąpienie identyfikatora — `network_wizard/dtos.py::InverterSetpoint`/
 # `ConverterSetpoint` i edycyjne operacje kreatora ZOSTAJĄ (poza mandatem karty).
 FORBIDDEN_CV42_FILES = {
-    BACKEND_SRC_DIR / "application" / "power_flow_input_builder.py": (
+    BACKEND_SRC_DIR
+    / "application"
+    / "power_flow_input_builder.py": (
         "application/power_flow_input_builder.py (P5) usunięty procedurą w CV-4.2"
     ),
-    BACKEND_SRC_DIR / "domain" / "load_flow_input.py": (
-        "domain/load_flow_input.py (P13) usunięty procedurą w CV-4.2"
-    ),
-    BACKEND_SRC_DIR / "domain" / "load_flow_validation.py": (
+    BACKEND_SRC_DIR
+    / "domain"
+    / "load_flow_input.py": ("domain/load_flow_input.py (P13) usunięty procedurą w CV-4.2"),
+    BACKEND_SRC_DIR
+    / "domain"
+    / "load_flow_validation.py": (
         "domain/load_flow_validation.py (P13) usunięty procedurą w CV-4.2"
     ),
 }
@@ -158,6 +162,19 @@ FORBIDDEN_CV42_FUNCTION_NAMES = {
     "build_short_circuit_input",
     "merge_bus_components",
     "validate_load_flow_input",
+}
+
+# Karta CV-4.2b (2026-09-05) — bramka wskrzeszenia WLASNEGO silnika/sesji z
+# `DATABASE_URL` w torze biegow. `enm/assembler.py::_uow_factory_biezacy` budowal
+# druga, niezalezna baze w tym samym procesie (inna niz `app.state.uow_factory`),
+# a `_maybe_load_audit2_extensions` czytal nia konfiguracje audytu 2 — zapisana
+# przez API bywala dla biegu niewidoczna. Po karcie: stan bazy czyta wykonawca
+# fabryka `UnitOfWork` WOLAJACEGO (`canonical_analysis.rozszerzenia_audit2_dla_opcji`
+# + repozytorium `UnitOfWork.audit2_station_configs`), assembler dostaje dane.
+# Sprawdzane jako DEFINICJE (ast.FunctionDef) gdziekolwiek w `backend/src`.
+FORBIDDEN_CV42B_FUNCTION_NAMES = {
+    "_uow_factory_biezacy",
+    "_maybe_load_audit2_extensions",
 }
 
 
@@ -323,6 +340,12 @@ def check_cv42_resurrection() -> list[str]:
                 violations.append(
                     f"[resurrected-function] {rel_path}:{node.lineno}: def {node.name} "
                     "(usunięty procedurą w CV-4.2) nie może wrócić"
+                )
+            if isinstance(node, ast.FunctionDef) and node.name in FORBIDDEN_CV42B_FUNCTION_NAMES:
+                violations.append(
+                    f"[resurrected-function] {rel_path}:{node.lineno}: def {node.name} "
+                    "(własny silnik/sesja z DATABASE_URL w torze biegów, usunięty w CV-4.2b) "
+                    "nie może wrócić"
                 )
     return violations
 

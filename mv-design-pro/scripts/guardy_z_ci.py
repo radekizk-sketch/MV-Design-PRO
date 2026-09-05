@@ -65,6 +65,38 @@ def guardy_z_workflowow() -> list[str]:
     return sorted(nazwy)
 
 
+#: Wywolania lintu z `python-tests.yml` (krok "black/ruff"), 1:1 co do sciezek i konfiguracji.
+LINT_JAK_CI: tuple[tuple[str, list[str]], ...] = (
+    ("black src tests", ["black", "--check", "src", "tests"]),
+    ("ruff src tests", ["ruff", "check", "src", "tests"]),
+    (
+        "black ../scripts",
+        ["black", "--check", "--config", "pyproject.toml", "../scripts"],
+    ),
+    ("ruff ../scripts", ["ruff", "check", "../scripts"]),
+)
+
+
+def _lint_jak_ci() -> list[str]:
+    """Uruchom lint dokladnie tak, jak CI; zwroc nazwy czerwonych wywolan."""
+    czerwone: list[str] = []
+    for nazwa, polecenie in LINT_JAK_CI:
+        wynik = subprocess.run(
+            [sys.executable, "-m", *polecenie],
+            cwd=PROJECT_ROOT / "backend",
+            capture_output=True,
+            text=True,
+        )
+        if wynik.returncode != 0:
+            czerwone.append(nazwa)
+            print(f"[CZERWONY] {nazwa} RC={wynik.returncode}", file=sys.stderr)
+            for linia in (wynik.stdout + wynik.stderr).splitlines()[-12:]:
+                print(f"    {linia}", file=sys.stderr)
+        else:
+            print(f"[zielony ] {nazwa}")
+    return czerwone
+
+
 def main() -> int:
     if not WORKFLOWS_DIR.is_dir():
         print(f"BLAD: brak katalogu workflowow: {WORKFLOWS_DIR}", file=sys.stderr)
@@ -109,6 +141,16 @@ def main() -> int:
 
     print(f"\nUruchomiono {len(nazwy) - len(brakujace)} guardow z {len(nazwy)} wolanych przez CI.")
 
+    # Trzecia czesc kroku CI (dopisana 2026-09-05 po CZERWONYCH runach 4879/4881:
+    # `black --check --config pyproject.toml ../scripts` zapalil sie na dwoch
+    # skryptach guardow, a bramka odbioru meldowala "KOMPLET ZIELONY" — bo nie
+    # uruchamiala lintu, ktory CI uruchamia w TYM SAMYM kroku co pytest). Dokladnie
+    # cztery wywolania z `python-tests.yml`: black/ruff dla `src tests` oraz — OSOBNO,
+    # z jawna konfiguracja — dla `../scripts` (black bez `--config` szuka pyproject
+    # w gore od pliku i trafia poza projekt backendu).
+    print("\n--- lint jak CI (black/ruff: src tests, ../scripts) ---")
+    lint_czerwone = _lint_jak_ci()
+
     # Druga polowa kroku CI: wlasne testy guardow (poza `testpaths` backendu).
     print("\n--- testy wlasne guardow (`python -m pytest ../scripts`) ---")
     testy = subprocess.run(
@@ -127,12 +169,14 @@ def main() -> int:
             print(f"    {linia}", file=sys.stderr)
         print("CZERWONE: testy wlasne guardow", file=sys.stderr)
 
-    if czerwone or brakujace or testy.returncode != 0:
+    if czerwone or brakujace or testy.returncode != 0 or lint_czerwone:
         if czerwone:
             print(
                 "CZERWONE: " + ", ".join(f"{n} (RC={rc})" for n, rc in czerwone),
                 file=sys.stderr,
             )
+        if lint_czerwone:
+            print("CZERWONE: lint jak CI: " + ", ".join(lint_czerwone), file=sys.stderr)
         return 1
     print("KOMPLET ZIELONY.")
     return 0

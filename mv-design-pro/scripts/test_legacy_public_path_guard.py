@@ -214,7 +214,9 @@ def test_guard_rejects_resurrected_engine_class_in_unrelated_file(tmp_path, monk
     other.write_text("class SolverProtocol:\n    def solve(self) -> None: ...\n", encoding="utf-8")
     monkeypatch.setattr(guard, "ROOT", tmp_path)
     monkeypatch.setattr(
-        guard, "STUDY_CASE_ENGINE_MODULE", tmp_path / "backend" / "src" / "domain" / "missing.py"
+        guard,
+        "STUDY_CASE_ENGINE_MODULE",
+        tmp_path / "backend" / "src" / "domain" / "missing.py",
     )
     monkeypatch.setattr(guard, "BACKEND_SRC_DIR", tmp_path / "backend" / "src")
 
@@ -229,7 +231,9 @@ def test_guard_accepts_clean_tree_without_engine(tmp_path, monkeypatch) -> None:
     (src_dir / "study_case.py").write_text("class StudyCase:\n    pass\n", encoding="utf-8")
     monkeypatch.setattr(guard, "ROOT", tmp_path)
     monkeypatch.setattr(
-        guard, "STUDY_CASE_ENGINE_MODULE", tmp_path / "backend" / "src" / "domain" / "missing.py"
+        guard,
+        "STUDY_CASE_ENGINE_MODULE",
+        tmp_path / "backend" / "src" / "domain" / "missing.py",
     )
     monkeypatch.setattr(guard, "BACKEND_SRC_DIR", tmp_path / "backend" / "src")
 
@@ -248,7 +252,9 @@ def test_guard_does_not_fire_on_engine_name_in_comment_text(tmp_path, monkeypatc
     )
     monkeypatch.setattr(guard, "ROOT", tmp_path)
     monkeypatch.setattr(
-        guard, "STUDY_CASE_ENGINE_MODULE", tmp_path / "backend" / "src" / "domain" / "missing.py"
+        guard,
+        "STUDY_CASE_ENGINE_MODULE",
+        tmp_path / "backend" / "src" / "domain" / "missing.py",
     )
     monkeypatch.setattr(guard, "BACKEND_SRC_DIR", tmp_path / "backend" / "src")
 
@@ -544,9 +550,7 @@ def test_guard_rejects_resurrected_power_flow_input_builder_module(tmp_path, mon
         "[resurrected-module]" in v and "application/power_flow_input_builder.py" in v
         for v in violations
     )
-    assert any(
-        "[resurrected-function]" in v and "build_power_flow_input" in v for v in violations
-    )
+    assert any("[resurrected-function]" in v and "build_power_flow_input" in v for v in violations)
 
 
 def test_guard_rejects_resurrected_load_flow_input_module(tmp_path, monkeypatch) -> None:
@@ -559,9 +563,7 @@ def test_guard_rejects_resurrected_load_flow_input_module(tmp_path, monkeypatch)
 
     violations = guard.check_cv42_resurrection()
 
-    assert any(
-        "[resurrected-module]" in v and "domain/load_flow_input.py" in v for v in violations
-    )
+    assert any("[resurrected-module]" in v and "domain/load_flow_input.py" in v for v in violations)
     assert any("[resurrected-class]" in v and "LoadFlowRunInput" in v for v in violations)
 
 
@@ -589,9 +591,7 @@ def test_guard_rejects_resurrected_cv42_class_or_function_under_other_path(
     assert any(
         "[resurrected-function]" in v and "build_short_circuit_input" in v for v in violations
     )
-    assert any(
-        "[resurrected-function]" in v and "merge_bus_components" in v for v in violations
-    )
+    assert any("[resurrected-function]" in v and "merge_bus_components" in v for v in violations)
     assert any(
         "[resurrected-function]" in v and "validate_load_flow_input" in v for v in violations
     )
@@ -614,4 +614,46 @@ def test_guard_accepts_clean_tree_without_cv42_resurrection(tmp_path, monkeypatc
 def test_guard_accepts_current_repo_state_cv42() -> None:
     """Stan repozytorium PO karcie CV-4.2 jest zielony na tej bramce —
     prawdziwe drzewo `backend/src`, nie sztuczne `tmp_path`."""
+    assert guard.check_cv42_resurrection() == []
+
+
+def test_guard_rejects_resurrected_own_db_engine_helpers_cv42b(tmp_path, monkeypatch) -> None:
+    """CV-4.2b: `_uow_factory_biezacy`/`_maybe_load_audit2_extensions` (wlasny silnik
+    z DATABASE_URL w torze biegow) nie moga wrocic pod ZADNYM plikiem `src`."""
+    src_dir = tmp_path / "backend" / "src" / "enm"
+    src_dir.mkdir(parents=True)
+    (src_dir / "assembler.py").write_text(
+        "def _uow_factory_biezacy():\n    pass\n\n\n"
+        "def _maybe_load_audit2_extensions(*, project_id_str, station_id):\n    pass\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", tmp_path / "backend" / "src")
+    _patch_cv42_files(monkeypatch, tmp_path)
+
+    violations = guard.check_cv42_resurrection()
+
+    assert any(
+        "[resurrected-function]" in v and "_uow_factory_biezacy" in v and "CV-4.2b" in v
+        for v in violations
+    )
+    assert any(
+        "[resurrected-function]" in v and "_maybe_load_audit2_extensions" in v for v in violations
+    )
+
+
+def test_guard_does_not_fire_on_cv42b_names_in_comments_or_strings(tmp_path, monkeypatch) -> None:
+    """Nazwa w komentarzu/dokstringu (np. opis kasacji) to nie definicja."""
+    src_dir = tmp_path / "backend" / "src" / "enm"
+    src_dir.mkdir(parents=True)
+    (src_dir / "assembler.py").write_text(
+        '"""Wlasny silnik (`_uow_factory_biezacy`/`_maybe_load_audit2_extensions`) skasowany."""\n'
+        "# _uow_factory_biezacy nie wraca\n"
+        "def zloz_wejscie_rozplywu():\n    pass\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", tmp_path / "backend" / "src")
+    _patch_cv42_files(monkeypatch, tmp_path)
+
     assert guard.check_cv42_resurrection() == []

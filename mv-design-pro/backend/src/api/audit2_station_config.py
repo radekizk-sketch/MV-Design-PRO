@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from api.dependencies import get_uow_factory
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -74,12 +74,11 @@ def _aggregate_loads_per_station_for_project(
     Zwraca dict {station_id: p_import_kw}. Pusty gdy snapshot nie istnieje
     lub graph nie ma loads.
     """
-    from infrastructure.persistence.models import ProjectORM
-
-    if uow.session is None or uow.snapshots is None:
+    if uow.projects is None or uow.snapshots is None:
         return {}
 
-    project = uow.session.query(ProjectORM).filter(ProjectORM.id == project_id).one_or_none()
+    # CV-4.2b: przez repozytorium projektów, nie własne zapytanie ORM.
+    project = uow.projects.get_orm(project_id)
     if project is None or not project.active_network_snapshot_id:
         return {}
 
@@ -166,13 +165,7 @@ def list_station_audit2_configs(
 ) -> list[dict[str, Any]]:
     """Lista wszystkich konfiguracji audytu 2 dla projektu."""
     with uow_factory() as uow:
-        assert uow.session is not None
-        rows = (
-            uow.session.query(StationAudit2ConfigORM)
-            .filter(StationAudit2ConfigORM.project_id == project_id)
-            .order_by(StationAudit2ConfigORM.station_id)
-            .all()
-        )
+        rows = uow.audit2_station_configs.list_for_project(project_id)
         return [_to_dict(row) for row in rows]
 
 
@@ -184,15 +177,7 @@ def get_station_audit2_config(
 ) -> dict[str, Any]:
     """Pobiera konfiguracje audytu 2 dla (project_id, station_id)."""
     with uow_factory() as uow:
-        assert uow.session is not None
-        row = (
-            uow.session.query(StationAudit2ConfigORM)
-            .filter(
-                StationAudit2ConfigORM.project_id == project_id,
-                StationAudit2ConfigORM.station_id == station_id,
-            )
-            .one_or_none()
-        )
+        row = uow.audit2_station_configs.get(project_id, station_id)
         if row is None:
             # 404 gdy brak — frontend traktuje jako pusta konfiguracja.
             raise HTTPException(
@@ -216,32 +201,11 @@ def upsert_station_audit2_config(
     Jesli nie - insert nowy.
     """
     with uow_factory() as uow:
-        assert uow.session is not None
-        existing = (
-            uow.session.query(StationAudit2ConfigORM)
-            .filter(
-                StationAudit2ConfigORM.project_id == project_id,
-                StationAudit2ConfigORM.station_id == station_id,
-            )
-            .one_or_none()
-        )
-        if existing is not None:
-            existing.mv_neutral_grounding_ref = body.mv_neutral_grounding_ref
-            existing.tap_changer_refs = list(body.tap_changer_refs)
-            existing.der_specs = [spec.model_dump() for spec in body.der_specs]
-            existing.transformer_tap_changers = dict(body.transformer_tap_changers)
-            existing.bay_hv_fuses = dict(body.bay_hv_fuses)
-            existing.bay_vts = dict(body.bay_vts)
-            existing.bay_device_withstand = {
-                k: v.model_dump() for k, v in body.bay_device_withstand.items()
-            }
-            uow.session.flush()
-            return _to_dict(existing)
-
-        new_row = StationAudit2ConfigORM(
-            id=uuid4(),
-            project_id=project_id,
-            station_id=station_id,
+        # CV-4.2b: UPSERT przez repozytorium (identyfikator istniejącego wiersza
+        # zachowany — pin `test_put_upserts_existing_config`).
+        row = uow.audit2_station_configs.upsert(
+            project_id,
+            station_id,
             mv_neutral_grounding_ref=body.mv_neutral_grounding_ref,
             tap_changer_refs=list(body.tap_changer_refs),
             der_specs=[spec.model_dump() for spec in body.der_specs],
@@ -250,9 +214,7 @@ def upsert_station_audit2_config(
             bay_vts=dict(body.bay_vts),
             bay_device_withstand={k: v.model_dump() for k, v in body.bay_device_withstand.items()},
         )
-        uow.session.add(new_row)
-        uow.session.flush()
-        return _to_dict(new_row)
+        return _to_dict(row)
 
 
 @router.delete("/{station_id:path}", status_code=status.HTTP_204_NO_CONTENT)
@@ -263,16 +225,7 @@ def delete_station_audit2_config(
 ) -> Response:
     """Usuwa konfiguracje audytu 2 dla (project_id, station_id)."""
     with uow_factory() as uow:
-        assert uow.session is not None
-        deleted = (
-            uow.session.query(StationAudit2ConfigORM)
-            .filter(
-                StationAudit2ConfigORM.project_id == project_id,
-                StationAudit2ConfigORM.station_id == station_id,
-            )
-            .delete(synchronize_session=False)
-        )
-        if deleted == 0:
+        if not uow.audit2_station_configs.delete(project_id, station_id):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Brak konfiguracji")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -291,33 +244,16 @@ def apply_audit2_to_network_model_endpoint(
 
     Endpoint dla diagnostyki + integracji UI (uruchamia adjustment przed run'em).
     """
-    from solver_input.audit2_der_payload import (
-        build_station_audit2_payload,
-        extract_solver_extensions_from_payload,
-    )
+    from solver_input.audit2_der_payload import rozszerzenia_audit2_z_konfiguracji
     from solver_input.audit2_solver_adjuster import apply_audit2_to_network_model
 
     with uow_factory() as uow:
-        assert uow.session is not None
-        cfg = (
-            uow.session.query(StationAudit2ConfigORM)
-            .filter(
-                StationAudit2ConfigORM.project_id == project_id,
-                StationAudit2ConfigORM.station_id == station_id,
-            )
-            .one_or_none()
-        )
+        cfg = uow.audit2_station_configs.get(project_id, station_id)
         if cfg is None:
             raise HTTPException(status_code=404, detail="Brak audit2 config")
 
-        payload = build_station_audit2_payload(
-            station_id=cfg.station_id,
-            mv_neutral_grounding_ref=cfg.mv_neutral_grounding_ref,
-            tap_changer_refs=list(cfg.tap_changer_refs or []),
-            der_specs=list(cfg.der_specs or []),
-            transformer_tap_changers=dict(cfg.transformer_tap_changers or {}),
-        )
-        extensions = extract_solver_extensions_from_payload(payload)
+        # CV-4.2b: ta sama droga wiersz -> rozszerzenia co w biegu kanonicznym.
+        extensions = rozszerzenia_audit2_z_konfiguracji(cfg)
 
         # Dummy graph z transformerami z config'u (do diagnostyki integracji).
         class _DummyTr:
@@ -381,12 +317,7 @@ def validate_all_audit2(
     )
 
     with uow_factory() as uow:
-        assert uow.session is not None
-        configs = (
-            uow.session.query(StationAudit2ConfigORM)
-            .filter(StationAudit2ConfigORM.project_id == project_id)
-            .all()
-        )
+        configs = uow.audit2_station_configs.list_for_project(project_id)
         # Phase 49: pobierz aktywny snapshot projektu, aby obliczyc real
         # p_import_kw (loady) dla hosting capacity validation.
         loads_per_station = _aggregate_loads_per_station_for_project(uow=uow, project_id=project_id)

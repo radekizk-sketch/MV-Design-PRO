@@ -24,6 +24,9 @@ from infrastructure.persistence.repositories.network_wizard_repository import (
 from infrastructure.persistence.repositories.project_repository import ProjectRepository
 from infrastructure.persistence.repositories.sld_repository import SldRepository
 from infrastructure.persistence.repositories.snapshot_repository import SnapshotRepository
+from infrastructure.persistence.repositories.station_audit2_config_repository import (
+    StationAudit2ConfigRepository,
+)
 from sqlalchemy.orm import Session, sessionmaker
 
 
@@ -55,6 +58,7 @@ class UnitOfWork(AbstractContextManager["UnitOfWork"]):
         self.design_specs: DesignSpecRepository | None = None
         self.design_proposals: DesignProposalRepository | None = None
         self.design_evidence: DesignEvidenceRepository | None = None
+        self.audit2_station_configs: StationAudit2ConfigRepository | None = None
 
     def __enter__(self) -> UnitOfWork:
         self.session = self._session_factory()
@@ -69,6 +73,7 @@ class UnitOfWork(AbstractContextManager["UnitOfWork"]):
         self.design_specs = DesignSpecRepository(self.session)
         self.design_proposals = DesignProposalRepository(self.session)
         self.design_evidence = DesignEvidenceRepository(self.session)
+        self.audit2_station_configs = StationAudit2ConfigRepository(self.session)
         return self
 
     def __exit__(

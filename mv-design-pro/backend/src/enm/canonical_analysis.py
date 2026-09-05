@@ -31,7 +31,6 @@ from enm.assembler import (
     _graph_id_from_ref,
     _short_circuit_requires_z0,
     _short_circuit_type_from_options,
-    _uow_factory_biezacy,
     zloz_wejscie_rozplywu,
     zloz_wejscie_zwarcia,
 )
@@ -880,34 +879,30 @@ def _wykonaj_analize_biegu(
     oszczedza POWTORNA budowe tego samego obiektu, nie podmienia wejscia. Ma
     dostawce wylacznie w rozplywie; dla innego typu analizy podanie grafu jest
     bledem kontraktu (zwarcie buduje wlasny graf i jego kopie MIN), nie cicho
-    ignorowanym argumentem.
+    ignorowanym argumentem — graf jest DANYMI wejsciowymi biegu.
 
     `uow_factory` — fabryka `UnitOfWork` WOLAJACEGO (np. `Depends(get_uow_factory)`
-    warstwy API, `app.state.uow_factory`), przekazywana wylacznie do
-    `_execute_protection` (jedyny typ analizy czytajacy `StudyCase.protection_
-    config` spoza ENM). CV-3.3-B: bez tego parametru `_execute_protection`
-    budowalby WLASNY silnik/sesje z `DATABASE_URL` (`_uow_factory_biezacy`) —
-    inny niz ten, ktorego uzywa reszta zadania/procesu (kazdy test i kazde
-    wdrozenie inne niz pojedynczy plik SQLite pod `DATABASE_URL` majaby
-    przypadek NIEZNALEZIONY, mimo ze naprawde istnieje). Ma dostawce wylacznie
-    w zabezpieczeniach; dla innego typu analizy podanie fabryki jest bledem
-    kontraktu z tego samego powodu co `graf` — nie cichym ignorowaniem.
+    warstwy API, `app.state.uow_factory`). To ZDOLNOSC kontekstu wykonania, nie
+    dane biegu: dyspozytor podaje ja kazdemu wykonawcy, ktory siega po stan
+    zapisany w bazie — rozplyw i zwarcie (konfiguracja audytu 2 stacji wskazana
+    opcjami `audit2_project_id`/`audit2_station_id`, CV-4.2b) oraz
+    zabezpieczenia (`StudyCase.protection_config`, CV-3.3-B). Wykonawca bez
+    odczytu bazy (stan fazowy, stabilnosc, zgodnosc zrodla) jej nie potrzebuje
+    i jej nie dostaje. ZADEN wykonawca nie buduje wlasnego silnika/sesji z
+    `DATABASE_URL` (kasacja `_uow_factory_biezacy`): bieg, ktory potrzebuje bazy,
+    a fabryki nie dostal, konczy sie jawnym `ValueError` (status FAILED z
+    powodem), nie cichym wynikiem bez korekt ani odczytem z innej bazy niz
+    reszta procesu.
     """
     if graf is not None and run.analysis_type != "PF":
         raise ValueError(
             "Gotowy graf sieci przyjmuje wylacznie rozplyw mocy (analysis_type='PF'); "
             f"dla {run.analysis_type!r} graf buduje wykonawca z migawki biegu."
         )
-    if uow_factory is not None and run.analysis_type != "protection_sn":
-        raise ValueError(
-            "Fabryke UnitOfWork przyjmuje wylacznie bieg zabezpieczen "
-            f"(analysis_type='protection_sn'); dla {run.analysis_type!r} nie ma "
-            "zastosowania."
-        )
     if run.analysis_type == "PF":
-        _execute_power_flow(run, graf)
+        _execute_power_flow(run, graf, uow_factory=uow_factory)
     elif run.analysis_type == "short_circuit_sn":
-        _execute_short_circuit(run)
+        _execute_short_circuit(run, uow_factory=uow_factory)
     elif run.analysis_type == "phase_state_sn":
         _execute_phase_state_sn(run)
     elif run.analysis_type == "dynamic_stability":
@@ -920,7 +915,11 @@ def _wykonaj_analize_biegu(
         raise ValueError(f"Unsupported analysis type: {run.analysis_type}")
 
 
-def wykonaj_bieg_w_pamieci(run: CanonicalRun, graf: NetworkGraph | None = None) -> None:
+def wykonaj_bieg_w_pamieci(
+    run: CanonicalRun,
+    graf: NetworkGraph | None = None,
+    uow_factory: Callable[[], Any] | None = None,
+) -> None:
     """Wykonaj bieg WARIANTU w pamieci — bez persystencji i bez zmiany statusu.
 
     Kanoniczne wejscie dla wzorca wariantow migawki (kontyngencje N-1, bieg
@@ -938,8 +937,14 @@ def wykonaj_bieg_w_pamieci(run: CanonicalRun, graf: NetworkGraph | None = None) 
     i oddaje TEN SAM obiekt do rozplywu zamiast budowac go drugi raz z tej samej
     migawki (wynik identyczny co do bitu: graf jest funkcja migawki). Wolajacy
     ODDAJE graf na wlasnosc (regulator zaczepow moze go zmodyfikowac).
+
+    `uow_factory` (CV-4.2b): fabryka `UnitOfWork` wolajacego — wariant dziedziczy
+    opcje biegu bazowego (`bieg_wariantu(options=None)`), wiec bieg bazowy
+    liczony z konfiguracja audytu 2 stacji daje warianty, ktore te sama
+    konfiguracje musza odczytac; bez fabryki taki wariant konczy sie jawnym
+    `ValueError` (patrz `_wykonaj_analize_biegu`), nie cichym biegiem bez korekt.
     """
-    _wykonaj_analize_biegu(run, graf)
+    _wykonaj_analize_biegu(run, graf, uow_factory)
 
 
 def bieg_wariantu(
@@ -1063,12 +1068,15 @@ def odtworz_bieg_z_archiwum(
 def execute_run(run_id: UUID, uow_factory: Callable[[], Any] | None = None) -> CanonicalRun:
     """Wykonaj bieg persystowany (dyspozycja fizyki: `_wykonaj_analize_biegu`).
 
-    `uow_factory` (opcjonalna, wyłącznie dla `analysis_type="protection_sn"`):
-    fabryka `UnitOfWork` WOŁAJĄCEGO (routera API), którą trzeba przekazać w
-    dół do `_execute_protection` — patrz `_wykonaj_analize_biegu` docstring.
-    Pominięcie dla biegu zabezpieczeń cofa do `_uow_factory_biezacy()`
-    (samodzielnej fabryki z `DATABASE_URL`) — zachowane dla wywołań spoza
-    granicy API (skrypty, `run_*_now` bez routera).
+    `uow_factory`: fabryka `UnitOfWork` WOŁAJĄCEGO (routera API), przekazywana
+    w dół dyspozytorowi (`_wykonaj_analize_biegu`) — potrzebna każdemu biegowi,
+    który czyta stan zapisany w bazie: zabezpieczeniom (`StudyCase.protection_
+    config`) oraz rozpływowi/zwarciu z konfiguracją audytu 2 stacji (opcje
+    `audit2_project_id`/`audit2_station_id`). Bieg bez odczytu bazy działa i bez
+    niej. Pominięcie dla biegu, który bazy potrzebuje, kończy się statusem
+    FAILED z jawnym powodem — od CV-4.2b NIE ma zapasowej fabryki z
+    `DATABASE_URL` (była drugim, niezależnym połączeniem z bazą w tym samym
+    procesie).
     """
     run = get_run(run_id)
     if run is None:
@@ -1101,6 +1109,7 @@ def run_short_circuit_now(
     klucz_twin: str,
     project_id: str | None = None,
     options: dict[str, Any] | None = None,
+    uow_factory: Callable[[], Any] | None = None,
 ) -> CanonicalRun:
     run = create_run(
         case_id=case_id,
@@ -1109,7 +1118,7 @@ def run_short_circuit_now(
         project_id=project_id,
         options=options,
     )
-    return execute_run(run.id)
+    return execute_run(run.id, uow_factory=uow_factory)
 
 
 def run_power_flow_now(
@@ -1118,6 +1127,7 @@ def run_power_flow_now(
     klucz_twin: str,
     project_id: str | None = None,
     options: dict[str, Any] | None = None,
+    uow_factory: Callable[[], Any] | None = None,
 ) -> CanonicalRun:
     run = create_run(
         case_id=case_id,
@@ -1126,7 +1136,7 @@ def run_power_flow_now(
         project_id=project_id,
         options=options,
     )
-    return execute_run(run.id)
+    return execute_run(run.id, uow_factory=uow_factory)
 
 
 def run_phase_state_now(
@@ -1135,6 +1145,7 @@ def run_phase_state_now(
     klucz_twin: str,
     project_id: str | None = None,
     options: dict[str, Any] | None = None,
+    uow_factory: Callable[[], Any] | None = None,
 ) -> CanonicalRun:
     run = create_run(
         case_id=case_id,
@@ -1143,7 +1154,7 @@ def run_phase_state_now(
         project_id=project_id,
         options=options,
     )
-    return execute_run(run.id)
+    return execute_run(run.id, uow_factory=uow_factory)
 
 
 def run_dynamic_stability_now(
@@ -1152,6 +1163,7 @@ def run_dynamic_stability_now(
     klucz_twin: str,
     project_id: str | None = None,
     options: dict[str, Any] | None = None,
+    uow_factory: Callable[[], Any] | None = None,
 ) -> CanonicalRun:
     run = create_run(
         case_id=case_id,
@@ -1160,7 +1172,7 @@ def run_dynamic_stability_now(
         project_id=project_id,
         options=options,
     )
-    return execute_run(run.id)
+    return execute_run(run.id, uow_factory=uow_factory)
 
 
 def run_source_compliance_now(
@@ -1169,6 +1181,7 @@ def run_source_compliance_now(
     klucz_twin: str,
     project_id: str | None = None,
     options: dict[str, Any] | None = None,
+    uow_factory: Callable[[], Any] | None = None,
 ) -> CanonicalRun:
     run = create_run(
         case_id=case_id,
@@ -1177,7 +1190,7 @@ def run_source_compliance_now(
         project_id=project_id,
         options=options,
     )
-    return execute_run(run.id)
+    return execute_run(run.id, uow_factory=uow_factory)
 
 
 def _phase_value_from_options(
@@ -1551,12 +1564,13 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
     module, gdzie analiza inna niz katalog/audit2 siega po `UnitOfWork`.
 
     `uow_factory`: fabryka WOLAJACEGO (routera API) — patrz
-    `_wykonaj_analize_biegu` docstring. `None` (wywolanie spoza granicy API)
-    cofa do `_uow_factory_biezacy()`, WLASNEJ fabryki z `DATABASE_URL` — inny
-    silnik/sesja niz reszta procesu, wiec przypadek istniejacy naprawde
-    potrafi wygladac jak nieistniejacy (bug znaleziony i naprawiony przy tej
-    karcie: patrz test `test_bieg_zakonczony_model_zmieniony_daje_outdated`
-    i siostrzane w `tests/api/test_protection_overlay_swiezosc.py`).
+    `_wykonaj_analize_biegu` docstring. `None` = jawny `ValueError` (CV-4.2b):
+    dawny zapasowy `_uow_factory_biezacy()` budowal WLASNA fabryke z
+    `DATABASE_URL` — inny silnik/sesje niz reszta procesu, wiec przypadek
+    istniejacy naprawde potrafil wygladac jak nieistniejacy (bug znaleziony
+    przy CV-3.3-B: `test_bieg_zakonczony_model_zmieniony_daje_outdated` i
+    siostrzane w `tests/api/test_protection_overlay_swiezosc.py`); po CV-4.2b
+    kazdy wolajacy podaje fabryke swojego kontekstu, a zapas nie istnieje.
     """
     from application.protection_analysis.catalog_lookup import (
         get_protection_curve,
@@ -1579,11 +1593,10 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
         )
 
     if uow_factory is None:
-        uow_factory = _uow_factory_biezacy()
-    if uow_factory is None:
         raise ValueError(
-            "Warstwa persystencji niedostepna — nie da sie odczytac konfiguracji "
-            "zabezpieczen przypadku"
+            "Bieg zabezpieczen czyta konfiguracje zabezpieczen przypadku z bazy, a "
+            "wykonawca nie dostal fabryki UnitOfWork wolajacego — bieg nie buduje "
+            "wlasnego polaczenia z baza (CV-4.2b)"
         )
 
     case_uuid = UUID(run.case_id)
@@ -1673,8 +1686,63 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
     run.power_flow_trace = None
 
 
-def _execute_short_circuit(run: CanonicalRun) -> None:
-    wejscie = zloz_wejscie_zwarcia(run.snapshot or {}, run.options)
+def rozszerzenia_audit2_dla_opcji(
+    options: Mapping[str, Any], uow_factory: Callable[[], Any] | None
+) -> dict[str, Any] | None:
+    """Rozszerzenia audytu 2 stacji wskazanej opcjami biegu — JEDYNY odczyt dla wykonawców.
+
+    Karta CV-4.2b. Opcje `audit2_project_id` + `audit2_station_id` (para) wskazują
+    zapisaną konfigurację audytu 2 (`station_audit2_configs`); wykonawca rozpływu i
+    zwarcia podaje wynik assemblerowi jako dane (`rozszerzenia_audit2`), a assembler
+    nie otwiera bazy. Odczyt idzie WYŁĄCZNIE fabryką `UnitOfWork` wołającego —
+    tą samą, którą zapisano konfigurację przez API — więc „zapisane" i „widoczne
+    dla biegu" to jedna baza (do tej karty assembler budował własny silnik z
+    `DATABASE_URL`, niezależny od `app.state.uow_factory`, i konfiguracja bywała
+    dla biegu niewidoczna).
+
+    Rozstrzygnięcia (bez cichych zapasów, klasa A6-12):
+    - brak OBU opcji → `None` (bieg bez korekt audytu 2; baza nietknięta);
+    - połowa pary, niepoprawny UUID projektu, brak fabryki → jawny `ValueError`
+      (bieg FAILED z powodem), nie wynik liczony bez korekt, o które proszono;
+    - para wskazuje stację bez zapisanej konfiguracji → `None` (opt-in nieobecny —
+      to legalny stan, nie błąd: konfiguracja audytu 2 jest nadpisaniem inżyniera).
+    """
+    project_id_str = options.get("audit2_project_id")
+    station_id = options.get("audit2_station_id")
+    if not project_id_str and not station_id:
+        return None
+    if not project_id_str or not station_id:
+        raise ValueError(
+            "Opcje biegu wskazuja konfiguracje audytu 2 polowa pary: potrzebne sa OBA "
+            "`audit2_project_id` i `audit2_station_id`"
+        )
+    try:
+        project_uuid = UUID(str(project_id_str))
+    except ValueError as exc:
+        raise ValueError(
+            f"`audit2_project_id` nie jest poprawnym UUID: {project_id_str!r}"
+        ) from exc
+    if uow_factory is None:
+        raise ValueError(
+            "Opcje biegu wskazuja konfiguracje audytu 2 stacji "
+            f"({project_id_str}/{station_id}), a wykonawca nie dostal fabryki UnitOfWork "
+            "wolajacego — bieg nie buduje wlasnego polaczenia z baza (CV-4.2b)"
+        )
+    from solver_input.audit2_der_payload import rozszerzenia_audit2_z_konfiguracji
+
+    with uow_factory() as uow:
+        cfg = uow.audit2_station_configs.get(project_uuid, str(station_id))
+        if cfg is None:
+            return None
+        return rozszerzenia_audit2_z_konfiguracji(cfg)
+
+
+def _execute_short_circuit(run: CanonicalRun, uow_factory: Callable[[], Any] | None = None) -> None:
+    wejscie = zloz_wejscie_zwarcia(
+        run.snapshot or {},
+        run.options,
+        rozszerzenia_audit2=rozszerzenia_audit2_dla_opcji(run.options, uow_factory),
+    )
     graph = wejscie.graph
     graph_nodes = wejscie.graph_nodes
     graph_branches = wejscie.graph_branches
@@ -1992,7 +2060,11 @@ def _run_oltc_study(
     return None
 
 
-def _execute_power_flow(run: CanonicalRun, graph: NetworkGraph | None = None) -> None:
+def _execute_power_flow(
+    run: CanonicalRun,
+    graph: NetworkGraph | None = None,
+    uow_factory: Callable[[], Any] | None = None,
+) -> None:
     """Wykonaj rozpływ mocy dla przebiegu.
 
     Args:
@@ -2005,8 +2077,16 @@ def _execute_power_flow(run: CanonicalRun, graph: NetworkGraph | None = None) ->
             (pętla regulatora zaczepowego przestawia pozycje zaczepów), więc grafu
             NIE wolno po tym wywołaniu czytać jako „stanu sprzed rozpływu".
             ``None`` = zbuduj graf z migawki (ścieżka kanoniczna).
+        uow_factory: fabryka ``UnitOfWork`` wołającego — potrzebna WYŁĄCZNIE, gdy
+            opcje biegu wskazują konfigurację audytu 2 stacji (patrz
+            ``rozszerzenia_audit2_dla_opcji``).
     """
-    wejscie = zloz_wejscie_rozplywu(run.snapshot or {}, run.options, graph=graph)
+    wejscie = zloz_wejscie_rozplywu(
+        run.snapshot or {},
+        run.options,
+        graph=graph,
+        rozszerzenia_audit2=rozszerzenia_audit2_dla_opcji(run.options, uow_factory),
+    )
     graph = wejscie.graph
     graph_nodes = wejscie.graph_nodes
     graph_branches = wejscie.graph_branches

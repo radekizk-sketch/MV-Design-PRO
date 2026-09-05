@@ -146,6 +146,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -477,7 +478,10 @@ def _klucz_rankingu(pozycja: dict[str, Any]) -> tuple[int, int, int, str]:
 
 
 def _kontyngencja(
-    bazowy: CanonicalRun, enm_bazowy: EnergyNetworkModel, element: _Element
+    bazowy: CanonicalRun,
+    enm_bazowy: EnergyNetworkModel,
+    element: _Element,
+    uow_factory: Callable[[], Any] | None,
 ) -> dict[str, Any]:
     """Jedna kontyngencja: scenariusz N-1 → migawka efektywna → bieg → skutki."""
     wspolne: dict[str, Any] = {
@@ -526,7 +530,7 @@ def _kontyngencja(
     bieg = bieg_wariantu(bazowy, migawka, analysis_type="PF")
     blad: str | None = None
     try:
-        wykonaj_bieg_w_pamieci(bieg, graf=graf_wariantu)
+        wykonaj_bieg_w_pamieci(bieg, graf=graf_wariantu, uow_factory=uow_factory)
     except Exception as exc:  # noqa: BLE001 — niezbieżność/osobliwość = STATUS, nie wyjątek
         blad = f"{type(exc).__name__}: {exc}"
 
@@ -586,7 +590,11 @@ def _kontyngencja(
     }
 
 
-def _przypadek_bazowy(bazowy: CanonicalRun, enm_bazowy: EnergyNetworkModel) -> dict[str, Any]:
+def _przypadek_bazowy(
+    bazowy: CanonicalRun,
+    enm_bazowy: EnergyNetworkModel,
+    uow_factory: Callable[[], Any] | None,
+) -> dict[str, Any]:
     """Stan N-0 (bez wyłączeń) — punkt odniesienia dla czytelnika macierzy.
 
     Liczony TĄ SAMĄ ścieżką co kontyngencje (scenariusz → migawka efektywna →
@@ -601,7 +609,7 @@ def _przypadek_bazowy(bazowy: CanonicalRun, enm_bazowy: EnergyNetworkModel) -> d
     bieg = bieg_wariantu(bazowy, migawka, analysis_type="PF")
     blad: str | None = None
     try:
-        wykonaj_bieg_w_pamieci(bieg, graf=graf_bazowy)
+        wykonaj_bieg_w_pamieci(bieg, graf=graf_bazowy, uow_factory=uow_factory)
     except Exception as exc:  # noqa: BLE001 — jak wyżej: stan bazowy to WYNIK, nie wyjątek
         blad = f"{type(exc).__name__}: {exc}"
     dane_biegu = _pusty_bieg() if blad is not None else _dane_biegu(bieg)
@@ -804,6 +812,7 @@ def build_kontyngencje_n1_view(
     run: CanonicalRun,
     *,
     element_refs: list[str] | None = None,
+    uow_factory: Callable[[], Any] | None = None,
 ) -> dict[str, Any]:
     """Zbuduj macierz skutków kontyngencji N-1 dla przebiegu rozpływu.
 
@@ -821,6 +830,9 @@ def build_kontyngencje_n1_view(
             drugie kosztowałaby najdroższy bieg dokładnie tam, gdzie zamawiający
             zakres wyczyścił (rozstrzygnięcie przypięte testem po obu stronach —
             serwis i końcówka).
+        uow_factory: fabryka ``UnitOfWork`` wołającego (CV-4.2b) — warianty
+            dziedziczą opcje biegu bazowego, więc bieg z konfiguracją audytu 2
+            stacji wymaga jej do odczytu tej konfiguracji.
 
     Returns:
         Widok macierzy N-1: stan bazowy, lista kontyngencji (po sortowanym
@@ -856,7 +868,7 @@ def build_kontyngencje_n1_view(
     # JEDNA walidacja modelu bazowego na CAŁĄ enumerację (nie na wariant) —
     # `apply_scenario` przyjmuje obiekt `EnergyNetworkModel`, nie słownik migawki.
     enm_bazowy = EnergyNetworkModel.model_validate(run.snapshot or {})
-    kontyngencje = [_kontyngencja(run, enm_bazowy, element) for element in elementy]
+    kontyngencje = [_kontyngencja(run, enm_bazowy, element, uow_factory) for element in elementy]
     rozstrzygniete = [pozycja for pozycja in kontyngencje if pozycja["status"] == "zbiegl"]
     ranking = [
         {
@@ -888,7 +900,7 @@ def build_kontyngencje_n1_view(
             "kryteria": kryteria,
         },
         "input_hash": _input_hash(run, refs, kryteria),
-        "przypadek_bazowy": _przypadek_bazowy(run, enm_bazowy),
+        "przypadek_bazowy": _przypadek_bazowy(run, enm_bazowy, uow_factory),
         "kontyngencje": kontyngencje,
         "ranking": ranking,
         "nierozstrzygniete": nierozstrzygniete,

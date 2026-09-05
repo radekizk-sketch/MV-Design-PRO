@@ -640,23 +640,13 @@ def _bay_device_withstand(
     uow_factory = getattr(request.app.state, "uow_factory", None)
     if uow_factory is None or project_id is None:
         return None
-    from infrastructure.persistence.models import StationAudit2ConfigORM
-
     try:
         parsed_project_id = UUID(project_id)
     except ValueError:
         return None
     with uow_factory() as uow:
-        if uow.session is None:
-            return None
-        row = (
-            uow.session.query(StationAudit2ConfigORM)
-            .filter(
-                StationAudit2ConfigORM.project_id == parsed_project_id,
-                StationAudit2ConfigORM.station_id == station_ref,
-            )
-            .one_or_none()
-        )
+        # CV-4.2b: odczyt przez repozytorium (jedno miejsce zapytań o tę tabelę).
+        row = uow.audit2_station_configs.get(parsed_project_id, station_ref)
         if row is None:
             return None
         return dict(row.bay_device_withstand or {})
@@ -1061,6 +1051,7 @@ async def run_short_circuit(case_id: str, klucz: KluczTwin, request: Request) ->
             klucz_twin=klucz,
             project_id=_resolve_project_id(case_id, request),
             options=allowed_options,
+            uow_factory=getattr(request.app.state, "uow_factory", None),
         )
         # Map ENM → NetworkGraph
         return {
@@ -1103,6 +1094,7 @@ def run_power_flow(case_id: str, klucz: KluczTwin, request: Request) -> dict[str
         case_id=case_id,
         klucz_twin=klucz,
         project_id=_resolve_project_id(case_id, request),
+        uow_factory=getattr(request.app.state, "uow_factory", None),
     )
     return {
         "case_id": case_id,

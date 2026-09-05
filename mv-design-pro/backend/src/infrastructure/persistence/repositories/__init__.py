@@ -8,6 +8,7 @@ from .network_wizard_repository import NetworkWizardRepository
 from .project_repository import ProjectRepository
 from .sld_repository import SldRepository
 from .snapshot_repository import SnapshotRepository
+from .station_audit2_config_repository import StationAudit2ConfigRepository
 
 __all__ = [
     "CaseRepository",
@@ -20,4 +21,5 @@ __all__ = [
     "ProjectRepository",
     "SnapshotRepository",
     "SldRepository",
+    "StationAudit2ConfigRepository",
 ]

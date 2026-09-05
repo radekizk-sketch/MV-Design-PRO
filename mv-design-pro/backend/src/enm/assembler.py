@@ -13,11 +13,16 @@ rozwiązują i montują wynik. Kod przeniesiony 1:1 — parytet bit w bit pilnuj
 NOT-A-SOLVER: tu jest wyłącznie przygotowanie wejścia z katalogu/normy (IEC 60909-0
 §6: c per pasmo, korekta temperaturowa MIN, Z0 z grupy połączeń) — fizyka sieci liczy
 się w ``network_model/solvers/**``.
+
+BEZ BAZY (CV-4.2b): assembler jest funkcją (migawka, opcje, dane) — nie otwiera sesji
+ani silnika. Stan zapisany w bazie (konfiguracja audytu 2 stacji) dostarcza wykonawca
+biegu fabryką ``UnitOfWork`` swojego wołającego i podaje tu jako ``rozszerzenia_audit2``.
+Własny silnik z ``DATABASE_URL`` (``_uow_factory_biezacy``/``_maybe_load_audit2_extensions``)
+został skasowany procedurą; bramka wskrzeszenia: ``scripts/legacy_public_path_guard.py``.
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 from uuid import NAMESPACE_DNS, uuid5
@@ -46,91 +51,6 @@ from network_model.solvers.short_circuit_core import ShortCircuitType
 
 def _graph_id_from_ref(ref_id: str) -> str:
     return str(uuid5(NAMESPACE_DNS, ref_id))
-
-
-def _uow_factory_biezacy() -> Callable[[], Any] | None:
-    """Fabryka `UnitOfWork` dla odczytow spoza granicy API (katalog, przypadek).
-
-    JEDNO miejsce budowy silnika/sesji z `DATABASE_URL` — reuzywane przez
-    `_maybe_load_audit2_extensions` i `_execute_protection`, zamiast dwoch
-    niezaleznych kopii tej samej sekwencji import/silnik/sesja (KLASA, NIE
-    INSTANCJA). `None`, gdy warstwa persystencji jest niedostepna (import) albo
-    silnik nie da sie zbudowac — co znaczy brak decyduje wolajacy (audit2:
-    cicho pomin rozszerzenie; protection: jawny blad, bo bez przypadku nie ma
-    configu zabezpieczen do odczytania).
-    """
-    try:
-        from infrastructure.persistence.db import (
-            create_engine_from_url,
-            create_session_factory,
-        )
-        from infrastructure.persistence.unit_of_work import build_uow_factory
-    except ImportError:
-        return None
-
-    import os
-
-    db_url = os.getenv("DATABASE_URL", "sqlite+pysqlite:///./mv_design_pro.db")
-    try:
-        engine = create_engine_from_url(db_url)
-        session_factory = create_session_factory(engine)
-        return build_uow_factory(session_factory)
-    except Exception:
-        return None
-
-
-def _maybe_load_audit2_extensions(
-    *, project_id_str: str | None, station_id: str | None
-) -> dict[str, object] | None:
-    """
-    Phase 41: opt-in audit2 extensions z DB. Zwraca None gdy brak ID-kow lub
-    config nie istnieje. NOT-A-SOLVER: tylko orchestracja, nie physics.
-    """
-    if not project_id_str or not station_id:
-        return None
-    try:
-        from uuid import UUID
-
-        pid_uuid = UUID(str(project_id_str))
-    except ValueError:
-        return None
-
-    try:
-        from infrastructure.persistence.models import StationAudit2ConfigORM
-    except ImportError:
-        return None
-
-    uow_factory = _uow_factory_biezacy()
-    if uow_factory is None:
-        return None
-
-    with uow_factory() as uow:
-        if uow.session is None:
-            return None
-        cfg = (
-            uow.session.query(StationAudit2ConfigORM)
-            .filter(
-                StationAudit2ConfigORM.project_id == pid_uuid,
-                StationAudit2ConfigORM.station_id == station_id,
-            )
-            .one_or_none()
-        )
-        if cfg is None:
-            return None
-
-        from solver_input.audit2_der_payload import (
-            build_station_audit2_payload,
-            extract_solver_extensions_from_payload,
-        )
-
-        payload = build_station_audit2_payload(
-            station_id=cfg.station_id,
-            mv_neutral_grounding_ref=cfg.mv_neutral_grounding_ref,
-            tap_changer_refs=list(cfg.tap_changer_refs or []),
-            der_specs=list(cfg.der_specs or []),
-            transformer_tap_changers=dict(cfg.transformer_tap_changers or {}),
-        )
-        return extract_solver_extensions_from_payload(payload)
 
 
 def _short_circuit_type_from_options(options: dict[str, Any]) -> ShortCircuitType:
@@ -508,11 +428,21 @@ def zloz_wejscie_rozplywu(
     snapshot: dict[str, Any] | None,
     options: dict[str, Any],
     graph: NetworkGraph | None = None,
+    *,
+    rozszerzenia_audit2: dict[str, Any] | None = None,
 ) -> WejscieRozplywu:
     """Złóż wejście rozpływu (przeniesione 1:1 z ``canonical_analysis._execute_power_flow``).
 
     ``graph``: opcjonalny GOTOWY graf zbudowany z TEJ SAMEJ migawki (oszczędzenie
     powtórnej budowy, wynik ten sam co do bitu) — patrz docstring wykonawcy.
+
+    ``rozszerzenia_audit2`` (CV-4.2b): rozszerzenia solvera z zapisanej konfiguracji
+    audytu 2 stacji (``solver_input.audit2_der_payload.rozszerzenia_audit2_z_konfiguracji``),
+    dostarczone przez WOŁAJĄCEGO — wykonawca biegu czyta je fabryką ``UnitOfWork``
+    swojego żądania (``canonical_analysis.rozszerzenia_audit2_dla_opcji``). Assembler
+    jest funkcją (migawka, opcje, dane) i NIE otwiera bazy: do tej karty budował tu
+    własny silnik z ``DATABASE_URL``, niezależny od reszty procesu, więc konfiguracja
+    zapisana przez API bywała dla biegu niewidoczna. ``None`` = bez korekt audytu 2.
     """
     snapshot = snapshot or {}
     graph = zbuduj_graf(snapshot) if graph is None else graph
@@ -671,13 +601,10 @@ def zloz_wejscie_rozplywu(
         trace_level=str(options.get("trace_level", "full")),
     )
     # base_mva obliczone wyżej (przed PQSpec — potrzebne dla regulacji falownika OZE).
-    # Phase 41: opt-in integracja audit2 z istniejacym pipeline'em.
-    # Jesli options zawiera audit2_project_id + audit2_station_id, ladujemy
-    # config z DB i aplikujemy adjustments do graph PRZED solverem.
-    audit2_extensions = _maybe_load_audit2_extensions(
-        project_id_str=options.get("audit2_project_id"),
-        station_id=options.get("audit2_station_id"),
-    )
+    # Phase 41 / CV-4.2b: opt-in rozszerzenia audytu 2 (zaczepy, statyzm, impedancja
+    # transformatora blokowego) przychodzą od WOŁAJĄCEGO jako dane — assembler nie
+    # czyta bazy; korekty idą na graf PRZED solverem.
+    audit2_extensions = rozszerzenia_audit2
     audit2_applied: dict[str, Any] | None = None
     if audit2_extensions is not None:
         from solver_input.audit2_solver_adjuster import apply_audit2_to_network_model
@@ -721,9 +648,17 @@ def zloz_wejscie_rozplywu(
 
 
 def zloz_wejscie_zwarcia(
-    snapshot: dict[str, Any] | None, options: dict[str, Any]
+    snapshot: dict[str, Any] | None,
+    options: dict[str, Any],
+    *,
+    rozszerzenia_audit2: dict[str, Any] | None = None,
 ) -> WejscieZwarcia:
-    """Złóż wejście zwarciowe (przeniesione 1:1 z ``canonical_analysis._execute_short_circuit``)."""
+    """Złóż wejście zwarciowe (przeniesione 1:1 z ``canonical_analysis._execute_short_circuit``).
+
+    ``rozszerzenia_audit2`` (CV-4.2b): jak w ``zloz_wejscie_rozplywu`` — dane od
+    wołającego (uziemienie punktu neutralnego SN → Z0/Z1, impedancja transformatora
+    blokowego), assembler nie otwiera bazy. ``None`` = bez korekt audytu 2.
+    """
     snapshot = snapshot or {}
     enm = EnergyNetworkModel.model_validate(snapshot)
     graph = map_enm_to_network_graph(enm)
@@ -732,13 +667,10 @@ def zloz_wejscie_zwarcia(
     graph_branches = graph_element_context.get("branches", {})
     short_circuit_type = _short_circuit_type_from_options(options)
 
-    # Phase 43: opt-in audit2 dla SC. Grounding Z0/Z1 wplywa na Z0_bus oraz
-    # block-trafo Z wplywa na fault current contribution. Aplikuje przed
-    # build_zero_sequence_zbus.
-    audit2_extensions_sc = _maybe_load_audit2_extensions(
-        project_id_str=options.get("audit2_project_id"),
-        station_id=options.get("audit2_station_id"),
-    )
+    # Phase 43 / CV-4.2b: opt-in rozszerzenia audytu 2 dla SC (uziemienie Z0/Z1,
+    # impedancja transformatora blokowego) od WOŁAJĄCEGO jako dane — assembler nie
+    # czyta bazy. Aplikowane przed build_zero_sequence_zbus.
+    audit2_extensions_sc = rozszerzenia_audit2
     if audit2_extensions_sc is not None:
         from solver_input.audit2_solver_adjuster import apply_audit2_to_network_model
 

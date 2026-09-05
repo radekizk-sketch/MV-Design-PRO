@@ -293,7 +293,10 @@ class TestCreateBatch:
 
         nazwana = client.post(
             f"{BASE_URL}/study-cases/{case_id}/batches",
-            json={"scenario_ids": [s1["scenario_id"]], "name": "  Zwarcia — wariant letni  "},
+            json={
+                "scenario_ids": [s1["scenario_id"]],
+                "name": "  Zwarcia — wariant letni  ",
+            },
         )
         assert nazwana.status_code == 201
         assert nazwana.json()["name"] == "Zwarcia — wariant letni"
@@ -963,3 +966,48 @@ class TestBiegSeriiMaKoperteZeScenariuszem:
         delete_resp = client.delete(f"{BASE_URL}/fault-scenarios/{s1['scenario_id']}")
         assert delete_resp.status_code == 409
         assert "powiązanymi przebiegami" in delete_resp.json()["detail"]
+
+
+# =============================================================================
+# CV-4.2b: seria podaje biegom pozycji fabryke `UnitOfWork` ZADANIA (bez zapasu)
+# =============================================================================
+
+
+def test_seria_przekazuje_fabryke_uow_zadania_do_kazdego_biegu_pozycji(monkeypatch):
+    """`execute_batch(..., uow_factory=)` -> `execute_run(run.id, uow_factory=TA SAMA)`.
+
+    Do CV-4.2b serwis wolal `execute_run(run.id)` bez fabryki, wiec bieg pozycji ze
+    scenariuszem wskazujacym konfiguracje audytu 2 stacji czytalby ja WLASNYM
+    silnikiem z `DATABASE_URL` (inna baza niz `app.state.uow_factory`).
+    """
+    from api import batch_execution as api_batch
+    from application.batch_execution_service import BatchExecutionService
+    from enm.canonical_analysis import execute_run
+
+    widziane: list[object] = []
+
+    def _wykonaj(run_id, **kwargs):
+        widziane.append(kwargs.get("uow_factory"))
+        return execute_run(run_id, **kwargs)
+
+    monkeypatch.setattr(
+        api_batch,
+        "_batch_service",
+        BatchExecutionService(
+            api_batch.get_fault_scenario_service(), execute_canonical_run=_wykonaj
+        ),
+    )
+    case_id = _nowy_przypadek()
+    _seed_valid_enm(case_id)
+    s1 = _create_scenario(case_id, name="A", element_ref="bus-main")
+    s2 = _create_scenario(case_id, name="B", element_ref="bus-1")
+    batch = client.post(
+        f"{BASE_URL}/study-cases/{case_id}/batches",
+        json={"scenario_ids": [s1["scenario_id"], s2["scenario_id"]]},
+    ).json()
+
+    done = client.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute").json()
+
+    assert done["status"] == "FINISHED", done
+    assert len(widziane) == 2
+    assert all(fabryka is app.state.uow_factory for fabryka in widziane)

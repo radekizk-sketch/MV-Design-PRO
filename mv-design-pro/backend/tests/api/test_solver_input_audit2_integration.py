@@ -33,7 +33,11 @@ def _create_audit2_config(client, pid: str, sid: str, body: dict) -> None:
 def _create_case(client, pid: str) -> str:
     res = client.post(
         "/api/study-cases",
-        json={"project_id": pid, "name": "Audit2 solver-input test", "set_active": True},
+        json={
+            "project_id": pid,
+            "name": "Audit2 solver-input test",
+            "set_active": True,
+        },
     )
     assert res.status_code == 201, res.text
     return str(res.json()["id"])
@@ -145,27 +149,15 @@ def _get_run_results(client, run_id: str) -> dict:
     return res.json()
 
 
-def _align_audit2_db_env(monkeypatch, tmp_path) -> None:
-    """DEFEKT ODKRYTY PRZY TEJ KARCIE (poza mandatem K7 — patrz meldunek).
-
-    `enm/assembler.py::_maybe_load_audit2_extensions` czyta konfigurację audit2
-    przez WŁASNY silnik/sesję zbudowaną z `DATABASE_URL`
-    (`_uow_factory_biezacy`), NIEZALEŻNY od `app.state.uow_factory` żądania —
-    TA SAMA klasa defektu, którą karta CV-3.3-B znalazła i naprawiła dla
-    `_execute_protection` (addytywny parametr `uow_factory` od wołającego).
-    Tu NIE naprawiona: naprawa wymaga zmiany sygnatury
-    `zloz_wejscie_rozplywu`/`zloz_wejscie_zwarcia` w `enm/assembler.py`, a K7
-    tej karty ogranicza edycję tego pliku do pola addytywnego (assembler w
-    edycji równoległej — karta A3-04). `app_client`'s `uow_factory` idzie do
-    PLIKU `{tmp_path}/test.db` (`tests/conftest.py::db_engine`) — `DATABASE_URL`
-    domyślnie wskazuje INNY plik (`./mv_design_pro.db`), więc bez tego
-    wyrównania `_maybe_load_audit2_extensions` nigdy nie widzi configu, który
-    test zapisał przez `app_client`. Wyrównanie na TEN SAM plik odtwarza
-    jedyny scenariusz, w którym produkcyjny kod DZIAŁA (jedna baza wskazana
-    jednym `DATABASE_URL` dla całej aplikacji) — nie maskuje defektu, tylko
-    pozwala go zmierzyć zamiast dostać fałszywy negatyw z powodu env-var.
-    """
-    monkeypatch.setenv("DATABASE_URL", f"sqlite+pysqlite:///{tmp_path / 'test.db'}")
+# CV-4.2b: do tej karty testy niżej musiały WYRÓWNYWAĆ `DATABASE_URL` na plik bazy
+# `app_client` (dawna pomoc `_align_audit2_db_env`), bo `enm/assembler.py::
+# _maybe_load_audit2_extensions` czytał konfigurację audytu 2 WŁASNYM silnikiem z
+# `DATABASE_URL`, niezależnym od `app.state.uow_factory` — bez wyrównania produkt
+# nie widział konfiguracji zapisanej przez API. Wyrównanie zdjęte: bieg czyta
+# konfigurację fabryką `UnitOfWork` żądania (`canonical_analysis.
+# rozszerzenia_audit2_dla_opcji`), a `DATABASE_URL` wskazuje tu INNĄ bazę
+# (izolowany magazyn biegów z conftest) — testy przechodzą WYŁĄCZNIE, gdy bieg
+# i API dzielą jedną bazę konfiguracji.
 
 
 def test_solver_input_endpoint_audit2_params_documented(app_client):
@@ -241,12 +233,14 @@ def test_audit2_per_transformer_persistence_round_trip(app_client):
     }
 
 
-def test_audit2_power_flow_run_uses_config_from_db(app_client, monkeypatch, tmp_path):
+def test_audit2_power_flow_run_uses_config_from_db(app_client):
     """Karta CV-4.2: bieg kanoniczny PF z audit2_project_id/audit2_station_id
     stosuje config z DB (zastępuje usunięty stub POST /api/cases/audit2-power-flow,
     który fabrykował wejście — `pq=[]`, `slack_node_id or "slack-stub"` — na
-    zawsze pustym grafie)."""
-    _align_audit2_db_env(monkeypatch, tmp_path)
+    zawsze pustym grafie).
+
+    CV-4.2b: bez wyrównania `DATABASE_URL` — konfiguracja zapisana przez API
+    (`app.state.uow_factory`) musi być widoczna dla biegu TĄ SAMĄ fabryką."""
     pid = _create_project(app_client)
     case_id = _create_case(app_client, pid)
     _build_minimal_network(app_client, case_id)
@@ -275,13 +269,12 @@ def test_audit2_power_flow_run_uses_config_from_db(app_client, monkeypatch, tmp_
     assert "tap_position_changes" in applied
 
 
-def test_audit2_power_flow_run_no_config_omits_audit2_applied(app_client, monkeypatch, tmp_path):
+def test_audit2_power_flow_run_no_config_omits_audit2_applied(app_client):
     """Karta CV-4.2: gdy audit2 config nie istnieje dla station_id, opcje biegu
     nie niosą audit2_project_id/audit2_station_id realnie znajdujących config —
     `audit2_applied` jest wtedy NIEOBECNE w wyniku (pole addytywne, `None` u
     źródła — `enm/assembler.py::WejscieRozplywu.audit2_applied`), nie pusty
     placeholder."""
-    _align_audit2_db_env(monkeypatch, tmp_path)
     pid = _create_project(app_client)
     case_id = _create_case(app_client, pid)
     _build_minimal_network(app_client, case_id)
@@ -296,13 +289,10 @@ def test_audit2_power_flow_run_no_config_omits_audit2_applied(app_client, monkey
     assert "audit2_applied" not in results["global_results"]
 
 
-def test_audit2_power_flow_run_without_audit2_options_omits_audit2_applied(
-    app_client, monkeypatch, tmp_path
-):
+def test_audit2_power_flow_run_without_audit2_options_omits_audit2_applied(app_client):
     """Karta CV-4.2: bieg PF bez opcji audit2 (droga zwykła) nie niesie
     `audit2_applied` w ogóle — parytet bit w bit z biegiem sprzed karty
     (`tests/golden/parytet_assemblera`)."""
-    _align_audit2_db_env(monkeypatch, tmp_path)
     pid = _create_project(app_client)
     case_id = _create_case(app_client, pid)
     _build_minimal_network(app_client, case_id)
@@ -313,10 +303,9 @@ def test_audit2_power_flow_run_without_audit2_options_omits_audit2_applied(
     assert "audit2_applied" not in results["global_results"]
 
 
-def test_audit2_power_flow_run_full_apply_trail(app_client, monkeypatch, tmp_path):
+def test_audit2_power_flow_run_full_apply_trail(app_client):
     """Karta CV-4.2 (dawniej Phase 34): weryfikuje ze applied trail zawiera
     REALNE trzy kanały (nie placeholder, nie zmyślona drabinka)."""
-    _align_audit2_db_env(monkeypatch, tmp_path)
     pid = _create_project(app_client)
     case_id = _create_case(app_client, pid)
     _build_minimal_network(app_client, case_id)
@@ -491,3 +480,60 @@ def test_der_spec_nominal_power_persists(app_client):
     assert spec["device_catalog_ref"] == "pv_inv_sma_2500"
     assert spec["nominal_power_kw"] == 2500
     assert spec["block_transformer_catalog_ref"] == "btr_pv_15_069_2500"
+
+
+def _create_and_execute_run(client, case_id: str, analysis_type: str, solver_input: dict) -> dict:
+    create = client.post(
+        f"/api/execution/study-cases/{case_id}/runs",
+        json={"analysis_type": analysis_type, "solver_input": solver_input},
+    )
+    assert create.status_code == 201, create.text
+    run_id = create.json()["id"]
+    execute = client.post(f"/api/execution/runs/{run_id}/execute")
+    assert execute.status_code == 200, execute.text
+    return execute.json()
+
+
+def test_audit2_short_circuit_run_reads_config_with_request_uow(app_client):
+    """CV-4.2b (SC × para z konfiguracją): bieg zwarciowy z parą audytu 2 kończy się DONE.
+
+    Od CV-4.2b para bez fabryki `UnitOfWork` = jawny błąd (bieg FAILED), więc DONE
+    dowodzi, że końcówka wykonania podała biegowi fabrykę żądania, a odczyt
+    konfiguracji (uziemienie punktu neutralnego SN) poszedł tą samą bazą. Zwarcie
+    3F: sieć minimalna tego testu nie niesie składowej zerowej (1F odmawia w
+    `create_run` niezależnie od audytu 2), a predykat fabryki od rodzaju zwarcia
+    nie zależy.
+    """
+    analysis_type = "SC_3F"
+    pid = _create_project(app_client)
+    case_id = _create_case(app_client, pid)
+    _build_minimal_network(app_client, case_id)
+    _create_audit2_config(
+        app_client,
+        pid,
+        "station-sc",
+        {
+            "mv_neutral_grounding_ref": "mng_petersen",
+            "tap_changer_refs": [],
+            "der_specs": [],
+        },
+    )
+
+    executed = _create_and_execute_run(
+        app_client,
+        case_id,
+        analysis_type,
+        {"audit2_project_id": pid, "audit2_station_id": "station-sc"},
+    )
+    assert executed["status"] == "DONE", executed
+
+
+def test_audit2_half_pair_fails_run_with_explicit_reason(app_client):
+    """CV-4.2b (połowa pary): bieg nie liczy się cicho bez korekt — FAILED z powodem."""
+    pid = _create_project(app_client)
+    case_id = _create_case(app_client, pid)
+    _build_minimal_network(app_client, case_id)
+
+    executed = _create_and_execute_run(app_client, case_id, "LOAD_FLOW", {"audit2_project_id": pid})
+    assert executed["status"] == "FAILED", executed
+    assert "polowa pary" in (executed.get("error_message") or "")

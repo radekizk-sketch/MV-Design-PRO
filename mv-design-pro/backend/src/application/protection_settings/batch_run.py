@@ -64,6 +64,7 @@ kodu (ten sam princyp co wybór odcinka w `voltage_drop_binding.py`).
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -207,15 +208,32 @@ def _opcjonalna_liczba(wartosc: Any) -> float | None:
     return liczba if math.isfinite(liczba) else None
 
 
+def _opcje_audit2_kotwicy(kotwica: CanonicalRun) -> dict[str, Any]:
+    """Para opcji konfiguracji audytu 2 stacji przejęta z kotwicy (CV-4.2b).
+
+    Warianty nastaw liczą TEN SAM model co kotwica — jeśli kotwicę policzono z
+    korektami audytu 2 (uziemienie punktu neutralnego → Z0, zaczepy), warianty
+    bez tej pary liczyłyby inną sieć (do tej karty: cicho, bez korekt). Brak
+    pary w kotwicy = brak pary w wariantach.
+    """
+    return {
+        klucz: kotwica.options[klucz]
+        for klucz in ("audit2_project_id", "audit2_station_id")
+        if klucz in kotwica.options
+    }
+
+
 def _opcje_wariantu_zwarciowego(
     kotwica: CanonicalRun, *, fault_type: str, c_factor: float
 ) -> dict[str, Any]:
     """Opcje wariantu zwarciowego (CV-3-W): `fault_type`/`c_factor` WŁASNE wariantu,
-    `thermal_time_seconds` przejęty z opcji kotwicy (SC nie zna innej wartości)."""
+    `thermal_time_seconds` i para audytu 2 przejęte z opcji kotwicy (SC nie zna
+    innej wartości; ten sam model stacji co kotwica)."""
     return {
         "fault_type": fault_type,
         "c_factor": c_factor,
         "thermal_time_seconds": float(kotwica.options.get("thermal_time_seconds", 1.0)),
+        **_opcje_audit2_kotwicy(kotwica),
     }
 
 
@@ -242,12 +260,17 @@ def zbuduj_wejscie_nastaw(
     t_upstream_s: float = 0.0,
     spz_enabled: bool = True,
     spz_pause_s: float = 0.5,
+    uow_factory: Callable[[], Any] | None = None,
 ) -> WejscieNastawZBiegow:
     """Zbuduj komplet wejścia silnika nastaw z kotwicy + dwóch wariantów zwarciowych
     + jednego wariantu rozpływu — WSZYSTKIE trzy na migawce kotwicy.
 
     Podnosi `BrakDanychNastawError` (powód po polsku) na każdym brakującym ogniwie —
     nigdy nie zwraca wejścia z podstawioną wartością.
+
+    `uow_factory` (CV-4.2b): fabryka `UnitOfWork` wołającego — trzy warianty
+    dziedziczą parę audytu 2 kotwicy, więc kotwica z konfiguracją audytu 2
+    stacji wymaga jej do odczytu tej konfiguracji (`wykonaj_bieg_w_pamieci`).
     """
     if kotwica.status != "FINISHED":
         raise BrakDanychNastawError(
@@ -325,7 +348,7 @@ def zbuduj_wejscie_nastaw(
         options=_opcje_wariantu_zwarciowego(kotwica, fault_type="3F", c_factor=c_min),
     )
     try:
-        wykonaj_bieg_w_pamieci(wariant_3f_cmin)
+        wykonaj_bieg_w_pamieci(wariant_3f_cmin, uow_factory=uow_factory)
     except Exception as exc:  # noqa: BLE001 — niezbieznosc/blad solvera = odmowa z powodem
         raise BrakDanychNastawError(
             f"Wariant zwarcia trójfazowego przy c_min={c_min} przerwany błędem "
@@ -346,7 +369,7 @@ def zbuduj_wejscie_nastaw(
         options=_opcje_wariantu_zwarciowego(kotwica, fault_type="2F", c_factor=c_min),
     )
     try:
-        wykonaj_bieg_w_pamieci(wariant_2f_cmin)
+        wykonaj_bieg_w_pamieci(wariant_2f_cmin, uow_factory=uow_factory)
     except Exception as exc:  # noqa: BLE001 — jak wyzej
         raise BrakDanychNastawError(
             f"Wariant zwarcia dwufazowego przy c_min={c_min} przerwany błędem "
@@ -359,9 +382,11 @@ def zbuduj_wejscie_nastaw(
             "na końcu chronionego odcinka."
         )
 
-    wariant_pf = bieg_wariantu(kotwica, migawka_kotwicy, analysis_type="PF", options={})
+    wariant_pf = bieg_wariantu(
+        kotwica, migawka_kotwicy, analysis_type="PF", options=_opcje_audit2_kotwicy(kotwica)
+    )
     try:
-        wykonaj_bieg_w_pamieci(wariant_pf)
+        wykonaj_bieg_w_pamieci(wariant_pf, uow_factory=uow_factory)
     except Exception as exc:  # noqa: BLE001 — niezbieznosc rozplywu = odmowa z powodem
         raise BrakDanychNastawError(
             f"Wariant rozpływu mocy migawki kotwicy przerwany błędem solvera: "

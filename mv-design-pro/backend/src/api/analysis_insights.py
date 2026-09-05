@@ -31,9 +31,11 @@ istniejący tor sieci referencyjnych (``/api/v1/reference-networks``).
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 from uuid import UUID
 
+from api.dependencies import get_uow_factory
 from api.klucz_twin_dep import KluczTwin
 from application.analyses.granice_sieci import build_granice_view
 from application.analyses.kontyngencje_n1 import (
@@ -44,7 +46,8 @@ from application.analyses.pokrycie_analiz import build_pokrycie_view
 from application.analyses.wrazliwosc_rozplywu import build_wrazliwosc_view
 from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import get_run as get_canonical_run
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from infrastructure.persistence.unit_of_work import UnitOfWork
 
 router = APIRouter(tags=["analysis-insights"])
 
@@ -109,10 +112,11 @@ def get_n_1_contingency_scope(run_id: UUID = Query(...)) -> dict[str, Any]:
 def get_n_1_contingency(
     run_id: UUID = Query(...),
     element_refs: list[str] | None = Query(default=None),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     run = _require_run(run_id)
     try:
-        return build_kontyngencje_n1_view(run, element_refs=element_refs)
+        return build_kontyngencje_n1_view(run, element_refs=element_refs, uow_factory=uow_factory)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

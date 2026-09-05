@@ -39,6 +39,7 @@ def _graph_for_analysis(
     analysis_type: SolverAnalysisType,
     scenario_lower: str,
     solver_options: dict[str, Any],
+    rozszerzenia_audit2: dict[str, Any] | None,
 ) -> NetworkGraph:
     """Karta CV-4.2: kontrakt P11 wypełniany PRZEZ assembler (`zloz_wejscie_*`),
     nie przez pusty graf-stub (P11 przed kartą zawsze budował payload z
@@ -49,10 +50,17 @@ def _graph_for_analysis(
 
     PROTECTION nie ma własnej analizy assemblera (payload jest jawnym stubem
     w ``build_solver_input``) — wystarcza IR bez montażu PF/SC.
+
+    ``rozszerzenia_audit2`` (CV-4.2b): rozszerzenia z konfiguracji audytu 2 stacji
+    odczytanej RAZ fabryką ``UnitOfWork`` żądania — assembler dostaje dane, nie
+    otwiera bazy (do tej karty czytał ją drugi raz własnym silnikiem z
+    ``DATABASE_URL``, więc kontrakt P11 potrafił nie widzieć zapisanej konfiguracji).
     """
     snapshot = get_enm(klucz).model_dump(mode="json")
     if analysis_type == SolverAnalysisType.LOAD_FLOW:
-        return zloz_wejscie_rozplywu(snapshot, solver_options).graph
+        return zloz_wejscie_rozplywu(
+            snapshot, solver_options, rozszerzenia_audit2=rozszerzenia_audit2
+        ).graph
     if analysis_type in (
         SolverAnalysisType.SHORT_CIRCUIT_3F,
         SolverAnalysisType.SHORT_CIRCUIT_1F,
@@ -62,7 +70,9 @@ def _graph_for_analysis(
             "3F" if analysis_type == SolverAnalysisType.SHORT_CIRCUIT_3F else "1F"
         )
         sc_options["scenario"] = scenario_lower
-        return zloz_wejscie_zwarcia(snapshot, sc_options).graph
+        return zloz_wejscie_zwarcia(
+            snapshot, sc_options, rozszerzenia_audit2=rozszerzenia_audit2
+        ).graph
     return zbuduj_graf(snapshot)
 
 
@@ -130,11 +140,13 @@ def get_solver_input(
     `zloz_wejscie_zwarcia`) z REALNEJ migawki ENM przypadku (`klucz` — CV-1-W),
     nie z pustego grafu-stubu.
 
-    Phase 17: jesli `project_id` + `station_id` przekazane, podlacza
-    audit2 config z bazy do envelope (`audit2_extensions` populated) — TA SAMA
-    para trafia też do opcji assemblera (`audit2_project_id`/`audit2_station_id`),
+    Phase 17 / CV-4.2b: jesli `project_id` + `station_id` przekazane, konfiguracja
+    audytu 2 jest czytana RAZ (fabryka `UnitOfWork` żądania, repozytorium
+    `audit2_station_configs`) i idzie w DWA miejsca: do envelope
+    (`audit2_extensions`) oraz — jako rozszerzenia solvera — do assemblera,
     więc payload odzwierciedla model PO korektach audit2 (tap/statyzm/impedancja
     bloku), nie tylko surowy model obok osobno raportowanych rozszerzeń.
+    Niepoprawny UUID projektu = 400 (nie cichy payload bez konfiguracji).
 
     Karta P0.3: `scenario` (MAX default | MIN) selects the IEC 60909-0
     Table 1 voltage factor c per bus (BusPayload.c_factor_iec60909) — see
@@ -157,54 +169,45 @@ def get_solver_input(
             detail=f"Invalid scenario '{scenario}'. Valid: ['MAX', 'MIN']",
         )
 
-    solver_options: dict[str, Any] = {}
+    # Phase 17 / CV-4.2b: konfiguracja audytu 2 z bazy RAZ, fabryką UnitOfWork żądania.
+    audit2_payload: dict[str, Any] | None = None
+    rozszerzenia_audit2: dict[str, Any] | None = None
     if project_id and station_id:
-        solver_options["audit2_project_id"] = project_id
-        solver_options["audit2_station_id"] = station_id
+        from uuid import UUID
+
+        from solver_input.audit2_der_payload import rozszerzenia_audit2_z_konfiguracji
+
+        try:
+            pid_uuid = UUID(project_id)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=400, detail=f"project_id nie jest poprawnym UUID: {project_id!r}"
+            ) from exc
+        with uow_factory() as uow:
+            cfg = uow.audit2_station_configs.get(pid_uuid, station_id)
+            if cfg is not None:
+                audit2_payload = {
+                    "station_id": cfg.station_id,
+                    "mv_neutral_grounding_ref": cfg.mv_neutral_grounding_ref,
+                    "tap_changer_refs": list(cfg.tap_changer_refs or []),
+                    "der_specs": list(cfg.der_specs or []),
+                    # Phase 22: per-transformer mapping dla apply_audit2_to_network_model.
+                    "transformer_tap_changers": dict(cfg.transformer_tap_changers or {}),
+                }
+                rozszerzenia_audit2 = rozszerzenia_audit2_z_konfiguracji(cfg)
+
     try:
         graph = _graph_for_analysis(
             klucz=klucz,
             analysis_type=at,
             scenario_lower=scenario_normalized.lower(),
-            solver_options=solver_options,
+            solver_options={},
+            rozszerzenia_audit2=rozszerzenia_audit2,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     config = _get_config_for_case(case_id)
     catalog = get_default_mv_catalog()
-
-    # Phase 17: pull audit2 station config z DB (gdy project+station pdane).
-    audit2_payload: dict[str, Any] | None = None
-    if project_id and station_id:
-        from uuid import UUID
-
-        from infrastructure.persistence.models import StationAudit2ConfigORM
-
-        try:
-            pid_uuid = UUID(project_id)
-        except ValueError:
-            pid_uuid = None
-
-        if pid_uuid is not None:
-            with uow_factory() as uow:
-                assert uow.session is not None
-                cfg = (
-                    uow.session.query(StationAudit2ConfigORM)
-                    .filter(
-                        StationAudit2ConfigORM.project_id == pid_uuid,
-                        StationAudit2ConfigORM.station_id == station_id,
-                    )
-                    .one_or_none()
-                )
-                if cfg is not None:
-                    audit2_payload = {
-                        "station_id": cfg.station_id,
-                        "mv_neutral_grounding_ref": cfg.mv_neutral_grounding_ref,
-                        "tap_changer_refs": list(cfg.tap_changer_refs or []),
-                        "der_specs": list(cfg.der_specs or []),
-                        # Phase 22: per-transformer mapping dla apply_audit2_to_network_model.
-                        "transformer_tap_changers": dict(cfg.transformer_tap_changers or {}),
-                    }
 
     envelope = build_solver_input(
         graph=graph,

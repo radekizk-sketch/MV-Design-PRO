@@ -27,7 +27,11 @@ from application.protection_settings.batch_run import (
     linie_kandydujace,
     zbuduj_wejscie_nastaw,
 )
-from enm.canonical_analysis import CanonicalRun, _execute_power_flow, _execute_short_circuit
+from enm.canonical_analysis import (
+    CanonicalRun,
+    _execute_power_flow,
+    _execute_short_circuit,
+)
 from enm.models import (
     BranchRating,
     Bus,
@@ -150,7 +154,11 @@ def _kotwica(
         snapshot=enm.model_dump(mode="json"),
         validation={},
         readiness={},
-        options={"fault_type": fault_type, "c_factor": c_factor, "thermal_time_seconds": 1.0},
+        options={
+            "fault_type": fault_type,
+            "c_factor": c_factor,
+            "thermal_time_seconds": 1.0,
+        },
     )
     run.finished_at = run.created_at
     if wykonaj:
@@ -376,3 +384,55 @@ def test_zbuduj_wejscie_nastaw_nie_mutuje_migawki_kotwicy_pin_spojnosci() -> Non
     assert wejscie.engine_input.ik3_min_beginning_a > 0  # dowod, ze warianty faktycznie policzono
     assert kotwica.snapshot == snapshot_przed, "kotwica bazowa NIETKNIETA (Case Immutability)"
     assert kotwica.raw_result == raw_result_przed, "zamrozony wynik kotwicy NIETKNIETY"
+
+
+# ---------------------------------------------------------------------------
+# CV-4.2b: warianty nastaw licza TEN SAM model stacji co kotwica (para audytu 2
+# dziedziczona), a bez fabryki wolajacego odmawiaja jawnie.
+# ---------------------------------------------------------------------------
+
+
+def test_warianty_nastaw_dziedzicza_pare_audit2_kotwicy() -> None:
+    from application.protection_settings.batch_run import (
+        _opcje_audit2_kotwicy,
+        _opcje_wariantu_zwarciowego,
+    )
+
+    kotwica = _kotwica(_siec_promieniowa(), wykonaj=False)
+    assert _opcje_audit2_kotwicy(kotwica) == {}
+    bez_pary = _opcje_wariantu_zwarciowego(kotwica, fault_type="3F", c_factor=1.0)
+    assert "audit2_project_id" not in bez_pary and "audit2_station_id" not in bez_pary
+
+    para = {"audit2_project_id": str(uuid4()), "audit2_station_id": "stacja-nastaw"}
+    kotwica.options = {**kotwica.options, **para}
+    assert _opcje_audit2_kotwicy(kotwica) == para
+    z_para = _opcje_wariantu_zwarciowego(kotwica, fault_type="2F", c_factor=1.0)
+    assert {k: z_para[k] for k in para} == para
+    assert z_para["fault_type"] == "2F" and z_para["c_factor"] == 1.0
+
+
+def test_kotwica_z_para_audit2_bez_fabryki_odmawia_jawnie() -> None:
+    kotwica = _kotwica(_siec_promieniowa())
+    kotwica.options = {
+        **kotwica.options,
+        "audit2_project_id": str(uuid4()),
+        "audit2_station_id": "stacja-nastaw",
+    }
+
+    with pytest.raises(BrakDanychNastawError, match="nie dostal fabryki UnitOfWork"):
+        zbuduj_wejscie_nastaw(kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0)
+
+
+def test_kotwica_z_para_audit2_i_fabryka_liczy_komplet_wariantow(uow_factory) -> None:
+    kotwica = _kotwica(_siec_promieniowa())
+    kotwica.options = {
+        **kotwica.options,
+        "audit2_project_id": str(uuid4()),
+        "audit2_station_id": "stacja-nastaw",
+    }
+
+    wejscie = zbuduj_wejscie_nastaw(
+        kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0, uow_factory=uow_factory
+    )
+
+    assert wejscie.engine_input is not None

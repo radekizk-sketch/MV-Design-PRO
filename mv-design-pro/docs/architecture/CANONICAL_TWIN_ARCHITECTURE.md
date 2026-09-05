@@ -291,6 +291,32 @@ Dziś: 14 implementacji przeglądu grafu w backendzie + 6 w kliencie (5 z własn
 
 Guard po CV-4: konstrukcja `PowerFlowInput(`, `ShortCircuitInput(`/`ShortCircuitPayload(` poza `enm/mapping.py`/assemblerem = czerwony; `backend_no_physics_guard` (rodziny wielkości: √3, κ, exp(−3R/X), I²t, k/(M^a−1), R·(1+α(θ−20)), P/(√3·U·cosφ)) poza `network_model/solvers` = czerwony z pustą allowlistą. **Stan po CV-4.1 (2026-09-05):** guard konstrukcji ISTNIEJE — `scripts/solver_input_assembler_guard.py` (krok P0 w `p0-extended-guards.yml`): wywołanie `PowerFlowInput(`/`ShortCircuitPayload(`/`LoadFlowPayload(`/`PQSpec(`/`SlackSpec(`/`PVSpec(`/`ShuntSpec(` poza `enm/assembler.py` = czerwony, z zapadką ZASTANE w obie strony (7 plików / 31 konstrukcji: P2/S4, P5, P6–P8, P11, P12 — schodzi wyłącznie w dół, kasacje procedurą w CV-4.2/CV-4.3) i allowlistą `power_flow_gauss_seidel.py` (fallback GS→NR z pól istniejącego `pf_input`, rdzeń FROZEN); `ShortCircuitInput` z tej listy to DTO kreatora (`network_wizard/dtos.py`), nie kontrakt solvera — ginie z kreatorem (P2/S4), nie jest liczone; `backend_no_physics_guard` — jeszcze nie. **Stan po CV-4.2 (2026-09-05):** zapadka ZASTANE zeszła do 3 plików / 16 konstrukcji — WYŁĄCZNIE `application/reference_networks/**` (CV-4.3, benchmarki jako substraty ENM); P2/S4, P5, P11, P12 zniknęły z zapadki (kasacja/przepięcie, patrz wiersze wyżej). `solver_input/builder.py` przeszedł do ALLOWLIST (nie liczony) z uzasadnieniem: kontrakt LOCKED wypełniany z grafu PODANEGO przez wywołującego (`api/solver_input.py`), zbudowanego PRZEZ assembler — ten sam wzorzec co `power_flow_gauss_seidel.py` (konstrukcja z pól/grafu podanego przez assembler, nie z modelu równolegle). Osobny guard `scripts/solver_input_substitute_guard.py` (podstawianie liczby za nieobecne dane wejściowe): 575 plików przeskanowanych, zapadka fizyczna 63 pliki/290 konstrukcji (P5 zniknął z zapadki jako martwy wpis — plik skasowany).
 
+**CV-4.2b (2026-09-05) — assembler BEZ bazy.** `enm/assembler.py` jest funkcją (migawka, opcje, dane):
+nie otwiera sesji ani silnika. Do tej karty `zloz_wejscie_rozplywu`/`zloz_wejscie_zwarcia` czytały
+konfigurację audytu 2 stacji (`station_audit2_configs`) WŁASNYM silnikiem z `DATABASE_URL`
+(`_uow_factory_biezacy` → `_maybe_load_audit2_extensions`) — drugą, niezależną bazą w tym samym
+procesie, inną niż `app.state.uow_factory`; konfiguracja zapisana przez API bywała dla biegu
+niewidoczna (ta sama klasa, którą CV-3.3-B naprawiła dla `_execute_protection`; test integracyjny P11
+musiał wyrównywać `DATABASE_URL`, żeby produkt zadziałał). Po karcie: (1) fabryka `UnitOfWork`
+WOŁAJĄCEGO idzie przez KAŻDE wejście wykonania — `execute_run`/`run_*_now`/`wykonaj_bieg_w_pamieci`
+→ `_wykonaj_analize_biegu` → `_execute_power_flow`/`_execute_short_circuit`/`_execute_protection`;
+końcówki `api/execution_runs`, `api/power_flow_runs`, `api/enm` (biegi natychmiastowe), seria
+`BatchExecutionService`, warianty w pamięci (`hosting_capacity`, `pq_area`, `kontyngencje_n1`,
+`protection_settings/batch_run` + `pakiet_nastaw`) podają ją jawnie; (2) `canonical_analysis.
+rozszerzenia_audit2_dla_opcji(options, uow_factory)` jest JEDYNYM odczytem konfiguracji dla wykonawców
+(brak pary → `None` bez dotykania bazy; połowa pary / zły UUID / brak fabryki → jawny `ValueError`,
+bieg FAILED z powodem; para bez zapisu → `None`), wynik idzie do assemblera jako `rozszerzenia_audit2`;
+(3) repozytorium `UnitOfWork.audit2_station_configs` (`infrastructure/persistence/repositories/
+station_audit2_config_repository.py`) zastępuje SIEDEM zapytań ORM poza warstwą persystencji
+(`api/audit2_station_config.py` ×5, `api/solver_input.py`, `api/enm.py::_bay_device_withstand`,
+assembler), a `NetworkWizardRepository.list_switch_equipment_assignments` — zapytanie w
+`catalog_governance/service.py`; (4) zapas `_uow_factory_biezacy` w `_execute_protection` skasowany
+(bieg bez fabryki = FAILED z powodem); bramka wskrzeszenia w `legacy_public_path_guard`
+(`FORBIDDEN_CV42B_FUNCTION_NAMES`). Poza klasą świadomie: `canonical_run_repository` (R1) ma własny
+silnik z `DATABASE_URL`, ale jest JEDYNYM czytelnikiem i pisarzem `canonical_runs` — nie ma drugiego
+uchwytu do tej samej tabeli, więc nie jest „drugą prawdą" (izolacja per test: `conftest.
+_izolowana_baza_przebiegow`); jego zejście pod wspólną fabrykę to decyzja rejestru CV-2, nie ta karta.
+
 ### C.2.4 Tożsamość w IR (§6, T-4)
 Dziś `Node.id = uuid5(NAMESPACE_DNS, ref_id)` w torze kanonicznym i `uuid4` w legacy (A1 §2). Docelowo identyfikator węzła IR = deterministyczna funkcja zbioru `ref_id` CN wchodzących w TN (posortowane, sha256 → stabilny id), mapa zwrotna TN → {CN ref_id} niesiona w `TopologyView`; wyniki mapowane na `ref_id` przez tę mapę (dziś `enm_ref_id_map`). Zakaz tłumaczeń tożsamości poza tą jedną funkcją (A1-06: 4 przestrzenie → 1).
 

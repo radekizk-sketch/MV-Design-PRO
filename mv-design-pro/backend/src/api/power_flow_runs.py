@@ -418,9 +418,14 @@ def create_power_flow_run(
 
 
 @router.post("/power-flow-runs/{run_id}/execute")
-def execute_power_flow_run(run_id: UUID) -> dict[str, Any]:
+def execute_power_flow_run(
+    run_id: UUID,
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
+) -> dict[str, Any]:
     _require_canonical_run(run_id)
-    run = execute_canonical_run(run_id)
+    # CV-4.2b: fabryka `UnitOfWork` żądania idzie do wykonawcy — rozpływ z
+    # konfiguracją audytu 2 stacji czyta ją tą samą bazą, którą ją zapisano.
+    run = execute_canonical_run(run_id, uow_factory=uow_factory)
     result_v1 = (run.raw_result or {}).get("result_v1") or {}
     return canonicalize_json(
         {

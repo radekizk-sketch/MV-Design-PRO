@@ -110,7 +110,7 @@ class BatchNotPendingError(BatchExecutionError):
 
 #: Sygnatury wołań toru kanonicznego (wstrzykiwalne w testach kontraktowych).
 CreateRunFn = Callable[..., CanonicalRun]
-ExecuteRunFn = Callable[[UUID], CanonicalRun]
+ExecuteRunFn = Callable[..., CanonicalRun]
 
 #: Rodzaj analizy kanonicznej dla KAŻDEGO biegu pozycji serii — serie działają
 #: WYŁĄCZNIE nad scenariuszami zwarciowymi (walidacja `create_batch`: wszystkie
@@ -270,7 +270,13 @@ class BatchExecutionService:
     # Wykonanie serii
     # ------------------------------------------------------------------
 
-    def execute_batch(self, batch_id: UUID, *, klucz_twin: str) -> RunBatch:
+    def execute_batch(
+        self,
+        batch_id: UUID,
+        *,
+        klucz_twin: str,
+        uow_factory: Callable[[], Any] | None = None,
+    ) -> RunBatch:
         """Wykonaj serię sekwencyjnie torem kanonicznym.
 
         Dla KAŻDEJ pozycji (w porządku `position`), NIEZALEŻNIE od wyniku
@@ -291,9 +297,15 @@ class BatchExecutionService:
         (`domain.run_batch.finalize_batch_status`).
 
         `klucz_twin` — klucz magazynu ENM (Canonical Project Twin) projektu
-        przypadku serii. Serwis jest bezstanowy wobec bazy danych domenowej
-        (brak `uow_factory` w zasięgu), więc tłumaczenie `case_id -> klucz`
-        dzieje się WYŁĄCZNIE u wołającego (`api/batch_execution.py`).
+        przypadku serii. Serwis jest bezstanowy wobec bazy danych domenowej —
+        tłumaczenie `case_id -> klucz` dzieje się WYŁĄCZNIE u wołającego
+        (`api/batch_execution.py`).
+
+        `uow_factory` (CV-4.2b) — fabryka `UnitOfWork` wołającego, podawana
+        każdemu biegowi pozycji (`execute_run(run.id, uow_factory=...)`): bieg
+        zwarciowy ze scenariuszem, którego opcje wskazują konfigurację audytu 2
+        stacji, czyta ją TĄ SAMĄ bazą, którą widzi reszta żądania — serwis nie
+        buduje własnego połączenia.
         """
         batch = self._get_batch(batch_id)
         if batch.status != RunBatchStatus.CREATED:
@@ -303,7 +315,7 @@ class BatchExecutionService:
         self._zapisz(batch)
 
         for pozycja in batch.sorted_items():
-            zaktualizowana = self._wykonaj_pozycje(klucz_twin, batch, pozycja)
+            zaktualizowana = self._wykonaj_pozycje(klucz_twin, batch, pozycja, uow_factory)
             batch = batch.with_item(zaktualizowana)
             self._zapisz(batch)
 
@@ -319,7 +331,11 @@ class BatchExecutionService:
         return batch
 
     def _wykonaj_pozycje(
-        self, klucz_twin: str, batch: RunBatch, pozycja: RunBatchItem
+        self,
+        klucz_twin: str,
+        batch: RunBatch,
+        pozycja: RunBatchItem,
+        uow_factory: Callable[[], Any] | None,
     ) -> RunBatchItem:
         """Wykonaj JEDNĄ pozycję — zawsze zwraca pozycję w stanie KOŃCOWYM
         (FINISHED/FAILED), nigdy nie podnosi wyjątku (awaria = FAILED, zero
@@ -341,7 +357,7 @@ class BatchExecutionService:
                 # scenariusz z aktywnym biegiem serii.
                 scenariusz=wpis,
             )
-            run = self._execute_canonical_run(run.id)
+            run = self._execute_canonical_run(run.id, uow_factory=uow_factory)
             if run.status != "FINISHED":
                 return RunBatchItem(
                     position=pozycja.position,

@@ -205,11 +205,19 @@ def list_runs(case_id: str) -> dict[str, Any]:
     "/api/execution/runs/{run_id}/execute",
     response_model=RunResponse,
 )
-def execute_run(run_id: str) -> dict[str, Any]:
+def execute_run(run_id: str, http_request: Request) -> dict[str, Any]:
+    # CV-4.2b: bieg wykonuje się TĄ SAMĄ fabryką `UnitOfWork`, którą widzi reszta
+    # żądania — bieg zabezpieczeń (konfiguracja przypadku) i rozpływ/zwarcie z
+    # konfiguracją audytu 2 stacji czytają bazę; bez fabryki wołającego wykonawca
+    # budował własne połączenie z `DATABASE_URL` (inna baza niż `app.state`).
+    # (Komentarz, nie docstring: opis operacji jest częścią snapshotu OpenAPI.)
     parsed_run_id = _parse_uuid(run_id, "run_id")
 
     try:
-        run = execute_canonical_run(parsed_run_id)
+        run = execute_canonical_run(
+            parsed_run_id,
+            uow_factory=getattr(http_request.app.state, "uow_factory", None),
+        )
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
