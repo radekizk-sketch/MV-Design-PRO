@@ -1,0 +1,144 @@
+"""Testy bramki `generator.q_missing` dla analiz V12.6 (karta FAB-H, H2).
+
+`_branch_current_a` (`network_model/solvers/v126_academic.py`, solver FROZEN —
+B-01, nie edytujemy go z tej karty) czyta `bus.generation_mvar` — agregat Q
+generatorów zbudowany przez `build_v126_input_from_enm`. Gdy Q wytwórcy jest
+naprawdę nieznane (brak pola, brak Q-set-pointu karty katalogowej), kontrakt
+podstawia 0,0 jako WYŁĄCZNIE strukturalne wypełnienie (ten sam agregat karmi też
+analizy, które Q w ogóle nie czytają) — więc solver policzyłby ciche zero
+zamiast melduje brak. Warstwa API odmawia PRZED wejściem do solvera, kodem
+gotowości `generator.q_missing` (reużytym z `calculation_readiness/service.py`,
+Reużycie zamiast duplikacji) — wzorzec identyczny z bramką `transformer.loss_data_missing`
+(karta FAB-D2, `tests/api/test_v126_opf_loss_lcc_api.py`).
+
+Predykaty parami: brak Q blokuje TYLKO analizy, które faktycznie czytają
+`generation_mvar` przez `_branch_current_a` — RELIABILITY_CONTINGENCY (test 1) i
+OPF_LOSS_LCC (test 2) — a NIE blokuje inną analizę V12.6, która tego Q nie czyta
+(test 4, HOSTING_CAPACITY) — bramka nie jest szersza niż potrzeba. Dana jawna
+(nawet 0.0) przechodzi bez zastrzeżeń (test 3); Q wyprowadzalne z jawnego
+Q-set-pointu karty katalogowej też przechodzi (test 5).
+"""
+
+from __future__ import annotations
+
+from uuid import UUID
+
+from api.main import app
+from enm.models import EnergyNetworkModel, ENMHeader
+from enm.store import reset_enm_store, set_enm
+from fastapi.testclient import TestClient
+
+_SZYNA_A = "BUS_A"
+_SZYNA_B = "BUS_B"
+
+
+def _model(*, generator: dict | None) -> EnergyNetworkModel:
+    generatory = [generator] if generator is not None else []
+    return EnergyNetworkModel.model_validate(
+        {
+            "header": ENMHeader(name="test-v126-generator-q-missing").model_dump(),
+            "buses": [
+                {"ref_id": _SZYNA_A, "name": "Szyna A", "voltage_kv": 15.0},
+                {"ref_id": _SZYNA_B, "name": "Szyna B", "voltage_kv": 15.0},
+            ],
+            "branches": [
+                {
+                    "ref_id": "L-1",
+                    "name": "Odcinek",
+                    "type": "cable",
+                    "from_bus_ref": _SZYNA_A,
+                    "to_bus_ref": _SZYNA_B,
+                    "length_km": 2.0,
+                    "r_ohm_per_km": 0.206,
+                    "x_ohm_per_km": 0.118,
+                }
+            ],
+            "generators": generatory,
+        }
+    )
+
+
+_GENERATOR_BEZ_Q = {
+    "ref_id": "GEN-1",
+    "name": "Generator",
+    "bus_ref": _SZYNA_A,
+    "p_mw": 1.0,
+}
+
+
+def _seed_case(case_id: UUID, model: EnergyNetworkModel) -> None:
+    reset_enm_store()
+    set_enm(str(case_id), model)
+
+
+def test_reliability_contingency_bez_q_generatora_zwraca_422_nie_liczy_po_cichu() -> None:
+    """PIN NA DEFEKT: przed naprawą brak Q wchodziłby do solvera jako 0,0."""
+    case_id = UUID("44444444-4444-4444-4444-444444444441")
+    _seed_case(case_id, _model(generator=_GENERATOR_BEZ_Q))
+    client = TestClient(app)
+    resp = client.post(
+        f"/api/cases/{case_id}/runs/v126/reliability_contingency",
+        json={"parameters": {}},
+    )
+    assert resp.status_code == 422, resp.text
+    assert "generator.q_missing" in resp.text
+    assert "GEN-1" in resp.text
+
+
+def test_opf_loss_lcc_bez_q_generatora_zwraca_422_nie_liczy_po_cichu() -> None:
+    """Ta sama bramka, druga analiza, która też czyta `_branch_current_a`."""
+    case_id = UUID("44444444-4444-4444-4444-444444444442")
+    _seed_case(case_id, _model(generator=_GENERATOR_BEZ_Q))
+    client = TestClient(app)
+    resp = client.post(
+        f"/api/cases/{case_id}/runs/v126/opf_loss_lcc",
+        json={"parameters": {}},
+    )
+    assert resp.status_code == 422, resp.text
+    assert "generator.q_missing" in resp.text
+
+
+def test_reliability_contingency_z_jawnym_q_liczy_normalnie() -> None:
+    """Kontrola dwustronna: Q jawne (nawet gdyby było 0.0) przechodzi."""
+    case_id = UUID("44444444-4444-4444-4444-444444444443")
+    _seed_case(case_id, _model(generator={**_GENERATOR_BEZ_Q, "q_mvar": 0.0}))
+    client = TestClient(app)
+    resp = client.post(
+        f"/api/cases/{case_id}/runs/v126/reliability_contingency",
+        json={"parameters": {}},
+    )
+    assert resp.status_code == 200, resp.text
+    result = client.get(resp.json()["result_url"])
+    assert result.status_code == 200
+
+
+def test_inna_analiza_v126_nie_jest_blokowana_brakiem_q_generatora() -> None:
+    """Bramka jest WĄSKA: `hosting_capacity` nie czyta `generation_mvar` przez
+    `_branch_current_a`, więc brak Q generatora nie może jej zablokować (inaczej
+    byłaby szersza niż trzeba)."""
+    case_id = UUID("44444444-4444-4444-4444-444444444444")
+    _seed_case(case_id, _model(generator=_GENERATOR_BEZ_Q))
+    client = TestClient(app)
+    resp = client.post(
+        f"/api/cases/{case_id}/runs/v126/hosting_capacity",
+        json={"parameters": {}},
+    )
+    assert resp.status_code == 200, resp.text
+
+
+def test_reliability_contingency_z_q_set_pointem_karty_liczy_normalnie() -> None:
+    """Q nieznane wprost, ale wyprowadzalne z jawnego Q-set-pointu karty
+    katalogowej (`qmin_mvar == qmax_mvar`) — TA SAMA funkcja co bramka gotowości
+    (`moc_bierna_wytworcy`), więc nie blokuje."""
+    case_id = UUID("44444444-4444-4444-4444-444444444445")
+    generator = {
+        **_GENERATOR_BEZ_Q,
+        "materialized_params": {"qmin_mvar": 0.3, "qmax_mvar": 0.3},
+    }
+    _seed_case(case_id, _model(generator=generator))
+    client = TestClient(app)
+    resp = client.post(
+        f"/api/cases/{case_id}/runs/v126/reliability_contingency",
+        json={"parameters": {}},
+    )
+    assert resp.status_code == 200, resp.text

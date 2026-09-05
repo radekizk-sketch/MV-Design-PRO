@@ -17,10 +17,12 @@ przyłączeniowa (D3, ``application/analyses/hosting_capacity.py``):
    progami: napięcia w paśmie, obciążenia ≤ 100 %).
 
 KLUCZOWY RECON (mapowanie Q generatora próbnego): ``enm/mapping.py`` przenosi
-moc bierną generatora do węzła identycznie jak moc czynną —
-``bus_q[gen.bus_ref] += (gen.q_mvar or 0.0)`` (``enm/mapping.py:201``, obok
-``bus_p += gen.p_mw`` w linii 200). Ta ``reactive_power`` trafia następnie do
-``PQSpec.q_mvar`` w ``_execute_power_flow`` (``enm/canonical_analysis.py:1186``),
+moc bierną generatora do węzła identycznie jak moc czynną — jawne ``q_mvar``
+generatora próbnego (karta FAB-H: rozstrzygane przez
+``solver_input.moc_bierna_wytworcy``, które dla JAWNEGO pola zwraca je bez
+zmian) trafia do ``bus_q[gen.bus_ref]`` (``enm/mapping.py``, obok
+``bus_p += gen.p_mw``). Ta ``reactive_power`` trafia następnie do
+``PQSpec.q_mvar`` w ``_execute_power_flow`` (``enm/canonical_analysis.py``),
 więc Q generatora próbnego RZECZYWIŚCIE wpływa na rozpływ. Obejście nie jest
 potrzebne — brak STOP-RAPORTU.
 

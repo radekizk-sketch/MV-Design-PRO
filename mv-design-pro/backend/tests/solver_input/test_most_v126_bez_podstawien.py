@@ -333,6 +333,67 @@ def test_prad_bazowy_zrodla_harmonicznego_z_napiecia_szyny(napiecie_kv: float) -
 
 
 # ---------------------------------------------------------------------------
+# MOC BIERNA WYTWÓRCY — karta FAB-H (H2, KLASA NIE INSTANCJA): iloczyn cech
+# jawne | Q-set-point karty | brak, dla agregatu Q szyny (`generation_mvar`).
+# ---------------------------------------------------------------------------
+
+
+def test_moc_bierna_wytworcy_jawna_wchodzi_do_agregatu_szyny() -> None:
+    model = _model(
+        generators=[
+            {
+                "ref_id": "GEN-1",
+                "name": "Generator",
+                "bus_ref": _SZYNA_A,
+                "p_mw": 1.0,
+                "q_mvar": 0.42,
+            }
+        ],
+    )
+    wejscie = build_v126_input_from_enm(model)
+    szyna_a = next(b for b in wejscie.buses if b.ref == _SZYNA_A)
+    assert szyna_a.generation_mvar == pytest.approx(0.42, rel=1e-9)
+
+
+def test_moc_bierna_wytworcy_q_set_point_karty_wchodzi_do_agregatu_szyny() -> None:
+    """PIN NA DEFEKT (karta FAB-H, KLASA NIE INSTANCJA): Q nieznane wprost, ale
+    karta katalogowa niesie zdegenerowany Q-set-point (``qmin_mvar == qmax_mvar``)
+    — przed naprawą ten most czytał WYŁĄCZNIE ``generator.q_mvar``, więc karta
+    katalogowa była ignorowana i agregat dostawał 0,0 mimo jawnej liczby w karcie
+    (dokładnie ten sam warunek, który bramka gotowości już wtedy odczytywała —
+    dwa niezależne warunki, które "dziś się zgadzają", są defektem)."""
+    model = _model(
+        generators=[
+            {
+                "ref_id": "GEN-1",
+                "name": "Generator",
+                "bus_ref": _SZYNA_A,
+                "p_mw": 1.0,
+                "materialized_params": {"qmin_mvar": 0.3, "qmax_mvar": 0.3},
+            }
+        ],
+    )
+    wejscie = build_v126_input_from_enm(model)
+    szyna_a = next(b for b in wejscie.buses if b.ref == _SZYNA_A)
+    assert szyna_a.generation_mvar == pytest.approx(0.3, rel=1e-9)
+
+
+def test_moc_bierna_wytworcy_brak_jest_wylacznie_strukturalnym_zerem_agregatu() -> None:
+    """Q naprawdę nieznane (brak pola, brak Q-set-pointu karty) => 0,0 jako
+    WYŁĄCZNIE strukturalne wypełnienie agregatu (V126BusInput.generation_mvar
+    jest float nie-Optional) — analizy, które to Q faktycznie CZYTAJĄ
+    (RELIABILITY_CONTINGENCY, OPF_LOSS_LCC), są zablokowane PRZED solverem przez
+    `api/v126_academic.py` (kod gotowości `generator.q_missing`), patrz
+    tests/api/test_v126_generator_q_missing_api.py."""
+    model = _model(
+        generators=[{"ref_id": "GEN-1", "name": "Generator", "bus_ref": _SZYNA_A, "p_mw": 1.0}],
+    )
+    wejscie = build_v126_input_from_enm(model)
+    szyna_a = next(b for b in wejscie.buses if b.ref == _SZYNA_A)
+    assert szyna_a.generation_mvar == 0.0
+
+
+# ---------------------------------------------------------------------------
 # KONSUMENCI — brak obciążalności mówi po polsku, nie liczbą
 # ---------------------------------------------------------------------------
 

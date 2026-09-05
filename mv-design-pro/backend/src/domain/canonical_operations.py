@@ -1042,6 +1042,43 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         fix_action_id="fix_generator_q",
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "q_mvar"},
     ),
+    # Karta FAB-H: udział zwarciowy falownika k_sc (Ik = k_sc*In, IEC 60909-0) —
+    # karta katalogowa konwertera nie niesie k_sc, więc enm/mapping.py przyjmuje
+    # 1,1 jako ZAREJESTROWANE ZAŁOŻENIE (ślad WHITE BOX + ta proweniencja), nie
+    # cichy numer. WARNING, nie BLOCKER: 1,1 jest udokumentowaną wartością
+    # typową IEC dla jednostek z przekształtnikiem, a nie zerem/wynikiem — SC
+    # dalej liczy się poprawnie, tylko z wartością przyjętą zamiast zmierzonej.
+    "inverter.k_sc_assumed": ReadinessCodeSpec(
+        code="inverter.k_sc_assumed",
+        area=ReadinessArea.GENERATORS,
+        priority=4,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Udział zwarciowy falownika (k_sc) nie jest podany w karcie katalogowej "
+            "konwertera — przyjęto wartość domyślną IEC 60909 (1,1) zamiast zmierzonej"
+        ),
+        fix_action_id=None,
+        fix_navigation={"panel": "inspector", "tab": "katalog"},
+    ),
+    # Karta FAB-H: konwerter BEZ ŻADNEGO katalogu (catalog_ref=None) — brama
+    # katalogowa nie wymaga referencji katalogowej dla Generator (E009 pilnuje
+    # tylko linii/kabli/transformatorów/źródeł, `enm/validator.py`), więc ten
+    # stan jest REALNY (np. tryb EKSPERCKI_RECZNY). Wtedy brakuje nie tylko
+    # k_sc, ale całej tabliczki znamionowej źródła zwarciowego — BLOCKER, nie
+    # WARNING (różny od inverter.k_sc_assumed powyżej: tam katalog JEST, tu go
+    # nie ma wcale).
+    "inverter.k_sc_missing": ReadinessCodeSpec(
+        code="inverter.k_sc_missing",
+        area=ReadinessArea.GENERATORS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Konwerter (PV/BESS/wiatrowy) nie ma żadnej referencji katalogowej — "
+            "zwarcia nie mogą zweryfikować tabliczki znamionowej źródła"
+        ),
+        fix_action_id="fix_generator_catalog_ref",
+        fix_navigation={"panel": "inspector", "tab": "katalog"},
+    ),
     # Ring
     "ring.endpoints_missing": ReadinessCodeSpec(
         code="ring.endpoints_missing",

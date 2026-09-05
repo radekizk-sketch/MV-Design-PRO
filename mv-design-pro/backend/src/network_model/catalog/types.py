@@ -272,8 +272,12 @@ def _uf_control_kwargs(data: dict[str, Any]) -> dict[str, Any]:
 # quality says how trustworthy each value is — see solver_input.provenance).
 # =============================================================================
 
-# SC fault-model card fields (feeds short-circuit beyond the simple k_sc*In).
+# SC fault-model card fields. `k_sc` feeds the LIVE short-circuit model
+# (Ik = k_sc * In — InverterSource/short_circuit_iec60909.py, mapped from the
+# catalog by enm/mapping.py::_add_generator_sc_sources); the other three fields
+# are reserved for a future model beyond that simple k_sc*In factor.
 _CARD_SC_MODEL_FIELDS: tuple[str, ...] = (
+    "k_sc",
     "sc_model",
     "sc_pq_split",
     "sc_transient_k",
@@ -320,6 +324,7 @@ def _card_schema_kwargs(data: dict[str, Any]) -> dict[str, Any]:
 
     sc_model = data.get("sc_model")
     return {
+        "k_sc": _opt_float("k_sc"),
         "sc_model": str(sc_model) if sc_model is not None else None,
         "sc_pq_split": _opt_float("sc_pq_split"),
         "sc_transient_k": _opt_float("sc_transient_k"),
@@ -1220,9 +1225,16 @@ class ConverterType:
     lfsm_deadband_hz: float | None = None
     lfsm_allow_increase: bool = False
     f0_hz: float | None = None
-    # Inverter-card ("karta falownika") SC fault-model fields. Feed the
-    # short-circuit solver beyond the simple k_sc*In contribution. All optional
-    # (None) so published types round-trip byte-identically.
+    # Inverter-card ("karta falownika") SC fault-model fields.
+    # k_sc: manufacturer-card short-circuit current contribution factor
+    # (Ik = k_sc * In, IEC 60909-0 for converter-connected units) — the value
+    # from the DATASHEET, never a normative default. None => enm/mapping.py
+    # falls back to the IEC-typical 1.1 as a REGISTERED assumption (WHITE BOX
+    # trace + `inverter.k_sc_assumed` readiness warning), never a silent number.
+    k_sc: float | None = None
+    # The remaining fields feed the short-circuit solver beyond the simple
+    # k_sc*In contribution. All optional (None) so published types round-trip
+    # byte-identically.
     sc_model: Literal["simple_k_factor", "pq_component", "from_datasheet"] | None = None
     sc_pq_split: float | None = None  # P/(P+Q) split for the SC contribution
     sc_transient_k: float | None = None  # fast/transient fault factor k*In
@@ -1279,13 +1291,17 @@ class ConverterType:
     verification_note: str | None = None
 
     def __post_init__(self) -> None:
-        """Validate optional additive fields (P-Q curve, flicker coefficient)."""
+        """Validate optional additive fields (P-Q curve, flicker coefficient, k_sc)."""
         if self.pq_curve is not None:
             _validate_pq_curve(self.pq_curve)
         if self.flicker_c is not None and self.flicker_c <= 0:
             raise ValueError(
                 "Wspolczynnik emisji migotania flicker_c musi byc > 0, "
                 f"otrzymano flicker_c={self.flicker_c}."
+            )
+        if self.k_sc is not None and self.k_sc <= 0:
+            raise ValueError(
+                f"Wspolczynnik udzialu zwarciowego k_sc musi byc > 0, otrzymano k_sc={self.k_sc}."
             )
 
     def validate_power_hierarchy(self) -> None:
@@ -3380,6 +3396,10 @@ class PVInverterType:
     grid_code: str | None = None
     manufacturer: str | None = None
     dynamic_profile_id: str | None = None
+    # Udział zwarciowy prądu z karty producenta (Ik = k_sc * In, IEC 60909-0).
+    # None => enm/mapping.py przyjmuje 1,1 jako ZAREJESTROWANE ZAŁOŻENIE (karta
+    # FAB-H) — patrz ConverterType.k_sc dla pełnego kontraktu tego pola.
+    k_sc: float | None = None
     ptpiree_status: str | None = None
     ptpiree_certificate_ref: str | None = None
     ptpiree_document_number: str | None = None
@@ -3415,6 +3435,7 @@ class PVInverterType:
             "grid_code": self.grid_code,
             "manufacturer": self.manufacturer,
             "dynamic_profile_id": self.dynamic_profile_id,
+            "k_sc": self.k_sc,
             "ptpiree_status": self.ptpiree_status,
             "ptpiree_certificate_ref": self.ptpiree_certificate_ref,
             "ptpiree_document_number": self.ptpiree_document_number,
@@ -3455,6 +3476,7 @@ class PVInverterType:
             grid_code=data.get("grid_code"),
             manufacturer=data.get("manufacturer"),
             dynamic_profile_id=data.get("dynamic_profile_id"),
+            k_sc=(float(data["k_sc"]) if data.get("k_sc") is not None else None),
             ptpiree_status=data.get("ptpiree_status"),
             ptpiree_certificate_ref=data.get("ptpiree_certificate_ref"),
             ptpiree_document_number=data.get("ptpiree_document_number"),
@@ -3504,6 +3526,10 @@ class BESSInverterType:
     s_n_kva: float | None = None
     manufacturer: str | None = None
     dynamic_profile_id: str | None = None
+    # Udział zwarciowy prądu z karty producenta (Ik = k_sc * In, IEC 60909-0).
+    # None => enm/mapping.py przyjmuje 1,1 jako ZAREJESTROWANE ZAŁOŻENIE (karta
+    # FAB-H) — patrz ConverterType.k_sc dla pełnego kontraktu tego pola.
+    k_sc: float | None = None
     ptpiree_status: str | None = None
     ptpiree_certificate_ref: str | None = None
     ptpiree_document_number: str | None = None
@@ -3537,6 +3563,7 @@ class BESSInverterType:
             "s_n_kva": self.s_n_kva,
             "manufacturer": self.manufacturer,
             "dynamic_profile_id": self.dynamic_profile_id,
+            "k_sc": self.k_sc,
             "ptpiree_status": self.ptpiree_status,
             "ptpiree_certificate_ref": self.ptpiree_certificate_ref,
             "ptpiree_document_number": self.ptpiree_document_number,
@@ -3573,6 +3600,7 @@ class BESSInverterType:
             s_n_kva=(float(data["s_n_kva"]) if data.get("s_n_kva") is not None else None),
             manufacturer=data.get("manufacturer"),
             dynamic_profile_id=data.get("dynamic_profile_id"),
+            k_sc=(float(data["k_sc"]) if data.get("k_sc") is not None else None),
             ptpiree_status=data.get("ptpiree_status"),
             ptpiree_certificate_ref=data.get("ptpiree_certificate_ref"),
             ptpiree_document_number=data.get("ptpiree_document_number"),
@@ -3928,7 +3956,10 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
     ),
     CatalogNamespace.ZRODLO_NN_PV.value: MaterializationContract(
         namespace=CatalogNamespace.ZRODLO_NN_PV.value,
-        solver_fields=("un_kv", "s_n_kva", "p_max_kw", "control_mode"),
+        # Karta FAB-H: k_sc dopisane obok pozostalych pol karty falownika PV —
+        # ten sam kontrakt co CONVERTER (ConverterType.k_sc), None = zalozenie
+        # 1,1 w enm/mapping.py, nigdy cichy numer bez sladu.
+        solver_fields=("un_kv", "s_n_kva", "p_max_kw", "control_mode", "k_sc"),
         ui_fields=(
             ("un_kv", "Un [kV]", "kV"),
             ("s_n_kva", "Sn [kVA]", "kVA"),
@@ -3936,16 +3967,19 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             ("control_mode", "Tryb sterowania", ""),
             ("cos_phi_min", "cos φ min", ""),
             ("cos_phi_max", "cos φ max", ""),
+            ("k_sc", "k_sc (udział zwarciowy)", ""),
         ),
     ),
     CatalogNamespace.ZRODLO_NN_BESS.value: MaterializationContract(
         namespace=CatalogNamespace.ZRODLO_NN_BESS.value,
-        solver_fields=("un_kv", "p_charge_kw", "p_discharge_kw", "e_kwh", "s_n_kva"),
+        # Karta FAB-H: k_sc jak w ZRODLO_NN_PV powyzej — sam kontrakt, ten sam powod.
+        solver_fields=("un_kv", "p_charge_kw", "p_discharge_kw", "e_kwh", "s_n_kva", "k_sc"),
         ui_fields=(
             ("un_kv", "Un [kV]", "kV"),
             ("p_charge_kw", "Pład [kW]", "kW"),
             ("p_discharge_kw", "Prozł [kW]", "kW"),
             ("e_kwh", "E [kWh]", "kWh"),
+            ("k_sc", "k_sc (udział zwarciowy)", ""),
         ),
     ),
     CatalogNamespace.ZABEZPIECZENIE.value: MaterializationContract(
@@ -4015,6 +4049,7 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             "lfsm_allow_increase",
             "f0_hz",
             # Inverter-card ("karta falownika") schema fields.
+            "k_sc",
             "sc_model",
             "sc_pq_split",
             "sc_transient_k",
@@ -4037,6 +4072,7 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             ("qmin_mvar", "Qmin [Mvar]", "Mvar"),
             ("qmax_mvar", "Qmax [Mvar]", "Mvar"),
             ("kind", "Technologia", ""),
+            ("k_sc", "k_sc (udział zwarciowy)", ""),
         ),
     ),
     CatalogNamespace.INVERTER.value: MaterializationContract(

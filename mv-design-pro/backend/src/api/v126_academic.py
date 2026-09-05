@@ -12,6 +12,7 @@ from enm.store import get_enm
 from fastapi import APIRouter, HTTPException, status
 from network_model.solvers.v126_academic import V126AcademicSolver
 from pydantic import BaseModel
+from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
 from solver_input.v126_contracts import (
     V126AcademicInput,
     V126AnalysisType,
@@ -126,6 +127,32 @@ def run_v126_analysis(
                 detail=(
                     f"{spec.message_pl} (transformer.loss_data_missing) — "
                     f"transformatory bez strat jałowych: {', '.join(bez_strat_jalowych)}"
+                ),
+            )
+    # Karta FAB-H (H2): `_branch_current_a` (network_model/solvers/v126_academic.py,
+    # solver FROZEN — B-01, nie edytujemy go z tej karty) czyta
+    # `bus.generation_mvar`, agregat zbudowany w `build_v126_input_from_enm` z Q
+    # generatorów — a przy Q nieznanym kontrakt podstawia 0,0 jako strukturalne
+    # wypełnienie (ten sam agregat karmi też analizy, które Q w ogóle nie
+    # czytają). Tylko RELIABILITY_CONTINGENCY i OPF_LOSS_LCC faktycznie
+    # konsumują `_branch_current_a`, więc tylko one są tu blokowane — wzorzec
+    # identyczny z bramką p0_kw powyżej (karta FAB-D2).
+    if analysis_type in (
+        V126AnalysisType.RELIABILITY_CONTINGENCY,
+        V126AnalysisType.OPF_LOSS_LCC,
+    ):
+        bez_mocy_biernej = [
+            gen.ref_id
+            for gen in enm.generators
+            if moc_bierna_wytworcy(gen, gen.materialized_params).brak
+        ]
+        if bez_mocy_biernej:
+            spec = READINESS_CODES["generator.q_missing"]
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"{spec.message_pl} (generator.q_missing) — "
+                    f"generatory bez mocy biernej: {', '.join(bez_mocy_biernej)}"
                 ),
             )
     result = _solver.run(analysis_type, model)

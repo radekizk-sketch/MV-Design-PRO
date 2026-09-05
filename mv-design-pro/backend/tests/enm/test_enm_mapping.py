@@ -1,7 +1,11 @@
 """Tests for ENM → NetworkGraph mapping and roundtrip to solver."""
 
 import pytest
-from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
+from enm.mapping import (
+    build_inverter_k_sc_trace,
+    build_zero_sequence_zbus,
+    map_enm_to_network_graph,
+)
 from enm.models import (
     BranchRating,
     Bus,
@@ -207,6 +211,58 @@ class TestBasicMapping:
         # Load is negative convention (consumed)
         assert node.active_power == -1.0
         assert node.reactive_power == -0.3
+
+    def test_generator_q_mvar_jawne_applied_to_node(self):
+        """Q wytwórcy jawne — konwencja generatorowa (dodatnia = wstrzyk)."""
+        enm = _make_enm(
+            buses=[Bus(ref_id="b1", name="B1", voltage_kv=15)],
+            generators=[Generator(ref_id="g1", name="G1", bus_ref="b1", p_mw=1.0, q_mvar=0.42)],
+        )
+        graph = map_enm_to_network_graph(enm)
+        node = list(graph.nodes.values())[0]
+        assert node.active_power == 1.0
+        assert node.reactive_power == 0.42
+
+    def test_generator_q_set_point_karty_applied_to_node(self):
+        """PIN NA DEFEKT (karta FAB-H, KLASA NIE INSTANCJA): Q nieznane wprost
+        (``q_mvar=None``), ale karta katalogowa niesie zdegenerowany Q-set-point
+        (``qmin_mvar == qmax_mvar``) — przed naprawą ten agregat czytał WYŁĄCZNIE
+        ``gen.q_mvar``, więc karta katalogowa była ignorowana i węzeł dostawał
+        0,0 mimo jawnej liczby w karcie, DOKŁADNIE gdy bramka gotowości
+        (`calculation_readiness/service.py::_generator_q_mvar_jawne`) już wtedy
+        czytała tę samą kartę i zgłaszała sieć jako gotową — dwa niezależne
+        warunki, które "dziś się zgadzają", są defektem (reguła KLASA NIE
+        INSTANCJA)."""
+        enm = _make_enm(
+            buses=[Bus(ref_id="b1", name="B1", voltage_kv=15)],
+            generators=[
+                Generator(
+                    ref_id="g1",
+                    name="G1",
+                    bus_ref="b1",
+                    p_mw=1.0,
+                    q_mvar=None,
+                    materialized_params={"qmin_mvar": 0.3, "qmax_mvar": 0.3},
+                )
+            ],
+        )
+        graph = map_enm_to_network_graph(enm)
+        node = list(graph.nodes.values())[0]
+        assert node.reactive_power == pytest.approx(0.3, rel=1e-9)
+
+    def test_generator_q_brak_jest_wylacznie_strukturalnym_zerem_wezla(self):
+        """Q naprawdę nieznane (brak pola, brak Q-set-pointu karty) => 0,0 jako
+        WYŁĄCZNIE strukturalne wypełnienie węzła (ten sam graf służy też
+        zwarciom, gdzie Q nie jest potrzebne) — rozpływ mocy jest zablokowany
+        PRZED tym punktem przez BLOCKER `generator.q_missing`, gdy Q jest
+        naprawdę nieznane."""
+        enm = _make_enm(
+            buses=[Bus(ref_id="b1", name="B1", voltage_kv=15)],
+            generators=[Generator(ref_id="g1", name="G1", bus_ref="b1", p_mw=1.0, q_mvar=None)],
+        )
+        graph = map_enm_to_network_graph(enm)
+        node = list(graph.nodes.values())[0]
+        assert node.reactive_power == 0.0
 
 
 class TestDeterminism:
@@ -416,6 +472,7 @@ class TestGeneratorShortCircuitSources:
             name="Blok PV",
             p_mw=2.0,
             gen_type="pv_inverter",
+            catalog_ref="conv-pv-test",
             materialized_params={"un_kv": 15.0, "sn_mva": 2.5},
         )
         graph = map_enm_to_network_graph(enm)
@@ -429,6 +486,81 @@ class TestGeneratorShortCircuitSources:
         assert src.ik_sc_a == pytest.approx(1.1 * expected_in, rel=1e-6)
         # No rotating-machine sources for a converter.
         assert len(graph.get_synchronous_machine_sources()) == 0
+        # Karta FAB-H: karta katalogowa nie niesie k_sc => ZAREJESTROWANE
+        # ZAŁOŻENIE (proweniencja + ślad WHITE BOX), tożsame co do liczby z
+        # dotychczasowym 1,1 — sieć bez k_sc w karcie daje IDENTYCZNY wynik.
+        assert src.k_sc == pytest.approx(1.1)
+        assert src.k_sc_zrodlo == "ZALOZENIE"
+        assert graph.k_sc_assumptions_trace == build_inverter_k_sc_trace(enm)
+        trace = graph.k_sc_assumptions_trace
+        assert len(trace) == 1
+        assert trace[0]["key"] == "k_sc_zalozenie_pv1"
+        assert trace[0]["result"] == {"k_sc": 1.1}
+        assert "1,1 przyjęte" in trace[0]["substitution"]
+        assert "conv-pv-test" in trace[0]["substitution"]
+
+    def test_pv_inverter_with_explicit_k_sc_from_catalog_changes_result(self):
+        """Karta z jawnym k_sc zmienia wynik jawnie — nie ma śladu założenia."""
+        enm = self._enm_with_generator(
+            ref_id="pv1",
+            name="Blok PV",
+            p_mw=2.0,
+            gen_type="pv_inverter",
+            catalog_ref="conv-pv-datasheet",
+            materialized_params={"un_kv": 15.0, "sn_mva": 2.5, "k_sc": 1.3},
+        )
+        graph = map_enm_to_network_graph(enm)
+        src = graph.get_inverter_sources()[0]
+        expected_in = 2.5 * 1.0e6 / (3.0**0.5 * 15.0 * 1.0e3)
+        # k_sc z karty (1,3), NIE domyślne 1,1 — wkład prądowy skaluje się ×1,3/1,1.
+        assert src.k_sc == pytest.approx(1.3)
+        assert src.k_sc_zrodlo == "KATALOG"
+        assert src.ik_sc_a == pytest.approx(1.3 * expected_in, rel=1e-6)
+        assert src.ik_sc_a != pytest.approx(1.1 * expected_in, rel=1e-6)
+        # Karta jawna => brak wpisu w śladzie WHITE BOX założeń.
+        assert graph.k_sc_assumptions_trace == []
+
+    def test_pv_inverter_k_sc_niedodatnie_w_karcie_traktowane_jak_brak(self):
+        """k_sc <= 0 w karcie jest danym niefizycznym — traktowany jak BRAK,
+        nie jak jawna (bezsensowna fizycznie) wartość."""
+        enm = self._enm_with_generator(
+            ref_id="pv1",
+            name="Blok PV",
+            p_mw=2.0,
+            gen_type="pv_inverter",
+            materialized_params={"un_kv": 15.0, "sn_mva": 2.5, "k_sc": 0.0},
+        )
+        graph = map_enm_to_network_graph(enm)
+        src = graph.get_inverter_sources()[0]
+        assert src.k_sc == pytest.approx(1.1)
+        assert src.k_sc_zrodlo == "ZALOZENIE"
+        assert len(graph.k_sc_assumptions_trace) == 1
+
+    def test_pv_inverter_bez_zadnego_katalogu_dostaje_takie_samo_zalozenie(self):
+        """Trzecia kratka iloczynu (H3): konwerter BEZ ŻADNEGO katalogu
+        (``catalog_ref=None`` — stan REALNY, brama katalogowa go tu nie
+        wyklucza, patrz `inverter.k_sc_missing`) przechodzi PRZEZ TĘ SAMĄ
+        ścieżkę mapowania co karta obecna-ale-bez-k_sc: k_sc=1,1 przyjęte,
+        proweniencja ZALOZENIE, wpis w śladzie WHITE BOX — mapping.py samo nie
+        rozróżnia „katalog bez k_sc” od „brak katalogu” (to rozróżnienie robi
+        WYŁĄCZNIE bramka gotowości: WARNING vs BLOCKER), więc oba muszą dawać
+        identyczny wynik tutaj."""
+        enm = self._enm_with_generator(
+            ref_id="pv1",
+            name="Blok PV",
+            p_mw=2.0,
+            gen_type="pv_inverter",
+            catalog_ref=None,
+        )
+        graph = map_enm_to_network_graph(enm)
+        src = graph.get_inverter_sources()[0]
+        assert src.type_ref is None
+        assert src.k_sc == pytest.approx(1.1)
+        assert src.k_sc_zrodlo == "ZALOZENIE"
+        trace = graph.k_sc_assumptions_trace
+        assert len(trace) == 1
+        assert "brak referencji katalogowej" in trace[0]["substitution"]
+        assert len(graph.k_sc_assumptions_trace) == 1
 
     def test_synchronous_becomes_machine_source(self):
         enm = self._enm_with_generator(

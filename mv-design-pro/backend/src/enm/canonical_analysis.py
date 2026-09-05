@@ -1690,11 +1690,26 @@ def _build_converter_control_by_node(
                 f"Szyna {bus_ref.strip()} ma wiecej niz jedno zrodlo z aktywna regulacja "
                 "falownika; kontrakt rozplywu dopuszcza jedna charakterystyke na wezel"
             )
+        # Karta FAB-H (H2, KLASA NIE INSTANCJA): Q rozstrzygane przez JEDNO wspólne
+        # źródło prawdy (moc_bierna_wytworcy), tak samo jak w enm/mapping.py i
+        # solver_input/v126_contracts.py oraz w bramce gotowości
+        # (calculation_readiness/service.py::_generator_q_mvar_jawne) — czyta
+        # dodatkowo jawny Q-set-point karty (qmin_mvar == qmax_mvar w
+        # materialized_params), którego to miejsce dotąd NIE odczytywało (mimo że
+        # bramka gotowości już go czytała — dwa niezależne warunki, które "dziś się
+        # zgadzają"). BRAK => 0,0 jako strukturalne wypełnienie (rozpływ jest
+        # zablokowany PRZED tym punktem przez BLOCKER `generator.q_missing`, gdy Q
+        # jest naprawdę nieznane).
+        from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
+
+        materialized_params = gen.get("materialized_params")
+        karta = materialized_params if isinstance(materialized_params, dict) else None
+        wynik_q = moc_bierna_wytworcy(gen, karta)
         out[node_id] = _ConverterBinding(
             control=control,
             # Konwencja generatorowa (>0 = wstrzyk), jak Generator.p_mw w ENM.
             p_mw=_oze_opt_float(gen.get("p_mw")) or 0.0,
-            q_mvar=_oze_opt_float(gen.get("q_mvar")) or 0.0,
+            q_mvar=wynik_q.q_mvar if wynik_q.q_mvar is not None else 0.0,
         )
     return out
 

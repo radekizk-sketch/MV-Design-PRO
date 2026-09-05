@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import math
 import uuid
+from typing import Literal
 
 import numpy as np
 from network_model.catalog.types import ConverterKind
@@ -417,7 +418,12 @@ def build_zero_sequence_trace(enm: EnergyNetworkModel, graph: NetworkGraph) -> l
 # short-circuit source model. Full converters (§6.7 bounded current source) →
 # InverterSource; rotating machines → voltage-behind-Z″ (§6.3 synchronous / §6.7
 # asynchronous, incl. DFIG Type 3 crowbar).
-_FULL_CONVERTER_SC_GEN_TYPES: dict[str, ConverterKind] = {
+# Public (no leading underscore): karta FAB-H reuses this exact set as the
+# single source of truth for "which gen_type needs a catalog k_sc" in
+# application/calculation_readiness/service.py — importing the SAME dict
+# instead of re-deriving an independent copy (reguła KLASA NIE INSTANCJA:
+# two independently-maintained sets are a defect waiting for drift).
+FULL_CONVERTER_SC_GEN_TYPES: dict[str, ConverterKind] = {
     "pv_inverter": ConverterKind.PV,
     "bess": ConverterKind.BESS,
     "wind_inverter": ConverterKind.WIND,
@@ -480,7 +486,7 @@ def _add_generator_sc_sources(
     enm: EnergyNetworkModel,
     graph: NetworkGraph,
     ref_to_node_id: dict[str, str],
-) -> None:
+) -> list[dict]:
     """G-SCM (V12K-054): wire ``enm.generators`` as IEC 60909 short-circuit sources.
 
     Closes the forward-phantom where DER/machines placed by the designer contributed
@@ -494,26 +500,30 @@ def _add_generator_sc_sources(
     IEC-typical default (``core/machine.py``) — WHITE BOX, the same defaulting
     pattern as the external-source ``rx`` ratio.
 
-    UWAGA (karta FAB-D1, D7 — znalezisko poza wykonalnym zakresem, patrz meldunek
-    końcowy): ``k_sc`` (udział zwarciowy falownika wg IEC 60909) WCIĄŻ fabrykuje
-    1,1, gdy tabliczka go nie niesie — a niesie go ZAWSZE, bo katalog konwerterów
-    (``network_model/catalog/**``) dziś nie ma tego pola (zmierzone: zero miejsc
-    w repo zapisujących ``materialized_params["k_sc"]``). Próba naprawy (pominięcie
-    źródła SC zamiast 1,1) zmierzona empirycznie: `graph.get_inverter_sources()`
-    wraca puste dla KAŻDEGO konwertera w całym repo (100% pokrycia testowego SC dla
-    DER traci wkład prądowy) — cichy regres bezpieczeństwa większy niż fabrykacja,
-    którą miała usunąć. `InverterSource.k_sc`/`SynchronousMachineSource.k_sc`
-    (``core/inverter.py``/``core/generator.py``) mają WŁASNY zaszyty domyślny 1,1
-    poza zasięgiem tej karty (rdzeń zamrożony) — ta sama liczba, drugie miejsce.
-    Pełna naprawa (karta FAB-H): pole katalogowe `ConverterType.k_sc`, a 1,1 jako
-    ZAREJESTROWANE założenie (ślad WHITE BOX + ostrzeżenie gotowości z
-    proweniencją) — kod gotowości powstaje razem z emiterem, nie wcześniej
-    (`readiness_consumption_guard`: kod bez emitera jest fantomem).
+    ``k_sc`` (udział zwarciowy falownika wg IEC 60909) — karta FAB-H (naprawa
+    znaleziska FAB-D1/D7): katalog konwertera (``ConverterType``/``PVInverterType``/
+    ``BESSInverterType``) MOŻE nieść ``k_sc`` z karty producenta (odczytany tu z
+    ``materialized_params["k_sc"]``). Gdy karta go NIE niesie, przyjmuje się IEC
+    1,1 jako ZAREJESTROWANE ZAŁOŻENIE — nie cichy numer: ``InverterSource.k_sc_zrodlo``
+    (IR, ``core/inverter.py``) niesie proweniencję ("KATALOG"/"ZALOZENIE"), a ta
+    funkcja zwraca ślad WHITE BOX (jeden wpis na każde takie założenie) surowany
+    przez wywołującego na ``graph.k_sc_assumptions_trace``; gotowość zgłasza WARNING
+    ``inverter.k_sc_assumed`` (`application/calculation_readiness/service.py`). Sieć
+    bez k_sc w KAŻDEJ karcie daje DOKŁADNIE ten sam wynik zwarciowy co przed tą
+    kartą (1,1) — zmienia się wyłącznie proweniencja i ślad, nigdy liczba.
     Deterministic: iteration is id-sorted and each source id is the generator ref_id.
     A no-op when there are no generators, so machine-free networks keep a
     byte-identical SC Y-bus (the ybus machine shunt / inverter superposition are
     themselves no-ops without sources).
+
+    Returns:
+        WHITE BOX trace entries (possibly empty) — one per generator whose k_sc
+        was a REGISTERED ASSUMPTION (catalog card silent on k_sc), sorted by
+        generator ref_id (same determinism as the generator iteration above).
     """
+    from network_model.whitebox.tracer import WhiteBoxTracer
+
+    tracer = WhiteBoxTracer()
     bus_voltage_by_ref = {b.ref_id: b.voltage_kv for b in enm.buses}
     for gen in sorted(enm.generators, key=lambda g: g.ref_id):
         gen_type = gen.gen_type
@@ -527,21 +537,52 @@ def _add_generator_sc_sources(
         if un_kv is None:
             continue
 
-        if gen_type in _FULL_CONVERTER_SC_GEN_TYPES:
+        if gen_type in FULL_CONVERTER_SC_GEN_TYPES:
             sr_mva = _gen_rated_apparent_mva(gen, mp)
             if sr_mva is None:
                 continue
             in_rated_a = sr_mva * 1.0e6 / (math.sqrt(3.0) * un_kv * 1.0e3)
-            k_sc = mp.get("k_sc")
+            k_sc_raw = mp.get("k_sc")
+            if (
+                isinstance(k_sc_raw, int | float)
+                and not isinstance(k_sc_raw, bool)
+                and k_sc_raw > 0
+            ):
+                k_sc_value = float(k_sc_raw)
+                k_sc_zrodlo: Literal["KATALOG", "ZALOZENIE"] = "KATALOG"
+            else:
+                k_sc_value = 1.1
+                k_sc_zrodlo = "ZALOZENIE"
+                tracer.add(
+                    key=f"k_sc_zalozenie_{gen.ref_id}",
+                    title="Założenie: udział zwarciowy falownika k_sc",
+                    formula_latex=r"I_k = k_{sc} \cdot I_n",
+                    inputs={
+                        "generator_ref": gen.ref_id,
+                        "catalog_ref": gen.catalog_ref,
+                    },
+                    substitution=(
+                        "k_sc = 1,1 przyjęte — brak danych karty katalogowej konwertera "
+                        f"{gen.catalog_ref or '(brak referencji katalogowej)'}"
+                    ),
+                    result={"k_sc": k_sc_value},
+                    notes=(
+                        "ZAREJESTROWANE ZAŁOŻENIE (karta FAB-H): karta katalogowa "
+                        "konwertera nie niesie k_sc — przyjęto wartość domyślną IEC "
+                        "60909 (1,1). Wpisz k_sc w karcie katalogowej, aby zastąpić "
+                        "założenie zmierzoną wartością producenta."
+                    ),
+                )
             graph.add_inverter_source(
                 InverterSource(
                     id=gen.ref_id,
                     name=gen.name,
                     node_id=node_id,
                     type_ref=gen.catalog_ref,
-                    converter_kind=_FULL_CONVERTER_SC_GEN_TYPES[gen_type],
+                    converter_kind=FULL_CONVERTER_SC_GEN_TYPES[gen_type],
                     in_rated_a=in_rated_a,
-                    k_sc=float(k_sc) if isinstance(k_sc, int | float) and k_sc > 0 else 1.1,
+                    k_sc=k_sc_value,
+                    k_sc_zrodlo=k_sc_zrodlo,
                     contributes_negative_sequence=True,
                     contributes_zero_sequence=False,
                 )
@@ -587,6 +628,19 @@ def _add_generator_sc_sources(
                 async_kwargs["i_lr_ratio"] = float(i_lr)
             graph.add_asynchronous_machine_source(AsynchronousMachineSource(**async_kwargs))
 
+    return tracer.to_list()
+
+
+def build_inverter_k_sc_trace(enm: EnergyNetworkModel) -> list[dict]:
+    """Ślad WHITE BOX zarejestrowanych założeń k_sc (udziału zwarciowego falownika).
+
+    Karta FAB-H — ten sam wzorzec co ``build_zero_sequence_trace`` powyżej: funkcja
+    publiczna, wywoływalna niezależnie od pełnego biegu SC, do wglądu/testów w ślad
+    założeń bez konieczności uruchamiania solvera. Pusta lista, gdy każdy konwerter
+    ma jawne ``k_sc`` w karcie katalogowej (albo gdy sieć nie ma konwerterów).
+    """
+    return map_enm_to_network_graph(enm).k_sc_assumptions_trace
+
 
 def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
     """
@@ -623,9 +677,20 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
                 zip_coeffs_from_materialized_params(load.materialized_params),
             )
         )
+    # Karta FAB-H (H2, KLASA NIE INSTANCJA): moc bierna wytwórcy rozstrzygana przez
+    # JEDNO wspólne źródło prawdy (moc_bierna_wytworcy), tak samo jak w
+    # canonical_analysis.py/v126_contracts.py i w bramce gotowości
+    # (calculation_readiness/service.py::_generator_q_mvar_jawne). BRAK => 0,0
+    # jako WYŁĄCZNIE strukturalne wypełnienie grafu (ten sam graf służy też
+    # zwarciom, gdzie Q nie jest potrzebne) — rozpływ mocy jest zablokowany PRZED
+    # tym punktem przez BLOCKER `generator.q_missing`, gdy Q jest naprawdę
+    # nieznane (nie wyprowadzalne z jawnego Q-set-pointu karty).
+    from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
+
     for gen in enm.generators:
         bus_p[gen.bus_ref] = bus_p.get(gen.bus_ref, 0.0) + gen.p_mw
-        bus_q[gen.bus_ref] = bus_q.get(gen.bus_ref, 0.0) + (gen.q_mvar or 0.0)
+        wynik_q = moc_bierna_wytworcy(gen, gen.materialized_params)
+        bus_q[gen.bus_ref] = bus_q.get(gen.bus_ref, 0.0) + (wynik_q.q_mvar or 0.0)
 
     # Map ref_id → node_id for cross-referencing
     ref_to_node_id: dict[str, str] = {}
@@ -895,6 +960,6 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
     # 5. Generators (DER / rotating machines) → IEC 60909 SC sources (G-SCM, V12K-054).
     #    Without this the designer's PV/BESS/wind/synchronous sources contributed only
     #    P/Q to the load flow and ZERO fault current to the short circuit.
-    _add_generator_sc_sources(enm, graph, ref_to_node_id)
+    graph.k_sc_assumptions_trace = _add_generator_sc_sources(enm, graph, ref_to_node_id)
 
     return graph

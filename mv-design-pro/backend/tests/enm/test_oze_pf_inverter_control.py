@@ -84,6 +84,33 @@ def test_binding_carries_the_source_own_power() -> None:
     assert binding.q_mvar == -0.25
 
 
+def test_binding_reads_q_set_point_from_catalog_card_when_q_mvar_unknown() -> None:
+    """Karta FAB-H (H2, KLASA NIE INSTANCJA): `q_mvar` nieznane wprost (None), ale
+    karta katalogowa niesie zdegenerowany Q-set-point (qmin_mvar == qmax_mvar) —
+    ten sam warunek, który bramka gotowości (`calculation_readiness/service.py`)
+    już odczytywała, a to miejsce dotąd (przed naprawą) czytało WYŁĄCZNIE
+    `q_mvar` i cicho podstawiało 0,0 mimo jawnej liczby w karcie."""
+    snapshot = _snapshot({"control_mode": "STALY_COS_PHI", "cos_phi": 0.9})
+    snapshot["generators"][0]["q_mvar"] = None
+    snapshot["generators"][0]["materialized_params"] = {"qmin_mvar": 0.3, "qmax_mvar": 0.3}
+    binding = _build_converter_control_by_node(snapshot, base_mva=100.0)[
+        _graph_id_from_ref("bus-oze")
+    ]
+    assert binding.q_mvar == pytest.approx(0.3)
+
+
+def test_binding_q_brak_jest_wylacznie_strukturalnym_zerem() -> None:
+    """Q naprawdę nieznane (brak pola, brak Q-set-pointu karty) => 0,0 jako
+    WYŁĄCZNIE strukturalne wypełnienie (rozpływ jest zablokowany PRZED tym
+    punktem przez BLOCKER `generator.q_missing`, gdy Q jest naprawdę nieznane)."""
+    snapshot = _snapshot({"control_mode": "STALY_COS_PHI", "cos_phi": 0.9})
+    snapshot["generators"][0]["q_mvar"] = None
+    binding = _build_converter_control_by_node(snapshot, base_mva=100.0)[
+        _graph_id_from_ref("bus-oze")
+    ]
+    assert binding.q_mvar == 0.0
+
+
 def test_two_regulated_sources_on_one_bus_are_refused() -> None:
     """Kontrakt: jedna charakterystyka na wezel. Dotad ostatnie zrodlo po cichu
     wygrywalo, a moc bierna pierwszego znikala z modelu."""

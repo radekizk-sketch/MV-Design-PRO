@@ -19,6 +19,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
+from enm.mapping import FULL_CONVERTER_SC_GEN_TYPES
 from enm.models import EnergyNetworkModel
 from pydantic import BaseModel, Field
 
@@ -105,15 +106,18 @@ def _generator_q_mvar_jawne(gen: Any) -> float | None:  # type: ignore[no-untype
     — TA derywacja jest fizyką i należy do warstwy solvera
     (`network_model/solvers/power_flow_inverter.py`), nie do bramki gotowości
     (reguła NOT-A-SOLVER — warstwa aplikacji nie liczy fizyki).
+
+    Karta FAB-H (H2, KLASA NIE INSTANCJA): predykat przeniesiony do
+    `solver_input.moc_bierna_wytworcy` — JEDNO źródło prawdy dzielone z
+    `enm/mapping.py` i `enm/canonical_analysis.py`. Bez tego bramka mogłaby
+    uznać sieć za gotową, podczas gdy mapper wciąż liczyłby zerem (dwa
+    niezależne warunki, które "dziś się zgadzają" — dokładnie defekt, który ta
+    reguła zakazuje).
     """
-    if gen.q_mvar is not None:
-        return gen.q_mvar
-    card = getattr(gen, "materialized_params", None) or {}
-    qmin = card.get("qmin_mvar")
-    qmax = card.get("qmax_mvar")
-    if qmin is not None and qmax is not None and qmin == qmax:
-        return float(qmin)
-    return None
+    from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
+
+    card = getattr(gen, "materialized_params", None)
+    return moc_bierna_wytworcy(gen, card).q_mvar
 
 
 def _check_power_flow(enm: EnergyNetworkModel) -> ReadinessTypeReport:
@@ -222,6 +226,32 @@ def _check_short_circuit(enm: EnergyNetworkModel) -> ReadinessTypeReport:
             missing.append(f"u_k transformatora '{tr.name}'")
             blockers.append(tr.ref_id)
 
+    # Karta FAB-H: udział zwarciowy falownika k_sc (Ik = k_sc*In, IEC 60909-0) dla
+    # generatorów pełnoprzekształtnikowych (PV/BESS/wiatrowy) — TA SAMA klasa
+    # gen_type co `enm/mapping.py::_add_generator_sc_sources` (importowany zbiór
+    # FULL_CONVERTER_SC_GEN_TYPES, nie re-derywowany osobno — reguła KLASA NIE
+    # INSTANCJA: dwa niezależne warunki nie mogą się cicho rozjechać). Brak
+    # JAKIEGOKOLWIEK katalogu (`catalog_ref is None`, stan REALNY — brama
+    # katalogowa go nie wyklucza dla Generator, tylko dla linii/kabli/
+    # transformatorów/źródeł) => BLOCKER `inverter.k_sc_missing`: brakuje całej
+    # tabliczki znamionowej źródła zwarciowego, nie tylko k_sc. Katalog JEST,
+    # ale nie niesie k_sc => WARNING `inverter.k_sc_assumed`: 1,1 przyjęte,
+    # IEC-typowe — SC dalej liczy się poprawnie, tylko z założeniem zamiast
+    # zmierzonej wartości.
+    zalozone_k_sc_refs: list[str] = []
+    for gen in enm.generators:
+        if gen.gen_type not in FULL_CONVERTER_SC_GEN_TYPES:
+            continue
+        mp = getattr(gen, "materialized_params", None) or {}
+        k_sc = mp.get("k_sc")
+        if isinstance(k_sc, int | float) and not isinstance(k_sc, bool) and k_sc > 0:
+            continue
+        if gen.catalog_ref is None:
+            missing.append(f"katalog konwertera '{gen.ref_id}' (kod 'inverter.k_sc_missing')")
+            blockers.append(gen.ref_id)
+        else:
+            zalozone_k_sc_refs.append(gen.ref_id)
+
     if blockers:
         return ReadinessTypeReport(
             calculation_type="short_circuit",
@@ -230,6 +260,18 @@ def _check_short_circuit(enm: EnergyNetworkModel) -> ReadinessTypeReport:
             missing_fields_pl=missing,
             blocking_object_refs=blockers,
             recommended_action_pl='Uzupełnij dane zwarciowe źródła i transformatorów (u_k, S_k").',
+        )
+    if zalozone_k_sc_refs:
+        return ReadinessTypeReport(
+            calculation_type="short_circuit",
+            label_pl=CALCULATION_LABEL_PL["short_circuit"],
+            status="partial",
+            recommended_action_pl=(
+                "Zwarcia można policzyć. Założenie: "
+                f"{len(zalozone_k_sc_refs)} konwerter(ów) bez k_sc w karcie katalogowej "
+                "dostało wartość domyślną IEC 1,1 (kod 'inverter.k_sc_assumed') — "
+                "sprawdź, czy karta producenta nie niesie zmierzonej wartości."
+            ),
         )
     return ReadinessTypeReport(
         calculation_type="short_circuit",

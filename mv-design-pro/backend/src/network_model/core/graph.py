@@ -62,6 +62,11 @@ class NetworkGraph:
         self.grid_sc_sources: dict[str, GridShortCircuitSource] = {}
         self.switches: dict[str, Switch] = {}
         self.stations: dict[str, Station] = {}
+        # Karta FAB-H: ślad WHITE BOX zarejestrowanych założeń k_sc (udziału
+        # zwarciowego falownika), zbudowany przez enm/mapping.py przy braku k_sc
+        # w karcie katalogowej konwertera. Metadana mostu, nie wejście solvera —
+        # network_model/solvers/** jej nie czyta (B-01, solver nietknięty).
+        self.k_sc_assumptions_trace: list[dict] = []
         self._graph: nx.MultiGraph = nx.MultiGraph()
 
     def add_node(self, node: Node) -> None:

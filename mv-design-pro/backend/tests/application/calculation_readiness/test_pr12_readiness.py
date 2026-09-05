@@ -151,6 +151,96 @@ class TestCalculationReadinessService:
         pf = svc.evaluate_single(enm, "power_flow")
         assert pf.status == "ready"
 
+    def test_short_circuit_partial_when_converter_k_sc_assumed(self) -> None:
+        """Karta FAB-H: konwerter Z katalogiem, ale karta nie niesie k_sc =>
+        WARNING/założenie `inverter.k_sc_assumed` — zwarcia się liczą (1,1
+        przyjęte), status 'partial', nie 'blocked'/'ready' po cichu."""
+        enm = _minimal_enm_with_pf_data()
+        enm.generators.append(
+            Generator(
+                ref_id="pv_1",
+                name="PV-01",
+                bus_ref="bus_lv",
+                gen_type="pv_inverter",
+                p_mw=1.0,
+                catalog_ref="conv-pv-test",
+                materialized_params={"un_kv": 0.4, "sn_mva": 1.0},
+            )
+        )
+        svc = CalculationReadinessService()
+        sc = svc.evaluate_single(enm, "short_circuit")
+        assert sc.status == "partial"
+        assert "inverter.k_sc_assumed" in (sc.recommended_action_pl or "")
+
+    def test_short_circuit_ready_when_converter_k_sc_explicit_in_catalog(self) -> None:
+        """Predykaty parami — dana JAWNA: k_sc w karcie katalogowej nie
+        zgłasza założenia."""
+        enm = _minimal_enm_with_pf_data()
+        enm.generators.append(
+            Generator(
+                ref_id="pv_1",
+                name="PV-01",
+                bus_ref="bus_lv",
+                gen_type="pv_inverter",
+                p_mw=1.0,
+                catalog_ref="conv-pv-test",
+                materialized_params={"un_kv": 0.4, "sn_mva": 1.0, "k_sc": 1.25},
+            )
+        )
+        svc = CalculationReadinessService()
+        sc = svc.evaluate_single(enm, "short_circuit")
+        assert sc.status == "ready"
+
+    def test_short_circuit_blocked_when_converter_has_no_catalog_ref(self) -> None:
+        """Karta FAB-H: konwerter BEZ ŻADNEGO katalogu (catalog_ref=None, stan
+        REALNY — brama katalogowa go nie wyklucza dla Generator) => BLOCKER
+        `inverter.k_sc_missing`, różny od WARNING powyżej (tam katalog JEST)."""
+        enm = _minimal_enm_with_pf_data()
+        enm.generators.append(
+            Generator(
+                ref_id="pv_1",
+                name="PV-01",
+                bus_ref="bus_lv",
+                gen_type="pv_inverter",
+                p_mw=1.0,
+                catalog_ref=None,
+            )
+        )
+        svc = CalculationReadinessService()
+        sc = svc.evaluate_single(enm, "short_circuit")
+        assert sc.status in ("partial", "blocked")
+        assert any("inverter.k_sc_missing" in m for m in sc.missing_fields_pl)
+        assert "pv_1" in sc.blocking_object_refs
+
+    def test_short_circuit_ready_without_converter_generators(self) -> None:
+        """Kontrola dwustronna: brak konwerterów => pętla k_sc jest no-opem,
+        status bez zmian ('ready', jak dotąd — sieć bez DER nietknięta)."""
+        enm = _minimal_enm_with_pf_data()
+        svc = CalculationReadinessService()
+        sc = svc.evaluate_single(enm, "short_circuit")
+        assert sc.status == "ready"
+
+    def test_short_circuit_k_sc_assumed_does_not_affect_power_flow(self) -> None:
+        """Predykaty parami — inny typ obliczenia: k_sc (SC-only) nie wpływa
+        na gotowość rozpływu mocy (Q jawne, więc power_flow zostaje 'ready')."""
+        enm = _minimal_enm_with_pf_data()
+        enm.generators.append(
+            Generator(
+                ref_id="pv_1",
+                name="PV-01",
+                bus_ref="bus_lv",
+                gen_type="pv_inverter",
+                p_mw=1.0,
+                q_mvar=0.0,
+                catalog_ref="conv-pv-test",
+                materialized_params={"un_kv": 0.4, "sn_mva": 1.0, "control_mode": "STALY_COS_PHI"},
+            )
+        )
+        svc = CalculationReadinessService()
+        report = svc.evaluate(enm)
+        assert report.get("short_circuit").status == "partial"
+        assert report.get("power_flow").status == "ready"
+
     def test_power_flow_partial_when_pv_control_mode_missing(self) -> None:
         """Karta FAB-D2 (D6): falownik PV bez control_mode w karcie katalogowej
         => BLOCKER pv.control_mode_missing (kod kanonu juz istniejacy w

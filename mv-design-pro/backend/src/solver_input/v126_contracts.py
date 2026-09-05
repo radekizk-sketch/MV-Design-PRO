@@ -5,6 +5,7 @@ from typing import Any
 
 from enm.models import EnergyNetworkModel
 from pydantic import BaseModel, Field
+from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
 
 
 class V126AnalysisType(StrEnum):
@@ -422,7 +423,16 @@ def build_v126_input_from_enm(
     converters: list[V126ConverterInput] = []
     harmonic_sources: list[V126HarmonicSourceInput] = []
     for generator in enm.generators:
-        q_mvar = generator.q_mvar or 0.0
+        # Karta FAB-H (H2, KLASA NIE INSTANCJA): Q rozstrzygane przez JEDNO wspólne
+        # źródło prawdy (moc_bierna_wytworcy), tak samo jak enm/mapping.py i
+        # enm/canonical_analysis.py oraz bramka gotowości
+        # (calculation_readiness/service.py::_generator_q_mvar_jawne). BRAK => 0,0
+        # jako strukturalne wypełnienie agregatu szyny (`gen_by_bus` jest float
+        # nie-Optional); analizy V12.6, które faktycznie CZYTAJĄ tę Q
+        # (RELIABILITY_CONTINGENCY, OPF_LOSS_LCC — via `_branch_current_a`) są
+        # zablokowane PRZED uruchomieniem solvera przez `api/v126_academic.py`
+        # (kod gotowości `generator.q_missing`), gdy Q jest naprawdę nieznane.
+        q_mvar = moc_bierna_wytworcy(generator, generator.materialized_params).q_mvar or 0.0
         p, q = gen_by_bus.get(generator.bus_ref, (0.0, 0.0))
         gen_by_bus[generator.bus_ref] = (p + generator.p_mw, q + q_mvar)
         if generator.gen_type in {"pv_inverter", "bess", "fw_pmsg", "fw_dfig", "fw_scig"}:
