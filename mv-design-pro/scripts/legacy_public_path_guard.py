@@ -4,8 +4,15 @@ import ast
 import sys
 from pathlib import Path
 
-import api_lifecycle_guard
-import canonical_ops_guard
+# Sasiednie strazniki sa importowane po nazwie modulu: przy uruchomieniu skryptu
+# katalog `scripts/` jest na sys.path automatycznie, ale konsument kontraktu
+# (`tests/ci/test_kontrakt_routerow_miedzy_straznikami.py`) laduje ten plik przez
+# `spec_from_file_location` - bez tego wpisu import sasiada konczy sie
+# ModuleNotFoundError (ta sama konwencja: route_prefix_guard, router_mount_guard).
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import api_lifecycle_guard  # noqa: E402
+import canonical_ops_guard  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 API_DIR = ROOT / "backend" / "src" / "api"
