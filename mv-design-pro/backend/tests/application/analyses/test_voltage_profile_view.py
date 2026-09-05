@@ -38,7 +38,7 @@ def _reset() -> None:
 
 def _pf_run() -> CanonicalRun:
     set_enm("c-pf-vpv", build_golden_enm())
-    return execute_run(create_run(case_id="c-pf-vpv", analysis_type="PF").id)
+    return execute_run(create_run(case_id="c-pf-vpv", klucz_twin="c-pf-vpv", analysis_type="PF").id)
 
 
 def _with_mutated_result_v1(run: CanonicalRun, mutate) -> CanonicalRun:

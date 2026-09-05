@@ -11,6 +11,7 @@ All assign/clear endpoints return 204 No Content.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from typing import Any, Literal
 from uuid import UUID
@@ -43,6 +44,8 @@ from network_model.catalog.switchgear import (
 )
 from network_model.catalog.types import normalize_ptpiree_key
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/catalog", tags=["Type Catalog"])
 
@@ -1052,6 +1055,29 @@ def auto_populate_catalog_suggestions(
     )
 
 
+def _liczba_z_katalogu(entry: dict[str, Any], pole: str) -> float | None:
+    """Liczbowe pole pozycji katalogu do filtrow auto-populate — albo `None`.
+
+    FAB-E (klasa „brak danej pokazany jako 0"): `params.get(pole, 0.0)` traktowal
+    pozycje katalogu BEZ pola jak pozycje o wartosci 0 — transformator „0 MVA"
+    przechodzil filtr napiecia i trafial do propozycji z tabliczka „Sn=0 kVA",
+    a kabel „0 mm²" odpadal albo przechodzil zaleznie od filtru, zawsze z
+    fabrykowana liczba w uzasadnieniu. Pozycja bez wymaganego pola jest
+    POMIJANA z nazwanym powodem w logu (defekt DANYCH katalogu, nie wybor
+    projektanta) — nigdy nie jest porownywana jako zero.
+    """
+    params = entry.get("params", {})
+    wartosc = params.get(pole)
+    if isinstance(wartosc, bool) or not isinstance(wartosc, int | float):
+        logger.warning(
+            "auto-populate: pozycja katalogu %s bez liczbowego pola %s — pominieta",
+            entry.get("id"),
+            pole,
+        )
+        return None
+    return float(wartosc)
+
+
 def _auto_populate_transformers(req: AutoPopulateRequest) -> AutoPopulateResponse:
     from network_model.catalog.mv_transformer_catalog import get_all_transformer_types
 
@@ -1060,9 +1086,11 @@ def _auto_populate_transformers(req: AutoPopulateRequest) -> AutoPopulateRespons
 
     for entry in all_types:
         params = entry.get("params", {})
-        rated_mva = params.get("rated_power_mva", 0.0)
-        v_hv = params.get("voltage_hv_kv", 0.0)
-        v_lv = params.get("voltage_lv_kv", 0.0)
+        rated_mva = _liczba_z_katalogu(entry, "rated_power_mva")
+        v_hv = _liczba_z_katalogu(entry, "voltage_hv_kv")
+        v_lv = _liczba_z_katalogu(entry, "voltage_lv_kv")
+        if rated_mva is None or v_hv is None or v_lv is None:
+            continue
         manufacturer = params.get("manufacturer", "")
         is_ptpire = bool(params.get("ptpire_certified", False))
 
@@ -1118,9 +1146,11 @@ def _auto_populate_cables(req: AutoPopulateRequest) -> AutoPopulateResponse:
 
     for entry in all_types:
         params = entry.get("params", {})
-        v_kv = params.get("voltage_rating_kv", 0.0)
-        cross = params.get("cross_section_mm2", 0.0)
-        rated_i = params.get("rated_current_a", 0.0)
+        v_kv = _liczba_z_katalogu(entry, "voltage_rating_kv")
+        cross = _liczba_z_katalogu(entry, "cross_section_mm2")
+        rated_i = _liczba_z_katalogu(entry, "rated_current_a")
+        if v_kv is None or cross is None or rated_i is None:
+            continue
         manufacturer = params.get("manufacturer", "")
         is_ptpire = bool(params.get("ptpire_certified", False))
 
@@ -1173,8 +1203,10 @@ def _auto_populate_switches(req: AutoPopulateRequest, kind_filter: str) -> AutoP
         params = entry.get("params", {})
         if target_kind and params.get("equipment_kind") != target_kind:
             continue
-        v_kv = params.get("un_kv", 0.0)
-        rated_i = params.get("in_a", 0.0)
+        v_kv = _liczba_z_katalogu(entry, "un_kv")
+        rated_i = _liczba_z_katalogu(entry, "in_a")
+        if v_kv is None or rated_i is None:
+            continue
         manufacturer = params.get("manufacturer", "")
         is_ptpire = bool(params.get("ptpire_certified", False))
 

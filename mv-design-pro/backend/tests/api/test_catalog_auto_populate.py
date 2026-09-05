@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
 
 
@@ -119,3 +120,72 @@ def test_auto_populate_polish_manufacturer_preference() -> None:
         top = data["suggestions"][0]
         # ZPUE Włoszczowa first
         assert "ZPUE" in (top.get("manufacturer") or "")
+
+
+def _z_pozycja_bez_pola(lista: list[dict], *, pole: str) -> list[dict]:
+    """Kopia listy katalogu + jedna pozycja pozbawiona liczbowego pola `pole`."""
+    import copy
+
+    wzor = copy.deepcopy(lista[0])
+    wzor["id"] = "pozycja-bez-pola"
+    wzor["name"] = "Pozycja bez pola"
+    wzor["params"].pop(pole, None)
+    return [*copy.deepcopy(lista), wzor]
+
+
+@pytest.mark.parametrize(
+    ("element_type", "modul", "funkcja", "pole"),
+    [
+        (
+            "transformer",
+            "network_model.catalog.mv_transformer_catalog",
+            "get_all_transformer_types",
+            "rated_power_mva",
+        ),
+        (
+            "cable",
+            "network_model.catalog.mv_cable_line_catalog",
+            "get_all_cable_types",
+            "cross_section_mm2",
+        ),
+        (
+            "switch",
+            "network_model.catalog.mv_switch_catalog",
+            "get_all_switch_equipment_types",
+            "in_a",
+        ),
+    ],
+)
+def test_pozycja_katalogu_bez_pola_liczbowego_jest_pomijana_nie_zerem(
+    monkeypatch, element_type: str, modul: str, funkcja: str, pole: str
+) -> None:
+    """FAB-E (klasa „brak danej pokazany jako 0"), iloczyn cech: trzy rodzaje
+    elementow × brak innego pola liczbowego. Dawniej `params.get(pole, 0.0)`
+    wpuszczalo taka pozycje do propozycji z fabrykowana tabliczka „0 kVA / 0 mm²
+    / 0 A" (bez filtrow kazda pozycja przechodzi). Teraz pozycja jest pominieta
+    z nazwanym powodem w logu, a pozostale pozycje katalogu pozostaja bez zmian.
+    """
+    import importlib
+
+    modul_obj = importlib.import_module(modul)
+    oryginal = getattr(modul_obj, funkcja)()
+    assert oryginal, "katalog nie moze byc pusty"
+    with_broken = _z_pozycja_bez_pola(oryginal, pole=pole)
+    monkeypatch.setattr(modul_obj, funkcja, lambda: with_broken)
+
+    client = _make_client()
+    response = client.post(f"/api/catalog/auto-populate/{element_type}", json={})
+    assert response.status_code == 200, response.text
+    body = response.json()
+    refy = {s["catalog_ref"] for s in body["suggestions"]}
+    assert "pozycja-bez-pola" not in refy
+    assert body["total_candidates"] == len(oryginal) - _liczba_pozycji_bez_pol(oryginal, pole)
+    for s in body["suggestions"]:
+        assert "=0 kVA" not in s["rationale_pl"]
+        assert not s["rationale_pl"].startswith("0 mm²")
+        assert "/ 0 A" not in s["rationale_pl"]
+
+
+def _liczba_pozycji_bez_pol(lista: list[dict], pole: str) -> int:
+    """Ile pozycji ORYGINALNEGO katalogu i tak nie ma tego pola (pomiar, nie zalozenie)."""
+    return sum(1 for e in lista if not isinstance(e.get("params", {}).get(pole), int | float))

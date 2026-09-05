@@ -207,7 +207,9 @@ def _pf_run_plain_golden() -> CanonicalRun:
     nie odpowiada żadnej pozycji katalogu domyślnego (rozjazd nazwy), więc
     jego moc zainstalowana jest GENUINIE nieznana solverowi/katalogowi."""
     set_enm("c-pf-plain", build_golden_enm())
-    return execute_run(create_run(case_id="c-pf-plain", analysis_type="PF").id)
+    return execute_run(
+        create_run(case_id="c-pf-plain", klucz_twin="c-pf-plain", analysis_type="PF").id
+    )
 
 
 def test_moc_w_punkcie_nieznana_nie_fabrykuje_zera() -> None:
