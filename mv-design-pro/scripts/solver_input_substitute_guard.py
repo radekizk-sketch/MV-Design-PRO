@@ -1247,9 +1247,6 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "F:dictget:result_v1.base_mva": 1,
         "F:dictget:result_v1.tolerance_used": 1,
     },
-    "application/analysis_run/results_inspector.py": {
-        "F:dictget:node.base_kv": 1,
-    },
     "application/analysis_run/service.py": {
         "B:ifexp:setpoint.cosphi": 2,
         "F:dictget:<dict>.p_mw": 1,

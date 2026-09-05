@@ -960,21 +960,26 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # 3636 pol (FIX-ACTION-KASACJA, 2026-09-05): fantomowy identyfikator akcji
     # naprawczej usuniety z ladunku prezentacji nastaw (application) — -1 pole
     # kontraktu; pliki/dlug/wykluczenia bez zmian.
-    assert "Pol kontraktow wejsciowych: 3636." in wyjscie, wyjscie
+    # 3609 pol / 583 plikow / zapadka 65 plikow, suma 345 / application 328 / api 65
+    # (CV-3.3-A, 2026-09-05): kasacja E3 (execution_engine 4 pliki), E2-widma
+    # (unified_runs, unified_run_dispatch, analysis_dispatch 3 pliki) i martwych
+    # podmodulow R2 (analysis_run 5 plikow) - 12 plikow produkcji poza skanem;
+    # wpis zapadki results_inspector.py (1 podstawienie) zdjety razem z plikiem.
+    assert "Pol kontraktow wejsciowych: 3609." in wyjscie, wyjscie
     assert (
-        "Przeskanowano 597 plikow w zakresie: network_model, solver_input, enm, "
+        "Przeskanowano 583 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
-    assert "Zapadka dlugu (fizyczne): 66 plikow, suma 346." in wyjscie, wyjscie
+    assert "Zapadka dlugu (fizyczne): 65 plikow, suma 345." in wyjscie, wyjscie
     assert "Wykluczenia skanera (niefizyczne): 18 plikow, suma 50." in wyjscie, wyjscie
     per_korzen = [
         "  network_model: pliki_skanowane=144, dlug=14 plikow/suma 77, "
         "wykluczenia=4 plikow/suma 7",
         "  solver_input: pliki_skanowane=10, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
         "  enm: pliki_skanowane=36, dlug=7 plikow/suma 84, wykluczenia=0 plikow/suma 0",
-        "  application: pliki_skanowane=341, dlug=40 plikow/suma 171, "
+        "  application: pliki_skanowane=328, dlug=39 plikow/suma 170, "
         "wykluczenia=8 plikow/suma 20",
-        "  api: pliki_skanowane=66, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 23",
+        "  api: pliki_skanowane=65, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 23",
     ]
     for linia in per_korzen:
         assert linia in wyjscie, f"Brak pinowanej sumy per korzen: {linia!r}\n{wyjscie}"
