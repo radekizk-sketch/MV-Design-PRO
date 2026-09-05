@@ -26,6 +26,7 @@ Kontrakt „MAX PLATFORM ARCHITECTURE & CONVERGENCE CONTRACT" i „FINAL PRODUCT
 - [architecture/DECISION_FREEZE_REGISTER.md](./architecture/DECISION_FREEZE_REGISTER.md) — decyzje fundamentalne: dowód, odrzucone alternatywy, warunki ponownego otwarcia, status
 - [reference-networks/REFERENCE_NETWORK_REGISTRY.md](./reference-networks/REFERENCE_NETWORK_REGISTRY.md) — rejestr G01–G15 z klasami wyroczni; tabela generowana `REGISTRY_TABLE.md`
 - [evidence/CONVERGENCE_EVIDENCE.md](./evidence/CONVERGENCE_EVIDENCE.md) — dowody: CI, ochrona `main` (owner action), determinizm, Definition of Done, karty, P0/P1, decyzje właściciela
+- [evidence/RAPORT_FAZY_CV_2026-09-05.md](./evidence/RAPORT_FAZY_CV_2026-09-05.md) — raport fazy konwergencji CV-0 → CV-4.2b (format §42 A–J): stan faktyczny, werdykt architektoniczny, wpływ na zdolności, wdrożenia, skasowane legacy, dowody, ustalenia adwersaryjne, P0/P1, decyzje właściciela, następny wycinek
 
 ## Program Digital Twin SN+nN 2026-09 (PROPOZYCJA — pakiet do przeglądu właściciela)
 
