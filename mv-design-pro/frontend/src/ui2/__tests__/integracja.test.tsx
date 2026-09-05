@@ -4,7 +4,7 @@
  * zmiana rewizji modelu → pasek stanu aktualizuje się bez przeładowania.
  * Store'y produkcyjne sterowane setState (bez API); fetch /api/health zamockowany.
  */
-import { render, screen, act, fireEvent, cleanup, waitFor } from '@testing-library/react';
+import { screen, act, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { EnergyNetworkModel, TopologyGraphSummary } from '../../types/enm';
@@ -15,6 +15,10 @@ import { AppRoot } from '../AppRoot';
 import { subskrybuj, type ZdarzenieSelekcja } from '../events';
 import { OTWORZ_STRINGS } from '../spaces/projekt/otworz';
 import { useShellStore } from '../shell/useShellStore';
+// Karta FAB-J: `useSynchronizacjaDerZModelu` w `AppRoot` czyta snapshot audytu 2
+// przez React Query — produkcja dostaje `QueryClientProvider` w `main.tsx`, test
+// tego samego drzewa musi dostać go tak samo (ten sam helper co testy kreatora DER).
+import { renderWithQueryClient } from '../../test/queryClientTestUtils';
 
 // E1.7b: kanwa SLD (ciężki komponent canvas) jest atrapowana — testy powłoki
 // sprawdzają kontrakt montażu (LegacySurface + testidy), nie silnik SLD.
@@ -78,7 +82,7 @@ function summaryZGpz(): TopologyGraphSummary {
  * „An update to AppRoot inside a test was not wrapped in act(...)".
  */
 async function renderujPowloke() {
-  const wynik = render(<AppRoot />);
+  const wynik = renderWithQueryClient(<AppRoot />);
   await screen.findByTestId('app-ready');
   return wynik;
 }
@@ -220,7 +224,7 @@ describe('E1.4 — integracja powłoki (shell + nav + inspector + events)', () =
   // === E1.7b — kontrakt testid parytetu ze starą powłoką ===
 
   it('kontrakt e2e: znacznik app-ready pojawia się po załadowaniu powłoki', async () => {
-    render(<AppRoot />);
+    renderWithQueryClient(<AppRoot />);
     expect(screen.getByTestId('canonical-layout')).toBeTruthy();
     await waitFor(() => {
       expect(screen.getByTestId('app-ready')).toBeTruthy();
