@@ -965,15 +965,20 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # (unified_runs, unified_run_dispatch, analysis_dispatch 3 pliki) i martwych
     # podmodulow R2 (analysis_run 5 plikow) - 12 plikow produkcji poza skanem;
     # wpis zapadki results_inspector.py (1 podstawienie) zdjety razem z plikiem.
-    assert "Pol kontraktow wejsciowych: 3609." in wyjscie, wyjscie
+    # 3614 pol / 584 plikow / network_model 145 (FAB-J, 2026-09-05): nowy katalog
+    # pakietow baterii BESS `network_model/catalog/mv_bess_battery_catalog.py`
+    # (+1 plik) i kontrakt `BESSBatteryType` w `catalog/types.py` (chemistry,
+    # capacity_kwh, nominal_voltage_dc_v, c_rate + metadane = +5 pol);
+    # dlug/wykluczenia bez zmian.
+    assert "Pol kontraktow wejsciowych: 3614." in wyjscie, wyjscie
     assert (
-        "Przeskanowano 583 plikow w zakresie: network_model, solver_input, enm, "
+        "Przeskanowano 584 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     assert "Zapadka dlugu (fizyczne): 65 plikow, suma 345." in wyjscie, wyjscie
     assert "Wykluczenia skanera (niefizyczne): 18 plikow, suma 50." in wyjscie, wyjscie
     per_korzen = [
-        "  network_model: pliki_skanowane=144, dlug=14 plikow/suma 77, "
+        "  network_model: pliki_skanowane=145, dlug=14 plikow/suma 77, "
         "wykluczenia=4 plikow/suma 7",
         "  solver_input: pliki_skanowane=10, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
         "  enm: pliki_skanowane=36, dlug=7 plikow/suma 84, wykluczenia=0 plikow/suma 0",
