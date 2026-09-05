@@ -122,7 +122,16 @@ def _zasiej_realny_przypadek(uow_factory, case_id: uuid.UUID) -> None:
 def _zasiej_ciag(klient: TestClient, case_id: str) -> str:
     """GPZ + odcinek kablowy pod DOKŁADNIE tym identyfikatorem. Zwraca ref odcinka."""
     for nazwa, payload in (
-        ("add_grid_source_sn", {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": REF_ZRODLO}),
+        (
+            "add_grid_source_sn",
+            {
+                "voltage_kv": 15.0,
+                "sk3_mva": 250.0,
+                "catalog_ref": REF_ZRODLO,
+                "hv_voltage_kv": 110.0,
+                "transformer_sn_mva": 25.0,
+            },
+        ),
         (
             "continue_trunk_segment_sn",
             {"segment": {"rodzaj": "KABEL", "dlugosc_m": 120.0, "catalog_ref": REF_KABEL}},

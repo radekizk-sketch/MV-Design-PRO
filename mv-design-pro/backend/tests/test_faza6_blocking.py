@@ -45,7 +45,13 @@ def _enm_with_source() -> dict:
     result = execute_domain_operation(
         enm_dict=enm,
         op_name="add_grid_source_sn",
-        payload={"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": CATALOG_ZRODLO_SN},
+        payload={
+            "voltage_kv": 15.0,
+            "sk3_mva": 250.0,
+            "catalog_ref": CATALOG_ZRODLO_SN,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
+        },
     )
     assert result.get("snapshot") is not None, "add_grid_source_sn musi zwrócić snapshot"
     return result["snapshot"]
@@ -91,7 +97,13 @@ class TestAllOperationsReturnSnapshot:
         result = execute_domain_operation(
             enm,
             "add_grid_source_sn",
-            {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": CATALOG_ZRODLO_SN},
+            {
+                "voltage_kv": 15.0,
+                "sk3_mva": 250.0,
+                "catalog_ref": CATALOG_ZRODLO_SN,
+                "hv_voltage_kv": 110.0,
+                "transformer_sn_mva": 25.0,
+            },
         )
         assert result.get("snapshot") is not None, "snapshot nie może być None"
         assert "readiness" in result, "readiness musi być w odpowiedzi"
@@ -154,7 +166,13 @@ class TestSnapshotChangesAfterOperation:
         result = execute_domain_operation(
             enm,
             "add_grid_source_sn",
-            {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": CATALOG_ZRODLO_SN},
+            {
+                "voltage_kv": 15.0,
+                "sk3_mva": 250.0,
+                "catalog_ref": CATALOG_ZRODLO_SN,
+                "hv_voltage_kv": 110.0,
+                "transformer_sn_mva": 25.0,
+            },
         )
         fp_after = _snapshot_fingerprint(result["snapshot"])
         assert fp_before != fp_after, "Fingerprint musi się zmienić po dodaniu źródła"
@@ -189,7 +207,13 @@ class TestSnapshotChangesAfterOperation:
         result = execute_domain_operation(
             enm,
             "add_grid_source_sn",
-            {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": CATALOG_ZRODLO_SN},
+            {
+                "voltage_kv": 15.0,
+                "sk3_mva": 250.0,
+                "catalog_ref": CATALOG_ZRODLO_SN,
+                "hv_voltage_kv": 110.0,
+                "transformer_sn_mva": 25.0,
+            },
         )
         changes = result.get("changes", {})
         assert (
@@ -327,7 +351,13 @@ class TestNoUnhandledException:
         result = execute_domain_operation(
             enm,
             "add_grid_source_sn",
-            {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": CATALOG_ZRODLO_SN},
+            {
+                "voltage_kv": 15.0,
+                "sk3_mva": 250.0,
+                "catalog_ref": CATALOG_ZRODLO_SN,
+                "hv_voltage_kv": 110.0,
+                "transformer_sn_mva": 25.0,
+            },
         )
         assert "error" in result, "Drugie dodanie GPZ powinno zwrócić error"
 
@@ -398,7 +428,13 @@ class TestFullDesignPath:
         result = execute_domain_operation(
             enm,
             "add_grid_source_sn",
-            {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": CATALOG_ZRODLO_SN},
+            {
+                "voltage_kv": 15.0,
+                "sk3_mva": 250.0,
+                "catalog_ref": CATALOG_ZRODLO_SN,
+                "hv_voltage_kv": 110.0,
+                "transformer_sn_mva": 25.0,
+            },
         )
         assert result.get("snapshot") is not None
         assert len(result["snapshot"].get("buses", [])) >= 1
@@ -463,7 +499,13 @@ class TestFullDesignPath:
         r_gpz = execute_domain_operation(
             enm,
             "add_grid_source_sn",
-            {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": CATALOG_ZRODLO_SN},
+            {
+                "voltage_kv": 15.0,
+                "sk3_mva": 250.0,
+                "catalog_ref": CATALOG_ZRODLO_SN,
+                "hv_voltage_kv": 110.0,
+                "transformer_sn_mva": 25.0,
+            },
         )
         r_after_gpz = execute_domain_operation(r_gpz["snapshot"], "refresh_snapshot", {})
         blockers_1 = len(r_after_gpz.get("readiness", {}).get("blockers", []))
@@ -502,7 +544,13 @@ class TestResponseEnvelopeCompleteness:
         result = execute_domain_operation(
             enm,
             "add_grid_source_sn",
-            {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": CATALOG_ZRODLO_SN},
+            {
+                "voltage_kv": 15.0,
+                "sk3_mva": 250.0,
+                "catalog_ref": CATALOG_ZRODLO_SN,
+                "hv_voltage_kv": 110.0,
+                "transformer_sn_mva": 25.0,
+            },
         )
         for field in self.REQUIRED_FIELDS:
             assert field in result, f"Brak pola '{field}' w odpowiedzi sukcesu"

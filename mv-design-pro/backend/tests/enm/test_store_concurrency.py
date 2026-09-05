@@ -93,6 +93,8 @@ def _zbuduj_magistrale(case_key: str, liczba_odcinkow: int) -> list[str]:
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_binding": _binding("ZRODLO_SN", SOURCE_ID),
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
         },
     )
     for numer in range(liczba_odcinkow):

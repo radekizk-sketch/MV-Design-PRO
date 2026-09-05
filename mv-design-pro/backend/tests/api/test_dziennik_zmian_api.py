@@ -24,6 +24,10 @@ GPZ = {
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
+            # Karta FAB-G: transformator WN/SN GPZ wymaga jawnej pary
+            # hv_voltage_kv + transformer_sn_mva (albo transformer_catalog_ref).
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
         },
     }
 }

@@ -60,6 +60,8 @@ def _build_radial_with_segments(segment_count: int) -> dict:
                 "sk3_mva": 500.0,
                 "rx_ratio": 0.1,
                 "catalog_ref": "src-gpz-15kv-500mva-rx010",
+                "hv_voltage_kv": 110.0,
+                "transformer_sn_mva": 25.0,
             },
         ),
         "add_grid_source_sn",

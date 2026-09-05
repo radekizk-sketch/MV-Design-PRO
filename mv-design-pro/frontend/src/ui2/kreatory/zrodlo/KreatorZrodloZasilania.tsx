@@ -365,6 +365,20 @@ export function KreatorZrodloZasilania() {
     }));
   }, [filtrowaneAparaty, dane.gpz_line_field_apparatus_catalog_ref]);
 
+  // Karta FAB-G: transformator 110/SN GPZ jest teraz WYMAGANY (zero fabrykacji
+  // mocy/napiecia po stronie backendu) — reuzycie wzorca auto-doboru aparatu
+  // pola powyzej, zeby projektant nie utknal na pustym, obowiazkowym polu.
+  useEffect(() => {
+    if (dane.transformer_catalog_ref || filtrowaneTransformatory.length === 0) return;
+    setDane((p) => (p.transformer_catalog_ref ? p : {
+      ...p,
+      transformer_catalog_ref: filtrowaneTransformatory[0].id,
+      transformer_sn_mva: filtrowaneTransformatory[0].rated_power_mva,
+      transformer_uk_percent: filtrowaneTransformatory[0].uk_percent,
+      transformer_vector_group: filtrowaneTransformatory[0].vector_group,
+    }));
+  }, [filtrowaneTransformatory, dane.transformer_catalog_ref]);
+
   const zadaniePodgladu = useMemo(() => zbudujZadaniePodgladu(dane), [dane]);
   useEffect(() => {
     if (zadaniePodgladu === null) {
@@ -687,6 +701,8 @@ export function KreatorZrodloZasilania() {
             status={bladTransformatorow ? 'error' : 'ready'}
             placeholder={T.transformatorPlaceholder}
             komunikatBledu={bladTransformatorow ?? T.transformatorBlad}
+            wymagane
+            blad={bladDlaPola('transformer_catalog_ref')}
             testid="mvd-kreator-zrodlo-transformator-katalog"
           />
           {dane.transformer_catalog_ref ? (

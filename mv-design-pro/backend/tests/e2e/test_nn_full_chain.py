@@ -407,6 +407,8 @@ def _build_substrate(client, case_id: str) -> dict[str, Any]:
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_ref": REF_ZRODLO_SN,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
         },
     )
 

@@ -72,6 +72,8 @@ def build_gn01_sn_promieniowa() -> dict[str, Any]:
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
         },
     )
     assert result.get("error") is None, f"add_grid_source_sn failed: {result.get('error')}"
@@ -160,6 +162,8 @@ def build_gn02_sn_odgalezienie() -> dict[str, Any]:
             "sk3_mva": 200.0,
             "rx_ratio": 0.1,
             "catalog_ref": "src-gpz-15kv-200mva-rx010",
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
         },
     )
     assert result.get("error") is None, f"add_grid_source_sn failed: {result.get('error')}"
@@ -267,6 +271,8 @@ def build_gn03_sn_pierscien() -> dict[str, Any]:
             "sk3_mva": 300.0,
             "rx_ratio": 0.1,
             "catalog_ref": "src-gpz-15kv-300mva-rx010",
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
         },
     )
     assert result.get("error") is None, f"add_grid_source_sn failed: {result.get('error')}"
@@ -372,6 +378,8 @@ def build_gn04_sn_nn_oze() -> dict[str, Any]:
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
         },
     )
     assert result.get("error") is None, f"add_grid_source_sn failed: {result.get('error')}"

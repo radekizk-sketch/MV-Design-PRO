@@ -700,8 +700,23 @@ def _resolve_gpz_wn_sn_transformer_catalog_ref(
     payload: dict[str, Any],
     *,
     voltage_kv: float,
-    rated_power_mva: float,
 ) -> str | dict[str, Any]:
+    """Rozstrzygnij pozycję katalogową transformatora WN/SN GPZ.
+
+    Karta FAB-G (Zero-Debt, zero fabrykacji — dług 7 rejestru V12K-315 —
+    ta sama klasa defektu co D2/`add_transformer_sn_nn`): funkcja NIE fabrykuje
+    już mocy znamionowej ani napięcia górnego, gdy ładunek milczy (dawne
+    `transformer_sn_mva or 25.0` / `hv_voltage_kv or 110.0` wybierały GPZ
+    110/15 kV 25 MVA, którego projektant nigdy nie zażądał). Dopuszczone są
+    WYŁĄCZNIE dwie jawne drogi: (a) `transformer_catalog_ref` albo
+    `transformer_catalog_binding`, wskazane wprost; (b) jawna para
+    `hv_voltage_kv` + `transformer_sn_mva`, która JEDNOZNACZNIE wskazuje
+    pozycję w `GPZ_WN_SN_TRANSFORMER_CATALOG_BY_VOLTAGE_AND_POWER` (napięcie
+    SN pochodzi z już rozstrzygniętego `voltage_kv` operacji — ładunku/szyny).
+    Brak obu dróg ORAZ para spoza mapy kończą się TYM SAMYM kodem
+    `catalog.ref_required` istniejącej bramy katalogowej (`_require_catalog_ref`),
+    z listą dopuszczalnych par w komunikacie PL — nigdy cichym podstawieniem.
+    """
     explicit_ref = payload.get("transformer_catalog_ref")
     if isinstance(explicit_ref, str) and explicit_ref.strip():
         return explicit_ref.strip()
@@ -711,23 +726,46 @@ def _resolve_gpz_wn_sn_transformer_catalog_ref(
     if binding_ref:
         return binding_ref
 
-    voltage_key = int(round(float(voltage_kv)))
-    power_key = int(round(float(rated_power_mva)))
-    default_ref = GPZ_WN_SN_TRANSFORMER_CATALOG_BY_VOLTAGE_AND_POWER.get((voltage_key, power_key))
-    if default_ref:
-        return default_ref
-
     supported = ", ".join(
         f"110/{voltage} kV {power} MVA"
         for voltage, power in sorted(GPZ_WN_SN_TRANSFORMER_CATALOG_BY_VOLTAGE_AND_POWER)
     )
+    error_message = (
+        "Transformator WN/SN GPZ wymaga pozycji katalogowej: podaj "
+        "transformer_catalog_ref (lub transformer_catalog_binding) albo jawną "
+        "parę hv_voltage_kv + transformer_sn_mva, która jednoznacznie wskazuje "
+        f"pozycję katalogu. Dostępne pary: {supported}."
+    )
+
+    hv_voltage_kv_payload = _as_positive_float(payload.get("hv_voltage_kv"))
+    rated_power_mva_payload = _as_positive_float(payload.get("transformer_sn_mva"))
+    if hv_voltage_kv_payload is None or rated_power_mva_payload is None:
+        return _error_response(error_message, "catalog.ref_required")
+
+    hv_voltage_key = int(round(hv_voltage_kv_payload))
+    if hv_voltage_key != 110:
+        return _error_response(
+            (
+                "Transformator WN/SN GPZ obsługuje wyłącznie stronę górną "
+                f"110 kV (podano {hv_voltage_kv_payload:g} kV). "
+                f"Dostępne pary: {supported}."
+            ),
+            "catalog.ref_required",
+        )
+
+    voltage_key = int(round(float(voltage_kv)))
+    power_key = int(round(rated_power_mva_payload))
+    default_ref = GPZ_WN_SN_TRANSFORMER_CATALOG_BY_VOLTAGE_AND_POWER.get((voltage_key, power_key))
+    if default_ref:
+        return default_ref
+
     return _error_response(
         (
             "Transformator WN/SN GPZ wymaga pozycji katalogowej. "
-            f"Brak domyślnego rekordu dla 110/{voltage_key} kV {power_key} MVA. "
-            f"Dostępne rekordy: {supported}."
+            f"Brak rekordu dla 110/{voltage_key} kV {power_key} MVA. "
+            f"Dostępne pary: {supported}."
         ),
-        "source.transformer_catalog_ref_missing",
+        "catalog.ref_required",
     )
 
 
@@ -3808,15 +3846,18 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             }
         )
 
-    # UWAGA (karta FAB-D1, znalezisko poza inwentarzem §0 — patrz meldunek
-    # koncowy): tabliczka transformatora(ow) WN/SN GPZ ponizej WCIAZ fabrykuje
-    # "typowe" wartosci (25 MVA/110 kV/12%/120 kW/25 kW/0,2%/YNd11), gdy payload
-    # ich nie poda — DOKLADNIE ta sama klasa defektu co D2 (add_transformer_sn_nn),
-    # ALE naprawa (odrzucenie z `transformer.field_missing`) zmierzona empirycznie
-    # na 517 czerwonych testow w samym `tests/enm` (KAZDY test budujacy siec przez
-    # `add_grid_source_sn` bez jawnego hv_voltage_kv/transformer_sn_mva). Migracja
-    # >40 plikow testowych przekracza zakres tej karty (Zero-Debt pkt 4) — NIE
-    # naprawione tutaj, zgloszone jawnie jako osobny wpis do zaplanowania.
+    # Karta FAB-G (Zero-Debt, zero fabrykacji — domyka dług 7 rejestru
+    # V12K-315, ta sama klasa defektu co D2/`add_transformer_sn_nn`): tabliczka
+    # transformatora(ów) WN/SN GPZ (moc, napięcie górne, uk/pk/p0/i0, grupa)
+    # pochodzi WYŁĄCZNIE z typu katalogowego — jawnego `transformer_catalog_ref`
+    # albo pary `hv_voltage_kv` + `transformer_sn_mva`, która jednoznacznie
+    # wskazuje pozycję w mapie. Bez jednego z nich operacja jest odrzucona
+    # (`catalog.ref_required`, `_resolve_gpz_wn_sn_transformer_catalog_ref`)
+    # PRZED utworzeniem jakiegokolwiek elementu — zła/brakująca pozycja nie
+    # zostawia połowicznej stacji w migawce. Katalog jest materializowany
+    # PRZED szyną 110 kV, więc jej napięcie (`voltage_kv`) i napięcie górnego
+    # uzwojenia transformatora (`uhv_kv`) pochodzą z TEJ SAMEJ liczby
+    # katalogowej — nigdy z niezależnego, fabrykowanego `or 110.0`.
     gpz_transformer_refs: list[str] = []
     gpz_hv_bus_refs: list[str] = []
     for index in range(transformer_count):
@@ -3824,12 +3865,34 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         hv_bus_ref = _make_id("gpz", seed, f"transformer/{order:03d}/bus_110")
         transformer_ref = _make_id("gpz", seed, f"transformer/{order:03d}/wn_sn")
         section = gpz_sections[index % len(gpz_sections)]
+
+        transformer_catalog_ref = _resolve_gpz_wn_sn_transformer_catalog_ref(
+            payload,
+            voltage_kv=voltage_kv,
+        )
+        if isinstance(transformer_catalog_ref, dict):
+            return transformer_catalog_ref
+
+        transformer_catalog_binding = payload.get("transformer_catalog_binding")
+        materialization = _materialize_catalog_payload(
+            catalog_ref=transformer_catalog_ref,
+            catalog_binding=transformer_catalog_binding,
+            default_namespace="TRAFO_SN_NN",
+        )
+        if isinstance(materialization, dict):
+            return materialization
+        transformer_binding_payload, transformer_materialized_params = materialization
+        # `voltage_hv_kv` jest polem WYMAGANYM kontraktu TransformerType
+        # (network_model/catalog/types.py) — zawsze obecne po udanej
+        # materializacji, więc szyna 110 kV dostaje realną daną katalogową.
+        hv_bus_voltage_kv = float(transformer_materialized_params["voltage_hv_kv"])
+
         result = create_node(
             new_enm,
             {
                 "ref_id": hv_bus_ref,
-                "name": f"Szyna 110 kV TR{order}",
-                "voltage_kv": float(payload.get("hv_voltage_kv") or 110.0),
+                "name": f"Szyna {hv_bus_voltage_kv:g} kV TR{order}",
+                "voltage_kv": hv_bus_voltage_kv,
                 "tags": ["gpz_hv_bus", "helper_bus"],
                 "meta": {
                     "visual_role": "GPZ_HV_BUS",
@@ -3851,25 +3914,6 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         events.append({"event_seq": ev_seq, "event_type": "BUS_CREATED", "element_id": hv_bus_ref})
         gpz_hv_bus_refs.append(hv_bus_ref)
 
-        transformer_rated_power_mva = float(payload.get("transformer_sn_mva") or 25.0)
-        transformer_catalog_ref = _resolve_gpz_wn_sn_transformer_catalog_ref(
-            payload,
-            voltage_kv=voltage_kv,
-            rated_power_mva=transformer_rated_power_mva,
-        )
-        if isinstance(transformer_catalog_ref, dict):
-            return transformer_catalog_ref
-
-        transformer_catalog_binding = payload.get("transformer_catalog_binding")
-        materialization = _materialize_catalog_payload(
-            catalog_ref=transformer_catalog_ref,
-            catalog_binding=transformer_catalog_binding,
-            default_namespace="TRAFO_SN_NN",
-        )
-        if isinstance(materialization, dict):
-            return materialization
-        transformer_binding_payload, transformer_materialized_params = materialization
-
         transformer = {
             "ref_id": transformer_ref,
             "name": payload.get(f"transformer_{order}_name") or f"TR{order} 110/{voltage_kv:g} kV",
@@ -3882,14 +3926,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             },
             "hv_bus_ref": hv_bus_ref,
             "lv_bus_ref": section["bus_ref"],
-            "sn_mva": transformer_rated_power_mva,
-            "uhv_kv": float(payload.get("hv_voltage_kv") or 110.0),
             "ulv_kv": float(voltage_kv),
-            "uk_percent": float(payload.get("transformer_uk_percent") or 12.0),
-            "pk_kw": float(payload.get("transformer_pk_kw") or 120.0),
-            "p0_kw": float(payload.get("transformer_p0_kw") or 25.0),
-            "i0_percent": float(payload.get("transformer_i0_percent") or 0.2),
-            "vector_group": payload.get("transformer_vector_group") or "YNd11",
             "catalog_ref": transformer_catalog_ref,
             "overrides": [],
         }

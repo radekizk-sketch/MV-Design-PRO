@@ -79,7 +79,13 @@ def _model_z_gpz() -> dict[str, Any]:
     return _wykonaj(
         _pusty_enm(),
         "add_grid_source_sn",
-        {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": REF_ZRODLO},
+        {
+            "voltage_kv": 15.0,
+            "sk3_mva": 250.0,
+            "catalog_ref": REF_ZRODLO,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
+        },
     )
 
 
@@ -106,7 +112,13 @@ def _model_ze_stacja_i_ct() -> dict[str, Any]:
 
 
 def _payload_gpz(_: dict[str, Any]) -> dict[str, Any]:
-    return {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": REF_ZRODLO}
+    return {
+        "voltage_kv": 15.0,
+        "sk3_mva": 250.0,
+        "catalog_ref": REF_ZRODLO,
+        "hv_voltage_kv": 110.0,
+        "transformer_sn_mva": 25.0,
+    }
 
 
 def _payload_odcinka(_: dict[str, Any]) -> dict[str, Any]:

@@ -334,6 +334,8 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_ref": _GPZ_SOURCE_REF,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
         },
     )
 

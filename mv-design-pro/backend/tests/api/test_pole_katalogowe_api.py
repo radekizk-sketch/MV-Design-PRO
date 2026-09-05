@@ -86,7 +86,13 @@ def _ciag_sn(klient: TestClient, case_id: str) -> dict[str, Any]:
         klient,
         case_id,
         "add_grid_source_sn",
-        {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": REF_ZRODLO},
+        {
+            "voltage_kv": 15.0,
+            "sk3_mva": 250.0,
+            "catalog_ref": REF_ZRODLO,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
+        },
     )
     wynik = _operacja(
         klient,

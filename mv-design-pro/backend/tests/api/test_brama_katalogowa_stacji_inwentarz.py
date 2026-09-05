@@ -93,7 +93,13 @@ def _ciag_sn() -> tuple[dict[str, Any], str, str]:
     snapshot = _wykonaj(
         _pusty_enm(),
         "add_grid_source_sn",
-        {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": REF_ZRODLO},
+        {
+            "voltage_kv": 15.0,
+            "sk3_mva": 250.0,
+            "catalog_ref": REF_ZRODLO,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
+        },
     )
     snapshot = _wykonaj(
         snapshot,
@@ -414,7 +420,13 @@ def test_literowka_odrzucona_w_torze_payloadu(
         json={
             "operation": {
                 "name": "add_grid_source_sn",
-                "payload": {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": REF_ZRODLO},
+                "payload": {
+                    "voltage_kv": 15.0,
+                    "sk3_mva": 250.0,
+                    "catalog_ref": REF_ZRODLO,
+                    "hv_voltage_kv": 110.0,
+                    "transformer_sn_mva": 25.0,
+                },
             }
         },
     )

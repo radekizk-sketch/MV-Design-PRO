@@ -185,6 +185,8 @@ test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
+    hv_voltage_kv: 110.0,
+    transformer_sn_mva: 25.0,
   });
 
   // Krok 2: Magistrala SN (3 segmenty)

@@ -43,7 +43,13 @@ def _seed_with_overhead_segment() -> tuple[dict, str]:
     s1 = execute_domain_operation(
         s0,
         "add_grid_source_sn",
-        {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": CATALOG_ZRODLO_SN},
+        {
+            "voltage_kv": 15.0,
+            "sk3_mva": 250.0,
+            "catalog_ref": CATALOG_ZRODLO_SN,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
+        },
     )["snapshot"]
     s2 = execute_domain_operation(
         s1,
@@ -65,7 +71,13 @@ def _seed_with_cable_segment() -> tuple[dict, str]:
     s1 = execute_domain_operation(
         s0,
         "add_grid_source_sn",
-        {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": CATALOG_ZRODLO_SN},
+        {
+            "voltage_kv": 15.0,
+            "sk3_mva": 250.0,
+            "catalog_ref": CATALOG_ZRODLO_SN,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
+        },
     )["snapshot"]
     s2 = execute_domain_operation(
         s1,

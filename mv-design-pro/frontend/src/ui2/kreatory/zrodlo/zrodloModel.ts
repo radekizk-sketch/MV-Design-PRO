@@ -234,6 +234,12 @@ export function walidujFormularz(data: GridSourceFormData): BladPolaZrodla[] {
   if (!Number.isInteger(data.transformer_count) || data.transformer_count < 1 || data.transformer_count > 4) {
     errors.push({ field: 'transformer_count', message: 'Liczba transformatorów 110/SN musi mieścić się w zakresie 1-4.' });
   }
+  if (!data.transformer_catalog_ref?.trim()) {
+    // Karta FAB-G: operacja domenowa wymaga jawnej pozycji katalogowej
+    // transformatora WN/SN (albo pary hv_voltage_kv + transformer_sn_mva) —
+    // bez tego pola backend odrzuca operację kodem catalog.ref_required.
+    errors.push({ field: 'transformer_catalog_ref', message: 'Dobierz transformator 110/SN z katalogu.' });
+  }
   if (!Number.isInteger(data.line_fields_per_section) || data.line_fields_per_section < 1 || data.line_fields_per_section > 12) {
     errors.push({ field: 'line_fields_per_section', message: 'Liczba pól liniowych na sekcję musi mieścić się w zakresie 1-12.' });
   }

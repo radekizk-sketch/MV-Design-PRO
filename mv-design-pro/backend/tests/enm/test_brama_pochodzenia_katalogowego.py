@@ -161,6 +161,10 @@ def _payload_gpz(
         "catalog_ref": REF_ZRODLO_SN,
         "sections_count": sections_count,
         "line_fields_per_section": line_fields_per_section,
+        # Karta FAB-G: transformator WN/SN GPZ wymaga jawnej pary
+        # hv_voltage_kv + transformer_sn_mva (albo transformer_catalog_ref).
+        "hv_voltage_kv": 110.0,
+        "transformer_sn_mva": 25.0,
     }
     if apparatus_ref is None:
         return payload
@@ -675,22 +679,40 @@ def test_przypisanie_katalogu_bez_ustalonej_kategorii_jest_odrzucane() -> None:
 
 def test_znacznik_pochodzenia_z_payloadu_nie_awansuje_zrodla_do_katalogu() -> None:
     """Ręczny ekwiwalent zwarciowy + `source_mode: KATALOG` z payloadu = zdanie
-    nieprawdziwe w migawce; operacja musi je odrzucić, a nie zapisać."""
+    nieprawdziwe w migawce; operacja musi je odrzucić, a nie zapisać.
+
+    Karta FAB-G: tabliczka transformatora WN/SN dostaje TEN SAM kod
+    `catalog.ref_required`, więc bez jawnej pary hv_voltage_kv/transformer_sn_mva
+    test przechodziłby z właściwym kodem, ale z NIEWŁAŚCIWEGO powodu (brama
+    transformatora, nie kłamstwo `source_mode`). Para poniżej domyka
+    transformator, żeby jedyną pozostałą przyczyną odrzucenia był fałszywy
+    znacznik pochodzenia źródła.
+    """
     payload = {
         "source_name": "Stacja zasilająca ekspercka",
         "voltage_kv": 15.0,
         "manual_equivalent": {"sk3_mva": 250.0, "rx_ratio": 0.1},
         "source_mode": "KATALOG",
+        "hv_voltage_kv": 110.0,
+        "transformer_sn_mva": 25.0,
     }
 
     wynik = execute_domain_operation(_pusty_enm(), "add_grid_source_sn", payload)
 
     assert wynik.get("error_code") == "catalog.ref_required", wynik
     assert wynik.get("snapshot") is None
+    assert "pochodzenia" in str(wynik.get("error")), (
+        "Oczekiwano odrzucenia z powodu falszywego znacznika pochodzenia zrodla, "
+        f"nie bramy transformatora: {wynik.get('error')}"
+    )
 
 
 def test_recznny_ekwiwalent_bez_znacznika_katalogowego_dziala_jak_dotad() -> None:
-    """Tryb ekspercki bez fałszywej deklaracji przechodzi bez zmian."""
+    """Tryb ekspercki bez fałszywej deklaracji przechodzi bez zmian.
+
+    Transformator WN/SN GPZ powstaje NIEZALEŻNIE od trybu źródła (karta FAB-G) —
+    para hv_voltage_kv/transformer_sn_mva domyka jego własną bramę katalogową.
+    """
     snapshot = _wykonaj(
         _pusty_enm(),
         "add_grid_source_sn",
@@ -698,6 +720,8 @@ def test_recznny_ekwiwalent_bez_znacznika_katalogowego_dziala_jak_dotad() -> Non
             "source_name": "Stacja zasilająca ekspercka",
             "voltage_kv": 15.0,
             "manual_equivalent": {"sk3_mva": 250.0, "rx_ratio": 0.1},
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
         },
     )
 

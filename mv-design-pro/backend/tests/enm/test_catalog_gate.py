@@ -40,7 +40,13 @@ def _add_gpz(enm_dict: dict) -> dict:
     result = execute_domain_operation(
         enm_dict=enm_dict,
         op_name="add_grid_source_sn",
-        payload={"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": CATALOG_ZRODLO_SN},
+        payload={
+            "voltage_kv": 15.0,
+            "sk3_mva": 250.0,
+            "catalog_ref": CATALOG_ZRODLO_SN,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
+        },
     )
     assert result.get("snapshot") is not None
     return result["snapshot"]

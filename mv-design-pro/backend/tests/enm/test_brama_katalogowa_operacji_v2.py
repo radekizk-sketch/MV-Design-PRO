@@ -136,7 +136,13 @@ def _siec_ze_stacja(nn_block: dict[str, Any] | None = None) -> dict[str, Any]:
     snapshot = _wykonaj(
         _pusty_enm(),
         "add_grid_source_sn",
-        {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": REF_ZRODLO},
+        {
+            "voltage_kv": 15.0,
+            "sk3_mva": 250.0,
+            "catalog_ref": REF_ZRODLO,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
+        },
     )
     snapshot = _wykonaj(
         snapshot,
@@ -749,7 +755,13 @@ def _zasiej_siec_przez_api(klient: TestClient, case_id: str) -> dict[str, Any]:
         klient,
         case_id,
         "add_grid_source_sn",
-        {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": REF_ZRODLO},
+        {
+            "voltage_kv": 15.0,
+            "sk3_mva": 250.0,
+            "catalog_ref": REF_ZRODLO,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
+        },
     )
     snapshot = _operacja_api(
         klient,

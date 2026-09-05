@@ -126,6 +126,8 @@ async function createProjectCaseWithGpz(
               catalog_item_id: SOURCE_ID,
               catalog_item_version: CATALOG_VERSION,
             },
+            hv_voltage_kv: 110.0,
+            transformer_sn_mva: 25.0,
           },
         },
       },
