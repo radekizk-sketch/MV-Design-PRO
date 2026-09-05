@@ -74,8 +74,19 @@ export interface SldDetailDrawerData {
   readonly accentColor?: string;
   /** K30-78: pre-filled DER kind when drawer opened via drag-drop. */
   readonly derKind?: 'PV' | 'BESS' | 'FW';
-  /** K30-78: pre-filled connection variant when drawer opened via drag-drop. */
-  readonly derConnectionVariant?: 'nn_side' | 'sn_side' | 'dedicated';
+  /**
+   * K30-78: pre-filled connection variant when drawer opened via drag-drop.
+   *
+   * Karta FAB-K (§0 R3, KLASA NIE INSTANCJA): JEDYNA wartość. Ten formularz nie
+   * zbiera punktu przyłączenia SN (`sn_connection_bus_ref`) — bez niego backend
+   * odrzuca `block_transformer` 422-ką `generator.sn_connection_bus_missing` przy
+   * KAŻDYM zapisie. Dawne `sn_side`/`dedicated` dawały tu dokładnie ten sam
+   * gwarantowany-422 co usunięty 6-wariantowy `ConnectionSide` w AddDerWizard —
+   * usunięte jako phantom (radio bez ścieżki zapisu), nie jako uproszczenie
+   * funkcji: przyłączenie SN przez transformator dedykowany zostaje dostępne w
+   * pełnym kreatorze DER (`AddDerWizard`), który ma realny picker punktu SN.
+   */
+  readonly derConnectionVariant?: 'nn_side';
   /** K30-79: real transformer spec from ENM snapshot (gdy kind='station'). */
   readonly transformerSpec?: SldTransformerDrawerSpec | null;
   /** K30-80: bay list dla rozdzielnica tab (kind='station'). */
@@ -171,7 +182,8 @@ export interface SldDetailDrawerData {
 }
 
 export type SldDerKind = 'PV' | 'BESS' | 'FW';
-export type SldDerConnectionVariant = 'nn_side' | 'sn_side' | 'dedicated';
+/** Karta FAB-K (§0 R3): patrz `SldDetailDrawerData.derConnectionVariant` wyżej. */
+export type SldDerConnectionVariant = 'nn_side';
 export type SldNcRfgModule = 'A' | 'B' | 'C' | 'D';
 
 export interface SldDerConfigFormValues {
@@ -504,23 +516,19 @@ const sldDerConfigSchema = z.object({
     .number({ invalid_type_error: 'Podaj moc czynną DER w MW.' })
     .min(0.1, 'Moc czynna DER musi być nie mniejsza niż 0,1 MW.')
     .max(10, 'Moc czynna DER musi być nie większa niż 10 MW.'),
-  connectionVariant: z.enum(['nn_side', 'sn_side', 'dedicated']),
+  connectionVariant: z.literal('nn_side'),
   pointVoltageKv: z.coerce.number().positive('Napięcie punktu przyłączenia musi być dodatnie.'),
   inverterCatalogRef: z.string().min(1, 'Wybierz typ przekształtnika z katalogu (zakładka „Falownik").'),
   ncRfgModule: z.enum(['A', 'B', 'C', 'D']),
 }).superRefine((value, ctx) => {
-  if (value.connectionVariant === 'nn_side' && value.pointVoltageKv >= 1) {
+  // Karta FAB-K (§0 R3): JEDYNY wariant to nN — punkt przyłączenia musi więc
+  // leżeć poniżej 1 kV (szyna nN stacji). Przyłączenie SN przez transformator
+  // dedykowany zbiera pełny kreator DER (`AddDerWizard`), nie ten formularz.
+  if (value.pointVoltageKv >= 1) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['connectionVariant'],
       message: 'Wariant nN wymaga punktu przyłączenia poniżej 1 kV.',
-    });
-  }
-  if (value.connectionVariant !== 'nn_side' && value.pointVoltageKv < 1) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['connectionVariant'],
-      message: 'Wariant SN wymaga punktu przyłączenia co najmniej 1 kV.',
     });
   }
 });
@@ -563,12 +571,18 @@ function tabsForKind(data: SldDetailDrawerData | null): readonly { id: string; l
   return [];
 }
 
-function pointVoltageForVariant(
-  variant: SldDerConnectionVariant,
-  stationVoltageKv: number | null | undefined,
-): number {
-  if (variant === 'nn_side') return 0.4;
-  return stationVoltageKv != null && stationVoltageKv >= 1 ? stationVoltageKv : 15;
+/**
+ * Napięcie punktu przyłączenia dla `nn_side` — JEDYNY wariant tego formularza
+ * (karta FAB-K, §0 R3). REALNA szyna nN stacji (`nnSpec.busVoltageKv`, ta sama
+ * migawka ENM co `buildStationDetailDrawerData` — `selectStationDistributionTransformers`
+ * → `lv_bus_ref` → `buses[].voltage_kv`), nie zgadywane „zawsze 0,4 kV": dawny
+ * kod ignorował napięcie modelu dla nN i wpisywał stałą niezależnie od
+ * rzeczywistej szyny stacji. Fallback 0,4 kV zostaje WYŁĄCZNIE, gdy migawka
+ * faktycznie nie niesie tej danej (stacja bez transformatora w ENM jeszcze) —
+ * ten sam `dataQuality: 'sld_fallback'`, co `transformerSpec` w tym module.
+ */
+function pointVoltageForVariant(nnBusVoltageKv: number | null | undefined): number {
+  return nnBusVoltageKv != null && nnBusVoltageKv > 0 && nnBusVoltageKv < 1 ? nnBusVoltageKv : 0.4;
 }
 
 function defaultDerPowerMw(kind: SldDerKind): number {
@@ -579,12 +593,11 @@ function defaultDerPowerMw(kind: SldDerKind): number {
 
 function makeDefaultDerFormValues(data: SldDetailDrawerData | null): SldDerConfigFormValues {
   const derKind = data?.derKind ?? 'PV';
-  const connectionVariant = data?.derConnectionVariant ?? 'nn_side';
   return {
     derKind,
     powerMw: defaultDerPowerMw(derKind),
-    connectionVariant,
-    pointVoltageKv: pointVoltageForVariant(connectionVariant, data?.voltageKv),
+    connectionVariant: 'nn_side',
+    pointVoltageKv: pointVoltageForVariant(data?.nnSpec?.busVoltageKv),
     // Wybór typu przekształtnika jest JAWNY (zakładka „Falownik", lista z
     // katalogu backendu) — wartość wstępna zostaje pusta i nikt jej nie
     // podstawia. Formularz odrzuca zapis z pustym `inverterCatalogRef`
@@ -692,18 +705,14 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
     };
   }, [open, data?.elementId]);
 
+  // Karta FAB-K (§0 R3): drugi efekt, który wcześniej przeliczał
+  // `pointVoltageKv` PRZY ZMIANIE `connectionVariant` (radio SN/dedicated),
+  // USUNIĘTY jako martwy — jedyny wariant (`nn_side`) nie jest już wyborem
+  // interaktywnym, więc przeliczenie na zmianę `data` wystarcza (poniżej).
   useEffect(() => {
     if (!open || data?.kind !== 'der') return;
     derForm.reset(makeDefaultDerFormValues(data));
-  }, [open, data?.elementId, data?.kind, data?.derKind, data?.derConnectionVariant, data?.voltageKv, derForm]);
-
-  useEffect(() => {
-    if (!open || data?.kind !== 'der') return;
-    const nextPointVoltage = pointVoltageForVariant(watchedConnectionVariant, data.voltageKv);
-    if (derForm.getValues('pointVoltageKv') !== nextPointVoltage) {
-      derForm.setValue('pointVoltageKv', nextPointVoltage, { shouldValidate: true });
-    }
-  }, [open, data?.kind, data?.voltageKv, watchedConnectionVariant, derForm]);
+  }, [open, data?.elementId, data?.kind, data?.derKind, data?.nnSpec?.busVoltageKv, derForm]);
 
   // Zmiana pary (technologia, wariant) unieważnia wybrany typ przekształtnika:
   // identyfikator PV nie może „przejść" do BESS ani typ SN do wariantu nN.
@@ -1939,50 +1948,32 @@ function PlaceholderTabBody({
     );
   }
   if (kind === 'der' && tab === 'punkt') {
-    const selectedVariant = derForm.watch('connectionVariant');
+    // Karta FAB-K (§0 R3, KLASA NIE INSTANCJA): radio SN/„dedicated" USUNIĘTE —
+    // dawały gwarantowany 422 (ten sam mechanizm co dawny 6-wariantowy
+    // `ConnectionSide` w AddDerWizard), bo ten formularz nie zbiera punktu
+    // przyłączenia SN (`sn_connection_bus_ref`). JEDYNY wariant tego formularza
+    // to strona nN — informacja, nie wybór; napięcie to REALNA szyna nN stacji
+    // (`nnSpec.busVoltageKv`), nie zgadywane 0,4 kV. Przyłączenie SN przez
+    // transformator dedykowany zbiera pełny kreator DER (`AddDerWizard`).
     const pointVoltage = Number(derForm.watch('pointVoltageKv') ?? 0);
-    const connectionRegister = derForm.register('connectionVariant');
+    const nnBusVoltageKnown = nnSpec?.busVoltageKv != null;
     return (
       <div data-testid="drawer-der-connection-variant">
         <label style={{ display: 'block', marginBottom: 6, color: 'rgb(var(--scada-muted))' }}>Punkt podłączenia</label>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {[
-            { value: 'nn_side', label: 'Strona nN (po transformatorze SN/nN)' },
-            { value: 'sn_side', label: 'Strona SN (przez dedykowane pole)' },
-            { value: 'dedicated', label: 'Dedykowane przyłącze (osobna linia)' },
-          ].map((opt) => (
-            <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'rgb(var(--scada-text))' }}>
-              <input
-                type="radio"
-                name={connectionRegister.name}
-                ref={connectionRegister.ref}
-                onBlur={connectionRegister.onBlur}
-                value={opt.value}
-                data-testid={`drawer-der-connection-${opt.value}`}
-                checked={selectedVariant === opt.value}
-                onChange={() => {
-                  const nextVariant = opt.value as SldDerConnectionVariant;
-                  derForm.setValue('connectionVariant', nextVariant, {
-                    shouldDirty: true,
-                    shouldValidate: true,
-                  });
-                  derForm.setValue(
-                    'pointVoltageKv',
-                    pointVoltageForVariant(nextVariant, voltageKv),
-                    { shouldDirty: true, shouldValidate: true },
-                  );
-                }}
-              />
-              {opt.label}
-            </label>
-          ))}
+        <div data-testid="drawer-der-connection-nn_side" style={{ color: 'rgb(var(--scada-text))' }}>
+          Strona nN (po transformatorze SN/nN stacji)
+        </div>
+        <div style={{ marginTop: 4, color: 'rgb(var(--scada-muted))', fontSize: 10 }}>
+          Przyłączenie po stronie SN (przez transformator dedykowany) wymaga wskazania
+          punktu przyłączenia istniejącego w modelu — dostępne w pełnym kreatorze DER.
         </div>
         <div data-testid="drawer-der-point-voltage" style={{ marginTop: 10, color: 'rgb(var(--scada-text))', fontSize: 10, fontFamily: 'monospace' }}>
           Punkt przyłączenia: {pointVoltage.toFixed(3)} kV
+          {!nnBusVoltageKnown && ' (wariant katalogowy — stacja bez transformatora w modelu)'}
         </div>
-        {(derForm.formState.errors.connectionVariant?.message || derForm.formState.errors.pointVoltageKv?.message) && (
+        {derForm.formState.errors.pointVoltageKv?.message && (
           <div data-testid="drawer-der-connection-error" style={{ marginTop: 6, color: 'rgb(var(--scada-status-err))', fontSize: 10 }}>
-            {derForm.formState.errors.connectionVariant?.message ?? derForm.formState.errors.pointVoltageKv?.message}
+            {derForm.formState.errors.pointVoltageKv.message}
           </div>
         )}
       </div>

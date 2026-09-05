@@ -1,7 +1,14 @@
 import type { DomainOpResponseV1 } from '../../../../types/enm';
 
 export type DerKind = 'PV' | 'BESS' | 'FW';
-export type DerConnectionVariant = 'nn_side' | 'sn_side' | 'dedicated';
+/**
+ * Karta FAB-K (§0 R3): DOKŁADNIE dwa warianty backendu (`api/generators.py::
+ * DerConnectionVariant`) — `sn_side`/`dedicated` USUNIĘTE bez kompatybilności
+ * wstecznej (backendowa `_canonical_variant` też usunięta). Wybór POZIOMU
+ * przyłączenia (nN vs SN przez transformator dedykowany); dla `block_transformer`
+ * PUNKT przyłączenia SN to osobne pole `sn_connection_bus_ref`.
+ */
+export type DerConnectionVariant = 'nn_side' | 'block_transformer';
 export type NcRfgModule = 'A' | 'B' | 'C' | 'D';
 
 export interface DerGeneratorConfigRequest {
@@ -11,6 +18,15 @@ export interface DerGeneratorConfigRequest {
   readonly connection_variant: DerConnectionVariant;
   readonly catalog_ref: string;
   readonly block_transformer_catalog_ref?: string | null;
+  /**
+   * Karta FAB-K (§0 R3): punkt przyłączenia SN — szyna ISTNIEJĄCA w modelu,
+   * WYMAGANA gdy `connection_variant==='block_transformer'` i backend nie ma
+   * jeszcze zapisanego `blocking_transformer_ref` (422 `generator.
+   * sn_connection_bus_missing` bez tego pola).
+   */
+  readonly sn_connection_bus_ref?: string | null;
+  /** Karta FAB-K (§0 R2): pakiet baterii BESS z katalogu `BATERIA_BESS`. */
+  readonly battery_catalog_ref?: string | null;
   readonly source_name?: string;
   readonly quantity?: number;
   readonly nc_rfg_module?: NcRfgModule;

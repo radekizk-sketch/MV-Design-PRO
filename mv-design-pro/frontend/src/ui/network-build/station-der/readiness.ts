@@ -21,6 +21,35 @@ import {
   type StationDerConnection,
 } from './types';
 
+/**
+ * Opis punktu przyłączenia po polsku (dla komunikatów bloków, nie surowy identyfikator).
+ *
+ * Karta FAB-K (§0 R3, KLASA NIE INSTANCJA): JEDYNE miejsce tego tłumaczenia —
+ * eksportowana i reużywana przez `DerConfigurator.tsx` (nagłówek karty DER),
+ * zamiast trzymać DRUGĄ, osobno starzejącą się kopię (`CONNECTION_SIDE_LABEL_PL`
+ * w tamtym pliku niosła cztery martwe klucze sprzed R3 — `SN`/`at_zksn`/
+ * `at_branch_pole`/`at_cable_joint` — nieosiągalne przez żadną realną wartość
+ * `ConnectionSide`, więc ekran nagłówka NIGDY nie pokazywał rodzaju punktu SN,
+ * tylko zawsze ten sam ogólnik „transformator dedykowany").
+ */
+export function punktPrzylaczeniaOpisPl(
+  der: Pick<StationDerConnection, 'connection_side' | 'sn_connection_point_kind'>,
+): string {
+  if (der.connection_side === 'nN') return 'po stronie nN';
+  switch (der.sn_connection_point_kind) {
+    case 'zksn':
+      return 'przez transformator dedykowany na złączu kablowym SN';
+    case 'branch_pole':
+      return 'przez transformator dedykowany na słupie rozgałęźnym';
+    case 'junction':
+      return 'przez transformator dedykowany na odgałęzieniu';
+    case 'station_bus':
+      return 'przez transformator dedykowany na szynie SN stacji';
+    default:
+      return 'przez transformator dedykowany';
+  }
+}
+
 export interface AggregatedReadinessAxis {
   readonly axis: keyof DerReadinessMatrix;
   readonly label_pl: string;
@@ -86,7 +115,7 @@ export function validateHostingCapacity(args: {
 }): HostingCapacityValidationResult {
   const dersOnBusbar = args.ders.filter((d) => {
     if (args.busbar_kind === 'lv_busbar') return d.lv_busbar_ref === args.busbar_ref;
-    return d.bay_ref === args.busbar_ref || d.connection_node_ref === args.busbar_ref;
+    return d.bay_ref === args.busbar_ref || d.sn_connection_bus_ref === args.busbar_ref;
   });
   const p_total = dersOnBusbar.reduce((sum, d) => sum + (d.nominal_power_kw ?? 0), 0);
   const utilization = args.capacity_limit_kw > 0 ? (p_total / args.capacity_limit_kw) * 100 : 0;
@@ -495,17 +524,27 @@ function buildBlockersForAxis(
           }
         }
       }
-      // Naprawa eng.11: anti-islanding (27/59/81U/81O) dla DER po nN/ZK/słupie.
+      // Naprawa eng.11: anti-islanding (27/59/81U/81O) dla DER po nN/ZK/słupie/odgałęzieniu.
+      //
+      // Karta FAB-K: dawne warianty `at_zksn`/`at_branch_pole`/`at_cable_joint` złożyły się
+      // w JEDEN poziom `dedicated_transformer` + osobny `sn_connection_point_kind` (rodzaj
+      // punktu SN). Wyłączenie „szyna SN stacji" (`station_bus`) z tej kontroli PRZETRWAŁO
+      // 1:1 — ten punkt ma WŁASNE pole SN z zabezpieczeniem w wymaganiach wariantu (inna,
+      // ogólniejsza reguła tej samej sekcji sprawdza `protection_catalog_ref` dla KAŻDEGO
+      // `dedicated_transformer` niezależnie od rodzaju punktu). ZK SN / słup / odgałęzienie
+      // to połączenia BEZ własnego pola stacyjnego — anti-islanding jest tu jedynym
+      // zabezpieczeniem przeciw wyspie, więc kontrola zostaje jawna.
       if (
-        (der.connection_side === 'nN' || der.connection_side === 'at_zksn'
-          || der.connection_side === 'at_branch_pole' || der.connection_side === 'at_cable_joint')
+        (der.connection_side === 'nN'
+          || (der.connection_side === 'dedicated_transformer'
+            && der.sn_connection_point_kind !== 'station_bus'))
         && (der.der_kind === 'PV' || der.der_kind === 'FW')
         && !der.catalogs.protection_catalog_ref
       ) {
         blockers.push({
           code: 'der.anti_islanding.required',
           message_pl:
-            `DER ${der.der_kind} po stronie ${der.connection_side} wymaga zabezpieczeń `
+            `DER ${der.der_kind} przyłączony ${punktPrzylaczeniaOpisPl(der)} wymaga zabezpieczeń `
             + `anti-islanding (27/59/81U/81O — IEEE 1547 / NC RfG Art. 14). `
             + `Brak zabezpieczeń uniemożliwia ochronę przed pracą wyspową.`,
           object_ref: der.id,

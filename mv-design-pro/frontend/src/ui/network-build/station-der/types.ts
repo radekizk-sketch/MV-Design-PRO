@@ -9,15 +9,37 @@ import type { CtClass } from './protection-catalogs';
  */
 
 /**
- * Wariant przyłączenia DER (Naprawa B.2 — rozszerzony o pozastacjonarne).
+ * Poziom przyłączenia DER — DOKŁADNIE DWIE decyzje fizyczne (karta FAB-K).
+ *
+ * Dawny 6-wariantowy `ConnectionSide` (`SN`/`nN`/`dedicated_transformer`/
+ * `at_zksn`/`at_branch_pole`/`at_cable_joint`) mieszał DWIE ortogonalne decyzje
+ * w jednym polu: (1) POZIOM przyłączenia — szyna nN stacji, albo sieć SN przez
+ * transformator dedykowany (żadne urządzenie w katalogu przekształtników nie
+ * łączy się z siecią SN bez pośredniczącego transformatora — stąd `SN` bez
+ * transformatora nie istnieje fizycznie); (2) dla SN, PUNKT przyłączenia —
+ * ISTNIEJĄCY element modelu, do którego podłącza się górna strona transformatora
+ * dedykowanego. Cztery z sześciu dawnych wariantów (`SN`, `at_zksn`,
+ * `at_branch_pole`, `at_cable_joint`) wysyłały ten sam wariant backendu
+ * (`dedicated`/`block_transformer`) BEZ pozycji katalogowej transformatora —
+ * gwarantowany 422 przy zapisie. Punkt przyłączenia SN jest teraz osobnym polem
+ * (`sn_connection_bus_ref` na `StationDerConnection`, `SnConnectionPointKind`
+ * niżej dla RODZAJU punktu — pochodna typu elementu w modelu, nie wybór).
  */
-export type ConnectionSide =
-  | 'SN'
-  | 'nN'
-  | 'dedicated_transformer'
-  | 'at_zksn'
-  | 'at_branch_pole'
-  | 'at_cable_joint';
+export type ConnectionSide = 'nN' | 'dedicated_transformer';
+
+/**
+ * Rodzaj punktu przyłączenia SN — POCHODNA typu elementu modelu, do którego
+ * należy `sn_connection_bus_ref` (szyna stacji wg pól / `BranchPointSN` /
+ * `Junction`), NIE osobny wybór projektanta. `null` gdy `connection_side` nie
+ * jest `dedicated_transformer`, albo gdy punktu nie da się sklasyfikować.
+ *
+ * Mufa kablowa (`CableJoint`) NIE WYSTĘPUJE tu jako rodzaj punktu — mufa NIE MA
+ * topologii w modelu (`enm/models.py`: „punkt na segmencie kabla SN BEZ podziału
+ * topologii"), więc nie jest obliczalnym punktem przyłączenia. Projektant, który
+ * chce przyłączyć DER w miejscu mufy, tworzy tam ODGAŁĘZIENIE (Junction/T-node)
+ * kreatorem odgałęzienia i wskazuje JEGO szynę — stąd `junction`, nie `mufa`.
+ */
+export type SnConnectionPointKind = 'station_bus' | 'branch_pole' | 'zksn' | 'junction';
 
 /** Rodzaj DER (zunifikowany dla 3 specjalizacji). */
 export type DerKindUnified = 'PV' | 'BESS' | 'FW';
@@ -31,19 +53,36 @@ export type DerCompleteness =
   | 'voltage_mismatch'
   | 'no_pcc';
 
-/** Wybrane pozycje katalogowe per DER. */
+/**
+ * Wybrane pozycje katalogowe per DER.
+ *
+ * PROWENIENCJA (karta FAB-K, 2026-09-05) — usunięto DWA pola FANTOMOWE (kontrolka
+ * UI bez pełnego łańcucha katalog → zapis → odczyt → konsument, reguła KLASA
+ * NIE INSTANCJA pkt R2):
+ *   * `controller_catalog_ref` (regulator PV/farmy FW) — backend NIE MA katalogu
+ *     regulatorów/kontrolerów (grep całego backendu: zero wyniku); istniejące
+ *     pasma regulatorów IBG w `mv_converter_catalog.py` to OSZACOWANIA literaturowe
+ *     wbudowane w tabliczkę urządzenia, nie osobna pozycja katalogowa z ID.
+ *   * `cable_catalog_ref` (kabel wewnętrzny od PCC do urządzenia) — ŻADNA operacja
+ *     domenowa go nie zapisuje, żaden kreator go nie zbiera; jedyny „konsument"
+ *     był etykietą w panelu OZE, która nigdy nie miała czego wyświetlić.
+ */
 export interface DerCatalogSelections {
   /** Katalog falownika PV / PCS BESS / turbiny FW. */
   readonly device_catalog_ref: string | null;
-  /** Wpis certyfikatu PTPiREE dla falownika/konwertera DER. */
+  /**
+   * Wpis certyfikatu PTPiREE dla falownika/konwertera DER — POCHODNA materializacji
+   * urządzenia (`materialized_params.ptpiree_certificate_ref`, backend
+   * `_certyfikat_ptpiree_z_katalogu`), nie osobny wybór projektanta.
+   */
   readonly ptpiree_certificate_ref: string | null;
-  /** Plant controller PV / regulator farmy FW (nie dotyczy BESS). */
-  readonly controller_catalog_ref: string | null;
-  /** Bateria BESS (tylko BESS). */
+  /**
+   * Bateria BESS (tylko BESS) — katalog `BATERIA_BESS` (`GET
+   * /api/catalog/bess-battery-types`, FAB-J), wiązanie i walidacja istnienia
+   * w żądaniu tworzenia (`battery_catalog_ref`, FAB-K).
+   */
   readonly battery_catalog_ref: string | null;
-  /** Kabel/linia wewnętrzna od PCC do urządzenia. */
-  readonly cable_catalog_ref: string | null;
-  /** Pole SN jeśli connection_side='SN'. */
+  /** Pole SN jeśli connection_side='dedicated_transformer'. */
   readonly bay_catalog_ref: string | null;
   /** Zabezpieczenie. */
   readonly protection_catalog_ref: string | null;
@@ -76,9 +115,7 @@ export interface DerCatalogSelections {
 export const EMPTY_DER_CATALOGS: DerCatalogSelections = Object.freeze({
   device_catalog_ref: null,
   ptpiree_certificate_ref: null,
-  controller_catalog_ref: null,
   battery_catalog_ref: null,
-  cable_catalog_ref: null,
   bay_catalog_ref: null,
   protection_catalog_ref: null,
   ct_catalog_ref: null,
@@ -88,7 +125,16 @@ export const EMPTY_DER_CATALOGS: DerCatalogSelections = Object.freeze({
   block_transformer_catalog_ref: null,
 });
 
-/** Wybrane profile zgodności przyłączeniowej i wymagań. */
+/**
+ * Wybrane profile zgodności przyłączeniowej i wymagań.
+ *
+ * PROWENIENCJA (karta FAB-K, 2026-09-05) — usunięto `regulation_profile_ref`
+ * (profil regulacji Q(U)/P(f)): backend NIE MA katalogu „nazwanych profili
+ * regulacji" — parametry Q(U)/P(f) są liczbami zapisywanymi WPROST na
+ * generatorze (`qu_slope_pu_per_pu`, `frequency_droop_percent`, …, `meta`
+ * `add_converter_source`), nie referencją do pozycji katalogowej. Pole nie
+ * miało żadnego zapisu produkcyjnego — tylko odczyt bez źródła.
+ */
 export interface DerProfileSelections {
   /** Operator (PSE/Energa/Tauron/Enea/PGE) — `nc-rfg-profile-catalog`. */
   readonly nc_rfg_profile_ref: string | null;
@@ -96,8 +142,6 @@ export interface DerProfileSelections {
   readonly lvrt_curve_ref: string | null;
   /** Krzywa HVRT (High Voltage Ride Through). */
   readonly hvrt_curve_ref: string | null;
-  /** Profil regulacji Q(U), P(f). */
-  readonly regulation_profile_ref: string | null;
   /** Pakiet H: krzywa P(f) (NC RfG Art. 13/15) — operator-specific. */
   readonly pf_curve_ref: string | null;
   /** Pakiet H: tryby pracy BESS (multi-select, NC RfG Art. 13/15). */
@@ -108,7 +152,6 @@ export const EMPTY_DER_PROFILES: DerProfileSelections = Object.freeze({
   nc_rfg_profile_ref: null,
   lvrt_curve_ref: null,
   hvrt_curve_ref: null,
-  regulation_profile_ref: null,
   pf_curve_ref: null,
   bess_operation_mode_refs: [],
 });
@@ -187,22 +230,23 @@ export interface StationDerConnection {
    */
   readonly ct_accuracy_class?: CtClass | null;
   readonly ct_application?: 'protection' | 'metering' | 'dual' | null;
-  /** Pole SN — jeśli `connection_side='SN'`. */
+  /** Pole SN — jeśli `connection_side='dedicated_transformer'` i punkt to `station_bus`. */
   readonly bay_ref: string | null;
   /** Transformator dedykowany — jeśli `connection_side='dedicated_transformer'`. */
   readonly transformer_ref: string | null;
   /** Szyna nN — jeśli `connection_side='nN'`. */
   readonly lv_busbar_ref: string | null;
   /**
-   * Naprawa B.2: węzeł połączenia poza stacją (ZK SN / słup / mufa). Wymagany
-   * gdy connection_side ∈ {at_zksn, at_branch_pole, at_cable_joint}.
-   * Format: `node_{kind}_{id}` (np. `node_zksn_ZK-12`).
+   * Punkt przyłączenia SN (karta FAB-K) — szyna ISTNIEJĄCA w modelu, do której
+   * podłącza się górna strona transformatora dedykowanego: szyna SN stacji,
+   * `BranchPointSN.bus_ref` (ZK SN / słup rozgałęźny) albo szyna `Junction`
+   * (odgałęzienie). Wymagany gdy `connection_side='dedicated_transformer'`.
+   * Zastępuje dawny `connection_node_ref`, który fabrykował referencje w UI
+   * (`node_zksn_<nazwa>` itp.) zamiast wskazywać istniejący element.
    */
-  readonly connection_node_ref: string | null;
-  /** Kabel/linia wewnętrzna stacji od PCC do urządzenia. */
-  readonly internal_cable_ref: string | null;
-  /** Poziom napięcia przyłączenia (z `lv-voltage-level-catalog` lub `mv`). */
-  readonly voltage_level_ref: string | null;
+  readonly sn_connection_bus_ref: string | null;
+  /** Rodzaj punktu `sn_connection_bus_ref` — pochodna typu elementu, nie wybór. */
+  readonly sn_connection_point_kind: SnConnectionPointKind | null;
 
   /** Parametry techniczne — wszystkie z katalogów. */
   readonly catalogs: DerCatalogSelections;
@@ -233,11 +277,13 @@ export interface StationDerConnection {
   /**
    * Napięcie znamionowe SZYNY PRZYŁĄCZENIA [kV] odczytane Z MODELU (migawka ENM).
    *
-   * PO CO. `voltage_level_ref` wskazuje pozycję katalogu poziomów napięć i zapisuje
-   * go WYŁĄCZNIE kreator stacji (`AddDerWizard`). Wytwórca zapisany kreatorem źródła
-   * OZE takiej referencji nie ma, a katalog poziomów nie zna np. 0,8 kV (typowe
-   * napięcie falowników string) — ocena zgodności NC RfG meldowała wtedy „brak
+   * PO CO. JEDYNE źródło napięcia przyłączenia od karty FAB-K — dawny
+   * `voltage_level_ref` (osobna referencja katalogu poziomów, zapisywana WYŁĄCZNIE
+   * przez kreator stacji) był FANTOMEM: backend go nie przyjmuje (`_build_domain_payload`
+   * dla `nn_side` sam bierze szynę nN stacji), a katalog poziomów nie znał np. 0,8 kV
+   * (typowe napięcie falowników string) — ocena zgodności NC RfG meldowała wtedy „brak
    * danych" dla urządzenia, którego napięcie stoi w modelu na szynie przyłączenia.
+   * Pole usunięte; to jest jedyne napięcie przyłączenia.
    *
    * To NIE jest domysł ani wartość domyślna: `null` zostaje `null`, a wartość
    * pochodzi z `buses[].voltage_kv` szyny, do której wytwórca jest przyłączony.
@@ -261,19 +307,31 @@ export interface StationDerConnection {
  *  - Brak PCC → no_pcc
  *  - Brak catalog urządzenia → missing_catalog
  *  - Brak profilu NC RfG → missing_profile
- *  - Connection nN bez voltage_level_ref → missing_catalog
- *    (SN i dedicated_transformer nie wymagają voltage_level_ref — napięcie
- *    pochodzi ze stacji albo z transformatora dedykowanego).
+ *  - Napięcie przyłączenia nierozpoznane z modelu (`connection_voltage_kv`) →
+ *    missing_catalog (dotyczy obu poziomów — nN i dedicated_transformer;
+ *    dawny wyjątek „SN i dedicated_transformer nie wymagają" odpadł razem
+ *    z fantomem `voltage_level_ref`, którego dotyczył).
+ *  - Dla `dedicated_transformer` brak wskazanego punktu przyłączenia SN
+ *    (`sn_connection_bus_ref`) → missing_catalog (backend odrzuci zapis 422
+ *    bez tego pola — kompletność frontu musi to nazwać PRZED próbą zapisu).
  *  - Voltage mismatch sprawdza wyższa warstwa porównująca napięcie szyny
  *    z napięciem urządzenia (potrzebuje katalogu).
  */
 export function computeDerCompleteness(der: Pick<
   StationDerConnection,
-  'connection_side' | 'bus_przylaczenia_ref' | 'catalogs' | 'profiles' | 'voltage_level_ref'
+  | 'connection_side'
+  | 'bus_przylaczenia_ref'
+  | 'catalogs'
+  | 'profiles'
+  | 'connection_voltage_kv'
+  | 'sn_connection_bus_ref'
 >): DerCompleteness {
   if (!der.bus_przylaczenia_ref) return 'no_pcc';
   if (!der.catalogs.device_catalog_ref) return 'missing_catalog';
   if (!der.profiles.nc_rfg_profile_ref) return 'missing_profile';
-  if (der.connection_side === 'nN' && !der.voltage_level_ref) return 'missing_catalog';
+  if (der.connection_voltage_kv == null) return 'missing_catalog';
+  if (der.connection_side === 'dedicated_transformer' && !der.sn_connection_bus_ref) {
+    return 'missing_catalog';
+  }
   return 'complete';
 }

@@ -49,8 +49,8 @@ function ustawModuly(): void {
         id: 'fw-1',
         name: 'Farma wiatrowa',
         der_kind: 'FW',
-        voltage_level_ref: null,
-        connection_side: 'SN',
+        connection_voltage_kv: null,
+        connection_side: 'dedicated_transformer',
       }),
     },
   });
@@ -145,7 +145,7 @@ describe('MacierzNcRfg — komórka → szczegół (kryterium 2)', () => {
 describe('MacierzNcRfg — moduł bez napięcia (kryterium 3)', () => {
   it('moduł bez napięcia przyłączenia → kolumna „brak danych", panel z jawnym powodem', async () => {
     render(<MacierzNcRfg trybZaawansowania="basic" />);
-    // fw-1 (SN, bez voltage_level_ref) — kolumna w stanie brak danych, bez 15 kV z powietrza.
+    // fw-1 (dedicated_transformer, bez connection_voltage_kv) — kolumna w stanie brak danych, bez 15 kV z powietrza.
     expect(await screen.findAllByTestId('mvd-oze-komorka-brak-danych')).not.toHaveLength(0);
     fireEvent.click(screen.getByTestId('mvd-oze-modul-fw-1'));
     expect(screen.getByTestId('mvd-oze-panel-blokada')).toHaveTextContent(

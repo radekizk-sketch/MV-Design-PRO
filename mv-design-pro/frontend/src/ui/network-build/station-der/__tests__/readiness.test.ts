@@ -33,16 +33,21 @@ function makeDer(
     station_id: 'station_1',
     der_kind: 'PV',
     name: 'PV Test',
-    connection_side: 'SN',
+    // Karta FAB-K (§0 R3): dawny gołosłowny wariant `'SN'` (bez transformatora
+    // dedykowanego) USUNIĘTY — domyślnie nN (najmniej specjalnych gałęzi reguł
+    // gotowości; poniższe testy nadpisują jawnie, gdzie topologia SN ma znaczenie).
+    connection_side: 'nN',
     bus_przylaczenia_ref: 'pcc_1',
     bay_ref: null,
     transformer_ref: null,
     lv_busbar_ref: null,
-    internal_cable_ref: null,
-    voltage_level_ref: null,
+    sn_connection_bus_ref: null,
+    sn_connection_point_kind: null,
+    connection_voltage_kv: null,
     catalogs: { ...EMPTY_DER_CATALOGS, device_catalog_ref: 'pv_inv_sma_2500' },
     profiles: { ...EMPTY_DER_PROFILES, nc_rfg_profile_ref: 'ncrfg_pse' },
     nominal_power_kw: 2500,
+    unit_count: null,
     completeness: 'complete',
     readiness: { ...EMPTY_DER_READINESS },
     created_at: FROZEN_NOW,
@@ -71,10 +76,10 @@ describe('computeDerReadinessMatrix — agregacja gotowości DER', () => {
     const matrix = computeDerReadinessMatrix(
       makeDer({
         profiles: {
+          ...EMPTY_DER_PROFILES,
           nc_rfg_profile_ref: 'ncrfg_pse',
           lvrt_curve_ref: 'lvrt_pse_b',
           hvrt_curve_ref: 'hvrt_pse_b',
-          regulation_profile_ref: null,
         },
         catalogs: {
           ...EMPTY_DER_CATALOGS,
@@ -331,17 +336,23 @@ describe('sumStationLoadImportKw (V12K-226)', () => {
 
 describe('osie niesymetryczne: powod stanu „czesciowo" (V12K-226)', () => {
   function derBezDanychZwarciowych(): StationDerConnection {
+    // Karta FAB-K (§0 R3, KLASA NIE INSTANCJA): dawny `'mv_bay'` nigdy nie był
+    // realną wartością `ConnectionSide` (był tolerowany wyłącznie przez rzutowanie
+    // `as unknown as` poniżej) — topologia przyłączenia jest tu nieistotna (testy
+    // sprawdzają WYŁĄCZNIE oś zwarciową zależną od `fault_current_data_ref`),
+    // więc fikstura dostaje najprostszą realną wartość zamiast wymyślonej.
     return {
       id: 'DER-1',
       station_id: 'ST-1',
       der_kind: 'PV',
-      connection_side: 'mv_bay',
+      connection_side: 'nN',
       bus_przylaczenia_ref: 'BUS-1',
-      bay_ref: 'BAY-1',
-      lv_busbar_ref: null,
-      connection_node_ref: null,
+      bay_ref: null,
+      lv_busbar_ref: 'BUS-1',
+      sn_connection_bus_ref: null,
+      sn_connection_point_kind: null,
       nominal_power_kw: 500,
-      voltage_level_ref: null,
+      connection_voltage_kv: null,
       catalogs: {
         device_catalog_ref: 'INV-1',
         block_transformer_catalog_ref: null,
@@ -472,10 +483,14 @@ describe('zlozZBramkaModelu — ocena DER + bramka modelu (V12K-231)', () => {
 
 describe('klasa przekladnika: DANA z modelu, nie szukanie w rownoleglym katalogu (V12K-232)', () => {
   function derZCt(over: Partial<StationDerConnection>): StationDerConnection {
+    // Karta FAB-K (§0 R3, KLASA NIE INSTANCJA): dawny `'mv_bay'` nigdy nie był
+    // realną wartością `ConnectionSide` — topologia przyłączenia jest tu
+    // nieistotna (testy sprawdzają wyłącznie rozwiązanie klasy przekładnika CT).
     return {
-      id: 'DER-1', station_id: 'ST-1', der_kind: 'PV', connection_side: 'mv_bay',
-      bus_przylaczenia_ref: 'BUS-1', bay_ref: 'BAY-1', lv_busbar_ref: null, connection_node_ref: null,
-      nominal_power_kw: 500, voltage_level_ref: null,
+      id: 'DER-1', station_id: 'ST-1', der_kind: 'PV', connection_side: 'nN',
+      bus_przylaczenia_ref: 'BUS-1', bay_ref: null, lv_busbar_ref: 'BUS-1',
+      sn_connection_bus_ref: null, sn_connection_point_kind: null,
+      nominal_power_kw: 500, connection_voltage_kv: null,
       catalogs: {
         device_catalog_ref: 'INV-1', block_transformer_catalog_ref: null,
         protection_catalog_ref: 'REL-1', ct_catalog_ref: 'ct_200_5_5p10_10va_abb',

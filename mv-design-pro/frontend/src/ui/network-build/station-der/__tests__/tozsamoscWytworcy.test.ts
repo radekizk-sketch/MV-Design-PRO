@@ -30,9 +30,9 @@ function der(over: Partial<StationDerConnection> = {}): StationDerConnection {
     bay_ref: 'BAY-1',
     transformer_ref: 'TR-1',
     lv_busbar_ref: 'BUS-NN-1',
-    connection_node_ref: null,
-    internal_cable_ref: null,
-    voltage_level_ref: null,
+    sn_connection_bus_ref: 'BUS-SN-1',
+    sn_connection_point_kind: 'station_bus',
+    connection_voltage_kv: 15,
     catalogs: { ...EMPTY_DER_CATALOGS },
     profiles: { ...EMPTY_DER_PROFILES },
     nominal_power_kw: 8000,
@@ -116,15 +116,34 @@ describe('tor mocy — z elementów modelu', () => {
     expect(transformator?.wymagane).toBe(true);
   });
 
-  it('wytwórca po stronie SN nie dostaje ogniw nN, których w jego torze nie ma', () => {
-    const tor = torMocy(der({ connection_side: 'SN' }), {
+  it('wytwórca po stronie nN dostaje transformator STACJI (nie blokowy) i pole SN nie jest wymagane', () => {
+    // Karta FAB-K (§0 R3, KLASA NIE INSTANCJA): dawny gołosłowny wariant `'SN'`
+    // (przyłączenie SN BEZ transformatora dedykowanego) USUNIĘTY jako fizycznie
+    // niemożliwy — każde urządzenie DER w katalogu przekształtników jest
+    // urządzeniem nN, więc do sieci SN dociera WYŁĄCZNIE przez transformator
+    // dedykowany. Test „SN bez ogniw nN" testował stan, którego już nie da się
+    // zbudować (`ConnectionSide` ma dziś dokładnie 2 wartości, obie mają Szynę
+    // nN w torze — patrz test wyżej dla `dedicated_transformer`). Zastępuje go
+    // ILOCZYN CECH dla DRUGIEJ, dotąd nieprzetestowanej w tym bloku wartości:
+    // `nN` dostaje nazwę ogniwa 'Transformator stacji SN/nN' (nie 'blokowy') i
+    // NIE wymaga własnego pola SN (dzieli pole stacyjne z resztą stacji).
+    const tor = torMocy(der({ connection_side: 'nN' }), {
       stacja: 'GPZ-01',
-      szynaNn: null,
-      transformator: null,
-      poleSn: 'Pole PV-01',
+      szynaNn: 'Szyna nN 0,4 kV',
+      transformator: 'TR stacji 15/0,4 kV',
+      poleSn: null,
       pcc: 'Szyna SN 15 kV',
     });
-    expect(tor.map((o) => o.rola)).not.toContain('Szyna nN');
+    expect(tor.map((o) => o.rola)).toEqual([
+      'Urządzenie wytwórcze',
+      'Szyna nN',
+      'Transformator stacji SN/nN',
+      'Pole SN',
+      'Stacja',
+      'Punkt przyłączenia',
+    ]);
+    const poleSn = tor.find((o) => o.rola === 'Pole SN');
+    expect(poleSn?.wymagane).toBe(false);
   });
 });
 

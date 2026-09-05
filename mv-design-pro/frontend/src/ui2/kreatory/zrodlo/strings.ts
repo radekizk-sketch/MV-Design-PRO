@@ -251,6 +251,7 @@ export const ZRODLO_STRINGS = {
   anuluj: 'Anuluj',
   brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem GPZ.',
   walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać GPZ.',
+  katalogLadowanieStopka: 'Ładowanie katalogu systemów zasilających — zapis chwilę poczeka.',
 
   // Opcje.
   rodzajeAparatu: [

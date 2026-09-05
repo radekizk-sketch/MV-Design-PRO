@@ -27,23 +27,23 @@ import {
   type DerConnectionVariant,
 } from '../../sld/v2/canvas/derPersistenceApi';
 import { useSnapshotStore } from '../../topology/snapshotStore';
+import type { EnergyNetworkModel } from '../../../types/enm';
 import { useAudit2CatalogSnapshot } from './audit2-hooks';
 import type { BlockTransformerItem } from './audit2-api';
 import {
   formatLvVoltageLabelPl,
   getNcRfgOperator,
   useBessBatteryTypes,
-  useLvVoltageLevelsKv,
   useNcRfgModuleClassification,
   useNcRfgOperatorCatalog,
 } from './derRemoteCatalogs';
 import { generateDeterministicDerId, validateWizardSelections } from './wizard-validation';
 import {
   getBlockTransformer,
-  getLvVoltageLevel,
+  getSnConnectionPointKindLabelPl,
   selectBessModesForPcs,
   selectBlockTransformersForDer,
-  selectConnectionVariantsForKind,
+  selectConnectionLevelsForKind,
 } from './catalogs';
 import {
   PTPIREE_CERTIFIED_INVERTERS,
@@ -51,7 +51,8 @@ import {
   type PtpireeCertifiedInverterItem,
 } from './ptpireeCertifiedInverters';
 import { useStationDerStore } from './store';
-import type { ConnectionSide, DerKindUnified } from './types';
+import { snPointKindForBus } from './zModelu';
+import type { ConnectionSide, DerKindUnified, SnConnectionPointKind } from './types';
 import { HelpTooltip } from '../../shared/HelpTooltip';
 import { getTooltip } from '../../shared/engineerTooltips';
 
@@ -146,15 +147,15 @@ const DER_KIND_LABELS: Record<DerKindUnified, string> = {
 };
 
 function toBackendConnectionVariant(connectionSide: ConnectionSide): DerConnectionVariant {
-  return connectionSide === 'nN' ? 'nn_side' : 'dedicated';
+  return connectionSide === 'nN' ? 'nn_side' : 'block_transformer';
 }
 
 function formatConnectionSideForReview(
   connectionSide: ConnectionSide | null,
-  variants: ReturnType<typeof selectConnectionVariantsForKind>,
+  levels: ReturnType<typeof selectConnectionLevelsForKind>,
 ): string {
   if (!connectionSide) return '';
-  return variants.find((variant) => variant.side === connectionSide)?.label_pl ?? connectionSide;
+  return levels.find((level) => level.side === connectionSide)?.label_pl ?? connectionSide;
 }
 
 interface WizardSelections {
@@ -167,9 +168,15 @@ interface WizardSelections {
    * i kategoria NC RfG zależą właśnie od iloczynu.
    */
   unitCount: number;
-  voltageLevelRef: string | null;
   pccLabel: string;
-  bayName: string;
+  /**
+   * Karta FAB-K: punkt przyłączenia SN — szyna ISTNIEJĄCA w modelu (szyna SN stacji,
+   * `BranchPointSN.bus_ref`, albo szyna `Junction`), wybrana z listy kandydatów
+   * migawki. Wymagany gdy `connectionSide==='dedicated_transformer'`. Zastępuje dawne
+   * `bayName` (etykieta tekstowa fabrykująca pseudo-referencję `bay_<stacja>_<nazwa>`
+   * / `node_zksn_<nazwa>` / `node_branch_pole_<nazwa>` / `node_cable_joint_<nazwa>`).
+   */
+  snConnectionBusRef: string | null;
   deviceCatalogRef: string | null;
   batteryCatalogRef: string | null;
   ncRfgProfileRef: string | null;
@@ -186,9 +193,8 @@ interface WizardSelections {
 
 const EMPTY_SELECTIONS: WizardSelections = {
   connectionSide: null,
-  voltageLevelRef: null,
   pccLabel: '',
-  bayName: '',
+  snConnectionBusRef: null,
   deviceCatalogRef: null,
   batteryCatalogRef: null,
   unitCount: 1,
@@ -243,24 +249,11 @@ function defaultPccLabel(derKind: DerKindUnified, stationName: string): string {
   return `PCC-${derKind}-${stationToken(stationName)}`;
 }
 
-function defaultConnectionPointLabel(
-  connectionSide: ConnectionSide,
-  derKind: DerKindUnified,
-  stationName: string,
-): string {
-  const token = stationToken(stationName);
-  if (connectionSide === 'at_zksn') return `ZK-SN-${token}`;
-  if (connectionSide === 'at_branch_pole') return `SLUP-${token}-${derKind}`;
-  if (connectionSide === 'at_cable_joint') return `MUFA-T-${token}-${derKind}`;
-  return `Pole-${derKind}-${token}`;
-}
-
 function applyPointDefaults(
   selections: WizardSelections,
   connectionSide: ConnectionSide,
   derKind: DerKindUnified,
   stationName: string,
-  lvVoltageLevelsKv: readonly number[],
   blockTransformers: readonly BlockTransformerItem[],
 ): WizardSelections {
   const next: WizardSelections = {
@@ -269,24 +262,125 @@ function applyPointDefaults(
     derName: selections.derName.trim() || defaultDerName(derKind, stationName),
     pccLabel: selections.pccLabel.trim() || defaultPccLabel(derKind, stationName),
   };
-  if (connectionSide === 'nN') {
-    // Karta FAB-J: domyślny poziom napięcia nN to najniższy poziom faktycznie
-    // niesiony przez katalog przekształtników — brak listy (jeszcze nie
-    // wczytana / katalog pusty) zostawia pole puste, nie zgaduje wartości,
-    // której katalog nie potwierdza.
-    next.voltageLevelRef = selections.voltageLevelRef
-      ?? (lvVoltageLevelsKv.length > 0 ? String(lvVoltageLevelsKv[0]) : null);
-  }
-  if (connectionSide === 'SN' || connectionSide === 'at_zksn'
-      || connectionSide === 'at_branch_pole' || connectionSide === 'at_cable_joint') {
-    next.bayName = selections.bayName.trim()
-      || defaultConnectionPointLabel(connectionSide, derKind, stationName);
-  }
   if (connectionSide === 'dedicated_transformer' && !selections.blockTransformerCatalogRef) {
     next.blockTransformerCatalogRef =
       selectBlockTransformersForDer(blockTransformers, { derKind })[0]?.id ?? null;
   }
   return next;
+}
+
+/** Kandydat punktu przyłączenia SN — element ISTNIEJĄCY w migawce (karta FAB-K). */
+interface SnConnectionPointCandidate {
+  readonly busRef: string;
+  readonly kind: SnConnectionPointKind;
+  readonly label: string;
+  readonly voltageKv: number;
+}
+
+/**
+ * Szyna nN stacji — jedyny punkt przyłączenia dla `connectionSide==='nN'` (nie
+ * jest wyborem: stacja ma DOKŁADNIE jedną szynę nN za swoim transformatorem
+ * SN/nN). Mirror backendu (`api/generators.py::_resolve_nn_bus_ref`): pierwsza
+ * szyna LV transformatora stacji, w braku transformatora — pierwsza szyna
+ * stacji o napięciu < 1 kV.
+ */
+function resolveStationNnBus(
+  snapshot: EnergyNetworkModel | null,
+  stationId: string | null,
+): { readonly busRef: string; readonly name: string; readonly voltageKv: number } | null {
+  if (!snapshot || !stationId) return null;
+  const station = (snapshot.substations ?? []).find(
+    (candidate) => candidate.ref_id === stationId || candidate.id === stationId,
+  );
+  if (!station) return null;
+  const busRefs = new Set(station.bus_refs ?? []);
+  const busByRef = new Map((snapshot.buses ?? []).map((bus) => [bus.ref_id, bus]));
+
+  const transformerRefs = new Set(station.transformer_refs ?? []);
+  for (const transformer of snapshot.transformers ?? []) {
+    const ref = transformer.ref_id;
+    if (!transformerRefs.has(ref) && !busRefs.has(transformer.hv_bus_ref) && !busRefs.has(transformer.lv_bus_ref)) {
+      continue;
+    }
+    const lvBus = busByRef.get(transformer.lv_bus_ref);
+    if (lvBus) {
+      return { busRef: lvBus.ref_id, name: lvBus.name, voltageKv: lvBus.voltage_kv };
+    }
+  }
+  for (const busRef of station.bus_refs ?? []) {
+    const bus = busByRef.get(busRef);
+    if (bus && bus.voltage_kv < 1) {
+      return { busRef: bus.ref_id, name: bus.name, voltageKv: bus.voltage_kv };
+    }
+  }
+  return null;
+}
+
+/**
+ * Kandydaci punktu przyłączenia SN — WYŁĄCZNIE elementy ISTNIEJĄCE w migawce
+ * (karta FAB-K): szyny SN bieżącej stacji, `BranchPointSN` (ZK SN / słup
+ * rozgałęźny — elementy sieciowe, niekoniecznie w tej stacji) i `Junction`
+ * (odgałęzienie, szyna rozwiązana `snPointKindForBus`). Zero pseudo-referencji
+ * fabrykowanych w UI — dawne `node_zksn_<nazwa>` / `bay_<stacja>_<nazwa>` itd.
+ * Posortowani deterministycznie (rodzaj, potem etykieta) dla stabilnego UI.
+ */
+function selectSnConnectionPointCandidates(
+  snapshot: EnergyNetworkModel | null,
+  stationId: string | null,
+): readonly SnConnectionPointCandidate[] {
+  if (!snapshot) return [];
+  const candidates: SnConnectionPointCandidate[] = [];
+
+  const station = stationId
+    ? (snapshot.substations ?? []).find((s) => s.ref_id === stationId || s.id === stationId)
+    : null;
+  if (station) {
+    for (const busRef of station.bus_refs ?? []) {
+      const bus = (snapshot.buses ?? []).find((b) => b.ref_id === busRef);
+      if (bus && bus.voltage_kv >= 1) {
+        candidates.push({
+          busRef: bus.ref_id,
+          kind: 'station_bus',
+          label: `${bus.name} (${bus.voltage_kv.toLocaleString('pl-PL')} kV)`,
+          voltageKv: bus.voltage_kv,
+        });
+      }
+    }
+  }
+
+  for (const branchPoint of snapshot.branch_points ?? []) {
+    const bus = (snapshot.buses ?? []).find((b) => b.ref_id === branchPoint.bus_ref);
+    if (!bus) continue;
+    candidates.push({
+      busRef: branchPoint.bus_ref,
+      kind: branchPoint.branch_point_type === 'zksn' ? 'zksn' : 'branch_pole',
+      label: `${branchPoint.name} (${bus.voltage_kv.toLocaleString('pl-PL')} kV)`,
+      voltageKv: bus.voltage_kv,
+    });
+  }
+
+  for (const junction of snapshot.junctions ?? []) {
+    for (const branchRef of junction.connected_branch_refs) {
+      const branch = (snapshot.branches ?? []).find((b) => b.ref_id === branchRef);
+      if (!branch) continue;
+      for (const candidateBusRef of [branch.from_bus_ref, branch.to_bus_ref]) {
+        if (snPointKindForBus(snapshot, candidateBusRef) !== 'junction') continue;
+        const bus = (snapshot.buses ?? []).find((b) => b.ref_id === candidateBusRef);
+        if (!bus || candidates.some((c) => c.busRef === candidateBusRef)) continue;
+        candidates.push({
+          busRef: candidateBusRef,
+          kind: 'junction',
+          label: `${junction.name} (${bus.voltage_kv.toLocaleString('pl-PL')} kV)`,
+          voltageKv: bus.voltage_kv,
+        });
+      }
+    }
+  }
+
+  return candidates.sort((a, b) => {
+    const kindOrder = { station_bus: 0, zksn: 1, branch_pole: 2, junction: 3 } as const;
+    return kindOrder[a.kind] - kindOrder[b.kind] || a.label.localeCompare(b.label);
+  });
 }
 
 
@@ -523,13 +617,12 @@ function fitsStationTransformerCapacity(
 function fitsSelectedLvVoltage(
   device: DerDeviceCatalogItem,
   connectionSide: ConnectionSide | null,
-  voltageLevelRef: string | null,
+  stationNnBusVoltageKv: number | null,
 ): boolean {
-  if (connectionSide !== 'nN' || !voltageLevelRef) return true;
+  if (connectionSide !== 'nN' || stationNnBusVoltageKv === null) return true;
   const deviceKv = getDeviceNominalVoltageKv(device);
   if (deviceKv === null) return true;
-  const lvLevel = getLvVoltageLevel(voltageLevelRef);
-  return !lvLevel || Math.abs(deviceKv - lvLevel.nominal_kv) <= 0.01;
+  return Math.abs(deviceKv - stationNnBusVoltageKv) <= 0.01;
 }
 
 function selectTransformerUpgradeOptions(
@@ -606,10 +699,6 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
   // (decyzja #4). Backend nie miał żadnego katalogu baterii przed tą kartą.
   const bessBatteryTypesQuery = useBessBatteryTypes();
   const bessBatteries = bessBatteryTypesQuery.data ?? [];
-  // Karta FAB-J: poziomy napięcia nN wyprowadzone z katalogu przekształtników
-  // (`un_kv` < 1 kV) — zero nowej końcówki, zero katalogu lokalnego (decyzja #3).
-  const lvVoltageLevelsQuery = useLvVoltageLevelsKv();
-  const lvVoltageLevelsKv = lvVoltageLevelsQuery.data ?? [];
 
   useEffect(() => {
     let active = true;
@@ -682,7 +771,24 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     onClose();
   }, [onClose]);
 
-  const variants = useMemo(() => selectConnectionVariantsForKind(derKind), [derKind]);
+  const levels = useMemo(() => selectConnectionLevelsForKind(derKind), [derKind]);
+
+  // Karta FAB-K: szyna nN stacji — JEDYNY punkt przyłączenia dla poziomu 'nN'
+  // (nie jest wyborem projektanta, patrz `resolveStationNnBus`).
+  const stationNnBus = useMemo(
+    () => resolveStationNnBus(snapshot, stationId),
+    [snapshot, stationId],
+  );
+  // Karta FAB-K: kandydaci punktu przyłączenia SN — WYŁĄCZNIE elementy
+  // istniejące w migawce (szyny SN stacji / BranchPointSN / Junction).
+  const snConnectionPointCandidates = useMemo(
+    () => selectSnConnectionPointCandidates(snapshot, stationId),
+    [snapshot, stationId],
+  );
+  const selectedSnConnectionPoint = useMemo(
+    () => snConnectionPointCandidates.find((c) => c.busRef === selections.snConnectionBusRef) ?? null,
+    [snConnectionPointCandidates, selections.snConnectionBusRef],
+  );
 
   const stationBelongsToSnapshot = useMemo(() => {
     if (!snapshot || !stationId) return false;
@@ -729,12 +835,12 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
 
   const compatibleDeviceCatalog = useMemo(
     () => deviceCatalog.filter((device) =>
-      fitsSelectedLvVoltage(device, selections.connectionSide, selections.voltageLevelRef)
+      fitsSelectedLvVoltage(device, selections.connectionSide, stationNnBus?.voltageKv ?? null)
       && fitsStationTransformerCapacity(device, selections.connectionSide, stationTransformerCapacityKw)),
     [
       deviceCatalog,
       selections.connectionSide,
-      selections.voltageLevelRef,
+      stationNnBus,
       stationTransformerCapacityKw,
     ],
   );
@@ -793,7 +899,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
       const voltageOk = fitsSelectedLvVoltage(
         device,
         selections.connectionSide,
-        selections.voltageLevelRef,
+        stationNnBus?.voltageKv ?? null,
       );
       const transformerOk = fitsStationTransformerCapacity(
         device,
@@ -819,7 +925,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
       filteredDeviceCatalog,
       ptpireeRegistry,
       selections.connectionSide,
-      selections.voltageLevelRef,
+      stationNnBus,
       stationTransformerCapacityKw,
     ],
   );
@@ -885,14 +991,14 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
   // zapisu, patrz `_weryfikuj_modul_ncrfg`).
   const napiecicPrzylaczeniaKv = useMemo(() => {
     if (selections.connectionSide === 'nN') {
-      return getLvVoltageLevel(selections.voltageLevelRef)?.nominal_kv ?? null;
+      return stationNnBus?.voltageKv ?? null;
     }
     return getBlockTransformer(blockTransformers, effectiveBlockTransformerCatalogRef)?.hv_kv ?? null;
   }, [
     blockTransformers,
     effectiveBlockTransformerCatalogRef,
     selections.connectionSide,
-    selections.voltageLevelRef,
+    stationNnBus,
   ]);
 
   const liczbaJednostekWybranych = Math.max(1, Math.round(selections.unitCount || 1));
@@ -921,21 +1027,20 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
   );
 
   const voltageMismatchWarning = useMemo(() => {
-    if (selections.connectionSide !== 'nN' || !selections.voltageLevelRef || !selectedDevice) {
+    if (selections.connectionSide !== 'nN' || !stationNnBus || !selectedDevice) {
       return null;
     }
-    const lvLevel = getLvVoltageLevel(selections.voltageLevelRef);
-    if (!lvLevel || !('nominal_voltage_kv' in selectedDevice)) return null;
+    if (!('nominal_voltage_kv' in selectedDevice)) return null;
     const deviceKv = selectedDevice.nominal_voltage_kv as number;
-    if (Math.abs(deviceKv - lvLevel.nominal_kv) > 0.01) {
+    if (Math.abs(deviceKv - stationNnBus.voltageKv) > 0.01) {
       return (
         `Niezgodność napięcia: urządzenie ${deviceKv.toFixed(2)} kV vs `
-        + `szyna nN ${lvLevel.nominal_kv.toFixed(2)} kV. `
+        + `szyna nN ${stationNnBus.voltageKv.toFixed(2)} kV. `
         + 'Wymagany transformator dedykowany albo zmiana wariantu przyłączenia.'
       );
     }
     return null;
-  }, [selections.connectionSide, selections.voltageLevelRef, selectedDevice]);
+  }, [selections.connectionSide, stationNnBus, selectedDevice]);
 
   const transformerPowerWarning = useMemo(() => {
     if (selections.connectionSide !== 'nN' || !selectedDevice || stationTransformerCapacityKw === null) {
@@ -962,15 +1067,12 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
         return (
           selections.derName.trim().length > 0 &&
           selections.pccLabel.trim().length > 0 &&
-          // nN wymaga voltage_level z katalogu
-          (selections.connectionSide !== 'nN' || selections.voltageLevelRef !== null) &&
-          // SN wymaga oznaczenia pola SN
-          (selections.connectionSide !== 'SN' || selections.bayName.trim().length > 0) &&
-          // Naprawa B.2: pozastacjonarne warianty wymagają connection_node_ref
-          (
-            !['at_zksn', 'at_branch_pole', 'at_cable_joint'].includes(selections.connectionSide ?? '')
-            || selections.bayName.trim().length > 0
-          )
+          // nN: stacja musi mieć realną szynę nN w modelu (patrz `resolveStationNnBus`)
+          (selections.connectionSide !== 'nN' || stationNnBus !== null) &&
+          // SN via transformator dedykowany: punkt przyłączenia MUSI wskazywać
+          // element ISTNIEJĄCY w modelu (karta FAB-K, §0 R3) — bez fabrykowanej
+          // pseudo-referencji.
+          (selections.connectionSide !== 'dedicated_transformer' || selections.snConnectionBusRef !== null)
         );
       case 'device':
         // Katalog niegotowy (ładowanie/pusty/błąd backendu) BLOKUJE krok — bez
@@ -982,6 +1084,18 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
           && (
             selections.connectionSide !== 'dedicated_transformer'
             || effectiveBlockTransformerCatalogRef !== null
+          )
+          // Karta FAB-K (§0 R3, KLASA NIE INSTANCJA — predykaty parami): TA SAMA
+          // bramka co krok „Punkt" — punkt przyłączenia SN wymagany dla
+          // dedicated_transformer NIEZALEŻNIE od tego, JAK projektant tam trafił
+          // (wybór na kroku 1, albo przełączenie „na transformator dedykowany"
+          // wprost z ostrzeżenia napięciowego na kroku „Urządzenie"). Bez tej
+          // powtórzonej bramki przełączenie ze skrótu omijało krok „Punkt" i
+          // pozwalało dojść do podsumowania bez punktu SN — backend i tak
+          // odrzuciłby zapis 422-ką, ale dopiero po kliknięciu „Utwórz".
+          && (
+            selections.connectionSide !== 'dedicated_transformer'
+            || selections.snConnectionBusRef !== null
           )
           && (
             derKind !== 'BESS'
@@ -1003,6 +1117,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     deviceCatalogStatus,
     effectiveBlockTransformerCatalogRef,
     selections,
+    stationNnBus,
     step,
     transformerPowerWarning,
     voltageMismatchWarning,
@@ -1026,11 +1141,9 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
   const selectConnectionSide = useCallback(
     (connectionSide: ConnectionSide) => {
       setSelections((current) =>
-        applyPointDefaults(
-          current, connectionSide, derKind, stationName, lvVoltageLevelsKv, blockTransformers,
-        ));
+        applyPointDefaults(current, connectionSide, derKind, stationName, blockTransformers));
     },
-    [blockTransformers, derKind, lvVoltageLevelsKv, stationName],
+    [blockTransformers, derKind, stationName],
   );
 
   useEffect(() => {
@@ -1062,39 +1175,22 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     selections.connectionSide,
   ]);
 
-  // Karta FAB-J: domyślny poziom napięcia nN wpisuje `applyPointDefaults` w
-  // chwili wyboru wariantu, ale poziomy z katalogu przekształtników mogą
-  // jeszcze wtedy ładować się asynchronicznie (lista pusta w tamtym momencie)
-  // — bez tego efektu domyślny wybór zostawałby trwale pusty, mimo że katalog
-  // chwilę później faktycznie odpowiedział. Ten sam wzorzec co auto-dobór
-  // transformatora dedykowanego powyżej.
-  useEffect(() => {
-    if (
-      selections.connectionSide !== 'nN'
-      || selections.voltageLevelRef !== null
-      || lvVoltageLevelsKv.length === 0
-    ) {
-      return;
-    }
-    setSelections((current) => ({
-      ...current,
-      voltageLevelRef: String(lvVoltageLevelsKv[0]),
-    }));
-  }, [lvVoltageLevelsKv, selections.connectionSide, selections.voltageLevelRef]);
-
+  // Karta FAB-K (§0 R4): `voltage_level_ref` USUNIĘTE jako phantom — backend
+  // nigdy go nie akceptował (dla `nn_side` wyprowadza szynę nN stacji sam,
+  // patrz `_resolve_nn_bus_ref`). Napięcie nN pokazuje się projektantowi
+  // WYŁĄCZNIE jako odczyt rzeczywistej szyny stacji (`stationNnBus`) — nie ma
+  // już domyślnego auto-wyboru z listy katalogowej, bo nie ma już wyboru.
   const handleSwitchToDedicatedTransformer = useCallback(() => {
     if (!autoBlockTransformer) {
       notify('Brak dopasowanego transformatora blokowego w katalogu dla wybranego urządzenia.', 'error');
       return;
     }
     setSelections((current) => ({
-      ...applyPointDefaults(
-        current, 'dedicated_transformer', derKind, stationName, lvVoltageLevelsKv, blockTransformers,
-      ),
+      ...applyPointDefaults(current, 'dedicated_transformer', derKind, stationName, blockTransformers),
       blockTransformerCatalogRef: autoBlockTransformer.id,
     }));
     notify('Przełączono wariant przyłączenia na transformator dedykowany.', 'success');
-  }, [autoBlockTransformer, blockTransformers, derKind, lvVoltageLevelsKv, notify, stationName]);
+  }, [autoBlockTransformer, blockTransformers, derKind, notify, stationName]);
 
   const handleChooseOtherDevice = useCallback(() => {
     setSelections((current) => ({ ...current, deviceCatalogRef: null }));
@@ -1168,7 +1264,6 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     // (chroni przed manipulacją selections w devtools).
     const validation = validateWizardSelections(selections, derKind, {
       allowedDeviceCatalogIds: deviceCatalog.map((device) => device.id),
-      allowedLvVoltageLevelRefs: lvVoltageLevelsKv.map((kv) => String(kv)),
       allowedBatteryCatalogIds: bessBatteries.map((battery) => battery.id),
       allowedNcRfgOperatorIds: ncRfgOperators.map((operator) => operator.operator_id),
     });
@@ -1195,6 +1290,16 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     }
     if (selections.connectionSide === 'dedicated_transformer' && !effectiveBlockTransformerCatalogRef) {
       notify('Wybierz transformator dedykowany z katalogu.', 'error');
+      return;
+    }
+    // Karta FAB-K (§0 R3): punkt przyłączenia SN — backend odrzuca 422-ką
+    // (`generator.sn_connection_bus_missing`) zapis `block_transformer` bez
+    // tego pola; ten sam strażnik parami co transformator dedykowany wyżej.
+    if (selections.connectionSide === 'dedicated_transformer' && !selections.snConnectionBusRef) {
+      notify(
+        'Wybierz punkt przyłączenia SN (szyna stacji / ZK SN / słup rozgałęźny / odgałęzienie).',
+        'error',
+      );
       return;
     }
 
@@ -1228,16 +1333,6 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
       return;
     }
 
-    // Naprawa B.2: connection_node_ref dla pozastacjonarnych wariantów.
-    let connectionNodeRef: string | null = null;
-    if (selections.connectionSide === 'at_zksn') {
-      connectionNodeRef = `node_zksn_${selections.bayName}`;
-    } else if (selections.connectionSide === 'at_branch_pole') {
-      connectionNodeRef = `node_branch_pole_${selections.bayName}`;
-    } else if (selections.connectionSide === 'at_cable_joint') {
-      connectionNodeRef = `node_cable_joint_${selections.bayName}`;
-    }
-
     setIsCreating(true);
     try {
       const response = await postDerGeneratorConfig(projectId, effectiveCaseId, {
@@ -1250,6 +1345,21 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
           selections.connectionSide === 'dedicated_transformer'
             ? effectiveBlockTransformerCatalogRef
             : null,
+        // Karta FAB-K (§0 R3): punkt przyłączenia SN — element ISTNIEJĄCY w
+        // modelu (szyna stacji / `BranchPointSN` / `Junction`), WYMAGANY przez
+        // backend gdy `block_transformer` nie ma jeszcze zapisanego
+        // `blocking_transformer_ref` (patrz strażnik wyżej i
+        // `_resolve_sn_connection_bus`). Pomijamy dla `nn_side` — backend go
+        // tam nie czyta.
+        sn_connection_bus_ref:
+          selections.connectionSide === 'dedicated_transformer'
+            ? selections.snConnectionBusRef ?? undefined
+            : undefined,
+        // Karta FAB-K (§0 R2): pakiet baterii BESS z katalogu `BATERIA_BESS`
+        // (`_materializuj_bateria_bess`) — wysyłany WYŁĄCZNIE dla BESS, bo
+        // backend odrzuca `battery_catalog_ref` na innej technologii
+        // (`converter.battery_catalog_not_applicable`).
+        battery_catalog_ref: derKind === 'BESS' ? selections.batteryCatalogRef ?? undefined : undefined,
         source_name: selections.derName,
         quantity: liczbaJednostek,
         // Karta FAB-J (decyzja #5): moduł wyliczony PRZEZ BACKEND dla (moc,
@@ -1267,6 +1377,16 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
         setSnapshot(response);
       }
 
+      // Karta FAB-K: rekord LOKALNY jest scaffoldingiem widocznym WYŁĄCZNIE do
+      // najbliższego odświeżenia migawki — `useSynchronizacjaDerZModelu`
+      // (`synchronizacjaZModelu.ts`) nadpisuje go rekordem z modelu, gdy tylko
+      // `derSemanticKey` (stacja+rodzaj+strona+katalog+moc) się zgodzi, co
+      // nastąpi natychmiast po `setSnapshot(response)` wyżej. `bay_ref` zostaje
+      // `null` (dawne pole SN nie istnieje już fizycznie jako wariant — model
+      // czyta je z NIEZALEŻNEGO `meta.field_ref`, którego ta ścieżka nie
+      // zapisuje) i `transformer_ref` zostaje etykietą prowizoryczną (realny
+      // ref transformatora bloku zna dopiero migawka) — obie wartości i tak
+      // zostają natychmiast zastąpione realnymi z modelu.
       attachDer({
         id,
         project_id: projectId,
@@ -1275,16 +1395,20 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
         name: selections.derName,
         connection_side: selections.connectionSide,
         bus_przylaczenia_ref: busPrzylaczeniaRef,
-        bay_ref:
-          selections.connectionSide === 'SN' ? `bay_${stationId}_${selections.bayName}` : null,
+        bay_ref: null,
         lv_busbar_ref:
-          selections.connectionSide === 'nN' ? `busbar_${stationId}_main` : null,
+          selections.connectionSide === 'nN' ? stationNnBus?.busRef ?? null : null,
         transformer_ref:
           selections.connectionSide === 'dedicated_transformer'
             ? `tr_dedicated_${id}`
             : null,
-        connection_node_ref: connectionNodeRef,
-        voltage_level_ref: selections.voltageLevelRef,
+        sn_connection_bus_ref:
+          selections.connectionSide === 'dedicated_transformer' ? selections.snConnectionBusRef : null,
+        sn_connection_point_kind:
+          selections.connectionSide === 'dedicated_transformer'
+            ? selectedSnConnectionPoint?.kind ?? null
+            : null,
+        connection_voltage_kv: napiecicPrzylaczeniaKv,
         nominal_power_kw: mocGrupyKw,
         unit_count: liczbaJednostek,
         catalogs: {
@@ -1330,15 +1454,17 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     effectiveBlockTransformerCatalogRef,
     effectiveCaseId,
     expectedNcRfgModule,
+    napiecicPrzylaczeniaKv,
     nowIso,
     handleClose,
-    lvVoltageLevelsKv,
     ncRfgOperators,
     projectId,
+    selectedSnConnectionPoint,
     selections,
     setSnapshot,
     stationId,
     stationName,
+    stationNnBus,
     transformerPowerWarning,
     voltageMismatchWarning,
   ]);
@@ -1406,7 +1532,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                 Wybierz wariant przyłączenia. Opcje są filtrowane wg rodzaju DER
                 (FW nie obsługuje "po stronie nN" zgodnie z modelem przyłączeń).
               </p>
-              {variants.map((v) => (
+              {levels.map((v) => (
                 <button
                   key={v.id}
                   type="button"
@@ -1457,96 +1583,88 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                 placeholder="np. PCC-01"
                 testId="add-der-pcc-label"
               />
-              {selections.connectionSide === 'SN' && (
-                <Field
-                  label="Oznaczenie pola SN"
-                  required
-                  value={selections.bayName}
-                  onChange={(v) => setSelections((s) => ({ ...s, bayName: v }))}
-                  placeholder="np. Pole-PV-01"
-                  testId="add-der-bay-name"
-                />
-              )}
-              {selections.connectionSide === 'at_zksn' && (
-                <Field
-                  label="Oznaczenie ZK SN (węzeł połączenia)"
-                  required
-                  value={selections.bayName}
-                  onChange={(v) => setSelections((s) => ({ ...s, bayName: v }))}
-                  placeholder="np. ZK-SN-12"
-                  testId="add-der-zksn-name"
-                />
-              )}
-              {selections.connectionSide === 'at_branch_pole' && (
-                <Field
-                  label="Oznaczenie słupa rozgałęźnego"
-                  required
-                  value={selections.bayName}
-                  onChange={(v) => setSelections((s) => ({ ...s, bayName: v }))}
-                  placeholder="np. SLUP-W-12-3"
-                  testId="add-der-pole-name"
-                />
-              )}
-              {selections.connectionSide === 'at_cable_joint' && (
-                <Field
-                  label="Oznaczenie mufy kablowej (T-joint)"
-                  required
-                  value={selections.bayName}
-                  onChange={(v) => setSelections((s) => ({ ...s, bayName: v }))}
-                  placeholder="np. MUFA-T-08"
-                  testId="add-der-joint-name"
-                />
-              )}
               {selections.connectionSide === 'nN' && (
                 <>
-                  <Select
-                    label="Poziom napięcia nN (z katalogu przekształtników)"
-                    required
-                    disabled={lvVoltageLevelsQuery.isLoading}
-                    value={selections.voltageLevelRef ?? ''}
-                    onChange={(v) => setSelections((s) => ({ ...s, voltageLevelRef: v }))}
-                    options={[
-                      {
-                        id: '',
-                        label: lvVoltageLevelsQuery.isLoading ? '— ładowanie —' : '— wybierz —',
-                      },
-                      ...lvVoltageLevelsKv.map((kv) => ({
-                        id: String(kv),
-                        label: formatLvVoltageLabelPl(kv),
-                      })),
-                    ]}
-                    testId="add-der-voltage-level"
-                  />
-                  {!lvVoltageLevelsQuery.isLoading && lvVoltageLevelsKv.length === 0 && (
+                  {/* Karta FAB-K (§0 R4): `voltage_level_ref` USUNIĘTY jako
+                      phantom — backend dla nN sam wyprowadza szynę stacji
+                      (`_resolve_nn_bus_ref`), więc to NIE JEST wybór projektanta.
+                      Poniżej odczyt szyny RZECZYWISTEJ, nie lista do wyboru. */}
+                  {stationNnBus ? (
                     <div
-                      data-testid="add-der-voltage-level-empty"
+                      data-testid="add-der-nn-bus-readonly"
+                      className="rounded border border-scada-border bg-scada-panel p-2 text-[11px] text-scada-text"
+                    >
+                      <div className="text-scada-muted">Szyna nN stacji (z modelu)</div>
+                      <div className="mt-0.5 font-semibold">
+                        {stationNnBus.name} · {stationNnBus.voltageKv.toLocaleString('pl-PL')} kV
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      data-testid="add-der-nn-bus-empty"
                       className="rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-2 text-[11px] text-sygnal-uwaga-tusz"
                     >
-                      Katalog przekształtników nie niesie żadnego urządzenia poniżej 1 kV — brak
-                      poziomów napięcia nN do wyboru. Uzupełnij katalog przekształtników.
+                      Stacja nie ma jeszcze transformatora SN/nN w modelu — brak szyny nN do
+                      przyłączenia. Dodaj transformator stacji, potem wróć do tego kreatora.
                     </div>
                   )}
                 </>
               )}
-              {/* Pakiet H: transformator dedykowany dla dedicated_transformer. */}
-              {selections.connectionSide === 'dedicated_transformer' && (() => {
-                const candidates = selectBlockTransformersForDer(blockTransformers, { derKind });
-                return (
-                  <Select
-                    label="Transformator dedykowany z katalogu"
-                    required
-                    value={selections.blockTransformerCatalogRef ?? ''}
-                    onChange={(v) =>
-                      setSelections((s) => ({ ...s, blockTransformerCatalogRef: v || null }))
-                    }
-                    options={[
-                      { id: '', label: '— wybierz transformator dedykowany —' },
-                      ...candidates.map((b) => ({ id: b.id, label: b.label_pl })),
-                    ]}
-                    testId="add-der-block-transformer"
-                  />
-                );
-              })()}
+              {/* Karta FAB-K (§0 R3): dla SN — PUNKT przyłączenia to element
+                  ISTNIEJĄCY w modelu (szyna stacji / ZK SN / słup rozgałęźny /
+                  odgałęzienie), NIE etykieta tekstowa fabrykująca pseudo-ref. */}
+              {selections.connectionSide === 'dedicated_transformer' && (
+                <>
+                  {snConnectionPointCandidates.length > 0 ? (
+                    <Select
+                      label="Punkt przyłączenia SN (element istniejący w modelu)"
+                      required
+                      value={selections.snConnectionBusRef ?? ''}
+                      onChange={(v) =>
+                        setSelections((s) => ({ ...s, snConnectionBusRef: v || null }))
+                      }
+                      options={[
+                        { id: '', label: '— wybierz punkt przyłączenia —' },
+                        ...snConnectionPointCandidates.map((c) => ({
+                          id: c.busRef,
+                          label: `${getSnConnectionPointKindLabelPl(c.kind)} — ${c.label}`,
+                        })),
+                      ]}
+                      testId="add-der-sn-connection-point"
+                    />
+                  ) : (
+                    <div
+                      data-testid="add-der-sn-connection-point-empty"
+                      className="rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-2 text-[11px] text-sygnal-uwaga-tusz"
+                    >
+                      Model nie ma jeszcze żadnego punktu przyłączenia SN (szyny stacji, ZK SN,
+                      słupa rozgałęźnego ani odgałęzienia). Utwórz go kreatorem stacji SN, ZK SN /
+                      słupa rozgałęźnego albo odgałęzienia, potem wróć do tego kreatora — mufa
+                      kablowa (T-joint) nie jest punktem przyłączenia: nie dzieli topologii.
+                    </div>
+                  )}
+                  {/* Pakiet H: transformator dedykowany ZAWSZE widoczny dla SN
+                      (karta FAB-K, §0 R3) — nie warunkowany wyborem punktu. */}
+                  {(() => {
+                    const candidates = selectBlockTransformersForDer(blockTransformers, { derKind });
+                    return (
+                      <Select
+                        label="Transformator dedykowany z katalogu"
+                        required
+                        value={selections.blockTransformerCatalogRef ?? ''}
+                        onChange={(v) =>
+                          setSelections((s) => ({ ...s, blockTransformerCatalogRef: v || null }))
+                        }
+                        options={[
+                          { id: '', label: '— wybierz transformator dedykowany —' },
+                          ...candidates.map((b) => ({ id: b.id, label: b.label_pl })),
+                        ]}
+                        testId="add-der-block-transformer"
+                      />
+                    );
+                  })()}
+                </>
+              )}
             </div>
           )}
 
@@ -1819,7 +1937,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                   const voltageOk = fitsSelectedLvVoltage(
                     device,
                     selections.connectionSide,
-                    selections.voltageLevelRef,
+                    stationNnBus?.voltageKv ?? null,
                   );
                   const transformerOk = fitsStationTransformerCapacity(
                     device,
@@ -2104,19 +2222,19 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                 <ReviewRow label="Stacja" value={stationName} />
                 <ReviewRow label="Rodzaj układu" value={DER_KIND_LABELS[derKind]} />
                 <ReviewRow label="Nazwa układu" value={selections.derName} />
-                <ReviewRow label="Wariant przyłączenia" value={formatConnectionSideForReview(selections.connectionSide, variants)} />
+                <ReviewRow label="Wariant przyłączenia" value={formatConnectionSideForReview(selections.connectionSide, levels)} />
                 <ReviewRow label="PCC" value={selections.pccLabel} />
-                {selections.connectionSide === 'SN' && (
-                  <ReviewRow label="Pole SN" value={selections.bayName} />
-                )}
-                {selections.connectionSide === 'nN' && (
+                <ReviewRow
+                  label="Napięcie punktu przyłączenia"
+                  value={napiecicPrzylaczeniaKv != null ? formatLvVoltageLabelPl(napiecicPrzylaczeniaKv) : ''}
+                />
+                {selections.connectionSide === 'dedicated_transformer' && (
                   <ReviewRow
-                    label="Poziom napięcia nN"
+                    label="Punkt przyłączenia SN"
                     value={
-                      (() => {
-                        const lvl = getLvVoltageLevel(selections.voltageLevelRef);
-                        return lvl ? formatLvVoltageLabelPl(lvl.nominal_kv) : '';
-                      })()
+                      selectedSnConnectionPoint
+                        ? `${getSnConnectionPointKindLabelPl(selectedSnConnectionPoint.kind)} — ${selectedSnConnectionPoint.label}`
+                        : ''
                     }
                   />
                 )}

@@ -923,7 +923,7 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
               ref_id: 'pv/station-15/converter',
               name: 'PV S15',
               tags: [],
-              meta: { voltage_level_ref: '0.4' },
+              meta: {},
               bus_ref: 'stn/station-15/nn_bus',
               p_mw: 0.185,
               q_mvar: 0,
@@ -954,13 +954,13 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
         connection_side: 'nN',
         bus_przylaczenia_ref: 'stn/station-15/nn_bus',
         lv_busbar_ref: 'stn/station-15/nn_bus',
-        voltage_level_ref: '0.4',
+        connection_voltage_kv: 0.4,
         catalogs: { device_catalog_ref: 'pv_inv_huawei_185' },
         profiles: {},
         nominal_power_kw: 185,
         // `completeness`/`readiness`/`updated_at` NIE sa czescia `AttachDerInput`
         // — `attachDer` liczy je sam (`computeDerCompleteness` z `catalogs`/
-        // `profiles`/`connection_side`/`voltage_level_ref` powyzej), wiec te
+        // `profiles`/`connection_side`/`connection_voltage_kv` powyzej), wiec te
         // pola bylyby i tak zignorowane; usuniete u zrodla zamiast wyciszone.
         created_at: '2026-05-22T00:00:00Z',
       });

@@ -191,6 +191,11 @@ export function KreatorZrodlaOze() {
   const [konwertery, setKonwertery] = useState<ConverterType[]>([]);
   const [aparaty, setAparaty] = useState<LVApparatusType[]>([]);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
+  // R5 (karta FAB-K, wzorzec E2E-S95): katalog przekształtników/aparatury nN
+  // ładuje się asynchronicznie (`fetchConverterTypes`/`fetchLvApparatusTypes`
+  // niżej) — bez tej flagi `stanGotowosci` nie mógłby odróżnić „katalog jeszcze
+  // w locie" od „katalog odpowiedział pustą listą".
+  const [katalogLadowanie, setKatalogLadowanie] = useState(true);
 
   // D4: auto-bieg obliczeń po zapisie + raport zgodności + BOM (opt-in, domyślnie tak).
   const [autoBieg, setAutoBieg] = useState(true);
@@ -212,6 +217,7 @@ export function KreatorZrodlaOze() {
   useEffect(() => {
     let cancelled = false;
     setBladKatalogu(null);
+    setKatalogLadowanie(true);
     Promise.all([fetchConverterTypes(), fetchLvApparatusTypes()])
       .then(([conv, apar]) => {
         if (cancelled) return;
@@ -223,6 +229,10 @@ export function KreatorZrodlaOze() {
         setKonwertery([]);
         setAparaty([]);
         setBladKatalogu(getCatalogErrorMessage(e));
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setKatalogLadowanie(false);
       });
     return () => {
       cancelled = true;
@@ -594,6 +604,27 @@ export function KreatorZrodlaOze() {
   const krokIndex = KROKI.findIndex((k) => k.id === krok);
   const wToku = faza === 'bieg' || faza === 'dokumenty';
 
+  /**
+   * R5 (karta FAB-K, wzorzec E2E-S95 — `KreatorMagistralaSn.tsx`): JEDNO
+   * źródło prawdy dla DWÓCH obserwowalnych powierzchni — `zablokowana`
+   * przycisku zapisu ORAZ `status`/`data-status` korzenia `KreatorRama` —
+   * żeby te dwie powierzchnie nie mogły rozjechać się w dwa niezależne
+   * warunki (reguła KLASA NIE INSTANCJA, „Predykaty parami"). Poprzednia
+   * wersja miała TYLKO `zablokowana: !hasKontekst || !activeCaseId` — bez
+   * stanu ładowania katalogu przekształtników/aparatury nN, więc przycisk
+   * był klikalny (i `KreatorRama` nie niosła żadnego `status`) w chwili, gdy
+   * katalog jeszcze leciał — zapis wtedy widziałby pustą listę urządzeń.
+   * Dotyczy WYŁĄCZNIE fazy „formularz" — `wToku`/`'gotowe"` mają WŁASNE,
+   * jawnie nazwane stany (bieg/dokumenty/zakończ), nieporównywalne z
+   * gotowością formularza przed pierwszym zapisem.
+   */
+  const stanGotowosci: 'ladowanie' | 'zablokowany' | 'gotowy' =
+    !hasKontekst || !activeCaseId
+      ? 'zablokowany'
+      : katalogLadowanie
+        ? 'ladowanie'
+        : 'gotowy';
+
   const akcjaGlowna =
     faza === 'gotowe'
       ? { etykieta: P.zakoncz, onClick: zakonczPoZapisie, testid: 'mvd-kreator-oze-zapisz' }
@@ -607,7 +638,7 @@ export function KreatorZrodlaOze() {
       : {
           etykieta: T.zapisz,
           onClick: onZapisz,
-          zablokowana: !hasKontekst || !activeCaseId,
+          zablokowana: stanGotowosci !== 'gotowy',
           testid: 'mvd-kreator-oze-zapisz',
         };
 
@@ -623,7 +654,18 @@ export function KreatorZrodlaOze() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={bledy.length > 0 ? T.walidacjaStopka : !hasKontekst ? T.brakStacjiOpis : null}
+      walidacja={
+        faza === 'gotowe' || wToku
+          ? null
+          : stanGotowosci === 'ladowanie'
+            ? T.katalogLadowanieStopka
+            : bledy.length > 0
+              ? T.walidacjaStopka
+              : !hasKontekst
+                ? T.brakStacjiOpis
+                : null
+      }
+      status={faza === 'gotowe' || wToku ? undefined : stanGotowosci}
       akcjaGlowna={akcjaGlowna}
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-oze-anuluj' }}
       krokWstecz={

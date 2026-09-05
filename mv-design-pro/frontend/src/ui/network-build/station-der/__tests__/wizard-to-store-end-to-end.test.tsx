@@ -187,6 +187,42 @@ function render(
 }
 import { useStationDerStore, selectAllDers } from '../store';
 
+/**
+ * Karta FAB-K (§0 R3/R4, KLASA NIE INSTANCJA): krok „Punkt" wymaga REALNEJ
+ * migawki — szyny nN stacji (`resolveStationNnBus`) dla `nn_side`, punktu
+ * przyłączenia SN istniejącego w modelu (`selectSnConnectionPointCandidates`)
+ * dla `dedicated_transformer`. Zero fabrykowanego wyboru w UI oznacza zero
+ * postępu bez migawki — testy integracyjne muszą ją dostarczyć (ten sam
+ * wzorzec co `AddDerWizard.test.tsx::defaultBaseSnapshot`).
+ */
+function station001Snapshot(): Record<string, unknown> {
+  return {
+    substations: [
+      {
+        ref_id: 'station-001',
+        id: 'station-001',
+        bus_refs: ['station-001/sn', 'station-001/nn'],
+        transformer_refs: ['station-001/tr'],
+      },
+    ],
+    transformers: [
+      {
+        ref_id: 'station-001/tr',
+        name: 'TR stacyjny station-001',
+        hv_bus_ref: 'station-001/sn',
+        lv_bus_ref: 'station-001/nn',
+        sn_mva: 10,
+        uhv_kv: 15,
+        ulv_kv: 0.4,
+      },
+    ],
+    buses: [
+      { ref_id: 'station-001/sn', id: 'station-001/sn', name: 'Szyna SN station-001', voltage_kv: 15 },
+      { ref_id: 'station-001/nn', id: 'station-001/nn', name: 'Szyna nN station-001', voltage_kv: 0.4 },
+    ],
+  };
+}
+
 describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
   beforeEach(() => {
     useStationDerStore.getState().reset();
@@ -194,6 +230,7 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     useSnapshotStore.getState().reset();
     useAppStateStore.getState().setActiveProject('projekt-test-001', 'Projekt testowy');
     useAppStateStore.getState().setActiveCase('case-test-001', 'Zakres testowy', 'ShortCircuitCase', 'NONE');
+    useSnapshotStore.setState({ caseId: 'case-test-001', snapshot: station001Snapshot() } as never);
   });
 
   it('zapisuje block_transformer_catalog_ref w store dla dedicated_transformer', async () => {
@@ -213,9 +250,13 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     fireEvent.click(screen.getByTestId('variant-dedicated_transformer'));
     fireEvent.click(screen.getByTestId('add-der-next'));
 
-    // Krok 2: PCC + nazwa + block-trafo z katalogu.
+    // Krok 2: PCC + nazwa + punkt przyłączenia SN (element istniejący w modelu,
+    // karta FAB-K §0 R3) + block-trafo z katalogu.
     fireEvent.change(screen.getByTestId('add-der-name'), { target: { value: 'PV Test' } });
     fireEvent.change(screen.getByTestId('add-der-pcc-label'), { target: { value: 'PCC-01' } });
+    fireEvent.change(screen.getByTestId('add-der-sn-connection-point'), {
+      target: { value: 'station-001/sn' },
+    });
     fireEvent.change(screen.getByTestId('add-der-block-transformer'), {
       target: { value: 'btr_pv_15_069_2500' },
     });
@@ -270,12 +311,14 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
       />,
     );
 
-    fireEvent.click(screen.getByTestId('variant-SN'));
+    fireEvent.click(screen.getByTestId('variant-dedicated_transformer'));
     fireEvent.click(screen.getByTestId('add-der-next'));
 
     fireEvent.change(screen.getByTestId('add-der-name'), { target: { value: 'BESS Test' } });
     fireEvent.change(screen.getByTestId('add-der-pcc-label'), { target: { value: 'PCC-02' } });
-    fireEvent.change(screen.getByTestId('add-der-bay-name'), { target: { value: 'POLE-BESS-01' } });
+    fireEvent.change(screen.getByTestId('add-der-sn-connection-point'), {
+      target: { value: 'station-001/sn' },
+    });
     fireEvent.click(screen.getByTestId('add-der-next'));
 
     await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
@@ -317,10 +360,8 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     );
     useSnapshotStore.setState({
       caseId: 'case-snapshot-001',
-      snapshot: {
-        substations: [{ ref_id: 'station-001', id: 'station-001' }],
-      } as never,
-    });
+      snapshot: station001Snapshot(),
+    } as never);
 
     render(
       <AddDerWizard
@@ -338,17 +379,9 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     fireEvent.click(screen.getByTestId('add-der-next'));
     fireEvent.change(screen.getByTestId('add-der-name'), { target: { value: 'PV Test' } });
     fireEvent.change(screen.getByTestId('add-der-pcc-label'), { target: { value: 'PCC-01' } });
-    // Poziomy napięcia nN są wyprowadzone asynchronicznie z katalogu
-    // przekształtników (karta FAB-J) — czekamy, aż opcja „0,4 kV" naprawdę
-    // istnieje w select, zanim ją wybierzemy (inaczej walidacja zapisu widzi
-    // pustą listę dozwolonych poziomów).
-    await waitFor(() => {
-      const opcje = Array.from(
-        (screen.getByTestId('add-der-voltage-level') as HTMLSelectElement).options,
-      ).map((o) => o.value);
-      expect(opcje).toContain('0.4');
-    });
-    fireEvent.change(screen.getByTestId('add-der-voltage-level'), { target: { value: '0.4' } });
+    // Napięcie nN to REALNA szyna stacji z migawki (karta FAB-K, §0 R4) —
+    // dostępna od razu, zero czekania na katalog przekształtników.
+    expect(screen.getByTestId('add-der-nn-bus-readonly')).toHaveTextContent('0,4');
     fireEvent.click(screen.getByTestId('add-der-next'));
     await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
     fireEvent.change(screen.getByTestId('add-der-device'), {
@@ -375,10 +408,8 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
   it('przekazuje do API katalogową moc PV 50 kW bez sztucznej podłogi 100 kW', async () => {
     useSnapshotStore.setState({
       caseId: 'case-snapshot-001',
-      snapshot: {
-        substations: [{ ref_id: 'station-001', id: 'station-001' }],
-      } as never,
-    });
+      snapshot: station001Snapshot(),
+    } as never);
 
     render(
       <AddDerWizard

@@ -5,8 +5,8 @@
  * katalogowe są frozen tabelami w pamięci frontendu (publikacja z backendu
  * wprowadzi te same wartości via `catalog_namespace` + `catalog_item_id`).
  *
- * Katalogi (stan po karcie FAB-J — pomiar pozostałości klasy FAB-I):
- *  - ConnectionVariantCatalog (3 warianty)
+ * Katalogi (stan po karcie FAB-K):
+ *  - ConnectionLevelCatalog (2 poziomy — nN / dedicated_transformer)
  *  - MvNeutralGroundingCatalog (5 wariantów)
  *  - StationTemplateCatalog (10 szablonów)
  *  - DerFaultCurrentDataCatalog (modele zwarciowe wg device_catalog_ref)
@@ -60,114 +60,95 @@ import type { BlockTransformerItem } from './audit2-api';
 export const AUDIT2_CATALOG_VERSION = '2026-08-14';
 
 // =============================================================================
-// 4. ConnectionVariantCatalog (Naprawa B.2 — rozszerzony)
+// 4. ConnectionLevelCatalog (karta FAB-K — zastępuje ConnectionVariantCatalog)
 // =============================================================================
 
 /**
- * Naprawa B.2 (audyt projektanta SN): rozszerzony catalog wariantów połączeń
- * o 3 dodatkowe punkty pozastacjonarne: ZK SN, słup rozgałęźny, mufa kablowa
- * (typowe dla małych farm PV / BESS przyłączonych do odgałęzienia).
+ * PROWENIENCJA (karta FAB-K, 2026-09-05). Dawny `CONNECTION_VARIANT_CATALOG`
+ * (6 „wariantów": SN/nN/dedicated_transformer/at_zksn/at_branch_pole/
+ * at_cable_joint) mieszał DWIE ortogonalne decyzje fizyczne w jednym enumie:
+ * (1) POZIOM przyłączenia (nN vs SN przez transformator dedykowany — żadne
+ * urządzenie w katalogu przekształtników nie łączy się z siecią SN bez
+ * pośredniczącego transformatora), i (2) dla SN, PUNKT przyłączenia (istniejący
+ * element modelu). Cztery z sześciu wariantów (`SN`, `at_zksn`, `at_branch_pole`,
+ * `at_cable_joint`) wysyłały do backendu ten sam `connection_variant` BEZ pozycji
+ * katalogowej transformatora (`block_transformer_catalog_ref`) — GWARANTOWANY
+ * 422 przy zapisie (pomiar: żadna z tych czterech ścieżek nie kończyła się
+ * sukcesem). `CONNECTION_LEVEL_CATALOG` niesie WYŁĄCZNIE poziom (2 pozycje);
+ * punkt przyłączenia SN wybiera się z listy ISTNIEJĄCYCH elementów modelu
+ * (`selectSnConnectionPointCandidates` w `AddDerWizard.tsx`), nie z katalogu.
  */
-export interface ConnectionVariantItem {
+export interface ConnectionLevelItem {
   readonly id: string;
-  readonly catalog_namespace: 'connection_variant';
-  readonly side: 'SN' | 'nN' | 'dedicated_transformer' | 'at_zksn' | 'at_branch_pole' | 'at_cable_joint';
+  readonly catalog_namespace: 'connection_level';
+  readonly side: 'nN' | 'dedicated_transformer';
   readonly label_pl: string;
   readonly description_pl: string;
   readonly applicable_der_kinds: ReadonlyArray<'PV' | 'BESS' | 'FW'>;
   readonly required_objects_pl: ReadonlyArray<string>;
 }
 
-export const CONNECTION_VARIANT_CATALOG: ReadonlyArray<ConnectionVariantItem> = Object.freeze([
+export const CONNECTION_LEVEL_CATALOG: ReadonlyArray<ConnectionLevelItem> = Object.freeze([
   {
-    id: 'cv_sn',
-    catalog_namespace: 'connection_variant',
-    side: 'SN',
-    label_pl: 'Po stronie SN — przez pole SN stacji',
-    description_pl:
-      'DER przyłączony bezpośrednio do szyny SN poprzez dedykowane pole SN. '
-      + 'Wymaga rozdzielni SN i pola SN źródłowego (PV/BESS/FW).',
-    applicable_der_kinds: ['PV', 'BESS', 'FW'],
-    required_objects_pl: ['Pole SN źródłowe', 'Aparatura', 'Przekładniki', 'Zabezpieczenie'],
-  },
-  {
-    id: 'cv_nn',
-    catalog_namespace: 'connection_variant',
+    id: 'level_nn',
+    catalog_namespace: 'connection_level',
     side: 'nN',
-    label_pl: 'Po stronie nN — do szyny nN stacji',
+    label_pl: 'Po stronie nN — za transformatorem stacji',
     description_pl:
-      'DER przyłączony do szyny nN za pośrednictwem rozdzielnicy nN. '
+      'DER przyłączony do szyny nN stacji, za istniejącym transformatorem SN/nN. '
       + 'Wymaga zgodności napięcia falownika/PCS z napięciem szyny nN.',
     applicable_der_kinds: ['PV', 'BESS'],
-    required_objects_pl: ['Szyna nN', 'Pole odpływowe nN', 'Zabezpieczenie nN', 'Pomiar'],
+    required_objects_pl: ['Szyna nN stacji', 'Pole odpływowe nN', 'Zabezpieczenie nN', 'Pomiar'],
   },
   {
-    id: 'cv_dedicated',
-    catalog_namespace: 'connection_variant',
+    id: 'level_dedicated',
+    catalog_namespace: 'connection_level',
     side: 'dedicated_transformer',
-    label_pl: 'Przez transformator dedykowany',
+    label_pl: 'Po stronie SN — przez transformator dedykowany',
     description_pl:
-      'DER przyłączony przez transformator dedykowany. '
-      + 'Stosowane gdy napięcie urządzenia nie pasuje do żadnej szyny stacji '
-      + 'albo dla farm PV/FW > 1 MW wymagających izolacji galwanicznej.',
+      'DER przyłączony do sieci SN przez transformator dedykowany (nowy z katalogu '
+      + 'albo istniejący w modelu). Wymaga wskazania PUNKTU przyłączenia — istniejącej '
+      + 'szyny SN stacji, ZK SN, słupa rozgałęźnego albo odgałęzienia (krok następny).',
     applicable_der_kinds: ['PV', 'BESS', 'FW'],
     required_objects_pl: [
       'Transformator dedykowany',
-      'Pole transformatorowe SN',
-      'Kabel SN do transformatora',
+      'Punkt przyłączenia SN (istniejący element modelu)',
       'Zabezpieczenia po obu stronach',
     ],
   },
+]);
+
+/**
+ * Rodzaj punktu przyłączenia SN — słownik UI (etykiety), nie katalog fizyczny:
+ * kandydaci realni pochodzą z migawki modelu (`selectSnConnectionPointCandidates`),
+ * to jest wyłącznie mapowanie rodzaju → etykieta/opis dla prezentacji.
+ */
+export interface SnConnectionPointKindItem {
+  readonly kind: 'station_bus' | 'zksn' | 'branch_pole' | 'junction';
+  readonly label_pl: string;
+  readonly description_pl: string;
+}
+
+export const SN_CONNECTION_POINT_KIND_CATALOG: ReadonlyArray<SnConnectionPointKindItem> = Object.freeze([
   {
-    id: 'cv_at_zksn',
-    catalog_namespace: 'connection_variant',
-    side: 'at_zksn',
-    label_pl: 'Na złączu kablowym SN (ZK SN)',
-    description_pl:
-      'DER przyłączony do złącza kablowego SN poza stacją — typowe dla małych '
-      + 'farm PV (200-500 kW) przyłączonych do odgałęzienia. Wymaga ZK SN '
-      + 'z dedykowanym polem oraz zabezpieczenia kierunkowego.',
-    applicable_der_kinds: ['PV', 'BESS'],
-    required_objects_pl: [
-      'ZK SN z polem dedykowanym',
-      'Aparatura ZK SN',
-      'Przekładniki na ZK SN',
-      'Zabezpieczenie kierunkowe (67/67N)',
-    ],
+    kind: 'station_bus',
+    label_pl: 'Szyna SN stacji (przez pole SN)',
+    description_pl: 'Punkt przyłączenia to szyna SN bieżącej stacji, dedykowane pole SN źródłowe.',
   },
   {
-    id: 'cv_at_branch_pole',
-    catalog_namespace: 'connection_variant',
-    side: 'at_branch_pole',
-    label_pl: 'Na słupie rozgałęźnym linii napowietrznej SN',
-    description_pl:
-      'DER przyłączony na słupie rozgałęźnym linii napowietrznej. Stosowane '
-      + 'dla małych farm wiatrowych (1 turbina) lub PV przy linii napowietrznej. '
-      + 'Wymaga rozłącznika napowietrznego + transformatora słupowego.',
-    applicable_der_kinds: ['PV', 'FW'],
-    required_objects_pl: [
-      'Słup rozgałęźny',
-      'Rozłącznik napowietrzny',
-      'Transformator słupowy SN/nN',
-      'Zabezpieczenie ziemnozwarciowe',
-    ],
+    kind: 'zksn',
+    label_pl: 'Złącze kablowe SN (ZK SN)',
+    description_pl: 'Punkt przyłączenia to złącze kablowe SN poza stacją — wymaga zabezpieczenia kierunkowego (67/67N).',
   },
   {
-    id: 'cv_at_cable_joint',
-    catalog_namespace: 'connection_variant',
-    side: 'at_cable_joint',
-    label_pl: 'Na mufie kablowej SN (T-joint)',
-    description_pl:
-      'DER przyłączony przez mufę kablową typu T (T-joint). Stosowane wyjątkowo '
-      + 'dla mikroinstalacji PV przyłączonych bez dedykowanej rozdzielni — '
-      + 'wymaga zatwierdzenia operatora z uwagi na trudności w zabezpieczeniach.',
-    applicable_der_kinds: ['PV'],
-    required_objects_pl: [
-      'Mufa T-joint SN',
-      'Kabel odgałęziający',
-      'Transformator dedykowany',
-      'Zabezpieczenie kierunkowe',
-    ],
+    kind: 'branch_pole',
+    label_pl: 'Słup rozgałęźny linii napowietrznej SN',
+    description_pl: 'Punkt przyłączenia to słup rozgałęźny linii napowietrznej SN.',
+  },
+  {
+    kind: 'junction',
+    label_pl: 'Odgałęzienie (węzeł T)',
+    description_pl: 'Punkt przyłączenia to węzeł T (odgałęzienie) na ciągu kablowym albo napowietrznym SN.',
   },
 ]);
 
@@ -679,19 +660,26 @@ export const DER_DYNAMIC_MODEL_CATALOG: ReadonlyArray<DerDynamicModelItem> = Obj
 // 9. Helpery selektora
 // =============================================================================
 
-/** Filtruje warianty przyłączenia po rodzaju DER. */
-export function selectConnectionVariantsForKind(
+/** Filtruje poziomy przyłączenia po rodzaju DER. */
+export function selectConnectionLevelsForKind(
   kind: 'PV' | 'BESS' | 'FW',
-): readonly ConnectionVariantItem[] {
-  return CONNECTION_VARIANT_CATALOG.filter((v) => v.applicable_der_kinds.includes(kind));
+): readonly ConnectionLevelItem[] {
+  return CONNECTION_LEVEL_CATALOG.filter((v) => v.applicable_der_kinds.includes(kind));
 }
 
-/** Polski label dla connection_side (w tym pozastacjonarne — Naprawa B.2). */
-export function getConnectionSideLabelPl(
-  side: 'SN' | 'nN' | 'dedicated_transformer' | 'at_zksn' | 'at_branch_pole' | 'at_cable_joint',
-): string {
-  const item = CONNECTION_VARIANT_CATALOG.find((v) => v.side === side);
+/** Polski label dla poziomu przyłączenia (`ConnectionSide`). */
+export function getConnectionSideLabelPl(side: 'nN' | 'dedicated_transformer'): string {
+  const item = CONNECTION_LEVEL_CATALOG.find((v) => v.side === side);
   return item?.label_pl ?? side;
+}
+
+/** Polski label dla rodzaju punktu przyłączenia SN (`SnConnectionPointKind`). */
+export function getSnConnectionPointKindLabelPl(
+  kind: 'station_bus' | 'zksn' | 'branch_pole' | 'junction' | null,
+): string {
+  if (kind === null) return '—';
+  const item = SN_CONNECTION_POINT_KIND_CATALOG.find((v) => v.kind === kind);
+  return item?.label_pl ?? kind;
 }
 
 /** Naprawa B.1: pobiera szczegóły uziemienia neutralnego stacji. */

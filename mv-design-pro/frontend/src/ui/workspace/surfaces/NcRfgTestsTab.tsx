@@ -127,11 +127,6 @@ function parseOptionalNumber(value: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function inferVoltageKv(der: StationDerConnection): number {
-  if (der.connection_side === 'nN' || der.voltage_level_ref?.includes('0.4')) return 0.4;
-  return 15;
-}
-
 function inferCertificateStatus(der: StationDerConnection): NcRfgCertificateStatus {
   return der.catalogs.ptpiree_certificate_ref || der.catalogs.device_catalog_ref?.includes('ptpiree')
     ? 'ptpiree_verified'
@@ -148,6 +143,13 @@ function buildModuleInput(args: {
   if (typeof args.der.nominal_power_kw !== 'number' || args.der.nominal_power_kw <= 0) {
     return null;
   }
+  // Karta FAB-K: napięcie przyłączenia WYŁĄCZNIE z modelu (`connection_voltage_kv`,
+  // szyna wytwórcy) — usunięte zgadywanie „nN→0,4 kV / inaczej→15 kV" (dawny
+  // `inferVoltageKv`, fabrykacja niezależna od realnego napięcia szyny SN, które
+  // bywa 6/10/15/20 kV). Brak napięcia w modelu zatrzymuje bieg zamiast zgadywać.
+  if (typeof args.der.connection_voltage_kv !== 'number' || args.der.connection_voltage_kv <= 0) {
+    return null;
+  }
   return {
     der_ref: args.der.id,
     der_name: args.der.name,
@@ -156,7 +158,7 @@ function buildModuleInput(args: {
     operator_id: args.operatorId,
     p_max_kw: args.der.nominal_power_kw,
     p_min_kw: parseOptionalNumber(args.numeric.pMinKw),
-    voltage_kv: inferVoltageKv(args.der),
+    voltage_kv: args.der.connection_voltage_kv,
     certificate_status: args.certificateStatus,
     has_lvrt_curve: args.capabilities.hasLvrtCurve,
     has_hvrt_curve: args.capabilities.hasHvrtCurve,
@@ -403,8 +405,11 @@ export function NcRfgTestsTab(): JSX.Element {
       ...current,
       hasLvrtCurve: Boolean(selectedDer.profiles.lvrt_curve_ref) || current.hasLvrtCurve,
       hasHvrtCurve: Boolean(selectedDer.profiles.hvrt_curve_ref) || current.hasHvrtCurve,
-      hasPfDroop: Boolean(selectedDer.profiles.pf_curve_ref || selectedDer.profiles.regulation_profile_ref) || current.hasPfDroop,
-      hasQuCurve: Boolean(selectedDer.profiles.regulation_profile_ref) || current.hasQuCurve,
+      hasPfDroop: Boolean(selectedDer.profiles.pf_curve_ref) || current.hasPfDroop,
+      // Karta FAB-K: `regulation_profile_ref` (profil Q(U) nazwany katalogowo) był
+      // FANTOMEM — backend nie ma takiego katalogu, Q(U) jest liczbą zapisywaną
+      // wprost na generatorze. Brak sygnału zostaje BRAKIEM, nie zgadywaniem.
+      hasQuCurve: current.hasQuCurve,
       hasDynamicModel: Boolean(selectedDer.catalogs.dynamic_model_ref) || current.hasDynamicModel,
     }));
   }, [selectedDer]);
@@ -435,7 +440,12 @@ export function NcRfgTestsTab(): JSX.Element {
       return;
     }
     if (!modulePreview) {
-      notify('Wybrany układ DER nie ma katalogowej mocy znamionowej. Wybierz urządzenie z katalogu PTPiREE/DER.', 'error');
+      notify(
+        'Wybrany układ DER nie ma katalogowej mocy znamionowej albo napięcia szyny '
+        + 'przyłączenia rozpoznanego w modelu. Wybierz urządzenie z katalogu PTPiREE/DER '
+        + 'i sprawdź, czy szyna przyłączenia ma znane napięcie.',
+        'error',
+      );
       return;
     }
     setStatus('running');

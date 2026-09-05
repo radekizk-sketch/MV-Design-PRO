@@ -10,19 +10,32 @@
  * ekrany pokazywały „Brak modułów wytwórczych do oceny" mimo generatora
  * w modelu — łańcuch „dodaj źródło OZE → oceń zgodność" był przerwany.
  *
- * SKĄD DANE (zero fabrykacji). WYŁĄCZNIE z migawki ENM: `generators[]` wraz
- * z `meta` zapisaną przez operacje domenowe. Moduł niczego nie liczy i niczego
- * nie dopowiada — brak danej zostaje `null`.
+ * SKĄD DANE (zero fabrykacji). WYŁĄCZNIE z migawki ENM: `generators[]`.
  *
- * REUŻYCIE, NIE DUPLIKACJA. Odwzorowanie mieszkało w `StationConfiguratorSurface`
- * i było widoczne wyłącznie dla JEDNEJ stacji na jednej powierzchni; tu jest
- * jedną funkcją dla całego modelu, a konfigurator stacji zawęża wynik do swojej
- * stacji tą samą drogą (`deryStacjiZModelu`).
+ * KARTA FAB-K (naprawa łańcucha danych DER, 2026-09-05). Operacja domenowa
+ * `set_der_catalog_bindings` (wiązania wybierane PO utworzeniu wytwórcy —
+ * zabezpieczenie, CT/VT, dane zwarciowe, model dynamiczny, profile zgodności)
+ * zapisuje WYŁĄCZNIE do `generator.materialized_params` (płasko) i
+ * `materialized_params.profiles` — NIGDY do `generator.meta`. Ten moduł czytał
+ * do tej pory WYŁĄCZNIE `generator.meta`, więc każde wiązanie zapisane przez
+ * `PATCH …/generators/{ref}/bindings` znikało z tego odwzorowania (a więc
+ * z całego frontu) natychmiast po odświeżeniu strony — sześć osi gotowości
+ * (zabezpieczenia, selektywność, SC1F, SC2FG, FRT, HVRT) liczyło werdykt
+ * z danych, których store nigdy nie widział.
+ *
+ * `DER_MATERIALIZED_BINDING_KEYS`/`DER_MATERIALIZED_PROFILE_KEYS` niżej
+ * MUSZĄ nazywać dokładnie te same klucze co backendowe `DER_BINDING_KEYS`/
+ * `DER_PROFILE_KEYS` (`enm/domain_operations_v2.py`) — test parytetu
+ * (`__tests__/zModelu.test.ts`) pilnuje, żeby żadna strona nie dodała klucza
+ * bez drugiej. `meta` zostaje źródłem WYŁĄCZNIE dla kluczy, które faktycznie
+ * pisze `add_converter_source` (pole źródłowe, sekwencja, tryb pracy, Q(U)/P(f)
+ * — patrz `_resolve_converter_defaults`), nigdy dla wiązań katalogowych/profili.
  *
  * Warstwa PREZENTACJI: zero fizyki, zero mutacji modelu.
  */
 
 import type {
+  Branch,
   EnergyNetworkModel,
   Generator as EnmGenerator,
 } from '../../../types/enm';
@@ -34,8 +47,34 @@ import {
   computeDerCompleteness,
   type ConnectionSide,
   type DerKindUnified,
+  type SnConnectionPointKind,
   type StationDerConnection,
 } from './types';
+
+/**
+ * Wiązania katalogowe wytwórcy — nazwy 1:1 z backendowym `DER_BINDING_KEYS`
+ * (`enm/domain_operations_v2.py`). JEDYNA definicja po stronie frontu: testy
+ * i odczyt (`derZGeneratora` niżej) czytają z TEJ listy, nie z ręcznie
+ * wypisanych kluczy w dwóch miejscach.
+ */
+export const DER_MATERIALIZED_BINDING_KEYS = [
+  'protection_catalog_ref',
+  'ct_catalog_ref',
+  'vt_catalog_ref',
+  'fault_current_data_ref',
+  'dynamic_model_ref',
+] as const;
+
+/**
+ * Profile zgodności przyłączeniowej — nazwy 1:1 z backendowym `DER_PROFILE_KEYS`.
+ * Trzymane przez backend w podsłowniku `materialized_params.profiles`.
+ */
+export const DER_MATERIALIZED_PROFILE_KEYS = [
+  'nc_rfg_profile_ref',
+  'lvrt_curve_ref',
+  'hvrt_curve_ref',
+  'pf_curve_ref',
+] as const;
 
 function readString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -43,6 +82,12 @@ function readString(value: unknown): string | null {
 
 function readNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
 }
 
 export function derKindFromGenerator(generator: EnmGenerator): DerKindUnified | null {
@@ -55,19 +100,70 @@ export function derKindFromGenerator(generator: EnmGenerator): DerKindUnified | 
   return null;
 }
 
+/**
+ * Poziom przyłączenia — WYŁĄCZNIE z `connection_variant` kanonicznego (karta
+ * FAB-K). Backend zapisuje na generatorze zawsze wartość PO tłumaczeniu
+ * aliasów (`add_converter_source::_VARIANT_ALIASES`) — `nn_side` albo
+ * `block_transformer` — więc odczyt nie zgaduje z podciągów `bus_ref`
+ * (dawny `bus_ref.includes('/nn_')` KASOWANY razem z domyślnym fallbackiem:
+ * zgadywanie poziomu z nazwy szyny jest tą samą klasą fabrykacji, którą ta
+ * karta usuwa wszędzie indziej). Aliasy `LV_BEHIND_STATION_TRANSFORMER` /
+ * `DEDICATED_MV_CONNECTION` / `SOURCE_CONNECTION_STATION` zostają jako odczyt
+ * WYŁĄCZNIE dla modeli zapisanych przed kartą FAB-K (nowe zapisy ich nie
+ * produkują — Literal kontraktu `DerGeneratorCreateRequest` ich nie przyjmuje).
+ */
 export function connectionSideFromGenerator(generator: EnmGenerator): ConnectionSide {
   switch (generator.connection_variant) {
-    case 'LV_BEHIND_STATION_TRANSFORMER':
     case 'nn_side':
+    case 'LV_BEHIND_STATION_TRANSFORMER':
       return 'nN';
-    case 'DEDICATED_MV_CONNECTION':
-    case 'block_transformer':
-      return 'dedicated_transformer';
-    case 'SOURCE_CONNECTION_STATION':
-      return 'SN';
     default:
-      return generator.bus_ref.includes('/nn_') || generator.bus_ref.includes('/nn_bus') ? 'nN' : 'SN';
+      return 'dedicated_transformer';
   }
+}
+
+/**
+ * Rodzaj punktu przyłączenia SN — POCHODNA typu elementu modelu, do którego
+ * należy `busRef` (szyna stacji wg pól / `BranchPointSN` / `Junction`).
+ * Mirror odczytu backendu (`enm/topology.py::_find_junction_bus` dla Junction —
+ * heurystyka „szyna z największą liczbą powiązanych gałęzi węzła", jedyne
+ * źródło prawdy o tym, jaką szynę reprezentuje węzeł T, bo `Junction` nie
+ * niesie własnego `bus_ref`). `null` gdy szyna nie należy do żadnego z trzech
+ * rodzajów (np. usunięta ze snapshotu).
+ */
+export function snPointKindForBus(
+  snapshot: EnergyNetworkModel,
+  busRef: string,
+): SnConnectionPointKind | null {
+  const branchPoint = (snapshot.branch_points ?? []).find((bp) => bp.bus_ref === busRef);
+  if (branchPoint) {
+    return branchPoint.branch_point_type === 'zksn' ? 'zksn' : 'branch_pole';
+  }
+  const station = (snapshot.substations ?? []).find((s) => (s.bus_refs ?? []).includes(busRef));
+  if (station) return 'station_bus';
+
+  const branchByRef = new Map<string, Branch>(
+    (snapshot.branches ?? []).map((branch) => [branch.ref_id, branch]),
+  );
+  for (const junction of snapshot.junctions ?? []) {
+    const busCounts = new Map<string, number>();
+    for (const branchRef of junction.connected_branch_refs) {
+      const branch = branchByRef.get(branchRef);
+      if (!branch) continue;
+      busCounts.set(branch.from_bus_ref, (busCounts.get(branch.from_bus_ref) ?? 0) + 1);
+      busCounts.set(branch.to_bus_ref, (busCounts.get(branch.to_bus_ref) ?? 0) + 1);
+    }
+    let bestRef: string | null = null;
+    let bestCount = -1;
+    for (const [ref, count] of busCounts) {
+      if (count > bestCount) {
+        bestRef = ref;
+        bestCount = count;
+      }
+    }
+    if (bestRef === busRef) return 'junction';
+  }
+  return null;
 }
 
 export function isGeneratorAttachedToStation(
@@ -146,37 +242,70 @@ function derZGeneratora(
 ): StationDerConnection | null {
   const kind = derKindFromGenerator(generator);
   if (!kind) return null;
-  const meta = generator.meta ?? {};
+  // KARTA FAB-K: `materialized_params` PIERWSZE — to jest gdzie pisze
+  // `set_der_catalog_bindings` (bindings PATCH) I gdzie `add_converter_source`
+  // materializuje tabliczkę urządzenia (un_kv, ptpiree_certificate_ref,
+  // battery_catalog_ref/battery). `meta` zostaje WYŁĄCZNIE dla kluczy, które
+  // `add_converter_source` faktycznie tam zapisuje (`field_ref`,
+  // `source_sequence_index`, tryb pracy, Q(U)/P(f) — `_resolve_converter_defaults`).
+  const materialized = asRecord(generator.materialized_params);
+  const meta = asRecord(generator.meta);
   const connectionSide = connectionSideFromGenerator(generator);
   const transformerRef = generator.blocking_transformer_ref ?? null;
   const blockTransformerCatalogRef = readString(meta.block_transformer_catalog_ref)
     ?? inferBlockTransformerCatalogRef(snapshot, transformerRef, blockTransformers);
+
+  // Karta FAB-K (parytet FE/BE, reguła KLASA NIE INSTANCJA): odczyt PĘTLĄ po
+  // kanonicznych listach kluczy (`DER_MATERIALIZED_BINDING_KEYS`/`_PROFILE_KEYS`)
+  // zamiast ręcznie wypisanych literałów jeden po drugim. Wcześniej te stałe
+  // były eksportowane, ale WYŁĄCZNIE dekoracyjne — nikt tu ich nie odczytywał,
+  // więc dopisanie klucza do listy bez dopisania osobnej linii niżej cicho
+  // gubiło dane. Teraz brak takiej osobnej linii nie jest już możliwy.
+  const materializedBindings = Object.fromEntries(
+    DER_MATERIALIZED_BINDING_KEYS.map((key) => [key, readString(materialized[key])]),
+  ) as Record<(typeof DER_MATERIALIZED_BINDING_KEYS)[number], string | null>;
+  const materializedProfiles = Object.fromEntries(
+    DER_MATERIALIZED_PROFILE_KEYS.map((key) => [key, readString(asRecord(materialized.profiles)[key])]),
+  ) as Record<(typeof DER_MATERIALIZED_PROFILE_KEYS)[number], string | null>;
+
   const catalogs = {
     ...EMPTY_DER_CATALOGS,
     device_catalog_ref: generator.catalog_ref ?? null,
     bay_catalog_ref: readString(meta.field_ref),
     block_transformer_catalog_ref: blockTransformerCatalogRef,
-    protection_catalog_ref: readString(meta.protection_catalog_ref),
-    ct_catalog_ref: readString(meta.ct_catalog_ref),
-    vt_catalog_ref: readString(meta.vt_catalog_ref),
-    fault_current_data_ref: readString(meta.fault_current_data_ref),
-    dynamic_model_ref: readString(meta.dynamic_model_ref),
+    // Materializacja urządzenia (PV/BESS/FW) niesie certyfikat PTPiREE 1:1 z
+    // tabliczką falownika — pochodna, nie osobny wybór (`_certyfikat_ptpiree_z_katalogu`).
+    ptpiree_certificate_ref: readString(materialized.ptpiree_certificate_ref),
+    battery_catalog_ref: readString(materialized.battery_catalog_ref),
+    ...materializedBindings,
   };
   const profiles = {
     ...EMPTY_DER_PROFILES,
-    nc_rfg_profile_ref:
-      readString(meta.nc_rfg_profile_ref) ?? readString(meta.operator_profile_ref),
-    regulation_profile_ref: readString(meta.regulation_profile_ref),
-    pf_curve_ref: readString(meta.pf_curve_ref),
+    ...materializedProfiles,
   };
   const busPrzylaczeniaRef = readString(meta.bus_przylaczenia_ref) ?? generator.bus_ref;
-  const voltageLevelRef = readString(meta.voltage_level_ref);
   // Napięcie przyłączenia WPROST z modelu (szyna wytwórcy) — patrz komentarz przy
   // `StationDerConnection.connection_voltage_kv`. Brak szyny w migawce ⇒ null.
   const szyna = (snapshot.buses ?? []).find(
     (bus) => bus.ref_id === generator.bus_ref || bus.id === generator.bus_ref,
   );
   const connectionVoltageKv = readNumber(szyna?.voltage_kv);
+
+  // Punkt przyłączenia SN (karta FAB-K): szyna GÓRNA transformatora dedykowanego,
+  // rodzaj wyprowadzony z typu elementu, do którego ta szyna należy — nigdy
+  // osobny wybór trzymany na rekordzie.
+  let snConnectionBusRef: string | null = null;
+  let snConnectionPointKind: SnConnectionPointKind | null = null;
+  if (connectionSide === 'dedicated_transformer' && transformerRef) {
+    const transformator = (snapshot.transformers ?? []).find(
+      (t) => t.ref_id === transformerRef || t.id === transformerRef,
+    );
+    snConnectionBusRef = readString(transformator?.hv_bus_ref);
+    if (snConnectionBusRef) {
+      snConnectionPointKind = snPointKindForBus(snapshot, snConnectionBusRef);
+    }
+  }
+
   return {
     id: generator.ref_id,
     project_id: projectId ?? 'project-from-enm',
@@ -188,22 +317,23 @@ function derZGeneratora(
     bay_ref: readString(meta.field_ref),
     transformer_ref: transformerRef,
     lv_busbar_ref: connectionSide === 'nN' ? generator.bus_ref : null,
-    connection_node_ref: readString(meta.connection_node_ref),
-    internal_cable_ref: readString(meta.internal_cable_ref),
-    voltage_level_ref: voltageLevelRef,
+    sn_connection_bus_ref: snConnectionBusRef,
+    sn_connection_point_kind: snConnectionPointKind,
     connection_voltage_kv: connectionVoltageKv,
     catalogs,
     profiles,
     nominal_power_kw: Math.round(generator.p_mw * 1000),
     // Liczba jednostek z modelu (`quantity`) — bez niej moc grupy i moc jednostki
-    // sa nierozroznialne (audyt E-21 pkt P2).
+    // sa nierozroznialne (audyt E-21 pkt P2). Zapisywane przez `add_converter_source`
+    // do `meta.quantity`, nie do `materialized_params` (patrz `_resolve_converter_defaults`).
     unit_count: readNumber(meta.quantity) ?? readNumber(meta.n_parallel),
     completeness: computeDerCompleteness({
       connection_side: connectionSide,
       bus_przylaczenia_ref: busPrzylaczeniaRef,
       catalogs,
       profiles,
-      voltage_level_ref: voltageLevelRef,
+      connection_voltage_kv: connectionVoltageKv,
+      sn_connection_bus_ref: snConnectionBusRef,
     }),
     readiness: { ...EMPTY_DER_READINESS },
     created_at: timestamp,

@@ -23,10 +23,19 @@ const SAMPLE_PV: Parameters<typeof useStationDerStore.getState>[0] extends never
   station_id: 'station_001',
   der_kind: 'PV',
   name: 'PV Centralna 1',
-  connection_side: 'SN',
+  // Karta FAB-K (§0 R3): dawny gołosłowny wariant `'SN'` (bez transformatora
+  // dedykowanego) USUNIĘTY — fizycznie żadne urządzenie katalogu przekształtników
+  // nie łączy się z siecią SN bez pośredniczącego transformatora.
+  connection_side: 'dedicated_transformer',
   bus_przylaczenia_ref: 'pcc_001',
   bay_ref: 'bay_001',
-  voltage_level_ref: '0.69',
+  // Karta FAB-K (§0 R3): punkt przyłączenia SN — element ISTNIEJĄCY w modelu,
+  // WYMAGANY dla `dedicated_transformer` (`computeDerCompleteness`).
+  sn_connection_bus_ref: 'bus_sn_001',
+  sn_connection_point_kind: 'station_bus',
+  // Karta FAB-K (§0 R4): `voltage_level_ref` USUNIĘTY jako phantom —
+  // `connection_voltage_kv` (napięcie szyny Z MODELU) jest JEDYNYM źródłem.
+  connection_voltage_kv: 15,
   catalogs: {
     device_catalog_ref: 'pv_inv_sma_2500',
   },
@@ -45,6 +54,9 @@ const SAMPLE_BESS = {
   connection_side: 'nN' as const,
   bay_ref: null,
   lv_busbar_ref: 'busbar_001',
+  sn_connection_bus_ref: null,
+  sn_connection_point_kind: null,
+  connection_voltage_kv: 0.4,
   catalogs: {
     device_catalog_ref: 'bess_pcs_abb_500',
     battery_catalog_ref: 'bess_bat_byd_2880',
@@ -62,7 +74,7 @@ describe('useStationDerStore — single source of truth E-13 ↔ DER', () => {
     expect(der.id).toBe('der_pv_001');
     expect(der.station_id).toBe('station_001');
     expect(der.der_kind).toBe('PV');
-    expect(der.connection_side).toBe('SN');
+    expect(der.connection_side).toBe('dedicated_transformer');
     expect(der.bus_przylaczenia_ref).toBe('pcc_001');
     expect(der.completeness).toBe('complete');
     expect(der.created_at).toBe(FROZEN_NOW);
@@ -114,11 +126,12 @@ describe('useStationDerStore — single source of truth E-13 ↔ DER', () => {
 
   it('completeness = no_pcc gdy brak bus_przylaczenia_ref', () => {
     const result = computeDerCompleteness({
-      connection_side: 'SN',
+      connection_side: 'dedicated_transformer',
       bus_przylaczenia_ref: null,
       catalogs: { device_catalog_ref: 'x' } as never,
       profiles: { nc_rfg_profile_ref: 'y' } as never,
-      voltage_level_ref: 'z',
+      connection_voltage_kv: 15,
+      sn_connection_bus_ref: 'bus_sn_001',
     });
     expect(result).toBe('no_pcc');
   });

@@ -190,7 +190,25 @@ POMIJANE_KATALOGI = {
 #     zdjety 1 pre-existing martwy import `PowerFlowComparisonTab`
 #     (`power-flow-comparison.test.ts`, TS6133, napotkany w tym samym imporcie
 #     — Zero-Debt). Sprowadzone do 136.
-BUDZET_BLEDOW_POZA_BRAMKA = 136
+#   * Karta FAB-K (pomiar 2026-09-05): 137 -> 129, U ZRODLA. Karta zwezyla
+#     `ConnectionSide` (6 wartosci -> 2: `nN`/`dedicated_transformer`) i usunela
+#     fantomy `voltage_level_ref`/`connection_node_ref`/`internal_cable_ref`/
+#     `regulation_profile_ref` z `StationDerConnection` — kazdy plik testowy
+#     poza bramka, ktory jeszcze niosl STARE nazwy pol/wartosci (fikstury
+#     `station-der/__tests__/*`, `workspace/surfaces/__tests__/*`,
+#     `station-configurator/cards/__tests__/*`, `der-configurator/__tests__/*`,
+#     `ui2/oze/macierz/__tests__/fixtures.ts`, `ui2/spaces/wyniki/__tests__/*`),
+#     naprawiony U ZRODLA (nazwa/wartosc pola, nie wyciszenie). Przy okazji:
+#     `DerConfigurator.tsx` (breadcrumb karty DER, poza bramka testow — w
+#     BRAMCE, 0 bledow w bramce bez zmian) niosl WLASNA, DRUGA kopie etykiet
+#     `connectionSide` z czterema martwymi kluczami sprzed tej karty
+#     (`SN`/`at_zksn`/`at_branch_pole`/`at_cable_joint`, nieosiagalnymi przez
+#     zadna realna wartosc `ConnectionSide`) — zamieniona na reuzycie
+#     `punktPrzylaczeniaOpisPl` (`station-der/readiness.ts`, ta sama funkcja,
+#     ktorej juz uzywaly komunikaty blokerow gotowosci), zamiast dwoch kopii tej
+#     samej fizyki. Dlug NIE ROSL — zmalal jako SKUTEK UBOCZNY naprawy klasy pol
+#     DER (karta FAB-K), nie osobnej sesji sprzatania tego pliku.
+BUDZET_BLEDOW_POZA_BRAMKA = 129
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

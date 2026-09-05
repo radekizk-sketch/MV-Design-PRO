@@ -263,11 +263,11 @@ describe('WynikiWarsztat — zakładki', () => {
     // kreatora DER dla generatora ENM niesionego przez akcję SLD show-ncrfg).
     useStationDerStore.getState().attachDer({
       id: 'der-a', project_id: 'p-1', station_id: 'st-1',
-      der_kind: 'PV', name: 'PV_T1', connection_side: 'SN',
+      der_kind: 'PV', name: 'PV_T1', connection_side: 'nN',
     });
     useStationDerStore.getState().attachDer({
       id: 'der-b', project_id: 'p-1', station_id: 'st-1',
-      der_kind: 'PV', name: 'PV_T4', connection_side: 'SN',
+      der_kind: 'PV', name: 'PV_T4', connection_side: 'nN',
     });
     useShellStore.setState({ wynikiTab: 'ncrfg', wynikiTabElement: 'PV_T4' });
     render(<WynikiWarsztat {...props()} />);
@@ -284,7 +284,7 @@ describe('WynikiWarsztat — zakładki', () => {
   it('deep-link „ncrfg" z nieznanym refem: zakładka otwarta, pre-selekcja bez zmian (zero fabrykacji)', async () => {
     useStationDerStore.getState().attachDer({
       id: 'der-a', project_id: 'p-1', station_id: 'st-1',
-      der_kind: 'PV', name: 'PV_T1', connection_side: 'SN',
+      der_kind: 'PV', name: 'PV_T1', connection_side: 'nN',
     });
     useShellStore.setState({ wynikiTab: 'ncrfg', wynikiTabElement: 'nieznany-ref' });
     render(<WynikiWarsztat {...props()} />);

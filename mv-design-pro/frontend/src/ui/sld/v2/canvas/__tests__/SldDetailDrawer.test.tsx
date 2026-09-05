@@ -317,34 +317,51 @@ describe('SldDetailDrawer — right-side detail panel', () => {
     cleanup();
   });
 
-  it('DER punkt tab pre-fills connection_variant=nn_side default', () => {
+  it('DER punkt tab pokazuje stronę nN — punkt przyłączenia z realnej szyny stacji', () => {
+    const data: SldDetailDrawerData = {
+      kind: 'der', elementId: 'der-1', label: 'Stacja S-08',
+      derKind: 'PV', derConnectionVariant: 'nn_side',
+      nnSpec: { busVoltageKv: 0.4, loads: [] },
+    };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-punkt"]') as Element);
+    expect(container.querySelector('[data-testid="drawer-der-connection-variant"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="drawer-der-connection-nn_side"]')?.textContent)
+      .toContain('Strona nN');
+    // Wariant nN → punkt przyłączenia z REALNEJ szyny nN stacji (`nnSpec`), nie
+    // ze zgadywanej stałej (karta FAB-K, §0 R3/R4, KLASA NIE INSTANCJA).
+    const pointVoltage = container.querySelector('[data-testid="drawer-der-point-voltage"]');
+    expect(pointVoltage?.textContent).toContain('0.400 kV');
+    cleanup();
+  });
+
+  it('DER punkt tab: napięcie punktu przyłączenia spada do 0,4 kV z uczciwą adnotacją, gdy stacja nie ma transformatora w modelu', () => {
     const data: SldDetailDrawerData = {
       kind: 'der', elementId: 'der-1', label: 'Stacja S-08',
       derKind: 'PV', derConnectionVariant: 'nn_side',
     };
     const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
     fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-punkt"]') as Element);
-    expect(container.querySelector('[data-testid="drawer-der-connection-variant"]')).toBeTruthy();
-    const nnRadio = container.querySelector('[data-testid="drawer-der-connection-nn_side"]') as HTMLInputElement;
-    const snRadio = container.querySelector('[data-testid="drawer-der-connection-sn_side"]') as HTMLInputElement;
-    expect(nnRadio.checked).toBe(true);
-    expect(snRadio.checked).toBe(false);
-    // Wariant nN → punkt przyłączenia 0,4 kV (niezależnie od katalogu
-    // przekształtników, który dla nN jest pusty — FAB-F).
     const pointVoltage = container.querySelector('[data-testid="drawer-der-point-voltage"]');
     expect(pointVoltage?.textContent).toContain('0.400 kV');
+    expect(pointVoltage?.textContent).toContain('wariant katalogowy');
     cleanup();
   });
 
-  it('DER punkt tab pre-fills connection_variant=sn_side when passed', () => {
+  it('DER punkt tab NIE oferuje przyłączenia SN — usunięty phantom (§0 R3, gwarantowany 422 bez punktu SN)', () => {
+    // Karta FAB-K: ten uproszczony formularz (drop DER na stację z palety SLD)
+    // nie zbiera punktu przyłączenia SN (`sn_connection_bus_ref`) — radio
+    // „Strona SN"/„Dedykowane przyłącze" dawały tu gwarantowany 422 przy
+    // KAŻDYM zapisie (ta sama klasa co usunięty 6-wariantowy `ConnectionSide`
+    // w AddDerWizard). Przyłączenie SN zbiera WYŁĄCZNIE pełny kreator DER.
     const data: SldDetailDrawerData = {
-      kind: 'der', elementId: 'der-1', label: 'PV-1',
-      derKind: 'PV', derConnectionVariant: 'sn_side',
+      kind: 'der', elementId: 'der-1', label: 'PV-1', derKind: 'PV',
     };
     const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
     fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-punkt"]') as Element);
-    const snRadio = container.querySelector('[data-testid="drawer-der-connection-sn_side"]') as HTMLInputElement;
-    expect(snRadio.checked).toBe(true);
+    expect(container.querySelector('[data-testid="drawer-der-connection-sn_side"]')).toBeNull();
+    expect(container.querySelector('[data-testid="drawer-der-connection-dedicated"]')).toBeNull();
+    expect(container.querySelectorAll('[data-testid="drawer-der-connection-variant"] input[type="radio"]').length).toBe(0);
     cleanup();
   });
 
@@ -746,14 +763,19 @@ describe('SldDetailDrawer — right-side detail panel', () => {
   });
 
   it('zakładka DER "Falownik" renderuje katalog PRAWDZIWY z backendu, per technologia', async () => {
+    // Karta FAB-K (§0 R3): `sn_side` USUNIĘTY z `SldDerConnectionVariant` (ten
+    // uproszczony formularz nie zbiera punktu przyłączenia SN — gwarantowany
+    // 422 bez niego). Mock katalogu przeniesiony na klasę napięcia nN (jedyny
+    // reachable wariant), intencja testu (katalog REALNY, per technologia,
+    // zero podstawienia) bez zmian.
     mockConverterCatalogFetch({
       PV: [
-        { id: 'conv-pv-0.5mw-15kv', name: 'Farma PV 0.5 MW / 15 kV', kind: 'PV', un_kv: 15, sn_mva: 0.5, pmax_mw: 0.5 },
-        { id: 'conv-pv-1mw-15kv', name: 'Farma PV 1 MW / 15 kV', kind: 'PV', un_kv: 15, sn_mva: 1, pmax_mw: 1 },
+        { id: 'conv-pv-nn-0.5mw-0p4kv', name: 'Falownik PV 0,5 MW / 0,4 kV', kind: 'PV', un_kv: 0.4, sn_mva: 0.5, pmax_mw: 0.5 },
+        { id: 'conv-pv-nn-1mw-0p4kv', name: 'Falownik PV 1 MW / 0,4 kV', kind: 'PV', un_kv: 0.4, sn_mva: 1, pmax_mw: 1 },
       ],
     });
     const data: SldDetailDrawerData = {
-      kind: 'der', elementId: 'pv-1', label: 'PV-1', derKind: 'PV', derConnectionVariant: 'sn_side',
+      kind: 'der', elementId: 'pv-1', label: 'PV-1', derKind: 'PV', derConnectionVariant: 'nn_side',
     };
     const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
     fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-inverter"]') as Element);
@@ -767,22 +789,24 @@ describe('SldDetailDrawer — right-side detail panel', () => {
     expect(select.value).toBe('');
     expect(select.options[0].value).toBe('');
     expect(select.options[0].label).toBe('— wybierz z katalogu —');
-    expect(Array.from(select.options).slice(1).map((o) => o.value)).toEqual(['conv-pv-0.5mw-15kv', 'conv-pv-1mw-15kv']);
+    expect(Array.from(select.options).slice(1).map((o) => o.value)).toEqual(['conv-pv-nn-0.5mw-0p4kv', 'conv-pv-nn-1mw-0p4kv']);
     expect(Array.from(select.options).slice(1).map((o) => o.label)).toEqual([
-      'Farma PV 0.5 MW / 15 kV',
-      'Farma PV 1 MW / 15 kV',
+      'Falownik PV 0,5 MW / 0,4 kV',
+      'Falownik PV 1 MW / 0,4 kV',
     ]);
     cleanup();
   });
 
   it('zakładka DER "Falownik" dla BESS ma inne typy niż PV (z katalogu backendu)', async () => {
+    // Karta FAB-K (§0 R3): mock przeniesiony na klasę napięcia nN (jedyny
+    // reachable wariant po usunięciu `sn_side`) — patrz test wyżej.
     mockConverterCatalogFetch({
       BESS: [
-        { id: 'conv-bess-0.5mw-1mwh-15kv', name: 'BESS 0.5 MW / 1 MWh / 15 kV', kind: 'BESS', un_kv: 15, sn_mva: 0.5, pmax_mw: 0.5, e_kwh: 1000 },
+        { id: 'conv-bess-nn-0.5mw-1mwh-0p4kv', name: 'BESS 0,5 MW / 1 MWh / 0,4 kV', kind: 'BESS', un_kv: 0.4, sn_mva: 0.5, pmax_mw: 0.5, e_kwh: 1000 },
       ],
     });
     const data: SldDetailDrawerData = {
-      kind: 'der', elementId: 'b-1', label: 'BESS-1', derKind: 'BESS', derConnectionVariant: 'sn_side',
+      kind: 'der', elementId: 'b-1', label: 'BESS-1', derKind: 'BESS', derConnectionVariant: 'nn_side',
     };
     const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
     fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-inverter"]') as Element);
@@ -791,7 +815,7 @@ describe('SldDetailDrawer — right-side detail panel', () => {
     });
     const select = container.querySelector('[data-testid="drawer-der-inverter-select"]') as HTMLSelectElement;
     expect(select.value).toBe('');
-    expect(Array.from(select.options).slice(1).map((o) => o.value)).toEqual(['conv-bess-0.5mw-1mwh-15kv']);
+    expect(Array.from(select.options).slice(1).map((o) => o.value)).toEqual(['conv-bess-nn-0.5mw-1mwh-0p4kv']);
     expect(container.innerHTML).not.toContain('conv-pv-');
     cleanup();
   });
@@ -854,10 +878,12 @@ describe('SldDetailDrawer — right-side detail panel', () => {
     // testu klikała „Falownik" PRZED zapisem i czekała na podstawioną wartość —
     // maskowała defekt produktu (zapis z zakładki „Moc" nigdy nie wysyłał
     // żądania). Test maskujący defekt = dwa defekty; tu ćwiczymy realną drogę.
+    // Karta FAB-K (§0 R3): mock katalogu przeniesiony na klasę napięcia nN
+    // (jedyny reachable wariant po usunięciu `sn_side`) — patrz test wyżej.
     mockConverterCatalogFetch({
       PV: [
-        { id: 'conv-pv-0.5mw-15kv', name: 'Farma PV 0.5 MW / 15 kV', kind: 'PV', un_kv: 15, sn_mva: 0.5, pmax_mw: 0.5 },
-        { id: 'conv-pv-1mw-15kv', name: 'Farma PV 1 MW / 15 kV', kind: 'PV', un_kv: 15, sn_mva: 1, pmax_mw: 1 },
+        { id: 'conv-pv-nn-0.5mw-0p4kv', name: 'Falownik PV 0,5 MW / 0,4 kV', kind: 'PV', un_kv: 0.4, sn_mva: 0.5, pmax_mw: 0.5 },
+        { id: 'conv-pv-nn-1mw-0p4kv', name: 'Falownik PV 1 MW / 0,4 kV', kind: 'PV', un_kv: 0.4, sn_mva: 1, pmax_mw: 1 },
       ],
     });
     const onSave = vi.fn();
@@ -865,9 +891,9 @@ describe('SldDetailDrawer — right-side detail panel', () => {
       kind: 'der',
       elementId: 'station/1',
       label: 'Stacja 1',
-      voltageKv: 15,
       derKind: 'PV',
-      derConnectionVariant: 'sn_side',
+      derConnectionVariant: 'nn_side',
+      nnSpec: { busVoltageKv: 0.4, loads: [] },
     };
     const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} onSave={onSave} />);
 
@@ -891,7 +917,7 @@ describe('SldDetailDrawer — right-side detail panel', () => {
     expect(container.querySelector('[data-testid="drawer-der-inverter-error"]')?.textContent)
       .toContain('Wybierz typ przekształtnika');
 
-    // Karta FAB-J: moduł NC RfG dla (1,2 MW, 15 kV) klasyfikuje się jako typ B
+    // Karta FAB-J: moduł NC RfG dla (1,2 MW, 0,4 kV) klasyfikuje się jako typ B
     // (0,8 kW ≤ P < 200 kW → A; 200 kW ≤ P < 10 MW → B) — zaglądamy do zakładki
     // „NC RfG", żeby dowieść, że klasyfikacja backendu się ustaliła PRZED
     // drugim zapisem (bez tego test łapałby wyścig z prowizoryczną wartością
@@ -914,8 +940,8 @@ describe('SldDetailDrawer — right-side detail panel', () => {
       container.querySelector('[data-testid="drawer-der-inverter-select"]') as HTMLSelectElement;
 
     // Jawny wybór — realna pozycja z odpowiedzi backendu, nie pierwsza z listy.
-    fireEvent.change(inverterSelectAfterRfg, { target: { value: 'conv-pv-1mw-15kv' } });
-    expect(inverterSelectAfterRfg.value).toBe('conv-pv-1mw-15kv');
+    fireEvent.change(inverterSelectAfterRfg, { target: { value: 'conv-pv-nn-1mw-0p4kv' } });
+    expect(inverterSelectAfterRfg.value).toBe('conv-pv-nn-1mw-0p4kv');
     fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-save"]') as Element);
 
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
@@ -925,9 +951,9 @@ describe('SldDetailDrawer — right-side detail panel', () => {
       derConfig: {
         derKind: 'PV',
         powerMw: 1.2,
-        connectionVariant: 'sn_side',
-        pointVoltageKv: 15,
-        inverterCatalogRef: 'conv-pv-1mw-15kv',
+        connectionVariant: 'nn_side',
+        pointVoltageKv: 0.4,
+        inverterCatalogRef: 'conv-pv-nn-1mw-0p4kv',
         ncRfgModule: 'B',
       },
     });
@@ -938,18 +964,19 @@ describe('SldDetailDrawer — right-side detail panel', () => {
     // Iloczyn cech: jawny wybór × zmiana pary (technologia, wariant) × leniwe
     // pobieranie katalogu. Stan haka jest kluczowany parą, więc lista PV
     // („ready") nie może uzasadnić zapisu identyfikatora PV dla BESS.
+    // Karta FAB-K (§0 R3): mock katalogu przeniesiony na klasę napięcia nN.
     mockConverterCatalogFetch({
-      PV: [{ id: 'conv-pv-1mw-15kv', name: 'Farma PV 1 MW / 15 kV', kind: 'PV', un_kv: 15, sn_mva: 1, pmax_mw: 1 }],
-      BESS: [{ id: 'conv-bess-1mw-2mwh-15kv', name: 'BESS 1 MW / 2 MWh / 15 kV', kind: 'BESS', un_kv: 15, sn_mva: 1, pmax_mw: 1, e_kwh: 2000 }],
+      PV: [{ id: 'conv-pv-nn-1mw-0p4kv', name: 'Falownik PV 1 MW / 0,4 kV', kind: 'PV', un_kv: 0.4, sn_mva: 1, pmax_mw: 1 }],
+      BESS: [{ id: 'conv-bess-nn-1mw-2mwh-0p4kv', name: 'BESS 1 MW / 2 MWh / 0,4 kV', kind: 'BESS', un_kv: 0.4, sn_mva: 1, pmax_mw: 1, e_kwh: 2000 }],
     });
     const onSave = vi.fn();
     const data: SldDetailDrawerData = {
       kind: 'der',
       elementId: 'station/1',
       label: 'Stacja 1',
-      voltageKv: 15,
       derKind: 'PV',
-      derConnectionVariant: 'sn_side',
+      derConnectionVariant: 'nn_side',
+      nnSpec: { busVoltageKv: 0.4, loads: [] },
     };
     const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} onSave={onSave} />);
 
@@ -958,8 +985,8 @@ describe('SldDetailDrawer — right-side detail panel', () => {
       expect(container.querySelector('[data-testid="drawer-der-inverter-select"]')).toBeTruthy();
     });
     const pvSelect = container.querySelector('[data-testid="drawer-der-inverter-select"]') as HTMLSelectElement;
-    fireEvent.change(pvSelect, { target: { value: 'conv-pv-1mw-15kv' } });
-    expect(pvSelect.value).toBe('conv-pv-1mw-15kv');
+    fireEvent.change(pvSelect, { target: { value: 'conv-pv-nn-1mw-0p4kv' } });
+    expect(pvSelect.value).toBe('conv-pv-nn-1mw-0p4kv');
 
     fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-typ"]') as Element);
     const typeSelect = container.querySelector('[data-testid="drawer-der-type-select"]') as HTMLSelectElement;
@@ -979,11 +1006,11 @@ describe('SldDetailDrawer — right-side detail panel', () => {
     await waitFor(() => {
       const select = container.querySelector('[data-testid="drawer-der-inverter-select"]') as HTMLSelectElement | null;
       expect(select).toBeTruthy();
-      expect(Array.from(select!.options).slice(1).map((o) => o.value)).toEqual(['conv-bess-1mw-2mwh-15kv']);
+      expect(Array.from(select!.options).slice(1).map((o) => o.value)).toEqual(['conv-bess-nn-1mw-2mwh-0p4kv']);
     });
     const bessSelect = container.querySelector('[data-testid="drawer-der-inverter-select"]') as HTMLSelectElement;
     expect(bessSelect.value).toBe('');
-    expect(container.innerHTML).not.toContain('conv-pv-1mw-15kv');
+    expect(container.innerHTML).not.toContain('conv-pv-nn-1mw-0p4kv');
     cleanup();
   });
 

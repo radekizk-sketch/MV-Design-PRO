@@ -517,6 +517,24 @@ export function KreatorZrodloZasilania() {
     </>
   );
 
+  /**
+   * R5 (karta FAB-K, wzorzec E2E-S95 — `KreatorMagistralaSn.tsx`): JEDNO
+   * źródło prawdy dla `zablokowana` przycisku zapisu ORAZ `status`/
+   * `data-status` korzenia `KreatorRama` (reguła KLASA NIE INSTANCJA,
+   * „Predykaty parami"). Poprzednia wersja NIE MIAŁA `zablokowana` w ogóle —
+   * przycisk „Zapisz GPZ" był klikalny od pierwszego renderu, a walidacja
+   * (`!activeCaseId` → `T.brakZakresu`) biegła DOPIERO po kliknięciu
+   * (`zapisz()`), więc `KreatorRama` nigdy nie niosła sygnału gotowości.
+   * Ładowanie = katalog systemów zasilających (`statusKatalogu`) jeszcze w
+   * locie — bez niego pola napięcia/Sk″/R/X zasiane z katalogu byłyby puste.
+   */
+  const stanGotowosci: 'ladowanie' | 'zablokowany' | 'gotowy' =
+    !activeCaseId
+      ? 'zablokowany'
+      : statusKatalogu === 'loading'
+        ? 'ladowanie'
+        : 'gotowy';
+
   return (
     <KreatorRama
       testid="mvd-kreator-zrodlo"
@@ -543,8 +561,22 @@ export function KreatorZrodloZasilania() {
         testid: 'mvd-kreator-zrodlo-dalej',
       }}
       bladGlobalny={bladGlobalny}
-      walidacja={bledy.length > 0 ? T.walidacjaStopka : null}
-      akcjaGlowna={{ etykieta: T.zapisz, onClick: () => void zapisz(), testid: 'mvd-kreator-zrodlo-zapisz' }}
+      walidacja={
+        stanGotowosci === 'ladowanie'
+          ? T.katalogLadowanieStopka
+          : stanGotowosci === 'zablokowany'
+            ? T.brakZakresu
+            : bledy.length > 0
+              ? T.walidacjaStopka
+              : null
+      }
+      status={stanGotowosci}
+      akcjaGlowna={{
+        etykieta: T.zapisz,
+        onClick: () => void zapisz(),
+        zablokowana: stanGotowosci !== 'gotowy',
+        testid: 'mvd-kreator-zrodlo-zapisz',
+      }}
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: closeForm, testid: 'mvd-kreator-zrodlo-anuluj' }}
     >
       {krok === 'identyfikacja' ? (

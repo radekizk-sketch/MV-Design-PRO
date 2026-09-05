@@ -81,25 +81,35 @@ vi.mock('../../../../ui/navigation/routes', () => ({
   navigateToSld: () => navigateToSldMock(),
 }));
 
+// R5 (karta FAB-K, wzorzec E2E-S95): `vi.hoisted` (nie zwykłe `const` nad
+// `vi.mock`) — testy gotowości nadpisują implementację per test
+// (`mockReturnValueOnce`), żeby symulować katalog przekształtników/aparatury
+// nN W TRAKCIE ładowania (Promise, który świadomie NIE rozstrzyga się w
+// obrębie testu) — ten sam wzorzec co `KreatorMagistralaSn.test.tsx`.
+const DOMYSLNE_KONWERTERY = [
+  {
+    id: 'conv-pv-1',
+    name: 'Falownik PV 1',
+    manufacturer: 'Producent testowy',
+    kind: 'PV',
+    un_kv: 0.4,
+    sn_mva: 1.0,
+    pmax_mw: 0.9,
+    qmin_mvar: -0.3,
+    qmax_mvar: 0.3,
+    ptpiree_certificate_ref: 'CERT-1',
+  },
+];
+const DOMYSLNE_APARATY = [{ id: 'apar-1', name: 'Wyłącznik nN', u_n_kv: 0.4, i_n_a: 630 }];
+const { fetchConverterTypesMock, fetchLvApparatusTypesMock } = vi.hoisted(() => ({
+  fetchConverterTypesMock: vi.fn(),
+  fetchLvApparatusTypesMock: vi.fn(),
+}));
+
 vi.mock('../../../../ui/catalog/api', () => ({
   getCatalogErrorMessage: () => 'błąd katalogu',
-  fetchConverterTypes: () =>
-    Promise.resolve([
-      {
-        id: 'conv-pv-1',
-        name: 'Falownik PV 1',
-        manufacturer: 'Producent testowy',
-        kind: 'PV',
-        un_kv: 0.4,
-        sn_mva: 1.0,
-        pmax_mw: 0.9,
-        qmin_mvar: -0.3,
-        qmax_mvar: 0.3,
-        ptpiree_certificate_ref: 'CERT-1',
-      },
-    ]),
-  fetchLvApparatusTypes: () =>
-    Promise.resolve([{ id: 'apar-1', name: 'Wyłącznik nN', u_n_kv: 0.4, i_n_a: 630 }]),
+  fetchConverterTypes: () => fetchConverterTypesMock(),
+  fetchLvApparatusTypes: () => fetchLvApparatusTypesMock(),
   // K9-A: katalogi kroku „Aparatura pola".
   fetchCtTypes: () =>
     Promise.resolve([
@@ -173,6 +183,10 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     uruchomAutoBiegMock.mockResolvedValue('DONE');
     fetchRaportMock.mockResolvedValue(null);
     fetchBomMock.mockResolvedValue(null);
+    fetchConverterTypesMock.mockReset();
+    fetchConverterTypesMock.mockResolvedValue(DOMYSLNE_KONWERTERY);
+    fetchLvApparatusTypesMock.mockReset();
+    fetchLvApparatusTypesMock.mockResolvedValue(DOMYSLNE_APARATY);
     // Readout osi gotowości wytwórcy pobiera dane z modelu przez fetch.
     vi.stubGlobal(
       'fetch',
@@ -539,6 +553,9 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     await screen.findByRole('option', { name: /Wyłącznik nN/ });
     expect(screen.getByTestId('mvd-kreator-oze-brak')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-kreator-oze-zapisz')).toBeDisabled();
+    // R5 (S9-5): sygnał gotowości (data-status) jest JEDNYM źródłem prawdy
+    // z `disabled` (KLASA NIE INSTANCJA, predykaty parami).
+    expect(screen.getByTestId('mvd-kreator-oze')).toHaveAttribute('data-status', 'zablokowany');
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
@@ -548,6 +565,54 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     // Realny stan końcowy montażu: opcja aparatu z katalogu (jak wyżej).
     await screen.findByRole('option', { name: /Wyłącznik nN/ });
     expect(screen.getByTestId('mvd-kreator-oze-zapisz')).toBeDisabled();
+    expect(screen.getByTestId('mvd-kreator-oze')).toHaveAttribute('data-status', 'zablokowany');
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  /**
+   * R5 (karta FAB-K, wzorzec E2E-S95) — PRZYCZYNA nazwana w kodzie:
+   * `akcjaGlowna.zablokowana` (`KreatorZrodlaOze.tsx`) sprawdzało WYŁĄCZNIE
+   * `!hasKontekst || !activeCaseId` — bez stanu ładowania katalogu
+   * przekształtników/aparatury nN (`GET /api/catalog/converter-types`,
+   * `.../lv-apparatus-types`, montaż komponentu). Test poniżej pokrywa ILOCZYN
+   * CECH z karty: „katalog jeszcze się ładuje" (Promise świadomie
+   * nierozstrzygnięty) × „kontekst i zakres obliczeń poprawne" → zapis MUSI
+   * być zablokowany, i to JAWNIE (komunikat w stopce), nie w ciszy.
+   */
+  it('iloczyn cech: katalog jeszcze się ładuje × kontekst/zakres poprawne → zapis zablokowany z komunikatem, nie w ciszy', () => {
+    fetchConverterTypesMock.mockReturnValueOnce(new Promise(() => {}));
+    fetchLvApparatusTypesMock.mockReturnValueOnce(new Promise(() => {}));
+    render(<KreatorZrodlaOze />);
+
+    expect(screen.getByTestId('mvd-kreator-oze-zapisz')).toBeDisabled();
+    expect(screen.getByTestId('mvd-kreator-oze')).toHaveAttribute('data-status', 'ladowanie');
+    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/[Łł]adowanie katalogu/);
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  /**
+   * R5 — test PRZEJŚCIA disabled→enabled sterowany REALNYM rozstrzygnięciem
+   * asynchronicznym (nie syntetyczną mutacją store'u): katalog w locie →
+   * `data-status="ladowanie"` + zapis zablokowany, katalog odpowiada →
+   * `data-status="gotowy"` I dopiero wtedy zapis klikalny.
+   */
+  it('przejście disabled→enabled: katalog w locie blokuje zapis, realne rozstrzygnięcie fetch odblokowuje', async () => {
+    let resolveKonwertery: (value: typeof DOMYSLNE_KONWERTERY) => void = () => {};
+    fetchConverterTypesMock.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveKonwertery = resolve;
+      }),
+    );
+    render(<KreatorZrodlaOze />);
+
+    expect(screen.getByTestId('mvd-kreator-oze-zapisz')).toBeDisabled();
+    expect(screen.getByTestId('mvd-kreator-oze')).toHaveAttribute('data-status', 'ladowanie');
+
+    resolveKonwertery(DOMYSLNE_KONWERTERY);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mvd-kreator-oze')).toHaveAttribute('data-status', 'gotowy');
+    });
+    expect(screen.getByTestId('mvd-kreator-oze-zapisz')).toBeEnabled();
   });
 });

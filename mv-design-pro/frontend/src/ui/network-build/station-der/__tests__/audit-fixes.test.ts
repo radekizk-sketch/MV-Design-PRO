@@ -13,7 +13,7 @@ import {
   getFaultCurrentDataForDevice,
   getDynamicModelForDevice,
   // Naprawa B
-  CONNECTION_VARIANT_CATALOG,
+  SN_CONNECTION_POINT_KIND_CATALOG,
   MV_NEUTRAL_GROUNDING_CATALOG,
   getMvNeutralGrounding,
   // Naprawa C
@@ -46,17 +46,21 @@ function makeDer(
     station_id: 's',
     der_kind: 'PV',
     name: 'PV X',
-    connection_side: 'SN',
+    // Karta FAB-K (§0 R3): dawny gołosłowny wariant `'SN'` (bez transformatora
+    // dedykowanego) USUNIĘTY — domyślnie nN (najmniej specjalnych gałęzi reguł
+    // gotowości; ten plik testuje dane zwarciowe/ochronne, nie topologię SN).
+    connection_side: 'nN',
     bus_przylaczenia_ref: 'pcc_x',
     bay_ref: 'bay_x',
     transformer_ref: null,
     lv_busbar_ref: null,
-    connection_node_ref: null,
-    internal_cable_ref: null,
-    voltage_level_ref: null,
+    sn_connection_bus_ref: null,
+    sn_connection_point_kind: null,
+    connection_voltage_kv: null,
     catalogs: { ...EMPTY_DER_CATALOGS, device_catalog_ref: 'pv_inv_sma_2500' },
     profiles: { ...EMPTY_DER_PROFILES, nc_rfg_profile_ref: 'ncrfg_pse' },
     nominal_power_kw: 2500,
+    unit_count: null,
     completeness: 'complete',
     readiness: { ...EMPTY_DER_READINESS },
     created_at: FROZEN_NOW,
@@ -254,25 +258,35 @@ describe('Naprawa B.1 — uziemienie neutralne (4 typy)', () => {
   });
 });
 
-describe('Naprawa B.2 — connection variants (rozszerzony)', () => {
-  it('katalog wariantów ma 6 pozycji (3 stacjonarne + 3 pozastacjonarne)', () => {
-    expect(CONNECTION_VARIANT_CATALOG.length).toBe(6);
-    const sides = CONNECTION_VARIANT_CATALOG.map((v) => v.side);
-    expect(sides).toContain('at_zksn');
-    expect(sides).toContain('at_branch_pole');
-    expect(sides).toContain('at_cable_joint');
+/**
+ * Karta FAB-K (§0 R3, KLASA NIE INSTANCJA): `CONNECTION_VARIANT_CATALOG`
+ * (6 „wariantów przyłączenia", w tym 3 „pozastacjonarne": `at_zksn`,
+ * `at_branch_pole`, `at_cable_joint") mieszał POZIOM przyłączenia z PUNKTEM
+ * przyłączenia SN w jednym enumie UI — cztery z sześciu wariantów dawały
+ * gwarantowany 422 (brak pickera transformatora dedykowanego). Punkt
+ * przyłączenia SN jest teraz `SnConnectionPointKind` — RODZAJ elementu modelu
+ * (`SN_CONNECTION_POINT_KIND_CATALOG`, WYŁĄCZNIE etykiety, nie enum wyboru:
+ * kandydaci pochodzą z migawki, `AddDerWizard.tsx::selectSnConnectionPointCandidates`).
+ * `at_cable_joint` (mufa) zniknął całkowicie — mufa nie ma topologii w modelu.
+ * Dawne ograniczenie „BESS nie może na słupie rozgałęźnym" nie ma odpowiednika
+ * w nowym modelu: kandydatury punktu SN nie są filtrowane po rodzaju DER (żaden
+ * fizyczny powód nie ogranicza BESS do konkretnego rodzaju punktu SN, skoro
+ * `CONNECTION_LEVEL_CATALOG.level_dedicated.applicable_der_kinds` dopuszcza
+ * PV/BESS/FW jednakowo) — test usunięty, nie przepisany na inny fakt.
+ */
+describe('SnConnectionPointKindCatalog (dawna Naprawa B.2 — punkt przyłączenia SN)', () => {
+  it('katalog rodzajów punktu SN ma 4 pozycje (szyna stacji, ZK SN, słup rozgałęźny, odgałęzienie)', () => {
+    expect(SN_CONNECTION_POINT_KIND_CATALOG.length).toBe(4);
+    const kinds = SN_CONNECTION_POINT_KIND_CATALOG.map((v) => v.kind);
+    expect(kinds).toContain('zksn');
+    expect(kinds).toContain('branch_pole');
+    expect(kinds).toContain('junction');
+    expect(kinds).not.toContain('at_cable_joint');
   });
 
   it('ZK SN wymaga zabezpieczenia kierunkowego (67/67N)', () => {
-    const zksn = CONNECTION_VARIANT_CATALOG.find((v) => v.side === 'at_zksn');
-    expect(zksn?.required_objects_pl.some((o) => o.includes('kierunkow'))).toBe(true);
-  });
-
-  it('Słup rozgałęźny dostępny dla PV i FW (nie BESS — brak energii)', () => {
-    const pole = CONNECTION_VARIANT_CATALOG.find((v) => v.side === 'at_branch_pole');
-    expect(pole?.applicable_der_kinds).toContain('PV');
-    expect(pole?.applicable_der_kinds).toContain('FW');
-    expect(pole?.applicable_der_kinds).not.toContain('BESS');
+    const zksn = SN_CONNECTION_POINT_KIND_CATALOG.find((v) => v.kind === 'zksn');
+    expect(zksn?.description_pl).toMatch(/kierunkow/);
   });
 });
 

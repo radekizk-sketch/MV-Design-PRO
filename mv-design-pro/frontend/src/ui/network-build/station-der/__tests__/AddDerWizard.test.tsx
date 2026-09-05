@@ -174,21 +174,6 @@ const DEFAULT_CONVERTERS: Readonly<Record<ConverterKind, readonly ConverterFixtu
   WIND: [],
 };
 
-/** Poziomy napięcia nN wyprowadzone z `DEFAULT_CONVERTERS` — te same reguły
- *  co `derRemoteCatalogs.ts::fetchLvVoltageLevelsKv` (un_kv < 1, deduplikacja,
- *  sortowanie), więc test nie zaszywa liczby domysłem. */
-function lvVoltageLevelsFromFixtures(
-  converters: Readonly<Partial<Record<ConverterKind, readonly ConverterFixture[]>>>,
-): readonly number[] {
-  const poziomy = new Set<number>();
-  for (const records of Object.values(converters)) {
-    for (const record of records ?? []) {
-      if (record.un_kv > 0 && record.un_kv < 1) poziomy.add(record.un_kv);
-    }
-  }
-  return [...poziomy].sort((a, b) => a - b);
-}
-
 /**
  * Mockuje granicę `fetch` — NIE listę opcji renderowaną przez kreator (wzorzec
  * `mockConverterCatalogFetch` z `SldDetailDrawer.test.tsx`). `/api/catalog/
@@ -264,6 +249,56 @@ function render(
 
 const FROZEN_NOW = '2026-05-06T10:00:00Z';
 
+/**
+ * Karta FAB-K (§0 R3/R4, KLASA NIE INSTANCJA): kreator NIE MA już fabrykowanej
+ * listy poziomów napięcia nN ani fałszywego wariantu „SN" bez transformatora —
+ * szyna nN pochodzi WYŁĄCZNIE z realnej migawki (`resolveStationNnBus`), a
+ * punkt przyłączenia SN z realnych elementów modelu
+ * (`selectSnConnectionPointCandidates`). Testy, które wcześniej nie
+ * potrzebowały żadnej migawki (bo poziom napięcia był wyborem UI, nie odczytem
+ * modelu), TERAZ potrzebują stacji z transformatorem SN/nN i realnymi szynami
+ * — inaczej krok „Punkt" nie ma czego pokazać i `Dalej` zostaje zablokowane
+ * na zawsze (uczciwie, ale test musi dostarczyć dane, nie oczekiwać fantomu).
+ * Domyślna migawka niesie WSZYSTKIE „gołe" identyfikatory stacji użyte w tym
+ * pliku (`s`, `station_test`, `station-015`, `station_1`) z transformatorem
+ * 10 MVA (moc nigdy nie ogranicza urządzeń testowych ≤ 2,5 MW) — testy z
+ * WŁASNYM scenariuszem transformatora (np. „stacja 63 kVA") nadpisują
+ * `snapshot` własnym, węższym `useSnapshotStore.setState(...)`.
+ */
+function bareStationSnapshot(stationId: string): Record<string, unknown> {
+  return {
+    ref_id: stationId,
+    id: stationId,
+    bus_refs: [`${stationId}/sn`, `${stationId}/nn`],
+    transformer_refs: [`${stationId}/tr`],
+  };
+}
+function bareStationTransformer(stationId: string): Record<string, unknown> {
+  return {
+    ref_id: `${stationId}/tr`,
+    name: `TR stacyjny ${stationId}`,
+    hv_bus_ref: `${stationId}/sn`,
+    lv_bus_ref: `${stationId}/nn`,
+    sn_mva: 10,
+    uhv_kv: 15,
+    ulv_kv: 0.4,
+  };
+}
+function bareStationBuses(stationId: string): Record<string, unknown>[] {
+  return [
+    { ref_id: `${stationId}/sn`, id: `${stationId}/sn`, name: `Szyna SN ${stationId}`, voltage_kv: 15 },
+    { ref_id: `${stationId}/nn`, id: `${stationId}/nn`, name: `Szyna nN ${stationId}`, voltage_kv: 0.4 },
+  ];
+}
+const BARE_STATION_IDS = ['s', 'station_test', 'station-015', 'station_1'];
+function defaultBaseSnapshot(): Record<string, unknown> {
+  return {
+    substations: BARE_STATION_IDS.map(bareStationSnapshot),
+    transformers: BARE_STATION_IDS.map(bareStationTransformer),
+    buses: BARE_STATION_IDS.flatMap(bareStationBuses),
+  };
+}
+
 describe('AddDerWizard — 5-krokowy guided flow', () => {
   beforeEach(() => {
     useStationDerStore.getState().reset();
@@ -271,6 +306,7 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     useSnapshotStore.getState().reset();
     useAppStateStore.getState().setActiveProject('proj_test', 'Projekt testowy');
     useAppStateStore.getState().setActiveCase('case_test', 'Zakres testowy', 'ShortCircuitCase', 'NONE');
+    useSnapshotStore.setState({ caseId: 'case_test', snapshot: defaultBaseSnapshot() } as never);
   });
 
   it('zwraca null gdy isOpen=false', () => {
@@ -306,36 +342,34 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     expect(screen.getByTestId('add-der-step-review')).toBeInTheDocument();
   });
 
-  it('Krok 1: PV pokazuje 3 warianty (SN, nN, dedicated)', () => {
+  it('Krok 1: PV pokazuje 2 poziomy przyłączenia (nN, dedicated_transformer)', () => {
     render(
       <AddDerWizard isOpen stationId="s" stationName="S" derKind="PV" projectId="p" onClose={vi.fn()} />,
     );
-    expect(screen.getByTestId('variant-SN')).toBeInTheDocument();
     expect(screen.getByTestId('variant-nN')).toBeInTheDocument();
     expect(screen.getByTestId('variant-dedicated_transformer')).toBeInTheDocument();
   });
 
-  it('Krok 1: FW pokazuje 2 warianty (SN, dedicated) — bez nN', () => {
+  it('Krok 1: FW pokazuje WYŁĄCZNIE dedicated_transformer — bez nN', () => {
     render(
       <AddDerWizard isOpen stationId="s" stationName="S" derKind="FW" projectId="p" onClose={vi.fn()} />,
     );
-    expect(screen.getByTestId('variant-SN')).toBeInTheDocument();
     expect(screen.getByTestId('variant-dedicated_transformer')).toBeInTheDocument();
     expect(screen.queryByTestId('variant-nN')).toBeNull();
   });
 
-  it('przycisk Dalej zablokowany gdy nie wybrano wariantu (Krok 1)', () => {
+  it('przycisk Dalej zablokowany gdy nie wybrano poziomu przyłączenia (Krok 1)', () => {
     render(
       <AddDerWizard isOpen stationId="s" stationName="S" derKind="PV" projectId="p" onClose={vi.fn()} />,
     );
     const next = screen.getByTestId('add-der-next') as HTMLButtonElement;
     expect(next.disabled).toBe(true);
 
-    fireEvent.click(screen.getByTestId('variant-SN'));
+    fireEvent.click(screen.getByTestId('variant-nN'));
     expect(next.disabled).toBe(false);
   });
 
-  it('pełny flow PV po SN: 5 kroków → utwórz', async () => {
+  it('pełny flow PV po SN (transformator dedykowany na szynie stacji): 5 kroków → utwórz', async () => {
     const onClose = vi.fn();
     render(
       <AddDerWizard
@@ -349,14 +383,17 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
       />,
     );
 
-    // Krok 1: variant SN
-    fireEvent.click(screen.getByTestId('variant-SN'));
+    // Krok 1: poziom przyłączenia — SN przez transformator dedykowany.
+    fireEvent.click(screen.getByTestId('variant-dedicated_transformer'));
     fireEvent.click(screen.getByTestId('add-der-next'));
 
-    // Krok 2: nazwa, PCC, pole SN
+    // Krok 2: nazwa, PCC, punkt przyłączenia SN (element ISTNIEJĄCY w modelu —
+    // szyna SN stacji z domyślnej migawki testowej, karta FAB-K §0 R3).
     fireEvent.change(screen.getByTestId('add-der-name'), { target: { value: 'PV Test 1' } });
     fireEvent.change(screen.getByTestId('add-der-pcc-label'), { target: { value: 'PCC-01' } });
-    fireEvent.change(screen.getByTestId('add-der-bay-name'), { target: { value: 'Pole-PV-01' } });
+    fireEvent.change(screen.getByTestId('add-der-sn-connection-point'), {
+      target: { value: 'station_test/sn' },
+    });
     fireEvent.click(screen.getByTestId('add-der-next'));
 
     // Krok 3: device — katalog backendu jest ASYNCHRONICZNY (zero listy statycznej,
@@ -379,9 +416,11 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     expect(ders).toHaveLength(1);
     expect(ders[0].name).toBe('PV Test 1');
     expect(ders[0].der_kind).toBe('PV');
-    expect(ders[0].connection_side).toBe('SN');
+    expect(ders[0].connection_side).toBe('dedicated_transformer');
     expect(ders[0].bus_przylaczenia_ref).toContain('PCC-01');
-    expect(ders[0].bay_ref).toContain('Pole-PV-01');
+    expect(ders[0].sn_connection_bus_ref).toBe('station_test/sn');
+    expect(ders[0].sn_connection_point_kind).toBe('station_bus');
+    expect(ders[0].connection_voltage_kv).toBe(15);
     expect(ders[0].catalogs.device_catalog_ref).toBe('pv_inv_sma_2500');
     expect(ders[0].profiles.nc_rfg_profile_ref).toBe('pse');
     expect(ders[0].profiles.lvrt_curve_ref).toBe('pse');
@@ -390,22 +429,27 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     expect(ders[0].completeness).toBe('complete');
   });
 
-  it('po nN: krok 2 pokazuje wybór poziomu napięcia wyprowadzony z katalogu przekształtników', async () => {
+  /**
+   * Karta FAB-K (§0 R4, KLASA NIE INSTANCJA): `voltage_level_ref` USUNIĘTY jako
+   * phantom — nie ma już wyboru poziomu napięcia nN, bo backend dla `nn_side`
+   * sam wyprowadza szynę nN stacji. Dawny test sprawdzał, że opcje SELECTA
+   * pochodzą z katalogu przekształtników — TERAZ napięcie pochodzi WYŁĄCZNIE
+   * z REALNEJ szyny nN modelu (`resolveStationNnBus`), niezależnie od
+   * katalogu przekształtników w ogóle (który tu filtruje tylko urządzenia).
+   */
+  it('po nN: krok „Punkt" pokazuje REALNĄ szynę nN stacji z modelu (odczyt, nie wybór)', async () => {
     render(
       <AddDerWizard isOpen stationId="s" stationName="S" derKind="BESS" projectId="p" onClose={vi.fn()} />,
     );
     fireEvent.click(screen.getByTestId('variant-nN'));
     fireEvent.click(screen.getByTestId('add-der-next'));
-    // Poziomy WYPROWADZONE z katalogu przekształtników (karta FAB-J) — zero
-    // katalogu statycznego, więc liczba opcji wynika z fikstur, nie z domysłu.
-    const oczekiwanePoziomy = lvVoltageLevelsFromFixtures(DEFAULT_CONVERTERS);
-    await waitFor(() => {
-      const select = screen.getByTestId('add-der-voltage-level') as HTMLSelectElement;
-      expect(select.options.length).toBe(oczekiwanePoziomy.length + 1);
-    });
+    expect(screen.queryByTestId('add-der-voltage-level')).toBeNull();
+    const szyna = screen.getByTestId('add-der-nn-bus-readonly');
+    expect(szyna).toHaveTextContent('0,4');
+    expect(screen.queryByTestId('add-der-nn-bus-empty')).toBeNull();
   });
 
-  it('po nN: podpowiada gotowy punkt PCC, nazwę DER i napięcie z katalogu', async () => {
+  it('po nN: podpowiada gotowy punkt PCC i nazwę DER; napięcie z REALNEJ szyny modelu', async () => {
     render(
       <AddDerWizard
         isOpen
@@ -421,11 +465,10 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
 
     expect((screen.getByTestId('add-der-name') as HTMLInputElement).value).toBe('PV S15');
     expect((screen.getByTestId('add-der-pcc-label') as HTMLInputElement).value).toBe('PCC-PV-S15');
-    // Domyślny poziom napięcia nN to najniższy poziom faktycznie niesiony
-    // przez katalog przekształtników (karta FAB-J) — dla fikstur PV/BESS 0,4 kV.
-    await waitFor(() => {
-      expect((screen.getByTestId('add-der-voltage-level') as HTMLSelectElement).value).toBe('0.4');
-    });
+    // Napięcie nN to REALNA szyna stacji z migawki (karta FAB-K, §0 R4) — nie
+    // wybór z katalogu przekształtników, więc dostępne natychmiast (bez waitFor
+    // na katalog), z domyślnej migawki testowej (0,4 kV).
+    expect(screen.getByTestId('add-der-nn-bus-readonly')).toHaveTextContent('0,4');
     expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false);
   });
 
@@ -438,15 +481,9 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
 
     fireEvent.change(screen.getByTestId('add-der-name'), { target: { value: 'BESS-1' } });
     fireEvent.change(screen.getByTestId('add-der-pcc-label'), { target: { value: 'PCC-1' } });
-    // Poziomy napięcia nN są wyprowadzone asynchronicznie z katalogu
-    // przekształtników (karta FAB-J) — czekamy, aż opcja naprawdę istnieje.
-    await waitFor(() => {
-      const opcje = Array.from(
-        (screen.getByTestId('add-der-voltage-level') as HTMLSelectElement).options,
-      ).map((o) => o.value);
-      expect(opcje).toContain('0.4');
-    });
-    fireEvent.change(screen.getByTestId('add-der-voltage-level'), { target: { value: '0.4' } });
+    // Napięcie nN to REALNA szyna stacji z migawki (karta FAB-K, §0 R4) —
+    // dostępna natychmiast, bez wyboru z katalogu przekształtników.
+    expect(screen.getByTestId('add-der-nn-bus-readonly')).toHaveTextContent('0,4');
     fireEvent.click(screen.getByTestId('add-der-next'));
 
     // Krok 3: musi pokazac wybor baterii i trybow pracy.
@@ -484,6 +521,10 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
             sn_mva: 0.063,
           },
         ],
+        buses: [
+          { ref_id: 'station-063/sn', id: 'station-063/sn', name: 'Szyna SN 063', voltage_kv: 15 },
+          { ref_id: 'station-063/nn', id: 'station-063/nn', name: 'Szyna nN 063', voltage_kv: 0.4 },
+        ],
       },
     } as never);
 
@@ -500,11 +541,9 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
 
     fireEvent.click(screen.getByTestId('variant-nN'));
     fireEvent.click(screen.getByTestId('add-der-next'));
-    // Domyślny poziom napięcia nN wypełnia się dopiero po rozstrzygnięciu
-    // asynchronicznego zapytania o katalog przekształtników (karta FAB-J) —
-    // czekamy na niego, zanim spróbujemy przejść dalej z kroku „Punkt".
-    await waitFor(() =>
-      expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false));
+    // Napięcie nN to REALNA szyna stacji z migawki (karta FAB-K, §0 R4) —
+    // dostępna od razu (zero czekania na katalog przekształtników).
+    expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(screen.getByTestId('add-der-next'));
     await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
     expect(
@@ -566,6 +605,11 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
             blocking_transformer_ref: 'station-250/tr-block-pv',
           },
         ],
+        buses: [
+          { ref_id: 'station-250/sn', id: 'station-250/sn', name: 'Szyna SN 250', voltage_kv: 15 },
+          { ref_id: 'station-250/nn', id: 'station-250/nn', name: 'Szyna nN 250', voltage_kv: 0.4 },
+          { ref_id: 'pv-1000/nn', id: 'pv-1000/nn', name: 'Szyna nN bloku PV 1 MW', voltage_kv: 0.69 },
+        ],
       },
     } as never);
 
@@ -582,10 +626,11 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
 
     fireEvent.click(screen.getByTestId('variant-nN'));
     fireEvent.click(screen.getByTestId('add-der-next'));
-    // Domyślny poziom napięcia nN wypełnia się dopiero po rozstrzygnięciu
-    // asynchronicznego zapytania o katalog przekształtników (karta FAB-J).
-    await waitFor(() =>
-      expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false));
+    // Napięcie nN to REALNA szyna stacji z migawki (karta FAB-K, §0 R4) —
+    // MUSI być szyna transformatora STACYJNEGO (0,4 kV), nie transformatora
+    // blokowego innego DER na tej samej szynie SN (0,69 kV).
+    expect(screen.getByTestId('add-der-nn-bus-readonly')).toHaveTextContent('0,4');
+    expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(screen.getByTestId('add-der-next'));
 
     const summary = screen.getByTestId('add-der-compatible-device-summary');
@@ -606,11 +651,11 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
       <AddDerWizard isOpen stationId="s" stationName="S" derKind="PV" projectId="p" onClose={vi.fn()} />,
     );
     // Przejście do kroku 4
-    fireEvent.click(screen.getByTestId('variant-SN'));
+    fireEvent.click(screen.getByTestId('variant-dedicated_transformer'));
     fireEvent.click(screen.getByTestId('add-der-next'));
     fireEvent.change(screen.getByTestId('add-der-name'), { target: { value: 'P' } });
     fireEvent.change(screen.getByTestId('add-der-pcc-label'), { target: { value: 'P' } });
-    fireEvent.change(screen.getByTestId('add-der-bay-name'), { target: { value: 'P' } });
+    fireEvent.change(screen.getByTestId('add-der-sn-connection-point'), { target: { value: 's/sn' } });
     fireEvent.click(screen.getByTestId('add-der-next'));
     await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
     fireEvent.change(screen.getByTestId('add-der-device'), { target: { value: 'pv_inv_sma_2500' } });
@@ -629,11 +674,11 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
       <AddDerWizard isOpen stationId="s" stationName="S" derKind="PV" projectId="p" onClose={vi.fn()} />,
     );
 
-    fireEvent.click(screen.getByTestId('variant-SN'));
+    fireEvent.click(screen.getByTestId('variant-dedicated_transformer'));
     fireEvent.click(screen.getByTestId('add-der-next'));
     fireEvent.change(screen.getByTestId('add-der-name'), { target: { value: 'PV-1' } });
     fireEvent.change(screen.getByTestId('add-der-pcc-label'), { target: { value: 'PCC-PV' } });
-    fireEvent.change(screen.getByTestId('add-der-bay-name'), { target: { value: 'Pole PV' } });
+    fireEvent.change(screen.getByTestId('add-der-sn-connection-point'), { target: { value: 's/sn' } });
     fireEvent.click(screen.getByTestId('add-der-next'));
     await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
     fireEvent.change(screen.getByTestId('add-der-device'), { target: { value: 'pv_inv_sma_2500' } });
@@ -680,6 +725,10 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
             ulv_kv: 0.4,
           },
         ],
+        buses: [
+          { ref_id: 'station-063/sn', id: 'station-063/sn', name: 'Szyna SN 063', voltage_kv: 15 },
+          { ref_id: 'station-063/nn', id: 'station-063/nn', name: 'Szyna nN 063', voltage_kv: 0.4 },
+        ],
       },
     } as never);
 
@@ -696,10 +745,9 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
 
     fireEvent.click(screen.getByTestId('variant-nN'));
     fireEvent.click(screen.getByTestId('add-der-next'));
-    // Domyślny poziom napięcia nN wypełnia się dopiero po rozstrzygnięciu
-    // asynchronicznego zapytania o katalog przekształtników (karta FAB-J).
-    await waitFor(() =>
-      expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false));
+    // Napięcie nN to REALNA szyna stacji z migawki (karta FAB-K, §0 R4) —
+    // dostępna od razu (zero czekania na katalog przekształtników).
+    expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(screen.getByTestId('add-der-next'));
     await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
     fireEvent.change(screen.getByTestId('add-der-device'), {
@@ -718,8 +766,20 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
       expect(screen.getByTestId('add-der-auto-block-transformer')).toHaveTextContent(
         '1250 kVA',
       ));
+    // Karta FAB-K (§0 R3): SAM transformator dedykowany nie wystarcza już —
+    // Dalej wymaga TEŻ punktu przyłączenia SN (element istniejący w modelu),
+    // wracamy na krok „Punkt" po przełączeniu wariantu i wybieramy szynę SN
+    // stacji z migawki testowej.
+    fireEvent.click(screen.getByTestId('add-der-prev'));
+    fireEvent.change(screen.getByTestId('add-der-sn-connection-point'), {
+      target: { value: 'station-063/sn' },
+    });
     expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false);
 
+    // Krok „Punkt" → „Urządzenie" (wybór urządzenia i transformatora blokowego
+    // przetrwały nawigację wstecz/wprzód — to ten sam stan `selections`).
+    fireEvent.click(screen.getByTestId('add-der-next'));
+    expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(screen.getByTestId('add-der-next'));
     await waitFor(() => expect(screen.getByTestId('add-der-ncrfg')).not.toBeDisabled());
     fireEvent.change(screen.getByTestId('add-der-ncrfg'), { target: { value: 'enea' } });
@@ -764,6 +824,10 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
             ulv_kv: 0.4,
           },
         ],
+        buses: [
+          { ref_id: 'station-063/sn', id: 'station-063/sn', name: 'Szyna SN 063', voltage_kv: 15 },
+          { ref_id: 'station-063/nn', id: 'station-063/nn', name: 'Szyna nN 063', voltage_kv: 0.4 },
+        ],
       },
       executeDomainOperation: executeDomainOperation as never,
     } as never);
@@ -782,10 +846,9 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
 
       fireEvent.click(screen.getByTestId('variant-nN'));
       fireEvent.click(screen.getByTestId('add-der-next'));
-      // Domyślny poziom napięcia nN wypełnia się dopiero po rozstrzygnięciu
-      // asynchronicznego zapytania o katalog przekształtników (karta FAB-J).
-      await waitFor(() =>
-        expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false));
+      // Napięcie nN to REALNA szyna stacji z migawki (karta FAB-K, §0 R4) —
+      // dostępna od razu (zero czekania na katalog przekształtników).
+      expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false);
       fireEvent.click(screen.getByTestId('add-der-next'));
       await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
       fireEvent.change(screen.getByTestId('add-der-device'), {
@@ -825,7 +888,7 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     render(
       <AddDerWizard isOpen stationId="s" stationName="S" derKind="PV" projectId="p" onClose={onClose} />,
     );
-    fireEvent.click(screen.getByTestId('variant-SN'));
+    fireEvent.click(screen.getByTestId('variant-nN'));
     fireEvent.click(screen.getByTestId('add-der-wizard-close'));
     expect(onClose).toHaveBeenCalled();
     const ders = selectDersOfStation(useStationDerStore.getState(), 's');
@@ -847,12 +910,17 @@ describe('Katalog urządzeń DER — wyłącznie z backendu, zero listy zastępc
     useSnapshotStore.getState().reset();
     useAppStateStore.getState().setActiveProject('proj_test', 'Projekt testowy');
     useAppStateStore.getState().setActiveCase('case_test', 'Zakres testowy', 'ShortCircuitCase', 'NONE');
+    // Karta FAB-K (§0 R4): krok „Punkt" dla nN wymaga REALNEJ szyny nN stacji
+    // z migawki (zero fabrykowanego wyboru) — bez niej `Dalej` zostaje
+    // zablokowane na zawsze, więc te testy (o katalogu URZĄDZEŃ, nie o
+    // punkcie przyłączenia) potrzebują minimalnej, poprawnej migawki.
+    useSnapshotStore.setState({ caseId: 'case_test', snapshot: defaultBaseSnapshot() } as never);
   });
 
   it.each([
-    ['PV', 'variant-SN'],
-    ['BESS', 'variant-SN'],
-    ['FW', 'variant-SN'],
+    ['PV', 'variant-nN'],
+    ['BESS', 'variant-nN'],
+    ['FW', 'variant-dedicated_transformer'],
   ] as const)(
     'katalog pusty dla %s: stan zerowy uczciwy + krok zablokowany + zero identyfikatorów statycznych w DOM',
     async (derKind, variantTestId) => {
@@ -862,6 +930,11 @@ describe('Katalog urządzeń DER — wyłącznie z backendu, zero listy zastępc
       );
       fireEvent.click(screen.getByTestId(variantTestId));
       fireEvent.click(screen.getByTestId('add-der-next'));
+      // FW: WYŁĄCZNIE dedicated_transformer (karta FAB-K, §0 R3) — krok
+      // „Punkt" wymaga punktu przyłączenia SN, element ISTNIEJĄCY w modelu.
+      if (variantTestId === 'variant-dedicated_transformer') {
+        fireEvent.change(screen.getByTestId('add-der-sn-connection-point'), { target: { value: 's/sn' } });
+      }
       fireEvent.click(screen.getByTestId('add-der-next'));
 
       await waitFor(() =>
@@ -911,7 +984,7 @@ describe('Katalog urządzeń DER — wyłącznie z backendu, zero listy zastępc
       </QueryClientProvider>,
     );
 
-    fireEvent.click(screen.getByTestId('variant-SN'));
+    fireEvent.click(screen.getByTestId('variant-nN'));
     fireEvent.click(screen.getByTestId('add-der-next'));
     fireEvent.click(screen.getByTestId('add-der-next'));
 
@@ -935,7 +1008,7 @@ describe('Katalog urządzeń DER — wyłącznie z backendu, zero listy zastępc
       <AddDerWizard isOpen stationId="s" stationName="S" derKind="PV" projectId="p" onClose={vi.fn()} />,
       { PV: backendOnly, BESS: [], WIND: [] },
     );
-    fireEvent.click(screen.getByTestId('variant-SN'));
+    fireEvent.click(screen.getByTestId('variant-nN'));
     fireEvent.click(screen.getByTestId('add-der-next'));
     fireEvent.click(screen.getByTestId('add-der-next'));
     await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
@@ -962,7 +1035,7 @@ describe('Katalog urządzeń DER — wyłącznie z backendu, zero listy zastępc
       </QueryClientProvider>,
     );
 
-    fireEvent.click(screen.getByTestId('variant-SN'));
+    fireEvent.click(screen.getByTestId('variant-nN'));
     fireEvent.click(screen.getByTestId('add-der-next'));
     fireEvent.click(screen.getByTestId('add-der-next'));
     await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
@@ -979,7 +1052,7 @@ describe('Katalog urządzeń DER — wyłącznie z backendu, zero listy zastępc
     // bez śladu wyboru zrobionego dla poprzedniej technologii.
     await waitFor(() =>
       expect(screen.getByTestId('add-der-step-content-variant')).toBeInTheDocument());
-    fireEvent.click(screen.getByTestId('variant-SN'));
+    fireEvent.click(screen.getByTestId('variant-nN'));
     fireEvent.click(screen.getByTestId('add-der-next'));
     fireEvent.click(screen.getByTestId('add-der-next'));
     await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());

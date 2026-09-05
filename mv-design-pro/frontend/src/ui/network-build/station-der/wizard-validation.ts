@@ -40,9 +40,13 @@ export function generateDeterministicDerId(input: DeterministicIdInput): string 
 
 export interface WizardSelections {
   readonly connectionSide: string | null;
-  readonly voltageLevelRef: string | null;
   readonly pccLabel: string;
-  readonly bayName: string;
+  /**
+   * Karta FAB-K: punkt przyłączenia SN — szyna ISTNIEJĄCA w modelu, wymagana
+   * gdy `connectionSide==='dedicated_transformer'`. Zastępuje dawne `bayName`
+   * (etykieta tekstowa fabrykująca pseudo-referencję w UI).
+   */
+  readonly snConnectionBusRef: string | null;
   readonly deviceCatalogRef: string | null;
   readonly batteryCatalogRef: string | null;
   readonly ncRfgProfileRef: string | null;
@@ -65,13 +69,6 @@ export interface WizardValidationContext {
    * już w kreatorze.
    */
   readonly allowedDeviceCatalogIds?: readonly string[];
-  /**
-   * Karta FAB-J: poziomy napięcia nN wyprowadzone z katalogu przekształtników
-   * (`derRemoteCatalogs.ts::useLvVoltageLevelsKv`) — referencje to same
-   * wartości kV jako łańcuchy (`"0.4"`, nie `"lv_0_4kV"`), bez katalogu
-   * lokalnego do sprawdzenia.
-   */
-  readonly allowedLvVoltageLevelRefs?: readonly string[];
   /** Karta FAB-J: identyfikatory pakietów baterii BESS z `/api/catalog/bess-battery-types`. */
   readonly allowedBatteryCatalogIds?: readonly string[];
   /** Karta FAB-J: `operator_id` z `GET /api/ncrfg-tests/catalog` (pse/energa/tauron/enea/pge). */
@@ -99,13 +96,12 @@ export function validateWizardSelections(
     errors.push('Etykieta PCC nie może być pusta.');
   }
 
-  // Voltage level (tylko nN) — WYŁĄCZNIE poziomy wyprowadzone z katalogu
-  // przekształtników backendu (karta FAB-J); brak listy zastępczej.
-  if (selections.connectionSide === 'nN') {
-    const allowedLvVoltageLevelRefs = new Set(context.allowedLvVoltageLevelRefs ?? []);
-    if (!selections.voltageLevelRef || !allowedLvVoltageLevelRefs.has(selections.voltageLevelRef)) {
-      errors.push('Wybrany poziom napięcia nN nie istnieje wśród urządzeń w katalogu backendu.');
-    }
+  // Punkt przyłączenia SN (karta FAB-K) — WYŁĄCZNIE dla dedicated_transformer;
+  // musi wskazywać element ISTNIEJĄCY w modelu (backend odrzuca 422 bez niego —
+  // `generator.sn_connection_bus_missing`), więc kreator nie może pozwolić na
+  // zapis bez tego pola.
+  if (selections.connectionSide === 'dedicated_transformer' && !selections.snConnectionBusRef) {
+    errors.push('Punkt przyłączenia SN (szyna stacji / ZK SN / słup rozgałęźny / odgałęzienie) jest wymagany.');
   }
 
   // Device catalog (per kind) — WYŁĄCZNIE backend (karta FAB-I). Katalog lokalny

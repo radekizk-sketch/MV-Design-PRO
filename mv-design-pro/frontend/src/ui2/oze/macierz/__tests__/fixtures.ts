@@ -44,15 +44,18 @@ export function derFixture(over: DerFixtureOverrides): StationDerConnection {
     bay_ref: over.bay_ref ?? null,
     transformer_ref: over.transformer_ref ?? null,
     lv_busbar_ref: over.lv_busbar_ref ?? null,
-    connection_node_ref: over.connection_node_ref ?? null,
-    internal_cable_ref: over.internal_cable_ref ?? null,
+    sn_connection_bus_ref: over.sn_connection_bus_ref ?? null,
+    sn_connection_point_kind: over.sn_connection_point_kind ?? null,
     // Uwaga: rozróżniamy jawny `null` (brak danej) od „nie podano" (undefined → domyślna).
-    // Karta FAB-J: referencja JEST wartością kV jako łańcuch (`getLvVoltageLevel`
-    // parsuje `Number(ref)`), nie identyfikatorem katalogowym `"lv_0_4kV"`.
-    voltage_level_ref: 'voltage_level_ref' in over ? over.voltage_level_ref! : '0.4',
+    // Karta FAB-K: JEDYNE źródło napięcia przyłączenia od tej karty —
+    // `connection_voltage_kv`, liczba WPROST z modelu (szyna wytwórcy), nie
+    // dawna referencja tekstowa `voltage_level_ref` (usunięta jako fantom —
+    // backend nigdy jej nie przyjmował).
+    connection_voltage_kv: 'connection_voltage_kv' in over ? over.connection_voltage_kv! : 0.4,
     catalogs: { ...EMPTY_DER_CATALOGS, ...(over.catalogs ?? {}) },
     profiles: { ...EMPTY_DER_PROFILES, ...(over.profiles ?? {}) },
     nominal_power_kw: 'nominal_power_kw' in over ? over.nominal_power_kw! : 500,
+    unit_count: over.unit_count ?? null,
     completeness: over.completeness ?? 'complete',
     readiness: over.readiness ?? { ...EMPTY_DER_READINESS },
     created_at: over.created_at ?? '1970-01-01T00:00:00Z',

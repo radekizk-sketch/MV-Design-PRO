@@ -25,6 +25,7 @@ import {
   type DerKindUnified,
   type DerProfileSelections,
   type DerReadinessMatrix,
+  type SnConnectionPointKind,
   type StationDerConnection,
 } from './types';
 import { mergeStationDers } from './zModelu';
@@ -44,9 +45,9 @@ export interface AttachDerInput {
   readonly bay_ref?: string | null;
   readonly transformer_ref?: string | null;
   readonly lv_busbar_ref?: string | null;
-  readonly connection_node_ref?: string | null;
-  readonly internal_cable_ref?: string | null;
-  readonly voltage_level_ref?: string | null;
+  readonly sn_connection_bus_ref?: string | null;
+  readonly sn_connection_point_kind?: SnConnectionPointKind | null;
+  readonly connection_voltage_kv?: number | null;
   readonly catalogs?: Partial<DerCatalogSelections>;
   readonly profiles?: Partial<DerProfileSelections>;
   readonly nominal_power_kw?: number | null;
@@ -74,9 +75,9 @@ export interface StationDerState {
         | 'bay_ref'
         | 'transformer_ref'
         | 'lv_busbar_ref'
-        | 'connection_node_ref'
-        | 'internal_cable_ref'
-        | 'voltage_level_ref'
+        | 'sn_connection_bus_ref'
+        | 'sn_connection_point_kind'
+        | 'connection_voltage_kv'
         | 'name'
         | 'nominal_power_kw'
         | 'unit_count'
@@ -115,9 +116,9 @@ export const useStationDerStore = create<StationDerState>((set) => ({
       bay_ref: input.bay_ref ?? null,
       transformer_ref: input.transformer_ref ?? null,
       lv_busbar_ref: input.lv_busbar_ref ?? null,
-      connection_node_ref: input.connection_node_ref ?? null,
-      internal_cable_ref: input.internal_cable_ref ?? null,
-      voltage_level_ref: input.voltage_level_ref ?? null,
+      sn_connection_bus_ref: input.sn_connection_bus_ref ?? null,
+      sn_connection_point_kind: input.sn_connection_point_kind ?? null,
+      connection_voltage_kv: input.connection_voltage_kv ?? null,
       catalogs,
       profiles,
       nominal_power_kw: input.nominal_power_kw ?? null,
@@ -127,7 +128,8 @@ export const useStationDerStore = create<StationDerState>((set) => ({
         bus_przylaczenia_ref: input.bus_przylaczenia_ref ?? null,
         catalogs,
         profiles,
-        voltage_level_ref: input.voltage_level_ref ?? null,
+        connection_voltage_kv: input.connection_voltage_kv ?? null,
+        sn_connection_bus_ref: input.sn_connection_bus_ref ?? null,
       }),
       readiness: { ...EMPTY_DER_READINESS },
       created_at: now,
@@ -159,7 +161,8 @@ export const useStationDerStore = create<StationDerState>((set) => ({
           bus_przylaczenia_ref: der.bus_przylaczenia_ref,
           catalogs: nextCatalogs,
           profiles: der.profiles,
-          voltage_level_ref: der.voltage_level_ref,
+          connection_voltage_kv: der.connection_voltage_kv,
+          sn_connection_bus_ref: der.sn_connection_bus_ref,
         }),
         updated_at: nowIso ?? der.updated_at,
       };
@@ -180,7 +183,8 @@ export const useStationDerStore = create<StationDerState>((set) => ({
           bus_przylaczenia_ref: der.bus_przylaczenia_ref,
           catalogs: der.catalogs,
           profiles: nextProfiles,
-          voltage_level_ref: der.voltage_level_ref,
+          connection_voltage_kv: der.connection_voltage_kv,
+          sn_connection_bus_ref: der.sn_connection_bus_ref,
         }),
         updated_at: nowIso ?? der.updated_at,
       };
@@ -200,7 +204,8 @@ export const useStationDerStore = create<StationDerState>((set) => ({
           bus_przylaczenia_ref: patch.bus_przylaczenia_ref ?? der.bus_przylaczenia_ref,
           catalogs: der.catalogs,
           profiles: der.profiles,
-          voltage_level_ref: patch.voltage_level_ref ?? der.voltage_level_ref,
+          connection_voltage_kv: patch.connection_voltage_kv ?? der.connection_voltage_kv,
+          sn_connection_bus_ref: patch.sn_connection_bus_ref ?? der.sn_connection_bus_ref,
         }),
         updated_at: nowIso ?? der.updated_at,
       };

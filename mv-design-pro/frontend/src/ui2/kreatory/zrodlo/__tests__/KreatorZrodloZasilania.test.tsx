@@ -9,6 +9,9 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { KreatorZrodloZasilania } from '../KreatorZrodloZasilania';
+import { ZRODLO_STRINGS as T } from '../strings';
+
+const T_BRAK_ZAKRESU = T.brakZakresu;
 
 const closeFormMock = vi.fn();
 const collapseSurfaceStackToMock = vi.fn();
@@ -41,21 +44,33 @@ vi.mock('../../../../ui/navigation/routes', () => ({
   navigateToSld: () => navigateToSldMock(),
 }));
 
+// R5 (karta FAB-K, wzorzec E2E-S95): `vi.hoisted` — testy gotowości
+// nadpisują implementację per test (`mockReturnValueOnce`), żeby symulować
+// katalog systemów zasilających W TRAKCIE ładowania (Promise, który świadomie
+// NIE rozstrzyga się w obrębie testu) — ten sam wzorzec co
+// `KreatorMagistralaSn.test.tsx`. Pozostałe cztery katalogi tego kreatora
+// (aparaty/rodziny rozdzielnic/transformatory/tap changery) NIE wchodzą do
+// bramki `stanGotowosci` (karta FAB-K, §0 R5: „GPZ: katalog" — WYŁĄCZNIE
+// katalog systemów zasilających) — zostają prostym, nienadpisywalnym mockiem.
+const DOMYSLNY_KATALOG_ZRODEL = [
+  {
+    id: 'GPZ-001',
+    name: 'Zasilanie GPZ 15 kV',
+    operator_name: 'OSD',
+    series: null,
+    catalog_number: 'SRC-1',
+    voltage_rating_kv: 15,
+    sk3_mva: 310,
+    rx_ratio: 0.12,
+  },
+];
+const { fetchSourceSystemTypesMock } = vi.hoisted(() => ({
+  fetchSourceSystemTypesMock: vi.fn(),
+}));
+
 vi.mock('../../../../ui/catalog/api', () => ({
   getCatalogErrorMessage: () => 'błąd katalogu',
-  fetchSourceSystemTypes: () =>
-    Promise.resolve([
-      {
-        id: 'GPZ-001',
-        name: 'Zasilanie GPZ 15 kV',
-        operator_name: 'OSD',
-        series: null,
-        catalog_number: 'SRC-1',
-        voltage_rating_kv: 15,
-        sk3_mva: 310,
-        rx_ratio: 0.12,
-      },
-    ]),
+  fetchSourceSystemTypes: () => fetchSourceSystemTypesMock(),
   fetchMvApparatusTypes: () =>
     Promise.resolve([
       { id: 'APP-001', name: 'Wyłącznik SN', device_kind: 'WYLACZNIK', u_n_kv: 17.5, i_n_a: 630 },
@@ -125,6 +140,8 @@ describe('KreatorZrodloZasilania — realna ścieżka', () => {
     executeDomainOperationMock.mockResolvedValue({});
     navigateToSldMock.mockReset();
     fetchGridSourcePreviewMock.mockClear();
+    fetchSourceSystemTypesMock.mockReset();
+    fetchSourceSystemTypesMock.mockResolvedValue(DOMYSLNY_KATALOG_ZRODEL);
     appState.activeCaseId = 'case-1';
   });
 
@@ -197,17 +214,74 @@ describe('KreatorZrodloZasilania — realna ścieżka', () => {
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
-  it('bez aktywnego zakresu pokazuje uczciwy błąd zamiast zapisu', async () => {
-    const user = userEvent.setup();
+  /**
+   * R5 (karta FAB-K, wzorzec E2E-S95) — PRZYCZYNA nazwana w kodzie:
+   * `akcjaGlowna` (`KreatorZrodloZasilania.tsx`) NIE MIAŁO `zablokowana` w
+   * ogóle — przycisk „Zapisz GPZ" był klikalny bez aktywnego zakresu obliczeń,
+   * a błąd (`T.brakZakresu`) pokazywał się DOPIERO po kliknięciu, wewnątrz
+   * `zapisz()`. Naprawa: bez aktywnego zakresu przycisk jest zablokowany
+   * PRZED kliknięciem — `data-status="zablokowany"` i komunikat w stopce
+   * (`mvd-kreator-walidacja`), zero zapisu.
+   */
+  it('bez aktywnego zakresu obliczeń zapis jest zablokowany PRZED kliknięciem, z uczciwym komunikatem', async () => {
     appState.activeCaseId = null;
     render(<KreatorZrodloZasilania />);
-    await user.click(screen.getByTestId('mvd-kreator-zrodlo-dalej'));
-    await waitFor(() =>
-      expect((screen.getByTestId('mvd-kreator-zrodlo-katalog-select') as HTMLSelectElement).value).toBe('GPZ-001'),
-    );
-    await user.click(screen.getByTestId('mvd-kreator-zrodlo-zapisz'));
-    await waitFor(() => expect(screen.getByTestId('mvd-kreator-blad')).toBeTruthy());
+    // Domyka mikrotaski montażu (5 katalogów + auto-wybór) w `act`, bez
+    // zależności od konkretnego kroku formularza — asercja dotyczy WYŁĄCZNIE
+    // stanu przycisku zapisu, niezależnego od aktywnego kroku.
+    await act(async () => {});
+    expect(screen.getByTestId('mvd-kreator-zrodlo-zapisz')).toBeDisabled();
+    // R5 (S9-5): sygnał gotowości (data-status) jest JEDNYM źródłem prawdy
+    // z `disabled` (KLASA NIE INSTANCJA, predykaty parami).
+    expect(screen.getByTestId('mvd-kreator-zrodlo')).toHaveAttribute('data-status', 'zablokowany');
+    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toBe(T_BRAK_ZAKRESU);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  /**
+   * R5 — PRZYCZYNA nazwana w kodzie: `akcjaGlowna.zablokowana`
+   * (`KreatorZrodloZasilania.tsx`) w OGÓLE nie sprawdzało, czy katalog
+   * systemów zasilających (`GET /api/catalog/source-system-types`, efekt
+   * montujący komponent) już doszedł — przycisk „Zapisz GPZ" był klikalny od
+   * pierwszego renderu, niezależnie od tego async zależności. Test poniżej
+   * pokrywa ILOCZYN CECH z karty: „katalog jeszcze się ładuje" (fetch
+   * świadomie nierozstrzygnięty) × „aktywny zakres obliczeń poprawny" →
+   * zapis MUSI być zablokowany, i to JAWNIE (komunikat w stopce), nie w ciszy.
+   */
+  it('iloczyn cech: katalog systemów zasilających jeszcze się ładuje × zakres obliczeń poprawny → zapis zablokowany z komunikatem', () => {
+    fetchSourceSystemTypesMock.mockReturnValueOnce(new Promise(() => {}));
+    render(<KreatorZrodloZasilania />);
+
+    expect(screen.getByTestId('mvd-kreator-zrodlo-zapisz')).toBeDisabled();
+    expect(screen.getByTestId('mvd-kreator-zrodlo')).toHaveAttribute('data-status', 'ladowanie');
+    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/[Łł]adowanie katalogu/);
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  /**
+   * R5 — test PRZEJŚCIA disabled→enabled sterowany REALNYM rozstrzygnięciem
+   * asynchronicznym (nie syntetyczną mutacją store'u): katalog w locie →
+   * `data-status="ladowanie"` + zapis zablokowany, katalog odpowiada →
+   * `data-status="gotowy"` I dopiero wtedy zapis klikalny.
+   */
+  it('przejście disabled→enabled: katalog w locie blokuje zapis, realne rozstrzygnięcie fetch odblokowuje', async () => {
+    let resolveKatalog: (value: typeof DOMYSLNY_KATALOG_ZRODEL) => void = () => {};
+    fetchSourceSystemTypesMock.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveKatalog = resolve;
+      }),
+    );
+    render(<KreatorZrodloZasilania />);
+
+    expect(screen.getByTestId('mvd-kreator-zrodlo-zapisz')).toBeDisabled();
+    expect(screen.getByTestId('mvd-kreator-zrodlo')).toHaveAttribute('data-status', 'ladowanie');
+
+    resolveKatalog(DOMYSLNY_KATALOG_ZRODEL);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mvd-kreator-zrodlo')).toHaveAttribute('data-status', 'gotowy');
+    });
+    expect(screen.getByTestId('mvd-kreator-zrodlo-zapisz')).toBeEnabled();
   });
 
   it('tryb ręczny na kroku Źródło odsłania stronę WN i pola Sk″ (klik natywny)', async () => {

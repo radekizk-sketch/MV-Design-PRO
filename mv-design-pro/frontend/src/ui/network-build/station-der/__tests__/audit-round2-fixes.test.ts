@@ -40,20 +40,23 @@ function makeDer(overrides: Partial<StationDerConnection> = {}): StationDerConne
     station_id: 'station-test',
     der_kind: 'PV',
     name: 'Test DER',
-    connection_side: 'SN',
+    // Karta FAB-K (§0 R3): dawny gołosłowny wariant `'SN'` (bez transformatora
+    // dedykowanego) USUNIĘTY — domyślnie nN (najmniej specjalnych gałęzi
+    // reguł gotowości; testy eng.6/eng.11 poniżej nadpisują jawnie, gdzie
+    // trzeba SN przez transformator dedykowany).
+    connection_side: 'nN',
     bus_przylaczenia_ref: 'pcc_station-test_PCC-01',
     bay_ref: 'bay_station-test_Pole-01',
-    lv_busbar_ref: null,
+    lv_busbar_ref: 'busbar_station-test_main',
     transformer_ref: null,
-    connection_node_ref: null,
-    internal_cable_ref: null,
-    voltage_level_ref: null,
+    sn_connection_bus_ref: null,
+    sn_connection_point_kind: null,
+    connection_voltage_kv: 0.4,
     catalogs: {
       device_catalog_ref: 'pv_inv_sma_2500',
-      controller_catalog_ref: null,
+      ptpiree_certificate_ref: null,
       battery_catalog_ref: null,
       block_transformer_catalog_ref: null,
-      cable_catalog_ref: null,
       bay_catalog_ref: null,
       protection_catalog_ref: 'protection_der_basic',
       ct_catalog_ref: 'ct_400_5_5p20_15va_abb',
@@ -65,9 +68,11 @@ function makeDer(overrides: Partial<StationDerConnection> = {}): StationDerConne
       nc_rfg_profile_ref: 'ncrfg_pse',
       lvrt_curve_ref: 'lvrt_pse_b',
       hvrt_curve_ref: 'hvrt_pse_b',
-      regulation_profile_ref: null,
+      pf_curve_ref: null,
+      bess_operation_mode_refs: [],
     },
     nominal_power_kw: 2500,
+    unit_count: null,
     completeness: 'complete',
     readiness: {} as never,
     created_at: '2026-04-01T00:00:00Z',
@@ -184,12 +189,19 @@ describe('eng.6 — Dual-core CT dla 87T (transformator dedykowany ≥ 1.6 MVA)'
 // Pakiet C — eng.11 (Anti-islanding dla DER po nN/ZK)
 // =============================================================================
 
-describe('eng.11 — Anti-islanding dla DER po nN/ZK/słupie/mufie', () => {
+/**
+ * Karta FAB-K (§0 R3, KLASA NIE INSTANCJA): dawne warianty `at_zksn`/
+ * `at_branch_pole`/`at_cable_joint` złożyły się w JEDEN poziom
+ * `dedicated_transformer` + osobne `sn_connection_point_kind` (rodzaj punktu
+ * SN, pochodna typu elementu modelu). „SN (pole SN)" to teraz
+ * `dedicated_transformer` + `sn_connection_point_kind: 'station_bus'`.
+ */
+describe('eng.11 — Anti-islanding dla DER po nN/ZK/słupie/odgałęzieniu', () => {
   it('PV po nN bez protection_catalog → bloker anti-islanding', () => {
     const der = makeDer({
       connection_side: 'nN',
       lv_busbar_ref: 'busbar_station-test_main',
-      voltage_level_ref: '0.4',
+      connection_voltage_kv: 0.4,
       catalogs: {
         ...makeDer().catalogs,
         protection_catalog_ref: null, // BRAK protection
@@ -202,12 +214,13 @@ describe('eng.11 — Anti-islanding dla DER po nN/ZK/słupie/mufie', () => {
     ).toBe(true);
   });
 
-  it('FW po at_zksn bez protection → bloker anti-islanding', () => {
+  it('FW po transformatorze dedykowanym na ZK SN, bez protection → bloker anti-islanding', () => {
     const der = makeDer({
       der_kind: 'FW',
-      connection_side: 'at_zksn',
+      connection_side: 'dedicated_transformer',
       bay_ref: null,
-      connection_node_ref: 'node_zksn_ZK-12',
+      sn_connection_bus_ref: 'bus_zksn_ZK-12',
+      sn_connection_point_kind: 'zksn',
       catalogs: {
         ...makeDer().catalogs,
         protection_catalog_ref: null,
@@ -220,9 +233,11 @@ describe('eng.11 — Anti-islanding dla DER po nN/ZK/słupie/mufie', () => {
     ).toBe(true);
   });
 
-  it('PV po SN (pole SN) NIE wymaga anti-islanding (zwarcia w polu)', () => {
+  it('PV po SN (transformator dedykowany na szynie stacji) NIE wymaga anti-islanding (zwarcia w polu)', () => {
     const der = makeDer({
-      connection_side: 'SN',
+      connection_side: 'dedicated_transformer',
+      sn_connection_bus_ref: 'bus_sn_station-test',
+      sn_connection_point_kind: 'station_bus',
       catalogs: {
         ...makeDer().catalogs,
         protection_catalog_ref: null,

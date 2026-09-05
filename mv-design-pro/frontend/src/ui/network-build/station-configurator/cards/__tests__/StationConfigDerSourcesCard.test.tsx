@@ -51,16 +51,23 @@ function makeDer(
     station_id: 'station_1',
     der_kind: 'PV',
     name: 'PV Centralna',
-    connection_side: 'SN',
+    // Karta FAB-K (§0 R3): dawny gołosłowny `'SN'` USUNIĘTY — DER przez
+    // transformator dedykowany na szynie stacji (zgodne z niżej podanym
+    // `bay_ref`/napięciem 0,69 kV strony dolnej TR blokowego 15/0,69 kV).
+    connection_side: 'dedicated_transformer',
+    sn_connection_bus_ref: 'bus_sn_station_1',
+    sn_connection_point_kind: 'station_bus',
     bus_przylaczenia_ref: 'pcc_1',
     bay_ref: 'bay_1',
     transformer_ref: null,
     lv_busbar_ref: null,
-    internal_cable_ref: null,
-    voltage_level_ref: '0.69',
+    // Karta FAB-K (§0 R4): `voltage_level_ref` USUNIĘTY jako phantom —
+    // `connection_voltage_kv` (napięcie WYŁĄCZNIE z modelu) jest jedynym źródłem.
+    connection_voltage_kv: 0.69,
     catalogs: { ...EMPTY_DER_CATALOGS, device_catalog_ref: 'pv_inv_sma_2500' },
     profiles: { ...EMPTY_DER_PROFILES, nc_rfg_profile_ref: 'ncrfg_pse' },
     nominal_power_kw: 2500,
+    unit_count: null,
     completeness: 'complete',
     readiness: { ...EMPTY_DER_READINESS },
     created_at: FROZEN_NOW,
@@ -118,7 +125,6 @@ describe('StationConfigDerSourcesCard — Karta 7 "Układy PV/BESS/FW"', () => {
               block_transformer_catalog_ref: 'btr_pv_15_069_1250',
             },
             nominal_power_kw: 1000,
-            voltage_level_ref: null,
           }),
         ]}
         blockTransformers={[BLOCK_TRANSFORMER_FIXTURE]}

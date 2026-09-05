@@ -62,6 +62,7 @@ export const OZE_STRINGS = {
   katalog: 'Układ PV/BESS/FW',
   katalogPlaceholder: '— wybierz układ z katalogu —',
   katalogBlad: 'Nie udało się pobrać katalogu układów PV/BESS/FW.',
+  katalogLadowanieStopka: 'Ładowanie katalogu przekształtników i aparatury nN — zapis chwilę poczeka.',
   katalogPomoc: 'Tabliczka wnosi napięcie, moc znamionową i zdolność Q — z katalogu (ZERO fizyki w UI).',
   liczba: 'Liczba jednostek',
   liczbaPomoc: 'Moc zagregowana = liczba × Pmax jednostki; agregacja po stronie backendu.',

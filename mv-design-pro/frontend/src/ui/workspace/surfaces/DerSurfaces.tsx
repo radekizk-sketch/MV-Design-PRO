@@ -32,11 +32,14 @@ import {
   EMPTY_DER_CATALOGS,
   EMPTY_DER_PROFILES,
   EMPTY_DER_READINESS,
+  computeDerCompleteness,
   computeDerReadinessMatrix,
   getBlockTransformer,
   getNcRfgOperator,
+  getSnConnectionPointKindLabelPl,
   selectAllDers,
   selectDerById,
+  snPointKindForBus,
   useAudit2CatalogSnapshot,
   useBessBatteryTypes,
   useNcRfgModuleClassification,
@@ -46,6 +49,7 @@ import {
   type BlockTransformerItem,
   type NcRfgOperatorItem,
   type PfCurveItem,
+  type SnConnectionPointKind,
 } from '../../network-build/station-der';
 import { wzbogacOKlaseCt } from '../../network-build/station-der/ctZKatalogu';
 import {
@@ -67,7 +71,6 @@ import {
 } from '../../network-build/station-der/ptpireeCertifiedInverters';
 import type {
   ConnectionSide,
-  DerCompleteness,
   DerReadinessMatrix,
   ReadinessAxisStatus,
   StationDerConnection,
@@ -254,13 +257,22 @@ function resolveDeviceCatalogRef(explicitRef: string | null): string | null {
   return explicitRef && explicitRef.trim().length > 0 ? explicitRef : null;
 }
 
+/**
+ * Karta FAB-K (§0 R3, KLASA NIE INSTANCJA): `ConnectionSide` niesie WYŁĄCZNIE
+ * poziom przyłączenia — nN, albo SN przez transformator dedykowany (żadne
+ * urządzenie z katalogu przekształtników nie łączy się z siecią SN bez
+ * pośredniczącego transformatora). Dawny wynik `'SN'` (dla legacy
+ * `SOURCE_CONNECTION_STATION`) nie istnieje już jako wariant — grupowany z
+ * pozostałymi „dedicated" tak jak w drugim niezależnym czytniku tej samej
+ * wartości backendu (`enmToSldAdapter.ts::mapGeneratorConnectionSide`), żeby
+ * oba czytniki zgadzały się co do tych samych legacy stringów.
+ */
 function connectionSideFromGenerator(generator: Generator): ConnectionSide {
   switch (generator.connection_variant) {
     case 'DEDICATED_MV_CONNECTION':
+    case 'SOURCE_CONNECTION_STATION':
     case 'block_transformer':
       return 'dedicated_transformer';
-    case 'SOURCE_CONNECTION_STATION':
-      return 'SN';
     default:
       return 'nN';
   }
@@ -319,13 +331,31 @@ function buildDerFromGenerator(
   const catalogRef = resolveDeviceCatalogRef(
     generator.catalog_ref ?? stringFromRecord(materialized, ['device_catalog_ref']),
   );
-  const completeness: DerCompleteness = !busPrzylaczeniaRef
-    ? 'no_pcc'
-    : !catalogRef
-      ? 'missing_catalog'
-      : !ncRfgRef
-        ? 'missing_profile'
-        : 'complete';
+  // Karta FAB-K (§0 R1/R4): napięcie punktu przyłączenia WPROST z modelu (szyna
+  // wytwórcy) — JEDYNE źródło (ten sam mechanizm, co `zModelu.ts::derZGeneratora`,
+  // KLASA NIE INSTANCJA: dwa niezależne czytniki tego samego generatora muszą
+  // wyprowadzać napięcie tą samą regułą, inaczej rozjadą się na danych brzegowych).
+  const szynaPrzylaczenia = (snapshot?.buses ?? []).find(
+    (bus) => bus.ref_id === generator.bus_ref || bus.id === generator.bus_ref,
+  );
+  const connectionVoltageKv = typeof szynaPrzylaczenia?.voltage_kv === 'number'
+    ? szynaPrzylaczenia.voltage_kv
+    : null;
+  // Karta FAB-K (§0 R3): punkt przyłączenia SN — szyna GÓRNA transformatora
+  // dedykowanego, rodzaj wyprowadzony z typu elementu modelu, do którego ta
+  // szyna należy (`snPointKindForBus`, ta sama funkcja co kreator DER i
+  // `zModelu.ts`). Zero osobnego pola trzymanego jako wybór.
+  let snConnectionBusRef: string | null = null;
+  let snConnectionPointKind: SnConnectionPointKind | null = null;
+  if (connectionSide === 'dedicated_transformer' && transformerRef && snapshot) {
+    const transformator = (snapshot.transformers ?? []).find(
+      (t) => t.ref_id === transformerRef || t.id === transformerRef,
+    );
+    snConnectionBusRef = transformator?.hv_bus_ref ?? null;
+    if (snConnectionBusRef) {
+      snConnectionPointKind = snPointKindForBus(snapshot, snConnectionBusRef);
+    }
+  }
 
   const rekord: StationDerConnection = {
     id: generator.ref_id,
@@ -338,19 +368,14 @@ function buildDerFromGenerator(
     bay_ref: stringFromRecord(materialized, ['bay_ref']) ?? stringFromRecord(meta, ['bay_ref']),
     transformer_ref: transformerRef,
     lv_busbar_ref: lvBusbarRef,
-    connection_node_ref: stringFromRecord(materialized, ['connection_node_ref'])
-      ?? stringFromRecord(meta, ['connection_node_ref']),
-    internal_cable_ref: stringFromRecord(materialized, ['internal_cable_ref'])
-      ?? stringFromRecord(meta, ['internal_cable_ref']),
-    voltage_level_ref: stringFromRecord(materialized, ['voltage_level_ref'])
-      ?? stringFromRecord(meta, ['voltage_level_ref']),
+    sn_connection_bus_ref: snConnectionBusRef,
+    sn_connection_point_kind: snConnectionPointKind,
+    connection_voltage_kv: connectionVoltageKv,
     catalogs: {
       ...EMPTY_DER_CATALOGS,
       device_catalog_ref: catalogRef,
       ptpiree_certificate_ref: stringFromRecord(materialized, ['ptpiree_certificate_ref'])
         ?? stringFromRecord(meta, ['ptpiree_certificate_ref']),
-      controller_catalog_ref: stringFromRecord(materialized, ['controller_catalog_ref'])
-        ?? stringFromRecord(meta, ['controller_catalog_ref']),
       battery_catalog_ref: stringFromRecord(materialized, ['battery_catalog_ref'])
         ?? stringFromRecord(meta, ['battery_catalog_ref']),
       protection_catalog_ref: stringFromRecord(materialized, ['protection_catalog_ref'])
@@ -368,12 +393,27 @@ function buildDerFromGenerator(
       nc_rfg_profile_ref: ncRfgRef,
       lvrt_curve_ref: stringFromRecord(profiles, ['lvrt_curve_ref', 'lvrt']),
       hvrt_curve_ref: stringFromRecord(profiles, ['hvrt_curve_ref', 'hvrt']),
-      regulation_profile_ref: stringFromRecord(profiles, ['regulation_profile_ref', 'q_u_curve_ref']),
       pf_curve_ref: stringFromRecord(profiles, ['pf_curve_ref', 'p_f_curve_ref', 'pf']),
     },
     nominal_power_kw: nominalPowerKw,
     unit_count: unitCount,
-    completeness,
+    // Karta FAB-K (§0 R1, KLASA NIE INSTANCJA): JEDNA funkcja kompletności
+    // (`types.ts::computeDerCompleteness`) — wczesniejszy lokalny duplikat
+    // (`!busPrzylaczeniaRef ? 'no_pcc' : ...`) IGNOROWAL napiecie przylaczenia
+    // i punkt SN, wiec ten ekran i `zModelu.ts` mogly wystawic RÓŻNY werdykt
+    // kompletnosci dla tego samego wytworcy — dokladnie defekt, ktory ta
+    // reguła zakazuje (dwa niezalezne predykaty, ktore "dzis sie zgadzaja").
+    completeness: computeDerCompleteness({
+      connection_side: connectionSide,
+      bus_przylaczenia_ref: busPrzylaczeniaRef,
+      catalogs: {
+        ...EMPTY_DER_CATALOGS,
+        device_catalog_ref: catalogRef,
+      },
+      profiles: { ...EMPTY_DER_PROFILES, nc_rfg_profile_ref: ncRfgRef },
+      connection_voltage_kv: connectionVoltageKv,
+      sn_connection_bus_ref: snConnectionBusRef,
+    }),
     // JEDNA regula gotowosci na tym ekranie (V12K-243). Wczesniej stal tu lokalny,
     // slabszy duplikat (`buildReadinessForGenerator`): patrzyl wylacznie na obecnosc
     // urzadzenia katalogowego i profili, wiec IGNOROWAL klase przekladnika, dane pradu
@@ -417,9 +457,9 @@ function buildDerFromSurfaceContext(
     bay_ref: null,
     transformer_ref: null,
     lv_busbar_ref: null,
-    connection_node_ref: null,
-    internal_cable_ref: null,
-    voltage_level_ref: null,
+    sn_connection_bus_ref: null,
+    sn_connection_point_kind: null,
+    connection_voltage_kv: null,
     catalogs: { ...EMPTY_DER_CATALOGS },
     profiles: { ...EMPTY_DER_PROFILES },
     nominal_power_kw: null,
@@ -733,7 +773,7 @@ function buildDerCards(
       <section>
         <dl>
           <FieldRow label="Stacja" value={assignedLabel(der.station_id, 'stacja przypisana')} />
-          <FieldRow label="Strona przyłączenia" value={connectionSidePl(der.connection_side)} />
+          <FieldRow label="Strona przyłączenia" value={connectionSidePl(der.connection_side, der.sn_connection_point_kind)} />
           <FieldRow label="Tor mocy" value={torMocyPl(tor)} />
           <FieldRow label="Pole SN" value={assignedLabel(der.bay_ref, 'pole SN przypisane')} />
           <FieldRow label="Szyna nN" value={assignedLabel(der.lv_busbar_ref, 'szyna nN przypisana')} />
@@ -766,10 +806,6 @@ function buildDerCards(
           />
           <FieldRow label="Prąd zwarciowy falownika" value={faultCurrent} />
           <FieldRow label="Bateria BESS" value={bateriaLabel} />
-          <FieldRow
-            label="Regulator źródła"
-            value={assignedLabel(der.catalogs.controller_catalog_ref, 'regulator przypisany z katalogu')}
-          />
         </dl>
       </section>
     ),
@@ -898,9 +934,9 @@ function PvInverterCatalogPanel({
         bay_ref: der.bay_ref,
         transformer_ref: der.transformer_ref,
         lv_busbar_ref: der.lv_busbar_ref,
-        connection_node_ref: der.connection_node_ref,
-        internal_cable_ref: der.internal_cable_ref,
-        voltage_level_ref: der.voltage_level_ref,
+        sn_connection_bus_ref: der.sn_connection_bus_ref,
+        sn_connection_point_kind: der.sn_connection_point_kind,
+        connection_voltage_kv: der.connection_voltage_kv,
         catalogs: nextCatalogs,
         profiles: der.profiles,
         nominal_power_kw: der.nominal_power_kw,
@@ -1276,6 +1312,7 @@ function DerSurfaceShell({
       stationName: publicStationName(snapshot ?? null, station ?? null, der.station_id),
       projectName: publicProjectName(projectName),
       connectionSide: der.connection_side,
+      snConnectionPointKind: der.sn_connection_point_kind,
       busPrzylaczeniaRef: der.bus_przylaczenia_ref,
       bayRef: der.bay_ref,
       transformerRef: der.transformer_ref,
@@ -1331,7 +1368,7 @@ function DerSurfaceShell({
       </div>
       {der && (
         <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
-          <DerKpi label="Punkt przyłączenia" value={connectionSidePl(der.connection_side)} />
+          <DerKpi label="Punkt przyłączenia" value={connectionSidePl(der.connection_side, der.sn_connection_point_kind)} />
           {/* Kafel nazywa POZIOM mocy, ktory pokazuje (V12K-245). „Moc znamionowa" bez
               wskazania, czy chodzi o jednostke czy o cala pozycje, byla dokladnie ta
               dwuznacznoscia, ktora audyt E-21 wskazal w pkt P2. */}
@@ -1370,21 +1407,18 @@ function DerKpi({ label, value }: { readonly label: string; readonly value: stri
   );
 }
 
-function connectionSidePl(side: ConnectionSide): string {
-  switch (side) {
-    case 'SN':
-      return 'po stronie SN';
-    case 'nN':
-      return 'po stronie nN';
-    case 'dedicated_transformer':
-      return 'transformator dedykowany';
-    case 'at_zksn':
-      return 'na ZK SN';
-    case 'at_branch_pole':
-      return 'na słupie rozgałęźnym';
-    case 'at_cable_joint':
-      return 'na mufie kablowej';
-  }
+/**
+ * Karta FAB-K (§0 R3, KLASA NIE INSTANCJA): `ConnectionSide` niesie WYŁĄCZNIE
+ * poziom (nN / SN przez transformator dedykowany) — dawne pozastacjonarne
+ * warianty (`at_zksn`/`at_branch_pole`/`at_cable_joint`) i gołe `'SN'` bez
+ * transformatora nie istnieją już jako wartości tego typu. Dla SN etykieta
+ * dołącza RODZAJ punktu przyłączenia (`sn_connection_point_kind`) — ta sama
+ * informacja, którą kreator DER pokazuje w kroku „Punkt" i w podsumowaniu.
+ */
+function connectionSidePl(side: ConnectionSide, pointKind: SnConnectionPointKind | null): string {
+  if (side === 'nN') return 'po stronie nN';
+  const kindLabel = getSnConnectionPointKindLabelPl(pointKind);
+  return pointKind ? `transformator dedykowany — ${kindLabel}` : 'transformator dedykowany';
 }
 
 export function PvSourceSurface({ surface }: DerSurfaceProps): JSX.Element {

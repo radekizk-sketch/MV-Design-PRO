@@ -13,7 +13,6 @@ import { useMemo } from 'react';
 import { MISSING_DASH } from '../../../shared/formatPolishValue';
 import {
   getNcRfgOperator,
-  getLvVoltageLevel,
   getConnectionSideLabelPl,
   getBlockTransformer,
   type BlockTransformerItem,
@@ -93,7 +92,9 @@ function buildRow(
   blockTransformers: readonly BlockTransformerItem[],
   ncRfgOperators: readonly NcRfgOperatorItem[],
 ): DerRow {
-  const voltage = der.voltage_level_ref ? getLvVoltageLevel(der.voltage_level_ref) : null;
+  // Karta FAB-K: napięcie WYŁĄCZNIE z modelu (`connection_voltage_kv`) — dawny
+  // `voltage_level_ref` (osobna referencja katalogu poziomów) był fantomem.
+  const voltageKv = der.connection_voltage_kv ?? null;
   const profile = getNcRfgOperator(ncRfgOperators, der.profiles.nc_rfg_profile_ref);
   const blockTransformer = getBlockTransformer(
     blockTransformers,
@@ -104,7 +105,7 @@ function buildRow(
     : null;
   const voltagePl = blockTransformer
     ? `${blockTransformer.hv_kv.toLocaleString('pl-PL')}/${blockTransformer.lv_kv.toLocaleString('pl-PL')} kV`
-    : voltage ? `${voltage.nominal_kv} kV` : der.connection_side === 'SN' ? 'SN' : MISSING_DASH;
+    : voltageKv != null ? `${voltageKv.toLocaleString('pl-PL')} kV` : MISSING_DASH;
   return {
     der,
     connectionSidePl: getConnectionSideLabelPl(der.connection_side),

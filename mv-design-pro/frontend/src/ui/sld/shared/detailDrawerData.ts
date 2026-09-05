@@ -644,12 +644,29 @@ export function buildNodeDetailDrawerData(
  * Samo wywołanie `dropOnStation` (mutacja stanu hooka) ZOSTAJE u wołającego
  * — ta funkcja przyjmuje już gotowy `derKind` z wyniku dropu.
  */
+/**
+ * Karta FAB-K (§0 R3/R4, KLASA NIE INSTANCJA): `nnSpec.busVoltageKv` — REALNA
+ * szyna nN stacji (`selectStationDistributionTransformers` → `lv_bus_ref` →
+ * `buses[].voltage_kv`, ta sama migawka co `buildStationDetailDrawerData`
+ * wyżej), nie zgadywane „zawsze 0,4 kV" (dawny `pointVoltageForVariant` w
+ * `SldDetailDrawer.tsx` ignorował model dla `nn_side` i wpisywał stałą).
+ * Falownik przeciągnięty na stację BEZ transformatora w ENM zostaje z `null` —
+ * `SldDetailDrawer` pokazuje wtedy uczciwy fallback katalogowy, nie fikcyjną
+ * pewność.
+ */
 export function buildDerDropDetailDrawerData(
+  snapshot: EnergyNetworkModel | null,
   sldData: SldDataPayload,
   stationId: string,
   derKind: 'PV' | 'BESS' | 'FW',
 ): SldDetailDrawerData {
   const stationForDrop = sldData.stations.find((s) => s.id === stationId);
+  const substation = findSubstationByRef(snapshot, stationId);
+  const tr = selectStationDistributionTransformers(snapshot, substation ?? null)[0];
+  const lvBusRef = tr?.lv_bus_ref ?? null;
+  const lvBus = lvBusRef && snapshot
+    ? (snapshot.buses ?? []).find((b) => b.ref_id === lvBusRef || b.id === lvBusRef)
+    : null;
   return {
     kind: 'der',
     elementId: stationId,
@@ -662,6 +679,7 @@ export function buildDerDropDetailDrawerData(
     accentColor: derKind === 'PV' ? '#FFD166' : derKind === 'BESS' ? '#7DD3FC' : '#7EE0B5',
     derKind,
     derConnectionVariant: 'nn_side',
+    nnSpec: { busVoltageKv: lvBus?.voltage_kv ?? tr?.ulv_kv ?? null, loads: [] },
   };
 }
 

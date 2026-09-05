@@ -163,10 +163,14 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
       station_id: 'station_001',
       der_kind: 'PV',
       name: 'PV Centralna 1',
-      connection_side: 'SN',
+      // Karta FAB-K (§0 R3): dawny gołosłowny `'SN'` USUNIĘTY — transformator
+      // dedykowany na szynie SN stacji (asercja niżej dostaje etykietę bogatszą
+      // o rodzaj punktu, patrz `punktPrzylaczeniaOpisPl`).
+      connection_side: 'dedicated_transformer',
+      sn_connection_point_kind: 'station_bus',
       bus_przylaczenia_ref: 'pcc_001',
       bay_ref: 'bay_001',
-      voltage_level_ref: null,
+      connection_voltage_kv: null,
       catalogs: {
         device_catalog_ref: 'pv_inv_sma_2500',
         ct_catalog_ref: 'ct_500_5_10p20',
@@ -204,7 +208,13 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     // Nazwa urządzenia przychodzi asynchronicznie z `fetchDerConverterTypes` —
     // `findAllByText` czeka na rozwiązanie zapytania zamiast łapać stan sprzed niego.
     expect((await screen.findAllByText(/SMA Sunny Central 2500-EV/)).length).toBeGreaterThan(0);
-    expect(screen.getAllByText('po stronie SN').length).toBeGreaterThan(0);
+    // Karta FAB-K (§0 R3): etykieta nagłówka karty DER (`DerConfigurator`) czyta
+    // dziś TĘ SAMĄ funkcję co komunikaty blokerów gotowości (`punktPrzylaczeniaOpisPl`,
+    // reużyta zamiast drugiej, osobno starzejącej się kopii) — rodzaj punktu SN,
+    // nie płaski „po stronie SN".
+    expect(
+      screen.getAllByText('przez transformator dedykowany na szynie SN stacji').length,
+    ).toBeGreaterThan(0);
     expect(screen.getAllByText('2500 kW').length).toBeGreaterThan(0);
     // Nazwa operatora (useNcRfgOperatorCatalog) jest osobnym zapytaniem od
     // konwerterów powyżej — czekamy na nią z osobna zamiast zakładać, że oba
@@ -551,7 +561,7 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
       name: 'BESS-1',
       connection_side: 'nN',
       bus_przylaczenia_ref: 'pcc_002',
-      voltage_level_ref: '0.4',
+      connection_voltage_kv: 0.4,
       catalogs: {
         device_catalog_ref: 'bess_pcs_abb_500',
         battery_catalog_ref: 'bess_bat_byd_2880',
@@ -592,7 +602,10 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     expect(screen.getByText(/Konfigurator farmy wiatrowej/)).toBeInTheDocument();
     expect(screen.getByText('Turbiny')).toBeInTheDocument();
     expect(screen.getByText('Sieć wewnętrzna farmy')).toBeInTheDocument();
-    expect(screen.getAllByText('transformator dedykowany').length).toBeGreaterThan(0);
+    // Karta FAB-K (§0 R3): breadcrumb czyta `punktPrzylaczeniaOpisPl` (reużyta
+    // z `readiness.ts`) — bez `sn_connection_point_kind` (nieustawiony wyżej)
+    // pada odmiana ogólna, nie flat „transformator dedykowany".
+    expect(screen.getAllByText('przez transformator dedykowany').length).toBeGreaterThan(0);
   });
 
   it('breadcrumb pokazuje nazwę stacji i klikalna nawigacja do E-13', () => {
@@ -602,7 +615,9 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
       station_id: 'station_xyz',
       der_kind: 'PV',
       name: 'PV X',
-      connection_side: 'SN',
+      // Karta FAB-K (§0 R3): dawny gołosłowny `'SN'` USUNIĘTY — topologia
+      // przyłączenia jest tu nieistotna (test sprawdza wyłącznie breadcrumb).
+      connection_side: 'nN',
       bus_przylaczenia_ref: 'pcc_x',
       catalogs: { device_catalog_ref: 'pv_inv_sma_2500' },
       profiles: { nc_rfg_profile_ref: 'pse' },
@@ -706,7 +721,10 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
       station_id: 'station_xyz',
       der_kind: 'PV',
       name: 'PV z przekładnikiem',
-      connection_side: 'SN',
+      // Karta FAB-K (§0 R3): dawny gołosłowny `'SN'` USUNIĘTY — `nN`, żeby moc
+      // 2500 kW nie uruchamiała REGUŁY 87T (`dedicated_transformer` ≥ 1,6 MVA,
+      // eng.6), której ten test nie dotyczy (sprawdza wyłącznie odczyt klasy CT).
+      connection_side: 'nN',
       bus_przylaczenia_ref: 'pcc_y',
       catalogs: {
         device_catalog_ref: 'pv_inv_sma_2500',
@@ -748,7 +766,10 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
       station_id: 'station_xyz',
       der_kind: 'PV',
       name: 'PV z przekładnikiem spoza katalogu',
-      connection_side: 'SN',
+      // Karta FAB-K (§0 R3): dawny gołosłowny `'SN'` USUNIĘTY — `nN`, żeby moc
+      // 2500 kW nie uruchamiała reguły 87T (`dedicated_transformer` ≥ 1,6 MVA,
+      // eng.6), której ten test nie dotyczy.
+      connection_side: 'nN',
       bus_przylaczenia_ref: 'pcc_y',
       catalogs: {
         device_catalog_ref: 'pv_inv_sma_2500',
@@ -794,7 +815,10 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
       station_id: 'station_xyz',
       der_kind: 'PV',
       name: 'PV z zabezpieczeniem',
-      connection_side: 'SN',
+      // Karta FAB-K (§0 R3): dawny gołosłowny `'SN'` USUNIĘTY — topologia
+      // przyłączenia jest tu nieistotna (test sprawdza wyłącznie nazwę
+      // zabezpieczenia z katalogu).
+      connection_side: 'nN',
       bus_przylaczenia_ref: 'pcc_y',
       catalogs: {
         device_catalog_ref: 'pv_inv_sma_2500',
@@ -860,7 +884,10 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
       station_id: 'station_xyz',
       der_kind: 'PV',
       name: 'PV do wyboru CT',
-      connection_side: 'SN',
+      // Karta FAB-K (§0 R3): dawny gołosłowny `'SN'` USUNIĘTY — `nN`, żeby moc
+      // 2500 kW nie uruchamiała reguły 87T (`dedicated_transformer` ≥ 1,6 MVA,
+      // eng.6), której ten test nie dotyczy (sprawdza wyłącznie zapis PATCH).
+      connection_side: 'nN',
       bus_przylaczenia_ref: 'pcc_y',
       catalogs: { device_catalog_ref: 'pv_inv_sma_2500' },
       profiles: {},
@@ -934,7 +961,13 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
       station_id: 'station_xyz',
       der_kind: 'PV',
       name: 'PV bez przekładnika prądowego',
-      connection_side: 'SN',
+      // Karta FAB-K (§0 R3): dawny gołosłowny `'SN'` USUNIĘTY — `nN`, ŻEBY moc
+      // 2500 kW NIE uruchamiała reguły 87T (`dedicated_transformer` ≥ 1,6 MVA,
+      // eng.6, wymaga CT dual-core) — ten test dowodzi werdyktu KLASY CT
+      // (5P10, pojedynczy rdzeń zabezpieczeniowy), a `dedicated_transformer`
+      // zmieniłby oczekiwany werdykt na 'partial' z INNEGO powodu (87T), łamiąc
+      // intencję testu.
+      connection_side: 'nN',
       bus_przylaczenia_ref: 'pcc_y',
       catalogs: {
         device_catalog_ref: 'pv_inv_sma_2500',
@@ -982,7 +1015,9 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
       station_id: 'station_xyz',
       der_kind: 'PV',
       name: 'PV bez profilu',
-      connection_side: 'SN',
+      // Karta FAB-K (§0 R3): dawny gołosłowny `'SN'` USUNIĘTY — topologia
+      // przyłączenia jest tu nieistotna (test sprawdza wyłącznie KPI profilu NC RfG).
+      connection_side: 'nN',
       bus_przylaczenia_ref: 'pcc_y',
       catalogs: { device_catalog_ref: 'pv_inv_sma_2500' },
       profiles: {},

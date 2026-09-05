@@ -5,11 +5,13 @@
 import { describe, it, expect } from 'vitest';
 
 import {
-  CONNECTION_VARIANT_CATALOG,
+  CONNECTION_LEVEL_CATALOG,
+  SN_CONNECTION_POINT_KIND_CATALOG,
   STATION_TEMPLATE_CATALOG,
-  selectConnectionVariantsForKind,
+  selectConnectionLevelsForKind,
   getLvVoltageLevel,
   getConnectionSideLabelPl,
+  getSnConnectionPointKindLabelPl,
 } from '../catalogs';
 
 // USUNIĘTE (karta FAB-J, 2026-09-05) — `NC_RFG_PROFILE_CATALOG`, `LVRT_CURVE_CATALOG`,
@@ -61,37 +63,63 @@ describe('LvVoltageLevelCatalog — getLvVoltageLevel parsuje wartość-referenc
   });
 });
 
-describe('ConnectionVariantCatalog', () => {
-  it('zawiera 6 wariantów (3 stacjonarne + 3 pozastacjonarne — Naprawa B.2)', () => {
-    expect(CONNECTION_VARIANT_CATALOG).toHaveLength(6);
-    const sides = CONNECTION_VARIANT_CATALOG.map((v) => v.side);
-    expect(sides).toContain('SN');
+/**
+ * Karta FAB-K (§0 R3, KLASA NIE INSTANCJA): `CONNECTION_VARIANT_CATALOG`
+ * (6 „wariantów" — SN/nN/dedicated_transformer/at_zksn/at_branch_pole/
+ * at_cable_joint) mieszał DWIE ortogonalne decyzje fizyczne w jednym enumie:
+ * POZIOM przyłączenia (nN vs SN przez transformator dedykowany — żadne
+ * urządzenie katalogu przekształtników nie łączy się z siecią SN bez
+ * pośredniczącego transformatora, więc goły `SN` bez transformatora nie
+ * istnieje fizycznie) i, dla SN, PUNKT przyłączenia (element ISTNIEJĄCY w
+ * modelu — szyna stacji / `BranchPointSN` / `Junction`, WYBRANY z migawki, nie
+ * z katalogu UI). Cztery z sześciu dawnych wariantów dawały gwarantowany 422
+ * (`generator.block_transformer_catalog_missing`) — usunięte jako phantom.
+ * `CONNECTION_LEVEL_CATALOG` niesie WYŁĄCZNIE poziom (2 pozycje);
+ * `SN_CONNECTION_POINT_KIND_CATALOG` niesie WYŁĄCZNIE etykiety RODZAJU punktu
+ * (pochodna typu elementu modelu, `AddDerWizard.tsx::selectSnConnectionPointCandidates`
+ * wybiera realne kandydatury z migawki, nie z tego katalogu). Mufa kablowa
+ * (`CableJoint`) nie ma topologii w modelu — nie jest punktem przyłączenia.
+ */
+describe('ConnectionLevelCatalog', () => {
+  it('zawiera DOKŁADNIE 2 poziomy przyłączenia (nN, SN przez transformator dedykowany)', () => {
+    expect(CONNECTION_LEVEL_CATALOG).toHaveLength(2);
+    const sides = CONNECTION_LEVEL_CATALOG.map((v) => v.side);
     expect(sides).toContain('nN');
     expect(sides).toContain('dedicated_transformer');
-    expect(sides).toContain('at_zksn');
-    expect(sides).toContain('at_branch_pole');
-    expect(sides).toContain('at_cable_joint');
   });
 
-  it('selectConnectionVariantsForKind: PV ma 6 wariantów (SN, nN, dedicated, ZK SN, słup, mufa)', () => {
-    const variants = selectConnectionVariantsForKind('PV');
-    expect(variants).toHaveLength(6);
+  it('selectConnectionLevelsForKind: PV ma 2 poziomy (nN, dedicated_transformer)', () => {
+    const levels = selectConnectionLevelsForKind('PV');
+    expect(levels).toHaveLength(2);
+    expect(levels.map((v) => v.side)).toEqual(expect.arrayContaining(['nN', 'dedicated_transformer']));
   });
 
-  it('selectConnectionVariantsForKind: FW ma 3 warianty (SN, dedicated, słup) — nie nN, nie mufa', () => {
-    const variants = selectConnectionVariantsForKind('FW');
-    const sides = variants.map((v) => v.side);
-    expect(sides).toContain('SN');
+  it('selectConnectionLevelsForKind: FW ma WYŁĄCZNIE dedicated_transformer — nie nN', () => {
+    const levels = selectConnectionLevelsForKind('FW');
+    const sides = levels.map((v) => v.side);
     expect(sides).toContain('dedicated_transformer');
-    expect(sides).toContain('at_branch_pole');
     expect(sides).not.toContain('nN');
-    expect(sides).not.toContain('at_cable_joint');
   });
 
-  it('getConnectionSideLabelPl zwraca polski label', () => {
-    expect(getConnectionSideLabelPl('SN')).toContain('SN');
+  it('getConnectionSideLabelPl zwraca polski label — WYŁĄCZNIE dwie wartości', () => {
     expect(getConnectionSideLabelPl('nN')).toContain('nN');
     expect(getConnectionSideLabelPl('dedicated_transformer')).toContain('transformator');
+  });
+});
+
+describe('SnConnectionPointKindCatalog', () => {
+  it('zawiera DOKŁADNIE 3 rodzaje punktu SN (szyna stacji, ZK SN, słup rozgałęźny, odgałęzienie) — bez mufy', () => {
+    expect(SN_CONNECTION_POINT_KIND_CATALOG).toHaveLength(4);
+    const kinds = SN_CONNECTION_POINT_KIND_CATALOG.map((v) => v.kind);
+    expect(kinds).toEqual(expect.arrayContaining(['station_bus', 'zksn', 'branch_pole', 'junction']));
+  });
+
+  it('getSnConnectionPointKindLabelPl zwraca polski label per rodzaj, „—" dla null', () => {
+    expect(getSnConnectionPointKindLabelPl('station_bus')).toBeTruthy();
+    expect(getSnConnectionPointKindLabelPl('zksn')).toContain('ZK');
+    expect(getSnConnectionPointKindLabelPl('branch_pole')).toContain('rozgałęźny');
+    expect(getSnConnectionPointKindLabelPl('junction')).toContain('Odgałęzienie');
+    expect(getSnConnectionPointKindLabelPl(null)).toBe('—');
   });
 });
 
