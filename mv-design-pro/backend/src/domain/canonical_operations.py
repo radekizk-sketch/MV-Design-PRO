@@ -1996,47 +1996,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         fix_action_id="fix_genset_fuel_type",
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "fuel_type"},
     ),
-    # Karta FAB-D1 (2026-09, klasa A6-12): kody gotowości dla braków, które NIE
-    # mogą być cicho podstawione liczbą (D1: brak danej fizycznej = None, nigdy
-    # 0.0/wartość domyślna). Wpięcie w bramkę gotowości przed uruchomieniem
-    # analizy (application/calculation_readiness/**) i pole katalogowe k_sc
-    # (network_model/catalog/**) są poza zasięgiem tej karty (FAB-D2) — kod jest
-    # tu zarejestrowany zgodnie z rejestrem, którego pilnuje
-    # scripts/readiness_codes_guard.py; emisja z `enm/mapping.py` (falownik bez
-    # k_sc) i `enm/catalog_completion.py` (punkt rozgałęzny bez portów, odpływ
-    # nN bez rozstrzygalnej mocy) działa już w warstwie domenowej (pomija
-    # element zamiast fabrykować), ale nie skanuje jeszcze modelu wprost przez
-    # tę bramkę.
-    "inverter.k_sc_missing": ReadinessCodeSpec(
-        code="inverter.k_sc_missing",
-        area=ReadinessArea.GENERATORS,
-        priority=2,
-        level=ReadinessLevel.BLOCKER,
-        message_pl=(
-            "Falownik nie ma udziału zwarciowego (k_sc) z karty katalogowej — "
-            "analiza zwarciowa nie uwzględnia jego wkładu prądowego"
-        ),
-        fix_action_id="fix_inverter_k_sc",
-        fix_navigation={"panel": "inspector", "tab": "katalog"},
-    ),
-    "load.p_missing": ReadinessCodeSpec(
-        code="load.p_missing",
-        area=ReadinessArea.STATIONS,
-        priority=2,
-        level=ReadinessLevel.BLOCKER,
-        message_pl="Odpływ nN nie ma odbioru z rozstrzygalną mocą czynną",
-        fix_action_id="fix_add_nn_load",
-        fix_navigation={"panel": "inspector", "tab": "nn"},
-    ),
-    "catalog.ports_missing": ReadinessCodeSpec(
-        code="catalog.ports_missing",
-        area=ReadinessArea.CATALOGS,
-        priority=3,
-        level=ReadinessLevel.BLOCKER,
-        message_pl="Punkt rozgałęzny SN nie ma rozstrzygalnej liczby portów z katalogu",
-        fix_action_id="fix_branch_point_catalog",
-        fix_navigation={"panel": "inspector", "tab": "katalog"},
-    ),
 }
 
 

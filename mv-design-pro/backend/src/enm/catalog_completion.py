@@ -72,8 +72,10 @@ def _branch_point_port_count(
     liczbę portów po napisie referencji (`"2P" in ref`) albo po TOPOLOGII już
     podłączonych gałęzi (`len(branch_ports)`) — obie te ścieżki są odczytem
     CZEGOŚ INNEGO niż tabliczka katalogowa, nie pomiarem liczby portów TEJ
-    pozycji. Wołający NIE materializuje punktu rozgałęźnego bez tej danej
-    (kod gotowości `catalog.ports_missing`).
+    pozycji. Wołający NIE materializuje punktu rozgałęźnego bez tej danej —
+    brak `ports` w `materialized_params` zgłasza istniejąca brama katalogowa
+    operacji (`catalog.ref_required`, `domain_operations`), bez osobnego kodu
+    gotowości (kod bez emitera byłby fantomem — `readiness_consumption_guard`).
     """
     if branch_point_type == "branch_pole":
         return 1
@@ -240,8 +242,8 @@ def complete_branch_point_catalog_materialization(
             # Karta FAB-D1 (D8): katalog nie rozstrzyga liczby portów — punkt
             # rozgałęźny zostaje NIEZMATERIALIZOWANY (jak brak kanonu katalogu
             # dla mocy biernej odbioru niżej w tym pliku), zamiast zgadywać.
-            # Kod gotowości `catalog.ports_missing` (zarejestrowany w
-            # `domain.canonical_operations.READINESS_CODES`) sygnalizuje stan.
+            # Stan sygnalizuje istniejąca brama `catalog.ref_required`
+            # (`materialized_params` bez `ports`), nie osobny kod gotowości.
             continue
         materialized = _materialized_branch_point_params(
             branch_point_type=branch_point.branch_point_type,
@@ -554,9 +556,10 @@ def complete_station_loads_from_nn_feeders(
     # (`load_type.p_kw`) — usunięta stała modułu `DEFAULT_LOAD_KW` jako ŹRÓDŁO
     # danej (zostaje jako oczekiwana wartość w testach, jedno źródło prawdy to
     # katalog). Brak/niepoprawna moc w katalogu ⇒ NIE materializujemy odbioru,
-    # tak samo jak brak kanonu mocy biernej niżej — kod gotowości
-    # `load.p_missing` (zarejestrowany w `domain.canonical_operations.
-    # READINESS_CODES`) sygnalizuje wpis wymagający jawnej decyzji projektanta.
+    # tak samo jak brak kanonu mocy biernej niżej — odbiór po prostu nie
+    # powstaje (żadnej fabrykacji); to uzupełnianie wpisów legacy, a brak
+    # odbioru nie jest defektem modelu, więc bez kodu gotowości (kod bez
+    # emitera byłby fantomem — `readiness_consumption_guard`).
     if load_type is None or not isinstance(load_type.p_kw, int | float) or load_type.p_kw <= 0:
         return enm, False
     p_mw = float(load_type.p_kw) / 1000.0

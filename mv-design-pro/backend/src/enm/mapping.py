@@ -505,11 +505,10 @@ def _add_generator_sc_sources(
     którą miała usunąć. `InverterSource.k_sc`/`SynchronousMachineSource.k_sc`
     (``core/inverter.py``/``core/generator.py``) mają WŁASNY zaszyty domyślny 1,1
     poza zasięgiem tej karty (rdzeń zamrożony) — ta sama liczba, drugie miejsce.
-    Kod gotowości `inverter.k_sc_missing` (BLOCKER) jest zarejestrowany w
-    `domain.canonical_operations.READINESS_CODES`; pełna naprawa wymaga pola
-    katalogowego (FAB-D2) + logiki w `application/calculation_readiness/` +
-    świadomej decyzji, czy brak k_sc powinien blokować analizę zwarciową zamiast
-    liczyć z wartością typową — poza zasięgiem tej karty.
+    Pełna naprawa (karta FAB-H): pole katalogowe `ConverterType.k_sc`, a 1,1 jako
+    ZAREJESTROWANE założenie (ślad WHITE BOX + ostrzeżenie gotowości z
+    proweniencją) — kod gotowości powstaje razem z emiterem, nie wcześniej
+    (`readiness_consumption_guard`: kod bez emitera jest fantomem).
     Deterministic: iteration is id-sorted and each source id is the generator ref_id.
     A no-op when there are no generators, so machine-free networks keep a
     byte-identical SC Y-bus (the ybus machine shunt / inverter superposition are
