@@ -2785,6 +2785,19 @@
    "CreateBatchRequest": {
     "description": "Żądanie utworzenia serii przebiegów.",
     "properties": {
+     "name": {
+      "anyOf": [
+       {
+        "maxLength": 200,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Nazwa serii nadana przez projektanta (opcjonalna; pusty napis = brak nazwy)",
+      "title": "Name"
+     },
      "scenario_ids": {
       "description": "Identyfikatory scenariuszy zwarciowych przypadku (UUID)",
       "items": {

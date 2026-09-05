@@ -34,6 +34,8 @@ export const SERIE_STRINGS = {
   zaznaczWszystkie: 'Zaznacz wszystkie',
   odznaczWszystkie: 'Odznacz wszystkie',
   nicNieZaznaczono: 'Zaznacz co najmniej jeden scenariusz, aby uruchomić serię.',
+  nazwaSerii: 'Nazwa serii (opcjonalnie)',
+  nazwaSeriiPodpowiedz: 'np. zwarcia na odpływach — wariant letni',
 
   // Lista serii
   sekcjaLista: 'Wykonane serie',

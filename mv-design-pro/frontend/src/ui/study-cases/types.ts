@@ -388,6 +388,8 @@ export interface BatchJob {
  */
 export interface CreateBatchRequest {
   scenario_ids: string[];
+  /** Nazwa serii nadana przez projektanta (opcjonalna; backend przycina, pusta = brak). */
+  name?: string;
 }
 
 /**

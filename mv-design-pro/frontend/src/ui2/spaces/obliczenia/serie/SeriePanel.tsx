@@ -101,6 +101,7 @@ export function SeriePanel({
 
   const [zaznaczone, setZaznaczone] = useState<ReadonlySet<string>>(new Set());
   const [ogloszenie, setOgloszenie] = useState('');
+  const [nazwa, setNazwa] = useState('');
 
   useEffect(() => {
     setStudyCaseId(activeCaseId ?? null);
@@ -110,6 +111,7 @@ export function SeriePanel({
     // panel serii jest samowystarczalny także bez panelu scenariuszy.
     useFaultScenariosStore.getState().setStudyCaseId(activeCaseId ?? null);
     setZaznaczone(new Set());
+    setNazwa('');
   }, [activeCaseId, setStudyCaseId]);
 
   const przelacz = (id: string) => {
@@ -128,9 +130,14 @@ export function SeriePanel({
     if (!activeCaseId || zaznaczone.size === 0) return;
     setOgloszenie('');
     try {
-      const seria = await utworzIWykonajSerie(activeCaseId, [...zaznaczone]);
+      const seria = await utworzIWykonajSerie(
+        activeCaseId,
+        [...zaznaczone],
+        nazwa.trim() || undefined,
+      );
       setOgloszenie(ogloszeniePoWykonaniu(seria.status));
       setZaznaczone(new Set());
+      setNazwa('');
     } catch {
       /* komunikat błędu żyje w store (pokazany niżej) */
     }
@@ -224,6 +231,17 @@ export function SeriePanel({
                 </li>
               ))}
             </ul>
+            <label className="mvd-serie-nazwa">
+              <span className="mvd-serie-nazwa-etykieta">{T.nazwaSerii}</span>
+              <input
+                type="text"
+                data-testid="mvd-serie-nazwa"
+                value={nazwa}
+                maxLength={200}
+                placeholder={T.nazwaSeriiPodpowiedz}
+                onChange={(e) => setNazwa(e.target.value)}
+              />
+            </label>
             <div className="mvd-serie-nowa-stopka">
               <button
                 type="button"
@@ -278,6 +296,14 @@ export function SeriePanel({
               data-testid={`mvd-serie-wiersz-${seria.id}`}
             >
               <header className="mvd-serie-karta-glowa">
+                {seria.nazwa && (
+                  <span
+                    className="mvd-serie-karta-nazwa"
+                    data-testid={`mvd-serie-nazwa-${seria.id}`}
+                  >
+                    {seria.nazwa}
+                  </span>
+                )}
                 <span className={`mvd-tag ${WARIANT_STATUSU_SERII[seria.status]}`}>
                   {seria.statusEtykieta}
                 </span>

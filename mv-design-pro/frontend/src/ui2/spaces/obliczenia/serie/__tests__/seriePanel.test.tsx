@@ -50,6 +50,7 @@ function scenariusz(id: string, nazwa: string) {
 function rekordSerii(
   status: 'CREATED' | 'FINISHED' | 'FAILED' | 'PARTIAL',
   runIds: string[] = [],
+  nazwa: string | null = null,
 ) {
   const bledy =
     status === 'FAILED' || status === 'PARTIAL'
@@ -67,7 +68,7 @@ function rekordSerii(
     run_ids: runIds,
     result_set_ids: runIds,
     errors: bledy,
-    name: null,
+    name: nazwa,
     envelope: null,
     items: [],
   };
@@ -91,7 +92,11 @@ function biegKanoniczny(id: string) {
  * `api/batch_execution.py` + sąsiadami). Serie: przed wykonaniem lista pusta,
  * po POST execute lista niesie wykonaną serię (autorytatywne odświeżenie).
  */
-function zamontujBackend(opcje: { scenariusze: ReturnType<typeof scenariusz>[] }): Zadanie[] {
+function zamontujBackend(opcje: {
+  scenariusze: ReturnType<typeof scenariusz>[];
+  /** Nazwa, którą atrapa oddaje w rekordzie serii (jak backend po POST z `name`). */
+  nazwaSerii?: string;
+}): Zadanie[] {
   const zadania: Zadanie[] = [];
   let wykonano = false;
   vi.stubGlobal(
@@ -111,15 +116,18 @@ function zamontujBackend(opcje: { scenariusze: ReturnType<typeof scenariusz>[] }
       }
       if (metoda === 'GET' && url.endsWith('/batches')) {
         return wykonano
-          ? json({ batches: [rekordSerii('FINISHED', ['run-a', 'run-b'])], count: 1 })
+          ? json({
+              batches: [rekordSerii('FINISHED', ['run-a', 'run-b'], opcje.nazwaSerii ?? null)],
+              count: 1,
+            })
           : json({ batches: [], count: 0 });
       }
       if (metoda === 'POST' && url.endsWith('/batches')) {
-        return json(rekordSerii('CREATED'), 201);
+        return json(rekordSerii('CREATED', [], opcje.nazwaSerii ?? null), 201);
       }
       if (metoda === 'POST' && url.endsWith('/execute')) {
         wykonano = true;
-        return json(rekordSerii('FINISHED', ['run-a', 'run-b']));
+        return json(rekordSerii('FINISHED', ['run-a', 'run-b'], opcje.nazwaSerii ?? null));
       }
       if (metoda === 'GET' && url.endsWith('/runs')) {
         return wykonano
@@ -197,6 +205,30 @@ describe('SeriePanel — powierzchnia serii przebiegów', () => {
     // Po wykonaniu: lista serii odświeżona autorytatywnie (GET), status PL.
     expect(await screen.findByTestId('mvd-serie-wiersz-batch-1')).toBeTruthy();
     expect(screen.getByTestId('mvd-serie-wiersz-batch-1').textContent).toContain('Zakończona');
+    // Seria bez nazwy: karta NIE renderuje pustej etykiety nazwy.
+    expect(screen.queryByTestId('mvd-serie-nazwa-batch-1')).toBeNull();
+  });
+
+  it('NAZWA SERII (C1): wpisana nazwa jedzie w POST batches (przycięta) i wraca na kartę serii', async () => {
+    const user = userEvent.setup();
+    const zadania = zamontujBackend({
+      scenariusze: [scenariusz('s1', 'Zwarcie w GPZ')],
+      nazwaSerii: 'Wariant letni',
+    });
+    render(<SeriePanel {...PROPS} />);
+
+    await user.click(await screen.findByTestId('mvd-serie-scenariusz-s1'));
+    await user.type(screen.getByTestId('mvd-serie-nazwa'), '  Wariant letni  ');
+    await user.click(screen.getByTestId('mvd-serie-uruchom'));
+
+    await waitFor(() => {
+      const post = zadania.find((z) => z.metoda === 'POST' && z.url.endsWith('/batches'));
+      expect(post).toBeTruthy();
+      expect(post!.body).toEqual({ scenario_ids: ['s1'], name: 'Wariant letni' });
+    });
+    expect((await screen.findByTestId('mvd-serie-nazwa-batch-1')).textContent).toBe('Wariant letni');
+    // Pole nazwy wyczyszczone po uruchomieniu — kolejna seria zaczyna od zera.
+    expect((screen.getByTestId('mvd-serie-nazwa') as HTMLInputElement).value).toBe('');
   });
 
   it('WYNIKI: „Pokaż wyniki" biegu serii woła lądowisko K3 z identyfikatorem biegu', async () => {

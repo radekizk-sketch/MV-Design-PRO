@@ -80,6 +80,11 @@ class CreateBatchRequest(BaseModel):
         ...,
         description="Identyfikatory scenariuszy zwarciowych przypadku (UUID)",
     )
+    name: str | None = Field(
+        default=None,
+        max_length=200,
+        description="Nazwa serii nadana przez projektanta (opcjonalna; pusty napis = brak nazwy)",
+    )
 
 
 class BatchItemResponse(BaseModel):
@@ -183,6 +188,14 @@ def _do_odpowiedzi(batch: RunBatch, uow_factory: Callable[[], UnitOfWork] | None
 # =============================================================================
 
 
+def _nazwa_serii(surowa: str | None) -> str | None:
+    """Nazwa serii po przycięciu białych znaków; pusty napis to BRAK nazwy, nie nazwa ''."""
+    if surowa is None:
+        return None
+    przycieta = surowa.strip()
+    return przycieta or None
+
+
 @router.post(
     "/api/execution/study-cases/{case_id}/batches",
     response_model=BatchResponse,
@@ -220,6 +233,7 @@ def create_batch(
             klucz=klucz,
             study_case_id=parsed_case_id,
             scenario_ids=scenario_ids,
+            name=_nazwa_serii(request.name),
         )
         return _do_odpowiedzi(batch, uow_factory)
     except FaultScenarioNotFoundError as exc:

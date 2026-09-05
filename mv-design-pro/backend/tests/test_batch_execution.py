@@ -284,6 +284,43 @@ class TestCreateBatch:
             assert pozycja["result_freshness"] == "NONE"
         assert [p["position"] for p in data["items"]] == [0, 1]
 
+    def test_nazwa_serii_z_zadania_do_rekordu_i_listy_a_pusta_to_brak(self):
+        """Karta C1: nazwa serii ma pelny lancuch POST -> rekord -> GET lista/szczegol;
+        pusty napis (same biale znaki) to BRAK nazwy, nie nazwa ''."""
+        case_id = _nowy_przypadek()
+        _seed_valid_enm(case_id)
+        s1 = _create_scenario(case_id, name="A", element_ref="bus-main")
+
+        nazwana = client.post(
+            f"{BASE_URL}/study-cases/{case_id}/batches",
+            json={"scenario_ids": [s1["scenario_id"]], "name": "  Zwarcia — wariant letni  "},
+        )
+        assert nazwana.status_code == 201
+        assert nazwana.json()["name"] == "Zwarcia — wariant letni"
+
+        pusta = client.post(
+            f"{BASE_URL}/study-cases/{case_id}/batches",
+            json={"scenario_ids": [s1["scenario_id"]], "name": "   "},
+        )
+        assert pusta.status_code == 201
+        assert pusta.json()["name"] is None
+
+        lista = client.get(f"{BASE_URL}/study-cases/{case_id}/batches")
+        assert lista.status_code == 200
+        nazwy = {b["batch_id"]: b["name"] for b in lista.json()["batches"]}
+        assert nazwy[nazwana.json()["batch_id"]] == "Zwarcia — wariant letni"
+        assert nazwy[pusta.json()["batch_id"]] is None
+
+        szczegol = client.get(f"{BASE_URL}/batches/{nazwana.json()['batch_id']}")
+        assert szczegol.status_code == 200
+        assert szczegol.json()["name"] == "Zwarcia — wariant letni"
+
+        za_dluga = client.post(
+            f"{BASE_URL}/study-cases/{case_id}/batches",
+            json={"scenario_ids": [s1["scenario_id"]], "name": "x" * 201},
+        )
+        assert za_dluga.status_code == 422
+
     def test_pusta_lista_scenariuszy_400(self):
         response = client.post(
             f"{BASE_URL}/study-cases/{uuid4()}/batches",

@@ -159,8 +159,12 @@ class BatchExecutionService:
         klucz: str,
         study_case_id: UUID,
         scenario_ids: list[UUID],
+        name: str | None = None,
     ) -> RunBatch:
         """Utwórz serię przebiegów (CREATED) nad scenariuszami przypadku.
+
+        `name` — nazwa serii nadana przez projektanta (karta C1; `None` = bez
+        nazwy). Wołający (API) normalizuje pusty napis do `None`.
 
         Walidacje (polskie komunikaty — kontrakt API):
         - lista scenariuszy niepusta i bez duplikatów,
@@ -218,6 +222,7 @@ class BatchExecutionService:
             scenario_ids=scenario_ids,
             scenario_content_hashes=content_hashes,
             envelope=envelope,
+            name=name,
         )
 
         with run_batch_repository_scope() as repo:

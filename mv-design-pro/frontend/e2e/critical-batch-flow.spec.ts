@@ -174,6 +174,8 @@ test('krytyczny flow serii (CV-3.3-C): utwórz serię 2 pozycje -> odśwież str
   await expect(checkboxy).toHaveCount(2);
   await checkboxy.nth(0).click();
   await checkboxy.nth(1).click();
+  // Nazwa serii (karta C1): realne pole -> POST `name` -> rekord `run_batches` -> karta serii.
+  await page.getByTestId('mvd-serie-nazwa').fill('Seria e2e — zwarcia GPZ');
   await page.getByTestId('mvd-serie-uruchom').click();
 
   // Seria wykonana: wiersz widoczny, status „Zakończona" (FINISHED), oba
@@ -181,6 +183,7 @@ test('krytyczny flow serii (CV-3.3-C): utwórz serię 2 pozycje -> odśwież str
   const wiersz = page.locator('[data-testid^="mvd-serie-wiersz-"]').first();
   await expect(wiersz).toBeVisible({ timeout: 30000 });
   await expect(wiersz).toContainText('Zakończona');
+  await expect(wiersz.locator('[data-testid^="mvd-serie-nazwa-"]')).toHaveText('Seria e2e — zwarcia GPZ');
   const przyciskiWynikow = wiersz.locator('[data-testid^="mvd-serie-wyniki-"]');
   await expect(przyciskiWynikow).toHaveCount(2);
   await expect(przyciskiWynikow.nth(0)).toBeEnabled();
@@ -198,6 +201,9 @@ test('krytyczny flow serii (CV-3.3-C): utwórz serię 2 pozycje -> odśwież str
   const wierszPoOdswiezeniu = page.locator(`[data-testid="${idSerii}"]`);
   await expect(wierszPoOdswiezeniu).toBeVisible({ timeout: 30000 });
   await expect(wierszPoOdswiezeniu).toContainText('Zakończona');
+  await expect(wierszPoOdswiezeniu.locator('[data-testid^="mvd-serie-nazwa-"]')).toHaveText(
+    'Seria e2e — zwarcia GPZ',
+  );
   const przyciskiPoOdswiezeniu = wierszPoOdswiezeniu.locator(
     '[data-testid^="mvd-serie-wyniki-"]',
   );
