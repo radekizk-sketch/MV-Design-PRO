@@ -1423,6 +1423,89 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
   }
+  if (url.includes('/api/protection-comparisons') && url.endsWith('/trace')) {
+    // Scena "porownanie" (CV-3.3-B2), tryb "Zabezpieczenia": slad porownania
+    // (White Box, na zadanie) — ksztalt 1:1 z `ProtectionComparisonTraceResponse`
+    // (`api/protection_comparisons.py`), kroki 1:1 ze steps `application/
+    // protection_comparison/service.py` (nazwy krokow/pol/progow realne).
+    return new Response(
+      JSON.stringify({
+        comparison_id: 'cmp-zab-demo-1', run_a_id: 'run-zab-a', run_b_id: 'run-zab-b',
+        library_fingerprint_a: 'template_ref_oc_100@1', library_fingerprint_b: 'template_ref_oc_100@1',
+        steps: [
+          {
+            step: 'MATCH_EVALUATIONS', description_pl: 'Dopasowanie ewaluacji po (element chroniony, punkt zwarcia)',
+            inputs: { evaluations_a_count: 2, evaluations_b_count: 2 },
+            outputs: { matched_pairs: 2, total_rows: 2 },
+          },
+          {
+            step: 'COMPUTE_DELTAS', description_pl: 'Obliczanie różnic czasów i prądów',
+            inputs: { row_count: 2 },
+            outputs: { no_change_count: 1, trip_to_no_trip_count: 1, no_trip_to_trip_count: 0, invalid_change_count: 0 },
+          },
+          {
+            step: 'RANK_ISSUES', description_pl: 'Generowanie rankingu problemów wg severity (5→1)',
+            inputs: { row_count: 2, delay_threshold_s: 0.1, margin_threshold_percent: 5.0 },
+            outputs: { total_issues: 1, critical: 1, major: 0, moderate: 0, minor: 0 },
+          },
+        ],
+        created_at: '2026-07-22T09:05:00Z',
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  if (url.includes('/protection-runs') && !url.includes('/execute')) {
+    // Scena "porownanie" (CV-3.3-B2): lista zakonczonych przebiegow zabezpieczen
+    // projektu — ksztalt 1:1 z `ProtectionRunListItemResponse` (karta CV-3.3-B).
+    return new Response(
+      JSON.stringify({
+        runs: [
+          { id: 'run-zab-a', project_id: 'proj-demo', study_case_id: 'K1', analysis_type: 'protection_sn', status: 'FINISHED', created_at: '2026-07-21T10:10:00Z', finished_at: '2026-07-21T10:10:04Z', input_hash: 'hash-zab-a', snapshot_hash: 'snap-zab-a', model_revision: 1, scenario_ref: null },
+          { id: 'run-zab-b', project_id: 'proj-demo', study_case_id: 'K2', analysis_type: 'protection_sn', status: 'FINISHED', created_at: '2026-07-21T11:10:00Z', finished_at: '2026-07-21T11:10:05Z', input_hash: 'hash-zab-b', snapshot_hash: 'snap-zab-b', model_revision: 2, scenario_ref: null },
+        ],
+        total: 2,
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  if (url.includes('/api/protection-comparisons')) {
+    // Scena "porownanie" (CV-3.3-B2), tryb "Zabezpieczenia": wynik porownania
+    // A/B — ksztalt 1:1 z `ProtectionComparisonResultResponse` (delty i ranking
+    // WYLACZNIE z backendu; `i_fault_a_a/b` nullowalne — FAB-E).
+    return new Response(
+      JSON.stringify({
+        comparison_id: 'cmp-zab-demo-1', run_a_id: 'run-zab-a', run_b_id: 'run-zab-b', project_id: 'proj-demo',
+        rows: [
+          { protected_element_ref: 'BRK-F01', fault_target_id: 'SZ-ST7', device_id_a: 'REL-OC-001', device_id_b: 'REL-OC-001', trip_state_a: 'TRIPS', trip_state_b: 'NO_TRIP', t_trip_s_a: 0.35, t_trip_s_b: null, i_fault_a_a: 1250.4, i_fault_a_b: 980.2, delta_t_s: null, delta_i_fault_a: -270.2, margin_percent_a: 12.5, margin_percent_b: 8.1, state_change: 'TRIP_TO_NO_TRIP' },
+          { protected_element_ref: 'BRK-F02', fault_target_id: 'SZ-PV2', device_id_a: 'REL-OC-002', device_id_b: 'REL-OC-002', trip_state_a: 'TRIPS', trip_state_b: 'TRIPS', t_trip_s_a: 0.5, t_trip_s_b: 0.5, i_fault_a_a: 640.0, i_fault_a_b: 640.0, delta_t_s: 0, delta_i_fault_a: 0, margin_percent_a: 20.0, margin_percent_b: 14.0, state_change: 'NO_CHANGE' },
+        ],
+        ranking: [
+          { issue_code: 'TRIP_LOST', severity: 5, element_ref: 'BRK-F01', fault_target_id: 'SZ-ST7', description_pl: 'Zabezpieczenie BRK-F01 traci zadziałanie na punkcie SZ-ST7 w wariancie B.', evidence_refs: [0] },
+        ],
+        summary: { total_rows: 2, no_change_count: 1, trip_to_no_trip_count: 1, no_trip_to_trip_count: 0, invalid_change_count: 0, total_issues: 1, critical_issues: 1, major_issues: 0, moderate_issues: 0, minor_issues: 0 },
+        input_hash: 'hash-cmp-zab-demo', created_at: '2026-07-22T09:00:00Z',
+        // B1 (karta CV-3.3-B): proweniencja obu biegow — pole WYMAGANE, panel
+        // eksperckiego trybu (`mvd-por-proweniencja`) czyta je bezposrednio.
+        provenance_a: {
+          run_id: 'run-zab-a', analysis_type: 'protection_sn', status: 'FINISHED',
+          snapshot_hash: 'snap-zab-a', input_hash: 'hash-zab-a', finished_at: '2026-07-21T10:10:04Z',
+          envelope: {
+            wersja: 1, project_id: 'proj-demo', model_revision: 1, snapshot_hash: 'snap-zab-a',
+            catalog_fingerprint: 'cat-demo', options_hash: 'opt-demo', semantic_fingerprint: 'sem-zab-a',
+          },
+        },
+        provenance_b: {
+          run_id: 'run-zab-b', analysis_type: 'protection_sn', status: 'FINISHED',
+          snapshot_hash: 'snap-zab-b', input_hash: 'hash-zab-b', finished_at: '2026-07-21T11:10:05Z',
+          envelope: {
+            wersja: 1, project_id: 'proj-demo', model_revision: 2, snapshot_hash: 'snap-zab-b',
+            catalog_fingerprint: 'cat-demo', options_hash: 'opt-demo', semantic_fingerprint: 'sem-zab-b',
+          },
+        },
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
   if (url.includes('/api/oze-analysis/grid-strength')) {
     // Scena "sila-sieci" (V-B): sila sieci SCR/WSCR — ksztalt 1:1 z
     // `analysis/grid_strength/serializer.py::view_to_dict`; kroki WHITE BOX

@@ -29,44 +29,18 @@ export type PowerFlowIssueCode =
   | 'SLACK_POWER_CHANGED';
 
 /**
- * Polish labels for issue codes.
- */
-export const ISSUE_CODE_LABELS: Record<PowerFlowIssueCode, string> = {
-  NON_CONVERGENCE_CHANGE: 'Zmiana zbieznosci',
-  VOLTAGE_DELTA_HIGH: 'Duza zmiana napiecia',
-  ANGLE_SHIFT_HIGH: 'Duze przesuniecie kata',
-  LOSSES_INCREASED: 'Wzrost strat',
-  LOSSES_DECREASED: 'Spadek strat',
-  SLACK_POWER_CHANGED: 'Zmiana mocy bilansowej',
-};
-
-/**
  * Severity levels (1-5).
  * Backend: domain/power_flow_comparison.py → PowerFlowIssueSeverity
+ *
+ * Etykiety PL: ekran ui2 (`ui2/wyniki/porownanie/strings.ts`) niesie WŁASNE
+ * mapy `KOD_PROBLEMU_PL`/`WAGA_PL` operujące na TYCH SAMYCH typach
+ * (`PowerFlowIssueCode`/`IssueSeverity`, importowanych stąd). `ISSUE_CODE_
+ * LABELS`/`SEVERITY_LABELS`/`SEVERITY_COLORS` (Tailwind) skasowane jako
+ * martwe eksporty (karta CV-3.3-B2, D3): jedyny konsument,
+ * `PowerFlowComparisonPage.tsx`, jest skasowany, a ui2 nie stylizuje wagi
+ * kolorem Tailwind (system tagu `ostrzezenie` wzorca).
  */
 export type IssueSeverity = 1 | 2 | 3 | 4 | 5;
-
-/**
- * Polish labels for severity levels.
- */
-export const SEVERITY_LABELS: Record<IssueSeverity, string> = {
-  1: 'Informacyjny',
-  2: 'Niski',
-  3: 'Umiarkowany',
-  4: 'Wysoki',
-  5: 'Krytyczny',
-};
-
-/**
- * Colors for severity levels (Tailwind classes).
- */
-export const SEVERITY_COLORS: Record<IssueSeverity, string> = {
-  1: 'bg-slate-100 text-slate-600',
-  2: 'bg-blue-100 text-blue-700',
-  3: 'bg-amber-100 text-amber-700',
-  4: 'bg-orange-100 text-orange-700',
-  5: 'bg-red-100 text-red-700',
-};
 
 // =============================================================================
 // Bus Diff Row
@@ -291,47 +265,12 @@ export interface PowerFlowRunItem {
 // =============================================================================
 // UI State Types
 // =============================================================================
-
-/**
- * Active tab in Power Flow Comparison page.
- */
-export type PowerFlowComparisonTab = 'BUSES' | 'BRANCHES' | 'RANKING' | 'TRACE';
-
-/**
- * Polish tab labels.
- */
-export const COMPARISON_TAB_LABELS: Record<PowerFlowComparisonTab, string> = {
-  BUSES: 'Szyny - roznice',
-  BRANCHES: 'Galezie - roznice',
-  RANKING: 'Ranking problemow',
-  TRACE: 'Slad porownania',
-};
-
-/**
- * Convergence status labels (Polish).
- */
-export const CONVERGENCE_LABELS: Record<string, string> = {
-  true: 'Zbiezny',
-  false: 'Niezbiezny',
-};
-
-/**
- * Get delta color based on value.
- * Positive = rose (increase), Negative = green (decrease), Zero = gray
- */
-export function getDeltaColor(value: number, threshold = 0): string {
-  if (Math.abs(value) <= threshold) return 'text-slate-500';
-  if (value > 0) return 'text-rose-600 font-medium';
-  return 'text-green-600 font-medium';
-}
-
-/**
- * Get voltage delta color based on significance.
- */
-export function getVoltageDeltaColor(deltaVPu: number): string {
-  const absDelta = Math.abs(deltaVPu);
-  if (absDelta >= 0.05) return 'bg-red-100 text-red-700';
-  if (absDelta >= 0.02) return 'bg-orange-100 text-orange-700';
-  if (absDelta >= 0.01) return 'bg-amber-100 text-amber-700';
-  return '';
-}
+//
+// `PowerFlowComparisonTab`/`COMPARISON_TAB_LABELS`/`CONVERGENCE_LABELS`/
+// `getDeltaColor`/`getVoltageDeltaColor` SKASOWANE jako martwe eksporty (karta
+// CV-3.3-B2, D3): jedyny konsument, `PowerFlowComparisonPage.tsx`, jest
+// skasowany. Ekran ui2 (`ui2/wyniki/porownanie`) ma WŁASNY, już żywy
+// mechanizm zakładek (`Zakladka`/`POROWNANIE_STRINGS.zakladka*`,
+// `EkranPorownania.tsx`) i zbieżności (`zbieznoscPL`, `strings.ts`) — nie
+// stylizuje wagi/delty kolorem Tailwind (system tagu `ostrzezenie` wzorca),
+// więc reużycie tych funkcji nie miało tu zastosowania.

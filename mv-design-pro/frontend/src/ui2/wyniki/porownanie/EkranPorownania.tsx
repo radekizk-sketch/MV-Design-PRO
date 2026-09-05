@@ -1,7 +1,13 @@
 /*
- * EkranPorownania — konkretyzacja wspólnego wzorca ekranu analizy dla porównania
- * A/B rozpływu mocy (karta E12.1 / W-609). Wybór dwóch zakończonych przebiegów
- * rozpływu, JAWNE uruchomienie porównania w backendzie („Porównaj przebiegi"),
+ * EkranPorownania — JEDEN ekran „Porównanie przebiegów" z przełącznikiem RODZAJU
+ * porównania (karta E12.1/E12.2 W-609, rozszerzony o zabezpieczenia w CV-3.3-B2
+ * §0 D1): rozpływ mocy (`TrybRozplywu`, ten plik), zwarcia (`TrybZwarciowy.tsx`)
+ * i zabezpieczenia (`TrybZabezpieczen.tsx`). Zero drugiego ekranu — jeden rodzaj
+ * naraz, ten sam mechanizm wyboru A/B i ten sam panel proweniencji
+ * (`PanelProweniencji.tsx`) w każdym z nich.
+ *
+ * `TrybRozplywu` (poniżej): wybór dwóch zakończonych przebiegów rozpływu,
+ * JAWNE uruchomienie porównania w backendzie („Porównaj przebiegi"),
  * prezentacja: podsumowanie jako ZAŁOŻENIA wzorca (A · B · Δ), zakładki
  * Szyny/Gałęzie/Ranking (tabele wzorca `TabelaWynikow`), szczegół problemu.
  *
@@ -31,6 +37,7 @@ import {
   usePoprawWModelu,
 } from '../wzorzec';
 import { stronaDowodu } from './dowodPorownania';
+import { PanelProweniencji } from './PanelProweniencji';
 import {
   createPowerFlowComparison,
   fetchPowerFlowRuns,
@@ -39,9 +46,15 @@ import { useStudyCasesStore } from '../../../ui/study-cases/store';
 import type {
   PowerFlowComparisonResult,
   PowerFlowRunItem,
-  RunProvenance,
 } from '../../../ui/power-flow-comparison/types';
-import { POROWNANIE_STRINGS, ZWARCIA_POROWNANIE_STRINGS, rodzajProblemuPL, wagaPL } from './strings';
+import {
+  POROWNANIE_STRINGS,
+  ZABEZPIECZENIA_POROWNANIE_STRINGS,
+  ZWARCIA_POROWNANIE_STRINGS,
+  rodzajProblemuPL,
+  wagaPL,
+} from './strings';
+import { TrybZabezpieczen } from './TrybZabezpieczen';
 import { TrybZwarciowy } from './TrybZwarciowy';
 import {
   KLUCZ_PROBLEM,
@@ -50,7 +63,6 @@ import {
   KOLUMNY_SZYN_DIFF,
   etykietaPrzebiegu,
   mapaWagElementow,
-  naLinieProweniencji,
   naWierszeGalezi,
   naWierszeRankingu,
   naWierszeSzynDiff,
@@ -82,13 +94,14 @@ export interface EkranPorownaniaProps {
   trybZaawansowania: AdvancementMode;
 }
 
-/** Tryb porównania: rozpływ mocy (E12.1) lub zwarcia (E12.2). */
-type TrybPorownania = 'rozplyw' | 'zwarcia';
+/** Tryb porównania: rozpływ mocy (E12.1), zwarcia (E12.2) lub zabezpieczenia (CV-3.3-B2). */
+type TrybPorownania = 'rozplyw' | 'zwarcia' | 'zabezpieczenia';
 
 /**
- * Okno „Porównanie przebiegów" — przełącznik trybu „Rozpływ / Zwarcia" nad
- * właściwym ekranem (karta E12.2 §2.2). Domyślnie tryb rozpływu (dzisiejsze
- * zachowanie, bez regresji). Każdy tryb ma własny stan i własne źródło danych.
+ * Okno „Porównanie przebiegów" — przełącznik RODZAJU porównania nad właściwym
+ * ekranem (karta E12.2 §2.2, rozszerzony o zabezpieczenia w CV-3.3-B2 §0 D1).
+ * Domyślnie tryb rozpływu (dzisiejsze zachowanie, bez regresji). Każdy tryb ma
+ * własny stan i własne źródło danych; JEDEN ekran, zero drugiej strony.
  */
 export function EkranPorownania({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
   const [tryb, setTryb] = useState<TrybPorownania>('rozplyw');
@@ -121,11 +134,23 @@ export function EkranPorownania({ projektId, trybZaawansowania }: EkranPorownani
         >
           {ZWARCIA_POROWNANIE_STRINGS.trybZwarcia}
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tryb === 'zabezpieczenia'}
+          className={tryb === 'zabezpieczenia' ? 'mvd-por-tab mvd-on' : 'mvd-por-tab'}
+          onClick={() => setTryb('zabezpieczenia')}
+          data-testid="mvd-por-tryb-zabezpieczenia"
+        >
+          {ZABEZPIECZENIA_POROWNANIE_STRINGS.trybZabezpieczenia}
+        </button>
       </div>
-      {tryb === 'rozplyw' ? (
+      {tryb === 'rozplyw' && (
         <TrybRozplywu projektId={projektId} trybZaawansowania={trybZaawansowania} />
-      ) : (
-        <TrybZwarciowy trybZaawansowania={trybZaawansowania} />
+      )}
+      {tryb === 'zwarcia' && <TrybZwarciowy trybZaawansowania={trybZaawansowania} />}
+      {tryb === 'zabezpieczenia' && (
+        <TrybZabezpieczen projektId={projektId} trybZaawansowania={trybZaawansowania} />
       )}
     </div>
   );
@@ -463,26 +488,6 @@ function TrybRozplywu({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
         </div>
       )}
     </div>
-  );
-}
-
-interface PanelProweniencjiProps {
-  etykieta: string;
-  dane: RunProvenance;
-}
-
-/** Panel proweniencji jednego biegu (A albo B) — karta CV-3.3-B, B1/B5. */
-function PanelProweniencji({ etykieta, dane }: PanelProweniencjiProps) {
-  return (
-    <dl className="mvd-por-proweniencja-panel" data-testid="mvd-por-proweniencja-panel">
-      <div className="mvd-por-proweniencja-naglowek">{etykieta}</div>
-      {naLinieProweniencji(dane).map((linia) => (
-        <div key={linia.etykieta} className="mvd-por-szczegol-poz">
-          <dt>{linia.etykieta}</dt>
-          <dd className="mvd-num">{linia.wartosc}</dd>
-        </div>
-      ))}
-    </dl>
   );
 }
 

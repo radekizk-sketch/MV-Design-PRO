@@ -1,13 +1,15 @@
 /**
  * P15b — Protection Comparison Module
  *
- * Exports:
- * - ProtectionComparisonPage: Main comparison UI component
- * - API functions: createProtectionComparison, getProtectionComparisonTrace
+ * `ProtectionComparisonPage` (UI) SKASOWANA (karta CV-3.3-B2, D3): martwa
+ * strona bez montujących — realna ścieżka użytkownika to ekran ui2
+ * (`ui2/wyniki/porownanie`, tryb „Zabezpieczenia"), reużywający klienta i
+ * typy z tego modułu. Ten plik zostaje jako KLIENT ui2:
+ * - API functions: createProtectionComparison, getProtectionComparisonTrace,
+ *   getProtectionComparisonResults, fetchProtectionRuns
  * - Types: All TypeScript interfaces
  */
 
-export { ProtectionComparisonPage } from './ProtectionComparisonPage';
 export {
   createProtectionComparison,
   getProtectionComparisonResults,
@@ -26,9 +28,4 @@ export type {
   ProtectionComparisonTrace,
   ProtectionRunItem,
 } from './types';
-export {
-  STATE_CHANGE_LABELS,
-  STATE_CHANGE_COLORS,
-  SEVERITY_LABELS,
-  SEVERITY_COLORS,
-} from './types';
+export { STATE_CHANGE_LABELS, ISSUE_CODE_LABELS } from './types';

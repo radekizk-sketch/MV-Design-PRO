@@ -27,23 +27,14 @@ export type ProtectionStateChange =
   | 'INVALID_CHANGE';
 
 /**
- * Polish labels for state changes.
+ * Polish labels for state changes. Reużyte w ekranie ui2 (tabela zmian stanu,
+ * `porownanieModel.ts::naWierszeStanowZabezpieczen`, karta CV-3.3-B2).
  */
 export const STATE_CHANGE_LABELS: Record<ProtectionStateChange, string> = {
   NO_CHANGE: 'Bez zmian',
   TRIP_TO_NO_TRIP: 'Utrata zadziałania',
   NO_TRIP_TO_TRIP: 'Pojawienie się zadziałania',
   INVALID_CHANGE: 'Nieprawidłowa zmiana',
-};
-
-/**
- * Colors for state changes (Tailwind classes).
- */
-export const STATE_CHANGE_COLORS: Record<ProtectionStateChange, string> = {
-  NO_CHANGE: 'bg-gray-50 text-gray-600',
-  TRIP_TO_NO_TRIP: 'bg-red-100 text-red-700',
-  NO_TRIP_TO_TRIP: 'bg-green-100 text-green-700',
-  INVALID_CHANGE: 'bg-amber-100 text-amber-700',
 };
 
 // =============================================================================
@@ -64,7 +55,9 @@ export type IssueCode =
   | 'MARGIN_INCREASED';
 
 /**
- * Polish labels for issue codes.
+ * Polish labels for issue codes. Reużyte w ekranie ui2 (ranking zabezpieczeń,
+ * `strings.ts::rodzajProblemuZabezpieczenPL`, karta CV-3.3-B2) — jedyne
+ * źródło tego słownika, zero drugiej mapy tych samych kodów.
  */
 export const ISSUE_CODE_LABELS: Record<IssueCode, string> = {
   TRIP_LOST: 'Utrata zadziałania',
@@ -79,30 +72,15 @@ export const ISSUE_CODE_LABELS: Record<IssueCode, string> = {
 /**
  * Severity levels (1-5).
  * Backend: domain/protection_comparison.py → IssueSeverity
+ *
+ * Etykiety PL: ekran ui2 reużywa `wagaPL`/`WAGA_PL` z
+ * `ui2/wyniki/porownanie/strings.ts` (ta sama skala 1–5, karta CV-3.3-B2)
+ * zamiast osobnego słownika tutaj — `SEVERITY_LABELS`/`SEVERITY_COLORS`
+ * (Tailwind) skasowane jako martwe eksporty (karta CV-3.3-B2, D3): jedyny
+ * konsument, `ProtectionComparisonPage.tsx`, jest skasowany, a ui2 nie
+ * stylizuje wagi kolorem Tailwind (system tagu `ostrzezenie` wzorca).
  */
 export type IssueSeverity = 1 | 2 | 3 | 4 | 5;
-
-/**
- * Polish labels for severity levels.
- */
-export const SEVERITY_LABELS: Record<IssueSeverity, string> = {
-  1: 'Informacyjny',
-  2: 'Niski',
-  3: 'Umiarkowany',
-  4: 'Wysoki',
-  5: 'Krytyczny',
-};
-
-/**
- * Colors for severity levels (Tailwind classes).
- */
-export const SEVERITY_COLORS: Record<IssueSeverity, string> = {
-  1: 'bg-slate-100 text-slate-600',
-  2: 'bg-blue-100 text-blue-700',
-  3: 'bg-amber-100 text-amber-700',
-  4: 'bg-orange-100 text-orange-700',
-  5: 'bg-red-100 text-red-700',
-};
 
 // =============================================================================
 // Comparison Row
@@ -111,6 +89,15 @@ export const SEVERITY_COLORS: Record<IssueSeverity, string> = {
 /**
  * Single comparison row (per element/fault pair).
  * Backend: domain/protection_comparison.py → ProtectionComparisonRow
+ *
+ * NAPRAWA (karta CV-3.3-B2, błąd napotkany przy okazji — Zero-Debt):
+ * `i_fault_a_a`/`i_fault_a_b`/`delta_i_fault_a` były tu typowane jako
+ * nienullowalny `number`, mimo że backend (`api/protection_comparisons.py::
+ * ComparisonRowResponse`, komentarz „FAB-E (E1)") jawnie wysyła `float | None`
+ * — element nieobecny w run A LUB run B daje `None`, nigdy fabrykowane 0.0 A.
+ * Ekran ui2 (`porownanieModel.ts::naWierszeStanowZabezpieczen`) już liczył
+ * się z `null` w praktyce (obronny `typeof wartosc !== 'number'`) — typ był
+ * fałszywą pewnością (deklaracja bez pokrycia w kontrakcie backendu).
  */
 export interface ProtectionComparisonRow {
   protected_element_ref: string;
@@ -121,10 +108,10 @@ export interface ProtectionComparisonRow {
   trip_state_b: string;
   t_trip_s_a: number | null;
   t_trip_s_b: number | null;
-  i_fault_a_a: number;
-  i_fault_a_b: number;
+  i_fault_a_a: number | null;
+  i_fault_a_b: number | null;
   delta_t_s: number | null;
-  delta_i_fault_a: number;
+  delta_i_fault_a: number | null;
   margin_percent_a: number | null;
   margin_percent_b: number | null;
   state_change: ProtectionStateChange;

@@ -41,22 +41,37 @@ import type {
   PowerFlowRunItem,
   RunProvenance,
 } from '../../../ui/power-flow-comparison/types';
+import type {
+  ProtectionComparisonRow,
+  ProtectionComparisonSummary,
+  ProtectionRunItem,
+  RankingIssue as ProtectionRankingIssue,
+} from '../../../ui/protection-comparison/types';
+import { STATE_CHANGE_LABELS } from '../../../ui/protection-comparison/types';
 import type { DefinicjaKolumny, WartoscKomorki, WierszTabeli, WierszZalozenia } from '../wzorzec';
 import { refDowoduPorownania } from './dowodPorownania';
 import {
   POROWNANIE_STRINGS,
   WAGA_PROG_TAG,
+  ZABEZPIECZENIA_POROWNANIE_STRINGS as ZB,
+  fmtCzasZadzialania,
   fmtData,
+  fmtDeltaCzasZadzialania,
   fmtDeltaKat,
   fmtDeltaMoc,
   fmtDeltaMocBierna,
   fmtDeltaNapiecie,
+  fmtDeltaPradZwarciowy,
   fmtRoznicaProcentowa,
   fmtKat,
+  fmtMarginesProcent,
   fmtMoc,
   fmtMocBierna,
   fmtNapiecie,
+  fmtPradZwarciowy,
   rodzajProblemuPL,
+  rodzajProblemuZabezpieczenPL,
+  stanZadzialaniaPL,
   wagaPL,
   zbieznoscPL,
 } from './strings';
@@ -121,7 +136,12 @@ export const KOLUMNY_GALEZI: DefinicjaKolumny[] = [
   { klucz: 'dQ', etykieta: POROWNANIE_STRINGS.kolMocBiernaGalazD, jednostka: POROWNANIE_STRINGS.jednMvar, mono: true },
 ];
 
-/** Klucz React wiersza rankingu (indeks źródłowy — stabilny przy sortowaniu). */
+/**
+ * Klucz React wiersza (indeks źródłowy — stabilny przy sortowaniu). Reużyty
+ * przez WSZYSTKIE tryby porównania (rozpływ: ranking; zabezpieczenia: zmiany
+ * stanu I ranking, karta CV-3.3-B2) — nazwa pola danych, nie semantyka
+ * „problemu": jedna stała zamiast osobnej kopii tego samego napisu na tryb.
+ */
 export const KLUCZ_PROBLEM = 'klucz';
 
 export const KOLUMNY_RANKINGU: DefinicjaKolumny[] = [
@@ -418,6 +438,23 @@ export function naLinieProweniencji(p: RunProvenance): LiniaProweniencji[] {
 // ---------------------------------------------------------------------------
 
 /**
+ * Rewizja modelu LUB scenariusz z pól listy biegów (B5, karta CV-3.3-B) —
+ * WSPÓLNA logika etykiety biegu (karta CV-3.3-B2 §0 D2: „etykieta biegu" jest
+ * jednym z elementów, których nie wolno duplikować). Rozpływ (`PowerFlowRunItem`)
+ * i zabezpieczenia (`ProtectionRunItem`) niosą te same trzy pola koperty
+ * (`model_revision`, `scenario_ref`, `snapshot_hash`) — jedna funkcja starcza
+ * obu, zamiast dwóch niezależnych kopii tego samego ternary.
+ */
+function rewizjaLubScenariuszBiegu(
+  modelRevision: number | null,
+  scenarioRef: readonly [string, number] | null,
+): string {
+  if (scenarioRef) return `scenariusz ${scenarioRef[0]} rew. ${scenarioRef[1]}`;
+  if (typeof modelRevision === 'number') return `rew. ${modelRevision}`;
+  return POROWNANIE_STRINGS.kreska;
+}
+
+/**
  * Buduje polską etykietę przebiegu rozpływu dla selektora A/B (karta E12.1,
  * rozszerzona B5/CV-3.3-B). Pierwszy plan: analiza (rozpływ) + rewizja modelu
  * albo scenariusz + krótki odcisk migawki (`snapshot_hash`) — dowód KTÓRY
@@ -436,11 +473,7 @@ export function etykietaPrzebiegu(
     run.converged === null
       ? POROWNANIE_STRINGS.kreska
       : zbieznoscPL(run.converged);
-  const rewizjaLubScenariusz = run.scenario_ref
-    ? `scenariusz ${run.scenario_ref[0]} rew. ${run.scenario_ref[1]}`
-    : typeof run.model_revision === 'number'
-      ? `rew. ${run.model_revision}`
-      : POROWNANIE_STRINGS.kreska;
+  const rewizjaLubScenariusz = rewizjaLubScenariuszBiegu(run.model_revision, run.scenario_ref);
   const skrotOdcisku = run.snapshot_hash
     ? run.snapshot_hash.slice(0, 8)
     : POROWNANIE_STRINGS.kreska;
@@ -452,6 +485,254 @@ export function etykietaPrzebiegu(
   ];
   if (nazwaPrzypadku) czlony.push(nazwaPrzypadku);
   czlony.push(zbieznosc);
+  const podstawa = czlony.join(' · ');
+  if (!trybEkspercki) return podstawa;
+  return `${podstawa} · ${run.study_case_id} · ${run.id}`;
+}
+
+// ---------------------------------------------------------------------------
+// TRYB ZABEZPIECZEŃ (karta CV-3.3-B2) — wariant modelu BEZ duplikacji logiki
+// wspólnej (koperta/rewizja: `rewizjaLubScenariuszBiegu` powyżej; proweniencja:
+// `naLinieProweniencji` poniżej, strukturalnie ta sama `RunProvenance`; dowód:
+// `refDowoduPorownania`/`stronaDowodu` z `dowodPorownania.ts`, generyczne).
+//
+// ŹRÓDŁO DANYCH — realny kontrakt (karta §2 „zero zgadywania"):
+// - Wynik pełny: `ProtectionComparisonResult` (`ui/protection-comparison/types.ts`):
+//   comparison_id, run_a_id, run_b_id, rows, ranking, summary, input_hash,
+//   provenance_a/b, created_at. Identyczny kształt zwraca POST i GET .../results
+//   (`api/protection_comparisons.py`) — ekran woła WYŁĄCZNIE POST (jak rozpływ).
+// - Wiersz: `ProtectionComparisonRow` — klucz PARY (protected_element_ref,
+//   fault_target_id), NIE samego elementu (inaczej niż rozpływ) — stąd osobna
+//   funkcja klucza wiersza (`kluczWierszaZabezpieczen`) reużyta ZARÓWNO do
+//   budowy mapy wag, JAK I do odczytu z niej (KLASA-NIE-INSTANCJA §3: predykaty
+//   parami z jednego źródła prawdy, nie dwa niezależne klucze).
+// - Problem rankingu: `RankingIssue` — jak wyżej, klucz PARY (element+punkt).
+// - Lista przebiegów do wyboru A/B: `ProtectionRunItem`, klient `fetchProtectionRuns`
+//   (`ui/protection-comparison/api.ts`) → `GET /projects/{id}/protection-runs`.
+// ---------------------------------------------------------------------------
+
+export const KOLUMNY_STANOW_ZABEZPIECZEN: DefinicjaKolumny[] = [
+  { klucz: 'element', etykieta: ZB.kolElementChroniony, wyrownanie: 'lewo' },
+  { klucz: 'punkt', etykieta: ZB.kolPunktZwarcia, wyrownanie: 'lewo' },
+  {
+    klucz: 'urzadzenieA',
+    etykieta: ZB.kolUrzadzenieA,
+    wyrownanie: 'lewo',
+    tylkoEkspercki: true,
+  },
+  {
+    klucz: 'urzadzenieB',
+    etykieta: ZB.kolUrzadzenieB,
+    wyrownanie: 'lewo',
+    tylkoEkspercki: true,
+  },
+  { klucz: 'stanA', etykieta: ZB.kolStanA, wyrownanie: 'lewo' },
+  { klucz: 'stanB', etykieta: ZB.kolStanB, wyrownanie: 'lewo' },
+  { klucz: 'czasA', etykieta: ZB.kolCzasA, jednostka: ZB.jednS, mono: true },
+  { klucz: 'czasB', etykieta: ZB.kolCzasB, jednostka: ZB.jednS, mono: true },
+  { klucz: 'czasD', etykieta: ZB.kolCzasD, jednostka: ZB.jednS, mono: true },
+  { klucz: 'pradA', etykieta: ZB.kolPradA, jednostka: ZB.jednA, mono: true },
+  { klucz: 'pradB', etykieta: ZB.kolPradB, jednostka: ZB.jednA, mono: true },
+  { klucz: 'pradD', etykieta: ZB.kolPradD, jednostka: ZB.jednA, mono: true },
+  // Margines selektywności — A i B osobno, BEZ kolumny Δ (backend nie publikuje
+  // `delta_margin_percent` na wierszu — patrz `fmtMarginesProcent` w strings.ts).
+  { klucz: 'marginesA', etykieta: ZB.kolMarginesA, jednostka: ZB.jednProcent, mono: true },
+  { klucz: 'marginesB', etykieta: ZB.kolMarginesB, jednostka: ZB.jednProcent, mono: true },
+  { klucz: 'zmiana', etykieta: ZB.kolZmianaStanu, wyrownanie: 'lewo' },
+];
+
+export const KOLUMNY_RANKINGU_ZABEZPIECZEN: DefinicjaKolumny[] = [
+  { klucz: 'waga', etykieta: POROWNANIE_STRINGS.kolWaga, wyrownanie: 'lewo' },
+  { klucz: 'rodzaj', etykieta: POROWNANIE_STRINGS.kolRodzaj, wyrownanie: 'lewo' },
+  { klucz: 'element', etykieta: POROWNANIE_STRINGS.kolElement, wyrownanie: 'lewo' },
+  // Rozszerzenie względem rankingu rozpływu: problem zabezpieczeń jest
+  // zakotwiczony w PARZE element+punkt zwarcia, nie samym elemencie.
+  { klucz: 'punkt', etykieta: ZB.kolPunktRankingu, wyrownanie: 'lewo' },
+  { klucz: 'opis', etykieta: POROWNANIE_STRINGS.kolOpis, wyrownanie: 'lewo', sortowalna: false },
+  {
+    klucz: 'kodTechniczny',
+    etykieta: POROWNANIE_STRINGS.kolKodTechniczny,
+    mono: true,
+    wyrownanie: 'lewo',
+    tylkoEkspercki: true,
+  },
+];
+
+/**
+ * Klucz PARY (element chroniony, punkt zwarcia) — TA SAMA funkcja buduje klucz
+ * mapy wag (`mapaWagWierszyZabezpieczen`) i klucz odczytu w wierszu
+ * (`naWierszeStanowZabezpieczen`): jedno źródło prawdy zamiast dwóch
+ * niezależnych formuł, które mogłyby się rozjechać (KLASA-NIE-INSTANCJA §3).
+ */
+function kluczWierszaZabezpieczen(elementRef: string, faultTargetId: string): string {
+  return `${elementRef}::${faultTargetId}`;
+}
+
+/**
+ * Buduje mapę (element, punkt) → maksymalna waga problemu z rankingu backendu.
+ * Klucz PARY (nie samego elementu — inaczej niż `mapaWagElementow` rozpływu),
+ * bo severity rankingu zabezpieczeń jest per (element, punkt zwarcia): ten sam
+ * element chroniony może mieć różne wagi na różnych punktach zwarcia.
+ */
+export function mapaWagWierszyZabezpieczen(ranking: ProtectionRankingIssue[]): Map<string, number> {
+  const mapa = new Map<string, number>();
+  for (const issue of ranking) {
+    const klucz = kluczWierszaZabezpieczen(issue.element_ref, issue.fault_target_id);
+    const poprz = mapa.get(klucz) ?? 0;
+    if (issue.severity > poprz) mapa.set(klucz, issue.severity);
+  }
+  return mapa;
+}
+
+function pozaZabezpieczenia(mapa: Map<string, number>, elementRef: string, faultTargetId: string): boolean {
+  return (mapa.get(kluczWierszaZabezpieczen(elementRef, faultTargetId)) ?? 0) >= WAGA_PROG_TAG;
+}
+
+/**
+ * Komórka wartości źródłowej A/B, nullowalna (FAB-E, karta CV-3.3-B: element
+ * nieobecny w jednym z biegów → `null`, nigdy fabrykowane zero). Wartość
+ * obecna dostaje `dowodRef` strony (R3-C); brak wartości → kreska bez dowodu
+ * (zero martwych klików — nie ma czego dowodzić).
+ */
+function komorkaZabezpieczen(
+  wartosc: number | null,
+  format: (n: number) => string,
+  dowodRef: string,
+): WartoscKomorki {
+  return typeof wartosc !== 'number'
+    ? { wartosc: ZB.kreska }
+    : { wartosc: format(wartosc), sortKey: wartosc, dowodRef };
+}
+
+/**
+ * Komórka delty, nullowalna (`delta_t_s`/`delta_i_fault_a` — `null`, gdy oba
+ * stany nie są TRIPS). BEZ `dowodRef` (R3-C): różnica nie ma pojedynczego
+ * wywodu WHITE BOX.
+ */
+function komorkaDeltyZabezpieczen(
+  wartosc: number | null,
+  format: (n: number) => string,
+  ostrzezenie: boolean,
+): WartoscKomorki {
+  return typeof wartosc !== 'number'
+    ? { wartosc: ZB.kreska }
+    : { wartosc: format(wartosc), sortKey: wartosc, ostrzezenie };
+}
+
+/** `ProtectionComparisonRow[]` → wiersze tabeli wzorca (A · B · Δ; kolejność źródłowa). */
+export function naWierszeStanowZabezpieczen(
+  rows: ProtectionComparisonRow[],
+  wagi: Map<string, number>,
+): WierszTabeli[] {
+  return rows.map((row, i) => {
+    const flaga = pozaZabezpieczenia(wagi, row.protected_element_ref, row.fault_target_id);
+    const parRef = kluczWierszaZabezpieczen(row.protected_element_ref, row.fault_target_id);
+    const refA = refDowoduPorownania('A', parRef);
+    const refB = refDowoduPorownania('B', parRef);
+    return {
+      [KLUCZ_PROBLEM]: { wartosc: String(i) },
+      element: { wartosc: row.protected_element_ref },
+      punkt: { wartosc: row.fault_target_id },
+      urzadzenieA: { wartosc: row.device_id_a, dowodRef: refA },
+      urzadzenieB: { wartosc: row.device_id_b, dowodRef: refB },
+      stanA: { wartosc: stanZadzialaniaPL(row.trip_state_a), dowodRef: refA },
+      stanB: { wartosc: stanZadzialaniaPL(row.trip_state_b), dowodRef: refB },
+      czasA: komorkaZabezpieczen(row.t_trip_s_a, fmtCzasZadzialania, refA),
+      czasB: komorkaZabezpieczen(row.t_trip_s_b, fmtCzasZadzialania, refB),
+      czasD: komorkaDeltyZabezpieczen(row.delta_t_s, fmtDeltaCzasZadzialania, flaga),
+      pradA: komorkaZabezpieczen(row.i_fault_a_a, fmtPradZwarciowy, refA),
+      pradB: komorkaZabezpieczen(row.i_fault_a_b, fmtPradZwarciowy, refB),
+      pradD: komorkaDeltyZabezpieczen(row.delta_i_fault_a, fmtDeltaPradZwarciowy, flaga),
+      marginesA: komorkaZabezpieczen(row.margin_percent_a, fmtMarginesProcent, refA),
+      marginesB: komorkaZabezpieczen(row.margin_percent_b, fmtMarginesProcent, refB),
+      zmiana: { wartosc: STATE_CHANGE_LABELS[row.state_change] },
+    };
+  });
+}
+
+/**
+ * Wiersze BEZ zmiany stanu (`state_change === 'NO_CHANGE'`) odfiltrowane —
+ * filtr „pokaż tylko zmiany" (port funkcji ze skasowanej martwej strony
+ * `ui/protection-comparison/ProtectionComparisonPage.tsx`, karta CV-3.3-B2).
+ * CZYSTA PREZENTACJA: klasyfikacja pochodzi z backendu, UI niczego nie liczy.
+ */
+export function tylkoZmianyStanowZabezpieczen(
+  rows: ProtectionComparisonRow[],
+): ProtectionComparisonRow[] {
+  return rows.filter((row) => row.state_change !== 'NO_CHANGE');
+}
+
+/**
+ * `RankingIssue[]` (zabezpieczenia) → wiersze tabeli wzorca. Waga → tag PL
+ * (`wagaPL`, reużyty z rozpływu — ta sama skala 1–5); rodzaj przez
+ * `rodzajProblemuZabezpieczenPL` (mapa `ISSUE_CODE_LABELS` zabezpieczeń);
+ * punkt zwarcia dołożony względem rankingu rozpływu (klucz PARY, nie
+ * samego elementu). Klucz wiersza = indeks źródłowy (deterministyczny).
+ */
+export function naWierszeRankinguZabezpieczen(ranking: ProtectionRankingIssue[]): WierszTabeli[] {
+  return ranking.map((issue, i) => ({
+    waga: {
+      wartosc: wagaPL(issue.severity),
+      sortKey: issue.severity,
+      ostrzezenie: issue.severity >= WAGA_PROG_TAG,
+    },
+    rodzaj: { wartosc: rodzajProblemuZabezpieczenPL(issue.issue_code) },
+    element: { wartosc: issue.element_ref },
+    punkt: { wartosc: issue.fault_target_id },
+    opis: { wartosc: issue.description_pl },
+    kodTechniczny: { wartosc: issue.issue_code },
+    [KLUCZ_PROBLEM]: { wartosc: String(i) },
+  }));
+}
+
+/**
+ * Podsumowanie porównania zabezpieczeń jako sekcja ZAŁOŻENIA wzorca — te same
+ * dwie pozycje „problemy" reużywają stringi rozpływu (`podsumProblemy(Razem)`,
+ * domenowo neutralne teksty, zero duplikacji), pozostałe pozycje są WŁASNE
+ * (podsumowanie zabezpieczeń nie ma zbieżności/strat/napięcia/kąta rozpływu).
+ */
+export function naZalozeniaPorownaniaZabezpieczen(
+  summary: ProtectionComparisonSummary,
+): WierszZalozenia[] {
+  return [
+    { etykieta: ZB.podsumPorownanRazem, wartosc: summary.total_rows },
+    {
+      etykieta: ZB.podsumZmianyStanu,
+      wartosc: `${summary.trip_to_no_trip_count} · ${summary.no_trip_to_trip_count} · ${summary.invalid_change_count} · ${summary.no_change_count}`,
+    },
+    { etykieta: POROWNANIE_STRINGS.podsumProblemyRazem, wartosc: summary.total_issues },
+    {
+      etykieta: POROWNANIE_STRINGS.podsumProblemy,
+      wartosc: `${summary.critical_issues} · ${summary.major_issues} · ${summary.moderate_issues} · ${summary.minor_issues}`,
+    },
+  ];
+}
+
+/**
+ * Buduje polską etykietę przebiegu zabezpieczeń dla selektora A/B (karta
+ * CV-3.3-B2, wzorzec `etykietaPrzebiegu` rozpływu — B5/CV-3.3-B). Pierwszy
+ * plan: analiza (zabezpieczenia) + rewizja/scenariusz + krótki odcisk migawki
+ * — dowód KTÓRY stan modelu bieg opisuje — dalej data + (nazwa przypadku, gdy
+ * znana). BEZ segmentu zbieżności: `ProtectionRunItem` go nie niesie (ocena
+ * zabezpieczeń nie ma pojęcia zbieżności solvera rozpływu/zwarcia) — uczciwe
+ * pominięcie, nie fabrykacja pustego pola. Identyfikatory WYŁĄCZNIE eksperckie.
+ */
+export function etykietaPrzebieguZabezpieczen(
+  run: ProtectionRunItem,
+  trybEkspercki: boolean,
+  nazwaPrzypadku?: string | null,
+): string {
+  const rewizjaLubScenariusz = rewizjaLubScenariuszBiegu(run.model_revision, run.scenario_ref);
+  const skrotOdcisku = run.snapshot_hash
+    ? run.snapshot_hash.slice(0, 8)
+    : POROWNANIE_STRINGS.kreska;
+  const czlony = [
+    ZB.analizaZabezpieczenia,
+    rewizjaLubScenariusz,
+    skrotOdcisku,
+    fmtData(run.created_at),
+  ];
+  if (nazwaPrzypadku) czlony.push(nazwaPrzypadku);
   const podstawa = czlony.join(' · ');
   if (!trybEkspercki) return podstawa;
   return `${podstawa} · ${run.study_case_id} · ${run.id}`;

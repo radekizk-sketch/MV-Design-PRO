@@ -9,6 +9,10 @@
  */
 
 import type { IssueSeverity, PowerFlowIssueCode } from '../../../ui/power-flow-comparison/types';
+import {
+  ISSUE_CODE_LABELS as ZABEZPIECZENIA_KOD_PROBLEMU_PL,
+  type IssueCode as ZabezpieczeniaIssueCode,
+} from '../../../ui/protection-comparison/types';
 
 export const POROWNANIE_STRINGS = {
   // Nagłówek analizy
@@ -410,4 +414,164 @@ export function fmtDeltaKA2s(n: number): string {
 export function fmtDeltaProcent(pct: number | null): string {
   if (pct === null) return '';
   return ` (${fmtDelta(pct, 1)}%)`;
+}
+
+// ===========================================================================
+// TRYB ZABEZPIECZEŃ (karta CV-3.3-B2) — teksty i formatery
+// ===========================================================================
+
+export const ZABEZPIECZENIA_POROWNANIE_STRINGS = {
+  // Przełącznik trybu porównania
+  trybZabezpieczenia: 'Zabezpieczenia',
+
+  // Nagłówek analizy (tryb zabezpieczeń)
+  podtytul:
+    'Porównanie A/B ocen zabezpieczeń — zmiany stanu zadziałania, ranking problemów i ślad porównania pochodzą z backendu (tylko do odczytu).',
+
+  // Wybór A/B
+  wyborTytul: 'Wybór przebiegów zabezpieczeń do porównania',
+  wyborA: 'Przebieg A (odniesienie)',
+  wyborB: 'Przebieg B (porównywany)',
+  wyborPusty: '— wybierz przebieg —',
+  porownaj: 'Porównaj przebiegi',
+  porownajWTrakcie: 'Porównywanie…',
+  analizaZabezpieczenia: 'Ocena zabezpieczeń',
+
+  // Stany listy przebiegów (zabezpieczeń)
+  listaWTrakcie: 'Wczytywanie listy przebiegów…',
+  brakPrzebiegow: 'Brak zakończonych przebiegów zabezpieczeń do porównania',
+  brakPrzebiegowOpis:
+    'Aby porównać dwa warianty, skonfiguruj zabezpieczenia przypadku i uruchom co najmniej dwa przebiegi ' +
+    'oceny zabezpieczeń — każdy wymaga wcześniej zakończonego obliczenia zwarciowego.',
+  bladListy: 'Nie udało się wczytać listy przebiegów zabezpieczeń',
+
+  // Stany porównania
+  wTrakcie: 'Trwa porównywanie przebiegów zabezpieczeń…',
+  bladPorownania: 'Nie udało się wykonać porównania zabezpieczeń',
+  walidacjaBrakAB: 'Wskaż oba przebiegi (A oraz B), aby wykonać porównanie.',
+  walidacjaTeSame: 'Przebieg A i przebieg B muszą być różne.',
+
+  // Podsumowanie (część wyniku — jako ZAŁOŻENIA wzorca)
+  podsumPorownanRazem: 'Porównań łącznie',
+  podsumZmianyStanu: 'Zmiany stanu (utrata · nowe · nieprawidłowe · bez zmian)',
+
+  // Zakładki
+  zakladkaStany: 'Zmiany stanu',
+  zakladkaRanking: 'Ranking problemów',
+
+  // Kolumny — zmiany stanu (ProtectionComparisonRow)
+  kolElementChroniony: 'Element chroniony',
+  kolPunktZwarcia: 'Punkt zwarcia',
+  kolUrzadzenieA: 'Urządzenie A',
+  kolUrzadzenieB: 'Urządzenie B',
+  kolStanA: 'Stan A',
+  kolStanB: 'Stan B',
+  kolCzasA: 'Czas zadziałania A',
+  kolCzasB: 'Czas zadziałania B',
+  kolCzasD: 'Δ czasu zadziałania',
+  kolPradA: 'Prąd zwarciowy A',
+  kolPradB: 'Prąd zwarciowy B',
+  kolPradD: 'Δ prądu zwarciowego',
+  kolMarginesA: 'Margines A',
+  kolMarginesB: 'Margines B',
+  kolZmianaStanu: 'Zmiana',
+
+  // Kolumny — ranking (rozszerzenie o punkt zwarcia — problem zabezpieczeń
+  // jest zakotwiczony w PARZE element+punkt, nie samym elemencie jak w rozpływie)
+  kolPunktRankingu: 'Punkt zwarcia',
+
+  // Stany puste tabel
+  brakStanow: 'Brak wierszy porównania w tym zestawieniu.',
+  brakRankingu: 'Porównanie nie wskazało problemów technicznych.',
+
+  // Filtr „tylko zmiany" — czysta prezentacja na klasyfikacji backendu
+  // (state_change != NO_CHANGE), zero arytmetyki w UI.
+  filtrTylkoZmiany: 'Pokaż tylko zmiany',
+  filtrOpis: 'Ukrywa wiersze bez zmiany stanu zadziałania (backend: state_change = NO_CHANGE).',
+  filtrPusto: 'Wszystkie wiersze mają ten sam stan zadziałania w obu przebiegach — brak zmian do pokazania.',
+
+  // Szczegół problemu (rozszerzenie o punkt zwarcia względem rozpływu)
+  szczegolPunkt: 'Punkt zwarcia',
+
+  // Ślad porównania (White Box, karta CV-3.3-B2 §0 D1: „które pola, progi") —
+  // na żądanie, zwinięty domyślnie (ten sam wzorzec interakcji co `SladSekcyjny`,
+  // inny kształt danych: kroki niosą pary pole→wartość, nie wywód LaTeX).
+  sladTytul: 'Ślad porównania (pełna jawność)',
+  sladPokaz: 'Pokaż ślad porównania',
+  sladUkryj: 'Ukryj ślad porównania',
+  sladWTrakcie: 'Wczytywanie śladu porównania…',
+  sladBlad: 'Nie udało się wczytać śladu porównania',
+  sladWejscia: 'Wejścia',
+  sladWyjscia: 'Wyjścia',
+  sladBrakPol: 'brak pól',
+  sladFingerprintA: 'Fingerprint biblioteki A',
+  sladFingerprintB: 'Fingerprint biblioteki B',
+  sladUtworzono: 'Data utworzenia śladu',
+
+  // Jednostki
+  jednS: 's',
+  jednA: 'A',
+  jednProcent: '%',
+
+  // Wartość pusta
+  kreska: '—',
+} as const;
+
+/**
+ * Stan zadziałania zabezpieczenia po polsku (backend: `trip_state_a/b` w
+ * `ProtectionComparisonRow` — `TRIPS`/`NO_TRIP`/`INVALID`/`MISSING`, patrz
+ * `domain/protection_comparison.py`). Token spoza tego zbioru (nierozpoznany,
+ * przyszła wartość backendu) → dosłownie, jako dana (zero ukrywania).
+ */
+const STAN_ZADZIALANIA_PL: Record<string, string> = {
+  TRIPS: 'Zadziałanie',
+  NO_TRIP: 'Brak zadziałania',
+  INVALID: 'Nieprawidłowy',
+  MISSING: 'Brak oceny',
+};
+
+/** Stan zadziałania po polsku (spoza słownika → dosłowna wartość backendu). */
+export function stanZadzialaniaPL(stan: string): string {
+  return STAN_ZADZIALANIA_PL[stan] ?? stan;
+}
+
+/**
+ * Rodzaj problemu zabezpieczeń po polsku. Reużywa `ISSUE_CODE_LABELS`
+ * (`ui/protection-comparison/types.ts`) — mapa JUŻ istnieje tam jako dana
+ * kontraktu (P15b), więc nie duplikujemy drugiego słownika tych samych
+ * kodów. Nierozpoznany kod (spoza unii typu) → dosłownie, jako dana.
+ */
+export function rodzajProblemuZabezpieczenPL(kod: ZabezpieczeniaIssueCode | string): string {
+  return ZABEZPIECZENIA_KOD_PROBLEMU_PL[kod as ZabezpieczeniaIssueCode] ?? String(kod);
+}
+
+/** Czas zadziałania [s] — 3 miejsca po przecinku (spójnie z resztą ekranu). */
+export function fmtCzasZadzialania(n: number): string {
+  return fmtLiczba(n, 3);
+}
+
+/** Delta czasu zadziałania [s] — 3 miejsca po przecinku, ze znakiem. */
+export function fmtDeltaCzasZadzialania(n: number): string {
+  return fmtDelta(n, 3);
+}
+
+/** Prąd zwarciowy w punkcie oceny [A] — 1 miejsce po przecinku. */
+export function fmtPradZwarciowy(n: number): string {
+  return fmtLiczba(n, 1);
+}
+
+/** Delta prądu zwarciowego [A] — 1 miejsce po przecinku, ze znakiem. */
+export function fmtDeltaPradZwarciowy(n: number): string {
+  return fmtDelta(n, 1);
+}
+
+/**
+ * Margines selektywności [%] — 2 miejsca po przecinku. BEZ wariantu delty:
+ * `ProtectionComparisonRow` nie niesie pola `delta_margin_percent` (backend
+ * liczy `MARGIN_DECREASED`/`MARGIN_INCREASED` wyłącznie do rankingu, nie
+ * publikuje różnicy na wierszu) — prezentacja pokazuje A i B osobno, zero
+ * odejmowania w UI (KD-1/KD-3/L-13: delty WYŁĄCZNIE z pola backendu).
+ */
+export function fmtMarginesProcent(n: number): string {
+  return fmtLiczba(n, 2);
 }
