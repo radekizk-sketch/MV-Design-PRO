@@ -15786,7 +15786,6 @@
       "name": "case_id",
       "required": true,
       "schema": {
-       "format": "uuid",
        "title": "Case Id",
        "type": "string"
       }
@@ -17990,7 +17989,7 @@
   },
   "/api/execution/batches/{batch_id}/execute": {
    "post": {
-    "description": "Wykonaj serię sekwencyjnie torem kanonicznym (realny solver).\n\nZero ponowień, zero częściowego sukcesu: pierwsza awaria kończy serię\nstanem FAILED z polskim komunikatem; biegi ukończone wcześniej pozostają\ndostępne jak zwykłe biegi kanoniczne.\n\nZwraca 404 dla nieznanej serii, 409 dla serii w stanie innym niż PENDING.",
+    "description": "Wykonaj serię sekwencyjnie torem kanonicznym (realny solver).\n\nZero ponowień, zero częściowego sukcesu: pierwsza awaria kończy serię\nstanem FAILED z polskim komunikatem; biegi ukończone wcześniej pozostają\ndostępne jak zwykłe biegi kanoniczne.\n\nZwraca 404 dla nieznanej serii, 409 dla serii w stanie innym niż PENDING,\n404 gdy przypadek serii nie należy do żadnego projektu (CV-1-W — klucz\nmagazynu ENM tłumaczony TU, bo `BatchExecutionService` nie ma dostępu do\nbazy danych — patrz `application/batch_execution_service.py`).",
     "operationId": "execute_batch_api_execution_batches__batch_id__execute_post",
     "parameters": [
      {
@@ -19207,7 +19206,6 @@
       "name": "case_id",
       "required": true,
       "schema": {
-       "format": "uuid",
        "title": "Case Id",
        "type": "string"
       }

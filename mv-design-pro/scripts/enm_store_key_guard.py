@@ -428,28 +428,15 @@ def check_file(
 # MA MALEC do zera migracja, nie zostac zamrozony na stale.
 # ---------------------------------------------------------------------------
 ZASTANE_KLUCZE_PRZYPADKU: dict[str, int] = {
-    "api/der_sn_documents.py": 2,
-    "api/diagnostics.py": 1,
-    "api/enm.py": 38,
-    "api/fault_scenarios.py": 1,
-    "api/generators.py": 10,
-    "api/ncrfg_ptpiree_tests.py": 1,
-    "api/nn_proof.py": 3,
-    "api/oze_analysis_runs.py": 2,
-    "api/reference_engine.py": 1,
-    "api/v126_academic.py": 1,
-    "application/analyses/dowod_certyfikatu.py": 1,
-    "application/analyses/granice_sieci.py": 1,
-    "application/analyses/werdykt_projektowy.py": 1,
-    "application/analyses/wytrzymalosc_cieplna_przewodow.py": 1,
-    "application/analysis_dispatch/service.py": 2,
-    "application/project_archive/service.py": 3,
-    "application/result_freshness.py": 2,
-    # 3, nie 1: `blokada_twin(case_key)` (import bezposredni z `enm.store`) +
-    # `_get_enm(case_key)`/`_set_enm(case_key, ...)` (import TRANZYTYWNY -
-    # `from api.enm import _get_enm, _set_enm`, lokalnie wewnatrz funkcji, zeby
-    # uniknac cyklu importow z `api.enm`) - patrz `zbuduj_eksporty`.
-    "application/station_templates/apply.py": 3,
+    # CV-1-W (a71bd91c): 17 plikow zeszlo do ZERA (wszystkie koncowki API i uslugi
+    # aplikacji tlumacza `case_id` przez `api/klucz_twin_dep.py` /
+    # `klucz_twin_dla_przypadku`). Jedyny zastany wyjatek: import archiwum ZIP
+    # z wieloma snapshotami per przypadek — `restore_enm(str(new_case_id), ...)`
+    # jest zapisem TYMCZASOWYM pod kluczem nowego przypadku, po ktorym
+    # `migruj_klucz_przypadku_do_projektu` porownuje hashem i odklada model do
+    # `legacy_przypadki/` z manifestem (nic nie ginie). Znika razem z legacy
+    # postacia archiwum (procedura kasacji, CV-4).
+    "application/project_archive/service.py": 1,
 }
 
 

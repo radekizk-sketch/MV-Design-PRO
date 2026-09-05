@@ -17,9 +17,8 @@ szersza niż potrzeba. Dana jawna (nawet 0.0) przechodzi bez zastrzeżeń (test 
 
 from __future__ import annotations
 
-from uuid import UUID
-
 from api.main import app
+from enm.klucz_twin import klucz_twin_projektu
 from enm.models import EnergyNetworkModel, ENMHeader
 from enm.store import reset_enm_store, set_enm
 from fastapi.testclient import TestClient
@@ -54,20 +53,30 @@ def _model(*, p0_kw: float | None) -> EnergyNetworkModel:
     )
 
 
-def _seed_case(case_id: UUID, model: EnergyNetworkModel) -> None:
+def _seed_case(client: TestClient, model: EnergyNetworkModel) -> str:
+    """Utworz REALNY projekt + przypadek przez API i zapisz model pod kluczem
+    PROJEKTU (CV-1-W: koncowka tlumaczy `case_id` na klucz twin projektu;
+    przypadek bez wiersza w bazie dostaje 404). Zwraca `case_id`."""
     reset_enm_store()
-    set_enm(str(case_id), model)
+    project_resp = client.post("/api/projects", json={"name": "V12.6 OPF straty - test"})
+    assert project_resp.status_code == 201, project_resp.text
+    project_id = project_resp.json()["id"]
+    case_resp = client.post(
+        "/api/study-cases", json={"project_id": project_id, "name": "Przypadek testu"}
+    )
+    assert case_resp.status_code == 201, case_resp.text
+    set_enm(klucz_twin_projektu(project_id), model)
+    return str(case_resp.json()["id"])
 
 
 def test_opf_loss_lcc_bez_strat_jalowych_zwraca_422_nie_liczy_po_cichu() -> None:
     """PIN NA DEFEKT: przed naprawą brak p0_kw wchodziłby do solvera jako 0.0."""
-    case_id = UUID("33333333-3333-3333-3333-333333333331")
-    _seed_case(case_id, _model(p0_kw=None))
-    client = TestClient(app)
-    resp = client.post(
-        f"/api/cases/{case_id}/runs/v126/opf_loss_lcc",
-        json={"parameters": {}},
-    )
+    with TestClient(app) as client:
+        case_id = _seed_case(client, _model(p0_kw=None))
+        resp = client.post(
+            f"/api/cases/{case_id}/runs/v126/opf_loss_lcc",
+            json={"parameters": {}},
+        )
     assert resp.status_code == 422, resp.text
     assert "transformer.loss_data_missing" in resp.text
     assert "TR-1" in resp.text
@@ -75,26 +84,24 @@ def test_opf_loss_lcc_bez_strat_jalowych_zwraca_422_nie_liczy_po_cichu() -> None
 
 def test_opf_loss_lcc_ze_stratami_jalowymi_liczy_normalnie() -> None:
     """Kontrola dwustronna: strata jałowa jawna (nawet gdyby była 0.0) przechodzi."""
-    case_id = UUID("33333333-3333-3333-3333-333333333332")
-    _seed_case(case_id, _model(p0_kw=12.5))
-    client = TestClient(app)
-    resp = client.post(
-        f"/api/cases/{case_id}/runs/v126/opf_loss_lcc",
-        json={"parameters": {}},
-    )
-    assert resp.status_code == 200, resp.text
-    result = client.get(resp.json()["result_url"])
+    with TestClient(app) as client:
+        case_id = _seed_case(client, _model(p0_kw=12.5))
+        resp = client.post(
+            f"/api/cases/{case_id}/runs/v126/opf_loss_lcc",
+            json={"parameters": {}},
+        )
+        assert resp.status_code == 200, resp.text
+        result = client.get(resp.json()["result_url"])
     assert result.status_code == 200
 
 
 def test_inna_analiza_v126_nie_jest_blokowana_brakiem_strat_jalowych() -> None:
     """Bramka jest WĄSKA: `reliability_contingency` nie czyta p0_kw transformatora,
     więc ten sam brak nie może jej zablokować (inaczej byłaby szersza niż trzeba)."""
-    case_id = UUID("33333333-3333-3333-3333-333333333333")
-    _seed_case(case_id, _model(p0_kw=None))
-    client = TestClient(app)
-    resp = client.post(
-        f"/api/cases/{case_id}/runs/v126/reliability_contingency",
-        json={"parameters": {}},
-    )
+    with TestClient(app) as client:
+        case_id = _seed_case(client, _model(p0_kw=None))
+        resp = client.post(
+            f"/api/cases/{case_id}/runs/v126/reliability_contingency",
+            json={"parameters": {}},
+        )
     assert resp.status_code == 200, resp.text

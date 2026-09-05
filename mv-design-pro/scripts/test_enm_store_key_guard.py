@@ -586,15 +586,16 @@ def test_czysty_zakres_daje_zielen(tmp_path, monkeypatch, capsys) -> None:
 
 
 def test_biezacy_stan_repozytorium_jest_zielony(capsys) -> None:
-    """Bramka na PRAWDZIWYM drzewie repo - budzet odpowiada pomiarowi z
-    2026-09-04 (karta CV-1-G), nie zyczeniu. Pinuje TEZ dokladna sume plikow
-    i wywolan, zeby cichy dryf zapadki (np. literowka w liczbie przy recznej
-    edycji, ktora przypadkiem nadal "zgadza sie" per-plik) nie schowal sie za
-    RC=0 z innego powodu.
+    """Bramka na PRAWDZIWYM drzewie repo - budzet odpowiada pomiarowi, nie
+    zyczeniu: 2026-09-04 (karta CV-1-G) 18 plikow / suma 74; 2026-09-05 po
+    CV-1-W (a71bd91c) 1 plik / suma 1 (zapis tymczasowy importu archiwum).
+    Pinuje TEZ dokladna sume plikow i wywolan, zeby cichy dryf zapadki (np.
+    literowka w liczbie przy recznej edycji, ktora przypadkiem nadal "zgadza
+    sie" per-plik) nie schowal sie za RC=0 z innego powodu.
     """
     assert guard.main() == 0
     wyjscie = capsys.readouterr().out
-    assert "zapadka: 18 plikow, suma 74" in wyjscie
+    assert "zapadka: 1 plikow, suma 1" in wyjscie
 
 
 def test_zapadka_wskazuje_wylacznie_pliki_pod_scan_roots() -> None:
