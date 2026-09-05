@@ -59,6 +59,26 @@ FORBIDDEN_DOMAIN_OP_NAMES = {
     "compare_study_cases",
 }
 
+# CV-3.2 (kasacja C4 + P24+, drugi commit karty) — bramka wskrzeszenia. C4
+# (`application/study_scenario/**`, `analysis/scenario_comparison/**`) usunięty
+# po decyzji architektonicznej: P24+ (`analysis/reporting/pdf/**`), jedyny
+# produkcyjny konsument `ScenarioComparisonEntry`/`View`, sam miał 0 wołających
+# w `backend/src` poza własnym re-eksportem i 0 tras HTTP — ten sam byt co C4
+# ("raport bez trasy"), więc skasowany razem z nim.
+STUDY_SCENARIO_DIR = BACKEND_SRC_DIR / "application" / "study_scenario"
+SCENARIO_COMPARISON_DIR = BACKEND_SRC_DIR / "analysis" / "scenario_comparison"
+REPORTING_PDF_DIR = BACKEND_SRC_DIR / "analysis" / "reporting" / "pdf"
+#: Katalog -> etykieta bytu w komunikacie naruszenia.
+FORBIDDEN_C4_DIRECTORIES = {
+    STUDY_SCENARIO_DIR: "application/study_scenario (C4)",
+    SCENARIO_COMPARISON_DIR: "analysis/scenario_comparison (C4)",
+    REPORTING_PDF_DIR: "analysis/reporting/pdf (P24+)",
+}
+#: Klasy/funkcje C4+P24+ — sprawdzane jako DEFINICJE (ast.ClassDef/FunctionDef)
+#: gdziekolwiek w `src`, nie jako dowolne wystąpienie identyfikatora.
+FORBIDDEN_C4_CLASS_NAMES = {"ScenarioComparisonBuilder"}
+FORBIDDEN_C4_FUNCTION_NAMES = {"export_p24_plus_report_pdf"}
+
 
 def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8", errors="ignore")
@@ -160,11 +180,49 @@ def check_domain_op_registry_resurrection() -> list[str]:
     return violations
 
 
+def check_c4_and_p24_plus_resurrection() -> list[str]:
+    """C4 + P24+ (CV-3.2, drugi commit karty): `application/study_scenario/**`,
+    `analysis/scenario_comparison/**`, `analysis/reporting/pdf/**` nie mogą
+    wrócić. Decyzja architektoniczna: P24+ (jedyny konsument
+    `ScenarioComparisonEntry`/`View`) miał 0 wołających w `backend/src` poza
+    własnym re-eksportem i 0 tras HTTP — ten sam byt co C4 ("raport bez
+    trasy"), skasowany razem z nim."""
+    violations: list[str] = []
+    for directory, label in FORBIDDEN_C4_DIRECTORIES.items():
+        # `directory.exists()` fałszywie zapaliłby się na osieroconym,
+        # niegitowanym `__pycache__/` (bytecode z sesji SPRZED kasacji) — guard
+        # ma wykryć wskrzeszone ŹRÓDŁO, nie zapomniany artefakt kompilacji.
+        if any(directory.glob("*.py")):
+            rel_path = directory.relative_to(ROOT).as_posix()
+            violations.append(
+                f"[resurrected-module] {rel_path}: {label} usunięty procedurą "
+                "w CV-3.2 — nie odtwarzaj tego pakietu"
+            )
+    if not BACKEND_SRC_DIR.exists():
+        return violations
+    for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        rel_path = py_file.relative_to(ROOT).as_posix()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_C4_CLASS_NAMES:
+                violations.append(
+                    f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
+                    "(C4, usunięty CV-3.2) nie może wrócić"
+                )
+            if isinstance(node, ast.FunctionDef) and node.name in FORBIDDEN_C4_FUNCTION_NAMES:
+                violations.append(
+                    f"[resurrected-function] {rel_path}:{node.lineno}: def {node.name} "
+                    "(P24+, usunięty CV-3.2) nie może wrócić"
+                )
+    return violations
+
+
 def main() -> int:
     violations = (
         check_legacy_public_paths()
         + check_study_case_engine_resurrection()
         + check_domain_op_registry_resurrection()
+        + check_c4_and_p24_plus_resurrection()
     )
     if violations:
         print("legacy-public-path-guard: FAILED")

@@ -1,5 +1,20 @@
 # P27 — SCENARIO COMPARISON (CANONICAL+)
 
+> **USUNIĘTY (2026-09-05, CV-3.2):** P27 (`ScenarioComparisonBuilder`,
+> `analysis/scenario_comparison/**`) był konsolidowany w
+> `CANONICAL_TWIN_ARCHITECTURE.md` (część B, pozycja C4 inwentarza — ten sam
+> byt co P23, `application/study_scenario/**`, patrz
+> `docs/architecture/STUDY_SCENARIO_WORKFLOW_CANONICAL_PLUS.md`). Jedyny
+> produkcyjny konsument `ScenarioComparisonEntry`/`View` — sekcja PDF „P27" w
+> P24+ (`analysis/reporting/pdf/**`) — sam miał 0 wołających poza sobą i 0
+> tras HTTP (ten sam byt, „raport bez trasy"). Kod usunięty procedurą kasacji
+> razem z P24+ w całości. Dokument zachowany jako materiał HISTORYCZNY
+> (wymagany przez `docs_archive_guard.py::MIGRATION_MAP` jako istniejący
+> następca `P27_SCENARIO_COMPARISON_ETAP_PLUS.md`); NIE jest źródłem
+> kanonicznym, nie opisuje niczego istniejącego w kodzie. Terminologia w §7
+> poniżej („BoundaryNode") jest historyczna i NIE obowiązuje — zakazana w
+> rdzeniu modelu (`CLAUDE.md`, Forbidden Terms).
+
 ## 1. Cel
 
 P27 zapewnia **deterministyczne porównanie scenariuszy A/B/C**

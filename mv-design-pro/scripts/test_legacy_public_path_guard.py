@@ -276,3 +276,130 @@ def test_guard_accepts_current_repo_state() -> None:
     musi byc czysta PO kasacji CV-3.2."""
     assert guard.check_study_case_engine_resurrection() == []
     assert guard.check_domain_op_registry_resurrection() == []
+    assert guard.check_c4_and_p24_plus_resurrection() == []
+
+
+# ---------------------------------------------------------------------------
+# CV-3.2 (drugi commit): bramka wskrzeszenia C4 (`ScenarioComparisonBuilder`,
+# `application.study_scenario`, `analysis.scenario_comparison`) + P24+
+# (`p24_plus_report`, `export_p24_plus_report_pdf`)
+# ---------------------------------------------------------------------------
+
+
+def _patch_c4_dirs(
+    monkeypatch, tmp_path, *, study_scenario=None, scenario_comparison=None, pdf=None
+):
+    """Podmien wszystkie trzy katalogi C4/P24+ na podane sciezki (domyslnie:
+    nieistniejace w tmp_path — czysty stan)."""
+    dirs = {
+        (
+            study_scenario or (tmp_path / "missing_study_scenario")
+        ): "application/study_scenario (C4)",
+        (scenario_comparison or (tmp_path / "missing_scenario_comparison")): (
+            "analysis/scenario_comparison (C4)"
+        ),
+        (pdf or (tmp_path / "missing_pdf")): "analysis/reporting/pdf (P24+)",
+    }
+    monkeypatch.setattr(guard, "FORBIDDEN_C4_DIRECTORIES", dirs)
+
+
+def test_guard_rejects_resurrected_study_scenario_directory(tmp_path, monkeypatch) -> None:
+    resurrected = tmp_path / "backend" / "src" / "application" / "study_scenario"
+    resurrected.mkdir(parents=True)
+    (resurrected / "models.py").write_text("class Study:\n    pass\n", encoding="utf-8")
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", tmp_path / "backend" / "src")
+    _patch_c4_dirs(monkeypatch, tmp_path, study_scenario=resurrected)
+
+    violations = guard.check_c4_and_p24_plus_resurrection()
+
+    assert any(
+        "[resurrected-module]" in v and "application/study_scenario" in v for v in violations
+    )
+
+
+def test_guard_rejects_resurrected_scenario_comparison_directory(tmp_path, monkeypatch) -> None:
+    resurrected = tmp_path / "backend" / "src" / "analysis" / "scenario_comparison"
+    resurrected.mkdir(parents=True)
+    (resurrected / "builder.py").write_text(
+        "class ScenarioComparisonBuilder:\n    pass\n", encoding="utf-8"
+    )
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", tmp_path / "backend" / "src")
+    _patch_c4_dirs(monkeypatch, tmp_path, scenario_comparison=resurrected)
+
+    violations = guard.check_c4_and_p24_plus_resurrection()
+
+    assert any(
+        "[resurrected-module]" in v and "analysis/scenario_comparison" in v for v in violations
+    )
+    assert any("[resurrected-class]" in v and "ScenarioComparisonBuilder" in v for v in violations)
+
+
+def test_guard_rejects_resurrected_p24_plus_directory(tmp_path, monkeypatch) -> None:
+    resurrected = tmp_path / "backend" / "src" / "analysis" / "reporting" / "pdf"
+    resurrected.mkdir(parents=True)
+    (resurrected / "p24_plus_report.py").write_text(
+        "def export_p24_plus_report_pdf():\n    pass\n", encoding="utf-8"
+    )
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", tmp_path / "backend" / "src")
+    _patch_c4_dirs(monkeypatch, tmp_path, pdf=resurrected)
+
+    violations = guard.check_c4_and_p24_plus_resurrection()
+
+    assert any("[resurrected-module]" in v and "analysis/reporting/pdf" in v for v in violations)
+    assert any(
+        "[resurrected-function]" in v and "export_p24_plus_report_pdf" in v for v in violations
+    )
+
+
+def test_guard_rejects_resurrected_class_or_function_under_other_path(
+    tmp_path, monkeypatch
+) -> None:
+    """Klasa/funkcja moze wrocic pod INNYM plikiem/katalogiem — guard skanuje
+    caly `src`, nie tylko trzy nazwane katalogi."""
+    src_dir = tmp_path / "backend" / "src" / "somewhere"
+    src_dir.mkdir(parents=True)
+    (src_dir / "sneaky.py").write_text(
+        "class ScenarioComparisonBuilder:\n    pass\n\n\n"
+        "def export_p24_plus_report_pdf():\n    pass\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", tmp_path / "backend" / "src")
+    _patch_c4_dirs(monkeypatch, tmp_path)
+
+    violations = guard.check_c4_and_p24_plus_resurrection()
+
+    assert any("[resurrected-class]" in v and "ScenarioComparisonBuilder" in v for v in violations)
+    assert any(
+        "[resurrected-function]" in v and "export_p24_plus_report_pdf" in v for v in violations
+    )
+
+
+def test_guard_does_not_fire_on_orphaned_pycache_directory(tmp_path, monkeypatch) -> None:
+    """Katalog istnieje na dysku (osierocony __pycache__ z sesji SPRZED
+    kasacji), ale nie zawiera ANI JEDNEGO .py — to NIE jest wskrzeszenie."""
+    stale = tmp_path / "backend" / "src" / "application" / "study_scenario"
+    (stale / "__pycache__").mkdir(parents=True)
+    (stale / "__pycache__" / "models.cpython-311.pyc").write_bytes(b"\x00")
+    src_dir = tmp_path / "backend" / "src"
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", src_dir)
+    _patch_c4_dirs(monkeypatch, tmp_path, study_scenario=stale)
+
+    assert guard.check_c4_and_p24_plus_resurrection() == []
+
+
+def test_guard_accepts_clean_tree_without_c4_or_p24_plus(tmp_path, monkeypatch) -> None:
+    src_dir = tmp_path / "backend" / "src" / "analysis"
+    src_dir.mkdir(parents=True)
+    (src_dir / "koperta_kontekstu.py").write_text(
+        "def pola_koperty(x):\n    return {}\n", encoding="utf-8"
+    )
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", tmp_path / "backend" / "src")
+    _patch_c4_dirs(monkeypatch, tmp_path)
+
+    assert guard.check_c4_and_p24_plus_resurrection() == []

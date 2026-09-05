@@ -139,9 +139,9 @@ Wynik mandatu „FINAL MASTER ARCHITECTURE MANDATE" (FAZY A–F, STOP §180). Ni
 - [analysis/NC_RFG_FLOW_TESTING_PROMPT.md](./analysis/NC_RFG_FLOW_TESTING_PROMPT.md) - prompt pętli testowania flow NC RfG
 - [analysis/SENSITIVITY_ANALYSIS_CANONICAL_PLUS.md](./analysis/SENSITIVITY_ANALYSIS_CANONICAL_PLUS.md) - analiza wrażliwości P25
 - [analysis/P26_AUTO_RECOMMENDATIONS_CANONICAL_PLUS.md](./analysis/P26_AUTO_RECOMMENDATIONS_CANONICAL_PLUS.md) - rekomendacje P26
-- [analysis/P27_SCENARIO_COMPARISON_CANONICAL_PLUS.md](./analysis/P27_SCENARIO_COMPARISON_CANONICAL_PLUS.md) - porównanie scenariuszy P27
+- [analysis/P27_SCENARIO_COMPARISON_CANONICAL_PLUS.md](./analysis/P27_SCENARIO_COMPARISON_CANONICAL_PLUS.md) - porównanie scenariuszy P27 (kod usunięty CV-3.2, dokument historyczny)
 - [analysis/P33_LF_SENSITIVITY_CANONICAL_KILLER.md](./analysis/P33_LF_SENSITIVITY_CANONICAL_KILLER.md) - wrażliwość napięć P33
-- [architecture/STUDY_SCENARIO_WORKFLOW_CANONICAL_PLUS.md](./architecture/STUDY_SCENARIO_WORKFLOW_CANONICAL_PLUS.md) - workflow Study/Scenario/Run
+- [architecture/STUDY_SCENARIO_WORKFLOW_CANONICAL_PLUS.md](./architecture/STUDY_SCENARIO_WORKFLOW_CANONICAL_PLUS.md) - workflow Study/Scenario/Run (kod usunięty CV-3.2, dokument historyczny)
 - [study/WARIANTY_URUCHOMIENIA_POROWNANIA.md](./study/WARIANTY_URUCHOMIENIA_POROWNANIA.md) - warianty, runy i porównania
 - [audit/REPO_HYGIENE_PO_FAZIE_KATALOG_FIRST.md](./audit/REPO_HYGIENE_PO_FAZIE_KATALOG_FIRST.md) - aktywna higiena repo po fazie katalog-first
 - [ui/UI_CANONICAL_PARITY_MATRIX.md](./ui/UI_CANONICAL_PARITY_MATRIX.md) - aktywna macierz UI
