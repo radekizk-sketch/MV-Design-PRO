@@ -6768,7 +6768,7 @@ V2_CATALOG_BINDING_KEYS: frozenset[str] = frozenset(
 # Export — V2 handlers and canonical ops
 # ---------------------------------------------------------------------------
 
-V2_CANONICAL_OPS = frozenset(
+V2_CANONICAL_OPS: frozenset[str] = frozenset(
     {
         # Ochrona
         "add_ct",
