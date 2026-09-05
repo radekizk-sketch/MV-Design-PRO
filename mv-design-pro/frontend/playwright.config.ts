@@ -18,6 +18,9 @@
  */
 
 import { defineConfig, devices } from '@playwright/test';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { resolveChromiumExecutable } from './scripts/playwright-env.mjs';
 
@@ -34,13 +37,67 @@ const backendHealthUrl = process.env.PLAYWRIGHT_BACKEND_HEALTH_URL
 const frontendUrl = process.env.PLAYWRIGHT_FRONTEND_URL ?? 'http://127.0.0.1:5173';
 const frontendCwd = fileURLToPath(new URL('.', import.meta.url));
 const backendCwd = fileURLToPath(new URL('../backend/', import.meta.url));
+
+// WŁASNOŚĆ SERWERÓW I IZOLACJA STANU (2026-09-05, karta FE-HIGIENA — odbiór).
+// Porty są WYPROWADZANE z adresów (PLAYWRIGHT_BACKEND_URL / PLAYWRIGHT_FRONTEND_URL),
+// więc bieg na innych portach nie wymaga żadnej innej zmiany — do tej pory komenda
+// backendu miała zaszyte `--port 8000` niezależnie od adresu, a serwer frontendu
+// zaszyte 5173 w `dev:e2e`; dwa równoległe biegi na jednej maszynie były niemożliwe.
+// `reuseExistingServer` domyślnie WYŁĄCZONE: przy `true` Playwright adoptował KAŻDY
+// serwer zastany na porcie — cudzy worktree, stary kod, cudza baza z projektami — a
+// gdy właściciel tamtego serwera go ubijał w trakcie biegu, specy padały na
+// `ERR_CONNECTION_REFUSED` (pomiar 2026-09-05: 9/17 czerwonych w jednym biegu z tej
+// przyczyny; wcześniejszy precedens w CONVERGENCE_EVIDENCE §E E2E-FIX). Teraz zajęty
+// port to JAWNY błąd startu serwera, nie cichy bieg na cudzym kodzie; świadome
+// współdzielenie serwera wymaga `PLAYWRIGHT_REUSE_SERVER=1`. Backend realny dostaje
+// ŚWIEŻĄ bazę i ŚWIEŻY magazyn ENM w katalogu tymczasowym biegu (spec „SLD render bez
+// ENM — empty state" zakłada pustą bazę; stan z poprzednich biegów w `./mv_design_pro.db`
+// łamał to założenie), chyba że wołający poda własne `PLAYWRIGHT_BACKEND_DATABASE_URL`
+// / `PLAYWRIGHT_ENM_STORE_DIR`. W CI (świeży runner, wolne porty) zachowanie jest
+// identyczne jak dotąd.
+const backendPort = new URL(withTrailingSlash(backendUrl)).port || '8000';
+const frontendPort = new URL(withTrailingSlash(frontendUrl)).port || '5173';
+const reuseExistingServer = process.env.PLAYWRIGHT_REUSE_SERVER === '1';
+function e2eTempDir(): string {
+  // Ustalany raz w procesie uruchamiającym; workery Playwrighta dziedziczą env,
+  // więc widzą TEN SAM katalog zamiast tworzyć własne.
+  if (!process.env.PLAYWRIGHT_E2E_TMP) {
+    process.env.PLAYWRIGHT_E2E_TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'mvd-e2e-'));
+  }
+  return process.env.PLAYWRIGHT_E2E_TMP;
+}
+const backendServerEnv: Record<string, string> = useRealBackend
+  ? {
+    ...(process.env as Record<string, string>),
+    // Kod backendu importuje pakiety absolutnie (`api.*`, `enm.*`), więc `src/`
+    // musi być na PYTHONPATH — w CI zapewniał to `poetry run` z instalacją
+    // edytowalną, przy jawnym interpreterze (worktree) trzeba to podać wprost.
+    PYTHONPATH: [path.join(backendCwd, 'src'), process.env.PYTHONPATH]
+      .filter((segment): segment is string => Boolean(segment))
+      .join(path.delimiter),
+    DATABASE_URL: process.env.PLAYWRIGHT_BACKEND_DATABASE_URL
+      ?? `sqlite+pysqlite:///${path.join(e2eTempDir(), 'mv_design_pro_e2e.db')}`,
+    ENM_STORE_DIR: process.env.PLAYWRIGHT_ENM_STORE_DIR ?? path.join(e2eTempDir(), 'enm_store'),
+  }
+  : {};
 const frontendServerCommand = process.env.PLAYWRIGHT_DISABLE_WEBSERVER
   ? 'echo "skip webserver"'
-  : 'npm run dev:e2e';
-const backendServerCommand = 'poetry run python -m uvicorn src.api.main:app --host 127.0.0.1 --port 8000';
+  : `npx vite --host 127.0.0.1 --port ${frontendPort} --strictPort`;
+// Interpreter backendu: domyślnie `poetry run python` (CI, pojedynczy checkout). W git
+// worktree Poetry wyprowadza NAZWĘ venv ze ścieżki projektu, więc `poetry run` trafia
+// w pusty venv bez uvicorna i serwer pada na starcie („No module named uvicorn") —
+// dotąd niewidoczne, bo Playwright adoptował cudzy serwer z portu 8000. Ten sam
+// mechanizm i to samo lekarstwo co w `scripts/mypy_ratchet_guard.py` (interpreter
+// podany jawnie): `PLAYWRIGHT_BACKEND_PYTHON=/sciezka/do/venv/bin/python`.
+const backendPython = process.env.PLAYWRIGHT_BACKEND_PYTHON ?? 'poetry run python';
+const backendServerCommand =
+  `${backendPython} -m uvicorn src.api.main:app --host 127.0.0.1 --port ${backendPort}`;
 
 export default defineConfig({
   testDir: './e2e',
+
+  // Rozgrzewka aplikacji po starcie serwerów (koszt zimnego startu Vite poza testami).
+  globalSetup: './e2e/global-setup.ts',
 
   // Run tests sequentially for determinism
   fullyParallel: false,
@@ -135,7 +192,8 @@ export default defineConfig({
         command: backendServerCommand,
         cwd: backendCwd,
         url: backendHealthUrl,
-        reuseExistingServer: true,
+        reuseExistingServer,
+        env: backendServerEnv,
         timeout: 120000,
         stdout: 'pipe',
         stderr: 'pipe',
@@ -144,7 +202,7 @@ export default defineConfig({
         command: frontendServerCommand,
         cwd: frontendCwd,
         url: frontendUrl,
-        reuseExistingServer: true,
+        reuseExistingServer,
         timeout: 120000,
         stdout: 'pipe',
         stderr: 'pipe',
@@ -154,7 +212,7 @@ export default defineConfig({
       command: frontendServerCommand,
       cwd: frontendCwd,
       url: frontendUrl,
-      reuseExistingServer: true,
+      reuseExistingServer,
       timeout: 120000,
       // Capture server output for debugging
       stdout: 'pipe',
