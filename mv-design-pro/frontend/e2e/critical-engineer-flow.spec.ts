@@ -15,7 +15,10 @@
 
 import { test, expect } from '@playwright/test';
 
-const API_BASE = process.env.API_BASE ?? 'http://127.0.0.1:8000';
+// Adres backendu z TEJ SAMEJ zmiennej co pozostale specy real-backend i runner
+// (`scripts/playwright-run-real.mjs`): wlasna zmienna `API_BASE` sprawiala, ze przy biegu
+// na innym porcie testy API tego pliku trafialy w cudzy/zastany backend na 8000.
+const API_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 
 test.describe('critical engineer flow — station templates end-to-end', () => {
   test('GET /api/station-templates returns 57+ templates across 10 categories', async ({ request }) => {
