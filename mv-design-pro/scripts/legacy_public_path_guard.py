@@ -45,6 +45,11 @@ FORBIDDEN_IMPORTS = {
     "application.result_mapping.load_flow_to_resultset_v1",
     "application.result_mapping.protection_to_overlay_v1",
     "domain.analysis_kind",
+    # Karta CV-3.3-C (2026-09-05): E4 (serie biegow) przeszlo z trzech
+    # slownikow w pamieci (`domain/batch_job.py`) na trwaly rejestr
+    # `run_batches` (`domain/run_batch.py`). Zadna aktywna trasa /api nie moze
+    # wskrzesic dawnego modulu.
+    "domain.batch_job",
 }
 FORBIDDEN_NAMES = {
     "AnalysisRun",
@@ -62,6 +67,10 @@ FORBIDDEN_NAMES = {
     "map_power_flow_to_resultset_v1",
     "map_protection_to_overlay_v1",
     "AnalysisKind",
+    # Karta CV-3.3-C (2026-09-05) — patrz FORBIDDEN_IMPORTS.
+    "BatchJob",
+    "BatchJobStatus",
+    "new_batch_job",
 }
 
 # CV-3.2 (kasacja C2/C3, karta CV-3.2) — bramka wskrzeszenia. C2

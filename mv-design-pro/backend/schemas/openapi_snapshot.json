@@ -548,6 +548,79 @@
     "title": "AutoPopulateSuggestion",
     "type": "object"
    },
+   "BatchItemResponse": {
+    "description": "Jedna pozycja serii — ZERO własnego wyniku (wynik = bieg kanoniczny po\n`canonical_run_id`, `GET /api/execution/runs/{canonical_run_id}`).",
+    "properties": {
+     "analysis_type": {
+      "title": "Analysis Type",
+      "type": "string"
+     },
+     "canonical_run_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Canonical Run Id"
+     },
+     "error_message": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error Message"
+     },
+     "options_hash": {
+      "title": "Options Hash",
+      "type": "string"
+     },
+     "position": {
+      "title": "Position",
+      "type": "integer"
+     },
+     "result_freshness": {
+      "title": "Result Freshness",
+      "type": "string"
+     },
+     "result_freshness_reason": {
+      "title": "Result Freshness Reason",
+      "type": "string"
+     },
+     "result_freshness_reason_pl": {
+      "title": "Result Freshness Reason Pl",
+      "type": "string"
+     },
+     "scenario_id": {
+      "title": "Scenario Id",
+      "type": "string"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     }
+    },
+    "required": [
+     "position",
+     "scenario_id",
+     "analysis_type",
+     "options_hash",
+     "canonical_run_id",
+     "status",
+     "error_message",
+     "result_freshness",
+     "result_freshness_reason",
+     "result_freshness_reason_pl"
+    ],
+    "title": "BatchItemResponse",
+    "type": "object"
+   },
    "BatchListResponse": {
     "description": "Lista serii przebiegów przypadku.",
     "properties": {
@@ -589,12 +662,53 @@
       "title": "Created At",
       "type": "string"
      },
+     "envelope": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Envelope"
+     },
      "errors": {
       "items": {
        "type": "string"
       },
       "title": "Errors",
       "type": "array"
+     },
+     "finished_at": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Finished At"
+     },
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/BatchItemResponse"
+      },
+      "title": "Items",
+      "type": "array"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
      },
      "result_set_ids": {
       "items": {
@@ -632,11 +746,15 @@
      "analysis_type",
      "scenario_ids",
      "created_at",
+     "finished_at",
      "status",
      "batch_input_hash",
      "run_ids",
      "result_set_ids",
-     "errors"
+     "errors",
+     "name",
+     "envelope",
+     "items"
     ],
     "title": "BatchResponse",
     "type": "object"
@@ -18599,7 +18717,7 @@
   },
   "/api/execution/batches/{batch_id}/execute": {
    "post": {
-    "description": "Wykonaj serię sekwencyjnie torem kanonicznym (realny solver).\n\nZero ponowień, zero częściowego sukcesu: pierwsza awaria kończy serię\nstanem FAILED z polskim komunikatem; biegi ukończone wcześniej pozostają\ndostępne jak zwykłe biegi kanoniczne.\n\nZwraca 404 dla nieznanej serii, 409 dla serii w stanie innym niż PENDING,\n404 gdy przypadek serii nie należy do żadnego projektu (CV-1-W — klucz\nmagazynu ENM tłumaczony TU, bo `BatchExecutionService` nie ma dostępu do\nbazy danych — patrz `application/batch_execution_service.py`).",
+    "description": "Wykonaj serię sekwencyjnie torem kanonicznym (realny solver).\n\nKAŻDA pozycja jest próbowana, niezależnie od wyniku poprzednich (karta §0\nC2 — zero zatrzymania na pierwszej awarii): status końcowy to FINISHED\n(wszystkie pozycje FINISHED), FAILED (wszystkie FAILED) albo PARTIAL\n(mieszanka).\n\nZwraca 404 dla nieznanej serii, 409 dla serii w stanie innym niż CREATED,\n404 gdy przypadek serii nie należy do żadnego projektu (klucz magazynu ENM\ntłumaczony TU, bo `BatchExecutionService` nie ma dostępu do bazy danych —\npatrz `application/batch_execution_service.py`).",
     "operationId": "execute_batch_api_execution_batches__batch_id__execute_post",
     "parameters": [
      {
@@ -19177,7 +19295,7 @@
     ]
    },
    "post": {
-    "description": "Utwórz serię przebiegów (PENDING) nad scenariuszami przypadku.\n\nOdcisk treści każdego scenariusza jest przypinany przy tworzeniu serii;\nwykonanie odmówi biegu, jeśli scenariusz został w międzyczasie zmieniony\nlub usunięty (jedno źródło prawdy o treści serii).\n\nZwraca 404 dla nieznanego scenariusza, 400 dla listy pustej, duplikatów,\nscenariusza spoza przypadku albo mieszanych typów analizy. Klucz magazynu\nscenariuszy (Canonical Project Twin) jest tłumaczony z `case_id` DOPIERO PO\nwalidacji kształtu żądania (lista niepusta, UUID-y poprawne) — karta\nC6-PERSIST: serwis scenariuszy jest bezstanowy i wymaga klucza na każde\nwywołanie, ale kolejność walidacji zostaje TAKA SAMA jak przed migracją\n(przypadek nieznany w bazie nie ma przewagi nad prostszym błędem żądania).",
+    "description": "Utwórz serię przebiegów (CREATED) nad scenariuszami przypadku.\n\nOdcisk treści każdego scenariusza jest przypinany przy tworzeniu serii;\nwykonanie odmówi biegu TEJ pozycji, jeśli scenariusz został w międzyczasie\nzmieniony lub usunięty (jedno źródło prawdy o treści serii) — reszta\npozycji jest próbowana niezależnie.\n\nZwraca 404 dla nieznanego scenariusza, 400 dla listy pustej, duplikatów,\nscenariusza spoza przypadku albo mieszanych typów analizy.",
     "operationId": "create_batch_api_execution_study_cases__case_id__batches_post",
     "parameters": [
      {

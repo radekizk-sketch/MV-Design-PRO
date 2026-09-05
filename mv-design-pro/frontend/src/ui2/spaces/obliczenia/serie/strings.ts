@@ -50,6 +50,7 @@ export const SERIE_STRINGS = {
 
   // Ogłoszenia po wykonaniu
   seriaZakonczona: 'Seria zakończona — wyniki przebiegów są dostępne poniżej.',
+  seriaCzesciowa: 'Seria zakończona częściowo — część przebiegów się nie powiodła (treść błędów przy serii).',
   seriaNieudana: 'Seria zakończona błędem — treść błędu przy serii.',
 } as const;
 

@@ -446,7 +446,7 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "diagnostics/preflight.py",
     "domain/analysis_run.py",
     "domain/archive_diff.py",
-    "domain/batch_job.py",
+    "domain/run_batch.py",
     "domain/der_protection_functions.py",
     "domain/der_readiness.py",
     "domain/dobor_przekladnika.py",

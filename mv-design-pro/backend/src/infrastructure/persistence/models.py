@@ -567,6 +567,44 @@ class CanonicalRunBranchFlowORM(Base):
     )
 
 
+class RunBatchORM(Base):
+    """Seria biegow kanonicznych (karta CV-3.3-C, R2). Zastepuje trzy slowniki
+    w pamieci (`_batches`/`_case_batches`/`_pinned_hashes`,
+    `application/batch_execution_service.py` sprzed tej karty) — seria ginela
+    z procesem backendu, choc kazdy bieg pozycji jest trwaly w `canonical_runs`
+    (R1). Pozycje sa jedna kolumna JSON (`items_json`, lista uporzadkowana wg
+    `position`): kazda niesie WYLACZNIE `canonical_run_id` wskazujacy na wynik
+    w R1 — seria NIE jest drugim rejestrem wynikow.
+    """
+
+    __tablename__ = "run_batches"
+    __table_args__ = (
+        Index("ix_run_batches_case_id_created_at", "case_id", "created_at"),
+        Index("ix_run_batches_project_id_created_at", "project_id", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(GUID(), primary_key=True)
+    project_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    case_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    analysis_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    #: Etykieta serii — kolumna schematu (karta §0 C1); brak dostawcy UI w tej
+    #: karcie, wiec zawsze `None` dopoki formularz tworzenia serii nie dostanie
+    #: pola nazwy (osobna karta UI, nie fantom: kolumna jest realna, tylko
+    #: niewypelniana).
+    name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    #: Koperta rewizji Z CHWILI UTWORZENIA serii (`enm/envelope.py`) — zapis
+    #: informacyjny, seria NIE kopiuje tej migawki do pozycji (karta C5).
+    envelope_json: Mapped[dict[str, Any] | None] = mapped_column(DeterministicJSON(), nullable=True)
+    #: Pozycje serii, uporzadkowane wg `position` — `domain.run_batch.RunBatchItem.to_dict()`.
+    items_json: Mapped[list[dict[str, Any]]] = mapped_column(
+        DeterministicJSON(), nullable=False, default=list
+    )
+    batch_input_hash: Mapped[str] = mapped_column(String(128), nullable=False)
+
+
 class AnalysisRunIndexORM(Base):
     __tablename__ = "analysis_runs_index"
     __table_args__ = (

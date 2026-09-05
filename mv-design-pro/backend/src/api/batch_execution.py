@@ -1,6 +1,7 @@
-"""Serie przebiegów (wsad) — REST API (karta BATCH-ROUTER).
+"""Serie przebiegów (wsad) — REST API (karta CV-3.3-C, trwały rejestr `run_batches`).
 
-Końcówki:
+Końcówki (kształt odpowiedzi BEZ ZMIANY względem karty BATCH-ROUTER — pola
+addytywne: `finished_at`, `name`, `envelope`, `items[]`):
     POST /api/execution/study-cases/{case_id}/batches      — utwórz serię
     POST /api/execution/batches/{batch_id}/execute         — wykonaj serię
     GET  /api/execution/study-cases/{case_id}/batches      — lista serii
@@ -11,22 +12,25 @@ przypadku (tor identyczny z pojedynczym biegiem ze scenariusza). Wyniki
 pojedynczych biegów są dostępne istniejącymi końcówkami
 (`GET /api/execution/runs/{run_id}` / `.../results`).
 
-HISTORIA (pomiar karty BATCH-ROUTER, 2026-08-07): poprzednia wersja tego
-modułu (PR-20/21, nigdy niewpięta do `main.py`) niosła 8 końcówek, z czego:
-- 4 wsadowe fabrykowały wyniki (wyniki z żądania klienta zamiast solvera,
-  rejestr przypadków w pamięci silnika, której produkcja nie zasila),
-- 4 porównawcze były DUPLIKATEM żywej powierzchni
-  `/api/short-circuit-comparisons` (rozstrzygnięcie 2026-08-06, rejestr
-  długu w `scripts/route_prefix_guard.py`) — usunięte, nie wpięte.
+TRWAŁOŚĆ (karta CV-3.3-C, 2026-09-05). Seria żyje odtąd w tabeli `run_batches`
+(R2) — restart procesu backendu NIE gubi serii (poprzednio: trzy słowniki w
+pamięci modułu). Status serii ma pięć wartości (CREATED/RUNNING/FINISHED/
+FAILED/PARTIAL) — PARTIAL, gdy część pozycji zawiodła, a reszta się powiodła
+(seria NIGDY nie melduje cicho FINISHED). Każda pozycja niesie własną
+świeżość wyniku (`result_freshness`, wyprowadzoną z koperty biegu — TA SAMA
+funkcja co nakładka pojedynczego biegu, `application/result_freshness.py`) —
+ekran serii pokazuje OUTDATED per pozycja, nie zielone na zawsze.
 
 Komunikaty błędów po polsku (spójność z UI).
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 from uuid import UUID
 
+from api.dependencies import get_uow_factory
 from api.fault_scenarios import get_fault_scenario_service
 from api.klucz_twin_dep import klucz_twin_z_sciezki
 from application.batch_execution_service import (
@@ -35,17 +39,29 @@ from application.batch_execution_service import (
     BatchNotPendingError,
 )
 from application.fault_scenario_service import FaultScenarioNotFoundError
-from fastapi import APIRouter, HTTPException, Request, status
+from application.result_freshness import (
+    FreshnessReason,
+    FreshnessVerdict,
+    ResultFreshness,
+    StanBiezacyModelu,
+    swiezosc_biegu_kanonicznego,
+)
+from domain.run_batch import RunBatch
+from enm.canonical_analysis import get_run as get_canonical_run
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from infrastructure.persistence.unit_of_work import UnitOfWork
 from pydantic import BaseModel, Field
 
 router = APIRouter(tags=["batch-execution"])
 
-# Serwis pamięciowy (spójnie z serwisem scenariuszy, którego serie dotyczą).
+# Serwis jest BEZSTANOWY (karta CV-3.3-C, wzorzec `FaultScenarioService`) —
+# singleton pozostaje wyłącznie jako wygodny punkt wstrzyknięcia w testach,
+# nie jako nośnik treści (treść żyje w `run_batches`).
 _batch_service: BatchExecutionService | None = None
 
 
 def get_batch_service() -> BatchExecutionService:
-    """Singleton serwisu serii — związany z serwisem scenariuszy zwarciowych."""
+    """Serwis serii — związany z serwisem scenariuszy zwarciowych."""
     global _batch_service
     if _batch_service is None:
         _batch_service = BatchExecutionService(get_fault_scenario_service())
@@ -66,6 +82,25 @@ class CreateBatchRequest(BaseModel):
     )
 
 
+class BatchItemResponse(BaseModel):
+    """Jedna pozycja serii — ZERO własnego wyniku (wynik = bieg kanoniczny po
+    `canonical_run_id`, `GET /api/execution/runs/{canonical_run_id}`)."""
+
+    position: int
+    scenario_id: str
+    analysis_type: str
+    options_hash: str
+    canonical_run_id: str | None
+    status: str
+    error_message: str | None
+    #: Świeżość WYNIKU pozycji względem modelu bieżącego — TA SAMA funkcja co
+    #: nakładka pojedynczego biegu (`application/result_freshness.py`), zero
+    #: pola "zielone na zawsze" (karta §0 C3).
+    result_freshness: str
+    result_freshness_reason: str
+    result_freshness_reason_pl: str
+
+
 class BatchResponse(BaseModel):
     """Rekord serii przebiegów."""
 
@@ -74,11 +109,15 @@ class BatchResponse(BaseModel):
     analysis_type: str
     scenario_ids: list[str]
     created_at: str
+    finished_at: str | None
     status: str
     batch_input_hash: str
     run_ids: list[str]
     result_set_ids: list[str]
     errors: list[str]
+    name: str | None
+    envelope: dict[str, Any] | None
+    items: list[BatchItemResponse]
 
 
 class BatchListResponse(BaseModel):
@@ -104,6 +143,41 @@ def _parse_uuid(value: str, field_name: str = "id") -> UUID:
         ) from exc
 
 
+def _werdykt_pozycji(run_id: str | None, stan: StanBiezacyModelu) -> FreshnessVerdict:
+    """Świeżość WYNIKU jednej pozycji — brak biegu = uczciwe NONE (bieg nigdy
+    nie powstał, np. scenariusz zablokowany przed utworzeniem biegu)."""
+    if run_id is None:
+        return FreshnessVerdict(ResultFreshness.NONE, FreshnessReason.BRAK_WYNIKU)
+    run = get_canonical_run(UUID(run_id))
+    if run is None:
+        return FreshnessVerdict(ResultFreshness.NONE, FreshnessReason.BRAK_WYNIKU)
+    return swiezosc_biegu_kanonicznego(run, stan)
+
+
+def _pola_swiezosci_pozycji(werdykt: FreshnessVerdict) -> dict[str, str]:
+    return {
+        "result_freshness": werdykt.status.value,
+        "result_freshness_reason": werdykt.reason.value,
+        "result_freshness_reason_pl": werdykt.reason_pl,
+    }
+
+
+def _do_odpowiedzi(batch: RunBatch, uow_factory: Callable[[], UnitOfWork] | None) -> dict[str, Any]:
+    """Rekord serii → kształt HTTP, z DOŁOŻONĄ świeżością per pozycja (liczoną
+    RAZ dla całej serii — pozycje dzielą `case_id`, więc `StanBiezacyModelu`
+    jest jednym odczytem, nie N odczytami modelu)."""
+    dane = batch.to_dict()
+    stan = StanBiezacyModelu.dla_przypadku(str(batch.case_id), uow_factory)
+    dane["items"] = [
+        {
+            **pozycja,
+            **_pola_swiezosci_pozycji(_werdykt_pozycji(pozycja["canonical_run_id"], stan)),
+        }
+        for pozycja in dane["items"]
+    ]
+    return dane
+
+
 # =============================================================================
 # Końcówki serii
 # =============================================================================
@@ -116,21 +190,20 @@ def _parse_uuid(value: str, field_name: str = "id") -> UUID:
     summary="Utwórz serię przebiegów ze scenariuszy zwarciowych",
 )
 def create_batch(
-    case_id: str, request: CreateBatchRequest, http_request: Request
+    case_id: str,
+    request: CreateBatchRequest,
+    http_request: Request,
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
-    """Utwórz serię przebiegów (PENDING) nad scenariuszami przypadku.
+    """Utwórz serię przebiegów (CREATED) nad scenariuszami przypadku.
 
     Odcisk treści każdego scenariusza jest przypinany przy tworzeniu serii;
-    wykonanie odmówi biegu, jeśli scenariusz został w międzyczasie zmieniony
-    lub usunięty (jedno źródło prawdy o treści serii).
+    wykonanie odmówi biegu TEJ pozycji, jeśli scenariusz został w międzyczasie
+    zmieniony lub usunięty (jedno źródło prawdy o treści serii) — reszta
+    pozycji jest próbowana niezależnie.
 
     Zwraca 404 dla nieznanego scenariusza, 400 dla listy pustej, duplikatów,
-    scenariusza spoza przypadku albo mieszanych typów analizy. Klucz magazynu
-    scenariuszy (Canonical Project Twin) jest tłumaczony z `case_id` DOPIERO PO
-    walidacji kształtu żądania (lista niepusta, UUID-y poprawne) — karta
-    C6-PERSIST: serwis scenariuszy jest bezstanowy i wymaga klucza na każde
-    wywołanie, ale kolejność walidacji zostaje TAKA SAMA jak przed migracją
-    (przypadek nieznany w bazie nie ma przewagi nad prostszym błędem żądania).
+    scenariusza spoza przypadku albo mieszanych typów analizy.
     """
     parsed_case_id = _parse_uuid(case_id, "case_id")
     if not request.scenario_ids:
@@ -148,7 +221,7 @@ def create_batch(
             study_case_id=parsed_case_id,
             scenario_ids=scenario_ids,
         )
-        return batch.to_dict()
+        return _do_odpowiedzi(batch, uow_factory)
     except FaultScenarioNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -166,17 +239,22 @@ def create_batch(
     response_model=BatchResponse,
     summary="Wykonaj serię przebiegów",
 )
-def execute_batch(batch_id: str, http_request: Request) -> dict[str, Any]:
+def execute_batch(
+    batch_id: str,
+    http_request: Request,
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
+) -> dict[str, Any]:
     """Wykonaj serię sekwencyjnie torem kanonicznym (realny solver).
 
-    Zero ponowień, zero częściowego sukcesu: pierwsza awaria kończy serię
-    stanem FAILED z polskim komunikatem; biegi ukończone wcześniej pozostają
-    dostępne jak zwykłe biegi kanoniczne.
+    KAŻDA pozycja jest próbowana, niezależnie od wyniku poprzednich (karta §0
+    C2 — zero zatrzymania na pierwszej awarii): status końcowy to FINISHED
+    (wszystkie pozycje FINISHED), FAILED (wszystkie FAILED) albo PARTIAL
+    (mieszanka).
 
-    Zwraca 404 dla nieznanej serii, 409 dla serii w stanie innym niż PENDING,
-    404 gdy przypadek serii nie należy do żadnego projektu (CV-1-W — klucz
-    magazynu ENM tłumaczony TU, bo `BatchExecutionService` nie ma dostępu do
-    bazy danych — patrz `application/batch_execution_service.py`).
+    Zwraca 404 dla nieznanej serii, 409 dla serii w stanie innym niż CREATED,
+    404 gdy przypadek serii nie należy do żadnego projektu (klucz magazynu ENM
+    tłumaczony TU, bo `BatchExecutionService` nie ma dostępu do bazy danych —
+    patrz `application/batch_execution_service.py`).
     """
     parsed_batch_id = _parse_uuid(batch_id, "batch_id")
     service = get_batch_service()
@@ -189,11 +267,11 @@ def execute_batch(batch_id: str, http_request: Request) -> dict[str, Any]:
             detail=str(exc),
         ) from exc
 
-    klucz = klucz_twin_z_sciezki(str(batch_przed.study_case_id), http_request)
+    klucz = klucz_twin_z_sciezki(str(batch_przed.case_id), http_request)
 
     try:
         batch = service.execute_batch(parsed_batch_id, klucz_twin=klucz)
-        return batch.to_dict()
+        return _do_odpowiedzi(batch, uow_factory)
     except BatchNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -211,14 +289,17 @@ def execute_batch(batch_id: str, http_request: Request) -> dict[str, Any]:
     response_model=BatchListResponse,
     summary="Lista serii przebiegów przypadku",
 )
-def list_batches(case_id: str) -> dict[str, Any]:
+def list_batches(
+    case_id: str,
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
+) -> dict[str, Any]:
     """Serie przypadku, najnowsze pierwsze (pusta lista = uczciwe zero)."""
     parsed_case_id = _parse_uuid(case_id, "case_id")
     service = get_batch_service()
 
     batches = service.list_batches(parsed_case_id)
     return {
-        "batches": [b.to_dict() for b in batches],
+        "batches": [_do_odpowiedzi(b, uow_factory) for b in batches],
         "count": len(batches),
     }
 
@@ -228,14 +309,17 @@ def list_batches(case_id: str) -> dict[str, Any]:
     response_model=BatchResponse,
     summary="Szczegóły serii przebiegów",
 )
-def get_batch(batch_id: str) -> dict[str, Any]:
+def get_batch(
+    batch_id: str,
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
+) -> dict[str, Any]:
     """Szczegóły serii; 404 dla nieznanego identyfikatora."""
     parsed_batch_id = _parse_uuid(batch_id, "batch_id")
     service = get_batch_service()
 
     try:
         batch = service.get_batch(parsed_batch_id)
-        return batch.to_dict()
+        return _do_odpowiedzi(batch, uow_factory)
     except BatchNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

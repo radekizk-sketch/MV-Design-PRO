@@ -329,9 +329,37 @@ export interface CreateRunRequest {
 // =============================================================================
 
 /**
- * Status serii przebiegów — 1:1 z domeną backendu (`domain/batch_job.py`).
+ * Status serii przebiegów — 1:1 z domeną backendu (`domain/run_batch.py`,
+ * karta CV-3.3-C: rejestr trwały `run_batches`). Słownik dzieli wartości z
+ * `CanonicalRun.status` (CREATED/RUNNING/FINISHED/FAILED) + PARTIAL, jedyny
+ * stan niemożliwy dla pojedynczego biegu (część pozycji FAILED, reszta
+ * FINISHED — seria NIGDY nie melduje cicho FINISHED).
  */
-export type BatchStatus = 'PENDING' | 'RUNNING' | 'DONE' | 'FAILED';
+export type BatchStatus = 'CREATED' | 'RUNNING' | 'FINISHED' | 'FAILED' | 'PARTIAL';
+
+/** Status WYKONANIA jednej pozycji serii — TEN SAM słownik co bieg kanoniczny
+ * (bez PARTIAL — to stan wyłącznie serii, agregat pozycji). */
+export type BatchItemStatus = 'CREATED' | 'RUNNING' | 'FINISHED' | 'FAILED';
+
+/**
+ * Jedna pozycja serii (kontrakt `items[]`, karta CV-3.3-C). ZERO własnego
+ * wyniku — wynik = bieg kanoniczny po `canonical_run_id`
+ * (`GET /api/execution/runs/{canonical_run_id}`).
+ */
+export interface BatchItem {
+  position: number;
+  scenario_id: string;
+  analysis_type: ExecutionAnalysisType;
+  options_hash: string;
+  canonical_run_id: string | null;
+  status: BatchItemStatus;
+  error_message: string | null;
+  /** Świeżość WYNIKU pozycji względem modelu bieżącego — liczona na żywo
+   * (TA SAMA funkcja co nakładka pojedynczego biegu), nie „zielona na zawsze". */
+  result_freshness: StudyCaseResultStatus;
+  result_freshness_reason: string;
+  result_freshness_reason_pl: string;
+}
 
 /**
  * Rekord serii przebiegów (kontrakt `GET /api/execution/study-cases/{id}/batches`).
@@ -344,11 +372,15 @@ export interface BatchJob {
   analysis_type: ExecutionAnalysisType;
   scenario_ids: string[];
   created_at: string;
+  finished_at: string | null;
   status: BatchStatus;
   batch_input_hash: string;
   run_ids: string[];
   result_set_ids: string[];
   errors: string[];
+  name: string | null;
+  envelope: Record<string, unknown> | null;
+  items: BatchItem[];
 }
 
 /**
@@ -362,8 +394,9 @@ export interface CreateBatchRequest {
  * Polskie etykiety statusów serii.
  */
 export const BATCH_STATUS_LABELS: Record<BatchStatus, string> = {
-  PENDING: 'Utworzona',
+  CREATED: 'Utworzona',
   RUNNING: 'W trakcie',
-  DONE: 'Zakończona',
+  FINISHED: 'Zakończona',
   FAILED: 'Błąd',
+  PARTIAL: 'Częściowa',
 };

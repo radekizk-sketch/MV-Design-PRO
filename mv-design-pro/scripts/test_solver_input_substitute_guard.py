@@ -1016,9 +1016,35 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # 7 pozycji PRZENIESIONYCH z bloku `enm/canonical_analysis.py` do bloku
     # `enm/assembler.py` (suma per korzen `enm` bez zmian: 84; +1 plik dlugu,
     # bo ten sam dlug siedzi teraz w dwoch plikach zamiast jednego).
-    assert "Pol kontraktow wejsciowych: 3609." in wyjscie, wyjscie
+    # 3604 pol / 576 plikow / application 319 (CV-3.3-C na szczycie po CV-4.1,
+    # 2026-09-05; 3609 - 5 pol, 577 - 1 plik): domena serii
+    # przebiegow przeszla z `domain/batch_job.py` (skasowany) na `domain/run_batch.py`
+    # (poza SCAN_ROOTS — `domain/` nie jest skanowanym korzeniem, wiec plik nie jest
+    # zrodlem pol per constructione tej bramki tak czy inaczej niniejszym pinem;
+    # CONTRACT_SOURCES aktualizowany osobno w guardzie). Stary `BatchJob` mial DZIESIEC
+    # pol AnnAssign (`batch_id/study_case_id/analysis_type/scenario_ids/created_at/
+    # status/batch_input_hash/run_ids/result_set_ids/errors`); piec z nich bylo
+    # UNIKALNYCH w calym zbiorze CONTRACT_SOURCES (`batch_id`, `scenario_ids`,
+    # `run_ids`, `result_set_ids`, `errors` — `study_case_id`/`analysis_type`/
+    # `created_at`/`status`/`batch_input_hash` juz istnialy gdzie indziej, np.
+    # `domain/fault_scenario.py::study_case_id`, wiec ich usuniecie nie zmienia sumy).
+    # Nowy `RunBatch`/`RunBatchItem` NIE odtwarza tych piatki jako pol klasy: to samo
+    # znaczenie zyje odtad w WYPROWADZONYCH wlasciwosciach (`@property scenario_ids/
+    # run_ids/result_set_ids/errors`) — jedno zrodlo prawdy zamiast drugiej ksiegi
+    # (docstring modulu), wiec skaner AST (ktory czyta WYLACZNIE `AnnAssign`, nie
+    # `@property`) ich juz nie widzi — uczciwy spadek, nie luka pomiaru. Pozostale
+    # nowe pola (`id/project_id/case_id/name/finished_at/envelope/items/analysis_type/
+    # status/canonical_run_id/error_message/options_hash/position/options_hash`)
+    # pokrywaja sie nazwami z polami juz obecnymi gdzie indziej w CONTRACT_SOURCES
+    # (m.in. `enm.canonical_analysis.CanonicalRun.{case_id,finished_at,envelope,
+    # status}`, `infrastructure/persistence/models.py` — liczne `id`/`project_id`/
+    # `name`), wiec nie dokladaja zadnej NOWEJ unikalnej nazwy — arytmetyka
+    # 3609 - 5 = 3604 (na szczycie po FAB-K i CV-4.1) zamyka sie bez reszty. Plik `results_workspace_projection.py`
+    # (martwy, skasowany razem z domena) ubral 1 plik ze skanu `application`
+    # (320 -> 319); dlug/wykluczenia bez zmian (nie mial wlasnego wpisu w zadnym).
+    assert "Pol kontraktow wejsciowych: 3604." in wyjscie, wyjscie
     assert (
-        "Przeskanowano 577 plikow w zakresie: network_model, solver_input, enm, "
+        "Przeskanowano 576 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     assert "Zapadka dlugu (fizyczne): 64 plikow, suma 312." in wyjscie, wyjscie
@@ -1028,7 +1054,7 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         "wykluczenia=4 plikow/suma 7",
         "  solver_input: pliki_skanowane=10, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
         "  enm: pliki_skanowane=37, dlug=8 plikow/suma 84, wykluczenia=0 plikow/suma 0",
-        "  application: pliki_skanowane=320, dlug=37 plikow/suma 137, "
+        "  application: pliki_skanowane=319, dlug=37 plikow/suma 137, "
         "wykluczenia=7 plikow/suma 19",
         "  api: pliki_skanowane=65, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 23",
     ]

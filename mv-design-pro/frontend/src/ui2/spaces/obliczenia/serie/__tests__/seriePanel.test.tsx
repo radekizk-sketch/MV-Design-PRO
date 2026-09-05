@@ -47,18 +47,29 @@ function scenariusz(id: string, nazwa: string) {
   };
 }
 
-function rekordSerii(status: 'PENDING' | 'DONE' | 'FAILED', runIds: string[] = []) {
+function rekordSerii(
+  status: 'CREATED' | 'FINISHED' | 'FAILED' | 'PARTIAL',
+  runIds: string[] = [],
+) {
+  const bledy =
+    status === 'FAILED' || status === 'PARTIAL'
+      ? ['Scenariusz s2: Analiza zablokowana: brak danych Z2']
+      : [];
   return {
     batch_id: 'batch-1',
     study_case_id: CASE_ID,
     analysis_type: 'SC_3F',
     scenario_ids: ['s1', 's2'],
     created_at: '2026-08-07T10:30:00Z',
+    finished_at: status === 'CREATED' ? null : '2026-08-07T10:30:02Z',
     status,
     batch_input_hash: 'a'.repeat(64),
     run_ids: runIds,
     result_set_ids: runIds,
-    errors: status === 'FAILED' ? ['Scenariusz s2: Analiza zablokowana: brak danych Z2'] : [],
+    errors: bledy,
+    name: null,
+    envelope: null,
+    items: [],
   };
 }
 
@@ -100,15 +111,15 @@ function zamontujBackend(opcje: { scenariusze: ReturnType<typeof scenariusz>[] }
       }
       if (metoda === 'GET' && url.endsWith('/batches')) {
         return wykonano
-          ? json({ batches: [rekordSerii('DONE', ['run-a', 'run-b'])], count: 1 })
+          ? json({ batches: [rekordSerii('FINISHED', ['run-a', 'run-b'])], count: 1 })
           : json({ batches: [], count: 0 });
       }
       if (metoda === 'POST' && url.endsWith('/batches')) {
-        return json(rekordSerii('PENDING'), 201);
+        return json(rekordSerii('CREATED'), 201);
       }
       if (metoda === 'POST' && url.endsWith('/execute')) {
         wykonano = true;
-        return json(rekordSerii('DONE', ['run-a', 'run-b']));
+        return json(rekordSerii('FINISHED', ['run-a', 'run-b']));
       }
       if (metoda === 'GET' && url.endsWith('/runs')) {
         return wykonano

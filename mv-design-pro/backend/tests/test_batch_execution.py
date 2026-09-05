@@ -1,4 +1,4 @@
-"""Testy serii przebiegów (wsadu) — karta BATCH-ROUTER.
+"""Testy serii przebiegów (wsadu) — karta CV-3.3-C (trwały rejestr `run_batches`).
 
 Kontrakt HTTP + determinizm + iloczyn cech:
 - końcówka × stan pusty/pełny × determinizm (odcisk serii),
@@ -6,17 +6,23 @@ Kontrakt HTTP + determinizm + iloczyn cech:
   istniejącą końcówką `GET /api/execution/runs/{id}/results`),
 - predykaty parami: odcisk treści scenariusza przypięty przy tworzeniu serii
   i weryfikowany przy wykonaniu (zmiana/usunięcie scenariusza po utworzeniu
-  serii = uczciwa odmowa),
+  serii = uczciwa odmowa TEJ pozycji, reszta próbowana niezależnie),
 - ta sama brama uprawnień, co pojedynczy bieg (SC_2F bez Z2 → FAILED),
 - jedno źródło wejścia solvera (`solver_input_for_scenario`) dla ścieżki
   pojedynczego biegu i serii, z naprawą klasy: konfiguracja scenariusza
-  (`c_factor`, `thermal_time_seconds`) na WIERZCHU opcji biegu.
+  (`c_factor`, `thermal_time_seconds`) na WIERZCHU opcji biegu,
+- TRWAŁOŚĆ: seria przetrwa symulowany restart procesu backendu (rejestr
+  `run_batches`, R2 — nie ginie z procesem, jak dawne trzy słowniki w pamięci),
+- WYKONANIE CIĄGŁE: awaria jednej pozycji NIE zatrzymuje pozostałych (status
+  PARTIAL — nigdy cicho FINISHED),
+- ŚWIEŻOŚĆ PER POZYCJA: `items[].result_freshness` liczona NA ŻYWO z koperty
+  biegu, nie „zielona na zawsze".
 
 INWARIANTY POD TESTEM:
 - ZERO losowości w odcisku serii (porządek podania scenariuszy bez znaczenia),
 - wykonanie sekwencyjne w porządku posortowanych identyfikatorów,
-- zero częściowego sukcesu (pierwsza awaria → FAILED, biegi wcześniejsze
-  pozostają biegami kanonicznymi),
+- KAŻDA pozycja jest próbowana — zero przerwania serii na pierwszej awarii
+  (karta §0 C2; poprzednia wersja zatrzymywała się na pierwszej awarii),
 - wyniki WYŁĄCZNIE z solvera (zero fabrykacji — stary serwis PR-20 kończył
   biegi wynikami z żądania klienta; ta klasa defektu ma tu pin).
 """
@@ -27,8 +33,8 @@ from uuid import uuid4
 
 import pytest
 from api.main import app
-from domain.batch_job import compute_batch_input_hash, new_batch_job
 from domain.execution import ExecutionAnalysisType
+from domain.run_batch import compute_batch_input_hash, new_run_batch
 from fastapi.testclient import TestClient
 
 from tests.catalog_test_helpers import gpz_source_record
@@ -89,19 +95,20 @@ def _dwa_przypadki_w_jednym_projekcie() -> tuple[str, str]:
 
 @pytest.fixture(autouse=True)
 def _reset_services():
-    """Izolacja stanu serwisów pamięciowych i biegów kanonicznych.
+    """Izolacja stanu serwisów pamięciowych, rejestru serii i biegów kanonicznych.
 
-    Scenariusze zwarciowe żyją odtąd w magazynie na dysku (karta C6-PERSIST,
-    `enm/scenariusze.py`) — `reset_enm_store()` czyści JE RÓWNIEŻ
-    (`usun_wszystkie_scenariusze` wołane wewnątrz), więc `FaultScenarioService`
-    (bezstanowy) nie ma już własnego stanu do czyszczenia.
+    Scenariusze zwarciowe żyją w magazynie na dysku (karta C6-PERSIST,
+    `enm/scenariusze.py`) — `reset_enm_store()` czyści JE RÓWNIEŻ. Rejestr
+    serii (`run_batches`, karta CV-3.3-C) żyje w TEJ SAMEJ bazie SQL co biegi
+    kanoniczne — `reset_run_batches()` czyści go analogicznie do
+    `reset_canonical_runs()`.
     """
-    from api.batch_execution import get_batch_service
+    from application.batch_execution_service import reset_run_batches
     from enm.canonical_analysis import reset_canonical_runs
     from enm.store import reset_enm_store
 
     def _wyczysc() -> None:
-        get_batch_service().reset()
+        reset_run_batches()
         reset_canonical_runs()
         reset_enm_store()
 
@@ -240,8 +247,9 @@ def _create_scenario(
 
 
 class TestCreateBatch:
-    def test_tworzy_serie_pending_z_posortowanymi_scenariuszami(self):
+    def test_tworzy_serie_created_z_posortowanymi_scenariuszami(self):
         case_id = _nowy_przypadek()
+        _seed_valid_enm(case_id)
         s1 = _create_scenario(case_id, name="A", element_ref="bus-main")
         s2 = _create_scenario(case_id, name="B", element_ref="bus-1")
 
@@ -251,13 +259,30 @@ class TestCreateBatch:
         )
         assert response.status_code == 201
         data = response.json()
-        assert data["status"] == "PENDING"
+        assert data["status"] == "CREATED"
         assert data["study_case_id"] == case_id
         assert data["analysis_type"] == "SC_3F"
         assert data["scenario_ids"] == sorted([s1["scenario_id"], s2["scenario_id"]])
         assert data["run_ids"] == []
+        assert data["result_set_ids"] == []
         assert data["errors"] == []
+        assert data["finished_at"] is None
+        assert data["name"] is None
         assert len(data["batch_input_hash"]) == 64
+
+        # Pola addytywne karty CV-3.3-C: koperta + pozycje (karta §0 C1/C3).
+        assert data["envelope"] is not None
+        assert data["envelope"]["wersja"] == 1
+        assert data["envelope"]["options_hash"] == data["batch_input_hash"]
+        assert len(data["items"]) == 2
+        for pozycja, scenario_id in zip(data["items"], data["scenario_ids"], strict=True):
+            assert pozycja["scenario_id"] == scenario_id
+            assert pozycja["analysis_type"] == "SC_3F"
+            assert pozycja["canonical_run_id"] is None
+            assert pozycja["status"] == "CREATED"
+            assert pozycja["error_message"] is None
+            assert pozycja["result_freshness"] == "NONE"
+        assert [p["position"] for p in data["items"]] == [0, 1]
 
     def test_pusta_lista_scenariuszy_400(self):
         response = client.post(
@@ -346,14 +371,23 @@ class TestBatchHashDeterminism:
         """Domena: porządek podania scenariuszy nie zmienia odcisku."""
         ids = [uuid4(), uuid4(), uuid4()]
         hashes = ["h1", "h2", "h3"]
-        job_a = new_batch_job(uuid4(), ExecutionAnalysisType.SC_3F, ids, hashes)
+        job_a = new_run_batch(
+            project_id=None,
+            case_id=uuid4(),
+            analysis_type=ExecutionAnalysisType.SC_3F,
+            scenario_ids=ids,
+            scenario_content_hashes=hashes,
+            envelope=None,
+        )
         pary = dict(zip(ids, hashes, strict=True))
         odwrocone = list(reversed(ids))
-        job_b = new_batch_job(
-            uuid4(),
-            ExecutionAnalysisType.SC_3F,
-            odwrocone,
-            [pary[i] for i in odwrocone],
+        job_b = new_run_batch(
+            project_id=None,
+            case_id=uuid4(),
+            analysis_type=ExecutionAnalysisType.SC_3F,
+            scenario_ids=odwrocone,
+            scenario_content_hashes=[pary[i] for i in odwrocone],
+            envelope=None,
         )
         assert job_a.batch_input_hash == job_b.batch_input_hash
 
@@ -370,7 +404,7 @@ class TestBatchHashDeterminism:
 
 
 class TestExecuteBatch:
-    def test_wykonanie_konczy_serie_done_a_biegi_maja_wyniki(self):
+    def test_wykonanie_konczy_serie_finished_a_biegi_maja_wyniki(self):
         """Iloczyn: wykonanie × realny solver × wyniki dostępne końcówką biegów."""
         case_id = _nowy_przypadek()
         _seed_valid_enm(case_id)
@@ -385,9 +419,14 @@ class TestExecuteBatch:
         response = client.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute")
         assert response.status_code == 200
         done = response.json()
-        assert done["status"] == "DONE"
+        assert done["status"] == "FINISHED"
+        assert done["finished_at"] is not None
         assert len(done["run_ids"]) == 2
         assert done["errors"] == []
+        for pozycja in done["items"]:
+            assert pozycja["status"] == "FINISHED"
+            assert pozycja["canonical_run_id"] is not None
+            assert pozycja["result_freshness"] == "FRESH"
 
         # Biegi serii to ZWYKŁE biegi kanoniczne — widoczne na liście biegów
         # przypadku i z wynikami pod istniejącą końcówką (zero fabrykacji:
@@ -422,6 +461,8 @@ class TestExecuteBatch:
         done = client.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute").json()
 
         assert done["scenario_ids"] == posortowane
+        assert [p["position"] for p in done["items"]] == [0, 1]
+        assert [p["scenario_id"] for p in done["items"]] == posortowane
         # run_ids idą w tym samym porządku, co scenario_ids: bieg i-ty niesie
         # w opcjach identyfikator scenariusza i-tego (weryfikacja przez artefakt).
         from uuid import UUID as _UUID
@@ -435,7 +476,8 @@ class TestExecuteBatch:
             assert run.options["location"]["element_ref"] == scenariusz_elementu[scenario_id]
 
     def test_brama_uprawnien_jak_pojedynczy_bieg(self):
-        """SC_2F bez danych Z2 → seria FAILED z polskim komunikatem blokady."""
+        """SC_2F bez danych Z2 → seria FAILED (jedyna pozycja) z polskim
+        komunikatem blokady."""
         case_id = _nowy_przypadek()
         _seed_valid_enm(case_id)
         s2f = _create_scenario(case_id, name="2F", fault_type="SC_2F")
@@ -449,9 +491,13 @@ class TestExecuteBatch:
         assert done["status"] == "FAILED"
         assert done["run_ids"] == []
         assert any("zablokowana" in e.lower() for e in done["errors"])
+        assert done["items"][0]["status"] == "FAILED"
+        assert done["items"][0]["canonical_run_id"] is None
+        assert done["items"][0]["result_freshness"] == "NONE"
 
     def test_scenariusz_usuniety_po_utworzeniu_serii_failed(self):
-        """Predykaty parami: usunięcie scenariusza unieważnia serię przy wykonaniu."""
+        """Predykaty parami: usunięcie scenariusza unieważnia TĘ pozycję przy
+        wykonaniu (jedyna pozycja → seria FAILED w całości)."""
         case_id = _nowy_przypadek()
         _seed_valid_enm(case_id)
         s1 = _create_scenario(case_id)
@@ -468,9 +514,9 @@ class TestExecuteBatch:
         assert any("usunięty po utworzeniu serii" in e for e in done["errors"])
 
     def test_scenariusz_zmieniony_po_utworzeniu_serii_failed(self):
-        """Predykaty parami: zmiana treści scenariusza unieważnia serię (odcisk
-        przypięty przy tworzeniu i weryfikowany przy wykonaniu z JEDNEGO źródła
-        — `compute_scenario_content_hash`)."""
+        """Predykaty parami: zmiana treści scenariusza unieważnia TĘ pozycję
+        (odcisk przypięty przy tworzeniu i weryfikowany przy wykonaniu z
+        JEDNEGO źródła — `compute_scenario_content_hash`)."""
         case_id = _nowy_przypadek()
         _seed_valid_enm(case_id)
         s1 = _create_scenario(case_id)
@@ -489,8 +535,12 @@ class TestExecuteBatch:
         assert done["status"] == "FAILED"
         assert any("zmieniony po utworzeniu serii" in e for e in done["errors"])
 
-    def test_awaria_w_srodku_serii_zachowuje_wczesniejsze_biegi(self):
-        """Iloczyn: awaria × pozycja w serii — biegi sprzed awarii pozostają."""
+    def test_awaria_jednej_pozycji_nie_zatrzymuje_pozostalych_partial(self):
+        """Karta §0 C2 (WYKONANIE CIĄGŁE) — iloczyn: awaria × pozycja w serii ×
+        reszta próbowana niezależnie. Poprzednia wersja zatrzymywała się na
+        pierwszej awarii (status FAILED, druga pozycja NIGDY nie próbowana);
+        odtąd DRUGA pozycja jest wykonana mimo awarii pierwszej — status
+        PARTIAL, nie FAILED (część pozycji powiodła się)."""
         case_id = _nowy_przypadek()
         _seed_valid_enm(case_id)
         s1 = _create_scenario(case_id, name="A", element_ref="bus-main")
@@ -502,16 +552,47 @@ class TestExecuteBatch:
             f"{BASE_URL}/study-cases/{case_id}/batches",
             json={"scenario_ids": [s1["scenario_id"], s2["scenario_id"]]},
         ).json()
-        # Usuwamy DRUGI w porządku wykonania — pierwszy bieg zdąży się policzyć.
+        # Usuwamy DRUGI w porządku wykonania.
         assert client.delete(f"{BASE_URL}/fault-scenarios/{drugi}").status_code == 204
 
         done = client.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute").json()
-        assert done["status"] == "FAILED"
+        assert done["status"] == "PARTIAL"
         assert len(done["run_ids"]) == 1
+        assert len(done["errors"]) == 1
+        assert len(done["items"]) == 2
+        pierwsza_pozycja, druga_pozycja = done["items"]
+        assert pierwsza_pozycja["scenario_id"] == posortowane[0]
+        assert pierwsza_pozycja["status"] == "FINISHED"
+        assert pierwsza_pozycja["canonical_run_id"] is not None
+        assert druga_pozycja["scenario_id"] == drugi
+        assert druga_pozycja["status"] == "FAILED"
+        assert druga_pozycja["canonical_run_id"] is None
+        assert "usunięty po utworzeniu serii" in (druga_pozycja["error_message"] or "")
+
         run = client.get(f"{BASE_URL}/runs/{done['run_ids'][0]}").json()
         assert run["status"] == "DONE"
 
-    def test_wykonanie_nie_pending_409(self):
+    def test_wszystkie_pozycje_failed_status_failed_nie_partial(self):
+        """Iloczyn: N>1 pozycji × WSZYSTKIE zawodzą → FAILED (nie PARTIAL —
+        PARTIAL wymaga MIESZANKI, nie samych awarii; odróżnia od poprzedniego
+        testu, gdzie jedna pozycja się powiodła)."""
+        case_id = _nowy_przypadek()
+        _seed_valid_enm(case_id)
+        s1 = _create_scenario(case_id, name="A", fault_type="SC_2F", element_ref="bus-main")
+        s2 = _create_scenario(case_id, name="B", fault_type="SC_2F", element_ref="bus-1")
+
+        batch = client.post(
+            f"{BASE_URL}/study-cases/{case_id}/batches",
+            json={"scenario_ids": [s1["scenario_id"], s2["scenario_id"]]},
+        ).json()
+        done = client.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute").json()
+
+        assert done["status"] == "FAILED"
+        assert done["run_ids"] == []
+        assert len(done["errors"]) == 2
+        assert all(p["status"] == "FAILED" for p in done["items"])
+
+    def test_wykonanie_nie_created_409(self):
         case_id = _nowy_przypadek()
         _seed_valid_enm(case_id)
         s1 = _create_scenario(case_id, element_ref="bus-main")
@@ -523,7 +604,7 @@ class TestExecuteBatch:
         assert first.status_code == 200
         second = client.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute")
         assert second.status_code == 409
-        assert "wymagany PENDING" in second.json()["detail"]
+        assert "wymagany CREATED" in second.json()["detail"]
 
     def test_wykonanie_nieznanej_serii_404(self):
         response = client.post(f"{BASE_URL}/batches/{uuid4()}/execute")
@@ -581,6 +662,168 @@ class TestListAndGetBatch:
 
 
 # =============================================================================
+# Karta CV-3.3-C — trwałość rejestru serii (R2, `run_batches`)
+# =============================================================================
+
+
+class TestTrwaloscPoRestarcie:
+    def test_seria_przetrwa_symulowany_restart_procesu(self, tmp_path, monkeypatch):
+        """Iloczyn: seria WYKONANA × restart procesu backendu × `GET` identyczny.
+
+        Rejestr `run_batches` żyje w TEJ SAMEJ bazie SQL co `canonical_runs`
+        (`run_batch_repository.py` reużywa `get_canonical_run_session_factory`).
+        Baza domyślna testów jest W PAMIĘCI (autouse `_izolowana_baza_
+        przebiegow`) — znika z ostatnim połączeniem, więc symulacja restartu
+        wymaga bazy NA DYSKU (nadpisujemy `DATABASE_URL` własnym
+        `monkeypatch`, zgodnie z konwencją `conftest.py`): zniszczenie i
+        odtworzenie silnika SQLAlchemy (symulacja nowego procesu backendu) NIE
+        usuwa pliku, więc dane MUSZĄ przetrwać, jeśli rejestr jest naprawdę
+        trwały."""
+        db_path = tmp_path / "run_batches_restart.db"
+        monkeypatch.setenv("DATABASE_URL", f"sqlite+pysqlite:///{db_path}")
+
+        from infrastructure.persistence.repositories import (
+            canonical_run_repository as repo_modul,
+        )
+
+        def _wymus_nowy_silnik() -> None:
+            if repo_modul._cached_engine is not None:
+                repo_modul._cached_engine.dispose()
+            repo_modul._cached_engine = None
+            repo_modul._cached_session_factory = None
+            repo_modul._cached_database_url = None
+
+        _wymus_nowy_silnik()
+
+        case_id = _nowy_przypadek()
+        _seed_valid_enm(case_id)
+        s1 = _create_scenario(case_id, element_ref="bus-main")
+        batch = client.post(
+            f"{BASE_URL}/study-cases/{case_id}/batches",
+            json={"scenario_ids": [s1["scenario_id"]]},
+        ).json()
+        done = client.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute").json()
+        assert done["status"] == "FINISHED"
+
+        # Symuluj restart procesu: zniszcz silnik (zamyka WSZYSTKIE połączenia
+        # do pliku) i wyczyść cache — NASTĘPNY dostęp buduje NOWY silnik od
+        # zera, dokładnie jak przy starcie nowego procesu backendu. Plik na
+        # dysku (w odróżnieniu od bazy w pamięci) przetrwa zniszczenie silnika.
+        _wymus_nowy_silnik()
+
+        po_restarcie = client.get(f"{BASE_URL}/batches/{batch['batch_id']}")
+        assert po_restarcie.status_code == 200
+        po_restarcie_json = po_restarcie.json()
+        assert po_restarcie_json["batch_id"] == done["batch_id"]
+        assert po_restarcie_json["status"] == "FINISHED"
+        assert po_restarcie_json["run_ids"] == done["run_ids"]
+        assert po_restarcie_json["items"][0]["canonical_run_id"] == (
+            done["items"][0]["canonical_run_id"]
+        )
+
+        lista_po_restarcie = client.get(f"{BASE_URL}/study-cases/{case_id}/batches").json()
+        assert lista_po_restarcie["count"] == 1
+        assert lista_po_restarcie["batches"][0]["batch_id"] == done["batch_id"]
+
+        # Bieg pozycji (R1) jest TEŻ dostępny po restarcie — to na nim opiera
+        # się cała trwałość serii (karta §0 C1: "pozycja NIE ma własnego wyniku").
+        wynik_biegu = client.get(f"{BASE_URL}/runs/{done['run_ids'][0]}/results")
+        assert wynik_biegu.status_code == 200
+
+        _wymus_nowy_silnik()
+
+
+# =============================================================================
+# Karta CV-3.3-C — koperta wspólna (§0 C1/C2/C5)
+# =============================================================================
+
+
+class TestKopertaWspolna:
+    def test_koperta_serii_odzwierciedla_model_z_chwili_utworzenia(self):
+        """Koperta serii jest budowana RAZ, przy tworzeniu — TA SAMA dla
+        wszystkich pozycji (§0 C2: "JEDNĄ kopertą"), niezależnie od tego, ile
+        pozycji ma seria."""
+        case_id = _nowy_przypadek()
+        _seed_valid_enm(case_id)
+        s1 = _create_scenario(case_id, name="A", element_ref="bus-main")
+        s2 = _create_scenario(case_id, name="B", element_ref="bus-1")
+
+        batch = client.post(
+            f"{BASE_URL}/study-cases/{case_id}/batches",
+            json={"scenario_ids": [s1["scenario_id"], s2["scenario_id"]]},
+        ).json()
+
+        koperta = batch["envelope"]
+        assert koperta is not None
+        assert koperta["wersja"] == 1  # brak JEDNEGO scenariusza na poziomie serii
+        assert koperta["model_revision"] == 1
+        assert koperta["options_hash"] == batch["batch_input_hash"]
+        assert "semantic_fingerprint" in koperta
+        assert "scenario_ref" not in koperta
+
+        # Koperta NIE zmienia się po wykonaniu — jest zapisem z CHWILI
+        # UTWORZENIA (§0 C5: seria nie kopiuje migawki do pozycji, każda
+        # pozycja czyta model na własny rachunek przy wykonaniu).
+        done = client.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute").json()
+        assert done["envelope"] == koperta
+
+
+# =============================================================================
+# Karta CV-3.3-C — świeżość per pozycja (§0 C3)
+# =============================================================================
+
+
+class TestSwiezoscPerPozycja:
+    def test_pozycja_outdated_po_zmianie_modelu_nie_zielona_na_zawsze(self):
+        """Iloczyn: bieg pozycji FINISHED (FRESH) × edycja modelu PO
+        wykonaniu × kolejny odczyt serii → OUTDATED. Dowód, że świeżość jest
+        liczona NA ŻYWO (§0 C3: "nie zielone na zawsze"), nie zapisywana raz
+        przy wykonaniu."""
+        case_id = _nowy_przypadek()
+        _seed_valid_enm(case_id)
+        s1 = _create_scenario(case_id, element_ref="bus-main")
+
+        batch = client.post(
+            f"{BASE_URL}/study-cases/{case_id}/batches",
+            json={"scenario_ids": [s1["scenario_id"]]},
+        ).json()
+        done = client.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute").json()
+        assert done["items"][0]["result_freshness"] == "FRESH"
+
+        # Edytuj model PO wykonaniu serii (dodaj odbiór) — operacja na SUROWYM
+        # słowniku (`model_dump` → mutacja słownika → `model_validate`), żeby
+        # uniknąć mieszania obiektów pydantic z surowym dict w polu listowym.
+        from enm.models import EnergyNetworkModel
+        from enm.store import get_enm, set_enm
+
+        from tests.test_execution_api import _klucz_modelu
+
+        klucz = _klucz_modelu(case_id)
+        zrzut = get_enm(klucz).model_dump(mode="json")
+        zrzut["loads"].append(
+            {
+                "id": "00000000-0000-0000-0000-000000000201",
+                "ref_id": "load-nowy",
+                "name": "Nowy odbior (test swiezosci)",
+                "tags": [],
+                "meta": {},
+                "bus_ref": "bus-1",
+                "p_mw": 0.1,
+                "q_mvar": 0.03,
+            }
+        )
+        set_enm(klucz, EnergyNetworkModel.model_validate(zrzut))
+
+        po_edycji = client.get(f"{BASE_URL}/batches/{batch['batch_id']}").json()
+        assert po_edycji["items"][0]["result_freshness"] == "OUTDATED"
+        assert po_edycji["items"][0]["result_freshness_reason"] == "model-zmieniony"
+        # Status WYKONANIA pozycji (FINISHED) jest niezależny od świeżości
+        # WYNIKU — bieg SIĘ wykonał, tylko opisuje już nieaktualny model.
+        assert po_edycji["items"][0]["status"] == "FINISHED"
+        assert po_edycji["status"] == "FINISHED"
+
+
+# =============================================================================
 # Jedno źródło wejścia solvera (KLASA, NIE INSTANCJA)
 # =============================================================================
 
@@ -627,7 +870,7 @@ class TestSolverInputJednoZrodlo:
             json={"scenario_ids": [s1["scenario_id"]]},
         ).json()
         done = client.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute").json()
-        assert done["status"] == "DONE"
+        assert done["status"] == "FINISHED"
 
         bieg_serii = client.get(f"{BASE_URL}/runs/{done['run_ids'][0]}").json()
         assert bieg_serii["solver_input_hash"] == pojedynczy.json()["solver_input_hash"]
@@ -656,7 +899,7 @@ class TestBiegSeriiMaKoperteZeScenariuszem:
             json={"scenario_ids": [s1["scenario_id"]]},
         ).json()
         done = client.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute").json()
-        assert done["status"] == "DONE"
+        assert done["status"] == "FINISHED"
 
         run = get_run(_UUID(done["run_ids"][0]))
         assert run is not None
@@ -678,7 +921,7 @@ class TestBiegSeriiMaKoperteZeScenariuszem:
             json={"scenario_ids": [s1["scenario_id"]]},
         ).json()
         done = client.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute").json()
-        assert done["status"] == "DONE"
+        assert done["status"] == "FINISHED"
 
         delete_resp = client.delete(f"{BASE_URL}/fault-scenarios/{s1['scenario_id']}")
         assert delete_resp.status_code == 409

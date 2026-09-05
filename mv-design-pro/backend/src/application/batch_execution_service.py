@@ -1,4 +1,4 @@
-"""Serwis serii przebiegów (wsadu) — karta BATCH-ROUTER.
+"""Serwis serii przebiegów (wsadu) — karta CV-3.3-C (R2, trwały rejestr).
 
 Orkiestracja SERII biegów kanonicznych nad scenariuszami zwarciowymi jednego
 przypadku obliczeniowego. Każdy element serii to ZWYKŁY bieg kanoniczny
@@ -9,32 +9,50 @@ liczy sama (NOT-A-SOLVER) i nie przechowuje wyników — wyniki żyją w
 artefaktach biegów kanonicznych, dostępnych istniejącymi końcówkami
 (`GET /api/execution/runs/{run_id}/results`).
 
-HISTORIA (pomiar karty BATCH-ROUTER, 2026-08-07): poprzednia wersja tego
-serwisu (PR-20) NIE wołała żadnego solvera — `execute_batch` kończyła biegi
-wynikami z ŻĄDANIA klienta (`solver_input["expected_results"]`) przez
-`ExecutionEngineService.complete_run`, a rejestr przypadków sprawdzała w
-pamięci silnika, której produkcja nigdy nie zasila. Wpięcie takiej końcówki
-byłoby fabrykacją wyników (fantom). Obecna wersja wykonuje KAŻDY scenariusz
-realnym torem kanonicznym.
+TRWAŁOŚĆ (karta CV-3.3-C, 2026-09-05). Poprzednia wersja tego serwisu (karta
+BATCH-ROUTER) trzymała serie w TRZECH słownikach modułu instancji
+(`_batches`/`_case_batches`/`_pinned_hashes`) — seria ginęła z procesem
+backendu, choć KAŻDY bieg pozycji jest trwały w R1 (`canonical_runs`).
+Konstytucja (docs/architecture/CANONICAL_TWIN_ARCHITECTURE.md §B.2): R1 =
+jedyny rejestr biegów, E4 → `run_batches`. Serwis jest odtąd BEZSTANOWY —
+DOKŁADNIE tak samo, jak `FaultScenarioService` (karta C6-PERSIST): żadna
+metoda nie trzyma treści serii w atrybucie instancji, wszystko żyje w
+`infrastructure.persistence.repositories.run_batch_repository`.
+
+WYKONANIE CIĄGŁE (karta §0 C2). Poprzednia wersja zatrzymywała serię na
+PIERWSZEJ awarii — pozostałe scenariusze NIGDY nie były próbowane. Odtąd
+KAŻDA pozycja jest próbowana niezależnie (kolejność deterministyczna —
+`position`); awaria jednej pozycji nie zatrzymuje pozostałych. Status serii
+jest WYPROWADZANY z pozycji (`domain.run_batch.finalize_batch_status`):
+FINISHED gdy wszystkie FINISHED, FAILED gdy wszystkie FAILED, PARTIAL gdy
+mieszanka — NIGDY cicho FINISHED. `stop_on_failure` NIE istnieje w kontrakcie
+API (sprawdzone przy tej karcie) — nie ma go jak zażądać, więc serwis nie
+wystawia takiej opcji (zero fantomu).
 
 INWARIANTY:
-- Wykonanie SEKWENCYJNE w porządku posortowanych identyfikatorów scenariuszy
-  (determinizm; zero równoległości).
-- Zero ponowień; pierwszy nieudany scenariusz kończy serię stanem FAILED
-  (biegi ukończone przed awarią pozostają — są zwykłymi biegami kanonicznymi).
+- Wykonanie SEKWENCYJNE w porządku `position` (determinizm; zero równoległości).
+- Zero ponowień; każda pozycja jest próbowana DOKŁADNIE raz.
 - PREDYKATY PARAMI: odcisk treści scenariusza jest przypinany przy TWORZENIU
-  serii i weryfikowany przy WYKONANIU z tego samego źródła prawdy
-  (`compute_scenario_content_hash`); scenariusz zmieniony lub usunięty po
-  utworzeniu serii = uczciwa odmowa, nigdy cichy bieg innej treści.
+  serii (`RunBatchItem.options_hash`) i weryfikowany przy WYKONANIU z tego
+  samego źródła prawdy (`compute_scenario_content_hash`); scenariusz zmieniony
+  lub usunięty po utworzeniu serii = uczciwa odmowa TEJ pozycji, nigdy cichy
+  bieg innej treści.
 - Wejście solvera per scenariusz buduje `solver_input_for_scenario` — TO SAMO
   źródło, którego używa ścieżka pojedynczego biegu (KLASA, NIE INSTANCJA).
 - `batch_input_hash` deterministyczny (domena `batch_job`, SHA-256).
+- Seria NIE kopiuje migawki modelu do pozycji (karta C5): koperta zapisana na
+  serii jest WYŁĄCZNIE informacyjna (stan modelu z chwili utworzenia); każda
+  pozycja czyta model NA WŁASNY RACHUNEK przy wykonaniu przez `create_run`,
+  dokładnie jak pojedynczy bieg (`scenario_copy_guard.py` R2/R3/R4: zero
+  konstrukcji `CanonicalRun` poza fabryką, zero kopii migawki).
 """
 
 from __future__ import annotations
 
 import logging
 from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 from application.fault_scenario_service import (
@@ -42,13 +60,29 @@ from application.fault_scenario_service import (
     FaultScenarioService,
     solver_input_for_scenario,
 )
-from domain.batch_job import BatchJob, BatchJobStatus, new_batch_job
 from domain.execution import ExecutionAnalysisType
 from domain.fault_scenario import FaultScenario, compute_scenario_content_hash
+from domain.run_batch import (
+    ITEM_STATUS_FAILED,
+    ITEM_STATUS_FINISHED,
+    RunBatch,
+    RunBatchItem,
+    RunBatchStatus,
+    compute_batch_input_hash,
+    new_run_batch,
+)
 from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import create_run as _create_canonical_run
 from enm.canonical_analysis import execute_run as _execute_canonical_run
+from enm.envelope import zbuduj_koperte
+from enm.hash import compute_enm_hash
+from enm.klucz_twin import czy_klucz_projektu, project_id_z_klucza
 from enm.scenariusze import OperatingScenario
+from enm.store import get_enm
+from infrastructure.persistence.repositories.run_batch_repository import (
+    run_batch_repository_scope,
+)
+from network_model.catalog.odcisk import odcisk_katalogu_domyslnego
 
 logger = logging.getLogger(__name__)
 
@@ -66,10 +100,10 @@ class BatchNotFoundError(BatchExecutionError):
 
 
 class BatchNotPendingError(BatchExecutionError):
-    """Seria przebiegów nie jest w stanie PENDING."""
+    """Seria przebiegów nie jest w stanie CREATED."""
 
     def __init__(self, batch_id: str, status: str) -> None:
-        super().__init__(f"Seria {batch_id} ma status {status} — wymagany PENDING")
+        super().__init__(f"Seria {batch_id} ma status {status} — wymagany CREATED")
         self.batch_id = batch_id
         self.status = status
 
@@ -78,14 +112,30 @@ class BatchNotPendingError(BatchExecutionError):
 CreateRunFn = Callable[..., CanonicalRun]
 ExecuteRunFn = Callable[[UUID], CanonicalRun]
 
+#: Rodzaj analizy kanonicznej dla KAŻDEGO biegu pozycji serii — serie działają
+#: WYŁĄCZNIE nad scenariuszami zwarciowymi (walidacja `create_batch`: wszystkie
+#: scenariusze tego samego `ExecutionAnalysisType`, mapowanego na jeden rodzaj
+#: analizy kanonicznej). Ta sama stała, co pojedynczy bieg ze scenariusza
+#: (`api/fault_scenarios.py`).
+_RODZAJ_ANALIZY_KANONICZNEJ = "short_circuit_sn"
+
+
+def reset_run_batches() -> None:
+    """Wyczyść rejestr serii (izolacja testów — parytet z `reset_canonical_runs`/
+    `reset_enm_store`)."""
+    with run_batch_repository_scope() as repo:
+        repo.clear_all()
+
 
 class BatchExecutionService:
     """Orkiestracja serii biegów kanonicznych nad scenariuszami zwarciowymi.
 
-    Serwis trzyma WYŁĄCZNIE metadane orkiestracji (rekordy `BatchJob`
-    w pamięci — spójnie z `FaultScenarioService`, którego scenariusze
-    orkiestruje). Biegi i ich wyniki żyją w repozytorium biegów
-    kanonicznych — seria nie tworzy równoległego magazynu wyników.
+    BEZSTANOWY (karta CV-3.3-C, wzorzec `FaultScenarioService`): żadna metoda
+    nie trzyma treści serii w atrybucie instancji — treść żyje wyłącznie w
+    rejestrze `run_batches` (`infrastructure.persistence.repositories.
+    run_batch_repository`), adresowanym identyfikatorem przekazanym jawnie do
+    każdej metody. Biegi i ich wyniki żyją w repozytorium biegów kanonicznych
+    (R1) — seria nie tworzy równoległego magazynu wyników.
     """
 
     def __init__(
@@ -98,11 +148,6 @@ class BatchExecutionService:
         self._scenario_service = scenario_service
         self._create_canonical_run = create_canonical_run
         self._execute_canonical_run = execute_canonical_run
-        self._batches: dict[UUID, BatchJob] = {}
-        self._case_batches: dict[UUID, list[UUID]] = {}
-        #: Odciski treści scenariuszy przypięte przy tworzeniu serii
-        #: (para z weryfikacją przy wykonaniu — jedno źródło prawdy).
-        self._pinned_hashes: dict[UUID, dict[UUID, str]] = {}
 
     # ------------------------------------------------------------------
     # Tworzenie serii
@@ -114,24 +159,28 @@ class BatchExecutionService:
         klucz: str,
         study_case_id: UUID,
         scenario_ids: list[UUID],
-    ) -> BatchJob:
-        """Utwórz serię przebiegów (PENDING) nad scenariuszami przypadku.
+    ) -> RunBatch:
+        """Utwórz serię przebiegów (CREATED) nad scenariuszami przypadku.
 
         Walidacje (polskie komunikaty — kontrakt API):
         - lista scenariuszy niepusta i bez duplikatów,
         - każdy scenariusz istnieje (`FaultScenarioNotFoundError` → 404),
         - każdy scenariusz należy do wskazanego przypadku,
-        - wszystkie scenariusze mają TEN SAM typ analizy (domena `BatchJob`
+        - wszystkie scenariusze mają TEN SAM typ analizy (domena `RunBatch`
           niesie jeden `analysis_type` — seria mieszana to dwie serie).
 
-        Odcisk treści każdego scenariusza jest przypinany TERAZ i stanowi
-        warunek wykonania (przewidywalność: seria wykonuje dokładnie tę
-        treść, którą widział projektant przy jej tworzeniu).
+        Odcisk treści każdego scenariusza jest przypinany TERAZ
+        (`RunBatchItem.options_hash`) i stanowi warunek wykonania
+        (przewidywalność: seria wykonuje dokładnie tę treść, którą widział
+        projektant przy jej tworzeniu).
+
+        Koperta rewizji modelu jest budowana TERAZ z modelu BIEŻĄCEGO —
+        zapis WYŁĄCZNIE informacyjny (karta C5: seria nie kopiuje migawki do
+        pozycji, każda pozycja czyta model na własny rachunek przy wykonaniu).
 
         `klucz` — klucz magazynu scenariuszy (Canonical Project Twin) przypadku
         serii, przetłumaczony przez wołającego (`api/batch_execution.py`,
-        `klucz_twin_dep.klucz_twin_z_sciezki` — karta C6-PERSIST: serwis
-        scenariuszy jest bezstanowy i wymaga klucza na każde wywołanie).
+        `klucz_twin_dep.klucz_twin_z_sciezki`).
         """
         if not scenario_ids:
             raise ValueError("Seria przebiegów wymaga co najmniej jednego scenariusza")
@@ -155,128 +204,190 @@ class BatchExecutionService:
         analysis_type: ExecutionAnalysisType = analysis_types.pop()
 
         content_hashes = [scenario.content_hash for scenario in scenarios]
-        batch = new_batch_job(
-            study_case_id=study_case_id,
+        envelope = self._zbuduj_koperte_serii(
+            klucz=klucz,
+            analysis_type=analysis_type,
+            scenario_ids=scenario_ids,
+            content_hashes=content_hashes,
+        )
+        project_id_koperty: str | None = envelope["project_id"]
+        batch = new_run_batch(
+            project_id=project_id_koperty,
+            case_id=study_case_id,
             analysis_type=analysis_type,
             scenario_ids=scenario_ids,
             scenario_content_hashes=content_hashes,
+            envelope=envelope,
         )
 
-        self._batches[batch.batch_id] = batch
-        self._case_batches.setdefault(study_case_id, []).append(batch.batch_id)
-        self._pinned_hashes[batch.batch_id] = {
-            scenario.scenario_id: scenario.content_hash for scenario in scenarios
-        }
+        with run_batch_repository_scope() as repo:
+            repo.create(batch)
 
         logger.info(
             "Utworzono serię %s dla przypadku %s (%d scenariuszy, odcisk=%s)",
-            batch.batch_id,
+            batch.id,
             study_case_id,
             len(batch.scenario_ids),
             batch.batch_input_hash[:16],
         )
         return batch
 
+    def _zbuduj_koperte_serii(
+        self,
+        *,
+        klucz: str,
+        analysis_type: ExecutionAnalysisType,
+        scenario_ids: list[UUID],
+        content_hashes: list[str],
+    ) -> dict[str, Any]:
+        """Koperta rewizji Z CHWILI UTWORZENIA serii — TA SAMA funkcja
+        (`enm.envelope.zbuduj_koperte`), którą buduje `create_run` dla
+        pojedynczego biegu; `scenario_ref=None` bo seria niesie WIELE
+        scenariuszy, nie jeden (`options_hash` = tożsamość CAŁEJ serii).
+        """
+        project_id = str(project_id_z_klucza(klucz)) if czy_klucz_projektu(klucz) else None
+        enm = get_enm(klucz)
+        batch_input_hash = compute_batch_input_hash(
+            analysis_type=analysis_type,
+            scenario_ids=tuple(scenario_ids),
+            scenario_content_hashes=tuple(content_hashes),
+        )
+        koperta = zbuduj_koperte(
+            project_id=project_id,
+            model_revision=enm.header.revision,
+            snapshot_hash=compute_enm_hash(enm),
+            catalog_fingerprint=odcisk_katalogu_domyslnego(),
+            options_hash=batch_input_hash,
+        )
+        return koperta.to_dict()
+
     # ------------------------------------------------------------------
     # Wykonanie serii
     # ------------------------------------------------------------------
 
-    def execute_batch(self, batch_id: UUID, *, klucz_twin: str) -> BatchJob:
+    def execute_batch(self, batch_id: UUID, *, klucz_twin: str) -> RunBatch:
         """Wykonaj serię sekwencyjnie torem kanonicznym.
 
-        Dla każdego scenariusza (w porządku posortowanych identyfikatorów):
+        Dla KAŻDEJ pozycji (w porządku `position`), NIEZALEŻNIE od wyniku
+        poprzednich:
         1. pobierz scenariusz i zweryfikuj odcisk treści względem przypiętego
-           przy tworzeniu serii (usunięty/zmieniony scenariusz = odmowa),
+           przy tworzeniu serii (usunięty/zmieniony scenariusz = odmowa TEJ
+           pozycji),
         2. brama uprawnień scenariusza (`check_scenario_eligibility` — ta sama
            brama co pojedynczy bieg),
         3. utwórz bieg kanoniczny (`create_run(scenariusz=...)` — walidacja ENM
            u źródła, koperta niesie referencję scenariusza — TEN SAM mechanizm,
-           co pojedynczy bieg, karta C6-PERSIST, KLASA NIE INSTANCJA: „ma
-           powiązane biegi" jest wyprowadzane z koperty dla OBU ścieżek),
+           co pojedynczy bieg, KLASA NIE INSTANCJA: „ma powiązane biegi" jest
+           wyprowadzane z koperty dla OBU ścieżek),
         4. wykonaj bieg (`execute_run` — realny solver, WHITE BOX).
 
-        `klucz_twin` — klucz magazynu ENM (Canonical Project Twin) projektu
-        przypadku serii (CV-1-W). Serwis jest bezstanowy wobec bazy danych
-        (brak `uow_factory` w zasięgu — patrz `__init__`), więc tłumaczenie
-        `case_id -> klucz` dzieje się WYŁĄCZNIE u wołającego (`api/batch_
-        execution.py`, granica API, `klucz_twin_dep.klucz_twin_z_sciezki`).
+        Awaria jednej pozycji NIE zatrzymuje pozostałych (karta §0 C2) — status
+        serii jest rozstrzygany DOPIERO po próbie wszystkich pozycji
+        (`domain.run_batch.finalize_batch_status`).
 
-        Pierwsza awaria kończy serię stanem FAILED z polskim komunikatem;
-        biegi ukończone wcześniej pozostają dostępne jak zwykłe biegi.
+        `klucz_twin` — klucz magazynu ENM (Canonical Project Twin) projektu
+        przypadku serii. Serwis jest bezstanowy wobec bazy danych domenowej
+        (brak `uow_factory` w zasięgu), więc tłumaczenie `case_id -> klucz`
+        dzieje się WYŁĄCZNIE u wołającego (`api/batch_execution.py`).
         """
         batch = self._get_batch(batch_id)
-        if batch.status != BatchJobStatus.PENDING:
+        if batch.status != RunBatchStatus.CREATED:
             raise BatchNotPendingError(str(batch_id), batch.status.value)
 
         batch = batch.mark_running()
-        self._batches[batch_id] = batch
+        self._zapisz(batch)
 
-        pinned = self._pinned_hashes.get(batch_id, {})
-        collected_run_ids: list[UUID] = []
+        for pozycja in batch.sorted_items():
+            zaktualizowana = self._wykonaj_pozycje(klucz_twin, batch, pozycja)
+            batch = batch.with_item(zaktualizowana)
+            self._zapisz(batch)
 
-        for scenario_id in batch.scenario_ids:
-            try:
-                wpis = self._pobierz_zweryfikowany_scenariusz(klucz_twin, scenario_id, pinned)
-                scenario = wpis.fault_spec
-                assert scenario is not None  # gwarantowane przez get_scenario_ze_wpisem
-                self._brama_uprawnien(klucz_twin, scenario_id)
-                run = self._create_canonical_run(
-                    case_id=str(batch.study_case_id),
-                    klucz_twin=klucz_twin,
-                    project_id=None,
-                    analysis_type="short_circuit_sn",
-                    options=solver_input_for_scenario(scenario),
-                    # Koperta niesie `scenario_ref=(scenario_id, revision)` —
-                    # BEZ tego `FaultScenarioService.has_associated_runs`
-                    # (wyprowadzone z koperty, karta C6-PERSIST) nie widziałby
-                    # biegów serii i pozwoliłby usunąć scenariusz z aktywnym
-                    # biegiem serii (regresja względem `register_run` sprzed
-                    # tej karty, który rejestrował OBIE ścieżki jednakowo).
-                    scenariusz=wpis,
-                )
-                run = self._execute_canonical_run(run.id)
-                if run.status != "FINISHED":
-                    collected_run_ids.append(run.id)
-                    raise BatchExecutionError(
-                        run.error_message or "Bieg zakończył się niepowodzeniem"
-                    )
-                collected_run_ids.append(run.id)
-            except Exception as exc:
-                komunikat = f"Scenariusz {scenario_id}: {exc}"
-                logger.warning("Seria %s FAILED na scenariuszu %s: %s", batch_id, scenario_id, exc)
-                batch = batch.mark_failed(
-                    errors=(komunikat,),
-                    run_ids=tuple(collected_run_ids),
-                    result_set_ids=tuple(collected_run_ids),
-                )
-                self._batches[batch_id] = batch
-                return batch
-
-        batch = batch.mark_done(
-            run_ids=tuple(collected_run_ids),
-            # Zestaw wyników biegu kanonicznego jest adresowany identyfikatorem
-            # biegu (`GET /api/execution/runs/{run_id}/results`).
-            result_set_ids=tuple(collected_run_ids),
+        batch = batch.finalize(finished_at=datetime.now(UTC))
+        self._zapisz(batch)
+        logger.info(
+            "Seria %s %s: %d/%d pozycji zakończonych",
+            batch_id,
+            batch.status.value,
+            sum(1 for p in batch.items if p.status == ITEM_STATUS_FINISHED),
+            len(batch.items),
         )
-        self._batches[batch_id] = batch
-        logger.info("Seria %s DONE: %d biegów", batch_id, len(collected_run_ids))
         return batch
 
+    def _wykonaj_pozycje(
+        self, klucz_twin: str, batch: RunBatch, pozycja: RunBatchItem
+    ) -> RunBatchItem:
+        """Wykonaj JEDNĄ pozycję — zawsze zwraca pozycję w stanie KOŃCOWYM
+        (FINISHED/FAILED), nigdy nie podnosi wyjątku (awaria = FAILED, zero
+        przerwania pętli wołającego — karta §0 C2)."""
+        try:
+            wpis = self._pobierz_zweryfikowany_scenariusz(klucz_twin, pozycja)
+            scenario = wpis.fault_spec
+            assert scenario is not None  # gwarantowane przez get_scenario_ze_wpisem
+            self._brama_uprawnien(klucz_twin, pozycja.scenario_id)
+            run = self._create_canonical_run(
+                case_id=str(batch.case_id),
+                klucz_twin=klucz_twin,
+                project_id=None,
+                analysis_type=_RODZAJ_ANALIZY_KANONICZNEJ,
+                options=solver_input_for_scenario(scenario),
+                # Koperta niesie `scenario_ref=(scenario_id, revision)` — BEZ
+                # tego `FaultScenarioService.has_associated_runs` (wyprowadzone
+                # z koperty) nie widziałby biegów serii i pozwoliłby usunąć
+                # scenariusz z aktywnym biegiem serii.
+                scenariusz=wpis,
+            )
+            run = self._execute_canonical_run(run.id)
+            if run.status != "FINISHED":
+                return RunBatchItem(
+                    position=pozycja.position,
+                    scenario_id=pozycja.scenario_id,
+                    analysis_type=pozycja.analysis_type,
+                    options_hash=pozycja.options_hash,
+                    canonical_run_id=run.id,
+                    status=ITEM_STATUS_FAILED,
+                    error_message=run.error_message or "Bieg zakończył się niepowodzeniem",
+                )
+            return RunBatchItem(
+                position=pozycja.position,
+                scenario_id=pozycja.scenario_id,
+                analysis_type=pozycja.analysis_type,
+                options_hash=pozycja.options_hash,
+                canonical_run_id=run.id,
+                status=ITEM_STATUS_FINISHED,
+                error_message=None,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Seria %s: pozycja %d (scenariusz %s) FAILED: %s",
+                batch.id,
+                pozycja.position,
+                pozycja.scenario_id,
+                exc,
+            )
+            return RunBatchItem(
+                position=pozycja.position,
+                scenario_id=pozycja.scenario_id,
+                analysis_type=pozycja.analysis_type,
+                options_hash=pozycja.options_hash,
+                canonical_run_id=None,
+                status=ITEM_STATUS_FAILED,
+                error_message=f"Scenariusz {pozycja.scenario_id}: {exc}",
+            )
+
     def _pobierz_zweryfikowany_scenariusz(
-        self, klucz: str, scenario_id: UUID, pinned: dict[UUID, str]
+        self, klucz: str, pozycja: RunBatchItem
     ) -> OperatingScenario:
         """Scenariusz (KOMPLETNY wpis magazynu) o treści IDENTYCZNEJ z przypiętą
-        przy tworzeniu serii."""
+        przy tworzeniu serii (`pozycja.options_hash`)."""
         try:
-            wpis = self._scenario_service.get_scenario_ze_wpisem(klucz, scenario_id)
+            wpis = self._scenario_service.get_scenario_ze_wpisem(klucz, pozycja.scenario_id)
         except FaultScenarioNotFoundError as exc:
             raise BatchExecutionError(
                 "Scenariusz został usunięty po utworzeniu serii — utwórz serię ponownie"
             ) from exc
         scenario = wpis.fault_spec
         assert scenario is not None  # gwarantowane przez get_scenario_ze_wpisem
-        przypiety = pinned.get(scenario_id)
-        if przypiety is not None and compute_scenario_content_hash(scenario) != przypiety:
+        if compute_scenario_content_hash(scenario) != pozycja.options_hash:
             raise BatchExecutionError(
                 "Scenariusz został zmieniony po utworzeniu serii — utwórz serię ponownie"
             )
@@ -293,29 +404,23 @@ class BatchExecutionService:
     # Odczyt
     # ------------------------------------------------------------------
 
-    def get_batch(self, batch_id: UUID) -> BatchJob:
+    def get_batch(self, batch_id: UUID) -> RunBatch:
         """Seria po identyfikatorze (`BatchNotFoundError` gdy brak)."""
         return self._get_batch(batch_id)
 
-    def list_batches(self, study_case_id: UUID) -> list[BatchJob]:
-        """Serie przypadku, najnowsze pierwsze."""
-        batch_ids = self._case_batches.get(study_case_id, [])
-        batches = [self._batches[bid] for bid in batch_ids if bid in self._batches]
-        return list(reversed(batches))
+    def list_batches(self, study_case_id: UUID) -> list[RunBatch]:
+        """Serie przypadku, najnowsze pierwsze (kolejność z repozytorium —
+        `ORDER BY created_at DESC, id DESC`)."""
+        with run_batch_repository_scope() as repo:
+            return repo.list_by_case(str(study_case_id))
 
-    def _get_batch(self, batch_id: UUID) -> BatchJob:
-        batch = self._batches.get(batch_id)
+    def _get_batch(self, batch_id: UUID) -> RunBatch:
+        with run_batch_repository_scope() as repo:
+            batch = repo.get(batch_id)
         if batch is None:
             raise BatchNotFoundError(str(batch_id))
         return batch
 
-    # ------------------------------------------------------------------
-    # Testy / izolacja stanu
-    # ------------------------------------------------------------------
-
-    def reset(self) -> None:
-        """Wyczyść stan orkiestracji (izolacja testów — parytet z resetami
-        pozostałych serwisów pamięciowych w `tests/`)."""
-        self._batches.clear()
-        self._case_batches.clear()
-        self._pinned_hashes.clear()
+    def _zapisz(self, batch: RunBatch) -> None:
+        with run_batch_repository_scope() as repo:
+            repo.save(batch)
