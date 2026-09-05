@@ -55,6 +55,8 @@ Klasyfikacja czerwonych bramek na szczycie `c5ebde3f` (pomiar z logów GitHub Ac
 
 Zakazy respektowane: brak `skip`, brak podnoszenia tolerancji, brak aktualizacji goldenów bez dowodu semantycznego, brak kasowania testów.
 
+**Stan końcowy (2026-09-05, szczyt `ef9d6790`): 9/9 workflowów zielonych** — Python tests (`33932904372`), Frontend checks (`33932904356`), Docs Integrity (`33932904335`), Physics Label (`33932904432`), Architectural And Repo Hygiene (`33932904362`), SLD Determinism (`33932904347`), P0 Extended (`33932904357`) na `ef9d6790`; Frontend E2E full (`33932883655`: 408 speców, bramka 60 MB przeszła po naprawie klasy `KLUCZE_ROZPLYWU`) i E2E smoke (`33932883696`) na `e2a0dc17` (workflowy path-filtered; `ef9d6790` zmienia wyłącznie dokumentację, treść kodu identyczna). Dla porównania `main` (7e84753a) pozostaje czerwony na E2E full i SLD Determinism od #472. Żaden test nie został pominięty, wyłączony ani przeniesiony do `continue-on-error`; żaden próg nie został podniesiony (bramka 60 MB bez zmian, budżety zapadek obniżone, nie podniesione).
+
 ## B. Ochrona gałęzi `main` (§36) — **OWNER ACTION P0**
 
 Pomiar (GitHub API `list_branches`, 2026-09-04): `main` → `protected: false`; łącznie ponad 400 gałęzi (`claude/*`, `codex/*`, `kopia/*`), żadna chroniona. Sesja agenta nie ma uprawnień administracyjnych do włączenia ochrony (brak narzędzia w MCP; wymaga roli admin repozytorium).
@@ -93,7 +95,7 @@ Do czasu wykonania: każdy merge do `main` bez zielonego kompletu bramek jest na
 | 16 | SN i nN bez konkurencyjnych modeli | CZĘŚCIOWO — jeden graf; nN miało równoległą prawdę (A1-08) | CV-5 |
 | 17 | White Box odtwarza pełną drogę wyniku | CZĘŚCIOWO — ślady inline; `trace_v2` martwe | CV-4 |
 | 18 | Reference Networks mają niezależne wyrocznie | CZĘŚCIOWO — 12 benchmarków IEEE/CIGRE (pandapower) tak; reszta REGRESSION_ONLY | rejestr §2 |
-| 19 | CI wiarygodne | W TOKU — @ e6f11de7/ee0ec472: Docs, Physics Label, Arch/Hygiene, E2E smoke, SLD Determinism zielone (5/9); pytest zielony (krok guardów → CI-A); Frontend checks tylko tsconfig gate (→ CI-B); P0 (→ CI-A); E2E full (→ CI-D) | §A |
+| 19 | CI wiarygodne | **DONE** — 9/9 zielone na `ef9d6790`/`e2a0dc17` (§A stan końcowy); każdy wcześniejszy czerwony sklasyfikowany i naprawiony u źródła (stale parser, martwy test, zapadka typów 658 → 137, 11 podstawień, regresja gotowości po #472, klasa ładunku per gałąź 105 MB), zero pominięć | §A |
 | 20 | Main chroniony lub jednoznaczne owner action | OWNER ACTION zapisane | §B |
 | 21 | G01 przechodzi end-to-end | NIE — G01 nie istnieje jako jedna sieć | CV-6 |
 | 22 | Future Capability Review potwierdza fundament | TAK (projektowo) — 16 decyzji, 4 z warunkiem | `docs/architecture/DECISION_FREEZE_REGISTER.md` |
@@ -143,7 +145,7 @@ Do czasu wykonania: każdy merge do `main` bez zielonego kompletu bramek jest na
 | P0-1 | `main` bez ochrony; merge #472 z czerwonym CI (P0/vitest/pytest maskowane przez środowisko) | governance | owner action §B |
 | P0-2 | ENM per `case_id` — kopia sieci per przypadek | architektura | CV-1 |
 | P0-3 | fabrykacje użytkowe: fikcyjny katalog, fantom nastaw, `c_factor=1.0` domyślne w torze legacy | zaufanie | FAB-A/B; kasacja toru legacy (CV-4) |
-| P0-4 | 12 czerwonych e2e na `main` od #472 | regresja produktu | CI-D |
+| P0-4 | 12 czerwonych e2e na `main` od #472 | regresja produktu | **ZAMKNIĘTE**: 11/12 przez CI-D (`b349377b`), 12. (`industrial-template-mass-flow`) przez naprawę klasy `KLUCZE_ROZPLYWU` (`1e9f21c5`) — E2E full 408 speców zielone na `e2a0dc17`; wydajność zwarć pozostaje otwarta jako P0-5 (pomiar PERF-0), niezależnie od zielonej bramki |
 | P1-1 | 4 rejestry biegów, 5 sposobów uruchomienia | spójność | CV-3.3 |
 | P1-2 | uziemienie: 6 reprezentacji, fizyka nie czyta żadnej | fizyka doziemna | CV-5 |
 | P1-3 | 12 benchmarków IEEE/CIGRE/IEC + `oze_pv_bess` istnieją tylko w dialekcie słownikowym P9 (nie walidują się jako ENM) — jedyna niezależna wyrocznia LF/SC liczy się poza torem kanonicznym | spójność / dowodowość | CV-4 (benchmarki jako ENM przez assembler; zapadka `BENCHMARK_DICT_ZASTANE`) |
