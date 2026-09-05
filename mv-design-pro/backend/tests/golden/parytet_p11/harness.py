@@ -48,9 +48,9 @@ from tests.golden.parytet_assemblera.harness import (
     sieci_enm_rejestru,
     widok_parytetu,
     wpis_do_zapisu,
+    wpis_z_wyniku,
     zapis_liczby,
 )
-from tests.golden.parytet_scenariuszy.harness import hash_widoku
 
 #: Warianty analizy P11 pinowane per sieć: (klucz, typ analizy, opcje assemblera SC).
 #: LOAD_FLOW i SHORT_CIRCUIT_{3F,1F} — jedyne dwa kontrakty payloadu nazwane w K5
@@ -103,16 +103,16 @@ def _payload_lub_odmowa(
         return {
             "odmowa": f"{type(exc).__name__}: {exc}",
             "szkielet_sha256": None,
+            "szkielet_skroty": None,
             "liczby": None,
             "sciezki": None,
+            "szkielet": None,
+            "slad_sha256": None,
         }
-    szkielet, liczby = widok_parytetu(payload)
-    return {
-        "odmowa": None,
-        "szkielet_sha256": hash_widoku(szkielet),
-        "liczby": [zapis_liczby(x) for _, x in liczby],
-        "sciezki": [sciezka for sciezka, _ in liczby],
-    }
+    # Ten sam wpis co parytet assemblera (K5: jeden harness): szkielet + mapa skrótów
+    # poddrzew + liczby kontraktu z tolerancją; payload P11 nie niesie poddrzew śladu
+    # White Box, więc ``slad_sha256`` jest skrótem pustej listy.
+    return wpis_z_wyniku(payload)
 
 
 def zbierz_hashe(
@@ -137,6 +137,7 @@ __all__ = [
     "sieci_enm_rejestru",
     "widok_parytetu",
     "wpis_do_zapisu",
+    "wpis_z_wyniku",
     "zapis_liczby",
     "zbierz_hashe",
 ]
