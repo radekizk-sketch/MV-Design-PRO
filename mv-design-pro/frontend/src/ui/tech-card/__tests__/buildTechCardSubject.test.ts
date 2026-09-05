@@ -218,7 +218,7 @@ describe('buildTechCardSubject', () => {
       gen_type: 'pv_inverter',
       connection_variant: 'nn_side',
       nc_rfg_module: 'A',
-    } as Generator;
+    } as unknown as Generator;
     const snapshot = snapshotWith({ generators: [pv] });
     const subject = buildTechCardSubject(snapshot, selected(pv.ref_id, 'PVInverter'));
     expect(subject?.kind).toBe('der');
@@ -246,7 +246,7 @@ describe('buildTechCardSubject', () => {
     ],
   ] as const)(
     'karta techniczna DER pokazuje tryb regulacji Q i jego nastawę — %s (karta CV-4.1b, A3-04)',
-    (controlMode, meta, pomocniczyKlucz, pomocniczaWartosc) => {
+    (_controlMode, meta, pomocniczyKlucz, pomocniczaWartosc) => {
       const pv: Generator = {
         id: 'gen/pv/2',
         ref_id: 'gen/pv/2',
@@ -256,7 +256,7 @@ describe('buildTechCardSubject', () => {
         gen_type: 'pv_inverter',
         connection_variant: 'nn_side',
         meta,
-      } as Generator;
+      } as unknown as Generator;
       const snapshot = snapshotWith({ generators: [pv] });
       const subject = buildTechCardSubject(snapshot, selected(pv.ref_id, 'PVInverter'));
       const fields = subject!.sections.flatMap((section) => section.fields);
@@ -275,7 +275,7 @@ describe('buildTechCardSubject', () => {
       gen_type: 'pv_inverter',
       connection_variant: 'nn_side',
       meta: { control_mode: 'WYLACZONE' },
-    } as Generator;
+    } as unknown as Generator;
     const snapshot = snapshotWith({ generators: [pv] });
     const subject = buildTechCardSubject(snapshot, selected(pv.ref_id, 'PVInverter'));
     const fields = subject!.sections.flatMap((section) => section.fields);

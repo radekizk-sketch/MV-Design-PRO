@@ -605,6 +605,8 @@ def _gn06_pv_regulacja_napiecia(
     PV_01 z domyślnego `STALY_COS_PHI` (bez cosφ, bez aktywnej regulacji) na
     `REGULACJA_NAPIECIA` — to samo źródło elektryczne, inna nastawa regulacji.
     """
+    from enm.domain_operations import execute_domain_operation
+
     baza = build_gn04_sn_nn_oze()
     enm = baza["enm"]
     pv = next(g for g in enm["generators"] if g["name"] == "PV_01")
@@ -612,12 +614,28 @@ def _gn06_pv_regulacja_napiecia(
     pv["meta"]["u_set_pu"] = u_set_pu
     pv["meta"]["q_min_mvar"] = q_min_mvar
     pv["meta"]["q_max_mvar"] = q_max_mvar
+    # Domknięcie CV-4.1b (odbiór): tryb regulacji napięcia wymaga profilu NC RfG
+    # operatora dopuszczającego `voltage_control` (walidator ENM
+    # `generators.voltage_control_profile_missing` — ta sama bramka, którą ma
+    # kreator OZE). Profil idzie TĄ SAMĄ operacją domenową co w kreatorze
+    # (`set_der_catalog_bindings`, magazyn `materialized_params.profiles`), nie
+    # ręcznym wpisem do słownika — fikstura ma być siecią, którą da się zbudować
+    # z UI. PSE: profil realny (`catalog/profiles/nc_rfg/pse.yaml`), dopuszcza
+    # `voltage_control` (pomiar 2026-09-05: wszystkie 5 profili go dopuszcza).
+    wynik = execute_domain_operation(
+        enm,
+        "set_der_catalog_bindings",
+        {"generator_ref": pv["ref_id"], "nc_rfg_profile_ref": "pse"},
+    )
+    if wynik.get("error") is not None:
+        raise RuntimeError(f"GN_06: profil NC RfG nie zapisany: {wynik['error']}")
+    enm = wynik["snapshot"]
     return {
         "name": f"GN_06_PV_REGULACJA_NAPIECIA_{wariant_nazwa}",
         "description": opis,
         "enm": enm,
         "snapshot_hash": _snapshot_hash(enm),
-        "operations_count": baza["operations_count"],
+        "operations_count": baza["operations_count"] + 1,
     }
 
 
