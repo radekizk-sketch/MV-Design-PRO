@@ -365,6 +365,20 @@ export function KreatorZrodloZasilania() {
     }));
   }, [filtrowaneAparaty, dane.gpz_line_field_apparatus_catalog_ref]);
 
+  // Karta FAB-G: transformator 110/SN GPZ jest teraz WYMAGANY (zero fabrykacji
+  // mocy/napiecia po stronie backendu) — reuzycie wzorca auto-doboru aparatu
+  // pola powyzej, zeby projektant nie utknal na pustym, obowiazkowym polu.
+  useEffect(() => {
+    if (dane.transformer_catalog_ref || filtrowaneTransformatory.length === 0) return;
+    setDane((p) => (p.transformer_catalog_ref ? p : {
+      ...p,
+      transformer_catalog_ref: filtrowaneTransformatory[0].id,
+      transformer_sn_mva: filtrowaneTransformatory[0].rated_power_mva,
+      transformer_uk_percent: filtrowaneTransformatory[0].uk_percent,
+      transformer_vector_group: filtrowaneTransformatory[0].vector_group,
+    }));
+  }, [filtrowaneTransformatory, dane.transformer_catalog_ref]);
+
   const zadaniePodgladu = useMemo(() => zbudujZadaniePodgladu(dane), [dane]);
   useEffect(() => {
     if (zadaniePodgladu === null) {
@@ -503,6 +517,24 @@ export function KreatorZrodloZasilania() {
     </>
   );
 
+  /**
+   * R5 (karta FAB-K, wzorzec E2E-S95 — `KreatorMagistralaSn.tsx`): JEDNO
+   * źródło prawdy dla `zablokowana` przycisku zapisu ORAZ `status`/
+   * `data-status` korzenia `KreatorRama` (reguła KLASA NIE INSTANCJA,
+   * „Predykaty parami"). Poprzednia wersja NIE MIAŁA `zablokowana` w ogóle —
+   * przycisk „Zapisz GPZ" był klikalny od pierwszego renderu, a walidacja
+   * (`!activeCaseId` → `T.brakZakresu`) biegła DOPIERO po kliknięciu
+   * (`zapisz()`), więc `KreatorRama` nigdy nie niosła sygnału gotowości.
+   * Ładowanie = katalog systemów zasilających (`statusKatalogu`) jeszcze w
+   * locie — bez niego pola napięcia/Sk″/R/X zasiane z katalogu byłyby puste.
+   */
+  const stanGotowosci: 'ladowanie' | 'zablokowany' | 'gotowy' =
+    !activeCaseId
+      ? 'zablokowany'
+      : statusKatalogu === 'loading'
+        ? 'ladowanie'
+        : 'gotowy';
+
   return (
     <KreatorRama
       testid="mvd-kreator-zrodlo"
@@ -529,8 +561,22 @@ export function KreatorZrodloZasilania() {
         testid: 'mvd-kreator-zrodlo-dalej',
       }}
       bladGlobalny={bladGlobalny}
-      walidacja={bledy.length > 0 ? T.walidacjaStopka : null}
-      akcjaGlowna={{ etykieta: T.zapisz, onClick: () => void zapisz(), testid: 'mvd-kreator-zrodlo-zapisz' }}
+      walidacja={
+        stanGotowosci === 'ladowanie'
+          ? T.katalogLadowanieStopka
+          : stanGotowosci === 'zablokowany'
+            ? T.brakZakresu
+            : bledy.length > 0
+              ? T.walidacjaStopka
+              : null
+      }
+      status={stanGotowosci}
+      akcjaGlowna={{
+        etykieta: T.zapisz,
+        onClick: () => void zapisz(),
+        zablokowana: stanGotowosci !== 'gotowy',
+        testid: 'mvd-kreator-zrodlo-zapisz',
+      }}
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: closeForm, testid: 'mvd-kreator-zrodlo-anuluj' }}
     >
       {krok === 'identyfikacja' ? (
@@ -687,6 +733,8 @@ export function KreatorZrodloZasilania() {
             status={bladTransformatorow ? 'error' : 'ready'}
             placeholder={T.transformatorPlaceholder}
             komunikatBledu={bladTransformatorow ?? T.transformatorBlad}
+            wymagane
+            blad={bladDlaPola('transformer_catalog_ref')}
             testid="mvd-kreator-zrodlo-transformator-katalog"
           />
           {dane.transformer_catalog_ref ? (

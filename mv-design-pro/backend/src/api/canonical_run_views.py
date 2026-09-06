@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from math import radians
 from typing import Any
 from uuid import UUID
@@ -21,8 +22,12 @@ from api.v125_contracts import (
 from application.analysis_run import build_trace_summary
 from application.result_freshness import (
     FreshnessVerdict,
-    current_model_hash,
-    evaluate_result_freshness,
+    StanBiezacyModelu,
+    swiezosc_biegu_kanonicznego,
+)
+from application.solvers.power_flow_binding import (
+    max_mismatch_ze_sladu_lub_brak,
+    skalary_wyniku_rozplywu,
 )
 from enm.canonical_analysis import (
     CanonicalRun,
@@ -176,7 +181,9 @@ def build_result_items(run: CanonicalRun) -> dict[str, Any]:
     }
 
 
-def build_run_freshness(run: CanonicalRun) -> FreshnessVerdict:
+def build_run_freshness(
+    run: CanonicalRun, uow_factory: Callable[[], Any] | None
+) -> FreshnessVerdict:
     """Swiezosc wyniku biegu kanonicznego wzgledem BIEZACEGO modelu przypadku.
 
     DLUG ZAMKNIETY (K-S, klasa). Nakladka oddawala tu `run.result_status`, czyli
@@ -184,12 +191,17 @@ def build_run_freshness(run: CanonicalRun) -> FreshnessVerdict:
     — do tego w slowniku nieznanym konsumentowi (`SldOverlay.tsx` porownuje z
     `'OUTDATED'`). Status jest teraz liczony z POROWNANIA odcisku modelu biegu
     (`CanonicalRun.snapshot_hash`) z odciskiem modelu biezacego, tym samym
-    mechanizmem co nakladka zabezpieczen.
+    mechanizmem co nakladka zabezpieczen. `uow_factory` (CV-1-W) tlumaczy
+    `run.case_id` na klucz magazynu ENM (`StanBiezacyModelu.dla_przypadku`).
+
+    CV-2: bieg z koperta rewizji (`CanonicalRun.envelope`) jest oceniany z
+    koperty — rewizja modelu, odcisk katalogu, lista zmian z dziennika; bieg bez
+    koperty (sprzed rejestru rewizji) wraca na sciezke odcisku modelu. JEDNA
+    funkcja (`application/result_freshness.swiezosc_biegu_kanonicznego`) dla
+    nakladki, listy biegow i statusu przypadku.
     """
-    return evaluate_result_freshness(
-        has_result=run.status == "FINISHED" and bool(run.raw_result),
-        run_model_hashes=(run.snapshot_hash,),
-        current_hash=current_model_hash(run.case_id),
+    return swiezosc_biegu_kanonicznego(
+        run, StanBiezacyModelu.dla_przypadku(run.case_id, uow_factory)
     )
 
 
@@ -198,6 +210,7 @@ def build_sld_overlay(
     *,
     diagram_id: UUID,
     sld_payload: dict[str, Any],
+    uow_factory: Callable[[], Any] | None,
 ) -> dict[str, Any]:
     bus_rows = {row["bus_id"]: row for row in build_bus_results(run).get("rows", [])}
     branch_rows = {row["branch_id"]: row for row in build_branch_results(run).get("rows", [])}
@@ -273,7 +286,7 @@ def build_sld_overlay(
     return {
         "diagram_id": str(diagram_id),
         "run_id": str(run.id),
-        **build_run_freshness(run).to_overlay_fields(),
+        **build_run_freshness(run, uow_factory).to_overlay_fields(),
         "nodes": nodes,
         "buses": nodes,
         "branches": branches,
@@ -340,36 +353,56 @@ def get_power_flow_trace(run: CanonicalRun) -> dict[str, Any]:
     return trace
 
 
+def _pf_bus_scalar(rows: list[dict[str, Any]], klucz: str) -> dict[str, float]:
+    """Mapa bus_id -> wartosc skalarna wyniku PF, POMIJAJAC wiersze bez pola.
+
+    FAB-E (E1): brak ``v_pu``/``angle_deg`` w wierszu wyniku NIE jest wartoscia
+    0 — szyna bez tej wartosci zostaje pominieta (brak wpisu), zamiast fikcyjnie
+    zgloszonego zerowego napiecia/kata (co dla ``v_pu`` wygenerowaloby fałszywe
+    "znacznie obnizone napiecie — istotny problem" w interpretacji).
+    """
+    return {str(row["bus_id"]): float(row[klucz]) for row in rows if row.get(klucz) is not None}
+
+
+def _pf_branch_s_mva(rows: list[dict[str, Any]], klucz_p: str, klucz_q: str) -> dict[str, complex]:
+    """Mapa branch_id -> moc pozorna [MVA], POMIJAJAC galezie bez kompletu danych.
+
+    FAB-E (E1): brak ``p_*_mw``/``q_*_mvar`` NIE jest moca zerowa — galaz bez
+    kompletu danych zostaje pominieta (brak wpisu) zamiast fikcyjnego 0+0j.
+    """
+    wynik: dict[str, complex] = {}
+    for row in rows:
+        p_mw = row.get(klucz_p)
+        q_mvar = row.get(klucz_q)
+        if p_mw is None or q_mvar is None:
+            continue
+        wynik[str(row["branch_id"])] = complex(float(p_mw), float(q_mvar))
+    return wynik
+
+
 def build_power_flow_interpretation(run: CanonicalRun) -> dict[str, Any]:
     result_v1 = get_power_flow_result(run)
     bus_results = result_v1.get("bus_results", [])
     branch_results = result_v1.get("branch_results", [])
 
+    # Skalary biegu WYLACZNIE z artefaktu (kontrakt FROZEN serializuje je zawsze;
+    # brak = odmowa z nazwa pola), koncowe niedopasowanie ze sladu White Box albo
+    # jawny brak — bez `or 0` / `or 100.0` / `0.0` (FAB-E, klasa „brak = zero").
+    skalary = skalary_wyniku_rozplywu(result_v1)
     power_flow_result = PowerFlowResult(
         converged=bool(result_v1.get("converged", False)),
-        iterations=int(result_v1.get("iterations_count", 0)),
-        tolerance=float(result_v1.get("tolerance_used", 0.0)),
-        max_mismatch_pu=0.0,
-        base_mva=float(result_v1.get("base_mva", 100.0)),
+        iterations=skalary.iterations_count,
+        tolerance=skalary.tolerance_used,
+        max_mismatch_pu=max_mismatch_ze_sladu_lub_brak(run.white_box_trace),
+        base_mva=skalary.base_mva,
         slack_node_id=str(result_v1.get("slack_bus_id", "")),
-        node_u_mag_pu={str(row["bus_id"]): float(row.get("v_pu", 0.0)) for row in bus_results},
+        node_u_mag_pu=_pf_bus_scalar(bus_results, "v_pu"),
         node_angle_rad={
-            str(row["bus_id"]): radians(float(row.get("angle_deg", 0.0))) for row in bus_results
+            bus_id: radians(v_deg)
+            for bus_id, v_deg in _pf_bus_scalar(bus_results, "angle_deg").items()
         },
-        branch_s_from_mva={
-            str(row["branch_id"]): complex(
-                float(row.get("p_from_mw", 0.0)),
-                float(row.get("q_from_mvar", 0.0)),
-            )
-            for row in branch_results
-        },
-        branch_s_to_mva={
-            str(row["branch_id"]): complex(
-                float(row.get("p_to_mw", 0.0)),
-                float(row.get("q_to_mvar", 0.0)),
-            )
-            for row in branch_results
-        },
+        branch_s_from_mva=_pf_branch_s_mva(branch_results, "p_from_mw", "q_from_mvar"),
+        branch_s_to_mva=_pf_branch_s_mva(branch_results, "p_to_mw", "q_to_mvar"),
     )
 
     context = InterpretationContext(

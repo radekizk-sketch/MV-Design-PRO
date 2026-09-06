@@ -27,9 +27,9 @@ from domain.protection_comparison import (
     ProtectionComparisonError,
     ProtectionComparisonNotFoundError,
     ProtectionProjectMismatchError,
-    ProtectionResultNotFoundError,
     ProtectionRunNotFinishedError,
     ProtectionRunNotFoundError,
+    ProtectionRunWrongTypeError,
 )
 from fastapi import APIRouter, Depends, HTTPException, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
@@ -57,7 +57,11 @@ class CreateProtectionComparisonRequest(BaseModel):
 
 
 class ComparisonRowResponse(BaseModel):
-    """Single comparison row."""
+    """Single comparison row.
+
+    FAB-E (E1): i_fault_a_a/i_fault_a_b/delta_i_fault_a to `| None` — element
+    nieobecny w run A LUB run B daje None, nigdy fabrykowane 0.0 A.
+    """
 
     protected_element_ref: str
     fault_target_id: str
@@ -67,10 +71,10 @@ class ComparisonRowResponse(BaseModel):
     trip_state_b: str
     t_trip_s_a: float | None
     t_trip_s_b: float | None
-    i_fault_a_a: float
-    i_fault_a_b: float
+    i_fault_a_a: float | None
+    i_fault_a_b: float | None
     delta_t_s: float | None
-    delta_i_fault_a: float
+    delta_i_fault_a: float | None
     margin_percent_a: float | None
     margin_percent_b: float | None
     state_change: str
@@ -102,6 +106,20 @@ class ComparisonSummaryResponse(BaseModel):
     minor_issues: int
 
 
+class RunProvenanceResponse(BaseModel):
+    """Proweniencja jednego biegu R1 wewnątrz odpowiedzi porównania (B1, karta
+    CV-3.3-B): porównanie bez tego jest porównaniem bez dowodu CO było
+    porównywane. `envelope` bywa `None` dla biegów sprzed CV-2 (uczciwy brak)."""
+
+    run_id: str
+    analysis_type: str
+    status: str
+    snapshot_hash: str
+    input_hash: str
+    finished_at: str | None
+    envelope: dict[str, Any] | None
+
+
 class ProtectionComparisonResultResponse(BaseModel):
     """Full comparison result response."""
 
@@ -113,6 +131,8 @@ class ProtectionComparisonResultResponse(BaseModel):
     ranking: list[RankingIssueResponse]
     summary: ComparisonSummaryResponse
     input_hash: str
+    provenance_a: RunProvenanceResponse
+    provenance_b: RunProvenanceResponse
     created_at: str
 
 
@@ -216,6 +236,11 @@ def create_protection_comparison(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Protection run nie znaleziony: {e.run_id}",
         ) from e
+    except ProtectionRunWrongTypeError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Bieg {e.run_id} nie jest biegiem zabezpieczeń (rodzaj: {e.analysis_type})",
+        ) from e
     except ProtectionRunNotFinishedError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -223,13 +248,8 @@ def create_protection_comparison(
         ) from e
     except ProtectionProjectMismatchError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Runs należą do różnych projektów: {e.run_a_project} vs {e.run_b_project}",
-        ) from e
-    except ProtectionResultNotFoundError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Wyniki protection nie znalezione dla run: {e.run_id}",
         ) from e
     except ProtectionComparisonError as e:
         raise HTTPException(

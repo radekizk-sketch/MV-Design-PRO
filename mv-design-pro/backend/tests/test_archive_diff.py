@@ -129,12 +129,11 @@ def _make_archive(
         "switching_states": [],
         "settings": None,
     }
-    runs_dict = {
-        "analysis_runs": [],
-        "analysis_runs_index": [],
-        "study_runs": [],
-    }
-    results_dict = {"study_results": []}
+    # CV-3.3-B: jedyny rejestr biegow w archiwum to `canonical_runs` (R1);
+    # `results` jest pustym kontenerem (wynik biegu siedzi w samym biegu jako
+    # `raw_result`), klucz zostaje w strukturze i odcisku.
+    runs_dict = {"canonical_runs": [], "analysis_runs_index": []}
+    results_dict: dict = {}
     proofs_dict = {
         "design_specs": design_specs,
         "design_proposals": [],
@@ -163,7 +162,7 @@ def _make_archive(
         sld_diagrams=SldSection(**sld_dict),
         cases=CasesSection(**cases_dict),
         runs=RunsSection(**runs_dict),
-        results=ResultsSection(**results_dict),
+        results=ResultsSection(),
         proofs=ProofsSection(**proofs_dict),
         interpretations=InterpretationsSection(**interpretations_dict),
         issues=IssuesSection(**issues_dict),

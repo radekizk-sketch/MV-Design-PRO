@@ -10,12 +10,13 @@
  *   (R1: dawne źródło `readinessLiveStore` miało `ready: true` w stanie
  *   początkowym i NIGDY nie było odświeżane — pasek kłamał „zwalidowany"),
  * - „Wyniki: …" → `useStudyCasesStore.activeCase` (stan serwerowy przypadku,
- *   odświeżany po każdym zakończonym biegu — R2, `events/adapters/caseAdapter`)
- *   ZESTAWIONY z parą rewizji: rewizją modelu, na której policzono ostatni
- *   zakończony bieg przypadku (`analysis_case_context.rewizja_modelu`), i bieżącą
- *   rewizją migawki. Sam `result_status` nie wystarcza — dług V12K-309 poz. 2:
- *   edycja modelu PO biegu nie przechodzi przez unieważnienie przypadku, więc
- *   chip trwał na „aktualne" przy modelu nowszym niż wynik,
+ *   odświeżany po każdym zakończonym biegu — R2, `events/adapters/caseAdapter`).
+ *   CV-2-W: `result_status` przypadku jest WYPROWADZANY po stronie backendu z
+ *   jego biegów i koperty rewizji, więc niesie prawdę także wtedy, gdy model
+ *   pojechał dalej po biegu — dług V12K-309 poz. 2 (chip trwał na „aktualne"
+ *   przy modelu nowszym niż wynik) zamknięty U ŹRÓDŁA, a nie drugą derywacją
+ *   w powłoce. Werdykt przychodzi razem z przyczyną po polsku i listą zmian,
+ *   które unieważniły wynik,
  * - „Model: rew. n" → rewizja migawki podana przez powłokę (R5: martwy fallback
  *   `readinessLiveStore.lastRevision` usunięty — nikt go nie zasilał),
  * - „Wersja modelu" → `snapshot.header.hash_sha256` (R4: dawne źródło
@@ -23,8 +24,6 @@
  * - „Przebieg: …" → etykieta ostatniego zakończonego przebiegu podana przez
  *   powłokę z rejestru przebiegów (R3).
  */
-
-import { useMemo } from 'react';
 
 import {
   useActiveCaseName,
@@ -34,9 +33,8 @@ import {
 import { useCasesCount, useStudyCasesStore } from '../../ui/study-cases/store';
 import { useExecutionRunsStore } from '../../ui/study-cases/runStore';
 import { ANALYSIS_TYPE_LABELS, type ExecutionRun } from '../../ui/study-cases/types';
-import { calculationScopeDisplayName } from '../../ui/shell/publicNames';
 import { useSnapshotStore } from '../../ui/topology/snapshotStore';
-import { useAnalysisRunContract } from '../../ui/workspace/analysisRunContract';
+import { calculationScopeDisplayName } from '../../ui/shell/publicNames';
 import { usePodsumowanieGotowosci } from '../spaces/gotowosc/adapters/gotowoscAdapter';
 import { formatCzas } from '../spaces/obliczenia/przebiegi/strings';
 import { znacznikSwiezosci, type ZnacznikSwiezosci } from './znacznikSwiezosci';
@@ -50,10 +48,9 @@ export interface ShellCaseInfo {
   caseName: string | null;
   caseCount: number;
   /**
-   * Znacznik świeżości wyników aktywnego przypadku (karta K4/D1). Źródła:
-   * `useStudyCasesStore.activeCase` (result_status + results_valid) ORAZ para
-   * rewizji — wyniku (kontrakt ostatniego zakończonego biegu przypadku) i modelu
-   * (migawka). Sam status serwerowy nie rozstrzyga świeżości (V12K-309 poz. 2).
+   * Znacznik świeżości wyników aktywnego przypadku (karta K4/D1). JEDNO źródło:
+   * werdykt serwera na `useStudyCasesStore.activeCase` (status + przyczyna PL +
+   * para rewizji + lista zmian), wyprowadzony z biegów przypadku (CV-2-W).
    */
   znacznikWynikow: ZnacznikSwiezosci;
   modelValidated: boolean;
@@ -92,7 +89,6 @@ export function useShellCaseInfo(): ShellCaseInfo {
   const caseCount = useCasesCount();
   const activeCase = useStudyCasesStore((state) => state.activeCase);
   const gotowosc = usePodsumowanieGotowosci();
-  const rewizje = useRewizjeSwiezosci(activeCase?.id ?? caseId);
 
   const projectPresent = projectId != null;
 
@@ -101,7 +97,7 @@ export function useShellCaseInfo(): ShellCaseInfo {
     projectName: projectName ?? null,
     caseName,
     caseCount,
-    znacznikWynikow: znacznikSwiezosci(activeCase, rewizje),
+    znacznikWynikow: znacznikSwiezosci(activeCase),
     modelValidated: projectPresent && gotowosc.ready,
     readinessGotowoscUstalona: gotowosc.ustalona,
     readinessWarnings: gotowosc.ostrzezenia,
@@ -110,7 +106,7 @@ export function useShellCaseInfo(): ShellCaseInfo {
 }
 
 // ---------------------------------------------------------------------------
-// Para rewizji dla znacznika świeżości (V12K-309 poz. 2)
+// Ostatni zakończony przebieg przypadku (współdzielony z „następnym krokiem" schematu)
 // ---------------------------------------------------------------------------
 
 /**
@@ -125,46 +121,6 @@ export function ostatniZakonczonyPrzebiegPrzypadku(
 ): ExecutionRun | null {
   if (!caseId) return null;
   return ostatniZakonczonyPrzebieg(runs.filter((run) => run.study_case_id === caseId));
-}
-
-/**
- * Para rewizji „wynik ↔ model" dla chipu świeżości.
- *
- * WYJĄTEK od reguły „powłoka nie woła API" — ten sam, który
- * `events/adapters/caseAdapter` zrobił dla `loadActiveCase` (R2) i z tego samego
- * powodu: liczba, która rozstrzyga świeżość, istnieje WYŁĄCZNIE w kontrakcie
- * przebiegu na serwerze. Odczyt idzie przez ISTNIEJĄCY, współdzielony hook
- * `useAnalysisRunContract` (ten sam, z którego korzysta znacznik świeżości
- * nagłówków analiz — `ui2/freshness/useSwiezoscNaglowka`), z jego pamięcią
- * podręczną per przebieg; powłoka nie ma własnego `fetch` ani własnej kopii.
- * Alternatywą byłoby zgadywanie rewizji wyniku — a zgadywanie jest zakazane.
- *
- * S9-11 / W-5 (spłata długu S9-3-DLUG-W5): rewizja bieżącego modelu pochodzi z
- * JEDNEGO źródła — `useSnapshotStore.rewizjaBiezacegoModelu` — które przeżywa
- * wgranie PODGLĄDU PRZEBIEGU (`setAnalysisRunSnapshot` go nie dotyka) i jest
- * zasilane każdą odpowiedzią opisującą bieżący model (operacje domenowe,
- * refresh, odczyt gotowości przy zimnym wejściu na link przebiegu). To samo
- * pole czyta znacznik nagłówka ekranów wyników (`useSwiezoscNaglowka`) — dwa
- * wskaźniki nie mogą już mówić sprzecznie (predykaty parami; przypięte testem
- * `freshness/__tests__/jednaPrawdaStanuWynikow.test.tsx`). `null` = rewizja
- * nieznana → chip uczciwie „nieustalone", nigdy „aktualne".
- */
-function useRewizjeSwiezosci(caseId: string | null): {
-  rewizjaWyniku: number | null;
-  rewizjaModelu: number | null;
-} {
-  const runs = useExecutionRunsStore((state) => state.runs);
-  const rewizjaModelu = useSnapshotStore((state) => state.rewizjaBiezacegoModelu);
-  const przebieg = useMemo(
-    () => ostatniZakonczonyPrzebiegPrzypadku(runs, caseId),
-    [runs, caseId],
-  );
-  const { data } = useAnalysisRunContract(przebieg?.id ?? null);
-
-  return {
-    rewizjaWyniku: data?.analysisCaseContext?.rewizjaModelu ?? null,
-    rewizjaModelu,
-  };
 }
 
 // ---------------------------------------------------------------------------

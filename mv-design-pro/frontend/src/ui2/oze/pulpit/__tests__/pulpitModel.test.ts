@@ -37,7 +37,7 @@ describe('zbudujPozycje — lista modułów (kryterium 1)', () => {
 
   it('moduł bez napięcia jest zablokowany i ma status „brak danych"', () => {
     const opisy = zbudujModuly([
-      derFixture({ id: 'fw-1', der_kind: 'FW', voltage_level_ref: null, connection_side: 'SN' }),
+      derFixture({ id: 'fw-1', der_kind: 'FW', connection_voltage_kv: null, connection_side: 'dedicated_transformer' }),
     ]);
     const pozycje = zbudujPozycje(opisy, wynikFixture());
     expect(pozycje[0].zablokowany).toBe(true);

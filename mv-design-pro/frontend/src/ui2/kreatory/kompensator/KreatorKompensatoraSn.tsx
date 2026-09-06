@@ -107,6 +107,10 @@ export function KreatorKompensatoraSn() {
 
   const [typy, setTypy] = useState<ShuntCapacitorCatalogType[]>([]);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
+  // S9-5 (klasa: bramka enable bez sygnału gotowości) — jawny znacznik
+  // ładowania katalogu, niezależny od `typy.length` (katalog pusty PO
+  // wczytaniu wygląda inaczej niż katalog W TRAKCIE wczytywania).
+  const [katalogLadowanie, setKatalogLadowanie] = useState(true);
 
   const [podglad, setPodglad] = useState<ShuntCompensatorPreviewResponse | null>(null);
   const [bladPodgladu, setBladPodgladu] = useState<string | null>(null);
@@ -115,6 +119,7 @@ export function KreatorKompensatoraSn() {
   useEffect(() => {
     let cancelled = false;
     setBladKatalogu(null);
+    setKatalogLadowanie(true);
     fetchShuntCapacitorTypes()
       .then((t) => {
         if (!cancelled) setTypy(Array.isArray(t) ? t : []);
@@ -123,6 +128,9 @@ export function KreatorKompensatoraSn() {
         if (cancelled) return;
         setTypy([]);
         setBladKatalogu(getCatalogErrorMessage(e));
+      })
+      .finally(() => {
+        if (!cancelled) setKatalogLadowanie(false);
       });
     return () => {
       cancelled = true;
@@ -264,7 +272,16 @@ export function KreatorKompensatoraSn() {
   ) : null;
 
   const krokIndex = KROKI.findIndex((k) => k.id === krok);
-  const zapisZablokowany = !hasSzyna || !activeCaseId;
+  // S9-5 (klasa: bramka enable bez sygnału gotowości) — jedno źródło prawdy
+  // dla `disabled` i `data-status` (patrz `KreatorMagistralaSn.tsx`, ta sama
+  // karta i ten sam mechanizm powtórzony w tym pliku).
+  const stanGotowosci: 'ladowanie' | 'zablokowany' | 'gotowy' =
+    !hasSzyna || !activeCaseId
+      ? 'zablokowany'
+      : katalogLadowanie
+        ? 'ladowanie'
+        : 'gotowy';
+  const zapisZablokowany = stanGotowosci !== 'gotowy';
 
   return (
     <KreatorRama
@@ -278,7 +295,16 @@ export function KreatorKompensatoraSn() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={bledy.length > 0 ? T.walidacjaStopka : !hasSzyna ? T.brakSzynyOpis : null}
+      walidacja={
+        stanGotowosci === 'ladowanie'
+          ? T.katalogLadowanieStopka
+          : bledy.length > 0
+            ? T.walidacjaStopka
+            : !hasSzyna
+              ? T.brakSzynyOpis
+              : null
+      }
+      status={stanGotowosci}
       akcjaGlowna={{
         etykieta: T.zapisz,
         onClick: onZapisz,

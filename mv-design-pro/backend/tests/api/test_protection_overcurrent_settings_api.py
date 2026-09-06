@@ -96,8 +96,8 @@ def test_niedostepne_nastawy_wychodza_z_powodem_i_akcja(app_client, uow_factory)
     brak = po_kluczu["i_inst_50_a"]
     assert brak["stan"] == "NIEDOSTEPNA"
     assert brak["wartosc"] is None
-    # Akcja naprawcza pochodzi z kanonicznego rejestru kodow gotowosci.
-    assert brak["fix_action_id"] == "fix_protection_run_short_circuit"
+    # Nawigacja naprawcza pochodzi z kanonicznego rejestru kodow gotowosci.
+    assert brak["fix_navigation"] == {"panel": "analizy", "tab": "zwarciowa"}
     assert "analiz" in brak["powod_pl"].lower()
 
 

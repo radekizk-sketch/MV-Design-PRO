@@ -53,7 +53,6 @@ from api.solver_input import router as solver_input_router
 from api.station_templates import router as station_templates_router
 from api.study_cases import router as study_cases_router
 from api.switchgear_config import router as switchgear_config_router
-from api.unified_runs import router as unified_runs_router
 from api.v126_academic import router as v126_academic_router
 from api.xlsx_import import router as xlsx_import_router
 from api.zwarcia_porownania import router as zwarcia_porownania_router
@@ -171,7 +170,6 @@ app.include_router(execution_runs_router)
 # Karta BATCH-ROUTER: serie przebiegów nad scenariuszami zwarciowymi
 # (tor kanoniczny — te same biegi, co pojedyncze uruchomienie scenariusza).
 app.include_router(batch_execution_router)
-app.include_router(unified_runs_router, prefix="/api")
 app.include_router(v126_academic_router)
 app.include_router(result_contract_v1_router)
 app.include_router(fault_loop_router)

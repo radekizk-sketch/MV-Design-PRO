@@ -7,7 +7,7 @@
  * — ekran niczego nie liczy, tylko renderuje odpowiedzi backendu.
  */
 
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -19,30 +19,39 @@ import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { useSelectionStore } from '../../../../ui/selection/store';
 import { useShellStore } from '../../../shell/useShellStore';
+import type { ExecutionRun } from '../../../../ui/study-cases/types';
 import { EkranAnalizTechnicznych } from '../../analizy/EkranAnalizTechnicznych';
 import { EkranZbieznosci } from '../EkranZbieznosci';
 import { ZBIEZNOSC_STRINGS as T } from '../strings';
 import {
   naWierszeOltcPrzebiegu,
+  naWierszeWysp,
   naWierszZaczepowModelu,
+  naZalozeniaZbieznosci,
   wybierzPrzebiegRozplywu,
 } from '../zbieznoscModel';
 
-const RUN_LF = {
+const RUN_LF: ExecutionRun = {
   id: 'run-lf-1',
+  study_case_id: 'case-1',
   analysis_type: 'LOAD_FLOW',
+  solver_input_hash: 'hash-lf-1',
   status: 'DONE',
   finished_at: '2026-07-20T10:00:00Z',
   started_at: '2026-07-20T09:59:00Z',
-} as never;
+  error_message: null,
+};
 
-const RUN_SC = {
+const RUN_SC: ExecutionRun = {
   id: 'run-sc-1',
+  study_case_id: 'case-1',
   analysis_type: 'SC_3F',
+  solver_input_hash: 'hash-sc-1',
   status: 'DONE',
   finished_at: '2026-07-20T08:00:00Z',
   started_at: '2026-07-20T07:59:00Z',
-} as never;
+  error_message: null,
+};
 
 const HEADER = {
   id: 'run-lf-1',
@@ -350,9 +359,79 @@ describe('EkranZbieznosci — werdykt, założenia, bilans i zaczepy z realnych 
   });
 });
 
+describe('EkranZbieznosci — rozpływ liczony per wyspa (CV-4.3 K3b)', () => {
+  const sladDwochWysp = (): PowerFlowTrace =>
+    sladFixture({
+      slack_bus_id: 'BUS-GPZ',
+      wyspy: [
+        {
+          slack_bus_id: 'BUS-GPZ',
+          zrodlo_ref: 'src',
+          pq_bus_ids: ['BUS-A1', 'BUS-A2', 'BUS-A3'],
+          pv_bus_ids: [],
+          init_state: {},
+          iterations: [{ k: 1, norm_mismatch: 0.4, max_mismatch_pu: 0.1, slack_bus_id: 'BUS-GPZ' }],
+          converged: true,
+          final_iterations_count: 3,
+        },
+        {
+          slack_bus_id: 'BUS-GPZ2',
+          zrodlo_ref: 'src2',
+          pq_bus_ids: ['BUS-B1'],
+          pv_bus_ids: ['BUS-B2'],
+          init_state: {},
+          iterations: [{ k: 1, norm_mismatch: 0.2, max_mismatch_pu: 0.05, slack_bus_id: 'BUS-GPZ2' }],
+          converged: false,
+          final_iterations_count: 50,
+        },
+      ],
+    });
+
+  it('ślad z dwiema wyspami: tabela wysp (szyna, źródło, szyny PQ/PV, iteracje, zbieżność) i obie szyny bilansujące w założeniach', async () => {
+    ustawKompletnyKontekst();
+    mockFetchPrzebiegu(wynikFixture(), sladDwochWysp());
+    render(<EkranZbieznosci />);
+    const tabela = await screen.findByTestId('mvd-zbieznosc-wyspy-tabela');
+    expect(tabela.querySelectorAll('tbody tr')).toHaveLength(2);
+    const pierwsza = screen.getByTestId('mvd-zbieznosc-wyspa-BUS-GPZ');
+    expect(pierwsza.textContent).toContain('src');
+    expect(pierwsza.textContent).toContain('3');
+    expect(pierwsza.textContent).toContain(T.wyspyZbiezna);
+    const druga = screen.getByTestId('mvd-zbieznosc-wyspa-BUS-GPZ2');
+    expect(druga.textContent).toContain('src2');
+    expect(druga.textContent).toContain(T.wyspyNiezbiezna);
+    expect(screen.getByText(T.wyspyOpis)).toBeInTheDocument();
+    expect(screen.getByText('BUS-GPZ, BUS-GPZ2')).toBeInTheDocument();
+  });
+
+  it('ślad z jedną wyspą (bez `wyspy`): sekcja wysp nie istnieje, założenia z jedną szyną', async () => {
+    ustawKompletnyKontekst();
+    mockFetchPrzebiegu(wynikFixture(), sladFixture());
+    render(<EkranZbieznosci />);
+    await screen.findByTestId('mvd-zbieznosc-oltc-tabela');
+    expect(screen.queryByTestId('mvd-zbieznosc-wyspy-tabela')).toBeNull();
+    expect(screen.queryByText(T.wyspyOpis)).toBeNull();
+  });
+
+  it('naWierszeWysp: pusta lista bez śladu albo z jedną wyspą; wiersze per wyspa z liczbami z kontraktu', () => {
+    expect(naWierszeWysp(null)).toEqual([]);
+    expect(naWierszeWysp(sladFixture())).toEqual([]);
+    const wiersze = naWierszeWysp(sladDwochWysp());
+    expect(wiersze).toEqual([
+      { szynaBilansujaca: 'BUS-GPZ', zrodloRef: 'src', liczbaSzynPq: 3, liczbaSzynPv: 0, iteracje: 3, zbiezna: true },
+      { szynaBilansujaca: 'BUS-GPZ2', zrodloRef: 'src2', liczbaSzynPq: 1, liczbaSzynPv: 1, iteracje: 50, zbiezna: false },
+    ]);
+    const zalozenia = naZalozeniaZbieznosci(wynikFixture(), sladDwochWysp());
+    const szyna = zalozenia.find((z) => z.etykieta === T.zalSzynaBilansujaca)!;
+    expect(szyna.wartosc).toBe('BUS-GPZ, BUS-GPZ2');
+    expect(szyna.uwaga).toBe(T.zalSzynyBilansujaceUwaga);
+    expect(naZalozeniaZbieznosci(wynikFixture(), sladFixture()).find((z) => z.etykieta === T.zalSzynaBilansujaca)!.wartosc).toBe('BUS-GPZ');
+  });
+});
+
 describe('zbieznoscModel — czyste projekcje kontraktów', () => {
   it('wybierzPrzebiegRozplywu preferuje aktywny zakończony rozpływ, inaczej najnowszy', () => {
-    const starszy = { ...RUN_LF, id: 'run-lf-0', finished_at: '2026-07-19T10:00:00Z' } as never;
+    const starszy: ExecutionRun = { ...RUN_LF, id: 'run-lf-0', finished_at: '2026-07-19T10:00:00Z' };
     expect(wybierzPrzebiegRozplywu([RUN_SC], null)).toBeNull();
     expect(wybierzPrzebiegRozplywu([starszy, RUN_LF], null)?.id).toBe('run-lf-1');
     expect(wybierzPrzebiegRozplywu([starszy, RUN_LF], 'run-lf-0')?.id).toBe('run-lf-0');
@@ -394,7 +473,7 @@ describe('EkranZbieznosci — wskazanie transformatora (F-K4, znalezisko Z4)', (
   it('klik w tabeli zaczepów prowadzi do TRANSFORMATORA w modelu (akcja inspekcyjna)', async () => {
     const user = userEvent.setup();
     ustawKompletnyKontekst();
-    mockFetchPrzebiegu(wynikFixture());
+    mockFetchPrzebiegu(wynikFixture(), sladFixture());
     useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
     render(<EkranZbieznosci />);
 

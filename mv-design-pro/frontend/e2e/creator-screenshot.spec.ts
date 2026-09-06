@@ -9,9 +9,10 @@ import { test, expect } from '@playwright/test';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { adresHarnessu } from './adresHarnessu';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
-const HARNESS_URL = 'http://127.0.0.1:5173/creator-harness.html';
+const HARNESS_URL = adresHarnessu('creator-harness.html');
 const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/kreatory');
 
 const CREATORS = ['pole', 'oze', 'arcflash'] as const;
@@ -99,7 +100,10 @@ test.describe('kreatory:screenshot', () => {
       // Krok 2 — falownik i moc (wybór z katalogu + liczba → tabliczka).
       await page.getByTestId('mvd-kreator-oze-dalej').click();
       await expect(page.getByTestId('mvd-kreator-oze-konwerter')).toBeVisible();
-      await page.getByTestId('mvd-kreator-oze-konwerter').selectOption('pv-1');
+      // Karta FAB-L (§0 L6): dawne zmyślone `pv-1`/`vt-1`/`rel-1` → realne
+      // identyfikatory katalogu backendu (picker idzie dziś do REALNEGO
+      // backendu, więc zmyślona wartość nie istnieje wśród opcji `<select>`).
+      await page.getByTestId('mvd-kreator-oze-konwerter').selectOption('conv-pv-1mw-15kv');
       await page.getByTestId('mvd-kreator-oze-liczba').fill('12');
       await shot(2);
 
@@ -109,8 +113,8 @@ test.describe('kreatory:screenshot', () => {
       const ctWybor = page.getByTestId('mvd-kreator-oze-aparatura-ct');
       await expect(ctWybor.locator('option').nth(1)).toBeAttached({ timeout: 15000 });
       await ctWybor.selectOption('ct_200_5_5p10_10va_abb');
-      await page.getByTestId('mvd-kreator-oze-aparatura-vt').selectOption('vt-1');
-      await page.getByTestId('mvd-kreator-oze-aparatura-zabezpieczenie').selectOption('rel-1');
+      await page.getByTestId('mvd-kreator-oze-aparatura-vt').selectOption('vt_15kv_100v_05_abb');
+      await page.getByTestId('mvd-kreator-oze-aparatura-zabezpieczenie').selectOption('ABB_REB670');
       await shot(3);
 
       // Krok 4 — zgodność przyłączeniowa (K9-A): profile NC RfG/LVRT/HVRT/PF.
@@ -123,9 +127,10 @@ test.describe('kreatory:screenshot', () => {
       // wpisuje w polu „statyzm".
       await page.getByTestId('mvd-kreator-oze-dalej').click();
       await expect(page.getByTestId('mvd-kreator-oze-zgodnosc')).toBeVisible();
-      await page.getByTestId('mvd-kreator-oze-zgodnosc-profil').selectOption('ncrfg_pse');
-      await page.getByTestId('mvd-kreator-oze-zgodnosc-lvrt').selectOption('lvrt_pse_b');
-      await page.getByTestId('mvd-kreator-oze-zgodnosc-hvrt').selectOption('hvrt_pse_b');
+      // Karta FAB-J: profil operatora WYŁĄCZNIE z backendu — identyfikator
+      // realny (`pse`), nie wymyślony przez front. LVRT/HVRT NIE SĄ już
+      // niezależnie wybieralne (read-only, tożsamościowo związane z profilem).
+      await page.getByTestId('mvd-kreator-oze-zgodnosc-profil').selectOption('pse');
       await page.getByTestId('mvd-kreator-oze-zgodnosc-pf').selectOption('pf_droop_5');
       await shot(4);
 
@@ -219,7 +224,11 @@ test.describe('kreatory:screenshot', () => {
         // Magistrala: wybierz kabel z katalogu (krok „typ", 1) → parametry normowe;
         // panel teorii jest na kroku „parametry" (2). Kompensator: teoria na „typ" (1).
         if (c === 'magistrala') {
-          await page.getByTestId('mvd-kreator-magistrala-katalog').selectOption('kab-120');
+          // Karta FAB-L (§0 L6): dawne zmyślone `kab-120` → realny identyfikator
+          // katalogu kabli SN backendu (`cable-base-epr-al-1c-120`, 120 mm²,
+          // In=255 A — 300 A wpisane niżej nadal przekracza obciążalność, więc
+          // ostrzeżenie M3 dalej się wywołuje).
+          await page.getByTestId('mvd-kreator-magistrala-katalog').selectOption('cable-base-epr-al-1c-120');
           await page.getByTestId('mvd-kreator-magistrala-dalej').click();
           // Prąd roboczy > obciążalności → asystent doboru pokazuje ostrzeżenie (M3).
           await page.getByTestId('mvd-kreator-magistrala-prad').fill('300');
@@ -351,9 +360,19 @@ test.describe('kreatory:screenshot', () => {
     const root = page.locator('[data-testid="creator-harness-root"]').first();
     await root.screenshot({ path: path.join(OUTPUT_DIR, 'wiazania_oze.png') });
 
-    // Picker otwiera się realnym klikiem i pokazuje typy z katalogu.
+    // Picker otwiera się realnym klikiem i pokazuje typy z REALNEGO katalogu.
+    // Nazwa pobrana z backendu (`/api/catalog/vt-types` przez proxy harnessu), nie
+    // przepisana do specu: literał „VT 10/0,1 kV kl. 0.5" był kopią DAWNEGO mocka
+    // harnessu (FAB-L zdjęła mock, backend nazywa tę pozycję „VT 10 kV / 100 V kl. 0.5")
+    // — spec, który cytuje etykietę z mocka, jest tą samą klasą co sam mock (druga
+    // prawda o urządzeniu) i zapalił E2E full (run 345) po zdjęciu kopii.
+    const odpowiedzVt = await page.request.get(new URL('/api/catalog/vt-types', HARNESS_URL).toString());
+    expect(odpowiedzVt.ok(), 'katalog VT backendu musi być dostępny przez proxy harnessu').toBe(true);
+    const typyVt = (await odpowiedzVt.json()) as ReadonlyArray<{ readonly id: string; readonly name: string }>;
+    const vtAbb = typyVt.find((t) => t.id === 'vt_10kv_100v_05_abb');
+    expect(vtAbb, 'katalog VT backendu musi nieść pozycję vt_10kv_100v_05_abb').toBeDefined();
     await page.getByTestId('der-wiazanie-wybierz-vt_catalog_ref').click();
-    await expect(page.getByText('VT 10/0,1 kV kl. 0.5')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(vtAbb!.name)).toBeVisible({ timeout: 15000 });
     await page.screenshot({ path: path.join(OUTPUT_DIR, 'wiazania_oze_picker.png') });
 
     if (errs.length > 0) console.log(`[wiazania] errors:\n${errs.join('\n')}`);

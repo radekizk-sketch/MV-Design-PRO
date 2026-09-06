@@ -50,12 +50,11 @@ SECTION_LIST_KEYS: dict[str, dict[str, str]] = {
         "operating_cases": "id",
     },
     "runs": {
-        "analysis_runs": "id",
-        "study_runs": "id",
+        # CV-3.3-B: `analysis_runs`/`study_runs` (R2/R3) usunięte razem z
+        # torem, który je pisał — jeden rejestr biegów to `canonical_runs` (R1).
+        "canonical_runs": "id",
     },
-    "results": {
-        "study_results": "id",
-    },
+    "results": {},
     "proofs": {
         "design_specs": "id",
         "design_proposals": "id",

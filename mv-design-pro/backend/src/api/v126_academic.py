@@ -1,15 +1,19 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+from api.klucz_twin_dep import KluczTwin
 from application.analyses.ssci_stability import build_ssci_stability_view
-from application.v126_artifacts import build_v126_proof_artifact, build_v126_report_artifact
+from domain.canonical_operations import READINESS_CODES
+from enm.canonical_analysis import create_run as _create_canonical_run
+from enm.canonical_analysis import execute_run as _execute_canonical_run
+from enm.canonical_analysis import get_run as _get_canonical_run
 from enm.store import get_enm
 from fastapi import APIRouter, HTTPException, status
 from network_model.solvers.v126_academic import V126AcademicSolver
 from pydantic import BaseModel
+from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
 from solver_input.v126_contracts import (
     V126AcademicInput,
     V126AnalysisType,
@@ -24,9 +28,6 @@ from solver_input.v126_contracts import (
 
 router = APIRouter(prefix="/api", tags=["v12.6-academic"])
 
-_solver = V126AcademicSolver()
-_runs: dict[str, dict[str, Any]] = {}
-
 
 class V126RunResponse(BaseModel):
     run_id: str
@@ -40,16 +41,24 @@ class V126RunResponse(BaseModel):
     deterministic_hash: str
 
 
-def _now_iso() -> str:
-    return datetime.now(UTC).isoformat()
-
-
 def _require_run(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, Any]:
-    run = _runs.get(str(run_id))
-    if run is None:
+    """Bieg V12.6 z rejestru kanonicznego R1 (CV-4.3-A4, K5.2).
+
+    Odtąd WSZYSTKIE typy analiz dzielą JEDEN rejestr biegów (`CanonicalRun`) —
+    `run_id` obcy tej rodzinie (np. bieg PF/SC) jest odróżniony po prefiksie
+    `analysis_type` ("v126:"), a nie tylko po nieobecności w słowniku, który do
+    tej karty istniał WYŁĄCZNIE dla V12.6.
+    """
+    canonical_run = _get_canonical_run(run_id)
+    if (
+        canonical_run is None
+        or not canonical_run.analysis_type.startswith("v126:")
+        or canonical_run.raw_result is None
+    ):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Nie znaleziono uruchomienia V12.6."
         )
+    run = canonical_run.raw_result
     if run["analysis_type"] != analysis_type.value:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -94,10 +103,11 @@ def _with_parameter_payloads(
 @router.post("/cases/{case_id}/runs/v126/{analysis_type}", response_model=V126RunResponse)
 def run_v126_analysis(
     case_id: UUID,
+    klucz: KluczTwin,
     analysis_type: V126AnalysisType,
     request: V126RunRequest,
 ) -> V126RunResponse:
-    enm = get_enm(str(case_id))
+    enm = get_enm(klucz)
     if not enm.buses:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -106,32 +116,98 @@ def run_v126_analysis(
     model = _with_parameter_payloads(
         build_v126_input_from_enm(enm, parameters=request.parameters), request.parameters
     )
-    result = _solver.run(analysis_type, model)
-    run_id = UUID(hex=result["deterministic_hash"][:32])
-    run_record = {
-        "run_id": str(run_id),
-        "case_id": str(case_id),
-        "analysis_type": analysis_type.value,
-        "status": "FINISHED",
-        "created_at": _now_iso(),
-        "input": model.model_dump(mode="json"),
-        "result": result,
-        "deterministic_hash": result["deterministic_hash"],
-    }
-    proof = build_v126_proof_artifact(run_record)
-    report = build_v126_report_artifact(run_record, proof)
-    run_record["proof"] = proof
-    run_record["report"] = report
-    _runs[str(run_id)] = run_record
+    # Karta FAB-D2 (D2): `_opf_loss_lcc` (network_model/solvers/v126_academic.py)
+    # sumuje straty jałowe transformatorów wprost (`p0_kw + pk_kw*0.45**2`) i nie
+    # ma własnej ścieżki "brak danej = niedostępne" (solver FROZEN — B-01, nie
+    # edytujemy go z tej karty). Brak p0_kw (odkąd `V126TransformerInput.p0_kw`
+    # niesie `None` zamiast cichego 0.0) musi więc zablokować URUCHOMIENIE tej
+    # jednej analizy tutaj, zanim payload trafi do solvera — inne typy analizy
+    # V12.6 (SSCI, uziemienie, izolacja, rozruch silnika...) nie czytają p0_kw
+    # i pozostają dostępne bez zmian.
+    if analysis_type == V126AnalysisType.OPF_LOSS_LCC:
+        bez_strat_jalowych = [t.ref for t in model.transformers if t.p0_kw is None]
+        if bez_strat_jalowych:
+            spec = READINESS_CODES["transformer.loss_data_missing"]
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"{spec.message_pl} (transformer.loss_data_missing) — "
+                    f"transformatory bez strat jałowych: {', '.join(bez_strat_jalowych)}"
+                ),
+            )
+    # Karta FAB-H (H2): `_branch_current_a` (network_model/solvers/v126_academic.py,
+    # solver FROZEN — B-01, nie edytujemy go z tej karty) czyta
+    # `bus.generation_mvar`, agregat zbudowany w `build_v126_input_from_enm` z Q
+    # generatorów — a przy Q nieznanym kontrakt podstawia 0,0 jako strukturalne
+    # wypełnienie (ten sam agregat karmi też analizy, które Q w ogóle nie
+    # czytają). Tylko RELIABILITY_CONTINGENCY i OPF_LOSS_LCC faktycznie
+    # konsumują `_branch_current_a`, więc tylko one są tu blokowane — wzorzec
+    # identyczny z bramką p0_kw powyżej (karta FAB-D2).
+    if analysis_type in (
+        V126AnalysisType.RELIABILITY_CONTINGENCY,
+        V126AnalysisType.OPF_LOSS_LCC,
+    ):
+        bez_mocy_biernej = [
+            gen.ref_id
+            for gen in enm.generators
+            if moc_bierna_wytworcy(gen, gen.materialized_params).brak
+        ]
+        if bez_mocy_biernej:
+            spec = READINESS_CODES["generator.q_missing"]
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"{spec.message_pl} (generator.q_missing) — "
+                    f"generatory bez mocy biernej: {', '.join(bez_mocy_biernej)}"
+                ),
+            )
+    # Karta FAB-H (domkniecie, B-01): `_z_conv_components` w solverze FROZEN liczy
+    # punkt pracy z `converter.q_mvar or 0.0` — Q nieznane weszloby jako 0,0. Solver
+    # nie jest edytowany (B-01), wiec analiza SSCI jest blokowana TUTAJ dla
+    # przeksztaltnika, ktory solver by wybral (`_ssci_select_converter` — ta sama
+    # regula wyboru, bez duplikatu), gdy jego Q jest nieznane (ten sam predykat
+    # `moc_bierna_wytworcy` co wyzej, przeniesiony do `V126ConverterInput.q_mvar`).
+    if analysis_type == V126AnalysisType.SSCI_IMPEDANCE:
+        przeksztaltnik = V126AcademicSolver()._ssci_select_converter(model)
+        if przeksztaltnik is not None and przeksztaltnik.q_mvar is None:
+            spec = READINESS_CODES["generator.q_missing"]
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"{spec.message_pl} (generator.q_missing) — przeksztaltnik analizy "
+                    f"SSCI bez mocy biernej: {przeksztaltnik.ref}"
+                ),
+            )
+    # CV-4.3-A4 (K5.2, 2026-09-06): bieg V12.6 trafia do rejestru kanonicznego
+    # R1 (`CanonicalRun`) zamiast słownika `_runs` w pamięci procesu — przeżywa
+    # odtąd restart procesu i jest widoczny każdemu workerowi (`tests/test_v126_
+    # canonical_run_persistence.py`). `analysis_type` istniejącego słownika
+    # (`create_run`) rozszerzony o prefiks "v126:<typ>" — NIE nowy rejestr, NIE
+    # nowa tabela. Model już zbudowany powyżej (ENM + parametry przypadku)
+    # wędruje w `options["model"]`; wykonawca `_execute_v126`
+    # (`enm/canonical_analysis.py`) go odtwarza i woli TEN SAM solver FROZEN.
+    run = _create_canonical_run(
+        case_id=str(case_id),
+        klucz_twin=klucz,
+        analysis_type=f"v126:{analysis_type.value}",
+        options={"model": model.model_dump(mode="json")},
+    )
+    run = _execute_canonical_run(run.id)
+    if run.status == "FAILED" or run.raw_result is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=run.error_message or "Bieg V12.6 nie powiódł się.",
+        )
+    result = run.raw_result["result"]
     return V126RunResponse(
-        run_id=str(run_id),
+        run_id=str(run.id),
         case_id=str(case_id),
         analysis_type=analysis_type,
         status="FINISHED",
-        result_url=f"/api/analysis-runs/{run_id}/results/v126/{analysis_type.value}",
-        trace_url=f"/api/analysis-runs/{run_id}/results/v126/{analysis_type.value}/trace",
-        proof_url=f"/api/analysis-runs/{run_id}/results/v126/{analysis_type.value}/proof",
-        report_url=f"/api/analysis-runs/{run_id}/results/v126/{analysis_type.value}/report",
+        result_url=f"/api/analysis-runs/{run.id}/results/v126/{analysis_type.value}",
+        trace_url=f"/api/analysis-runs/{run.id}/results/v126/{analysis_type.value}/trace",
+        proof_url=f"/api/analysis-runs/{run.id}/results/v126/{analysis_type.value}/proof",
+        report_url=f"/api/analysis-runs/{run.id}/results/v126/{analysis_type.value}/report",
         deterministic_hash=result["deterministic_hash"],
     )
 

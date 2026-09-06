@@ -14,8 +14,6 @@ referencyjna Huawei), a ścieżka HTTP GET jest wykonywana natywnie.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
-from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
@@ -25,9 +23,8 @@ from analysis.ssci_stability import (
     VERDICT_STABLE,
     VERDICT_UNSTABLE,
 )
-from application.v126_artifacts import build_v126_proof_artifact, build_v126_report_artifact
+from enm.canonical_analysis import reset_canonical_runs
 from network_model.catalog.repository import get_default_mv_catalog
-from network_model.solvers.v126_academic import V126AcademicSolver
 from solver_input.v126_contracts import (
     V126AcademicInput,
     V126AnalysisType,
@@ -42,11 +39,12 @@ _HUAWEI_CARD_ID = "conv-pv-card-huawei-sun2000-215ktl"
 
 @pytest.fixture(autouse=True)
 def _reset_v126_runs() -> None:
-    from api import v126_academic
-
-    v126_academic._runs.clear()
+    # CV-4.3-A4 (K5.2): biegi V12.6 żyją odtąd w rejestrze kanonicznym R1
+    # (`CanonicalRun`), nie w słowniku `_runs` modułu — reset tego samego
+    # rejestru, którego używają WSZYSTKIE typy analiz.
+    reset_canonical_runs()
     yield
-    v126_academic._runs.clear()
+    reset_canonical_runs()
 
 
 def _reference_card():
@@ -101,32 +99,24 @@ def _seed_run(
     model: V126AcademicInput,
     analysis_type: V126AnalysisType = V126AnalysisType.SSCI_IMPEDANCE,
 ) -> UUID:
-    """Zapisz przebieg V12.6 wiernie jak ``run_v126_analysis`` (realny solver).
-
-    Odtwarza dokładnie kształt rekordu utrwalanego przez końcówkę POST
-    (``result``/``input``/``proof``/``report``); numery pochodzą z REALNEGO solvera,
-    nie są fabrykowane. Końcówka GET pod testem jest wykonywana natywnie przez
-    ``app_client``.
+    """Zapisz przebieg V12.6 PRZEZ REJESTR KANONICZNY R1 (CV-4.3-A4, K5.2) —
+    ten sam ``create_run``+``execute_run`` i wykonawca ``_execute_v126``,
+    których używa prawdziwa końcówka POST ``run_v126_analysis`` (zero
+    duplikatu logiki budowy ``proof``/``report``). Numery pochodzą z REALNEGO
+    solvera (adapter, zero fizyki), nie są fabrykowane. Końcówka GET pod
+    testem jest wykonywana natywnie przez ``app_client``.
     """
-    from api import v126_academic
+    from enm.canonical_analysis import create_run, execute_run
 
-    result = V126AcademicSolver().run(analysis_type, model)
-    run_id = UUID(hex=result["deterministic_hash"][:32])
-    run_record: dict[str, Any] = {
-        "run_id": str(run_id),
-        "case_id": "c-ssci",
-        "analysis_type": analysis_type.value,
-        "status": "FINISHED",
-        "created_at": datetime.now(UTC).isoformat(),
-        "input": model.model_dump(mode="json"),
-        "result": result,
-        "deterministic_hash": result["deterministic_hash"],
-    }
-    proof = build_v126_proof_artifact(run_record)
-    run_record["proof"] = proof
-    run_record["report"] = build_v126_report_artifact(run_record, proof)
-    v126_academic._runs[str(run_id)] = run_record
-    return run_id
+    run = create_run(
+        case_id="c-ssci",
+        klucz_twin="c-ssci",
+        analysis_type=f"v126:{analysis_type.value}",
+        options={"model": model.model_dump(mode="json")},
+    )
+    run = execute_run(run.id)
+    assert run.status == "FINISHED", run.error_message
+    return run.id
 
 
 # ---------------------------------------------------------------------------

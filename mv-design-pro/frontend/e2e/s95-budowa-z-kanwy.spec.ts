@@ -354,7 +354,15 @@ async function zapiszMagistrale(page: Page): Promise<void> {
   const dlugosc = page.getByTestId('mvd-kreator-magistrala-dlugosc');
   await expect(dlugosc).toBeVisible({ timeout: 30000 });
   await dlugosc.fill('300');
-  await expect(page.getByTestId('mvd-kreator-magistrala-zapisz')).toBeEnabled({ timeout: 30000 });
+  // KARTA S9-5 (klasa: bramka enable bez sygnału gotowości formularza):
+  // czekamy na JAWNY sygnał gotowości (`data-status="gotowy"`, jedno źródło
+  // prawdy z `disabled` przycisku — `KreatorMagistralaSn.tsx`), NIE na sam
+  // atrybut `disabled` z gołym limitem czasu — ten nie odróżnia „zaraz się
+  // odblokuje" od „utknęło". Po zaobserwowaniu sygnału asercja `toBeEnabled`
+  // korzysta z DOMYŚLNEGO limitu (konfiguracja Playwrighta) — jest wtedy
+  // faktycznością potwierdzającą, nie oczekiwaniem na zbieg zdarzeń.
+  await expect(kreator).toHaveAttribute('data-status', 'gotowy', { timeout: 30000 });
+  await expect(page.getByTestId('mvd-kreator-magistrala-zapisz')).toBeEnabled();
   await page.getByTestId('mvd-kreator-magistrala-zapisz').click();
   const zakoncz = page.getByTestId('mvd-kreator-magistrala-zakoncz');
   if (await zakoncz.isVisible({ timeout: 15000 }).catch(() => false)) {

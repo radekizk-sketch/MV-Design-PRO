@@ -16,6 +16,7 @@ from io import BytesIO
 from typing import Any
 
 from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
+from network_model.reporting.missing_value import format_wynik
 
 _DOCX_AVAILABLE = find_spec("docx") is not None
 
@@ -171,7 +172,8 @@ def _add_overlay_section(doc: DocumentType, bundle: dict[str, Any]) -> None:
     summary = overlay.get("summary", {})
     doc.add_paragraph(f"Diagram: {diagram.get('name') or '—'} ({diagram.get('id') or '—'})")
     doc.add_paragraph(
-        f"Nodes: {summary.get('node_count', 0)} | Branches: {summary.get('branch_count', 0)}"
+        f"Nodes: {format_wynik(summary.get('node_count'))} | "
+        f"Branches: {format_wynik(summary.get('branch_count'))}"
     )
     payload = overlay.get("payload", {})
     doc.add_paragraph("Skrócony JSON:")

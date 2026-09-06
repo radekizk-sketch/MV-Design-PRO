@@ -1121,9 +1121,80 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // jawny portal ma pierwszeństwo przed minimalizacją pionów (spec §15.1
     // „redukcja jest ograniczeniem MIĘKKIM"); zero nowych kolizji
     // (`kosztSceny`, `sceneConformance`, `junction_dot_probe` 0 luk).
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(22672);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(45656);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(45656);
+    // SUB-52s (2026-09-04): OBNIŻONY 22672/45656/45656 → 20936/43912/43912
+    // (−1736 na L0, −1744 na L1/L2). Przyczyna TOPOLOGICZNA, nie kosmetyczna:
+    // fixtura miała stację (`stn/a99b8720.../station`, „Stacja L6-3") odciętą
+    // od źródła za otwartym łącznikiem NO — ENMValidator E003 (wyspa,
+    // BLOCKER), nie funkcja fixtury. Naprawa (`sld_substrate_52s.py` krok 5d)
+    // spina koniec tego odgałęzienia z końcem SĄSIEDNIEGO odgałęzienia
+    // (dawna „Stacja L7-4") nową gałęzią kablową — łącznik NO zostaje otwarty
+    // (rezerwa), ale odgałęzienie ma teraz DRUGĄ drogę do źródła. To zmienia
+    // przydział rodzic/głębokość drzewa BFS dla stacji tego rejonu (dowód:
+    // `sldNetwork53.ts` po regeneracji — S52/S53 zamieniają się identyfikatorem
+    // i rodzicem: „Stacja L7-4" rodzic S51→S49, „Stacja L7-3" rodzic S52→S51,
+    // głębokość S53 38→37), więc inaczej wypada rezerwacja kanału pionowego
+    // między wierszami — SPADEK, nie wzrost. Atrybucja per przyczyna
+    // (`accept:sld-v3`, `vertical_length_by_cause_probe`, karta CI-C): CAŁA
+    // delta w „rezerwacja-kanalu" (L0 22264→20528, L1/L2 43672→41936) i
+    // „footprint" (L0/L1/L2 88→80 / 1688→1680); „jog-trasy" i
+    // „slupek-terminalny" BEZ zmian. Metadane E063 (`nn_earthing_system`,
+    // 20 stacji) NIE wpływają na geometrię — potwierdzone grepem: pole nie
+    // występuje w żadnym module `layout/`/`scene/` (tylko w danych fixtury i w
+    // kreatorze stacji ui2, niezwiązanym z SLD). Reguła „nie-rosnąca" (§15.1)
+    // spełniona z zapasem; zero nowych kolizji (`npm run accept:sld-v3` ALL PASS).
+    // SLD-LOC (2026-09-05): PODNIESIONY 20936/43912/43912 → 21040/44016/44016
+    // (+104 na KAŻDYM LOD — delta jednolita, jeden mechanizm). Przyczyna
+    // ZMIERZONA, nie topologiczna: naprawa lokalności pionowej kotwic stacji
+    // (`enmToSldAdapter.ts` `fallbackSequenceBaseByRunId`, wywołanie
+    // `buildStations`) zmienia ŹRÓDŁO bazy numeracji fallback stacji BEZ
+    // jawnej nazwy (WSZYSTKIE 54 stacje tej fixtury — żadna nie ma nazwy
+    // pasującej do `\bS\d{2,3}\b`/„Stacja SN/nN NNN", regexy `stationCode
+    // FromName`) z JEDNEGO GLOBALNEGO licznika (dawny błąd: dopisanie stacji
+    // do jednego ciągu przesuwało fallback-kod KAŻDEGO później przetwarzanego
+    // ciągu, patrz karta SLD-LOC) na bazę = INDEKS ciągu w `sortedRuns`
+    // (kolejność UKŁADU, `compareLineRunsForLayout` — TA SAMA, w jakiej
+    // `buildStations` już iteruje; STRUKTURALNA właściwość ciągu, nie zależy
+    // od liczby jego stacji) × rozmiar bloku (`Math.max` liczby stacji
+    // najliczniejszego ciągu TEJ sieci, policzone PER BUDOWA — pełne
+    // uzasadnienie trzech zbadanych wariantów rozmiaru bloku w docstringu
+    // `fallbackSequenceBaseByRunId`/wywołaniu w `enmToSldAdapter.ts`).
+    // Magistrala (`gpz/<hash>/corridor_01`, 12 stacji T1..T12, `run_kind=
+    // main_trunk`) jest ZAWSZE przetwarzana jako PIERWSZA w `sortedRuns`
+    // (kindRank 0), więc jej indeks/baza = `0×BLOK+1 = 1` NIEZALEŻNIE od
+    // rozmiaru bloku — kody T1..T12 zostają „S01".."S12", BEZ ZMIAN względem
+    // dawnego licznika globalnego. Delta pochodzi z INNYCH (nie-magistrala)
+    // ciągów: ich baza = indeks×12 (block=12, bo 12 to zmierzone maksimum
+    // stacji w jednym ciągu tej sieci) zamiast ciągłego zliczania globalnego
+    // licznika — te same DWUCYFROWE szerokości kodu (block=12 celowo dobrany
+    // małym, żeby NIE poszerzać kodu — patrz uzasadnienie w adapterze), ale
+    // inne KONKRETNE wartości (np. „S25" zamiast „S16" — ta sama liczba
+    // cyfr, inna wartość) — kod fallback jest treścią PASMA NAZW stacji na
+    // KAŻDYM LOD (`scene/buildScene.ts:1105` `name: props.stationCode ??
+    // props.name` na L0; ten sam kanał niesie kod na L1/L2 — stąd delta
+    // IDENTYCZNA na wszystkich trzech), więc drobna zmiana treści (nie
+    // szerokości) w kilku etykietach przesuwa `dropBandHeight`/rezerwację
+    // pasma nazw w niektórych wierszach arkusza przez próg `snapUp` (kwant
+    // GRID=8), dając zmierzone +104 (13×GRID) jednolicie na L0/L1/L2. Reguła
+    // „nie-rosnąca" (§15.1) świadomie NIE spełniona — jak F9.10/LV DOMAIN
+    // PROJECTION/F10.3 wcześniej w tej historii, poprawność (jednoznaczność
+    // + lokalność fallback-kodu) ma pierwszeństwo przed minimalizacją pionów
+    // (§15.1 „redukcja jest ograniczeniem MIĘKKIM"). Sufit `accept:sld-v3`
+    // (`VERTICAL_LENGTH_BASELINE`) NIE wymaga aktualizacji: 21040/44016/44016
+    // ≤ 22672/45656/45656 (sufit z ery LV DOMAIN PROJECTION, nigdy nie
+    // obniżony przy SUB-52s) — zapas pochłania deltę. Zero nowych kolizji:
+    // macierz lokalności `buildScene.p1Recenzja.test.ts` (karta SLD-LOC L4,
+    // 9/9 kombinacji topologia×edycja `pionowe=0`); `busbar_label_probe` —
+    // 53 etykiety, 53 UNIKALNE teksty (dawny błąd globalnego licznika dawał
+    // tu tylko 12 unikalnych pod naiwnym „reset do 1" — regresja odwrotna,
+    // nie nowa); `crossings.test.ts` junction_dot_probe, `buildScene.
+    // w3Labels.test.ts` anty-dryf, `obszarBezpieczny.contract.test.tsx`,
+    // `buildScene.sheetRows.test.ts` S9-1 — wszystkie BEZ ZMIAN (dwie
+    // odrzucone próby rozmiaru bloku — stała mała=10, stała duża=1000 —
+    // łamały te niezmienniki, patrz docstring w adapterze; ta, przyjęta,
+    // nie).
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(21040);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(44016);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(44016);
   });
 });
 

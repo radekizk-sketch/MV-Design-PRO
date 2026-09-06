@@ -197,110 +197,31 @@ overlay_token:
 
 ---
 
-## 5. Operacje domenowe StudyCase
+## 5. Operacje domenowe StudyCase -- USUNIETE (CV-3.2, 58e520ce)
 
-Wszystkie operacje domenowe sa zdefiniowane na warstwie Application/Domain.
-Zadna operacja **nie mutuje** NetworkModel.
+Ponizsze 9 sygnatur (5.1-5.9: `create_study_case`, `set_case_switch_state`,
+`set_case_normal_state`, `set_case_source_mode`, `set_case_time_profile`,
+`run_short_circuit`, `run_power_flow`, `run_time_series_power_flow`,
+`compare_study_cases`) opisywaly zamierzona operacje domenowa, ktorej
+JEDYNA rzeczywista implementacja (`enm/domain_operations_v2.py`, 9 operacji
+v2) zapisywala `study_cases[]` do dokumentu ENM -- pole, ktorego
+`EnergyNetworkModel` nigdy nie mialo (ginelo przy `model_validate`); 0
+konsumentow produkcyjnych. Usuniete procedura 7 krokow (karta CV-3.2).
 
-### 5.1 `create_study_case`
+Zywy odpowiednik kazdej intencji:
+- stan lacznika/zrodla/N-1 w kontekscie obliczenia: `enm/scenariusze.py::OperatingScenario`
+  + `apply_scenario` (CV-3.1) -- NIE pole StudyCase.
+- utworzenie/klonowanie/porownanie PRZYPADKU jako konfiguracji (nie fizyki):
+  `api/study_cases.py`, `domain/study_case.py::compare_study_cases` (C1).
+- uruchomienie solvera i determinizm/porownywalnosc biegu:
+  `enm/canonical_analysis.py::create_run/execute_run`, testy
+  `tests/invariants/test_scenariusz_i_bieg.py::test_is6_*`.
 
-```
-create_study_case(label_pl: str, base_case: Optional[StudyCase] = None) -> StudyCase
-```
-
-- Tworzy nowy StudyCase z deterministycznym `case_id`.
-- Jezeli `base_case` podany - kopiuje konfiguracje (switch_states, source_modes, analysis_settings).
-- Wyniki: zawsze `NONE` (nigdy nie sa kopiowane z base_case).
-
-### 5.2 `set_case_switch_state`
-
-```
-set_case_switch_state(case: StudyCase, element_id: str, state: SwitchState) -> StudyCase
-```
-
-- Ustawia stan lacznika w kontekscie danego StudyCase.
-- Walidacja: `element_id` musi wskazywac na element typu Switch/Breaker w NetworkModel.
-- Efekt uboczny: wyniki tego case -> `OUTDATED`.
-
-### 5.3 `set_case_normal_state`
-
-```
-set_case_normal_state(case: StudyCase, element_id: str, state: SwitchState) -> StudyCase
-```
-
-- Ustawia stan normalny lacznika (punkt odniesienia).
-- Walidacja: `element_id` musi wskazywac na element typu Switch/Breaker.
-- Efekt uboczny: wyniki tego case -> `OUTDATED`.
-
-### 5.4 `set_case_source_mode`
-
-```
-set_case_source_mode(case: StudyCase, source_element_id: str, mode: SourceMode) -> StudyCase
-```
-
-- Ustawia tryb pracy zrodla.
-- Walidacja: `source_element_id` musi wskazywac na element typu Source.
-- Efekt uboczny: wyniki tego case -> `OUTDATED`.
-
-### 5.5 `set_case_time_profile`
-
-```
-set_case_time_profile(case: StudyCase, profile_ref: str) -> StudyCase
-```
-
-- Przypisuje profil czasowy do StudyCase.
-- Walidacja: profil o podanym `profile_ref` musi istniec.
-- Efekt uboczny: wyniki tego case -> `OUTDATED`.
-
-### 5.6 `run_short_circuit`
-
-```
-run_short_circuit(
-    case: StudyCase,
-    fault_type: SC3F | SC2F | SC1F,
-    fault_bus_id: str,
-    Rf_ohm: Optional[float] = None
-) -> ShortCircuitResult
-```
-
-- Uruchamia solver zwarciowy IEC 60909.
-- `fault_type`: typ zwarcia (trojfazowe / dwufazowe / jednofazowe).
-- `Rf_ohm`: opcjonalna rezystancja zwarcia (wymagana gdy `fault_resistance_policy: JAWNA`).
-- Wynik zawiera: I_k, I_p, I_th, I_dyn + pelny WHITE BOX trace.
-- Po zakonczeniu: wyniki case -> `FRESH`.
-
-### 5.7 `run_power_flow`
-
-```
-run_power_flow(case: StudyCase) -> PowerFlowResult
-```
-
-- Uruchamia solver rozplywu mocy (Newton-Raphson).
-- Wynik zawiera: napiecia wezlowe, przeplywy mocy, straty + WHITE BOX trace.
-- Po zakonczeniu: wyniki case -> `FRESH`.
-
-### 5.8 `run_time_series_power_flow`
-
-```
-run_time_series_power_flow(case: StudyCase) -> TimeSeriesResult
-```
-
-- Uruchamia serie obliczen rozplywu mocy wg profilu czasowego.
-- Wymaga: `time_profile_ref` ustawione w StudyCase.
-- Dla kazdego punktu czasowego: aktualizacja obciazen/generacji -> power flow.
-- Wynik: seria PowerFlowResult + agregacje (max/min/avg).
-- Po zakonczeniu: wyniki case -> `FRESH`.
-
-### 5.9 `compare_study_cases`
-
-```
-compare_study_cases(case_a: StudyCase, case_b: StudyCase) -> ComparisonResult
-```
-
-- Porownuje wyniki dwoch StudyCase (patrz sekcja 4).
-- Wymaga: oba case musza miec status wynikow `FRESH`.
-- Wynik: `delta_results` + `delta_overlay_tokens`.
-- Operacja czysto odczytowa - nie zmienia zadnego case.
+Model StudyCase w sekcji 1 (pola `switch_states`/`normal_states`/`source_modes`/
+`analysis_settings`) oraz sekcje 2-4 i 6 opisuja TA SAMA, nigdy poprawnie
+zaimplementowana koncepcje -- pozostaja jako zapis historyczny zamierzenia,
+NIE jako kontrakt do budowania na nim; nowa praca idzie na rdzeniu CV-3.1
+wymienionym wyzej.
 
 ---
 
@@ -336,14 +257,14 @@ Wyniki obliczen StudyCase podlegaja scislemu cyklowi zycia zapewniajacemu spojno
 |-----------|----------------|
 | Zmiana NetworkModel (dodanie/usuniecie/modyfikacja elementu) | **WSZYSTKIE** StudyCase -> `OUTDATED` |
 | Zmiana konfiguracji danego case (switch_state, source_mode, analysis_settings, time_profile) | **TYLKO TEN** StudyCase -> `OUTDATED` |
-| Klonowanie StudyCase (`create_study_case` z `base_case`) | Nowy case -> `NONE` (wyniki nigdy nie sa kopiowane) |
+| Klonowanie StudyCase (C1: `api/study_cases.py::clone_study_case`) | Nowy case -> `NONE` (wyniki nigdy nie sa kopiowane) |
 | Pomyslne zakonczenie `run_*()` | Ten case -> `FRESH` |
 | Blad w trakcie `run_*()` | Ten case -> `NONE` (czesciowe wyniki sa odrzucane) |
 
 ### Invarianty cyklu zycia
 
 1. **Solver nie uruchomi sie** na case ze statusem `FRESH` bez jawnego zadania ponownego obliczenia.
-2. **Porownanie wymaga FRESH**: `compare_study_cases` odrzuca case ze statusem innym niz `FRESH`.
+2. **Porownanie wymaga FRESH**: `domain/study_case.py::compare_study_cases` (C1) odrzuca case ze statusem innym niz `FRESH`.
 3. **Brak czesciowych wynikow**: jezeli solver zakonczy sie bledem, wyniki wracaja do `NONE` (nie `OUTDATED`).
 4. **Determinizm**: ten sam NetworkModel + ten sam StudyCase config + ten sam solver -> identyczny wynik. Gwarantowane przez WHITE BOX trace i frozen Result API.
 

@@ -7,7 +7,6 @@ from uuid import uuid4
 
 import pytest
 from api.main import app
-from application.proof_engine.proof_generator import ProofGenerator, SC3FInput
 from domain.analysis_run import AnalysisRun
 from domain.models import OperatingCase, Project
 from domain.project_design_mode import ProjectDesignMode
@@ -21,33 +20,8 @@ from infrastructure.persistence.repositories import (
     AnalysisRunRepository,
     CaseRepository,
     ProjectRepository,
-    ResultRepository,
 )
 from infrastructure.persistence.unit_of_work import build_uow_factory
-
-
-def _build_sc3f_proof():
-    test_input = SC3FInput(
-        project_name="Test Project",
-        case_name="Test Case SC3F",
-        fault_node_id="B2",
-        fault_type="THREE_PHASE",
-        run_timestamp=datetime(2026, 1, 27, 10, 30, 0),
-        solver_version="1.0.0-test",
-        c_factor=1.10,
-        u_n_kv=15.0,
-        z_thevenin_ohm=complex(0.749, 3.419),
-        ikss_ka=2.722,
-        ip_ka=5.882,
-        ith_ka=2.722,
-        sk_mva=70.7,
-        kappa=1.528,
-        rx_ratio=0.219,
-        tk_s=1.0,
-        m_factor=1.0,
-        n_factor=0.0,
-    )
-    return ProofGenerator.generate_sc3f_proof(test_input)
 
 
 def _prepare_api_client(tmp_path):
@@ -88,13 +62,11 @@ def _prepare_api_client(tmp_path):
     )
     AnalysisRunRepository(session).create(run)
 
-    proof = _build_sc3f_proof()
-    ResultRepository(session).add_result(
-        run_id=run_id,
-        project_id=project_id,
-        result_type="proof_document",
-        payload=proof.to_dict(),
-    )
+    # CV-3.3-B: zapis dowodu przez (usuniety) `ResultRepository` byl tu MARTWY —
+    # `/api/proof/{project}/{case}/{run}/pack` konczy sie 410 BEZWARUNKOWO
+    # (test_proof_pack_api_returns_zip/404_when_missing ponizej), wiec nikt
+    # tego zapisu nigdy nie odczytywal (usunieta razem z nim funkcja pomocnicza
+    # `_build_sc3f_proof`, jedyny jej wolajacy).
 
     missing_run_id = uuid4()
     run_missing = AnalysisRun(

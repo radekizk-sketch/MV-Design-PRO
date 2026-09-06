@@ -53,6 +53,7 @@ def _groups() -> dict[str, list[object]]:
         "VT": repo.list_vt_types(),
         "FALOWNIK_PV": repo.list_pv_inverter_types(),
         "FALOWNIK_BESS": repo.list_bess_inverter_types(),
+        "BATERIA_BESS": repo.list_bess_battery_types(),
         "ZABEZPIECZENIE": repo.list_protection_device_types(),
         "KRZYWA_ZABEZPIECZENIA": repo.list_protection_curves(),
         "SZABLON_NASTAW": repo.list_protection_setting_templates(),

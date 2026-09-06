@@ -22,6 +22,7 @@ import { useOtworzKonfiguracjeStacji, WeryfikacjaAparatury } from './aparatura';
 import { BilansIEC } from './BilansIEC';
 import { usePokazZwarcieNaSchemacie } from './pokazNaSchemacie';
 import { RozplywZwarciowy } from './RozplywZwarciowy';
+import { SladPodzialuPradu } from './SladPodzialuPradu';
 import { WkladyZwarciowe } from './WkladyZwarciowe';
 import { WykresZwarc } from './WykresZwarc';
 import { ZWARCIA_STRINGS } from './strings';
@@ -137,7 +138,7 @@ export function EkranZwarc({
           type="button"
           className="mvd-zwarcia-wykres-btn"
           data-testid="mvd-zwarcia-pokaz-sld"
-          onClick={() => pokazNaSchemacie(wierszAktywny, runId, rozplyw)}
+          onClick={() => pokazNaSchemacie(wierszAktywny, runId, rozplyw.flows)}
         >
           {ZWARCIA_STRINGS.pokazNaSchemacie}
         </button>
@@ -155,9 +156,18 @@ export function EkranZwarc({
 
       <RozplywZwarciowy
         punktNazwa={nazwaAktywnego}
-        flows={rozplyw}
+        flows={rozplyw.flows}
         trybZaawansowania={trybZaawansowania}
         onOtworzDowod={onOtworzDowod}
+      />
+
+      {/* Karta WB-ROZPLYW: ślad WHITE BOX podziału prądu zwarciowego (TH-1) —
+          ta sama odpowiedź co tabela rozpływu wyżej (jedno wywołanie), pod nią. */}
+      <SladPodzialuPradu
+        punktNazwa={nazwaAktywnego}
+        trace={rozplyw.trace}
+        blad={rozplyw.blad}
+        trybZaawansowania={trybZaawansowania}
       />
 
       <WkladyZwarciowe

@@ -9,8 +9,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { fetchCtTypes, fetchProtectionDeviceTypes, fetchVtTypes } from '../../catalog/api';
-import type { CTCatalogType, ProtectionDeviceType, VTCatalogType } from '../../catalog/types';
+import { fetchCtTypes, fetchDerConverterTypes, fetchProtectionDeviceTypes, fetchVtTypes } from '../../catalog/api';
+import type { ConverterType, CTCatalogType, ProtectionDeviceType, VTCatalogType } from '../../catalog/types';
 import { useAppStateStore } from '../../app-state';
 import {
   DerConfigurator,
@@ -27,26 +27,31 @@ import { buildAggregatedReadiness } from '../../network-build/station-der/readin
 import { useExecutionRunsStore } from '../../study-cases/runStore';
 import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
 import {
-  BESS_BATTERY_CATALOG,
-  BESS_PCS_CATALOG,
-  DER_DYNAMIC_MODEL_CATALOG,
-  DER_FAULT_CURRENT_DATA_CATALOG,
   EMPTY_DER_CATALOGS,
   EMPTY_DER_PROFILES,
   EMPTY_DER_READINESS,
-  HVRT_CURVE_CATALOG,
-  LVRT_CURVE_CATALOG,
-  NC_RFG_PROFILE_CATALOG,
-  PF_CURVE_CATALOG,
-  PV_INVERTER_CATALOG,
-  WIND_TURBINE_CATALOG,
-  BLOCK_TRANSFORMER_CATALOG,
+  computeDerCompleteness,
   computeDerReadinessMatrix,
+  formatDerDynamicProfileLabelPl,
   getBlockTransformer,
-  getNcRfgProfile,
+  getDerDynamicProfile,
+  getNcRfgOperator,
+  getSnConnectionPointKindLabelPl,
   selectAllDers,
   selectDerById,
+  snPointKindForBus,
+  useAudit2CatalogSnapshot,
+  useBessBatteryTypes,
+  useDerDynamicProfiles,
+  useNcRfgModuleClassification,
+  useNcRfgOperatorCatalog,
   useStationDerStore,
+  type BessBatteryItem,
+  type BlockTransformerItem,
+  type DerDynamicProfileItem,
+  type NcRfgOperatorItem,
+  type PfCurveItem,
+  type SnConnectionPointKind,
 } from '../../network-build/station-der';
 import { wzbogacOKlaseCt } from '../../network-build/station-der/ctZKatalogu';
 import {
@@ -68,7 +73,6 @@ import {
 } from '../../network-build/station-der/ptpireeCertifiedInverters';
 import type {
   ConnectionSide,
-  DerCompleteness,
   DerReadinessMatrix,
   ReadinessAxisStatus,
   StationDerConnection,
@@ -89,15 +93,6 @@ interface DerWrapperProps {
   readonly title: string;
   readonly testId: string;
 }
-
-type CatalogItem = {
-  readonly id: string;
-  readonly label_pl: string;
-};
-
-type PowerCatalogItem = CatalogItem & {
-  readonly nominal_power_kw: number;
-};
 
 // ZERO DOMYSLNEGO OPERATORA (V12K-236). Nie ma tu żadnego „profilu domyślnego":
 // wcześniej brak profilu w modelu był zastępowany zestawem ENEA
@@ -198,15 +193,6 @@ function publicStationName(
   return isInternalLabel(fallbackRef) ? typeLabel : fallbackRef;
 }
 
-function catalogLabel<T extends CatalogItem>(
-  catalog: readonly T[],
-  id: string | null | undefined,
-): string {
-  if (!id) return 'wybierz wariant katalogowy';
-  const item = catalog.find((entry) => entry.id === id);
-  return item ? cleanCatalogText(item.label_pl) : 'wybierz wariant katalogowy';
-}
-
 /**
  * Nazwa typu z REALNEGO katalogu (V12K-239, kontrakt zawężony w V12K-242).
  *
@@ -251,57 +237,44 @@ function stringFromRecord(
   return null;
 }
 
-function selectPowerCatalogItem<T extends PowerCatalogItem>(
-  catalog: readonly T[],
-  nominalPowerKw: number | null,
-): T | null {
-  if (catalog.length === 0) return null;
-  if (nominalPowerKw === null || !Number.isFinite(nominalPowerKw) || nominalPowerKw <= 0) {
-    return catalog[0] ?? null;
-  }
-  const exact = catalog.find((item) =>
-    Math.abs(item.nominal_power_kw - nominalPowerKw) / nominalPowerKw <= 0.1,
-  );
-  if (exact) return exact;
-  const above = catalog
-    .filter((item) => item.nominal_power_kw >= nominalPowerKw)
-    .sort((a, b) => a.nominal_power_kw - b.nominal_power_kw)[0];
-  if (above) return above;
-  return [...catalog].sort((a, b) => b.nominal_power_kw - a.nominal_power_kw)[0] ?? null;
+/**
+ * Referencja katalogowa urządzenia z modelu — BEZ podstawiania (naprawa FAB-I,
+ * ta sama klasa co fallback `AddDerWizard`/`wizard-validation`).
+ *
+ * POMIAR PRZED NAPRAWĄ: gdy `explicitRef` (zapisany przez kreator, dziś zawsze
+ * identyfikator z backendu) nie pasował do ŻADNEJ pozycji lokalnych katalogów
+ * `PV_INVERTER_CATALOG`/`BESS_PCS_CATALOG`/`WIND_TURBINE_CATALOG` — co jest
+ * ścieżką NORMALNĄ, nie brzegową, odkąd kreator DER wybiera urządzenie z
+ * backendu — funkcja podstawiała inne urządzenie z lokalnej listy, dobrane
+ * WYŁĄCZNIE po najbliższej mocy znamionowej. Karta inżynierska pokazywała więc
+ * producenta, model i napięcie urządzenia, którego w stacji NIE MA. Dokładnie
+ * ten sam mechanizm, jaki `nazwaTypuZKatalogu` miał dla CT/VT przed V12K-239/242
+ * (patrz komentarz przy `KatalogiWiazan` niżej) — tam już naprawiony,
+ * tu nie. Naprawa: referencja z modelu wraca 1:1, `null` zostaje `null`.
+ * Brak dopasowania w katalogu jest teraz widoczny WPROST — `findDeviceLabel`
+ * (karta FAB-J: szuka w `fetchDerConverterTypes`, to samo pobranie co kreator)
+ * zwraca `„<ref> (pozycja spoza katalogu)"` zamiast fabrykować nazwę/producenta.
+ */
+function resolveDeviceCatalogRef(explicitRef: string | null): string | null {
+  return explicitRef && explicitRef.trim().length > 0 ? explicitRef : null;
 }
 
-function defaultDeviceCatalogRef(
-  derKind: DerKind,
-  nominalPowerKw: number | null,
-): string | null {
-  if (derKind === 'PV') return selectPowerCatalogItem(PV_INVERTER_CATALOG, nominalPowerKw)?.id ?? null;
-  if (derKind === 'BESS') return selectPowerCatalogItem(BESS_PCS_CATALOG, nominalPowerKw)?.id ?? null;
-  return selectPowerCatalogItem(WIND_TURBINE_CATALOG, nominalPowerKw)?.id ?? null;
-}
-
-function hasKnownDeviceCatalogRef(derKind: DerKind, ref: string | null): boolean {
-  if (!ref) return false;
-  if (derKind === 'PV') return PV_INVERTER_CATALOG.some((item) => item.id === ref);
-  if (derKind === 'BESS') return BESS_PCS_CATALOG.some((item) => item.id === ref);
-  return WIND_TURBINE_CATALOG.some((item) => item.id === ref);
-}
-
-function resolveDeviceCatalogRef(
-  derKind: DerKind,
-  explicitRef: string | null,
-  nominalPowerKw: number | null,
-): string | null {
-  if (hasKnownDeviceCatalogRef(derKind, explicitRef)) return explicitRef;
-  return defaultDeviceCatalogRef(derKind, nominalPowerKw);
-}
-
+/**
+ * Karta FAB-K (§0 R3, KLASA NIE INSTANCJA): `ConnectionSide` niesie WYŁĄCZNIE
+ * poziom przyłączenia — nN, albo SN przez transformator dedykowany (żadne
+ * urządzenie z katalogu przekształtników nie łączy się z siecią SN bez
+ * pośredniczącego transformatora). Dawny wynik `'SN'` (dla legacy
+ * `SOURCE_CONNECTION_STATION`) nie istnieje już jako wariant — grupowany z
+ * pozostałymi „dedicated" tak jak w drugim niezależnym czytniku tej samej
+ * wartości backendu (`enmToSldAdapter.ts::mapGeneratorConnectionSide`), żeby
+ * oba czytniki zgadzały się co do tych samych legacy stringów.
+ */
 function connectionSideFromGenerator(generator: Generator): ConnectionSide {
   switch (generator.connection_variant) {
     case 'DEDICATED_MV_CONNECTION':
+    case 'SOURCE_CONNECTION_STATION':
     case 'block_transformer':
       return 'dedicated_transformer';
-    case 'SOURCE_CONNECTION_STATION':
-      return 'SN';
     default:
       return 'nN';
   }
@@ -320,6 +293,7 @@ function buildDerFromGenerator(
   generator: Generator | null | undefined,
   fallbackKind: DerKind,
   snapshot: EnergyNetworkModel | null,
+  blockTransformers: readonly BlockTransformerItem[] = [],
 ): StationDerConnection | null {
   if (!generator) return null;
   const connectionSide = connectionSideFromGenerator(generator);
@@ -345,7 +319,7 @@ function buildDerFromGenerator(
     ?? (connectionSide === 'dedicated_transformer' ? `tr_${generator.ref_id}` : null);
   const blockTransformerCatalogRef = stringFromRecord(materialized, ['block_transformer_catalog_ref'])
     ?? stringFromRecord(meta, ['block_transformer_catalog_ref'])
-    ?? inferBlockTransformerCatalogRef(snapshot, transformerRef);
+    ?? inferBlockTransformerCatalogRef(snapshot, transformerRef, blockTransformers);
   const lvBusbarRef = stringFromRecord(materialized, ['lv_busbar_ref', 'lv_bus_ref'])
     ?? stringFromRecord(meta, ['lv_busbar_ref', 'lv_bus_ref'])
     ?? (connectionSide === 'nN' ? generator.bus_ref ?? null : null);
@@ -357,17 +331,33 @@ function buildDerFromGenerator(
   const unitCount = numberFromRecord(materialized, ['quantity', 'n_parallel'])
     ?? numberFromRecord(meta, ['quantity', 'n_parallel']);
   const catalogRef = resolveDeviceCatalogRef(
-    fallbackKind,
     generator.catalog_ref ?? stringFromRecord(materialized, ['device_catalog_ref']),
-    nominalPowerKw,
   );
-  const completeness: DerCompleteness = !busPrzylaczeniaRef
-    ? 'no_pcc'
-    : !catalogRef
-      ? 'missing_catalog'
-      : !ncRfgRef
-        ? 'missing_profile'
-        : 'complete';
+  // Karta FAB-K (§0 R1/R4): napięcie punktu przyłączenia WPROST z modelu (szyna
+  // wytwórcy) — JEDYNE źródło (ten sam mechanizm, co `zModelu.ts::derZGeneratora`,
+  // KLASA NIE INSTANCJA: dwa niezależne czytniki tego samego generatora muszą
+  // wyprowadzać napięcie tą samą regułą, inaczej rozjadą się na danych brzegowych).
+  const szynaPrzylaczenia = (snapshot?.buses ?? []).find(
+    (bus) => bus.ref_id === generator.bus_ref || bus.id === generator.bus_ref,
+  );
+  const connectionVoltageKv = typeof szynaPrzylaczenia?.voltage_kv === 'number'
+    ? szynaPrzylaczenia.voltage_kv
+    : null;
+  // Karta FAB-K (§0 R3): punkt przyłączenia SN — szyna GÓRNA transformatora
+  // dedykowanego, rodzaj wyprowadzony z typu elementu modelu, do którego ta
+  // szyna należy (`snPointKindForBus`, ta sama funkcja co kreator DER i
+  // `zModelu.ts`). Zero osobnego pola trzymanego jako wybór.
+  let snConnectionBusRef: string | null = null;
+  let snConnectionPointKind: SnConnectionPointKind | null = null;
+  if (connectionSide === 'dedicated_transformer' && transformerRef && snapshot) {
+    const transformator = (snapshot.transformers ?? []).find(
+      (t) => t.ref_id === transformerRef || t.id === transformerRef,
+    );
+    snConnectionBusRef = transformator?.hv_bus_ref ?? null;
+    if (snConnectionBusRef) {
+      snConnectionPointKind = snPointKindForBus(snapshot, snConnectionBusRef);
+    }
+  }
 
   const rekord: StationDerConnection = {
     id: generator.ref_id,
@@ -380,19 +370,14 @@ function buildDerFromGenerator(
     bay_ref: stringFromRecord(materialized, ['bay_ref']) ?? stringFromRecord(meta, ['bay_ref']),
     transformer_ref: transformerRef,
     lv_busbar_ref: lvBusbarRef,
-    connection_node_ref: stringFromRecord(materialized, ['connection_node_ref'])
-      ?? stringFromRecord(meta, ['connection_node_ref']),
-    internal_cable_ref: stringFromRecord(materialized, ['internal_cable_ref'])
-      ?? stringFromRecord(meta, ['internal_cable_ref']),
-    voltage_level_ref: stringFromRecord(materialized, ['voltage_level_ref'])
-      ?? stringFromRecord(meta, ['voltage_level_ref']),
+    sn_connection_bus_ref: snConnectionBusRef,
+    sn_connection_point_kind: snConnectionPointKind,
+    connection_voltage_kv: connectionVoltageKv,
     catalogs: {
       ...EMPTY_DER_CATALOGS,
       device_catalog_ref: catalogRef,
       ptpiree_certificate_ref: stringFromRecord(materialized, ['ptpiree_certificate_ref'])
         ?? stringFromRecord(meta, ['ptpiree_certificate_ref']),
-      controller_catalog_ref: stringFromRecord(materialized, ['controller_catalog_ref'])
-        ?? stringFromRecord(meta, ['controller_catalog_ref']),
       battery_catalog_ref: stringFromRecord(materialized, ['battery_catalog_ref'])
         ?? stringFromRecord(meta, ['battery_catalog_ref']),
       protection_catalog_ref: stringFromRecord(materialized, ['protection_catalog_ref'])
@@ -401,8 +386,6 @@ function buildDerFromGenerator(
       vt_catalog_ref: stringFromRecord(materialized, ['vt_catalog_ref']) ?? stringFromRecord(meta, ['vt_catalog_ref']),
       dynamic_model_ref: stringFromRecord(materialized, ['dynamic_model_ref'])
         ?? stringFromRecord(meta, ['dynamic_model_ref']),
-      fault_current_data_ref: stringFromRecord(materialized, ['fault_current_data_ref'])
-        ?? stringFromRecord(meta, ['fault_current_data_ref']),
       block_transformer_catalog_ref: blockTransformerCatalogRef,
     },
     profiles: {
@@ -410,12 +393,27 @@ function buildDerFromGenerator(
       nc_rfg_profile_ref: ncRfgRef,
       lvrt_curve_ref: stringFromRecord(profiles, ['lvrt_curve_ref', 'lvrt']),
       hvrt_curve_ref: stringFromRecord(profiles, ['hvrt_curve_ref', 'hvrt']),
-      regulation_profile_ref: stringFromRecord(profiles, ['regulation_profile_ref', 'q_u_curve_ref']),
       pf_curve_ref: stringFromRecord(profiles, ['pf_curve_ref', 'p_f_curve_ref', 'pf']),
     },
     nominal_power_kw: nominalPowerKw,
     unit_count: unitCount,
-    completeness,
+    // Karta FAB-K (§0 R1, KLASA NIE INSTANCJA): JEDNA funkcja kompletności
+    // (`types.ts::computeDerCompleteness`) — wczesniejszy lokalny duplikat
+    // (`!busPrzylaczeniaRef ? 'no_pcc' : ...`) IGNOROWAL napiecie przylaczenia
+    // i punkt SN, wiec ten ekran i `zModelu.ts` mogly wystawic RÓŻNY werdykt
+    // kompletnosci dla tego samego wytworcy — dokladnie defekt, ktory ta
+    // reguła zakazuje (dwa niezalezne predykaty, ktore "dzis sie zgadzaja").
+    completeness: computeDerCompleteness({
+      connection_side: connectionSide,
+      bus_przylaczenia_ref: busPrzylaczeniaRef,
+      catalogs: {
+        ...EMPTY_DER_CATALOGS,
+        device_catalog_ref: catalogRef,
+      },
+      profiles: { ...EMPTY_DER_PROFILES, nc_rfg_profile_ref: ncRfgRef },
+      connection_voltage_kv: connectionVoltageKv,
+      sn_connection_bus_ref: snConnectionBusRef,
+    }),
     // JEDNA regula gotowosci na tym ekranie (V12K-243). Wczesniej stal tu lokalny,
     // slabszy duplikat (`buildReadinessForGenerator`): patrzyl wylacznie na obecnosc
     // urzadzenia katalogowego i profili, wiec IGNOROWAL klase przekladnika, dane pradu
@@ -459,9 +457,9 @@ function buildDerFromSurfaceContext(
     bay_ref: null,
     transformer_ref: null,
     lv_busbar_ref: null,
-    connection_node_ref: null,
-    internal_cable_ref: null,
-    voltage_level_ref: null,
+    sn_connection_bus_ref: null,
+    sn_connection_point_kind: null,
+    connection_voltage_kv: null,
     catalogs: { ...EMPTY_DER_CATALOGS },
     profiles: { ...EMPTY_DER_PROFILES },
     nominal_power_kw: null,
@@ -473,9 +471,15 @@ function buildDerFromSurfaceContext(
   };
 }
 
+/**
+ * Karta FAB-J: `blockTransformers` przychodzi ze snapshotu audytu 2
+ * (`useAudit2CatalogSnapshot`) zamiast statyku modułowego usuniętego z
+ * `catalogs.ts` — pominięcie (lista jeszcze nie pobrana) zwraca uczciwie `null`.
+ */
 function inferBlockTransformerCatalogRef(
   snapshot: EnergyNetworkModel | null,
   transformerRef: string | null | undefined,
+  blockTransformers: readonly BlockTransformerItem[],
 ): string | null {
   if (!snapshot || !transformerRef) return null;
   const transformer = (snapshot.transformers ?? []).find(
@@ -484,7 +488,7 @@ function inferBlockTransformerCatalogRef(
   if (!transformer) return null;
   const snKva = Math.round(transformer.sn_mva * 1000);
   const vectorGroup = transformer.vector_group ?? null;
-  const match = BLOCK_TRANSFORMER_CATALOG.find((candidate) =>
+  const match = blockTransformers.find((candidate) =>
     candidate.sn_kva === snKva
     && Math.abs(candidate.hv_kv - transformer.uhv_kv) < 0.01
     && Math.abs(candidate.lv_kv - transformer.ulv_kv) < 0.01
@@ -493,16 +497,33 @@ function inferBlockTransformerCatalogRef(
   return match?.id ?? null;
 }
 
-function findDeviceLabel(der: StationDerConnection): string {
-  if (der.der_kind === 'PV') return catalogLabel(PV_INVERTER_CATALOG, der.catalogs.device_catalog_ref);
-  if (der.der_kind === 'BESS') return catalogLabel(BESS_PCS_CATALOG, der.catalogs.device_catalog_ref);
-  return catalogLabel(WIND_TURBINE_CATALOG, der.catalogs.device_catalog_ref);
+/**
+ * Etykieta urządzenia z katalogu — WYRÓŻNIA „brak wyboru" od „wybór spoza
+ * katalogu backendu" (naprawa FAB-I, rozszerzona kartą FAB-J).
+ *
+ * `catalogLabel` (dzielona z CT/VT) traktuje obie sytuacje tak samo i zwraca
+ * „wybierz wariant katalogowy" — komunikat prawdziwy, gdy referencja jest
+ * pusta, ale MYLĄCY, gdy projektant już wybrał urządzenie w kreatorze
+ * (backend), a lokalna lista go po prostu nie zna. Karta FAB-J usuwa OSTATNI
+ * powód takiej rozbieżności: `converters` to TO SAMO pobranie
+ * (`fetchDerConverterTypes`), którego kreator już używa — więc „spoza
+ * katalogu" zostaje tylko dla referencji naprawdę nieznanej backendowi
+ * (rekord legacy sprzed migracji katalogu).
+ */
+function findDeviceLabel(der: StationDerConnection, converters: readonly ConverterType[]): string {
+  const ref = der.catalogs.device_catalog_ref;
+  if (!ref) return 'wybierz wariant katalogowy';
+  const item = converters.find((entry) => entry.id === ref);
+  if (!item) return `${ref} (pozycja spoza katalogu)`;
+  return cleanCatalogText(item.name || [item.manufacturer, item.model].filter(Boolean).join(' ') || ref);
 }
 
-function findPvInverter(der: StationDerConnection) {
-  return PV_INVERTER_CATALOG.find((item) => item.id === der.catalogs.device_catalog_ref) ?? null;
+function findConverter(
+  der: StationDerConnection,
+  converters: readonly ConverterType[],
+): ConverterType | null {
+  return converters.find((item) => item.id === der.catalogs.device_catalog_ref) ?? null;
 }
-
 
 /**
  * Moc POJEDYNCZEJ jednostki z katalogu urzadzenia.
@@ -510,65 +531,82 @@ function findPvInverter(der: StationDerConnection) {
  * Odroznienie od `der.nominal_power_kw` (moc calej pozycji) jest sednem naprawy P2:
  * do V12K-245 jedna etykieta „Moc znamionowa AC" pokazywala raz jedno, raz drugie.
  */
-function mocJednostkiZKatalogu(der: StationDerConnection): number | null {
-  if (der.der_kind === 'PV') return findPvInverter(der)?.nominal_power_kw ?? null;
-  if (der.der_kind === 'BESS') {
-    return BESS_PCS_CATALOG.find((item) => item.id === der.catalogs.device_catalog_ref)
-      ?.nominal_power_kw ?? null;
-  }
-  return WIND_TURBINE_CATALOG.find((item) => item.id === der.catalogs.device_catalog_ref)
-    ?.nominal_power_kw ?? null;
+function mocJednostkiZKatalogu(
+  der: StationDerConnection,
+  converters: readonly ConverterType[],
+): number | null {
+  const item = findConverter(der, converters);
+  return item && Number.isFinite(item.pmax_mw) ? item.pmax_mw * 1000 : null;
 }
 
-function blockTransformerLabel(der: StationDerConnection): string {
-  const transformer = der.catalogs.block_transformer_catalog_ref
-    ? getBlockTransformer(der.catalogs.block_transformer_catalog_ref)
-    : null;
+function blockTransformerLabel(
+  der: StationDerConnection,
+  blockTransformers: readonly BlockTransformerItem[],
+): string {
+  const transformer = getBlockTransformer(blockTransformers, der.catalogs.block_transformer_catalog_ref);
   if (!transformer) return assignedLabel(der.transformer_ref, 'transformator blokowy przypisany');
   const voltage = `${transformer.hv_kv.toLocaleString('pl-PL')}/${transformer.lv_kv.toLocaleString('pl-PL')} kV`;
   const power = `${transformer.sn_kva.toLocaleString('pl-PL')} kVA`;
   return `TR blokowy ${voltage} ${power} ${transformer.vector_group}`;
 }
 
-function dynamicModelLabel(der: StationDerConnection): string {
-  const selected = DER_DYNAMIC_MODEL_CATALOG.find((item) => item.id === der.catalogs.dynamic_model_ref)
-    ?? DER_DYNAMIC_MODEL_CATALOG.find((item) =>
-      der.catalogs.device_catalog_ref ? item.applicable_device_ids.includes(der.catalogs.device_catalog_ref) : false,
-    );
-  return selected ? cleanCatalogText(selected.label_pl) : 'model dynamiczny z wariantu katalogowego';
+/**
+ * Karta FAB-L: katalog WYŁĄCZNIE z backendu (`GET /api/catalog/der-dynamic-profiles`,
+ * `useDerDynamicProfiles`) — dawny `DER_DYNAMIC_MODEL_CATALOG` niósł pola ZMYŚLONE
+ * (`k_factor_iq_over_du`, `voltage_drop_detection_time_ms`) bez odpowiednika w
+ * realnym resolverze (`network_model.catalog.der_dynamic`). Dobór PO URZĄDZENIU
+ * (`applicable_device_ids`) skasowany bez zamiennika: backend nie wyraża mapowania
+ * „to urządzenie → ten profil" żadną końcówką — wybór jest dziś JAWNY
+ * (`dynamic_model_ref` wybrany przez projektanta w konfiguratorze), nigdy cichym
+ * domyślnym po dopasowaniu urządzenia.
+ */
+function dynamicModelLabel(der: StationDerConnection, profiles: readonly DerDynamicProfileItem[]): string {
+  const selected = getDerDynamicProfile(profiles, der.catalogs.dynamic_model_ref);
+  return selected ? cleanCatalogText(formatDerDynamicProfileLabelPl(selected)) : 'model dynamiczny z wariantu katalogowego';
 }
 
 /**
  * Stan braku granicznego prądu zwarciowego falownika (karta K-Q, 2026-08-14).
  * Wzorzec `BRAK_PASMA_BEZPIECZNIKA`: pole nie znika z karty (ciche zniknięcie to
  * inne kłamstwo), tylko mówi wprost, czego brakuje i skąd to wziąć.
+ *
+ * Karta FAB-L: JEDYNY komunikat dla „model zwarciowy" na całym ekranie (dawny
+ * `faultCurrentLabel` czytał drugi, sfabrykowany katalog `DER_FAULT_CURRENT_
+ * DATA_CATALOG` — inwentarz solvera IEC 60909 wykazał zero konsumentów tych
+ * danych; ten sam komunikat zastępuje oba miejsca, patrz `buildDerCards`).
  */
 const BRAK_PRADU_ZWARCIOWEGO_FALOWNIKA_PL = 'wymaga karty katalogowej wyrobu (wynik zwarciowy: SC3F/SC1F)';
 
-function faultCurrentLabel(der: StationDerConnection): string {
-  const selected = DER_FAULT_CURRENT_DATA_CATALOG.find((item) => item.id === der.catalogs.fault_current_data_ref)
-    ?? DER_FAULT_CURRENT_DATA_CATALOG.find((item) =>
-      der.catalogs.device_catalog_ref ? item.applicable_device_ids.includes(der.catalogs.device_catalog_ref) : false,
-    );
-  return selected ? cleanCatalogText(selected.label_pl) : 'dane zwarciowe z wariantu katalogowego';
+/**
+ * Karta FAB-J: `ref` jest teraz `operator_id` (pse/energa/...), bo backend
+ * (`GET /api/ncrfg-tests/catalog`) niesie JEDNĄ parę krzywych LVRT/HVRT na
+ * operatora — bez podziału wg modułu, którego front dawniej nie miał czym
+ * potwierdzić.
+ */
+function rideThroughLabel(
+  kind: 'LVRT' | 'HVRT',
+  ref: string | null,
+  ncRfgOperators: readonly NcRfgOperatorItem[],
+): string {
+  const operator = getNcRfgOperator(ncRfgOperators, ref);
+  if (!operator) return `${kind}: profil z wariantu operatora`;
+  const punkty = kind === 'LVRT' ? operator.ride_through.lvrt : operator.ride_through.hvrt;
+  return `${kind}: ${operator.operator_name_pl} (${punkty.length} pkt czas/napięcie)`;
 }
 
-function rideThroughLabel(kind: 'LVRT' | 'HVRT', ref: string | null): string {
-  const catalog = kind === 'LVRT' ? LVRT_CURVE_CATALOG : HVRT_CURVE_CATALOG;
-  const item = catalog.find((entry) => entry.id === ref);
-  return item ? `${kind}: ${item.operator_code}, moduł ${item.module_type}` : `${kind}: profil z wariantu operatora`;
-}
-
-function pfCurveLabel(ref: string | null): string {
-  const item = PF_CURVE_CATALOG.find((entry) => entry.id === ref);
+function pfCurveLabel(ref: string | null, pfCurves: readonly PfCurveItem[]): string {
+  const item = pfCurves.find((entry) => entry.id === ref);
   return item ? cleanCatalogText(item.label_pl) : 'charakterystyka z profilu operatora';
 }
 
-function moduleTypeLabel(der: StationDerConnection): string {
-  const inverter = findPvInverter(der);
-  const profile = der.profiles.nc_rfg_profile_ref ? getNcRfgProfile(der.profiles.nc_rfg_profile_ref) : null;
-  const module = inverter?.applicable_module_types[0] ?? profile?.applicable_module_types[0] ?? null;
-  return module ? `moduł ${module}` : 'moduł wg profilu NC RfG';
+/**
+ * Karta FAB-J: moduł NC RfG jest klasyfikacją NORMATYWNĄ liczoną backendem
+ * (`GET /api/ncrfg-tests/modul`, `compliance/nc_rfg_modul.py`) — ekran go
+ * WYŚWIETLA (przekazany przez komponent, który woła klasyfikację), nie liczy
+ * sam z progów mocy.
+ */
+function moduleTypeLabel(moduleType: string | null): string {
+  return moduleType ? `moduł ${moduleType}` : 'moduł wg profilu NC RfG';
 }
 
 function readinessPl(value: ReadinessAxisStatus): string {
@@ -684,11 +722,24 @@ function buildDerCards(
   macierzAnaliz: JSX.Element,
   /** Dobor przekladnikow: kryteria normowe z jawnym rachunkiem (E21-4, pkt P9). */
   doborPrzekladnikow: JSX.Element,
+  /** Karta FAB-J: katalogi WYŁĄCZNIE z backendu — zero statyku modułowego. */
+  katalogi: {
+    readonly converters: readonly ConverterType[];
+    readonly blockTransformers: readonly BlockTransformerItem[];
+    readonly ncRfgOperators: readonly NcRfgOperatorItem[];
+    readonly pfCurves: readonly PfCurveItem[];
+    readonly bessBatteries: readonly BessBatteryItem[];
+    /** Karta FAB-L: profile dynamiczne DER — `GET /api/catalog/der-dynamic-profiles`. */
+    readonly dynamicProfiles: readonly DerDynamicProfileItem[];
+    /** Moduł NC RfG oczekiwany dla (moc, napięcie) tego wytwórcy — z backendu. */
+    readonly moduleType: string | null;
+  },
 ): Partial<Record<DerCardId, JSX.Element>> {
-  const ncRfg = der.profiles.nc_rfg_profile_ref
-    ? NC_RFG_PROFILE_CATALOG.find((profile) => profile.id === der.profiles.nc_rfg_profile_ref)
-    : null;
-  const inverter = findPvInverter(der);
+  const {
+    converters, blockTransformers, ncRfgOperators, pfCurves, bessBatteries, dynamicProfiles, moduleType,
+  } = katalogi;
+  const ncRfg = getNcRfgOperator(ncRfgOperators, der.profiles.nc_rfg_profile_ref);
+  const inverter = findConverter(der, converters);
   const ptpireeCertificate = getPtpireeCertifiedInverter(der.catalogs.ptpiree_certificate_ref);
   // Graniczny prąd zwarciowy falownika (karta K-Q): katalog mirrorowy NIE niesie
   // już tej liczby, bo podaje ją wyłącznie karta katalogowa konkretnego wyrobu,
@@ -697,6 +748,10 @@ function buildDerCards(
   // zamiast pokazywać liczbę bez pokrycia.
   const faultCurrent = BRAK_PRADU_ZWARCIOWEGO_FALOWNIKA_PL;
   const isDedicatedTransformer = der.connection_side === 'dedicated_transformer';
+  const bateriaLabel = der.catalogs.battery_catalog_ref
+    ? (nazwaTypuZKatalogu(bessBatteries, der.catalogs.battery_catalog_ref)
+      ?? `${der.catalogs.battery_catalog_ref} (pozycja spoza katalogu)`)
+    : 'wybierz wariant katalogowy';
 
   return {
     basic: (
@@ -711,11 +766,11 @@ function buildDerCards(
           <FieldRow label="Liczba jednostek" value={liczbaJednostekPl(moc)} />
           <FieldRow label="Moc jednostki (katalog)" value={mocJednostkiPl(moc)} />
           {isDedicatedTransformer && (
-            <FieldRow label="Transformator blokowy" value={blockTransformerLabel(der)} />
+            <FieldRow label="Transformator blokowy" value={blockTransformerLabel(der, blockTransformers)} />
           )}
-          <FieldRow label="Urządzenie katalogowe" value={findDeviceLabel(der)} />
+          <FieldRow label="Urządzenie katalogowe" value={findDeviceLabel(der, converters)} />
           <FieldRow label="Certyfikat PTPiREE" value={formatPtpireeCertificateLabel(ptpireeCertificate)} />
-          <FieldRow label="Moduł NC RfG" value={moduleTypeLabel(der)} />
+          <FieldRow label="Moduł NC RfG" value={moduleTypeLabel(moduleType)} />
         </dl>
         <EngineeringNote>
           Konfiguracja zaczyna się od falownika lub PCS, bo to urządzenie definiuje napięcie nN, prąd zwarciowy, model dynamiczny i wymagania FRT.
@@ -726,13 +781,13 @@ function buildDerCards(
       <section>
         <dl>
           <FieldRow label="Stacja" value={assignedLabel(der.station_id, 'stacja przypisana')} />
-          <FieldRow label="Strona przyłączenia" value={connectionSidePl(der.connection_side)} />
+          <FieldRow label="Strona przyłączenia" value={connectionSidePl(der.connection_side, der.sn_connection_point_kind)} />
           <FieldRow label="Tor mocy" value={torMocyPl(tor)} />
           <FieldRow label="Pole SN" value={assignedLabel(der.bay_ref, 'pole SN przypisane')} />
           <FieldRow label="Szyna nN" value={assignedLabel(der.lv_busbar_ref, 'szyna nN przypisana')} />
           <FieldRow
             label={isDedicatedTransformer ? 'Transformator blokowy' : 'Transformator'}
-            value={isDedicatedTransformer ? blockTransformerLabel(der) : assignedLabel(der.transformer_ref, 'transformator przypisany')}
+            value={isDedicatedTransformer ? blockTransformerLabel(der, blockTransformers) : assignedLabel(der.transformer_ref, 'transformator przypisany')}
           />
         </dl>
         <EngineeringNote>
@@ -743,26 +798,22 @@ function buildDerCards(
     inverters: der.der_kind === 'PV' ? (
       <PvInverterCatalogPanel
         der={der}
-        inverterLabel={findDeviceLabel(der)}
+        inverterLabel={findDeviceLabel(der, converters)}
         inverterManufacturer={inverter?.manufacturer ?? null}
-        inverterVoltage={inverter ? `${inverter.nominal_voltage_kv} kV` : null}
+        inverterVoltage={inverter ? `${inverter.un_kv} kV` : null}
         faultCurrent={faultCurrent}
       />
     ) : (
       <section>
         <dl>
-          <FieldRow label={der.der_kind === 'FW' ? 'Turbina z katalogu' : 'Falownik / PCS'} value={findDeviceLabel(der)} />
+          <FieldRow label={der.der_kind === 'FW' ? 'Turbina z katalogu' : 'Falownik / PCS'} value={findDeviceLabel(der, converters)} />
           <FieldRow label="Producent" value={inverter?.manufacturer ?? MISSING_DASH} />
           <FieldRow
             label="Napięcie urządzenia"
-            value={inverter ? `${inverter.nominal_voltage_kv} kV` : MISSING_DASH}
+            value={inverter ? `${inverter.un_kv} kV` : MISSING_DASH}
           />
           <FieldRow label="Prąd zwarciowy falownika" value={faultCurrent} />
-          <FieldRow label="Bateria BESS" value={catalogLabel(BESS_BATTERY_CATALOG, der.catalogs.battery_catalog_ref)} />
-          <FieldRow
-            label="Regulator źródła"
-            value={assignedLabel(der.catalogs.controller_catalog_ref, 'regulator przypisany z katalogu')}
-          />
+          <FieldRow label="Bateria BESS" value={bateriaLabel} />
         </dl>
       </section>
     ),
@@ -771,12 +822,12 @@ function buildDerCards(
         <dl>
           <FieldRow
             label="Charakterystyka Q(U)"
-            value={ncRfg ? `${ncRfg.operator_code}: martwa strefa ${ncRfg.q_u_deadzone_percent}%` : 'wg profilu operatora'}
+            value={ncRfg ? `${ncRfg.operator_name_pl}: zakres ${(ncRfg.reactive_power.q_range_pct_pn_min * 100).toFixed(0)}…${(ncRfg.reactive_power.q_range_pct_pn_max * 100).toFixed(0)}% Pn` : 'wg profilu operatora'}
           />
-          <FieldRow label="Charakterystyka P(f)" value={pfCurveLabel(der.profiles.pf_curve_ref)} />
+          <FieldRow label="Charakterystyka P(f)" value={pfCurveLabel(der.profiles.pf_curve_ref, pfCurves)} />
           <FieldRow
             label="Zakres cos φ"
-            value={ncRfg ? `min. ${ncRfg.cos_phi_min_lagging.toFixed(2)}` : 'wg profilu operatora'}
+            value={ncRfg ? `min. ${ncRfg.reactive_power.cos_phi_min.toFixed(2)}` : 'wg profilu operatora'}
           />
           <FieldRow label="Ograniczenie eksportu" value="do wyznaczenia w rozpływie mocy" />
         </dl>
@@ -785,9 +836,9 @@ function buildDerCards(
     'frt-hvrt': (
       <section>
         <dl>
-          <FieldRow label="LVRT" value={rideThroughLabel('LVRT', der.profiles.lvrt_curve_ref)} />
-          <FieldRow label="HVRT" value={rideThroughLabel('HVRT', der.profiles.hvrt_curve_ref)} />
-          <FieldRow label="Model dynamiczny" value={dynamicModelLabel(der)} />
+          <FieldRow label="LVRT" value={rideThroughLabel('LVRT', der.profiles.lvrt_curve_ref, ncRfgOperators)} />
+          <FieldRow label="HVRT" value={rideThroughLabel('HVRT', der.profiles.hvrt_curve_ref, ncRfgOperators)} />
+          <FieldRow label="Model dynamiczny" value={dynamicModelLabel(der, dynamicProfiles)} />
           <FieldRow label="Status FRT" value={readinessPl(gotowosc.frt)} />
           <FieldRow label="Status HVRT" value={readinessPl(gotowosc.hvrt)} />
         </dl>
@@ -798,13 +849,13 @@ function buildDerCards(
         <dl>
           <FieldRow
             label="Profil zgodności"
-            value={ncRfg ? cleanCatalogText(ncRfg.label_pl) : 'wybierz profil zgodności przyłączeniowej'}
+            value={ncRfg ? cleanCatalogText(ncRfg.operator_name_pl) : 'wybierz profil zgodności przyłączeniowej'}
           />
-          <FieldRow label="P(f)" value={pfCurveLabel(der.profiles.pf_curve_ref)} />
-          <FieldRow label="Model zwarciowy" value={faultCurrentLabel(der)} />
+          <FieldRow label="P(f)" value={pfCurveLabel(der.profiles.pf_curve_ref, pfCurves)} />
+          <FieldRow label="Model zwarciowy" value={BRAK_PRADU_ZWARCIOWEGO_FALOWNIKA_PL} />
           <FieldRow
             label="Minimalna moc zwarciowa PCC"
-            value={ncRfg ? `${moduleTypeLabel(der)}: wg profilu ${ncRfg.operator_code}` : 'wg profilu operatora'}
+            value={ncRfg ? `${moduleTypeLabel(moduleType)}: wg profilu ${ncRfg.operator_name_pl}` : 'wg profilu operatora'}
           />
           <FieldRow label="Zgodność przyłączeniowa" value={readinessPl(gotowosc.nc_rfg)} />
         </dl>
@@ -891,9 +942,9 @@ function PvInverterCatalogPanel({
         bay_ref: der.bay_ref,
         transformer_ref: der.transformer_ref,
         lv_busbar_ref: der.lv_busbar_ref,
-        connection_node_ref: der.connection_node_ref,
-        internal_cable_ref: der.internal_cable_ref,
-        voltage_level_ref: der.voltage_level_ref,
+        sn_connection_bus_ref: der.sn_connection_bus_ref,
+        sn_connection_point_kind: der.sn_connection_point_kind,
+        connection_voltage_kv: der.connection_voltage_kv,
         catalogs: nextCatalogs,
         profiles: der.profiles,
         nominal_power_kw: der.nominal_power_kw,
@@ -1036,13 +1087,18 @@ function DerSurfaceShell({
     derId ? selectDerById(state, derId) : null,
   );
   const snapshot = useSnapshotStore((state) => state.snapshot);
+  // Karta FAB-J: snapshot audytu 2 pobrany TU (przed jego pierwszym użyciem w
+  // `snapshotDer` niżej) — transformatory dedykowane WYŁĄCZNIE z backendu,
+  // zero statyku modułowego usuniętego z `catalogs.ts`.
+  const blockTransformers = useAudit2CatalogSnapshot().data?.block_transformers ?? [];
   const snapshotDer = useMemo(
     () => buildDerFromGenerator(
       derId ? snapshot?.generators?.find((generator) => generator.ref_id === derId) : null,
       derKind,
       snapshot ?? null,
+      blockTransformers,
     ),
-    [derId, derKind, snapshot],
+    [derId, derKind, snapshot, blockTransformers],
   );
   const surfaceContextDer = useMemo(
     () => buildDerFromSurfaceContext(surface, derKind),
@@ -1072,6 +1128,30 @@ function DerSurfaceShell({
       aktualne = false;
     };
   }, []);
+  // Karta FAB-J: urządzenia DER (PV/BESS/FW) WYŁĄCZNIE z tego samego pobrania,
+  // którego kreator już używa (`fetchDerConverterTypes`, FAB-I) — zero listy
+  // lokalnej, zero fabrykowanej nazwy/producenta dla urządzenia nieznanego
+  // lokalnie, ale realnie wybranego z katalogu backendu.
+  const [converters, setConverters] = useState<readonly ConverterType[]>([]);
+  useEffect(() => {
+    let aktualne = true;
+    void fetchDerConverterTypes()
+      .then((items) => { if (aktualne) setConverters(items); })
+      .catch(() => { if (aktualne) setConverters([]); });
+    return () => {
+      aktualne = false;
+    };
+  }, []);
+  // Karta FAB-J: PF curves ze snapshotu audytu 2 (`blockTransformers` już
+  // pobrany wyżej) + katalog operatorów NC RfG (profil + ride-through) +
+  // katalog baterii BESS — WYŁĄCZNIE z backendu, zero statyku modułowego
+  // usuniętego z `catalogs.ts`.
+  const pfCurves = useAudit2CatalogSnapshot().data?.pf_curves ?? [];
+  const ncRfgOperators = useNcRfgOperatorCatalog().data ?? [];
+  const bessBatteries = useBessBatteryTypes().data ?? [];
+  // Karta FAB-L: profile dynamiczne DER — WYŁĄCZNIE z backendu, zero statyku
+  // modułowego usuniętego z `catalogs.ts` (`DER_DYNAMIC_MODEL_CATALOG`).
+  const dynamicProfiles = useDerDynamicProfiles().data ?? [];
   const projectName = useAppStateStore((state) => state.activeProjectName);
   const activeProjectId = useAppStateStore((state) => state.activeProjectId);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
@@ -1098,10 +1178,18 @@ function DerSurfaceShell({
   const mocWytworcy = useMemo(
     () => identyfikacjaMocy(
       der ?? { nominal_power_kw: null, unit_count: null },
-      der ? mocJednostkiZKatalogu(der) : null,
+      der ? mocJednostkiZKatalogu(der, converters) : null,
     ),
-    [der],
+    [der, converters],
   );
+  // Karta FAB-J: moduł NC RfG oczekiwany dla (moc, napięcie) — klasyfikacja
+  // normatywna liczona WYŁĄCZNIE backendem (`compliance/nc_rfg_modul.py`),
+  // ekran ją tylko wyświetla. Napięcie: szyna przyłączenia z modelu.
+  const moduleTypeQuery = useNcRfgModuleClassification(
+    mocWytworcy.mocGrupyKw !== null ? mocWytworcy.mocGrupyKw / 1000 : null,
+    der?.connection_voltage_kv ?? null,
+  );
+  const moduleType = moduleTypeQuery.data ?? null;
   const torWytworcy = useMemo(() => {
     if (!der) return [];
     const nazwaSzyny = (ref: string | null): string | null =>
@@ -1235,6 +1323,7 @@ function DerSurfaceShell({
       stationName: publicStationName(snapshot ?? null, station ?? null, der.station_id),
       projectName: publicProjectName(projectName),
       connectionSide: der.connection_side,
+      snConnectionPointKind: der.sn_connection_point_kind,
       busPrzylaczeniaRef: der.bus_przylaczenia_ref,
       bayRef: der.bay_ref,
       transformerRef: der.transformer_ref,
@@ -1284,12 +1373,13 @@ function DerSurfaceShell({
                 sekcjaFunkcji,
                 sekcjaMacierzy,
                 sekcjaDoboru,
+                { converters, blockTransformers, ncRfgOperators, pfCurves, bessBatteries, dynamicProfiles, moduleType },
               ) : undefined}
         />
       </div>
       {der && (
         <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
-          <DerKpi label="Punkt przyłączenia" value={connectionSidePl(der.connection_side)} />
+          <DerKpi label="Punkt przyłączenia" value={connectionSidePl(der.connection_side, der.sn_connection_point_kind)} />
           {/* Kafel nazywa POZIOM mocy, ktory pokazuje (V12K-245). „Moc znamionowa" bez
               wskazania, czy chodzi o jednostke czy o cala pozycje, byla dokladnie ta
               dwuznacznoscia, ktora audyt E-21 wskazal w pkt P2. */}
@@ -1304,12 +1394,12 @@ function DerSurfaceShell({
             label="Profil NC RfG"
             value={
               der.profiles.nc_rfg_profile_ref
-                ? cleanCatalogText(getNcRfgProfile(der.profiles.nc_rfg_profile_ref)?.label_pl ?? MISSING_DASH)
+                ? cleanCatalogText(getNcRfgOperator(ncRfgOperators, der.profiles.nc_rfg_profile_ref)?.operator_name_pl ?? MISSING_DASH)
                 : MISSING_DASH
             }
           />
           {der.connection_side === 'dedicated_transformer' && (
-            <DerKpi label="Transformator blokowy" value={blockTransformerLabel(der)} />
+            <DerKpi label="Transformator blokowy" value={blockTransformerLabel(der, blockTransformers)} />
           )}
         </div>
       )}
@@ -1328,21 +1418,18 @@ function DerKpi({ label, value }: { readonly label: string; readonly value: stri
   );
 }
 
-function connectionSidePl(side: ConnectionSide): string {
-  switch (side) {
-    case 'SN':
-      return 'po stronie SN';
-    case 'nN':
-      return 'po stronie nN';
-    case 'dedicated_transformer':
-      return 'transformator dedykowany';
-    case 'at_zksn':
-      return 'na ZK SN';
-    case 'at_branch_pole':
-      return 'na słupie rozgałęźnym';
-    case 'at_cable_joint':
-      return 'na mufie kablowej';
-  }
+/**
+ * Karta FAB-K (§0 R3, KLASA NIE INSTANCJA): `ConnectionSide` niesie WYŁĄCZNIE
+ * poziom (nN / SN przez transformator dedykowany) — dawne pozastacjonarne
+ * warianty (`at_zksn`/`at_branch_pole`/`at_cable_joint`) i gołe `'SN'` bez
+ * transformatora nie istnieją już jako wartości tego typu. Dla SN etykieta
+ * dołącza RODZAJ punktu przyłączenia (`sn_connection_point_kind`) — ta sama
+ * informacja, którą kreator DER pokazuje w kroku „Punkt" i w podsumowaniu.
+ */
+function connectionSidePl(side: ConnectionSide, pointKind: SnConnectionPointKind | null): string {
+  if (side === 'nN') return 'po stronie nN';
+  const kindLabel = getSnConnectionPointKindLabelPl(pointKind);
+  return pointKind ? `transformator dedykowany — ${kindLabel}` : 'transformator dedykowany';
 }
 
 export function PvSourceSurface({ surface }: DerSurfaceProps): JSX.Element {

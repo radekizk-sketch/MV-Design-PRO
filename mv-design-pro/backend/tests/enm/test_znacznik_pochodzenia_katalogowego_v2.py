@@ -152,6 +152,10 @@ def _payload_nn_load_obca(snapshot: dict[str, Any]) -> dict[str, Any]:
     return {
         "feeder_ref": _pole_nn_ref(snapshot),
         "active_power_kw": 30.0,
+        # cos_phi jawny: `add_nn_load` wymaga rozstrzygalnej mocy biernej
+        # (FAB-D1 D5) — ten test sprawdza znacznik pochodzenia katalogowego,
+        # nie moc bierną.
+        "cos_phi": 0.9,
         "catalog_binding": _wiazanie(REF_ODBIOR),
     }
 
@@ -671,7 +675,10 @@ def test_odbior_ekspercki_nie_deklaruje_kategorii_katalogu() -> None:
     wynik = execute_domain_operation(
         snapshot,
         "add_nn_load",
-        {"feeder_ref": _pole_nn_ref(snapshot), "active_power_kw": 12.0},
+        # cos_phi jawny: `add_nn_load` wymaga rozstrzygalnej mocy biernej
+        # (FAB-D1 D5) — ten test sprawdza brak deklaracji kategorii katalogu,
+        # nie moc bierną.
+        {"feeder_ref": _pole_nn_ref(snapshot), "active_power_kw": 12.0, "cos_phi": 0.9},
     )
 
     assert not wynik.get("error"), wynik.get("error")

@@ -125,16 +125,3 @@ class ImportReport:
     skipped: dict[str, int] = field(default_factory=dict)
     errors: tuple[str, ...] = ()
     validation: ValidationReport | None = None
-
-
-@dataclass(frozen=True)
-class ShortCircuitInput:
-    graph: Any
-    base_mva: float
-    connection_node_id: str
-    sources: list[dict[str, Any]]
-    loads: list[dict[str, Any]]
-    grounding: dict[str, Any]
-    limits: dict[str, Any]
-    fault_spec: dict[str, Any]
-    options: dict[str, Any] = field(default_factory=dict)

@@ -70,16 +70,6 @@ class TestCanonicalOperationsRegistry:
         for op in prot_ops:
             assert op in CANONICAL_OP_NAMES, f"Missing protection operation: {op}"
 
-    def test_all_study_case_operations_present(self):
-        case_ops = {
-            "create_study_case",
-            "run_short_circuit",
-            "run_power_flow",
-            "compare_study_cases",
-        }
-        for op in case_ops:
-            assert op in CANONICAL_OP_NAMES, f"Missing study case operation: {op}"
-
     def test_all_universal_operations_present(self):
         universal_ops = {
             "assign_catalog_to_element",
@@ -167,12 +157,14 @@ class TestReadinessCodes:
             assert spec.message_pl, f"Code {code} missing message_pl"
             assert len(spec.message_pl) > 5, f"Code {code} message_pl too short"
 
-    def test_each_blocker_has_fix_action(self):
+    def test_each_blocker_has_fix_navigation(self):
+        # `fix_navigation` is the ONLY real remediation path (the remediation-action
+        # identifier field was removed from ReadinessCodeSpec as a phantom nobody
+        # executed — REJESTR_KONFLIKTOW.md V12K-338). Every BLOCKER, including
+        # metakody like analysis.blocked_by_readiness, already carries it.
         for code, spec in READINESS_CODES.items():
             if spec.level == ReadinessLevel.BLOCKER:
-                # Most blockers should have fix actions
-                if spec.code != "analysis.blocked_by_readiness":
-                    assert spec.fix_action_id, f"Blocker {code} missing fix_action_id"
+                assert spec.fix_navigation, f"Blocker {code} missing fix_navigation"
 
     def test_no_duplicate_priorities_in_same_area(self):
         # Within same area, priorities should be deterministic

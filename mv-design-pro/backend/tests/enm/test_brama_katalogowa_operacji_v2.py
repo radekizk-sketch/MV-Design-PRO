@@ -65,7 +65,7 @@ REF_APARAT_NN = "cb_nn_630a"
 REF_KABEL_NN = "kab_nn_4x120_al"
 REF_CT = "ct_400_5_5p20_15va_abb"
 REF_VT = "vt_15kv_100v_3p_abb"
-REF_PRZEKAZNIK = "ACME_REX100_v1"
+REF_PRZEKAZNIK = "REF-OC-100"
 REF_ODBIOR = "load_mieszk_15kw"
 
 #: Magazyn energii nN 2 MW / 0,4 kV: katalog deklaruje 2000 kW rozładowania
@@ -136,7 +136,13 @@ def _siec_ze_stacja(nn_block: dict[str, Any] | None = None) -> dict[str, Any]:
     snapshot = _wykonaj(
         _pusty_enm(),
         "add_grid_source_sn",
-        {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": REF_ZRODLO},
+        {
+            "voltage_kv": 15.0,
+            "sk3_mva": 250.0,
+            "catalog_ref": REF_ZRODLO,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
+        },
     )
     snapshot = _wykonaj(
         snapshot,
@@ -327,6 +333,9 @@ def _payload_nn_load(snapshot: dict[str, Any]) -> dict[str, Any]:
     return {
         "feeder_ref": _pole_nn_ref(snapshot),
         "active_power_kw": 30.0,
+        # cos_phi jawny: `add_nn_load` wymaga rozstrzygalnej mocy biernej
+        # (FAB-D1 D5) — ten test sprawdza bramę katalogową, nie moc bierną.
+        "cos_phi": 0.9,
         "catalog_ref": REF_ODBIOR,
     }
 
@@ -703,7 +712,37 @@ POKRYCIE_POZA_INIEKCJAMI: dict[str, str] = {
         "pozycja NIEBRAMKOWANA — brak kategorii katalogu dla UPS; "
         "uzasadnienie pilnowane testem `pozycje_niebramkowane_maja_uzasadnienie`"
     ),
+    "add_converter_source|battery_catalog_ref": (
+        "karta FAB-K (R2): bramkowana w WARSTWIE DOMENOWEJ "
+        "(`_materializuj_bateria_bess`), CELOWO NIE w bramie API — kod "
+        "`converter.battery_catalog_ref_unknown`/`_not_applicable` jest bogatszy "
+        "od generycznego `catalog.item_not_found` (rozróżnia nieznaną pozycję od "
+        "pola użytego dla PV/FW) i to JEGO pilnuje "
+        "`test_generators_api.py::TestBateriaBess` (materializacja tabliczki, "
+        "nieznany ref → 422, PV → 422) — droga produkcyjna "
+        "`POST …/generators` i tak kończy każdy błąd domeny kodem 422 "
+        "(`api/generators.py`), więc nie ma tu luki PARYTETU KONTRAKTU HTTP, "
+        "którą ta brama naprawia; iniekcja przez `/enm/domain-ops` dublowałaby "
+        "dowód, zastępując bogatszy kod ogólnym."
+    ),
 }
+
+
+def _nowy_przypadek(klient: TestClient) -> str:
+    """Utwórz REALNY projekt + przypadek przez API; zwróć `case_id`.
+
+    CV-1-W: przypadek bez wiersza w bazie dostaje teraz 404 z magazynu ENM
+    (inwariant I-2), więc testy bramy katalogowej potrzebują prawdziwej pary
+    projekt+przypadek zamiast dowolnego napisu.
+    """
+    project_resp = klient.post("/api/projects", json={"name": "Brama katalogowa — test"})
+    assert project_resp.status_code == 201, project_resp.text
+    project_id = project_resp.json()["id"]
+    case_resp = klient.post(
+        "/api/study-cases", json={"project_id": project_id, "name": "Przypadek testu"}
+    )
+    assert case_resp.status_code == 201, case_resp.text
+    return str(case_resp.json()["id"])
 
 
 def _operacja_api(
@@ -729,7 +768,13 @@ def _zasiej_siec_przez_api(klient: TestClient, case_id: str) -> dict[str, Any]:
         klient,
         case_id,
         "add_grid_source_sn",
-        {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": REF_ZRODLO},
+        {
+            "voltage_kv": 15.0,
+            "sk3_mva": 250.0,
+            "catalog_ref": REF_ZRODLO,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
+        },
     )
     snapshot = _operacja_api(
         klient,
@@ -747,11 +792,17 @@ def _zasiej_siec_przez_api(klient: TestClient, case_id: str) -> dict[str, Any]:
 
 
 @pytest.fixture()
-def klient(tmp_path, monkeypatch) -> TestClient:
+def klient(tmp_path, monkeypatch, uow_factory) -> TestClient:
+    from api.dependencies import get_uow_factory
+
     monkeypatch.setenv("ENM_STORE_DIR", str(tmp_path))
     reset_enm_store()
     wyczysc_dziennik()
+    app.dependency_overrides[get_uow_factory] = lambda: uow_factory
+    app.state.uow_factory = uow_factory
     yield TestClient(app)
+    app.dependency_overrides.pop(get_uow_factory, None)
+    app.state.uow_factory = None
     reset_enm_store()
     wyczysc_dziennik()
 
@@ -971,7 +1022,7 @@ def test_literowka_odrzucona_w_torze_payloadu(
     `der_bindings.catalog_ref_unknown`) zostaje kodem WARSTWY DOMENOWEJ i jest
     pilnowany osobnym testem wyżej.
     """
-    case_id = f"v2-brama-{abs(hash((przypadek.operacja, przypadek.sciezka)))}"
+    case_id = _nowy_przypadek(klient)
     snapshot = _zasiej_siec_przez_api(klient, case_id)
     if przypadek.wymaga_ct:
         snapshot = _operacja_api(klient, case_id, "add_ct", _payload_ct(snapshot))
@@ -1223,7 +1274,12 @@ def test_zabezpieczenie_niesie_tozsamosc_z_katalogu() -> None:
 
     przypisanie = wynik["protection_assignments"][0]
     assert przypisanie["source_mode"] == "KATALOG"
-    assert przypisanie["materialized_params"]["vendor"] == "ABB"
+    # Karta FAB-A/D-33: REF_PRZEKAZNIK to profil referencyjny bez marki —
+    # `vendor` jest jawnie None (nigdy tekst udajacy producenta). Tozsamosc
+    # z katalogu dowodzi `name_pl` (niepusta wartosc pochodzaca z rekordu),
+    # nie `vendor` (ktory dla tej pozycji jest legalnie nieobecny).
+    assert przypisanie["materialized_params"]["vendor"] is None
+    assert przypisanie["materialized_params"]["name_pl"]
     assert przypisanie["materialized_params"]["catalog_item_id"] == REF_PRZEKAZNIK
 
 
@@ -1296,7 +1352,7 @@ def test_koncowka_domain_ops_odrzuca_rozjazd_bramy_i_modelu(
     stan, przed którym kontrola ma bronić; reszta drogi (operacja, zapis, migawka)
     jest prawdziwa.
     """
-    case_id = "v2-brama-rozjazd"
+    case_id = _nowy_przypadek(klient)
     snapshot = _zasiej_siec_przez_api(klient, case_id)
     hash_przed = klient.get(f"/api/cases/{case_id}/enm").json()["header"]["hash_sha256"]
 
@@ -1336,7 +1392,7 @@ def test_koncowka_domain_ops_odrzuca_rozjazd_bramy_i_modelu(
 
 def test_produkcyjna_droga_zapisu_utrwala_tabliczke_katalogowa(klient: TestClient) -> None:
     """`POST /enm/domain-ops` — jedyna produkcyjna droga zapisu — zapisuje katalog."""
-    case_id = "v2-brama-produkcyjna"
+    case_id = _nowy_przypadek(klient)
     snapshot = _zasiej_siec_przez_api(klient, case_id)
 
     odpowiedz = klient.post(

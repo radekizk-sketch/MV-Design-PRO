@@ -8,7 +8,7 @@ import { ApparatusDsCircle, ApparatusCbSquare } from '../GpzApparatusSymbols';
 
 afterEach(() => cleanup());
 
-describe('ApparatusDsCircle — K30-109 IEC 60617-7-13-02', () => {
+describe('ApparatusDsCircle — IEC 60617-7-13-02', () => {
   it('closed: vertical lever + 2 contact dots', () => {
     const { container } = render(
       <svg>
@@ -29,7 +29,7 @@ describe('ApparatusDsCircle — K30-109 IEC 60617-7-13-02', () => {
   it('open: diagonal lever (~45°) + 2 contact dots', () => {
     const { container } = render(
       <svg>
-        <ApparatusDsCircle cx={50} cy={50} state="open" />
+        <ApparatusDsCircle cx={50} cy={50} state="open" energized={false} />
       </svg>,
     );
     const ds = container.querySelector('[data-testid="sld-v2-gpz-bay-ds"]');
@@ -42,7 +42,7 @@ describe('ApparatusDsCircle — K30-109 IEC 60617-7-13-02', () => {
   it('unknown: neutralny symbol bez znaku zastępczego', () => {
     const { container } = render(
       <svg>
-        <ApparatusDsCircle cx={50} cy={50} state="unknown" />
+        <ApparatusDsCircle cx={50} cy={50} state="unknown" energized={false} />
       </svg>,
     );
     const ds = container.querySelector('[data-testid="sld-v2-gpz-bay-ds"]');
@@ -51,7 +51,7 @@ describe('ApparatusDsCircle — K30-109 IEC 60617-7-13-02', () => {
   });
 });
 
-describe('ApparatusCbSquare — K30-110 IEC 60617-7-13-08', () => {
+describe('ApparatusCbSquare — IEC 60617-7-13-08', () => {
   it('closed: vertical contact line + 2 contact dots wewnątrz kwadratu', () => {
     const { container } = render(
       <svg>
@@ -74,7 +74,7 @@ describe('ApparatusCbSquare — K30-110 IEC 60617-7-13-08', () => {
   it('open: horizontal break line + brak contact dots', () => {
     const { container } = render(
       <svg>
-        <ApparatusCbSquare cx={50} cy={50} state="open" />
+        <ApparatusCbSquare cx={50} cy={50} state="open" energized={false} />
       </svg>,
     );
     const cb = container.querySelector('[data-testid="sld-v2-gpz-bay-cb"]');
@@ -90,7 +90,7 @@ describe('ApparatusCbSquare — K30-110 IEC 60617-7-13-08', () => {
   it('CB jest wizualnie WIĘKSZY niż DS (kwadrat 9 vs okrąg radius 4.5)', () => {
     const { container: cbContainer } = render(
       <svg>
-        <ApparatusCbSquare cx={50} cy={50} state="closed" />
+        <ApparatusCbSquare cx={50} cy={50} state="closed" energized />
       </svg>,
     );
     const cbRect = cbContainer.querySelector('[data-testid="sld-v2-gpz-bay-cb"] rect');
@@ -98,7 +98,7 @@ describe('ApparatusCbSquare — K30-110 IEC 60617-7-13-08', () => {
     cleanup();
     const { container: dsContainer } = render(
       <svg>
-        <ApparatusDsCircle cx={50} cy={50} state="closed" />
+        <ApparatusDsCircle cx={50} cy={50} state="closed" energized />
       </svg>,
     );
     const dsCircle = dsContainer.querySelector('[data-testid="sld-v2-gpz-bay-ds"] circle');

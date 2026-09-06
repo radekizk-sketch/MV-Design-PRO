@@ -95,7 +95,7 @@ def _make_archive(
     nodes: list | None = None,
     branches: list | None = None,
     study_cases: list | None = None,
-    study_results: list | None = None,
+    canonical_runs: list | None = None,
     design_specs: list | None = None,
     project_name: str = "TestProject",
 ) -> ProjectArchive:
@@ -130,14 +130,12 @@ def _make_archive(
         "switching_states": [],
         "settings": None,
     }
-    runs_dict = {
-        "analysis_runs": [],
-        "analysis_runs_index": [],
-        "study_runs": [],
-    }
-    results_dict = {
-        "study_results": study_results or [],
-    }
+    # CV-3.3-B: wyniki biegow zyja w sekcji `runs` (`canonical_runs`, R1,
+    # kazdy bieg niesie `raw_result`); `results` to pusty kontener, ktory
+    # zostaje w strukturze i odcisku archiwum. Testy "zmiana wynikow" mierza
+    # odtad zmiane sekcji `runs` — ta sama intencja (delta tylko po wynikach).
+    runs_dict = {"canonical_runs": canonical_runs or [], "analysis_runs_index": []}
+    results_dict: dict = {}
     proofs_dict = {
         "design_specs": design_specs or [],
         "design_proposals": [],
@@ -166,7 +164,7 @@ def _make_archive(
         sld_diagrams=SldSection(**sld_dict),
         cases=CasesSection(**cases_dict),
         runs=RunsSection(**runs_dict),
-        results=ResultsSection(**results_dict),
+        results=ResultsSection(),
         proofs=ProofsSection(**proofs_dict),
         interpretations=InterpretationsSection(**interp_dict),
         issues=IssuesSection(**issues_dict),
@@ -223,7 +221,9 @@ class TestComputeSectionDeltas:
                 {"id": "n2", "name": "Bus2", "voltage_kv": 20.0},
             ],
             study_cases=[{"id": "sc1", "name": "Przypadek 1"}],
-            study_results=[{"id": "r1", "value": 42}],
+            canonical_runs=[
+                {"id": "r1", "analysis_type": "power_flow", "raw_result": {"value": 42}}
+            ],
         )
 
         deltas = compute_section_deltas(base.fingerprints, modified)
@@ -231,10 +231,10 @@ class TestComputeSectionDeltas:
 
         assert delta_map["network_model"].status == SectionChangeStatus.MODIFIED
         assert delta_map["cases"].status == SectionChangeStatus.MODIFIED
-        assert delta_map["results"].status == SectionChangeStatus.MODIFIED
+        assert delta_map["runs"].status == SectionChangeStatus.MODIFIED
 
         # Inne sekcje powinny być UNCHANGED
-        unchanged_names = {"sld_diagrams", "runs", "proofs", "interpretations", "issues"}
+        unchanged_names = {"sld_diagrams", "results", "proofs", "interpretations", "issues"}
         for name in unchanged_names:
             assert delta_map[name].status == SectionChangeStatus.UNCHANGED
 
@@ -361,7 +361,9 @@ class TestApplyIncrementalArchive:
         """Niezgodność hash bazowego → BaseHashMismatchError."""
         base = _make_archive()
         other_base = _make_archive(nodes=[{"id": "n99", "name": "Other", "voltage_kv": 1.0}])
-        modified = _make_archive(study_results=[{"id": "r1", "val": 100}])
+        modified = _make_archive(
+            canonical_runs=[{"id": "r1", "analysis_type": "power_flow", "raw_result": {"val": 100}}]
+        )
 
         incr = build_incremental_archive(base.fingerprints, modified)
 
@@ -448,7 +450,11 @@ class TestSerializationRoundtrip:
     def test_roundtrip_then_apply(self) -> None:
         """Serializacja → deserializacja → nałożenie delty → poprawny wynik."""
         base = _make_archive()
-        modified = _make_archive(study_results=[{"id": "r1", "type": "SC3F", "ik3": 12.5}])
+        modified = _make_archive(
+            canonical_runs=[
+                {"id": "r1", "analysis_type": "short_circuit", "raw_result": {"ik3": 12.5}}
+            ]
+        )
 
         incr = build_incremental_archive(base.fingerprints, modified)
         data = serialize_incremental(incr)
@@ -479,16 +485,20 @@ class TestSizeSavings:
             nodes=[{"id": f"n{i}", "name": f"Bus{i}", "voltage_kv": 15.0} for i in range(50)],
             branches=[{"id": f"b{i}", "from": f"n{i}", "to": f"n{i+1}"} for i in range(49)],
             study_cases=[{"id": f"sc{i}", "name": f"Przypadek {i}"} for i in range(20)],
-            study_results=[{"id": f"r{i}", "value": i * 1.1} for i in range(30)],
+            canonical_runs=[
+                {"id": f"r{i}", "analysis_type": "power_flow", "raw_result": {"value": i * 1.1}}
+                for i in range(30)
+            ],
         )
 
-        # Niewielka zmiana — tylko wyniki
+        # Niewielka zmiana — tylko wyniki biegow (sekcja `runs`)
         modified = _make_archive(
             nodes=[{"id": f"n{i}", "name": f"Bus{i}", "voltage_kv": 15.0} for i in range(50)],
             branches=[{"id": f"b{i}", "from": f"n{i}", "to": f"n{i+1}"} for i in range(49)],
             study_cases=[{"id": f"sc{i}", "name": f"Przypadek {i}"} for i in range(20)],
-            study_results=[
-                {"id": f"r{i}", "value": i * 2.2} for i in range(30)  # zmienione wyniki
+            canonical_runs=[
+                {"id": f"r{i}", "analysis_type": "power_flow", "raw_result": {"value": i * 2.2}}
+                for i in range(30)  # zmienione wyniki biegow
             ],
         )
 

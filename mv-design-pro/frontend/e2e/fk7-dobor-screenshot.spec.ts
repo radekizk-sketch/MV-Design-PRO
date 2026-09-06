@@ -7,21 +7,28 @@
  * zrzutach są zatem wynikiem solvera, a nie fixturą — dokładnie tego wymaga reguła
  * braku fabrykacji.
  *
- * Scena dowodowa (2 falowniki PV 900 kW ⇒ ΣP 1,8 MW ⇒ TR 2,5 MVA ⇒ I_TR 96,2 A,
+ * Scena dowodowa (2 falowniki PV 1 MW ⇒ ΣP 2,0 MW ⇒ TR 2,5 MVA ⇒ I_TR 96,2 A,
  * rezerwa kabla 0,3 ⇒ próg 125,1 A):
  *   A. warunki KATALOGOWE      ⇒ propozycja 50 mm²
  *   B. ziemia, 3 kable, 200 mm ⇒ 50 mm² odpada (Iz 160 A × 0,74538 = 119,3 A < 125,1 A)
  *                                ⇒ propozycja 70 mm², obciążalność po korekcie obok
  *                                  katalogowej + jawne założenie w śladzie
+ *
+ * Karta FAB-L (§0 L6, 2026-09-05): falownik `conv-pv-nn-1mw-0p4kv` (realny
+ * katalog backendu) zastąpił dawny zmyślony `pv-1` (900 kW) — cały dalszy tor
+ * (TR/kabel/próg) wyszedł 1:1 taki sam, bo TR 2,5 MVA to najbliższy krok
+ * katalogowy zarówno dla 1,8, jak i 2,0 MVA pozornej mocy; zweryfikowane
+ * bezpośrednim wywołaniem `preview_der_selection` (ten sam solver, poza HTTP).
  * Oba motywy. Wyjście: docs/audit/visual/fk7/*.png
  */
 import { test, expect, type Page } from '@playwright/test';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { adresHarnessu } from './adresHarnessu';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
-const HARNESS_URL = 'http://127.0.0.1:5173/creator-harness.html';
+const HARNESS_URL = adresHarnessu('creator-harness.html');
 const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/fk7');
 const THEMES = ['light', 'dark'] as const;
 
@@ -60,10 +67,11 @@ test.describe('fk7-dobor:screenshot', () => {
       await page.getByTestId('mvd-kreator-oze-nazwa').fill('Farma PV Wschód');
       await page.getByTestId('mvd-kreator-oze-wariant').selectOption('block_transformer');
 
-      // Krok 2 — falownik z katalogu: 2 × PV 900 kW ⇒ ΣP 1,8 MW.
+      // Krok 2 — falownik z katalogu: 2 × PV 1 MW ⇒ ΣP 2,0 MW (karta FAB-L
+      // §0 L6: `conv-pv-nn-1mw-0p4kv`, realny katalog — patrz nagłówek pliku).
       await page.getByTestId('mvd-kreator-oze-dalej').click();
       await expect(page.getByTestId('mvd-kreator-oze-konwerter')).toBeVisible();
-      await page.getByTestId('mvd-kreator-oze-konwerter').selectOption('pv-1');
+      await page.getByTestId('mvd-kreator-oze-konwerter').selectOption('conv-pv-nn-1mw-0p4kv');
       await page.getByTestId('mvd-kreator-oze-liczba').fill('2');
 
       // Krok 3 — dobór toru SN.

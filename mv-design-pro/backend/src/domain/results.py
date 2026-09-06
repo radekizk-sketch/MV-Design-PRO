@@ -31,7 +31,10 @@ class RunResultState(StrEnum):
     """
     Result state for a Study Run (industrial-grade).
 
-    P10b: Canonical states aligned with StudyCaseResultStatus.
+    P10b: slownik zgodny ze slownikiem statusu wynikow przypadku w kontrakcie HTTP
+    (`ResultFreshness` w `application/result_freshness.py` — CV-2-W: status
+    przypadku jest WYPROWADZANY, a nie przechowywany, wiec typ domenowy
+    `StudyCaseResultStatus` zostal skasowany).
     """
 
     NONE = "NONE"  # No results computed
@@ -186,6 +189,10 @@ class ShortCircuitComparison:
     - ip_delta: Peak current Ip [A]
     - ith_delta: Thermal equivalent current Ith [A]
 
+    FAB-E (E1): każde pole delty jest ``None``, gdy brakuje wartości źródłowej w
+    payloadzie run A LUB run B (niekompletny/starszy zapis wyniku) — NIGDY
+    fabrykowana delta liczona od milczącego 0 (fikcyjna zbieżność/rozbieżność).
+
     ADDITIVE FIELDS (karta S-C, 2026-07-22 — pełny bilans IEC 60909):
     - xr_ratio_delta: X/R ratio [—] (None dla starszych wyników bez rx_ratio)
     - i2t_delta: Thermal energy I²t [kA²s] (None bez ith_a+tk_s)
@@ -193,22 +200,22 @@ class ShortCircuitComparison:
     INVARIANT: No normative interpretation, no limits/thresholds.
     """
 
-    ikss_delta: NumericDelta  # Ik'' [A]
-    sk_delta: NumericDelta  # Sk'' [MVA]
-    zth_delta: ComplexDelta  # Zth [Ohm]
-    ip_delta: NumericDelta  # Ip [A]
-    ith_delta: NumericDelta  # Ith [A]
+    ikss_delta: NumericDelta | None  # Ik'' [A]
+    sk_delta: NumericDelta | None  # Sk'' [MVA]
+    zth_delta: ComplexDelta | None  # Zth [Ohm]
+    ip_delta: NumericDelta | None  # Ip [A]
+    ith_delta: NumericDelta | None  # Ith [A]
     xr_ratio_delta: NumericDelta | None = None  # X/R [—] (addytywne)
     i2t_delta: NumericDelta | None = None  # I²t [kA²s] (addytywne)
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""
         return {
-            "ikss_delta": self.ikss_delta.to_dict(),
-            "sk_delta": self.sk_delta.to_dict(),
-            "zth_delta": self.zth_delta.to_dict(),
-            "ip_delta": self.ip_delta.to_dict(),
-            "ith_delta": self.ith_delta.to_dict(),
+            "ikss_delta": self.ikss_delta.to_dict() if self.ikss_delta is not None else None,
+            "sk_delta": self.sk_delta.to_dict() if self.sk_delta is not None else None,
+            "zth_delta": self.zth_delta.to_dict() if self.zth_delta is not None else None,
+            "ip_delta": self.ip_delta.to_dict() if self.ip_delta is not None else None,
+            "ith_delta": self.ith_delta.to_dict() if self.ith_delta is not None else None,
             "xr_ratio_delta": (
                 self.xr_ratio_delta.to_dict() if self.xr_ratio_delta is not None else None
             ),
@@ -225,19 +232,23 @@ class BusVoltageComparison:
     - bus_id: Bus identifier
     - u_kv_delta: Voltage magnitude [kV]
     - u_pu_delta: Voltage in per-unit
+
+    FAB-E (E1): ``None`` gdy szyna nie ma wartości w run A LUB run B (np. szyna
+    istnieje tylko w jednym z porównywanych biegów — zmiana topologii) — NIGDY
+    fabrykowane 0.0 kV/pu, co wyglądałoby jak całkowity zanik napięcia.
     """
 
     bus_id: str
-    u_kv_delta: NumericDelta
-    u_pu_delta: NumericDelta
+    u_kv_delta: NumericDelta | None
+    u_pu_delta: NumericDelta | None
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""
         return {
             "bus_id": self.bus_id,
             "node_id": self.bus_id,  # backward-compatible alias
-            "u_kv_delta": self.u_kv_delta.to_dict(),
-            "u_pu_delta": self.u_pu_delta.to_dict(),
+            "u_kv_delta": self.u_kv_delta.to_dict() if self.u_kv_delta is not None else None,
+            "u_pu_delta": self.u_pu_delta.to_dict() if self.u_pu_delta is not None else None,
         }
 
 
@@ -254,18 +265,24 @@ class BranchPowerComparison:
     - branch_id: Branch identifier
     - p_mw_delta: Active power [MW]
     - q_mvar_delta: Reactive power [Mvar]
+
+    FAB-E (E1): ``None`` gdy gałąź nie ma wartości w run A LUB run B (np. gałąź
+    istnieje tylko w jednym z porównywanych biegów) — NIGDY fabrykowane 0.0
+    MW/Mvar, co wyglądałoby jak realny zanik przepływu.
     """
 
     branch_id: str
-    p_mw_delta: NumericDelta
-    q_mvar_delta: NumericDelta
+    p_mw_delta: NumericDelta | None
+    q_mvar_delta: NumericDelta | None
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""
         return {
             "branch_id": self.branch_id,
-            "p_mw_delta": self.p_mw_delta.to_dict(),
-            "q_mvar_delta": self.q_mvar_delta.to_dict(),
+            "p_mw_delta": self.p_mw_delta.to_dict() if self.p_mw_delta is not None else None,
+            "q_mvar_delta": (
+                self.q_mvar_delta.to_dict() if self.q_mvar_delta is not None else None
+            ),
         }
 
 
@@ -284,23 +301,38 @@ class PowerFlowComparison:
     - node_voltages: Per-bus voltage comparisons
     - branch_powers: Per-branch power comparisons (from side)
 
+    FAB-E (E1): agregaty (straty/bilans węzła bilansującego) są ``None``, gdy
+    payload run A LUB run B nie niesie tej wielkości — NIGDY fabrykowane 0.0.
+
     INVARIANT: No normative interpretation, no limits/thresholds.
     """
 
-    total_losses_p_delta: NumericDelta
-    total_losses_q_delta: NumericDelta
-    slack_p_delta: NumericDelta
-    slack_q_delta: NumericDelta
+    total_losses_p_delta: NumericDelta | None
+    total_losses_q_delta: NumericDelta | None
+    slack_p_delta: NumericDelta | None
+    slack_q_delta: NumericDelta | None
     node_voltages: tuple[BusVoltageComparison, ...]
     branch_powers: tuple[BranchPowerComparison, ...]
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""
         return {
-            "total_losses_p_delta": self.total_losses_p_delta.to_dict(),
-            "total_losses_q_delta": self.total_losses_q_delta.to_dict(),
-            "slack_p_delta": self.slack_p_delta.to_dict(),
-            "slack_q_delta": self.slack_q_delta.to_dict(),
+            "total_losses_p_delta": (
+                self.total_losses_p_delta.to_dict()
+                if self.total_losses_p_delta is not None
+                else None
+            ),
+            "total_losses_q_delta": (
+                self.total_losses_q_delta.to_dict()
+                if self.total_losses_q_delta is not None
+                else None
+            ),
+            "slack_p_delta": (
+                self.slack_p_delta.to_dict() if self.slack_p_delta is not None else None
+            ),
+            "slack_q_delta": (
+                self.slack_q_delta.to_dict() if self.slack_q_delta is not None else None
+            ),
             "bus_voltages": [nv.to_dict() for nv in self.node_voltages],
             "node_voltages": [nv.to_dict() for nv in self.node_voltages],  # backward-compat
             "branch_powers": [bp.to_dict() for bp in self.branch_powers],
@@ -360,21 +392,31 @@ class ProtectionComparison:
     - no_trip_count_delta: Change in number of no-trips
     - invalid_count_delta: Change in number of invalid evaluations
 
+    FAB-E (E1): count-delty są ``None``, gdy payload run A LUB run B nie niesie
+    klucza ``summary`` w ogóle — NIGDY fabrykowane 0 (co wyglądałoby jak "zero
+    zadziałań", a naprawdę oznacza brak podsumowania w zapisie wyniku).
+
     INVARIANT: No normative interpretation, no limits/thresholds.
     """
 
     evaluations: tuple[ProtectionEvaluationComparison, ...]
-    trip_count_delta: NumericDelta
-    no_trip_count_delta: NumericDelta
-    invalid_count_delta: NumericDelta
+    trip_count_delta: NumericDelta | None
+    no_trip_count_delta: NumericDelta | None
+    invalid_count_delta: NumericDelta | None
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""
         return {
             "evaluations": [ev.to_dict() for ev in self.evaluations],
-            "trip_count_delta": self.trip_count_delta.to_dict(),
-            "no_trip_count_delta": self.no_trip_count_delta.to_dict(),
-            "invalid_count_delta": self.invalid_count_delta.to_dict(),
+            "trip_count_delta": (
+                self.trip_count_delta.to_dict() if self.trip_count_delta is not None else None
+            ),
+            "no_trip_count_delta": (
+                self.no_trip_count_delta.to_dict() if self.no_trip_count_delta is not None else None
+            ),
+            "invalid_count_delta": (
+                self.invalid_count_delta.to_dict() if self.invalid_count_delta is not None else None
+            ),
         }
 
 
@@ -394,6 +436,9 @@ class RunComparisonResult:
     - short_circuit: SC comparison (if applicable)
     - power_flow: PF comparison (if applicable)
     - protection: Protection comparison (if applicable)
+    - provenance_a: proweniencja biegu A (B1, karta CV-3.3-B:
+        `RunProvenance.to_dict()` — snapshot_hash/input_hash/koperta biegu R1)
+    - provenance_b: proweniencja biegu B — jak wyżej
 
     INVARIANT: 100% read-only, no mutations, no physics.
     """
@@ -406,6 +451,8 @@ class RunComparisonResult:
     short_circuit: ShortCircuitComparison | None = None
     power_flow: PowerFlowComparison | None = None
     protection: ProtectionComparison | None = None
+    provenance_a: dict[str, Any] = field(default_factory=dict)
+    provenance_b: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary for API responses."""
@@ -415,6 +462,8 @@ class RunComparisonResult:
             "project_id": str(self.project_id),
             "analysis_type": self.analysis_type,
             "compared_at": self.compared_at.isoformat(),
+            "provenance_a": self.provenance_a,
+            "provenance_b": self.provenance_b,
         }
         if self.short_circuit is not None:
             result["short_circuit"] = self.short_circuit.to_dict()
@@ -455,6 +504,19 @@ class RunNotFoundError(ComparisonError):
     def __init__(self, run_id: UUID):
         self.run_id = run_id
         super().__init__(f"Run not found: {run_id}")
+
+
+class RunNotFinishedError(ComparisonError):
+    """CV-3.3-B: raised when a run (R1 `CanonicalRun`) is not FINISHED yet.
+
+    Osobny błąd od `RunNotFoundError` — bieg NAPRAWDĘ istnieje, tylko nie ma
+    jeszcze wyniku do porównania.
+    """
+
+    def __init__(self, run_id: UUID, status: str):
+        self.run_id = run_id
+        self.status = status
+        super().__init__(f"Run not finished (status: {status}): {run_id}")
 
 
 class ResultNotFoundError(ComparisonError):

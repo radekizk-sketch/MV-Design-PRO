@@ -11,8 +11,9 @@ All assign/clear endpoints return 204 No Content.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from api.dependencies import get_uow_factory
@@ -27,6 +28,8 @@ from application.network_wizard import NetworkWizardService
 from application.network_wizard.service import NotFound
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
+from network_model.catalog.der_dynamic import get_profile, list_all_profile_ids
+from network_model.catalog.der_dynamic.models import WindTurbineDynamicProfile
 from network_model.catalog.governance import ImportMode
 from network_model.catalog.mv_branch_point_catalog import get_all_branch_point_types
 from network_model.catalog.mv_ptpiree_catalog import get_ptpiree_catalog_manifest
@@ -44,6 +47,8 @@ from network_model.catalog.switchgear import (
 from network_model.catalog.types import normalize_ptpiree_key
 from pydantic import BaseModel
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api/catalog", tags=["Type Catalog"])
 
 
@@ -59,15 +64,43 @@ def _serialize_analytical_protection_device(device: Any) -> dict[str, Any]:
         )
     if meta.get("unverified_ranges"):
         notes.append("Zakresy nastaw pochodza z katalogu analitycznego i wymagaja weryfikacji.")
-    verification_status = "NIEWERYFIKOWANY" if meta.get("unverified") else "CZESCIOWO_ZWERYFIKOWANY"
+
+    # Karta FAB-A/D-33: `vendor is None` = profil REFERENCYJNY bez marki
+    # (byl falszywie przypisany ABB). Etykieta MUSI jednoznacznie mowic, ze to
+    # nie jest produkt producenta — konkatenacja f"{vendor} {model}" pokazalaby
+    # tu literalny tekst "None", wiec galaz jest odrebna, nie fallbackiem.
+    is_referencyjny = device.vendor is None
+    if is_referencyjny:
+        name_pl = (
+            f"Profil referencyjny (nie produkt producenta) - {device.model or device.device_id}"
+        )
+        verification_status = "REFERENCYJNY"
+        catalog_status = "REFERENCYJNY_V1"
+        series_value: str | None = None
+        verification_note = str(
+            meta.get("verification_note")
+            or "Profil referencyjny wbudowany MV-DESIGN-PRO; nie dane producenta."
+        )
+    else:
+        name_pl = f"{device.vendor} {device.model}"
+        verification_status = (
+            "NIEWERYFIKOWANY" if meta.get("unverified") else "CZESCIOWO_ZWERYFIKOWANY"
+        )
+        catalog_status = "ANALITYCZNY_V1"
+        series_value = str(meta.get("series") or device.model)
+        verification_note = (
+            "Zakres ochrony pochodzi z katalogu analitycznego; rekord nie jest promowany do katalogu produkcyjnego."
+            if meta.get("unverified") or meta.get("unverified_ranges")
+            else "Rekord analityczny zachowany poza torem produkcyjnym."
+        )
 
     return {
         "id": device.device_id,
-        "name_pl": f"{device.vendor} {device.model}",
+        "name_pl": name_pl,
         "params": {
             "vendor": device.vendor,
             "model": device.model,
-            "series": str(meta.get("series") or device.model),
+            "series": series_value,
             "revision": "v0",
             "rated_current_a": float(meta["rated"]) if meta.get("rated") is not None else None,
             "notes_pl": " ".join(notes) if notes else None,
@@ -76,13 +109,9 @@ def _serialize_analytical_protection_device(device: Any) -> dict[str, Any]:
             "unverified_ranges": bool(meta.get("unverified_ranges", False)),
             "source_reference": str(source_ref or "devices_v0.json / katalog analityczny ochrony"),
             "verification_status": verification_status,
-            "catalog_status": "ANALITYCZNY_V1",
+            "catalog_status": catalog_status,
             "contract_version": "2.0",
-            "verification_note": (
-                "Zakres ochrony pochodzi z katalogu analitycznego; rekord nie jest promowany do katalogu produkcyjnego."
-                if meta.get("unverified") or meta.get("unverified_ranges")
-                else "Rekord analityczny zachowany poza torem produkcyjnym."
-            ),
+            "verification_note": verification_note,
             "functions_supported": list(device.functions_supported),
             "curves_supported": list(device.curves_supported),
             "i_pickup_51_a_min": device.i_pickup_51_a_min,
@@ -316,6 +345,17 @@ def list_bess_inverter_types() -> list[dict[str, Any]]:
     return [item.to_dict() for item in get_default_mv_catalog().list_bess_inverter_types()]
 
 
+@router.get("/bess-battery-types")
+def list_bess_battery_types() -> list[dict[str, Any]]:
+    """List all BESS battery PACK types (karta FAB-J) — sprzęt oddzielny od PCS.
+
+    Katalog pojemności [kWh] / napięcia DC / C-rate / chemii pakietu baterii;
+    typ przekształtnika magazynu (moc, Q, cosφ) niesie `/bess-inverter-types`
+    powyżej.
+    """
+    return [item.to_dict() for item in get_default_mv_catalog().list_bess_battery_types()]
+
+
 @router.get("/inverter-types")
 def list_inverter_types() -> list[dict[str, Any]]:
     """List all generic inverter/converter catalog entries from the canonical MV catalog."""
@@ -346,6 +386,30 @@ def list_wind_inverter_types() -> list[dict[str, Any]]:
 def list_source_system_types() -> list[dict[str, Any]]:
     """List all MV system source types for GPZ / zasilanie systemowe."""
     return [item.to_dict() for item in get_default_mv_catalog().list_source_system_types()]
+
+
+@router.get("/der-dynamic-profiles")
+def list_der_dynamic_profiles() -> list[dict[str, Any]]:
+    """Profile dynamiczne DER (PV/BESS/FW) — karta FAB-L.
+
+    Jedyne źródło prawdy o modelach dynamicznych konsumowanych przez solvery
+    `network_model.solvers.stability_rms` i `network_model.solvers.frt_hvrt`
+    (`network_model.catalog.der_dynamic`, resolver `resolve_der_dynamic_profile`).
+    Front pokazuje parametry WHITE BOX wprost (Tp/Tq/droop/FRT/inercja) —
+    zero drugiej kopii pod zmyślonymi nazwami pól.
+
+    `der_kind` jest dopisywane w tej serializacji ("FW" dla turbin) — model
+    katalogowy turbiny niesie tylko `iec_type`, ale front potrzebuje jednego
+    pola rodzaju DER dla obu kształtów profilu.
+    """
+    wyniki: list[dict[str, Any]] = []
+    for profile_id in list_all_profile_ids():
+        profil = get_profile(profile_id)
+        dane = profil.model_dump(mode="json")
+        if isinstance(profil, WindTurbineDynamicProfile):
+            dane["der_kind"] = "FW"
+        wyniki.append(dane)
+    return wyniki
 
 
 @router.get("/ptpiree/manifest")
@@ -955,13 +1019,34 @@ class AutoPopulateRequest(BaseModel):
     """K30-23: prefer Polish PTPiRE-certified entries by default."""
 
 
+#: Dopasowanie sugestii auto-populate — kategoryczne, nie liczba bez definicji
+#: (karta FAB-D2, D9). "PELNE" = producent z żądania znaleziony w rekordzie
+#: katalogowym; "CZĘŚCIOWE" = rekord przeszedł filtry (napięcie/moc/prąd), ale
+#: bez dopasowania producenta. Certyfikat PTPiREE jest osobną, jawną flagą —
+#: nie jest już zmieszany w jedną liczbę z dopasowaniem producenta.
+Dopasowanie = Literal["PELNE", "CZESCIOWE"]
+
+#: Ranga sortowania — PELNE przed CZĘŚCIOWE; jedno źródło prawdy dla klucza
+#: sortującego, żeby porządek na liście i porządek w teście nie mogły się rozjechać.
+_RANGA_DOPASOWANIA: dict[Dopasowanie, int] = {"PELNE": 0, "CZESCIOWE": 1}
+
+
 class AutoPopulateSuggestion(BaseModel):
     catalog_ref: str
     label_pl: str
     manufacturer: str | None = None
-    confidence: float  # 0.0..1.0 — how well it matches request context
+    dopasowanie: Dopasowanie
+    certyfikat_ptpiree: bool = False
     badge_pl: str | None = None  # 'PTPiRE certyfikat' jeśli applicable
     rationale_pl: str  # Why this suggestion ranked
+
+    def klucz_sortowania(self) -> tuple[int, bool, str]:
+        """Deterministyczny klucz sortowania (dopasowanie, certyfikat, catalog_ref)."""
+        return (
+            _RANGA_DOPASOWANIA[self.dopasowanie],
+            not self.certyfikat_ptpiree,
+            self.catalog_ref,
+        )
 
 
 class AutoPopulateResponse(BaseModel):
@@ -979,7 +1064,9 @@ def auto_populate_catalog_suggestions(
 
     Element types supported: transformer, cable, switch, branch_point, der.
     Logic: filter by voltage compatibility + power/current range + manufacturer
-    cascade. PTPiRE-certified prefer (boost +0.2 confidence).
+    cascade. Dopasowanie kategoryczne (PELNE/CZĘŚCIOWE) + osobna flaga
+    certyfikatu PTPiREE — sortowanie deterministyczne
+    (dopasowanie, certyfikat, catalog_ref); karta FAB-D2 (D9).
     """
     normalized = element_type.lower().strip()
 
@@ -1005,10 +1092,27 @@ def auto_populate_catalog_suggestions(
     )
 
 
-def _confidence_with_ptpire(base: float, is_ptpire: bool, prefer: bool) -> float:
-    if not prefer:
-        return base
-    return min(1.0, base + 0.2) if is_ptpire else base
+def _liczba_z_katalogu(entry: dict[str, Any], pole: str) -> float | None:
+    """Liczbowe pole pozycji katalogu do filtrow auto-populate — albo `None`.
+
+    FAB-E (klasa „brak danej pokazany jako 0"): `params.get(pole, 0.0)` traktowal
+    pozycje katalogu BEZ pola jak pozycje o wartosci 0 — transformator „0 MVA"
+    przechodzil filtr napiecia i trafial do propozycji z tabliczka „Sn=0 kVA",
+    a kabel „0 mm²" odpadal albo przechodzil zaleznie od filtru, zawsze z
+    fabrykowana liczba w uzasadnieniu. Pozycja bez wymaganego pola jest
+    POMIJANA z nazwanym powodem w logu (defekt DANYCH katalogu, nie wybor
+    projektanta) — nigdy nie jest porownywana jako zero.
+    """
+    params = entry.get("params", {})
+    wartosc = params.get(pole)
+    if isinstance(wartosc, bool) or not isinstance(wartosc, int | float):
+        logger.warning(
+            "auto-populate: pozycja katalogu %s bez liczbowego pola %s — pominieta",
+            entry.get("id"),
+            pole,
+        )
+        return None
+    return float(wartosc)
 
 
 def _auto_populate_transformers(req: AutoPopulateRequest) -> AutoPopulateResponse:
@@ -1019,9 +1123,11 @@ def _auto_populate_transformers(req: AutoPopulateRequest) -> AutoPopulateRespons
 
     for entry in all_types:
         params = entry.get("params", {})
-        rated_mva = params.get("rated_power_mva", 0.0)
-        v_hv = params.get("voltage_hv_kv", 0.0)
-        v_lv = params.get("voltage_lv_kv", 0.0)
+        rated_mva = _liczba_z_katalogu(entry, "rated_power_mva")
+        v_hv = _liczba_z_katalogu(entry, "voltage_hv_kv")
+        v_lv = _liczba_z_katalogu(entry, "voltage_lv_kv")
+        if rated_mva is None or v_hv is None or v_lv is None:
+            continue
         manufacturer = params.get("manufacturer", "")
         is_ptpire = bool(params.get("ptpire_certified", False))
 
@@ -1038,11 +1144,12 @@ def _auto_populate_transformers(req: AutoPopulateRequest) -> AutoPopulateRespons
             if rated_mva < req.expected_power_mva * 0.5 or rated_mva > req.expected_power_mva * 2.0:
                 continue
 
-        # Manufacturer cascade
-        confidence = 0.6
+        # Manufacturer cascade — dopasowanie PELNE tylko gdy producent z żądania
+        # znaleziony w rekordzie; w przeciwnym razie CZĘŚCIOWE (przeszedł filtry
+        # napięcia/mocy, ale bez trafienia producenta).
+        dopasowanie: Dopasowanie = "CZESCIOWE"
         if req.prefer_manufacturer and req.prefer_manufacturer.lower() in manufacturer.lower():
-            confidence = 0.9
-        confidence = _confidence_with_ptpire(confidence, is_ptpire, req.prefer_ptpire_certified)
+            dopasowanie = "PELNE"
 
         rationale = (
             f"Sn={rated_mva*1000:.0f} kVA, U_HV={v_hv} kV, " f"U_LV={v_lv} kV ({manufacturer})"
@@ -1053,13 +1160,14 @@ def _auto_populate_transformers(req: AutoPopulateRequest) -> AutoPopulateRespons
                 catalog_ref=entry["id"],
                 label_pl=entry.get("name", entry["id"]),
                 manufacturer=manufacturer or None,
-                confidence=confidence,
+                dopasowanie=dopasowanie,
+                certyfikat_ptpiree=is_ptpire,
                 badge_pl="PTPiRE" if is_ptpire else None,
                 rationale_pl=rationale,
             )
         )
 
-    suggestions.sort(key=lambda s: (-s.confidence, s.catalog_ref))
+    suggestions.sort(key=lambda s: s.klucz_sortowania())
     return AutoPopulateResponse(
         element_type="transformer",
         suggestions=suggestions[:20],
@@ -1075,9 +1183,11 @@ def _auto_populate_cables(req: AutoPopulateRequest) -> AutoPopulateResponse:
 
     for entry in all_types:
         params = entry.get("params", {})
-        v_kv = params.get("voltage_rating_kv", 0.0)
-        cross = params.get("cross_section_mm2", 0.0)
-        rated_i = params.get("rated_current_a", 0.0)
+        v_kv = _liczba_z_katalogu(entry, "voltage_rating_kv")
+        cross = _liczba_z_katalogu(entry, "cross_section_mm2")
+        rated_i = _liczba_z_katalogu(entry, "rated_current_a")
+        if v_kv is None or cross is None or rated_i is None:
+            continue
         manufacturer = params.get("manufacturer", "")
         is_ptpire = bool(params.get("ptpire_certified", False))
 
@@ -1091,23 +1201,23 @@ def _auto_populate_cables(req: AutoPopulateRequest) -> AutoPopulateResponse:
             if rated_i < req.expected_current_a * 0.9:
                 continue
 
-        confidence = 0.5
+        dopasowanie: Dopasowanie = "CZESCIOWE"
         if req.prefer_manufacturer and req.prefer_manufacturer.lower() in manufacturer.lower():
-            confidence = 0.85
-        confidence = _confidence_with_ptpire(confidence, is_ptpire, req.prefer_ptpire_certified)
+            dopasowanie = "PELNE"
 
         suggestions.append(
             AutoPopulateSuggestion(
                 catalog_ref=entry["id"],
                 label_pl=entry.get("name", entry["id"]),
                 manufacturer=manufacturer or None,
-                confidence=confidence,
+                dopasowanie=dopasowanie,
+                certyfikat_ptpiree=is_ptpire,
                 badge_pl="PTPiRE PN-HD 620" if is_ptpire else None,
                 rationale_pl=f"{int(cross)} mm² {v_kv} kV, In={int(rated_i)} A ({manufacturer})",
             )
         )
 
-    suggestions.sort(key=lambda s: (-s.confidence, s.catalog_ref))
+    suggestions.sort(key=lambda s: s.klucz_sortowania())
     return AutoPopulateResponse(
         element_type="cable",
         suggestions=suggestions[:20],
@@ -1130,8 +1240,10 @@ def _auto_populate_switches(req: AutoPopulateRequest, kind_filter: str) -> AutoP
         params = entry.get("params", {})
         if target_kind and params.get("equipment_kind") != target_kind:
             continue
-        v_kv = params.get("un_kv", 0.0)
-        rated_i = params.get("in_a", 0.0)
+        v_kv = _liczba_z_katalogu(entry, "un_kv")
+        rated_i = _liczba_z_katalogu(entry, "in_a")
+        if v_kv is None or rated_i is None:
+            continue
         manufacturer = params.get("manufacturer", "")
         is_ptpire = bool(params.get("ptpire_certified", False))
 
@@ -1142,23 +1254,23 @@ def _auto_populate_switches(req: AutoPopulateRequest, kind_filter: str) -> AutoP
             if rated_i < req.expected_current_a * 0.9:
                 continue
 
-        confidence = 0.55
+        dopasowanie: Dopasowanie = "CZESCIOWE"
         if req.prefer_manufacturer and req.prefer_manufacturer.lower() in manufacturer.lower():
-            confidence = 0.88
-        confidence = _confidence_with_ptpire(confidence, is_ptpire, req.prefer_ptpire_certified)
+            dopasowanie = "PELNE"
 
         suggestions.append(
             AutoPopulateSuggestion(
                 catalog_ref=entry["id"],
                 label_pl=entry.get("name", entry["id"]),
                 manufacturer=manufacturer or None,
-                confidence=confidence,
+                dopasowanie=dopasowanie,
+                certyfikat_ptpiree=is_ptpire,
                 badge_pl="PTPiRE" if is_ptpire else None,
                 rationale_pl=(f"{int(v_kv)} kV / {int(rated_i)} A ({manufacturer})"),
             )
         )
 
-    suggestions.sort(key=lambda s: (-s.confidence, s.catalog_ref))
+    suggestions.sort(key=lambda s: s.klucz_sortowania())
     return AutoPopulateResponse(
         element_type="switch",
         suggestions=suggestions[:20],
@@ -1174,28 +1286,44 @@ def _auto_populate_protection(req: AutoPopulateRequest) -> AutoPopulateResponse:
     for d in devices:
         manufacturer = d.vendor
         rated = d.meta.get("rated") if isinstance(d.meta, dict) else None
-        confidence = 0.5
-        if req.prefer_manufacturer and req.prefer_manufacturer.lower() in manufacturer.lower():
-            confidence = 0.85
+        dopasowanie: Dopasowanie = "CZESCIOWE"
+        if (
+            req.prefer_manufacturer
+            and manufacturer
+            and req.prefer_manufacturer.lower() in manufacturer.lower()
+        ):
+            dopasowanie = "PELNE"
         # PTPiRE = Polish vendors (Elektrometal, ZPAS, Elester, Energotest, ZIAD)
         is_polish = manufacturer in {"ELEKTROMETAL", "ZPAS", "ELESTER", "ENERGOTEST", "ZIAD"}
-        confidence = _confidence_with_ptpire(confidence, is_polish, req.prefer_ptpire_certified)
         # Current match
         if req.expected_current_a is not None and isinstance(rated, int | float):
             if rated < req.expected_current_a * 0.8:
                 continue
+        # Karta FAB-A/D-33: `manufacturer` None = profil REFERENCYJNY bez marki.
+        # Etykieta MUSI jednoznacznie mowic, ze to nie jest produkt producenta —
+        # konkatenacja f"{manufacturer} {model}" pokazalaby tu literalny "None".
+        label_pl = (
+            f"{manufacturer} {d.model}"
+            if manufacturer
+            else f"Profil referencyjny (nie produkt producenta) - {d.model or d.device_id}"
+        )
         suggestions.append(
             AutoPopulateSuggestion(
                 catalog_ref=d.device_id,
-                label_pl=f"{d.vendor} {d.model}",
+                label_pl=label_pl,
                 manufacturer=manufacturer,
-                confidence=confidence,
-                badge_pl="Polski producent" if is_polish else None,
-                rationale_pl=f"{d.vendor} {d.model} — funkcje: {', '.join(d.functions_supported[:6])}",
+                dopasowanie=dopasowanie,
+                certyfikat_ptpiree=is_polish,
+                badge_pl=(
+                    "Polski producent"
+                    if is_polish
+                    else ("Profil referencyjny" if not manufacturer else None)
+                ),
+                rationale_pl=f"{label_pl} — funkcje: {', '.join(d.functions_supported[:6])}",
             )
         )
 
-    suggestions.sort(key=lambda s: (-s.confidence, s.catalog_ref))
+    suggestions.sort(key=lambda s: s.klucz_sortowania())
     return AutoPopulateResponse(
         element_type="protection",
         suggestions=suggestions[:20],
@@ -1214,18 +1342,19 @@ def _auto_populate_surge_arresters(req: AutoPopulateRequest) -> AutoPopulateResp
             if abs(v_kv - req.voltage_kv) / max(req.voltage_kv, 0.001) > 0.3:
                 continue
 
-        confidence = 0.6
-        if item.bil_protected_kv >= 125.0:
-            confidence += 0.05
+        dopasowanie: Dopasowanie = "CZESCIOWE"
         if req.prefer_manufacturer and req.prefer_manufacturer.lower() in manufacturer.lower():
-            confidence = 0.9
+            dopasowanie = "PELNE"
 
         suggestions.append(
             AutoPopulateSuggestion(
                 catalog_ref=item.id,
                 label_pl=item.name,
                 manufacturer=manufacturer or None,
-                confidence=min(1.0, confidence),
+                dopasowanie=dopasowanie,
+                # Katalog ograniczników nie niesie statusu certyfikatu PTPiREE
+                # (namespace OGRANICZNIK_SN — brak pola w rekordzie źródłowym).
+                certyfikat_ptpiree=False,
                 badge_pl=f"IEC 60099-4, klasa {item.energy_class}",
                 rationale_pl=(
                     f"Um={item.u_m_kv:g} kV, MCOV={item.mcov_kv:g} kV, "
@@ -1235,7 +1364,7 @@ def _auto_populate_surge_arresters(req: AutoPopulateRequest) -> AutoPopulateResp
             )
         )
 
-    suggestions.sort(key=lambda s: (-s.confidence, s.catalog_ref))
+    suggestions.sort(key=lambda s: s.klucz_sortowania())
     return AutoPopulateResponse(
         element_type="surge_arrester",
         suggestions=suggestions[:20],
@@ -1271,10 +1400,9 @@ def _auto_populate_inverters(
 
         manufacturer = item.manufacturer or ""
         is_ptpiree = item.ptpiree_status == "POWIAZANY"
-        confidence = 0.55
+        dopasowanie: Dopasowanie = "CZESCIOWE"
         if req.prefer_manufacturer and req.prefer_manufacturer.lower() in manufacturer.lower():
-            confidence = 0.85
-        confidence = _confidence_with_ptpire(confidence, is_ptpiree, req.prefer_ptpire_certified)
+            dopasowanie = "PELNE"
         badge = None
         if is_ptpiree:
             badge = f"PTPiREE {item.ptpiree_wipwc_version or ''}".strip()
@@ -1284,7 +1412,8 @@ def _auto_populate_inverters(
                 catalog_ref=item.id,
                 label_pl=item.name,
                 manufacturer=manufacturer or None,
-                confidence=confidence,
+                dopasowanie=dopasowanie,
+                certyfikat_ptpiree=is_ptpiree,
                 badge_pl=badge,
                 rationale_pl=(
                     f"{kind}, Un={item.un_kv:g} kV, Sn={item.sn_mva:g} MVA, "
@@ -1293,7 +1422,7 @@ def _auto_populate_inverters(
             )
         )
 
-    suggestions.sort(key=lambda s: (-s.confidence, s.catalog_ref))
+    suggestions.sort(key=lambda s: s.klucz_sortowania())
     return AutoPopulateResponse(
         element_type="inverter",
         suggestions=suggestions[:20],

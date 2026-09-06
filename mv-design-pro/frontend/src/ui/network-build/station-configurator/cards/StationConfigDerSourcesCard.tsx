@@ -12,10 +12,11 @@ import { useMemo } from 'react';
 
 import { MISSING_DASH } from '../../../shared/formatPolishValue';
 import {
-  getNcRfgProfile,
-  getLvVoltageLevel,
+  getNcRfgOperator,
   getConnectionSideLabelPl,
   getBlockTransformer,
+  type BlockTransformerItem,
+  type NcRfgOperatorItem,
   type StationDerConnection,
 } from '../../station-der';
 
@@ -37,6 +38,15 @@ export interface StationConfigDerSourcesCardProps {
   readonly onDetachDer?: (derId: string) => void;
   /** Czy dany DER moze byc odlaczony przez te karte bez pustej akcji. */
   readonly canDetachDer?: (derId: string) => boolean;
+  /**
+   * Karta FAB-J: snapshot audytu 2 (transformatory dedykowane) i katalog
+   * operatorów NC RfG — WYŁĄCZNIE z backendu (`useAudit2CatalogSnapshot`,
+   * `useNcRfgOperatorCatalog`). Pominięcie nie jest błędem: etykiety
+   * pokazują wtedy uczciwy stan „brak danych z katalogu backendu", nie
+   * fabrykowaną nazwę z listy lokalnej.
+   */
+  readonly blockTransformers?: readonly BlockTransformerItem[];
+  readonly ncRfgOperators?: readonly NcRfgOperatorItem[];
 }
 
 const KIND_LABEL_PL: Record<AddDerKindRequest, string> = {
@@ -77,26 +87,31 @@ interface DerRow {
   readonly profilePl: string;
 }
 
-function buildRow(der: StationDerConnection): DerRow {
-  const voltage = der.voltage_level_ref ? getLvVoltageLevel(der.voltage_level_ref) : null;
-  const profile = der.profiles.nc_rfg_profile_ref
-    ? getNcRfgProfile(der.profiles.nc_rfg_profile_ref)
-    : null;
-  const blockTransformer = der.catalogs.block_transformer_catalog_ref
-    ? getBlockTransformer(der.catalogs.block_transformer_catalog_ref)
-    : null;
+function buildRow(
+  der: StationDerConnection,
+  blockTransformers: readonly BlockTransformerItem[],
+  ncRfgOperators: readonly NcRfgOperatorItem[],
+): DerRow {
+  // Karta FAB-K: napięcie WYŁĄCZNIE z modelu (`connection_voltage_kv`) — dawny
+  // `voltage_level_ref` (osobna referencja katalogu poziomów) był fantomem.
+  const voltageKv = der.connection_voltage_kv ?? null;
+  const profile = getNcRfgOperator(ncRfgOperators, der.profiles.nc_rfg_profile_ref);
+  const blockTransformer = getBlockTransformer(
+    blockTransformers,
+    der.catalogs.block_transformer_catalog_ref,
+  );
   const blockTransformerPl = blockTransformer
     ? `TR blokowy ${blockTransformer.sn_kva.toLocaleString('pl-PL')} kVA ${blockTransformer.vector_group}`
     : null;
   const voltagePl = blockTransformer
     ? `${blockTransformer.hv_kv.toLocaleString('pl-PL')}/${blockTransformer.lv_kv.toLocaleString('pl-PL')} kV`
-    : voltage ? `${voltage.nominal_kv} kV` : der.connection_side === 'SN' ? 'SN' : MISSING_DASH;
+    : voltageKv != null ? `${voltageKv.toLocaleString('pl-PL')} kV` : MISSING_DASH;
   return {
     der,
     connectionSidePl: getConnectionSideLabelPl(der.connection_side),
     voltagePl,
     blockTransformerPl,
-    profilePl: profile?.label_pl ?? MISSING_DASH,
+    profilePl: profile?.operator_name_pl ?? MISSING_DASH,
   };
 }
 
@@ -112,9 +127,14 @@ export function StationConfigDerSourcesCard(
     onAddDer,
     onDetachDer,
     canDetachDer,
+    blockTransformers = [],
+    ncRfgOperators = [],
   } = props;
 
-  const rows = useMemo(() => ders.map(buildRow), [ders]);
+  const rows = useMemo(
+    () => ders.map((der) => buildRow(der, blockTransformers, ncRfgOperators)),
+    [ders, blockTransformers, ncRfgOperators],
+  );
   const displayStationLabel = stationLabel ?? 'Stacja';
   const counts = useMemo(() => {
     const pv = ders.filter((d) => d.der_kind === 'PV').length;

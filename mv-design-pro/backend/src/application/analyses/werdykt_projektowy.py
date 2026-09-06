@@ -956,13 +956,17 @@ def _najnowszy_bieg(biegi: Sequence[CanonicalRun], rodzaj: str) -> CanonicalRun 
     return max(pula, key=lambda bieg: (bieg.created_at, str(bieg.id)))
 
 
-def build_werdykt_projektowy_view(case_id: str) -> dict[str, Any]:
+def build_werdykt_projektowy_view(case_id: str, klucz_twin: str) -> dict[str, Any]:
     """Widok agregatu werdyktu projektowego dla przypadku obliczeniowego.
 
     Serwis rozwiazuje zaleznosci z magazynu (biezacy model + najnowsze biegi) i
     deleguje agregacje do czystej funkcji ``zbuduj_werdykt_projektowy``.
+    `klucz_twin` — klucz magazynu ENM (Canonical Project Twin, CV-1-W),
+    przetlumaczony z `case_id` na granicy API (`api/klucz_twin_dep.py`);
+    `case_id` zostaje jako identyfikator biegow (`list_runs_for_case`) i pole
+    werdyktu.
     """
-    enm = get_enm(case_id)
+    enm = get_enm(klucz_twin)
     model_hash = compute_enm_hash(enm)
     biegi = list_runs_for_case(case_id)
     werdykt = zbuduj_werdykt_projektowy(

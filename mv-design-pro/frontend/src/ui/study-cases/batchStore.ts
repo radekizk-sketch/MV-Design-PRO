@@ -42,7 +42,7 @@ interface BatchRunsState {
    * końcówki: POST batches + POST execute — wzorzec `createAndExecuteRun`).
    * Po wykonaniu odświeża listę serii ORAZ listę biegów przypadku.
    */
-  utworzIWykonajSerie: (caseId: string, scenarioIds: string[]) => Promise<BatchJob>;
+  utworzIWykonajSerie: (caseId: string, scenarioIds: string[], nazwa?: string) => Promise<BatchJob>;
   /** Wykonaj istniejącą serię PENDING. */
   wykonajSerie: (batchId: string) => Promise<BatchJob>;
   clearError: () => void;
@@ -95,10 +95,13 @@ export const useBatchRunsStore = create<BatchRunsState>((set, get) => ({
     }
   },
 
-  utworzIWykonajSerie: async (caseId, scenarioIds) => {
+  utworzIWykonajSerie: async (caseId, scenarioIds, nazwa) => {
     set({ isExecuting: true, actionError: null });
     try {
-      const created = await api.createBatch(caseId, { scenario_ids: scenarioIds });
+      const created = await api.createBatch(
+        caseId,
+        nazwa ? { scenario_ids: scenarioIds, name: nazwa } : { scenario_ids: scenarioIds },
+      );
       const executed = await api.executeBatch(created.batch_id);
       set({ isExecuting: false });
       await get().loadBatches(caseId);

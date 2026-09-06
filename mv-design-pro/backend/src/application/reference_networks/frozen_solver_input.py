@@ -55,6 +55,7 @@ from __future__ import annotations
 import math
 from typing import Any
 
+from application.reference_networks.wymagane import pole_wymagane
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
@@ -80,7 +81,11 @@ _UNIT_LENGTH_KM = 1.0
 def _slack_bus_and_voltage(enm: dict[str, Any]) -> tuple[str, float]:
     for source in enm.get("sources", []):
         if source.get("source_kind") == "slack":
-            return str(source["bus"]), float(source.get("v_pu", 1.0))
+            return str(source["bus"]), float(
+                pole_wymagane(
+                    source, "v_pu", opis=f"zrodlo bilansujace na szynie {source.get('bus')!r}"
+                )
+            )
     raise ValueError("Reference ENM has no slack source (source_kind='slack').")
 
 
@@ -173,9 +178,13 @@ def build_frozen_power_flow_input(
         branch_id = str(branch["ref_id"])
         from_bus = str(branch["from_bus"])
         to_bus = str(branch["to_bus"])
-        r_pu = float(branch.get("r_pu", 0.0))
-        x_pu = float(branch.get("x_pu", 0.0))
-        b_pu = float(branch.get("b_pu", 0.0))
+        opis_galezi = f"galaz {branch_id!r}"
+        r_pu = float(pole_wymagane(branch, "r_pu", opis=opis_galezi))
+        x_pu = float(pole_wymagane(branch, "x_pu", opis=opis_galezi))
+        b_pu = float(pole_wymagane(branch, "b_pu", opis=opis_galezi))
+        # Brak "ratio" = linia (bez odczepu) — 1.0 to udokumentowana wartosc
+        # domyslna wynikajaca z SEMANTYKI, nie brakujacy WYNIK (patrz analogiczny
+        # komentarz w computation.py::_build_ybus_pu).
         ratio = float(branch.get("ratio", 1.0)) or 1.0
 
         if ratio != 1.0:
@@ -222,8 +231,8 @@ def build_frozen_power_flow_input(
     shunts: list[ShuntSpec] = [
         ShuntSpec(
             node_id=str(shunt["bus"]),
-            g_pu=float(shunt.get("g_pu", 0.0)),
-            b_pu=float(shunt.get("b_pu", 0.0)),
+            g_pu=float(pole_wymagane(shunt, "g_pu", opis=f"shunt na szynie {shunt.get('bus')!r}")),
+            b_pu=float(pole_wymagane(shunt, "b_pu", opis=f"shunt na szynie {shunt.get('bus')!r}")),
         )
         for shunt in enm.get("shunts", [])
         if str(shunt.get("bus")) != ""
@@ -233,16 +242,19 @@ def build_frozen_power_flow_input(
     load_by_bus: dict[str, list[float]] = {}
     for load in enm.get("loads", []):
         bus_id = str(load["bus"])
+        opis_odbioru = f"odbior na szynie {bus_id!r}"
         acc = load_by_bus.setdefault(bus_id, [0.0, 0.0])
-        acc[0] += float(load.get("p_mw", 0.0))
-        acc[1] += float(load.get("q_mvar", 0.0))
+        acc[0] += float(pole_wymagane(load, "p_mw", opis=opis_odbioru))
+        acc[1] += float(pole_wymagane(load, "q_mvar", opis=opis_odbioru))
 
     gen_by_bus: dict[str, list[float]] = {}
     for gen in enm.get("generators", []):
         bus_id = str(gen["bus"])
-        acc = gen_by_bus.setdefault(bus_id, [0.0, float(gen.get("v_pu", 1.0))])
-        acc[0] += float(gen.get("p_mw", 0.0))
-        acc[1] = float(gen.get("v_pu", 1.0))
+        opis_generatora = f"generator na szynie {bus_id!r}"
+        v_pu_gen = float(pole_wymagane(gen, "v_pu", opis=opis_generatora))
+        acc = gen_by_bus.setdefault(bus_id, [0.0, v_pu_gen])
+        acc[0] += float(pole_wymagane(gen, "p_mw", opis=opis_generatora))
+        acc[1] = v_pu_gen
 
     pv: list[PVSpec] = []
     for bus_id, (p_gen, v_pu) in gen_by_bus.items():

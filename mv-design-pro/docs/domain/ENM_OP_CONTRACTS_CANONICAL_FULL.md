@@ -75,19 +75,19 @@
 | 25 | `calculate_tcc_curve`             | Obliczenie krzywej czas-prad (TCC) dla przekaznika             | Analysis / Protection     |
 | 26 | `validate_selectivity`            | Walidacja selektywnosci miedzy urzadzeniami zabezpieczeniowymi | Analysis / Protection     |
 
-### 1.5 Operacje StudyCase (Przypadki obliczeniowe)
+### 1.5 Operacje StudyCase (Przypadki obliczeniowe) -- USUNIETE (CV-3.2, 58e520ce)
 
-| Nr | Nazwa kanoniczna                   | Opis (PL)                                                      | Warstwa docelowa          |
-|----|------------------------------------|-----------------------------------------------------------------|---------------------------|
-| 27 | `create_study_case`               | Utworzenie nowego przypadku obliczeniowego                      | Domain / StudyCase        |
-| 28 | `set_case_switch_state`           | Ustawienie stanu lacznika w kontekscie przypadku               | Domain / StudyCase        |
-| 29 | `set_case_normal_state`           | Ustawienie stanu normalnego eksploatacji w przypadku           | Domain / StudyCase        |
-| 30 | `set_case_source_mode`            | Ustawienie trybu pracy zrodla w kontekscie przypadku           | Domain / StudyCase        |
-| 31 | `set_case_time_profile`           | Ustawienie profilu czasowego w przypadku (chwila t)            | Domain / StudyCase        |
-| 32 | `run_short_circuit`               | Uruchomienie obliczen zwarciowych IEC 60909                    | Solver / IEC 60909        |
-| 33 | `run_power_flow`                  | Uruchomienie obliczen rozplywu mocy (Newton-Raphson)           | Solver / Power Flow       |
-| 34 | `run_time_series_power_flow`      | Uruchomienie serii obliczen rozplywu mocy w dziedzinie czasu   | Solver / Power Flow       |
-| 35 | `compare_study_cases`             | Porownanie dwoch przypadkow obliczeniowych                     | Analysis / Comparison     |
+9 operacji (Nr 27-35: `create_study_case`, `set_case_switch_state`, `set_case_normal_state`,
+`set_case_source_mode`, `set_case_time_profile`, `run_short_circuit`, `run_power_flow`,
+`run_time_series_power_flow`, `compare_study_cases`) zapisywaly `study_cases[]` do dokumentu
+ENM -- zapis w proznie (`EnergyNetworkModel` nie ma takiego pola, ginal przy `model_validate`),
+0 konsumentow produkcyjnych (frontend nigdy nie znal tych nazw -- `domainOps.ts`). Usuniete
+procedura 7 krokow razem z definicjami w `enm/domain_operations_v2.py`, rejestrem
+`domain/canonical_operations.py`. Semantyka "stanu roboczego" (lacznik/zrodlo/N-1) zyje
+WYLACZNIE w `enm/scenariusze.py::OperatingScenario` (CV-3.1); bieg i porownanie biegow --
+`enm/canonical_analysis.py::create_run/execute_run` (patrz `tests/invariants/test_scenariusz_i_bieg.py`).
+Zywe operacje StudyCase (utworzenie/porownanie PRZYPADKU jako konfiguracji, nie fizyki) sa
+inna warstwa: `api/study_cases.py`, `domain/study_case.py` (C1).
 
 ### 1.6 Operacje Uniwersalne
 
@@ -457,91 +457,6 @@ Kazdy przyklad zawiera kompletny obiekt JSON -- bez skrotow, bez "...", z realis
 }
 ```
 
-### Przyklad 13: `create_study_case`
-
-```json
-{
-  "operation": "create_study_case",
-  "meta": {
-    "snapshot_in": "S12",
-    "idempotency_key": "6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b",
-    "ui_click_id": "click_013",
-    "timestamp_utc": "2026-02-17T10:12:00Z"
-  },
-  "payload": {
-    "case_name": "Przypadek bazowy -- stan normalny lato 2026",
-    "description": "Stan normalny eksploatacji z pelnym obciazeniem letnim i wlaczonymi OZE",
-    "network_snapshot_id": "S12",
-    "config": {
-      "c_factor_max": 1.10,
-      "c_factor_min": 1.00,
-      "base_mva": 100.0,
-      "max_iterations": 50,
-      "tolerance": 1e-6,
-      "include_motor_contribution": true,
-      "include_inverter_contribution": true,
-      "thermal_time_seconds": 1.0
-    },
-    "is_active": true
-  }
-}
-```
-
-### Przyklad 14: `run_short_circuit`
-
-```json
-{
-  "operation": "run_short_circuit",
-  "meta": {
-    "snapshot_in": "S12",
-    "idempotency_key": "7b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c",
-    "ui_click_id": "click_014",
-    "timestamp_utc": "2026-02-17T10:13:00Z"
-  },
-  "payload": {
-    "case_id": "case-bazowy-lato-2026",
-    "fault_type": "SC3F",
-    "fault_bus_ids": [
-      "bus-st-01-sn",
-      "bus-st-02-sn",
-      "bus-rpz-polnocna-15kv"
-    ],
-    "c_factor": 1.10,
-    "include_inverter_contribution": true,
-    "include_motor_contribution": true,
-    "calculate_peak_current": true,
-    "calculate_thermal_current": true,
-    "thermal_time_s": 1.0,
-    "solver_version": "iec60909_v3.2"
-  }
-}
-```
-
-### Przyklad 15: `run_power_flow`
-
-```json
-{
-  "operation": "run_power_flow",
-  "meta": {
-    "snapshot_in": "S12",
-    "idempotency_key": "8c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d",
-    "ui_click_id": "click_015",
-    "timestamp_utc": "2026-02-17T10:14:00Z"
-  },
-  "payload": {
-    "case_id": "case-bazowy-lato-2026",
-    "solver_method": "NEWTON_RAPHSON",
-    "base_mva": 100.0,
-    "max_iterations": 50,
-    "tolerance": 1e-6,
-    "flat_start": true,
-    "enforce_reactive_limits": true,
-    "tap_adjustment": false,
-    "solver_version": "power_flow_newton_v2.1"
-  }
-}
-```
-
 ### Przyklad 16: `assign_catalog_to_element`
 
 ```json
@@ -762,44 +677,8 @@ Referencja wskazuje na modele Pydantic w `backend/src/domain/domain_ops_models.p
 | `curve_settings`   | `object` | NIE      | Nastawy krzywej (dla IT)           |
 | `directional`      | `bool`   | NIE      | Czy stopien jest kierunkowy         |
 
-### 4.14 `create_study_case` -- CreateStudyCasePayload
-
-| Pole                  | Typ      | Wymagane | Ograniczenia       | Opis                                |
-|-----------------------|----------|----------|--------------------|-------------------------------------|
-| `case_name`           | `string` | TAK      | min 1, max 200     | Nazwa przypadku obliczeniowego      |
-| `description`         | `string` | NIE      |                    | Opis przypadku                      |
-| `network_snapshot_id` | `string` | TAK      |                    | ID snapshotu sieci                  |
-| `config`              | `object` | NIE      | StudyCaseConfig    | Konfiguracja obliczen               |
-| `is_active`           | `bool`   | NIE      | dom. false         | Czy przypadek ma byc aktywny        |
-
-### 4.15 `run_short_circuit` -- RunShortCircuitPayload
-
-| Pole                          | Typ        | Wymagane | Ograniczenia       | Opis                                  |
-|-------------------------------|------------|----------|--------------------|---------------------------------------|
-| `case_id`                     | `string`   | TAK      |                    | ID przypadku obliczeniowego           |
-| `fault_type`                  | `string`   | TAK      | SC3F / SC2F / SC1F / SC2FE | Typ zwarcia (wg IEC 60909)    |
-| `fault_bus_ids`               | `string[]` | TAK      | min 1 element      | Lista ID szyn z punktami zwarcia      |
-| `c_factor`                    | `float`    | NIE      | > 0, dom. 1.10     | Wspolczynnik napiecia c               |
-| `include_inverter_contribution` | `bool`   | NIE      | dom. true          | Uwzglednienie wkladu falownikow       |
-| `include_motor_contribution`  | `bool`     | NIE      | dom. true          | Uwzglednienie wkladu silnikow         |
-| `calculate_peak_current`      | `bool`     | NIE      | dom. true          | Obliczenie pradu udarowego ip         |
-| `calculate_thermal_current`   | `bool`     | NIE      | dom. true          | Obliczenie pradu cieplnego Ith        |
-| `thermal_time_s`              | `float`    | NIE      | > 0, dom. 1.0      | Czas trwania zwarcia [s]             |
-| `solver_version`              | `string`   | NIE      |                    | Wersja solvera (do reprodukowalnosci) |
-
-### 4.16 `run_power_flow` -- RunPowerFlowPayload
-
-| Pole                       | Typ      | Wymagane | Ograniczenia               | Opis                                    |
-|----------------------------|----------|----------|----------------------------|-----------------------------------------|
-| `case_id`                  | `string` | TAK      |                            | ID przypadku obliczeniowego             |
-| `solver_method`            | `string` | NIE      | NEWTON_RAPHSON / GAUSS_SEIDEL / FAST_DECOUPLED | Metoda obliczeniowa     |
-| `base_mva`                 | `float`  | NIE      | > 0, dom. 100.0            | Moc bazowa [MVA]                        |
-| `max_iterations`           | `int`    | NIE      | > 0, dom. 50               | Maksymalna liczba iteracji              |
-| `tolerance`                | `float`  | NIE      | > 0, dom. 1e-6             | Tolerancja zbieznosci                   |
-| `flat_start`               | `bool`   | NIE      | dom. true                  | Start plaski (U=1.0 pu, theta=0)       |
-| `enforce_reactive_limits`  | `bool`   | NIE      | dom. true                  | Egzekwowanie limitow mocy biernej       |
-| `tap_adjustment`           | `bool`   | NIE      | dom. false                 | Automatyczna regulacja zaczepow         |
-| `solver_version`           | `string` | NIE      |                            | Wersja solvera (do reprodukowalnosci)   |
+<!-- 4.14-4.16 (`create_study_case`/`run_short_circuit`/`run_power_flow` jako operacje C3
+     "study_cases[] w ENM") USUNIETE CV-3.2, 58e520ce -- patrz sekcja 1.5. -->
 
 ### 4.17 `assign_catalog_to_element` -- AssignCatalogToElementPayload
 
@@ -930,15 +809,6 @@ class DomainEvent(str, Enum):
 | `link_relay_to_field`             | `RELAY_SETTINGS_UPDATED`                                                   |
 | `calculate_tcc_curve`             | `TCC_CURVE_COMPUTED`                                                       |
 | `validate_selectivity`            | `SELECTIVITY_VALIDATED`                                                    |
-| `create_study_case`               | `STUDY_CASE_CREATED`                                                       |
-| `set_case_switch_state`           | `CASE_STATE_UPDATED`                                                       |
-| `set_case_normal_state`           | `CASE_STATE_UPDATED`                                                       |
-| `set_case_source_mode`            | `CASE_STATE_UPDATED`                                                       |
-| `set_case_time_profile`           | `CASE_STATE_UPDATED`                                                       |
-| `run_short_circuit`               | `ANALYSIS_RUN_STARTED`, `ANALYSIS_RUN_COMPLETED`, `RESULTS_MAPPED`         |
-| `run_power_flow`                  | `ANALYSIS_RUN_STARTED`, `ANALYSIS_RUN_COMPLETED`, `RESULTS_MAPPED`         |
-| `run_time_series_power_flow`      | `ANALYSIS_RUN_STARTED`, `ANALYSIS_RUN_COMPLETED`, `RESULTS_MAPPED`         |
-| `compare_study_cases`             | `RESULTS_MAPPED`                                                           |
 | `assign_catalog_to_element`       | `DEVICES_CREATED_SN` lub `DEVICES_CREATED_NN` (zaleznie od warstwy)        |
 | `update_element_parameters`       | `CASE_STATE_UPDATED`                                                       |
 | `rename_element`                  | `LOGICAL_VIEWS_UPDATED`                                                    |
@@ -971,8 +841,8 @@ class DomainEvent(str, Enum):
 3. **Typy katalogowe**: Operacje z `type_ref` / `cable_type_ref` MUSZA odwolywac sie do istniejacego typu w katalogu.
 4. **Unikalnosc nazw**: Nazwy elementow w obrebie jednego typu MUSZA byc unikalne (np. dwie szyny nie moga miec tej samej nazwy).
 5. **NOP**: W kazdym pierścieniu moze byc dokladnie jeden NOP. Operacja `set_normal_open_point` automatycznie zamyka poprzedni NOP (jesli `auto_close_previous = true`).
-6. **StudyCase immutability**: Operacje `set_case_*` modyfikuja WYLACZNIE dane przypadku obliczeniowego, NIGDY modelu sieci (zgodnie z regula Case Immutability).
-7. **Solver READ-ONLY**: Operacje `run_short_circuit`, `run_power_flow`, `run_time_series_power_flow` NIE modyfikuja modelu sieci -- dzialaja na niemutowalnym snapshocie.
+6. **Case immutability**: operacje przypadku obliczeniowego (C1: `api/study_cases.py`) modyfikuja WYLACZNIE dane przypadku, NIGDY modelu sieci (zgodnie z regula Case Immutability). Reguly 6-7 dawniej wskazywaly na 9 operacji `set_case_*`/`run_*` z sekcji 1.5 -- usuniete CV-3.2, intencja "case immutability" przechodzi na `api/study_cases.py`/`domain/study_case.py`.
+7. **Solver READ-ONLY**: zywe koncowki uruchomienia solvera (`api/enm.py::run_short_circuit/run_power_flow`, E2) NIE modyfikuja modelu sieci -- dzialaja na niemutowalnym snapshocie (`enm/canonical_analysis.py::create_run/execute_run`).
 
 ---
 

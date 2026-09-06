@@ -32,6 +32,10 @@ from network_model.catalog.switchgear import (
     family_supports_voltage,
 )
 from network_model.catalog.types import CatalogBinding
+from network_model.pochodne import (
+    moc_bierna_z_czynnej_i_cos_phi,
+    moc_pozorna_z_czynnej_mva,
+)
 from network_model.solvers import cable_ampacity_derating as cable_derating
 
 from . import der_sn_validation as der_val
@@ -55,6 +59,7 @@ from .domain_operations import (
     _materialize_catalog_payload,
     _opt_float_any,
     _require_catalog_ref,
+    _require_transformer_fields,
     _response,
     _rodzaj_aparatu_sn_z_katalogu,
     _station_has_transformer,
@@ -63,6 +68,7 @@ from .domain_operations import (
     szyna_prowadzi_tranzyt_sn,
     wybor_bloku_fabrycznego,
 )
+from .exceptions import DomainInvariantError
 from .kopia_graniczna import kopia_graniczna_enm
 from .load_zip_model import KOD_BLEDU_ZIP, zip_odbioru_z_payloadu
 from .migrations.nn_field_specs_promocja import META_KLUCZ_GALAZ_ZRODLO_FIELD_REF
@@ -382,6 +388,35 @@ def _ta_sama_niepusta_pozycja_katalogowa(
     ref_a = element_a.get("catalog_ref")
     ref_b = element_b.get("catalog_ref")
     return bool(ref_a) and ref_a == ref_b
+
+
+def _wymagane_pola_odcinka(segment: dict[str, Any], *pola: str, op: str) -> dict[str, float]:
+    """Czyta WYMAGANE pola liczbowe odcinka nN bez podstawiania zera za brak.
+
+    Karta CI-A (`scripts/solver_input_substitute_guard.py`): `length_km`/
+    `r_ohm_per_km`/`x_ohm_per_km` są polami WYMAGANYMI modelu `Cable`
+    (`enm/models.py`, brak wartości domyślnej) — odcinek utworzony przez
+    `create_branch` (walidacja pydantic) ma je zawsze. `segment.get(pole, 0.0)`
+    fabrykował więc zerową rezystancję/reaktancję/długość (liczbę udającą
+    pomiar) dla odcinka bez danej, zamiast zamelduj brak — dokładnie klasa,
+    którą ta bramka zwalcza. Brak pola na WEJŚCIU tej funkcji jest oznaką
+    danych uszkodzonych/niekompletnych (payload spoza operacji domenowych,
+    np. ręczna migracja), nie brakiem pomiaru do zgadnięcia.
+
+    Rzuca `DomainInvariantError` (kod `nn.segment_field_missing`) z listą
+    WSZYSTKICH brakujących pól i `ref_id` odcinka naraz. `op` (np.
+    "split_nn_segment"/"merge_nn_segments") trafia do komunikatu.
+    """
+    brakujace = [pole for pole in pola if segment.get(pole) is None]
+    if brakujace:
+        ref = segment.get("ref_id")
+        raise DomainInvariantError(
+            "nn.segment_field_missing",
+            f"Odcinek '{ref if isinstance(ref, str) else '?'}' ({op}): brak wymaganych "
+            f"pól modelu kabla: {', '.join(brakujace)}.",
+            [ref] if isinstance(ref, str) else None,
+        )
+    return {pole: float(segment[pole]) for pole in pola}
 
 
 def _sn_bay_branch_type(apparatus_kind: object) -> str:
@@ -1160,253 +1195,6 @@ def validate_selectivity(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
                 "action": f"Selektywność: {'OK' if all_passed else 'NIESPEŁNIONA'}",
                 "detail": json.dumps(selectivity_results, ensure_ascii=False),
             }
-        ],
-    )
-
-
-# ---------------------------------------------------------------------------
-# 8-15. STUDY CASE
-# ---------------------------------------------------------------------------
-
-
-def create_study_case(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Utwórz nowy Study Case."""
-    label_pl = payload.get("label_pl", "Nowy przypadek")
-    mode_pl = payload.get("mode_pl", "NORMALNY")
-
-    cases = enm.get("study_cases", [])
-    seed = _compute_seed({"op": "study_case", "label": label_pl, "idx": len(cases)})
-    case_id = f"CASE_{seed[:8].upper()}"
-
-    new_enm = kopia_graniczna_enm(enm)
-    new_enm.setdefault("study_cases", []).append(
-        {
-            "case_id": case_id,
-            "label_pl": label_pl,
-            "mode_pl": mode_pl,
-            "switch_states": {},
-            "normal_states": {},
-            "source_modes": {},
-            "time_profile_ref": None,
-            "analysis_settings": {
-                "standard": "IEC_60909",
-                "c_factor_max": 1.10,
-                "c_factor_min": 0.95,
-            },
-            "status": "NONE",
-            "results": None,
-        }
-    )
-
-    return _response(
-        new_enm,
-        created=[case_id],
-        selection_id=case_id,
-        selection_type="study_case",
-        events=[{"event_seq": 1, "event_type": "STUDY_CASE_CREATED", "element_id": case_id}],
-    )
-
-
-def set_case_switch_state(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Ustaw stan łącznika w Study Case."""
-    case_id = payload.get("case_id")
-    switch_id = payload.get("switch_element_id")
-    state = payload.get("state", "ZAMKNIETY")
-
-    if not case_id or not switch_id:
-        return _error_response("Brak case_id lub switch_element_id.", "case.params_missing")
-
-    new_enm = kopia_graniczna_enm(enm)
-    for case in new_enm.get("study_cases", []):
-        if case.get("case_id") == case_id:
-            case["switch_states"][switch_id] = state
-            case["status"] = "OUTDATED"
-            return _response(
-                new_enm,
-                updated=[case_id],
-                events=[
-                    {"event_seq": 1, "event_type": "CASE_STATE_UPDATED", "element_id": case_id}
-                ],
-            )
-
-    return _error_response(f"Study Case '{case_id}' nie znaleziony.", "case.not_found")
-
-
-def set_case_normal_state(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Ustaw stan normalny łącznika w Study Case."""
-    case_id = payload.get("case_id")
-    switch_id = payload.get("switch_element_id")
-    state = payload.get("state_normal", "ZAMKNIETY")
-
-    if not case_id or not switch_id:
-        return _error_response("Brak case_id lub switch_element_id.", "case.params_missing")
-
-    new_enm = kopia_graniczna_enm(enm)
-    for case in new_enm.get("study_cases", []):
-        if case.get("case_id") == case_id:
-            case["normal_states"][switch_id] = state
-            return _response(
-                new_enm,
-                updated=[case_id],
-                events=[
-                    {"event_seq": 1, "event_type": "CASE_STATE_UPDATED", "element_id": case_id}
-                ],
-            )
-
-    return _error_response(f"Study Case '{case_id}' nie znaleziony.", "case.not_found")
-
-
-def set_case_source_mode(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Ustaw tryb pracy źródła w Study Case."""
-    case_id = payload.get("case_id")
-    source_id = payload.get("source_element_id")
-    mode = payload.get("mode", "SIEC")
-
-    if not case_id or not source_id:
-        return _error_response("Brak case_id lub source_element_id.", "case.params_missing")
-
-    new_enm = kopia_graniczna_enm(enm)
-    for case in new_enm.get("study_cases", []):
-        if case.get("case_id") == case_id:
-            case["source_modes"][source_id] = mode
-            case["status"] = "OUTDATED"
-            return _response(
-                new_enm,
-                updated=[case_id],
-                events=[
-                    {"event_seq": 1, "event_type": "CASE_STATE_UPDATED", "element_id": case_id}
-                ],
-            )
-
-    return _error_response(f"Study Case '{case_id}' nie znaleziony.", "case.not_found")
-
-
-def set_case_time_profile(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Przypisz profil czasowy do Study Case."""
-    case_id = payload.get("case_id")
-    profile_ref = payload.get("profile_ref")
-
-    if not case_id:
-        return _error_response("Brak case_id.", "case.id_missing")
-
-    new_enm = kopia_graniczna_enm(enm)
-    for case in new_enm.get("study_cases", []):
-        if case.get("case_id") == case_id:
-            case["time_profile_ref"] = profile_ref
-            return _response(
-                new_enm,
-                updated=[case_id],
-                events=[
-                    {"event_seq": 1, "event_type": "CASE_STATE_UPDATED", "element_id": case_id}
-                ],
-            )
-
-    return _error_response(f"Study Case '{case_id}' nie znaleziony.", "case.not_found")
-
-
-def run_short_circuit(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Uruchom analizę zwarciową (IEC 60909). Deleguje do solvera."""
-    case_id = payload.get("case_id")
-    fault = payload.get("fault", {})
-    fault_type = fault.get("type", "3F")
-    location = fault.get("location_element_id")
-    rf_ohm = fault.get("transition_resistance_ohm", 0.0)
-
-    new_enm = kopia_graniczna_enm(enm)
-    events = []
-    ev_seq = 0
-
-    ev_seq += 1
-    events.append(
-        {"event_seq": ev_seq, "event_type": "ANALYSIS_RUN_STARTED", "element_id": case_id}
-    )
-
-    # Placeholder wyników — w produkcji delegowane do solvera IEC 60909
-    results = {
-        "run_id": _compute_seed({"case": case_id, "fault": fault_type, "loc": location}),
-        "fault_type": fault_type,
-        "location": location,
-        "transition_resistance_ohm": rf_ohm,
-        "results_per_element": {},
-        "status": "COMPLETED",
-    }
-
-    if case_id:
-        for case in new_enm.get("study_cases", []):
-            if case.get("case_id") == case_id:
-                case["results"] = results
-                case["status"] = "FRESH"
-                break
-
-    ev_seq += 1
-    events.append(
-        {"event_seq": ev_seq, "event_type": "ANALYSIS_RUN_COMPLETED", "element_id": case_id}
-    )
-    ev_seq += 1
-    events.append({"event_seq": ev_seq, "event_type": "RESULTS_MAPPED", "element_id": case_id})
-
-    return _response(new_enm, updated=[case_id] if case_id else [], events=events)
-
-
-def run_power_flow(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Uruchom analizę przepływu mocy. Deleguje do solvera Newton-Raphson."""
-    case_id = payload.get("case_id")
-
-    new_enm = kopia_graniczna_enm(enm)
-    events = [
-        {"event_seq": 1, "event_type": "ANALYSIS_RUN_STARTED", "element_id": case_id},
-        {"event_seq": 2, "event_type": "ANALYSIS_RUN_COMPLETED", "element_id": case_id},
-        {"event_seq": 3, "event_type": "RESULTS_MAPPED", "element_id": case_id},
-    ]
-
-    if case_id:
-        for case in new_enm.get("study_cases", []):
-            if case.get("case_id") == case_id:
-                case["status"] = "FRESH"
-                break
-
-    return _response(new_enm, updated=[case_id] if case_id else [], events=events)
-
-
-def run_time_series_power_flow(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Uruchom serię czasową przepływu mocy."""
-    case_id = payload.get("case_id")
-    new_enm = kopia_graniczna_enm(enm)
-
-    return _response(
-        new_enm,
-        updated=[case_id] if case_id else [],
-        events=[
-            {"event_seq": 1, "event_type": "ANALYSIS_RUN_STARTED", "element_id": case_id},
-            {"event_seq": 2, "event_type": "ANALYSIS_RUN_COMPLETED", "element_id": case_id},
-        ],
-    )
-
-
-def compare_study_cases(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Porównaj dwa Study Cases — wylicz deltę wyników."""
-    case_a_id = payload.get("case_a")
-    case_b_id = payload.get("case_b")
-
-    if not case_a_id or not case_b_id:
-        return _error_response("Brak case_a lub case_b.", "compare.params_missing")
-
-    new_enm = kopia_graniczna_enm(enm)
-    new_enm.setdefault("meta", {})["comparison"] = {
-        "case_a": case_a_id,
-        "case_b": case_b_id,
-        "delta_results": {},
-        "delta_overlay_tokens": [],
-    }
-
-    return _response(
-        new_enm,
-        events=[
-            {
-                "event_seq": 1,
-                "event_type": "RESULTS_MAPPED",
-                "element_id": f"{case_a_id}_vs_{case_b_id}",
-            },
         ],
     )
 
@@ -2690,7 +2478,7 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             cp = 0.0
             p_kw = 0.0
         if 0.0 < cp <= 1.0:
-            reactive_power_kvar = p_kw * math.tan(math.acos(cp))
+            reactive_power_kvar = moc_bierna_z_czynnej_i_cos_phi(p_kw, cp)
 
     if not feeder_ref:
         return _error_response("Brak identyfikatora odpływu (feeder_ref).", "nn.feeder_missing")
@@ -2733,6 +2521,17 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     if blad_zip is not None:
         return _error_response(blad_zip, KOD_BLEDU_ZIP)
 
+    # Karta FAB-D1 (D5 sibling): `Load.q_mvar` jest polem WYMAGANYM kontraktu
+    # (`enm/models.py`) — bez jawnej mocy biernej i bez cosφ, z którego dałoby
+    # się ją wyprowadzić, operacja NIE fabrykuje 0 Mvar (praca przy cosφ=1 to
+    # TWIERDZENIE o odbiorze, nie brak danej).
+    if reactive_power_kvar is None:
+        return _error_response(
+            "Odbiór nN: brak mocy biernej (reactive_power_kvar) i brak cosφ, z "
+            "którego dałoby się ją wyprowadzić. Podaj jedno z nich.",
+            "load.q_missing",
+        )
+
     seed = _compute_seed({"op": "nn_load", "feeder": feeder_ref, "p": active_power_kw})
     load_ref = _make_id("nn", seed, "load")
 
@@ -2741,7 +2540,7 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         "name": payload.get("load_name") or "Odbiór nN",
         "bus_ref": feeder_bus_ref,
         "p_mw": active_power_kw / 1000.0,
-        "q_mvar": (reactive_power_kvar or 0) / 1000.0,
+        "q_mvar": reactive_power_kvar / 1000.0,
         # Load.model akceptuje 'pq' | 'zip' — 'pq' = constant power (klasyczny PQ).
         "model": "zip" if zip_odbioru else "pq",
         "catalog_ref": catalog_ref,
@@ -2828,21 +2627,39 @@ def _add_nn_cable_segment_internal(
             "nn.cable_from_bus_not_nn",
         )
 
-    length_m = _opt_float_any(payload.get("length_m")) or 0.0
+    # Karta FAB-D1 (D6): brak length_m NIE jest 0 m (fabrykacja impedancji zero) —
+    # reużycie `_wymagane_pola_odcinka` z karty CI-A (ten sam kod błędu
+    # `nn.segment_field_missing`, jedna funkcja zamiast drugiej kopii). Wartość
+    # PODANA, ale <=0, zostaje osobnym, już istniejącym kodem (dana jawna
+    # niepoprawna, nie dana nieobecna).
+    try:
+        pola_odcinka_nn = _wymagane_pola_odcinka(payload, "length_m", op="add_nn_cable_segment")
+    except DomainInvariantError as blad:
+        return _error_response(blad.message_pl, blad.code)
+    length_m = pola_odcinka_nn["length_m"]
     if length_m <= 0:
         return _error_response(
             "Długość odcinka nN (length_m) musi być > 0.", "nn.cable_length_invalid"
         )
 
-    n_parallel_raw = payload.get("n_parallel", 1)
-    try:
-        n_parallel = int(n_parallel_raw)
-    except (TypeError, ValueError):
-        return _error_response(
-            "n_parallel musi być liczbą całkowitą >= 1.", "nn.cable_n_parallel_invalid"
-        )
-    if n_parallel < 1:
-        return _error_response("n_parallel musi być >= 1.", "nn.cable_n_parallel_invalid")
+    # Karta CI-A: brak n_parallel w payloadzie NIE jest podstawiany jedynką tu —
+    # `1` jest elementem NEUTRALNYM mnożenia (Z/1=Z), a nie zmyśloną daną, więc
+    # walidacja `int >= 1` działa TYLKO gdy coś jawnie podano; nieobecność
+    # przechodzi jako `n_parallel=1` lokalnie (poniżej `branch_data` i tak
+    # pomija klucz dla wartości 1 — patrz `enm.models.liczba_torow`), a model
+    # niesie `None`, więc hash ENM dla istniejących payloadów bez zmian.
+    n_parallel_podany = payload.get("n_parallel")
+    if n_parallel_podany is None:
+        n_parallel = 1
+    else:
+        try:
+            n_parallel = int(n_parallel_podany)
+        except (TypeError, ValueError):
+            return _error_response(
+                "n_parallel musi być liczbą całkowitą >= 1.", "nn.cable_n_parallel_invalid"
+            )
+        if n_parallel < 1:
+            return _error_response("n_parallel musi być >= 1.", "nn.cable_n_parallel_invalid")
 
     catalog_ref = _require_catalog_ref(
         payload_ref=payload.get("catalog_ref"),
@@ -3244,8 +3061,22 @@ def add_nn_section_coupler(enm: dict[str, Any], payload: dict[str, Any]) -> dict
     bus_refs = station.get("bus_refs") or []
     sekcje = [s for s in (station.get("nn_sections") or []) if isinstance(s, dict)]
     if sekcje:
-        ostatnia = max(sekcje, key=lambda s: s.get("order", 0))
-        last_order = ostatnia.get("order", 0)
+        # `NnSection.order` jest polem WYMAGANYM modelu (enm/models.py) — obie
+        # operacje tworzące sekcje nN (add_nn_distribution_board,
+        # add_nn_section_coupler niżej w tej funkcji) zawsze je nadają. `0` tu
+        # byłby liczbą udającą pomiar dla sekcji spoza tych operacji (np. ręcznie
+        # spreparowany payload/migracja) — melduj brak jawnym błędem domenowym
+        # zamiast cicho przyjąć fikcyjną kolejność (karta CI-A).
+        brakujace_order = [s for s in sekcje if "order" not in s]
+        if brakujace_order:
+            return _error_response(
+                f"Rozdzielnica nN '{station_ref}': sekcja "
+                f"'{brakujace_order[0].get('section_id', '?')}' nie ma pola 'order' "
+                "(dane sekcji nN niekompletne).",
+                "nn.section_order_missing",
+            )
+        ostatnia = max(sekcje, key=lambda s: s["order"])
+        last_order = ostatnia["order"]
         last_bus_ref = ostatnia.get("bus_ref")
     else:
         if not bus_refs:
@@ -3417,7 +3248,13 @@ def split_nn_segment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
             "nn.split_segment_not_nn_band",
         )
 
-    length_km = _opt_float_any(segment.get("length_km")) or 0.0
+    try:
+        pola_odcinka = _wymagane_pola_odcinka(
+            segment, "length_km", "r_ohm_per_km", "x_ohm_per_km", op="split_nn_segment"
+        )
+    except DomainInvariantError as blad:
+        return _error_response(blad.message_pl, blad.code)
+    length_km = pola_odcinka["length_km"]
     length_m_total = length_km * 1000.0
 
     split_at_m = _opt_float_any(payload.get("split_at_m"))
@@ -3469,8 +3306,8 @@ def split_nn_segment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
         "from_bus_ref": from_bus_ref,
         "to_bus_ref": mid_bus_ref,
         "length_km": split_at_m / 1000.0,
-        "r_ohm_per_km": segment.get("r_ohm_per_km", 0.0),
-        "x_ohm_per_km": segment.get("x_ohm_per_km", 0.0),
+        "r_ohm_per_km": pola_odcinka["r_ohm_per_km"],
+        "x_ohm_per_km": pola_odcinka["x_ohm_per_km"],
         "status": segment.get("status", "closed"),
     }
     _copy_split_segment_fields(left_data, segment)
@@ -3490,8 +3327,8 @@ def split_nn_segment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
         "from_bus_ref": mid_bus_ref,
         "to_bus_ref": to_bus_ref,
         "length_km": (length_m_total - split_at_m) / 1000.0,
-        "r_ohm_per_km": segment.get("r_ohm_per_km", 0.0),
-        "x_ohm_per_km": segment.get("x_ohm_per_km", 0.0),
+        "r_ohm_per_km": pola_odcinka["r_ohm_per_km"],
+        "x_ohm_per_km": pola_odcinka["x_ohm_per_km"],
         "status": segment.get("status", "closed"),
     }
     _copy_split_segment_fields(right_data, segment)
@@ -3626,8 +3463,34 @@ def merge_nn_segments(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
                 "nn.merge_shared_bus_not_isolated",
             )
 
-    dlugosc_a = segment_a.get("length_km") or 0.0
-    dlugosc_b = segment_b.get("length_km") or 0.0
+    try:
+        pola_a = _wymagane_pola_odcinka(
+            segment_a, "length_km", "r_ohm_per_km", "x_ohm_per_km", op="merge_nn_segments"
+        )
+        pola_b = _wymagane_pola_odcinka(
+            segment_b, "length_km", "r_ohm_per_km", "x_ohm_per_km", op="merge_nn_segments"
+        )
+    except DomainInvariantError as blad:
+        return _error_response(blad.message_pl, blad.code)
+
+    # Scalenie dwóch odcinków o RÓŻNYCH parametrach na kilometr fabrykowałoby
+    # fizykę jednego wspólnego kabla tam, gdzie fizycznie są dwa różne tory.
+    # `_ta_sama_niepusta_pozycja_katalogowa` wyżej łapie różny catalog_ref;
+    # ta tolerancja (analogiczna do `_same_nominal_voltage`) łapie przypadek
+    # tego samego catalog_ref z manualnie nadpisanymi parametrami elektrycznymi.
+    rozne_parametry = [
+        pole for pole in ("r_ohm_per_km", "x_ohm_per_km") if abs(pola_a[pole] - pola_b[pole]) > 1e-9
+    ]
+    if rozne_parametry:
+        return _error_response(
+            "Scalane odcinki mają różne parametry na kilometr "
+            f"({', '.join(rozne_parametry)}) — scalenie fizycznie różnych torów "
+            "jest niedozwolone.",
+            "nn.merge_segments_type_mismatch",
+        )
+
+    dlugosc_a = pola_a["length_km"]
+    dlugosc_b = pola_b["length_km"]
 
     seed = _compute_seed({"op": "merge_nn_segments", "a": segment_a_ref, "b": segment_b_ref})
     merged_ref = _make_id("nn", seed, "merged")
@@ -3654,8 +3517,8 @@ def merge_nn_segments(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
         "from_bus_ref": zewnetrzna_a,
         "to_bus_ref": zewnetrzna_b,
         "length_km": dlugosc_a + dlugosc_b,
-        "r_ohm_per_km": segment_a.get("r_ohm_per_km", 0.0),
-        "x_ohm_per_km": segment_a.get("x_ohm_per_km", 0.0),
+        "r_ohm_per_km": pola_a["r_ohm_per_km"],
+        "x_ohm_per_km": pola_a["x_ohm_per_km"],
         "status": "closed",
     }
     _copy_split_segment_fields(merged_data, segment_a)
@@ -4212,6 +4075,51 @@ def _certyfikat_ptpiree_z_katalogu(namespace: str, catalog_ref: str) -> dict[str
     return {pole: zrodlo[pole] for pole in _POLA_CERTYFIKATU_PTPIREE if zrodlo.get(pole)}
 
 
+def _materializuj_bateria_bess(
+    payload: dict[str, Any], technology: str
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    """Pakiet baterii BESS (`battery_catalog_ref`) — walidacja istnienia + tabliczka.
+
+    Karta FAB-K (R2): katalog `BATERIA_BESS` istnieje od FAB-J
+    (`GET /api/catalog/bess-battery-types`), ale kreator wybierał pakiet BEZ
+    wysłania referencji do backendu — wybór ginął, a karta techniczna/gotowość
+    BESS nie miały skąd wziąć danych pakietu (energia, napięcie DC, C-rate,
+    chemia — sprzęt ODDZIELNY od przekształtnika/PCS, patrz `BESSBatteryType`).
+
+    Pole jest OPCJONALNE (pakiet może zostać dobrany później) — brak w
+    payloadzie zwraca `({}, None)`, zero fabrykacji. Podana referencja MUSI
+    dotyczyć `der_kind="BESS"` (bateria nie ma zastosowania dla PV/FW) i MUSI
+    istnieć w katalogu — obie kontrole 422, nigdy ciche pominięcie.
+    """
+    ref = payload.get("battery_catalog_ref")
+    if not isinstance(ref, str) or not ref.strip():
+        return {}, None
+    ref = ref.strip()
+    if technology != "BESS":
+        return {}, _error_response(
+            "Pakiet baterii (battery_catalog_ref) dotyczy wyłącznie źródeł BESS.",
+            "converter.battery_catalog_not_applicable",
+        )
+    from network_model.catalog import get_default_mv_catalog
+
+    typ = get_default_mv_catalog().get_bess_battery_type(ref)
+    if typ is None:
+        return {}, _error_response(
+            f"Pakiet baterii '{ref}' nie istnieje w katalogu BATERIA_BESS. "
+            f"{_AKCJA_NAPRAWCZA_KATALOG_PL}",
+            "converter.battery_catalog_ref_unknown",
+        )
+    return {
+        "battery_catalog_ref": ref,
+        "battery": {
+            "chemistry": typ.chemistry,
+            "capacity_kwh": typ.capacity_kwh,
+            "nominal_voltage_dc_v": typ.nominal_voltage_dc_v,
+            "c_rate": typ.c_rate,
+        },
+    }, None
+
+
 def _build_converter_materialized_params(
     *,
     technology: str,
@@ -4345,7 +4253,15 @@ def _resolve_converter_defaults(
     technology: str,
     payload: dict[str, Any],
     materialized_params: dict[str, Any],
-) -> tuple[str, str, str, dict[str, Any], float]:
+) -> tuple[str, str, str, dict[str, Any], float | None]:
+    """Wywnioskuj tabliczkę i moc źródła przekształtnikowego (PV/BESS/FW).
+
+    Karta FAB-D1 (D3): ostatni element krotki (moc, MW) jest `None`, gdy ani
+    payload (`power_setpoint_mw`), ani katalog (`pmax_mw`/`max_power_kw`/...)
+    nie niosą mocy — wołający ODRZUCA operację kodem `generator.power_missing`
+    zamiast zapisać generator z fabrykowanym 0 MW (0 MW jest WYNIKIEM tylko
+    wtedy, gdy dana jest jawna).
+    """
     quantity = int(payload.get("quantity") or 1)
     quantity = max(quantity, 1)
     explicit_power_mw = _as_float(payload.get("power_setpoint_mw"))
@@ -4375,6 +4291,10 @@ def _resolve_converter_defaults(
                 # brak → unity/0 → brak wpływu na PF (determinizm zachowany).
                 "cos_phi": _first_number(payload.get("cos_phi"), materialized_params.get("cosphi")),
                 "qu_slope_pu_per_pu": _as_float(payload.get("qu_slope_pu_per_pu")),
+                # Karta CV-4.1b (A3-04): nastawa napięcia [pu] trybu REGULACJA_NAPIECIA
+                # (węzeł PV w rozpływie) — brak → tryb niekompletny, blokowany walidatorem
+                # ENM (`generators.voltage_control_incomplete`) przed uruchomieniem biegu.
+                "u_set_pu": _as_float(payload.get("u_set_pu")),
                 # V12K-064 (G-OZE-B4): napięciowe pasmo nieczułości Q(U) [pu U]; brak → 1.0/1.0.
                 "qu_deadband_low_pu": _as_float(payload.get("qu_deadband_low_pu")),
                 "qu_deadband_high_pu": _as_float(payload.get("qu_deadband_high_pu")),
@@ -4390,7 +4310,7 @@ def _resolve_converter_defaults(
             (
                 explicit_power_mw
                 if explicit_power_mw is not None
-                else (default_power or 0.0) * quantity
+                else (default_power * quantity if default_power is not None else None)
             ),
         )
 
@@ -4413,8 +4333,38 @@ def _resolve_converter_defaults(
                 "usable_capacity_kwh": _first_number(
                     materialized_params.get("usable_capacity_kwh"),
                 ),
+                # Znalezisko KLASA NIE INSTANCJA (karta CV-4.1b, przy okazji A3-04):
+                # gałąź BESS nie niosła `control_mode` (PV/FW niżej/wyżej niosą) —
+                # `cos_phi`/`qu_slope_pu_per_pu` BYŁY zapisywane, ale bez `control_mode`
+                # w `meta` asembler (`_build_converter_control_by_node`) nigdy nie
+                # aktywował kształtowania (mode="" nie pasuje do żadnej gałęzi trybu) —
+                # regulacja Q kreatora OZE dla BESS była forward-phantomem (wartości
+                # w modelu, zero wpływu na rozpływ). Naprawione u źródła — ten sam
+                # zapis co PV/FW.
+                "control_mode": payload.get("control_mode")
+                or materialized_params.get("control_mode"),
+                # DRUGIE znalezisko TEJ SAMEJ KLASY w tej samej gałęzi (przegląd przy
+                # wdrożeniu REGULACJA_NAPIECIA, karta CV-4.1b): `q_min_mvar`/`q_max_mvar`
+                # w `meta` — PV/FW je niosą (patrz gałęzie wyżej/niżej), BESS nie niósł
+                # ŻADNEGO. Walidator ENM (`generators.voltage_control_incomplete`) i
+                # assembler (`enm/assembler.py::zloz_wejscie_rozplywu`) czytają granice Q
+                # trybu regulacji napięcia WYŁĄCZNIE z `meta` — bez tego pola BESS w tym
+                # trybie miałby granice Q wypełnione w UI (krok „regulacja"), zero w
+                # modelu (`generator.limits.q_min_mvar` to ODDZIELNY zapis, druga
+                # operacja `update_element_parameters` sekwencji K9-A — nie ten sam
+                # magazyn) — walidator blokowałby bieg mimo poprawnie wypełnionego
+                # formularza. Ten sam zapis co PV/FW (fallback do `materialized_params`
+                # katalogu — falownik BESS też ma nameplate `qmin_mvar`/`qmax_mvar`).
+                "q_min_mvar": _first_number(
+                    payload.get("q_min_mvar"), materialized_params.get("qmin_mvar")
+                ),
+                "q_max_mvar": _first_number(
+                    payload.get("q_max_mvar"), materialized_params.get("qmax_mvar")
+                ),
                 "cos_phi": _first_number(payload.get("cos_phi"), materialized_params.get("cosphi")),
                 "qu_slope_pu_per_pu": _as_float(payload.get("qu_slope_pu_per_pu")),
+                # Karta CV-4.1b (A3-04): nastawa napięcia [pu] trybu REGULACJA_NAPIECIA.
+                "u_set_pu": _as_float(payload.get("u_set_pu")),
                 # V12K-064 (G-OZE-B4): napięciowe pasmo nieczułości Q(U) [pu U]; brak → 1.0/1.0.
                 "qu_deadband_low_pu": _as_float(payload.get("qu_deadband_low_pu")),
                 "qu_deadband_high_pu": _as_float(payload.get("qu_deadband_high_pu")),
@@ -4431,7 +4381,7 @@ def _resolve_converter_defaults(
             (
                 explicit_power_mw
                 if explicit_power_mw is not None
-                else (default_power or 0.0) * quantity
+                else (default_power * quantity if default_power is not None else None)
             ),
         )
 
@@ -4455,6 +4405,8 @@ def _resolve_converter_defaults(
             # V12K-051 (G-OZE-PF): docelowy cosφ + nachylenie Q(U); brak → brak wpływu.
             "cos_phi": _first_number(payload.get("cos_phi"), materialized_params.get("cosphi")),
             "qu_slope_pu_per_pu": _as_float(payload.get("qu_slope_pu_per_pu")),
+            # Karta CV-4.1b (A3-04): nastawa napięcia [pu] trybu REGULACJA_NAPIECIA.
+            "u_set_pu": _as_float(payload.get("u_set_pu")),
             # V12K-064 (G-OZE-B4): napięciowe pasmo nieczułości Q(U) [pu U]; brak → 1.0/1.0.
             "qu_deadband_low_pu": _as_float(payload.get("qu_deadband_low_pu")),
             "qu_deadband_high_pu": _as_float(payload.get("qu_deadband_high_pu")),
@@ -4466,7 +4418,11 @@ def _resolve_converter_defaults(
             "has_hvrt_curve": _as_bool(payload.get("has_hvrt_curve")),
             "quantity": quantity,
         },
-        explicit_power_mw if explicit_power_mw is not None else (default_power or 0.0) * quantity,
+        (
+            explicit_power_mw
+            if explicit_power_mw is not None
+            else (default_power * quantity if default_power is not None else None)
+        ),
     )
 
 
@@ -4606,11 +4562,20 @@ def _materialize_der_block_transformer(
         "name": name,
         "hv_bus_ref": hv_bus_ref,
         "lv_bus_ref": lv_bus_ref,
-        "sn_mva": _as_float(spec.get("rated_power_mva")) or 0.0,
+        # Karta FAB-D1 (D2, KLASA sibling z `add_transformer_sn_nn`): sn_mva/
+        # uk_percent/pk_kw NIE dostają fabrykowanego "or 0.0" — materializacja
+        # katalogowa poniżej je uzupełnia, a `_require_transformer_fields`
+        # odrzuca operację, gdy ani katalog, ani spec nie niosą wartości.
+        # Literał "pk_kw": 0.0 (fabrykacja strat obciążeniowych) usunięty.
+        "sn_mva": _as_float(spec.get("rated_power_mva")),
         "uhv_kv": _as_float(spec.get("primary_voltage_kv")) or hv_voltage_kv,
         "ulv_kv": _as_float(spec.get("secondary_voltage_kv")) or lv_voltage_kv,
-        "uk_percent": _as_float(spec.get("uk_percent")) or 0.0,
-        "pk_kw": 0.0,
+        "uk_percent": _as_float(spec.get("uk_percent")),
+        # `DerBlockTransformerSpec` (enm/domain_ops_models.py) nie deklaruje pola
+        # `pk_kw` — TR blokowy DER nie ma payloadowego nadpisania strat
+        # obciążeniowych (w odróżnieniu od sn_mva/uk_percent), więc jedynym
+        # źródłem jest materializacja katalogowa poniżej.
+        "pk_kw": None,
         "vector_group": spec.get("vector_group"),
         "source_mode": "KATALOG",
         "catalog_namespace": przestrzen_katalogu,
@@ -4643,6 +4608,9 @@ def _materialize_der_block_transformer(
     tr_data["catalog_ref"] = catalog_ref
     _apply_catalog_metadata(tr_data, binding_payload, default_namespace=przestrzen_katalogu)
     _apply_materialized_transformer_fields(tr_data, materialized_params)
+    brak_pol_tr_der = _require_transformer_fields(tr_data, ref_id)
+    if brak_pol_tr_der is not None:
+        return None, brak_pol_tr_der
     # Rola DER musi przetrwać materializację katalogu (odróżnienie od TR stacji).
     tr_data.setdefault("meta", {})
     tr_data["meta"]["catalog_role"] = "TRANSFORMATOR_BLOKOWY_DER"
@@ -4961,6 +4929,10 @@ def _add_converter_source_der_sn(
     )
     if materialization_error is not None:
         return materialization_error
+    bateria, blad_baterii = _materializuj_bateria_bess(payload, technology)
+    if blad_baterii is not None:
+        return blad_baterii
+    materialized_params.update(bateria)
     converter_un_kv = _as_float(materialized_params.get("un_kv"))
     if converter_un_kv is None or converter_un_kv <= 0:
         return _error_response(
@@ -5017,7 +4989,17 @@ def _add_converter_source_der_sn(
     name, gen_type, event_type, gen_meta, p_mw = _resolve_converter_defaults(
         technology, payload, materialized_params
     )
-    q_mvar = _first_number(payload.get("q_min_mvar"), 0.0)
+    if p_mw is None:
+        return _error_response(
+            f"Źródło {technology}: brak mocy (power_setpoint_mw) i brak wartości "
+            "mocy znamionowej w katalogu.",
+            "generator.power_missing",
+        )
+    # Karta FAB-D1 (D3 cleanup): brak `q_min_mvar` w payloadzie NIE jest 0 Mvar —
+    # `Generator.q_mvar` jest OPCJONALNE w kontrakcie (enm/models.py), więc
+    # nieobecność zostaje `None` (brak jawnego celu Q), zamiast twierdzenia
+    # "generator ustawiony na dokładnie 0 Mvar".
+    q_mvar = _first_number(payload.get("q_min_mvar"))
 
     # Deterministyczny seed z refów (kolejny numer powtarzalnego DER na tej szynie SN).
     source_sequence = _next_der_sn_sequence(
@@ -5281,13 +5263,26 @@ def _add_converter_source_der_sn(
         return tr_error
     assert tr_data is not None
 
+    # Karta FAB-D1 (D2 cleanup): `_materialize_der_block_transformer` już
+    # odrzuciła operację kodem `transformer.field_missing`, gdy `sn_mva` nie
+    # dało się ustalić — więc tr_data["sn_mva"] jest tu GWARANTOWANE realną
+    # liczbą, nie `None`. Odczyt wprost (bez zapasowego "or 0.0") zamiast
+    # cichego podstawienia, na wypadek gdyby ten niezmiennik kiedyś pękł.
+    tr_sn_mva_raw = tr_data.get("sn_mva")
+    if not isinstance(tr_sn_mva_raw, int | float):
+        return _error_response(
+            f"Transformator blokowy {block_tr_ref}: brak mocy znamionowej (sn_mva) "
+            "po materializacji.",
+            "transformer.field_missing",
+        )
+    tr_sn_mva = float(tr_sn_mva_raw)
+
     # D1 wymaganie 5: moc TR blokowego — ΣS falowników ≤ Sn_TR · dopuszczalne obciążenie
     # (z uwzgl. współczynnika jednoczesności). Sn_TR = wartość ZMATERIALIZOWANA z katalogu
     # (autorytatywna — ta sama, którą widzi solver i kaskada prądowa); ΣS z mocy czynnej
     # falowników przez cosφ znamionowy (inaczej P=S konserwatywnie).
     cos_phi = _first_number(payload.get("cos_phi"), materialized_params.get("cosphi"))
     sum_apparent_mva = der_val.converter_apparent_power_mva(p_mw, cos_phi)
-    tr_sn_mva = _as_float(tr_data.get("sn_mva")) or 0.0
     power_error = der_val.validate_transformer_power(
         sum_apparent_power_mva=sum_apparent_mva,
         transformer_sn_mva=tr_sn_mva,
@@ -5358,9 +5353,7 @@ def _add_converter_source_der_sn(
     # Ogniwo bez danych jest POMIJANE Z JAWNYM OSTRZEŻENIEM (nie cichy skip). Prąd
     # znamionowy TR z tabliczki (Sn, U_SN); Iz kabla z materializacji katalogu kabla;
     # In pola z katalogu aparatu głównego (best-effort — brak → pominięcie).
-    transformer_current_a = der_val.rated_current_a(
-        _as_float(tr_data.get("sn_mva")) or 0.0, block_primary_kv
-    )
+    transformer_current_a = der_val.rated_current_a(tr_sn_mva, block_primary_kv)
     cable_ampacity_a = _as_float((cable_data.get("rating") or {}).get("in_a"))
     field_rated_current_a = _resolve_apparatus_rated_current_a(apparatus_binding)
     cascade_warnings = der_val.build_current_cascade_warnings(
@@ -5569,6 +5562,10 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
     )
     if materialization_error is not None:
         return materialization_error
+    bateria, blad_baterii = _materializuj_bateria_bess(payload, technology)
+    if blad_baterii is not None:
+        return blad_baterii
+    materialized_params.update(bateria)
 
     converter_voltage_kv = _as_float(materialized_params.get("un_kv"))
     if converter_voltage_kv is None or converter_voltage_kv <= 0:
@@ -5609,7 +5606,14 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
         payload,
         materialized_params,
     )
-    q_mvar = _first_number(payload.get("q_min_mvar"), 0.0)
+    if p_mw is None:
+        return _error_response(
+            f"Źródło {technology}: brak mocy (power_setpoint_mw) i brak wartości "
+            "mocy znamionowej w katalogu.",
+            "generator.power_missing",
+        )
+    # Karta FAB-D1 (D3 cleanup) — patrz uzasadnienie przy pierwszym wywołaniu wyżej.
+    q_mvar = _first_number(payload.get("q_min_mvar"))
     source_sequence = _next_converter_source_sequence(
         enm,
         station_ref=station_ref,
@@ -5763,11 +5767,40 @@ def add_genset_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any
     # Tabliczka SC do materialized_params (sr=P/cosφ, un=napięcie znamionowe/szyny, cosφ);
     # x″d = domyślne IEC modelu SynchronousMachineSource (§6.3). Wpina agregat w łańcuch
     # zwarciowy maszyn wirujących (F1 → SynchronousMachineSource, F2 → rozbicie μ/q/i_b).
-    p_mw = (genset_spec.get("rated_power_kw") or 0) / 1000.0
-    cos_phi = genset_spec.get("power_factor")
-    cos_phi = float(cos_phi) if isinstance(cos_phi, int | float) and 0 < cos_phi <= 1 else 0.8
+    #
+    # Karta FAB-D1 (D3 sibling): `rated_power_kw`/`power_factor` są polami
+    # WYMAGANYMI kontraktu `GensetSpec` (enm/domain_ops_models.py, dokumentacja
+    # "jawnie"/">0") — brak żadnego z nich NIE fabrykuje 0 kW ani cosφ=0,8
+    # (typowa wartość ≠ pomiar TEGO agregatu). `rated_voltage_kv` zachowuje
+    # topologiczny fallback na napięcie szyny (dana realna, nie zmyślona).
+    rated_power_kw = _as_float(genset_spec.get("rated_power_kw"))
+    power_factor_jawny = _as_float(genset_spec.get("power_factor"))
+    if rated_power_kw is None or power_factor_jawny is None:
+        # Jawne zawężenie typów (mypy nie zawęża przez listę składaną) — ten sam
+        # komunikat z listą brakujących pól.
+        brakujace_pola_agregatu = [
+            etykieta
+            for wartosc, etykieta in (
+                (rated_power_kw, "moc znamionowa (rated_power_kw)"),
+                (power_factor_jawny, "współczynnik mocy (power_factor)"),
+            )
+            if wartosc is None
+        ]
+        return _error_response(
+            "Agregat prądotwórczy: brak wymaganych parametrów tabliczki: "
+            + ", ".join(brakujace_pola_agregatu)
+            + ".",
+            "generator.power_missing",
+        )
+    if not (0 < power_factor_jawny <= 1):
+        return _error_response(
+            "Agregat prądotwórczy: współczynnik mocy (power_factor) musi być w przedziale (0, 1].",
+            "generator.power_factor_invalid",
+        )
+    p_mw = rated_power_kw / 1000.0
+    cos_phi = power_factor_jawny
     un_kv = genset_spec.get("rated_voltage_kv") or _bus_voltage_kv(enm, bus_nn_ref)
-    sn_mva = (p_mw / cos_phi) if p_mw > 0 else 0.0
+    sn_mva = moc_pozorna_z_czynnej_mva(p_mw, cos_phi)
     genset_meta: dict[str, Any] = {
         "sn_mva": sn_mva,
         "cos_phi": cos_phi,
@@ -5817,7 +5850,16 @@ def add_ups_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     # ENM); zwarciowo modelowany jako ograniczone źródło prądowe (InverterSource, §6.7),
     # co jest fizycznie poprawne dla double-conversion UPS. Tożsamość zachowana w `name`
     # + `meta.source_kind="UPS"`. Tabliczka: sn_mva=P, un=napięcie szyny nN.
-    p_mw = (ups_spec.get("rated_power_kw") or 0) / 1000.0
+    #
+    # Karta FAB-D1 (D3 sibling): `rated_power_kw` jest polem WYMAGANYM kontraktu
+    # `UPSSpec` (enm/domain_ops_models.py, ">0") — brak nie fabrykuje 0 kW.
+    ups_rated_power_kw = _as_float(ups_spec.get("rated_power_kw"))
+    if ups_rated_power_kw is None:
+        return _error_response(
+            "UPS: brak mocy znamionowej (rated_power_kw).",
+            "generator.power_missing",
+        )
+    p_mw = ups_rated_power_kw / 1000.0
     un_kv = _bus_voltage_kv(enm, bus_nn_ref)
     ups_meta: dict[str, Any] = {"sn_mva": p_mw}
     if un_kv:
@@ -6111,28 +6153,48 @@ def set_dynamic_profile(enm: dict[str, Any], payload: dict[str, Any]) -> dict[st
 #: Wiązania wytwórcy wybierane PO jego utworzeniu — nazwy kluczy są te same, których
 #: odczyt ENM (`buildDerFromGenerator`) już szuka w ``materialized_params``, więc ścieżka
 #: powrotna nie wymaga tłumaczenia nazw (V12K-238).
+#:
+#: Karta FAB-L: `fault_current_data_ref` USUNIĘTE. Pole wskazywało pozycję
+#: frontowego `DER_FAULT_CURRENT_DATA_CATALOG` (R₁/X₁/R₂/X₂/R₀/X₀/Z₀·Z₁⁻¹/κ) —
+#: żaden solver ani `solver_input` nigdy tej pozycji nie czytał (inwentarz:
+#: `network_model/solvers/short_circuit_iec60909.py` i `enm/mapping.py` biorą
+#: WYŁĄCZNIE `materialized_params["k_sc"]`; wkład składowej ujemnej falownika
+#: jest STAŁĄ solvera `contributes_negative_sequence=True`, składowej zerowej —
+#: STAŁĄ `contributes_zero_sequence=False`, niezależnie od jakiejkolwiek karty
+#: katalogowej). Pole było więc referencją bez dostawcy fizyki — druga prawda
+#: o urządzeniu, którą solver ignorował.
 DER_BINDING_KEYS: tuple[str, ...] = (
     "protection_catalog_ref",
     "ct_catalog_ref",
     "vt_catalog_ref",
-    "fault_current_data_ref",
     "dynamic_model_ref",
 )
 
 #: Referencje profili zgodności przyłączeniowej — trzymane w podsłowniku ``profiles``,
 #: bo tam ich szuka odczyt (i tam trafiają z kreatora OZE).
+#:
+#: Karta FAB-L: `bess_operation_mode_refs` dopisane — dotąd wybór trybów pracy
+#: magazynu (`AddDerWizard`) trafiał WYŁĄCZNIE do `station_audit2_configs`
+#: (per-stacja, poza wytwórcą), nie do modelu wytwórcy — pole żyło tylko w
+#: Zustand frontu i znikało po odświeżeniu/reimporcie. Lista (nie pojedynczy
+#: ref) — walidowana OSOBNO w `_nieznane_referencje_katalogowe` (każdy wpis
+#: wobec `get_bess_operation_mode`), bo `_KATALOGI_WIAZAN_DER` niżej zakłada
+#: wartość skalarną.
 DER_PROFILE_KEYS: tuple[str, ...] = (
     "nc_rfg_profile_ref",
     "lvrt_curve_ref",
     "hvrt_curve_ref",
     "pf_curve_ref",
+    "bess_operation_mode_refs",
 )
 
 
-#: Wiazania, dla ktorych backend MA katalog i moze sprawdzic istnienie typu.
-#: `fault_current_data_ref` i `dynamic_model_ref` NIE sa tu wymienione, bo backend nie
-#: ma dla nich katalogu — ich sprawdzenie wymaga najpierw dostawcy danych, a udawanie
-#: walidacji bylo by gorsze niz jej brak (jawny dlug, karta w rejestrze).
+#: Wiazania, dla ktorych backend MA katalog i moze sprawdzic istnienie typu poprzez
+#: metode `get_default_mv_catalog()`. `dynamic_model_ref` walidowany jest OSOBNO
+#: (patrz `_nieznane_referencje_katalogowe` nizej) — jego dostawca
+#: (`network_model.catalog.der_dynamic`) nie jest metoda `get_default_mv_catalog()`.
+#: `bess_operation_mode_refs` walidowany OSOBNO z tego samego powodu (lista, nie
+#: skalar; dostawca `network_model.catalog.audit2_catalogs.get_bess_operation_mode`).
 _KATALOGI_WIAZAN_DER: tuple[tuple[str, str], ...] = (
     ("ct_catalog_ref", "get_ct_type"),
     ("vt_catalog_ref", "get_vt_type"),
@@ -6165,8 +6227,8 @@ def _nieznane_referencje_katalogowe(wiazania: dict[str, Any]) -> list[str]:
         if getattr(katalog, metoda)(str(wartosc)) is not None:
             continue
         # V12K-248: zabezpieczenia zyja w DWOCH zbiorach. Repozytorium katalogu MV ma
-        # 12 wpisow (syntetyczne `ACME_REX*`), a katalog analityczny — 51 rekordow
-        # producenckich (ABB, SEL…), i to WLASNIE jego wystawia endpoint
+        # 12 wpisow (5 profili referencyjnych bez marki + 7 Elektrometal e2TANGO),
+        # a katalog analityczny — 51 rekordow producenckich (ABB, SEL…), i to WLASNIE jego wystawia endpoint
         # `/api/catalog/protection/device-types`, z ktorego wybiera picker. Sprawdzanie
         # wylacznie repozytorium MV odrzucalo 39 z 51 urzadzen, ktore projektant widzi
         # na liscie — czyli bramka postawiona przeciw literowkom blokowala realny wybor.
@@ -6177,6 +6239,38 @@ def _nieznane_referencje_katalogowe(wiazania: dict[str, Any]) -> list[str]:
         ):
             continue
         nieznane.append(f"{pole}={wartosc}")
+
+    # Karta FAB-K (R2): `dynamic_model_ref` MA dostawcę od tej karty
+    # (`network_model.catalog.der_dynamic`, profile grid-following/forming PV/BESS
+    # + IEC 61400-27 typu 1-4 wiatru — konsumowane przez solvery RMS/FRT-HVRT).
+    # Dostawca nie jest metoda `get_default_mv_catalog()`, więc walidacja idzie
+    # osobnym torem, tym samym wzorcem „jawny brak zamiast cichej zgody".
+    dynamic_ref = wiazania.get("dynamic_model_ref")
+    if dynamic_ref is not None and "dynamic_model_ref" in wiazania:
+        from network_model.catalog.der_dynamic import list_all_profile_ids
+
+        if str(dynamic_ref) not in list_all_profile_ids():
+            nieznane.append(f"dynamic_model_ref={dynamic_ref}")
+
+    # Karta FAB-L: `bess_operation_mode_refs` — LISTA referencji (nie skalar),
+    # każda zwalidowana wobec `get_bess_operation_mode`
+    # (`network_model.catalog.audit2_catalogs`, ten sam katalog, który wystawia
+    # `GET /api/v1/catalog/audit2/bess-operation-modes`). Wartość spoza listy
+    # (np. `None` sprzed tej karty, albo zły typ) nie jest iterowana znakami —
+    # `list`/`tuple` sprawdzane jawnie, inaczej pojedynczy string iterowałby się
+    # po literach i fałszywie zgłaszał każdą literę jako nieznaną referencję.
+    bess_mode_refs = wiazania.get("bess_operation_mode_refs")
+    if (
+        bess_mode_refs is not None
+        and "bess_operation_mode_refs" in wiazania
+        and isinstance(bess_mode_refs, list | tuple)
+    ):
+        from network_model.catalog.audit2_catalogs import get_bess_operation_mode
+
+        for tryb_ref in bess_mode_refs:
+            if get_bess_operation_mode(str(tryb_ref)) is None:
+                nieznane.append(f"bess_operation_mode_refs={tryb_ref}")
+
     return nieznane
 
 
@@ -6210,7 +6304,11 @@ def set_der_catalog_bindings(enm: dict[str, Any], payload: dict[str, Any]) -> di
             "Żadne wiązanie ani profil nie zostały podane.", "der_bindings.payload_empty"
         )
 
-    nieznane = _nieznane_referencje_katalogowe(obecne_wiazania)
+    # Karta FAB-L: profile (`obecne_profile`) dołączone do wejścia obok wiązań —
+    # `_nieznane_referencje_katalogowe` sama rozstrzyga, które klucze ma czym
+    # sprawdzić (dziś: `bess_operation_mode_refs`; pozostałe profile bez dostawcy
+    # przechodzą bez zmian, jak dotąd).
+    nieznane = _nieznane_referencje_katalogowe({**obecne_wiazania, **obecne_profile})
     if nieznane:
         return _error_response(
             "Referencje katalogowe nie istnieja w katalogu: " + ", ".join(nieznane) + ".",
@@ -6478,6 +6576,14 @@ V2_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyKatalogowejV2, ...] = (
         True,
     ),
     PozycjaBramyKatalogowejV2(
+        "add_converter_source",
+        "battery_catalog_ref",
+        "BATERIA_BESS",
+        True,
+        "materializacja przez `_materializuj_bateria_bess` — "
+        "`converter.battery_catalog_ref_unknown`/`_not_applicable`",
+    ),
+    PozycjaBramyKatalogowejV2(
         "add_shunt_compensator_sn", "catalog_binding", "KOMPENSATOR_SN", True
     ),
     PozycjaBramyKatalogowejV2("add_surge_arrester_sn", "catalog_binding", "OGRANICZNIK_SN", True),
@@ -6543,6 +6649,7 @@ V2_CATALOG_REF_PAYLOAD_KEYS: frozenset[str] = frozenset(
     {
         "catalog_ref",
         "apparatus_catalog_ref",
+        "battery_catalog_ref",
         "cable_catalog_ref",
         "protection_catalog_ref",
         "ct_catalog_ref",
@@ -6572,7 +6679,7 @@ V2_CATALOG_BINDING_KEYS: frozenset[str] = frozenset(
 # Export — V2 handlers and canonical ops
 # ---------------------------------------------------------------------------
 
-V2_CANONICAL_OPS = frozenset(
+V2_CANONICAL_OPS: frozenset[str] = frozenset(
     {
         # Ochrona
         "add_ct",
@@ -6582,16 +6689,6 @@ V2_CANONICAL_OPS = frozenset(
         "link_relay_to_field",
         "calculate_tcc_curve",
         "validate_selectivity",
-        # Study Case
-        "create_study_case",
-        "set_case_switch_state",
-        "set_case_normal_state",
-        "set_case_source_mode",
-        "set_case_time_profile",
-        "run_short_circuit",
-        "run_power_flow",
-        "run_time_series_power_flow",
-        "compare_study_cases",
         # nN
         "add_sn_bay",
         "add_sn_bay_from_catalog",
@@ -6630,15 +6727,6 @@ ALL_V2_HANDLERS: dict[str, Any] = {
     "link_relay_to_field": link_relay_to_field,
     "calculate_tcc_curve": calculate_tcc_curve,
     "validate_selectivity": validate_selectivity,
-    "create_study_case": create_study_case,
-    "set_case_switch_state": set_case_switch_state,
-    "set_case_normal_state": set_case_normal_state,
-    "set_case_source_mode": set_case_source_mode,
-    "set_case_time_profile": set_case_time_profile,
-    "run_short_circuit": run_short_circuit,
-    "run_power_flow": run_power_flow,
-    "run_time_series_power_flow": run_time_series_power_flow,
-    "compare_study_cases": compare_study_cases,
     "add_sn_bay": add_sn_bay,
     "add_sn_bay_from_catalog": add_sn_bay_from_catalog,
     "add_nn_outgoing_field": add_nn_outgoing_field,

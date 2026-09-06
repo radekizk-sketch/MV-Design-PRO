@@ -157,18 +157,28 @@ def sample_cases_section() -> CasesSection:
 
 @pytest.fixture
 def sample_runs_section() -> RunsSection:
-    """Sample runs section."""
+    """Sample runs section.
+
+    CV-3.3-B: `RunsSection` niesie odtąd `canonical_runs` (R1) +
+    `analysis_runs_index` (niezależna tabela koordynacji nastaw, zostaje) —
+    `analysis_runs`/`study_runs` (R2 serwis / R3) skasowane razem z torem,
+    który je pisał.
+    """
     return RunsSection(
-        analysis_runs=[],
+        canonical_runs=[],
         analysis_runs_index=[],
-        study_runs=[],
     )
 
 
 @pytest.fixture
 def sample_results_section() -> ResultsSection:
-    """Sample results section."""
-    return ResultsSection(study_results=[])
+    """Sample results section.
+
+    CV-3.3-B: `study_results` (R3) skasowany — wynik biegu jest częścią
+    `CanonicalRun.raw_result`, nie osobnym rekordem; sekcja jest pustym
+    kontenerem (zero pól).
+    """
+    return ResultsSection()
 
 
 @pytest.fixture
@@ -228,12 +238,15 @@ def sample_archive(
     }
 
     runs_dict = {
-        "analysis_runs": sample_runs_section.analysis_runs,
+        "canonical_runs": sample_runs_section.canonical_runs,
         "analysis_runs_index": sample_runs_section.analysis_runs_index,
-        "study_runs": sample_runs_section.study_runs,
     }
 
-    results_dict = {"study_results": sample_results_section.study_results}
+    # `archive_to_dict` zawsze pisze `"results": {}` (ResultsSection ma zero
+    # pól) — fingerprint MUSI liczyć się z tego samego kształtu, inaczej
+    # `verify_archive_integrity` (przelicza z `archive_to_dict`, nie z tego
+    # słownika) zgłosiłby rozjazd hasha.
+    results_dict = {}
 
     proofs_dict = {
         "design_specs": sample_proofs_section.design_specs,
@@ -610,8 +623,8 @@ class TestEdgeCases:
                 "switching_states": [],
                 "settings": None,
             },
-            runs={"analysis_runs": [], "analysis_runs_index": [], "study_runs": []},
-            results={"study_results": []},
+            runs={"canonical_runs": [], "analysis_runs_index": []},
+            results={},
             proofs={"design_specs": [], "design_proposals": [], "design_evidence": []},
             interpretations={"cached": []},
             issues={"snapshot": []},
@@ -624,8 +637,8 @@ class TestEdgeCases:
             network_model=empty_network,
             sld_diagrams=SldSection([], [], [], []),
             cases=CasesSection([], [], [], None),
-            runs=RunsSection([], [], []),
-            results=ResultsSection([]),
+            runs=RunsSection([], []),
+            results=ResultsSection(),
             proofs=ProofsSection([], [], []),
             interpretations=InterpretationsSection([]),
             issues=IssuesSection([]),
@@ -672,8 +685,8 @@ class TestEdgeCases:
             network_model=NetworkModelSection([], [], [], [], []),
             sld_diagrams=SldSection([], [], [], []),
             cases=CasesSection([], [], [], None),
-            runs=RunsSection([], [], []),
-            results=ResultsSection([]),
+            runs=RunsSection([], []),
+            results=ResultsSection(),
             proofs=ProofsSection([], [], []),
             interpretations=InterpretationsSection([]),
             issues=IssuesSection([]),
@@ -759,8 +772,8 @@ class TestEdgeCases:
             network_model=network,
             sld_diagrams=SldSection([], [], [], []),
             cases=CasesSection([], [], [], None),
-            runs=RunsSection([], [], []),
-            results=ResultsSection([]),
+            runs=RunsSection([], []),
+            results=ResultsSection(),
             proofs=ProofsSection([], [], []),
             interpretations=InterpretationsSection([]),
             issues=IssuesSection([]),

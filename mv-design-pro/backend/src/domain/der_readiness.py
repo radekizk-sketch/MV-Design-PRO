@@ -118,7 +118,6 @@ class WejscieGotowosciDer:
     protection_catalog_ref: str | None = None
     ct_catalog_ref: str | None = None
     vt_catalog_ref: str | None = None
-    fault_current_data_ref: str | None = None
     dynamic_model_ref: str | None = None
     # Dane WYPROWADZONE z katalogu (IEC 61869-2) — `None` znaczy „nie ustalono",
     # co jest innym faktem niz „klasa nie jest zabezpieczeniowa".
@@ -181,7 +180,6 @@ def macierz_gotowosci_der(we: WejscieGotowosciDer) -> dict[str, StatusOsi]:
     ma_hvrt = we.hvrt_curve_ref is not None
     ma_zabezpieczenie = we.protection_catalog_ref is not None
     ma_ct_vt = we.ct_catalog_ref is not None and we.vt_catalog_ref is not None
-    ma_dane_zwarciowe = we.fault_current_data_ref is not None
     ma_model_dynamiczny = we.dynamic_model_ref is not None
     trafo_dedykowany = we.connection_side == "dedicated_transformer"
     ma_trafo_dedykowany = we.block_transformer_catalog_ref is not None
@@ -195,14 +193,20 @@ def macierz_gotowosci_der(we: WejscieGotowosciDer) -> dict[str, StatusOsi]:
     ct_dwurdzeniowy = we.ct_application == "dual"
 
     sc_3f: StatusOsi = "ready" if (ma_urzadzenie and ma_przylacze) else "blocked"
-    # Zwarcia Z UDZIALEM ZIEMI wymagaja skladowej zerowej (IEC 60909-3). Zwarcie
-    # dwufazowe BEZ ziemi rozklada sie na Z₁ i Z₂, wiec danych Z₀ nie potrzebuje.
-    if not ma_urzadzenie or not ma_przylacze:
-        sc_niesymetryczne: StatusOsi = "blocked"
-    elif not ma_dane_zwarciowe:
-        sc_niesymetryczne = "partial"
-    else:
-        sc_niesymetryczne = "ready"
+    # Karta FAB-L (inwentarz solvera IEC 60909, `enm/mapping.py`): wkład DER do
+    # zwarcia niesymetrycznego z udziałem ziemi (SC1F/SC2FG) nie ma osobnego
+    # WEJŚCIA per-DER — solver bierze TE SAME dane co dla SC3F/SC2F (`k_sc`,
+    # moc znamionowa, napięcie), a składową zerową falownika modeluje STAŁĄ
+    # `contributes_zero_sequence=False` niezależnie od jakiejkolwiek karty
+    # katalogowej urządzenia. Kompletność danych Z₀ SIECI (r0/x0 gałęzi, grupy
+    # połączeń transformatorów, wariant uziemienia punktu neutralnego) jest
+    # własnością CAŁEJ sieci, nie tego wytwórcy — sprawdza ją osobna bramka
+    # modelu (`analysis-eligibility` SC_1F / `_check_asymmetry`), złożona z tą
+    # oceną wyżej w stosie (front: `readiness.ts::zlozZBramkaModelu`), nie
+    # duplikowana tutaj drugim, per-DER predykatem tej samej fizyki. Dawne pole
+    # `fault_current_data_ref` (R₀/X₀/Z₀·Z₁⁻¹ z katalogu frontu) nie miało
+    # żadnego solvera czytającego je — usunięte razem z katalogiem (karta FAB-L).
+    sc_niesymetryczne: StatusOsi = sc_3f
     sc_2f: StatusOsi = sc_3f
 
     if ma_urzadzenie and ma_przylacze and ma_moc:
@@ -325,13 +329,6 @@ def _blokady_osi(os: str, we: WejscieGotowosciDer, status: StatusOsi) -> list[Bl
             )
         if we.bus_przylaczenia_ref is None:
             dodaj("der.przylacze.missing", "Brak punktu przyłączenia.", "topology")
-        if os in ("sc_1f", "sc_2fg") and we.fault_current_data_ref is None:
-            dodaj(
-                "der.fault_current_data.missing",
-                "Brak modelu zwarciowego urządzenia (R₀/X₀/Z₀·Z₁⁻¹) — bez składowej "
-                "zerowej zwarcia niesymetrycznego nie da się policzyć.",
-                "ncrfg",
-            )
     elif os == "vdrop":
         if we.nominal_power_kw is None:
             dodaj(
@@ -519,7 +516,6 @@ def wejscie_z_generatora(
         protection_catalog_ref=_tekst(zrodla, ("protection_catalog_ref",)),
         ct_catalog_ref=_tekst(zrodla, ("ct_catalog_ref",)),
         vt_catalog_ref=_tekst(zrodla, ("vt_catalog_ref",)),
-        fault_current_data_ref=_tekst(zrodla, ("fault_current_data_ref",)),
         dynamic_model_ref=_tekst(zrodla, ("dynamic_model_ref",)),
         ct_accuracy_class=ct_accuracy_class,
         ct_application=ct_application,

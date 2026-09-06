@@ -1,7 +1,17 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render as rtlRender, screen } from '@testing-library/react';
+import type { ReactElement } from 'react';
 import { InspectorEngineeringView } from '../InspectorEngineeringView';
 import { readinessZListy } from '../../../test/gotowoscTestUtils';
+
+/** Karta FAB-J: patrz komentarz w `InspectorEngineeringView.test.tsx`. */
+function render(ui: ReactElement) {
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return rtlRender(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
+}
 
 const openOperationForm = vi.fn();
 const openRouteSurface = vi.fn();
@@ -74,10 +84,23 @@ const snapshot = {
       connection_variant: 'nn_side',
       materialized_params: {
         station_transformer_ref: 'tr-st-001',
+        // Karta FAB-J: katalog falowników PV (PV_INVERTER_CATALOG) usunięty z
+        // frontu (FAB-I) — etykieta/producent/moc/napięcie są dziś TYLKO tym, co
+        // backend zmaterializował przy tworzeniu generatora, nie drugą lokalną
+        // kopią katalogu, więc fikstura musi je nieść wprost.
+        catalog_label: 'Huawei SUN2000-185KTL (185 kW · 0,4 kV)',
+        manufacturer: 'Huawei',
+        nominal_power_kw: 185,
+        nominal_voltage_kv: 0.4,
+        // Karta FAB-L: `dynamic_model_ref` jest dziś JEDYNYM sposobem powiązania
+        // modelu dynamicznego (auto-selekcja „po rodzaju urządzenia" zniesiona —
+        // `DER_DYNAMIC_MODEL_CATALOG`/`getDynamicModelForDevice` skasowane) —
+        // fikstura musi go nieść wprost, tak jak realny `set_der_catalog_bindings`.
+        dynamic_model_ref: 'default_pv_gfl',
         profiles: {
-          nc_rfg_profile_ref: 'ncrfg_pse',
-          lvrt_curve_ref: 'lvrt_pse_b',
-          hvrt_curve_ref: 'hvrt_pse_b',
+          nc_rfg_profile_ref: 'pse',
+          lvrt_curve_ref: 'pse',
+          hvrt_curve_ref: 'pse',
           pf_curve_ref: 'pf_pse_2024',
         },
       },
@@ -158,6 +181,70 @@ vi.mock('../../app-state', () => ({
     selector({ activeMode: 'MODEL_EDIT', activeCaseId: 'case-1' }),
 }));
 
+// Karta FAB-J: profil NC RfG (`useNcRfgOperatorCatalog`) czyta katalog operatorów
+// z backendu przez React Query — mockujemy hook SYNCHRONICZNIE (spójnie z
+// pozostałymi zależnościami tego pliku powyżej), zamiast podstawiać `fetch` i
+// czekać na rozstrzygnięcie zapytania asynchronicznie w każdym teście z osobna.
+// `getNcRfgOperator` zostaje prawdziwą implementacją (`importOriginal`).
+//
+// Karta FAB-L: `useDerDynamicProfiles` (profile modelu dynamicznego,
+// `GET /api/catalog/der-dynamic-profiles`) mockowany tym samym wzorcem —
+// `getDerDynamicProfile`/`formatDerDynamicProfileLabelPl` zostają prawdziwą
+// implementacją (`importOriginal`), więc test ćwiczy REALNE formatowanie
+// etykiety, nie zaszyty literał. Fikstura 1:1 z realnym profilem backendu
+// `default_pv_gfl` (`network_model/catalog/der_dynamic/defaults.py`).
+vi.mock('../station-der/derRemoteCatalogs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../station-der/derRemoteCatalogs')>();
+  return {
+    ...actual,
+    useNcRfgOperatorCatalog: () => ({
+      data: [{
+        operator_id: 'pse',
+        operator_name_pl: 'PSE — Polskie Sieci Elektroenergetyczne',
+        last_revision: '2024-Q4',
+        reactive_power: {
+          q_range_pct_pn_min: -0.33, q_range_pct_pn_max: 0.33, cos_phi_min: 0.95, voltage_control_modes: [],
+        },
+        ride_through: {
+          lvrt: [{ time_s: 0, voltage_pu: 0.05 }],
+          hvrt: [{ time_s: 0, voltage_pu: 1.3 }],
+        },
+      }],
+      status: 'success',
+      isLoading: false,
+      error: null,
+    }),
+    useDerDynamicProfiles: () => ({
+      data: [{
+        profile_id: 'default_pv_gfl',
+        profile_name_pl: 'Domyślny PV grid-following (IEEE 1547 / NC RfG kat. B)',
+        der_kind: 'PV',
+        control_mode: 'grid_following',
+        tp_s: 0.05,
+        tq_s: 0.05,
+        p_f_droop_pu: 0.04,
+        p_f_dead_band_hz: 0.2,
+        q_u_droop_pu: 0.1,
+        q_u_dead_band_pu: 0.02,
+        i_max_pu: 1.2,
+        v_min_continuous_pu: 0.85,
+        v_max_continuous_pu: 1.1,
+        frt_response_time_ms: 60.0,
+        iq_max_during_fault_pu: 1.0,
+        iq_priority_during_fault: true,
+        p_recovery_rate_pu_per_s: 0.8,
+        p_recovery_delay_ms: 100.0,
+        virtual_inertia_h_s: null,
+        source_reference: 'IEEE 1547-2018, IEC 62116, NC RfG art. 13–17',
+        standard_compliance: ['IEEE 1547', 'NC RfG', 'IEC 62116'],
+      }],
+      status: 'success',
+      isLoading: false,
+      error: null,
+    }),
+  };
+});
+
 describe('InspectorEngineeringView - PV za transformatorem SN/nN', () => {
   beforeEach(() => {
     openOperationForm.mockReset();
@@ -186,7 +273,15 @@ describe('InspectorEngineeringView - PV za transformatorem SN/nN', () => {
     expect(screen.getByText('NC RfG i regulacja')).toBeInTheDocument();
     expect(screen.getByText('PSE — Polskie Sieci Elektroenergetyczne')).toBeInTheDocument();
     expect(screen.getByText('FRT / LVRT / HVRT')).toBeInTheDocument();
-    expect(screen.getByText('PV grid-following typowy (NC RfG: k=2, t_resp=20ms)')).toBeInTheDocument();
+    // Karta FAB-L: etykieta modelu dynamicznego jest dziś REALNYM formatowaniem
+    // (`formatDerDynamicProfileLabelPl`) profilu backendu `default_pv_gfl`, nie
+    // zaszytym literałem starego katalogu frontu (usunięty razem z auto-selekcją
+    // „po rodzaju urządzenia").
+    expect(
+      screen.getByText(
+        'Domyślny PV grid-following (IEEE 1547 / NC RfG kat. B) (grid-following, droop P/f=4%, t_odp=0.05 s)',
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText('Obliczenia i uzasadnienie')).toBeInTheDocument();
     expect(screen.getAllByText('Falownik PV 0.5 MW / 0.4 kV nN').length).toBeGreaterThan(0);
     expect(screen.getByText('Stacja PV ST-001')).toBeInTheDocument();

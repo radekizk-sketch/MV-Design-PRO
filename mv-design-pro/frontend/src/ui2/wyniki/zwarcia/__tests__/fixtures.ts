@@ -81,6 +81,111 @@ export function rozplywFixture(): ShortCircuitBranchFlow[] {
   ];
 }
 
+/**
+ * Ślad WHITE BOX podziału prądu zwarciowego Thevenina (TH-1, karta WB-ROZPLYW)
+ * — skopiowany BAJT-W-BAJT z `test_branch_flow_trace_is_whitebox`
+ * (`backend/tests/test_short_circuit_iec60909.py`), wyprowadzony na
+ * `build_slack_radial_graph()` solvera (transformator T1 A→B, linia L1 B→C,
+ * zwarcie 3F w C). Kształt REALNY solvera (`WhiteBoxTracer.add`, patrz
+ * `dowod/dowodModel.ts` nagłówek): `inputs`/`result` niosą skalar/liczbę
+ * zespoloną `{re,im}` WPROST, nie opakowany `TraceValue` — celowo BEZ adnotacji
+ * `: TraceStep[]` (żeby nie wymuszać rzutowania na inny kształt niż realny).
+ */
+export function branchFlowTraceFixture() {
+  return [
+    {
+      key: 'thevenin_flow_setup',
+      title: 'Podział prądu Thevenina — iniekcja jednostkowa w węźle zwarcia',
+      formula_latex:
+        '\\underline{V} = \\underline{Z}_{bus} \\cdot \\underline{i}_{inj},\\quad \\underline{i}_{inj,k} = -1',
+      inputs: {
+        fault_node_id: 'C',
+        fault_index: 2,
+        ik_thevenin_a: 5611.281490619905,
+        n_nodes: 3,
+      },
+      substitution: 'i_inj[2] = -1 (pu); V = Z_bus @ i_inj',
+      substitution_latex: '\\underline{i}_{inj,2} = -1',
+      result: {
+        v_nodes_pu: [
+          { re: -0.000001, im: 6.358554899650295e-23 },
+          { re: -0.01893053694727093, im: -0.3939107821975983 },
+          { re: -0.14393053694727095, im: -0.49391078219759826 },
+        ],
+      },
+      notes:
+        'Napięcia węzłowe ze zwarcia z macierzy Z-bus sieci zgodnej (build_zbus, ta sama macierz co tor superpozycji falownikowej).',
+    },
+    {
+      key: 'thevenin_flow_T1',
+      title: 'Prąd zwarciowy Thevenina w gałęzi T1',
+      formula_latex:
+        "I_{ga\\l} = \\left| (\\underline{V}_i - \\underline{V}_j)\\,\\underline{y}_{ij} \\right| \\cdot I_k''^{(Th)}",
+      inputs: {
+        branch_id: 'T1',
+        from_node_id: 'A',
+        to_node_id: 'B',
+        v_from_pu: { re: -0.000001, im: 6.358554899650295e-23 },
+        v_to_pu: { re: -0.01893053694727093, im: -0.3939107821975983 },
+        y_series_pu: { re: 0.12171454623628124, im: -2.5327968796231715 },
+        ik_thevenin_a: 5611.281490619905,
+      },
+      substitution:
+        '|(-1e-06+j6.35855e-23 - -0.0189305-j0.393911) * 0.121715-j2.5328| * 5611.28',
+      substitution_latex:
+        '\\left| \\left(\\left(-1e-06 + j 6.35855e-23\\right) - \\left(-0.0189305 - j 0.393911\\right)\\right) \\cdot \\left(0.121715 - j 2.5328\\right)\\right| \\cdot 5611.28',
+      result: {
+        fraction: 0.9999999999999997,
+        i_contrib_a: 5611.281490619903,
+        direction: 'from_to',
+      },
+      notes: null,
+    },
+    {
+      key: 'thevenin_flow_L1',
+      title: 'Prąd zwarciowy Thevenina w gałęzi L1',
+      formula_latex:
+        "I_{ga\\l} = \\left| (\\underline{V}_i - \\underline{V}_j)\\,\\underline{y}_{ij} \\right| \\cdot I_k''^{(Th)}",
+      inputs: {
+        branch_id: 'L1',
+        from_node_id: 'B',
+        to_node_id: 'C',
+        v_from_pu: { re: -0.01893053694727093, im: -0.3939107821975983 },
+        v_to_pu: { re: -0.14393053694727095, im: -0.49391078219759826 },
+        y_series_pu: { re: 4.878048780487805, im: -3.902439024390244 },
+        ik_thevenin_a: 5611.281490619905,
+      },
+      substitution:
+        '|(-0.0189305-j0.393911 - -0.143931-j0.493911) * 4.87805-j3.90244| * 5611.28',
+      substitution_latex:
+        '\\left| \\left(\\left(-0.0189305 - j 0.393911\\right) - \\left(-0.143931 - j 0.493911\\right)\\right) \\cdot \\left(4.87805 - j 3.90244\\right)\\right| \\cdot 5611.28',
+      result: {
+        fraction: 1.0,
+        i_contrib_a: 5611.281490619905,
+        direction: 'from_to',
+      },
+      notes: null,
+    },
+    {
+      key: 'thevenin_flow_balance',
+      title: 'Suma kontrolna bilansu prądu w węźle zwarcia (KCL)',
+      formula_latex: '\\sum_{ga\\l \\to k} I_{ga\\l} = I_k\'\'^{(Th)}',
+      inputs: {
+        fault_node_id: 'C',
+        ik_thevenin_a: 5611.281490619905,
+      },
+      substitution: 'Σ = 5611.28 ≈ 5611.28',
+      substitution_latex: '\\sum = 5611.28 \\approx 5611.28',
+      result: {
+        sum_into_fault_a: 5611.281490619905,
+        fraction_sum: 1.0,
+      },
+      notes:
+        'KCL: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc Σ prądów gałęziowych = Ik\'\'(Thevenin).',
+    },
+  ];
+}
+
 export function shortCircuitResultsFixture(
   over: Partial<ShortCircuitResults> = {},
 ): ShortCircuitResults {

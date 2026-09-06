@@ -14,6 +14,8 @@ from __future__ import annotations
 from collections import deque
 from typing import Any
 
+from application.reference_networks.wymagane import pole_wymagane
+
 _LINE_TYPES = {"cable", "line_overhead"}
 # Bays connect a station's SN bus to the feeder through breaker/switch devices; include them so the
 # tree is connected and every lateral is reachable. Any status (NO-ORPHAN: structure ≠ switch state).
@@ -34,7 +36,10 @@ def _nn_bus_of(sub: dict[str, Any], bus_kv: dict[str, float]) -> str | None:
 def distill_sld_network(enm: dict[str, Any]) -> dict[str, Any]:
     """ENM → {gpz, stations[], edges[], nop, voltages} compact network model (deterministic)."""
     buses = enm.get("buses", [])
-    bus_kv = {b["ref_id"]: float(b.get("voltage_kv", 0.0)) for b in buses}
+    bus_kv = {
+        b["ref_id"]: float(pole_wymagane(b, "voltage_kv", opis=f"szyna {b['ref_id']!r}"))
+        for b in buses
+    }
     subs = enm.get("substations", [])
     transformers = {t["ref_id"]: t for t in enm.get("transformers", [])}
 
@@ -143,7 +148,7 @@ def distill_sld_network(enm: dict[str, Any]) -> dict[str, Any]:
         for tr in s.get("transformer_refs", []):
             t = transformers.get(tr)
             if t:
-                return float(t.get("sn_mva", 0.0))
+                return float(pole_wymagane(t, "sn_mva", opis=f"transformator {tr!r}"))
         return None
 
     stations = []
@@ -183,9 +188,15 @@ def distill_sld_network(enm: dict[str, Any]) -> dict[str, Any]:
     gpz_transformers = [
         {
             "id": tr.split("/")[-1],
-            "mva": round(float(transformers[tr].get("sn_mva", 0.0)), 1),
-            "uhv_kv": round(float(transformers[tr].get("uhv_kv", 110.0)), 1),
-            "ulv_kv": round(float(transformers[tr].get("ulv_kv", 15.0)), 1),
+            "mva": round(
+                float(pole_wymagane(transformers[tr], "sn_mva", opis=f"transformator {tr!r}")), 1
+            ),
+            "uhv_kv": round(
+                float(pole_wymagane(transformers[tr], "uhv_kv", opis=f"transformator {tr!r}")), 1
+            ),
+            "ulv_kv": round(
+                float(pole_wymagane(transformers[tr], "ulv_kv", opis=f"transformator {tr!r}")), 1
+            ),
         }
         for tr in gpz.get("transformer_refs", [])
         if tr in transformers
@@ -196,19 +207,18 @@ def distill_sld_network(enm: dict[str, Any]) -> dict[str, Any]:
         names = sec.get("line_field_names") or (
             [sec.get("line_field_name")] if sec.get("line_field_name") else []
         )
+        sekcja_order = int(pole_wymagane(sec, "order", opis=f"sekcja GPZ {sec.get('name')!r}"))
         gpz_sections.append(
             {
                 "name": sec.get("name", "Sekcja"),
-                "order": int(sec.get("order", 0)),
+                "order": sekcja_order,
                 "feeders": [
                     {
                         "name": names[i] if i < len(names) else f"Pole {i + 1}",
                         "to": heads[i]["id"] if i < len(heads) else None,
                         "to_name": heads[i]["name"] if i < len(heads) else None,
                     }
-                    for i in range(
-                        max(len(names), len(heads) if sec.get("order", 0) == 0 else 0, 1)
-                    )
+                    for i in range(max(len(names), len(heads) if sekcja_order == 0 else 0, 1))
                 ],
             }
         )
@@ -217,7 +227,11 @@ def distill_sld_network(enm: dict[str, Any]) -> dict[str, Any]:
         "gpz": {
             "id": "GPZ",
             "name": gpz.get("name", "GPZ"),
-            "hv_kv": round(float(gpz_tr.get("uhv_kv", 110.0)), 1) if gpz_tr else 110.0,
+            "hv_kv": (
+                round(float(pole_wymagane(gpz_tr, "uhv_kv", opis="transformator GPZ")), 1)
+                if gpz_tr
+                else 110.0
+            ),
             "sn_kv": round(bus_kv.get(root, 15.0), 1),
             "transformers": gpz_transformers,
             "sections": gpz_sections,

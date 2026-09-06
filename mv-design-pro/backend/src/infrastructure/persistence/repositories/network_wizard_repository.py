@@ -513,6 +513,24 @@ class NetworkWizardRepository:
         if commit:
             self._session.commit()
 
+    def list_switch_equipment_assignments(self, project_id: UUID) -> list[dict]:
+        """Przypisania typów aparatów łączeniowych projektu (CV-4.2b).
+
+        JEDYNE miejsce odczytu ``switch_equipment_assignments`` — do tej karty
+        ``application/catalog_governance/service.py`` pisało własne zapytanie ORM
+        z komentarzem „repozytorium tego nie wystawia" (klasa: ORM poza warstwą
+        persystencji).
+        """
+        stmt = (
+            select(SwitchEquipmentAssignmentORM)
+            .where(SwitchEquipmentAssignmentORM.project_id == project_id)
+            .order_by(SwitchEquipmentAssignmentORM.switch_id)
+        )
+        return [
+            {"switch_id": row.switch_id, "equipment_type_id": row.equipment_type_id}
+            for row in self._session.execute(stmt).scalars().all()
+        ]
+
     def set_switching_state(
         self,
         case_id: UUID,

@@ -47,6 +47,16 @@ def op(snap: dict[str, Any], name: str, payload: dict[str, Any]) -> dict[str, An
     if name == "add_grid_source_sn":
         payload = {
             **({"catalog_ref": CATALOG_ZRODLO_250} if "catalog_ref" not in payload else {}),
+            # Karta FAB-G: transformator WN/SN GPZ wymaga jawnej pary
+            # hv_voltage_kv + transformer_sn_mva (albo transformer_catalog_ref) —
+            # odtwarzamy jako dana fikstury zalozenie, ktore wczesniej wchodzilo
+            # domyslnie (25 MVA @ 110 kV).
+            **(
+                {"hv_voltage_kv": 110.0, "transformer_sn_mva": 25.0}
+                if "transformer_catalog_ref" not in payload
+                and "transformer_catalog_binding" not in payload
+                else {}
+            ),
             "gpz_line_field_apparatus": {
                 "apparatus_kind": "BREAKER",
                 "catalog_binding": {
@@ -861,6 +871,29 @@ def test_endpoint_append_station_auxiliary_materializes_nn_load() -> None:
     assert abs(load["q_mvar"] - 0.0075) < 1e-6
 
 
+def test_endpoint_append_station_auxiliary_bez_q_i_cosphi_odrzucone() -> None:
+    """Karta FAB-D1 (D5): station_auxiliary bez reactive_power_kvar i bez cosφ NIE
+    fabrykuje Q=0 (praca przy cosφ=1 jest twierdzeniem o odbiorze, nie brakiem
+    danej) — operacja jest ODRZUCONA kodem `load.q_missing`."""
+    snap, endpoint = _build_gpz_with_endpoint()
+    response = append_station_on_endpoint(
+        snap,
+        {
+            "endpoint_bus_ref": endpoint,
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+            "station": {"name": "Stacja PW append bez cosphi", "station_type": "terminal"},
+            "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
+            "nn_voltage_kv": 0.4,
+            "nn_block": {"nn_configuration": "LOAD_NN", "outgoing_feeders_nn_count": 1},
+            # Ani reactive_power_kvar, ani cos_phi — moc bierna nierozstrzygalna.
+            "station_auxiliary": {"active_power_kw": 10.0},
+        },
+    )
+    assert response.get("error")
+    assert response.get("error_code") == "load.q_missing"
+    assert response.get("snapshot") is None
+
+
 def test_endpoint_append_parallel_transformers_aggregate_impedance() -> None:
     """transformer.n_parallel=2 → n_parallel na modelu + agregacja Sn×2 w grafie (G-STK-6).
 
@@ -1065,7 +1098,12 @@ def test_prad_zwarciowy_na_szynie_nn_liczy_sie_z_impedancji_katalogowej() -> Non
     )
 
     assert galaz_tr.uk_percent == 5.0
-    assert abs(wynik.ikss_a - 19391.1) < 0.5
+    # Wartość normatywna toru kanonicznego (CV-4.3 K6, 2026-09-06): impedancja zasilania
+    # Z_Q = c_max·U_nQ²/S''_kQ (IEC 60909-0:2016 §6.2.1 eq. 6; 15 kV, 250 MVA, R/X = 0,1)
+    # za transformatorem katalogowym 630 kVA, uk = 5 %. Przed K6 Z_Q była liczona bez c
+    # i pin wynosił 19 391,1 A (Sk 13,4346 MVA) — intencja bez zmian: liczy się pozycja
+    # katalogowa, nie wstrzyknięta tabliczka uk = 4 % (ta dawała +22,5 %).
+    assert abs(wynik.ikss_a - 19298.0) < 0.5
     # Wartość z wstrzykniętej tabliczki nie może już powstać na żadnej ścieżce.
     assert abs(wynik.ikss_a - 23753.1) > 100.0
 

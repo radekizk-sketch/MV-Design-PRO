@@ -670,7 +670,9 @@ def scenariusz_02_two_tr_qbc_open() -> EnergyNetworkModel:
 def scenariusz_03_two_tr_qbc_closed() -> EnergyNetworkModel:
     # Sprzęgło ZAMKNIĘTE jako ROZŁĄCZNIK (druga klasa aparatu sprzęgła obok
     # wyłącznika w 02) — symbol realnego aparatu z `device_kind`, nie „QBC".
-    return _stacja_dwutransformatorowa(sprzeglo="closed", sprzeglo_device_kind="ROZLACZNIK").zbuduj()
+    return _stacja_dwutransformatorowa(
+        sprzeglo="closed", sprzeglo_device_kind="ROZLACZNIK"
+    ).zbuduj()
 
 
 def scenariusz_04_shared_upstream_boundary() -> EnergyNetworkModel:

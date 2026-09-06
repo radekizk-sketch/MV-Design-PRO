@@ -22,6 +22,13 @@ function daneKompletne(nadpisz: Partial<GridSourceFormData> = {}): GridSourceFor
     ...DANE_DOMYSLNE,
     catalog_ref: 'GPZ-001',
     gpz_line_field_apparatus_catalog_ref: 'APP-001',
+    // Karta FAB-G: transformator 110/SN GPZ jest teraz WYMAGANY przez backend
+    // (zero fabrykacji mocy/napiecia) — "kompletne dane" musza go niesc, tak
+    // jak nioso juz katalog zrodla i aparat pola liniowego powyzej.
+    transformer_catalog_ref: 'TR-110-15-25',
+    transformer_sn_mva: 25,
+    transformer_uk_percent: 12.5,
+    transformer_vector_group: 'YNd11',
     ...nadpisz,
   };
 }
@@ -104,7 +111,19 @@ describe('zbudujPayloadZrodla — kontrakt operacji add_grid_source_sn', () => {
     expect(payload.switchgear_family_ref).toBeUndefined();
     const sekcje = payload.gpz_sections as Array<{ bays?: unknown }>;
     expect(sekcje[0].bays).toBeUndefined();
+  });
+
+  it('bez wybranego transformatora payload nie niesie tabliczki transformatora (kompat.)', () => {
+    const payload = zbudujPayloadZrodla(daneKompletne({
+      transformer_catalog_ref: null,
+      transformer_sn_mva: null,
+      transformer_uk_percent: null,
+      transformer_vector_group: null,
+    }));
     expect(payload.transformer_catalog_ref).toBeUndefined();
+    expect(payload.transformer_sn_mva).toBeUndefined();
+    expect(payload.transformer_uk_percent).toBeUndefined();
+    expect(payload.transformer_vector_group).toBeUndefined();
   });
 
   it('wybrany transformator 110/SN z katalogu trafia do payloadu (Sn/uk/grupa)', () => {
@@ -233,6 +252,11 @@ describe('walidujFormularz', () => {
   it('wymaga aparatu pola liniowego', () => {
     const bledy = walidujFormularz(daneKompletne({ gpz_line_field_apparatus_catalog_ref: null }));
     expect(bledy.some((b) => b.field === 'gpz_line_field_apparatus_catalog_ref')).toBe(true);
+  });
+
+  it('wymaga transformatora 110/SN z katalogu (karta FAB-G)', () => {
+    const bledy = walidujFormularz(daneKompletne({ transformer_catalog_ref: null }));
+    expect(bledy.some((b) => b.field === 'transformer_catalog_ref')).toBe(true);
   });
 
   it('tryb ręczny 110 kV wymaga Sk″ i napięcia strony WN (nie katalogu)', () => {

@@ -26,12 +26,19 @@ function resultsDotClass(status: StatusZnacznikaWynikow): string {
       return 'mvd-dot mvd-dot-ok';
     case 'OUTDATED':
       return 'mvd-dot mvd-dot-warn';
-    // Świeżość nierozstrzygnięta wygląda tak samo jak brak wyniku: neutralnie.
-    // Kropka „ok" byłaby werdyktem, którego nikt nie policzył (V12K-309 poz. 2).
     case 'NONE':
-    case 'NIEUSTALONE':
       return 'mvd-dot mvd-dot-none';
   }
+}
+
+/**
+ * Podpowiedź chipu wyników: PRZYCZYNA z backendu (`result_status_reason_pl`),
+ * a przy wyniku nieaktualnym dopisana wskazówka, co zrobić. UI nie tłumaczy
+ * przyczyny po swojemu — pokazuje zdanie serwera (CV-2-W).
+ */
+function resultsTitle(przyczynaPl: string | null, klikalny: boolean): string | undefined {
+  const wskazowka = klikalny ? SHELL_STRINGS.resultsOutdatedHint : null;
+  return [przyczynaPl, wskazowka].filter(Boolean).join(' ') || undefined;
 }
 
 export function CaseBar({ info, onOpenProject, onOpenVariants, onPrzejdzDoObliczen }: CaseBarProps) {
@@ -110,13 +117,17 @@ export function CaseBar({ info, onOpenProject, onOpenVariants, onPrzejdzDoOblicz
               className="mvd-chip mvd-chip-klik"
               data-testid="mvd-casebar-results"
               onClick={onPrzejdzDoObliczen}
-              title={SHELL_STRINGS.resultsOutdatedHint}
+              title={resultsTitle(info.znacznikWynikow.przyczynaPl, true)}
             >
               <span className={resultsDotClass(info.znacznikWynikow.status)} />
               {info.znacznikWynikow.etykieta}
             </button>
           ) : (
-            <span className="mvd-chip" data-testid="mvd-casebar-results">
+            <span
+              className="mvd-chip"
+              data-testid="mvd-casebar-results"
+              title={resultsTitle(info.znacznikWynikow.przyczynaPl, false)}
+            >
               <span className={resultsDotClass(info.znacznikWynikow.status)} />
               {info.znacznikWynikow.etykieta}
             </span>

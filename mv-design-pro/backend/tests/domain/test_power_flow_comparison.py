@@ -20,7 +20,6 @@ from domain.power_flow_comparison import (
     PowerFlowBranchDiffRow,
     PowerFlowBusDiffRow,
     PowerFlowComparisonResult,
-    PowerFlowComparisonStatus,
     PowerFlowComparisonSummary,
     PowerFlowComparisonTrace,
     PowerFlowComparisonTraceStep,
@@ -29,7 +28,6 @@ from domain.power_flow_comparison import (
     PowerFlowRankingIssue,
     compute_pf_comparison_input_hash,
     get_ranking_thresholds,
-    new_power_flow_comparison,
     procent_roznicy,
 )
 
@@ -256,8 +254,8 @@ class TestPowerFlowComparisonTrace:
             comparison_id="trace-test",
             run_a_id="run-a",
             run_b_id="run-b",
-            snapshot_id_a="snap-a",
-            snapshot_id_b="snap-b",
+            snapshot_hash_a="snap-a",
+            snapshot_hash_b="snap-b",
             input_hash_a="hash-a",
             input_hash_b="hash-b",
             solver_version="1.0.0",
@@ -356,33 +354,12 @@ class TestThresholds:
         assert "top_n_for_ranking" in thresholds
 
 
-class TestNewPowerFlowComparison:
-    """Tests for factory function."""
-
-    def test_creates_with_created_status(self):
-        """Factory must create comparison in CREATED status."""
-        from uuid import uuid4
-
-        comparison = new_power_flow_comparison(
-            project_id=uuid4(),
-            run_a_id="run-a",
-            run_b_id="run-b",
-        )
-
-        assert comparison.status == PowerFlowComparisonStatus.CREATED
-
-    def test_computes_input_hash(self):
-        """Factory must compute input hash."""
-        from uuid import uuid4
-
-        comparison = new_power_flow_comparison(
-            project_id=uuid4(),
-            run_a_id="run-a",
-            run_b_id="run-b",
-        )
-
-        expected_hash = compute_pf_comparison_input_hash("run-a", "run-b")
-        assert comparison.input_hash == expected_hash
+# CV-3.3-B: `TestNewPowerFlowComparison` usunięta razem z fabryką
+# `new_power_flow_comparison`/`PowerFlowComparisonStatus` — porównanie jest
+# odtąd BEZSTANOWE (zero bytu trwałości R3 do utworzenia w statusie CREATED),
+# patrz `domain/power_flow_comparison.py` nagłówek sekcji „HELPER FUNCTIONS".
+# `compute_pf_comparison_input_hash` pozostaje pokryty przez
+# `TestComputePfComparisonInputHash` powyżej.
 
 
 class TestDeterminismContract:
@@ -563,37 +540,47 @@ class TestRoznicaWzglednaL13:
         assert "delta_p_from_percent" not in row.to_dict()
 
     def test_serwis_liczy_procenty_dla_szyn_galezi_i_podsumowania(self):
-        """Ścieżka produkcyjna: te same metody, które woła `compare()`."""
+        """Ścieżka produkcyjna: te same metody, które woła `compare()`.
+
+        CV-3.3-B: wejście to `dict[element_ref, values]` — kształt
+        `ResultSetV1.element_results` po indeksacji `_values_by_ref`
+        (`application/power_flow_comparison/service.py`), nie surowy payload
+        R2/R3. Klucz napięcia to `u_pu` (zgodny z `build_bus_results` w
+        `enm/canonical_analysis.py`), nie `v_pu` sprzed przepięcia na R1.
+        """
         service = PowerFlowComparisonService(lambda: None)
 
-        buses_a = [
-            {
-                "bus_id": "BUS_1",
-                "v_pu": 1.0,
+        buses_a = {
+            "BUS_1": {
+                "u_pu": 1.0,
                 "angle_deg": 2.0,
                 "p_injected_mw": 4.0,
                 "q_injected_mvar": 0.0,
             }
-        ]
-        buses_b = [
-            {
-                "bus_id": "BUS_1",
-                "v_pu": 0.9,
+        }
+        buses_b = {
+            "BUS_1": {
+                "u_pu": 0.9,
                 "angle_deg": 1.0,
                 "p_injected_mw": 5.0,
                 "q_injected_mvar": 1.0,
             }
-        ]
+        }
         bus_diffs = service._compute_bus_diffs(buses_a, buses_b)
         assert bus_diffs[0].delta_v_percent == pytest.approx(-10.0)
         assert bus_diffs[0].delta_angle_percent == pytest.approx(-50.0)
-        assert bus_diffs[0].delta_p_percent == pytest.approx(25.0)
-        # q_a = 0 → różnica względna nie istnieje.
+        # p_injected_mw/q_injected_mvar PER SZYNA są 0.0 stałe (dług
+        # architektoniczny udokumentowany w serwisie — FROZEN
+        # `PowerFlowResultV1.bus_results` nie niesie mocy wstrzykniętej per
+        # węzeł), więc delta_p/delta_q liczone są od 0.0, nie od pól
+        # `p_injected_mw`/`q_injected_mvar` powyżej (te pola są tu ignorowane
+        # przez `_compute_bus_diffs` — pozostawione w fixture, by pokazać, że
+        # NIE wpływają na wynik, nie po to, by być odczytane).
+        assert bus_diffs[0].delta_p_percent is None
         assert bus_diffs[0].delta_q_percent is None
 
-        branches_a = [
-            {
-                "branch_id": "BR_1",
+        branches_a = {
+            "BR_1": {
                 "p_from_mw": 2.0,
                 "q_from_mvar": 1.0,
                 "p_to_mw": 2.0,
@@ -601,10 +588,9 @@ class TestRoznicaWzglednaL13:
                 "losses_p_mw": 0.2,
                 "losses_q_mvar": 0.1,
             }
-        ]
-        branches_b = [
-            {
-                "branch_id": "BR_1",
+        }
+        branches_b = {
+            "BR_1": {
                 "p_from_mw": 3.0,
                 "q_from_mvar": 1.5,
                 "p_to_mw": 1.0,
@@ -612,7 +598,7 @@ class TestRoznicaWzglednaL13:
                 "losses_p_mw": 0.3,
                 "losses_q_mvar": 0.2,
             }
-        ]
+        }
         branch_diffs = service._compute_branch_diffs(branches_a, branches_b)
         assert branch_diffs[0].delta_p_from_percent == pytest.approx(50.0)
         assert branch_diffs[0].delta_q_from_percent == pytest.approx(50.0)
@@ -647,3 +633,146 @@ class TestRoznicaWzglednaL13:
         )
         assert summary.delta_total_losses_p_percent is None
         assert "delta_total_losses_p_percent" not in summary.to_dict()
+
+
+class TestBusOrBranchOnlyOnOneSideIsNoneNotZero:
+    """FAB-E (E1): szyna/galaz obecna tylko w jednym z porownywanych biegow
+    (bus_a/bus_b lub br_a/br_b = {}) -> delty None, nigdy fabrykowane 0.0
+    (wygladaloby jak calkowity zanik napiecia/przeplywu)."""
+
+    @staticmethod
+    def _service():
+        return PowerFlowComparisonService(lambda: None)
+
+    def test_bus_only_in_run_a_gives_none_voltage_and_angle_deltas(self):
+        service = self._service()
+        buses_a = {
+            "BUS_ONLY_A": {"u_pu": 1.0, "angle_deg": 2.0},
+            "BUS_BOTH": {"u_pu": 1.0, "angle_deg": 0.0},
+        }
+        buses_b = {"BUS_BOTH": {"u_pu": 0.99, "angle_deg": 0.1}}
+
+        bus_diffs = service._compute_bus_diffs(buses_a, buses_b)
+        only_a = next(b for b in bus_diffs if b.bus_id == "BUS_ONLY_A")
+        assert only_a.v_pu_a == pytest.approx(1.0)
+        assert only_a.v_pu_b is None
+        assert only_a.angle_deg_b is None
+        assert only_a.delta_v_pu is None
+        assert only_a.delta_angle_deg is None
+        assert only_a.delta_v_percent is None
+        # Szyna obecna w obu biegach nadal liczy sie normalnie.
+        both = next(b for b in bus_diffs if b.bus_id == "BUS_BOTH")
+        assert both.delta_v_pu is not None
+
+    def test_branch_only_in_run_b_gives_none_power_deltas(self):
+        service = self._service()
+        branch_both = {
+            "p_from_mw": 1.0,
+            "q_from_mvar": 0.0,
+            "p_to_mw": 1.0,
+            "q_to_mvar": 0.0,
+            "losses_p_mw": 0.1,
+            "losses_q_mvar": 0.0,
+        }
+        branches_a = {"BR_BOTH": branch_both}
+        branches_b = {
+            "BR_BOTH": branch_both,
+            "BR_ONLY_B": {
+                "p_from_mw": 2.0,
+                "q_from_mvar": 0.5,
+                "p_to_mw": 1.8,
+                "q_to_mvar": 0.4,
+                "losses_p_mw": 0.2,
+                "losses_q_mvar": 0.1,
+            },
+        }
+
+        branch_diffs = service._compute_branch_diffs(branches_a, branches_b)
+        only_b = next(b for b in branch_diffs if b.branch_id == "BR_ONLY_B")
+        assert only_b.p_from_mw_a is None
+        assert only_b.p_from_mw_b == pytest.approx(2.0)
+        assert only_b.delta_p_from_mw is None
+        assert only_b.delta_losses_q_mvar is None
+        both = next(b for b in branch_diffs if b.branch_id == "BR_BOTH")
+        assert both.delta_p_from_mw is not None
+
+    def test_ranking_skips_buses_with_none_delta_without_crashing(self):
+        """FAB-E: ranking (Rule 2/3) MUSI pominac szyny bez delty, nie abs(None)."""
+        service = self._service()
+        buses_a = {"BUS_ONLY_A": {"u_pu": 1.0, "angle_deg": 5.0}}
+        buses_b: dict[str, dict] = {}
+        bus_diffs = service._compute_bus_diffs(buses_a, buses_b)
+        assert bus_diffs[0].delta_v_pu is None
+
+        # Nie moze podniesc TypeError (abs(None)) — to byla by regresja.
+        ranking = service._generate_ranking(
+            bus_diffs=bus_diffs,
+            branch_diffs=[],
+            converged_a=True,
+            converged_b=True,
+            summary_a={"total_losses_p_mw": 0.0, "slack_p_mw": 0.0},
+            summary_b={"total_losses_p_mw": 0.0, "slack_p_mw": 0.0},
+        )
+        # Szyna bez delty nie generuje VOLTAGE_DELTA_HIGH/ANGLE_SHIFT_HIGH.
+        codes = {issue.issue_code for issue in ranking}
+        assert PowerFlowIssueCode.VOLTAGE_DELTA_HIGH not in codes
+        assert PowerFlowIssueCode.ANGLE_SHIFT_HIGH not in codes
+
+    def test_summary_max_delta_is_none_when_no_bus_is_comparable(self):
+        """FAB-E: zero wspolnych szyn -> max_delta_v_pu/angle_deg None, nie 0.0
+        (co wygladaloby jak "brak zmian napiecia w calej sieci")."""
+        service = self._service()
+        buses_a = {"ONLY_A": {"u_pu": 1.0, "angle_deg": 0.0}}
+        buses_b = {"ONLY_B": {"u_pu": 1.0, "angle_deg": 0.0}}
+        bus_diffs = service._compute_bus_diffs(buses_a, buses_b)
+        assert all(b.delta_v_pu is None for b in bus_diffs)
+
+        summary = service._build_summary(
+            bus_diffs=bus_diffs,
+            branch_diffs=[],
+            ranking=[],
+            converged_a=True,
+            converged_b=True,
+            summary_a={"total_losses_p_mw": 0.0},
+            summary_b={"total_losses_p_mw": 0.0},
+        )
+        assert summary.max_delta_v_pu is None
+        assert summary.max_delta_angle_deg is None
+
+    def test_summary_max_delta_ignores_none_buses_when_some_are_comparable(self):
+        """Mieszanka: jedna szyna bez pary, jedna wspolna -> max liczony z RESZTY,
+        nie None (to nie jest przypadek "zero danych")."""
+        service = self._service()
+        buses_a = {
+            "ONLY_A": {"u_pu": 1.0, "angle_deg": 0.0},
+            "BOTH": {"u_pu": 1.0, "angle_deg": 0.0},
+        }
+        buses_b = {"BOTH": {"u_pu": 0.95, "angle_deg": 2.0}}
+        bus_diffs = service._compute_bus_diffs(buses_a, buses_b)
+
+        summary = service._build_summary(
+            bus_diffs=bus_diffs,
+            branch_diffs=[],
+            ranking=[],
+            converged_a=True,
+            converged_b=True,
+            summary_a={"total_losses_p_mw": 0.0},
+            summary_b={"total_losses_p_mw": 0.0},
+        )
+        assert summary.max_delta_v_pu == pytest.approx(0.05)
+        assert summary.max_delta_angle_deg == pytest.approx(2.0)
+
+
+# CV-3.3-B: `TestMissingBaseMvaRaisesNotFabricatedDefault` usunięta —
+# testowała `_build_pf_result_from_payload`, metodę parsującą surowy payload
+# R2/R3 z zapisanego biegu (i broniącą się przed brakiem `base_mva` w TYM
+# payloadzie). B1 zabrania takiego parsowania: serwis czyta odtąd WYŁĄCZNIE
+# `ResultSetV1.element_results[].values` przez `_values_by_ref` — gotowe,
+# już przeliczone wartości fizyczne (u_pu, p_from_mw, ...), nie surowy
+# słownik solvera wymagający skalowania przez `base_mva`. Metoda, którą ten
+# test wołał, nie istnieje w przepisanym serwisie
+# (`application/power_flow_comparison/service.py`) — nie ma czego bronić na
+# TYM poziomie. Ogólna zasada „brak pola -> None, nigdy fabrykowany
+# default" dla NOWEGO wejścia (dict-by-ref z `ResultSetV1`) jest pokryta
+# przez `TestBusOrBranchOnlyOnOneSideIsNoneNotZero` powyżej (te same metody
+# `_compute_bus_diffs`/`_compute_branch_diffs`, ten sam serwis).

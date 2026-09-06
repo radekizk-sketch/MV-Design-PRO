@@ -27,7 +27,12 @@ from typing import Any
 # STAŁE WERSJI
 # ============================================================================
 
-ARCHIVE_SCHEMA_VERSION = "1.0.0"
+# CV-3.3-B: bump MAJOR — sekcje `runs`/`results` zmieniają kształt (R2 `analysis_runs`
+# + R3 `study_runs`/`study_results` usunięte, `canonical_runs` R1 dodane). Archiwa
+# 1.x pozostają WCZYTYWALNE (`_is_compatible_version`: major <= current_major) —
+# ich `analysis_runs`/`study_runs`/`study_results` są po prostu pomijane przy
+# imporcie (`.get(...)` bez tych kluczy), zgodnie z „usuń, nie migruj".
+ARCHIVE_SCHEMA_VERSION = "2.0.0"
 ARCHIVE_FORMAT_ID = "MV-DESIGN-PRO-ARCHIVE"
 
 
@@ -142,18 +147,34 @@ class CasesSection:
 
 @dataclass(frozen=True)
 class RunsSection:
-    """Sekcja wykonań analiz w archiwum."""
+    """Sekcja wykonań analiz w archiwum.
 
-    analysis_runs: list[dict[str, Any]]
+    CV-3.3-B: `analysis_runs` (R2) + `study_runs` (R3) usunięte razem z torem,
+    który je pisał (`AnalysisRunService`, legacy `study_runs`/`study_results`) —
+    JEDYNY rejestr biegów to odtąd `canonical_runs` (R1, `enm.canonical_analysis
+    .CanonicalRun`), pełny zrzut pól (patrz `application/project_archive/service
+    .py::_collect_runs`). `analysis_runs_index` ZOSTAJE bez zmian: to
+    NIEZALEŻNA tabela (`AnalysisRunIndexORM`) obsługująca ekran koordynacji
+    zabezpieczeń (`application/analyses/protection/{catalog,overcurrent}
+    /pipeline.py`, `api/protection_overcurrent_settings.py`) — żywy konsument
+    produkcyjny (`ui2/wyniki/koordynacja`), niezwiązany z R2/R3.
+    """
+
+    canonical_runs: list[dict[str, Any]]
     analysis_runs_index: list[dict[str, Any]]
-    study_runs: list[dict[str, Any]]
 
 
 @dataclass(frozen=True)
 class ResultsSection:
-    """Sekcja wyników w archiwum."""
+    """Sekcja wyników w archiwum.
 
-    study_results: list[dict[str, Any]]
+    CV-3.3-B: `study_results` (R3, `StudyResultORM`) usunięty razem z torem,
+    który go pisał — wynik biegu jest odtąd częścią samego `canonical_runs`
+    (`CanonicalRun.raw_result`), nie osobnym rekordem. Sekcja zostaje jako
+    pusty kontener: klucz `results` jest częścią WYMAGANEJ struktury archiwum
+    (`required_keys` w `archive_from_dict`), a hash sekcji (`results_hash`)
+    zostaje stabilnym polem odcisku nawet bez zawartości.
+    """
 
 
 @dataclass(frozen=True)
@@ -381,13 +402,10 @@ def archive_to_dict(archive: ProjectArchive) -> dict[str, Any]:
                 "settings": archive.cases.settings,
             },
             "runs": {
-                "analysis_runs": archive.runs.analysis_runs,
+                "canonical_runs": archive.runs.canonical_runs,
                 "analysis_runs_index": archive.runs.analysis_runs_index,
-                "study_runs": archive.runs.study_runs,
             },
-            "results": {
-                "study_results": archive.results.study_results,
-            },
+            "results": {},
             "proofs": {
                 "design_specs": archive.proofs.design_specs,
                 "design_proposals": archive.proofs.design_proposals,
@@ -452,7 +470,6 @@ def dict_to_archive(data: dict[str, Any]) -> ProjectArchive:
     sld = data["sld_diagrams"]
     cases = data["cases"]
     runs = data["runs"]
-    results = data["results"]
     proofs = data["proofs"]
     interpretations = data.get("interpretations", {"cached": []})
     issues = data.get("issues", {"snapshot": []})
@@ -493,13 +510,10 @@ def dict_to_archive(data: dict[str, Any]) -> ProjectArchive:
             settings=cases.get("settings"),
         ),
         runs=RunsSection(
-            analysis_runs=runs.get("analysis_runs", []),
+            canonical_runs=runs.get("canonical_runs", []),
             analysis_runs_index=runs.get("analysis_runs_index", []),
-            study_runs=runs.get("study_runs", []),
         ),
-        results=ResultsSection(
-            study_results=results.get("study_results", []),
-        ),
+        results=ResultsSection(),
         proofs=ProofsSection(
             design_specs=proofs.get("design_specs", []),
             design_proposals=proofs.get("design_proposals", []),

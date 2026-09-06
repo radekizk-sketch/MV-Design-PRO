@@ -8,7 +8,6 @@ krokami), determinizm dwóch pobrań, podgląd JSON (`/circuit/preview`)."""
 from __future__ import annotations
 
 import io
-from uuid import uuid4
 from zipfile import ZipFile
 
 from enm.models import (
@@ -25,7 +24,33 @@ from enm.models import (
 from enm.store import set_enm
 
 
-def _seed_enm(case_id: str) -> None:
+def _nowy_przypadek(client) -> str:
+    """Utwórz REALNY projekt + przypadek przez API; zwróć `case_id`.
+
+    CV-1-W: przypadek bez wiersza w bazie dostaje teraz 404 z magazynu ENM
+    (inwariant I-2) — testy tego pliku potrzebują prawdziwej pary
+    projekt+przypadek zamiast dowolnego UUID-a (nawet te, które testują
+    "brak danych" na poziomie stacji/aparatu — to inny, uczciwy brak niż
+    "przypadek nie należy do żadnego projektu").
+    """
+    project_resp = client.post("/api/projects", json={"name": "Pakiet dowodowy nN — test"})
+    assert project_resp.status_code == 201, project_resp.text
+    project_id = project_resp.json()["id"]
+    case_resp = client.post(
+        "/api/study-cases", json={"project_id": project_id, "name": "Przypadek testu"}
+    )
+    assert case_resp.status_code == 201, case_resp.text
+    return str(case_resp.json()["id"])
+
+
+def _klucz(client, case_id: str) -> str:
+    """Klucz magazynu ENM dla `case_id` — TO SAMO tłumaczenie co warstwa API (CV-1)."""
+    from application.twin_key import klucz_twin_dla_przypadku
+
+    return klucz_twin_dla_przypadku(case_id, client.app.state.uow_factory)
+
+
+def _seed_enm(client, case_id: str) -> None:
     enm = EnergyNetworkModel(
         header=ENMHeader(name="t", defaults=ENMDefaults(sn_nominal_kv=15.0)),
         buses=[
@@ -85,7 +110,7 @@ def _seed_enm(case_id: str) -> None:
             )
         ],
     )
-    set_enm(case_id, enm)
+    set_enm(_klucz(client, case_id), enm)
 
 
 def _payload(case_id: str, **overrides) -> dict:
@@ -129,15 +154,15 @@ def test_pack_wymaga_pol_obowiazkowych(app_client) -> None:
 
 
 def test_pack_brak_danych_daje_422_z_powodem_pl(app_client) -> None:
-    case_id = str(uuid4())  # brak zasianego ENM -> brak stacji
+    case_id = _nowy_przypadek(app_client)  # brak zasianego ENM -> brak stacji
     resp = app_client.post("/api/nn-proof/circuit/pack", json=_payload(case_id))
     assert resp.status_code == 422
     assert resp.json()["detail"]
 
 
 def test_pack_sukces_zwraca_zip_z_10_krokami(app_client) -> None:
-    case_id = str(uuid4())
-    _seed_enm(case_id)
+    case_id = _nowy_przypadek(app_client)
+    _seed_enm(app_client, case_id)
     resp = app_client.post("/api/nn-proof/circuit/pack", json=_payload(case_id))
     assert resp.status_code == 200
     assert resp.headers["content-type"] == "application/zip"
@@ -150,8 +175,8 @@ def test_pack_sukces_zwraca_zip_z_10_krokami(app_client) -> None:
 
 
 def test_pack_determinizm_dwa_pobrania_identyczne(app_client) -> None:
-    case_id = str(uuid4())
-    _seed_enm(case_id)
+    case_id = _nowy_przypadek(app_client)
+    _seed_enm(app_client, case_id)
     payload = _payload(case_id)
     resp1 = app_client.post("/api/nn-proof/circuit/pack", json=payload)
     resp2 = app_client.post("/api/nn-proof/circuit/pack", json=payload)
@@ -160,8 +185,8 @@ def test_pack_determinizm_dwa_pobrania_identyczne(app_client) -> None:
 
 
 def test_preview_zwraca_json_z_dziesiecioma_krokami(app_client) -> None:
-    case_id = str(uuid4())
-    _seed_enm(case_id)
+    case_id = _nowy_przypadek(app_client)
+    _seed_enm(app_client, case_id)
     resp = app_client.post("/api/nn-proof/circuit/preview", json=_payload(case_id))
     assert resp.status_code == 200
     body = resp.json()
@@ -170,7 +195,7 @@ def test_preview_zwraca_json_z_dziesiecioma_krokami(app_client) -> None:
 
 
 def test_preview_brak_danych_zwraca_200_z_uczciwym_statusem(app_client) -> None:
-    case_id = str(uuid4())
+    case_id = _nowy_przypadek(app_client)
     resp = app_client.post("/api/nn-proof/circuit/preview", json=_payload(case_id))
     assert resp.status_code == 200
     body = resp.json()
@@ -178,8 +203,8 @@ def test_preview_brak_danych_zwraca_200_z_uczciwym_statusem(app_client) -> None:
 
 
 def test_ik_max_ka_opcjonalny(app_client) -> None:
-    case_id = str(uuid4())
-    _seed_enm(case_id)
+    case_id = _nowy_przypadek(app_client)
+    _seed_enm(app_client, case_id)
     payload = _payload(case_id)
     payload["ik_max_ka"] = None
     resp = app_client.post("/api/nn-proof/circuit/preview", json=payload)
@@ -188,8 +213,8 @@ def test_ik_max_ka_opcjonalny(app_client) -> None:
 
 
 def test_report_sekcje_nn_zwraca_wszystkie_sekcje(app_client) -> None:
-    case_id = str(uuid4())
-    _seed_enm(case_id)
+    case_id = _nowy_przypadek(app_client)
+    _seed_enm(app_client, case_id)
     resp = app_client.post(
         "/api/nn-proof/circuit/report",
         json={
@@ -221,7 +246,7 @@ def test_report_sekcje_nn_zwraca_wszystkie_sekcje(app_client) -> None:
 
 
 def test_report_brak_danych_zwraca_200_z_uczciwym_statusem(app_client) -> None:
-    case_id = str(uuid4())
+    case_id = _nowy_przypadek(app_client)
     resp = app_client.post(
         "/api/nn-proof/circuit/report",
         json={

@@ -148,9 +148,27 @@ describe('SCHEMAT-10 S7.6 — kontraktowe minimum światła pasm (Z1 KOMPRESJA)'
     // rezerwacja B4 strony nN obejmująca portal; pełne uzasadnienie i
     // pomiar w `buildScene.test.ts` (vertical_length_probe). Kompresja Z1
     // nadal działa (asercje względne niżej).
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(22672);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(45656);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(45656);
+    // SUB-52s (2026-09-04): OBNIŻONY 22672/45656/45656 → 20936/43912/43912 —
+    // naprawa wyspy E003 (stacja odcięta za łącznikiem NO ring-tied do
+    // sąsiedniego odgałęzienia); pełne uzasadnienie i pomiar w
+    // `buildScene.test.ts` (vertical_length_probe), ta sama fixtura.
+    // SLD-LOC (2026-09-05): PODNIESIONY 20936/43912/43912 → 21040/44016/44016
+    // (+104 jednolicie na L0/L1/L2) — naprawa lokalności pionowej kotwic
+    // stacji (baza numeracji fallback = indeks ciągu w kolejności UKŁADU
+    // `sortedRuns` × rozmiar bloku, nie GLOBALNY licznik ciągły) przesuwa
+    // fallback-kody ciągów PO magistrali na inne (ale wciąż DWUCYFROWE)
+    // wartości — magistrala (12 stacji T1..T12, zawsze PIERWSZA w kolejności
+    // układu, `run_kind=main_trunk`) dostaje bazę=1 NIEZALEŻNIE od rozmiaru
+    // bloku, więc jej kody „S01".."S12" zostają BEZ ZMIAN. Kod fallback
+    // niesie PASMO NAZW stacji na KAŻDYM LOD, stąd delta jednolita. Pełne
+    // uzasadnienie (w tym dwóch odrzuconych wariantów rozmiaru bloku) i
+    // pomiar w `buildScene.test.ts` (vertical_length_probe), ta sama
+    // fixtura. Kompresja Z1 nadal działa (asercje względne niżej) — ta karta
+    // nie rusza mechanizmu kompresji, tylko wejściową wysokość PRZED
+    // kompresją.
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(21040);
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(44016);
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(44016);
   });
 
   it('determinizm: rekordy pasm identyczne w dwóch biegach (fixtura referencyjna, L2)', () => {

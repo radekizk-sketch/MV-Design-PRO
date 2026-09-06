@@ -83,6 +83,8 @@ def _magistrala(liczba_odcinkow: int = 3) -> tuple[dict[str, Any], list[str]]:
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_binding": _binding("ZRODLO_SN", "src-gpz-15kv-250mva-rx010"),
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
         },
     )["snapshot"]
     odcinki: list[str] = []

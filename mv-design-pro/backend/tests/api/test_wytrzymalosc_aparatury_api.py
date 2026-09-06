@@ -21,17 +21,40 @@ KABEL = "cable-tfk-yakxs-3x120"
 TRAFO = "tr-sn-nn-15-04-630kva-dyn11"
 ZRODLO = "src-gpz-15kv-250mva-rx010"
 CT = "ct_400_5_5p20_15va_abb"
-PRZEKAZNIK = "ACME_REX100_v1"
+PRZEKAZNIK = "REF-OC-100"
 
 
 @pytest.fixture()
-def klient(tmp_path, monkeypatch) -> TestClient:
+def klient(tmp_path, monkeypatch, uow_factory) -> TestClient:
+    from api.dependencies import get_uow_factory
+
     monkeypatch.setenv("ENM_STORE_DIR", str(tmp_path))
     reset_enm_store()
     wyczysc_dziennik()
+    app.dependency_overrides[get_uow_factory] = lambda: uow_factory
+    app.state.uow_factory = uow_factory
     yield TestClient(app)
+    app.dependency_overrides.pop(get_uow_factory, None)
+    app.state.uow_factory = None
     reset_enm_store()
     wyczysc_dziennik()
+
+
+def _nowy_przypadek(klient: TestClient) -> str:
+    """Utwórz REALNY projekt + przypadek przez API; zwróć `case_id`.
+
+    CV-1-W: przypadek bez wiersza w bazie dostaje teraz 404 z magazynu ENM
+    (inwariant I-2) — testy tego pliku potrzebują prawdziwej pary
+    projekt+przypadek zamiast dowolnego napisu.
+    """
+    project_resp = klient.post("/api/projects", json={"name": "Wytrzymalosc aparatury — test"})
+    assert project_resp.status_code == 201, project_resp.text
+    project_id = project_resp.json()["id"]
+    case_resp = klient.post(
+        "/api/study-cases", json={"project_id": project_id, "name": "Przypadek testu"}
+    )
+    assert case_resp.status_code == 201, case_resp.text
+    return str(case_resp.json()["id"])
 
 
 def _operacja(klient: TestClient, case_id: str, nazwa: str, payload: dict) -> dict:
@@ -50,7 +73,13 @@ def _stacja_z_polami(klient: TestClient, case_id: str, *, z_zabezpieczeniem: boo
         klient,
         case_id,
         "add_grid_source_sn",
-        {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": ZRODLO},
+        {
+            "voltage_kv": 15.0,
+            "sk3_mva": 250.0,
+            "catalog_ref": ZRODLO,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
+        },
     )
     odp = _operacja(
         klient,
@@ -115,10 +144,11 @@ def _stacja_z_polami(klient: TestClient, case_id: str, *, z_zabezpieczeniem: boo
 
 def test_werdykty_powstaja_z_modelu_bez_zadnej_konfiguracji(klient: TestClient):
     """SEDNO: żadnego zapisu konfiguracji — a pola stacji dostają werdykt."""
-    station_ref = _stacja_z_polami(klient, "c-model")
+    case_id = _nowy_przypadek(klient)
+    station_ref = _stacja_z_polami(klient, case_id)
 
     odp = klient.post(
-        "/api/cases/c-model/enm/wytrzymalosc-aparatury",
+        f"/api/cases/{case_id}/enm/wytrzymalosc-aparatury",
         json={"station_ref": station_ref, "i_peak_ka": 10.0, "i_thermal_ka": 4.0},
     )
     assert odp.status_code == 200, odp.text
@@ -138,20 +168,28 @@ def test_werdykty_powstaja_z_modelu_bez_zadnej_konfiguracji(klient: TestClient):
 
 
 def test_koncowka_jest_deterministyczna(klient: TestClient):
-    station_ref = _stacja_z_polami(klient, "c-det")
+    case_id = _nowy_przypadek(klient)
+    station_ref = _stacja_z_polami(klient, case_id)
     zapytanie = {"station_ref": station_ref, "i_peak_ka": 10.0, "i_thermal_ka": 4.0}
 
-    pierwsza = klient.post("/api/cases/c-det/enm/wytrzymalosc-aparatury", json=zapytanie).json()
-    druga = klient.post("/api/cases/c-det/enm/wytrzymalosc-aparatury", json=zapytanie).json()
+    sciezka = f"/api/cases/{case_id}/enm/wytrzymalosc-aparatury"
+    pierwsza_odp = klient.post(sciezka, json=zapytanie)
+    druga_odp = klient.post(sciezka, json=zapytanie)
+    # Przypina status PRZED porownaniem cial — dwie identyczne odpowiedzi
+    # bledu (np. 404 tlumaczenia case_id) rownie chetnie przeszlyby ten
+    # test (test maskujacy defekt).
+    assert pierwsza_odp.status_code == 200, pierwsza_odp.text
+    assert druga_odp.status_code == 200, druga_odp.text
 
-    assert pierwsza == druga
+    assert pierwsza_odp.json() == druga_odp.json()
 
 
 def test_stacja_spoza_modelu_nie_udaje_pustej(klient: TestClient):
-    _stacja_z_polami(klient, "c-brak")
+    case_id = _nowy_przypadek(klient)
+    _stacja_z_polami(klient, case_id)
 
     odp = klient.post(
-        "/api/cases/c-brak/enm/wytrzymalosc-aparatury",
+        f"/api/cases/{case_id}/enm/wytrzymalosc-aparatury",
         json={"station_ref": "nie-ma-takiej", "i_peak_ka": 10.0, "i_thermal_ka": 4.0},
     )
     assert odp.status_code == 200
@@ -161,10 +199,11 @@ def test_stacja_spoza_modelu_nie_udaje_pustej(klient: TestClient):
 
 
 def test_brak_pradow_z_biegu_daje_jawny_kod_gotowosci(klient: TestClient):
-    station_ref = _stacja_z_polami(klient, "c-pusty")
+    case_id = _nowy_przypadek(klient)
+    station_ref = _stacja_z_polami(klient, case_id)
 
     odp = klient.post(
-        "/api/cases/c-pusty/enm/wytrzymalosc-aparatury",
+        f"/api/cases/{case_id}/enm/wytrzymalosc-aparatury",
         json={"station_ref": station_ref},
     )
     assert odp.status_code == 200
@@ -175,10 +214,11 @@ def test_brak_pradow_z_biegu_daje_jawny_kod_gotowosci(klient: TestClient):
 
 def test_czas_wylaczenia_pochodzi_z_nastaw_pola_i_niesie_rozbicie(klient: TestClient):
     """KD-6 poz. 3: czas kryterium cieplnego wyprowadzony z NASTAW, nie wpisany ręcznie."""
-    station_ref = _stacja_z_polami(klient, "c-nastawy", z_zabezpieczeniem=True)
+    case_id = _nowy_przypadek(klient)
+    station_ref = _stacja_z_polami(klient, case_id, z_zabezpieczeniem=True)
 
     odp = klient.post(
-        "/api/cases/c-nastawy/enm/wytrzymalosc-aparatury",
+        f"/api/cases/{case_id}/enm/wytrzymalosc-aparatury",
         json={
             "station_ref": station_ref,
             "i_peak_ka": 10.0,
@@ -204,10 +244,11 @@ def test_czas_wylaczenia_pochodzi_z_nastaw_pola_i_niesie_rozbicie(klient: TestCl
 
 
 def test_pole_bez_nastaw_dostaje_kod_gotowosci_zamiast_czasu_z_powietrza(klient: TestClient):
-    station_ref = _stacja_z_polami(klient, "c-bez-nastaw")
+    case_id = _nowy_przypadek(klient)
+    station_ref = _stacja_z_polami(klient, case_id)
 
     odp = klient.post(
-        "/api/cases/c-bez-nastaw/enm/wytrzymalosc-aparatury",
+        f"/api/cases/{case_id}/enm/wytrzymalosc-aparatury",
         json={
             "station_ref": station_ref,
             "i_peak_ka": 10.0,
@@ -215,6 +256,7 @@ def test_pole_bez_nastaw_dostaje_kod_gotowosci_zamiast_czasu_z_powietrza(klient:
             "ik_ka": 8.0,
         },
     )
+    assert odp.status_code == 200, odp.text
     widok = odp.json()
 
     assert widok["pola"], "Stacja ma pola z aparatami — werdykt dynamiczny nadal powstaje"

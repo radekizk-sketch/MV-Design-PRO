@@ -162,12 +162,75 @@ POMIJANE_KATALOGI = {
 #     `base_template`, więc przestały być niezgodne z typem.
 # `e2e/` i `playwright.config.ts` weszły DO bramki (0 błędów) — nie są już
 # długiem, tylko zasięgiem.
-BUDZET_BLEDOW_POZA_BRAMKA = 531
+#   * Karta CI-B (pomiar 2026-09-04): na HEAD dług byl 658 (urosl z 531 bez
+#     sparowanego wpisu w rejestrze — przyczyna wzrostu nie jest znana tej
+#     karcie, tylko zastany fakt). Sprowadzony do 137 U ZRODLA, bez wyciszen i
+#     bez zmiany zachowania produktu (poza jednym addytywnym poszerzeniem typu
+#     `TraceValue` — patrz commit). Najwieksze klasy: brakujacy `import {
+#     describe, it, expect } from 'vitest'` w 3 plikach (259 bledow, TS2304 +
+#     TS2582 — testy polegaly wylacznie na globalach `vitest.config` przy
+#     type-checku, ktory globali nie widzi), martwy `@ts-expect-error` na
+#     shimie `URL.createObjectURL`/`revokeObjectURL` w 13 plikach (38 bledow —
+#     TS DOM lib w uzywanej wersji TS juz zna te metody statyczne, wiec
+#     zabezpieczenie stalo sie zbedne), fikstury niezgodne z kanonicznym
+#     ksztaltem typu (ENM `EnmFragment`/`StationTransformerUnit`/
+#     `ReadinessEntry.severity`/`KontekstJakosci.case_id+snapshot_hash+run_id`/
+#     `DerCatalogSelections` czesciowe nadpisania w `derFixture`), oraz
+#     `Array.prototype.at()` niedostepne pod zamrozonym `lib: ES2020` (20
+#     wystapien w 8 plikach — nowy `src/test/arrayAt.ts`, rownowaznik `at()`
+#     dla testow, zamiast luzowania `lib` calego projektu).
+#   * Karta CV-3.3-B (pomiar 2026-09-05): 137 -> 139 przy dopisaniu
+#     `provenance_a`/`provenance_b` (pole WYMAGANE, B1) do
+#     `PowerFlowComparisonResult`/`ProtectionComparisonResult` bez aktualizacji
+#     WSZYSTKICH fikstur budujacych te typy literalem — `src/ui/power-flow-
+#     comparison/__tests__/power-flow-comparison.test.ts` i `src/ui/protection-
+#     comparison/__tests__/protection-comparison.test.ts` (osobne od
+#     `ui2/wyniki/porownanie/__tests__/fixtures.ts`, ktore juz mialo poprawke).
+#     Naprawione U ZRODLA (fixture proweniencji w obu plikach) + przy okazji
+#     zdjety 1 pre-existing martwy import `PowerFlowComparisonTab`
+#     (`power-flow-comparison.test.ts`, TS6133, napotkany w tym samym imporcie
+#     — Zero-Debt). Sprowadzone do 136.
+#   * Karta FAB-K (pomiar 2026-09-05): 137 -> 129, U ZRODLA. Karta zwezyla
+#     `ConnectionSide` (6 wartosci -> 2: `nN`/`dedicated_transformer`) i usunela
+#     fantomy `voltage_level_ref`/`connection_node_ref`/`internal_cable_ref`/
+#     `regulation_profile_ref` z `StationDerConnection` — kazdy plik testowy
+#     poza bramka, ktory jeszcze niosl STARE nazwy pol/wartosci (fikstury
+#     `station-der/__tests__/*`, `workspace/surfaces/__tests__/*`,
+#     `station-configurator/cards/__tests__/*`, `der-configurator/__tests__/*`,
+#     `ui2/oze/macierz/__tests__/fixtures.ts`, `ui2/spaces/wyniki/__tests__/*`),
+#     naprawiony U ZRODLA (nazwa/wartosc pola, nie wyciszenie). Przy okazji:
+#     `DerConfigurator.tsx` (breadcrumb karty DER, poza bramka testow — w
+#     BRAMCE, 0 bledow w bramce bez zmian) niosl WLASNA, DRUGA kopie etykiet
+#     `connectionSide` z czterema martwymi kluczami sprzed tej karty
+#     (`SN`/`at_zksn`/`at_branch_pole`/`at_cable_joint`, nieosiagalnymi przez
+#     zadna realna wartosc `ConnectionSide`) — zamieniona na reuzycie
+#     `punktPrzylaczeniaOpisPl` (`station-der/readiness.ts`, ta sama funkcja,
+#     ktorej juz uzywaly komunikaty blokerow gotowosci), zamiast dwoch kopii tej
+#     samej fizyki. Dlug NIE ROSL — zmalal jako SKUTEK UBOCZNY naprawy klasy pol
+#     DER (karta FAB-K), nie osobnej sesji sprzatania tego pliku.
+#   * Scalenie FAB-K z CV-3.3-B (koordynator, pomiar 2026-09-05): 129 -> 128.
+#     Po scaleniu bylo 130: dwa pliki testow korzenia aplikacji (`App.test`,
+#     `ui2/__tests__/integracja.test`) niosly DWA importy tego samego helpera
+#     (`renderWithQueryClient as render` z b40e1778 i `renderWithQueryClient`
+#     z FAB-K, ktory zamienil wywolania) — alias zostal bez uzycia (TS6133).
+#     Usuniety alias, nie prog. Do tego FAB-K skasowala martwy import
+#     `PowerFlowComparisonTab` niezaleznie od CV-3.3-B (ta sama naprawa w obu
+#     kartach) — laczny stan po scaleniu: 128.
+BUDZET_BLEDOW_POZA_BRAMKA = 128
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,
 #: WSZYSTKIE w plikach testowych.
-BUDZET_WYCISZEN = 35
+#: Karta CI-B (pomiar 2026-09-04): na HEAD 39 (urosl bez wpisu w rejestrze).
+#: 38 z 39 to DOKLADNIE ten sam martwy `@ts-expect-error` na shimie
+#: `URL.createObjectURL`/`revokeObjectURL` opisany wyzej — usuniete U ZRODLA
+#: (nie wyciszeniem: TS sam meldowal je jako "Unused '@ts-expect-error'
+#: directive", TS2578, wiec byly juz policzone w BUDZET_BLEDOW_POZA_BRAMKA
+#: TEZ jako blad). Zostaje 1: `src/ui/sld/v3/export/__tests__/
+#: eksportDokumentu.test.ts` — celowe, dokumentuje ze format spoza rejestru
+#: nie przechodzi ANI typu, ANI wykonania (jedyny prawdziwy powod wyciszenia
+#: w calym repo).
+BUDZET_WYCISZEN = 1
 
 #: Zapadka na pusty skan: `frontend/src` to tysiące modułów. Mniej niż tyle
 #: znaczy, że zmienił się układ katalogów, a nie że kodu ubyło.

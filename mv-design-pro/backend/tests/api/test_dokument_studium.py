@@ -55,12 +55,14 @@ def _reset() -> None:
 
 def _pf_run(case_id: str = "c-pf") -> CanonicalRun:
     set_enm(case_id, build_golden_enm())
-    return execute_run(create_run(case_id=case_id, analysis_type="PF").id)
+    return execute_run(create_run(case_id=case_id, klucz_twin=case_id, analysis_type="PF").id)
 
 
 def _sc_run() -> CanonicalRun:
     set_enm("c-sc", build_golden_enm())
-    return execute_run(create_run(case_id="c-sc", analysis_type="short_circuit_sn").id)
+    return execute_run(
+        create_run(case_id="c-sc", klucz_twin="c-sc", analysis_type="short_circuit_sn").id
+    )
 
 
 def _converter():

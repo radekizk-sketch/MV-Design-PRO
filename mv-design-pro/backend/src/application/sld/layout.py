@@ -15,7 +15,6 @@ Layout modes:
 
 from __future__ import annotations
 
-from collections import deque
 from collections.abc import Iterable
 from uuid import UUID, uuid5
 
@@ -26,6 +25,7 @@ from domain.sld import (
     SldNodeSymbol,
     SldSwitchSymbol,
 )
+from network_model.core.topologia import poziomy, przeglad_wszerz
 
 
 def build_auto_layout_diagram(
@@ -255,20 +255,16 @@ def _bfs_levels(
     start_node: UUID,
     visited: set[UUID],
 ) -> dict[UUID, int]:
-    levels: dict[UUID, int] = {start_node: 0}
-    queue: deque[UUID] = deque([start_node])
-    visited.add(start_node)
-
-    while queue:
-        current = queue.popleft()
-        neighbors = sorted(adjacency.get(current, set()), key=lambda item: str(item))
-        for neighbor in neighbors:
-            if neighbor in visited:
-                continue
-            visited.add(neighbor)
-            levels[neighbor] = levels[current] + 1
-            queue.append(neighbor)
-    return levels
+    """Poziomy węzłów składowej od ``start_node`` — jedyne jądro przeglądu
+    (``network_model.core.topologia.przeglad_wszerz`` ze wspólnym ``visited``, CV-4.3)."""
+    drzewo = przeglad_wszerz(
+        start_node,
+        lambda current: [
+            (None, neighbor) for neighbor in sorted(adjacency.get(current, set()), key=str)
+        ],
+        odwiedzone=visited,
+    )
+    return poziomy(drzewo)
 
 
 def _sorted_ids(node_ids: Iterable[UUID]) -> list[UUID]:

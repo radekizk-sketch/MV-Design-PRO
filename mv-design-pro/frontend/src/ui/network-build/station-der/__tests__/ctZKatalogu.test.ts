@@ -29,24 +29,27 @@ const TYPY_CT = [
 ] as unknown as readonly CTCatalogType[];
 
 function der(over: Partial<StationDerConnection> = {}): StationDerConnection {
+  // Karta FAB-K (§0 R3, KLASA NIE INSTANCJA): dawny `'mv_bay'` nigdy nie był
+  // realną wartością `ConnectionSide` — topologia przyłączenia jest tu
+  // nieistotna (testy sprawdzają wyłącznie rozwiązanie klasy przekładnika CT).
   return {
     id: 'DER-1',
     station_id: 'ST-1',
     der_kind: 'PV',
-    connection_side: 'mv_bay',
+    connection_side: 'nN',
     bus_przylaczenia_ref: 'BUS-1',
-    bay_ref: 'BAY-1',
-    lv_busbar_ref: null,
-    connection_node_ref: null,
+    bay_ref: null,
+    lv_busbar_ref: 'BUS-1',
+    sn_connection_bus_ref: null,
+    sn_connection_point_kind: null,
     nominal_power_kw: 500,
-    voltage_level_ref: null,
+    connection_voltage_kv: null,
     catalogs: {
       device_catalog_ref: 'INV-1',
       block_transformer_catalog_ref: null,
       protection_catalog_ref: 'REL-1',
       ct_catalog_ref: 'ct_200_5_5p10_10va_abb',
       vt_catalog_ref: 'VT-1',
-      fault_current_data_ref: 'FC-1',
       dynamic_model_ref: null,
     },
     profiles: { nc_rfg_profile_ref: null, lvrt_curve_ref: null, hvrt_curve_ref: null },

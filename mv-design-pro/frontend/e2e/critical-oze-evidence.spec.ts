@@ -155,6 +155,8 @@ async function zbudujSiec(
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
+    hv_voltage_kv: 110.0,
+    transformer_sn_mva: 25.0,
   });
 
   const trunk = await executeDomainOp(request, caseId, 'continue_trunk_segment_sn', {

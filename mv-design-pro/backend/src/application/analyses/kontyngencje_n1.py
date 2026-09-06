@@ -4,22 +4,25 @@ Warstwa APPLICATION (ORKIESTRACJA, NIE fizyka). Odpowiada na pytanie „czy sie�
 zniesie wyłączenie dowolnego pojedynczego elementu": dla KAŻDEGO kwalifikowanego
 elementu (linia napowietrzna, kabel, transformator) buduje WARIANT WEJŚCIA
 solvera bez tego elementu, uruchamia ISTNIEJĄCY solver rozpływu przez ISTNIEJĄCĄ
-ścieżkę wykonania (``enm.canonical_analysis._execute_power_flow`` — ta sama
-funkcja, której używa kanoniczny przebieg PF) i składa macierz skutków.
+ścieżkę wykonania (``enm.canonical_analysis.wykonaj_bieg_w_pamieci`` — ten sam
+dyspozytor, którego używa kanoniczny przebieg PF) i składa macierz skutków.
 
 ZERO nowej fizyki, ZERO mutacji modelu, ZERO równoległości, ZERO heurystyk.
 
-MECHANIZM WARIANTOWANIA (reguła Case Immutability).
-Wyłączenie elementu = USUNIĘCIE go z listy elementów w KOPII migawki, na której
-pracuje bieg wariantu (płytka kopia słownika migawki + NOWA, przefiltrowana po
-``ref_id`` lista tej jednej kolekcji, z której element znika). Model w magazynie
-(``enm.store``) ani migawka biegu bazowego NIE są dotykane — dokładnie ten sam
-wzorzec, którego używają zdolność przyłączeniowa (``hosting_capacity.py``),
-obszar P–Q (``pq_area.py``) i odpowiedź OSD (``odpowiedz_osd.py``): wariant to
-delta migawki + ``CanonicalRun`` w pamięci (bez persystencji). Pozostałe kolekcje
-wariant WSPÓŁDZIELI z migawką bazową, bo cała ścieżka konsumująca wariant tylko
-ją czyta (patrz ``_wariant_bez_elementu``); izolacja modelu jest przypięta testami
-odcisku ENM i migawki biegu bazowego przed/po enumeracji.
+MECHANIZM WARIANTOWANIA (reguła Case Immutability; migracja CV-3-W, 2026-09-05).
+Wyłączenie elementu = scenariusz roboczy ``enm.scenariusze.OperatingScenario``
+z ``out_of_service=(element.ref,)``, nałożony na model bazowy przez
+``enm.scenariusze.apply_scenario`` — JEDYNE miejsce kopii migawki z
+nadpisaniami (rdzeń CV-3.1). Migawka efektywna idzie do
+``enm.canonical_analysis.bieg_wariantu`` (JEDYNA fabryka biegu wariantu w
+pamięci, bez persystencji) i do wykonania przez ``wykonaj_bieg_w_pamieci``.
+Model w magazynie (``enm.store``) ani migawka biegu bazowego NIE są dotykane —
+``apply_scenario`` zawsze pracuje na ŚWIEŻYM ``model_dump`` modelu bazowego,
+zbudowanym RAZ na całą enumerację (``EnergyNetworkModel.model_validate``), nie
+na migawce zapisanej w ``bazowy.snapshot``. Ten sam mechanizm (do CV-3-W: ta
+sama prywatna droga, dziś wspólna fabryka) obsługuje zdolność przyłączeniową
+(``hosting_capacity.py``) i obszar P–Q (``pq_area.py``); izolacja modelu jest
+przypięta testami odcisku ENM (``compute_enm_hash``) przed/po enumeracji.
 
 JEDEN mechanizm dla WSZYSTKICH rodzajów elementów (linia, kabel, transformator) —
 warunkiem wyjściowym jest zawsze to samo: w grafie wariantu NIE MA krawędzi tego
@@ -84,11 +87,27 @@ kwalifikowane). Karta N1-WYDAJNOSC, pomiar na jednej maszynie:
 1. blokowe składanie jakobianu Newtona-Raphsona zamiast pętli skalarnej
    (``power_flow_newton_internal.build_jacobian_v2``) — było 76 % czasu własnego
    całej analizy; wynik przypięty bitowo wobec postaci skalarnej,
-2. JEDNA budowa grafu wariantu zamiast dwóch przed rozpływem — ten sam obiekt
-   obsługuje odczyt topologii zasilania i bieg rozpływu (patrz ``_kontyngencja``),
-3. płytka kopia migawki wariantu zamiast głębokiej (patrz ``_wariant_bez_elementu``).
+2. (STAN SPRZED CV-3-W) JEDNA budowa grafu wariantu zamiast dwóch przed
+   rozpływem — ten sam obiekt obsługiwał odczyt topologii zasilania i bieg
+   rozpływu,
+3. (STAN SPRZED CV-3-W) płytka kopia migawki wariantu zamiast głębokiej.
 
-GRANICA (zmierzona, nie oszacowana): po tych zmianach 83 % czasu kontyngencji to
+AKTUALIZACJA UCZCIWOŚCI (CV-3-W, 2026-09-05, migracja na ``apply_scenario`` —
+patrz „MECHANIZM WARIANTOWANIA" wyżej): źródło #3 opisuje mechanizm SPRZED tej
+migracji i już NIE obowiązuje dosłownie — migawka wariantu to dziś świeży, PEŁNY
+``model_dump()`` scenariusza (``apply_scenario``), nie płytka kopia słownika.
+Źródło #2 (jedna budowa grafu na kontyngencję) OBOWIĄZUJE: ``_graf_migawki``
+buduje JEDEN graf do odczytu topologii zasilania (``_zasilanie``) i TEN SAM
+obiekt idzie do rozpływu przez kanoniczny dyspozytor
+(``wykonaj_bieg_w_pamieci(bieg, graf=…)`` — parametr dodany przy domknięciu
+CV-3-W, żeby migracja nie kosztowała drugiej budowy grafu na każdą kontyngencję;
+pin: ``test_jedna_budowa_grafu_na_kontyngencje``). Ponowny pomiar wydajności NIE
+był częścią karty CV-3-W (zakres = parytet bit w bit wyniku, nie czas) — liczby
+w akapicie GRANICA poniżej opisują stan SPRZED migracji i wymagają nowego
+pomiaru, jeśli wydajność ścieżki N-1 stanie się
+
+GRANICA (zmierzona, nie oszacowana, STAN SPRZED CV-3-W): po zmianach karty
+N1-WYDAJNOSC 83 % czasu kontyngencji to
 sam bieg rozpływu, a w nim dominuje GĘSTE rozwiązanie układu równań jakobianu
 (``numpy.linalg.solve``, ~0,10 s dla macierzy 628×628 na tej maszynie, 3 iteracje
 na bieg). Zejście niżej wymagałoby solvera RZADKIEGO albo startu z poprzedniego
@@ -127,15 +146,22 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
 from analysis.energy_validation.models import EnergyValidationConfig
 from application.analyses.energy_validation.service import build_energy_validation_view
 from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
-from enm.canonical_analysis import CanonicalRun, _execute_power_flow
+from enm.canonical_analysis import CanonicalRun, bieg_wariantu, wykonaj_bieg_w_pamieci
 from enm.mapping import map_enm_to_network_graph, ref_to_graph_id
 from enm.models import EnergyNetworkModel
+from enm.scenariusze import (
+    SCENARIUSZ_NORMALNY,
+    OperatingScenario,
+    RodzajScenariusza,
+    apply_scenario,
+)
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import NodeType
 from network_model.solvers.power_flow_newton_internal import build_slack_island
@@ -227,52 +253,6 @@ def _inwentarz_elementow(snapshot: dict[str, Any]) -> list[_Element]:
             )
         )
     return sorted(elementy, key=lambda element: element.ref)
-
-
-def _wariant_bez_elementu(snapshot: dict[str, Any], element: _Element) -> dict[str, Any]:
-    """Kopia migawki BEZ wskazanego elementu (wariant wejścia solvera).
-
-    Model bazowy pozostaje nietknięty (reguła Case Immutability: przypadek
-    obliczeniowy nie mutuje modelu sieci) — i to jest tu JEDYNE wymaganie.
-
-    Kopiujemy PŁYTKO słownik migawki i podmieniamy WYŁĄCZNIE tę jedną listę, z
-    której element znika; pozostałe kolekcje wariant współdzieli z migawką bazową.
-    Wolno tak, bo cała ścieżka konsumująca wariant tylko CZYTA migawkę: most
-    ENM→graf przepisuje dane do modeli pydantic (``model_validate`` nie tyka
-    wejścia), rozpływ zapisuje wynik do ``run.raw_result``, a builder walidacji
-    energetycznej czyta migawkę i wynik. Głęboka kopia całej migawki kopiowała
-    315 szyn, 260 gałęzi i 54 transformatory po to, by odrzucić z nich jeden wpis.
-
-    To założenie o WSPÓŁDZIELENIU jest przypięte testami izolacji (odcisk ENM i
-    migawki biegu bazowego przed/po enumeracji oraz porównanie głębokie migawki),
-    więc gdyby ktokolwiek na tej ścieżce zaczął pisać po migawce, pin zaświeci na
-    czerwono zamiast po cichu uszkodzić model w magazynie.
-    """
-    wariant = dict(snapshot)
-    wariant[element.kolekcja] = [
-        pozycja
-        for pozycja in (snapshot.get(element.kolekcja) or [])
-        if str(pozycja.get("ref_id")) != element.ref
-    ]
-    return wariant
-
-
-def _bieg_wariantu(bazowy: CanonicalRun, snapshot: dict[str, Any]) -> CanonicalRun:
-    """Przebieg rozpływu w pamięci (bez persystencji) na podanej migawce."""
-    return CanonicalRun(
-        id=bazowy.id,
-        case_id=bazowy.case_id,
-        project_id=bazowy.project_id,
-        analysis_type="PF",
-        status="FINISHED",
-        created_at=bazowy.created_at,
-        snapshot_hash=bazowy.snapshot_hash,
-        input_hash=bazowy.input_hash,
-        snapshot=snapshot,
-        validation={},
-        readiness={},
-        options=dict(bazowy.options),
-    )
 
 
 def _graf_migawki(snapshot: dict[str, Any]) -> NetworkGraph:
@@ -497,8 +477,13 @@ def _klucz_rankingu(pozycja: dict[str, Any]) -> tuple[int, int, int, str]:
     )
 
 
-def _kontyngencja(bazowy: CanonicalRun, element: _Element) -> dict[str, Any]:
-    """Jedna kontyngencja: wariant bez elementu → bieg → skutki."""
+def _kontyngencja(
+    bazowy: CanonicalRun,
+    enm_bazowy: EnergyNetworkModel,
+    element: _Element,
+    uow_factory: Callable[[], Any] | None,
+) -> dict[str, Any]:
+    """Jedna kontyngencja: scenariusz N-1 → migawka efektywna → bieg → skutki."""
     wspolne: dict[str, Any] = {
         "element_ref": element.ref,
         "element_name": element.name,
@@ -528,17 +513,24 @@ def _kontyngencja(bazowy: CanonicalRun, element: _Element) -> dict[str, Any]:
         }
 
     snapshot_bazowy = bazowy.snapshot or {}
-    wariant = _wariant_bez_elementu(snapshot_bazowy, element)
+    scenariusz = OperatingScenario(
+        scenario_id=f"__n1__{element.ref}",
+        name=f"Kontyngencja N-1: {element.ref}",
+        kind=RodzajScenariusza.N_1,
+        out_of_service=(element.ref,),
+    )
+    migawka = apply_scenario(enm_bazowy, scenariusz)
+    wariant = migawka.snapshot
     # JEDNA budowa grafu wariantu na dwa odczyty: najpierw topologia zasilania
-    # (stan sprzed rozpływu, wyłącznie odczyt), potem ten sam obiekt idzie do
-    # rozpływu — zamiast budować dwa razy ten sam graf z tej samej migawki.
+    # (stan sprzed rozpływu, wyłącznie odczyt), potem TEN SAM obiekt idzie do
+    # rozpływu przez kanoniczny dyspozytor (`wykonaj_bieg_w_pamieci(bieg, graf=)`).
     # Kolejności nie wolno odwrócić: rozpływ może graf zmodyfikować (zaczepy).
     graf_wariantu = _graf_migawki(wariant)
     zasilanie = _zasilanie(wariant, graf_wariantu)
-    bieg = _bieg_wariantu(bazowy, wariant)
+    bieg = bieg_wariantu(bazowy, migawka, analysis_type="PF")
     blad: str | None = None
     try:
-        _execute_power_flow(bieg, graf_wariantu)
+        wykonaj_bieg_w_pamieci(bieg, graf=graf_wariantu, uow_factory=uow_factory)
     except Exception as exc:  # noqa: BLE001 — niezbieżność/osobliwość = STATUS, nie wyjątek
         blad = f"{type(exc).__name__}: {exc}"
 
@@ -598,25 +590,32 @@ def _kontyngencja(bazowy: CanonicalRun, element: _Element) -> dict[str, Any]:
     }
 
 
-def _przypadek_bazowy(bazowy: CanonicalRun) -> dict[str, Any]:
+def _przypadek_bazowy(
+    bazowy: CanonicalRun,
+    enm_bazowy: EnergyNetworkModel,
+    uow_factory: Callable[[], Any] | None,
+) -> dict[str, Any]:
     """Stan N-0 (bez wyłączeń) — punkt odniesienia dla czytelnika macierzy.
 
-    Liczony TĄ SAMĄ ścieżką co kontyngencje (bieg wariantu na pełnej migawce),
-    żeby porównanie „przed / po" nie zestawiało dwóch różnych sposobów liczenia.
+    Liczony TĄ SAMĄ ścieżką co kontyngencje (scenariusz → migawka efektywna →
+    bieg wariantu → rozpływ), na scenariuszu stanu normalnego
+    (``enm.scenariusze.SCENARIUSZ_NORMALNY``) — żeby porównanie „przed / po" nie
+    zestawiało dwóch różnych sposobów liczenia.
     """
-    snapshot_bazowy = bazowy.snapshot or {}
+    migawka = apply_scenario(enm_bazowy, SCENARIUSZ_NORMALNY)
+    snapshot_bazowy = migawka.snapshot
     graf_bazowy = _graf_migawki(snapshot_bazowy)
     zasilanie = _zasilanie(snapshot_bazowy, graf_bazowy)
-    bieg = _bieg_wariantu(bazowy, dict(snapshot_bazowy))
+    bieg = bieg_wariantu(bazowy, migawka, analysis_type="PF")
     blad: str | None = None
     try:
-        _execute_power_flow(bieg, graf_bazowy)
+        wykonaj_bieg_w_pamieci(bieg, graf=graf_bazowy, uow_factory=uow_factory)
     except Exception as exc:  # noqa: BLE001 — jak wyżej: stan bazowy to WYNIK, nie wyjątek
         blad = f"{type(exc).__name__}: {exc}"
     dane_biegu = _pusty_bieg() if blad is not None else _dane_biegu(bieg)
     zbiegl = bool(dane_biegu["zbieznosc"])
     skutki = (
-        _skutki_z_walidacji(build_energy_validation_view(bieg), _indeks_ref(bazowy.snapshot or {}))
+        _skutki_z_walidacji(build_energy_validation_view(bieg), _indeks_ref(snapshot_bazowy))
         if zbiegl
         else None
     )
@@ -813,6 +812,7 @@ def build_kontyngencje_n1_view(
     run: CanonicalRun,
     *,
     element_refs: list[str] | None = None,
+    uow_factory: Callable[[], Any] | None = None,
 ) -> dict[str, Any]:
     """Zbuduj macierz skutków kontyngencji N-1 dla przebiegu rozpływu.
 
@@ -830,6 +830,9 @@ def build_kontyngencje_n1_view(
             drugie kosztowałaby najdroższy bieg dokładnie tam, gdzie zamawiający
             zakres wyczyścił (rozstrzygnięcie przypięte testem po obu stronach —
             serwis i końcówka).
+        uow_factory: fabryka ``UnitOfWork`` wołającego (CV-4.2b) — warianty
+            dziedziczą opcje biegu bazowego, więc bieg z konfiguracją audytu 2
+            stacji wymaga jej do odczytu tej konfiguracji.
 
     Returns:
         Widok macierzy N-1: stan bazowy, lista kontyngencji (po sortowanym
@@ -862,7 +865,10 @@ def build_kontyngencje_n1_view(
     kryteria = _kryteria(config)
     refs = [element.ref for element in elementy]
 
-    kontyngencje = [_kontyngencja(run, element) for element in elementy]
+    # JEDNA walidacja modelu bazowego na CAŁĄ enumerację (nie na wariant) —
+    # `apply_scenario` przyjmuje obiekt `EnergyNetworkModel`, nie słownik migawki.
+    enm_bazowy = EnergyNetworkModel.model_validate(run.snapshot or {})
+    kontyngencje = [_kontyngencja(run, enm_bazowy, element, uow_factory) for element in elementy]
     rozstrzygniete = [pozycja for pozycja in kontyngencje if pozycja["status"] == "zbiegl"]
     ranking = [
         {
@@ -894,7 +900,7 @@ def build_kontyngencje_n1_view(
             "kryteria": kryteria,
         },
         "input_hash": _input_hash(run, refs, kryteria),
-        "przypadek_bazowy": _przypadek_bazowy(run),
+        "przypadek_bazowy": _przypadek_bazowy(run, enm_bazowy, uow_factory),
         "kontyngencje": kontyngencje,
         "ranking": ranking,
         "nierozstrzygniete": nierozstrzygniete,

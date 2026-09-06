@@ -65,7 +65,7 @@ describe('PanelModulu', () => {
   });
 
   it('moduł zablokowany (brak napięcia) → widoczny jawny stan braku danych', () => {
-    const opis = opisZ({ voltage_level_ref: null });
+    const opis = opisZ({ connection_voltage_kv: null });
     render(
       <PanelModulu
         opis={opis}

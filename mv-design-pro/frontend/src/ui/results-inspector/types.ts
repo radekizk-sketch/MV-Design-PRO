@@ -324,11 +324,22 @@ export interface TraceStep {
 
 /**
  * Trace value with unit and optional label.
+ *
+ * Wariant zespolony (`re`/`im`): niektore kroki WHITE BOX (impedancja
+ * zastepcza Z = R + jX, `ElementCalculationProofPanel` `firstComplexValue`/
+ * `complexParts`) niosa liczbe zespolona zamiast skalara — solver realnie
+ * to emituje, komponent to juz konsumuje (duck-typing na `unknown`); pola
+ * dodane addytywnie (oba opcjonalne), zeby nie zlamac istniejacych
+ * konsumentow skalara `value`.
  */
 export interface TraceValue {
-  value: number | string | boolean | null;
+  value?: number | string | boolean | null;
   unit?: string;
   label?: string;
+  /** Skladowa rzeczywista Z = R + jX — obecna razem z `im`, `value` wtedy nieistotne. */
+  re?: number;
+  /** Skladowa urojona Z = R + jX. */
+  im?: number;
 }
 
 export interface TraceRelatedElement {

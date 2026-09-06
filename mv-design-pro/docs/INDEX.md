@@ -15,6 +15,41 @@
 
 ---
 
+## Architektura kanoniczna platformy MAX (konstytucja właściciela 2026-09-04) — ŹRÓDŁO PRAWDY programu konwergencji
+
+Kontrakt „MAX PLATFORM ARCHITECTURE & CONVERGENCE CONTRACT" i „FINAL PRODUCT CONSTITUTION" są nadrzędne wobec pakietu Digital Twin niżej (materiał wejściowy i dowodowy). Model operacyjny (role Fable / wykonawcy): `../AGENTS.md` §8.
+
+- [architecture/PRODUCT_CAPABILITY_CONSTITUTION.md](./architecture/PRODUCT_CAPABILITY_CONSTITUTION.md) — misja, zasada MAX, trzy poziomy zobowiązania, taksonomia zdolności A–Y, reguły future-proof, nie-cele
+- [architecture/CAPABILITY_ARCHITECTURE_MATRIX.md](./architecture/CAPABILITY_ARCHITECTURE_MATRIX.md) — macierz §25: zdolność → pojęcia → dane → usługi → solver → projekcja → stan (pomiar) → luka → poziom → werdykt future-proof
+- [architecture/CANONICAL_TWIN_ARCHITECTURE.md](./architecture/CANONICAL_TWIN_ARCHITECTURE.md) — część A: Canonical Project Twin = rozwinięty ENM (własność projektu, terminale, fazy, uziemienie); część B: rewizja/wariant/scenariusz/StudyCase, `RevisionEnvelope`, `EffectiveNetworkSnapshot`, wykonanie, współbieżność; część C: topologia wyprowadzana, Computational IR, solvery, White Box, determinizm
+- [architecture/CONVERGENCE_ROADMAP.md](./architecture/CONVERGENCE_ROADMAP.md) — stan i kontynuacja (§41), wycinki CV-0…CV-6, kroki, parity, guardy
+- [architecture/DECISION_FREEZE_REGISTER.md](./architecture/DECISION_FREEZE_REGISTER.md) — decyzje fundamentalne: dowód, odrzucone alternatywy, warunki ponownego otwarcia, status
+- [reference-networks/REFERENCE_NETWORK_REGISTRY.md](./reference-networks/REFERENCE_NETWORK_REGISTRY.md) — rejestr G01–G15 z klasami wyroczni; tabela generowana `REGISTRY_TABLE.md`
+- [evidence/CONVERGENCE_EVIDENCE.md](./evidence/CONVERGENCE_EVIDENCE.md) — dowody: CI, ochrona `main` (owner action), determinizm, Definition of Done, karty, P0/P1, decyzje właściciela
+- [evidence/RAPORT_FAZY_CV_2026-09-05.md](./evidence/RAPORT_FAZY_CV_2026-09-05.md) — raport fazy konwergencji CV-0 → CV-4.2b (format §42 A–J): stan faktyczny, werdykt architektoniczny, wpływ na zdolności, wdrożenia, skasowane legacy, dowody, ustalenia adwersaryjne, P0/P1, decyzje właściciela, następny wycinek
+
+## Program Digital Twin SN+nN 2026-09 (PROPOZYCJA — pakiet do przeglądu właściciela)
+
+Wynik mandatu „FINAL MASTER ARCHITECTURE MANDATE" (FAZY A–F, STOP §180). Nic z tego programu nie jest jeszcze wdrożone ani wiążące; hierarchia kanonu powyżej pozostaje w mocy do decyzji właściciela.
+
+- [twin/INDEX_TWIN.md](./twin/INDEX_TWIN.md) — indeks programu i kolejność czytania
+- [twin/OWNER_REVIEW_PACKAGE.md](./twin/OWNER_REVIEW_PACKAGE.md) — pakiet §179, wymagania dodatkowe §177, konflikty §178, decyzje
+- [twin/MV_DESIGN_PRO_DIGITAL_TWIN_AUDIT.md](./twin/MV_DESIGN_PRO_DIGITAL_TWIN_AUDIT.md) — audyt forensyczny (FAZA A): TOP 30, macierz luk, rejestry
+- [twin/ENGINEERING_FRICTION_REGISTER.md](./twin/ENGINEERING_FRICTION_REGISTER.md) — rejestr tarć inżynierskich W1–W14
+- [twin/MV_DESIGN_PRO_TARGET_DIGITAL_TWIN_ARCHITECTURE.md](./twin/MV_DESIGN_PRO_TARGET_DIGITAL_TWIN_ARCHITECTURE.md) — docelowa architektura twin (FAZA B)
+- [twin/MV_DESIGN_PRO_DATA_VERSIONING_PROVENANCE.md](./twin/MV_DESIGN_PRO_DATA_VERSIONING_PROVENANCE.md) — rewizje, provenance, persystencja
+- [twin/MV_DESIGN_PRO_TARGET_ENGINEERING_WORKFLOW.md](./twin/MV_DESIGN_PRO_TARGET_ENGINEERING_WORKFLOW.md) — docelowy workflow inżynierski (FAZA C)
+- [twin/MV_DESIGN_PRO_SIMULATION_ARCHITECTURE.md](./twin/MV_DESIGN_PRO_SIMULATION_ARCHITECTURE.md) — architektura symulacji (FAZA D cz. 1)
+- [twin/MV_DESIGN_PRO_DESIGN_OPTIMIZATION_ARCHITECTURE.md](./twin/MV_DESIGN_PRO_DESIGN_OPTIMIZATION_ARCHITECTURE.md) — dobór i optymalizacja (FAZA D cz. 2)
+- [twin/MV_DESIGN_PRO_PROTECTION_ARCHITECTURE.md](./twin/MV_DESIGN_PRO_PROTECTION_ARCHITECTURE.md) — architektura zabezpieczeń
+- [twin/MV_DESIGN_PRO_SLD_PRESENTATION_ARCHITECTURE.md](./twin/MV_DESIGN_PRO_SLD_PRESENTATION_ARCHITECTURE.md) — prezentacja SLD/CAD/SCADA (FAZA E)
+- [twin/SLD_SYMBOL_SYSTEM_PLAN.md](./twin/SLD_SYMBOL_SYSTEM_PLAN.md) — plan pakietu symboli R3
+- [twin/MV_DESIGN_PRO_PERFORMANCE_PLAN.md](./twin/MV_DESIGN_PRO_PERFORMANCE_PLAN.md) — plan wydajności
+- [twin/MV_DESIGN_PRO_MIGRATION_PLAN.md](./twin/MV_DESIGN_PRO_MIGRATION_PLAN.md) — plan migracji strangler (FAZA F)
+- ADR-012…ADR-028 (PROPOSED) w [adr/](./adr/)
+
+---
+
 ## 🚀 START — Od czego zaczyna nowy developer
 
 **Krok 1: Zrozumieć kontekst (15 min)**
@@ -105,9 +140,9 @@
 - [analysis/NC_RFG_FLOW_TESTING_PROMPT.md](./analysis/NC_RFG_FLOW_TESTING_PROMPT.md) - prompt pętli testowania flow NC RfG
 - [analysis/SENSITIVITY_ANALYSIS_CANONICAL_PLUS.md](./analysis/SENSITIVITY_ANALYSIS_CANONICAL_PLUS.md) - analiza wrażliwości P25
 - [analysis/P26_AUTO_RECOMMENDATIONS_CANONICAL_PLUS.md](./analysis/P26_AUTO_RECOMMENDATIONS_CANONICAL_PLUS.md) - rekomendacje P26
-- [analysis/P27_SCENARIO_COMPARISON_CANONICAL_PLUS.md](./analysis/P27_SCENARIO_COMPARISON_CANONICAL_PLUS.md) - porównanie scenariuszy P27
+- [analysis/P27_SCENARIO_COMPARISON_CANONICAL_PLUS.md](./analysis/P27_SCENARIO_COMPARISON_CANONICAL_PLUS.md) - porównanie scenariuszy P27 (kod usunięty CV-3.2, dokument historyczny)
 - [analysis/P33_LF_SENSITIVITY_CANONICAL_KILLER.md](./analysis/P33_LF_SENSITIVITY_CANONICAL_KILLER.md) - wrażliwość napięć P33
-- [architecture/STUDY_SCENARIO_WORKFLOW_CANONICAL_PLUS.md](./architecture/STUDY_SCENARIO_WORKFLOW_CANONICAL_PLUS.md) - workflow Study/Scenario/Run
+- [architecture/STUDY_SCENARIO_WORKFLOW_CANONICAL_PLUS.md](./architecture/STUDY_SCENARIO_WORKFLOW_CANONICAL_PLUS.md) - workflow Study/Scenario/Run (kod usunięty CV-3.2, dokument historyczny)
 - [study/WARIANTY_URUCHOMIENIA_POROWNANIA.md](./study/WARIANTY_URUCHOMIENIA_POROWNANIA.md) - warianty, runy i porównania
 - [audit/REPO_HYGIENE_PO_FAZIE_KATALOG_FIRST.md](./audit/REPO_HYGIENE_PO_FAZIE_KATALOG_FIRST.md) - aktywna higiena repo po fazie katalog-first
 - [ui/UI_CANONICAL_PARITY_MATRIX.md](./ui/UI_CANONICAL_PARITY_MATRIX.md) - aktywna macierz UI

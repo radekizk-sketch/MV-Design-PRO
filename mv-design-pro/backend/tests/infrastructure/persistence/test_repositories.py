@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from domain.models import OperatingCase, Project, StudyCase, StudyRun
+from domain.models import OperatingCase, Project, StudyCase
 from infrastructure.persistence.db import (
     create_engine_from_url,
     create_session_factory,
@@ -13,9 +13,7 @@ from infrastructure.persistence.repositories import (
     CaseRepository,
     NetworkRepository,
     ProjectRepository,
-    ResultRepository,
     SldRepository,
-    StudyRunRepository,
 )
 from sqlalchemy.orm import Session
 
@@ -138,46 +136,11 @@ def test_case_repository_operating_and_study_cases() -> None:
     session.close()
 
 
-def test_study_runs_and_results() -> None:
-    session = _setup_session()
-    project = Project(id=uuid4(), name="Runs")
-    ProjectRepository(session).add(project)
-    case = StudyCase(
-        id=uuid4(),
-        project_id=project.id,
-        name="SC",
-        study_payload={"analysis": "sc"},
-    )
-    CaseRepository(session).add_study_case(case)
-
-    run = StudyRun(
-        id=uuid4(),
-        project_id=project.id,
-        case_id=case.id,
-        analysis_type="short_circuit",
-        input_hash="hash",
-    )
-    run_repo = StudyRunRepository(session)
-    run_repo.add(run)
-
-    finished = datetime.now(UTC)
-    run_repo.update_status(run.id, "done", finished_at=finished)
-    updated = run_repo.get(run.id)
-
-    result_repo = ResultRepository(session)
-    result_id = result_repo.add_result(
-        run_id=run.id,
-        project_id=project.id,
-        result_type="short_circuit",
-        payload={"ik": 12.3},
-    )
-    results = result_repo.list_results(run.id)
-
-    assert updated is not None
-    assert updated.status == "done"
-    assert updated.finished_at == finished
-    assert results[0]["id"] == result_id
-    session.close()
+# CV-3.3-B: `test_study_runs_and_results` (roundtrip `StudyRunRepository` +
+# `ResultRepository`) usunięty razem z obiema klasami — R3 `study_runs`/
+# `study_results`, zero konsumentów produkcyjnych po przepięciu porównań i
+# biegów zabezpieczeń na R1 (`canonical_runs`). Analogiczny roundtrip biegu
+# kanonicznego jest pokryty w `tests/enm/` (`canonical_run_repository`).
 
 
 def test_sld_repository() -> None:

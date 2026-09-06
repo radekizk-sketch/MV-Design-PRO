@@ -26,7 +26,6 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum, StrEnum
 from typing import Any
-from uuid import UUID, uuid4
 
 # =============================================================================
 # ENUMS AND TYPES
@@ -172,19 +171,28 @@ class PowerFlowBusDiffRow:
         delta_angle_percent: Względna zmiana kąta [%]; None = A równe zeru (L-13)
         delta_p_percent: Względna zmiana mocy czynnej [%]; None = A równe zeru (L-13)
         delta_q_percent: Względna zmiana mocy biernej [%]; None = A równe zeru (L-13)
+
+    FAB-E (E1): v_pu/angle_deg (i ich delty) są ``None``, gdy szyna nie ma
+    wartości w run A LUB run B (np. szyna obecna tylko w jednym z porównywanych
+    biegów) — NIGDY fabrykowane 0.0, co wyglądałoby jak całkowity zanik
+    napięcia. p_injected_mw/q_injected_mvar POZOSTAJĄ required: zapis wyniku
+    rozpływu (``analysis/power_flow/result.py::PowerFlowResult``) nie niesie
+    mocy wstrzykniętej PER WĘZEŁ w ogóle (dług architektoniczny nienaprawialny
+    w tej karcie — wymaga nowego pola w solverze/warstwie wyniku, nie odczytu;
+    patrz raport FAB-E).
     """
 
     bus_id: str
-    v_pu_a: float
-    v_pu_b: float
-    angle_deg_a: float
-    angle_deg_b: float
+    v_pu_a: float | None
+    v_pu_b: float | None
+    angle_deg_a: float | None
+    angle_deg_b: float | None
     p_injected_mw_a: float
     p_injected_mw_b: float
     q_injected_mvar_a: float
     q_injected_mvar_b: float
-    delta_v_pu: float
-    delta_angle_deg: float
+    delta_v_pu: float | None
+    delta_angle_deg: float | None
     delta_p_mw: float
     delta_q_mvar: float
     # L-13 — pola addytywne (domyślnie None: starszy zapis porównania w cache
@@ -226,16 +234,16 @@ class PowerFlowBusDiffRow:
         """Deserialize from dict."""
         return cls(
             bus_id=str(data["bus_id"]),
-            v_pu_a=float(data["v_pu_a"]),
-            v_pu_b=float(data["v_pu_b"]),
-            angle_deg_a=float(data["angle_deg_a"]),
-            angle_deg_b=float(data["angle_deg_b"]),
+            v_pu_a=_procent_z_danych(data, "v_pu_a"),
+            v_pu_b=_procent_z_danych(data, "v_pu_b"),
+            angle_deg_a=_procent_z_danych(data, "angle_deg_a"),
+            angle_deg_b=_procent_z_danych(data, "angle_deg_b"),
             p_injected_mw_a=float(data["p_injected_mw_a"]),
             p_injected_mw_b=float(data["p_injected_mw_b"]),
             q_injected_mvar_a=float(data["q_injected_mvar_a"]),
             q_injected_mvar_b=float(data["q_injected_mvar_b"]),
-            delta_v_pu=float(data["delta_v_pu"]),
-            delta_angle_deg=float(data["delta_angle_deg"]),
+            delta_v_pu=_procent_z_danych(data, "delta_v_pu"),
+            delta_angle_deg=_procent_z_danych(data, "delta_angle_deg"),
             delta_p_mw=float(data["delta_p_mw"]),
             delta_q_mvar=float(data["delta_q_mvar"]),
             delta_v_percent=_procent_z_danych(data, "delta_v_percent"),
@@ -279,27 +287,31 @@ class PowerFlowBranchDiffRow:
         delta_losses_q_mvar: Losses reactive power delta (B - A) [Mvar]
         delta_*_percent: Względne zmiany (B − A)/|A| [%] tych samych wielkości;
             None = wartość A równa zeru (różnica względna nie istnieje) — L-13
+
+    FAB-E (E1): wszystkie pola powyżej są ``None``, gdy gałąź nie ma wartości w
+    run A LUB run B (np. gałąź obecna tylko w jednym z porównywanych biegów) —
+    NIGDY fabrykowane 0.0 MW/Mvar, co wyglądałoby jak realny zanik przepływu.
     """
 
     branch_id: str
-    p_from_mw_a: float
-    p_from_mw_b: float
-    q_from_mvar_a: float
-    q_from_mvar_b: float
-    p_to_mw_a: float
-    p_to_mw_b: float
-    q_to_mvar_a: float
-    q_to_mvar_b: float
-    losses_p_mw_a: float
-    losses_p_mw_b: float
-    losses_q_mvar_a: float
-    losses_q_mvar_b: float
-    delta_p_from_mw: float
-    delta_q_from_mvar: float
-    delta_p_to_mw: float
-    delta_q_to_mvar: float
-    delta_losses_p_mw: float
-    delta_losses_q_mvar: float
+    p_from_mw_a: float | None
+    p_from_mw_b: float | None
+    q_from_mvar_a: float | None
+    q_from_mvar_b: float | None
+    p_to_mw_a: float | None
+    p_to_mw_b: float | None
+    q_to_mvar_a: float | None
+    q_to_mvar_b: float | None
+    losses_p_mw_a: float | None
+    losses_p_mw_b: float | None
+    losses_q_mvar_a: float | None
+    losses_q_mvar_b: float | None
+    delta_p_from_mw: float | None
+    delta_q_from_mvar: float | None
+    delta_p_to_mw: float | None
+    delta_q_to_mvar: float | None
+    delta_losses_p_mw: float | None
+    delta_losses_q_mvar: float | None
     # L-13 — pola addytywne (exclude_none; brak = starszy zapis albo A = 0).
     delta_p_from_percent: float | None = None
     delta_q_from_percent: float | None = None
@@ -348,24 +360,24 @@ class PowerFlowBranchDiffRow:
         """Deserialize from dict."""
         return cls(
             branch_id=str(data["branch_id"]),
-            p_from_mw_a=float(data["p_from_mw_a"]),
-            p_from_mw_b=float(data["p_from_mw_b"]),
-            q_from_mvar_a=float(data["q_from_mvar_a"]),
-            q_from_mvar_b=float(data["q_from_mvar_b"]),
-            p_to_mw_a=float(data["p_to_mw_a"]),
-            p_to_mw_b=float(data["p_to_mw_b"]),
-            q_to_mvar_a=float(data["q_to_mvar_a"]),
-            q_to_mvar_b=float(data["q_to_mvar_b"]),
-            losses_p_mw_a=float(data["losses_p_mw_a"]),
-            losses_p_mw_b=float(data["losses_p_mw_b"]),
-            losses_q_mvar_a=float(data["losses_q_mvar_a"]),
-            losses_q_mvar_b=float(data["losses_q_mvar_b"]),
-            delta_p_from_mw=float(data["delta_p_from_mw"]),
-            delta_q_from_mvar=float(data["delta_q_from_mvar"]),
-            delta_p_to_mw=float(data["delta_p_to_mw"]),
-            delta_q_to_mvar=float(data["delta_q_to_mvar"]),
-            delta_losses_p_mw=float(data["delta_losses_p_mw"]),
-            delta_losses_q_mvar=float(data["delta_losses_q_mvar"]),
+            p_from_mw_a=_procent_z_danych(data, "p_from_mw_a"),
+            p_from_mw_b=_procent_z_danych(data, "p_from_mw_b"),
+            q_from_mvar_a=_procent_z_danych(data, "q_from_mvar_a"),
+            q_from_mvar_b=_procent_z_danych(data, "q_from_mvar_b"),
+            p_to_mw_a=_procent_z_danych(data, "p_to_mw_a"),
+            p_to_mw_b=_procent_z_danych(data, "p_to_mw_b"),
+            q_to_mvar_a=_procent_z_danych(data, "q_to_mvar_a"),
+            q_to_mvar_b=_procent_z_danych(data, "q_to_mvar_b"),
+            losses_p_mw_a=_procent_z_danych(data, "losses_p_mw_a"),
+            losses_p_mw_b=_procent_z_danych(data, "losses_p_mw_b"),
+            losses_q_mvar_a=_procent_z_danych(data, "losses_q_mvar_a"),
+            losses_q_mvar_b=_procent_z_danych(data, "losses_q_mvar_b"),
+            delta_p_from_mw=_procent_z_danych(data, "delta_p_from_mw"),
+            delta_q_from_mvar=_procent_z_danych(data, "delta_q_from_mvar"),
+            delta_p_to_mw=_procent_z_danych(data, "delta_p_to_mw"),
+            delta_q_to_mvar=_procent_z_danych(data, "delta_q_to_mvar"),
+            delta_losses_p_mw=_procent_z_danych(data, "delta_losses_p_mw"),
+            delta_losses_q_mvar=_procent_z_danych(data, "delta_losses_q_mvar"),
             delta_p_from_percent=_procent_z_danych(data, "delta_p_from_percent"),
             delta_q_from_percent=_procent_z_danych(data, "delta_q_from_percent"),
             delta_p_to_percent=_procent_z_danych(data, "delta_p_to_percent"),
@@ -432,6 +444,10 @@ class PowerFlowRankingIssue:
 class PowerFlowComparisonSummary:
     """
     Summary statistics for power flow comparison.
+
+    FAB-E (E1): max_delta_v_pu/max_delta_angle_deg to ``None``, gdy ŻADNA szyna
+    nie ma porownywalnej delty (obie strony bez wspolnych szyn) — NIGDY
+    fabrykowane 0.0, co wygladaloby jak "brak zmian napiecia w calej sieci".
     """
 
     total_buses: int
@@ -441,8 +457,8 @@ class PowerFlowComparisonSummary:
     total_losses_p_mw_a: float
     total_losses_p_mw_b: float
     delta_total_losses_p_mw: float
-    max_delta_v_pu: float
-    max_delta_angle_deg: float
+    max_delta_v_pu: float | None
+    max_delta_angle_deg: float | None
     total_issues: int
     critical_issues: int
     major_issues: int
@@ -484,8 +500,8 @@ class PowerFlowComparisonSummary:
             total_losses_p_mw_a=float(data["total_losses_p_mw_a"]),
             total_losses_p_mw_b=float(data["total_losses_p_mw_b"]),
             delta_total_losses_p_mw=float(data["delta_total_losses_p_mw"]),
-            max_delta_v_pu=float(data["max_delta_v_pu"]),
-            max_delta_angle_deg=float(data["max_delta_angle_deg"]),
+            max_delta_v_pu=_procent_z_danych(data, "max_delta_v_pu"),
+            max_delta_angle_deg=_procent_z_danych(data, "max_delta_angle_deg"),
             total_issues=int(data["total_issues"]),
             critical_issues=int(data["critical_issues"]),
             major_issues=int(data["major_issues"]),
@@ -517,6 +533,9 @@ class PowerFlowComparisonResult:
         ranking: Tuple of ranking issues (sorted by severity DESC)
         summary: Summary statistics
         input_hash: SHA-256 hash of inputs for caching
+        provenance_a: proweniencja biegu A (B1: `RunProvenance.to_dict()` —
+            snapshot_hash/input_hash/koperta biegu R1)
+        provenance_b: proweniencja biegu B — jak wyżej
         created_at: Comparison timestamp
     """
 
@@ -529,6 +548,8 @@ class PowerFlowComparisonResult:
     ranking: tuple[PowerFlowRankingIssue, ...]
     summary: PowerFlowComparisonSummary
     input_hash: str
+    provenance_a: dict[str, Any] = field(default_factory=dict)
+    provenance_b: dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
@@ -543,6 +564,8 @@ class PowerFlowComparisonResult:
             "ranking": [i.to_dict() for i in self.ranking],
             "summary": self.summary.to_dict(),
             "input_hash": self.input_hash,
+            "provenance_a": self.provenance_a,
+            "provenance_b": self.provenance_b,
             "created_at": self.created_at.isoformat(),
         }
 
@@ -561,6 +584,8 @@ class PowerFlowComparisonResult:
             ranking=tuple(PowerFlowRankingIssue.from_dict(i) for i in data.get("ranking", [])),
             summary=PowerFlowComparisonSummary.from_dict(data["summary"]),
             input_hash=str(data["input_hash"]),
+            provenance_a=data.get("provenance_a", {}),
+            provenance_b=data.get("provenance_b", {}),
             created_at=(
                 datetime.fromisoformat(data["created_at"])
                 if "created_at" in data
@@ -618,8 +643,9 @@ class PowerFlowComparisonTrace:
         comparison_id: ID of the comparison
         run_a_id: First power flow run ID
         run_b_id: Second power flow run ID
-        snapshot_id_a: Snapshot ID from Run A
-        snapshot_id_b: Snapshot ID from Run B
+        snapshot_hash_a: Model snapshot hash from Run A (B1: R1 `CanonicalRun.
+            snapshot_hash` — zastępuje R2 `snapshot_id`, którego R1 nie niesie)
+        snapshot_hash_b: Model snapshot hash from Run B
         input_hash_a: Input hash from Run A
         input_hash_b: Input hash from Run B
         solver_version: Solver version used
@@ -631,8 +657,8 @@ class PowerFlowComparisonTrace:
     comparison_id: str
     run_a_id: str
     run_b_id: str
-    snapshot_id_a: str | None
-    snapshot_id_b: str | None
+    snapshot_hash_a: str | None
+    snapshot_hash_b: str | None
     input_hash_a: str
     input_hash_b: str
     solver_version: str
@@ -646,8 +672,8 @@ class PowerFlowComparisonTrace:
             "comparison_id": self.comparison_id,
             "run_a_id": self.run_a_id,
             "run_b_id": self.run_b_id,
-            "snapshot_id_a": self.snapshot_id_a,
-            "snapshot_id_b": self.snapshot_id_b,
+            "snapshot_hash_a": self.snapshot_hash_a,
+            "snapshot_hash_b": self.snapshot_hash_b,
             "input_hash_a": self.input_hash_a,
             "input_hash_b": self.input_hash_b,
             "solver_version": self.solver_version,
@@ -663,8 +689,8 @@ class PowerFlowComparisonTrace:
             comparison_id=str(data["comparison_id"]),
             run_a_id=str(data["run_a_id"]),
             run_b_id=str(data["run_b_id"]),
-            snapshot_id_a=data.get("snapshot_id_a"),
-            snapshot_id_b=data.get("snapshot_id_b"),
+            snapshot_hash_a=data.get("snapshot_hash_a"),
+            snapshot_hash_b=data.get("snapshot_hash_b"),
             input_hash_a=str(data.get("input_hash_a", "")),
             input_hash_b=str(data.get("input_hash_b", "")),
             solver_version=str(data.get("solver_version", "")),
@@ -679,96 +705,15 @@ class PowerFlowComparisonTrace:
 
 
 # =============================================================================
-# COMPARISON ENTITY (FOR PERSISTENCE)
-# =============================================================================
-
-
-class PowerFlowComparisonStatus(StrEnum):
-    """Status of a power flow comparison."""
-
-    CREATED = "CREATED"
-    COMPUTING = "COMPUTING"
-    FINISHED = "FINISHED"
-    FAILED = "FAILED"
-
-
-@dataclass(frozen=True)
-class PowerFlowComparison:
-    """
-    Power flow comparison entity.
-
-    Tracks the lifecycle of a power flow comparison from creation to completion.
-    Supports caching: same (run_a_id, run_b_id) pair returns cached result.
-
-    Attributes:
-        id: Unique comparison identifier (UUID)
-        project_id: Parent project ID
-        run_a_id: First power flow run ID
-        run_b_id: Second power flow run ID
-        status: Comparison lifecycle status
-        input_hash: SHA-256 hash for deduplication/caching
-        result_json: Full comparison result (after FINISHED)
-        trace_json: Full trace data (after FINISHED)
-        error_message: Error details (after FAILED)
-        created_at: Creation timestamp
-        finished_at: Completion timestamp
-    """
-
-    id: UUID
-    project_id: UUID
-    run_a_id: str
-    run_b_id: str
-    status: PowerFlowComparisonStatus
-    input_hash: str = ""
-    result_json: dict[str, Any] | None = None
-    trace_json: dict[str, Any] | None = None
-    error_message: str | None = None
-    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
-    finished_at: datetime | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        """Serialize to JSON-compatible dict."""
-        return {
-            "id": str(self.id),
-            "project_id": str(self.project_id),
-            "run_a_id": self.run_a_id,
-            "run_b_id": self.run_b_id,
-            "status": self.status.value,
-            "input_hash": self.input_hash,
-            "result_json": self.result_json,
-            "trace_json": self.trace_json,
-            "error_message": self.error_message,
-            "created_at": self.created_at.isoformat(),
-            "finished_at": self.finished_at.isoformat() if self.finished_at else None,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> PowerFlowComparison:
-        """Deserialize from dict."""
-        return cls(
-            id=UUID(data["id"]),
-            project_id=UUID(data["project_id"]),
-            run_a_id=str(data["run_a_id"]),
-            run_b_id=str(data["run_b_id"]),
-            status=PowerFlowComparisonStatus(data["status"]),
-            input_hash=data.get("input_hash", ""),
-            result_json=data.get("result_json"),
-            trace_json=data.get("trace_json"),
-            error_message=data.get("error_message"),
-            created_at=(
-                datetime.fromisoformat(data["created_at"])
-                if "created_at" in data
-                else datetime.now(UTC)
-            ),
-            finished_at=(
-                datetime.fromisoformat(data["finished_at"]) if data.get("finished_at") else None
-            ),
-        )
-
-
-# =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
+#
+# CV-3.3-B: `PowerFlowComparisonStatus` + `PowerFlowComparison` (byt trwałości
+# dla cache'a R3 `study_results`) usunięte — porównanie jest odtąd BEZSTANOWE
+# (żadna trwałość poza dwoma biegami R1, które i tak są append-only): ten sam
+# `comparison_id` zawsze przelicza się identycznie, więc nie ma czego
+# cache'ować ani czyjego statusu utrzymywać (`compare()` w
+# `application/power_flow_comparison/service.py`).
 
 
 def compute_pf_comparison_input_hash(run_a_id: str, run_b_id: str) -> str:
@@ -790,34 +735,6 @@ def compute_pf_comparison_input_hash(run_a_id: str, run_b_id: str) -> str:
         sort_keys=True,
     )
     return hashlib.sha256(canonical_input.encode()).hexdigest()
-
-
-def new_power_flow_comparison(
-    *,
-    project_id: UUID,
-    run_a_id: str,
-    run_b_id: str,
-) -> PowerFlowComparison:
-    """
-    Factory function to create a new PowerFlowComparison.
-
-    Args:
-        project_id: ID of the project
-        run_a_id: ID of the first power flow run
-        run_b_id: ID of the second power flow run
-
-    Returns:
-        New PowerFlowComparison in CREATED status
-    """
-    input_hash = compute_pf_comparison_input_hash(run_a_id, run_b_id)
-    return PowerFlowComparison(
-        id=uuid4(),
-        project_id=project_id,
-        run_a_id=run_a_id,
-        run_b_id=run_b_id,
-        status=PowerFlowComparisonStatus.CREATED,
-        input_hash=input_hash,
-    )
 
 
 def get_ranking_thresholds() -> dict[str, float]:
@@ -856,6 +773,20 @@ class PowerFlowRunNotFoundError(PowerFlowComparisonError):
         super().__init__(f"Power flow run nie znaleziony: {run_id}")
 
 
+class PowerFlowRunWrongTypeError(PowerFlowComparisonError):
+    """CV-3.3-B: bieg R1 istnieje, ale nie jest biegiem rozpływu mocy (PF).
+
+    Osobny błąd od `PowerFlowRunNotFoundError` — 422, nie 404: bieg NAPRAWDĘ
+    istnieje, tylko porównanie PF nie może go zinterpretować (inny rodzaj
+    analizy). Router mapuje to na `422 Unprocessable Entity`.
+    """
+
+    def __init__(self, run_id: str, analysis_type: str):
+        self.run_id = run_id
+        self.analysis_type = analysis_type
+        super().__init__(f"Bieg {run_id} nie jest biegiem rozpływu mocy (rodzaj: {analysis_type})")
+
+
 class PowerFlowRunNotFinishedError(PowerFlowComparisonError):
     """Raised when a power flow run is not finished."""
 
@@ -880,11 +811,3 @@ class PowerFlowComparisonNotFoundError(PowerFlowComparisonError):
     def __init__(self, comparison_id: str):
         self.comparison_id = comparison_id
         super().__init__(f"Power flow comparison nie znalezione: {comparison_id}")
-
-
-class PowerFlowResultNotFoundError(PowerFlowComparisonError):
-    """Raised when power flow results are not found for a run."""
-
-    def __init__(self, run_id: str):
-        self.run_id = run_id
-        super().__init__(f"Wyniki power flow nie znalezione dla run: {run_id}")

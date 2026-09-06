@@ -126,7 +126,9 @@ export const StudyCaseEditor: React.FC<StudyCaseEditorProps> = ({
             <p className="text-sm text-gray-500">{studyCase.description}</p>
           )}
         </div>
-        <div className={`text-sm font-medium ${statusColor}`}>
+        {/* CV-2-W: przyczyna statusu (`result_status_reason_pl`) pochodzi z
+            backendu — ekran jej nie tłumaczy ani nie uzupełnia. */}
+        <div className={`text-sm font-medium ${statusColor}`} title={studyCase.result_status_reason_pl}>
           {statusLabel}
         </div>
       </div>

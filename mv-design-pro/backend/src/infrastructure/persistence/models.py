@@ -520,6 +520,9 @@ class CanonicalRunORM(Base):
     power_flow_trace_json: Mapped[dict[str, Any] | None] = mapped_column(
         DeterministicJSON(), nullable=True
     )
+    #: CV-2: koperta rewizji biegu (addytywna, nullable — dokladana do istniejacych
+    #: baz przez `db._dolacz_kolumny_addytywne`).
+    envelope_json: Mapped[dict[str, Any] | None] = mapped_column(DeterministicJSON(), nullable=True)
 
 
 class CanonicalRunBranchFlowORM(Base):
@@ -554,6 +557,52 @@ class CanonicalRunBranchFlowORM(Base):
     contributions_json: Mapped[list[dict[str, Any]]] = mapped_column(
         DeterministicJSON(), nullable=False
     )
+    #: Ślad WHITE BOX podziału prądu (`results[].branch_flow_trace`, TH-1) — ta sama
+    #: klasa ładunku co wkłady, więc ten sam wiersz tabeli. Kolumna ADDYTYWNA
+    #: (nullable): wiersze zapisane przed jej dodaniem czytają się jako `None`
+    #: (uczciwy brak śladu, nie pusta lista); dokładana do istniejącej bazy przez
+    #: `db.init_db` (`_dolacz_kolumny_addytywne`).
+    branch_flow_trace_json: Mapped[list[dict[str, Any]] | None] = mapped_column(
+        DeterministicJSON(), nullable=True
+    )
+
+
+class RunBatchORM(Base):
+    """Seria biegow kanonicznych (karta CV-3.3-C, R2). Zastepuje trzy slowniki
+    w pamieci (`_batches`/`_case_batches`/`_pinned_hashes`,
+    `application/batch_execution_service.py` sprzed tej karty) — seria ginela
+    z procesem backendu, choc kazdy bieg pozycji jest trwaly w `canonical_runs`
+    (R1). Pozycje sa jedna kolumna JSON (`items_json`, lista uporzadkowana wg
+    `position`): kazda niesie WYLACZNIE `canonical_run_id` wskazujacy na wynik
+    w R1 — seria NIE jest drugim rejestrem wynikow.
+    """
+
+    __tablename__ = "run_batches"
+    __table_args__ = (
+        Index("ix_run_batches_case_id_created_at", "case_id", "created_at"),
+        Index("ix_run_batches_project_id_created_at", "project_id", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(GUID(), primary_key=True)
+    project_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    case_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    analysis_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    #: Etykieta serii — kolumna schematu (karta §0 C1); brak dostawcy UI w tej
+    #: karcie, wiec zawsze `None` dopoki formularz tworzenia serii nie dostanie
+    #: pola nazwy (osobna karta UI, nie fantom: kolumna jest realna, tylko
+    #: niewypelniana).
+    name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    #: Koperta rewizji Z CHWILI UTWORZENIA serii (`enm/envelope.py`) — zapis
+    #: informacyjny, seria NIE kopiuje tej migawki do pozycji (karta C5).
+    envelope_json: Mapped[dict[str, Any] | None] = mapped_column(DeterministicJSON(), nullable=True)
+    #: Pozycje serii, uporzadkowane wg `position` — `domain.run_batch.RunBatchItem.to_dict()`.
+    items_json: Mapped[list[dict[str, Any]]] = mapped_column(
+        DeterministicJSON(), nullable=False, default=list
+    )
+    batch_input_hash: Mapped[str] = mapped_column(String(128), nullable=False)
 
 
 class AnalysisRunIndexORM(Base):
@@ -578,43 +627,12 @@ class AnalysisRunIndexORM(Base):
     meta_json: Mapped[dict[str, Any] | None] = mapped_column(DeterministicJSON(), nullable=True)
 
 
-class StudyRunORM(Base):
-    """
-    Study Run ORM model — P10a immutable calculation execution.
-
-    P10a ADDITIONS:
-    - network_snapshot_id: BINDING reference to specific snapshot
-    - solver_version_hash: Ensures reproducibility
-    - result_state: VALID / OUTDATED validity tracking
-    """
-
-    __tablename__ = "study_runs"
-
-    id: Mapped[UUID] = mapped_column(GUID(), primary_key=True)
-    project_id: Mapped[UUID] = mapped_column(GUID(), ForeignKey("projects.id"), nullable=False)
-    case_id: Mapped[UUID] = mapped_column(GUID(), ForeignKey("study_cases.id"), nullable=False)
-    analysis_type: Mapped[str] = mapped_column(String(100), nullable=False)
-    input_hash: Mapped[str] = mapped_column(String(128), nullable=False)
-    # P10a: BINDING reference to specific network snapshot
-    network_snapshot_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    # P10a: Hash of solver version for reproducibility
-    solver_version_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    # P10a: Result validity state (VALID, OUTDATED)
-    result_state: Mapped[str] = mapped_column(String(20), nullable=False, default="VALID")
-    status: Mapped[str] = mapped_column(String(50), nullable=False)
-    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-
-
-class StudyResultORM(Base):
-    __tablename__ = "study_results"
-
-    id: Mapped[UUID] = mapped_column(GUID(), primary_key=True)
-    run_id: Mapped[UUID] = mapped_column(GUID(), ForeignKey("study_runs.id"), nullable=False)
-    project_id: Mapped[UUID] = mapped_column(GUID(), ForeignKey("projects.id"), nullable=False)
-    result_type: Mapped[str] = mapped_column(String(100), nullable=False)
-    result_jsonb: Mapped[dict[str, Any]] = mapped_column(DeterministicJSON(), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+# CV-3.3-B: `StudyRunORM` (`study_runs`, R3) i `StudyResultORM` (`study_results`,
+# R3) usunięte — zero konsumentów po przepięciu porównań (`comparison`,
+# `power_flow_comparison`, `protection_comparison`) i biegów zabezpieczeń
+# (`enm.canonical_analysis`, `analysis_type="protection_sn"`) na R1
+# (`canonical_runs`, `CanonicalRunORM`). Tabele same (bez ORM) usunięte w
+# `infrastructure/migrations/` — patrz wpis tam.
 
 
 class SldDiagramORM(Base):

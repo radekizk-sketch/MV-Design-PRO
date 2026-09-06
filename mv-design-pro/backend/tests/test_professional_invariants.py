@@ -177,10 +177,11 @@ def _find_any_annotations_in_file(filepath: Path) -> list[tuple[int, str]]:
     - canonicalize family (recursive canonicalizer/hash-of-arbitrary-structure
       by definition uses Any): _canonicalize_value, _canonicalize,
       _canonicalize_for_hash, canonicalize, compute_hash — five names, one
-      class, across domain/project_archive.py, domain/study_case_engine.py,
-      domain/trace_v2/artifact.py, domain/execution.py,
-      domain/load_flow_input.py, domain/result_contract_v1.py,
-      domain/analysis_run.py, enm/canonical_analysis.py
+      class, across domain/project_archive.py, domain/trace_v2/artifact.py,
+      domain/execution.py, domain/result_contract_v1.py, domain/analysis_run.py,
+      enm/canonical_analysis.py (domain/study_case_engine.py removed CV-3.2,
+      domain/load_flow_input.py removed CV-4.2 — both were listed users of
+      this same allowlisted name set, not a separate one)
     - stable sort key (heterogeneous item → deterministic sort key, by
       definition uses Any): _stable_sort_key
     - protection interop (domain layer reads a protection-analysis result
@@ -783,7 +784,6 @@ def test_case_immutability_enforcement():
 
     from domain.study_case import (
         StudyCaseConfig,
-        StudyCaseResultStatus,
         new_study_case,
     )
 
@@ -805,9 +805,6 @@ def test_case_immutability_enforcement():
         case.name = "Mutated!"  # type: ignore[misc]
 
     with pytest.raises((FrozenInstanceError, AttributeError)):
-        case.result_status = StudyCaseResultStatus.FRESH  # type: ignore[misc]
-
-    with pytest.raises((FrozenInstanceError, AttributeError)):
         case.is_active = True  # type: ignore[misc]
 
     # Verify that modification methods return NEW instances (not mutate)
@@ -816,10 +813,12 @@ def test_case_immutability_enforcement():
     assert updated_case.name == "Updated Name"
     assert case.name == "Test Case", "Original case must be unchanged"
 
-    # Clone must have NONE status and new ID
+    # Clone must have a new ID and no results of its own. Status wynikow klonu nie
+    # jest tu POLEM (CV-2-W) — klon nie ma wlasnych biegow, wiec wychodzi NONE z
+    # derywacji; pin tego zachowania przez HTTP:
+    # `tests/api/test_status_wynikow_przypadku.py::test_wszystkie_odpowiedzi_z_przypadkiem_daja_ten_sam_werdykt`.
     cloned = case.clone("Cloned Case")
     assert cloned.id != case.id, "Clone must have new ID"
-    assert cloned.result_status == StudyCaseResultStatus.NONE, "Clone must have NONE status"
     assert cloned.is_active is False, "Clone must not be active"
 
 

@@ -265,6 +265,10 @@ def _uruchom(tor: str, pole_ref: str, rodzina_ref: str | None) -> dict[str, Any]
                 }
             ],
             "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
+            # Karta FAB-G: transformator WN/SN GPZ wymaga jawnej pary
+            # hv_voltage_kv + transformer_sn_mva (albo transformer_catalog_ref).
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
         }
         if rodzina_ref:
             payload["switchgear_family_ref"] = rodzina_ref

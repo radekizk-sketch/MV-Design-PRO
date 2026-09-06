@@ -161,6 +161,8 @@ async function zbudujSiecGotowaDoObliczen(
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
+    hv_voltage_kv: 110.0,
+    transformer_sn_mva: 25.0,
   });
 
   for (const [idx, length] of [300, 250, 200].entries()) {
@@ -193,6 +195,21 @@ async function zbudujSiecGotowaDoObliczen(
       create: true,
       catalog_binding: buildCatalogBinding('TRAFO_SN_NN', TRAFO_ID),
     },
+    // Odbiór „potrzeby własne" (G-STK-3, `_materialize_station_auxiliary_load`)
+    // — JAWNY, bo bez niego sieć nie ma ŻADNEGO odbioru/generatora, a
+    // `POST .../runs {analysis_type:'LOAD_FLOW'}` (test K5-B b niżej) odrzuca
+    // wtedy zgłoszenie: `analysis_available.load_flow = bool(enm.loads) or
+    // bool(enm.generators)` (`enm/canonical_analysis.py`), oba puste bez tego
+    // bloku (naprawa regresji CI-D — 30 s+ nigdy nie pomoże, gdy backend
+    // odpowiada 409 od razu). Wartości jak w `legenda-na-zadanie.spec.ts`
+    // (ten sam wzorzec fixture'u).
+    station_auxiliary: { active_power_kw: 5.0, cos_phi: 0.95 },
+    // Układ uziemienia sieci nN (G-STK-1) — WYMAGANY konsekwencją powyższego:
+    // stacja z odbiorem nN bez `meta.nn_earthing_system` jest E063 (BLOKER,
+    // `enm/validator.py` — IEC 60364-4-41, ochrona przeciwporażeniowa), więc
+    // pętla domykania blokerów niżej (bez obsługi kodu E063) nigdy by go nie
+    // zamknęła i `readiness.ready` zostałby `false` na stałe (naprawa CI-D).
+    nn_earthing: { lv_system: 'TN-S' },
   });
 
   // Szyny SN stacji — bus_ref rozwiązywalny na stację (resolveStationRef →

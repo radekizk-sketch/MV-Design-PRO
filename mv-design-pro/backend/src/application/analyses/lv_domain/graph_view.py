@@ -52,7 +52,6 @@ i wchodzą do grafu WYŁĄCZNIE, gdy model je niesie (§12).
 from __future__ import annotations
 
 import math
-from collections import deque
 from dataclasses import dataclass
 from typing import Any
 
@@ -60,6 +59,7 @@ from application.analyses.fault_loop.service import (
     _find_station as find_station,  # reeksport publiczny (dzielony z upstream_equivalent.py)
 )
 from enm.models import Branch, Bus, EnergyNetworkModel, Substation, Transformer
+from network_model.core.topologia import poziomy, przeglad_wszerz_od
 from network_model.core.voltage_factor import LV_BAND_LIMIT_KV
 
 from .energization import EnergizationView, TerminalState, build_energization_view
@@ -305,12 +305,12 @@ def build_lv_domain_view(enm: EnergyNetworkModel, station_ref: str) -> dict[str,
     domain_branches: dict[str, Branch] = {}
     boundary_links: list[BoundaryLink] = []
     bus_depth: dict[str, int] = {b: 0 for b in seed_bus_refs}
-    visited: set[str] = set(seed_bus_refs)
-    queue: deque[str] = deque(sorted(seed_bus_refs))
 
-    while queue:
-        current = queue.popleft()
+    def _sasiedzi_domeny(current: str) -> list[tuple[Branch, str]]:
+        """Sąsiedzi szyny w domenie (z efektami: granice, wchłonięte podrozdzielnice,
+        gałęzie domeny) — kolejność (branch.ref_id, sąsiad) jak dotąd."""
         domain_bus_refs.add(current)
+        wynik: list[tuple[Branch, str]] = []
         neighbors = sorted(adjacency.get(current, []), key=lambda item: (item[1].ref_id, item[0]))
         for neighbor_ref, branch in neighbors:
             owner = owner_by_bus.get(neighbor_ref)
@@ -332,10 +332,14 @@ def build_lv_domain_view(enm: EnergyNetworkModel, station_ref: str) -> dict[str,
                 absorbed_station_refs.add(owner.ref_id)
 
             domain_branches[branch.ref_id] = branch
-            if neighbor_ref not in visited:
-                visited.add(neighbor_ref)
-                bus_depth[neighbor_ref] = bus_depth[current] + 1
-                queue.append(neighbor_ref)
+            wynik.append((branch, neighbor_ref))
+        return wynik
+
+    # Jedyne jądro przeglądu (``network_model.core.topologia.przeglad_wszerz_od``, CV-4.3):
+    # wszystkie szyny nasienne NARAZ na poziomie 0 (posortowane) — jak dawna jedna
+    # kolejka zaczynająca od wszystkich nasion; głębokość = odległość od najbliższego.
+    drzewo = przeglad_wszerz_od(sorted(seed_bus_refs), _sasiedzi_domeny)
+    bus_depth.update(poziomy(drzewo))
 
     domain_transformers = sorted(
         (t for t in enm.transformers if t.lv_bus_ref in domain_bus_refs),

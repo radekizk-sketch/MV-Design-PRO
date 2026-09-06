@@ -22,6 +22,7 @@ from network_model.core.generator import (
     GeneratorSN,
     GeneratorType,
 )
+from network_model.pochodne import moc_pozorna_z_czynnej_mva
 from network_model.validation.validator import Severity, ValidationIssue
 
 if TYPE_CHECKING:
@@ -231,7 +232,7 @@ def validate_power_limit(
     # Transformator: rated_power_mva [MVA]
     # Przybliżenie: P [MW] ~ S [MVA] * cos_phi
     generator_apparent_mva = (
-        generator.rated_power_mw / generator.cos_phi
+        moc_pozorna_z_czynnej_mva(generator.rated_power_mw, generator.cos_phi)
         if generator.cos_phi > 0
         else generator.rated_power_mw
     )

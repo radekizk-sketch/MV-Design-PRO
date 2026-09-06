@@ -22,6 +22,7 @@ import json
 from typing import Any
 
 from api.document_store import store_generated_document
+from api.klucz_twin_dep import KluczTwin
 from application.analyses.der_sn_track import extract_der_sn_track, sum_apparent_power_mva
 from application.analyses.lista_materialowa import build_bom_view
 from application.analyses.raport_zgodnosci import build_compliance_report_from_track
@@ -31,13 +32,13 @@ from fastapi import APIRouter, HTTPException, Query, status
 router = APIRouter(tags=["der-sn-documents"])
 
 
-def _require_enm(case_id: str) -> dict[str, Any]:
-    if not has_enm(case_id):
+def _require_enm(case_id: str, klucz: str) -> dict[str, Any]:
+    if not has_enm(klucz):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Przypadek {case_id} nie ma dokumentu ENM.",
         )
-    return get_enm(case_id).model_dump(mode="json")
+    return get_enm(klucz).model_dump(mode="json")
 
 
 def _json_bytes(view: dict[str, Any]) -> bytes:
@@ -93,6 +94,25 @@ def _cable_derating_from_model(cable: dict[str, Any]) -> Any:
         return WARUNKI_KATALOGOWE
 
 
+def _zastosowana_wartosc(payload: dict[str, Any], klucz: str, etykieta: str) -> float:
+    """Wartość RZECZYWIŚCIE ZASTOSOWANEGO elementu (transformator/kabel) do
+    porównania z propozycją D2.
+
+    Brak pola nie może być cichym zerem (FAB-E, E1): fabrykowana wartość 0.0
+    zgłosiłaby FAŁSZYWE odstępstwo („zastosowano 0 MVA/mm²") zamiast uczciwego
+    pominięcia sekcji, które ta funkcja już robi dla katalogu niekompletnego
+    (``except Exception`` w ``_compute_d2_deviations`` poniżej) — podniesienie
+    wyjątku tutaj trafia w TĘ SAMĄ, już istniejącą, udokumentowaną ścieżkę.
+    """
+    wartosc = payload.get(klucz)
+    if wartosc is None:
+        raise ValueError(
+            f"Brak pola {klucz!r} zastosowanego {etykieta} — brak danych do "
+            "porównania z propozycją D2."
+        )
+    return float(wartosc)
+
+
 def _compute_d2_deviations(track: Any) -> list[dict[str, Any]] | None:
     """Odstępstwa zastosowanego doboru od propozycji D2 (⚠). ``None`` gdy brak danych.
 
@@ -134,7 +154,7 @@ def _compute_d2_deviations(track: Any) -> list[dict[str, Any]] | None:
         )
         deviations: list[dict[str, Any]] = []
         if tr_result.proposal is not None:
-            applied_sn = float(tr.get("sn_mva") or 0.0)
+            applied_sn = _zastosowana_wartosc(tr, "sn_mva", "transformatora")
             deviations.append(
                 {
                     "parametr": "moc_transformatora_mva",
@@ -157,7 +177,9 @@ def _compute_d2_deviations(track: Any) -> list[dict[str, Any]] | None:
 
         from enm.der_sn_validation import rated_current_a
 
-        tr_current = rated_current_a(float(tr.get("sn_mva") or 0.0), float(sn_bus_kv))
+        tr_current = rated_current_a(
+            _zastosowana_wartosc(tr, "sn_mva", "transformatora"), float(sn_bus_kv)
+        )
         if tr_current is not None:
             # V12K-207 (F-K7): propozycję trzeba policzyć dla TYCH SAMYCH warunków
             # ułożenia, które przyjęto w doborze — inaczej raport zgłaszałby odstępstwo
@@ -173,7 +195,7 @@ def _compute_d2_deviations(track: Any) -> list[dict[str, Any]] | None:
                 )
             )
             if cable_result.proposal is not None:
-                applied_cross = float(cable.get("cross_section_mm2") or 0.0)
+                applied_cross = _zastosowana_wartosc(cable, "cross_section_mm2", "kabla")
                 deviations.append(
                     {
                         "parametr": "przekroj_kabla_mm2",
@@ -192,6 +214,7 @@ def _compute_d2_deviations(track: Any) -> list[dict[str, Any]] | None:
 @router.get("/api/der-sn/{case_id}/compliance-report")
 def get_der_sn_compliance_report(
     case_id: str,
+    klucz: KluczTwin,
     generator_ref: str | None = Query(default=None),
     run_status: str | None = Query(default=None),
     readiness_codes: list[str] | None = Query(default=None),
@@ -199,7 +222,7 @@ def get_der_sn_compliance_report(
     zapisz_do_magazynu: bool = Query(default=False),
 ) -> dict[str, Any]:
     """Raport zgodności ✓/⚠/❌ toru DER-SN (wymaganie 13). 404 gdy brak toru."""
-    enm = _require_enm(case_id)
+    enm = _require_enm(case_id, klucz)
     track = extract_der_sn_track(enm, generator_ref)
     if track is None:
         raise HTTPException(
@@ -227,12 +250,13 @@ def get_der_sn_compliance_report(
 @router.get("/api/der-sn/{case_id}/bom")
 def get_der_sn_bom(
     case_id: str,
+    klucz: KluczTwin,
     generator_ref: str | None = Query(default=None),
     project_id: str | None = Query(default=None),
     zapisz_do_magazynu: bool = Query(default=False),
 ) -> dict[str, Any]:
     """Lista materiałowa (BOM) toru DER-SN. 404 gdy brak toru."""
-    enm = _require_enm(case_id)
+    enm = _require_enm(case_id, klucz)
     view = build_bom_view(enm, generator_ref)
     if view is None:
         raise HTTPException(

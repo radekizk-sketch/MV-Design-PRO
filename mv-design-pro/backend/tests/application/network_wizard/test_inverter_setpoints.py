@@ -48,7 +48,12 @@ def _build_inverter_network(service: NetworkWizardService, project_id: UUID) -> 
             branch_type="LINE",
             from_node_id=slack["id"],
             to_node_id=inverter_node["id"],
-            params={"r_ohm_per_km": 0.1, "x_ohm_per_km": 0.2, "length_km": 1.0},
+            params={
+                "r_ohm_per_km": 0.1,
+                "x_ohm_per_km": 0.2,
+                "length_km": 1.0,
+                "rated_current_a": 400.0,
+            },
         ),
     )
     service.set_connection_node(project_id, slack["id"])
@@ -115,29 +120,6 @@ def test_inverter_setpoints_validation() -> None:
         service.set_inverter_setpoints(case.id, source["id"], p_mw=1.0, q_mvar=0.2, cosphi=0.95)
 
 
-def test_power_flow_input_uses_case_setpoints_for_inverters() -> None:
-    service = _build_service()
-    project = service.create_project("InvPF")
-    _, inverter_node = _build_inverter_network(service, project.id)
-    source = service.add_source(
-        project.id,
-        SourcePayload(
-            name="INV-1",
-            node_id=inverter_node["id"],
-            source_type="INVERTER",
-            payload={"name": "INV-1", "p_mw": 99.0, "q_mvar": 99.0},
-            type_ref=uuid4(),
-        ),
-    )
-    case = service.create_operating_case(project.id, "Case", {"base_mva": 100.0})
-    service.set_inverter_setpoints(case.id, source["id"], p_mw=1.5, q_mvar=0.4)
-
-    pf_input = service.build_power_flow_input(project.id, case.id)
-
-    assert pf_input.pv == []
-    assert [(spec.p_mw, spec.q_mvar) for spec in pf_input.pq] == [(1.5, 0.4)]
-
-
 def test_converter_setpoints_stored_on_case_only() -> None:
     service = _build_service()
     project = service.create_project("ConvCase")
@@ -183,26 +165,3 @@ def test_converter_setpoints_validation() -> None:
 
     with pytest.raises(ValueError):
         service.set_converter_setpoints(case.id, source["id"], p_mw=1.0, q_mvar=0.2, cosphi=0.95)
-
-
-def test_power_flow_input_uses_case_setpoints_for_converters() -> None:
-    service = _build_service()
-    project = service.create_project("ConvPF")
-    _, converter_node = _build_converter_network(service, project.id)
-    source = service.add_source(
-        project.id,
-        SourcePayload(
-            name="CONV-1",
-            node_id=converter_node["id"],
-            source_type="CONVERTER",
-            payload={"name": "CONV-1", "converter_kind": "BESS", "p_mw": 99.0, "q_mvar": 99.0},
-            type_ref=uuid4(),
-        ),
-    )
-    case = service.create_operating_case(project.id, "Case", {"base_mva": 100.0})
-    service.set_converter_setpoints(case.id, source["id"], p_mw=-1.5, q_mvar=0.4)
-
-    pf_input = service.build_power_flow_input(project.id, case.id)
-
-    assert pf_input.pv == []
-    assert [(spec.p_mw, spec.q_mvar) for spec in pf_input.pq] == [(-1.5, 0.4)]

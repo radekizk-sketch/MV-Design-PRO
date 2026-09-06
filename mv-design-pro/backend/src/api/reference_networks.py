@@ -21,6 +21,11 @@ from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/v1/reference-networks", tags=["reference-networks"])
 
+#: solver_kind identyfikujace analize rozplywu mocy w rejestrze siec
+#: referencyjnych (`ReferenceNetwork.supported_solvers`) — patrz uzycie w
+#: `_run_solver_for_network` (FAB-E, E4).
+_POWER_FLOW_SOLVER_KINDS = frozenset({"power_flow_newton", "power_flow_unbalanced_bfs"})
+
 
 class ReferenceNetworkSummary(BaseModel):
     """Lekkie podsumowanie dla listy w UI."""
@@ -183,8 +188,18 @@ def _run_solver_for_network(network_id: str, solver_kind: str) -> dict[str, Any]
     net = get_reference_network(network_id)
     enm = net.builder_fn()
 
-    # PF/BFS: prawdziwy solver
-    actual = solve_reference_network(network_id, enm)
+    # PF/BFS: prawdziwy solver — TYLKO gdy siec jest do tego zarejestrowana.
+    # FAB-E (E4): fikstury dedykowane WYLACZNIE zwarciom (supported_solvers =
+    # tylko "short_circuit_iec60909") czesto podaja dane galezi w Ohm/km, bez
+    # odpowiednikow w p.u. — liczenie rozplywu na takim wejsciu wymuszaloby
+    # fikcyjne r_pu/x_pu (podstawiane wczesniej cicho jako 0.01/0.05),
+    # kompletnie nie zwiazane z fikstura, tylko po to, zeby "cos policzyc" dla
+    # analizy, ktorej ta siec nigdy nie mial reprezentowac. Brak wsparcia PF
+    # dla sieci = brak wyniku PF (pusty), nie wynik z fikcyjnego wejscia.
+    if _POWER_FLOW_SOLVER_KINDS.isdisjoint(net.supported_solvers):
+        actual: dict[str, Any] = {"buses": {}, "trace": []}
+    else:
+        actual = solve_reference_network(network_id, enm)
 
     # SC: prawdziwy solver IEC 60909, expected JSON sluzy tylko do porownania.
     actual_sc: dict[str, dict[str, Any]] = {}

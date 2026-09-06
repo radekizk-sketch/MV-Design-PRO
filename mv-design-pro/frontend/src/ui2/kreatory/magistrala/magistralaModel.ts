@@ -46,7 +46,13 @@ export const DANE_DOMYSLNE: MagistralaFormData = {
   next_step: 'station',
 };
 
-function isPositive(v: number | null): v is number {
+/**
+ * Eksportowana (S9-5, `karta_e2e_s95.md`): reużyta wprost przez komponent
+ * kreatora do sygnału gotowości zapisu — jedno źródło prawdy dla walidacji
+ * przy zapisie (`walidujFormularz`) i dla bramki `disabled`/`data-status`,
+ * zamiast duplikować ten sam warunek dwoma niezależnymi wyrażeniami.
+ */
+export function isPositive(v: number | null): v is number {
   return typeof v === 'number' && Number.isFinite(v) && v > 0;
 }
 

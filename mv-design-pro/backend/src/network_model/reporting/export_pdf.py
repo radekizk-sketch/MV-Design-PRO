@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from network_model.reporting.czcionki import zarejestruj_czcionki
+from network_model.reporting.missing_value import format_wynik
 
 if TYPE_CHECKING:
     from network_model.solvers.power_flow_result import PowerFlowResultV1
@@ -488,7 +489,7 @@ def generate_pf_report_pdf(
     params = [
         f"Status: {'Zbiezny' if data.get('converged') else 'Niezbiezny'}",
         f"Iteracje: {data.get('iterations_count', _dash)}",
-        f"Bazowa: {data.get('base_mva', 100)} MVA",
+        f"Bazowa: {format_wynik(data.get('base_mva'))} MVA",
     ]
     lay.draw_subtitle(" | ".join(params))
     lay.space()
@@ -630,8 +631,8 @@ def generate_pf_report_pdf(
                 lay.draw_table_row(
                     [
                         str(it.get("k", "\u2014")),
-                        f"{it.get('norm_mismatch', 0):.2e}",
-                        f"{it.get('max_mismatch_pu', 0):.2e}",
+                        format_wynik(it.get("norm_mismatch"), ".2e"),
+                        format_wynik(it.get("max_mismatch_pu"), ".2e"),
                         it.get("cause_if_failed") or "OK",
                     ],
                     iter_cols,

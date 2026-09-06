@@ -4,8 +4,9 @@ ROZSTRZYGNIECIE ZNALEZISKA Z8 audytu FLOW. Do tej pory w systemie zylo CZTERY re
 kodow gotowosci, prawie rozlaczne:
 
   1. `READINESS_CODES` (`domain/canonical_operations.py`) — kanon tresci: komunikat PL,
-     poziom, priorytet, `fix_action_id`, nawigacja naprawcza. Do V12K-204 nie mial
-     ZADNEGO konsumenta w czasie dzialania.
+     poziom, priorytet, nawigacja naprawcza (jedyna REALNA sciezka naprawcza — kasacja
+     fantoma bez wykonawcy opisana w `docs/v12xx/REJESTR_KONFLIKTOW.md` V12K-338).
+     Do V12K-204 nie mial ZADNEGO konsumenta w czasie dzialania.
   2. `ValidationIssue` walidatora ENM (`enm/validator.py`, kody E001..W040 i kilka
      kropkowanych) — JEDYNY realny dostawca sygnalu do UI, bo tylko walidator zna stan
      modelu. Kodow wspolnych z kanonem: ZERO.
@@ -50,8 +51,20 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     "W041": "transformer.bay_missing",
     # „Magistrala nie ma segmentow" == brak segmentu magistrali.
     "I004": "trunk.segment_missing",
+    # „Zrodlo nie jest podlaczone do istniejacej szyny" == zrodlo bez polaczenia
+    # (odbior CV-3.3-B: jedyny dawny emiter kanonu byl w skasowanym torze R2).
+    "sources.bus_missing": "source.connection_missing",
     # „Magistrala pierscieniowa nie ma punktu normalnie otwartego" == wymog NOP.
     "I005": "ring.nop_required",
+    # Karta CV-4.1b (A3-04): generator w trybie regulacji napiecia bez nastawy U
+    # albo bez granic Q == generator w trybie regulacji napiecia bez kompletnej
+    # nastawy (ten sam warunek, `enm/validator.py` -> `domain/canonical_operations.py`).
+    "generators.voltage_control_incomplete": "generator.voltage_setpoint_missing",
+    # Domkniecie CV-4.1b (odbior): tryb regulacji napiecia bez profilu NC RfG operatora
+    # / z profilem nieznanym == brak profilu; profil bez zdolnosci voltage_control ==
+    # tryb niedopuszczony (ten sam warunek co bramka kreatora OZE, `enm/validator.py`).
+    "generators.voltage_control_profile_missing": "generator.voltage_control_profile_missing",
+    "generators.voltage_control_not_permitted": "generator.voltage_control_not_permitted",
 }
 
 # ---------------------------------------------------------------------------
@@ -169,7 +182,12 @@ KODY_KANONU_ZAREZERWOWANE: dict[str, str] = {
     "nn.source.catalog_missing": _POWOD_NN,
     "nn.source.parameters_missing": _POWOD_NN,
     "nn.voltage_missing": _POWOD_NN,
-    "pv.control_mode_missing": _POWOD_NN,
+    # "pv.control_mode_missing" USUNIETE z rezerwacji (karta FAB-D2, D6):
+    # emiter jest teraz w application/calculation_readiness/service.py
+    # (`_check_power_flow`) — falownik PV bez `control_mode` w
+    # zmaterializowanych parametrach zglasza ten kod jako BLOCKER. Kod ma
+    # droge do projektanta, wiec rezerwacja bylaby od tej chwili falszywa
+    # (por. `readiness_consumption_guard.py`, niezmiennik (a)).
     "bess.energy_module_missing": _POWOD_NN,
     "bess.soc_limits_invalid": _POWOD_NN,
     "ups.backup_time_invalid": _POWOD_NN,
@@ -275,7 +293,6 @@ def opis_kanoniczny(kod_zgloszenia: str) -> dict[str, Any] | None:
         "canonical_priority": spec.priority,
         "canonical_area": spec.area.value,
         "canonical_message_pl": spec.message_pl,
-        "canonical_fix_action_id": spec.fix_action_id,
         "canonical_fix_navigation": spec.fix_navigation,
     }
 
@@ -303,7 +320,6 @@ def widok_rejestru() -> dict[str, Any]:
             "level": spec.level.value,
             "priority": spec.priority,
             "message_pl": spec.message_pl,
-            "fix_action_id": spec.fix_action_id,
             "fix_navigation": spec.fix_navigation,
             "reserved_reason": KODY_KANONU_ZAREZERWOWANE.get(spec.code),
         }

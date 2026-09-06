@@ -7,15 +7,12 @@ Production path:
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from application.execution_engine import ExecutionEngineService
+from api.klucz_twin_dep import KluczTwin
 from domain.execution import ExecutionAnalysisType
-from domain.study_case import StudyCaseResult
 from enm.canonical_analysis import (
-    CanonicalRun,
     build_execution_result_set,
 )
 from enm.canonical_analysis import (
@@ -34,13 +31,6 @@ from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 router = APIRouter(tags=["execution-runs"])
-
-# Retained only for compatibility with modules/tests importing get_engine().
-_engine = ExecutionEngineService()
-
-
-def get_engine() -> ExecutionEngineService:
-    return _engine
 
 
 class CreateRunRequest(BaseModel):
@@ -171,59 +161,21 @@ def _resolve_project_id(case_id: str, request: Request) -> str | None:
     return None
 
 
-def _oznacz_wyniki_przypadku(run: CanonicalRun, request: Request) -> None:
-    """Zakonczony bieg czyni wyniki przypadku AKTUALNYMI (FRESH) na serwerze.
-
-    DEFEKT NAPRAWIONY (K6 / H-6 R2): `StudyCase.mark_as_fresh` istnialo w domenie,
-    ale NIKT go nie wolal — po udanym biegu przypadek zostawal w stanie NONE,
-    wiec serwerowy znacznik wynikow (`GET /api/study-cases/project/{id}/active`
-    -> `result_status`) nigdy nie potwierdzal, ze wyniki sa. Powloka pokazywala
-    wtedy „Wyniki: brak" mimo policzonego przebiegu (albo — gorzej — musiala
-    ufac lokalnemu przypuszczeniu zamiast serwerowi).
-
-    Zapisujemy WYLACZNIE referencje wyniku (identyfikator biegu, rodzaj analizy,
-    znacznik czasu, odcisk wejscia) — zadnych wielkosci fizycznych; te zyja
-    w artefakcie biegu (Case Immutability Rule: przypadek nie przechowuje modelu
-    ani wynikow, tylko konfiguracje i referencje).
-
-    Brak `uow_factory` (scenariusze bez bazy) albo nieznany przypadek = brak
-    zapisu; bieg pozostaje wazny, a odpowiedz endpointu bez zmian.
-    """
-    if run.status != "FINISHED":
-        return
-    uow_factory = getattr(request.app.state, "uow_factory", None)
-    if uow_factory is None:
-        return
-    try:
-        case_uuid = UUID(str(run.case_id))
-    except (TypeError, ValueError):
-        return
-
-    with uow_factory() as uow:
-        study_case = uow.cases.get_study_case(case_uuid)
-        if study_case is None:
-            return
-        result_ref = StudyCaseResult(
-            analysis_run_id=run.id,
-            analysis_type=run.analysis_type,
-            calculated_at=run.finished_at or datetime.now(UTC),
-            input_hash=run.input_hash,
-        )
-        uow.cases.update_study_case(study_case.mark_as_fresh(result_ref))
-
-
 @router.post(
     "/api/execution/study-cases/{case_id}/runs",
     response_model=RunResponse,
     status_code=status.HTTP_201_CREATED,
 )
-def create_run(case_id: str, request: CreateRunRequest, http_request: Request) -> dict[str, Any]:
+def create_run(
+    case_id: str, klucz: KluczTwin, request: CreateRunRequest, http_request: Request
+) -> dict[str, Any]:
     _parse_uuid(case_id, "case_id")
     analysis_type = _parse_analysis_type(request.analysis_type)
 
     try:
         run = create_canonical_run(
             case_id=case_id,
+            klucz_twin=klucz,
             project_id=_resolve_project_id(case_id, http_request),
             analysis_type=_canonical_analysis_type(analysis_type),
             options=_normalize_solver_input(analysis_type, request.solver_input),
@@ -254,18 +206,27 @@ def list_runs(case_id: str) -> dict[str, Any]:
     response_model=RunResponse,
 )
 def execute_run(run_id: str, http_request: Request) -> dict[str, Any]:
+    # CV-4.2b: bieg wykonuje się TĄ SAMĄ fabryką `UnitOfWork`, którą widzi reszta
+    # żądania — bieg zabezpieczeń (konfiguracja przypadku) i rozpływ/zwarcie z
+    # konfiguracją audytu 2 stacji czytają bazę; bez fabryki wołającego wykonawca
+    # budował własne połączenie z `DATABASE_URL` (inna baza niż `app.state`).
+    # (Komentarz, nie docstring: opis operacji jest częścią snapshotu OpenAPI.)
     parsed_run_id = _parse_uuid(run_id, "run_id")
 
     try:
-        run = execute_canonical_run(parsed_run_id)
+        run = execute_canonical_run(
+            parsed_run_id,
+            uow_factory=getattr(http_request.app.state, "uow_factory", None),
+        )
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
 
-    # K6 / H-6 R2: stan wynikow przypadku jest wlasnoscia SERWERA.
-    _oznacz_wyniki_przypadku(run, http_request)
+    # CV-2-W: po biegu NIE przestawiamy zadnego stanu na przypadku. Status wynikow
+    # jest wyprowadzany z biegow przypadku i koperty rewizji, wiec zakonczony bieg
+    # sam w sobie zmienia werdykt — nie ma czego zapisywac (i nie ma jak zapomniec).
     return run.to_execution_dict()
 
 

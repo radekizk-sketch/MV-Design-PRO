@@ -3,7 +3,7 @@
 DŁUG, KTÓRY TO ZAMYKA. `POST /api/station-templates/{id}/apply` normalizowało
 identyfikator przypadku przez `str(UUID(...))`, a WSZYSTKIE pozostałe ścieżki —
 w tym KLUCZE MAGAZYNU ENM (`enm.store._case_path` liczy SHA-256 z tekstu
-identyfikatora, `blokada_przypadku` indeksuje tym samym tekstem) — używają
+identyfikatora, `blokada_twin` indeksuje tym samym tekstem) — używają
 surowego łańcucha z adresu. Dopóki identyfikatory pochodzą z backendu, obie
 postacie są identyczne; dla postaci NIEKANONICZNEJ (wielkie litery, klamry,
 prefiks `urn:uuid:`, zapis bez myślników) zastosowanie szablonu operowałoby na
@@ -28,6 +28,21 @@ Pilnowane własności:
     przypadek);
 (d) KLASA — żadna ścieżka API nie wyprowadza klucza magazynu przez
     przekształcenie identyfikatora (skan modułów `api/**`, asercja na liście).
+
+STAN PO CV-1-W (korekta 2026-09, żeby akapit „DŁUG, KTÓRY TO ZAMYKA" powyżej nie
+mylił jako opis BIEŻĄCEGO stanu): magazyn ENM przestał być kluczowany surowym
+tekstem `case_id` — `enm.store` kluczuje kluczem Canonical Project Twin
+(`projekt:<uuid_projektu>`, `enm.klucz_twin.klucz_twin_projektu`), tłumaczonym z
+`case_id` PRZEZ ZAPYTANIE DO BAZY (`application/twin_key.py::
+klucz_twin_dla_przypadku`, JEDYNE miejsce tłumaczenia). Ryzyko z akapitu wyżej
+(dwie postacie tego samego UUID trafiające w DWA różne wpisy magazynu) już nie
+istnieje: tłumacz sam parsuje `case_id` przez `UUID(...)`, więc obie postacie
+tej samej WARTOŚCI UUID dają TEN SAM klucz projektu — POD WARUNKIEM, że
+przypadek ma wiersz w bazie (inwariant I-2: przypadek bez wiersza to jawny
+błąd, nie „model domyślny"). Własności (a)-(d) niżej nadal obowiązują i są
+pilnowane — zmieniła się WYŁĄCZNIE mechanika, którą się posługują (zob. też
+`klucz_przypadku` w `api/station_templates.py`, którego docstring ma pełny
+opis stanu po CV-1-W).
 """
 
 from __future__ import annotations
@@ -42,6 +57,7 @@ import pytest
 from api import station_templates
 from api.main import app
 from api.station_templates import klucz_przypadku
+from application.twin_key import klucz_twin_dla_przypadku
 from enm.dziennik_zmian import wyczysc_dziennik
 from enm.store import has_enm, reset_enm_store
 from fastapi.testclient import TestClient
@@ -62,19 +78,60 @@ NIEKANONICZNE: tuple[str, ...] = (
 
 
 @pytest.fixture()
-def klient(tmp_path, monkeypatch) -> TestClient:  # type: ignore[no-untyped-def]
+def klient(tmp_path, monkeypatch, uow_factory) -> TestClient:  # type: ignore[no-untyped-def]
+    from api.dependencies import get_uow_factory
+
     monkeypatch.setenv("ENM_STORE_DIR", str(tmp_path))
     reset_enm_store()
     wyczysc_dziennik()
+    app.dependency_overrides[get_uow_factory] = lambda: uow_factory
+    app.state.uow_factory = uow_factory
     yield TestClient(app)
+    app.dependency_overrides.pop(get_uow_factory, None)
+    app.state.uow_factory = None
     reset_enm_store()
     wyczysc_dziennik()
+
+
+def _zasiej_realny_przypadek(uow_factory, case_id: uuid.UUID) -> None:
+    """Utwórz REALNY projekt + przypadek z DOKŁADNIE wskazanym `id`.
+
+    CV-1-W: magazyn ENM tłumaczy `case_id` na klucz projektu przez zapytanie
+    do bazy (`application/twin_key.py::klucz_twin_dla_przypadku`) — przypadek
+    bez wiersza w bazie dostaje 404 (inwariant I-2), niezależnie od tego, czy
+    jego tekstowa postać jest kanoniczna. Testy tego pliku badają postać
+    TEKSTU (a nie istnienie przypadku), więc potrzebują realnego wiersza pod
+    identyfikatorem, którego WARTOŚĆ (nie tekst) się bada — `POST
+    /api/study-cases` nie przyjmuje `id` z żądania, więc wiersz wstawiamy
+    wprost przez `uow_factory` (ten sam wzorzec co
+    `tests/invariants/test_wlasnosc_modelu_projektu.py::_projekt_z_przypadkami`).
+    """
+    from domain.models import Project
+    from domain.study_case import StudyCase
+
+    project_id = uuid.uuid4()
+    with uow_factory() as uow:
+        uow.projects.add(Project(id=project_id, name="Klucz przypadku — test"), commit=False)
+        uow.cases.add_study_case(
+            StudyCase(id=case_id, project_id=project_id, name="Przypadek testu"),
+            commit=False,
+        )
+        uow.commit()
 
 
 def _zasiej_ciag(klient: TestClient, case_id: str) -> str:
     """GPZ + odcinek kablowy pod DOKŁADNIE tym identyfikatorem. Zwraca ref odcinka."""
     for nazwa, payload in (
-        ("add_grid_source_sn", {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": REF_ZRODLO}),
+        (
+            "add_grid_source_sn",
+            {
+                "voltage_kv": 15.0,
+                "sk3_mva": 250.0,
+                "catalog_ref": REF_ZRODLO,
+                "hv_voltage_kv": 110.0,
+                "transformer_sn_mva": 25.0,
+            },
+        ),
         (
             "continue_trunk_segment_sn",
             {"segment": {"rodzaj": "KABEL", "dlugosc_m": 120.0, "catalog_ref": REF_KABEL}},
@@ -138,14 +195,19 @@ def test_biale_znaki_nie_sa_obcinane(otoczenie: str) -> None:
 
 
 @pytest.mark.parametrize("postac", NIEKANONICZNE)
-def test_szablon_nie_operuje_na_innym_wpisie_magazynu(klient: TestClient, postac: str) -> None:
+def test_szablon_nie_operuje_na_innym_wpisie_magazynu(
+    klient: TestClient, uow_factory, postac: str
+) -> None:
     """Zastosowanie szablonu NIE MOŻE trafić w inny wpis magazynu niż adres.
 
     CZERWONY PRZED NAPRAWĄ: końcówka normalizowała klucz, więc stacja lądowała pod
     `str(UUID(postac))` — wpisie, którego `GET /api/cases/{postac}/enm` nigdy nie
     czyta. Test mierzy DOKŁADNIE to: model spod adresu bez zmian ORAZ brak
-    wpisu-ducha pod postacią kanoniczną.
+    wpisu-ducha pod postacią kanoniczną. Realny wiersz bazy pod WARTOŚCIĄ
+    `KANONICZNY` (CV-1-W, inwariant I-2) — każda postać tekstowa niżej tłumaczy
+    się na TEN SAM projekt, bo tłumacz `case_id -> klucz` parsuje przez `UUID(...)`.
     """
+    _zasiej_realny_przypadek(uow_factory, uuid.UUID(KANONICZNY))
     segment_ref = _zasiej_ciag(klient, postac)
     hash_przed = klient.get(f"/api/cases/{postac}/enm").json()["header"]["hash_sha256"]
     assert not has_enm(KANONICZNY), "wpis kanoniczny istniał jeszcze przed zastosowaniem szablonu"
@@ -168,9 +230,12 @@ def test_szablon_nie_operuje_na_innym_wpisie_magazynu(klient: TestClient, postac
 # ---------------------------------------------------------------------------
 
 
-def test_szablon_i_operacje_domenowe_trafiaja_w_ten_sam_wpis(klient: TestClient) -> None:
+def test_szablon_i_operacje_domenowe_trafiaja_w_ten_sam_wpis(
+    klient: TestClient, uow_factory
+) -> None:
     """Iloczyn cech: jeden przypadek × obie ścieżki zapisu × jeden wpis magazynu."""
     case_id = str(uuid.uuid4())
+    _zasiej_realny_przypadek(uow_factory, uuid.UUID(case_id))
     segment_ref = _zasiej_ciag(klient, case_id)
     stacje_przed = len(klient.get(f"/api/cases/{case_id}/enm").json()["substations"])
 
@@ -186,8 +251,13 @@ def test_szablon_i_operacje_domenowe_trafiaja_w_ten_sam_wpis(klient: TestClient)
     assert len(snapshot["substations"]) == stacje_przed + 1
     assert any(stacja["ref_id"] == station_ref for stacja in snapshot["substations"])
 
-    # ...i nie powstał żaden drugi wpis magazynu pod przekształconym kluczem.
-    assert has_enm(case_id)
+    # ...i nie powstał żaden drugi wpis magazynu pod przekształconym kluczem —
+    # ISTNIEJE dokładnie jeden wpis, pod kluczem PROJEKTU (CV-1-W), nigdy pod
+    # surowym `case_id` (ten NIGDY nie był kluczem magazynu po CV-1-W) ani pod
+    # jego przekształconą postacią.
+    klucz = klucz_twin_dla_przypadku(case_id, uow_factory)
+    assert has_enm(klucz)
+    assert not has_enm(case_id)
     assert not has_enm(case_id.upper())
 
 
@@ -231,6 +301,12 @@ INWENTARZ_KLUCZA_PRZYPADKU: dict[str, str] = {
     "fault_scenarios.py": KLUCZ_Z_REKORDU,
     "ncrfg_ptpiree_tests.py": KLUCZ_UUID_Z_TRASY,
     "v126_academic.py": KLUCZ_UUID_Z_TRASY,
+    # Karta CV-4.2 (P11 rewiring): `get_solver_input`/`get_eligibility` przestały
+    # fabrykować graf pusty (`_get_graph_for_case`, usunięty) i biorą model tą samą
+    # drogą co `GET /api/cases/{case_id}/enm` — trasa deklaruje `case_id: str` obok
+    # `klucz: KluczTwin`, oba rozwiązywane z TEGO SAMEGO segmentu `{case_id}` adresu
+    # (bez `UUID(...)`/`str(...)` pomiędzy) — wzorzec identyczny z `diagnostics.py`.
+    "solver_input.py": KLUCZ_SUROWY,
 }
 
 #: Dług ZGŁOSZONY, nie naprawiony (pliki poza torem karty U1). Zbiór jest zamknięty:
@@ -270,17 +346,24 @@ def test_inwentarz_sciezek_siegajacych_po_magazyn_jest_domkniety() -> None:
 def test_koncowka_szablonow_nie_jest_juz_zrodlem_rozjazdu() -> None:
     """`station_templates` sięga po magazyn POŚREDNIO i przekazuje klucz tożsamościowo.
 
-    Moduł nie importuje `enm.store` — robi to `apply_template_to_case`. Dowodem
-    braku przekształcenia jest niezmiennik `str(UUID(klucz)) == klucz`, pilnowany
-    testem `koncowka_szablonu_nie_przekazuje_dalej_przeksztalconego_klucza`, oraz
-    to, że modułu NIE MA w inwentarzu bezpośrednich konsumentów magazynu.
+    CV-1-W: moduł nie importuje `enm.store` — czyta i pisze przez
+    `apply_template_to_case`, który bierze już PRZETŁUMACZONY `klucz_twin`
+    (nie `case_id`). Jedynym tłumaczeniem `case_id -> klucz` w całej końcówce
+    jest wywołanie `klucz_twin_z_sciezki` (JEDYNE miejsce tłumaczenia,
+    `api/klucz_twin_dep.py`) — moduł NIE wyprowadza własnego klucza magazynu
+    (dawny wektor tego długu: własna konwersja `str(UUID(...))`/`UUID(...)`
+    obok tej z `klucz_twin_z_sciezki`).
     """
     assert "station_templates.py" not in _moduly_api_siegajace_po_magazyn()
     zrodlo = Path(inspect.getfile(station_templates)).read_text(encoding="utf-8")
     assert "def klucz_przypadku" in zrodlo
-    # Jedyna konwersja na UUID w końcówce karmi się KLUCZEM, nie surowym payloadem —
-    # inaczej wróciłaby normalizacja, tyle że o jedną linijkę dalej.
-    assert "case_id=UUID(klucz)" in zrodlo
+    # Jedyne tłumaczenie `case_id -> klucz` w tej końcówce: `klucz_twin_z_sciezki`
+    # — żadnej własnej konwersji między walidacją formatu (`klucz_przypadku`)
+    # a wywołaniem `apply_template_to_case`, które dostaje klucz JUŻ gotowy.
+    assert "klucz_twin_z_sciezki(case_id_kanoniczny, http_request)" in zrodlo
+    assert "apply_template_to_case(" in zrodlo
+    assert "klucz_twin=klucz_twin," in zrodlo
+    assert "case_id=UUID(klucz)" not in zrodlo
     assert "UUID(request.case_id)" not in zrodlo
 
 

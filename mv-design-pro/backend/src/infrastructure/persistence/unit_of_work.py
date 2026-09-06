@@ -22,10 +22,11 @@ from infrastructure.persistence.repositories.network_wizard_repository import (
     NetworkWizardRepository,
 )
 from infrastructure.persistence.repositories.project_repository import ProjectRepository
-from infrastructure.persistence.repositories.result_repository import ResultRepository
 from infrastructure.persistence.repositories.sld_repository import SldRepository
 from infrastructure.persistence.repositories.snapshot_repository import SnapshotRepository
-from infrastructure.persistence.repositories.study_run_repository import StudyRunRepository
+from infrastructure.persistence.repositories.station_audit2_config_repository import (
+    StationAudit2ConfigRepository,
+)
 from sqlalchemy.orm import Session, sessionmaker
 
 
@@ -33,7 +34,14 @@ class UnitOfWork(AbstractContextManager["UnitOfWork"]):
     """
     Unit of Work pattern for transactional operations.
 
-    P10a: Added study_runs repository for Run lifecycle management.
+    CV-3.3-B: `results` (R3 `study_results`, `ResultRepository`) i `study_runs`
+    (R3 `study_runs`, `StudyRunRepository`, P10a) usunięte — zero konsumentów
+    po przepięciu porównań PF/zabezpieczeń/ogólnych i biegów zabezpieczeń na R1
+    (`enm.canonical_analysis`). `analysis_runs`/`analysis_runs_index` ZOSTAJĄ:
+    pierwsza żyje dla `ResultInvalidator` (legacy `network_wizard`, kasacja
+    dopiero w CV-4 razem z całym torem legacy ORM), druga jest NIEZALEŻNĄ
+    tabelą koordynacji zabezpieczeń (`application/analyses/protection/
+    {catalog,overcurrent}/pipeline.py`), niezwiązaną z R2/R3.
     """
 
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
@@ -44,14 +52,13 @@ class UnitOfWork(AbstractContextManager["UnitOfWork"]):
         self.cases: CaseRepository | None = None
         self.wizard: NetworkWizardRepository | None = None
         self.sld: SldRepository | None = None
-        self.results: ResultRepository | None = None
         self.analysis_runs: AnalysisRunRepository | None = None
         self.analysis_runs_index: AnalysisRunIndexRepository | None = None
         self.snapshots: SnapshotRepository | None = None
-        self.study_runs: StudyRunRepository | None = None  # P10a
         self.design_specs: DesignSpecRepository | None = None
         self.design_proposals: DesignProposalRepository | None = None
         self.design_evidence: DesignEvidenceRepository | None = None
+        self.audit2_station_configs: StationAudit2ConfigRepository | None = None
 
     def __enter__(self) -> UnitOfWork:
         self.session = self._session_factory()
@@ -60,14 +67,13 @@ class UnitOfWork(AbstractContextManager["UnitOfWork"]):
         self.cases = CaseRepository(self.session)
         self.wizard = NetworkWizardRepository(self.session)
         self.sld = SldRepository(self.session)
-        self.results = ResultRepository(self.session)
         self.analysis_runs = AnalysisRunRepository(self.session)
         self.analysis_runs_index = AnalysisRunIndexRepository(self.session)
         self.snapshots = SnapshotRepository(self.session)
-        self.study_runs = StudyRunRepository(self.session)  # P10a
         self.design_specs = DesignSpecRepository(self.session)
         self.design_proposals = DesignProposalRepository(self.session)
         self.design_evidence = DesignEvidenceRepository(self.session)
+        self.audit2_station_configs = StationAudit2ConfigRepository(self.session)
         return self
 
     def __exit__(

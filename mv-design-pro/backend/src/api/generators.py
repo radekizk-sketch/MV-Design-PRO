@@ -8,8 +8,10 @@ from typing import Any, Literal
 from uuid import UUID
 
 from api.domain_ops_policy import validate_and_materialize_catalog_binding
+from api.klucz_twin_dep import KluczTwin
 from application.analyses.protection.catalog.catalog_store import list_devices
 from application.field_read_model import build_field_read_model
+from compliance.nc_rfg_modul import modul_nc_rfg
 from domain.canonical_operations import resolve_operation_name
 from domain.der_protection_functions import (
     FaktyPolaWytworcy,
@@ -30,9 +32,8 @@ from domain.dobor_przekladnika import (
 )
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
-from enm.store import blokada_przypadku
+from enm.store import blokada_twin
 from enm.store import get_enm as _get_enm
-from enm.store import has_enm as _has_enm
 from enm.store import set_enm as _set_enm
 from fastapi import APIRouter, HTTPException, Request, status
 from network_model.catalog.audit2_catalogs import get_block_transformer
@@ -43,39 +44,76 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/projects", tags=["generators"])
 
 DerKind = Literal["PV", "BESS", "FW"]
-DerConnectionVariant = Literal["nn_side", "sn_side", "dedicated", "block_transformer"]
 
-_DEFAULT_CATALOG_BY_VARIANT: dict[tuple[str, str], str] = {
-    ("PV", "nn_side"): "conv-pv-nn-0p5mw-0p4kv",
-    ("PV", "block_transformer"): "conv-pv-0.5mw-15kv",
-    ("BESS", "nn_side"): "conv-bess-nn-0p5mw-0p4kv",
-    ("BESS", "block_transformer"): "conv-bess-0.5mw-1mwh-15kv",
-    ("FW", "nn_side"): "conv-wind-nn-2mw-0p4kv",
-    ("FW", "block_transformer"): "conv-wind-2mw-15kv",
-}
+#: Karta FAB-K: DOKŁADNIE dwie decyzje fizyczne — poziom przyłączenia (szyna nN
+#: stacji, albo sieć SN przez transformator dedykowany). Aliasy `sn_side`/`dedicated`
+#: (i `_canonical_variant`, który je tłumaczył) SKASOWANE bez kompatybilności wstecznej:
+#: mieszały poziom przyłączenia z punktem przyłączenia SN (szyna stacji / ZK SN / słup
+#: rozgałęźny / odgałęzienie) — DWIE ortogonalne decyzje w jednym polu enum. Punkt
+#: przyłączenia SN wjeżdża teraz jawnym `sn_connection_bus_ref` (patrz niżej).
+DerConnectionVariant = Literal["nn_side", "block_transformer"]
 
 
 class DerGeneratorCreateRequest(BaseModel):
-    """Payload formularza DER z drawera SLD."""
+    """Payload formularza DER z drawera SLD i kreatora DER.
+
+    `catalog_ref` jest WYMAGANY. Typ przekształtnika to dana projektowa (moc
+    pozorna, k_sc, zakres cos φ, napięcie znamionowe), od której zależą wyniki
+    zwarciowe i rozpływowe — nie ustawienie interfejsu. Dawna mapa
+    `_DEFAULT_CATALOG_BY_VARIANT` podstawiała ją PO CICHU, gdy klient pominął
+    pole (ta sama klasa co „ciche podstawienia" FAB-D1): model dostawał typ,
+    którego nikt nie wybrał, a odpowiedź HTTP 201 wyglądała jak zapis wyboru
+    użytkownika. Brak albo pusty `catalog_ref` = 422 (usunięto 2026-09-05).
+
+    `bus_ref` (karta FAB-K) jest WYŁĄCZNIE jawną szyną urządzenia dla wariantu
+    `nn_side` — dla `block_transformer` punkt przyłączenia do sieci OSD/OSP jest
+    `sn_connection_bus_ref`, a `bus_ref` jest ignorowany (usunięcie dwuznaczności
+    V12K: `_napiecie_przylaczenia_kv` czytała `bus_ref` niezależnie od wariantu,
+    więc szyna nN/DC urządzenia potrafiła podszyć się pod napięcie przyłączenia).
+    """
 
     station_ref: str = Field(..., min_length=1)
     der_kind: DerKind
     power_mw: float = Field(..., gt=0.0, le=10.0)
     connection_variant: DerConnectionVariant = "nn_side"
-    catalog_ref: str | None = Field(default=None, min_length=1)
+    catalog_ref: str = Field(..., min_length=1)
     bus_ref: str | None = Field(default=None, min_length=1)
     blocking_transformer_ref: str | None = Field(default=None, min_length=1)
     block_transformer_catalog_ref: str | None = Field(default=None, min_length=1)
+    # Karta FAB-K: punkt przyłączenia SN — szyna ISTNIEJĄCA w modelu (szyna SN stacji,
+    # BranchPointSN.bus_ref, albo szyna Junction/T-node), wymagana gdy `block_transformer`
+    # materializuje NOWY transformator dedykowany z `block_transformer_catalog_ref`
+    # (nie wymagana, gdy klient poda już istniejący `blocking_transformer_ref` —
+    # jego szyna HV jest wtedy stała, bez wyboru).
+    sn_connection_bus_ref: str | None = Field(default=None, min_length=1)
+    # Karta FAB-K (R2): pakiet baterii BESS — katalog `BATERIA_BESS` istnieje od FAB-J
+    # (`GET /api/catalog/bess-battery-types`), ale kreator go nie wysyłał. Dotyczy
+    # WYŁĄCZNIE `der_kind="BESS"` — dla PV/FW pole musi zostać puste.
+    battery_catalog_ref: str | None = Field(default=None, min_length=1)
     source_name: str | None = Field(default=None, min_length=1)
     quantity: int = Field(default=1, ge=1, le=100)
     nc_rfg_module: Literal["A", "B", "C", "D"] | None = None
 
+    @field_validator("station_ref", "catalog_ref")
+    @classmethod
+    def _strip_required_strings(cls, value: str) -> str:
+        """Pole wymagane złożone z samych białych znaków jest brakiem, nie wartością.
+
+        Wcześniej wspólny walidator zamieniał je na `None` już PO sprawdzeniu
+        `min_length`, więc `"  "` przechodziło jako „obecne", a handler dostawał
+        `None` w polu zadeklarowanym jako `str`.
+        """
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("pole wymagane nie może być puste")
+        return stripped
+
     @field_validator(
-        "station_ref",
-        "catalog_ref",
         "bus_ref",
         "blocking_transformer_ref",
         "block_transformer_catalog_ref",
+        "sn_connection_bus_ref",
+        "battery_catalog_ref",
         "source_name",
     )
     @classmethod
@@ -109,18 +147,21 @@ class DerCatalogBindingsRequest(BaseModel):
     protection_catalog_ref: str | None = None
     ct_catalog_ref: str | None = None
     vt_catalog_ref: str | None = None
-    fault_current_data_ref: str | None = None
     dynamic_model_ref: str | None = None
     nc_rfg_profile_ref: str | None = None
     lvrt_curve_ref: str | None = None
     hvrt_curve_ref: str | None = None
     pf_curve_ref: str | None = None
+    #: Karta FAB-L: tryby pracy magazynu (lista, nie skalar — patrz
+    #: `enm.domain_operations_v2.DER_PROFILE_KEYS`). `null` usuwa wiązanie jak
+    #: pozostałe pola; `[]` jest wartością (świadomie zero trybów wybranych),
+    #: nie kasowaniem — rozróżnienie jak przy każdym innym polu tego kontraktu.
+    bess_operation_mode_refs: list[str] | None = None
 
     @field_validator(
         "protection_catalog_ref",
         "ct_catalog_ref",
         "vt_catalog_ref",
-        "fault_current_data_ref",
         "dynamic_model_ref",
         "nc_rfg_profile_ref",
         "lvrt_curve_ref",
@@ -134,11 +175,12 @@ class DerCatalogBindingsRequest(BaseModel):
         stripped = value.strip()
         return stripped or None
 
-
-def _canonical_variant(variant: DerConnectionVariant) -> Literal["nn_side", "block_transformer"]:
-    if variant == "nn_side":
-        return "nn_side"
-    return "block_transformer"
+    @field_validator("bess_operation_mode_refs")
+    @classmethod
+    def _strip_list_or_none(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
+        return [item.strip() for item in value if item and item.strip()]
 
 
 def _catalog_namespace(technology: DerKind) -> str:
@@ -150,6 +192,18 @@ def _catalog_namespace(technology: DerKind) -> str:
 
 
 def _validate_project_case_context(request: Request, project_id: str, case_id: str) -> None:
+    """Sprawdz, ze `case_id` istnieje w bazie i nalezy do `project_id`.
+
+    CV-1-W: przypadek BEZ wiersza w bazie (`study_case is None`) jest zawsze
+    404 — magazyn ENM nie ma juz wlasnego modelu per przypadek (inwariant
+    I-2, `enm.klucz_twin.PrzypadekBezProjektuError`), wiec „przypadek ma
+    materialized ENM pod raw case_id, ale nie ma go w bazie" przestalo byc
+    legalnym stanem. Dawny fallback (`_has_enm(case_id)`) tolerowal DOKLADNIE
+    ten stan i po CV-1-W dawal odpowiedz sprzeczna z dalsza czescia zadania:
+    ta funkcja przepuszczalaby request, a tlumacz klucza (`KluczTwin`,
+    wolany przez handler) i tak odrzucalby go 404 — walidacja i rzeczywisty
+    dostep do magazynu mowilyby co innego.
+    """
     try:
         parsed_project_id = UUID(project_id)
         parsed_case_id = UUID(case_id)
@@ -170,8 +224,6 @@ def _validate_project_case_context(request: Request, project_id: str, case_id: s
         study_case = uow.cases.get_study_case(parsed_case_id)
 
     if study_case is None:
-        if _has_enm(case_id):
-            return
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
@@ -229,22 +281,56 @@ def _stable_ref_token(*parts: str | None) -> str:
     return hashlib.sha1(source.encode("utf-8")).hexdigest()[:12]
 
 
-def _station_bus_ref_for_voltage(
+def _resolve_sn_connection_bus(
     enm: dict[str, Any],
-    station: dict[str, Any],
-    voltage_kv: float,
-) -> str | None:
-    voltages = _bus_voltage_index(enm)
-    candidates = [ref for ref in station.get("bus_refs", []) if isinstance(ref, str)]
-    for bus_ref in candidates:
-        bus_voltage = voltages.get(bus_ref)
-        if bus_voltage is not None and abs(bus_voltage - voltage_kv) <= 0.05:
-            return bus_ref
-    for bus_ref in candidates:
-        bus_voltage = voltages.get(bus_ref)
-        if bus_voltage is not None and bus_voltage > 1.0:
-            return bus_ref
-    return None
+    req: DerGeneratorCreateRequest,
+    hv_kv: float,
+) -> str:
+    """Punkt przyłączenia SN dla transformatora dedykowanego — szyna ISTNIEJĄCA
+    w modelu, wskazana WPROST przez klienta (`sn_connection_bus_ref`).
+
+    Karta FAB-K: zastępuje dawne wyszukiwanie „najbliższej szyny SN stacji po
+    napięciu" (`_station_bus_ref_for_voltage`) — ta heurystyka fabrykowała punkt
+    przyłączenia zamiast czytać wybór projektanta i nie dawała żadnego sposobu
+    wskazania punktu SPOZA stacji (BranchPointSN — ZK SN/słup rozgałęźny —
+    albo Junction/odgałęzienie). Front wybiera go z listy ISTNIEJĄCYCH elementów
+    modelu (migawka), więc referencja musi istnieć i mieć zgodne napięcie —
+    obie kontrole tu, jawnym kodem, nigdy cichym dopasowaniem „najbliższej".
+    """
+    bus_ref = req.sn_connection_bus_ref
+    if not bus_ref:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "generator.sn_connection_bus_missing",
+                "message_pl": (
+                    "Wariant z transformatorem dedykowanym wymaga wskazania punktu "
+                    "przyłączenia SN — istniejącej szyny SN stacji, ZK SN, słupa "
+                    "rozgałęźnego albo odgałęzienia."
+                ),
+            },
+        )
+    bus_voltage = _bus_voltage_index(enm).get(bus_ref)
+    if bus_voltage is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "generator.sn_connection_bus_unknown",
+                "message_pl": f"Punkt przyłączenia SN '{bus_ref}' nie istnieje w modelu sieci.",
+            },
+        )
+    if abs(bus_voltage - hv_kv) > 0.05:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "generator.sn_bus_voltage_mismatch",
+                "message_pl": (
+                    f"Napięcie punktu przyłączenia SN ({bus_voltage:g} kV) nie zgadza się "
+                    f"z napięciem górnym transformatora dedykowanego ({hv_kv:g} kV)."
+                ),
+            },
+        )
+    return bus_ref
 
 
 def _ensure_catalog_block_transformer(
@@ -282,15 +368,7 @@ def _ensure_catalog_block_transformer(
             },
         )
 
-    hv_bus_ref = _station_bus_ref_for_voltage(enm, station, float(block_transformer.hv_kv))
-    if hv_bus_ref is None:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={
-                "code": "station.sn_bus_missing_for_block_transformer",
-                "message_pl": "Stacja nie ma szyny SN zgodnej z transformatorem dedykowanym.",
-            },
-        )
+    hv_bus_ref = _resolve_sn_connection_bus(enm, req, float(block_transformer.hv_kv))
 
     station_ref = str(station.get("ref_id") or station.get("id") or req.station_ref)
     token = _stable_ref_token(
@@ -370,6 +448,94 @@ def _resolve_nn_bus_ref(enm: dict[str, Any], station: dict[str, Any]) -> str | N
     return None
 
 
+def _napiecie_przylaczenia_kv(
+    enm_dict: dict[str, Any],
+    req: DerGeneratorCreateRequest,
+    payload: dict[str, Any],
+    canonical_variant: str,
+) -> float | None:
+    """Napięcie w punkcie przyłączenia DER do sieci — wejście klasyfikacji NC RfG.
+
+    Karta FAB-J: `POST .../generators` weryfikuje `nc_rfg_module` względem
+    klasyfikacji (moc × napięcie punktu przyłączenia), więc potrzebuje tego
+    napięcia z MODELU, nie z deklaracji klienta.
+
+    Dla wariantu z transformatorem dedykowanym (`block_transformer`) punktem
+    przyłączenia do sieci OSD/OSP jest strona SN (górna) transformatora
+    dedykowanego — `payload["bus_nn_ref"]` w tym wariancie to szyna PO
+    transformatorze, WEWNĄTRZ pakietu DER (0,4-6,3 kV), a nie napięcie
+    przyłączenia.
+
+    Karta FAB-K: `bus_ref` NIE jest już czytany dla `block_transformer` — to
+    pole jest wyłącznie jawną szyną URZĄDZENIA dla `nn_side` (kontrakt
+    `DerGeneratorCreateRequest`). Wcześniejszy jawny priorytet `bus_ref` przed
+    napięciem transformatora dedykowanego dawał dwuznaczność: szyna nN/DC
+    urządzenia (0,4-6,3 kV) mogła podszyć się pod napięcie przyłączenia do
+    sieci OSD/OSP (kilkanaście–kilkadziesiąt kV) — dwie różne wielkości fizyczne
+    czytane z jednego pola przy różnych wariantach.
+    """
+    voltages = _bus_voltage_index(enm_dict)
+    if canonical_variant == "block_transformer":
+        if req.block_transformer_catalog_ref:
+            block_transformer = get_block_transformer(req.block_transformer_catalog_ref)
+            if block_transformer is not None:
+                return float(block_transformer.hv_kv)
+        if req.blocking_transformer_ref:
+            transformer = next(
+                (
+                    t
+                    for t in enm_dict.get("transformers", [])
+                    if t.get("ref_id") == req.blocking_transformer_ref
+                    or t.get("id") == req.blocking_transformer_ref
+                ),
+                None,
+            )
+            if transformer is not None and isinstance(transformer.get("uhv_kv"), int | float):
+                return float(transformer["uhv_kv"])
+        return None
+    if req.bus_ref:
+        return voltages.get(req.bus_ref)
+    bus_nn_ref = payload.get("bus_nn_ref")
+    return voltages.get(bus_nn_ref) if isinstance(bus_nn_ref, str) else None
+
+
+def _weryfikuj_modul_ncrfg(
+    enm_dict: dict[str, Any],
+    req: DerGeneratorCreateRequest,
+    payload: dict[str, Any],
+    canonical_variant: str,
+) -> None:
+    """422 przy niezgodności `nc_rfg_module` z klasyfikacją — nigdy cicha korekta.
+
+    Brak `nc_rfg_module` w żądaniu NIE jest błędem (pole opcjonalne, patrz
+    `DerGeneratorCreateRequest`) — weryfikujemy tylko wtedy, gdy klient
+    zadeklarował konkretny moduł. Brak rozpoznanego napięcia przyłączenia
+    (model bez szyny o znanym napięciu) też nie blokuje zapisu — nie ma z
+    czym porównać deklaracji, a domysł napięcia byłby tą samą klasą fabrykacji,
+    którą ta karta usuwa gdzie indziej.
+    """
+    if req.nc_rfg_module is None:
+        return
+    napiecie_kv = _napiecie_przylaczenia_kv(enm_dict, req, payload, canonical_variant)
+    if napiecie_kv is None:
+        return
+    oczekiwany_modul = modul_nc_rfg(req.power_mw, napiecie_kv)
+    if oczekiwany_modul == req.nc_rfg_module:
+        return
+    raise HTTPException(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        detail={
+            "code": "generator.nc_rfg_module_mismatch",
+            "message_pl": (
+                f"Moduł NC RfG „{req.nc_rfg_module}” nie zgadza się z klasyfikacją: "
+                f"przy mocy {req.power_mw:g} MW i napięciu przyłączenia "
+                f"{napiecie_kv:g} kV oczekiwany moduł to „{oczekiwany_modul}”."
+            ),
+            "expected_module": oczekiwany_modul,
+        },
+    )
+
+
 def _build_domain_payload(
     enm_dict: dict[str, Any],
     req: DerGeneratorCreateRequest,
@@ -384,10 +550,11 @@ def _build_domain_payload(
             },
         )
 
-    canonical_variant = _canonical_variant(req.connection_variant)
-    if req.block_transformer_catalog_ref:
-        canonical_variant = "block_transformer"
-    catalog_ref = req.catalog_ref or _DEFAULT_CATALOG_BY_VARIANT[(req.der_kind, canonical_variant)]
+    # Karta FAB-K: `connection_variant` jest już kanoniczny (Literal kontraktu,
+    # bez aliasów `sn_side`/`dedicated`) — zero tłumaczenia, zero domysłu z
+    # obecności `block_transformer_catalog_ref`.
+    canonical_variant = req.connection_variant
+    catalog_ref = req.catalog_ref
     payload: dict[str, Any] = {
         "source_technology": req.der_kind,
         "connection_variant": canonical_variant,
@@ -406,28 +573,37 @@ def _build_domain_payload(
 
     if req.nc_rfg_module is not None:
         payload["nc_rfg_module"] = req.nc_rfg_module
-    if req.blocking_transformer_ref:
-        payload["blocking_transformer_ref"] = req.blocking_transformer_ref
-    elif canonical_variant == "block_transformer":
-        transformer_ref, converter_bus_ref = _ensure_catalog_block_transformer(
-            enm_dict, station, req
-        )
-        payload["blocking_transformer_ref"] = transformer_ref
-        payload["bus_nn_ref"] = converter_bus_ref
+    if req.battery_catalog_ref:
+        payload["battery_catalog_ref"] = req.battery_catalog_ref
 
-    if req.bus_ref:
-        payload["bus_nn_ref"] = req.bus_ref
-    elif canonical_variant == "nn_side":
-        nn_bus_ref = _resolve_nn_bus_ref(enm_dict, station)
-        if nn_bus_ref is None:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail={
-                    "code": "station.nn_bus_missing",
-                    "message_pl": "Stacja nie ma rozpoznanej szyny nN dla przyłączenia DER.",
-                },
+    # Karta FAB-K: `bus_ref` i `sn_connection_bus_ref` są SCOPED do dokładnie
+    # jednego wariantu każdy — zero pola dzielonego między dwie fizycznie różne
+    # szyny (patrz `_napiecie_przylaczenia_kv`).
+    if canonical_variant == "block_transformer":
+        if req.blocking_transformer_ref:
+            payload["blocking_transformer_ref"] = req.blocking_transformer_ref
+        else:
+            transformer_ref, converter_bus_ref = _ensure_catalog_block_transformer(
+                enm_dict, station, req
             )
-        payload["bus_nn_ref"] = nn_bus_ref
+            payload["blocking_transformer_ref"] = transformer_ref
+            payload["bus_nn_ref"] = converter_bus_ref
+    else:
+        if req.bus_ref:
+            payload["bus_nn_ref"] = req.bus_ref
+        else:
+            nn_bus_ref = _resolve_nn_bus_ref(enm_dict, station)
+            if nn_bus_ref is None:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail={
+                        "code": "station.nn_bus_missing",
+                        "message_pl": "Stacja nie ma rozpoznanej szyny nN dla przyłączenia DER.",
+                    },
+                )
+            payload["bus_nn_ref"] = nn_bus_ref
+
+    _weryfikuj_modul_ncrfg(enm_dict, req, payload, canonical_variant)
 
     return payload
 
@@ -439,6 +615,7 @@ def _build_domain_payload(
 def create_der_generator(
     project_id: str,
     case_id: str,
+    klucz: KluczTwin,
     req: DerGeneratorCreateRequest,
     request: Request,
 ) -> dict[str, Any]:
@@ -458,12 +635,12 @@ def create_der_generator(
 
     _validate_project_case_context(request, project_id, case_id)
 
-    with blokada_przypadku(case_id):
-        return _utworz_wytworce_pod_blokada(case_id, req)
+    with blokada_twin(klucz):
+        return _utworz_wytworce_pod_blokada(klucz, req)
 
 
-def _utworz_wytworce_pod_blokada(case_id: str, req: DerGeneratorCreateRequest) -> dict[str, Any]:
-    enm = _get_enm(case_id)
+def _utworz_wytworce_pod_blokada(klucz: str, req: DerGeneratorCreateRequest) -> dict[str, Any]:
+    enm = _get_enm(klucz)
     enm_dict = enm.model_dump(mode="json")
     payload = _build_domain_payload(enm_dict, req)
 
@@ -495,7 +672,7 @@ def _utworz_wytworce_pod_blokada(case_id: str, req: DerGeneratorCreateRequest) -
 
     if result.get("snapshot"):
         try:
-            saved = _set_enm(case_id, EnergyNetworkModel.model_validate(result["snapshot"]))
+            saved = _set_enm(klucz, EnergyNetworkModel.model_validate(result["snapshot"]))
             result["snapshot"] = saved.model_dump(mode="json")
         except Exception as exc:  # pragma: no cover - defensive validation guard
             logger.exception("Zapis modelu ENM po konfiguracji DER nie powiódł się")
@@ -518,6 +695,7 @@ def _utworz_wytworce_pod_blokada(case_id: str, req: DerGeneratorCreateRequest) -
 def set_der_bindings(
     project_id: str,
     case_id: str,
+    klucz: KluczTwin,
     generator_ref: str,
     req: DerCatalogBindingsRequest,
     request: Request,
@@ -540,12 +718,12 @@ def set_der_bindings(
     for pole in req.model_fields_set:
         payload[pole] = getattr(req, pole)
 
-    with blokada_przypadku(case_id):
-        return _zapisz_wiazania_pod_blokada(case_id, payload)
+    with blokada_twin(klucz):
+        return _zapisz_wiazania_pod_blokada(klucz, payload)
 
 
-def _zapisz_wiazania_pod_blokada(case_id: str, payload: dict[str, Any]) -> dict[str, Any]:
-    enm = _get_enm(case_id)
+def _zapisz_wiazania_pod_blokada(klucz: str, payload: dict[str, Any]) -> dict[str, Any]:
+    enm = _get_enm(klucz)
     resolved_name = resolve_operation_name("set_der_catalog_bindings")
     result = execute_domain_operation(
         enm_dict=enm.model_dump(mode="json"),
@@ -563,7 +741,7 @@ def _zapisz_wiazania_pod_blokada(case_id: str, payload: dict[str, Any]) -> dict[
 
     if result.get("snapshot"):
         try:
-            saved = _set_enm(case_id, EnergyNetworkModel.model_validate(result["snapshot"]))
+            saved = _set_enm(klucz, EnergyNetworkModel.model_validate(result["snapshot"]))
             result["snapshot"] = saved.model_dump(mode="json")
         except Exception as exc:  # pragma: no cover - defensive validation guard
             logger.exception("Zapis modelu ENM po konfiguracji DER nie powiódł się")
@@ -654,7 +832,12 @@ def _funkcje_urzadzenia(protection_ref: str | None) -> tuple[tuple[str, ...] | N
         return None, "wybrane urządzenie"
     for urzadzenie in list_devices():
         if urzadzenie.device_id == protection_ref:
-            nazwa = f"{urzadzenie.vendor} {urzadzenie.model}".strip()
+            # Karta FAB-A/D-33: `vendor` bywa None dla profilu referencyjnego
+            # bez marki — f"{None} {model}" dawaloby falszywy tekst "None".
+            czesci_nazwy = [str(urzadzenie.vendor)] if urzadzenie.vendor else []
+            if urzadzenie.model:
+                czesci_nazwy.append(str(urzadzenie.model))
+            nazwa = " ".join(czesci_nazwy).strip()
             return tuple(urzadzenie.functions_supported), nazwa or protection_ref
     return None, protection_ref
 
@@ -663,6 +846,7 @@ def _funkcje_urzadzenia(protection_ref: str | None) -> tuple[tuple[str, ...] | N
 def get_der_protection_functions(
     project_id: str,
     case_id: str,
+    klucz: KluczTwin,
     generator_ref: str,
     request: Request,
 ) -> dict[str, Any]:
@@ -673,7 +857,7 @@ def get_der_protection_functions(
     """
 
     _validate_project_case_context(request, project_id, case_id)
-    enm = _get_enm(case_id)
+    enm = _get_enm(klucz)
     dane = enm.model_dump(mode="json")
 
     generator = next(
@@ -732,6 +916,7 @@ def get_der_protection_functions(
 def get_der_readiness(
     project_id: str,
     case_id: str,
+    klucz: KluczTwin,
     generator_ref: str,
     request: Request,
 ) -> dict[str, Any]:
@@ -752,7 +937,7 @@ def get_der_readiness(
     """
 
     _validate_project_case_context(request, project_id, case_id)
-    enm = _get_enm(case_id)
+    enm = _get_enm(klucz)
     dane = enm.model_dump(mode="json")
 
     generatory = dane.get("generators", [])
@@ -794,6 +979,7 @@ def get_der_readiness(
 def get_der_instrument_transformers(
     project_id: str,
     case_id: str,
+    klucz: KluczTwin,
     generator_ref: str,
     request: Request,
 ) -> dict[str, Any]:
@@ -814,7 +1000,7 @@ def get_der_instrument_transformers(
     """
 
     _validate_project_case_context(request, project_id, case_id)
-    enm = _get_enm(case_id)
+    enm = _get_enm(klucz)
     dane = enm.model_dump(mode="json")
 
     generator = next(

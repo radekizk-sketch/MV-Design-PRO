@@ -2,9 +2,18 @@
 Study Cases API — P10 FULL MAX
 
 REST API endpoints for study case management.
-Implements full CRUD, clone, compare, and status management.
+Implements full CRUD, clone and compare.
 
 All responses use Polish error messages for UI consistency.
+
+STATUS WYNIKOW (CV-2-W). `result_status` przypadku jest tu WYPROWADZANY z jego
+biegow i biezacej rewizji modelu (`application/study_case/status_wynikow.py`),
+nie odczytywany z kolumny. Slownik kontraktu HTTP bez zmian (NONE/FRESH/OUTDATED);
+addytywnie kazda odpowiedz z przypadkiem niesie PRZYCZYNE statusu
+(`result_status_reason`, `result_status_reason_pl`), pare rewizji
+(`rewizja_biegu`, `rewizja_biezaca`) i LISTE ZMIAN, ktore uniewaznily wynik
+(`zmiany_od_biegu`). Koncowki „uniewaznij” (`/invalidate-all`, `/invalidate`)
+zostaly USUNIETE — nie ma juz stanu, ktory dalo by sie recznie przestawic.
 """
 
 from __future__ import annotations
@@ -18,6 +27,7 @@ from application.study_case import (
     StudyCaseNotFoundError,
     StudyCaseService,
 )
+from application.study_case.status_wynikow import pola_statusu_przypadku
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
 from pydantic import BaseModel, Field
@@ -68,7 +78,28 @@ class CompareRequest(BaseModel):
     case_b_id: str = Field(..., description="ID drugiego przypadku")
 
 
-class StudyCaseResponse(BaseModel):
+class ZmianaOdBieguResponse(BaseModel):
+    """Jedna rewizja modelu powstala PO rewizji biegu — przyczyna nieaktualnosci."""
+
+    rewizja: int
+    operacja: str | None
+    opis_pl: str
+    elementy: list[str]
+
+
+class StatusWynikowResponse(BaseModel):
+    """Status wynikow przypadku — WYPROWADZANY, nigdy zapisywany (CV-2-W)."""
+
+    result_status: str  # NONE / FRESH / OUTDATED (slownik kontraktu bez zmian)
+    results_valid: bool  # PR-4: explicit validity flag — prawda wylacznie dla FRESH
+    result_status_reason: str  # kod maszynowy przyczyny (stabilny, bez diakrytykow)
+    result_status_reason_pl: str  # zdanie dla projektanta — jedyne zrodlo tekstu w UI
+    rewizja_biegu: int | None  # rewizja modelu, na ktorej policzono wynik
+    rewizja_biezaca: int | None  # rewizja modelu teraz
+    zmiany_od_biegu: list[ZmianaOdBieguResponse]  # co uniewaznilo wynik
+
+
+class StudyCaseResponse(StatusWynikowResponse):
     """Study case response model."""
 
     id: str
@@ -76,22 +107,18 @@ class StudyCaseResponse(BaseModel):
     name: str
     description: str
     config: dict[str, Any]
-    result_status: str
-    results_valid: bool  # PR-4: explicit validity flag
     is_active: bool
     revision: int
     created_at: str
     updated_at: str
 
 
-class StudyCaseListItemResponse(BaseModel):
+class StudyCaseListItemResponse(StatusWynikowResponse):
     """Study case list item response."""
 
     id: str
     name: str
     description: str
-    result_status: str
-    results_valid: bool  # PR-4: explicit validity flag
     is_active: bool
     updated_at: str
 
@@ -157,6 +184,13 @@ def _parse_uuid(value: str, field_name: str = "id") -> UUID:
         ) from exc
 
 
+def _z_statusem(dane: dict[str, Any], uow_factory: Any) -> dict[str, Any]:
+    """Doklej status wynikow do serializacji przypadku — JEDYNE miejsce w API,
+    ktore go orzeka (ta sama funkcja dla pojedynczego przypadku, listy, klonu i
+    aktywacji, wiec zaden ekran nie moze dostac innego werdyktu niz sasiedni)."""
+    return {**dane, **pola_statusu_przypadku(dane["id"], uow_factory)}
+
+
 # =============================================================================
 # CRUD Endpoints
 # =============================================================================
@@ -183,7 +217,7 @@ def create_study_case(
         set_active=request.set_active,
     )
 
-    return case.to_dict()
+    return _z_statusem(case.to_dict(), uow_factory)
 
 
 @router.get("/{case_id}", response_model=StudyCaseResponse)
@@ -201,7 +235,7 @@ def get_study_case(
 
     try:
         case = service.get_case(parsed_id)
-        return case.to_dict()
+        return _z_statusem(case.to_dict(), uow_factory)
     except StudyCaseNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -223,7 +257,7 @@ def list_study_cases(
     service = _build_service(uow_factory)
 
     cases = service.list_cases(parsed_id)
-    return [case.to_dict() for case in cases]
+    return [_z_statusem(case.to_dict(), uow_factory) for case in cases]
 
 
 @router.patch("/{case_id}", response_model=StudyCaseResponse)
@@ -234,8 +268,6 @@ def update_study_case(
 ) -> dict[str, Any]:
     """
     Aktualizuj przypadek obliczeniowy.
-
-    Zmiana konfiguracji oznacza wyniki jako OUTDATED.
 
     PATCH /api/study-cases/{case_id}
     """
@@ -249,7 +281,7 @@ def update_study_case(
             description=request.description,
             config=request.config,
         )
-        return case.to_dict()
+        return _z_statusem(case.to_dict(), uow_factory)
     except StudyCaseNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -306,7 +338,7 @@ def clone_study_case(
 
     try:
         cloned = service.clone_case(parsed_id, new_name)
-        return cloned.to_dict()
+        return _z_statusem(cloned.to_dict(), uow_factory)
     except StudyCaseNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -333,7 +365,7 @@ def get_active_case(
     service = _build_service(uow_factory)
 
     case = service.get_active_case(parsed_id)
-    return case.to_dict() if case else None
+    return _z_statusem(case.to_dict(), uow_factory) if case else None
 
 
 @router.post("/activate", response_model=StudyCaseResponse)
@@ -354,7 +386,7 @@ def set_active_case(
 
     try:
         case = service.set_active_case(project_id, case_id)
-        return case.to_dict()
+        return _z_statusem(case.to_dict(), uow_factory)
     except StudyCaseNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -385,7 +417,13 @@ def compare_study_cases(
 
     try:
         comparison = service.compare_cases(case_a_id, case_b_id)
-        return comparison.to_dict()
+        return {
+            **comparison.to_dict(),
+            # Statusy obu przypadkow z TEJ SAMEJ derywacji co kazda inna odpowiedz
+            # — porownanie nie moze pokazac innego werdyktu niz lista przypadkow.
+            "status_a": pola_statusu_przypadku(case_a_id, uow_factory)["result_status"],
+            "status_b": pola_statusu_przypadku(case_b_id, uow_factory)["result_status"],
+        }
     except StudyCaseNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -394,50 +432,8 @@ def compare_study_cases(
 
 
 # =============================================================================
-# Status Management Endpoints
+# Status Endpoints
 # =============================================================================
-
-
-@router.post("/project/{project_id}/invalidate-all")
-def invalidate_all_cases(
-    project_id: str,
-    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-) -> dict[str, Any]:
-    """
-    Oznacz wszystkie przypadki jako OUTDATED.
-
-    Wywoływane po zmianie NetworkModel.
-
-    POST /api/study-cases/project/{project_id}/invalidate-all
-    """
-    parsed_id = _parse_uuid(project_id, "project_id")
-    service = _build_service(uow_factory)
-
-    count = service.mark_all_outdated(parsed_id)
-    return {
-        "message": f"Oznaczono {count} przypadków jako nieaktualne",
-        "affected_count": count,
-    }
-
-
-@router.post("/{case_id}/invalidate")
-def invalidate_case(
-    case_id: str,
-    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-) -> dict[str, Any]:
-    """
-    Oznacz przypadek jako OUTDATED.
-
-    Wywoływane po zmianie konfiguracji przypadku.
-
-    POST /api/study-cases/{case_id}/invalidate
-    """
-    parsed_id = _parse_uuid(case_id, "case_id")
-    service = _build_service(uow_factory)
-
-    if service.mark_case_outdated(parsed_id):
-        return {"message": "Przypadek oznaczony jako nieaktualny", "result_status": "OUTDATED"}
-    return {"message": "Przypadek nie wymaga aktualizacji statusu", "result_status": "unchanged"}
 
 
 @router.get("/{case_id}/can-calculate")

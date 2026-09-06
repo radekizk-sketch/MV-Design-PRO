@@ -46,7 +46,6 @@ NIGDY domyślna/zgadnięta wartość.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -76,6 +75,7 @@ from application.proof_engine.packs.lv_circuit_verification import (
 )
 from enm.models import EnergyNetworkModel, FuseBranch, SwitchBranch
 from network_model.catalog.lv_mccb_settings_iec60947_2 import resolwuj_nastawy_mccb
+from network_model.pochodne import napiecie_fazowe_v
 from network_model.solvers.cable_ampacity_derating import WspolczynnikiObciazalnosciNN
 from network_model.solvers.conductor_thermal_withstand import ConductorThermalResult
 from network_model.solvers.fault_loop_builder import (
@@ -278,7 +278,7 @@ def _petla_zwarcia_min(
 
     phase_component, return_component = sum_phase_and_return_route(segments)
     net_type, protection = _SYSTEM_MAP.get(system, _SYSTEM_MAP[_DEFAULT_SYSTEM])
-    u_phase_v = trafo.ulv_kv * 1000.0 / math.sqrt(3.0)
+    u_phase_v = napiecie_fazowe_v(trafo.ulv_kv * 1000.0)
 
     request = FaultLoopBuildRequest(
         fault_node_id=bus_ref,

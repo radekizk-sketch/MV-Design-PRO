@@ -179,6 +179,8 @@ async function zbudujSiecGotowaDoObliczen(
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
+    hv_voltage_kv: 110.0,
+    transformer_sn_mva: 25.0,
   });
 
   for (const [idx, length] of [300, 250, 200].entries()) {
@@ -211,6 +213,19 @@ async function zbudujSiecGotowaDoObliczen(
       create: true,
       catalog_binding: buildCatalogBinding('TRAFO_SN_NN', TRAFO_ID),
     },
+    // Odbiór „potrzeby własne" (G-STK-3, `_materialize_station_auxiliary_load`)
+    // — JAWNY. Ten test woła `LOAD_FLOW` (`uruchomBiegPrzezApi`) ZANIM kreator
+    // OZE zdąży dodać generator — bez tego bloku sieć nie ma ŻADNEGO
+    // odbioru/generatora i `POST .../runs {analysis_type:'LOAD_FLOW'}` odrzuca
+    // zgłoszenie 409 (`analysis_available.load_flow`, `enm/canonical_analysis.py`
+    // — naprawa regresji CI-D, ten sam wzorzec co `nastawy-i-akcje-oze.spec.ts`
+    // i `legenda-na-zadanie.spec.ts`).
+    station_auxiliary: { active_power_kw: 5.0, cos_phi: 0.95 },
+    // Układ uziemienia sieci nN (G-STK-1) — WYMAGANY konsekwencją powyższego:
+    // stacja z odbiorem nN bez `meta.nn_earthing_system` jest E063 (BLOKER,
+    // `enm/validator.py` — IEC 60364-4-41), a pętla domykania blokerów niżej
+    // nie zna kodu E063, więc `readiness.ready` zostałby `false` na stałe.
+    nn_earthing: { lv_system: 'TN-S' },
   });
 
   const napiecia = new Map(
@@ -389,8 +404,13 @@ test('K9-A: kreator OZE MAX — aparatura i zgodność w jednym przepływie, wi�
   await expect(page.getByTestId('mvd-kreator-oze-dobor-rezerwa-pole')).toBeVisible();
 
   // ------------------------------------------------------------------
-  // Krok 4 (APARATURA — NOWY): CT, VT, zabezpieczenie z realnych katalogów
-  // + referencja danych zwarciowych (pole jawnie bez walidacji katalogowej).
+  // Krok 4 (APARATURA — NOWY): CT, VT, zabezpieczenie i model dynamiczny
+  // z realnych katalogów backendu (żadne pole nie jest już wolnym tekstem).
+  // Karta FAB-L (§0 L2/L3, 2026-09-05): `fault_current_data_ref` USUNIĘTE
+  // (solver IEC 60909 nigdy go nie czytał — κ liczy z modelu, nie z deklaracji
+  // urządzenia); `dane-zwarciowe` zastąpione picker'em modelu dynamicznego
+  // (`dynamic_model_ref`, `GET /api/catalog/der-dynamic-profiles`), jedynym
+  // źródłem konsumowanym przez solvery RMS/FRT-HVRT.
   // ------------------------------------------------------------------
   await page.getByTestId('mvd-kreator-oze-dalej').click();
   await expect(page.getByTestId('mvd-kreator-oze-aparatura')).toBeVisible();
@@ -411,18 +431,23 @@ test('K9-A: kreator OZE MAX — aparatura i zgodność w jednym przepływie, wi�
   const zabRef = await zabSelect.inputValue();
   expect(zabRef.length).toBeGreaterThan(0);
 
-  await page.getByTestId('mvd-kreator-oze-aparatura-dane-zwarciowe').fill('KARTA-ZW-2026-01');
+  const dynSelect = page.getByTestId('mvd-kreator-oze-aparatura-model-dynamiczny');
+  await expect(dynSelect.locator('option').nth(1)).toBeAttached({ timeout: 20000 });
+  await dynSelect.selectOption({ index: 1 });
+  const dynRef = await dynSelect.inputValue();
+  expect(dynRef.length).toBeGreaterThan(0);
 
   // ------------------------------------------------------------------
   // Krok 5 (ZGODNOŚĆ — NOWY): profil operatora + krzywe LVRT/HVRT/P(f).
   // ------------------------------------------------------------------
   await page.getByTestId('mvd-kreator-oze-dalej').click();
   await expect(page.getByTestId('mvd-kreator-oze-zgodnosc')).toBeVisible();
-  await page.getByTestId('mvd-kreator-oze-zgodnosc-profil').selectOption('ncrfg_pse');
-  // LVRT/HVRT pozostają krzywymi OPERATORA (obwiednia FRT jest cechą profilu
-  // przyłączeniowego), więc referencje są tu realnym kontraktem katalogu.
-  await page.getByTestId('mvd-kreator-oze-zgodnosc-lvrt').selectOption('lvrt_pse_b');
-  await page.getByTestId('mvd-kreator-oze-zgodnosc-hvrt').selectOption('hvrt_pse_b');
+  // Karta FAB-J: profil operatora WYŁĄCZNIE z backendu (`GET /api/ncrfg-tests/
+  // catalog`) — identyfikator jest teraz REALNY (`pse`, operator_id backendu),
+  // nie wymyślony przez front (`ncrfg_pse`). LVRT/HVRT NIE SĄ już niezależnie
+  // wybieralne: backend niesie jedną parę krzywych ride-through na operatora,
+  // więc są pokazywane read-only, tożsamościowo związane z profilem.
+  await page.getByTestId('mvd-kreator-oze-zgodnosc-profil').selectOption('pse');
   // NASTAWA P(f) — kanon po karcie K-Q (2026-08-14): katalog NIE dzieli już
   // krzywych po operatorze i typie modułu (`pf_pse_b`), bo statyzm per typ
   // modułu był zgadnięty — rozporządzenie (UE) 2016/631 art. 13 ust. 2 podaje
@@ -438,13 +463,23 @@ test('K9-A: kreator OZE MAX — aparatura i zgodność w jednym przepływie, wi�
   expect(pfCurveRef, 'katalog musi oferować nastawę P(f)').toMatch(/^pf_droop_/);
 
   // ------------------------------------------------------------------
-  // Krok 6 (regulacja): tryb pracy źródła + limity mocy biernej.
+  // Krok 6 (regulacja): tryb pracy źródła + limity mocy biernej + tryb
+  // regulacji Q. Karta CV-4.1b (A3-04): profil operatora wybrany w kroku
+  // ZGODNOŚĆ (PSE — `voltage_control_modes` niesie `voltage_control` w
+  // realnym katalogu backendu) odbramkowuje pozycję „regulacja napięcia
+  // (U = const)"; wybieramy ją i wypełniamy nastawę U, żeby łańcuch
+  // ENM meta -> walidator -> IR (węzeł PV) -> assembler -> wynik ćwiczyć na
+  // ŻYWEJ aplikacji, nie tylko w testach jednostkowych.
   // ------------------------------------------------------------------
   await page.getByTestId('mvd-kreator-oze-dalej').click();
   await expect(page.getByTestId('mvd-kreator-oze-tryb-pracy')).toBeVisible();
   await page.getByTestId('mvd-kreator-oze-tryb-pracy').selectOption('praca_sieciowa');
   await page.getByTestId('mvd-kreator-oze-qmin').fill('-0.05');
   await page.getByTestId('mvd-kreator-oze-qmax').fill('0.05');
+  const trybRegulacjiSelect = page.getByTestId('mvd-kreator-oze-tryb');
+  await expect(trybRegulacjiSelect.locator('option[value="REGULACJA_NAPIECIA"]')).toBeAttached();
+  await trybRegulacjiSelect.selectOption('REGULACJA_NAPIECIA');
+  await page.getByTestId('mvd-kreator-oze-u-set-pu').fill('1.02');
 
   // ------------------------------------------------------------------
   // Krok 7 (zapis): bez auto-biegu (sekwencja mierzalna szybko) → Zapisz.
@@ -483,14 +518,25 @@ test('K9-A: kreator OZE MAX — aparatura i zgodność w jednym przepływie, wi�
   expect(zmaterializowane['ct_catalog_ref']).toBe(ctRef);
   expect(zmaterializowane['vt_catalog_ref']).toBe(vtRef);
   expect(zmaterializowane['protection_catalog_ref']).toBe(zabRef);
-  expect(zmaterializowane['fault_current_data_ref']).toBe('KARTA-ZW-2026-01');
+  expect(zmaterializowane['dynamic_model_ref']).toBe(dynRef);
   const profile = (zmaterializowane['profiles'] ?? {}) as Record<string, unknown>;
-  expect(profile['nc_rfg_profile_ref']).toBe('ncrfg_pse');
-  expect(profile['lvrt_curve_ref']).toBe('lvrt_pse_b');
-  expect(profile['hvrt_curve_ref']).toBe('hvrt_pse_b');
+  // Karta FAB-J: LVRT/HVRT tożsamościowo związane z operatorem (ten sam `pse`)
+  // — backend niesie jedną parę krzywych ride-through na operatora, nie
+  // niezależny wybór (patrz `KrokiAparaturaZgodnosc.tsx::wybierzProfil`).
+  expect(profile['nc_rfg_profile_ref']).toBe('pse');
+  expect(profile['lvrt_curve_ref']).toBe('pse');
+  expect(profile['hvrt_curve_ref']).toBe('pse');
   expect(profile['pf_curve_ref']).toBe(pfCurveRef);
   expect((wytworca!.meta ?? {})['operating_mode']).toBe('praca_sieciowa');
   const limity = (wytworca!.limits ?? {}) as Record<string, unknown>;
   expect(limity['q_min_mvar']).toBe(-0.05);
   expect(limity['q_max_mvar']).toBe(0.05);
+  // Karta CV-4.1b (A3-04): tryb regulacji napięcia i jego nastawa utrwalone w
+  // modelu — łańcuch ENM (meta) domyka się tu; IR/assembler/solver dowiedzione
+  // niezależnie w tests/enm/test_generator_voltage_control_e2e.py (backend).
+  const meta = (wytworca!.meta ?? {}) as Record<string, unknown>;
+  expect(meta['control_mode']).toBe('REGULACJA_NAPIECIA');
+  expect(meta['u_set_pu']).toBe(1.02);
+  expect(meta['q_min_mvar']).toBe(-0.05);
+  expect(meta['q_max_mvar']).toBe(0.05);
 });

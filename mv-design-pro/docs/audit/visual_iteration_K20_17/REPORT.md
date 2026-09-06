@@ -13,7 +13,7 @@ Stop hook: "V12K-014 protection_case provisioning ~7 OD".
 ### Step 1: Bind protection template
 ```
 PUT /api/study-cases/651654aa-.../protection-config
-  Body: {"template_ref": "template_rex100_oc"}
+  Body: {"template_ref": "template_ref_oc_100"}
 → 200 OK
 ```
 
@@ -37,7 +37,7 @@ POST /api/protection-runs/edea6d81-.../execute
 ```
 GET /api/protection-runs/edea6d81-.../results
 → 1 evaluation:
-  - device: ACME REX-100 v1
+  - device: REF-OC-100 (profil referencyjny)
   - curve: IEC normal inverse
   - I_fault: 8109 A
   - I_pickup: 0.1 A
@@ -143,7 +143,7 @@ Po implementacji P0.3:
 ---
 
 **Konkluzja iter K20-17:** V12K-014 RESOLVED E2E — protection-run dla
-K20 wykonany w 56 ms z 1 trip @ 165.6 ms (IEC 60255 IDMT REX-100).
+K20 wykonany w 56 ms z 1 trip @ 165.6 ms (IEC 60255 IDMT REF-OC-100).
 **100% V12K resolution rate (6/6).**
 
 **Zabezpieczenia specialist +2.5 (6.5 → 9.0).** Pierwszy raz 5/7

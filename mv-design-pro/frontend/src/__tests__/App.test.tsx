@@ -7,13 +7,17 @@
  *   light_technical  → markery `mv-light-technical` + `data-ui-theme="light-technical"`.
  * Sprawdzamy obie gałęzie, przełączanie store→wrapper oraz brak regresji montażu.
  */
-import { render, screen, cleanup, act } from '@testing-library/react';
+import { screen, cleanup, act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { App } from '../App';
 import type { EnergyNetworkModel } from '../types/enm';
 import { useSnapshotStore } from '../ui/topology/snapshotStore';
 import { useThemeModeStore } from '../ui2/theme/themeMode';
+// Karta FAB-J: `AppRoot` (pod `App`) czyta snapshot audytu 2 przez React Query —
+// produkcja dostaje `QueryClientProvider` w `main.tsx`, test tego samego drzewa
+// dostaje go tym samym helperem co testy kreatora DER.
+import { renderWithQueryClient } from '../test/queryClientTestUtils';
 
 // Kanwa SLD (ciężki komponent canvas) jest atrapowana — test korzenia motywu
 // sprawdza kontrakt markerów i montaż powłoki, nie silnik SLD.
@@ -70,7 +74,7 @@ describe('U4/TM1 — korzeń motywu (jeden sterownik)', () => {
   });
 
   it('gałąź dark_scada — markery mv-dark-scada + data-ui-theme="dark-scada"', () => {
-    const { container } = render(<App />);
+    const { container } = renderWithQueryClient(<App />);
     const korzen = container.querySelector('.mv-dark-scada');
     expect(korzen).not.toBeNull();
     expect(korzen?.getAttribute('data-ui-theme')).toBe('dark-scada');
@@ -87,7 +91,7 @@ describe('U4/TM1 — korzeń motywu (jeden sterownik)', () => {
     act(() => {
       useThemeModeStore.setState({ mode: 'light_technical' });
     });
-    const { container } = render(<App />);
+    const { container } = renderWithQueryClient(<App />);
     const korzen = container.querySelector('.mv-light-technical');
     expect(korzen).not.toBeNull();
     expect(korzen?.getAttribute('data-ui-theme')).toBe('light-technical');
@@ -97,7 +101,7 @@ describe('U4/TM1 — korzeń motywu (jeden sterownik)', () => {
   });
 
   it('zmiana store przełącza wrapper (jeden sterownik: store → wrapper)', () => {
-    const { container } = render(<App />);
+    const { container } = renderWithQueryClient(<App />);
     expect(container.querySelector('.mv-dark-scada')).not.toBeNull();
     expect(container.querySelector('.mv-light-technical')).toBeNull();
 

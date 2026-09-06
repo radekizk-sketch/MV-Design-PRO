@@ -21,8 +21,10 @@ Testy pilnują CAŁEJ KLASY, nie jednego przykładu:
 from __future__ import annotations
 
 import pytest
-from enm.canonical_analysis import (
+from enm.assembler import (
     _graph_id_from_ref,
+)
+from enm.canonical_analysis import (
     create_run,
     execute_run,
     reset_canonical_runs,
@@ -443,7 +445,9 @@ def _payload_z_odbiorem(nazwa: str, model_zip: dict | None) -> dict:
 def _rozplyw(case_id: str, payload: dict):
     set_enm(case_id, EnergyNetworkModel.model_validate(payload))
     run = execute_run(
-        create_run(case_id=case_id, analysis_type="PF", options={"base_mva": BASE_MVA}).id
+        create_run(
+            case_id=case_id, klucz_twin=case_id, analysis_type="PF", options={"base_mva": BASE_MVA}
+        ).id
     )
     assert run.status == "FINISHED", run.error_message
     return run

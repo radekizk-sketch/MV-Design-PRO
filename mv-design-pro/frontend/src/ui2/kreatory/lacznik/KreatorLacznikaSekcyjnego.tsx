@@ -79,10 +79,15 @@ export function KreatorLacznikaSekcyjnego() {
 
   const [typy, setTypy] = useState<MVApparatusCatalogType[]>([]);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
+  // S9-5 (klasa: bramka enable bez sygnału gotowości) — jawny znacznik
+  // ładowania katalogu, niezależny od `typy.length` (katalog pusty PO
+  // wczytaniu wygląda inaczej niż katalog W TRAKCIE wczytywania).
+  const [katalogLadowanie, setKatalogLadowanie] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     setBladKatalogu(null);
+    setKatalogLadowanie(true);
     fetchMvApparatusTypes()
       .then((t) => {
         if (!cancelled) setTypy(Array.isArray(t) ? t : []);
@@ -91,6 +96,9 @@ export function KreatorLacznikaSekcyjnego() {
         if (cancelled) return;
         setTypy([]);
         setBladKatalogu(getCatalogErrorMessage(e));
+      })
+      .finally(() => {
+        if (!cancelled) setKatalogLadowanie(false);
       });
     return () => {
       cancelled = true;
@@ -181,6 +189,16 @@ export function KreatorLacznikaSekcyjnego() {
   ) : null;
 
   const krokIndex = KROKI.findIndex((k) => k.id === krok);
+  // S9-5 (klasa: bramka enable bez sygnału gotowości) — jedno źródło prawdy
+  // dla `disabled` i `data-status` (patrz `KreatorMagistralaSn.tsx`, ta sama
+  // karta i ten sam mechanizm powtórzony w tym pliku).
+  const stanGotowosci: 'ladowanie' | 'zablokowany' | 'gotowy' =
+    !hasOdcinek || !activeCaseId
+      ? 'zablokowany'
+      : katalogLadowanie
+        ? 'ladowanie'
+        : 'gotowy';
+  const zapisMozliwy = stanGotowosci === 'gotowy';
 
   return (
     <KreatorRama
@@ -194,8 +212,17 @@ export function KreatorLacznikaSekcyjnego() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={bledy.length > 0 ? T.walidacjaStopka : !hasOdcinek ? T.brakOdcinkaOpis : null}
-      akcjaGlowna={{ etykieta: T.zapisz, onClick: onZapisz, zablokowana: !hasOdcinek || !activeCaseId, testid: 'mvd-kreator-lacznik-zapisz' }}
+      walidacja={
+        stanGotowosci === 'ladowanie'
+          ? T.katalogLadowanieStopka
+          : bledy.length > 0
+            ? T.walidacjaStopka
+            : !hasOdcinek
+              ? T.brakOdcinkaOpis
+              : null
+      }
+      status={stanGotowosci}
+      akcjaGlowna={{ etykieta: T.zapisz, onClick: onZapisz, zablokowana: !zapisMozliwy, testid: 'mvd-kreator-lacznik-zapisz' }}
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-lacznik-anuluj' }}
       krokWstecz={
         krokIndex > 0

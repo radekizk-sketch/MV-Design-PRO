@@ -13,6 +13,7 @@ from io import BytesIO
 from typing import Any
 
 from network_model.reporting.czcionki import zarejestruj_czcionki
+from network_model.reporting.missing_value import format_wynik
 
 _PDF_AVAILABLE = find_spec("reportlab") is not None
 
@@ -154,8 +155,8 @@ def export_analysis_run_to_pdf(bundle: dict[str, Any]) -> bytes:
         summary = overlay.get("summary", {})
         draw_wrapped(f"Diagram: {diagram.get('name') or '—'} ({diagram.get('id') or '—'})")
         draw_wrapped(
-            f"Nodes: {summary.get('node_count', 0)} | "
-            f"Branches: {summary.get('branch_count', 0)}"
+            f"Nodes: {format_wynik(summary.get('node_count'))} | "
+            f"Branches: {format_wynik(summary.get('branch_count'))}"
         )
         draw_wrapped("Skrócony JSON:")
         for line in _truncate_json(overlay.get("payload", {})).splitlines():

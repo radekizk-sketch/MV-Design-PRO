@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 
 from .types import (
+    BESSBatteryType,
     BESSInverterType,
     CableType,
     ConverterKind,
@@ -36,6 +37,22 @@ def _converter_kind_value(record: dict) -> str:
     params = record.get("params") or {}
     raw_kind = params.get("kind") or params.get("converter_kind") or ""
     return str(raw_kind).upper()
+
+
+def _wymagana_moc_znamionowa(params: dict, field: str, *, type_id: object) -> float:
+    """Odczytaj pole znamionowe wymagane do derywacji falownika z ConverterType.
+
+    Karta FAB-D2 (D6): brak `sn_mva`/`pmax_mw`/`e_kwh` w rekordzie konwertera
+    ODRZUCA derywację (wyjątek nazwany) zamiast fabrykować "0 kVA"/"0 kWh" —
+    zerowa moc znamionowa to fikcyjny falownik, nie legalny wynik.
+    """
+    wartosc = params.get(field)
+    if wartosc is None:
+        raise ValueError(
+            f"catalog.type_incomplete: brak pola '{field}' w rekordzie konwertera "
+            f"id={type_id!r} — derywacja typu falownika odrzucona (nie 0)."
+        )
+    return float(wartosc)  # type: ignore[arg-type]
 
 
 def _copy_catalog_quality(record: dict) -> dict:
@@ -166,11 +183,20 @@ def _derive_pv_records(converter_records: Iterable[dict]) -> list[dict]:
                 "name": record.get("name"),
                 "params": {
                     "un_kv": params.get("un_kv"),
-                    "s_n_kva": float(params.get("sn_mva", 0.0)) * 1000.0,
-                    "p_max_kw": float(params.get("pmax_mw", 0.0)) * 1000.0,
+                    "s_n_kva": _wymagana_moc_znamionowa(params, "sn_mva", type_id=record.get("id"))
+                    * 1000.0,
+                    "p_max_kw": _wymagana_moc_znamionowa(
+                        params, "pmax_mw", type_id=record.get("id")
+                    )
+                    * 1000.0,
                     "cos_phi_min": params.get("cosphi_min"),
                     "cos_phi_max": params.get("cosphi_max"),
-                    "control_mode": params.get("control_mode") or "STALY_COS_PHI",
+                    # `None` = tryb sterowania nieznany (nie "STALY_COS_PHI" —
+                    # to byłoby zmyślenie KONKRETNEGO trybu regulacji, ktory
+                    # dla Q(U)/P(f) zmienia wynik rozplywu jakosciowo).
+                    # Konsument trybu przy `None` zglasza BLOCKER
+                    # `inverter.control_mode_missing` (D6).
+                    "control_mode": params.get("control_mode"),
                     "grid_code": params.get("grid_code"),
                     "manufacturer": params.get("manufacturer"),
                     "dynamic_profile_id": params.get("dynamic_profile_id"),
@@ -187,7 +213,7 @@ def _derive_bess_records(converter_records: Iterable[dict]) -> list[dict]:
         if _converter_kind_value(record) != "BESS":
             continue
         params = dict(record.get("params") or {})
-        p_max_kw = float(params.get("pmax_mw", 0.0)) * 1000.0
+        p_max_kw = _wymagana_moc_znamionowa(params, "pmax_mw", type_id=record.get("id")) * 1000.0
         derived.append(
             {
                 "id": record.get("id"),
@@ -196,8 +222,9 @@ def _derive_bess_records(converter_records: Iterable[dict]) -> list[dict]:
                     "un_kv": params.get("un_kv"),
                     "p_charge_kw": p_max_kw,
                     "p_discharge_kw": p_max_kw,
-                    "e_kwh": float(params.get("e_kwh", 0.0)),
-                    "s_n_kva": float(params.get("sn_mva", 0.0)) * 1000.0,
+                    "e_kwh": _wymagana_moc_znamionowa(params, "e_kwh", type_id=record.get("id")),
+                    "s_n_kva": _wymagana_moc_znamionowa(params, "sn_mva", type_id=record.get("id"))
+                    * 1000.0,
                     "manufacturer": params.get("manufacturer"),
                     "dynamic_profile_id": params.get("dynamic_profile_id"),
                     **_copy_catalog_quality(record),
@@ -263,6 +290,7 @@ class CatalogRepository:
     source_system_types: dict[str, SourceSystemType] = field(default_factory=dict)
     pv_inverter_types: dict[str, PVInverterType] = field(default_factory=dict)
     bess_inverter_types: dict[str, BESSInverterType] = field(default_factory=dict)
+    bess_battery_types: dict[str, BESSBatteryType] = field(default_factory=dict)
     surge_arrester_types: dict[str, SurgeArresterType] = field(default_factory=dict)
     shunt_capacitor_types: dict[str, ShuntCapacitorType] = field(default_factory=dict)
     ptpiree_generator_certificates: dict[str, PtpireeGeneratorCertificate] = field(
@@ -293,6 +321,7 @@ class CatalogRepository:
         source_system_types: Iterable[dict] | None = None,
         pv_inverter_types: Iterable[dict] | None = None,
         bess_inverter_types: Iterable[dict] | None = None,
+        bess_battery_types: Iterable[dict] | None = None,
         surge_arrester_types: Iterable[dict] | None = None,
         shunt_capacitor_types: Iterable[dict] | None = None,
         ptpiree_generator_certificates: Iterable[dict] | None = None,
@@ -397,6 +426,11 @@ class CatalogRepository:
             data.update(record.get("params") or {})
             return BESSInverterType.from_dict(data)
 
+        def _build_bess_battery_type(record: dict) -> BESSBatteryType:
+            data = {"id": record.get("id"), "name": record.get("name")}
+            data.update(record.get("params") or {})
+            return BESSBatteryType.from_dict(data)
+
         def _build_surge_arrester_type(record: dict) -> SurgeArresterType:
             data = {"id": record.get("id"), "name": record.get("name")}
             data.update(record.get("params") or {})
@@ -431,6 +465,7 @@ class CatalogRepository:
         bess_records = list(bess_inverter_types or [])
         if not bess_records and converter_records:
             bess_records = _derive_bess_records(converter_records)
+        bess_battery_records = list(bess_battery_types or [])
         return cls(
             line_types={str(item.id): item for item in map(_build_line_type, line_types)},
             cable_types={str(item.id): item for item in map(_build_cable_type, cable_types)},
@@ -492,6 +527,9 @@ class CatalogRepository:
             },
             bess_inverter_types={
                 str(item.id): item for item in map(_build_bess_inverter_type, bess_records)
+            },
+            bess_battery_types={
+                str(item.id): item for item in map(_build_bess_battery_type, bess_battery_records)
             },
             surge_arrester_types={
                 str(item.id): item
@@ -635,6 +673,12 @@ class CatalogRepository:
     def get_bess_inverter_type(self, type_id: str) -> BESSInverterType | None:
         return self.bess_inverter_types.get(str(type_id))
 
+    def list_bess_battery_types(self) -> list[BESSBatteryType]:
+        return self._sorted(self.bess_battery_types.values())
+
+    def get_bess_battery_type(self, type_id: str) -> BESSBatteryType | None:
+        return self.bess_battery_types.get(str(type_id))
+
     def list_surge_arrester_types(self) -> list[SurgeArresterType]:
         return self._sorted(self.surge_arrester_types.values())
 
@@ -708,6 +752,7 @@ def get_default_mv_catalog() -> CatalogRepository:
         get_all_protection_setting_templates,
         get_all_vt_types,
     )
+    from .mv_bess_battery_catalog import get_all_bess_battery_types
     from .mv_cable_line_catalog import get_all_cable_types, get_all_line_types
     from .mv_converter_catalog import get_all_converter_types
     from .mv_ptpiree_catalog import get_all_ptpiree_generator_certificates
@@ -724,6 +769,7 @@ def get_default_mv_catalog() -> CatalogRepository:
         switch_equipment_types=get_all_switch_equipment_types(),
         converter_types=get_all_converter_types(),
         inverter_types=[],
+        bess_battery_types=get_all_bess_battery_types(),
         protection_device_types=get_all_protection_device_types(),
         protection_curves=get_all_protection_curves(),
         protection_setting_templates=get_all_protection_setting_templates(),

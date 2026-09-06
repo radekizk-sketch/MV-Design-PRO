@@ -5,7 +5,7 @@
  * Validates:
  * - DEFAULT_STUDY_CASE_CONFIG contains valid IEC 60909 defaults
  * - RESULT_STATUS_LABELS covers all status values
- * - RESULT_STATUS_TOOLTIPS covers all status values
+ * - przyczyna statusu przychodzi z backendu (UI nie ma własnego słownika — CV-2-W)
  * - CONFIG_FIELD_LABELS covers all config fields
  * - ANALYSIS_TYPE_LABELS covers all analysis types
  * - RUN_STATUS_LABELS and RUN_STATUS_COLORS cover all run statuses
@@ -14,10 +14,10 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import * as kontrakty from '../types';
 import {
   DEFAULT_STUDY_CASE_CONFIG,
   RESULT_STATUS_LABELS,
-  RESULT_STATUS_TOOLTIPS,
   CONFIG_FIELD_LABELS,
   ANALYSIS_TYPE_LABELS,
   RUN_STATUS_LABELS,
@@ -112,25 +112,22 @@ describe('RESULT_STATUS_LABELS', () => {
 });
 
 // ---------------------------------------------------------------------------
-// RESULT_STATUS_TOOLTIPS
+// Przyczyna statusu — TEKST Z BACKENDU, nie z UI (CV-2-W)
 // ---------------------------------------------------------------------------
 
-describe('RESULT_STATUS_TOOLTIPS', () => {
-  const ALL_STATUSES: StudyCaseResultStatus[] = ['NONE', 'FRESH', 'OUTDATED'];
-
-  it('should have tooltips for all result statuses', () => {
-    for (const status of ALL_STATUSES) {
-      expect(RESULT_STATUS_TOOLTIPS[status]).toBeDefined();
-      expect(typeof RESULT_STATUS_TOOLTIPS[status]).toBe('string');
-      expect(RESULT_STATUS_TOOLTIPS[status].length).toBeGreaterThan(0);
-    }
+describe('przyczyna statusu wyników', () => {
+  it('UI nie ma własnego słownika tłumaczącego status', () => {
+    // `RESULT_STATUS_TOOLTIPS` zgadywał przyczynę („model został zmieniony po
+    // ostatnim obliczeniu") — a przyczyn jest więcej niż jedna (zmiana biblioteki
+    // typów katalogowych, niespójna koperta rewizji, brak modelu bieżącego) i tylko
+    // backend je zna. Ekrany pokazują `result_status_reason_pl` z odpowiedzi.
+    expect(kontrakty).not.toHaveProperty('RESULT_STATUS_TOOLTIPS');
   });
 
-  it('should have longer tooltips than labels (more detailed)', () => {
+  it('etykieta statusu zostaje w UI — to nazwa stanu, nie jego wyjaśnienie', () => {
+    const ALL_STATUSES: StudyCaseResultStatus[] = ['NONE', 'FRESH', 'OUTDATED'];
     for (const status of ALL_STATUSES) {
-      expect(RESULT_STATUS_TOOLTIPS[status].length).toBeGreaterThan(
-        RESULT_STATUS_LABELS[status].length
-      );
+      expect(RESULT_STATUS_LABELS[status].length).toBeGreaterThan(0);
     }
   });
 });

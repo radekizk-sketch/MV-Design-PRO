@@ -12,17 +12,29 @@ from tests.catalog_test_helpers import gpz_source_record
 
 
 def _reset_backend_state() -> None:
-    from api.execution_runs import get_engine
     from enm.canonical_analysis import reset_canonical_runs
     from enm.store import reset_enm_store
 
-    engine = get_engine()
-    engine._runs.clear()
-    engine._result_sets.clear()
-    engine._study_cases.clear()
-    engine._case_runs.clear()
     reset_canonical_runs()
     reset_enm_store()
+
+
+def _klucz_modelu(case_id: str) -> str:
+    """Klucz magazynu ENM przypadku — model zyje pod kluczem PROJEKTU (CV-1).
+
+    Zasiewanie surowym `case_id` bylo poprawne tylko przy zalozeniu, ze PIERWSZE
+    przetlumaczone dotkniecie przypadku nastapi PO zasiewie (migracja
+    `migruj_projekt_z_legacy` adoptowala wtedy plik przypadku). Zalozenie padlo w
+    CV-2-W: kazda odpowiedz API z przypadkiem (juz samo `POST /api/study-cases`)
+    wylicza status wynikow, wiec tlumaczy `case_id` na klucz projektu i ZNACZY
+    projekt jako zmigrowany — pozniejszy zasiew pod surowym kluczem trafial w
+    prozne miejsce, a bieg dostawal model domyslny (pusty). Zasiewamy wiec tam,
+    gdzie model naprawde mieszka, zamiast liczyc na kolejnosc wywolan.
+    """
+    from api.main import app
+    from application.twin_key import klucz_twin_dla_przypadku
+
+    return klucz_twin_dla_przypadku(case_id, app.state.uow_factory)
 
 
 def _seed_valid_enm(case_id: str) -> None:
@@ -30,7 +42,7 @@ def _seed_valid_enm(case_id: str) -> None:
     from enm.store import set_enm
 
     set_enm(
-        case_id,
+        _klucz_modelu(case_id),
         EnergyNetworkModel.model_validate(
             {
                 "header": {
@@ -133,13 +145,32 @@ def reset_state():
 
 @pytest.fixture
 def client():
-    """Create a fresh TestClient with clean canonical state."""
-    return TestClient(app)
+    """Create a fresh TestClient with clean canonical state.
+
+    CV-1-W: `with` uruchamia lifespan aplikacji, ktory wiaze `app.state.
+    uow_factory` — bez niego tlumaczenie `case_id -> klucz` (`KluczTwin`)
+    zawsze konczyloby sie 404 „brak warstwy bazy danych".
+    """
+    with TestClient(app) as test_client:
+        yield test_client
 
 
 @pytest.fixture
-def registered_case() -> str:
-    case_id = str(uuid4())
+def registered_case(client) -> str:
+    """Utworz REALNY projekt + przypadek przez API i zasiej model ENM.
+
+    CV-1-W: przypadek bez wiersza w bazie dostaje teraz 404 z magazynu ENM
+    (inwariant I-2). CV-2-W: `_seed_valid_enm` zasiewa model pod KLUCZEM PROJEKTU
+    (`_klucz_modelu`), a nie pod surowym `case_id` — patrz docstring `_klucz_modelu`.
+    """
+    project_resp = client.post("/api/projects", json={"name": "Execution API — test"})
+    assert project_resp.status_code == 201, project_resp.text
+    case_resp = client.post(
+        "/api/study-cases",
+        json={"project_id": project_resp.json()["id"], "name": "Przypadek testu"},
+    )
+    assert case_resp.status_code == 201, case_resp.text
+    case_id = str(case_resp.json()["id"])
     _seed_valid_enm(case_id)
     return case_id
 
@@ -189,9 +220,24 @@ class TestCreateRunEndpoint:
         assert "V12K-025" in detail
 
     def test_create_run_without_canonical_enm_snapshot_is_rejected(self, client):
-        fake_id = str(uuid4())
+        """Przypadek ISTNIEJACY w bazie, ale BEZ zasianego modelu ENM — 409.
+
+        Rozroznienie od 404 „przypadek nie nalezy do zadnego projektu"
+        (CV-1-W, inwariant I-2) wymaga REALNEGO wiersza StudyCase: fikcyjny
+        `uuid4()` bez wiersza dostawalby teraz 404 z tlumaczenia case_id,
+        zanim doszloby do sprawdzenia obecnosci snapshotu.
+        """
+        project_resp = client.post("/api/projects", json={"name": "Execution API — test"})
+        assert project_resp.status_code == 201, project_resp.text
+        case_resp = client.post(
+            "/api/study-cases",
+            json={"project_id": project_resp.json()["id"], "name": "Przypadek bez modelu"},
+        )
+        assert case_resp.status_code == 201, case_resp.text
+        case_id = str(case_resp.json()["id"])
+
         response = client.post(
-            f"/api/execution/study-cases/{fake_id}/runs",
+            f"/api/execution/study-cases/{case_id}/runs",
             json={
                 "analysis_type": "SC_3F",
                 "solver_input": {},
@@ -243,6 +289,13 @@ class TestCreateRunEndpoint:
         assert response.json()["analysis_type"] == "LOAD_FLOW"
 
     def test_create_run_invalid_uuid(self, client):
+        """CV-1-W: tlumaczenie `case_id -> klucz` jest JEDYNYM miejscem
+        tlumaczenia (SS0 pkt 7, `api/klucz_twin_dep.py`) — zle sformatowany
+        `case_id` i nieistniejacy `case_id` dostaja TEN SAM kod (404, magazyn
+        ENM), bo oba znacza „nie da sie ustalic projektu przypadku". Odrebny
+        kod 400 tylko dla zlego formatu bylby DRUGIM miejscem tlumaczenia,
+        ktorego kanon zakazuje.
+        """
         response = client.post(
             "/api/execution/study-cases/not-a-uuid/runs",
             json={
@@ -250,7 +303,8 @@ class TestCreateRunEndpoint:
                 "solver_input": {},
             },
         )
-        assert response.status_code == 400
+        assert response.status_code == 404
+        assert "not-a-uuid" in response.json()["detail"]
 
 
 class TestListRunsEndpoint:

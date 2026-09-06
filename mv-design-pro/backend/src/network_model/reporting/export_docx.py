@@ -38,6 +38,7 @@ except ImportError:
     _DOCX_AVAILABLE = False
 
 from network_model.reporting.docx_determinism import make_docx_deterministic
+from network_model.reporting.missing_value import format_wynik
 
 
 def _format_complex(value: dict | complex | str | Any) -> str:
@@ -494,7 +495,7 @@ def generate_pf_report_docx(
         f"Status: {'Zbiezny' if data.get('converged') else 'Niezbiezny'}",
         f"Iteracje: {data.get('iterations_count', _dash)}",
         f"Tolerancja: {_format_value(data.get('tolerance_used'))}",
-        f"Moc bazowa: {data.get('base_mva', 100)} MVA",
+        f"Moc bazowa: {_format_value(data.get('base_mva'))} MVA",
     ]
     subtitle = doc.add_paragraph(" | ".join(subtitle_parts))
     subtitle.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -622,7 +623,10 @@ def generate_pf_report_docx(
         for bus in v_violations:
             row = vv_table.add_row().cells
             row[0].text = str(bus.get("bus_id", "\u2014"))[:20]
-            v_val = bus.get("v_pu", 0.0)
+            # v_val zawsze ZNANA tutaj (v_violations filtrowane wyzej po
+            # `v_pu is not None`) \u2014 .get() BEZ domyslnej liczby, zeby nie
+            # udawac znanej wartosci 0.0 gdyby ten niezmiennik kiedys pekl.
+            v_val = bus.get("v_pu")
             row[1].text = _format_value(v_val)
             if v_val < v_min_limit:
                 row[2].text = "Podnapiecie"
@@ -688,8 +692,8 @@ def generate_pf_report_docx(
             for it in iterations:
                 row = iter_table.add_row().cells
                 row[0].text = str(it.get("k", "\u2014"))
-                row[1].text = f"{it.get('norm_mismatch', 0):.2e}"
-                row[2].text = f"{it.get('max_mismatch_pu', 0):.2e}"
+                row[1].text = format_wynik(it.get("norm_mismatch"), ".2e")
+                row[2].text = format_wynik(it.get("max_mismatch_pu"), ".2e")
                 row[3].text = it.get("cause_if_failed", "OK") or "OK"
 
     # Save document

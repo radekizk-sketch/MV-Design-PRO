@@ -6,9 +6,13 @@
  * FIXTURY POCHODZĄ Z ŻYWEGO BIEGU (zero fabrykacji): sieć zbudowana realnymi
  * operacjami domenowymi API (`add_grid_source_sn` → 2× `continue_trunk_segment_sn`
  * → `station-templates/tpl_sn_nn_1000kva/apply`), a nakładki to odpowiedzi
- * `GET /api/execution/runs/{run}/results/v1` po biegu zwarciowym
- * (`POST /api/cases/{case}/runs/short-circuit`) i rozpływowym
- * (`POST /api/cases/{case}/runs/power-flow`) na TEJ SIECI.
+ * `GET /api/execution/runs/{run}/results/v1` po biegu zwarciowym i rozpływowym
+ * na TEJ SIECI. Fixtury przechwycone przed kartą CV-4.3-A4 (K5.1) torem, który
+ * dziś już nie istnieje (`POST /api/cases/{case}/runs/{short-circuit,power-
+ * flow}` skasowany procedurą siedmiu kroków, 0 konsumentów produkcyjnych) —
+ * odtworzenie fixtury idzie odtąd torem kanonicznym: `POST /api/execution/
+ * study-cases/{case}/runs` (`analysis_type=SC_3F`/`LOAD_FLOW`) → `POST
+ * /api/execution/runs/{id}/execute` → ten sam `GET .../results/v1`.
  *   * `s92Bieg.enm.json`         — migawka ENM (`GET /api/cases/{case}/enm`);
  *   * `s92Zwarcie.overlay.json`  — `overlay_payload` biegu zwarciowego (3 punkty);
  *   * `s92Rozplyw.overlay.json`  — `overlay_payload` biegu rozpływowego (16 punktów).

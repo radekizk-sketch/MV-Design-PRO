@@ -3,8 +3,8 @@
 NO-CODENAMES GUARD — CI/UI Enforcement
 
 BINDING RULE:
-- Nazwy kodowe typu P7, P11, P14, P17, P20 itd. NIGDY nie mogą pojawiać się
-  w UI-visible stringach, eksportach ani artefaktach testowych.
+- Nazwy kodowe typu P7, P11, P14, P17, P20 lub K30, K30-38 itd. NIGDY nie mogą
+  pojawiać się w UI-visible stringach, eksportach ani artefaktach testowych.
 - Dozwolone są:
   - Komentarze dokumentacyjne (// /* */ *)
   - Parametry techniczne jak P0 (straty jałowe transformatora)
@@ -12,6 +12,51 @@ BINDING RULE:
 
 Pattern: \\b[pP]\\d+\\b (case-insensitive)
 Excluded: P0 (technical parameter)
+
+ROZSZERZENIE NA `K<cyfry>` (karta FAB-F, 2026-09-05). Klasa kryptonimów w tym
+repo NIE jest ograniczona do liter `P` — `SldTitleBlock.tsx` (v2, usunięty tą
+samą kartą jako fabrykacja) miał zaszyte `revision: 'K30-38'` i sąsiednie
+`K30-NN`: DOKŁADNIE ta sama nazwa-fazy/sesji co P7/P11/P14, tylko pod inną
+literą. Wzorzec łapie teraz `K<cyfry>` ALE WYŁĄCZNIE wielką literą — small
+`k<cyfry>` (case-sensitive, inaczej niż `[pP]`) jest w tym repo, po pomiarze,
+GENUINE fizyką/metrologią, nie kryptonimem: `I_k1`/`I_k2`/`I_k3` (podkategorie
+prądu zwarciowego wg IEC 60909 — 1-fazowy/2-fazowy/3-fazowy), `k1..k4`
+(współczynniki korekcyjne obciążalności kabla wg IEC 60364-5-52), `k2` jako
+współczynnik rozszerzenia niepewności pomiaru (GUM, zwykle k=2 dla ok. 95%
+ufności) oraz lustrzane nazwy pól kontraktu (`sc_k1_max`, `sc_k2_min`,
+`expanded_uncertainty_percent_k2`). Zero zmierzonych wystąpień lowercase `k`
+odnoszących się do kryptonimu sesji/fazy — stąd wielka litera jest jedynym
+warunkiem, nie białą listą tokenów.
+
+WYKLUCZENIE `K0`: brak, świadomie — w przeciwieństwie do `P0` (zmierzony,
+realny parametr transformatorowy) `K0` nie ma w tym repo ŻADNEGO zmierzonego
+odpowiednika technicznego (grep zero wystąpień). Jeśli kiedyś taki się
+pojawi, wyklucz go tym samym wzorcem co `P0`, z tym samym uzasadnieniem
+(dowód w kodzie, nie przypuszczenie).
+
+WYKLUCZENIE `GATE_CITATION_TOKENS` (K1..K13, TYLKO skan frontendu, patrz
+niżej): zmierzone 2026-09-05 (ponowna, precyzyjna weryfikacja przy zamknięciu
+karty — poprzedni szacunek 164/108 był zaniżony, licznik nie sumował
+wielokrotnych cytowań w jednej linii) — 305 wystąpień w 109 plikach
+`describe`/`it`/`test`, KAŻDE odwołuje się do JEDNEJ, konkretnej, udokumentowanej decyzji w
+`docs/uiux/`/`docs/v12xx/` (np. „K11-B" = bramka nawigatora kanwy SLD, „K9-A"
+= kreator OZE MAX, „R3-A / K1-G2" = werdykt obciążalności, „K3-A1" =
+`V12K-273`) — DOKŁADNIE ta sama konwencja cytowania co nie-kolidujące
+prefiksy `F6d`/`S9-6`/`M0-1`/`H-3`/`R3-A`/`V12K-273` (celowo NIE zmieniane tą
+kartą — zmiana konwencji cytowania całego repo to decyzja produktowa, nie
+naprawa fabrykacji). RÓŻNI SIĘ jakościowo od `K30`: `K30` to SESJA/FAZA
+programu użyta jako OGÓLNY prefiks powtórzony identycznie w >120 niepowiązanych
+testach (żaden z nich nie cytuje jednej decyzji — to była fabrykacja danych
+projektu w `SldTitleBlock.DEFAULTS.revision`, naprawiona tą samą kartą) — TO
+jest realna klasa kryptonimu i NIE jest wykluczone (zero wystąpień po naprawie
+FAB-F). Wykluczenie `K1..K13` obowiązuje WYŁĄCZNIE dla skanu frontendu
+(opisy testów — treść, której projektant NIGDY nie widzi); skan backendu
+(pola `_pl`, czytane przez projektanta) go NIE ma — surowy identyfikator kroku
+kreatora przeciekający do komunikatu (`message_pl="...(K1)..."`) jest błędem
+niezależnie od zakresu tokenu (naprawione tą kartą w
+`network_wizard/step_controller.py` i `domain/generator_validation.py`:
+`wizard_step_hint`/`wizard_step` już niosą identyfikator maszynowo, tekst PL
+nazywa krok po polsku).
 
 Usage:
   python scripts/no_codenames_guard.py
@@ -86,8 +131,28 @@ EXCLUDED_RELATIVE_FILES = {
 # wstępnego skanu to `p0_kw` (straty jałowe transformatora, wykluczone niżej)
 # oraz `p95_ms` (token techniczny). Dziura była LATENTNA: nic przez nią dziś
 # nie przeszło, ale nic jej też nie pilnowało.
-CODENAME_PATTERN = re.compile(r"(?<![A-Za-z0-9])[pP](?!0(?![A-Za-z0-9]))\d+(?![A-Za-z0-9])")
+#
+# ROZSZERZENIE `K` (FAB-F, 2026-09-05, patrz docstring modułu): WYŁĄCZNIE
+# wielka litera — `[pP]` zostaje dwuznaczne (P i p, tak jak było), `K` NIE
+# przyjmuje małego `k` (patrz uzasadnienie u góry pliku: `k<cyfry>` małą
+# literą jest w tym repo fizyką/metrologią, nie kryptonimem). Wyjątek "nie 0"
+# NIE jest współdzielony między literami — `K0` nie ma odpowiednika P0 (brak
+# zmierzonego dowodu technicznego, patrz docstring), więc lookahead "nie 0"
+# siedzi WYŁĄCZNIE w gałęzi `[pP]`. Współdzielony lookahead (jedna kopia dla
+# obu liter) to DOKŁADNIE ta usterka, którą złapał własny test tej karty
+# (`test_k0_nie_ma_wykluczenia`): wykluczał `K0` "przy okazji", bo obie
+# litery czytały ten sam warunek — deklaracja bez testu byłaby fałszywą
+# pewnością (reguła KLASA §4).
+CODENAME_PATTERN = re.compile(r"(?<![A-Za-z0-9])(?:[pP](?!0(?![A-Za-z0-9]))|K)\d+(?![A-Za-z0-9])")
 ALLOWED_TECHNICAL_TOKENS = {"p50", "p75", "p90", "p95", "p99"}
+
+#: Cytowania kart/bramek w OPISACH TESTÓW (`describe`/`it`/`test`) — patrz
+#: uzasadnienie „WYKLUCZENIE GATE_CITATION_TOKENS" w docstringu modułu.
+#: Zbiór ZAMKNIĘTY i zmierzony (2026-09-05): K1..K13. Rozszerzenie wymaga
+#: tego samego dowodu (grep + review kontekstu każdego wystąpienia), nie
+#: samego „to też pewnie cytat". Używane WYŁĄCZNIE przez `scan_file`
+#: (frontend) — `scan_backend_file` go nie przekazuje (patrz niżej).
+GATE_CITATION_TOKENS = {f"k{i}" for i in range(1, 14)}
 
 # Regex for string literals (single, double, or template)
 STRING_LITERAL_PATTERN = re.compile(
@@ -127,14 +192,25 @@ def is_comment_line(line: str) -> bool:
     return any(pattern.match(trimmed) for pattern in COMMENT_LINE_PATTERNS)
 
 
-def find_codenames_in_strings(line: str) -> list[str]:
-    """Find codenames inside string literals in a line."""
+def find_codenames_in_strings(line: str, *, exempt_gate_citations: bool = False) -> list[str]:
+    """Find codenames inside string literals in a line.
+
+    `exempt_gate_citations` — TYLKO frontend (`scan_file`): dodatkowo pomija
+    `GATE_CITATION_TOKENS` (K1..K13 — cytowania kart/bramek w opisach testów,
+    patrz uzasadnienie przy definicji zbioru). Domyślnie `False`: skan
+    backendu (`scan_backend_file`) NIE dostaje tego wykluczenia — pole `_pl`
+    to tekst czytany przez projektanta, gdzie identyfikator kroku (nawet
+    z zakresu K1..K13) jest zawsze błędem, nie cytatem.
+    """
     matches = []
     for string_match in STRING_LITERAL_PATTERN.finditer(line):
         string_content = string_match.group("string")
         for codename_match in CODENAME_PATTERN.finditer(string_content):
             token = codename_match.group()
-            if token.lower() in ALLOWED_TECHNICAL_TOKENS:
+            lowered = token.lower()
+            if lowered in ALLOWED_TECHNICAL_TOKENS:
+                continue
+            if exempt_gate_citations and lowered in GATE_CITATION_TOKENS:
                 continue
             matches.append(token)
     return matches
@@ -178,8 +254,8 @@ def scan_file(file_path: Path) -> list[Violation]:
         if IGNORE_PATTERN.search(line):
             continue
 
-        # Find codenames in string literals
-        codenames = find_codenames_in_strings(line)
+        # Find codenames in string literals (frontend: gate-citation exemption applies)
+        codenames = find_codenames_in_strings(line, exempt_gate_citations=True)
         for codename in codenames:
             violations.append(
                 Violation(
@@ -310,7 +386,7 @@ def main() -> int:
         print("=" * 70, file=sys.stderr)
         print(file=sys.stderr)
         print(
-            "W UI/Proof nie wolno używać nazw kodowych (np. P11, P14, P17).",
+            "W UI/Proof nie wolno używać nazw kodowych (np. P11, P14, P17, K30).",
             file=sys.stderr,
         )
         print(

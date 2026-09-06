@@ -270,7 +270,6 @@ const NASTAWY_ODPOWIEDZ = {
         stan: 'NIEDOSTEPNA',
         komunikat_pl: 'Niedostepna — uzupelnij dane wejsciowe',
         powod_pl: 'Brak prądu zwarciowego z biegu SC',
-        fix_action_id: 'fix_protection_run_short_circuit',
         fix_navigation: { panel: 'analizy' },
       },
     ],

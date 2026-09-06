@@ -263,6 +263,53 @@ def compute_variant_hash(variant_payload: dict[str, Any]) -> str:
     return _canonical_sha256(variant_payload)
 
 
+#: Pola naglowka wykluczane z hasha modelu — JEDNA lista dla `compute_enm_hash`
+#: (hash z obiektu) i `hash_migawki_enm` (hash ze slownika `model_dump`): oba
+#: odciski musza byc rowne co do bitu dla tej samej tresci (przypiete testem
+#: `tests/enm/test_scenariusze.py::test_hash_migawki_rowny_hashowi_modelu`).
+_POLA_NAGLOWKA_POZA_HASHEM = (
+    "updated_at",
+    "created_at",
+    "hash_sha256",
+    # Warunki przyłączenia OSD (dane WEJŚCIOWE dokumentu, czytane w warstwie
+    # interpretacji — nie przez solver). Wykluczone jak pozostałe pola zmienne
+    # nagłówka: deklaracja pola w ENMHeader (naprawa defektu utrwalania, karta
+    # POMIAR-RODZAJ) nie może przestawić odcisków istniejących modeli.
+    "connection_conditions",
+)
+
+
+def hash_migawki_enm(snapshot: dict[str, Any]) -> str:
+    """Hash modelu policzony ze SLOWNIKA migawki (`EnergyNetworkModel.model_dump(mode="json")`).
+
+    Ta sama regula co `compute_enm_hash` (te same wykluczenia naglowka, te same
+    usuniete UUID elementow, ten sam kanoniczny JSON), ale bez odtwarzania obiektu
+    modelu — dla migawek efektywnych scenariuszy (CV-3.1, `enm/scenariusze.py`),
+    ktore powstaja jako slowniki z narzuconymi nadpisaniami i sa hashowane
+    setki razy (sondy zdolnosci przylaczeniowej). Rownosc z `compute_enm_hash`
+    dla migawki bez nadpisan jest przypieta testem; migawka przekazana przez
+    wolajacego NIE jest modyfikowana (praca na glebokiej kopii).
+    """
+    data = _kopia_pod_hash(snapshot)
+    _strip_uuids(data)
+    return _canonical_sha256(data)
+
+
+def _kopia_pod_hash(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Kopia migawki dokladnie tak gleboka, jak siegaja mutacje hashowania:
+    naglowek bez pol zmiennych, elementy list skopiowane plytko (z nich znika
+    wylacznie `id`). Zadna struktura wolajacego nie jest dotykana."""
+    data: dict[str, Any] = {}
+    for klucz, wartosc in snapshot.items():
+        if klucz == "header" and isinstance(wartosc, dict):
+            data[klucz] = {k: v for k, v in wartosc.items() if k not in _POLA_NAGLOWKA_POZA_HASHEM}
+        elif klucz in _ELEMENT_KEYS and isinstance(wartosc, list):
+            data[klucz] = [dict(item) if isinstance(item, dict) else item for item in wartosc]
+        else:
+            data[klucz] = wartosc
+    return data
+
+
 def compute_enm_hash(enm: EnergyNetworkModel) -> str:
     """DEPRECATED w docstring (BEZ runtime warning — determinizm zachowany).
 
@@ -277,26 +324,6 @@ def compute_enm_hash(enm: EnergyNetworkModel) -> str:
       compute_case_hash               — parametry przypadku
       compute_variant_hash            — delty wariantu
     """
-    data = enm.model_dump(
-        mode="json",
-        exclude={
-            "header": {
-                "updated_at",
-                "created_at",
-                "hash_sha256",
-                "semantic_hash",
-                "input_hash",
-                "case_hash",
-                "variant_hash",
-                "switching_snapshot_hash",
-                # Warunki przyłączenia OSD (dane WEJŚCIOWE dokumentu, czytane
-                # w warstwie interpretacji — nie przez solver). Wykluczone jak
-                # pozostałe pola zmienne nagłówka: deklaracja pola w ENMHeader
-                # (naprawa defektu utrwalania, karta POMIAR-RODZAJ) nie może
-                # przestawić odcisków istniejących modeli.
-                "connection_conditions",
-            }
-        },
-    )
+    data = enm.model_dump(mode="json", exclude={"header": set(_POLA_NAGLOWKA_POZA_HASHEM)})
     _strip_uuids(data)
     return _canonical_sha256(data)

@@ -40,10 +40,14 @@ def _serialize_value(value: Any) -> Any:
 @dataclass
 class PowerFlowResult:
     converged: bool
-    iterations: int
-    tolerance: float
-    max_mismatch_pu: float
-    base_mva: float
+    #: `None` = skalar nieznany w źródle (odtworzenie z niekompletnego zapisu biegu);
+    #: solver zawsze podaje liczby — NIGDY `0` za brak (FAB-E).
+    iterations: int | None
+    tolerance: float | None
+    #: Końcowe niedopasowanie [pu]; `None` = nieznane w źródle (odtworzenie z
+    #: zapisu biegu bez kroku końcowego śladu) — NIGDY `0.0` za brak (FAB-E).
+    max_mismatch_pu: float | None
+    base_mva: float | None
     slack_node_id: str
     node_voltage_pu: dict[str, complex] = field(default_factory=dict)
     node_u_mag_pu: dict[str, float] = field(default_factory=dict)
@@ -64,10 +68,12 @@ class PowerFlowResult:
     def to_dict(self) -> dict[str, Any]:
         return {
             "converged": bool(self.converged),
-            "iterations": int(self.iterations),
-            "tolerance": float(self.tolerance),
-            "max_mismatch_pu": float(self.max_mismatch_pu),
-            "base_mva": float(self.base_mva),
+            "iterations": None if self.iterations is None else int(self.iterations),
+            "tolerance": None if self.tolerance is None else float(self.tolerance),
+            "max_mismatch_pu": (
+                None if self.max_mismatch_pu is None else float(self.max_mismatch_pu)
+            ),
+            "base_mva": None if self.base_mva is None else float(self.base_mva),
             "slack_node_id": self.slack_node_id,
             "node_voltage_pu": _sorted_complex_dict(self.node_voltage_pu),
             "node_u_mag_pu": _sorted_float_dict(self.node_u_mag_pu),

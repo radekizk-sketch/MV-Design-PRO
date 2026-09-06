@@ -1250,6 +1250,10 @@ class AddConverterSourcePayload(_FrozenBase):
     # V12K-063 (G-OZE-B3): nachylenie Q(U) [pu Q na pu U] — wartość rządząca trybem Q_OD_U;
     # bez niej wybór trybu Q(U) był pasywny (phantom). Konsumowany przez kanoniczny PF.
     qu_slope_pu_per_pu: float | None = None
+    # Karta CV-4.1b (A3-04): nastawa napięcia [pu] rządząca trybem REGULACJA_NAPIECIA
+    # (węzeł PV w rozpływie — napięcie zadane, moc bierna wynikiem solvera w paśmie
+    # q_min_mvar/q_max_mvar powyżej). Brak → tryb niekompletny (walidator ENM blokuje).
+    u_set_pu: float | None = None
     # V12K-064 (G-OZE-B4): napięciowe pasmo nieczułości charakterystyki Q(U) [pu U] —
     # zakres napięcia, w którym Q=0 (NC RfG). Brak → domyślnie punkt 1.0/1.0 (reakcja
     # natychmiastowa). Konsumowany przez kanoniczny PF falownika (q_from_voltage).
@@ -1329,58 +1333,6 @@ class AddNNLoadPayload(_FrozenBase):
 
     load_name: str | None = None
     load_label: str | None = None
-
-
-# ===========================================================================
-# 6. CANONICAL OPERATION NAMES — kanoniczne nazwy operacji
-# ===========================================================================
-
-
-CANONICAL_OPS: set[str] = {
-    # V1 — budowa SN
-    "add_grid_source_sn",
-    "add_sn_bay",
-    "add_sn_bay_from_catalog",
-    "continue_trunk_segment_sn",
-    "insert_station_on_segment_sn",
-    "start_branch_segment_sn",
-    "insert_section_switch_sn",
-    "connect_secondary_ring_sn",
-    "set_normal_open_point",
-    "add_transformer_sn_nn",
-    "assign_catalog_to_element",
-    "update_element_parameters",
-    "add_converter_source",
-    "add_genset_nn",
-    "add_ups_nn",
-    "add_nn_load",
-    # V2 — ochrona
-    "add_ct",
-    "add_vt",
-    "add_relay",
-    "update_relay_settings",
-    "link_relay_to_field",
-    "calculate_tcc_curve",
-    "validate_selectivity",
-    # V2 — Study Case
-    "create_study_case",
-    "set_case_switch_state",
-    "set_case_normal_state",
-    "set_case_source_mode",
-    "set_case_time_profile",
-    "run_short_circuit",
-    "run_power_flow",
-    "run_time_series_power_flow",
-    "compare_study_cases",
-    # V2 — nN
-    "add_nn_outgoing_field",
-    "set_source_operating_mode",
-    "set_dynamic_profile",
-    # V2 — uniwersalne
-    "rename_element",
-    "set_label",
-}
-"""Zbiór kanonicznych nazw operacji domenowych."""
 
 
 DOMAIN_EVENT_TYPES: list[str] = [

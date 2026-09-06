@@ -39,16 +39,51 @@ def _reset() -> None:
     reset_enm_store()
 
 
-def _bieg_pf(case_id: str = "c-pf", **opcje):
-    """Zbieżny bieg rozpływu na sieci golden — realna ścieżka produkcyjna."""
-    set_enm(case_id, build_golden_enm())
-    run = create_run(case_id=case_id, analysis_type="PF", options=opcje or None)
+def _nowy_przypadek(client) -> str:
+    """Utwórz REALNY projekt + przypadek przez API; zwróć `case_id`.
+
+    CV-1-W: przypadek bez wiersza w bazie dostaje teraz 404 z magazynu ENM
+    (inwariant I-2) — testy tras diagnostyki (`/api/cases/{case_id}/...`)
+    potrzebują prawdziwej pary projekt+przypadek.
+    """
+    project_resp = client.post("/api/projects", json={"name": "Diagnoza przebiegu — test"})
+    assert project_resp.status_code == 201, project_resp.text
+    project_id = project_resp.json()["id"]
+    case_resp = client.post(
+        "/api/study-cases", json={"project_id": project_id, "name": "Przypadek testu"}
+    )
+    assert case_resp.status_code == 201, case_resp.text
+    return str(case_resp.json()["id"])
+
+
+def _klucz(client, case_id: str) -> str:
+    """Klucz magazynu ENM dla `case_id` — TO SAMO tłumaczenie co warstwa API (CV-1)."""
+    from application.twin_key import klucz_twin_dla_przypadku
+
+    return klucz_twin_dla_przypadku(case_id, client.app.state.uow_factory)
+
+
+def _bieg_pf(case_id: str = "c-pf", *, client=None, **opcje):
+    """Zbieżny bieg rozpływu na sieci golden — realna ścieżka produkcyjna.
+
+    `client` opcjonalny: testy czytające wynik WYŁĄCZNIE przez `run_id`
+    (`DIAGNOZA_BIEGU`) nie dotykają tłumaczenia `case_id` w ogóle, więc
+    zostają na surowym kluczu. Testy, które PÓŹNIEJ CZYTAJĄ TEN SAM model
+    przez `/api/cases/{case_id}/...` (case_id w ścieżce), muszą podać
+    `client`, żeby zapis trafił pod klucz, który tamta trasa przetłumaczy.
+    """
+    klucz = _klucz(client, case_id) if client is not None else case_id
+    set_enm(klucz, build_golden_enm())
+    run = create_run(case_id=case_id, klucz_twin=klucz, analysis_type="PF", options=opcje or None)
     return execute_run(run.id)
 
 
-def _bieg_zwarciowy(case_id: str = "c-sc"):
-    set_enm(case_id, build_golden_enm())
-    return execute_run(create_run(case_id=case_id, analysis_type="short_circuit_sn").id)
+def _bieg_zwarciowy(case_id: str = "c-sc", *, client=None):
+    klucz = _klucz(client, case_id) if client is not None else case_id
+    set_enm(klucz, build_golden_enm())
+    return execute_run(
+        create_run(case_id=case_id, klucz_twin=klucz, analysis_type="short_circuit_sn").id
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -58,9 +93,10 @@ def _bieg_zwarciowy(case_id: str = "c-sc"):
 
 def test_diagnostyka_modelu_zwraca_raport_dla_istniejacego_przypadku(app_client):
     """Trasa diagnostyki ODPOWIADA danymi (przed naprawą: zawsze 404)."""
-    set_enm("c-diag", build_golden_enm())
+    case_id = _nowy_przypadek(app_client)
+    set_enm(_klucz(app_client, case_id), build_golden_enm())
 
-    odpowiedz = app_client.get(DIAGNOSTYKA.format(case_id="c-diag"))
+    odpowiedz = app_client.get(DIAGNOSTYKA.format(case_id=case_id))
 
     assert odpowiedz.status_code == 200, odpowiedz.text
     ciało = odpowiedz.json()
@@ -72,9 +108,10 @@ def test_diagnostyka_modelu_zwraca_raport_dla_istniejacego_przypadku(app_client)
 
 def test_preflight_zwraca_tabele_analiz_dla_istniejacego_przypadku(app_client):
     """Trasa pre-flight ODPOWIADA danymi (przed naprawą: zawsze 404)."""
-    set_enm("c-pre", build_golden_enm())
+    case_id = _nowy_przypadek(app_client)
+    set_enm(_klucz(app_client, case_id), build_golden_enm())
 
-    odpowiedz = app_client.get(PREFLIGHT.format(case_id="c-pre"))
+    odpowiedz = app_client.get(PREFLIGHT.format(case_id=case_id))
 
     assert odpowiedz.status_code == 200, odpowiedz.text
     ciało = odpowiedz.json()
@@ -95,19 +132,23 @@ def test_diagnostyka_i_preflight_opisuja_ten_sam_model_co_bieg(app_client):
     Gdyby źródło modelu się rozjechało (dwie ścieżki tej samej prawdy), macierz
     analiz opisywałaby inną sieć niż ta policzona — pin trzyma je razem.
     """
-    bieg = _bieg_pf("c-spojnosc")
+    case_id = _nowy_przypadek(app_client)
+    bieg = _bieg_pf(case_id, client=app_client)
 
-    diagnostyka = app_client.get(DIAGNOSTYKA.format(case_id="c-spojnosc"))
+    diagnostyka = app_client.get(DIAGNOSTYKA.format(case_id=case_id))
     assert diagnostyka.status_code == 200, diagnostyka.text
 
     diagnoza = app_client.get(DIAGNOZA_BIEGU.format(run_id=bieg.id))
     assert diagnoza.status_code == 200, diagnoza.text
-    assert diagnoza.json()["case_id"] == "c-spojnosc"
+    assert diagnoza.json()["case_id"] == case_id
 
 
 def test_diagnostyka_nieznanego_przypadku_nie_wywraca_trasy(app_client):
-    """Nieznany przypadek = model domyślny (pusty), nie błąd serwera."""
-    odpowiedz = app_client.get(DIAGNOSTYKA.format(case_id="c-nieznany"))
+    """Przypadek bez ANI JEDNEGO zapisu ENM = model domyślny (pusty), nie błąd
+    serwera (CV-1-W: przypadek musi należeć do realnego projektu — inwariant
+    I-2 — ale samo istnienie w bazie nie wymaga uprzedniego zapisu modelu)."""
+    case_id = _nowy_przypadek(app_client)
+    odpowiedz = app_client.get(DIAGNOSTYKA.format(case_id=case_id))
 
     assert odpowiedz.status_code == 200, odpowiedz.text
     assert odpowiedz.json()["status"] in ("OK", "WARN", "FAIL")

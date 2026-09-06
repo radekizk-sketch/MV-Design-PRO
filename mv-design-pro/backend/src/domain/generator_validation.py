@@ -94,7 +94,7 @@ def validate_generator_connections(
                     ),
                     element_id=ref_id,
                     element_type="GENERATOR",
-                    fix_hint_pl="Wybierz wariant przylaczenia w kreatorze (krok K6)",
+                    fix_hint_pl="Wybierz wariant przylaczenia w kreatorze",
                     wizard_step="K6",
                 )
             )
@@ -114,7 +114,7 @@ def validate_generator_connections(
                         ),
                         element_id=ref_id,
                         element_type="GENERATOR",
-                        fix_hint_pl="Wskazz stacje SN/nN w kreatorze (krok K6)",
+                        fix_hint_pl="Wskazz stacje SN/nN w kreatorze",
                         wizard_step="K6",
                     )
                 )
@@ -149,7 +149,7 @@ def validate_generator_connections(
                         ),
                         element_id=ref_id,
                         element_type="GENERATOR",
-                        fix_hint_pl="Wskazz transformator blokowy w kreatorze (krok K6)",
+                        fix_hint_pl="Wskazz transformator blokowy w kreatorze",
                         wizard_step="K6",
                     )
                 )
@@ -165,7 +165,7 @@ def validate_generator_connections(
                         ),
                         element_id=ref_id,
                         element_type="GENERATOR",
-                        fix_hint_pl="Dodaj transformator blokowy w kreatorze (krok K5)",
+                        fix_hint_pl="Dodaj transformator blokowy w kreatorze",
                         wizard_step="K5",
                     )
                 )

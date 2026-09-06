@@ -25,18 +25,16 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-import numpy as np
 import pytest
-from application.execution_engine.service import ExecutionEngineService
 from application.fault_scenario_service import (
     FaultScenarioDuplicateError,
+    FaultScenarioHasRunsError,
     FaultScenarioNotFoundError,
     FaultScenarioService,
 )
 from domain.execution import (
     ExecutionAnalysisType,
     ResultSet,
-    RunStatus,
 )
 from domain.fault_scenario import (
     FAULT_TYPE_TO_ANALYSIS,
@@ -48,150 +46,35 @@ from domain.fault_scenario import (
     compute_scenario_content_hash,
     new_fault_scenario,
 )
-from domain.study_case import StudyCaseConfig, new_study_case
-from network_model.core.branch import BranchType, LineBranch, TransformerBranch
-from network_model.core.graph import NetworkGraph
-from network_model.core.inverter import InverterSource
-from network_model.core.node import Node, NodeType
-from network_model.core.ybus import AdmittanceMatrixBuilder
 
 # =============================================================================
 # Fixtures
 # =============================================================================
 
-MOCK_PROJECT_ID = uuid4()
 MOCK_CASE_ID = uuid4()
 
 # Default test scenario name (Polish, user-facing).
 DEFAULT_NAME = "Zwarcie testowe"
 
 
-def _create_golden_graph() -> NetworkGraph:
-    """Golden MV network for testing (same as PR-18)."""
-    graph = NetworkGraph()
-
-    graph.add_node(
-        Node(
-            id="SLACK",
-            name="Stacja 110kV",
-            node_type=NodeType.PQ,
-            voltage_level=110.0,
-            active_power=0.0,
-            reactive_power=0.0,
-        )
-    )
-    graph.add_node(
-        Node(
-            id="BUS_MV",
-            name="Szyna SN 20kV",
-            node_type=NodeType.PQ,
-            voltage_level=20.0,
-            active_power=5.0,
-            reactive_power=2.0,
-        )
-    )
-    graph.add_node(
-        Node(
-            id="BUS_LOAD",
-            name="Szyna odbiorcza 20kV",
-            node_type=NodeType.PQ,
-            voltage_level=20.0,
-            active_power=10.0,
-            reactive_power=4.0,
-        )
-    )
-    graph.add_node(
-        Node(
-            id="GND",
-            name="Uziemienie",
-            node_type=NodeType.PQ,
-            voltage_level=20.0,
-            active_power=0.0,
-            reactive_power=0.0,
-        )
-    )
-
-    graph.add_branch(
-        TransformerBranch(
-            id="T1",
-            name="Transformator T1",
-            branch_type=BranchType.TRANSFORMER,
-            from_node_id="SLACK",
-            to_node_id="BUS_MV",
-            in_service=True,
-            rated_power_mva=25.0,
-            voltage_hv_kv=110.0,
-            voltage_lv_kv=20.0,
-            uk_percent=10.0,
-            pk_kw=120.0,
-            i0_percent=0.5,
-            p0_kw=25.0,
-            vector_group="Dyn11",
-            tap_position=0,
-            tap_step_percent=2.5,
-            type_ref="TRAFO_110_20_25MVA",
-        )
-    )
-
-    graph.add_branch(
-        LineBranch(
-            id="C1",
-            name="Kabel C1",
-            branch_type=BranchType.CABLE,
-            from_node_id="BUS_MV",
-            to_node_id="BUS_LOAD",
-            in_service=True,
-            r_ohm_per_km=0.125,
-            x_ohm_per_km=0.08,
-            b_us_per_km=260.0,
-            length_km=5.0,
-            rated_current_a=400.0,
-            type_ref="YAKY_3x240",
-        )
-    )
-
-    graph.add_branch(
-        LineBranch(
-            id="REF",
-            name="Ref GND",
-            branch_type=BranchType.LINE,
-            from_node_id="BUS_LOAD",
-            to_node_id="GND",
-            in_service=True,
-            r_ohm_per_km=1e9,
-            x_ohm_per_km=0.0,
-            b_us_per_km=0.0,
-            length_km=1.0,
-            rated_current_a=1.0,
-        )
-    )
-
-    graph.add_inverter_source(
-        InverterSource(
-            id="INV1",
-            name="Falownik PV 1",
-            node_id="BUS_LOAD",
-            in_rated_a=100.0,
-            k_sc=1.1,
-            contributes_negative_sequence=False,
-            contributes_zero_sequence=False,
-            in_service=True,
-        )
-    )
-
-    return graph
+def _klucz() -> str:
+    """Klucz magazynu scenariuszy — świeży per wywołanie (karta C6-PERSIST):
+    `FaultScenarioService` jest bezstanowy, więc izolacja testów nie wymaga
+    resetu magazynu, tylko klucza, który żaden inny test nie mógł jeszcze
+    dotknąć (`enm/scenariusze.py` partycjonuje magazyn WYŁĄCZNIE po kluczu)."""
+    return f"pr19-fault-svc-{uuid4()}"
 
 
-def _create_engine_with_case():
-    """Create ExecutionEngineService with registered study case."""
-    engine = ExecutionEngineService()
-    case = new_study_case(
-        project_id=MOCK_PROJECT_ID,
-        name="PR-19 test case",
-        config=StudyCaseConfig(c_factor_max=1.10, thermal_time_seconds=1.0),
-    )
-    engine.register_study_case(case)
-    return engine, case
+# Historia: golden graf `_create_golden_graph()` i pomocnik silnika
+# `_create_engine_with_case()` (surowy `network_model.core.graph.NetworkGraph`
+# + `ExecutionEngineService.execute_run_by_scenario`) zdjete karta CV-3.3-A
+# (2026-09-05) razem z E3 (`application/execution_engine/**`, zero konsumenta
+# produkcyjnego) — jedyny konsument obu pomocnikow, klasa
+# `TestExecutionEngineScenarioIntegration`, tez zdjeta (patrz sekcja 5 nizej).
+# Fizyka (SC3F/SC2F/SC1F przez scenariusz zwarciowy, determinizm, 3F>2F) ma
+# rownowazny dowod na torze kanonicznym: `tests/test_fault_scenarios_run_integration.py`
+# (`create_run_from_scenario`, karta CV-1-W/C6-PERSIST, POST /fault-scenarios/{id}/runs)
+# oraz `tests/enm/test_short_circuit_migracja_e3_golden.py` (migracja E3, ta karta).
 
 
 # =============================================================================
@@ -527,12 +410,20 @@ class TestValidation:
 
 
 class TestFaultScenarioService:
-    """Test application-layer FaultScenarioService."""
+    """Test application-layer FaultScenarioService (magazyn scenariuszy, karta C6-PERSIST).
+
+    Serwis jest bezstanowy — każda metoda dostaje `klucz` magazynu jawnie
+    (parytet z `enm.canonical_analysis.create_run(klucz_twin=...)`). Testy
+    poniżej NIE resetują magazynu między sobą — izolacja idzie przez klucz
+    świeży per test (`_klucz()`), zgodnie z partycjonowaniem magazynu.
+    """
 
     def test_create_and_get_scenario(self):
         """Create a scenario and retrieve it."""
         service = FaultScenarioService()
+        klucz = _klucz()
         scenario = service.create_scenario(
+            klucz=klucz,
             study_case_id=MOCK_CASE_ID,
             name=DEFAULT_NAME,
             fault_type="SC_3F",
@@ -541,59 +432,67 @@ class TestFaultScenarioService:
         assert scenario.fault_type == FaultType.SC_3F
         assert scenario.content_hash != ""
 
-        retrieved = service.get_scenario(scenario.scenario_id)
+        retrieved = service.get_scenario(klucz, scenario.scenario_id)
         assert retrieved.scenario_id == scenario.scenario_id
 
     def test_list_scenarios_sorted(self):
         """list_scenarios returns deterministically sorted list."""
         service = FaultScenarioService()
+        klucz = _klucz()
         service.create_scenario(
+            klucz=klucz,
             study_case_id=MOCK_CASE_ID,
             name="Scenariusz B",
             fault_type="SC_2F",
             location={"element_ref": "BUS_B", "location_type": "BUS"},
         )
         service.create_scenario(
+            klucz=klucz,
             study_case_id=MOCK_CASE_ID,
             name="Scenariusz A",
             fault_type="SC_3F",
             location={"element_ref": "BUS_A", "location_type": "BUS"},
         )
         service.create_scenario(
+            klucz=klucz,
             study_case_id=MOCK_CASE_ID,
             name="Scenariusz C",
             fault_type="SC_2F",
             location={"element_ref": "BUS_A", "location_type": "BUS"},
         )
 
-        scenarios = service.list_scenarios(MOCK_CASE_ID)
+        scenarios = service.list_scenarios(klucz, MOCK_CASE_ID)
         keys = [(s.fault_type.value, s.location.element_ref) for s in scenarios]
         assert keys == sorted(keys)
 
     def test_delete_scenario(self):
         """Delete removes scenario from store."""
         service = FaultScenarioService()
+        klucz = _klucz()
         scenario = service.create_scenario(
+            klucz=klucz,
             study_case_id=MOCK_CASE_ID,
             name=DEFAULT_NAME,
             fault_type="SC_3F",
             location={"element_ref": "BUS_MV", "location_type": "BUS"},
         )
-        service.delete_scenario(scenario.scenario_id)
+        service.delete_scenario(klucz, scenario.scenario_id)
 
         with pytest.raises(FaultScenarioNotFoundError):
-            service.get_scenario(scenario.scenario_id)
+            service.get_scenario(klucz, scenario.scenario_id)
 
     def test_delete_nonexistent_raises(self):
         """Delete nonexistent scenario raises."""
         service = FaultScenarioService()
         with pytest.raises(FaultScenarioNotFoundError):
-            service.delete_scenario(uuid4())
+            service.delete_scenario(_klucz(), uuid4())
 
     def test_duplicate_content_hash_raises(self):
         """Creating a scenario with duplicate content_hash raises."""
         service = FaultScenarioService()
+        klucz = _klucz()
         service.create_scenario(
+            klucz=klucz,
             study_case_id=MOCK_CASE_ID,
             name=DEFAULT_NAME,
             fault_type="SC_3F",
@@ -601,6 +500,7 @@ class TestFaultScenarioService:
         )
         with pytest.raises(FaultScenarioDuplicateError):
             service.create_scenario(
+                klucz=klucz,
                 study_case_id=MOCK_CASE_ID,
                 name=DEFAULT_NAME,
                 fault_type="SC_3F",
@@ -610,35 +510,40 @@ class TestFaultScenarioService:
     def test_validate_scenario(self):
         """validate_scenario confirms invariants hold."""
         service = FaultScenarioService()
+        klucz = _klucz()
         scenario = service.create_scenario(
+            klucz=klucz,
             study_case_id=MOCK_CASE_ID,
             name=DEFAULT_NAME,
             fault_type="SC_3F",
             location={"element_ref": "BUS_MV", "location_type": "BUS"},
         )
         # Should not raise
-        service.validate_scenario(scenario.scenario_id)
+        service.validate_scenario(klucz, scenario.scenario_id)
 
     def test_compute_hash_matches(self):
         """compute_hash recomputes and matches stored hash."""
         service = FaultScenarioService()
+        klucz = _klucz()
         scenario = service.create_scenario(
+            klucz=klucz,
             study_case_id=MOCK_CASE_ID,
             name=DEFAULT_NAME,
             fault_type="SC_3F",
             location={"element_ref": "BUS_MV", "location_type": "BUS"},
         )
-        assert service.compute_hash(scenario.scenario_id) == scenario.content_hash
+        assert service.compute_hash(klucz, scenario.scenario_id) == scenario.content_hash
 
     def test_list_empty_case_returns_empty(self):
         """list_scenarios for nonexistent case returns empty list."""
         service = FaultScenarioService()
-        assert service.list_scenarios(uuid4()) == []
+        assert service.list_scenarios(_klucz(), uuid4()) == []
 
     def test_create_with_config_override(self):
         """Custom config overrides defaults."""
         service = FaultScenarioService()
         scenario = service.create_scenario(
+            klucz=_klucz(),
             study_case_id=MOCK_CASE_ID,
             name=DEFAULT_NAME,
             fault_type="SC_3F",
@@ -648,199 +553,104 @@ class TestFaultScenarioService:
         assert scenario.config.c_factor == 0.95
         assert scenario.config.thermal_time_seconds == 2.0
 
+    # -------------------------------------------------------------------
+    # Karta C6-PERSIST — testy klasy (trwałość, rewizje magazynu)
+    # -------------------------------------------------------------------
+
+    def test_restart_procesu_nie_gubi_scenariuszy(self):
+        """(a) Nowy obiekt serwisu (restart procesu), TEN SAM magazyn na dysku
+        -> scenariusz nadal czytelny. Dowód, że treść żyje w magazynie
+        (`enm/scenariusze.py`), nie w atrybucie instancji `FaultScenarioService`."""
+        klucz = _klucz()
+        pierwszy = FaultScenarioService()
+        scenario = pierwszy.create_scenario(
+            klucz=klucz,
+            study_case_id=MOCK_CASE_ID,
+            name=DEFAULT_NAME,
+            fault_type="SC_3F",
+            location={"element_ref": "BUS_MV", "location_type": "BUS"},
+        )
+
+        drugi = FaultScenarioService()  # symuluje restart procesu backendu
+        odczytany = drugi.get_scenario(klucz, scenario.scenario_id)
+        assert odczytany.scenario_id == scenario.scenario_id
+        assert odczytany.content_hash == scenario.content_hash
+        assert drugi.list_scenarios(klucz, MOCK_CASE_ID) == [odczytany]
+
+    def test_update_tworzy_nowa_rewizje_w_magazynie(self):
+        """(b) Update = nowa rewizja w magazynie; brak zmiany = brak rewizji."""
+        from enm.scenariusze import stan_scenariusza
+
+        service = FaultScenarioService()
+        klucz = _klucz()
+        scenario = service.create_scenario(
+            klucz=klucz,
+            study_case_id=MOCK_CASE_ID,
+            name=DEFAULT_NAME,
+            fault_type="SC_3F",
+            location={"element_ref": "BUS_MV", "location_type": "BUS"},
+        )
+        assert stan_scenariusza(klucz, str(scenario.scenario_id)).rewizja == 1
+
+        updated = service.update_scenario(klucz, scenario.scenario_id, name="Nazwa po zmianie")
+        assert updated.content_hash != scenario.content_hash
+        assert stan_scenariusza(klucz, str(scenario.scenario_id)).rewizja == 2
+
+        # Update BEZ żadnego pola: content_hash bez zmian -> magazyn NIE
+        # zapisuje nowej rewizji („brak zmiany" nie jest zmianą).
+        service.update_scenario(klucz, scenario.scenario_id)
+        assert stan_scenariusza(klucz, str(scenario.scenario_id)).rewizja == 2
+
+    def test_delete_z_powiazanym_biegiem_wyprowadzone_z_koperty(self):
+        """(c) Usunięcie scenariusza z istniejącym biegiem = błąd, wyprowadzony
+        z koperty biegu kanonicznego (nie z osobnego rejestru — `register_run`
+        nie istnieje już w tym serwisie)."""
+        from enm.canonical_analysis import create_run
+        from enm.scenariusze import OperatingScenario, RodzajScenariusza
+        from enm.store import set_enm
+
+        from tests.cgmes.golden_enm import build_golden_enm
+
+        service = FaultScenarioService()
+        klucz = _klucz()
+        case_id = str(MOCK_CASE_ID)
+        set_enm(klucz, build_golden_enm())
+
+        scenario = service.create_scenario(
+            klucz=klucz,
+            study_case_id=MOCK_CASE_ID,
+            name=DEFAULT_NAME,
+            fault_type="SC_3F",
+            location={"element_ref": "bus_sn_main", "location_type": "BUS"},
+        )
+        assert service.has_associated_runs(MOCK_CASE_ID, scenario.scenario_id) is False
+
+        wpis = OperatingScenario(
+            scenario_id=str(scenario.scenario_id),
+            name=scenario.name,
+            kind=RodzajScenariusza.FAULT_STUDY,
+            fault_spec=scenario,
+        )
+        create_run(
+            case_id=case_id,
+            klucz_twin=klucz,
+            analysis_type="short_circuit_sn",
+            scenariusz=wpis,
+        )
+
+        assert service.has_associated_runs(MOCK_CASE_ID, scenario.scenario_id) is True
+        with pytest.raises(FaultScenarioHasRunsError):
+            service.delete_scenario(klucz, scenario.scenario_id)
+
 
 # =============================================================================
-# 5. EXECUTION ENGINE INTEGRATION (execute_run_by_scenario)
+# 5. EXECUTION ENGINE INTEGRATION (execute_run_by_scenario) — USUNIETA
 # =============================================================================
-
-
-class TestExecutionEngineScenarioIntegration:
-    """Test execute_run_by_scenario via FaultScenario."""
-
-    def test_sc_3f_via_scenario(self):
-        """SC_3F execution via FaultScenario produces DONE + ResultSet."""
-        graph = _create_golden_graph()
-        engine, case = _create_engine_with_case()
-
-        scenario = new_fault_scenario(
-            study_case_id=case.id,
-            name="Zwarcie 3F — BUS_MV",
-            fault_type=FaultType.SC_3F,
-            location=FaultLocation(element_ref="BUS_MV", location_type="BUS"),
-        )
-
-        run = engine.create_run(
-            study_case_id=case.id,
-            analysis_type=ExecutionAnalysisType.SC_3F,
-            solver_input={"scenario_hash": scenario.content_hash},
-        )
-
-        done_run, rs = engine.execute_run_by_scenario(
-            run.id,
-            fault_scenario=scenario,
-            graph=graph,
-            readiness_snapshot={"ready": True},
-            validation_snapshot={"is_valid": True},
-        )
-
-        assert done_run.status == RunStatus.DONE
-        assert rs.analysis_type == ExecutionAnalysisType.SC_3F
-        assert rs.global_results["ikss_a"] > 0
-        assert rs.global_results["ip_a"] > 0
-
-    def test_sc_2f_via_scenario(self):
-        """SC_2F execution via FaultScenario produces DONE."""
-        graph = _create_golden_graph()
-        engine, case = _create_engine_with_case()
-
-        scenario = new_fault_scenario(
-            study_case_id=case.id,
-            name="Zwarcie 2F — BUS_MV",
-            fault_type=FaultType.SC_2F,
-            location=FaultLocation(element_ref="BUS_MV", location_type="BUS"),
-        )
-
-        run = engine.create_run(
-            study_case_id=case.id,
-            analysis_type=ExecutionAnalysisType.SC_2F,
-            solver_input={"scenario_hash": scenario.content_hash},
-        )
-
-        done_run, rs = engine.execute_run_by_scenario(
-            run.id,
-            fault_scenario=scenario,
-            graph=graph,
-            readiness_snapshot={"ready": True},
-            validation_snapshot={"is_valid": True},
-        )
-
-        assert done_run.status == RunStatus.DONE
-        assert rs.global_results["ikss_a"] > 0
-
-    def test_sc_1f_via_scenario_with_z0(self):
-        """SC_1F execution via FaultScenario with Z0 produces DONE."""
-        graph = _create_golden_graph()
-        engine, case = _create_engine_with_case()
-
-        builder = AdmittanceMatrixBuilder(graph)
-        y_bus = builder.build()
-        z1_bus = np.linalg.inv(y_bus)
-        z0_bus = z1_bus * 3.0
-
-        scenario = new_fault_scenario(
-            study_case_id=case.id,
-            name="Zwarcie 1F — BUS_MV",
-            fault_type=FaultType.SC_1F,
-            location=FaultLocation(element_ref="BUS_MV", location_type="BUS"),
-            z0_bus_data={"placeholder": True},
-        )
-
-        run = engine.create_run(
-            study_case_id=case.id,
-            analysis_type=ExecutionAnalysisType.SC_1F,
-            solver_input={"scenario_hash": scenario.content_hash},
-        )
-
-        done_run, rs = engine.execute_run_by_scenario(
-            run.id,
-            fault_scenario=scenario,
-            graph=graph,
-            readiness_snapshot={"ready": True},
-            validation_snapshot={"is_valid": True},
-            z0_bus=z0_bus,
-        )
-
-        assert done_run.status == RunStatus.DONE
-        assert rs.global_results["ikss_a"] > 0
-
-    def test_scenario_determinism(self):
-        """Two runs via same scenario produce identical results."""
-        graph = _create_golden_graph()
-        scenario = new_fault_scenario(
-            study_case_id=MOCK_CASE_ID,
-            name="Determinizm — BUS_MV",
-            fault_type=FaultType.SC_3F,
-            location=FaultLocation(element_ref="BUS_MV", location_type="BUS"),
-        )
-
-        engine_a, case_a = _create_engine_with_case()
-        engine_b, case_b = _create_engine_with_case()
-
-        run_a = engine_a.create_run(
-            study_case_id=case_a.id,
-            analysis_type=ExecutionAnalysisType.SC_3F,
-            solver_input={"hash": scenario.content_hash},
-        )
-        run_b = engine_b.create_run(
-            study_case_id=case_b.id,
-            analysis_type=ExecutionAnalysisType.SC_3F,
-            solver_input={"hash": scenario.content_hash},
-        )
-
-        _, rs_a = engine_a.execute_run_by_scenario(
-            run_a.id,
-            fault_scenario=scenario,
-            graph=graph,
-            readiness_snapshot={"ready": True},
-            validation_snapshot={"is_valid": True},
-        )
-        _, rs_b = engine_b.execute_run_by_scenario(
-            run_b.id,
-            fault_scenario=scenario,
-            graph=graph,
-            readiness_snapshot={"ready": True},
-            validation_snapshot={"is_valid": True},
-        )
-
-        assert rs_a.global_results == rs_b.global_results
-
-    def test_3f_gt_2f_via_scenario(self):
-        """IEC 60909: I_3F > I_2F at same fault node via scenarios."""
-        graph = _create_golden_graph()
-
-        scenario_3f = new_fault_scenario(
-            study_case_id=MOCK_CASE_ID,
-            name="Porównanie 3F",
-            fault_type=FaultType.SC_3F,
-            location=FaultLocation(element_ref="BUS_MV", location_type="BUS"),
-        )
-        scenario_2f = new_fault_scenario(
-            study_case_id=MOCK_CASE_ID,
-            name="Porównanie 2F",
-            fault_type=FaultType.SC_2F,
-            location=FaultLocation(element_ref="BUS_MV", location_type="BUS"),
-        )
-
-        engine_3f, case_3f = _create_engine_with_case()
-        engine_2f, case_2f = _create_engine_with_case()
-
-        run_3f = engine_3f.create_run(
-            study_case_id=case_3f.id,
-            analysis_type=ExecutionAnalysisType.SC_3F,
-            solver_input={"hash": scenario_3f.content_hash},
-        )
-        run_2f = engine_2f.create_run(
-            study_case_id=case_2f.id,
-            analysis_type=ExecutionAnalysisType.SC_2F,
-            solver_input={"hash": scenario_2f.content_hash},
-        )
-
-        _, rs_3f = engine_3f.execute_run_by_scenario(
-            run_3f.id,
-            fault_scenario=scenario_3f,
-            graph=graph,
-            readiness_snapshot={"ready": True},
-            validation_snapshot={"is_valid": True},
-        )
-        _, rs_2f = engine_2f.execute_run_by_scenario(
-            run_2f.id,
-            fault_scenario=scenario_2f,
-            graph=graph,
-            readiness_snapshot={"ready": True},
-            validation_snapshot={"is_valid": True},
-        )
-
-        assert rs_3f.global_results["ikss_a"] > rs_2f.global_results["ikss_a"]
+# Klasa `TestExecutionEngineScenarioIntegration` (SC3F/SC2F/SC1F/determinizm/
+# 3F>2F przez `ExecutionEngineService.execute_run_by_scenario`) skasowana
+# karta CV-3.3-A (2026-09-05) razem z E3. Uzasadnienie i wskazanie dowodu
+# zastepczego — patrz uwaga historyczna przy dawnych pomocnikach
+# `_create_golden_graph`/`_create_engine_with_case` (poczatek pliku).
 
 
 # =============================================================================
@@ -849,27 +659,51 @@ class TestExecutionEngineScenarioIntegration:
 
 
 class TestFaultScenarioApi:
-    """Test fault scenario REST API endpoints."""
+    """Test fault scenario REST API endpoints.
+
+    Karta C6-PERSIST: scenariusze żyją w magazynie per PROJEKT (klucz Canonical
+    Project Twin), więc każda końcówka `study-cases/{case_id}/...` wymaga
+    RZECZYWISTEGO przypadku w bazie (`klucz_twin_z_sciezki` odmawia 404 dla
+    `case_id`, którego nie ma w bazie) — `case_id = str(uuid4())` swobodny,
+    jak przed tą kartą, przestał być reprezentatywny. `client` wchodzi w
+    `with` (lifespan), bo bez niego `app.state.uow_factory` nie jest związany
+    i TO tłumaczenie kończy się 404 niezależnie od treści żądania.
+    """
 
     @pytest.fixture
     def client(self):
         from api.main import app
         from fastapi.testclient import TestClient
 
-        return TestClient(app)
+        with TestClient(app) as test_client:
+            yield test_client
 
     @pytest.fixture(autouse=True)
-    def reset_service(self):
-        """Reset service state between tests."""
-        from api.fault_scenarios import get_fault_scenario_service
+    def reset_enm(self):
+        """Reset magazynu ENM (razem ze scenariuszami — `usun_wszystkie_scenariusze`
+        jest wołane wewnątrz `reset_enm_store`, jeden cykl życia)."""
+        from enm.store import reset_enm_store
 
-        service = get_fault_scenario_service()
-        service._scenarios.clear()
-        service._case_scenarios.clear()
+        reset_enm_store()
+        yield
+        reset_enm_store()
+
+    def _nowy_przypadek(self, client) -> str:
+        """Utwórz REALNY projekt + przypadek przez API; zwróć `case_id`."""
+        project_resp = client.post(
+            "/api/projects", json={"name": "PR-19 fault scenario API — test"}
+        )
+        assert project_resp.status_code == 201, project_resp.text
+        case_resp = client.post(
+            "/api/study-cases",
+            json={"project_id": project_resp.json()["id"], "name": "Przypadek testu"},
+        )
+        assert case_resp.status_code == 201, case_resp.text
+        return str(case_resp.json()["id"])
 
     def test_create_scenario_success(self, client):
         """POST creates a fault scenario."""
-        case_id = str(uuid4())
+        case_id = self._nowy_przypadek(client)
         response = client.post(
             f"/api/execution/study-cases/{case_id}/fault-scenarios",
             json={
@@ -888,11 +722,13 @@ class TestFaultScenarioApi:
         assert data["name"] == DEFAULT_NAME
         assert data["location"]["element_ref"] == "BUS_MV"
         assert len(data["content_hash"]) == 64
+        assert data["revision"] == 1
 
     def test_create_scenario_missing_name_returns_422(self, client):
         """POST without name returns 422 (Pydantic validation)."""
+        case_id = self._nowy_przypadek(client)
         response = client.post(
-            f"/api/execution/study-cases/{uuid4()}/fault-scenarios",
+            f"/api/execution/study-cases/{case_id}/fault-scenarios",
             json={
                 "fault_type": "SC_3F",
                 "location": {"element_ref": "B1", "location_type": "BUS"},
@@ -902,8 +738,9 @@ class TestFaultScenarioApi:
 
     def test_create_scenario_empty_name_returns_422(self, client):
         """POST with empty name returns 422 (domain validation)."""
+        case_id = self._nowy_przypadek(client)
         response = client.post(
-            f"/api/execution/study-cases/{uuid4()}/fault-scenarios",
+            f"/api/execution/study-cases/{case_id}/fault-scenarios",
             json={
                 "name": "",
                 "fault_type": "SC_3F",
@@ -915,8 +752,9 @@ class TestFaultScenarioApi:
 
     def test_create_scenario_invalid_fault_type(self, client):
         """POST with invalid fault_type returns 400."""
+        case_id = self._nowy_przypadek(client)
         response = client.post(
-            f"/api/execution/study-cases/{uuid4()}/fault-scenarios",
+            f"/api/execution/study-cases/{case_id}/fault-scenarios",
             json={
                 "name": DEFAULT_NAME,
                 "fault_type": "INVALID",
@@ -927,8 +765,9 @@ class TestFaultScenarioApi:
 
     def test_create_scenario_sc1f_no_z0_returns_422(self, client):
         """POST SC_1F without z0_bus_data returns 422."""
+        case_id = self._nowy_przypadek(client)
         response = client.post(
-            f"/api/execution/study-cases/{uuid4()}/fault-scenarios",
+            f"/api/execution/study-cases/{case_id}/fault-scenarios",
             json={
                 "name": DEFAULT_NAME,
                 "fault_type": "SC_1F",
@@ -940,8 +779,9 @@ class TestFaultScenarioApi:
 
     def test_create_scenario_branch_no_position_returns_422(self, client):
         """POST BRANCH without position returns 422."""
+        case_id = self._nowy_przypadek(client)
         response = client.post(
-            f"/api/execution/study-cases/{uuid4()}/fault-scenarios",
+            f"/api/execution/study-cases/{case_id}/fault-scenarios",
             json={
                 "name": DEFAULT_NAME,
                 "fault_type": "SC_3F",
@@ -952,7 +792,8 @@ class TestFaultScenarioApi:
 
     def test_list_scenarios_empty(self, client):
         """GET returns empty list for new case."""
-        response = client.get(f"/api/execution/study-cases/{uuid4()}/fault-scenarios")
+        case_id = self._nowy_przypadek(client)
+        response = client.get(f"/api/execution/study-cases/{case_id}/fault-scenarios")
         assert response.status_code == 200
         data = response.json()
         assert data["scenarios"] == []
@@ -960,7 +801,7 @@ class TestFaultScenarioApi:
 
     def test_list_scenarios_with_data(self, client):
         """GET returns created scenarios."""
-        case_id = str(uuid4())
+        case_id = self._nowy_przypadek(client)
         client.post(
             f"/api/execution/study-cases/{case_id}/fault-scenarios",
             json={
@@ -985,7 +826,7 @@ class TestFaultScenarioApi:
 
     def test_delete_scenario_success(self, client):
         """DELETE removes a scenario."""
-        case_id = str(uuid4())
+        case_id = self._nowy_przypadek(client)
         create_resp = client.post(
             f"/api/execution/study-cases/{case_id}/fault-scenarios",
             json={
@@ -1010,7 +851,7 @@ class TestFaultScenarioApi:
 
     def test_duplicate_scenario_returns_409(self, client):
         """POST duplicate scenario returns 409."""
-        case_id = str(uuid4())
+        case_id = self._nowy_przypadek(client)
         client.post(
             f"/api/execution/study-cases/{case_id}/fault-scenarios",
             json={

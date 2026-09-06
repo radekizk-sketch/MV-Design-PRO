@@ -1,4 +1,14 @@
-"""Tests for pandapower bridge — lazy import, conversion correctness."""
+"""Tests for pandapower bridge — conversion correctness.
+
+Marker `pandapower` (zarejestrowany w pyproject.toml): ten modul wymaga
+realnie zainstalowanego pandapower. W glownym venv solverow (scipy 1.17.0,
+zlote hashe) pandapower NIE jest instalowane celowo (konflikt zaleznosci —
+pandapower<3.6 wymaga scipy<1.17 na Pythonie 3.11). Walidacja krzyzowa biegnie
+w IZOLOWANYM srodowisku (job CI `pandapower-cross-validation`, patrz
+`.github/workflows/python-tests.yml`); glowny bieg deselekcjonuje ten marker
+jawnie (`-m "not pandapower"`), wiec brak biblioteki w glownym venv NIE jest
+skipem tych testow — po prostu nie sa tam wybierane do biegu.
+"""
 
 from __future__ import annotations
 
@@ -6,30 +16,15 @@ import pytest
 from application.reference_networks.builders.ieee_4bus import build_ieee_4bus_network
 from application.reference_networks.pandapower_bridge import (
     enm_to_pandapower_dict,
-    is_pandapower_available,
     run_pandapower_powerflow,
 )
 
-
-class TestLazyImport:
-    """Module must not crash when pandapower is missing."""
-
-    def test_is_pandapower_available_returns_bool(self) -> None:
-        result = is_pandapower_available()
-        assert isinstance(result, bool)
+pytestmark = pytest.mark.pandapower
 
 
 class TestEnmConversion:
     """Test the ENM → pandapower dict conversion structure."""
 
-    def test_conversion_requires_pandapower(self) -> None:
-        """If pandapower not installed, conversion raises ImportError."""
-        pp_available = is_pandapower_available()
-        if not pp_available:
-            with pytest.raises(ImportError, match="pandapower"):
-                enm_to_pandapower_dict(build_ieee_4bus_network())
-
-    @pytest.mark.skipif(not is_pandapower_available(), reason="pandapower not installed")
     def test_ieee_4bus_converts_without_error(self) -> None:
         enm = build_ieee_4bus_network()
         result = enm_to_pandapower_dict(enm)
@@ -37,7 +32,6 @@ class TestEnmConversion:
         assert "bus_idx_map" in result
         assert len(result["bus_idx_map"]) == 4
 
-    @pytest.mark.skipif(not is_pandapower_available(), reason="pandapower not installed")
     def test_pp_simple_4bus_converts(self) -> None:
         from application.reference_networks.builders.pp_simple_four_bus import (
             build_pp_simple_four_bus_network,
@@ -51,7 +45,6 @@ class TestEnmConversion:
 class TestPandapowerPowerflow:
     """End-to-end pandapower NR cross-check."""
 
-    @pytest.mark.skipif(not is_pandapower_available(), reason="pandapower not installed")
     def test_runs_powerflow_returns_buses(self) -> None:
         enm = build_ieee_4bus_network()
         results = run_pandapower_powerflow(enm)
@@ -60,7 +53,6 @@ class TestPandapowerPowerflow:
         # Slack should have v_pu ~ 1.0
         assert abs(results["BUS-1"]["v_pu"] - 1.0) < 1e-6
 
-    @pytest.mark.skipif(not is_pandapower_available(), reason="pandapower not installed")
     def test_voltages_drop_from_slack(self) -> None:
         enm = build_ieee_4bus_network()
         results = run_pandapower_powerflow(enm)

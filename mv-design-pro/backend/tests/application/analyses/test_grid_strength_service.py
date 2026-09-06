@@ -203,6 +203,43 @@ def test_ibg_bus_without_installed_power_is_no_data() -> None:
     assert "s_installed_mva" in entry["missing_data"]
 
 
+def test_ibg_bus_with_mixed_known_and_unknown_power_is_still_no_data() -> None:
+    """FAB-E (E1): węzeł ma DWA źródła IBG — jedno o znanej mocy (2.0 MVA),
+    drugie bez znanej mocy (brak materialized/katalogu). Suma węzła MUSI
+    pozostać ``None`` (nieznana), NIE 2.0 MVA — poprzednia implementacja
+    (``_installed_mva_by_bus``) trzymała sentinel 0.0 wyłącznie przez
+    ``setdefault``, więc obecność ZNANEGO źródła w tym samym węźle cicho
+    „wygrywała" i ukrywała fakt, że część mocy węzła jest nieznana, niezależnie
+    od kolejności generatorów na liście."""
+    run = _sc_run(
+        generators=[_ibg("g_znany", "b1", sn_mva=2.0), _ibg("g_nieznany", "b1")],
+        buses=[_bus("b1")],
+        sc_rows=[{"fault_node_id": "n1", "sk_mva": 100.0}],
+        graph_nodes={"n1": {"element_id": "b1"}},
+    )
+    view = build_grid_strength_view(run)
+    entry = view["entries"][0]
+    assert entry["s_installed_mva"] is None
+    assert entry["verdict"] == "brak danych"
+    assert "s_installed_mva" in entry["missing_data"]
+
+
+def test_ibg_bus_with_mixed_known_and_unknown_power_order_independent() -> None:
+    """Ta sama sytuacja co wyżej, ale z odwróconą kolejnością generatorów na
+    liście — wynik musi być identyczny (defekt naprawiony był zależny od
+    kolejności: nieznany PRZED znanym maskował błąd, znany PRZED nieznanym go
+    ujawniał)."""
+    run = _sc_run(
+        generators=[_ibg("g_nieznany", "b1"), _ibg("g_znany", "b1", sn_mva=2.0)],
+        buses=[_bus("b1")],
+        sc_rows=[{"fault_node_id": "n1", "sk_mva": 100.0}],
+        graph_nodes={"n1": {"element_id": "b1"}},
+    )
+    entry = build_grid_strength_view(run)["entries"][0]
+    assert entry["s_installed_mva"] is None
+    assert entry["verdict"] == "brak danych"
+
+
 # --------------------------------------------------------------------------
 # Moduły źródłowe per węzeł (P47b — mapowanie moduł→węzeł, ADDYTYWNE)
 # --------------------------------------------------------------------------
@@ -342,7 +379,9 @@ def test_real_short_circuit_run_produces_scr_with_white_box() -> None:
     )
     enm = enm.model_copy(update={"generators": gens})
     set_enm("c1", enm)
-    run = execute_run(create_run(case_id="c1", analysis_type="short_circuit_sn").id)
+    run = execute_run(
+        create_run(case_id="c1", klucz_twin="c1", analysis_type="short_circuit_sn").id
+    )
     assert run.status == "FINISHED", run.error_message
 
     view = build_grid_strength_view(run)

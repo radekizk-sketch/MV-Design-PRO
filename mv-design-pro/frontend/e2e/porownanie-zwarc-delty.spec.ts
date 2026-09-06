@@ -152,6 +152,8 @@ async function zbudujSiec(request: APIRequestContext, caseId: string): Promise<s
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
+    hv_voltage_kv: 110.0,
+    transformer_sn_mva: 25.0,
   });
 
   let op: DomainOpResponse = {};
@@ -387,6 +389,158 @@ test('KD-3 poz. 11: delta na ekranie porównania zwarć = pole z końcówki back
   await page.screenshot({ path: path.join(OUTPUT_DIR, 'kd3-porownanie-zwarc-light.png') });
 
   for (const plik of ['kd3-porownanie-zwarc-dark.png', 'kd3-porownanie-zwarc-light.png']) {
+    expect(fs.existsSync(path.join(OUTPUT_DIR, plik)), `zrzut ${plik}`).toBe(true);
+  }
+});
+
+/**
+ * CV-3.3-B2 — nowy krok e2e: porównanie DWÓCH BIEGÓW ZABEZPIECZEŃ z realnym
+ * backendem. Umieszczony w TYM pliku (rozszerzenie istniejącego specu porównań,
+ * karta CV-3.3-B2 §0 „definicja ukończenia"), bo reużywa całą infrastrukturę
+ * budowy sieci/przypadku/przebiegu SC z testu KD-3 powyżej — bez niej trzeba by
+ * powielić `otworzAplikacje`/`zbudujSiec`/`uruchomBiegSc`/`executeDomainOp`.
+ *
+ * Bieg zabezpieczeń wymaga DWÓCH poprzedzających kroków, których PF/SC nie mają:
+ * konfiguracji zabezpieczeń przypadku (`PUT .../protection-config`) i biegu
+ * zwarciowego ŹRÓDŁOWEGO (`sc_run_id`) — stąd dwa biegi zabezpieczeń budowane są
+ * na DWÓCH RÓŻNYCH biegach SC_3F (ta sama zmiana modelu — dłuższy odcinek — co
+ * w KD-3), żeby prąd zwarciowy w ocenie zabezpieczeń różnił się między A i B
+ * (inaczej delty byłyby zerowe i test nie odróżniłby pola backendu od ekranu).
+ */
+
+/** Konfiguruje zabezpieczenia przypadku szablonem referencyjnym (P15b). */
+async function skonfigurujZabezpieczenia(request: APIRequestContext, caseId: string): Promise<void> {
+  const odpowiedz = await request.put(
+    `${BACKEND_BASE}/api/study-cases/${caseId}/protection-config`,
+    { data: { template_ref: 'template_ref_oc_100' } },
+  );
+  expect(odpowiedz.ok(), await odpowiedz.text()).toBeTruthy();
+}
+
+/** Tworzy i wykonuje bieg zabezpieczeń (P15b) na wskazanym biegu zwarciowym źródłowym. */
+async function uruchomBiegZabezpieczen(
+  request: APIRequestContext,
+  projectId: string,
+  caseId: string,
+  scRunId: string,
+): Promise<string> {
+  const utworzenie = await request.post(
+    `${BACKEND_BASE}/api/projects/${projectId}/protection-runs`,
+    { data: { sc_run_id: scRunId, protection_case_id: caseId } },
+  );
+  expect(utworzenie.ok(), await utworzenie.text()).toBeTruthy();
+  const run = (await utworzenie.json()) as { id: string };
+
+  const wykonanie = await request.post(
+    `${BACKEND_BASE}/api/protection-runs/${run.id}/execute`,
+    { timeout: 90000 },
+  );
+  expect(wykonanie.ok(), await wykonanie.text()).toBeTruthy();
+  const wynikWykonania = (await wykonanie.json()) as { status: string; error_message?: string | null };
+  expect(wynikWykonania.status, wynikWykonania.error_message ?? '').toBe('FINISHED');
+  return run.id;
+}
+
+test('CV-3.3-B2: porównanie dwóch biegów zabezpieczeń — tabela ekranu = pole z końcówki backendu', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(300000);
+
+  const { projectId, caseId } = await otworzAplikacje(page, request);
+  const odcinek = await zbudujSiec(request, caseId);
+  await skonfigurujZabezpieczenia(request, caseId);
+
+  // Bieg A: zwarcie 3F na modelu wyjściowym -> ocena zabezpieczeń A.
+  const scA = await uruchomBiegSc(request, caseId);
+  const runA = await uruchomBiegZabezpieczen(request, projectId, caseId, scA);
+
+  // ZMIANA MODELU między biegami SC (jak w KD-3): dłuższy odcinek -> większa
+  // impedancja -> inny prąd zwarciowy -> inna ocena zabezpieczeń na biegu B.
+  await executeDomainOp(request, caseId, 'update_element_parameters', {
+    element_ref: odcinek,
+    parameters: { length_km: 1.5, parameter_source: 'CATALOG' },
+  });
+  const scB = await uruchomBiegSc(request, caseId);
+  expect(scA).not.toBe(scB);
+  const runB = await uruchomBiegZabezpieczen(request, projectId, caseId, scB);
+  expect(runA).not.toBe(runB);
+
+  // Ekran porównań: przestrzeń wyników → zakładka „Porównanie A/B” → tryb zabezpieczeń.
+  await page.reload({ waitUntil: 'commit' });
+  await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
+  await page.getByRole('button', { name: /^Wyniki i dowody \d$/ }).click();
+  await page.getByTestId('mvd-wyniki-zakladka-porownanie').click();
+  await expect(page.getByTestId('mvd-por-host')).toBeVisible({ timeout: 20000 });
+  await page.getByTestId('mvd-por-tryb-zabezpieczenia').click();
+  await expect(page.getByTestId('mvd-porzab-ekran')).toBeVisible({ timeout: 20000 });
+
+  // Wybór pary A/B i JAWNE uruchomienie porównania (zero automatyzmu).
+  await page.getByTestId('mvd-porzab-select-a').selectOption(runA);
+  await page.getByTestId('mvd-porzab-select-b').selectOption(runB);
+
+  const odpowiedzPorownania = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/protection-comparisons')
+      && response.request().method() === 'POST',
+    { timeout: 60000 },
+  );
+  await page.getByTestId('mvd-porzab-przycisk').click();
+  const surowa = await odpowiedzPorownania;
+  expect(surowa.ok()).toBeTruthy();
+
+  const porownanie = (await surowa.json()) as {
+    comparison_id: string;
+    rows: Array<{
+      protected_element_ref: string;
+      i_fault_a_a: number | null;
+      i_fault_a_b: number | null;
+      state_change: string;
+    }>;
+  };
+  expect(porownanie.rows.length, 'ocena zabezpieczeń — porównanie nie może być puste').toBeGreaterThan(0);
+
+  await expect(page.getByTestId('mvd-porzab-wynik')).toBeVisible({ timeout: 20000 });
+
+  // DOWÓD, ŻE PRĄD ZWARCIOWY POCHODZI Z PRAWDZIWEGO WYNIKU SOLVERA: dłuższy
+  // odcinek (impedancja większa) MUSI dać MNIEJSZY prąd zwarciowy w ocenie
+  // zabezpieczeń (prawo Ohma), nie tylko zmienić liczbę o dowolny znak.
+  const wierszZmienny = porownanie.rows.find(
+    (r) => typeof r.i_fault_a_a === 'number' && typeof r.i_fault_a_b === 'number' && r.i_fault_a_a !== r.i_fault_a_b,
+  );
+  expect(wierszZmienny, 'zmiana długości odcinka musi dać niezerową deltę prądu').toBeTruthy();
+  expect(wierszZmienny!.i_fault_a_b!).toBeLessThan(wierszZmienny!.i_fault_a_a!);
+
+  // TO, CO WIDAĆ, = TO, CO ZWRÓCIŁ BACKEND: ref elementu chronionego z pierwszego
+  // wiersza backendu jest widoczny w tabeli „Zmiany stanu” ekranu.
+  const tabela = page.getByTestId('mvd-porzab-wynik');
+  await expect(tabela).toContainText(porownanie.rows[0].protected_element_ref);
+
+  // ------------------------------------------- zrzuty do oceny (bramka 6)
+  fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: path.join(OUTPUT_DIR, 'cv33b2-porownanie-zabezpieczen-dark.png') });
+
+  await page.evaluate(() => {
+    localStorage.setItem(
+      'mvd-theme-mode',
+      JSON.stringify({ state: { mode: 'light_technical' }, version: 0 }),
+    );
+  });
+  await page.reload({ waitUntil: 'commit' });
+  await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
+  await page.getByRole('button', { name: /^Wyniki i dowody \d$/ }).click();
+  await page.getByTestId('mvd-wyniki-zakladka-porownanie').click();
+  await page.getByTestId('mvd-por-tryb-zabezpieczenia').click();
+  await page.getByTestId('mvd-porzab-select-a').selectOption(runA);
+  await page.getByTestId('mvd-porzab-select-b').selectOption(runB);
+  await page.getByTestId('mvd-porzab-przycisk').click();
+  await expect(page.getByTestId('mvd-porzab-wynik')).toBeVisible({ timeout: 60000 });
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: path.join(OUTPUT_DIR, 'cv33b2-porownanie-zabezpieczen-light.png') });
+
+  for (const plik of ['cv33b2-porownanie-zabezpieczen-dark.png', 'cv33b2-porownanie-zabezpieczen-light.png']) {
     expect(fs.existsSync(path.join(OUTPUT_DIR, plik)), `zrzut ${plik}`).toBe(true);
   }
 });

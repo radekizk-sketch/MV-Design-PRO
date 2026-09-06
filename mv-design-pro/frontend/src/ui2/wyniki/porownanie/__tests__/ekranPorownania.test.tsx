@@ -21,6 +21,11 @@ function przypadekFixture(over: Partial<StudyCaseListItem> = {}): StudyCaseListI
     description: '',
     result_status: 'FRESH',
     results_valid: true,
+    result_status_reason: 'model-niezmieniony',
+    result_status_reason_pl: 'Model nie zmienił się od chwili obliczenia.',
+    rewizja_biegu: 4,
+    rewizja_biezaca: 4,
+    zmiany_od_biegu: [],
     is_active: false,
     updated_at: '2026-07-10T08:00:00Z',
     ...over,
@@ -82,7 +87,7 @@ describe('EkranPorownania — lista przebiegów i stany', () => {
   it('selektory renderują przebiegi po polsku (data + zbieżność)', async () => {
     render(<EkranPorownania {...props()} />);
     const selA = await screen.findByTestId('mvd-por-select-a');
-    expect(within(selA).getByRole('option', { name: /Rozpływ mocy · 2026-07-10 08:15 · Zbieżny/ })).toBeInTheDocument();
+    expect(within(selA).getByRole('option', { name: /Rozpływ mocy · rew\. 1 · snap-a · 2026-07-10 08:15 · Zbieżny/ })).toBeInTheDocument();
     expect(within(selA).getByRole('option', { name: /Niezbieżny/ })).toBeInTheDocument();
   });
 
@@ -99,7 +104,7 @@ describe('EkranPorownania — lista przebiegów i stany', () => {
     render(<EkranPorownania {...props()} />);
     const selA = await screen.findByTestId('mvd-por-select-a');
     expect(
-      within(selA).getByRole('option', { name: /Rozpływ mocy · 2026-07-10 08:15 · Zbieżny/ }),
+      within(selA).getByRole('option', { name: /Rozpływ mocy · rew\. 1 · snap-a · 2026-07-10 08:15 · Zbieżny/ }),
     ).toBeInTheDocument();
     expect(within(selA).queryByRole('option', { name: /Wariant letni/ })).not.toBeInTheDocument();
   });
@@ -244,6 +249,25 @@ describe('EkranPorownania — prezentacja wyniku backendu', () => {
     expect(screen.queryByTestId('mvd-por-id')).not.toBeInTheDocument();
     rerender(<EkranPorownania {...props({ trybZaawansowania: 'expert' })} />);
     expect(screen.getByTestId('mvd-por-id')).toHaveTextContent('cmp-001');
+  });
+
+  // B1/B5 (karta CV-3.3-B): dowód CO było porównywane — proweniencja obu
+  // biegów R1 (rodzaj, status, rewizja, odciski), wyłącznie tryb ekspercki
+  // (te same surowe identyfikatory techniczne co `comparison_id` powyżej).
+  it('proweniencja biegów A/B widoczna wyłącznie w trybie eksperckim', async () => {
+    const { rerender } = render(<EkranPorownania {...props({ trybZaawansowania: 'basic' })} />);
+    await wykonajPorownanie();
+    expect(screen.queryByTestId('mvd-por-proweniencja')).not.toBeInTheDocument();
+
+    rerender(<EkranPorownania {...props({ trybZaawansowania: 'expert' })} />);
+    const panele = screen.getAllByTestId('mvd-por-proweniencja-panel');
+    expect(panele).toHaveLength(2);
+    expect(panele[0]).toHaveTextContent(POROWNANIE_STRINGS.proweniencjaA);
+    expect(panele[0]).toHaveTextContent('snap-a');
+    expect(panele[0]).toHaveTextContent('rew. 1');
+    expect(panele[1]).toHaveTextContent(POROWNANIE_STRINGS.proweniencjaB);
+    expect(panele[1]).toHaveTextContent('snap-b');
+    expect(panele[1]).toHaveTextContent('rew. 2');
   });
 });
 

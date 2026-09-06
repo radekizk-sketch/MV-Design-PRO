@@ -20,7 +20,7 @@ import math
 import uuid
 from dataclasses import dataclass, field
 
-_SQRT3 = math.sqrt(3.0)
+from network_model.pochodne import impedancja_z_napiecia_i_pradu_ohm, prad_znamionowy_a
 
 
 def _synchronous_r_over_x(ur_kv: float, sr_mva: float) -> float:
@@ -88,7 +88,7 @@ class SynchronousMachineSource:
     @property
     def ir_a(self) -> float:
         """Rated current I_rG [A]."""
-        return self.sr_mva * 1.0e6 / (_SQRT3 * self.ur_kv * 1.0e3)
+        return prad_znamionowy_a(self.sr_mva, self.ur_kv)
 
     def white_box(self) -> dict[str, float | complex | str]:
         """Auditable derivation (WHITE BOX) — every factor pinned to a clause."""
@@ -151,12 +151,14 @@ class AsynchronousMachineSource:
     @property
     def ir_a(self) -> float:
         """Rated current I_rM [A]."""
-        return self.sr_mva * 1.0e6 / (_SQRT3 * self.ur_kv * 1.0e3)
+        return prad_znamionowy_a(self.sr_mva, self.ur_kv)
 
     @property
     def z_abs_ohm(self) -> float:
         """|Z_M| = (1/(I_LR/I_rM))·(U_rM/(√3·I_rM))."""
-        return (1.0 / self.i_lr_ratio) * (self.ur_kv * 1.0e3 / (_SQRT3 * self.ir_a))
+        return (1.0 / self.i_lr_ratio) * impedancja_z_napiecia_i_pradu_ohm(
+            self.ur_kv * 1.0e3, self.ir_a
+        )
 
     @property
     def p_per_pole_mw(self) -> float:

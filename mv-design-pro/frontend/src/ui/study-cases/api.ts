@@ -160,26 +160,6 @@ export async function compareStudyCases(
 }
 
 /**
- * Invalidate all cases in a project (mark as OUTDATED).
- */
-export async function invalidateAllCases(projectId: string): Promise<{ affected_count: number }> {
-  const response = await fetch(`${API_BASE}/project/${projectId}/invalidate-all`, {
-    method: 'POST',
-  });
-  return handleResponse<{ affected_count: number }>(response);
-}
-
-/**
- * Invalidate a single case (mark as OUTDATED).
- */
-export async function invalidateCase(caseId: string): Promise<{ result_status: string }> {
-  const response = await fetch(`${API_BASE}/${caseId}/invalidate`, {
-    method: 'POST',
-  });
-  return handleResponse<{ result_status: string }>(response);
-}
-
-/**
  * Check if a case can be calculated.
  */
 export async function canCalculateCase(

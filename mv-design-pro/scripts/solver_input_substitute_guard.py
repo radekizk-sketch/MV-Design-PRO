@@ -35,6 +35,11 @@ Trafieniem jest ODCZYT POLA KONTRAKTU WEJSCIOWEGO z GALEZIA ZAPASOWA LICZBOWA:
   D. `<slownik>["<pole>"] or <wyrazenie liczbowe>` / `<slownik>.get("<pole>") or <wyrazenie liczbowe>`
   F. `<slownik>.get("<pole>", <wyrazenie liczbowe>)`
   G. `... <slownik>["<pole>"]/.get("<pole>") ... if <warunek> else <wyrazenie liczbowe>`
+  H. zmienna LOKALNA przypisana z odczytu pola (`x = <obiekt>.<pole>` /
+     `x = <slownik>.get("<pole>")` / `x = <slownik>["<pole>"]`, takze przez
+     `float(...)`/`int(...)`), gdy PO tym przypisaniu, w TEJ SAMEJ funkcji,
+     `x` samo trafia w galaz zapasowa liczbowa (`x or <liczba>` / `... x ...
+     if <warunek> else <liczba>`) — patrz „FORMA H" nizej.
 
 ODCZYT PRZEZ `getattr` LICZY SIE TAK SAMO, CO PRZEZ KROPKE (2026-08-08, karta
 MOST-WEJSCIA-V126): w formach A i B `<obiekt>.<pole>` obejmuje rowniez
@@ -53,6 +58,51 @@ jest juz forma F i nie liczy sie ponownie jako D/G (`reads_contract_dict_field`)
 Szczegoly pomiaru, historia OBALONEJ probki (73/79 falszywych trafien w rundzie
 QU-FABRYKACJA) i uzasadnienie warunku 1. ponizej dla tej formy — patrz docstring
 `reads_contract_dict_field`.
+
+FORMA H — ZMIENNA LOKALNA JAKO NOSNIK POLA (2026-09-05, karta GUARD-SUB-2).
+Piata droga do tego samego pola — tym razem nie przez SPOSOB odczytu (atrybut/
+`getattr`/slownik, jak A-G), tylko przez ODROCZENIE go o JEDNA INSTRUKCJE: kod
+NAJPIERW czyta pole do zmiennej lokalnej BEZ WLASNEJ galezi zapasowej (z galezia
+na tej samej linii bylaby to juz forma A/B/C/D/F/G), a DOPIERO w KOLEJNEJ
+instrukcji podstawia liczbe za TA ZMIENNA, gdy okazuje sie `None`. Formy A-G
+patrza na POJEDYNCZY wezel skladni (`BoolOp`/`IfExp`/wywolanie) — ten sam
+defekt rozlozony na DWA wezly w DWOCH instrukcjach byl dla nich niewidzialny
+z konstrukcji, mimo identycznego skutku (liczba wchodzi do arytmetyki jako
+pomiar, ktorego solver nie zrobil).
+
+ZNALEZISKO, KTORE TO WYMUSILO (FAB-E, 2026-09-05,
+`application/analyses/energy_validation/service.py` PRZED naprawa `98ad6b6a`):
+
+    iterations_raw = result_v1.get("iterations_count")
+    ...
+    iterations=int(iterations_raw) if iterations_raw is not None else 0
+
+oraz analogicznie dla `base_mva` (`base_mva_znane if base_mva_znane is not
+None else 100.0`). Bramka deklarowala zakres — „odczyt pola kontraktu z galezia
+zapasowa liczbowa" — ktorego jej wlasna wyrocznia (analiza WEZLA, nie STANU
+zmiennej) nie obejmowala. Ta sama klasa metodyczna, ktora runda 3 naprawila dla
+modelu domenowego (patrz „GRANICE BRAMKI" p.5 wyzej): deklarowany zakres i
+faktycznie wykrywany zakres rozjezdzaly sie.
+
+ZASIEG: FUNKCYJNY, SEKWENCYJNY, BEZ ANALIZY PRZEPLYWU STEROWANIA. Nosnik zyje
+od przypisania do (a) konca funkcji, (b) PONOWNEGO przypisania tej samej
+nazwie inna wartoscia — kasuje status BEZ SPRAWDZANIA, czy to przypisanie
+faktycznie wykona sie na sciezce runtime (patrz nizej), lub (c) granicy
+zagniezdzonej funkcji/lambdy/klasy (WLASNY zasieg — ten sam nosnik w dwoch
+roznych funkcjach to DWA rozne zjawiska, nie jedno; `test_forma_h_nosnik_z_
+innej_funkcji_nie_jest_naruszeniem`). Galezie `if`/`else` i `try`/`except` sa
+odwiedzane SEKWENCYJNIE (kolejnosc zapisu w zrodle), NIE jako alternatywy
+wykluczajace — nosnik ustanowiony w jednej galezi bedzie (niepoprawnie
+optymistycznie) wciaz „zywy" w sasiedniej. To NAZWANE OGRANICZENIE, tej samej
+klasy co „Podstawienie o dwa kroki dalej" wyzej w tym pliku: pelna analiza
+przeplywu sterowania (i alias jednej nazwy przez druga, `y = x`) jest poza
+zakresem tej karty. Test negatywny (`test_forma_h_nadpisanie_przed_uzyciem_
+nie_jest_naruszeniem`) pokrywa przypadek WYMAGANY przez karte: liniowe
+nadpisanie inna wartoscia PRZED uzyciem, w TEJ SAMEJ galezi, kasuje nosnik.
+
+SYGNATURA: `H:local:<pole_zrodlowe>` (np. `H:local:result_v1.base_mva`) — CEL
+jest polem, Z KTOREGO nosnik zostal ustanowiony, NIE nazwa zmiennej lokalnej
+(ktora jest szczegolem implementacji funkcji, a nie istota defektu).
 
 WYRAZENIEM LICZBOWYM JEST TEZ STALA MODULU zwiazana z literalem liczbowym
 (`numeric_module_constants`). Bez tego kazdy zastepnik chowal sie jednym ruchem —
@@ -208,13 +258,34 @@ from __future__ import annotations
 import ast
 import sys
 from collections import Counter
+from collections.abc import Iterator
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 BACKEND_SRC = PROJECT_ROOT / "backend" / "src"
 
 #: Korzenie skanowania (wzgledem `BACKEND_SRC`) — patrz „ZAKRES SKANU".
-SCAN_ROOTS: tuple[str, ...] = ("network_model/solvers", "solver_input", "enm")
+#:
+#: ROZSZERZONE karta GUARD-SUB (2026-09-05): z trzech korzeni
+#: (`network_model/solvers`, `solver_input`, `enm`) na PIEC — dolozone CALE
+#: `network_model` (nie tylko `solvers/`), `application` i `api`. Pomiar
+#: (ten sam skaner puszczony na calym `backend/src`, 2026-09-05): 560 zywych
+#: trafien klasy „cichy zastepnik liczby wejscia solvera" POZA dawnym
+#: zakresem, w tym 66 w czterech legacy budowniczych wejscia
+#: (`application/power_flow_input_builder.py`,
+#: `application/network_wizard/service.py`,
+#: `application/analysis_run/service.py`,
+#: `application/analysis_run/results_inspector.py`). Guard, ktory nie siega
+#: tam, gdzie klasa faktycznie zyje, daje falszywa zielen — dokladnie ta
+#: sama luka co `network_model/core` w rundzie 3 i wlasne deklaracje warstwy
+#: w rundzie 4 (patrz „GRANICE BRAMKI" p.5 wyzej), tylko o rzad wielkosci
+#: wiekszy zasieg. `network_model/catalog`, `network_model/validation`,
+#: `network_model/whitebox` byly dotad WYLACZNIE zrodlem pol (CONTRACT_
+#: SOURCES), nie warstwa SKANOWANA — miejsce, w ktorym KATALOG materializuje
+#: parametry do modelu (Rule #10) i w ktorym Wizard/API buduja wejscie
+#: solvera z danych uzytkownika, jest dokladnie tym samym torem, co most
+#: ENM->V12.6 objety od karty MOST-WEJSCIA-V126.
+SCAN_ROOTS: tuple[str, ...] = ("network_model", "solver_input", "enm", "application", "api")
 
 #: Zrodla zbioru pol modeli WEJSCIOWYCH. Zbior jest CZYTANY Z KODU, zeby zmiana
 #: kontraktu nie rozbrajala reguly po cichu.
@@ -246,6 +317,23 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     # trafien w warstwie skanowanej wczesniej, czyli czysty zysk zasiegu.
     # `enm/models.py` jest podzbiorem tego korzenia (wpis zdjety jako zbedny).
     "enm",
+    # CALY `network_model`, CALY `application`, CALY `api` — karta GUARD-SUB
+    # (2026-09-05), razem z rozszerzeniem SCAN_ROOTS o te same trzy korzenie
+    # (patrz komentarz przy SCAN_ROOTS). Kazdy z trzech ponizej ZASTEPUJE (jest
+    # nadzbiorem) wszystkich pozycji `network_model/...`/`application/...`
+    # wypisanych DALEJ w tej krotce — te pozycje pochodza z wczesniejszych kart
+    # (MOST-WEJSCIA-V126, CI-A), ktore dodawaly PLIK PO PLIKU, zanim caly korzen
+    # wszedl do zakresu skanu. Zostaja jako zapis pomiaru przyrostowego (kazda
+    # niesie wlasna liczbe trafien z dnia dolozenia) — sa teraz nadmiarowe
+    # (redundantne), ale NIESZKODLIWE: `is_covered_by_contract_sources` i
+    # `contract_fields()` liczą po ZBIORZE plikow, nie po TYM, KTORY wpis krotki
+    # go przyniosl, wiec powielenie pokrycia nie zmienia zachowania bramki.
+    # Usuniecie ich wymagaloby przeceny KAZDEJ historycznej liczby w tym pliku —
+    # poza zakresem karty pomiarowej (nie naprawiamy tu kodu ani nie przepisujemy
+    # historii, tylko rozszerzamy zasieg).
+    "network_model",
+    "application",
+    "api",
     # WLASNE deklaracje warstwy objetej skanem (runda 4). Kontrakt zadeklarowany
     # WEWNATRZ warstwy nie jest przez nia IMPORTOWANY, wiec pin mapy — ktory
     # wyprowadza korzenie z importow — z konstrukcji nie mogl zazadac o nim
@@ -274,6 +362,22 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "application/automation/trace.py",
     "application/compliance/source_compliance.py",
     "application/proof_engine/packs/phase_state_sn.py",
+    # KARTA CI-A (2026-09-04) — pin mapy zazadal decyzji dla dwoch korzeni po
+    # dolozeniu importu w `enm/canonical_analysis.py`
+    # (`application.solvers.lv_temperature_correction.build_min_scenario_graph`,
+    # karta P0.3b) i w `network_model/solvers/protection_lv_curves.py`
+    # (`network_model.catalog.lv_mcb_bands_iec60898`). Oba deklaruja WYLACZNIE
+    # dataclassy WYNIKU/KATALOGU, nie kontrakt materializowany na element sieci —
+    # `MODEL_ROOTS_POZA_MAPA` odpada, bo test_wylaczenie_wygrywa_z_pokryciem_
+    # prefiksem zada, zeby wykluczenie mialo skutek (modul musi byc NAJPIERW
+    # pokryty jakims prefiksem), a zaden istniejacy prefiks (`application/solvers`,
+    # `network_model/catalog` — oba NIEOBECNE jako korzenie bare) go nie obejmuje;
+    # ten sam wzorzec „pojedynczy plik do mapy", co dziesiec korzeni MOST-WEJSCIA-V126
+    # nizej. Pomiar: +8 pol nowych (branch_name, corrected, klasa, max_x_in,
+    # min_x_in, r20_ohm_per_km, r_theta_ohm_per_km, theta_k_c — 1860 -> 1868;
+    # branch_id/reason/graph/notes juz byly w mapie przez inne korzenie), ZERO
+    # nowych trafien (RC=0 niezmieniony po dolozeniu obu plikow).
+    "application/solvers/lv_temperature_correction.py",
     "application/stability/dynamic_stability.py",
     "application/stability/voltage_trajectory.py",
     "domain/canonical_operations.py",
@@ -282,6 +386,7 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "infrastructure/persistence/models.py",
     "network_model/catalog/audit2_catalogs.py",
     "network_model/catalog/bay_templates.py",
+    "network_model/catalog/lv_mcb_bands_iec60898.py",
     "network_model/catalog/materialization.py",
     "network_model/catalog/repository.py",
     "network_model/catalog/types.py",
@@ -304,6 +409,81 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "network_model/solvers/state_estimation_wls.py",
     "network_model/whitebox/tracer.py",
     "reference_engine/validation.py",
+    # KARTA GUARD-SUB (2026-09-05) — pin mapy zazadal decyzji dla 53 korzeni po
+    # rozszerzeniu SCAN_ROOTS o cale `application` i `api` (patrz komentarz przy
+    # SCAN_ROOTS): te moduly-modele sa importowane BEZPOSREDNIO przez pliki nowo
+    # objete skanem, wiec `test_kazdy_model_czytany_przez_zakres_jest_w_mapie`
+    # zada dla kazdego z nich decyzji "do mapy" albo "do MODEL_ROOTS_POZA_MAPA".
+    # Pomiar delty pol PRZED podjeciem decyzji (ten sam warunek co przy dziesieciu
+    # korzeniach MOST-WEJSCIA-V126 i dwoch CI-A powyzej): dolozenie WSZYSTKICH 53
+    # naraz daje +300 nowych nazw pol (3319 -> 3619) i ANI JEDNEJ nazwy z listy
+    # podejrzanych ogolnych tokenow bedacych typowym zrodlem kolizji (`id`, `name`,
+    # `value`, `count`, `index`, `key`, `status`, `type`, `state`...) — zero
+    # kolizji analogicznych do `real`/`imag` w `stability_rms/contracts.py`.
+    # Trzy najkrotsze nowe nazwy zweryfikowane recznie zamiast zalozone: `p`
+    # (`protection/curves/ieee_curves.py` — wykladnik krzywej IEEE, wspolczynnik
+    # rownania t=TDS*(A/((I/Ipickup)^p-1)+B)), `scr`/`wscr` (`analysis/grid_
+    # strength/models.py` — SCR/WSCR sieci, wskazniki mocy zwarciowej), `f50`/`f51`
+    # (`domain/protection_engine_v1.py` — obiekty ustawien funkcji zabezpieczeniowej
+    # ANSI 50/51, NIE liczby — galaz zapasowa liczbowa nie moze sie z nimi
+    # skladniowo polaczyc). Decyzja "do mapy" dla wszystkich 53: kazdy jest
+    # WYNIKIEM/KONTRAKTEM analizy albo domeny czytanym PRZEZ warstwe objeta
+    # skanem (nie kolekcja atrybutow wbudowanego typu jak `complex.real/imag`),
+    # wiec zaden nie kwalifikuje sie do wykluczenia wg precedensu jedynego
+    # istniejacego wpisu `MODEL_ROOTS_POZA_MAPA`.
+    "analysis/energy_validation/models.py",
+    "analysis/grid_strength/models.py",
+    "analysis/lf_sensitivity/builder.py",
+    "analysis/normative/models.py",
+    "analysis/power_flow/result.py",
+    "analysis/reactive_adequacy/models.py",
+    "analysis/reporting/arc_flash_report.py",
+    "analysis/reporting/audit2_report.py",
+    "analysis/sanity_bounds/short_circuit_bounds.py",
+    "analysis/voltage_profile/models.py",
+    "catalog/profiles/nc_rfg/loader.py",
+    "diagnostics/diff.py",
+    "diagnostics/preflight.py",
+    "domain/analysis_run.py",
+    "domain/archive_diff.py",
+    "domain/run_batch.py",
+    "domain/der_protection_functions.py",
+    "domain/der_readiness.py",
+    "domain/dobor_przekladnika.py",
+    "domain/eligibility_models.py",
+    "domain/execution.py",
+    "domain/fault_scenario.py",
+    "domain/field_device.py",
+    "domain/geometry_overrides.py",
+    "domain/incremental_archive.py",
+    "domain/models.py",
+    "domain/power_flow_comparison.py",
+    "domain/project_archive.py",
+    "domain/protection_analysis.py",
+    "domain/protection_comparison.py",
+    "domain/protection_coordination_v1.py",
+    "domain/protection_current_source.py",
+    "domain/protection_device.py",
+    "domain/protection_engine_v1.py",
+    "domain/protection_vendors.py",
+    "domain/readiness.py",
+    "domain/result_contract_v1.py",
+    "domain/result_set.py",
+    "domain/results.py",
+    "domain/sld.py",
+    "domain/switchgear_config.py",
+    "domain/trace_v2/artifact.py",
+    "domain/trace_v2/equation_registry_v2.py",
+    "domain/trace_v2/math_spec_version.py",
+    "domain/validation.py",
+    "domain/zwarcia_porownanie.py",
+    "infrastructure/cgmes/cgmes_importer.py",
+    "infrastructure/cgmes/refmap.py",
+    "infrastructure/cloud_backup.py",
+    "infrastructure/persistence/repositories/document_store_repository.py",
+    "protection/curves/curve_calculator.py",
+    "protection/curves/iec_curves.py",
+    "protection/curves/ieee_curves.py",
 )
 
 #: Korzenie modeli SWIADOMIE POZA mapa pol — z POWODEM MERYTORYCZNYM, nie „poza
@@ -329,6 +509,208 @@ MODEL_ROOTS_POZA_MAPA: dict[str, str] = {
 _NUMERIC_CALLS: frozenset[str] = frozenset(
     {"float", "int", "abs", "max", "min", "round", "sum", "len"}
 )
+
+#: WYKLUCZENIA SKANERA — karta GUARD-SUB (2026-09-05), §0.2. Mechanizm oddzielny
+#: od `ZASTANE_ZASTEPNIKI`: pozycja tutaj NIE jest dlugiem fizycznym — podstawiona
+#: liczba NIGDY nie wchodzi do arytmetyki ELEKTRYCZNEJ (impedancja, moc, napiecie,
+#: prad, kat, czestotliwosc, %-fizyczny). To OCZYWISTY falszywy alarm skladniowy:
+#: skaner widzi „<obiekt>.<pole> or/if/.get <liczba>" i nie potrafi odroznic
+#: LICZNIKA ZDARZEN/REKORDOW/ITERACJI PROCESU OBLICZENIOWEGO (ile razy petla,
+#: ile obiektow w archiwum, ile pominietych elementow, ranga priorytetu zadania)
+#: od WIELKOSCI FIZYCZNEJ (prad, napiecie, moc). Rozroznienie stosowane PRZY
+#: KLASYFIKACJI (nie przez liste nazw): „czy podstawiona `0` MOZE znieksztalcic
+#: wynik obliczen elektrycznych sieci?" NIE => tutaj; TAK => `ZASTANE_ZASTEPNIKI`
+#: (patrz tamtejszy docstring modulu, „ZAPADKA").
+#:
+#: Zapadka DZIALA W OBIE STRONY, DOKLADNIE JAK `ZASTANE_ZASTEPNIKI` (ten sam
+#: ksztalt: plik -> {"<forma>:<cel>": liczba}) — to NIE jest cicha, rosnaca
+#: zgoda: NOWE wystapienie tej samej sygnatury w tym samym pliku nadal zapala
+#: bramke (moze przestac byc falszywym alarmem — np. licznik zaczal wchodzic
+#: do przeliczenia fizyki), a ZNIKNIECIE wystapienia zada obnizenia budzetu.
+#: Rozszerzanie tej listy „na wszelki wypadek" bez konkretnego, zmierzonego
+#: trafienia jest zakazane (§0.5 ZAKAZY: „obnizanie czulosci skanera").
+#:
+#: DWA KONKRETNE PRZYPADKI KOLIZJI NAZW zmierzone przy tej karcie (ta sama
+#: klasa, co `real`/`imag` w `MODEL_ROOTS_POZA_MAPA` — atrybut o TEJ SAMEJ
+#: nazwie, co pole kontraktu gdzie indziej, czytany w zupelnie innym znaczeniu):
+#: `installed_by_bus.values` w `application/analyses/wniosek_osd.py` to
+#: WYWOLANIE WBUDOWANEJ METODY `dict.values()` (suma mocy zainstalowanej per
+#: szyna), a nie odczyt pola „values" — kolizja z polem o tej samej nazwie
+#: zadeklarowanym gdzie indziej w zbiorze `CONTRACT_SOURCES`.
+#:
+#: PRZYKLADY POZYCJI PONIZEJ WG KLASY (pelne uzasadnienie per plik przy wpisie):
+#:  * archiwum/manifest/raport: licznik REKORDOW projektu (ile szyn/galezi/
+#:    przypadkow/wynikow istnieje) do wyswietlenia — NIGDY nie wchodzi do
+#:    przeliczenia elektrycznego (`api/project_archive.py`, raporty DOCX/PDF).
+#:  * licznik ZDARZEN procesu porownania/walidacji (ile testow/probek
+#:    przeszlo/nie przeszlo/bylo niepoprawnych) — bookkeeping wyniku analizy,
+#:    nie dana wejsciowa fizyki (`application/comparison/service.py`,
+#:    `application/analyses/wniosek_osd.py`).
+#:  * licznik ITERACJI ALGORYTMU (ile razy petla Newtona/solvera sie wykonala)
+#:    — metryka WYDAJNOSCI OBLICZEN, bez jednostki fizycznej, w odroznieniu od
+#:    juz zaakceptowanej (w `ZASTANE_ZASTEPNIKI`) klasy „odczyt WARTOSCI sladu
+#:    solvera" (np. `max_mismatch_pu`, ktore JEST wielkoscia fizyczna — bledem
+#:    zbieznosci w j. pu), patrz `application/trace_emitters/load_flow_emitter.py`.
+#:  * licznik POMINIETYCH REKORDOW przy imporcie (akumulator `.get(k,0)+1`,
+#:    idiom zliczania, nie odczyt danej) — `application/network_wizard/service.py`.
+#:  * ranga/priorytet ZADANIA w kolejce automatyzacji (nie elementu sieci) i
+#:    konfiguracja odpytywania/ponawiania joba (`application/symphony/**`) —
+#:    poza domena elektryczna w calosci.
+#:  * geometria WIZUALNA adnotacji SLD (wspolrzedne x/y etykiety na kanwie) —
+#:    warstwa SLD nie liczy fizyki z definicji (ARCHITECTURE.md, Architecture
+#:    Layer Boundaries) — `application/sld/layout.py`.
+WYKLUCZENIA_SKANERA: dict[str, dict[str, int]] = {
+    # Manifest archiwum projektu: 12 liczb REKORDOW (ile szyn/galezi/zrodel/
+    # odbiorow/migawek/diagramow SLD/przypadkow obliczeniowych/uruchomien/
+    # wynikow/dowodow ISTNIEJE w projekcie) do wyswietlenia w podsumowaniu
+    # eksportu. Zweryfikowane w zrodle (w. 232-243): kazda pozycja to
+    # `summary_data.get("<pole>_count", 0)` budujace `ArchiveSummary` — DTO
+    # WYLACZNIE prezentacyjne, brak dalszego uzycia w arytmetyce. Zero
+    # rekordow przy braku danych jest UCZCIWA wartoscia (nie zalozeniem).
+    "api/project_archive.py": {
+        "F:dictget:summary_data.analysis_runs_count": 1,
+        "F:dictget:summary_data.branches_count": 1,
+        "F:dictget:summary_data.loads_count": 1,
+        "F:dictget:summary_data.nodes_count": 1,
+        "F:dictget:summary_data.operating_cases_count": 1,
+        "F:dictget:summary_data.proofs_count": 1,
+        "F:dictget:summary_data.results_count": 1,
+        "F:dictget:summary_data.sld_diagrams_count": 1,
+        "F:dictget:summary_data.snapshots_count": 1,
+        "F:dictget:summary_data.sources_count": 1,
+        "F:dictget:summary_data.study_cases_count": 1,
+        "F:dictget:summary_data.study_runs_count": 1,
+    },
+    # Diff dwoch archiwow: 6 liczb REKORDOW diffa (ile sekcji identycznych/
+    # zmienionych/ile elementow dodanych/usunietych/zmodyfikowanych) — jak
+    # wyzej, DTO prezentacyjne (`ArchiveDiffResponse.summary`), zero dalszej
+    # arytmetyki elektrycznej.
+    "api/archive_diff.py": {
+        "F:dictget:summary.sections_identical": 1,
+        "F:dictget:summary.sections_modified": 1,
+        "F:dictget:summary.sections_total": 1,
+        "F:dictget:summary.total_elements_added": 1,
+        "F:dictget:summary.total_elements_modified": 1,
+        "F:dictget:summary.total_elements_removed": 1,
+    },
+    # Liczba KROKOW sladu obliczeniowego do wyswietlenia w eksporcie ("Liczba
+    # krokow: N") — bookkeeping procesu, nie dana fizyki. Ten sam wzorzec w
+    # dwoch niezaleznych endpointach (`analysis_run_exports.py` w. 1563,
+    # `analysis_runs.py` w. 213 — `summary.get("count", 0)` budujace
+    # `build_trace_summary`).
+    "api/analysis_run_exports.py": {"F:dictget:summary.count": 1},
+    "api/analysis_runs.py": {"F:dictget:summary.count": 1},
+    # Liczba PROBLEMOW rankingu (`total_issues`) i ranga waznosci problemu
+    # (`issue.severity`, skala 1-5 do etykiety "Info".."Krytyczny" — patrz
+    # `severity_labels` w zrodle) — oba to KLASYFIKACJA/RANKING zdarzenia
+    # walidacji do wyswietlenia w raporcie porownania, nie wielkosc fizyczna
+    # sieci. Ten sam wzorzec `issue.severity` powtorzony w dwoch raportach
+    # DOCX/PDF ponizej (`network_model/reporting/power_flow_report_{docx,pdf}.py`).
+    "api/power_flow_comparisons.py": {
+        "F:dictget:summary.total_issues": 1,
+    },
+    # Liczba URZADZEN i liczba SPRAWDZEN koordynacji zabezpieczen — bookkeeping
+    # raportu (ile pozycji zestawiono), nie nastawa/prad/czas zabezpieczenia
+    # (te zostaja fizyczne gdzie indziej). Ten sam wzorzec w API i w dwoch
+    # generatorach raportu DOCX/PDF.
+    "api/protection_coordination.py": {
+        "F:dictget:summary.total_checks": 1,
+        "F:dictget:summary.total_devices": 1,
+    },
+    "network_model/reporting/protection_report_docx.py": {
+        "F:dictget:summary.total_checks": 1,
+        "F:dictget:summary.total_devices": 1,
+    },
+    "network_model/reporting/protection_report_pdf.py": {
+        "F:dictget:summary.total_checks": 1,
+        "F:dictget:summary.total_devices": 1,
+    },
+    "application/analyses/voltage_profile_view.py": {"F:dictget:result_v1.iterations_count": 1},
+    # Zliczenie WYNIKOW walidacji wniosku OSD (ile spelnione/ostrzezenia/
+    # niespelnione/nieobliczone) — bookkeeping raportu, nie dana fizyki.
+    # `installed_by_bus.values` to KOLIZJA NAZW: wywolanie wbudowanej metody
+    # `dict.values()` (w. 191, `sum(installed_by_bus.values())`), nie odczyt
+    # pola „values" — pole o tej nazwie jest zadeklarowane GDZIE INDZIEJ w
+    # zbiorze `CONTRACT_SOURCES` (ta sama klasa kolizji, co `real`/`imag`
+    # w `MODEL_ROOTS_POZA_MAPA`, tylko na poziomie POJEDYNCZEGO odczytu, nie
+    # calego modulu, wiec wykluczenie jest tu, nie tam).
+    "application/analyses/wniosek_osd.py": {
+        "F:dictget:summary.fail_count": 1,
+        "F:dictget:summary.not_computed_count": 1,
+        "F:dictget:summary.pass_count": 1,
+        "F:dictget:summary.warning_count": 1,
+    },
+    # Zliczenie REKORDOW pominietych przy imporcie XLSX/JSON projektu — idiom
+    # akumulatora `skipped["nodes"] = skipped.get("nodes", 0) + 1`
+    # (zweryfikowane w zrodle, w. 1389 i siostrzane), nie odczyt danej.
+    "application/network_wizard/service.py": {
+        "F:dictget:skipped.branches": 2,
+        "F:dictget:skipped.nodes": 2,
+        "F:dictget:skipped.operating_cases": 1,
+        "F:dictget:skipped.study_cases": 1,
+    },
+    # Automatyzacja Symphony (kolejka zadan agentowych, `WorkflowDefinition`/
+    # `tracker.kind == "linear"`) — CALKOWICIE POZA DOMENA ELEKTRYCZNA. Ranga
+    # priorytetu ZADANIA (nie elementu sieci) w kolejce dyspozytora oraz
+    # konfiguracja odpytywania/ponawiania (rownoleglosc, liczba/opoznienie
+    # ponowien) joba w tle — zero zwiazku z fizyka sieci SN.
+    "application/symphony/orchestrator.py": {"B:ifexp:issue.priority": 1},
+    "application/symphony/config.py": {
+        "F:dictget:polling.max_concurrency": 1,
+        "F:dictget:polling.retry_base_delay_seconds": 1,
+        "F:dictget:polling.retry_max_attempts": 1,
+        "F:dictget:polling.retry_max_delay_seconds": 1,
+    },
+    # Wspolrzedne x/y adnotacji SLD (etykieta tekstowa na kanwie diagramu) —
+    # geometria WIZUALNA warstwy SLD, ktora z definicji NIE liczy fizyki
+    # (ARCHITECTURE.md, Architecture Layer Boundaries: „SLD (visualization) —
+    # NO physics calculations"). Brakujaca wspolrzedna domyslnie 0.0 (poczatek
+    # kanwy) jest nieszkodliwym polozeniem etykiety, nie zmyslona wielkoscia.
+    "application/sld/layout.py": {
+        "F:dictget:annotation.x": 1,
+        "F:dictget:annotation.y": 1,
+    },
+    # KARTA GUARD-SUB-2 (2026-09-05) — TRZY NOWE KLASY, WSZYSTKIE odslonione
+    # przez forme H (nosnik lokalny), zero fizyki w kazdej.
+    #
+    # (d) SORT KEY STRUKTURALNIE OBOJETNY na wynik sortowania. `_klucz_
+    # sortowania_delty` zwraca KROTKE `(delta is not None, abs(delta) if ...
+    # else 0.0)` — PIERWSZY element (flaga logiczna) ROZSTRZYGA porownanie
+    # kazdej pary krotek, w ktorej jedna strona ma brakujacy `delta_v_pu`, a
+    # druga nie (`True`/`False` roznia sie ZAWSZE w takim przypadku, wiec
+    # DRUGI element krotki nigdy nie jest w takiej parze porownywany) —
+    # zweryfikowane w zrodle, komentarz FAB-E wprost: „nie traktujemy None
+    # jako 0 pu". Sam zwracany klucz jest wewnetrzny dla `sorted(...)`
+    # (Python odrzuca go po posortowaniu) — `0.0` nigdy nie trafia do
+    # zadnego pola wyniku ani do arytmetyki elektrycznej.
+    "network_model/reporting/power_flow_report_docx.py": {
+        "H:local:wiersz.delta_v_pu": 1,
+    },
+    # (e) REGULA WALIDACJI (nie solver), ktora CELOWO traktuje BRAK mocy
+    # odbioru jak jej JAWNE zero — `rule_zero_power_load` (docstring wprost:
+    # „najprawdopodobniej placeholder LUB BRAK MATERIALIZACJI KATALOGU")
+    # ostrzega w OBU przypadkach identycznie, bo dla warstwy Validation
+    # (ARCHITECTURE.md: „NO physics calculations") skutek jest ten sam:
+    # element nie wplywa na rozplyw. Wartosc `p`/`q` liczona tu SLUZY
+    # WYLACZNIE progowi `abs(p) < 1e-9 and abs(q) < 1e-9` decydujacemu o
+    # emisji komunikatu WARNING — nigdy nie wchodzi do zadnego solvera.
+    "network_model/validation/semantic_rules.py": {
+        "H:local:load.p_kw": 1,
+        "H:local:load.q_kvar": 1,
+    },
+    # (f) ZAWEZENIE TYPU DLA TYPE-CHECKERA na galezi STRUKTURALNIE MARTWEJ.
+    # `_confidence_pct`'s wlasny docstring: „confidence_pct is ALWAYS a float
+    # (built via round(...) above); narrowed explicitly because the dict's
+    # value type is object" — `isinstance` nie odsiewa braku danych (danej
+    # brakujacej nigdy nie ma), tylko dowodzi typ mypy dla slownika
+    # `dict[str, object]`; galaz `else 0.0` nie wykona sie NIGDY w praktyce.
+    # `confidence_pct` jest tez WYNIKIEM DOPASOWANIA WZORCA (ranking
+    # podobienstwa sieci referencyjnej), nie wielkoscia elektryczna — ta sama
+    # klasa, co `issue.priority`/`summary.total_issues` wyzej w tym slowniku.
+    "application/reference_networks/similarity_matcher.py": {
+        "H:local:match.confidence_pct": 1,
+    },
+}
 
 #: Zapadka zastanych zastepnikow: plik -> {"<forma>:<cel>": liczba}.
 #: Pomiar zamrozenia 2026-08-08 (karta QU-FABRYKACJA, rundy 2 i 3):
@@ -511,13 +893,22 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         # znamionowa systemu, ale nadal podstawienie; do zamiany na wymog danej.
         "A:or:enm.frequency_hz": 1,
         "B:ifexp:enm.frequency_hz": 1,
-        # Moc bierna wytworcy nieokreslona -> 0 Mvar (praca przy cos φ = 1).
-        # DLUG NAZWANY: to zalozenie o trybie regulacji, nie pomiar.
-        "A:or:generator.q_mvar": 1,
-        # Straty jalowe transformatora nieokreslone -> 0 kW. DLUG NAZWANY: brak
-        # danej tabliczkowej udaje transformator bezstratny w stanie jalowym.
-        "A:or:transformer.p0_kw": 1,
+        # "A:or:generator.q_mvar" USUNIETE z zapadki (FAB-H, H2): dawny odczyt
+        # `generator.q_mvar or 0.0` zastapiony wspolnym zrodlem prawdy
+        # `solver_input/moc_bierna_wytworcy.py::moc_bierna_wytworcy`; Q nieznane
+        # = wklad POMINIETY, nie 0,0 (domkniecie FAB-H `d58b949e`/`54cb5356`,
+        # brama SSCI 422 `generator.q_missing`). Nowa sygnatura po refaktorze
+        # NIE wystepuje juz w drzewie — brak wpisu jest pomiarem, nie kredytem.
     },
+    # "A:or:transformer.p0_kw" USUNIETE z zapadki (karta FAB-D2, D2): straty
+    # jalowe transformatora nieokreslone zostaja teraz `None` (pole
+    # `V126TransformerInput.p0_kw` jest `float | None`), nie ciche 0 kW.
+    # Jedyny konsument arytmetyki (`_opf_loss_lcc` w
+    # `network_model/solvers/v126_academic.py`, FROZEN — B-01) jest bramkowany
+    # PRZED wejsciem do solvera w `api/v126_academic.py::run_v126_analysis`
+    # (kod gotowosci `transformer.loss_data_missing`, reużyty z
+    # `equipment_checks/transformer_losses.py`) — patrz
+    # `tests/api/test_v126_opf_loss_lcc_api.py`.
     # --- korzen `enm` dolozony do zakresu karta MOST-WEJSCIA-V126 (2026-08-08) ---
     # Pomiar dolozenia: +17 trafien, WSZYSTKIE w `enm/**`, zero kolateralnych w
     # warstwie skanowanej wczesniej. Nadzorca podawal wczesniej liczbe 33 dla
@@ -534,14 +925,24 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # `TransformerBranch`/`Switch` (`i0_percent: float = 0.0`, `tap_step_percent:
     # float = 2.5`) — czyli do granicy nr 4, ktora jest OSOBNA decyzja projektowa.
     "enm/mapping.py": {
-        # Liczba jednostek rownoleglych: brak -> 1. To KARDYNALNOSC elementu
-        # („ile sztuk reprezentuje ta pozycja"), a nie wielkosc mierzona —
-        # element bez podanej liczby jest jedna sztuka. Powod merytoryczny.
-        "A:or:gen.n_parallel": 1,
-        "A:or:trafo.n_parallel": 1,
-        # Moc bierna wytworcy -> 0 Mvar. Ta sama pozycja, co w moscie V12.6 wyzej
-        # (jeden defekt, dwa mosty) — DLUG NAZWANY, do rozstrzygniecia razem.
-        "A:or:gen.q_mvar": 1,
+        # Karta CI-A (2026-09-04): pozycje `A:or:gen.n_parallel` (budzet 1) i
+        # `A:or:trafo.n_parallel` (budzet 1) ZNIKAJA z zapadki — dlug zamalal.
+        # Trzecia niezalezna kopia tego samego wzorca (`A:or:branch.n_parallel`
+        # dla Cable, wykryta przez te karte jako NOWE trafienie na w. 660) i te
+        # dwie ISTNIEJACE zostaly ujednolicone jedna funkcja domenowa
+        # `enm.models.liczba_torow` (regula KLASA NIE INSTANCJA — trzy miejsca
+        # czytajace to samo pole tym samym wzorcem, jedna definicja zamiast
+        # trzech niezaleznych podstawien). Liczba jednostek rownoleglych
+        # (brak -> 1, KARDYNALNOSC elementu, nie wielkosc mierzona — ten sam
+        # powod merytoryczny, co poprzednio) jest teraz w `liczba_torow`
+        # zapisana INSTRUKCJA `if` (nie wyrazeniem `or`), wiec bramka jej nie
+        # widzi — patrz uzasadnienie w docstringu tej funkcji. Obnizenie
+        # budzetu tu utrwala poprawe — zapadka dziala w obie strony.
+        #
+        # "A:or:gen.q_mvar" USUNIETE z zapadki (FAB-H, H2): jak w
+        # `solver_input/v126_contracts.py` wyzej — wspolne zrodlo prawdy
+        # `moc_bierna_wytworcy`, wklad pominiety przy braku danych (domkniecie
+        # FAB-H `d58b949e`), sygnatura nie wystepuje w drzewie.
         # Stosunek R/X zasilania systemowego wg IEC 60909-0 §3.2 dla sieci WN.
         # Wartosc NORMOWA z przypisem, nie wymyslona; karta sprowadzila ja do
         # JEDNEJ stalej modulu (byly DWIE niezalezne kopie tego obliczenia).
@@ -599,6 +1000,24 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # `p.load_scale` (profil OLTC) pochodzi z listy `run_options.get(
     # "oltc_load_profile")`, czyli z TEGO SAMEGO worka.
     #
+    # KARTA CI-A (2026-09-04): pozycja `F:dictget:run.c_factor` (budzet 1)
+    # ZNIKA z zapadki — dlug zamrozony w rundzie RATCHET-DICT-READ juz nie
+    # zyje w kodzie. Commit `c489876698ac8b7c1b8e24eb67a306f8140dcc4f`
+    # ("feat(nn): P0.3b c per pasmo IEC 60909 w kanonicznej sciezce SC ENM",
+    # 2026-08-13) zastapil `c_factor = float(run.options.get("c_factor", 1.10))`
+    # (plaski wspolczynnik 1,10 dla KAZDEGO wezla, niezaleznie od pasma
+    # napieciowego — fizycznie bledny dla nN wg IEC 60909 Tab. 1) dwoma
+    # krokami: `c_factor_explicit: Any = run.options.get("c_factor")`
+    # (1-argumentowy odczyt, bez zapasu liczbowego — nie jest juz trafieniem
+    # tej bramki) + `c_factor_override = c_factor_explicit is not None`, po
+    # czym `c_factor = float(c_factor_explicit) if c_factor_override else
+    # c_for_node(graph.nodes[node_id].voltage_level, scenario_c)` — AUTO per
+    # wezel z jego wlasnego pasma napieciowego (`network_model.core.
+    # voltage_factor.c_for_node`, Tab. 1: <=1 kV c_max/min=1,05/0,95, >1 kV
+    # c_max/min=1,10/1,00), z jawnym override tylko gdy `options["c_factor"]`
+    # podane wprost (zachowanie wsteczne). Obnizenie budzetu utrwala poprawe —
+    # zapadka dziala w obie strony.
+    #
     # (b) ODCZYT SLADU/WYNIKU SOLVERA DO RAPORTU, NIE WEJSCIE SOLVERA.
     # `iteration`/`step` pochodza z `solution.nr_trace`/kroku budowanego PRZEZ
     # solver (whitebox trace rozplywu Newtona) — inwariant tej bramki dotyczy
@@ -612,29 +1031,52 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # enm/models.py) przy odczycie surowego (niewalidowanego) JSON tego
     # samego pola — granica nr 4 modulu (domyslna w sygnaturze modelu to
     # swiadoma decyzja kontraktu, nie fabrykacja w kodzie liczacym).
-    "enm/canonical_analysis.py": {
-        "A:or:node.active_power": 1,
+    # Karta CV-4.1 (2026-09-05): zlozenie wejscia rozplywu i zwarcia WYCIETE
+    # 1:1 z `_execute_power_flow`/`_execute_short_circuit` do `enm/assembler.py`
+    # (`zloz_wejscie_rozplywu`/`zloz_wejscie_zwarcia`, parytet 252 zlotych
+    # hashy bit w bit). Siedem pozycji ponizej to TE SAME odczyty, ktore do tej
+    # karty siedzialy w bloku `enm/canonical_analysis.py` — przeniesione razem
+    # z kodem, dlug BEZ ZMIAN (suma zapadki nie rosnie). Klucze `options.*`
+    # zamiast `run.*`: assembler nie importuje `CanonicalRun` i dostaje worek
+    # opcji przypadku jako parametr `options` (ten sam slownik `run.options`),
+    # wiec lewy skrajny identyfikator odczytu zmienil nazwe. Uzasadnienie
+    # merytoryczne klas bez zmian: (a) konfiguracja przypadku obliczeniowego
+    # (`base_mva`, `tolerance`, `max_iter`, `thermal_time_seconds` — strojenie
+    # analizy, nie dana fizyczna elementu), (b) brak wstrzykniecia = zero
+    # (`node.active_power`/`reactive_power`), granica nr 4
+    # (`defaults.frequency_hz` powtarza domyslna z sygnatury `ENMDefaults`).
+    # Karta CV-4.1b (2026-09-05, A3-04): `A:or:node.active_power` 1 -> 2. Drugie
+    # wystapienie to budowa `PVSpec.p_mw` (petla wezlow PV) — TA SAMA klasa (b)
+    # co istniejace wystapienie w petli PQSpec wyzej w tym samym pliku: mapping.py
+    # ustawia `active_power` BEZWARUNKOWO dla obu typow wezla (PQ i PV), wiec
+    # `or 0.0` jest defensywnym powtorzeniem tego samego mostu pola na nowy typ
+    # wezla, nie nowa klasa fabrykacji. `reactive_power` bez zmian: PVSpec nie ma
+    # pola mocy biernej (Q jest WYNIKIEM solvera w granicach q_min/q_max, nie
+    # wielkoscia zadana), wiec petla PV nie czyta `node.reactive_power` wcale.
+    "enm/assembler.py": {
+        "A:or:node.active_power": 2,
         "A:or:node.reactive_power": 1,
+        "F:dictget:defaults.frequency_hz": 1,
+        "F:dictget:options.base_mva": 1,
+        "F:dictget:options.max_iter": 1,
+        "F:dictget:options.thermal_time_seconds": 1,
+        "F:dictget:options.tolerance": 1,
+    },
+    "enm/canonical_analysis.py": {
         "D:dictor:run_options.angle_damping": 1,
         "D:dictor:run_options.rebuild_matrices_every": 1,
         "D:dictor:run_options.voltage_damping": 1,
-        "F:dictget:defaults.frequency_hz": 1,
         "F:dictget:item.p_from_mw": 1,
         "F:dictget:item.q_from_mvar": 1,
         "F:dictget:iteration.max_mismatch_pu": 2,
         "F:dictget:p.load_scale": 1,
         "F:dictget:row.event_seq": 1,
-        "F:dictget:run.base_mva": 1,
-        "F:dictget:run.c_factor": 1,
         "F:dictget:run.clearing_time_ms": 1,
         "F:dictget:run.during_fault_angle_deg": 1,
-        "F:dictget:run.max_iter": 1,
         "F:dictget:run.post_fault_angle_deg": 1,
         "F:dictget:run.post_fault_frequency_pu": 1,
         "F:dictget:run.post_fault_voltage_pu": 1,
         "F:dictget:run.pre_fault_angle_deg": 1,
-        "F:dictget:run.thermal_time_seconds": 1,
-        "F:dictget:run.tolerance": 1,
         "F:dictget:run.unbalance_alert_percent": 1,
         "F:dictget:step.max_mismatch_pu": 2,
     },
@@ -719,13 +1161,12 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     "enm/store.py": {
         "B:ifexp:existing.revision": 1,
     },
-    # Karta RATCHET-DICT-READ (2026-08-13). `enm/domain_operations.py` jest
-    # ZAKAZANE do edycji W TEJ KARCIE (§0.4 ZAKAZY: „zero enm/domain_operations*
-    # (watek nN)" — plik nalezy do rownoleglego watku nN). Zbior ponizej to
-    # PELNY inwentarz form D/F formy slownikowej z kluczem bedacym zadeklarowanym
-    # polem kontraktu, zmierzony na dzien odbioru tej karty — nie sa to
-    # deklaracje „wszystko tu jest legalne": KLASYFIKACJA PER GRUPA (peany
-    # meldunek koncowy karty ma pelne uzasadnienie per pozycja):
+    # Karta RATCHET-DICT-READ (2026-08-13), zaktualizowana kartą FAB-D1
+    # (klasa A6-12, 2026-09) — „watek nN" domknięty, plik odblokowany do edycji.
+    # Zbior ponizej to PELNY inwentarz form D/F formy slownikowej z kluczem
+    # bedacym zadeklarowanym polem kontraktu — nie sa to deklaracje „wszystko tu
+    # jest legalne": KLASYFIKACJA PER GRUPA (pelne uzasadnienie per pozycja w
+    # meldunku koncowym karty FAB-D1):
     #   * `insert_at.value`/`s.order`/`seed.*` — parametry operacji wstawienia/
     #     kolejnosci sekcji (RATIO domyslny 0,5; kolejnosc 0 dla pierwszego
     #     elementu) — MERYTORYCZNIE bliskie kardynalnosci/domyslnej pozycji.
@@ -735,23 +1176,24 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     #     strukturalnie martwa DLA odcinka pochodzacego z juz zwalidowanego
     #     ENM — analogiczna martwa wartosc zapasowa, jak `C:getattr:length_km`
     #     zdjeta w MOST-WEJSCIA-V126 dla atrybutowej formy tego samego pola.
-    #   * `payload.sn_mva`/`uk_percent`/`pk_kw`/`dlugosc_m`, `t.sn_mva`,
-    #     `nn_block.outgoing_feeders_nn_count`, `genset_spec`/`ups_spec.
-    #     rated_power_kw` (w domain_operations_v2.py) — tabliczki znamionowe
-    #     transformatora/generatora/UPS tworzonego z surowego payloadu
-    #     kreatora — TA SAMA KLASA fabrykacji, co naprawiona w tej karcie dla
-    #     `enm/topology_ops.py` (uhv_kv/ulv_kv/pk_kw) i `enm/catalog_completion.py`
-    #     (switch_rated_current_a), ale w PLIKU ZAKAZANYM do edycji. DLUG
-    #     NAZWANY, NIENAPRAWIALNY W TEJ SESJI (Zero-Debt pkt 4): wymaga
-    #     koordynacji z watkiem nN (ten sam plik jest w trakcie rownoleglej
-    #     pracy), nie decyzji syntaktycznej tej karty.
+    #   * `payload.dlugosc_m`/`segment.dlugosc_m` (dzielenie odcinka magistrali/
+    #     odgalezienia SN) — SENTINEL PRZED WALIDACJA BLOCKER: `dlugosc_m or 0`
+    #     jest NATYCHMIAST sprawdzane `<= 0` i konczy operacje jawnym,
+    #     dedykowanym kodem (`trunk.dlugosc_missing`/`branch.dlugosc_missing`)
+    #     PRZED zapisem do modelu — ten sam bezpieczny wzorzec, co juz przyjety
+    #     dla `enm/topology_ops.py` nizej, zweryfikowany osobno przy przegladzie
+    #     karty FAB-D1 (poprzednia klasyfikacja "DLUG NAZWANY" byla nadmiernie
+    #     ostrozna, bo plik byl wtedy zakazany do edycji i naprawy).
+    #   * `payload.sn_mva`/`uk_percent`/`pk_kw` (add_transformer_sn_nn) i
+    #     `t.sn_mva` (_compute_materialized_params — odczyt WYNIKOWY do
+    #     zestawienia w odpowiedzi, nie tworzenie elementu) NAPRAWIONE kartą
+    #     FAB-D1 (D2): fabrykowane "or 0.0" usuniete, `_require_transformer_
+    #     fields` odrzuca operacje kodem `transformer.field_missing`, gdy ani
+    #     katalog, ani payload nie niosa wartosci. Pozycje ZNIKAJA z zapadki —
+    #     dlug usuniety, nie zmalal cicho.
     "enm/domain_operations.py": {
         "D:dictor:payload.dlugosc_m": 2,
-        "D:dictor:payload.pk_kw": 1,
-        "D:dictor:payload.sn_mva": 1,
-        "D:dictor:payload.uk_percent": 1,
         "D:dictor:segment.dlugosc_m": 1,
-        "D:dictor:t.sn_mva": 2,
         "F:dictget:insert_at.value": 4,
         "F:dictget:nn_block.outgoing_feeders_nn_count": 1,
         "F:dictget:s.order": 3,
@@ -762,25 +1204,408 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "F:dictget:segment.length_km": 3,
         "F:dictget:segment.r_ohm_per_km": 5,
         "F:dictget:segment.x_ohm_per_km": 5,
+        # Karta GUARD-SUB-2 (2026-09-05), forma H, dwa niezalezne miejsca
+        # (10012-wierszowy plik, wiele operacji CRUD ENM):
+        # `rated_power_mva = materialized.get("rated_power_mva")` ... `s_n_kva
+        # = float(rated_power_mva)*1000 if rated_power_mva is not None else
+        # float(t["sn_mva"])*1000 if t.get("sn_mva") else None` — LANCUCH
+        # trzech zrodel (materializacja katalogu -> surowe sn_mva -> None), nie
+        # zmyslona liczba na koncu (patrz komentarz zrodlowy FAB-D1 obok) —
+        # ale forma jest SKLADNIOWO nieodroznialna dla skanera od podstawienia
+        # (zagniezdzony `IfExp` w galezi zapasowej jest TEZ liczbowy). DLUG
+        # NAZWANY jako pomiar, nie jako blad: moc znamionowa transformatora.
+        # `nn_voltage_raw = station_payload.get("nn_voltage_kv"); if ... is
+        # None: nn_voltage_raw = payload.get("nn_voltage_kv"); nn_voltage_kv =
+        # nn_voltage_raw if ... is not None else 0.4` (kreator stacji SN/nN) —
+        # 0,4 kV to STANDARDOWE napiecie znamionowe nN, ale nadal ZALOZENIE
+        # dla NOWEJ stacji, gdy zadne z dwoch zrodel go nie poda — DLUG
+        # NAZWANY, ta sama klasa co typowe wartosci domyslne w `enm/mapping.py`.
+        "H:local:materialized.rated_power_mva": 1,
+        "H:local:payload.nn_voltage_kv": 1,
     },
-    # Karta RATCHET-DICT-READ (2026-08-13). `enm/domain_operations_v2.py` jest
-    # ZAKAZANE do edycji W TEJ KARCIE (§0.4 ZAKAZY, ten sam powod, co
-    # `enm/domain_operations.py` wyzej — watek nN). `payload.quantity`
-    # (kardynalnosc, ta sama klasa co `A:or:gen.n_parallel` juz zaakceptowane w
-    # `enm/mapping.py`) i `payload.active_power_kw` (brak wstrzykniecia = zero
-    # MW, ta sama klasa co `A:or:node.active_power` w `enm/canonical_analysis.py`)
-    # SA merytorycznie uzasadnione. `genset_spec.rated_power_kw`/`ups_spec.
-    # rated_power_kw` (0 kW fabrykowane dla mocy znamionowej agregatu/UPS
-    # tworzonego z payloadu kreatora) SA DLUGIEM NAZWANYM tej samej klasy, co
-    # `enm/domain_operations.py` wyzej — NIENAPRAWIALNE W TEJ SESJI (Zero-Debt
-    # pkt 4, ZAKAZY, watek nN).
+    # Karta RATCHET-DICT-READ (2026-08-13), zaktualizowana kartą FAB-D1
+    # (klasa A6-12, 2026-09) — „watek nN" domknięty, plik odblokowany do edycji.
+    # `payload.quantity` (kardynalnosc, ta sama klasa co `A:or:gen.n_parallel`
+    # juz zaakceptowane w `enm/mapping.py`) i `payload.active_power_kw`/
+    # `genset_spec.rated_power_kw`/`ups_spec.rated_power_kw` W FORMIE F
+    # (`.get(klucz, 0)` w SEEDZIE deterministycznego id — kardynalnosc/wejscie
+    # skrótu, nie tabliczka fizyczna) SA merytorycznie uzasadnione, zostaja.
+    # `genset_spec.rated_power_kw`/`ups_spec.rated_power_kw` W FORMIE D
+    # (`.get(klucz) or 0` przy liczeniu p_mw — TABLICZKA agregatu/UPS)
+    # NAPRAWIONE karta FAB-D1 (D3 sibling): operacja odrzucona kodem
+    # `generator.power_missing`, gdy rated_power_kw nie podano. Pozycje
+    # ZNIKAJA z zapadki — dlug usuniety, nie zmalal cicho.
     "enm/domain_operations_v2.py": {
-        "D:dictor:genset_spec.rated_power_kw": 1,
         "D:dictor:payload.quantity": 1,
-        "D:dictor:ups_spec.rated_power_kw": 1,
+        # Karta GUARD-SUB-2 (2026-09-05), forma H: `quantity_raw = payload.get
+        # ("quantity")` ... `quantity = int(quantity_raw) if isinstance(
+        # quantity_raw, int | float) else 1` w `_converter_required_apparent_
+        # power_mva`, gdzie `quantity` mnozy WPROST moc pozorna (`return max(
+        # candidates) * quantity`, w. 1543) — TA SAMA klasa kardynalnosci, co
+        # `D:dictor:payload.quantity` obok (jedynka = brak redukcji liczba
+        # jednostek), tylko przez nosnik lokalny w INNEJ funkcji tego samego
+        # pliku. Zostaje w budzecie z tym samym powodem merytorycznym.
+        "H:local:payload.quantity": 1,
+        # Karta GUARD-SUB (2026-09-05): `ds_settings.get("time_dial", 1.0)` /
+        # `us_settings.get("time_dial", 1.0)` w `calculate_tcc_curve`/
+        # `validate_selectivity` (w. 1153-1154) — NOWO WIDOCZNE dopiero po
+        # dolozeniu `domain/protection_engine_v1.py` do CONTRACT_SOURCES (pole
+        # `time_dial` nie bylo wczesniej zadeklarowanym polem zadnej klasy w
+        # zasiegu). DLUG NAZWANY, NIE falszywy alarm: nastawa TMS (Time
+        # Multiplier/Dial Setting) przekaznika wchodzi WPROST do
+        # `_compute_tcc_point(ik/ipickup, tms, curve)`, czyli do czasu
+        # zadzialania krzywej TCC wg IEC 60255 — brakujaca nastawa powinna
+        # przerywac walidacje selektywnosci kodem bledu, nie liczyc sie z
+        # domyslnym mnoznikiem 1,0.
+        "F:dictget:ds_settings.time_dial": 1,
         "F:dictget:genset_spec.rated_power_kw": 1,
         "F:dictget:payload.active_power_kw": 1,
+        "F:dictget:us_settings.time_dial": 1,
         "F:dictget:ups_spec.rated_power_kw": 1,
+    },
+    "api/power_flow_comparisons.py": {
+        "F:dictget:summary.delta_total_losses_p_mw": 2,
+    },
+    "application/analyses/voltage_profile_view.py": {
+        "F:dictget:result_v1.base_mva": 1,
+        "F:dictget:result_v1.tolerance_used": 1,
+    },
+    "application/network_wizard/service.py": {
+        # Karta CV-4.2: `build_power_flow_input`/`build_short_circuit_input`
+        # (jedyny dom `B:ifexp:setpoint.cosphi`, `case.base_mva`,
+        # `case_payload.base_mva`, `data.p_mw`, `payload.p_mw/q_*/u_pu`,
+        # `slack_data.voltage_*`) skasowane — kreator P2/S4 (0 wywołań
+        # produkcyjnych). `node_data.base_kv` zostaje: inna funkcja
+        # (`_upsert_node`, import CSV/JSON), poza zakresem tej karty.
+        "F:dictget:node_data.base_kv": 1,
+    },
+    "application/network_wizard/step_controller.py": {
+        "F:dictget:data.rx_ratio": 1,
+        "F:dictget:data.sk3_mva": 1,
+        "F:dictget:data.voltage_kv": 1,
+        "F:dictget:enm.revision": 2,
+        "F:dictget:mutated_enm.revision": 1,
+    },
+    "application/network_wizard/validator.py": {
+        "F:dictget:defaults.frequency_hz": 1,
+        "F:dictget:source_bus.voltage_kv": 1,
+        "F:dictget:t.sn_mva": 1,
+        "F:dictget:t.uk_percent": 1,
+    },
+    "application/power_flow_comparison/service.py": {
+        "F:dictget:summary_a.slack_p_mw": 1,
+        "F:dictget:summary_a.total_losses_p_mw": 2,
+        "F:dictget:summary_b.slack_p_mw": 1,
+        "F:dictget:summary_b.total_losses_p_mw": 2,
+    },
+    "network_model/proof/power_flow_proof_builder.py": {
+        "F:dictget:deltas.delta_v_pu": 1,
+    },
+    # GRUPA 2 — PLATFORMA ZWARCIOWA/ZABEZPIECZENIOWA. Rodzina powtorzonego
+    # mostu „wynik zwarcia (ikss_a/ip_a/ith_a/sk_mva/rx_ratio/kappa) -> wejscie
+    # oceny zabezpieczenia (c_factor/tk_s/tb_s/ib_a)" — DOKLADNIE TEN SAM
+    # zestaw pol duplikowany NIEZALEZNIE w `protection/overcurrent/pipeline.py`
+    # i `wytrzymalosc_cieplna_przewodow.py` (KLASA NIE INSTANCJA: kandydat na
+    # dedykowana karte konsolidacyjna — patrz meldunek koncowy). Nastawy
+    # przekaznika (i_pickup_51/i_inst_50/tms_51 z wariantem doziemnym `_51n`/
+    # `_50n`) w bibliotece katalogowej `protection/catalog/*`; wspolczynniki
+    # asymetrii `m_factor`/`n_factor` wg IEC 60909 w piatciu niezaleznych
+    # proof-packach (sc_symmetrical/sc_asymmetrical/proof_generator — TA SAMA
+    # para pol w trzech plikach, kolejny kandydat KLASA NIE INSTANCJA);
+    # `threshold_a` (nastawa progu prądowego zabezpieczenia) w read-modelu;
+    # `i_fault_a` w porownaniu A/B ewaluacji zabezpieczen. `bramka_
+    # konwencjonalna.inf_a` (SWZ/D2): dzielenie przez prad nietopliwosci
+    # wkladki bezpiecznikowej, oslonione `if inf_a > 0` z jawnym uzasadnieniem
+    # normowym w komentarzu zrodlowym (Ik1_min <= Inf ⇒ brak stopienia
+    # gwarantowany) — MERYTORYCZNIE bliskie zabezpieczeniu dzielenia (jak
+    # `trafo.sn_mva` w `enm/zero_sequence_transformer.py` wyzej), zamrozone tu
+    # bo forma jest nieodroznialna dla skanera od podstawienia.
+    "api/audit2_station_config.py": {
+        "F:dictget:spec.i_peak_calculated_ka": 1,
+        "F:dictget:spec.i_thermal_calculated_ka": 1,
+        "F:dictget:spec.t_clearing_s": 1,
+    },
+    "api/grid_source_preview.py": {
+        "B:ifexp:request.cos_phi": 1,
+    },
+    "application/analyses/fault_loop/route.py": {
+        "A:or:branch.r_ohm": 1,
+        "A:or:branch.x_ohm": 1,
+    },
+    "application/analyses/kontyngencje_n1.py": {
+        "D:dictor:pozycja.p_mw": 1,
+    },
+    "application/analyses/lista_materialowa.py": {
+        "D:dictor:gen.n_parallel": 1,
+    },
+    "application/analyses/nn_circuit_sheet.py": {
+        "D:dictor:seg.delta_u_kv": 1,
+        "D:dictor:seg.delta_u_percent": 1,
+    },
+    "application/analyses/pq_area.py": {
+        "D:dictor:gen.q_mvar": 1,
+    },
+    "application/analyses/protection/catalog/catalog_store.py": {
+        "F:dictget:payload.i_inst_50_a_max": 1,
+        "F:dictget:payload.i_inst_50_a_min": 1,
+        "F:dictget:payload.i_inst_50n_a_max": 1,
+        "F:dictget:payload.i_inst_50n_a_min": 1,
+        "F:dictget:payload.i_pickup_51_a_max": 1,
+        "F:dictget:payload.i_pickup_51_a_min": 1,
+        "F:dictget:payload.i_pickup_51n_a_max": 1,
+        "F:dictget:payload.i_pickup_51n_a_min": 1,
+        "F:dictget:payload.tms_51_max": 1,
+        "F:dictget:payload.tms_51_min": 1,
+        "F:dictget:payload.tms_51n_max": 1,
+        "F:dictget:payload.tms_51n_min": 1,
+    },
+    "application/analyses/protection/catalog/pipeline.py": {
+        "F:dictget:settings.tms_51": 1,
+        "F:dictget:settings.tms_51n": 1,
+    },
+    "application/analyses/state_estimation/service.py": {
+        "F:dictget:run.base_mva": 1,
+    },
+    # Karta GUARD-SUB-2 (2026-09-05), forma H: `ia = aparat.ii_a` (nastawa
+    # zwarciowa wyzwalacza elektronicznego MCCB, IEC 60947-2) ... `margines =
+    # ik1_min_a / ia if ia > 0 else float("inf")`. TRZECIA droga do TEJ SAMEJ
+    # klasy, co juz zaakceptowane `B:ifexp:bramka_konwencjonalna.inf_a` w tym
+    # samym pliku (GRUPA 2 wyzej: prad progowy aparatu jako mianownik marginesu
+    # bezpieczenstwa, oslonione `> 0`) — tylko odczytany przez NOSNIK LOKALNY,
+    # nie bezposrednio. DLUG NAZWANY: `ii_a<=0` jest DANA NIEPOPRAWNA (nastawa
+    # zwarciowa nie moze byc zerowa/ujemna), nie brakiem — margines=inf
+    # UDAJE nieskonczony zapas bezpieczenstwa zamiast zgloszenia bledu wejscia.
+    "application/analyses/swz/werdykt.py": {
+        "B:ifexp:bramka_konwencjonalna.inf_a": 1,
+        "H:local:aparat.ii_a": 1,
+    },
+    "application/proof_engine/packs/lv_circuit_verification.py": {
+        "B:ifexp:th.i2t_a2s": 1,
+        "B:ifexp:th.i2t_admissible_a2s": 1,
+    },
+    "application/proof_engine/packs/p16_losses.py": {
+        "B:ifexp:data.p_gen_total_mw": 2,
+    },
+    "application/proof_engine/packs/protection_settings.py": {
+        "B:ifexp:data.cross_section_mm2": 1,
+        "B:ifexp:data.ik2_min_end_a": 1,
+    },
+    "application/proof_engine/packs/sc_asymmetrical.py": {
+        "B:ifexp:result.m_factor": 1,
+        "B:ifexp:result.n_factor": 1,
+    },
+    "application/proof_engine/packs/sc_symmetrical.py": {
+        "B:ifexp:result.m_factor": 1,
+        "B:ifexp:result.n_factor": 1,
+    },
+    "application/proof_engine/pakiet_biegu.py": {
+        "F:dictget:run.c_factor": 1,
+        "F:dictget:run.thermal_time_seconds": 1,
+    },
+    "application/proof_engine/proof_generator.py": {
+        "A:or:data.sn_mva": 2,
+        "B:ifexp:entry.u_secondary_kv": 1,
+        "B:ifexp:result.m_factor": 1,
+        "B:ifexp:result.n_factor": 1,
+    },
+    "application/proof_engine/serialization.py": {
+        "F:dictget:payload.step_number": 1,
+        "F:dictget:payload.total_steps": 1,
+    },
+    "application/protection_read_model.py": {
+        "A:or:setting.threshold_a": 2,
+    },
+    "application/protection_settings/batch_run.py": {
+        "F:dictget:kotwica.c_factor": 1,
+        "F:dictget:kotwica.thermal_time_seconds": 1,
+    },
+    # Karta GUARD-SUB-2 (2026-09-05), forma H: `ik_max = inp.ik3_max_beginning_a`
+    # ... `margin = ((i_th_dop - ik_max) / i_th_dop * 100) if i_th_dop > 0 else
+    # 0.0` (nosnik `ik_max` zagniezdzony w liczniku dzielenia). TA SAMA klasa,
+    # co dwa juz zaakceptowane wpisy obok (dzielenie przez wielkosc cieplna/
+    # zwarciowa oslonione `> 0`) — `margin` (margines wytrzymalosci cieplnej,
+    # %) trafia wprost do `trace["result"]["margin_percent"]`. DLUG NAZWANY:
+    # `i_th_dop<=0` jest DANA NIEPOPRAWNA (przekroj/material przewodu
+    # brakujacy), nie brakiem marginesu — 0,0% zamiast odmowy.
+    "application/protection_settings/engine.py": {
+        "B:ifexp:inp.cross_section_mm2": 1,
+        "B:ifexp:inp.ik2_min_end_a": 1,
+        "H:local:inp.ik3_max_beginning_a": 1,
+    },
+    "application/trace_emitters/protection_emitter.py": {
+        "F:dictget:tp.i_a_primary": 1,
+        "F:dictget:tp.i_a_secondary": 1,
+    },
+    "application/xlsx_import/service.py": {
+        "F:dictget:wezel.voltage_angle_rad": 1,
+        "F:dictget:wezel.voltage_magnitude_pu": 1,
+    },
+    "application/reference_networks/expected_values.py": {
+        "F:dictget:item.rtol": 3,
+    },
+    "application/reference_networks/station_archetype_substrate.py": {
+        "B:ifexp:rmax.ikss_a": 1,
+        "B:ifexp:rmin.ikss_a": 1,
+        "C:getattr:rated_current_a": 2,
+    },
+    "application/reference_patterns/pattern_line_i_doubleprime_thermal_spz.py": {
+        "B:ifexp:window.i_min_primary_a": 2,
+        "F:dictget:conductor_data.theta_b_deg": 1,
+        "F:dictget:conductor_data.theta_k_deg": 1,
+        "F:dictget:fixture.kb": 1,
+        "F:dictget:fixture.kbth": 1,
+        "F:dictget:fixture.kc": 1,
+        "F:dictget:fixture.t_breaker_s": 1,
+        "F:dictget:fixture.t_nast_1_s": 1,
+        "F:dictget:fixture.t_nast_2_s": 1,
+        "F:dictget:spz_data.t_dead_1_s": 1,
+        "F:dictget:spz_data.t_dead_2_s": 1,
+        "F:dictget:spz_data.t_fault_max_s": 1,
+    },
+    # GRUPA 4 — KATALOG I MODEL DOMENOWY (`network_model/catalog/**`,
+    # `network_model/core/branch.py`). Materializacja parametrow katalogu
+    # (ZIP a_p/b_p/c_p/a_q/b_q/c_q/v0_pu/k_pf/k_qf/f0_hz w `catalog/types.py`)
+    # to TRZECIA niezalezna kopia tego samego wzorca Rule #10, juz
+    # zaakceptowanego jako merytorycznie uzasadniony w `power_flow_zip.py`/
+    # `power_flow_inverter.py` (neutralny element wielomianu ZIP, gdy katalog
+    # nie zglasza zaleznosci). `der_dynamic/models.py.virtual_inertia_h_s` to
+    # bezwladnosc wirtualna DER (sekundy) wchodzaca WPROST do parametrow
+    # silnika FRT/HVRT — DLUG NAZWANY (0 s bezwladnosci to silne, blednie
+    # optymistyczne zalozenie o stabilnosci). `network_model/core/branch.py`
+    # to WLASNY deserializator (`from_dict`) modelu domenowego `TapChanger`/
+    # `TransformerBranch` — pozycje zaczepu/procenty/dane znamionowe sa TA SAMA
+    # KLASA, co juz zaakceptowane siostrzane wpisy w `enm/mapping.py`/
+    # `enm/domain_operations.py` (kardynalnosc pozycji zaczepu, dane
+    # znamionowe transformatora), tylko czytane w INNYM miejscu tego samego
+    # modelu — trzecia droga do tej samej klasy (KLASA NIE INSTANCJA).
+    "network_model/catalog/der_dynamic/models.py": {
+        "A:or:self.virtual_inertia_h_s": 1,
+    },
+    "network_model/catalog/mv_cable_line_catalog.py": {
+        "F:dictget:<dict>.cross_section_mm2": 4,
+    },
+    "network_model/catalog/types.py": {
+        "F:dictget:data.a_p": 1,
+        "F:dictget:data.a_q": 1,
+        "F:dictget:data.b_p": 1,
+        "F:dictget:data.b_q": 1,
+        "F:dictget:data.c_p": 1,
+        "F:dictget:data.c_q": 1,
+        "F:dictget:data.f0_hz": 1,
+        "F:dictget:data.k_pf": 1,
+        "F:dictget:data.k_qf": 1,
+        "F:dictget:data.v0_pu": 1,
+    },
+    "network_model/core/branch.py": {
+        "F:dictget:data.b_us_per_km": 1,
+        "F:dictget:data.current_position": 1,
+        "F:dictget:data.max_position": 1,
+        "F:dictget:data.min_position": 1,
+        "F:dictget:data.neutral_position": 1,
+        "F:dictget:data.pk_kw": 1,
+        "F:dictget:data.rated_power_mva": 1,
+        "F:dictget:data.step_percent": 1,
+        "F:dictget:data.tap_position": 1,
+        "F:dictget:data.tap_step_percent": 1,
+        "F:dictget:data.uk_percent": 1,
+        "F:dictget:data.voltage_hv_kv": 1,
+        "F:dictget:data.voltage_lv_kv": 1,
+    },
+    # GRUPA 5 — SZABLONY STACJI. Napiecie znamionowe strony nN szablonu stacji
+    # SN/nN, ta sama klasa „dana znamionowa podstawiona zerem", co w grupach
+    # wyzej.
+    "application/station_templates/apply.py": {
+        "D:dictor:station_spec.nn_voltage_kv": 1,
+    },
+    # GRUPA 6 — KARTA GUARD-SUB-2 (2026-09-05), forma H. Piec plikow DOTAD
+    # CZYSTYCH (bez wpisu w zapadce/wykluczeniach) — luka zamknieta przez
+    # rozszerzenie wyroczni o sledzenie ZMIENNYCH LOKALNYCH w obrebie funkcji
+    # (patrz „FORMA H" w docstringu modulu). WSZYSTKIE ponizej sa DZIELENIEM
+    # PRZEZ WIELKOSC ELEKTRYCZNA oslonionym warunkiem `> 0`/`is not None`
+    # (rodzina „przeksztalcenie strona pierwotna -> wtorna przekladnika",
+    # „margines selektywnosci/czulosci zabezpieczenia", „udzial pradu zwarcia
+    # generacji lokalnej") — TA SAMA klasa, co juz zaakceptowane wpisy formy B
+    # w innych plikach tego rejestru (np. `bramka_konwencjonalna.inf_a`,
+    # `inp.cross_section_mm2` wyzej), tylko odczytana przez nosnik lokalny,
+    # a nie bezposrednio. DLUG NAZWANY dla kazdego: dana <= 0 jest bledem
+    # WEJSCIA (przekladnik/prog/prad zwarciowy nie moze byc zerowy/ujemny w
+    # realnej sieci), nie brakiem — wynikowy margines/prad wtorny=0 UDAJE
+    # pomiar zamiast zglosic odmowe z powodem.
+    #
+    # `application/analyses/protection/line_overcurrent_setting/analyzer.py`:
+    # TRZY NIEZALEZNE funkcje (`_check_selectivity`/`_check_sensitivity`/
+    # `_check_thermal`) powtarzaja IDENTYCZNY idiom „przelicz prad strony
+    # pierwotnej na wtorna dzielac przez `ct_ratio`, oslaniajac `> 0`" —
+    # KLASA NIE INSTANCJA: TRZY miejsca tego samego mostu CT, nie jedno.
+    # Wynik (`i_min_secondary_a`/`i_max_secondary_a`) trafia wprost do
+    # `SelectivityCriterionResult`/`SensitivityCriterionResult`/
+    # `ThermalCriterionResult` — nastawy przekaznika w amperach. `kc`
+    # (wspolczynnik czulosci) jest mianownikiem `ik_min/kc` w tej samej
+    # funkcji sensitivity. `ik_max_busbars_a` (prad zwarciowy na szynach,
+    # `_check_local_generation`) jest mianownikiem stosunku wkladu generacji
+    # lokalnej `el_ratio = ik_el/ik_total`, uzywanego do progu ryzyka blokady
+    # ZSZ (>=30%) — DWA niezalezne odczyty tej samej wielkosci w tej samej
+    # funkcji (raz do `notes_pl`, raz zduplikowane w `trace["calculation"]`).
+    "application/analyses/protection/line_overcurrent_setting/analyzer.py": {
+        "H:local:input_data.ct_ratio": 3,
+        "H:local:input_data.ik_max_busbars_a": 2,
+        "H:local:input_data.kc": 1,
+    },
+    # `application/analyses/werdykt_projektowy.py`: DWIE funkcje klucza
+    # sortowania (`_wiodacy_wiersz_walidacji`/`_wiodaca_galaz`) wybierajace
+    # „NAJGORSZY" wiersz walidacji do zaraportowania w podsumowaniu werdyktu
+    # projektowego. W ODROZNIENIU od wykluczenia `power_flow_report_docx.py`
+    # wyzej (gdzie flaga logiczna w krotce strukturalnie gwarantuje obojetnosc
+    # zapasu na wynik), TU zapas (`float("inf")`/`-1.0`) jest JEDYNYM
+    # czynnikiem decydujacym o pozycji — wiersz z BRAKUJACYM `margin_pct`/
+    # `utilization` (analiza nie policzyla wartosci) dostaje sztucznie
+    # „najbezpieczniejsza" pozycje i NIGDY nie zostanie wskazany jako wiodacy
+    # problem, nawet jesli faktycznie jest najgorszy — zapas MOZE ukryc
+    # rzeczywiscie krytyczny przypadek w podsumowaniu werdyktu.
+    "application/analyses/werdykt_projektowy.py": {
+        "H:local:wiersz.margin_pct": 1,
+        "H:local:wiersz.utilization": 1,
+    },
+    # `application/proof_engine/latex_renderer.py`: `_render_losses_energy_
+    # section` przenosi `current_delta_t` (czas trwania kroku energii strat,
+    # sekundy) MIEDZY iteracjami petli po krokach dowodu (EQ_LE_001 ustawia,
+    # EQ_LE_002 czyta) do wiersza tabeli LaTeX. Brak wczesniejszego kroku
+    # EQ_LE_001 w danym przebiegu daje `delta_t=0,0 s` w RENDEROWANYM DOWODZIE
+    # formalnym — Proof Engine (CLAUDE.md, „ZERO FABRYKACJI") traktuje
+    # podstawiona wartosc w dowodzie jako gorsza niz jego brak, nawet gdy
+    # renderowanie samo nie liczy fizyki.
+    "application/proof_engine/latex_renderer.py": {
+        "H:local:step.value": 1,
+    },
+    # `application/proof_engine/proof_inspector/inspector.py`: SZESC odczytow
+    # `kr[<klucz>].value` (Q_cmd/U kontrfaktycznego porownania A/B: moc bierna
+    # Mvar, napiecie kV) w `_counterfactual_view`, kazdy z tym samym
+    # opakowaniem `float(x) if isinstance(x, int | float) else 0.0` przed
+    # zlozeniem `CounterfactualRow`. Proof Inspector istnieje do AUDYTU White
+    # Box — pokazanie 0,0 zamiast anomalii w wartosci sladu ukrywa dokladnie
+    # to, co narzedzie ma ujawniac.
+    "application/proof_engine/proof_inspector/inspector.py": {
+        "H:local:kr.value": 6,
+    },
+    # `application/reference_patterns/wzorzec_c_generacja_lokalna.py`: CZTERY
+    # pola w TRZECH niezaleznych funkcjach sprawdzajacych wplyw generacji
+    # lokalnej (E-L) na koordynacje zabezpieczen — ta sama rodzina „dzielenie
+    # przez prog/prad zwarciowy oslonione `> 0`, wynik trafia do werdyktu
+    # PASS/FAIL selektywnosci", co `analyzer.py` wyzej (KLASA NIE INSTANCJA,
+    # inny plik tej samej domeny — koordynacja zabezpieczen z DER). `prog_
+    # blokady_szyn_a` (prog blokady zabezpieczenia szyn) jest mianownikiem
+    # stosunku procentowego DWA razy w tej samej funkcji (opis tekstowy i
+    # `details` slownika). `i_wyzszy_stopien_a` (nastawa wyzszego stopnia) —
+    # mianownik rezerwy selektywnosci, DWA razy (bez generacji / z generacja
+    # maksymalna). `ik_za_nastepnym_zabezpieczeniem_a` — mianownik marginesu
+    # selektywnosci wobec kolejnego zabezpieczenia (`float("inf")` gdy brak).
+    # `ik_3f_a` (prad zwarciowy 3-fazowy, z/bez generacji) — mianownik zmiany
+    # procentowej wplywu generacji na prad zwarciowy w budowie artefaktow.
+    "application/reference_patterns/wzorzec_c_generacja_lokalna.py": {
+        "H:local:input_data.i_wyzszy_stopien_a": 2,
+        "H:local:input_data.ik_3f_a": 1,
+        "H:local:input_data.ik_za_nastepnym_zabezpieczeniem_a": 1,
+        "H:local:input_data.prog_blokady_szyn_a": 2,
     },
 }
 
@@ -1176,11 +2001,361 @@ def is_numeric(expr: ast.expr, stale: set[str] | None = None) -> bool:
     return False
 
 
+#: Granica ZASIEGU FUNKCYJNEGO formy H (karta GUARD-SUB-2) — wezly, ktore
+#: wprowadzaja WLASNA przestrzen nazw. Przy skanowaniu instrukcji biezacej
+#: funkcji NIE wchodzimy w cialo zadnego z nich: kazdy ma WLASNE zmienne
+#: lokalne, wiec ten sam nosnik w dwoch takich zasiegach to DWA rozne zjawiska.
+_SCOPE_BOUNDARY: tuple[type[ast.AST], ...] = (
+    ast.FunctionDef,
+    ast.AsyncFunctionDef,
+    ast.Lambda,
+    ast.ClassDef,
+)
+
+
+def _iter_expr_nodes(node: ast.AST) -> Iterator[ast.AST]:
+    """Jak `ast.walk(node)`, ale NIE schodzi w cialo zagniezdzonej funkcji/
+    lambdy/klasy (`_SCOPE_BOUNDARY`) — te maja WLASNY zasieg zmiennych formy H.
+
+    Wezel STARTOWY jest zawsze w pelni odwiedzony (granica jest sprawdzana
+    WYLACZNIE na jego DZIECIACH), wiec wywolanie na calej instrukcji zlozonej
+    (np. `ast.If`) nadal schodzi w jej `test`/`body`/`orelse` — granica dziala
+    dopiero, gdy w tych galeziach pojawi sie WLASNA definicja funkcji/klasy/
+    lambdy.
+    """
+    stack = [node]
+    while stack:
+        current = stack.pop()
+        yield current
+        for child in ast.iter_child_nodes(current):
+            if isinstance(child, _SCOPE_BOUNDARY):
+                continue
+            stack.append(child)
+
+
+def local_carrier_target(expr: ast.expr, fields: set[str]) -> str | None:
+    """Etykieta pola, gdy `expr` jest CZYSTYM (bez WLASNEJ galezi zapasowej)
+    odczytem zadeklarowanego pola kontraktu — kwalifikuje NAZWE, do ktorej
+    zostanie przypisany, jako NOSNIK DANEJ (forma H, karta GUARD-SUB-2).
+
+    Trzy rownowazne drogi odczytu — te same, ktore formy A/B/C (atrybut/
+    `getattr`) i D/F/G (slownik) juz rozpoznaja jako „odczyt pola", tylko TU
+    BEZ wlasnej galezi zapasowej: Z galezia odczyt jest JUZ zliczony w miejscu,
+    w ktorym stoi (forma A/B/C/D/F/G na TEJ SAMEJ linii) — zaliczenie go DRUGI
+    RAZ jako nosnika, ktory „znow podstawia" przy pierwszym uzyciu, rozdmuchaloby
+    budzet o pozycje-widmo (ten sam warunek dedupu, ktory `getattr_read` i
+    `reads_contract_dict_field` stosuja dla form C i F):
+      * `<obiekt>.<pole>` LUB `getattr(<obiekt>, "<pole>")` (2-argumentowy, BEZ
+        zapasu) — rodzina atrybutowa (A/B/C);
+      * `<slownik>["<pole>"]` — subskrypcja (rodzina D/G);
+      * `<slownik>.get("<pole>")` (1-argumentowy, BEZ zapasu) — rodzina F.
+    Dopuszczalne opakowanie `float(...)`/`int(...)` WOKOL ktoregokolwiek z nich:
+    `x = float(obj.dana)` jest tak samo nosnikiem, jak `x = obj.dana`.
+
+    NIE OBSLUGUJE ALIASOWANIA (`y = x`, gdzie `x` jest juz nosnikiem) — to
+    DRUGI HOP, ktorego karta GUARD-SUB-2 nie zada (§0 pkt 2: „odczyt pola
+    kontraktu", nie „nazwa juz bedaca nosnikiem"); nazwane ograniczenie, nie
+    przeoczenie.
+    """
+    inner = expr
+    if (
+        isinstance(inner, ast.Call)
+        and isinstance(inner.func, ast.Name)
+        and inner.func.id in ("float", "int")
+        and len(inner.args) == 1
+    ):
+        inner = inner.args[0]
+    if isinstance(inner, ast.Attribute) and inner.attr in fields:
+        return f"{leftmost_name(inner) or '<obj>'}.{inner.attr}"
+    if (
+        isinstance(inner, ast.Call)
+        and isinstance(inner.func, ast.Name)
+        and inner.func.id == "getattr"
+        and len(inner.args) == 2
+    ):
+        klucz_getattr = inner.args[1]
+        if (
+            isinstance(klucz_getattr, ast.Constant)
+            and isinstance(klucz_getattr.value, str)
+            and klucz_getattr.value in fields
+        ):
+            return f"{leftmost_name(inner.args[0]) or 'getattr'}.{klucz_getattr.value}"
+    sub = dict_key_read(inner)
+    if sub is not None and sub[0] in fields:
+        klucz_sub, baza_sub = sub
+        return f"{baza_sub or '<dict>'}.{klucz_sub}"
+    get = dict_get_read(inner)
+    if get is not None and get[2] is None and get[0] in fields:
+        klucz_get, baza_get, _ = get
+        return f"{baza_get or '<dict>'}.{klucz_get}"
+    return None
+
+
+#: Pola instrukcji zlozonych niosace ZAGNIEZDZONE LISTY INSTRUKCJI. Splaszczajaca
+#: rekursja formy H (`_walk_local_carrier_body`) odwiedza je OSOBNO, wiec
+#: sprawdzenie uzycia na poziomie STATEMENTU (`_check_local_carrier_usage`)
+#: musi je pominac — inaczej ten sam wezel `BoolOp`/`IfExp` zostalby policzony
+#: DWA RAZY: raz tutaj (przy pelnym przejsciu drzewa instrukcji), raz przy
+#: rekursji w nizszej instrukcji.
+_NESTED_BODY_FIELDS: dict[type[ast.AST], tuple[str, ...]] = {
+    ast.If: ("body", "orelse"),
+    ast.For: ("body", "orelse"),
+    ast.AsyncFor: ("body", "orelse"),
+    ast.While: ("body", "orelse"),
+    ast.With: ("body",),
+    ast.AsyncWith: ("body",),
+}
+
+
+def _iter_own_expr_nodes(stmt: ast.stmt) -> Iterator[ast.AST]:
+    """Wezly wyrazen NALEZACE BEZPOSREDNIO do tej instrukcji, z pominieciem
+    zagniezdzonych LIST INSTRUKCJI (`body`/`orelse`/`finalbody`/cialo handlera)
+    — te splaszczajaca rekursja formy H odwiedzi OSOBNO (patrz
+    `_NESTED_BODY_FIELDS`). Instrukcja PROSTA (bez wlasnych zagniezdzonych list
+    instrukcji — jedyna mozliwa WLASNA przestrzen nazw wewnatrz niej to
+    `Lambda`, ktora `_iter_expr_nodes` juz traktuje jako granice) jest
+    odwiedzana W CALOSCI.
+    """
+    if isinstance(stmt, ast.If | ast.While):
+        yield from _iter_expr_nodes(stmt.test)
+        return
+    if isinstance(stmt, ast.For | ast.AsyncFor):
+        yield from _iter_expr_nodes(stmt.iter)
+        return
+    if isinstance(stmt, ast.Try):
+        for handler in stmt.handlers:
+            if handler.type is not None:
+                yield from _iter_expr_nodes(handler.type)
+        return
+    if isinstance(stmt, ast.With | ast.AsyncWith):
+        for item in stmt.items:
+            yield from _iter_expr_nodes(item.context_expr)
+        return
+    if isinstance(stmt, ast.Match):
+        yield from _iter_expr_nodes(stmt.subject)
+        for case in stmt.cases:
+            if case.guard is not None:
+                yield from _iter_expr_nodes(case.guard)
+        return
+    yield from _iter_expr_nodes(stmt)
+
+
+def _iter_carrier_probe_nodes(expr: ast.expr) -> Iterator[ast.AST]:
+    """Jak `_iter_expr_nodes`, ale NIE schodzi w `.value` (baze dereferencji)
+    `ast.Attribute`/`ast.Subscript` — pozostale pola (np. `slice` subskrypcji)
+    sa nadal przeszukiwane.
+
+    PO CO TO OGRANICZENIE (iniekcja nadzorcy na tej karcie,
+    `lv_circuit_verification.py`: `th = data.thermal` ... `th.i2t_a2s if
+    th.i2t_a2s is not None else 0.0`). Bez niego przeszukanie subtree
+    znajduje `th` ZAGNIEZDZONE wewnatrz `th.i2t_a2s` i forma H melduje
+    `H:local:data.thermal` — NAZYWAJAC ZLE POLE: to nie „data.thermal" (caly
+    obiekt-nosnik) jest tu podstawiane, tylko jego WLASNY atrybut `i2t_a2s`,
+    ktory ma juz POPRAWNE, bezposrednie wykrycie w formie B
+    (`reads_contract_field` na `th.i2t_a2s` samym, bo `i2t_a2s` jest polem).
+    Uzycie nosnika jako BAZY dalszej dereferencji (`carrier.pole`/
+    `carrier["klucz"]`/`carrier.metoda(...)`) to odczyt INNEGO pola (majacego
+    WLASNE, poprawne wykrycie w formie A/B/D/G, gdy samo jest polem
+    kontraktu) — nie uzycie WARTOSCI nosnika, wiec forma H go NIE lapie
+    (dedup z forma A/B/D/G, ta sama zasada „jedno miejsce w kodzie = jedna
+    pozycja budzetu", co `getattr_read` stosuje dla C kontra A).
+
+    POZA TYM WYJATKIEM przeszukanie jest TAK SAME szerokie, jak
+    `nested_contract_field` dla formy B — nosnik zagniezdzony w dzialaniu
+    arytmetycznym (`i_min_primary / ct_ratio`), porownaniu czy argumencie
+    wywolania NADAL trafia, zgodnie z zapisem „... x ..." w §0 karty
+    GUARD-SUB-2 (ten sam konwencja elipsy, co forma B w docstringu modulu).
+    """
+    stack: list[ast.AST] = [expr]
+    while stack:
+        current = stack.pop()
+        yield current
+        if isinstance(current, _SCOPE_BOUNDARY):
+            continue
+        if isinstance(current, ast.Attribute):
+            continue
+        if isinstance(current, ast.Subscript):
+            stack.append(current.slice)
+            continue
+        for child in ast.iter_child_nodes(current):
+            stack.append(child)
+
+
+def _carrier_name_in(expr: ast.expr, live: dict[str, str]) -> str | None:
+    """Pierwsza (najplytsza, potem najwczesniejsza) nazwa ZYWEGO nosnika w
+    drzewie wyrazenia, z pominieciem baz dereferencji atrybutu/subskrypcji —
+    analogon `nested_contract_field` dla formy H (patrz `_iter_carrier_probe_
+    nodes` dla uzasadnienia wylaczenia)."""
+    for node in _iter_carrier_probe_nodes(expr):
+        if isinstance(node, ast.Name) and node.id in live:
+            return node.id
+    return None
+
+
+def _check_local_carrier_usage(
+    stmt: ast.stmt, live: dict[str, str], stale: set[str], findings: list[tuple[str, int]]
+) -> None:
+    """Forma H: `<nosnik> or <liczba>` / `... <nosnik> ... if <warunek> else
+    <liczba>` — analogon form A i B, z NAZWA zamiast bezposredniego odczytu
+    pola. Dokladnie sytuacja, ktorej poprzednia wersja bramki nie widziala
+    (§0 pkt 1 karty GUARD-SUB-2): `iterations_raw = result_v1.get(
+    "iterations_count")` ... `iterations = int(iterations_raw) if
+    iterations_raw is not None else 0`.
+    """
+    for node in _iter_own_expr_nodes(stmt):
+        if isinstance(node, ast.BoolOp) and isinstance(node.op, ast.Or):
+            for index, value in enumerate(node.values[:-1]):
+                if (
+                    isinstance(value, ast.Name)
+                    and value.id in live
+                    and is_numeric(node.values[index + 1], stale)
+                ):
+                    findings.append((f"H:local:{live[value.id]}", node.lineno))
+        if isinstance(node, ast.IfExp):
+            carrier = _carrier_name_in(node.body, live)
+            if (
+                carrier is not None
+                and is_numeric(node.orelse, stale)
+                and _carrier_name_in(node.orelse, live) is None
+            ):
+                findings.append((f"H:local:{live[carrier]}", node.lineno))
+
+
+def _update_local_carriers(stmt: ast.stmt, fields: set[str], live: dict[str, str]) -> None:
+    """Ustanow/uniewaznij nosniki formy H po przetworzeniu jednej instrukcji.
+
+    Ustanowienie dziala WYLACZNIE na przypisaniu POJEDYNCZEJ nazwy
+    (`ast.Assign` z jednym celem-`Name`, albo `ast.AnnAssign` z wartoscia) — to
+    JEDYNY ksztalt przypisania, ktory `local_carrier_target` rozpoznaje jako
+    „czysty odczyt". Kazda INNA nazwa, ktora ta instrukcja WIAZE (`_bound_names`
+    — tuple unpacking, `for`, `with ... as`, `+=`, ponowne przypisanie inna
+    wartoscia), traci status nosnika, jesli go miala — „ponowne przypisanie
+    inna wartoscia kasuje status nosnika" (karta GUARD-SUB-2, §0 pkt 2).
+    """
+    established: str | None = None
+    target: str | None = None
+    if (
+        isinstance(stmt, ast.Assign)
+        and len(stmt.targets) == 1
+        and isinstance(stmt.targets[0], ast.Name)
+    ):
+        established = stmt.targets[0].id
+        target = local_carrier_target(stmt.value, fields)
+    elif (
+        isinstance(stmt, ast.AnnAssign)
+        and isinstance(stmt.target, ast.Name)
+        and stmt.value is not None
+    ):
+        established = stmt.target.id
+        target = local_carrier_target(stmt.value, fields)
+
+    for name in _bound_names(stmt):
+        if name == established and target is not None:
+            continue
+        live.pop(name, None)
+    if established is not None and target is not None:
+        live[established] = target
+
+
+def _bound_names(stmt: ast.stmt) -> set[str]:
+    """Nazwy BEZPOSREDNIO wiazane (przypisywane) przez ta instrukcje.
+
+    Uzywane WYLACZNIE do INWALIDACJI nosnika formy H w `_update_local_carriers`
+    — ustanowienie nosnika idzie WYLACZNIE przez `local_carrier_target` na
+    prostym przypisaniu pojedynczej nazwy. Kazda inna nazwa, ktora ta
+    instrukcja wiaze (tuple unpacking, `for`, `with ... as`, `+=`), KASUJE
+    status nosnika, jesli byla nim wczesniej.
+    """
+    targets: list[ast.expr] = []
+    if isinstance(stmt, ast.Assign):
+        targets = list(stmt.targets)
+    elif isinstance(stmt, ast.AnnAssign | ast.AugAssign):
+        targets = [stmt.target]
+    elif isinstance(stmt, ast.For | ast.AsyncFor):
+        targets = [stmt.target]
+    elif isinstance(stmt, ast.With | ast.AsyncWith):
+        targets = [item.optional_vars for item in stmt.items if item.optional_vars is not None]
+    names: set[str] = set()
+    for target in targets:
+        for node in ast.walk(target):
+            if isinstance(node, ast.Name):
+                names.add(node.id)
+    return names
+
+
+def _walk_local_carrier_body(
+    body: list[ast.stmt],
+    fields: set[str],
+    stale: set[str],
+    live: dict[str, str],
+    findings: list[tuple[str, int]],
+) -> None:
+    """Splaszcz cialo instrukcji zlozonych w kolejnosci TEKSTOWEJ (bez wchodzenia
+    w zagniezdzone definicje funkcji/klas — WLASNY zasieg, patrz `_SCOPE_
+    BOUNDARY`), aktualizujac WSPOLNY stan `live` sekwencyjnie, jedna instrukcja
+    na raz: najpierw sprawdz UZYCIE (przeciwko stanowi SPRZED tej instrukcji),
+    potem zaktualizuj NOSNIKI (ustanow/uniewaznij) — w tej kolejnosci, zeby
+    `x = x or 5.0` poprawnie zaliczylo uzycie STAREGO `x`, zanim samo `x`
+    straci status nosnika (bo `x or 5.0` nie jest juz „czystym odczytem").
+
+    BEZ ANALIZY PRZEPLYWU STEROWANIA (celowe uproszczenie, §0 pkt 2 karty
+    GUARD-SUB-2): galaz `else`/`except` jest odwiedzana PO galezi `if`/`try`, W
+    TEJ SAMEJ kolejnosci co w zrodle, NIE jako alternatywa wykluczajaca. Nosnik
+    ustanowiony w jednej galezi `if` bedzie wiec (niepoprawnie optymistycznie)
+    „zywy" w jej `else` — ta sama klasa uproszczenia, co „Podstawienie o dwa
+    kroki dalej" w GRANICACH BRAMKI wyzej w tym pliku. Test negatywny
+    (`test_forma_h_nadpisanie_przed_uzyciem_nie_jest_naruszeniem`) pokrywa
+    jedyny przypadek WYMAGANY przez karte: liniowe nadpisanie PRZED uzyciem w
+    TEJ SAMEJ galezi kasuje nosnik.
+    """
+    for stmt in body:
+        _check_local_carrier_usage(stmt, live, stale, findings)
+        _update_local_carriers(stmt, fields, live)
+        if isinstance(stmt, ast.If):
+            _walk_local_carrier_body(stmt.body, fields, stale, live, findings)
+            _walk_local_carrier_body(stmt.orelse, fields, stale, live, findings)
+        elif isinstance(stmt, ast.For | ast.AsyncFor | ast.While):
+            _walk_local_carrier_body(stmt.body, fields, stale, live, findings)
+            _walk_local_carrier_body(stmt.orelse, fields, stale, live, findings)
+        elif isinstance(stmt, ast.Try):
+            _walk_local_carrier_body(stmt.body, fields, stale, live, findings)
+            for handler in stmt.handlers:
+                _walk_local_carrier_body(handler.body, fields, stale, live, findings)
+            _walk_local_carrier_body(stmt.orelse, fields, stale, live, findings)
+            _walk_local_carrier_body(stmt.finalbody, fields, stale, live, findings)
+        elif isinstance(stmt, ast.With | ast.AsyncWith):
+            _walk_local_carrier_body(stmt.body, fields, stale, live, findings)
+        elif isinstance(stmt, ast.Match):
+            for case in stmt.cases:
+                _walk_local_carrier_body(case.body, fields, stale, live, findings)
+
+
+def collect_local_carrier_findings(
+    func: ast.FunctionDef | ast.AsyncFunctionDef, fields: set[str], stale: set[str]
+) -> list[tuple[str, int]]:
+    """Forma H (karta GUARD-SUB-2): ZMIENNA LOKALNA jako nosnik odczytanego
+    pola kontraktu, podstawiona liczba w NASTEPNEJ instrukcji tej samej
+    funkcji — patrz „FORMA H" w docstringu modulu dla pelnego uzasadnienia i
+    nazwanych ograniczen (zasieg funkcyjny, sekwencyjny, bez analizy przeplywu
+    sterowania, bez aliasowania `y = x`).
+    """
+    live: dict[str, str] = {}
+    findings: list[tuple[str, int]] = []
+    _walk_local_carrier_body(func.body, fields, stale, live, findings)
+    return findings
+
+
 def collect_findings(tree: ast.AST, fields: set[str]) -> list[tuple[str, int]]:
     """Lista (`<forma>:<cel>`, wiersz) dla jednego pliku."""
     findings: list[tuple[str, int]] = []
     stale = numeric_module_constants(tree)
     for node in ast.walk(tree):
+        # H. zmienna lokalna jako nosnik pola (karta GUARD-SUB-2) — patrz
+        # `collect_local_carrier_findings`. Zasieg jest FUNKCYJNY, wiec liczony
+        # RAZ na kazda definicje funkcji (w tym zagniezdzona) napotkana przy
+        # tym samym przejsciu drzewa, ktore juz obsluguje formy A-G ponizej.
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+            findings.extend(collect_local_carrier_findings(node, fields, stale))
         # A. dana or <liczba>
         if isinstance(node, ast.BoolOp) and isinstance(node.op, ast.Or):
             for index, value in enumerate(node.values[:-1]):
@@ -1227,36 +2402,70 @@ def collect_findings(tree: ast.AST, fields: set[str]) -> list[tuple[str, int]]:
     return findings
 
 
+#: Komunikaty per kategoria budzetu — (etykieta, powod NADWYZKI, powod NIEDOBORU).
+_KATEGORIE_BUDZETU: dict[str, tuple[str, str, str]] = {
+    "dlug": (
+        "zapadka zastanych zastepnikow",
+        "NOWE podstawienie liczby za nieobecna dana wejsciowa jest naruszeniem — pomin "
+        "element albo zamelduj brak (`None` + powod), tak jak `_grid_source_shunt_admittance`.",
+        "Dlug ZMALAL — obniz budzet w ZASTANE_ZASTEPNIKI, inaczej poprawa nie zostaje "
+        "utrwalona.",
+    ),
+    "wykluczenie": (
+        "wykluczenie skanera",
+        "NOWE wystapienie tej samej formy skladniowej — moze juz NIE byc falszywym "
+        "alarmem (np. pole zaczelo wchodzic do arytmetyki fizyki). Zweryfikuj zrodlo "
+        "przed podniesieniem budzetu w WYKLUCZENIA_SKANERA.",
+        "Wykluczenie ZMALALO — obniz budzet w WYKLUCZENIA_SKANERA, inaczej wpis staje "
+        "sie martwym (nigdy nieporownanym) zapisem.",
+    ),
+}
+
+
 def apply_ratchet(
     rel: str,
     findings: list[tuple[str, int]],
-    budget: dict[str, int],
+    dlug_budget: dict[str, int],
+    wykluczenia_budget: dict[str, int],
 ) -> list[str]:
-    """Porownaj znaleziska pliku z budzetem — W OBIE STRONY."""
+    """Porownaj znaleziska pliku z DWOMA budzetami (dlug fizyczny i wykluczenia
+    skanera) — KAZDY z osobna, W OBIE STRONY (patrz „ZAPADKA" w docstringu modulu
+    i uzasadnienie `WYKLUCZENIA_SKANERA` powyzej).
+
+    Sygnatura NIEOBECNA w zadnym z dwoch budzetow domyslnie NALEZY DO DLUGU z
+    budzetem 0 — DOKLADNIE tak, jak dzialala jedyna zapadka przed karta GUARD-SUB:
+    kazde nowe, nieprzypisane podstawienie w PLIKU JUZ ZNANYM zapadce (choc jednym
+    wpisem) jest NADWYZKA budzetu 0, nie osobnym typem komunikatu — inaczej ten sam
+    plik z jednym wykluczeniem stalby sie „bezpiecznym schronieniem" dla kazdego
+    INNEGO, calkiem nowego podstawienia (patrz `test_sygnatura_nieprzypisana_w_
+    pliku_ze_znanym_budzetem_jest_naruszeniem`). Jedna sygnatura NIE MOZE byc
+    jednoczesnie WPISANA do dlugu i do wykluczen — pilnuje tego `test_dlug_i_
+    wykluczenie_sie_nie_pokrywaja`.
+    """
     violations: list[str] = []
     counted = Counter(signature for signature, _ in findings)
+    wszystkie = sorted(set(counted) | set(dlug_budget) | set(wykluczenia_budget))
 
-    for signature in sorted(set(counted) | set(budget)):
+    for signature in wszystkie:
         found = counted.get(signature, 0)
-        allowed = budget.get(signature, 0)
+        if signature in wykluczenia_budget:
+            kategoria = "wykluczenie"
+            allowed = wykluczenia_budget[signature]
+        else:
+            kategoria = "dlug"
+            allowed = dlug_budget.get(signature, 0)
         if found == allowed:
             continue
+
         lines = ", ".join(
             str(ln) for sig, ln in sorted(findings, key=lambda f: f[1]) if sig == signature
         )
-        if found > allowed:
-            violations.append(
-                f"  {rel}: zapadka zastanych zastepnikow '{signature}': budzet {allowed}, "
-                f"znaleziono {found} (wiersze: {lines or 'brak'}). NOWE podstawienie liczby "
-                "za nieobecna dana wejsciowa jest naruszeniem — pomin element albo zamelduj "
-                "brak (`None` + powod), tak jak `_grid_source_shunt_admittance`."
-            )
-        else:
-            violations.append(
-                f"  {rel}: zapadka zastanych zastepnikow '{signature}': budzet {allowed}, "
-                f"znaleziono {found} (wiersze: {lines or 'brak'}). Dlug ZMALAL — obniz budzet "
-                "w ZASTANE_ZASTEPNIKI, inaczej poprawa nie zostaje utrwalona."
-            )
+        etykieta, powod_nadwyzki, powod_niedoboru = _KATEGORIE_BUDZETU[kategoria]
+        powod = powod_nadwyzki if found > allowed else powod_niedoboru
+        violations.append(
+            f"  {rel}: {etykieta} '{signature}': budzet {allowed}, znaleziono {found} "
+            f"(wiersze: {lines or 'brak'}). {powod}"
+        )
     return violations
 
 
@@ -1274,9 +2483,10 @@ def check_file(path: Path, fields: set[str]) -> list[str]:
 
     rel = path.relative_to(BACKEND_SRC).as_posix()
     findings = collect_findings(tree, fields)
-    budget = ZASTANE_ZASTEPNIKI.get(rel)
-    if budget is not None:
-        return apply_ratchet(rel, findings, budget)
+    dlug_budget = ZASTANE_ZASTEPNIKI.get(rel)
+    wykluczenia_budget = WYKLUCZENIA_SKANERA.get(rel)
+    if dlug_budget is not None or wykluczenia_budget is not None:
+        return apply_ratchet(rel, findings, dlug_budget or {}, wykluczenia_budget or {})
 
     return [
         f"  {rel}:{lineno}: podstawienie liczby za nieobecna dana wejsciowa "
@@ -1301,6 +2511,7 @@ def main() -> int:
 
     violations: list[str] = []
     scanned = 0
+    scanned_per_root: dict[str, int] = dict.fromkeys(SCAN_ROOTS, 0)
     for root_name in SCAN_ROOTS:
         root = BACKEND_SRC / root_name
         if not root.is_dir():
@@ -1309,6 +2520,7 @@ def main() -> int:
             return 1
         for path in sorted(root.rglob("*.py")):
             scanned += 1
+            scanned_per_root[root_name] += 1
             violations.extend(check_file(path, fields))
 
     print(f"Pol kontraktow wejsciowych: {len(fields)}.")
@@ -1318,14 +2530,40 @@ def main() -> int:
         print("FAIL: PUSTY SKAN — 0 plikow. Bramka, ktora nic nie obejrzala, nic nie dowodzi.")
         return 1
 
-    # Wpis zapadki wskazujacy plik, ktorego nie ma, to martwy budzet: rejestr
-    # moze tylko malec, wiec nieaktualny wpis jest bledem, nie ozdoba.
-    martwe = [rel for rel in ZASTANE_ZASTEPNIKI if not (BACKEND_SRC / rel).is_file()]
-    if martwe:
-        print("FAIL: zapadka wskazuje pliki, ktorych nie ma:")
-        for rel in sorted(martwe):
+    # Wpis zapadki/wykluczenia wskazujacy plik, ktorego nie ma, to martwy budzet:
+    # rejestr moze tylko malec, wiec nieaktualny wpis jest bledem, nie ozdoba.
+    martwe_dlug = [rel for rel in ZASTANE_ZASTEPNIKI if not (BACKEND_SRC / rel).is_file()]
+    martwe_wykl = [rel for rel in WYKLUCZENIA_SKANERA if not (BACKEND_SRC / rel).is_file()]
+    if martwe_dlug or martwe_wykl:
+        print("FAIL: zapadka/wykluczenia wskazuja pliki, ktorych nie ma:")
+        for rel in sorted(martwe_dlug):
             print(f"  {rel} — zdejmij wpis z ZASTANE_ZASTEPNIKI.")
+        for rel in sorted(martwe_wykl):
+            print(f"  {rel} — zdejmij wpis z WYKLUCZENIA_SKANERA.")
         return 1
+
+    # Sumy per korzen — PRZYPIETE testem (`test_biezacy_stan_repozytorium_...`),
+    # zeby cichy dryf (np. literowka w liczbie, ktora przypadkiem nadal "zgadza
+    # sie" per-plik) nie schowal sie za samym RC.
+    def _suma_per_korzen(rejestr: dict[str, dict[str, int]], korzen: str) -> tuple[int, int]:
+        prefiks = korzen + "/"
+        pliki = [rel for rel in rejestr if rel == korzen or rel.startswith(prefiks)]
+        return len(pliki), sum(sum(rejestr[rel].values()) for rel in pliki)
+
+    dlug_pliki_total = len(ZASTANE_ZASTEPNIKI)
+    dlug_suma_total = sum(sum(b.values()) for b in ZASTANE_ZASTEPNIKI.values())
+    wykl_pliki_total = len(WYKLUCZENIA_SKANERA)
+    wykl_suma_total = sum(sum(b.values()) for b in WYKLUCZENIA_SKANERA.values())
+    print(f"Zapadka dlugu (fizyczne): {dlug_pliki_total} plikow, suma {dlug_suma_total}.")
+    print(f"Wykluczenia skanera (niefizyczne): {wykl_pliki_total} plikow, suma {wykl_suma_total}.")
+    for root_name in SCAN_ROOTS:
+        dlug_pliki, dlug_suma = _suma_per_korzen(ZASTANE_ZASTEPNIKI, root_name)
+        wykl_pliki, wykl_suma = _suma_per_korzen(WYKLUCZENIA_SKANERA, root_name)
+        print(
+            f"  {root_name}: pliki_skanowane={scanned_per_root[root_name]}, "
+            f"dlug={dlug_pliki} plikow/suma {dlug_suma}, "
+            f"wykluczenia={wykl_pliki} plikow/suma {wykl_suma}"
+        )
 
     if violations:
         print("FAIL: podstawianie liczb za nieobecne dane wejsciowe:")

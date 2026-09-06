@@ -9,23 +9,30 @@ import { GpzConfiguratorSurface } from '../GpzConfiguratorSurface';
 import { BayConfiguratorSurface } from '../BayConfiguratorSurface';
 import { StationConfiguratorSurface } from '../StationConfiguratorSurface';
 import { renderWithQueryClient as render } from '../../../../test/queryClientTestUtils';
+import type { WorkspaceSurfaceDescriptor } from '../../types';
 
-const minimalSurface = {
+// Kompletny `WorkspaceSurfaceDescriptor` (nie `as never`) — `never` przechodzi
+// bezposrednie przypisanie do propa `surface`, ale `{ ...minimalSurface, ... }`
+// wymaga realnego typu obiektowego (TS2698), wiec kazde uzycie musi byc
+// prawdziwie typowane, nie obchodzone rzutowaniem.
+const minimalSurface: WorkspaceSurfaceDescriptor = {
   surfaceId: 'surface-test',
-  screenCode: 'E-10' as const,
+  screenCode: 'E-10',
+  surfaceKind: 'pomocniczy',
   titlePl: 'Test',
   entityRef: null,
   entityType: null,
-  routeState: { payload: {} },
+  parentSurfaceId: null,
+  tabId: null,
+  routeState: { route: 'unknown', payload: {} },
   breadcrumbs: [],
   supportsMiniSld: false,
-  supportsChildren: false,
-  sizeClass: 'C' as const,
-  stackLevel: 0 as const,
-  openMode: 'expand_workspace' as const,
-  subjectKind: 'helper_context' as const,
+  sizeClass: 'C',
+  stackLevel: 0,
+  openMode: 'expand_workspace',
+  subjectKind: 'helper_context',
   subjectRef: null,
-} as never;
+};
 
 describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
   beforeEach(() => {
@@ -916,7 +923,7 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
               ref_id: 'pv/station-15/converter',
               name: 'PV S15',
               tags: [],
-              meta: { voltage_level_ref: 'lv_0_4kV' },
+              meta: {},
               bus_ref: 'stn/station-15/nn_bus',
               p_mw: 0.185,
               q_mvar: 0,
@@ -947,20 +954,15 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
         connection_side: 'nN',
         bus_przylaczenia_ref: 'stn/station-15/nn_bus',
         lv_busbar_ref: 'stn/station-15/nn_bus',
-        voltage_level_ref: 'lv_0_4kV',
+        connection_voltage_kv: 0.4,
         catalogs: { device_catalog_ref: 'pv_inv_huawei_185' },
         profiles: {},
         nominal_power_kw: 185,
-        completeness: {
-          pcc: true,
-          catalogs: true,
-          profiles: true,
-          protections: true,
-          voltage_level: true,
-        },
-        readiness: { status: 'ready', blockers: [], warnings: [] },
+        // `completeness`/`readiness`/`updated_at` NIE sa czescia `AttachDerInput`
+        // — `attachDer` liczy je sam (`computeDerCompleteness` z `catalogs`/
+        // `profiles`/`connection_side`/`connection_voltage_kv` powyzej), wiec te
+        // pola bylyby i tak zignorowane; usuniete u zrodla zamiast wyciszone.
         created_at: '2026-05-22T00:00:00Z',
-        updated_at: '2026-05-22T00:00:00Z',
       });
 
       render(

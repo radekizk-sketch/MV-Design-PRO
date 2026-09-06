@@ -194,6 +194,64 @@ describe('Property Grid Field Definitions', () => {
     });
   });
 
+  describe('Source Field Definitions', () => {
+    const sections = getSourceFieldDefinitions();
+
+    it('should have short_circuit section with editable Sk" and R/X', () => {
+      const scSection = sections.find((s) => s.id === 'short_circuit');
+      expect(scSection).toBeDefined();
+
+      const skField = scSection!.fields.find((f) => f.key === 'sk_mva');
+      expect(skField).toBeDefined();
+      expect(skField!.editable).toBe(true);
+      expect(skField!.type).toBe('number');
+      expect(skField!.unit).toBe('MVA');
+
+      const rxField = scSection!.fields.find((f) => f.key === 'rx_ratio');
+      expect(rxField!.editable).toBe(true);
+      expect(rxField!.type).toBe('number');
+    });
+
+    it('should have calculated zk_ohm as read-only', () => {
+      const calcSection = sections.find((s) => s.id === 'calculated');
+      const zkField = calcSection!.fields.find((f) => f.key === 'zk_ohm');
+
+      expect(zkField).toBeDefined();
+      expect(zkField!.editable).toBe(false);
+      expect(zkField!.source).toBe('calculated');
+    });
+  });
+
+  describe('Load Field Definitions', () => {
+    const sections = getLoadFieldDefinitions();
+
+    it('should have electrical_params section with editable P, Q and load_type', () => {
+      const paramsSection = sections.find((s) => s.id === 'electrical_params');
+      expect(paramsSection).toBeDefined();
+
+      const pField = paramsSection!.fields.find((f) => f.key === 'p_mw');
+      expect(pField).toBeDefined();
+      expect(pField!.editable).toBe(true);
+      expect(pField!.type).toBe('number');
+      expect(pField!.unit).toBe('MW');
+
+      const loadTypeField = paramsSection!.fields.find((f) => f.key === 'load_type');
+      expect(loadTypeField).toBeDefined();
+      expect(loadTypeField!.type).toBe('enum');
+      expect(loadTypeField!.enumOptions).toContain('CONSTANT_POWER');
+      expect(loadTypeField!.enumOptions).toContain('ZIP');
+    });
+
+    it('should have topology section with editable bus_id ref', () => {
+      const topologySection = sections.find((s) => s.id === 'topology');
+      const busField = topologySection!.fields.find((f) => f.key === 'bus_id');
+
+      expect(busField).toBeDefined();
+      expect(busField!.editable).toBe(true);
+      expect(busField!.type).toBe('ref');
+    });
+  });
+
   describe('Field Units', () => {
     const lineSections = getLineBranchFieldDefinitions();
 

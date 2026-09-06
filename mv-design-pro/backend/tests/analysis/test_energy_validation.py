@@ -717,89 +717,13 @@ class TestGoldenNetworkIntegration:
         assert len(bl_fails) > 0
 
 
-# ============================================================================
-# TestOrchestrator
-# ============================================================================
-
-
-class TestOrchestrator:
-    """Analysis orchestrator integration."""
-
-    def test_orchestrator_produces_bundle(self):
-        from application.analysis_run.orchestrator import AnalysisOrchestrator
-
-        graph = _build_simple_graph()
-        pf = _build_pf_result(
-            node_voltage_kv={"slack": 110.0, "bus-a": 109.5, "bus-b": 14.8},
-            branch_current_ka={"line-1": 0.1},
-            branch_s_from_mva={"tr-1": complex(10.0, 5.0)},
-            losses_total_pu=0.01 + 0.005j,
-            slack_power_pu=1.0 + 0.3j,
-        )
-        orch = AnalysisOrchestrator()
-        bundle = orch.run_post_pf_analysis(
-            run_id="test-run-001",
-            power_flow_result=pf,
-            graph=graph,
-        )
-        assert bundle.run_id == "test-run-001"
-        assert bundle.energy_validation is not None
-        assert bundle.voltage_profile is not None
-        assert bundle.overall_status in {"PASS", "WARNING", "FAIL", "NOT_COMPUTED"}
-        assert len(bundle.fingerprint) == 64  # SHA-256 hex
-
-    def test_orchestrator_deterministic(self):
-        from application.analysis_run.orchestrator import AnalysisOrchestrator
-
-        graph = _build_simple_graph()
-        pf = _build_pf_result(
-            node_voltage_kv={"slack": 110.0, "bus-a": 109.5, "bus-b": 14.8},
-            branch_current_ka={"line-1": 0.1},
-            branch_s_from_mva={"tr-1": complex(10.0, 5.0)},
-            losses_total_pu=0.01 + 0.005j,
-            slack_power_pu=1.0 + 0.3j,
-        )
-        orch = AnalysisOrchestrator()
-        b1 = orch.run_post_pf_analysis(run_id="run-x", power_flow_result=pf, graph=graph)
-        b2 = orch.run_post_pf_analysis(run_id="run-x", power_flow_result=pf, graph=graph)
-        assert b1.fingerprint == b2.fingerprint
-
-    def test_orchestrator_without_voltage_profile(self):
-        from application.analysis_run.orchestrator import AnalysisOrchestrator
-
-        graph = _build_simple_graph()
-        pf = _build_pf_result(
-            node_voltage_kv={"slack": 110.0, "bus-a": 109.5, "bus-b": 14.8},
-        )
-        orch = AnalysisOrchestrator()
-        bundle = orch.run_post_pf_analysis(
-            run_id="run-y",
-            power_flow_result=pf,
-            graph=graph,
-            include_voltage_profile=False,
-        )
-        assert bundle.voltage_profile is None
-        assert bundle.energy_validation is not None
-
-    def test_bundle_to_dict(self):
-        from application.analysis_run.orchestrator import AnalysisOrchestrator
-
-        graph = _build_simple_graph()
-        pf = _build_pf_result(
-            node_voltage_kv={"slack": 110.0, "bus-a": 109.5, "bus-b": 14.8},
-            branch_current_ka={"line-1": 0.1},
-            branch_s_from_mva={"tr-1": complex(10.0, 5.0)},
-        )
-        orch = AnalysisOrchestrator()
-        bundle = orch.run_post_pf_analysis(
-            run_id="run-z",
-            power_flow_result=pf,
-            graph=graph,
-        )
-        d = bundle.to_dict()
-        assert isinstance(d, dict)
-        serialized = json.dumps(d, sort_keys=True)
-        assert isinstance(serialized, str)
+# TestOrchestrator (karta CV-3.3-A, 2026-09-05): skasowana razem z
+# `application/analysis_run/orchestrator.py::AnalysisOrchestrator` — podmodul
+# R2 martwy, zero konsumentow poza tymi 4 testami. Bilans/profil napieciowy
+# post-PF, ktory orkiestrator opakowywal, jest w tym samym pliku pokryty
+# bezposrednio przez `EnergyValidationBuilder` (klasy powyzej) i
+# `VoltageProfileBuilder` — bez przejscia przez orkiestrator; fizyka nie ginie
+# razem z kasowanym opakowaniem.
 
 
 # ============================================================================

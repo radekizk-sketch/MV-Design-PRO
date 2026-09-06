@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { at } from '../../../../test/arrayAt';
+
 import type { CompleteMvBayTemplateSummary } from '../../../../ui/catalog/BayTemplatePicker';
 import type { ConverterType, TransformerType } from '../../../../ui/catalog/types';
 import {
@@ -681,8 +683,8 @@ describe('stacjaModel — pełny parytet nN (5 wariantów vs legacy)', () => {
       feeder_role: string;
       catalog_bindings: { source_converter?: { catalog_namespace?: string } } | null;
     }>;
-    expect(feeders.at(-1)?.feeder_role).toBe('ZRODLO_NN_FW');
-    expect(feeders.at(-1)?.catalog_bindings?.source_converter?.catalog_namespace).toBe('CONVERTER');
+    expect(at(feeders, -1)?.feeder_role).toBe('ZRODLO_NN_FW');
+    expect(at(feeders, -1)?.catalog_bindings?.source_converter?.catalog_namespace).toBe('CONVERTER');
   });
 
   it('payload CUSTOM_NN: własne napięcie nN w payloadzie, bez źródła i pola źródłowego', () => {

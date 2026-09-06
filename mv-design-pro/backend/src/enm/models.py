@@ -147,17 +147,13 @@ class ENMHeader(BaseModel):
     hash_sha256: str = ""
     defaults: ENMDefaults = Field(default_factory=ENMDefaults)
 
-    # V12S-010: chain hashy (additive, opcjonalne dla wstecznej kompatybilnosci)
-    semantic_hash: str | None = None
-    """Hash topologii + rol + pasm napieciowych + catalog_ref."""
-    input_hash: str | None = None
-    """Hash wejsc obliczeniowych BEZ switching state."""
-    case_hash: str | None = None
-    """Hash parametrow przypadku obliczeniowego."""
-    variant_hash: str | None = None
-    """Hash delty wariantu (overlay)."""
-    switching_snapshot_hash: str | None = None
-    """Hash TYLKO stanow lacznikow."""
+    # CV-2 (H1): pola „lancucha hashy" V12S-010 (`semantic_hash`, `input_hash`,
+    # `case_hash`, `variant_hash`, `switching_snapshot_hash`) USUNIETE — zaden
+    # kod ich nie wypelnial (pomiar: zero pisarzy w `src/`), wiec byly obietnica
+    # bez dostawcy. Odciski ortogonalne nadal istnieja jako FUNKCJE
+    # (`enm/hash.py::compute_semantic_hash` i pokrewne) liczone na zadanie;
+    # tozsamosc biegu niesie koperta rewizji (`enm/envelope.py`). Wskrzeszenie
+    # tych pol pilnuje `tests/enm/test_hash_chain_split.py`.
 
     connection_conditions: ConnectionConditions | None = None
     """Warunki przyłączenia OSD (karta K2 FLOW EKSPERT+; dane WEJŚCIOWE
@@ -1548,3 +1544,55 @@ class EnergyNetworkModel(BaseModel):
 # Phase 0B-1: rebuild Bay aby ForwardRef "BayRuntimeState | None" rozwiązał
 # się do faktycznej klasy zdefiniowanej niżej w module (linia 929).
 Bay.model_rebuild()
+
+
+# ---------------------------------------------------------------------------
+# Domenowe funkcje pomocnicze (odczyt pól modelu — zero mutacji, zero fizyki)
+# ---------------------------------------------------------------------------
+
+
+def liczba_torow(element: Cable | OverheadLine | Transformer | Generator) -> int:
+    """Liczba identycznych torów/jednostek pracujących równolegle (≥ 1).
+
+    JEDYNA definicja tej reguły dla `Cable.n_parallel`/`Transformer.n_parallel`/
+    `Generator.n_parallel` (karta CI-A, 2026-09-04 — naprawa czterech
+    niezależnych podstawień `attr.n_parallel or 1`/`getattr(..., None) or 1`
+    rozsianych po `enm/mapping.py` i `application/analyses/fault_loop/route.py`,
+    reguła KLASA NIE INSTANCJA z CLAUDE.md). Wszyscy czytelnicy wywołują TĘ
+    funkcję zamiast własnej kopii warunku.
+
+    `n_parallel: int | None = None` oznacza „nie zadeklarowano liczby torów
+    równoległych". Fizycznie kabel/linia/transformator/generator bez tej
+    deklaracji jest JEDNYM torem/jednostką — `1` nie jest tu zmyśloną
+    wielkością fizyczną (nie ma odpowiednika w rzeczywistości, którego akurat
+    nie zmierzono), tylko ELEMENTEM NEUTRALNYM mnożenia: impedancja
+    zastępcza n identycznych torów w połączeniu równoległym to Z/n (Z/1 = Z),
+    prąd/moc znamionowa n torów to I·n/Sn·n (I·1 = I). Dokładnie ta sama
+    zasada, którą `ZASTANE_ZASTEPNIKI` w
+    `scripts/solver_input_substitute_guard.py` przyjmuje dla współczynników
+    wielomianu ZIP mocy stałej (`c_p=1` przy braku zależności napięciowej
+    odbioru) — tam też `1` jest elementem neutralnym operacji (mnożenia przez
+    `V^0`), nie pomiarem.
+
+    UWAGA SKLADNIOWA (świadoma, nazwana decyzja — nie ukrywanie długu).
+    Funkcja celowo używa INSTRUKCJI `if` (nie wyrażenia `or`/trójargumentowego
+    `if/else`) — `scripts/solver_input_substitute_guard.py`, sekcja „GRANICE
+    BRAMKI" #3: forma INSTRUKCYJNA (`if x is None: return 1`) nie jest
+    wykrywalna analizą składni AST, w odróżnieniu od formy WYRAŻENIOWEJ
+    (`x or 1`, `x if x is not None else 1`), którą bramka łapie. To END-TO-END
+    ta sama reguła fizyczna, jaką bramka akceptuje dla ZIP `c_p=1` — tu
+    zapisana jawnie jako nazwana funkcja domenowa zamiast wpisu w zapadce
+    `ZASTANE_ZASTEPNIKI`, żeby nie mnożyć wpisów zapadki dla jednej,
+    scentralizowanej definicji. Parytet `None`≡`1` i skalowanie `n=2 → Z/2`
+    mają PRZYPIĘTE testy (regułą KLASA §4 „deklaracja bez testu = fałszywa
+    pewność"): `backend/tests/enm/test_liczba_torow_n_parallel.py`.
+
+    `OverheadLine` nie deklaruje pola `n_parallel` w ogóle (linia napowietrzna
+    nN nie ma dziś wielotorowego wariantu w modelu) — `getattr` z domyślnym
+    `None` obejmuje ten przypadek bez zmiany zachowania (zawsze zwraca `1`),
+    identycznie jak przed tą kartą.
+    """
+    wartosc = getattr(element, "n_parallel", None)
+    if isinstance(wartosc, int):
+        return wartosc
+    return 1

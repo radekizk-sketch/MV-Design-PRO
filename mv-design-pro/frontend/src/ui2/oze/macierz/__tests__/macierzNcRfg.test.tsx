@@ -49,8 +49,8 @@ function ustawModuly(): void {
         id: 'fw-1',
         name: 'Farma wiatrowa',
         der_kind: 'FW',
-        voltage_level_ref: null,
-        connection_side: 'SN',
+        connection_voltage_kv: null,
+        connection_side: 'dedicated_transformer',
       }),
     },
   });
@@ -145,7 +145,7 @@ describe('MacierzNcRfg — komórka → szczegół (kryterium 2)', () => {
 describe('MacierzNcRfg — moduł bez napięcia (kryterium 3)', () => {
   it('moduł bez napięcia przyłączenia → kolumna „brak danych", panel z jawnym powodem', async () => {
     render(<MacierzNcRfg trybZaawansowania="basic" />);
-    // fw-1 (SN, bez voltage_level_ref) — kolumna w stanie brak danych, bez 15 kV z powietrza.
+    // fw-1 (dedicated_transformer, bez connection_voltage_kv) — kolumna w stanie brak danych, bez 15 kV z powietrza.
     expect(await screen.findAllByTestId('mvd-oze-komorka-brak-danych')).not.toHaveLength(0);
     fireEvent.click(screen.getByTestId('mvd-oze-modul-fw-1'));
     expect(screen.getByTestId('mvd-oze-panel-blokada')).toHaveTextContent(
@@ -287,9 +287,7 @@ describe('MacierzNcRfg — certyfikat zgodności (karta P39c)', () => {
     vi.mocked(pobierzCertyfikatDocx).mockResolvedValue(blob);
 
     // jsdom nie implementuje URL.createObjectURL — shim + spy.
-    // @ts-expect-error shim jsdom
     if (typeof URL.createObjectURL !== 'function') URL.createObjectURL = () => 'blob:shim';
-    // @ts-expect-error shim jsdom
     if (typeof URL.revokeObjectURL !== 'function') URL.revokeObjectURL = () => {};
     const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
@@ -388,9 +386,7 @@ describe('MacierzNcRfg — dowód certyfikacji PTPiREE w certyfikacie zgodności
   it('eksport DOCX certyfikatu też niesie aktywny przypadek', async () => {
     vi.mocked(pobierzCertyfikat).mockResolvedValue(certyfikatZDowodemFixture());
     vi.mocked(pobierzCertyfikatDocx).mockResolvedValue(new Blob(['docx']));
-    // @ts-expect-error shim jsdom
     if (typeof URL.createObjectURL !== 'function') URL.createObjectURL = () => 'blob:shim';
-    // @ts-expect-error shim jsdom
     if (typeof URL.revokeObjectURL !== 'function') URL.revokeObjectURL = () => {};
     vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});

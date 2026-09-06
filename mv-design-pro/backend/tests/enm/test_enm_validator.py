@@ -9,6 +9,7 @@ from enm.models import (
     Cable,
     EnergyNetworkModel,
     ENMHeader,
+    Generator,
     OverheadLine,
     Port,
     Source,
@@ -570,3 +571,294 @@ class TestE030EndpointPorts:
             assert _strict_port_binding_enabled() is False
         os.environ.pop("ENM_STRICT_PORT_BINDING", None)
         assert _strict_port_binding_enabled() is False
+
+
+class TestSourcesBusMissing:
+    """`sources.bus_missing` (odbiór CV-3.3-B): źródło bez istniejącej szyny.
+
+    Iloczyn cech: bus_ref wskazujący nieistniejącą szynę × pusty bus_ref × źródło
+    poprawnie podłączone (brak kodu). Kod jest odwzorowany mostem na kanoniczny
+    `source.connection_missing` (test w `test_readiness_kanon_w_odpowiedzi.py`).
+    """
+
+    @staticmethod
+    def _kody(enm: EnergyNetworkModel) -> list[str]:
+        return [issue.code for issue in ENMValidator().validate(enm).issues]
+
+    def test_bus_ref_wskazujacy_nieistniejaca_szyne_blokuje(self):
+        enm = _minimal_enm()
+        zrodlo = enm.sources[0].model_copy(update={"bus_ref": "bus_widmo"})
+        enm = enm.model_copy(update={"sources": [zrodlo]})
+        raport = ENMValidator().validate(enm)
+        trafienia = [i for i in raport.issues if i.code == "sources.bus_missing"]
+        assert len(trafienia) == 1
+        assert trafienia[0].severity == SEVERITY_BLOCKER
+        assert "bus_widmo" in trafienia[0].message_pl
+        assert trafienia[0].element_refs == ["src_1"]
+        assert trafienia[0].fix_action is not None
+        assert trafienia[0].fix_action.modal_type == "SourceModal"
+        assert is_blocking_severity(trafienia[0].severity) is True
+
+    def test_pusty_bus_ref_blokuje(self):
+        enm = _minimal_enm()
+        zrodlo = enm.sources[0].model_copy(update={"bus_ref": ""})
+        enm = enm.model_copy(update={"sources": [zrodlo]})
+        assert self._kody(enm).count("sources.bus_missing") == 1
+
+    def test_zrodlo_podlaczone_nie_daje_kodu(self):
+        assert "sources.bus_missing" not in self._kody(_minimal_enm())
+
+
+class TestGeneratorVoltageControlIncomplete:
+    """`generators.voltage_control_incomplete` (karta CV-4.1b, A3-04).
+
+    Generator w trybie regulacji napięcia (`meta.control_mode ==
+    "REGULACJA_NAPIECIA"`) bez nastawy napięcia (`u_set_pu` w [0,9; 1,1] pu) albo
+    bez spójnych granic mocy biernej (`q_min_mvar < q_max_mvar`) blokuje bieg —
+    tor kanoniczny (`enm/mapping.py`) buduje z tych danych węzeł PV i solver FROZEN
+    wymaga ich jako danej wejściowej, nigdy jako wartości domyślnej.
+
+    Iloczyn cech: tryb (nie ustawiony / inny tryb / REGULACJA_NAPIECIA) ×
+    obecność/zakres u_set_pu × obecność/spójność granic Q.
+    """
+
+    @staticmethod
+    def _kody(meta: dict) -> list[str]:
+        enm = _minimal_enm()
+        gen = Generator(ref_id="gen_1", name="Generator", bus_ref="bus_2", p_mw=0.1, meta=meta)
+        enm = enm.model_copy(update={"generators": [gen]})
+        return [issue.code for issue in ENMValidator().validate(enm).issues]
+
+    @pytest.mark.parametrize(
+        ("meta", "oczekiwany_kod"),
+        [
+            pytest.param({}, False, id="brak-control_mode"),
+            pytest.param(
+                {"control_mode": "STALY_COS_PHI", "cos_phi": 0.95},
+                False,
+                id="inny-tryb-stary_cos_phi",
+            ),
+            pytest.param(
+                {
+                    "control_mode": "REGULACJA_NAPIECIA",
+                    "u_set_pu": 1.0,
+                    "q_min_mvar": -0.02,
+                    "q_max_mvar": 0.02,
+                },
+                False,
+                id="kompletny-poprawny",
+            ),
+            pytest.param(
+                {"control_mode": "REGULACJA_NAPIECIA", "q_min_mvar": -0.02, "q_max_mvar": 0.02},
+                True,
+                id="brak-u_set_pu",
+            ),
+            pytest.param(
+                {
+                    "control_mode": "REGULACJA_NAPIECIA",
+                    "u_set_pu": 0.85,
+                    "q_min_mvar": -0.02,
+                    "q_max_mvar": 0.02,
+                },
+                True,
+                id="u_set_pu-ponizej-pasma",
+            ),
+            pytest.param(
+                {
+                    "control_mode": "REGULACJA_NAPIECIA",
+                    "u_set_pu": 1.15,
+                    "q_min_mvar": -0.02,
+                    "q_max_mvar": 0.02,
+                },
+                True,
+                id="u_set_pu-powyzej-pasma",
+            ),
+            pytest.param(
+                {"control_mode": "REGULACJA_NAPIECIA", "u_set_pu": 1.0},
+                True,
+                id="brak-granic-Q",
+            ),
+            pytest.param(
+                {
+                    "control_mode": "REGULACJA_NAPIECIA",
+                    "u_set_pu": 1.0,
+                    "q_min_mvar": 0.01,
+                    "q_max_mvar": 0.01,
+                },
+                True,
+                id="q_min-rowne-q_max",
+            ),
+            pytest.param(
+                {
+                    "control_mode": "REGULACJA_NAPIECIA",
+                    "u_set_pu": 1.0,
+                    "q_min_mvar": 0.02,
+                    "q_max_mvar": 0.01,
+                },
+                True,
+                id="q_min-wiekszy-niz-q_max",
+            ),
+            pytest.param(
+                {
+                    "control_mode": "REGULACJA_NAPIECIA",
+                    "u_set_pu": 0.9,
+                    "q_min_mvar": -0.02,
+                    "q_max_mvar": 0.02,
+                },
+                False,
+                id="u_set_pu-dolna-granica-pasma-wlacznie",
+            ),
+            pytest.param(
+                {
+                    "control_mode": "REGULACJA_NAPIECIA",
+                    "u_set_pu": 1.1,
+                    "q_min_mvar": -0.02,
+                    "q_max_mvar": 0.02,
+                },
+                False,
+                id="u_set_pu-gorna-granica-pasma-wlacznie",
+            ),
+        ],
+    )
+    def test_iloczyn_cech(self, meta: dict, oczekiwany_kod: bool):
+        kody = self._kody(meta)
+        assert ("generators.voltage_control_incomplete" in kody) is oczekiwany_kod
+
+    def test_komunikat_i_nawigacja_naprawcza(self):
+        enm = _minimal_enm()
+        gen = Generator(
+            ref_id="gen_1",
+            name="Falownik PV",
+            bus_ref="bus_2",
+            p_mw=0.1,
+            meta={"control_mode": "REGULACJA_NAPIECIA"},
+        )
+        enm = enm.model_copy(update={"generators": [gen]})
+        raport = ENMValidator().validate(enm)
+        trafienia = [i for i in raport.issues if i.code == "generators.voltage_control_incomplete"]
+        assert len(trafienia) == 1
+        issue = trafienia[0]
+        assert issue.severity == SEVERITY_BLOCKER
+        assert is_blocking_severity(issue.severity) is True
+        assert issue.element_refs == ["gen_1"]
+        assert "u_set_pu" in issue.message_pl
+        assert "q_min_mvar" in issue.message_pl
+        assert issue.fix_action is not None
+        assert issue.fix_action.modal_type == "GeneratorModal"
+        assert raport.status == STATUS_FAIL
+
+
+class TestGeneratorVoltageControlProfile:
+    """`generators.voltage_control_profile_missing` / `..._not_permitted` (domknięcie CV-4.1b).
+
+    Kreator OZE bramkuje tryb REGULACJA_NAPIECIA profilem NC RfG operatora
+    (`reactive_power.voltage_control_modes` zawiera `voltage_control`) — bramka tylko
+    w UI byłaby fantomem, więc model ma tę samą regułę w walidatorze. Profil czytany
+    z `materialized_params.profiles.nc_rfg_profile_ref` (magazyn `update_der_bindings`).
+
+    Iloczyn cech: tryb (inny / REGULACJA_NAPIECIA) × profil (brak / nieznany /
+    realny dopuszczający / dopuszczenie cofnięte w danych katalogu).
+    """
+
+    _META_KOMPLETNA = {
+        "control_mode": "REGULACJA_NAPIECIA",
+        "u_set_pu": 1.02,
+        "q_min_mvar": -1.0,
+        "q_max_mvar": 1.0,
+    }
+    _KODY_PROFILU = {
+        "generators.voltage_control_profile_missing",
+        "generators.voltage_control_not_permitted",
+    }
+
+    @staticmethod
+    def _raport(meta: dict, materialized_params: dict | None):
+        enm = _minimal_enm()
+        gen = Generator(
+            ref_id="gen_1",
+            name="Generator",
+            bus_ref="bus_2",
+            p_mw=0.1,
+            meta=meta,
+            materialized_params=materialized_params,
+        )
+        return ENMValidator().validate(enm.model_copy(update={"generators": [gen]}))
+
+    def _kody_profilu(self, meta: dict, materialized_params: dict | None) -> list[str]:
+        return [
+            i.code
+            for i in self._raport(meta, materialized_params).issues
+            if i.code in self._KODY_PROFILU
+        ]
+
+    @pytest.mark.parametrize(
+        ("materialized_params", "oczekiwany"),
+        [
+            pytest.param(
+                None, "generators.voltage_control_profile_missing", id="brak-materialized"
+            ),
+            pytest.param({}, "generators.voltage_control_profile_missing", id="brak-profiles"),
+            pytest.param(
+                {"profiles": {}}, "generators.voltage_control_profile_missing", id="brak-ref"
+            ),
+            pytest.param(
+                {"profiles": {"nc_rfg_profile_ref": "   "}},
+                "generators.voltage_control_profile_missing",
+                id="pusty-ref",
+            ),
+            pytest.param(
+                {"profiles": {"nc_rfg_profile_ref": "operator-widmo"}},
+                "generators.voltage_control_profile_missing",
+                id="nieznany-profil",
+            ),
+            pytest.param({"profiles": {"nc_rfg_profile_ref": "pse"}}, None, id="pse-dopuszcza"),
+        ],
+    )
+    def test_profil_brak_nieznany_albo_dopuszczajacy(self, materialized_params, oczekiwany):
+        kody = self._kody_profilu(dict(self._META_KOMPLETNA), materialized_params)
+        assert kody == ([oczekiwany] if oczekiwany else [])
+
+    def test_profil_bez_zdolnosci_blokuje_z_nawigacja(self, monkeypatch):
+        from types import SimpleNamespace
+
+        from enm import validator as modul_walidatora
+
+        monkeypatch.setattr(
+            modul_walidatora,
+            "load_nc_rfg_profile",
+            lambda ref: SimpleNamespace(
+                reactive_power=SimpleNamespace(
+                    voltage_control_modes=["cos_phi_constant", "q_constant", "q_of_u"]
+                )
+            ),
+        )
+        raport = self._raport(
+            dict(self._META_KOMPLETNA), {"profiles": {"nc_rfg_profile_ref": "pse"}}
+        )
+        trafienia = [
+            i for i in raport.issues if i.code == "generators.voltage_control_not_permitted"
+        ]
+        assert len(trafienia) == 1
+        assert trafienia[0].severity == SEVERITY_BLOCKER
+        assert trafienia[0].element_refs == ["gen_1"]
+        assert "'pse'" in trafienia[0].message_pl
+        assert trafienia[0].fix_action is not None
+        assert trafienia[0].fix_action.modal_type == "GeneratorModal"
+        assert trafienia[0].fix_action.payload_hint == {"required": "control_mode"}
+        assert "generators.voltage_control_profile_missing" not in [i.code for i in raport.issues]
+
+    def test_inny_tryb_nie_wymaga_profilu(self):
+        meta = {"control_mode": "STALY_COS_PHI", "cos_phi": 0.95}
+        assert self._kody_profilu(meta, None) == []
+        assert (
+            self._kody_profilu(meta, {"profiles": {"nc_rfg_profile_ref": "operator-widmo"}}) == []
+        )
+
+    def test_brak_profilu_nie_dubluje_kodu_niekompletnej_nastawy(self):
+        raport = self._raport(dict(self._META_KOMPLETNA), None)
+        kody = [i.code for i in raport.issues]
+        assert kody.count("generators.voltage_control_profile_missing") == 1
+        assert "generators.voltage_control_incomplete" not in kody
+        (trafienie,) = (i for i in raport.issues if i.code in self._KODY_PROFILU)
+        assert trafienie.fix_action is not None
+        assert trafienie.fix_action.payload_hint == {"required": "nc_rfg_profile_ref"}

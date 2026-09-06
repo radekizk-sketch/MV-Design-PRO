@@ -567,7 +567,6 @@ export interface ReadinessIssue {
   canonical_priority?: number;
   canonical_area?: string;
   canonical_message_pl?: string;
-  canonical_fix_action_id?: string | null;
   canonical_fix_navigation?: Record<string, string> | null;
 }
 

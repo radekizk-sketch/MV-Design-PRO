@@ -6,21 +6,25 @@ naruszania kryteriów sieciowych" jako DETERMINISTYCZNA siatka scenariuszy
 rozpływu — dokładnie tym samym mechanizmem, którego używa zdolność
 przyłączeniowa (D3, ``application/analyses/hosting_capacity.py``):
 
-1. dla wskazanego węzła wstrzykuje generator próbny o zadanej mocy czynnej P i
-   biernej Q (deterministyczny ``id`` z ``uuid5``),
+1. dla wskazanego węzła buduje scenariusz roboczy (``enm.scenariusze.OperatingScenario``)
+   z generatorem próbnym o zadanej mocy czynnej P i biernej Q (``Wstrzyk``, deterministyczny
+   ``id_seed``), nałożony na model bazowy przez ``enm.scenariusze.apply_scenario`` —
+   JEDYNE miejsce kopii migawki z nadpisaniami (rdzeń CV-3.1; migracja CV-3-W, 2026-09-05),
 2. uruchamia ISTNIEJĄCY solver rozpływu przez ISTNIEJĄCĄ ścieżkę wykonania
-   (``enm.canonical_analysis._execute_power_flow`` — ta sama funkcja, której
+   (``enm.canonical_analysis.wykonaj_bieg_w_pamieci`` — ten sam dyspozytor, którego
    używa kanoniczny przebieg PF; ZERO nowej fizyki, ZERO wołania klas solvera
-   na skróty),
+   na skróty), na biegu zbudowanym JEDYNĄ fabryką wariantu (``bieg_wariantu``),
 3. ocenia dopuszczalność REUŻYWAJĄC serwisu walidacji energetycznej D2
    (``build_energy_validation_view`` → ``EnergyValidationBuilder`` z domyślnymi
    progami: napięcia w paśmie, obciążenia ≤ 100 %).
 
 KLUCZOWY RECON (mapowanie Q generatora próbnego): ``enm/mapping.py`` przenosi
-moc bierną generatora do węzła identycznie jak moc czynną —
-``bus_q[gen.bus_ref] += (gen.q_mvar or 0.0)`` (``enm/mapping.py:201``, obok
-``bus_p += gen.p_mw`` w linii 200). Ta ``reactive_power`` trafia następnie do
-``PQSpec.q_mvar`` w ``_execute_power_flow`` (``enm/canonical_analysis.py:1186``),
+moc bierną generatora do węzła identycznie jak moc czynną — jawne ``q_mvar``
+generatora próbnego (karta FAB-H: rozstrzygane przez
+``solver_input.moc_bierna_wytworcy``, które dla JAWNEGO pola zwraca je bez
+zmian) trafia do ``bus_q[gen.bus_ref]`` (``enm/mapping.py``, obok
+``bus_p += gen.p_mw``). Ta ``reactive_power`` trafia następnie do
+``PQSpec.q_mvar`` w ``_execute_power_flow`` (``enm/canonical_analysis.py``),
 więc Q generatora próbnego RZECZYWIŚCIE wpływa na rozpływ. Obejście nie jest
 potrzebne — brak STOP-RAPORTU.
 
@@ -51,16 +55,19 @@ Założenia domyślne (parametry z jawnymi wartościami, udokumentowane):
 
 from __future__ import annotations
 
-import copy
 import hashlib
 import json
+import logging
+from collections.abc import Callable
 from typing import Any
-from uuid import NAMESPACE_URL, uuid5
 
 from application.analyses.energy_validation.service import build_energy_validation_view
 from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
-from enm.canonical_analysis import CanonicalRun, _execute_power_flow
-from enm.models import Generator
+from enm.canonical_analysis import CanonicalRun, bieg_wariantu, wykonaj_bieg_w_pamieci
+from enm.models import EnergyNetworkModel
+from enm.scenariusze import OperatingScenario, RodzajScenariusza, Wstrzyk, apply_scenario
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_STEP_P_MW = 0.5
 DEFAULT_STEP_Q_MVAR = 0.25
@@ -80,48 +87,33 @@ def _round_observed(value: float | None) -> float | None:
     return round(float(value), 4) if value is not None else None
 
 
-def _probe_generator(bus_ref: str, p_mw: float, q_mvar: float) -> dict[str, Any]:
-    """Deterministyczny generator próbny (OZE) o zadanej mocy P i Q.
+def _pq_scenario(bus_ref: str, p_mw: float, q_mvar: float) -> OperatingScenario:
+    """Scenariusz próbnego przyłączenia OZE (P–Q), deterministyczny per punkt siatki.
 
-    ``id`` pochodzi z ``uuid5`` (stały dla danej szyny), więc snapshot scenariusza
-    jest w pełni deterministyczny.
+    ``p_mw == 0.0 and q_mvar == 0.0`` → scenariusz BEZ wstrzyku (punkt środkowy =
+    stan bazowy, jak przed migracją CV-3-W). ``id`` elementu próbnego pochodzi z
+    ``uuid5`` przez jawne ``id_seed`` (stały dla danej szyny — patrz
+    ``enm.scenariusze.Wstrzyk``), więc migawka scenariusza jest w pełni
+    deterministyczna i bit w bit taka sama, jaką budował usunięty pomocnik
+    ``_probe_generator``.
     """
-    return Generator(
-        id=uuid5(NAMESPACE_URL, f"pq-area-probe:{bus_ref}"),
-        ref_id=f"__pq_probe__{bus_ref}",
-        name="Próbne przyłączenie OZE (P–Q)",
-        bus_ref=bus_ref,
-        p_mw=p_mw,
-        q_mvar=q_mvar,
-    ).model_dump(mode="json")
-
-
-def _snapshot_with_injection(
-    base_snapshot: dict[str, Any], bus_ref: str, p_mw: float, q_mvar: float
-) -> dict[str, Any]:
-    snapshot = copy.deepcopy(base_snapshot)
-    generators = list(snapshot.get("generators") or [])
+    injections: tuple[Wstrzyk, ...] = ()
     if p_mw != 0.0 or q_mvar != 0.0:
-        generators.append(_probe_generator(bus_ref, p_mw, q_mvar))
-    snapshot["generators"] = generators
-    return snapshot
-
-
-def _scenario_run(base_run: CanonicalRun, snapshot: dict[str, Any]) -> CanonicalRun:
-    """Przebieg PF w pamięci (bez persystencji) z podmienionym snapshotem."""
-    return CanonicalRun(
-        id=base_run.id,
-        case_id=base_run.case_id,
-        project_id=base_run.project_id,
-        analysis_type="PF",
-        status="FINISHED",
-        created_at=base_run.created_at,
-        snapshot_hash=base_run.snapshot_hash,
-        input_hash=base_run.input_hash,
-        snapshot=snapshot,
-        validation={},
-        readiness={},
-        options=dict(base_run.options),
+        injections = (
+            Wstrzyk(
+                bus_ref=bus_ref,
+                ref_id=f"__pq_probe__{bus_ref}",
+                name="Próbne przyłączenie OZE (P–Q)",
+                p_mw=p_mw,
+                q_mvar=q_mvar,
+                id_seed=f"pq-area-probe:{bus_ref}",
+            ),
+        )
+    return OperatingScenario(
+        scenario_id=f"__pq__{bus_ref}__{p_mw}__{q_mvar}",
+        name="Próbne przyłączenie OZE (P–Q)",
+        kind=RodzajScenariusza.SIZING,
+        injections=injections,
     )
 
 
@@ -151,17 +143,22 @@ def _binding_from_items(items: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def _evaluate_scenario(
-    base_run: CanonicalRun, bus_ref: str, p_mw: float, q_mvar: float
+    base_run: CanonicalRun,
+    enm_bazowy: EnergyNetworkModel,
+    bus_ref: str,
+    p_mw: float,
+    q_mvar: float,
+    uow_factory: Callable[[], Any] | None,
 ) -> tuple[bool, dict[str, Any]]:
     """Uruchom rozpływ dla scenariusza (P, Q) i oceń dopuszczalność.
 
     Zwraca ``(acceptable, binding)``. Niezbieżność lub błąd solvera → scenariusz
     niedopuszczalny z kryterium ``non_convergence`` (bez zgadywania).
     """
-    snapshot = _snapshot_with_injection(base_run.snapshot, bus_ref, p_mw, q_mvar)
-    run = _scenario_run(base_run, snapshot)
+    migawka = apply_scenario(enm_bazowy, _pq_scenario(bus_ref, p_mw, q_mvar))
+    run = bieg_wariantu(base_run, migawka, analysis_type="PF")
     try:
-        _execute_power_flow(run)
+        wykonaj_bieg_w_pamieci(run, uow_factory=uow_factory)
     except Exception:  # noqa: BLE001 — niezbieżność/osobliwość = twardy koniec pasma
         return False, {"kind": "non_convergence"}
 
@@ -183,10 +180,12 @@ def _evaluate_scenario(
 
 def _scan_q_direction(
     base_run: CanonicalRun,
+    enm_bazowy: EnergyNetworkModel,
     bus_ref: str,
     p_mw: float,
     step_q_mvar: float,
     max_steps_q: int,
+    uow_factory: Callable[[], Any] | None,
 ) -> tuple[float, dict[str, Any], int]:
     """Skan mocy biernej od środka (Q = 0, już dopuszczalny) w JEDNYM kierunku.
 
@@ -201,7 +200,9 @@ def _scan_q_direction(
     for k in range(1, max_steps_q + 1):
         q_mvar = _round_power(k * step_q_mvar)
         runs += 1
-        acceptable, edge_binding = _evaluate_scenario(base_run, bus_ref, p_mw, q_mvar)
+        acceptable, edge_binding = _evaluate_scenario(
+            base_run, enm_bazowy, bus_ref, p_mw, q_mvar, uow_factory
+        )
         if acceptable:
             last_ok_q = q_mvar
             continue
@@ -212,17 +213,21 @@ def _scan_q_direction(
 
 def _vertex_for_p(
     base_run: CanonicalRun,
+    enm_bazowy: EnergyNetworkModel,
     bus_ref: str,
     p_mw: float,
     step_q_mvar: float,
     max_steps_q: int,
+    uow_factory: Callable[[], Any] | None,
 ) -> tuple[dict[str, Any], bool]:
     """Zbuduj wierzchołek obszaru dla ustalonego P (skan Q w obu kierunkach).
 
     Zwraca ``(vertex, feasible)`` — ``feasible=False`` gdy scenariusz środkowy
     (Q = 0) jest już niedopuszczalny (wiersz P bez pasma pracy).
     """
-    center_acceptable, center_binding = _evaluate_scenario(base_run, bus_ref, p_mw, 0.0)
+    center_acceptable, center_binding = _evaluate_scenario(
+        base_run, enm_bazowy, bus_ref, p_mw, 0.0, uow_factory
+    )
     if not center_acceptable:
         vertex = {
             "p_mw": _round_power(p_mw),
@@ -237,10 +242,10 @@ def _vertex_for_p(
         return vertex, False
 
     q_max, binding_high, runs_pos = _scan_q_direction(
-        base_run, bus_ref, p_mw, step_q_mvar, max_steps_q
+        base_run, enm_bazowy, bus_ref, p_mw, step_q_mvar, max_steps_q, uow_factory
     )
     q_min, binding_low, runs_neg = _scan_q_direction(
-        base_run, bus_ref, p_mw, -step_q_mvar, max_steps_q
+        base_run, enm_bazowy, bus_ref, p_mw, -step_q_mvar, max_steps_q, uow_factory
     )
     vertex = {
         "p_mw": _round_power(p_mw),
@@ -256,9 +261,34 @@ def _vertex_for_p(
 
 
 def _existing_generation(snapshot: dict[str, Any], bus_ref: str) -> dict[str, float]:
+    """Moc generacji już zainstalowanej w węźle (P + Q, do wyświetlenia obok
+    obszaru P–Q — informacyjnie, nie wchodzi do obliczenia obszaru).
+
+    ``p_mw`` jest polem WYMAGANYM ``Generator`` (enm/models.py) — brak w
+    rekordzie migawki oznacza uszkodzony wpis, a nie zerową generację (FAB-E,
+    E1); taki wpis jest pomijany z ostrzeżeniem w logu, a nie liczony jako 0.
+    ``q_mvar`` jest polem GENUINIE opcjonalnym tego samego modelu — brak
+    oznacza generator bez zadanej mocy biernej, co kanoniczny most ENM→graf
+    (``enm/mapping.py:201``, poza zakresem tej karty) też liczy jako 0 Mvar
+    przy budowie wstrzyknięcia węzła; ta agregacja ma pozostać SPÓJNA z tym,
+    co solver faktycznie zobaczył, więc `` or 0.0`` tu nie jest fabrykacją,
+    tylko odwzorowaniem tej samej, już przyjętej konwencji mostu.
+    """
     gens = [gen for gen in (snapshot.get("generators") or []) if gen.get("bus_ref") == bus_ref]
-    p = sum(float(gen.get("p_mw", 0.0)) for gen in gens)
-    q = sum(float(gen.get("q_mvar") or 0.0) for gen in gens)
+    p = 0.0
+    q = 0.0
+    for gen in gens:
+        p_mw = gen.get("p_mw")
+        if p_mw is None:
+            logger.warning(
+                "Generator %r na szynie %r bez pola p_mw w migawce — pominięty "
+                "w sumie generacji istniejącej (nie liczony jako 0 MW).",
+                gen.get("ref_id"),
+                bus_ref,
+            )
+            continue
+        p += float(p_mw)
+        q += float(gen.get("q_mvar") or 0.0)
     return {"p_mw": _round_power(p), "q_mvar": _round_power(q)}
 
 
@@ -298,8 +328,13 @@ def build_pq_area_view(
     step_q_mvar: float = DEFAULT_STEP_Q_MVAR,
     max_steps_p: int = DEFAULT_MAX_STEPS_P,
     max_steps_q: int = DEFAULT_MAX_STEPS_Q,
+    uow_factory: Callable[[], Any] | None = None,
 ) -> dict[str, Any]:
     """Zbuduj widok obszaru bezpiecznej pracy P–Q dla wskazanego węzła.
+
+    ``uow_factory`` (CV-4.2b): fabryka ``UnitOfWork`` wołającego — warianty
+    dziedziczą opcje biegu bazowego, więc bieg z konfiguracją audytu 2 stacji
+    wymaga jej do odczytu tej konfiguracji (patrz ``wykonaj_bieg_w_pamieci``).
 
     Raises:
         ValueError: gdy przebieg nie jest rozpływem (``PF``) lub nie został
@@ -330,11 +365,16 @@ def build_pq_area_view(
     if bus_ref not in bus_names:
         raise ValueError(f"Wskazany węzeł nie istnieje w modelu: {bus_ref}.")
 
+    # JEDNA walidacja modelu bazowego na CAŁY widok (nie na scenariusz) —
+    # `apply_scenario` przyjmuje obiekt `EnergyNetworkModel`, nie słownik migawki.
+    enm_bazowy = EnergyNetworkModel.model_validate(snapshot)
     vertices: list[dict[str, Any]] = []
     total_runs = 0
     for step_index in range(max_steps_p + 1):
         p_mw = _round_power(step_index * step_p_mw)
-        vertex, feasible = _vertex_for_p(run, bus_ref, p_mw, step_q_mvar, max_steps_q)
+        vertex, feasible = _vertex_for_p(
+            run, enm_bazowy, bus_ref, p_mw, step_q_mvar, max_steps_q, uow_factory
+        )
         vertices.append(vertex)
         total_runs += int(vertex["runs"])
         if not feasible:

@@ -28,6 +28,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from domain.execution import ExecutionAnalysisType
+from network_model.pochodne import calka_joule_ka2s
 
 
 @dataclass(frozen=True)
@@ -236,7 +237,7 @@ def _derive_sc_globals(global_results: dict[str, Any]) -> dict[str, float]:
         and isinstance(tk_s, int | float)
         and not isinstance(tk_s, bool)
     ):
-        derived["i2t_ka2s"] = (float(ith_a) / 1000.0) ** 2 * float(tk_s)
+        derived["i2t_ka2s"] = calka_joule_ka2s(float(ith_a) / 1000.0, float(tk_s))
 
     return derived
 

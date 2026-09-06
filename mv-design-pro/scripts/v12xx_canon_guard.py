@@ -442,10 +442,16 @@ def check_playwright_webserver_lifecycle() -> list[str]:
                 f"[playwright-webserver-shell] frontend/playwright.config.ts must not use shell backend handoff {fragment!r}"
             )
 
+    # Kanon §10.2: backend realny startuje przez `cwd: backendCwd` (bez shellowego
+    # handoffu). Od 2026-09-05 (E2E-RUNNER) komenda jest szablonem: interpreter
+    # domyslnie `poetry run python` (CI) z jawnym nadpisaniem dla worktree
+    # (`PLAYWRIGHT_BACKEND_PYTHON`), a port jest WYPROWADZANY z adresu backendu —
+    # pin literalu `--port 8000` pilnowal instancji, nie inwariantu kanonu.
     required_fragments = (
         "backendCwd",
         "cwd: backendCwd",
-        "poetry run python -m uvicorn src.api.main:app --host 127.0.0.1 --port 8000",
+        "process.env.PLAYWRIGHT_BACKEND_PYTHON ?? 'poetry run python'",
+        "-m uvicorn src.api.main:app --host 127.0.0.1 --port ${backendPort}",
     )
     for fragment in required_fragments:
         if fragment not in text:

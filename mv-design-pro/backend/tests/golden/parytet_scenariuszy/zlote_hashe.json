@@ -1,0 +1,333 @@
+{
+  "dobor_kompensacji/golden/bus_sn_c_dzien": {
+    "parametry": {
+      "funkcja": "build_compensation_sizing_view",
+      "kwargs": {
+        "bus_ref": "bus_sn_c",
+        "cos_phi_min": 0.95
+      },
+      "siec": "golden"
+    },
+    "sha256": "bfd8803b25a499ff56ceafd973787457a26c6cb3f188023e6a046e4d3eed3fd7"
+  },
+  "dobor_kompensacji/golden/bus_sn_c_noc": {
+    "parametry": {
+      "funkcja": "build_compensation_sizing_view",
+      "kwargs": {
+        "bus_ref": "bus_sn_c",
+        "cos_phi_min": 0.9,
+        "uwzglednij_noc": true
+      },
+      "siec": "golden"
+    },
+    "sha256": "16b1387ed0859e78123da596e1341d706852756592bda2159b30666c45374f44"
+  },
+  "dobor_kompensacji/kompensacja/bus_pcc_dzien": {
+    "parametry": {
+      "funkcja": "build_compensation_sizing_view",
+      "kwargs": {
+        "bus_ref": "bus_pcc",
+        "cos_phi_min": 0.95
+      },
+      "siec": "kompensacja"
+    },
+    "sha256": "63daf122b81a529272bc23c7a29f802274093f7cdad930fb10866228180ac6ab"
+  },
+  "dobor_kompensacji/kompensacja/bus_pcc_noc": {
+    "parametry": {
+      "funkcja": "build_compensation_sizing_view",
+      "kwargs": {
+        "bus_ref": "bus_pcc",
+        "cos_phi_min": 0.9,
+        "uwzglednij_noc": true
+      },
+      "siec": "kompensacja"
+    },
+    "sha256": "576aa6ff89888e1f974edb98af559e948e3666cb5764fee3e7a6f51395a8e09f"
+  },
+  "hosting_capacity/golden/bus_sn_c_max20": {
+    "parametry": {
+      "funkcja": "build_hosting_capacity_view",
+      "kwargs": {
+        "candidate_bus_refs": [
+          "bus_sn_c"
+        ],
+        "max_steps": 20
+      },
+      "siec": "golden"
+    },
+    "sha256": "0ddfa1b21c429d053905f8761b4eda2352fc5e93106095063efd26c79c622da9"
+  },
+  "hosting_capacity/golden/domyslni_kandydaci_max10": {
+    "parametry": {
+      "funkcja": "build_hosting_capacity_view",
+      "kwargs": {
+        "max_steps": 10
+      },
+      "siec": "golden"
+    },
+    "sha256": "260f8ed1de046d57d76577c5246635050c183c02bfb453a30ae430bbfd9bc26e"
+  },
+  "hosting_capacity/napiecie_graniczne/b_rem_max10": {
+    "parametry": {
+      "funkcja": "build_hosting_capacity_view",
+      "kwargs": {
+        "candidate_bus_refs": [
+          "b_rem"
+        ],
+        "max_steps": 10
+      },
+      "siec": "napiecie_graniczne"
+    },
+    "sha256": "dbd1584bd5dd984d5bdcc0b48af2de183a1c0a98c5e48fbb8080d94df163c855"
+  },
+  "kontyngencje_n1/golden/pelny": {
+    "parametry": {
+      "funkcja": "build_kontyngencje_n1_view",
+      "kwargs": {},
+      "siec": "golden"
+    },
+    "sha256": "26512f32cdf364807791f8911e4cd751d9f0d15fdff9f80ebb17fe30798c38fd"
+  },
+  "kontyngencje_n1/golden/zakres": {
+    "parametry": {
+      "funkcja": "build_kontyngencje_n1_zakres_view",
+      "kwargs": {},
+      "siec": "golden"
+    },
+    "sha256": "4a4899093b65e2a61edf5e7ab44f59e2e1d70a47572ef4a94e0760eadc80f768"
+  },
+  "kontyngencje_n1/pierscien/pelny": {
+    "parametry": {
+      "funkcja": "build_kontyngencje_n1_view",
+      "kwargs": {},
+      "siec": "pierscien"
+    },
+    "sha256": "79fba89f21e90b5d7f610acf5bd862a106fdcb131bdec939976c75838c66352f"
+  },
+  "kontyngencje_n1/pierscien/zakres": {
+    "parametry": {
+      "funkcja": "build_kontyngencje_n1_zakres_view",
+      "kwargs": {},
+      "siec": "pierscien"
+    },
+    "sha256": "35c1388b4cb5c2e96ed8ef7fb6f6ec06c1f449734eb6cb07d80701e8bbcf3de0"
+  },
+  "nastawy/promieniowa/ln1_bb_cmin0_9_niestandardowe": {
+    "parametry": {
+      "funkcja": "zbuduj_wejscie_nastaw",
+      "kwargs": {
+        "c_min": 0.9,
+        "delta_t_s": 0.45,
+        "k_b": 1.35,
+        "k_bth": 1.18,
+        "line_id": "ln1",
+        "next_bus_id": "b_b"
+      },
+      "siec": "promieniowa"
+    },
+    "sha256": "c96a893f94ca34d0e1faadf3265ba43ff8a719b270d597dabc36d3a74d48cdca"
+  },
+  "nastawy/promieniowa/ln1_bb_cmin1_0": {
+    "parametry": {
+      "funkcja": "zbuduj_wejscie_nastaw",
+      "kwargs": {
+        "c_min": 1.0,
+        "line_id": "ln1",
+        "next_bus_id": "b_b"
+      },
+      "siec": "promieniowa"
+    },
+    "sha256": "f2ea1dd3efb254f15dab9552baa7e80ea6ae2ee8b72c0d4bc859c766d6163f76"
+  },
+  "nastawy/rozgalezienie/ln1_bb_cmin1_0": {
+    "parametry": {
+      "funkcja": "zbuduj_wejscie_nastaw",
+      "kwargs": {
+        "c_min": 1.0,
+        "line_id": "ln1",
+        "next_bus_id": "b_b"
+      },
+      "siec": "rozgalezienie"
+    },
+    "sha256": "7a37308de557401594f021854444d6eccd5d4c70722a3b87a2bdd5b073ae3d64"
+  },
+  "nastawy/rozgalezienie/ln1_bc_cmin1_0": {
+    "parametry": {
+      "funkcja": "zbuduj_wejscie_nastaw",
+      "kwargs": {
+        "c_min": 1.0,
+        "line_id": "ln1",
+        "next_bus_id": "b_c"
+      },
+      "siec": "rozgalezienie"
+    },
+    "sha256": "74cb7520d2565f369b4cf416f2ea2355646dc9c2bc862d90ee241e6af20c5fb5"
+  },
+  "odpowiedz_osd/golden/cosfi": {
+    "parametry": {
+      "funkcja": "build_osd_response_view",
+      "kwargs": {
+        "command": "cosfi",
+        "cos_phi": 0.95,
+        "q_charakter": "nadwzbudny",
+        "source_ref": "gen_sync"
+      },
+      "siec": "golden"
+    },
+    "sha256": "0282357fdc03139912b24239e6a314b2eecd2fe04d3aa0886fbda24cf1b8df8b"
+  },
+  "odpowiedz_osd/golden/lfsm_o": {
+    "parametry": {
+      "funkcja": "build_osd_response_view",
+      "kwargs": {
+        "command": "lfsm_o",
+        "deadband_hz": 0.2,
+        "droop_pct": 5.0,
+        "frequency_hz": 50.5,
+        "source_ref": "gen_sync"
+      },
+      "siec": "golden"
+    },
+    "sha256": "2fb304aeb70240003072e3180203ac42e4ab344bf248c7b3245e31e0410a5740"
+  },
+  "odpowiedz_osd/golden/lfsm_u": {
+    "parametry": {
+      "funkcja": "build_osd_response_view",
+      "kwargs": {
+        "command": "lfsm_u",
+        "deadband_hz": 0.2,
+        "droop_pct": 5.0,
+        "frequency_hz": 49.5,
+        "source_ref": "gen_sync"
+      },
+      "siec": "golden"
+    },
+    "sha256": "b41fb80ed657cb4e8c9b57edd66bc08f7ed13930a0675d00c87de32b7473dee0"
+  },
+  "odpowiedz_osd/golden/moc_bierna": {
+    "parametry": {
+      "funkcja": "build_osd_response_view",
+      "kwargs": {
+        "command": "moc_bierna",
+        "q_mvar": 1.5,
+        "source_ref": "gen_sync"
+      },
+      "siec": "golden"
+    },
+    "sha256": "42605da611626f404821dafef39485212a8ccb4e655c032eb4a04d4ad2afe7b8"
+  },
+  "odpowiedz_osd/golden/ograniczenie_p": {
+    "parametry": {
+      "funkcja": "build_osd_response_view",
+      "kwargs": {
+        "command": "ograniczenie_p",
+        "p_limit_pct": 50.0,
+        "source_ref": "gen_sync"
+      },
+      "siec": "golden"
+    },
+    "sha256": "25df309239f429b21e702bd1fa4d44e42043ae7000bb2a9cb5e804e6fe59dc70"
+  },
+  "odpowiedz_osd/kompensacja/cosfi": {
+    "parametry": {
+      "funkcja": "build_osd_response_view",
+      "kwargs": {
+        "command": "cosfi",
+        "cos_phi": 0.95,
+        "q_charakter": "nadwzbudny",
+        "source_ref": "gen_pcc"
+      },
+      "siec": "kompensacja"
+    },
+    "sha256": "18edcc54a3532c425832b1ed5b3f4dc285482d94009af97aa90966cefd0b4db4"
+  },
+  "odpowiedz_osd/kompensacja/lfsm_o": {
+    "parametry": {
+      "funkcja": "build_osd_response_view",
+      "kwargs": {
+        "command": "lfsm_o",
+        "deadband_hz": 0.2,
+        "droop_pct": 5.0,
+        "frequency_hz": 50.5,
+        "source_ref": "gen_pcc"
+      },
+      "siec": "kompensacja"
+    },
+    "sha256": "f7c77f110a2de62d94576033dcb03d4bb26cbe168aba0d6e67b4af881169d36c"
+  },
+  "odpowiedz_osd/kompensacja/lfsm_u": {
+    "parametry": {
+      "funkcja": "build_osd_response_view",
+      "kwargs": {
+        "command": "lfsm_u",
+        "deadband_hz": 0.2,
+        "droop_pct": 5.0,
+        "frequency_hz": 49.5,
+        "source_ref": "gen_pcc"
+      },
+      "siec": "kompensacja"
+    },
+    "sha256": "fb4519293dcc439a385467304b4b7b7429db5457b8d3fa8a5a7907673e9b1ab6"
+  },
+  "odpowiedz_osd/kompensacja/moc_bierna": {
+    "parametry": {
+      "funkcja": "build_osd_response_view",
+      "kwargs": {
+        "command": "moc_bierna",
+        "q_mvar": 1.5,
+        "source_ref": "gen_pcc"
+      },
+      "siec": "kompensacja"
+    },
+    "sha256": "4648f2e3f0882da855ae7bd5b21aa970c88385037d38b0f3fdb17de207d94045"
+  },
+  "odpowiedz_osd/kompensacja/ograniczenie_p": {
+    "parametry": {
+      "funkcja": "build_osd_response_view",
+      "kwargs": {
+        "command": "ograniczenie_p",
+        "p_limit_pct": 50.0,
+        "source_ref": "gen_pcc"
+      },
+      "siec": "kompensacja"
+    },
+    "sha256": "be757e3359a98509e25cdd9704223db86c3a5db7b564b5e265f8d80412990531"
+  },
+  "pq_area/golden/bus_nn_p3_q3": {
+    "parametry": {
+      "funkcja": "build_pq_area_view",
+      "kwargs": {
+        "bus_ref": "bus_nn",
+        "max_steps_p": 3,
+        "max_steps_q": 3
+      },
+      "siec": "golden"
+    },
+    "sha256": "36738842f85584f041382928004232c581ade05b6979db89844c36cde5ec45a4"
+  },
+  "pq_area/golden/bus_sn_c_p4_q3": {
+    "parametry": {
+      "funkcja": "build_pq_area_view",
+      "kwargs": {
+        "bus_ref": "bus_sn_c",
+        "max_steps_p": 4,
+        "max_steps_q": 3
+      },
+      "siec": "golden"
+    },
+    "sha256": "6e42cb9c6f79ea6e7f802a3daacb39fbb2f8a277a2b2d6ee7717691a6ab73bc8"
+  },
+  "pq_area/napiecie_graniczne/b_rem_p4_q6": {
+    "parametry": {
+      "funkcja": "build_pq_area_view",
+      "kwargs": {
+        "bus_ref": "b_rem",
+        "max_steps_p": 4,
+        "max_steps_q": 6
+      },
+      "siec": "napiecie_graniczne"
+    },
+    "sha256": "3ded081af672e92095194f758f531036562bf58da47764930af5bbfcdd5ff0f4"
+  }
+}

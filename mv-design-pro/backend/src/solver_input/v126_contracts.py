@@ -4,7 +4,9 @@ from enum import StrEnum
 from typing import Any
 
 from enm.models import EnergyNetworkModel
+from network_model.pochodne import prad_roboczy_a
 from pydantic import BaseModel, Field
+from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
 
 
 class V126AnalysisType(StrEnum):
@@ -77,7 +79,16 @@ class V126TransformerInput(BaseModel):
     ulv_kv: float = Field(gt=0)
     uk_percent: float = Field(gt=0)
     pk_kw: float = Field(default=0.0, ge=0)
-    p0_kw: float = Field(default=0.0, ge=0)
+    # `None` = strata jałowa NIEZNANA (karta FAB-D2, D2) — ENM `Transformer.p0_kw`
+    # jest `float | None` (brak w katalogu jest legalny, IEC 60909 tego pola nie
+    # wymaga). Podstawienie 0.0 za brak fałszowałoby wynik OPF/LCC (`_opf_loss_lcc`
+    # w `network_model/solvers/v126_academic.py`) — zero strat jałowych to WYNIK,
+    # nie nieznana dana. Ten solver nie ma dziś własnej ścieżki "brak = niedostępne"
+    # (w odróżnieniu od `equipment_checks/transformer_losses.py`, który reużywa
+    # `transformer.loss_data_missing`), więc konsument (endpoint API `run_v126_analysis`)
+    # odmawia uruchomienia analizy OPF_LOSS_LCC tym samym kodem, zamiast liczyć na
+    # milczącym zerze — solver pozostaje nietknięty (B-01, `network_model/solvers/**`).
+    p0_kw: float | None = Field(default=None, ge=0)
     vector_group: str | None = None
 
 
@@ -413,9 +424,23 @@ def build_v126_input_from_enm(
     converters: list[V126ConverterInput] = []
     harmonic_sources: list[V126HarmonicSourceInput] = []
     for generator in enm.generators:
-        q_mvar = generator.q_mvar or 0.0
+        # Karta FAB-H (H2, KLASA NIE INSTANCJA): Q rozstrzygane przez JEDNO wspólne
+        # źródło prawdy (moc_bierna_wytworcy), tak samo jak enm/mapping.py i
+        # enm/canonical_analysis.py oraz bramka gotowości
+        # (calculation_readiness/service.py::_generator_q_mvar_jawne). BRAK => 0,0
+        # jako strukturalne wypełnienie agregatu szyny (`gen_by_bus` jest float
+        # nie-Optional); analizy V12.6, które faktycznie CZYTAJĄ tę Q
+        # (RELIABILITY_CONTINGENCY, OPF_LOSS_LCC — via `_branch_current_a`) są
+        # zablokowane PRZED uruchomieniem solvera przez `api/v126_academic.py`
+        # (kod gotowości `generator.q_missing`), gdy Q jest naprawdę nieznane.
+        wynik_q = moc_bierna_wytworcy(generator, generator.materialized_params)
         p, q = gen_by_bus.get(generator.bus_ref, (0.0, 0.0))
-        gen_by_bus[generator.bus_ref] = (p + generator.p_mw, q + q_mvar)
+        # Q nieznane = wklad POMINIETY w agregacie szyny (nie 0,0); analizy czytajace
+        # Q sa zablokowane przed solverem (`generator.q_missing`), pozostale Q nie czytaja.
+        gen_by_bus[generator.bus_ref] = (
+            p + generator.p_mw,
+            q + wynik_q.q_mvar if wynik_q.q_mvar is not None else q,
+        )
         if generator.gen_type in {"pv_inverter", "bess", "fw_pmsg", "fw_dfig", "fw_scig"}:
             rated = max(abs(generator.p_mw), 0.1)
             mode = "GFL" if generator.gen_type != "bess" else "GFM_droop"
@@ -446,7 +471,9 @@ def build_v126_input_from_enm(
                     filter_l_pu=_card_float("filter_l_pu"),
                     filter_r_pu=_card_float("filter_r_pu"),
                     p_mw=generator.p_mw,
-                    q_mvar=generator.q_mvar,
+                    # Q przeksztaltnika z TEGO SAMEGO zrodla prawdy co agregat szyny
+                    # (jawne Q albo Q-set-point karty); None = nieznane (brama SSCI w API).
+                    q_mvar=wynik_q.q_mvar,
                 )
             )
             # Prad bazowy z napiecia SZYNY PRZYLACZENIA (dana modelu), nie z
@@ -459,7 +486,7 @@ def build_v126_input_from_enm(
                     V126HarmonicSourceInput(
                         bus_ref=generator.bus_ref,
                         source_ref=generator.ref_id,
-                        base_current_a=1000.0 * rated / (1.7320508075688772 * un_kv),
+                        base_current_a=prad_roboczy_a(rated, un_kv),
                         spectrum_percent={5: 3.0, 7: 2.0, 11: 1.2, 13: 1.0},
                     )
                 )
@@ -545,7 +572,10 @@ def build_v126_input_from_enm(
             ulv_kv=transformer.ulv_kv,
             uk_percent=transformer.uk_percent,
             pk_kw=transformer.pk_kw,
-            p0_kw=transformer.p0_kw or 0.0,
+            # Karta FAB-D2 (D2): brak strat jałowych w ENM zostaje `None`, nie 0.0
+            # (zero strat jest wynikiem, nie nieznaną daną) — patrz komentarz przy
+            # definicji pola `V126TransformerInput.p0_kw` powyżej.
+            p0_kw=transformer.p0_kw,
             vector_group=transformer.vector_group,
         )
         for transformer in enm.transformers

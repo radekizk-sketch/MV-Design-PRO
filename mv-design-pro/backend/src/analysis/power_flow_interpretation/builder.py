@@ -17,6 +17,7 @@ REGULY SEVERITY (jawne, stale):
 from __future__ import annotations
 
 import hashlib
+import logging
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -35,6 +36,8 @@ from analysis.power_flow_interpretation.serializer import SEVERITY_ORDER
 
 if TYPE_CHECKING:
     from analysis.power_flow.result import PowerFlowResult
+
+logger = logging.getLogger(__name__)
 
 
 # =============================================================================
@@ -247,10 +250,27 @@ class PowerFlowInterpretationBuilder:
         branch_s_from = power_flow_result.branch_s_from_mva
         branch_s_to = power_flow_result.branch_s_to_mva
 
-        # Iterate over branches (deterministycznie posortowane po ID)
-        for branch_id in sorted(branch_s_from.keys()):
-            s_from = branch_s_from.get(branch_id, 0.0 + 0.0j)
-            s_to = branch_s_to.get(branch_id, 0.0 + 0.0j)
+        # Iterate over branches (deterministycznie posortowane po ID) — suma obu
+        # zbiorow kluczy, bo FAB-E (E1): brak jednej strony NIE jest moca zerowa,
+        # wiec galaz moze dzis istniec tylko w jednym ze slownikow.
+        for branch_id in sorted(set(branch_s_from.keys()) | set(branch_s_to.keys())):
+            if branch_id not in branch_s_from or branch_id not in branch_s_to:
+                # Strata galezi (p_from + p_to) wymaga OBU stron — brakujacej
+                # strony NIE wolno domyslic jako 0+0j (fikcyjne straty), wiec
+                # galaz jest pomijana z jawnym powodem w logu (analogicznie do
+                # `analysis.boundary.identifier`), nie fikcyjnym wynikiem.
+                logger.warning(
+                    "PowerFlowInterpretationBuilder: galaz %s bez kompletu mocy "
+                    "pozornej (from=%s, to=%s obecne) — pominieta w obserwacjach "
+                    "obciazenia galezi (bieg %s).",
+                    branch_id,
+                    branch_id in branch_s_from,
+                    branch_id in branch_s_to,
+                    run_id,
+                )
+                continue
+            s_from = branch_s_from[branch_id]
+            s_to = branch_s_to[branch_id]
 
             # Extract real/imag parts (handle both complex and dict formats)
             if isinstance(s_from, dict):

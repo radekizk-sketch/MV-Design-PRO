@@ -171,6 +171,7 @@ def get_analysis_run_overlay(
         canonical_run,
         diagram_id=diagram_id,
         sld_payload=diagram.get("payload", {}),
+        uow_factory=uow_factory,
     )
     # Status swiezosci WCHODZI do odpowiedzi (K-S). Wczesniej byl tu budowany i
     # WYRZUCANY, wiec klient (`ui/results-inspector/api.ts`) dopisywal sobie
@@ -606,6 +607,7 @@ def get_pakiet_dowodowy_nastaw(
     delta_t_s: float = Query(default=0.3),
     k_b: float = Query(default=1.2),
     k_bth: float = Query(default=1.1),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> Response:
     """Pakiet dowodowy nastaw I>/I>> (ZIP: dowód, źródło LaTeX, wykaz plików, odcisk).
 
@@ -624,6 +626,7 @@ def get_pakiet_dowodowy_nastaw(
             delta_t_s=delta_t_s,
             k_b=k_b,
             k_bth=k_bth,
+            uow_factory=uow_factory,
         )
     except PakietNastawError as exc:
         raise HTTPException(

@@ -36,12 +36,19 @@ vi.mock('../../../../ui/navigation/routes', () => ({
   navigateToSld: () => navigateToSldMock(),
 }));
 
-vi.mock('../../../../ui/catalog/api', () => ({
-  getCatalogErrorMessage: () => 'błąd katalogu',
-  fetchMvApparatusTypes: () =>
+// `vi.hoisted` + `vi.fn()` (S9-5): pozwala nadpisać implementację per test
+// (`mockReturnValueOnce`), żeby symulować katalog W TRAKCIE ładowania.
+const { fetchMvApparatusTypesMock } = vi.hoisted(() => ({
+  fetchMvApparatusTypesMock: vi.fn(() =>
     Promise.resolve([
       { id: 'app-1', name: 'Rozłącznik SN', device_kind: 'ROZLACZNIK', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 20 },
     ]),
+  ),
+}));
+
+vi.mock('../../../../ui/catalog/api', () => ({
+  getCatalogErrorMessage: () => 'błąd katalogu',
+  fetchMvApparatusTypes: () => fetchMvApparatusTypesMock(),
 }));
 
 async function pick() {
@@ -59,6 +66,7 @@ describe('KreatorLacznikaSekcyjnego — realna ścieżka', () => {
     closeFormMock.mockReset();
     executeDomainOperationMock.mockReset();
     navigateToSldMock.mockReset();
+    fetchMvApparatusTypesMock.mockClear();
   });
 
   afterEach(() => cleanup());
@@ -118,6 +126,21 @@ describe('KreatorLacznikaSekcyjnego — realna ścieżka', () => {
     render(<KreatorLacznikaSekcyjnego />);
     await pick();
     expect(screen.getByTestId('mvd-kreator-lacznik-zapisz')).toBeDisabled();
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  /**
+   * S9-5 (`karta_e2e_s95.md`, klasa: bramka enable bez sygnału gotowości) —
+   * TEN SAM mechanizm jak w `KreatorMagistralaSn.tsx`, powtórzony w tym pliku:
+   * `zapisMozliwy` nie sprawdzał, czy katalog aparatów SN już doszedł.
+   */
+  it('iloczyn cech: katalog jeszcze się ładuje × odcinek dostępny → zapis zablokowany z komunikatem', async () => {
+    fetchMvApparatusTypesMock.mockReturnValueOnce(new Promise(() => {}));
+    render(<KreatorLacznikaSekcyjnego />);
+
+    expect(screen.getByTestId('mvd-kreator-lacznik-zapisz')).toBeDisabled();
+    expect(screen.getByTestId('mvd-kreator-lacznik')).toHaveAttribute('data-status', 'ladowanie');
+    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/[Łł]adowanie katalogu/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 });

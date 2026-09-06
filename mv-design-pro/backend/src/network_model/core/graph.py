@@ -6,6 +6,8 @@ elektroenergetycznej z wykorzystaniem biblioteki NetworkX do analizy
 spójności i znajdowania wysp.
 """
 
+from collections.abc import Iterable
+
 import networkx as nx
 
 from .branch import Branch
@@ -15,6 +17,7 @@ from .machine import AsynchronousMachineSource, SynchronousMachineSource
 from .node import Node, NodeType
 from .station import Station
 from .switch import Switch
+from .topologia import skladowe_spojne
 
 
 class NetworkGraph:
@@ -62,6 +65,11 @@ class NetworkGraph:
         self.grid_sc_sources: dict[str, GridShortCircuitSource] = {}
         self.switches: dict[str, Switch] = {}
         self.stations: dict[str, Station] = {}
+        # Karta FAB-H: ślad WHITE BOX zarejestrowanych założeń k_sc (udziału
+        # zwarciowego falownika), zbudowany przez enm/mapping.py przy braku k_sc
+        # w karcie katalogowej konwertera. Metadana mostu, nie wejście solvera —
+        # network_model/solvers/** jej nie czyta (B-01, solver nietknięty).
+        self.k_sc_assumptions_trace: list[dict] = []
         self._graph: nx.MultiGraph = nx.MultiGraph()
 
     def add_node(self, node: Node) -> None:
@@ -70,30 +78,30 @@ class NetworkGraph:
 
         Walidacje:
         - node.id nie może istnieć już w nodes
-        - Po dodaniu sprawdza constraint: maksymalnie 1 węzeł SLACK w całej sieci
+
+        Węzeł SLACK = szyna o ZADANYM napięciu (szyna źródła sieciowego). Graf może
+        mieć ich wiele — po jednej na wyspę (CV-4.3 K3b, A3-05): solvery FROZEN nie
+        czytają ``NodeType.SLACK`` (rozpływ bierze szynę bilansującą z
+        ``PowerFlowInput.slack`` i liczy WYSPĘ tej szyny, ``build_slack_island``;
+        zwarcie stampuje KAŻDE źródło sieciowe jako bocznik Y_Q, V12K-184). Dawny
+        inwariant „maksymalnie jeden SLACK w całym grafie" był więc regułą
+        WEJŚCIA rozpływu wpisaną w IR i odmawiał całej sieci z dwoma GPZ w
+        osobnych wyspach; regułą wejścia rządzi assembler
+        (``enm/assembler.py::zloz_wejscie_rozplywu``: jedna szyna bilansująca na
+        wyspę, dwie w jednej wyspie = odmowa nazwana
+        ``source.multiple_grid_sources_in_island``).
 
         Args:
             node: Węzeł do dodania.
 
         Raises:
             ValueError: Gdy węzeł o podanym ID już istnieje.
-            ValueError: Gdy dodanie węzła powoduje posiadanie więcej niż 1 węzła SLACK.
         """
         if node.id in self.nodes:
             raise ValueError(f"Węzeł o ID '{node.id}' już istnieje w grafie.")
 
-        # Dodaj węzeł tymczasowo
         self.nodes[node.id] = node
         self._graph.add_node(node.id)
-
-        # Sprawdź constraint pojedynczego SLACK
-        try:
-            self._validate_single_slack()
-        except ValueError:
-            # Wycofaj dodanie węzła
-            del self.nodes[node.id]
-            self._graph.remove_node(node.id)
-            raise
 
     def add_branch(self, branch: Branch) -> None:
         """
@@ -571,6 +579,12 @@ class NetworkGraph:
                 return station
         return None
 
+    def get_slack_node_ids(self) -> list[str]:
+        """ID wszystkich węzłów SLACK (szyn o zadanym napięciu), posortowane."""
+        return sorted(
+            node_id for node_id, node in self.nodes.items() if node.node_type == NodeType.SLACK
+        )
+
     def get_slack_node(self) -> Node:
         """
         Zwraca jedyny węzeł SLACK w sieci.
@@ -579,20 +593,22 @@ class NetworkGraph:
             Węzeł typu SLACK.
 
         Raises:
-            ValueError: Gdy brak węzła SLACK lub jest więcej niż jeden.
+            ValueError: Gdy brak węzła SLACK lub jest więcej niż jeden (sieć z kilkoma
+                szynami o zadanym napięciu — wołający musi wskazać szynę bilansującą
+                jawnie, np. z ``get_slack_node_ids()`` albo z wyspy ``TopologyView``).
         """
-        slack_nodes = [node for node in self.nodes.values() if node.node_type == NodeType.SLACK]
+        slack_ids = self.get_slack_node_ids()
 
-        if len(slack_nodes) == 0:
+        if len(slack_ids) == 0:
             raise ValueError("Brak węzła SLACK w sieci.")
 
-        if len(slack_nodes) > 1:
+        if len(slack_ids) > 1:
             raise ValueError(
-                f"W sieci znajduje się {len(slack_nodes)} węzłów SLACK, "
-                f"powinien być dokładnie jeden."
+                f"W sieci znajduje się {len(slack_ids)} węzłów SLACK ({', '.join(slack_ids)}) — "
+                "wskaż szynę bilansującą jawnie (po jednej na wyspę)."
             )
 
-        return slack_nodes[0]
+        return self.nodes[slack_ids[0]]
 
     def get_connected_nodes(self, node_id: str) -> list[Node]:
         """
@@ -619,6 +635,51 @@ class NetworkGraph:
 
         return [self.nodes[nid] for nid in neighbor_ids]
 
+    def podgraf(self, wezly: Iterable[str]) -> "NetworkGraph":
+        """Podgraf indukowany zbiorem węzłów — TE SAME obiekty elementów, nowy kontener.
+
+        Wchodzą: węzły ``wezly``, gałęzie i łączniki o OBU końcach w zbiorze, źródła
+        (falownikowe, maszynowe, sieciowe SC) przyłączone do węzłów zbioru. Stacje
+        (kontener logiczny bez fizyki) nie są kopiowane. Elementy są współdzielone
+        z grafem macierzystym (bez kopii): mutacja przez solver (np. pozycja
+        zaczepu przestawiona pętlą regulatora) jest widoczna w obu grafach — tak
+        samo jak dziś, gdy wykonawca oddaje graf solverowi na własność.
+
+        Użycie (CV-4.3 K3b): jedno wejście rozpływu na wyspę zasiloną (solver
+        FROZEN liczy wyspę szyny bilansującej i nic więcej; regulator zaczepowy
+        czyta napięcia tylko swojej wyspy) oraz graf zwarciowy bez wysp
+        pływających (Y-bus nieosobliwa). Kolejność wstawiania = kolejność w grafie
+        macierzystym (deterministyczna).
+        """
+        zbior = set(wezly)
+        nieznane = sorted(zbior - set(self.nodes))
+        if nieznane:
+            raise ValueError(f"Węzły spoza grafu: {', '.join(nieznane)}")
+        podgraf = NetworkGraph(network_model_id=self.network_model_id)
+        for node_id, node in self.nodes.items():
+            if node_id in zbior:
+                podgraf.add_node(node)
+        for branch in self.branches.values():
+            if branch.from_node_id in zbior and branch.to_node_id in zbior:
+                podgraf.add_branch(branch)
+        for switch in self.switches.values():
+            if switch.from_node_id in zbior and switch.to_node_id in zbior:
+                podgraf.add_switch(switch)
+        for inverter in self.inverter_sources.values():
+            if inverter.node_id in zbior:
+                podgraf.add_inverter_source(inverter)
+        for synchronous in self.synchronous_machine_sources.values():
+            if synchronous.node_id in zbior:
+                podgraf.add_synchronous_machine_source(synchronous)
+        for asynchronous in self.asynchronous_machine_sources.values():
+            if asynchronous.node_id in zbior:
+                podgraf.add_asynchronous_machine_source(asynchronous)
+        for grid_source in self.grid_sc_sources.values():
+            if grid_source.node_id in zbior:
+                podgraf.add_grid_sc_source(grid_source)
+        podgraf.k_sc_assumptions_trace = list(self.k_sc_assumptions_trace)
+        return podgraf
+
     def is_connected(self) -> bool:
         """
         Sprawdza czy graf sieci jest spójny.
@@ -637,10 +698,14 @@ class NetworkGraph:
         """
         if len(self.nodes) == 0:
             return False
+        return len(self._skladowe()) == 1
 
-        # Konwertuj MultiGraph do prostego Graph dla analizy spójności
-        simple_graph = nx.Graph(self._graph)
-        return nx.is_connected(simple_graph)
+    def _skladowe(self) -> tuple[tuple[str, ...], ...]:
+        """Składowe spójne po aktywnych gałęziach i łącznikach — jedyne jądro
+        (``network_model.core.topologia.skladowe_spojne``, CV-4.3); kolejność =
+        pierwsze napotkanie węzła w porządku wstawiania (jak dawne ``nx.connected_components``)."""
+        krawedzie = [(str(a), str(b)) for a, b in self._graph.edges()]
+        return skladowe_spojne(list(self.nodes.keys()), krawedzie)
 
     def find_islands(self) -> list[list[str]]:
         """
@@ -660,34 +725,10 @@ class NetworkGraph:
         """
         if len(self.nodes) == 0:
             return []
-
-        # Konwertuj MultiGraph do prostego Graph dla analizy spójności
-        simple_graph = nx.Graph(self._graph)
-
-        # Znajdź komponenty spójności
-        components = list(nx.connected_components(simple_graph))
-
-        # Posortuj węzły wewnątrz każdej wyspy
-        islands = [sorted(component) for component in components]
-
-        # Posortuj wyspy malejąco po długości
+        islands = [list(skladowa) for skladowa in self._skladowe()]
+        # Posortuj wyspy malejąco po długości (stabilnie — kolejność napotkania)
         islands.sort(key=lambda x: len(x), reverse=True)
-
         return islands
-
-    def _validate_single_slack(self) -> None:
-        """
-        Sprawdza czy w sieci jest maksymalnie 1 węzeł SLACK.
-
-        Raises:
-            ValueError: Gdy w sieci jest więcej niż 1 węzeł SLACK.
-        """
-        slack_count = sum(1 for node in self.nodes.values() if node.node_type == NodeType.SLACK)
-
-        if slack_count > 1:
-            raise ValueError(
-                f"W sieci może być maksymalnie jeden węzeł SLACK, " f"aktualnie jest {slack_count}."
-            )
 
     def _rebuild_graph(self) -> None:
         """

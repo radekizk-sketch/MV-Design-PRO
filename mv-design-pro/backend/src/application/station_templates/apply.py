@@ -16,12 +16,11 @@ from __future__ import annotations
 import logging
 import re
 from typing import Any
-from uuid import UUID
 
 from application.station_templates.schema import StationTemplate
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
-from enm.store import blokada_przypadku
+from enm.store import blokada_twin
 
 logger = logging.getLogger(__name__)
 
@@ -38,13 +37,16 @@ class TemplateApplyError(Exception):
 def apply_template_to_case(
     *,
     template: StationTemplate,
-    case_id: UUID,
+    klucz_twin: str,
     target_segment_id: str,
     insert_at_ratio: float = 0.5,
     params_override: dict[str, Any] | None = None,
     catalog_profile: str | None = None,
 ) -> dict[str, Any]:
     """Apply template do active ENM. Returns aggregated result.
+
+    `klucz_twin` — klucz magazynu ENM (Canonical Project Twin, CV-1-W),
+    przetlumaczony z `case_id` na granicy API (`api/station_templates.py`).
 
     Flow:
     1. Load case ENM
@@ -67,11 +69,10 @@ def apply_template_to_case(
     Blokada jest per przypadek obliczeniowy — zastosowania szablonu na ROZNYCH
     przypadkach nadal biegna rownolegle.
     """
-    case_key = str(case_id)
-    with blokada_przypadku(case_key):
+    with blokada_twin(klucz_twin):
         return _zastosuj_szablon_pod_blokada(
             template=template,
-            case_key=case_key,
+            klucz=klucz_twin,
             target_segment_id=target_segment_id,
             insert_at_ratio=insert_at_ratio,
             params_override=params_override,
@@ -82,7 +83,7 @@ def apply_template_to_case(
 def _zastosuj_szablon_pod_blokada(
     *,
     template: StationTemplate,
-    case_key: str,
+    klucz: str,
     target_segment_id: str,
     insert_at_ratio: float,
     params_override: dict[str, Any] | None,
@@ -93,7 +94,7 @@ def _zastosuj_szablon_pod_blokada(
     # Avoid circular import — import here
     from api.enm import _get_enm, _set_enm
 
-    enm = _get_enm(case_key)
+    enm = _get_enm(klucz)
     enm_dict: dict[str, Any] = enm.model_dump(mode="json")
 
     created_refs: list[str] = []
@@ -343,7 +344,7 @@ def _zastosuj_szablon_pod_blokada(
     # Persist final snapshot
     try:
         new_enm = EnergyNetworkModel.model_validate(enm_dict)
-        saved = _set_enm(case_key, new_enm)
+        saved = _set_enm(klucz, new_enm)
         enm_dict = saved.model_dump(mode="json")
     except Exception as exc:
         # Szczegol techniczny (typ wyjatku, sciezka pliku) idzie do dziennika

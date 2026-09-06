@@ -320,17 +320,10 @@ class CatalogGovernanceService:
                 if type_ref:
                     types_in_use.add(str(type_ref))
 
-            # Check switch equipment assignments
-            # Note: Using raw session query as wizard repository doesn't expose this
-            from infrastructure.persistence.models import SwitchEquipmentAssignmentORM
-
-            switch_assignments = (
-                uow.session.query(SwitchEquipmentAssignmentORM)
-                .filter(SwitchEquipmentAssignmentORM.project_id == project.id)
-                .all()
-            )
-            for assignment in switch_assignments:
-                types_in_use.add(str(assignment.equipment_type_id))
+            # Check switch equipment assignments (CV-4.2b: przez repozytorium,
+            # nie własne zapytanie ORM — jedno miejsce odczytu tej tabeli).
+            for assignment in uow.wizard.list_switch_equipment_assignments(project.id):
+                types_in_use.add(str(assignment["equipment_type_id"]))
 
         return types_in_use
 

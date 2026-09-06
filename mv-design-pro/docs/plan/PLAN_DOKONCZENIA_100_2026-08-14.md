@@ -688,6 +688,17 @@ przycisk zapisu niedostępny (bez wymuszania stanu store). Zero fizyki w UI —
 werdykt liczy backend, UI tylko go egzekwuje.
 
 ### K-V MARTWE-WYSPY-UI `[klasa K-N — precedens c4669cea]`
+**Punkt (3) ROZSTRZYGNIĘTY karta FAB-M (2026-09-05).** Pomiar (nie założenie):
+backendowy `application/analyses/protection/line_overcurrent_setting/
+spz_lookup.py` jest INNĄ zdolnością (progi blokady SPZ wg prądu/czasu zwarcia),
+nie katalogiem profili cykli SPZ/trybów SZR — „kanał katalogowy w backendzie"
+z tego punktu nie istniał w mierzonej postaci, więc `SPZ_CATALOG`/`SZR_CATALOG`
+(+`PROTECTION_FUNCTION_CATALOG`, ta sama klasa zero-konsumenta zmierzona przy
+okazji) skasowane BEZ migracji (nie ma czego migrować), z testami. Szczegóły:
+`docs/architecture/CONVERGENCE_ROADMAP.md` / `docs/evidence/
+CONVERGENCE_EVIDENCE.md` §E, wiersz FAB-M. Punkty (1)/(2)/(4)/(5) NIETKNIĘTE —
+inny plik, poza zakresem tej karty.
+
 Inwentarz zmierzony audytem: (1) `ui/catalog/CatalogMaterializationDialog.tsx`
 — 337 linii, zero referencji w repo, bez własnego testu; (2)
 `ui/catalog/ManufacturerPicker.tsx` + predykaty statusu producenta — martwa

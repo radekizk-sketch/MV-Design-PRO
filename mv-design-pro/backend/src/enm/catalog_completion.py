@@ -9,13 +9,17 @@ from enm.models import BranchRating, Cable, EnergyNetworkModel, Load, OverheadLi
 from network_model.catalog.materialization import materialize_catalog_binding
 from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
 from network_model.catalog.types import CatalogBinding, LoadType
+from network_model.pochodne import moc_bierna_z_czynnej_i_cos_phi
 
 DEFAULT_LOAD_CATALOG_REF = "load_uslugi_30kw"
+#: Karta FAB-D1 (D8): `DEFAULT_LOAD_KW`/`DEFAULT_LOAD_COS_PHI` NIE SĄ już źródłem
+#: danych materializacji (usunięta fabrykacja 30 kW dla wpisów legacy bez
+#: rozstrzygalnej mocy w katalogu — `complete_station_loads_from_nn_feeders`
+#: czyta `load_type.p_kw`/`load_type.cos_phi` WPROST z pozycji katalogowej).
+#: Stałe zostają jako OCZEKIWANA wartość tabliczki `load_uslugi_30kw` — wyrocznia
+#: testów (`tests/enm/test_catalog_completion_cosphi.py`), która dokumentuje
+#: parytet modułu z katalogiem, nie odwrotnie.
 DEFAULT_LOAD_KW = 30.0
-#: cosφ deklarowany przez pozycję katalogową `load_uslugi_30kw` — stała
-#: dokumentuje parytet modułu z katalogiem. Wartością UŻYWANĄ do wyprowadzenia
-#: mocy biernej jest cosφ ODCZYTANY Z KATALOGU (jedno źródło prawdy tabliczki),
-#: żeby dane odbioru nie mogły rozjechać się z pozycją katalogową.
 DEFAULT_LOAD_COS_PHI = 0.92
 DEFAULT_ZKSN_SWITCH_STATE = "closed"
 CATALOG_VERSION_DEFAULT = "2026.01"
@@ -43,36 +47,43 @@ def _branch_point_catalog_params(catalog_ref: str | None) -> dict[str, Any]:
         return {}
     try:
         from network_model.catalog.mv_branch_point_catalog import get_all_branch_point_types
-
-        for item in get_all_branch_point_types():
-            if item.get("id") == catalog_ref:
-                params = item.get("params")
-                return deepcopy(params) if isinstance(params, dict) else {}
-    except Exception:
+    except ImportError:
+        # Karta FAB-D1 (D8): wyjątek ZAWĘŻONY do importu modułu katalogu — jedyna
+        # operacja w tym bloku, która realnie może go nie znaleźć (np. w trakcie
+        # refaktoru). Każdy INNY wyjątek (błąd w danych, literówka w atrybucie)
+        # propaguje zamiast cicho zwracać {} — `except Exception` maskował takie
+        # błędy tak samo, jak brak kanonu katalogu.
         return {}
+    for item in get_all_branch_point_types():
+        if item.get("id") == catalog_ref:
+            params = item.get("params")
+            return deepcopy(params) if isinstance(params, dict) else {}
     return {}
 
 
 def _branch_point_port_count(
     *,
     branch_point_type: str,
-    catalog_ref: str | None,
     catalog_params: dict[str, Any],
-    branch_ports: list[str],
-) -> int:
+) -> int | None:
+    """Liczba portów BRANCH punktu rozgałęźnego — WYŁĄCZNIE z typu katalogowego.
+
+    Karta FAB-D1 (D8): brak `branch_ports_count` w danych katalogowych (pozycja
+    nierozstrzygalna albo rekord bez tego pola) zwraca `None` zamiast ZGADYWAĆ
+    liczbę portów po napisie referencji (`"2P" in ref`) albo po TOPOLOGII już
+    podłączonych gałęzi (`len(branch_ports)`) — obie te ścieżki są odczytem
+    CZEGOŚ INNEGO niż tabliczka katalogowa, nie pomiarem liczby portów TEJ
+    pozycji. Wołający NIE materializuje punktu rozgałęźnego bez tej danej —
+    brak `ports` w `materialized_params` zgłasza istniejąca brama katalogowa
+    operacji (`catalog.ref_required`, `domain_operations`), bez osobnego kodu
+    gotowości (kod bez emitera byłby fantomem — `readiness_consumption_guard`).
+    """
     if branch_point_type == "branch_pole":
         return 1
-    try:
-        raw = catalog_params.get("branch_ports_count")
-        if raw is None:
-            # Ta sama sciezka co ValueError/TypeError ponizej (pre-existing
-            # blad mypy na HEAD, naprawiony przy okazji karty P0.6 — `int(None)`
-            # jest niepoprawne typowo, mimo ze bylo bezpieczne w runtime dzieki
-            # temu samemu except; zero zmiany zachowania).
-            raise TypeError("branch_ports_count is None")
-        value = int(raw)
-    except (TypeError, ValueError):
-        value = 2 if "2P" in str(catalog_ref or "").upper() else len(branch_ports) or 1
+    raw = catalog_params.get("branch_ports_count")
+    if not isinstance(raw, int | float) or isinstance(raw, bool):
+        return None
+    value = int(raw)
     return max(1, min(2, value))
 
 
@@ -224,14 +235,17 @@ def complete_branch_point_catalog_materialization(
         if not _branch_point_needs_materialization(branch_point.branch_point_type, existing):
             continue
         catalog_params = _branch_point_catalog_params(branch_point.catalog_ref)
-        ports = branch_point.ports
-        branch_ports = ports.BRANCH if ports is not None else []
         branch_ports_count = _branch_point_port_count(
             branch_point_type=branch_point.branch_point_type,
-            catalog_ref=branch_point.catalog_ref,
             catalog_params=catalog_params,
-            branch_ports=branch_ports,
         )
+        if branch_ports_count is None:
+            # Karta FAB-D1 (D8): katalog nie rozstrzyga liczby portów — punkt
+            # rozgałęźny zostaje NIEZMATERIALIZOWANY (jak brak kanonu katalogu
+            # dla mocy biernej odbioru niżej w tym pliku), zamiast zgadywać.
+            # Stan sygnalizuje istniejąca brama `catalog.ref_required`
+            # (`materialized_params` bez `ports`), nie osobny kod gotowości.
+            continue
         materialized = _materialized_branch_point_params(
             branch_point_type=branch_point.branch_point_type,
             catalog_ref=branch_point.catalog_ref,
@@ -539,8 +553,19 @@ def complete_station_loads_from_nn_feeders(
     # żeby wszystkie dokładane odbiory dostały ten sam, deterministyczny komplet
     # danych tabliczkowych.
     load_type = get_default_mv_catalog().get_load_type(DEFAULT_LOAD_CATALOG_REF)
-    reactive_power = _catalog_load_reactive_power(load_type, DEFAULT_LOAD_KW / 1000.0)
-    if load_type is None or reactive_power is None:
+    # Karta FAB-D1 (D8): moc czynna WYŁĄCZNIE z tabliczki katalogowej
+    # (`load_type.p_kw`) — usunięta stała modułu `DEFAULT_LOAD_KW` jako ŹRÓDŁO
+    # danej (zostaje jako oczekiwana wartość w testach, jedno źródło prawdy to
+    # katalog). Brak/niepoprawna moc w katalogu ⇒ NIE materializujemy odbioru,
+    # tak samo jak brak kanonu mocy biernej niżej — odbiór po prostu nie
+    # powstaje (żadnej fabrykacji); to uzupełnianie wpisów legacy, a brak
+    # odbioru nie jest defektem modelu, więc bez kodu gotowości (kod bez
+    # emitera byłby fantomem — `readiness_consumption_guard`).
+    if load_type is None or not isinstance(load_type.p_kw, int | float) or load_type.p_kw <= 0:
+        return enm, False
+    p_mw = float(load_type.p_kw) / 1000.0
+    reactive_power = _catalog_load_reactive_power(load_type, p_mw)
+    if reactive_power is None:
         # Brak kanonu katalogu dla mocy biernej ⇒ NIE materializujemy odbioru.
         # Cicha wartość Q = 0 przy zadeklarowanym katalogu to phantom cosφ
         # (V12K-050) — rachunek szedłby z cosφ = 1,0 i zaniżonym spadkiem
@@ -555,6 +580,7 @@ def complete_station_loads_from_nn_feeders(
             bus_ref,
             index,
             load_type=load_type,
+            p_mw=p_mw,
             reactive_power=reactive_power,
         )
         for station_ref, station_name, feeder_ref, bus_ref, index in pending
@@ -697,7 +723,7 @@ def _catalog_load_reactive_power(
     if not 0.0 < cos_phi_value <= 1.0:
         return None
 
-    q_mvar = p_mw * math.tan(math.acos(cos_phi_value))
+    q_mvar = moc_bierna_z_czynnej_i_cos_phi(p_mw, cos_phi_value)
     return (-q_mvar if mode == "POJ" else q_mvar), Q_SOURCE_CATALOG_COS_PHI
 
 
@@ -709,11 +735,18 @@ def _build_default_load(
     index: int,
     *,
     load_type: LoadType,
+    p_mw: float,
     reactive_power: tuple[float, str],
 ) -> Load:
+    """Zbuduj odbiór LEGACY z tabliczką pochodzącą WYŁĄCZNIE z `load_type`.
+
+    Karta FAB-D1 (D8): `p_mw` jest przekazywane przez wołającego (policzone RAZ
+    z `load_type.p_kw`, ten sam wzorzec co `reactive_power` obok) — funkcja nie
+    ma już własnego, fabrykowanego źródła mocy czynnej.
+    """
     seed = sha256(f"catalog-load|{station_ref}|{feeder_ref}".encode()).hexdigest()[:32]
-    p_mw = DEFAULT_LOAD_KW / 1000.0
     q_mvar, q_source = reactive_power
+    p_kw = p_mw * 1000.0
     nameplate: dict[str, Any] = {"q_kvar": q_mvar * 1000.0, "q_source": q_source}
     if load_type.cos_phi is not None:
         nameplate["cos_phi"] = float(load_type.cos_phi)
@@ -732,7 +765,7 @@ def _build_default_load(
         source_mode="KATALOG",
         materialized_params={
             "catalog_item_id": DEFAULT_LOAD_CATALOG_REF,
-            "p_kw": DEFAULT_LOAD_KW,
+            "p_kw": p_kw,
             **nameplate,
         },
         meta={

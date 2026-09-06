@@ -35,14 +35,40 @@ def _reset() -> None:
     reset_enm_store()
 
 
+def _nowy_przypadek(client) -> str:
+    """Utwórz REALNY projekt + przypadek przez API; zwróć `case_id`.
+
+    CV-1-W: przypadek bez wiersza w bazie dostaje teraz 404 z magazynu ENM
+    (inwariant I-2) — testy „werdyktu projektowego" (`?case_id=`, nie
+    `?run_id=`) potrzebują prawdziwej pary projekt+przypadek.
+    """
+    project_resp = client.post("/api/projects", json={"name": "Werdykt projektowy — test"})
+    assert project_resp.status_code == 201, project_resp.text
+    project_id = project_resp.json()["id"]
+    case_resp = client.post(
+        "/api/study-cases", json={"project_id": project_id, "name": "Przypadek testu"}
+    )
+    assert case_resp.status_code == 201, case_resp.text
+    return str(case_resp.json()["id"])
+
+
+def _klucz(client, case_id: str) -> str:
+    """Klucz magazynu ENM dla `case_id` — TO SAMO tłumaczenie co warstwa API (CV-1)."""
+    from application.twin_key import klucz_twin_dla_przypadku
+
+    return klucz_twin_dla_przypadku(case_id, client.app.state.uow_factory)
+
+
 def _sc_run_id():
     set_enm("c-sc", build_golden_enm())
-    return execute_run(create_run(case_id="c-sc", analysis_type="short_circuit_sn").id).id
+    return execute_run(
+        create_run(case_id="c-sc", klucz_twin="c-sc", analysis_type="short_circuit_sn").id
+    ).id
 
 
 def _pf_run_id():
     set_enm("c-pf", build_golden_enm())
-    return execute_run(create_run(case_id="c-pf", analysis_type="PF").id).id
+    return execute_run(create_run(case_id="c-pf", klucz_twin="c-pf", analysis_type="PF").id).id
 
 
 # --------------------------------------------------------------------------
@@ -507,15 +533,17 @@ def test_conductor_thermal_unknown_run_returns_404(app_client) -> None:
 
 
 def test_design_verdict_endpoint_returns_aggregate(app_client) -> None:
-    set_enm("c-werdykt", build_golden_enm())
-    execute_run(create_run(case_id="c-werdykt", analysis_type="PF").id)
-    execute_run(create_run(case_id="c-werdykt", analysis_type="short_circuit_sn").id)
+    case_id = _nowy_przypadek(app_client)
+    klucz = _klucz(app_client, case_id)
+    set_enm(klucz, build_golden_enm())
+    execute_run(create_run(case_id=case_id, klucz_twin=klucz, analysis_type="PF").id)
+    execute_run(create_run(case_id=case_id, klucz_twin=klucz, analysis_type="short_circuit_sn").id)
 
-    resp = app_client.get(DESIGN_VERDICT, params={"case_id": "c-werdykt"})
+    resp = app_client.get(DESIGN_VERDICT, params={"case_id": case_id})
 
     assert resp.status_code == 200
     data = resp.json()
-    assert data["case_id"] == "c-werdykt"
+    assert data["case_id"] == case_id
     assert data["werdykt"] in {"SPELNIONE", "NARUSZONE", "NIESPRAWDZONE"}
     assert len(data["pozycje"]) >= 8
     # Każde kryterium niesie warunek i odniesienie normowe (kontrakt ekranu).
@@ -529,9 +557,10 @@ def test_design_verdict_endpoint_returns_aggregate(app_client) -> None:
 
 def test_design_verdict_without_runs_is_unchecked_not_error(app_client) -> None:
     """Brak biegów to stan „niesprawdzone", a nie błąd — projektant ma dostać listę braków."""
-    set_enm("c-bez-biegow", build_golden_enm())
+    case_id = _nowy_przypadek(app_client)
+    set_enm(_klucz(app_client, case_id), build_golden_enm())
 
-    resp = app_client.get(DESIGN_VERDICT, params={"case_id": "c-bez-biegow"})
+    resp = app_client.get(DESIGN_VERDICT, params={"case_id": case_id})
 
     assert resp.status_code == 200
     data = resp.json()
@@ -542,10 +571,16 @@ def test_design_verdict_without_runs_is_unchecked_not_error(app_client) -> None:
 
 
 def test_design_verdict_endpoint_is_deterministic(app_client) -> None:
-    set_enm("c-det-werdykt", build_golden_enm())
-    execute_run(create_run(case_id="c-det-werdykt", analysis_type="PF").id)
+    case_id = _nowy_przypadek(app_client)
+    klucz = _klucz(app_client, case_id)
+    set_enm(klucz, build_golden_enm())
+    execute_run(create_run(case_id=case_id, klucz_twin=klucz, analysis_type="PF").id)
 
-    first = app_client.get(DESIGN_VERDICT, params={"case_id": "c-det-werdykt"}).json()
-    second = app_client.get(DESIGN_VERDICT, params={"case_id": "c-det-werdykt"}).json()
+    resp1 = app_client.get(DESIGN_VERDICT, params={"case_id": case_id})
+    resp2 = app_client.get(DESIGN_VERDICT, params={"case_id": case_id})
 
-    assert first == second
+    # Asercja statusu ZANIM porówna treść — bez niej dwie identyczne odpowiedzi
+    # błędu (np. 404 przy nieprzetłumaczalnym `case_id`) „zdałyby" ten test z
+    # niewłaściwego powodu (test maskujący defekt).
+    assert resp1.status_code == 200, resp1.text
+    assert resp1.json() == resp2.json()

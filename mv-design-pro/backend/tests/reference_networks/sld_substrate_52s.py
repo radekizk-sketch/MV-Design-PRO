@@ -63,6 +63,8 @@ import hashlib
 import json
 from typing import Any
 
+import networkx as nx
+
 # ---------------------------------------------------------------------------
 # Catalog constants (verified against mv_converter_catalog.py + mv_transformer_catalog.py)
 # ---------------------------------------------------------------------------
@@ -72,6 +74,18 @@ _LINE_REF = "line-base-al-120"  # overhead line 120 mm² Al
 _GPZ_SOURCE_REF = "src-gpz-15kv-250mva-rx010"
 _TRAFO_STANDARD = "tr-sn-nn-15-04-630kva-dyn11"  # 630 kVA — standard load station
 _TRAFO_DER_LARGE = "tr-sn-nn-15-04-2500kva-dyn11"  # 2500 kVA — FW/large-DER station
+
+# Uklad sieci nN (E063, walidator ENM: `meta.nn_earthing_system`) — deklaracja
+# JAWNA fikstury referencyjnej, nie cichy domysl walidatora/modelu (SUB-52s
+# par. 1). Wszystkie 53 stacje tego substratu sa stacjami rozdzielczymi
+# publicznymi SN/nN (linia napowietrzna/kablowa -> stacja -> odbior nN) —
+# TN-C-S jest ukladem typowym dla tej klasy stacji w polskiej sieci
+# dystrybucyjnej i jest juz konsekwentnie uzywany w innych fikstur referencyjnych
+# repo (np. tests/e2e/test_nn_full_chain.py, tests/enm/test_domain_operations.py,
+# tests/application/analyses/fault_loop/test_service.py). Materializuje sie
+# przez ISTNIEJACY kanal domenowy `nn_earthing.lv_system`
+# (`enm.domain_operations._apply_station_neutral_grounding`), NIE nowy kanal.
+_NN_EARTHING_SYSTEM = "TN-C-S"
 
 # DER catalog refs — all nn_side variant, all at 0.4 kV (verified in catalog)
 # Capacity check: PV 0.5MW < 630 kVA OK; BESS 0.5MW < 630 kVA OK; FW 2MW > 630 kVA → needs 2500 kVA
@@ -86,9 +100,13 @@ _FW_NAMESPACE = "CONVERTER"
 # Loads near the GPZ make those feeders net-consuming (flow GPZ→stacja), while DER
 # tips net-generate (flow reverses upstream) → genuine BIDIRECTIONAL active-power
 # flow that the frozen solver computes. The NOP (open SN sectionaliser, real RM6
-# load switch) splits one lateral so part of the network is de-energised — exactly
-# what the solver reports as `not_solved` buses. Both are catalog-bound domain ops
-# (no fictional entities); the schematic == the ENM == what the solver computes.
+# load switch) sits on a lateral whose tip is ring-tied to an adjacent feeder
+# (see builder step 5d) — the switch itself carries zero current (open), but
+# the fragment beyond it stays energised from the ring, exactly like a real
+# normally-open reserve tie (SUB-52s par. 2; a topologically stranded fragment
+# is ENMValidator E003, a defect — not a demonstration). Both load and switch
+# are catalog-bound domain ops (no fictional entities); the schematic == the
+# ENM == what the solver computes.
 _LOAD_NAMESPACE = "OBCIAZENIE"
 _NOP_SWITCH_REF = "sw-ls-schneider-rm6-17kv-400a"  # Schneider RM6 SN load switch
 _NOP_SWITCH_NAMESPACE = "APARAT_SN"
@@ -189,6 +207,57 @@ def _latest_station_ref(enm: dict[str, Any]) -> str | None:
     return stations[-1] if stations else None
 
 
+def _latest_segment_to_bus_ref(enm: dict[str, Any]) -> str | None:
+    """Return the far-end (`to_bus_ref`) of the most recently created cable/line segment.
+
+    Used right after ``start_branch_segment_sn`` to capture a lateral's tip
+    bus BEFORE any station gets inserted on it. Every later
+    ``insert_station_on_segment_sn`` call in the lateral-building loop only
+    splits the TAIL segment (``segs[-1]``); the pre-split ``to_bus_ref`` is
+    preserved unchanged on the "right" half all the way through (mirrors the
+    same left/right split pattern used by ``insert_section_switch_sn``), so
+    the ref captured here stays valid as the lateral's dead end throughout
+    the whole build.
+    """
+    segs = _cable_segment_refs(enm)
+    if not segs:
+        return None
+    latest_ref = segs[-1]
+    for b in enm.get("branches", []):
+        if b.get("ref_id") == latest_ref:
+            to_ref = b.get("to_bus_ref")
+            return str(to_ref) if to_ref else None
+    return None
+
+
+def _graph_islands_without_source(enm: dict[str, Any]) -> list[frozenset[str]]:
+    """Return connected components (bus graph) that have NO path to any source.
+
+    Mirrors ``ENMValidator._check_graph_connectivity`` (E003: buses + CLOSED
+    branches + transformers form the graph; a component without a source bus
+    is an island) — run here, on the raw ENM dict, so the builder can DETECT
+    and repair an island the NOP switch creates instead of assuming in
+    advance which lateral it lands on (KLASA NIE INSTANCJA: the fix targets
+    the mechanism — "opening this switch stranded a fragment" — not today's
+    specific bus UUID).
+    """
+    g = nx.Graph()
+    bus_refs = {b["ref_id"] for b in enm.get("buses", [])}
+    g.add_nodes_from(bus_refs)
+    for branch in enm.get("branches", []):
+        if branch.get("status") != "closed":
+            continue
+        f_ref, t_ref = branch.get("from_bus_ref"), branch.get("to_bus_ref")
+        if f_ref in bus_refs and t_ref in bus_refs:
+            g.add_edge(f_ref, t_ref)
+    for trafo in enm.get("transformers", []):
+        f_ref, t_ref = trafo.get("hv_bus_ref"), trafo.get("lv_bus_ref")
+        if f_ref in bus_refs and t_ref in bus_refs:
+            g.add_edge(f_ref, t_ref)
+    source_bus_refs = {s["bus_ref"] for s in enm.get("sources", []) if s.get("bus_ref") in bus_refs}
+    return [frozenset(comp) for comp in nx.connected_components(g) if not (comp & source_bus_refs)]
+
+
 def _add_trunk_station(
     enm: dict[str, Any],
     segment_ref: str,
@@ -210,6 +279,7 @@ def _add_trunk_station(
                 "sn_voltage_kv": 15.0,
                 "nn_voltage_kv": 0.4,
             },
+            "nn_earthing": {"lv_system": _NN_EARTHING_SYSTEM},
             "sn_fields": [
                 {"field_role": "LINIA_IN"},
                 {"field_role": "LINIA_OUT"},
@@ -334,6 +404,8 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_ref": _GPZ_SOURCE_REF,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
         },
     )
 
@@ -409,6 +481,12 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
     LATERAL_SIZES = [3, 4, 3, 3, 4, 3, 4, 3, 3, 4, 3, 4]
     lateral_station_refs: list[str] = []
     lateral_count = 0
+    # Tip (dead-end) bus of each lateral, indexed the same as trunk_station_refs
+    # — captured immediately after the lateral's single-segment run is created,
+    # before any station insertion (see _latest_segment_to_bus_ref). Used by the
+    # ring-closure step (5d) to reconnect whichever lateral the NOP switch (5c)
+    # strands, without hardcoding which one that is.
+    lateral_tip_bus_refs: list[str] = []
 
     for i, trunk_stn_ref in enumerate(trunk_station_refs):
         feeder_port = _feeder_port_ref(enm, trunk_stn_ref)
@@ -431,6 +509,9 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
         if err:
             continue
         lateral_count += 1
+        tip_ref = _latest_segment_to_bus_ref(enm)
+        if tip_ref:
+            lateral_tip_bus_refs.append(tip_ref)
 
         # Add stations along the lateral — always insert on the last segment
         n_lat = LATERAL_SIZES[i % len(LATERAL_SIZES)]
@@ -453,6 +534,7 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
                         "sn_voltage_kv": 15.0,
                         "nn_voltage_kv": 0.4,
                     },
+                    "nn_earthing": {"lv_system": _NN_EARTHING_SYSTEM},
                     "sn_fields": [
                         {"field_role": "LINIA_IN"},
                         {"field_role": "LINIA_OUT"},
@@ -554,9 +636,12 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
     # 5c. Normally-open point (NOP) — realistic reserve tie left open
     # -----------------------------------------------------------------------
     # An open SN sectionaliser (real Schneider RM6 load switch) on a deep lateral
-    # segment. In a real ring this would tie to an adjacent feeder; here it leaves
-    # the downstream stub de-energised — exactly the `not_solved` set the frozen
-    # solver returns. set_normal_open_point records it on the corridor too.
+    # segment. set_normal_open_point records it on the corridor too. Opening the
+    # switch alone would strand everything downstream of it (ENMValidator E003 —
+    # a component with no path to source is a defect, not a feature: SUB-52s
+    # par. 2). Step 5d below closes the ring to an adjacent feeder — exactly what
+    # a real NOP is: a normally-open RESERVE tie between two feeders that are
+    # each independently fed, not a dead end.
     from enm.domain_operations import execute_domain_operation
 
     nop_switch_ref: str | None = None
@@ -588,6 +673,50 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
             nop_switch_ref = (nop_result.get("selection_hint") or {}).get("element_id")
             if nop_switch_ref:
                 enm, _ = _try_op(enm, "set_normal_open_point", {"switch_ref": nop_switch_ref})
+
+    # -----------------------------------------------------------------------
+    # 5d. Ring closure — tie the NOP-stranded lateral to its neighbour
+    # -----------------------------------------------------------------------
+    # Opening the 5c switch splits its lateral's corridor; the fragment beyond
+    # the open point has no OTHER path to source (a plain radial dead end), so
+    # ENMValidator flags it as E003 (island). A real MV ring ties that fragment
+    # to the tip of an ADJACENT feeder as reserve supply — the switch then sits
+    # normally open between two feeders that are each independently energised,
+    # instead of cutting the only path to one of them. connect_secondary_ring_sn
+    # is the existing domain op for exactly this (reused, not duplicated).
+    #
+    # KLASA NIE INSTANCJA: rather than assuming the NOP always lands on the
+    # same lateral, detect whichever lateral tip actually ended up islanded
+    # (_graph_islands_without_source) and close the ring from there — the fix
+    # tracks the mechanism ("opening this switch stranded a fragment"), not
+    # today's specific bus UUID. If an island does not correspond to a known
+    # lateral tip, it is left unfixed rather than guessing a bus to reconnect —
+    # ZERO fabrykacji topologii — so it still surfaces as E003 for a human.
+    for island in _graph_islands_without_source(enm):
+        stranded_tip = next((ref for ref in lateral_tip_bus_refs if ref in island), None)
+        if stranded_tip is None:
+            continue
+        tip_index = lateral_tip_bus_refs.index(stranded_tip)
+        neighbor_index = (tip_index + 1) % len(lateral_tip_bus_refs)
+        if neighbor_index == tip_index:
+            continue
+        neighbor_tip = lateral_tip_bus_refs[neighbor_index]
+        # Hard-fail (not _try_op): an unfixed island is an invalid fixture, not
+        # a degraded-but-usable one (unlike optional DER/load attach above).
+        enm = _op(
+            enm,
+            "connect_secondary_ring_sn",
+            {
+                "from_bus_ref": neighbor_tip,
+                "to_bus_ref": stranded_tip,
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 200,
+                    "catalog_ref": _CABLE_REF,
+                },
+                "ring_name": "Rezerwa pierscieniowa (odcinek NOP)",
+            },
+        )
 
     # -----------------------------------------------------------------------
     # 6. Metrics

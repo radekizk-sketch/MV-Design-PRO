@@ -53,5 +53,6 @@ def get_sld_result_overlay(
             canonical_run,
             diagram_id=diagram_id,
             sld_payload=diagram.get("payload", {}),
+            uow_factory=uow_factory,
         )
     )

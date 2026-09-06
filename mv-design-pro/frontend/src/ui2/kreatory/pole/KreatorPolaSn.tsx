@@ -111,10 +111,15 @@ export function KreatorPolaSn() {
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
   const [rodziny, setRodziny] = useState<SwitchgearFamily[]>([]);
   const [szablony, setSzablony] = useState<CompleteMvBayTemplateSummary[]>([]);
+  // S9-5 (klasa: bramka enable bez sygnału gotowości) — jawny znacznik
+  // ładowania katalogu, niezależny od `typy.length` (katalog pusty PO
+  // wczytaniu wygląda inaczej niż katalog W TRAKCIE wczytywania).
+  const [katalogLadowanie, setKatalogLadowanie] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     setBladKatalogu(null);
+    setKatalogLadowanie(true);
     Promise.all([fetchMvApparatusTypes(), fetchSwitchgearFamilies()])
       .then(([apar, fam]) => {
         if (cancelled) return;
@@ -126,6 +131,9 @@ export function KreatorPolaSn() {
         setTypy([]);
         setRodziny([]);
         setBladKatalogu(getCatalogErrorMessage(e));
+      })
+      .finally(() => {
+        if (!cancelled) setKatalogLadowanie(false);
       });
     return () => {
       cancelled = true;
@@ -276,6 +284,16 @@ export function KreatorPolaSn() {
   ) : null;
 
   const krokIndex = KROKI.findIndex((k) => k.id === krok);
+  // S9-5 (klasa: bramka enable bez sygnału gotowości) — jedno źródło prawdy
+  // dla `disabled` i `data-status` (patrz `KreatorMagistralaSn.tsx`, ta sama
+  // karta i ten sam mechanizm powtórzony w tym pliku).
+  const stanGotowosci: 'ladowanie' | 'zablokowany' | 'gotowy' =
+    !hasSzyne || !activeCaseId
+      ? 'zablokowany'
+      : katalogLadowanie
+        ? 'ladowanie'
+        : 'gotowy';
+  const zapisZablokowany = stanGotowosci !== 'gotowy';
 
   return (
     <KreatorRama
@@ -289,8 +307,17 @@ export function KreatorPolaSn() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={bledy.length > 0 ? T.walidacjaStopka : !hasSzyne ? T.brakSzynyOpis : null}
-      akcjaGlowna={{ etykieta: T.zapisz, onClick: onZapisz, zablokowana: !hasSzyne || !activeCaseId, testid: 'mvd-kreator-pole-zapisz' }}
+      walidacja={
+        stanGotowosci === 'ladowanie'
+          ? T.katalogLadowanieStopka
+          : bledy.length > 0
+            ? T.walidacjaStopka
+            : !hasSzyne
+              ? T.brakSzynyOpis
+              : null
+      }
+      status={stanGotowosci}
+      akcjaGlowna={{ etykieta: T.zapisz, onClick: onZapisz, zablokowana: zapisZablokowany, testid: 'mvd-kreator-pole-zapisz' }}
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-pole-anuluj' }}
       krokWstecz={
         krokIndex > 0

@@ -156,9 +156,7 @@ describe('KreatorStudium — dokument studium (żądanie i podgląd)', () => {
 
   it('żądania dokumentu niosą aktywny przypadek (bez niego nie ma dowodu PTPiREE)', async () => {
     useAppStateStore.setState({ activeCaseId: 'case-oze-1' } as never);
-    // @ts-expect-error shim jsdom
     if (typeof URL.createObjectURL !== 'function') URL.createObjectURL = () => 'blob:shim';
-    // @ts-expect-error shim jsdom
     if (typeof URL.revokeObjectURL !== 'function') URL.revokeObjectURL = () => {};
     vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
@@ -251,9 +249,7 @@ describe('KreatorStudium — dokument studium (błędy)', () => {
 
 describe('KreatorStudium — dokument studium (pobrania plików)', () => {
   function przechwycPobranie() {
-    // @ts-expect-error shim jsdom
     if (typeof URL.createObjectURL !== 'function') URL.createObjectURL = () => 'blob:shim';
-    // @ts-expect-error shim jsdom
     if (typeof URL.revokeObjectURL !== 'function') URL.revokeObjectURL = () => {};
     const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});

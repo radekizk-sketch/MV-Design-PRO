@@ -16,7 +16,7 @@ import { useSelectionStore } from '../../../ui/selection/store';
 import type { EnergyNetworkModel, ReadinessInfo } from '../../../types/enm';
 import type { ExecutionRun } from '../../../ui/study-cases/types';
 
-import { subskrybuj } from '../bus';
+import { emituj, subskrybuj } from '../bus';
 import { startSnapshotAdapter } from '../adapters/snapshotAdapter';
 import { startCaseAdapter } from '../adapters/caseAdapter';
 import { startSelectionAdapter, ZRODLO_STORE_SELEKCJI } from '../adapters/selectionAdapter';
@@ -339,6 +339,29 @@ describe('caseAdapter — study-cases/runStore.ts -> magistrala: wyniki-gotowe (
     useExecutionRunsStore.setState({ runs: [{ ...runDobiegu, status: 'DONE' }], runStatus: 'DONE' });
 
     expect(loadActiveCase).toHaveBeenCalledWith('projekt-1');
+  });
+
+  it('CV-2-W: po ZMIANIE MODELU adapter odswieza aktywny przypadek (werdykt liczy backend)', () => {
+    // Werdykt swiezosci przypadku (status + przyczyna + lista zmian) powstaje po
+    // stronie serwera z biegow i koperty rewizji. Bez tego odswiezenia chip
+    // trwalby na ostatnim znanym „aktualne" mimo modelu, ktory pojechal dalej —
+    // dokladnie defekt V12K-309 poz. 2, tyle ze od strony pobierania danych.
+    const loadActiveCase = vi.fn(async () => {});
+    useStudyCasesStore.setState({ projectId: 'projekt-cv2', loadActiveCase } as never);
+
+    emituj({ typ: 'model-zmieniony', rev: 9, zakres: [] });
+
+    expect(loadActiveCase).toHaveBeenCalledWith('projekt-cv2');
+  });
+
+  it('CV-2-W: zmiana modelu bez projektu w zasiegu nie wola niczego (zero zgadywania)', () => {
+    const loadActiveCase = vi.fn(async () => {});
+    useStudyCasesStore.setState({ projectId: null, loadActiveCase } as never);
+    useAppStateStore.setState({ activeProjectId: null } as never);
+
+    emituj({ typ: 'model-zmieniony', rev: 9, zakres: [] });
+
+    expect(loadActiveCase).not.toHaveBeenCalled();
   });
 
   it('K6/H-6 R2: bez projektu w zasiegu adapter nie wola niczego (zero zgadywania)', () => {

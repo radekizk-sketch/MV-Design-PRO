@@ -24,7 +24,9 @@ ZRODLO_WEJSC_NORMA = "szereg_preferowany_IEC_60255_1"
 @dataclass(frozen=True)
 class DeviceCapability:
     device_id: str
-    vendor: str
+    #: Nazwa producenta. `None` dla profili REFERENCYJNYCH bez marki (karta
+    #: FAB-A/D-33) — pole NIGDY nie niesie tekstu udajacego producenta.
+    vendor: str | None
     model: str
     functions_supported: tuple[str, ...]
     curves_supported: tuple[str, ...]

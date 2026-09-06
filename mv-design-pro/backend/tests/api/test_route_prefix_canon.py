@@ -132,20 +132,9 @@ def test_stare_adresy_bez_api_nie_sa_juz_serwowane() -> None:
     assert pozostale == [], f"Stare adresy nadal serwowane: {pozostale}"
 
 
-def test_adres_wyniku_w_podsumowaniu_biegu_jest_kanoniczny() -> None:
-    """`result_location` to ADRES HTTP — musi byc kanoniczny juz w zrodle.
-
-    Wczesniej trzy miejsca w warstwie aplikacji emitowaly go BEZ `/api`, a `/api`
-    doklejal — tylko dla zwarc — jeden konsument (`api/unified_runs.py`). Rozplyw
-    i zabezpieczenia dostawaly adres, ktorego zaden router nie serwowal.
-    """
-    import inspect
-
-    from application.analysis_dispatch import service
-
-    zrodlo = inspect.getsource(service)
-    for zly in ('f"/analysis-runs/', 'f"/power-flow-runs/', 'f"/protection-runs/'):
-        assert zly not in zrodlo, (
-            f"Adres wyniku budowany bez prefiksu `/api` ({zly}) — konsument bedzie "
-            "musial go poprawiac doklejka, czyli defekt wroci ta sama droga."
-        )
+# `test_adres_wyniku_w_podsumowaniu_biegu_jest_kanoniczny` (dlug V12K-325, karta
+# PREFIKSY) inspektowal `application.analysis_dispatch.service` — jedynego
+# konsumenta budujacego adres wyniku bez prefiksu `/api`. Karta CV-3.3-A
+# (2026-09-05) skasowala `analysis_dispatch` razem z `api/unified_runs.py`
+# (E2-widmo, zero konsumenta produkcyjnego), wiec scenariusz, ktory ten test
+# pilnowal, nie ma juz zadnego zrodla — usuniety razem z modulem, nie zamaskowany.

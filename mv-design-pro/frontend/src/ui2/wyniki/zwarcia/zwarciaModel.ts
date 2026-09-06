@@ -38,6 +38,23 @@
  *    `zrodloRozplywuPL`); strzałki v3 dostają pełny rozpływ. Pusta lista =
  *    policzono, brak prądu w gałęziach (sieć bez źródła zastępczego i bez
  *    falowników zasilających zwarcie).
+ *    GAP DOMKNIĘTY (karta WB-ROZPLYW): sam `branch_flow_trace` (WHITE BOX
+ *    podziału, TH-1) był od `1e9f21c5` dostępny WYŁĄCZNIE na żądanie
+ *    (`GET …/results/short-circuit/rozplyw`), niewpięty w żaden ekran (dług
+ *    — treść WHITE BOX istniejąca tylko w magazynie). Sekcja `SladPodzialuPradu`
+ *    (pod `RozplywZwarciowy`) renderuje kroki tego śladu REUŻYWAJĄC istniejący
+ *    kanon pięciu pól (`KrokDowodu`/`mapujKroki`, `ui2/wyniki/dowod` — ten sam
+ *    komponent, którym ekran „Dowód obliczeń" pokazuje `white_box_trace`).
+ *    Dostawca `useRozplywZwarciowy` (`zwarcia/api.ts`) zwraca teraz PARĘ
+ *    `{flows, trace, blad}` z jednego wywołania endpointu (`RozplywOdpowiedz`
+ *    rozszerzony o `branch_flow_trace`) — jedno źródło prawdy dla obu sekcji,
+ *    nie dwa niezależne wołania. Naprawiono PRZY OKAZJI defekt klasy w
+ *    `dowod/dowodModel.ts` (`mapujWielkosci`): adapter zakładał WYŁĄCZNIE
+ *    opakowany kształt `TraceValue` ({value, unit, label}), a REALNY solver
+ *    (`WhiteBoxTracer.add`) emituje skalar/liczbę zespoloną `{re, im}` wprost —
+ *    każda wartość realnego śladu (SC/PF/branch_flow_trace) renderowała się
+ *    jako pusta kreska (KLASA NIE INSTANCJA — naprawa u źródła, nie lokalna
+ *    obejście w tej sekcji).
  * 2. ŚWIEŻOŚĆ (FreshnessBadge): kontrakt wyników zwarciowych nie niesie LICZBOWEJ
  *    rewizji modelu z chwili liczenia → nagłówek nie podaje rewizji (badge
  *    pominięty, jak w oknie rozpływu). Numeryczną świeżość dostarczy karta

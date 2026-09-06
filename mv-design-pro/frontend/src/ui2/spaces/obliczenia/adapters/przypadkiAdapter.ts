@@ -31,8 +31,9 @@
  *
  * TODO-KARTA (ograniczenia — brak źródła w typach read-only, karta §2 „NIE zgaduj"):
  * 1. „Temperatura przewodów" oraz „Stan łączeń" NIE są polami `StudyCaseConfig`
- *    (`types.ts:46-71`; temperatura nieobecna, stany łączeń utrwalane osobną operacją
- *    domenową `set_case_switch_state`, niewystawianą przez store study-cases) →
+ *    (`types.ts:46-71`; temperatura nieobecna, stan łączeniowy jest częścią
+ *    `OperatingScenario` (CV-3.1, `enm/scenariusze.py`), nie `StudyCaseConfig`,
+ *    i nie jest wystawiany przez store study-cases) →
  *    w sekcji „Założenia" renderowane jako „wkrótce", bez fabrykowania wartości.
  * 2. `CaseKind` (`ui/app-state/store.ts:56`) nie jest niesiony przez `StudyCase`;
  *    przy aktywacji ustawiamy `'ShortCircuitCase'` — tak jak istniejący orkiestrator

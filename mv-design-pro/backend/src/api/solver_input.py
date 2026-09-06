@@ -12,7 +12,10 @@ from collections.abc import Callable
 from typing import Any
 
 from api.dependencies import get_uow_factory
+from api.klucz_twin_dep import KluczTwin
 from domain.study_case import StudyCaseConfig
+from enm.assembler import zbuduj_graf, zloz_wejscie_rozplywu, zloz_wejscie_zwarcia
+from enm.store import get_enm
 from fastapi import APIRouter, Depends, HTTPException, Path
 from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.catalog.repository import get_default_mv_catalog
@@ -30,179 +33,52 @@ router = APIRouter(
 )
 
 
-# ---------------------------------------------------------------------------
-# Stub: In production, these would come from persistence layer.
-# For PR-12, we expose the contract via test-friendly endpoints.
-# ---------------------------------------------------------------------------
-
-
-def _get_graph_for_case(case_id: str) -> NetworkGraph:
-    """
-    Phase 36: Real loader — case_id is treated as snapshot_id.
-    If snapshot exists in DB, returns its graph; otherwise empty graph
-    (backward-compat dla istniejacych endpointow ktore nie maja UoW).
-
-    Caller z UoW (build_audit2_solver_input_payload) moze przekazac
-    real graph wskazujac snapshot_id.
-    """
-    return NetworkGraph(network_model_id=case_id)
-
-
-def _get_graph_for_snapshot(
-    snapshot_id: str, uow_factory: Callable[[], UnitOfWork]
+def _graph_for_analysis(
+    *,
+    klucz: str,
+    analysis_type: SolverAnalysisType,
+    scenario_lower: str,
+    solver_options: dict[str, Any],
+    rozszerzenia_audit2: dict[str, Any] | None,
 ) -> NetworkGraph:
-    """
-    Phase 36: ladowanie real NetworkGraph z persystencji (network_snapshots).
+    """Karta CV-4.2: kontrakt P11 wypełniany PRZEZ assembler (`zloz_wejscie_*`),
+    nie przez pusty graf-stub (P11 przed kartą zawsze budował payload z
+    ``NetworkGraph(network_model_id=case_id)`` — 0 elementów, niezależnie od
+    realnego modelu przypadku). Zero własnego składania slacka/PQ/PV/Z0
+    równolegle do assemblera — ten sam ``zloz_wejscie_rozplywu``/
+    ``zloz_wejscie_zwarcia`` co tor kanoniczny biegów.
 
-    Zwraca empty graph (z network_model_id=snapshot_id) jesli snapshot
-    nie istnieje — pozwala na backward-compat.
+    PROTECTION nie ma własnej analizy assemblera (payload jest jawnym stubem
+    w ``build_solver_input``) — wystarcza IR bez montażu PF/SC.
+
+    ``rozszerzenia_audit2`` (CV-4.2b): rozszerzenia z konfiguracji audytu 2 stacji
+    odczytanej RAZ fabryką ``UnitOfWork`` żądania — assembler dostaje dane, nie
+    otwiera bazy (do tej karty czytał ją drugi raz własnym silnikiem z
+    ``DATABASE_URL``, więc kontrakt P11 potrafił nie widzieć zapisanej konfiguracji).
     """
-    with uow_factory() as uow:
-        assert uow.session is not None and uow.snapshots is not None
-        snapshot = uow.snapshots.get_snapshot(snapshot_id)
-        if snapshot is None:
-            return NetworkGraph(network_model_id=snapshot_id)
-        return snapshot.graph
+    snapshot = get_enm(klucz).model_dump(mode="json")
+    if analysis_type == SolverAnalysisType.LOAD_FLOW:
+        return zloz_wejscie_rozplywu(
+            snapshot, solver_options, rozszerzenia_audit2=rozszerzenia_audit2
+        ).graph
+    if analysis_type in (
+        SolverAnalysisType.SHORT_CIRCUIT_3F,
+        SolverAnalysisType.SHORT_CIRCUIT_1F,
+    ):
+        sc_options = dict(solver_options)
+        sc_options["fault_type"] = (
+            "3F" if analysis_type == SolverAnalysisType.SHORT_CIRCUIT_3F else "1F"
+        )
+        sc_options["scenario"] = scenario_lower
+        return zloz_wejscie_zwarcia(
+            snapshot, sc_options, rozszerzenia_audit2=rozszerzenia_audit2
+        ).graph
+    return zbuduj_graf(snapshot)
 
 
 def _get_config_for_case(case_id: str) -> StudyCaseConfig:
     """Stub: retrieve StudyCaseConfig for a given case."""
     return StudyCaseConfig()
-
-
-# =============================================================================
-# Phase 33: Audit2 Power Flow endpoint — uzywa Audit2PowerFlowWrapper
-# =============================================================================
-
-
-class Audit2PowerFlowRequest(BaseModel):
-    """Request dla POST /api/cases/audit2-power-flow."""
-
-    case_id: str
-    project_id: str
-    station_id: str
-    base_mva: float = 100.0
-    slack_node_id: str | None = None
-    # Phase 36: opcjonalny snapshot_id — jesli pdany, graph ladowany z DB.
-    snapshot_id: str | None = None
-
-
-class Audit2PowerFlowResponse(BaseModel):
-    """Response z applied audit trail + (optional) solution metadata."""
-
-    case_id: str
-    project_id: str
-    station_id: str
-    audit2_applied: dict[str, Any] = {}
-    solver_attempted: bool = False
-    solver_error: str | None = None
-    audit2_extensions_keys: list[str] = []
-    # Phase 36: graph stats — diagnose jaki graph zostal zaladowany.
-    graph_branch_count: int = 0
-    graph_node_count: int = 0
-    graph_inverter_source_count: int = 0
-    snapshot_id_loaded: str | None = None
-
-
-@router.post(
-    "/audit2-power-flow",
-    response_model=Audit2PowerFlowResponse,
-    summary="Phase 33: Power flow z audit2 adjustments z DB station config",
-    description=(
-        "Wczytuje audit2 config z DB (project_id + station_id), buduje "
-        "PowerFlowInput z audit2_extensions, aplikuje przez "
-        "Audit2PowerFlowWrapper i zwraca audit trail + solver result."
-    ),
-)
-def run_audit2_power_flow(
-    req: Audit2PowerFlowRequest,
-    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-) -> Audit2PowerFlowResponse:
-    """Phase 33: pelna petla — DB audit2 -> wrapper -> graph mutation."""
-    from uuid import UUID
-
-    from infrastructure.persistence.models import StationAudit2ConfigORM
-    from network_model.solvers.power_flow_types import (
-        PowerFlowInput,
-        PowerFlowOptions,
-        SlackSpec,
-    )
-    from solver_input.audit2_der_payload import (
-        build_station_audit2_payload,
-        extract_solver_extensions_from_payload,
-    )
-    from solver_input.audit2_pf_wrapper import solve_power_flow_with_audit2
-
-    # 1. Pobierz audit2 config z DB.
-    try:
-        pid_uuid = UUID(req.project_id)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=f"Invalid project_id: {exc}") from exc
-
-    audit2_extensions: dict[str, Any] | None = None
-    with uow_factory() as uow:
-        assert uow.session is not None
-        cfg = (
-            uow.session.query(StationAudit2ConfigORM)
-            .filter(
-                StationAudit2ConfigORM.project_id == pid_uuid,
-                StationAudit2ConfigORM.station_id == req.station_id,
-            )
-            .one_or_none()
-        )
-        if cfg is not None:
-            payload = build_station_audit2_payload(
-                station_id=cfg.station_id,
-                mv_neutral_grounding_ref=cfg.mv_neutral_grounding_ref,
-                tap_changer_refs=list(cfg.tap_changer_refs or []),
-                der_specs=list(cfg.der_specs or []),
-                transformer_tap_changers=dict(cfg.transformer_tap_changers or {}),
-            )
-            audit2_extensions = extract_solver_extensions_from_payload(payload)
-
-    # 2. Zbuduj PowerFlowInput. Phase 36: real graph loader gdy snapshot_id pdany.
-    if req.snapshot_id:
-        graph = _get_graph_for_snapshot(req.snapshot_id, uow_factory)
-    else:
-        graph = _get_graph_for_case(req.case_id)
-    pf_input = PowerFlowInput(
-        graph=graph,
-        base_mva=req.base_mva,
-        slack=SlackSpec(node_id=req.slack_node_id or "slack-stub", u_pu=1.0, angle_rad=0.0),
-        pq=[],
-        options=PowerFlowOptions(),
-        audit2_extensions=audit2_extensions,
-    )
-
-    # 3. Wywolaj wrapper. Solver moze rzucic na empty graph — przechwyc.
-    applied: dict[str, Any] = {}
-    solver_error: str | None = None
-    try:
-        result = solve_power_flow_with_audit2(pf_input)
-        applied = result.applied_audit2
-        solver_attempted = True
-    except Exception as exc:
-        # Apply ZOSTAL juz wywolany przed solverem — extract applied state
-        # bezposrednio (nie zgubione).
-        from solver_input.audit2_solver_adjuster import apply_audit2_to_network_model
-
-        applied = apply_audit2_to_network_model(graph=graph, audit2_extensions=audit2_extensions)
-        solver_error = str(exc)
-        solver_attempted = True
-
-    return Audit2PowerFlowResponse(
-        case_id=req.case_id,
-        project_id=req.project_id,
-        station_id=req.station_id,
-        audit2_applied=applied,
-        solver_attempted=solver_attempted,
-        solver_error=solver_error,
-        audit2_extensions_keys=list((audit2_extensions or {}).keys()),
-        graph_branch_count=len(getattr(graph, "branches", {}) or {}),
-        graph_node_count=len(getattr(graph, "nodes", {}) or {}),
-        graph_inverter_source_count=len(getattr(graph, "inverter_sources", {}) or {}),
-        snapshot_id_loaded=req.snapshot_id,
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -246,6 +122,7 @@ class EligibilityMapResponse(BaseModel):
     ),
 )
 def get_solver_input(
+    klucz: KluczTwin,
     case_id: str = Path(..., description="Study case ID"),
     analysis_type: str = Path(
         ...,
@@ -259,8 +136,17 @@ def get_solver_input(
     """
     Generate and return solver-input for the given case and analysis type.
 
-    Phase 17: jesli `project_id` + `station_id` przekazane, podlacza
-    audit2 config z bazy do envelope (`audit2_extensions` populated).
+    Karta CV-4.2: wejście budowane PRZEZ assembler (`zloz_wejscie_rozplywu`/
+    `zloz_wejscie_zwarcia`) z REALNEJ migawki ENM przypadku (`klucz` — CV-1-W),
+    nie z pustego grafu-stubu.
+
+    Phase 17 / CV-4.2b: jesli `project_id` + `station_id` przekazane, konfiguracja
+    audytu 2 jest czytana RAZ (fabryka `UnitOfWork` żądania, repozytorium
+    `audit2_station_configs`) i idzie w DWA miejsca: do envelope
+    (`audit2_extensions`) oraz — jako rozszerzenia solvera — do assemblera,
+    więc payload odzwierciedla model PO korektach audit2 (tap/statyzm/impedancja
+    bloku), nie tylko surowy model obok osobno raportowanych rozszerzeń.
+    Niepoprawny UUID projektu = 400 (nie cichy payload bez konfiguracji).
 
     Karta P0.3: `scenario` (MAX default | MIN) selects the IEC 60909-0
     Table 1 voltage factor c per bus (BusPayload.c_factor_iec60909) — see
@@ -283,42 +169,45 @@ def get_solver_input(
             detail=f"Invalid scenario '{scenario}'. Valid: ['MAX', 'MIN']",
         )
 
-    graph = _get_graph_for_case(case_id)
-    config = _get_config_for_case(case_id)
-    catalog = get_default_mv_catalog()
-
-    # Phase 17: pull audit2 station config z DB (gdy project+station pdane).
+    # Phase 17 / CV-4.2b: konfiguracja audytu 2 z bazy RAZ, fabryką UnitOfWork żądania.
     audit2_payload: dict[str, Any] | None = None
+    rozszerzenia_audit2: dict[str, Any] | None = None
     if project_id and station_id:
         from uuid import UUID
 
-        from infrastructure.persistence.models import StationAudit2ConfigORM
+        from solver_input.audit2_der_payload import rozszerzenia_audit2_z_konfiguracji
 
         try:
             pid_uuid = UUID(project_id)
-        except ValueError:
-            pid_uuid = None
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=400, detail=f"project_id nie jest poprawnym UUID: {project_id!r}"
+            ) from exc
+        with uow_factory() as uow:
+            cfg = uow.audit2_station_configs.get(pid_uuid, station_id)
+            if cfg is not None:
+                audit2_payload = {
+                    "station_id": cfg.station_id,
+                    "mv_neutral_grounding_ref": cfg.mv_neutral_grounding_ref,
+                    "tap_changer_refs": list(cfg.tap_changer_refs or []),
+                    "der_specs": list(cfg.der_specs or []),
+                    # Phase 22: per-transformer mapping dla apply_audit2_to_network_model.
+                    "transformer_tap_changers": dict(cfg.transformer_tap_changers or {}),
+                }
+                rozszerzenia_audit2 = rozszerzenia_audit2_z_konfiguracji(cfg)
 
-        if pid_uuid is not None:
-            with uow_factory() as uow:
-                assert uow.session is not None
-                cfg = (
-                    uow.session.query(StationAudit2ConfigORM)
-                    .filter(
-                        StationAudit2ConfigORM.project_id == pid_uuid,
-                        StationAudit2ConfigORM.station_id == station_id,
-                    )
-                    .one_or_none()
-                )
-                if cfg is not None:
-                    audit2_payload = {
-                        "station_id": cfg.station_id,
-                        "mv_neutral_grounding_ref": cfg.mv_neutral_grounding_ref,
-                        "tap_changer_refs": list(cfg.tap_changer_refs or []),
-                        "der_specs": list(cfg.der_specs or []),
-                        # Phase 22: per-transformer mapping dla apply_audit2_to_network_model.
-                        "transformer_tap_changers": dict(cfg.transformer_tap_changers or {}),
-                    }
+    try:
+        graph = _graph_for_analysis(
+            klucz=klucz,
+            analysis_type=at,
+            scenario_lower=scenario_normalized.lower(),
+            solver_options={},
+            rozszerzenia_audit2=rozszerzenia_audit2,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    config = _get_config_for_case(case_id)
+    catalog = get_default_mv_catalog()
 
     envelope = build_solver_input(
         graph=graph,
@@ -354,10 +243,15 @@ def get_solver_input(
     ),
 )
 def get_eligibility(
+    klucz: KluczTwin,
     case_id: str = Path(..., description="Study case ID"),
 ) -> EligibilityMapResponse:
-    """Check eligibility for all analysis types for the given case."""
-    graph = _get_graph_for_case(case_id)
+    """Check eligibility for all analysis types for the given case.
+
+    Karta CV-4.2: IR budowany z REALNEJ migawki ENM przypadku (`zbuduj_graf`,
+    ten sam assembler co reszta toru kanonicznego), nie z pustego grafu-stubu.
+    """
+    graph = zbuduj_graf(get_enm(klucz).model_dump(mode="json"))
     catalog = get_default_mv_catalog()
 
     emap = build_eligibility_map(graph, catalog)

@@ -1,7 +1,7 @@
 /**
  * OsdDataForm — formularz danych OSD dla wniosku przyłączeniowego.
  *
- * Edytuje wszystkie pola SldTitleBlockData wymagane przez operatorów
+ * Edytuje wszystkie pola metryki rysunku wymagane przez operatorów
  * dystrybucyjnych (PSE / Energa / Tauron / Enea / PGE). Po wypełnieniu
  * dane trafiają do title block na SLD i do raportu OSD (PDF/DOCX).
  *
@@ -16,7 +16,45 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { clsx } from 'clsx';
-import type { SldTitleBlockData } from '../sld/v2/canvas/SldTitleBlock';
+
+/**
+ * Pola metryki rysunku/wniosku OSD edytowane przez ten formularz. Formularz
+ * NIE ma domyślnych wartości — pole bez danej zostaje puste (uczciwy stan
+ * zerowy), a rysunek SLD (v3 `SheetTitleBlock`) pokazuje wtedy jawne
+ * „brak danych" zamiast wartości zmyślonej.
+ */
+export interface OsdDrawingMetadata {
+  /** Format arkusza (A4, A3, A2, A1, A0). */
+  readonly sheetFormat?: string;
+  /** Skala (np. "1:1000"). */
+  readonly scale?: string;
+  /** Arkusz X z Y (np. "1/3"). */
+  readonly sheetNumber?: string;
+  /** Status dokumentu. */
+  readonly status?: 'DRAFT' | 'AUDIT' | 'RELEASED' | 'ARCHIVED';
+  /** Numer rysunku (numer dokumentacji projektowej). */
+  readonly drawingNumber?: string;
+  /** Projektant odpowiedzialny. */
+  readonly designer?: string;
+  /** Sprawdzający / zatwierdzający. */
+  readonly approver?: string;
+  /** Rewizja dokumentu wniosku (np. "R02"). */
+  readonly revision?: string;
+  /** Data wydania (YYYY-MM-DD). */
+  readonly issueDate?: string;
+  /** Operator sieci dystrybucyjnej (PGE / Enea / Energa / Tauron / PSE / inny). */
+  readonly osdOperator?: string;
+  /** Numer uprawnień projektanta (SEP D/E). */
+  readonly designerQualification?: string;
+  /** Numer uprawnień sprawdzającego (SEP D/E). */
+  readonly approverQualification?: string;
+  /** Inwestor (klient zlecający projekt). */
+  readonly investor?: string;
+  /** Lokalizacja (adres / nr działki dla wniosku OSD). */
+  readonly location?: string;
+  /** Faza projektu. */
+  readonly phase?: 'PB' | 'PW' | 'PR' | 'PK';
+}
 
 type OsdOperatorKey = 'PSE' | 'ENEA' | 'ENERGA' | 'TAURON' | 'PGE' | 'INNY';
 
@@ -29,14 +67,14 @@ const OSD_OPERATORS: Readonly<Record<OsdOperatorKey, { label: string; full: stri
   INNY: { label: 'Inny', full: '' },
 };
 
-const PROJECT_PHASE_LABELS: Readonly<Record<NonNullable<SldTitleBlockData['phase']>, string>> = {
+const PROJECT_PHASE_LABELS: Readonly<Record<NonNullable<OsdDrawingMetadata['phase']>, string>> = {
   PB: 'PB — Projekt budowlany',
   PW: 'PW — Projekt wykonawczy',
   PR: 'PR — Projekt rozbudowy',
   PK: 'PK — Projekt koncepcyjny',
 };
 
-const STATUS_LABELS: Readonly<Record<NonNullable<SldTitleBlockData['status']>, string>> = {
+const STATUS_LABELS: Readonly<Record<NonNullable<OsdDrawingMetadata['status']>, string>> = {
   DRAFT: 'Szkic (DRAFT)',
   AUDIT: 'Do audytu (AUDIT)',
   RELEASED: 'Wydany (RELEASED)',
@@ -45,13 +83,13 @@ const STATUS_LABELS: Readonly<Record<NonNullable<SldTitleBlockData['status']>, s
 
 export interface OsdDataFormProps {
   readonly isOpen: boolean;
-  readonly data?: Partial<SldTitleBlockData>;
+  readonly data?: Partial<OsdDrawingMetadata>;
   readonly onClose: () => void;
-  readonly onSave?: (data: SldTitleBlockData) => void | Promise<void>;
+  readonly onSave?: (data: OsdDrawingMetadata) => void | Promise<void>;
 }
 
 export function OsdDataForm({ isOpen, data, onClose, onSave }: OsdDataFormProps): JSX.Element | null {
-  const [form, setForm] = useState<SldTitleBlockData>(data ?? {});
+  const [form, setForm] = useState<OsdDrawingMetadata>(data ?? {});
   const [operatorKey, setOperatorKey] = useState<OsdOperatorKey>('INNY');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -69,7 +107,7 @@ export function OsdDataForm({ isOpen, data, onClose, onSave }: OsdDataFormProps)
     }
   }, [isOpen, data]);
 
-  const handleChange = useCallback(<K extends keyof SldTitleBlockData>(field: K, value: SldTitleBlockData[K]) => {
+  const handleChange = useCallback(<K extends keyof OsdDrawingMetadata>(field: K, value: OsdDrawingMetadata[K]) => {
     setSaveError(null);
     setForm((prev) => ({ ...prev, [field]: value }));
   }, []);
@@ -241,7 +279,7 @@ export function OsdDataForm({ isOpen, data, onClose, onSave }: OsdDataFormProps)
                 </label>
                 <select
                   value={form.phase ?? ''}
-                  onChange={(e) => handleChange('phase', (e.target.value || undefined) as SldTitleBlockData['phase'])}
+                  onChange={(e) => handleChange('phase', (e.target.value || undefined) as OsdDrawingMetadata['phase'])}
                   className={inputClass}
                   data-testid="osd-phase"
                 >
@@ -257,7 +295,7 @@ export function OsdDataForm({ isOpen, data, onClose, onSave }: OsdDataFormProps)
                 <label className="block text-[11px] text-gray-500 mb-0.5">Status</label>
                 <select
                   value={form.status ?? ''}
-                  onChange={(e) => handleChange('status', (e.target.value || undefined) as SldTitleBlockData['status'])}
+                  onChange={(e) => handleChange('status', (e.target.value || undefined) as OsdDrawingMetadata['status'])}
                   className={inputClass}
                   data-testid="osd-status"
                 >

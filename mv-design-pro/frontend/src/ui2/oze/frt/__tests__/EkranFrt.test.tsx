@@ -56,7 +56,7 @@ function dodajModul(deviceRef: string | null, id = 'der-1', name = 'Farma PV 1 M
     station_id: 'st-1',
     der_kind: 'PV',
     name,
-    connection_side: 'SN',
+    connection_side: 'nN',
     catalogs: { device_catalog_ref: deviceRef },
   });
 }

@@ -26,7 +26,7 @@ describe('Selection Store', () => {
 
   describe('Element Selection', () => {
     it('should select an element', () => {
-      const { selectElement, selectedElement } = useSelectionStore.getState();
+      const { selectElement } = useSelectionStore.getState();
 
       selectElement({ id: 'bus-1', type: 'Bus', name: 'Szyna główna' });
 
@@ -203,9 +203,6 @@ describe('Selection Store', () => {
 describe('Selection Store Hooks', () => {
   describe('useCanEdit', () => {
     it('should return true in MODEL_EDIT mode', async () => {
-      // Import dynamically to get fresh hook
-      const { useCanEdit } = await import('../selection/store');
-
       useSelectionStore.getState().setMode('MODEL_EDIT');
 
       // Hooks need React context, so we test the store directly
@@ -218,14 +215,15 @@ describe('Selection Store Hooks', () => {
     it('should return false in MODEL_EDIT mode', async () => {
       useSelectionStore.getState().setMode('MODEL_EDIT');
       const state = useSelectionStore.getState();
-      const isBlocked = state.mode === 'RESULT_VIEW' || state.mode === 'CASE_CONFIG';
+      // Ta sama regula co realny hook (`useIsMutationBlocked`, `selection/store.ts`).
+      const isBlocked = state.mode === 'RESULT_VIEW';
       expect(isBlocked).toBe(false);
     });
 
     it('should return true in RESULT_VIEW mode', async () => {
       useSelectionStore.getState().setMode('RESULT_VIEW');
       const state = useSelectionStore.getState();
-      const isBlocked = state.mode === 'RESULT_VIEW' || state.mode === 'CASE_CONFIG';
+      const isBlocked = state.mode === 'RESULT_VIEW';
       expect(isBlocked).toBe(true);
     });
 

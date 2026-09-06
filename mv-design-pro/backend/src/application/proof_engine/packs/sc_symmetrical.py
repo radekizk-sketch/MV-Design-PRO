@@ -105,7 +105,7 @@ class SC3FProofPack:
         graph = zwarcie.graf
 
         # Rozbicie per-maszyna (μ/q/i_b, §6.6) z tego samego grafu; t_min = czas prądu
-        # wyłączeniowego (tb_s), zgodnie z torem AnalysisRunService. Dołączane do dowodu
+        # wyłączeniowego (tb_s) z wyniku solvera IEC 60909. Dołączane do dowodu
         # tylko gdy realnie są maszyny — inaczej dowód bez sekcji maszynowej (determinizm).
         machine_result = compute_machine_contributions(
             graph,

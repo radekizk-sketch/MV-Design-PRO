@@ -52,8 +52,8 @@ _POWOD_NIEZNANY = (
 )
 
 
-def _powod_z_kodow(klucz: str, kody_biegu: tuple[str, ...]) -> tuple[str, str | None, dict | None]:
-    """Powod PL + akcja naprawcza + nawigacja dla brakujacej nastawy.
+def _powod_z_kodow(klucz: str, kody_biegu: tuple[str, ...]) -> tuple[str, dict | None]:
+    """Powod PL + nawigacja naprawcza dla brakujacej nastawy.
 
     Bierzemy PIERWSZY kod biegu, ktory dotyczy tej nastawy — kolejnosc `_KODY_NASTAWY`
     wyznacza priorytet. Gdy bieg nie zglosil zadnego dopasowanego kodu, mowimy o tym
@@ -64,8 +64,8 @@ def _powod_z_kodow(klucz: str, kody_biegu: tuple[str, ...]) -> tuple[str, str | 
         if kod in kody_biegu:
             spec = READINESS_CODES.get(kod)
             if spec is not None:
-                return (spec.message_pl, spec.fix_action_id, spec.fix_navigation)
-    return (_POWOD_NIEZNANY, None, None)
+                return (spec.message_pl, spec.fix_navigation)
+    return (_POWOD_NIEZNANY, None)
 
 
 def zbuduj_prezentacje_nastaw(nastawy: dict[str, Any]) -> dict[str, Any]:
@@ -73,7 +73,7 @@ def zbuduj_prezentacje_nastaw(nastawy: dict[str, Any]) -> dict[str, Any]:
 
     Zwraca strukture gotowa do wyswietlenia i do sekcji raportu:
       pozycje[]      — klucz, etykieta, jednostka, wartosc (``None`` gdy brak), stan,
-                       powod_pl / fix_action_id / fix_navigation dla stanu NIEDOSTEPNA
+                       powod_pl / fix_navigation dla stanu NIEDOSTEPNA
       kompletne      — czy wszystkie cztery nastawy sa dostepne
       brakujace[]    — klucze nastaw niedostepnych (kolejnosc jak w pozycjach)
       kody_gotowosci — kanoniczne kody biegu (przepisane, nie wymyslone)
@@ -86,7 +86,7 @@ def zbuduj_prezentacje_nastaw(nastawy: dict[str, Any]) -> dict[str, Any]:
     for klucz, etykieta, jednostka in _POZYCJE:
         wartosc = nastawy.get(klucz)
         if wartosc is None:
-            powod, fix_action_id, nawigacja = _powod_z_kodow(klucz, kody_biegu)
+            powod, nawigacja = _powod_z_kodow(klucz, kody_biegu)
             brakujace.append(klucz)
             pozycje.append(
                 {
@@ -97,7 +97,6 @@ def zbuduj_prezentacje_nastaw(nastawy: dict[str, Any]) -> dict[str, Any]:
                     "stan": STAN_NIEDOSTEPNA,
                     "komunikat_pl": KOMUNIKAT_NIEDOSTEPNA,
                     "powod_pl": powod,
-                    "fix_action_id": fix_action_id,
                     "fix_navigation": nawigacja,
                 }
             )
@@ -111,7 +110,6 @@ def zbuduj_prezentacje_nastaw(nastawy: dict[str, Any]) -> dict[str, Any]:
                     "stan": STAN_DOSTEPNA,
                     "komunikat_pl": None,
                     "powod_pl": None,
-                    "fix_action_id": None,
                     "fix_navigation": None,
                 }
             )

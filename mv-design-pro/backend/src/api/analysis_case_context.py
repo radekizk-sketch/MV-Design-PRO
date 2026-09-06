@@ -89,7 +89,10 @@ def _build_assumptions(run: CanonicalRun) -> dict[str, Any]:
                 else "sc_load_snapshot"
             )
         ),
-        "switching_state_ref": options.get("switching_state_ref") or "snapshot_switching_state",
+        # CV-2 (H3): brak jawnej migawki lacznikowej = `None`, nie etykieta
+        # „snapshot_switching_state" udajaca referencje (stan lacznikow biegu
+        # kanonicznego JEST w migawce biegu — `CanonicalRun.snapshot`).
+        "switching_state_ref": options.get("switching_state_ref"),
         "grounding_assumptions_ref": options.get("grounding_assumptions_ref")
         or "network_grounding_snapshot",
         "temperature_assumptions_ref": options.get("temperature_assumptions_ref")

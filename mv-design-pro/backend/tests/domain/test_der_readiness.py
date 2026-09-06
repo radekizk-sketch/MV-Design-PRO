@@ -38,7 +38,6 @@ def we(**nadpisania) -> WejscieGotowosciDer:
         "vt_catalog_ref": "vt_10kv_100v_05_abb",
         "ct_accuracy_class": "5P10",
         "ct_application": "protection",
-        "fault_current_data_ref": "fc_pv_2500",
         "dynamic_model_ref": "dyn_grid_following_pv",
         "nc_rfg_profile_ref": "pse",
         "lvrt_curve_ref": "lvrt_pse",
@@ -83,23 +82,39 @@ class TestMacierzPodstawowa:
         assert kody(osie_gotowosci_der(we()), "sc_3f") == []
 
 
-class TestSkladowaZerowa:
-    """IEC 60909-3: skladowej zerowej potrzebuja WYLACZNIE zwarcia z udzialem ziemi."""
+class TestZwarciaNiesymetryczne:
+    """Karta FAB-L (inwentarz solvera IEC 60909, `enm/mapping.py`): SC1F/SC2FG NIE
+    mają osobnego wejścia per-DER — solver bierze te same dane co SC3F/SC2F
+    (`k_sc`), a składową zerową falownika modeluje stałą `contributes_zero_
+    sequence=False` niezależnie od jakiejkolwiek karty katalogowej. Dawne pole
+    `fault_current_data_ref` (usunięte razem z `DER_FAULT_CURRENT_DATA_CATALOG`
+    frontu) nie miało żadnego solvera, który by je czytał — druga fizyka bez
+    konsumenta. Kompletność danych Z₀ CAŁEJ sieci (r0/x0 gałęzi, grupy połączeń
+    transformatorów, uziemienie punktu neutralnego) jest bramką MODELU
+    (`analysis-eligibility` SC_1F), nie osią per-DER."""
 
-    def test_brak_danych_zwarciowych_obniza_tylko_osie_z_ziemia(self) -> None:
-        macierz = macierz_gotowosci_der(we(fault_current_data_ref=None))
-        assert macierz["sc_1f"] == "partial"
-        assert macierz["sc_2fg"] == "partial"
-        # KONTROLA ODWROTNA: zwarcie dwufazowe BEZ ziemi rozklada sie na Z₁ i Z₂,
-        # wiec zadanie od niego danych Z₀ byloby FALSZYWYM BRAKIEM.
-        assert macierz["sc_2f"] == "ready"
-        assert macierz["sc_3f"] == "ready"
+    def test_sc1f_i_sc2fg_pokrywaja_sie_ze_sc3f_i_sc2f_dla_kazdego_stanu_urzadzenia(
+        self,
+    ) -> None:
+        # Iloczyn cech (KLASA NIE INSTANCJA pkt 2): urządzenie kompletne,
+        # urządzenie bez katalogu, urządzenie bez PCC — SC1F/SC2FG muszą
+        # zgadzać się z SC3F/SC2F w KAŻDYM z tych stanów, nie tylko w jednym.
+        for nadpisania in ({}, {"device_catalog_ref": None}, {"bus_przylaczenia_ref": None}):
+            macierz = macierz_gotowosci_der(we(**nadpisania))
+            assert macierz["sc_1f"] == macierz["sc_3f"], nadpisania
+            assert macierz["sc_2fg"] == macierz["sc_2f"] == macierz["sc_3f"], nadpisania
 
-    def test_powod_jest_nazwany_tylko_przy_osiach_z_ziemia(self) -> None:
-        osie = osie_gotowosci_der(we(fault_current_data_ref=None))
-        assert "der.fault_current_data.missing" in kody(osie, "sc_1f")
-        assert "der.fault_current_data.missing" in kody(osie, "sc_2fg")
-        assert kody(osie, "sc_2f") == []
+    def test_powody_sc1f_sc2fg_pokrywaja_sie_z_sc3f(self) -> None:
+        wejscie = we(device_catalog_ref=None)
+        osie = osie_gotowosci_der(wejscie)
+        assert kody(osie, "sc_1f") == kody(osie, "sc_3f")
+        assert kody(osie, "sc_2fg") == kody(osie, "sc_2f") == kody(osie, "sc_3f")
+
+    def test_pole_fault_current_data_ref_nie_istnieje_juz_w_kontrakcie(self) -> None:
+        # Kontrola granicy: dawne pole nie ma odpowiednika w `WejscieGotowosciDer` —
+        # próba przekazania go musi być błędem konstrukcji, nie cichym ignorowaniem.
+        with pytest.raises(TypeError):
+            we(fault_current_data_ref="fc_dowolne")  # type: ignore[call-arg]
 
 
 class TestPrzekladnikPradowy:

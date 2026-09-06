@@ -126,26 +126,30 @@ def sample_global_results() -> dict:
 
 
 def _reset_canonical_backend_state() -> None:
-    from api.execution_runs import get_engine
     from enm.canonical_analysis import reset_canonical_runs
     from enm.store import reset_enm_store
 
-    engine = get_engine()
-    engine._runs.clear()
-    engine._result_sets.clear()
-    engine._study_cases.clear()
-    engine._case_runs.clear()
     reset_canonical_runs()
     reset_enm_store()
 
 
 def _seed_valid_sc_enm(client, case_id: str) -> None:
+    """Zasiew modelu pod KLUCZEM PROJEKTU przypadku (CV-1/CV-2-W).
+
+    Zasiew surowym `case_id` dzialal tylko dopoki zadna wczesniejsza odpowiedz API
+    nie przetlumaczyla przypadku na klucz projektu (migracja `migruj_projekt_z_legacy`
+    dzieje sie RAZ na projekt). Odkad kazda odpowiedz z przypadkiem wylicza status
+    wynikow, tlumaczenie nastepuje juz przy `POST /api/study-cases` — zasiewamy tam,
+    gdzie model naprawde mieszka.
+    """
     from enm.models import EnergyNetworkModel
     from enm.store import set_enm
 
+    from tests.test_execution_api import _klucz_modelu
+
     _ = client
     set_enm(
-        case_id,
+        _klucz_modelu(case_id),
         EnergyNetworkModel.model_validate(
             {
                 "header": {
@@ -726,11 +730,28 @@ class TestResultContractV1Api:
         from fastapi.testclient import TestClient
 
         _reset_canonical_backend_state()
-        return TestClient(app)
+        # CV-1-W wymaga realnego `uow_factory` (tlumaczenie case_id -> klucz
+        # magazynu ENM) — `with` uruchamia lifespan aplikacji, ktory go wiaze;
+        # bez niego `case_id` ponizej nie mialby jak dostac 201.
+        with TestClient(app) as test_client:
+            yield test_client
 
     @pytest.fixture
-    def case_id(self) -> str:
-        return str(uuid4())
+    def case_id(self, client) -> str:
+        """Utworz REALNY projekt + przypadek przez API; zwroc `case_id`.
+
+        CV-1-W: przypadek bez wiersza w bazie dostaje teraz 404 z magazynu
+        ENM (inwariant I-2) — testy tej klasy potrzebuja prawdziwej pary
+        projekt+przypadek zamiast dowolnego UUID-a.
+        """
+        project_resp = client.post("/api/projects", json={"name": "Result Contract V1 — test"})
+        assert project_resp.status_code == 201, project_resp.text
+        case_resp = client.post(
+            "/api/study-cases",
+            json={"project_id": project_resp.json()["id"], "name": "Przypadek testu"},
+        )
+        assert case_resp.status_code == 201, case_resp.text
+        return str(case_resp.json()["id"])
 
     def test_get_resultset_v1_success(self, client, case_id):
         """GET /api/execution/runs/{id}/results/v1 returns ResultSetV1."""

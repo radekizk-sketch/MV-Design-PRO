@@ -966,7 +966,7 @@
     "scenario_id": "MAX",
     "station_ref": "stC"
   },
-  "projection_hash": "f10dbc3bcb48c301b2573932d8bd20108f1c1bd1786847355305de6b52871003",
+  "projection_hash": "f287382f1b3af8dfe9f4701761c7fb442a679309958514120bddbf5596272f5b",
   "result_snapshot": {
     "analysis_type": "LOAD_FLOW",
     "overlay_payload": {
@@ -980,63 +980,63 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "",
-              "value": 0.9806921120992962
+              "value": 0.980692112
             },
             "DELTA_U_KV": {
               "code": "DELTA_U_KV",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kV",
-              "value": 0.001450691842519336
+              "value": 0.00145069184
             },
             "DELTA_U_PCT": {
               "code": "DELTA_U_PCT",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "%",
-              "value": 0.36267296062983956
+              "value": 0.362672961
             },
             "I_A": {
               "code": "I_A",
               "format_hint": "fixed1",
               "source": "solver",
               "unit": "A",
-              "value": 8.869222469660338
+              "value": 8.86922247
             },
             "LOSSES_P_MW": {
               "code": "LOSSES_P_MW",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "MW",
-              "value": 2.253698021747845e-05
+              "value": 2.25369802e-05
             },
             "LOSSES_Q_Mvar": {
               "code": "LOSSES_Q_Mvar",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "Mvar",
-              "value": 9.439572865959072e-07
+              "value": 9.43957287e-07
             },
             "P_MW": {
               "code": "P_MW",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "MW",
-              "value": 0.0060225355372898375
+              "value": 0.00602253554
             },
             "Q_Mvar": {
               "code": "Q_Mvar",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "Mvar",
-              "value": 0.0012009434546089175
+              "value": 0.00120094345
             },
             "S_MVA": {
               "code": "S_MVA",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "MVA",
-              "value": 0.0061411073495817505
+              "value": 0.00614110735
             }
           },
           "ref_id": "FU-21_kabel",
@@ -1051,14 +1051,14 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "°",
-              "value": -149.74655973401573
+              "value": -149.74656
             },
             "U_kV": {
               "code": "U_kV",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kV",
-              "value": 0.39831039133382773
+              "value": 0.398310391
             }
           },
           "ref_id": "FU-21_koniec",
@@ -1073,14 +1073,14 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "°",
-              "value": -149.77916055231339
+              "value": -149.779161
             },
             "U_kV": {
               "code": "U_kV",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kV",
-              "value": 0.39976108317634707
+              "value": 0.399761083
             }
           },
           "ref_id": "FU-21_zacisk",
@@ -1095,63 +1095,63 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "",
-              "value": 0.9806985244549323
+              "value": 0.980698524
             },
             "DELTA_U_KV": {
               "code": "DELTA_U_KV",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kV",
-              "value": 0.0018310150028531536
+              "value": 0.001831015
             },
             "DELTA_U_PCT": {
               "code": "DELTA_U_PCT",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "%",
-              "value": 0.4577537507132856
+              "value": 0.457753751
             },
             "I_A": {
               "code": "I_A",
               "format_hint": "fixed1",
               "source": "solver",
               "unit": "A",
-              "value": 17.730752629210578
+              "value": 17.7307526
             },
             "LOSSES_P_MW": {
               "code": "LOSSES_P_MW",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "MW",
-              "value": 5.6588325983686e-05
+              "value": 5.6588326e-05
             },
             "LOSSES_Q_Mvar": {
               "code": "LOSSES_Q_Mvar",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "Mvar",
-              "value": 3.77255506557898e-06
+              "value": 3.77255507e-06
             },
             "P_MW": {
               "code": "P_MW",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "MW",
-              "value": 0.012056585909186124
+              "value": 0.0120565859
             },
             "Q_Mvar": {
               "code": "Q_Mvar",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "Mvar",
-              "value": 0.002403771975736542
+              "value": 0.00240377198
             },
             "S_MVA": {
               "code": "S_MVA",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "MVA",
-              "value": 0.012293875853323139
+              "value": 0.0122938759
             }
           },
           "ref_id": "QF-01_kabel",
@@ -1166,14 +1166,14 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "°",
-              "value": -149.74611747218952
+              "value": -149.746117
             },
             "U_kV": {
               "code": "U_kV",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kV",
-              "value": 0.3984832120202314
+              "value": 0.398483212
             }
           },
           "ref_id": "QF-01_koniec",
@@ -1188,14 +1188,14 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "°",
-              "value": -149.78059870014746
+              "value": -149.780599
             },
             "U_kV": {
               "code": "U_kV",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kV",
-              "value": 0.40031422702308456
+              "value": 0.400314227
             }
           },
           "ref_id": "QF-01_zacisk",
@@ -1210,63 +1210,63 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "",
-              "value": 0.9806964149719714
+              "value": 0.980696415
             },
             "DELTA_U_KV": {
               "code": "DELTA_U_KV",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kV",
-              "value": 0.0005531422306747635
+              "value": 0.000553142231
             },
             "DELTA_U_PCT": {
               "code": "DELTA_U_PCT",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "%",
-              "value": 0.13828555766868256
+              "value": 0.138285558
             },
             "I_A": {
               "code": "I_A",
               "format_hint": "fixed1",
               "source": "solver",
               "unit": "A",
-              "value": 8.869222540289988
+              "value": 8.86922254
             },
             "LOSSES_P_MW": {
               "code": "LOSSES_P_MW",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "MW",
-              "value": 8.363461692443772e-06
+              "value": 8.36346169e-06
             },
             "LOSSES_Q_Mvar": {
               "code": "LOSSES_Q_Mvar",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "Mvar",
-              "value": 1.510331682608168e-06
+              "value": 1.51033168e-06
             },
             "P_MW": {
               "code": "P_MW",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "MW",
-              "value": 0.006030922542979605
+              "value": 0.00603092254
             },
             "Q_Mvar": {
               "code": "Q_Mvar",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "Mvar",
-              "value": 0.0012024779107895416
+              "value": 0.00120247791
             },
             "S_MVA": {
               "code": "S_MVA",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "MVA",
-              "value": 0.006149632496772175
+              "value": 0.0061496325
             }
           },
           "ref_id": "QF-02_kabel",
@@ -1281,14 +1281,14 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "°",
-              "value": -149.7804262120746
+              "value": -149.780426
             },
             "U_kV": {
               "code": "U_kV",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kV",
-              "value": 0.40031603235796126
+              "value": 0.400316032
             }
           },
           "ref_id": "QF-02_zacisk",
@@ -1303,63 +1303,63 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "",
-              "value": 0.9999987558177212
+              "value": 0.999998756
             },
             "DELTA_U_KV": {
               "code": "DELTA_U_KV",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kV",
-              "value": -0.0050592503077164785
+              "value": -0.00505925031
             },
             "DELTA_U_PCT": {
               "code": "DELTA_U_PCT",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "%",
-              "value": -1.2648125769291196
+              "value": -1.26481258
             },
             "I_A": {
               "code": "I_A",
               "format_hint": "fixed1",
               "source": "solver",
               "unit": "A",
-              "value": 113.93319427114918
+              "value": 113.933194
             },
             "LOSSES_P_MW": {
               "code": "LOSSES_P_MW",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "MW",
-              "value": 0.0009984810404551625
+              "value": 0.00099848104
             },
             "LOSSES_Q_Mvar": {
               "code": "LOSSES_Q_Mvar",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "Mvar",
-              "value": 0.00012461541846554348
+              "value": 0.000124615418
             },
             "P_MW": {
               "code": "P_MW",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "MW",
-              "value": -0.07900174394917787
+              "value": -0.0790017439
             },
             "Q_Mvar": {
               "code": "Q_Mvar",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "Mvar",
-              "value": 0.00012462181931008971
+              "value": 0.000124621819
             },
             "S_MVA": {
               "code": "S_MVA",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "MVA",
-              "value": 0.07900184224186999
+              "value": 0.0790018422
             }
           },
           "ref_id": "QF-03_kabel",
@@ -1374,14 +1374,14 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "°",
-              "value": -149.68704776831183
+              "value": -149.687048
             },
             "U_kV": {
               "code": "U_kV",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kV",
-              "value": 0.40539679176441246
+              "value": 0.405396792
             }
           },
           "ref_id": "QF-03_pcc",
@@ -1396,14 +1396,14 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "°",
-              "value": -149.77742471239114
+              "value": -149.777425
             },
             "U_kV": {
               "code": "U_kV",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kV",
-              "value": 0.400337541456696
+              "value": 0.400337541
             }
           },
           "ref_id": "QF-03_zacisk",
@@ -1454,14 +1454,14 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "°",
-              "value": -149.77898768616416
+              "value": -149.778988
             },
             "U_kV": {
               "code": "U_kV",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kV",
-              "value": 0.3997628901272865
+              "value": 0.39976289
             }
           },
           "ref_id": "RGN-2_szyna",
@@ -1476,14 +1476,14 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "°",
-              "value": -149.78025357982867
+              "value": -149.780254
             },
             "U_kV": {
               "code": "U_kV",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kV",
-              "value": 0.4003178392822515
+              "value": 0.400317839
             }
           },
           "ref_id": "RGnN-1",
@@ -1498,63 +1498,63 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "",
-              "value": 0.9978833528061506
+              "value": 0.997883353
             },
             "DELTA_U_KV": {
               "code": "DELTA_U_KV",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kV",
-              "value": 14.599696442886183
+              "value": 14.5996964
             },
             "DELTA_U_PCT": {
               "code": "DELTA_U_PCT",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "%",
-              "value": -0.07588927845414428
+              "value": -0.0758892785
             },
             "I_A": {
               "code": "I_A",
               "format_hint": "fixed1",
               "source": "solver",
               "unit": "A",
-              "value": 2.3469740774995858
+              "value": 2.34697408
             },
             "LOSSES_P_MW": {
               "code": "LOSSES_P_MW",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "MW",
-              "value": 6.07972529071063e-05
+              "value": 6.07972529e-05
             },
             "LOSSES_Q_Mvar": {
               "code": "LOSSES_Q_Mvar",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "Mvar",
-              "value": 0.0002281062962162096
+              "value": 0.000228106296
             },
             "P_MW": {
               "code": "P_MW",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "MW",
-              "value": -0.0608471101440293
+              "value": -0.0608471101
             },
             "Q_Mvar": {
               "code": "Q_Mvar",
               "format_hint": "fixed4",
               "source": "solver",
               "unit": "Mvar",
-              "value": 0.003965240021425176
+              "value": 0.00396524002
             },
             "S_MVA": {
               "code": "S_MVA",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "MVA",
-              "value": 0.06097617519414566
+              "value": 0.0609761752
             }
           },
           "ref_id": "T1",
@@ -1569,14 +1569,14 @@
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "°",
-              "value": -149.78256492021004
+              "value": -149.782565
             },
             "U_kV": {
               "code": "U_kV",
               "format_hint": "fixed2",
               "source": "solver",
               "unit": "kV",
-              "value": 0.4003035571138166
+              "value": 0.400303557
             }
           },
           "ref_id": "T1_zacisk",
@@ -1699,141 +1699,141 @@
           "bus_id": "QF-03_pcc",
           "bus_name": "PV1 · punkt przyłączenia",
           "case_name": null,
-          "delta_pct": 1.3491979411031085,
+          "delta_pct": 1.34919794,
           "p_mw": null,
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
           "solver_bus_id": "bbe4a646-d98e-51e4-a3d7-93b69de70588",
           "status": "PASS",
-          "u_kv": 0.40539679176441246,
+          "u_kv": 0.405396792,
           "u_nom_kv": 0.4,
-          "u_pu": 1.013491979411031
+          "u_pu": 1.01349198
         },
         {
           "bus_id": "FU-21_koniec",
           "bus_name": "Zacisk Odbiór RGN-2",
           "case_name": null,
-          "delta_pct": -0.4224021665430733,
+          "delta_pct": -0.422402167,
           "p_mw": null,
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
           "solver_bus_id": "1269ff2f-7988-5fe7-942f-fa287f72d3ad",
           "status": "PASS",
-          "u_kv": 0.39831039133382773,
+          "u_kv": 0.398310391,
           "u_nom_kv": 0.4,
-          "u_pu": 0.9957759783345693
+          "u_pu": 0.995775978
         },
         {
           "bus_id": "QF-01_koniec",
           "bus_name": "Zacisk Odbiór 1",
           "case_name": null,
-          "delta_pct": -0.37919699494215475,
+          "delta_pct": -0.379196995,
           "p_mw": null,
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
           "solver_bus_id": "ed38533a-00d5-5316-b004-e20ff7023da9",
           "status": "PASS",
-          "u_kv": 0.3984832120202314,
+          "u_kv": 0.398483212,
           "u_nom_kv": 0.4,
-          "u_pu": 0.9962080300505785
+          "u_pu": 0.99620803
         },
         {
           "bus_id": "QF-03_zacisk",
           "bus_name": "QF-03 zacisk wyjściowy",
           "case_name": null,
-          "delta_pct": 0.0843853641739889,
+          "delta_pct": 0.0843853642,
           "p_mw": null,
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
           "solver_bus_id": "3747b718-1225-5ddf-97b3-144f9ec46ea6",
           "status": "PASS",
-          "u_kv": 0.400337541456696,
+          "u_kv": 0.400337541,
           "u_nom_kv": 0.4,
-          "u_pu": 1.0008438536417399
+          "u_pu": 1.00084385
         },
         {
           "bus_id": "RGnN-1",
           "bus_name": "RGnN-1",
           "case_name": null,
-          "delta_pct": 0.0794598205628716,
+          "delta_pct": 0.0794598206,
           "p_mw": null,
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
           "solver_bus_id": "c8cbea4b-8412-51a7-be92-56b1b8184ef2",
           "status": "PASS",
-          "u_kv": 0.4003178392822515,
+          "u_kv": 0.400317839,
           "u_nom_kv": 0.4,
-          "u_pu": 1.0007945982056288
+          "u_pu": 1.0007946
         },
         {
           "bus_id": "QF-02_zacisk",
           "bus_name": "QF-02 zacisk wyjściowy",
           "case_name": null,
-          "delta_pct": 0.07900808949030946,
+          "delta_pct": 0.0790080895,
           "p_mw": null,
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
           "solver_bus_id": "529fa4ef-5aac-5377-a0d8-c0449633b6ce",
           "status": "PASS",
-          "u_kv": 0.40031603235796126,
+          "u_kv": 0.400316032,
           "u_nom_kv": 0.4,
-          "u_pu": 1.000790080894903
+          "u_pu": 1.00079008
         },
         {
           "bus_id": "QF-01_zacisk",
           "bus_name": "QF-01 zacisk wyjściowy",
           "case_name": null,
-          "delta_pct": 0.07855675577113364,
+          "delta_pct": 0.0785567558,
           "p_mw": null,
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
           "solver_bus_id": "95a12785-5406-5c81-8168-0b598ee26787",
           "status": "PASS",
-          "u_kv": 0.40031422702308456,
+          "u_kv": 0.400314227,
           "u_nom_kv": 0.4,
-          "u_pu": 1.0007855675577113
+          "u_pu": 1.00078557
         },
         {
           "bus_id": "T1_zacisk",
           "bus_name": "T1 zacisk nN",
           "case_name": null,
-          "delta_pct": 0.07588927845414428,
+          "delta_pct": 0.0758892785,
           "p_mw": null,
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
           "solver_bus_id": "52d24f01-220e-51b6-8ea6-df847f5ce215",
           "status": "PASS",
-          "u_kv": 0.4003035571138166,
+          "u_kv": 0.400303557,
           "u_nom_kv": 0.4,
-          "u_pu": 1.0007588927845414
+          "u_pu": 1.00075889
         },
         {
           "bus_id": "FU-21_zacisk",
           "bus_name": "FU-21 zacisk wyjściowy",
           "case_name": null,
-          "delta_pct": -0.05972920591323927,
+          "delta_pct": -0.0597292059,
           "p_mw": null,
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
           "solver_bus_id": "ccfbea28-0407-5498-a677-b880efc15f82",
           "status": "PASS",
-          "u_kv": 0.39976108317634707,
+          "u_kv": 0.399761083,
           "u_nom_kv": 0.4,
-          "u_pu": 0.9994027079408676
+          "u_pu": 0.999402708
         },
         {
           "bus_id": "RGN-2_szyna",
           "bus_name": "RGN-2",
           "case_name": null,
-          "delta_pct": -0.05927746817838142,
+          "delta_pct": -0.0592774682,
           "p_mw": null,
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
           "solver_bus_id": "343a61e5-480a-54f3-82d2-86076aa1ba80",
           "status": "PASS",
-          "u_kv": 0.3997628901272865,
+          "u_kv": 0.39976289,
           "u_nom_kv": 0.4,
-          "u_pu": 0.9994072253182162
+          "u_pu": 0.999407225
         }
       ],
       "summary": {
@@ -1842,7 +1842,7 @@
         "pass_count": 11,
         "warning_count": 0,
         "worst_bus_id": "QF-03_pcc",
-        "worst_delta_pct_abs": 1.3491979411031085
+        "worst_delta_pct_abs": 1.34919794
       },
       "thresholds": {
         "voltage_fail_pct": 10.0,
@@ -1870,35 +1870,35 @@
                   "components": [
                     {
                       "label": "Przewód fazowy L (trasa)",
-                      "magnitude_ohm": 0.06013318551349163,
+                      "magnitude_ohm": 0.0601331855,
                       "r_ohm": 0.06,
                       "x_ohm": 0.004
                     },
                     {
                       "label": "Przewód powrotny PE/PEN (trasa)",
-                      "magnitude_ohm": 0.06013318551349163,
+                      "magnitude_ohm": 0.0601331855,
                       "r_ohm": 0.06,
                       "x_ohm": 0.004
                     },
                     {
                       "label": "Transformator SN/nN T1",
-                      "magnitude_ohm": 0.010158730158730162,
-                      "r_ohm": 0.0026162761400856643,
-                      "x_ohm": 0.009816053055923863
+                      "magnitude_ohm": 0.0101587302,
+                      "r_ohm": 0.00261627614,
+                      "x_ohm": 0.00981605306
                     },
                     {
                       "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                      "magnitude_ohm": 0.0003625969431888203,
-                      "r_ohm": 7.111111111111113e-05,
-                      "x_ohm": 0.00035555555555555557
+                      "magnitude_ohm": 0.000362596943,
+                      "r_ohm": 7.11111111e-05,
+                      "x_ohm": 0.000355555556
                     }
                   ],
                   "fault_node_id": "QF-01_koniec",
-                  "ik_max_a": 1955.134231522845,
-                  "ik_min_a": 1768.9309713778118,
+                  "ik_max_a": 1955.13423,
+                  "ik_min_a": 1768.93097,
                   "network_type": "TN-C-S",
                   "protection_arrangement": "PEN",
-                  "u_nom_v": 230.94010767585033,
+                  "u_nom_v": 230.940108,
                   "white_box_trace": [
                     {
                       "components": [
@@ -1914,38 +1914,38 @@
                         },
                         {
                           "label": "Transformator SN/nN T1",
-                          "r_ohm": 0.0026162761400856643,
-                          "x_ohm": 0.009816053055923863
+                          "r_ohm": 0.00261627614,
+                          "x_ohm": 0.00981605306
                         },
                         {
                           "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                          "r_ohm": 7.111111111111113e-05,
-                          "x_ohm": 0.00035555555555555557
+                          "r_ohm": 7.11111111e-05,
+                          "x_ohm": 0.000355555556
                         }
                       ],
                       "method": "Z_loop = Σ(R_i + jX_i)",
                       "result": {
-                        "magnitude_ohm": 0.12402581324084883,
-                        "r_total_ohm": 0.12268738725119677,
-                        "x_total_ohm": 0.018171608611479418
+                        "magnitude_ohm": 0.124025813,
+                        "r_total_ohm": 0.122687387,
+                        "x_total_ohm": 0.0181716086
                       },
                       "step": "sum_components"
                     },
                     {
                       "c_max": 1.05,
                       "c_min": 0.95,
-                      "ik_max_a": 1955.134231522845,
-                      "ik_min_a": 1768.9309713778118,
+                      "ik_max_a": 1955.13423,
+                      "ik_min_a": 1768.93097,
                       "method": "I_k = c * U_n / |Z_loop|",
                       "step": "compute_ik",
-                      "u_nom_v": 230.94010767585033,
-                      "z_magnitude_ohm": 0.12402581324084883
+                      "u_nom_v": 230.940108,
+                      "z_magnitude_ohm": 0.124025813
                     }
                   ],
                   "z_loop_ohm": {
-                    "im": 0.018171608611479418,
-                    "magnitude": 0.12402581324084883,
-                    "re": 0.12268738725119677
+                    "im": 0.0181716086,
+                    "magnitude": 0.124025813,
+                    "re": 0.122687387
                   }
                 },
                 "hop_count": 3,
@@ -1970,23 +1970,23 @@
                     },
                     {
                       "label": "Transformator SN/nN T1",
-                      "magnitude_ohm": 0.010158730158730162,
-                      "r_ohm": 0.0026162761400856643,
-                      "x_ohm": 0.009816053055923863
+                      "magnitude_ohm": 0.0101587302,
+                      "r_ohm": 0.00261627614,
+                      "x_ohm": 0.00981605306
                     },
                     {
                       "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                      "magnitude_ohm": 0.0003625969431888203,
-                      "r_ohm": 7.111111111111113e-05,
-                      "x_ohm": 0.00035555555555555557
+                      "magnitude_ohm": 0.000362596943,
+                      "r_ohm": 7.11111111e-05,
+                      "x_ohm": 0.000355555556
                     }
                   ],
                   "fault_node_id": "QF-01_zacisk",
-                  "ik_max_a": 23048.72380363071,
-                  "ik_min_a": 20853.607250903973,
+                  "ik_max_a": 23048.7238,
+                  "ik_min_a": 20853.6073,
                   "network_type": "TN-C-S",
                   "protection_arrangement": "PEN",
-                  "u_nom_v": 230.94010767585033,
+                  "u_nom_v": 230.940108,
                   "white_box_trace": [
                     {
                       "components": [
@@ -2002,38 +2002,38 @@
                         },
                         {
                           "label": "Transformator SN/nN T1",
-                          "r_ohm": 0.0026162761400856643,
-                          "x_ohm": 0.009816053055923863
+                          "r_ohm": 0.00261627614,
+                          "x_ohm": 0.00981605306
                         },
                         {
                           "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                          "r_ohm": 7.111111111111113e-05,
-                          "x_ohm": 0.00035555555555555557
+                          "r_ohm": 7.11111111e-05,
+                          "x_ohm": 0.000355555556
                         }
                       ],
                       "method": "Z_loop = Σ(R_i + jX_i)",
                       "result": {
-                        "magnitude_ohm": 0.010520630778761187,
-                        "r_total_ohm": 0.0026873872511967755,
-                        "x_total_ohm": 0.010171608611479418
+                        "magnitude_ohm": 0.0105206308,
+                        "r_total_ohm": 0.00268738725,
+                        "x_total_ohm": 0.0101716086
                       },
                       "step": "sum_components"
                     },
                     {
                       "c_max": 1.05,
                       "c_min": 0.95,
-                      "ik_max_a": 23048.72380363071,
-                      "ik_min_a": 20853.607250903973,
+                      "ik_max_a": 23048.7238,
+                      "ik_min_a": 20853.6073,
                       "method": "I_k = c * U_n / |Z_loop|",
                       "step": "compute_ik",
-                      "u_nom_v": 230.94010767585033,
-                      "z_magnitude_ohm": 0.010520630778761187
+                      "u_nom_v": 230.940108,
+                      "z_magnitude_ohm": 0.0105206308
                     }
                   ],
                   "z_loop_ohm": {
-                    "im": 0.010171608611479418,
-                    "magnitude": 0.010520630778761187,
-                    "re": 0.0026873872511967755
+                    "im": 0.0101716086,
+                    "magnitude": 0.0105206308,
+                    "re": 0.00268738725
                   }
                 },
                 "hop_count": 2,
@@ -2050,35 +2050,35 @@
                 "components": [
                   {
                     "label": "Przewód fazowy L (trasa)",
-                    "magnitude_ohm": 0.09368543109790338,
+                    "magnitude_ohm": 0.0936854311,
                     "r_ohm": 0.0936,
                     "x_ohm": 0.004
                   },
                   {
                     "label": "Przewód powrotny PE/PEN (trasa)",
-                    "magnitude_ohm": 0.09368543109790338,
+                    "magnitude_ohm": 0.0936854311,
                     "r_ohm": 0.0936,
                     "x_ohm": 0.004
                   },
                   {
                     "label": "Transformator SN/nN T1",
-                    "magnitude_ohm": 0.010158730158730162,
-                    "r_ohm": 0.0026162761400856643,
-                    "x_ohm": 0.009816053055923863
+                    "magnitude_ohm": 0.0101587302,
+                    "r_ohm": 0.00261627614,
+                    "x_ohm": 0.00981605306
                   },
                   {
                     "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                    "magnitude_ohm": 0.0003625969431888203,
-                    "r_ohm": 7.111111111111113e-05,
-                    "x_ohm": 0.00035555555555555557
+                    "magnitude_ohm": 0.000362596943,
+                    "r_ohm": 7.11111111e-05,
+                    "x_ohm": 0.000355555556
                   }
                 ],
                 "fault_node_id": "QF-01_koniec",
-                "ik_max_a": 1271.197377602393,
-                "ik_min_a": 1150.1309606878795,
+                "ik_max_a": 1271.19738,
+                "ik_min_a": 1150.13096,
                 "network_type": "TN-C-S",
                 "protection_arrangement": "PEN",
-                "u_nom_v": 230.94010767585033,
+                "u_nom_v": 230.940108,
                 "white_box_trace": [
                   {
                     "components": [
@@ -2094,38 +2094,38 @@
                       },
                       {
                         "label": "Transformator SN/nN T1",
-                        "r_ohm": 0.0026162761400856643,
-                        "x_ohm": 0.009816053055923863
+                        "r_ohm": 0.00261627614,
+                        "x_ohm": 0.00981605306
                       },
                       {
                         "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                        "r_ohm": 7.111111111111113e-05,
-                        "x_ohm": 0.00035555555555555557
+                        "r_ohm": 7.11111111e-05,
+                        "x_ohm": 0.000355555556
                       }
                     ],
                     "method": "Z_loop = Σ(R_i + jX_i)",
                     "result": {
-                      "magnitude_ohm": 0.19075488773977656,
-                      "r_total_ohm": 0.18988738725119678,
-                      "x_total_ohm": 0.018171608611479418
+                      "magnitude_ohm": 0.190754888,
+                      "r_total_ohm": 0.189887387,
+                      "x_total_ohm": 0.0181716086
                     },
                     "step": "sum_components"
                   },
                   {
                     "c_max": 1.05,
                     "c_min": 0.95,
-                    "ik_max_a": 1271.197377602393,
-                    "ik_min_a": 1150.1309606878795,
+                    "ik_max_a": 1271.19738,
+                    "ik_min_a": 1150.13096,
                     "method": "I_k = c * U_n / |Z_loop|",
                     "step": "compute_ik",
-                    "u_nom_v": 230.94010767585033,
-                    "z_magnitude_ohm": 0.19075488773977656
+                    "u_nom_v": 230.940108,
+                    "z_magnitude_ohm": 0.190754888
                   }
                 ],
                 "z_loop_ohm": {
-                  "im": 0.018171608611479418,
-                  "magnitude": 0.19075488773977656,
-                  "re": 0.18988738725119678
+                  "im": 0.0181716086,
+                  "magnitude": 0.190754888,
+                  "re": 0.189887387
                 }
               },
               "missing_data": [],
@@ -2135,8 +2135,8 @@
               "status": "OK",
               "swz": {
                 "ia_wymagane_a": 250.0,
-                "ik1_min_a": 1150.1309606878795,
-                "margines": 4.600523842751517,
+                "ik1_min_a": 1150.13096,
+                "margines": 4.60052384,
                 "pasmo_u0": "120<U0<=230",
                 "przyczyna_pl": "Ik1_min=1150.1 A ≥ Ia=250.0 A (MCB C 25 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (<0,1 s) — poniżej t_wymagany=0.4 s z Tab. 41.1 (odbiorczy, pasmo U0 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
                 "rodzaj_obwodu": "odbiorczy",
@@ -2150,7 +2150,7 @@
                     "rodzaj_obwodu": "odbiorczy",
                     "step": "tabela_czasow_41_1",
                     "t_wymagany_s": 0.4,
-                    "u0_v": 230.94010767585033
+                    "u0_v": 230.940108
                   },
                   {
                     "ia_a": 250.0,
@@ -2161,8 +2161,8 @@
                   },
                   {
                     "ia_a": 250.0,
-                    "ik1_min_a": 1150.1309606878795,
-                    "margines": 4.600523842751517,
+                    "ik1_min_a": 1150.13096,
+                    "margines": 4.60052384,
                     "method": "Ik1_min ≥ Ia ⇒ wyzwolenie magnetyczne gwarantowane (chwilowe, <0,1 s < t_wymagany z Tab. 41.1)",
                     "result": "spełnia",
                     "step": "werdykt"
@@ -2182,35 +2182,35 @@
                   "components": [
                     {
                       "label": "Przewód fazowy L (trasa)",
-                      "magnitude_ohm": 0.13135236427259314,
+                      "magnitude_ohm": 0.131352364,
                       "r_ohm": 0.13094,
                       "x_ohm": 0.0104
                     },
                     {
                       "label": "Przewód powrotny PE/PEN (trasa)",
-                      "magnitude_ohm": 0.13135236427259314,
+                      "magnitude_ohm": 0.131352364,
                       "r_ohm": 0.13094,
                       "x_ohm": 0.0104
                     },
                     {
                       "label": "Transformator SN/nN T1",
-                      "magnitude_ohm": 0.010158730158730162,
-                      "r_ohm": 0.0026162761400856643,
-                      "x_ohm": 0.009816053055923863
+                      "magnitude_ohm": 0.0101587302,
+                      "r_ohm": 0.00261627614,
+                      "x_ohm": 0.00981605306
                     },
                     {
                       "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                      "magnitude_ohm": 0.0003625969431888203,
-                      "r_ohm": 7.111111111111113e-05,
-                      "x_ohm": 0.00035555555555555557
+                      "magnitude_ohm": 0.000362596943,
+                      "r_ohm": 7.11111111e-05,
+                      "x_ohm": 0.000355555556
                     }
                   ],
                   "fault_node_id": "FU-21_koniec",
-                  "ik_max_a": 910.3255315827589,
-                  "ik_min_a": 823.6278619082103,
+                  "ik_max_a": 910.325532,
+                  "ik_min_a": 823.627862,
                   "network_type": "TN-C-S",
                   "protection_arrangement": "PEN",
-                  "u_nom_v": 230.94010767585033,
+                  "u_nom_v": 230.940108,
                   "white_box_trace": [
                     {
                       "components": [
@@ -2226,38 +2226,38 @@
                         },
                         {
                           "label": "Transformator SN/nN T1",
-                          "r_ohm": 0.0026162761400856643,
-                          "x_ohm": 0.009816053055923863
+                          "r_ohm": 0.00261627614,
+                          "x_ohm": 0.00981605306
                         },
                         {
                           "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                          "r_ohm": 7.111111111111113e-05,
-                          "x_ohm": 0.00035555555555555557
+                          "r_ohm": 7.11111111e-05,
+                          "x_ohm": 0.000355555556
                         }
                       ],
                       "method": "Z_loop = Σ(R_i + jX_i)",
                       "result": {
-                        "magnitude_ohm": 0.26637406581142126,
-                        "r_total_ohm": 0.2645673872511968,
-                        "x_total_ohm": 0.030971608611479417
+                        "magnitude_ohm": 0.266374066,
+                        "r_total_ohm": 0.264567387,
+                        "x_total_ohm": 0.0309716086
                       },
                       "step": "sum_components"
                     },
                     {
                       "c_max": 1.05,
                       "c_min": 0.95,
-                      "ik_max_a": 910.3255315827589,
-                      "ik_min_a": 823.6278619082103,
+                      "ik_max_a": 910.325532,
+                      "ik_min_a": 823.627862,
                       "method": "I_k = c * U_n / |Z_loop|",
                       "step": "compute_ik",
-                      "u_nom_v": 230.94010767585033,
-                      "z_magnitude_ohm": 0.26637406581142126
+                      "u_nom_v": 230.940108,
+                      "z_magnitude_ohm": 0.266374066
                     }
                   ],
                   "z_loop_ohm": {
-                    "im": 0.030971608611479417,
-                    "magnitude": 0.26637406581142126,
-                    "re": 0.2645673872511968
+                    "im": 0.0309716086,
+                    "magnitude": 0.266374066,
+                    "re": 0.264567387
                   }
                 },
                 "hop_count": 5,
@@ -2270,35 +2270,35 @@
                   "components": [
                     {
                       "label": "Przewód fazowy L (trasa)",
-                      "magnitude_ohm": 0.03601324200901663,
+                      "magnitude_ohm": 0.036013242,
                       "r_ohm": 0.03544,
                       "x_ohm": 0.0064
                     },
                     {
                       "label": "Przewód powrotny PE/PEN (trasa)",
-                      "magnitude_ohm": 0.03601324200901663,
+                      "magnitude_ohm": 0.036013242,
                       "r_ohm": 0.03544,
                       "x_ohm": 0.0064
                     },
                     {
                       "label": "Transformator SN/nN T1",
-                      "magnitude_ohm": 0.010158730158730162,
-                      "r_ohm": 0.0026162761400856643,
-                      "x_ohm": 0.009816053055923863
+                      "magnitude_ohm": 0.0101587302,
+                      "r_ohm": 0.00261627614,
+                      "x_ohm": 0.00981605306
                     },
                     {
                       "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                      "magnitude_ohm": 0.0003625969431888203,
-                      "r_ohm": 7.111111111111113e-05,
-                      "x_ohm": 0.00035555555555555557
+                      "magnitude_ohm": 0.000362596943,
+                      "r_ohm": 7.11111111e-05,
+                      "x_ohm": 0.000355555556
                     }
                   ],
                   "fault_node_id": "FU-21_zacisk",
-                  "ik_max_a": 3146.3043556386942,
-                  "ik_min_a": 2846.656321768342,
+                  "ik_max_a": 3146.30436,
+                  "ik_min_a": 2846.65632,
                   "network_type": "TN-C-S",
                   "protection_arrangement": "PEN",
-                  "u_nom_v": 230.94010767585033,
+                  "u_nom_v": 230.940108,
                   "white_box_trace": [
                     {
                       "components": [
@@ -2314,38 +2314,38 @@
                         },
                         {
                           "label": "Transformator SN/nN T1",
-                          "r_ohm": 0.0026162761400856643,
-                          "x_ohm": 0.009816053055923863
+                          "r_ohm": 0.00261627614,
+                          "x_ohm": 0.00981605306
                         },
                         {
                           "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                          "r_ohm": 7.111111111111113e-05,
-                          "x_ohm": 0.00035555555555555557
+                          "r_ohm": 7.11111111e-05,
+                          "x_ohm": 0.000355555556
                         }
                       ],
                       "method": "Z_loop = Σ(R_i + jX_i)",
                       "result": {
-                        "magnitude_ohm": 0.07707045652626267,
-                        "r_total_ohm": 0.07356738725119677,
-                        "x_total_ohm": 0.02297160861147942
+                        "magnitude_ohm": 0.0770704565,
+                        "r_total_ohm": 0.0735673873,
+                        "x_total_ohm": 0.0229716086
                       },
                       "step": "sum_components"
                     },
                     {
                       "c_max": 1.05,
                       "c_min": 0.95,
-                      "ik_max_a": 3146.3043556386942,
-                      "ik_min_a": 2846.656321768342,
+                      "ik_max_a": 3146.30436,
+                      "ik_min_a": 2846.65632,
                       "method": "I_k = c * U_n / |Z_loop|",
                       "step": "compute_ik",
-                      "u_nom_v": 230.94010767585033,
-                      "z_magnitude_ohm": 0.07707045652626267
+                      "u_nom_v": 230.940108,
+                      "z_magnitude_ohm": 0.0770704565
                     }
                   ],
                   "z_loop_ohm": {
-                    "im": 0.02297160861147942,
-                    "magnitude": 0.07707045652626267,
-                    "re": 0.07356738725119677
+                    "im": 0.0229716086,
+                    "magnitude": 0.0770704565,
+                    "re": 0.0735673873
                   }
                 },
                 "hop_count": 4,
@@ -2370,23 +2370,23 @@
                     },
                     {
                       "label": "Transformator SN/nN T1",
-                      "magnitude_ohm": 0.010158730158730162,
-                      "r_ohm": 0.0026162761400856643,
-                      "x_ohm": 0.009816053055923863
+                      "magnitude_ohm": 0.0101587302,
+                      "r_ohm": 0.00261627614,
+                      "x_ohm": 0.00981605306
                     },
                     {
                       "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                      "magnitude_ohm": 0.0003625969431888203,
-                      "r_ohm": 7.111111111111113e-05,
-                      "x_ohm": 0.00035555555555555557
+                      "magnitude_ohm": 0.000362596943,
+                      "r_ohm": 7.11111111e-05,
+                      "x_ohm": 0.000355555556
                     }
                   ],
                   "fault_node_id": "QF-02_zacisk",
-                  "ik_max_a": 23048.72380363071,
-                  "ik_min_a": 20853.607250903973,
+                  "ik_max_a": 23048.7238,
+                  "ik_min_a": 20853.6073,
                   "network_type": "TN-C-S",
                   "protection_arrangement": "PEN",
-                  "u_nom_v": 230.94010767585033,
+                  "u_nom_v": 230.940108,
                   "white_box_trace": [
                     {
                       "components": [
@@ -2402,38 +2402,38 @@
                         },
                         {
                           "label": "Transformator SN/nN T1",
-                          "r_ohm": 0.0026162761400856643,
-                          "x_ohm": 0.009816053055923863
+                          "r_ohm": 0.00261627614,
+                          "x_ohm": 0.00981605306
                         },
                         {
                           "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                          "r_ohm": 7.111111111111113e-05,
-                          "x_ohm": 0.00035555555555555557
+                          "r_ohm": 7.11111111e-05,
+                          "x_ohm": 0.000355555556
                         }
                       ],
                       "method": "Z_loop = Σ(R_i + jX_i)",
                       "result": {
-                        "magnitude_ohm": 0.010520630778761187,
-                        "r_total_ohm": 0.0026873872511967755,
-                        "x_total_ohm": 0.010171608611479418
+                        "magnitude_ohm": 0.0105206308,
+                        "r_total_ohm": 0.00268738725,
+                        "x_total_ohm": 0.0101716086
                       },
                       "step": "sum_components"
                     },
                     {
                       "c_max": 1.05,
                       "c_min": 0.95,
-                      "ik_max_a": 23048.72380363071,
-                      "ik_min_a": 20853.607250903973,
+                      "ik_max_a": 23048.7238,
+                      "ik_min_a": 20853.6073,
                       "method": "I_k = c * U_n / |Z_loop|",
                       "step": "compute_ik",
-                      "u_nom_v": 230.94010767585033,
-                      "z_magnitude_ohm": 0.010520630778761187
+                      "u_nom_v": 230.940108,
+                      "z_magnitude_ohm": 0.0105206308
                     }
                   ],
                   "z_loop_ohm": {
-                    "im": 0.010171608611479418,
-                    "magnitude": 0.010520630778761187,
-                    "re": 0.0026873872511967755
+                    "im": 0.0101716086,
+                    "magnitude": 0.0105206308,
+                    "re": 0.00268738725
                   }
                 },
                 "hop_count": 2,
@@ -2446,35 +2446,35 @@
                   "components": [
                     {
                       "label": "Przewód fazowy L (trasa)",
-                      "magnitude_ohm": 0.03601324200901663,
+                      "magnitude_ohm": 0.036013242,
                       "r_ohm": 0.03544,
                       "x_ohm": 0.0064
                     },
                     {
                       "label": "Przewód powrotny PE/PEN (trasa)",
-                      "magnitude_ohm": 0.03601324200901663,
+                      "magnitude_ohm": 0.036013242,
                       "r_ohm": 0.03544,
                       "x_ohm": 0.0064
                     },
                     {
                       "label": "Transformator SN/nN T1",
-                      "magnitude_ohm": 0.010158730158730162,
-                      "r_ohm": 0.0026162761400856643,
-                      "x_ohm": 0.009816053055923863
+                      "magnitude_ohm": 0.0101587302,
+                      "r_ohm": 0.00261627614,
+                      "x_ohm": 0.00981605306
                     },
                     {
                       "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                      "magnitude_ohm": 0.0003625969431888203,
-                      "r_ohm": 7.111111111111113e-05,
-                      "x_ohm": 0.00035555555555555557
+                      "magnitude_ohm": 0.000362596943,
+                      "r_ohm": 7.11111111e-05,
+                      "x_ohm": 0.000355555556
                     }
                   ],
                   "fault_node_id": "RGN-2_szyna",
-                  "ik_max_a": 3146.3043556386942,
-                  "ik_min_a": 2846.656321768342,
+                  "ik_max_a": 3146.30436,
+                  "ik_min_a": 2846.65632,
                   "network_type": "TN-C-S",
                   "protection_arrangement": "PEN",
-                  "u_nom_v": 230.94010767585033,
+                  "u_nom_v": 230.940108,
                   "white_box_trace": [
                     {
                       "components": [
@@ -2490,38 +2490,38 @@
                         },
                         {
                           "label": "Transformator SN/nN T1",
-                          "r_ohm": 0.0026162761400856643,
-                          "x_ohm": 0.009816053055923863
+                          "r_ohm": 0.00261627614,
+                          "x_ohm": 0.00981605306
                         },
                         {
                           "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                          "r_ohm": 7.111111111111113e-05,
-                          "x_ohm": 0.00035555555555555557
+                          "r_ohm": 7.11111111e-05,
+                          "x_ohm": 0.000355555556
                         }
                       ],
                       "method": "Z_loop = Σ(R_i + jX_i)",
                       "result": {
-                        "magnitude_ohm": 0.07707045652626267,
-                        "r_total_ohm": 0.07356738725119677,
-                        "x_total_ohm": 0.02297160861147942
+                        "magnitude_ohm": 0.0770704565,
+                        "r_total_ohm": 0.0735673873,
+                        "x_total_ohm": 0.0229716086
                       },
                       "step": "sum_components"
                     },
                     {
                       "c_max": 1.05,
                       "c_min": 0.95,
-                      "ik_max_a": 3146.3043556386942,
-                      "ik_min_a": 2846.656321768342,
+                      "ik_max_a": 3146.30436,
+                      "ik_min_a": 2846.65632,
                       "method": "I_k = c * U_n / |Z_loop|",
                       "step": "compute_ik",
-                      "u_nom_v": 230.94010767585033,
-                      "z_magnitude_ohm": 0.07707045652626267
+                      "u_nom_v": 230.940108,
+                      "z_magnitude_ohm": 0.0770704565
                     }
                   ],
                   "z_loop_ohm": {
-                    "im": 0.02297160861147942,
-                    "magnitude": 0.07707045652626267,
-                    "re": 0.07356738725119677
+                    "im": 0.0229716086,
+                    "magnitude": 0.0770704565,
+                    "re": 0.0735673873
                   }
                 },
                 "hop_count": 3,
@@ -2538,82 +2538,82 @@
                 "components": [
                   {
                     "label": "Przewód fazowy L (trasa)",
-                    "magnitude_ohm": 0.20453098095144415,
-                    "r_ohm": 0.20426640000000001,
+                    "magnitude_ohm": 0.204530981,
+                    "r_ohm": 0.2042664,
                     "x_ohm": 0.0104
                   },
                   {
                     "label": "Przewód powrotny PE/PEN (trasa)",
-                    "magnitude_ohm": 0.20453098095144415,
-                    "r_ohm": 0.20426640000000001,
+                    "magnitude_ohm": 0.204530981,
+                    "r_ohm": 0.2042664,
                     "x_ohm": 0.0104
                   },
                   {
                     "label": "Transformator SN/nN T1",
-                    "magnitude_ohm": 0.010158730158730162,
-                    "r_ohm": 0.0026162761400856643,
-                    "x_ohm": 0.009816053055923863
+                    "magnitude_ohm": 0.0101587302,
+                    "r_ohm": 0.00261627614,
+                    "x_ohm": 0.00981605306
                   },
                   {
                     "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                    "magnitude_ohm": 0.0003625969431888203,
-                    "r_ohm": 7.111111111111113e-05,
-                    "x_ohm": 0.00035555555555555557
+                    "magnitude_ohm": 0.000362596943,
+                    "r_ohm": 7.11111111e-05,
+                    "x_ohm": 0.000355555556
                   }
                 ],
                 "fault_node_id": "FU-21_koniec",
-                "ik_max_a": 588.0116592977384,
-                "ik_min_a": 532.0105488884299,
+                "ik_max_a": 588.011659,
+                "ik_min_a": 532.010549,
                 "network_type": "TN-C-S",
                 "protection_arrangement": "PEN",
-                "u_nom_v": 230.94010767585033,
+                "u_nom_v": 230.940108,
                 "white_box_trace": [
                   {
                     "components": [
                       {
                         "label": "Przewód fazowy L (trasa)",
-                        "r_ohm": 0.20426640000000001,
+                        "r_ohm": 0.2042664,
                         "x_ohm": 0.0104
                       },
                       {
                         "label": "Przewód powrotny PE/PEN (trasa)",
-                        "r_ohm": 0.20426640000000001,
+                        "r_ohm": 0.2042664,
                         "x_ohm": 0.0104
                       },
                       {
                         "label": "Transformator SN/nN T1",
-                        "r_ohm": 0.0026162761400856643,
-                        "x_ohm": 0.009816053055923863
+                        "r_ohm": 0.00261627614,
+                        "x_ohm": 0.00981605306
                       },
                       {
                         "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                        "r_ohm": 7.111111111111113e-05,
-                        "x_ohm": 0.00035555555555555557
+                        "r_ohm": 7.11111111e-05,
+                        "x_ohm": 0.000355555556
                       }
                     ],
                     "method": "Z_loop = Σ(R_i + jX_i)",
                     "result": {
-                      "magnitude_ohm": 0.41238487234971655,
-                      "r_total_ohm": 0.4112201872511968,
-                      "x_total_ohm": 0.030971608611479417
+                      "magnitude_ohm": 0.412384872,
+                      "r_total_ohm": 0.411220187,
+                      "x_total_ohm": 0.0309716086
                     },
                     "step": "sum_components"
                   },
                   {
                     "c_max": 1.05,
                     "c_min": 0.95,
-                    "ik_max_a": 588.0116592977384,
-                    "ik_min_a": 532.0105488884299,
+                    "ik_max_a": 588.011659,
+                    "ik_min_a": 532.010549,
                     "method": "I_k = c * U_n / |Z_loop|",
                     "step": "compute_ik",
-                    "u_nom_v": 230.94010767585033,
-                    "z_magnitude_ohm": 0.41238487234971655
+                    "u_nom_v": 230.940108,
+                    "z_magnitude_ohm": 0.412384872
                   }
                 ],
                 "z_loop_ohm": {
-                  "im": 0.030971608611479417,
-                  "magnitude": 0.41238487234971655,
-                  "re": 0.4112201872511968
+                  "im": 0.0309716086,
+                  "magnitude": 0.412384872,
+                  "re": 0.411220187
                 }
               },
               "missing_data": [],
@@ -2623,8 +2623,8 @@
               "status": "OK",
               "swz": {
                 "ia_wymagane_a": 1250.0,
-                "ik1_min_a": 532.0105488884299,
-                "margines": 0.4256084391107439,
+                "ik1_min_a": 532.010549,
+                "margines": 0.425608439,
                 "pasmo_u0": "120<U0<=230",
                 "przyczyna_pl": "Ik1_min=532.0 A < Ia=1250.0 A (MCB C 125 A) — wyzwolenie magnetyczne NIE jest gwarantowane; aparat może nie wyłączyć w czasie t_wymagany=5 s z Tab. 41.1 (rozdzielczy, pasmo U0 120<U0<=230).",
                 "rodzaj_obwodu": "rozdzielczy",
@@ -2638,7 +2638,7 @@
                     "rodzaj_obwodu": "rozdzielczy",
                     "step": "tabela_czasow_41_1",
                     "t_wymagany_s": 5.0,
-                    "u0_v": 230.94010767585033
+                    "u0_v": 230.940108
                   },
                   {
                     "ia_a": 1250.0,
@@ -2649,8 +2649,8 @@
                   },
                   {
                     "ia_a": 1250.0,
-                    "ik1_min_a": 532.0105488884299,
-                    "margines": 0.4256084391107439,
+                    "ik1_min_a": 532.010549,
+                    "margines": 0.425608439,
                     "method": "Ik1_min ≥ Ia ⇒ wyzwolenie magnetyczne gwarantowane (chwilowe, <0,1 s < t_wymagany z Tab. 41.1)",
                     "result": "nie spełnia",
                     "step": "werdykt"
@@ -2670,35 +2670,35 @@
                   "components": [
                     {
                       "label": "Przewód fazowy L (trasa)",
-                      "magnitude_ohm": 0.025838916385947767,
+                      "magnitude_ohm": 0.0258389164,
                       "r_ohm": 0.02564,
                       "x_ohm": 0.0032
                     },
                     {
                       "label": "Przewód powrotny PE/PEN (trasa)",
-                      "magnitude_ohm": 0.025838916385947767,
+                      "magnitude_ohm": 0.0258389164,
                       "r_ohm": 0.02564,
                       "x_ohm": 0.0032
                     },
                     {
                       "label": "Transformator SN/nN T1",
-                      "magnitude_ohm": 0.010158730158730162,
-                      "r_ohm": 0.0026162761400856643,
-                      "x_ohm": 0.009816053055923863
+                      "magnitude_ohm": 0.0101587302,
+                      "r_ohm": 0.00261627614,
+                      "x_ohm": 0.00981605306
                     },
                     {
                       "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                      "magnitude_ohm": 0.0003625969431888203,
-                      "r_ohm": 7.111111111111113e-05,
-                      "x_ohm": 0.00035555555555555557
+                      "magnitude_ohm": 0.000362596943,
+                      "r_ohm": 7.11111111e-05,
+                      "x_ohm": 0.000355555556
                     }
                   ],
                   "fault_node_id": "QF-03_pcc",
-                  "ik_max_a": 4295.2754084106855,
-                  "ik_min_a": 3886.20155999062,
+                  "ik_max_a": 4295.27541,
+                  "ik_min_a": 3886.20156,
                   "network_type": "TN-C-S",
                   "protection_arrangement": "PEN",
-                  "u_nom_v": 230.94010767585033,
+                  "u_nom_v": 230.940108,
                   "white_box_trace": [
                     {
                       "components": [
@@ -2714,38 +2714,38 @@
                         },
                         {
                           "label": "Transformator SN/nN T1",
-                          "r_ohm": 0.0026162761400856643,
-                          "x_ohm": 0.009816053055923863
+                          "r_ohm": 0.00261627614,
+                          "x_ohm": 0.00981605306
                         },
                         {
                           "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                          "r_ohm": 7.111111111111113e-05,
-                          "x_ohm": 0.00035555555555555557
+                          "r_ohm": 7.11111111e-05,
+                          "x_ohm": 0.000355555556
                         }
                       ],
                       "method": "Z_loop = Σ(R_i + jX_i)",
                       "result": {
-                        "magnitude_ohm": 0.056454380686468394,
-                        "r_total_ohm": 0.05396738725119678,
-                        "x_total_ohm": 0.01657160861147942
+                        "magnitude_ohm": 0.0564543807,
+                        "r_total_ohm": 0.0539673873,
+                        "x_total_ohm": 0.0165716086
                       },
                       "step": "sum_components"
                     },
                     {
                       "c_max": 1.05,
                       "c_min": 0.95,
-                      "ik_max_a": 4295.2754084106855,
-                      "ik_min_a": 3886.20155999062,
+                      "ik_max_a": 4295.27541,
+                      "ik_min_a": 3886.20156,
                       "method": "I_k = c * U_n / |Z_loop|",
                       "step": "compute_ik",
-                      "u_nom_v": 230.94010767585033,
-                      "z_magnitude_ohm": 0.056454380686468394
+                      "u_nom_v": 230.940108,
+                      "z_magnitude_ohm": 0.0564543807
                     }
                   ],
                   "z_loop_ohm": {
-                    "im": 0.01657160861147942,
-                    "magnitude": 0.056454380686468394,
-                    "re": 0.05396738725119678
+                    "im": 0.0165716086,
+                    "magnitude": 0.0564543807,
+                    "re": 0.0539673873
                   }
                 },
                 "hop_count": 3,
@@ -2770,23 +2770,23 @@
                     },
                     {
                       "label": "Transformator SN/nN T1",
-                      "magnitude_ohm": 0.010158730158730162,
-                      "r_ohm": 0.0026162761400856643,
-                      "x_ohm": 0.009816053055923863
+                      "magnitude_ohm": 0.0101587302,
+                      "r_ohm": 0.00261627614,
+                      "x_ohm": 0.00981605306
                     },
                     {
                       "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                      "magnitude_ohm": 0.0003625969431888203,
-                      "r_ohm": 7.111111111111113e-05,
-                      "x_ohm": 0.00035555555555555557
+                      "magnitude_ohm": 0.000362596943,
+                      "r_ohm": 7.11111111e-05,
+                      "x_ohm": 0.000355555556
                     }
                   ],
                   "fault_node_id": "QF-03_zacisk",
-                  "ik_max_a": 23048.72380363071,
-                  "ik_min_a": 20853.607250903973,
+                  "ik_max_a": 23048.7238,
+                  "ik_min_a": 20853.6073,
                   "network_type": "TN-C-S",
                   "protection_arrangement": "PEN",
-                  "u_nom_v": 230.94010767585033,
+                  "u_nom_v": 230.940108,
                   "white_box_trace": [
                     {
                       "components": [
@@ -2802,38 +2802,38 @@
                         },
                         {
                           "label": "Transformator SN/nN T1",
-                          "r_ohm": 0.0026162761400856643,
-                          "x_ohm": 0.009816053055923863
+                          "r_ohm": 0.00261627614,
+                          "x_ohm": 0.00981605306
                         },
                         {
                           "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                          "r_ohm": 7.111111111111113e-05,
-                          "x_ohm": 0.00035555555555555557
+                          "r_ohm": 7.11111111e-05,
+                          "x_ohm": 0.000355555556
                         }
                       ],
                       "method": "Z_loop = Σ(R_i + jX_i)",
                       "result": {
-                        "magnitude_ohm": 0.010520630778761187,
-                        "r_total_ohm": 0.0026873872511967755,
-                        "x_total_ohm": 0.010171608611479418
+                        "magnitude_ohm": 0.0105206308,
+                        "r_total_ohm": 0.00268738725,
+                        "x_total_ohm": 0.0101716086
                       },
                       "step": "sum_components"
                     },
                     {
                       "c_max": 1.05,
                       "c_min": 0.95,
-                      "ik_max_a": 23048.72380363071,
-                      "ik_min_a": 20853.607250903973,
+                      "ik_max_a": 23048.7238,
+                      "ik_min_a": 20853.6073,
                       "method": "I_k = c * U_n / |Z_loop|",
                       "step": "compute_ik",
-                      "u_nom_v": 230.94010767585033,
-                      "z_magnitude_ohm": 0.010520630778761187
+                      "u_nom_v": 230.940108,
+                      "z_magnitude_ohm": 0.0105206308
                     }
                   ],
                   "z_loop_ohm": {
-                    "im": 0.010171608611479418,
-                    "magnitude": 0.010520630778761187,
-                    "re": 0.0026873872511967755
+                    "im": 0.0101716086,
+                    "magnitude": 0.0105206308,
+                    "re": 0.00268738725
                   }
                 },
                 "hop_count": 2,
@@ -2850,35 +2850,35 @@
                 "components": [
                   {
                     "label": "Przewód fazowy L (trasa)",
-                    "magnitude_ohm": 0.04012620094850745,
+                    "magnitude_ohm": 0.0401262009,
                     "r_ohm": 0.0399984,
                     "x_ohm": 0.0032
                   },
                   {
                     "label": "Przewód powrotny PE/PEN (trasa)",
-                    "magnitude_ohm": 0.04012620094850745,
+                    "magnitude_ohm": 0.0401262009,
                     "r_ohm": 0.0399984,
                     "x_ohm": 0.0032
                   },
                   {
                     "label": "Transformator SN/nN T1",
-                    "magnitude_ohm": 0.010158730158730162,
-                    "r_ohm": 0.0026162761400856643,
-                    "x_ohm": 0.009816053055923863
+                    "magnitude_ohm": 0.0101587302,
+                    "r_ohm": 0.00261627614,
+                    "x_ohm": 0.00981605306
                   },
                   {
                     "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                    "magnitude_ohm": 0.0003625969431888203,
-                    "r_ohm": 7.111111111111113e-05,
-                    "x_ohm": 0.00035555555555555557
+                    "magnitude_ohm": 0.000362596943,
+                    "r_ohm": 7.11111111e-05,
+                    "x_ohm": 0.000355555556
                   }
                 ],
                 "fault_node_id": "QF-03_pcc",
-                "ik_max_a": 2875.5066453576856,
-                "ik_min_a": 2601.6488696093343,
+                "ik_max_a": 2875.50665,
+                "ik_min_a": 2601.64887,
                 "network_type": "TN-C-S",
                 "protection_arrangement": "PEN",
-                "u_nom_v": 230.94010767585033,
+                "u_nom_v": 230.940108,
                 "white_box_trace": [
                   {
                     "components": [
@@ -2894,38 +2894,38 @@
                       },
                       {
                         "label": "Transformator SN/nN T1",
-                        "r_ohm": 0.0026162761400856643,
-                        "x_ohm": 0.009816053055923863
+                        "r_ohm": 0.00261627614,
+                        "x_ohm": 0.00981605306
                       },
                       {
                         "label": "Sieć SN (upstream Thevenin, sprowadzone do nN)",
-                        "r_ohm": 7.111111111111113e-05,
-                        "x_ohm": 0.00035555555555555557
+                        "r_ohm": 7.11111111e-05,
+                        "x_ohm": 0.000355555556
                       }
                     ],
                     "method": "Z_loop = Σ(R_i + jX_i)",
                     "result": {
-                      "magnitude_ohm": 0.08432848293052016,
-                      "r_total_ohm": 0.08268418725119678,
-                      "x_total_ohm": 0.01657160861147942
+                      "magnitude_ohm": 0.0843284829,
+                      "r_total_ohm": 0.0826841873,
+                      "x_total_ohm": 0.0165716086
                     },
                     "step": "sum_components"
                   },
                   {
                     "c_max": 1.05,
                     "c_min": 0.95,
-                    "ik_max_a": 2875.5066453576856,
-                    "ik_min_a": 2601.6488696093343,
+                    "ik_max_a": 2875.50665,
+                    "ik_min_a": 2601.64887,
                     "method": "I_k = c * U_n / |Z_loop|",
                     "step": "compute_ik",
-                    "u_nom_v": 230.94010767585033,
-                    "z_magnitude_ohm": 0.08432848293052016
+                    "u_nom_v": 230.940108,
+                    "z_magnitude_ohm": 0.0843284829
                   }
                 ],
                 "z_loop_ohm": {
-                  "im": 0.01657160861147942,
-                  "magnitude": 0.08432848293052016,
-                  "re": 0.08268418725119678
+                  "im": 0.0165716086,
+                  "magnitude": 0.0843284829,
+                  "re": 0.0826841873
                 }
               },
               "missing_data": [],
@@ -2935,8 +2935,8 @@
               "status": "OK",
               "swz": {
                 "ia_wymagane_a": 1000.0,
-                "ik1_min_a": 2601.6488696093343,
-                "margines": 2.6016488696093343,
+                "ik1_min_a": 2601.64887,
+                "margines": 2.60164887,
                 "pasmo_u0": "120<U0<=230",
                 "przyczyna_pl": "Ik1_min=2601.6 A ≥ Ia=1000.0 A (MCB C 100 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (<0,1 s) — poniżej t_wymagany=5 s z Tab. 41.1 (rozdzielczy, pasmo U0 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
                 "rodzaj_obwodu": "rozdzielczy",
@@ -2950,7 +2950,7 @@
                     "rodzaj_obwodu": "rozdzielczy",
                     "step": "tabela_czasow_41_1",
                     "t_wymagany_s": 5.0,
-                    "u0_v": 230.94010767585033
+                    "u0_v": 230.940108
                   },
                   {
                     "ia_a": 1000.0,
@@ -2961,8 +2961,8 @@
                   },
                   {
                     "ia_a": 1000.0,
-                    "ik1_min_a": 2601.6488696093343,
-                    "margines": 2.6016488696093343,
+                    "ik1_min_a": 2601.64887,
+                    "margines": 2.60164887,
                     "method": "Ik1_min ≥ Ia ⇒ wyzwolenie magnetyczne gwarantowane (chwilowe, <0,1 s < t_wymagany z Tab. 41.1)",
                     "result": "spełnia",
                     "step": "werdykt"
@@ -2987,15 +2987,15 @@
       "calculation_run_id": "43da0501-f8f2-5bf9-bfdc-844e7ee6d987",
       "case_id": "fixture-16_stale_result",
       "equivalent_id": "55157d9b-7be6-5d04-9d4e-476827a009d3",
-      "ikss_ka": 18.682571063385836,
+      "ikss_ka": 18.6825711,
       "missing_data": [],
       "model_hash": "63affe9f31ee5113e671a174f016ae9143a93966e29e86b40ba9b3b619dfd402",
       "model_revision": 1,
       "note_pl": "Równoważnik Thevenina sieci SN w punkcie HV transformatora — granica wizualna domeny nN (L2) jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten snapshot jest dokładnie tym wejściem, którym solver pętli zwarcia nN liczy stronę SN (application.analyses.fault_loop).",
       "operating_state_id": "7b13a7b48d5efd8098b86178ba1b429f7e2eba0be6da9ef14fb8cc1245c1cf43",
-      "rx_ratio": 0.2000000000000001,
+      "rx_ratio": 0.2,
       "scenario_id": "MAX",
-      "sk_mva": 485.3874344670056,
+      "sk_mva": 485.387434,
       "source_node_id": "597eca72-4f74-52ca-9b72-548d57f0df86",
       "station_name": "Stacja C",
       "station_ref": "stC",
@@ -3018,8 +3018,8 @@
         "x": 0.0
       },
       "z1_ohm": {
-        "r": 0.10000000000000002,
-        "x": 0.4999999999999999
+        "r": 0.1,
+        "x": 0.5
       }
     }
   ],

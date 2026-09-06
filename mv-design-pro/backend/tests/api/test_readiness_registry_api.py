@@ -21,7 +21,6 @@ def test_rejestr_wystawia_kanon_z_akcjami(app_client) -> None:
     # Kod z realnym emiterem (V12K-189) niesie komplet tresci naprawczej.
     prad = po_kodzie["protection.fault_current_missing"]
     assert prad["level"] == "WARNING"
-    assert prad["fix_action_id"] == "fix_protection_run_short_circuit"
     assert prad["fix_navigation"]["panel"] == "analizy"
     assert prad["reserved_reason"] is None
 

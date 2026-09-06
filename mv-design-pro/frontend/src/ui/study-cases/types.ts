@@ -71,29 +71,50 @@ export interface StudyCaseConfig {
 }
 
 /**
- * Study case result reference.
+ * Jedna rewizja modelu powstała PO rewizji wyniku — to ona go unieważniła.
+ * Wszystkie pola pochodzą z backendu (kanon operacji + `changes` operacji
+ * domenowej); UI ich nie tłumaczy i nie uzupełnia.
  */
-export interface StudyCaseResultRef {
-  analysis_run_id: string;
-  analysis_type: string;
-  calculated_at: string;
-  input_hash: string;
+export interface ZmianaOdBiegu {
+  rewizja: number;
+  /** Kanoniczna nazwa operacji; `null` = rewizja bez zarejestrowanej operacji. */
+  operacja: string | null;
+  opis_pl: string;
+  elementy: string[];
+}
+
+/**
+ * Status wyników przypadku — WYPROWADZANY po stronie backendu z biegów przypadku
+ * i koperty rewizji (`application/study_case/status_wynikow.py`). UI wyłącznie go
+ * pokazuje: zero własnych tekstów tłumaczących i zero porównywania rewizji na
+ * własną rękę.
+ */
+export interface StatusWynikowPrzypadku {
+  result_status: StudyCaseResultStatus;
+  /** Explicit flag — true only when result_status === 'FRESH'. */
+  results_valid: boolean;
+  /** Kod maszynowy przyczyny (stabilny, bez diakrytyków). */
+  result_status_reason: string;
+  /** Zdanie dla projektanta — JEDYNE źródło tekstu przyczyny w UI. */
+  result_status_reason_pl: string;
+  /** Rewizja modelu, na której policzono wynik (`null` = brak wyniku). */
+  rewizja_biegu: number | null;
+  /** Bieżąca rewizja modelu (`null` = model przypadku niedostępny). */
+  rewizja_biezaca: number | null;
+  /** Które zmiany unieważniły wynik (puste dla FRESH i NONE). */
+  zmiany_od_biegu: ZmianaOdBiegu[];
 }
 
 /**
  * Study case entity.
  */
-export interface StudyCase {
+export interface StudyCase extends StatusWynikowPrzypadku {
   id: string;
   project_id: string;
   name: string;
   description: string;
   config: StudyCaseConfig;
-  result_status: StudyCaseResultStatus;
-  /** PR-4: Explicit flag — true only when result_status === 'FRESH'. */
-  results_valid: boolean;
   is_active: boolean;
-  result_refs: StudyCaseResultRef[];
   revision: number;
   created_at: string;
   updated_at: string;
@@ -102,13 +123,10 @@ export interface StudyCase {
 /**
  * Study case list item (summary).
  */
-export interface StudyCaseListItem {
+export interface StudyCaseListItem extends StatusWynikowPrzypadku {
   id: string;
   name: string;
   description: string;
-  result_status: StudyCaseResultStatus;
-  /** PR-4: Explicit flag — true only when result_status === 'FRESH'. */
-  results_valid: boolean;
   is_active: boolean;
   updated_at: string;
 }
@@ -177,16 +195,14 @@ export const RESULT_STATUS_LABELS: Record<StudyCaseResultStatus, string> = {
   OUTDATED: 'Wyniki nieaktualne',
 };
 
-/**
- * Polish tooltips for result status (expanded descriptions).
- * UI-09: Rozbudowane tooltips statusów przypadków.
+/*
+ * RESULT_STATUS_TOOLTIPS USUNIĘTE (CV-2-W). Był to WŁASNY tekst UI tłumaczący
+ * status („model został zmieniony po ostatnim obliczeniu") — zgadywany, bo UI
+ * nie znał przyczyny. Backend wyprowadza status z biegów przypadku i podaje
+ * PRZYCZYNĘ zdaniem po polsku (`result_status_reason_pl`), także dla przypadków,
+ * których UI nie umiał nazwać (zmiana biblioteki typów katalogowych, koperta
+ * rewizji niespójna). Ekrany pokazują ten tekst; nie piszą własnego.
  */
-export const RESULT_STATUS_TOOLTIPS: Record<StudyCaseResultStatus, string> = {
-  NONE: 'Wyniki do obliczenia — obliczenia nie zostały jeszcze wykonane',
-  FRESH: 'Wyniki aktualne — obliczenia wykonane po ostatniej zmianie modelu',
-  OUTDATED:
-    'Wyniki nieaktualne — model został zmieniony po ostatnim obliczeniu. Zalecenie: wykonaj obliczenia ponownie.',
-};
 
 /**
  * Polish labels for configuration fields.
@@ -313,9 +329,37 @@ export interface CreateRunRequest {
 // =============================================================================
 
 /**
- * Status serii przebiegów — 1:1 z domeną backendu (`domain/batch_job.py`).
+ * Status serii przebiegów — 1:1 z domeną backendu (`domain/run_batch.py`,
+ * karta CV-3.3-C: rejestr trwały `run_batches`). Słownik dzieli wartości z
+ * `CanonicalRun.status` (CREATED/RUNNING/FINISHED/FAILED) + PARTIAL, jedyny
+ * stan niemożliwy dla pojedynczego biegu (część pozycji FAILED, reszta
+ * FINISHED — seria NIGDY nie melduje cicho FINISHED).
  */
-export type BatchStatus = 'PENDING' | 'RUNNING' | 'DONE' | 'FAILED';
+export type BatchStatus = 'CREATED' | 'RUNNING' | 'FINISHED' | 'FAILED' | 'PARTIAL';
+
+/** Status WYKONANIA jednej pozycji serii — TEN SAM słownik co bieg kanoniczny
+ * (bez PARTIAL — to stan wyłącznie serii, agregat pozycji). */
+export type BatchItemStatus = 'CREATED' | 'RUNNING' | 'FINISHED' | 'FAILED';
+
+/**
+ * Jedna pozycja serii (kontrakt `items[]`, karta CV-3.3-C). ZERO własnego
+ * wyniku — wynik = bieg kanoniczny po `canonical_run_id`
+ * (`GET /api/execution/runs/{canonical_run_id}`).
+ */
+export interface BatchItem {
+  position: number;
+  scenario_id: string;
+  analysis_type: ExecutionAnalysisType;
+  options_hash: string;
+  canonical_run_id: string | null;
+  status: BatchItemStatus;
+  error_message: string | null;
+  /** Świeżość WYNIKU pozycji względem modelu bieżącego — liczona na żywo
+   * (TA SAMA funkcja co nakładka pojedynczego biegu), nie „zielona na zawsze". */
+  result_freshness: StudyCaseResultStatus;
+  result_freshness_reason: string;
+  result_freshness_reason_pl: string;
+}
 
 /**
  * Rekord serii przebiegów (kontrakt `GET /api/execution/study-cases/{id}/batches`).
@@ -328,11 +372,15 @@ export interface BatchJob {
   analysis_type: ExecutionAnalysisType;
   scenario_ids: string[];
   created_at: string;
+  finished_at: string | null;
   status: BatchStatus;
   batch_input_hash: string;
   run_ids: string[];
   result_set_ids: string[];
   errors: string[];
+  name: string | null;
+  envelope: Record<string, unknown> | null;
+  items: BatchItem[];
 }
 
 /**
@@ -340,14 +388,17 @@ export interface BatchJob {
  */
 export interface CreateBatchRequest {
   scenario_ids: string[];
+  /** Nazwa serii nadana przez projektanta (opcjonalna; backend przycina, pusta = brak). */
+  name?: string;
 }
 
 /**
  * Polskie etykiety statusów serii.
  */
 export const BATCH_STATUS_LABELS: Record<BatchStatus, string> = {
-  PENDING: 'Utworzona',
+  CREATED: 'Utworzona',
   RUNNING: 'W trakcie',
-  DONE: 'Zakończona',
+  FINISHED: 'Zakończona',
   FAILED: 'Błąd',
+  PARTIAL: 'Częściowa',
 };

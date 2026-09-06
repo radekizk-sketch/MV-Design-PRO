@@ -29,6 +29,14 @@
  */
 import { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+// Ten sam dostawca React Query co `main.tsx` (jeden klient z `./query-client`):
+// komponenty montowane w harnessie czytają katalogi backendu przez `useQuery`
+// (od karty FAB-J m.in. kreator OZE i snapshot audytu 2) — bez dostawcy strona
+// harnessu padała przy montażu i korzeń z `data-status` nigdy nie powstawał
+// (5 czerwonych specyfikacji `creator-screenshot` w CI). Klasa: KAŻDE wejście
+// `*-harness-main.tsx`, nie tylko kreatora.
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './query-client';
 import { SldCanvasV3 } from './ui/sld/v3/canvas/SldCanvasV3';
 import type { ThemeMode } from './ui2/theme/themeMode';
 import type { SldV3Overlay, SegmentFlowOverlay } from './ui/sld/v3/canvas/overlay';
@@ -95,9 +103,22 @@ function overlayModeFromQuery(): OverlayMode {
   return raw === 'pf' || raw === 'faultflow' ? raw : null;
 }
 
+/** Przypadek towarzysza rozpływu z `?case=` (E2E-FIX) — `normal` (domyślny,
+ *  stan radialny) albo `maintenance` (druga migawka: stacja wyłączona do
+ *  konserwacji, `select_ring_maintenance_scenario` / `compute_substrate_
+ *  power_flow_maintenance`, backend). Nazwa pliku fixtury niesie sufiks
+ *  `.maintenance` — SAME dwie lokalizacje co companion normalny. */
+type PowerFlowCase = 'normal' | 'maintenance';
+
+function powerFlowCaseFromQuery(): PowerFlowCase {
+  const raw = new URLSearchParams(window.location.search).get('case');
+  return raw === 'maintenance' ? 'maintenance' : 'normal';
+}
+
 async function loadPowerFlowCompanion(mode: OverlayMode): Promise<PowerFlowCompanion | null> {
   if (mode !== 'pf') return null; // rysunek bazowy / inny tryb nakładki
-  const resp = await fetch('/test-fixtures/sldSubstrate52s.powerflow.json');
+  const suffix = powerFlowCaseFromQuery() === 'maintenance' ? '.maintenance' : '';
+  const resp = await fetch(`/test-fixtures/sldSubstrate52s.powerflow${suffix}.json`);
   if (!resp.ok) return null; // brak companion = rysunek bazowy bez nakładki
   return await resp.json() as PowerFlowCompanion;
 }
@@ -312,4 +333,8 @@ function SubstrateHarness(): JSX.Element {
 
 const rootEl = document.getElementById('root');
 if (!rootEl) throw new Error('screenshot-harness: brak elementu #root');
-createRoot(rootEl).render(<SubstrateHarness />);
+createRoot(rootEl).render(
+  <QueryClientProvider client={queryClient}>
+    <SubstrateHarness />
+  </QueryClientProvider>,
+);

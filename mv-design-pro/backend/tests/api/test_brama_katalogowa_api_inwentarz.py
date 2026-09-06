@@ -77,7 +77,7 @@ REF_APARAT_NN = "cb_nn_630a"
 REF_KABEL_NN = "kab_nn_4x120_al"
 REF_CT = "ct_400_5_5p20_15va_abb"
 REF_VT = "vt_15kv_100v_3p_abb"
-REF_PRZEKAZNIK = "ACME_REX100_v1"
+REF_PRZEKAZNIK = "REF-OC-100"
 REF_ODBIOR = "load_mieszk_15kw"
 REF_KOMPENSATOR = "KOMP_SN_1V2_15KV"
 REF_OGRANICZNIK = "arrester-abb-polim-d-24kv-10ka"
@@ -140,6 +140,12 @@ def _payload_zrodla(**nadpisania: Any) -> dict[str, Any]:
         "voltage_kv": 15.0,
         "sk3_mva": 250.0,
         "catalog_ref": REF_ZRODLO,
+        # Karta FAB-G: transformator WN/SN GPZ wymaga jawnej pary hv_voltage_kv
+        # + transformer_sn_mva (albo transformer_catalog_ref) — nadpisania
+        # (np. transformer_catalog_ref=REF_TRAFO_WN_SN w iniekcji bramy) i tak
+        # wygrywaja przez `payload.update(nadpisania)` ponizej.
+        "hv_voltage_kv": 110.0,
+        "transformer_sn_mva": 25.0,
     }
     payload.update(nadpisania)
     return payload
@@ -718,13 +724,36 @@ def _pusty_enm() -> dict[str, Any]:
 
 
 @pytest.fixture()
-def klient(tmp_path, monkeypatch) -> TestClient:  # type: ignore[no-untyped-def]
+def klient(tmp_path, monkeypatch, uow_factory) -> TestClient:  # type: ignore[no-untyped-def]
+    from api.dependencies import get_uow_factory
+
     monkeypatch.setenv("ENM_STORE_DIR", str(tmp_path))
     reset_enm_store()
     wyczysc_dziennik()
+    app.dependency_overrides[get_uow_factory] = lambda: uow_factory
+    app.state.uow_factory = uow_factory
     yield TestClient(app)
+    app.dependency_overrides.pop(get_uow_factory, None)
+    app.state.uow_factory = None
     reset_enm_store()
     wyczysc_dziennik()
+
+
+def _nowy_przypadek(klient: TestClient) -> str:
+    """Utwórz REALNY projekt + przypadek przez API; zwróć `case_id`.
+
+    CV-1-W: przypadek bez wiersza w bazie dostaje teraz 404 z magazynu ENM
+    (inwariant I-2) — testy bramy katalogowej potrzebują prawdziwej pary
+    projekt+przypadek zamiast dowolnego napisu.
+    """
+    project_resp = klient.post("/api/projects", json={"name": "Brama katalogowa — test"})
+    assert project_resp.status_code == 201, project_resp.text
+    project_id = project_resp.json()["id"]
+    case_resp = klient.post(
+        "/api/study-cases", json={"project_id": project_id, "name": "Przypadek testu"}
+    )
+    assert case_resp.status_code == 201, case_resp.text
+    return str(case_resp.json()["id"])
 
 
 def _operacja_api(
@@ -812,14 +841,20 @@ def test_produkcyjna_droga_zapisu_konczy_zle_referencje_kodem_422(
     klient: TestClient, iniekcja: IniekcjaHttp
 ) -> None:
     """422 `catalog.item_not_found`, model bez zmian — nie `HTTP 200` z kodem w treści."""
-    case_id = f"brama-api-{abs(hash((iniekcja.operacja, iniekcja.sciezka)))}"
+    case_id = _nowy_przypadek(klient)
     snapshot: dict[str, Any] = {}
     if iniekcja.wymaga_ciagu:
         snapshot = _operacja_api(
             klient,
             case_id,
             "add_grid_source_sn",
-            {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": REF_ZRODLO},
+            {
+                "voltage_kv": 15.0,
+                "sk3_mva": 250.0,
+                "catalog_ref": REF_ZRODLO,
+                "hv_voltage_kv": 110.0,
+                "transformer_sn_mva": 25.0,
+            },
         )
         snapshot = _operacja_api(
             klient,
@@ -999,7 +1034,7 @@ def test_predykat_wiazan_der_jest_ten_sam_co_w_warstwie_domenowej() -> None:
     tylko_analityczne = [
         urzadzenie.device_id
         for urzadzenie in list_devices()
-        if not urzadzenie.device_id.startswith("ACME_")
+        if not urzadzenie.device_id.startswith("REF-")
     ]
     assert tylko_analityczne, "Katalog analityczny zabezpieczeń jest pusty — skan bez kotwicy"
 
@@ -1217,16 +1252,35 @@ def _enm_z_odplywem_nn() -> tuple[dict[str, Any], str]:
     return feeder["snapshot"], str(feeder["selection_hint"]["element_id"])
 
 
-def _zasiej_odplyw_nn(case_id: str) -> str:
-    """Zapisuje w store model z odpływem nN i zwraca jego `feeder_ref` —
-    przygotowanie stanu POZA drogą HTTP (setup, nie przedmiot testu), żeby
-    dalsze wywołanie `add_nn_load` w teście szło PRODUKCYJNĄ drogą zapisu
-    (`POST .../enm/domain-ops`), a nie bezpośrednim `execute_domain_operation`.
+def _zasiej_odplyw_nn(klucz: str) -> str:
+    """Zapisuje w store (pod kluczem magazynu ENM projektu, CV-1-W) model z
+    odpływem nN i zwraca jego `feeder_ref` — przygotowanie stanu POZA drogą
+    HTTP (setup, nie przedmiot testu), żeby dalsze wywołanie `add_nn_load`
+    w teście szło PRODUKCYJNĄ drogą zapisu (`POST .../enm/domain-ops`), a nie
+    bezpośrednim `execute_domain_operation`.
     """
     snapshot, feeder_ref = _enm_z_odplywem_nn()
     model = EnergyNetworkModel.model_validate(snapshot)
-    set_enm(case_id, model)
+    set_enm(klucz, model)
     return feeder_ref
+
+
+def _nowy_przypadek_z_kluczem(klient: TestClient) -> tuple[str, str]:
+    """Jak `_nowy_przypadek`, ale zwraca też klucz magazynu ENM projektu
+    (`(klucz, case_id)`) — potrzebny, gdy seedowanie idzie mimo API (`set_enm`
+    wprost), więc musi trafić pod TEN SAM klucz, który czyta produkcyjna droga
+    zapisu (CV-1-W: magazyn kluczowany kluczem projektu, nie surowym case_id).
+    """
+    from enm.klucz_twin import klucz_twin_projektu
+
+    project_resp = klient.post("/api/projects", json={"name": "Brama katalogowa — test"})
+    assert project_resp.status_code == 201, project_resp.text
+    project_id = project_resp.json()["id"]
+    case_resp = klient.post(
+        "/api/study-cases", json={"project_id": project_id, "name": "Przypadek testu"}
+    )
+    assert case_resp.status_code == 201, case_resp.text
+    return klucz_twin_projektu(project_id), str(case_resp.json()["id"])
 
 
 def test_add_nn_load_ekspercki_reczny_wymaga_jawnej_deklaracji() -> None:
@@ -1297,8 +1351,8 @@ def test_add_nn_load_ekspercki_reczny_znacznik_przez_pelne_api(klient: TestClien
     test_znacznik_pochodzenia_katalogowego_v2.py`. Dowód, że ścieżka ekspercka
     jest osiągalna z produkcyjnej drogi zapisu, tak jak jest z domeny.
     """
-    case_id = "brama-api-nn-load-ekspercki-ok"
-    feeder_ref = _zasiej_odplyw_nn(case_id)
+    klucz, case_id = _nowy_przypadek_z_kluczem(klient)
+    feeder_ref = _zasiej_odplyw_nn(klucz)
 
     odpowiedz = klient.post(
         f"/api/cases/{case_id}/enm/domain-ops",
@@ -1309,6 +1363,10 @@ def test_add_nn_load_ekspercki_reczny_znacznik_przez_pelne_api(klient: TestClien
                     "feeder_ref": feeder_ref,
                     "active_power_kw": 12.0,
                     "source_mode": "EKSPERCKI_RECZNY",
+                    # cos_phi jawny: `add_nn_load` wymaga rozstrzygalnej mocy
+                    # biernej (FAB-D1 D5) — ten test sprawdza znacznik trybu
+                    # eksperckiego przez pełne API, nie moc bierną.
+                    "cos_phi": 0.9,
                 },
             }
         },
@@ -1330,8 +1388,8 @@ def test_add_nn_load_bez_deklaracji_i_bez_katalogu_daje_422(klient: TestClient) 
     iniekcja co przypadek (3) w teście funkcyjnym powyżej, przeprowadzona
     PRODUKCYJNĄ drogą zapisu.
     """
-    case_id = "brama-api-nn-load-422"
-    feeder_ref = _zasiej_odplyw_nn(case_id)
+    klucz, case_id = _nowy_przypadek_z_kluczem(klient)
+    feeder_ref = _zasiej_odplyw_nn(klucz)
     hash_przed = klient.get(f"/api/cases/{case_id}/enm").json()["header"]["hash_sha256"]
 
     odpowiedz = klient.post(

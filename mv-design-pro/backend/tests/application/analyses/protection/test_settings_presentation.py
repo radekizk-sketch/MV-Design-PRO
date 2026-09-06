@@ -46,8 +46,8 @@ def test_kompletny_zestaw_ma_wszystkie_pozycje_dostepne() -> None:
     assert widok["brakujace"] == []
     assert [p["stan"] for p in widok["pozycje"]] == [STAN_DOSTEPNA] * 4
     assert [p["wartosc"] for p in widok["pozycje"]] == [120.0, 800.0, 60.0, 300.0]
-    # Pozycja dostepna nie niesie akcji naprawczej — nie ma czego naprawiac.
-    assert all(p["fix_action_id"] is None for p in widok["pozycje"])
+    # Pozycja dostepna nie niesie nawigacji naprawczej — nie ma czego naprawiac.
+    assert all(p["fix_navigation"] is None for p in widok["pozycje"])
     assert widok["podsumowanie_pl"].startswith("Wszystkie nastawy")
 
 
@@ -65,10 +65,9 @@ def test_niedostepna_nastawa_ma_stan_powod_i_akcje_naprawcza() -> None:
     assert brak["stan"] == STAN_NIEDOSTEPNA
     assert brak["wartosc"] is None
     assert brak["komunikat_pl"] == KOMUNIKAT_NIEDOSTEPNA
-    # Powod i akcja z KANONICZNEGO rejestru — nie z wlasnego tekstu tego modulu.
+    # Powod i nawigacja z KANONICZNEGO rejestru — nie z wlasnego tekstu tego modulu.
     spec = READINESS_CODES["protection.fault_current_missing"]
     assert brak["powod_pl"] == spec.message_pl
-    assert brak["fix_action_id"] == spec.fix_action_id
     assert brak["fix_navigation"] == spec.fix_navigation
     assert "3 z 4" in widok["podsumowanie_pl"]
 
@@ -89,7 +88,7 @@ def test_brak_pradu_znamionowego_dotyczy_tylko_nastawy_rozruchowej() -> None:
     widok = zbuduj_prezentacje_nastaw(nastawy)
     po_kluczu = {p["klucz"]: p for p in widok["pozycje"]}
     spec = READINESS_CODES["protection.nominal_current_missing"]
-    assert po_kluczu["i_pickup_51_a"]["fix_action_id"] == spec.fix_action_id
+    assert po_kluczu["i_pickup_51_a"]["fix_navigation"] == spec.fix_navigation
     assert po_kluczu["i_pickup_51_a"]["powod_pl"] == spec.message_pl
     assert po_kluczu["i_inst_50_a"]["stan"] == STAN_DOSTEPNA
 
@@ -105,7 +104,7 @@ def test_brak_nastawy_bez_kodu_gotowosci_mowi_o_tym_wprost() -> None:
     widok = zbuduj_prezentacje_nastaw(nastawy)
     pozycja = next(p for p in widok["pozycje"] if p["klucz"] == "i_inst_50_a")
     assert pozycja["stan"] == STAN_NIEDOSTEPNA
-    assert pozycja["fix_action_id"] is None
+    assert pozycja["fix_navigation"] is None
     assert "nie podala powodu" in pozycja["powod_pl"]
 
 

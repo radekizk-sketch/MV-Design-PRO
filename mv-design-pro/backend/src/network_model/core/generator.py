@@ -11,11 +11,13 @@ Wszystkie modele są FROZEN (immutable) zgodnie z konwencją PowerFactory.
 Wkład do zwarcia modelowany jako ograniczone źródło prądowe IEC 60909.
 """
 
-import math
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
+
+from network_model.ir_fields import wymagany_float
+from network_model.pochodne import prad_znamionowy_z_mocy_czynnej_a
 
 
 class GeneratorType(Enum):
@@ -138,7 +140,7 @@ class GeneratorSN:
         # P [MW] -> [W] = P * 1e6, U [kV] -> [V] = U * 1e3
         p_w = self.rated_power_mw * 1e6
         u_v = voltage_kv * 1e3
-        return p_w / (math.sqrt(3) * u_v * self.cos_phi)
+        return prad_znamionowy_z_mocy_czynnej_a(p_w, u_v, self.cos_phi)
 
     def get_ik_sc_a(self, voltage_kv: float) -> float:
         """
@@ -199,11 +201,11 @@ class GeneratorSN:
             name=str(data.get("name", "")),
             node_id=str(data.get("node_id", "")),
             generator_type=gen_type,
-            rated_power_mw=float(data.get("rated_power_mw", 0.0)),
-            cos_phi=float(data.get("cos_phi", 0.9)),
+            rated_power_mw=wymagany_float(data, "rated_power_mw", context="GeneratorSN"),
+            cos_phi=wymagany_float(data, "cos_phi", context="GeneratorSN"),
             internal_impedance_pu=impedance,
             transformer_ref=data.get("transformer_ref"),
-            k_sc=float(data.get("k_sc", 1.1)),
+            k_sc=wymagany_float(data, "k_sc", context="GeneratorSN"),
             in_service=bool(data.get("in_service", True)),
         )
 
@@ -300,13 +302,15 @@ class GeneratorNN:
             name=str(data.get("name", "")),
             node_id=str(data.get("node_id", "")),
             generator_type=gen_type,
-            rated_power_kw=float(data.get("rated_power_kw", 0.0)),
-            inverter_rated_current_a=float(data.get("inverter_rated_current_a", 0.0)),
+            rated_power_kw=wymagany_float(data, "rated_power_kw", context="GeneratorNN"),
+            inverter_rated_current_a=wymagany_float(
+                data, "inverter_rated_current_a", context="GeneratorNN"
+            ),
             control_mode=ctrl_mode,
             power_limit_kw=(
                 float(data["power_limit_kw"]) if data.get("power_limit_kw") is not None else None
             ),
             profile_p_t=profile,
-            k_sc=float(data.get("k_sc", 1.1)),
+            k_sc=wymagany_float(data, "k_sc", context="GeneratorNN"),
             in_service=bool(data.get("in_service", True)),
         )

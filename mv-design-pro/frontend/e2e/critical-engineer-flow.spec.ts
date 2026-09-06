@@ -15,9 +15,12 @@
 
 import { test, expect } from '@playwright/test';
 
-const API_BASE = process.env.API_BASE ?? 'http://127.0.0.1:8000';
+// Adres backendu z TEJ SAMEJ zmiennej co pozostale specy real-backend i runner
+// (`scripts/playwright-run-real.mjs`): wlasna zmienna `API_BASE` sprawiala, ze przy biegu
+// na innym porcie testy API tego pliku trafialy w cudzy/zastany backend na 8000.
+const API_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 
-test.describe('K30-28 critical engineer flow — station templates end-to-end', () => {
+test.describe('critical engineer flow — station templates end-to-end', () => {
   test('GET /api/station-templates returns 57+ templates across 10 categories', async ({ request }) => {
     const response = await request.get(`${API_BASE}/api/station-templates`);
     expect(response.ok()).toBe(true);
@@ -89,9 +92,22 @@ test.describe('K30-28 critical engineer flow — station templates end-to-end', 
     const data = await response.json();
     expect(data.element_type).toBe('transformer');
     expect(data.suggestions.length).toBeGreaterThan(0);
-    // First suggestion has highest confidence
-    if (data.suggestions.length >= 2) {
-      expect(data.suggestions[0].confidence).toBeGreaterThanOrEqual(data.suggestions[1].confidence);
+    // Kontrakt FAB-D2 (D9): dopasowanie jest KATEGORYCZNE (PELNE przed CZESCIOWE),
+    // certyfikat PTPiREE osobna flaga — nie ma juz liczby `confidence` bez definicji.
+    // Porzadek listy = klucz sortowania backendu (dopasowanie, certyfikat, catalog_ref).
+    const ranga: Record<string, number> = { PELNE: 0, CZESCIOWE: 1 };
+    for (const sugestia of data.suggestions) {
+      expect(Object.keys(ranga)).toContain(sugestia.dopasowanie);
+      expect(typeof sugestia.certyfikat_ptpiree).toBe('boolean');
+      expect(typeof sugestia.catalog_ref).toBe('string');
+    }
+    for (let i = 1; i < data.suggestions.length; i += 1) {
+      const poprzednia = data.suggestions[i - 1];
+      const biezaca = data.suggestions[i];
+      const kluczPoprzedniej = [ranga[poprzednia.dopasowanie], poprzednia.certyfikat_ptpiree ? 0 : 1];
+      const kluczBiezacej = [ranga[biezaca.dopasowanie], biezaca.certyfikat_ptpiree ? 0 : 1];
+      const porownanie = kluczPoprzedniej[0] - kluczBiezacej[0] || kluczPoprzedniej[1] - kluczBiezacej[1];
+      expect(porownanie).toBeLessThanOrEqual(0);
     }
   });
 
@@ -122,12 +138,20 @@ test.describe('K30-28 critical engineer flow — station templates end-to-end', 
     expect(refs.some((r) => r.includes('yhakxs') || r.includes('150'))).toBe(true);
   });
 
+  // Endpoint zweryfikowany jako WPIĘTY (karta FE-HIGIENA, 2026-09-05):
+  // `backend/src/api/catalog.py::list_protection_device_types`
+  // (`@router.get("/protection/device-types")`) odpowiada 200 na żywym
+  // backendzie i — gdy aktywna biblioteka jest pusta — spada na katalog
+  // analityczny `backend/src/application/analyses/protection/catalog/
+  // catalog_store.py::list_devices` (źródło danych: `data/devices_v0.json`,
+  // 51 urządzeń / 10 nazwanych producentów + 1 profil referencyjny bez marki
+  // = 11 unikalnych wartości `vendor` łącznie z `None`). Dawny bezwarunkowy
+  // skip wewnątrz testu (gałąź „if (!response.ok())") maskował to na stałe
+  // niezależnie od realnej odpowiedzi backendu — usunięty; test wywołuje
+  // końcówkę naprawdę.
   test('protection database covers 51+ devices / 10 vendors', async ({ request }) => {
     const response = await request.get(`${API_BASE}/api/catalog/protection/device-types`);
-    if (!response.ok()) {
-      test.skip(true, 'Protection device-types endpoint not exposed; skipping (covered by unit tests)');
-      return;
-    }
+    expect(response.ok()).toBe(true);
     const data = await response.json();
     expect(data.length).toBeGreaterThanOrEqual(51);
     const vendors = new Set(data.map((d: { vendor?: string; params?: { vendor?: string } }) =>

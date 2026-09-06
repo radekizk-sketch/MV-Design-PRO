@@ -19,6 +19,11 @@ from typing import Any
 
 import numpy as np
 from application.reference_networks.expected_values import ExpectedShortCircuit
+from application.reference_networks.wymagane import (
+    ReferenceFixtureError,
+    pole_wymagane,
+    pole_z_aliasem,
+)
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
@@ -72,13 +77,17 @@ def _build_ybus_pu(
             continue
         i = bus_index[from_id]
         j = bus_index[to_id]
+        opis_galezi = f"galaz {branch.get('ref_id')!r} ({from_id}->{to_id})"
         y_series = _ohm_per_unit_from_pu(
-            float(branch.get("r_pu", 0.01)),
-            float(branch.get("x_pu", 0.05)),
+            float(pole_wymagane(branch, "r_pu", opis=opis_galezi)),
+            float(pole_wymagane(branch, "x_pu", opis=opis_galezi)),
         )
         # Half shunt admittance per side (PI-model)
-        y_shunt_half = complex(0.0, float(branch.get("b_pu", 0.0)) / 2.0)
-        # Off-nominal turns ratio (tap on from-side); lines default to 1.0.
+        y_shunt_half = complex(0.0, float(pole_wymagane(branch, "b_pu", opis=opis_galezi)) / 2.0)
+        # Off-nominal turns ratio (tap on from-side): brak pola = linia (bez
+        # odczepu zaczepow) — 1.0 to udokumentowana wartosc domyslna
+        # wynikajaca z SEMANTYKI (linia „nie ma ratio"), nie brakujacy WYNIK;
+        # zostaje bez zmian (patrz docstring _build_ybus_pu).
         ratio = float(branch.get("ratio", 1.0)) or 1.0
         ybus[i, i] += (y_series + y_shunt_half) / (ratio * ratio)
         ybus[j, j] += y_series + y_shunt_half
@@ -89,9 +98,10 @@ def _build_ybus_pu(
         if bus_id not in bus_index:
             continue
         idx = bus_index[bus_id]
+        opis_shuntu = f"shunt na szynie {bus_id!r}"
         ybus[idx, idx] += complex(
-            float(shunt.get("g_pu", 0.0)),
-            float(shunt.get("b_pu", 0.0)),
+            float(pole_wymagane(shunt, "g_pu", opis=opis_shuntu)),
+            float(pole_wymagane(shunt, "b_pu", opis=opis_shuntu)),
         )
     return ybus, bus_index
 
@@ -123,8 +133,9 @@ def _classify_buses(
         bus_id = load.get("bus")
         if bus_id in bus_index:
             i = bus_index[bus_id]
-            p_inj[i] -= float(load.get("p_mw", 0.0)) / base_mva
-            q_inj[i] -= float(load.get("q_mvar", 0.0)) / base_mva
+            opis_odbioru = f"odbior na szynie {bus_id!r}"
+            p_inj[i] -= float(pole_wymagane(load, "p_mw", opis=opis_odbioru)) / base_mva
+            q_inj[i] -= float(pole_wymagane(load, "q_mvar", opis=opis_odbioru)) / base_mva
 
     # Sources (slack only here)
     for source in sources:
@@ -132,7 +143,9 @@ def _classify_buses(
         if bus_id in bus_index and source.get("source_kind") == "slack":
             i = bus_index[bus_id]
             slack_indices.append(i)
-            v_spec[i] = float(source.get("v_pu", 1.0))
+            v_spec[i] = float(
+                pole_wymagane(source, "v_pu", opis=f"zrodlo bilansujace na szynie {bus_id!r}")
+            )
 
     # Generators - PV bus
     for gen in generators:
@@ -140,9 +153,10 @@ def _classify_buses(
         if bus_id in bus_index:
             i = bus_index[bus_id]
             if i not in slack_indices:
+                opis_generatora = f"generator na szynie {bus_id!r}"
                 pv_indices.append(i)
-                v_spec[i] = float(gen.get("v_pu", 1.0))
-                p_inj[i] += float(gen.get("p_mw", 0.0)) / base_mva
+                v_spec[i] = float(pole_wymagane(gen, "v_pu", opis=opis_generatora))
+                p_inj[i] += float(pole_wymagane(gen, "p_mw", opis=opis_generatora)) / base_mva
 
     # PQ buses = all not in slack/pv
     for i in range(n):
@@ -181,7 +195,9 @@ def _power_flow_newton_raphson(
     generators = enm.get("generators", [])
     loads = enm.get("loads", [])
     shunts = enm.get("shunts", [])
-    base_mva = float(enm.get("header", {}).get("base_mva", 100.0))
+    base_mva = float(
+        pole_wymagane(enm.get("header", {}), "base_mva", opis="naglowek sieci referencyjnej")
+    )
 
     if not buses:
         return {"buses": {}, "converged": True, "iterations": 0, "trace": []}
@@ -203,13 +219,16 @@ def _power_flow_newton_raphson(
         bus_id = load.get("bus")
         if bus_id in bus_index:
             i = bus_index[bus_id]
-            p_sched[i] -= float(load.get("p_mw", 0.0)) / base_mva
-            q_sched[i] -= float(load.get("q_mvar", 0.0)) / base_mva
+            opis_odbioru = f"odbior na szynie {bus_id!r}"
+            p_sched[i] -= float(pole_wymagane(load, "p_mw", opis=opis_odbioru)) / base_mva
+            q_sched[i] -= float(pole_wymagane(load, "q_mvar", opis=opis_odbioru)) / base_mva
     for gen in generators:
         bus_id = gen.get("bus")
         if bus_id in bus_index:
             i = bus_index[bus_id]
-            p_sched[i] += float(gen.get("p_mw", 0.0)) / base_mva
+            p_sched[i] += (
+                float(pole_wymagane(gen, "p_mw", opis=f"generator na szynie {bus_id!r}")) / base_mva
+            )
 
     trace: list[dict[str, float | int]] = []
     converged = False
@@ -342,8 +361,9 @@ def _power_flow_unbalanced_bfs(enm: dict[str, Any]) -> dict[str, Any]:
     branches = enm.get("branches", [])
     loads = enm.get("loads", [])
     sources = enm.get("sources", [])
-    base_mva = float(enm.get("header", {}).get("base_mva", 100.0))
-    base_kv = float(enm.get("header", {}).get("base_kv", 15.0))
+    header = enm.get("header", {})
+    base_mva = float(pole_wymagane(header, "base_mva", opis="naglowek sieci referencyjnej"))
+    base_kv = float(pole_wymagane(header, "base_kv", opis="naglowek sieci referencyjnej"))
 
     slack_id: str | None = None
     for source in sources:
@@ -358,20 +378,22 @@ def _power_flow_unbalanced_bfs(enm: dict[str, Any]) -> dict[str, Any]:
     for branch in branches:
         # Convert pu to ohm using base
         z_base = (base_kv**2) / base_mva
+        opis_galezi = f"galaz {branch.get('ref_id')!r}"
         branch_specs.append(
             UnbalancedBranchSpec(
                 branch_id=str(branch["ref_id"]),
                 from_bus_id=str(branch["from_bus"]),
                 to_bus_id=str(branch["to_bus"]),
-                r_self_ohm=float(branch.get("r_pu", 0.01)) * z_base,
-                x_self_ohm=float(branch.get("x_pu", 0.05)) * z_base,
+                r_self_ohm=float(pole_wymagane(branch, "r_pu", opis=opis_galezi)) * z_base,
+                x_self_ohm=float(pole_wymagane(branch, "x_pu", opis=opis_galezi)) * z_base,
             )
         )
     load_specs = []
     for load in loads:
         # Distribute load evenly across 3 phases (balanced approximation per Kersting)
-        p_total = float(load.get("p_mw", 0.0))
-        q_total = float(load.get("q_mvar", 0.0))
+        opis_odbioru = f"odbior na szynie {load.get('bus')!r}"
+        p_total = float(pole_wymagane(load, "p_mw", opis=opis_odbioru))
+        q_total = float(pole_wymagane(load, "q_mvar", opis=opis_odbioru))
         load_specs.append(
             UnbalancedLoadSpec(
                 bus_id=str(load["bus"]),
@@ -414,7 +436,7 @@ def _power_flow_unbalanced_bfs(enm: dict[str, Any]) -> dict[str, Any]:
 def _bus_voltage_lookup(enm: dict[str, Any]) -> dict[str, float]:
     return {
         str(bus["ref_id"]): float(
-            bus.get("u_n_kv", bus.get("voltage_kv", enm.get("header", {}).get("base_kv", 15.0)))
+            pole_z_aliasem(bus, "u_n_kv", "voltage_kv", opis=f"szyna {bus.get('ref_id')!r}")
         )
         for bus in enm.get("buses", [])
     }
@@ -434,23 +456,24 @@ def _line_params_from_enm_branch(
     base_mva: float,
     default_base_kv: float,
 ) -> tuple[float, float, float]:
-    length_km = float(branch.get("length_km", 1.0))
+    opis_galezi = f"galaz {branch.get('ref_id')!r}"
+    length_km = float(pole_wymagane(branch, "length_km", opis=opis_galezi))
     if length_km <= 0:
         raise ValueError(f"Reference branch {branch.get('ref_id')} has non-positive length")
 
     if "r_ohm_per_km" in branch or "x_ohm_per_km" in branch:
         return (
-            float(branch.get("r_ohm_per_km", 0.0)),
-            float(branch.get("x_ohm_per_km", 0.0)),
-            float(branch.get("b_us_per_km", 0.0)),
+            float(pole_wymagane(branch, "r_ohm_per_km", opis=opis_galezi)),
+            float(pole_wymagane(branch, "x_ohm_per_km", opis=opis_galezi)),
+            float(pole_wymagane(branch, "b_us_per_km", opis=opis_galezi)),
         )
 
     from_bus = str(branch.get("from_bus"))
     base_kv = voltage_lookup.get(from_bus, default_base_kv)
     z_base_ohm = (base_kv**2) / base_mva
     return (
-        float(branch.get("r_pu", 0.0)) * z_base_ohm / length_km,
-        float(branch.get("x_pu", 0.0)) * z_base_ohm / length_km,
+        float(pole_wymagane(branch, "r_pu", opis=opis_galezi)) * z_base_ohm / length_km,
+        float(pole_wymagane(branch, "x_pu", opis=opis_galezi)) * z_base_ohm / length_km,
         0.0,
     )
 
@@ -459,21 +482,39 @@ def build_short_circuit_graph_from_enm(enm: dict[str, Any]) -> NetworkGraph:
     """Build solver-layer NetworkGraph for IEC 60909 reference validation."""
 
     header = enm.get("header", {})
-    base_mva = float(header.get("base_mva", 100.0))
-    default_base_kv = float(header.get("base_kv", 15.0))
+    base_mva = float(pole_wymagane(header, "base_mva", opis="naglowek sieci referencyjnej"))
+    default_base_kv = float(pole_wymagane(header, "base_kv", opis="naglowek sieci referencyjnej"))
     voltage_lookup = _bus_voltage_lookup(enm)
     graph = NetworkGraph(network_model_id=str(header.get("name", "reference-network")))
+    # Napiecie szyny bilansujacej jest atrybutem ZRODLA (source_kind="slack"),
+    # nie szyny — ta sama konwencja co _classify_buses (power flow) wyzej w
+    # tym pliku. Slownik zrodel bilansujacych po id szyny, zeby bus.get("v_pu")
+    # mial gdzie spasc, gdy fikstura (nietypowo) trzyma v_pu tez na szynie.
+    zrodla_bilansujace_po_szynie = {
+        str(source.get("bus")): source
+        for source in enm.get("sources", [])
+        if source.get("source_kind") == "slack"
+    }
 
     for bus in enm.get("buses", []):
         bus_id = str(bus["ref_id"])
         bus_kind = str(bus.get("bus_kind", "pq")).lower()
         if bus_kind == "slack":
+            zrodlo_bilansujace = zrodla_bilansujace_po_szynie.get(bus_id, {})
+            v_pu_slacka = zrodlo_bilansujace.get("v_pu")
+            if v_pu_slacka is None:
+                v_pu_slacka = bus.get("v_pu")
+            if v_pu_slacka is None:
+                raise ReferenceFixtureError(
+                    f"Fikstura sieci referencyjnej: szyna bilansujaca {bus_id!r} nie ma "
+                    "pola 'v_pu' — ani na zrodle (source_kind='slack'), ani na szynie."
+                )
             node = Node(
                 id=bus_id,
                 name=str(bus.get("name", bus_id)),
                 node_type=NodeType.SLACK,
                 voltage_level=voltage_lookup[bus_id],
-                voltage_magnitude=float(bus.get("v_pu", 1.0)),
+                voltage_magnitude=float(v_pu_slacka),
                 voltage_angle=0.0,
             )
         else:
@@ -490,6 +531,7 @@ def build_short_circuit_graph_from_enm(enm: dict[str, Any]) -> NetworkGraph:
     for branch in enm.get("branches", []):
         from_bus = str(branch["from_bus"])
         to_bus = str(branch["to_bus"])
+        opis_galezi = f"galaz {branch.get('ref_id')!r}"
         r_ohm_per_km, x_ohm_per_km, b_us_per_km = _line_params_from_enm_branch(
             branch,
             voltage_lookup=voltage_lookup,
@@ -507,13 +549,14 @@ def build_short_circuit_graph_from_enm(enm: dict[str, Any]) -> NetworkGraph:
                 r_ohm_per_km=r_ohm_per_km,
                 x_ohm_per_km=x_ohm_per_km,
                 b_us_per_km=b_us_per_km,
-                length_km=float(branch.get("length_km", 1.0)),
-                rated_current_a=float(branch.get("rated_current_a", 1.0)),
+                length_km=float(pole_wymagane(branch, "length_km", opis=opis_galezi)),
+                rated_current_a=float(pole_wymagane(branch, "rated_current_a", opis=opis_galezi)),
                 type_ref=branch.get("type_ref"),
             )
         )
 
     for transformer in enm.get("transformers", []):
+        opis_transformatora = f"transformator {transformer.get('ref_id')!r}"
         graph.add_branch(
             TransformerBranch(
                 id=str(transformer["ref_id"]),
@@ -523,21 +566,37 @@ def build_short_circuit_graph_from_enm(enm: dict[str, Any]) -> NetworkGraph:
                 to_node_id=str(transformer["to_bus"]),
                 in_service=bool(transformer.get("in_service", True)),
                 rated_power_mva=float(
-                    transformer.get("rated_power_mva", transformer.get("sn_mva", 0.0))
+                    pole_z_aliasem(
+                        transformer, "rated_power_mva", "sn_mva", opis=opis_transformatora
+                    )
                 ),
                 voltage_hv_kv=float(
-                    transformer.get("voltage_hv_kv", transformer.get("primary_kv", 0.0))
+                    pole_z_aliasem(
+                        transformer, "voltage_hv_kv", "primary_kv", opis=opis_transformatora
+                    )
                 ),
                 voltage_lv_kv=float(
-                    transformer.get("voltage_lv_kv", transformer.get("secondary_kv", 0.0))
+                    pole_z_aliasem(
+                        transformer, "voltage_lv_kv", "secondary_kv", opis=opis_transformatora
+                    )
                 ),
-                uk_percent=float(transformer.get("uk_percent", transformer.get("ukr_pct", 0.0))),
-                pk_kw=float(transformer.get("pk_kw", transformer.get("p_k_kw", 0.0))),
-                i0_percent=float(transformer.get("i0_percent", 0.0)),
-                p0_kw=float(transformer.get("p0_kw", 0.0)),
+                uk_percent=float(
+                    pole_z_aliasem(transformer, "uk_percent", "ukr_pct", opis=opis_transformatora)
+                ),
+                pk_kw=float(
+                    pole_z_aliasem(transformer, "pk_kw", "p_k_kw", opis=opis_transformatora)
+                ),
+                i0_percent=float(
+                    pole_wymagane(transformer, "i0_percent", opis=opis_transformatora)
+                ),
+                p0_kw=float(pole_wymagane(transformer, "p0_kw", opis=opis_transformatora)),
                 vector_group=str(transformer.get("vector_group", "Dyn11")),
-                tap_position=int(transformer.get("tap_position", 0)),
-                tap_step_percent=float(transformer.get("tap_step_percent", 2.5)),
+                tap_position=int(
+                    pole_wymagane(transformer, "tap_position", opis=opis_transformatora)
+                ),
+                tap_step_percent=float(
+                    pole_wymagane(transformer, "tap_step_percent", opis=opis_transformatora)
+                ),
                 type_ref=transformer.get("type_ref"),
             )
         )
@@ -620,11 +679,16 @@ def solve_reference_network(network_id: str, enm: dict[str, Any]) -> dict[str, A
         result = _power_flow_unbalanced_bfs(enm)
     else:
         result = _power_flow_newton_raphson(enm)
+    # "converged"/"iterations" sa ZAWSZE obecne w kazdej galezi zwrotu obu
+    # solverow (_power_flow_newton_raphson/_power_flow_unbalanced_bfs) —
+    # subskrypcja wprost zamiast .get(..., False/0), zeby przyszla niekompletna
+    # galaz solvera rzucila KeyError zamiast cicho zglosic "niezbiezny"/"0
+    # iteracji" dla wyniku, ktory faktycznie nie zostal jeszcze obliczony.
     return {
         "buses": result["buses"],
         "branches": {},
         "short_circuit": {},
         "trace": result["trace"],
-        "converged": result.get("converged", False),
-        "iterations": result.get("iterations", 0),
+        "converged": result["converged"],
+        "iterations": result["iterations"],
     }

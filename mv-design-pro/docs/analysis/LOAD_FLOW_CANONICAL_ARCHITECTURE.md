@@ -1,6 +1,14 @@
 # LOAD FLOW CANONICAL ARCHITECTURE
 
-> **Status**: BINDING
+> **KOREKTA 2026-09-05 (karta CV-3.3-A2):** dokument sprzed kanonu V12.xx, poza
+> hierarchią `CLAUDE.md`. `application/result_mapping/load_flow_to_resultset_v1.py`
+> (wzmiankowany niżej jako przyszły mapper `LoadFlowResultSetV1`) skasowany — zero
+> konsumenta produkcyjnego, `ExecutionEngineService` (jedyny docelowy wołający) też
+> skasowany. Żywy producent kontraktu `ResultSet v1` dla rozpływu:
+> `application/result_mapping/canonical_run_to_resultset_v1.py`. Szczegóły →
+> `docs/architecture/CONVERGENCE_ROADMAP.md` CV-3.3-A2.
+>
+> **Status (pierwotny)**: BINDING
 > **Date**: 2026-02-13
 > **Scope**: Load Flow (Power Flow) analysis — layer boundaries, contracts, determinism, prohibitions
 > **Base**: Existing NR/GS/FD solvers, PowerFlowResultV1 (FROZEN v1.0.0), AnalysisRunService

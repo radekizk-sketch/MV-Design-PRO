@@ -29,9 +29,11 @@ from network_model.catalog.materialization import materialize_catalog_binding
 if TYPE_CHECKING:
     from network_model.catalog.repository import CatalogRepository
 from network_model.catalog.types import CatalogBinding
+from network_model.pochodne import moc_bierna_z_czynnej_i_cos_phi
 
 from .kopia_graniczna import kopia_graniczna_enm
 from .load_zip_model import KOD_BLEDU_ZIP, zip_odbioru_z_parametrow_materializacji
+from .migrations.nn_field_specs_promocja import META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA
 from .models import GEN_TYPES_PRZEKSZTALTNIKOWE, EnergyNetworkModel
 from .pole_katalogowe import (
     KOD_BLEDU_POLA_KATALOGOWEGO,
@@ -699,8 +701,23 @@ def _resolve_gpz_wn_sn_transformer_catalog_ref(
     payload: dict[str, Any],
     *,
     voltage_kv: float,
-    rated_power_mva: float,
 ) -> str | dict[str, Any]:
+    """Rozstrzygnij pozycję katalogową transformatora WN/SN GPZ.
+
+    Karta FAB-G (Zero-Debt, zero fabrykacji — dług 7 rejestru V12K-315 —
+    ta sama klasa defektu co D2/`add_transformer_sn_nn`): funkcja NIE fabrykuje
+    już mocy znamionowej ani napięcia górnego, gdy ładunek milczy (dawne
+    `transformer_sn_mva or 25.0` / `hv_voltage_kv or 110.0` wybierały GPZ
+    110/15 kV 25 MVA, którego projektant nigdy nie zażądał). Dopuszczone są
+    WYŁĄCZNIE dwie jawne drogi: (a) `transformer_catalog_ref` albo
+    `transformer_catalog_binding`, wskazane wprost; (b) jawna para
+    `hv_voltage_kv` + `transformer_sn_mva`, która JEDNOZNACZNIE wskazuje
+    pozycję w `GPZ_WN_SN_TRANSFORMER_CATALOG_BY_VOLTAGE_AND_POWER` (napięcie
+    SN pochodzi z już rozstrzygniętego `voltage_kv` operacji — ładunku/szyny).
+    Brak obu dróg ORAZ para spoza mapy kończą się TYM SAMYM kodem
+    `catalog.ref_required` istniejącej bramy katalogowej (`_require_catalog_ref`),
+    z listą dopuszczalnych par w komunikacie PL — nigdy cichym podstawieniem.
+    """
     explicit_ref = payload.get("transformer_catalog_ref")
     if isinstance(explicit_ref, str) and explicit_ref.strip():
         return explicit_ref.strip()
@@ -710,23 +727,46 @@ def _resolve_gpz_wn_sn_transformer_catalog_ref(
     if binding_ref:
         return binding_ref
 
-    voltage_key = int(round(float(voltage_kv)))
-    power_key = int(round(float(rated_power_mva)))
-    default_ref = GPZ_WN_SN_TRANSFORMER_CATALOG_BY_VOLTAGE_AND_POWER.get((voltage_key, power_key))
-    if default_ref:
-        return default_ref
-
     supported = ", ".join(
         f"110/{voltage} kV {power} MVA"
         for voltage, power in sorted(GPZ_WN_SN_TRANSFORMER_CATALOG_BY_VOLTAGE_AND_POWER)
     )
+    error_message = (
+        "Transformator WN/SN GPZ wymaga pozycji katalogowej: podaj "
+        "transformer_catalog_ref (lub transformer_catalog_binding) albo jawną "
+        "parę hv_voltage_kv + transformer_sn_mva, która jednoznacznie wskazuje "
+        f"pozycję katalogu. Dostępne pary: {supported}."
+    )
+
+    hv_voltage_kv_payload = _as_positive_float(payload.get("hv_voltage_kv"))
+    rated_power_mva_payload = _as_positive_float(payload.get("transformer_sn_mva"))
+    if hv_voltage_kv_payload is None or rated_power_mva_payload is None:
+        return _error_response(error_message, "catalog.ref_required")
+
+    hv_voltage_key = int(round(hv_voltage_kv_payload))
+    if hv_voltage_key != 110:
+        return _error_response(
+            (
+                "Transformator WN/SN GPZ obsługuje wyłącznie stronę górną "
+                f"110 kV (podano {hv_voltage_kv_payload:g} kV). "
+                f"Dostępne pary: {supported}."
+            ),
+            "catalog.ref_required",
+        )
+
+    voltage_key = int(round(float(voltage_kv)))
+    power_key = int(round(rated_power_mva_payload))
+    default_ref = GPZ_WN_SN_TRANSFORMER_CATALOG_BY_VOLTAGE_AND_POWER.get((voltage_key, power_key))
+    if default_ref:
+        return default_ref
+
     return _error_response(
         (
             "Transformator WN/SN GPZ wymaga pozycji katalogowej. "
-            f"Brak domyślnego rekordu dla 110/{voltage_key} kV {power_key} MVA. "
-            f"Dostępne rekordy: {supported}."
+            f"Brak rekordu dla 110/{voltage_key} kV {power_key} MVA. "
+            f"Dostępne pary: {supported}."
         ),
-        "source.transformer_catalog_ref_missing",
+        "catalog.ref_required",
     )
 
 
@@ -2139,6 +2179,21 @@ def _build_readiness(
                 )
 
         # Domain-level check: switches/breakers without catalog_ref
+        #
+        # WYJATEK (naprawa regresji #472, karta CI-D): galaz nN z automigracji
+        # promocji pol (`enm/migrations/nn_field_specs_promocja.py`, meta
+        # `nn_promocja_bez_wiazania_katalogowej`) jest JUZ policzona przez
+        # ENMValidator wyzej w tej funkcji jako W061 (OSTRZEZENIE, nie BLOKER —
+        # dane historyczne, ktorych katalog nigdy nie widzial, `validator.py`
+        # E061/W061). Ten ODREBNY, domenowy check duplikowal generyczny warunek
+        # "lacznik bez catalog_ref = BLOKER" bez znajomosci tego wyjatku, wiec
+        # TA SAMA galaz dostawala DRUGI, sprzeczny wpis (BLOKER) — odpowiedz
+        # operacji domenowej (zrodlo chromu powloki, `useSnapshotStore.readiness`)
+        # mowila "w budowie" dokladnie wtedy, gdy `/engineering-readiness`
+        # (ENMValidator w izolacji) juz mowila "gotowe". Predykat wejscia
+        # (ENMValidator: wyjatek migracji) i predykat tego bloku MUSZA pochodzic
+        # z JEDNEGO zrodla prawdy (reguła KLASA, NIE INSTANCJA) — stad ten sam
+        # klucz meta, zaimportowany z modulu migracji, nie osobny warunek.
         for b in enm.get("branches", []):
             b_type = b.get("type", "")
             b_meta = b.get("meta") if isinstance(b.get("meta"), dict) else {}
@@ -2146,6 +2201,7 @@ def _build_readiness(
                 b_type in ("switch", "breaker")
                 and not b.get("catalog_ref")
                 and b_meta.get("requires_catalog_binding") is not False
+                and not b_meta.get(META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA)
             ):
                 b_ref = b.get("ref_id", "")
                 blockers.append(
@@ -2918,11 +2974,20 @@ def _build_gpz_tap_changer(
         tc["controlled_bus_ref"] = str(controlled_ref)
 
     if payload.get("transformer_ldc_enabled"):
-        tc["line_drop_compensation"] = {
-            "enabled": True,
-            "r_ohm": _opt_float_any(payload.get("transformer_ldc_r_ohm")) or 0.0,
-            "x_ohm": _opt_float_any(payload.get("transformer_ldc_x_ohm")) or 0.0,
-        }
+        # Karta FAB-D1 (D4): r_ohm/x_ohm sa DANA POMIAROWA kompensacji LDC, nie
+        # akumulatorem — brak jednej z nich w payloadzie nie moze cicho stac sie
+        # 0 Ω (LDC "aktywne" z fabrykowana impedancja). Blok LDC powstaje TYLKO
+        # gdy obie wartosci sa podane jawnie; inaczej LDC zostaje NIESKONFIGUROWANE
+        # (klucz nieobecny — `TapChanger.line_drop_compensation` jest juz Optional
+        # w kontrakcie, wiec "nieobecne" ma naturalna reprezentacje bez zmiany modelu).
+        ldc_r_ohm = _opt_float_any(payload.get("transformer_ldc_r_ohm"))
+        ldc_x_ohm = _opt_float_any(payload.get("transformer_ldc_x_ohm"))
+        if ldc_r_ohm is not None and ldc_x_ohm is not None:
+            tc["line_drop_compensation"] = {
+                "enabled": True,
+                "r_ohm": ldc_r_ohm,
+                "x_ohm": ldc_x_ohm,
+            }
 
     if catalog_ref:
         tc["catalog_ref"] = str(catalog_ref)
@@ -3106,16 +3171,22 @@ def _compute_materialized_params(enm: dict[str, Any]) -> dict[str, Any]:
             p0_kw = materialized.get("p0_kw")
             pk_kw = materialized.get("pk_kw")
             rated_power_mva = materialized.get("rated_power_mva")
+            # Karta FAB-D1: `or 0` w gałęzi ZAWSZE martwej — zewnętrzny warunek
+            # `if t.get("sn_mva")` już odsiewa brak, więc podstawienie nie mogło
+            # się wykonać ani razu (transformator zapisany do modelu ma sn_mva
+            # WYMAGANE kontraktem `Transformer`). Bezpośredni odczyt bez
+            # zapasowej liczby, zamiast pozostawiać wzorzec wyglądający na
+            # fabrykację.
             s_n_kva = (
                 float(rated_power_mva) * 1000
                 if rated_power_mva is not None
-                else (t.get("sn_mva") or 0) * 1000 if t.get("sn_mva") else None
+                else float(t["sn_mva"]) * 1000 if t.get("sn_mva") else None
             )
         else:
             uk_percent = t.get("uk_percent")
             p0_kw = t.get("p0_kw")
             pk_kw = t.get("pk_kw")
-            s_n_kva = (t.get("sn_mva") or 0) * 1000 if t.get("sn_mva") else None
+            s_n_kva = float(t["sn_mva"]) * 1000 if t.get("sn_mva") else None
 
             if catalog:
                 type_data = catalog.get_transformer_type(catalog_ref)
@@ -3776,6 +3847,18 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             }
         )
 
+    # Karta FAB-G (Zero-Debt, zero fabrykacji — domyka dług 7 rejestru
+    # V12K-315, ta sama klasa defektu co D2/`add_transformer_sn_nn`): tabliczka
+    # transformatora(ów) WN/SN GPZ (moc, napięcie górne, uk/pk/p0/i0, grupa)
+    # pochodzi WYŁĄCZNIE z typu katalogowego — jawnego `transformer_catalog_ref`
+    # albo pary `hv_voltage_kv` + `transformer_sn_mva`, która jednoznacznie
+    # wskazuje pozycję w mapie. Bez jednego z nich operacja jest odrzucona
+    # (`catalog.ref_required`, `_resolve_gpz_wn_sn_transformer_catalog_ref`)
+    # PRZED utworzeniem jakiegokolwiek elementu — zła/brakująca pozycja nie
+    # zostawia połowicznej stacji w migawce. Katalog jest materializowany
+    # PRZED szyną 110 kV, więc jej napięcie (`voltage_kv`) i napięcie górnego
+    # uzwojenia transformatora (`uhv_kv`) pochodzą z TEJ SAMEJ liczby
+    # katalogowej — nigdy z niezależnego, fabrykowanego `or 110.0`.
     gpz_transformer_refs: list[str] = []
     gpz_hv_bus_refs: list[str] = []
     for index in range(transformer_count):
@@ -3783,12 +3866,34 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         hv_bus_ref = _make_id("gpz", seed, f"transformer/{order:03d}/bus_110")
         transformer_ref = _make_id("gpz", seed, f"transformer/{order:03d}/wn_sn")
         section = gpz_sections[index % len(gpz_sections)]
+
+        transformer_catalog_ref = _resolve_gpz_wn_sn_transformer_catalog_ref(
+            payload,
+            voltage_kv=voltage_kv,
+        )
+        if isinstance(transformer_catalog_ref, dict):
+            return transformer_catalog_ref
+
+        transformer_catalog_binding = payload.get("transformer_catalog_binding")
+        materialization = _materialize_catalog_payload(
+            catalog_ref=transformer_catalog_ref,
+            catalog_binding=transformer_catalog_binding,
+            default_namespace="TRAFO_SN_NN",
+        )
+        if isinstance(materialization, dict):
+            return materialization
+        transformer_binding_payload, transformer_materialized_params = materialization
+        # `voltage_hv_kv` jest polem WYMAGANYM kontraktu TransformerType
+        # (network_model/catalog/types.py) — zawsze obecne po udanej
+        # materializacji, więc szyna 110 kV dostaje realną daną katalogową.
+        hv_bus_voltage_kv = float(transformer_materialized_params["voltage_hv_kv"])
+
         result = create_node(
             new_enm,
             {
                 "ref_id": hv_bus_ref,
-                "name": f"Szyna 110 kV TR{order}",
-                "voltage_kv": float(payload.get("hv_voltage_kv") or 110.0),
+                "name": f"Szyna {hv_bus_voltage_kv:g} kV TR{order}",
+                "voltage_kv": hv_bus_voltage_kv,
                 "tags": ["gpz_hv_bus", "helper_bus"],
                 "meta": {
                     "visual_role": "GPZ_HV_BUS",
@@ -3810,25 +3915,6 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         events.append({"event_seq": ev_seq, "event_type": "BUS_CREATED", "element_id": hv_bus_ref})
         gpz_hv_bus_refs.append(hv_bus_ref)
 
-        transformer_rated_power_mva = float(payload.get("transformer_sn_mva") or 25.0)
-        transformer_catalog_ref = _resolve_gpz_wn_sn_transformer_catalog_ref(
-            payload,
-            voltage_kv=voltage_kv,
-            rated_power_mva=transformer_rated_power_mva,
-        )
-        if isinstance(transformer_catalog_ref, dict):
-            return transformer_catalog_ref
-
-        transformer_catalog_binding = payload.get("transformer_catalog_binding")
-        materialization = _materialize_catalog_payload(
-            catalog_ref=transformer_catalog_ref,
-            catalog_binding=transformer_catalog_binding,
-            default_namespace="TRAFO_SN_NN",
-        )
-        if isinstance(materialization, dict):
-            return materialization
-        transformer_binding_payload, transformer_materialized_params = materialization
-
         transformer = {
             "ref_id": transformer_ref,
             "name": payload.get(f"transformer_{order}_name") or f"TR{order} 110/{voltage_kv:g} kV",
@@ -3841,14 +3927,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             },
             "hv_bus_ref": hv_bus_ref,
             "lv_bus_ref": section["bus_ref"],
-            "sn_mva": transformer_rated_power_mva,
-            "uhv_kv": float(payload.get("hv_voltage_kv") or 110.0),
             "ulv_kv": float(voltage_kv),
-            "uk_percent": float(payload.get("transformer_uk_percent") or 12.0),
-            "pk_kw": float(payload.get("transformer_pk_kw") or 120.0),
-            "p0_kw": float(payload.get("transformer_p0_kw") or 25.0),
-            "i0_percent": float(payload.get("transformer_i0_percent") or 0.2),
-            "vector_group": payload.get("transformer_vector_group") or "YNd11",
             "catalog_ref": transformer_catalog_ref,
             "overrides": [],
         }
@@ -5001,13 +5080,19 @@ def _materialize_station_auxiliary_load(
     station_id: str,
     station_seed: str,
     created: list[str],
-) -> str | None:
+) -> dict[str, Any] | str | None:
     """Zmaterializuj odbiór potrzeb własnych stacji (G-STK-3).
 
     Reużywa wzorzec `add_nn_load`: mały odbiór nN na szynie nN stacji, z mocą
     bierną wyprowadzoną z cosφ (Q = P·tan(arccos cosφ)) gdy Q nie podano jawnie.
     Konsument: kanoniczny rozpływ mocy (kolekcja ``loads``). Addytywne: brak bloku
-    ``station_auxiliary`` lub P≤0 → brak odbioru. Zwraca ref odbioru albo ``None``.
+    ``station_auxiliary`` lub P≤0 → brak odbioru.
+
+    Karta FAB-D1 (D5): ``Load.q_mvar`` jest polem WYMAGANYM kontraktu
+    (`enm/models.py`) — bez jawnej mocy biernej i bez cosφ, z ktorego daloby sie
+    ja wyprowadzic, operacja NIE fabrykuje 0 Mvar (praca przy cosφ=1 to TWIERDZENIE
+    o odbiorze, nie brak danej). Zwraca ref odbioru (`str`), `None` (brak bloku/P≤0,
+    addytywnie — bez zmiany), albo odpowiedz bledu (`dict`, kod `load.q_missing`).
     """
     aux = payload.get("station_auxiliary") or payload.get("station", {}).get("station_auxiliary")
     if not isinstance(aux, dict) or not aux:
@@ -5016,12 +5101,18 @@ def _materialize_station_auxiliary_load(
     if p_kw is None:
         return None
 
-    q_kvar = aux.get("reactive_power_kvar")
+    q_kvar = _opt_float_any(aux.get("reactive_power_kvar"))
     cos_phi = aux.get("cos_phi")
     if q_kvar is None and cos_phi is not None:
         cp = _as_positive_float(cos_phi)
         if cp is not None and cp <= 1.0:
-            q_kvar = p_kw * math.tan(math.acos(cp))
+            q_kvar = moc_bierna_z_czynnej_i_cos_phi(p_kw, cp)
+    if q_kvar is None:
+        return _error_response(
+            "Potrzeby własne stacji: brak mocy biernej (reactive_power_kvar) i "
+            "brak cosφ, z którego dałoby się ją wyprowadzić. Podaj jedno z nich.",
+            "load.q_missing",
+        )
 
     load_ref = _make_id("stn", station_seed, "aux_load")
     new_enm.setdefault("loads", []).append(
@@ -5030,7 +5121,7 @@ def _materialize_station_auxiliary_load(
             "name": aux.get("name") or "Potrzeby własne stacji",
             "bus_ref": nn_bus_id,
             "p_mw": p_kw / 1000.0,
-            "q_mvar": (q_kvar or 0.0) / 1000.0,
+            "q_mvar": q_kvar / 1000.0,
             "model": "pq",
             "source_mode": "EKSPERCKI_RECZNY",
             "parameter_source": "OVERRIDE",
@@ -6572,6 +6663,10 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         station_seed=station_seed,
         created=created,
     )
+    if isinstance(aux_load_ref, dict):
+        # Brama mocy biernej potrzeb własnych — nierozstrzygalna wartosc konczy
+        # operacje (FAB-D1 D5), bez pozostawiania polowicznej stacji w migawce.
+        return aux_load_ref
     if aux_load_ref is not None:
         ev_seq += 1
         events.append(
@@ -7827,6 +7922,46 @@ def set_normal_open_point(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
     )
 
 
+#: Pola WYMAGANE tabliczki transformatora (`enm.models.Transformer`: `sn_mva`,
+#: `uhv_kv`, `ulv_kv`, `uk_percent`, `pk_kw` — bez wartości domyślnej w kontrakcie,
+#: w odróżnieniu od OPCJONALNYCH `p0_kw`/`i0_percent`/`vector_group`). Etykieta
+#: PL trafia do komunikatu odrzucenia. JEDNO źródło prawdy dla WSZYSTKICH miejsc
+#: materializujących tabliczkę transformatora (KLASA NIE INSTANCJA, karta FAB-D1
+#: D2) — `add_transformer_sn_nn`, GPZ WN/SN (`add_grid_source_sn`) i TR blokowy
+#: DER (`domain_operations_v2._materialize_der_block_transformer`).
+_TRANSFORMER_REQUIRED_FIELD_LABELS: dict[str, str] = {
+    "sn_mva": "moc znamionowa (sn_mva)",
+    "uhv_kv": "napięcie górne (uhv_kv)",
+    "ulv_kv": "napięcie dolne (ulv_kv)",
+    "uk_percent": "napięcie zwarcia (uk_percent)",
+    "pk_kw": "straty obciążeniowe (pk_kw)",
+}
+
+
+def _require_transformer_fields(tr_data: dict[str, Any], ref_id: str) -> dict[str, Any] | None:
+    """Sprawdź WYMAGANE pola tabliczki transformatora PO materializacji katalogu.
+
+    Karta FAB-D1 (D2): `sn_mva`/`uhv_kv`/`ulv_kv`/`uk_percent`/`pk_kw` MUSZĄ
+    pochodzić z typu katalogowego (materializacja) albo z jawnego nadpisania w
+    payloadzie. Gdy ANI TYP, ANI PAYLOAD nie niosą wartości, operacja jest
+    ODRZUCONA jednym kodem (`transformer.field_missing`) z listą WSZYSTKICH
+    brakujących pól naraz — zamiast cicho zapisać tabliczkę z placeholderem
+    (0.0 MVA/kV/%/kW to fabrykacja pomiaru, nie brak danej).
+    """
+    missing = [
+        label
+        for field, label in _TRANSFORMER_REQUIRED_FIELD_LABELS.items()
+        if tr_data.get(field) is None
+    ]
+    if not missing:
+        return None
+    return _error_response(
+        f"Transformator {ref_id}: brak wymaganych parametrów (ani z katalogu, ani "
+        f"z payloadu): {', '.join(missing)}.",
+        "transformer.field_missing",
+    )
+
+
 # ---------------------------------------------------------------------------
 # 8. add_transformer_sn_nn
 # ---------------------------------------------------------------------------
@@ -7856,7 +7991,13 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
     events = []
     ev_seq = 0
 
-    # Napięcia z szyn (topologiczne), brak domyślnych parametrów
+    # Napięcia z szyn (topologiczne), brak domyślnych parametrów. Karta FAB-D1
+    # (D2): sn_mva/uk_percent/pk_kw NIE dostają fabrykowanego podstawienia
+    # "or 0.0" — materializacja katalogowa poniżej je uzupełnia, a
+    # `_require_transformer_fields` odrzuca operację, gdy ani katalog, ani
+    # payload nie niosą wartości. uhv_kv/ulv_kv zachowują topologiczny fallback
+    # na napięcie szyny (to REALNA dana z modelu, nie zmyślona liczba) — kończący
+    # "or 0.0" usunięty z tej samej przyczyny.
     hv_voltage = None
     lv_voltage = None
     for b in enm.get("buses", []):
@@ -7865,17 +8006,19 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
         if b.get("ref_id") == lv_bus_ref:
             lv_voltage = b.get("voltage_kv")
 
+    payload_uhv_kv = _opt_float_any(payload.get("uhv_kv"))
+    payload_ulv_kv = _opt_float_any(payload.get("ulv_kv"))
     tr_data: dict[str, Any] = {
         "device_type": "transformer",
         "ref_id": tr_ref,
         "name": "Transformator SN/nN",
         "hv_bus_ref": hv_bus_ref,
         "lv_bus_ref": lv_bus_ref,
-        "sn_mva": payload.get("sn_mva") or 0.0,
-        "uhv_kv": payload.get("uhv_kv") or hv_voltage or 0.0,
-        "ulv_kv": payload.get("ulv_kv") or lv_voltage or 0.0,
-        "uk_percent": payload.get("uk_percent") or 0.0,
-        "pk_kw": payload.get("pk_kw") or 0.0,
+        "sn_mva": _opt_float_any(payload.get("sn_mva")),
+        "uhv_kv": payload_uhv_kv if payload_uhv_kv is not None else hv_voltage,
+        "ulv_kv": payload_ulv_kv if payload_ulv_kv is not None else lv_voltage,
+        "uk_percent": _opt_float_any(payload.get("uk_percent")),
+        "pk_kw": _opt_float_any(payload.get("pk_kw")),
         "source_mode": "KATALOG",
         "catalog_namespace": "TRAFO_SN_NN",
     }
@@ -7894,6 +8037,9 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
         default_namespace="TRAFO_SN_NN",
     )
     _apply_materialized_transformer_fields(tr_data, materialized_params)
+    brak_pol_tr = _require_transformer_fields(tr_data, tr_ref)
+    if brak_pol_tr is not None:
+        return brak_pol_tr
 
     # OLTC/DETC (V12K-048, G-TRF): materializuj kanoniczny TapChanger, gdy operator
     # zażądał regulacji. Reużycie proven helpera GPZ — każde pole mapuje na realne
@@ -9651,6 +9797,9 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
             station_seed=seed,
             created=created,
         )
+        if isinstance(aux_load_ref, dict):
+            # Brama mocy biernej potrzeb własnych — parytet z insert (FAB-D1 D5).
+            return aux_load_ref
         if aux_load_ref is not None:
             ev_seq += 1
             events.append(

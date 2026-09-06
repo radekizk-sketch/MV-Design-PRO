@@ -142,10 +142,8 @@ const ODNOSNIKI_KOLEJNOSC: readonly {
 }[] = [
   { klucz: 'device_catalog_ref', etykieta: 'Urządzenie wytwórcze' },
   { klucz: 'ptpiree_certificate_ref', etykieta: 'Certyfikat PTPiREE' },
-  { klucz: 'controller_catalog_ref', etykieta: 'Regulator instalacji' },
   { klucz: 'battery_catalog_ref', etykieta: 'Bateria magazynu' },
   { klucz: 'block_transformer_catalog_ref', etykieta: 'Transformator dedykowany' },
-  { klucz: 'cable_catalog_ref', etykieta: 'Kabel wewnętrzny' },
   { klucz: 'protection_catalog_ref', etykieta: 'Zabezpieczenie' },
   { klucz: 'dynamic_model_ref', etykieta: 'Model dynamiczny' },
 ];

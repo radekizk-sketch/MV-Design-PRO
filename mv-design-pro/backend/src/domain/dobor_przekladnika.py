@@ -42,6 +42,8 @@ import math
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+from network_model.pochodne import napiecie_fazowe_v
+
 #: Ponizej tego wykorzystania przekladni dokladnosc pomiaru pradu roboczego jest slaba
 #: (blad wzgledny rosnie przy malym wykorzystaniu zakresu). Progu nie ma w normie jako
 #: wymagania — to praktyka projektowa, wiec kryterium jest INFORMACJA, nie werdyktem.
@@ -557,7 +559,7 @@ def sprawdz_dobor_vt(przekladnik: dict[str, Any], tor: WymaganiaToruNapieciowego
             )
         )
     else:
-        faza_ziemia = tor.napiecie_sieci_v / math.sqrt(3.0)
+        faza_ziemia = napiecie_fazowe_v(tor.napiecie_sieci_v)
         if _blisko(un_pierwotne, faza_ziemia, TOLERANCJA_PRZEKLADNI_NAPIECIOWEJ):
             uklad = "faza_ziemia"
         elif _blisko(un_pierwotne, tor.napiecie_sieci_v, TOLERANCJA_PRZEKLADNI_NAPIECIOWEJ):
@@ -752,11 +754,11 @@ def sprawdz_dobor_vt(przekladnik: dict[str, Any], tor: WymaganiaToruNapieciowego
     else:
         pasuje = any(
             _blisko(un_wtorne, w, TOLERANCJA_PRZEKLADNI_NAPIECIOWEJ)
-            or _blisko(un_wtorne, w / math.sqrt(3.0), TOLERANCJA_PRZEKLADNI_NAPIECIOWEJ)
+            or _blisko(un_wtorne, napiecie_fazowe_v(w), TOLERANCJA_PRZEKLADNI_NAPIECIOWEJ)
             for w in tor.napiecia_wejsc_przekaznika_v
         )
         wykaz = " / ".join(
-            f"{w:.0f} V (albo {w / math.sqrt(3.0):.1f} V faza–ziemia)"
+            f"{w:.0f} V (albo {napiecie_fazowe_v(w):.1f} V faza–ziemia)"
             for w in tor.napiecia_wejsc_przekaznika_v
         )
         kryteria.append(

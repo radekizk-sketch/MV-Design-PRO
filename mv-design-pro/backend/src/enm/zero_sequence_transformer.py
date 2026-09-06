@@ -57,6 +57,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from network_model.core.ybus import S_BASE_MVA
+from network_model.pochodne import impedancja_z_napiecia_i_mocy_ohm
 
 from .models import GroundingConfig, Transformer
 
@@ -216,7 +217,7 @@ def _zn_pu_base(zn_ohm: complex, u_side_kv: float) -> complex:
     """3·Z_N w per-unit na S_base i napięciu danej strony: 3·Z_N·S_base/U²."""
     if u_side_kv <= 0:
         return 0j
-    z_base_side = (u_side_kv**2) / S_BASE_MVA
+    z_base_side = impedancja_z_napiecia_i_mocy_ohm(u_side_kv, S_BASE_MVA)
     return 3.0 * zn_ohm / z_base_side
 
 

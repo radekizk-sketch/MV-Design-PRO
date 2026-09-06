@@ -52,6 +52,21 @@ def build_iec60909_example_network() -> dict[str, Any]:
                 "sn_mva": 25.0,
                 "ukr_pct": 10.0,
                 "uk0_pct": 9.0,
+                # Uproszczenie podrecznikowe (IEC 60909-4 Sekcja 4, patrz
+                # expected/iec60909_example.json:source_note): transformator
+                # sieciowy modelowany jako bezstratny (pk=0 kW), bez galezi
+                # magnesujacej (i0=0%, p0=0 kW — nieuzywana przez metodyke
+                # IEC 60909, ktora liczy tylko impedancje szeregowa) —
+                # zalozenie stalo sie jawna dana (FAB-E, E5), a nie
+                # fabrykowanym domyslem czytnika wyniku.
+                "pk_kw": 0.0,
+                "i0_percent": 0.0,
+                "p0_kw": 0.0,
+                # Bez przelacznika zaczepow (zaczep nominalny, brak regulacji)
+                # w tym przykladzie — tap_position=0 => ratio=1.0 niezaleznie
+                # od tap_step_percent (mnozona przez zero), stad 0.0.
+                "tap_position": 0,
+                "tap_step_percent": 0.0,
                 "vector_group": "YNd11",
                 "primary_kv": 110.0,
                 "secondary_kv": 33.0,

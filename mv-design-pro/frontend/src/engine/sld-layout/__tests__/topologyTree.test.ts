@@ -6,7 +6,12 @@
 import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../types/enm';
-import { BranchKind, readTopologyFromENM, type TopologyInputV1 } from '../../../ui/sld/core/topologyInputReader';
+import {
+  BranchKind,
+  readTopologyFromENM,
+  StationKind,
+  type TopologyInputV1,
+} from '../../../ui/sld/core/topologyInputReader';
 import { buildTopologyTree } from '../topologyTree';
 import fixture from '../../../ui/sld/v2/geometry/__tests__/fixtures/sldSubstrate52s.enm.json';
 
@@ -40,22 +45,58 @@ describe('buildTopologyTree on substrate', () => {
   });
 
   it('conducts connectivity through a switch link (else a tapped station islands)', () => {
-    // A station can hang off the spine behind a switch (e.g. a normally-open reserve tie) with
-    // no other cable feed. The layout tree is a DRAWING skeleton, so it traverses in-service
-    // switch links to place that station — the switch is still drawn open; energization is the
-    // solver's job. Proof: take the switch links out of service and >=1 real station drops out.
-    expect(
-      snapshot.branches.some((b) => b.kind === BranchKind.BUS_LINK && b.inService),
-      'substrate models an in-service switch link',
-    ).toBe(true);
+    // ZMIANA KANONU (SUB-52s, 2026-09-04): this used to read the shared substrate, whose NOP
+    // switch used to be the SOLE path to one station — a topologically stranded fragment,
+    // which is a defect (ENMValidator E003), not a fixture feature (see
+    // sld_substrate_52s.py step 5d — that lateral is now ring-tied to an adjacent feeder, so
+    // no substrate station depends on a switch as its ONLY path any more). INTENCJA
+    // PRESERVED: verify buildTopologyTree still traverses an in-service BUS_LINK branch to
+    // place a station tapped behind ONLY a switch (else a tapped station islands) — exercised
+    // here on a small, dedicated 3-station fixture built for exactly that purpose, decoupled
+    // from the substrate's own topology contract.
+    const minimal: TopologyInputV1 = {
+      snapshotId: 'test-switch-tap',
+      snapshotFingerprint: 'test-switch-tap',
+      connectionNodes: [
+        { id: 'bus-gpz', name: 'GPZ', voltageKv: 15, stationId: 'stn-gpz', busIndex: 0, inService: true },
+        { id: 'bus-a', name: 'A', voltageKv: 15, stationId: 'stn-a', busIndex: 0, inService: true },
+        { id: 'bus-b', name: 'B', voltageKv: 15, stationId: 'stn-b', busIndex: 0, inService: true },
+      ],
+      branches: [
+        {
+          id: 'br-gpz-a', name: 'GPZ-A', fromNodeId: 'bus-gpz', toNodeId: 'bus-a',
+          kind: BranchKind.CABLE, isNormallyOpen: false, inService: true,
+          catalogRef: null, lengthKm: 0.2, ratedPowerMva: null, voltageHvKv: null, voltageLvKv: null,
+        },
+        {
+          id: 'sw-a-b', name: 'Lacznik A-B', fromNodeId: 'bus-a', toNodeId: 'bus-b',
+          kind: BranchKind.BUS_LINK, isNormallyOpen: false, inService: true,
+          catalogRef: null, lengthKm: null, ratedPowerMva: null, voltageHvKv: null, voltageLvKv: null,
+        },
+      ],
+      devices: [],
+      stations: [
+        { id: 'stn-gpz', name: 'GPZ', stationType: StationKind.MAIN_SUBSTATION, voltageKv: 15, busIds: ['bus-gpz'], branchIds: [], switchIds: [], transformerIds: [] },
+        { id: 'stn-a', name: 'A', stationType: StationKind.DISTRIBUTION, voltageKv: 15, busIds: ['bus-a'], branchIds: [], switchIds: [], transformerIds: [] },
+        { id: 'stn-b', name: 'B (tapped only via switch)', stationType: StationKind.DISTRIBUTION, voltageKv: 15, busIds: ['bus-b'], branchIds: [], switchIds: [], transformerIds: [] },
+      ],
+      generators: [],
+      sources: [{ id: 'src-gpz', name: 'Zrodlo', nodeId: 'bus-gpz', inService: true }],
+      loads: [],
+      protectionBindings: [],
+      fixActions: [],
+    };
+    const minimalTree = buildTopologyTree(minimal);
+    expect(minimalTree.stationCount, 'fixture: switch places the tapped station').toBe(3);
+
     const withoutSwitchLinks: TopologyInputV1 = {
-      ...snapshot,
-      branches: snapshot.branches.map((b) =>
+      ...minimal,
+      branches: minimal.branches.map((b) =>
         b.kind === BranchKind.BUS_LINK ? { ...b, inService: false } : b,
       ),
     };
     const reduced = buildTopologyTree(withoutSwitchLinks);
-    expect(reduced.stationCount).toBeLessThan(tree.stationCount);
+    expect(reduced.stationCount).toBeLessThan(minimalTree.stationCount);
   });
 
   it('identifies a magistrala (trunk) as a path from the root', () => {

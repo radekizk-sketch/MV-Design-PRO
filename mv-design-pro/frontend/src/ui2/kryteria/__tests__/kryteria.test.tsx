@@ -33,7 +33,6 @@ const REJESTR = async () =>
         code: 'ct.winding_resistance_missing',
         message_pl: 'Brak rezystancji uzwojenia wtórnego przekładnika',
         level: 'WARNING',
-        fix_action_id: 'fix_ct_winding_resistance',
       },
     ],
     [
@@ -44,7 +43,6 @@ const REJESTR = async () =>
           'Nierozpoznana klasa uzwojenia przekładnika napięciowego — bez kategorii '
           + '(pomiarowe/zabezpieczeniowe) nie ma limitu zmiany napięcia',
         level: 'WARNING',
-        fix_action_id: 'fix_vt_winding_category',
       },
     ],
   ]);
@@ -347,7 +345,7 @@ describe('komunikatyKodow', () => {
     const rejestr = new Map([
       [
         'a.b',
-        { code: 'a.b', message_pl: 'Zdanie kanonu', level: 'WARNING', fix_action_id: null },
+        { code: 'a.b', message_pl: 'Zdanie kanonu', level: 'WARNING' },
       ],
     ]);
     expect(komunikatyKodow(['a.b', 'nie.ma.takiego'], rejestr)).toEqual(['Zdanie kanonu']);

@@ -147,6 +147,91 @@ def test_zbierz_braki_pusta_lista_gdy_komplet() -> None:
     assert zbierz_braki(_run_result(_module())) == []
 
 
+# --------------------------------------------------------------------------- #
+# Karta FAB-K: moduł klasy A (zero testów WYMAGANYCH z klasyfikacji — żaden test
+# katalogu nie ma klasy A w `default_for_modules`, patrz `engine.py`) — ILOCZYN
+# CECH certyfikat × podstawa, nie jeden przykład z karty. Regresja odkryta
+# empirycznie (e2e `critical-oze-evidence.spec.ts`, moduł 215 kW/0,8 kV) PO
+# naprawie frontu (karta FAB-K R1), który dotąd czytał `ptpiree_certificate_ref`
+# z pola nigdy niezapisywanego przez backend — `certificate_status` był więc
+# ZAWSZE "unknown" i ta gałąź nigdy się nie uruchamiała: luka była niewidoczna,
+# dopóki front nie zaczął poprawnie zgłaszać zweryfikowanego certyfikatu.
+# --------------------------------------------------------------------------- #
+_MODULU_KLASY_A: dict = {
+    "der_ref": "pv-a-1",
+    "der_name": "PV 215 kW",
+    "der_kind": "PV",
+    "operator_id": "enea",
+    "p_max_kw": 215,
+    "voltage_kv": 0.8,
+    "certificate_status": "ptpiree_verified",
+}
+
+
+def test_klasa_a_z_certyfikatem_ptpiree_ma_zero_wymaganych_ale_to_NIE_jest_brak() -> None:
+    """Moduł klasy A bez ŻADNEGO testu z klasyfikacji, ALE ze zweryfikowanym
+    certyfikatem PTPiREE — certyfikat producenta jest samodzielną podstawą,
+    zero testów NC RfG jest tu WNIOSKIEM klasyfikacji, nie luką dowodową."""
+    run_result = _run_result(dict(_MODULU_KLASY_A))
+    modul = run_result.modules[0]
+    assert modul.module_type == "A"
+    assert modul.required_count == 0
+    assert zbierz_braki(run_result) == []
+    # Certyfikat MUSI faktycznie powstać (nie tylko `zbierz_braki` pusta) —
+    # dowód end-to-end przez `build_certyfikat_view`, nie tylko przez samą
+    # funkcję bramki (przypadek z karty PRZEGLAD_FALI_2026-08-01: naprawiono
+    # jedną funkcję, nie ścieżkę produkcyjną).
+    view = build_certyfikat_view(run_result, nazwa_projektu="Projekt A")
+    assert view["moduly"][0]["klasa"] == "A"
+
+
+def test_klasa_a_bez_certyfikatu_wymaga_t12_i_zostaje_brakiem_gdy_niekompletny() -> None:
+    """PREDYKAT PAROWY z testem wyżej — TA SAMA klasa A, ALE BEZ certyfikatu:
+    `required_count` NIE jest tu 0 (T12 „zaprzestanie generacji" staje się
+    WYMAGANY właśnie DLATEGO, że certyfikatu brak — `_is_required` w
+    `engine.py`), więc gałąź „required_count == 0" tej karty nigdy się nie
+    uruchamia dla tego przypadku z innego powodu niż w teście wyżej. Test
+    pilnuje WŁAŚNIE tej pary predykatów: `required_count == 0` i
+    `certificate_status == "ptpiree_verified"` idą razem dla klasy A (żaden
+    inny test katalogu nie ma klasy A w `default_for_modules`) — nie da się
+    skonstruować „klasa A + zero wymaganych + bez certyfikatu" wcale, bo T12
+    WYPEŁNIA lukę. Zostaje więc niekompletny (brak danych numerycznych, których
+    fikstura celowo nie podaje) — bramka braków nadal blokuje, innym powodem."""
+    for status in ("unknown", "none", "expired"):
+        run_result = _run_result(dict(_MODULU_KLASY_A, certificate_status=status))
+        modul = run_result.modules[0]
+        assert modul.module_type == "A"
+        assert modul.required_count >= 1, (
+            status,
+            "T12 musi stac sie wymagany bez certyfikatu",
+        )
+        with pytest.raises(CertyfikatBrakiError):
+            build_certyfikat_view(run_result, nazwa_projektu="Projekt A")
+
+
+def test_certyfikowany_modul_z_INNYM_brakiem_nadal_jest_blokowany() -> None:
+    """PREDYKAT PAROWY właściwy dla naprawy: certyfikat PTPiREE zwalnia
+    WYŁĄCZNIE z braku „required_count == 0" — moduł certyfikowany (`_MODULE_FULL`
+    ma `certificate_status="ptpiree_verified"` od zawsze), który MA testy
+    wymagane z klasyfikacji (klasa B), ale jeden z nich ma werdykt `no_data`
+    (`test_braki_blokuja_generacje_lista_pl` powyżej — TA SAMA fikstura),
+    MUSI zostać zablokowany jak każdy inny. Ten test czyni PAROWANIE jawnym
+    (asercja na `certificate_status`), zamiast polegać na przypadkowej wartości
+    domyślnej fikstury — naprawa nie zdejmuje bramki z certyfikowanych modułów
+    w całości, tylko dokładnie z powodu „required_count == 0"."""
+    run_result = _run_result(_module(p_recovery_time_s=None, reactive_current_gain=None))
+    modul = run_result.modules[0]
+    assert modul.module_type == "B"
+    assert modul.certificate_status == "ptpiree_verified"
+    assert modul.required_count > 0
+    braki = zbierz_braki(run_result)
+    assert braki
+    assert not any("brak podstawy do certyfikacji" in b for b in braki)
+    assert any("brak danych do oceny" in b for b in braki)
+    with pytest.raises(CertyfikatBrakiError):
+        build_certyfikat_view(run_result, nazwa_projektu="Projekt A")
+
+
 def test_docx_determinizm_bajtowy() -> None:
     view = build_certyfikat_view(_run_result(_module()), nazwa_projektu="Projekt A")
     first = render_certyfikat_docx(view)

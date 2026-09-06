@@ -260,17 +260,17 @@ export const SLD_NETWORK_53: SldNetworkModel = {
       "to": "S50"
     },
     {
+      "from": "S49",
+      "open": false,
+      "to": "S52"
+    },
+    {
       "from": "S50",
       "open": false,
       "to": "S51"
     },
     {
       "from": "S51",
-      "open": false,
-      "to": "S52"
-    },
-    {
-      "from": "S52",
       "open": false,
       "to": "S53"
     }
@@ -304,7 +304,7 @@ export const SLD_NETWORK_53: SldNetworkModel = {
   },
   "nop_station": "S44",
   "schema": "sld_network_model_v1",
-  "source_hash": "741bf1cb3f549df814ca2b276b225cb0de72db0c3b6086c7b3017644617192bf",
+  "source_hash": "fa2f07f0326fbcb157bd1bfe4d8094bfd9dff9e0cc0e8feb97282c109aa9acb9",
   "stations": [
     {
       "depth": 2,
@@ -959,22 +959,22 @@ export const SLD_NETWORK_53: SldNetworkModel = {
       "der": [],
       "id": "S52",
       "kind": "lateral",
-      "name": "Stacja L7-3",
+      "name": "Stacja L7-4",
       "nn_kv": 0.4,
       "nop_downstream": false,
-      "parent": "S51",
+      "parent": "S49",
       "sn_kv": 15.0,
       "trafo_mva": 0.63
     },
     {
-      "depth": 38,
+      "depth": 37,
       "der": [],
       "id": "S53",
       "kind": "lateral",
-      "name": "Stacja L7-4",
+      "name": "Stacja L7-3",
       "nn_kv": 0.4,
       "nop_downstream": false,
-      "parent": "S52",
+      "parent": "S51",
       "sn_kv": 15.0,
       "trafo_mva": 0.63
     }

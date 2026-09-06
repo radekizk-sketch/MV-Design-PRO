@@ -597,6 +597,32 @@ class TestExportPowerFlowComparisonToDocx:
             header = f.read(2)
         assert header == b"PK"
 
+    def test_export_comparison_with_none_delta_v_pu_does_not_crash(self, tmp_path: Path) -> None:
+        """FAB-E (E1): delta_v_pu=None (szyna tylko w jednym biegu, karta P20c)
+        nie moze rzucic TypeError w sortowaniu top-roznic (abs(None))."""
+        from network_model.reporting.power_flow_report_docx import (
+            export_power_flow_comparison_to_docx,
+        )
+
+        comparison = create_sample_comparison_result()
+        comparison["summary"]["max_delta_v_pu"] = None
+        comparison["summary"]["max_delta_angle_deg"] = None
+        comparison["bus_diffs"].append(
+            {
+                "bus_id": "BUS_ONLY_A",
+                "v_pu_a": 1.02,
+                "v_pu_b": None,
+                "delta_v_pu": None,
+                "delta_angle_deg": None,
+            }
+        )
+        output_file = tmp_path / "pf_comparison_none_delta.docx"
+
+        returned_path = export_power_flow_comparison_to_docx(comparison, output_file)
+
+        assert output_file.exists()
+        assert returned_path == output_file
+
 
 @pytest.mark.skipif(not _DOCX_AVAILABLE, reason="python-docx is not installed")
 class TestDocxErrorHandling:
@@ -734,16 +760,27 @@ class TestWhiteBoxTraceDocx:
 
 # -----------------------------------------------------------------------------
 # Tests for ImportError when dependencies are NOT available
+#
+# reportlab/python-docx are dev dependencies (pyproject.toml) always present
+# in a correctly provisioned environment, so gating these tests on the real
+# _PDF_AVAILABLE/_DOCX_AVAILABLE flag (skipif(_PDF_AVAILABLE, ...)) meant they
+# never ran in CI/regression — the "library missing" branch had zero
+# coverage. Simulating absence via monkeypatch on the reporting module's own
+# flag exercises the real ImportError-raising code path unconditionally.
 # -----------------------------------------------------------------------------
-@pytest.mark.skipif(_PDF_AVAILABLE, reason="reportlab IS installed, skip unavailable test")
 class TestPdfWhenReportlabUnavailable:
     """Tests for behavior when reportlab is not installed."""
 
-    def test_import_error_raised_when_reportlab_missing(self, tmp_path: Path) -> None:
+    def test_import_error_raised_when_reportlab_missing(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Verify that ImportError with clear message is raised when reportlab missing."""
+        from network_model.reporting import power_flow_report_pdf
         from network_model.reporting.power_flow_report_pdf import (
             export_power_flow_result_to_pdf,
         )
+
+        monkeypatch.setattr(power_flow_report_pdf, "_PDF_AVAILABLE", False)
 
         result = create_sample_power_flow_result()
         output_file = tmp_path / "pf_report.pdf"
@@ -752,15 +789,19 @@ class TestPdfWhenReportlabUnavailable:
             export_power_flow_result_to_pdf(result, output_file)
 
 
-@pytest.mark.skipif(_DOCX_AVAILABLE, reason="python-docx IS installed, skip unavailable test")
 class TestDocxWhenPythonDocxUnavailable:
     """Tests for behavior when python-docx is not installed."""
 
-    def test_import_error_raised_when_docx_missing(self, tmp_path: Path) -> None:
+    def test_import_error_raised_when_docx_missing(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Verify that ImportError with clear message is raised when python-docx missing."""
+        from network_model.reporting import power_flow_report_docx
         from network_model.reporting.power_flow_report_docx import (
             export_power_flow_result_to_docx,
         )
+
+        monkeypatch.setattr(power_flow_report_docx, "_DOCX_AVAILABLE", False)
 
         result = create_sample_power_flow_result()
         output_file = tmp_path / "pf_report.docx"

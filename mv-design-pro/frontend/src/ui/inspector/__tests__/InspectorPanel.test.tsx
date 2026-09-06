@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { InspectorPanel } from '../InspectorPanel';
 import { useExecutionRunsStore } from '../../study-cases/runStore';
+import { at } from '../../../test/arrayAt';
 
 describe('InspectorPanel', () => {
   const selectedRow = {
@@ -39,7 +40,7 @@ describe('InspectorPanel', () => {
       screen.getByText('Wywód obliczeń jest dostępny w dedykowanej zakładce „Wywód”.'),
     ).toBeInTheDocument();
     expect(screen.getByText('pakietu wywodu', { exact: false })).toBeInTheDocument();
-    const proofButton = screen.getAllByRole('button', { name: 'Otwórz wywód obliczeń' }).at(-1);
+    const proofButton = at(screen.getAllByRole('button', { name: 'Otwórz wywód obliczeń' }), -1);
     expect(proofButton).toBeDefined();
     expect(proofButton).toBeDisabled();
     expect(screen.getByTestId('open-proof-trace-blocked-proof')).toHaveTextContent(

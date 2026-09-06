@@ -164,43 +164,70 @@ def _model_with_der() -> EnergyNetworkModel:
     )
 
 
-def test_compliance_endpoint_runs_from_model() -> None:
-    from uuid import UUID
+def _nowy_przypadek(client) -> str:
+    """Utwórz REALNY projekt + przypadek przez API; zwróć `case_id`.
 
+    CV-1-W: przypadek bez wiersza w bazie dostaje teraz 404 z magazynu ENM
+    (inwariant I-2) — testy tego pliku potrzebują prawdziwej pary
+    projekt+przypadek zamiast dowolnego UUID-a.
+    """
+    project_resp = client.post("/api/projects", json={"name": "NC RfG model bridge — test"})
+    assert project_resp.status_code == 201, project_resp.text
+    project_id = project_resp.json()["id"]
+    case_resp = client.post(
+        "/api/study-cases", json={"project_id": project_id, "name": "Przypadek testu"}
+    )
+    assert case_resp.status_code == 201, case_resp.text
+    return str(case_resp.json()["id"])
+
+
+def test_compliance_endpoint_runs_from_model() -> None:
     from api.main import app
+    from application.twin_key import klucz_twin_dla_przypadku
     from catalog.profiles.nc_rfg import list_available_operators
     from enm.store import reset_enm_store, set_enm
     from fastapi.testclient import TestClient
 
     reset_enm_store()
-    case_id = UUID("33333333-3333-3333-3333-333333333333")
-    set_enm(str(case_id), _model_with_der())
     operator_id = list_available_operators()[0]
 
-    client = TestClient(app)
-    resp = client.get(
-        f"/api/ncrfg-tests/cases/{case_id}/compliance", params={"operator_id": operator_id}
-    )
-    assert resp.status_code == 200, resp.text
-    body = resp.json()
-    assert body["der_count"] == 1
-    assert body["reports"][0]["der_ref"] == "DER1"
-    assert "overall_pass" in body["reports"][0]
+    # CV-1-W: `TestClient(app)` bez `with` NIE uruchamia lifespan — więc
+    # `app.state.uow_factory` zostaje po dowolnym POPRZEDNIM teście (kolejność
+    # zależna od uruchomienia). `with` wymusza świeży lifespan związany z
+    # `DATABASE_URL` USTAWIONYM PRZEZ TEN test (fixture `_izolowana_baza_przebiegow`).
+    with TestClient(app) as client:
+        case_id = _nowy_przypadek(client)
+        klucz = klucz_twin_dla_przypadku(case_id, client.app.state.uow_factory)
+        set_enm(klucz, _model_with_der())
+
+        resp = client.get(
+            f"/api/ncrfg-tests/cases/{case_id}/compliance", params={"operator_id": operator_id}
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["der_count"] == 1
+        assert body["reports"][0]["der_ref"] == "DER1"
+        assert "overall_pass" in body["reports"][0]
 
 
 def test_compliance_endpoint_rejects_unknown_operator() -> None:
-    from uuid import UUID
-
     from api.main import app
+    from application.twin_key import klucz_twin_dla_przypadku
     from enm.store import reset_enm_store, set_enm
     from fastapi.testclient import TestClient
 
     reset_enm_store()
-    case_id = UUID("44444444-4444-4444-4444-444444444444")
-    set_enm(str(case_id), _model_with_der())
 
-    client = TestClient(app)
-    resp = client.get(
-        f"/api/ncrfg-tests/cases/{case_id}/compliance", params={"operator_id": "nieistnieje"}
-    )
-    assert resp.status_code == 404
+    with TestClient(app) as client:
+        case_id = _nowy_przypadek(client)
+        klucz = klucz_twin_dla_przypadku(case_id, client.app.state.uow_factory)
+        set_enm(klucz, _model_with_der())
+
+        resp = client.get(
+            f"/api/ncrfg-tests/cases/{case_id}/compliance", params={"operator_id": "nieistnieje"}
+        )
+        assert resp.status_code == 404
+        # Przypina WŁAŚCIWY powód (operator, nie tłumaczenie case_id) — bez
+        # tego dwa różne 404 (case bez projektu vs. nieznany operator) byłyby
+        # nierozróżnialne dla tego testu (test maskujący defekt).
+        assert "nieistnieje" in resp.json()["detail"]

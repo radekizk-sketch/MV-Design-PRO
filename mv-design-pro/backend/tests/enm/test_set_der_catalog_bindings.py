@@ -16,6 +16,7 @@ gotowa i czekała na dane.
 
 from __future__ import annotations
 
+import pytest
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 
@@ -58,21 +59,21 @@ class TestWiazaniaTrafiajaDoModelu:
         wynik = _wykonaj(
             {
                 "generator_ref": "gen_pv_1",
-                "protection_catalog_ref": "ACME_REX200_v1",
+                "protection_catalog_ref": "REF-OC-200",
                 "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
                 "vt_catalog_ref": "vt_10kv_100v_05_abb",
-                "fault_current_data_ref": "fc_pv_500",
-                "dynamic_model_ref": "dyn_pv_wecc",
+                # Karta FAB-K: `dynamic_model_ref` MA teraz katalog (der_dynamic) —
+                # musi byc identyfikatorem realnym, nie dowolnym lancuchem.
+                "dynamic_model_ref": "default_pv_gfl",
             }
         )
 
         assert wynik.get("error") is None
         params = _params(wynik)
-        assert params["protection_catalog_ref"] == "ACME_REX200_v1"
+        assert params["protection_catalog_ref"] == "REF-OC-200"
         assert params["ct_catalog_ref"] == "ct_200_5_5p10_10va_abb"
         assert params["vt_catalog_ref"] == "vt_10kv_100v_05_abb"
-        assert params["fault_current_data_ref"] == "fc_pv_500"
-        assert params["dynamic_model_ref"] == "dyn_pv_wecc"
+        assert params["dynamic_model_ref"] == "default_pv_gfl"
         # Dane materializacji katalogowej urządzenia zostają nietknięte.
         assert params["un_kv"] == 0.4
         assert params["rated_power_ac_kw"] == 500.0
@@ -80,6 +81,8 @@ class TestWiazaniaTrafiajaDoModelu:
     def test_profile_zgodnosci_ida_do_podslownika_profiles(self) -> None:
         # Odczyt frontu szuka profili w `materialized_params.profiles` — zapis musi trafić
         # dokładnie tam, inaczej dana istnieje w modelu i nadal nie dociera do reguły.
+        # Karta FAB-L: `bess_operation_mode_refs` dołączone — TEN SAM podsłownik,
+        # nie osobna ścieżka zapisu (lista, nie skalar jak pozostałe profile).
         wynik = _wykonaj(
             {
                 "generator_ref": "gen_pv_1",
@@ -87,6 +90,7 @@ class TestWiazaniaTrafiajaDoModelu:
                 "lvrt_curve_ref": "lvrt_pse_b",
                 "hvrt_curve_ref": "hvrt_pse_b",
                 "pf_curve_ref": "pf_pse_2024",
+                "bess_operation_mode_refs": ["mode_peak_shaving", "mode_self_consumption"],
             }
         )
 
@@ -97,6 +101,7 @@ class TestWiazaniaTrafiajaDoModelu:
             "lvrt_curve_ref": "lvrt_pse_b",
             "hvrt_curve_ref": "hvrt_pse_b",
             "pf_curve_ref": "pf_pse_2024",
+            "bess_operation_mode_refs": ["mode_peak_shaving", "mode_self_consumption"],
         }
 
     def test_wytworca_wskazany_przez_id_a_nie_ref_id(self) -> None:
@@ -121,7 +126,6 @@ class TestZeroFabrykacji:
         for klucz in (
             "protection_catalog_ref",
             "vt_catalog_ref",
-            "fault_current_data_ref",
             "dynamic_model_ref",
             "profiles",
         ):
@@ -213,26 +217,101 @@ class TestWiazanieMusiIstniecWKatalogu:
         assert wynik.get("error") is None
         assert "ct_catalog_ref" not in _params(wynik)
 
-    def test_wiazania_bez_katalogu_w_backendzie_przechodza_z_zapisanym_dlugiem(self) -> None:
-        # `fault_current_data_ref` i `dynamic_model_ref` NIE maja katalogu po stronie
-        # backendu, wiec nie sa sprawdzane. Udawanie walidacji byloby gorsze niz jej
-        # brak — ten test utrwala granice, zeby nie zniknela po cichu.
+    def test_dynamic_model_ref_MA_katalog_od_karty_fab_k_dowolny_string_odrzucony(
+        self,
+    ) -> None:
+        # Karta FAB-K (R2): `dynamic_model_ref` dostal dostawce
+        # (`network_model.catalog.der_dynamic`, konsumowany przez solvery RMS/FRT-HVRT
+        # — patrz `resolve_der_dynamic_profile`) — od tej karty JEST sprawdzany, tak
+        # samo jak ct/vt/protection_catalog_ref.
         wynik = _wykonaj(
             {
                 "generator_ref": "gen_pv_1",
-                "fault_current_data_ref": "fc_dowolne",
                 "dynamic_model_ref": "dyn_dowolne",
             }
         )
 
+        assert wynik.get("error_code") == "der_bindings.catalog_ref_unknown"
+        assert "dynamic_model_ref=dyn_dowolne" in (wynik.get("error") or "")
+
+    def test_dynamic_model_ref_realny_profil_der_dynamic_przechodzi(self) -> None:
+        wynik = _wykonaj(
+            {
+                "generator_ref": "gen_pv_1",
+                "dynamic_model_ref": "default_pv_gfm",
+            }
+        )
+
         assert wynik.get("error") is None
+        assert _params(wynik)["dynamic_model_ref"] == "default_pv_gfm"
+
+    def test_dynamic_model_ref_jawny_null_NIE_jest_walidowany_bo_usuwa_dana(self) -> None:
+        enm = _enm_z_wytworca()
+        enm["generators"][0]["materialized_params"]["dynamic_model_ref"] = "default_pv_gfl"
+        wynik = _wykonaj({"generator_ref": "gen_pv_1", "dynamic_model_ref": None}, enm)
+
+        assert wynik.get("error") is None
+        assert "dynamic_model_ref" not in _params(wynik)
+
+    def test_bess_operation_mode_refs_MA_katalog_lista_z_jednym_nieznanym_odrzucona(
+        self,
+    ) -> None:
+        # Karta FAB-L: `bess_operation_mode_refs` dostał dostawcę
+        # (`network_model.catalog.audit2_catalogs.get_bess_operation_mode`) —
+        # KAŻDY element listy jest sprawdzany, nie tylko pierwszy/ostatni (iloczyn
+        # cech: jeden dobry + jeden zły element w tej samej liście).
+        wynik = _wykonaj(
+            {
+                "generator_ref": "gen_pv_1",
+                "bess_operation_mode_refs": ["mode_peak_shaving", "mode_KTORY_NIE_ISTNIEJE"],
+            }
+        )
+
+        assert wynik.get("error_code") == "der_bindings.catalog_ref_unknown"
+        assert "bess_operation_mode_refs=mode_KTORY_NIE_ISTNIEJE" in (wynik.get("error") or "")
+        assert wynik.get("snapshot") is None
+
+    def test_bess_operation_mode_refs_realne_tryby_przechodza(self) -> None:
+        wynik = _wykonaj(
+            {
+                "generator_ref": "gen_pv_1",
+                "bess_operation_mode_refs": ["mode_peak_shaving", "mode_self_consumption"],
+            }
+        )
+
+        assert wynik.get("error") is None
+        assert _params(wynik)["profiles"]["bess_operation_mode_refs"] == [
+            "mode_peak_shaving",
+            "mode_self_consumption",
+        ]
+
+    def test_bess_operation_mode_refs_pusta_lista_jest_wartoscia_nie_brakiem(self) -> None:
+        # `[]` znaczy „świadomie zero trybów" (np. odznaczono ostatni checkbox) —
+        # INNY fakt niż pominięcie pola. Zapisywana jak każda inna wartość profilu.
+        wynik = _wykonaj({"generator_ref": "gen_pv_1", "bess_operation_mode_refs": []})
+
+        assert wynik.get("error") is None
+        assert _params(wynik)["profiles"]["bess_operation_mode_refs"] == []
+
+    def test_bess_operation_mode_refs_jawny_null_NIE_jest_walidowany_bo_usuwa_dana(
+        self,
+    ) -> None:
+        enm = _enm_z_wytworca()
+        enm["generators"][0]["materialized_params"]["profiles"] = {
+            "bess_operation_mode_refs": ["mode_peak_shaving"]
+        }
+        wynik = _wykonaj({"generator_ref": "gen_pv_1", "bess_operation_mode_refs": None}, enm)
+
+        assert wynik.get("error") is None
+        assert "profiles" not in _params(wynik)
 
 
 def test_urzadzenie_z_listy_pickera_daje_sie_ZAPISAC(tmp_path=None) -> None:
     """V12K-248: walidacja wiazan pyta o katalog, ktory widzi projektant.
 
-    POMIAR: repozytorium katalogu MV ma 12 urzadzen zabezpieczeniowych (syntetyczne
-    `ACME_REX*`), a katalog analityczny — 51 rekordow producenckich; to jego wystawia
+    POMIAR: repozytorium katalogu MV ma 12 urzadzen zabezpieczeniowych (5 profili
+    referencyjnych bez marki + 7 Elektrometal e2TANGO), a katalog analityczny — 51
+    rekordow producenckich; to jego wystawia
     `/api/catalog/protection/device-types`, z ktorego wybiera picker. Sprawdzanie samego
     repozytorium MV odrzucalo **39 z 51** urzadzen widocznych na liscie: projektant
     wybieral realny przekaznik ABB i dostawal „typ katalogowy nie istnieje".
@@ -249,3 +328,112 @@ def test_urzadzenie_z_listy_pickera_daje_sie_ZAPISAC(tmp_path=None) -> None:
     assert _nieznane_referencje_katalogowe(
         {"protection_catalog_ref": "REL_KTORY_NIE_ISTNIEJE"}
     ) == ["protection_catalog_ref=REL_KTORY_NIE_ISTNIEJE"]
+
+
+# =============================================================================
+# Karta FAB-K (§0 R1) — parytet NAZW kluczy FE ↔ BE + round-trip (iloczyn cech)
+# =============================================================================
+#
+# `DER_BINDING_KEYS`/`DER_PROFILE_KEYS` (`enm/domain_operations_v2.py`) SĄ
+# JEDYNĄ definicją — front czyta z lustra `zModelu.ts::DER_MATERIALIZED_
+# BINDING_KEYS`/`DER_MATERIALIZED_PROFILE_KEYS` (test frontowy
+# `zModelu.test.ts::DER_MATERIALIZED_BINDING_KEYS — parytet z backendem`
+# przypina te SAME nazwy w tej SAMEJ kolejności). Dwa języki nie dzielą
+# jednego importu, więc „jedno źródło" oznacza tu: KAŻDY z dwóch testów
+# importuje SWOJĄ realną definicję (nie ręcznie przepisaną kopię) i przypina
+# ją do jawnej, identycznej listy — rozjazd między backendem a frontem staje
+# się WIDOCZNY jako czerwony test po jednej albo drugiej stronie, nie cichy.
+
+
+def test_der_binding_profile_keys_pin_parytet_fe_be() -> None:
+    """Przypięcie nazw kluczy — zmiana wymaga świadomej aktualizacji obu stron."""
+    from enm.domain_operations_v2 import DER_BINDING_KEYS, DER_PROFILE_KEYS
+
+    assert DER_BINDING_KEYS == (
+        "protection_catalog_ref",
+        "ct_catalog_ref",
+        "vt_catalog_ref",
+        "dynamic_model_ref",
+    )
+    assert DER_PROFILE_KEYS == (
+        "nc_rfg_profile_ref",
+        "lvrt_curve_ref",
+        "hvrt_curve_ref",
+        "pf_curve_ref",
+        "bess_operation_mode_refs",
+    )
+
+
+#: Wartości REALNE (te same, którymi posługują się testy wyżej w tym pliku) —
+#: `ct`/`vt`/`protection`/`dynamic_model_ref`/`bess_operation_mode_refs` są
+#: WALIDOWANE względem katalogu backendu (`_KATALOGI_WIAZAN_DER` + walidacje
+#: osobne w `_nieznane_referencje_katalogowe`), więc wartość musi być realną
+#: pozycją, nie dowolnym łańcuchem. `bess_operation_mode_refs` jest LISTĄ, nie
+#: skalarem — jedyne pole tego kształtu w obu zbiorach kluczy.
+_WARTOSC_DLA_KLUCZA: dict[str, str | list[str]] = {
+    "protection_catalog_ref": "REF-OC-200",
+    "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
+    "vt_catalog_ref": "vt_10kv_100v_05_abb",
+    "dynamic_model_ref": "default_pv_gfl",
+    "nc_rfg_profile_ref": "pse",
+    "lvrt_curve_ref": "lvrt_pse_b",
+    "hvrt_curve_ref": "hvrt_pse_b",
+    "pf_curve_ref": "pf_pse_2024",
+    "bess_operation_mode_refs": ["mode_peak_shaving", "mode_self_consumption"],
+}
+
+
+def _wartosc_wynikowa(wynik: dict, klucz: str) -> object:
+    """Odczyt wartości klucza z odpowiedzi — profile idą do podsłownika ``profiles``."""
+    from enm.domain_operations_v2 import DER_PROFILE_KEYS
+
+    params = _params(wynik)
+    if klucz in DER_PROFILE_KEYS:
+        return params.get("profiles", {}).get(klucz)
+    return params.get(klucz)
+
+
+def _wszystkie_klucze() -> tuple[str, ...]:
+    from enm.domain_operations_v2 import DER_BINDING_KEYS, DER_PROFILE_KEYS
+
+    return DER_BINDING_KEYS + DER_PROFILE_KEYS
+
+
+@pytest.mark.parametrize("klucz", _wszystkie_klucze())
+def test_round_trip_zapis_klucza(klucz: str) -> None:
+    """Karta FAB-K (§0 R1), iloczyn cech, gałąź „zapis": KAŻDY klucz z
+    ``DER_BINDING_KEYS``/``DER_PROFILE_KEYS`` (nie tylko przykład z audytu)
+    zapisuje się w ``materialized_params`` (płasko) albo ``materialized_params
+    .profiles`` (profile) i wraca w odpowiedzi PATCH dokładnie z tą wartością —
+    ta sama ścieżka, którą czyta front (`derZGeneratora`) po GET snapshotu.
+    """
+    wartosc = _WARTOSC_DLA_KLUCZA[klucz]
+    wynik = _wykonaj({"generator_ref": "gen_pv_1", klucz: wartosc})
+
+    assert wynik.get("error") is None, f"zapis klucza {klucz} odrzucony: {wynik.get('error')}"
+    assert _wartosc_wynikowa(wynik, klucz) == wartosc
+
+
+@pytest.mark.parametrize("klucz", _wszystkie_klucze())
+def test_round_trip_wyczyszczenie_klucza(klucz: str) -> None:
+    """Karta FAB-K (§0 R1), iloczyn cech, gałąź „wyczyszczenie": KAŻDY klucz,
+    zapisany raz, znika CAŁKOWICIE z modelu po jawnym ``null`` (reguła
+    gotowości musi znów widzieć BRAK danej, nie pustą wartość) — nie tylko
+    ``ct_catalog_ref``/``nc_rfg_profile_ref`` z dwóch istniejących przykładów.
+    """
+    from enm.domain_operations_v2 import DER_PROFILE_KEYS
+
+    enm = _enm_z_wytworca()
+    if klucz in DER_PROFILE_KEYS:
+        enm["generators"][0]["materialized_params"]["profiles"] = {
+            klucz: _WARTOSC_DLA_KLUCZA[klucz]
+        }
+    else:
+        enm["generators"][0]["materialized_params"][klucz] = _WARTOSC_DLA_KLUCZA[klucz]
+
+    wynik = _wykonaj({"generator_ref": "gen_pv_1", klucz: None}, enm)
+
+    assert (
+        wynik.get("error") is None
+    ), f"wyczyszczenie klucza {klucz} odrzucone: {wynik.get('error')}"
+    assert _wartosc_wynikowa(wynik, klucz) is None

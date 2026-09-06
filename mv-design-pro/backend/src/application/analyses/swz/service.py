@@ -16,7 +16,6 @@ którym ostrzega reguła KLASA NIE INSTANCJA (dwie ścieżki tej samej fizyki).
 
 from __future__ import annotations
 
-import math
 from typing import Any
 
 from application.analyses.fault_loop.route import (
@@ -37,6 +36,7 @@ from application.analyses.fault_loop.service import (
 )
 from enm.models import EnergyNetworkModel, FuseBranch, SwitchBranch
 from network_model.catalog.lv_mccb_settings_iec60947_2 import resolwuj_nastawy_mccb
+from network_model.pochodne import napiecie_fazowe_v
 from network_model.solvers.fault_loop_builder import (
     FaultLoopBuildRequest,
     build_fault_loop_input,
@@ -219,7 +219,7 @@ def build_swz_view(
 
     phase_component, return_component = sum_phase_and_return_route(segments)
     net_type, protection = _SYSTEM_MAP.get(system, _SYSTEM_MAP[_DEFAULT_SYSTEM])
-    u_phase_v = trafo.ulv_kv * 1000.0 / math.sqrt(3.0)
+    u_phase_v = napiecie_fazowe_v(trafo.ulv_kv * 1000.0)
 
     request = FaultLoopBuildRequest(
         fault_node_id=bus_ref,

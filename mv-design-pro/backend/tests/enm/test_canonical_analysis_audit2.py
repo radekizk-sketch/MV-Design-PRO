@@ -1,85 +1,115 @@
-"""
-Test integracji canonical_run z audit2 (Phase 41+43+44).
+"""Rozszerzenia audytu 2 w torze kanonicznym (CV-4.2b) + stan fazowy a katalog uziemienia (K-Q).
 
-Sprawdza:
-- _maybe_load_audit2_extensions zwraca None gdy brak ID-kow.
-- _maybe_load_audit2_extensions zwraca None gdy invalid UUID.
-- _execute_power_flow respektuje run.options.audit2_project_id.
-- _execute_short_circuit respektuje run.options.audit2_station_id (Phase 43).
+Klasa CV-4.2b: wykonawca biegu NIE buduje własnego połączenia z bazą. Konfigurację
+audytu 2 stacji wskazaną opcjami biegu czyta `rozszerzenia_audit2_dla_opcji(options,
+uow_factory)` fabryką `UnitOfWork` WOŁAJĄCEGO i podaje assemblerowi jako dane
+(`rozszerzenia_audit2`); assembler nie zna bazy. Do tej karty `enm/assembler.py::
+_maybe_load_audit2_extensions` budował własny silnik z `DATABASE_URL`
+(`_uow_factory_biezacy`) — inną bazę niż `app.state.uow_factory`, więc konfiguracja
+zapisana przez API bywała dla biegu niewidoczna (test `tests/api/
+test_solver_input_audit2_integration.py` musiał wyrównywać `DATABASE_URL`, żeby
+produkt w ogóle działał).
+
+Iloczyn cech pokryty niżej (reguła KLASA §2):
+  {brak pary, połowa pary, zły UUID, brak fabryki, para bez konfiguracji,
+   para z konfiguracją} × {rozpływ, zwarcie} + „assembler nie zna bazy" (źródło).
 """
 
 from __future__ import annotations
 
-from uuid import UUID
+import ast
+import inspect
+from typing import Any
+from uuid import UUID, uuid4
 
 import pytest
 
+from tests.application.test_protection_settings_batch_run import (
+    _kotwica,
+    _siec_promieniowa,
+)
+
 pytest.importorskip("sqlalchemy")
-pytest.importorskip("pydantic")
 
 
-def test_maybe_load_audit2_extensions_none_for_missing_ids():
-    """Phase 41: brak project/station IDs -> None."""
-    from enm.canonical_analysis import _maybe_load_audit2_extensions
+class _FabrykaNieDoWolania:
+    """Fabryka `UnitOfWork`, której wywołanie jest błędem testu — pin „baza nietknięta"."""
 
-    assert _maybe_load_audit2_extensions(project_id_str=None, station_id="s1") is None
-    assert _maybe_load_audit2_extensions(project_id_str="some-uuid", station_id=None) is None
-    assert _maybe_load_audit2_extensions(project_id_str=None, station_id=None) is None
-
-
-def test_maybe_load_audit2_extensions_none_for_invalid_uuid():
-    """Phase 41: invalid UUID -> None (nie crashuje)."""
-    from enm.canonical_analysis import _maybe_load_audit2_extensions
-
-    assert _maybe_load_audit2_extensions(project_id_str="not-a-uuid", station_id="s1") is None
-
-
-def test_maybe_load_audit2_extensions_returns_extensions_for_existing_config(tmp_path):
-    """Phase 41: istniejacy config -> extensions dict z kluczami SC/PF/Protection."""
-    import os
-
-    from enm.canonical_analysis import _maybe_load_audit2_extensions
-    from infrastructure.persistence.db import (
-        create_engine_from_url,
-        create_session_factory,
-        init_db,
-    )
-    from infrastructure.persistence.models import StationAudit2ConfigORM
-    from infrastructure.persistence.unit_of_work import build_uow_factory
-
-    db_path = tmp_path / "test_audit2_canonical.db"
-    db_url = f"sqlite+pysqlite:///{db_path.as_posix()}"
-    os.environ["DATABASE_URL"] = db_url
-
-    engine = create_engine_from_url(db_url)
-    init_db(engine)
-    session_factory = create_session_factory(engine)
-    uow_factory = build_uow_factory(session_factory)
-
-    project_id = UUID("00000000-0000-0000-0000-000000000001")
-    station_id = "station-canonical-1"
-
-    # Insert audit2 config.
-    with uow_factory() as uow:
-        assert uow.session is not None
-        # First create a project (FK requirement).
-        from infrastructure.persistence.models import ProjectORM
-
-        proj = ProjectORM(
-            id=project_id,
-            name="Test Project",
-            schema_version="1.0",
-            mode="AS-IS",
-            voltage_level_kv=15.0,
-            frequency_hz=50.0,
+    def __call__(self) -> Any:
+        raise AssertionError(
+            "wykonawca dotknął bazy, choć opcje nie wskazują konfiguracji audytu 2"
         )
-        uow.session.add(proj)
-        uow.session.flush()
 
-        cfg = StationAudit2ConfigORM(
-            id=UUID("00000000-0000-0000-0000-000000000002"),
-            project_id=project_id,
-            station_id=station_id,
+
+def _rozszerzenia(options: dict[str, Any], uow_factory: Any) -> dict[str, Any] | None:
+    from enm.canonical_analysis import rozszerzenia_audit2_dla_opcji
+
+    return rozszerzenia_audit2_dla_opcji(options, uow_factory)
+
+
+def test_brak_pary_audit2_nie_dotyka_bazy_i_daje_none() -> None:
+    assert _rozszerzenia({}, _FabrykaNieDoWolania()) is None
+    assert _rozszerzenia({"fault_type": "3F"}, None) is None
+
+
+@pytest.mark.parametrize(
+    "options",
+    [
+        {"audit2_project_id": str(uuid4())},
+        {"audit2_station_id": "st-1"},
+        {"audit2_project_id": str(uuid4()), "audit2_station_id": ""},
+        {"audit2_project_id": "", "audit2_station_id": "st-1"},
+    ],
+)
+def test_polowa_pary_audit2_to_jawny_blad(options: dict[str, Any]) -> None:
+    with pytest.raises(ValueError, match="polowa pary"):
+        _rozszerzenia(options, _FabrykaNieDoWolania())
+
+
+def test_zly_uuid_projektu_to_jawny_blad_a_nie_cichy_bieg_bez_korekt() -> None:
+    with pytest.raises(ValueError, match="nie jest poprawnym UUID"):
+        _rozszerzenia(
+            {"audit2_project_id": "not-a-uuid", "audit2_station_id": "st-1"},
+            _FabrykaNieDoWolania(),
+        )
+
+
+def test_para_audit2_bez_fabryki_wolajacego_to_jawny_blad() -> None:
+    with pytest.raises(ValueError, match="nie dostal fabryki UnitOfWork"):
+        _rozszerzenia({"audit2_project_id": str(uuid4()), "audit2_station_id": "st-1"}, None)
+
+
+def test_para_audit2_bez_zapisanej_konfiguracji_daje_none(uow_factory) -> None:
+    assert (
+        _rozszerzenia(
+            {
+                "audit2_project_id": str(uuid4()),
+                "audit2_station_id": "station-bez-konfiguracji",
+            },
+            uow_factory,
+        )
+        is None
+    )
+
+
+def _zapisz_projekt_i_konfiguracje(uow_factory, project_id: UUID, station_id: str) -> None:
+    from infrastructure.persistence.models import ProjectORM
+
+    with uow_factory() as uow:
+        uow.session.add(
+            ProjectORM(
+                id=project_id,
+                name="Projekt audytu 2",
+                schema_version="1.0",
+                mode="AS-IS",
+                voltage_level_kv=15.0,
+                frequency_hz=50.0,
+            )
+        )
+        uow.session.flush()
+        uow.audit2_station_configs.upsert(
+            project_id,
+            station_id,
             mv_neutral_grounding_ref="mng_petersen",
             tap_changer_refs=[],
             der_specs=[],
@@ -88,58 +118,119 @@ def test_maybe_load_audit2_extensions_returns_extensions_for_existing_config(tmp
             bay_vts={},
             bay_device_withstand={},
         )
-        uow.session.add(cfg)
-        uow.session.commit()
 
-    extensions = _maybe_load_audit2_extensions(
-        project_id_str=str(project_id), station_id=station_id
+
+def test_para_audit2_z_zapisana_konfiguracja_daje_rozszerzenia_ta_sama_fabryka(
+    uow_factory,
+) -> None:
+    """Zapis i odczyt TĄ SAMĄ fabryką — bez żadnego `DATABASE_URL` w teście."""
+    project_id = uuid4()
+    _zapisz_projekt_i_konfiguracje(uow_factory, project_id, "station-canonical-1")
+
+    extensions = _rozszerzenia(
+        {
+            "audit2_project_id": str(project_id),
+            "audit2_station_id": "station-canonical-1",
+        },
+        uow_factory,
     )
+
     assert extensions is not None
-    assert "power_flow_extensions" in extensions
-    assert "sc_iec60909_extensions" in extensions
-    # Per-transformer mapping populated.
-    assert "transformer_to_tap_changer" in extensions["power_flow_extensions"]
     assert "tr_001" in extensions["power_flow_extensions"]["transformer_to_tap_changer"]
-    # Grounding type populated.
     assert (
         extensions["sc_iec60909_extensions"]["mv_neutral_grounding"]["grounding_type"]
         == "petersen_coil"
     )
 
 
-def test_canonical_run_pf_options_propagate_to_audit2():
-    """Phase 41+44: run.options.audit2_* -> _execute_power_flow respektuje."""
-    # Smoke test: importy + sygnatura. Pelny test wymaga skomplikowanego setup'u
-    # CanonicalRun + ENM model — tu weryfikujemy ze hook istnieje i akceptuje
-    # options.audit2_project_id / audit2_station_id bez crash.
-    from enm.canonical_analysis import _maybe_load_audit2_extensions
-
-    # Z run.options.get("audit2_project_id") = None (default) -> None.
-    assert (
-        _maybe_load_audit2_extensions(
-            project_id_str=None,  # Symuluje run.options.get("audit2_project_id")
-            station_id=None,
-        )
-        is None
-    )
-
-
-def test_canonical_run_sc_options_propagate_to_audit2():
-    """Phase 43: _execute_short_circuit tez korzysta z _maybe_load_audit2_extensions."""
-    # Smoke: sprawdza ze SC i PF uzywaja tego samego helper'a.
-    import inspect
-
+@pytest.mark.parametrize("analysis_type", ["PF", "short_circuit_sn"])
+def test_wykonawca_podaje_fabryke_wolajacego_i_rozszerzenia_assemblerowi(
+    analysis_type: str, monkeypatch
+) -> None:
+    """PF × SC: wykonawca woła JEDEN odczyt z fabryką wołającego i oddaje wynik assemblerowi."""
     from enm import canonical_analysis
 
-    pf_source = inspect.getsource(canonical_analysis._execute_power_flow)
-    sc_source = inspect.getsource(canonical_analysis._execute_short_circuit)
+    fabryka = object()
+    widziane: list[tuple[dict[str, Any], Any]] = []
 
-    # Oba uzywaja _maybe_load_audit2_extensions.
-    assert "_maybe_load_audit2_extensions" in pf_source
-    assert "_maybe_load_audit2_extensions" in sc_source
-    # Oba uzywaja apply_audit2_to_network_model.
-    assert "apply_audit2_to_network_model" in pf_source
-    assert "apply_audit2_to_network_model" in sc_source
+    def _odczyt(options, uow_factory):
+        widziane.append((dict(options), uow_factory))
+        return None
+
+    monkeypatch.setattr(canonical_analysis, "rozszerzenia_audit2_dla_opcji", _odczyt)
+    przekazane: list[Any] = []
+    if analysis_type == "PF":
+        oryginal = canonical_analysis.zloz_wejscie_rozplywu
+
+        def _assembler(snapshot, options, graph=None, *, rozszerzenia_audit2=None):
+            przekazane.append(rozszerzenia_audit2)
+            return oryginal(snapshot, options, graph=graph, rozszerzenia_audit2=rozszerzenia_audit2)
+
+        monkeypatch.setattr(canonical_analysis, "zloz_wejscie_rozplywu", _assembler)
+        run = _kotwica(_siec_promieniowa(), analysis_type="PF", wykonaj=False)
+        run.options = {}
+        canonical_analysis._execute_power_flow(run, uow_factory=fabryka)
+    else:
+        oryginal = canonical_analysis.zloz_wejscie_zwarcia
+
+        def _assembler(snapshot, options, *, rozszerzenia_audit2=None):
+            przekazane.append(rozszerzenia_audit2)
+            return oryginal(snapshot, options, rozszerzenia_audit2=rozszerzenia_audit2)
+
+        monkeypatch.setattr(canonical_analysis, "zloz_wejscie_zwarcia", _assembler)
+        run = _kotwica(_siec_promieniowa(), wykonaj=False)
+        canonical_analysis._execute_short_circuit(run, uow_factory=fabryka)
+
+    assert len(widziane) == 1 and widziane[0][1] is fabryka
+    assert przekazane == [None]
+    assert run.raw_result, "wykonawca policzył bieg po odczycie rozszerzeń"
+
+
+def _kod_bez_dokumentacji(modul_lub_funkcja: Any) -> str:
+    """Źródło bez docstringów (AST): pin klasy sprawdza KOD, nie opis kasacji."""
+    drzewo = ast.parse(inspect.getsource(modul_lub_funkcja))
+    for wezel in ast.walk(drzewo):
+        if isinstance(wezel, ast.Module | ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+            cialo = wezel.body
+            if (
+                cialo
+                and isinstance(cialo[0], ast.Expr)
+                and isinstance(cialo[0].value, ast.Constant)
+                and isinstance(cialo[0].value.value, str)
+            ):
+                del cialo[0]
+    return ast.unparse(drzewo)
+
+
+def test_assembler_nie_zna_bazy_a_wykonawcy_czytaja_ja_fabryka_wolajacego() -> None:
+    """Źródło (bez docstringów) jako pin klasy: brak własnego silnika w assemblerze,
+    jedna droga odczytu w wykonawcach."""
+    from enm import assembler, canonical_analysis
+
+    kod_assemblera = _kod_bez_dokumentacji(assembler)
+    for zakazane in (
+        "DATABASE_URL",
+        "create_engine",
+        "session",
+        "uow_factory",
+        "_maybe_load_audit2_extensions",
+        "_uow_factory_biezacy",
+        "infrastructure.persistence",
+    ):
+        assert zakazane not in kod_assemblera, zakazane
+    # Oba wejścia assemblera przyjmują rozszerzenia jako dane i stosują ten sam adjuster.
+    for funkcja in (assembler.zloz_wejscie_rozplywu, assembler.zloz_wejscie_zwarcia):
+        assert "rozszerzenia_audit2" in inspect.signature(funkcja).parameters
+        assert "apply_audit2_to_network_model" in _kod_bez_dokumentacji(funkcja)
+    # Wykonawcy NIE składają wejścia sami i czytają rozszerzenia JEDNĄ funkcją z fabryką.
+    for wykonawca, wejscie in (
+        (canonical_analysis._execute_power_flow, "zloz_wejscie_rozplywu("),
+        (canonical_analysis._execute_short_circuit, "zloz_wejscie_zwarcia("),
+    ):
+        kod = _kod_bez_dokumentacji(wykonawca)
+        assert wejscie in kod
+        assert "rozszerzenia_audit2=rozszerzenia_audit2_dla_opcji(run.options, uow_factory)" in kod
+    assert "_uow_factory_biezacy" not in _kod_bez_dokumentacji(canonical_analysis)
 
 
 # Stan fazowy SN a katalog uziemienia (karta K-Q, 2026-08-14)

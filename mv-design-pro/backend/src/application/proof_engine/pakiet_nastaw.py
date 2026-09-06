@@ -17,6 +17,7 @@ predykatów parami).
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 from application.proof_engine.packs.protection_settings import (
@@ -103,6 +104,7 @@ def zbuduj_pakiet_nastaw(
     delta_t_s: float = 0.3,
     k_b: float = 1.2,
     k_bth: float = 1.1,
+    uow_factory: Callable[[], Any] | None = None,
 ) -> tuple[str, bytes]:
     """Zbuduj pakiet dowodowy nastaw: ``(nazwa_pliku, zawartość ZIP)``.
 
@@ -118,6 +120,7 @@ def zbuduj_pakiet_nastaw(
             delta_t_s=delta_t_s,
             k_b=k_b,
             k_bth=k_bth,
+            uow_factory=uow_factory,
         )
     except BrakDanychNastawError as exc:
         raise PakietNastawError(str(exc)) from exc

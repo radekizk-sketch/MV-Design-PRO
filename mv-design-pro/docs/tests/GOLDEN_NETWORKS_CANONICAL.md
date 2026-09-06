@@ -309,16 +309,17 @@ profile_load:
 3. `insert_station_on_segment_sn(type=B)` - stacja B
 4. `add_converter_source` - źródło przekształtnikowe PV
 5. `add_converter_source` - źródło przekształtnikowe BESS
-6. `create_study_case(label_pl="Przypadek dzienny")` - Case_DZIEN
-7. `create_study_case(label_pl="Przypadek nocny")` - Case_NOC
-8. `set_case_switch_state(Case_NOC, sw_pv, OTWARTY)` - wylaczenie PV w trybie nocnym
-9. `set_dynamic_profile(Case_DZIEN, "prof_pv_dzien")` - przypisanie profilu PV
-10. `set_dynamic_profile(Case_DZIEN, "prof_bess")` - przypisanie profilu BESS
-11. `set_dynamic_profile(Case_DZIEN, "prof_load_typ")` - przypisanie profilu obciazenia
-12. `run_short_circuit(Case_DZIEN, SC2F, Bus_nN, Rf_ohm=0.5)` - zwarcie 2F z rezystancja
-13. `run_power_flow(Case_DZIEN)` - rozplyw mocy dzien
-14. `run_power_flow(Case_NOC)` - rozplyw mocy noc
-15. `compare_study_cases(Case_DZIEN, Case_NOC)` - porownanie wynikow dzien vs noc
+
+> Korekta (CV-3.2, 58e520ce): kroki 6-15 tej listy myliły C3 (9 usuniętych
+> operacji domenowych zapisujących fantomowe `study_cases[]` do ENM) z C1
+> (żywy `StudyCase` — `api/study_cases.py`/`domain/study_case.py`) i z
+> `set_dynamic_profile` (żywa operacja v2, ale przypisująca profil do
+> ŹRÓDŁA nN, nie do przypadku). Konkretna sekwencja wywołań budująca ten
+> wariant sieci (dzień/noc, PV wyłączone nocą, porównanie SC/PF) NIE była
+> zweryfikowana względem żadnej z dwóch żywych ścieżek (C1 `StudyCase`+CV-3.1
+> `OperatingScenario`, albo `enm/canonical_analysis.py::create_run/execute_run`)
+> w budżecie tej karty — wymaga osobnej weryfikacji, zanim posłuży za wzorzec
+> fixture'u. Nie fabrykuję tu nowej, niesprawdzonej sekwencji w jej miejsce.
 
 ---
 

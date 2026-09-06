@@ -132,6 +132,28 @@ export interface PowerFlowIterationTrace {
   jacobian_size?: { rows: number; cols: number };
   pv_to_pq_switches?: string[];
   cause_if_failed?: string | null;
+  /**
+   * Szyna bilansująca wyspy, z której pochodzi ta iteracja — obecna WYŁĄCZNIE w
+   * przebiegach z kilkoma wyspami zasilonymi (`enm/rozplyw_wysp.py`, addytywnie).
+   */
+  slack_bus_id?: string;
+}
+
+/**
+ * Wyspa zasilona przebiegu rozpływu liczonego PER WYSPA (backend 1:1:
+ * `enm/canonical_analysis.py::_execute_power_flow` → `power_flow_trace.wyspy`;
+ * obecne WYŁĄCZNIE gdy sieć ma ≥ 2 wyspy z własnym źródłem sieciowym).
+ */
+export interface PowerFlowTraceWyspa {
+  slack_bus_id: string;
+  zrodlo_ref: string;
+  pq_bus_ids: string[];
+  pv_bus_ids: string[];
+  ybus_trace?: Record<string, unknown>;
+  init_state: Record<string, { v_pu: number; theta_rad: number }>;
+  iterations: PowerFlowIterationTrace[];
+  converged: boolean;
+  final_iterations_count: number;
 }
 
 /**
@@ -199,6 +221,12 @@ export interface PowerFlowTrace {
    * regulators (`enm/canonical_analysis.py:1565-1566`, additive/optional).
    */
   oltc_control?: OltcControlTrace;
+  /**
+   * Rozpływ liczony PER WYSPA (CV-4.3 K3b) — jedna pozycja na wyspę zasiloną, tylko
+   * gdy wysp jest ≥ 2 (sieć z kilkoma źródłami sieciowymi w osobnych wyspach);
+   * `slack_bus_id` wyniku to szyna PIERWSZEJ wyspy, bilans mocy = suma wysp.
+   */
+  wyspy?: PowerFlowTraceWyspa[];
 }
 
 // =============================================================================

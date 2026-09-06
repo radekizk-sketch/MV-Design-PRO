@@ -13,6 +13,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
+from network_model.ir_fields import wymagany_float
+
 if TYPE_CHECKING:
     from network_model.solvers.power_flow_zip import ZipCoeffs
 
@@ -259,7 +261,7 @@ class Node:
             id=data.get("id", str(uuid.uuid4())),
             name=data.get("name", ""),
             node_type=node_type,
-            voltage_level=data.get("voltage_level", 0.0),
+            voltage_level=wymagany_float(data, "voltage_level", context="Node"),
             voltage_magnitude=data.get("voltage_magnitude"),
             voltage_angle=data.get("voltage_angle"),
             active_power=data.get("active_power"),

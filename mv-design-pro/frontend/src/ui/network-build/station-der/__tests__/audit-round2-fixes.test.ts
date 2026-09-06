@@ -13,20 +13,8 @@ import { describe, it, expect } from 'vitest';
 import {
   computeDerReadinessMatrix,
   buildAggregatedReadiness,
-  // Pakiet D
-  BESS_OPERATION_MODE_CATALOG,
-  selectBessModesForPcs,
-  TAP_CHANGER_CATALOG,
-  selectTapChangersForTransformer,
-  getTapChanger,
   validateHostingCapacityExport,
 } from '..';
-import {
-  // Pakiet F
-  HV_FUSE_CATALOG,
-  SPZ_CATALOG,
-  selectHvFusesForRating,
-} from '../protection-catalogs';
 import type { StationDerConnection } from '../types';
 
 // =============================================================================
@@ -40,34 +28,38 @@ function makeDer(overrides: Partial<StationDerConnection> = {}): StationDerConne
     station_id: 'station-test',
     der_kind: 'PV',
     name: 'Test DER',
-    connection_side: 'SN',
+    // Karta FAB-K (§0 R3): dawny gołosłowny wariant `'SN'` (bez transformatora
+    // dedykowanego) USUNIĘTY — domyślnie nN (najmniej specjalnych gałęzi
+    // reguł gotowości; testy eng.6/eng.11 poniżej nadpisują jawnie, gdzie
+    // trzeba SN przez transformator dedykowany).
+    connection_side: 'nN',
     bus_przylaczenia_ref: 'pcc_station-test_PCC-01',
     bay_ref: 'bay_station-test_Pole-01',
-    lv_busbar_ref: null,
+    lv_busbar_ref: 'busbar_station-test_main',
     transformer_ref: null,
-    connection_node_ref: null,
-    internal_cable_ref: null,
-    voltage_level_ref: null,
+    sn_connection_bus_ref: null,
+    sn_connection_point_kind: null,
+    connection_voltage_kv: 0.4,
     catalogs: {
       device_catalog_ref: 'pv_inv_sma_2500',
-      controller_catalog_ref: null,
+      ptpiree_certificate_ref: null,
       battery_catalog_ref: null,
       block_transformer_catalog_ref: null,
-      cable_catalog_ref: null,
       bay_catalog_ref: null,
       protection_catalog_ref: 'protection_der_basic',
       ct_catalog_ref: 'ct_400_5_5p20_15va_abb',
       vt_catalog_ref: 'vt_15kv_100v_3p',
-      fault_current_data_ref: null,
       dynamic_model_ref: null,
     },
     profiles: {
       nc_rfg_profile_ref: 'ncrfg_pse',
       lvrt_curve_ref: 'lvrt_pse_b',
       hvrt_curve_ref: 'hvrt_pse_b',
-      regulation_profile_ref: null,
+      pf_curve_ref: null,
+      bess_operation_mode_refs: [],
     },
     nominal_power_kw: 2500,
+    unit_count: null,
     completeness: 'complete',
     readiness: {} as never,
     created_at: '2026-04-01T00:00:00Z',
@@ -184,12 +176,19 @@ describe('eng.6 — Dual-core CT dla 87T (transformator dedykowany ≥ 1.6 MVA)'
 // Pakiet C — eng.11 (Anti-islanding dla DER po nN/ZK)
 // =============================================================================
 
-describe('eng.11 — Anti-islanding dla DER po nN/ZK/słupie/mufie', () => {
+/**
+ * Karta FAB-K (§0 R3, KLASA NIE INSTANCJA): dawne warianty `at_zksn`/
+ * `at_branch_pole`/`at_cable_joint` złożyły się w JEDEN poziom
+ * `dedicated_transformer` + osobne `sn_connection_point_kind` (rodzaj punktu
+ * SN, pochodna typu elementu modelu). „SN (pole SN)" to teraz
+ * `dedicated_transformer` + `sn_connection_point_kind: 'station_bus'`.
+ */
+describe('eng.11 — Anti-islanding dla DER po nN/ZK/słupie/odgałęzieniu', () => {
   it('PV po nN bez protection_catalog → bloker anti-islanding', () => {
     const der = makeDer({
       connection_side: 'nN',
       lv_busbar_ref: 'busbar_station-test_main',
-      voltage_level_ref: 'lv_0_4kV',
+      connection_voltage_kv: 0.4,
       catalogs: {
         ...makeDer().catalogs,
         protection_catalog_ref: null, // BRAK protection
@@ -202,12 +201,13 @@ describe('eng.11 — Anti-islanding dla DER po nN/ZK/słupie/mufie', () => {
     ).toBe(true);
   });
 
-  it('FW po at_zksn bez protection → bloker anti-islanding', () => {
+  it('FW po transformatorze dedykowanym na ZK SN, bez protection → bloker anti-islanding', () => {
     const der = makeDer({
       der_kind: 'FW',
-      connection_side: 'at_zksn',
+      connection_side: 'dedicated_transformer',
       bay_ref: null,
-      connection_node_ref: 'node_zksn_ZK-12',
+      sn_connection_bus_ref: 'bus_zksn_ZK-12',
+      sn_connection_point_kind: 'zksn',
       catalogs: {
         ...makeDer().catalogs,
         protection_catalog_ref: null,
@@ -220,9 +220,11 @@ describe('eng.11 — Anti-islanding dla DER po nN/ZK/słupie/mufie', () => {
     ).toBe(true);
   });
 
-  it('PV po SN (pole SN) NIE wymaga anti-islanding (zwarcia w polu)', () => {
+  it('PV po SN (transformator dedykowany na szynie stacji) NIE wymaga anti-islanding (zwarcia w polu)', () => {
     const der = makeDer({
-      connection_side: 'SN',
+      connection_side: 'dedicated_transformer',
+      sn_connection_bus_ref: 'bus_sn_station-test',
+      sn_connection_point_kind: 'station_bus',
       catalogs: {
         ...makeDer().catalogs,
         protection_catalog_ref: null,
@@ -240,59 +242,19 @@ describe('eng.11 — Anti-islanding dla DER po nN/ZK/słupie/mufie', () => {
 // Pakiet D — eng.10 (BESS operation modes)
 // =============================================================================
 
-describe('eng.10 — BessOperationModeCatalog', () => {
-  it('katalog ma ≥9 trybów obejmujących peak shaving / arbitraż / FCR / aFRR / mFRR / Q(U) / island / self-consumption', () => {
-    expect(BESS_OPERATION_MODE_CATALOG.length).toBeGreaterThanOrEqual(9);
-    const codes = BESS_OPERATION_MODE_CATALOG.map((m) => m.mode_code);
-    expect(codes).toContain('peak_shaving');
-    expect(codes).toContain('arbitrage');
-    expect(codes).toContain('fcr_n');
-    expect(codes).toContain('fcr_d_up');
-    expect(codes).toContain('afrr');
-    expect(codes).toContain('mfrr');
-    expect(codes).toContain('voltage_support');
-    expect(codes).toContain('island_backup');
-    expect(codes).toContain('self_consumption');
-  });
-
-  it('FCR-N wymaga 4Q, a katalog nie deklaruje czasu reakcji bez źródła', () => {
-    // INTENCJA POPRZEDNIEGO TESTU: pilnował pary „czas reakcji ≤ 30 s + 4Q".
-    // Czas reakcji określa regulamin rynku bilansującego operatora systemu
-    // przesyłowego, a nie ten katalog — pole usunięto w karcie K-Q (backend jest
-    // autorytetem). Zostaje ta część, która wynika z definicji usługi.
-    const fcrN = BESS_OPERATION_MODE_CATALOG.find((m) => m.mode_code === 'fcr_n');
-    expect(fcrN).toBeDefined();
-    expect(fcrN!.requires_four_quadrant).toBe(true);
-    for (const mode of BESS_OPERATION_MODE_CATALOG as unknown as ReadonlyArray<Record<string, unknown>>) {
-      expect(mode).not.toHaveProperty('response_time_s');
-      expect(mode).not.toHaveProperty('max_duration_h');
-      expect(mode).not.toHaveProperty('reserved_capacity_percent');
-      expect(mode).not.toHaveProperty('required_for_nc_rfg_modules');
-    }
-  });
-
-  it('Island backup wymaga grid-forming PCS', () => {
-    const island = BESS_OPERATION_MODE_CATALOG.find((m) => m.mode_code === 'island_backup');
-    expect(island).toBeDefined();
-    expect(island!.requires_grid_forming).toBe(true);
-  });
-
-  it('selectBessModesForPcs filtruje po 4Q + grid-forming', () => {
-    const grid_forming = selectBessModesForPcs({
-      fourQuadrant: true,
-      gridFormingCapable: true,
-    });
-    expect(grid_forming.length).toBe(BESS_OPERATION_MODE_CATALOG.length);
-
-    const grid_following_only = selectBessModesForPcs({
-      fourQuadrant: true,
-      gridFormingCapable: false,
-    });
-    expect(grid_following_only.every((m) => !m.requires_grid_forming)).toBe(true);
-    // island_backup powinien być wykluczony
-    expect(grid_following_only.find((m) => m.mode_code === 'island_backup')).toBeUndefined();
-  });
-
+// USUNIĘTE (karta FAB-L, 2026-09-05) — „katalog ma ≥9 trybów…"/„FCR-N wymaga
+// 4Q…"/„Island backup wymaga grid-forming PCS"/„selectBessModesForPcs filtruje
+// po 4Q + grid-forming". `BESS_OPERATION_MODE_CATALOG` USUNIĘTY z `catalogs.ts`
+// jako blok statyczny (front czyta go WYŁĄCZNIE ze snapshotu audytu 2), a
+// `selectBessModesForPcs` przyjmuje dziś katalog jako PARAMETR. Pokrycie:
+//   - zawartość katalogu (≥9 pozycji, kody, `requires_four_quadrant`/
+//     `requires_grid_forming` per kod, zero pól bez proweniencji):
+//     `backend/tests/api/test_audit2_catalogs_api.py::test_list_bess_operation_modes`
+//     + `backend/tests/network_model/test_audit2_katalogi_parytet.py`
+//     (`response_time_s` dopisany do `POLA_BEZ_PROWENIENCJI_ZAKAZANE`).
+//   - zachowanie selektora na PODANYM katalogu:
+//     `__tests__/catalogs.test.ts` („Selektory snapshotu audytu 2").
+describe('eng.10 — BessOperationModeCatalog (selektor przeniesiony do catalogs.test.ts)', () => {
   it('nie ma już selektora trybów rzekomo wymaganych przez NC RfG', async () => {
     // INTENCJA POPRZEDNIEGO TESTU: pilnował, że moduł C „wymaga" FCR-N i Q(U).
     // Sprawdzone na tekście rozporządzenia (UE) 2016/631: ono nie nakazuje
@@ -307,51 +269,16 @@ describe('eng.10 — BessOperationModeCatalog', () => {
 // Pakiet D — eng.13 (Tap changers)
 // =============================================================================
 
-describe('eng.13 — TapChangerCatalog', () => {
-  it('katalog zawiera OLTC dla 110/SN i DETC dla SN/nN', () => {
-    expect(TAP_CHANGER_CATALOG.length).toBeGreaterThanOrEqual(4);
-    const oltcs = TAP_CHANGER_CATALOG.filter((tc) => tc.type === 'oltc');
-    const detcs = TAP_CHANGER_CATALOG.filter((tc) => tc.type === 'detc');
-    expect(oltcs.length).toBeGreaterThan(0);
-    expect(detcs.length).toBeGreaterThan(0);
-  });
-
-  it('OLTC 110/SN ma 17 lub 19 zaczepów ze step 1.25%', () => {
-    const oltc110 = TAP_CHANGER_CATALOG.find(
-      (tc) => tc.applicable_to.includes('transformer_110_15') && tc.type === 'oltc',
-    );
-    expect(oltc110).toBeDefined();
-    expect([17, 19]).toContain(oltc110!.tap_count);
-    expect(oltc110!.step_percent).toBe(1.25);
-    expect(oltc110!.supports_avr).toBe(true);
-  });
-
-  it('DETC SN/nN nie obsługuje AVR (off-load)', () => {
-    const detc = TAP_CHANGER_CATALOG.find((tc) => tc.type === 'detc');
-    expect(detc).toBeDefined();
-    expect(detc!.supports_avr).toBe(false);
-    // Karta K-Q: czas przełączenia i resurs między przeglądami to dane wyrobu
-    // bez źródła — usunięte po obu stronach. O tym, że DETC przełącza się bez
-    // obciążenia, mówi jego typ i nazwa, a nie zgadnięta liczba sekund.
-    for (const tc of TAP_CHANGER_CATALOG as unknown as ReadonlyArray<Record<string, unknown>>) {
-      expect(tc).not.toHaveProperty('switching_time_s');
-      expect(tc).not.toHaveProperty('operations_before_maintenance_thousand');
-    }
-  });
-
-  it('selectTapChangersForTransformer filtruje po typie', () => {
-    const for110 = selectTapChangersForTransformer('transformer_110_15');
-    expect(for110.length).toBeGreaterThan(0);
-    expect(for110.every((tc) => tc.applicable_to.includes('transformer_110_15'))).toBe(true);
-  });
-
-  it('getTapChanger zwraca null dla nieznanego ID', () => {
-    expect(getTapChanger('tc_unknown')).toBeNull();
-    const valid = getTapChanger('tc_oltc_110sn_19_125');
-    expect(valid).not.toBeNull();
-    expect(valid!.tap_count).toBe(19);
-  });
-});
+// USUNIĘTE (karta FAB-L, 2026-09-05) — całe „eng.13 — TapChangerCatalog":
+// `TAP_CHANGER_CATALOG` USUNIĘTY z `catalogs.ts` jako blok statyczny (front
+// czyta go WYŁĄCZNIE ze snapshotu audytu 2), a `selectTapChangersForTransformer`/
+// `getTapChanger` przyjmują dziś katalog jako PARAMETR. Pokrycie:
+//   - zawartość katalogu (≥4 pozycje, typy oltc/detc, tap_count 17/19,
+//     step_percent=1.25, supports_avr, zero pól bez proweniencji):
+//     `backend/tests/api/test_audit2_catalogs_api.py::test_list_tap_changers`
+//     + `backend/tests/network_model/test_audit2_katalogi_parytet.py`.
+//   - zachowanie selektorów na PODANYM katalogu:
+//     `__tests__/catalogs.test.ts` („Selektory snapshotu audytu 2").
 
 // =============================================================================
 // Pakiet D — eng.15 (Hosting capacity export check)
@@ -399,108 +326,45 @@ describe('eng.15 — Hosting capacity export check', () => {
 });
 
 // =============================================================================
-// Pakiet F — eng.17 (HV fuses)
+// Pakiet F — eng.17: katalog PRZENIESIONY DO BACKENDU (karta FAB-M)
 // =============================================================================
-
-describe('eng.17 — HvFuseCatalog', () => {
-  it('katalog ma ≥4 bezpieczniki SN', () => {
-    expect(HV_FUSE_CATALOG.length).toBeGreaterThanOrEqual(4);
-  });
-
-  it('Wszystkie pozycje mają napięcie 6-36 kV', () => {
-    for (const f of HV_FUSE_CATALOG) {
-      expect(f.nominal_voltage_kv).toBeGreaterThanOrEqual(6);
-      expect(f.nominal_voltage_kv).toBeLessThanOrEqual(36);
-    }
-  });
-
-  it('selectHvFusesForRating filtruje po napięciu i prądzie', () => {
-    const fuses_15kv = selectHvFusesForRating({
-      voltageKv: 15,
-      minCurrentA: 50,
-    });
-    expect(fuses_15kv.length).toBeGreaterThan(0);
-    expect(fuses_15kv.every((f) => Math.abs(f.nominal_voltage_kv - 15) <= 1.0)).toBe(true);
-    expect(fuses_15kv.every((f) => f.nominal_current_a >= 50)).toBe(true);
-  });
-
-  // ===========================================================================
-  // KARTA K-O — PINY KLASY: wartość bez źródła NIE ISTNIEJE
-  // ===========================================================================
-  //
-  // Poprzednik tych pinów sprawdzał, że „pre-arcing < total clearing" — czyli
-  // WEWNĘTRZNĄ SPÓJNOŚĆ dwóch WYMYŚLONYCH liczb. Test przechodził i przez to
-  // uwiarygadniał fabrykację. Piny poniżej pytają o proweniencję, nie o spójność,
-  // i chodzą po WSZYSTKICH pozycjach (klasa), nie po przykładzie z karty.
-
-  /** Zbiór ZAMKNIĘTY: każde pole spoza listy = pole bez proweniencji. */
-  const DOZWOLONE_POLA_POZYCJI = new Set([
-    'id',
-    'catalog_namespace',
-    'catalog_version',
-    'label_pl',
-    'nominal_voltage_kv',
-    'nominal_current_a',
-    'class',
-    'pasmo_tcc',
-    'application',
-  ]);
-
-  it('KLASA: żadna pozycja nie niesie pola wyrobu bez źródła (lista zamknięta)', () => {
-    for (const f of HV_FUSE_CATALOG) {
-      for (const pole of Object.keys(f)) {
-        expect(
-          DOZWOLONE_POLA_POZYCJI.has(pole),
-          `Pozycja ${f.id} niesie pole "${pole}" bez proweniencji. `
-            + 'Dane wyrobu (producent, prądy przerywania, I²t, punkty pasma) wolno '
-            + 'dodać WYŁĄCZNIE razem z adresem tabeli producenta.',
-        ).toBe(true);
-      }
-    }
-  });
-
-  it('KLASA: żadna pozycja nie przypisuje wkładki imiennemu producentowi bez źródła', () => {
-    for (const f of HV_FUSE_CATALOG) {
-      expect(f).not.toHaveProperty('manufacturer');
-    }
-  });
-
-  it('KLASA: żadna pozycja nie niesie punktów pasma przy 6×In (fabrykacja K-O)', () => {
-    for (const f of HV_FUSE_CATALOG) {
-      expect(f).not.toHaveProperty('pre_arcing_time_at_6in_ms');
-      expect(f).not.toHaveProperty('total_clearing_time_at_6in_ms');
-      expect(f).not.toHaveProperty('i2t_total_a2s');
-      expect(f).not.toHaveProperty('i_min_breaking_a');
-      expect(f).not.toHaveProperty('i_max_breaking_ka');
-    }
-  });
-
-  it('PARA PREDYKATÓW: pasmo istnieje wyłącznie razem z URL tabeli producenta', () => {
-    for (const f of HV_FUSE_CATALOG) {
-      if (f.pasmo_tcc === null) continue;
-      // Gdy ktoś kiedyś dopisze pasmo — musi przyjść z adresem i z punktami.
-      expect(f.pasmo_tcc.zrodlo_url).toMatch(/^https?:\/\//);
-      expect(f.pasmo_tcc.punkty.length).toBeGreaterThan(0);
-      for (const p of f.pasmo_tcc.punkty) {
-        expect(Number.isFinite(p.prad_a)).toBe(true);
-        expect(Number.isFinite(p.czas_s)).toBe(true);
-      }
-    }
-  });
-
-  it('Stan faktyczny: KAŻDA pozycja deklaruje brak pasma (brak kart producenta)', () => {
-    expect(HV_FUSE_CATALOG.length).toBeGreaterThan(0);
-    for (const f of HV_FUSE_CATALOG) {
-      expect(f.pasmo_tcc).toBeNull();
-    }
-  });
-
-  it('KLASA: SPZ nie przypisuje praktyki ruchowej imiennym operatorom bez źródła', () => {
-    for (const s of SPZ_CATALOG) {
-      expect(s).not.toHaveProperty('typical_operators_pl');
-    }
-  });
-});
+//
+// Tu stał komplet asercji na `HV_FUSE_CATALOG` — DRUGIEJ kopii tych samych 4
+// pozycji już serwowanych przez backend (`network_model/catalog/audit2_catalogs
+// .py::HV_FUSE_CATALOG`, identyczne identyfikatory `fuse_15kv_50a_full` i in.),
+// zgłoszonej jako znalezisko poza zakresem karty FAB-L (§0 nazwał WYŁĄCZNIE
+// `catalogs.ts`; ten katalog mieszkał w `protection-catalogs.ts`, patrz jej
+// nota proweniencji). `HV_FUSE_CATALOG` USUNIĘTY z `protection-catalogs.ts`:
+// front czyta go WYŁĄCZNIE ze snapshotu audytu 2 (`useAudit2CatalogSnapshot`,
+// typowane 1:1 w `audit2-api.ts::HvFuseItem`) — karta pola (`StationConfig
+// BaysCard.tsx`) dostaje katalog jako prop `hvFuses` z `StationConfigurator
+// Surface.tsx`. `selectHvFusesForRating` (jedyny selektor tego katalogu) NIE
+// MIAŁ żadnego konsumenta produkcyjnego (karta pola czytała `HV_FUSE_CATALOG`
+// wprost przez `.map`/`.find`, zmierzone grepem) — usunięty z testem, nie
+// migrowany do przyjmowania katalogu jako parametru (ten wzorzec dotyczy
+// wyłącznie selektorów z realnym konsumentem, np. `selectTapChangersFor
+// Transformer` w `catalogs.ts`).
+//
+// Osobne znalezisko tej samej klasy w TYM PLIKU (zero konsumenta produktu,
+// wzorzec L4 z FAB-L): `SPZ_CATALOG` (import usunięty razem z HV_FUSE powyżej)
+// nie miał ŻADNEGO konsumenta produkcyjnego — usunięty z `protection-
+// catalogs.ts` w tej samej karcie (backendowy `spz_lookup.py` to INNA
+// zdolność — progi blokady SPZ wg prądu/czasu zwarcia, nie katalog profili
+// cykli — nie ma tu duplikatu do migracji).
+//
+// Pokrycie:
+//   - zawartość katalogu HV_FUSE (≥4 pozycje, napięcie 6-36 kV, lista pól
+//     ZAMKNIĘTA, brak `manufacturer`/punktów pasma bez źródła, `pasmo_tcc`
+//     PARA z URL, każda pozycja dziś `pasmo_tcc: null`):
+//     `backend/tests/api/test_audit2_catalogs_api.py::test_list_hv_fuses` +
+//     `backend/tests/network_model/test_audit2_katalogi_parytet.py`
+//     (`POLA_BEZ_PROWENIENCJI_ZAKAZANE` pilnuje pól wyrobu bez źródła, nowy
+//     test identyfikatorów bezpieczników użytych w froncie).
+//   - zero cudzej tożsamości w SPZ (dawny operator bez źródła): ten sam
+//     katalog `test_audit2_katalogi_parytet.py::
+//     test_cudze_imie_nie_wraca_do_danych_katalogow_audytu2` — a skoro
+//     `SPZ_CATALOG` usunięty CAŁKOWICIE (nie migrowany), sam katalog, którego
+//     dotyczył ten pin, już nie istnieje po żadnej stronie.
 
 // =============================================================================
 // Pakiet F — eng.18: rachunek PRZENIESIONY DO BACKENDU (karta K7-B)

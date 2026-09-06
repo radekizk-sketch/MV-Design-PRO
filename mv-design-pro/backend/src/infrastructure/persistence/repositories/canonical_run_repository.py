@@ -23,6 +23,18 @@ if TYPE_CHECKING:
 
 #: Klucz surowych wkładów gałęziowych FROZEN solvera w wierszu wyniku zwarciowego.
 KLUCZ_ROZPLYWU = "branch_contributions"
+#: Klucz śladu WHITE BOX podziału prądu zwarciowego w gałęziach (TH-1) — ten sam
+#: iloczyn źródło×gałąź co wkłady, tylko opisany krok po kroku (zmierzone na
+#: sieci S: ślad jest ~5× większy od wkładów, które objaśnia).
+KLUCZ_SLADU_ROZPLYWU = "branch_flow_trace"
+#: KLASA „ładunek per gałąź jednego punktu zwarcia" — JEDNO źródło prawdy dla
+#: wszystkich mechanizmów, które ten ładunek wycinają z wiersza (zapis rozdzielony,
+#: świeże wiersze odpowiedzi POST) i oddają na żądanie (rozpływ punktu). Przegląd
+#: 2026-08-01 (KLASA, NIE INSTANCJA): V12K-284 i K14 obsłużyły wyłącznie
+#: `branch_contributions`, a `branch_flow_trace` — ten sam mechanizm, ten sam
+#: wzrost O(punkty×gałęzie) — został w wierszu; odpowiedź POST świeżego biegu na
+#: sieci 50 stacji urosła do 105 MB przy bramce 60 MB (E2E full, 2026-09-05).
+KLUCZE_ROZPLYWU: tuple[str, ...] = (KLUCZ_ROZPLYWU, KLUCZ_SLADU_ROZPLYWU)
 #: Znacznik: rozpływ dla tego punktu zwarcia ISTNIEJE i leży w osobnej tabeli.
 #: Odróżnia zapis rozdzielony od starszego wyniku policzonego BEZ wkładów.
 KLUCZ_DOSTEPNOSCI_ROZPLYWU = "branch_contributions_available"
@@ -30,8 +42,12 @@ KLUCZ_DOSTEPNOSCI_ROZPLYWU = "branch_contributions_available"
 
 def _rozdziel_rozplyw(
     raw_result: dict[str, Any] | None,
-) -> tuple[dict[str, Any] | None, dict[str, list[Any]]]:
+) -> tuple[dict[str, Any] | None, dict[str, dict[str, Any]]]:
     """Artefakt biegu → (artefakt BEZ rozpływu, rozpływ per punkt zwarcia).
+
+    Rozpływ punktu = CAŁA klasa `KLUCZE_ROZPLYWU`: wkłady (`branch_contributions`)
+    i ich ślad WHITE BOX (`branch_flow_trace`) wędrują razem — słownik
+    ``{"contributions": [...], "trace": [...] | None}`` per punkt.
 
     Rozpływ gałęziowy to iloczyn źródło×gałąź liczony dla KAŻDEGO punktu zwarcia
     (zmierzone na sieci 50 stacji: 104 punkty × 11 506 wpisów), a konsument
@@ -50,7 +66,7 @@ def _rozdziel_rozplyw(
     if not isinstance(results, list):
         return raw_result, {}
 
-    rozplyw: dict[str, list[Any]] = {}
+    rozplyw: dict[str, dict[str, Any]] = {}
     wiersze: list[Any] = []
     wyciete = False
     for item in results:
@@ -61,10 +77,13 @@ def _rozdziel_rozplyw(
         if not fault_node_id:
             wiersze.append(item)
             continue
-        rozplyw[fault_node_id] = item[KLUCZ_ROZPLYWU]
+        rozplyw[fault_node_id] = {
+            "contributions": item[KLUCZ_ROZPLYWU],
+            "trace": item.get(KLUCZ_SLADU_ROZPLYWU),
+        }
         wiersze.append(
             {
-                **{key: value for key, value in item.items() if key != KLUCZ_ROZPLYWU},
+                **{key: value for key, value in item.items() if key not in KLUCZE_ROZPLYWU},
                 KLUCZ_DOSTEPNOSCI_ROZPLYWU: True,
             }
         )
@@ -107,6 +126,7 @@ _KOLUMNY_LEKKIE = (
     CanonicalRunORM.readiness_json,
     CanonicalRunORM.options_json,
     CanonicalRunORM.error_message,
+    CanonicalRunORM.envelope_json,
 )
 
 _DEFAULT_DATABASE_URL = "sqlite+pysqlite:///./mv_design_pro.db"
@@ -213,9 +233,10 @@ class CanonicalRunRepository:
         row.raw_result_json = lekki_artefakt
         row.white_box_trace_json = run.white_box_trace
         row.power_flow_trace_json = run.power_flow_trace
+        row.envelope_json = run.envelope
         self._zapisz_rozplyw(run, rozplyw)
 
-    def _zapisz_rozplyw(self, run: CanonicalRun, rozplyw: dict[str, list[Any]]) -> None:
+    def _zapisz_rozplyw(self, run: CanonicalRun, rozplyw: dict[str, dict[str, Any]]) -> None:
         """Zapisz rozpływ biegu W TEJ SAMEJ transakcji co bieg (bez stanów pośrednich).
 
         Tabela odzwierciedla to, co mówi ZAPISYWANY artefakt:
@@ -232,12 +253,13 @@ class CanonicalRunRepository:
         self._session.execute(
             delete(CanonicalRunBranchFlowORM).where(CanonicalRunBranchFlowORM.run_id == run.id)
         )
-        for fault_node_id, wpisy in sorted(rozplyw.items()):
+        for fault_node_id, punkt in sorted(rozplyw.items()):
             self._session.add(
                 CanonicalRunBranchFlowORM(
                     run_id=run.id,
                     fault_node_id=fault_node_id,
-                    contributions_json=wpisy,
+                    contributions_json=punkt["contributions"],
+                    branch_flow_trace_json=punkt["trace"],
                 )
             )
 
@@ -248,6 +270,19 @@ class CanonicalRunRepository:
         `enm.canonical_analysis.pobierz_rozplyw_biegu` (jedna prawda dostępu).
         """
         stmt = select(CanonicalRunBranchFlowORM.contributions_json).where(
+            CanonicalRunBranchFlowORM.run_id == run_id,
+            CanonicalRunBranchFlowORM.fault_node_id == fault_node_id,
+        )
+        return self._session.execute(stmt).scalar_one_or_none()
+
+    def get_branch_flow_trace(self, run_id: UUID, fault_node_id: str) -> list[Any] | None:
+        """Ślad WHITE BOX podziału prądu JEDNEGO punktu zwarcia z osobnej tabeli.
+
+        Ta sama klasa ładunku co wkłady (`KLUCZE_ROZPLYWU`), ten sam magazyn i ta
+        sama jedna prawda dostępu (`enm.canonical_analysis.pobierz_slad_rozplywu_biegu`).
+        Brak wpisu albo wpis zapisany przed dodaniem kolumny → None (uczciwy brak).
+        """
+        stmt = select(CanonicalRunBranchFlowORM.branch_flow_trace_json).where(
             CanonicalRunBranchFlowORM.run_id == run_id,
             CanonicalRunBranchFlowORM.fault_node_id == fault_node_id,
         )
@@ -332,6 +367,7 @@ class CanonicalRunRepository:
             raw_result=row.raw_result_json,
             white_box_trace=list(row.white_box_trace_json or []),
             power_flow_trace=row.power_flow_trace_json,
+            envelope=row.envelope_json,
         )
 
     def _to_domain_lekki(self, row: Any) -> CanonicalRun:
@@ -354,6 +390,7 @@ class CanonicalRunRepository:
             finished_at=ensure_utc(row.finished_at),
             error_message=row.error_message,
             result_status=row.result_status,
+            envelope=row.envelope_json,
         )
 
     def _to_orm(self, run: CanonicalRun, lekki_artefakt: dict[str, Any] | None) -> CanonicalRunORM:
@@ -377,4 +414,5 @@ class CanonicalRunRepository:
             raw_result_json=lekki_artefakt,
             white_box_trace_json=run.white_box_trace,
             power_flow_trace_json=run.power_flow_trace,
+            envelope_json=run.envelope,
         )

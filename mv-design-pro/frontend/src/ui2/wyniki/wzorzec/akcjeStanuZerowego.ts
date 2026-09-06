@@ -49,6 +49,9 @@ export const AKCJE_STANU_ZEROWEGO_STRINGS = {
   otworzDokumentacjeOpis: 'Otwiera przestrzeń „Dokumentacja" — raport i dowód obliczeń.',
   porownajWarianty: 'Porównaj warianty',
   porownajWariantyOpis: 'Otwiera okno porównania A/B przebiegów tego projektu.',
+  przejdzDoSchematu: 'Przejdź do schematu',
+  przejdzDoSchematuOpis:
+    'Otwiera schemat (SLD) — stąd uruchomisz obliczenie zwarciowe i bieg zabezpieczeń.',
 } as const;
 
 /** Etykieta/opis biegu wg rodzaju analizy (jedno miejsce, zero literałów w JSX). */
@@ -125,6 +128,26 @@ export function useAkcjaPorownajWarianty(): AkcjaStanuZerowego {
   return {
     etykieta: AKCJE_STANU_ZEROWEGO_STRINGS.porownajWarianty,
     opis: AKCJE_STANU_ZEROWEGO_STRINGS.porownajWariantyOpis,
+    onKlik,
+  };
+}
+
+/**
+ * Akcja „Przejdź do schematu" (karta CV-3.3-B2) — zero-state porównania
+ * zabezpieczeń: bieg zabezpieczeń NIE rusza jednym kliknięciem „Oblicz"
+ * (`useAkcjaUruchomObliczenie` obsługuje `ExecutionAnalysisType`, unię BEZ
+ * `protection_sn` — wymaga uprzedniego biegu zwarciowego i `protection_case_id`,
+ * dwuetapowo). Uczciwa akcja tego stanu zerowego to NAWIGACJA do miejsca,
+ * gdzie operator faktycznie może uruchomić bieg — schemat (SLD), gdzie żyje
+ * obliczenie zwarciowe i przycisk „Uruchom Protection"
+ * (`ui/sld/v2/protection/ProtectionRunButton.tsx`) — zero fabrykacji akcji
+ * bez pokrycia w backendzie.
+ */
+export function useAkcjaPrzejdzDoSchematu(): AkcjaStanuZerowego {
+  const onKlik = useCallback(() => przejdzDoPrzestrzeni('schemat'), []);
+  return {
+    etykieta: AKCJE_STANU_ZEROWEGO_STRINGS.przejdzDoSchematu,
+    opis: AKCJE_STANU_ZEROWEGO_STRINGS.przejdzDoSchematuOpis,
     onKlik,
   };
 }

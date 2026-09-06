@@ -13,11 +13,25 @@ import {
   EMPTY_DER_CATALOGS,
   EMPTY_DER_PROFILES,
   EMPTY_DER_READINESS,
+  type DerCatalogSelections,
   type DerKindUnified,
+  type DerProfileSelections,
   type StationDerConnection,
 } from '../../../../ui/network-build/station-der';
 
-export function derFixture(over: Partial<StationDerConnection> & { id: string }): StationDerConnection {
+// `catalogs`/`profiles` sa CZESCIOWYMI nadpisaniami (cialo funkcji nizej scala
+// je z EMPTY_DER_CATALOGS/EMPTY_DER_PROFILES) — `Partial<StationDerConnection>`
+// tego nie wyraza (spłaszcza tylko pola najwyzszego poziomu, nie zagniezdzone),
+// wiec wywolujacy musialby podawac KOMPLETNE obiekty katalogowe. Nadpisanie
+// tych dwoch pol na `Partial<...>` naprawia sygnature u zrodla zamiast
+// dopisywac brakujace pola w kazdym z wywolan w plikach testowych.
+type DerFixtureOverrides = Omit<Partial<StationDerConnection>, 'catalogs' | 'profiles'> & {
+  id: string;
+  catalogs?: Partial<DerCatalogSelections>;
+  profiles?: Partial<DerProfileSelections>;
+};
+
+export function derFixture(over: DerFixtureOverrides): StationDerConnection {
   const der_kind: DerKindUnified = over.der_kind ?? 'PV';
   return {
     id: over.id,
@@ -30,13 +44,18 @@ export function derFixture(over: Partial<StationDerConnection> & { id: string })
     bay_ref: over.bay_ref ?? null,
     transformer_ref: over.transformer_ref ?? null,
     lv_busbar_ref: over.lv_busbar_ref ?? null,
-    connection_node_ref: over.connection_node_ref ?? null,
-    internal_cable_ref: over.internal_cable_ref ?? null,
+    sn_connection_bus_ref: over.sn_connection_bus_ref ?? null,
+    sn_connection_point_kind: over.sn_connection_point_kind ?? null,
     // Uwaga: rozróżniamy jawny `null` (brak danej) od „nie podano" (undefined → domyślna).
-    voltage_level_ref: 'voltage_level_ref' in over ? over.voltage_level_ref! : 'lv_0_4kV',
+    // Karta FAB-K: JEDYNE źródło napięcia przyłączenia od tej karty —
+    // `connection_voltage_kv`, liczba WPROST z modelu (szyna wytwórcy), nie
+    // dawna referencja tekstowa `voltage_level_ref` (usunięta jako fantom —
+    // backend nigdy jej nie przyjmował).
+    connection_voltage_kv: 'connection_voltage_kv' in over ? over.connection_voltage_kv! : 0.4,
     catalogs: { ...EMPTY_DER_CATALOGS, ...(over.catalogs ?? {}) },
     profiles: { ...EMPTY_DER_PROFILES, ...(over.profiles ?? {}) },
     nominal_power_kw: 'nominal_power_kw' in over ? over.nominal_power_kw! : 500,
+    unit_count: over.unit_count ?? null,
     completeness: over.completeness ?? 'complete',
     readiness: over.readiness ?? { ...EMPTY_DER_READINESS },
     created_at: over.created_at ?? '1970-01-01T00:00:00Z',
