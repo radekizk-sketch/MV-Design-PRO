@@ -1,29 +1,29 @@
 {
   "network_id": "iec60909-example",
   "source": "IEC 60909-4:2000 Examples for the calculation of short-circuit currents, Section 4",
-  "source_note": "Uproszczona siec IEC-style: idealne zrodlo 110 kV i transformator sieciowy 110/33 kV 25 MVA, uk=10%, pk=0 kW. Expected values are deterministic IEC 60909 white-box values for the modeled network, not copied from the solver response. V12K-178 (SM-1) re-baseline: wartosci uwzgledniaja korekcje impedancji transformatora sieciowego K_T = 0.95*c_max/(1+0.6*x_T) = 0.95*1.10/(1+0.6*0.10) = 1.045/1.06 = 0.9858490566 (IEC 60909-0 par. 3.3.3). Delta wzgledem poprzedniego baseline = dokladnie 1/K_T = 1.0143540566 dla kazdej wielkosci (K_T<1 => Z_TK<Z_T => Ik'' wiekszy).",
+  "source_note": "Uproszczona siec IEC-style: zrodlo 110 kV Sk''=4000 MVA X/R=10 i transformator sieciowy 110/33 kV 25 MVA, uk=10%, pk=0 kW. KOREKTA (CV-4.3 K1, 2026-09-06): poprzedni baseline (V12K-178 SM-1, 2026-07-24) liczyl Ik'' WYLACZNIE z impedancji transformatora K_T-skorygowanej (Z_TK), z pominieciem wlasnej impedancji zrodla sieciowego Z_Q przeniesionej na strone 33 kV — DOKLADNIE ta sama klasa defektu, ktora V12K-184 (ta sama data) naprawilo systemowo w torze ENM->graf->solver (\"moc zwarciowa sieci zasilajacej NIE wchodzila do obliczen wcale\"), ale ten plik nigdy nie zostal przeliczony na kanonicznym grafie tej konkretnej sieci (nie istnial kanoniczny ENM-bliźniak `iec60909_example` przed ta karta). Nowe wartosci pochodza z toru kanonicznego (`enm/assembler.py::zloz_wejscie_zwarcia` -> FROZEN `ShortCircuitIEC60909Solver`, `enm_builders/iec60909_example.py`), zweryfikowane wprost ze sladu White Box: Z_TK=K_T*Z_T=0.9858490566*(0+j4.356)=(0+j4.294657) ohm (transformator, NIEZMIENIONE wzgledem V12K-178) + Z_Q'=zrodlo Sk''=4000 MVA, X/R=10 przy 110 kV przeniesione na 33 kV wspolczynnikiem (33/110)^2=0.09 = (0.027090+j0.270600) ohm (POMINIETE w poprzednim baseline) => Z_k(3F)=Z_1=(0.027090+j4.565257) ohm, |Z_k|=4.565338 ohm; Z_k(2F)=Z_1+Z_2=2*Z_1=(0.054180+j9.130515) ohm. kappa=1.02+0.98*exp(-3*R/X)=1.02+0.98*exp(-3*0.0059339)=1.982709 (R/X=0.0059339 z udzialem zrodla — NIE ~0 jak w poprzednim baseline, bo Z_Q' niesie R nietrywialny z rx_ratio=0.1). m=0.555796 (IEC 60909-0 par. 4.7/12), n=1 (zwarcie daleko od generatora, brak maszyn wirujacych w tej sieci).",
   "power_flow": [],
   "power_flow_branches": [],
   "short_circuit": [
     {
       "fault_node_id": "BUS-MV",
       "sc_type": "3F",
-      "ikss_a": 4880.313,
-      "ip_a": 13803.559,
-      "ith_a": 8450.851,
-      "sk_mva": 278.947,
-      "rtol": 0.001,
-      "note": "Three-phase fault on 33 kV bus, c=1.10, K_T-corrected TR impedance Z_TK=K_T*Zk=0.9858490566*(0.00001089+j4.356)=(0.00001073+j4.294660) ohm (IEC 60909-0 par. 3.3.3). Poprzedni baseline bez K_T: ikss=4811.252 A; nowy/stary=1.0143540566=1/K_T. RE-BASELINE ith_a (audyt fizyki fala G, 2026-07): poprzednia wartosc oczekiwana byla DOSLOWNA KOPIA ikss_a, bo rdzenny solver liczyl ith_a = ikss*sqrt(t_k), co jest niezgodne wymiarowo (sqrt(s) nie jest bezwymiarowe) i przy t_k = 1 s dawalo ith = ikss. Poprawna formula IEC 60909-0 par. 4.7/12: I_th = I''k*sqrt(m+n). Dla tej sieci kappa = ip/(sqrt2*ikss) = 13803.559/(1.414214*4880.313) = 1.999993, czyli R/X ~ 0 i skladowa DC praktycznie nie zanika => m -> 2, n = 1 (zwarcie daleko od generatora). Sprawdzenie analityczne niezalezne od kodu: I_th^2 = I_AC^2 + I_DC^2 = ikss^2 + (sqrt2*ikss)^2 = 3*ikss^2, czyli I_th = sqrt(3)*ikss = 8452.95 A dla 3F; wartosc solvera 8450.851 A rozni sie o 0.025 %, bo kappa jest nieco mniejsza od 2. Stosunek ith/ikss = 1.731621 jest IDENTYCZNY dla 3F i 2F, bo kappa (a wiec m) zalezy od R/X sieci, nie od rodzaju zwarcia."
+      "ikss_a": 4590.638,
+      "ip_a": 12872.028,
+      "ith_a": 5725.975,
+      "sk_mva": 262.390,
+      "rtol": 1e-4,
+      "note": "Three-phase fault on 33 kV bus, c=1.10. Z_k=Z_1=Z_Q'+Z_TK=(0.027090+j0.270600)+(0+j4.294657)=(0.027090+j4.565257) ohm, |Z_k|=4.565338 ohm. Ikss=c*Un/(sqrt(3)*|Z_k|)=1.10*33000/(1.732051*4.565338)=4590.638 A. kappa=1.982709 (R/X=0.0059339, kappa/m nie sa ~2/1 jak w poprzednim (blednym) baseline, bo Z_Q' niesie R nietrywialny — patrz source_note). Ip=kappa*sqrt(2)*Ikss=12872.028 A. Ith=Ikss*sqrt(m+n)=4590.638*sqrt(1.555796)=5725.975 A. Sk=sqrt(3)*Un*Ikss=262.390 MVA. Poprzedni (bledny, Z_Q' pominiete) baseline: ikss=4880.313 A — patrz source_note dla korekty V12K-178/184."
     },
     {
       "fault_node_id": "BUS-MV",
       "sc_type": "2F",
-      "ikss_a": 4226.475,
-      "ip_a": 11954.233,
-      "ith_a": 7318.651,
-      "sk_mva": 241.576,
-      "rtol": 0.001,
-      "note": "Two-phase fault on 33 kV bus, c=1.10, K_T-corrected TR impedance Z1+Z2 (oba czlony z K_T=0.9858490566). Poprzedni baseline bez K_T: ikss=4166.667 A; nowy/stary=1.0143540566=1/K_T. RE-BASELINE ith_a (audyt fizyki fala G, 2026-07): poprzednia wartosc oczekiwana byla DOSLOWNA KOPIA ikss_a, bo rdzenny solver liczyl ith_a = ikss*sqrt(t_k), co jest niezgodne wymiarowo (sqrt(s) nie jest bezwymiarowe) i przy t_k = 1 s dawalo ith = ikss. Poprawna formula IEC 60909-0 par. 4.7/12: I_th = I''k*sqrt(m+n). Dla tej sieci kappa = ip/(sqrt2*ikss) = 13803.559/(1.414214*4880.313) = 1.999993, czyli R/X ~ 0 i skladowa DC praktycznie nie zanika => m -> 2, n = 1 (zwarcie daleko od generatora). Sprawdzenie analityczne niezalezne od kodu: I_th^2 = I_AC^2 + I_DC^2 = ikss^2 + (sqrt2*ikss)^2 = 3*ikss^2, czyli I_th = sqrt(3)*ikss = 8452.95 A dla 3F; wartosc solvera 8450.851 A rozni sie o 0.025 %, bo kappa jest nieco mniejsza od 2. Stosunek ith/ikss = 1.731621 jest IDENTYCZNY dla 3F i 2F, bo kappa (a wiec m) zalezy od R/X sieci, nie od rodzaju zwarcia."
+      "ikss_a": 3975.609,
+      "ip_a": 11147.503,
+      "ith_a": 4958.840,
+      "sk_mva": 227.237,
+      "rtol": 1e-4,
+      "note": "Two-phase fault on 33 kV bus, c=1.10. Z_k=Z_1+Z_2=2*(0.027090+j4.565257)=(0.054180+j9.130515) ohm, |Z_k|=9.130675 ohm. Ikss=c*Un/|Z_k|=1.10*33000/9.130675=3975.609 A. kappa=1.982709 (identyczne jak 3F — ta sama siec statyczna, R/X niezalezne od typu zwarcia). Ip=11147.503 A. Ith=3975.609*sqrt(1.555796)=4958.840 A. Sk=sqrt(3)*Un*Ikss=227.237 MVA. Poprzedni (bledny, Z_Q' pominiete) baseline: ikss=4226.475 A — patrz source_note dla korekty V12K-178/184."
     }
   ],
   "dynamic_samples": []

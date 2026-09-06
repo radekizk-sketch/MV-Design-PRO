@@ -285,7 +285,13 @@ BACKEND_SRC = PROJECT_ROOT / "backend" / "src"
 #: parametry do modelu (Rule #10) i w ktorym Wizard/API buduja wejscie
 #: solvera z danych uzytkownika, jest dokladnie tym samym torem, co most
 #: ENM->V12.6 objety od karty MOST-WEJSCIA-V126.
-SCAN_ROOTS: tuple[str, ...] = ("network_model", "solver_input", "enm", "application", "api")
+SCAN_ROOTS: tuple[str, ...] = (
+    "network_model",
+    "solver_input",
+    "enm",
+    "application",
+    "api",
+)
 
 #: Zrodla zbioru pol modeli WEJSCIOWYCH. Zbior jest CZYTANY Z KODU, zeby zmiana
 #: kontraktu nie rozbrajala reguly po cichu.
@@ -943,12 +949,20 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         # `solver_input/v126_contracts.py` wyzej — wspolne zrodlo prawdy
         # `moc_bierna_wytworcy`, wklad pominiety przy braku danych (domkniecie
         # FAB-H `d58b949e`), sygnatura nie wystepuje w drzewie.
-        # Stosunek R/X zasilania systemowego wg IEC 60909-0 §3.2 dla sieci WN.
-        # Wartosc NORMOWA z przypisem, nie wymyslona; karta sprowadzila ja do
-        # JEDNEJ stalej modulu (byly DWIE niezalezne kopie tego obliczenia).
-        # Zostaje w budzecie, bo norma podaje ja jako wartosc TYPOWA, a nie jako
-        # wlasciwosc konkretnego przylacza.
-        "B:ifexp:source.rx_ratio": 1,
+        # "B:ifexp:source.rx_ratio" ZNIKA z zapadki (CV-4.3 K1, 2026-09-06):
+        # stosunek R/X zasilania systemowego wg IEC 60909-0 §3.2 dla sieci WN —
+        # wartosc NORMOWA z przypisem, nie wymyslona, WCIAZ TU JEST (funkcja
+        # `_positive_impedance_ohm`, ten sam wiersz kodu co poprzednio, ta sama
+        # stala `_IEC60909_RX_ZASILANIA_SYSTEMOWEGO`) — zero zmiany fizyki.
+        # Karta wydzielila wspolna funkcje reuzywana przez stary dialekt
+        # (`application/reference_networks/computation.py`, ten sam defekt
+        # V12K-184 co dla zrodla sieciowego, wczesniej nienaprawiony w TYM
+        # miejscu), wiec parametr nazywa sie dzis `rx_ratio` (goly `Name`), nie
+        # `source.rx_ratio` (`Attribute`) w miejscu wyrazenia `ifexp` — TA SAMA
+        # klasa co „liczba_torow" wyzej w tym samym pliku: bramka patrzy
+        # wylacznie na `ast.Attribute`, wiec przeniesienie do parametru
+        # funkcji jest dla niej niewidzialne. Obnizenie budzetu tu utrwala
+        # poprawe, nie kasuje jej.
         # Prad/napiecie znamionowe bezpiecznika -> 0. Wartosc nalezy do kontraktu
         # `Switch` (`rated_current_a: float = 0.0`); rola mostu ogranicza sie do
         # odroznienia braku od danej i to zostalo naprawione (`is None`).
@@ -1086,14 +1100,24 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # zero dlugu, dwie klasy:
     #
     # (a) SENTINEL PRZED WALIDACJA BLOCKER. `voltage_kv`/`length_km`/`sn_mva`/
-    # `uk_percent`/`uhv_kv`/`ulv_kv`/`pk_kw` czytane sa z domyslna wartoscia 0,
+    # `uk_percent`/`uhv_kv`/`ulv_kv` czytane sa z domyslna wartoscia 0,
     # ktora NATYCHMIAST wywoluje jawny warunek `<= 0` -> `OpIssue(..., "BLOCKER",
     # ...)` i operacja PRZERYWA sie PRZED zapisem do modelu — brak danej nigdy
     # nie dociera do fizyki jako liczba udajaca pomiar, tylko jako odrzucenie
     # operacji z polskim komunikatem. Ten sam wzorzec, co `None` w pozostalych
     # formach tej bramki: 0 tu gra role uczciwego meldunku braku, nie pomiaru.
-    # `uhv_kv`/`ulv_kv`/`pk_kw` DOSTALY ten sam wzorzec walidacji w tej samej
+    # `uhv_kv`/`ulv_kv` DOSTALY ten sam wzorzec walidacji w tej samej
     # karcie (byly fabrykacja bez BLOCKER — patrz commit naprawczy tej karty).
+    # "F:dictget:data.pk_kw" ZNIKNAL Z ZAPADKI (CV-4.3 K1, 2026-09-06): karta
+    # posunela sie DALEJ niz sentinel-0 — `create_device` czyta dzis
+    # `data.get("pk_kw")` BEZ zapasu liczbowego i rozroznia `is None` (BLOCKER:
+    # brak danej) od `< 0` (BLOCKER: wartosc ujemna), dopuszczajac jawne
+    # `pk_kw=0.0` jako prawdziwy pomiar (transformator bez strat jalowych, a
+    # nie brak danych). Bramka formy F wymaga DRUGIEGO argumentu `.get()` z
+    # liczba — ten wzorzec juz go nie ma, wiec sygnatura znika calkiem
+    # (nie przenosi sie do innej formy, jak `rx_ratio` w `enm/mapping.py`
+    # wyzej w tym pliku — to jest faktyczna eliminacja substytucji, nie
+    # przeniesienie do niewidzialnej dla bramki postaci).
     #
     # (b) BRAK WSTRZYKNIECIA = ZERO. `p_mw`/`q_mvar` odbioru/generatora bez
     # podanej wartosci -> 0 MW/Mvar. Ta sama pozycja klasy, co juz zaakceptowane
@@ -1103,7 +1127,6 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     "enm/topology_ops.py": {
         "F:dictget:data.length_km": 1,
         "F:dictget:data.p_mw": 2,
-        "F:dictget:data.pk_kw": 1,
         "F:dictget:data.q_mvar": 1,
         "F:dictget:data.sn_mva": 1,
         "F:dictget:data.uhv_kv": 1,
@@ -2193,7 +2216,10 @@ def _carrier_name_in(expr: ast.expr, live: dict[str, str]) -> str | None:
 
 
 def _check_local_carrier_usage(
-    stmt: ast.stmt, live: dict[str, str], stale: set[str], findings: list[tuple[str, int]]
+    stmt: ast.stmt,
+    live: dict[str, str],
+    stale: set[str],
+    findings: list[tuple[str, int]],
 ) -> None:
     """Forma H: `<nosnik> or <liczba>` / `... <nosnik> ... if <warunek> else
     <liczba>` — analogon form A i B, z NAZWA zamiast bezposredniego odczytu

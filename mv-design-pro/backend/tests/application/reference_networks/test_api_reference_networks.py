@@ -97,7 +97,39 @@ def test_validate_endpoint_ieee_4bus_passes() -> None:
 
 
 def test_validate_endpoint_all_networks_pass() -> None:
-    """All registered networks must return PASS with real solver outputs."""
+    """All registered networks must return PASS with real solver outputs.
+
+    `oze-pv-bess` WYKLUCZONE z tej listy (CV-4.3 K1, 2026-09-06 — dług jawny,
+    Zero-Debt pkt 4; patrz test przypinający niżej, NIE milczące pominięcie).
+    Stary dialekt słownikowy (`computation.py::_power_flow_newton_raphson`)
+    NIE ZBIEGA dla tej sieci (`converged: False`, zweryfikowane bezpośrednio)
+    — endpoint zwraca flat start (v_pu=1.0/angle_deg=0.0), co historycznie
+    "przechodziło" wyłącznie dzięki łagodnej polityce kąta w `comparator.py`
+    (|expected|<10° ⇒ tolerancja ABSOLUTNA 10°), maskującej brak zbieżności
+    fabrykowanymi "oczekiwanymi" kątami rzędu -0,15/-0,22° (test maskujący
+    defekt = dwa defekty, CLAUDE.md pkt 5).
+
+    Historia korekt `expected/oze_pv_bess.json` (obie w tej samej karcie —
+    patrz `source_note` pliku dla pełnej wersji): KOREKTA 1 podstawiła kąt
+    zmierzony torem KANONICZNYM (~29,8°) w miejsce niezweryfikowanego
+    oryginału — ale ten kąt sam okazał się BŁĘDNY (defekt katalogowy
+    `vector_group=None` -> domyślne "Dyn11" +30° w `enm/mapping.py`, patrz
+    `mv_benchmark_catalog.py`). KOREKTA 2 (ta sama sesja) naprawiła katalog
+    (`vector_group="Yy0"`) i ponownie odczytała tor kanoniczny — PRAWDZIWY
+    kąt jest MAŁY (rzędu -0,19/-0,20°, fizycznie sensowny, bliski
+    pierwotnemu przed-KOREKTA-1 zgadywaniu -0,15/-0,22°). Ta zmiana NIE
+    naprawia starego dialektu (wciąż `converged: False`) — zmienia tylko,
+    KTÓRE konkretne porównania łagodna polityka kąta comparator.py maskuje
+    (patrz test przypinający niżej, zaktualizowany do aktualnego kształtu).
+    Łagodna polityka kąta w `comparator.py` (tolerancja ABSOLUTNA 10° dla
+    małych kątów, niezależna od `rtol` zadeklarowanego per wiersz) jest
+    znaleziskiem POZA zakresem tej karty — używana przez WSZYSTKIE sieci
+    tego endpointu, jej zawężenie wymaga audytu wpływu na całą powierzchnię
+    `/validate` (Zero-Debt pkt 4, dług jawny do execplanu, nie cicha zmiana
+    tu). Wyrocznia kanoniczna (klasy a/b/c, CV-4.3 K1) dla tej sieci żyje w
+    `tests/golden/parytet_benchmarkow/` — TA funkcja pilnuje wyłącznie
+    starego dialektu, nieużywanego przez tor kanoniczny.
+    """
     from api.main import app
 
     client = TestClient(app)
@@ -110,7 +142,7 @@ def test_validate_endpoint_all_networks_pass() -> None:
         "pandapower-iec60909-radial",
         "cigre-mv-14",
         "pp-simple-4bus",
-        "oze-pv-bess",
+        # "oze-pv-bess" — patrz docstring wyżej + test przypinający niżej.
         "ieee-13bus",
         "ieee-34bus",
         "cigre-lv-benchmark",
@@ -119,6 +151,52 @@ def test_validate_endpoint_all_networks_pass() -> None:
         assert response.status_code == 200, f"{net_id} validate failed: {response.text}"
         report = response.json()["report"]
         assert report["overall_status"] == "PASS", f"{net_id} validation FAIL: {report}"
+
+
+def test_oze_pv_bess_validate_przypina_znany_brak_zbieznosci_starego_dialektu() -> None:
+    """Przypina DOKŁADNY kształt wykluczenia z testu wyżej (jego docstring).
+
+    Deklaracja bez testu = fałszywa pewność (reguła KLASA §4): jeśli stary
+    dialekt kiedyś zacznie zbiegać dla tej sieci (albo defekt się pogłębi),
+    ten test czerwienieje i ktoś musi to świadomie zauważyć — zamiast cichego
+    wykluczenia, które nikt już nigdy nie zrewiduje.
+
+    ZBIÓR NIEZBIEŻNYCH PORÓWNAŃ ZMIENIŁ SIĘ w tej samej karcie (KOREKTA 2
+    `expected/oze_pv_bess.json` — patrz docstring testu wyżej): flat start
+    starego dialektu (v_pu=1.0/angle_deg=0.0 wszędzie) jest NIEZMIENIONY, ale
+    prawdziwy (mały) kąt kanoniczny wpadł w łagodne pasmo ABSOLUTNEJ
+    tolerancji 10° `comparator.py` dla obu szyn — `angle_deg@BUS-2` i
+    `angle_deg@BUS-3` przeszły z FAIL na PASS mimo rel_diff=1,0 (100%
+    błędu względnego), bo abs_diff (~0,19/0,20°) mieści się w paśmie 10°.
+    To NIE jest naprawa starego dialektu — asercja niżej (`actual in
+    (0.0, 1.0)`) na WSZYSTKICH porównaniach (PASS i FAIL) jest właśnie po
+    to, żeby złapać moment, gdy stary dialekt naprawdę zacznie zbiegać,
+    NIEZALEŻNIE od tego, czy dana wielkość akurat mieści się w tolerancji.
+    """
+    from api.main import app
+
+    client = TestClient(app)
+    response = client.post("/api/v1/reference-networks/oze-pv-bess/validate")
+    assert response.status_code == 200
+    report = response.json()["report"]
+    assert report["overall_status"] == "FAIL"
+    niezbiezne = {
+        f"{c['quantity']}@{c['element_id']}"
+        for c in report["pf_comparisons"]
+        if c["status"] == "FAIL"
+    }
+    assert niezbiezne == {"v_pu@BUS-3"}
+    # Brak zbieżności starego NR (flat start), nie inna fizyka — sprawdzone na
+    # WSZYSTKICH porównaniach (nie tylko FAIL), bo łagodna polityka kąta
+    # comparator.py potrafi zamaskować brak zbieżności na PASS (patrz wyżej).
+    # Jeśli `actual` kiedyś przestanie być dokładnie stanem startowym
+    # (0.0/1.0), ktoś zmienił zachowanie solvera i musi zaktualizować to
+    # przypięcie.
+    for porownanie in report["pf_comparisons"]:
+        assert porownanie["actual"] in (0.0, 1.0), (
+            "actual poza flat startem starego dialektu — defekt się zmienił, "
+            "zrewiduj to przypięcie (nie tylko wartości)"
+        )
 
 
 def test_pandapower_iec60909_radial_uses_solver_trace_not_expected_copy() -> None:

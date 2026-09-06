@@ -528,6 +528,19 @@ class ENMValidator:
             meta = getattr(gen, "meta", None) or {}
             if str(meta.get("control_mode") or "").strip() != "REGULACJA_NAPIECIA":
                 continue
+            # CV-4.3 K1 (2026-09-06): bramka NC RfG operatora dotyczy TECHNOLOGII
+            # DER podłączonej przez przekształtnik (kreator OZE, `add_converter_source`
+            # — pv_inverter/wind_inverter/fw_*/bess), nie generatora SYNCHRONICZNEGO
+            # (`add_generator_sn` — blok wytwórczy przyłączony wprost, np. IEEE/CIGRE
+            # generator w sieci referencyjnej). Warunek sprawdzał WYŁĄCZNIE tryb
+            # regulacji, ignorując `gen_type` — luka nigdy nie ujawniona, bo PRZED tą
+            # kartą żadna operacja nie tworzyła generatora `synchronous` w trybie
+            # REGULACJA_NAPIECIA (`add_genset_nn` nie ma trybu regulacji wcale).
+            # Katalog profili operatorów (enea/energa/pge/pse/tauron) jest z natury
+            # regulacją PRZYŁĄCZENIA DER, nie generacji klasycznej w sieci akademickiej
+            # (IEEE/CIGRE) — wymaganie go tam byłoby fabrykacją zgodności bez treści.
+            if gen.gen_type == "synchronous":
+                continue
             materialized = getattr(gen, "materialized_params", None) or {}
             profile = materialized.get("profiles") if isinstance(materialized, dict) else None
             profile_ref_raw = (
@@ -654,7 +667,17 @@ class ENMValidator:
                 )
 
         for source in enm.sources:
-            if not source.catalog_ref:
+            # CV-4.3 K1 (2026-09-06): `parameter_source="MANUAL_EQUIVALENT"` jest
+            # TRZECIM, jawnie zamodelowanym stanem pola (patrz `Source.parameter_source`
+            # w `enm/models.py` — Literal["CATALOG","OVERRIDE","MANUAL_EQUIVALENT"]),
+            # ustawianym przez `add_grid_source_sn` dla źródła z jawnym Sk''/RX bez
+            # pozycji katalogowej — udokumentowana, zamierzona ścieżka (K1.2 tej karty:
+            # "source manual_equivalent with explicit Sk/RX"), nie luka do wypełnienia.
+            # Ta reguła sprawdzała WYŁĄCZNIE `catalog_ref`, ignorując pole, które sam
+            # model niesie właśnie po to, żeby odróżnić ten przypadek — luka istniała
+            # od momentu dodania trzeciej wartości Literal, nigdy nie zauważona, bo
+            # żaden budowniczy dotąd nie przechodził tej ścieżki przez pełny walidator.
+            if not source.catalog_ref and source.parameter_source != "MANUAL_EQUIVALENT":
                 issues.append(
                     ValidationIssue(
                         code="E009",

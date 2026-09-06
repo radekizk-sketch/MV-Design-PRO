@@ -3448,7 +3448,26 @@ def _resolve_manual_source_equivalent(
         "short_circuit_input_side": input_side,
         "manual_equivalent": True,
         "short_circuit_mode": short_circuit_mode,
+        # CV-4.3 K1: sieci referencyjne (IEEE/CIGRE/MATPOWER) modelują szynę
+        # bilansującą JAKO szczyt sieci — bez nadrzędnego układu 110 kV, którego
+        # publikacja nie opisuje. `add_grid_source_sn` dotąd ZAWSZE budowała
+        # transformator WN/SN (1..MAX_GPZ_WN_SN_TRANSFORMERS), nawet z
+        # `manual_equivalent` — dodawałaby fikcyjną szynę 110 kV i fikcyjny
+        # transformator nieobecne w literaturze (naruszenie zasady zero
+        # fabrykacji, sekcja B.9 inwentarza karty). `skip_hv_transformer=True`
+        # (dozwolone WYŁĄCZNIE przy `short_circuit_input_side=SN`, bo strona
+        # HV_110 z definicji opisuje ekwiwalent WIDZIANY zza transformatora)
+        # pomija KOMPLETNIE blok budowy transformatora/szyny 110 kV — źródło
+        # dołącza się WPROST do szyny SN. Domyślnie `False`: zero zmiany
+        # zachowania dla wszystkich istniejących wywołań.
+        "skip_hv_transformer": bool(manual.get("skip_hv_transformer", False)),
     }
+    if resolved["skip_hv_transformer"] and input_side == "HV_110":
+        return _error_response(
+            "skip_hv_transformer nie ma zastosowania przy short_circuit_input_side=HV_110 "
+            "— strona WN z definicji opisuje ekwiwalent za transformatorem WN/SN.",
+            "source.manual_equivalent_incomplete",
+        )
 
     if short_circuit_mode == "IMPEDANCE":
         r_ohm = _as_non_negative_number(manual.get("r_ohm", payload.get("r_ohm")))
@@ -3553,12 +3572,20 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             "GPZ musi mieć od 1 do 4 sekcji szyn SN.",
             "source.invalid_sections_count",
         )
-    transformer_count = _read_gpz_transformer_count(payload, sections_count)
-    if transformer_count < 1 or transformer_count > MAX_GPZ_WN_SN_TRANSFORMERS:
-        return _error_response(
-            "GPZ musi mieć od 1 do 4 transformatorów 110/SN.",
-            "source.invalid_transformer_count",
-        )
+    skip_hv_transformer = bool(
+        manual_equivalent is not None and manual_equivalent.get("skip_hv_transformer")
+    )
+    if skip_hv_transformer:
+        # Zob. komentarz w `_resolve_manual_source_equivalent` — sieć referencyjna
+        # bez nadrzędnego układu 110 kV w literaturze; zero transformatorów WN/SN.
+        transformer_count = 0
+    else:
+        transformer_count = _read_gpz_transformer_count(payload, sections_count)
+        if transformer_count < 1 or transformer_count > MAX_GPZ_WN_SN_TRANSFORMERS:
+            return _error_response(
+                "GPZ musi mieć od 1 do 4 transformatorów 110/SN.",
+                "source.invalid_transformer_count",
+            )
     for index, entry in enumerate(gpz_section_entries):
         line_fields_count = entry.get("line_fields_count")
         if (
@@ -4422,7 +4449,34 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
     if isinstance(catalog_ref, dict):
         return catalog_ref
     segment_name = segment.get("name")
+    # CV-4.3 K1 (KLASA NIE INSTANCJA — ta sama naprawa w start_branch_segment_sn
+    # niżej): `segment.bus_name` OPCJONALNE — bez niego zero zmiany zachowania
+    # (nowa szyna zostaje anonimowym, ukrytym punktem technicznym `helper_bus`,
+    # wykluczonym z celów zwarcia — patrz `enm/assembler.py::
+    # skip_short_circuit_target` — dokładnie jak dziś, dla wywołań kreatora
+    # SLD budujących magistralę przyrostowo). Gdy wołający PODAJE `bus_name`,
+    # jawnie deklaruje, że ten punkt jest OD RAZU realną, nazwaną szyną
+    # rozdzielczą (nie prowizorycznym punktem podziału w trakcie edycji) —
+    # np. budowniczy sieci benchmarkowej (`enm_builders/_kernel.py`), gdzie
+    # KAŻDA szyna jest gotowym, nazwanym punktem literatury. Taka szyna musi
+    # być raportowalna dla zwarcia i widoczna od chwili powstania — dokładnie
+    # ten sam zestaw tagów/flag co promocja szyny końcowej do szyny stacyjnej
+    # w `append_station_on_endpoint` (Step 5: zdjęcie `helper_bus`, ustawienie
+    # `render_on_sld`/`show_in_project_tree`).
+    bus_name = segment.get("bus_name")
+    is_named_bus = bool(bus_name)
 
+    # CV-4.3 K1 (KLASA NIE INSTANCJA — ta sama naprawa w 3 operacjach budowy
+    # odcinka SN, patrz start_branch_segment_sn/connect_secondary_ring_sn
+    # niżej): seed BEZ catalog_ref/segment_name kolidował, gdy DWA różne
+    # odcinki (różny typ katalogowy, różna nazwa) odchodziły z TEJ SAMEJ szyny
+    # z tym samym rodzajem i tą samą długością — drugie wywołanie odrzucał
+    # "ref_id już istnieje" (kolizja identyfikatora, nie błąd wołającego).
+    # Dodanie dwóch pól, które FAKTYCZNIE odróżniają odcinki w praktyce, jest
+    # bezpieczne wstecznie: kolidujące dotąd wywołania nigdy nie kończyły się
+    # sukcesem (więc nie ma czyjegoś ustalonego ref_id do zachowania), a
+    # niekolidujące dotąd pary (różny catalog_ref/nazwa) dostają NOWY,
+    # rozłączny seed — determinizm (ten sam ładunek → ten sam wynik) zachowany.
     seed = _compute_seed(
         {
             "op": "continue_trunk",
@@ -4430,6 +4484,9 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
             "from": field_ref or from_terminal_id,
             "rodzaj": rodzaj,
             "dlugosc_m": dlugosc_m,
+            "catalog_ref": catalog_ref,
+            "segment_name": segment_name or "",
+            "bus_name": bus_name or "",
         }
     )
     new_bus_ref = f"bus/{seed}/downstream"
@@ -4453,15 +4510,14 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
         new_enm,
         {
             "ref_id": new_bus_ref,
-            "name": (
-                f"Zacisk końcowy {segment_name}" if segment_name else "Zacisk końcowy odcinka SN"
-            ),
+            "name": bus_name
+            or (f"Zacisk końcowy {segment_name}" if segment_name else "Zacisk końcowy odcinka SN"),
             "voltage_kv": voltage_kv,
-            "tags": ["helper_bus", "topology_terminal"],
+            "tags": ["topology_terminal"] if is_named_bus else ["helper_bus", "topology_terminal"],
             "meta": {
-                "visual_role": "INLINE_TERMINAL",
-                "render_on_sld": False,
-                "show_in_project_tree": False,
+                "visual_role": "NAMED_TERMINAL" if is_named_bus else "INLINE_TERMINAL",
+                "render_on_sld": is_named_bus,
+                "show_in_project_tree": is_named_bus,
             },
         },
     )
@@ -7363,12 +7419,24 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
     if not from_bus:
         return _error_response(f"Szyna '{from_bus_ref}' nie istnieje.", "branch.from_bus_not_found")
 
+    # CV-4.3 K1 (KLASA NIE INSTANCJA — patrz identyczny komentarz w
+    # continue_trunk_segment_sn): catalog_ref/nazwa dopisane, żeby dwa
+    # RÓŻNE odgałęzienia z tej samej szyny (różny typ katalogowy/nazwa) nie
+    # kolidowały identyfikatorem, gdy rodzaj i długość akurat się pokrywają.
+    # `segment.bus_name` OPCJONALNE — identyczna promocja "od razu realna,
+    # nazwana szyna" co w `continue_trunk_segment_sn` (patrz jego docstring
+    # dla pełnego uzasadnienia); bez niego zero zmiany zachowania.
+    bus_name = segment.get("bus_name")
+    is_named_bus = bool(bus_name)
     seed = _compute_seed(
         {
             "op": "start_branch",
             "from": from_bus_ref,
             "rodzaj": rodzaj,
             "dlugosc_m": dlugosc_m,
+            "catalog_ref": branch_catalog_ref,
+            "segment_name": segment.get("name") or "",
+            "bus_name": bus_name or "",
         }
     )
     new_bus_ref = f"bus/{seed}/branch_end"
@@ -7389,13 +7457,13 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
         new_enm,
         {
             "ref_id": new_bus_ref,
-            "name": "Szyna odgałęzienia",
+            "name": bus_name or "Szyna odgałęzienia",
             "voltage_kv": voltage_kv,
-            "tags": ["helper_bus", "topology_terminal"],
+            "tags": ["topology_terminal"] if is_named_bus else ["helper_bus", "topology_terminal"],
             "meta": {
-                "visual_role": "INLINE_TERMINAL",
-                "render_on_sld": False,
-                "show_in_project_tree": False,
+                "visual_role": "NAMED_TERMINAL" if is_named_bus else "INLINE_TERMINAL",
+                "render_on_sld": is_named_bus,
+                "show_in_project_tree": is_named_bus,
             },
         },
     )
@@ -7432,7 +7500,13 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
         )
     branch_data: dict[str, Any] = {
         "ref_id": branch_ref,
-        "name": "Odgałęzienie",
+        # CV-4.3 K1: `continue_trunk_segment_sn` honoruje `segment.name` (jawną
+        # nazwę wyświetlaną odcinka) od dawna — `start_branch_segment_sn` je
+        # ignorowała i zawsze zapisywała literał "Odgałęzienie", nawet gdy
+        # wołający jawnie podał nazwę. Ten sam wzorzec fallbacku co tam
+        # (jawna nazwa > domyślna), zero zmiany zachowania dla wywołań bez
+        # `segment.name` (istniejące testy/fikstury nie podają tego pola).
+        "name": segment.get("name") or "Odgałęzienie",
         "type": branch_type,
         "from_bus_ref": from_bus_ref,
         "to_bus_ref": new_bus_ref,
@@ -7798,16 +7872,6 @@ def connect_secondary_ring_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
     if to_bus_ref not in bus_refs:
         return _error_response(f"Szyna '{to_bus_ref}' nie istnieje.", "ring.to_not_found")
 
-    seed = _compute_seed(
-        {"op": "connect_secondary_ring_sn", "from": from_bus_ref, "to": to_bus_ref}
-    )
-    ring_ref = f"seg/{seed}/ring_closure"
-
-    new_enm = kopia_graniczna_enm(enm)
-    created = []
-    events = []
-    ev_seq = 0
-
     rodzaj = segment.get("rodzaj", "KABEL")
     dlugosc_m = segment.get("dlugosc_m") or 0
     if dlugosc_m <= 0:
@@ -7825,6 +7889,26 @@ def connect_secondary_ring_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
             "Podaj catalog_ref lub catalog_binding w payload segmentu.",
             "catalog.ref_required",
         )
+
+    # CV-4.3 K1 (KLASA NIE INSTANCJA — patrz identyczny komentarz w
+    # continue_trunk_segment_sn/start_branch_segment_sn): catalog_ref dopisany
+    # do seeda, żeby DWA pierścienie zamykające TĘ SAMĄ parę szyn równoległymi
+    # kablami różnego typu (scenariusz realny — redundancja) nie kolidowały
+    # identyfikatorem.
+    seed = _compute_seed(
+        {
+            "op": "connect_secondary_ring_sn",
+            "from": from_bus_ref,
+            "to": to_bus_ref,
+            "catalog_ref": ring_catalog_ref,
+        }
+    )
+    ring_ref = f"seg/{seed}/ring_closure"
+
+    new_enm = kopia_graniczna_enm(enm)
+    created = []
+    events = []
+    ev_seq = 0
 
     branch_type = "cable" if rodzaj == "KABEL" else "line_overhead"
     ring_data: dict[str, Any] = {
@@ -7971,9 +8055,30 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
     """Dodaj transformator SN/nN."""
     hv_bus_ref = payload.get("hv_bus_ref")
     lv_bus_ref = payload.get("lv_bus_ref")
-
-    if not hv_bus_ref or not lv_bus_ref:
+    # CV-4.3 K1: dotąd OBIE szyny musiały istnieć wcześniej — nie da się tak
+    # wyrazić transformatora zmieniającego napięcie W ŚRODKU topologii (np.
+    # transformator generatorowy IEEE 14/39-bus, transformator XFM Kerstinga
+    # IEEE 13-bus), bo żadna inna operacja domenowa nie tworzy „gołej" szyny
+    # bez odcinka/stacji. `lv_voltage_kv` jawnie podane (bez `lv_bus_ref`)
+    # tworzy nową szynę nN przez ten sam mechanizm (`create_node`), ale NIE
+    # tagiem `helper_bus` uzywanym przez `continue_trunk_segment_sn` — tamten
+    # tag oznacza tymczasowy, jeszcze nienazwany punkt podzialu magistrali w
+    # trakcie budowy (moze zniknac przy dalszej edycji, ukryty na SLD/w
+    # drzewie projektu, wykluczony z celow zwarcia — `enm/assembler.py::
+    # skip_short_circuit_target`). Szyna nN transformatora to fizycznie
+    # ZAWSZE realna szyna rozdzielcza NOWEGO poziomu napiecia (cel budowy
+    # calej operacji), nigdy techniczny punkt podzialu — musi byc widoczna i
+    # raportowalna dla zwarcia od chwili powstania, zero zmiany zachowania
+    # dla wywolan z jawnym `lv_bus_ref` (istniejace wywolania nietkniete).
+    auto_lv_voltage_kv = _opt_float_any(payload.get("lv_voltage_kv"))
+    if not hv_bus_ref or (not lv_bus_ref and auto_lv_voltage_kv is None):
         return _error_response("Brak szyn HV/LV.", "transformer.buses_missing")
+    if lv_bus_ref and auto_lv_voltage_kv is not None:
+        return _error_response(
+            "Podaj albo lv_bus_ref (istniejąca szyna), albo lv_voltage_kv "
+            "(nowa szyna) — nie oba naraz.",
+            "transformer.lv_bus_ambiguous",
+        )
 
     standalone_catalog = _require_catalog_ref(
         payload_ref=payload.get("transformer_catalog_ref"),
@@ -7983,13 +8088,60 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
     if isinstance(standalone_catalog, dict):
         return standalone_catalog
 
-    seed = _compute_seed({"op": "add_transformer_sn_nn", "hv": hv_bus_ref, "lv": lv_bus_ref})
+    # CV-4.3 K1 (KLASA NIE INSTANCJA — ta sama naprawa co continue_trunk_segment_sn/
+    # start_branch_segment_sn/connect_secondary_ring_sn wcześniej w tej karcie):
+    # seed BEZ catalog_ref/zaczepu kolidował, gdy DWA różne transformatory
+    # (różny typ katalogowy, różny zaczep pozanominalny) odchodziły od TEJ
+    # SAMEJ szyny HV z tym samym lv_voltage_kv (np. IEEE 39-bus: BR40 i BR41
+    # obie z B18 na 345 kV, różny katalog/zaczep) — drugie wywołanie odrzucał
+    # "ref_id już istnieje".
+    seed = _compute_seed(
+        {
+            "op": "add_transformer_sn_nn",
+            "hv": hv_bus_ref,
+            "lv": lv_bus_ref,
+            "lv_voltage_kv": auto_lv_voltage_kv,
+            "catalog_ref": standalone_catalog,
+            "tap_current_position": payload.get("transformer_tap_current_position"),
+            "tap_step_percent": payload.get("transformer_tap_step_percent"),
+        }
+    )
     tr_ref = f"tr/{seed}/transformer"
 
     new_enm = kopia_graniczna_enm(enm)
     created = []
     events = []
     ev_seq = 0
+
+    if lv_bus_ref is None:
+        assert auto_lv_voltage_kv is not None  # zawężenie typu — sprawdzone wyżej
+        new_lv_bus_ref = f"bus/{seed}/lv_auto"
+        result = create_node(
+            new_enm,
+            {
+                "ref_id": new_lv_bus_ref,
+                "name": f"Szyna {auto_lv_voltage_kv:g} kV (TR {tr_ref[-8:]})",
+                "voltage_kv": auto_lv_voltage_kv,
+                "tags": ["topology_terminal"],
+                "meta": {
+                    "visual_role": "TRANSFORMER_LV_BUS",
+                    "render_on_sld": True,
+                    "show_in_project_tree": True,
+                },
+            },
+        )
+        if not result.success:
+            return _error_response(
+                f"Nie udało się utworzyć szyny nN: {result.issues[0].message_pl if result.issues else '?'}",
+                "transformer.lv_bus_creation_failed",
+            )
+        new_enm = result.enm
+        created.append(new_lv_bus_ref)
+        ev_seq += 1
+        events.append(
+            {"event_seq": ev_seq, "event_type": "BUS_CREATED", "element_id": new_lv_bus_ref}
+        )
+        lv_bus_ref = new_lv_bus_ref
 
     # Napięcia z szyn (topologiczne), brak domyślnych parametrów. Karta FAB-D1
     # (D2): sn_mva/uk_percent/pk_kw NIE dostają fabrykowanego podstawienia
@@ -8000,7 +8152,7 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
     # "or 0.0" usunięty z tej samej przyczyny.
     hv_voltage = None
     lv_voltage = None
-    for b in enm.get("buses", []):
+    for b in new_enm.get("buses", []):
         if b.get("ref_id") == hv_bus_ref:
             hv_voltage = b.get("voltage_kv")
         if b.get("ref_id") == lv_bus_ref:

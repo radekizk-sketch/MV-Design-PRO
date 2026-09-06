@@ -736,6 +736,9 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
     # --- Kompensacja, ograniczniki, wiązania DER (V2) -----------------------
     PozycjaBramyApi("add_shunt_compensator_sn", "catalog_binding", "KOMPENSATOR_SN", True),
     PozycjaBramyApi("add_surge_arrester_sn", "catalog_binding", "OGRANICZNIK_SN", True),
+    # --- CV-4.3 K1: odbiór/generator wprost na szynie -----------------------
+    PozycjaBramyApi("add_load_sn", "catalog_binding", "OBCIAZENIE", True),
+    PozycjaBramyApi("add_generator_sn", "catalog_binding", "GENERATOR_SN", True),
     PozycjaBramyApi(
         "set_der_catalog_bindings", "protection_catalog_ref", PRZESTRZEN_WIAZANIA_DER, True
     ),
@@ -1009,6 +1012,30 @@ def _referencje_dodatkowe(
         _dodaj(
             "Ogranicznik przepięć SN",
             "OGRANICZNIK_SN",
+            _ref_z_wiazania(payload.get("catalog_binding"))
+            or payload.get("catalog_item_id")
+            or payload.get("catalog_ref"),
+            payload.get("catalog_binding"),
+        )
+
+    # CV-4.3 K1: `add_load_sn` (odbiór wprost na szynie, katalog OPCJONALNY —
+    # jak `add_nn_load`) i `add_generator_sn` (generator synchroniczny wprost
+    # na SN, katalog OBOWIĄZKOWY) — TA SAMA para (catalog_ref top-level /
+    # catalog_binding) co bateria kondensatorów/ogranicznik powyżej.
+    if operation == "add_load_sn":
+        _dodaj(
+            "Odbiór",
+            "OBCIAZENIE",
+            _ref_z_wiazania(payload.get("catalog_binding"))
+            or payload.get("catalog_item_id")
+            or payload.get("catalog_ref"),
+            payload.get("catalog_binding"),
+        )
+
+    if operation == "add_generator_sn":
+        _dodaj(
+            "Generator synchroniczny",
+            "GENERATOR_SN",
             _ref_z_wiazania(payload.get("catalog_binding"))
             or payload.get("catalog_item_id")
             or payload.get("catalog_ref"),

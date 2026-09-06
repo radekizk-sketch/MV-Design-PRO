@@ -93,7 +93,10 @@ def test_pokrycie_rodzin_wyroczniami_nie_maleje() -> None:
 
 #: Pomiar 2026-09-04: budowniczowie zwracający dialekt benchmarków (nie ENM). Zapadka w obie
 #: strony — liczba może tylko MALEĆ (CV-4 zwija benchmarki w ENM przez kanoniczny assembler).
-BENCHMARK_DICT_ZASTANE: dict[str, int] = {"G07": 1, "B-BENCH": 12}
+#: CV-4.3 K1 (2026-09-06): B-BENCH i G07 przepięte na ENM-bliźniaki
+#: (`application/reference_networks/enm_builders/*.py`) — zero pozostałych sieci dialektu
+#: w tych dwóch wpisach, stąd pusty słownik (zapadka może tylko maleć, nigdy wrócić w górę).
+BENCHMARK_DICT_ZASTANE: dict[str, int] = {}
 
 #: Pomiar 2026-09-04: liczba problemów BLOCKER walidatora ENM per wpis (suma po sieciach wpisu).
 #: G04/G05: 18 scenariuszy nN celowo obejmuje stany konfliktowe (źródła równoległe, sekcja bez

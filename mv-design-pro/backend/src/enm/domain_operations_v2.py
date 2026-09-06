@@ -5989,6 +5989,257 @@ def add_shunt_compensator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
     )
 
 
+def add_load_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """Dodaj odbiór WPROST na wskazaną szynę (SN albo dowolnego innego pasma).
+
+    CV-4.3 K1: `add_nn_load` wymaga `feeder_ref` wskazującego ISTNIEJĄCY
+    odpływ nN (pole stacji) — nie da się nią wyrazić odbioru siedzącego
+    wprost na szynie modelu bez pośredniej stacji SN/nN. Taki kształt jest
+    NORMĄ w sieciach referencyjnych IEEE/CIGRE/MATPOWER (każda szyna JEST
+    punktem odbioru — transmisja/rozdział bez oddzielnej rozdzielni nN).
+    Ta operacja domyka lukę: `bus_ref` DOWOLNEJ istniejącej szyny, katalog
+    OPCJONALNY (jak `add_nn_load` — odbiór nie jest „wyrobem katalogowym"
+    z tabliczką producenta), semantyka P/Q/cosφ/ZIP reużywa `add_nn_load`
+    (`zip_odbioru_z_payloadu`, ta sama derywacja Q z cosφ).
+    """
+    bus_ref_raw = payload.get("bus_ref")
+    bus_ref = bus_ref_raw.strip() if isinstance(bus_ref_raw, str) else None
+    if not bus_ref:
+        return _error_response("Brak identyfikatora szyny (bus_ref).", "load.bus_missing")
+    if _bus_voltage_kv(enm, bus_ref) is None:
+        return _error_response(
+            f"Szyna '{bus_ref}' nie istnieje w modelu albo nie ma napięcia znamionowego.",
+            "load.bus_not_found",
+        )
+
+    active_power_kw = payload.get("active_power_kw")
+    if active_power_kw is None and payload.get("p_mw") is not None:
+        active_power_kw = float(payload["p_mw"]) * 1000.0
+    if active_power_kw is None:
+        return _error_response(
+            "Odbiór wymaga mocy czynnej (active_power_kw albo p_mw).", "load.p_missing"
+        )
+    active_power_kw = float(active_power_kw)
+
+    przestrzen_katalogu = "OBCIAZENIE"
+    catalog_binding = _catalog_binding_from_payload(payload, przestrzen_katalogu)
+    catalog_ref = _catalog_item_id(catalog_binding)
+
+    # Dobór mocy biernej z tabliczki (Q = P·tan(arccos cosφ)) — jak `add_nn_load`.
+    reactive_power_kvar = payload.get("reactive_power_kvar")
+    if reactive_power_kvar is None and payload.get("q_mvar") is not None:
+        reactive_power_kvar = float(payload["q_mvar"]) * 1000.0
+    cos_phi = payload.get("cos_phi")
+    if reactive_power_kvar is None and cos_phi is not None:
+        try:
+            cp = float(cos_phi)
+        except (TypeError, ValueError):
+            cp = 0.0
+        if 0.0 < cp <= 1.0:
+            reactive_power_kvar = active_power_kw * math.tan(math.acos(cp))
+
+    if catalog_ref:
+        _, blad_katalogu = _pozycja_katalogu(
+            namespace=przestrzen_katalogu,
+            catalog_ref=catalog_ref,
+            catalog_binding=catalog_binding,
+            opis_pl="Odbiór",
+        )
+        if blad_katalogu is not None:
+            return blad_katalogu
+
+    zip_odbioru, blad_zip = zip_odbioru_z_payloadu(payload)
+    if blad_zip is not None:
+        return _error_response(blad_zip, KOD_BLEDU_ZIP)
+
+    # Karta FAB-D1 (D5 sibling, jak `add_nn_load`): brak jawnej mocy biernej i
+    # brak cosφ, z którego dałoby się ją wyprowadzić, NIE fabrykuje 0 Mvar.
+    if reactive_power_kvar is None:
+        return _error_response(
+            "Odbiór: brak mocy biernej (reactive_power_kvar/q_mvar) i brak cosφ, z "
+            "którego dałoby się ją wyprowadzić. Podaj jedno z nich.",
+            "load.q_missing",
+        )
+
+    seed = _compute_seed({"op": "load_sn", "bus": bus_ref, "p": active_power_kw})
+    load_ref = _make_id("load", seed, "sn")
+
+    nowy_odbior: dict[str, Any] = {
+        "ref_id": load_ref,
+        "name": payload.get("load_name") or "Odbiór",
+        "bus_ref": bus_ref,
+        "p_mw": active_power_kw / 1000.0,
+        "q_mvar": float(reactive_power_kvar) / 1000.0,
+        "model": "zip" if zip_odbioru else "pq",
+        "catalog_ref": catalog_ref,
+        "catalog_namespace": przestrzen_katalogu if catalog_ref else None,
+        "source_mode": "KATALOG" if catalog_ref else "EKSPERCKI_RECZNY",
+        "parameter_source": "CATALOG" if catalog_ref else "OVERRIDE",
+        "tags": [],
+        "meta": {
+            "load_kind": payload.get("load_kind", "SKUPIONY"),
+            "connection_type": payload.get("connection_type", "TROJFAZOWY"),
+            "catalog_binding": copy.deepcopy(catalog_binding) if catalog_binding else None,
+            "cos_phi": payload.get("cos_phi"),
+        },
+    }
+    if zip_odbioru is not None:
+        nowy_odbior["materialized_params"] = zip_odbioru
+
+    new_enm = kopia_graniczna_enm(enm)
+    new_enm.setdefault("loads", []).append(nowy_odbior)
+
+    return _response(
+        new_enm,
+        created=[load_ref],
+        selection_id=load_ref,
+        selection_type="load",
+        events=[{"event_seq": 1, "event_type": "LOAD_SN_CREATED", "element_id": load_ref}],
+    )
+
+
+def add_generator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """Dodaj generator SYNCHRONICZNY wprost na szynę SN/WN (bez przekształtnika).
+
+    CV-4.3 K1: `add_converter_source` (falowniki PV/BESS/FW) odmawia
+    przyłączenia do SN bez transformatora blokowego z komentarzem WPROST w
+    kodzie (`_add_converter_source_der_sn`): „Bezpośrednie przyłączenie do
+    szyny SN bez TR blokowego jest zarezerwowane dla generatora
+    synchronicznego (osobna operacja)" — ta operacja domyka tę nazwaną lukę.
+    Blok wytwórczy (np. generator synchroniczny elektrowni) dołączony wprost
+    do szyny — węzeł PV rozpływu mocy, gdy `control_mode=REGULACJA_NAPIECIA`
+    (ten sam mechanizm co `add_converter_source`: `enm/mapping.py` czyta
+    `meta.control_mode`/`u_set_pu`/`q_min_mvar`/`q_max_mvar`, zero zmian w
+    assemblerze/solverze). Katalog WYMAGANY (GENERATOR_SN) — tabliczka
+    znamionowa (moc pozorna, napięcie, granice mocy biernej); moc czynna
+    WYJŚCIOWA jest nastawą STUDIUM (payload `p_mw`), nie polem katalogu.
+    """
+    bus_ref_raw = payload.get("bus_ref")
+    bus_ref = bus_ref_raw.strip() if isinstance(bus_ref_raw, str) else None
+    if not bus_ref:
+        return _error_response("Brak identyfikatora szyny (bus_ref).", "generator.bus_missing")
+    bus_voltage_kv = _bus_voltage_kv(enm, bus_ref)
+    if bus_voltage_kv is None:
+        return _error_response(
+            f"Szyna '{bus_ref}' nie istnieje w modelu albo nie ma napięcia znamionowego.",
+            "generator.bus_not_found",
+        )
+
+    p_mw = payload.get("p_mw")
+    if p_mw is None:
+        return _error_response(
+            "Generator synchroniczny wymaga mocy czynnej (p_mw) — nastawa studium.",
+            "generator.power_missing",
+        )
+    p_mw = float(p_mw)
+
+    # Katalog WYMAGANY (K1.2 — element fizyczny, bez wyjątku dla generatorów).
+    # `GENERATOR_SN` (b) rated_mva/rated_kv/q_min_mvar/q_max_mvar z tabliczki.
+    namespace = "GENERATOR_SN"
+    catalog_binding = _catalog_binding_from_payload(payload, namespace)
+    catalog_ref = _catalog_item_id(catalog_binding)
+    if not catalog_ref:
+        return _error_response(
+            "Generator synchroniczny wymaga typu katalogowego (GENERATOR_SN).",
+            "generator.catalog_required",
+        )
+    tabliczka, blad_katalogu = _pozycja_katalogu(
+        namespace=namespace,
+        catalog_ref=catalog_ref,
+        catalog_binding=catalog_binding,
+        opis_pl="Generator synchroniczny",
+    )
+    if blad_katalogu is not None:
+        return blad_katalogu
+
+    rated_kv = _as_float(tabliczka.get("rated_kv"))
+    if rated_kv is not None and not _same_nominal_voltage(
+        rated_kv, bus_voltage_kv, tolerance_kv=1.0
+    ):
+        return _error_response(
+            f"Napięcie znamionowe generatora ({rated_kv:g} kV) nie pasuje do szyny "
+            f"({bus_voltage_kv:g} kV). Dobierz typ dla właściwego napięcia.",
+            "generator.voltage_mismatch",
+        )
+
+    control_mode_raw = payload.get("control_mode")
+    control_mode = (
+        control_mode_raw.strip()
+        if isinstance(control_mode_raw, str) and control_mode_raw.strip()
+        else None
+    )
+    gen_meta: dict[str, Any] = {"source_kind": "SYNCHRONOUS_GENERATOR_SN"}
+    if control_mode == "REGULACJA_NAPIECIA":
+        u_set_pu = _as_float(payload.get("u_set_pu"))
+        if u_set_pu is None or u_set_pu <= 0:
+            return _error_response(
+                "Generator w trybie regulacji napięcia wymaga dodatniej nastawy " "u_set_pu.",
+                "generator.u_set_missing",
+            )
+        q_min_mvar = _first_number(payload.get("q_min_mvar"), tabliczka.get("q_min_mvar"))
+        q_max_mvar = _first_number(payload.get("q_max_mvar"), tabliczka.get("q_max_mvar"))
+        if q_min_mvar is None or q_max_mvar is None or q_min_mvar >= q_max_mvar:
+            return _error_response(
+                "Generator w trybie regulacji napięcia wymaga spójnych granic mocy "
+                "biernej (q_min_mvar < q_max_mvar) — z payloadu albo z tabliczki "
+                "katalogowej.",
+                "generator.q_limits_invalid",
+            )
+        gen_meta.update(
+            {
+                "control_mode": "REGULACJA_NAPIECIA",
+                "u_set_pu": u_set_pu,
+                "q_min_mvar": q_min_mvar,
+                "q_max_mvar": q_max_mvar,
+            }
+        )
+        q_mvar_field = None
+    elif control_mode is not None:
+        return _error_response(
+            "Nieznany tryb pracy generatora synchronicznego (control_mode).",
+            "generator.control_mode_invalid",
+        )
+    else:
+        # Tryb PQ stały — moc bierna WPROST z payloadu (brak = None, nie 0 Mvar
+        # fabrykowane; jak `add_genset_nn`/`Generator.q_mvar` opcjonalne).
+        q_mvar_field = _as_float(payload.get("q_mvar"))
+
+    seed = _compute_seed({"op": "generator_sn", "bus": bus_ref, "cat": catalog_ref, "p": p_mw})
+    gen_ref = _make_id("gen", seed, "sn")
+
+    nowy_generator: dict[str, Any] = {
+        "ref_id": gen_ref,
+        "name": payload.get("name") or payload.get("source_name") or "Generator synchroniczny",
+        "bus_ref": bus_ref,
+        "p_mw": p_mw,
+        "q_mvar": q_mvar_field,
+        "gen_type": "synchronous",
+        "catalog_ref": catalog_ref,
+        "catalog_namespace": namespace,
+        "source_mode": "KATALOG",
+        "parameter_source": "CATALOG",
+        "tags": [],
+        "materialized_params": {
+            "rated_mva": tabliczka.get("rated_mva"),
+            "rated_kv": tabliczka.get("rated_kv"),
+            "q_min_mvar": tabliczka.get("q_min_mvar"),
+            "q_max_mvar": tabliczka.get("q_max_mvar"),
+        },
+        "meta": gen_meta,
+    }
+
+    new_enm = kopia_graniczna_enm(enm)
+    new_enm.setdefault("generators", []).append(nowy_generator)
+
+    return _response(
+        new_enm,
+        created=[gen_ref],
+        selection_id=gen_ref,
+        selection_type="generator",
+        events=[{"event_seq": 1, "event_type": "GENERATOR_SN_CREATED", "element_id": gen_ref}],
+    )
+
+
 def add_surge_arrester_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """G-STK-8: postaw ogranicznik przepięć (SPD) w polu SN.
 
@@ -6541,6 +6792,13 @@ V2_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyKatalogowejV2, ...] = (
         "materializacja pola z katalogu rodzin — aparat glowny wskazywany tak samo",
     ),
     PozycjaBramyKatalogowejV2("add_nn_load", "catalog_binding", "OBCIAZENIE", True),
+    # CV-4.3 K1: `add_load_sn` reużywa DOKŁADNIE ten sam wzorzec co `add_nn_load`
+    # (katalog opcjonalny — odbiór nie jest wyrobem katalogowym — ale WSKAZANA
+    # pozycja musi istnieć, `_pozycja_katalogu` weryfikuje).
+    PozycjaBramyKatalogowejV2("add_load_sn", "catalog_binding", "OBCIAZENIE", True),
+    # CV-4.3 K1: generator synchroniczny wprost na SN — katalog OBOWIĄZKOWY
+    # (element fizyczny, K1.2), weryfikowany przez `_pozycja_katalogu`.
+    PozycjaBramyKatalogowejV2("add_generator_sn", "catalog_binding", "GENERATOR_SN", True),
     PozycjaBramyKatalogowejV2(
         "add_converter_source", "catalog_ref", "ZRODLO_NN_PV|ZRODLO_NN_BESS|CONVERTER", True
     ),
@@ -6695,6 +6953,8 @@ V2_CANONICAL_OPS: frozenset[str] = frozenset(
         "add_nn_outgoing_field",
         "add_converter_source",
         "add_nn_load",
+        "add_load_sn",
+        "add_generator_sn",
         "add_genset_nn",
         "add_ups_nn",
         "add_shunt_compensator_sn",
@@ -6732,6 +6992,8 @@ ALL_V2_HANDLERS: dict[str, Any] = {
     "add_nn_outgoing_field": add_nn_outgoing_field,
     "add_converter_source": add_converter_source,
     "add_nn_load": add_nn_load,
+    "add_load_sn": add_load_sn,
+    "add_generator_sn": add_generator_sn,
     "add_genset_nn": add_genset_nn,
     "add_ups_nn": add_ups_nn,
     "add_shunt_compensator_sn": add_shunt_compensator_sn,

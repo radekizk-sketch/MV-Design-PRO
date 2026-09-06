@@ -139,8 +139,14 @@ def _map_tap_changer(
 _IEC60909_RX_ZASILANIA_SYSTEMOWEGO = 0.1
 
 
-def impedancja_zrodla_sieciowego(
-    source: Source, bus_voltage_kv: float
+def impedancja_zasilania_systemowego(
+    *,
+    ref_id: str,
+    r_ohm: float | None,
+    x_ohm: float | None,
+    sk3_mva: float | None,
+    rx_ratio: float | None,
+    u_nq_kv: float,
 ) -> tuple[complex, dict[str, Any]] | None:
     """Impedancja zgodna zasilania systemowego Z_Q [Ω] + ślad WHITE BOX wyprowadzenia.
 
@@ -150,49 +156,55 @@ def impedancja_zrodla_sieciowego(
     bo deklarowana przez OSD moc zwarciowa S''_kQ została policzona ze źródłem
     zastępczym c·U_nQ/√3 za tą impedancją. Bez c (stan do CV-4.3 K6, 2026-09-06)
     prąd zwarciowy w samym węźle przyłączenia wychodził c·I''_kQ — o 10 % (SN/WN)
-    lub 5 % (nN) ponad wartość deklarowaną; po K6 bieg w węźle przyłączenia odtwarza I''_kQ
-    dokładnie (test ``tests/enm/test_z_q_wspolczynnik_c.py``).
+    lub 5 % (nN) ponad wartość deklarowaną; po K6 bieg w węźle przyłączenia odtwarza
+    I''_kQ dokładnie (test ``tests/enm/test_z_q_wspolczynnik_c.py``).
 
     c = c_max pasma U_nQ ZAWSZE — także dla studium MIN: Z_Q jest własnością sieci
     zasilającej wyprowadzoną z JEDYNEJ deklarowanej danej (S''_kQmax); c_min wchodzi
     wyłącznie do źródła napięciowego w węźle zwarcia (assembler/solver). Literalne
-    c_min·U²/S''_kQmax dałoby Ik''min(węzeł przyłączenia) = I''_kQmax (niekonserwatywnie dla
-    czułości zabezpieczeń). Model z S''_kQmin — karta K7.
+    c_min·U²/S''_kQmax dałoby Ik''min(węzeł przyłączenia) = I''_kQmax (niekonserwatywnie
+    dla czułości zabezpieczeń). Model z S''_kQmin — karta K7.
+
+    Postać WARTOŚCIOWA (nie ``Source``) — CV-4.3 K1 (KLASA NIE INSTANCJA):
+    ``application/reference_networks/computation.py::build_short_circuit_graph_from_enm``
+    potrzebuje TEJ SAMEJ formuły dla źródła w starym dialekcie słownikowym
+    (``sk_max_mva``/``rx_ratio`` wprost w dict); wrapper ``impedancja_zrodla_sieciowego``
+    podaje tu pola pydantic ``Source``. Jedna formuła, zero kopii — druga kopia
+    rozjechałaby się przy pierwszej zmianie (dokładnie tak, jak do K6 rozjechał się
+    most pandapower i mapper).
 
     Tryb ``r_ohm``/``x_ohm`` (impedancja jawna) = impedancja fizyczna z modelu, bez c.
     ``None`` znaczy „źródło nie ma z czego policzyć impedancji" (brak jawnego R/X
     i brak mocy zwarciowej) — wołający POMIJA takie źródło, zamiast wstawiać za
     nie liczbę.
     """
-    if source.r_ohm is not None and source.x_ohm is not None:
-        z_ohm = complex(source.r_ohm, source.x_ohm)
+    if r_ohm is not None and x_ohm is not None:
+        z_ohm = complex(r_ohm, x_ohm)
         return z_ohm, {
-            "ref_id": source.ref_id,
+            "ref_id": ref_id,
             "tryb": "IMPEDANCJA_JAWNA",
-            "u_nq_kv": bus_voltage_kv,
+            "u_nq_kv": u_nq_kv,
             "z_q_ohm": {"re": z_ohm.real, "im": z_ohm.imag},
             "formula": "Z_Q = R_Q + jX_Q (impedancja jawna z modelu, bez c)",
         }
-    if source.sk3_mva is None or source.sk3_mva <= 0:
+    if sk3_mva is None or sk3_mva <= 0:
         return None
-    c_max = c_for_node(bus_voltage_kv, "MAX")
-    z_abs = c_max * impedancja_z_napiecia_i_mocy_ohm(bus_voltage_kv, source.sk3_mva)
-    rx_z_modelu = source.rx_ratio is not None and source.rx_ratio > 0
+    c_max = c_for_node(u_nq_kv, "MAX")
+    z_abs = c_max * impedancja_z_napiecia_i_mocy_ohm(u_nq_kv, sk3_mva)
+    rx_z_modelu = rx_ratio is not None and rx_ratio > 0
     rx: float = (
-        source.rx_ratio
-        if source.rx_ratio is not None and source.rx_ratio > 0
-        else _IEC60909_RX_ZASILANIA_SYSTEMOWEGO
+        rx_ratio if rx_ratio is not None and rx_ratio > 0 else _IEC60909_RX_ZASILANIA_SYSTEMOWEGO
     )
-    x_ohm = z_abs / math.sqrt(1.0 + rx**2)
-    r_ohm = x_ohm * rx
-    z_ohm = complex(r_ohm, x_ohm)
+    x_q_ohm = z_abs / math.sqrt(1.0 + rx**2)
+    r_q_ohm = x_q_ohm * rx
+    z_ohm = complex(r_q_ohm, x_q_ohm)
     return z_ohm, {
-        "ref_id": source.ref_id,
+        "ref_id": ref_id,
         "tryb": "MOC_ZWARCIOWA",
-        "u_nq_kv": bus_voltage_kv,
-        "sk3_mva": source.sk3_mva,
+        "u_nq_kv": u_nq_kv,
+        "sk3_mva": sk3_mva,
         "c": c_max,
-        "pasmo_c": "nN" if bus_voltage_kv <= 1.0 else "SN/WN",
+        "pasmo_c": "nN" if u_nq_kv <= 1.0 else "SN/WN",
         "rx_ratio": rx,
         "rx_ratio_zrodlo": "MODEL" if rx_z_modelu else "IEC_60909_DOMYSLNY_0_1",
         "z_q_abs_ohm": z_abs,
@@ -202,6 +214,20 @@ def impedancja_zrodla_sieciowego(
             "X_Q = Z_Q/√(1+(R/X)²); R_Q = X_Q·(R/X)"
         ),
     }
+
+
+def impedancja_zrodla_sieciowego(
+    source: Source, bus_voltage_kv: float
+) -> tuple[complex, dict[str, Any]] | None:
+    """Z_Q + ślad dla ``Source`` ENM — wrapper nad ``impedancja_zasilania_systemowego``."""
+    return impedancja_zasilania_systemowego(
+        ref_id=source.ref_id,
+        r_ohm=source.r_ohm,
+        x_ohm=source.x_ohm,
+        sk3_mva=source.sk3_mva,
+        rx_ratio=source.rx_ratio,
+        u_nq_kv=bus_voltage_kv,
+    )
 
 
 def _source_positive_impedance_ohm(source: Source, bus_voltage_kv: float) -> complex | None:

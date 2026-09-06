@@ -15,6 +15,7 @@ maleje (zapadka).
 
 from __future__ import annotations
 
+import dataclasses
 import importlib
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -40,8 +41,10 @@ class PostacSieci(str, Enum):
     """Postać danych budowniczego. `ENM` = `EnergyNetworkModel` (lub słownik walidujący się jako ENM);
     `BENCHMARK_DICT` = słownik dialektu benchmarków (`application/reference_networks/library.py`:
     `id` szyn jako napisy, NIE waliduje się jako ENM) — DRUGA PRAWDA O SIECI liczona własnym
-    solverem (P9, A3 §2.1); pomiar 2026-09-04: 12 benchmarków + oze_pv_bess. Do zwinięcia w ENM
-    przez kanoniczny assembler (CV-4); zapadka `BENCHMARK_DICT_ZASTANE` w teście."""
+    solverem (P9, A3 §2.1). CV-4.3 K1 (2026-09-06): B-BENCH i G07 (12 benchmarków + oze_pv_bess)
+    przepięte na `ENM` (`application/reference_networks/enm_builders/*.py`) — `BENCHMARK_DICT_ZASTANE`
+    puste, żaden wpis dziś nie deklaruje tej postaci; stary dialekt (`library.py`, własny NR) żyje
+    dalej jako wyrocznia (b) w `tests/golden/parytet_benchmarkow/`, do usunięcia w karcie A2/K2."""
 
     ENM = "ENM"
     BENCHMARK_DICT = "BENCHMARK_DICT"
@@ -234,12 +237,19 @@ REJESTR: tuple[WpisRejestru, ...] = (
         inwarianty=("bilans energii w kroku",),
         wyrocznie=(),
         budowniczowie=(
-            "application.reference_networks.builders.oze_pv_bess:build_oze_pv_bess_network",
+            "application.reference_networks.enm_builders.oze_pv_bess:build_oze_pv_bess_enm",
         ),
         konsumenci=("solver",),
         status=StatusSieci.PARTIAL,
-        postac=PostacSieci.BENCHMARK_DICT,
-        proweniencja="dialekt benchmarków (nie ENM) — druga prawda o sieci; do zwinięcia w ENM (CV-4)",
+        postac=PostacSieci.ENM,
+        proweniencja=(
+            "CV-4.3 K1 (2026-09-06): przepięte na ENM-bliźniak (operacje domenowe + typy "
+            "katalogowe `benchmark`), tor kanoniczny — PV-2 REGULACJA_NAPIECIA, BESS-2 wstrzyk "
+            "PQ Q=0 na tej samej szynie (dwa niezależne źródła regulacji napięcia na jednej "
+            "szynie są zabronione przez `enm/mapping.py`). Stary dialekt (własny NR, P9) NIE "
+            "ZBIEGA na tej sieci (`converged: False`, zmierzone bezpośrednio) — wyrocznia (b) "
+            "PLANNED/NIE_DOTYCZY dla tej sieci, nie brakująca rozbieżność do wyjaśnienia."
+        ),
     ),
     WpisRejestru(
         id="G08",
@@ -422,11 +432,58 @@ REJESTR: tuple[WpisRejestru, ...] = (
                 "IEC 60909-4",
             ),
         ),
-        budowniczowie=("application.reference_networks.library:REFERENCE_NETWORK_REGISTRY",),
+        budowniczowie=(
+            "application.reference_networks.enm_builders.ieee_4bus:build_ieee_4bus_enm",
+            "application.reference_networks.enm_builders.ieee_9bus:build_ieee_9bus_enm",
+            "application.reference_networks.enm_builders.ieee_13bus:build_ieee_13bus_enm",
+            "application.reference_networks.enm_builders.ieee_14bus:build_ieee_14bus_enm",
+            "application.reference_networks.enm_builders.ieee_34bus:build_ieee_34bus_enm",
+            "application.reference_networks.enm_builders.ieee_39bus:build_ieee_39bus_enm",
+            "application.reference_networks.enm_builders.cigre_mv:build_cigre_mv_enm",
+            "application.reference_networks.enm_builders.cigre_lv_benchmark:build_cigre_lv_benchmark_enm",
+            "application.reference_networks.enm_builders.pp_simple_four_bus:build_pp_simple_four_bus_enm",
+            "application.reference_networks.enm_builders.iec60909_example:build_iec60909_example_enm",
+            "application.reference_networks.enm_builders.pandapower_iec60909_radial:build_pandapower_iec60909_radial_enm",
+        ),
         konsumenci=("solver_output_drift_guard", "reference_networks_validation_guard"),
         status=StatusSieci.SUPPORTED,
-        proweniencja="application/reference_networks/library.py — jedyna dziś niezależna wyrocznia; liczone własnym NR (P9) — do przepięcia na tor P1/S1 (CV-4)",
-        postac=PostacSieci.BENCHMARK_DICT,
+        proweniencja=(
+            "CV-4.3 K1 (2026-09-06): przepięte na ENM-bliźniaki "
+            "(`application/reference_networks/enm_builders/*.py`, budowa przez operacje domenowe "
+            "+ typy katalogowe `benchmark`), tor kanoniczny (`enm/assembler.py` -> FROZEN solvers). "
+            "Odkrycie klasowe tej karty: `enm/mapping.py` podstawiał domyślnie "
+            '`vector_group="Dyn11"` (+30°) gdy katalog transformatora nie deklarował grupy '
+            "połączeń (`vector_group=None`) — poprawne, zamierzone zachowanie FROZEN "
+            "`power_flow_newton_internal.py::transformer_phase_shift_rad` (SM-2/V12K-180), ale "
+            "BŁĘDNE dane katalogowe (9 rekordów transformatorów benchmarków miało "
+            "`vector_group=None`, literatura PF zakłada brak przesunięcia) — naprawione na "
+            '`vector_group="Yy0"` we WSZYSTKICH 9 (mv_benchmark_catalog.py). Skutek: '
+            "pp_simple_four_bus/oze_pv_bess (kąt był podbity dokładnie o +30° — potwierdzone "
+            "numerycznie) i ieee_39bus (PF przechodzi z NIEPRZETestowanego/prawdopodobnie "
+            "rozbieżnego na `quality_status: accepted`, profil napięć fizyczny 0,957-1,064 pu) "
+            "odzyskały zbieżność/poprawność; ieee_14bus nadal rozbiega KATASTROFICZNIE "
+            "(potwierdzone PO naprawie — hipoteza vector_group jako przyczyny WYKLUCZONA "
+            "pomiarem, pozostaje PLANNED). ieee_13bus: pozytywna-sekwencja/aproksymacja "
+            "zweryfikowana wyrocznią (a) (`expected/ieee_13bus.json`, własna deklaracja pliku: "
+            '"BFS regression baseline z naszego uproszczonego 13-bus builder" — nie jest to '
+            "wyrocznia prawdziwej fizyki niesymetrycznej); PRAWDZIWE rozwiązanie niesymetryczne "
+            "pozostaje PLANNED (FROZEN solver liczy wyłącznie sieci symetryczne — 4-przewodowy "
+            "tor to przyszłe ADR-021). ieee_34bus: PLANNED bez zmian (sieć niesymetryczna jw. "
+            "+ topologia 30-z-32 szyn, BUS-862 nieosiągalny w danych starego dialektu — patrz "
+            "docstring buildera). ieee_39bus: PO naprawie vector_group zbiega "
+            "(`quality_status: accepted`), wyrocznia (a) (prawdziwe pandapower/MATPOWER case39, "
+            "NIEZALEŻNE od naszego solvera) zgodna na 53/78 porównań; pozostałe ~2-4% zaniżenia "
+            "napięcia na szynach odbiorczych zdalnych od szyny bilansującej — zmierzone, dwie "
+            "hipotezy WYKLUCZONE dowodem (susceptancja linii: bajt-w-bajt zgodna z MATPOWER b_pu "
+            "dla wszystkich 35 linii; granice mocy biernej generatorów PV: celowo szerokie/"
+            "nie wiążące z konstrukcji, `_q_bound` w katalogu), przyczyna ostateczna nie "
+            'zdiagnozowana w tej sesji — PLANNED, status podniesiony z "rozbieżność niezbadana" '
+            'na "zbieżne, częściowa zgodność zmierzona, przyczyna resztkowej luki zawężona". '
+            "Stary dialekt słownikowy (`application/reference_networks/library.py`, własny NR P9) "
+            "pozostaje ŻYWY jako druga, niezależna wyrocznia (b) — `tests/golden/parytet_benchmarkow/` — "
+            "do usunięcia w karcie A2/K2."
+        ),
+        postac=PostacSieci.ENM,
     ),
 )
 
@@ -444,9 +501,18 @@ def _importuj(sciezka: str) -> Any:
 
 
 def _rozpakuj(siec: Any) -> Any:
-    """Buildery testowe zwracają opakowanie `{"enm": ..., "name": ..., ...}` — rejestr oddaje sieć."""
+    """Buildery testowe zwracają opakowanie `{"enm": ..., "name": ..., ...}` — rejestr oddaje sieć.
+
+    CV-4.3 K1: buildery benchmarków (`application/reference_networks/
+    enm_builders/*.py`) zwracają `BenchmarkEnm` — dataclass z polem `.enm`
+    (plus `bus_map`/`branch_map` dla wyroczni (a)/(b)/(c), nieużywane przez
+    ten rejestr) — ten sam wzorzec „opakowanie z .enm", inny nośnik (dataclass,
+    nie dict), stąd osobna gałąź zamiast rozszerzania warunku dict.
+    """
     if isinstance(siec, dict) and isinstance(siec.get("enm"), dict):
         return siec["enm"]
+    if dataclasses.is_dataclass(siec) and isinstance(getattr(siec, "enm", None), dict):
+        return siec.enm  # type: ignore[union-attr]
     return siec
 
 

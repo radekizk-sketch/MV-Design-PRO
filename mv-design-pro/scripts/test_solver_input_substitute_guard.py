@@ -1123,19 +1123,51 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # zrodla sieciowego z c, IEC 60909-0:2016 eq. 6; wyjscie zlozenia z migawki,
     # nie miejsce podstawienia). Pliki bez zmian (579), zapadka dlugu i
     # wykluczenia bez zmian — pomiar guarda na drzewie po K6: 3611 pol.
-    assert "Pol kontraktow wejsciowych: 3611." in wyjscie, wyjscie
+    # 3612 pol / 591 plikow / network_model 147 (+1) / application 332 (+14)
+    # (CV-4.3 K1, 2026-09-06): 15 nowych plikow benchmarkow ENM —
+    # `network_model/catalog/mv_benchmark_catalog.py` (+1, katalog referencyjny
+    # typow benchmarkowych, korzen network_model) i `application/reference_
+    # networks/enm_builders/{__init__,_kernel,ieee_4bus,ieee_9bus,ieee_13bus,
+    # ieee_14bus,ieee_34bus,ieee_39bus,cigre_mv,cigre_lv_benchmark,
+    # pp_simple_four_bus,iec60909_example,pandapower_iec60909_radial,
+    # oze_pv_bess}.py` (+14, korzen application) wnosza nowe pola kontraktu:
+    # dataclass `EdgeSpec` w `_kernel.py` (pola `edge_id`/`from_lit`/`to_lit`/
+    # `dlugosc_m` — `catalog_ref`/`rodzaj` juz istnialy gdzie indziej, wiec
+    # `contract_fields()` jako ZBIOR ich nie dolicza ponownie) daje wiekszosc
+    # przyrostu do 3612; `BenchmarkEnm` (`enm`/`bus_map`/`branch_map`) nie
+    # dokladala nic nowego (nazwy juz obecne). Zapadka dlugu SUMA spada 291->289 (dwa GENUINE naprawienia,
+    # nie nowy dlug — patrz `ZASTANE_ZASTEPNIKI` w `solver_input_substitute_
+    # guard.py`): `enm/mapping.py` "B:ifexp:source.rx_ratio" (wydzielenie
+    # `_positive_impedance_ohm`, ten sam wzorzec co "liczba_torow" — parametr
+    # zamiast atrybutu, bramka niewidzialna, fizyka niezmieniona) i `enm/
+    # topology_ops.py` "F:dictget:data.pk_kw" (naprawa NAZWANA w tej samej
+    # karcie: `data.get("pk_kw")` bez zapasu liczbowego + jawne `is None` ->
+    # BLOCKER, zamiast sentinela 0 — faktyczna eliminacja, nie przeniesienie).
+    # Plikow ZASTANE bez zmian (63) — oba naprawione wzorce byly jednymi z
+    # WIELU w swoich plikach, zaden plik nie zszedl do zera. Wykluczenia bez
+    # zmian (17 plikow / suma 49).
+    # Scalenie K6 + K1/A1 (odbior Fable, 2026-09-06, pomiar guarda na drzewie po
+    # scaleniu, nie suma deklaracji): 3617 pol (3611 po K6 + przyrost K1 z
+    # `EdgeSpec` w `enm_builders/_kernel.py`), 594 plikow (579 po K3b/K4/K6 + 15
+    # modulow benchmarkow K1), network_model 149 (148 + `mv_benchmark_catalog.py`),
+    # enm 38 (K3b `rozplyw_wysp.py` zostaje; A1 liczyl 37 na bazie sprzed K3b),
+    # application 332 (318 + 14 budowniczych ENM). Zapadka dlugu 289 (A1: −2
+    # GENUINE; formula Z_Q po scaleniu jest WARTOSCIOWA —
+    # `impedancja_zasilania_systemowego(rx_ratio=...)` — wiec forma
+    # "B:ifexp:source.rx_ratio" nie wraca mimo wchloniecia K6 w te sama funkcje).
+    assert "Pol kontraktow wejsciowych: 3617." in wyjscie, wyjscie
     assert (
-        "Przeskanowano 579 plikow w zakresie: network_model, solver_input, enm, "
+        "Przeskanowano 594 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
-    assert "Zapadka dlugu (fizyczne): 63 plikow, suma 291." in wyjscie, wyjscie
+    assert "Zapadka dlugu (fizyczne): 63 plikow, suma 289." in wyjscie, wyjscie
     assert "Wykluczenia skanera (niefizyczne): 17 plikow, suma 49." in wyjscie, wyjscie
     per_korzen = [
-        "  network_model: pliki_skanowane=148, dlug=14 plikow/suma 77, "
+        "  network_model: pliki_skanowane=149, dlug=14 plikow/suma 77, "
         "wykluczenia=4 plikow/suma 7",
         "  solver_input: pliki_skanowane=10, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
-        "  enm: pliki_skanowane=38, dlug=8 plikow/suma 85, wykluczenia=0 plikow/suma 0",
-        "  application: pliki_skanowane=318, dlug=36 plikow/suma 115, "
+        "  enm: pliki_skanowane=38, dlug=8 plikow/suma 83, wykluczenia=0 plikow/suma 0",
+        "  application: pliki_skanowane=332, dlug=36 plikow/suma 115, "
         "wykluczenia=7 plikow/suma 19",
         "  api: pliki_skanowane=65, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 23",
     ]
@@ -1316,7 +1348,13 @@ def test_model_domenowy_klasycznych_solverow_jest_w_mapie() -> None:
     """
     assert guard.is_covered_by_contract_sources("network_model/core/node.py")
     pola = guard.contract_fields()
-    for pole in ("cos_phi", "voltage_level", "voltage_magnitude", "voltage_angle", "un_kv"):
+    for pole in (
+        "cos_phi",
+        "voltage_level",
+        "voltage_magnitude",
+        "voltage_angle",
+        "un_kv",
+    ):
         assert pole in pola, f"Pole modelu domenowego '{pole}' wypadlo z mapy bramki."
 
 

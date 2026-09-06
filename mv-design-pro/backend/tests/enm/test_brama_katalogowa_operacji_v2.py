@@ -444,6 +444,31 @@ def _payload_kompensator(snapshot: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _payload_odbior_sn(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """CV-4.3 K1: `add_load_sn` — odbiór wprost na szynie SN (bez feeder_ref)."""
+    return {
+        "bus_ref": _szyna_sn_ref(snapshot),
+        "p_mw": 0.03,
+        "cos_phi": 0.9,
+        "catalog_ref": REF_ODBIOR,
+    }
+
+
+def _payload_generator_sn(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """CV-4.3 K1: `add_generator_sn` — generator synchroniczny wprost na SN.
+
+    `bench_ozepvbess_pv2` (GENERATOR_SN, 15 kV) — jedyna pozycja katalogu
+    benchmarku CV-4.3-A1 na napięciu zgodnym z fikstura stacji tego testu.
+    """
+    return {
+        "bus_ref": _szyna_sn_ref(snapshot),
+        "p_mw": 0.5,
+        "catalog_ref": "bench_ozepvbess_pv2",
+        "control_mode": "REGULACJA_NAPIECIA",
+        "u_set_pu": 1.0,
+    }
+
+
 def _payload_ogranicznik(snapshot: dict[str, Any]) -> dict[str, Any]:
     return {
         "station_ref": _stacja_ref(snapshot),
@@ -637,6 +662,23 @@ INIEKCJE: tuple[PrzypadekIniekcji, ...] = (
         _payload_kompensator,
         lambda p: p["catalog_binding"].update({"catalog_item_id": REF_KOMPENSATOR + LITEROWKA}),
         oczekiwany_kod="shunt.catalog_not_found",
+    ),
+    # CV-4.3 K1: `add_load_sn` (odbiór wprost na szynie, bez feeder_ref) — ta
+    # sama brama katalogowa co `add_nn_load` (opcjonalny, ale wskazana pozycja
+    # musi istnieć — `_pozycja_katalogu`, kod jak przy `add_nn_load` powyżej).
+    PrzypadekIniekcji(
+        "catalog_binding",
+        "add_load_sn",
+        _payload_odbior_sn,
+        lambda p: _zepsuj_klucz(p, "catalog_ref"),
+    ),
+    # CV-4.3 K1: `add_generator_sn` (generator synchroniczny wprost na SN) —
+    # katalog OBOWIĄZKOWY, weryfikowany przez `_pozycja_katalogu`.
+    PrzypadekIniekcji(
+        "catalog_binding",
+        "add_generator_sn",
+        _payload_generator_sn,
+        lambda p: _zepsuj_klucz(p, "catalog_ref"),
     ),
     PrzypadekIniekcji(
         "catalog_binding",

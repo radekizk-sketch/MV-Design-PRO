@@ -28,6 +28,7 @@ import uuid
 
 import pytest
 from application.reference_networks.sld_substrate_power_flow import (
+    _PREFIKS_SCENARIUSZA_KONSERWACJI,
     _build_power_flow_input,
     compute_substrate_power_flow,
     compute_substrate_power_flow_maintenance,
@@ -323,11 +324,32 @@ def test_maintenance_de_energized_is_non_empty(companion_maintenance: dict) -> N
 def test_maintenance_isolated_station_matches_out_of_service(
     substrate: dict, companion_maintenance: dict
 ) -> None:
-    """The station(s) actually de-energized are EXACTLY the ones reachable
-    (in the substrate's own topology) only through the scenario's
-    ``out_of_service`` branches — proving the picker's own prediction
-    (``select_ring_maintenance_scenario``) against the REAL frozen-solver
-    result, not just against itself."""
+    """The TARGET station the picker chose is ALWAYS actually de-energized —
+    the solver's own result confirms the picker's topology-only prediction —
+    proving `select_ring_maintenance_scenario` against the REAL frozen-solver
+    result, not just against itself.
+
+    CV-4.3 K1 (2026-09-06) fix — KLASA NIE INSTANCJA, „iloczyn cech" gap
+    (regula KLASA §2): the assertion below used to be the BLANKET
+    ``disabled_endpoint_stations <= de_energized_stations`` — every station
+    touching a disabled branch must be de-energized. That equality holds
+    ONLY for the picker's path (B): exact two-branch, single-station
+    isolation (see its docstring). Path (C) — its OWN documented fallback,
+    reached whenever NO station qualifies for (B) — disables ALL branches
+    incident to the smallest-degree station, which routinely touches a
+    RING NEIGHBOUR that keeps an alternate feed via the ring's other side
+    (redundancy is the entire point of a ring) and therefore stays
+    energized. The production invariant (`_sprawdz_odlaczenie_stacji`,
+    called by `compute_substrate_power_flow_maintenance` itself) only ever
+    guarantees the TARGET station de-energizes — never that every endpoint
+    of every disabled branch does. This test previously exercised ONLY
+    path (B) by coincidence of the substrate's ref_id hashes (content
+    hashes drive the picker's lexical tie-break — see its docstring);
+    changing ANY upstream seed input (e.g. a domain-operation ref_id
+    formula fix, CV-4.3 K1) can legitimately flip which path fires, without
+    the picker or the solver being wrong. Fixed to check the REAL contract
+    for BOTH paths, not just the one the old hashes happened to hit.
+    """
     substations = substrate["enm"]["substations"]
     bus_to_station: dict[str, str] = {}
     for station in substations:
@@ -353,10 +375,42 @@ def test_maintenance_isolated_station_matches_out_of_service(
             station_ref = bus_to_station.get(endpoint)
             if station_ref:
                 disabled_endpoint_stations.add(station_ref)
-    # Every station touched by a disabled branch is actually de-energized —
-    # the solver's own result confirms the picker's topology-only prediction.
     assert disabled_endpoint_stations, "disabled branches must touch a real station"
-    assert disabled_endpoint_stations <= de_energized_stations
+
+    # Core contract (holds for BOTH picker paths, matches the production
+    # invariant `_sprawdz_odlaczenie_stacji`): the TARGET station the picker
+    # named in the scenario id is ALWAYS actually de-energized.
+    target_station_ref = companion_maintenance["scenario"]["scenario_id"].removeprefix(
+        _PREFIKS_SCENARIUSZA_KONSERWACJI
+    )
+    assert (
+        target_station_ref in bus_to_station.values()
+    ), f"scenario names an unknown station {target_station_ref!r}"
+    assert target_station_ref in de_energized_stations, (
+        "the picker's own target station must be among the solver's de-energized stations "
+        f"(target={target_station_ref!r}, de_energized={sorted(de_energized_stations)!r})"
+    )
+
+    if len(disabled_refs) == 2:
+        # Path (B): exact two-branch, single-station isolation — the
+        # picker's OWN selection criterion (`stranded_stations_if_removed(..)
+        # == frozenset({station_ref})`) already proves the stranded set is
+        # EXACTLY the target, so the solver's result must equal it exactly.
+        assert disabled_endpoint_stations <= de_energized_stations
+        assert de_energized_stations == {target_station_ref}
+    else:
+        # Path (C) fallback (its own docstring: "CAN strand more than that
+        # one station... documented, not hidden"): a ring neighbour touching
+        # a disabled branch may keep an alternate feed via the ring's other
+        # side and stay energized (not a defect — the redundancy a ring
+        # exists to provide), and a station further downstream on the SAME
+        # lateral can ALSO lose power without touching a disabled branch
+        # directly (transitively stranded). Neither direction of a set
+        # relationship between `disabled_endpoint_stations` and
+        # `de_energized_stations` is guaranteed in general — the only
+        # contract this path makes is the target's own de-energization,
+        # already asserted above.
+        pass
 
 
 def test_maintenance_normal_companion_unaffected(

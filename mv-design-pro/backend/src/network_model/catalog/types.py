@@ -73,6 +73,19 @@ class CatalogNamespace(Enum):
     PTPIREE_CERTYFIKAT_GENERATORA = "PTPIREE_CERTYFIKAT_GENERATORA"
     CONVERTER = "CONVERTER"
     INVERTER = "INVERTER"
+    #: CV-4.3 K1: generator SYNCHRONICZNY dołączony wprost do szyny SN/WN (bez
+    #: przekształtnika) — np. blok wytwórczy modelowany jako węzeł PV w
+    #: rozpływie mocy (napięcie zadane + granice mocy biernej). ODRĘBNA
+    #: przestrzeń od CONVERTER/INVERTER: `ConverterKind` = {PV, WIND, BESS}
+    #: opisuje WYŁĄCZNIE źródła przekształtnikowe (falownikowe) — fizyka
+    #: zwarciowa i regulacyjna maszyny synchronicznej jest inna niż falownika,
+    #: więc reużycie CONVERTER zniekształcałoby oba typy fizyczne pod jedną
+    #: etykietą. Luka nazwana wprost w kodzie PRZED tą kartą:
+    #: `enm/domain_operations_v2.py::_add_converter_source_der_sn` odmawia
+    #: przyłączenia falownika do SN bez transformatora blokowego z komentarzem
+    #: "zarezerwowane dla generatora synchronicznego (osobna operacja)" —
+    #: ta operacja (`add_generator_sn`) i ten namespace domykają tę lukę.
+    GENERATOR_SN = "GENERATOR_SN"
 
 
 # =============================================================================
@@ -2488,6 +2501,77 @@ class ShuntCapacitorType:
         )
 
 
+@dataclass(frozen=True)
+class SynchronousGeneratorType:
+    """Immutable synchronous-generator type definition for catalog (GENERATOR_SN).
+
+    Tabliczka znamionowa maszyny synchronicznej dołączonej WPROST do szyny
+    SN/WN (bez przekształtnika) — węzeł PV rozpływu mocy: moc czynna jest
+    NASTAWĄ STUDIUM (payload operacji `add_generator_sn`), a moc bierna jest
+    WYNIKIEM solvera w granicach [q_min_mvar, q_max_mvar] tabliczki. Odrębna
+    od `ConverterType`/`InverterType` (falowniki) — inna fizyka zwarciowa
+    (reaktancje synchroniczne, nie prąd ograniczony przez IGBT).
+
+    Attributes:
+        id: Unique identifier.
+        name: Type name.
+        rated_mva: Rated apparent power [MVA].
+        rated_kv: Rated (nameplate) voltage [kV].
+        q_min_mvar: Minimum reactive power capability [Mvar] (generator convention).
+        q_max_mvar: Maximum reactive power capability [Mvar] (generator convention).
+        manufacturer: Manufacturer/source (optional).
+    """
+
+    id: str
+    name: str
+    rated_mva: float = 0.0
+    rated_kv: float = 0.0
+    q_min_mvar: float = 0.0
+    q_max_mvar: float = 0.0
+    manufacturer: str | None = None
+    verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
+    source_reference: str = "Katalog generatorow synchronicznych MV-DESIGN-PRO"
+    catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
+    contract_version: str = CATALOG_CONTRACT_VERSION
+    verification_note: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "rated_mva": self.rated_mva,
+            "rated_kv": self.rated_kv,
+            "q_min_mvar": self.q_min_mvar,
+            "q_max_mvar": self.q_max_mvar,
+            "manufacturer": self.manufacturer,
+            **_catalog_metadata_to_dict(
+                verification_status=self.verification_status,
+                source_reference=self.source_reference,
+                catalog_status=self.catalog_status,
+                contract_version=self.contract_version,
+                verification_note=self.verification_note,
+            ),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "SynchronousGeneratorType":
+        return cls(
+            id=str(data.get("id", str(uuid4()))),
+            name=str(data.get("name", "")),
+            rated_mva=wymagany_float(data, "rated_mva", context="SynchronousGeneratorType"),
+            rated_kv=wymagany_float(data, "rated_kv", context="SynchronousGeneratorType"),
+            q_min_mvar=wymagany_float(data, "q_min_mvar", context="SynchronousGeneratorType"),
+            q_max_mvar=wymagany_float(data, "q_max_mvar", context="SynchronousGeneratorType"),
+            manufacturer=data.get("manufacturer"),
+            **_catalog_metadata_kwargs(
+                data,
+                default_source_reference="Katalog generatorow synchronicznych MV-DESIGN-PRO",
+                default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
+                default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
+            ),
+        )
+
+
 # =============================================================================
 # MV APPARATUS TYPE (APARAT_SN) — aparaty łączeniowe SN
 # =============================================================================
@@ -4037,6 +4121,21 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             ("rated_mvar", "Qn [Mvar]", "Mvar"),
             ("rated_kv", "Un [kV]", "kV"),
             ("loss_kw", "Straty [kW]", "kW"),
+        ),
+    ),
+    CatalogNamespace.GENERATOR_SN.value: MaterializationContract(
+        namespace=CatalogNamespace.GENERATOR_SN.value,
+        solver_fields=(
+            "rated_mva",
+            "rated_kv",
+            "q_min_mvar",
+            "q_max_mvar",
+        ),
+        ui_fields=(
+            ("rated_mva", "Sn [MVA]", "MVA"),
+            ("rated_kv", "Un [kV]", "kV"),
+            ("q_min_mvar", "Qmin [Mvar]", "Mvar"),
+            ("q_max_mvar", "Qmax [Mvar]", "Mvar"),
         ),
     ),
     CatalogNamespace.ZRODLO_SN.value: MaterializationContract(

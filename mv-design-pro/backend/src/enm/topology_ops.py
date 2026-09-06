@@ -485,9 +485,23 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
             issues.append(
                 OpIssue("OP_ULV_INVALID", "BLOCKER", "Napięcie znamionowe DN musi być > 0 kV")
             )
-        if data.get("pk_kw", 0) <= 0:
+        # CV-4.3 K1: `data.get("pk_kw", 0) <= 0` nie odróżniał BRAKU danej (klucz
+        # nieobecny -> domyślne 0 z .get()) od JAWNEGO zera zmierzonego/podanego
+        # w literaturze (transformator modelowany jako bezstratny — udokumentowane
+        # uproszczenie podręcznikowe, np. IEC 60909-4 Sekcja 4 §4: Pk=0, i0=0,
+        # p0=0 — norma NIE wymaga strat czynnych do policzenia impedancji
+        # zwarciowej). Ten sam błąd metodyczny, który komentarz wyżej już
+        # naprawił dla `uhv_kv`/`ulv_kv` (BRAK != 0) nie objął `pk_kw` — zero
+        # wpisane WPROST (nie fabrykowane przez `.get(..., 0)`) jest fizycznie
+        # poprawnym R_T=0 w obwodzie zastępczym IEC 60909 (czysto reaktancyjny
+        # transformator), nie fikcyjną tabliczką.
+        if data.get("pk_kw") is None:
             issues.append(
-                OpIssue("OP_PK_INVALID", "BLOCKER", "Straty obciążeniowe Pk muszą być > 0 kW")
+                OpIssue("OP_PK_INVALID", "BLOCKER", "Brak strat obciążeniowych Pk transformatora")
+            )
+        elif data["pk_kw"] < 0:
+            issues.append(
+                OpIssue("OP_PK_INVALID", "BLOCKER", "Straty obciążeniowe Pk nie mogą być ujemne")
             )
 
         if any(i.severity == "BLOCKER" for i in issues):

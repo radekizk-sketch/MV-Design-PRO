@@ -24,8 +24,10 @@ from application.reference_networks.wymagane import (
     pole_wymagane,
     pole_z_aliasem,
 )
+from enm.mapping import impedancja_zasilania_systemowego
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
+from network_model.core.grid_source import GridShortCircuitSource
 from network_model.core.node import Node, NodeType
 from network_model.solvers.power_flow_unbalanced import (
     UnbalancedBranchSpec,
@@ -527,6 +529,41 @@ def build_short_circuit_graph_from_enm(enm: dict[str, Any]) -> NetworkGraph:
                 reactive_power=0.0,
             )
         graph.add_node(node)
+
+    # CV-4.3 K1 (KLASA NIE INSTANCJA — V12K-184 "Defekt 1", DRUGA, dotad
+    # nienaprawiona instancja tej samej klasy bledu w ROWNOLEGLYM torze:
+    # ten budowniczy grafu byl POZA lista plikow V12K-184 — moc zwarciowa
+    # zrodla systemowego (sk_max_mva/rx_ratio) byla CZYTANA WYLACZNIE do
+    # napiecia v_pu wezla SLACK, nigdy do impedancji Z_Q; zwarcie na szynie
+    # ZA transformatorem liczylo sie z samej impedancji transformatora, jakby
+    # siec zasilajaca byla idealna NIEZALEZNIE od jej rzeczywistej mocy
+    # zwarciowej. Naprawa PO WZORZE `enm/mapping.py` (ten sam bocznik
+    # Y_Q = 1/Z_Q w wezle przylaczenia, IEC 60909-0 par. 3.2) — formula
+    # WSPOLNA (`impedancja_zasilania_systemowego` — od CV-4.3 K6 z
+    # wspolczynnikiem c wg IEC 60909-0:2016 eq. 6, postac wartosciowa), nie druga kopia. Zrodlo BEZ
+    # sk_max_mva/rx_ratio/r_ohm/x_ohm (siec faktycznie idealna, np.
+    # `pandapower_iec60909_radial`) dostaje `None` z formuly i NIE jest
+    # stampowane — zachowanie identyczne jak dzis dla takich sieci.
+    for bus_id, zrodlo in zrodla_bilansujace_po_szynie.items():
+        wynik_z_q = impedancja_zasilania_systemowego(
+            ref_id=str(zrodlo.get("ref_id", bus_id)),
+            r_ohm=zrodlo.get("r_ohm"),
+            x_ohm=zrodlo.get("x_ohm"),
+            sk3_mva=zrodlo.get("sk_max_mva"),
+            rx_ratio=zrodlo.get("rx_ratio"),
+            u_nq_kv=voltage_lookup[bus_id],
+        )
+        if wynik_z_q is None or wynik_z_q[0] == 0:
+            continue
+        z_ohm = wynik_z_q[0]
+        graph.add_grid_sc_source(
+            GridShortCircuitSource(
+                id=f"_zsrc_{zrodlo.get('ref_id', bus_id)}",
+                name=str(zrodlo.get("name") or zrodlo.get("ref_id") or bus_id),
+                node_id=bus_id,
+                z_ohm=z_ohm,
+            )
+        )
 
     for branch in enm.get("branches", []):
         from_bus = str(branch["from_bus"])
