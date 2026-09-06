@@ -1118,7 +1118,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # dlugu i wykluczenia bez zmian (pomiar guarda na drzewie po K4).
     # Scalenie K3b + K4 (odbior Fable, 2026-09-06): 3610 pol (K3b) / 579 plikow
     # (577 po K3b + 2 pliki `network_model/pochodne/` z K4).
-    assert "Pol kontraktow wejsciowych: 3610." in wyjscie, wyjscie
+    # CV-4.3 K6 (Fable, 2026-09-06): +1 pole kontraktu zlozenia —
+    # `WejscieZwarcia.zrodla_sieciowe_trace` (slad WHITE BOX wyprowadzenia Z_Q
+    # zrodla sieciowego z c, IEC 60909-0:2016 eq. 6; wyjscie zlozenia z migawki,
+    # nie miejsce podstawienia). Pliki bez zmian (579), zapadka dlugu i
+    # wykluczenia bez zmian — pomiar guarda na drzewie po K6: 3611 pol.
+    assert "Pol kontraktow wejsciowych: 3611." in wyjscie, wyjscie
     assert (
         "Przeskanowano 579 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie

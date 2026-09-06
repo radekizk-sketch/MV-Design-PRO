@@ -121,3 +121,62 @@ def test_zwarcie_3f_sieci_thevenina_zgodne_z_pandapower(slug: str) -> None:
         ik_pp = pp[bus.ref_id]
         max_wzgl = max(max_wzgl, abs(nasz["ik_thevenin_a"] - ik_pp) / ik_pp)
     assert max_wzgl <= TOLERANCJA_IK_WZGL, (slug, max_wzgl)
+
+
+def test_ext_grid_s_sc_rowne_deklarowanemu_sk() -> None:
+    """CV-4.3 K6: most odtwarza ``s_sc_max_mva`` z impedancji IR (pandapower liczy
+    Z_Q = c_max·U²/s_sc, IEC 60909-0 eq. 6) — po K6 (Z_Q mappingu = c_max·U²/S''_kQ) ta
+    liczba jest RÓWNA deklarowanemu ``sk3_mva`` źródła w trybie mocy zwarciowej, a dla
+    impedancji jawnej równa c_max·U²/|Z| (ta sama Z po obu stronach). Przed K6 most
+    podawał pandapower c_max·S''_kQ — parytet solverów był prawdziwy, ale maskował
+    brak c w mappingu i NIE był walidacją konwencji Z_Q."""
+    from enm.models import Bus, EnergyNetworkModel, ENMHeader, Source
+    from network_model.core.voltage_factor import c_for_node
+
+    enm = EnergyNetworkModel(
+        header=ENMHeader(name="k6-most"),
+        buses=[
+            Bus(ref_id="sn", name="SN", voltage_kv=15.0),
+            Bus(ref_id="nn", name="nN", voltage_kv=0.4),
+            Bus(ref_id="hv", name="HV", voltage_kv=110.0),
+        ],
+        sources=[
+            Source(
+                ref_id="s_sn",
+                name="GPZ SN",
+                bus_ref="sn",
+                model="short_circuit_power",
+                sk3_mva=250.0,
+                rx_ratio=0.1,
+            ),
+            Source(
+                ref_id="s_nn",
+                name="Zasilanie nN",
+                bus_ref="nn",
+                model="short_circuit_power",
+                sk3_mva=10.0,
+                rx_ratio=0.2,
+            ),
+            Source(
+                ref_id="s_hv",
+                name="Siec 110",
+                bus_ref="hv",
+                model="thevenin",
+                r_ohm=0.3,
+                x_ohm=3.0,
+            ),
+        ],
+    )
+    net, _ = most.zbuduj_siec(enm)
+    zrodla = {s.ref_id: s for s in enm.sources}
+    assert len(net.ext_grid) == 3
+    for _, wiersz in net.ext_grid.iterrows():
+        zrodlo = zrodla[wiersz["name"]]
+        if zrodlo.sk3_mva is not None:
+            assert float(wiersz["s_sc_max_mva"]) == pytest.approx(zrodlo.sk3_mva, rel=1e-12)
+            assert float(wiersz["rx_max"]) == pytest.approx(zrodlo.rx_ratio, rel=1e-12)
+        else:
+            z = complex(zrodlo.r_ohm, zrodlo.x_ohm)
+            assert float(wiersz["s_sc_max_mva"]) == pytest.approx(
+                c_for_node(110.0, "MAX") * 110.0**2 / abs(z), rel=1e-12
+            )

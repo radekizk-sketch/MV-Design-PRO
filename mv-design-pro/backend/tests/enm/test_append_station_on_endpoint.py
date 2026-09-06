@@ -1098,7 +1098,12 @@ def test_prad_zwarciowy_na_szynie_nn_liczy_sie_z_impedancji_katalogowej() -> Non
     )
 
     assert galaz_tr.uk_percent == 5.0
-    assert abs(wynik.ikss_a - 19391.1) < 0.5
+    # Wartość normatywna toru kanonicznego (CV-4.3 K6, 2026-09-06): impedancja zasilania
+    # Z_Q = c_max·U_nQ²/S''_kQ (IEC 60909-0:2016 §6.2.1 eq. 6; 15 kV, 250 MVA, R/X = 0,1)
+    # za transformatorem katalogowym 630 kVA, uk = 5 %. Przed K6 Z_Q była liczona bez c
+    # i pin wynosił 19 391,1 A (Sk 13,4346 MVA) — intencja bez zmian: liczy się pozycja
+    # katalogowa, nie wstrzyknięta tabliczka uk = 4 % (ta dawała +22,5 %).
+    assert abs(wynik.ikss_a - 19298.0) < 0.5
     # Wartość z wstrzykniętej tabliczki nie może już powstać na żadnej ścieżce.
     assert abs(wynik.ikss_a - 23753.1) > 100.0
 

@@ -29,7 +29,11 @@ from uuid import NAMESPACE_DNS, uuid5
 
 from application.solvers.lv_temperature_correction import build_min_scenario_graph
 from domain.canonical_operations import READINESS_CODES
-from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
+from enm.mapping import (
+    build_grid_source_trace,
+    build_zero_sequence_zbus,
+    map_enm_to_network_graph,
+)
 from enm.models import EnergyNetworkModel
 from enm.topology import Wyspa, derive
 from network_model.core.graph import NetworkGraph
@@ -475,6 +479,9 @@ class WejscieZwarcia:
     graph_nodes: dict[str, dict[str, Any]]
     graph_branches: dict[str, dict[str, Any]]
     wezly_bez_odniesienia: frozenset[str]
+    #: CV-4.3 K6: ślad WHITE BOX wyprowadzenia Z_Q każdego źródła sieciowego
+    #: (c wg IEC 60909-0:2016 §6.2.1 eq. 6) — ``enm.mapping.build_grid_source_trace``.
+    zrodla_sieciowe_trace: tuple[dict[str, Any], ...]
 
 
 def wezly_bez_impedancji_do_odniesienia(graph: NetworkGraph) -> frozenset[str]:
@@ -962,4 +969,5 @@ def zloz_wejscie_zwarcia(
         graph_nodes=graph_nodes,
         graph_branches=graph_branches,
         wezly_bez_odniesienia=wezly_bez_odniesienia,
+        zrodla_sieciowe_trace=tuple(build_grid_source_trace(enm)),
     )

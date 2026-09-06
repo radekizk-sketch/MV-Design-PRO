@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import math
 import uuid
-from typing import Literal
+from typing import Any, Literal
 
 import numpy as np
 from network_model.catalog.types import ConverterKind
@@ -35,6 +35,7 @@ from network_model.core.inverter import InverterSource
 from network_model.core.machine import AsynchronousMachineSource, SynchronousMachineSource
 from network_model.core.node import Node, NodeType
 from network_model.core.switch import Switch, SwitchState, SwitchType
+from network_model.core.voltage_factor import c_for_node
 from network_model.core.ybus import AdmittanceMatrixBuilder
 from network_model.pochodne import (
     impedancja_z_napiecia_i_mocy_ohm,
@@ -138,26 +139,75 @@ def _map_tap_changer(
 _IEC60909_RX_ZASILANIA_SYSTEMOWEGO = 0.1
 
 
-def _source_positive_impedance_ohm(source: Source, bus_voltage_kv: float) -> complex | None:
-    """Impedancja zgodna zasilania systemowego Z_Q [Ω] albo ``None``.
+def impedancja_zrodla_sieciowego(
+    source: Source, bus_voltage_kv: float
+) -> tuple[complex, dict[str, Any]] | None:
+    """Impedancja zgodna zasilania systemowego Z_Q [Ω] + ślad WHITE BOX wyprowadzenia.
 
-    ``None`` znaczy „źródło nie ma z czego policzyć impedancji" (brak jawnego
-    R/X i brak mocy zwarciowej) — wołający POMIJA takie źródło, zamiast wstawiać
-    za nie liczbę.
+    IEC 60909-0:2016 §6.2.1 eq. (6): Z_Q = c·U_nQ / (√3·I''_kQ) = c·U_nQ²/S''_kQ —
+    współczynnik napięciowy c (Tab. 1, pasmo napięcia węzła przyłączenia Q,
+    ``c_for_node``) jest CZĘŚCIĄ definicji impedancji zastępczej sieci zasilającej,
+    bo deklarowana przez OSD moc zwarciowa S''_kQ została policzona ze źródłem
+    zastępczym c·U_nQ/√3 za tą impedancją. Bez c (stan do CV-4.3 K6, 2026-09-06)
+    prąd zwarciowy w samym węźle przyłączenia wychodził c·I''_kQ — o 10 % (SN/WN)
+    lub 5 % (nN) ponad wartość deklarowaną; po K6 bieg w węźle przyłączenia odtwarza I''_kQ
+    dokładnie (test ``tests/enm/test_z_q_wspolczynnik_c.py``).
+
+    c = c_max pasma U_nQ ZAWSZE — także dla studium MIN: Z_Q jest własnością sieci
+    zasilającej wyprowadzoną z JEDYNEJ deklarowanej danej (S''_kQmax); c_min wchodzi
+    wyłącznie do źródła napięciowego w węźle zwarcia (assembler/solver). Literalne
+    c_min·U²/S''_kQmax dałoby Ik''min(węzeł przyłączenia) = I''_kQmax (niekonserwatywnie dla
+    czułości zabezpieczeń). Model z S''_kQmin — karta K7.
+
+    Tryb ``r_ohm``/``x_ohm`` (impedancja jawna) = impedancja fizyczna z modelu, bez c.
+    ``None`` znaczy „źródło nie ma z czego policzyć impedancji" (brak jawnego R/X
+    i brak mocy zwarciowej) — wołający POMIJA takie źródło, zamiast wstawiać za
+    nie liczbę.
     """
     if source.r_ohm is not None and source.x_ohm is not None:
-        return complex(source.r_ohm, source.x_ohm)
+        z_ohm = complex(source.r_ohm, source.x_ohm)
+        return z_ohm, {
+            "ref_id": source.ref_id,
+            "tryb": "IMPEDANCJA_JAWNA",
+            "u_nq_kv": bus_voltage_kv,
+            "z_q_ohm": {"re": z_ohm.real, "im": z_ohm.imag},
+            "formula": "Z_Q = R_Q + jX_Q (impedancja jawna z modelu, bez c)",
+        }
     if source.sk3_mva is None or source.sk3_mva <= 0:
         return None
-    z_abs = impedancja_z_napiecia_i_mocy_ohm(bus_voltage_kv, source.sk3_mva)
-    rx = (
+    c_max = c_for_node(bus_voltage_kv, "MAX")
+    z_abs = c_max * impedancja_z_napiecia_i_mocy_ohm(bus_voltage_kv, source.sk3_mva)
+    rx_z_modelu = source.rx_ratio is not None and source.rx_ratio > 0
+    rx: float = (
         source.rx_ratio
         if source.rx_ratio is not None and source.rx_ratio > 0
         else _IEC60909_RX_ZASILANIA_SYSTEMOWEGO
     )
     x_ohm = z_abs / math.sqrt(1.0 + rx**2)
     r_ohm = x_ohm * rx
-    return complex(r_ohm, x_ohm)
+    z_ohm = complex(r_ohm, x_ohm)
+    return z_ohm, {
+        "ref_id": source.ref_id,
+        "tryb": "MOC_ZWARCIOWA",
+        "u_nq_kv": bus_voltage_kv,
+        "sk3_mva": source.sk3_mva,
+        "c": c_max,
+        "pasmo_c": "nN" if bus_voltage_kv <= 1.0 else "SN/WN",
+        "rx_ratio": rx,
+        "rx_ratio_zrodlo": "MODEL" if rx_z_modelu else "IEC_60909_DOMYSLNY_0_1",
+        "z_q_abs_ohm": z_abs,
+        "z_q_ohm": {"re": z_ohm.real, "im": z_ohm.imag},
+        "formula": (
+            "Z_Q = c_max·U_nQ²/S''_kQ (IEC 60909-0:2016 §6.2.1 eq. 6); "
+            "X_Q = Z_Q/√(1+(R/X)²); R_Q = X_Q·(R/X)"
+        ),
+    }
+
+
+def _source_positive_impedance_ohm(source: Source, bus_voltage_kv: float) -> complex | None:
+    """Impedancja zgodna Z_Q [Ω] albo ``None`` — patrz ``impedancja_zrodla_sieciowego``."""
+    wynik = impedancja_zrodla_sieciowego(source, bus_voltage_kv)
+    return None if wynik is None else wynik[0]
 
 
 def _source_zero_impedance_ohm(source: Source, bus_voltage_kv: float) -> complex | None:
@@ -660,6 +710,28 @@ def build_inverter_k_sc_trace(enm: EnergyNetworkModel) -> list[dict]:
     ma jawne ``k_sc`` w karcie katalogowej (albo gdy sieć nie ma konwerterów).
     """
     return map_enm_to_network_graph(enm).k_sc_assumptions_trace
+
+
+def build_grid_source_trace(enm: EnergyNetworkModel) -> list[dict[str, Any]]:
+    """Ślad WHITE BOX wyprowadzenia Z_Q każdego źródła sieciowego (CV-4.3 K6).
+
+    Ten sam wzorzec co ``build_inverter_k_sc_trace``: funkcja publiczna, do wglądu
+    bez biegu solvera; jeden wpis na źródło z policzalną impedancją (tryb mocy
+    zwarciowej z c wg IEC 60909-0 eq. (6) albo impedancja jawna), w kolejności
+    ``ref_id`` źródeł. Źródło bez danych (``None``) nie ma wpisu — tak samo jak nie
+    ma bocznika Y_Q w grafie (``map_enm_to_network_graph``): jeden predykat.
+    """
+    napiecie = {bus.ref_id: bus.voltage_kv for bus in enm.buses}
+    slad: list[dict[str, Any]] = []
+    for source in sorted(enm.sources, key=lambda s: s.ref_id):
+        u_kv = napiecie.get(source.bus_ref, 0.0)
+        if u_kv <= 0:
+            continue
+        wynik = impedancja_zrodla_sieciowego(source, u_kv)
+        if wynik is None or wynik[0] == 0:
+            continue
+        slad.append(wynik[1])
+    return slad
 
 
 def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:

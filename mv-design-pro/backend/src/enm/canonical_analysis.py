@@ -2032,6 +2032,13 @@ def _execute_short_circuit(run: CanonicalRun, uow_factory: Callable[[], Any] | N
             if temperature_correction_notes
             else {}
         ),
+        # CV-4.3 K6: ślad WHITE BOX wyprowadzenia Z_Q źródeł sieciowych (c wg IEC
+        # 60909-0:2016 §6.2.1 eq. 6) — addytywnie, tylko gdy bieg ma źródło sieciowe.
+        **(
+            {"zrodla_sieciowe": list(wejscie.zrodla_sieciowe_trace)}
+            if wejscie.zrodla_sieciowe_trace
+            else {}
+        ),
         "results": rows,
         "graph": {
             "nodes": {

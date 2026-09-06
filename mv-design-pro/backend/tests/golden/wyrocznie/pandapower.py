@@ -11,7 +11,7 @@ z ``network_model.core.voltage_factor.c_for_node``) — most nie ma własnej def
 ZAKRES (jawny): szyny, linie/kable (R, X, B na km, tory równoległe), łączniki i
 bezpieczniki, transformatory dwuuzwojeniowe (uk, Pk, i0, P0, grupa połączeń jako
 przesunięcie kątowe, zaczep stały), źródła sieciowe (``ext_grid`` z mocą zwarciową
-odtworzoną z Z_Q i c), odbiory stałomocowe, wytwórcy PQ (``sgen``) i wytwórcy z
+odtworzoną z Z_Q i c — po CV-4.3 K6 równą deklarowanemu ``sk3_mva``), odbiory stałomocowe, wytwórcy PQ (``sgen``) i wytwórcy z
 regulacją napięcia (``gen``). Element spoza zakresu (odbiór ZIP, bateria
 kondensatorów, maszyna wirująca jako źródło zwarciowe) = ``ValueError`` z nazwą —
 wyrocznia nie ręczy za to, czego nie modeluje.
@@ -148,6 +148,11 @@ def zbuduj_siec(
         z_ohm = _source_positive_impedance_ohm(source, u_kv)
         if z_ohm is None or z_ohm == 0:
             raise ValueError(f"Źródło {source.ref_id} bez impedancji zwarciowej")
+        # pandapower: Z_Q = c_max·U²/s_sc_max_mva (IEC 60909-0 eq. 6) — odtwarzamy
+        # s_sc z impedancji IR, żeby po obu stronach stała TA SAMA Z_Q. Po CV-4.3 K6
+        # (Z_Q mappingu = c_max·U²/S''_kQ) ta liczba jest RÓWNA deklarowanemu
+        # ``sk3_mva`` źródła (test ``test_ext_grid_s_sc_rowne_deklarowanemu_sk``);
+        # przed K6 wychodziła c_max·S''_kQ — most maskował brak c w mappingu.
         c_max = c_for_node(u_kv, "MAX")
         pp.create_ext_grid(
             net,
