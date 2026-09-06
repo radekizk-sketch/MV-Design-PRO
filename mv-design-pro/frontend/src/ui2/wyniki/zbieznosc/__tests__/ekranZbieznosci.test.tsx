@@ -25,7 +25,9 @@ import { EkranZbieznosci } from '../EkranZbieznosci';
 import { ZBIEZNOSC_STRINGS as T } from '../strings';
 import {
   naWierszeOltcPrzebiegu,
+  naWierszeWysp,
   naWierszZaczepowModelu,
+  naZalozeniaZbieznosci,
   wybierzPrzebiegRozplywu,
 } from '../zbieznoscModel';
 
@@ -354,6 +356,76 @@ describe('EkranZbieznosci — werdykt, założenia, bilans i zaczepy z realnych 
     render(<EkranZbieznosci />);
     await user.click(screen.getByTestId('mvd-zbieznosc-powrot'));
     expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
+  });
+});
+
+describe('EkranZbieznosci — rozpływ liczony per wyspa (CV-4.3 K3b)', () => {
+  const sladDwochWysp = (): PowerFlowTrace =>
+    sladFixture({
+      slack_bus_id: 'BUS-GPZ',
+      wyspy: [
+        {
+          slack_bus_id: 'BUS-GPZ',
+          zrodlo_ref: 'src',
+          pq_bus_ids: ['BUS-A1', 'BUS-A2', 'BUS-A3'],
+          pv_bus_ids: [],
+          init_state: {},
+          iterations: [{ k: 1, norm_mismatch: 0.4, max_mismatch_pu: 0.1, slack_bus_id: 'BUS-GPZ' }],
+          converged: true,
+          final_iterations_count: 3,
+        },
+        {
+          slack_bus_id: 'BUS-GPZ2',
+          zrodlo_ref: 'src2',
+          pq_bus_ids: ['BUS-B1'],
+          pv_bus_ids: ['BUS-B2'],
+          init_state: {},
+          iterations: [{ k: 1, norm_mismatch: 0.2, max_mismatch_pu: 0.05, slack_bus_id: 'BUS-GPZ2' }],
+          converged: false,
+          final_iterations_count: 50,
+        },
+      ],
+    });
+
+  it('ślad z dwiema wyspami: tabela wysp (szyna, źródło, szyny PQ/PV, iteracje, zbieżność) i obie szyny bilansujące w założeniach', async () => {
+    ustawKompletnyKontekst();
+    mockFetchPrzebiegu(wynikFixture(), sladDwochWysp());
+    render(<EkranZbieznosci />);
+    const tabela = await screen.findByTestId('mvd-zbieznosc-wyspy-tabela');
+    expect(tabela.querySelectorAll('tbody tr')).toHaveLength(2);
+    const pierwsza = screen.getByTestId('mvd-zbieznosc-wyspa-BUS-GPZ');
+    expect(pierwsza.textContent).toContain('src');
+    expect(pierwsza.textContent).toContain('3');
+    expect(pierwsza.textContent).toContain(T.wyspyZbiezna);
+    const druga = screen.getByTestId('mvd-zbieznosc-wyspa-BUS-GPZ2');
+    expect(druga.textContent).toContain('src2');
+    expect(druga.textContent).toContain(T.wyspyNiezbiezna);
+    expect(screen.getByText(T.wyspyOpis)).toBeInTheDocument();
+    expect(screen.getByText('BUS-GPZ, BUS-GPZ2')).toBeInTheDocument();
+  });
+
+  it('ślad z jedną wyspą (bez `wyspy`): sekcja wysp nie istnieje, założenia z jedną szyną', async () => {
+    ustawKompletnyKontekst();
+    mockFetchPrzebiegu(wynikFixture(), sladFixture());
+    render(<EkranZbieznosci />);
+    await screen.findByTestId('mvd-zbieznosc-oltc-tabela');
+    expect(screen.queryByTestId('mvd-zbieznosc-wyspy-tabela')).toBeNull();
+    expect(screen.queryByText(T.wyspyOpis)).toBeNull();
+  });
+
+  it('naWierszeWysp: pusta lista bez śladu albo z jedną wyspą; wiersze per wyspa z liczbami z kontraktu', () => {
+    expect(naWierszeWysp(null)).toEqual([]);
+    expect(naWierszeWysp(sladFixture())).toEqual([]);
+    const wiersze = naWierszeWysp(sladDwochWysp());
+    expect(wiersze).toEqual([
+      { szynaBilansujaca: 'BUS-GPZ', zrodloRef: 'src', liczbaSzynPq: 3, liczbaSzynPv: 0, iteracje: 3, zbiezna: true },
+      { szynaBilansujaca: 'BUS-GPZ2', zrodloRef: 'src2', liczbaSzynPq: 1, liczbaSzynPv: 1, iteracje: 50, zbiezna: false },
+    ]);
+    const zalozenia = naZalozeniaZbieznosci(wynikFixture(), sladDwochWysp());
+    const szyna = zalozenia.find((z) => z.etykieta === T.zalSzynaBilansujaca)!;
+    expect(szyna.wartosc).toBe('BUS-GPZ, BUS-GPZ2');
+    expect(szyna.uwaga).toBe(T.zalSzynyBilansujaceUwaga);
+    expect(naZalozeniaZbieznosci(wynikFixture(), sladFixture()).find((z) => z.etykieta === T.zalSzynaBilansujaca)!.wartosc).toBe('BUS-GPZ');
   });
 });
 

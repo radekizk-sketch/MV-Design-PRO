@@ -88,13 +88,47 @@ export function naZalozeniaZbieznosci(
     { etykieta: T.zalMetoda, wartosc: metoda, uwaga: T.zalMetodaUwaga },
     { etykieta: T.zalTolerancja, wartosc: fmtTolerancja(wynik.tolerance_used) },
     { etykieta: T.zalMocBazowa, wartosc: fmtLiczba(wynik.base_mva, 1), jednostka: T.jednMVA },
-    { etykieta: T.zalSzynaBilansujaca, wartosc: wynik.slack_bus_id },
+    // CV-4.3 K3b: przebieg liczony per wyspa niesie szynę bilansującą KAŻDEJ wyspy;
+    // kontrakt wyniku (`slack_bus_id`) trzyma szynę pierwszej wyspy.
+    slad?.wyspy && slad.wyspy.length >= 2
+      ? {
+          etykieta: T.zalSzynaBilansujaca,
+          wartosc: slad.wyspy.map((w) => w.slack_bus_id).join(', '),
+          uwaga: T.zalSzynyBilansujaceUwaga,
+        }
+      : { etykieta: T.zalSzynaBilansujaca, wartosc: wynik.slack_bus_id },
     {
       etykieta: T.zalMaxIteracji,
       wartosc: slad ? slad.max_iterations : T.kreska,
       uwaga: T.zalMaxIteracjiUwaga,
     },
   ];
+}
+
+// ---------------------------------------------------------------------------
+// Wyspy zasilone (trace.wyspy — rozpływ per wyspa, CV-4.3 K3b)
+// ---------------------------------------------------------------------------
+
+export interface WierszWyspy {
+  szynaBilansujaca: string;
+  zrodloRef: string;
+  liczbaSzynPq: number;
+  liczbaSzynPv: number;
+  iteracje: number;
+  zbiezna: boolean;
+}
+
+/** Wiersze wysp zasilonych — pusta lista, gdy przebieg miał jedną wyspę (brak `wyspy`). */
+export function naWierszeWysp(slad: PowerFlowTrace | null): WierszWyspy[] {
+  if (!slad?.wyspy || slad.wyspy.length < 2) return [];
+  return slad.wyspy.map((w) => ({
+    szynaBilansujaca: w.slack_bus_id,
+    zrodloRef: w.zrodlo_ref,
+    liczbaSzynPq: w.pq_bus_ids.length,
+    liczbaSzynPv: w.pv_bus_ids.length,
+    iteracje: w.final_iterations_count,
+    zbiezna: w.converged,
+  }));
 }
 
 // ---------------------------------------------------------------------------
