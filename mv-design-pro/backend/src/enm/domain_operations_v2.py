@@ -32,6 +32,10 @@ from network_model.catalog.switchgear import (
     family_supports_voltage,
 )
 from network_model.catalog.types import CatalogBinding
+from network_model.pochodne import (
+    moc_bierna_z_czynnej_i_cos_phi,
+    moc_pozorna_z_czynnej_mva,
+)
 from network_model.solvers import cable_ampacity_derating as cable_derating
 
 from . import der_sn_validation as der_val
@@ -2474,7 +2478,7 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             cp = 0.0
             p_kw = 0.0
         if 0.0 < cp <= 1.0:
-            reactive_power_kvar = p_kw * math.tan(math.acos(cp))
+            reactive_power_kvar = moc_bierna_z_czynnej_i_cos_phi(p_kw, cp)
 
     if not feeder_ref:
         return _error_response("Brak identyfikatora odpływu (feeder_ref).", "nn.feeder_missing")
@@ -5796,7 +5800,7 @@ def add_genset_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any
     p_mw = rated_power_kw / 1000.0
     cos_phi = power_factor_jawny
     un_kv = genset_spec.get("rated_voltage_kv") or _bus_voltage_kv(enm, bus_nn_ref)
-    sn_mva = p_mw / cos_phi
+    sn_mva = moc_pozorna_z_czynnej_mva(p_mw, cos_phi)
     genset_meta: dict[str, Any] = {
         "sn_mva": sn_mva,
         "cos_phi": cos_phi,

@@ -36,6 +36,10 @@ from network_model.core.machine import AsynchronousMachineSource, SynchronousMac
 from network_model.core.node import Node, NodeType
 from network_model.core.switch import Switch, SwitchState, SwitchType
 from network_model.core.ybus import AdmittanceMatrixBuilder
+from network_model.pochodne import (
+    impedancja_z_napiecia_i_mocy_ohm,
+    prad_znamionowy_a,
+)
 from network_model.solvers.power_flow_zip import (
     ZipCoeffs,
     aggregate_zip,
@@ -145,7 +149,7 @@ def _source_positive_impedance_ohm(source: Source, bus_voltage_kv: float) -> com
         return complex(source.r_ohm, source.x_ohm)
     if source.sk3_mva is None or source.sk3_mva <= 0:
         return None
-    z_abs = (bus_voltage_kv**2) / source.sk3_mva
+    z_abs = impedancja_z_napiecia_i_mocy_ohm(bus_voltage_kv, source.sk3_mva)
     rx = (
         source.rx_ratio
         if source.rx_ratio is not None and source.rx_ratio > 0
@@ -557,7 +561,7 @@ def _add_generator_sc_sources(
             sr_mva = _gen_rated_apparent_mva(gen, mp)
             if sr_mva is None:
                 continue
-            in_rated_a = sr_mva * 1.0e6 / (math.sqrt(3.0) * un_kv * 1.0e3)
+            in_rated_a = prad_znamionowy_a(sr_mva, un_kv)
             k_sc_raw = mp.get("k_sc")
             if (
                 isinstance(k_sc_raw, int | float)

@@ -27,6 +27,7 @@ from dataclasses import dataclass, replace
 
 from network_model.core.branch import LineBranch
 from network_model.core.graph import NetworkGraph
+from network_model.pochodne import rezystancja_w_temperaturze
 
 #: IEC 60909-0: temperature coefficient of resistance for copper/aluminium
 #: conductors, per degree Celsius above the 20 degC reference.
@@ -68,8 +69,8 @@ class MinScenarioGraphResult:
 
 def r_theta_ohm_per_km(r20_ohm_per_km: float, theta_k_c: float) -> float:
     """IEC 60909 resistance temperature correction: R_theta = R20*[1+0.004*(theta_k-20)]."""
-    return r20_ohm_per_km * (
-        1.0 + TEMPERATURE_COEFFICIENT_PER_C * (theta_k_c - REFERENCE_TEMPERATURE_C)
+    return rezystancja_w_temperaturze(
+        r20_ohm_per_km, TEMPERATURE_COEFFICIENT_PER_C, theta_k_c, REFERENCE_TEMPERATURE_C
     )
 
 

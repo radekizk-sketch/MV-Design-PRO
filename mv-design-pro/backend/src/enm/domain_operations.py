@@ -29,6 +29,7 @@ from network_model.catalog.materialization import materialize_catalog_binding
 if TYPE_CHECKING:
     from network_model.catalog.repository import CatalogRepository
 from network_model.catalog.types import CatalogBinding
+from network_model.pochodne import moc_bierna_z_czynnej_i_cos_phi
 
 from .kopia_graniczna import kopia_graniczna_enm
 from .load_zip_model import KOD_BLEDU_ZIP, zip_odbioru_z_parametrow_materializacji
@@ -5105,7 +5106,7 @@ def _materialize_station_auxiliary_load(
     if q_kvar is None and cos_phi is not None:
         cp = _as_positive_float(cos_phi)
         if cp is not None and cp <= 1.0:
-            q_kvar = p_kw * math.tan(math.acos(cp))
+            q_kvar = moc_bierna_z_czynnej_i_cos_phi(p_kw, cp)
     if q_kvar is None:
         return _error_response(
             "Potrzeby własne stacji: brak mocy biernej (reactive_power_kvar) i "

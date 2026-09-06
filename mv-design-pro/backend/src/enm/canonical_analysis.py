@@ -61,6 +61,7 @@ from infrastructure.persistence.repositories.canonical_run_repository import (
 from network_model.catalog.odcisk import odcisk_katalogu_domyslnego
 from network_model.core.graph import NetworkGraph
 from network_model.core.voltage_factor import c_for_node
+from network_model.pochodne import calka_joule_ka2s, napiecie_fazowe_v
 from network_model.solvers.phase_state_sn import (
     OpenPhaseFlags,
     PhaseStateSNInput,
@@ -1351,7 +1352,7 @@ def _execute_phase_state_sn(run: CanonicalRun) -> None:
         raise ValueError(
             f"Stan fazowy SN: docelowa szyna '{target_bus_ref}' nie istnieje w modelu ENM"
         )
-    source_voltage_default = float(target_bus["voltage_kv"]) / math.sqrt(3.0)
+    source_voltage_default = napiecie_fazowe_v(float(target_bus["voltage_kv"]))
     solver_input = PhaseStateSNInput(
         source_voltage_kv=_phase_value_from_options(
             run.options,
@@ -2783,7 +2784,9 @@ def _sc_pelny_bilans(item: dict[str, Any]) -> dict[str, Any]:
     xr = (1.0 / rx) if rx else None
     ith_a = item.get("ith_a")
     tk_s = item.get("tk_s")
-    i2t_ka2s = ((ith_a / 1000.0) ** 2 * tk_s) if ith_a is not None and tk_s is not None else None
+    i2t_ka2s = (
+        calka_joule_ka2s(ith_a / 1000.0, tk_s) if ith_a is not None and tk_s is not None else None
+    )
     un_v = item.get("un_v")
     return {
         "rk_ohm": rk,

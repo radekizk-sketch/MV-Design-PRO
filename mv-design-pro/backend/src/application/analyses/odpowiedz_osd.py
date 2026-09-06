@@ -71,6 +71,7 @@ from enm.scenariusze import (
     RodzajScenariusza,
     apply_scenario,
 )
+from network_model.pochodne import tan_phi_z_cos_phi
 from network_model.solvers.power_flow_inverter import InverterControl, lfsm_factor
 
 DEFAULT_F0_HZ = 50.0
@@ -145,7 +146,7 @@ def _resolve_setpoint(
                 "Polecenie cosφ wymaga q_charakter: 'nadwzbudny' (generacja Q) "
                 "lub 'podwzbudny' (pobór Q)."
             )
-        tan_phi = math.tan(math.acos(cos_phi))
+        tan_phi = tan_phi_z_cos_phi(cos_phi)
         sign = 1.0 if q_charakter == "nadwzbudny" else -1.0
         q_after = sign * abs(p_base_mw) * tan_phi
         return p_base_mw, q_after, {"cos_phi": _round6(cos_phi), "q_charakter": q_charakter}

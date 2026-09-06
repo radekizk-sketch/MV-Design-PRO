@@ -36,7 +36,6 @@ równoważnika; jedyny nietrywialny krok fizyczny (Ik'' z Z_equiv, solver IEC
 
 from __future__ import annotations
 
-import math
 from typing import Any, Literal
 from uuid import NAMESPACE_URL, uuid5
 
@@ -53,6 +52,7 @@ from enm.hash import compute_enm_hash, compute_switching_snapshot_hash
 from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
 from network_model.core.voltage_factor import c_for_node
+from network_model.pochodne import moc_zwarciowa_z_pradu_mva
 from network_model.solvers.short_circuit_core import (
     ShortCircuitType,
     build_zbus,
@@ -170,7 +170,7 @@ def _build_upstream_equivalent_snapshot_surowy(
         short_circuit_type=ShortCircuitType.THREE_PHASE,
         z_equiv=hv_equiv.z_hv_ohm,
     )
-    sk_mva = (math.sqrt(3.0) * un_hv_v * ikss_a) / 1_000_000.0
+    sk_mva = moc_zwarciowa_z_pradu_mva(un_hv_v, ikss_a)
     uth_kv = c_factor * trafo.uhv_kv
 
     r1_ohm = hv_equiv.z_hv_ohm.real

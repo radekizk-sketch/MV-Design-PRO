@@ -4,6 +4,7 @@ from enum import StrEnum
 from typing import Any
 
 from enm.models import EnergyNetworkModel
+from network_model.pochodne import prad_roboczy_a
 from pydantic import BaseModel, Field
 from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
 
@@ -485,7 +486,7 @@ def build_v126_input_from_enm(
                     V126HarmonicSourceInput(
                         bus_ref=generator.bus_ref,
                         source_ref=generator.ref_id,
-                        base_current_a=1000.0 * rated / (1.7320508075688772 * un_kv),
+                        base_current_a=prad_roboczy_a(rated, un_kv),
                         spectrum_percent={5: 3.0, 7: 2.0, 11: 1.2, 13: 1.0},
                     )
                 )

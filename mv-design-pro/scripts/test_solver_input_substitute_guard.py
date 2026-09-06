@@ -1102,15 +1102,31 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # liczona) — to wyjscia zlozenia z migawki, nie miejsca podstawienia; nowy plik
     # `enm/rozplyw_wysp.py` (scalanie rozwiazan wysp, zero pol kontraktow) wchodzi do
     # zakresu skanu (+1 plik w korzeniu enm). Zapadka dlugu i wykluczenia bez zmian.
+    # CV-4.3 K4 (karta CV-4.3-A3): nowy podpakiet `network_model/pochodne/`
+    # (`__init__.py` + `wielkosci_pochodne.py`, czyste funkcje bez kontraktow
+    # solvera — zero pol kontraktow, zero podstawien) wchodzi do zakresu skanu
+    # (+2 pliki w korzeniu `network_model`, bo `solver_input_substitute_guard`
+    # skanuje CALE `network_model/**` bez wzgledu na podkatalog — w
+    # odroznieniu od `backend_no_physics_guard`, ktory wyklucza konkretnie
+    # `network_model/solvers/**` i `network_model/pochodne/**`). Pakiet lezy
+    # SIOSTRZANO wobec `network_model/solvers/` (relokacja architekta
+    # 2026-09-06, nie zagniezdzony pod `solvers/` — patrz docstring
+    # `wielkosci_pochodne.py`), ale ten guard nie rozroznia podkatalogow
+    # `network_model/**`, wiec liczba plikow w korzeniu `network_model` jest
+    # identyczna niezaleznie od tego, czy `pochodne/` lezy pod `solvers/` czy
+    # obok niego — zmierzone na drzewie PO relokacji, nie przed. Zapadka
+    # dlugu i wykluczenia bez zmian (pomiar guarda na drzewie po K4).
+    # Scalenie K3b + K4 (odbior Fable, 2026-09-06): 3610 pol (K3b) / 579 plikow
+    # (577 po K3b + 2 pliki `network_model/pochodne/` z K4).
     assert "Pol kontraktow wejsciowych: 3610." in wyjscie, wyjscie
     assert (
-        "Przeskanowano 577 plikow w zakresie: network_model, solver_input, enm, "
+        "Przeskanowano 579 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     assert "Zapadka dlugu (fizyczne): 63 plikow, suma 291." in wyjscie, wyjscie
     assert "Wykluczenia skanera (niefizyczne): 17 plikow, suma 49." in wyjscie, wyjscie
     per_korzen = [
-        "  network_model: pliki_skanowane=146, dlug=14 plikow/suma 77, "
+        "  network_model: pliki_skanowane=148, dlug=14 plikow/suma 77, "
         "wykluczenia=4 plikow/suma 7",
         "  solver_input: pliki_skanowane=10, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
         "  enm: pliki_skanowane=38, dlug=8 plikow/suma 85, wykluczenia=0 plikow/suma 0",

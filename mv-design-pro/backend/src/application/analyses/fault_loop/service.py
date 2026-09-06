@@ -34,7 +34,6 @@ transformatora, którego szyna nN jest ich korzeniem.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 from typing import Any
 
@@ -46,6 +45,7 @@ from enm.zero_sequence_transformer import (
 )
 from network_model.core.graph import NetworkGraph
 from network_model.core.ybus import S_BASE_MVA
+from network_model.pochodne import napiecie_fazowe_v
 from network_model.solvers.fault_loop_builder import (
     FaultLoopBuildRequest,
     LoopImpedanceComponent,
@@ -518,7 +518,7 @@ def build_station_fault_loop_view(
         return {**context, "status": "brak danych", "missing_data": upstream_missing}
 
     net_type, protection = _SYSTEM_MAP.get(system, _SYSTEM_MAP[_DEFAULT_SYSTEM])
-    u_phase_v = trafo.ulv_kv * 1000.0 / math.sqrt(3.0)
+    u_phase_v = napiecie_fazowe_v(trafo.ulv_kv * 1000.0)
     zero_component = LoopImpedanceComponent(label="—", r_ohm=0.0, x_ohm=0.0)
 
     result = _build_fault_loop_at_route(
@@ -624,7 +624,7 @@ def build_fault_loop_view_at_point(
 
     phase_component, return_component = sum_phase_and_return_route(segments)
     net_type, protection = _SYSTEM_MAP.get(system, _SYSTEM_MAP[_DEFAULT_SYSTEM])
-    u_phase_v = trafo.ulv_kv * 1000.0 / math.sqrt(3.0)
+    u_phase_v = napiecie_fazowe_v(trafo.ulv_kv * 1000.0)
 
     result = _build_fault_loop_at_route(
         fault_node_id=bus_ref,
@@ -742,7 +742,7 @@ def build_feeder_fault_loop_view_for_transformer(
         }
 
     net_type, protection = _SYSTEM_MAP.get(system, _SYSTEM_MAP[_DEFAULT_SYSTEM])
-    u_phase_v = trafo.ulv_kv * 1000.0 / math.sqrt(3.0)
+    u_phase_v = napiecie_fazowe_v(trafo.ulv_kv * 1000.0)
 
     assignment = assign_station_lv_buses(enm, station_transformers(enm, station))
     paths = assignment.paths_by_transformer.get(trafo.ref_id, {})

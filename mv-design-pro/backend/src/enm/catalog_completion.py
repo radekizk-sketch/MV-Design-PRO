@@ -9,6 +9,7 @@ from enm.models import BranchRating, Cable, EnergyNetworkModel, Load, OverheadLi
 from network_model.catalog.materialization import materialize_catalog_binding
 from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
 from network_model.catalog.types import CatalogBinding, LoadType
+from network_model.pochodne import moc_bierna_z_czynnej_i_cos_phi
 
 DEFAULT_LOAD_CATALOG_REF = "load_uslugi_30kw"
 #: Karta FAB-D1 (D8): `DEFAULT_LOAD_KW`/`DEFAULT_LOAD_COS_PHI` NIE SĄ już źródłem
@@ -722,7 +723,7 @@ def _catalog_load_reactive_power(
     if not 0.0 < cos_phi_value <= 1.0:
         return None
 
-    q_mvar = p_mw * math.tan(math.acos(cos_phi_value))
+    q_mvar = moc_bierna_z_czynnej_i_cos_phi(p_mw, cos_phi_value)
     return (-q_mvar if mode == "POJ" else q_mvar), Q_SOURCE_CATALOG_COS_PHI
 
 

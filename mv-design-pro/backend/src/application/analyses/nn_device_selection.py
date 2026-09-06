@@ -43,7 +43,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import math
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
@@ -81,6 +80,7 @@ from network_model.catalog.lv_mccb_settings_iec60947_2 import (
 )
 from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
 from network_model.catalog.types import LVApparatusType
+from network_model.pochodne import napiecie_fazowe_v
 from network_model.solvers.fault_loop_builder import (
     FaultLoopBuildRequest,
     build_fault_loop_input,
@@ -714,7 +714,7 @@ def _ik1_min_i_u0(
 
     phase_component, return_component = sum_phase_and_return_route(segments)
     net_type, protection = _SYSTEM_MAP.get(system, _SYSTEM_MAP[_DEFAULT_SYSTEM])
-    u_phase_v = trafo.ulv_kv * 1000.0 / math.sqrt(3.0)
+    u_phase_v = napiecie_fazowe_v(trafo.ulv_kv * 1000.0)
 
     request = FaultLoopBuildRequest(
         fault_node_id=bus_ref,

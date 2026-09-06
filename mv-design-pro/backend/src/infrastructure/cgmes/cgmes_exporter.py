@@ -33,6 +33,8 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from typing import TYPE_CHECKING
 
+from network_model.pochodne import prad_znamionowy_a
+
 from .mrid import mrid_for, urn
 from .profiles import NS_CIM, RDF_ABOUT, RDF_ID, RDF_RESOURCE
 from .units import (
@@ -385,7 +387,7 @@ def _ik_from_sk(sk3_mva: float, bus_kv: float | None) -> float:
     """Ik'' [A] = Sk'' / (sqrt(3) * Un). Pure algebraic conversion, not a solve."""
     if not bus_kv or bus_kv <= 0:
         return 0.0
-    return (sk3_mva * 1.0e6) / (3.0**0.5 * bus_kv * 1.0e3)
+    return prad_znamionowy_a(sk3_mva, bus_kv)
 
 
 # ---------------------------------------------------------------------------

@@ -176,6 +176,9 @@ jobs:
       - name: Jedna implementacja topologii — zapadka przegladow grafu poza network_model/core/topologia.py (CV-4.3)
         run: $GUARD_PY scripts/topology_single_impl_guard.py
 
+      - name: Formuly fizyczne poza solverami — zapadka poza network_model/pochodne (CV-4.3 K4)
+        run: $GUARD_PY scripts/backend_no_physics_guard.py
+
       - name: Legacy public path
         run: $GUARD_PY scripts/legacy_public_path_guard.py
 

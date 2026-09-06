@@ -28,6 +28,7 @@ from network_model.catalog import (
 from network_model.catalog.types import TransformerType
 from network_model.core.voltage_factor import c_for_node
 from network_model.ir_fields import wymagany_float
+from network_model.pochodne import impedancja_z_napiecia_i_mocy_ohm, napiecie_fazowe_v
 
 
 class BranchType(Enum):
@@ -926,7 +927,7 @@ class TransformerBranch(Branch):
             Complex short-circuit impedance in ohms on LV side.
         """
         self._validate_short_circuit_inputs()
-        z_base_lv = (self.voltage_lv_kv**2) / self.rated_power_mva
+        z_base_lv = impedancja_z_napiecia_i_mocy_ohm(self.voltage_lv_kv, self.rated_power_mva)
         return self.get_short_circuit_impedance_pu() * z_base_lv
 
     def get_voltage_factor_c_max(self) -> float:
@@ -976,7 +977,7 @@ class TransformerBranch(Branch):
         z_th_lv = self.get_short_circuit_impedance_ohm_lv()
         if z_th_lv == 0 or abs(z_th_lv) == 0:
             raise ZeroDivisionError("Short-circuit impedance is zero")
-        u_th = c * (self.voltage_lv_kv * 1e3) / math.sqrt(3)
+        u_th = napiecie_fazowe_v(c * (self.voltage_lv_kv * 1e3))
         ikss = u_th / abs(z_th_lv)
         return ikss / 1000.0
 

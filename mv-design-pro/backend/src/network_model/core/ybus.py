@@ -16,6 +16,7 @@ System per-unit:
 from __future__ import annotations
 
 import numpy as np
+from network_model.pochodne import impedancja_z_napiecia_i_mocy_ohm
 
 from .branch import Branch, LineBranch, TransformerBranch
 from .graph import NetworkGraph
@@ -185,7 +186,7 @@ class AdmittanceMatrixBuilder:
     def get_zbase_ohm(self, node_id: str) -> float:
         """Zwraca Zbase [Ω] dla danego węzła: Vn² / Sbase."""
         vn_kv = self._graph.nodes[node_id].voltage_level
-        return vn_kv**2 / S_BASE_MVA
+        return impedancja_z_napiecia_i_mocy_ohm(vn_kv, S_BASE_MVA)
 
     def _get_branch_admittances_pu(self, branch: Branch) -> tuple[complex, complex, float]:
         """
@@ -196,7 +197,7 @@ class AdmittanceMatrixBuilder:
         """
         if isinstance(branch, LineBranch):
             vn_kv = self._graph.nodes[branch.from_node_id].voltage_level
-            z_base = vn_kv**2 / S_BASE_MVA
+            z_base = impedancja_z_napiecia_i_mocy_ohm(vn_kv, S_BASE_MVA)
             z_total_ohm = branch.get_total_impedance()
             if z_total_ohm == 0:
                 raise ZeroDivisionError("Cannot compute line admittance: impedance is zero")

@@ -7,10 +7,10 @@ Komunikaty po polsku.
 
 from __future__ import annotations
 
-import math
 import os
 
 from catalog.profiles.nc_rfg import load_nc_rfg_profile
+from network_model.pochodne import prad_z_mocy_pozornej_ka
 from pydantic import BaseModel
 
 from .fix_actions import FixAction
@@ -749,7 +749,7 @@ class ENMValidator:
             bus = buses_by_ref.get(source.bus_ref) if source.bus_ref else None
             if bus is None or not bus.voltage_kv or bus.voltage_kv <= 0:
                 continue
-            expected_ik_ka = source.sk3_mva / (math.sqrt(3.0) * bus.voltage_kv)
+            expected_ik_ka = prad_z_mocy_pozornej_ka(source.sk3_mva, bus.voltage_kv)
             if abs(source.ik3_ka - expected_ik_ka) / expected_ik_ka > 0.05:
                 issues.append(
                     ValidationIssue(
