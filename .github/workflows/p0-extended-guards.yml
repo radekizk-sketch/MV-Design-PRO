@@ -173,6 +173,9 @@ jobs:
       - name: Jeden assembler wejścia solvera — zapadka konstrukcji poza enm/assembler.py (CV-4.1)
         run: $GUARD_PY scripts/solver_input_assembler_guard.py
 
+      - name: Jedna implementacja topologii — zapadka przegladow grafu poza network_model/core/topologia.py (CV-4.3)
+        run: $GUARD_PY scripts/topology_single_impl_guard.py
+
       - name: Legacy public path
         run: $GUARD_PY scripts/legacy_public_path_guard.py
 

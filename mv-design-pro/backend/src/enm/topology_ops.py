@@ -36,6 +36,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+from network_model.core.topologia import ma_cykl, polaczone, poziomy, przeglad_wszerz
+
 from .load_zip_model import zip_odbioru_z_parametrow_materializacji
 
 # ---------------------------------------------------------------------------
@@ -100,35 +102,27 @@ def _ref_id_unique(enm: dict[str, Any], ref_id: str) -> bool:
     return ref_id not in _all_refs_set(enm)
 
 
-def _check_cycle_on_add(enm: dict[str, Any], from_ref: str, to_ref: str) -> bool:
-    """Sprawdź czy dodanie gałęzi tworzy cykl (BFS od to_ref do from_ref)."""
-    adj: dict[str, list[str]] = {}
+def _krawedzie_w_ruchu(enm: dict[str, Any]) -> list[tuple[str, str]]:
+    """Krawędzie topologiczne słownika ENM: gałęzie nie-``open`` + transformatory
+    (końce po ``ref``, także spoza listy szyn — jak dotąd w tym module)."""
+    krawedzie: list[tuple[str, str]] = []
     for b in enm.get("branches", []):
         if b.get("status") == "open":
             continue
-        fr = b.get("from_bus_ref", "")
-        to = b.get("to_bus_ref", "")
-        adj.setdefault(fr, []).append(to)
-        adj.setdefault(to, []).append(fr)
+        krawedzie.append((b.get("from_bus_ref", ""), b.get("to_bus_ref", "")))
     for t in enm.get("transformers", []):
-        hv = t.get("hv_bus_ref", "")
-        lv = t.get("lv_bus_ref", "")
-        adj.setdefault(hv, []).append(lv)
-        adj.setdefault(lv, []).append(hv)
-    # BFS from to_ref to find from_ref (without the new edge)
-    visited: set[str] = set()
-    queue = [to_ref]
-    while queue:
-        current = queue.pop(0)
-        if current == from_ref:
-            return True  # cycle detected
-        if current in visited:
-            continue
-        visited.add(current)
-        for neighbor in adj.get(current, []):
-            if neighbor not in visited:
-                queue.append(neighbor)
-    return False
+        krawedzie.append((t.get("hv_bus_ref", ""), t.get("lv_bus_ref", "")))
+    return krawedzie
+
+
+def _check_cycle_on_add(enm: dict[str, Any], from_ref: str, to_ref: str) -> bool:
+    """Czy dodanie gałęzi ``from_ref``–``to_ref`` domknie cykl (końce już połączone).
+
+    Jedyne jądro topologii (``network_model.core.topologia.polaczone``, CV-4.3).
+    """
+    krawedzie = _krawedzie_w_ruchu(enm)
+    wezly = {w for para in krawedzie for w in para} | {from_ref, to_ref}
+    return polaczone(sorted(wezly), krawedzie, to_ref, from_ref)
 
 
 def _find_breaker_refs(enm: dict[str, Any]) -> set[str]:
@@ -1025,32 +1019,34 @@ def compute_topology_summary(enm: dict[str, Any]) -> TopologySummary:
     visited: set[str] = set()
     lateral_roots: list[str] = []
 
+    # Przegląd wszerz od kolejnych szyn źródłowych ze wspólnym zbiorem odwiedzonych —
+    # jedyne jądro (``network_model.core.topologia.przeglad_wszerz``, CV-4.3); kolejność
+    # węzłów kręgosłupa = kolejność odkrycia, dzieci = węzły odkryte z danego węzła.
+    def _sasiedzi(current: str) -> list[tuple[None, str]]:
+        return [
+            (None, neighbor)
+            for neighbor, _via, _vtype in sorted(adj_map.get(current, []), key=lambda x: x[0])
+        ]
+
     for src_bus in source_bus_refs:
-        if src_bus in visited:
-            continue
-        queue: list[tuple[str, int]] = [(src_bus, 0)]
-        visited.add(src_bus)
-
-        while queue:
-            current, depth = queue.pop(0)
-            children: list[str] = []
-            for neighbor, _via, _vtype in sorted(adj_map.get(current, []), key=lambda x: x[0]):
-                if neighbor not in visited:
-                    visited.add(neighbor)
-                    children.append(neighbor)
-                    queue.append((neighbor, depth + 1))
-
+        drzewo = przeglad_wszerz(src_bus, _sasiedzi, odwiedzone=visited)
+        glebokosc = poziomy(drzewo)
+        dzieci: dict[str, list[str]] = {wezel: [] for wezel in drzewo}
+        for wezel, rodzic in drzewo.items():
+            if rodzic is not None:
+                dzieci[rodzic[1]].append(wezel)
+        for current in drzewo:
+            children = dzieci[current]
             spine_nodes.append(
                 SpineNode(
                     bus_ref=current,
-                    depth=depth,
+                    depth=glebokosc[current],
                     is_source=current in source_bus_refs,
                     children_refs=tuple(children),
                 )
             )
-
             # Mark lateral roots: nodes with >1 children from depth >= 1
-            if depth >= 1 and len(children) > 1:
+            if glebokosc[current] >= 1 and len(children) > 1:
                 lateral_roots.extend(children[1:])
 
     # Cycle detection
@@ -1074,67 +1070,14 @@ def compute_topology_summary(enm: dict[str, Any]) -> TopologySummary:
 
 
 def _detect_cycles(enm: dict[str, Any]) -> bool:
-    """Wykryj cykle w grafie ENM.
+    """Wykryj cykle w grafie ENM (jedyne jądro: ``network_model.core.topologia.ma_cykl``).
 
-    Metoda: E_unique - V + C > 0 oznacza cykl, gdzie:
-    - E_unique = liczba unikalnych krawędzi (par węzłów bez duplikatów)
-    - V = liczba węzłów w grafie
-    - C = liczba spójnych składowych
-
-    Równoległe gałęzie (np. linia + wyłącznik między tymi samymi szynami)
-    NIE tworzą cyklu — to standardowa topologia SN.
+    Równoległe gałęzie (np. linia + wyłącznik między tymi samymi szynami) NIE tworzą
+    cyklu — to standardowa topologia SN; węzłami są szyny ORAZ końce gałęzi (jak dotąd).
     """
-    edge_set: set[tuple[str, str]] = set()
-    all_nodes: set[str] = set()
-
-    for b in enm.get("branches", []):
-        if b.get("status") == "open":
-            continue
-        fr = b.get("from_bus_ref", "")
-        to = b.get("to_bus_ref", "")
-        if fr and to:
-            edge_set.add((min(fr, to), max(fr, to)))
-            all_nodes.add(fr)
-            all_nodes.add(to)
-
-    for t in enm.get("transformers", []):
-        hv = t.get("hv_bus_ref", "")
-        lv = t.get("lv_bus_ref", "")
-        if hv and lv:
-            edge_set.add((min(hv, lv), max(hv, lv)))
-            all_nodes.add(hv)
-            all_nodes.add(lv)
-
-    # Include isolated buses
-    for b in enm.get("buses", []):
-        ref = b.get("ref_id", "")
-        if ref:
-            all_nodes.add(ref)
-
-    if not edge_set:
+    krawedzie = [(a, b) for a, b in _krawedzie_w_ruchu(enm) if a and b]
+    wezly = {w for para in krawedzie for w in para}
+    wezly.update(b.get("ref_id", "") for b in enm.get("buses", []) if b.get("ref_id", ""))
+    if not krawedzie:
         return False
-
-    # Count connected components (BFS)
-    adj: dict[str, set[str]] = {}
-    for fr, to in edge_set:
-        adj.setdefault(fr, set()).add(to)
-        adj.setdefault(to, set()).add(fr)
-
-    visited: set[str] = set()
-    components = 0
-    for node in sorted(all_nodes):
-        if node in visited:
-            continue
-        components += 1
-        queue = [node]
-        while queue:
-            current = queue.pop(0)
-            if current in visited:
-                continue
-            visited.add(current)
-            for neighbor in adj.get(current, set()):
-                if neighbor not in visited:
-                    queue.append(neighbor)
-
-    # For a forest: E = V - C. If E > V - C, there are cycles.
-    return len(edge_set) > len(all_nodes) - components
+    return ma_cykl(sorted(wezly), krawedzie)

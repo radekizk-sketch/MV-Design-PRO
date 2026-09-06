@@ -1086,15 +1086,24 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # 3597 pol (scalenie FAB-L na szczycie po CV-4.2 + CV-4.1b, 2026-09-05): 3598
     # (scalenie wyzej) - 1 (`fault_current_data_ref`, FAB-L) = 3597; zapadka i
     # wykluczenia bez zmian wobec scalenia (pomiar guarda na scalonym drzewie).
-    assert "Pol kontraktow wejsciowych: 3597." in wyjscie, wyjscie
+    # 3606 pol / 576 plikow (CV-4.3 K3, 2026-09-05): nowe kontrakty WYJSCIOWE
+    # topologii w `enm/topology.py` — dataclassy `Wyspa` (szyny, zrodla_sieciowe,
+    # maszyny, generatory) i `TopologyView` (szyny, wezel_topologiczny, wyspy, sekcje,
+    # laczniki_otwarte, galezie_otwarte, krawedzie_pominiete) wchodza do zbioru nazw
+    # pol (10 nowych nazw, `szyny` liczone raz jako element zbioru) — to widoki
+    # WYPROWADZANE z migawki, nie dane wejsciowe solvera, wiec zadne z nich nie jest
+    # miejscem podstawienia; nowy plik `network_model/core/topologia.py` (jadro
+    # algorytmow, zero pol kontraktow) wchodzi do zakresu skanu (+1 plik). Zapadka
+    # dlugu i wykluczenia bez zmian (pomiar guarda na drzewie K3).
+    assert "Pol kontraktow wejsciowych: 3606." in wyjscie, wyjscie
     assert (
-        "Przeskanowano 575 plikow w zakresie: network_model, solver_input, enm, "
+        "Przeskanowano 576 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     assert "Zapadka dlugu (fizyczne): 63 plikow, suma 291." in wyjscie, wyjscie
     assert "Wykluczenia skanera (niefizyczne): 17 plikow, suma 49." in wyjscie, wyjscie
     per_korzen = [
-        "  network_model: pliki_skanowane=145, dlug=14 plikow/suma 77, "
+        "  network_model: pliki_skanowane=146, dlug=14 plikow/suma 77, "
         "wykluczenia=4 plikow/suma 7",
         "  solver_input: pliki_skanowane=10, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
         "  enm: pliki_skanowane=37, dlug=8 plikow/suma 85, wykluczenia=0 plikow/suma 0",

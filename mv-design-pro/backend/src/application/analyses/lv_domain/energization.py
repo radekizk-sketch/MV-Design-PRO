@@ -83,12 +83,12 @@ kolejności najmniejszego ``bus_ref`` w wyspie.
 
 from __future__ import annotations
 
-from collections import deque
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from enm.models import Branch, EnergyNetworkModel, Generator, Substation
 from enm.severity import SEVERITY_BLOCKER, SEVERITY_IMPORTANT, SEVERITY_INFO
+from network_model.core.topologia import przeglad_wszerz, skladowe_spojne
 
 EnergizationState = Literal["ENERGIZED", "DEENERGIZED", "UNKNOWN", "CONFLICT", "MULTISOURCE"]
 ConnectivityState = Literal["CLOSED", "OPEN"]
@@ -394,21 +394,16 @@ class EnergizationView:
 
 
 def _components(bus_refs: set[str], adjacency: dict[str, set[str]]) -> dict[str, frozenset[str]]:
-    """Spójne składowe grafu nieskierowanego — składowa per szyna."""
+    """Spójne składowe grafu nieskierowanego — składowa per szyna.
+
+    Liczone JEDYNYM jądrem topologii (``network_model.core.topologia.skladowe_spojne``,
+    CV-4.3); sąsiedztwo spoza ``bus_refs`` jest pomijane jak dotąd.
+    """
+    krawedzie = [(a, b) for a in sorted(adjacency) for b in sorted(adjacency[a])]
     component_of: dict[str, frozenset[str]] = {}
-    for start in sorted(bus_refs):
-        if start in component_of:
-            continue
-        seen = {start}
-        queue: deque[str] = deque([start])
-        while queue:
-            current = queue.popleft()
-            for neighbor in sorted(adjacency.get(current, set())):
-                if neighbor not in seen:
-                    seen.add(neighbor)
-                    queue.append(neighbor)
-        frozen = frozenset(seen)
-        for ref in seen:
+    for skladowa in skladowe_spojne(sorted(bus_refs), krawedzie):
+        frozen = frozenset(skladowa)
+        for ref in skladowa:
             component_of[ref] = frozen
     return component_of
 
@@ -879,15 +874,7 @@ def build_energization_view(
 
     supply_paths: list[SupplyPath] = []
     for source_ref, root_bus in sorted(supply_roots):
-        parent: dict[str, tuple[str, str] | None] = {root_bus: None}
-        queue: deque[str] = deque([root_bus])
-        while queue:
-            current = queue.popleft()
-            for branch_ref, neighbor in sorted(section_edges.get(current, [])):
-                if neighbor in parent:
-                    continue
-                parent[neighbor] = (branch_ref, current)
-                queue.append(neighbor)
+        parent = przeglad_wszerz(root_bus, lambda szyna: sorted(section_edges.get(szyna, [])))
         for bus_ref in sorted(domain_bus_refs):
             if bus_ref not in parent:
                 continue

@@ -20,28 +20,9 @@ import numpy as np
 from .branch import Branch, LineBranch, TransformerBranch
 from .graph import NetworkGraph
 from .node import NodeType
+from .topologia import UniaWezlow
 
 S_BASE_MVA: float = 100.0
-
-
-class _UnionFind:
-    """Union-Find do scalania węzłów połączonych zamkniętymi łącznikami."""
-
-    def __init__(self, elements: list[str]) -> None:
-        self._parent: dict[str, str] = {e: e for e in elements}
-
-    def find(self, x: str) -> str:
-        while self._parent[x] != x:
-            self._parent[x] = self._parent[self._parent[x]]
-            x = self._parent[x]
-        return x
-
-    def union(self, a: str, b: str) -> None:
-        ra, rb = self.find(a), self.find(b)
-        if ra != rb:
-            if ra > rb:
-                ra, rb = rb, ra
-            self._parent[rb] = ra
 
 
 class AdmittanceMatrixBuilder:
@@ -75,19 +56,22 @@ class AdmittanceMatrixBuilder:
         Returns:
             Tuple (representative_ids_sorted, all_node_id_to_index).
         """
+        # Jedyne jądro scalania (CV-4.3): ``network_model.core.topologia.UniaWezlow`` —
+        # ta sama reguła reprezentanta (najmniejszy identyfikator klasy), więc porządek
+        # wierszy macierzy Y jest bit w bit taki jak przed konsolidacją.
         all_node_ids = sorted(self._graph.nodes.keys())
-        uf = _UnionFind(all_node_ids)
+        unia = UniaWezlow(all_node_ids)
 
         for sw in self._graph.switches.values():
             if not getattr(sw, "in_service", True):
                 continue
             if sw.is_closed:
                 if sw.from_node_id in self._graph.nodes and sw.to_node_id in self._graph.nodes:
-                    uf.union(sw.from_node_id, sw.to_node_id)
+                    unia.polacz(sw.from_node_id, sw.to_node_id)
 
-        representatives = sorted({uf.find(nid) for nid in all_node_ids})
+        representatives = sorted({unia.znajdz(nid) for nid in all_node_ids})
         rep_to_idx = {rep: idx for idx, rep in enumerate(representatives)}
-        node_to_idx = {nid: rep_to_idx[uf.find(nid)] for nid in all_node_ids}
+        node_to_idx = {nid: rep_to_idx[unia.znajdz(nid)] for nid in all_node_ids}
 
         return representatives, node_to_idx
 

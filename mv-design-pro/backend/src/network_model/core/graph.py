@@ -15,6 +15,7 @@ from .machine import AsynchronousMachineSource, SynchronousMachineSource
 from .node import Node, NodeType
 from .station import Station
 from .switch import Switch
+from .topologia import skladowe_spojne
 
 
 class NetworkGraph:
@@ -642,10 +643,14 @@ class NetworkGraph:
         """
         if len(self.nodes) == 0:
             return False
+        return len(self._skladowe()) == 1
 
-        # Konwertuj MultiGraph do prostego Graph dla analizy spójności
-        simple_graph = nx.Graph(self._graph)
-        return nx.is_connected(simple_graph)
+    def _skladowe(self) -> tuple[tuple[str, ...], ...]:
+        """Składowe spójne po aktywnych gałęziach i łącznikach — jedyne jądro
+        (``network_model.core.topologia.skladowe_spojne``, CV-4.3); kolejność =
+        pierwsze napotkanie węzła w porządku wstawiania (jak dawne ``nx.connected_components``)."""
+        krawedzie = [(str(a), str(b)) for a, b in self._graph.edges()]
+        return skladowe_spojne(list(self.nodes.keys()), krawedzie)
 
     def find_islands(self) -> list[list[str]]:
         """
@@ -665,19 +670,9 @@ class NetworkGraph:
         """
         if len(self.nodes) == 0:
             return []
-
-        # Konwertuj MultiGraph do prostego Graph dla analizy spójności
-        simple_graph = nx.Graph(self._graph)
-
-        # Znajdź komponenty spójności
-        components = list(nx.connected_components(simple_graph))
-
-        # Posortuj węzły wewnątrz każdej wyspy
-        islands = [sorted(component) for component in components]
-
-        # Posortuj wyspy malejąco po długości
+        islands = [list(skladowa) for skladowa in self._skladowe()]
+        # Posortuj wyspy malejąco po długości (stabilnie — kolejność napotkania)
         islands.sort(key=lambda x: len(x), reverse=True)
-
         return islands
 
     def _validate_single_slack(self) -> None:

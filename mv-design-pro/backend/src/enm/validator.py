@@ -10,7 +10,6 @@ from __future__ import annotations
 import math
 import os
 
-import networkx as nx
 from catalog.profiles.nc_rfg import load_nc_rfg_profile
 from pydantic import BaseModel
 
@@ -46,6 +45,7 @@ from .severity import (
     is_warning_severity,
     severity_rank,
 )
+from .topology import derive
 
 # V12S-007: voltage band thresholds (kV).
 # Pasma napieciowe domeny:
@@ -1354,29 +1354,15 @@ class ENMValidator:
     def _check_graph_connectivity(
         self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
     ) -> None:
-        g = nx.Graph()
-        bus_refs = {b.ref_id for b in enm.buses}
-        for ref in bus_refs:
-            g.add_node(ref)
-
-        for branch in enm.branches:
-            if branch.status == "closed":
-                if branch.from_bus_ref in bus_refs and branch.to_bus_ref in bus_refs:
-                    g.add_edge(branch.from_bus_ref, branch.to_bus_ref)
-
-        for trafo in enm.transformers:
-            if trafo.hv_bus_ref in bus_refs and trafo.lv_bus_ref in bus_refs:
-                g.add_edge(trafo.hv_bus_ref, trafo.lv_bus_ref)
-
-        source_bus_refs = {s.bus_ref for s in enm.sources if s.bus_ref in bus_refs}
-
-        components = list(nx.connected_components(g))
-        if len(components) <= 1:
+        # Jedyny serwis topologii (CV-4.3): wyspy z ``enm.topology.derive`` — ta sama
+        # definicja krawędzi (gałąź ``closed`` + transformator) co w mapowaniu ENM → IR.
+        widok = derive(enm)
+        if len(widok.wyspy) <= 1:
             return
 
-        for comp in components:
-            if not comp.intersection(source_bus_refs):
-                island_refs = sorted(comp)
+        for wyspa in widok.wyspy:
+            if not wyspa.zasilona:
+                island_refs = list(wyspa.szyny)
                 issues.append(
                     ValidationIssue(
                         code="E003",
@@ -1672,22 +1658,12 @@ class ENMValidator:
             return _voltage_band(bus.voltage_kv) == "nN"
 
         # --- E060: ciaglosc zasilania odbiorow/generatorow nN ---------------
-        graf = nx.Graph()
-        for bus in enm.buses:
-            graf.add_node(bus.ref_id)
-        for branch in enm.branches:
-            if branch.status != "closed":
-                continue
-            if branch.from_bus_ref in bus_by_ref and branch.to_bus_ref in bus_by_ref:
-                graf.add_edge(branch.from_bus_ref, branch.to_bus_ref)
-        for trafo in enm.transformers:
-            if trafo.hv_bus_ref in bus_by_ref and trafo.lv_bus_ref in bus_by_ref:
-                graf.add_edge(trafo.hv_bus_ref, trafo.lv_bus_ref)
+        # Jedyny serwis topologii (CV-4.3): te same wyspy co E003 i mapowanie ENM → IR.
         source_bus_refs = {s.bus_ref for s in enm.sources if s.bus_ref in bus_by_ref}
         skladowa_wezla: dict[str, frozenset[str]] = {}
-        for skladowa in nx.connected_components(graf):
-            zamrozona = frozenset(skladowa)
-            for ref in skladowa:
+        for wyspa in derive(enm).wyspy:
+            zamrozona = frozenset(wyspa.szyny)
+            for ref in wyspa.szyny:
                 skladowa_wezla[ref] = zamrozona
 
         def _ma_sciezke_do_zrodla(bus_ref: str) -> bool:
