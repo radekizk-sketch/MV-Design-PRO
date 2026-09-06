@@ -236,6 +236,11 @@ jobs:
       - name: Install pandapower (IZOLOWANE — obniza scipy TYLKO w tym jobie)
         working-directory: mv-design-pro/backend
         run: poetry run pip install "pandapower==3.5.4"
-      - name: Run pandapower cross-validation (marker `pandapower`)
+      # Ten sam katalog `tests` co job `pytest`, dzielony JEDNYM markerem
+      # (`-m pandapower` tu, `-m "not pandapower"` tam) — zaden test nie moze
+      # wypasc z obu jobow (do CV-4.3 K3b job czytal tylko
+      # `tests/application/reference_networks`, wiec wyrocznia poza tym katalogiem
+      # nigdy by nie pobiegla).
+      - name: Run pandapower cross-validation (marker `pandapower`, caly katalog tests)
         working-directory: mv-design-pro/backend
-        run: poetry run pytest -q -m pandapower tests/application/reference_networks
+        run: poetry run pytest -q -m pandapower tests

@@ -221,13 +221,11 @@ class TestTozsamoscZasilaniaSn:
         assert any(m["code"] == "NN-AUD-10" for m in projekcja["validation_messages"])
 
     def test_niezalezne_systemy_sn_maja_rozne_systemy_i_zrodla(self) -> None:
-        """Tożsamość systemu SN i jego źródła pochodzą z TOPOLOGII (graf domeny),
-        więc są dostępne także wtedy, gdy równoważnik Thevenina NIE jest
-        obliczalny. POMIAR PRZYPIĘTY (ograniczenie zarejestrowane, nie ukryte):
-        model z DWOMA źródłami sieciowymi ma dwa węzły SLACK, a rdzeń solvera
-        (`network_model/core/graph.py::NetworkGraph` — zamrożony, B-01)
-        dopuszcza dokładnie jeden — kotwice obu transformatorów meldują uczciwe
-        „brak danych: upstream_network_topology_invalid" zamiast liczby."""
+        """Tożsamość systemu SN i jego źródła pochodzą z TOPOLOGII (graf domeny).
+        CV-4.3 K3b (A3-05): model z DWOMA niezależnymi źródłami sieciowymi ma
+        dwa węzły SLACK — IR przyjmuje po jednym na źródło, więc każda kotwica
+        dostaje równoważnik Thevenina z WŁASNEJ wyspy i własną tożsamość
+        (do K3b: „brak danych: upstream_network_topology_invalid" z odmowy IR)."""
         projekcja = _projekcja(
             zbuduj_stacje_nn(transformatory=2, sprzeglo="open", niezalezny_system_sn_tr2=True)
         )
@@ -237,9 +235,10 @@ class TestTozsamoscZasilaniaSn:
         assert kotwice["tr1"]["upstream_source_ids"] == ["src"]
         assert kotwice["tr2"]["upstream_source_ids"] == ["src2"]
         for ref in ("tr1", "tr2"):
-            assert kotwice[ref]["status"] == "brak danych"
-            assert kotwice[ref]["missing_data"] == ["upstream_network_topology_invalid"]
-            assert "equivalent_id" not in kotwice[ref]
+            assert kotwice[ref]["status"] == "OK"
+            assert not kotwice[ref].get("missing_data")
+            assert kotwice[ref]["sk_mva"] > 0
+        assert kotwice["tr1"]["equivalent_id"] != kotwice["tr2"]["equivalent_id"]
         assert not any(m["code"] == "NN-AUD-10" for m in projekcja["validation_messages"])
 
     def test_spiecie_niezaleznych_systemow_daje_konflikt_w_komunikatach(self) -> None:

@@ -155,12 +155,14 @@ Pozostałe zasady:
   nieznany → 404. Klient odrzuca odpowiedź z inną wersją kontraktu, brakiem
   stanów szyn / komunikatów audytu lub inną tożsamością żądania
   (`lv-domain/projectionApi.ts`).
-- **Ograniczenie zarejestrowane (nie ukryte):** dwa NIEZALEŻNE źródła SN w
-  jednym modelu to dwa węzły SLACK — zamrożony rdzeń
-  (`network_model/core/graph.py::_validate_single_slack`, B-01) odrzuca taki
-  graf, więc kotwice SN meldują `brak danych: upstream_network_topology_invalid`;
-  tożsamość systemów (`upstream_system_id`, nazwy źródeł) pochodzi z grafu
-  ENM i jest rysowana mimo to (scenariusze 05/06).
+- **Ograniczenie ZNIESIONE (CV-4.3 K3b, 2026-09-06):** dwa NIEZALEŻNE źródła SN
+  w jednym modelu to dwa węzły SLACK — IR przyjmuje po jednym na źródło
+  (dawny inwariant `_validate_single_slack` był regułą wejścia rozpływu, nie
+  IR), więc kotwice SN obu systemów dostają równoważnik Thevenina
+  (scenariusz 05: każda z własnej wyspy; 06: superpozycja obu źródeł w jednej
+  wyspie — zwarcie liczy, rozpływ odmawia nazwanym kodem
+  `source.multiple_grid_sources_in_island`); tożsamość systemów
+  (`upstream_system_id`, nazwy źródeł) nadal z grafu ENM.
 
 Piny (testy): `backend/tests/application/analyses/lv_domain/
 test_projection_v1.py` (w tym `TestAtomowoscProjekcji`, profil napięć po

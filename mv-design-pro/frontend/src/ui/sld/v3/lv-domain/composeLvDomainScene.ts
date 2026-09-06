@@ -238,7 +238,7 @@ const LABEL_RESERVE_BOTTOM = 48;
  *  danych; etykieta nie pokazuje angielskiego identyfikatora technicznego). */
 const OPIS_BRAKU_ROWNOWAZNIKA_PL: Readonly<Record<string, string>> = {
   upstream_network_topology_invalid:
-    'sieć SN wieloźródłowa — równoważnik nieobliczalny (jeden węzeł bilansujący)',
+    'topologia sieci SN niepoprawna (źródło poza szyną modelu) — równoważnik nieobliczalny',
   upstream_network_singular: 'sieć SN osobliwa — brak drogi do źródła',
   upstream_hv_bus: 'szyna SN transformatora poza rozwiązywalną siecią',
   route: 'brak trasy do źródła w aktualnej topologii',

@@ -31,6 +31,7 @@ from application.solvers.lv_temperature_correction import build_min_scenario_gra
 from domain.canonical_operations import READINESS_CODES
 from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
+from enm.topology import Wyspa, derive
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import NodeType
 from network_model.core.voltage_factor import Scenario
@@ -365,6 +366,48 @@ def _build_converter_control_by_node(
 # ---------------------------------------------------------------------------
 
 
+#: Kod gotowości odmowy rozpływu: dwa lub więcej źródeł sieciowych w JEDNEJ wyspie
+#: (rdzeń NR zna jeden ``SlackSpec``; polityka modelowa właściciela — OD-7).
+KOD_WIELE_ZRODEL_W_WYSPIE = "source.multiple_grid_sources_in_island"
+
+
+class OdmowaWejsciaRozplywu(ValueError):
+    """Odmowa złożenia wejścia rozpływu z kodem gotowości kanonu (``READINESS_CODES``).
+
+    ``kod`` = kod kanonu (ten sam, który emituje bramka gotowości
+    ``calculation_readiness/service.py::_check_power_flow`` z tej samej
+    ``TopologyView``), ``elementy`` = ref_id elementów blokujących.
+    """
+
+    def __init__(self, kod: str, komunikat: str, *, elementy: tuple[str, ...] = ()) -> None:
+        super().__init__(f"{komunikat} (kod gotowości: {kod})")
+        self.kod = kod
+        self.elementy = elementy
+
+
+@dataclass(frozen=True)
+class WyspaRozplywu:
+    """Wyspa zasilona JEDNYM źródłem sieciowym — własne wejście solvera (CV-4.3 K3b).
+
+    Solver FROZEN liczy wyłącznie wyspę szyny bilansującej (``build_slack_island``),
+    więc sieć z kilkoma GPZ w osobnych wyspach jest rozwiązywana po jednej wyspie
+    naraz; wykonawca scala rozwiązania (``enm/rozplyw_wysp.py``). Przy jednej
+    wyspie zasilonej ``pf_input`` to wejście na PEŁNYM grafie — tożsame z tym
+    sprzed karty (parytet bit w bit); przy kilku — podgraf wyspy (regulator
+    zaczepowy i boczniki czytają tylko własną wyspę).
+    """
+
+    #: Węzeł IR szyny bilansującej (szyna jedynego źródła sieciowego wyspy).
+    slack_node_id: str
+    #: ``ref_id`` źródła sieciowego ENM tej wyspy.
+    zrodlo_ref: str
+    #: ``ref_id`` szyn ENM wyspy (kolejność ``TopologyView``: posortowane).
+    szyny: tuple[str, ...]
+    #: Węzły IR wyspy (posortowane).
+    wezly: tuple[str, ...]
+    pf_input: PowerFlowInput
+
+
 @dataclass(frozen=True)
 class WejscieRozplywu:
     """Wejście rozpływu złożone z migawki ENM i opcji biegu (kontrakt FROZEN ``PowerFlowInput``).
@@ -372,6 +415,12 @@ class WejscieRozplywu:
     ``graph`` jest oddawany na własność solverowi (pętla regulatora zaczepowego może
     przestawić pozycje zaczepów); ``graph_nodes``/``graph_branches`` to kontekst
     elementów migawki (tożsamość ref_id, rola) do montażu wyniku, nie fizyka.
+
+    ``wyspy`` (CV-4.3 K3b): jedno wejście solvera na wyspę zasiloną, w kolejności
+    ``TopologyView`` (największa wyspa pierwsza, potem pierwsza szyna);
+    ``pf_input``/``slack_node_id`` to wejście i szyna bilansująca PIERWSZEJ wyspy.
+    ``pq_specs``/``pv_specs`` = specyfikacje WSZYSTKICH szyn PQ/PV sieci (także w
+    wyspach niezasilonych — jak dotąd w ``pf_input.pq`` przy jednej wyspie).
     """
 
     graph: NetworkGraph
@@ -391,16 +440,25 @@ class WejscieRozplywu:
     audit2_applied: dict[str, Any] | None
     graph_nodes: dict[str, dict[str, Any]]
     graph_branches: dict[str, dict[str, Any]]
+    wyspy: tuple[WyspaRozplywu, ...]
+    pq_specs: tuple[PQSpec, ...]
+    pv_specs: tuple[PVSpec, ...]
 
 
 @dataclass(frozen=True)
 class WejscieZwarcia:
     """Wejście zwarciowe złożone z migawki ENM i opcji biegu (IEC 60909: graf, Z0, c, tk).
 
-    ``graph`` = graf migawki (topologia węzłów raportowalnych, źródło Z0);
+    ``graph`` = graf migawki (topologia węzłów raportowalnych);
     ``solve_graph`` = graf podany solverowi (kopia z korektą temperaturową R_θ dla
-    scenariusza MIN albo ten sam obiekt dla MAX); ``reportable_fault_node_ids`` =
-    węzły zwarcia po zawężeniu lokalizacją scenariusza.
+    scenariusza MIN albo ten sam obiekt dla MAX) BEZ wysp pływających
+    (``wezly_bez_odniesienia`` — CV-4.3 K3b: wyspa bez impedancji do odniesienia
+    czyniła Y-bus osobliwą i wywracała CAŁY bieg albo oddawała szum algebry
+    liniowej; jej węzły nie wchodzą do solvera, wiersz niesie powód);
+    ``z0_bus`` = macierz składowej zerowej w porządku węzłów ``solve_graph``;
+    ``reportable_fault_node_ids`` = węzły zwarcia po zawężeniu lokalizacją
+    scenariusza (węzły bez odniesienia zostają raportowalne — jako wiersze
+    nieraportowalne z powodem).
     """
 
     enm: EnergyNetworkModel
@@ -416,6 +474,83 @@ class WejscieZwarcia:
     temperature_correction_notes: tuple[dict[str, Any], ...]
     graph_nodes: dict[str, dict[str, Any]]
     graph_branches: dict[str, dict[str, Any]]
+    wezly_bez_odniesienia: frozenset[str]
+
+
+def wezly_bez_impedancji_do_odniesienia(graph: NetworkGraph) -> frozenset[str]:
+    """Węzły, których wyspa nie ma ŻADNEGO elementu z impedancją do odniesienia.
+
+    Wyspa = komponent spójności aktywnych gałęzi i zamkniętych łączników
+    (``NetworkGraph.find_islands``); element z impedancją do odniesienia = źródło
+    sieciowe (``grid_sc_sources``), maszyna synchroniczna albo asynchroniczna w
+    ruchu. Metoda równoważnego źródła napięciowego (IEC 60909-0 §4.2) wymaga
+    skończonej impedancji Z_kk widzianej z węzła zwarcia do odniesienia; falownik
+    jest źródłem prądowym bez impedancji (§6.8), więc wyspa zasilana wyłącznie
+    falownikami ma Y-bus osobliwą — ``np.linalg.inv`` w solverze (FROZEN, B-01)
+    oddaje wtedy liczby zależne od biblioteki algebry liniowej, nie od sieci,
+    albo (macierz dokładnie osobliwa) wywraca cały bieg. Pomiar 2026-09-05 (CI run
+    4877 vs lokalnie, sieć G04/06 rejestru): lokalnie R/X = −32 dokładnie,
+    κ ≈ 5·10⁴¹, na CI inne śmieci mieszczące się w paśmie — kwalifikacja po
+    LICZBACH była funkcją maszyny. Wyspa jest funkcją WEJŚCIA, więc kwalifikacja
+    po niej jest deterministyczna i przenośna (CI-PARYTET-5); od CV-4.3 K3b te
+    węzły są ponadto USUWANE z grafu solvera (``WejscieZwarcia.solve_graph``).
+    """
+    wezly_odniesienia: set[str] = set()
+    for zrodla in (
+        graph.grid_sc_sources,
+        graph.synchronous_machine_sources,
+        graph.asynchronous_machine_sources,
+    ):
+        wezly_odniesienia.update(
+            s.node_id for s in zrodla.values() if getattr(s, "in_service", True)
+        )
+    bez_odniesienia: set[str] = set()
+    for wyspa in graph.find_islands():
+        if not any(wezel in wezly_odniesienia for wezel in wyspa):
+            bez_odniesienia.update(wyspa)
+    return frozenset(bez_odniesienia)
+
+
+def _wyspy_zasilone(snapshot: dict[str, Any], graph: NetworkGraph) -> list[tuple[Wyspa, str, str]]:
+    """Wyspy zasilone migawki jako ``(wyspa, ref_id źródła, węzeł IR szyny bilansującej)``.
+
+    Predykat odmowy (≥ 2 źródła sieciowe w jednej wyspie) i przydział szyny
+    bilansującej pochodzą z JEDNEGO obiektu ``TopologyView`` (predykaty parami).
+    Wyspy bez źródła sieciowego nie wchodzą do listy — ich węzły zostają
+    nierozwiązane (``not_solved_nodes`` → ``None`` + ``non_finite_fields``).
+    """
+    widok = derive(snapshot)
+    szyna_zrodla = {
+        str(zrodlo.get("ref_id")): str(zrodlo.get("bus_ref"))
+        for zrodlo in snapshot.get("sources") or []
+        if isinstance(zrodlo, dict)
+    }
+    konflikty = [wyspa for wyspa in widok.wyspy if len(wyspa.zrodla_sieciowe) > 1]
+    if konflikty:
+        opis = "; ".join(
+            f"wyspa szyn [{', '.join(wyspa.szyny[:6])}{', …' if len(wyspa.szyny) > 6 else ''}]: "
+            f"źródła {', '.join(wyspa.zrodla_sieciowe)}"
+            for wyspa in konflikty
+        )
+        raise OdmowaWejsciaRozplywu(
+            KOD_WIELE_ZRODEL_W_WYSPIE,
+            f"{READINESS_CODES[KOD_WIELE_ZRODEL_W_WYSPIE].message_pl} — {opis}",
+            elementy=tuple(zrodlo for wyspa in konflikty for zrodlo in wyspa.zrodla_sieciowe),
+        )
+    wynik: list[tuple[Wyspa, str, str]] = []
+    for wyspa in widok.wyspy:
+        if not wyspa.zrodla_sieciowe:
+            continue
+        zrodlo_ref = wyspa.zrodla_sieciowe[0]
+        slack_node_id = _graph_id_from_ref(szyna_zrodla[zrodlo_ref])
+        wezel = graph.nodes.get(slack_node_id)
+        if wezel is None or wezel.node_type != NodeType.SLACK:
+            raise ValueError(
+                f"Szyna źródła sieciowego '{zrodlo_ref}' nie jest węzłem SLACK grafu — graf "
+                "podany assemblerowi nie odpowiada migawce ENM (niespójne wejście)."
+            )
+        wynik.append((wyspa, zrodlo_ref, slack_node_id))
+    return wynik
 
 
 def zbuduj_graf(snapshot: dict[str, Any] | None) -> NetworkGraph:
@@ -450,12 +585,16 @@ def zloz_wejscie_rozplywu(
     graph_nodes = graph_element_context.get("nodes", {})
     graph_branches = graph_element_context.get("branches", {})
 
-    slack_nodes = sorted(
-        node_id for node_id, node in graph.nodes.items() if node.node_type == NodeType.SLACK
-    )
-    if not slack_nodes:
+    # CV-4.3 K3b (A3-05): szyna bilansująca PER WYSPA z jedynego serwisu topologii
+    # (``enm/topology.py::derive``) — do tej karty pierwszy posortowany węzeł SLACK
+    # był szyną bilansującą CAŁEJ sieci, a sieć z dwoma GPZ (w osobnych wyspach czy
+    # w jednej) była odmawiana już przy konstrukcji IR. Dziś: wyspa z jednym
+    # źródłem = własne wejście solvera; dwa źródła w jednej wyspie = odmowa NAZWANA
+    # (``OdmowaWejsciaRozplywu``, kod ``source.multiple_grid_sources_in_island``).
+    wyspy_zasilone = _wyspy_zasilone(snapshot, graph)
+    if not wyspy_zasilone:
         raise ValueError("Brak wezla bilansujacego SLACK w kanonicznym snapshotcie ENM")
-    slack_node_id = slack_nodes[0]
+    slack_node_id = wyspy_zasilone[0][2]
 
     # G-OZE-PF (V12K-051): regulacja falownika OZE dla kanonicznego PF (Q(U)/cosφ).
     # base_mva potrzebne przed budową PQSpec, aby przeliczyć limity/nachylenie na pu.
@@ -617,25 +756,52 @@ def zloz_wejscie_rozplywu(
     # ENM ShuntCapacitor -> ShuntSpec(b_pu = Q_rated / S_base). Solver untouched.
     shunt_specs = _build_shunt_specs_from_snapshot(snapshot, base_mva)
 
-    pf_input = PowerFlowInput(
-        graph=graph,
-        base_mva=base_mva,
-        slack=SlackSpec(node_id=slack_node_id, u_pu=1.0, angle_rad=0.0),
-        pq=pq_specs,
-        pv=pv_specs,
-        shunts=shunt_specs,
-        options=options_solvera,
-        # ADR-011 (Z-ZIP-04): study frequency from the ENM header defaults
-        # (drives the P(f)/Q(f) factor; at f0 the factor is 1.0).
-        base_frequency_hz=_study_frequency_hz(snapshot),
-        audit2_extensions=audit2_extensions,
-    )
+    # ADR-011 (Z-ZIP-04): study frequency from the ENM header defaults
+    # (drives the P(f)/Q(f) factor; at f0 the factor is 1.0).
+    base_frequency_hz = _study_frequency_hz(snapshot)
+    # Jedna wyspa zasilona = wejście na PEŁNYM grafie z pełnymi listami (tożsame
+    # z wejściem sprzed karty K3b — parytet złotych hashy bit w bit; węzły wysp
+    # niezasilonych solver sam pomija jako ``not_solved_nodes``). Kilka wysp
+    # zasilonych = podgraf i listy WŁASNEJ wyspy (solver FROZEN i pętla regulatora
+    # zaczepowego widzą wyłącznie tę wyspę — cudze węzły nie oddają NaN do
+    # regulatora, cudze boczniki nie są zgłaszane jako nałożone).
+    wyspy: list[WyspaRozplywu] = []
+    for wyspa, zrodlo_ref, slack_wyspy in wyspy_zasilone:
+        wezly = tuple(sorted(_graph_id_from_ref(szyna) for szyna in wyspa.szyny))
+        if len(wyspy_zasilone) == 1:
+            graf_wyspy = graph
+            pq_wyspy, pv_wyspy, shunty_wyspy = pq_specs, pv_specs, shunt_specs
+        else:
+            zbior = set(wezly)
+            graf_wyspy = graph.podgraf(wezly)
+            pq_wyspy = [spec for spec in pq_specs if spec.node_id in zbior]
+            pv_wyspy = [spec for spec in pv_specs if spec.node_id in zbior]
+            shunty_wyspy = [spec for spec in shunt_specs if spec.node_id in zbior]
+        wyspy.append(
+            WyspaRozplywu(
+                slack_node_id=slack_wyspy,
+                zrodlo_ref=zrodlo_ref,
+                szyny=tuple(wyspa.szyny),
+                wezly=wezly,
+                pf_input=PowerFlowInput(
+                    graph=graf_wyspy,
+                    base_mva=base_mva,
+                    slack=SlackSpec(node_id=slack_wyspy, u_pu=1.0, angle_rad=0.0),
+                    pq=pq_wyspy,
+                    pv=pv_wyspy,
+                    shunts=shunty_wyspy,
+                    options=options_solvera,
+                    base_frequency_hz=base_frequency_hz,
+                    audit2_extensions=audit2_extensions,
+                ),
+            )
+        )
     requested_solver_method = _normalize_power_flow_solver_method(
         options.get("solver_method") or options.get("method")
     )
     return WejscieRozplywu(
         graph=graph,
-        pf_input=pf_input,
+        pf_input=wyspy[0].pf_input,
         options=options_solvera,
         base_mva=base_mva,
         slack_node_id=slack_node_id,
@@ -644,6 +810,9 @@ def zloz_wejscie_rozplywu(
         audit2_applied=audit2_applied,
         graph_nodes=graph_nodes,
         graph_branches=graph_branches,
+        wyspy=tuple(wyspy),
+        pq_specs=tuple(pq_specs),
+        pv_specs=tuple(pv_specs),
     )
 
 
@@ -675,12 +844,6 @@ def zloz_wejscie_zwarcia(
         from solver_input.audit2_solver_adjuster import apply_audit2_to_network_model
 
         apply_audit2_to_network_model(graph=graph, audit2_extensions=audit2_extensions_sc)
-
-    z0_bus = (
-        build_zero_sequence_zbus(enm, graph)
-        if _short_circuit_requires_z0(short_circuit_type)
-        else None
-    )
 
     # Karta P0.3b (docs/nn/H_PLAN_IMPLEMENTACJI_NN.md §P0.3, kontynuacja P0.3):
     # c per pasmo napięciowe węzła zwarcia (IEC 60909 Tab. 1) + scenariusz MIN
@@ -714,6 +877,28 @@ def zloz_wejscie_zwarcia(
         temperature_correction_notes = tuple(
             note.to_dict() for note in min_scenario_graph_result.notes
         )
+
+    # CV-4.3 K3b: wyspy bez impedancji do odniesienia (kwalifikacja z TOPOLOGII,
+    # CI-PARYTET-5) NIE wchodzą do grafu solvera — ich blok Y-bus jest osobliwy
+    # (żadnego bocznika do odniesienia), więc odwrócenie pełnej macierzy wywracało
+    # cały bieg (pomiar: 8 wpisów złotych „Y-bus is singular" — G04/09, G05/09)
+    # albo oddawało szum. Wiersz takiego węzła buduje wykonawca bez solvera
+    # (``_oznacz_wiersz_bez_odniesienia``). Podgraf dzieli obiekty elementów z
+    # ``solve_graph`` (bez kopii); ``graph`` (topologia raportowalna) nietknięty.
+    wezly_bez_odniesienia = wezly_bez_impedancji_do_odniesienia(solve_graph)
+    if wezly_bez_odniesienia:
+        solve_graph = solve_graph.podgraf(
+            wezel for wezel in solve_graph.nodes if wezel not in wezly_bez_odniesienia
+        )
+
+    # Z0 w porządku węzłów grafu SOLVERA (ten sam ``AdmittanceMatrixBuilder``):
+    # impedancje składowej zerowej pochodzą z pól ENM, więc dla grafu bez wysp
+    # pływających macierz jest tożsama z liczoną dotąd z ``graph``.
+    z0_bus = (
+        build_zero_sequence_zbus(enm, solve_graph)
+        if _short_circuit_requires_z0(short_circuit_type)
+        else None
+    )
 
     reportable_fault_node_ids = [
         node_id
@@ -776,4 +961,5 @@ def zloz_wejscie_zwarcia(
         temperature_correction_notes=temperature_correction_notes,
         graph_nodes=graph_nodes,
         graph_branches=graph_branches,
+        wezly_bez_odniesienia=wezly_bez_odniesienia,
     )

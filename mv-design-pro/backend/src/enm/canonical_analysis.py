@@ -28,6 +28,8 @@ from application.stability.voltage_trajectory import (
     generate_voltage_trajectory,
 )
 from enm.assembler import (
+    WejscieRozplywu,
+    WyspaRozplywu,
     _graph_id_from_ref,
     _short_circuit_requires_z0,
     _short_circuit_type_from_options,
@@ -38,6 +40,7 @@ from enm.element_kind import rodzaj_elementu, zbuduj_indeks_rodzajow
 from enm.envelope import RevisionEnvelope, zbuduj_koperte
 from enm.klucz_twin import czy_klucz_projektu, project_id_z_klucza
 from enm.models import EnergyNetworkModel
+from enm.rozplyw_wysp import opis_wysp, scal_rozwiazania_wysp, scal_slady_oltc
 from enm.scenariusze import (
     SCENARIUSZ_NORMALNY,
     EffectiveNetworkSnapshot,
@@ -164,39 +167,6 @@ _KLUCZE_SLADU_WIERSZA_ZWARCIA: frozenset[str] = frozenset(
 )
 
 
-def _wezly_bez_impedancji_do_odniesienia(graph: NetworkGraph) -> frozenset[str]:
-    """Węzły, których wyspa nie ma ŻADNEGO elementu z impedancją do odniesienia.
-
-    Wyspa = komponent spójności aktywnych gałęzi i zamkniętych łączników
-    (``NetworkGraph.find_islands``); element z impedancją do odniesienia = źródło
-    sieciowe (``grid_sc_sources``), maszyna synchroniczna albo asynchroniczna w
-    ruchu. Metoda równoważnego źródła napięciowego (IEC 60909-0 §4.2) wymaga
-    skończonej impedancji Z_kk widzianej z węzła zwarcia do odniesienia; falownik
-    jest źródłem prądowym bez impedancji (§6.8), więc wyspa zasilana wyłącznie
-    falownikami ma Y-bus osobliwą — ``np.linalg.inv`` w solverze (FROZEN, B-01)
-    oddaje wtedy liczby zależne od biblioteki algebry liniowej, nie od sieci.
-    Pomiar 2026-09-05 (CI run 4877 vs lokalnie, sieć G04/06 rejestru): lokalnie
-    R/X = −32 dokładnie, κ ≈ 5·10⁴¹ (wiersz „niefizyczny" po paśmie κ), na CI inne
-    śmieci mieszczące się w paśmie — kwalifikacja po LICZBACH była funkcją
-    maszyny. Wyspa jest funkcją WEJŚCIA, więc kwalifikacja po niej jest
-    deterministyczna i przenośna.
-    """
-    wezly_odniesienia: set[str] = set()
-    for zrodla in (
-        graph.grid_sc_sources,
-        graph.synchronous_machine_sources,
-        graph.asynchronous_machine_sources,
-    ):
-        wezly_odniesienia.update(
-            s.node_id for s in zrodla.values() if getattr(s, "in_service", True)
-        )
-    bez_odniesienia: set[str] = set()
-    for wyspa in graph.find_islands():
-        if not any(wezel in wezly_odniesienia for wezel in wyspa):
-            bez_odniesienia.update(wyspa)
-    return frozenset(bez_odniesienia)
-
-
 def _zeruj_liczby_wyniku(
     obiekt: Any,
     _sciezka: str = "$",
@@ -268,6 +238,83 @@ def _oznacz_wiersz_bez_odniesienia(payload: dict[str, Any]) -> dict[str, Any]:
             "reporting_limitations": ograniczenia,
             "non_physical_fields": sorted(set(pola)),
             "non_physical_reason": POWOD_WEZEL_BEZ_ODNIESIENIA,
+        }
+    )
+    return wiersz
+
+
+#: Klucze kontraktu wiersza zwarcia (``ShortCircuitResult.to_dict`` bez pól opcjonalnych
+#: exclude-None) — kształt wiersza węzła bez impedancji do odniesienia, który od
+#: CV-4.3 K3b nie przechodzi przez solver (jego wyspa nie jest w grafie solvera).
+#: Przypięte testem do prawdziwego ``to_dict()`` (deklaracja bez testu = fałszywa pewność).
+KLUCZE_WIERSZA_ZWARCIA: tuple[str, ...] = (
+    "short_circuit_type",
+    "fault_node_id",
+    "c_factor",
+    "un_v",
+    "zkk_ohm",
+    "rx_ratio",
+    "kappa",
+    "tk_s",
+    "tb_s",
+    "ikss_a",
+    "ip_a",
+    "ith_a",
+    "ib_a",
+    "sk_mva",
+    "ik_thevenin_a",
+    "ik_inverters_a",
+    "ik_total_a",
+    "contributions",
+    "branch_contributions",
+    "white_box_trace",
+)
+
+#: Klucze ``to_dict()`` dołączane WYŁĄCZNIE gdy solver je policzył (exclude-None):
+#: składowe symetryczne, ślad rozpływu Thevenina, współczynniki m/n.
+KLUCZE_WIERSZA_ZWARCIA_OPCJONALNE: frozenset[str] = frozenset(
+    {"z1_ohm", "z2_ohm", "z0_ohm", "branch_flow_trace", "m_factor", "n_factor"}
+)
+
+#: ``tb_s`` domyślne solvera (``compute_*_short_circuit(tb_s=0.1)``) — wykonawca nie
+#: podaje własnego, więc wiersz bez solvera niesie tę samą daną wejściową.
+_TB_S_DOMYSLNE = 0.1
+
+
+def _pusty_wiersz_zwarcia(
+    short_circuit_type: ShortCircuitType,
+    node_id: str,
+    *,
+    c_factor: float,
+    un_kv: float,
+    tk_s: float,
+) -> dict[str, Any]:
+    """Wiersz zwarcia węzła bez impedancji do odniesienia BEZ wołania solvera.
+
+    Te same klucze co ``ShortCircuitResult.to_dict()``: dane wejściowe wiersza
+    (``c_factor``, ``un_v``, ``tk_s``, ``tb_s`` — zachowywane przez
+    ``_oznacz_wiersz_bez_odniesienia``) mają wartości, wielkości wynikowe ``None``,
+    listy śladu puste. Do CV-4.3 K3b solver był wołany także dla takich węzłów i
+    oddawał szum osobliwej macierzy (zerowany po fakcie) albo wywracał cały bieg
+    (macierz dokładnie osobliwa — 8 wpisów złotych „Y-bus is singular").
+    """
+    # Wielkości wynikowe jako NaN w TYM SAMYM kształcie co ``to_dict()`` (``zkk_ohm`` =
+    # {re, im}): ``_oznacz_wiersz_bez_odniesienia`` zamienia je na ``None`` i wpisuje
+    # ich ścieżki do ``non_physical_fields`` — wykaz pól kontraktu bez wartości jest
+    # taki sam jak dla wiersza, który przeszedł przez solver.
+    wiersz: dict[str, Any] = {klucz: math.nan for klucz in KLUCZE_WIERSZA_ZWARCIA}
+    wiersz.update(
+        {
+            "short_circuit_type": short_circuit_type.value,
+            "fault_node_id": node_id,
+            "c_factor": float(c_factor),
+            "un_v": float(un_kv) * 1000.0,
+            "zkk_ohm": {"re": math.nan, "im": math.nan},
+            "tk_s": float(tk_s),
+            "tb_s": _TB_S_DOMYSLNE,
+            "contributions": [],
+            "branch_contributions": [],
+            "white_box_trace": [],
         }
     )
     return wiersz
@@ -1758,9 +1805,10 @@ def _execute_short_circuit(run: CanonicalRun, uow_factory: Callable[[], Any] | N
     rows: list[dict[str, Any]] = []
     trace_steps: list[dict[str, Any]] = []
 
-    # CI-PARYTET-5: węzły bez impedancji do odniesienia ustalone z TOPOLOGII przed
-    # biegiem (funkcja wejścia, nie liczb solvera — patrz docstring pomocnika).
-    wezly_bez_odniesienia = _wezly_bez_impedancji_do_odniesienia(solve_graph)
+    # CI-PARYTET-5 / CV-4.3 K3b: węzły bez impedancji do odniesienia ustalone z
+    # TOPOLOGII przez assembler (funkcja wejścia, nie liczb solvera); ich wyspy
+    # NIE są w ``solve_graph`` — wiersz powstaje bez solvera (jawny brak, nie szum).
+    wezly_bez_odniesienia = wejscie.wezly_bez_odniesienia
     for node_id in reportable_fault_node_ids:
         # AUTO: c z pasma napięciowego WŁASNEGO węzła zwarcia (IEC 60909 Tab. 1);
         # OVERRIDE: wartość jawna z options, płasko dla wszystkich węzłów.
@@ -1769,10 +1817,12 @@ def _execute_short_circuit(run: CanonicalRun, uow_factory: Callable[[], Any] | N
             if c_factor_override
             else c_for_node(graph.nodes[node_id].voltage_level, scenario_c)
         )
+        if node_id in wezly_bez_odniesienia:
+            result = None
         # ZWARCIA-PRO F4 (karta W-C): wkłady gałęziowe FROZEN solvera są liczone
         # ZAWSZE w torze kanonicznym (opcja addytywna solvera — nie zmienia
         # żadnej istniejącej wielkości ani śladu White Box; osobna superpozycja).
-        if short_circuit_type == ShortCircuitType.THREE_PHASE:
+        elif short_circuit_type == ShortCircuitType.THREE_PHASE:
             result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
                 graph=solve_graph,
                 fault_node_id=node_id,
@@ -1806,7 +1856,17 @@ def _execute_short_circuit(run: CanonicalRun, uow_factory: Callable[[], Any] | N
                 z0_bus=z0_bus,
                 include_branch_contributions=True,
             )
-        payload = result.to_dict()
+        payload = (
+            result.to_dict()
+            if result is not None
+            else _pusty_wiersz_zwarcia(
+                short_circuit_type,
+                node_id,
+                c_factor=c_factor,
+                un_kv=graph.nodes[node_id].voltage_level,
+                tk_s=tk_s,
+            )
+        )
         node_trace_step_refs: list[int] = []
         for step_index, step in enumerate(payload.get("white_box_trace", []), start=1):
             node_context = graph_nodes.get(node_id, {})
@@ -1869,18 +1929,9 @@ def _execute_short_circuit(run: CanonicalRun, uow_factory: Callable[[], Any] | N
         raise ValueError("Nie udalo sie obliczyc wynikow zwarciowych dla zadnego wezla")
 
     # Ślad White Box biegu dzieli słowniki kroków z wierszami (kopie płytkie) —
-    # ta sama podmiana wartości niefinitowych, ten sam wykaz ścieżek.
-    # Kroki śladu węzłów bez impedancji do odniesienia — te same śmieci algebry
-    # liniowej co w wierszu: zerowane bez wykazu (wiersz niesie powód i wykaz pól).
-    if wezly_bez_odniesienia:
-        trace_steps = [
-            (
-                _zeruj_liczby_wyniku(krok, _wykaz=False)[0]
-                if krok.get("target_id") in wezly_bez_odniesienia
-                else krok
-            )
-            for krok in trace_steps
-        ]
+    # ta sama podmiana wartości niefinitowych, ten sam wykaz ścieżek. Węzły bez
+    # impedancji do odniesienia nie mają kroków śladu (nie przeszły przez solver —
+    # CV-4.3 K3b); ich wiersz niesie powód i wykaz pól.
     trace_steps, _niefinitowe_w_sladzie = _niefinitowe_na_none(trace_steps)
     wiersze_niefizyczne = sorted(
         str(row.get("fault_node_id"))
@@ -2093,7 +2144,6 @@ def _execute_power_flow(
     base_mva = wejscie.base_mva
     slack_node_id = wejscie.slack_node_id
     options = wejscie.options
-    pf_input = wejscie.pf_input
     requested_solver_method = wejscie.requested_solver_method
 
     # V12K-045 (OLTC F2): wrap the single-shot solve with the automatic OLTC
@@ -2107,7 +2157,18 @@ def _execute_power_flow(
             requested_solver_method,
         )
 
-    solution, oltc_trace = solve_with_oltc(pf_input, _solve_once)
+    # CV-4.3 K3b (A3-05): jedno rozwiązanie na wyspę zasiloną (przy jednej wyspie —
+    # pełny graf, tożsamość z torem sprzed karty; przy kilku — podgraf wyspy), potem
+    # scalenie w jeden wynik (``enm/rozplyw_wysp.py``: unie węzłów/gałęzi, sumy
+    # strat i mocy szyn bilansujących, węzły poza wyspami zasilonymi nierozwiązane).
+    rozwiazania: list[tuple[WyspaRozplywu, PowerFlowNewtonSolution]] = []
+    slady_oltc: list[dict[str, Any] | None] = []
+    for wyspa in wejscie.wyspy:
+        rozwiazanie_wyspy, slad_oltc_wyspy = solve_with_oltc(wyspa.pf_input, _solve_once)
+        rozwiazania.append((wyspa, rozwiazanie_wyspy))
+        slady_oltc.append(slad_oltc_wyspy)
+    solution = scal_rozwiazania_wysp(rozwiazania, graph)
+    oltc_trace = scal_slady_oltc(rozwiazania, slady_oltc)
     solver_method = str(getattr(solution, "solver_method", requested_solver_method))
     proof_ref = _power_flow_proof_ref(run=run, solver_method=solver_method)
     reporting_status = "reportable" if solution.converged else "not_reportable"
@@ -2127,11 +2188,11 @@ def _execute_power_flow(
     # solvera (ZERO fizyki w tej warstwie); dla szyny stałomocowej jest ona
     # bitowo równa dotychczasowemu -p_mw/base_mva, więc wyniki bez ZIP/regulacji
     # są nietknięte. Szyny spoza wyspy slacka solver pomija — zostaje żądanie.
-    node_p_injected_pu = {node.node_id: 0.0 for node in pf_input.pq}
-    node_q_injected_pu = {node.node_id: 0.0 for node in pf_input.pq}
+    node_p_injected_pu = {node.node_id: 0.0 for node in wejscie.pq_specs}
+    node_q_injected_pu = {node.node_id: 0.0 for node in wejscie.pq_specs}
     solver_p_effective = solution.node_p_spec_effective_pu
     solver_q_effective = solution.node_q_spec_effective_pu
-    for pq in pf_input.pq:
+    for pq in wejscie.pq_specs:
         node_p_injected_pu[pq.node_id] = solver_p_effective.get(pq.node_id, -pq.p_mw / base_mva)
         node_q_injected_pu[pq.node_id] = solver_q_effective.get(pq.node_id, -pq.q_mvar / base_mva)
     # DŁUG W2-D1 (V12K-318): szyna o regulowanym napięciu też wstrzykuje moc — jej
@@ -2141,18 +2202,22 @@ def _execute_power_flow(
     # szyny spoza wyspy slacka — solver ich nie liczy. `PVSpec.p_mw` jest w tej
     # samej konwencji OBCIĄŻENIOWEJ co `PQSpec.p_mw` (`build_power_spec_v2`
     # neguje oba), więc zapas negujemy tak samo.
-    for pv in pf_input.pv:
+    for pv in wejscie.pv_specs:
         node_p_injected_pu[pv.node_id] = solver_p_effective.get(pv.node_id, -pv.p_mw / base_mva)
         node_q_injected_pu[pv.node_id] = solver_q_effective.get(pv.node_id, 0.0)
-    node_p_injected_pu[pf_input.slack.node_id] = float(solution.slack_power.real)
-    node_q_injected_pu[pf_input.slack.node_id] = float(solution.slack_power.imag)
+    # Szyna bilansująca KAŻDEJ wyspy wstrzykuje moc WŁASNEJ wyspy (rozwiązanie tej
+    # wyspy); ``result_v1.slack_power`` niesie sumę (bilans całej sieci), a
+    # ``result_v1.slack_bus_id`` szynę pierwszej wyspy (kontrakt FROZEN ma jedno pole).
+    for wyspa, rozwiazanie_wyspy in rozwiazania:
+        node_p_injected_pu[wyspa.slack_node_id] = float(rozwiazanie_wyspy.slack_power.real)
+        node_q_injected_pu[wyspa.slack_node_id] = float(rozwiazanie_wyspy.slack_power.imag)
 
     result_v1 = build_power_flow_result_v1(
         converged=solution.converged,
         iterations_count=solution.iterations,
         tolerance_used=options.tolerance,
         base_mva=base_mva,
-        slack_bus_id=pf_input.slack.node_id,
+        slack_bus_id=slack_node_id,
         node_u_mag=solution.node_u_mag,
         node_angle=solution.node_angle,
         node_p_injected_pu=node_p_injected_pu,
@@ -2214,6 +2279,9 @@ def _execute_power_flow(
         # bez zagladania w iteracje. Addytywnie (dict), lista z solvera w
         # porzadku wykrycia (deterministyczna — iteracje sa deterministyczne).
         "pv_to_pq_switches": solution.pv_to_pq_switches,
+        # CV-4.3 K3b: kilka wysp zasilonych = wynik zbiorczy per wyspa (addytywnie,
+        # WYŁĄCZNIE gdy wysp jest więcej niż jedna — sieci jednoźródłowe bit w bit).
+        **({"wyspy": opis_wysp(rozwiazania)} if len(rozwiazania) > 1 else {}),
         # Polityka §35: węzły spoza wyspy slacka (``unsolved_node_ids``) nie mają
         # napięcia — solver oddaje NaN, kontrakt wyjściowy niesie ``None`` (jawny
         # brak, nie liczba). Każda INNA wartość niefinitowa jest wypisana w
@@ -2262,7 +2330,9 @@ def _execute_power_flow(
     # run.options["oltc_study"]; the engines restore the tap state they mutate.
     oltc_study = run.options.get("oltc_study")
     if oltc_study:
-        study_result = _run_oltc_study(oltc_study, pf_input, _solve_once, run.options)
+        study_result = _run_oltc_study(
+            oltc_study, _wejscie_studium_oltc(wejscie, run.options), _solve_once, run.options
+        )
         if study_result is not None:
             run.raw_result[study_result[0]] = study_result[1]
 
@@ -2283,28 +2353,64 @@ def _execute_power_flow(
         "max_iterations": options.max_iter,
         "base_mva": base_mva,
         "slack_bus_id": slack_node_id,
-        "pq_bus_ids": [spec.node_id for spec in pf_input.pq],
+        "pq_bus_ids": [spec.node_id for spec in wejscie.pq_specs],
         # Karta CV-4.1b (A3-04): dawniej ZAWSZE pusta lista (konstytucja A3-04:
         # "pv_bus_ids=[] zawsze" — generator z regulacją napięcia liczony jak PQ).
-        # `pf_input.pv` jest teraz wypełniane przez assembler dla generatorów w
+        # `pv_specs` jest teraz wypełniane przez assembler dla generatorów w
         # trybie regulacji napięcia (`enm/mapping.py` -> `NodeType.PV`).
-        "pv_bus_ids": [spec.node_id for spec in pf_input.pv],
+        "pv_bus_ids": [spec.node_id for spec in wejscie.pv_specs],
         "ybus_trace": solution.ybus_trace,
-        "iterations": [
-            {
-                "k": int(step.get("iter", index + 1)),
-                "norm_mismatch": float(step.get("mismatch_norm", step.get("max_mismatch_pu", 0.0))),
-                "max_mismatch_pu": float(step.get("max_mismatch_pu", 0.0)),
-                "cause_if_failed": step.get("cause_if_failed_optional"),
-            }
-            for index, step in enumerate(solution.nr_trace)
-        ],
+        "iterations": _iteracje_sladu(solution.nr_trace),
         "converged": solution.converged,
         "final_iterations_count": solution.iterations,
         "catalog_context": _build_snapshot_catalog_context(run.snapshot or {}),
     }
+    if len(rozwiazania) > 1:
+        # CV-4.3 K3b: ślad White Box per wyspa (addytywnie, tylko przy kilku wyspach):
+        # własna szyna bilansująca, własne szyny PQ/PV, własna macierz Y i iteracje.
+        run.power_flow_trace["wyspy"] = [
+            {
+                "slack_bus_id": wyspa.slack_node_id,
+                "zrodlo_ref": wyspa.zrodlo_ref,
+                "pq_bus_ids": [spec.node_id for spec in wyspa.pf_input.pq],
+                "pv_bus_ids": [spec.node_id for spec in wyspa.pf_input.pv],
+                "ybus_trace": rozwiazanie_wyspy.ybus_trace,
+                "init_state": rozwiazanie_wyspy.init_state or {},
+                "iterations": _iteracje_sladu(rozwiazanie_wyspy.nr_trace),
+                "converged": rozwiazanie_wyspy.converged,
+                "final_iterations_count": rozwiazanie_wyspy.iterations,
+            }
+            for wyspa, rozwiazanie_wyspy in rozwiazania
+        ]
     if oltc_trace is not None:
         run.power_flow_trace["oltc_control"] = oltc_trace
+
+
+def _iteracje_sladu(nr_trace: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Wpisy iteracji śladu rozpływu (``k``, normy niedopasowania, przyczyna przerwania);
+    wpis rozwiązania scalonego z kilku wysp niesie dodatkowo ``slack_bus_id`` swojej
+    wyspy (``enm/rozplyw_wysp.py``) — przy jednej wyspie klucz nie występuje."""
+    return [
+        {
+            "k": int(step.get("iter", index + 1)),
+            "norm_mismatch": float(step.get("mismatch_norm", step.get("max_mismatch_pu", 0.0))),
+            "max_mismatch_pu": float(step.get("max_mismatch_pu", 0.0)),
+            "cause_if_failed": step.get("cause_if_failed_optional"),
+            **({"slack_bus_id": step["slack_bus_id"]} if "slack_bus_id" in step else {}),
+        }
+        for index, step in enumerate(nr_trace)
+    ]
+
+
+def _wejscie_studium_oltc(wejscie: WejscieRozplywu, run_options: dict[str, Any]) -> PowerFlowInput:
+    """Wejście solvera dla studium OLTC: wyspa zawierająca wskazany transformator
+    (``oltc_branch_id``), a bez wskazania — pierwsza wyspa zasilona (jak dotąd)."""
+    branch_id = run_options.get("oltc_branch_id")
+    if branch_id:
+        for wyspa in wejscie.wyspy:
+            if branch_id in wyspa.pf_input.typed_graph().branches:
+                return wyspa.pf_input
+    return wejscie.pf_input
 
 
 def _build_power_flow_trace_steps(
@@ -2334,10 +2440,12 @@ def _build_power_flow_trace_steps(
             }
         )
     for index, iteration in enumerate(solution.nr_trace, start=len(steps) + 1):
+        wyspa = iteration.get("slack_bus_id")
         steps.append(
             {
                 "step": index,
-                "title": f"Iteracja {title_method} {iteration.get('iter', index)}",
+                "title": f"Iteracja {title_method} {iteration.get('iter', index)}"
+                + (f" (wyspa szyny bilansującej {wyspa})" if wyspa else ""),
                 "phase": phase,
                 "inputs": {
                     "max_mismatch_pu": {

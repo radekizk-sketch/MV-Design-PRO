@@ -117,15 +117,17 @@ class TestBuildFaultLoopViewAtPoint:
         assert view["missing_data"] == ["route"]
 
     def test_upstream_map_error_is_honest_not_a_crash(self) -> None:
-        """Model topologicznie niepoprawny (dwa węzły SLACK) → uczciwy brak
-        danych, NIGDY wyjątek/500 (napotkany defekt karty P0.6: budowa grafu
-        rzucała ValueError poza obsługą błędów)."""
-        enm = _base_enm([], ["druga_szyna_zrodlowa"])
+        """Model topologicznie niepoprawny (źródło na szynie, której nie ma) →
+        uczciwy brak danych, NIGDY wyjątek/500 (napotkany defekt karty P0.6:
+        budowa grafu rzucała ValueError poza obsługą błędów). Do CV-4.3 K3b tę
+        klasę reprezentował drugi węzeł SLACK — IR przyjmuje go dziś (po jednym
+        na źródło), więc drugie zasilanie na własnej szynie liczy się normalnie."""
+        enm = _base_enm([], [])
         enm.sources.append(
             Source(
                 ref_id="src2",
                 name="Drugie zasilanie",
-                bus_ref="druga_szyna_zrodlowa",
+                bus_ref="szyna_ktorej_nie_ma",
                 model="thevenin",
                 r_ohm=1.0,
                 x_ohm=1.0,

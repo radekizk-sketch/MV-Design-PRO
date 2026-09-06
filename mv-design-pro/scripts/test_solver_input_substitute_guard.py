@@ -1095,9 +1095,16 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # miejscem podstawienia; nowy plik `network_model/core/topologia.py` (jadro
     # algorytmow, zero pol kontraktow) wchodzi do zakresu skanu (+1 plik). Zapadka
     # dlugu i wykluczenia bez zmian (pomiar guarda na drzewie K3).
-    assert "Pol kontraktow wejsciowych: 3606." in wyjscie, wyjscie
+    # 3610 pol / 577 plikow (CV-4.3 K3b, 2026-09-06): kontrakty ZLOZENIA assemblera
+    # rozszerzone o rozplyw per wyspa — `WyspaRozplywu` (slack_node_id, zrodlo_ref,
+    # szyny, wezly, pf_input), `WejscieRozplywu.wyspy/pq_specs/pv_specs`,
+    # `WejscieZwarcia.wezly_bez_odniesienia` (4 nowe nazwy w zbiorze; reszta juz
+    # liczona) — to wyjscia zlozenia z migawki, nie miejsca podstawienia; nowy plik
+    # `enm/rozplyw_wysp.py` (scalanie rozwiazan wysp, zero pol kontraktow) wchodzi do
+    # zakresu skanu (+1 plik w korzeniu enm). Zapadka dlugu i wykluczenia bez zmian.
+    assert "Pol kontraktow wejsciowych: 3610." in wyjscie, wyjscie
     assert (
-        "Przeskanowano 576 plikow w zakresie: network_model, solver_input, enm, "
+        "Przeskanowano 577 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     assert "Zapadka dlugu (fizyczne): 63 plikow, suma 291." in wyjscie, wyjscie
@@ -1106,7 +1113,7 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         "  network_model: pliki_skanowane=146, dlug=14 plikow/suma 77, "
         "wykluczenia=4 plikow/suma 7",
         "  solver_input: pliki_skanowane=10, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
-        "  enm: pliki_skanowane=37, dlug=8 plikow/suma 85, wykluczenia=0 plikow/suma 0",
+        "  enm: pliki_skanowane=38, dlug=8 plikow/suma 85, wykluczenia=0 plikow/suma 0",
         "  application: pliki_skanowane=318, dlug=36 plikow/suma 115, "
         "wykluczenia=7 plikow/suma 19",
         "  api: pliki_skanowane=65, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 23",

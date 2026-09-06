@@ -694,6 +694,25 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         message_pl="Źródło zasilania nie jest podłączone do szyny",
         fix_navigation={"panel": "inspector", "tab": "polaczenia"},
     ),
+    # CV-4.3 K3b (A3-05): rozpływ liczy jedną szynę bilansującą na wyspę; dwa źródła
+    # sieciowe w JEDNEJ wyspie (praca równoległa dwóch GPZ przez zamknięte sprzęgło)
+    # wymagają polityki rozdziału mocy między nimi (OD-7 właściciela) — do tego czasu
+    # jawna odmowa: emiter w bramce gotowości (`calculation_readiness/service.py::
+    # _check_power_flow`) i w assemblerze (`enm/assembler.py::zloz_wejscie_rozplywu`),
+    # oba z tej samej `TopologyView`. Zwarcie IEC 60909 NIE jest blokowane (każde
+    # źródło wchodzi do Y-bus jako bocznik Y_Q — superpozycja).
+    "source.multiple_grid_sources_in_island": ReadinessCodeSpec(
+        code="source.multiple_grid_sources_in_island",
+        area=ReadinessArea.SOURCES,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Dwa lub więcej źródeł sieciowych w jednej wyspie — rozpływ mocy wymaga "
+            "jednej szyny bilansującej na wyspę (otwórz sprzęgło albo pozostaw jedno "
+            "źródło sieciowe w wyspie)"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "polaczenia"},
+    ),
     # Topology
     "trunk.terminal_missing": ReadinessCodeSpec(
         code="trunk.terminal_missing",

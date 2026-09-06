@@ -274,39 +274,37 @@ def widoki() -> list[tuple[str, EnergyNetworkModel, TopologyView]]:
 
 
 def _graf_ir(enm: EnergyNetworkModel, widok: TopologyView, nazwa: str):
-    """IR z migawki albo ``None``, gdy tor kanoniczny ODMAWIA sieci z więcej niż jednym
-    źródłem sieciowym (``NetworkGraph._validate_single_slack``) — pomiar klasy A3-05
-    (slack per wyspa, CV-4.3): odmowa jest przypięta do przyczyny, nie przemilczana."""
-    try:
-        return map_enm_to_network_graph(enm)
-    except ValueError as blad:
-        assert "SLACK" in str(blad), (nazwa, blad)
-        zrodla = sum(len(w.zrodla_sieciowe) for w in widok.wyspy)
-        assert zrodla >= 2, (nazwa, zrodla)
-        return None
+    """IR z migawki — od CV-4.3 K3b (A3-05) dla KAŻDEJ sieci rejestru: IR przyjmuje
+    po jednym węźle SLACK na źródło sieciowe (do K3b `NetworkGraph.add_node`
+    odmawiał drugiego SLACK i 4 sieci rejestru z dwoma GPZ nie miały IR wcale).
+    Szyny SLACK grafu == szyny źródeł sieciowych z ``TopologyView`` (parytet)."""
+    graph = map_enm_to_network_graph(enm)
+    zrodla_szyn = {
+        _ref_to_uuid(zrodlo.bus_ref) for zrodlo in enm.sources if zrodlo.bus_ref in widok.szyny
+    }
+    assert set(graph.get_slack_node_ids()) == zrodla_szyn, nazwa
+    return graph
 
 
 def test_parytet_wysp_z_networkgraph_ir_dla_calego_rejestru(widoki) -> None:
     assert len(widoki) >= 40
-    odmowy: list[str] = []
+    # Pomiar A3-05 (2026-09-05): 4 sieci rejestru z dwoma GPZ (G04/04, G05/04 — osobne
+    # wyspy; G04/05, G05/05 — jedna wyspa) — po K3b IR istnieje dla wszystkich, odmowa
+    # dwóch źródeł w jednej wyspie należy do assemblera rozpływu, nie do IR.
+    z_wieloma_zrodlami = 0
     for nazwa, enm, widok in widoki:
         graph = _graf_ir(enm, widok, nazwa)
-        if graph is None:
-            odmowy.append(nazwa)
-            continue
+        if sum(len(w.zrodla_sieciowe) for w in widok.wyspy) >= 2:
+            z_wieloma_zrodlami += 1
         oczekiwane = {frozenset(w) for w in graph.find_islands()}
         otrzymane = {frozenset(_ref_to_uuid(s) for s in w.szyny) for w in widok.wyspy}
         assert otrzymane == oczekiwane, nazwa
-    # pomiar zastany (2026-09-05): sieci rejestru z dwoma źródłami sieciowymi, których tor
-    # kanoniczny dziś odmawia — A3-05 ma je rozwiązać; liczba może tylko maleć
-    assert len(odmowy) <= 4, odmowy
+    assert z_wieloma_zrodlami >= 4
 
 
 def test_parytet_wezlow_topologicznych_ze_scalaniem_macierzy_y(widoki) -> None:
     for nazwa, enm, widok in widoki:
         graph = _graf_ir(enm, widok, nazwa)
-        if graph is None:
-            continue
         _reprezentanci, wezel_do_indeksu = AdmittanceMatrixBuilder(graph)._build_merged_node_map()
         klasy_ir: dict[int, set[str]] = {}
         for wezel, indeks in wezel_do_indeksu.items():

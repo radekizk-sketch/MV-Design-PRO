@@ -21,6 +21,7 @@ from typing import Any, Literal
 
 from enm.mapping import FULL_CONVERTER_SC_GEN_TYPES
 from enm.models import EnergyNetworkModel
+from enm.topology import derive
 from pydantic import BaseModel, Field
 
 CalculationType = Literal[
@@ -133,6 +134,23 @@ def _check_power_flow(enm: EnergyNetworkModel) -> ReadinessTypeReport:
         missing.append("co najmniej 1 szyna")
         blockers.append("project")
         has_critical_blocker = True
+    # CV-4.3 K3b (A3-05): jedna szyna bilansująca na wyspę. Dwa źródła sieciowe w
+    # JEDNEJ wyspie (np. dwa GPZ spięte zamkniętym sprzęgłem) => BLOCKER
+    # `source.multiple_grid_sources_in_island` — ta sama `TopologyView`
+    # (`enm/topology.py::derive`), z której assembler odmawia złożenia wejścia
+    # (`enm/assembler.py::OdmowaWejsciaRozplywu`): bramka i wykonawca czytają jeden
+    # predykat. Źródła w OSOBNYCH wyspach nie blokują (rozpływ per wyspa).
+    if enm.sources and enm.buses:
+        for wyspa in derive(enm).wyspy:
+            if len(wyspa.zrodla_sieciowe) > 1:
+                missing.append(
+                    "jedno źródło sieciowe na wyspę — w wyspie szyn "
+                    f"{', '.join(wyspa.szyny[:5])}{', …' if len(wyspa.szyny) > 5 else ''} "
+                    f"są źródła {', '.join(wyspa.zrodla_sieciowe)} "
+                    "(kod 'source.multiple_grid_sources_in_island')"
+                )
+                blockers.extend(wyspa.zrodla_sieciowe)
+                has_critical_blocker = True
     for ld in enm.loads:
         if ld.p_mw is None:
             missing.append(f"P odbioru '{ld.name}'")
