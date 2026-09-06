@@ -1,5 +1,24 @@
 """Wspolbieznosc koncowek API — miara „done" osi wspolbieznosci programu 10x.
 
+KARTA CV-4.3-A4 (K5.1, 2026-09-06). Plik mierzyl pierwotnie `POST /api/cases/
+{id}/runs/{power-flow,short-circuit}` (`api/enm.py`) — trasy skasowane
+procedura siedmiu krokow (0 konsumentow produkcyjnych; ZNALEZISKO PRZY OKAZJI
+tej samej karty: ten plik NIE zostal policzony w pierwotnym pomiarze
+konsumentow testowych karty, bo adres koncowki budowal Sie Z ZMIENNEJ
+parametryzacji [`f"/api/cases/{{case_id}}/runs/{{sciezka}}"`], nie z literalu —
+grep po literalnym `runs/short-circuit`/`runs/power-flow` go nie widzial; pelny
+`pytest` zlapal luke, ktorej grep nie mogl). Wlasnosc pod pomiarem (koncowka z
+BLOKUJACYM wnetrzem nie moze dusic petli zdarzen) przenosi sie WPROST na tor
+kanoniczny: `execute_run` (`api/execution_runs.py`) jest funkcja PLAIN `def`
+(nie `async def`) — FastAPI sam odklada taka funkcje do puli watkow (ten sam
+mechanizm bazowy, z ktorego korzystala `run_power_flow` PRZED karta; `run_
+short_circuit` byla `async def` z RECZNYM `run_in_threadpool` w srodku, bo
+potrzebowala `await request.json()` — `execute_run` nie czyta ciala zadania,
+wiec nie ma tego ograniczenia). Fizyka solvera zyje WYLACZNIE w kroku
+`execute` (`create_run` tylko waliduje migawke i liczy hash — bez solvera),
+wiec TO WLASNIE `execute` jest oknem pomiaru; `create_run` jest przygotowaniem
+poza oknem, analogicznie do `_zasiej`.
+
 CO TEN TEST PILNUJE. Projektant w JEDNEJ sesji odpala kilka analiz rownolegle
 (rozplyw + zwarcia) i czyta model — UI ma pozostac responsywne. Koncowka
 zdefiniowana jako `async def` z BLOKUJACYM wnetrzem (solver CPU, sync
@@ -276,33 +295,17 @@ def _bez_tozsamosci_biegu(wartosc: object) -> object:
     return wartosc
 
 
-def _odcisk(payload: dict, klucz_wyniku: str) -> str:
+def _odcisk(payload: dict) -> str:
     """Odcisk WYNIKU FIZYKI — bez pol z natury zmiennych miedzy biegami.
 
-    `run_id` (losowy UUID) i `enm_revision` (rosnie przy kazdym zapisie modelu)
-    NIE sa wynikiem solvera; ich udzial w odcisku zamienilby test determinizmu w
-    test generatora UUID. To samo dotyczy `proof_ref` ZAGNIEZDZONEGO w wyniku —
-    jest liczony z `run_id`, wiec niesie tozsamosc biegu, a nie jego fizyke.
-    Porownujemy to, co ma byc identyczne: prady, napiecia, moce, straty, slady
-    White Box i hash modelu wejsciowego.
+    `proof_ref` ZAGNIEZDZONY w wierszach jest liczony z `run.id` (losowy UUID4
+    nadawany przez `create_run` kazdemu biegowi, niezaleznie od tego, czy bieg
+    jest szeregowy czy rownolegly), wiec niesie tozsamosc biegu, a nie jego
+    fizyke — zostawienie go zamienialoby test determinizmu w test generatora
+    UUID. Porownujemy to, co ma byc identyczne: prady, napiecia, moce, straty,
+    slady White Box.
     """
-    return json.dumps(
-        {
-            "enm_hash": payload["enm_hash"],
-            "input_hash": payload["input_hash"],
-            "wynik": _bez_tozsamosci_biegu(payload[klucz_wyniku]),
-        },
-        sort_keys=True,
-        ensure_ascii=False,
-    )
-
-
-def _odcisk_rozplywu(payload: dict) -> str:
-    return _odcisk(payload, "result")
-
-
-def _odcisk_zwarcia(payload: dict) -> str:
-    return _odcisk(payload, "results")
+    return json.dumps(_bez_tozsamosci_biegu(payload), sort_keys=True, ensure_ascii=False)
 
 
 #: Rodzaje biegow objete offloadem — kazdy MUSI udowodnic wspolbieznosc OSOBNO.
@@ -318,15 +321,41 @@ RODZAJE_BIEGOW = (
 )
 
 
-def _uruchom_bieg(client: TestClient, case_id: str, sciezka: str):
-    """Jedno wywolanie biegu — `short-circuit` czyta cialo zadania, `power-flow` nie."""
+#: `sciezka` ("power-flow"/"short-circuit", nazwy zachowane po skasowanej
+#: trasie dla czytelnosci parametryzacji) -> `analysis_type` toru kanonicznego.
+_TYP_ANALIZY = {"power-flow": "LOAD_FLOW", "short-circuit": "SC_3F"}
+
+
+def _stworz_bieg(client: TestClient, case_id: str, sciezka: str) -> str:
+    """Utworz bieg (create) — POZA oknem pomiaru.
+
+    `create_run` waliduje migawke i liczy hash; fizyka solvera zyje WYLACZNIE
+    w `execute_run` (`_wykonaj_analize_biegu`) — to `execute` jest krokiem pod
+    pomiarem tego pliku, nie `create`.
+    """
+    odp = client.post(
+        f"/api/execution/study-cases/{case_id}/runs",
+        json={"analysis_type": _TYP_ANALIZY[sciezka]},
+    )
+    assert odp.status_code == 201, odp.text
+    return odp.json()["id"]
+
+
+def _wykonaj_bieg(client: TestClient, run_id: str):
+    """Wykonaj bieg — TO JEST okno pomiaru (jedyne miejsce, gdzie solver liczy)."""
+    return client.post(f"/api/execution/runs/{run_id}/execute")
+
+
+def _wyniki_biegu(client: TestClient, run_id: str, sciezka: str) -> dict:
+    """Pobierz wynik fizyki UKONCZONEGO biegu — POZA oknem pomiaru (czyste
+    odczyty juz policzonych danych, bez solvera)."""
     if sciezka == "short-circuit":
-        return client.post(f"/api/cases/{case_id}/runs/{sciezka}", json={})
-    return client.post(f"/api/cases/{case_id}/runs/{sciezka}")
-
-
-def _odcisk_dla(sciezka: str, payload: dict) -> str:
-    return _odcisk_zwarcia(payload) if sciezka == "short-circuit" else _odcisk_rozplywu(payload)
+        odp = client.get(f"/api/analysis-runs/{run_id}/results/short-circuit")
+        assert odp.status_code == 200, odp.text
+        return odp.json()["rows"]
+    odp = client.get(f"/api/power-flow-runs/{run_id}/results")
+    assert odp.status_code == 200, odp.text
+    return odp.json()
 
 
 def test_biegi_rownolegle_sa_deterministyczne(client: TestClient) -> None:
@@ -349,13 +378,27 @@ def test_biegi_rownolegle_sa_deterministyczne(client: TestClient) -> None:
 
     sciezki = [RODZAJE_BIEGOW[i % 2][1] for i in range(K_ROWNOLEGLYCH)]
 
+    # Bieg wykonuje sie DOKLADNIE RAZ (execute jest idempotentny — drugie
+    # wywolanie na tym samym run_id nie liczy solvera ponownie), a test
+    # potrzebuje DWOCH niezaleznych wykonan tej samej sieci (raz szeregowo, raz
+    # rownolegle) — stad DWA `create_run` na przypadek, oba POZA oknem pomiaru
+    # (`_stworz_bieg` nie dotyka solvera, patrz docstring modulu).
+    biegi_szeregowe = [
+        _stworz_bieg(client, case_id, sciezka)
+        for case_id, sciezka in zip(przypadki, sciezki, strict=False)
+    ]
+    biegi_rownolegle = [
+        _stworz_bieg(client, case_id, sciezka)
+        for case_id, sciezka in zip(przypadki, sciezki, strict=False)
+    ]
+
     # --- Odniesienie: ten sam zestaw zadan wykonany SZEREGOWO ---------------
     wzorce: dict[str, str] = {}
     start_szeregowo = time.perf_counter()
-    for case_id, sciezka in zip(przypadki, sciezki, strict=False):
-        odp = _uruchom_bieg(client, case_id, sciezka)
+    for case_id, sciezka, run_id in zip(przypadki, sciezki, biegi_szeregowe, strict=False):
+        odp = _wykonaj_bieg(client, run_id)
         assert odp.status_code == 200, odp.text
-        wzorce[case_id] = _odcisk_dla(sciezka, odp.json())
+        wzorce[case_id] = _odcisk(_wyniki_biegu(client, run_id, sciezka))
         assert client.get(f"/api/cases/{case_id}/enm/readiness").status_code == 200
     czas_szeregowo = time.perf_counter() - start_szeregowo
 
@@ -363,10 +406,10 @@ def test_biegi_rownolegle_sa_deterministyczne(client: TestClient) -> None:
     wyniki: dict[str, str] = {}
     zamek = threading.Lock()
 
-    def zadanie(para: tuple[str, str]) -> int:
-        case_id, sciezka = para
-        odp = _uruchom_bieg(client, case_id, sciezka)
-        odcisk = _odcisk_dla(sciezka, odp.json()) if odp.status_code == 200 else ""
+    def zadanie(trojka: tuple[str, str, str]) -> int:
+        case_id, sciezka, run_id = trojka
+        odp = _wykonaj_bieg(client, run_id)
+        odcisk = _odcisk(_wyniki_biegu(client, run_id, sciezka)) if odp.status_code == 200 else ""
         odczyt = client.get(f"/api/cases/{case_id}/enm/readiness")
         with zamek:
             wyniki[case_id] = odcisk
@@ -375,7 +418,9 @@ def test_biegi_rownolegle_sa_deterministyczne(client: TestClient) -> None:
 
     start_rownolegle = time.perf_counter()
     with ThreadPoolExecutor(max_workers=K_ROWNOLEGLYCH) as pula:
-        kody = list(pula.map(zadanie, list(zip(przypadki, sciezki, strict=False))))
+        kody = list(
+            pula.map(zadanie, list(zip(przypadki, sciezki, biegi_rownolegle, strict=False)))
+        )
     czas_rownolegle = time.perf_counter() - start_rownolegle
 
     # (a) wszystkie 200
@@ -475,11 +520,14 @@ def test_lekkie_zadanie_przechodzi_w_trakcie_biegow(
     najgorszy 3, wobec najgorszego 8 na kodzie poprawnym.
     """
     przypadki = [_nowy_przypadek(client) for _ in range(K_ROWNOLEGLYCH)]
+    biegi: dict[str, str] = {}
     for i, case_id in enumerate(przypadki):
         _zasiej(case_id, f"Siec SN {rodzaj} {i}")
         # Rozgrzewka: pierwszy odczyt modelu wykonuje migracje i uzupelnia dane
         # katalogowe, wiec jest jednorazowo drozszy — nie ma go w pomiarze.
         assert client.get(f"/api/cases/{case_id}/enm/readiness").status_code == 200
+        # `create_run` (bez solvera) POZA oknem pomiaru — patrz docstring modulu.
+        biegi[case_id] = _stworz_bieg(client, case_id, sciezka)
 
     okna_sondy: list[tuple[float, float]] = []
     okna_biegow: list[tuple[float, float]] = []
@@ -498,7 +546,7 @@ def test_lekkie_zadanie_przechodzi_w_trakcie_biegow(
 
     def wykonaj_bieg(case_id: str) -> int:
         start = time.perf_counter()
-        kod = _uruchom_bieg(client, case_id, sciezka).status_code
+        kod = _wykonaj_bieg(client, biegi[case_id]).status_code
         with zamek:
             okna_biegow.append((start, time.perf_counter()))
         return kod
@@ -577,10 +625,14 @@ def test_odczyt_nie_czeka_na_bieg_analizy(client: TestClient, rodzaj: str, sciez
     def probka() -> tuple[bool, bool]:
         """(czy okna sie nalozyly, czy odczyt skonczyl sie przed biegiem)."""
         znaczniki: dict[str, tuple[float, float]] = {}
+        # `create_run` (bez solvera) POZA oknem pomiaru, PRZED wyscigiem watkow
+        # — patrz docstring modulu; inaczej okno `bieg()` startowaloby pozniej
+        # niz okno `odczyt()` z powodu niezwiazanego z fizyka opoznienia.
+        run_id = _stworz_bieg(client, case_id, sciezka)
 
         def bieg() -> int:
             start = time.perf_counter()
-            odp = _uruchom_bieg(client, case_id, sciezka)
+            odp = _wykonaj_bieg(client, run_id)
             znaczniki["bieg"] = (start, time.perf_counter())
             return odp.status_code
 

@@ -9,8 +9,6 @@ Routes:
   GET  /api/cases/{case_id}/enm/topology/summary → TopologySummary (graph view: adjacency, spine, laterals)
   GET  /api/cases/{case_id}/enm/readiness    → ReadinessMatrix (SC/PF/PR)
   POST /api/cases/{case_id}/enm/ops          → Topology operations (atomic graph CRUD)
-  POST /api/cases/{case_id}/runs/short-circuit → dispatch SC run via ENM
-  POST /api/cases/{case_id}/runs/power-flow    → dispatch PF run via ENM
   GET  /api/cases/{case_id}/enm/lv-domain/{station_ref}
                                               → graf domeny nN (LOD L2, karta T5b)
   GET  /api/cases/{case_id}/enm/lv-domain/{station_ref}/upstream-equivalent
@@ -18,6 +16,16 @@ Routes:
   GET  /api/cases/{case_id}/enm/dziennik-zmian → wpisy dziennika PO wskazanej rewizji
   GET  /api/cases/{case_id}/enm/rewizje/{rewizja}
                                               → migawka modelu DOKLADNIE w tej rewizji
+
+Karta CV-4.3-A4 (K5.1, 2026-09-06): `POST /api/cases/{case_id}/runs/short-circuit`
+i `.../runs/power-flow` USUNIETE procedura siedmiu krokow — 0 konsumentow
+produkcyjnych (jedyny byl e2e nazywajacy je wprost "legacy" we wlasnym kodzie).
+Tor kanoniczny: `POST /api/execution/study-cases/{case_id}/runs` (`analysis_type=
+SC_3F/SC_1F/SC_2F/SC_2F_G/LOAD_FLOW`) -> `POST /api/execution/runs/{id}/execute`
+-> `GET /api/analysis-runs/{run_id}/results/...` (`api/execution_runs.py`,
+`api/analysis_runs.py`). `run_short_circuit_now`/`run_power_flow_now`
+(`enm/canonical_analysis.py`) zostaja — maja innych wolajacych bezposrednich
+(testy silnika, `tests/e2e/test_nn_full_chain.py`) niezaleznych od tej trasy.
 """
 
 from __future__ import annotations
@@ -65,16 +73,11 @@ from domain.readiness_bridge import opis_kanoniczny
 from enm.canonical_analysis import (
     get_run as _get_canonical_run,
 )
-from enm.canonical_analysis import (
-    run_power_flow_now,
-    run_short_circuit_now,
-    wiersze_swiezego_biegu_bez_rozplywu,
-)
 from enm.dziennik_zmian import wpisy_od as wpisy_dziennika_od
 from enm.hash import compute_enm_hash
 from enm.models import EnergyNetworkModel
 from enm.rewizje import RewizjaNieistniejeError, RewizjaUszkodzonaError
-from enm.severity import empty_severity_counts, is_failed_status
+from enm.severity import empty_severity_counts
 from enm.store import ZrodloZmiany, blokada_twin
 from enm.store import checkout as _checkout_rewizji
 from enm.store import get_enm as _get_enm
@@ -97,9 +100,8 @@ from enm.topology_ops import (
     update_protection,
 )
 from enm.v2_projection import project_enm_v1_to_v2
-from enm.validator import ENMValidator, ValidationResult
+from enm.validator import ENMValidator
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
@@ -110,19 +112,6 @@ router = APIRouter(prefix="/api/cases", tags=["enm"])
 class WizardStepRequestModel(BaseModel):
     step_id: str
     data: dict[str, Any] = Field(default_factory=dict)
-
-
-def _wczytaj_i_zwaliduj(klucz: str) -> tuple[EnergyNetworkModel, ValidationResult]:
-    """Odczyt modelu + walidacja — blokujący blok wydzielony do puli wątków.
-
-    Wydzielony, bo `run_in_threadpool` przyjmuje funkcję, a nie fragment ciała.
-    Zwraca model RAZEM z wynikiem walidacji, żeby wołający nie musiał czytać
-    modelu drugi raz (odczyt to IO pliku + uzupełnianie danych katalogowych).
-    `klucz` to klucz magazynu ENM (Canonical Project Twin) — patrz
-    `api/klucz_twin_dep.py`.
-    """
-    enm = _get_enm(klucz)
-    return enm, ENMValidator().validate(enm)
 
 
 def _resolve_project_id(case_id: str, request: Request) -> str | None:
@@ -982,130 +971,6 @@ def _topology_ops_batch_pod_blokada(klucz: str, req: BatchOpsRequest) -> dict[st
         "results": results,
         "error": None,
         "revision": saved.header.revision,
-    }
-
-
-# ---------------------------------------------------------------------------
-# Run dispatch: ENM → NetworkGraph → Solver → Result
-# ---------------------------------------------------------------------------
-
-# Cache: (case_id, enm_hash) → result
-
-
-@router.post("/{case_id}/runs/short-circuit")
-async def run_short_circuit(case_id: str, klucz: KluczTwin, request: Request) -> dict[str, Any]:
-    """
-    Dispatch short-circuit 3F run:
-    1. Load ENM
-    2. Validate (must not FAIL)
-    3. Map ENM → NetworkGraph
-    4. Run solver
-    5. Cache + return
-
-    WSPÓŁBIEŻNOŚĆ: ta końcówka MUSI zostać `async def`, bo czyta treść żądania
-    (`await request.json()`) — końcówka `def` nie ma jak tego wykonać. Blokujące
-    jest natomiast wszystko dookoła: odczyt modelu z pliku, walidacja i bieg
-    solvera IEC 60909 (zmierzone 91,3 ms na sieci 2-szynowej, czyli MINIMALNEJ).
-    Na pętli zdarzeń zatrzymywało to cały proces na czas biegu — kilka analiz
-    puszczonych równolegle wykonywało się szeregowo, a UI zamierało.
-    Dlatego blokujące części idą do puli wątków, a `await` zostaje między nimi.
-
-    KOLEJNOŚĆ ZACHOWANA CO DO KROKU: walidacja biegnie PRZED odczytem treści
-    żądania, dokładnie jak dotąd — model, który nie przechodzi walidacji, kończy
-    się 422 niezależnie od tego, co przyszło w ciele. Rozbicie na dwa wejścia do
-    puli (zamiast jednego obejmującego całość) jest ceną tej wierności.
-    """
-    enm, validation = await run_in_threadpool(_wczytaj_i_zwaliduj, klucz)
-    if is_failed_status(validation.status):
-        raise HTTPException(
-            status_code=422,
-            detail=[i.model_dump(mode="json") for i in validation.issues],
-        )
-
-    try:
-        body = await request.json()
-    except Exception:
-        body = {}
-    allowed_options = {
-        key: body[key]
-        for key in (
-            "fault_type",
-            "short_circuit_type",
-            "c_factor",
-            "thermal_time_seconds",
-            # Karta P0.3b: scenariusz MAX/MIN (c per pasmo IEC 60909 Tab. 1 +
-            # korekta temperaturowa R_θ dla MIN) — addytywne, patrz
-            # enm/canonical_analysis.py::_execute_short_circuit.
-            "scenario",
-        )
-        if isinstance(body, dict) and key in body
-    }
-
-    def _policz() -> dict[str, Any]:
-        # `_resolve_project_id` odpytuje bazę (sync SQLAlchemy) — musi być PO tej
-        # stronie granicy, razem z biegiem. Zostawienie go przed nią byłoby tym
-        # samym defektem, który ta karta usuwa, tyle że mniejszym: pojedyncze
-        # zapytanie zamiast całego biegu, ale wciąż na pętli zdarzeń.
-        run = run_short_circuit_now(
-            case_id=case_id,
-            klucz_twin=klucz,
-            project_id=_resolve_project_id(case_id, request),
-            options=allowed_options,
-            uow_factory=getattr(request.app.state, "uow_factory", None),
-        )
-        # Map ENM → NetworkGraph
-        return {
-            "case_id": case_id,
-            "enm_revision": enm.header.revision,
-            "enm_hash": compute_enm_hash(enm),
-            "analysis_type": (run.raw_result or {}).get("analysis_type", "short_circuit_3f"),
-            "short_circuit_type": (run.raw_result or {}).get("short_circuit_type", "3F"),
-            "reporting_status": (run.raw_result or {}).get("reporting_status"),
-            "proof_status": (run.raw_result or {}).get("proof_status"),
-            "proof_engine_version": (run.raw_result or {}).get("proof_engine_version"),
-            "run_id": str(run.id),
-            "input_hash": run.input_hash,
-            "readiness": run.readiness,
-            # V12K-284: wiersze świeżego biegu BEZ rozpływu gałęziowego inline —
-            # każdy wiersz niesie flagę `branch_contributions_available`, a treść
-            # rozpływu WSKAZANEGO punktu pobiera się końcówką
-            # /api/analysis-runs/{run_id}/results/short-circuit/rozplyw?target_id=…
-            # (ten sam wzorzec co wiersze kanoniczne w V12K-281).
-            "results": wiersze_swiezego_biegu_bez_rozplywu(run),
-        }
-
-    return await run_in_threadpool(_policz)
-
-
-@router.post("/{case_id}/runs/power-flow")
-def run_power_flow(case_id: str, klucz: KluczTwin, request: Request) -> dict[str, Any]:
-    """Dispatch power-flow run from the canonical ENM snapshot."""
-    enm = _get_enm(klucz)
-
-    validator = ENMValidator()
-    validation = validator.validate(enm)
-    if is_failed_status(validation.status):
-        raise HTTPException(
-            status_code=422,
-            detail=[i.model_dump(mode="json") for i in validation.issues],
-        )
-
-    run = run_power_flow_now(
-        case_id=case_id,
-        klucz_twin=klucz,
-        project_id=_resolve_project_id(case_id, request),
-        uow_factory=getattr(request.app.state, "uow_factory", None),
-    )
-    return {
-        "case_id": case_id,
-        "enm_revision": enm.header.revision,
-        "enm_hash": compute_enm_hash(enm),
-        "analysis_type": "power_flow",
-        "run_id": str(run.id),
-        "input_hash": run.input_hash,
-        "readiness": run.readiness,
-        "result": ((run.raw_result or {}).get("result_v1") or {}),
-        "trace": run.power_flow_trace or {},
     }
 
 

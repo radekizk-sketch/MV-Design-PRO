@@ -27,6 +27,7 @@ from application.stability.voltage_trajectory import (
     TrajectoryGenerationParams,
     generate_voltage_trajectory,
 )
+from application.v126_artifacts import build_v126_proof_artifact, build_v126_report_artifact
 from enm.assembler import (
     WejscieRozplywu,
     WyspaRozplywu,
@@ -88,6 +89,8 @@ from network_model.solvers.power_flow_types import (
 )
 from network_model.solvers.short_circuit_core import ShortCircuitType
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver
+from network_model.solvers.v126_academic import V126AcademicSolver
+from solver_input.v126_contracts import V126AcademicInput, V126AnalysisType
 
 
 def _canonicalize(value: Any) -> Any:
@@ -473,6 +476,15 @@ def _execution_analysis_type_for_run(run: CanonicalRun) -> str:
         return "SOURCE_COMPLIANCE"
     if run.analysis_type == "protection_sn":
         return "PROTECTION"
+    if run.analysis_type.startswith("v126:"):
+        # CV-4.3-A4 (K5.2): biegi V12.6 dzielą odtąd rejestr R1 z resztą
+        # analiz (dawniej: słownik `_runs` osobny, poza tym mapowaniem w
+        # ogóle). Listing ogólny (`GET /api/execution/study-cases/{id}/runs`,
+        # `to_execution_dict()`) MUSI umieć nazwać wiersz V12.6 zamiast
+        # wywalać CAŁĄ listę biegów przypadku wyjątkiem — żaden aktywny człon
+        # `ExecutionAnalysisType` (FROZEN, `domain/execution.py`) nie ma
+        # odpowiednika V12.6, więc etykieta jest własna, nie z tego wyliczenia.
+        return f"V126_{run.analysis_type.removeprefix('v126:').upper()}"
     raise ValueError(f"Unsupported canonical analysis type: {run.analysis_type}")
 
 
@@ -832,7 +844,16 @@ def create_run(
     validation = validator.validate(enm_liczony)
     readiness = validator.readiness(validation)
 
-    if validation.status == "FAIL":
+    # CV-4.3-A4 (K5.2, 2026-09-06): V12.6 Academic NIE jest siecia Kirchhoffa
+    # (Source->Thevenin->rozplyw/zwarcie) — model wejsciowy solvera przyjmuje
+    # wprost `fault_level_mva` na szynie i innego rodzaju parametry akademickie
+    # bez pelnego lancucha zasilania, wiec NIGDY nie przechodzil przez
+    # `enm/assembler.py`/`ENMValidator` (jedyna bramka historyczna, zachowana w
+    # trasie: model musi miec co najmniej jedna szyne). Dolaczenie V12.6 do
+    # wspolnego rejestru biegow (R1) nie ma prawa PODNIESC wymagan modelowych
+    # analiz akademickich ponad ten historyczny stan — wyjatek jest JAWNY,
+    # nazwany, i dotyczy WYLACZNIE `analysis_type` z prefiksem "v126:".
+    if validation.status == "FAIL" and not analysis_type.startswith("v126:"):
         messages = [issue.message_pl for issue in validation.issues if issue.severity == "BLOCKER"]
         raise ValueError("; ".join(messages) or "Model sieci nie przeszedl walidacji")
 
@@ -959,6 +980,8 @@ def _wykonaj_analize_biegu(
         _execute_source_compliance(run)
     elif run.analysis_type == "protection_sn":
         _execute_protection(run, uow_factory)
+    elif run.analysis_type.startswith("v126:"):
+        _execute_v126(run)
     else:
         raise ValueError(f"Unsupported analysis type: {run.analysis_type}")
 
@@ -1594,6 +1617,48 @@ def _execute_source_compliance(run: CanonicalRun) -> None:
         },
     ]
     run.power_flow_trace = None
+
+
+def _execute_v126(run: CanonicalRun) -> None:
+    """Wykonawca V12.6 Academic (CV-4.3-A4, K5.2) — adapter do solvera FROZEN
+    `V126AcademicSolver`, zero fizyki tutaj.
+
+    Model wejsciowy solvera (`V126AcademicInput`) jest JUZ ZBUDOWANY przez
+    wolajacego (trasa `api/v126_academic.py::run_v126_analysis` skleja ENM
+    committed + parametry przypadku PRZED utworzeniem biegu — model V12.6 jest
+    luzniejszy niz siec elektryczna Kirchhoffa, np. przyjmuje `fault_level_mva`
+    wprost na szynie zamiast lancucha Source->Thevenin, wiec nigdy nie
+    przechodzil przez `enm/assembler.py`; przelozenie go na ten tor byloby
+    fabrykacja wymagan, ktorych V12.6 nigdy nie mial) i zapisany w
+    `run.options["model"]` — wykonawca WYLACZNIE go odtwarza i woli solver.
+
+    `run.raw_result` dostaje DOKLADNIE ten sam ksztalt `run_record`, ktory do
+    tej karty trzymal slownik `_runs` w pamieci procesu (`run_id`, `case_id`,
+    `analysis_type`, `status`, `created_at`, `input`, `result`,
+    `deterministic_hash`, `proof`, `report`) — 5 tras GET czytaja go bez zadnej
+    zmiany ksztaltu odpowiedzi.
+    """
+    v126_type = run.analysis_type.removeprefix("v126:")
+    analysis_type = V126AnalysisType(v126_type)
+    options = run.options or {}
+    model = V126AcademicInput.model_validate(options["model"])
+    solver = V126AcademicSolver()
+    result = solver.run(analysis_type, model)
+    run_record: dict[str, Any] = {
+        "run_id": str(run.id),
+        "case_id": run.case_id,
+        "analysis_type": analysis_type.value,
+        "status": "FINISHED",
+        "created_at": run.created_at.isoformat(),
+        "input": model.model_dump(mode="json"),
+        "result": result,
+        "deterministic_hash": result["deterministic_hash"],
+    }
+    proof = build_v126_proof_artifact(run_record)
+    report = build_v126_report_artifact(run_record, proof)
+    run_record["proof"] = proof
+    run_record["report"] = report
+    run.raw_result = run_record
 
 
 def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None = None) -> None:

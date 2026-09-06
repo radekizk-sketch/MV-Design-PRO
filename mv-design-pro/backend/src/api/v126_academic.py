@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
 from api.klucz_twin_dep import KluczTwin
 from application.analyses.ssci_stability import build_ssci_stability_view
-from application.v126_artifacts import build_v126_proof_artifact, build_v126_report_artifact
 from domain.canonical_operations import READINESS_CODES
+from enm.canonical_analysis import create_run as _create_canonical_run
+from enm.canonical_analysis import execute_run as _execute_canonical_run
+from enm.canonical_analysis import get_run as _get_canonical_run
 from enm.store import get_enm
 from fastapi import APIRouter, HTTPException, status
 from network_model.solvers.v126_academic import V126AcademicSolver
@@ -27,9 +28,6 @@ from solver_input.v126_contracts import (
 
 router = APIRouter(prefix="/api", tags=["v12.6-academic"])
 
-_solver = V126AcademicSolver()
-_runs: dict[str, dict[str, Any]] = {}
-
 
 class V126RunResponse(BaseModel):
     run_id: str
@@ -43,16 +41,24 @@ class V126RunResponse(BaseModel):
     deterministic_hash: str
 
 
-def _now_iso() -> str:
-    return datetime.now(UTC).isoformat()
-
-
 def _require_run(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, Any]:
-    run = _runs.get(str(run_id))
-    if run is None:
+    """Bieg V12.6 z rejestru kanonicznego R1 (CV-4.3-A4, K5.2).
+
+    Odtąd WSZYSTKIE typy analiz dzielą JEDEN rejestr biegów (`CanonicalRun`) —
+    `run_id` obcy tej rodzinie (np. bieg PF/SC) jest odróżniony po prefiksie
+    `analysis_type` ("v126:"), a nie tylko po nieobecności w słowniku, który do
+    tej karty istniał WYŁĄCZNIE dla V12.6.
+    """
+    canonical_run = _get_canonical_run(run_id)
+    if (
+        canonical_run is None
+        or not canonical_run.analysis_type.startswith("v126:")
+        or canonical_run.raw_result is None
+    ):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Nie znaleziono uruchomienia V12.6."
         )
+    run = canonical_run.raw_result
     if run["analysis_type"] != analysis_type.value:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -162,7 +168,7 @@ def run_v126_analysis(
     # regula wyboru, bez duplikatu), gdy jego Q jest nieznane (ten sam predykat
     # `moc_bierna_wytworcy` co wyzej, przeniesiony do `V126ConverterInput.q_mvar`).
     if analysis_type == V126AnalysisType.SSCI_IMPEDANCE:
-        przeksztaltnik = _solver._ssci_select_converter(model)
+        przeksztaltnik = V126AcademicSolver()._ssci_select_converter(model)
         if przeksztaltnik is not None and przeksztaltnik.q_mvar is None:
             spec = READINESS_CODES["generator.q_missing"]
             raise HTTPException(
@@ -172,32 +178,36 @@ def run_v126_analysis(
                     f"SSCI bez mocy biernej: {przeksztaltnik.ref}"
                 ),
             )
-    result = _solver.run(analysis_type, model)
-    run_id = UUID(hex=result["deterministic_hash"][:32])
-    run_record = {
-        "run_id": str(run_id),
-        "case_id": str(case_id),
-        "analysis_type": analysis_type.value,
-        "status": "FINISHED",
-        "created_at": _now_iso(),
-        "input": model.model_dump(mode="json"),
-        "result": result,
-        "deterministic_hash": result["deterministic_hash"],
-    }
-    proof = build_v126_proof_artifact(run_record)
-    report = build_v126_report_artifact(run_record, proof)
-    run_record["proof"] = proof
-    run_record["report"] = report
-    _runs[str(run_id)] = run_record
+    # CV-4.3-A4 (K5.2, 2026-09-06): bieg V12.6 trafia do rejestru kanonicznego
+    # R1 (`CanonicalRun`) zamiast słownika `_runs` w pamięci procesu — przeżywa
+    # odtąd restart procesu i jest widoczny każdemu workerowi (`tests/test_v126_
+    # canonical_run_persistence.py`). `analysis_type` istniejącego słownika
+    # (`create_run`) rozszerzony o prefiks "v126:<typ>" — NIE nowy rejestr, NIE
+    # nowa tabela. Model już zbudowany powyżej (ENM + parametry przypadku)
+    # wędruje w `options["model"]`; wykonawca `_execute_v126`
+    # (`enm/canonical_analysis.py`) go odtwarza i woli TEN SAM solver FROZEN.
+    run = _create_canonical_run(
+        case_id=str(case_id),
+        klucz_twin=klucz,
+        analysis_type=f"v126:{analysis_type.value}",
+        options={"model": model.model_dump(mode="json")},
+    )
+    run = _execute_canonical_run(run.id)
+    if run.status == "FAILED" or run.raw_result is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=run.error_message or "Bieg V12.6 nie powiódł się.",
+        )
+    result = run.raw_result["result"]
     return V126RunResponse(
-        run_id=str(run_id),
+        run_id=str(run.id),
         case_id=str(case_id),
         analysis_type=analysis_type,
         status="FINISHED",
-        result_url=f"/api/analysis-runs/{run_id}/results/v126/{analysis_type.value}",
-        trace_url=f"/api/analysis-runs/{run_id}/results/v126/{analysis_type.value}/trace",
-        proof_url=f"/api/analysis-runs/{run_id}/results/v126/{analysis_type.value}/proof",
-        report_url=f"/api/analysis-runs/{run_id}/results/v126/{analysis_type.value}/report",
+        result_url=f"/api/analysis-runs/{run.id}/results/v126/{analysis_type.value}",
+        trace_url=f"/api/analysis-runs/{run.id}/results/v126/{analysis_type.value}/trace",
+        proof_url=f"/api/analysis-runs/{run.id}/results/v126/{analysis_type.value}/proof",
+        report_url=f"/api/analysis-runs/{run.id}/results/v126/{analysis_type.value}/report",
         deterministic_hash=result["deterministic_hash"],
     )
 

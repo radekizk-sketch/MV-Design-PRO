@@ -1,5 +1,6 @@
 """Tests for ENM API read/validate/run/domain-ops endpoints."""
 
+from typing import Any
 from uuid import uuid4
 
 import pytest
@@ -253,171 +254,249 @@ class TestENMValidate:
         assert data["analysis_available"]["short_circuit_3f"] is True
 
 
+def _run_app(uow_factory) -> TestClient:
+    """Aplikacja testowa z torem KANONICZNYM uruchomienia (K5.1, CV-4.3-A4).
+
+    `POST /api/cases/{id}/runs/{short-circuit,power-flow}` (`api/enm.py`) zostały
+    skasowane procedurą siedmiu kroków (0 konsumentów produkcyjnych). `TestRunDispatch`
+    jedzie odtąd torem kanonicznym na TEJ SAMEJ sieci: `POST /api/execution/
+    study-cases/{id}/runs` -> `POST /api/execution/runs/{id}/execute` ->
+    `GET /api/analysis-runs/{run_id}/results/short-circuit` (+ `/trace` dla White Box).
+    """
+    from api.analysis_runs import router as analysis_runs_router
+    from api.execution_runs import router as execution_runs_router
+
+    test_app = FastAPI()
+    test_app.include_router(enm_router)
+    # Ścieżki obu routerów są już pełne (`/api/execution/...`, `/api/analysis-runs/...`)
+    # — ten sam wzorzec montażu co `api/main.py` (bez dodatkowego prefiksu).
+    test_app.include_router(execution_runs_router)
+    test_app.include_router(analysis_runs_router, prefix="/api")
+    test_app.state.uow_factory = uow_factory
+    return TestClient(test_app)
+
+
+def _create_and_execute(
+    client: TestClient, case_id: str, analysis_type: str, solver_input: dict | None = None
+):
+    """Bieg kanoniczny: create -> execute. Zwraca (odpowiedź create, odpowiedź execute)."""
+    body: dict[str, Any] = {"analysis_type": analysis_type, "solver_input": solver_input or {}}
+    utworzony = client.post(f"/api/execution/study-cases/{case_id}/runs", json=body)
+    if utworzony.status_code != 201:
+        return utworzony, None
+    run_id = utworzony.json()["id"]
+    wykonany = client.post(f"/api/execution/runs/{run_id}/execute")
+    return utworzony, wykonany
+
+
+def _sc_rows(client: TestClient, run_id: str) -> list[dict]:
+    resp = client.get(f"/api/analysis-runs/{run_id}/results/short-circuit")
+    assert resp.status_code == 200, resp.text
+    return resp.json()["rows"]
+
+
+def _trace_steps(client: TestClient, run_id: str) -> list[dict]:
+    resp = client.get(f"/api/analysis-runs/{run_id}/trace")
+    assert resp.status_code == 200, resp.text
+    return resp.json()["trace"]
+
+
 class TestRunDispatch:
-    def test_run_fails_on_empty_enm(self, client):
+    def test_run_fails_on_empty_enm(self, uow_factory):
+        client = _run_app(uow_factory)
         case_id = _nowy_przypadek(client)
         client.get(f"/api/cases/{case_id}/enm")
-        response = client.post(f"/api/cases/{case_id}/runs/short-circuit")
-        assert response.status_code == 422
+        # Tor kanoniczny odmawia CONFLICT (409), nie 422: `create_run` podnosi
+        # `ValueError` dla modelu bez blokerów walidacji (E001 brak źródła,
+        # E002 brak szyn), a `execution_runs.py::create_run` mapuje go na 409
+        # (ten sam kontrakt co `tests/test_execution_api.py` dla przypadku bez
+        # zasianego ENM — 422 było WYŁĄCZNIE konwencją skasowanej trasy `enm.py`).
+        utworzony, _ = _create_and_execute(client, case_id, "SC_3F")
+        assert utworzony.status_code == 409, utworzony.text
 
-    def test_run_succeeds_on_valid_enm(self, client):
+    def test_run_succeeds_on_valid_enm(self, uow_factory):
+        client = _run_app(uow_factory)
         case_id = _nowy_przypadek(client)
         _seed_enm(client, case_id, _valid_enm_payload("SC Test"))
-        response = client.post(f"/api/cases/{case_id}/runs/short-circuit")
-        assert response.status_code == 200
-        data = response.json()
-        assert data["analysis_type"] == "short_circuit_3f"
-        assert len(data["results"]) >= 1
-        assert data["results"][0]["ikss_a"] > 0
 
-    def test_run_dispatch_ignores_client_snapshot_body(self, client):
+        utworzony, wykonany = _create_and_execute(client, case_id, "SC_3F")
+        assert utworzony.status_code == 201, utworzony.text
+        assert wykonany.status_code == 200, wykonany.text
+        assert wykonany.json()["status"] == "DONE"
+
+        rows = _sc_rows(client, utworzony.json()["id"])
+        assert len(rows) >= 1
+        assert rows[0]["ikss_ka"] > 0
+
+    def test_run_dispatch_ignores_client_snapshot_body(self, uow_factory):
+        """Ciało żądania nie może wstrzyknąć modelu innego niż committed ENM.
+
+        Kontrakt `CreateRunRequest` (Pydantic) czyta WYŁĄCZNIE `analysis_type`/
+        `solver_input` — dowolne inne klucze najwyższego poziomu są strukturalnie
+        odrzucane przez walidację schematu (nie "po cichu ignorowane w kodzie
+        handlera" jak w skasowanej trasie, tylko niedopuszczalne dla samego
+        kształtu ciała), a ENM do biegu ZAWSZE pochodzi z `get_enm(klucz_twin)`
+        wewnątrz `create_run` — ten sam fakt architektoniczny, silniejsza gwarancja.
+        """
+        client = _run_app(uow_factory)
         case_id = _nowy_przypadek(client)
         _seed_enm(client, case_id, _valid_enm_payload("Committed ENM"))
 
-        response = client.post(
-            f"/api/cases/{case_id}/runs/short-circuit",
+        utworzony = client.post(
+            f"/api/execution/study-cases/{case_id}/runs",
             json={
+                "analysis_type": "SC_3F",
+                "solver_input": {},
                 "snapshot": {"header": {"name": "Wstrzykniety draft"}, "buses": []},
                 "enm": {"buses": [], "sources": []},
                 "buses": [],
             },
         )
+        assert utworzony.status_code == 201, utworzony.text
+        wykonany = client.post(f"/api/execution/runs/{utworzony.json()['id']}/execute")
+        assert wykonany.status_code == 200, wykonany.text
 
-        assert response.status_code == 200
-        data = response.json()
-        assert data["case_id"] == case_id
-        assert data["analysis_type"] == "short_circuit_3f"
-        assert len(data["results"]) >= 1
-        assert data["results"][0]["ikss_a"] > 0
+        rows = _sc_rows(client, utworzony.json()["id"])
+        assert len(rows) >= 1
+        assert rows[0]["ikss_ka"] > 0
 
-    def test_run_dispatch_accepts_fault_type_1f_without_accepting_enm_draft(self, client):
+    def test_run_dispatch_accepts_fault_type_1f_without_accepting_enm_draft(self, uow_factory):
+        client = _run_app(uow_factory)
         case_id = _nowy_przypadek(client)
         _seed_enm(client, case_id, _valid_enm_payload_with_z0("Committed ENM Z0"))
 
-        response = client.post(
-            f"/api/cases/{case_id}/runs/short-circuit",
-            json={
-                "fault_type": "1F",
-                "snapshot": {"header": {"name": "Wstrzykniety draft"}, "buses": []},
-                "enm": {"buses": [], "sources": []},
-            },
-        )
+        utworzony, wykonany = _create_and_execute(client, case_id, "SC_1F")
+        assert utworzony.status_code == 201, utworzony.text
+        assert wykonany.status_code == 200, wykonany.text
+        run_id = utworzony.json()["id"]
 
-        assert response.status_code == 200
-        data = response.json()
-        assert data["analysis_type"] == "short_circuit_1f"
-        assert data["short_circuit_type"] == "1F"
-        assert len(data["results"]) >= 1
-        assert data["results"][0]["short_circuit_type"] == "1F"
-        assert data["results"][0]["reporting_status"] == "reportable"
-        assert data["results"][0]["proof_status"] == "complete"
-        assert data["results"][0]["proof_ref"].startswith("proof:short-circuit:")
-        assert "z0_ohm" in data["results"][0]["white_box_trace"][0]["inputs"]
+        rows = _sc_rows(client, run_id)
+        assert len(rows) >= 1
+        assert rows[0]["fault_type"] == "1F"
+        assert rows[0]["reporting_status"] == "reportable"
+        assert rows[0]["proof_status"] == "complete"
+        assert rows[0]["proof_ref"].startswith("proof:short-circuit:")
 
-    def test_run_dispatch_accepts_fault_type_2fg_with_reportable_proof(self, client):
+        kroki = _trace_steps(client, run_id)
+        krok_ikss = next(krok for krok in kroki if krok["key"] == "Ikss")
+        assert "z0_ohm" not in krok_ikss["inputs"]  # Ikss nie zależy od Z0 wprost
+        krok_z0 = next((krok for krok in kroki if "z0_ohm" in krok.get("inputs", {})), None)
+        assert krok_z0 is not None, "brak kroku śladu z parametrem z0_ohm dla zwarcia 1F"
+
+    def test_run_dispatch_accepts_fault_type_2fg_with_reportable_proof(self, uow_factory):
+        client = _run_app(uow_factory)
         case_id = _nowy_przypadek(client)
         _seed_enm(client, case_id, _valid_enm_payload_with_z0("Committed ENM Z0"))
 
-        response = client.post(
-            f"/api/cases/{case_id}/runs/short-circuit",
-            json={"fault_type": "2F+Z"},
-        )
+        # `SC_2F_G` domyślnie ustawia `fault_type="2F+Z"` (`_normalize_solver_input`)
+        # — dokładnie ta wartość, którą skasowana trasa przyjmowała jawnie w ciele.
+        utworzony, wykonany = _create_and_execute(client, case_id, "SC_2F_G")
+        assert utworzony.status_code == 201, utworzony.text
+        assert wykonany.status_code == 200, wykonany.text
+        run_id = utworzony.json()["id"]
 
-        assert response.status_code == 200
-        data = response.json()
-        assert data["analysis_type"] == "short_circuit_2fg"
-        assert data["short_circuit_type"] == "2F+G"
-        assert data["reporting_status"] == "reportable"
-        assert data["proof_status"] == "complete"
-        assert len(data["results"]) >= 1
-        assert data["results"][0]["short_circuit_type"] == "2F+G"
-        assert data["results"][0]["proof_binding"]["z0_source"] == "ENM_COMMITTED"
-        assert data["results"][0]["dopuszczalnosc_raportowa"] is True
+        rows = _sc_rows(client, run_id)
+        assert len(rows) >= 1
+        assert rows[0]["fault_type"] == "2F+G"
+        assert rows[0]["reporting_status"] == "reportable"
+        assert rows[0]["proof_status"] == "complete"
+        assert rows[0]["proof_binding"]["z0_source"] == "ENM_COMMITTED"
+        assert rows[0]["dopuszczalnosc_raportowa"] is True
 
-    def test_run_dispatch_scenario_min_przechodzi_whitelist_opcji(self, client):
-        """Pin whitelisty opcji ``scenario`` (karta P0.3b, odbiór nadzoru).
+    def test_run_dispatch_scenario_min_przechodzi_whitelist_opcji(self, uow_factory):
+        """Pin ``scenario`` przechodzącego przez `solver_input` toru kanonicznego.
 
         Deklaracja bez testu = fałszywa pewność (KLASA-NIE-INSTANCJA §4):
         testy silnika wołają ``_execute_short_circuit`` bezpośrednio, więc
-        usunięcie ``"scenario"`` z whitelisty endpointu zostawiłoby je zielone,
+        zgubienie ``"scenario"`` między API a solverem zostawiłoby je zielone,
         a API po cichu gubiłoby opcję (phantom). Ten test jedzie PEŁNĄ ścieżką
         HTTP i przypina skutek obserwowalny: c_min=1,00 dla sieci SN (>1 kV,
-        IEC 60909 Tab. 1) zamiast domyślnego c_max=1,10.
+        IEC 60909 Tab. 1) zamiast domyślnego c_max=1,10 — czytane z kroku
+        White Box ``Ikss`` (jedyne miejsce, w którym `c_factor` jest publicznie
+        obserwowalny na torze kanonicznym; lista wierszy zbiorczych go nie niesie).
         """
+        client = _run_app(uow_factory)
         case_id = _nowy_przypadek(client)
         _seed_enm(client, case_id, _valid_enm_payload("Committed ENM scenariusz"))
 
-        response_max = client.post(f"/api/cases/{case_id}/runs/short-circuit")
-        assert response_max.status_code == 200
-        rows_max = response_max.json()["results"]
-        assert rows_max and all(row["c_factor"] == 1.10 for row in rows_max)
+        utworzony_max, wykonany_max = _create_and_execute(client, case_id, "SC_3F")
+        assert wykonany_max.status_code == 200, wykonany_max.text
+        run_id_max = utworzony_max.json()["id"]
+        c_factor_max = next(
+            krok for krok in _trace_steps(client, run_id_max) if krok["key"] == "Ikss"
+        )["inputs"]["c_factor"]
+        ikss_max = _sc_rows(client, run_id_max)[0]["ikss_ka"]
+        assert c_factor_max == 1.10
 
-        response_min = client.post(
-            f"/api/cases/{case_id}/runs/short-circuit",
-            json={"scenario": "min"},
+        utworzony_min, wykonany_min = _create_and_execute(
+            client, case_id, "SC_3F", {"scenario": "min"}
         )
-        assert response_min.status_code == 200
-        rows_min = response_min.json()["results"]
-        assert rows_min and all(row["c_factor"] == 1.00 for row in rows_min)
-        assert rows_min[0]["ikss_a"] < rows_max[0]["ikss_a"]
+        assert wykonany_min.status_code == 200, wykonany_min.text
+        run_id_min = utworzony_min.json()["id"]
+        c_factor_min = next(
+            krok for krok in _trace_steps(client, run_id_min) if krok["key"] == "Ikss"
+        )["inputs"]["c_factor"]
+        ikss_min = _sc_rows(client, run_id_min)[0]["ikss_ka"]
 
-    def test_run_response_rows_without_inline_branch_flows(self, client):
-        """V12K-284: świeży bieg zwraca wiersze BEZ rozpływu inline + flagę.
+        assert c_factor_min == 1.00
+        assert ikss_min < ikss_max
 
-        Rozpływ gałęziowy (iloczyn źródło×gałąź per punkt zwarcia) jest treścią
-        na żądanie — odpowiedź POST niesie wyłącznie informację, że istnieje.
+    def test_run_response_rows_without_inline_branch_flows(self, uow_factory):
+        """V12K-284: lista wierszy zbiorczych niesie FLAGĘ dostępności rozpływu,
+        nie sam rozpływ — treść pobiera się na żądanie (`.../rozplyw?target_id=`).
+
+        Kształt kanoniczny (`build_short_circuit_results`, `include_rozplyw=False`
+        domyślnie) niesie klucz `branch_contributions` ZAWSZE, z wartością `None`
+        gdy rozpływ nie jest dołączony — inaczej niż skasowana trasa, która klucz
+        w ogóle POMIJAŁA (`wiersze_swiezego_biegu_bez_rozplywu`). Ten sam fakt
+        fizyczny ("rozpływ nie jest tu, pobierz go osobno"), inny odcisk kontraktu.
         """
+        client = _run_app(uow_factory)
         case_id = _nowy_przypadek(client)
         _seed_enm(client, case_id, _valid_enm_payload("SC slim"))
 
-        response = client.post(f"/api/cases/{case_id}/runs/short-circuit")
+        utworzony, wykonany = _create_and_execute(client, case_id, "SC_3F")
+        assert wykonany.status_code == 200, wykonany.text
 
-        assert response.status_code == 200
-        wiersze = response.json()["results"]
-        assert len(wiersze) >= 1
-        for wiersz in wiersze:
-            assert "branch_contributions" not in wiersz
+        rows = _sc_rows(client, utworzony.json()["id"])
+        assert len(rows) >= 1
+        for wiersz in rows:
+            assert wiersz["branch_contributions"] is None
             assert wiersz["branch_contributions_available"] is True
             # Wielkości zwarciowe wiersza pozostają nietknięte.
-            assert wiersz["ikss_a"] > 0
+            assert wiersz["ikss_ka"] > 0
 
     def test_branch_flows_available_on_demand_for_fresh_run(self, uow_factory):
         """Rozpływ świeżego biegu pobierany końcówką „na żądanie" (parytet treści).
 
-        Bramka trasy: to, czego POST już nie niesie, MUSI być osiągalne przez
-        istniejącą końcówkę rozpływu dla wskazanego punktu zwarcia. Obie trasy
-        w JEDNEJ aplikacji testowej — baza przebiegów jest współdzielona przez
-        jedno połączenie klienta (izolacja `_izolowana_baza_przebiegow`).
+        Bramka trasy: to, czego lista wierszy już nie niesie, MUSI być osiągalne
+        przez istniejącą końcówkę rozpływu dla wskazanego punktu zwarcia.
         """
-        from api.analysis_runs import router as analysis_runs_router
         from infrastructure.persistence.repositories.canonical_run_repository import (
-            KLUCZE_ROZPLYWU,
+            KLUCZ_SLADU_ROZPLYWU,
         )
 
-        test_app = FastAPI()
-        test_app.include_router(enm_router)
-        # Ten sam prefiks co w aplikacji produkcyjnej (`api/main.py`).
-        test_app.include_router(analysis_runs_router, prefix="/api")
-        test_app.state.uow_factory = uow_factory
-        klient = TestClient(test_app)
-
+        klient = _run_app(uow_factory)
         case_id = _nowy_przypadek(klient)
         _seed_enm(klient, case_id, _valid_enm_payload("SC slim rozplyw"))
 
-        response = klient.post(f"/api/cases/{case_id}/runs/short-circuit")
-        assert response.status_code == 200
-        dane = response.json()
-        wiersz = dane["results"][0]
-        # KLASA, NIE INSTANCJA (2026-09-05): żaden klucz klasy „ładunek per gałąź"
-        # (wkłady I ich ślad WHITE BOX) nie wraca w świeżym wierszu — sam ślad
-        # `branch_flow_trace` dawał 105 MB odpowiedzi na sieci 50 stacji.
-        for klucz in KLUCZE_ROZPLYWU:
-            assert klucz not in wiersz, klucz
+        utworzony, wykonany = _create_and_execute(klient, case_id, "SC_3F")
+        assert wykonany.status_code == 200, wykonany.text
+        run_id = utworzony.json()["id"]
+
+        wiersz = _sc_rows(klient, run_id)[0]
+        # KLASA, NIE INSTANCJA (2026-09-05): ślad WHITE BOX podziału prądu
+        # (`branch_flow_trace`) nie wraca w wierszu zbiorczym — sam ślad dawał
+        # 105 MB odpowiedzi na sieci 50 stacji. `branch_contributions` WRACA w
+        # wierszu zbiorczym z wartością `None` (kontrakt kanoniczny, patrz test
+        # wyżej) — to NIE jest ten sam odcisk co skasowana trasa, więc sprawdzamy
+        # tu wyłącznie klucz, którego kanon nigdy nie umieszcza w wierszu zbiorczym.
+        assert KLUCZ_SLADU_ROZPLYWU not in wiersz
         assert wiersz["branch_contributions_available"] is True
 
         rozplyw = klient.get(
-            f"/api/analysis-runs/{dane['run_id']}/results/short-circuit/rozplyw",
-            params={"target_id": wiersz["fault_node_id"]},
+            f"/api/analysis-runs/{run_id}/results/short-circuit/rozplyw",
+            params={"target_id": wiersz["target_id"]},
         )
         assert rozplyw.status_code == 200
         assert rozplyw.json()["branch_contributions"] is not None

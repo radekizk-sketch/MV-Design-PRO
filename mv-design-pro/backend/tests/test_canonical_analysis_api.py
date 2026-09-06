@@ -154,6 +154,26 @@ def client() -> TestClient:
         yield test_client
 
 
+def _run_power_flow(client: TestClient, case_id: str) -> str:
+    """Bieg PF torem kanonicznym: create -> execute. Zwraca `run_id` (`id`).
+
+    Karta CV-4.3-A4 (K5.1, 2026-09-06): `POST /api/cases/{id}/runs/power-flow`
+    (`api/enm.py`) skasowany procedurą siedmiu kroków (0 konsumentów
+    produkcyjnych). Tor kanoniczny: `POST /api/execution/study-cases/{id}/runs`
+    (`analysis_type=LOAD_FLOW`) -> `POST /api/execution/runs/{id}/execute` —
+    ta sama fizyka, kontrakt HTTP `execution_runs.py` (nietknięty tą kartą).
+    """
+    created = client.post(
+        f"/api/execution/study-cases/{case_id}/runs",
+        json={"analysis_type": "LOAD_FLOW", "solver_input": {}},
+    )
+    assert created.status_code == 201, created.text
+    run_id = created.json()["id"]
+    executed = client.post(f"/api/execution/runs/{run_id}/execute")
+    assert executed.status_code == 200, executed.text
+    return run_id
+
+
 def test_domain_operation_snapshot_feeds_analysis_result_and_trace(client: TestClient) -> None:
     case_id = _nowy_przypadek(client)
 
@@ -617,13 +637,24 @@ def test_analysis_creation_requires_canonical_enm_snapshot(client: TestClient) -
 
 
 def test_power_flow_read_and_export_endpoints_use_canonical_run(client: TestClient) -> None:
+    from enm.hash import compute_enm_hash
+    from enm.models import EnergyNetworkModel
+
     case_id = _nowy_przypadek(client)
     _seed_power_flow_enm(client, case_id)
 
-    run_response = client.post(f"/api/cases/{case_id}/runs/power-flow")
-    assert run_response.status_code == 200
-    run_payload = run_response.json()
-    run_id = run_payload["run_id"]
+    # K5.1 (CV-4.3-A4): trasa tworząca bieg PF (`enm.py`) skasowana — bieg
+    # powstaje odtąd torem kanonicznym. Odpowiedź `execute` nie niesie
+    # `enm_hash`/`input_hash` pod tymi nazwami (`solver_input_hash` zamiast
+    # `input_hash`, brak odpowiednika `enm_hash`) — odcisk modelu liczymy
+    # NIEZALEŻNIE z committed ENM (ta sama funkcja co `create_run` wewnątrz,
+    # `enm/scenariusze.py::apply_scenario` — `base_hash = compute_enm_hash(enm)`
+    # dla biegu bez nadpisań scenariusza, czyli KAŻDEGO biegu w tym teście).
+    run_id = _run_power_flow(client, case_id)
+    execute_payload = client.get(f"/api/execution/runs/{run_id}").json()
+    input_hash = execute_payload["solver_input_hash"]
+    enm_snapshot = EnergyNetworkModel.model_validate(client.get(f"/api/cases/{case_id}/enm").json())
+    enm_hash = compute_enm_hash(enm_snapshot)
 
     header_response = client.get(f"/api/power-flow-runs/{run_id}")
     assert header_response.status_code == 200
@@ -631,18 +662,15 @@ def test_power_flow_read_and_export_endpoints_use_canonical_run(client: TestClie
     assert header_payload["id"] == run_id
     assert header_payload["study_case_id"] == case_id
     assert "operating_case_id" not in header_payload
-    assert header_payload["input_hash"] == run_payload["input_hash"]
-    assert header_payload["input_metadata"]["snapshot_hash"] == run_payload["enm_hash"]
+    assert header_payload["input_hash"] == input_hash
+    assert header_payload["input_metadata"]["snapshot_hash"] == enm_hash
     assert header_payload["analysis_case_context"]["rodzaj_przypadku"] == "ROZPLYW_MAX_OBC"
     assert header_payload["analysis_case_context"]["completeness"] == "complete"
     assert (
         header_payload["analysis_case_context"]["reproducibility"]["solver_family"]
         == "power_flow_newton"
     )
-    assert (
-        header_payload["input_metadata"]["analysis_case_context"]["snapshot_ref"]
-        == run_payload["enm_hash"]
-    )
+    assert header_payload["input_metadata"]["analysis_case_context"]["snapshot_ref"] == enm_hash
     assert header_payload["proof_pack_ref"].startswith("proof-pack:")
     assert header_payload["export_artifact"]["export_kind"] == "json"
     assert header_payload["export_artifact"]["proof_pack_ref"].startswith("proof-pack:")
@@ -661,7 +689,7 @@ def test_power_flow_read_and_export_endpoints_use_canonical_run(client: TestClie
     trace_payload = trace_response.json()
     assert trace_payload["iterations"]
     assert trace_payload["run_id"] == run_id
-    assert trace_payload["snapshot_id"] == run_payload["enm_hash"]
+    assert trace_payload["snapshot_id"] == enm_hash
     assert "catalog_context" in trace_payload
     assert any(entry["element_id"] == "branch-load" for entry in trace_payload["catalog_context"])
 
@@ -689,13 +717,13 @@ def test_power_flow_read_and_export_endpoints_use_canonical_run(client: TestClie
     assert export_payload["metadata"]["run_id"] == run_id
     assert export_payload["metadata"]["study_case_id"] == case_id
     assert "operating_case_id" not in export_payload["metadata"]
-    assert export_payload["metadata"]["snapshot_hash"] == run_payload["enm_hash"]
+    assert export_payload["metadata"]["snapshot_hash"] == enm_hash
     assert export_payload["metadata"]["proof_pack_ref"].startswith("proof-pack:")
     assert (
         export_payload["metadata"]["reproducibility"]["quality_gate_policy_version"]
         == "v12_5_quality_gate"
     )
-    assert export_payload["trace_summary"]["input_hash"] == run_payload["input_hash"]
+    assert export_payload["trace_summary"]["input_hash"] == input_hash
     assert export_payload["trace_summary"]["converged"] is True
     assert export_payload["metadata"]["catalog_context_count"] >= 2
     assert any(entry["element_id"] == "branch-load" for entry in export_payload["catalog_context"])
@@ -728,9 +756,7 @@ def test_resultset_v1_includes_branch_elements_for_load_flow(client: TestClient)
     case_id = _nowy_przypadek(client)
     _seed_power_flow_enm(client, case_id)
 
-    run_response = client.post(f"/api/cases/{case_id}/runs/power-flow")
-    assert run_response.status_code == 200
-    run_id = run_response.json()["run_id"]
+    run_id = _run_power_flow(client, case_id)
 
     # Wartosc referencyjna: ten sam run, inny (juz istniejacy, przetestowany
     # gdzie indziej) endpoint galeziowy — `build_branch_results_response`.
@@ -800,9 +826,7 @@ def test_resultset_v1_load_flow_direction_and_voltage_drop_are_physically_correc
     case_id = _nowy_przypadek(client)
     _seed_power_flow_enm(client, case_id)
 
-    run_response = client.post(f"/api/cases/{case_id}/runs/power-flow")
-    assert run_response.status_code == 200
-    run_id = run_response.json()["run_id"]
+    run_id = _run_power_flow(client, case_id)
 
     resultset_response = client.get(f"/api/execution/runs/{run_id}/results/v1")
     assert resultset_response.status_code == 200
@@ -852,9 +876,7 @@ def test_resultset_v1_load_flow_emits_source_injection_and_derived_branch_metric
     case_id = _nowy_przypadek(client)
     _seed_power_flow_enm(client, case_id)
 
-    run_response = client.post(f"/api/cases/{case_id}/runs/power-flow")
-    assert run_response.status_code == 200
-    run_id = run_response.json()["run_id"]
+    run_id = _run_power_flow(client, case_id)
 
     payload = client.get(f"/api/execution/runs/{run_id}/results/v1").json()
     element_results = payload["element_results"]
@@ -909,7 +931,7 @@ def test_resultset_v1_load_flow_source_and_branch_metrics_are_deterministic(
     for _ in range(2):
         case_id = _nowy_przypadek(client)
         _seed_power_flow_enm(client, case_id)
-        run_id = client.post(f"/api/cases/{case_id}/runs/power-flow").json()["run_id"]
+        run_id = _run_power_flow(client, case_id)
         payload = client.get(f"/api/execution/runs/{run_id}/results/v1").json()
         picked = {
             er["element_ref"]: er["values"]

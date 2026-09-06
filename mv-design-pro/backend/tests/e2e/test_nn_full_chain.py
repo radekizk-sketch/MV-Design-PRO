@@ -14,8 +14,10 @@ wskazywała KTÓRY krok łańcucha pękł.
 
 Każdy krok czyta/pisze przez PUBLICZNE ścieżki: kanoniczny dispatcher operacji
 domenowych przez TestClient (budowa modelu), `enm.canonical_analysis.
-run_power_flow_now` / `run_short_circuit_now` (te same funkcje, których używają
-`POST /runs/power-flow` i `POST /runs/short-circuit`), oraz publiczne serwisy
+run_power_flow_now` / `run_short_circuit_now` (cienkie opakowania `create_run`+
+`execute_run` — do karty CV-4.3-A4/K5.1 wołane też przez skasowane trasy
+`POST /api/cases/{id}/runs/{power-flow,short-circuit}`; dziś te same funkcje
+wołane BEZPOŚREDNIO tu i w testach silnika, niezależnie od HTTP), oraz publiczne serwisy
 warstwy `application/analyses/*` (te same, których używają GET-y
 `/enm/fault-loop-point`, `/enm/swz`, `/enm/nn-device-selection`) i
 `POST /api/nn-proof/circuit/pack|report`. Zero sięgania po prywatne
@@ -888,7 +890,8 @@ class TestNnFullChain:
 
     def test_krok_01_rozplyw_mocy_sn_nn_zbiega(self, app_client) -> None:
         """Rozpływ mocy (Newton-Raphson) przez kanoniczny serwis
-        `run_power_flow_now` — TA SAMA funkcja, którą woła `POST /runs/power-flow`."""
+        `run_power_flow_now` (cienkie opakowanie `create_run`+`execute_run`,
+        `enm/canonical_analysis.py`; wywoływane wprost, niezależnie od HTTP)."""
         pf_run = run_power_flow_now(
             case_id=_CASE_ID, klucz_twin=_KLUCZ, project_id=None, options={}
         )
@@ -1016,9 +1019,9 @@ class TestNnFullChain:
 
     def test_krok_04_zwarcia_max_min(self) -> None:
         """SC 3F, scenariusze MAX/MIN, przez kanoniczny serwis
-        `run_short_circuit_now` — TA SAMA funkcja, którą woła
-        `POST /runs/short-circuit`. c per pasmo napięcia (IEC 60909 Tab. 1):
-        nN → c_max=1,05, c_min=0,95 — AUTO, bez override."""
+        `run_short_circuit_now` (cienkie opakowanie `create_run`+`execute_run`,
+        wywoływane wprost, niezależnie od HTTP). c per pasmo napięcia
+        (IEC 60909 Tab. 1): nN → c_max=1,05, c_min=0,95 — AUTO, bez override."""
         sc_max = run_short_circuit_now(
             case_id=_CASE_ID,
             klucz_twin=_KLUCZ,

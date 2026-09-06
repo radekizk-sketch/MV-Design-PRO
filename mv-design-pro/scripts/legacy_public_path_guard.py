@@ -177,6 +177,24 @@ FORBIDDEN_CV42B_FUNCTION_NAMES = {
     "_maybe_load_audit2_extensions",
 }
 
+# Karta CV-4.3-A4 (K5, 2026-09-06) — bramka wskrzeszenia. (1) E2 sieroty
+# `POST /api/cases/{id}/runs/{short-circuit,power-flow}` (`api/enm.py`)
+# skasowane procedura siedmiu krokow (0 konsumentow produkcyjnych — jedyny byl
+# e2e nazywajacy je wprost "legacy" we wlasnym kodzie); kanon:
+# `POST /api/execution/study-cases/{id}/runs` -> `.../execute`. Sprawdzane
+# jako DEFINICJE (ast.FunctionDef/AsyncFunctionDef) W TYM JEDNYM pliku — nazwy
+# `run_short_circuit_now`/`run_power_flow_now` (inne funkcje, INNY plik,
+# `enm/canonical_analysis.py`) MAJA innych wolajacych bezposrednich i ZOSTAJA,
+# guard nie ma prawa sie na nie zapalic. (2) R4 `_runs` w pamieci procesu
+# (`api/v126_academic.py`) skasowany na rzecz rejestru `CanonicalRun` (R1) —
+# bieg V12.6 musi przezyc restart procesu i wielu workerow, czego slownik w
+# pamieci nigdy nie gwarantowal. Sprawdzane jako PRZYPISANIE NAJWYZSZEGO
+# POZIOMU (nie dowolna zmienna lokalna) W TYM JEDNYM pliku.
+CV43_A4_ENM_MODULE = API_DIR / "enm.py"
+FORBIDDEN_CV43_A4_ROUTE_FUNCTION_NAMES = {"run_short_circuit", "run_power_flow"}
+CV43_A4_V126_MODULE = API_DIR / "v126_academic.py"
+FORBIDDEN_CV43_A4_V126_INMEMORY_NAMES = {"_runs"}
+
 
 def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8", errors="ignore")
@@ -350,6 +368,56 @@ def check_cv42_resurrection() -> list[str]:
     return violations
 
 
+def check_cv43_a4_resurrection() -> list[str]:
+    """CV-4.3-A4/K5 (2026-09-06): dwie sieroty E2 (`api/enm.py` POST runs/{short-
+    circuit,power-flow}) usunięte procedurą siedmiu kroków (0 konsumentów
+    produkcyjnych), V12.6 (`api/v126_academic.py`) przeszło z własnego słownika
+    `_runs` w pamięci procesu (R4) na rejestr R1 (`CanonicalRun` przez
+    `enm.canonical_analysis.create_run`/`execute_run`) — bieg V12.6 musi
+    przeżyć restart procesu i wielu workerów, czego słownik w pamięci nigdy nie
+    gwarantował. Guard pilnuje, żeby żaden z trzech bytów nie wrócił."""
+    violations: list[str] = []
+    if CV43_A4_ENM_MODULE.exists():
+        tree = ast.parse(read_text(CV43_A4_ENM_MODULE), filename=str(CV43_A4_ENM_MODULE))
+        rel_path = CV43_A4_ENM_MODULE.relative_to(ROOT).as_posix()
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+                and node.name in FORBIDDEN_CV43_A4_ROUTE_FUNCTION_NAMES
+            ):
+                violations.append(
+                    f"[resurrected-route] {rel_path}:{node.lineno}: def {node.name} "
+                    "(E2, usunięty procedurą siedmiu kroków w CV-4.3-A4/K5.1 — 0 "
+                    "konsumentów produkcyjnych, tor kanoniczny /api/execution/...) "
+                    "nie może wrócić"
+                )
+    if CV43_A4_V126_MODULE.exists():
+        tree = ast.parse(read_text(CV43_A4_V126_MODULE), filename=str(CV43_A4_V126_MODULE))
+        rel_path = CV43_A4_V126_MODULE.relative_to(ROOT).as_posix()
+        # Przypisanie NAJWYŻSZEGO POZIOMU (`tree.body`, nie `ast.walk`) — zmienna
+        # lokalna o tej samej nazwie wewnątrz funkcji pomocniczej nie jest tym
+        # bytem, którego kasacja pilnuje (rejestr w pamięci procesu, nie zmienna
+        # robocza).
+        for node in tree.body:
+            targets: list[ast.expr] = []
+            if isinstance(node, ast.Assign):
+                targets = node.targets
+            elif isinstance(node, ast.AnnAssign):
+                targets = [node.target]
+            for target in targets:
+                if (
+                    isinstance(target, ast.Name)
+                    and target.id in FORBIDDEN_CV43_A4_V126_INMEMORY_NAMES
+                ):
+                    violations.append(
+                        f"[resurrected-inmemory-registry] {rel_path}:{node.lineno}: "
+                        f"'{target.id}' (słownik biegów V12.6 w pamięci procesu, "
+                        "usunięty w CV-4.3-A4/K5.2 na rzecz CanonicalRun/R1) nie może "
+                        "wrócić"
+                    )
+    return violations
+
+
 def main() -> int:
     violations = (
         check_legacy_public_paths()
@@ -357,6 +425,7 @@ def main() -> int:
         + check_domain_op_registry_resurrection()
         + check_c4_and_p24_plus_resurrection()
         + check_cv42_resurrection()
+        + check_cv43_a4_resurrection()
     )
     if violations:
         print("legacy-public-path-guard: FAILED")

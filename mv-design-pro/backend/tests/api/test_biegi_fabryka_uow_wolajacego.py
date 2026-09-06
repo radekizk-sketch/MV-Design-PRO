@@ -3,12 +3,25 @@
 Klasa: wykonawca biegu NIE buduje własnego silnika/sesji z `DATABASE_URL`
 (`_uow_factory_biezacy` skasowany). Dwa wejścia wykonania, które do tej karty
 NIE podawały fabryki (`POST /api/execution/runs/{id}/execute` — ogólne, oraz
-`run_*_now` z `api/enm.py`), teraz ją podają; a bieg zabezpieczeń wołany BEZ
+`run_*_now` wołane BEZPOŚREDNIO), teraz ją podają; a bieg zabezpieczeń wołany BEZ
 fabryki kończy się FAILED z jawnym powodem, nie odczytem z innej bazy.
 
 Iloczyn cech: {końcówka ogólna, wywołanie bezpośrednie bez fabryki} ×
 {zabezpieczenia (konfiguracja przypadku)} — rozpływ/zwarcie z parą audytu 2
 przez końcówkę ogólną pokrywa `test_solver_input_audit2_integration.py`.
+
+Karta CV-4.3-A4 (K5.1, 2026-09-06): trzeci test tego pliku (`run_short_circuit`/
+`run_power_flow` w `api/enm.py` forwardują `uow_factory` do `run_*_now`) usunięty
+RAZEM z trasami, które testował — obie skasowane procedurą siedmiu kroków (0
+konsumentów produkcyjnych). Własność „tor wykonania forwarduje fabrykę
+wołającego" dla PF/SC jest dowiedziona SILNIEJ przez `test_solver_input_
+audit2_integration.py` (round-trip przez `execution/study-cases/.../runs` +
+`execution/runs/{id}/execute` z rzeczywistą konfiguracją audytu 2 w bazie —
+bieg bez poprawnie podanej fabryki zwróciłby FAILED albo config `None`, nie
+tylko `is`-identyczność obiektu), a dla zabezpieczeń przez test pierwszy poniżej.
+`run_short_circuit_now`/`run_power_flow_now` same w sobie zostają w
+`enm/canonical_analysis.py` — mają innych wołających bezpośrednich (silnik,
+`tests/e2e/test_nn_full_chain.py`) niezależnych od skasowanej trasy HTTP.
 """
 
 from __future__ import annotations
@@ -60,35 +73,3 @@ def test_bieg_zabezpieczen_bez_fabryki_odmawia_jawnie_zamiast_czytac_inna_baze(
     assert "nie dostal fabryki UnitOfWork" in (wynik.error_message or "")
     zapisany = get_run(UUID(run_id))
     assert zapisany is not None and zapisany.status == "FAILED"
-
-
-def test_koncowki_enm_przekazuja_fabryke_zadania_do_biegow_natychmiastowych(
-    app_client, monkeypatch
-) -> None:
-    """`run_short_circuit_now`/`run_power_flow_now` dostają `app.state.uow_factory`."""
-    from api import enm as api_enm
-    from api.main import app
-
-    widziane: list[object] = []
-    oryginal_sc = api_enm.run_short_circuit_now
-    oryginal_pf = api_enm.run_power_flow_now
-
-    def _sc(**kwargs):
-        widziane.append(kwargs.get("uow_factory"))
-        return oryginal_sc(**kwargs)
-
-    def _pf(**kwargs):
-        widziane.append(kwargs.get("uow_factory"))
-        return oryginal_pf(**kwargs)
-
-    monkeypatch.setattr(api_enm, "run_short_circuit_now", _sc)
-    monkeypatch.setattr(api_enm, "run_power_flow_now", _pf)
-    _project_id, case_id = _projekt_i_przypadek(app_client)
-
-    zwarcie = app_client.post(f"/api/cases/{case_id}/runs/short-circuit", json={})
-    rozplyw = app_client.post(f"/api/cases/{case_id}/runs/power-flow")
-
-    assert zwarcie.status_code == 200, zwarcie.text
-    assert rozplyw.status_code == 200, rozplyw.text
-    assert len(widziane) == 2
-    assert all(fabryka is app.state.uow_factory for fabryka in widziane)
