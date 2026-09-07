@@ -67,6 +67,15 @@ do auto-układu przy braku wpisu; VoltWeave `0384b23` (MIT) — dekompozycja `pl
 - [ ] Przesunięcie symbolu **nie** przestawia wyniku na nieaktualny (`result_freshness`) — test.
 - [ ] Zapisywane są **wyłącznie wierzchołki wewnętrzne**; oba końce liczone przy renderze — test.
 - [ ] `npm run type-check`, `lint`, pełny vitest, guardy SLD i determinizmu — zielone.
+**Ograniczenie wdrożeniowe wyprowadzone z kodu (nie do pominięcia):** `buildSceneV3`
+(`v3/scene/buildScene.ts`) jest **czystą funkcją** `EnergyNetworkModel` + LOD → `SceneV3`,
+z zadeklarowanym „zero DOM/losowości/Date — to samo wejście ⇒ identyczny wynik", i **jawnie
+ignoruje** pozycje `x`/`y` z adaptera v2 („są WSZĘDZIE IGNOROWANE; ta funkcja liczy WŁASNĄ
+geometrię"). Magazyn **nie może** wskrzeszać tej zignorowanej ścieżki v2 — musi wejść jako
+**nowe, jawne wejście** funkcji scenowej, a determinizm ma obowiązywać dla pary
+(model, magazyn): to samo wejście **wraz z magazynem** ⇒ identyczna scena. Inaczej złamiemy
+własność, na której stoją bramki determinizmu SLD.
+
 **Ryzyko:** dziś prawo 3.4 zachodzi trywialnie (scena w całości pochodna). To zmiana najbardziej
 podatna na erozję tego prawa — stąd test prawa jako **pierwszy** krok, nie ostatni.
 
