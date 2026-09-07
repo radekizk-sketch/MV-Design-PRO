@@ -301,3 +301,37 @@ a scena spada do układu wyliczonego (`buildScene`) — nigdy odwrotnie. To real
 warstwę prezentacji można skasować w całości bez dotknięcia modelu.
 Nie tworzy to „drugiego źródła prawdy" (DT-1), bo agregat nie przechowuje żadnej informacji
 elektrycznej — wyłącznie współrzędne i wierzchołki tras.
+
+### F-17. sldeditor przechodzi test geometrii — i wypada LEPIEJ niż VoltWeave (weryfikacja własna)
+Mandat kazał sprawdzić, czy connectivity donora jest geometry-dependent, i odrzucić tę część,
+jeśli jest. **Sprawdziłem w kodzie — nie jest.**
+
+Skala: `src/` = **26 332 linie TypeScriptu** (82 pliki `.ts`, 39 `.tsx`) + biblioteka elementów
+w JSON. Katalogi: `model/`, `compiler/`, `canvas/`, `store/`, `element-library/`, `hooks/`, `i18n/`.
+To jest ~23× więcej kodu niż VoltWeave i **we właściwym języku** (front MV = TypeScript strict).
+
+**Dowód rozdzielenia semantyki od geometrii (`src/model/types.ts`):**
+- `export type WireEnd = TerminalRef | BusId | JunctionId;` — końce przewodu to **wyłącznie
+  referencje symboliczne, ZERO współrzędnych**.
+- `interface Wire { ends: [WireEnd, WireEnd]; path?: [number,number][] }` — komentarz autora:
+  „Optional manual route path. **Absent → auto-route**". Trasa ręczna jest opcjonalną nakładką
+  na połączenie semantyczne, nie jego definicją. Dokładnie model, którego MV potrzebuje (F-5).
+- `interface Placement { at, rot?, mirror? }` — rozmieszczenie jako osobny byt.
+- `label` i `color` opisane wprost jako „Pure decoration — has no effect on routing or
+  connectivity" oraz „routing and connectivity ignore it".
+- `compiler/union-find.ts`: scala **`connections`** w klasy równoważności **`ConnectivityNode`** —
+  czyli z jawnych relacji, nie z przecięć linii ani bliskości XY.
+- `SymbolStandard = 'iec' | 'ansi'`: „Terminal coordinates, connectivity, wiring and layout are
+  identical in both, by construction… Flipping the standard on a finished drawing must never
+  move or re-route anything."
+
+**To jest to samo prawo, które MV ma w konstytucji (3.2, 3.3, 3.4) — donor egzekwuje je w kodzie.**
+Dodatkowo słownictwo jest zbieżne z MV: `Bus` jako hiperkrawędź („Each bus is a hyperedge node,
+not an element") odpowiada DT-3 (`Bus` ≡ `ConnectivityNode`).
+
+**Korekta hipotezy wejściowej właściciela.** Mandat stawiał VoltWeave jako „kandydata najwyższego
+priorytetu", a sldeditor jako donora wtórnego dla UX. Pomiar odwraca tę kolejność:
+VoltWeave (1152 linie JS, sprzężenie kasowania rysunku z kasowaniem połączenia — F-15) jest
+SŁABSZYM donorem niż sldeditor (26 332 linie TS, jawne connectivity, MIT, rozdzielone
+placement/route, eksport DXF). Dla wzorca `connection ≠ route` **sldeditor jest lepszym
+źródłem odniesienia**, a jego licencja (MIT, SHA `9e1bba0`) nie stawia przeszkód.
