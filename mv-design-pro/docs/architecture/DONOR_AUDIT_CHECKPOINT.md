@@ -162,3 +162,24 @@ udowodnione jako matematyka solvera. Wymiana solvera na szybszy nie naprawi kosz
 w assemblerze/śladzie/API. Najpierw profil, potem ewentualnie donor.
 Powtórzenie `build_zbus` per węzeł (F-9) zostaje realnym, tanim usprawnieniem — ale rdzeń
 jest FROZEN (B-01, patrz `enm/assembler.py:496`), więc wymaga zgody właściciela.
+
+### F-11. DT-12 to decyzja ZAMROŻONA i NIEWDROŻONA — donor runtime trafia w istniejącą lukę
+`DECISION_FREEZE_REGISTER.md` DT-12: „`ExecutionBackend` (**pula procesów teraz**, kolejka
+później); jeden rejestr biegów", uzasadnienie: „N-1/optymalizacja/QSTS: wsady równoległe;
+dynamika: długie biegi jako zadania z postępem; skala L: backend kolejkowy bez zmiany
+orkiestratora".
+Pomiar: `grep -rn "ExecutionBackend\|ProcessPool\|concurrent.futures" src/ --include=*.py`
+→ **zero trafień**. Razem z F-8 (Celery = stub bez importerów) znaczy to, że biegi analiz
+wykonują się **synchronicznie w procesie API**, wbrew własnej zamrożonej decyzji.
+**Konsekwencja:** architektura worker/job NIE jest nową decyzją architektoniczną do podjęcia —
+jest realizacją DT-12. Donor runtime nie wymaga zatem zgody właściciela na kierunek, tylko
+dowodu, że wzorzec jest lepszy niż napisanie tego wprost.
+
+### F-12. DT-14 ogranicza donorów ECAD twardo
+DT-14: „SLD = projekcja twin; **backend semantyka, frontend geometria**; IEC 60617; IEC 81346
+przez profil". Donor, który trzyma semantykę elektryczną we froncie (model połączeń w warstwie
+React/Canvas), łamie DT-14 niezależnie od jakości kodu. To jest kryterium odrzucenia
+rozstrzygane PRZED oceną ergonomii.
+Pozostałe wiążące: DT-9 (rdzenie solverów FROZEN + bramka B-01), DT-10 (`ResultSetV1` FROZEN,
+zmiana = `ResultSetV2`), DT-8 (jeden assembler, jedna implementacja `TopologyService`),
+DT-1 (brak nowej klasy modelu obok ENM).
