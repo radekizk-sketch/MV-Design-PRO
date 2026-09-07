@@ -105,7 +105,15 @@ w tym mandacie (atomowe `claim_for_execution`); martwy `cadRoutingContract.ts` (
 bez konsumentów) — karta D-6; drugi mapper `pandapower_bridge.py` bez konsumentów — karta D-7;
 krzywa `RI` będąca w rzeczywistości Long-Time Inverse — **bramka B-01**, decyzja właściciela.
 
-**Korekta pomiarowa do §1:** regresja czasu SC sieci 50 stacji **nie leży w algebrze liniowej**.
-Zmierzone: Y-bus **144×144** (172 łączniki scalają 315 węzłów), `build_zbus` = 2,5 ms,
-całość ×144 węzłów = **0,4 s** wobec 170,9 s (~0,2 %). Przyczyna nadal niezdiagnozowana;
-wymaga profilu pełnej ścieżki `execute`. Żaden donor solverowy tego nie naprawia.
+**Korekta pomiarowa do §1 (wersja po przeglądzie adwersaryjnym — pierwsza była BŁĘDNA):**
+profil realnego biegu (`cProfile`, substrat 52 stacji, w procesie, 59,14 s) daje:
+306 węzłów zwarciowych, **1530 wywołań `build_zbus` = 5 na węzeł**, `np.linalg.inv` 1,758 s ≈ 3 %.
+**Przyczyna jest nazwana**, nie „niezdiagnozowana": `_niefinitowe_na_none`
+(`canonical_analysis.py:127`) — 8 381 870 wywołań, 15,07 s tottime (~26–32 %) — oraz
+`_build_branch_contributions_for_inverters` (cumtime 16,54 s, ~28 %).
+Wcześniejszy zapis („0,4 s ≈ 0,2 %, przyczyna niezdiagnozowana") ekstrapolował wyizolowany
+prymityw zamiast mierzyć ścieżkę i **jest wycofany** (`DONOR_AUDIT_CHECKPOINT.md` F-19).
+Wniosek o donorach **wzmacnia się**: oba dominujące koszty to własny kod MV (sanityzacja JSON,
+wkłady falowników), których żaden zewnętrzny solver nie dotyka.
+Zastrzeżenie: 59,14 s (w procesie) i 170 866,7 ms (pełna ścieżka HTTP, inna maszyna) **nie są
+liczbami wymiennymi**.

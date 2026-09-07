@@ -77,11 +77,20 @@ def _baza_plikowa(tmp_path, monkeypatch):
     wyczysc_cache()
 
 
-def _bieg(status: str = "PENDING", run_id: UUID | None = None) -> CanonicalRun:
+def _bieg(status: str = "CREATED", run_id: UUID | None = None) -> CanonicalRun:
     """Wiersz biegu wprost przez repozytorium — bez solvera i bez ENM.
 
     Przedmiotem pomiaru jest PRZEJĘCIE biegu, nie fizyka: sieć wzorcowa
     dokładałaby sekundy do testu wyścigu, nie dokładając nic do jego mocy.
+
+    Stan startowy to ``CREATED`` — JEDYNY stan, w którym `create_run` tworzy bieg
+    (`canonical_analysis.py:943`). Wcześniejsza wersja tego testu używała
+    ``"PENDING"``, którego domena NIE ZNA: ``PENDING`` jest wyłącznie renderem
+    HTTP stanu ``CREATED`` w `to_execution_dict()`. Test przechodził, bo warunek
+    przejęcia to `NOT IN (...)`, który przepuszcza dowolny napis — czyli
+    przechodził NIE ĆWICZĄC realnego stanu (Zero-Debt pkt 5). Na ``"PENDING"``
+    `to_execution_dict()` wywala `KeyError`, więc bieg w tym stanie nie mógłby
+    nawet wrócić z API.
     """
     run = CanonicalRun(
         id=run_id or uuid4(),
@@ -155,14 +164,17 @@ def test_biegu_w_stanie_nieprzejmowalnym_nie_da_sie_przejac(stan_startowy: str) 
     assert zapisany.status == stan_startowy, "stan biegu zmieniony mimo odmowy przejęcia"
 
 
-def test_execute_run_liczy_analize_dokladnie_raz(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("stan_startowy", ["CREATED"])
+def test_execute_run_liczy_analize_dokladnie_raz(
+    stan_startowy: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Poziom `execute_run`: równoległe wywołania liczą solver DOKŁADNIE RAZ.
 
     Dyspozycja fizyki podmieniona sondą liczącą wejścia — mierzymy przejęcie,
     nie solver. Sonda ŚPI, żeby okno między przejęciem a zapisem FINISHED było
     szersze niż czas przełączenia wątku; bez tego wyścig bywa niewidoczny.
     """
-    run = _bieg()
+    run = _bieg(status=stan_startowy)
     wejscia = 0
     zamek = threading.Lock()
 

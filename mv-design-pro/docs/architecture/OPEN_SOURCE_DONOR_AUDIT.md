@@ -144,13 +144,20 @@ z K6.
 
 Wnioski subagentów **nie były przyjmowane na słowo** (§16 mandatu). Trzy korekty:
 
-1. **Rząd wielkości regresji SC — twierdzenie agenta SOLVERS obalone pomiarem.**
-   Agent wyprowadził O(N⁴) i oszacował n=1200 → 197,4 s jako wyjaśnienie zmierzonych 170,9 s.
-   Pomiar bezpośredni na `sld_substrate_52s`: **Y-bus ma 144×144** (172 łączniki scalają 315
-   węzłów), `build_zbus` = **2,5 ms**, ×144 węzłów = **0,4 s ≈ 0,2 %** budżetu.
-   **Struktura defektu potwierdzona** (Z-bus liczony od nowa per węzeł; `z0_bus`/`z2_bus` już
-   podnoszone, pominięto `z1`), **magnituda obalona**. Przyczyna 170,9 s pozostaje
-   niezdiagnozowana i **żaden donor solverowy jej nie naprawia**.
+1. **Rząd wielkości regresji SC — TU POMYLIŁEM SIĘ JA, nie agent (korekta po bramce §17).**
+   Napisałem najpierw, że algebra liniowa to ~0,2 % kosztu i że przyczyna jest niezdiagnozowana.
+   **Oba zdania były nieprawdziwe.** Sprofilowałem realny bieg zamiast ekstrapolować prymityw:
+   306 węzłów zwarciowych, **1530 wywołań `build_zbus` = 5 na węzeł** (nie 1, jak napisałem),
+   `np.linalg.inv` 1,758 s ≈ 3 %, a **przyczynę nazywa jeden `cProfile`**:
+   `_niefinitowe_na_none` (`canonical_analysis.py:127`) — **8 381 870 wywołań, 15,07 s tottime**
+   (~26–32 %) — oraz `_build_branch_contributions_for_inverters` (cumtime 16,54 s, ~28 %).
+   Wymiar Y-bus **144×144 był poprawny**; błędna była liczba wywołań i wniosek.
+   Agent SOLVERS mylił się co do mechanizmu (założył n≈1200), ale **jego struktura była bliżej
+   prawdy niż moje odrzucenie**. Szczegóły: `DONOR_AUDIT_CHECKPOINT.md` F-19.
+   **Decyzja się nie zmienia i jest teraz lepiej udowodniona:** dwa dominujące koszty to własna
+   sanityzacja JSON-a i własne składanie wkładów falowników — **żaden zewnętrzny solver ich nie
+   dotyka**.
+
 2. **„Zabezpieczenia to główna luka" — skorygowane w moim własnym briefie** (§4): realna
    powierzchnia to ~23 800 linii, nie 1,1k. Agent PROTECTION wykrył ten błąd i go nazwał.
 3. **`elkjs` — nieweryfikowalny przy tym SHA.** Algorytmy nie są w repo (`src/` to 4 pliki Java

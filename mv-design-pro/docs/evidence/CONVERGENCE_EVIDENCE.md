@@ -390,3 +390,25 @@ Dwa równoległe `POST /api/execution/runs/{id}/execute` na tym samym biegu prze
 - `api/celery_app.py`: **26 linii, zero importerów** — kolejka zadań nie obsługuje biegów analiz.
 - `execute_run` jest zwykłym `def`, więc FastAPI odkłada go do puli wątków — **pętla zdarzeń
   nie jest blokowana** (przypięte `tests/api/test_wspolbieznosc_biegow.py`).
+
+
+### KOREKTA (ten sam mandat, po przeglądzie adwersaryjnym) — profil realnego biegu
+Powyższa tabela mierzyła **wyizolowane prymitywy**, nie ścieżkę biegu, i prowadziła do
+**błędnego** wniosku „~0,2 %" oraz „przyczyna niezdiagnozowana". Profil realnego biegu
+(`run_short_circuit_now`, substrat 52 stacji, `cProfile`, w procesie):
+
+| Pomiar | Wartość |
+|---|---|
+| Czas biegu | **59,14 s** |
+| Węzły zwarciowe | **306** |
+| Wywołania `build_zbus` | **1530** = **5 na węzeł** (nie 1) |
+| `np.linalg.inv` | 1,758 s ≈ **3 %** |
+| `_niefinitowe_na_none` (`canonical_analysis.py:127`) | **8 381 870 wywołań**, 15,07 s tottime ≈ **26–32 %** |
+| `_build_branch_contributions_for_inverters` | cumtime 16,54 s ≈ **28 %** |
+| `json.encoder.iterencode` | 4,76 s |
+
+**Przyczyna jest więc NAZWANA:** rekurencyjne czyszczenie NaN/inf po całym artefakcie wyniku
+(ze śladem White Box) oraz składanie wkładów gałęziowych falowników. Defekt strukturalny
+(`build_zbus` przeliczany od zera) jest **pięciokrotnie większy**, niż zapisano wcześniej.
+**Zastrzeżenie:** 59,14 s to bieg w procesie na innej maszynie niż pomiar 170 866,7 ms
+pełnej ścieżki HTTP — liczby **nie są wymienne**; nazwane są hotspoty biegu, nie tamten wynik.

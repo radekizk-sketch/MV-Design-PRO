@@ -408,3 +408,52 @@ GPL-3.0. Nie blokuje żadnej karty (wszystkie z tych donorów są clean-room lub
 ### NEXT EXACT STEP
 Odbiór przeglądu adwersaryjnego (bramka §17) → naniesienie korekt → ewentualny mały wycinek
 wdrożeniowy D-2 (jedyna karta dopuszczalna równolegle z K7). **K7 pozostaje następną kartą CV-4.3.**
+
+## CP-5 — 2026-09-07, KOREKTA WŁASNA po bramce adwersaryjnej (§17)
+
+Przegląd adwersaryjny podważył **moje** ustalenie F-10/F-18 i **miał rację**. Sprofilowałem
+realny bieg zwarciowy zamiast wyizolowanego prymitywu. Poniżej stan faktyczny.
+
+### F-19. F-10 i F-18 BYŁY BŁĘDNE — profil realnego biegu (korekta)
+
+Bieg `run_short_circuit_now` na substracie 52 stacji, w procesie, `cProfile`, ta maszyna:
+
+| Pomiar | Wartość |
+|---|---|
+| Czas całego biegu | **59,14 s** |
+| Węzły zwarciowe (`raw_result["results"]`) | **306** |
+| Wywołania `build_zbus` | **1530** = **5 na węzeł zwarciowy** |
+| `np.linalg.inv` (1530 wywołań) | 1,758 s ≈ **3 %** |
+| `_niefinitowe_na_none` (`canonical_analysis.py:127`) | **8 381 870 wywołań**, tottime **15,07 s**, cumtime **18,66 s** ≈ **26–32 %** |
+| `_build_branch_contributions_for_inverters` (`short_circuit_iec60909.py:764`) | tottime 5,49 s, cumtime **16,54 s** ≈ **28 %** |
+| `json.encoder.iterencode` | 4,76 s |
+| `ybus.node_id_to_index` | 1 811 472 wywołań, 2,45 s |
+| `ybus._get_branch_admittances_pu` | 1 120 548 wywołań, cumtime 6,12 s |
+
+**Co było błędne w moich wcześniejszych zapisach:**
+1. **„`build_zbus` raz na węzeł zwarciowy" → NIEPRAWDA.** Jest **pięć razy** na węzeł
+   (1530 wobec 306). Defekt strukturalny jest **pięciokrotnie większy**, niż napisałem.
+2. **„Cała algebra to 0,4 s = ~0,2 %" → NIEPRAWDA.** Liczyłem 144 wywołania po 2,5 ms.
+   Wywołań jest 1530, a sama inwersja to 1,758 s ≈ 3 %; do tego dochodzi maszyneria
+   przebudowy Y-bus (`node_id_to_index`, `_get_branch_admittances_pu` — po ponad milion
+   wywołań), która istnieje **wyłącznie** dlatego, że Z-bus liczy się od nowa 1530 razy.
+3. **„Przyczyna niezdiagnozowana" → NIEPRAWDA.** Jeden `cProfile` ją nazywa. Dominują
+   **`_niefinitowe_na_none`** (rekurencyjne czyszczenie NaN/inf po CAŁYM artefakcie wyniku,
+   ze śladem White Box włącznie — 8,4 mln wywołań) oraz **składanie wkładów gałęziowych
+   falowników**. Napisałem, że wymaga to osobnego profilu — a wystarczył jeden przebieg,
+   który mogłem wykonać w tej samej sesji. To był mój błąd metodyczny: **wyciągnąłem wniosek
+   z ekstrapolacji prymitywu zamiast zmierzyć ścieżkę.**
+
+**Co się NIE zmienia (i jest teraz mocniej udowodnione):** żaden donor solverowy tego nie
+naprawia. Dwa dominujące koszty to **własna sanityzacja JSON-a MV** i **własne składanie
+wkładów falowników** — zewnętrzny solver nie dotknąłby ani jednego. Decyzja o Power Grid Model
+(REJECT/P2) stoi, ale **stoi na innym dowodzie**, niż napisałem wcześniej.
+
+**Korekta wobec agenta SOLVERS (uczciwość w obie strony):** odrzuciłem jego tezę jako
+„magnitudę obaloną". Jego mechanizm (n≈1200) był istotnie błędny, ale jego **struktura była
+bliżej prawdy niż moje odrzucenie**: wielokrotne `build_zbus` to realny, duży koszt, a nie
+0,2 %. Zaliczam to sobie jako pomyłkę, nie jemu.
+
+**Zastrzeżenie:** 59,14 s to bieg **w procesie** na tej maszynie; 170 866,7 ms z
+`CONVERGENCE_EVIDENCE` to pomiar pełnej ścieżki HTTP na innej maszynie. **Nie są to liczby
+wymienne** — nie twierdzę, że wyjaśniłem tamte 171 s, tylko że hotspoty biegu są nazwane.
