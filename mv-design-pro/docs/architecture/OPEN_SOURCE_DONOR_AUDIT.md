@@ -120,8 +120,8 @@ Zmierzone, nie założone (szczegóły i liczby: `DONOR_AUDIT_CHECKPOINT.md` F-1
 | # | Luka | Dowód |
 |---|---|---|
 | L1 | **Brak trwałego magazynu placement/route** | Scena v3 w całości pochodna ENM (`buildScene.ts`); `application/sld/` liczy układ, nie przechowuje. Ręczne rozmieszczenie i wierzchołki tras nie przeżywają przeliczenia. |
-| L2 | **Brak podpowiedzi kolejności/strony pola w domenie** | Kolejność rysowania wynika z kolejności kolekcji ENM — brak pola domenowego. |
-| L3 | **Brak lokalnego wycinka sieci** (fokus, N skoków) | Jest `compute_topology_summary` (globalny), brak ekstrakcji sąsiedztwa. |
+| L2 | **Brak podpowiedzi kolejności/strony pola w domenie** | Zweryfikowane osobiście: klasa `Bay` w `enm/models.py` **nie ma** żadnego pola porządku ani strony (`order`/`kolejnosc`/`strona`/`side`/`position`). Kolejność rysowania wynika z kolejności kolekcji ENM. |
+| L3 | **Brak lokalnego wycinka sieci** (fokus, N skoków) | Zweryfikowane osobiście: `enm/topology_ops.py` **ma** głębokość, ale jako pole `SpineNode.depth` liczone w `compute_topology_summary` (linia 979) dla **całej** sieci, do znakowania korzeni odgałęzień. To **nie jest** ekstrakcja sąsiedztwa o zadanym promieniu wokół wskazanego węzła — takiej nie ma. |
 | L4 | **`ExecutionBackend` (DT-12) niewdrożony** | Zero trafień `ExecutionBackend`/`ProcessPool`/`concurrent.futures`; Celery = stub 26 linii **bez importerów**. Biegi idą synchronicznie. |
 | L5 | **Pary zabezpieczeń podawane przez wołającego** | `analyzer.py:545`: „Compare adjacent devices (assuming ordered downstream to upstream)" — parowanie po indeksie listy; brak wyprowadzenia z topologii. |
 | L6 | **Adapter nie publikuje proweniencji** | Brak `solver_version` / `mapping_version` przy biegu; `pandapower.__version__` nie jest nigdzie zapisywany. |
