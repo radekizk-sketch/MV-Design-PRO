@@ -226,3 +226,40 @@ funkcjonalnej (runtime TENSA, wzorzec integracji GElectrical, optymalizator nast
 są **zablokowani licencyjnie do kopiowania**. Ich wartość dla MV-DESIGN-PRO jest wartością
 **wzorca i zestawu przypadków testowych**, nie kodu. Odwrotnie: donor o najwyższym priorytecie
 (VoltWeave) jest MIT, czyli licencyjnie otwarty — o jego losie decyduje wyłącznie technika.
+
+### F-15. VoltWeave — pomiar obala hipotezę „kandydat na nasz SLD kernel" (weryfikacja własna)
+**Skala (zmierzona, `wc -l`):** `src/` to **11 plików czystego JavaScriptu, łącznie 1152 linie**.
+Zero TypeScriptu. Największy plik `app.js` = 397 linii; `model.js` = 208; `routing.js` = 70;
+`renderer.js` = 99; `scene.js` = 80; `persistence.js` = 25; `reports.js` = 23;
+`analysis-worker.js` = **6 linii**.
+Porównanie: warstwa SLD MV-DESIGN-PRO to ~183 000 linii TypeScriptu.
+**VoltWeave to ~0,6 % objętości tego, co miałby zastąpić.** Nie jest „kernelem" ani frameworkiem —
+jest zwięzłą, jednoosobową demonstracją. Hipoteza wejściowa właściciela („kandydat najwyższego
+priorytetu na Semantic ECAD / SLD kernel") **nie broni się przy kontakcie z kodem**.
+
+**ALE — model pojęciowy jest dokładnie tym, czego szukamy, i to jest prawdziwa wartość donora.**
+`model.js` rozdziela kolekcje: `devices` · `functions` · `pins` · `placements` · `connections`.
+- `device` = tożsamość urządzenia (tag, part, manufacturer) — trwała, niezależna;
+  `rebindDevice()` przepina funkcję na inne urządzenie bez ruszania rysunku
+- `function` = funkcja elektryczna wskazująca `deviceId` (wiele funkcji ↔ jedno urządzenie)
+- `pin` = tożsamość zacisku, należy do funkcji
+- `placement` = graficzne wystąpienie funkcji na stronie (`x`, `y`, `rotation`)
+- `connection` = **`{from: pinId, to: pinId}`** — semantyka na zaciskach — z ZAGNIEŻDŻONYM,
+  osobnym `route: {pageId, fromPlacementId, toPlacementId, waypoints}`
+To jest dosłownie rozdzielenie wymagane przez prawo 3.2: **końce połączenia to piny (semantyka),
+trasa to osobna struktura wskazująca placementy (grafika)**. Potwierdzone z kodu, nie z README.
+
+**Wada dyskwalifikująca kod (dwa miejsca, oba w `model.js`):**
+1. `connect()` odrzuca połączenie, gdy placementy są na różnych stronach:
+   „Drawn connections need two placements on the same page". Akt **semantyczny** jest
+   bramkowany warunkiem **graficznym**.
+2. `deleteSelection()` kasuje `connection`, gdy zniknie placement:
+   „A route cannot refer to a deleted representation" — usuwa CAŁE połączenie, nie samą trasę.
+   Czyli **skasowanie rysunku kasuje połączenie elektryczne** — wprost przeciwnie do prawa 3.4
+   (SLD ma być kasowalne i przeliczalne bez zmiany modelu kanonicznego).
+
+**Werdykt wyprowadzony:** przyjmujemy **wzorzec dekompozycji**, odrzucamy **kod i jego
+sprzężenia**. Ponieważ ENM ma już `Port`/`PortRef`/`ConnectionNode` (F-6), brakującym ogniwem
+jest wyłącznie warstwa `placement` + `route` z trwałością (F-5) — czyli dokładnie ta część,
+którą VoltWeave modeluje. Kierunek: `REWRITE_CLEAN_ROOM` inspirowany wzorcem (mimo licencji MIT
+pozwalającej na kopiowanie — kopiowanie 1152 linii JS do 183 000 linii TS byłoby regresją).
