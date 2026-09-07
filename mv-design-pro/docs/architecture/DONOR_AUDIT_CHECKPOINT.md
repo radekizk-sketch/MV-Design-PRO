@@ -183,3 +183,46 @@ rozstrzygane PRZED oceną ergonomii.
 Pozostałe wiążące: DT-9 (rdzenie solverów FROZEN + bramka B-01), DT-10 (`ResultSetV1` FROZEN,
 zmiana = `ResultSetV2`), DT-8 (jeden assembler, jedna implementacja `TopologyService`),
 DT-1 (brak nowej klasy modelu obok ENM).
+
+### F-13. LICENCJE ZWERYFIKOWANE OSOBIŚCIE przy dokładnych SHA (§11 — zero zgadywania)
+Sprawdzone przeze mnie bezpośrednio w sklonowanych drzewach, nie przez subagenta,
+nie z README, nie z opisu właściciela:
+
+| Donor | SHA zweryfikowany | Licencja |
+|---|---|---|
+| wieslawsoltes/VoltWeave | `0384b23` | **MIT** |
+| NovaShang/sldeditor | `9e1bba0` | **MIT** |
+| xyflow/xyflow | `0a1f957` | **MIT** |
+| e2nIEE/pandapower | `fd7346f` | **BSD-3-Clause** |
+| cool-japan/oxigrid | `1f46bc6` | **Apache-2.0** |
+| PowerGridModel/power-grid-model | `e50f161` | **MPL-2.0** |
+| powsybl/powsybl-diagram | `952186b` | **MPL-2.0** |
+| kieler/elkjs | `cc80083` | **EPL-2.0** |
+| Roger-GO/TENSA | `caca7d5` | **GPL-3.0** |
+| manuvarkey/GElectrical | `47082c7` | **GPL-3.0** |
+| sandialabs/Protection-settings-optimizer | `44fe954` | **GPL-3.0** |
+
+### F-14. BLOKER LICENCYJNY — MV-DESIGN-PRO nie ma własnej licencji
+Pomiar: brak pliku `LICENSE` w `/home/user/MV-Design-PRO` i w `mv-design-pro/`; brak pola
+`license` w `backend/pyproject.toml` i w `frontend/package.json`.
+Brak deklaracji = domyślnie „wszelkie prawa zastrzeżone" (własnościowe).
+
+Konsekwencje, które z tego wynikają (rejestracja zobowiązania i ryzyka — **nie opinia prawna**):
+- **GPL-3.0** (TENSA, GElectrical, Sandia PSO): skopiowanie kodu do dzieła bez licencji
+  rozciągnęłoby na nie warunki GPL-3.0. Dla projektu bez deklaracji licencyjnej to
+  **zmiana sposobu dystrybucji** → zgodnie z §11 mandatu **NIE kopiuję kodu z tych trzech
+  donorów** i rejestruję blokera. Dozwolone bez decyzji właściciela: STUDY_ONLY, benchmark
+  behawioralny, REWRITE_CLEAN_ROOM z normy/dokumentacji.
+  **To jest jedna z niewielu rzeczy w tym audycie wymagających decyzji WŁAŚCICIELA, nie mojej.**
+- **MPL-2.0 / EPL-2.0** (power-grid-model, powsybl-diagram, elkjs): copyleft plikowy.
+  Użycie jako **niemodyfikowanej zależności** nie zaraża własnego kodu; skopiowanie
+  pojedynczych plików źródłowych zostawia je pod MPL/EPL z obowiązkiem udostępnienia.
+  → INTEGRATE realne, COPY ograniczone i wymagające świadomej ewidencji plików.
+- **MIT / BSD-3** (VoltWeave, sldeditor, xyflow, pandapower): permisywne, COPY/PORT wykonalne
+  przy zachowaniu noty o prawach autorskich i tekstu licencji (NOTICE).
+
+**Wniosek strukturalny audytu:** trzej donorzy o największej pozornej atrakcyjności
+funkcjonalnej (runtime TENSA, wzorzec integracji GElectrical, optymalizator nastaw Sandia)
+są **zablokowani licencyjnie do kopiowania**. Ich wartość dla MV-DESIGN-PRO jest wartością
+**wzorca i zestawu przypadków testowych**, nie kodu. Odwrotnie: donor o najwyższym priorytecie
+(VoltWeave) jest MIT, czyli licencyjnie otwarty — o jego losie decyduje wyłącznie technika.
