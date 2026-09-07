@@ -34,9 +34,25 @@ Wyprowadzone z reguł haszowania, nie z preferencji stylistycznych (`DONOR_AUDIT
 - `snapshot_hash` biegu to właśnie ten hasz, a `application/result_freshness.py:292`
   porównuje go z bieżącym, żeby oznaczyć wyniki jako nieaktualne.
 
-**Wniosek:** `placements`/`routes` w ENM oznaczałyby, że **przesunięcie symbolu unieważnia
-wszystkie wyniki obliczeń**. Wariant „dodajmy addytywnie, pola opcjonalne nie zaszkodzą"
-jest **technicznie błędny** i został odrzucony na podstawie pomiaru.
+**Wniosek — w wersji poprawionej po bramce §17.** Mechanizm jest prawdziwy: nowa kolekcja
+najwyższego poziomu **wchodzi** do hasza migawki, więc naiwne „dodajmy addytywnie, pola
+opcjonalne nie zaszkodzą" faktycznie unieważniałoby wyniki przy przesunięciu symbolu.
+**Ale napisałem wcześniej, że jest to „technicznie błędne" i wniosek „nieunikniony" — i to było
+za mocne.** Jedna linia wykluczenia czyni pole hasz-neutralnym, a **repozytorium już to zrobiło**:
+`connection_conditions` jest wykluczone przez `_POLA_NAGLOWKA_POZA_HASHEM` (`hash.py:270-278`).
+Wariant „w ENM, z wykluczeniem z hasza" jest więc **wykonalny technicznie**.
+
+**Odrzucamy go z innych powodów — i one wystarczają:**
+- **DT-1 / prawo 1:** ENM to model **elektryczny**. Współrzędne i wierzchołki tras nie są
+  informacją elektryczną; wstawienie ich do modelu kanonicznego miesza dwie odpowiedzialności.
+- **Prawo 3.4:** magazyn ma być kasowalny w całości bez dotknięcia modelu. Kolekcja wewnątrz
+  `EnergyNetworkModel` nie jest kasowalna niezależnie.
+- **DT-14:** backend semantyka, frontend geometria.
+- **Krucha ochrona:** hasz-neutralność opartą na liście wykluczeń łatwo zepsuć cichym
+  dodaniem pola. Ochrona przez **umiejscowienie poza modelem** jest odporna z konstrukcji,
+  a nie z pamięci autora kolejnej zmiany.
+
+To rozstrzygnięcie potwierdza niezależnie PowSyBl (§ niżej): geometria w side-carze, nie w modelu.
 
 To samo rozstrzygnięcie potwierdza niezależnie PowSyBl: `single-line-diagram-core` (20 229 linii)
 robi **zero** mutacji modelu sieci, a trwała geometria leży w side-carze kluczowanym

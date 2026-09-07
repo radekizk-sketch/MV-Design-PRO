@@ -457,3 +457,34 @@ bliżej prawdy niż moje odrzucenie**: wielokrotne `build_zbus` to realny, duży
 **Zastrzeżenie:** 59,14 s to bieg **w procesie** na tej maszynie; 170 866,7 ms z
 `CONVERGENCE_EVIDENCE` to pomiar pełnej ścieżki HTTP na innej maszynie. **Nie są to liczby
 wymienne** — nie twierdzę, że wyjaśniłem tamte 171 s, tylko że hotspoty biegu są nazwane.
+
+
+### F-20. KOREKTA F-16 — mechanizm prawdziwy, ale wniosek był za mocny
+Bramka §17 słusznie podważyła sformułowanie. Prawda: nowa kolekcja najwyższego poziomu
+**wchodzi** do `hash_migawki_enm` (zweryfikowane ponownie). Nieprawda: że wariant „w ENM"
+jest przez to **niemożliwy**. Jedna linia wykluczenia go ratuje, a **repo już tak zrobiło** dla
+`connection_conditions` (`hash.py:270-278`).
+Decyzja „placement/route poza ENM" **stoi**, ale na DT-1 / prawie 3.4 / DT-14 i na odporności
+konstrukcyjnej (ochrona przez umiejscowienie, nie przez listę wykluczeń), a **nie** na
+niemożliwości technicznej. Karta D-8 miała bramkę opisaną jako „udowodnij hasz-neutralność
+przez `exclude_none`" — to było **mylące**: `exclude_none` nie decyduje, decyduje jawne
+wykluczenie w `hash.py`.
+
+### F-21. KOREKTA F-3/L7 — policzyłem konsumentów złą metodą
+Napisałem „7 z 8 eksportów `cadRoutingContract.ts` bez konsumentów, żywy `snapToGrid` (12)".
+Zmierzone ponownie: **19 eksportów**, a **żaden plik produkcyjny nie importuje modułu**
+(jedyne odwołania: własny test + `scadaComplianceContract.test.ts:154` przypinający istnienie
+pliku po nazwie). Liczyłem **wystąpienia nazwy**, nie importy modułu — i dlatego przegapiłem
+znalezisko: `snapToGrid` ma **TRZY** niezależne definicje
+(`v2/theme/tokens.ts:342`, `v2/geometry/cadRoutingContract.ts:82`, `v3/core/grid.ts:11`),
+z czego dwie żywe (v2 → `ViewportController`, `routing.ts`; v3 → `buildScene`, `compose`, `layout`).
+Moja karta D-6 mówiła „przenieść `snapToGrid` tam, gdzie jest używany" — to utworzyłoby
+**czwartą kopię**. Dokładnie błąd KLASA-NIE-INSTANCJA, przed którym ostrzega konstytucja.
+
+### F-22. KOREKTA L3 — zaproponowałem duplikat
+Orzekłem brak lokalnego wycinka sieci po sprawdzeniu **jednego** pliku (`topology_ops.py`).
+MV **ma** tę zdolność: `application/analyses/lv_domain/graph_view.py` — `BoundaryLink` (105)
+i `hops_from_root` (135, 223), na jądrze `core/topologia.py::przeglad_wszerz_od`; plus
+`NetworkGraph.podgraf` (`graph.py:638`, 2 konsumentów produkcyjnych).
+**Karta D-9 odrzucona jako duplikat.** To drugi raz w tym audycie, gdy o mało nie zaproponowałem
+istniejącej funkcji (pierwszy: eksport DXF) — obie wykryte, obie wycofane.

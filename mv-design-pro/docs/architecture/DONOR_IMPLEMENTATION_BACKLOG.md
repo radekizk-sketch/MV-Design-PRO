@@ -101,8 +101,15 @@ podatna na erozję tego prawa — stąd test prawa jako **pierwszy** krok, nie o
 ### D-3 · Pary zabezpieczeń z topologii · **P0 programu ZAB** · PO CV-4.3
 **Donor / wzorzec:** Sandia `44fe954` (**GPL-3.0 → wyłącznie clean-room, zero kodu**).
 **Cel:** `src/protection/` + analiza koordynacji.
+**Zakres zawężony po bramce §17:** MV **ma już** wyprowadzanie aparatu chroniącego z topologii —
+`application/analyses/protection/czas_wylaczenia_galezi.py:195::znajdz_aparat_chroniacy`
+(BFS, pomija łączniki otwarte, deterministyczne, **nie zakłada sieci promieniowej** — czyli
+spełnia najtrudniejsze kryterium tej karty, którego wzorzec Sandia NIE spełnia).
+Karta **nie buduje tego od zera**: przepina `analyzer.py` na istniejące wyprowadzenie
+i rozszerza je o pary główna/rezerwowa oraz przypadki zwarciowe per strefa.
 **Kryteria odbioru:**
-- [ ] Pary główna/rezerwowa **wyprowadzone z topologii ENM**, nie z kolejności listy.
+- [ ] Pary główna/rezerwowa **wyprowadzone z topologii ENM**, nie z kolejności listy,
+      **na istniejącym wyprowadzeniu** — bez drugiego przeglądu grafu (DT-8).
 - [ ] Poprawne dla **pierścienia SN** (nie tylko sieci promieniowej — `nx.shortest_path` donora
       zakłada promieniową; nasze wyprowadzenie **nie może**).
 - [ ] Poprawne przy DER wnoszącym prąd zwarciowy z drugiej strony.
@@ -120,10 +127,18 @@ brak wyniku-sieroty; `AbortController` po stronie frontu; test wykonywalny.
 ### D-5 · Taksonomia awarii biegu · **P1** · PO CV-4.3
 `FAILED` + `error_message` zastąpione powodem klasyfikowalnym maszynowo. Bez fizyki w warstwie.
 
-### D-6 · Kasacja martwego `cadRoutingContract.ts` (v2) · **P1** · PO CV-4.3
-Znalezisko Z3/L7: **7 z 8 eksportów ma 0 konsumentów produkcyjnych** (żywy tylko `snapToGrid`,
-12 konsumentów). Dwa niezależne routery ortogonalne we froncie; żywy jest `v3/layout/route.ts`.
-Kasacja **procedurą siedmiu kroków**; `snapToGrid` przenieść tam, gdzie jest używany.
+### D-6 · Kasacja martwego `cadRoutingContract.ts` + **konsolidacja trzech kopii `snapToGrid`** · **P1** · PO CV-4.3
+**Karta poprawiona po bramce §17 — pierwotna wersja tworzyła czwartą kopię.**
+Stan zmierzony: moduł ma **19 eksportów** i **żaden plik produkcyjny go nie importuje**.
+Jedyne odwołania: własny test oraz `v2/__tests__/scadaComplianceContract.test.ts:154`,
+który przypina **istnienie pliku po nazwie** — kasacja musi zdjąć także ten pin
+(ta sama pułapka, którą nazwałem dla `test_wymagane.py`).
+**Znalezisko właściwe (klasa, nie instancja):** `snapToGrid` istnieje w **TRZECH** kopiach —
+`v2/theme/tokens.ts:342` (żywa: `ViewportController`, `geometry/routing.ts`),
+`v2/geometry/cadRoutingContract.ts:82` (martwa), `v3/core/grid.ts:11` (żywa: `buildScene`,
+`compose/*`, `layout/*`). Karta ma **skonsolidować prymityw**, nie przenieść martwą kopię.
+Uwaga: v2 i v3 mogą mieć różne stałe siatki — przed scaleniem **udowodnić równoważność
+liczbową**, inaczej konsolidacja zmieni geometrię i złamie bramki determinizmu SLD.
 `findNearestPort` + `PORT_SNAP_THRESHOLD_PX` kasujemy **świadomie**: to geometryczne kojarzenie
 portów, które wpięte kiedykolwiek do tworzenia połączeń złamałoby prawo 3.3.
 
@@ -133,16 +148,25 @@ produkcyjnych** (zweryfikowane), ciche domyślne (`vkr_percent=0.5`, `pfe_kw=0.5
 `max_i_ka=1.0`, „rough conversion"), testy sprawdzają kształt zamiast zgodności z solverem.
 Kasacja procedurą siedmiu kroków; `test_wymagane.py` wymusza jego istnienie — zdjąć też wymaganie.
 
-### D-8 · Podpowiedzi kolejności/strony pola · **P2** · PO CV-4.3
+### D-8 · Podpowiedzi **strony** i porządku rysowania pola · **P2** · PO CV-4.3
+**Zakres zawężony po bramce §17:** `Bay.bay_number` **już istnieje** (`models.py:969`) —
+numeracji nie dodajemy. Brakuje **strony** (góra/dół szyny) i jawnego porządku prezentacji.
 Wzorzec: PowSyBl `ConnectablePosition` (order + TOP/BOTTOM, **bez geometrii**).
-**Warunek dopuszczenia:** hasz-neutralność **udowodniona testem**, nie założona przez
-`exclude_none`. Jeśli pole wchodzi do `hash_migawki_enm` — karta **upada** i wraca jako pole
-Presentation Store.
+**Bramka poprawiona:** wcześniej napisałem „hasz-neutralność przez `exclude_none`" — to było
+mylące. `exclude_none` nie decyduje; decyduje **jawne wykluczenie w `enm/hash.py`**
+(precedens: `connection_conditions` w `_POLA_NAGLOWKA_POZA_HASHEM`). Warunek dopuszczenia:
+albo pole ląduje w Presentation Store (domyślnie preferowane), albo wchodzi do ENM z jawnym
+wykluczeniem **przypiętym testem** porównującym `hash_migawki_enm` przed i po.
 
-### D-9 · Lokalny wycinek sieci (fokus, N skoków) · **P2** · PO CV-4.3
-Wzorzec: PowSyBl `VoltageLevelFilter.traverseVoltageLevels` — predykat **w trakcie** rozwijania,
-reguły skoku per klasa aparatu, pierścień `visible=false` bez wiszących krawędzi.
-**Twardy warunek:** zwraca **zbiór referencji**, nigdy przyciętego ENM (inaczej drugi model).
+### ~~D-9 · Lokalny wycinek sieci~~ · **KARTA WYCOFANA** (bramka §17)
+**To była propozycja duplikatu.** MV ma tę zdolność: `application/analyses/lv_domain/graph_view.py`
+z `BoundaryLink` (105) i `hops_from_root` (135, 223) — sąsiedztwo o ograniczonej głębokości
+z jawnym pierścieniem granicznym, zbudowane na kanonicznym jądrze
+`network_model/core/topologia.py::przeglad_wszerz_od`; plus `NetworkGraph.podgraf`
+(`graph.py:638`, 2 konsumentów produkcyjnych). Wdrożenie PowSyBl-owego wariantu utworzyłoby
+**drugi przegląd grafu** wbrew DT-8 (jedna implementacja topologii).
+Jeśli fokus SLD kiedykolwiek będzie potrzebny, **rozszerzamy istniejące wyprowadzenie**
+(dziś wyspecjalizowane dla domeny nN), nie budujemy nowego.
 
 ### D-10 · Korekta opisu `ui/sld-editor` w CLAUDE.md · **P2**
 Znalezisko Z4: katalog zawiera sam `types.ts` (56 linii) z komentarzem „pełny moduł poza tym

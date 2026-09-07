@@ -66,8 +66,8 @@ ENM pozostaje jedyną prawdą elektryczną.
 |---|---|---|---|---|---|---|
 | F1 | Trwałe rozmieszczenie/trasa jako **side-car** (`FixedLayoutFactory`, `getFixedPositions`, `CustomPathRouting`) | klucz = `getEquipmentId()` (**nigdy** `getSvgId()`), brak wpisu → cichy powrót do auto-układu, **zapisywane tylko wierzchołki wewnętrzne**, końce liczone od nowa | brak (L1) | **REWRITE_CLEAN_ROOM** | ZERO (poza modelem) | **P0** |
 | F2 | Wariant CGMES: współrzędne **na modelu** | — | — | **REJECT** | łamie F-16 (hasz migawki) | — |
-| F3 | Podpowiedzi porządkowe `ConnectablePosition` (order, TOP/BOTTOM, **bez geometrii**) | kolejność i strona pola jako dana domenowa | brak (L2) | **REWRITE_CLEAN_ROOM** | **pole opcjonalne w `Bay`** — hasz-neutralność **do udowodnienia testem**, nie do założenia | P1 |
-| F4 | Sąsiedztwo o ograniczonej głębokości (`VoltageLevelFilter.traverseVoltageLevels`) | predykat **w trakcie** rozwijania, reguły skoku per klasa aparatu, pierścień `visible=false` bez wiszących krawędzi | brak (L3) | **REWRITE_CLEAN_ROOM** | ZERO — **zwraca zbiór referencji, NIGDY przyciętego ENM** | P1 |
+| F3 | Podpowiedzi porządkowe `ConnectablePosition` (order, TOP/BOTTOM, **bez geometrii**) | **strona** pola i porządek rysowania (numer pola `Bay.bay_number` JUŻ JEST — korekta §17) | zawężona (L2) | **REWRITE_CLEAN_ROOM** (zakres mniejszy) | domyślnie **Presentation Store**; wariant w ENM wymaga jawnego wykluczenia w `hash.py` przypiętego testem | P2 |
+| F4 | Sąsiedztwo o ograniczonej głębokości (`VoltageLevelFilter.traverseVoltageLevels`) | predykat w trakcie rozwijania, pierścień bez wiszących krawędzi | **JEST**: `lv_domain/graph_view.py` (`BoundaryLink`, `hops_from_root`) na jądrze `przeglad_wszerz_od` + `NetworkGraph.podgraf` | **REJECT** (duplikat — korekta §17) | drugi przegląd grafu łamałby DT-8 | — |
 | F5 | Kontrakt nakładek: `StyleProvider` zwraca **wyłącznie nazwy klas CSS** | kompozycja + `reset()` | nakładka MV po `elementRef` | **STUDY_ONLY** | ZERO | P2 |
 | F6 | `LimitHighlightStyleProvider` (`getV() > limit` w prezentacji) | — | — | **REJECT** | łamie `overlay_no_physics_guard` | — |
 | F7 | Wzorce determinizmu: siatka całkowita `Position(h,v,hSpan,vSpan)`, `TreeSet` z porządkiem **totalnym**, sort na granicy, `Locale` wymuszony, jawna kolejność JSON | bajtowa powtarzalność | MV ma własne bramki determinizmu | **STUDY_ONLY** (potwierdzenie kierunku) | ZERO | P2 |
@@ -137,3 +137,17 @@ Nie tworzono katalogu dla samego katalogu. **QElectroTech** wchodzi wyłącznie 
 (biblioteka `.elmt` w `sldeditor/third_party/`) i jest **odrzucony** (B6): CC-BY z jawnym zakazem
 użycia jako danych treningowych. **LibrePCB / Horizon EDA** — domena PCB, nie schematy
 jednokreskowe SN/nN; brak zdolności, której nie pokrywają donorzy A–K. Nie audytowane dalej.
+
+
+---
+
+## M. Korekty po bramce adwersaryjnej (§17) — rejestr zmian tej macierzy
+
+| Wiersz | Było | Jest | Powód |
+|---|---|---|---|
+| B4 (DXF) | STUDY_ONLY | **REJECT** (duplikat) | MV ma `v3/export/exportDxfV3.ts` — wykryte przeze mnie w trakcie pisania |
+| F4 (sąsiedztwo N skoków) | REWRITE_CLEAN_ROOM, P1 | **REJECT** (duplikat) | MV ma `lv_domain/graph_view.py` z `BoundaryLink`/`hops_from_root` |
+| F3 (podpowiedzi porządkowe) | P1, „brak pola" | **P2, zakres zawężony** | `Bay.bay_number` już istnieje; brakuje tylko strony i porządku |
+| C2/C3 (proweniencja) | „brak `solver_version`" | **zawężone do stempla pandapower** | `solver_version` istnieje w torze kanonicznym |
+| A1/B1 (placement/route) | uzasadnienie: hasz **wyklucza** wariant w ENM | **uzasadnienie: DT-1 / prawo 3.4 / DT-14** | wykluczenie z hasza jest wykonalne (precedens `connection_conditions`) — argument haszowy był za mocny |
+| D3 (wydajność) | „algebra 0,2 %, przyczyna nieznana" | **profil: `_niefinitowe_na_none` ~26–32 %, wkłady falowników ~28 %** | decyzja REJECT dla PGM **wzmocniona**, dowód wymieniony |
