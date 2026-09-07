@@ -335,3 +335,38 @@ VoltWeave (1152 linie JS, sprzężenie kasowania rysunku z kasowaniem połączen
 SŁABSZYM donorem niż sldeditor (26 332 linie TS, jawne connectivity, MIT, rozdzielone
 placement/route, eksport DXF). Dla wzorca `connection ≠ route` **sldeditor jest lepszym
 źródłem odniesienia**, a jego licencja (MIT, SHA `9e1bba0`) nie stawia przeszkód.
+
+## CP-3 — 2026-09-07, weryfikacja twierdzeń subagentów (nie przyjmuję ich na słowo, §16)
+
+### F-18. POMIAR ROZSTRZYGAJĄCY — macierz Y-bus sieci 52 stacji ma 144×144, nie ~1200
+Agent SOLVERS wyprowadził dla powtarzanego `build_zbus` złożoność O(N⁴) i oszacował
+n=1200 → 164,5 ms × 1200 = **197,4 s**, uznając to za wyjaśnienie zmierzonych 170,9 s.
+**Sprawdziłem to bezpośrednio na substracie `sld_substrate_52s` i twierdzenie się nie broni.**
+
+Pomiar (`map_enm_to_network_graph` → `AdmittanceMatrixBuilder`, ta maszyna):
+
+| Wielkość | Wartość |
+|---|---|
+| Stacje / szyny ENM / gałęzie ENM | 53 / **315** / 261 |
+| Węzły grafu / gałęzie / **łączniki** | 315 / 143 / **172** |
+| **Wymiar Y-bus** | **144 × 144** |
+| `AdmittanceMatrixBuilder.build()` | **1,0 ms** |
+| `np.linalg.inv` | **2,3 ms** |
+| `build_zbus` (build + inv) razem | **2,5 ms** |
+| `build_zbus` × 144 węzłów zwarciowych | **0,4 s** |
+
+Powód rozbieżności: **łączniki scalają węzły**. 172 łączniki redukują 315 węzłów grafu do
+144 klas równoważności (union-find w `core/ybus.py::_build_merged_node_map`). Macierz jest
+budowana na klasach, nie na szynach ENM. Oszacowanie n≈1200 nie ma oparcia w tej sieci.
+
+**Wniosek — F-10 zostaje w mocy i jest teraz zmierzony bezpośrednio, nie ekstrapolowany:**
+cała algebra liniowa zwarć na tej sieci to **rząd 0,4 s wobec zmierzonych 170,9 s (~0,2 %)**.
+Powtarzane `build_zbus` per węzeł (F-9) jest realnym marnotrawstwem i rośnie kwadratowo,
+więc warto je usunąć — ale **nie jest przyczyną** regresji wydajności. Przyczyna pozostaje
+niezdiagnozowana i wymaga profilu pełnej ścieżki `execute`, dokładnie jak zapisano w
+`CONVERGENCE_EVIDENCE.md`. Żaden donor solverowy tego nie naprawia.
+
+**Korekta w drugą stronę (uczciwość §21):** agent SOLVERS ma rację co do STRUKTURY defektu
+(`compute_equivalent_impedance` przelicza Z-bus od zera przy każdym wywołaniu, a `z0_bus`/
+`z2_bus` są już podnoszone przez wołającego — pominięto tylko `z1`). Myli się co do RZĘDU
+WIELKOŚCI, bo przyjął wymiar macierzy bez pomiaru. Struktura: potwierdzona. Magnituda: obalona.
