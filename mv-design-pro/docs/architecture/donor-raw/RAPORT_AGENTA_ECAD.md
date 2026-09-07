@@ -120,7 +120,7 @@ unions only:
 3. matching named potentials, scoped `project` or `location` (`graph.js:20-24`).
 
 No branch reads `x`/`y`. Determinism is deliberate: ids sorted, `union` picks the
-lexicographically smaller root (`a<b?b:a`), nets and their `connections`/`labels`/`numbers`
+lexicographically smaller root (`a < b ? b : a`), nets and their `connections`/`labels`/`numbers`
 sorted before return.
 
 `app.js:261` `resolveEndpoint` is the decisive interaction proof. Dropping a wire onto an
