@@ -127,3 +127,38 @@ Wykonanie idzie synchronicznie przez `POST /api/execution/runs/{id}/execute`.
 To jest realna luka runtime — ALE jej wagę wyznacza F-1: bieg SC 50 stacji trwa 171 s
 synchronicznie. Worker poprawi responsywność, anulowanie i izolację awarii; **nie skróci
 tych 171 s**. Obie rzeczy trzeba trzymać rozdzielnie (§9 mandatu).
+
+### F-9. Z-bus jest przeliczany OD NOWA dla KAŻDEGO węzła zwarciowego (potwierdzone z kodu)
+`network_model/solvers/short_circuit_core.py:78` — `compute_equivalent_impedance()` woła
+`build_zbus(graph)` przy **każdym wywołaniu**, a `build_zbus` (linia 46-55) robi
+`AdmittanceMatrixBuilder(graph).build()` + `np.linalg.inv(y_bus)`. Dla skanu N węzłów
+zwarciowych daje to N pełnych budów Y-bus i N pełnych inwersji gęstych.
+Dodatkowe wywołania `build_zbus`: `short_circuit_iec60909.py:644`, `:785`,
+`machine_sc_iec60909.py:184`. **Zero `scipy.sparse`** w całym katalogu solverów.
+
+### F-10. KOREKTA: gęsta algebra NIE jest dominującym kosztem (pomiar, nie domysł)
+`docs/evidence/PERFORMANCE_BASELINE.md` przypisuje wolne zwarcia G00 „gęstej algebrze".
+**Pomiar tego nie potwierdza.** Zmierzony izolowany prymityw (numpy, ta maszyna):
+
+| Operacja | Czas | ×315 wywołań |
+|---|---|---|
+| `np.linalg.inv(315×315)` complex | 4,31 ms | **1,4 s** |
+| `np.linalg.inv(630×630)` complex | 23,14 ms | 7,3 s |
+
+G00 ma 315 szyn / 260 gałęzi. Budowa Y-bus jest liniowa względem gałęzi i węzłów
+(`core/ybus.py`: union-find + jedna pętla po gałęziach), więc `build_zbus` ≈ jednostki ms.
+Nawet powtórzone dla każdego węzła daje to **rząd 1-2 s, nie 171 s**.
+
+**Wniosek:** dominujący koszt biegu SC 50 stacji **leży poza rdzeniem algebry liniowej** —
+kandydaci do profilowania: składanie migawki/assembler, walidacja, rozwiązywanie katalogu,
+budowa śladu White Box per węzeł zwarciowy, warstwa API/persystencji. Nie zdiagnozowane.
+**Zastrzeżenie uczciwości:** zmierzyłem wyłącznie wyizolowany prymityw, NIE pełną ścieżkę
+`POST /api/execution/runs/{id}/execute` (brak zainstalowanego środowiska backendu w tej sesji).
+To wyklucza jedną hipotezę, nie wskazuje sprawcy.
+
+**Konsekwencja dla audytu donorów (kluczowa):** argument „przyjmijmy Power Grid Model /
+inny solver, bo jest szybszy" **nie ma pokrycia w pomiarze** — wąskie gardło nie jest
+udowodnione jako matematyka solvera. Wymiana solvera na szybszy nie naprawi kosztu leżącego
+w assemblerze/śladzie/API. Najpierw profil, potem ewentualnie donor.
+Powtórzenie `build_zbus` per węzeł (F-9) zostaje realnym, tanim usprawnieniem — ale rdzeń
+jest FROZEN (B-01, patrz `enm/assembler.py:496`), więc wymaga zgody właściciela.
