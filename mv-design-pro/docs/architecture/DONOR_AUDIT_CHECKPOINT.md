@@ -263,3 +263,41 @@ sprzężenia**. Ponieważ ENM ma już `Port`/`PortRef`/`ConnectionNode` (F-6), b
 jest wyłącznie warstwa `placement` + `route` z trwałością (F-5) — czyli dokładnie ta część,
 którą VoltWeave modeluje. Kierunek: `REWRITE_CLEAN_ROOM` inspirowany wzorcem (mimo licencji MIT
 pozwalającej na kopiowanie — kopiowanie 1152 linii JS do 183 000 linii TS byłoby regresją).
+
+### F-16. ROZSTRZYGNIĘCIE ARCHITEKTONICZNE — placement/route NIE MOŻE trafić do ENM
+Wyprowadzone z kodu haszowania, nie z preferencji.
+
+`enm/hash.py` ma dwie różne reguły:
+- `_semantic_payload()` (linia 157) to **biała lista** — jawna projekcja 9 kolekcji przez
+  `_SEMANTIC_INCLUDE_*`. Nowa kolekcja NIE weszłaby do `semantic_hash`. ✔
+- `_input_payload()` (linia 179) i `hash_migawki_enm()` (linia 282) to **pełny zrzut modelu**.
+  `_kopia_pod_hash()` przepisuje **WSZYSTKIE** klucze migawki, usuwając jedynie zmienne pola
+  nagłówka i `id` elementów. Każda nowa kolekcja najwyższego poziomu w `EnergyNetworkModel`
+  **wchodzi do hasza migawki**. ✘
+
+`snapshot_hash` biegu jest właśnie tym haszem, a `application/result_freshness.py:292`
+porównuje go z bieżącym, żeby oznaczyć wyniki jako nieaktualne.
+
+**Wniosek nieunikniony:** gdyby `placements` / `routes` dodać jako kolekcje ENM,
+**przesunięcie symbolu na schemacie unieważniłoby wszystkie wyniki obliczeń** — bo zmieniłoby
+`snapshot_hash`. To jest dokładnie to, czego zakazuje prawo 3.2 i 3.4. Wariant „dodajmy
+addytywnie do ENM, przecież pola opcjonalne nie psują payloadów" jest **technicznie błędny**
+i zostaje odrzucony na podstawie pomiaru.
+
+**Poprawna docelowa architektura (i zgodna z już zamrożonym DT-14 „backend semantyka,
+frontend geometria" oraz ADR-023 polityk prezentacji):**
+trwała warstwa prezentacji jako **osobny agregat**, poza `EnergyNetworkModel`, kluczowany
+przez `ref_id` elementów ENM i identyfikatory portów:
+
+```
+ENM (kanoniczna prawda elektryczna)         SLD Presentation Store (osobny agregat)
+  Port / PortRef / ConnectionNode    <——ref_id——   Placement {element_ref, x, y, rotation, sheet}
+  Bus / Branch / Bay / Substation                  Route     {connection_ref, waypoints[], locked}
+  → wchodzi do snapshot_hash                       → NIE wchodzi do snapshot_hash
+  → zmiana unieważnia wyniki                       → zmiana NIE unieważnia wyników
+```
+Zerwane referencje (`ref_id` bez odpowiednika po zmianie modelu) są **odrzucane przy odczycie**,
+a scena spada do układu wyliczonego (`buildScene`) — nigdy odwrotnie. To realizuje prawo 3.4:
+warstwę prezentacji można skasować w całości bez dotknięcia modelu.
+Nie tworzy to „drugiego źródła prawdy" (DT-1), bo agregat nie przechowuje żadnej informacji
+elektrycznej — wyłącznie współrzędne i wierzchołki tras.
