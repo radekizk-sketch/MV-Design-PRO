@@ -306,10 +306,16 @@ class CanonicalRunRepository:
         rownolegle `POST /execute` na tym samym `run_id` przechodzily oba i
         liczyly solver dwa razy, nadpisujac sobie wynik).
 
-        Zbior stanow blokujacych jest ten sam co zbior stanow, ktore konczy
-        `execute_run` (RUNNING = ktos liczy, FINISHED/FAILED = policzone) --
-        jedno zrodlo prawdy dla warunku wejscia i wyjscia (regula KLASA,
-        NIE INSTANCJA, pkt 3: predykaty parami).
+        Predykat przejscia jest JEDEN i mieszka TYLKO tutaj: `execute_run` nie ma
+        wlasnego sprawdzenia statusu, wiec nie da sie rozjechac dwoch warunkow
+        (regula KLASA, NIE INSTANCJA pkt 3). Niezmiennik, na ktorym to stoi:
+        stany, ktore `execute_run` ZAPISUJE (RUNNING na czas liczenia,
+        FINISHED/FAILED na koniec), musza sie zawierac w
+        `_STANY_NIEPRZEJMOWALNE` -- inaczej bieg zakonczony dalby sie przejac
+        i policzyc drugi raz. Niezmiennik jest PRZYPIETY testem
+        `tests/enm/test_przejecie_biegu_atomowe.py::test_stany_konczace_sa_nieprzejmowalne`,
+        ktory czyta stany ze ZRODLA `execute_run`, bo deklaracja bez testu to
+        falszywa pewnosc (regula KLASA pkt 4).
 
         Zwraca ``True``, gdy TEN wolajacy przejal bieg; ``False``, gdy bieg jest
         juz wykonywany albo zakonczony przez kogos innego.

@@ -272,3 +272,101 @@ def test_bieg_odzyskany_po_zamiataniu_da_sie_uruchomic_ponownie(
     execute_run(swiezy.id)
     assert wejscia == 1
     assert get_run(swiezy.id).status == "FINISHED"  # type: ignore[union-attr]
+
+
+def test_stany_konczace_sa_nieprzejmowalne() -> None:
+    """Niezmiennik pary predykatow: co `execute_run` ZAPISUJE, tego nie da sie przejac.
+
+    `claim_for_execution` deklaruje, ze stany konczace bieg zawieraja sie w
+    `_STANY_NIEPRZEJMOWALNE`. Bez tego testu byla to sama deklaracja (regula
+    KLASA, NIE INSTANCJA pkt 4). Gdyby ktos dodal `execute_run` nowy stan
+    koncowy (np. "CANCELLED") i nie dopisal go do zbioru blokujacego, bieg
+    zakonczony dalby sie policzyc DRUGI RAZ — dokladnie naprawiony defekt.
+
+    Stany czytamy ze ZRODLA (`inspect.getsource`), nie z listy przepisanej
+    recznie: lista przepisana rozjechalaby sie z kodem przy pierwszej zmianie.
+    """
+    import inspect
+    import re
+
+    zrodlo = inspect.getsource(ca.execute_run)
+    zapisywane = set(re.findall(r'run\.status = "([A-Z_]+)"', zrodlo))
+
+    assert zapisywane, "nie wykryto zadnego przypisania run.status — test stracil kontakt z kodem"
+    poza = zapisywane - set(_STANY_NIEPRZEJMOWALNE)
+    assert not poza, (
+        f"execute_run zapisuje stan(y) {sorted(poza)}, ktorych claim_for_execution nie blokuje "
+        f"— bieg w takim stanie da sie przejac ponownie i policzyc dwa razy"
+    )
+
+
+def test_przegrany_dostaje_stan_biezacy_i_nie_dotyka_wiersza(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Przegrany wyscig NIE liczy, NIE psuje wiersza i oddaje UCZCIWY stan RUNNING.
+
+    Bez tego testu pokryte bylo tylko `w is not None`. Zachowanie przegranego jest
+    widoczne w HTTP: `POST /api/execution/runs/{id}/execute` moze teraz zwrocic 200
+    ze statusem RUNNING i BEZ wynikow — wolajacy ma odpytywac dalej, a nie uznac
+    bieg za policzony. Pinujemy to jawnie, bo to zmiana obserwowalna dla klienta.
+    """
+    run = _bieg()
+    # Zwyciezca "trzyma" bieg: przejmujemy go recznie, tak jak zrobilby to inny watek.
+    with canonical_run_repository_scope() as repozytorium:
+        assert repozytorium.claim_for_execution(run.id, started_at=datetime.now(UTC))
+
+    wejscia = 0
+
+    def sonda(bieg: CanonicalRun, uow_factory=None) -> None:  # noqa: ANN001
+        nonlocal wejscia
+        wejscia += 1
+
+    monkeypatch.setattr(ca, "_wykonaj_analize_biegu", sonda)
+
+    wynik = execute_run(run.id)
+
+    assert wejscia == 0, "przegrany policzyl analize mimo przegranego wyscigu"
+    assert wynik.status == "RUNNING", "przegrany musi oddac stan biezacy, nie udawac sukcesu"
+    assert wynik.raw_result in (None, {}), "przegrany nie moze zwrocic wynikow, ktorych nie ma"
+    # Wiersz nietkniety: nadal RUNNING, bez finished_at i bez bledu.
+    zapisany = get_run(run.id)
+    assert zapisany is not None
+    assert zapisany.status == "RUNNING"
+    assert zapisany.finished_at is None
+    assert zapisany.error_message is None
+
+
+def test_zamiatanie_stoi_na_zalozeniu_jednego_procesu_api() -> None:
+    """Pin zalozenia, na ktorym stoi `fail_orphaned_running`.
+
+    Zamiatanie kasuje KAZDY wiersz RUNNING bez filtra po wlascicielu — jest to
+    poprawne WYLACZNIE dopoki bieg wykonuje sie w tym samym, JEDNYM procesie API.
+    Gdyby ktos uruchomil drugi proces (uvicorn --workers, gunicorn) albo przeniosl
+    wykonanie do puli procesow (DT-12), start jednego procesu WYWALILBY biegi
+    trwajace w drugim — przy oknie liczonym w minutach. Ten test zamienia zalozenie
+    w warunek sprawdzany; gdy przestanie byc prawdziwe, ma zapalic sie TU, a nie
+    u projektanta.
+    """
+    from pathlib import Path
+
+    korzen = Path(__file__).resolve().parents[2]
+
+    dockerfile = (korzen / "Dockerfile").read_text(encoding="utf-8")
+    assert "--workers" not in dockerfile, (
+        "Dockerfile uruchamia wiele procesow API — zamiatanie osieroconych biegow "
+        "przestalo byc bezpieczne (patrz fail_orphaned_running)"
+    )
+    assert "gunicorn" not in dockerfile, "gunicorn oznacza wiele workerow — patrz komentarz wyzej"
+
+    zakazane = ("ProcessPoolExecutor", "multiprocessing", "concurrent.futures")
+    trafienia = [
+        f"{sciezka.relative_to(korzen)}:{nazwa}"
+        for sciezka in (korzen / "src").rglob("*.py")
+        for nazwa in zakazane
+        if nazwa in sciezka.read_text(encoding="utf-8")
+    ]
+    assert not trafienia, (
+        "wykonanie moze juz isc w osobnych procesach "
+        f"({trafienia}) — zamiatanie po statusie RUNNING wymaga wtedy dzierzawy "
+        "z biciem serca zamiast globalnego UPDATE"
+    )
