@@ -328,6 +328,38 @@ class CanonicalRunRepository:
         wynik = cast("CursorResult[Any]", self._session.execute(stmt))
         return wynik.rowcount == 1
 
+    def fail_orphaned_running(self, *, reason: str, finished_at: datetime) -> int:
+        """Zamknij biegi osierocone w RUNNING. Zwraca liczbe zamknietych.
+
+        DLACZEGO TO ISTNIEJE. Odkad przejecie biegu jest atomowe
+        (`claim_for_execution`), RUNNING blokuje ponowne uruchomienie -- i slusznie,
+        bo inaczej ten sam bieg liczylby sie dwa razy. Ale bieg przerwany w polowie
+        (restart procesu, ubicie kontenera, wyjatek poza `try`) zostawalby w RUNNING
+        NA ZAWSZE, bez zadnej sciezki wyjscia: projektant widzialby wieczne
+        "trwa obliczenie", a kazde `execute` odbijaloby sie od blokady.
+        Przed atomowym przejeciem taki bieg dawal sie uruchomic ponownie -- ale
+        PRZYPADKIEM, tym samym defektem, ktory pozwalal na podwojne wykonanie.
+        Przypadkowe odzyskiwanie zastapione jawnym.
+
+        DLACZEGO TO JEST POPRAWNE DZIS. Wykonanie biegu zyje W PROCESIE API
+        (`execute_run` to zwykle `def` odkladane przez FastAPI do puli watkow;
+        `ExecutionBackend` z DT-12 nie jest wdrozony, a `api/celery_app.py` nie ma
+        importerow). Skoro proces wlasnie wstal, ZADEN bieg nie moze byc w toku:
+        kazdy wiersz RUNNING jest osierocony z definicji.
+
+        CZEGO NIE WOLNO ZAPOMNIEC PRZY DT-12. Gdy biegi przejda do puli procesow
+        albo kolejki, to zalozenie PRZESTAJE OBOWIAZYWAC -- wtedy RUNNING moze
+        nalezec do zywego workera i zamiast zamiatania przy starcie potrzebna jest
+        dzierzawa z biciem serca. Ta metoda musi wtedy zniknac razem z zalozeniem.
+        """
+        stmt = (
+            update(CanonicalRunORM)
+            .where(CanonicalRunORM.status == "RUNNING")
+            .values(status="FAILED", error_message=reason, finished_at=finished_at)
+        )
+        wynik = cast("CursorResult[Any]", self._session.execute(stmt))
+        return wynik.rowcount
+
     def exists(self, run_id: UUID) -> bool:
         stmt = select(CanonicalRunORM.id).where(CanonicalRunORM.id == run_id)
         return self._session.execute(stmt).scalar_one_or_none() is not None

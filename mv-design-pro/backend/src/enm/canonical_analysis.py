@@ -688,6 +688,25 @@ def _save_run(run: CanonicalRun) -> None:
         repository.save(run)
 
 
+POWOD_OSIEROCENIA = (
+    "Bieg przerwany przed zakonczeniem (restart procesu API). "
+    "Wykonanie zyje w procesie API, wiec po jego starcie zaden bieg nie jest w toku. "
+    "Uruchom analize ponownie."
+)
+
+
+def zamknij_osierocone_biegi() -> int:
+    """Zamknij biegi zostawione w RUNNING przez przerwany proces. Zwraca liczbe.
+
+    Wolane przy starcie API. Szczegoly i warunek wygasniecia (DT-12):
+    `CanonicalRunRepository.fail_orphaned_running`.
+    """
+    with canonical_run_repository_scope() as repository:
+        return repository.fail_orphaned_running(
+            reason=POWOD_OSIEROCENIA, finished_at=datetime.now(UTC)
+        )
+
+
 def _przejmij_bieg(run_id: UUID, *, started_at: datetime) -> bool:
     """Atomowe przejscie biegu do RUNNING — patrz `CanonicalRunRepository.claim_for_execution`."""
     with canonical_run_repository_scope() as repository:

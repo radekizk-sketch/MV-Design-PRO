@@ -56,6 +56,7 @@ from api.switchgear_config import router as switchgear_config_router
 from api.v126_academic import router as v126_academic_router
 from api.xlsx_import import router as xlsx_import_router
 from api.zwarcia_porownania import router as zwarcia_porownania_router
+from enm.canonical_analysis import zamknij_osierocone_biegi
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from infrastructure.persistence.db import (
@@ -82,6 +83,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.engine = engine
     app.state.uow_factory = build_uow_factory(session_factory)
     init_db(engine)
+    # Biegi zostawione w RUNNING przez przerwany proces sa osierocone: wykonanie
+    # zyje w procesie API, wiec skoro proces wlasnie wstal, zaden bieg nie trwa.
+    # Bez tego zostawalyby w RUNNING na zawsze, bo atomowe przejecie (naprawa
+    # podwojnego wykonania) slusznie blokuje ponowne uruchomienie takiego biegu.
+    osierocone = zamknij_osierocone_biegi()
+    if osierocone:
+        logger.warning("Zamknieto %d bieg(ow) osieroconych w RUNNING po restarcie", osierocone)
     logger.info("MV-DESIGN PRO API started, DB initialized")
     yield
     logger.info("MV-DESIGN PRO API shutting down")

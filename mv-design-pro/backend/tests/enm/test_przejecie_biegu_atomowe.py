@@ -33,7 +33,12 @@ import pytest
 sqlalchemy = pytest.importorskip("sqlalchemy")
 
 from enm import canonical_analysis as ca  # noqa: E402
-from enm.canonical_analysis import CanonicalRun, execute_run, get_run  # noqa: E402
+from enm.canonical_analysis import (  # noqa: E402
+    CanonicalRun,
+    execute_run,
+    get_run,
+    zamknij_osierocone_biegi,
+)
 from infrastructure.persistence.repositories.canonical_run_repository import (  # noqa: E402
     _STANY_NIEPRZEJMOWALNE,
     canonical_run_repository_scope,
@@ -194,3 +199,64 @@ def test_execute_run_nie_powtarza_biegu_zakonczonego(monkeypatch: pytest.MonkeyP
 
     assert wejscia == 0, "bieg zakończony został policzony ponownie"
     assert wynik.status == "FINISHED"
+
+
+def test_osierocony_bieg_w_running_jest_zamykany_przy_starcie() -> None:
+    """Bieg przerwany restartem procesu MA sciezke wyjscia z RUNNING.
+
+    Atomowe przejecie slusznie blokuje ponowne uruchomienie biegu w RUNNING —
+    ale bez tego zamiatania bieg przerwany w polowie zostalby w RUNNING NA ZAWSZE
+    (przed naprawa dawal sie uruchomic ponownie PRZYPADKIEM, tym samym defektem,
+    ktory pozwalal na podwojne wykonanie). Zamieniamy odzyskiwanie przypadkowe
+    na jawne — i pinujemy je testem, bo deklaracja bez testu to falszywa pewnosc.
+    """
+    osierocony = _bieg(status="RUNNING")
+    nietkniety_pending = _bieg(status="PENDING")
+    nietkniety_finished = _bieg(status="FINISHED")
+
+    zamkniete = zamknij_osierocone_biegi()
+
+    assert zamkniete == 1, f"zamknieto {zamkniete} biegow zamiast 1"
+    po = get_run(osierocony.id)
+    assert po is not None
+    assert po.status == "FAILED"
+    assert po.finished_at is not None
+    assert (
+        po.error_message and "restart procesu" in po.error_message
+    ), "powod musi nazywac przyczyne, a nie byc pustym FAILED"
+    # Zamiatanie NIE dotyka biegow, ktore nie sa osierocone.
+    assert get_run(nietkniety_pending.id).status == "PENDING"  # type: ignore[union-attr]
+    assert get_run(nietkniety_finished.id).status == "FINISHED"  # type: ignore[union-attr]
+
+
+def test_bieg_odzyskany_po_zamiataniu_da_sie_uruchomic_ponownie(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Zamkniecie osieroconego biegu przywraca mozliwosc policzenia go od nowa.
+
+    Iloczyn cech: {osierocony RUNNING} x {ponowne wykonanie} — samo przejscie do
+    FAILED nie wystarcza, jesli projektant nadal nie moze uruchomic analizy.
+    """
+    run = _bieg(status="RUNNING")
+    zamknij_osierocone_biegi()
+
+    wejscia = 0
+
+    def sonda(bieg: CanonicalRun, uow_factory=None) -> None:  # noqa: ANN001
+        nonlocal wejscia
+        wejscia += 1
+
+    monkeypatch.setattr(ca, "_wykonaj_analize_biegu", sonda)
+
+    # Bieg jest teraz FAILED, wiec `execute_run` go NIE wznawia (stan terminalny) —
+    # wznowienie idzie przez utworzenie nowego biegu. Pinujemy zachowanie jawnie,
+    # zeby nikt nie uznal, ze zamiatanie samo restartuje obliczenia.
+    wynik = execute_run(run.id)
+    assert wynik.status == "FAILED"
+    assert wejscia == 0, "zamiatanie nie moze samo wznawiac obliczen"
+
+    # Nowy bieg na tym samym przypadku liczy sie normalnie.
+    swiezy = _bieg(status="PENDING")
+    execute_run(swiezy.id)
+    assert wejscia == 1
+    assert get_run(swiezy.id).status == "FINISHED"  # type: ignore[union-attr]
