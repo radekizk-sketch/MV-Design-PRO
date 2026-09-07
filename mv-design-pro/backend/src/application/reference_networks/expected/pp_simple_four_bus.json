@@ -1,7 +1,7 @@
 {
   "network_id": "pp-simple-4bus",
   "source": "pandapower.networks.example_simple() — Newton-Raphson convergence (offline regenerated)",
-  "source_note": "Values from pandapower NR solver (deterministic). Use scripts/regenerate_expected_values.py to refresh.",
+  "source_note": "Values from pandapower NR solver (deterministic). Odswiezenie jest swiadoma rewalidacja z zapisem wersji pandapower - nie ma skryptu, ktory zrobi to automatycznie.",
   "power_flow": [
     {"bus_id": "BUS-1", "v_pu": 1.0000, "angle_deg": 0.000, "rtol": 5e-3, "note": "Slack 110 kV"},
     {"bus_id": "BUS-2", "v_pu": 0.998, "angle_deg": -0.36, "rtol": 5e-3, "note": "MV bus after TR"},

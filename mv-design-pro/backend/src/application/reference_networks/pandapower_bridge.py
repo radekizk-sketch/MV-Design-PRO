@@ -3,7 +3,6 @@ Pandapower bridge — opcjonalny offline cross-check + topology import.
 
 LAZY IMPORT: `import pandapower` jest wewnątrz funkcji aby uniknąć dependency
 podczas runtime API. Pandapower wymagane TYLKO dla:
-- scripts/regenerate_expected_values.py (offline expected JSON generation)
 - testów cross-validation oznaczonych markerem `pandapower` (pyproject.toml),
   uruchamianych WYŁĄCZNIE w izolowanym środowisku (job CI
   `pandapower-cross-validation` w .github/workflows/python-tests.yml), bo

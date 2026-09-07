@@ -269,7 +269,8 @@ def validate_network(network_id: str) -> ValidationResponse:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=(
                 f"Expected values not yet defined for {network_id}. "
-                "Run scripts/regenerate_expected_values.py first."
+                "Wartosci odniesienia pochodza z literatury i sa dodawane swiadomie "
+                "(patrz rejestr sieci wzorcowych) - nie ma skryptu, ktory je wygeneruje."
             ),
         )
 

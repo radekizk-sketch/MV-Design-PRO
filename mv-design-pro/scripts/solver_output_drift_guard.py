@@ -75,7 +75,18 @@ def main() -> int:
         print("solver_output_drift_guard: FAIL")
         for w in WARNINGS:
             print(f"  ✗ {w}")
-        print("\nUruchom: poetry run python scripts/regenerate_expected_values.py --confirm --all")
+        # Wczesniej stalo tu "Uruchom: regenerate_expected_values.py --confirm --all".
+        # Ten skrypt NIGDY nie przeliczal wartosci solverem (cialo: "In a real
+        # implementation we would invoke the actual solver here" + ponowna
+        # serializacja wczytanego pliku), a mimo to melodwal sukces. Instrukcja
+        # naprawcza wskazujaca no-op jest grozniejsza niz jej brak, wiec skrypt
+        # zostal skasowany, a instrukcja mowi, co faktycznie pomaga.
+        print(
+            "\nWartosci odniesienia sa danymi normatywnymi (literatura: "
+            "Stevenson/Kersting/IEC/CIGRE) - nie regeneruje sie ich automatycznie. "
+            "Zbadaj, ktora wartosc zdryfowala i dlaczego, a zmiane pliku expected "
+            "wprowadz swiadomie, z diffem w przegladzie."
+        )
     return EXIT_CODE
 
 
