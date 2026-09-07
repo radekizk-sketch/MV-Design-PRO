@@ -81,9 +81,13 @@ podatna na erozję tego prawa — stąd test prawa jako **pierwszy** krok, nie o
       z **zadeklarowanego pola ENM**, nie z pośredniego wyniku MV (wzorzec: test z K6).
 - [ ] Brak wyroczni dla 2F+G **nazwany wprost** w rejestrze (pandapower: `NotImplementedError`) —
       uczciwy brak zamiast cichej luki.
-- [ ] `scripts/regenerate_expected_values.py`: docstring mówi, że przelicza solverem, a ciało
-      zawiera „In a real implementation we would invoke the actual solver here" i **przepisuje
-      plik, który właśnie wczytał** — naprawić albo skasować, nie zostawiać kłamiącego narzędzia.
+- [x] **ZROBIONE w mandacie audytu:** `scripts/regenerate_expected_values.py` — docstring mówił,
+      że przelicza solverem, a ciało zawierało „In a real implementation we would invoke the actual
+      solver here" i **przepisywało plik, który właśnie wczytało**, meldując sukces. Groźne, bo
+      `solver_output_drift_guard.py:78` i `api/reference_networks.py:272` wskazywały je jako
+      **procedurę naprawczą**. Skrypt skasowany, obie instrukcje mówią prawdę.
+      **Zostaje w tej karcie:** prawdziwa regeneracja z solvera — z zapisem wersji pandapower
+      i diffem wartości golden pod przeglądem. To zmiana danych normatywnych, nie sprzątanie.
 
 ### D-3 · Pary zabezpieczeń z topologii · **P0 programu ZAB** · PO CV-4.3
 **Donor / wzorzec:** Sandia `44fe954` (**GPL-3.0 → wyłącznie clean-room, zero kodu**).
