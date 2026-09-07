@@ -4,7 +4,8 @@ import os
 import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any
+from datetime import datetime
+from typing import TYPE_CHECKING, Any, cast
 from uuid import UUID
 
 from infrastructure.persistence.db import (
@@ -15,11 +16,12 @@ from infrastructure.persistence.db import (
 )
 from infrastructure.persistence.models import CanonicalRunBranchFlowORM, CanonicalRunORM
 from infrastructure.persistence.time_utils import ensure_utc
-from sqlalchemy import Engine, delete, select
+from sqlalchemy import Engine, delete, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 if TYPE_CHECKING:
     from enm.canonical_analysis import CanonicalRun
+    from sqlalchemy.engine import CursorResult
 
 #: Klucz surowych wkładów gałęziowych FROZEN solvera w wierszu wyniku zwarciowego.
 KLUCZ_ROZPLYWU = "branch_contributions"
@@ -191,6 +193,13 @@ def get_canonical_run_session_factory() -> sessionmaker[Session]:
         return _cached_session_factory
 
 
+# Stany, z ktorych biegu NIE wolno przejac do wykonania: RUNNING = ktos juz liczy,
+# FINISHED/FAILED = policzone. Wspoldzielone przez `claim_for_execution` i
+# `enm.canonical_analysis.execute_run`, zeby warunek wejscia i wyjscia mial jedno
+# zrodlo prawdy.
+_STANY_NIEPRZEJMOWALNE: tuple[str, ...] = ("RUNNING", "FINISHED", "FAILED")
+
+
 @contextmanager
 def canonical_run_repository_scope() -> Iterator[CanonicalRunRepository]:
     session_factory = get_canonical_run_session_factory()
@@ -287,6 +296,37 @@ class CanonicalRunRepository:
             CanonicalRunBranchFlowORM.fault_node_id == fault_node_id,
         )
         return self._session.execute(stmt).scalar_one_or_none()
+
+    def claim_for_execution(self, run_id: UUID, *, started_at: datetime) -> bool:
+        """Atomowo przejmij bieg do wykonania: cokolwiek-poza-terminalnym -> RUNNING.
+
+        JEDEN wolajacy wygrywa. Warunek przejscia i sam zapis sa w TYM SAMYM
+        zdaniu UPDATE, wiec miedzy sprawdzeniem a zapisem nie ma okna (odczyt
+        statusu osobnym SELECT-em, a potem zapis, dawal klasyczne TOCTOU: dwa
+        rownolegle `POST /execute` na tym samym `run_id` przechodzily oba i
+        liczyly solver dwa razy, nadpisujac sobie wynik).
+
+        Zbior stanow blokujacych jest ten sam co zbior stanow, ktore konczy
+        `execute_run` (RUNNING = ktos liczy, FINISHED/FAILED = policzone) --
+        jedno zrodlo prawdy dla warunku wejscia i wyjscia (regula KLASA,
+        NIE INSTANCJA, pkt 3: predykaty parami).
+
+        Zwraca ``True``, gdy TEN wolajacy przejal bieg; ``False``, gdy bieg jest
+        juz wykonywany albo zakonczony przez kogos innego.
+        """
+        stmt = (
+            update(CanonicalRunORM)
+            .where(
+                CanonicalRunORM.id == run_id,
+                CanonicalRunORM.status.not_in(_STANY_NIEPRZEJMOWALNE),
+            )
+            .values(status="RUNNING", started_at=started_at, error_message=None)
+        )
+        # `Session.execute` jest typowane na `Result`; `rowcount` niesie dopiero
+        # `CursorResult` zwracany dla zdan DML. Rzutowanie zaweza typ do tego,
+        # co SQLAlchemy faktycznie oddaje dla UPDATE.
+        wynik = cast("CursorResult[Any]", self._session.execute(stmt))
+        return wynik.rowcount == 1
 
     def exists(self, run_id: UUID) -> bool:
         stmt = select(CanonicalRunORM.id).where(CanonicalRunORM.id == run_id)

@@ -688,6 +688,12 @@ def _save_run(run: CanonicalRun) -> None:
         repository.save(run)
 
 
+def _przejmij_bieg(run_id: UUID, *, started_at: datetime) -> bool:
+    """Atomowe przejscie biegu do RUNNING — patrz `CanonicalRunRepository.claim_for_execution`."""
+    with canonical_run_repository_scope() as repository:
+        return repository.claim_for_execution(run_id, started_at=started_at)
+
+
 def reset_canonical_runs() -> None:
     with canonical_run_repository_scope() as repository:
         repository.clear_all()
@@ -1152,13 +1158,24 @@ def execute_run(run_id: UUID, uow_factory: Callable[[], Any] | None = None) -> C
     run = get_run(run_id)
     if run is None:
         raise ValueError(f"Run {run_id} not found")
-    if run.status in {"FINISHED", "FAILED"}:
-        return run
+
+    # Przejecie biegu jest ATOMOWE (warunek + zapis w jednym UPDATE). Wczesniej
+    # bylo: `if run.status in {"FINISHED", "FAILED"}: return` + osobny zapis
+    # RUNNING. RUNNING nie bylo w zbiorze blokujacym i miedzy odczytem a zapisem
+    # bylo okno, wiec dwa rownolegle `POST /api/execution/runs/{id}/execute` na
+    # tym samym biegu przechodzily OBA: solver liczyl sie dwa razy i oba zapisy
+    # trafialy w ten sam wiersz. Przy biegu SC sieci 50 stacji okno mialo
+    # ~171 s (pomiar w CONVERGENCE_EVIDENCE), wiec byl to defekt osiagalny
+    # zwyklym dwuklikiem, nie teoretyczny wyscig.
+    started_at = datetime.now(UTC)
+    if not _przejmij_bieg(run_id, started_at=started_at):
+        # Przegrany NIE liczy niczego i NIE dotyka wiersza — oddaje stan biezacy
+        # (RUNNING albo juz terminalny), zeby wolajacy mogl odpytywac dalej.
+        return get_run(run_id) or run
 
     run.status = "RUNNING"
-    run.started_at = datetime.now(UTC)
+    run.started_at = started_at
     run.error_message = None
-    _save_run(run)
 
     try:
         _wykonaj_analize_biegu(run, uow_factory=uow_factory)
