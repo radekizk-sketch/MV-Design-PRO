@@ -331,3 +331,62 @@ Metoda: `grep -n "@router\." backend/src/api/power_flow_runs.py` (15 tras potwie
 
 ## J. Następny vertical slice
 **CV-4.3 — benchmarki i sieci referencyjne torem kanonicznym; `TopologyService` jedna implementacja** (2026-09-05, po raporcie fazy `RAPORT_FAZY_CV_2026-09-05.md` §J; kolejność `docs/architecture/CONVERGENCE_ROADMAP.md` §2/§4). Zakres: (1) 12 benchmarków IEEE/CIGRE + `oze_pv_bess` jako `EnergyNetworkModel` liczone przez P1/S1 — wyrocznia: identyczność z własnym NR w tolerancji zadeklarowanej per benchmark + walidacja krzyżowa pandapower; `BENCHMARK_DICT_ZASTANE` {G07: 1, B-BENCH: 12} → {}; (2) kasacja P6–P8, S5, S6, P9 (własny NR + Ybus), P10 procedurą 7 kroków, `application/reference_networks/**` przepięte na `zloz_wejscie_*`, zapadka `solver_input_assembler_guard` 3/16 → 0, `k_sc = 1.1` w martwej wyspie (P2-1) kasowane razem; (3) `TopologyService` — konsolidacja 18 implementacji / 15 definicji krawędzi do jednej `TopologyView` (osiągalność, wyspy, slack per wyspa, stan łączników, energizacja) z parytetem wysp/energizacji dla całego rejestru i guardem przeciw drugiej implementacji; (4) `backend_no_physics_guard` z pustą allowlistą (108 linii fizyki poza solverami → 0); (5) 3 trasy E2 uruchomienia — pomiar konsumenta FE, przepięcie na `/api/execution/...`, zdjęcie tras. Poza granicą: rdzenie solverów (B-01), legacy ORM C5 (CV-4.4, krok 3 procedury po OD-2), CV-5. DoD: pełny `pytest tests/` 0 failed / 0 skipped, job pandapower zielony, obie zapadki puste pinowane testami własnymi, parytet assemblera bez różnic, mypy 0, snapshot OpenAPI przeliczony, C.2.2/C.2.3 wiersze → ZREALIZOWANE, CI 9/9 na szczycie, przegląd adwersaryjny granicy topologii w §G.
+
+---
+
+## Audyt donorów open-source — dowody pomiarowe (2026-09-07, baza `5adc958d`)
+
+Pełny zestaw: `../architecture/DONOR_AUDIT_CHECKPOINT.md` (F-1…F-18).
+Poniżej wyłącznie pomiary korygujące lub uzupełniające wcześniejsze zapisy tego dokumentu.
+
+### Regresja czasu SC sieci 50 stacji — algebra liniowa WYKLUCZONA jako przyczyna
+Wcześniejszy zapis tego dokumentu wiązał wolne zwarcia G00 z „gęstą algebrą"
+(`PERFORMANCE_BASELINE.md`). **Pomiar bezpośredni tego nie potwierdza.**
+
+Substrat `tests/reference_networks/sld_substrate_52s` (53 stacje, 315 szyn ENM, 261 gałęzi ENM);
+graf po zmapowaniu: 315 węzłów, 143 gałęzie, **172 łączniki**:
+
+| Wielkość | Pomiar |
+|---|---|
+| **Wymiar Y-bus** | **144 × 144** (łączniki scalają węzły — union-find w `core/ybus.py`) |
+| `AdmittanceMatrixBuilder.build()` | 1,0 ms |
+| `np.linalg.inv` | 2,3 ms |
+| `build_zbus` (build + inv) | **2,5 ms** |
+| `build_zbus` × 144 węzłów zwarciowych | **0,4 s** |
+| Zmierzony bieg `execute` (zapis wcześniejszy) | **170 866,7 ms** |
+| Udział algebry liniowej | **~0,2 %** |
+
+**Wniosek:** przyczyna regresji leży poza rdzeniem algebry — kandydaci do profilowania:
+składanie migawki/assembler, walidacja, rozwiązywanie katalogu, budowa śladu White Box per
+węzeł, warstwa API/persystencji. **Nadal niezdiagnozowana.**
+**Zastrzeżenie:** zmierzono wyizolowane prymitywy, NIE pełną ścieżkę
+`POST /api/execution/runs/{id}/execute`. To wyklucza jedną hipotezę, nie wskazuje sprawcy.
+
+**Znalezisko strukturalne (nie wydajnościowe):** `short_circuit_core.py:78`
+`compute_equivalent_impedance()` woła `build_zbus(graph)` przy **każdym** wywołaniu, choć
+`z0_bus`/`z2_bus` są już podnoszone przez wołającego — pominięto `z1`. Marnotrawstwo realne
+i rosnące kwadratowo, ale **nie jest przyczyną** regresji. Rdzeń FROZEN (DT-9 / B-01).
+
+### Wyścig podwójnego wykonania biegu — defekt NAPRAWIONY
+`enm/canonical_analysis.py::execute_run` sprawdzał status osobnym odczytem, a zbiór blokujący
+`{FINISHED, FAILED}` **nie zawierał `RUNNING`**; między odczytem a zapisem nie było zamka.
+Dwa równoległe `POST /api/execution/runs/{id}/execute` na tym samym biegu przechodziły **oba**.
+
+- **Dowód defektu:** na kodzie sprzed naprawy nowy test wątkowy (8 wątków, `threading.Barrier`)
+  daje „analiza policzona **8 razy** zamiast 1".
+- **Naprawa:** `CanonicalRunRepository.claim_for_execution()` — warunek i zapis w JEDNYM
+  `UPDATE ... WHERE status NOT IN (...)`, decyzja po `rowcount`; zbiór stanów blokujących
+  wyniesiony do `_STANY_NIEPRZEJMOWALNE` i wspólny dla predykatu wejścia i wyjścia.
+- **Testy:** `tests/enm/test_przejecie_biegu_atomowe.py` — 6 pozycji, iloczyn cech
+  {repozytorium, `execute_run`} × {PENDING, RUNNING, FINISHED, FAILED}.
+- **Regresja:** `pytest tests/enm tests/api tests/infrastructure tests/application/reference_networks
+  -m "not pandapower"` → **3284 passed, 0 failed** (11 deselected — wymagają osobnego venv).
+  `black` czysty, `ruff` czysty, `mypy` 0 błędów na obu zmienionych plikach.
+- Kontrakt HTTP i sygnatura `execute_run` **bez zmian** (snapshot OpenAPI nietknięty).
+
+### Stan wykonania biegów — pomiar
+- `ExecutionBackend` / `ProcessPool` / `concurrent.futures`: **zero trafień** w `src/`
+  (DT-12 „pula procesów teraz" — decyzja zamrożona i **niewdrożona**).
+- `api/celery_app.py`: **26 linii, zero importerów** — kolejka zadań nie obsługuje biegów analiz.
+- `execute_run` jest zwykłym `def`, więc FastAPI odkłada go do puli wątków — **pętla zdarzeń
+  nie jest blokowana** (przypięte `tests/api/test_wspolbieznosc_biegow.py`).

@@ -72,3 +72,40 @@ CV-4 (jeden assembler, `TopologyService`, kasacja P2–P12/S2–S7 i dialektu be
 
 ## 5. Raportowanie
 Po każdym wycinku: raport w formacie §43 konstytucji (A–K) i aktualizacja `../evidence/CONVERGENCE_EVIDENCE.md`; granica przechodzi w FROZEN w `DECISION_FREEZE_REGISTER.md` dopiero po dowodzie implementacji, wyroczni, przeglądzie future-capability, przeglądzie adwersaryjnym i bramce CI.
+
+## 6. Audyt donorów open-source (2026-09-07, na bazie `5adc958d` = CV-4.3 K6)
+
+Wykonano niezależny technical due diligence 11 repozytoriów open-source (~50 podsystemów).
+Dokumenty: `OPEN_SOURCE_DONOR_AUDIT.md`, `DONOR_DECISION_MATRIX.md`,
+`DONOR_ADOPTION_ARCHITECTURE.md`, `DONOR_IMPLEMENTATION_BACKLOG.md`,
+`DONOR_AUDIT_CHECKPOINT.md` (pomiary), `donor-raw/` (materiał surowy, NIEwiążący).
+
+**Audyt NIE zmienia kolejności konwergencji.** K5 i K6 pozostają zamknięte, skasowane trasy
+legacy nie wracają, **K7 (`S''_kQmin`) pozostaje następną kartą CV-4.3**. Żadna karta donorowa
+nie ma zależności technicznej od K7 ani K7 od nich; cała adopcja jest planowana PO CV-4.3
+z jednym wyjątkiem (D-2 — proweniencja wyroczni pandapower — dopuszczalna równolegle, bo nie
+dotyka solvera ani `enm/assembler.py`).
+
+**Przyjęte (3):** trwały magazyn rozmieszczenia i tras jako agregat POZA ENM (D-1);
+proweniencja + asercja mapowania w wyroczni pandapower (D-2, lekcja K6); wyprowadzenie par
+zabezpieczeń z topologii zamiast z kolejności listy (D-3).
+**Odrzucone świadomie (3):** Power Grid Model jako drugi solver (nieinstalowalny przy
+Pythonie 3.11 / numpy 1.26.4; jako wyrocznia różni się systematycznie); VoltWeave jako „SLD
+kernel" (1152 linie JS wobec ~183k linii TS warstwy SLD; kasowanie rysunku kasuje u niego
+połączenie elektryczne); migracja biegów na workery procesowe (nie naprawia odczuwanego
+problemu, `enm/store.py` chroni zapis `threading.RLock` niedziałającym między procesami).
+
+**Rozstrzygnięcie architektoniczne wiążące dla programu SLD:** `placements`/`routes` **nie mogą**
+być kolekcjami `EnergyNetworkModel` — `hash_migawki_enm` zrzuca wszystkie kolekcje, więc
+przesunięcie symbolu unieważniłoby wyniki (`result_freshness` porównuje `snapshot_hash`).
+Warstwa prezentacji trwałej idzie **obok** ENM, kluczowana `ref_id`, poza haszem.
+
+**Dług nazwany przy okazji (Zero-Debt):** wyścig podwójnego wykonania biegu — **NAPRAWIONY**
+w tym mandacie (atomowe `claim_for_execution`); martwy `cadRoutingContract.ts` (7 z 8 eksportów
+bez konsumentów) — karta D-6; drugi mapper `pandapower_bridge.py` bez konsumentów — karta D-7;
+krzywa `RI` będąca w rzeczywistości Long-Time Inverse — **bramka B-01**, decyzja właściciela.
+
+**Korekta pomiarowa do §1:** regresja czasu SC sieci 50 stacji **nie leży w algebrze liniowej**.
+Zmierzone: Y-bus **144×144** (172 łączniki scalają 315 węzłów), `build_zbus` = 2,5 ms,
+całość ×144 węzłów = **0,4 s** wobec 170,9 s (~0,2 %). Przyczyna nadal niezdiagnozowana;
+wymaga profilu pełnej ścieżki `execute`. Żaden donor solverowy tego nie naprawia.
