@@ -488,3 +488,36 @@ i `hops_from_root` (135, 223), na jądrze `core/topologia.py::przeglad_wszerz_od
 `NetworkGraph.podgraf` (`graph.py:638`, 2 konsumentów produkcyjnych).
 **Karta D-9 odrzucona jako duplikat.** To drugi raz w tym audycie, gdy o mało nie zaproponowałem
 istniejącej funkcji (pierwszy: eksport DXF) — obie wykryte, obie wycofane.
+
+## CP-6 — 2026-09-07, PO BRAMCE ADWERSARIALNEJ (audyt domknięty)
+
+Bramka §17 (`donor-raw/PRZEGLAD_ADWERSARIALNY.md`) **znalazła realne błędy w moim audycie**.
+Wszystkie zweryfikowałem osobiście i naniosłem korekty. Rejestr: F-19…F-22 wyżej + sekcja M
+w `DONOR_DECISION_MATRIX.md`.
+
+### Co bramka OBALIŁA (i co z tym zrobiłem)
+| Zarzut | Werdykt | Działanie |
+|---|---|---|
+| „Algebra to 0,2 %, przyczyna niezdiagnozowana" | **SŁUSZNY** | Profil realnego biegu: 1530 wywołań `build_zbus` (5/węzeł), `_niefinitowe_na_none` ~26–32 %, wkłady falowników ~28 %. F-19, korekta w 4 dokumentach. |
+| L3 (lokalny wycinek) to nie luka | **SŁUSZNY** | Karta D-9 **wycofana**, wiersz F4 → REJECT (duplikat). F-22. |
+| L7 policzone złą metodą | **SŁUSZNY** | 19 eksportów, zero importerów; **3 kopie `snapToGrid`**. Karta D-6 przepisana (tworzyłaby czwartą). F-21. |
+| F-16 „technicznie błędne" za mocne | **SŁUSZNY** | Decyzja stoi, ale na DT-1/3.4/DT-14, nie na niemożliwości. F-20. |
+| L2/L5/L6 przeszacowane | **SŁUSZNE** | Zakresy zawężone (`bay_number`, `znajdz_aparat_chroniacy`, `solver_version` już istnieją). |
+| Moja naprawa: deklaracja bez testu, przegrany niepokryty, zamiatanie na nieprzypiętym założeniu | **SŁUSZNE** | 3 nowe testy + poprawiony docstring; test fikstury przestawiony z nieistniejącego `PENDING` na `CREATED`. |
+
+### Co bramka POTWIERDZIŁA
+Wszystkie 11 licencji (zweryfikowane niezależnie po raz drugi), brak vendor lock-in, brak
+naruszenia prymatu ENM, brak drugiego źródła prawdy topologicznej, poprawność rozdziału
+trasa/połączenie, luki L1/L4/L7 i znalezisko Z4, oraz **wszystkie odrzucenia donorów**
+(VoltWeave jako kod, oxigrid, elkjs, xyflow, PGM). Sam defekt wyścigu i wzorzec naprawy
+(`UPDATE … WHERE … NOT IN` + `rowcount`) potwierdzone jako poprawne również dla Postgresa.
+
+### Bilans uczciwości
+W tym audycie **dwa razy** o mało nie zaproponowałem funkcji, którą MV już ma
+(eksport DXF — wykryte przeze mnie; lokalny wycinek sieci — wykryte przez bramkę).
+Obie wycofane. To jest miara wartości bramki, nie ozdobnik.
+
+### NEXT EXACT STEP
+**K7 (`S''_kQmin`) — następna karta CV-4.3, bez zmian.** Karty donorowe: `DONOR_IMPLEMENTATION_BACKLOG.md`
+(D-2 dopuszczalna równolegle; reszta po CV-4.3). Otwarte do decyzji właściciela: **B-LIC**
+(licencja MV wobec donorów GPL-3.0) i **B-01-RI** (krzywa `RI` = Long-Time Inverse, rdzeń FROZEN).
