@@ -370,3 +370,41 @@ niezdiagnozowana i wymaga profilu pełnej ścieżki `execute`, dokładnie jak za
 (`compute_equivalent_impedance` przelicza Z-bus od zera przy każdym wywołaniu, a `z0_bus`/
 `z2_bus` są już podnoszone przez wołającego — pominięto tylko `z1`). Myli się co do RZĘDU
 WIELKOŚCI, bo przyjął wymiar macierzy bez pomiaru. Struktura: potwierdzona. Magnituda: obalona.
+
+## CP-4 — 2026-09-07, artefakty w repo (stan po scaleniu ustaleń)
+
+### CURRENT HEAD
+Gałąź `claude/mv-design-pro-donor-audit-vnuqd1`, wypchnięta. Baza: `5adc958d` (CV-4.3 K6).
+
+### DONORS REVIEWED — 11, wszyscy sklonowani i przejrzani z kodu
+VoltWeave `0384b23` · sldeditor `9e1bba0` · xyflow `0a1f957` · elkjs `cc80083` ·
+powsybl-diagram `952186b` (+ powsybl-core `cd6f609`) · pandapower `fd7346f` ·
+power-grid-model `e50f161` · GElectrical `47082c7` · TENSA `caca7d5` ·
+oxigrid `1f46bc6` · Sandia PSO `44fe954`.
+
+### DECISIONS ACCEPTED
+Macierz per podsystem: `DONOR_DECISION_MATRIX.md` (A1…L). TOP 3 przyjęte / TOP 3 odrzucone
+oraz karty D-1…D-10: `DONOR_IMPLEMENTATION_BACKLOG.md`.
+
+### LICENSE QUESTIONS
+Jeden bloker do decyzji właściciela: **B-LIC** — MV bez własnej licencji wobec trzech donorów
+GPL-3.0. Nie blokuje żadnej karty (wszystkie z tych donorów są clean-room lub study-only).
+
+### OPEN ENGINEERING QUESTIONS
+1. **B-01-RI** — krzywa `RI` = Long-Time Inverse; zmiana dotyka rdzenia FROZEN i treści dowodów.
+2. Przyczyna regresji czasu SC (170,9 s) — **niezdiagnozowana**; algebra liniowa wykluczona (F-18).
+3. Kontrakt współbieżności magazynu ENM **między procesami** (warunek wstępny dla DT-12):
+   `enm/store.py` chroni zapis `threading.RLock`, który międzyprocesowo nie działa.
+
+### TESTS EXECUTED
+- `tests/enm/test_przejecie_biegu_atomowe.py` — 6 passed (nowy).
+- Dowód, że test łapie defekt: na kodzie sprzed naprawy „policzona **8 razy** zamiast 1".
+- `pytest tests/enm tests/api tests/infrastructure tests/application/reference_networks
+  -m "not pandapower"` → **3284 passed, 0 failed**, 11 deselected.
+- `black` / `ruff` / `mypy` — czyste na zmienionych plikach.
+- Guardy: `docs_guard`, `repo_hygiene`, `docs_archive`, `local_truth`, `utf8_mojibake`,
+  `no_codenames`, `arch_guard`, `solver_boundary`, `pcc_zero` — **OK**.
+
+### NEXT EXACT STEP
+Odbiór przeglądu adwersaryjnego (bramka §17) → naniesienie korekt → ewentualny mały wycinek
+wdrożeniowy D-2 (jedyna karta dopuszczalna równolegle z K7). **K7 pozostaje następną kartą CV-4.3.**
