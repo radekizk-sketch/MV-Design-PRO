@@ -1,5 +1,16 @@
 # DONOR AUDIT — CHECKPOINT (odporność na limit kontekstu, §15 mandatu)
 
+> **HIERARCHIA PRAWDY PAKIETU AUDYTU (obowiązuje przy każdym konflikcie):**
+> **1. KANONICZNE** — `OPEN_SOURCE_DONOR_AUDIT.md` (ustalenia) · `DONOR_DECISION_MATRIX.md`
+> (decyzje) · `DONOR_ADOPTION_ARCHITECTURE.md` (architektura) · `DONOR_IMPLEMENTATION_BACKLOG.md`
+> (karty). **2. DOWODY/CHECKPOINT** — `DONOR_AUDIT_CHECKPOINT.md` (pomiary F-1…F-22; zawiera
+> bloki jawnie oznaczone jako WYCOFANE — czytaj znaczniki). **3. NIEWIĄŻĄCE** — `donor-raw/**`
+> (surowe raporty subagentów i przegląd adwersaryjny; **nie są decyzją**, zawierają twierdzenia
+> obalone przy weryfikacji).
+> Konflikt rozstrzyga poziom wyższy. Cały pakiet jest **podrzędny** wobec kanonu V12.xx,
+> `DECISION_FREEZE_REGISTER.md` (DT-1…DT-16) i `CANONICAL_TWIN_ARCHITECTURE.md`.
+
+
 **Status:** ŻYWY. Aktualizowany po każdej partii donorów. Punkt wejścia dla następnej sesji.
 
 ## CP-1 — 2026-09-07, ustalenie baseline
@@ -54,7 +65,8 @@ zapisany w `docs/evidence/CONVERGENCE_EVIDENCE.md` bez tego identyfikatora, z po
 - `POST /api/execution/runs/{id}/execute`, bieg SC sieci 50 stacji: **170 866,7 ms**
 - kalibracja 2026-07-29: **~32 s** → regresja **~5,3×**
 - budżet 240 000 ms, margines **1,40×** (wobec ~7× przy kalibracji)
-- próg NIE podniesiony (Zero-Debt); przyczyna **niezdiagnozowana**, wymaga osobnego profilowania
+- próg NIE podniesiony (Zero-Debt); przyczyna **nieznana w chwili tego zapisu** — nazwana
+  później w **F-19** (profil biegu w procesie: `_niefinitowe_na_none`, wkłady falowników)
 - wykluczono: kontencję CPU (cichy host, load < 3,0) oraz różnicę BLAS/OpenBLAS (0.3.23 identyczny)
 Wniosek dla audytu: to problem **wydajności solvera/assemblera**, nie responsywności procesu.
 Izolacja workera go NIE naprawi (§9 mandatu) — donor runtime nie może być sprzedany jako lek na to.
@@ -338,7 +350,11 @@ placement/route, eksport DXF). Dla wzorca `connection ≠ route` **sldeditor jes
 
 ## CP-3 — 2026-09-07, weryfikacja twierdzeń subagentów (nie przyjmuję ich na słowo, §16)
 
-### F-18. POMIAR ROZSTRZYGAJĄCY — macierz Y-bus sieci 52 stacji ma 144×144, nie ~1200
+### F-18. ~~POMIAR ROZSTRZYGAJĄCY~~ — **CZĘŚCIOWO WYCOFANE PRZEZ F-19 (czytaj F-19 najpierw)**
+> **Status:** wymiar Y-bus **144×144 pozostaje poprawny**. Wniosek o udziale algebry
+> (**0,4 s / ~0,2 %**) i o „niezdiagnozowanej przyczynie" jest **OBALONY** — patrz **F-19**
+> (profil realnego biegu: 1530 wywołań `build_zbus` = 5 na węzeł, `_niefinitowe_na_none`
+> ~26–32 %, wkłady falowników ~28 %). Blok zostawiony jako ślad rozumowania, **nie jako prawda**.
 Agent SOLVERS wyprowadził dla powtarzanego `build_zbus` złożoność O(N⁴) i oszacował
 n=1200 → 164,5 ms × 1200 = **197,4 s**, uznając to za wyjaśnienie zmierzonych 170,9 s.
 **Sprawdziłem to bezpośrednio na substracie `sld_substrate_52s` i twierdzenie się nie broni.**
@@ -353,18 +369,19 @@ Pomiar (`map_enm_to_network_graph` → `AdmittanceMatrixBuilder`, ta maszyna):
 | `AdmittanceMatrixBuilder.build()` | **1,0 ms** |
 | `np.linalg.inv` | **2,3 ms** |
 | `build_zbus` (build + inv) razem | **2,5 ms** |
-| `build_zbus` × 144 węzłów zwarciowych | **0,4 s** |
+| ~~`build_zbus` × 144 węzłów zwarciowych~~ | ~~0,4 s~~ — **BŁĄD (F-19): 306 węzłów × 5 = 1530 wywołań** |
 
 Powód rozbieżności: **łączniki scalają węzły**. 172 łączniki redukują 315 węzłów grafu do
 144 klas równoważności (union-find w `core/ybus.py::_build_merged_node_map`). Macierz jest
 budowana na klasach, nie na szynach ENM. Oszacowanie n≈1200 nie ma oparcia w tej sieci.
 
-**Wniosek — F-10 zostaje w mocy i jest teraz zmierzony bezpośrednio, nie ekstrapolowany:**
-cała algebra liniowa zwarć na tej sieci to **rząd 0,4 s wobec zmierzonych 170,9 s (~0,2 %)**.
-Powtarzane `build_zbus` per węzeł (F-9) jest realnym marnotrawstwem i rośnie kwadratowo,
-więc warto je usunąć — ale **nie jest przyczyną** regresji wydajności. Przyczyna pozostaje
-niezdiagnozowana i wymaga profilu pełnej ścieżki `execute`, dokładnie jak zapisano w
-`CONVERGENCE_EVIDENCE.md`. Żaden donor solverowy tego nie naprawia.
+**~~Wniosek (OBALONY — zostawiony do wglądu, zastąpiony przez F-19)~~:** ~~cała algebra
+liniowa zwarć to rząd 0,4 s wobec 170,9 s (~0,2 %), a przyczyna pozostaje niezdiagnozowana.~~
+
+**Prawda wg F-19:** `build_zbus` wołany **1530 razy (5 na węzeł)**, `np.linalg.inv` **1,758 s ≈ 3 %**
+biegu 59,14 s, a przyczynę nazywa profil: `_niefinitowe_na_none` (~26–32 %) i składanie wkładów
+falowników (~28 %). Bez zmian zostaje jedynie konkluzja donorowa: **żaden donor solverowy tego
+nie naprawia** — i jest teraz **mocniej** uzasadniona, bo oba hotspoty to własny kod MV.
 
 **Korekta w drugą stronę (uczciwość §21):** agent SOLVERS ma rację co do STRUKTURY defektu
 (`compute_equivalent_impedance` przelicza Z-bus od zera przy każdym wywołaniu, a `z0_bus`/
@@ -392,7 +409,10 @@ GPL-3.0. Nie blokuje żadnej karty (wszystkie z tych donorów są clean-room lub
 
 ### OPEN ENGINEERING QUESTIONS
 1. **B-01-RI** — krzywa `RI` = Long-Time Inverse; zmiana dotyka rdzenia FROZEN i treści dowodów.
-2. Przyczyna regresji czasu SC (170,9 s) — **niezdiagnozowana**; algebra liniowa wykluczona (F-18).
+2. ~~Przyczyna regresji czasu SC — niezdiagnozowana~~ → **ROZSTRZYGNIĘTE w F-19**: hotspoty to
+   `_niefinitowe_na_none` (~26–32 %) i składanie wkładów falowników (~28 %). Otwarte pozostaje
+   **czy te hotspoty tłumaczą także pomiar 170 866,7 ms pełnej ścieżki HTTP** (inna maszyna,
+   inny tor) — to wymaga profilu tamtej ścieżki, nie tej.
 3. Kontrakt współbieżności magazynu ENM **między procesami** (warunek wstępny dla DT-12):
    `enm/store.py` chroni zapis `threading.RLock`, który międzyprocesowo nie działa.
 
@@ -521,3 +541,76 @@ Obie wycofane. To jest miara wartości bramki, nie ozdobnik.
 **K7 (`S''_kQmin`) — następna karta CV-4.3, bez zmian.** Karty donorowe: `DONOR_IMPLEMENTATION_BACKLOG.md`
 (D-2 dopuszczalna równolegle; reszta po CV-4.3). Otwarte do decyzji właściciela: **B-LIC**
 (licencja MV wobec donorów GPL-3.0) i **B-01-RI** (krzywa `RI` = Long-Time Inverse, rdzeń FROZEN).
+
+## CP-7 — 2026-09-08, HARDENING PAKIETU (mandat domknięcia)
+
+Sesja **nie powtarzała** audytu donorów. Zadanie: usunąć drift między dokumentami, domknąć
+model statusów, dowieść naprawy wyścigu na dialekcie produkcyjnym, nazwać granice zamiatania,
+wystawić kartę migracyjną Z7 i utrzymać blokadę RI.
+
+### F-23. Drift dokumentów — usunięty (pełny sweep, nie trzy znane miejsca)
+Stara, obalona liczba („cała algebra 0,4 s / ~0,2 %", „przyczyna niezdiagnozowana") żyła
+jeszcze jako **prawda bieżąca** w czterech miejscach: `DONOR_DECISION_MATRIX.md` (wiersz D3),
+`DONOR_ADOPTION_ARCHITECTURE.md` §3, `DONOR_IMPLEMENTATION_BACKLOG.md` (TOP-3 REJECT poz. 1),
+`DONOR_AUDIT_CHECKPOINT.md` (CP-4 „otwarte pytania"). Dodatkowo bloki **F-18** (checkpoint)
+i tabela w `CONVERGENCE_EVIDENCE.md` stały bez znacznika wycofania.
+Wszystkie podmienione na wynik profilu; bloki historyczne opatrzone jawnym
+**„CZĘŚCIOWO WYCOFANE"** i przekreśleniem obalonych wierszy. Sweep powtórzony — poza tekstem
+korekt nie ma już starej liczby.
+
+### F-24. Statusy `CanonicalRun` — instancja i KLASA
+- **Instancja:** dwa ostatnie `_bieg(status="PENDING")` (linie 226 i 271) przestawione na
+  `CREATED`. `PENDING` **nie jest stanem domenowym** — to render HTTP stanu `CREATED`.
+- **`VALIDATED` rozstrzygnięty: NIE jest stanem `CanonicalRun`.** Należy do **legacy rejestru
+  R2** (`domain/analysis_run.py::AnalysisRunStatus`), innej klasy, nietykającej tabeli
+  `canonical_runs`; **żaden zapis** nie wstawia go tam (grep). Zarzut „VALIDATED wywali
+  `to_execution_dict` KeyError-em" **nie dotyczy** tego rejestru.
+- **KLASA defektu:** `CanonicalRun.status` to goły `str` (`canonical_analysis.py:497`) bez
+  `Literal`, więc literówka przechodzi i przez model, i przez `NOT IN`. Pin:
+  `test_kazdy_status_domenowy_ma_odwzorowanie_http` — zbiór statusów **zapisywanych** przez
+  moduł ⊆ klucze mapowania `to_execution_dict()`. Iniekcja `"ZAKONCZONY"` → **FAILED**.
+
+### F-25. Naprawa wyścigu — DOWÓD NA POSTGRESIE (wykonany, nie wywnioskowany)
+Zainstalowałem i uruchomiłem **PostgreSQL 16.13**; baza `mvtest`, 12 wątków, bariera startowa:
+
+| Scenariusz | Wynik |
+|---|---|
+| `claim_for_execution` równolegle | **1 zwycięzca / 12** ; status `RUNNING` |
+| `execute_run` równolegle | solver policzony **1×** ; status `FINISHED` |
+| `claim(RUNNING/FINISHED/FAILED)` | **False** dla każdego |
+| **KOD SPRZED NAPRAWY** na Postgresie | solver policzony **12×** |
+
+Test trwały: `test_przejecie_jest_atomowe_takze_na_postgresie`, włączany
+`MV_TEST_POSTGRES_URL`, **pomijany** (nie „cicho zielony") bez niej.
+
+### F-26. DEFEKT POSTGRESA znaleziony przy tym dowodzie — NAPRAWIONY
+`infrastructure/persistence/models.py::GUID.process_result_value` robiło bezwarunkowe
+`UUID(value)`, podczas gdy `load_dialect_impl` ustawia dla PostgreSQL `PG_UUID(as_uuid=True)`,
+czyli sterownik oddaje **gotowy obiekt `UUID`**. Skutek: `AttributeError: 'UUID' object has no
+attribute 'replace'` przy **każdym** odczycie kolumny GUID na Postgresie.
+Niewidoczne w testach, bo `conftest.py` wymusza SQLite — a `docker-compose.yml` uruchamia
+backend na `postgresql+psycopg://` (DT-13). Naprawione: `isinstance(value, UUID)` → zwróć.
+**To był defekt czynny na dialekcie produkcyjnym**, znaleziony wyłącznie dlatego, że dowód
+wykonano zamiast go wywnioskować.
+
+### F-27. Zamiatanie osieroconych — granice nazwane i pinowane
+Mechanizm nazwany w kodzie **TRANSITIONAL SINGLE-EXECUTOR RECOVERY**, z jawnym kontraktem
+wyjścia: przy DT-12 ma zostać **zastąpiony** dzierżawą (`worker_id`, `lease_until`,
+`heartbeat_at`), nie rozszerzony. Pin rozszerzony z jednego na **trzy** kształty
+wieloprocesowości: `--workers`/`gunicorn`, **repliki/`scale` w compose** (+ obecność
+`container_name`, które blokuje `--scale`), pula procesów/kolejka w `src/`.
+Iniekcja `replicas: 3` do compose → **FAILED**.
+
+### F-28. Z7 — karta migracyjna + zamknięty zbiór wyjątków
+Pomiar: **16** kolekcji listowych ENM, **14** w `_ELEMENT_KEYS`; poza polityką
+`connection_nodes` i `line_runs`; **0** martwych wpisów w `_ELEMENT_KEYS`.
+Kod **nietknięty** (zmiana wejścia hasza = migracja). Karta **D-11** w backlogu.
+Guard: `tests/enm/test_polityka_hash_kolekcji.py` — zbiór wyjątków ZAMKNIĘTY w obie strony.
+Iniekcja nowej kolekcji → **FAILED**.
+
+### F-29. RI — blokada utrzymana, warianty rozdzielone
+Potwierdzone ponownie: `RI = (120,0, 1,0)` = **Long-Time Inverse**; prawdziwej RI
+(`t = TMS/(0,339 − 0,236/M)`) **nie ma nigdzie w repo**. Etykieta i LaTeX **trafiają do
+dowodu** (`protection_iec60255.py:531` i `:542`). Rozdzielone w karcie: **wariant A** —
+przemianowanie bez zmiany liczb; **wariant B** — dodanie prawdziwej RI jako nowej krzywej.
+Defekt **nazewnictwa/normy, nie liczb**. Blokada **B-01** utrzymana.

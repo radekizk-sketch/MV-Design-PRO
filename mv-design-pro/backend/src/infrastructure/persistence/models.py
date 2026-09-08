@@ -44,9 +44,22 @@ class GUID(TypeDecorator[UUID]):
             return None
         return str(value)
 
-    def process_result_value(self, value: str | None, dialect: Dialect) -> UUID | None:
+    def process_result_value(self, value: str | UUID | None, dialect: Dialect) -> UUID | None:
+        """Odczyt identyfikatora, ktory u kazdego dialektu przychodzi w innej postaci.
+
+        SQLite oddaje `str` (kolumna `String(36)`), a PostgreSQL — przez
+        `PG_UUID(as_uuid=True)` ustawione w `load_dialect_impl` — oddaje GOTOWY
+        obiekt `uuid.UUID`. Bezwarunkowe `UUID(value)` dzialalo wiec wylacznie na
+        SQLite, a na PostgreSQL wywalalo `AttributeError: 'UUID' object has no
+        attribute 'replace'` przy KAZDYM odczycie kolumny GUID. Defekt byl
+        niewidoczny w testach, bo `tests/conftest.py` wymusza SQLite, podczas gdy
+        `docker-compose.yml` uruchamia backend na `postgresql+psycopg://` (DT-13:
+        „Postgres docelowo, SQLite dev/test").
+        """
         if value is None:
             return None
+        if isinstance(value, UUID):
+            return value
         return UUID(value)
 
 

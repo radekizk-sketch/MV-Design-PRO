@@ -1,5 +1,16 @@
 # DONOR DECISION MATRIX — MV-DESIGN-PRO
 
+> **HIERARCHIA PRAWDY PAKIETU AUDYTU (obowiązuje przy każdym konflikcie):**
+> **1. KANONICZNE** — `OPEN_SOURCE_DONOR_AUDIT.md` (ustalenia) · `DONOR_DECISION_MATRIX.md`
+> (decyzje) · `DONOR_ADOPTION_ARCHITECTURE.md` (architektura) · `DONOR_IMPLEMENTATION_BACKLOG.md`
+> (karty). **2. DOWODY/CHECKPOINT** — `DONOR_AUDIT_CHECKPOINT.md` (pomiary F-1…F-22; zawiera
+> bloki jawnie oznaczone jako WYCOFANE — czytaj znaczniki). **3. NIEWIĄŻĄCE** — `donor-raw/**`
+> (surowe raporty subagentów i przegląd adwersaryjny; **nie są decyzją**, zawierają twierdzenia
+> obalone przy weryfikacji).
+> Konflikt rozstrzyga poziom wyższy. Cały pakiet jest **podrzędny** wobec kanonu V12.xx,
+> `DECISION_FREEZE_REGISTER.md` (DT-1…DT-16) i `CANONICAL_TWIN_ARCHITECTURE.md`.
+
+
 **Data:** 2026-09-07 · **Baza:** `5adc958d` (CV-4.3 K6) · **Kontekst:** `OPEN_SOURCE_DONOR_AUDIT.md`
 Decyzja dotyczy **PODSYSTEMU**, nigdy całego repozytorium. Klasy:
 `COPY` · `PORT` · `INTEGRATE` · `REWRITE_CLEAN_ROOM` · `STUDY_ONLY` · `REJECT`.
@@ -50,7 +61,7 @@ ENM pozostaje jedyną prawdą elektryczną.
 |---|---|---|---|---|
 | D1 | Drugi niezależny adapter solvera | **REJECT / DEFER** | **Nie da się zainstalować:** wymaga Pythona ≥3.12 (MV: 3.11.15) i numpy ≥2.0 (MV zamyka 1.26.4, nośne dla haszy golden). Ponadto rdzeń C++ bez pośrednich (Ybus/Zth) — pod prawem 5 może być najwyżej wyrocznią, a jako wyrocznia różni się **z założenia**: `c_max` nN zaszyte 1,10 wobec 1,05 w MV, napięcie przedzwarciowe ze źródła (±3 %), zwarcia wymagają sieci uziemionej (wyklucza sieci kompensowane). | P2 |
 | D2 | `two_phase_to_ground` jako wyrocznia | **DEFER** | Jedyna unikalna wartość (C6), ale przychodzi w pakiecie z trzema odchyleniami. Wznowić **tylko** przy nazwanym warunku: MV przechodzi na Python ≥3.12 **i** numpy ≥2.0. | P2 |
-| D3 | „Szybszy solver naprawi regresję SC" | **REJECT (teza obalona)** | §7 pkt 1 audytu: cała algebra to 0,4 s z 170,9 s. Wymiana solvera zamaskowałaby nieznaną przyczynę. | — |
+| D3 | „Szybszy solver naprawi regresję SC" | **REJECT (teza obalona)** | Profil realnego biegu (§7 pkt 1 audytu): dominują **`_niefinitowe_na_none` ~26–32 %** i **składanie wkładów falowników ~28 %** — obie to **własny kod MV**, którego zewnętrzny solver nie dotyka. Sama algebra (`np.linalg.inv`, 1530 wywołań) to **1,758 s ≈ 3 %**. Wymiana solvera zamaskowałaby przyczynę, zamiast ją usunąć. | — |
 
 ## E. GElectrical — `47082c7`, **GPL-3.0-or-later** → COPY ZABLOKOWANE
 

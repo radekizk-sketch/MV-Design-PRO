@@ -1,5 +1,16 @@
 # DONOR ADOPTION ARCHITECTURE — MV-DESIGN-PRO
 
+> **HIERARCHIA PRAWDY PAKIETU AUDYTU (obowiązuje przy każdym konflikcie):**
+> **1. KANONICZNE** — `OPEN_SOURCE_DONOR_AUDIT.md` (ustalenia) · `DONOR_DECISION_MATRIX.md`
+> (decyzje) · `DONOR_ADOPTION_ARCHITECTURE.md` (architektura) · `DONOR_IMPLEMENTATION_BACKLOG.md`
+> (karty). **2. DOWODY/CHECKPOINT** — `DONOR_AUDIT_CHECKPOINT.md` (pomiary F-1…F-22; zawiera
+> bloki jawnie oznaczone jako WYCOFANE — czytaj znaczniki). **3. NIEWIĄŻĄCE** — `donor-raw/**`
+> (surowe raporty subagentów i przegląd adwersaryjny; **nie są decyzją**, zawierają twierdzenia
+> obalone przy weryfikacji).
+> Konflikt rozstrzyga poziom wyższy. Cały pakiet jest **podrzędny** wobec kanonu V12.xx,
+> `DECISION_FREEZE_REGISTER.md` (DT-1…DT-16) i `CANONICAL_TWIN_ARCHITECTURE.md`.
+
+
 **Data:** 2026-09-07 · **Baza:** `5adc958d` (CV-4.3 K6)
 **Podrzędne wobec:** `CANONICAL_TWIN_ARCHITECTURE.md`, `DECISION_FREEZE_REGISTER.md` (DT-1…DT-16).
 **Decyzje:** `DONOR_DECISION_MATRIX.md` · **Dowody i pomiary:** `DONOR_AUDIT_CHECKPOINT.md`
@@ -148,7 +159,9 @@ upadają na pomiarze i na środowisku:
   (wyklucza sieci kompensowane, typowe dla SN w Polsce). Wyrocznia, która różni się
   systematycznie, nie zwiększa wartości dowodowej — przenosi spór z liczb na konwencje.
 - **Argument wydajnościowy jest obalony pomiarem:** cała algebra liniowa zwarć na sieci
-  52 stacji to **0,4 s** wobec zmierzonych **170,9 s** (Y-bus **144×144**, `build_zbus` 2,5 ms).
+  52 stacji (`np.linalg.inv`, **1530 wywołań** = 5 na węzeł zwarciowy) to **1,758 s ≈ 3 %** biegu
+  trwającego **59,14 s**; dominują **`_niefinitowe_na_none` (~26–32 %)** i **składanie wkładów
+  falowników (~28 %)** — czyli **własny kod MV**, nie matematyka solvera.
   Wymiana solvera **zamaskowałaby** nieznaną przyczynę zamiast ją usunąć.
 
 **Warunek wznowienia (nazwany, nie „kiedyś"):** MV przechodzi na Python ≥3.12 **i** numpy ≥2.0.

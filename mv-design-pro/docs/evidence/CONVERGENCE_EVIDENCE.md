@@ -346,19 +346,22 @@ Wcześniejszy zapis tego dokumentu wiązał wolne zwarcia G00 z „gęstą algeb
 Substrat `tests/reference_networks/sld_substrate_52s` (53 stacje, 315 szyn ENM, 261 gałęzi ENM);
 graf po zmapowaniu: 315 węzłów, 143 gałęzie, **172 łączniki**:
 
-| Wielkość | Pomiar |
+> **UWAGA — ten blok jest CZĘŚCIOWO WYCOFANY.** Wymiar Y-bus 144×144 pozostaje poprawny,
+> ale mnożnik „×144 węzłów" i udział „~0,2 %" są **BŁĘDNE**: węzłów zwarciowych jest **306**,
+> a `build_zbus` wołany jest **1530 razy (5 na węzeł)**. Poprawne liczby i nazwana przyczyna —
+> w sekcji **KOREKTA** poniżej. Blok zostawiony jako ślad rozumowania, nie jako prawda.
+
+| Wielkość | Pomiar (prymityw, w izolacji) |
 |---|---|
-| **Wymiar Y-bus** | **144 × 144** (łączniki scalają węzły — union-find w `core/ybus.py`) |
+| **Wymiar Y-bus** | **144 × 144** (łączniki scalają węzły — union-find w `core/ybus.py`) — **nadal aktualne** |
 | `AdmittanceMatrixBuilder.build()` | 1,0 ms |
 | `np.linalg.inv` | 2,3 ms |
 | `build_zbus` (build + inv) | **2,5 ms** |
-| `build_zbus` × 144 węzłów zwarciowych | **0,4 s** |
-| Zmierzony bieg `execute` (zapis wcześniejszy) | **170 866,7 ms** |
-| Udział algebry liniowej | **~0,2 %** |
+| ~~`build_zbus` × 144 węzłów zwarciowych~~ | ~~0,4 s~~ — **BŁĄD: 306 węzłów × 5 wywołań = 1530** |
+| ~~Udział algebry liniowej~~ | ~~~0,2 %~~ — **BŁĄD: ≈ 3 % biegu 59,14 s** |
 
-**Wniosek:** przyczyna regresji leży poza rdzeniem algebry — kandydaci do profilowania:
-składanie migawki/assembler, walidacja, rozwiązywanie katalogu, budowa śladu White Box per
-węzeł, warstwa API/persystencji. **Nadal niezdiagnozowana.**
+**~~Wniosek (OBALONY)~~:** ~~przyczyna regresji leży poza rdzeniem algebry i jest nadal
+niezdiagnozowana.~~ Przyczyna **została nazwana** profilem — patrz KOREKTA poniżej.
 **Zastrzeżenie:** zmierzono wyizolowane prymitywy, NIE pełną ścieżkę
 `POST /api/execution/runs/{id}/execute`. To wyklucza jedną hipotezę, nie wskazuje sprawcy.
 

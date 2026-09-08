@@ -24,6 +24,7 @@ prawdy (`_STANY_NIEPRZEJMOWALNE`).
 
 from __future__ import annotations
 
+import os
 import threading
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
@@ -223,7 +224,7 @@ def test_osierocony_bieg_w_running_jest_zamykany_przy_starcie() -> None:
     na jawne — i pinujemy je testem, bo deklaracja bez testu to falszywa pewnosc.
     """
     osierocony = _bieg(status="RUNNING")
-    nietkniety_pending = _bieg(status="PENDING")
+    nietkniety_utworzony = _bieg(status="CREATED")
     nietkniety_finished = _bieg(status="FINISHED")
 
     zamkniete = zamknij_osierocone_biegi()
@@ -237,7 +238,7 @@ def test_osierocony_bieg_w_running_jest_zamykany_przy_starcie() -> None:
         po.error_message and "restart procesu" in po.error_message
     ), "powod musi nazywac przyczyne, a nie byc pustym FAILED"
     # Zamiatanie NIE dotyka biegow, ktore nie sa osierocone.
-    assert get_run(nietkniety_pending.id).status == "PENDING"  # type: ignore[union-attr]
+    assert get_run(nietkniety_utworzony.id).status == "CREATED"  # type: ignore[union-attr]
     assert get_run(nietkniety_finished.id).status == "FINISHED"  # type: ignore[union-attr]
 
 
@@ -268,7 +269,7 @@ def test_bieg_odzyskany_po_zamiataniu_da_sie_uruchomic_ponownie(
     assert wejscia == 0, "zamiatanie nie moze samo wznawiac obliczen"
 
     # Nowy bieg na tym samym przypadku liczy sie normalnie.
-    swiezy = _bieg(status="PENDING")
+    swiezy = _bieg(status="CREATED")
     execute_run(swiezy.id)
     assert wejscia == 1
     assert get_run(swiezy.id).status == "FINISHED"  # type: ignore[union-attr]
@@ -337,15 +338,23 @@ def test_przegrany_dostaje_stan_biezacy_i_nie_dotyka_wiersza(
 
 
 def test_zamiatanie_stoi_na_zalozeniu_jednego_procesu_api() -> None:
-    """Pin zalozenia, na ktorym stoi `fail_orphaned_running`.
+    """Pin zalozenia, na ktorym stoi TRANSITIONAL SINGLE-EXECUTOR RECOVERY.
 
-    Zamiatanie kasuje KAZDY wiersz RUNNING bez filtra po wlascicielu — jest to
-    poprawne WYLACZNIE dopoki bieg wykonuje sie w tym samym, JEDNYM procesie API.
-    Gdyby ktos uruchomil drugi proces (uvicorn --workers, gunicorn) albo przeniosl
-    wykonanie do puli procesow (DT-12), start jednego procesu WYWALILBY biegi
-    trwajace w drugim — przy oknie liczonym w minutach. Ten test zamienia zalozenie
-    w warunek sprawdzany; gdy przestanie byc prawdziwe, ma zapalic sie TU, a nie
-    u projektanta.
+    `fail_orphaned_running` kasuje KAZDY wiersz RUNNING bez filtra po wlascicielu.
+    Poprawne WYLACZNIE dopoki wykonanie biegu nalezy do JEDNEGO procesu API.
+    Wieloprocesowosc ma wiecej niz jeden ksztalt i pin musi pokrywac je RAZEM
+    (KLASA, NIE INSTANCJA) — kazdy z osobna wystarczy do szkody:
+      (a) wiele workerow w jednym kontenerze (uvicorn --workers, gunicorn),
+      (b) wiele KONTENEROW/replik przy tej samej bazie (compose replicas/scale;
+          `container_name` blokuje `--scale`, wiec tez jest pinowany),
+      (c) przeniesienie wykonania do puli procesow albo kolejki (DT-12).
+    W kazdym z nich start jednego procesu WYWALILBY biegi trwajace w drugim —
+    przy oknie liczonym w minutach.
+
+    Gdy ktorykolwiek warunek przestanie byc prawdziwy, ma zapalic sie TU, a nie u
+    projektanta, a mechanizm ma zostac ZASTAPIONY dzierzawa (`worker_id`,
+    `lease_until`, `heartbeat_at` albo rownowaznym kontraktem lease/heartbeat).
+    Globalne zamiatanie jest rozwiazaniem PRZEJSCIOWYM, nie architektura docelowa.
     """
     from pathlib import Path
 
@@ -357,6 +366,18 @@ def test_zamiatanie_stoi_na_zalozeniu_jednego_procesu_api() -> None:
         "przestalo byc bezpieczne (patrz fail_orphaned_running)"
     )
     assert "gunicorn" not in dockerfile, "gunicorn oznacza wiele workerow — patrz komentarz wyzej"
+
+    # (b) wiele kontenerow/replik przy tej samej bazie
+    compose = (korzen.parent / "docker-compose.yml").read_text(encoding="utf-8")
+    for wzorzec in ("replicas:", "scale:"):
+        assert wzorzec not in compose, (
+            f"docker-compose deklaruje {wzorzec} — repliki backendu to wiele procesow "
+            "przy jednej bazie, wiec globalne zamiatanie RUNNING przestalo byc bezpieczne"
+        )
+    assert "container_name: mv-design-pro-backend" in compose, (
+        "zniknal container_name backendu — compose pozwala wtedy na --scale, "
+        "czyli wiele procesow API przy jednej bazie (patrz docstring)"
+    )
 
     zakazane = ("ProcessPoolExecutor", "multiprocessing", "concurrent.futures")
     trafienia = [
@@ -370,3 +391,91 @@ def test_zamiatanie_stoi_na_zalozeniu_jednego_procesu_api() -> None:
         f"({trafienia}) — zamiatanie po statusie RUNNING wymaga wtedy dzierzawy "
         "z biciem serca zamiast globalnego UPDATE"
     )
+
+
+def test_kazdy_status_domenowy_ma_odwzorowanie_http() -> None:
+    """Zbior statusow ZAPISYWANYCH przez domene = zbior kluczy mapowania HTTP.
+
+    KLASA, NIE INSTANCJA. Instancja defektu: ten plik budowal biegi w statusie
+    "PENDING", ktorego domena NIE ZNA (PENDING to render HTTP stanu CREATED), a
+    testy i tak przechodzily. Klasa defektu: `CanonicalRun.status` jest golym
+    `str` (`canonical_analysis.py:497`) BEZ ograniczenia `Literal`, wiec dowolna
+    literowka przechodzi zarowno przez model, jak i przez predykat przejecia
+    (`NOT IN` przepuszcza kazdy napis). Bez tego pinu kolejny status dopisany do
+    domeny bez wpisu w `to_execution_dict()` wywalilby endpoint `KeyError`-em
+    dopiero u projektanta.
+
+    UWAGA — `VALIDATED` NIE jest stanem `CanonicalRun`. Nalezy do legacy rejestru
+    R2 (`domain/analysis_run.py::AnalysisRunStatus`), ktory jest INNA klasa i nie
+    dotyka tabeli `canonical_runs`; zaden zapis nie wstawia go tutaj (sprawdzone
+    grepem). Dlatego zbior domenowy wyprowadzamy ZE ZRODLA modulu, a nie z listy
+    statusow innego rejestru.
+    """
+    import inspect
+    import re
+
+    zrodlo_modulu = inspect.getsource(ca)
+    zapisywane = set(re.findall(r'run\.status = "([A-Z_]+)"', zrodlo_modulu))
+    zapisywane |= set(re.findall(r'status="([A-Z_]+)",', inspect.getsource(ca.create_run)))
+
+    assert zapisywane, "nie wykryto zadnego zapisu statusu — test stracil kontakt z kodem"
+
+    zrodlo_mapowania = inspect.getsource(ca.CanonicalRun.to_execution_dict)
+    odwzorowane = set(re.findall(r'"([A-Z_]+)": "[A-Z_]+"', zrodlo_mapowania))
+
+    bez_odwzorowania = zapisywane - odwzorowane
+    assert not bez_odwzorowania, (
+        f"domena zapisuje status(y) {sorted(bez_odwzorowania)} bez wpisu w to_execution_dict() "
+        f"— endpoint wywali KeyError; mapowanie zna {sorted(odwzorowane)}"
+    )
+
+
+# --------------------------------------------------------------------------
+# Postgres: ten sam kontrakt na dialekcie PRODUKCYJNYM
+# --------------------------------------------------------------------------
+# `docker-compose.yml` uruchamia backend na `postgresql+psycopg://` (DT-13:
+# „Postgres docelowo, SQLite dev/test"), a `conftest.py` wymusza SQLite — wiec
+# bez tego testu atomowosc przejecia bylaby sprawdzana WYLACZNIE na dialekcie,
+# ktory nie jest produkcyjny. Test wlacza sie, gdy wskazesz baze zmienna
+# `MV_TEST_POSTGRES_URL`, np.:
+#   MV_TEST_POSTGRES_URL=postgresql+psycopg://postgres@127.0.0.1:5432/mvtest
+# Bez niej jest pomijany (a NIE cicho zielony).
+POSTGRES_URL = os.environ.get("MV_TEST_POSTGRES_URL")
+
+
+@pytest.mark.skipif(
+    not POSTGRES_URL, reason="brak MV_TEST_POSTGRES_URL — dialekt produkcyjny niesprawdzany"
+)
+def test_przejecie_jest_atomowe_takze_na_postgresie(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Ten sam niezmiennik, ten sam wyscig, dialekt produkcyjny.
+
+    Wzorzec `UPDATE ... WHERE status NOT IN (...)` + `rowcount` jest poprawny w
+    obu silnikach, ale poprawnosc rozumowania to nie to samo co wykonany dowod.
+    Zmierzone przy dodawaniu tego testu (PostgreSQL 16.13, 12 watkow, bariera):
+    kod SPRZED naprawy liczyl solver **12 razy**, kod PO naprawie — **1 raz**.
+    """
+    from infrastructure.persistence.repositories import canonical_run_repository as repo
+
+    monkeypatch.setenv("DATABASE_URL", POSTGRES_URL)
+    repo._cached_engine = None
+    repo._cached_session_factory = None
+    repo._cached_database_url = None
+
+    run = _bieg()
+    wejscia = 0
+    zamek = threading.Lock()
+
+    def sonda(bieg: CanonicalRun, uow_factory=None) -> None:  # noqa: ANN001
+        nonlocal wejscia
+        with zamek:
+            wejscia += 1
+        threading.Event().wait(0.05)
+
+    monkeypatch.setattr(ca, "_wykonaj_analize_biegu", sonda)
+
+    _rownolegle(lambda: execute_run(run.id))
+
+    assert wejscia == 1, f"na Postgresie analiza policzona {wejscia} razy zamiast 1"
+    zapisany = get_run(run.id)
+    assert zapisany is not None
+    assert zapisany.status == "FINISHED"

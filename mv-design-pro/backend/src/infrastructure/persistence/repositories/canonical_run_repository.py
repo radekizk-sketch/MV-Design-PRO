@@ -335,7 +335,14 @@ class CanonicalRunRepository:
         return wynik.rowcount == 1
 
     def fail_orphaned_running(self, *, reason: str, finished_at: datetime) -> int:
-        """Zamknij biegi osierocone w RUNNING. Zwraca liczbe zamknietych.
+        """TRANSITIONAL SINGLE-EXECUTOR RECOVERY: zamknij biegi osierocone w RUNNING.
+
+        NAZWA JEST CZESCIA KONTRAKTU. To rozwiazanie PRZEJSCIOWE, nie architektura
+        docelowa: globalny `UPDATE ... WHERE status='RUNNING'` bez filtra po
+        wlascicielu. Przy DT-12 (pula procesow albo kolejka) ma zostac ZASTAPIONE
+        dzierzawa -- `worker_id`, `lease_until`, `heartbeat_at` (albo rownowaznym
+        kontraktem lease/heartbeat) -- a nie rozszerzone o kolejny warunek.
+        Zwraca liczbe zamknietych.
 
         DLACZEGO TO ISTNIEJE. Odkad przejecie biegu jest atomowe
         (`claim_for_execution`), RUNNING blokuje ponowne uruchomienie -- i slusznie,
@@ -353,10 +360,15 @@ class CanonicalRunRepository:
         importerow). Skoro proces wlasnie wstal, ZADEN bieg nie moze byc w toku:
         kazdy wiersz RUNNING jest osierocony z definicji.
 
-        CZEGO NIE WOLNO ZAPOMNIEC PRZY DT-12. Gdy biegi przejda do puli procesow
-        albo kolejki, to zalozenie PRZESTAJE OBOWIAZYWAC -- wtedy RUNNING moze
-        nalezec do zywego workera i zamiast zamiatania przy starcie potrzebna jest
-        dzierzawa z biciem serca. Ta metoda musi wtedy zniknac razem z zalozeniem.
+        GRANICE ZALOZENIA (pinowane testem
+        `tests/enm/test_przejecie_biegu_atomowe.py::test_zamiatanie_stoi_na_zalozeniu_jednego_procesu_api`,
+        bo deklaracja bez testu to falszywa pewnosc). Zalozenie lamie KAZDY z trzech
+        ksztaltow wieloprocesowosci, nie tylko pierwszy:
+          (a) wiele workerow w kontenerze (`uvicorn --workers`, `gunicorn`),
+          (b) wiele KONTENEROW/replik przy tej samej bazie (compose `replicas`/`scale`),
+          (c) wykonanie w puli procesow albo kolejce (DT-12).
+        W kazdym z nich start jednego procesu wywalilby biegi trwajace w drugim.
+        Ta metoda musi wtedy zniknac razem z zalozeniem.
         """
         stmt = (
             update(CanonicalRunORM)

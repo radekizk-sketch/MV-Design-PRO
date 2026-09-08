@@ -1,5 +1,16 @@
 # DONOR IMPLEMENTATION BACKLOG — MV-DESIGN-PRO
 
+> **HIERARCHIA PRAWDY PAKIETU AUDYTU (obowiązuje przy każdym konflikcie):**
+> **1. KANONICZNE** — `OPEN_SOURCE_DONOR_AUDIT.md` (ustalenia) · `DONOR_DECISION_MATRIX.md`
+> (decyzje) · `DONOR_ADOPTION_ARCHITECTURE.md` (architektura) · `DONOR_IMPLEMENTATION_BACKLOG.md`
+> (karty). **2. DOWODY/CHECKPOINT** — `DONOR_AUDIT_CHECKPOINT.md` (pomiary F-1…F-22; zawiera
+> bloki jawnie oznaczone jako WYCOFANE — czytaj znaczniki). **3. NIEWIĄŻĄCE** — `donor-raw/**`
+> (surowe raporty subagentów i przegląd adwersaryjny; **nie są decyzją**, zawierają twierdzenia
+> obalone przy weryfikacji).
+> Konflikt rozstrzyga poziom wyższy. Cały pakiet jest **podrzędny** wobec kanonu V12.xx,
+> `DECISION_FREEZE_REGISTER.md` (DT-1…DT-16) i `CANONICAL_TWIN_ARCHITECTURE.md`.
+
+
 **Data:** 2026-09-07 · **Baza:** `5adc958d` (CV-4.3 K6)
 **Decyzje:** `DONOR_DECISION_MATRIX.md` · **Architektura:** `DONOR_ADOPTION_ARCHITECTURE.md`
 
@@ -26,7 +37,7 @@ Przejrzano 11 donorów i **~50 podsystemów**. Adoptujemy **trzy**. To jest celo
 
 | # | Co | Decyzja | Dlaczego |
 |---|---|---|---|
-| **1** | **Power Grid Model jako drugi solver** | REJECT / P2 z warunkiem | Nieinstalowalny (Python ≥3.12, numpy ≥2.0 wobec 3.11.15 / 1.26.4 zamkniętego dla haszy golden). Jako wyrocznia różni się **systematycznie** (`c_max` nN 1,10 vs 1,05; ±3 % z napięcia źródła; wymaga sieci uziemionej). Argument wydajnościowy **obalony pomiarem** (0,4 s z 170,9 s). Warunek wznowienia: MV na Pythonie ≥3.12 **i** numpy ≥2.0. |
+| **1** | **Power Grid Model jako drugi solver** | REJECT / P2 z warunkiem | Nieinstalowalny (Python ≥3.12, numpy ≥2.0 wobec 3.11.15 / 1.26.4 zamkniętego dla haszy golden). Jako wyrocznia różni się **systematycznie** (`c_max` nN 1,10 vs 1,05; ±3 % z napięcia źródła; wymaga sieci uziemionej). Argument wydajnościowy **obalony profilem**: dominują `_niefinitowe_na_none` (~26–32 %) i składanie wkładów falowników (~28 %) — **własny kod MV**; sama algebra to ~3 %. Warunek wznowienia: MV na Pythonie ≥3.12 **i** numpy ≥2.0. |
 | **2** | **VoltWeave jako „SLD kernel"** | REJECT (kod) | 1152 linie JavaScriptu wobec ~183 000 linii TypeScriptu warstwy SLD MV. Jego `deleteSelection()` kasuje **połączenie elektryczne** przy usunięciu rysunku — odwrotność prawa 3.4. Bierzemy **wzorzec** (poz. 1 wyżej), nie kod. |
 | **3** | **Migracja biegów na workery procesowe (TENSA)** | STUDY_ONLY / P2 | Nie naprawia odczuwanego problemu (171 s to CPU solvera, nie blokada pętli — pętla **nie jest** blokowana). Wysoki promień rażenia: `enm/store.py` chroni zapis `threading.RLock`, który **między procesami nie działa**; ADR-028 zostawia Postgres jako PROPOSED. GPL-3.0 blokuje kopiowanie. Odczuwany objaw naprawia **anulowanie** (D-4, P1). |
 
@@ -173,6 +184,36 @@ Znalezisko Z4: katalog zawiera sam `types.ts` (56 linii) z komentarzem „pełny
 worktree", a CLAUDE.md opisuje go jako „Edycja SLD (geometria CAD, przeciąganie, trasowanie)".
 Opis niezgodny ze stanem repo.
 
+### D-11 · Migracja polityki haszowania kolekcji ENM (Z7) · **P2** · PO CV-4.3
+**Znalezisko zweryfikowane pomiarem:** `EnergyNetworkModel` ma **16 kolekcji listowych**,
+`enm/hash.py::_ELEMENT_KEYS` zna **14**. Poza polityką stoją **`connection_nodes`** i
+**`line_runs`**, więc `_kopia_pod_hash` **nie zdejmuje z nich `id`** przed haszowaniem —
+inaczej niż z pozostałych elementów. `_ELEMENT_KEYS` nie zawiera wpisów martwych (0 nazw
+bez odpowiednika w modelu).
+
+**Dlaczego to NIE jest defekt czynny:** identyfikatory w obu kolekcjach są dziś stabilne,
+więc hasz jest deterministyczny. To **niespójność polityki**, nie błąd wyniku.
+
+**Dlaczego NIE naprawiam tego przy okazji audytu:** dopisanie dwóch nazw do `_ELEMENT_KEYS`
+**zmienia wejście hasza**. Skutki, które trzeba obsłużyć razem, nie pojedynczo:
+- unieważnia `snapshot_hash` **zapisane w istniejących bazach** (`canonical_runs.snapshot_hash`),
+- przez `application/result_freshness.py` (porównanie `snapshot_hash`) oznaczy **wszystkie
+  istniejące wyniki jako nieaktualne**, mimo że fizyka się nie zmieniła,
+- wymaga **przeliczenia plików golden** i wpisów parytetu, które niosą hasze,
+- wymaga decyzji, czy stare hasze migrujemy, czy akceptujemy jednorazowe unieważnienie.
+
+**Zabezpieczenie wdrożone TERAZ (żeby dług nie urósł):**
+`tests/enm/test_polityka_hash_kolekcji.py` — zbiór wyjątków jest **ZAMKNIĘTY**:
+każda **nowa** kolekcja poza `_ELEMENT_KEYS` wywala test z instrukcją, a wyjątek, który
+przestał być potrzebny, też wywala (żeby lista nie udawała długu, którego nie ma).
+Zweryfikowane iniekcją: dodanie kolekcji `testowe_kolekcje` → test **FAILED**.
+
+**Kryteria odbioru karty:**
+- [ ] Decyzja: migrujemy hasze czy akceptujemy jednorazowe unieważnienie (**właściciel**).
+- [ ] `connection_nodes` i `line_runs` w `_ELEMENT_KEYS`; wyjątki w teście **puste**.
+- [ ] Golden i wpisy parytetu przeliczone, diff **w przeglądzie**, nie automatem.
+- [ ] Pomiar PRZED/PO: ile zapisanych biegów zmieniło `snapshot_hash`.
+
 ## 3. Karty ZABLOKOWANE — decyzja właściciela, nie moja
 
 ### B-LIC · Licencja MV-DESIGN-PRO a donorzy GPL-3.0
@@ -193,7 +234,20 @@ charakterystyka RI to `t = TMS/(0,339 − 0,236/M)` (ABB, spoza IEC 60255-151).
 i widoczna w dowodach** (etykieta + LaTeX trafiają do ProofDocument).
 **Dlaczego stop:** zmiana dotyka **zamrożonego rdzenia solvera** (DT-9) oraz **treści dowodów**
 i plików golden → **bramka B-01**, zgoda właściciela.
-**Wariant zalecany:** przemianować na `LONG_TIME_INVERSE` (liczby bez zmian — dziś liczy
-poprawnie, tylko pod złą nazwą) i osobno rozstrzygnąć, czy MV ma w ogóle oferować prawdziwą RI.
-**Zaznaczenie uczciwe:** to defekt **nazewnictwa/normy**, nie liczb — dziś zwracana wartość
-jest poprawna dla Long-Time Inverse.
+**Weryfikacja ponowna (2026-09-08):** ustalenie potwierdzone. `RI = (120.0, 1.0)`,
+etykieta `"Odwrotna RI (120)"`, LaTeX `t = TMS·120/(M−1)`. Prawdziwej charakterystyki RI
+(`t = TMS/(0,339 − 0,236/M)`) **nie ma nigdzie w repo** — MV jej po prostu nie oferuje.
+Etykieta i wzór **trafiają do dowodu**: `protection_iec60255.py:531` (`formula_latex`) i
+`:542` (`curve_label_pl`), więc błędna nazwa jest widoczna dla odbiorcy dokumentacji.
+
+**ROZDZIELENIE, na którym stoi ta karta:** to defekt **nazewnictwa/normy**, **NIE** defekt
+numeryczny. Zwracana wartość jest **poprawna dla Long-Time Inverse**; żaden wynik nie jest
+dziś liczbowo zły. Dlatego karta nie jest pilna, ale jest **normatywna**.
+
+**Wariant A (zalecany, minimalny):** przemianować `RI` → `LONG_TIME_INVERSE`, **bez zmiany
+liczb**. Dotyka: enum, etykiety PL, LaTeX, snapshot OpenAPI, zapisane nastawy używające
+identyfikatora `"RI"`, pliki golden dowodów. Wymaga migracji wartości `"RI"` w danych.
+**Wariant B (osobno, tylko jeśli potrzebne produktowo):** dodać **prawdziwą** RI jako nową
+charakterystykę (`t = TMS/(0,339 − 0,236/M)`) — to nowa fizyka krzywej, własne testy i
+sanity-bounds, nie część przemianowania.
+**Bramka:** B-01 (rdzeń FROZEN + treść dowodów + golden) — decyzja właściciela.
