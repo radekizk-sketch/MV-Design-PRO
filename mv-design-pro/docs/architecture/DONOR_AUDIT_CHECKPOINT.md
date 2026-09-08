@@ -614,3 +614,29 @@ Potwierdzone ponownie: `RI = (120,0, 1,0)` = **Long-Time Inverse**; prawdziwej R
 dowodu** (`protection_iec60255.py:531` i `:542`). Rozdzielone w karcie: **wariant A** —
 przemianowanie bez zmiany liczb; **wariant B** — dodanie prawdziwej RI jako nowej krzywej.
 Defekt **nazewnictwa/normy, nie liczb**. Blokada **B-01** utrzymana.
+
+### F-30. BRAMKA ODBIOROWA CP-7 — wyniki (rozdzielone LOCAL / CI / NOT RUN)
+
+**LOCAL PASS** (ta maszyna, środowisko `poetry`):
+| Bramka | Wynik |
+|---|---|
+| `pytest tests -m "not pandapower"` (pełny backend) | **12 076 passed, 1 skipped, 18 deselected, 0 failed** (18 min 10 s) |
+| `black --check src tests` | 1494 pliki bez zmian |
+| `ruff check src tests` | czysto |
+| `mypy src` | **779 plików, 0 błędów** |
+| Guardy repo (10) | docs · repo_hygiene · docs_archive · local_truth · utf8_mojibake · no_codenames · arch · solver_boundary · pcc_zero · domain_no_guessing — **OK** |
+| Guardy backendu (14) | canonical_ops · readiness_codes · audit_contract · catalog_binding · catalog_gate · api_lifecycle · legacy_public_path · trace_determinism · solver_diff · topology_single_impl · solver_input_assembler · backend_no_physics · resultset_v1_schema · fault_scenarios_determinism — **OK** |
+| Postgres 16.13 (12 wątków) | claim 1/12 · `execute_run` solver 1× · stany blokujące odmawiają · **kod sprzed naprawy: 12×** |
+
+**„1 skipped"** to `test_przejecie_jest_atomowe_takze_na_postgresie` — pomijany bez
+`MV_TEST_POSTGRES_URL`. Z ustawioną zmienną: **13 passed** (wykonany na realnym Postgresie).
+
+**NOT RUN — i dlaczego, uczciwie:**
+- **Suite `pandapower` (18 deselected)** — zależności **nie ma i nie może być** w tym środowisku:
+  `pandapower<3.6` wymaga `scipy<1.17`, a pin repo to **scipy 1.17.0**. To nie jest przeoczenie,
+  tylko powód, dla którego `.github/workflows/python-tests.yml` uruchamia
+  `pandapower-cross-validation` w **izolowanym środowisku** (komentarz w workflow, linie 42-46,
+  186-188). Instalacja tutaj cofnęłaby `scipy` i unieważniła powyższy czysty przebieg 12 076.
+- **Front (`tsc`, `eslint`, `vitest`)** — **nie uruchamiane lokalnie**, bo ta sesja **nie zmieniła
+  ani jednego pliku frontu** ani kontraktu API (snapshot OpenAPI jest częścią backendu i przeszedł).
+  Pokrycie: workflow `Frontend checks` w CI.
