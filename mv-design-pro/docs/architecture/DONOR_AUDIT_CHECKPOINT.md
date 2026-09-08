@@ -699,3 +699,21 @@ zdaniem `UPDATE`), których wcześniejsza wersja testu nie widziała.
   **zero pokrycia CI**, więc naprawiony defekt GUID (F-26) mógłby wrócić niezauważony.
   Dodany job **`postgres-dialect`** (PostgreSQL 16 jako `services:`) w `python-tests.yml`.
   Instancja naprawiona wcześniej, **klasa domknięta teraz**.
+
+### F-34. Stan CI — rozdzielony wg prawdy (nie „CI green")
+
+| Workflow | Commit | Wynik |
+|---|---|---|
+| **Python tests** (zawiera izolowany job `pandapower-cross-validation`) | `c5708af0` | **CI PASS** ✅ — to domyka lukę „pandapower NOT RUN" lokalnie |
+| Docs Integrity Guard | `8967547f` (HEAD) | **CI PASS** ✅ |
+| Physics Label Guard | `8967547f` | **CI PASS** ✅ |
+| Architectural And Repo Hygiene Guard | `8967547f` | **CI PASS** ✅ |
+| P0 Extended Guards (V12K) | `8967547f` | **CI PASS** ✅ |
+| SLD Determinism Guards | `8967547f` | **CI PASS** ✅ |
+| Frontend E2E smoke | `5bf5d1b8` | **CI PASS** ✅ |
+| **Python tests** (z NOWYM jobem `postgres-dialect`) | `8967547f` | **W TOKU** — pierwsze uruchomienie nowego jobu |
+| Frontend checks · Frontend E2E full | `8967547f` | **W TOKU** |
+
+**Uczciwie:** nie piszę „CI green" dla całości. Zielone jest to, co wyżej oznaczone `CI PASS`;
+job `postgres-dialect` dodany w tej sesji **nie ma jeszcze przebiegu CI** — lokalnie jego
+dokładna komenda daje **73 passed** z realnym Postgresem.
