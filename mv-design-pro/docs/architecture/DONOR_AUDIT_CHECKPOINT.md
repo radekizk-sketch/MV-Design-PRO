@@ -112,12 +112,19 @@ CAD, przeciąganie, trasowanie)" — **opis nie odpowiada stanowi repo**.
 > Orzekłem brak trwałego magazynu po sprawdzeniu `application/sld/` i `buildScene`. **Nie
 > sprawdziłem warstwy persystencji.** Magazyn ISTNIEJE (`sld_node_symbols`, `sld_branch_symbols`).
 > Korekta: **F-31**.
-Brak w backendzie magazynu placement/route dla SLD. `application/sld/` zawiera `layout.py`,
-`internal_layout.py`, `station_geometry.py` — czyli **wyliczanie** układu, nie jego trwałe
-przechowywanie. Scena v3 jest w całości pochodną ENM (`v3/scene/buildScene.ts`).
-Konsekwencja: ręczne rozmieszczenie i ręczne wierzchołki trasy **nie są trwałymi danymi
-domenowymi** i nie przeżywają przeliczenia. To jest realna luka, na którą donor ECAD może
-odpowiadać — i jedyna z obszaru SLD, której MV faktycznie nie ma.
+~~Brak w backendzie magazynu placement/route dla SLD. `application/sld/` zawiera `layout.py`,
+`internal_layout.py`, `station_geometry.py` — czyli wyliczanie układu, nie jego trwałe
+przechowywanie. Konsekwencja: ręczne rozmieszczenie i wierzchołki trasy nie są trwałymi danymi
+domenowymi. To jest realna luka, na którą donor ECAD może odpowiadać — i jedyna z obszaru SLD,
+której MV faktycznie nie ma.~~ ← **CAŁY TEN AKAPIT JEST BŁĘDNY (F-31).**
+
+**Prawda:** magazyn ISTNIEJE i jest trwały — `sld_node_symbols` (`x`, `y`) i
+`sld_branch_symbols` (`points_jsonb`) w `models.py:663-686`, z `SldRepository` w `UnitOfWork`
+i konsumentami (`network_wizard/service.py`, archiwum ZIP). Obok niego stoją jeszcze DWA
+niedokończone: ulotne API nadpisań geometrii i martwe typy we froncie.
+**Poprawne pozostaje tylko jedno zdanie:** scena v3 jest w całości pochodną ENM
+(`buildScene.ts`) i **nie czyta** zapisanych współrzędnych. Luka to **fragmentacja i brak
+wpięcia**, nie brak magazynu.
 
 ### F-6. ENM ma już tożsamość portu i węzeł przyłączenia
 `Port` (15 rodzajów `PortKind`, `occupied_by`), `PortRef` (adres niemutowalny), `ConnectionNode`
