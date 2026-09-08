@@ -25,7 +25,7 @@ ENM pozostaje jedyną prawdą elektryczną.
 
 | # | Podsystem | Zdolność | Odpowiednik w MV | Luka | Decyzja | Cel w MV | ENM | Priorytet |
 |---|---|---|---|---|---|---|---|---|
-| A1 | Dekompozycja `device`/`function`/`pin`/`placement`/`connection`+`route` | Semantyka na pinach, trasa osobno | ENM ma `Port`/`PortRef`/`ConnectionNode`; **brak placement/route** | L1 | **REWRITE_CLEAN_ROOM** | SLD Presentation Store | ZERO | **P0** |
+| A1 | Dekompozycja `device`/`function`/`pin`/`placement`/`connection`+`route` | Semantyka na pinach, trasa osobno | ENM ma `Port`/`PortRef`/`ConnectionNode`; placement/route **ISTNIEJĄ** w `sld_node_symbols`/`sld_branch_symbols` (korekta bramki końcowej) | L1 przeformułowana: fragmentacja, nie brak | **STUDY_ONLY** (kontrakt), wdrożenie = **konsolidacja** w D-1 | magazyn wybrany w D-1 | ZERO | **P0** |
 | A2 | Materializacja mufy przy upuszczeniu przewodu | Gest → jawny węzeł + pin | `ConnectionNode.location="branch_point"` istnieje; **żaden gest go nie tworzy** | częściowa | **REWRITE_CLEAN_ROOM** | edytor SLD | ZERO (istniejące pole) | P1 |
 | A3 | Walidator „trasa nie może wskazywać nieistniejącego placementu" | Spójność trasa↔placement | brak | L1 | **PORT (reguła, odwrócony kierunek)** | walidacja Store | ZERO | P0 |
 | A4 | Testy niezmienników („rysunek nie rządzi modelem") | Prawo jako test wykonywalny | brak testu prawa 3.4 | tak | **REWRITE_CLEAN_ROOM** | testy kontraktu | ZERO | **P0** |
@@ -37,7 +37,7 @@ ENM pozostaje jedyną prawdą elektryczną.
 
 | # | Podsystem | Zdolność | Odpowiednik w MV | Luka | Decyzja | Cel w MV | ENM | Priorytet |
 |---|---|---|---|---|---|---|---|---|
-| B1 | `WireEnd = TerminalRef \| BusId \| JunctionId` + `Wire.path?` | Wzorzec „trasa ręczna jako opcjonalna nakładka" | brak trwałej trasy | L1 | **REWRITE_CLEAN_ROOM** (odniesienie nr 1) | SLD Presentation Store | ZERO | **P0** |
+| B1 | `WireEnd = TerminalRef \| BusId \| JunctionId` + `Wire.path?` | Wzorzec „trasa ręczna jako opcjonalna nakładka" | trasa trwała **JEST** (`points_jsonb`), ale magazyn trzyma też `from_node_id`/`to_node_id` = **topologia w prezentacji** | L1 przeformułowana | **STUDY_ONLY** — wzorzec jako kryterium naprawy istniejącego magazynu | D-1 | ZERO | **P0** |
 | B2 | `compiler/union-find.ts` → klasy `ConnectivityNode` | Wyprowadzenie netów z jawnych relacji | `core/ybus.py` (union-find) + `enm/topology.py` | brak | **REJECT** (duplikat) | — | — | — |
 | B3 | Interakcja operatora: multi-select, align/distribute, kopiuj/wklej, klawiatura | Ergonomia CAD | `ui/sld-editor` = 56 linii (sam `types.ts`) | tak | **REWRITE_CLEAN_ROOM** | edytor SLD | ZERO | P1 |
 | B4 | Eksport DXF | Wymiana z CAD | **JEST**: `v3/export/exportDxfV3.ts` (oraz `v2/export/exportDxf.ts`) | brak | **REJECT** (duplikat) | — | — | — |
@@ -75,7 +75,7 @@ ENM pozostaje jedyną prawdą elektryczną.
 
 | # | Podsystem | Zdolność | Odpowiednik w MV | Decyzja | ENM | Priorytet |
 |---|---|---|---|---|---|---|
-| F1 | Trwałe rozmieszczenie/trasa jako **side-car** (`FixedLayoutFactory`, `getFixedPositions`, `CustomPathRouting`) | klucz = `getEquipmentId()` (**nigdy** `getSvgId()`), brak wpisu → cichy powrót do auto-układu, **zapisywane tylko wierzchołki wewnętrzne**, końce liczone od nowa | brak (L1) | **REWRITE_CLEAN_ROOM** | ZERO (poza modelem) | **P0** |
+| F1 | Trwałe rozmieszczenie/trasa jako **side-car** (`FixedLayoutFactory`, `getFixedPositions`, `CustomPathRouting`) | klucz = `getEquipmentId()` (**nigdy** `getSvgId()`), brak wpisu → cichy powrót do auto-układu, **zapisywane tylko wierzchołki wewnętrzne**, końce liczone od nowa | magazyn istnieje, ale **przechowuje końce** zamiast je liczyć — wzorzec PowSyBl jest tu **kryterium naprawy** | **STUDY_ONLY** (wzorzec) → wdrożenie w D-1 | ZERO (poza modelem) | **P0** |
 | F2 | Wariant CGMES: współrzędne **na modelu** | — | — | **REJECT** | łamie F-16 (hasz migawki) | — |
 | F3 | Podpowiedzi porządkowe `ConnectablePosition` (order, TOP/BOTTOM, **bez geometrii**) | **strona** pola i porządek rysowania (numer pola `Bay.bay_number` JUŻ JEST — korekta §17) | zawężona (L2) | **REWRITE_CLEAN_ROOM** (zakres mniejszy) | domyślnie **Presentation Store**; wariant w ENM wymaga jawnego wykluczenia w `hash.py` przypiętego testem | P2 |
 | F4 | Sąsiedztwo o ograniczonej głębokości (`VoltageLevelFilter.traverseVoltageLevels`) | predykat w trakcie rozwijania, pierścień bez wiszących krawędzi | **JEST**: `lv_domain/graph_view.py` (`BoundaryLink`, `hops_from_root`) na jądrze `przeglad_wszerz_od` + `NetworkGraph.podgraf` | **REJECT** (duplikat — korekta §17) | drugi przegląd grafu łamałby DT-8 | — |
@@ -162,3 +162,6 @@ jednokreskowe SN/nN; brak zdolności, której nie pokrywają donorzy A–K. Nie 
 | C2/C3 (proweniencja) | „brak `solver_version`" | **zawężone do stempla pandapower** | `solver_version` istnieje w torze kanonicznym |
 | A1/B1 (placement/route) | uzasadnienie: hasz **wyklucza** wariant w ENM | **uzasadnienie: DT-1 / prawo 3.4 / DT-14** | wykluczenie z hasza jest wykonalne (precedens `connection_conditions`) — argument haszowy był za mocny |
 | D3 (wydajność) | „algebra 0,2 %, przyczyna nieznana" | **profil: `_niefinitowe_na_none` ~26–32 %, wkłady falowników ~28 %** | decyzja REJECT dla PGM **wzmocniona**, dowód wymieniony |
+
+| A1/B1/F1 (magazyn prezentacji) | „brak trwałego magazynu placement/route" → REWRITE_CLEAN_ROOM | **STUDY_ONLY wzorca + KONSOLIDACJA istniejącego (D-1)** | MV ma trzy niedokończone magazyny; budowa czwartego byłaby trzecim duplikatem audytu |
+| D-8 (porządek pól) | brakuje porządku i strony | **zostaje tylko strona** | `REORDER_FIELD` już istnieje w `geometry_overrides.py:188` |

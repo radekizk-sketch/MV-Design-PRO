@@ -99,6 +99,17 @@ robi **zero** mutacji modelu sieci, a trwała geometria leży w side-carze klucz
 
 ### 2.1 SLD Presentation Store — kontrakt
 
+> **KOREKTA po bramce końcowej (2026-09-08).** Ta sekcja opisuje **kontrakt docelowy**, a nie
+> rzecz do zbudowania od zera. MV **ma już** trwały magazyn (`sld_node_symbols` z `x`/`y`,
+> `sld_branch_symbols` z `points_jsonb`; `models.py:663-686`), **oraz** ulotne API nadpisań
+> geometrii (`domain/geometry_overrides.py` + zamontowany `api/sld_overrides.py`, dane w
+> słowniku w pamięci), **oraz** martwe typy we froncie. Zadaniem karty D-1 jest **konsolidacja
+> do jednego** i wpięcie w `buildSceneV3` — nie budowa czwartego. Poniższa tabela jest listą
+> wymagań, którą wybrany magazyn ma spełnić; dziś **nie spełnia ich w całości** (w szczególności
+> trzyma `from_node_id`/`to_node_id`, czyli topologię w warstwie prezentacji).
+
+
+
 | Właściwość | Rozstrzygnięcie | Źródło |
 |---|---|---|
 | Umiejscowienie | **Poza** `EnergyNetworkModel`, osobny agregat trwały | F-16 |

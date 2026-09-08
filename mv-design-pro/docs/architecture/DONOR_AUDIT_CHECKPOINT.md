@@ -108,7 +108,10 @@ Zawiera wyłącznie `types.ts` (56 linii) z jawnym komentarzem: „Pełny moduł
 (komponenty, runtime) jest poza tym worktree". CLAUDE.md opisuje go jako „Edycja SLD (geometria
 CAD, przeciąganie, trasowanie)" — **opis nie odpowiada stanowi repo**.
 
-### F-5. Trwałe placement/route — LUKA POTWIERDZONA
+### F-5. ~~Trwałe placement/route — LUKA POTWIERDZONA~~ — **BŁĘDNE, patrz F-31**
+> Orzekłem brak trwałego magazynu po sprawdzeniu `application/sld/` i `buildScene`. **Nie
+> sprawdziłem warstwy persystencji.** Magazyn ISTNIEJE (`sld_node_symbols`, `sld_branch_symbols`).
+> Korekta: **F-31**.
 Brak w backendzie magazynu placement/route dla SLD. `application/sld/` zawiera `layout.py`,
 `internal_layout.py`, `station_geometry.py` — czyli **wyliczanie** układu, nie jego trwałe
 przechowywanie. Scena v3 jest w całości pochodną ENM (`v3/scene/buildScene.ts`).
@@ -148,7 +151,11 @@ zwarciowych daje to N pełnych budów Y-bus i N pełnych inwersji gęstych.
 Dodatkowe wywołania `build_zbus`: `short_circuit_iec60909.py:644`, `:785`,
 `machine_sc_iec60909.py:184`. **Zero `scipy.sparse`** w całym katalogu solverów.
 
-### F-10. KOREKTA: gęsta algebra NIE jest dominującym kosztem (pomiar, nie domysł)
+### F-10. ~~KOREKTA: gęsta algebra NIE jest dominującym kosztem~~ — **WYCOFANE PRZEZ F-19**
+> **Status:** ten blok orzeka „rząd 1-2 s, nie 171 s", „nie zdiagnozowane" i „wąskie gardło nie
+> jest udowodnione". **Wszystkie trzy zdania są OBALONE** przez **F-19** (profil realnego biegu).
+> Bramka końcowa słusznie wytknęła, że F-18 dostał znacznik, a F-10 nie — a to F-10 postawiło
+> błędną tezę jako pierwsze. Zostawiony jako ślad rozumowania, **nie jako prawda**.
 `docs/evidence/PERFORMANCE_BASELINE.md` przypisuje wolne zwarcia G00 „gęstej algebrze".
 **Pomiar tego nie potwierdza.** Zmierzony izolowany prymityw (numpy, ta maszyna):
 
@@ -640,3 +647,48 @@ Defekt **nazewnictwa/normy, nie liczb**. Blokada **B-01** utrzymana.
 - **Front (`tsc`, `eslint`, `vitest`)** — **nie uruchamiane lokalnie**, bo ta sesja **nie zmieniła
   ani jednego pliku frontu** ani kontraktu API (snapshot OpenAPI jest częścią backendu i przeszedł).
   Pokrycie: workflow `Frontend checks` w CI.
+
+
+## CP-8 — 2026-09-08, KOREKTY PO KOŃCOWEJ BRAMCE ADWERSARIALNEJ
+
+Bramka końcowa (`donor-raw/PRZEGLAD_ADWERSARIALNY_FINAL.md`) dała **3 FAIL / 4 PASS** i znalazła
+**nowe P0**. Wszystko zweryfikowane osobiście i naniesione.
+
+### F-31. **P0 — L1 BYŁA FAŁSZYWA. MV ma TRZY niedokończone magazyny prezentacji**
+Napisałem, że MV nie ma trwałego magazynu placement/route, i **na tym oparłem adopcję nr 1**.
+Sprawdziłem `application/sld/` i `buildScene.ts`, ale **nie sprawdziłem persystencji**. Stan:
+
+| # | Co | Gdzie | Trwałość | Konsumenci |
+|---|---|---|---|---|
+| 1 | `sld_node_symbols` (`node_id`, **`x`**, **`y`**, `label`) · `sld_branch_symbols` (`branch_id`, `from_node_id`, `to_node_id`, **`points_jsonb`**) | `models.py:663-686`, `SldRepository`, `UnitOfWork` | **TRWAŁY** | `network_wizard/service.py`, archiwum ZIP |
+| 2 | `GeometryOverrideV1` (303 linie; `MOVE_DELTA`/`REORDER_FIELD`/`MOVE_LABEL`; NODE/BLOCK/FIELD/LABEL/EDGE_CHANNEL; kanonizacja, hasz, walidacja zerwanych referencji) + **zamontowany** router `api/sld_overrides.py` (`main.py:187`) | `domain/geometry_overrides.py` | **ULOTNY** (`_overrides_store: dict = {}`, „In production this would use a repository/DB") | **ZERO** |
+| 3 | Typy `GeometryOverride*` | `ui/workspace/types.ts:377` **i** `ui/contracts/shared.ts:220` | — | **ZERO** |
+
+**To trzeci duplikat, jaki ten audyt o mało nie wprowadził** (po eksporcie DXF i lokalnym
+wycinku sieci). Karta D-1 przepisana z „zbuduj magazyn" na **„skonsoliduj trzy do jednego i
+wepnij w `buildSceneV3`"**. Połowa D-8 też odpada — `REORDER_FIELD` już istnieje.
+**Odwrócony phantom:** pozycja 2 to żywy endpoint HTTP **bez UI**, oddający 200 i hasz, tracący
+dane przy restarcie — lustrzane odbicie reguły „zero fabrykacji".
+**Dług nazwany (P1):** `SldBranchSymbolORM` trzyma `from_node_id`/`to_node_id` — **topologia w
+warstwie prezentacji**, dokładnie wzorzec odrzucany u donorów.
+
+### F-32. Dwie kopie mapowania statusów — usunięte
+`application/analyses/diagnoza_przebiegu.py:79-88` trzymało **drugi dosłowny egzemplarz**
+mapowania statusów, w komentarzu deklarując „JEDNO źródło prawdy". Wyniesione do
+`canonical_analysis.STATUS_WYKONAWCZY`; `diagnoza_przebiegu` **importuje**. Usunięty też cichy
+przelot `.get(..., run.status)` — status spoza mapowania wyglądał jak poprawny.
+Pin rozszerzony o statusy zapisywane **z repozytorium** (`claim_for_execution` ustawia RUNNING
+zdaniem `UPDATE`), których wcześniejsza wersja testu nie widziała.
+
+### F-33. Dziury w moich własnych pinach — zamknięte
+- **Z-1:** pin jednoprocesowości sprawdzał `--workers` **tylko w Dockerfile**, a `command:`
+  w compose nadpisuje `CMD`. Iniekcja `command: uvicorn … --workers 4` **przechodziła**.
+  Teraz sprawdzane w obu miejscach — iniekcja → **FAILED**.
+- **Z-2:** guard polityki hasza wykrywał kolekcje przez `"list" in str(annotation)`, więc
+  `tuple[Bus, ...]` **uciekało**. Teraz po `get_origin`/`get_args` z rozwijaniem `Annotated`
+  i unii (inaczej gubiło `branches`, czyli `list[Annotated[Union[...]]]`).
+  Wykrywa **16/16** kolekcji; iniekcja `tuple[Bus, ...]` → **FAILED**.
+- **Z-3:** `MV_TEST_POSTGRES_URL` nie występowało w `.github/` — dialekt produkcyjny miał
+  **zero pokrycia CI**, więc naprawiony defekt GUID (F-26) mógłby wrócić niezauważony.
+  Dodany job **`postgres-dialect`** (PostgreSQL 16 jako `services:`) w `python-tests.yml`.
+  Instancja naprawiona wcześniej, **klasa domknięta teraz**.

@@ -22,6 +22,9 @@ ZAMKNIETY — kazda NOWA kolekcja poza polityka to swiadoma decyzja, nie przeocz
 
 from __future__ import annotations
 
+from collections import abc
+from typing import Any, get_args, get_origin
+
 import pytest
 
 sqlalchemy = pytest.importorskip("sqlalchemy")
@@ -34,17 +37,52 @@ from enm.models import EnergyNetworkModel  # noqa: E402
 WYJATKI_POZA_POLITYKA_HASH: frozenset[str] = frozenset({"connection_nodes", "line_runs"})
 
 
-def _kolekcje_listowe() -> set[str]:
-    return {
-        nazwa
-        for nazwa, pole in EnergyNetworkModel.model_fields.items()
-        if "list" in str(pole.annotation).lower()
-    }
+def _kolekcje_elementow() -> set[str]:
+    """Pola ENM bedace KOLEKCJA elementow — wykrywane po TYPIE, nie po napisie.
+
+    Pierwsza wersja sprawdzala `"list" in str(annotation)`. Wykrywala `list[...]`,
+    ale przepuszczala `tuple[Bus, ...]`, `Sequence[...]` i aliasy — czyli pin mial
+    mniejszy zasieg, niz obiecywal (falszywa pewnosc, regula KLASA pkt 4).
+    Teraz idziemy po `typing.get_origin`/`get_args`: kolekcja to pole, ktorego
+    origin jest kontenerem sekwencyjnym, a argument jest typem zlozonym (model
+    Pydantic albo dowolna klasa poza prostymi skalarami) — czyli czyms, co ma `id`.
+    """
+    kolekcje: set[str] = set()
+    kontenery = {list, tuple, set, frozenset, abc.Sequence, abc.MutableSequence}
+    for nazwa, pole in EnergyNetworkModel.model_fields.items():
+        adnotacja = pole.annotation
+        origin = get_origin(adnotacja)
+        if origin is None or origin not in kontenery:
+            continue
+        if _ma_argument_zlozony(get_args(adnotacja)):
+            kolekcje.add(nazwa)
+    return kolekcje
+
+
+def _ma_argument_zlozony(argumenty: tuple[Any, ...]) -> bool:
+    """Czy ktorykolwiek argument kontenera jest typem ZLOZONYM (czyli ma `id`).
+
+    Rozwijamy `Annotated[...]` i unie: `branches` to
+    `list[Annotated[OverheadLine | Cable | SwitchBranch | FuseBranch, discriminator]]`,
+    wiec plaskie sprawdzenie `isinstance(a, type)` gubiloby wlasnie te kolekcje,
+    ktora `_ELEMENT_KEYS` zna — a pin milczalby o realnej rozbieznosci.
+    """
+    for argument in argumenty:
+        if argument is Ellipsis:
+            continue
+        if isinstance(argument, type):
+            if argument not in (str, int, float, bool, bytes):
+                return True
+            continue
+        # Annotated[...] / Union[...] / Optional[...] — zejdz glebiej
+        if _ma_argument_zlozony(get_args(argument)):
+            return True
+    return False
 
 
 def test_zbior_kolekcji_poza_polityka_hash_jest_zamkniety() -> None:
     """Zadna NOWA kolekcja nie moze cicho ominac zdejmowania `id` przed haszowaniem."""
-    poza = _kolekcje_listowe() - set(_ELEMENT_KEYS)
+    poza = _kolekcje_elementow() - set(_ELEMENT_KEYS)
 
     nowe = poza - WYJATKI_POZA_POLITYKA_HASH
     assert not nowe, (
@@ -63,5 +101,5 @@ def test_zbior_kolekcji_poza_polityka_hash_jest_zamkniety() -> None:
 
 def test_element_keys_nie_wymienia_nieistniejacych_kolekcji() -> None:
     """`_ELEMENT_KEYS` nie moze zawierac nazw, ktorych model juz nie ma (martwy wpis)."""
-    martwe = set(_ELEMENT_KEYS) - _kolekcje_listowe()
+    martwe = set(_ELEMENT_KEYS) - _kolekcje_elementow()
     assert not martwe, f"`_ELEMENT_KEYS` wymienia nieistniejace kolekcje: {sorted(martwe)}"

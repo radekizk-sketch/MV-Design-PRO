@@ -488,6 +488,21 @@ def _execution_analysis_type_for_run(run: CanonicalRun) -> str:
     raise ValueError(f"Unsupported canonical analysis type: {run.analysis_type}")
 
 
+#: Mapowanie statusu DOMENOWEGO biegu na status KONTRAKTU HTTP — JEDYNE zrodlo prawdy.
+#: Domena zna CREATED/RUNNING/FINISHED/FAILED; "PENDING" istnieje WYLACZNIE po stronie
+#: HTTP jako render stanu CREATED i NIE JEST stanem domenowym (proba zbudowania biegu
+#: w statusie "PENDING" to defekt — patrz tests/enm/test_przejecie_biegu_atomowe.py).
+#: Wczesniej ten slownik byl wpisany DWA RAZY: tutaj (inline w `to_execution_dict`) oraz
+#: w `application/analyses/diagnoza_przebiegu.py`, ktory w komentarzu deklarowal
+#: „JEDNO zrodlo prawdy" — deklaracja bez pokrycia (regula KLASA, NIE INSTANCJA pkt 4).
+STATUS_WYKONAWCZY: dict[str, str] = {
+    "CREATED": "PENDING",
+    "RUNNING": "RUNNING",
+    "FINISHED": "DONE",
+    "FAILED": "FAILED",
+}
+
+
 @dataclass
 class CanonicalRun:
     id: UUID
@@ -534,12 +549,7 @@ class CanonicalRun:
 
     def to_execution_dict(self) -> dict[str, Any]:
         analysis_type = _execution_analysis_type_for_run(self)
-        status = {
-            "CREATED": "PENDING",
-            "RUNNING": "RUNNING",
-            "FINISHED": "DONE",
-            "FAILED": "FAILED",
-        }[self.status]
+        status = STATUS_WYKONAWCZY[self.status]
         return {
             "id": str(self.id),
             "study_case_id": self.case_id,

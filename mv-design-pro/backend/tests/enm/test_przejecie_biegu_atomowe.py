@@ -369,6 +369,13 @@ def test_zamiatanie_stoi_na_zalozeniu_jednego_procesu_api() -> None:
 
     # (b) wiele kontenerow/replik przy tej samej bazie
     compose = (korzen.parent / "docker-compose.yml").read_text(encoding="utf-8")
+    # `command:` w compose NADPISUJE CMD z Dockerfile, wiec sam Dockerfile nie wystarczy:
+    # `command: uvicorn ... --workers 4` uruchomiloby wiele procesow mimo czystego obrazu.
+    for wzorzec in ("--workers", "gunicorn"):
+        assert wzorzec not in compose, (
+            f"docker-compose uruchamia backend z {wzorzec} — to wiele procesow API przy jednej "
+            "bazie, wiec globalne zamiatanie RUNNING przestalo byc bezpieczne"
+        )
     for wzorzec in ("replicas:", "scale:"):
         assert wzorzec not in compose, (
             f"docker-compose deklaruje {wzorzec} — repliki backendu to wiele procesow "
@@ -414,19 +421,29 @@ def test_kazdy_status_domenowy_ma_odwzorowanie_http() -> None:
     import inspect
     import re
 
+    from infrastructure.persistence.repositories import canonical_run_repository as repo
+
+    # Statusy zapisywane przez DOMENE...
     zrodlo_modulu = inspect.getsource(ca)
     zapisywane = set(re.findall(r'run\.status = "([A-Z_]+)"', zrodlo_modulu))
-    zapisywane |= set(re.findall(r'status="([A-Z_]+)",', inspect.getsource(ca.create_run)))
+    zapisywane |= set(re.findall(r'status="([A-Z_]+)"', inspect.getsource(ca.create_run)))
+    # ...ORAZ przez REPOZYTORIUM. `claim_for_execution` ustawia RUNNING zdaniem
+    # `UPDATE ... .values(status="RUNNING")`, wiec status potrafi powstac POZA
+    # `canonical_analysis`. Pominiecie tej sciezki zostawialoby luke dokladnie tam,
+    # gdzie wprowadzono nowy wzorzec zapisu (i gdzie dopisze go karta D-4).
+    zapisywane |= set(re.findall(r'status="([A-Z_]+)"', inspect.getsource(repo)))
 
     assert zapisywane, "nie wykryto zadnego zapisu statusu — test stracil kontakt z kodem"
 
-    zrodlo_mapowania = inspect.getsource(ca.CanonicalRun.to_execution_dict)
-    odwzorowane = set(re.findall(r'"([A-Z_]+)": "[A-Z_]+"', zrodlo_mapowania))
+    # Mapowanie czytamy WPROST ze stalej (jedyne zrodlo prawdy), nie z parsowania
+    # zrodla `to_execution_dict` — inaczej refaktor samego mapowania wywalalby test
+    # bez zadnego defektu produktu.
+    odwzorowane = set(ca.STATUS_WYKONAWCZY)
 
     bez_odwzorowania = zapisywane - odwzorowane
     assert not bez_odwzorowania, (
         f"domena zapisuje status(y) {sorted(bez_odwzorowania)} bez wpisu w to_execution_dict() "
-        f"— endpoint wywali KeyError; mapowanie zna {sorted(odwzorowane)}"
+        f"— endpoint wywali KeyError; STATUS_WYKONAWCZY zna {sorted(odwzorowane)}"
     )
 
 

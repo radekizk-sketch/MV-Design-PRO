@@ -29,7 +29,7 @@ Przejrzano 11 donorów i **~50 podsystemów**. Adoptujemy **trzy**. To jest celo
 
 | # | Co | Klasa | Dlaczego TERAZ | Luka |
 |---|---|---|---|---|
-| **1** | **Trwały magazyn rozmieszczenia i tras (SLD Presentation Store)** | REWRITE_CLEAN_ROOM (wzorzec: sldeditor `9e1bba0` + VoltWeave `0384b23` + PowSyBl `952186b`) | Jedyna luka SLD, której MV faktycznie nie ma. Dziś ręczne rozmieszczenie i wierzchołki tras **nie przeżywają przeliczenia** — projektant traci pracę. Trzej niezależni donorzy rozwiązali to **tym samym** wzorcem, co jest mocną przesłanką. | L1 |
+| **1** | **KONSOLIDACJA trzech niedokończonych magazynów prezentacji SLD** (nie budowa czwartego) | **REUŻYCIE** + wzorzec z donorów (sldeditor `9e1bba0`, PowSyBl `952186b`) tylko dla kontraktu | **KOREKTA po bramce końcowej:** MV **ma już** trwały magazyn (`sld_node_symbols` z `x`/`y`, `sld_branch_symbols` z `points_jsonb`), **plus** API nadpisań geometrii trzymane w pamięci, **plus** martwe typy we froncie. Żaden z nich nie jest wpięty w scenę v3. Problemem jest **fragmentacja i brak wpięcia**, nie brak magazynu — a donor daje tu najwyżej kontrakt, nie implementację. | L1 (przeformułowana) |
 | **2** | **Proweniencja i asercja mapowania w wyroczni pandapower** | HARDEN (pandapower `fd7346f`, BSD-3) | **Lekcja K6, nie nowa funkcja.** Błąd `Z_Q` przeżył parytet, bo obie strony liczyły tę samą złą sieć. Dopóki adapter nie publikuje wersji i nie ma asercji mapowania, każdy zielony parytet jest **słabszym dowodem, niż wygląda**. Najtańsza karta o największym wpływie na wiarygodność. | L6 |
 | **3** | **Wyprowadzenie par zabezpieczeń z topologii** | REWRITE_CLEAN_ROOM (wzorzec: Sandia `44fe954`, GPL → tylko clean-room) | `analyzer.py:545` paruje aparaty **po indeksie listy** („assuming ordered downstream to upstream"). Koordynacja stoi na założeniu, którego nikt nie sprawdza; przy pierścieniu SN lub DER jest po prostu nieprawdziwe. | L5 |
 
@@ -54,41 +54,61 @@ Przejrzano 11 donorów i **~50 podsystemów**. Adoptujemy **trzy**. To jest celo
 
 ## 2. Karty
 
-### D-1 · SLD Presentation Store — trwałe rozmieszczenie i trasy · **P0** · PO CV-4.3
-**Donor / wzorzec:** sldeditor `9e1bba0` (MIT) — `WireEnd = TerminalRef|BusId|JunctionId`,
-`Wire.path?` jako opcjonalna nakładka; PowSyBl `952186b` (MPL-2.0, **clean-room z opisu**) —
-side-car kluczowany `getEquipmentId()`, zapis **tylko wierzchołków wewnętrznych**, cichy powrót
-do auto-układu przy braku wpisu; VoltWeave `0384b23` (MIT) — dekompozycja `placement`/`route`.
-**Cel:** osobny agregat trwały **poza** `EnergyNetworkModel`, kluczowany `ref_id`.
-**Promień rażenia:** nowy magazyn + odczyt w `buildScene`; ENM **nietknięty**.
+### D-1 · Konsolidacja magazynu prezentacji SLD (NIE budowa nowego) · **P0** · PO CV-4.3
+**KARTA PRZEPISANA po bramce końcowej (2026-09-08).** Pierwotna wersja („zbuduj trwały magazyn
+placement/route wg wzorca donorów") była **propozycją czwartej implementacji** — trzecim
+duplikatem, jaki ten audyt o mało nie wprowadził.
 
-**Kolejność wewnątrz karty (test prawa PRZED funkcją):**
-1. Test niezmiennika (A4) — **pisany pierwszy, musi być zielony przed i po**.
-2. Kontrakt agregatu + trwałość.
-3. Odczyt w `buildScene` z cichym powrotem do układu wyliczonego.
-4. Zapis z edytora.
+**Inwentarz klasy PRZED naprawą (regula KLASA, NIE INSTANCJA pkt 1) — stan zmierzony:**
 
-**Kryteria odbioru (mierzalne, nie opisowe):**
+| # | Co istnieje | Gdzie | Trwałość | Konsumenci |
+|---|---|---|---|---|
+| 1 | `sld_node_symbols` (`node_id`, **`x`**, **`y`**, `label`, `is_connection_node`) · `sld_branch_symbols` (`branch_id`, `from_node_id`, `to_node_id`, **`points_jsonb`**) | `models.py:663-686` + `SldRepository` + `UnitOfWork` | **TRWAŁY** (baza + migracja) | `network_wizard/service.py`, archiwum projektu (ZIP) |
+| 2 | `GeometryOverrideV1`: `MOVE_DELTA`/`REORDER_FIELD`/`MOVE_LABEL`, zakresy NODE/BLOCK/FIELD/LABEL/EDGE_CHANNEL, kanonizacja, hasz, walidacja zerwanych referencji | `domain/geometry_overrides.py` (303 linie) + **zamontowany** router `api/sld_overrides.py` (`main.py:187`) | **ULOTNY** — `_overrides_store: dict = {}` z komentarzem „In production this would use a repository/DB" | **ZERO** |
+| 3 | Typy `GeometryOverride*` | `ui/workspace/types.ts:377` **i** `ui/contracts/shared.ts:220` (zduplikowane) | — | **ZERO** |
+| 4 | Scena v3 | `v3/scene/buildScene.ts` | pochodna | **ignoruje** zapisane współrzędne |
+
+**Odwrócony phantom (nazwany wprost):** pozycja 2 to **żywy endpoint HTTP bez UI**, zwracający
+200 i hasz, tracący wszystko przy restarcie. Reguła „zero fabrykacji" zakazuje kontrolki UI bez
+backendu; to jest jej odbicie — backend bez odbiorcy, który wygląda na działający.
+
+**Zakres karty:** wybrać **JEDEN** magazyn (kandydat domyślny: pozycja 1, bo jako jedyna jest
+trwała i przetestowana), **wpiąć go w `buildSceneV3`**, skasować pozostałe procedurą siedmiu
+kroków, zdjąć duplikat typów we froncie. **Nie wolno** dodać czwartej ścieżki.
+
+**Dług, który trzeba usunąć przy okazji (P1, znaleziony przez bramkę):**
+`SldBranchSymbolORM` trzyma `from_node_id` i `to_node_id` — czyli **topologię w warstwie
+prezentacji**. To dokładnie ten wzorzec, przed którym audyt ostrzegał u donorów (VoltWeave,
+GElectrical). Magazyn prezentacji ma wskazywać **`branch_ref`**, a końce brać z ENM; inaczej
+konsolidacja utrwali drugie źródło prawdy topologicznej **wewnątrz** MV.
+
+**Kryteria odbioru (mierzalne):**
+- [ ] **Jeden** magazyn prezentacji w repo; pozostałe dwa skasowane procedurą siedmiu kroków;
+      duplikat typów we froncie zdjęty. Grep po `geometry_overrides`/`GeometryOverride`
+      pokazuje **jedną** ścieżkę albo zero.
+- [ ] `sld_branch_symbols` **bez** `from_node_id`/`to_node_id` — końce wyprowadzane z ENM
+      po `branch_ref` (usunięcie topologii z warstwy prezentacji).
 - [ ] Pełny relayout **nie zmienia** topologii ENM ani `snapshot_hash` — test.
 - [ ] **Skasowanie całego magazynu** przywraca scenę wyliczoną; model bez zmian — test.
-- [ ] Zerwana referencja (`ref_id` bez odpowiednika) jest **odrzucana przy odczycie**,
-      bez błędu i bez wiszącej trasy — test.
+- [ ] Zerwana referencja odrzucana przy odczycie, bez błędu i bez wiszącej trasy — test.
 - [ ] `compute_semantic_hash`, `compute_input_hash`, `hash_migawki_enm` **bit w bit** takie same
-      dla modelu z magazynem i bez — test (to jest pin dla F-16, nie deklaracja).
+      z magazynem i bez (pin dla F-16, nie deklaracja).
 - [ ] Przesunięcie symbolu **nie** przestawia wyniku na nieaktualny (`result_freshness`) — test.
-- [ ] Zapisywane są **wyłącznie wierzchołki wewnętrzne**; oba końce liczone przy renderze — test.
-- [ ] `npm run type-check`, `lint`, pełny vitest, guardy SLD i determinizmu — zielone.
+- [ ] `buildSceneV3` przyjmuje magazyn jako **jawne wejście**; determinizm obowiązuje dla pary
+      (model, magazyn) — patrz ograniczenie niżej.
+- [ ] `npm run type-check`, `lint`, vitest, guardy SLD i determinizmu — zielone.
+
 **Ograniczenie wdrożeniowe wyprowadzone z kodu (nie do pominięcia):** `buildSceneV3`
 (`v3/scene/buildScene.ts`) jest **czystą funkcją** `EnergyNetworkModel` + LOD → `SceneV3`,
 z zadeklarowanym „zero DOM/losowości/Date — to samo wejście ⇒ identyczny wynik", i **jawnie
 ignoruje** pozycje `x`/`y` z adaptera v2 („są WSZĘDZIE IGNOROWANE; ta funkcja liczy WŁASNĄ
 geometrię"). Magazyn **nie może** wskrzeszać tej zignorowanej ścieżki v2 — musi wejść jako
 **nowe, jawne wejście** funkcji scenowej, a determinizm ma obowiązywać dla pary
-(model, magazyn): to samo wejście **wraz z magazynem** ⇒ identyczna scena. Inaczej złamiemy
-własność, na której stoją bramki determinizmu SLD.
+(model, magazyn): to samo wejście **wraz z magazynem** ⇒ identyczna scena.
 
-**Ryzyko:** dziś prawo 3.4 zachodzi trywialnie (scena w całości pochodna). To zmiana najbardziej
-podatna na erozję tego prawa — stąd test prawa jako **pierwszy** krok, nie ostatni.
+**Ryzyko:** dziś prawo 3.4 zachodzi trywialnie, bo scena jest w całości pochodna. Wpięcie
+trwałego rozmieszczenia jest zmianą **najbardziej podatną** na erozję tego prawa — stąd test
+prawa jako **pierwszy** krok karty, nie ostatni.
 
 ### D-2 · Proweniencja wyroczni + asercja mapowania · **P0** · dopuszczalna równolegle z K7
 **Donor:** pandapower `fd7346f` (BSD-3) — utrzymanie, nie nowa integracja.
@@ -160,8 +180,11 @@ produkcyjnych** (zweryfikowane), ciche domyślne (`vkr_percent=0.5`, `pfe_kw=0.5
 Kasacja procedurą siedmiu kroków; `test_wymagane.py` wymusza jego istnienie — zdjąć też wymaganie.
 
 ### D-8 · Podpowiedzi **strony** i porządku rysowania pola · **P2** · PO CV-4.3
-**Zakres zawężony po bramce §17:** `Bay.bay_number` **już istnieje** (`models.py:969`) —
-numeracji nie dodajemy. Brakuje **strony** (góra/dół szyny) i jawnego porządku prezentacji.
+**Zakres zawężony DWUKROTNIE.** Po bramce §17: `Bay.bay_number` **już istnieje**
+(`models.py:969`) — numeracji nie dodajemy. Po bramce końcowej: **porządek pól też już
+istnieje** — `GeometryOverrideV1` ma zakres `FIELD` z operacją `REORDER_FIELD`
+(`domain/geometry_overrides.py:188`). Zostaje **wyłącznie strona pola** (góra/dół szyny),
+a i ona powinna trafić do magazynu wybranego w karcie D-1, nie obok niego.
 Wzorzec: PowSyBl `ConnectablePosition` (order + TOP/BOTTOM, **bez geometrii**).
 **Bramka poprawiona:** wcześniej napisałem „hasz-neutralność przez `exclude_none`" — to było
 mylące. `exclude_none` nie decyduje; decyduje **jawne wykluczenie w `enm/hash.py`**
