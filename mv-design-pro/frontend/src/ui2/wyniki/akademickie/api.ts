@@ -81,6 +81,19 @@ export interface KopertaWyniku {
   readonly deterministic_hash: string;
 }
 
+/** Jedno źródło pominięte w wejściu V12.6 (karta katalogowa niekompletna). */
+export interface ZrodloPominiete {
+  readonly ref: string;
+  readonly kod: string;
+  readonly powod: string;
+}
+
+/** Proweniencja widma harmonicznego źródła, które DO wejścia trafiło. */
+export interface ProweniencjaZrodlaWidma {
+  readonly ref: string;
+  readonly proweniencja: string;
+}
+
 /** Odpowiedź `GET …/results/v126/{analysis_type}` (`get_v126_result`). */
 export interface OdpowiedzWyniku {
   readonly run_id: string;
@@ -91,6 +104,15 @@ export interface OdpowiedzWyniku {
   readonly result: KopertaWyniku;
   readonly proof_ref: string;
   readonly report_ref: string;
+  /**
+   * Karta W2-C (zero fabrykacji wejścia V12.6): przekształtniki PV/BESS/wiatrowe
+   * pominięte w wejściu solvera (brak karty katalogowej albo brak jej widma
+   * harmonicznego) — pole ADDYTYWNE, obecne tylko dla `power_quality_harmonics`/
+   * `ssci_impedance` i tylko gdy jest CO pominąć.
+   */
+  readonly pominiete_zrodla?: readonly ZrodloPominiete[];
+  /** Proweniencja widma (KATALOG/RECZNE) źródeł, które DO wejścia trafiły. */
+  readonly zrodla_widma?: readonly ProweniencjaZrodlaWidma[];
 }
 
 /** Krok śladu WHITE BOX (`TraceBuilder.add`). */

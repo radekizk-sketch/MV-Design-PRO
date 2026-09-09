@@ -47,6 +47,9 @@ interface OpcjeMocka {
   /** Liczba sekcji raportu — 7 sprawdza, że limit 3 zniknął. */
   readonly sekcjiRaportu?: number;
   readonly bladBiegu?: string;
+  /** Karta W2-C: pola addytywne odpowiedzi wyniku — źródła pominięte/proweniencja widma. */
+  readonly pominieteZrodla?: readonly { ref: string; kod: string; powod: string }[];
+  readonly zrodlaWidma?: readonly { ref: string; proweniencja: string }[];
 }
 
 function odpowiedz(dane: unknown): Response {
@@ -176,6 +179,8 @@ function ustawFetch(opcje: OpcjeMocka = {}): ReturnType<typeof vi.fn> {
         },
         proof_ref: 'proof:v126:test:abc',
         report_ref: 'report:v126:test:abc',
+        ...(opcje.pominieteZrodla ? { pominiete_zrodla: opcje.pominieteZrodla } : {}),
+        ...(opcje.zrodlaWidma ? { zrodla_widma: opcje.zrodlaWidma } : {}),
       });
     }
     throw new Error(`Nieoczekiwane wywołanie fetch: ${metoda} ${adres}`);
@@ -411,10 +416,76 @@ describe('EkranAnalizAkademickich — parametry projektowe', () => {
   });
 
   it('rodzaj liczący wprost z modelu informuje o braku parametrów', async () => {
+    // `power_quality_harmonics` PRZENIESIONY do rodzajów Z parametrami (karta
+    // W2-C): liczy wprost z karty katalogowej, ale przyjmuje TEŻ jawne wejście
+    // widma (`harmonic_spectra`) — pokrycie w teście niżej. `insulation_
+    // coordination` zostaje bez parametrów (ograniczniki z aparatów modelu).
+    ustawFetch();
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    await wybierzRodzaj('insulation_coordination');
+    expect(screen.queryByTestId('mvd-akad-parametry-przelacz')).not.toBeInTheDocument();
+  });
+
+  it('power_quality_harmonics ma parametry: tabela wierszy widma harmonicznego', async () => {
     ustawFetch();
     render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
     await wybierzRodzaj('power_quality_harmonics');
-    expect(screen.queryByTestId('mvd-akad-parametry-przelacz')).not.toBeInTheDocument();
+    expect(screen.getByTestId('mvd-akad-parametry-przelacz')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('mvd-akad-parametry-przelacz'));
+    expect(screen.getByTestId('mvd-akad-lista')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('mvd-akad-dodaj-wiersz'));
+    expect(screen.getByTestId('mvd-akad-pole-generator_ref')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-akad-pole-rzad')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-akad-pole-procent')).toBeInTheDocument();
+  });
+});
+
+describe('EkranAnalizAkademickich — źródła harmoniczne pominięte / proweniencja (karta W2-C)', () => {
+  it('wynik bez pominiętych i bez proweniencji nie renderuje sekcji', async () => {
+    ustawFetch();
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    await wybierzRodzaj('power_quality_harmonics');
+    fireEvent.click(screen.getByTestId('mvd-akad-uruchom'));
+    await screen.findByTestId('mvd-akad-wyniki');
+    expect(screen.queryByTestId('mvd-akad-zrodla-harmoniczne')).not.toBeInTheDocument();
+  });
+
+  it('źródła pominięte i proweniencja widma renderują się z treścią z odpowiedzi API', async () => {
+    ustawFetch({
+      pominieteZrodla: [
+        {
+          ref: 'PV-BRAK',
+          kod: 'generator.harmonic_spectrum_missing',
+          powod: 'Karta katalogowa przekształtnika nie niesie widma prądu harmonicznych.',
+        },
+      ],
+      zrodlaWidma: [{ ref: 'PV-OK', proweniencja: 'KATALOG' }],
+    });
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    await wybierzRodzaj('power_quality_harmonics');
+    fireEvent.click(screen.getByTestId('mvd-akad-uruchom'));
+    await screen.findByTestId('mvd-akad-wyniki');
+
+    expect(screen.getByTestId('mvd-akad-zrodla-harmoniczne')).toBeInTheDocument();
+    const zrodlaWidma = screen.getByTestId('mvd-akad-zrodla-widma');
+    expect(zrodlaWidma.textContent).toContain('PV-OK');
+    expect(zrodlaWidma.textContent).toContain('z karty katalogowej');
+
+    const pominieteLista = screen.getByTestId('mvd-akad-zrodla-pominiete-lista');
+    expect(pominieteLista.textContent).toContain('PV-BRAK');
+    expect(pominieteLista.textContent).toContain('generator.harmonic_spectrum_missing');
+    expect(pominieteLista.textContent).toContain('nie niesie widma prądu harmonicznych');
+  });
+
+  it('sekcja nie renderuje się dla rodzaju spoza harmonic_sources/converters', async () => {
+    ustawFetch({
+      pominieteZrodla: [{ ref: 'PV-1', kod: 'generator.converter_card_missing', powod: 'brak karty' }],
+    });
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    await wybierzRodzaj('earthing_safety');
+    fireEvent.click(screen.getByTestId('mvd-akad-uruchom'));
+    await screen.findByTestId('mvd-akad-wyniki');
+    expect(screen.queryByTestId('mvd-akad-zrodla-harmoniczne')).not.toBeInTheDocument();
   });
 });
 

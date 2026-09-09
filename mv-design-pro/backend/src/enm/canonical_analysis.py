@@ -1771,6 +1771,16 @@ def _execute_v126(run: CanonicalRun) -> None:
         "result": result,
         "deterministic_hash": result["deterministic_hash"],
     }
+    # Karta W2-C: lista generatorów pominiętych w wejściu (kod gotowości + powód),
+    # wyliczona przez wołającego (`api/v126_academic.py::run_v126_analysis`, gdzie
+    # ENM jest jeszcze dostępny — tu mamy tylko model już zbudowany) i stashowana
+    # w `run.options`. Sibling-klucz OBOK `result` solvera (FROZEN, B-01) — nigdy
+    # do środka niego — więc `result["deterministic_hash"]` i cały solver
+    # pozostają nietknięte. Pomijana, gdy pusta (pole addytywne, brak klucza =
+    # brak pominięć, nie pusta lista wszędzie).
+    pominiete_zrodla = options.get("pominiete_zrodla")
+    if pominiete_zrodla:
+        run_record["pominiete_zrodla"] = pominiete_zrodla
     proof = build_v126_proof_artifact(run_record)
     report = build_v126_report_artifact(run_record, proof)
     run_record["proof"] = proof

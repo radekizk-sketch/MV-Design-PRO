@@ -15,11 +15,41 @@ import {
   POLA_REFERENCJI,
   POLA_SILNIKA,
   POLA_UZIOMU,
+  POLA_WIDMA,
   zestawParametrow,
   type DefinicjaPola,
+  type ListaZlozona,
   type StanPol,
   type WierszListy,
 } from './parametry';
+
+/** Definicje pól i etykiety per lista złożona — jedna decyzja na `ListaZlozona`,
+ * nie trójskładnikowy ternar (rozszerzalne bez zmiany kształtu warunku). */
+const DEFINICJE_LISTY: Record<ListaZlozona, readonly DefinicjaPola[]> = {
+  motors: POLA_SILNIKA,
+  benchmark_references: POLA_REFERENCJI,
+  harmonic_spectra: POLA_WIDMA,
+};
+const TYTUL_LISTY: Record<ListaZlozona, string> = {
+  motors: S.parametrySilnikiTytul,
+  benchmark_references: S.parametryReferencjeTytul,
+  harmonic_spectra: S.parametryWidmoTytul,
+};
+const OPIS_LISTY: Record<ListaZlozona, string> = {
+  motors: S.parametrySilnikiOpis,
+  benchmark_references: S.parametryReferencjeOpis,
+  harmonic_spectra: S.parametryWidmoOpis,
+};
+const DODAJ_LISTY: Record<ListaZlozona, string> = {
+  motors: S.parametryDodajSilnik,
+  benchmark_references: S.parametryDodajReferencje,
+  harmonic_spectra: S.parametryDodajWidmo,
+};
+const USUN_LISTY: Record<ListaZlozona, string> = {
+  motors: S.parametryUsunSilnik,
+  benchmark_references: S.parametryUsunReferencje,
+  harmonic_spectra: S.parametryUsunWidmo,
+};
 
 function PoleParametru({
   definicja,
@@ -109,13 +139,11 @@ export function FormularzParametrow({
   onUsunWiersz,
 }: FormularzParametrowProps) {
   const zestaw = zestawParametrow(rodzaj);
-  const definicjeListy = zestaw.lista === 'motors' ? POLA_SILNIKA : POLA_REFERENCJI;
-  const tytulListy =
-    zestaw.lista === 'motors' ? S.parametrySilnikiTytul : S.parametryReferencjeTytul;
-  const opisListy = zestaw.lista === 'motors' ? S.parametrySilnikiOpis : S.parametryReferencjeOpis;
-  const dodajListy =
-    zestaw.lista === 'motors' ? S.parametryDodajSilnik : S.parametryDodajReferencje;
-  const usunListy = zestaw.lista === 'motors' ? S.parametryUsunSilnik : S.parametryUsunReferencje;
+  const definicjeListy = zestaw.lista !== null ? DEFINICJE_LISTY[zestaw.lista] : [];
+  const tytulListy = zestaw.lista !== null ? TYTUL_LISTY[zestaw.lista] : '';
+  const opisListy = zestaw.lista !== null ? OPIS_LISTY[zestaw.lista] : '';
+  const dodajListy = zestaw.lista !== null ? DODAJ_LISTY[zestaw.lista] : '';
+  const usunListy = zestaw.lista !== null ? USUN_LISTY[zestaw.lista] : '';
 
   return (
     <div className="mvd-akad-parametry" data-testid="mvd-akad-parametry">

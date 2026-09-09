@@ -48,3 +48,23 @@ def test_rejestr_jest_deterministyczny(app_client) -> None:
     pierwszy = app_client.get("/api/readiness/registry").json()
     drugi = app_client.get("/api/readiness/registry").json()
     assert pierwszy == drugi
+
+
+def test_rejestr_niesie_kody_przeksztaltnika_v126_karta_w2c(app_client) -> None:
+    """Karta W2-C (zero fabrykacji wejścia V12.6): dwa nowe kody gotowości —
+    `converter_card_missing` (BLOCKER, brak karty/mocy znamionowej) i
+    `harmonic_spectrum_missing` (WARNING, karta bez widma) — muszą nieść treść
+    naprawczą przez TEN SAM kanał co reszta rejestru (deklaracja bez testu =
+    fałszywa pewność, reguła KLASA §4)."""
+    dane = app_client.get("/api/readiness/registry").json()
+    po_kodzie = {k["code"]: k for k in dane["codes"]}
+
+    karta_brak = po_kodzie["generator.converter_card_missing"]
+    assert karta_brak["level"] == "BLOCKER"
+    assert karta_brak["fix_navigation"]["panel"] == "inspector"
+    assert len(karta_brak["message_pl"]) >= 5
+
+    widmo_brak = po_kodzie["generator.harmonic_spectrum_missing"]
+    assert widmo_brak["level"] == "WARNING"
+    assert widmo_brak["fix_navigation"]["panel"] == "inspector"
+    assert len(widmo_brak["message_pl"]) >= 5

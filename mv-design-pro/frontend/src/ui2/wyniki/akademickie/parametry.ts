@@ -13,6 +13,13 @@
  * Lista pól jest ZAMKNIĘTA kontraktem solvera: strażnikiem drugiego końca pary jest
  * test CI `backend/tests/ci/test_v126_rodzaje_parytet.py` (klucz czytany przez
  * solver i nieobsłużony tutaj = czerwony test).
+ *
+ * WYJĄTEK JAWNY (karta W2-C): `harmonic_spectra` (rodzaj `power_quality_harmonics`,
+ * `POLA_WIDMA`) nie jest czytany przez SOLVER — jest czytany przez MOST
+ * (`solver_input/v126_contracts.py::build_v126_input_from_enm`), warstwę PRZED
+ * solverem, gdzie widmo harmoniczne staje się częścią `harmonic_sources`. Ta sama
+ * zasada zero fabrykacji obowiązuje jeden krok wcześniej w łańcuchu — pole puste
+ * = solver liczy wyłącznie ze źródeł, których karta katalogowa niesie widmo.
  */
 
 import type { RodzajAnalizy } from './api';
@@ -111,6 +118,33 @@ export const POLA_SILNIKA: readonly DefinicjaPola[] = [
   { klucz: 'load_start_torque_pu', etykieta: 'Moment obciążenia przy rozruchu', rodzaj: 'liczba', jednostka: 'j.w.' },
 ];
 
+/**
+ * Pola wiersza jawnego widma harmonicznego (`harmonic_spectra`, karta W2-C).
+ * Kształt WEJŚCIA solvera niesie tu WYJĄTEK od reguły „każde pole = klucz
+ * czytany przez solver" z nagłówka pliku: `harmonic_spectra` jest czytany
+ * przez MOST (`solver_input/v126_contracts.py::build_v126_input_from_enm`),
+ * o warstwę PRZED solverem — solver widzi już gotowe `harmonic_sources`. Wiersz
+ * (generator, rząd, %) jest agregowany do zagnieżdżonej mapy
+ * `{generator_ref: {rząd: %}}` w `zbudujParametry` (nie jest to lista płaska,
+ * jak `motors`/`benchmark_references`).
+ */
+export const POLA_WIDMA: readonly DefinicjaPola[] = [
+  { klucz: 'generator_ref', etykieta: 'Oznaczenie przekształtnika', rodzaj: 'tekst' },
+  {
+    klucz: 'rzad',
+    etykieta: 'Rząd harmonicznej',
+    rodzaj: 'liczba',
+    opis: 'Liczba całkowita w zakresie 2–50.',
+  },
+  {
+    klucz: 'procent',
+    etykieta: 'Udział w prądzie znamionowym',
+    rodzaj: 'liczba',
+    jednostka: '%',
+    opis: 'Zakres 0–100 %.',
+  },
+];
+
 /** Pola wiersza referencji benchmarkowej (`benchmark_references`). */
 export const POLA_REFERENCJI: readonly DefinicjaPola[] = [
   { klucz: 'network', etykieta: 'Sieć odniesienia', rodzaj: 'tekst' },
@@ -122,7 +156,7 @@ export const POLA_REFERENCJI: readonly DefinicjaPola[] = [
 ];
 
 /** Listy złożone obsługiwane przez formularz (poza polami prostymi). */
-export type ListaZlozona = 'motors' | 'benchmark_references';
+export type ListaZlozona = 'motors' | 'benchmark_references' | 'harmonic_spectra';
 
 /** Zestaw parametrów rodzaju analizy. */
 export interface ZestawParametrow {
@@ -143,8 +177,11 @@ const PUSTY: ZestawParametrow = { pola: [], uziom: false, lista: null, metodyDet
  * w solverze — komentarz przy zestawie podaje wiersz kontraktu.
  */
 export const PARAMETRY_RODZAJU: Record<RodzajAnalizy, ZestawParametrow> = {
-  // Liczy wprost z modelu (źródła harmoniczne z ENM).
-  power_quality_harmonics: PUSTY,
+  // `build_v126_input_from_enm`: widmo źródeł harmonicznych z karty katalogowej
+  // przekształtnika, ALBO z jawnego wejścia tutaj (`harmonic_spectra`, karta
+  // W2-C) — proweniencja RECZNE nadpisuje proweniencję KATALOG. Puste = solver
+  // liczy wyłącznie ze źródeł, których karta katalogowa niesie widmo.
+  power_quality_harmonics: { pola: [], uziom: false, lista: 'harmonic_spectra', metodyDetekcji: false },
 
   // `_ssci_impedance`: model.parameters["ssci_converter_ref"] — wskazanie przekształtnika.
   ssci_impedance: {
@@ -337,6 +374,32 @@ function wartoscPola(definicja: DefinicjaPola, tekst: string | undefined): unkno
   return Number.isFinite(liczba) ? liczba : undefined;
 }
 
+/**
+ * Agreguje wiersze (generator, rząd, %) do mapy `{generator_ref: {rząd: %}}`
+ * oczekiwanej przez `V126RunRequest.parameters.harmonic_spectra` — kształt
+ * ZAGNIEŻDŻONY, więc NIE reużywa `wierszDoObiektu` (ten buduje listę płaskich
+ * obiektów, jak `motors`/`benchmark_references`). Wiersz z rzędem poza 2–50 albo
+ * procentem poza 0–100 jest POMIJANY — okno nie fabrykuje widma z błędnego
+ * wpisu, tak samo jak backend (`_widma_jawne_z_parametrow`).
+ */
+function wierszeWidmaDoMapy(
+  wiersze: readonly WierszListy[],
+): Record<string, Record<string, number>> | null {
+  const mapa: Record<string, Record<string, number>> = {};
+  wiersze.forEach((wiersz) => {
+    const ref = (wiersz.generator_ref ?? '').trim();
+    const rzadTekst = (wiersz.rzad ?? '').trim();
+    const procentTekst = (wiersz.procent ?? '').trim();
+    if (ref === '' || rzadTekst === '' || procentTekst === '') return;
+    const rzad = Number(rzadTekst.replace(',', '.'));
+    const procent = Number(procentTekst.replace(',', '.'));
+    if (!Number.isInteger(rzad) || rzad < 2 || rzad > 50) return;
+    if (!Number.isFinite(procent) || procent < 0 || procent > 100) return;
+    mapa[ref] = { ...(mapa[ref] ?? {}), [String(rzad)]: procent };
+  });
+  return Object.keys(mapa).length === 0 ? null : mapa;
+}
+
 function wierszDoObiektu(
   definicje: readonly DefinicjaPola[],
   wiersz: WierszListy,
@@ -381,7 +444,10 @@ export function zbudujParametry(wejscie: WejscieParametrow): Record<string, unkn
     parametry.relay_methods = [...wejscie.metody];
   }
 
-  if (zestaw.lista !== null) {
+  if (zestaw.lista === 'harmonic_spectra') {
+    const mapa = wierszeWidmaDoMapy(wejscie.wiersze);
+    if (mapa !== null) parametry.harmonic_spectra = mapa;
+  } else if (zestaw.lista !== null) {
     const definicje = zestaw.lista === 'motors' ? POLA_SILNIKA : POLA_REFERENCJI;
     const wiersze = wejscie.wiersze
       .map((wiersz) => wierszDoObiektu(definicje, wiersz))

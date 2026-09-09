@@ -312,7 +312,10 @@ def test_prad_bazowy_zrodla_harmonicznego_z_napiecia_szyny(napiecie_kv: float) -
 
     Każde źródło spoza tego poziomu dostawało prąd zafałszowany proporcją napięć,
     a prąd bazowy wchodzi wprost do wstrzyknięcia harmonicznych, czyli do THD,
-    TDD i oceny zgodności.
+    TDD i oceny zgodności. Karta W2-C: źródło harmoniczne wymaga dziś KARTY
+    KATALOGOWEJ z widmem (`_PRZEKSZTALTNIK_Z_WIDMEM`) — bez karty źródło jest
+    pominięte (osobny test klasy niżej), więc ten test dokłada kartę, żeby
+    dalej pinować wyłącznie napięcie bazowe, nie widmo.
     """
     model = _model(
         napiecie_kv=napiecie_kv,
@@ -323,13 +326,200 @@ def test_prad_bazowy_zrodla_harmonicznego_z_napiecia_szyny(napiecie_kv: float) -
                 "bus_ref": _SZYNA_A,
                 "p_mw": 2.0,
                 "gen_type": "pv_inverter",
+                "materialized_params": {"sn_mva": 2.2, "harmonic_spectrum_percent": {5: 3.0}},
             }
         ],
     )
     wejscie = build_v126_input_from_enm(model)
     assert len(wejscie.harmonic_sources) == 1
-    oczekiwany = 1000.0 * 2.0 / (math.sqrt(3.0) * napiecie_kv)
+    oczekiwany = 1000.0 * 2.2 / (math.sqrt(3.0) * napiecie_kv)
     assert wejscie.harmonic_sources[0].base_current_a == pytest.approx(oczekiwany, rel=1e-9)
+
+
+# ---------------------------------------------------------------------------
+# KARTA W2-C — zero fabrykacji parametrów przekształtnika (widmo/droop/tryb/moc)
+# ---------------------------------------------------------------------------
+#
+# Iloczyn cech pokrywany poniżej (reguła KLASA §2): {karta z widmem · karta bez
+# widma · jawne wejście RECZNE · generator bez KARTY w ogóle} × {BESS z GFM
+# zadeklarowanym w karcie · bez GFM} × {moc znamionowa obecna (sn_mva/s_n_kva)
+# · nieobecna}.
+
+_KARTA_GFL_KOMPLETNA: dict = {
+    "un_kv": 15.0,
+    "sn_mva": 2.2,
+    "control_mode": "Q_OF_U",
+    "harmonic_spectrum_percent": {5: 4.5, 7: 2.1, 11: 1.0},
+}
+
+_KARTA_GFM_KOMPLETNA: dict = {
+    "un_kv": 30.0,
+    "sn_mva": 55.0,
+    "control_mode": "GRID_FORMING",
+    "droop_p_f_percent": 4.0,
+    "droop_q_u_percent": 3.0,
+}
+
+
+def _przeksztaltnik(**nadpisania: object) -> dict:
+    dane: dict = {
+        "ref_id": "PV-1",
+        "name": "Przekształtnik",
+        "bus_ref": _SZYNA_A,
+        "p_mw": 2.0,
+        "gen_type": "pv_inverter",
+    }
+    dane.update(nadpisania)
+    return dane
+
+
+def test_przeksztaltnik_z_widmem_karty_dostaje_zrodlo_harmoniczne_z_proweniencja_katalog() -> None:
+    """Karta niesie widmo => źródło harmoniczne WCHODZI, z proweniencją KATALOG."""
+    model = _model(generators=[_przeksztaltnik(materialized_params=_KARTA_GFL_KOMPLETNA)])
+    wejscie = build_v126_input_from_enm(model)
+    assert len(wejscie.converters) == 1
+    assert len(wejscie.harmonic_sources) == 1
+    zrodlo = wejscie.harmonic_sources[0]
+    assert zrodlo.spectrum_percent == {5: 4.5, 7: 2.1, 11: 1.0}
+    assert zrodlo.spectrum_provenance == "KATALOG"
+    assert wejscie.converters[0].rated_mva == pytest.approx(2.2)
+    assert wejscie.converters[0].mode == "GFL"
+    assert wejscie.converters[0].droop_p_f_percent is None
+    assert wejscie.converters[0].droop_q_u_percent is None
+
+
+def test_przeksztaltnik_bez_widma_karty_ma_przeksztaltnik_ale_nie_zrodlo_harmoniczne() -> None:
+    """PIN NA DEFEKT USUNIĘTY TĄ KARTĄ: karta bez widma NIE dostaje już zaszytego
+    {5:3%, 7:2%, 11:1,2%, 13:1%} wspólnego dla każdego przekształtnika — źródło
+    harmoniczne jest POMINIĘTE, ale przekształtnik (moc, tryb, Q) nadal wchodzi
+    do wejścia V12.6 (SSCI go widzi)."""
+    karta_bez_widma = {
+        k: v for k, v in _KARTA_GFL_KOMPLETNA.items() if k != "harmonic_spectrum_percent"
+    }
+    model = _model(generators=[_przeksztaltnik(materialized_params=karta_bez_widma)])
+    wejscie = build_v126_input_from_enm(model)
+    assert len(wejscie.converters) == 1
+    assert wejscie.harmonic_sources == []
+
+
+def test_przeksztaltnik_bez_zadnej_karty_jest_pominiety_calkowicie() -> None:
+    """PIN NA DEFEKT USUNIĘTY TĄ KARTĄ: `rated = max(abs(P), 0,1 MVA)` dawał
+    przekształtnikowi bez karty zmyśloną moc znamionową 2,0 MVA (=P) — dziś
+    generator bez ŻADNEJ materializacji katalogowej jest pominięty w CAŁOŚCI
+    (ani converters, ani harmonic_sources), nie wchodzi z liczbą z powietrza."""
+    model = _model(generators=[_przeksztaltnik()])
+    wejscie = build_v126_input_from_enm(model)
+    assert wejscie.converters == []
+    assert wejscie.harmonic_sources == []
+
+
+def test_przeksztaltnik_z_karta_bez_mocy_znamionowej_jest_pominiety_calkowicie() -> None:
+    """Karta ISTNIEJE (niesie inne pola) ale bez `sn_mva`/`s_n_kva` — nadal
+    pominięcie CAŁKOWITE, nie `max(P, 0,1 MVA)`."""
+    karta_bez_mocy = {"un_kv": 15.0, "control_mode": "Q_OF_U"}
+    model = _model(generators=[_przeksztaltnik(materialized_params=karta_bez_mocy)])
+    wejscie = build_v126_input_from_enm(model)
+    assert wejscie.converters == []
+    assert wejscie.harmonic_sources == []
+
+
+def test_przeksztaltnik_moc_znamionowa_z_klucza_s_n_kva_zapasowego_namespace() -> None:
+    """Generator materializowany z namespace'u nN (`s_n_kva`, nie `sn_mva`) nadal
+    dostaje realną moc znamionową — konwersja kVA -> MVA, nie pominięcie."""
+    karta_nn = {"un_kv": 0.4, "s_n_kva": 50.0, "control_mode": "Q_OF_U"}
+    model = _model(napiecie_kv=0.4, generators=[_przeksztaltnik(materialized_params=karta_nn)])
+    wejscie = build_v126_input_from_enm(model)
+    assert len(wejscie.converters) == 1
+    assert wejscie.converters[0].rated_mva == pytest.approx(0.05)
+
+
+def test_bess_z_karta_grid_forming_dostaje_tryb_gfm_i_droop_z_karty() -> None:
+    """Tryb grid-forming z KARTY (`control_mode == "GRID_FORMING"`), nie z
+    `gen_type == "bess"` — PIN NA DEFEKT USUNIĘTY: `mode = "GFL" if gen_type !=
+    "bess" else "GFM_droop"` dawał KAŻDEMU BESS tryb GFM niezależnie od karty."""
+    model = _model(
+        generators=[
+            _przeksztaltnik(
+                ref_id="BESS-1", gen_type="bess", materialized_params=_KARTA_GFM_KOMPLETNA
+            )
+        ]
+    )
+    wejscie = build_v126_input_from_enm(model)
+    konwerter = wejscie.converters[0]
+    assert konwerter.mode == "GFM_droop"
+    assert konwerter.droop_p_f_percent == pytest.approx(4.0)
+    assert konwerter.droop_q_u_percent == pytest.approx(3.0)
+
+
+def test_bess_bez_deklaracji_gfm_w_karcie_pracuje_jako_gfl() -> None:
+    """Kontrola dwustronna: BESS jest fizycznym typem magazynu, ale bez
+    zadeklarowanej zdolności GRID_FORMING w karcie pracuje jako grid-following
+    — to własność karty, nie domysł z `gen_type == "bess"`."""
+    karta_bess_gfl = {"un_kv": 15.0, "sn_mva": 5.0, "control_mode": "Q_OF_U"}
+    model = _model(
+        generators=[
+            _przeksztaltnik(ref_id="BESS-1", gen_type="bess", materialized_params=karta_bess_gfl)
+        ]
+    )
+    wejscie = build_v126_input_from_enm(model)
+    konwerter = wejscie.converters[0]
+    assert konwerter.mode == "GFL"
+    assert konwerter.droop_p_f_percent is None
+    assert konwerter.droop_q_u_percent is None
+
+
+def test_pv_z_deklaracja_grid_forming_w_karcie_dostaje_tryb_gfm() -> None:
+    """Kontrola dwustronna PO DRUGIEJ STRONIE: PV (nie tylko BESS) z kartą
+    `control_mode == "GRID_FORMING"` dostaje tryb GFM — dawny kod nigdy nie
+    dawał PV trybu grid-forming, niezależnie od karty (fałszywy warunek
+    `gen_type != "bess"`)."""
+    model = _model(generators=[_przeksztaltnik(materialized_params=_KARTA_GFM_KOMPLETNA)])
+    wejscie = build_v126_input_from_enm(model)
+    assert wejscie.converters[0].mode == "GFM_droop"
+
+
+def test_widmo_reczne_nadpisuje_widmo_karty_z_proweniencja_reczne() -> None:
+    """Jawne wejście projektanta (`parameters.harmonic_spectra`, wzorzec OD-15(a))
+    ma pierwszeństwo przed widmem karty, z proweniencją RECZNE."""
+    model = _model(generators=[_przeksztaltnik(materialized_params=_KARTA_GFL_KOMPLETNA)])
+    wejscie = build_v126_input_from_enm(
+        model, parameters={"harmonic_spectra": {"PV-1": {"5": 9.9, "7": 1.1}}}
+    )
+    zrodlo = wejscie.harmonic_sources[0]
+    assert zrodlo.spectrum_percent == {5: 9.9, 7: 1.1}
+    assert zrodlo.spectrum_provenance == "RECZNE"
+
+
+def test_widmo_reczne_dla_generatora_bez_widma_karty_wchodzi_z_proweniencja_reczne() -> None:
+    """Jawne wejście działa RÓWNIEŻ, gdy karta w ogóle nie niesie widma —
+    źródło harmoniczne WCHODZI mimo braku karty katalogowego widma."""
+    karta_bez_widma = {
+        k: v for k, v in _KARTA_GFL_KOMPLETNA.items() if k != "harmonic_spectrum_percent"
+    }
+    model = _model(generators=[_przeksztaltnik(materialized_params=karta_bez_widma)])
+    wejscie = build_v126_input_from_enm(
+        model, parameters={"harmonic_spectra": {"PV-1": {"5": 6.0}}}
+    )
+    assert len(wejscie.harmonic_sources) == 1
+    assert wejscie.harmonic_sources[0].spectrum_provenance == "RECZNE"
+
+
+def test_widmo_reczne_zle_uksztaltowane_jest_pomijane_bez_fabrykacji() -> None:
+    """Rząd/procent poza zakresem albo nienumeryczny jest ODRZUCONY (nie wchodzi
+    do widma), zamiast fabrykować widmo z niepoprawnych danych — generator
+    wraca do stanu „brak widma"."""
+    model = _model(generators=[_przeksztaltnik(materialized_params=_KARTA_GFL_KOMPLETNA)])
+    wejscie_zle_dane = build_v126_input_from_enm(
+        model,
+        parameters={"harmonic_spectra": {"PV-1": {"51": 5.0, "5": 150.0, "x": 3.0}}},
+    )
+    # Wszystkie wpisy jawne odrzucone (rząd 51 > 50, procent 150 > 100, "x" nie liczba)
+    # => most wraca do widma KARTY (nie do braku), bo widmo reczne po oczyszczeniu jest puste.
+    assert wejscie_zle_dane.harmonic_sources[0].spectrum_provenance == "KATALOG"
+    assert (
+        wejscie_zle_dane.harmonic_sources[0].spectrum_percent
+        == _KARTA_GFL_KOMPLETNA["harmonic_spectrum_percent"]
+    )
 
 
 # ---------------------------------------------------------------------------

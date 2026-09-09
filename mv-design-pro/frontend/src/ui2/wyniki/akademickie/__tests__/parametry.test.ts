@@ -189,7 +189,10 @@ describe('zestaw parametrów rodzaju', () => {
   });
 
   it('rodzaje liczące wprost z modelu nie mają parametrów', () => {
-    expect(maParametry('power_quality_harmonics')).toBe(false);
+    // `power_quality_harmonics` PRZENIESIONY do listy „ma parametry" niżej
+    // (karta W2-C): liczy WPROST z modelu (widmo karty katalogowej), ale
+    // przyjmuje TEŻ jawne wejście `harmonic_spectra` — ten sam wzorzec, co
+    // `ssci_impedance` (liczy z modelu, a `ssci_converter_ref` jest polem).
     expect(maParametry('insulation_coordination')).toBe(false);
     expect(maParametry('voltage_stability')).toBe(false);
     expect(maParametry('reliability_contingency')).toBe(false);
@@ -201,5 +204,94 @@ describe('zestaw parametrów rodzaju', () => {
     expect(maParametry('motor_starting')).toBe(true);
     expect(maParametry('neutral_earthing_design')).toBe(true);
     expect(maParametry('earth_fault_detection')).toBe(true);
+    expect(maParametry('power_quality_harmonics')).toBe(true);
+  });
+});
+
+describe('zbudujParametry — widmo harmoniczne jawne (karta W2-C)', () => {
+  it('wiersz kompletny agreguje się do mapy {generator_ref: {rząd: %}}', () => {
+    const parametry = zbudujParametry({
+      rodzaj: 'power_quality_harmonics',
+      pola: {},
+      uziom: {},
+      metody: [],
+      wiersze: [{ generator_ref: 'PV-1', rzad: '5', procent: '4,5' }],
+    });
+    expect(parametry).toEqual({ harmonic_spectra: { 'PV-1': { '5': 4.5 } } });
+  });
+
+  it('dwa wiersze tego samego generatora scalają się w jedno widmo', () => {
+    const parametry = zbudujParametry({
+      rodzaj: 'power_quality_harmonics',
+      pola: {},
+      uziom: {},
+      metody: [],
+      wiersze: [
+        { generator_ref: 'PV-1', rzad: '5', procent: '4,5' },
+        { generator_ref: 'PV-1', rzad: '7', procent: '2,1' },
+      ],
+    });
+    expect(parametry).toEqual({ harmonic_spectra: { 'PV-1': { '5': 4.5, '7': 2.1 } } });
+  });
+
+  it('dwa generatory dostają osobne wpisy w mapie', () => {
+    const parametry = zbudujParametry({
+      rodzaj: 'power_quality_harmonics',
+      pola: {},
+      uziom: {},
+      metody: [],
+      wiersze: [
+        { generator_ref: 'PV-1', rzad: '5', procent: '4,5' },
+        { generator_ref: 'PV-2', rzad: '5', procent: '3,0' },
+      ],
+    });
+    expect(parametry).toEqual({
+      harmonic_spectra: { 'PV-1': { '5': 4.5 }, 'PV-2': { '5': 3.0 } },
+    });
+  });
+
+  it('brak wierszy nie tworzy klucza harmonic_spectra', () => {
+    const parametry = zbudujParametry({
+      rodzaj: 'power_quality_harmonics',
+      pola: {},
+      uziom: {},
+      metody: [],
+      wiersze: [],
+    });
+    expect(parametry).toEqual({});
+    expect('harmonic_spectra' in parametry).toBe(false);
+  });
+
+  it.each([
+    ['rząd poza 2–50 (za mały)', { generator_ref: 'PV-1', rzad: '1', procent: '5' }],
+    ['rząd poza 2–50 (za duży)', { generator_ref: 'PV-1', rzad: '51', procent: '5' }],
+    ['rząd niecałkowity', { generator_ref: 'PV-1', rzad: '5,5', procent: '5' }],
+    ['procent ujemny', { generator_ref: 'PV-1', rzad: '5', procent: '-1' }],
+    ['procent powyżej 100', { generator_ref: 'PV-1', rzad: '5', procent: '150' }],
+    ['procent nienumeryczny', { generator_ref: 'PV-1', rzad: '5', procent: 'x' }],
+    ['brak oznaczenia generatora', { generator_ref: '', rzad: '5', procent: '5' }],
+  ])('wiersz błędnie ukształtowany (%s) jest pomijany, nie fabrykuje widma', (_opis, wiersz) => {
+    const parametry = zbudujParametry({
+      rodzaj: 'power_quality_harmonics',
+      pola: {},
+      uziom: {},
+      metody: [],
+      wiersze: [wiersz],
+    });
+    expect(parametry).toEqual({});
+  });
+
+  it('wiersz błędny obok poprawnego: tylko poprawny wchodzi do widma', () => {
+    const parametry = zbudujParametry({
+      rodzaj: 'power_quality_harmonics',
+      pola: {},
+      uziom: {},
+      metody: [],
+      wiersze: [
+        { generator_ref: 'PV-1', rzad: '5', procent: '4,5' },
+        { generator_ref: 'PV-1', rzad: '99', procent: '4,5' },
+      ],
+    });
+    expect(parametry).toEqual({ harmonic_spectra: { 'PV-1': { '5': 4.5 } } });
   });
 });

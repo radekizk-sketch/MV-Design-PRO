@@ -24,6 +24,8 @@ from solver_input.v126_contracts import (
     V126MotorInput,
     V126RunRequest,
     build_v126_input_from_enm,
+    generatory_przeksztaltnikowe_v126,
+    pominiete_zrodla_v126,
 )
 
 router = APIRouter(prefix="/api", tags=["v12.6-academic"])
@@ -178,6 +180,47 @@ def run_v126_analysis(
                     f"SSCI bez mocy biernej: {przeksztaltnik.ref}"
                 ),
             )
+    # Karta W2-C (zero fabrykacji wejścia V12.6): `power_quality_harmonics` i
+    # `ssci_impedance` są JEDYNE dwa rodzaje V12.6 czytające `harmonic_sources`/
+    # `converters` (`grep -n "converters\|harmonic_sources" v126_academic.py`).
+    # `build_v126_input_from_enm` pomija POJEDYNCZE generatory bez karty/widma
+    # (kod `generator.converter_card_missing`/`generator.harmonic_spectrum_missing`,
+    # patrz `pominiete_zrodla_v126` niżej) — ale gdy TO POMINIĘCIE oznacza, że
+    # ŻADEN kandydujący generator nie wniósł danych, uruchomienie zwróciłoby
+    # wynik prawie pusty (`has_inputs=False` / brak przekształtnika) zamiast
+    # jasnej odmowy z listą generatorów do naprawy — wzorzec identyczny z bramką
+    # `generator.q_missing` powyżej (:156-177).
+    if analysis_type == V126AnalysisType.POWER_QUALITY_HARMONICS:
+        kandydaci = generatory_przeksztaltnikowe_v126(enm)
+        if kandydaci and not model.harmonic_sources:
+            spec = READINESS_CODES["generator.harmonic_spectrum_missing"]
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"{spec.message_pl} (generator.harmonic_spectrum_missing) — "
+                    f"generatory bez widma harmonicznego: {', '.join(kandydaci)}"
+                ),
+            )
+    if analysis_type == V126AnalysisType.SSCI_IMPEDANCE:
+        kandydaci = generatory_przeksztaltnikowe_v126(enm)
+        if kandydaci and not model.converters:
+            spec = READINESS_CODES["generator.converter_card_missing"]
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"{spec.message_pl} (generator.converter_card_missing) — "
+                    f"generatory bez karty przekształtnika: {', '.join(kandydaci)}"
+                ),
+            )
+    # Karta W2-C: lista generatorów pominiętych CZĘŚCIOWO (część kandydatów ma
+    # dane, część nie) — pole addytywne `pominiete_zrodla` w payloadzie biegu,
+    # wyliczone TĄ SAMĄ oceną karty co budowa wejścia (`pominiete_zrodla_v126`,
+    # reguła KLASA §3). Puste dla rodzajów, które `harmonic_sources`/`converters`
+    # nie czytają (i tam, gdzie wszystkie/żadne kandydaty mają dane — bramki 422
+    # powyżej już to rozstrzygnęły).
+    pominiete_zrodla: list[dict[str, str]] = []
+    if analysis_type in (V126AnalysisType.POWER_QUALITY_HARMONICS, V126AnalysisType.SSCI_IMPEDANCE):
+        pominiete_zrodla = pominiete_zrodla_v126(enm, parameters=request.parameters)
     # CV-4.3-A4 (K5.2, 2026-09-06): bieg V12.6 trafia do rejestru kanonicznego
     # R1 (`CanonicalRun`) zamiast słownika `_runs` w pamięci procesu — przeżywa
     # odtąd restart procesu i jest widoczny każdemu workerowi (`tests/test_v126_
@@ -190,7 +233,7 @@ def run_v126_analysis(
         case_id=str(case_id),
         klucz_twin=klucz,
         analysis_type=f"v126:{analysis_type.value}",
-        options={"model": model.model_dump(mode="json")},
+        options={"model": model.model_dump(mode="json"), "pominiete_zrodla": pominiete_zrodla},
     )
     run = _execute_canonical_run(run.id)
     if run.status == "FAILED" or run.raw_result is None:
@@ -215,7 +258,7 @@ def run_v126_analysis(
 @router.get("/analysis-runs/{run_id}/results/v126/{analysis_type}")
 def get_v126_result(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, Any]:
     run = _require_run(run_id, analysis_type)
-    return {
+    payload: dict[str, Any] = {
         "run_id": run["run_id"],
         "case_id": run["case_id"],
         "analysis_type": run["analysis_type"],
@@ -225,6 +268,25 @@ def get_v126_result(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, 
         "proof_ref": run["proof"]["proof_id"],
         "report_ref": run["report"]["report_id"],
     }
+    # Karta W2-C: pola ADDYTYWNE (kontrakt odpowiedzi FROZEN — tylko dołożone
+    # klucze, kształt istniejących 8 pól bez zmian). `pominiete_zrodla` —
+    # generatory pominięte w wejściu wyliczone przy tworzeniu biegu (stashowane
+    # w `run.options`, przeniesione tu przez wykonawcę `_execute_v126`).
+    # `zrodla_widma` — proweniencja widma (KATALOG/RECZNE) dla źródeł, które
+    # DO wejścia trafiły; wyprowadzona wprost z `run["input"]` (już istniejący,
+    # pełny zapis wejścia solvera — zero nowego wyliczenia, zero ryzyka rozjazdu
+    # z tym, co solver naprawdę policzył).
+    pominiete = run.get("pominiete_zrodla")
+    if pominiete:
+        payload["pominiete_zrodla"] = pominiete
+    zrodla_widma = [
+        {"ref": zrodlo["source_ref"], "proweniencja": zrodlo.get("spectrum_provenance", "KATALOG")}
+        for zrodlo in run.get("input", {}).get("harmonic_sources", [])
+        if isinstance(zrodlo, dict) and isinstance(zrodlo.get("source_ref"), str)
+    ]
+    if zrodla_widma:
+        payload["zrodla_widma"] = zrodla_widma
+    return payload
 
 
 @router.get("/analysis-runs/{run_id}/results/v126/{analysis_type}/trace")

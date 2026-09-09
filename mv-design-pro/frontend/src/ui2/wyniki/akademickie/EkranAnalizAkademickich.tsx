@@ -77,6 +77,7 @@ import { FormularzParametrow } from './FormularzParametrow';
 import { useNazwaObiektu } from './useNazwaObiektu';
 import {
   AKADEMICKIE_STRINGS as S,
+  etykietaProweniencjiWidma,
   etykietaRodzaju,
   etykietaStanuPrzebiegu,
   fmtWartosc,
@@ -489,6 +490,57 @@ function PanelWiarygodnosci({ payload }: { payload: unknown }) {
             <li key={indeks}>{String(odczytaj(naruszenie, 'detail_pl') ?? S.kreska)}</li>
           ))}
         </ul>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Źródła przekształtnikowe wejścia V12.6 (karta W2-C, zero fabrykacji): dla
+ * `power_quality_harmonics`/`ssci_impedance` pokazuje (a) proweniencję widma
+ * (KATALOG/RECZNE) źródeł, które DO wejścia solvera trafiły, i (b) listę
+ * generatorów POMINIĘTYCH (brak karty katalogowej albo brak jej widma), z
+ * kodem gotowości i powodem po polsku. Pola pochodzą wprost z odpowiedzi API
+ * (`OdpowiedzWyniku.pominiete_zrodla`/`.zrodla_widma`), NIE z odczytu po
+ * ścieżce w `wynik.result.result` — to dane O WEJŚCIU solvera, nie o jego
+ * wyniku. Uczciwy stan zerowy: brak obu list = sekcja się nie renderuje
+ * (nie ma czego pokazać, martwy nagłówek to gorszy stan niż jego brak).
+ */
+function PanelZrodelHarmonicznych({ wynik }: { wynik: OdpowiedzWyniku }) {
+  const nazwaObiektu = useNazwaObiektu();
+  const zrodlaWidma = wynik.zrodla_widma ?? [];
+  const pominieteZrodla = wynik.pominiete_zrodla ?? [];
+  if (zrodlaWidma.length === 0 && pominieteZrodla.length === 0) return null;
+  return (
+    <section className="mvd-akad-sekcja" data-testid="mvd-akad-zrodla-harmoniczne">
+      {zrodlaWidma.length > 0 && (
+        <div data-testid="mvd-akad-zrodla-widma">
+          <h3 className="mvd-akad-sekcja-tytul">{S.zrodlaWidmaTytul}</h3>
+          <div className="mvd-akad-wiersze">
+            {zrodlaWidma.map((zrodlo) => (
+              <div className="mvd-akad-wiersz" key={zrodlo.ref}>
+                <span className="mvd-akad-wiersz-etyk">{nazwaObiektu(zrodlo.ref)}</span>
+                <span className="mvd-akad-wiersz-wartosc">
+                  {S.zrodlaWidmaProweniencjaEtykieta}: {etykietaProweniencjiWidma(zrodlo.proweniencja)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {pominieteZrodla.length > 0 && (
+        <div data-testid="mvd-akad-zrodla-pominiete">
+          <h3 className="mvd-akad-sekcja-tytul">{S.zrodlaPominieteTytul}</h3>
+          <p className="mvd-akad-opis">{S.zrodlaPominieteOpis}</p>
+          <ul className="mvd-akad-naruszenia" data-testid="mvd-akad-zrodla-pominiete-lista">
+            {pominieteZrodla.map((zrodlo) => (
+              <li key={zrodlo.ref}>
+                {nazwaObiektu(zrodlo.ref)} — {zrodlo.powod} ({S.zrodlaPominieteKodEtykieta}:{' '}
+                <span className="mvd-num">{zrodlo.kod}</span>)
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </section>
   );
@@ -1144,6 +1196,9 @@ export function EkranAnalizAkademickich({
               z jednostkami → obiekty nazwane jak na schemacie → wiarygodność
               → następny krok. Zapis techniczny i ślad zostają, ale ZWINIĘTE. */}
           <PanelWerdyktu rodzaj={wybrany} payload={stan.dane.wynik.result.result} />
+          {(wybrany === 'power_quality_harmonics' || wybrany === 'ssci_impedance') && (
+            <PanelZrodelHarmonicznych wynik={stan.dane.wynik} />
+          )}
           <PanelWielkosci rodzaj={wybrany} payload={stan.dane.wynik.result.result} />
           {(PREZENTACJA[wybrany as RodzajPrezentowany]?.tabele ?? []).map((tabela) => (
             <PanelObiektow

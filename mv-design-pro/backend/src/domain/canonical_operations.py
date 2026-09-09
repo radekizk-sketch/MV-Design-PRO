@@ -1123,6 +1123,50 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "inspector", "tab": "katalog"},
     ),
+    # Karta W2-C (zero fabrykacji wejścia V12.6): przekształtnik PV/BESS/wiatrowy
+    # bez ŻADNEJ materializacji katalogowej (`generator.materialized_params`
+    # puste) ALBO z materializacją, która nie niesie mocy znamionowej (Sn) —
+    # `V126ConverterInput.rated_mva` jest polem WYMAGANYM (>0), więc solver_input
+    # (`solver_input/v126_contracts.py::_oceb_karte_przeksztaltnika`) nie potrafi
+    # zbudować wejścia V12.6 dla tego generatora W OGÓLE (nie tylko widma/droopu/
+    # trybu — analogiczny stan do `inverter.k_sc_missing` powyżej, ale dla rodziny
+    # analiz V12.6, nie dla zwarć IEC 60909, stąd osobny kod z własnym
+    # komunikatem). BLOCKER, bo bez mocy znamionowej WSZYSTKIE wielkości V12.6
+    # tego przekształtnika (widmo, SSCI, punkt pracy) są niewyznaczalne — nie
+    # tylko jedna z nich.
+    "generator.converter_card_missing": ReadinessCodeSpec(
+        code="generator.converter_card_missing",
+        area=ReadinessArea.GENERATORS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Przekształtnik (PV/BESS/wiatrowy) nie ma karty katalogowej albo karta "
+            "nie niesie mocy znamionowej — analizy V12.6 (jakość energii, SSCI) nie "
+            "mogą go uwzględnić"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "katalog"},
+    ),
+    # Karta W2-C: karta katalogowa przekształtnika ISTNIEJE i niesie moc
+    # znamionową (inaczej trafiłby w `generator.converter_card_missing` powyżej),
+    # ale nie niesie widma prądu harmonicznych (IEC 61000-3-12 / IEEE 519,
+    # `ConverterType.harmonic_spectrum_percent`). WARNING, nie BLOCKER: sam
+    # przekształtnik nadal wchodzi do wejścia V12.6 (moc, tryb, droop) — pomijany
+    # jest wyłącznie jego wkład do wstrzyknięcia harmonicznych. Zastępuje zaszyte
+    # widmo {5:3%, 7:2%, 11:1,2%, 13:1%} wstrzykiwane wcześniej KAŻDEMU
+    # przekształtnikowi bez różnicy między producentami — to była fabrykacja
+    # (dyrektywa właściciela „zero fabrykacji").
+    "generator.harmonic_spectrum_missing": ReadinessCodeSpec(
+        code="generator.harmonic_spectrum_missing",
+        area=ReadinessArea.GENERATORS,
+        priority=4,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Karta katalogowa przekształtnika nie niesie widma prądu harmonicznych — "
+            "wkład źródła do analizy jakości energii V12.6 jest pominięty (podaj "
+            "widmo ręcznie w oknie analizy albo uzupełnij kartę katalogową)"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "katalog"},
+    ),
     # Ring
     "ring.endpoints_missing": ReadinessCodeSpec(
         code="ring.endpoints_missing",

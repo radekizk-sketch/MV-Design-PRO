@@ -156,6 +156,13 @@ export const AKADEMICKIE_STRINGS = {
     + 'Bez referencji solver nie wystawia werdyktu.',
   parametryDodajReferencje: 'Dodaj referencję',
   parametryUsunReferencje: 'Usuń referencję',
+  parametryWidmoTytul: 'Widmo harmoniczne — wejście ręczne',
+  parametryWidmoOpis:
+    'Wiersz widma: przekształtnik, rząd harmonicznej (2–50), udział w prądzie znamionowym '
+    + '(0–100 %). Nadpisuje widmo karty katalogowej dla wskazanego przekształtnika — '
+    + 'źródła bez wiersza tutaj i bez widma w karcie są pominięte w wejściu solvera.',
+  parametryDodajWidmo: 'Dodaj wiersz widma',
+  parametryUsunWidmo: 'Usuń wiersz widma',
   parametryMetodyTytul: 'Metody dostępne w przekaźniku',
 
   // Wynik
@@ -252,6 +259,16 @@ export const AKADEMICKIE_STRINGS = {
   katalogBlad: 'Nie udało się wczytać danych odniesienia',
   katalogBrak: 'Ten rodzaj analizy nie ma w katalogu danych odniesienia.',
 
+  // Źródła harmoniczne / przekształtnika — karta W2-C (zero fabrykacji wejścia)
+  zrodlaWidmaTytul: 'Widmo harmoniczne — źródła uwzględnione',
+  zrodlaWidmaProweniencjaEtykieta: 'Skąd widmo',
+  zrodlaPominieteTytul: 'Źródła pominięte (brak widma w karcie)',
+  zrodlaPominieteOpis:
+    'Przekształtniki PV/BESS/wiatrowe bez kompletnej karty katalogowej — ich wkład nie '
+    + 'wszedł do wejścia solvera. Uzupełnij kartę katalogową albo podaj widmo ręcznie '
+    + 'w parametrach projektowych powyżej.',
+  zrodlaPominieteKodEtykieta: 'Kod gotowości',
+
   // Odesłanie do okna SSCI
   odeslanieSsci:
     'Werdykt stabilności podsynchronicznej (kryterium Nyquista) prezentuje osobne okno '
@@ -301,6 +318,20 @@ export function etykietaRodzaju(kod: string): string {
 /** Opis rodzaju albo pusty łańcuch, gdy rodzaj spoza kontraktu okna. */
 export function opisRodzaju(kod: string): string {
   return (OPISY_RODZAJOW as Record<string, string | undefined>)[kod] ?? '';
+}
+
+/**
+ * Proweniencja widma harmonicznego (`V126HarmonicSourceInput.spectrum_provenance`)
+ * → polska etykieta. Karta W2-C. Wartość spoza kontraktu wraca bez zmian (uczciwy
+ * kod produkcyjny zamiast fabrykowanej nazwy) — ten sam wzorzec co `etykietaRodzaju`.
+ */
+export const PROWENIENCJE_WIDMA: Readonly<Record<string, string>> = {
+  KATALOG: 'z karty katalogowej',
+  RECZNE: 'wpisane ręcznie',
+};
+
+export function etykietaProweniencjiWidma(kod: string): string {
+  return PROWENIENCJE_WIDMA[kod] ?? kod;
 }
 
 /**

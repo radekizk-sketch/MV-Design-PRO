@@ -160,6 +160,10 @@ _PRZEKSZTALTNIK_BEZ_Q = {
         "filter_l_pu": 0.1,
         "filter_r_pu": 0.01,
         "un_kv": 15.0,
+        # Karta W2-C: moc znamionowa MUSI być na karcie, inaczej ten przekształtnik
+        # jest pominięty CAŁKOWICIE (kod `generator.converter_card_missing`) zanim
+        # test zdąży dotrzeć do bramki Q — ta fikstura izoluje WYŁĄCZNIE brak Q.
+        "sn_mva": 1.1,
     },
 }
 

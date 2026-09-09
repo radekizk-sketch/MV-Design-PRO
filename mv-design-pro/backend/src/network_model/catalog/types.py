@@ -431,6 +431,20 @@ def _pq_curve_from_raw(
     return tuple(tuple(float(v) for v in point) for point in raw)  # type: ignore[misc]
 
 
+def _harmonic_spectrum_from_raw(raw: Any) -> dict[int, float] | None:
+    """Parse a converter harmonic-spectrum dict (round-trips the ``to_dict``
+    stringified-key form: JSON object keys are always strings). Order/range
+    are NOT enforced here so malformed input surfaces the explicit Polish
+    message from ``__post_init__`` instead of a generic ``ValueError``."""
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        raise ValueError(
+            f"Widmo harmonicznych musi byc obiektem {{rzad: procent}}, otrzymano {raw!r}."
+        )
+    return {int(rzad): float(procent) for rzad, procent in raw.items()}
+
+
 # =============================================================================
 # NASTAWIALNOSC APARATU nN ("capability-driven UI") — para (min, max) dla pol
 # nastaw wyprowadzanych z aparatu (Ir/Isd/Ii/tr/tsd). Optional/None-default —
@@ -1231,9 +1245,15 @@ class ConverterType:
         e_kwh: Nameplate energy [kWh] (optional, BESS only).
         manufacturer: Manufacturer name (optional).
         model: Model designation (optional).
-        control_mode: Default converter control mode (optional).
+        control_mode: Default converter control mode (optional). ``"GRID_FORMING"``
+            is the existing, reused signal of grid-forming capability (V126-W2-C) —
+            no separate boolean field.
         grid_code: Grid-code / NC RfG profile marker (optional).
         dynamic_profile_id: Dynamic model profile reference (optional).
+        harmonic_spectrum_percent: Manufacturer-declared current harmonic spectrum
+            (optional, order -> % of rated current). See field comment for provenance.
+        droop_p_f_percent: Grid-forming P/f droop statism [%] (optional).
+        droop_q_u_percent: Grid-forming Q/U droop statism [%] (optional).
     """
 
     id: str
@@ -1309,6 +1329,36 @@ class ConverterType:
     # Pst_i = c * Sn / Ssc. None => not declared, so published converter types
     # round-trip byte-identically. NOT a solver field.
     flicker_c: float | None = None
+    # Karta W2-C (zero fabrykacji wejscia V12.6). Trzy pola opcjonalne z KARTY
+    # KATALOGOWEJ producenta — ZADEN katalog opublikowany w tym repo (168 pozycji,
+    # `mv_converter_catalog.py`) ich dzis nie ustawia, bo zaden wpis nie ma zrodla
+    # (karty PDF/dokumentu) z tymi wartosciami; podanie liczby bez zrodla byloby
+    # dokladnie fabrykacja, ktora ta karta usuwa z `solver_input/v126_contracts.py`
+    # (`build_v126_input_from_enm` czytal je wczesniej jako STALA dla KAZDEGO
+    # przeksztaltnika PV/BESS/wiatrowego). Pozycja dostaje wartosc TYLKO gdy w repo
+    # istnieje przywolywalne zrodlo (karta producenta) — do tego czasu `None`
+    # jest jedyna uczciwa wartoscia, a solver_input traktuje brak jako "dana
+    # nieznana", nie jako zero.
+    #
+    # widmo pradu harmonicznych wg deklaracji producenta (IEC 61000-3-12 —
+    # dopuszczalne poziomy emisji harmonicznych dla odbiornikow > 16 A/faza;
+    # IEEE 519 — limity TDD). Klucz = rzad harmonicznej (2..50), wartosc = %
+    # pradu znamionowego przeksztaltnika (Sn/Un). Zrodlo wejscia solvera V12.6
+    # `power_quality_harmonics` (`V126HarmonicSourceInput.spectrum_percent`,
+    # via `solver_input/v126_contracts.py::build_v126_input_from_enm`).
+    harmonic_spectrum_percent: dict[int, float] | None = None
+    # statyzm regulacji mocy czynnej wzgledem czestotliwosci przeksztaltnika
+    # grid-forming (VSM/droop control), w %: df/f * (1/statyzm) = dP/Pn. Karta
+    # katalogowa producenta (typowe zakresy IEEE 2800-2022: 2-10 %). Nie mylic
+    # z `lfsm_droop_pct` (aktywny udzial redukcji mocy LFSM-O wg NC RfG — INNY
+    # parametr, INNA norma, ustawiony na czesci pozycji katalogu). Zrodlo
+    # `V126ConverterInput.droop_p_f_percent`, tylko dla przeksztaltnikow
+    # zadeklarowanych jako `control_mode == "GRID_FORMING"`.
+    droop_p_f_percent: float | None = None
+    # statyzm regulacji napiecia wzgledem mocy biernej przeksztaltnika
+    # grid-forming (VSM/droop control), w %. Karta katalogowa producenta.
+    # Zrodlo `V126ConverterInput.droop_q_u_percent`, jak wyzej.
+    droop_q_u_percent: float | None = None
     # Per-card data-quality override ("karta falownika" provenance). A serialized
     # {field_name -> CardFieldStatus.to_dict()} map declaring, per field, how
     # trustworthy each value is (DATASHEET / ESTIMATED / SYSTEM_DEFAULT). Stored as
@@ -1346,6 +1396,32 @@ class ConverterType:
             raise ValueError(
                 f"Wspolczynnik udzialu zwarciowego k_sc musi byc > 0, otrzymano k_sc={self.k_sc}."
             )
+        if self.droop_p_f_percent is not None and self.droop_p_f_percent <= 0:
+            raise ValueError(
+                "Statyzm P/f przeksztaltnika grid-forming (droop_p_f_percent) musi byc > 0, "
+                f"otrzymano {self.droop_p_f_percent}."
+            )
+        if self.droop_q_u_percent is not None and self.droop_q_u_percent <= 0:
+            raise ValueError(
+                "Statyzm Q/U przeksztaltnika grid-forming (droop_q_u_percent) musi byc > 0, "
+                f"otrzymano {self.droop_q_u_percent}."
+            )
+        if self.harmonic_spectrum_percent is not None:
+            if not self.harmonic_spectrum_percent:
+                raise ValueError(
+                    "Widmo harmonicznych (harmonic_spectrum_percent) nie moze byc puste."
+                )
+            for rzad, procent in self.harmonic_spectrum_percent.items():
+                if not isinstance(rzad, int) or isinstance(rzad, bool) or rzad < 2 or rzad > 50:
+                    raise ValueError(
+                        "Rzad harmonicznej w widmie musi byc liczba calkowita 2..50, "
+                        f"otrzymano {rzad!r}."
+                    )
+                if not (0.0 <= float(procent) <= 100.0):
+                    raise ValueError(
+                        f"Udzial {rzad}. harmonicznej musi byc w zakresie 0..100 % pradu "
+                        f"znamionowego, otrzymano {procent}."
+                    )
 
     def validate_power_hierarchy(self) -> None:
         """Assert Pzainst >= Pn,AC >= Pprzylacz >= Posiagl for the fields present.
@@ -1399,6 +1475,29 @@ class ConverterType:
             # Flicker emission coefficient: emitted only when declared so converters
             # without it (flicker_c=None) round-trip byte-identically.
             **({"flicker_c": self.flicker_c} if self.flicker_c is not None else {}),
+            # Karta W2-C: widmo harmonicznych / statyzmy GFM — emitowane WYLACZNIE gdy
+            # zadeklarowane (zaden opublikowany typ ich dzis nie ma), zeby istniejace
+            # pozycje katalogu zostaly bajtowo identyczne (materializacja +
+            # `materialization_hash`/odciski V12.6 nietkniete tam, gdzie danej nie ma).
+            **(
+                {
+                    "harmonic_spectrum_percent": {
+                        str(k): v for k, v in self.harmonic_spectrum_percent.items()
+                    }
+                }
+                if self.harmonic_spectrum_percent is not None
+                else {}
+            ),
+            **(
+                {"droop_p_f_percent": self.droop_p_f_percent}
+                if self.droop_p_f_percent is not None
+                else {}
+            ),
+            **(
+                {"droop_q_u_percent": self.droop_q_u_percent}
+                if self.droop_q_u_percent is not None
+                else {}
+            ),
             "ptpiree_status": self.ptpiree_status,
             "ptpiree_certificate_ref": self.ptpiree_certificate_ref,
             "ptpiree_document_number": self.ptpiree_document_number,
@@ -1454,6 +1553,11 @@ class ConverterType:
             ),
             pq_curve=_pq_curve_from_raw(data.get("pq_curve")),
             flicker_c=(float(data["flicker_c"]) if data.get("flicker_c") is not None else None),
+            harmonic_spectrum_percent=_harmonic_spectrum_from_raw(
+                data.get("harmonic_spectrum_percent")
+            ),
+            droop_p_f_percent=_opcjonalny_float(data, "droop_p_f_percent"),
+            droop_q_u_percent=_opcjonalny_float(data, "droop_q_u_percent"),
             ptpiree_status=data.get("ptpiree_status"),
             ptpiree_certificate_ref=data.get("ptpiree_certificate_ref"),
             ptpiree_document_number=data.get("ptpiree_document_number"),
@@ -4328,6 +4432,13 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             "pn_ac_mw",
             "p_connection_mw",
             "p_achievable_mw",
+            # Karta W2-C: widmo harmonicznych / statyzmy GFM — brak w katalogu dla
+            # WSZYSTKICH 168 pozycji dzisiaj (`pola_opcjonalne` niżej), więc dodanie
+            # tych kluczy do materializacji NIE zmienia odcisku żadnego istniejącego
+            # elementu (ten sam wzorzec, co pola SSCI dodane wcześniej do tej listy).
+            "harmonic_spectrum_percent",
+            "droop_p_f_percent",
+            "droop_q_u_percent",
         ),
         ui_fields=(
             ("un_kv", "Un [kV]", "kV"),
@@ -4338,6 +4449,7 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             ("kind", "Technologia", ""),
             ("k_sc", "k_sc (udział zwarciowy)", ""),
         ),
+        pola_opcjonalne=("harmonic_spectrum_percent", "droop_p_f_percent", "droop_q_u_percent"),
     ),
     CatalogNamespace.INVERTER.value: MaterializationContract(
         namespace=CatalogNamespace.INVERTER.value,
