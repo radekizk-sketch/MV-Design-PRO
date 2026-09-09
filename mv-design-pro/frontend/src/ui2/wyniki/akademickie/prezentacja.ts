@@ -329,14 +329,16 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
 
   // -------------------------------------------------------------------------
   reliability_contingency: {
-    pytanie:
-      'Jak często i jak długo odbiorcy pozostaną bez zasilania i który element '
-      + 'sieci jest najgroźniejszy przy awarii?',
+    // Karta W3-E (2026-09-09): pytanie i kryterium przepisane — poprzednia
+    // wersja obiecywała „który element sieci jest najgroźniejszy przy awarii"
+    // (odpowiedź rankingu), choć ranking zszedł z ekranu (zdjęty razem z
+    // wyliczeniem, nie tylko z tabeli — zob. `nastepnyKrok`).
+    pytanie: 'Jak często i jak długo odbiorcy pozostaną bez zasilania z powodu awarii sieci?',
     kryterium:
-      'Obciążenie gałęzi po wyłączeniu pojedynczego elementu (N-1) ≤ 100 % '
-      + 'obciążalności. Wskaźniki SAIDI/SAIFI są wielkościami projektowymi — solver '
-      + 'nie wystawia dla nich progu normatywnego (wartości docelowe określa operator).',
-    norma: 'IEEE 1366 (definicje wskaźników); kryterium N-1',
+      'Wskaźniki SAIDI/SAIFI/CAIDI/MAIFI są wielkościami projektowymi — solver '
+      + 'nie wystawia dla nich progu normatywnego (wartości docelowe określa operator). '
+      + 'Ranking dotkliwości kontyngencji — patrz następny krok.',
+    norma: 'IEEE 1366 (definicje wskaźników)',
     werdykt: {
       rodzaj: 'pojedynczy',
       sciezki: ['sanity.status'],
@@ -364,22 +366,18 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
         jednostka: '1/rok',
       },
     ],
-    tabele: [
-      {
-        sciezka: 'contingency_ranking',
-        tytul: 'Ranking awarii wg dotkliwości',
-        kluczRef: 'contingency',
-        etykietaRef: 'Wyłączany element',
-        kolumny: [
-          { klucz: 'order', etykieta: 'Rodzaj awarii' },
-          { klucz: 'severity', etykieta: 'Dotkliwość (wskaźnik rankingowy)' },
-          { klucz: 'max_loading_percent', etykieta: 'Obciążenie gałęzi po awarii', jednostka: '%' },
-        ],
-      },
-    ],
+    // Karta W3-E (2026-09-09): tabela `contingency_ranking` SKASOWANA — ranking
+    // jest liczony z `_branch_current_a` (prąd gałęzi z obciążenia węzła
+    // docelowego, bez sprzężenia sieci) i NIE jest kanonem (kanon = pełny
+    // re-solve w `application/analyses/kontyngencje_n1.py`, ekran „Wyniki ›
+    // Kontyngencje"). Backend zdejmuje klucz z odpowiedzi (`bez_rankingu_n1`) i
+    // dokłada `ranking_n1` — okno pokazuje go jako STAN, nie tabelę
+    // (`PanelRankinguNieprezentowanego`, payload-driven, renderuje się dla
+    // KAŻDEGO rodzaju niosącego `ranking_n1`, nie tylko dla tego).
+    tabele: [],
     nastepnyKrok:
-      'Element z czoła rankingu zabezpiecz rezerwą: punkt podziału do przełączenia, '
-      + 'drugie zasilanie albo skrócenie czasu odtworzenia (automatyka SZR).',
+      'Ranking dotkliwości kontyngencji policz na ekranie „Wyniki › Kontyngencje" '
+      + '(pełny re-solve rozpływu) — ta analiza daje wyłącznie wskaźniki niezawodności.',
   },
 
   // -------------------------------------------------------------------------
@@ -614,108 +612,6 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
       + 'przemiennik) albo wzmocnij tor zasilania szyny rozruchowej.',
   },
 
-  // -------------------------------------------------------------------------
-  hosting_capacity: {
-    pytanie:
-      'Ile mocy generacji można przyłączyć w węźle, żeby nie przekroczyć granic '
-      + 'napięcia ani obciążalności gałęzi?',
-    kryterium:
-      'Napięcie w zakresie 0,90–1,10 j.w. i prąd gałęzi ≤ obciążalność długotrwała, '
-      + 'z prawdopodobieństwem ≥ 95 % w losowaniu obciążenia i generacji.',
-    norma: 'metoda probabilistyczna Monte Carlo; granice napięcia PN-EN 50160',
-    werdykt: {
-      rodzaj: 'pojedynczy',
-      sciezki: ['sanity.status'],
-      mapa: MAPA_WIARYGODNOSCI,
-    },
-    wielkosciGlowne: [],
-    tabele: [
-      {
-        sciezka: 'hosting_capacity',
-        tytul: 'Zdolność przyłączeniowa węzłów',
-        kluczRef: 'bus_ref',
-        etykietaRef: 'Szyna',
-        kolumny: [
-          {
-            klucz: 'hosting_capacity_mw',
-            etykieta: 'Moc generacji możliwa do przyłączenia',
-            jednostka: 'MW',
-          },
-          {
-            klucz: 'critical_limit',
-            etykieta: 'Ograniczenie rozstrzygające',
-            mapaStatusu: {
-              U_max: { tekst: 'granica napięcia', istotnosc: 'warn' },
-              I_galaz: { tekst: 'obciążalność gałęzi', istotnosc: 'warn' },
-            },
-          },
-          { klucz: 'confidence_percent', etykieta: 'Poziom ufności', jednostka: '%' },
-          { klucz: 'monte_carlo_n', etykieta: 'Liczba losowań' },
-          // Uczciwy stan zerowy (karta MOST-WEJSCIA-V126): szyna, do której nie
-          // wchodzi żaden element z obciążalnością długotrwałą, ma wynik oparty
-          // WYŁĄCZNIE na kryterium napięciowym. Bez tej kolumny ekran pokazywałby
-          // „granica napięcia" jako rozstrzygnięcie, przemilczając, że drugiego
-          // kryterium w ogóle nie zastosowano — a przed tą kartą liczono je
-          // z obciążalności 300 A wziętej z powietrza.
-          { klucz: 'brak_danych', etykieta: 'Czego zabrakło' },
-        ],
-      },
-    ],
-    nastepnyKrok:
-      'Za mała moc przyłączeniowa: wzmocnij tor (przekrój, drugie zasilanie), '
-      + 'zastosuj regulację mocy biernej źródła albo przesuń punkt przyłączenia bliżej stacji.',
-  },
-
-  // -------------------------------------------------------------------------
-  opf_loss_lcc: {
-    pytanie:
-      'Ile energii traci sieć w ciągu roku i ile te straty kosztują w całym '
-      + 'cyklu życia?',
-    kryterium:
-      'Straty i koszt cyklu życia są wielkościami projektowymi — solver nie wystawia '
-      + 'dla nich progu normatywnego. Porównuje się je między wariantami sieci.',
-    norma: 'rachunek kosztu cyklu życia (wartość bieżąca strat)',
-    werdykt: {
-      rodzaj: 'liczbowy',
-      sciezka: 'total_losses_kw',
-      jednostka: 'kW',
-    },
-    wielkosciGlowne: [
-      { sciezka: 'total_losses_kw', etykieta: 'Straty mocy w sieci', jednostka: 'kW' },
-      {
-        sciezka: 'transformer_losses_kw',
-        etykieta: 'w tym straty w transformatorach',
-        jednostka: 'kW',
-      },
-      { sciezka: 'annual_losses_kwh', etykieta: 'Straty energii w roku', jednostka: 'kWh/rok' },
-      {
-        sciezka: 'lcc_loss_opex_pv_pln',
-        etykieta: 'Koszt strat w cyklu życia (wartość bieżąca)',
-        jednostka: 'zł',
-      },
-      { sciezka: 'annual_co2_kg', etykieta: 'Emisja towarzysząca stratom', jednostka: 'kg CO₂/rok' },
-      {
-        sciezka: 'decision_variables.nop_position_ref',
-        etykieta: 'Punkt podziału sieci przyjęty w wariancie',
-      },
-    ],
-    tabele: [
-      {
-        sciezka: 'branch_losses',
-        tytul: 'Straty w gałęziach',
-        kluczRef: 'branch_ref',
-        etykietaRef: 'Gałąź',
-        kolumny: [
-          { klucz: 'loss_kw', etykieta: 'Straty mocy', jednostka: 'kW' },
-          { klucz: 'current_a', etykieta: 'Prąd obciążenia', jednostka: 'A' },
-        ],
-      },
-    ],
-    nastepnyKrok:
-      'Gałąź o największych stratach: rozważ większy przekrój albo przesunięcie '
-      + 'punktu podziału sieci — i porównaj warianty w oknie porównania A/B.',
-  },
-
   /*
    * V126-WYGASZENIE (decyzja właściciela 2026-08-07): `benchmark_validation` NIE
    * MA tu projektu ekranu, bo został wycofany z toru projektanta — bada, czy
@@ -725,6 +621,17 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
    * przeniesiony kartą K2, 2026-09-09).
    * Powód wycofania: `nieprezentowane.ts`; rozstrzygnięcie:
    * `docs/v12xx/REJESTR_KONFLIKTOW.md`, wiersz V126-WYGASZENIE.
+   *
+   * Karta W3-E (2026-09-09): `hosting_capacity` i `opf_loss_lcc` NIE MAJĄ tu
+   * projektu ekranu — DUPLIKUJĄ kanon liczony pełnym rozpływem/rzeczywistymi
+   * danymi katalogowymi gdzie indziej (`hosting_capacity`: lokalna impedancja
+   * Thevenina bez sprzężenia sieci wobec `application/analyses/
+   * hosting_capacity.py`; `opf_loss_lcc`: β = 0,45 zaszyte i zaczep OLTC
+   * zawsze 0 wobec `equipment_checks/transformer_losses.py` + badań OLTC).
+   * Backend odmawia URUCHOMIENIA nowego biegu (410 `v126.analysis_withdrawn`)
+   * — ekran nie ma czego renderować, bo POST nigdy się nie powiedzie. Powód
+   * wycofania: `nieprezentowane.ts`; rozstrzygnięcie: `docs/v12xx/
+   * REJESTR_KONFLIKTOW.md`, wiersz W3-E.
    */
 
   // -------------------------------------------------------------------------

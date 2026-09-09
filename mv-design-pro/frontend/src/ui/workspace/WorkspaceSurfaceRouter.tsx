@@ -2876,8 +2876,13 @@ const RODZAJ_EKRANU_V126: Partial<Record<string, RodzajPrezentowany>> = {
   'E-44': 'insulation_coordination',
   'E-45': 'transient_trv',
   'E-46': 'motor_starting',
-  'E-47': 'hosting_capacity',
-  'E-48': 'opf_loss_lcc',
+  // 'E-47' (hosting capacity OZE) i 'E-48' (OPF i optymalizacja strat) ZDJĘTE
+  // z mapy — oba rodzaje wycofane kartą W3-E (2026-09-09): duplikują kanon
+  // liczony gdzie indziej, backend odmawia URUCHOMIENIA nowego biegu (410).
+  // Wpis zostawiony wskazywałby rodzaj nieobecny na liście wyboru okna, więc
+  // ekran po cichu pokazałby PIERWSZĄ pozycję katalogu, czyli inną analizę
+  // niż obiecuje wejście — to samo rozstrzygnięcie, co dla E-41/E-49. Typ
+  // mapy (`RodzajPrezentowany`) i tak nie pozwoliłby tu na rodzaj wycofany.
   'E-50': 'uncertainty_sensitivity',
 };
 

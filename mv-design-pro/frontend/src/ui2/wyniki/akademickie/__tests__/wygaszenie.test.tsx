@@ -355,3 +355,57 @@ describe('stabilność napięciowa — rodzaj wycofany w całości', () => {
     expect(SCREEN_CANON_REGISTRY['E-42'].visibleInNavigation).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// HOSTING_CAPACITY / OPF_LOSS_LCC — schodzą z powierzchni (karta W3-E)
+// ---------------------------------------------------------------------------
+
+/*
+ * DRUGIE WYCOFANIE Z INNEGO POWODU: `voltage_stability`/`benchmark_validation`
+ * (powyżej) nie wnoszą wartości projektantowi (narzędzie sprawdza samo siebie
+ * / wielkość bez pokrycia w danych). `hosting_capacity`/`opf_loss_lcc` WNOSZĄ
+ * wartość merytoryczną — problem jest w tym, że DUPLIKUJĄ kanon liczony
+ * gdzie indziej pełnym rozpływem/rzeczywistymi danymi katalogowymi, więc
+ * backend odmawia URUCHOMIENIA nowego biegu (410), nie tylko prezentacji.
+ * Generyczne testy w bloku „rejestr rodzajów nieprezentowanych" powyżej
+ * (pisane jako iloczyn cech na ZBIORZE `WYCOFANE`, nie na przykładzie z karty)
+ * już pokrywają OBA nowe wpisy automatycznie — ten blok dopina to, czego
+ * generyczne testy NIE mierzą: widoczność w nawigacji ekranów trasowych.
+ */
+
+describe('hosting_capacity / opf_loss_lcc — duplikat kanonu schodzi z powierzchni (karta W3-E)', () => {
+  it('oba rodzaje są w rejestrze wycofań z powodem merytorycznym', () => {
+    for (const kod of ['hosting_capacity', 'opf_loss_lcc']) {
+      const powod = POWODY_NIEPREZENTOWANIA[kod as keyof typeof POWODY_NIEPREZENTOWANIA];
+      expect(powod.length, `${kod}: powód pusty`).toBeGreaterThan(40);
+      expect(powod.toLowerCase(), `${kod}: „poza zakresem" nie jest powodem`).not.toContain(
+        'poza zakresem',
+      );
+    }
+  });
+
+  it('znikają z listy wyboru okna, sąsiedzi z tego samego obszaru zostają', async () => {
+    ustawFetch(KATALOG_BACKENDU);
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    const selektor = (await screen.findByTestId('mvd-akad-rodzaj')) as HTMLSelectElement;
+    const opcje = Array.from(selektor.options).map((o) => o.value);
+    expect(opcje).not.toContain('hosting_capacity');
+    expect(opcje).not.toContain('opf_loss_lcc');
+    // Kontrola dodatnia: sąsiedzi z tego samego obszaru (rozdzielnia/straty)
+    // ZOSTAJĄ — wycofanie jest wąskie, nie zabrało sąsiednich zdolności.
+    expect(opcje).toContain('earthing_safety');
+    expect(opcje).toContain('reliability_contingency');
+  });
+
+  it('ekrany trasowe E-47 i E-48 znikają z nawigacji, ale zostają w kanonie', () => {
+    for (const kod of ['E-47', 'E-48'] as const) {
+      const ekran = SCREEN_CANON_REGISTRY[kod];
+      expect(ekran, `${kod} wypadł z kanonu — złamana ciągłość numeracji`).toBeDefined();
+      expect(ekran.visibleInNavigation, `${kod}: powinien zniknąć z nawigacji`).toBe(false);
+      expect(ekran.implemented, `${kod}: zdolność solvera ma zostać implemented`).toBe(true);
+    }
+    // Kontrola dodatnia: sąsiednie ekrany akademickie nadal SĄ w nawigacji.
+    expect(SCREEN_CANON_REGISTRY['E-46'].visibleInNavigation).toBe(true);
+    expect(SCREEN_CANON_REGISTRY['E-50'].visibleInNavigation).toBe(true);
+  });
+});

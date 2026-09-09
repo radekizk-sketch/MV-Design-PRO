@@ -274,6 +274,11 @@ export const AKADEMICKIE_STRINGS = {
     'Werdykt stabilności podsynchronicznej (kryterium Nyquista) prezentuje osobne okno '
     + '„Stabilność SSCI" — ma własny kontrakt odpowiedzi i własny model prezentacji.',
 
+  // Ranking N-1 nieprezentowany (karta W3-E) — stan zamiast tabeli
+  rankingN1Tytul: 'Ranking dotkliwości kontyngencji',
+  rankingN1Nieprezentowany: 'Ranking nie jest prezentowany na tym ekranie',
+  rankingN1Przejdz: 'Otwórz ekran Kontyngencje',
+
   // Brama opracowania (V126-JEZYK — ocena właściciela 0/10 z 2026-08-07)
   bramaTytul: 'Pakiet analiz specjalistycznych — w opracowaniu',
   bramaOpis:

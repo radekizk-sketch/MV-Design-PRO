@@ -496,6 +496,43 @@ function PanelWiarygodnosci({ payload }: { payload: unknown }) {
 }
 
 /**
+ * Ranking N-1 nieprezentowany (karta W3-E) — PAYLOAD-DRIVEN jak `PanelBrakow`/
+ * `PanelWiarygodnosci`: renderuje się dla KAŻDEGO rodzaju, którego odpowiedź
+ * niesie `ranking_n1` (dziś wyłącznie `reliability_contingency` — backend
+ * dokłada pole, front go tylko odczytuje; ZERO logiki rodzaju tutaj, zero
+ * fizyki). Ranking liczony z prądu gałęzi bez sprzężenia sieci NIE jest
+ * kanonem (kanon = pełny re-solve rozpływu, ekran „Wyniki › Kontyngencje") —
+ * sekcja pokazuje STAN z powodem po polsku i przejściem do ekranu kanonicznego,
+ * zamiast tabeli, którą backend już nie wysyła.
+ */
+function PanelRankinguNieprezentowanego({
+  payload,
+  onPrzejdzDoKontyngencji,
+}: {
+  payload: unknown;
+  onPrzejdzDoKontyngencji: () => void;
+}) {
+  const powod = odczytaj(payload, 'ranking_n1.powod_pl');
+  if (typeof powod !== 'string') return null;
+  return (
+    <section className="mvd-akad-sekcja" data-testid="mvd-akad-ranking-n1">
+      <h3 className="mvd-akad-sekcja-tytul">{S.rankingN1Tytul}</h3>
+      <p className="mvd-akad-opis" data-testid="mvd-akad-ranking-n1-powod">
+        {S.rankingN1Nieprezentowany} — {powod}
+      </p>
+      <button
+        type="button"
+        className="mvd-akad-btn-wtorny"
+        data-testid="mvd-akad-ranking-n1-przejdz"
+        onClick={onPrzejdzDoKontyngencji}
+      >
+        {S.rankingN1Przejdz}
+      </button>
+    </section>
+  );
+}
+
+/**
  * Źródła przekształtnikowe wejścia V12.6 (karta W2-C, zero fabrykacji): dla
  * `power_quality_harmonics`/`ssci_impedance` pokazuje (a) proweniencję widma
  * (KATALOG/RECZNE) źródeł, które DO wejścia solvera trafiły, i (b) listę
@@ -1210,6 +1247,10 @@ export function EkranAnalizAkademickich({
           ))}
           <PanelBrakow payload={stan.dane.wynik.result.result} />
           <PanelWiarygodnosci payload={stan.dane.wynik.result.result} />
+          <PanelRankinguNieprezentowanego
+            payload={stan.dane.wynik.result.result}
+            onPrzejdzDoKontyngencji={() => setWynikiTab('kontyngencje')}
+          />
           {PREZENTACJA[wybrany as RodzajPrezentowany] !== undefined && (
             <section className="mvd-akad-sekcja" data-testid="mvd-akad-nastepny-krok">
               <h3 className="mvd-akad-sekcja-tytul">{S.nastepnyKrokTytul}</h3>

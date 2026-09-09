@@ -310,6 +310,58 @@ describe('EkranAnalizAkademickich — ścieżka natywna biegu', () => {
   });
 });
 
+describe('EkranAnalizAkademickich — ranking N-1 nieprezentowany (karta W3-E)', () => {
+  it('payload z ranking_n1 pokazuje stan z powodem i przejściem do Kontyngencji, bez tabeli rankingu', async () => {
+    ustawFetch({
+      wynik: {
+        indices: {
+          saidi_min_per_year: 10.8,
+          saifi_per_year: 0.015,
+          caidi_min_per_interruption: 720.0,
+          maifi_per_year: 0.0018,
+        },
+        sanity: { status: 'zweryfikowany', checks_total: 4, checks_passed: 4, violations: [] },
+        ranking_n1: {
+          status: 'NIEPREZENTOWANY',
+          powod_pl:
+            'ranking liczony z prądu gałęzi bez rozpływu (V12.6); ranking kanoniczny = pełny re-solve',
+          ekran: 'Wyniki › Kontyngencje',
+          trasa: '/api/insights/n-1-contingency',
+        },
+      },
+    });
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    await wybierzRodzaj('reliability_contingency');
+    fireEvent.click(screen.getByTestId('mvd-akad-uruchom'));
+    await screen.findByTestId('mvd-akad-wyniki');
+
+    expect(screen.getByTestId('mvd-akad-ranking-n1')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-akad-ranking-n1-powod')).toHaveTextContent(
+      'ranking liczony z prądu gałęzi bez rozpływu',
+    );
+    // Kontrola dodatnia: wskaźniki niezawodności widoczne bez zmian.
+    expect(screen.getByText(/Średni czas przerw na odbiorcę \(SAIDI\)/)).toBeInTheDocument();
+    // Tabela rankingu ZNIKNĘŁA — sekcja obiektów po ścieżce `contingency_ranking`
+    // (`PanelObiektow`, testid pochodny od `sciezka`) nie renderuje się w ogóle.
+    expect(
+      screen.queryByTestId('mvd-akad-obiekty-contingency_ranking'),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('mvd-akad-ranking-n1-przejdz'));
+    expect(useShellStore.getState().wynikiTab).toBe('kontyngencje');
+  });
+
+  it('payload BEZ ranking_n1 (inny rodzaj) nie renderuje sekcji — uczciwy brak, nie pusty stan', async () => {
+    ustawFetch({ wynik: { neutral_grounding: 'petersen_tuned', recommended_method: 'wattmetric' } });
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    await wybierzRodzaj('earth_fault_detection');
+    fireEvent.click(screen.getByTestId('mvd-akad-uruchom'));
+    await screen.findByTestId('mvd-akad-wyniki');
+
+    expect(screen.queryByTestId('mvd-akad-ranking-n1')).not.toBeInTheDocument();
+  });
+});
+
 describe('EkranAnalizAkademickich — komplet artefaktów bez zaszytych limitów', () => {
   it('ślad dłuższy niż 8 kroków renderuje się w CAŁOŚCI (limit powierzchni zastanej)', async () => {
     ustawFetch({ krokowSladu: 25 });
@@ -366,19 +418,22 @@ describe('EkranAnalizAkademickich — komplet artefaktów bez zaszytych limitów
 
 describe('EkranAnalizAkademickich — parametry projektowe', () => {
   it('wypełnione pole trafia do żądania; pola puste NIE tworzą kluczy', async () => {
+    // Karta W3-E: `opf_loss_lcc` zszedł z listy wyboru (410 na POST, duplikuje
+    // kanon) — `transient_trv` ma ten sam kształt pola (liczba pojedyncza,
+    // klucz `parameters` wprost) i zostaje prezentowany.
     const mock = ustawFetch();
     render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
-    await wybierzRodzaj('opf_loss_lcc');
+    await wybierzRodzaj('transient_trv');
 
     fireEvent.click(screen.getByTestId('mvd-akad-parametry-przelacz'));
-    fireEvent.change(screen.getByTestId('mvd-akad-pole-energy_price_pln_per_kwh'), {
-      target: { value: '0,89' },
+    fireEvent.change(screen.getByTestId('mvd-akad-pole-breaker_rated_voltage_kv'), {
+      target: { value: '15,75' },
     });
     fireEvent.click(screen.getByTestId('mvd-akad-uruchom'));
     await screen.findByTestId('mvd-akad-wyniki');
 
     expect(zadaniaPost(mock)[0].body).toEqual({
-      parameters: { energy_price_pln_per_kwh: 0.89 },
+      parameters: { breaker_rated_voltage_kv: 15.75 },
     });
   });
 
@@ -400,11 +455,14 @@ describe('EkranAnalizAkademickich — parametry projektowe', () => {
   });
 
   it('zmiana rodzaju czyści parametry — wpisy nie wyciekają do innego rodzaju', async () => {
+    // Karta W3-E: `hosting_capacity` zszedł z listy wyboru (410 na POST,
+    // duplikuje kanon) — `neutral_earthing_design` ma ten sam kształt pola
+    // (liczba pojedyncza) i zostaje prezentowany.
     const mock = ustawFetch();
     render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
-    await wybierzRodzaj('hosting_capacity');
+    await wybierzRodzaj('neutral_earthing_design');
     fireEvent.click(screen.getByTestId('mvd-akad-parametry-przelacz'));
-    fireEvent.change(screen.getByTestId('mvd-akad-pole-hosting_monte_carlo_n'), {
+    fireEvent.change(screen.getByTestId('mvd-akad-pole-petersen_detuning'), {
       target: { value: '500' },
     });
 

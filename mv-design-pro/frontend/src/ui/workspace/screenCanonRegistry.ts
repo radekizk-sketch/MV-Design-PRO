@@ -1165,7 +1165,17 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     requiresSelection: false,
     requiresStudyCase: true,
     requiresOperatingVariant: true,
-    visibleInNavigation: true,
+    // Karta W3-E (2026-09-09): lokalna impedancja Thevenina per szyna metodą
+    // Monte Carlo, BEZ sprzężenia sieci — duplikuje kanon
+    // `application/analyses/hosting_capacity.py` (pełny rozpływ przez wariant
+    // sieci), który ma WŁASNY ekran „OZE › Zdolność przyłączeniowa"
+    // (`ui2/oze/zdolnosc`). Backend odmawia URUCHOMIENIA nowego biegu tego
+    // rodzaju (410 `v126.analysis_withdrawn`) — ekran zostaje w kanonie
+    // (zdolność solvera istnieje, biegi historyczne odtwarzalne z polem
+    // `wycofany`, ciągłość numeracji E-00…E-50), ale nie ma go w nawigacji:
+    // pozycja „Hosting OZE" obiecywałaby analizę, której okno już nie
+    // oferuje do uruchomienia. Rozstrzygnięcie: docs/v12xx/REJESTR_KONFLIKTOW.md.
+    visibleInNavigation: false,
     surfaceKind: 'analityczny',
     subjectKind: 'analysis_case',
     sizeClass: 'C',
@@ -1188,7 +1198,15 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     requiresSelection: false,
     requiresStudyCase: true,
     requiresOperatingVariant: true,
-    visibleInNavigation: true,
+    // Karta W3-E (2026-09-09): β = 0,45 zaszyte i zaczep OLTC zawsze 0 —
+    // duplikuje DWA kanony naraz (`equipment_checks/transformer_losses.py`,
+    // ekran „Kryteria › Wyposażenie"; badania OLTC, ekran „Wyniki › OLTC").
+    // Backend odmawia URUCHOMIENIA nowego biegu (410 `v126.analysis_withdrawn`)
+    // — ekran zostaje w kanonie (zdolność solvera istnieje, biegi historyczne
+    // odtwarzalne z polem `wycofany`), ale nie ma go w nawigacji: pozycja
+    // „OPF straty" obiecywałaby analizę, której okno już nie oferuje do
+    // uruchomienia. Rozstrzygnięcie: docs/v12xx/REJESTR_KONFLIKTOW.md.
+    visibleInNavigation: false,
     surfaceKind: 'analityczny',
     subjectKind: 'analysis_case',
     sizeClass: 'C',
