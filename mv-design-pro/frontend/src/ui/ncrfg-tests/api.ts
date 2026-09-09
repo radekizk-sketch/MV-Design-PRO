@@ -134,6 +134,48 @@ export interface NcRfgRunResult {
   readonly report_pl: string;
 }
 
+/**
+ * Zgodność NC RfG przekrojowo dla WSZYSTKICH DER przypadku naraz (karta W3-D,
+ * 2026-09-09) — kontrakt `GET /api/ncrfg-tests/cases/{case_id}/compliance`
+ * (`application/ncrfg_compliance/checker.py::NcRfgComplianceChecker`, ten sam
+ * kanon co macierz per moduł). Liczona NA ŻYWO z committed ENM
+ * (`build_der_compliance_list_from_enm` — most model → zgodność, zero
+ * fabrykacji wejścia); ZASTĘPUJE trzecią, uboższą ścieżkę
+ * `application/compliance/source_compliance.py` (skasowaną razem z tą kartą),
+ * która porównywała punkty krzywych bez modelu dynamicznego urządzenia.
+ */
+export type NcRfgComplianceVerdict = 'pass' | 'fail' | 'no_data' | 'no_module';
+
+export interface NcRfgComplianceTestResult {
+  readonly test_id: string;
+  readonly test_name_pl: string;
+  readonly verdict: NcRfgComplianceVerdict;
+  readonly message_pl: string | null;
+}
+
+/** Pełen raport zgodności jednego DER (`NcRfgComplianceReport.model_dump`). */
+export interface NcRfgComplianceReport {
+  readonly operator_id: string;
+  readonly operator_name_pl: string;
+  readonly der_ref: string;
+  /** Klasa modułu A/B/C/D wg klasyfikacji P/U operatora; "?" gdy nieklasyfikowalny. */
+  readonly module_type: string;
+  readonly p_max_kw: number;
+  readonly voltage_kv: number;
+  readonly test_results: readonly NcRfgComplianceTestResult[];
+  readonly overall_pass: boolean;
+  readonly total_tests: number;
+  readonly passed_count: number;
+  readonly no_module_count: number;
+}
+
+export interface NcRfgCaseComplianceResponse {
+  readonly case_id: string;
+  readonly operator_id: string;
+  readonly der_count: number;
+  readonly reports: readonly NcRfgComplianceReport[];
+}
+
 async function getJson<T>(url: string): Promise<T> {
   const response = await fetch(url);
   if (!response.ok) {
@@ -170,4 +212,19 @@ export function runNcRfgPtpireeTests(
     ? `/api/ncrfg-tests/run?case_id=${encodeURIComponent(caseId)}`
     : '/api/ncrfg-tests/run';
   return postJson<NcRfgRunResult>(url, request);
+}
+
+/**
+ * Zgodność NC RfG przekrojowo — wszystkie DER przypadku, liczone na żywo
+ * z committed ENM (bez budowania wejść modułów po stronie klienta, w
+ * odróżnieniu od `runNcRfgPtpireeTests`).
+ */
+export function fetchNcRfgCaseCompliance(
+  caseId: string,
+  operatorId: string,
+): Promise<NcRfgCaseComplianceResponse> {
+  return getJson<NcRfgCaseComplianceResponse>(
+    `/api/ncrfg-tests/cases/${encodeURIComponent(caseId)}/compliance` +
+      `?operator_id=${encodeURIComponent(operatorId)}`,
+  );
 }

@@ -114,6 +114,27 @@ export const MACIERZ_STRINGS = {
   certyfikatDowodData: 'Data akceptacji',
   certyfikatDowodWarunek: 'Warunek ważności',
 
+  // Zgodność przekrojowa przypadku (karta W3-D) — wszystkie DER naraz, liczona
+  // na żywo z modelu (bez ręcznego kompletowania zdolności jak w macierzy obok).
+  zgodnoscPrzekrojowaTytul: 'Zgodność przekrojowa przypadku',
+  zgodnoscPrzekrojowaOpis:
+    'Werdykt NC RfG liczony na żywo z bieżącego modelu dla wszystkich źródeł naraz — ' +
+    'bez ręcznego kompletowania zdolności modułu. Ten sam operator co macierz obok.',
+  zgodnoscPrzekrojowaOdswiez: 'Odśwież',
+  zgodnoscPrzekrojowaLadowanie: 'Sprawdzam zgodność…',
+  zgodnoscPrzekrojowaBrakPrzypadku: 'Wybierz aktywny przypadek, aby sprawdzić zgodność przekrojową.',
+  zgodnoscPrzekrojowaBrakDer:
+    'Model nie zawiera żadnego źródła przekształtnikowego (PV/BESS/FW) — dodaj układ ' +
+    'wytwórczy, aby zobaczyć zgodność NC RfG.',
+  zgodnoscPrzekrojowaBlad: 'Nie udało się sprawdzić zgodności przekrojowej',
+  zgodnoscPrzekrojowaOperator: 'Operator (profil zgodności)',
+  zgodnoscPrzekrojowaWerdyktZgodny: 'zgodny',
+  zgodnoscPrzekrojowaWerdyktNiezgodny: 'niezgodny',
+  zgodnoscPrzekrojowaKolModul: 'Moduł',
+  zgodnoscPrzekrojowaKolWerdykt: 'Werdykt',
+  zgodnoscPrzekrojowaKolSpelnione: 'Spełnione / testy',
+  zgodnoscPrzekrojowaNiespelnioneTytul: 'Niespełnione wymagania',
+
   // Panel modułu
   panelTytul: 'Dane wejściowe modułu',
   panelOpis:
