@@ -657,3 +657,106 @@ def test_guard_does_not_fire_on_cv42b_names_in_comments_or_strings(tmp_path, mon
     _patch_cv42_files(monkeypatch, tmp_path)
 
     assert guard.check_cv42_resurrection() == []
+
+
+# ---------------------------------------------------------------------------
+# Karta KASACJA-DATA-MANAGER (2026-09-09) — bramka wskrzeszenia frontendowa
+# (`ui/data-manager/**`, komponent `DataManager`, typ `DataManagerRow`).
+# ---------------------------------------------------------------------------
+
+
+def _patch_data_manager_dirs(monkeypatch, tmp_path, *, data_manager_dir=None) -> None:
+    """Podmien katalog danych/frontend na sciezki pod `tmp_path` (domyslnie:
+    nieistniejacy `data-manager/` i pusty `frontend/src` — czysty stan)."""
+    frontend_src = tmp_path / "frontend" / "src"
+    frontend_src.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "FRONTEND_SRC_DIR", frontend_src)
+    monkeypatch.setattr(
+        guard, "DATA_MANAGER_DIR", data_manager_dir or (frontend_src / "ui" / "data-manager")
+    )
+
+
+def test_guard_rejects_resurrected_data_manager_directory(tmp_path, monkeypatch) -> None:
+    dm_dir = tmp_path / "frontend" / "src" / "ui" / "data-manager"
+    dm_dir.mkdir(parents=True)
+    (dm_dir / "DataManager.tsx").write_text(
+        "export function DataManager() { return null; }\n", encoding="utf-8"
+    )
+    _patch_data_manager_dirs(monkeypatch, tmp_path, data_manager_dir=dm_dir)
+
+    violations = guard.check_data_manager_resurrection()
+
+    assert any(
+        "[resurrected-module]" in v and "ui/data-manager" in v and "DataManager.tsx" in v
+        for v in violations
+    )
+    assert any("[resurrected-component]" in v and "DataManager.tsx" in v for v in violations)
+
+
+def test_guard_rejects_resurrected_component_under_other_path(tmp_path, monkeypatch) -> None:
+    """Komponent moze wrocic pod INNYM plikiem/katalogiem — guard skanuje CALY
+    `frontend/src`, nie tylko stary katalog `ui/data-manager`."""
+    sneaky_dir = tmp_path / "frontend" / "src" / "ui" / "elsewhere"
+    sneaky_dir.mkdir(parents=True)
+    (sneaky_dir / "sneaky.tsx").write_text(
+        "export const DataManager = () => null;\n", encoding="utf-8"
+    )
+    _patch_data_manager_dirs(monkeypatch, tmp_path)
+
+    violations = guard.check_data_manager_resurrection()
+
+    assert any("[resurrected-component]" in v and "sneaky.tsx" in v for v in violations)
+    # Katalog stary nie istnieje w tym scenariuszu — [resurrected-module] nie pada.
+    assert not any("[resurrected-module]" in v for v in violations)
+
+
+def test_guard_rejects_resurrected_data_manager_row_type_under_other_path(
+    tmp_path, monkeypatch
+) -> None:
+    sneaky_dir = tmp_path / "frontend" / "src" / "ui"
+    sneaky_dir.mkdir(parents=True)
+    (sneaky_dir / "types.ts").write_text(
+        "export interface DataManagerRow {\n  id: string;\n}\n", encoding="utf-8"
+    )
+    _patch_data_manager_dirs(monkeypatch, tmp_path)
+
+    violations = guard.check_data_manager_resurrection()
+
+    assert any("[resurrected-type]" in v and "types.ts" in v for v in violations)
+
+
+def test_guard_does_not_fire_on_data_manager_name_in_comment_text(tmp_path, monkeypatch) -> None:
+    """Naglowek testu cytujacy nazwe kasacji (jak `ui/__tests__/project-tree.test.ts`
+    po karcie KASACJA-DATA-MANAGER) to komentarz, nie definicja — guard milczy."""
+    ui_dir = tmp_path / "frontend" / "src" / "ui" / "__tests__"
+    ui_dir.mkdir(parents=True)
+    (ui_dir / "project-tree.test.ts").write_text(
+        "/**\n"
+        " * Kasacja 2026-09-09 (karta KASACJA-DATA-MANAGER): `ui/data-manager/**`\n"
+        " * (DataManager, DataManagerRow) usuniete razem z martwym modulem.\n"
+        " */\n"
+        "// DataManager nie wraca\n"
+        "export const cos_innego = 1;\n",
+        encoding="utf-8",
+    )
+    _patch_data_manager_dirs(monkeypatch, tmp_path)
+
+    assert guard.check_data_manager_resurrection() == []
+
+
+def test_guard_accepts_clean_tree_without_data_manager(tmp_path, monkeypatch) -> None:
+    src_dir = tmp_path / "frontend" / "src" / "ui" / "topology"
+    src_dir.mkdir(parents=True)
+    (src_dir / "ProjectTree.tsx").write_text(
+        "export function ProjectTree() { return null; }\n", encoding="utf-8"
+    )
+    _patch_data_manager_dirs(monkeypatch, tmp_path)
+
+    assert guard.check_data_manager_resurrection() == []
+
+
+def test_guard_accepts_current_repo_state_data_manager() -> None:
+    """Integracyjny pin: bramka na PRAWDZIWYM drzewie repo (bez monkeypatch)
+    musi byc czysta PO kasacji KASACJA-DATA-MANAGER."""
+    assert guard.check_data_manager_resurrection() == []

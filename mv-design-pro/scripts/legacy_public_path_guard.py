@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import re
 import sys
 from pathlib import Path
 
@@ -17,6 +18,7 @@ import canonical_ops_guard  # noqa: E402
 ROOT = Path(__file__).resolve().parents[1]
 API_DIR = ROOT / "backend" / "src" / "api"
 BACKEND_SRC_DIR = ROOT / "backend" / "src"
+FRONTEND_SRC_DIR = ROOT / "frontend" / "src"
 
 FORBIDDEN_IMPORTS = {
     "application.analysis_dispatch",
@@ -194,6 +196,34 @@ CV43_A4_ENM_MODULE = API_DIR / "enm.py"
 FORBIDDEN_CV43_A4_ROUTE_FUNCTION_NAMES = {"run_short_circuit", "run_power_flow"}
 CV43_A4_V126_MODULE = API_DIR / "v126_academic.py"
 FORBIDDEN_CV43_A4_V126_INMEMORY_NAMES = {"_runs"}
+
+# Karta KASACJA-DATA-MANAGER (2026-09-09) — bramka wskrzeszenia FRONTENDOWA (jedyna
+# w tym pliku poza AST-em backendu: `frontend/src` to TypeScript, ktorego `ast`
+# Pythona nie parsuje, wiec sprawdzenie jest tekstowe na definicjach, nie AST).
+# `frontend/src/ui/data-manager/**` (DataManager.tsx, BatchEditPreviewDialog.tsx,
+# store.ts) skasowany jako martwy kod — pomiar w chwili kasacji: 0 konsumentow
+# produkcyjnych (eksportowany WYLACZNIE przez wlasny `index.ts`, zero `<DataManager`
+# w App.tsx/powloce/nawigacji), a niesiona rownolegla definicja kolumn elementow
+# (klucze-fantomy `bus_id`/`sk_mva` wobec modelu ENM) byla ta sama klasa dlugu, ktora
+# K7/K7c-FE naprawily w property-grid. Sprawdzane: (1) katalog nie zawiera ZADNEGO
+# `.ts`/`.tsx`, (2) nazwy `DataManager`/`DataManagerRow` nie wracaja jako DEFINICJA
+# (nie dowolne wystapienie — komentarz/dokstring nazywajacy kasacje, jak w naglowku
+# `ui/__tests__/project-tree.test.ts`, NIE jest definicja) GDZIEKOLWIEK w
+# `frontend/src`, nie tylko pod starym katalogiem.
+DATA_MANAGER_DIR = FRONTEND_SRC_DIR / "ui" / "data-manager"
+FORBIDDEN_DATA_MANAGER_TS_EXTENSIONS = (".ts", ".tsx")
+#: Blok `/* ... */` i linia `// ...` — komentarz cytujacy nazwe (np. ten wlasnie
+#: naglowek) nie jest definicja. Ta sama technika co `nawigacja_jeden_kanon_guard.py`.
+_TS_BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
+_TS_LINE_COMMENT = re.compile(r"//[^\n]*")
+_TS_DATA_MANAGER_COMPONENT_DEF = re.compile(
+    r"^[ \t]*export\s+(?:default\s+)?(?:function|const|class)\s+DataManager\b",
+    re.MULTILINE,
+)
+_TS_DATA_MANAGER_ROW_DEF = re.compile(
+    r"^[ \t]*export\s+(?:interface|type)\s+DataManagerRow\b",
+    re.MULTILINE,
+)
 
 
 def read_text(path: Path) -> str:
@@ -418,6 +448,46 @@ def check_cv43_a4_resurrection() -> list[str]:
     return violations
 
 
+def _bez_komentarzy_ts(tekst: str) -> str:
+    """Tresc pliku TS/TSX bez komentarzy — cytat nazwy w komentarzu to nie definicja."""
+    return _TS_LINE_COMMENT.sub("", _TS_BLOCK_COMMENT.sub("", tekst))
+
+
+def check_data_manager_resurrection() -> list[str]:
+    """Karta KASACJA-DATA-MANAGER (2026-09-09): `ui/data-manager/**` (komponent
+    `DataManager`, typ `DataManagerRow`) nie moze wrocic — 0 konsumentow
+    produkcyjnych w chwili kasacji (pomiar w meldunku karty). Katalog byl jedynym
+    nosicielem rownoleglej, martwej kopii definicji kolumn elementow z kluczami-
+    fantomami (`bus_id`/`sk_mva`) wobec modelu ENM."""
+    violations: list[str] = []
+    if DATA_MANAGER_DIR.exists():
+        for suffix in FORBIDDEN_DATA_MANAGER_TS_EXTENSIONS:
+            for ts_file in sorted(DATA_MANAGER_DIR.rglob(f"*{suffix}")):
+                rel_path = ts_file.relative_to(ROOT).as_posix()
+                violations.append(
+                    f"[resurrected-module] {rel_path}: frontend/src/ui/data-manager "
+                    "usunięty procedurą w karcie KASACJA-DATA-MANAGER (2026-09-09) — "
+                    "nie odtwarzaj tego katalogu"
+                )
+    if not FRONTEND_SRC_DIR.exists():
+        return violations
+    for suffix in FORBIDDEN_DATA_MANAGER_TS_EXTENSIONS:
+        for ts_file in sorted(FRONTEND_SRC_DIR.rglob(f"*{suffix}")):
+            tekst = _bez_komentarzy_ts(read_text(ts_file))
+            rel_path = ts_file.relative_to(ROOT).as_posix()
+            if _TS_DATA_MANAGER_COMPONENT_DEF.search(tekst):
+                violations.append(
+                    f"[resurrected-component] {rel_path}: export DataManager "
+                    "(komponent, usunięty w karcie KASACJA-DATA-MANAGER) nie może wrócić"
+                )
+            if _TS_DATA_MANAGER_ROW_DEF.search(tekst):
+                violations.append(
+                    f"[resurrected-type] {rel_path}: export DataManagerRow "
+                    "(typ, usunięty w karcie KASACJA-DATA-MANAGER) nie może wrócić"
+                )
+    return violations
+
+
 def main() -> int:
     violations = (
         check_legacy_public_paths()
@@ -426,6 +496,7 @@ def main() -> int:
         + check_c4_and_p24_plus_resurrection()
         + check_cv42_resurrection()
         + check_cv43_a4_resurrection()
+        + check_data_manager_resurrection()
     )
     if violations:
         print("legacy-public-path-guard: FAILED")

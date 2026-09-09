@@ -588,7 +588,18 @@ All remediations verified via:
 
 ---
 
-## 15. Project Tree & Data Manager (P9 FULL)
+## 15. Project Tree (P9) — Data Manager USUNIĘTY 2026-09-09
+
+> **Kasacja 2026-09-09 (karta KASACJA-DATA-MANAGER):** `frontend/src/ui/data-manager/**`
+> (Data Manager, Batch Edit, ich Mode Gating) skasowany jako martwy kod — 0 konsumentów
+> produkcyjnych (nigdy niewpięty w `App.tsx`/powłokę/nawigację; własna, równoległa
+> definicja kolumn niosła klucze-fantomy `bus_id`/`sk_mva` wobec modelu ENM). §§15.2–15.4
+> poniżej opisywały WYŁĄCZNIE ten moduł i zostały usunięte w całości; §15.5 skorygowany
+> tak, by nie wymieniał już DM jako źródła/celu synchronizacji. Ten dokument jest
+> nieaktualnym snapshotem audytu (Status: AUDIT DOCUMENT, Updated 2026-01, poza
+> `Document Hierarchy` w `CLAUDE.md`) — §15.1 (`ProjectTree.tsx`) ma własną, wcześniejszą
+> nieaktualność (plik nie istnieje pod tą ścieżką) niezwiązaną z tą kasacją i celowo
+> pozostawioną bez zmian (poza zakresem karty KASACJA-DATA-MANAGER).
 
 ### 15.1 Project Tree (Drzewo Projektu)
 
@@ -607,65 +618,36 @@ All remediations verified via:
 
 **Code location:** `frontend/src/ui/project-tree/ProjectTree.tsx`
 
-### 15.2 Data Manager (Menedżer Danych)
+### 15.2 Data Manager (Menedżer Danych) — USUNIĘTY 2026-09-09
 
-| ID | Requirement | Verification | Status |
-|----|-------------|--------------|--------|
-| DM-001 | Table view for selected element type | Check: DataManager.tsx | PASS |
-| DM-002 | Deterministic column ordering per type | Check: COLUMNS_BY_TYPE | PASS |
-| DM-003 | Columns: ID, Name, In Service, Type, key params | Check: column definitions | PASS |
-| DM-004 | Multi-column sort with ID tie-breaker | Check: sortedRows useMemo | PASS |
-| DM-005 | Search by ID + Name | Check: searchQuery filter | PASS |
-| DM-006 | Filter: in_service (tak/nie) | Check: inServiceOnly filter | PASS |
-| DM-007 | Filter: with type / without type | Check: withTypeOnly, withoutTypeOnly | PASS |
-| DM-008 | Filter: switch state (OPEN/CLOSED) | Check: switchStateFilter | PASS |
-| DM-009 | Polish labels for all UI elements | Check: CATEGORY_LABELS, column labels | PASS |
-| DM-010 | Row click → select element (Selection Store) | Check: handleRowClick | PASS |
-| DM-011 | Row click → center SLD | Check: centerSldOnElement | PASS |
-| DM-012 | Validation messages inline | Check: validationMessages rendering | PASS |
+Sekcja opisywała `frontend/src/ui/data-manager/DataManager.tsx` (DM-001…DM-012).
+Moduł skasowany — 0 konsumentów produkcyjnych (patrz notatka na początku §15).
 
-**Code location:** `frontend/src/ui/data-manager/DataManager.tsx`
+### 15.3 Batch Edit (Masowa Edycja) — USUNIĘTY 2026-09-09
 
-### 15.3 Batch Edit (Masowa Edycja)
+Sekcja opisywała masową edycję w `frontend/src/ui/data-manager/DataManager.tsx`
+(BE-001…BE-008). Funkcja skasowana razem z modułem (patrz notatka na początku §15).
 
-| ID | Requirement | Verification | Status |
-|----|-------------|--------------|--------|
-| BE-001 | Multi-select with checkboxes | Check: selectedIds state | PASS |
-| BE-002 | Select all / deselect all | Check: handleSelectAll | PASS |
-| BE-003 | Batch SET_IN_SERVICE (enable/disable) | Check: handleBatchSetInService | PASS |
-| BE-004 | Batch ASSIGN_TYPE | Check: handleBatchAssignType | PASS |
-| BE-005 | Batch CLEAR_TYPE | Check: handleBatchClearType | PASS |
-| BE-006 | Batch SET_SWITCH_STATE (Switch only) | Check: handleBatchSetSwitchState | PASS |
-| BE-007 | Polish labels: "Edytuj zbiorczo", "Włącz", "Wyłącz" | Check: batch toolbar labels | PASS |
-| BE-008 | Actions via existing change mechanism | Check: onBatchEdit callback | PASS |
+### 15.4 Mode Gating (Twarde) — USUNIĘTY 2026-09-09
 
-**Code location:** `frontend/src/ui/data-manager/DataManager.tsx`
+Sekcja opisywała WYŁĄCZNIE bramkowanie paska masowej edycji Data Managera
+(MG-001…MG-005, `canBatchEdit`). Skasowana razem z modułem (patrz notatka na początku
+§15). Bramkowanie trybu dla pozostałych powierzchni (property grid, ui2) żyje poza tą
+sekcją i nią nieopisane.
 
-### 15.4 Mode Gating (Twarde)
-
-| ID | Requirement | Verification | Status |
-|----|-------------|--------------|--------|
-| MG-001 | MODEL_EDIT: full functionality | Check: canBatchEdit = MODEL_EDIT | PASS |
-| MG-002 | CASE_CONFIG: read-only model, no batch edit | Check: batch toolbar hidden | PASS |
-| MG-003 | RESULT_VIEW: 100% read-only | Check: batch toolbar hidden | PASS |
-| MG-004 | Batch edit toolbar visible only in MODEL_EDIT | Check: canBatchEdit && selectedIds.size > 0 | PASS |
-| MG-005 | No hidden mutation handlers in RO modes | Check: canBatchEdit guards | PASS |
-
-**Code locations:**
-- `frontend/src/ui/data-manager/DataManager.tsx` (canBatchEdit)
-- `frontend/src/ui/selection/store.ts` (mode state)
-
-### 15.5 4-Way Sync (Tree ↔ DM ↔ Grid ↔ SLD)
+### 15.5 4-Way Sync (Tree ↔ Grid ↔ SLD)
 
 | ID | Requirement | Verification | Status |
 |----|-------------|--------------|--------|
 | 4S-001 | Single source of truth: Selection Store | Check: useSelectionStore | PASS |
-| 4S-002 | Tree selection → updates DM + Grid + SLD | Check: handleTreeClick | PASS |
-| 4S-003 | DM selection → updates Tree + Grid + SLD | Check: handleRowClick | PASS |
-| 4S-004 | SLD selection → updates Tree + Grid + DM | Check: useSldSelection | PASS |
-| 4S-005 | Grid selection → updates Tree + DM + SLD | Check: usePropertyGridSelection | PASS |
-| 4S-006 | Center SLD on element from Tree/DM | Check: centerSldOnElement | PASS |
+| 4S-002 | Tree selection → updates Grid + SLD | Check: handleTreeClick | PASS |
+| 4S-004 | SLD selection → updates Tree + Grid | Check: useSldSelection | PASS |
+| 4S-005 | Grid selection → updates Tree + SLD | Check: usePropertyGridSelection | PASS |
+| 4S-006 | Center SLD on element from Tree | Check: centerSldOnElement | PASS |
 | 4S-007 | Property Grid auto-open on selection | Check: propertyGridOpen logic | PASS |
+
+> `4S-003` (DM selection → …) usunięty 2026-09-09 razem z Data Managerem — Selection
+> Store nie ma już konsumenta DM jako źródła zdarzenia.
 
 **Code locations:**
 - `frontend/src/ui/selection/store.ts`
@@ -676,16 +658,26 @@ All remediations verified via:
 | Test Suite | Tests | Status |
 |------------|-------|--------|
 | Project Tree structure | 8 | PASS |
-| Data Manager columns | 6 | PASS |
-| Sorting (deterministic) | 4 | PASS |
-| Filtering | 10 | PASS |
 | Mode Gating | 6 | PASS |
-| 4-Way Sync | 8 | PASS |
-| Batch Edit Operations | 6 | PASS |
-| Polish Labels | 4 | PASS |
-| **Total** | **52** | **PASS** |
+| Selection Sync (Tree ↔ Grid ↔ SLD) | 4 | PASS |
+| Polish Labels | 1 | PASS |
+| Persystencja stanu UI (drzewo) | 2 | PASS |
+| **Total** | **21** | **PASS** |
 
-**Test location:** `frontend/src/ui/__tests__/project-tree-data-manager.test.ts`
+> Wiersze „Data Manager columns" (6), „Sorting" (4), „Filtering" (10), „Switch State
+> Filtering" (3), „Batch Edit Operations" (5), „Presety widoku kolumn" (3), „Filtrowanie
+> i sygnalizacja błędów" (4), „Szybkie akcje" (3) oraz „Data Manager UI State
+> Persistence" (5) usunięte 2026-09-09 razem z modułem — testy skasowane, nie
+> przenumerowane; „4-Way Sync"/„Polish Labels" skorygowane do faktycznej liczby
+> zachowanych testów (4-Way Sync liczyła tu 8 już PRZED tą kasacją — rozjazd z
+> rzeczywistym plikiem sprzed karty KASACJA-DATA-MANAGER, poza jej zakresem poza tym
+> jednym wierszem, który i tak trzeba było przeliczyć). Oryginał: 57 testów w pliku
+> (`git show HEAD:mv-design-pro/frontend/src/ui/__tests__/project-tree-data-manager.test.ts
+> | grep -c '^\s*it('`), zachowane 21 (dowód: `npx vitest run --no-file-parallelism
+> src/ui/__tests__/project-tree.test.ts` → 21 passed), usunięte 36 — wyliczenie w
+> meldunku karty KASACJA-DATA-MANAGER.
+
+**Test location:** `frontend/src/ui/__tests__/project-tree.test.ts`
 
 ---
 

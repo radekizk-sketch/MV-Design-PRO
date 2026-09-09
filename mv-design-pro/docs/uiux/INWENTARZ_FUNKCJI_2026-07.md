@@ -139,10 +139,10 @@ odstawiony z uzasadnieniem; zapadka działa w obie strony).
 
 ## 5. Powierzchnia frontendu (stan zastany)
 
-### 5a. `frontend/src/ui/` — powierzchnia klasyczna (56 katalogów, listing 2026-07-20)
+### 5a. `frontend/src/ui/` — powierzchnia klasyczna (55 katalogów, listing 2026-07-20)
 
 analysis-eligibility, app-state, audit, canon, catalog, common, comparison, config, context-menu,
-contracts, data-manager, engineering-readiness, enm-inspector, fault-scenarios, field, help,
+contracts, engineering-readiness, enm-inspector, fault-scenarios, field, help,
 history, icons, inspector, issue-panel, mode-gate, navigation, ncrfg-tests, network-build,
 notifications, onboarding, power-distribution, power-flow-comparison, power-flow-results,
 project-archive, projects, proof, property-grid, protection, protection-comparison,
@@ -153,6 +153,10 @@ sld-editor, sld-overlay, status-bar, study-cases, tech-card, topology, voltage-p
 
 > Zmiana od 2026-07-15 (rewizja Audyt F): usunięto katalogi `active-case-bar`, `layout`,
 > `sensitivity` (63 → 56). Funkcja wrażliwości (`sensitivity`) migruje do `ui2/` (patrz §5b).
+> Zmiana od 2026-09-09 (karta KASACJA-DATA-MANAGER): usunięto katalog `data-manager`
+> (56 → 55) — martwy kod, 0 konsumentów produkcyjnych (pomiar w commicie kasacji);
+> niósł własną, równoległą definicję kolumn elementów z kluczami-fantomami (`bus_id`,
+> `sk_mva`) wobec modelu ENM.
 
 ### 5b. `frontend/src/ui2/` — nowa powierzchnia klasy przemysłowej (NOWE, dodane 2026-07-20)
 
