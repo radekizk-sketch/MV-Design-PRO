@@ -8,15 +8,29 @@ podstawia 0,0 jako WYŁĄCZNIE strukturalne wypełnienie (ten sam agregat karmi 
 analizy, które Q w ogóle nie czytają) — więc solver policzyłby ciche zero
 zamiast melduje brak. Warstwa API odmawia PRZED wejściem do solvera, kodem
 gotowości `generator.q_missing` (reużytym z `calculation_readiness/service.py`,
-Reużycie zamiast duplikacji) — wzorzec identyczny z bramką `transformer.loss_data_missing`
-(karta FAB-D2, `tests/api/test_v126_opf_loss_lcc_api.py`).
+Reużycie zamiast duplikacji).
 
-Predykaty parami: brak Q blokuje TYLKO analizy, które faktycznie czytają
-`generation_mvar` przez `_branch_current_a` — RELIABILITY_CONTINGENCY (test 1) i
-OPF_LOSS_LCC (test 2) — a NIE blokuje inną analizę V12.6, która tego Q nie czyta
-(test 4, HOSTING_CAPACITY) — bramka nie jest szersza niż potrzeba. Dana jawna
-(nawet 0.0) przechodzi bez zastrzeżeń (test 3); Q wyprowadzalne z jawnego
-Q-set-pointu karty katalogowej też przechodzi (test 5).
+KARTA W3-E (2026-09-09): `OPF_LOSS_LCC` czytał `_branch_current_a` tak samo
+jak `RELIABILITY_CONTINGENCY`, więc do tej karty ta sama bramka chroniła OBA
+rodzaje (drugi test tej pary testował właśnie `opf_loss_lcc`). Karta W3-E
+wycofała CAŁY rodzaj `opf_loss_lcc` z powierzchni nowych biegów (410, patrz
+`tests/api/test_v126_opf_loss_lcc_api.py`) — 410 zapada PRZED tą bramką, więc
+test bramki dla `opf_loss_lcc` testowałby dziś kod nieosiągalny i został zdjęty
+(nie przepisany: bramka istniała WYŁĄCZNIE po to, żeby chronić uruchomienie
+analizy, która teraz w ogóle się nie uruchamia — intencja „opf_loss_lcc bez Q
+generatora" nie ma już odpowiednika w kanonie, bo `opf_loss_lcc` nie liczy się
+wcale).
+
+Predykaty parami: brak Q blokuje TYLKO analizy jeszcze URUCHAMIALNE, które
+faktycznie czytają `generation_mvar` przez `_branch_current_a` —
+RELIABILITY_CONTINGENCY (test 1) — a NIE blokuje inną analizę V12.6, która
+tego Q nie czyta (test 4, INSULATION_COORDINATION — świadomie NIE
+`hosting_capacity`: ten rodzaj też jest dziś wycofany 410-em niezależnym od
+tej bramki, więc `insulation_coordination` jest jedynym uczciwym dowodem, że
+bramka Q sama w sobie nie blokuje rodzajów spoza swojego zakresu) — bramka nie
+jest szersza niż potrzeba. Dana jawna (nawet 0.0) przechodzi bez zastrzeżeń
+(test 3); Q wyprowadzalne z jawnego Q-set-pointu karty katalogowej też
+przechodzi (test 5).
 """
 
 from __future__ import annotations
@@ -93,18 +107,6 @@ def test_reliability_contingency_bez_q_generatora_zwraca_422_nie_liczy_po_cichu(
     assert "GEN-1" in resp.text
 
 
-def test_opf_loss_lcc_bez_q_generatora_zwraca_422_nie_liczy_po_cichu() -> None:
-    """Ta sama bramka, druga analiza, która też czyta `_branch_current_a`."""
-    with TestClient(app) as client:
-        case_id = _seed_case(client, _model(generator=_GENERATOR_BEZ_Q))
-        resp = client.post(
-            f"/api/cases/{case_id}/runs/v126/opf_loss_lcc",
-            json={"parameters": {}},
-        )
-    assert resp.status_code == 422, resp.text
-    assert "generator.q_missing" in resp.text
-
-
 def test_reliability_contingency_z_jawnym_q_liczy_normalnie() -> None:
     """Kontrola dwustronna: Q jawne (nawet gdyby było 0.0) przechodzi."""
     with TestClient(app) as client:
@@ -119,13 +121,15 @@ def test_reliability_contingency_z_jawnym_q_liczy_normalnie() -> None:
 
 
 def test_inna_analiza_v126_nie_jest_blokowana_brakiem_q_generatora() -> None:
-    """Bramka jest WĄSKA: `hosting_capacity` nie czyta `generation_mvar` przez
-    `_branch_current_a`, więc brak Q generatora nie może jej zablokować (inaczej
-    byłaby szersza niż trzeba)."""
+    """Bramka jest WĄSKA: `insulation_coordination` nie czyta `generation_mvar`
+    przez `_branch_current_a`, więc brak Q generatora nie może jej zablokować
+    (inaczej byłaby szersza niż trzeba). Świadomie NIE `hosting_capacity`: ten
+    rodzaj jest dziś wycofany 410-em niezależnym od tej bramki (karta W3-E) —
+    użycie go tutaj dowodziłoby 410, nie „bramka Q nie blokuje"."""
     with TestClient(app) as client:
         case_id = _seed_case(client, _model(generator=_GENERATOR_BEZ_Q))
         resp = client.post(
-            f"/api/cases/{case_id}/runs/v126/hosting_capacity",
+            f"/api/cases/{case_id}/runs/v126/insulation_coordination",
             json={"parameters": {}},
         )
     assert resp.status_code == 200, resp.text

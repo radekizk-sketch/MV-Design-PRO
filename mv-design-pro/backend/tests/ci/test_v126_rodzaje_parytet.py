@@ -67,6 +67,15 @@ KONTROLA_JAKOSCI_WYCOFANYCH: dict[str, Path] = {
     / "backend"
     / "tests"
     / "test_v126_stabilnosc_bez_fabrykacji.py",
+    # Karta W3-E (2026-09-09): `hosting_capacity`/`opf_loss_lcc` duplikują kanon
+    # liczony gdzie indziej i 410-ują na POST (`tests/api/test_v126_opf_loss_lcc_api.py`
+    # pilnuje SAMEGO wycofania), ale zdolność SOLWERA zostaje uruchamiana wprost
+    # w `test_v126_sanity_bounds.py` (`_run(V126AnalysisType.HOSTING_CAPACITY, …)`
+    # / `_run(V126AnalysisType.OPF_LOSS_LCC)`, `.run()` publiczne, nie metoda
+    # prywatna) — ten sam plik dla obu, bo to jedna klasa kontroli (sanity-bounds
+    # solvera), nie dwa niezależne testy.
+    "hosting_capacity": PROJECT_ROOT / "backend" / "tests" / "test_v126_sanity_bounds.py",
+    "opf_loss_lcc": PROJECT_ROOT / "backend" / "tests" / "test_v126_sanity_bounds.py",
 }
 
 #: Klucze `parameters`, które NIE są polem formularza, bo docierają do solvera inną,

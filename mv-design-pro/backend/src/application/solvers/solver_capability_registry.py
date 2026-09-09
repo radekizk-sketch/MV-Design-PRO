@@ -34,7 +34,13 @@ AnalysisCapability = Literal[
 class SolverCapability:
     capability: AnalysisCapability
     analysis_type: str
-    availability: Literal["available"]
+    # Karta W3-E: "withdrawn" dla `HOSTING_CAPACITY`/`OPF_LOSS_LCC` — solver
+    # zdolność ma i wykonuje (`implementation_status` zostaje "implemented"),
+    # ale API odmawia URUCHOMIENIA nowego biegu (410, duplikuje kanon liczony
+    # gdzie indziej). "available" znaczyłoby TU nieprawdę: rodzaj przestał być
+    # dostępny do nowych biegów, choć pozostaje odtwarzalny z biegów
+    # historycznych i uruchamialny wprost w testach solvera.
+    availability: Literal["available", "withdrawn"]
     implementation_status: Literal["implemented"]
     solver_version: str
     required_inputs: tuple[str, ...]
@@ -327,7 +333,7 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
     "HOSTING_CAPACITY": SolverCapability(
         capability="HOSTING_CAPACITY",
         analysis_type="hosting_capacity",
-        availability="available",
+        availability="withdrawn",
         implementation_status="implemented",
         solver_version="v126-academic-whitebox-1.0",
         required_inputs=("committed_enm", "stochastic_profiles", "limits"),
@@ -335,12 +341,17 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         proof_support=True,
         reportable=True,
         reference_test="test_v126_academic_solver.py::test_hosting_capacity_is_seeded",
-        applicability="Stochastyczna hosting capacity OZE z deterministycznym Monte Carlo.",
+        applicability=(
+            "Stochastyczna hosting capacity OZE z deterministycznym Monte Carlo — "
+            "wycofana z powierzchni nowych biegów (karta W3-E, 2026-09-09): lokalna "
+            "impedancja Thevenina bez sprzężenia sieci, duplikuje kanon "
+            "`GET /api/oze-analysis/hosting-capacity` (pełny rozpływ)."
+        ),
     ),
     "OPF_LOSS_LCC": SolverCapability(
         capability="OPF_LOSS_LCC",
         analysis_type="opf_loss_lcc",
-        availability="available",
+        availability="withdrawn",
         implementation_status="implemented",
         solver_version="v126-academic-whitebox-1.0",
         required_inputs=("committed_enm", "branch_limits", "cost_profile"),
@@ -348,7 +359,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         proof_support=True,
         reportable=True,
         reference_test="test_v126_academic_solver.py::test_opf_losses_lcc_contract",
-        applicability="Minimalizacja strat, energia strat, LCC i emisja CO2.",
+        applicability=(
+            "Minimalizacja strat, energia strat, LCC i emisja CO2 — wycofana z "
+            "powierzchni nowych biegów (karta W3-E, 2026-09-09): β = 0,45 zaszyte, "
+            "zaczep 0, prąd gałęzi z jednej szyny; duplikuje kanon "
+            "`POST /api/solver/transformer-losses` + badania OLTC."
+        ),
     ),
     "BENCHMARK_VALIDATION": SolverCapability(
         capability="BENCHMARK_VALIDATION",

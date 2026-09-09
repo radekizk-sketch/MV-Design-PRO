@@ -273,10 +273,16 @@ def test_straty_jalowe_transformatora_nieobecne_nie_dostaja_liczby() -> None:
     jako `float | None`) mylił te dwa stany identycznie jak defekty pinowane
     wyżej w tym pliku dla obciążalności/susceptancji/skoku zaczepu. Tu drobna
     różnica: solver `_opf_loss_lcc` (`network_model/solvers/v126_academic.py`)
-    NIE ma dziś własnej ścieżki „brak = niedostępne" (FROZEN, B-01) — więc
-    zamiast cichej liczby brak musi zablokować URUCHOMIENIE tej jednej analizy
-    w warstwie API (patrz `tests/api/test_v126_opf_loss_lcc_api.py`), nie
-    wejść do solvera jako 0.0.
+    NIE ma dziś własnej ścieżki „brak = niedostępne" (FROZEN, B-01). Do karty
+    W3-E (2026-09-09) brak musiał więc zablokować URUCHOMIENIE tej jednej
+    analizy w warstwie API; W3-E wycofała CAŁY rodzaj `opf_loss_lcc` z
+    powierzchni nowych biegów (410, duplikuje `equipment_checks/
+    transformer_losses.py` — β rzeczywisty z karty katalogowej, nie zaszyte
+    0,45; patrz `tests/api/test_v126_opf_loss_lcc_api.py`), więc ta konkretna
+    bramka p0_kw stała się zbędna i została zdjęta razem z rodzajem — pole
+    `p0_kw` zostaje `float | None` z tego samego powodu co reszta mostu
+    (rozróżnienie „nieznane" vs „zero" jest faktem modelu, niezależnym od
+    tego, który rodzaj V12.6 dziś to pole czyta).
     """
     wejscie = build_v126_input_from_enm(_model(transformers=[_transformator()]))
     assert wejscie.transformers[0].p0_kw is None

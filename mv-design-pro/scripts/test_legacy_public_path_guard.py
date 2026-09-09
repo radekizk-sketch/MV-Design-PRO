@@ -1112,6 +1112,11 @@ def test_guard_rejects_resurrected_w3d_enum_member_under_other_path(tmp_path, mo
 
     assert any(
         "[resurrected-enum]" in v and "ExecutionAnalysisType.SOURCE_COMPLIANCE" in v
+        for v in violations
+    )
+
+
+# ---------------------------------------------------------------------------
 # W3-A (2026-09): drugi silnik fizyki IDMT nie wraca
 # ---------------------------------------------------------------------------
 

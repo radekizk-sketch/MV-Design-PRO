@@ -27,7 +27,11 @@ from application.stability.voltage_trajectory import (
     TrajectoryGenerationParams,
     generate_voltage_trajectory,
 )
-from application.v126_artifacts import build_v126_proof_artifact, build_v126_report_artifact
+from application.v126_artifacts import (
+    bez_rankingu_n1,
+    build_v126_proof_artifact,
+    build_v126_report_artifact,
+)
 from domain.canonical_operations import READINESS_CODES
 from enm.assembler import (
     WejscieRozplywu,
@@ -1662,6 +1666,16 @@ def _execute_v126(run: CanonicalRun) -> None:
     model = V126AcademicInput.model_validate(options["model"])
     solver = V126AcademicSolver()
     result = solver.run(analysis_type, model)
+    # Karta W3-E (KARTA_W3 §0 rodzina E, 9 #2): `reliability_contingency` traci
+    # ranking N-1/N-2 (pochodny od `_branch_current_a`, bez sprzężenia sieci) z
+    # powierzchni odpowiedzi — JEDNA funkcja aplikacyjna, wywołana TUTAJ raz,
+    # zasila jednocześnie końcówkę `results` (czyta `run_record["result"]`
+    # wprost) i `report` (`build_v126_report_artifact` czyta `result["result"]`
+    # — ten sam słownik po tej linii); `proof` nigdy nie niósł klucza rankingu
+    # (czyta wyłącznie `white_box_trace`), więc jest czysty z konstrukcji.
+    # Solver FROZEN (B-01) NIETKNIĘTY — postprocess wyniku, zero fizyki.
+    if analysis_type == V126AnalysisType.RELIABILITY_CONTINGENCY:
+        result = {**result, "result": bez_rankingu_n1(result["result"])}
     run_record: dict[str, Any] = {
         "run_id": str(run.id),
         "case_id": run.case_id,

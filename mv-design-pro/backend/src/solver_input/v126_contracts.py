@@ -82,13 +82,20 @@ class V126TransformerInput(BaseModel):
     pk_kw: float = Field(default=0.0, ge=0)
     # `None` = strata jałowa NIEZNANA (karta FAB-D2, D2) — ENM `Transformer.p0_kw`
     # jest `float | None` (brak w katalogu jest legalny, IEC 60909 tego pola nie
-    # wymaga). Podstawienie 0.0 za brak fałszowałoby wynik OPF/LCC (`_opf_loss_lcc`
-    # w `network_model/solvers/v126_academic.py`) — zero strat jałowych to WYNIK,
-    # nie nieznana dana. Ten solver nie ma dziś własnej ścieżki "brak = niedostępne"
-    # (w odróżnieniu od `equipment_checks/transformer_losses.py`, który reużywa
-    # `transformer.loss_data_missing`), więc konsument (endpoint API `run_v126_analysis`)
-    # odmawia uruchomienia analizy OPF_LOSS_LCC tym samym kodem, zamiast liczyć na
-    # milczącym zerze — solver pozostaje nietknięty (B-01, `network_model/solvers/**`).
+    # wymaga). Podstawienie 0.0 za brak fałszowałoby wynik solvera FROZEN
+    # (`_opf_loss_lcc` w `network_model/solvers/v126_academic.py` sumuje
+    # `p0_kw + pk_kw*0.45**2` wprost) — zero strat jałowych to WYNIK, nie
+    # nieznana dana. Do karty W3-E (2026-09-09) konsument (endpoint API
+    # `run_v126_analysis`) odmawiał URUCHOMIENIA analizy OPF_LOSS_LCC 422-ką
+    # `transformer.loss_data_missing`, gdy p0_kw był `None`; karta W3-E
+    # wycofała CAŁY rodzaj `opf_loss_lcc` z powierzchni (410, duplikuje kanon
+    # `equipment_checks/transformer_losses.py`, który p0_kw czyta z KARTY
+    # katalogowej rzeczywistej, nie zaszytego β = 0,45) — bramka warunkowa
+    # p0_kw stała się więc zbędna i została zdjęta razem z rodzajem. Pole
+    # `p0_kw` zostaje `float | None`: legalny brak wg IEC 60909 to fakt modelu
+    # niezależny od tego, który rodzaj V12.6 go dziś czyta, a solver
+    # (`_opf_loss_lcc`, nadal FROZEN — B-01) zostaje zdolnością odtwarzalną z
+    # historycznych biegów i osiągalną wprost w testach solvera.
     p0_kw: float | None = Field(default=None, ge=0)
     vector_group: str | None = None
 

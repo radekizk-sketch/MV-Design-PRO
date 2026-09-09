@@ -11,6 +11,7 @@ from enm.canonical_analysis import execute_run as _execute_canonical_run
 from enm.canonical_analysis import get_run as _get_canonical_run
 from enm.store import get_enm
 from fastapi import APIRouter, HTTPException, status
+from fastapi.responses import JSONResponse
 from network_model.solvers.v126_academic import V126AcademicSolver
 from pydantic import BaseModel
 from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
@@ -41,6 +42,90 @@ class V126RunResponse(BaseModel):
     proof_url: str
     report_url: str
     deterministic_hash: str
+
+
+class V126ZamiennikTrasy(BaseModel):
+    trasa: str
+    ekran: str
+
+
+class V126AnalizaWycofanaResponse(BaseModel):
+    """Ciało odmowy 410 dla rodzaju V12.6 zdjętego z powierzchni (karta W3-E).
+
+    Ten sam kształt jedzie DODATKOWO jako pole addytywne `wycofany` na
+    czterech końcówkach GET historycznego biegu tego rodzaju (results, trace,
+    proof, report) — odtwarzalność zostaje, powierzchnia do NOWYCH biegów nie.
+    """
+
+    code: str
+    analysis_type: str
+    message_pl: str
+    zamiennik: list[V126ZamiennikTrasy]
+    powod_pl: str
+
+
+# Karta W3-E (KARTA_W3 §0 rodzina D/F, 5 #8, 9 #7, 9 #10): oba rodzaje
+# DUPLIKUJĄ kanon liczony gdzie indziej pełnym rozpływem/rzeczywistymi danymi
+# katalogowymi — `_hosting_capacity` (impedancja Thevenina lokalna, Monte
+# Carlo per szyna, BEZ sprzężenia sieci) wobec `application/analyses/
+# hosting_capacity.py` (pełny rozpływ przez `bieg_wariantu`); `_opf_loss_lcc`
+# (β = 0,45 zaszyte, `oltc_tap_position: 0` zawsze, prąd gałęzi z JEDNEJ
+# szyny przez `_branch_current_a`) wobec `equipment_checks/transformer_losses.py`
+# (β rzeczywisty z karty katalogowej) i badań OLTC (`power_flow_oltc_studies.py`,
+# zaczep RZECZYWIŚCIE optymalizowany). LCC (Σ annual_kwh·cena/(1+r)^t) nie ma
+# dziś kanonu — ekonomia cyklu życia jest decyzją właściciela OD-16, nie
+# odtwarzana gdzie indziej. Solver FROZEN (B-01) NIETKNIĘTY: enum
+# `V126AnalysisType` bez zmian, `_hosting_capacity`/`_opf_loss_lcc` zostają
+# zdolnością solvera — GET historycznych biegów (trasy niżej) je odtwarza.
+_ANALIZY_WYCOFANE: dict[V126AnalysisType, dict[str, Any]] = {
+    V126AnalysisType.HOSTING_CAPACITY: {
+        "zamiennik": [
+            {
+                "trasa": "GET /api/oze-analysis/hosting-capacity",
+                "ekran": "OZE › Zdolność przyłączeniowa",
+            }
+        ],
+        "powod_pl": ("lokalna impedancja Thevenina bez sprzężenia sieci; " "kanon = pełny rozpływ"),
+    },
+    V126AnalysisType.OPF_LOSS_LCC: {
+        "zamiennik": [
+            {
+                "trasa": "POST /api/solver/transformer-losses",
+                "ekran": "Kryteria › Wyposażenie",
+            },
+            {
+                "trasa": (
+                    "POST /api/execution/study-cases/{case_id}/runs "
+                    "(analysis_type=LOAD_FLOW, run_options.oltc_*)"
+                ),
+                "ekran": "Wyniki › OLTC",
+            },
+        ],
+        "powod_pl": (
+            "β = 0,45 zaszyte, zaczep 0, prąd gałęzi z jednej szyny; "
+            "LCC bez kanonu — decyzja właściciela OD-16"
+        ),
+    },
+}
+
+
+def _wycofanie_v126(analysis_type: V126AnalysisType) -> dict[str, Any] | None:
+    """Ciało wycofania rodzaju V12.6 — JEDNO źródło prawdy dla 410 na POST i
+    dla pola addytywnego `wycofany` na czterech końcówkach GET (karta W3-E).
+    """
+    dane = _ANALIZY_WYCOFANE.get(analysis_type)
+    if dane is None:
+        return None
+    return {
+        "code": "v126.analysis_withdrawn",
+        "analysis_type": analysis_type.value,
+        "message_pl": (
+            f"Rodzaj analizy „{analysis_type.value}” zszedł z powierzchni V12.6 "
+            "— duplikuje kanon liczony gdzie indziej."
+        ),
+        "zamiennik": dane["zamiennik"],
+        "powod_pl": dane["powod_pl"],
+    }
 
 
 def _require_run(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, Any]:
@@ -102,13 +187,37 @@ def _with_parameter_payloads(
     return model.model_copy(update=update)
 
 
-@router.post("/cases/{case_id}/runs/v126/{analysis_type}", response_model=V126RunResponse)
+@router.post(
+    "/cases/{case_id}/runs/v126/{analysis_type}",
+    response_model=V126RunResponse,
+    responses={
+        410: {
+            "model": V126AnalizaWycofanaResponse,
+            "description": (
+                "Rodzaj analizy zszedł z powierzchni V12.6 (duplikuje kanon liczony "
+                "gdzie indziej) — karta W3-E."
+            ),
+        }
+    },
+)
 def run_v126_analysis(
     case_id: UUID,
     klucz: KluczTwin,
     analysis_type: V126AnalysisType,
     request: V126RunRequest,
-) -> V126RunResponse:
+) -> V126RunResponse | JSONResponse:
+    # Karta W3-E: dwa rodzaje V12.6 DUPLIKUJĄ kanon (patrz komentarz przy
+    # `_ANALIZY_WYCOFANE`) i nie uruchamiają już NOWYCH biegów — odmowa stoi
+    # PRZED logiką TEJ trasy (odczyt ENM, bramki 422 przypadku), bo dotyczy
+    # samego rodzaju analizy, nie stanu przypadku: 410 zapada nawet dla
+    # przypadku bez committed ENM (`klucz: KluczTwin` powyżej w sygnaturze to
+    # zależność WSPÓLNA całego API tłumacząca `case_id` — musi zobaczyć
+    # przypadek w bazie, zanim JAKAKOLWIEK trasa, w tym ta, w ogóle się
+    # wykona; SS0 pkt 7 zakazuje drugiego miejsca tego tłumaczenia). GET
+    # historycznych biegów sprzed tej karty zostaje (odtwarzalność).
+    wycofanie = _wycofanie_v126(analysis_type)
+    if wycofanie is not None:
+        return JSONResponse(status_code=status.HTTP_410_GONE, content=wycofanie)
     enm = get_enm(klucz)
     if not enm.buses:
         raise HTTPException(
@@ -118,37 +227,19 @@ def run_v126_analysis(
     model = _with_parameter_payloads(
         build_v126_input_from_enm(enm, parameters=request.parameters), request.parameters
     )
-    # Karta FAB-D2 (D2): `_opf_loss_lcc` (network_model/solvers/v126_academic.py)
-    # sumuje straty jałowe transformatorów wprost (`p0_kw + pk_kw*0.45**2`) i nie
-    # ma własnej ścieżki "brak danej = niedostępne" (solver FROZEN — B-01, nie
-    # edytujemy go z tej karty). Brak p0_kw (odkąd `V126TransformerInput.p0_kw`
-    # niesie `None` zamiast cichego 0.0) musi więc zablokować URUCHOMIENIE tej
-    # jednej analizy tutaj, zanim payload trafi do solvera — inne typy analizy
-    # V12.6 (SSCI, uziemienie, izolacja, rozruch silnika...) nie czytają p0_kw
-    # i pozostają dostępne bez zmian.
-    if analysis_type == V126AnalysisType.OPF_LOSS_LCC:
-        bez_strat_jalowych = [t.ref for t in model.transformers if t.p0_kw is None]
-        if bez_strat_jalowych:
-            spec = READINESS_CODES["transformer.loss_data_missing"]
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=(
-                    f"{spec.message_pl} (transformer.loss_data_missing) — "
-                    f"transformatory bez strat jałowych: {', '.join(bez_strat_jalowych)}"
-                ),
-            )
     # Karta FAB-H (H2): `_branch_current_a` (network_model/solvers/v126_academic.py,
     # solver FROZEN — B-01, nie edytujemy go z tej karty) czyta
     # `bus.generation_mvar`, agregat zbudowany w `build_v126_input_from_enm` z Q
     # generatorów — a przy Q nieznanym kontrakt podstawia 0,0 jako strukturalne
     # wypełnienie (ten sam agregat karmi też analizy, które Q w ogóle nie
-    # czytają). Tylko RELIABILITY_CONTINGENCY i OPF_LOSS_LCC faktycznie
-    # konsumują `_branch_current_a`, więc tylko one są tu blokowane — wzorzec
-    # identyczny z bramką p0_kw powyżej (karta FAB-D2).
-    if analysis_type in (
-        V126AnalysisType.RELIABILITY_CONTINGENCY,
-        V126AnalysisType.OPF_LOSS_LCC,
-    ):
+    # czytają). Tylko RELIABILITY_CONTINGENCY faktycznie konsumuje
+    # `_branch_current_a` spośród rodzajów jeszcze URUCHAMIALNYCH — OPF_LOSS_LCC
+    # też go czytał, ale ten rodzaj 410-uje wyżej, więc bramka tutaj nie
+    # osiągnęłaby go nigdy (karta W3-E zdjęła OPF_LOSS_LCC z tej krotki razem
+    # z bramką p0_kw, która niegdyś stała tu obok — obie bramki istniały
+    # WYŁĄCZNIE po to, żeby chronić uruchomienie analizy, która teraz w ogóle
+    # się nie uruchamia).
+    if analysis_type == V126AnalysisType.RELIABILITY_CONTINGENCY:
         bez_mocy_biernej = [
             gen.ref_id
             for gen in enm.generators
@@ -286,6 +377,13 @@ def get_v126_result(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, 
     ]
     if zrodla_widma:
         payload["zrodla_widma"] = zrodla_widma
+    # Karta W3-E: pole ADDYTYWNE `wycofany` na biegu HISTORYCZNYM rodzaju zdjętego
+    # z powierzchni — kontrakt odpowiedzi FROZEN nietknięty (dołożony klucz),
+    # odtwarzalność biegu zostaje, ale front pokazuje stan „analiza wycofana",
+    # nie próbuje renderować wyniku jak rodzaju wciąż uruchamialnego.
+    wycofanie = _wycofanie_v126(analysis_type)
+    if wycofanie is not None:
+        payload["wycofany"] = wycofanie
     return payload
 
 
@@ -293,13 +391,20 @@ def get_v126_result(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, 
 def get_v126_trace(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, Any]:
     run = _require_run(run_id, analysis_type)
     result = run["result"]
-    return {
+    payload: dict[str, Any] = {
         "run_id": run["run_id"],
         "analysis_type": run["analysis_type"],
         "trace_version": "AcademicWhiteBoxTraceV1",
         "deterministic_hash": result["deterministic_hash"],
         "steps": result["white_box_trace"],
     }
+    # Karta W3-E: adnotacja addytywna — WHITE BOX (`steps`) zostaje SUROWY i
+    # kompletny (auditowalność solvera FROZEN nietknięta), `wycofany` jedzie
+    # obok jako informacja o powierzchni, nie jako zmiana śladu.
+    wycofanie = _wycofanie_v126(analysis_type)
+    if wycofanie is not None:
+        payload["wycofany"] = wycofanie
+    return payload
 
 
 @router.get("/analysis-runs/{run_id}/results/v126/ssci_impedance/stability")
@@ -330,13 +435,25 @@ def get_v126_ssci_stability(run_id: UUID) -> dict[str, Any]:
 @router.get("/analysis-runs/{run_id}/results/v126/{analysis_type}/proof")
 def get_v126_proof(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, Any]:
     run = _require_run(run_id, analysis_type)
-    return run["proof"]
+    proof: dict[str, Any] = run["proof"]
+    # Karta W3-E: `wycofany` addytywnie obok pakietu dowodowego — pakiet sam w
+    # sobie zostaje NIETKNIĘTY (FROZEN, kroki z `white_box_trace` solvera).
+    wycofanie = _wycofanie_v126(analysis_type)
+    if wycofanie is not None:
+        proof = {**proof, "wycofany": wycofanie}
+    return proof
 
 
 @router.get("/analysis-runs/{run_id}/results/v126/{analysis_type}/report")
 def get_v126_report(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, Any]:
     run = _require_run(run_id, analysis_type)
-    return run["report"]
+    report: dict[str, Any] = run["report"]
+    # Karta W3-E: `wycofany` addytywnie obok raportu — raport sam w sobie
+    # zostaje NIETKNIĘTY (FROZEN, sekcje z wyniku solvera).
+    wycofanie = _wycofanie_v126(analysis_type)
+    if wycofanie is not None:
+        report = {**report, "wycofany": wycofanie}
+    return report
 
 
 @router.get("/catalog/v126/{namespace}")
@@ -349,6 +466,15 @@ def get_v126_catalog(namespace: str) -> dict[str, Any]:
             "tdd_ieee519_default_percent": 5.0,
             "individual_percent": {"5": 6.0, "7": 5.0, "11": 3.5, "13": 3.0},
         },
+        # Tabela IEC 60071-1 zduplikowana z solverem FROZEN (`_insulation`,
+        # `network_model/solvers/v126_academic.py:1653-1658` — B-01, solver
+        # nie eksportuje jej, więc nie ma jak wskazać tu jednego źródła).
+        # STRAŻNIK PARYTETU: `tests/test_v126_bil_parytet.py` uruchamia
+        # `_insulation` przez publiczne wejście solvera (`V126AcademicSolver
+        # .run(INSULATION_COORDINATION, …)`) i porównuje `bil_kv`/
+        # `short_duration_50hz_kv` każdego wiersza z tabelą poniżej — zmiana w
+        # JEDNYM miejscu bez drugiego daje czerwień (karta W3-E, KLASA §4:
+        # deklaracja bez testu = fałszywa pewność).
         "insulation-levels": [
             {"u_m_kv": 12.0, "bil_kv": 75.0, "short_duration_50hz_kv": 28.0},
             {"u_m_kv": 17.5, "bil_kv": 95.0, "short_duration_50hz_kv": 38.0},
