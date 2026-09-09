@@ -122,7 +122,7 @@ Odniesienie architektoniczne: `mv-design-pro/ARCHITECTURE.md` (v4.0),
 |----------------|------------------------------------------------------------------------------|
 | Komponent      | `ui/network-build/CatalogBrowser.tsx`                                        |
 | Problem        | CatalogBrowser nie pozwala na edycje typow katalogowych.                     |
-| Werdykt        | **Akceptowalne** -- design constraint. Typy katalogowe sa immutable (benchmark Type Library parity). Edycja typow nie jest dozwolona w warstwie UI. Zgodne z Catalog Binding Rule (`CLAUDE.md`); szczegolowa checklista `CANONICAL_COMPLIANCE.md` CAT-* zarchiwizowana -- `docs/audit/archive/CANONICAL_COMPLIANCE_2026-01.md` [archiwum], zaden zywy dokument nie odtwarza jej wprost (luka kanonu). |
+| Werdykt        | **Akceptowalne** -- design constraint. Typy katalogowe sa immutable (benchmark Type Library parity). Edycja typow nie jest dozwolona w warstwie UI. Zgodne z Catalog Binding Rule (`CLAUDE.md`) oraz `docs/system/SPEC_KATALOGI_I_MATERIALIZACJA_PARAMETROW.md` sekcja "Niemutowalnosc typow katalogowych i brak edycji w UI" (frozen dataclass w `types.py` + brak endpointu zapisu definicji typu w `api/catalog.py`, oba pinowane testami). Dawna checklista `CANONICAL_COMPLIANCE.md` CAT-* -- `docs/audit/archive/CANONICAL_COMPLIANCE_2026-01.md` -- jako kontekst historyczny. |
 | Status         | AKCEPTOWALNE (by design)                                                     |
 
 ---

@@ -7,11 +7,12 @@ Implements PowerFactory-grade type library management:
 - Safe import with conflict detection (merge/replace modes)
 - Hard compatibility rules for type_ref (no mass migrations)
 
-Canonical reference: SYSTEM_SPEC.md § 4 (Catalog). The former CT-* governance
-checklist is archived (docs/audit/archive/CANONICAL_COMPLIANCE_2026-01.md CT-*)
-[archiwum] -- no living binding doc currently restates type-library versioning/
-import/export governance in detail (canon gap logged in the ARCHIWUM-CANONICAL-
-COMPLIANCE report, 2026-09-09).
+Canonical reference: SYSTEM_SPEC.md § 4 (Catalog); versioning/export/import
+governance rules below are spelled out in docs/system/SPEC_KATALOGI_I_MATERIALIZACJA_
+PARAMETROW.md, section "Governance biblioteki typow" (each rule cites the enforcing
+symbol here and its pinning test). The retired CT-* checklist that used to be cited
+here lives at docs/audit/archive/CANONICAL_COMPLIANCE_2026-01.md CT-* as historical
+context only.
 """
 
 from __future__ import annotations
