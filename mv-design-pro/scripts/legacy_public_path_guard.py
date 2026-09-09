@@ -342,6 +342,26 @@ def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8", errors="ignore")
 
 
+def zrodlo_istnieje(path: Path, wzorce: tuple[str, ...] = ("*.py",)) -> bool:
+    """Czy pod sciezka istnieje ZRODLO: plik albo katalog z choc jednym plikiem
+    zrodlowym (`wzorce`, domyslnie `*.py`; dla frontendu `*.ts`/`*.tsx`) na
+    dowolnej glebokosci.
+
+    Goly `path.exists()` falszywie zapala bramke wskrzeszenia na osieroconym,
+    niegitowanym `__pycache__/` (bytecode z sesji SPRZED kasacji zostaje na
+    dysku, bo git usuwa tylko sledzone pliki) — guard ma wykryc wskrzeszone
+    zrodlo, nie zapomniany artefakt kompilacji. KLASA, NIE INSTANCJA (odbior K2,
+    2026-09-09): wyjatek byl obsluzony tylko w bramce C4 (`glob("*.py")`, plytko),
+    a bramki CV-4.2, W1 i K2 uzywaly golego `exists()` — jedna funkcja dla
+    wszystkich czterech, rekurencyjnie (wskrzeszony podpakiet tez jest zrodlem).
+    """
+    if path.is_file():
+        return True
+    if path.is_dir():
+        return any(any(path.rglob(wzorzec)) for wzorzec in wzorce)
+    return False
+
+
 def active_api_module_paths() -> list[Path]:
     module_paths: list[Path] = []
     seen: set[Path] = set()
@@ -382,7 +402,7 @@ def check_study_case_engine_resurrection() -> list[str]:
     nie mogą wrócić — 0 konsumentów w `src` w chwili kasacji, semantyka
     `OperatingMode.N_1/MAINTENANCE` żyje w `RodzajScenariusza` (CV-3.1)."""
     violations: list[str] = []
-    if STUDY_CASE_ENGINE_MODULE.exists():
+    if zrodlo_istnieje(STUDY_CASE_ENGINE_MODULE):
         rel_path = STUDY_CASE_ENGINE_MODULE.relative_to(ROOT).as_posix()
         violations.append(
             f"[resurrected-module] {rel_path}: domain/study_case_engine.py (C2) "
@@ -447,10 +467,8 @@ def check_c4_and_p24_plus_resurrection() -> list[str]:
     trasy"), skasowany razem z nim."""
     violations: list[str] = []
     for directory, label in FORBIDDEN_C4_DIRECTORIES.items():
-        # `directory.exists()` fałszywie zapaliłby się na osieroconym,
-        # niegitowanym `__pycache__/` (bytecode z sesji SPRZED kasacji) — guard
-        # ma wykryć wskrzeszone ŹRÓDŁO, nie zapomniany artefakt kompilacji.
-        if any(directory.glob("*.py")):
+        # Wskrzeszone ZRODLO, nie osierocony `__pycache__/` — patrz `zrodlo_istnieje`.
+        if zrodlo_istnieje(directory):
             rel_path = directory.relative_to(ROOT).as_posix()
             violations.append(
                 f"[resurrected-module] {rel_path}: {label} usunięty procedurą "
@@ -482,7 +500,7 @@ def check_cv42_resurrection() -> list[str]:
     (`enm/assembler.py::zloz_wejscie_rozplywu`/`zloz_wejscie_zwarcia`)."""
     violations: list[str] = []
     for path, label in FORBIDDEN_CV42_FILES.items():
-        if path.exists():
+        if zrodlo_istnieje(path):
             rel_path = path.relative_to(ROOT).as_posix()
             violations.append(f"[resurrected-module] {rel_path}: {label}")
     if not BACKEND_SRC_DIR.exists():
@@ -586,7 +604,7 @@ def check_w1_legacy_persistence_resurrection() -> list[str]:
     violations: list[str] = []
     for rel, label in W1_LEGACY_RELATIVE_PATHS.items():
         path = BACKEND_SRC_DIR / rel
-        if path.exists():
+        if zrodlo_istnieje(path):
             violations.append(f"[resurrected-module] backend/src/{rel}: {label} (usuniety w W1)")
     if not BACKEND_SRC_DIR.exists():
         return violations
@@ -694,13 +712,13 @@ def check_k2_reference_networks_resurrection() -> list[str]:
     `tests/golden/parytet_benchmarkow/test_wyrocznia_a_expected_json.py`)."""
     violations: list[str] = []
     backend_dir = BACKEND_SRC_DIR / K2_REFERENCE_NETWORKS_BACKEND_DIR
-    if backend_dir.exists():
+    if zrodlo_istnieje(backend_dir):
         violations.append(
             f"[resurrected-module] backend/src/{K2_REFERENCE_NETWORKS_BACKEND_DIR}: "
             "dawny dialekt benchmarków (usunięty kartą K2, 2026-09-09) — nie odtwarzaj"
         )
     api_module = BACKEND_SRC_DIR / K2_REFERENCE_NETWORKS_API_MODULE
-    if api_module.exists():
+    if zrodlo_istnieje(api_module):
         violations.append(
             f"[resurrected-module] backend/src/{K2_REFERENCE_NETWORKS_API_MODULE}: "
             "9 tras /api/v1/reference-networks/* (usunięte kartą K2) — nie odtwarzaj"
@@ -727,7 +745,7 @@ def check_k2_reference_networks_resurrection() -> list[str]:
                         f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
                         "(dialekt benchmarków, usunięty kartą K2) nie może wrócić"
                     )
-    if K2_REFERENCE_NETWORKS_FRONTEND_DIR.exists():
+    if zrodlo_istnieje(K2_REFERENCE_NETWORKS_FRONTEND_DIR, ("*.ts", "*.tsx")):
         violations.append(
             "[resurrected-module] frontend/src/ui/reference-networks: ekran zastany "
             "(usunięty kartą K2, 2026-09-09) — nie odtwarzaj tego katalogu"

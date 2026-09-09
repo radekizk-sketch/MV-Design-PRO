@@ -870,12 +870,55 @@ def test_guard_rejects_resurrected_w1_legacy_module(tmp_path, monkeypatch) -> No
     src = _patch_w1_tree(monkeypatch, tmp_path)
     (src / "network_model").mkdir()
     (src / "network_model" / "sld_projection.py").write_text("x = 1\n", encoding="utf-8")
+    # Wskrzeszony PAKIET = zrodlo w srodku (goly katalog to nie modul — patrz
+    # `zrodlo_istnieje` i test osieroconego `__pycache__` nizej).
     (src / "application" / "sld").mkdir(parents=True)
+    (src / "application" / "sld" / "__init__.py").write_text("", encoding="utf-8")
 
     violations = guard.check_w1_legacy_persistence_resurrection()
 
     assert any("[resurrected-module]" in v and "sld_projection.py" in v for v in violations)
     assert any("[resurrected-module]" in v and "application/sld" in v for v in violations)
+
+
+def test_guard_ignores_orphaned_pycache_only_directories(tmp_path, monkeypatch) -> None:
+    """Klasa (odbior K2, 2026-09-09): git usuwa tylko sledzone pliki, wiec po
+    kasacji pakietu na dysku zostaje `__pycache__/` z bytecode sprzed kasacji.
+    Zadna z czterech bramek wskrzeszenia (C4, CV-4.2, W1, K2) nie moze tego
+    liczyc jako wskrzeszonego modulu; zrodlo w PODPAKIECIE nadal jest lapane."""
+    src = _patch_w1_tree(monkeypatch, tmp_path)
+    monkeypatch.setattr(guard, "FRONTEND_SRC_DIR", tmp_path / "frontend" / "src")
+    monkeypatch.setattr(
+        guard,
+        "K2_REFERENCE_NETWORKS_FRONTEND_DIR",
+        tmp_path / "frontend" / "src" / "ui" / "reference-networks",
+    )
+    for rel in ("application/sld", "application/reference_networks/builders"):
+        cache = src / rel / "__pycache__"
+        cache.mkdir(parents=True)
+        (cache / "modul.cpython-311.pyc").write_bytes(b"\x00")
+    c4_dir = src / "application" / "study_scenario"
+    (c4_dir / "__pycache__").mkdir(parents=True)
+    (c4_dir / "__pycache__" / "x.cpython-311.pyc").write_bytes(b"\x00")
+    monkeypatch.setattr(
+        guard, "FORBIDDEN_C4_DIRECTORIES", {c4_dir: "application/study_scenario (C4)"}
+    )
+
+    assert guard.check_w1_legacy_persistence_resurrection() == []
+    assert guard.check_k2_reference_networks_resurrection() == []
+    assert guard.check_c4_and_p24_plus_resurrection() == []
+
+    # Zrodlo w podpakiecie — nadal wskrzeszenie (rekurencja, nie plytki glob).
+    (src / "application" / "reference_networks" / "builders" / "__init__.py").write_text(
+        "", encoding="utf-8"
+    )
+    (c4_dir / "glebiej").mkdir()
+    (c4_dir / "glebiej" / "__init__.py").write_text("", encoding="utf-8")
+    assert any(
+        "application/reference_networks" in v
+        for v in guard.check_k2_reference_networks_resurrection()
+    )
+    assert any("study_scenario" in v for v in guard.check_c4_and_p24_plus_resurrection())
 
 
 def test_guard_rejects_resurrected_w1_orm_class_and_table_under_other_path(
@@ -934,3 +977,96 @@ def test_guard_accepts_current_repo_state_w1() -> None:
     """Stan repozytorium PO W1 jest zielony na tej bramce — prawdziwe drzewo
     `backend/src` (w tym pin liczby tabel w `models.py`), nie sztuczne `tmp_path`."""
     assert guard.check_w1_legacy_persistence_resurrection() == []
+
+
+# ---------------------------------------------------------------------------
+# K2 (2026-09-09): bramka wskrzeszenia dialektu benchmarkow — testy dopisane przy
+# odbiorze (agent K2 zostawil bramke BEZ testow wlasnych: deklaracja bez testu =
+# falszywa pewnosc). Kazda galaz `check_k2_reference_networks_resurrection` ma
+# przypadek pozytywny; stan realnego repo ma przypadek negatywny.
+# ---------------------------------------------------------------------------
+
+
+def _patch_k2_tree(monkeypatch, tmp_path) -> tuple[Path, Path]:
+    src = _patch_w1_tree(monkeypatch, tmp_path)
+    fe = tmp_path / "frontend" / "src"
+    fe.mkdir(parents=True)
+    monkeypatch.setattr(guard, "FRONTEND_SRC_DIR", fe)
+    monkeypatch.setattr(
+        guard, "K2_REFERENCE_NETWORKS_FRONTEND_DIR", fe / "ui" / "reference-networks"
+    )
+    return src, fe
+
+
+def test_guard_rejects_resurrected_k2_backend_package_and_api_module(tmp_path, monkeypatch) -> None:
+    src, _fe = _patch_k2_tree(monkeypatch, tmp_path)
+    (src / "application" / "reference_networks").mkdir(parents=True)
+    (src / "application" / "reference_networks" / "__init__.py").write_text("", encoding="utf-8")
+    (src / "api").mkdir()
+    (src / "api" / "reference_networks.py").write_text("router = None\n", encoding="utf-8")
+
+    violations = guard.check_k2_reference_networks_resurrection()
+
+    assert any(
+        "[resurrected-module]" in v and "application/reference_networks" in v for v in violations
+    )
+    assert any("[resurrected-module]" in v and "api/reference_networks.py" in v for v in violations)
+
+
+def test_guard_rejects_k2_import_prefix_and_class_name_under_other_path(
+    tmp_path, monkeypatch
+) -> None:
+    src, _fe = _patch_k2_tree(monkeypatch, tmp_path)
+    (src / "application").mkdir()
+    (src / "application" / "inny_modul.py").write_text(
+        "from application.reference_networks.library import cokolwiek\n"
+        "\n\nclass ReferenceNetwork:\n    pass\n",
+        encoding="utf-8",
+    )
+
+    violations = guard.check_k2_reference_networks_resurrection()
+
+    assert any("[legacy-public-import]" in v and "inny_modul.py" in v for v in violations)
+    assert any("[resurrected-class]" in v and "class ReferenceNetwork" in v for v in violations)
+
+
+def test_guard_does_not_fire_on_k2_names_in_strings_or_unrelated_prefix(
+    tmp_path, monkeypatch
+) -> None:
+    src, _fe = _patch_k2_tree(monkeypatch, tmp_path)
+    (src / "application").mkdir()
+    (src / "application" / "inny_modul.py").write_text(
+        'OPIS = "application.reference_networks bylo dialektem"\n'
+        "from application.reference_networks_v2 import x\n",
+        encoding="utf-8",
+    )
+
+    assert guard.check_k2_reference_networks_resurrection() == []
+
+
+def test_guard_rejects_k2_frontend_dir_and_surface_component(tmp_path, monkeypatch) -> None:
+    _src, fe = _patch_k2_tree(monkeypatch, tmp_path)
+    (fe / "ui" / "reference-networks").mkdir(parents=True)
+    (fe / "ui" / "reference-networks" / "api.ts").write_text(
+        "export const x = 1;\n", encoding="utf-8"
+    )
+    (fe / "ui" / "workspace").mkdir(parents=True)
+    (fe / "ui" / "workspace" / "Ekran.tsx").write_text(
+        "// export function ReferenceNetworkSurface() {} — komentarz nie liczy sie\n"
+        "export function ReferenceNetworkSurface() { return null; }\n",
+        encoding="utf-8",
+    )
+
+    violations = guard.check_k2_reference_networks_resurrection()
+
+    assert any("[resurrected-module]" in v and "ui/reference-networks" in v for v in violations)
+    assert sum("[resurrected-component]" in v for v in violations) == 1
+
+
+def test_guard_accepts_clean_tree_without_k2_resurrection(tmp_path, monkeypatch) -> None:
+    _patch_k2_tree(monkeypatch, tmp_path)
+    assert guard.check_k2_reference_networks_resurrection() == []
+
+
+def test_real_repo_has_no_k2_resurrection() -> None:
+    assert guard.check_k2_reference_networks_resurrection() == []
