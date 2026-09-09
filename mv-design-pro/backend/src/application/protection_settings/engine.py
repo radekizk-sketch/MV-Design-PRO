@@ -88,6 +88,22 @@ class ProtectionSettingsInput:
     spz_enabled: bool = True  # Whether SPZ (auto-reclose) is considered
     spz_pause_s: float = 0.5  # SPZ dead time [s]
 
+    # --- Rozszerzenie W3-C2 (2026-09-09): generacja lokalna (E-L) — ADDYTYWNE,
+    # opcjonalne, bez zmiany domyślnych wyników I>/I>>/cieplne/SPZ dla
+    # dotychczasowych wejść (karta W3-C2 §0.2 pkt 2). Przeniesione z
+    # `line_overcurrent_setting/analyzer.py::_check_local_generation` z
+    # wejściami JAWNYMI — próg ryzyka blokady ZSZ NIE ma domyślnej wartości
+    # (dawny analizator zaszywał 30% bez cytatu źródła; tu brak progu = werdykt
+    # NIEDOSTĘPNY, zero zgadywania).
+    lokalna_generacja_aktywna: bool = False  # Czy sieć ma aktywną generację lokalną (E-L)
+    lokalna_generacja_typ_zrodla: str | None = (
+        None  # "SYNCHRONICZNE" | "ASYNCHRONICZNE" | "FALOWNIKOWE"
+    )
+    lokalna_generacja_wklad_a: float = 0.0  # Wkład E-L do I_k3_max na początku linii [A]
+    lokalna_generacja_prog_udzialu_zsz: float | None = (
+        None  # Próg udziału E-L → ryzyko ZSZ; brak = NIEDOSTĘPNY
+    )
+
 
 @dataclass(frozen=True)
 class DelayedSettings:
@@ -146,6 +162,83 @@ class SPZAnalysisResult:
 
 
 @dataclass(frozen=True)
+class LocalGenerationDiagnostic:
+    """Diagnostyka sieci z generacją lokalną (E-L) — rozszerzenie W3-C2.
+
+    Interpretacja porównawcza prądów zwarciowych: rozkład prądu 3F na początku
+    chronionej linii (`ik3_max_beginning_a`, wynik solvera SC z kotwicy) na
+    wkład systemu i wkład E-L (wejście JAWNE). Ryzyko blokady ZSZ liczone
+    TYLKO gdy próg udziału podany jawnie w wejściu (`lokalna_generacja_prog_
+    udzialu_zsz`) — bez progu `ryzyko_blokady_zsz` jest `None` (NIEDOSTĘPNY),
+    silnik nie zgaduje progu bez cytowanego źródła (poprzedni analizator FIX-12D
+    zaszywał 30% bez cytatu — świadomie NIE przeniesione, patrz karta W3-C2 §0.2).
+    """
+
+    aktywna: bool
+    typ_zrodla: str | None
+    prad_widziany_lacznie_a: float
+    wklad_el_a: float
+    wklad_systemu_a: float
+    udzial_el: float | None
+    prog_udzialu_zsz: float | None
+    ryzyko_blokady_zsz: bool | None
+    uwagi_pl: list[str]
+    trace: list[dict[str, Any]]
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to JSON-compatible dict."""
+        return {
+            "aktywna": self.aktywna,
+            "typ_zrodla": self.typ_zrodla,
+            "prad_widziany_lacznie_a": self.prad_widziany_lacznie_a,
+            "wklad_el_a": self.wklad_el_a,
+            "wklad_systemu_a": self.wklad_systemu_a,
+            "udzial_el": self.udzial_el,
+            "prog_udzialu_zsz": self.prog_udzialu_zsz,
+            "ryzyko_blokady_zsz": self.ryzyko_blokady_zsz,
+            "uwagi_pl": self.uwagi_pl,
+            "trace": self.trace,
+        }
+
+
+@dataclass(frozen=True)
+class InstantaneousSettingWindow:
+    """Okno dopuszczalnych nastaw I>> z nazwanymi kryteriami granic — rozszerzenie W3-C2.
+
+    Dolna granica zawsze z warunku selektywności (`InstantaneousSettings.
+    i_min_selectivity_a`). Górna granica z warunku, który silniej ogranicza
+    (cieplny albo czułości) — pole `limiting_criterion_max` nazywa który.
+    `window_valid` czyta TEN SAM predykat co `InstantaneousSettings.range_valid`
+    (jedno źródło prawdy — reguła KLASA NIE INSTANCJA, predykaty parami). Przy
+    pustym oknie `conflict_pl` niesie deficyt liczbowy i nazywa oba kryteria
+    (przeniesione z `line_overcurrent_setting/analyzer.py::_mark_window_conflict`,
+    dostosowane do parametrów Hoppla — bez przekładni CT, bez `kc` osobnego).
+    """
+
+    i_min_a: float
+    i_max_a: float
+    limiting_criterion_min: str
+    limiting_criterion_max: str
+    window_valid: bool
+    conflict_pl: str | None
+    recommendations_pl: list[str]
+    trace: list[dict[str, Any]]
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to JSON-compatible dict."""
+        return {
+            "i_min_a": self.i_min_a,
+            "i_max_a": self.i_max_a,
+            "limiting_criterion_min": self.limiting_criterion_min,
+            "limiting_criterion_max": self.limiting_criterion_max,
+            "window_valid": self.window_valid,
+            "conflict_pl": self.conflict_pl,
+            "recommendations_pl": self.recommendations_pl,
+            "trace": self.trace,
+        }
+
+
+@dataclass(frozen=True)
 class ProtectionSettingsResult:
     """Complete result of protection settings calculation."""
 
@@ -155,6 +248,8 @@ class ProtectionSettingsResult:
     instantaneous: InstantaneousSettings
     thermal: ThermalWithstandResult
     spz: SPZAnalysisResult
+    local_generation: LocalGenerationDiagnostic
+    setting_window: InstantaneousSettingWindow
     overall_valid: bool
     summary_notes: list[str]
 
@@ -203,6 +298,10 @@ class ProtectionSettingsResult:
                 "blocking_recommended": self.spz.blocking_recommended,
                 "trace": self.spz.trace,
             },
+            # Rozszerzenie W3-C2 (ADDYTYWNE) — nowe bloki, istniejące klucze wyżej
+            # niezmienione bit w bit dla dotychczasowych wejść.
+            "generacja_lokalna": self.local_generation.to_dict(),
+            "okno_nastaw": self.setting_window.to_dict(),
             "overall_valid": self.overall_valid,
             "summary_notes": self.summary_notes,
         }
@@ -227,6 +326,10 @@ class ProtectionSettingsEngine:
         instantaneous = ProtectionSettingsEngine._calculate_instantaneous(inp)
         thermal = ProtectionSettingsEngine._check_thermal_withstand(inp)
         spz = ProtectionSettingsEngine._analyze_spz(inp, instantaneous, thermal)
+        # Rozszerzenie W3-C2 (ADDYTYWNE) — nie zmienia notes/overall_valid poniżej,
+        # więc istniejące wyjścia dla dotychczasowych wejść zostają bit w bit.
+        local_generation = ProtectionSettingsEngine._check_local_generation(inp)
+        setting_window = ProtectionSettingsEngine._build_setting_window(inp, instantaneous)
 
         notes: list[str] = []
         overall_valid = True
@@ -250,6 +353,8 @@ class ProtectionSettingsEngine:
             instantaneous=instantaneous,
             thermal=thermal,
             spz=spz,
+            local_generation=local_generation,
+            setting_window=setting_window,
             overall_valid=overall_valid,
             summary_notes=notes,
         )
@@ -602,5 +707,235 @@ class ProtectionSettingsEngine:
             i_th_required_a=round(i_th_required, 1),
             i_th_available_a=round(i_th_available, 1),
             blocking_recommended=blocking_recommended,
+            trace=trace,
+        )
+
+    @staticmethod
+    def _check_local_generation(inp: ProtectionSettingsInput) -> LocalGenerationDiagnostic:
+        """
+        Rozszerzenie W3-C2: diagnostyka sieci z generacją lokalną (E-L).
+
+        Porównanie wkładu systemu i E-L do prądu zwarcia 3F na początku chronionej
+        linii (`ik3_max_beginning_a` — wynik solvera SC z kotwicy biegu). Wkład E-L
+        jest wejściem JAWNYM (`lokalna_generacja_wklad_a`) — silnik nie liczy fizyki,
+        tylko interpretuje różnicę. Ryzyko blokady ZSZ liczone WYŁĄCZNIE gdy próg
+        udziału podany jawnie w wejściu; bez progu — `ryzyko_blokady_zsz = None`
+        (NIEDOSTĘPNY), zero zgadywania (Zero-Debt / Zero fabrykacji).
+        """
+        trace: list[dict[str, Any]] = []
+
+        if not inp.lokalna_generacja_aktywna:
+            return LocalGenerationDiagnostic(
+                aktywna=False,
+                typ_zrodla=None,
+                prad_widziany_lacznie_a=0.0,
+                wklad_el_a=0.0,
+                wklad_systemu_a=0.0,
+                udzial_el=None,
+                prog_udzialu_zsz=None,
+                ryzyko_blokady_zsz=None,
+                uwagi_pl=["Generacja lokalna (E-L) nieaktywna."],
+                trace=[
+                    {
+                        "step": "Generacja lokalna nieaktywna",
+                        "result": {"lokalna_generacja_aktywna": False},
+                    }
+                ],
+            )
+
+        prad_lacznie = inp.ik3_max_beginning_a
+        wklad_el = inp.lokalna_generacja_wklad_a
+        wklad_systemu = prad_lacznie - wklad_el
+        udzial_el = wklad_el / prad_lacznie if prad_lacznie > 0 else None
+
+        trace.append(
+            {
+                "step": "Rozkład wkładów prądu zwarciowego (system / E-L)",
+                "formula": "I_{system} = I_{k3,max,poczatek} - I_{E-L}",
+                "inputs": {
+                    "ik3_max_beginning_a": round(prad_lacznie, 1),
+                    "wklad_el_a": round(wklad_el, 1),
+                },
+                "substitution": f"{prad_lacznie:.1f} - {wklad_el:.1f}",
+                "result": {
+                    "wklad_systemu_a": round(wklad_systemu, 1),
+                    "udzial_el": round(udzial_el, 4) if udzial_el is not None else None,
+                },
+            }
+        )
+
+        uwagi: list[str] = []
+        prog_wejsciowy = inp.lokalna_generacja_prog_udzialu_zsz
+        ryzyko: bool | None
+        if prog_wejsciowy is None:
+            ryzyko = None
+            uwagi.append(
+                "Ryzyko blokady ZSZ NIEDOSTĘPNE: brak jawnie podanego progu udziału E-L "
+                "(lokalna_generacja_prog_udzialu_zsz) — silnik nie zgaduje progu bez "
+                "nazwanego źródła."
+            )
+            trace.append(
+                {
+                    "step": "Ryzyko blokady ZSZ — brak progu wejściowego",
+                    "result": {"ryzyko_blokady_zsz": None, "powod": "brak progu wejściowego"},
+                }
+            )
+        elif udzial_el is None:
+            ryzyko = None
+            uwagi.append(
+                "Ryzyko blokady ZSZ NIEDOSTĘPNE: prąd zwarciowy łącznie na początku linii "
+                "jest niedodatni — udział E-L niewyznaczalny."
+            )
+            trace.append(
+                {
+                    "step": "Ryzyko blokady ZSZ — udział niewyznaczalny",
+                    "result": {"ryzyko_blokady_zsz": None, "powod": "ik3_max_beginning_a <= 0"},
+                }
+            )
+        else:
+            ryzyko = udzial_el >= prog_wejsciowy
+            if ryzyko:
+                uwagi.append(
+                    f"Wkład E-L stanowi {udzial_el*100:.1f}% prądu zwarciowego (próg "
+                    f"{prog_wejsciowy*100:.1f}%) — ryzyko niepożądanej blokady ZSZ; rozważ "
+                    "blokadę kierunkową i sprawdź nastawy ZSZ pod kątem wkładu od E-L."
+                )
+            else:
+                uwagi.append(
+                    f"Wkład E-L {udzial_el*100:.1f}% poniżej progu ryzyka blokady ZSZ "
+                    f"({prog_wejsciowy*100:.1f}%)."
+                )
+            trace.append(
+                {
+                    "step": "Sprawdzenie ryzyka blokady ZSZ",
+                    "formula": "ryzyko = (I_{E-L} / I_{lacznie}) \\geq prog_{ZSZ}",
+                    "inputs": {"udzial_el": udzial_el, "prog_udzialu_zsz": prog_wejsciowy},
+                    "result": {"ryzyko_blokady_zsz": ryzyko},
+                }
+            )
+
+        if inp.lokalna_generacja_typ_zrodla == "SYNCHRONICZNE":
+            uwagi.append(
+                "Generator synchroniczny — znaczący wkład do prądów zwarciowych; "
+                "uwzględnij wkład E-L w analizie czułości zabezpieczeń."
+            )
+        elif inp.lokalna_generacja_typ_zrodla == "FALOWNIKOWE":
+            uwagi.append(
+                "Źródło falownikowe — ograniczony wkład do prądów zwarciowych "
+                "(typowo 1,1–1,5 In falownika)."
+            )
+
+        return LocalGenerationDiagnostic(
+            aktywna=True,
+            typ_zrodla=inp.lokalna_generacja_typ_zrodla,
+            prad_widziany_lacznie_a=round(prad_lacznie, 1),
+            wklad_el_a=round(wklad_el, 1),
+            wklad_systemu_a=round(wklad_systemu, 1),
+            udzial_el=round(udzial_el, 4) if udzial_el is not None else None,
+            prog_udzialu_zsz=inp.lokalna_generacja_prog_udzialu_zsz,
+            ryzyko_blokady_zsz=ryzyko,
+            uwagi_pl=uwagi,
+            trace=trace,
+        )
+
+    @staticmethod
+    def _build_setting_window(
+        inp: ProtectionSettingsInput, inst: InstantaneousSettings
+    ) -> InstantaneousSettingWindow:
+        """
+        Rozszerzenie W3-C2: okno dopuszczalnych nastaw I>> z nazwanymi kryteriami.
+
+        Nie liczy niczego od nowa — czyta WYŁĄCZNIE pola już policzone przez
+        `_calculate_instantaneous` (`i_min_selectivity_a`, `i_max_thermal_a`,
+        `i_max_sensitivity_a`, `range_valid`) — jedno źródło prawdy dla ważności
+        okna, tak jak `InstantaneousSettings.is_valid` powyżej. Dodaje wyłącznie
+        NAZWĘ kryterium granicznego, tekst konfliktu i rekomendacje — informacje,
+        których dotychczasowy silnik nie ujawniał w osobnym, nazwanym bloku
+        (karta W3-C2 §0.2 pkt 2, przeniesione z `line_overcurrent_setting/
+        analyzer.py::_calculate_setting_window`/`_mark_window_conflict`/
+        `_generate_recommendations`, dostosowane do parametrów Hoppla — bez
+        przekładni CT, bez sugestii dotyczących `kc`, którego Hoppel nie ma).
+        """
+        trace: list[dict[str, Any]] = []
+
+        i_min = inst.i_min_selectivity_a
+        if inst.i_max_sensitivity_a <= inst.i_max_thermal_a:
+            i_max = inst.i_max_sensitivity_a
+            limiting_max = "sensitivity"
+        else:
+            i_max = inst.i_max_thermal_a
+            limiting_max = "thermal"
+        window_valid = inst.range_valid
+
+        trace.append(
+            {
+                "step": "Nazwanie kryteriów granic okna I>>",
+                "inputs": {
+                    "i_min_selectivity_a": i_min,
+                    "i_max_thermal_a": inst.i_max_thermal_a,
+                    "i_max_sensitivity_a": inst.i_max_sensitivity_a,
+                },
+                "result": {
+                    "i_min_a": round(i_min, 1),
+                    "i_max_a": round(i_max, 1),
+                    "limiting_criterion_max": limiting_max,
+                    "window_valid": window_valid,
+                },
+            }
+        )
+
+        conflict_pl: str | None = None
+        recommendations: list[str] = []
+
+        if not window_valid:
+            deficit = i_min - i_max
+            limiting_pl = "czułość" if limiting_max == "sensitivity" else "wytrzymałość cieplna"
+            conflict_pl = (
+                f"Konflikt kryteriów: dolna granica {i_min/1000:.2f} kA (selektywność) "
+                f"przewyższa górną {i_max/1000:.2f} kA ({limiting_pl}) o "
+                f"{deficit/1000:.2f} kA — żadna nastawa I>> nie spełnia obu warunków "
+                "jednocześnie."
+            )
+            recommendations.append(
+                f"Okno nastaw jest sprzeczne (I_min = {i_min/1000:.2f} kA > "
+                f"I_max = {i_max/1000:.2f} kA)."
+            )
+            if limiting_max == "sensitivity":
+                recommendations.append(
+                    "Możliwe rozwiązania: obniż współczynnik k_b, zwiększ zapas wobec "
+                    "kolejnej strefy selektywności, lub przenieś punkt kolejnego "
+                    "zabezpieczenia (next_bus_id)."
+                )
+            else:
+                recommendations.append(
+                    "Możliwe rozwiązania: zwiększ przekrój przewodu, skróć czas "
+                    "zadziałania zabezpieczenia (delta_t_s / t_upstream_s), lub "
+                    "wyłącz SPZ."
+                )
+            trace.append(
+                {
+                    "step": "Konflikt okna nastaw I>>",
+                    "inputs": {"i_min_a": round(i_min, 1), "i_max_a": round(i_max, 1)},
+                    "outputs": {
+                        "deficit_a": round(deficit, 1),
+                        "limiting_criterion_max": limiting_max,
+                        "notes_pl": conflict_pl,
+                    },
+                }
+            )
+        else:
+            recommendations.append(
+                f"Zalecana nastawa I>>: {inst.i_setting_a:.1f} A (środek okna "
+                f"[{i_min:.1f}, {i_max:.1f}] A)."
+            )
+
+        return InstantaneousSettingWindow(
+            i_min_a=round(i_min, 1),
+            i_max_a=round(i_max, 1),
+            limiting_criterion_min="selectivity",
+            limiting_criterion_max=limiting_max,
+            window_valid=window_valid,
+            conflict_pl=conflict_pl,
+            recommendations_pl=recommendations,
             trace=trace,
         )
