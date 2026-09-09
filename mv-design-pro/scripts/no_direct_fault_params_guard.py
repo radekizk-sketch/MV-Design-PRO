@@ -177,14 +177,12 @@ LEGACY_DIRECT_SOLVER_CALLERS: dict[str, dict[str, int]] = {
     "application/proof_engine/packs/sc_symmetrical.py": {
         "C:compute_machine_contributions": 1,
     },
-    "application/reference_networks/computation.py": {
-        "A:compute_2ph_short_circuit": 1,
-        "A:compute_3ph_short_circuit": 1,
-    },
-    "application/reference_networks/station_archetype_substrate.py": {
-        "A:compute_3ph_short_circuit": 1,
-        "C:compute_machine_contributions": 2,
-    },
+    # `application/reference_networks/computation.py` i
+    # `.../station_archetype_substrate.py` usuniete/przeniesione karta K2
+    # (2026-09-09): computation.py skasowany razem z calym dawnym dialektem;
+    # station_archetype_substrate.py przeniesiony do `backend/tests/` (poza
+    # BACKEND_SRC, wiec poza skanem tego guarda) — oba wpisy zdjete (zapadka
+    # w obie strony, niedobor = obniz budzet).
     "enm/canonical_analysis.py": {
         "A:compute_1ph_short_circuit": 1,
         "A:compute_2ph_ground_short_circuit": 1,

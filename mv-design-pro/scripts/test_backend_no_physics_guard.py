@@ -271,10 +271,10 @@ def test_pochodne_naprawde_istnieje_i_niesie_wiekszosc_rodzin() -> None:
 
 def test_pin_stanu_repozytorium() -> None:
     """Zapadka = pomiar (obie strony). Wzrost = formuła fizyczna poza
-    pochodne/; spadek = obniż ZASTANE. Docelowo (po karcie A2 — kasacja
-    `application/reference_networks/**`) zapadka jest PUSTA."""
+    pochodne/; spadek = obniż ZASTANE. Karta K2 (2026-09-09) skasowała
+    `application/reference_networks/**` — zapadka jest PUSTA."""
     assert porownaj_z_zapadka(zmierz(), ZASTANE) == []
-    assert set(ZASTANE) <= {"application/reference_networks/computation.py"}
+    assert ZASTANE == {}
 
 
 def test_wykluczone_prefiksy_to_solvery_i_siostrzany_pochodne() -> None:

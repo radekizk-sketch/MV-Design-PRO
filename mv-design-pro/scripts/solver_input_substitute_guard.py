@@ -660,18 +660,10 @@ WYKLUCZENIA_SKANERA: dict[str, dict[str, int]] = {
         "H:local:load.p_kw": 1,
         "H:local:load.q_kvar": 1,
     },
-    # (f) ZAWEZENIE TYPU DLA TYPE-CHECKERA na galezi STRUKTURALNIE MARTWEJ.
-    # `_confidence_pct`'s wlasny docstring: „confidence_pct is ALWAYS a float
-    # (built via round(...) above); narrowed explicitly because the dict's
-    # value type is object" — `isinstance` nie odsiewa braku danych (danej
-    # brakujacej nigdy nie ma), tylko dowodzi typ mypy dla slownika
-    # `dict[str, object]`; galaz `else 0.0` nie wykona sie NIGDY w praktyce.
-    # `confidence_pct` jest tez WYNIKIEM DOPASOWANIA WZORCA (ranking
-    # podobienstwa sieci referencyjnej), nie wielkoscia elektryczna — ta sama
-    # klasa, co `issue.priority`/`summary.total_issues` wyzej w tym slowniku.
-    "application/reference_networks/similarity_matcher.py": {
-        "H:local:match.confidence_pct": 1,
-    },
+    # `application/reference_networks/similarity_matcher.py` (wpis (f),
+    # zawezenie typu dla type-checkera na galezi strukturalnie martwej) —
+    # skasowany karta K2 (2026-09-09) razem z cala tracka reference-networks
+    # (jedyny konsument: usuniety ekran ReferenceNetworkSurface).
 }
 
 #: Zapadka zastanych zastepnikow: plik -> {"<forma>:<cel>": liczba}.
@@ -1404,14 +1396,11 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "F:dictget:tp.i_a_primary": 1,
         "F:dictget:tp.i_a_secondary": 1,
     },
-    "application/reference_networks/expected_values.py": {
-        "F:dictget:item.rtol": 3,
-    },
-    "application/reference_networks/station_archetype_substrate.py": {
-        "B:ifexp:rmax.ikss_a": 1,
-        "B:ifexp:rmin.ikss_a": 1,
-        "C:getattr:rated_current_a": 2,
-    },
+    # `application/reference_networks/expected_values.py` (F:dictget:item.rtol
+    # x3) i `.../station_archetype_substrate.py` (B:ifexp x2 + C:getattr x2):
+    # karta K2 (2026-09-09) przeniosla oba pliki pod `backend/tests/` (poza
+    # BACKEND_SRC, wiec poza skanem tego guarda) bez zmiany wlasnej tresci —
+    # wpisy zdjete, nie dlug naprawiony (zapadka dziala w obie strony).
     "application/reference_patterns/pattern_line_i_doubleprime_thermal_spz.py": {
         "B:ifexp:window.i_min_primary_a": 2,
         "F:dictget:conductor_data.theta_b_deg": 1,

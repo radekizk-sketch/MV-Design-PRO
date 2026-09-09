@@ -1,7 +1,7 @@
 /**
  * GENERATED — do not edit by hand. The COMPACT 53-station SLD network model, distilled from the
  * backend ENM substrate (backend/tests/reference_networks/sld_substrate_52s.py) by
- * application/reference_networks/sld_network_model.py. Regenerate:
+ * backend/tests/golden/sld_network_model.py. Regenerate:
  *   cd backend && poetry run python scripts/emit_sld_network_fixture.py
  * It is the read-only INPUT to the E3 network auto-layout — the SAME source the backend solves.
  */

@@ -11,8 +11,9 @@
  * solver, końcówki API i katalog `analysis-types` pozostają NIETKNIĘTE — wycofanie
  * dotyczy wyłącznie warstwy prezentacji. Zdolność jest dalej wykonywana i pilnowana
  * w kontroli jakości przez
- * `backend/tests/application/reference_networks/test_ieee_benchmark_wiring.py`
- * (referencje z niezależnej implementacji, wynik z naszego solvera produkcyjnego).
+ * `backend/tests/golden/parytet_benchmarkow/test_ieee_benchmark_wiring.py`
+ * (przeniesiony z `tests/application/reference_networks/` kartą K2, 2026-09-09;
+ * referencje z niezależnej implementacji, wynik z naszego solvera produkcyjnego).
  *
  * DLACZEGO REJESTR, A NIE CICHE USUNIĘCIE WPISU: parytet front↔backend pilnuje
  * `backend/tests/ci/test_v126_rodzaje_parytet.py`. Gdyby rodzaj po prostu zniknął

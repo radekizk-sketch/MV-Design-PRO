@@ -22,12 +22,12 @@ TOL_PU = 2e-4
 #: pandapower 3.5.4, runpp, vm_pu w kolejności szyn literatury (B0 = szyna 1).
 NAPIECIA_PANDAPOWER: dict[str, tuple[str, str, list[float]]] = {
     "case9": (
-        "application.reference_networks.enm_builders.ieee_9bus",
+        "tests.golden.enm_builders.ieee_9bus",
         "build_ieee_9bus_enm",
         [1.0, 1.0, 1.0, 0.987, 0.9755, 1.0034, 0.9856, 0.9962, 0.9576],
     ),
     "case14": (
-        "application.reference_networks.enm_builders.ieee_14bus",
+        "tests.golden.enm_builders.ieee_14bus",
         "build_ieee_14bus_enm",
         [
             1.06,
@@ -47,7 +47,7 @@ NAPIECIA_PANDAPOWER: dict[str, tuple[str, str, list[float]]] = {
         ],
     ),
     "case39": (
-        "application.reference_networks.enm_builders.ieee_39bus",
+        "tests.golden.enm_builders.ieee_39bus",
         "build_ieee_39bus_enm",
         [
             1.03938,

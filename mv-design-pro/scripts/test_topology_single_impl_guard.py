@@ -86,9 +86,7 @@ def test_dom_i_allowlist_wylaczone_z_pomiaru_ale_dom_naprawde_jest_jadrem(tmp_pa
 
 def test_pin_stanu_repozytorium() -> None:
     """Zapadka = pomiar (obie strony). Wzrost = własna topologia poza jądrem; spadek =
-    obniż ZASTANE (docelowo puste — wpisy to sieci referencyjne kasowane w CV-4.3 K2)."""
+    obniż ZASTANE. Karta K2 (2026-09-09) przeniosła oba wcześniejsze wpisy (sieci
+    referencyjne) pod `backend/tests/golden/` — zapadka jest PUSTA."""
     assert porownaj_z_zapadka(zmierz(), ZASTANE) == []
-    assert set(ZASTANE) <= {
-        "application/reference_networks/sld_network_model.py",
-        "application/reference_networks/sld_substrate_power_flow.py",
-    }
+    assert ZASTANE == {}

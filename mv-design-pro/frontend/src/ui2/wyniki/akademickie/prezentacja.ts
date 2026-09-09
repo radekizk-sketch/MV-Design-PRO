@@ -721,7 +721,8 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
    * MA tu projektu ekranu, bo został wycofany z toru projektanta — bada, czy
    * solver odtwarza sieci odniesienia, czyli sprawdza NARZĘDZIE, nie projekt
    * użytkownika. Zdolność żyje dalej w backendzie i w kontroli jakości
-   * (`backend/tests/application/reference_networks/test_ieee_benchmark_wiring.py`).
+   * (`backend/tests/golden/parytet_benchmarkow/test_ieee_benchmark_wiring.py`,
+   * przeniesiony kartą K2, 2026-09-09).
    * Powód wycofania: `nieprezentowane.ts`; rozstrzygnięcie:
    * `docs/v12xx/REJESTR_KONFLIKTOW.md`, wiersz V126-WYGASZENIE.
    */

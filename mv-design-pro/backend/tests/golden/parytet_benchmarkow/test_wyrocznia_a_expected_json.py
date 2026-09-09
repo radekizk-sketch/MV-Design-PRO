@@ -1,13 +1,16 @@
 """Wyrocznia (a) — ENM-bliźniaki benchmarków vs `expected/*.json` (CV-4.3 K1).
 
-Buduje każdą sieć przez `application/reference_networks/enm_builders/*.py`
-(operacje domenowe + typy katalogowe `benchmark` — K1.1/K1.2), liczy TOREM
-KANONICZNYM (`enm/canonical_analysis.py` -> FROZEN `power_flow_newton`/
+Buduje każdą sieć przez `tests/golden/enm_builders/*.py` (operacje domenowe +
+typy katalogowe `benchmark` — K1.1/K1.2; przeniesione z `application/
+reference_networks/enm_builders/` kartą K2, 2026-09-09, razem z `comparator.py`
+i `expected_values.py` niżej — treść niezmieniona), liczy TOREM KANONICZNYM
+(`enm/canonical_analysis.py` -> FROZEN `power_flow_newton`/
 `ShortCircuitIEC60909Solver`) i porównuje z `expected/*.json` (tolerancja
-zadeklarowana PER WIERSZ w pliku — `comparator.py`, ta sama infrastruktura co
-`/api/v1/reference-networks/*/validate`, tu na wyniku kanonicznym zamiast
-starego dialektu). Rozbieżność ponad tolerancję jest DEFEKTEM do wyjaśnienia
-(K1.3) — nigdy nie luzuje się tolerancji, żeby przepchnąć niezgodność.
+zadeklarowana PER WIERSZ w pliku — `comparator.py`, DAWNIEJ ta sama
+infrastruktura co `/api/v1/reference-networks/*/validate`, usunięte kartą K2 —
+dziś wyłącznie tor kanoniczny). Rozbieżność ponad tolerancję jest DEFEKTEM do
+wyjaśnienia (K1.3) — nigdy nie luzuje się tolerancji, żeby przepchnąć
+niezgodność.
 
 Sieć NIESYMETRYCZNA ieee_34bus (ieee_13bus ma dodatkowo swój WŁASNY test bez
 xfail — patrz `test_ieee_13bus_pf_aproksymacja_pozytywnosekwencyjna`, weryfikuje
@@ -26,15 +29,14 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from application.reference_networks.comparator import compare_power_flow, compare_short_circuit
-from application.reference_networks.expected_values import load_expected_values_from_json
 from enm.canonical_analysis import CanonicalRun, _execute_power_flow, _execute_short_circuit
 from enm.mapping import _ref_to_uuid
 from enm.models import EnergyNetworkModel
 
-_EXPECTED_DIR = (
-    Path(__file__).parents[3] / "src" / "application" / "reference_networks" / "expected"
-)
+from tests.golden.parytet_benchmarkow.comparator import compare_power_flow, compare_short_circuit
+from tests.golden.parytet_benchmarkow.expected_values import load_expected_values_from_json
+
+_EXPECTED_DIR = Path(__file__).parent / "expected"
 
 
 def _bieg(snapshot: dict[str, Any], analysis_type: str, options: dict[str, Any]) -> CanonicalRun:
@@ -132,25 +134,25 @@ def _sprawdz_sc(builder: Any, expected_filename: str) -> None:
 
 
 def test_ieee_4bus_pf() -> None:
-    from application.reference_networks.enm_builders.ieee_4bus import build_ieee_4bus_enm
+    from tests.golden.enm_builders.ieee_4bus import build_ieee_4bus_enm
 
     _sprawdz_pf(build_ieee_4bus_enm, "ieee_4bus.json")
 
 
 def test_ieee_9bus_pf() -> None:
-    from application.reference_networks.enm_builders.ieee_9bus import build_ieee_9bus_enm
+    from tests.golden.enm_builders.ieee_9bus import build_ieee_9bus_enm
 
     _sprawdz_pf(build_ieee_9bus_enm, "ieee_9bus.json")
 
 
 def test_cigre_mv_pf() -> None:
-    from application.reference_networks.enm_builders.cigre_mv import build_cigre_mv_enm
+    from tests.golden.enm_builders.cigre_mv import build_cigre_mv_enm
 
     _sprawdz_pf(build_cigre_mv_enm, "cigre_mv.json")
 
 
 def test_cigre_lv_benchmark_pf() -> None:
-    from application.reference_networks.enm_builders.cigre_lv_benchmark import (
+    from tests.golden.enm_builders.cigre_lv_benchmark import (
         build_cigre_lv_benchmark_enm,
     )
 
@@ -158,7 +160,7 @@ def test_cigre_lv_benchmark_pf() -> None:
 
 
 def test_pp_simple_four_bus_pf() -> None:
-    from application.reference_networks.enm_builders.pp_simple_four_bus import (
+    from tests.golden.enm_builders.pp_simple_four_bus import (
         build_pp_simple_four_bus_enm,
     )
 
@@ -166,13 +168,13 @@ def test_pp_simple_four_bus_pf() -> None:
 
 
 def test_oze_pv_bess_pf() -> None:
-    from application.reference_networks.enm_builders.oze_pv_bess import build_oze_pv_bess_enm
+    from tests.golden.enm_builders.oze_pv_bess import build_oze_pv_bess_enm
 
     _sprawdz_pf(build_oze_pv_bess_enm, "oze_pv_bess.json")
 
 
 def test_iec60909_example_sc() -> None:
-    from application.reference_networks.enm_builders.iec60909_example import (
+    from tests.golden.enm_builders.iec60909_example import (
         build_iec60909_example_enm,
     )
 
@@ -180,7 +182,7 @@ def test_iec60909_example_sc() -> None:
 
 
 def test_pandapower_iec60909_radial_sc() -> None:
-    from application.reference_networks.enm_builders.pandapower_iec60909_radial import (
+    from tests.golden.enm_builders.pandapower_iec60909_radial import (
         build_pandapower_iec60909_radial_enm,
     )
 
@@ -199,7 +201,7 @@ def test_ieee_13bus_pf_aproksymacja_pozytywnosekwencyjna() -> None:
     PRAWDZIWE rozwiązanie niesymetryczne (rzeczywisty rozkład obciążeń per
     faza z Kerstinga) pozostaje PLANNED — FROZEN power_flow_newton liczy
     wyłącznie sieci symetryczne (4-przewodowy tor to przyszłe ADR-021)."""
-    from application.reference_networks.enm_builders.ieee_13bus import build_ieee_13bus_enm
+    from tests.golden.enm_builders.ieee_13bus import build_ieee_13bus_enm
 
     _sprawdz_pf(build_ieee_13bus_enm, "ieee_13bus.json")
 
@@ -212,7 +214,7 @@ def test_ieee_13bus_pf_aproksymacja_pozytywnosekwencyjna() -> None:
     strict=False,
 )
 def test_ieee_34bus_pf_planned() -> None:
-    from application.reference_networks.enm_builders.ieee_34bus import build_ieee_34bus_enm
+    from tests.golden.enm_builders.ieee_34bus import build_ieee_34bus_enm
 
     _sprawdz_pf(build_ieee_34bus_enm, "ieee_34bus.json")
 
@@ -230,7 +232,7 @@ def test_ieee_14bus_pf_zgodny_z_wyrocznia_a() -> None:
     `pandapower.networks.case14()` + `runpp`: max|ΔU| 3·10⁻⁵ p.u.
     (`tests/network_model/test_blizniaki_matpower_napiecia.py`).
     """
-    from application.reference_networks.enm_builders.ieee_14bus import build_ieee_14bus_enm
+    from tests.golden.enm_builders.ieee_14bus import build_ieee_14bus_enm
 
     _sprawdz_pf(build_ieee_14bus_enm, "ieee_14bus.json")
 
@@ -246,6 +248,6 @@ def test_ieee_39bus_pf_zgodny_z_wyrocznia_a() -> None:
     `hv_voltage_kv`: nowa szyna HV nad istniejącą LV). Zgodność z
     `pandapower.networks.case39()` + `runpp`: max|ΔU| < 1·10⁻⁵ p.u.
     """
-    from application.reference_networks.enm_builders.ieee_39bus import build_ieee_39bus_enm
+    from tests.golden.enm_builders.ieee_39bus import build_ieee_39bus_enm
 
     _sprawdz_pf(build_ieee_39bus_enm, "ieee_39bus.json")

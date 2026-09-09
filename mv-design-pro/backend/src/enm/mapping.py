@@ -180,13 +180,15 @@ def impedancja_zasilania_systemowego(
       ślad niesie ``zalozenie = source.sk_min_missing`` (kod gotowości), a wykonawca
       publikuje je w ``raw_result.zalozenia``.
 
-    Postać WARTOŚCIOWA (nie ``Source``) — CV-4.3 K1 (KLASA NIE INSTANCJA):
-    ``application/reference_networks/computation.py::build_short_circuit_graph_from_enm``
-    potrzebuje TEJ SAMEJ formuły dla źródła w starym dialekcie słownikowym
-    (``sk_max_mva``/``rx_ratio`` wprost w dict); wrapper ``impedancja_zrodla_sieciowego``
-    podaje tu pola pydantic ``Source``. Jedna formuła, zero kopii — druga kopia
-    rozjechałaby się przy pierwszej zmianie (dokładnie tak, jak do K6 rozjechał się
-    most pandapower i mapper). Tryb danych rozstrzyga ``enm.zrodlo_zwarcie.tryb_danych``
+    Postać WARTOŚCIOWA (nie ``Source``) — CV-4.3 K1 (KLASA NIE INSTANCJA): do karty
+    K2 (2026-09-09) ``application/reference_networks/computation.py::
+    build_short_circuit_graph_from_enm`` potrzebował TEJ SAMEJ formuły dla źródła
+    w starym dialekcie słownikowym (``sk_max_mva``/``rx_ratio`` wprost w dict);
+    ten plik i całe `computation.py` skasowane kartą K2 — wrapper
+    ``impedancja_zrodla_sieciowego`` (jedyny żyjący konsument dziś) podaje tu pola
+    pydantic ``Source``. Jedna formuła, zero kopii — druga kopia rozjechałaby się
+    przy pierwszej zmianie (dokładnie tak, jak do K6 rozjechał się most pandapower
+    i mapper). Tryb danych rozstrzyga ``enm.zrodlo_zwarcie.tryb_danych``
     — TEN SAM predykat, którym walidator i gotowość sprawdzają, czy źródło jest
     policzalne (predykaty parami).
 
@@ -1058,8 +1060,9 @@ def map_enm_to_network_graph(
                 # kryterium niesprawdzalne": `analysis/energy_validation/builder.py`
                 # (pozycja NOT_COMPUTED „Brak pradu znamionowego galezi"),
                 # `analysis/power_flow/analysis.py`, `application/sld/overlay_builder.py`
-                # i `application/reference_networks/station_archetype_substrate.py`
-                # bramkuja `rated > 0`. Ta sama klasa defektu zostala juz naprawiona
+                # i `backend/tests/reference_networks/station_archetype_substrate.py`
+                # (przeniesiony z `application/reference_networks/` karta K2,
+                # 2026-09-09) bramkuja `rated > 0`. Ta sama klasa defektu zostala juz naprawiona
                 # w imporcie XLSX (`application/xlsx_import/importer.py`: „ZERO
                 # WARTOSCI FIKCYJNYCH … 0.0 = wielkosc nieznana") oraz w moscie
                 # wejsciowym V12.6 (630 A / 300 A per aparat) — tu byla ostatnia

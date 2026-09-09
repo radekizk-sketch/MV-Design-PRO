@@ -53,11 +53,15 @@ SOLVER_PY = PROJECT_ROOT / "backend" / "src" / "network_model" / "solvers" / "v1
 #: Wpis w rejestrze wycofań bez pozycji tutaj zapala `test_zdolnosc_wycofana_ma_kontrole_jakosci`
 #: — wycofanie ma PRZENOSIĆ zdolność do kontroli jakości, nie zostawiać jej bez konsumenta.
 KONTROLA_JAKOSCI_WYCOFANYCH: dict[str, Path] = {
+    # K2 (2026-09-09): przeniesiony z tests/application/reference_networks/ —
+    # `application/reference_networks/**` (dawny dialekt benchmarków) skasowany
+    # w całości; kontrola jakości przepięta na tor kanoniczny (ENM-bliźniaki),
+    # patrz `tests/golden/parytet_benchmarkow/kontrola_v126.py`.
     "benchmark_validation": PROJECT_ROOT
     / "backend"
     / "tests"
-    / "application"
-    / "reference_networks"
+    / "golden"
+    / "parytet_benchmarkow"
     / "test_ieee_benchmark_wiring.py",
     "voltage_stability": PROJECT_ROOT
     / "backend"

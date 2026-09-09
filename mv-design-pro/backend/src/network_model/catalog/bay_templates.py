@@ -133,7 +133,10 @@ TRANSFORMER_BAY_PROTECTION_CODES: list[str] = [
 # źródłowego SN. Kierunkowe nadprądowe (67/67N), napięciowe (27/59), częstotliwościowe
 # (81U/81O), ROCOF (df/dt) i ochrona przed pracą wyspową (anti-islanding). PEŁNA ochrona
 # maszyny (87G, 40, 32, 64, 46, 21/25) mieszka na source.protection, NIE na polu interfejsu.
-# Lustro `_PROTECTION_BY_MACHINE["IBG"]` z reference_networks (jedno źródło kanonu interfejsu).
+# Lustro `_PROTECTION_BY_MACHINE["IBG"]` z
+# `backend/tests/reference_networks/station_archetype_substrate.py` (jedno źródło
+# kanonu interfejsu; ścieżka przeniesiona z `application/reference_networks/`
+# karta K2, 2026-09-09).
 OZE_INTERFACE_BAY_PROTECTION_CODES: list[str] = [
     "67",
     "67N",

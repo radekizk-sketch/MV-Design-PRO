@@ -99,17 +99,6 @@ export const GRUPY_ANALIZ: readonly GrupaAnaliz[] = [
         testid: 'mvd-analizy-karta-stabilnosc',
         zakladkaWynikow: 'stabilnosc',
       },
-      {
-        // ROUTERY-4A (S6): jedyna produkcyjna droga do rozpływu niesymetrycznego
-        // (BFS per faza) prowadzi przez sieci referencyjne — karta czyni
-        // powierzchnię E-39 osiągalną z nowej powłoki (dotąd ZERO wejść).
-        ekran: 'E-39',
-        tytul: 'Walidacja sieci referencyjnych',
-        opis: 'Rozpływ (w tym niesymetryczny BFS per faza) i zwarcia na wbudowanych sieciach wzorcowych IEEE/CIGRE/IEC — wynik solvera i porównanie z wartościami z literatury.',
-        zrodlo: 'wbudowane sieci referencyjne (IEEE, CIGRE, IEC) i solvery systemu',
-        wymaga: 'wbudowane',
-        testid: 'mvd-analizy-karta-sieci-referencyjne',
-      },
     ],
   },
   {

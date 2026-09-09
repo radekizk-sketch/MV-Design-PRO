@@ -71,7 +71,8 @@
  * `power_flow_newton_internal.py::build_power_spec_v2` neguje ponownie
  * oczekując konwencji obciążeniowej. Naprawione konwersją gen→load NA
  * GRANICY budowy `PQSpec` (`canonical_analysis.py` oraz analogiczny
- * `application/reference_networks/sld_substrate_power_flow.py`); `mapping.py`
+ * `backend/tests/golden/sld_substrate_power_flow.py` — przeniesiony z
+ * `application/reference_networks/` kartą K2, 2026-09-09); `mapping.py`
  * i solver NIETKNIĘTE (oba poprawne na własnych warunkach). Dowód fizyczny:
  * `backend/tests/test_canonical_analysis_api.py
  * ::test_resultset_v1_load_flow_direction_and_voltage_drop_are_physically_correct`

@@ -14,7 +14,7 @@ _BACKEND = os.path.dirname(_HERE)
 sys.path.insert(0, os.path.join(_BACKEND, "src"))
 sys.path.append(os.path.join(_BACKEND, "tests"))
 
-from application.reference_networks.sld_network_model import (  # noqa: E402
+from golden.sld_network_model import (  # noqa: E402
     distill_sld_network,
     render_sld_network_fixture,
 )

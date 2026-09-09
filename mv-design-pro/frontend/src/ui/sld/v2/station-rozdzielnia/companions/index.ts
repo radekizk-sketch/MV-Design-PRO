@@ -4,11 +4,11 @@
  * Per-archetype frozen-solver power-flow companions for the station-rozdzielnia
  * v2 renderer. Produced by running the FROZEN power-flow solver
  * (`solve_power_flow_physics`) on the per-archetype substrate in
- * `backend/src/application/reference_networks/station_archetype_substrate.py`
+ * `backend/tests/reference_networks/station_archetype_substrate.py`
  * (READ-ONLY w.r.t. the solver, B-01). Regenerate with:
  *
  *   cd mv-design-pro/backend && poetry run python -m \
- *     application.reference_networks.station_archetype_substrate --write
+ *     tests.reference_networks.station_archetype_substrate --write
  *
  * The renderer reads nN load power, PV generation, power-flow DIRECTION and
  * energisation from THESE values (one truth) — never recomputed in the renderer.

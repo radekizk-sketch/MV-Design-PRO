@@ -28,9 +28,9 @@ pytestmark = pytest.mark.pandapower
 
 TOL_PU = 2e-4
 _PRZYPADKI = [
-    ("case9", "application.reference_networks.enm_builders.ieee_9bus", "build_ieee_9bus_enm"),
-    ("case14", "application.reference_networks.enm_builders.ieee_14bus", "build_ieee_14bus_enm"),
-    ("case39", "application.reference_networks.enm_builders.ieee_39bus", "build_ieee_39bus_enm"),
+    ("case9", "tests.golden.enm_builders.ieee_9bus", "build_ieee_9bus_enm"),
+    ("case14", "tests.golden.enm_builders.ieee_14bus", "build_ieee_14bus_enm"),
+    ("case39", "tests.golden.enm_builders.ieee_39bus", "build_ieee_39bus_enm"),
 ]
 
 

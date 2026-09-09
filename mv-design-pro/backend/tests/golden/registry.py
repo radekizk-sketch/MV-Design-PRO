@@ -39,12 +39,15 @@ class StatusSieci(str, Enum):
 
 class PostacSieci(str, Enum):
     """Postać danych budowniczego. `ENM` = `EnergyNetworkModel` (lub słownik walidujący się jako ENM);
-    `BENCHMARK_DICT` = słownik dialektu benchmarków (`application/reference_networks/library.py`:
+    `BENCHMARK_DICT` = słownik dialektu benchmarków (dawny `application/reference_networks/library.py`:
     `id` szyn jako napisy, NIE waliduje się jako ENM) — DRUGA PRAWDA O SIECI liczona własnym
     solverem (P9, A3 §2.1). CV-4.3 K1 (2026-09-06): B-BENCH i G07 (12 benchmarków + oze_pv_bess)
-    przepięte na `ENM` (`application/reference_networks/enm_builders/*.py`) — `BENCHMARK_DICT_ZASTANE`
-    puste, żaden wpis dziś nie deklaruje tej postaci; stary dialekt (`library.py`, własny NR) żyje
-    dalej jako wyrocznia (b) w `tests/golden/parytet_benchmarkow/`, do usunięcia w karcie A2/K2."""
+    przepięte na `ENM` (`tests/golden/enm_builders/*.py`) — `BENCHMARK_DICT_ZASTANE`
+    puste, żaden wpis dziś nie deklaruje tej postaci. Karta K2 (2026-09-09) usunęła CAŁY dialekt
+    (`application/reference_networks/**`: `library.py`, `builders/*.py`, `computation.py`) razem z
+    jego wyrocznią (b) (`tests/golden/parytet_benchmarkow/harness.py`/`zlote_wyniki.json`) — żadna
+    sieć rejestru może dziś zbudować `BENCHMARK_DICT`; ta wartość enum zostaje jako historyczny
+    kontrast dla `ENM` (dokumentuje, co odróżniało tor kanoniczny od zabitego dialektu)."""
 
     ENM = "ENM"
     BENCHMARK_DICT = "BENCHMARK_DICT"
@@ -236,9 +239,7 @@ REJESTR: tuple[WpisRejestru, ...] = (
         analizy=("LF", "QSTS"),
         inwarianty=("bilans energii w kroku",),
         wyrocznie=(),
-        budowniczowie=(
-            "application.reference_networks.enm_builders.oze_pv_bess:build_oze_pv_bess_enm",
-        ),
+        budowniczowie=("tests.golden.enm_builders.oze_pv_bess:build_oze_pv_bess_enm",),
         konsumenci=("solver",),
         status=StatusSieci.PARTIAL,
         postac=PostacSieci.ENM,
@@ -433,19 +434,27 @@ REJESTR: tuple[WpisRejestru, ...] = (
             ),
         ),
         budowniczowie=(
-            "application.reference_networks.enm_builders.ieee_4bus:build_ieee_4bus_enm",
-            "application.reference_networks.enm_builders.ieee_9bus:build_ieee_9bus_enm",
-            "application.reference_networks.enm_builders.ieee_13bus:build_ieee_13bus_enm",
-            "application.reference_networks.enm_builders.ieee_14bus:build_ieee_14bus_enm",
-            "application.reference_networks.enm_builders.ieee_34bus:build_ieee_34bus_enm",
-            "application.reference_networks.enm_builders.ieee_39bus:build_ieee_39bus_enm",
-            "application.reference_networks.enm_builders.cigre_mv:build_cigre_mv_enm",
-            "application.reference_networks.enm_builders.cigre_lv_benchmark:build_cigre_lv_benchmark_enm",
-            "application.reference_networks.enm_builders.pp_simple_four_bus:build_pp_simple_four_bus_enm",
-            "application.reference_networks.enm_builders.iec60909_example:build_iec60909_example_enm",
-            "application.reference_networks.enm_builders.pandapower_iec60909_radial:build_pandapower_iec60909_radial_enm",
+            "tests.golden.enm_builders.ieee_4bus:build_ieee_4bus_enm",
+            "tests.golden.enm_builders.ieee_9bus:build_ieee_9bus_enm",
+            "tests.golden.enm_builders.ieee_13bus:build_ieee_13bus_enm",
+            "tests.golden.enm_builders.ieee_14bus:build_ieee_14bus_enm",
+            "tests.golden.enm_builders.ieee_34bus:build_ieee_34bus_enm",
+            "tests.golden.enm_builders.ieee_39bus:build_ieee_39bus_enm",
+            "tests.golden.enm_builders.cigre_mv:build_cigre_mv_enm",
+            "tests.golden.enm_builders.cigre_lv_benchmark:build_cigre_lv_benchmark_enm",
+            "tests.golden.enm_builders.pp_simple_four_bus:build_pp_simple_four_bus_enm",
+            "tests.golden.enm_builders.iec60909_example:build_iec60909_example_enm",
+            "tests.golden.enm_builders.pandapower_iec60909_radial:build_pandapower_iec60909_radial_enm",
         ),
-        konsumenci=("solver_output_drift_guard", "reference_networks_validation_guard"),
+        # K2 (2026-09-09): dawni konsumenci `solver_output_drift_guard`/
+        # `reference_networks_validation_guard` skasowani — czytali WYŁĄCZNIE
+        # dawny `application.reference_networks.REFERENCE_NETWORK_REGISTRY`
+        # (pola has_der/is_unbalanced/expected_path bez odpowiednika w tym
+        # rejestrze), nigdy niewpięci w CI/`guardy_z_ci.py`. Ten sam rodzaj
+        # sprawdzeń (buildery wykonalne, wyrocznia niezależna ma źródło, PF/SC
+        # w expected/*.json) niesie dziś `tests/golden/test_registry.py` +
+        # `tests/golden/parytet_benchmarkow/test_wyrocznia_a_expected_json.py`.
+        konsumenci=("test_registry.py", "test_wyrocznia_a_expected_json.py"),
         status=StatusSieci.SUPPORTED,
         proweniencja=(
             "CV-4.3 K1 (2026-09-06): przepięte na ENM-bliźniaki "

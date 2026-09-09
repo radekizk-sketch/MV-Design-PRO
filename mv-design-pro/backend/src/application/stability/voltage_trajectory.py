@@ -46,8 +46,9 @@ class TrajectoryGenerationParams:
     zaszyta na 0,3 s bez podstawy w danych scenariusza. Wywołujący musi podać
     ją jawnie — dla `enm/canonical_analysis.py::_execute_dynamic_stability` to
     pole `recovery_time_constant_s` kontraktu opcji biegu (brak = odmowa
-    biegu, patrz tam); `api/reference_networks.py` już podawał ją jawnie
-    (0,25 s) przed tą kartą. `kw_only=True`, bo pole bez domyślnej wartości nie
+    biegu, patrz tam); dawny `api/reference_networks.py` (usunięty karta K2,
+    2026-09-09) już podawał ją jawnie (0,25 s) przed tą kartą. `kw_only=True`,
+    bo pole bez domyślnej wartości nie
     może następować po polach z domyślną w zwykłej kolejności pozycyjnej —
     wszyscy dotychczasowi wołający już używają nazwanych argumentów.
     """

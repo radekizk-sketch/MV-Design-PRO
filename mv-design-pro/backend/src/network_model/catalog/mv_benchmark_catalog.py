@@ -5,29 +5,36 @@ Rekordy w tym module NIE sa wyrobami producenta — sa DOKLADNYM przeniesieniem
 parametrow opublikowanych w literaturze (Stevenson 1982 / Kersting 2001 /
 MATPOWER case9-case39 via pandapower / CIGRE TF C6.04.02 2014 / IEC 60909-4:2000
 / pandapower.shortcircuit) do postaci typu katalogowego — zeby elementy
-FIZYCZNE 12 sieci referencyjnych (`application/reference_networks/library.py::
-REFERENCE_NETWORK_REGISTRY`) mogly wejsc do `EnergyNetworkModel` przez operacje
+FIZYCZNE 12 sieci referencyjnych (dawny `application/reference_networks/
+library.py::REFERENCE_NETWORK_REGISTRY`, skasowany karta K2 2026-09-09 —
+zastapiony przez `tests/golden/registry.py`) mogly wejsc do `EnergyNetworkModel`
+przez operacje
 domenowe z jawnym `catalog_ref` (K1.2 karty CV-4.3-A1: "Catalog Binding Rule bez
 wyjatku dla elementow fizycznych"), zamiast surowego slownika z pominieciem
 materializacji katalogowej.
 
 Identyfikatory: ``bench_<siec>_<element>`` (K1.2). Prowenienacja: pole
-``source_reference`` niesie DOKLADNY cytat z ``library.py`` (``_SOURCE_*``
-nizej — jedna stala na siec, przepisana raz). ``verification_status=REFERENCYJNY``
+``source_reference`` niesie DOKLADNY cytat z dawnego ``library.py`` (skasowany
+karta K2, 2026-09-09; cytat przepisany raz do ``_SOURCE_*`` nizej, wiec zostaje
+poprawny mimo kasacji zrodla) — jedna stala na siec, przepisana raz.
+``verification_status=REFERENCYJNY``
 / ``catalog_status=REFERENCYJNY_V1`` (wartosci NIE sa produktem, ktory mozna
 zamowic u producenta — to jest jawne odzwierciedlenie w metadanych jakosci
 katalogu, ten sam wzorzec co ``mv_shunt_capacitor_catalog.py``).
 
 Konwersja jednostek — linie/kable: siec referencyjna podaje impedancje w
-PER-UNIT na bazie MOCY systemu (``base_mva`` z jej naglowka
-``library.py::ReferenceNetwork.builder_fn()().header``) i NAPIECIA POZIOMU, na
-ktorym lezy dana linia (pandapower/MATPOWER: ``vn_kv`` szyny poczatkowej; dla
-sieci jednopoziomowej = ``base_kv`` naglowka). ``_linia_z_pu`` przelicza na
-Om/km z konwencja dlugosci=1 km: r_ohm_per_km = r_pu · U_linii²/S_base. Wzorzec
-``application/reference_networks/frozen_solver_input.py`` ("a line is stamped
-with r_ohm_per_km = r_pu * z_base_system and length_km = 1.0 — the global
-per-unit conversion then recovers exactly r_pu") jest poprawny WYLACZNIE dla
-sieci, ktorych wszystkie linie leza na poziomie bazy systemu; tor kanoniczny
+PER-UNIT na bazie MOCY systemu (``base_mva`` z jej naglowka — dawniej
+``library.py::ReferenceNetwork.builder_fn()().header``, skasowany karta K2;
+dzis analogiczny naglowek ENM-bliznaka, ``tests/golden/enm_builders/*.py``)
+i NAPIECIA POZIOMU, na ktorym lezy dana linia (pandapower/MATPOWER: ``vn_kv``
+szyny poczatkowej; dla sieci jednopoziomowej = ``base_kv`` naglowka).
+``_linia_z_pu`` przelicza na Om/km z konwencja dlugosci=1 km:
+r_ohm_per_km = r_pu · U_linii²/S_base. Wzorzec dawnego
+``application/reference_networks/frozen_solver_input.py`` (skasowany karta K2;
+"a line is stamped with r_ohm_per_km = r_pu * z_base_system and
+length_km = 1.0 — the global per-unit conversion then recovers exactly r_pu")
+byl poprawny WYLACZNIE dla sieci, ktorych wszystkie linie leza na poziomie
+bazy systemu; tor kanoniczny
 (``enm/mapping.py``) przelicza Om -> p.u. baza WLASNEGO poziomu napiecia szyny,
 wiec linia na innym poziomie stemplowana baza systemu dostaje impedancje
 (U_systemu/U_linii)² razy za duza (ieee14bus, obszar 0,208 kV: ~4,2·10⁵ razy —
@@ -70,7 +77,8 @@ from .types import (
 )
 
 # ---------------------------------------------------------------------------
-# Cytaty zrodel — DOKLADNIE `library.py::REFERENCE_NETWORK_REGISTRY[...].source`
+# Cytaty zrodel — DOKLADNIE dawny `library.py::REFERENCE_NETWORK_REGISTRY[...].source`
+# (application/reference_networks/library.py, skasowany karta K2, 2026-09-09)
 # ---------------------------------------------------------------------------
 
 _SOURCE_IEEE4 = "Stevenson, Elements of Power System Analysis (1982), Example 9.5, p.337"
@@ -383,7 +391,8 @@ _CIGRE_LV_LINES: tuple[tuple[str, float, float, float], ...] = (
 #: Impedancja per-unit linii z literatury jest wyrażona na bazie JEJ WŁASNEGO
 #: poziomu napięcia (pandapower/MATPOWER: ``vn_kv`` szyny początkowej), więc Ω/km
 #: = r_pu · U_linii²/S_base — NIE r_pu · U_systemu²/S_base. Konwencja „jedna
-#: globalna z_base" z `frozen_solver_input.py` jest poprawna WYŁĄCZNIE dla sieci
+#: globalna z_base" z dawnego `frozen_solver_input.py` (skasowany karta K2) jest
+#: poprawna WYŁĄCZNIE dla sieci
 #: jednopoziomowych (wszystkie pozostałe benchmarki tej tabeli). Znalezisko
 #: (CI run 4923 na `fc24fc76`, 2026-09-09): ieee14bus ma 8 odcinków w obszarze
 #: 0,208 kV (B5/B8–B13; pandapower ``case14`` ``vn_kv``) stemplowanych bazą
@@ -707,7 +716,8 @@ def get_all_benchmark_shunt_capacitor_records() -> list[dict]:
     nominalnie — kV nie wchodzi do tej formuly). KOREKTA (CV-4.3 K1,
     2026-09-06): poprzedni komentarz/wartosc twierdzily rated_kv=135 kV
     (rzekomo "napiecie szyny B8 = baza sieci 135 kV") — BLEDNE, B8 jest w
-    tym builderze na 0,208 kV (patrz `library.py`/dump rejestru: B8 u_n_kv=
+    tym builderze na 0,208 kV (patrz dawny `library.py`, skasowany karta K2/dump
+    rejestru: B8 u_n_kv=
     0,208), NIE 135 kV. rated_mvar (19) pozostaje bez zmian (niezalezne od kV
     w ukladzie p.u.); poprawiono WYLACZNIE rated_kv na rzeczywiste napiecie
     szyny nosnej.
@@ -778,8 +788,9 @@ def get_all_benchmark_synchronous_generator_records() -> list[dict]:
     ieee-9bus, ieee-14bus, ieee-39bus, cigre-mv-14, cigre-lv-benchmark,
     oze-pv-bess) trafia tu jako WEZEL PV rozplywu mocy (control_mode=
     REGULACJA_NAPIECIA) niezaleznie od etykiety `gen_kind` w dawnym dialekcie
-    (pv/pv_inverter/bess_inverter/pv_residential) — `computation.py::
-    _classify_buses` (wlasny NR, wyrocznia (b)) TEZ nie rozroznia `gen_kind`:
+    (pv/pv_inverter/bess_inverter/pv_residential) — dawny `computation.py::
+    _classify_buses` (wlasny NR, wyrocznia (b), skasowany karta K2) TEZ nie
+    rozroznial `gen_kind`:
     kazdy wpis listy `generators` jest wezlem PV bez wyjatku. Bezposrednie
     przylaczenie do SN bez transformatora blokowego jest zarezerwowane dla
     generatora synchronicznego wprost w kodzie `enm/domain_operations_v2.py::

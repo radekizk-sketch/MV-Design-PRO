@@ -66,7 +66,6 @@ SCAN_TARGETS = [
     "backend/src/application/analyses/wniosek_osd.py",
     "backend/src/application/analyses/certyfikat_zgodnosci.py",
     "backend/src/application/reference_patterns/reporting.py",
-    "backend/src/application/reference_networks/report_export.py",
     "backend/src/api/analysis_run_exports.py",
     "backend/src/api/power_flow_runs.py",
     "backend/src/api/power_flow_comparisons.py",

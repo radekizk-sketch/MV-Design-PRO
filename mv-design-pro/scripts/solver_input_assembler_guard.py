@@ -72,27 +72,15 @@ ALLOWLIST: dict[str, str] = {
 
 #: Zapadka w OBIE strony — pomiar 2026-09-05 na stanie po wycięciu assemblera
 #: (CV-4.1 krok 1) i po kasacji kreatora/P5/P12 + przepięciu P11 na assembler
-#: (CV-4.2). Jedyne pozostałe wpisy: substraty sieci referencyjnych
-#: (`application/reference_networks/**`, CV-4.3 — benchmarki jako ENM).
-ZASTANE: dict[str, dict[str, int]] = {
-    "application/reference_networks/frozen_solver_input.py": {
-        "PQSpec": 2,
-        "PVSpec": 1,
-        "PowerFlowInput": 1,
-        "ShuntSpec": 1,
-        "SlackSpec": 1,
-    },
-    "application/reference_networks/sld_substrate_power_flow.py": {
-        "PQSpec": 1,
-        "PowerFlowInput": 1,
-        "SlackSpec": 1,
-    },
-    "application/reference_networks/station_archetype_substrate.py": {
-        "PQSpec": 3,
-        "PowerFlowInput": 2,
-        "SlackSpec": 2,
-    },
-}
+#: (CV-4.2). Karta K2 (2026-09-09) zamknęła wszystkie trzy ówczesne wpisy:
+#: `frozen_solver_input.py` skasowany razem z resztą dawnego dialektu
+#: (`application/reference_networks/**`); `sld_substrate_power_flow.py` i
+#: `station_archetype_substrate.py` przeniesione pod `backend/tests/` (poza
+#: BACKEND_SRC, więc poza skanem tego guarda) BEZ zmiany własnej konstrukcji —
+#: dalej budują `PowerFlowInput` wprost, ale to już nie jest dług TEJ zapadki
+#: (backend/src). Zapadka opróżniona, może tylko rosnąć wraz z NOWYM budowniczym
+#: równoległym w backend/src, nigdy wrócić do tych trzech wpisów.
+ZASTANE: dict[str, dict[str, int]] = {}
 
 
 def _nazwa_wywolania(node: ast.Call) -> str | None:

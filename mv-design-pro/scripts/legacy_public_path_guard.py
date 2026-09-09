@@ -663,6 +663,88 @@ def check_data_manager_resurrection() -> list[str]:
     return violations
 
 
+#: Karta K2 (2026-09-09) — bramka wskrzeszenia: `application/reference_networks/**`
+#: (dawny dialekt benchmarków — builders/, computation.py, library.py,
+#: frozen_solver_input.py, pandapower_bridge.py, report_export.py,
+#: similarity_matcher.py, benchmark_wiring.py — DRUGA ścieżka budowy wejścia
+#: solwerów, równoległa do kanonicznej ENM → enm/assembler.py → solver) +
+#: `api/reference_networks.py` (9 tras `/api/v1/reference-networks/*`) +
+#: frontend `ui/reference-networks/**` + `ReferenceNetworkSurface` (ekran
+#: zastany, rejestr kanonu) skasowane w całości. Zastępstwo (walidacja solverów
+#: vs publikowane benchmarki jako zdolność WERYFIKACYJNA, nie tok pracy
+#: inżyniera): `backend/tests/golden/enm_builders/**` + `tests/golden/registry.py`.
+K2_REFERENCE_NETWORKS_BACKEND_DIR = "application/reference_networks"
+K2_REFERENCE_NETWORKS_API_MODULE = "api/reference_networks.py"
+FORBIDDEN_K2_MODULE_PREFIXES = ("application.reference_networks", "api.reference_networks")
+FORBIDDEN_K2_CLASS_NAMES = {"ReferenceNetwork"}
+K2_REFERENCE_NETWORKS_FRONTEND_DIR = FRONTEND_SRC_DIR / "ui" / "reference-networks"
+_TS_REFERENCE_NETWORK_SURFACE_DEF = re.compile(
+    r"^[ \t]*export\s+(?:default\s+)?(?:function|const|class)\s+ReferenceNetworkSurface\b",
+    re.MULTILINE,
+)
+
+
+def check_k2_reference_networks_resurrection() -> list[str]:
+    """Karta K2 (2026-09-09): druga ścieżka budowy wejścia solwerów
+    (`application/reference_networks/**`) i jej API (`api/reference_networks.py`)
+    i ekran zastany (`ui/reference-networks/**` + `ReferenceNetworkSurface`)
+    nie mogą wrócić — 0 konsumentów produktowych poza sobą nawzajem (jedyny
+    produkcyjny konsument pakietu było samo API + ten ekran; benchmarki jako
+    ENM żyją w `tests/golden/enm_builders/**`, wyrocznia (a) w
+    `tests/golden/parytet_benchmarkow/test_wyrocznia_a_expected_json.py`)."""
+    violations: list[str] = []
+    backend_dir = BACKEND_SRC_DIR / K2_REFERENCE_NETWORKS_BACKEND_DIR
+    if backend_dir.exists():
+        violations.append(
+            f"[resurrected-module] backend/src/{K2_REFERENCE_NETWORKS_BACKEND_DIR}: "
+            "dawny dialekt benchmarków (usunięty kartą K2, 2026-09-09) — nie odtwarzaj"
+        )
+    api_module = BACKEND_SRC_DIR / K2_REFERENCE_NETWORKS_API_MODULE
+    if api_module.exists():
+        violations.append(
+            f"[resurrected-module] backend/src/{K2_REFERENCE_NETWORKS_API_MODULE}: "
+            "9 tras /api/v1/reference-networks/* (usunięte kartą K2) — nie odtwarzaj"
+        )
+    if BACKEND_SRC_DIR.exists():
+        for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+            tree = ast.parse(read_text(py_file), filename=str(py_file))
+            rel_path = py_file.relative_to(ROOT).as_posix()
+            for node in ast.walk(tree):
+                if (
+                    isinstance(node, ast.ImportFrom)
+                    and node.module is not None
+                    and any(
+                        node.module == prefix or node.module.startswith(prefix + ".")
+                        for prefix in FORBIDDEN_K2_MODULE_PREFIXES
+                    )
+                ):
+                    violations.append(
+                        f"[legacy-public-import] {rel_path}:{node.lineno}: {node.module} "
+                        "(dawny dialekt benchmarków, usunięty kartą K2)"
+                    )
+                if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_K2_CLASS_NAMES:
+                    violations.append(
+                        f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
+                        "(dialekt benchmarków, usunięty kartą K2) nie może wrócić"
+                    )
+    if K2_REFERENCE_NETWORKS_FRONTEND_DIR.exists():
+        violations.append(
+            "[resurrected-module] frontend/src/ui/reference-networks: ekran zastany "
+            "(usunięty kartą K2, 2026-09-09) — nie odtwarzaj tego katalogu"
+        )
+    if FRONTEND_SRC_DIR.exists():
+        for suffix in FORBIDDEN_DATA_MANAGER_TS_EXTENSIONS:
+            for ts_file in sorted(FRONTEND_SRC_DIR.rglob(f"*{suffix}")):
+                tekst = _bez_komentarzy_ts(read_text(ts_file))
+                rel_path = ts_file.relative_to(ROOT).as_posix()
+                if _TS_REFERENCE_NETWORK_SURFACE_DEF.search(tekst):
+                    violations.append(
+                        f"[resurrected-component] {rel_path}: export ReferenceNetworkSurface "
+                        "(usunięty kartą K2) nie może wrócić"
+                    )
+    return violations
+
+
 def main() -> int:
     violations = (
         check_legacy_public_paths()
@@ -673,6 +755,7 @@ def main() -> int:
         + check_cv43_a4_resurrection()
         + check_w1_legacy_persistence_resurrection()
         + check_data_manager_resurrection()
+        + check_k2_reference_networks_resurrection()
     )
     if violations:
         print("legacy-public-path-guard: FAILED")

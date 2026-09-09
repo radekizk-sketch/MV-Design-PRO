@@ -4122,48 +4122,6 @@
     "title": "DomainOpPayloadModel",
     "type": "object"
    },
-   "DynamicValidationResponse": {
-    "properties": {
-     "in_envelope_count": {
-      "title": "In Envelope Count",
-      "type": "integer"
-     },
-     "network_id": {
-      "title": "Network Id",
-      "type": "string"
-     },
-     "out_of_envelope_count": {
-      "title": "Out Of Envelope Count",
-      "type": "integer"
-     },
-     "overall_status": {
-      "title": "Overall Status",
-      "type": "string"
-     },
-     "sample_count": {
-      "title": "Sample Count",
-      "type": "integer"
-     },
-     "samples": {
-      "items": {
-       "additionalProperties": true,
-       "type": "object"
-      },
-      "title": "Samples",
-      "type": "array"
-     }
-    },
-    "required": [
-     "network_id",
-     "overall_status",
-     "sample_count",
-     "in_envelope_count",
-     "out_of_envelope_count",
-     "samples"
-    ],
-    "title": "DynamicValidationResponse",
-    "type": "object"
-   },
    "ElementResultResponse": {
     "properties": {
      "element_ref": {
@@ -6102,47 +6060,6 @@
      "der_ref"
     ],
     "title": "NcRfgCertificateEvidence",
-    "type": "object"
-   },
-   "NcRfgComplianceResponse": {
-    "properties": {
-     "applicable": {
-      "title": "Applicable",
-      "type": "boolean"
-     },
-     "missing_items": {
-      "items": {
-       "type": "string"
-      },
-      "title": "Missing Items",
-      "type": "array"
-     },
-     "network_id": {
-      "title": "Network Id",
-      "type": "string"
-     },
-     "passed_count": {
-      "title": "Passed Count",
-      "type": "integer"
-     },
-     "status": {
-      "title": "Status",
-      "type": "string"
-     },
-     "total_count": {
-      "title": "Total Count",
-      "type": "integer"
-     }
-    },
-    "required": [
-     "network_id",
-     "applicable",
-     "status",
-     "passed_count",
-     "total_count",
-     "missing_items"
-    ],
-    "title": "NcRfgComplianceResponse",
     "type": "object"
    },
    "NcRfgPtpireeModuleInput": {
@@ -9450,145 +9367,6 @@
     "title": "PutOverridesRequest",
     "type": "object"
    },
-   "ReferenceNetworkDetail": {
-    "description": "Szczegóły z liczbą expected values.",
-    "properties": {
-     "branch_count": {
-      "default": 0,
-      "title": "Branch Count",
-      "type": "integer"
-     },
-     "bus_count": {
-      "default": 0,
-      "title": "Bus Count",
-      "type": "integer"
-     },
-     "description_pl": {
-      "title": "Description Pl",
-      "type": "string"
-     },
-     "expected_pf_count": {
-      "default": 0,
-      "title": "Expected Pf Count",
-      "type": "integer"
-     },
-     "expected_sc_count": {
-      "default": 0,
-      "title": "Expected Sc Count",
-      "type": "integer"
-     },
-     "has_der": {
-      "title": "Has Der",
-      "type": "boolean"
-     },
-     "has_dynamic_expected": {
-      "default": false,
-      "title": "Has Dynamic Expected",
-      "type": "boolean"
-     },
-     "has_pf_expected": {
-      "default": false,
-      "title": "Has Pf Expected",
-      "type": "boolean"
-     },
-     "has_sc_expected": {
-      "default": false,
-      "title": "Has Sc Expected",
-      "type": "boolean"
-     },
-     "id": {
-      "title": "Id",
-      "type": "string"
-     },
-     "is_unbalanced": {
-      "title": "Is Unbalanced",
-      "type": "boolean"
-     },
-     "name_pl": {
-      "title": "Name Pl",
-      "type": "string"
-     },
-     "source": {
-      "title": "Source",
-      "type": "string"
-     },
-     "supported_solvers": {
-      "items": {
-       "type": "string"
-      },
-      "title": "Supported Solvers",
-      "type": "array"
-     },
-     "voltage_kv": {
-      "title": "Voltage Kv",
-      "type": "number"
-     }
-    },
-    "required": [
-     "id",
-     "name_pl",
-     "description_pl",
-     "source",
-     "voltage_kv",
-     "has_der",
-     "is_unbalanced",
-     "supported_solvers"
-    ],
-    "title": "ReferenceNetworkDetail",
-    "type": "object"
-   },
-   "ReferenceNetworkSummary": {
-    "description": "Lekkie podsumowanie dla listy w UI.",
-    "properties": {
-     "description_pl": {
-      "title": "Description Pl",
-      "type": "string"
-     },
-     "has_der": {
-      "title": "Has Der",
-      "type": "boolean"
-     },
-     "id": {
-      "title": "Id",
-      "type": "string"
-     },
-     "is_unbalanced": {
-      "title": "Is Unbalanced",
-      "type": "boolean"
-     },
-     "name_pl": {
-      "title": "Name Pl",
-      "type": "string"
-     },
-     "source": {
-      "title": "Source",
-      "type": "string"
-     },
-     "supported_solvers": {
-      "items": {
-       "type": "string"
-      },
-      "title": "Supported Solvers",
-      "type": "array"
-     },
-     "voltage_kv": {
-      "title": "Voltage Kv",
-      "type": "number"
-     }
-    },
-    "required": [
-     "id",
-     "name_pl",
-     "description_pl",
-     "source",
-     "voltage_kv",
-     "has_der",
-     "is_unbalanced",
-     "supported_solvers"
-    ],
-    "title": "ReferenceNetworkSummary",
-    "type": "object"
-   },
    "RejectedCandidateResponse": {
     "properties": {
      "catalog_ref": {
@@ -9811,7 +9589,7 @@
      },
      "runs": {
       "items": {
-       "$ref": "#/components/schemas/api__execution_runs__RunResponse"
+       "$ref": "#/components/schemas/RunResponse"
       },
       "title": "Runs",
       "type": "array"
@@ -9881,6 +9659,72 @@
      "envelope"
     ],
     "title": "RunProvenanceResponse",
+    "type": "object"
+   },
+   "RunResponse": {
+    "properties": {
+     "analysis_type": {
+      "title": "Analysis Type",
+      "type": "string"
+     },
+     "error_message": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error Message"
+     },
+     "finished_at": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Finished At"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "solver_input_hash": {
+      "title": "Solver Input Hash",
+      "type": "string"
+     },
+     "started_at": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Started At"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     },
+     "study_case_id": {
+      "title": "Study Case Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "study_case_id",
+     "analysis_type",
+     "solver_input_hash",
+     "status"
+    ],
+    "title": "RunResponse",
     "type": "object"
    },
    "SC3FPackRequest": {
@@ -10363,90 +10207,6 @@
      "formula_ref"
     ],
     "title": "ShuntCompensatorPreviewResponse",
-    "type": "object"
-   },
-   "SimilarityMatchRequestEntity": {
-    "description": "Lekki opis sieci użytkownika do similarity matching.",
-    "properties": {
-     "branch_count": {
-      "title": "Branch Count",
-      "type": "integer"
-     },
-     "bus_count": {
-      "title": "Bus Count",
-      "type": "integer"
-     },
-     "has_der": {
-      "title": "Has Der",
-      "type": "boolean"
-     },
-     "is_unbalanced": {
-      "default": false,
-      "title": "Is Unbalanced",
-      "type": "boolean"
-     },
-     "voltage_kv_levels": {
-      "items": {
-       "type": "number"
-      },
-      "title": "Voltage Kv Levels",
-      "type": "array"
-     }
-    },
-    "required": [
-     "bus_count",
-     "branch_count",
-     "voltage_kv_levels",
-     "has_der"
-    ],
-    "title": "SimilarityMatchRequestEntity",
-    "type": "object"
-   },
-   "SimilarityMatchResponse": {
-    "properties": {
-     "matches": {
-      "items": {
-       "$ref": "#/components/schemas/SimilarityMatchScore"
-      },
-      "title": "Matches",
-      "type": "array"
-     }
-    },
-    "required": [
-     "matches"
-    ],
-    "title": "SimilarityMatchResponse",
-    "type": "object"
-   },
-   "SimilarityMatchScore": {
-    "properties": {
-     "confidence_pct": {
-      "title": "Confidence Pct",
-      "type": "number"
-     },
-     "matched_features": {
-      "items": {
-       "type": "string"
-      },
-      "title": "Matched Features",
-      "type": "array"
-     },
-     "name_pl": {
-      "title": "Name Pl",
-      "type": "string"
-     },
-     "network_id": {
-      "title": "Network Id",
-      "type": "string"
-     }
-    },
-    "required": [
-     "network_id",
-     "name_pl",
-     "confidence_pct",
-     "matched_features"
-    ],
-    "title": "SimilarityMatchScore",
     "type": "object"
    },
    "SladKroku": {
@@ -11764,21 +11524,6 @@
     "title": "ValidationIssueResponse",
     "type": "object"
    },
-   "ValidationResponse": {
-    "description": "Pełny raport walidacji.",
-    "properties": {
-     "report": {
-      "additionalProperties": true,
-      "title": "Report",
-      "type": "object"
-     }
-    },
-    "required": [
-     "report"
-    ],
-    "title": "ValidationResponse",
-    "type": "object"
-   },
    "VtBurdenRequest": {
     "description": "Wejscie bilansu VT: pozycja katalogowa + wybrane uzwojenie + obwod.",
     "properties": {
@@ -12312,72 +12057,6 @@
     "title": "ZwarciaPorownanieResponse",
     "type": "object"
    },
-   "api__execution_runs__RunResponse": {
-    "properties": {
-     "analysis_type": {
-      "title": "Analysis Type",
-      "type": "string"
-     },
-     "error_message": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Error Message"
-     },
-     "finished_at": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Finished At"
-     },
-     "id": {
-      "title": "Id",
-      "type": "string"
-     },
-     "solver_input_hash": {
-      "title": "Solver Input Hash",
-      "type": "string"
-     },
-     "started_at": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Started At"
-     },
-     "status": {
-      "title": "Status",
-      "type": "string"
-     },
-     "study_case_id": {
-      "title": "Study Case Id",
-      "type": "string"
-     }
-    },
-    "required": [
-     "id",
-     "study_case_id",
-     "analysis_type",
-     "solver_input_hash",
-     "status"
-    ],
-    "title": "RunResponse",
-    "type": "object"
-   },
    "api__power_flow_comparisons__ComparisonSummaryResponse": {
     "description": "Comparison summary statistics.\n\nFAB-E (E1): max_delta_v_pu/max_delta_angle_deg to `| None` — brak zadnej\nporownywalnej szyny (obie strony bez wspolnych bus_id) daje None, nigdy\nfabrykowane 0.0 (wygladaloby jak \"brak zmian w calej sieci\").",
     "properties": {
@@ -12615,46 +12294,6 @@
      "evidence_refs"
     ],
     "title": "RankingIssueResponse",
-    "type": "object"
-   },
-   "api__reference_networks__RunResponse": {
-    "description": "Wynik uruchomienia solverów (bez porównania).",
-    "properties": {
-     "error": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Error"
-     },
-     "network_id": {
-      "title": "Network Id",
-      "type": "string"
-     },
-     "result": {
-      "additionalProperties": true,
-      "title": "Result",
-      "type": "object"
-     },
-     "solver_kind": {
-      "title": "Solver Kind",
-      "type": "string"
-     },
-     "success": {
-      "title": "Success",
-      "type": "boolean"
-     }
-    },
-    "required": [
-     "network_id",
-     "solver_kind",
-     "success"
-    ],
-    "title": "RunResponse",
     "type": "object"
    },
    "api__sld_overrides__ValidateResponse": {
@@ -18594,7 +18233,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "$ref": "#/components/schemas/api__execution_runs__RunResponse"
+         "$ref": "#/components/schemas/RunResponse"
         }
        }
       },
@@ -18682,7 +18321,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "$ref": "#/components/schemas/api__execution_runs__RunResponse"
+         "$ref": "#/components/schemas/RunResponse"
         }
        }
       },
@@ -19048,7 +18687,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "$ref": "#/components/schemas/api__execution_runs__RunResponse"
+         "$ref": "#/components/schemas/RunResponse"
         }
        }
       },
@@ -27869,385 +27508,6 @@
     "summary": "Apply Audit2 To Network Model Endpoint",
     "tags": [
      "Audit2 Station Config"
-    ]
-   }
-  },
-  "/api/v1/reference-networks": {
-   "get": {
-    "description": "Lista wszystkich sieci referencyjnych.",
-    "operationId": "list_networks_api_v1_reference_networks_get",
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "items": {
-          "$ref": "#/components/schemas/ReferenceNetworkSummary"
-         },
-         "title": "Response List Networks Api V1 Reference Networks Get",
-         "type": "array"
-        }
-       }
-      },
-      "description": "Successful Response"
-     }
-    },
-    "summary": "List Networks",
-    "tags": [
-     "reference-networks"
-    ]
-   }
-  },
-  "/api/v1/reference-networks/similarity-match": {
-   "post": {
-    "description": "Match user network features against registry → ranked candidates.",
-    "operationId": "similarity_match_api_v1_reference_networks_similarity_match_post",
-    "requestBody": {
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/SimilarityMatchRequestEntity"
-       }
-      }
-     },
-     "required": true
-    },
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/SimilarityMatchResponse"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Similarity Match",
-    "tags": [
-     "reference-networks"
-    ]
-   }
-  },
-  "/api/v1/reference-networks/{network_id}": {
-   "get": {
-    "description": "Szczegóły sieci + ilość expected values.",
-    "operationId": "get_network_detail_api_v1_reference_networks__network_id__get",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "network_id",
-      "required": true,
-      "schema": {
-       "title": "Network Id",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/ReferenceNetworkDetail"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Get Network Detail",
-    "tags": [
-     "reference-networks"
-    ]
-   }
-  },
-  "/api/v1/reference-networks/{network_id}/export/json": {
-   "get": {
-    "description": "Eksportuje ValidationReport jako JSON file.",
-    "operationId": "export_validation_json_api_v1_reference_networks__network_id__export_json_get",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "network_id",
-      "required": true,
-      "schema": {
-       "title": "Network Id",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "title": "Response Export Validation Json Api V1 Reference Networks  Network Id  Export Json Get"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Export Validation Json",
-    "tags": [
-     "reference-networks"
-    ]
-   }
-  },
-  "/api/v1/reference-networks/{network_id}/export/pdf": {
-   "get": {
-    "description": "Eksportuje ValidationReport jako PDF.",
-    "operationId": "export_validation_pdf_api_v1_reference_networks__network_id__export_pdf_get",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "network_id",
-      "required": true,
-      "schema": {
-       "title": "Network Id",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "title": "Response Export Validation Pdf Api V1 Reference Networks  Network Id  Export Pdf Get"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Export Validation Pdf",
-    "tags": [
-     "reference-networks"
-    ]
-   }
-  },
-  "/api/v1/reference-networks/{network_id}/nc-rfg-compliance": {
-   "get": {
-    "description": "Check NC RfG compliance dla sieci OZE.",
-    "operationId": "nc_rfg_compliance_api_v1_reference_networks__network_id__nc_rfg_compliance_get",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "network_id",
-      "required": true,
-      "schema": {
-       "title": "Network Id",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/NcRfgComplianceResponse"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Nc Rfg Compliance",
-    "tags": [
-     "reference-networks"
-    ]
-   }
-  },
-  "/api/v1/reference-networks/{network_id}/run": {
-   "post": {
-    "description": "Załaduj sieć + uruchom solver, bez porównania.",
-    "operationId": "run_network_api_v1_reference_networks__network_id__run_post",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "network_id",
-      "required": true,
-      "schema": {
-       "title": "Network Id",
-       "type": "string"
-      }
-     },
-     {
-      "in": "query",
-      "name": "solver_kind",
-      "required": false,
-      "schema": {
-       "default": "power_flow_newton",
-       "title": "Solver Kind",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/api__reference_networks__RunResponse"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Run Network",
-    "tags": [
-     "reference-networks"
-    ]
-   }
-  },
-  "/api/v1/reference-networks/{network_id}/validate": {
-   "post": {
-    "description": "Pełna walidacja: load + run solver + compare → ValidationReport.",
-    "operationId": "validate_network_api_v1_reference_networks__network_id__validate_post",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "network_id",
-      "required": true,
-      "schema": {
-       "title": "Network Id",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/ValidationResponse"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Validate Network",
-    "tags": [
-     "reference-networks"
-    ]
-   }
-  },
-  "/api/v1/reference-networks/{network_id}/validate-dynamic": {
-   "post": {
-    "description": "Dynamiczna walidacja FRT — porównanie U(t) trajectory vs NC RfG envelope.",
-    "operationId": "validate_dynamic_api_v1_reference_networks__network_id__validate_dynamic_post",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "network_id",
-      "required": true,
-      "schema": {
-       "title": "Network Id",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/DynamicValidationResponse"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Validate Dynamic",
-    "tags": [
-     "reference-networks"
     ]
    }
   },

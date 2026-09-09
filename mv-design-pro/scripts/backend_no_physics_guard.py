@@ -57,23 +57,14 @@ WYKLUCZONY_PREFIKSY = ("network_model/solvers/", "network_model/pochodne/")
 #: solverami/`pochodne/` nie ma sankcjonowanego prawa liczyć tych formuł.
 ALLOWLIST: dict[str, str] = {}
 
-#: Pomiar CV-4.3-A3 (2026-09-06, po przepięciu 59 miejsc na `pochodne/`):
-#: zostaje WYŁĄCZNIE `application/reference_networks/computation.py`
-#: (`_power_flow_newton_raphson`, `z_base = (base_kv**2)/base_mva` ×2 —
-#: WŁASNA implementacja Newtona-Raphsona żyjąca poza solverami, dług
-#: nazwany już w CV-4.3 inwentarzu A.2, nie K4) — pakiet `reference_networks`
-#: kasowany w karcie A2 po odbiorze A1 (adnotacja A2, patrz `docs/
-#: architecture/CANONICAL_TWIN_ARCHITECTURE.md` C.2.3 i `karta_cv43_a3.md`).
-#: Nie jest to dług przeniesiony do `pochodne/`: cały plik znika w A2, więc
-#: przenoszenie formuły z pliku przeznaczonego do kasacji byłoby pracą do
-#: wyrzucenia. (`station_archetype_substrate.py::_SQRT3 = 3.0**0.5` NIE jest
-#: tu wpisany: to bare przypisanie stałej, nigdy nie jest bezpośrednim
-#: operandem mnożenia/dzielenia w TYM miejscu — K4.4 liczy rodzinę A tylko
-#: „w mnożeniu/dzieleniu"; użycia `_SQRT3` gdzie indziej w tym pliku idą
-#: przez nazwę zmiennej, nie przez świeże wyrażenie `sqrt(3)`/`3**0.5`.)
-ZASTANE: dict[str, dict[str, int]] = {
-    "application/reference_networks/computation.py": {"G_z_u2_s": 2},
-}
+#: Karta K2 (2026-09-09): `application/reference_networks/**` (w tym jedyny
+#: pozostały wpis zapadki, `computation.py` — własna implementacja Newtona-
+#: Raphsona, `z_base = (base_kv**2)/base_mva` ×2) skasowany w całości —
+#: `station_archetype_substrate.py` przeniesiony do `backend/tests/` (poza
+#: skanem tego guarda, `BACKEND_SRC`), reszta pakietu usunięta. Zapadka
+#: opróżniona (może tylko maleć, nigdy wrócić w górę — nowy wpis oznaczałby
+#: nowy dług, nie odzyskanie starego).
+ZASTANE: dict[str, dict[str, int]] = {}
 
 _TIME_RE = re.compile(r"(^|_)(t|tk|time|czas)(_|$)", re.IGNORECASE)
 

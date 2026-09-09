@@ -178,8 +178,10 @@ ALLOWLIST: dict[tuple[str, int], str] = {
         # CV-4.2 (2026-09-05): kolejny dryf o 1 wiersz (dodanie `activeCaseId`
         # z `useAppStateStore` WCZEŚNIEJ w pliku, przy przepięciu P12 na bieg
         # kanoniczny) — TEN SAM napis, wiersz 2633 → 2632.
+        # K2 (2026-09-09): kolejny dryf o 1 wiersz (usunięcie case 'E-39'/importu
+        # ReferenceNetworkSurface WCZEŚNIEJ w pliku) — TEN SAM napis, wiersz 2632 → 2631.
         "frontend/src/ui/workspace/WorkspaceSurfaceRouter.tsx",
-        2632,
+        2631,
     ): "b: opis analizy w katalogu ekranów ('IEC 60909, Ik″/ip/Ith z śladem Y-bus') — napis",
     (
         # Karta WB-ROZPLYW: numer wiersza zdryfował po dopisaniu kontraktu

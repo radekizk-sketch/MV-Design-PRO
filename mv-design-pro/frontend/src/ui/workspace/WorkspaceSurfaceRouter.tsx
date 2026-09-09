@@ -69,7 +69,6 @@ import {
   NopSurface,
 } from './surfaces/InfrastructureSurfaces';
 import { PvSourceSurface, BessSurface, FwSurface } from './surfaces/DerSurfaces';
-import { ReferenceNetworkSurface } from './surfaces/ReferenceNetworkSurface';
 import { EkranAnalizAkademickich, type RodzajPrezentowany } from '../../ui2/wyniki/akademickie';
 import { NcRfgTestsTab } from './surfaces/NcRfgTestsTab';
 import {
@@ -2987,9 +2986,8 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
     case 'E-09':
       // Etap 17 dostawy: Historia i audyt operacji.
       return <AuditTrailSurface surface={surface} />;
-    case 'E-39':
-      // Sprint 2 dostawy: Walidacja sieci referencyjnych (Reference Network Validation).
-      return <ReferenceNetworkSurface surface={surface} />;
+    // E-39 (Walidacja sieci referencyjnych / ReferenceNetworkSurface) skasowane
+    // karta K2 (2026-09-09) — patrz screenCanonRegistry.ts.
     case 'E-40':
     case 'E-41':
     case 'E-42':

@@ -731,8 +731,9 @@ class TransformerBranch(Branch):
     # Typ jest Optional (pole MOZE niesc None), ale wartosc domyslna dla
     # BEZPOSREDNIEJ konstrukcji Python (bez przejscia przez `from_dict`)
     # zostaje "Dyn11"/0.0 — dowod empiryczny (pelna regresja, karta FAB-D2):
-    # `application/reference_networks/station_archetype_substrate.py` (i inne
-    # generatory sieci referencyjnych) konstruuja `TransformerBranch(...)`
+    # `backend/tests/reference_networks/station_archetype_substrate.py`
+    # (przeniesiony z `application/reference_networks/` karta K2, 2026-09-09;
+    # i inne generatory sieci referencyjnych) konstruuja `TransformerBranch(...)`
     # WPROST, celowo pomijajac te pola, licząc na wartosc domyslna Dyn11 (kat
     # przesuniecia fazowego solvera Newtona, `power_flow_newton_internal.
     # transformer_phase_shift_rad` — Dyn11 daje +30 deg, `None` daje 0 deg:

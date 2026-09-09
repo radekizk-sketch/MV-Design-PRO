@@ -39,10 +39,10 @@ ALLOWLIST: dict[str, str] = {
 #: Pomiar 2026-09-05 (po przepięciu ybus/graph/walidatora/energizacji/topology_ops/
 #: route/segment_decomposition/layout/czas_wylaczenia/graph_view/trunk na jądro):
 #: zostały wyłącznie sieci referencyjne przeznaczone do kasacji (CV-4.3 K2).
-ZASTANE: dict[str, dict[str, int]] = {
-    "application/reference_networks/sld_network_model.py": {"deque": 1},
-    "application/reference_networks/sld_substrate_power_flow.py": {"nx.connected_components": 1},
-}
+#: Karta K2 (2026-09-09): oba wpisy przeniesione pod `backend/tests/golden/`
+#: (poza BACKEND_SRC, więc poza skanem tego guarda) bez zmiany własnej treści —
+#: zapadka opróżniona.
+ZASTANE: dict[str, dict[str, int]] = {}
 
 NX_FUNKCJE = {
     "connected_components",

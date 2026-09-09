@@ -6,7 +6,8 @@ szynę "downstream"/"branch_end" jako `helper_bus` — anonimowy, ukryty
 WYKLUCZONY z celów zwarcia (`enm/assembler.py::skip_short_circuit_target`).
 To poprawne dla przyrostowej edycji kreatora SLD, ale BŁĘDNE, gdy wołający
 od razu wie, że ta szyna jest realnym, nazwanym punktem sieci (np. builder
-sieci benchmarkowej `application/reference_networks/enm_builders/`, gdzie
+sieci benchmarkowej `tests/golden/enm_builders/` — przeniesiony z
+`application/reference_networks/enm_builders/` kartą K2, 2026-09-09 — gdzie
 KAŻDA szyna jest gotowym punktem literatury) — znalezisko: sieć czysto
 zwarciowa `iec60909_example` miała szynę BUS-MV wykluczoną z celów zwarcia,
 co czyniło ją NIE-weryfikowalną wyrocznią (b)/(c) tej karty.
