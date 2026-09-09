@@ -435,47 +435,6 @@ def _build_dynamic_stability_run() -> CanonicalRun:
     )
 
 
-def _build_source_compliance_run() -> CanonicalRun:
-    return CanonicalRun(
-        id=uuid4(),
-        case_id="case-comp",
-        project_id="project-1",
-        analysis_type="source_compliance",
-        status="FINISHED",
-        created_at=datetime.now(UTC),
-        snapshot_hash="snapshot-comp",
-        input_hash="hash-comp",
-        snapshot={"sources": [{"ref_id": "src-main"}]},
-        validation={},
-        readiness={},
-        result_status="VALID",
-        raw_result={
-            "analysis_type": "source_compliance",
-            "source_ref": "src-main",
-            "proof_ref": "proof:source-compliance:src-main",
-            "proof_status": "complete",
-            "reporting_status": "reportable",
-            "result": {
-                "source_type": "PV",
-                "verdict": "compliant",
-                "reporting_status": "reportable",
-                "proof_status": "complete",
-                "limitations": [],
-                "checks": {"frt": {"verdict": "compliant"}},
-            },
-        },
-        white_box_trace=[
-            {
-                "step": 1,
-                "title": "Krok zgodnosci zrodla",
-                "proof_ref": "proof:source-compliance:src-main",
-                "proof_status": "complete",
-                "reporting_status": "reportable",
-            }
-        ],
-    )
-
-
 def test_export_payload_supports_asymmetric_short_circuit_proof_status() -> None:
     payload = build_analysis_run_export_payload(_build_sc_run())
 
@@ -585,15 +544,6 @@ def test_export_payload_supports_dynamic_stability_bundle() -> None:
     assert payload["dynamic_stability"]["rows"][0]["status"] == "STABLE"
     assert payload["automation_trace"]["rows"][-1]["event_type"] == "DYNAMIC_STABILITY_EVALUATED"
     assert payload["metadata"]["proof_status"] == "complete"
-
-
-def test_export_payload_supports_source_compliance_bundle() -> None:
-    payload = build_analysis_run_export_payload(_build_source_compliance_run())
-
-    assert payload["report_type"] == "source_compliance"
-    assert payload["source_compliance"]["rows"][0]["verdict"] == "compliant"
-    assert payload["source_compliance"]["rows"][0]["reporting_status"] == "reportable"
-    assert payload["metadata"]["analysis_type"] == "source_compliance"
 
 
 def test_report_payload_marks_readiness_blockers_as_partial_with_missing_prerequisites() -> None:

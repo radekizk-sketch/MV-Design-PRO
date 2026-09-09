@@ -41,7 +41,6 @@ from enm.canonical_analysis import (
     build_results_index,
     build_short_circuit_results,
     build_short_circuit_rozplyw,
-    build_source_compliance_results,
 )
 
 
@@ -140,15 +139,6 @@ def build_run_summary_json(run: CanonicalRun) -> dict[str, Any]:
             "stability_index": row.get("stability_index"),
             "limiting_factor": row.get("limiting_factor"),
         }
-    if run.analysis_type == "source_compliance":
-        rows = build_source_compliance_results(run).get("rows", [])
-        row = rows[0] if rows else {}
-        return {
-            "row_count": len(rows),
-            "source_type": row.get("source_type"),
-            "verdict": row.get("verdict"),
-            "reporting_status": row.get("reporting_status"),
-        }
     return {"row_count": 0}
 
 
@@ -159,7 +149,6 @@ def build_result_items(run: CanonicalRun) -> dict[str, Any]:
         "short_circuit_sn": "short_circuit_sn",
         "phase_state_sn": "phase_state_sn",
         "dynamic_stability": "dynamic_stability",
-        "source_compliance": "source_compliance",
     }.get(run.analysis_type, run.analysis_type)
     payload_summary = build_run_summary_json(run)
     return {
@@ -218,8 +207,6 @@ def build_sld_overlay(
     phase_rows = {row["target_id"]: row for row in build_phase_state_results(run).get("rows", [])}
     stability_rows = build_dynamic_stability_results(run).get("rows", [])
     stability_row = stability_rows[0] if stability_rows else {}
-    compliance_rows = build_source_compliance_results(run).get("rows", [])
-    compliance_row = compliance_rows[0] if compliance_rows else {}
 
     node_symbols = list(sld_payload.get("nodes", []))
     if not node_symbols:
@@ -253,11 +240,6 @@ def build_sld_overlay(
                 "dynamic_stability_status": (
                     stability_row.get("status")
                     if node_id == str(stability_row.get("source_id") or "")
-                    else None
-                ),
-                "source_compliance_verdict": (
-                    compliance_row.get("verdict")
-                    if node_id == str(compliance_row.get("source_ref") or "")
                     else None
                 ),
             }
@@ -480,12 +462,6 @@ def build_dynamic_stability_time_series_response(run: CanonicalRun) -> dict[str,
 
 def build_automation_trace_results_response(run: CanonicalRun) -> dict[str, Any]:
     payload = build_automation_trace_results(run)
-    payload["analysis_case_context"] = build_analysis_case_context(run)
-    return payload
-
-
-def build_source_compliance_results_response(run: CanonicalRun) -> dict[str, Any]:
-    payload = build_source_compliance_results(run)
     payload["analysis_case_context"] = build_analysis_case_context(run)
     return payload
 

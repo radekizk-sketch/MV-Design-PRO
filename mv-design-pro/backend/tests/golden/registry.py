@@ -221,7 +221,7 @@ REJESTR: tuple[WpisRejestru, ...] = (
             "tests.reference_networks.builders:build_gn06_pv_regulacja_napiecia",
             "tests.reference_networks.builders:build_gn06_pv_regulacja_napiecia_nasycenie",
         ),
-        konsumenci=("ncrfg", "source_compliance", "solver"),
+        konsumenci=("ncrfg", "solver"),
         status=StatusSieci.PARTIAL,
         proweniencja=(
             "V12-GN-004; tests/reference_networks/test_pv1mw_g1_physics.py (własne dane, nie "

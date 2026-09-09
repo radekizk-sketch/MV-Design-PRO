@@ -12,9 +12,7 @@ AnalysisCapability = Literal[
     "LOAD_FLOW_GS_DIAGNOSTIC",
     "LOAD_FLOW_FD_PERFORMANCE",
     "PHASE_STATE_SN",
-    "SOURCE_FRT_LVRT_HVRT",
     "DYNAMIC_STABILITY",
-    "SOURCE_COMPLIANCE",
     "POWER_QUALITY_HARMONICS",
     "SSCI_IMPEDANCE",
     "VOLTAGE_STABILITY",
@@ -166,19 +164,14 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         reference_test="phase-state-sn-reference.test.py::test_phase_state_has_proof",
         applicability="Analiza stanu fazowego SN dla asymetrii, przerw fazowych i niezrownowazenia.",
     ),
-    "SOURCE_FRT_LVRT_HVRT": SolverCapability(
-        capability="SOURCE_FRT_LVRT_HVRT",
-        analysis_type="source_compliance",
-        availability="available",
-        implementation_status="implemented",
-        solver_version="source-compliance-v1",
-        required_inputs=("source_type", "operator_profile", "source_profile", "frt_curve"),
-        output_contract="SourceComplianceResultV1",
-        proof_support=True,
-        reportable=True,
-        reference_test="frt-lvrt-hvrt-compliance.test.py::test_source_frt_compliance_for_supported_sources",
-        applicability="PV, BESS oraz farmy wiatrowe PMSG, DFIG i SCIG z LVRT/HVRT/FRT.",
-    ),
+    # USUNIETE (karta W3-D, 2026-09-09): "SOURCE_FRT_LVRT_HVRT" i "SOURCE_COMPLIANCE"
+    # (obie analysis_type="source_compliance", `application/compliance/source_compliance.py`,
+    # skasowany). Kanon fizyki regulacji: `network_model/solvers/power_flow_inverter.py`
+    # (FROZEN); kanon testu zgodnosci typu NC RfG: `network_model/solvers/ncrfg_ptpiree/
+    # engine.py` (FROZEN, 5 profili operatorow) przez `POST /api/ncrfg-tests/run` i
+    # `GET /api/ncrfg-tests/cases/{case_id}/compliance` — poza tym rejestrem
+    # (dyspozycja `analysis_type`-owa `canonical_analysis.py`), wiec nowej pozycji
+    # capability nie dopisano.
     "DYNAMIC_STABILITY": SolverCapability(
         capability="DYNAMIC_STABILITY",
         analysis_type="dynamic_stability",
@@ -191,19 +184,6 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         reportable=True,
         reference_test="dynamic-stability-reference.test.py::test_fault_clear_stability_reportable",
         applicability="Ocena stabilnosci w zdefiniowanym zakresie zaklocen i czasu wylaczenia.",
-    ),
-    "SOURCE_COMPLIANCE": SolverCapability(
-        capability="SOURCE_COMPLIANCE",
-        analysis_type="source_compliance",
-        availability="available",
-        implementation_status="implemented",
-        solver_version="source-compliance-v1",
-        required_inputs=("source_type", "operator_profile", "source_profile", "grid_code_profile"),
-        output_contract="SourceComplianceResultV1",
-        proof_support=True,
-        reportable=True,
-        reference_test="advanced-results-reportability.test.py::test_source_compliance_reportable",
-        applicability="Zgodnosc przyłączeniowa z profilami operatora, Q(U), cos phi(P), FRT/LVRT/HVRT.",
     ),
     "POWER_QUALITY_HARMONICS": SolverCapability(
         capability="POWER_QUALITY_HARMONICS",

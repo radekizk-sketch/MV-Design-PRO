@@ -14,9 +14,7 @@ def test_advanced_solver_capability_registry_is_complete_and_real() -> None:
         "LOAD_FLOW_GS_DIAGNOSTIC",
         "LOAD_FLOW_FD_PERFORMANCE",
         "PHASE_STATE_SN",
-        "SOURCE_FRT_LVRT_HVRT",
         "DYNAMIC_STABILITY",
-        "SOURCE_COMPLIANCE",
         "POWER_QUALITY_HARMONICS",
         "SSCI_IMPEDANCE",
         "VOLTAGE_STABILITY",
@@ -51,4 +49,4 @@ def test_advanced_solver_capability_contract_reports_full_support() -> None:
     assert contract["all_implemented"] is True
     assert contract["all_proof_supported"] is True
     assert contract["all_reportable"] is True
-    assert len(contract["capabilities"]) == 25
+    assert len(contract["capabilities"]) == 23

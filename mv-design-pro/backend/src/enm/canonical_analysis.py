@@ -13,7 +13,6 @@ from application.automation.trace import (
     build_automation_trace,
     build_post_fault_topology_effect,
 )
-from application.compliance.source_compliance import evaluate_source_compliance
 from application.proof_engine.packs.phase_state_sn import (
     PhaseStateSNProofPack,
     PhaseStateSNProofPackInput,
@@ -414,17 +413,6 @@ def _dynamic_stability_proof_ref(*, run: CanonicalRun, scenario_id: str) -> str:
     return f"proof:dynamic-stability:{hashlib.sha256(raw.encode('utf-8')).hexdigest()}"
 
 
-def _source_compliance_proof_ref(*, run: CanonicalRun, source_ref: str) -> str:
-    payload = {
-        "analysis_type": "source_compliance",
-        "input_hash": run.input_hash,
-        "run_id": str(run.id),
-        "source_ref": source_ref,
-    }
-    raw = json.dumps(payload, sort_keys=True, separators=(",", ":"))
-    return f"proof:source-compliance:{hashlib.sha256(raw.encode('utf-8')).hexdigest()}"
-
-
 def _power_flow_proof_ref(*, run: CanonicalRun, solver_method: str) -> str:
     payload = {
         "analysis_type": "PF",
@@ -445,8 +433,6 @@ def _execution_analysis_type_for_run(run: CanonicalRun) -> str:
         return "PHASE_STATE_SN"
     if run.analysis_type == "dynamic_stability":
         return "DYNAMIC_STABILITY"
-    if run.analysis_type == "source_compliance":
-        return "SOURCE_COMPLIANCE"
     if run.analysis_type == "protection_sn":
         return "PROTECTION"
     if run.analysis_type.startswith("v126:"):
@@ -516,8 +502,6 @@ class CanonicalRun:
             return "phase_state_sn"
         if self.analysis_type == "dynamic_stability":
             return "dynamic_stability"
-        if self.analysis_type == "source_compliance":
-            return "source_compliance"
         return self.analysis_type
 
     def to_execution_dict(self) -> dict[str, Any]:
@@ -882,8 +866,6 @@ def create_run(
         raise ValueError("Stan fazowy SN wymaga co najmniej jednej szyny w ENM")
     if analysis_type == "dynamic_stability" and not (enm_liczony.sources or enm_liczony.generators):
         raise ValueError("Stabilnosc dynamiczna wymaga co najmniej jednego zrodla w ENM")
-    if analysis_type == "source_compliance" and not (enm_liczony.sources or enm_liczony.generators):
-        raise ValueError("Ocena zgodnosci zrodla wymaga co najmniej jednego zrodla w ENM")
     if analysis_type == "protection_sn":
         _validate_protection_sc_reference(
             normalized_options=normalized_options,
@@ -973,8 +955,6 @@ def _wykonaj_analize_biegu(
         _execute_phase_state_sn(run)
     elif run.analysis_type == "dynamic_stability":
         _execute_dynamic_stability(run)
-    elif run.analysis_type == "source_compliance":
-        _execute_source_compliance(run)
     elif run.analysis_type == "protection_sn":
         _execute_protection(run, uow_factory)
     elif run.analysis_type.startswith("v126:"):
@@ -1254,24 +1234,6 @@ def run_dynamic_stability_now(
     return execute_run(run.id, uow_factory=uow_factory)
 
 
-def run_source_compliance_now(
-    *,
-    case_id: str,
-    klucz_twin: str,
-    project_id: str | None = None,
-    options: dict[str, Any] | None = None,
-    uow_factory: Callable[[], Any] | None = None,
-) -> CanonicalRun:
-    run = create_run(
-        case_id=case_id,
-        klucz_twin=klucz_twin,
-        analysis_type="source_compliance",
-        project_id=project_id,
-        options=options,
-    )
-    return execute_run(run.id, uow_factory=uow_factory)
-
-
 def _phase_value_from_options(
     options: dict[str, Any],
     key: str,
@@ -1330,17 +1292,23 @@ def _pick_dynamic_source_ref(snapshot: dict[str, Any], options: dict[str, Any]) 
     return "source-dynamic"
 
 
-def _pick_compliance_source_ref(snapshot: dict[str, Any], options: dict[str, Any]) -> str:
-    explicit = options.get("source_ref") or options.get("source_id")
-    if explicit:
-        return str(explicit)
-    for collection in ("sources", "generators"):
-        for raw_element in snapshot.get(collection) or []:
-            if isinstance(raw_element, dict) and raw_element.get("ref_id"):
-                return str(raw_element["ref_id"])
-    return "source-compliance"
-
-
+# USUNIETE (karta W3-D, 2026-09-09): `_pick_compliance_source_ref`, `_execute_source_compliance`,
+# `_source_compliance_proof_ref`, `run_source_compliance_now`, `build_source_compliance_results`
+# i rodzaj biegu "source_compliance" (`application/compliance/source_compliance.py`).
+#
+# Trzecia, uboższa sciezka oceny FRT/Q(U)/cosfi(P) obok fizyki regulacji
+# (`network_model/solvers/power_flow_inverter.py`, FROZEN) i kanonicznego testu
+# zgodnosci typu NC RfG (`network_model/solvers/ncrfg_ptpiree/engine.py`, FROZEN,
+# 5 profili operatorow) — porownywala punkty krzywych operatora i zrodla BEZ
+# modelu dynamicznego urzadzenia i z niespojnym kryterium porownania w tym samym
+# pliku ("source_duration >= required" dla FRT, "source_value == required"
+# rownosc DOKLADNA dla Q(U)/cosfi(P)). 0 ekranow ui2 w chwili kasacji — jedyny
+# slad byl wpisem w generycznej macierzy DER (`ui/network-build/station-der/
+# macierzAnaliz.ts`, przycisk bez realnego biegu). Kanon zgodnosci NC RfG ma
+# odtad jedynego konsumenta przekrojowego: sekcja "Zgodnosc przekrojowa
+# przypadku" w `ui2/oze/macierz` czytajaca `GET /api/ncrfg-tests/cases/{case_id}
+# /compliance` (`application/ncrfg_compliance/checker.py`, live z committed ENM).
+#
 # USUNIETE (karta K-Q, 2026-08-14): `_phase_state_default_fault_current_from_grounding`.
 #
 # Funkcja brala MEDIANE zakresu `typical_ik1_a_range` z katalogu uziemienia SN i
@@ -1665,73 +1633,6 @@ def _execute_dynamic_stability(run: CanonicalRun) -> None:
             "reporting_status": "reportable",
         }
         for index, event in enumerate(automation_trace.events, start=1)
-    ]
-    run.power_flow_trace = None
-
-
-def _execute_source_compliance(run: CanonicalRun) -> None:
-    snapshot = run.snapshot or {}
-    source_ref = _pick_compliance_source_ref(snapshot, run.options)
-    source_type = str(run.options.get("source_type") or "PV")
-    operator_profile = run.options.get("operator_profile")
-    source_profile = run.options.get("source_profile")
-    compliance_result = evaluate_source_compliance(
-        source_type=source_type,
-        operator_profile=operator_profile if isinstance(operator_profile, dict) else None,
-        source_profile=source_profile if isinstance(source_profile, dict) else None,
-    )
-    proof_ref = _source_compliance_proof_ref(run=run, source_ref=source_ref)
-    result_payload = compliance_result.to_dict()
-    run.raw_result = {
-        "analysis_type": "source_compliance",
-        "source_ref": source_ref,
-        "source_type": result_payload["source_type"],
-        "operator_profile": operator_profile,
-        "source_profile": source_profile,
-        "result": result_payload,
-        "proof_ref": proof_ref,
-        "proof_status": result_payload["proof_status"],
-        "proof_status_pl": (
-            "pelny" if result_payload["proof_status"] == "complete" else "niepelny"
-        ),
-        "reporting_status": result_payload["reporting_status"],
-        "reporting_status_pl": (
-            "raportowalny"
-            if result_payload["reporting_status"] == "reportable"
-            else "nieraportowalny"
-        ),
-        "dopuszczalnosc_raportowa": result_payload["reporting_status"] == "reportable",
-        "reporting_limitations": list(result_payload["limitations"]),
-    }
-    run.white_box_trace = [
-        {
-            "step": 1,
-            "key": "SOURCE_PROFILE_INPUT",
-            "title": f"Profil operatora i zrodla: {source_ref}",
-            "target_id": source_ref,
-            "element_id": source_ref,
-            "method_basis": "SOURCE_COMPLIANCE_V1",
-            "inputs": {
-                "source_type": result_payload["source_type"],
-                "operator_profile": operator_profile,
-                "source_profile": source_profile,
-            },
-            "proof_ref": proof_ref,
-            "proof_status": result_payload["proof_status"],
-            "reporting_status": result_payload["reporting_status"],
-        },
-        {
-            "step": 2,
-            "key": "SOURCE_COMPLIANCE_RESULT",
-            "title": f"Ocena zgodnosci zrodla: {source_ref}",
-            "target_id": source_ref,
-            "element_id": source_ref,
-            "method_basis": "SOURCE_COMPLIANCE_V1",
-            "result": result_payload,
-            "proof_ref": proof_ref,
-            "proof_status": result_payload["proof_status"],
-            "reporting_status": result_payload["reporting_status"],
-        },
     ]
     run.power_flow_trace = None
 
@@ -2922,22 +2823,6 @@ def build_results_index(run: CanonicalRun) -> dict[str, Any]:
                 },
             ]
         )
-    if run.analysis_type == "source_compliance":
-        tables.append(
-            {
-                "table_id": "source_compliance",
-                "label_pl": "Zgodnosc zrodla",
-                "row_count": 1 if raw_result.get("result") else 0,
-                "columns": [
-                    {"key": "source_ref", "label_pl": "Zrodlo"},
-                    {"key": "source_type", "label_pl": "Typ"},
-                    {"key": "verdict", "label_pl": "Werdykt"},
-                    {"key": "reporting_status", "label_pl": "Status raportowy"},
-                    {"key": "proof_status", "label_pl": "Status uzasadnienia"},
-                    {"key": "limitations", "label_pl": "Ograniczenia"},
-                ],
-            }
-        )
     tables.append(
         {
             "table_id": "trace",
@@ -3479,33 +3364,6 @@ def build_automation_trace_results(run: CanonicalRun) -> dict[str, Any]:
     }
 
 
-def build_source_compliance_results(run: CanonicalRun) -> dict[str, Any]:
-    if run.analysis_type != "source_compliance":
-        return {"run_id": str(run.id), "rows": []}
-    raw_result = run.raw_result or {}
-    result = raw_result.get("result") or {}
-    if not result:
-        return {"run_id": str(run.id), "rows": []}
-    return {
-        "run_id": str(run.id),
-        "rows": [
-            {
-                "source_ref": raw_result.get("source_ref"),
-                "source_type": result.get("source_type"),
-                "verdict": result.get("verdict"),
-                "reporting_status": result.get("reporting_status"),
-                "proof_status": result.get("proof_status"),
-                "limitations": list(result.get("limitations") or []),
-                "checks": result.get("checks") or {},
-                "proof_ref": raw_result.get("proof_ref"),
-                "proof_status_pl": raw_result.get("proof_status_pl"),
-                "reporting_status_pl": raw_result.get("reporting_status_pl"),
-                "dopuszczalnosc_raportowa": raw_result.get("dopuszczalnosc_raportowa", False),
-            }
-        ],
-    }
-
-
 def _amps_to_ka(value: float | None) -> float | None:
     if value is None:
         return None
@@ -3981,26 +3839,6 @@ def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
             "count": len(element_results),
             "analysis_type": "dynamic_stability",
             "automation_event_count": len(build_automation_trace_results(run).get("rows", [])),
-            "proof_status": (run.raw_result or {}).get("proof_status"),
-            "reporting_status": (run.raw_result or {}).get("reporting_status"),
-        }
-    elif run.analysis_type == "source_compliance":
-        compliance_rows = build_source_compliance_results(run).get("rows", [])
-        for row in compliance_rows:
-            element_results.append(
-                {
-                    "element_ref": row.get("source_ref"),
-                    "element_type": "Source",
-                    "solver_ref": row.get("source_ref"),
-                    "values": row,
-                    "proof_ref": row.get("proof_ref"),
-                    "proof_status": row.get("proof_status"),
-                    "reporting_status": row.get("reporting_status"),
-                }
-            )
-        global_results = {
-            "count": len(element_results),
-            "analysis_type": "source_compliance",
             "proof_status": (run.raw_result or {}).get("proof_status"),
             "reporting_status": (run.raw_result or {}).get("reporting_status"),
         }

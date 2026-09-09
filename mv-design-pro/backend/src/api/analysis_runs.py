@@ -28,7 +28,6 @@ from api.canonical_run_views import (
     build_run_trace_payload,
     build_short_circuit_results_response,
     build_short_circuit_rozplyw_response,
-    build_source_compliance_results_response,
 )
 from api.dependencies import get_uow_factory
 from api.document_store import store_generated_document_from_response
@@ -659,13 +658,6 @@ def get_dynamic_stability_time_series(run_id: UUID) -> dict[str, Any]:
 def get_automation_trace_results(run_id: UUID) -> dict[str, Any]:
     return canonicalize_json(
         build_automation_trace_results_response(_require_canonical_run(run_id))
-    )
-
-
-@router.get("/analysis-runs/{run_id}/results/source-compliance")
-def get_source_compliance_results(run_id: UUID) -> dict[str, Any]:
-    return canonicalize_json(
-        build_source_compliance_results_response(_require_canonical_run(run_id))
     )
 
 

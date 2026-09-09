@@ -17,7 +17,6 @@ from api.canonical_run_views import (
     build_power_flow_export_bundle,
     build_results_index_response,
     build_short_circuit_results_response,
-    build_source_compliance_results_response,
 )
 from api.v125_contracts import build_export_artifact, build_export_policy, resolve_proof_pack_ref
 from application.analysis_run.read_model import build_trace_summary, canonicalize_json
@@ -45,7 +44,6 @@ ReportFocusTable = (
         "phase_state",
         "dynamic_stability",
         "automation_trace",
-        "source_compliance",
         "trace",
     ]
     | None
@@ -111,7 +109,6 @@ def normalize_report_options(
             "phase_state",
             "dynamic_stability",
             "automation_trace",
-            "source_compliance",
             "trace",
         }
         else None
@@ -148,8 +145,6 @@ def _analysis_title(run: CanonicalRun) -> str:
         return "Raport stanu fazowego SN"
     if run.analysis_type == "dynamic_stability":
         return "Raport stabilności dynamicznej"
-    if run.analysis_type == "source_compliance":
-        return "Raport zgodności źródła"
     return "Raport analizy sieci"
 
 
@@ -174,7 +169,6 @@ def _build_report_results_section(
     phase_state_results = build_phase_state_results_response(run)
     dynamic_stability_results = build_dynamic_stability_results_response(run)
     automation_trace_results = build_automation_trace_results_response(run)
-    source_compliance_results = build_source_compliance_results_response(run)
 
     if scope != "active_table" or focus_table is None:
         return {
@@ -185,7 +179,6 @@ def _build_report_results_section(
             "phase_state": phase_state_results,
             "dynamic_stability": dynamic_stability_results,
             "automation_trace": automation_trace_results,
-            "source_compliance": source_compliance_results,
         }
 
     filtered_tables = [
@@ -218,11 +211,6 @@ def _build_report_results_section(
         "automation_trace": (
             automation_trace_results
             if focus_table == "automation_trace"
-            else {"run_id": str(run.id), "rows": []}
-        ),
-        "source_compliance": (
-            source_compliance_results
-            if focus_table == "source_compliance"
             else {"run_id": str(run.id), "rows": []}
         ),
     }
@@ -380,8 +368,6 @@ def _build_generic_export_bundle(run: CanonicalRun) -> dict[str, Any]:
     elif run.analysis_type == "dynamic_stability":
         bundle["dynamic_stability"] = build_dynamic_stability_results_response(run)
         bundle["automation_trace"] = build_automation_trace_results_response(run)
-    elif run.analysis_type == "source_compliance":
-        bundle["source_compliance"] = build_source_compliance_results_response(run)
     return bundle
 
 
@@ -497,8 +483,6 @@ def build_analysis_run_export_payload(run: CanonicalRun) -> dict[str, Any]:
         payload["dynamic_stability"] = bundle["dynamic_stability"]
     if "automation_trace" in bundle:
         payload["automation_trace"] = bundle["automation_trace"]
-    if "source_compliance" in bundle:
-        payload["source_compliance"] = bundle["source_compliance"]
     return payload
 
 
@@ -1243,21 +1227,6 @@ def export_run_report_docx_response(
                             ]
                         )
                     )
-            elif table_id == "source_compliance":
-                rows = (results_section.get("source_compliance", {}) or {}).get("rows", [])[
-                    : limits["rows"]
-                ]
-                for row_data in rows:
-                    doc.add_paragraph(
-                        " | ".join(
-                            [
-                                str(row_data.get("source_ref") or "—"),
-                                str(row_data.get("source_type") or "—"),
-                                str(row_data.get("verdict") or "—"),
-                                str(row_data.get("reporting_status") or "—"),
-                            ]
-                        )
-                    )
             else:
                 doc.add_paragraph("Brak danych tabelarycznych dla wybranego zakresu.")
 
@@ -1426,13 +1395,6 @@ def export_run_report_pdf_response(
                 ]:
                     draw_line(
                         f"{row_data.get('event_seq') or '—'} | {row_data.get('event_type') or '—'} | {row_data.get('element_id') or '—'} | {row_data.get('detail') or '—'}"
-                    )
-            elif table.get("table_id") == "source_compliance":
-                for row_data in (results_section.get("source_compliance", {}) or {}).get(
-                    "rows", []
-                )[: limits["rows"]]:
-                    draw_line(
-                        f"{row_data.get('source_ref') or '—'} | {row_data.get('source_type') or '—'} | {row_data.get('verdict') or '—'} | {row_data.get('reporting_status') or '—'}"
                     )
         y -= 2 * mm
 

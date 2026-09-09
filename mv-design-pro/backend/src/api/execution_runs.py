@@ -38,7 +38,7 @@ class CreateRunRequest(BaseModel):
         ...,
         description=(
             "Typ analizy: SC_3F, SC_1F, SC_2F, SC_2F_G, LOAD_FLOW, "
-            "PHASE_STATE_SN, DYNAMIC_STABILITY, SOURCE_COMPLIANCE"
+            "PHASE_STATE_SN, DYNAMIC_STABILITY"
         ),
     )
     solver_input: dict[str, Any] = Field(default_factory=dict, description="Opcje solvera")
@@ -113,8 +113,6 @@ def _canonical_analysis_type(value: ExecutionAnalysisType) -> str:
         return "phase_state_sn"
     if value == ExecutionAnalysisType.DYNAMIC_STABILITY:
         return "dynamic_stability"
-    if value == ExecutionAnalysisType.SOURCE_COMPLIANCE:
-        return "source_compliance"
     # V12K-025: PROTECTION ma osobny endpoint (architektoniczna separacja
     # bo wymaga sc_run_id + protection_case_id + protection_engine_v1).
     if value == ExecutionAnalysisType.PROTECTION:

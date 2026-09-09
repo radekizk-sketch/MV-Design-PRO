@@ -314,7 +314,6 @@ def build_analysis_case_reproducibility(run: CanonicalRun) -> dict[str, Any]:
         "short_circuit_sn": "iec60909_short_circuit",
         "phase_state_sn": "phase_state_sn_radial",
         "dynamic_stability": "dynamic_stability_fault_clear",
-        "source_compliance": "source_compliance_profile_match",
     }.get(run.analysis_type, run.analysis_type)
     # CV-2 (H2): wersja solvera WYLACZNIE ze sladu solvera albo z opcji biegu;
     # brak = `None` (dotad stala "1.0.0" udawala odczyt).
@@ -327,14 +326,12 @@ def build_analysis_case_reproducibility(run: CanonicalRun) -> dict[str, Any]:
         "short_circuit_sn": "iec60909_v1",
         "phase_state_sn": "phase_state_sn_v1",
         "dynamic_stability": "dynamic_stability_fault_clear_v1",
-        "source_compliance": "source_compliance_v1",
     }.get(run.analysis_type, "canonical_run_v1")
     standard_basis_ref = {
         "PF": "NR_POWER_FLOW",
         "short_circuit_sn": "IEC_60909",
         "phase_state_sn": "PHASE_STATE_SN_RADIAL_V1",
         "dynamic_stability": "DYNAMIC_STABILITY_FAULT_CLEAR_V1",
-        "source_compliance": "SOURCE_COMPLIANCE_PROFILE_V1",
     }.get(run.analysis_type, "CANONICAL_ANALYSIS")
     variant_ref = _option_or_header(run, "variant_ref")
     switching_snapshot_ref = _option_or_header(run, "switching_snapshot_ref") or _option_or_header(

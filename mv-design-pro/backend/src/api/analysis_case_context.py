@@ -24,8 +24,6 @@ def _infer_case_kind(run: CanonicalRun) -> str:
         return "STAN_FAZOWY_SN"
     if run.analysis_type == "dynamic_stability":
         return "PRACA_PO_ZAKLOCENIU"
-    if run.analysis_type == "source_compliance":
-        return "ZGODNOSC_PRZYLACZENIOWA"
     return "RAPORTOWY_BAZOWY"
 
 
@@ -53,8 +51,6 @@ def _infer_applicability_scope(run: CanonicalRun) -> list[str]:
         return ["PHASE_STATE_SN", "REPORT"]
     if run.analysis_type == "dynamic_stability":
         return ["DYNAMIC_STABILITY", "AUTOMATION", "REPORT"]
-    if run.analysis_type == "source_compliance":
-        return ["SOURCE_COMPLIANCE", "REPORT"]
     return ["REPORT"]
 
 
@@ -71,11 +67,7 @@ def _build_assumptions(run: CanonicalRun) -> dict[str, Any]:
                 else (
                     "dynamic_fault_source_state"
                     if run.analysis_type == "dynamic_stability"
-                    else (
-                        "source_profile_snapshot"
-                        if run.analysis_type == "source_compliance"
-                        else "pf_source_nominal"
-                    )
+                    else "pf_source_nominal"
                 )
             )
         ),

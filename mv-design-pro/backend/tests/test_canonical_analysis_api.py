@@ -1201,53 +1201,6 @@ def test_dynamic_stability_run_odmawia_gdy_wszystkie_pola_brakuja(client: TestCl
         assert pole in payload["error_message"], pole
 
 
-def test_source_compliance_run_exposes_reportable_statuses(client: TestClient) -> None:
-    case_id = _nowy_przypadek(client)
-    _seed_power_flow_enm(client, case_id)
-
-    operator_profile = {
-        "frt": {"points": [{"u_pu": 0.15, "min_duration_ms": 150.0}]},
-        "q_u": {"points": [{"u_pu": 1.0, "q_pu": 0.0}]},
-        "cos_phi_p": {"points": [{"p_pu": 1.0, "cos_phi": 0.95}]},
-    }
-    source_profile = {
-        "frt": {"points": [{"u_pu": 0.15, "min_duration_ms": 200.0}]},
-        "q_u": {"points": [{"u_pu": 1.0, "q_pu": 0.0}]},
-        "cos_phi_p": {"points": [{"p_pu": 1.0, "cos_phi": 0.95}]},
-    }
-
-    create_run = client.post(
-        f"/api/execution/study-cases/{case_id}/runs",
-        json={
-            "analysis_type": "SOURCE_COMPLIANCE",
-            "solver_input": {
-                "source_ref": "src-grid",
-                "source_type": "PV",
-                "operator_profile": operator_profile,
-                "source_profile": source_profile,
-            },
-        },
-    )
-    assert create_run.status_code == 201
-    run_id = create_run.json()["id"]
-
-    execute_run = client.post(f"/api/execution/runs/{run_id}/execute")
-    assert execute_run.status_code == 200
-    assert execute_run.json()["analysis_type"] == "SOURCE_COMPLIANCE"
-
-    result_set = client.get(f"/api/execution/runs/{run_id}/results")
-    assert result_set.status_code == 200
-    assert result_set.json()["global_results"]["analysis_type"] == "source_compliance"
-
-    source_compliance = client.get(f"/api/analysis-runs/{run_id}/results/source-compliance")
-    assert source_compliance.status_code == 200
-    source_payload = source_compliance.json()
-    assert source_payload["analysis_case_context"]["rodzaj_przypadku"] == "ZGODNOSC_PRZYLACZENIOWA"
-    assert source_payload["rows"][0]["verdict"] == "compliant"
-    assert source_payload["rows"][0]["reporting_status"] == "reportable"
-    assert source_payload["rows"][0]["proof_ref"].startswith("proof:source-compliance:")
-
-
 def test_legacy_snapshot_and_analysis_index_routes_are_disabled_in_main_app(
     client: TestClient,
 ) -> None:
