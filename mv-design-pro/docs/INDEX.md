@@ -105,6 +105,7 @@ Wynik mandatu „FINAL MASTER ARCHITECTURE MANDATE" (FAZY A–F, STOP §180). Ni
 - [plan/PLAN_PRZEBUDOWY_10X_2026-07.md](./plan/PLAN_PRZEBUDOWY_10X_2026-07.md) — program inżynieryjny 10x (F0–F4)
 - [plan/MISJA_DOMKNIECIA_PRODUKTU_2026-09.md](./plan/MISJA_DOMKNIECIA_PRODUKTU_2026-09.md) — misja domknięcia produktu (dyrektywa właściciela 2026-09-09; 12 domen, kontrakt ukończenia CLAIMED → VERIFICATION GATE → ACCEPTED, mapa domknięcia z dowodów repo)
 - [plan/MAPA_DOMKNIECIA_PRODUKTU_2026-09.md](./plan/MAPA_DOMKNIECIA_PRODUKTU_2026-09.md) — mapa domknięcia produktu (2026-09-09; granica faktyczna 12 domen z dowodów repo: klasyfikacja per zdolność, klasy defektów, wyjścia do Excela, korekty roszczeń, decyzje właściciela OD-13…OD-16, kolejność wycinków W1–W12, karta pierwszego wycinka W1)
+- [plan/KARTA_W3_KONWERGENCJA_FIZYKI_2026-09.md](./plan/KARTA_W3_KONWERGENCJA_FIZYKI_2026-09.md) — karta wycinka W3 (konwergencja duplikatów fizyki): rozstrzygnięcia architekta per rodzina, podkarty A–I, fale, DoD (2026-09-09)
 
 ### Program UI/UX 2026-07 (AKTYWNY)
 - [uiux/PROGRAM_UIUX_2026-07.md](./uiux/PROGRAM_UIUX_2026-07.md) — program przebudowy UI/UX do klasy ETAP/PowerFactory (fazy U0–U5; clean-room UI)
