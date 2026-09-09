@@ -1179,7 +1179,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # wylacznie przez skasowane pliki (network_wizard/service.py, sld/layout.py,
     # power_flow_report_docx.py, project_archive 8 liczb sekcji legacy) — pomiar `--pomiar`
     # na drzewie karty, zero nowych podstawien.
-    assert "Pol kontraktow wejsciowych: 3530." in wyjscie, wyjscie
+    # W2-C (2026-09-09, daf303a3): +9 pol kontraktu (karta ConverterType: widmo harmoniczne,
+    # droop P(f)/Q(U); wejscie V12.6: proweniencja widma, pominiete zrodla) — pomiar guardem.
+    assert "Pol kontraktow wejsciowych: 3539." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1192,13 +1194,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     assert "Zapadka dlugu (fizyczne): 61 plikow, suma 280." in wyjscie, wyjscie
     assert "Wykluczenia skanera (niefizyczne): 14 plikow, suma 32." in wyjscie, wyjscie
     per_korzen = [
-        "  network_model: pliki_skanowane=136, dlug=14 plikow/suma 77, "
-        "wykluczenia=3 plikow/suma 6",
-        "  solver_input: pliki_skanowane=10, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
-        "  enm: pliki_skanowane=41, dlug=8 plikow/suma 77, wykluczenia=0 plikow/suma 0",
-        "  application: pliki_skanowane=294, dlug=34 plikow/suma 112, "
-        "wykluczenia=5 plikow/suma 11",
-        "  api: pliki_skanowane=64, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 15",
+        "network_model: pliki_skanowane=136, dlug=14 plikow/suma 77, wykluczenia=3 plikow/suma 6",
+        "solver_input: pliki_skanowane=10, dlug=2 plikow/suma 8, wykluczenia=0 plikow/suma 0",
+        "enm: pliki_skanowane=41, dlug=8 plikow/suma 77, wykluczenia=0 plikow/suma 0",
+        "application: pliki_skanowane=294, dlug=34 plikow/suma 112, wykluczenia=5 plikow/suma 11",
+        "api: pliki_skanowane=64, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 15",
     ]
     for linia in per_korzen:
         assert linia in wyjscie, f"Brak pinowanej sumy per korzen: {linia!r}\n{wyjscie}"
