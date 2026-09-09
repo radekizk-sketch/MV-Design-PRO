@@ -54,8 +54,8 @@ def _rozplyw(enm: EnergyNetworkModel, **opcje):
     return run
 
 
-def _zwarcie(enm: EnergyNetworkModel):
-    run = _bieg(enm, klucz="k3b-sc", analysis_type="short_circuit_sn", options=_SC_3F)
+def _zwarcie(enm: EnergyNetworkModel, **opcje):
+    run = _bieg(enm, klucz="k3b-sc", analysis_type="short_circuit_sn", options={**_SC_3F, **opcje})
     _execute_short_circuit(run)
     return run
 
@@ -332,7 +332,10 @@ def test_klucze_pustego_wiersza_zwarcia_sa_kluczami_kontraktu_solvera() -> None:
     """Deklaracja bez testu = fałszywa pewność: szablon wiersza bez solvera musi mieć
     dokładnie klucze ``ShortCircuitResult.to_dict()`` (poza polami exclude-None)."""
     enm = _siec("02_two_tr_qbc_open")
-    run = _zwarcie(enm)
+    # PERF-SC-50: pełny kontrakt solvera (z wkładami) niesie wiersz biegu `in_run`; tryb
+    # domyślny (na żądanie) zdejmuje klasę wkładów i dokłada flagę dostępności — jego
+    # kształt pinuje `tests/enm/test_wklady_na_zadanie.py`.
+    run = _zwarcie(enm, branch_contributions_mode="in_run")
     wiersz = run.raw_result["results"][0]
     klucze_solvera = set(wiersz) - KLUCZE_WIERSZA_ZWARCIA_OPCJONALNE - set(_KLUCZE_WYKONAWCY)
     assert klucze_solvera == set(KLUCZE_WIERSZA_ZWARCIA), klucze_solvera ^ set(

@@ -493,7 +493,9 @@ def _wymagane_pole_sc(payload: dict[str, Any], klucz: str, run: CanonicalRun) ->
     return float(wartosc)
 
 
-def _odtworz_wynik_zwarciowy(run: CanonicalRun) -> ShortCircuitResult:
+def _odtworz_wynik_zwarciowy(
+    run: CanonicalRun, uow_factory: Callable[[], Any] | None = None
+) -> ShortCircuitResult:
     """Wynik zwarciowy odtworzony z wiersza przebiegu (read-only, bez fizyki).
 
     Bierze PIERWSZY wiersz wyniku (najniekorzystniejszy przypadek wybiera sie przy
@@ -539,15 +541,19 @@ def _odtworz_wynik_zwarciowy(run: CanonicalRun) -> ShortCircuitResult:
         tk_s=_wymagane_pole_sc(payload, "tk_s", run),
         ib_a=_wymagane_pole_sc(payload, "ib_a", run),
         tb_s=_wymagane_pole_sc(payload, "tb_s", run),
+        # PERF-SC-50: wkłady liczone na żądanie z wejścia biegu (fabryka UoW jak przy
+        # biegu — opcje audytu 2 czytane tą samą bazą).
         branch_contributions=_odtworz_wklady_galeziowe(
-            pobierz_rozplyw_biegu(run, str(payload.get("fault_node_id", "")))
+            pobierz_rozplyw_biegu(
+                run, str(payload.get("fault_node_id", "")), uow_factory=uow_factory
+            )
         ),
     )
     return sc_result
 
 
 def _ocena_dla_przebiegu(
-    run: CanonicalRun,
+    run: CanonicalRun, uow_factory: Callable[[], Any] | None = None
 ) -> tuple[ShortCircuitResult, ConductorThermalWithstandView, dict[str, dict[str, Any]]]:
     """(wynik zwarciowy, ocena cieplna, slad czasu) dla przebiegu — jedno przejscie.
 
@@ -556,7 +562,7 @@ def _ocena_dla_przebiegu(
     PRADZIE TEJ GALEZI; pozostale uzywaja zalozonego czasu przypadku, ale slad mowi
     to wprost (``zrodlo``), wiec zalozenie nigdy nie udaje nastawy.
     """
-    sc_result = _odtworz_wynik_zwarciowy(run)
+    sc_result = _odtworz_wynik_zwarciowy(run, uow_factory)
     model = EnergyNetworkModel.model_validate(run.snapshot)
     graph = map_enm_to_network_graph(model)
 
@@ -592,7 +598,7 @@ def build_wytrzymalosc_cieplna_view(
         ValueError: gdy przebieg nie jest zwarciowy albo nie jest zakonczony —
             komunikat w jezyku polskim, jak w pozostalych widokach.
     """
-    sc_result, widok, slad = _ocena_dla_przebiegu(run)
+    sc_result, widok, slad = _ocena_dla_przebiegu(run, uow_factory)
     return {
         "run_id": str(run.id),
         # Karta F-K1 faza 6 (uwaga 12): raport MUSI powiedziec, czy liczby dotycza
@@ -612,7 +618,9 @@ def build_wytrzymalosc_cieplna_view(
     }
 
 
-def zbuduj_dowod_cieplny(run: CanonicalRun, branch_id: str) -> dict[str, Any]:
+def zbuduj_dowod_cieplny(
+    run: CanonicalRun, branch_id: str, uow_factory: Callable[[], Any] | None = None
+) -> dict[str, Any]:
     """Kroki dowodowe kryterium cieplnego dla JEDNEJ galezi (karta F-K1 faza 5).
 
     Dowod zaczyna sie od kroku „Czas trwania zwarcia" — bo to on rozstrzyga, czy
@@ -626,7 +634,7 @@ def zbuduj_dowod_cieplny(run: CanonicalRun, branch_id: str) -> dict[str, Any]:
     """
     # Kroki solvera bierzemy z OBIEKTU oceny (``to_dict`` ich nie niesie — lista
     # pozycji nie ma puchnac o slad dowodowy kazdej galezi).
-    _sc_result, widok, slad = _ocena_dla_przebiegu(run)
+    _sc_result, widok, slad = _ocena_dla_przebiegu(run, uow_factory)
     pozycja = next((item for item in widok.items if item.branch_id == branch_id), None)
     if pozycja is None:
         raise ValueError(f"Gałąź {branch_id} nie występuje w ocenie cieplnej przebiegu {run.id}.")

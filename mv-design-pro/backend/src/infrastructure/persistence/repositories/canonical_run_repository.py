@@ -272,6 +272,35 @@ class CanonicalRunRepository:
                 )
             )
 
+    def zapisz_rozplyw_punktu(
+        self,
+        run_id: UUID,
+        fault_node_id: str,
+        contributions: list[dict[str, Any]],
+        trace: list[dict[str, Any]] | None,
+    ) -> None:
+        """Utrwal rozpływ JEDNEGO punktu policzony na żądanie (PERF-SC-50, krok 3).
+
+        Idempotentnie: wpis istniejący zostaje (treść jest deterministyczna — ten sam
+        `solve_graph` z tej samej migawki i opcji daje bajtowo ten sam rozpływ, więc
+        dwa równoległe żądania tego samego punktu nie mają czego uzgadniać).
+        """
+        # Bieg nieutrwalony (np. bieg w pamięci harnessu/testu) nie ma wiersza nadrzędnego —
+        # nie ma do czego przypiąć rozpływu (klucz obcy); obliczenie wraca do wołającego,
+        # utrwalenie następuje przy najbliższym żądaniu na biegu zapisanym.
+        if self._session.get(CanonicalRunORM, run_id) is None:
+            return
+        if self._session.get(CanonicalRunBranchFlowORM, (run_id, fault_node_id)) is not None:
+            return
+        self._session.add(
+            CanonicalRunBranchFlowORM(
+                run_id=run_id,
+                fault_node_id=fault_node_id,
+                contributions_json=contributions,
+                branch_flow_trace_json=trace,
+            )
+        )
+
     def get_branch_flows(self, run_id: UUID, fault_node_id: str) -> list[Any] | None:
         """Rozpływ JEDNEGO punktu zwarcia z osobnej tabeli (brak wpisu → None).
 

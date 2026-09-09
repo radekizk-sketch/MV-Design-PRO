@@ -760,3 +760,90 @@ def test_guard_accepts_current_repo_state_data_manager() -> None:
     """Integracyjny pin: bramka na PRAWDZIWYM drzewie repo (bez monkeypatch)
     musi byc czysta PO kasacji KASACJA-DATA-MANAGER."""
     assert guard.check_data_manager_resurrection() == []
+
+
+# ---------------------------------------------------------------------------
+# CV-4.3-A4/K5 (2026-09-06) — bramka wskrzeszenia sierot E2 (`api/enm.py`
+# POST runs/{short-circuit,power-flow}) i słownika biegów V12.6 w pamięci
+# (`api/v126_academic.py::_runs`). Self-testy dopisane 2026-09-09 (odbiór karty
+# KASACJA-DATA-MANAGER: deklaracja bez testu = fałszywa pewność).
+# ---------------------------------------------------------------------------
+
+
+def _patch_cv43_a4_modules(monkeypatch, tmp_path, *, enm_src: str | None, v126_src: str | None):
+    api_dir = tmp_path / "backend" / "src" / "api"
+    api_dir.mkdir(parents=True, exist_ok=True)
+    enm_module = api_dir / "enm.py"
+    v126_module = api_dir / "v126_academic.py"
+    if enm_src is not None:
+        enm_module.write_text(enm_src, encoding="utf-8")
+    if v126_src is not None:
+        v126_module.write_text(v126_src, encoding="utf-8")
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "CV43_A4_ENM_MODULE", enm_module)
+    monkeypatch.setattr(guard, "CV43_A4_V126_MODULE", v126_module)
+
+
+def test_guard_rejects_resurrected_e2_route_functions(tmp_path, monkeypatch) -> None:
+    _patch_cv43_a4_modules(
+        monkeypatch,
+        tmp_path,
+        enm_src=(
+            "from fastapi import APIRouter\n"
+            "router = APIRouter()\n"
+            "@router.post('/api/enm/{case_id}/runs/short-circuit')\n"
+            "def run_short_circuit(case_id: str):\n"
+            "    return {}\n"
+            "@router.post('/api/enm/{case_id}/runs/power-flow')\n"
+            "async def run_power_flow(case_id: str):\n"
+            "    return {}\n"
+        ),
+        v126_src=None,
+    )
+
+    violations = guard.check_cv43_a4_resurrection()
+
+    assert [v for v in violations if "[resurrected-route]" in v and "run_short_circuit" in v]
+    assert [v for v in violations if "[resurrected-route]" in v and "run_power_flow" in v]
+    assert len(violations) == 2
+
+
+def test_guard_rejects_resurrected_v126_inmemory_registry(tmp_path, monkeypatch) -> None:
+    _patch_cv43_a4_modules(
+        monkeypatch,
+        tmp_path,
+        enm_src=None,
+        v126_src="from typing import Any\n_runs: dict[str, Any] = {}\n",
+    )
+
+    violations = guard.check_cv43_a4_resurrection()
+
+    assert len(violations) == 1
+    assert "[resurrected-inmemory-registry]" in violations[0]
+    assert "_runs" in violations[0] and "v126_academic.py:2" in violations[0]
+
+
+def test_guard_ignores_local_variable_named_like_registry(tmp_path, monkeypatch) -> None:
+    """Zmienna lokalna `_runs` w funkcji pomocniczej nie jest rejestrem w pamięci
+    procesu — guard patrzy wyłącznie na przypisania najwyższego poziomu."""
+    _patch_cv43_a4_modules(
+        monkeypatch,
+        tmp_path,
+        enm_src="def zdrowy_endpoint():\n    return {}\n",
+        v126_src=(
+            "def _zbierz(biegi):\n" "    _runs = {b.id: b for b in biegi}\n" "    return _runs\n"
+        ),
+    )
+
+    assert guard.check_cv43_a4_resurrection() == []
+
+
+def test_guard_accepts_missing_cv43_a4_modules(tmp_path, monkeypatch) -> None:
+    _patch_cv43_a4_modules(monkeypatch, tmp_path, enm_src=None, v126_src=None)
+
+    assert guard.check_cv43_a4_resurrection() == []
+
+
+def test_real_repo_has_no_cv43_a4_resurrection() -> None:
+    """Pin na prawdziwym repo: sieroty E2 i słownik `_runs` nie wróciły."""
+    assert guard.check_cv43_a4_resurrection() == []

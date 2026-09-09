@@ -412,3 +412,37 @@ def test_zmiana_modelu_po_biegu_uniewaznia_werdykt() -> None:
         if pozycja["kryterium_id"] == KRYTERIUM_NAPIECIE
     }
     assert powody[KRYTERIUM_NAPIECIE] == POWOD_BIEG_NIEAKTUALNY
+
+
+# ---------------------------------------------------------------------------
+# PERF-SC-50: fabryka UoW wołającego dociera do dostawcy cieplnego
+# ---------------------------------------------------------------------------
+
+
+def test_fabryka_uow_wolajacego_dociera_do_dostawcy_cieplnego(monkeypatch) -> None:
+    """Wkłady gałęziowe liczą się na żądanie z wejścia biegu; bieg z opcjami audytu 2
+    czyta konfigurację WYŁĄCZNIE fabryką wołającego — agregat musi ją przekazać
+    dostawcy cieplnemu (inaczej kryterium cieplne spadałoby do „niesprawdzone"
+    z powodu braku fabryki, nie braku danych)."""
+    import application.analyses.werdykt_projektowy as modul
+
+    bieg_sc = _bieg("c-uow", "short_circuit_sn")
+    przechwycone: list[object] = []
+    fabryka = object()
+
+    def atrapa_dostawcy(bieg, uow_factory=None):
+        przechwycone.append(uow_factory)
+        raise ValueError("atrapa dostawcy cieplnego")
+
+    monkeypatch.setattr(modul, "build_wytrzymalosc_cieplna_view", atrapa_dostawcy)
+    werdykt = zbuduj_werdykt_projektowy(
+        case_id="c-uow",
+        model_hash=compute_enm_hash(get_enm("c-uow")),
+        bieg_pf=None,
+        bieg_sc=bieg_sc,
+        uow_factory=fabryka,
+    )
+    assert przechwycone == [fabryka]
+    pozycja = _pozycje_po_id(werdykt)[KRYTERIUM_PRZEWOD_CIEPLNY]
+    assert pozycja.stan == STAN_NIESPRAWDZONE
+    assert "atrapa dostawcy cieplnego" in (pozycja.powod_pl or "")

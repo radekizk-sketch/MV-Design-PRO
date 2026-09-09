@@ -232,6 +232,7 @@ def get_conductor_thermal_withstand(request: Request, run_id: UUID = Query(...))
 
 @router.get("/api/quality/conductor-thermal-withstand/proof")
 def get_conductor_thermal_withstand_proof(
+    request: Request,
     run_id: UUID = Query(...),
     branch_id: str = Query(...),
 ) -> dict[str, Any]:
@@ -244,7 +245,8 @@ def get_conductor_thermal_withstand_proof(
     """
     run = _require_run(run_id)
     try:
-        return zbuduj_dowod_cieplny(run, branch_id)
+        # PERF-SC-50: wkłady na żądanie z wejścia biegu — fabryka UoW jak przy biegu.
+        return zbuduj_dowod_cieplny(run, branch_id, getattr(request.app.state, "uow_factory", None))
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -455,7 +457,9 @@ def post_arc_flash_report_docx(zadanie: ArcFlashReportZadanie) -> Response:
 
 
 @router.get("/api/quality/design-verdict")
-def get_design_verdict(klucz: KluczTwin, case_id: str = Query(...)) -> dict[str, Any]:
+def get_design_verdict(
+    request: Request, klucz: KluczTwin, case_id: str = Query(...)
+) -> dict[str, Any]:
     """Agregat werdyktu projektowego dla przypadku obliczeniowego (karta F-K3).
 
     JEDYNA koncowka tej rodziny parametryzowana PRZYPADKIEM, nie przebiegiem — i
@@ -466,4 +470,7 @@ def get_design_verdict(klucz: KluczTwin, case_id: str = Query(...)) -> dict[str,
     zakres kryteriow, ktorych system NIE sprawdza automatycznie. Bieg nieaktualny
     wobec biezacego modelu daje NIESPRAWDZONE (regula 4 kanonu), nigdy spelnienie.
     """
-    return build_werdykt_projektowy_view(case_id, klucz)
+    # PERF-SC-50: wkłady na żądanie z wejścia biegu — fabryka UoW jak przy biegu.
+    return build_werdykt_projektowy_view(
+        case_id, klucz, getattr(request.app.state, "uow_factory", None)
+    )

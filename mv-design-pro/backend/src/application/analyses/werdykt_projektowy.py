@@ -815,12 +815,18 @@ def zbuduj_werdykt_projektowy(
     bieg_pf: CanonicalRun | None,
     bieg_sc: CanonicalRun | None,
     enm_snapshot: Mapping[str, Any] | None = None,
+    uow_factory: Callable[[], Any] | None = None,
 ) -> WerdyktProjektowy:
     """Zbuduj agregat werdyktu projektowego z gotowych widokow analiz.
 
     Funkcja jest CZYSTA wobec magazynu: biegi i snapshot przychodzą argumentami,
     dzieki czemu agregacja jest testowalna bez repozytorium (a serwis nizej
-    dostarcza je z magazynu).
+    dostarcza je z magazynu). ``uow_factory`` — fabryka `UnitOfWork` wołającego
+    (`app.state.uow_factory`), przekazywana dostawcy cieplnemu: od PERF-SC-50 wkłady
+    gałęziowe liczą się na żądanie z wejścia biegu, a bieg z opcjami audytu 2 czyta
+    swoją konfigurację wyłącznie tą fabryką (bez niej dostawca odmawia nazwanym
+    `ValueError`, a kryterium cieplne spadałoby do „niesprawdzone" z powodu, który
+    nie jest brakiem danych inżynierskich).
     """
     pozycje_po_id: dict[str, PozycjaWerdyktu] = {}
     zrodla: list[ZrodloWerdyktu] = []
@@ -872,7 +878,9 @@ def zbuduj_werdykt_projektowy(
     zrodla.append(zrodlo_sc)
     if zrodlo_sc.dostepny and bieg_sc is not None:
         run_sc = str(bieg_sc.id)
-        widok_cieplny, blad_cieplny = _bezpiecznie(build_wytrzymalosc_cieplna_view, bieg_sc)
+        widok_cieplny, blad_cieplny = _bezpiecznie(
+            lambda bieg: build_wytrzymalosc_cieplna_view(bieg, uow_factory), bieg_sc
+        )
         if widok_cieplny is not None:
             _wpisz(pozycje_po_id, [_pozycja_cieplna(widok_cieplny, run_id=run_sc)])
         else:
@@ -956,7 +964,9 @@ def _najnowszy_bieg(biegi: Sequence[CanonicalRun], rodzaj: str) -> CanonicalRun 
     return max(pula, key=lambda bieg: (bieg.created_at, str(bieg.id)))
 
 
-def build_werdykt_projektowy_view(case_id: str, klucz_twin: str) -> dict[str, Any]:
+def build_werdykt_projektowy_view(
+    case_id: str, klucz_twin: str, uow_factory: Callable[[], Any] | None = None
+) -> dict[str, Any]:
     """Widok agregatu werdyktu projektowego dla przypadku obliczeniowego.
 
     Serwis rozwiazuje zaleznosci z magazynu (biezacy model + najnowsze biegi) i
@@ -975,5 +985,6 @@ def build_werdykt_projektowy_view(case_id: str, klucz_twin: str) -> dict[str, An
         bieg_pf=_najnowszy_bieg(biegi, ZRODLO_PF),
         bieg_sc=_najnowszy_bieg(biegi, ZRODLO_SC),
         enm_snapshot=enm.model_dump(mode="json"),
+        uow_factory=uow_factory,
     )
     return werdykt.to_dict()

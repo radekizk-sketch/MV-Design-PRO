@@ -1168,9 +1168,14 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # (adnotowany atrybut klasy importera XLSX, nie pole fizyczne — inwentarz guarda
     # zbiera adnotowane atrybuty klas w `application/`); zmierzone różnicą zbiorów
     # `contract_fields()` af2d0f5b → HEAD: dokładnie ten jeden wpis, zero podstawień.
-    assert "Pol kontraktow wejsciowych: 3627." in wyjscie, wyjscie
+    # PERF-SC-50 (2026-09-09): +1 = `WejscieZwarcia.wklady_w_biegu` (assembler, tryb wkładów
+    # gałęziowych: w biegu / na żądanie) — pole sterowania, nie liczba fizyczna; zmierzone
+    # guardem na drzewie karty: 3628, zapadka dlugu/wykluczenia bez zmian.
+    assert "Pol kontraktow wejsciowych: 3628." in wyjscie, wyjscie
     assert (
-        "Przeskanowano 595 plikow w zakresie: network_model, solver_input, enm, "
+        # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
+        # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
+        "Przeskanowano 596 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     assert "Zapadka dlugu (fizyczne): 63 plikow, suma 289." in wyjscie, wyjscie
@@ -1179,7 +1184,7 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         "  network_model: pliki_skanowane=149, dlug=14 plikow/suma 77, "
         "wykluczenia=4 plikow/suma 7",
         "  solver_input: pliki_skanowane=10, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
-        "  enm: pliki_skanowane=39, dlug=8 plikow/suma 83, wykluczenia=0 plikow/suma 0",
+        "  enm: pliki_skanowane=40, dlug=8 plikow/suma 83, wykluczenia=0 plikow/suma 0",
         "  application: pliki_skanowane=332, dlug=36 plikow/suma 115, "
         "wykluczenia=7 plikow/suma 19",
         "  api: pliki_skanowane=65, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 23",

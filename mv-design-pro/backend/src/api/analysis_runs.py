@@ -660,14 +660,22 @@ def get_short_circuit_results(run_id: UUID) -> dict[str, Any]:
 
 
 @router.get("/analysis-runs/{run_id}/results/short-circuit/rozplyw")
-def get_short_circuit_rozplyw(run_id: UUID, target_id: str = Query(...)) -> dict[str, Any]:
+def get_short_circuit_rozplyw(
+    run_id: UUID,
+    target_id: str = Query(...),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
+) -> dict[str, Any]:
     # V12K-281 (K13): rozpływ gałęziowy JEDNEGO punktu zwarcia na żądanie —
     # wiersze zbiorcze `/results/short-circuit` nie niosą już rozpływu
     # (iloczyn źródło×gałąź per wiersz dawał odpowiedź/raport 730 MB).
     # `target_id` jako parametr zapytania: refy węzłów ENM zawierają ukośniki.
     run = _require_canonical_run(run_id)
     try:
-        return canonicalize_json(build_short_circuit_rozplyw_response(run, target_id))
+        # PERF-SC-50: wkłady na żądanie z wejścia biegu — fabryka UoW jak przy biegu
+        # (opcje audytu 2 czytane tą samą bazą, którą zapisano konfigurację).
+        return canonicalize_json(
+            build_short_circuit_rozplyw_response(run, target_id, uow_factory=uow_factory)
+        )
     except KeyError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

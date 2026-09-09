@@ -30,6 +30,7 @@ from application.stability.voltage_trajectory import (
 from application.v126_artifacts import build_v126_proof_artifact, build_v126_report_artifact
 from enm.assembler import (
     WejscieRozplywu,
+    WejscieZwarcia,
     WyspaRozplywu,
     _graph_id_from_ref,
     _short_circuit_requires_z0,
@@ -52,6 +53,7 @@ from enm.scenariusze import (
 )
 from enm.store import get_enm
 from enm.validator import ENMValidator
+from enm.wartosci_niefinitowe import podmien_niefinitowe
 from infrastructure.persistence.repositories.canonical_run_repository import (
     KLUCZ_DOSTEPNOSCI_ROZPLYWU,
     KLUCZ_ROZPLYWU,
@@ -88,7 +90,10 @@ from network_model.solvers.power_flow_types import (
     PowerFlowOptions,
 )
 from network_model.solvers.short_circuit_core import ShortCircuitType
-from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver
+from network_model.solvers.short_circuit_iec60909 import (
+    ShortCircuitIEC60909Solver,
+    ShortCircuitResult,
+)
 from network_model.solvers.v126_academic import V126AcademicSolver
 from solver_input.v126_contracts import V126AcademicInput, V126AnalysisType
 
@@ -122,40 +127,6 @@ def _compute_input_hash(
 _KAPPA_MIN = 1.02
 _KAPPA_MAX = 2.0
 OGRANICZENIE_WYNIK_NIEFIZYCZNY = "solver_result_non_physical"
-
-
-def _niefinitowe_na_none(obiekt: Any, _sciezka: str = "$") -> tuple[Any, list[str]]:
-    """Kopia struktury JSON z NaN/±inf zamienionymi na ``None`` + ścieżki podmian.
-
-    Polityka §35 (``kontrakt_liczb``): kontrakt wyjściowy biegu musi być poprawnym
-    JSON-em o wartościach finitowych — NaN/inf nie ma reprezentacji w JSON, a
-    „liczba" w polu wyniku bez znaczenia fizycznego jest fabrykacją. Podmiana
-    NIE jest cicha: każda ścieżka wraca do wołającego, który oznacza wynik jako
-    nieraportowalny i wypisuje podmienione pola.
-    """
-    if isinstance(obiekt, bool):
-        return obiekt, []
-    if isinstance(obiekt, float):
-        if math.isfinite(obiekt):
-            return obiekt, []
-        return None, [_sciezka]
-    if isinstance(obiekt, dict):
-        kopia: dict[Any, Any] = {}
-        sciezki: list[str] = []
-        for klucz, wartosc in obiekt.items():
-            nowa, sc = _niefinitowe_na_none(wartosc, f"{_sciezka}.{klucz}")
-            kopia[klucz] = nowa
-            sciezki.extend(sc)
-        return kopia, sciezki
-    if isinstance(obiekt, list | tuple):
-        elementy: list[Any] = []
-        sciezki = []
-        for indeks, wartosc in enumerate(obiekt):
-            nowa, sc = _niefinitowe_na_none(wartosc, f"{_sciezka}[{indeks}]")
-            elementy.append(nowa)
-            sciezki.extend(sc)
-        return elementy, sciezki
-    return obiekt, []
 
 
 #: Powód nieraportowalności wiersza zwarcia ustalony z TOPOLOGII (nie z liczb):
@@ -333,7 +304,7 @@ def _oznacz_wiersz_zwarcia_niefizyczny(payload: dict[str, Any]) -> dict[str, Any
     widzi, że to nie jest prąd zwarciowy, a nie liczbę 2·10¹⁴ A. Wiersz bez
     takich wartości wraca bez zmian (parytet bit w bit dla sieci zdrowych).
     """
-    wiersz, niefinitowe = _niefinitowe_na_none(payload)
+    wiersz, niefinitowe = podmien_niefinitowe(payload)
     kappa = wiersz.get("kappa")
     kappa_poza = isinstance(kappa, int | float) and not (_KAPPA_MIN <= float(kappa) <= _KAPPA_MAX)
     if not niefinitowe and not kappa_poza:
@@ -738,53 +709,42 @@ def get_run(run_id: UUID) -> CanonicalRun | None:
         return repository.get(run_id)
 
 
-def pobierz_rozplyw_biegu(run: CanonicalRun, fault_node_id: str) -> list[dict[str, Any]] | None:
+def pobierz_rozplyw_biegu(
+    run: CanonicalRun,
+    fault_node_id: str,
+    *,
+    uow_factory: Callable[[], Any] | None = None,
+) -> list[dict[str, Any]] | None:
     """Surowe wkłady gałęziowe solvera dla punktu zwarcia — JEDNA prawda dostępu.
 
     Kolejność źródeł (pierwsze, które ma treść, wygrywa):
-    1. rozpływ INLINE w artefakcie biegu — świeżo policzony bieg trzymany w pamięci
-       ORAZ zapis sprzed rozdzielenia artefaktu (ZGODNOŚĆ WSTECZNA: stare bazy
-       czytane bez migracji danych),
-    2. osobna tabela rozpływu (zapis rozdzielony — artefakt niesie tylko znacznik
-       dostępności, treść leży obok).
+    1. rozpływ INLINE w artefakcie biegu — bieg `branch_contributions_mode: in_run`
+       trzymany w pamięci ORAZ zapis sprzed rozdzielenia artefaktu (ZGODNOŚĆ WSTECZNA:
+       stare bazy czytane bez migracji danych),
+    2. osobna tabela rozpływu (zapis rozdzielony albo punkt policzony wcześniej na żądanie),
+    3. PERF-SC-50: obliczenie NA ŻĄDANIE z wejścia biegu (`_policz_rozplyw_punktu_na_zadanie`)
+       — bieg domyślnie nie liczy wkładów, wiersz niesie tylko flagę dostępności;
+       ``uow_factory`` potrzebna wyłącznie biegom z opcjami audytu 2 (jak przy biegu).
 
-    Brak w obu źródłach → ``None``: uczciwy brak (solver policzony bez wkładów albo
+    Brak w źródłach → ``None``: uczciwy brak (solver policzony bez wkładów albo
     nieznany punkt zwarcia), nigdy pusta lista udająca „policzono zero".
     """
-    for item in (run.raw_result or {}).get("results", []):
-        if not isinstance(item, dict) or item.get("fault_node_id") != fault_node_id:
-            continue
-        inline = item.get(KLUCZ_ROZPLYWU)
-        if inline is not None:
-            return list(inline)
-        if not item.get(KLUCZ_DOSTEPNOSCI_ROZPLYWU):
-            return None
-        with canonical_run_repository_scope() as repository:
-            return repository.get_branch_flows(run.id, fault_node_id)
-    return None
+    return _rozplyw_punktu(run, fault_node_id, uow_factory)[0]
 
 
 def pobierz_slad_rozplywu_biegu(
-    run: CanonicalRun, fault_node_id: str
+    run: CanonicalRun,
+    fault_node_id: str,
+    *,
+    uow_factory: Callable[[], Any] | None = None,
 ) -> list[dict[str, Any]] | None:
     """Ślad WHITE BOX podziału prądu zwarciowego punktu (`branch_flow_trace`, TH-1).
 
-    Ta sama klasa ładunku i ta sama kolejność źródeł co `pobierz_rozplyw_biegu`:
-    (1) inline w artefakcie w pamięci, (2) osobna tabela (zapis rozdzielony).
-    Brak → ``None``: bieg policzony bez wkładów, punkt nieznany albo zapis sprzed
-    dodania kolumny śladu — nigdy pusta lista udająca „ślad pusty".
+    Ta sama klasa ładunku i ta sama kolejność źródeł co `pobierz_rozplyw_biegu`
+    (`_rozplyw_punktu`). Brak → ``None``: bieg policzony bez wkładów, punkt nieznany
+    albo zapis sprzed dodania kolumny śladu — nigdy pusta lista udająca „ślad pusty".
     """
-    for item in (run.raw_result or {}).get("results", []):
-        if not isinstance(item, dict) or item.get("fault_node_id") != fault_node_id:
-            continue
-        inline = item.get(KLUCZ_SLADU_ROZPLYWU)
-        if inline is not None:
-            return list(inline)
-        if not item.get(KLUCZ_DOSTEPNOSCI_ROZPLYWU):
-            return None
-        with canonical_run_repository_scope() as repository:
-            return repository.get_branch_flow_trace(run.id, fault_node_id)
-    return None
+    return _rozplyw_punktu(run, fault_node_id, uow_factory)[1]
 
 
 def list_runs_for_case(case_id: str) -> list[CanonicalRun]:
@@ -1896,6 +1856,150 @@ def rozszerzenia_audit2_dla_opcji(
         return rozszerzenia_audit2_z_konfiguracji(cfg)
 
 
+def _c_factor_punktu(wejscie: WejscieZwarcia, node_id: str) -> float:
+    """c punktu zwarcia: OVERRIDE z opcji (płasko) albo AUTO z pasma napięcia węzła (IEC 60909 Tab. 1)."""
+    if wejscie.c_factor_override:
+        return float(wejscie.c_factor_explicit)
+    return c_for_node(wejscie.graph.nodes[node_id].voltage_level, wejscie.scenario_c)
+
+
+def _wynik_solvera_punktu(
+    wejscie: WejscieZwarcia, node_id: str, *, c_factor: float, wklady: bool
+) -> ShortCircuitResult | None:
+    """Wynik FROZEN solvera dla JEDNEGO punktu zwarcia — jedyna dyspozycja rodzaju zwarcia.
+
+    Wołana przez bieg (pętla po węzłach raportowalnych) i przez wkłady na żądanie
+    (PERF-SC-50, krok 3) — jedno miejsce, więc bieg i żądanie liczą z identycznego
+    wejścia (`solve_graph`, `z0_bus`, c, tk). Węzeł bez impedancji do odniesienia
+    (CV-4.3 K3b) nie przechodzi przez solver → ``None``.
+    """
+    if node_id in wejscie.wezly_bez_odniesienia:
+        return None
+    typ = wejscie.short_circuit_type
+    if typ == ShortCircuitType.THREE_PHASE:
+        return ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+            graph=wejscie.solve_graph,
+            fault_node_id=node_id,
+            c_factor=c_factor,
+            tk_s=wejscie.tk_s,
+            include_branch_contributions=wklady,
+        )
+    if typ == ShortCircuitType.SINGLE_PHASE_GROUND:
+        return ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
+            graph=wejscie.solve_graph,
+            fault_node_id=node_id,
+            c_factor=c_factor,
+            tk_s=wejscie.tk_s,
+            z0_bus=wejscie.z0_bus,
+            include_branch_contributions=wklady,
+        )
+    if typ == ShortCircuitType.TWO_PHASE:
+        return ShortCircuitIEC60909Solver.compute_2ph_short_circuit(
+            graph=wejscie.solve_graph,
+            fault_node_id=node_id,
+            c_factor=c_factor,
+            tk_s=wejscie.tk_s,
+            include_branch_contributions=wklady,
+        )
+    return ShortCircuitIEC60909Solver.compute_2ph_ground_short_circuit(
+        graph=wejscie.solve_graph,
+        fault_node_id=node_id,
+        c_factor=c_factor,
+        tk_s=wejscie.tk_s,
+        z0_bus=wejscie.z0_bus,
+        include_branch_contributions=wklady,
+    )
+
+
+#: Pola wiersza zwarcia porównywane przy wkładach na żądanie z wynikiem odtworzonym z
+#: migawki i opcji biegu (bramka spójności PERF-SC-50): rdzeń jest deterministyczny,
+#: więc rozjazd oznacza, że dane wejściowe (migawka, opcje, konfiguracja audytu 2)
+#: zmieniły się od biegu — wtedy wkłady nie należą do tego biegu i są ODMAWIANE.
+_POLA_SPOJNOSCI_WKLADOW: tuple[str, ...] = ("ikss_a", "ip_a", "ith_a", "sk_mva", "kappa")
+
+
+def _policz_rozplyw_punktu_na_zadanie(
+    run: CanonicalRun, fault_node_id: str, uow_factory: Callable[[], Any] | None
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]] | None] | None:
+    """Wkłady gałęziowe + ślad podziału prądu JEDNEGO punktu policzone z wejścia biegu.
+
+    PERF-SC-50 (krok 3): bieg kanoniczny nie liczy iloczynu źródło×gałąź dla każdego
+    z punktów zwarcia (92 % bajtów biegu sieci 50 stacji); punkt wybrany przez
+    konsumenta liczy się TU, z tego samego assemblera (`zloz_wejscie_zwarcia` na
+    `run.snapshot`/`run.options`) i tej samej dyspozycji solvera co bieg, a wynik
+    jest utrwalany obok biegu. Zwraca ``None`` dla punktu, którego bieg nie liczył
+    solverem (nieznany albo bez impedancji do odniesienia).
+    """
+    wejscie = zloz_wejscie_zwarcia(
+        run.snapshot or {},
+        run.options,
+        rozszerzenia_audit2=rozszerzenia_audit2_dla_opcji(run.options, uow_factory),
+    )
+    if fault_node_id not in wejscie.reportable_fault_node_ids:
+        return None
+    result = _wynik_solvera_punktu(
+        wejscie, fault_node_id, c_factor=_c_factor_punktu(wejscie, fault_node_id), wklady=True
+    )
+    if result is None:
+        return None
+    odtworzony, _ = podmien_niefinitowe(result.to_dict())
+    wiersz = next(
+        (
+            w
+            for w in (run.raw_result or {}).get("results", [])
+            if isinstance(w, dict) and w.get("fault_node_id") == fault_node_id
+        ),
+        None,
+    )
+    if wiersz is None:
+        return None
+    rozjazd = [p for p in _POLA_SPOJNOSCI_WKLADOW if wiersz.get(p) != odtworzony.get(p)]
+    if rozjazd:
+        raise ValueError(
+            "Wkłady gałęziowe na żądanie niespójne z biegiem "
+            f"{run.id} (punkt {fault_node_id}, pola {rozjazd}): dane wejściowe biegu "
+            "(migawka, opcje, konfiguracja audytu 2) zmieniły się od jego wykonania — "
+            "uruchom analizę ponownie."
+        )
+    wklady = list(odtworzony.get(KLUCZ_ROZPLYWU) or [])
+    slad_surowy = odtworzony.get(KLUCZ_SLADU_ROZPLYWU)
+    slad = list(slad_surowy) if slad_surowy is not None else None
+    with canonical_run_repository_scope() as repository:
+        repository.zapisz_rozplyw_punktu(run.id, fault_node_id, wklady, slad)
+    return wklady, slad
+
+
+def _rozplyw_punktu(
+    run: CanonicalRun, fault_node_id: str, uow_factory: Callable[[], Any] | None
+) -> tuple[list[dict[str, Any]] | None, list[dict[str, Any]] | None]:
+    """(wkłady, ślad) punktu — JEDNA prawda dostępu dla obu akcesorów.
+
+    Kolejność źródeł: (1) inline w artefakcie (świeży bieg `in_run`, zapis sprzed
+    rozdzielenia), (2) osobna tabela rozpływu, (3) PERF-SC-50: obliczenie na żądanie
+    z wejścia biegu (utrwalane w (2)). Brak flagi dostępności → (None, None): bieg
+    policzony bez wkładów albo nieznany punkt — uczciwy brak.
+    """
+    for item in (run.raw_result or {}).get("results", []):
+        if not isinstance(item, dict) or item.get("fault_node_id") != fault_node_id:
+            continue
+        inline = item.get(KLUCZ_ROZPLYWU)
+        if inline is not None:
+            slad_inline = item.get(KLUCZ_SLADU_ROZPLYWU)
+            return list(inline), (list(slad_inline) if slad_inline is not None else None)
+        if not item.get(KLUCZ_DOSTEPNOSCI_ROZPLYWU):
+            return None, None
+        with canonical_run_repository_scope() as repository:
+            z_tabeli = repository.get_branch_flows(run.id, fault_node_id)
+            slad_z_tabeli = repository.get_branch_flow_trace(run.id, fault_node_id)
+        if z_tabeli is not None:
+            return z_tabeli, slad_z_tabeli
+        policzone = _policz_rozplyw_punktu_na_zadanie(run, fault_node_id, uow_factory)
+        if policzone is None:
+            return None, None
+        return policzone
+    return None, None
+
+
 def _execute_short_circuit(run: CanonicalRun, uow_factory: Callable[[], Any] | None = None) -> None:
     wejscie = zloz_wejscie_zwarcia(
         run.snapshot or {},
@@ -1906,12 +2010,9 @@ def _execute_short_circuit(run: CanonicalRun, uow_factory: Callable[[], Any] | N
     graph_nodes = wejscie.graph_nodes
     graph_branches = wejscie.graph_branches
     short_circuit_type = wejscie.short_circuit_type
-    z0_bus = wejscie.z0_bus
     scenario_c = wejscie.scenario_c
-    c_factor_explicit = wejscie.c_factor_explicit
     c_factor_override = wejscie.c_factor_override
     tk_s = wejscie.tk_s
-    solve_graph = wejscie.solve_graph
     temperature_correction_notes = wejscie.temperature_correction_notes
     reportable_fault_node_ids = wejscie.reportable_fault_node_ids
     rows: list[dict[str, Any]] = []
@@ -1924,50 +2025,14 @@ def _execute_short_circuit(run: CanonicalRun, uow_factory: Callable[[], Any] | N
     for node_id in reportable_fault_node_ids:
         # AUTO: c z pasma napięciowego WŁASNEGO węzła zwarcia (IEC 60909 Tab. 1);
         # OVERRIDE: wartość jawna z options, płasko dla wszystkich węzłów.
-        c_factor = (
-            float(c_factor_explicit)
-            if c_factor_override
-            else c_for_node(graph.nodes[node_id].voltage_level, scenario_c)
+        c_factor = _c_factor_punktu(wejscie, node_id)
+        # ZWARCIA-PRO F4 (karta W-C): wkłady gałęziowe FROZEN solvera (opcja addytywna —
+        # nie zmienia żadnej istniejącej wielkości ani śladu White Box). PERF-SC-50:
+        # liczone W BIEGU tylko w trybie `in_run`; domyślnie NA ŻĄDANIE punktu
+        # (`pobierz_rozplyw_biegu` — ta sama dyspozycja `_wynik_solvera_punktu`).
+        result = _wynik_solvera_punktu(
+            wejscie, node_id, c_factor=c_factor, wklady=wejscie.wklady_w_biegu
         )
-        if node_id in wezly_bez_odniesienia:
-            result = None
-        # ZWARCIA-PRO F4 (karta W-C): wkłady gałęziowe FROZEN solvera są liczone
-        # ZAWSZE w torze kanonicznym (opcja addytywna solvera — nie zmienia
-        # żadnej istniejącej wielkości ani śladu White Box; osobna superpozycja).
-        elif short_circuit_type == ShortCircuitType.THREE_PHASE:
-            result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
-                graph=solve_graph,
-                fault_node_id=node_id,
-                c_factor=c_factor,
-                tk_s=tk_s,
-                include_branch_contributions=True,
-            )
-        elif short_circuit_type == ShortCircuitType.SINGLE_PHASE_GROUND:
-            result = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
-                graph=solve_graph,
-                fault_node_id=node_id,
-                c_factor=c_factor,
-                tk_s=tk_s,
-                z0_bus=z0_bus,
-                include_branch_contributions=True,
-            )
-        elif short_circuit_type == ShortCircuitType.TWO_PHASE:
-            result = ShortCircuitIEC60909Solver.compute_2ph_short_circuit(
-                graph=solve_graph,
-                fault_node_id=node_id,
-                c_factor=c_factor,
-                tk_s=tk_s,
-                include_branch_contributions=True,
-            )
-        else:
-            result = ShortCircuitIEC60909Solver.compute_2ph_ground_short_circuit(
-                graph=solve_graph,
-                fault_node_id=node_id,
-                c_factor=c_factor,
-                tk_s=tk_s,
-                z0_bus=z0_bus,
-                include_branch_contributions=True,
-            )
         payload = (
             result.to_dict()
             if result is not None
@@ -1979,6 +2044,13 @@ def _execute_short_circuit(run: CanonicalRun, uow_factory: Callable[[], Any] | N
                 tk_s=tk_s,
             )
         )
+        if result is not None and not wejscie.wklady_w_biegu:
+            # PERF-SC-50 (krok 3): wiersz NIE niesie wkładów ani śladu podziału prądu —
+            # tylko flagę dostępności; treść liczy `pobierz_rozplyw_biegu` z tego samego
+            # wejścia (assembler deterministyczny) i utrwala w `canonical_run_branch_flows`.
+            payload.pop(KLUCZ_ROZPLYWU, None)
+            payload.pop(KLUCZ_SLADU_ROZPLYWU, None)
+            payload[KLUCZ_DOSTEPNOSCI_ROZPLYWU] = True
         node_trace_step_refs: list[int] = []
         for step_index, step in enumerate(payload.get("white_box_trace", []), start=1):
             node_context = graph_nodes.get(node_id, {})
@@ -2044,7 +2116,9 @@ def _execute_short_circuit(run: CanonicalRun, uow_factory: Callable[[], Any] | N
     # ta sama podmiana wartości niefinitowych, ten sam wykaz ścieżek. Węzły bez
     # impedancji do odniesienia nie mają kroków śladu (nie przeszły przez solver —
     # CV-4.3 K3b); ich wiersz niesie powód i wykaz pól.
-    trace_steps, _niefinitowe_w_sladzie = _niefinitowe_na_none(trace_steps)
+    # PERF-SC-50: skan bez kopii — ślad zdrowy wraca jako ten sam obiekt (patrz
+    # `enm/wartosci_niefinitowe.py`; dotąd każdy bieg kopiował cały ślad rekurencyjnie).
+    trace_steps, _niefinitowe_w_sladzie = podmien_niefinitowe(trace_steps)
     wiersze_niefizyczne = sorted(
         str(row.get("fault_node_id"))
         for row in rows
@@ -2352,14 +2426,14 @@ def _execute_power_flow(
     )
 
     nierozwiazane = set(solution.not_solved_nodes)
-    node_voltage_kv_finite, niefinitowe_u = _niefinitowe_na_none(
+    node_voltage_kv_finite, niefinitowe_u = podmien_niefinitowe(
         {
             node_id: (None if node_id in nierozwiazane else value)
             for node_id, value in solution.node_voltage_kv.items()
         },
         "$.node_voltage_kv",
     )
-    branch_current_ka_finite, niefinitowe_i = _niefinitowe_na_none(
+    branch_current_ka_finite, niefinitowe_i = podmien_niefinitowe(
         dict(solution.branch_current_ka), "$.branch_current_ka"
     )
     pola_niefinitowe = sorted(niefinitowe_u + niefinitowe_i)
@@ -3075,7 +3149,9 @@ def build_short_circuit_results(
     return odpowiedz
 
 
-def build_short_circuit_rozplyw(run: CanonicalRun, target_id: str) -> dict[str, Any]:
+def build_short_circuit_rozplyw(
+    run: CanonicalRun, target_id: str, *, uow_factory: Callable[[], Any] | None = None
+) -> dict[str, Any]:
     """Rozpływ prądu zwarciowego JEDNEGO punktu zwarcia na żądanie (V12K-281, K13).
 
     Lista wierszy zbiorczych (`build_short_circuit_results`) nie niesie już
@@ -3096,17 +3172,17 @@ def build_short_circuit_rozplyw(run: CanonicalRun, target_id: str) -> dict[str, 
     graph_branches = (raw_result.get("graph") or {}).get("branches", {})
     for item in raw_result.get("results", []):
         if item.get("fault_node_id") == target_id:
+            # PERF-SC-50: wkłady i ślad JEDNYM odczytem/obliczeniem punktu (`_rozplyw_punktu`).
+            wklady, slad = _rozplyw_punktu(run, target_id, uow_factory)
             return {
                 "run_id": str(run.id),
                 "target_id": target_id,
-                "branch_contributions": _sc_rozplyw_galeziowy(
-                    pobierz_rozplyw_biegu(run, target_id), graph_nodes, graph_branches
-                ),
+                "branch_contributions": _sc_rozplyw_galeziowy(wklady, graph_nodes, graph_branches),
                 # Ślad WHITE BOX podziału prądu tego punktu (TH-1) — ta sama klasa
                 # ładunku co wkłady, więc oddawany w tym samym miejscu na żądanie;
                 # kroki solvera bez projekcji. `None` = uczciwy brak (patrz
                 # `pobierz_slad_rozplywu_biegu`).
-                "branch_flow_trace": pobierz_slad_rozplywu_biegu(run, target_id),
+                "branch_flow_trace": slad,
             }
     raise KeyError(f"Brak punktu zwarcia {target_id} w wynikach przebiegu {run.id}")
 

@@ -51,6 +51,21 @@ study_case:
 - `c_factor_max` / `c_factor_min` - wspolczynniki napiecia wg IEC 60909 Tabela 1.
 - `thermal_time_s` - czas trwania zwarcia do obliczenia pradu termicznego I_th. Domyslnie 1.0 s.
 
+### Opcje biegu kanonicznego zwarcia (`CanonicalRun.options`)
+
+Jedyny czytelnik opcji biegu zwarciowego to assembler (`enm/assembler.py::zloz_wejscie_zwarcia`,
+CV-4.1); wykonawca (`enm/canonical_analysis._execute_short_circuit`) nie interpretuje opcji sam.
+Klucz nieobecny = wartość domyślna (odcisk `input_hash` istniejących payloadów bez zmian).
+
+| Klucz | Wartości | Domyślnie | Znaczenie |
+|-------|----------|-----------|-----------|
+| `fault_type` / `short_circuit_type` | `3F`, `1F`, `2F`, `2FG` (także `SC_3F`…) | `3F` | rodzaj zwarcia (IEC 60909-0) |
+| `scenario` | `max`, `min` | `max` | scenariusz c / temperatury (MIN: korekta R_θ na kopii grafu, dane MIN źródła sieciowego — K7) |
+| `c_factor` | liczba | brak = AUTO per pasmo napięcia węzła (IEC 60909 Tab. 1) | jawne c płasko dla wszystkich węzłów |
+| `thermal_time_seconds` | liczba [s] | `1.0` | czas trwania zwarcia dla I_th |
+| `location` | słownik lokalizacji scenariusza | brak = wszystkie węzły raportowalne | zawężenie punktów zwarcia (C6-PERSIST) |
+| `branch_contributions_mode` | `on_demand`, `in_run` | `on_demand` (albo `in_run`, gdy `config.include_branch_contributions` scenariusza jest `true`) | PERF-SC-50: wkłady gałęziowe i ślad podziału prądu (iloczyn źródło×gałąź per punkt) liczone NA ŻĄDANIE punktu (`GET …/results/short-circuit/rozplyw?target_id=`, `pobierz_rozplyw_biegu`) z tego samego wejścia biegu i utrwalane w `canonical_run_branch_flows`; wiersz biegu niesie flagę `branch_contributions_available`. `in_run` liczy wkłady każdego punktu w biegu (wiersz niesie treść inline, przy zapisie rozdzielaną do tabeli). Bramka spójności: wkłady na żądanie są ODMAWIANE (`ValueError`), gdy liczby wiersza odtworzone z migawki i opcji nie równają się liczbom biegu. Nieznana wartość → `ValueError`. |
+
 ---
 
 ## 2. Profile czasowe

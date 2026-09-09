@@ -508,10 +508,13 @@ def build_short_circuit_results_response(run: CanonicalRun) -> dict[str, Any]:
     return payload
 
 
-def build_short_circuit_rozplyw_response(run: CanonicalRun, target_id: str) -> dict[str, Any]:
+def build_short_circuit_rozplyw_response(
+    run: CanonicalRun, target_id: str, *, uow_factory: Callable[[], Any] | None = None
+) -> dict[str, Any]:
     # V12K-281 (K13): rozpływ gałęziowy jednego punktu zwarcia na żądanie —
     # wiersze zbiorcze nie niosą już rozpływu (raport/odpowiedź 730 MB).
-    payload = build_short_circuit_rozplyw(run, target_id)
+    # PERF-SC-50: treść liczona na żądanie z wejścia biegu (fabryka UoW dla audytu 2).
+    payload = build_short_circuit_rozplyw(run, target_id, uow_factory=uow_factory)
     payload["analysis_case_context"] = build_analysis_case_context(run)
     return payload
 

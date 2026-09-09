@@ -182,7 +182,15 @@ def _swiezy_bieg():
     # solver czytał wpis, który faktycznie istnieje w magazynie (CV-1-W).
     case_id = str(uuid4())
     _seed_enm(case_id)
-    return run_short_circuit_now(case_id=case_id, klucz_twin=case_id, project_id="projekt-k14")
+    # PERF-SC-50: te testy pinują MECHANIZM rozdzielenia (rozpływ inline w pamięci →
+    # osobna tabela przy zapisie), który istnieje wyłącznie w trybie `in_run`; tryb
+    # domyślny (na żądanie, wiersz bez treści inline) pinuje `tests/enm/test_wklady_na_zadanie.py`.
+    return run_short_circuit_now(
+        case_id=case_id,
+        klucz_twin=case_id,
+        project_id="projekt-k14",
+        options={"branch_contributions_mode": "in_run"},
+    )
 
 
 def test_zapis_biegu_rozdziela_rozplyw_od_artefaktu() -> None:
@@ -603,3 +611,126 @@ def test_init_db_doklada_kolumne_koperty_rewizji_do_istniejacej_bazy(tmp_path: A
             text("SELECT case_id, envelope_json FROM canonical_runs")
         ).all()
     assert wiersze == [("c1", None)]
+
+
+# ---------------------------------------------------------------------------
+# PERF-SC-50 (krok 3): bieg DOMYŚLNY nie liczy wkładów; punkt liczy się przy pierwszym
+# żądaniu z wejścia biegu i jest utrwalany w tej samej tabeli, którą zasila tryb
+# `in_run` — drugie żądanie (i każdy kolejny odczyt biegu z bazy) czyta tabelę bez
+# solvera. Ta sama klasa ładunku (`KLUCZE_ROZPLYWU`): wkłady I ślad podziału.
+# ---------------------------------------------------------------------------
+
+
+def _bieg_na_zadanie():
+    case_id = str(uuid4())
+    _seed_enm(case_id)
+    return run_short_circuit_now(case_id=case_id, klucz_twin=case_id, project_id="projekt-k14")
+
+
+def _licznik_solvera(monkeypatch: pytest.MonkeyPatch) -> dict[str, int]:
+    from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver
+
+    oryginal = ShortCircuitIEC60909Solver.compute_3ph_short_circuit
+    licznik = {"wywolania": 0}
+
+    def opakowanie(*args: Any, **kwargs: Any) -> Any:
+        licznik["wywolania"] += 1
+        return oryginal(*args, **kwargs)
+
+    monkeypatch.setattr(
+        ShortCircuitIEC60909Solver, "compute_3ph_short_circuit", staticmethod(opakowanie)
+    )
+    return licznik
+
+
+def test_bieg_domyslny_zapisuje_sie_bez_rozplywu_a_punkt_liczy_sie_i_utrwala_na_zadanie(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Pierwsze żądanie punktu: JEDNO wywołanie solvera + wpis w tabeli; drugie: zero solvera."""
+    bieg = _bieg_na_zadanie()
+    assert _wiersze_rozplywu(bieg.id) == {}, "bieg domyślny nie utrwala rozpływu żadnego punktu"
+    zapisany = get_run(bieg.id)
+    assert zapisany is not None
+    wiersze_solvera = [w for w in zapisany.raw_result["results"] if w.get("white_box_trace")]
+    assert wiersze_solvera
+    for wiersz in wiersze_solvera:
+        for klucz in KLUCZE_ROZPLYWU:
+            assert klucz not in wiersz
+        assert wiersz["branch_contributions_available"] is True
+    punkt = wiersze_solvera[0]["fault_node_id"]
+
+    licznik = _licznik_solvera(monkeypatch)
+    pierwsze = pobierz_rozplyw_biegu(zapisany, punkt)
+    assert pierwsze, "sieć testowa daje niepusty rozpływ punktu"
+    assert licznik["wywolania"] == 1
+    assert set(_wiersze_rozplywu(bieg.id)) == {punkt}
+    assert _kanonicznie(_wiersze_rozplywu(bieg.id)[punkt]) == _kanonicznie(pierwsze)
+
+    # Ślad podziału prądu (druga połowa klasy) utrwalony razem z wkładami — bez solvera.
+    slad = pobierz_slad_rozplywu_biegu(zapisany, punkt)
+    assert slad is not None
+    assert _kanonicznie(_slady_rozplywu(bieg.id)[punkt]) == _kanonicznie(slad)
+    assert licznik["wywolania"] == 1
+
+    # Drugie żądanie i świeży odczyt biegu z bazy czytają tabelę, nie solver.
+    assert pobierz_rozplyw_biegu(zapisany, punkt) == pierwsze
+    ponownie = get_run(bieg.id)
+    assert ponownie is not None
+    assert pobierz_rozplyw_biegu(ponownie, punkt) == pierwsze
+    assert pobierz_slad_rozplywu_biegu(ponownie, punkt) == slad
+    widok = build_short_circuit_rozplyw(ponownie, punkt)
+    assert widok["branch_contributions"] is not None
+    assert _kanonicznie(widok["branch_flow_trace"]) == _kanonicznie(slad)
+    assert licznik["wywolania"] == 1
+
+    # Drugi punkt biegu liczy się osobno (jeden solver) i dokłada DRUGI wiersz tabeli.
+    assert len(wiersze_solvera) >= 2
+    drugi_punkt = wiersze_solvera[1]["fault_node_id"]
+    assert pobierz_rozplyw_biegu(ponownie, drugi_punkt) is not None
+    assert licznik["wywolania"] == 2
+    assert set(_wiersze_rozplywu(bieg.id)) == {punkt, drugi_punkt}
+
+
+def test_rozplyw_na_zadanie_jest_bajtowo_rowny_rozplywowi_biegu_in_run() -> None:
+    """Ta sama sieć: tabela zasilona na żądanie == tabela zasilona przy zapisie `in_run`."""
+    na_zadanie = _bieg_na_zadanie()
+    zapisany = get_run(na_zadanie.id)
+    assert zapisany is not None
+    w_biegu = _swiezy_bieg()
+    w_tabeli_in_run = _wiersze_rozplywu(w_biegu.id)
+    slady_in_run = _slady_rozplywu(w_biegu.id)
+    assert w_tabeli_in_run
+    for punkt, wpisy in w_tabeli_in_run.items():
+        assert _kanonicznie(pobierz_rozplyw_biegu(zapisany, punkt)) == _kanonicznie(wpisy)
+        assert _kanonicznie(pobierz_slad_rozplywu_biegu(zapisany, punkt)) == _kanonicznie(
+            slady_in_run[punkt]
+        )
+    assert set(_wiersze_rozplywu(na_zadanie.id)) == set(w_tabeli_in_run)
+    # Liczby wierszy biegu niezależne od trybu (opcja solvera addytywna).
+    liczby = ("ikss_a", "ip_a", "ith_a", "sk_mva", "kappa")
+    wiersze_in_run = {w["fault_node_id"]: w for w in w_biegu.raw_result["results"]}
+    for wiersz in zapisany.raw_result["results"]:
+        for pole in liczby:
+            assert wiersz.get(pole) == wiersze_in_run[wiersz["fault_node_id"]].get(pole)
+
+
+def test_zmiana_migawki_po_zapisie_odmawia_wkladow_na_zadanie() -> None:
+    """Bieg zapisany, migawka podmieniona w bazie → odmowa NAZWANA, nie wkłady z innej sieci."""
+    from infrastructure.persistence.models import CanonicalRunORM
+
+    bieg = _bieg_na_zadanie()
+    punkt = next(w["fault_node_id"] for w in bieg.raw_result["results"] if w.get("white_box_trace"))
+    session_factory = get_canonical_run_session_factory()
+    with session_factory() as session:
+        wiersz = session.get(CanonicalRunORM, bieg.id)
+        assert wiersz is not None
+        migawka = json.loads(json.dumps(wiersz.snapshot_json))
+        for zrodlo in migawka["sources"]:
+            zrodlo["sk3_mva"] = 2.0 * float(zrodlo["sk3_mva"])
+        wiersz.snapshot_json = migawka
+        session.commit()
+    zapisany = get_run(bieg.id)
+    assert zapisany is not None
+    with pytest.raises(ValueError, match="niespójne z biegiem"):
+        pobierz_rozplyw_biegu(zapisany, punkt)
+    assert _wiersze_rozplywu(bieg.id) == {}, "odmowa nie utrwala niczego"

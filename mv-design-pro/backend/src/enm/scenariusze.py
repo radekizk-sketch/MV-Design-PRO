@@ -553,6 +553,15 @@ def opcje_biegu_ze_scenariusza(scenariusz: OperatingScenario) -> dict[str, Any]:
         "config": spec.config.to_dict(),
         "c_factor": spec.config.c_factor,
         "thermal_time_seconds": spec.config.thermal_time_seconds,
+        # PERF-SC-50: `include_branch_contributions` scenariusza staje się realnym
+        # sterowaniem biegu (do tej karty zapisywane w `config`, nieczytane przez
+        # wykonawcę — fantom). Klucz tylko przy True: payload/hash scenariuszy bez
+        # flagi (domyślne False) pozostaje bajtowo ten sam.
+        **(
+            {"branch_contributions_mode": "in_run"}
+            if spec.config.include_branch_contributions
+            else {}
+        ),
     }
 
 

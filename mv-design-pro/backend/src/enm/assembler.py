@@ -485,6 +485,12 @@ class WejscieZwarcia:
     #: CV-4.3 K7: założenia biegu nazwane kodem gotowości (np. ``source.sk_min_missing``:
     #: scenariusz MIN bez S''_kQmin — Z_Q z danych MAX). Pusta krotka = bieg bez założeń.
     zalozenia: tuple[dict[str, Any], ...]
+    #: PERF-SC-50 (2026-09-09, W-4 krok 3): czy bieg liczy wkłady gałęziowe (iloczyn
+    #: źródło×gałąź per punkt zwarcia, 92 % bajtów biegu sieci 50 stacji) W BIEGU
+    #: (``branch_contributions_mode: "in_run"`` albo scenariusz z ``include_branch_contributions``),
+    #: czy NA ŻĄDANIE punktu (domyślnie: wiersz niesie flagę dostępności, treść liczy
+    #: ``canonical_analysis.pobierz_rozplyw_biegu`` z tego samego wejścia i utrwala).
+    wklady_w_biegu: bool
 
 
 def wezly_bez_impedancji_do_odniesienia(graph: NetworkGraph) -> frozenset[str]:
@@ -898,6 +904,27 @@ def zloz_wejscie_zwarcia(
 
     tk_s = float(options.get("thermal_time_seconds", 1.0))
 
+    # PERF-SC-50: tryb wkładów gałęziowych. Domyślnie NA ŻĄDANIE (klucz nieobecny —
+    # istniejące payloady i ich `input_hash` bez zmian); `in_run` jawnie z opcji albo z
+    # konfiguracji scenariusza zwarciowego (`config.include_branch_contributions`, do tej
+    # karty flaga zapisywana, lecz nieczytana — fantom sterowania), nigdy z domysłu.
+    tryb_wkladow_surowy = options.get("branch_contributions_mode")
+    if tryb_wkladow_surowy is None:
+        konfiguracja = options.get("config")
+        z_konfiguracji = (
+            isinstance(konfiguracja, dict)
+            and konfiguracja.get("include_branch_contributions") is True
+        )
+        tryb_wkladow = "in_run" if z_konfiguracji else "on_demand"
+    else:
+        tryb_wkladow = str(tryb_wkladow_surowy).strip().lower()
+    if tryb_wkladow not in ("on_demand", "in_run"):
+        raise ValueError(
+            f"Nieznany tryb wkładów gałęziowych: {tryb_wkladow_surowy!r} "
+            "(oczekiwano 'on_demand'/'in_run')"
+        )
+    wklady_w_biegu = tryb_wkladow == "in_run"
+
     # Scenariusz MIN: dekoracja WEJŚCIA solvera (kopia grafu z R_θ skorygowanym
     # dla gałęzi liniowych/kablowych) — solver FROZEN dostaje gotowy graf, bez
     # zmiany ani jednej linii jego kodu. Oryginalny `graph` (użyty do topologii
@@ -1015,4 +1042,5 @@ def zloz_wejscie_zwarcia(
         wezly_bez_odniesienia=wezly_bez_odniesienia,
         zrodla_sieciowe_trace=zrodla_sieciowe_trace,
         zalozenia=zalozenia,
+        wklady_w_biegu=wklady_w_biegu,
     )
