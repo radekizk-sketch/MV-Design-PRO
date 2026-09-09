@@ -1,8 +1,9 @@
-"""Testy własne guarda formuł fizycznych poza solverami (CV-4.3 K4).
+"""Testy własne guarda formuł fizycznych poza solverami (CV-4.3 K4; rodzina E
+dopisana kartą W3-A, 2026-09).
 
 Iloczyn cech (KLASA NIE INSTANCJA, CLAUDE.md): rodzina x forma AST (wyrażenie
 arytmetyczne vs napis vs komentarz vs docstring vs porównanie kryterialne),
-dla KAŻDEJ z 5 rodzin — nie tylko przykład z karty.
+dla KAŻDEJ z 6 rodzin — nie tylko przykład z karty.
 """
 
 from __future__ import annotations
@@ -159,6 +160,149 @@ def test_rodzina_d_nie_liczy_przypadkowej_liczby_karty() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Rodzina E — IDMT IEC 60255 t = TMS*A/(M^B-1) (karta W3-A)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "kod",
+    [
+        # Inline: wykladnik literalem != 2.0 (SI/NI, A=0.14, B=0.02).
+        "x = tms * 0.14 / (m ** 0.02 - 1.0)\n",
+        # Inline: wykladnik literalem 1.0 (VI/RI) — odejmowanie 1 (int, nie float).
+        "x = tms * 13.5 / (m ** 1.0 - 1)\n",
+        # Inline: wykladnik literalem 2.0 (EI) — MIMO ze rodzina C tez rozpoznaje
+        # `m**2.0`, tu jest ODEJMOWANIE w mianowniku dzielenia, nie mnozenie
+        # przez znacznik czasu — rodzina E i C sie nie wykluczaja wzajemnie.
+        "x = tms * 80.0 / (m ** 2.0 - 1.0)\n",
+        # Inline: wykladnik to ZMIENNA (nie literal) — dokladnie ksztalt, ktory
+        # `_is_pow2` (rodzina C) NIE lapie (wymaga literalu 2.0).
+        "x = tms * a / (m ** b - 1.0)\n",
+        # `math.pow(m, b)` jako WYWOLANIE, nie ast.BinOp(Pow) — INLINE wariant
+        # ksztaltu uzytego (przez zmienna posrednia) w `domain/
+        # protection_engine_v1.py::iec_curve_time_seconds` (drugi silnik IDMT,
+        # B-01 STOP — ZOSTAJE, nie skasowany; patrz test ponizej dla
+        # dwupoziomowej posredniosci i test udokumentowanego ograniczenia).
+        "import math\nx = tms * a / (math.pow(m, b) - 1.0)\n",
+        # Wywolanie bare `pow(...)`.
+        "x = tms * a / (pow(m, b) - 1.0)\n",
+        # Zmienna posrednia: `denominator = (ratio**b) - 1.0; ... / denominator`
+        # — REALNY ksztalt znaleziony w 3 z 4 zdublowanych implementacji IDMT
+        # inwentarza W3 rodzina A (protection_analysis/engine.py PRZED W3-A,
+        # domain_operations_v2.py PRZED W3-A, overcurrent/calculator.py —
+        # ten ostatni ZOSTAJE zywy do W3-C, stad wpis w ZASTANE).
+        "def f(ratio, tms, a, b):\n"
+        "    denominator = (ratio ** b) - 1.0\n"
+        "    if denominator <= 0:\n"
+        "        return None\n"
+        "    return tms * a / denominator\n",
+    ],
+)
+def test_rodzina_e_wykrywa_ksztalt_idmt(kod: str) -> None:
+    assert _wzorce(kod).get("E_idmt_shape", 0) == 1
+
+
+def test_rodzina_e_liczy_zagniezdzona_funkcje_osobno_bez_przecieku() -> None:
+    """Dwie funkcje, KAZDA z WLASNA zmienna `denominator` — zasieg funkcji nie
+    przecieka miedzy nimi (2 trafienia, nie 1 i nie 4 przez skrzyzowanie)."""
+    kod = (
+        "def f(m, b, a, tms):\n"
+        "    denominator = (m ** b) - 1.0\n"
+        "    return tms * a / denominator\n"
+        "def g(m2, b2, a2, tms2):\n"
+        "    denominator = (m2 ** b2) - 1.0\n"
+        "    return tms2 * a2 / denominator\n"
+    )
+    assert _wzorce(kod).get("E_idmt_shape", 0) == 2
+
+
+def test_rodzina_e_wykrywa_dwupoziomowa_posredniosc() -> None:
+    """`m_power_b = math.pow(m, b)` (osobne przypisanie), POTEM
+    `denominator = m_power_b - 1.0`, POTEM `a / denominator` — DRUGI poziom
+    pośredniości (potęga sama jest nazwą, nie inline), dokładnie kształt
+    `domain/protection_engine_v1.py::iec_curve_time_seconds` (drugi silnik
+    IDMT, B-01 STOP)."""
+    kod = (
+        "import math\n"
+        "def f(m, b, a, tms):\n"
+        "    m_power_b = math.pow(m, b)\n"
+        "    denominator = m_power_b - 1.0\n"
+        "    return tms * a / denominator\n"
+    )
+    assert _wzorce(kod).get("E_idmt_shape", 0) == 1
+
+
+def test_rodzina_e_nie_lapie_mianownika_za_zaslonieta_warunkowym_ponownym_przypisaniem() -> None:
+    """Znane, udokumentowane ograniczenie (KLASA NIE INSTANCJA, ale bez pełnej
+    analizy przepływu sterowania — patrz docstring `_idmt_lokalne_przypisania`):
+    gdy `denominator` jest PONOWNIE przypisany wewnątrz `if` (numeryczny
+    guard/floor, jak `if denominator <= 1e-12: denominator = 1e-12`), ostatnie
+    przypisanie w PROSTYM przejściu tekstowym wygrywa i zasłania fizykę —
+    DOKŁADNIE kształt `iec_curve_time_seconds` w `domain/
+    protection_engine_v1.py` (B-01 STOP, karta W3-A): guard tego NIE łapie.
+    Ten test PRZYPINA fałszywy negatyw jako świadomy, nie cichy — poprawność
+    formuły w tym miejscu pilnuje B-01 (edycja wymaga sankcji właściciela),
+    nie ten guard."""
+    kod = (
+        "import math\n"
+        "def f(m, b, a, tms):\n"
+        "    m_power_b = math.pow(m, b)\n"
+        "    denominator = m_power_b - 1.0\n"
+        "    if denominator <= 1e-12:\n"
+        "        denominator = 1e-12\n"
+        "    return tms * a / denominator\n"
+    )
+    assert _wzorce(kod).get("E_idmt_shape", 0) == 0
+
+
+def test_rodzina_e_nie_liczy_i2t_ksztaltu_rodziny_c() -> None:
+    """`x**2 * t` (calka Joule'a, rodzina C) NIE moze zaliczyc sie do IDMT —
+    to MNOZENIE przez znacznik czasu, nie ODEJMOWANIE jedynki pod dzieleniem;
+    zero wspolnego ksztaltu AST miedzy C i E mimo wspolnego `Pow`."""
+    kod = "x = i_ka ** 2 * tk_s\n"
+    wzorce = _wzorce(kod)
+    assert wzorce.get("E_idmt_shape", 0) == 0
+    assert wzorce.get("C_i2t_joule", 0) == 1  # rodzina C nadal dziala na tym kodzie
+
+
+def test_rodzina_e_nie_liczy_mianownika_bez_odejmowania_jedynki() -> None:
+    kod = "x = tms * a / (m ** b)\n"
+    assert _wzorce(kod).get("E_idmt_shape", 0) == 0
+
+
+def test_rodzina_e_nie_liczy_odejmowania_innej_stalej_niz_jeden() -> None:
+    kod = "x = tms * a / (m ** b - 2.0)\n"
+    assert _wzorce(kod).get("E_idmt_shape", 0) == 0
+
+
+def test_rodzina_e_nie_liczy_potegi_w_liczniku() -> None:
+    """`(m**b - 1) / s` — odejmowanie potegi jest LICZNIKIEM, nie mianownikiem
+    dzielenia; ksztalt rodziny E wymaga go WPROST w mianowniku (analogicznie
+    do rodziny G, ktora wymaga kwadratu WPROST w liczniku)."""
+    kod = "x = (m ** b - 1.0) / s\n"
+    assert _wzorce(kod).get("E_idmt_shape", 0) == 0
+
+
+def test_rodzina_e_nie_liczy_napisu_ani_komentarza() -> None:
+    kod = (
+        "# formula: t = TMS * A / (M**B - 1)\n"
+        "def f():\n"
+        '    """t = TMS * A / (M**B - 1)."""\n'
+        '    return "t = TMS * A / (M**B - 1)"\n'
+    )
+    assert _wzorce(kod).get("E_idmt_shape", 0) == 0
+
+
+def test_rodzina_e_nie_liczy_przypisania_bez_uzycia_w_dzieleniu() -> None:
+    """`denominator = (m**b) - 1.0` samo, bez UZYCIA w dzieleniu w tym samym
+    zasiegu, nie jest jeszcze formula IDMT (analogicznie do rodziny A, ktora
+    tez wymaga bezposredniego kontekstu mnozenia/dzielenia, nie bare
+    przypisania)."""
+    kod = "def f(m, b):\n    denominator = (m ** b) - 1.0\n    return denominator\n"
+    assert _wzorce(kod).get("E_idmt_shape", 0) == 0
+
+
+# ---------------------------------------------------------------------------
 # Rodzina G — impedancja/moc bazowa Z = U²/S
 # ---------------------------------------------------------------------------
 
@@ -272,9 +416,23 @@ def test_pochodne_naprawde_istnieje_i_niesie_wiekszosc_rodzin() -> None:
 def test_pin_stanu_repozytorium() -> None:
     """Zapadka = pomiar (obie strony). Wzrost = formuła fizyczna poza
     pochodne/; spadek = obniż ZASTANE. Karta K2 (2026-09-09) skasowała
-    `application/reference_networks/**` — zapadka jest PUSTA."""
+    `application/reference_networks/**`; po W3-C (kasacja
+    `application/analyses/protection/overcurrent/**`) zapadka jest PUSTA."""
     assert porownaj_z_zapadka(zmierz(), ZASTANE) == []
-    assert ZASTANE == {}
+    assert set(ZASTANE) <= {"application/analyses/protection/overcurrent/calculator.py"}
+
+
+def test_rodzina_e_zastane_ma_jedyny_wpis_overcurrent_kalkulatora() -> None:
+    """Rodzina E, DoD W3-A §4.1: `--pomiar` = 0 trafień poza ZASTANE, a jedyny
+    dopuszczalny wpis ZASTANE dla tej rodziny to `overcurrent/calculator.py`
+    (W3-C kasuje razem z V12K-189) — żadne inne miejsce nie ma prawa mieć
+    tego kształtu w ZASTANE."""
+    e_zastane = {
+        plik: licznik["E_idmt_shape"]
+        for plik, licznik in ZASTANE.items()
+        if "E_idmt_shape" in licznik
+    }
+    assert e_zastane == {"application/analyses/protection/overcurrent/calculator.py": 1}
 
 
 def test_wykluczone_prefiksy_to_solvery_i_siostrzany_pochodne() -> None:

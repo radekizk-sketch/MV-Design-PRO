@@ -2,13 +2,17 @@
 """Guard: formuły fizyczne poza `network_model/solvers/**` i `network_model/pochodne/**`
 (CV-4.3 K4, C.2.3).
 
-Rodziny wykrywane (AST, nie grep — patrz karta `karta_cv43_a3.md`, K4.4):
+Rodziny wykrywane (AST, nie grep — patrz karta `karta_cv43_a3.md`, K4.4, oraz
+`KARTA_W3_KONWERGENCJA_FIZYKI_2026-09.md` §0.13 dla rodziny E):
 √3 (`sqrt(3)`/`3**0.5`/literał `1.7320508...`) w mnożeniu/dzieleniu, κ IEC
 60909 (`1.02 + 0.98*exp(...)` / `exp(-3*x)`), całka Joule'a I²t (`x**2 * t`,
 gdzie `t` to wielkość czasowa — nazwa zawiera „t"/„tk"/„time"/„czas"), korekta
-temperaturowa (`1 + alpha*(theta - cokolwiek)`), impedancja/moc bazowa
-Z = U²/S (`u**2 / s`, dzielenie z KWADRATEM wprost w liczniku). Napis,
-komentarz i docstring NIE są liczone — to jest AST wyrażeń, nie tekst.
+temperaturowa (`1 + alpha*(theta - cokolwiek)`), IDMT IEC 60255
+t = TMS·A/(M^B−1) (`a / (m**b - 1)`, mianownik `Pow(*, *) − 1` z DOWOLNYM
+wykładnikiem — inline albo przez zmienną lokalną, `math.pow(...)` też się
+liczy), impedancja/moc bazowa Z = U²/S (`u**2 / s`, dzielenie z KWADRATEM
+wprost w liczniku). Napis, komentarz i docstring NIE są liczone — to jest AST
+wyrażeń, nie tekst.
 
 Jedyne recenzowane miejsce dla tych formuł: `network_model/pochodne/`
 (karta CV-4.3-A3, K4.1). ALLOWLIST jest PUSTA — żadne miejsce nie ma prawa
@@ -64,7 +68,17 @@ ALLOWLIST: dict[str, str] = {}
 #: skanem tego guarda, `BACKEND_SRC`), reszta pakietu usunięta. Zapadka
 #: opróżniona (może tylko maleć, nigdy wrócić w górę — nowy wpis oznaczałby
 #: nowy dług, nie odzyskanie starego).
-ZASTANE: dict[str, dict[str, int]] = {}
+#: Pomiar W3-A (2026-09, po konsolidacji rodziny A IDMT §0.1 do
+#: `compute_idmt_generic`): `application/analyses/protection/overcurrent/
+#: calculator.py::_iec_ni_time` (`denominator = (ratio**0.02) - 1.0`, tylko
+#: SI, V12K-189) jest CZWARTĄ implementacją IDMT z inwentarza W3 rodzina A —
+#: W3-C KASUJE cały plik `overcurrent/**` razem z V12K-189 (§0.2/§0.11,
+#: pipeline zapisu ma 0 wywołań produkcyjnych), więc migracja do
+#: `pochodne/wielkosci_pochodne.py` byłaby pracą do wyrzucenia w kolejnej
+#: podkarcie tej samej fali — TYMCZASOWY dług nazwany, nie cichy.
+ZASTANE: dict[str, dict[str, int]] = {
+    "application/analyses/protection/overcurrent/calculator.py": {"E_idmt_shape": 1},
+}
 
 _TIME_RE = re.compile(r"(^|_)(t|tk|time|czas)(_|$)", re.IGNORECASE)
 
@@ -196,10 +210,125 @@ def _is_z_u2_s_shape(node: ast.expr) -> bool:
     return isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div) and _is_pow2(node.left)
 
 
+def _is_pow_any_exponent(node: ast.expr) -> bool:
+    """`x ** b` (DOWOLNY wykładnik — zmienna, literał różny od 2.0, wyrażenie)
+    albo wywołanie `pow(x, b)` / `math.pow(x, b)` / `cmath.pow(x, b)`. W
+    odróżnieniu od `_is_pow2` (rodzina C — wymaga literału 2.0 w `ast.BinOp`
+    WYŁĄCZNIE), tu wykładnik jest DOWOLNY i wywołanie funkcyjne też się liczy
+    — bo IDMT IEC 60255 ma wykładnik B zmienny per typ krzywej (0,02/1,0/2,0)
+    i bywał zapisywany jako `math.pow(M, B)` (patrz rodzina E, karta W3-A)."""
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Pow):
+        return True
+    if isinstance(node, ast.Call):
+        fname = _dotted_name(node.func)
+        if fname and fname.rsplit(".", 1)[-1] == "pow" and len(node.args) == 2:
+            return True
+    return False
+
+
+def _is_idmt_denominator_shape(
+    expr: ast.expr, przypisania: dict[str, ast.expr] | None = None
+) -> bool:
+    """`M**B - 1` (wykładnik DOWOLNY, `math.pow(...)` też się liczy) —
+    kształt MIANOWNIKA formuły IEC 60255 IDMT `t = TMS·A/(M^B−1)` (rodzina E,
+    karta W3-A §0.1/§0.13). Kanon: `network_model/solvers/
+    protection_iec60255.py::compute_idmt_generic` — JEDYNE miejsce, gdzie ten
+    kształt wolno liczyć poza `pochodne/`. Różni się od rodziny G
+    (`_is_z_u2_s_shape`, kwadrat w LICZNIKU dzielenia) tym, że tu potęga z
+    odejmowaniem jedynki leży w MIANOWNIKU, i od rodziny C (`_is_i2t_shape`,
+    mnożenie przez znacznik czasu) tym, że tu jest ODEJMOWANIE, nie mnożenie,
+    a wykładnik NIE musi być literałem 2.0.
+
+    `przypisania`, gdy podane, rozwiązuje DRUGI poziom pośredniości: strona
+    potęgi (`expr.left`) bywa sama nazwą zmiennej przypisaną w OSOBNYM
+    wyrażeniu (`m_power_b = math.pow(M, B)`, POTEM `denominator = m_power_b
+    - 1.0`) — dokładnie kształt znaleziony w `domain/protection_engine_v1.py::
+    iec_curve_time_seconds` (drugi silnik IDMT, B-01 STOP, patrz ZASTANE).
+    Bez tego poziomu rozwiązania to konkretne miejsce byłoby niewidzialne dla
+    guarda mimo identycznej fizyki co reszta rodziny E."""
+    if not (isinstance(expr, ast.BinOp) and isinstance(expr.op, ast.Sub)):
+        return False
+    lewy = expr.left
+    if isinstance(lewy, ast.Name) and przypisania and lewy.id in przypisania:
+        lewy = przypisania[lewy.id]
+    if not _is_pow_any_exponent(lewy):
+        return False
+    prawy = _num(expr.right)
+    return prawy is not None and abs(prawy - 1.0) < 1e-9
+
+
 def _walk_z_rodzicem(node: ast.AST, rodzic: ast.AST | None = None):
     yield node, rodzic
     for dziecko in ast.iter_child_nodes(node):
         yield from _walk_z_rodzicem(dziecko, node)
+
+
+_ZASIEG_FUNKCJI = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)
+
+
+def _walk_bez_zagniezdzonych_zasiegow(node: ast.AST):
+    """Jak `ast.walk`, ale NIE wchodzi do ciał zagnieżdżonych
+    FunctionDef/AsyncFunctionDef/Lambda — te mają WŁASNY zasięg zmiennych
+    (osobny przebieg `_licz_idmt_w_pliku` odwiedzi je jako własne korzenie)."""
+    for dziecko in ast.iter_child_nodes(node):
+        yield dziecko
+        if not isinstance(dziecko, _ZASIEG_FUNKCJI):
+            yield from _walk_bez_zagniezdzonych_zasiegow(dziecko)
+
+
+def _idmt_lokalne_przypisania(zasieg: ast.AST) -> dict[str, ast.expr]:
+    """`nazwa -> ostatnie przypisane wyrażenie` dla PROSTYCH przypisań
+    (`x = wyrażenie`, jeden cel typu `Name`) w BEZPOŚREDNIM zasięgu (funkcja
+    albo moduł), bez schodzenia do zagnieżdżonych funkcji/lambd. Wystarcza do
+    wykrycia wzorca `denominator = (m**b) - 1; ... a / denominator` — stylu
+    użytego w 3 z 4 zdublowanych implementacji IDMT znalezionych w inwentarzu
+    W3 rodzina A — bez pełnej analizy przepływu danych: fałszywe negatywy przy
+    bardziej złożonym kodzie (rozgałęzienia, reassignment) są akceptowalne,
+    bo poprawność formuł w strefie dozwolonej pilnują testy parytetu z
+    podstawieniem do normy, NIE ten guard (patrz docstring modułu)."""
+    przypisania: dict[str, ast.expr] = {}
+    for wezel in _walk_bez_zagniezdzonych_zasiegow(zasieg):
+        if (
+            isinstance(wezel, ast.Assign)
+            and len(wezel.targets) == 1
+            and isinstance(wezel.targets[0], ast.Name)
+        ):
+            przypisania[wezel.targets[0].id] = wezel.value
+    return przypisania
+
+
+def _licz_idmt_w_zasiegu(zasieg: ast.AST) -> int:
+    """Zlicz `A / (M**B - 1)` w JEDNYM zasięgu (funkcja albo moduł) —
+    dzielenie, którego mianownik ma kształt rodziny E BEZPOŚREDNIO (inline)
+    ALBO przez nazwę zmiennej przypisaną w TYM SAMYM zasięgu (patrz
+    `_idmt_lokalne_przypisania`). Rodzina E jest jedyną z sześciu wymagającą
+    świadomości zasięgu — pozostałe (A-D, G) dopasowują wyłącznie kształt
+    inline w płaskim przejściu całego pliku (`zlicz_wzorce`)."""
+    przypisania = _idmt_lokalne_przypisania(zasieg)
+    total = 0
+    for wezel in _walk_bez_zagniezdzonych_zasiegow(zasieg):
+        if not (isinstance(wezel, ast.BinOp) and isinstance(wezel.op, ast.Div)):
+            continue
+        denom = wezel.right
+        if isinstance(denom, ast.Name) and denom.id in przypisania:
+            denom = przypisania[denom.id]
+        if _is_idmt_denominator_shape(denom, przypisania):
+            total += 1
+    return total
+
+
+def _licz_idmt_w_pliku(tree: ast.AST) -> int:
+    """Suma trafień rodziny E po WSZYSTKICH zasięgach pliku: moduł (kod poza
+    funkcjami) + każda funkcja/metoda, w tym zagnieżdżone (`ast.walk` trafia
+    każdy `FunctionDef`/`AsyncFunctionDef` niezależnie od głębokości; każdy
+    dostaje WŁASNY przebieg `_licz_idmt_w_zasiegu`, więc zagnieżdżenie nie
+    powoduje ani podwójnego liczenia, ani przecieku zmiennych między
+    zasięgami)."""
+    total = _licz_idmt_w_zasiegu(tree)
+    for wezel in ast.walk(tree):
+        if isinstance(wezel, ast.FunctionDef | ast.AsyncFunctionDef):
+            total += _licz_idmt_w_zasiegu(wezel)
+    return total
 
 
 def zlicz_wzorce(tree: ast.AST) -> dict[str, int]:
@@ -225,6 +354,12 @@ def zlicz_wzorce(tree: ast.AST) -> dict[str, int]:
             licznik["D_korekta_temperaturowa"] += 1
         if _is_z_u2_s_shape(node):
             licznik["G_z_u2_s"] += 1
+    # Rodzina E: jedyna wymagająca świadomości zasięgu (przypisanie do
+    # zmiennej lokalnej, potem użycie w dzieleniu) — osobny przebieg, nie
+    # płaski `_walk_z_rodzicem` powyżej (patrz `_licz_idmt_w_pliku`).
+    idmt = _licz_idmt_w_pliku(tree)
+    if idmt:
+        licznik["E_idmt_shape"] += idmt
     return dict(sorted(licznik.items()))
 
 
