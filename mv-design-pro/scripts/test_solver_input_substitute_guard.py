@@ -1194,6 +1194,19 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `ZASTANE_ZASTEPNIKI`); plikow dlugu bez zmian (61 — plik ma inne wpisy).
     # Pol kontraktow/wykluczenia bez zmian (funkcje `jednostki.py` sa czystymi
     # przelicznikami literalow, zero pol kontraktu, zero podstawien).
+    # W3-B (2026-09-09): 3539 -> 3543 pol (+4, pliki bez zmian — same 545). Roznica zbiorow
+    # contract_fields() a16f8d2b -> HEAD (dokladnie 4 nowe nazwy, zero usunietych):
+    # `obwod_wtorny` (Measurement.obwod_wtorny, enm/models.py), `vt_uzwojenie`
+    # (Measurement.vt_uzwojenie — ktore uzwojenie VT, VT-only), `kody_gotowosci` i `slad`
+    # (Kryterium.kody_gotowosci/slad, domain/dobor_przekladnika.py — kryterium `ct.alf`
+    # niesie teraz kody gotowosci + slad WHITE BOX z jadra delegowanego). Pola obwodu
+    # wtornego wspoldzielone z istniejacym kontraktem `api/equipment_checks.py`
+    # (`dlugosc_przewodu_m`/`przekroj_przewodu_mm2`/`obciazenia_aparatow`/`moc_stykow_va`,
+    # tez w nowych `dobor_przekladnika.py::WymaganiaToru` i `generators.py::_ObwodWtornyPomiaru`)
+    # zbiegaja sie z istniejacymi nazwami zbioru — zero przyrostu z tego tytulu. Zapadka
+    # dlugu i wykluczenia bez zmian (61 plikow/suma 280 dlug; 14 plikow/suma 32 wykluczenia) —
+    # pomiar guarda na drzewie karty, zero nowych podstawien (filtr `_obwod_wtorny_pomiaru`
+    # pomija pozycje bez `moc_va` zamiast podstawiac zero, patrz `api/generators.py`).
     # (piny ponizej przeliczane guardem na drzewie scalonym fali 2 — odbior, nie arytmetyka)
     assert "Pol kontraktow wejsciowych: 3491." in wyjscie, wyjscie
     assert (

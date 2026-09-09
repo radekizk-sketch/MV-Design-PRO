@@ -63,17 +63,23 @@ def test_guard_liczy_pola_literalowe_dziedziczone_z_branchbase(capsys) -> None:
     """Regresja wprost: licznik pol Literal[str,...] MUSI objac pola zadeklarowane
     WYLACZNIE na BranchBase (status/parameter_source/source_mode), nie tylko
     pola wlasne encji. Przed naprawa z 2026-09-05 licznik wynosil 103 (12 pol
-    cicho pomijanych); po naprawie 115 — patrz docstring modulu."""
+    cicho pomijanych); po naprawie 115 — patrz docstring modulu. Karta W3-B
+    (2026-09-09) dodaje `Measurement.vt_uzwojenie: Literal["POMIAROWE",
+    "ZABEZPIECZENIOWE"] | None` (ktore uzwojenie VT: pomiarowe/zabezpieczeniowe
+    — pole VT-only, walidowane w `_validate_ctvt_variant_matches_measurement_type`)
+    z lustrem `'POMIAROWE' | 'ZABEZPIECZENIOWE' | null` w `types/enm.ts` — nowe
+    pole Literal z zachowanym parytetem zbioru wartosci podnosi licznik 115 -> 116."""
     guard.main()
     wyjscie = capsys.readouterr().out
     import re
 
     dopasowanie = re.search(r"parytet wartosci\): (\d+)", wyjscie)
     assert dopasowanie is not None, wyjscie
-    assert int(dopasowanie.group(1)) == 115, (
-        "Liczba sprawdzonych pol Literal[str,...] spadla ponizej oczekiwanej — "
+    assert int(dopasowanie.group(1)) == 116, (
+        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 116 — "
         "sprawdz, czy pola dziedziczone z bazy warunkowej (BranchBase) nie sa "
-        "znowu cicho pomijane."
+        "znowu cicho pomijane (spadek), albo opisz nowe pole Literal w docstringu "
+        "tego testu i podnies licznik z uzasadnieniem (wzrost)."
     )
 
 
