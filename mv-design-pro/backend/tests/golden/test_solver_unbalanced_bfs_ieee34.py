@@ -1,5 +1,5 @@
-"""Konsument produktowy `network_model/solvers/power_flow_unbalanced.py` po karcie K2
-(2026-09-09, §0.4(f), mapa domknięcia 3 #2).
+"""Konsument regresyjny (na publikowanej topologii) `network_model/solvers/
+power_flow_unbalanced.py` po karcie K2 (2026-09-09, §0.4(f), mapa domknięcia 3 #2).
 
 Ten FROZEN solver (B-01) miał w produkcie JEDNEGO konsumenta:
 `application/reference_networks/computation.py::_power_flow_unbalanced_bfs`,
@@ -34,10 +34,14 @@ fizyką niesymetryczną Kerstinga (per-fazowe rozdzielenie odbiorów pozostaje
 PLANNED, patrz `tests/golden/registry.py::B-BENCH` docstring dla ieee_34bus) —
 ten test dowodzi WYŁĄCZNIE, że solver KONWERGUJE i daje fizycznie sensowne
 napięcia na REALNEJ topologii publikowanego benchmarku (11+9 gałęzi, 34 węzły)
-— nie porównuje z żadną niezależną wyrocznią liczbową. Mapa domknięcia:
-zapisz „3 #2: solver ma konsumenta produktowego (test regresyjny na
-publikowanej topologii), BEZ niezależnej wyroczni fizyki niesymetrycznej —
-W5" (dosłowny tekst wiersza w meldunku karty K2).
+— nie porównuje z żadną niezależną wyrocznią liczbową. Solver ma też od dawna
+niezależny test jednostkowy na syntetycznych fikstywach 2-szynowych
+(`tests/test_power_flow_unbalanced.py`, sprzed karty K2, nietknięty) — ten
+plik go NIE zastępuje, dokłada ćwiczenie na realnej, publikowanej topologii.
+Mapa domknięcia: zapisz „3 #2: solver ma WYŁĄCZNIE konsumentów testowych
+(jednostkowy sprzed karty + nowy regresyjny na publikowanej topologii IEEE
+34-bus), ZERO konsumenta produkcyjnego, BEZ niezależnej wyroczni fizyki
+niesymetrycznej — W5" (dosłowny tekst wiersza w meldunku karty K2).
 """
 
 from __future__ import annotations
