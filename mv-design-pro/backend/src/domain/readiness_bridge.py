@@ -69,6 +69,16 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     # tryb niedopuszczony (ten sam warunek co bramka kreatora OZE, `enm/validator.py`).
     "generators.voltage_control_profile_missing": "generator.voltage_control_profile_missing",
     "generators.voltage_control_not_permitted": "generator.voltage_control_not_permitted",
+    # Karta W3-I (§0.15 karty konwergencji fizyki): „generator przekształtnikowy
+    # nie ma referencji katalogowej" == ten sam fakt, który gotowość zwarciowa
+    # zgłasza jako `inverter.k_sc_missing` (`application/calculation_readiness/
+    # service.py`, ta sama tabela `catalog.governance.wymagalnosc_katalogu`
+    # decyduje o obu). Poziomy się różnią (W010 = IMPORTANT: model jako całość
+    # pozostaje użyteczny; kanon = BLOCKER: TA konkretna analiza zwarciowa jest
+    # zablokowana) — to różna DOTKLIWOŚĆ tego samego faktu na różnych warstwach
+    # (walidacja modelu vs gotowość jednej analizy), nie różny warunek; most
+    # łączy fakty, nie poziomy.
+    "W010": "inverter.k_sc_missing",
 }
 
 # ---------------------------------------------------------------------------

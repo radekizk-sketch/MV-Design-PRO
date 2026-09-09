@@ -52,12 +52,39 @@ skorygowane tego samego dnia karta W1 — z faktycznego zachowania kodu, repo > 
   (`enm/katalog_projektu.py`, status `PROJEKTOWY_V1` — import arkusza XLSX, migracja
   legacy), wiazanie elementu z typem wylacznie przez `catalog_ref` w operacjach domenowych;
   bramka wskrzeszenia: `scripts/legacy_public_path_guard.py::check_w1_legacy_persistence_resurrection`,
-- bramka katalogowa importu (ktore rodzaje galezi wymagaja referencji katalogowej) ma
-  JEDNO zrodlo prawdy: `network_model/catalog/governance.py::wymaga_referencji_katalogowej`
-  (normalizuje nazewnictwo ENM `cable`/`line_overhead` i rdzenia `CABLE`/`LINE`;
-  transformator rozstrzyga `domain_ops_policy`, nie bramka); pin:
-  `tests/network_model/catalog/test_governance.py::test_wymaga_referencji_katalogowej_dla_odcinkow_w_obu_nazewnictwach`,
-  `test_wymaga_referencji_katalogowej_nie_dotyczy_pozostalych`,
+- bramka katalogowa (ktory rodzaj elementu wymaga referencji katalogowej, na ktorej
+  osi cyklu zycia — tworzenie w operacji domenowej / walidacja modelu ENM / import z
+  pliku zewnetrznego) ma JEDNO zrodlo prawdy (karta W3-I, 2026-09-09):
+  `network_model/catalog/governance.py::wymagalnosc_katalogu(rodzaj, *, parameter_source=None,
+  gen_type=None) -> WymagalnoscKatalogu` (pola `tworzenie`/`walidacja`/`import_`/`kod_walidacji`,
+  poziomy `BLOCKER`/`WARNING`/`NIE`). Normalizuje nazewnictwo ENM (`cable`/`line_overhead`/
+  `transformer`/`source`/`generator`/`load`/`switch`/`breaker`/`fuse`/`measurement`/
+  `protection`/`shunt_capacitor`) i rdzenia (`CABLE`/`LINE`/`TRANSFORMER`). Wyjatek
+  `parameter_source == "MANUAL_EQUIVALENT"` zdejmuje wymog dla zrodla na WSZYSTKICH
+  trzech osiach (K1.2: zrodlo z jawnym Sk''/RX bez pozycji katalogowej); `gen_type` steruje
+  osiami `walidacja`/`import_` generatora wedlug `enm/mapping.py::FULL_CONVERTER_SC_GEN_TYPES`
+  (IMPORTOWANY, nie kopiowany — inny zbior niz `enm/models.py::GEN_TYPES_PRZEKSZTALTNIKOWE`,
+  ktory odpowiada na INNE pytanie: czy generator jest DER). Konsumenci (walidator ENM — kod
+  E009 dla galezi/transformatorow/zrodel, kod NOWY W010 dla generatorow przeksztaltnikowych;
+  bramka importu archiwum ZIP; `infrastructure/cgmes/cgmes_importer.py::_elements_without_catalog`;
+  `application/xlsx_import/importer.py` — asercja w `_waliduj_typy`; `enm/v2_projection.py` —
+  ostrzezenie migracji generatora `V12-MIG-GEN-002` i `readiness_status`;
+  `application/calculation_readiness/service.py` — kod gotowosci `inverter.k_sc_missing`;
+  `application/eligibility_service.py::_check_catalog_refs` — bramka eligibility SC_3F/SC_1F/
+  SC_2F/LOAD_FLOW/FAULT_LOOP_NN/SWZ_NN, SIODMY konsument, znaleziony dopiero przy weryfikacji
+  DoD karty W3-I, nienazwany w jej tresci) CZYTAJA
+  te funkcje zamiast trzymac wlasny predykat — transformator (tworzenie/walidacja/import
+  BLOCKER) rozstrzyga TA SAMA tabela, nie osobno `domain_ops_policy`. Brama operacji
+  (`api/domain_ops_policy.py::CATALOG_REQUIRED_OPERATIONS`, `enm/domain_operations_v2.py::
+  V2_CATALOG_GATE_INVENTORY`) zostaje kluczowana OPERACJA (kontrakt payloadow, inny ksztalt
+  problemu), ale ma test parytetu z tabela (rozjazdy `add_load_sn`/`add_generator_sn` NAZWANE
+  jawnie, nie ukryte); pin:
+  `tests/network_model/catalog/test_governance.py` (tabela jako iloczyn cech: rodzaj × os ×
+  `catalog_ref` × `parameter_source` × `gen_type`),
+  `tests/network_model/catalog/test_governance_konsumenci_czytaja_tabele.py` (po jednym
+  teście na kazdego z szesciu konsumentow, monkeypatch poziomu),
+  `tests/api/test_katalog_predykat_operacje_parytet.py` (parytet brama operacji ↔ tabela),
+  `tests/cgmes/test_cgmes_katalog_predykat.py` (naprawa wyjatku MANUAL_EQUIVALENT w CGMES),
 - governance biblioteki zabezpieczen (P14b): manifest niemutowalny i deterministyczny,
   eksport sortuje typy (nazwa -> id) przed odciskiem SHA-256, import MERGE (domyslny)
   wylacznie dodaje nowe typy (istniejacy `id` pomijany, konflikt raportowany), REPLACE
