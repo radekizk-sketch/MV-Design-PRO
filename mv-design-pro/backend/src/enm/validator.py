@@ -10,6 +10,10 @@ from __future__ import annotations
 import os
 
 from catalog.profiles.nc_rfg import load_nc_rfg_profile
+from network_model.catalog.governance import (
+    brakuje_wymaganej_referencji,
+    wymagalnosc_katalogu,
+)
 from network_model.pochodne import prad_z_mocy_pozornej_ka
 from pydantic import BaseModel
 
@@ -694,9 +698,19 @@ class ENMValidator:
                     )
                 )
 
-        # E009: Brak referencji katalogowej (CATALOG-FIRST)
+        # E009: Brak referencji katalogowej (CATALOG-FIRST) — predykat „czy ten
+        # rodzaj wymaga katalogu" czytany z JEDYNEGO źródła prawdy
+        # (`catalog.governance.wymagalnosc_katalogu`, karta W3-I) zamiast
+        # trzech niezależnych, dosłownie powielonych warunków. Poziomy
+        # (BLOCKER dla linii/kabli/transformatorów/źródeł, wyjątek
+        # `MANUAL_EQUIVALENT` dla źródeł) są DOKŁADNIE te same, jakie ta
+        # reguła sprawdzała przed kartą — konwergencja miejsca, nie polityki.
         for branch in enm.branches:
-            if isinstance(branch, OverheadLine | Cable) and not branch.catalog_ref:
+            if not isinstance(branch, OverheadLine | Cable):
+                continue
+            if brakuje_wymaganej_referencji(
+                wymagalnosc_katalogu(branch.type).walidacja, branch.catalog_ref
+            ):
                 issues.append(
                     ValidationIssue(
                         code="E009",
@@ -718,7 +732,9 @@ class ENMValidator:
                 )
 
         for trafo in enm.transformers:
-            if not trafo.catalog_ref:
+            if brakuje_wymaganej_referencji(
+                wymagalnosc_katalogu("transformer").walidacja, trafo.catalog_ref
+            ):
                 issues.append(
                     ValidationIssue(
                         code="E009",
@@ -746,11 +762,13 @@ class ENMValidator:
             # ustawianym przez `add_grid_source_sn` dla źródła z jawnym Sk''/RX bez
             # pozycji katalogowej — udokumentowana, zamierzona ścieżka (K1.2 tej karty:
             # "source manual_equivalent with explicit Sk/RX"), nie luka do wypełnienia.
-            # Ta reguła sprawdzała WYŁĄCZNIE `catalog_ref`, ignorując pole, które sam
-            # model niesie właśnie po to, żeby odróżnić ten przypadek — luka istniała
-            # od momentu dodania trzeciej wartości Literal, nigdy nie zauważona, bo
-            # żaden budowniczy dotąd nie przechodził tej ścieżki przez pełny walidator.
-            if not source.catalog_ref and source.parameter_source != "MANUAL_EQUIVALENT":
+            # Wyjątek żyje TERAZ w `wymagalnosc_katalogu` (karta W3-I) — ta sama
+            # tabela, którą czyta bramka ZIP i CGMES, więc nie może się już od nich
+            # rozjechać (CGMES tego wyjątku nie znał przed kartą — naprawione tam).
+            poziom = wymagalnosc_katalogu(
+                "source", parameter_source=source.parameter_source
+            ).walidacja
+            if brakuje_wymaganej_referencji(poziom, source.catalog_ref):
                 issues.append(
                     ValidationIssue(
                         code="E009",
@@ -766,6 +784,51 @@ class ENMValidator:
                             action_type="SELECT_CATALOG",
                             element_ref=source.ref_id,
                             modal_type="SourceModal",
+                            payload_hint={"required": "catalog_ref"},
+                        ),
+                    )
+                )
+
+        # W010: Generator przekształtnikowy bez ŻADNEJ referencji katalogowej —
+        # karta W3-I (§0.15 karty konwergencji fizyki), NOWY kod. Przed tą kartą
+        # E009 milczał dla generatorów (nie iterował `enm.generators` wcale),
+        # mimo że tworzenie generatora przekształtnikowego bez katalogu odmawia
+        # (422 `catalog.ref_required`) i gotowość zwarciowa go blokuje
+        # (`inverter.k_sc_missing`, `application/calculation_readiness/
+        # service.py:264-275`) — trzy poziomy w trzech miejscach bez wspólnego
+        # źródła. IMPORTANT (nie BLOCKER): brak KATALOGU nie blokuje modelu jako
+        # całości (rozpływ i inne analizy nadal policzalne) — blokuje WYŁĄCZNIE
+        # gotowość obliczeniową zwarcia DLA TEGO generatora (osobny, niezmieniony
+        # kod `inverter.k_sc_missing`, BLOCKER na tamtej osi). Bez katalogu brakuje
+        # CAŁEJ tabliczki znamionowej źródła zwarciowego (nie tylko k_sc) — to NIE
+        # jest przypadek „katalog jest, ale bez k_sc" (`inverter.k_sc_assumed`,
+        # WARNING, 1,1 przyjęte); ten komunikat nie obiecuje założenia, bo go nie
+        # będzie — kanon tej samej sytuacji: `domain/readiness_bridge.py::
+        # ODWZOROWANIE_WALIDATOR_NA_KANON["W010"]`.
+        for generator in enm.generators:
+            poziom = wymagalnosc_katalogu("generator", gen_type=generator.gen_type).walidacja
+            if brakuje_wymaganej_referencji(poziom, generator.catalog_ref):
+                issues.append(
+                    ValidationIssue(
+                        code="W010",
+                        severity=SEVERITY_IMPORTANT,
+                        message_pl=(
+                            f"Generator przekształtnikowy '{generator.ref_id}' nie ma "
+                            f"referencji katalogowej (catalog_ref). Model pozostaje "
+                            f"ogólnie użyteczny, ale obliczenia zwarciowe dla tego "
+                            f"generatora są zablokowane w gotowości obliczeniowej "
+                            f"(kod 'inverter.k_sc_missing') do czasu przypisania katalogu."
+                        ),
+                        element_refs=[generator.ref_id],
+                        wizard_step_hint="K6",
+                        suggested_fix=(
+                            "Przypisz typ przekształtnika z katalogu i zapisz catalog_ref, "
+                            "żeby zwarcie liczyło się ze zmierzonym k_sc."
+                        ),
+                        fix_action=FixAction(
+                            action_type="SELECT_CATALOG",
+                            element_ref=generator.ref_id,
+                            modal_type="GeneratorModal",
                             payload_hint={"required": "catalog_ref"},
                         ),
                     )
@@ -1123,9 +1186,15 @@ class ENMValidator:
                     )
                 )
 
-        # I002: Gałąź bez katalogu
+        # I002: Gałąź bez katalogu — sama para (rodzaj, brak catalog_ref) co
+        # E009 wyżej (osobny kod INFO, informacyjny odpowiednik BLOCKER-a),
+        # czytana z tej samej tabeli (`catalog.governance`, karta W3-I).
         for branch in enm.branches:
-            if isinstance(branch, OverheadLine | Cable) and not branch.catalog_ref:
+            if not isinstance(branch, OverheadLine | Cable):
+                continue
+            if brakuje_wymaganej_referencji(
+                wymagalnosc_katalogu(branch.type).walidacja, branch.catalog_ref
+            ):
                 issues.append(
                     ValidationIssue(
                         code="I002",

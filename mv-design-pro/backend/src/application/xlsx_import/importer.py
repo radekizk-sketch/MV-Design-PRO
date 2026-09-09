@@ -69,6 +69,7 @@ from typing import Any
 
 from enm.katalog_projektu import STATUS_KATALOGU_PROJEKTU, STATUS_WERYFIKACJI_ARKUSZA
 from enm.zrodlo_zwarcie import PASMO_U_SET_PU, u_set_pu_w_pasmie
+from network_model.catalog.governance import Poziom, wymagalnosc_katalogu
 from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
 from network_model.pochodne import km_na_m
 
@@ -871,7 +872,25 @@ class XlsxNetworkImporter:
           brakująca kolumna tabliczki to błąd wiersza, nigdy wartość domyślna.
         Dwa wiersze z tym samym `typ` (linie) muszą nieść tę samą tabliczkę — inaczej ta
         sama nazwa znaczyłaby dwa różne przewody.
+
+        Karta W3-I (§0.15 karty konwergencji fizyki, 2026-09-09): „element bez typu
+        to błąd wiersza" jest JEDNYM z sześciu miejsc, w których system rozstrzyga
+        „czy ten rodzaj wymaga katalogu przy imporcie" — pozostałe pięć (walidator
+        E009/W010, bramka ZIP, CGMES, brama operacji) czytają
+        `catalog.governance.wymagalnosc_katalogu`. Mechanizm resolwowania typu w tej
+        funkcji (katalog statyczny ALBO pełna tabliczka -> katalog projektu) jest
+        SPECYFICZNY dla arkusza — inne drogi importu (ZIP/CGMES) nie znają trybu
+        „tabliczka zamiast referencji" — więc funkcja nie deleguje SAMEJ decyzji o
+        odrzuceniu wiersza do tabeli (zmieniłoby to intryka kontroli krzyżowej
+        tabliczek poniżej dla hipotetycznego rodzaju, którego dziś nie ma). Zamiast
+        tego czyta tabelę jako ASERCJĘ założenia, na którym stoi CAŁA reszta funkcji
+        — odcinek SN i transformator wymagają typu przy imporcie (oś `import_` !=
+        `NIE`). Gdyby polityka to kiedyś zmieniła, asercja pęka GŁOŚNO (czerwony
+        test), zamiast cichego rozjazdu tej funkcji z pozostałych pięciu miejsc.
         """
+        assert wymagalnosc_katalogu("line_overhead").import_ is not Poziom.NIE
+        assert wymagalnosc_katalogu("cable").import_ is not Poziom.NIE
+        assert wymagalnosc_katalogu("transformer").import_ is not Poziom.NIE
         bledy: list[BladArkusza] = []
         katalog = self._katalog()
         tabliczki_wg_typu: dict[tuple[str, str], tuple[dict[str, Any], int]] = {}

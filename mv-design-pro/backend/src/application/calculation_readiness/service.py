@@ -19,10 +19,10 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from enm.mapping import FULL_CONVERTER_SC_GEN_TYPES
 from enm.models import EnergyNetworkModel
 from enm.topology import derive
 from enm.zrodlo_zwarcie import TrybDanych, dane_zwarciowe_zrodla
+from network_model.catalog.governance import Poziom, wymagalnosc_katalogu
 from pydantic import BaseModel, Field
 
 CalculationType = Literal[
@@ -248,11 +248,14 @@ def _check_short_circuit(enm: EnergyNetworkModel) -> ReadinessTypeReport:
             missing.append(f"u_k transformatora '{tr.name}'")
             blockers.append(tr.ref_id)
 
-    # Karta FAB-H: udział zwarciowy falownika k_sc (Ik = k_sc*In, IEC 60909-0) dla
-    # generatorów pełnoprzekształtnikowych (PV/BESS/wiatrowy) — TA SAMA klasa
-    # gen_type co `enm/mapping.py::_add_generator_sc_sources` (importowany zbiór
-    # FULL_CONVERTER_SC_GEN_TYPES, nie re-derywowany osobno — reguła KLASA NIE
-    # INSTANCJA: dwa niezależne warunki nie mogą się cicho rozjechać). Brak
+    # Karta FAB-H (uzupełniona kartą W3-I, 2026-09-09): udział zwarciowy falownika
+    # k_sc (Ik = k_sc*In, IEC 60909-0) dla generatorów pełnoprzekształtnikowych
+    # (PV/BESS/wiatrowy) — bramka „czy ten gen_type wymaga katalogu przy
+    # zwarciu" czytana z JEDYNEGO źródła prawdy (`catalog.governance.
+    # wymagalnosc_katalogu`, oś `walidacja`; tabela sama importuje
+    # `FULL_CONVERTER_SC_GEN_TYPES` z `enm/mapping.py` — reguła KLASA NIE
+    # INSTANCJA: jeden zbiór, nie cztery niezależne warunki, które mogłyby się
+    # cicho rozjechać). Poziomy kodów `inverter.k_sc_*` BEZ ZMIAN: brak
     # JAKIEGOKOLWIEK katalogu (`catalog_ref is None`, stan REALNY — brama
     # katalogowa go nie wyklucza dla Generator, tylko dla linii/kabli/
     # transformatorów/źródeł) => BLOCKER `inverter.k_sc_missing`: brakuje całej
@@ -262,7 +265,7 @@ def _check_short_circuit(enm: EnergyNetworkModel) -> ReadinessTypeReport:
     # zmierzonej wartości.
     zalozone_k_sc_refs: list[str] = []
     for gen in enm.generators:
-        if gen.gen_type not in FULL_CONVERTER_SC_GEN_TYPES:
+        if wymagalnosc_katalogu("generator", gen_type=gen.gen_type).walidacja is Poziom.NIE:
             continue
         mp = getattr(gen, "materialized_params", None) or {}
         k_sc = mp.get("k_sc")

@@ -58,7 +58,7 @@ from infrastructure.persistence.repositories.canonical_run_repository import (
     CanonicalRunRepository,
 )
 from infrastructure.persistence.repositories.case_repository import CaseRepository
-from network_model.catalog.governance import wymaga_referencji_katalogowej
+from network_model.catalog.governance import brakuje_wymaganej_referencji, wymagalnosc_katalogu
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -924,12 +924,20 @@ def _find_elements_without_catalog(model: EnergyNetworkModel | None) -> list[str
 
     W1-B-ARCH §0.4: liczy się z MODELU ENM (przywróconego z sekcji `enm`, albo
     skompilowanego z danych legacy w `_restore_project`) — jedynego nośnika
-    sieci od W1. Sprawdza gałęzie wymagające katalogu (linie/kable — predykat
-    wspólny dla WSZYSTKICH dróg wejścia modelu, `catalog.governance`, żeby
-    bramka katalogowa nie rozjechała się między importerami) i transformatory
-    (katalog wymagany zawsze — jak w bramce importu arkusza XLSX). Model
-    nieobecny (import bez sieci, albo model 2.x nie odtworzony — ostrzeżenie
-    już nazwane wyżej) → pusta lista, zero fabrykacji.
+    sieci od W1. Sprawdza gałęzie, transformatory i źródła systemowe wg
+    JEDYNEGO źródła prawdy `catalog.governance.wymagalnosc_katalogu` (oś
+    `import_`) — wspólnego z walidatorem E009, bramką CGMES i XLSX (karta
+    W3-I), żeby bramka katalogowa nie rozjechała się między importerami.
+    Model nieobecny (import bez sieci, albo model 2.x nie odtworzony —
+    ostrzeżenie już nazwane wyżej) → pusta lista, zero fabrykacji.
+
+    Karta W3-I (2026-09-09): PRZED tą kartą ta bramka sprawdzała WYŁĄCZNIE
+    gałęzie i transformatory — źródła systemowe nie były sprawdzane wcale,
+    mimo że CGMES (`infrastructure/cgmes/cgmes_importer.py::
+    _elements_without_catalog`) i walidator (E009) je sprawdzają. Rozjazd
+    nazwany w meldunku karty — teraz ZIP sprawdza źródła tak samo jak
+    pozostałych pięć miejsc (z wyjątkiem `parameter_source ==
+    "MANUAL_EQUIVALENT"`, K1.2).
 
     Zwraca listę ref_id elementów bez catalog_ref.
     """
@@ -937,11 +945,17 @@ def _find_elements_without_catalog(model: EnergyNetworkModel | None) -> list[str
         return []
     elements_no_catalog: list[str] = []
     for branch in model.branches:
-        if wymaga_referencji_katalogowej(branch.type) and not branch.catalog_ref:
+        poziom = wymagalnosc_katalogu(branch.type).import_
+        if brakuje_wymaganej_referencji(poziom, branch.catalog_ref):
             elements_no_catalog.append(branch.ref_id)
     for transformer in model.transformers:
-        if not transformer.catalog_ref:
+        poziom = wymagalnosc_katalogu("transformer").import_
+        if brakuje_wymaganej_referencji(poziom, transformer.catalog_ref):
             elements_no_catalog.append(transformer.ref_id)
+    for source in model.sources:
+        poziom = wymagalnosc_katalogu("source", parameter_source=source.parameter_source).import_
+        if brakuje_wymaganej_referencji(poziom, source.catalog_ref):
+            elements_no_catalog.append(source.ref_id)
     return elements_no_catalog
 
 

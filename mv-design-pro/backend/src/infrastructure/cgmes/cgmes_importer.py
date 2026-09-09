@@ -41,6 +41,7 @@ from enm.models import (
     SwitchBranch,
 )
 from enm.validator import ENMValidator, ValidationResult
+from network_model.catalog.governance import brakuje_wymaganej_referencji, wymagalnosc_katalogu
 from network_model.pochodne import m_na_km
 
 from .profiles import NS_CIM, NS_RDF
@@ -483,15 +484,36 @@ def _ostrzezenia_importu(
 
 
 def _elements_without_catalog(enm: EnergyNetworkModel) -> list[str]:
-    """Return ref_ids of catalog-bound elements missing a catalog_ref."""
+    """Return ref_ids of catalog-bound elements missing a catalog_ref.
+
+    Side-car (lossless) round-trip only — `catalog.governance.wymagalnosc_
+    katalogu` (oś `import_`), jedyne źródło prawdy wspólne z walidatorem E009,
+    bramką ZIP i XLSX (karta W3-I). Karta W3-I (2026-09-09): PRZED tą kartą
+    to sprawdzenie nie znało wyjątku `parameter_source == "MANUAL_EQUIVALENT"`
+    (K1.2) — źródło z jawnym Sk''/RX, poprawne wg E009, wracało z side-car
+    round-tripu oznaczone `CATALOG_MAPPING_REQUIRED`. Rozjazd nazwany w
+    meldunku karty — naprawiony tu; test round-tripu w
+    `tests/cgmes/test_cgmes_katalog_predykat.py`.
+
+    Third-party EQ+TP path (`import_from_eq_tp`) NIE woła tej funkcji — buduje
+    własną listę inline, bo TAM każdy element jest z definicji migracyjnym
+    artefaktem bez katalogu (CIM nie niesie referencji katalogowej wcale),
+    niezależnie od rodzaju — to inna decyzja biznesowa, nie duplikat tego
+    predykatu (patrz `import_from_eq_tp`).
+    """
     missing: list[str] = []
     for branch in enm.branches:
-        if isinstance(branch, OverheadLine | Cable) and not branch.catalog_ref:
+        if brakuje_wymaganej_referencji(
+            wymagalnosc_katalogu(branch.type).import_, branch.catalog_ref
+        ):
             missing.append(branch.ref_id)
     for trafo in enm.transformers:
-        if not trafo.catalog_ref:
+        if brakuje_wymaganej_referencji(
+            wymagalnosc_katalogu("transformer").import_, trafo.catalog_ref
+        ):
             missing.append(trafo.ref_id)
     for source in enm.sources:
-        if not source.catalog_ref:
+        poziom = wymagalnosc_katalogu("source", parameter_source=source.parameter_source).import_
+        if brakuje_wymaganej_referencji(poziom, source.catalog_ref):
             missing.append(source.ref_id)
     return sorted(set(missing))
