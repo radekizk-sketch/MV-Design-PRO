@@ -388,7 +388,7 @@ MV-Design-PRO/
 │   │   │       ├── theme/             # Motyw i tokeny
 │   │   │       ├── wyniki/            # Ekrany wynikow (rozplyw, zwarcia, porownanie, estymacja, skladowe)
 │   │   └── e2e/                  # Playwright end-to-end tests
-│   ├── scripts/                  # CI/CD guard scripts (64+ scripts)
+│   ├── scripts/                  # CI/CD guard scripts (86 guards + 35 self-tests, 2026-09-09)
 │   └── docs/                     # Detailed documentation (150+ files)
 │       ├── spec/                 # DETAILED SPECIFICATION (18 chapters + supplements - SOURCE OF TRUTH)
 │       ├── ui/                   # UI contracts (35+ canonical contracts)
@@ -425,7 +425,7 @@ Note: `POWERFACTORY_COMPLIANCE.md` was removed in the V12.5.1 hard cut (2026-04-
 
 In case of conflict: higher priority wins. Conflicts must be recorded in `docs/v12xx/REJESTR_KONFLIKTOW.md`. The latest canon documents (DOC_INVENTORY_2026-05, AUDYT_BRAKI_2026-05, PLAN_E2E_INDUSTRIAL_2026-05, SLD_INDUSTRIAL_SPEC_v1) live under `mv-design-pro/docs/audit/` and `mv-design-pro/docs/plan/` and `mv-design-pro/docs/sld/`.
 
-Active operational programs (2026-07, subordinate to the canon above): `mv-design-pro/docs/uiux/PROGRAM_UIUX_2026-07.md` (UI/UX rebuild, with the BINDING functional inventory `docs/uiux/INWENTARZ_FUNKCJI_2026-07.md`), `mv-design-pro/docs/plan/PLAN_SLD_REWORK.md` (SLD — separate thread), `mv-design-pro/docs/plan/PLAN_PRZEBUDOWY_10X_2026-07.md` (engineering 10x). **Nadrzędna misja właściciela od 2026-09-09:** `mv-design-pro/docs/plan/MISJA_DOMKNIECIA_PRODUKTU_2026-09.md` (domknięcie całego produktu w 12 domenach; architektura, kolejność, kontrakty i wdrożenie po stronie architekta; bramki właściciela B-01/B-02 bez zmian; mapa domknięcia budowana z dowodów repo, nie z planów). See "Active programs" in Project Status below.
+Active operational programs (2026-07, subordinate to the canon above): `mv-design-pro/docs/uiux/PROGRAM_UIUX_2026-07.md` (UI/UX rebuild, with the BINDING functional inventory `docs/uiux/INWENTARZ_FUNKCJI_2026-07.md`), `mv-design-pro/docs/plan/PLAN_SLD_REWORK.md` (SLD — separate thread), `mv-design-pro/docs/plan/PLAN_PRZEBUDOWY_10X_2026-07.md` (engineering 10x). **Nadrzędna misja właściciela od 2026-09-09:** `mv-design-pro/docs/plan/MISJA_DOMKNIECIA_PRODUKTU_2026-09.md` (domknięcie całego produktu w 12 domenach; architektura, kolejność, kontrakty i wdrożenie po stronie architekta; bramki właściciela B-01/B-02 bez zmian; mapa domknięcia budowana z dowodów repo, nie z planów). **Mapa domknięcia (2026-09-09):** `mv-design-pro/docs/plan/MAPA_DOMKNIECIA_PRODUKTU_2026-09.md` — klasyfikacja każdej zdolności 12 domen z dowodem, klasy defektów, kolejność wycinków W1–W12; pierwszy wycinek W1 (jedna prawda sieci: import XLSX → ENM, kasacja legacy ORM). See "Active programs" in Project Status below.
 
 ## Architecture Layer Boundaries (CRITICAL)
 
@@ -578,7 +578,7 @@ npm run test:watch
 # Run tests with coverage
 npm run test:coverage
 
-# Run e2e tests (Playwright, mock backend)
+# Run e2e tests (Playwright, REAL backend — playwright-run.mjs forces PLAYWRIGHT_REAL_BACKEND=1; all 90 spec files)
 npm run test:e2e
 
 # Run e2e against real backend (critical path)
@@ -626,7 +626,7 @@ docker-compose logs -f backend
 docker-compose down
 ```
 
-### Guard Scripts (64+ total)
+### Guard Scripts (86 guards + 35 self-tests; list below is a selection)
 ```bash
 cd mv-design-pro
 
@@ -848,7 +848,7 @@ The system is fully functional with:
 - 19 analysis modules (incl. Arc Flash, Grid Strength, Reactive Adequacy, SSCI, Sanity Bounds,
   Energy Validation — see inventory)
 - Full frontend (63 UI modules): SLD editor, Results, Study Cases, Proof Inspector, Protection, NC RfG tests
-- ~5,400 backend test functions; ~7,350 frontend tests (537 files); 79 guard scripts
+- ~9 080 backend test functions (`grep def test_`, 2026-09-09); ~10 580 frontend tests in 892 files; 86 guard scripts + 35 guard self-tests
 - Project import/export (ZIP, deterministic, versioned), CAD geometry editing in SLD,
   PDF/DOCX report generation, ENM v1.0 (EnergyNetworkModel)
 
