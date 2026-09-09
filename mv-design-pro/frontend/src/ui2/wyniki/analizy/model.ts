@@ -84,7 +84,7 @@ export const GRUPY_ANALIZ: readonly GrupaAnaliz[] = [
       {
         ekran: 'E-31',
         tytul: 'Stan fazowy SN',
-        opis: 'Napięcia i prądy fazowe celu analizy oraz asymetrie U/I/strat z werdyktem z flag solvera.',
+        opis: 'Napięcia i prądy fazowe celu analizy oraz odchylenie napięcia/prądu/strat od średniej faz, z werdyktem z flag solvera.',
         zrodlo: 'zakończony przebieg analizy stanu fazowego SN',
         wymaga: 'fazowy',
         testid: 'mvd-analizy-karta-fazowy',

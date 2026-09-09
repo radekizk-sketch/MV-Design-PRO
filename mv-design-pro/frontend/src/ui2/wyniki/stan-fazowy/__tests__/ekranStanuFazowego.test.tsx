@@ -128,6 +128,16 @@ describe('EkranStanuFazowego — realna ścieżka wejścia (karta huba → zakł
     const karta = screen.getByTestId('mvd-analizy-karta-fazowy');
     expect(within(karta).getByText('wymaga przebiegu stanu fazowego')).toBeInTheDocument();
   });
+
+  it('opis karty huba NIE sugeruje VUF — druga kopia tego samego opisu (karta W2 pkt 4, KLASA NIE INSTANCJA)', () => {
+    // `ui2/wyniki/analizy/model.ts` niesie WŁASNĄ, oddzielną kopię opisu ekranu
+    // E-31 (menu „Analizy techniczne") — ten sam defekt nazewnictwa co
+    // `strings.ts::asymetriaTytul/asymetriaOpis`, w drugim miejscu.
+    render(<EkranAnalizTechnicznych />);
+    const karta = screen.getByTestId('mvd-analizy-karta-fazowy');
+    expect(karta.textContent ?? '').not.toMatch(/asymetri[ae]\s+U\/I\/strat/i);
+    expect(within(karta).getByText(/odchylenie napięcia\/prądu\/strat od średniej faz/i)).toBeInTheDocument();
+  });
 });
 
 describe('EkranStanuFazowego — rama prowadząca i uczciwe stany zerowe', () => {
@@ -193,6 +203,40 @@ describe('EkranStanuFazowego — wartości fazowe i werdykty z flag solvera', ()
 
     // Bez zdarzeń obwodu: uczciwa informacja zamiast pustej listy.
     expect(screen.getByTestId('mvd-fazowy-bez-zdarzen')).toBeInTheDocument();
+  });
+
+  it('etykieta wskaźnika = dokładnie definicja solvera (odchylenie od średniej faz), nie VUF (karta W2 pkt 4)', async () => {
+    // `phase_state_sn.py::_compute_unbalance_percent` liczy odchylenie MAKSYMALNE
+    // od ŚREDNIEJ TRZECH FAZ w % — nie współczynnik asymetrii wg składowych
+    // symetrycznych (VUF). Etykieta i opis pomocy muszą mówić dokładnie to.
+    expect(T.asymetriaTytul).toBe('Odchylenie od średniej faz [%]');
+    expect(T.asymetriaOpis).toContain(
+      'nie jest współczynnikiem asymetrii wg składowych symetrycznych (VUF)',
+    );
+    expect(T.asymetriaOpis).toContain('ten wskaźnik nie jest dziś liczony');
+    // Żadna etykieta per-wielkość nie nazywa się „Asymetria …" (sugestia VUF) —
+    // wszystkie trzy dzielą tę samą klasę solvera (`_compute_unbalance_percent`
+    // wywoływane identycznie dla napięcia/prądu/strat), więc wszystkie trzy
+    // dostają tę samą korektę nazewnictwa, nie tylko jedna z trzech.
+    for (const etykieta of [T.asymetriaU, T.asymetriaI, T.asymetriaStrat]) {
+      expect(etykieta).not.toMatch(/^Asymetria/);
+      expect(etykieta).toContain('Odchylenie');
+      expect(etykieta).toContain('od średniej faz');
+    }
+
+    ustawKompletnyKontekst();
+    mockFetchStanuFazowego({ run_id: 'run-ps-1', rows: [wierszFixture()] });
+    render(<EkranStanuFazowego />);
+
+    const asymetrie = await screen.findByTestId('mvd-fazowy-asymetrie');
+    // Nagłówek sekcji i opis renderują się DOKŁADNIE tym tekstem na ekranie —
+    // nie tylko w stałej `strings.ts`, którą nikt nie musi importować poprawnie.
+    expect(screen.getByText(T.asymetriaTytul)).toBeInTheDocument();
+    expect(screen.getByText(T.asymetriaOpis)).toBeInTheDocument();
+    expect(within(asymetrie).getByText(T.asymetriaU)).toBeInTheDocument();
+    expect(within(asymetrie).getByText(T.asymetriaI)).toBeInTheDocument();
+    expect(within(asymetrie).getByText(T.asymetriaStrat)).toBeInTheDocument();
+    expect(screen.queryByText(/^Asymetria (napięcia|prądu|strat)$/)).not.toBeInTheDocument();
   });
 
   it('kontrakt bez wartości i bez flag → kreski i „bez werdyktu" (zero fabrykacji)', async () => {
