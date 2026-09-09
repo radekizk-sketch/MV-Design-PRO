@@ -15,10 +15,12 @@ interface KafelProps {
   tytul: string;
   onKlik?: () => void;
   ariaLabel?: string;
+  /** Identyfikator testowy klikalnego kafla (e2e / testy interakcji). */
+  testId?: string;
   children?: ReactNode;
 }
 
-export function Kafel({ tytul, onKlik, ariaLabel, children }: KafelProps) {
+export function Kafel({ tytul, onKlik, ariaLabel, testId, children }: KafelProps) {
   const klasa = 'mvd-kafel';
   const zawartosc = (
     <>
@@ -29,7 +31,13 @@ export function Kafel({ tytul, onKlik, ariaLabel, children }: KafelProps) {
 
   if (onKlik) {
     return (
-      <button type="button" className={klasa} onClick={onKlik} aria-label={ariaLabel}>
+      <button
+        type="button"
+        className={klasa}
+        onClick={onKlik}
+        aria-label={ariaLabel}
+        data-testid={testId}
+      >
         {zawartosc}
       </button>
     );

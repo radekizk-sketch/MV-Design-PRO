@@ -79,11 +79,16 @@ export interface OtworzProjektKontenerProps {
   onWrocDoPulpitu?: () => void;
   /** Wywoływane po skutecznym otwarciu / utworzeniu projektu (zamyka tryb zmiany). */
   onProjektOtwarty?: () => void;
+  /** Inne drogi zdobycia projektu (E1) — okna importu z arkusza i archiwum. */
+  onOtworzImportArkusza?: () => void;
+  onOtworzArchiwum?: () => void;
 }
 
 export function OtworzProjektKontener({
   onWrocDoPulpitu,
   onProjektOtwarty,
+  onOtworzImportArkusza,
+  onOtworzArchiwum,
 }: OtworzProjektKontenerProps = {}) {
   const setActiveProject = useAppStateStore((s) => s.setActiveProject);
   const setActiveCase = useAppStateStore((s) => s.setActiveCase);
@@ -249,6 +254,8 @@ export function OtworzProjektKontener({
       }
       onWrocDoPulpitu={onWrocDoPulpitu}
       wToku={wToku}
+      onOtworzImportArkusza={onOtworzImportArkusza}
+      onOtworzArchiwum={onOtworzArchiwum}
       onWczytajPrzyklad={() => {
         // Nieosiągalne przy pustej liście przykładów — celowo bez akcji
         // (żadnego udawania materializacji; dostawca = przyszła karta).

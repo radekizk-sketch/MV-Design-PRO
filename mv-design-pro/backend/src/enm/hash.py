@@ -69,6 +69,10 @@ def _strip_uuids(payload: dict[str, Any]) -> dict[str, Any]:
     (`_POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE`). JEDYNE miejsce tej reguly — wolaja ja
     `compute_enm_hash`, `_input_payload` i `hash_migawki_enm`, wiec trzy odciski
     nie moga sie rozjechac."""
+    # W1: sekcja `katalog_projektu` jest addytywna — brak sekcji i `None` to ten sam
+    # model (odciski sprzed pola bajtowo niezmienione); obecna sekcja wchodzi do hasha.
+    if payload.get("katalog_projektu") is None:
+        payload.pop("katalog_projektu", None)
     for key in _ELEMENT_KEYS:
         if key in payload and isinstance(payload[key], list):
             pola_gdy_none = _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE.get(key, ())

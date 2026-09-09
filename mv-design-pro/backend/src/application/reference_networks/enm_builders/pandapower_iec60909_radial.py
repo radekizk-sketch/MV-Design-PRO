@@ -21,7 +21,7 @@ niemierzalny (rel_err < 1e-6), zgodnie z tym, co reprezentuje.
 
 from __future__ import annotations
 
-from application.reference_networks.enm_builders._kernel import (
+from enm.kompilator_grafu import (
     BenchmarkEnm,
     _gpz_line_fields,
     dodaj_zrodlo_slack,

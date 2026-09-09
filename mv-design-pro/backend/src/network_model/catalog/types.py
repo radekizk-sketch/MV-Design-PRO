@@ -113,6 +113,10 @@ class CatalogStatus(Enum):
     REFERENCYJNY_V1 = "REFERENCYJNY_V1"
     ANALITYCZNY_V1 = "ANALITYCZNY_V1"
     TESTOWY = "TESTOWY"
+    #: W1 (mapa domknięcia 2026-09): pozycja PROJEKTU — dane inżyniera spoza katalogu
+    #: producenckiego (arkusz XLSX), ważna w obrębie modelu, który ją niesie
+    #: (`enm/katalog_projektu.py`); nigdy w modułach katalogu statycznego.
+    PROJEKTOWY_V1 = "PROJEKTOWY_V1"
 
 
 def _normalize_verification_status(

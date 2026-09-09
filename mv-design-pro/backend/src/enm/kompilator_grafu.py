@@ -658,3 +658,389 @@ def rozbuduj_z_dowolnej_szyny(
         branch_map[edge.edge_id] = _ostatnia_dodana_galaz(enm, edge.edge_id)["ref_id"]
 
     return enm, branch_map
+
+
+# ---------------------------------------------------------------------------
+# W1 (mapa domknięcia 2026-09): kompilator DOWOLNEGO grafu węzeł–gałąź
+# (szyny + odcinki + transformatory + źródła + odbiory) → operacje domenowe.
+# Jeden kompilator dla importu arkusza XLSX, migracji starych projektów i
+# builderów sieci benchmarkowych — zero drugiej implementacji tej samej drogi.
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class SzynaSpec:
+    """Szyna grafu wejściowego — identyfikator literaturowy/arkuszowy, nazwa, napięcie."""
+
+    lit: str
+    name: str
+    voltage_kv: float
+
+
+@dataclass(frozen=True)
+class TransformatorSpec:
+    """Transformator między dwiema szynami grafu wejściowego (obie zadeklarowane)."""
+
+    edge_id: str
+    hv_lit: str
+    lv_lit: str
+    catalog_ref: str
+    name: str | None = None
+
+
+@dataclass(frozen=True)
+class ZrodloSpec:
+    """Źródło systemowe (GPZ) na szynie grafu — dane zwarciowe jak w
+    `add_grid_source_sn.manual_equivalent` (Sk''/Ik'' MAX, opcjonalnie MIN, U zadane)."""
+
+    lit: str
+    name: str
+    rx_ratio: float
+    sk3_mva: float | None = None
+    ik3_ka: float | None = None
+    sk3_min_mva: float | None = None
+    ik3_min_ka: float | None = None
+    rx_ratio_min: float | None = None
+    u_set_pu: float | None = None
+
+
+@dataclass(frozen=True)
+class OdbiorSpec:
+    """Odbiór P/Q na szynie grafu."""
+
+    lit: str
+    name: str
+    p_mw: float
+    q_mvar: float
+
+
+@dataclass(frozen=True)
+class GrafDoKompilacji:
+    """Kompletny graf wejściowy. `katalog_projektu` = sekcja typów niesionych przez model
+    (`enm/katalog_projektu.py`) — pozycje, do których odwołują się `catalog_ref` odcinków
+    i transformatorów spoza katalogu statycznego."""
+
+    name: str
+    szyny: tuple[SzynaSpec, ...]
+    odcinki: tuple[EdgeSpec, ...] = ()
+    transformatory: tuple[TransformatorSpec, ...] = ()
+    zrodla: tuple[ZrodloSpec, ...] = ()
+    odbiory: tuple[OdbiorSpec, ...] = ()
+    katalog_projektu: dict[str, Any] | None = None
+
+
+@dataclass
+class WynikKompilacji:
+    """ENM + mapy identyfikatorów grafu wejściowego → `ref_id` elementów modelu."""
+
+    enm: dict[str, Any]
+    bus_map: dict[str, str] = field(default_factory=dict)
+    branch_map: dict[str, str] = field(default_factory=dict)
+    transformer_map: dict[str, str] = field(default_factory=dict)
+    source_map: dict[str, str] = field(default_factory=dict)
+    load_map: dict[str, str] = field(default_factory=dict)
+
+
+class BladGrafuWejsciowego(ValueError):
+    """Graf wejściowy nie daje się skompilować — komunikat nazywa element i przyczynę."""
+
+
+def _sprawdz_graf(graf: GrafDoKompilacji) -> dict[str, SzynaSpec]:
+    szyny: dict[str, SzynaSpec] = {}
+    for szyna in graf.szyny:
+        if szyna.lit in szyny:
+            raise BladGrafuWejsciowego(f"szyna '{szyna.lit}' zadeklarowana dwukrotnie")
+        if szyna.voltage_kv <= 0:
+            raise BladGrafuWejsciowego(f"szyna '{szyna.lit}': napięcie musi być dodatnie")
+        szyny[szyna.lit] = szyna
+    if not graf.zrodla:
+        raise BladGrafuWejsciowego("graf bez źródła systemowego — nie ma skąd zacząć budowy")
+    identyfikatory: set[str] = set()
+    for odcinek in graf.odcinki:
+        if odcinek.edge_id in identyfikatory:
+            raise BladGrafuWejsciowego(f"gałąź '{odcinek.edge_id}' zadeklarowana dwukrotnie")
+        identyfikatory.add(odcinek.edge_id)
+        for koniec in (odcinek.from_lit, odcinek.to_lit):
+            if koniec not in szyny:
+                raise BladGrafuWejsciowego(
+                    f"odcinek '{odcinek.edge_id}': szyna '{koniec}' nie istnieje w grafie"
+                )
+        if odcinek.from_lit == odcinek.to_lit:
+            raise BladGrafuWejsciowego(f"odcinek '{odcinek.edge_id}' łączy szynę samą ze sobą")
+        u_od, u_do = szyny[odcinek.from_lit].voltage_kv, szyny[odcinek.to_lit].voltage_kv
+        if abs(u_od - u_do) > 1e-9:
+            raise BladGrafuWejsciowego(
+                f"odcinek '{odcinek.edge_id}' łączy szyny o różnych napięciach "
+                f"({u_od:g} kV / {u_do:g} kV) — zmiana poziomu napięcia wymaga transformatora"
+            )
+    for trafo in graf.transformatory:
+        if trafo.edge_id in identyfikatory:
+            raise BladGrafuWejsciowego(f"gałąź '{trafo.edge_id}' zadeklarowana dwukrotnie")
+        identyfikatory.add(trafo.edge_id)
+        for koniec in (trafo.hv_lit, trafo.lv_lit):
+            if koniec not in szyny:
+                raise BladGrafuWejsciowego(
+                    f"transformator '{trafo.edge_id}': szyna '{koniec}' nie istnieje w grafie"
+                )
+        if trafo.hv_lit == trafo.lv_lit:
+            raise BladGrafuWejsciowego(f"transformator '{trafo.edge_id}' łączy szynę samą ze sobą")
+        if szyny[trafo.hv_lit].voltage_kv < szyny[trafo.lv_lit].voltage_kv:
+            raise BladGrafuWejsciowego(
+                f"transformator '{trafo.edge_id}': strona HV ('{trafo.hv_lit}', "
+                f"{szyny[trafo.hv_lit].voltage_kv:g} kV) ma niższe napięcie niż strona LV "
+                f"('{trafo.lv_lit}', {szyny[trafo.lv_lit].voltage_kv:g} kV)"
+            )
+    szyny_zrodel: set[str] = set()
+    for zrodlo in graf.zrodla:
+        if zrodlo.lit not in szyny:
+            raise BladGrafuWejsciowego(f"źródło '{zrodlo.name}': szyna '{zrodlo.lit}' nie istnieje")
+        if zrodlo.lit in szyny_zrodel:
+            raise BladGrafuWejsciowego(
+                f"szyna '{zrodlo.lit}' ma więcej niż jedno źródło systemowe — model niesie "
+                "jedno źródło sieciowe na szynę zasilającą"
+            )
+        szyny_zrodel.add(zrodlo.lit)
+        if zrodlo.sk3_mva is None and zrodlo.ik3_ka is None:
+            raise BladGrafuWejsciowego(
+                f"źródło '{zrodlo.name}': podaj moc zwarciową Sk'' albo prąd zwarciowy Ik''"
+            )
+    for odbior in graf.odbiory:
+        if odbior.lit not in szyny:
+            raise BladGrafuWejsciowego(f"odbiór '{odbior.name}': szyna '{odbior.lit}' nie istnieje")
+    return szyny
+
+
+def _pola_liniowe_gpz_szyny(enm: dict[str, Any], bus_ref: str) -> list[dict[str, Any]]:
+    """Pola liniowe odpływowe GPZ, którego szyną główną jest `bus_ref` (wiele GPZ w modelu)."""
+    for stacja in enm.get("substations", []):
+        if not str(stacja.get("ref_id", "")).startswith("gpz/"):
+            continue
+        if bus_ref not in (stacja.get("bus_refs") or []):
+            continue
+        pola = [
+            spec
+            for spec in stacja.get("meta", {}).get("field_specs", [])
+            if "gpz_line_field" in (spec.get("tags") or [])
+        ]
+        pola.sort(key=lambda f: f["meta"]["gpz_line_field_index"])
+        return pola
+    return []
+
+
+def _przemianuj(enm: dict[str, Any], element_ref: str, new_name: str) -> dict[str, Any]:
+    return wykonaj(enm, "rename_element", {"element_ref": element_ref, "new_name": new_name})
+
+
+def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
+    """Zbuduj `EnergyNetworkModel` z dowolnego grafu węzeł–gałąź WYŁĄCZNIE operacjami
+    domenowymi — ten sam mechanizm, którym kreatory budują sieć klik po kliku.
+
+    Kolejność (deterministyczna, więc `ref_id` powtarzalne dla tego samego grafu):
+    1. sekcja `katalog_projektu` w pustym modelu (typy spoza katalogu statycznego);
+    2. źródła → `add_grid_source_sn` (GPZ na własnym napięciu szyny, bez nadrzędnego
+       układu WN; liczba pól liniowych = liczba odcinków przy szynie źródła);
+    3. przegląd wszerz od WSZYSTKICH szyn źródeł naraz (`przeglad_wszerz_od`) przez
+       odcinki i transformatory: krawędź drzewa tworzy nową szynę (odcinek →
+       `continue_trunk_segment_sn`/`start_branch_segment_sn`, transformator →
+       `add_transformer_sn_nn` z nową szyną LV albo HV), krawędź zamykająca łączy
+       szyny już istniejące (`connect_secondary_ring_sn`, transformator między
+       istniejącymi szynami);
+    4. odbiory → `add_load_sn`.
+    Szyna nieosiągalna z żadnego źródła to błąd wejścia (wyspa bez zasilania nie ma
+    w modelu żadnej operacji, która by ją utworzyła) — zero cichego pomijania.
+    """
+    szyny = _sprawdz_graf(graf)
+    pierwsze = szyny[graf.zrodla[0].lit]
+    enm = pusty_enm(name=graf.name, sn_nominal_kv=pierwsze.voltage_kv)
+    if graf.katalog_projektu:
+        enm["katalog_projektu"] = graf.katalog_projektu
+    wynik = WynikKompilacji(enm=enm)
+
+    odcinki_przy_szynie: dict[str, int] = {}
+    for odcinek in graf.odcinki:
+        odcinki_przy_szynie[odcinek.from_lit] = odcinki_przy_szynie.get(odcinek.from_lit, 0) + 1
+        odcinki_przy_szynie[odcinek.to_lit] = odcinki_przy_szynie.get(odcinek.to_lit, 0) + 1
+
+    # 2. źródła (każde = GPZ na szynie o napięciu z grafu)
+    for zrodlo in graf.zrodla:
+        szyna = szyny[zrodlo.lit]
+        rownowaznik: dict[str, Any] = {
+            "sn_voltage_kv": szyna.voltage_kv,
+            "rx_ratio": zrodlo.rx_ratio,
+            "skip_hv_transformer": True,
+        }
+        for klucz in ("sk3_mva", "ik3_ka", "sk3_min_mva", "ik3_min_ka", "rx_ratio_min", "u_set_pu"):
+            wartosc = getattr(zrodlo, klucz)
+            if wartosc is not None:
+                rownowaznik[klucz] = wartosc
+        przed = {s["ref_id"] for s in enm.get("sources", [])}
+        enm = wykonaj(
+            enm,
+            "add_grid_source_sn",
+            {
+                "voltage_kv": szyna.voltage_kv,
+                "manual_equivalent": rownowaznik,
+                "source_name": zrodlo.name,
+                "gpz_sections": [
+                    {
+                        "order": 0,
+                        "name": szyna.name,
+                        "bus_name": szyna.name,
+                        "line_fields_count": max(odcinki_przy_szynie.get(zrodlo.lit, 0), 1),
+                    }
+                ],
+            },
+        )
+        nowe_zrodlo = next(s for s in enm["sources"] if s["ref_id"] not in przed)
+        wynik.source_map[zrodlo.lit] = nowe_zrodlo["ref_id"]
+        wynik.bus_map[zrodlo.lit] = nowe_zrodlo["bus_ref"]
+        wynik.enm = enm
+
+    # 3. przegląd wszerz od wszystkich źródeł — odcinki i transformatory razem
+    krawedzie: dict[str, tuple[str, str, str]] = {}  # edge_id -> (rodzaj, a, b)
+    sasiedztwo: dict[str, list[tuple[str, str]]] = {}
+    for odcinek in graf.odcinki:
+        krawedzie[odcinek.edge_id] = ("odcinek", odcinek.from_lit, odcinek.to_lit)
+    for trafo in graf.transformatory:
+        krawedzie[trafo.edge_id] = ("transformator", trafo.hv_lit, trafo.lv_lit)
+    for edge_id, (_rodzaj, a, b) in krawedzie.items():
+        sasiedztwo.setdefault(a, []).append((edge_id, b))
+        sasiedztwo.setdefault(b, []).append((edge_id, a))
+    odcinki_wg_id = {o.edge_id: o for o in graf.odcinki}
+    trafo_wg_id = {t.edge_id: t for t in graf.transformatory}
+
+    def sasiedzi(lit: str) -> list[tuple[str, str]]:
+        return list(sasiedztwo.get(lit, []))
+
+    korzenie = [zrodlo.lit for zrodlo in graf.zrodla]
+    drzewo = przeglad_wszerz_od(korzenie, sasiedzi)
+    krawedzie_drzewa: set[str] = set()
+    pierwsze_odejscie_gpz: set[str] = set()
+    indeks_pola_gpz: dict[str, int] = {}
+
+    for lit_nowej, info in drzewo.items():
+        if info is None:
+            continue  # korzeń — szyna źródła już istnieje
+        edge_id, lit_biezacej = info
+        krawedzie_drzewa.add(edge_id)
+        rodzaj, _a, _b = krawedzie[edge_id]
+        ref_biezacej = wynik.bus_map[lit_biezacej]
+        if rodzaj == "odcinek":
+            odcinek = odcinki_wg_id[edge_id]
+            if lit_biezacej in wynik.source_map:
+                pola = _pola_liniowe_gpz_szyny(enm, ref_biezacej)
+                if lit_biezacej not in pierwsze_odejscie_gpz:
+                    pierwsze_odejscie_gpz.add(lit_biezacej)
+                    indeks_pola_gpz[lit_biezacej] = 0
+                    enm, ref_nowej = kontynuuj_z_pola(
+                        enm,
+                        field_ref=pola[0]["field_ref"],
+                        catalog_ref=odcinek.catalog_ref,
+                        dlugosc_m=odcinek.dlugosc_m,
+                        name=odcinek.edge_id,
+                        rodzaj=odcinek.rodzaj,
+                        bus_name=szyny[lit_nowej].name,
+                    )
+                else:
+                    indeks_pola_gpz[lit_biezacej] += 1
+                    enm, ref_nowej = rozpocznij_z_pola(
+                        enm,
+                        field_ref=pola[indeks_pola_gpz[lit_biezacej]]["field_ref"],
+                        catalog_ref=odcinek.catalog_ref,
+                        dlugosc_m=odcinek.dlugosc_m,
+                        name=odcinek.edge_id,
+                        rodzaj=odcinek.rodzaj,
+                        bus_name=szyny[lit_nowej].name,
+                    )
+            else:
+                enm, ref_nowej = kontynuuj_z_szyny(
+                    enm,
+                    from_bus_ref=ref_biezacej,
+                    catalog_ref=odcinek.catalog_ref,
+                    dlugosc_m=odcinek.dlugosc_m,
+                    name=odcinek.edge_id,
+                    rodzaj=odcinek.rodzaj,
+                    bus_name=szyny[lit_nowej].name,
+                )
+            wynik.branch_map[edge_id] = _ostatnia_dodana_galaz(enm, edge_id)["ref_id"]
+        else:
+            trafo = trafo_wg_id[edge_id]
+            if lit_biezacej == trafo.hv_lit:
+                enm, ref_nowej = dodaj_transformator(
+                    enm,
+                    hv_bus_ref=ref_biezacej,
+                    catalog_ref=trafo.catalog_ref,
+                    lv_voltage_kv=szyny[lit_nowej].voltage_kv,
+                )
+            else:
+                enm, ref_nowej = dodaj_transformator(
+                    enm,
+                    lv_bus_ref=ref_biezacej,
+                    hv_voltage_kv=szyny[lit_nowej].voltage_kv,
+                    catalog_ref=trafo.catalog_ref,
+                )
+            ref_trafo = enm["transformers"][-1]["ref_id"]
+            wynik.transformer_map[edge_id] = ref_trafo
+            # Szyna po drugiej stronie transformatora i sam transformator dostają nazwy
+            # z grafu (operacja tworzy je bez nazwy; `rename_element` to ta sama droga,
+            # którą nazwę zmienia projektant w kreatorze).
+            enm = _przemianuj(enm, ref_nowej, szyny[lit_nowej].name)
+            if trafo.name is not None:
+                enm = _przemianuj(enm, ref_trafo, trafo.name)
+        wynik.bus_map[lit_nowej] = ref_nowej
+        wynik.enm = enm
+
+    nieosiagalne = sorted(lit for lit in szyny if lit not in wynik.bus_map)
+    if nieosiagalne:
+        raise BladGrafuWejsciowego(
+            "szyny nieosiągalne z żadnego źródła systemowego (wyspa bez zasilania): "
+            + ", ".join(nieosiagalne)
+        )
+
+    # krawędzie zamykające — oba końce istnieją
+    for edge_id in sorted(krawedzie):
+        if edge_id in krawedzie_drzewa:
+            continue
+        rodzaj, a, b = krawedzie[edge_id]
+        if rodzaj == "odcinek":
+            odcinek = odcinki_wg_id[edge_id]
+            enm = zamknij_pierscien(
+                enm,
+                from_bus_ref=wynik.bus_map[a],
+                to_bus_ref=wynik.bus_map[b],
+                catalog_ref=odcinek.catalog_ref,
+                dlugosc_m=odcinek.dlugosc_m,
+                name=odcinek.edge_id,
+                rodzaj=odcinek.rodzaj,
+            )
+            wynik.branch_map[edge_id] = _ostatnia_dodana_galaz(enm, edge_id)["ref_id"]
+        else:
+            trafo = trafo_wg_id[edge_id]
+            enm, _ = dodaj_transformator(
+                enm,
+                hv_bus_ref=wynik.bus_map[trafo.hv_lit],
+                lv_bus_ref=wynik.bus_map[trafo.lv_lit],
+                catalog_ref=trafo.catalog_ref,
+            )
+            ref_trafo = enm["transformers"][-1]["ref_id"]
+            wynik.transformer_map[edge_id] = ref_trafo
+            if trafo.name is not None:
+                enm = _przemianuj(enm, ref_trafo, trafo.name)
+        wynik.enm = enm
+
+    # 4. odbiory
+    for odbior in graf.odbiory:
+        przed_odbiory = {o["ref_id"] for o in enm.get("loads", [])}
+        enm = dodaj_obciazenie(
+            enm,
+            bus_ref=wynik.bus_map[odbior.lit],
+            p_mw=odbior.p_mw,
+            q_mvar=odbior.q_mvar,
+            name=odbior.name,
+        )
+        nowy = next(o for o in enm["loads"] if o["ref_id"] not in przed_odbiory)
+        wynik.load_map[odbior.name] = nowy["ref_id"]
+        wynik.enm = enm
+
+    wynik.enm = enm
+    return wynik

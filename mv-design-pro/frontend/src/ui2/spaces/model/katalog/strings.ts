@@ -89,4 +89,5 @@ export const ETYKIETY_STATUSU_KATALOGU: Readonly<Record<string, string>> = {
   REFERENCYJNY_V1: 'Referencyjny',
   ANALITYCZNY_V1: 'Analityczny',
   TESTOWY: 'Testowy',
+  PROJEKTOWY_V1: 'Projektowy (dane z arkusza)',
 };

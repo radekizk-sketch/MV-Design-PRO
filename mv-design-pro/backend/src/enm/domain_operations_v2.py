@@ -26,12 +26,13 @@ from typing import Any, cast
 
 from network_model.catalog.materialization import materialize_catalog_binding
 from network_model.catalog.mv_ptpiree_catalog import annotate_with_ptpiree_status
-from network_model.catalog.repository import get_default_mv_catalog
 from network_model.catalog.switchgear import (
     NiezgodnoscKonfiguracjiError,
     family_supports_voltage,
 )
 from network_model.catalog.types import CatalogBinding
+
+from .katalog_projektu import katalog_biezacy
 from network_model.pochodne import (
     moc_bierna_z_czynnej_i_cos_phi,
     moc_pozorna_z_czynnej_mva,
@@ -1570,7 +1571,7 @@ def _materialize_nn_source_params(
         catalog_item_version="2024.1",
         materialize=True,
     )
-    result = materialize_catalog_binding(binding, get_default_mv_catalog())
+    result = materialize_catalog_binding(binding, katalog_biezacy())
     if not result.success:
         return None, result.error_code or "catalog.materialization_incomplete"
 
@@ -4028,7 +4029,7 @@ def _certyfikat_ptpiree_z_katalogu(namespace: str, catalog_ref: str) -> dict[str
 
     Uczciwy stan zerowy: brak certyfikatu = brak klucza, nigdy `null` udający daną.
     """
-    katalog = get_default_mv_catalog()
+    katalog = katalog_biezacy()
     if namespace == "ZRODLO_NN_PV":
         rekord: Any = katalog.get_pv_inverter_type(catalog_ref)
     elif namespace == "ZRODLO_NN_BESS":
@@ -4100,9 +4101,8 @@ def _materializuj_bateria_bess(
             "Pakiet baterii (battery_catalog_ref) dotyczy wyłącznie źródeł BESS.",
             "converter.battery_catalog_not_applicable",
         )
-    from network_model.catalog import get_default_mv_catalog
 
-    typ = get_default_mv_catalog().get_bess_battery_type(ref)
+    typ = katalog_biezacy().get_bess_battery_type(ref)
     if typ is None:
         return {}, _error_response(
             f"Pakiet baterii '{ref}' nie istnieje w katalogu BATERIA_BESS. "
@@ -5930,7 +5930,7 @@ def add_shunt_compensator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
             "shunt.catalog_required",
         )
 
-    catalog = get_default_mv_catalog()
+    catalog = katalog_biezacy()
     catalog_type = catalog.get_shunt_capacitor_type(catalog_ref)
     if catalog_type is None:
         return _error_response(
@@ -6280,7 +6280,7 @@ def add_surge_arrester_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
             "Wybierz typ ogranicznika przepięć z katalogu (OGRANICZNIK_SN).",
             "spd.catalog_required",
         )
-    catalog_type = get_default_mv_catalog().get_surge_arrester_type(catalog_ref)
+    catalog_type = katalog_biezacy().get_surge_arrester_type(catalog_ref)
     if catalog_type is None:
         return _error_response(
             f"Typ ogranicznika '{catalog_ref}' nie istnieje w katalogu ograniczników SN.",
@@ -6441,9 +6441,9 @@ DER_PROFILE_KEYS: tuple[str, ...] = (
 
 
 #: Wiazania, dla ktorych backend MA katalog i moze sprawdzic istnienie typu poprzez
-#: metode `get_default_mv_catalog()`. `dynamic_model_ref` walidowany jest OSOBNO
+#: metode `katalog_biezacy()`. `dynamic_model_ref` walidowany jest OSOBNO
 #: (patrz `_nieznane_referencje_katalogowe` nizej) — jego dostawca
-#: (`network_model.catalog.der_dynamic`) nie jest metoda `get_default_mv_catalog()`.
+#: (`network_model.catalog.der_dynamic`) nie jest metoda `katalog_biezacy()`.
 #: `bess_operation_mode_refs` walidowany OSOBNO z tego samego powodu (lista, nie
 #: skalar; dostawca `network_model.catalog.audit2_catalogs.get_bess_operation_mode`).
 _KATALOGI_WIAZAN_DER: tuple[tuple[str, str], ...] = (
@@ -6469,7 +6469,7 @@ def _nieznane_referencje_katalogowe(wiazania: dict[str, Any]) -> list[str]:
     from application.analyses.protection.catalog.catalog_store import list_devices
     from network_model.catalog import get_default_mv_catalog
 
-    katalog = get_default_mv_catalog()
+    katalog = katalog_biezacy()
     nieznane: list[str] = []
     for pole, metoda in _KATALOGI_WIAZAN_DER:
         wartosc = wiazania.get(pole)
@@ -6494,7 +6494,7 @@ def _nieznane_referencje_katalogowe(wiazania: dict[str, Any]) -> list[str]:
     # Karta FAB-K (R2): `dynamic_model_ref` MA dostawcę od tej karty
     # (`network_model.catalog.der_dynamic`, profile grid-following/forming PV/BESS
     # + IEC 61400-27 typu 1-4 wiatru — konsumowane przez solvery RMS/FRT-HVRT).
-    # Dostawca nie jest metoda `get_default_mv_catalog()`, więc walidacja idzie
+    # Dostawca nie jest metoda `katalog_biezacy()`, więc walidacja idzie
     # osobnym torem, tym samym wzorcem „jawny brak zamiast cichej zgody".
     dynamic_ref = wiazania.get("dynamic_model_ref")
     if dynamic_ref is not None and "dynamic_model_ref" in wiazania:

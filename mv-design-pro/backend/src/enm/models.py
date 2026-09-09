@@ -8,7 +8,7 @@ Jedno źródło prawdy dla projektu (case-bound).
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, model_validator
@@ -1528,6 +1528,50 @@ class BranchPointSN(ENMElement):
 
 
 # ---------------------------------------------------------------------------
+# Katalog projektu (W1 — typy z danych inżyniera niesione przez model)
+# ---------------------------------------------------------------------------
+
+
+class RekordTypuProjektu(BaseModel):
+    """Pozycja katalogu projektu w kształcie rekordu `CatalogRepository.from_records`
+    (`id`, `name`, `params` = pola klasy typu, np. `LineType`/`TransformerType`, wraz
+    z proweniencją `source_reference`/`verification_status`). Kształt jest celowo TEN SAM
+    co rekordów katalogu statycznego — nakładka per model (`enm/katalog_projektu.py`) nie
+    tłumaczy pól, tylko dokłada rekordy do tego samego budowniczego."""
+
+    id: str
+    name: str
+    params: dict[str, Any] = {}
+
+
+class KatalogProjektu(BaseModel):
+    """Typy katalogowe niesione PRZEZ model (dane inżyniera z arkusza, nie karta
+    producenta) — patrz `enm/katalog_projektu.py`. Sekcja wchodzi do odcisku modelu
+    (parametr typu = wejście obliczeń) i jest deterministyczna: listy posortowane po `id`,
+    identyfikatory unikalne w obrębie całej sekcji."""
+
+    line_types: list[RekordTypuProjektu] = []
+    cable_types: list[RekordTypuProjektu] = []
+    transformer_types: list[RekordTypuProjektu] = []
+
+    @model_validator(mode="after")
+    def _unikalne_i_posortowane(self) -> KatalogProjektu:
+        widziane: set[str] = set()
+        for rodzaj in ("line_types", "cable_types", "transformer_types"):
+            rekordy = getattr(self, rodzaj)
+            for rekord in rekordy:
+                if not rekord.id.strip():
+                    raise ValueError(f"katalog_projektu.{rodzaj}: pusty identyfikator pozycji")
+                if rekord.id in widziane:
+                    raise ValueError(
+                        f"katalog_projektu: identyfikator '{rekord.id}' powtarza się w sekcji"
+                    )
+                widziane.add(rekord.id)
+            rekordy.sort(key=lambda r: r.id)
+        return self
+
+
+# ---------------------------------------------------------------------------
 # ROOT
 # ---------------------------------------------------------------------------
 
@@ -1551,6 +1595,10 @@ class EnergyNetworkModel(BaseModel):
     # PR-3 rebuild SLD: nowe kolekcje (addytywne, opcjonalne)
     line_runs: list[LineRun] = []
     connection_nodes: list[ConnectionNode] = []
+    # W1: typy katalogowe z danych inżyniera (arkusz XLSX) — pole addytywne,
+    # `None` poza odciskiem (`enm/hash.py::_strip_uuids`), więc modele bez sekcji
+    # zachowują dotychczasowe hashe co do bajtu.
+    katalog_projektu: KatalogProjektu | None = None
 
 
 # Phase 0B-1: rebuild Bay aby ForwardRef "BayRuntimeState | None" rozwiązał

@@ -1230,6 +1230,27 @@ export interface EnergyNetworkModel {
   logical_views?: LogicalViewsV1;
   /** Phase 0B-4: ciągi liniowe — explicit order stacji (zamiast wnioskowania z grafu). */
   line_runs?: LineRunV1[];
+  /**
+   * W1 (mapa domknięcia 2026-09): typy katalogowe niesione przez model — dane
+   * inżyniera z arkusza XLSX jako pozycje katalogu z proweniencją
+   * (`backend/src/enm/katalog_projektu.py`). Brak sekcji = model wyłącznie na
+   * katalogu statycznym.
+   */
+  katalog_projektu?: KatalogProjektu | null;
+}
+
+/** W1: pozycja katalogu projektu — kształt rekordu `CatalogRepository.from_records`. */
+export interface RekordTypuProjektu {
+  id: string;
+  name: string;
+  params: Record<string, unknown>;
+}
+
+/** W1: sekcja `katalog_projektu` modelu (listy posortowane po `id`, id unikalne). */
+export interface KatalogProjektu {
+  line_types: RekordTypuProjektu[];
+  cable_types: RekordTypuProjektu[];
+  transformer_types: RekordTypuProjektu[];
 }
 
 // ---------------------------------------------------------------------------

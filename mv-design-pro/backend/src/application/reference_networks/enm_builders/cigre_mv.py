@@ -11,7 +11,7 @@ dla uzasadnienia, dlaczego `add_generator_sn` obejmuje też DER benchmarków).
 
 from __future__ import annotations
 
-from application.reference_networks.enm_builders._kernel import (
+from enm.kompilator_grafu import (
     BenchmarkEnm,
     EdgeSpec,
     dodaj_generator_pv,

@@ -4,8 +4,8 @@
  * Interakcje przez NATYWNĄ ścieżkę użytkownika (userEvent — wybór pliku przez
  * realny `input[type=file]`, natywne kliki), Zero-Debt pkt 5. Asercje idą na
  * REALNY kontrakt backendu (`api/xlsx_import.py`): adresy końcówek, metoda,
- * pola multipart i pełny kształt odpowiedzi (podsumowanie, zastrzeżenia per
- * wiersz, bramka katalogowa).
+ * pola multipart i pełny kształt odpowiedzi (podsumowanie z modelu, zastrzeżenia
+ * per wiersz i do całego modelu, elementy z typem z tabliczki arkusza).
  *
  * Iloczyn cech (reguła KLASA, NIE INSTANCJA):
  * {plik poprawny × plik z zastrzeżeniami wierszy × plik pustego arkusza ×
@@ -34,9 +34,10 @@ const PODGLAD_OK = {
   poprawny: true,
   podsumowanie: PODSUMOWANIE,
   bledy: [],
-  ostrzezenia: ['Wymagane domapowanie typu katalogowego dla 11 odcinków.'],
-  elementy_bez_katalogu: ['L1', 'L2'],
-  mapowanie_katalogowe_wymagane: true,
+  ostrzezenia: [
+    "Transformator 'T1': napięcia znamionowe uzwojeń przyjęte z napięć szyn (brak kolumn U_HV_kV/U_LV_kV)",
+  ],
+  elementy_typow_projektu: ['L1', 'L2'],
 };
 
 const PODGLAD_Z_ZASTRZEZENIAMI = {
@@ -57,8 +58,23 @@ const PODGLAD_Z_ZASTRZEZENIAMI = {
     },
   ],
   ostrzezenia: [],
-  elementy_bez_katalogu: [],
-  mapowanie_katalogowe_wymagane: false,
+  elementy_typow_projektu: [],
+};
+
+const PODGLAD_WYSPA = {
+  poprawny: false,
+  podsumowanie: null,
+  bledy: [
+    {
+      arkusz: 'model',
+      wiersz: null,
+      kolumna: null,
+      komunikat:
+        'Model nie daje się zbudować z arkusza: szyny nieosiągalne z żadnego źródła systemowego (wyspa bez zasilania): B9',
+    },
+  ],
+  ostrzezenia: [],
+  elementy_typow_projektu: [],
 };
 
 const PODGLAD_PUSTY_ARKUSZ = {
@@ -73,28 +89,26 @@ const PODGLAD_PUSTY_ARKUSZ = {
     },
   ],
   ostrzezenia: [],
-  elementy_bez_katalogu: [],
-  mapowanie_katalogowe_wymagane: false,
+  elementy_typow_projektu: [],
 };
 
 const IMPORT_OK = {
   status: 'ZAIMPORTOWANO',
   project_id: 'proj-z-arkusza',
-  snapshot_id: 'snap-1',
-  odcisk_migawki: 'abcdef0123456789aaaa',
+  case_id: 'case-1',
+  enm_hash: 'abcdef0123456789aaaa',
   podsumowanie: PODSUMOWANIE,
   bledy: [],
   ostrzezenia: [],
-  elementy_bez_katalogu: [],
-  mapowanie_katalogowe_wymagane: false,
+  elementy_typow_projektu: [],
 };
 
-const IMPORT_BRAMKA = {
+const IMPORT_Z_TYPAMI_PROJEKTU = {
   ...IMPORT_OK,
-  status: 'WYMAGA_MAPOWANIA_KATALOGU',
-  elementy_bez_katalogu: ['L1', 'L2'],
-  mapowanie_katalogowe_wymagane: true,
-  ostrzezenia: ['Wymagane domapowanie typu katalogowego dla 2 odcinków.'],
+  elementy_typow_projektu: ['L1', 'L2'],
+  ostrzezenia: [
+    "Transformator 'T1': napięcia znamionowe uzwojeń przyjęte z napięć szyn (brak kolumn U_HV_kV/U_LV_kV)",
+  ],
 };
 
 function odpowiedz(dane: unknown, ok = true, status = 200) {
@@ -171,7 +185,26 @@ describe('EkranImportuArkusza — podgląd zawartości', () => {
     expect(liczby).toHaveTextContent('12');
     expect(liczby).toHaveTextContent('11');
     expect(liczby).toHaveTextContent('3');
-    expect(screen.getByTestId('mvd-ark-bez-katalogu')).toHaveTextContent('L1');
+    expect(screen.getByTestId('mvd-ark-typy-projektu')).toHaveTextContent('L1');
+    expect(screen.getByTestId('mvd-ark-ostrzezenia')).toHaveTextContent('U_HV_kV/U_LV_kV');
+  });
+
+  it('zastrzeżenie kompilatora (szyna bez zasilania) → adres „cały model", nie wiersz', async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => odpowiedz(PODGLAD_WYSPA)),
+    );
+
+    render(<EkranImportuArkusza onZamknij={vi.fn()} />);
+    await user.upload(screen.getByTestId('mvd-ark-plik') as HTMLInputElement, plikArkusza());
+    await user.click(screen.getByTestId('mvd-ark-podglad-akcja'));
+
+    const lista = await screen.findByTestId('mvd-ark-zastrzezenia');
+    expect(lista).toHaveTextContent(T.zastrzezenieModel);
+    expect(lista).toHaveTextContent('wyspa bez zasilania');
+    expect(lista).not.toHaveTextContent('Wiersz');
+    expect(screen.queryByTestId('mvd-ark-podglad-liczby')).toBeNull();
   });
 
   it('arkusz z błędami wierszy → adres każdego zastrzeżenia (arkusz · wiersz · kolumna)', async () => {
@@ -232,8 +265,9 @@ describe('EkranImportuArkusza — import do modelu', () => {
     const raport = await screen.findByTestId('mvd-ark-raport');
     expect(raport).toHaveTextContent(T.raportZaimportowano);
     expect(screen.getByTestId('mvd-ark-raport-liczby')).toHaveTextContent('12');
-    expect(raport).toHaveTextContent('abcdef0123456789');
+    expect(screen.getByTestId('mvd-ark-raport-odcisk')).toHaveTextContent('abcdef0123456789');
     expect(screen.getByTestId('mvd-ark-nastepny-krok')).toHaveTextContent(T.raportNastepnyKrok);
+    expect(screen.queryByTestId('mvd-ark-raport-typy-projektu')).toBeNull();
   });
 
   it('nazwa projektu podana przez projektanta trafia do wysyłki', async () => {
@@ -253,11 +287,11 @@ describe('EkranImportuArkusza — import do modelu', () => {
     expect((init.body as FormData).get('nazwa_projektu')).toBe('GPZ Wschód 15 kV');
   });
 
-  it('bramka katalogowa → następny krok prowadzi do uzupełnienia typów', async () => {
+  it('typy z tabliczki arkusza → następny krok prowadzi do ich weryfikacji w katalogu projektu', async () => {
     const user = userEvent.setup();
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => odpowiedz(IMPORT_BRAMKA)),
+      vi.fn(async () => odpowiedz(IMPORT_Z_TYPAMI_PROJEKTU)),
     );
 
     render(<EkranImportuArkusza onZamknij={vi.fn()} />);
@@ -265,11 +299,15 @@ describe('EkranImportuArkusza — import do modelu', () => {
     await user.click(screen.getByTestId('mvd-ark-import'));
 
     const raport = await screen.findByTestId('mvd-ark-raport');
-    expect(raport).toHaveTextContent(T.raportBramkaKatalogu);
-    expect(raport.getAttribute('data-wariant')).toBe('warn');
-    expect(screen.getByTestId('mvd-ark-raport-bez-katalogu')).toHaveTextContent('L1');
+    expect(raport).toHaveTextContent(T.raportZaimportowano);
+    expect(raport.getAttribute('data-wariant')).toBe('ok');
+    expect(screen.getByTestId('mvd-ark-raport-typy-projektu')).toHaveTextContent('L1');
+    expect(screen.getByTestId('mvd-ark-raport-typy-projektu')).toHaveTextContent(
+      T.typyProjektuTytul,
+    );
+    expect(screen.getByTestId('mvd-ark-raport-ostrzezenia')).toHaveTextContent('U_HV_kV/U_LV_kV');
     expect(screen.getByTestId('mvd-ark-nastepny-krok')).toHaveTextContent(
-      T.raportNastepnyKrokKatalog,
+      T.raportNastepnyKrokTypy,
     );
   });
 

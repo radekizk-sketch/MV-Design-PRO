@@ -407,6 +407,8 @@ export function AppRoot() {
                   activeProjectId == null ? undefined : () => setZmianaProjektu(false)
                 }
                 onProjektOtwarty={() => setZmianaProjektu(false)}
+                onOtworzImportArkusza={() => setZadanieArkusza(true)}
+                onOtworzArchiwum={() => setZadanieArchiwum(true)}
               />
             ) : (
               <PulpitProjektu

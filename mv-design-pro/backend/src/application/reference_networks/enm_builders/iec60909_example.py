@@ -11,7 +11,7 @@ generatorów w literaturze.
 
 from __future__ import annotations
 
-from application.reference_networks.enm_builders._kernel import (
+from enm.kompilator_grafu import (
     BenchmarkEnm,
     dodaj_transformator,
     dodaj_zrodlo_slack,

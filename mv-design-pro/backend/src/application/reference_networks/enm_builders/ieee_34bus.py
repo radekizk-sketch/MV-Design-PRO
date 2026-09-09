@@ -30,7 +30,7 @@ cicho) — kompletny dla WSZYSTKICH szyn osiągalnych w danych rejestru.
 
 from __future__ import annotations
 
-from application.reference_networks.enm_builders._kernel import (
+from enm.kompilator_grafu import (
     BenchmarkEnm,
     EdgeSpec,
     dodaj_obciazenie,

@@ -32,7 +32,7 @@ Status dwupoziomowy (zmierzony, CV-4.3 K1, 2026-09-06):
 
 from __future__ import annotations
 
-from application.reference_networks.enm_builders._kernel import (
+from enm.kompilator_grafu import (
     BenchmarkEnm,
     EdgeSpec,
     dodaj_obciazenie,

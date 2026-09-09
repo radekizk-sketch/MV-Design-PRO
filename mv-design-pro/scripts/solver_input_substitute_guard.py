@@ -1459,10 +1459,6 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "F:dictget:tp.i_a_primary": 1,
         "F:dictget:tp.i_a_secondary": 1,
     },
-    "application/xlsx_import/service.py": {
-        "F:dictget:wezel.voltage_angle_rad": 1,
-        "F:dictget:wezel.voltage_magnitude_pu": 1,
-    },
     "application/reference_networks/expected_values.py": {
         "F:dictget:item.rtol": 3,
     },

@@ -11,7 +11,7 @@ bliźniak odbiegał od pandapower o 0,05 p.u. Iloczyn cech: {hv_bus_ref, hv_volt
 from __future__ import annotations
 
 import pytest
-from application.reference_networks.enm_builders._kernel import (
+from enm.kompilator_grafu import (
     BenchmarkBuildError,
     dodaj_transformator,
     dodaj_zrodlo_slack,

@@ -14,7 +14,7 @@ L34 — BUS-4.
 
 from __future__ import annotations
 
-from application.reference_networks.enm_builders._kernel import (
+from enm.kompilator_grafu import (
     BenchmarkEnm,
     dodaj_obciazenie,
     dodaj_transformator,

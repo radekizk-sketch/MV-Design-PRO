@@ -657,7 +657,7 @@
     "type": "object"
    },
    "BladArkuszaModel": {
-    "description": "Zastrzeżenie do zawartości arkusza (arkusz/wiersz/kolumna/komunikat).",
+    "description": "Zastrzeżenie do zawartości arkusza (arkusz/wiersz/kolumna/komunikat).\n\n`arkusz = \"model\"` oznacza zastrzeżenie kompilatora grafu albo walidatora modelu\n(dotyczy sieci złożonej ze wszystkich arkuszy naraz, np. szyna bez zasilania).",
     "properties": {
      "arkusz": {
       "title": "Arkusz",
@@ -5449,20 +5449,7 @@
       "title": "Bledy",
       "type": "array"
      },
-     "elementy_bez_katalogu": {
-      "default": [],
-      "items": {
-       "type": "string"
-      },
-      "title": "Elementy Bez Katalogu",
-      "type": "array"
-     },
-     "mapowanie_katalogowe_wymagane": {
-      "default": false,
-      "title": "Mapowanie Katalogowe Wymagane",
-      "type": "boolean"
-     },
-     "odcisk_migawki": {
+     "case_id": {
       "anyOf": [
        {
         "type": "string"
@@ -5471,7 +5458,26 @@
         "type": "null"
        }
       ],
-      "title": "Odcisk Migawki"
+      "title": "Case Id"
+     },
+     "elementy_typow_projektu": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Elementy Typow Projektu",
+      "type": "array"
+     },
+     "enm_hash": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Enm Hash"
      },
      "ostrzezenia": {
       "default": [],
@@ -5501,17 +5507,6 @@
        }
       ],
       "title": "Project Id"
-     },
-     "snapshot_id": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Snapshot Id"
      },
      "status": {
       "title": "Status",
@@ -7444,7 +7439,7 @@
     "type": "object"
    },
    "PodgladArkuszaResponse": {
-    "description": "Odpowiedź podglądu — zawartość arkusza BEZ zapisu do modelu.",
+    "description": "Odpowiedź podglądu — model zbudowany w pamięci, BEZ zapisu.",
     "properties": {
      "bledy": {
       "default": [],
@@ -7454,18 +7449,13 @@
       "title": "Bledy",
       "type": "array"
      },
-     "elementy_bez_katalogu": {
+     "elementy_typow_projektu": {
       "default": [],
       "items": {
        "type": "string"
       },
-      "title": "Elementy Bez Katalogu",
+      "title": "Elementy Typow Projektu",
       "type": "array"
-     },
-     "mapowanie_katalogowe_wymagane": {
-      "default": false,
-      "title": "Mapowanie Katalogowe Wymagane",
-      "type": "boolean"
      },
      "ostrzezenia": {
       "default": [],
@@ -7497,7 +7487,7 @@
     "type": "object"
    },
    "PodsumowanieArkuszaModel": {
-    "description": "Liczby elementów rozpoznanych w arkuszu.",
+    "description": "Liczby elementów MODELU zbudowanego z arkusza (z ENM, nie z liczenia wierszy).",
     "properties": {
      "odbiory": {
       "title": "Odbiory",
@@ -19501,7 +19491,7 @@
   },
   "/api/import/xlsx": {
    "post": {
-    "description": "Import sieci z arkusza XLSX do NOWEGO projektu.\n\nPOST /api/import/xlsx\n\nTworzy projekt z węzłami, gałęziami, źródłami i odbiorami oraz migawkę sieci\nustawioną jako aktywna. Arkusz bez identyfikatorów katalogowych przechodzi,\nale odpowiedź niesie bramkę katalogową (`mapowanie_katalogowe_wymagane`).",
+    "description": "Import sieci z arkusza XLSX do NOWEGO projektu.\n\nPOST /api/import/xlsx\n\nTworzy projekt, pierwszy (aktywny) przypadek obliczeniowy i model sieci w magazynie\nmodelu projektu — zbudowany operacjami domenowymi z arkusza. Arkusz, z którego model\nnie daje się zbudować (błąd wiersza, szyna bez zasilania, blokada walidatora), kończy\nsię 422 z listą zastrzeżeń i NIE zostawia projektu.",
     "operationId": "import_xlsx_api_import_xlsx_post",
     "requestBody": {
      "content": {
@@ -19543,7 +19533,7 @@
   },
   "/api/import/xlsx/preview": {
    "post": {
-    "description": "Podgląd zawartości arkusza — BEZ zapisu do modelu.\n\nPOST /api/import/xlsx/preview",
+    "description": "Podgląd zawartości arkusza — model zbudowany w pamięci, BEZ zapisu.\n\nPOST /api/import/xlsx/preview",
     "operationId": "podglad_xlsx_api_import_xlsx_preview_post",
     "requestBody": {
      "content": {

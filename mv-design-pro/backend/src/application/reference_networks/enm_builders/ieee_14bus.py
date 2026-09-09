@@ -5,7 +5,7 @@
 
 Topologia: TRZY poziomy napięcia połączone pięcioma transformatorami z
 zaczepem pozanominalnym (konwencja MATPOWER `ratio` na gałęzi = `tau` po
-stronie HV — patrz `enm_builders/_kernel.py::dodaj_transformator`,
+stronie HV — patrz `enm/kompilator_grafu.py::dodaj_transformator`,
 `off_nominal_ratio`):
 
   * 135 kV: B0(slack)-B1-B2-B3-B4 (oczko, 7 odcinków: BR0-BR6).
@@ -57,7 +57,7 @@ nieograniczających z konstrukcji (`mv_benchmark_catalog.py::_q_bound`).
 
 from __future__ import annotations
 
-from application.reference_networks.enm_builders._kernel import (
+from enm.kompilator_grafu import (
     BenchmarkEnm,
     EdgeSpec,
     dodaj_bocznik,

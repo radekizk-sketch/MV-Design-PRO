@@ -8,6 +8,8 @@ from typing import Any
 from enm.models import BranchRating, Cable, EnergyNetworkModel, Load, OverheadLine
 from network_model.catalog.materialization import materialize_catalog_binding
 from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
+
+from enm.katalog_projektu import katalog_dla_modelu
 from network_model.catalog.types import CatalogBinding, LoadType
 from network_model.pochodne import moc_bierna_z_czynnej_i_cos_phi
 
@@ -326,7 +328,7 @@ def complete_branch_catalog_materialization(
     `materialized_params`. Na granicy ENM odtwarzamy deterministycznie dane z
     katalogu, tak żeby SLD i obliczenia dostały ten sam wariant kabla/linii.
     """
-    catalog = get_default_mv_catalog()
+    catalog = katalog_dla_modelu(enm)
 
     # PREDYKATY PARAMI (karta S9-9, znalezisko B-5 audytu SLD 2026-08).
     # Warunek WEJŚCIA musi być tym samym warunkiem, którym pętla niżej decyduje

@@ -9,7 +9,7 @@ Topologia: BUS-1 (slack 110 kV) — TR-110-15 — BUS-2 (15 kV, z PV+BESS) — L
 
 from __future__ import annotations
 
-from application.reference_networks.enm_builders._kernel import (
+from enm.kompilator_grafu import (
     BenchmarkEnm,
     dodaj_generator_pq,
     dodaj_generator_pv,

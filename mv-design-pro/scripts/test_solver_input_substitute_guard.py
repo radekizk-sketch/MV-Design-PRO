@@ -1131,7 +1131,7 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # ieee_14bus,ieee_34bus,ieee_39bus,cigre_mv,cigre_lv_benchmark,
     # pp_simple_four_bus,iec60909_example,pandapower_iec60909_radial,
     # oze_pv_bess}.py` (+14, korzen application) wnosza nowe pola kontraktu:
-    # dataclass `EdgeSpec` w `_kernel.py` (pola `edge_id`/`from_lit`/`to_lit`/
+    # dataclass `EdgeSpec` w `enm/kompilator_grafu.py` (pola `edge_id`/`from_lit`/`to_lit`/
     # `dlugosc_m` — `catalog_ref`/`rodzaj` juz istnialy gdzie indziej, wiec
     # `contract_fields()` jako ZBIOR ich nie dolicza ponownie) daje wiekszosc
     # przyrostu do 3612; `BenchmarkEnm` (`enm`/`bus_map`/`branch_map`) nie
@@ -1148,7 +1148,7 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # zmian (17 plikow / suma 49).
     # Scalenie K6 + K1/A1 (odbior Fable, 2026-09-06, pomiar guarda na drzewie po
     # scaleniu, nie suma deklaracji): 3617 pol (3611 po K6 + przyrost K1 z
-    # `EdgeSpec` w `enm_builders/_kernel.py`), 594 plikow (579 po K3b/K4/K6 + 15
+    # `EdgeSpec` w `enm/kompilator_grafu.py`), 594 plikow (579 po K3b/K4/K6 + 15
     # modulow benchmarkow K1), network_model 149 (148 + `mv_benchmark_catalog.py`),
     # enm 38 (K3b `rozplyw_wysp.py` zostaje; A1 liczyl 37 na bazie sprzed K3b),
     # application 332 (318 + 14 budowniczych ENM). Zapadka dlugu 289 (A1: −2

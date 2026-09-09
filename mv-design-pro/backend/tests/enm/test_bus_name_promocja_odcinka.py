@@ -29,7 +29,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from application.reference_networks.enm_builders._kernel import (
+from enm.kompilator_grafu import (
     dodaj_zrodlo_slack,
     kontynuuj_z_pola,
     kontynuuj_z_szyny,

@@ -8,7 +8,7 @@ gałęzie BR35-45 (`ratio`≠1) NIE zmieniają napięcia znamionowego (hv_kv=
 lv_kv=345 kV), to transformatory blokowe/regulacyjne w tej samej sieci
 przesyłowej. Szyna bilansująca B30 wchodzi do sieci WYŁĄCZNIE przez
 transformator BR36 (nie pole liniowe GPZ) — stąd `rozbuduj_z_dowolnej_szyny`
-(`_kernel.py`, nowa zdolność tej karty), nie `zbuduj_topologie` (zakłada
+(`enm/kompilator_grafu.py`, nowa zdolność tej karty), nie `zbuduj_topologie` (zakłada
 korzeń = pole GPZ). Główna siatka (35 linii BR0-BR34) ma DWA fragmenty poza
 głównym komponentem liniowym: B11 (osiągalna WYŁĄCZNIE przez transformatory
 BR38/BR39, żadna linia jej nie dotyka) i siedem szyn generatorowych
@@ -54,7 +54,7 @@ zmierzona (53/78), przyczyna resztkowej luki zawężona (2 hipotezy wykluczone)"
 
 from __future__ import annotations
 
-from application.reference_networks.enm_builders._kernel import (
+from enm.kompilator_grafu import (
     BenchmarkEnm,
     EdgeSpec,
     dodaj_generator_pv,

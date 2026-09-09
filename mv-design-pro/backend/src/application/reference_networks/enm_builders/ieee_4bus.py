@@ -10,7 +10,7 @@ BUS-3 — L13 — BUS-1), jeden poziom napięcia (132 kV), bez transformatorów.
 
 from __future__ import annotations
 
-from application.reference_networks.enm_builders._kernel import (
+from enm.kompilator_grafu import (
     BenchmarkEnm,
     EdgeSpec,
     dodaj_generator_pv,

@@ -29,6 +29,8 @@ from network_model.catalog.materialization import materialize_catalog_binding
 if TYPE_CHECKING:
     from network_model.catalog.repository import CatalogRepository
 from network_model.catalog.types import CatalogBinding
+
+from .katalog_projektu import BladKataloguProjektu, katalog_biezacy, kontekst_katalogu
 from network_model.pochodne import moc_bierna_z_czynnej_i_cos_phi
 
 from .kopia_graniczna import kopia_graniczna_enm
@@ -2626,11 +2628,10 @@ def _lookup_branch_from_ref_for_bus(
 
 
 def _get_catalog_safe() -> CatalogRepository | None:
-    """Załaduj katalog MV (bezpieczne — zwraca None przy braku)."""
+    """Katalog bieżącej operacji (statyczny + pozycje projektu — `enm/katalog_projektu.py`);
+    bezpieczne — zwraca None, gdy katalogu nie da się załadować."""
     try:
-        from network_model.catalog import get_default_mv_catalog
-
-        return get_default_mv_catalog()
+        return katalog_biezacy()
     except Exception:
         return None
 
@@ -4558,7 +4559,7 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
     # SLD budujących magistralę przyrostowo). Gdy wołający PODAJE `bus_name`,
     # jawnie deklaruje, że ten punkt jest OD RAZU realną, nazwaną szyną
     # rozdzielczą (nie prowizorycznym punktem podziału w trakcie edycji) —
-    # np. budowniczy sieci benchmarkowej (`enm_builders/_kernel.py`), gdzie
+    # np. budowniczy sieci benchmarkowej (`enm/kompilator_grafu.py`), gdzie
     # KAŻDA szyna jest gotowym, nazwanym punktem literatury. Taka szyna musi
     # być raportowalna dla zwarcia i widoczna od chwili powstania — dokładnie
     # ten sam zestaw tagów/flag co promocja szyny końcowej do szyny stacyjnej
@@ -4900,9 +4901,8 @@ _DEVICE_KIND_NA_TYP_GALEZI: dict[str, tuple[str, str]] = {
 
 def _rodzaj_aparatu_sn_z_katalogu(apparatus_catalog_ref: str) -> str | None:
     """`device_kind` pozycji katalogu APARAT_SN (``None``, gdy katalog jej nie zna)."""
-    from network_model.catalog.repository import get_default_mv_catalog
 
-    pozycja = get_default_mv_catalog().mv_apparatus_types.get(apparatus_catalog_ref)
+    pozycja = katalog_biezacy().mv_apparatus_types.get(apparatus_catalog_ref)
     kind = getattr(pozycja, "device_kind", None)
     return kind.strip().upper() if isinstance(kind, str) and kind.strip() else None
 
@@ -10284,7 +10284,12 @@ def execute_domain_operation(
         )
 
     try:
-        result = handler(enm_dict, payload)
+        # W1: katalog operacji = statyczny + pozycje projektu z TEGO modelu (jeden
+        # resolver dla każdego miejsca rozstrzygania `catalog_ref` w handlerach).
+        with kontekst_katalogu(enm_dict):
+            result = handler(enm_dict, payload)
+    except BladKataloguProjektu as blad:
+        return _error_response(str(blad), "katalog_projektu.invalid")
     except NiezgodnoscKonfiguracjiError as blad:
         # Niezgodność katalogowa pola to BŁĄD DZIEDZINY, nie awaria operacji:
         # projektant wskazał wyrób, którego producent nie robi (np. pole GPZ na

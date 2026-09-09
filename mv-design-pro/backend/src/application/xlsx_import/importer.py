@@ -1,11 +1,24 @@
 """
-Import sieci SN z arkusza XLSX — ODCZYT I WALIDACJA (bez zapisu do bazy).
+Import sieci SN z arkusza XLSX — ODCZYT I WALIDACJA (bez zapisu).
 
 Format arkusza (uzgodniony z operatorami sieci):
 - Arkusz "Szyny"    (wymagany):  id, nazwa, napięcie_kV
-- Arkusz "Linie"    (wymagany):  id, szyna_pocz, szyna_kon, typ, długość_km,
-                                 R_ohm_km, X_ohm_km [opcjonalnie: B_uS_km, typ_katalogowy]
-- Arkusz "Trafo"    (opcjonalny): id, szyna_HV, szyna_LV, Sn_MVA, uk_pct [opc.: Pk_kW, grupa]
+- Arkusz "Linie"    (wymagany):  id, szyna_pocz, szyna_kon, typ, długość_km
+                                 + DOKŁADNIE JEDNA droga do typu przewodu (W1):
+                                 (a) typ_katalogowy — identyfikator typu z katalogu
+                                     statycznego; wartości podane obok (R_ohm_km, X_ohm_km,
+                                     I_dop_A, Un_kV) muszą się z nim zgadzać (jedna prawda),
+                                 (b) pełna tabliczka przewodu: rodzaj (LINIA|KABEL), R_ohm_km,
+                                     X_ohm_km, Un_kV, I_dop_A oraz dla LINIA: B_uS_km
+                                     [T_max_C, przekroj_mm2 mogą być puste — dana nieznana
+                                     z definicji źródła]; dla KABEL: C_nF_km, T_max_C,
+                                     przekroj_mm2, zyly — z tabliczki powstaje pozycja
+                                     KATALOGU PROJEKTU (`enm/katalog_projektu.py`)
+- Arkusz "Trafo"    (opcjonalny): id, szyna_HV, szyna_LV + (a) typ_katalogowy ALBO
+                                 (b) tabliczka: Sn_MVA, uk_pct, Pk_kW, grupa, zaczep_min,
+                                 zaczep_max, zaczep_krok_pct [U_HV_kV, U_LV_kV — puste =
+                                 napięcia szyn; przyjęcie nazwane w ostrzeżeniu i w rekordzie
+                                 typu, nigdy ciche]
 - Arkusz "Źródła"   (opcjonalny): id, szyna, typ, RX_ratio + (Sk_MVA i/lub Ik_kA — co
                                  najmniej jedna z tych dwu kolumn scenariusza MAX) [opcjonalnie
                                  scenariusz MIN wg IEC 60909-0:2016 §6.2.1 eq. 6 z c_min —
@@ -13,44 +26,50 @@ Format arkusza (uzgodniony z operatorami sieci):
                                  zadane szyny bilansującej w p.u. (0,8–1,2), puste = 1,0]
 - Arkusz "Odbiory"  (opcjonalny): id, szyna, P_MW, Q_Mvar
 
-ZASADY (naprawa karty XLSX-IMPORT, 2026-08-07):
-- ZERO FIZYKI. Ten moduł NIE liczy zadnej wielkosci elektrycznej. Dane zrodla
-  (Sk'', R/X) trafiaja do modelu jako DANE WEJSCIOWE w kanonicznym ksztalcie
-  (`model`/`sk3_mva`/`rx_ratio` — jak w kreatorze sieci); impedancje zastepcza
-  liczy warstwa solverowa. Stan PRZED: importer sam liczyl Z = Un²/Sk'' i R/X,
-  po czym wpisywal wynik w DYNAMICZNY atrybut `node.source_impedance`, ktorego
-  NIKT w systemie nie czytal (fizyka w warstwie aplikacji + martwa dana).
+ZASADY:
+- ZERO FIZYKI. Ten moduł NIE liczy żadnej wielkości elektrycznej. Dane źródła
+  (Sk'', Ik'', R/X) trafiają do modelu jako DANE WEJŚCIOWE w kanonicznym kształcie
+  (`manual_equivalent` operacji `add_grid_source_sn` — jak w kreatorze sieci);
+  impedancję zastępczą liczy warstwa solverowa.
 - ZERO ZGADYWANIA. Nazwa handlowa z arkusza (kolumna `typ`) NIE jest dopasowywana
-  do katalogu po podobienstwie — wiazanie katalogowe powstaje wylacznie z jawnej
-  kolumny `typ_katalogowy` (identyfikator typu). Brak wiazania nie jest bledem:
-  element trafia do BRAMKI KATALOGOWEJ (jak przy imporcie archiwum ZIP), a
-  projektant domapowuje typ w katalogu.
-- ZERO WARTOSCI FIKCYJNYCH. Stan PRZED wpisywal `rated_current_a=1.0` z komentarzem
-  „placeholder"; teraz obciazalnosc pochodzi WYLACZNIE z typu katalogowego, a jej
-  brak zostaje brakiem (0.0 = wielkosc nieznana, kryterium niesprawdzalne).
-- Bledy sa strukturalne (arkusz/wiersz/kolumna/komunikat) — front pokazuje je
-  przy wierszu, bez parsowania arkusza w przegladarce.
+  do katalogu po podobieństwie. Typ elementu pochodzi WYŁĄCZNIE z jawnej kolumny
+  `typ_katalogowy` albo z pełnej tabliczki w wierszu. Element bez żadnej z tych dróg
+  to BŁĄD WIERSZA — nie „bramka do domapowania później": element bez typu nie ma
+  parametrów, a model bez parametrów nie jest modelem (mapa domknięcia W1, K-A/K-C).
+- ZERO WARTOŚCI FIKCYJNYCH. Żadna dana tabliczki nie ma wartości domyślnej: brak
+  obciążalności nie staje się 0 A, brak grupy połączeń nie staje się Dyn11, brak
+  susceptancji nie staje się 0. Brakująca kolumna tabliczki = błąd wiersza z nazwą
+  kolumny. Jedyne przyjęcia (U_HV/U_LV transformatora z napięć szyn) są NAZWANE w
+  ostrzeżeniu i zapisane w rekordzie typu (`verification_note`).
+- JEDNA PRAWDA. Wartość podana w arkuszu obok `typ_katalogowy` musi być równa polu
+  typu; rozjazd jest błędem wiersza, nie cichym nadpisaniem w żadną stronę.
+- Błędy są strukturalne (arkusz/wiersz/kolumna/komunikat) — front pokazuje je
+  przy wierszu, bez parsowania arkusza w przeglądarce.
+- Wynik odczytu (`SiecZArkusza`) to rekordy dla KOMPILATORA GRAFU
+  (`enm/kompilator_grafu.py`), który buduje model wyłącznie operacjami domenowymi —
+  tą samą drogą, którą sieć powstaje klik po kliku w kreatorach. Importer nie zna
+  żadnej warstwy trwałości.
 - CV-4.3 K7 (dane zwarciowe scenariusza MIN): kolumny `Sk_min_MVA`/`Ik_min_kA`/`RX_min`
-  sa OPCJONALNE — puste = klucz pominiety w payloadzie (IEC 60909-0:2016 §6.2.1 eq. 6
-  z c_min; brak danych MIN = biegi scenariusza MIN licza sie z impedancji dla S''kQmax,
-  zalozenie jawnie oznaczone kodem `source.sk_min_missing` w warstwie domenowej). Sprzecznosc
-  danych (Sk_min_MVA > Sk_MVA, Ik_min_kA > Ik_kA, RX_min bez wlasnej mocy zwarciowej MIN)
-  NIE jest tu twardym bledem odrzucajacym import — importer POKAZUJE ja jako ostrzezenie
-  w podgladzie (rozstrzygniecie nalezy do warstwy domenowej, ktora dane docelowo konsumuje).
-  Kolumna `Sk_MVA` jest odtad opcjonalna: zrodlo wymaga co najmniej jednej z `Sk_MVA`/`Ik_kA`
-  (tryb pradowy — I''kQ jako jedyna dana zwarciowa — jest policzalny, jak w kreatorze sieci).
+  są OPCJONALNE — puste = klucz pominięty w rekordzie (IEC 60909-0:2016 §6.2.1 eq. 6
+  z c_min; brak danych MIN = biegi scenariusza MIN liczą się z impedancji dla S''kQmax,
+  założenie jawnie oznaczone kodem `source.sk_min_missing` w warstwie domenowej).
+  Sprzeczność danych (Sk_min_MVA > Sk_MVA, Ik_min_kA > Ik_kA, RX_min bez własnej mocy
+  zwarciowej MIN) NIE jest tu twardym błędem odrzucającym import — importer POKAZUJE ją
+  jako ostrzeżenie (rozstrzygnięcie należy do warstwy domenowej, która dane konsumuje).
+  Kolumna `Sk_MVA` jest opcjonalna: źródło wymaga co najmniej jednej z `Sk_MVA`/`Ik_kA`
+  (tryb prądowy — I''kQ jako jedyna dana zwarciowa — jest policzalny, jak w kreatorze).
 """
 
 from __future__ import annotations
 
 import io
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
+from enm.katalog_projektu import STATUS_KATALOGU_PROJEKTU, STATUS_WERYFIKACJI_ARKUSZA
 from enm.zrodlo_zwarcie import PASMO_U_SET_PU, u_set_pu_w_pasmie
-from network_model.catalog.governance import wymaga_referencji_katalogowej
 from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
-from network_model.core.branch import BranchType
 
 # Nazwy arkuszy i kolumn — jedyne zrodlo prawdy formatu (uzywane tez przez API/dokumentacje).
 ARKUSZ_SZYNY = "Szyny"
@@ -103,22 +122,26 @@ class BladArkusza:
 
 @dataclass(frozen=True)
 class SiecZArkusza:
-    """Zawartosc arkusza przelozona na kanoniczne rekordy modelu (bez zapisu).
+    """Zawartość arkusza przełożona na rekordy dla kompilatora grafu (bez zapisu).
 
-    Rekordy maja ksztalt kanoniczny warstwy trwalosci (`network_nodes`,
-    `network_branches`, `network_sources`, `network_loads`), zeby zapis byl
-    czystym przepisaniem, bez drugiego tlumaczenia danych.
+    Rekordy są słownikami o kluczach kompilatora (`enm/kompilator_grafu.py`: `SzynaSpec`,
+    `EdgeSpec`, `TransformatorSpec`, `ZrodloSpec`, `OdbiorSpec`); `typy_projektu` to
+    sekcja `katalog_projektu` modelu (`enm/katalog_projektu.py`) — pozycje powstałe z
+    tabliczek arkusza, do których odwołują się `catalog_ref` odcinków/transformatorów.
+    Każdy rekord niesie `wiersz` arkusza (proweniencja do komunikatów kompilatora).
     """
 
     wezly: list[dict[str, Any]] = field(default_factory=list)
     galezie: list[dict[str, Any]] = field(default_factory=list)
+    transformatory: list[dict[str, Any]] = field(default_factory=list)
     zrodla: list[dict[str, Any]] = field(default_factory=list)
     odbiory: list[dict[str, Any]] = field(default_factory=list)
+    typy_projektu: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
 
 
 @dataclass
 class XlsxImportResult:
-    """Wynik odczytu arkusza (bez zapisu do bazy)."""
+    """Wynik odczytu arkusza (bez zapisu)."""
 
     success: bool
     siec: SiecZArkusza | None = None
@@ -129,12 +152,13 @@ class XlsxImportResult:
     trafo_count: int = 0
     warnings: list[str] = field(default_factory=list)
     bledy: list[BladArkusza] = field(default_factory=list)
-    elementy_bez_katalogu: list[str] = field(default_factory=list)
-    mapowanie_katalogowe_wymagane: bool = False
+    #: Identyfikatory elementów, których typ powstał z tabliczki arkusza (pozycja
+    #: katalogu projektu o statusie NIEWERYFIKOWANY) — projektant ma je zweryfikować.
+    elementy_typow_projektu: list[str] = field(default_factory=list)
 
     @property
     def errors(self) -> list[str]:
-        """Bledy jako plaskie komunikaty (zgodnosc z dotychczasowym kontraktem API)."""
+        """Błędy jako płaskie komunikaty (zgodność z dotychczasowym kontraktem API)."""
         return [blad.jako_tekst() for blad in self.bledy]
 
     def to_dict(self) -> dict[str, Any]:
@@ -148,19 +172,18 @@ class XlsxImportResult:
             "warnings": self.warnings,
             "errors": self.errors,
             "bledy": [blad.to_dict() for blad in self.bledy],
-            "elementy_bez_katalogu": self.elementy_bez_katalogu,
-            "mapowanie_katalogowe_wymagane": self.mapowanie_katalogowe_wymagane,
+            "elementy_typow_projektu": self.elementy_typow_projektu,
         }
 
 
 class XlsxNetworkImporter:
     """Odczyt sieci SN z arkusza Excel.
 
-    Uzycie:
+    Użycie:
         importer = XlsxNetworkImporter()
-        wynik = importer.import_from_bytes(xlsx_bytes)
+        wynik = importer.import_from_bytes(xlsx_bytes, nazwa_pliku="siec.xlsx")
         if wynik.success:
-            siec = wynik.siec  # rekordy do zapisu przez XlsxImportService
+            siec = wynik.siec  # rekordy dla kompilatora grafu (XlsxImportService)
     """
 
     REQUIRED_SHEETS = set(ARKUSZE_WYMAGANE)
@@ -173,18 +196,37 @@ class XlsxNetworkImporter:
         "szyna_kon": str,
         "typ": str,
         "długość_km": float,
+    }
+    # W1: odcinek wiąże się z typem KATALOGU (`typ_katalogowy`) ALBO niesie pełną tabliczkę
+    # przewodu, z której powstaje pozycja katalogu PROJEKTU (`enm/katalog_projektu.py`).
+    # Nie ma trzeciej drogi: parametr wpisany wprost do elementu byłby wstrzyknięciem
+    # z pominięciem katalogu (reguła 10), a brakująca dana podstawiona zerem — fabrykacją.
+    LINE_OPTIONAL_COLUMNS: dict[str, type] = {
+        "typ_katalogowy": str,
+        "rodzaj": str,  # LINIA (napowietrzna) | KABEL — wymagane bez typu katalogowego
         "R_ohm_km": float,
         "X_ohm_km": float,
+        "B_uS_km": float,  # LINIA: susceptancja doziemna
+        "C_nF_km": float,  # KABEL: pojemność robocza
+        "Un_kV": float,  # napięcie znamionowe przewodu (tabliczka), nie napięcie szyny
+        "I_dop_A": float,  # obciążalność długotrwała
+        "T_max_C": float,  # LINIA: może być puste (dana nieznana z definicji źródła)
+        "przekroj_mm2": float,  # LINIA: może być puste; KABEL: wymagane
+        "zyly": float,  # KABEL: liczba żył (1 albo 3)
     }
-    LINE_OPTIONAL_COLUMNS: dict[str, type] = {"B_uS_km": float, "typ_katalogowy": str}
-    TRAFO_COLUMNS: dict[str, type] = {
-        "id": str,
-        "szyna_HV": str,
-        "szyna_LV": str,
+    TRAFO_COLUMNS: dict[str, type] = {"id": str, "szyna_HV": str, "szyna_LV": str}
+    TRAFO_OPTIONAL_COLUMNS: dict[str, type] = {
+        "typ_katalogowy": str,
         "Sn_MVA": float,
         "uk_pct": float,
+        "Pk_kW": float,
+        "grupa": str,
+        "zaczep_min": float,
+        "zaczep_max": float,
+        "zaczep_krok_pct": float,
+        "U_HV_kV": float,  # puste = napięcie szyny HV (przyjęcie nazwane w rekordzie typu)
+        "U_LV_kV": float,  # puste = napięcie szyny LV (j.w.)
     }
-    TRAFO_OPTIONAL_COLUMNS: dict[str, type] = {"Pk_kW": float, "grupa": str}
     SOURCE_COLUMNS: dict[str, type] = {
         "id": str,
         "szyna": str,
@@ -222,8 +264,12 @@ class XlsxNetworkImporter:
     # Wejscie glowne
     # ------------------------------------------------------------------
 
-    def import_from_bytes(self, data: bytes) -> XlsxImportResult:
-        """Odczytaj siec z bajtow pliku XLSX."""
+    def import_from_bytes(self, data: bytes, nazwa_pliku: str | None = None) -> XlsxImportResult:
+        """Odczytaj sieć z bajtów pliku XLSX.
+
+        `nazwa_pliku` wchodzi WYŁĄCZNIE do proweniencji pozycji katalogu projektu
+        (`source_reference = arkusz:<plik>#<arkusz>:<wiersz>`).
+        """
         import openpyxl  # zaleznosc glowna (pyproject) — brak = blad srodowiska, nie danych
 
         try:
@@ -311,13 +357,13 @@ class XlsxNetworkImporter:
 
         bledy.extend(self._waliduj_powiazania(szyny, linie, trafo, zrodla, odbiory))
         bledy.extend(self._waliduj_wartosci(szyny, linie, trafo, zrodla))
-        bledy.extend(self._waliduj_typy_katalogowe(linie))
+        bledy.extend(self._waliduj_typy(linie, trafo))
 
         if bledy:
             return XlsxImportResult(success=False, bledy=bledy)
 
-        siec, elementy_bez_katalogu = self._zbuduj_rekordy(
-            szyny, linie, trafo, zrodla, odbiory, ostrzezenia
+        siec, elementy_typow_projektu = self._zbuduj_rekordy(
+            szyny, linie, trafo, zrodla, odbiory, ostrzezenia, nazwa_pliku
         )
 
         return XlsxImportResult(
@@ -329,8 +375,7 @@ class XlsxNetworkImporter:
             load_count=len(odbiory),
             trafo_count=len(trafo),
             warnings=ostrzezenia,
-            elementy_bez_katalogu=elementy_bez_katalogu,
-            mapowanie_katalogowe_wymagane=bool(elementy_bez_katalogu),
+            elementy_typow_projektu=elementy_typow_projektu,
         )
 
     # ------------------------------------------------------------------
@@ -550,7 +595,6 @@ class XlsxNetworkImporter:
         zrodla: list[dict[str, Any]],
     ) -> list[BladArkusza]:
         bledy: list[BladArkusza] = []
-
         for szyna in szyny:
             if szyna["napięcie_kV"] <= 0:
                 bledy.append(
@@ -561,7 +605,6 @@ class XlsxNetworkImporter:
                         komunikat="Napięcie znamionowe musi być większe od zera",
                     )
                 )
-
         for linia in linie:
             if linia["długość_km"] <= 0:
                 bledy.append(
@@ -572,8 +615,9 @@ class XlsxNetworkImporter:
                         komunikat="Długość musi być większa od zera",
                     )
                 )
-            for kolumna in ("R_ohm_km", "X_ohm_km"):
-                if linia[kolumna] < 0:
+            for kolumna in ("R_ohm_km", "X_ohm_km", "B_uS_km", "C_nF_km"):
+                wartosc = linia.get(kolumna)
+                if wartosc is not None and wartosc < 0:
                     bledy.append(
                         BladArkusza(
                             arkusz=ARKUSZ_LINIE,
@@ -582,6 +626,27 @@ class XlsxNetworkImporter:
                             komunikat="Wartość jednostkowa nie może być ujemna",
                         )
                     )
+            for kolumna in ("Un_kV", "I_dop_A", "T_max_C", "przekroj_mm2"):
+                wartosc = linia.get(kolumna)
+                if wartosc is not None and wartosc <= 0:
+                    bledy.append(
+                        BladArkusza(
+                            arkusz=ARKUSZ_LINIE,
+                            wiersz=linia["_wiersz"],
+                            kolumna=kolumna,
+                            komunikat="Wartość musi być większa od zera",
+                        )
+                    )
+            zyly = linia.get("zyly")
+            if zyly is not None and zyly not in (1.0, 3.0):
+                bledy.append(
+                    BladArkusza(
+                        arkusz=ARKUSZ_LINIE,
+                        wiersz=linia["_wiersz"],
+                        kolumna="zyly",
+                        komunikat="Liczba żył kabla musi wynosić 1 albo 3",
+                    )
+                )
             if linia["szyna_pocz"] == linia["szyna_kon"]:
                 bledy.append(
                     BladArkusza(
@@ -591,27 +656,68 @@ class XlsxNetworkImporter:
                         komunikat="Początek i koniec odcinka wskazują tę samą szynę",
                     )
                 )
-
         for transformator in trafo:
-            if transformator["Sn_MVA"] <= 0:
+            for kolumna in ("Sn_MVA", "uk_pct", "U_HV_kV", "U_LV_kV"):
+                wartosc = transformator.get(kolumna)
+                if wartosc is not None and wartosc <= 0:
+                    bledy.append(
+                        BladArkusza(
+                            arkusz=ARKUSZ_TRAFO,
+                            wiersz=transformator["_wiersz"],
+                            kolumna=kolumna,
+                            komunikat="Wartość musi być większa od zera",
+                        )
+                    )
+            for kolumna in ("Pk_kW", "zaczep_krok_pct"):
+                wartosc = transformator.get(kolumna)
+                if wartosc is not None and wartosc < 0:
+                    bledy.append(
+                        BladArkusza(
+                            arkusz=ARKUSZ_TRAFO,
+                            wiersz=transformator["_wiersz"],
+                            kolumna=kolumna,
+                            komunikat="Wartość nie może być ujemna",
+                        )
+                    )
+            for kolumna in ("zaczep_min", "zaczep_max"):
+                wartosc = transformator.get(kolumna)
+                if wartosc is not None and float(wartosc) != int(wartosc):
+                    bledy.append(
+                        BladArkusza(
+                            arkusz=ARKUSZ_TRAFO,
+                            wiersz=transformator["_wiersz"],
+                            kolumna=kolumna,
+                            komunikat="Numer zaczepu musi być liczbą całkowitą",
+                        )
+                    )
+            zaczep_min, zaczep_max = transformator.get("zaczep_min"), transformator.get(
+                "zaczep_max"
+            )
+            if (
+                zaczep_min is not None
+                and zaczep_max is not None
+                and not (zaczep_min <= 0 <= zaczep_max)
+            ):
                 bledy.append(
                     BladArkusza(
                         arkusz=ARKUSZ_TRAFO,
                         wiersz=transformator["_wiersz"],
-                        kolumna="Sn_MVA",
-                        komunikat="Moc znamionowa musi być większa od zera",
+                        kolumna="zaczep_min",
+                        komunikat=(
+                            "Zakres zaczepów musi obejmować położenie znamionowe 0 "
+                            "(zaczep_min <= 0 <= zaczep_max)"
+                        ),
                     )
                 )
-            if transformator["uk_pct"] <= 0:
+            if transformator["szyna_HV"] == transformator["szyna_LV"]:
                 bledy.append(
                     BladArkusza(
                         arkusz=ARKUSZ_TRAFO,
                         wiersz=transformator["_wiersz"],
-                        kolumna="uk_pct",
-                        komunikat="Napięcie zwarcia musi być większe od zera",
+                        kolumna="szyna_LV",
+                        komunikat="Strona HV i LV wskazują tę samą szynę",
                     )
                 )
-
         for zrodlo in zrodla:
             sk_mva = zrodlo.get("Sk_MVA")
             ik_ka = zrodlo.get("Ik_kA")
@@ -700,35 +806,284 @@ class XlsxNetworkImporter:
                         ),
                     )
                 )
-
         return bledy
 
-    def _waliduj_typy_katalogowe(self, linie: list[dict[str, Any]]) -> list[BladArkusza]:
-        """Jawnie podany typ katalogowy MUSI istnieć w katalogu (żadnego cichego pominięcia)."""
+    # ------------------------------------------------------------------
+    # W1: wiązanie typów — katalog statyczny ALBO pełna tabliczka (typ projektu)
+    # ------------------------------------------------------------------
+
+    _KOLUMNY_TABLICZKI_LINII: dict[str, tuple[str, ...]] = {
+        "LINIA": ("R_ohm_km", "X_ohm_km", "B_uS_km", "Un_kV", "I_dop_A"),
+        "KABEL": (
+            "R_ohm_km",
+            "X_ohm_km",
+            "C_nF_km",
+            "Un_kV",
+            "I_dop_A",
+            "T_max_C",
+            "przekroj_mm2",
+            "zyly",
+        ),
+    }
+    _KOLUMNY_TABLICZKI_TRAFO: tuple[str, ...] = (
+        "Sn_MVA",
+        "uk_pct",
+        "Pk_kW",
+        "grupa",
+        "zaczep_min",
+        "zaczep_max",
+        "zaczep_krok_pct",
+    )
+    #: Kolumna arkusza -> pole typu katalogowego (do sprawdzenia jednej prawdy, gdy arkusz
+    #: podaje wartość OBOK typu katalogowego).
+    _POLA_KRZYZOWE_LINII: tuple[tuple[str, str], ...] = (
+        ("R_ohm_km", "r_ohm_per_km"),
+        ("X_ohm_km", "x_ohm_per_km"),
+        ("I_dop_A", "rated_current_a"),
+        ("Un_kV", "voltage_rating_kv"),
+    )
+    _POLA_KRZYZOWE_TRAFO: tuple[tuple[str, str], ...] = (
+        ("Sn_MVA", "rated_power_mva"),
+        ("uk_pct", "uk_percent"),
+        ("Pk_kW", "pk_kw"),
+    )
+
+    @staticmethod
+    def _rodzaj_linii(linia: dict[str, Any]) -> str | None:
+        surowy = linia.get("rodzaj")
+        if surowy is None:
+            return None
+        return str(surowy).strip().upper() or None
+
+    @staticmethod
+    def _rowne(a: float, b: float) -> bool:
+        return abs(float(a) - float(b)) <= 1e-6 * max(1.0, abs(float(b)))
+
+    def _waliduj_typy(
+        self, linie: list[dict[str, Any]], trafo: list[dict[str, Any]]
+    ) -> list[BladArkusza]:
+        """Każdy odcinek i transformator ma DOKŁADNIE jedną drogę do typu:
+
+        * `typ_katalogowy` — pozycja katalogu statycznego (musi istnieć; wartości podane
+          obok w arkuszu muszą się z nią zgadzać — jedna prawda, zero cichego rozjazdu),
+        * pełna tabliczka — powstaje pozycja katalogu PROJEKTU (`enm/katalog_projektu.py`);
+          brakująca kolumna tabliczki to błąd wiersza, nigdy wartość domyślna.
+        Dwa wiersze z tym samym `typ` (linie) muszą nieść tę samą tabliczkę — inaczej ta
+        sama nazwa znaczyłaby dwa różne przewody.
+        """
         bledy: list[BladArkusza] = []
         katalog = self._katalog()
+        tabliczki_wg_typu: dict[tuple[str, str], tuple[dict[str, Any], int]] = {}
         for linia in linie:
-            typ_katalogowy = linia.get("typ_katalogowy")
-            if not typ_katalogowy:
-                continue
-            if typ_katalogowy in katalog.line_types or typ_katalogowy in katalog.cable_types:
-                continue
-            bledy.append(
-                BladArkusza(
-                    arkusz=ARKUSZ_LINIE,
-                    wiersz=linia["_wiersz"],
-                    kolumna="typ_katalogowy",
-                    komunikat=(
-                        f"Typ '{typ_katalogowy}' nie występuje w katalogu — "
-                        f"popraw identyfikator albo usuń kolumnę i domapuj typ po imporcie"
-                    ),
+            typ_katalogowy = linia.get("typ_katalogowy") or None
+            rodzaj = self._rodzaj_linii(linia)
+            if rodzaj is not None and rodzaj not in self._KOLUMNY_TABLICZKI_LINII:
+                bledy.append(
+                    BladArkusza(
+                        arkusz=ARKUSZ_LINIE,
+                        wiersz=linia["_wiersz"],
+                        kolumna="rodzaj",
+                        komunikat="Rodzaj odcinka musi być LINIA (napowietrzna) albo KABEL",
+                    )
                 )
-            )
+                continue
+            if typ_katalogowy:
+                w_liniach = typ_katalogowy in katalog.line_types
+                w_kablach = typ_katalogowy in katalog.cable_types
+                if not (w_liniach or w_kablach):
+                    bledy.append(
+                        BladArkusza(
+                            arkusz=ARKUSZ_LINIE,
+                            wiersz=linia["_wiersz"],
+                            kolumna="typ_katalogowy",
+                            komunikat=(
+                                f"Typ '{typ_katalogowy}' nie występuje w katalogu — popraw "
+                                "identyfikator albo usuń kolumnę i podaj pełną tabliczkę przewodu"
+                            ),
+                        )
+                    )
+                    continue
+                rodzaj_katalogu = "KABEL" if w_kablach else "LINIA"
+                if rodzaj is not None and rodzaj != rodzaj_katalogu:
+                    bledy.append(
+                        BladArkusza(
+                            arkusz=ARKUSZ_LINIE,
+                            wiersz=linia["_wiersz"],
+                            kolumna="rodzaj",
+                            komunikat=(
+                                f"Arkusz podaje rodzaj {rodzaj}, a typ katalogowy "
+                                f"'{typ_katalogowy}' to {rodzaj_katalogu}"
+                            ),
+                        )
+                    )
+                typ = (
+                    katalog.cable_types[typ_katalogowy]
+                    if w_kablach
+                    else katalog.line_types[typ_katalogowy]
+                )
+                for kolumna, pole in self._POLA_KRZYZOWE_LINII:
+                    wartosc = linia.get(kolumna)
+                    if wartosc is None:
+                        continue
+                    z_katalogu = getattr(typ, pole)
+                    if not self._rowne(wartosc, z_katalogu):
+                        bledy.append(
+                            BladArkusza(
+                                arkusz=ARKUSZ_LINIE,
+                                wiersz=linia["_wiersz"],
+                                kolumna=kolumna,
+                                komunikat=(
+                                    f"Arkusz podaje {wartosc:g}, a typ katalogowy "
+                                    f"'{typ_katalogowy}' ma {float(z_katalogu):g} — jedna prawda: "
+                                    "usuń wartość z arkusza albo wskaż inny typ"
+                                ),
+                            )
+                        )
+                continue
+            if rodzaj is None:
+                bledy.append(
+                    BladArkusza(
+                        arkusz=ARKUSZ_LINIE,
+                        wiersz=linia["_wiersz"],
+                        kolumna="rodzaj",
+                        komunikat=(
+                            "Odcinek bez typu katalogowego wymaga kolumny rodzaj (LINIA/KABEL) "
+                            "i pełnej tabliczki przewodu"
+                        ),
+                    )
+                )
+                continue
+            brakujace = [
+                kolumna
+                for kolumna in self._KOLUMNY_TABLICZKI_LINII[rodzaj]
+                if linia.get(kolumna) is None
+            ]
+            if brakujace:
+                bledy.append(
+                    BladArkusza(
+                        arkusz=ARKUSZ_LINIE,
+                        wiersz=linia["_wiersz"],
+                        komunikat=(
+                            f"Odcinek {rodzaj} bez typu katalogowego wymaga pełnej tabliczki — "
+                            f"brak kolumn: {', '.join(brakujace)} (żadna z nich nie ma wartości "
+                            "domyślnej)"
+                        ),
+                    )
+                )
+                continue
+            klucz = (rodzaj, self._nazwa_typu_projektu(linia))
+            tabliczka = self._tabliczka_linii(linia, rodzaj)
+            poprzednia = tabliczki_wg_typu.get(klucz)
+            if poprzednia is None:
+                tabliczki_wg_typu[klucz] = (tabliczka, linia["_wiersz"])
+            elif poprzednia[0] != tabliczka:
+                bledy.append(
+                    BladArkusza(
+                        arkusz=ARKUSZ_LINIE,
+                        wiersz=linia["_wiersz"],
+                        kolumna="typ",
+                        komunikat=(
+                            f"Typ '{linia['typ']}' ma inną tabliczkę niż w wierszu "
+                            f"{poprzednia[1]} — ta sama nazwa typu musi znaczyć ten sam przewód"
+                        ),
+                    )
+                )
+        for transformator in trafo:
+            typ_katalogowy = transformator.get("typ_katalogowy") or None
+            if typ_katalogowy:
+                typ_trafo = katalog.transformer_types.get(typ_katalogowy)
+                if typ_trafo is None:
+                    bledy.append(
+                        BladArkusza(
+                            arkusz=ARKUSZ_TRAFO,
+                            wiersz=transformator["_wiersz"],
+                            kolumna="typ_katalogowy",
+                            komunikat=(
+                                f"Typ '{typ_katalogowy}' nie występuje w katalogu "
+                                "transformatorów — popraw identyfikator albo podaj pełną tabliczkę"
+                            ),
+                        )
+                    )
+                    continue
+                for kolumna, pole in self._POLA_KRZYZOWE_TRAFO:
+                    wartosc = transformator.get(kolumna)
+                    if wartosc is None:
+                        continue
+                    z_katalogu = getattr(typ_trafo, pole)
+                    if not self._rowne(wartosc, z_katalogu):
+                        bledy.append(
+                            BladArkusza(
+                                arkusz=ARKUSZ_TRAFO,
+                                wiersz=transformator["_wiersz"],
+                                kolumna=kolumna,
+                                komunikat=(
+                                    f"Arkusz podaje {wartosc:g}, a typ katalogowy "
+                                    f"'{typ_katalogowy}' ma {float(z_katalogu):g} — jedna prawda: "
+                                    "usuń wartość z arkusza albo wskaż inny typ"
+                                ),
+                            )
+                        )
+                continue
+            brakujace = [
+                kolumna
+                for kolumna in self._KOLUMNY_TABLICZKI_TRAFO
+                if transformator.get(kolumna) is None
+                or (kolumna == "grupa" and not str(transformator.get(kolumna)).strip())
+            ]
+            if brakujace:
+                bledy.append(
+                    BladArkusza(
+                        arkusz=ARKUSZ_TRAFO,
+                        wiersz=transformator["_wiersz"],
+                        komunikat=(
+                            "Transformator bez typu katalogowego wymaga pełnej tabliczki — "
+                            f"brak kolumn: {', '.join(brakujace)} (żadna z nich nie ma wartości "
+                            "domyślnej)"
+                        ),
+                    )
+                )
         return bledy
 
     # ------------------------------------------------------------------
-    # Budowa rekordow kanonicznych
+    # Budowa rekordów dla kompilatora grafu (`enm/kompilator_grafu.py`)
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _slug(tekst: str) -> str:
+        slug = re.sub(r"[^a-z0-9]+", "-", str(tekst).lower()).strip("-")
+        return slug or "typ"
+
+    @classmethod
+    def _nazwa_typu_projektu(cls, linia: dict[str, Any]) -> str:
+        return str(linia["typ"]).strip()
+
+    @staticmethod
+    def _tabliczka_linii(linia: dict[str, Any], rodzaj: str) -> dict[str, Any]:
+        """Pola typu katalogowego z kolumn arkusza (bez proweniencji — ta jest per wiersz)."""
+        wspolne = {
+            "r_ohm_per_km": float(linia["R_ohm_km"]),
+            "x_ohm_per_km": float(linia["X_ohm_km"]),
+            "rated_current_a": float(linia["I_dop_A"]),
+            "voltage_rating_kv": float(linia["Un_kV"]),
+        }
+        if rodzaj == "LINIA":
+            return {
+                **wspolne,
+                "b_us_per_km": float(linia["B_uS_km"]),
+                "max_temperature_c": (
+                    float(linia["T_max_C"]) if linia.get("T_max_C") is not None else None
+                ),
+                "cross_section_mm2": (
+                    float(linia["przekroj_mm2"]) if linia.get("przekroj_mm2") is not None else None
+                ),
+            }
+        return {
+            **wspolne,
+            "c_nf_per_km": float(linia["C_nF_km"]),
+            "max_temperature_c": float(linia["T_max_C"]),
+            "cross_section_mm2": float(linia["przekroj_mm2"]),
+            "number_of_cores": int(linia["zyly"]),
+        }
 
     def _zbuduj_rekordy(
         self,
@@ -738,92 +1093,130 @@ class XlsxNetworkImporter:
         zrodla: list[dict[str, Any]],
         odbiory: list[dict[str, Any]],
         ostrzezenia: list[str],
+        nazwa_pliku: str | None,
     ) -> tuple[SiecZArkusza, list[str]]:
+        """Rekordy kanoniczne dla kompilatora grafu + sekcja typów projektu.
+
+        Zero fabrykacji: parametr elementu pochodzi WYŁĄCZNIE z typu (katalog statyczny
+        albo tabliczka arkusza jako typ projektu); brak danej = brak klucza, nigdy 0/Dyn11.
+        """
         katalog = self._katalog()
-        szyny_ze_zrodlem = {z["szyna"] for z in zrodla}
+        plik = nazwa_pliku or "arkusz.xlsx"
+        typy_projektu: dict[str, dict[str, dict[str, Any]]] = {
+            "line_types": {},
+            "cable_types": {},
+            "transformer_types": {},
+        }
+        elementy_typow_projektu: list[str] = []
 
-        wezly: list[dict[str, Any]] = []
-        slack_przypisany = False
-        for szyna in szyny:
-            czy_slack = szyna["id"] in szyny_ze_zrodlem and not slack_przypisany
-            if czy_slack:
-                slack_przypisany = True
-                wezly.append(
-                    {
-                        "ref": szyna["id"],
-                        "name": szyna["nazwa"],
-                        "node_type": "SLACK",
-                        "base_kv": szyna["napięcie_kV"],
-                        "attrs": {"voltage_magnitude_pu": 1.0, "voltage_angle_rad": 0.0},
-                    }
-                )
-            else:
-                wezly.append(
-                    {
-                        "ref": szyna["id"],
-                        "name": szyna["nazwa"],
-                        "node_type": "PQ",
-                        "base_kv": szyna["napięcie_kV"],
-                        "attrs": {},
-                    }
-                )
+        wezly = [
+            {
+                "ref": szyna["id"],
+                "name": szyna["nazwa"],
+                "voltage_kv": float(szyna["napięcie_kV"]),
+                "wiersz": szyna["_wiersz"],
+            }
+            for szyna in szyny
+        ]
+        napiecia_szyn = {s["id"]: float(s["napięcie_kV"]) for s in szyny}
 
-        if zrodla and not slack_przypisany:
-            ostrzezenia.append(
-                "Arkusz nie pozwolił wskazać szyny bilansującej — sprawdź arkusz 'Źródła'."
-            )
-
-        elementy_bez_katalogu: list[str] = []
         galezie: list[dict[str, Any]] = []
-
         for linia in linie:
             typ_katalogowy = linia.get("typ_katalogowy") or None
-            rodzaj = BranchType.LINE.value
-            obciazalnosc_a = 0.0
             if typ_katalogowy:
-                if typ_katalogowy in katalog.cable_types:
-                    rodzaj = BranchType.CABLE.value
-                    obciazalnosc_a = float(katalog.cable_types[typ_katalogowy].rated_current_a)
-                else:
-                    obciazalnosc_a = float(katalog.line_types[typ_katalogowy].rated_current_a)
-            elif wymaga_referencji_katalogowej(rodzaj):
-                elementy_bez_katalogu.append(linia["id"])
-
+                rodzaj = "KABEL" if typ_katalogowy in katalog.cable_types else "LINIA"
+                catalog_ref = typ_katalogowy
+            else:
+                rodzaj = self._rodzaj_linii(linia) or "LINIA"
+                nazwa_typu = self._nazwa_typu_projektu(linia)
+                catalog_ref = f"arkusz-{rodzaj.lower()}-{self._slug(nazwa_typu)}"
+                sekcja = "cable_types" if rodzaj == "KABEL" else "line_types"
+                if catalog_ref not in typy_projektu[sekcja]:
+                    typy_projektu[sekcja][catalog_ref] = {
+                        "id": catalog_ref,
+                        "name": f"{nazwa_typu} (arkusz)",
+                        "params": {
+                            **self._tabliczka_linii(linia, rodzaj),
+                            "source_reference": f"arkusz:{plik}#{ARKUSZ_LINIE}:{linia['_wiersz']}",
+                            "verification_status": STATUS_WERYFIKACJI_ARKUSZA,
+                            "catalog_status": STATUS_KATALOGU_PROJEKTU,
+                        },
+                    }
+                elementy_typow_projektu.append(linia["id"])
             galezie.append(
                 {
                     "ref": linia["id"],
-                    "name": linia["typ"],
-                    "branch_type": rodzaj,
+                    "name": linia["id"],
                     "from_ref": linia["szyna_pocz"],
                     "to_ref": linia["szyna_kon"],
-                    "params": {
-                        "r_ohm_per_km": linia["R_ohm_km"],
-                        "x_ohm_per_km": linia["X_ohm_km"],
-                        "b_us_per_km": linia.get("B_uS_km", 0.0),
-                        "length_km": linia["długość_km"],
-                        "rated_current_a": obciazalnosc_a,
-                        "type_ref": typ_katalogowy,
-                    },
+                    # Jednostka kompilatora (`EdgeSpec.dlugosc_m`) — przeliczenie km→m to
+                    # zamiana jednostki długości, nie wielkość elektryczna.
+                    "dlugosc_m": float(linia["długość_km"]) * 1000.0,
+                    "catalog_ref": catalog_ref,
+                    "rodzaj": rodzaj,
+                    "wiersz": linia["_wiersz"],
                 }
             )
 
-        napiecia_szyn = {s["id"]: s["napięcie_kV"] for s in szyny}
+        transformatory: list[dict[str, Any]] = []
         for transformator in trafo:
-            galezie.append(
+            typ_katalogowy = transformator.get("typ_katalogowy") or None
+            if typ_katalogowy:
+                catalog_ref = typ_katalogowy
+            else:
+                catalog_ref = f"arkusz-trafo-{self._slug(transformator['id'])}"
+                u_hv = transformator.get("U_HV_kV")
+                u_lv = transformator.get("U_LV_kV")
+                przyjete: list[str] = []
+                if u_hv is None:
+                    u_hv = napiecia_szyn[transformator["szyna_HV"]]
+                    przyjete.append(
+                        f"U_HV = napięcie szyny {transformator['szyna_HV']} ({u_hv:g} kV)"
+                    )
+                if u_lv is None:
+                    u_lv = napiecia_szyn[transformator["szyna_LV"]]
+                    przyjete.append(
+                        f"U_LV = napięcie szyny {transformator['szyna_LV']} ({u_lv:g} kV)"
+                    )
+                if przyjete:
+                    ostrzezenia.append(
+                        f"Transformator '{transformator['id']}': napięcia znamionowe uzwojeń "
+                        "przyjęte z napięć szyn (brak kolumn U_HV_kV/U_LV_kV): "
+                        + "; ".join(przyjete)
+                    )
+                typy_projektu["transformer_types"][catalog_ref] = {
+                    "id": catalog_ref,
+                    "name": (
+                        f"{transformator['id']} {float(transformator['Sn_MVA']):g} MVA "
+                        f"{float(u_hv):g}/{float(u_lv):g} kV (arkusz)"
+                    ),
+                    "params": {
+                        "rated_power_mva": float(transformator["Sn_MVA"]),
+                        "voltage_hv_kv": float(u_hv),
+                        "voltage_lv_kv": float(u_lv),
+                        "uk_percent": float(transformator["uk_pct"]),
+                        "pk_kw": float(transformator["Pk_kW"]),
+                        "vector_group": str(transformator["grupa"]).strip(),
+                        "tap_min": int(transformator["zaczep_min"]),
+                        "tap_max": int(transformator["zaczep_max"]),
+                        "tap_step_percent": float(transformator["zaczep_krok_pct"]),
+                        "source_reference": (
+                            f"arkusz:{plik}#{ARKUSZ_TRAFO}:{transformator['_wiersz']}"
+                        ),
+                        "verification_status": STATUS_WERYFIKACJI_ARKUSZA,
+                        "catalog_status": STATUS_KATALOGU_PROJEKTU,
+                        **({"verification_note": "; ".join(przyjete)} if przyjete else {}),
+                    },
+                }
+                elementy_typow_projektu.append(transformator["id"])
+            transformatory.append(
                 {
                     "ref": transformator["id"],
-                    "name": transformator.get("grupa", transformator["id"]),
-                    "branch_type": BranchType.TRANSFORMER.value,
-                    "from_ref": transformator["szyna_HV"],
-                    "to_ref": transformator["szyna_LV"],
-                    "params": {
-                        "rated_power_mva": transformator["Sn_MVA"],
-                        "voltage_hv_kv": napiecia_szyn[transformator["szyna_HV"]],
-                        "voltage_lv_kv": napiecia_szyn[transformator["szyna_LV"]],
-                        "uk_percent": transformator["uk_pct"],
-                        "pk_kw": transformator.get("Pk_kW", 0.0),
-                        "vector_group": transformator.get("grupa", "Dyn11"),
-                    },
+                    "name": transformator["id"],
+                    "hv_ref": transformator["szyna_HV"],
+                    "lv_ref": transformator["szyna_LV"],
+                    "catalog_ref": catalog_ref,
+                    "wiersz": transformator["_wiersz"],
                 }
             )
 
@@ -831,28 +1224,22 @@ class XlsxNetworkImporter:
             {
                 "ref": zrodlo["id"],
                 "node_ref": zrodlo["szyna"],
-                "source_type": "GRID",
-                "payload": {
-                    "name": zrodlo["id"],
-                    # Kanoniczny ksztalt danych zrodla systemowego (jak w kreatorze):
-                    # DANE WEJSCIOWE, nie wynik — impedancje liczy warstwa solverowa.
-                    "model": "short_circuit_power",
-                    "rx_ratio": zrodlo["RX_ratio"],
-                    "rodzaj_z_arkusza": zrodlo["typ"],
-                    # Puste w arkuszu = klucz pominięty (zero fabrykacji) — nie 0/None.
-                    **({"sk3_mva": zrodlo["Sk_MVA"]} if "Sk_MVA" in zrodlo else {}),
-                    **({"ik3_ka": zrodlo["Ik_kA"]} if "Ik_kA" in zrodlo else {}),
-                    # CV-4.3 K7: dane scenariusza MIN (IEC 60909-0:2016 §6.2.1 eq. 6 z c_min).
-                    **({"sk3_min_mva": zrodlo["Sk_min_MVA"]} if "Sk_min_MVA" in zrodlo else {}),
-                    **({"ik3_min_ka": zrodlo["Ik_min_kA"]} if "Ik_min_kA" in zrodlo else {}),
-                    **({"rx_ratio_min": zrodlo["RX_min"]} if "RX_min" in zrodlo else {}),
-                    # Napięcie zadane szyny bilansującej (MATPOWER `Vm` slack) — puste = 1,0.
-                    **({"u_set_pu": zrodlo["U_pu"]} if "U_pu" in zrodlo else {}),
-                },
+                "name": zrodlo["id"],
+                "rodzaj_z_arkusza": zrodlo["typ"],
+                "rx_ratio": float(zrodlo["RX_ratio"]),
+                # Puste w arkuszu = klucz pominięty (zero fabrykacji) — nie 0/None.
+                **({"sk3_mva": float(zrodlo["Sk_MVA"])} if "Sk_MVA" in zrodlo else {}),
+                **({"ik3_ka": float(zrodlo["Ik_kA"])} if "Ik_kA" in zrodlo else {}),
+                # CV-4.3 K7: dane scenariusza MIN (IEC 60909-0:2016 §6.2.1 eq. 6 z c_min).
+                **({"sk3_min_mva": float(zrodlo["Sk_min_MVA"])} if "Sk_min_MVA" in zrodlo else {}),
+                **({"ik3_min_ka": float(zrodlo["Ik_min_kA"])} if "Ik_min_kA" in zrodlo else {}),
+                **({"rx_ratio_min": float(zrodlo["RX_min"])} if "RX_min" in zrodlo else {}),
+                # Napięcie zadane szyny bilansującej (MATPOWER `Vm` slack) — puste = 1,0.
+                **({"u_set_pu": float(zrodlo["U_pu"])} if "U_pu" in zrodlo else {}),
+                "wiersz": zrodlo["_wiersz"],
             }
             for zrodlo in zrodla
         ]
-
         # CV-4.3 K7: sprzeczność MIN/MAX NIE jest błędem odrzucającym import (rozstrzyga ją
         # warstwa domenowa, która dane docelowo konsumuje — `source.manual_equivalent_invalid`
         # / `sources.sk_min_exceeds_max`) — importer ją POKAZUJE w podglądzie, nie połyka.
@@ -877,32 +1264,30 @@ class XlsxNetworkImporter:
                     "stosunek R/X scenariusza minimalnego nie ma zastosowania bez własnej "
                     "mocy zwarciowej minimalnej tego źródła."
                 )
-
         rekordy_odbiorow = [
             {
                 "ref": odbior["id"],
                 "node_ref": odbior["szyna"],
-                "payload": {
-                    "name": odbior["id"],
-                    "p_mw": odbior["P_MW"],
-                    "q_mvar": odbior["Q_Mvar"],
-                },
+                "name": odbior["id"],
+                "p_mw": float(odbior["P_MW"]),
+                "q_mvar": float(odbior["Q_Mvar"]),
+                "wiersz": odbior["_wiersz"],
             }
             for odbior in odbiory
         ]
-
-        if elementy_bez_katalogu:
-            ostrzezenia.append(
-                f"Wymagane domapowanie typu katalogowego dla {len(elementy_bez_katalogu)} "
-                f"odcinków — arkusz nie zawierał kolumny 'typ_katalogowy'."
-            )
-
-        return (
-            SiecZArkusza(
-                wezly=wezly,
-                galezie=galezie,
-                zrodla=rekordy_zrodel,
-                odbiory=rekordy_odbiorow,
-            ),
-            elementy_bez_katalogu,
+        sekcja_typow = {
+            rodzaj: [
+                typy_projektu[rodzaj][identyfikator]
+                for identyfikator in sorted(typy_projektu[rodzaj])
+            ]
+            for rodzaj in ("line_types", "cable_types", "transformer_types")
+        }
+        siec = SiecZArkusza(
+            wezly=wezly,
+            galezie=galezie,
+            transformatory=transformatory,
+            zrodla=rekordy_zrodel,
+            odbiory=rekordy_odbiorow,
+            typy_projektu=sekcja_typow,
         )
+        return siec, elementy_typow_projektu

@@ -6,12 +6,12 @@
 
 export const ARKUSZ_STRINGS = {
   tytul: 'Import sieci z arkusza (XLSX)',
-  cel: 'Wczytaj dane sieci otrzymane od operatora w arkuszu kalkulacyjnym i utwórz z nich nowy projekt.',
+  cel: 'Wczytaj dane sieci otrzymane od operatora w arkuszu kalkulacyjnym i utwórz z nich nowy projekt z gotowym modelem sieci.',
   powrot: 'Powrót',
 
   formatEyebrow: 'Czego potrzebuje arkusz',
   formatOpis:
-    'Wymagane arkusze: „Szyny" (id, nazwa, napięcie_kV) oraz „Linie" (id, szyna_pocz, szyna_kon, typ, długość_km, R_ohm_km, X_ohm_km). Opcjonalnie: „Trafo", „Źródła", „Odbiory". Kolumna „typ_katalogowy" w arkuszu „Linie" wiąże odcinek z typem z katalogu.',
+    'Wymagane arkusze: „Szyny" (id, nazwa, napięcie_kV) oraz „Linie" (id, szyna_pocz, szyna_kon, typ, długość_km). Opcjonalnie: „Trafo", „Źródła", „Odbiory". Każdy odcinek i transformator wiąże się z typem na jeden z dwóch sposobów: kolumna „typ_katalogowy" (typ z katalogu) albo pełna tabliczka w wierszu (odcinek: rodzaj LINIA/KABEL, R_ohm_km, X_ohm_km, B_uS_km lub C_nF_km, Un_kV, I_dop_A; transformator: Sn_MVA, uk_pct, Pk_kW, grupa, zaczepy). Z tabliczki powstaje typ w katalogu projektu — bez wartości domyślnych.',
 
   wyborEyebrow: 'Plik z danymi',
   wybierz: 'Wybierz plik arkusza',
@@ -40,21 +40,22 @@ export const ARKUSZ_STRINGS = {
   zastrzezenieKolumna: 'Kolumna',
   zastrzezenieCalyArkusz: 'cały arkusz',
   zastrzezenieCalyWiersz: 'cały wiersz',
+  /** Zastrzeżenie kompilatora/walidatora modelu (`arkusz === 'model'`). */
+  zastrzezenieModel: 'cały model',
 
   ostrzezeniaTytul: 'Uwagi do danych',
-  bezKataloguTytul: 'Odcinki wymagające typu z katalogu',
+  typyProjektuTytul: 'Elementy z typem z tabliczki arkusza (typ projektu, niezweryfikowany)',
 
   raportTytul: 'Wynik importu',
-  raportZaimportowano: 'Sieć z arkusza została zapisana jako nowy projekt.',
-  raportBramkaKatalogu:
-    'Sieć zapisana. Zanim policzysz obliczenia, przypisz typy katalogowe odcinkom wymienionym poniżej.',
+  raportZaimportowano:
+    'Sieć z arkusza została zapisana jako nowy projekt z gotowym modelem i wariantem bazowym.',
   raportOdrzucono: 'Arkusz nie przeszedł walidacji — model nie został zmieniony.',
   raportProjekt: 'Projekt',
-  raportMigawka: 'Odcisk modelu',
+  raportOdcisk: 'Odcisk modelu',
   raportOtworz: 'Otwórz zaimportowany projekt',
   raportPonow: 'Wczytaj inny arkusz',
-  raportNastepnyKrokKatalog:
-    'Następny krok: otwórz projekt i uzupełnij typy katalogowe w przestrzeni „Model", a potem sprawdź gotowość obliczeniową.',
+  raportNastepnyKrokTypy:
+    'Następny krok: otwórz projekt, zweryfikuj typy z arkusza w katalogu projektu (przestrzeń „Model"), a potem sprawdź schemat i gotowość obliczeniową.',
   raportNastepnyKrok:
     'Następny krok: otwórz projekt i sprawdź schemat oraz gotowość obliczeniową przed uruchomieniem analiz.',
 } as const;

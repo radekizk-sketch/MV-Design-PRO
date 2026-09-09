@@ -9,7 +9,7 @@ BUS-LV-01..05 (odbiory + 2 instalacje PV rezydencjalne na 02/04).
 
 from __future__ import annotations
 
-from application.reference_networks.enm_builders._kernel import (
+from enm.kompilator_grafu import (
     BenchmarkEnm,
     EdgeSpec,
     dodaj_generator_pv,
