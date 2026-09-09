@@ -6,10 +6,8 @@ Blocks merge if protection code contains forbidden heuristic patterns.
 Ensures NO auto-mapping, NO fallback, NO guessing in protection layer.
 
 SCAN FILES:
-  backend/src/domain/protection_engine_v1.py
-  backend/src/domain/protection_current_source.py
-  backend/src/application/protection_current_resolver.py
-  backend/src/application/result_mapping/protection_to_resultset_v1.py
+  backend/src/application/protection_analysis/engine.py
+  backend/src/enm/domain_operations_v2.py
 
   W1 (2026-09-09): protection_coordination_v1.py i protection_report_model.py
   zdjęte z zakresu — skasowane razem z legacy persystencją sieci (0 konsumentów
@@ -18,6 +16,20 @@ SCAN FILES:
   Karta CV-3.3-A2 (2026-09-05): protection_to_overlay_v1.py zdjęty z zakresu —
   skasowany (zero konsumenta produkcyjnego; żywa końcówka nakładki w
   api/protection_runs.py buduje ją inline, bez tego mappera).
+
+  Karta W3-A (2026-09): drugi silnik fizyki IDMT (domain/protection_engine_v1.py,
+  domain/protection_current_source.py, application/protection_current_resolver.py,
+  application/result_mapping/protection_to_resultset_v1.py) zdjęty z zakresu —
+  skasowany bez konsumenta produkcyjnego (0 importerów poza sobą nawzajem; drugi,
+  martwy tor tej samej fizyki, patrz rejestr wskrzeszenia w
+  scripts/legacy_public_path_guard.py::FORBIDDEN_W3A_CLASS_NAMES). Zastąpiony
+  DWOMA żywymi plikami, które od W3-A NIOSĄ jedyną liczącą się fizykę IDMT poza
+  network_model/solvers/protection_iec60255.py (solver FROZEN, poza zakresem tego
+  guarda — patrz solver_boundary_guard.py): application/protection_analysis/
+  engine.py (tor kanoniczny protection_sn) i enm/domain_operations_v2.py (operacja
+  validate_selectivity). Ten guard bez żadnego pliku w SCAN_FILES byłby CICHYM
+  no-opem na zawsze — reguła CLAUDE.md #9 ("No Heuristics in Solvers", ten guard
+  jest jej częścią dla warstwy ochrony) wymaga realnego zakresu, nie pustej listy.
 
 FORBIDDEN PATTERNS:
   auto_select, auto_map, fallback, default_target,
@@ -44,10 +56,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 SCAN_FILES = [
-    "backend/src/domain/protection_engine_v1.py",
-    "backend/src/domain/protection_current_source.py",
-    "backend/src/application/protection_current_resolver.py",
-    "backend/src/application/result_mapping/protection_to_resultset_v1.py",
+    "backend/src/application/protection_analysis/engine.py",
+    "backend/src/enm/domain_operations_v2.py",
 ]
 
 FORBIDDEN_PATTERNS = [

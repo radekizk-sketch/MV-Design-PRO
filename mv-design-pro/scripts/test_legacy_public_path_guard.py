@@ -1112,6 +1112,40 @@ def test_guard_rejects_resurrected_w3d_enum_member_under_other_path(tmp_path, mo
 
     assert any(
         "[resurrected-enum]" in v and "ExecutionAnalysisType.SOURCE_COMPLIANCE" in v
+# W3-A (2026-09): drugi silnik fizyki IDMT nie wraca
+# ---------------------------------------------------------------------------
+
+
+def _patch_w3a_tree(monkeypatch, tmp_path) -> Path:
+    src = tmp_path / "backend" / "src"
+    src.mkdir(parents=True)
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", src)
+    return src
+
+
+def test_guard_rejects_resurrected_w3a_second_engine_module(tmp_path, monkeypatch) -> None:
+    """B-01 STOP (odkryty `guardy_z_ci.py`/`verification_phantom_paths_guard`):
+    tylko DWA z czterech plikow bridge'a SC<->Protection Engine v1 zostaly
+    faktycznie skasowane — `domain/protection_engine_v1.py` (WATCHED_PATHS
+    `solver_boundary_guard.py`) i `application/result_mapping/
+    protection_to_resultset_v1.py` (PROTECTED_FILES `resultset_v1_schema_
+    guard.py`) ZOSTALY PRZYWROCONE i NIE sa juz w `W3A_LEGACY_RELATIVE_PATHS`
+    (patrz test ponizej, ktory to jawnie pinuje)."""
+    src = _patch_w3a_tree(monkeypatch, tmp_path)
+    (src / "domain").mkdir()
+    (src / "domain" / "protection_current_source.py").write_text("x = 1\n", encoding="utf-8")
+    (src / "application").mkdir()
+    (src / "application" / "protection_current_resolver.py").write_text("x = 1\n", encoding="utf-8")
+
+    violations = guard.check_w3a_second_engine_resurrection()
+
+    assert any(
+        "[resurrected-module]" in v and "domain/protection_current_source.py" in v
+        for v in violations
+    )
+    assert any(
+        "[resurrected-module]" in v and "application/protection_current_resolver.py" in v
         for v in violations
     )
 
@@ -1137,3 +1171,100 @@ def test_guard_accepts_current_repo_state_w3d() -> None:
     """Stan repozytorium PO W3-D jest zielony na tej bramce — prawdziwe drzewo
     `backend/src`, nie sztuczne `tmp_path`."""
     assert guard.check_w3d_source_compliance_resurrection() == []
+def test_guard_rejects_resurrected_w3a_class_under_other_path(tmp_path, monkeypatch) -> None:
+    """Iloczyn cech: klasa resolvera bridge'a (`ProtectionCurrentResolver`) I
+    typ błędu bridge'a (`AmbiguousMappingError`) — DWIE różne rodziny nazw
+    (serwis, wyjątek domenowy), obie muszą złapać się pod DOWOLNĄ ścieżką,
+    nie tylko pod oryginalną (już skasowaną)."""
+    src = _patch_w3a_tree(monkeypatch, tmp_path)
+    (src / "enm").mkdir()
+    (src / "enm" / "cokolwiek.py").write_text(
+        "class ProtectionCurrentResolver:\n    pass\n\n\n"
+        "class AmbiguousMappingError(Exception):\n    pass\n",
+        encoding="utf-8",
+    )
+
+    violations = guard.check_w3a_second_engine_resurrection()
+
+    assert any("[resurrected-class]" in v and "ProtectionCurrentResolver" in v for v in violations)
+    assert any("[resurrected-class]" in v and "AmbiguousMappingError" in v for v in violations)
+
+
+def test_guard_rejects_resurrected_w3a_function_under_other_path(tmp_path, monkeypatch) -> None:
+    """Zaślepka bez fizyki skasowana z `domain_operations_v2.py`
+    (`calculate_tcc_curve`, `tcc.legacy_write_disabled`) — jedyna pozostała
+    pozycja `FORBIDDEN_W3A_FUNCTION_NAMES` po B-01 STOP (funkcje
+    `protection_engine_v1.py`/`protection_to_resultset_v1.py` ZOSTAJĄ, patrz
+    test poniżej)."""
+    src = _patch_w3a_tree(monkeypatch, tmp_path)
+    (src / "enm").mkdir()
+    (src / "enm" / "cokolwiek.py").write_text(
+        "def calculate_tcc_curve(enm, payload):\n    return {}\n",
+        encoding="utf-8",
+    )
+
+    violations = guard.check_w3a_second_engine_resurrection()
+
+    assert any("[resurrected-function]" in v and "calculate_tcc_curve" in v for v in violations)
+
+
+def test_guard_does_not_fire_on_w3a_b01_stopped_names(tmp_path, monkeypatch) -> None:
+    """B-01 STOP jest CELOWY, nie przeoczeniem: `domain/protection_engine_v1.py`
+    i `application/result_mapping/protection_to_resultset_v1.py` istnieją
+    LEGALNIE (chronione, nie skasowane) — ich klasy/funkcje NIE mogą być na
+    listach zakazanych, inaczej ten guard fałszywie zapaliłby się na plikach,
+    które mają prawo istnieć. Deklaracja bez testu = fałszywa pewność
+    (CLAUDE.md, reguła KLASA NIE INSTANCJA pkt 4) — ten test PRZYPINA tę
+    obietnicę z komentarza przy `W3A_LEGACY_RELATIVE_PATHS`."""
+    src = _patch_w3a_tree(monkeypatch, tmp_path)
+    (src / "domain").mkdir()
+    (src / "domain" / "protection_engine_v1.py").write_text(
+        "class ProtectionResultSetV1:\n    pass\n\n\n"
+        "def execute_protection_v1(x):\n    return x\n",
+        encoding="utf-8",
+    )
+    (src / "application" / "result_mapping").mkdir(parents=True)
+    (src / "application" / "result_mapping" / "protection_to_resultset_v1.py").write_text(
+        "def map_protection_to_resultset_v1(x):\n    return x\n",
+        encoding="utf-8",
+    )
+    assert guard.check_w3a_second_engine_resurrection() == []
+
+
+def test_guard_does_not_fire_on_w3a_names_in_comments_or_strings(tmp_path, monkeypatch) -> None:
+    src = _patch_w3a_tree(monkeypatch, tmp_path)
+    (src / "enm").mkdir()
+    (src / "enm" / "notatka.py").write_text(
+        "# dawniej: ProtectionCurrentResolver, klasa AmbiguousMappingError\n"
+        'OPIS = "calculate_tcc_curve skasowana, domain/protection_current_source.py '
+        'skasowany w W3-A"\n',
+        encoding="utf-8",
+    )
+    assert guard.check_w3a_second_engine_resurrection() == []
+
+
+def test_guard_does_not_fire_on_w3a_shared_private_helper_names(tmp_path, monkeypatch) -> None:
+    """`_build_element_results`/`_build_global_results` (prywatne funkcje
+    skasowanego `protection_to_resultset_v1.py`) NIE są na liście zakazanych
+    nazw — te same nazwy żyją w `short_circuit_to_resultset_v1.py` (żywy
+    mapper SC, poza zakresem W3-A); zakaz nazwy złapałby fałsz-pozytyw na
+    module z tej samej rodziny plików, ale INNEGO silnika fizyki."""
+    src = _patch_w3a_tree(monkeypatch, tmp_path)
+    (src / "application").mkdir()
+    (src / "application" / "short_circuit_to_resultset_v1.py").write_text(
+        "def _build_element_results(x):\n    return x\n\n\n"
+        "def _build_global_results(x):\n    return x\n",
+        encoding="utf-8",
+    )
+    assert guard.check_w3a_second_engine_resurrection() == []
+
+
+def test_guard_accepts_clean_tree_without_w3a_resurrection(tmp_path, monkeypatch) -> None:
+    _patch_w3a_tree(monkeypatch, tmp_path)
+    assert guard.check_w3a_second_engine_resurrection() == []
+
+
+def test_guard_accepts_current_repo_state_w3a() -> None:
+    """Stan repozytorium PO W3-A jest zielony na tej bramce — prawdziwe drzewo
+    `backend/src`, nie sztuczne `tmp_path`."""
+    assert guard.check_w3a_second_engine_resurrection() == []

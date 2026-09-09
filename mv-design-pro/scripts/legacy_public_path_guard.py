@@ -377,6 +377,82 @@ FORBIDDEN_W3D_DEF_NAMES = {
 }
 W3D_EXECUTION_TYPE_CLASS_NAME = "ExecutionAnalysisType"
 FORBIDDEN_W3D_ENUM_MEMBERS = {"SOURCE_COMPLIANCE"}
+# Karta W3-A (2026-09) — bramka wskrzeszenia CZESCI DRUGIEGO SILNIKA fizyki
+# IDMT (zakres zwezony B-01 STOP-em, patrz nizej). Rodzina A (KLASA NIE
+# INSTANCJA, inwentarz W3 §1) miala 5 implementacji formuly IEC 60255 IDMT
+# (t = TMS*A/(M^B-1)); JEDYNA kanoniczna to `network_model/solvers/
+# protection_iec60255.py::compute_idmt_generic`. Trzy zywe duplikaty
+# przekierowano na jadro (adapter, zero wlasnej petli):
+# `application/protection_analysis/engine.py::compute_iec_inverse_time`,
+# `enm/domain_operations_v2.py::_compute_tcc_point`,
+# `application/analyses/protection/overcurrent/calculator.py::_iec_ni_time`
+# (ten ostatni ZOSTAJE do W3-C, ktora kasuje caly plik razem z V12K-189 — patrz
+# ZASTANE w `backend_no_physics_guard.py`).
+#
+# Drugi silnik (`domain/protection_engine_v1.py` + `application/
+# protection_current_resolver.py` + `application/result_mapping/
+# protection_to_resultset_v1.py` + `domain/protection_current_source.py` —
+# bridge SC<->Protection Engine v1) mial ZERO konsumentow produkcyjnych w
+# chwili pomiaru, ALE B-01 STOP na DWA z czterech plikow, odkryty dopiero
+# `guardy_z_ci.py` (verification_phantom_paths_guard): `domain/
+# protection_engine_v1.py` jest w WATCHED_PATHS `scripts/
+# solver_boundary_guard.py` (kasacja = zmiana chronionego pliku solvera, wymaga
+# jawnej sankcji wlasciciela w SANCTIONED_CHANGES), a `application/
+# result_mapping/protection_to_resultset_v1.py` jest w PROTECTED_FILES
+# `scripts/resultset_v1_schema_guard.py` (docstring TEGO guarda: „Kasacja
+# pliku chronionego... to edycja zamrozonego rdzenia (B-01)... wymaga zgody
+# wlasciciela, nie tylko pomiaru zero importera"). OBA PRZYWROCONE do stanu
+# `a16f8d2b` razem z `test_protection_engine_v1.py` (40 testow, zero importu
+# z dwoch ponizej skasowanych plikow) — zaden guard fizyki solvera nie byl
+# tu naruszony wczesniej.
+#
+# SKASOWANE (bez zadnej ochrony B-01, zweryfikowane grepem PRZED i PO):
+# `application/protection_current_resolver.py` (resolver pradu SC->Protection
+# Engine v1, bridge PR-27) i `domain/protection_current_source.py` (typy
+# domenowe tego bridge'a) — razem z ich testami
+# (`test_protection_current_resolver.py` 25 + `test_protection_determinism_
+# guards.py` 10 — oba importowaly WYLACZNIE z tych dwoch plikow i/lub z
+# przywroconego `protection_engine_v1.py`, wiec nie dalo sie ich przywrocic
+# bez zerwania importu do skasowanej reszty). `api/execution_runs.py:119` i
+# `solver_input/eligibility.py:263` mialy TYLKO komentarz o `protection_
+# engine_v1` — poprawiony na fakt (silnik ZOSTAJE, B-01, nie skasowany).
+# Rownolegle skasowana martwa `_compute_tcc_curve` (0 wywolan) i zaslepka
+# `calculate_tcc_curve` (`tcc.legacy_write_disabled`, operacja domenowa BEZ
+# fizyki, NIE czesc drugiego silnika) razem z rejestracja w
+# `V2_CANONICAL_OPS`/`ALL_V2_HANDLERS` (`enm/domain_operations_v2.py`) i w
+# rejestrze kanonicznym `domain/canonical_operations.py`.
+#
+# Sprawdzane: (1) zaden z 2 plikow SKASOWANYCH nie istnieje, (2) zadna nazwa z
+# `FORBIDDEN_W3A_CLASS_NAMES` nie wraca jako DEFINICJA (ast.ClassDef)
+# gdziekolwiek w `backend/src`, (3) zadna nazwa z `FORBIDDEN_W3A_FUNCTION_NAMES`
+# nie wraca jako DEFINICJA (ast.FunctionDef/AsyncFunctionDef) gdziekolwiek w
+# `backend/src`. Klasy/funkcje `domain/protection_engine_v1.py` i
+# `application/result_mapping/protection_to_resultset_v1.py` (PRZYWROCONE,
+# istnieja legalnie) CELOWO NIE sa na tych listach — zakazanie ich nazw
+# zlapaloby falsz-pozytyw na plikach, ktore prawnie istnieja.
+W3A_LEGACY_RELATIVE_PATHS: dict[str, str] = {
+    "application/protection_current_resolver.py": "resolver prądu SC->Protection Engine v1 (bridge PR-27)",
+    "domain/protection_current_source.py": "typy domenowe bridge'a SC<->Protection Engine v1 (PR-27)",
+}
+FORBIDDEN_W3A_CLASS_NAMES = {
+    # application/protection_current_resolver.py
+    "ProtectionCurrentResolver",
+    # domain/protection_current_source.py
+    "CurrentSourceType",
+    "TargetRefMapping",
+    "SCCurrentSelection",
+    "ProtectionCurrentSource",
+    "CurrentSourceError",
+    "AmbiguousMappingError",
+    "MissingMappingError",
+    "InvalidQuantityError",
+    "SCRunNotFoundError",
+    "DuplicateMappingError",
+}
+FORBIDDEN_W3A_FUNCTION_NAMES = {
+    # enm/domain_operations_v2.py — zaslepka bez fizyki (tcc.legacy_write_disabled)
+    "calculate_tcc_curve",
+}
 
 
 def read_text(path: Path) -> str:
@@ -814,6 +890,21 @@ def check_w3d_source_compliance_resurrection() -> list[str]:
         path = BACKEND_SRC_DIR / rel
         if zrodlo_istnieje(path):
             violations.append(f"[resurrected-module] backend/src/{rel}: {label}")
+def check_w3a_second_engine_resurrection() -> list[str]:
+    """W3-A (2026-09): bridge SC<->Protection Engine v1 (resolver pradu +
+    typy domenowe) nie moze wrocic — jedyna fizyka IDMT jest w
+    `network_model/solvers/protection_iec60255.py` (`compute_idmt_generic`),
+    jedyny zywy tor `protection_sn` jest w `application/protection_analysis/
+    engine.py` (adapter na jadro). `domain/protection_engine_v1.py` i
+    `application/result_mapping/protection_to_resultset_v1.py` ZOSTAJA (B-01
+    STOP — chronione przez `solver_boundary_guard.py`/
+    `resultset_v1_schema_guard.py`, patrz komentarz przy
+    `W3A_LEGACY_RELATIVE_PATHS`) — celowo POZA zakresem tego sprawdzenia."""
+    violations: list[str] = []
+    for rel, label in W3A_LEGACY_RELATIVE_PATHS.items():
+        path = BACKEND_SRC_DIR / rel
+        if zrodlo_istnieje(path):
+            violations.append(f"[resurrected-module] backend/src/{rel}: {label} (usuniety w W3-A)")
     if not BACKEND_SRC_DIR.exists():
         return violations
     for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
@@ -839,6 +930,19 @@ def check_w3d_source_compliance_resurrection() -> list[str]:
                                 f"{W3D_EXECUTION_TYPE_CLASS_NAME}.{target.id} "
                                 "(usuniety w W3-D) nie moze wrocic"
                             )
+            if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_W3A_CLASS_NAMES:
+                violations.append(
+                    f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
+                    "(drugi silnik IDMT, usuniety w W3-A) nie moze wrocic"
+                )
+            if (
+                isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+                and node.name in FORBIDDEN_W3A_FUNCTION_NAMES
+            ):
+                violations.append(
+                    f"[resurrected-function] {rel_path}:{node.lineno}: def {node.name} "
+                    "(drugi silnik IDMT / zaslepka bez fizyki, usuniety w W3-A) nie moze wrocic"
+                )
     return violations
 
 
@@ -854,6 +958,7 @@ def main() -> int:
         + check_data_manager_resurrection()
         + check_k2_reference_networks_resurrection()
         + check_w3d_source_compliance_resurrection()
+        + check_w3a_second_engine_resurrection()
     )
     if violations:
         print("legacy-public-path-guard: FAILED")
