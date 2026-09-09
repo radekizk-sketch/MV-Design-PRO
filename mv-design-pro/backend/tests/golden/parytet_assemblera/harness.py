@@ -112,8 +112,16 @@ def _bieg(
 #: dowód dla CI; lokalnie (ta sama maszyna) ``test_harness_jest_deterministyczny``
 #: wymaga równości DOKŁADNEJ także śladu (``slad_sha256`` — skrót pełnych
 #: poddrzew śladu, liczony tylko w pamięci, nie w złotym pliku).
+#: ``pv_to_pq_switches`` (rozpływ NR/GS/FD, FROZEN): lista przełączeń PV→PQ z numerem
+#: ITERACJI i wartością Q w chwili przełączenia — struktura (liczba wpisów, ``iter``) jest
+#: funkcją ścieżki iteracyjnej przy granicy Q, czyli szumu BLAS między maszynami, nie
+#: wejścia. Pomiar: CI run 4920 na ``2c4747a8`` — B-BENCH/03 (IEEE case14, MATPOWER) PF:
+#: szkielet inny WYŁĄCZNIE w ``$.pv_to_pq_switches[1]``/``[2]`` (``iter: 26`` na CI) przy
+#: zerowej rozbieżności liczb kontraktu (12 952 pozostałe testy zielone). Ta sama klasa
+#: co poddrzewa śladu zwarć: obecność (``None``/lista) porównywana, treść poza porównaniem
+#: między maszynami, na tej samej maszynie w ``slad_sha256``.
 KLUCZE_SLADU_LICZBOWEGO: frozenset[str] = frozenset(
-    {"branch_contributions", "branch_flow_trace", "white_box_trace"}
+    {"branch_contributions", "branch_flow_trace", "white_box_trace", "pv_to_pq_switches"}
 )
 #: Tolerancja porównania liczb kontraktu między maszynami (jednostki kontraktu:
 #: MW, Mvar, kV, kA, A, pu, Ω, s). ATOL = 10⁻⁶ jednostki (1 W, 1 mV, 1 mA):
