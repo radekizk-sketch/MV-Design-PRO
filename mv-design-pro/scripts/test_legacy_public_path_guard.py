@@ -1070,6 +1070,8 @@ def test_guard_accepts_clean_tree_without_k2_resurrection(tmp_path, monkeypatch)
 
 def test_real_repo_has_no_k2_resurrection() -> None:
     assert guard.check_k2_reference_networks_resurrection() == []
+
+
 def test_guard_rejects_resurrected_w3d_source_compliance_module(tmp_path, monkeypatch) -> None:
     src = _patch_w1_tree(monkeypatch, tmp_path)
     (src / "application" / "compliance").mkdir(parents=True)
@@ -1176,6 +1178,8 @@ def test_guard_accepts_current_repo_state_w3d() -> None:
     """Stan repozytorium PO W3-D jest zielony na tej bramce — prawdziwe drzewo
     `backend/src`, nie sztuczne `tmp_path`."""
     assert guard.check_w3d_source_compliance_resurrection() == []
+
+
 def test_guard_rejects_resurrected_w3a_class_under_other_path(tmp_path, monkeypatch) -> None:
     """Iloczyn cech: klasa resolvera bridge'a (`ProtectionCurrentResolver`) I
     typ błędu bridge'a (`AmbiguousMappingError`) — DWIE różne rodziny nazw

@@ -877,6 +877,9 @@ def check_k2_reference_networks_resurrection() -> list[str]:
                         f"[resurrected-component] {rel_path}: export ReferenceNetworkSurface "
                         "(usunięty kartą K2) nie może wrócić"
                     )
+    return violations
+
+
 def check_w3d_source_compliance_resurrection() -> list[str]:
     """W3-D (2026-09-09): trzecia, uboższa sciezka oceny FRT/Q(U)/cosfi(P)
     (`application/compliance/source_compliance.py`, rodzaj analizy
@@ -890,6 +893,34 @@ def check_w3d_source_compliance_resurrection() -> list[str]:
         path = BACKEND_SRC_DIR / rel
         if zrodlo_istnieje(path):
             violations.append(f"[resurrected-module] backend/src/{rel}: {label}")
+    if not BACKEND_SRC_DIR.exists():
+        return violations
+    for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        rel_path = (
+            py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
+        )
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+                if node.name in FORBIDDEN_W3D_DEF_NAMES:
+                    violations.append(
+                        f"[resurrected-def] {rel_path}:{node.lineno}: {node.name} "
+                        "(trzecia sciezka source_compliance, usunieta w W3-D) nie moze wrocic"
+                    )
+            if isinstance(node, ast.ClassDef) and node.name == W3D_EXECUTION_TYPE_CLASS_NAME:
+                for stmt in node.body:
+                    if not isinstance(stmt, ast.Assign):
+                        continue
+                    for target in stmt.targets:
+                        if isinstance(target, ast.Name) and target.id in FORBIDDEN_W3D_ENUM_MEMBERS:
+                            violations.append(
+                                f"[resurrected-enum] {rel_path}:{stmt.lineno}: "
+                                f"{W3D_EXECUTION_TYPE_CLASS_NAME}.{target.id} "
+                                "(usuniety w W3-D) nie moze wrocic"
+                            )
+    return violations
+
+
 def check_w3a_second_engine_resurrection() -> list[str]:
     """W3-A (2026-09): bridge SC<->Protection Engine v1 (resolver pradu +
     typy domenowe) nie moze wrocic — jedyna fizyka IDMT jest w

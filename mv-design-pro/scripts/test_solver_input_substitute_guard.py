@@ -1181,7 +1181,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # na drzewie karty, zero nowych podstawien.
     # K2 (2026-09-09): 3530 -> 3484 pol (application/reference_networks/** skasowane);
     # po scaleniu z W2-C (+9 pol, daf303a3) pomiar na drzewie galezi = 3493 (odbior K2).
-    assert "Pol kontraktow wejsciowych: 3493." in wyjscie, wyjscie
+    # Odbior W3-D + W3-A + W3-E (2026-09-09, drzewo galezi po K2): 3493 -> 3491 = -3 (W3-D:
+    # SourceComplianceResult) -2 (W3-A: bridge SC<->Protection v1) +3 (W3-E: pola 410/
+    # wycofany) — pomiar guardem na drzewie scalonym, nie arytmetyka z kart.
+    assert "Pol kontraktow wejsciowych: 3491." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1190,7 +1193,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # reszta pakietu, w tym enm_builders/comparator.py/expected_values.py/wymagane.py/
         # sld_network_model.py/sld_substrate_power_flow.py/station_archetype_substrate.py,
         # przeniesiona pod backend/tests/, poza tym skanem juz wczesniej w tej samej karcie).
-        "Przeskanowano 504 plikow w zakresie: network_model, solver_input, enm, "
+        # W3-D (-1: application/compliance/source_compliance.py) + W3-A (-1:
+        # application/protection_current_resolver.py) na drzewie po K2: 504 -> 502.
+        "Przeskanowano 502 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1212,7 +1217,7 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         "wykluczenia=3 plikow/suma 6",
         "  solver_input: pliki_skanowane=10, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
         "  enm: pliki_skanowane=41, dlug=8 plikow/suma 77, wykluczenia=0 plikow/suma 0",
-        "  application: pliki_skanowane=254, dlug=32 plikow/suma 105, "
+        "  application: pliki_skanowane=252, dlug=32 plikow/suma 105, "
         "wykluczenia=4 plikow/suma 10",
         "  api: pliki_skanowane=63, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 15",
     ]
