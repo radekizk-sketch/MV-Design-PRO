@@ -760,6 +760,67 @@ describe('B-3 — wyposażenie pola w payloadzie operacji stacyjnej', () => {
     expect(wyposazenie).toBeNull();
   });
 
+  describe('karta W3-B — obwód wtórny CT/VT w payloadzie (koniec liczenia „na kartce")', () => {
+    it('obwód wtórny CT trafia do equipment.ct.obwod_wtorny 1:1 z wpisu', () => {
+      const wyposazenie = zbudujWyposazeniePolaDoPayloadu(
+        nowyWpisWyposazenia({
+          ct_catalog_ref: 'ct-400-5',
+          ct_dlugosc_m: 30,
+          ct_przekroj_mm2: 2.5,
+          ct_moc_aparatow_va: 3,
+          ct_moc_stykow_va: 0.5,
+        }),
+        CT,
+        VT,
+      );
+      expect(wyposazenie?.ct).toMatchObject({
+        obwod_wtorny: {
+          dlugosc_przewodu_m: 30,
+          przekroj_przewodu_mm2: 2.5,
+          obciazenia_aparatow: [{ nazwa: expect.any(String), moc_va: 3 }],
+          moc_stykow_va: 0.5,
+        },
+      });
+    });
+
+    it('obwód wtórny VT trafia do equipment.vt.obwod_wtorny razem z vt_uzwojenie', () => {
+      const wyposazenie = zbudujWyposazeniePolaDoPayloadu(
+        nowyWpisWyposazenia({
+          vt_catalog_ref: 'vt-15-100',
+          vt_dlugosc_m: 12,
+          vt_przekroj_mm2: 1.5,
+          vt_uzwojenie: 'ZABEZPIECZENIOWE',
+        }),
+        CT,
+        VT,
+      );
+      expect(wyposazenie?.vt).toMatchObject({
+        obwod_wtorny: { dlugosc_przewodu_m: 12, przekroj_przewodu_mm2: 1.5 },
+        vt_uzwojenie: 'ZABEZPIECZENIOWE',
+      });
+    });
+
+    it('brak jakiejkolwiek wielkości obwodu = brak klucza obwod_wtorny (addytywne)', () => {
+      const wyposazenie = zbudujWyposazeniePolaDoPayloadu(
+        nowyWpisWyposazenia({ ct_catalog_ref: 'ct-400-5' }),
+        CT,
+        VT,
+      );
+      expect(wyposazenie?.ct).not.toHaveProperty('obwod_wtorny');
+    });
+
+    it('częściowy obwód (tylko długość) niesie WYŁĄCZNIE podane pole — zero domysłu', () => {
+      const wyposazenie = zbudujWyposazeniePolaDoPayloadu(
+        nowyWpisWyposazenia({ ct_catalog_ref: 'ct-400-5', ct_dlugosc_m: 15 }),
+        CT,
+        VT,
+      );
+      const obwod = (wyposazenie?.ct as { obwod_wtorny?: Record<string, unknown> })
+        ?.obwod_wtorny;
+      expect(obwod).toEqual({ dlugosc_przewodu_m: 15 });
+    });
+  });
+
   it('wyposażenie trafia do WŁAŚCIWEGO wpisu pola (dopasowanie po identyfikatorze)', () => {
     const pola = zbudujPolaSnZWpisow(
       [

@@ -74,7 +74,18 @@ type Snapshot = {
   corridors?: Array<{ ordered_segment_refs?: string[] }>;
   branches?: Array<{ ref_id: string; catalog_ref?: string | null; tags?: string[]; meta?: Record<string, unknown> }>;
   substations?: Substation[];
-  measurements?: Array<{ ref_id: string; measurement_type?: string; bay_ref?: string | null }>;
+  measurements?: Array<{
+    ref_id: string;
+    measurement_type?: string;
+    bay_ref?: string | null;
+    // Karta W3-B (mapa 4 #3): obwód wtórny zapisany razem z przekładnikiem.
+    obwod_wtorny?: {
+      dlugosc_przewodu_m?: number | null;
+      przekroj_przewodu_mm2?: number | null;
+      obciazenia_aparatow?: Array<{ nazwa: string; moc_va: number }>;
+      moc_stykow_va?: number | null;
+    } | null;
+  }>;
   protection_assignments?: Array<{ ref_id: string; catalog_ref?: string | null; meta?: Record<string, unknown> }>;
   transformers?: Array<{
     ref_id: string;
@@ -488,6 +499,24 @@ test('K9-B: kreator stacji MAX — szablon → pola → CT/VT/przekaźnik → po
   expect(pomiary.some((m) => m.measurement_type === 'CT')).toBe(true);
   expect(pomiary.some((m) => m.measurement_type === 'VT')).toBe(true);
   expect((enm.protection_assignments ?? []).length).toBeGreaterThan(0);
+
+  // Karta W3-B (mapa 4 #3): obwód wtórny wpisany w kroku 4 (linie 339-369
+  // powyżej) NIE JEST wyrzucany po zapisie — trafia do modelu razem z
+  // przekładnikiem, w TEJ SAMEJ operacji atomowej co stacja. Koniec stanu
+  // „liczę na kartce": dane wpisane w kreatorze SĄ danymi modelu, nie tylko
+  // danymi do jednorazowego podglądu bilansu.
+  const pomiarCt = pomiary.find((m) => m.measurement_type === 'CT');
+  expect(pomiarCt?.obwod_wtorny, 'obwód wtórny CT zapisany na Measurement').toMatchObject({
+    dlugosc_przewodu_m: 25,
+    przekroj_przewodu_mm2: 4,
+    obciazenia_aparatow: [{ moc_va: 3.5 }],
+  });
+  const pomiarVt = pomiary.find((m) => m.measurement_type === 'VT');
+  expect(pomiarVt?.obwod_wtorny, 'obwód wtórny VT zapisany na Measurement').toMatchObject({
+    dlugosc_przewodu_m: 40,
+    przekroj_przewodu_mm2: 2.5,
+    obciazenia_aparatow: [{ moc_va: 12 }],
+  });
 
   // KD-3 (B-2): zaczepy zapisane w TEJ SAMEJ operacji co stacja — kanoniczny
   // podzespół `tap_changer`, bez osobnej operacji po zapisie.

@@ -13,6 +13,7 @@
  */
 
 import { normalizeCatalogBinding } from '../../../ui/network-build/forms/catalogPayload';
+import { KRYTERIA_STRINGS } from '../../kryteria';
 import {
   SN_FIELD_ROLE_TO_BAY_KIND,
   buildDefaultSnFields,
@@ -126,18 +127,25 @@ export interface WyposazeniePolaWpis {
   relay_catalog_ref: string | null;
   relay_type: string;
   /**
-   * Obwody wtórne CT i VT (karta KD-3). Dane WYŁĄCZNIE wejściowe do kryteriów
-   * bilansu (końcówki `ct-burden-check` / `vt-burden-check`) — model sieci nie
-   * ma dla nich pola, więc NIE trafiają do payloadu operacji stacyjnej. Nazwy
+   * Obwody wtórne CT i VT (karta KD-3, domknięte kartą W3-B). Wejście do
+   * kryteriów bilansu na żywo (końcówki `ct-burden-check` / `vt-burden-check`)
+   * ORAZ do payloadu operacji stacyjnej: `Measurement.obwod_wtorny` modelu
+   * (`add_ct`/`add_vt`, `enm/models.py`) ma DOKŁADNIE ten sam kształt — koniec
+   * stanu „liczę na kartce" (`zbudujWyposazeniePolaDoPayloadu` przenosi te pola
+   * 1:1 do `equipment.ct.obwod_wtorny`/`equipment.vt.obwod_wtorny`). Nazwy
    * odpowiadają 1:1 polom żądania końcówki (zero fabrykacji kontrolek).
    * `null` = projektant nie podał, kryterium zwraca kod gotowości.
    */
   ct_dlugosc_m: number | null;
   ct_przekroj_mm2: number | null;
   ct_moc_aparatow_va: number | null;
+  /** Moc tracona na stykach i zaciskach obwodu CT [VA] — podana TYLKO jawnie. */
+  ct_moc_stykow_va: number | null;
   vt_dlugosc_m: number | null;
   vt_przekroj_mm2: number | null;
   vt_moc_aparatow_va: number | null;
+  /** Moc tracona na stykach i zaciskach obwodu VT [VA] — podana TYLKO jawnie. */
+  vt_moc_stykow_va: number | null;
   /** Które uzwojenie VT sprawdzamy (limit ΔU zależy od kategorii uzwojenia). */
   vt_uzwojenie: 'POMIAROWE' | 'ZABEZPIECZENIOWE';
 }
@@ -167,9 +175,11 @@ export function nowyWpisWyposazenia(
     ct_dlugosc_m: null,
     ct_przekroj_mm2: null,
     ct_moc_aparatow_va: null,
+    ct_moc_stykow_va: null,
     vt_dlugosc_m: null,
     vt_przekroj_mm2: null,
     vt_moc_aparatow_va: null,
+    vt_moc_stykow_va: null,
     vt_uzwojenie: 'POMIAROWE',
     ...nadpisania,
   };
@@ -702,10 +712,45 @@ function bindingWyposazenia(namespace: string, itemId: string): Record<string, u
 }
 
 /**
+ * Obwód wtórny (karta W3-B) → kształt `ObwodWtorny` modelu (`enm/models.py`,
+ * `add_ct`/`add_vt`). `null`, gdy projektant nie podał ŻADNEJ wielkości obwodu
+ * — pole `obwod_wtorny` wtedy nie wchodzi do payloadu (addytywne, zero
+ * wymuszania pustego obiektu tam, gdzie nic nie zostało wpisane).
+ */
+function obwodWtornyDoPayloadu(
+  dlugoscM: number | null,
+  przekrojMm2: number | null,
+  mocAparatowVa: number | null,
+  mocStykowVa: number | null,
+  nazwaAparatu: string,
+): Record<string, unknown> | null {
+  if (
+    dlugoscM === null
+    && przekrojMm2 === null
+    && mocAparatowVa === null
+    && mocStykowVa === null
+  ) {
+    return null;
+  }
+  const obwod: Record<string, unknown> = {};
+  if (dlugoscM !== null) obwod.dlugosc_przewodu_m = dlugoscM;
+  if (przekrojMm2 !== null) obwod.przekroj_przewodu_mm2 = przekrojMm2;
+  if (mocAparatowVa !== null) {
+    obwod.obciazenia_aparatow = [{ nazwa: nazwaAparatu, moc_va: mocAparatowVa }];
+  }
+  if (mocStykowVa !== null) obwod.moc_stykow_va = mocStykowVa;
+  return obwod;
+}
+
+/**
  * Wyposażenie pomiarowo-zabezpieczeniowe JEDNEGO pola (krok 4) → payload
  * operacji stacyjnej (B-3, tor atomowy). Przekładnie CT/VT pochodzą z POZYCJI
  * KATALOGOWEJ (parametry materializuje backend — zero fizyki w UI); pozycja
  * niewskazana = brak elementu, nigdy domysł.
+ *
+ * Karta W3-B: obwód wtórny (`ct_dlugosc_m` itd.) jedzie W TYM SAMYM payloadzie
+ * co przekładnia — `add_ct`/`add_vt` zapisują go na `Measurement.obwod_wtorny`
+ * (koniec liczenia „na kartce", patrz `WyposazeniePolaWpis`).
  *
  * Zwraca `null`, gdy pole nie ma wskazanego żadnego elementu — wtedy operacja
  * stacyjna nie dostaje klucza `equipment` i zachowuje się jak dotąd.
@@ -720,21 +765,38 @@ export function zbudujWyposazeniePolaDoPayloadu(
 
   const ct = wpis.ct_catalog_ref ? ctTypy.find((t) => t.id === wpis.ct_catalog_ref) : null;
   if (wpis.ct_catalog_ref && ct) {
+    const obwodCt = obwodWtornyDoPayloadu(
+      wpis.ct_dlugosc_m,
+      wpis.ct_przekroj_mm2,
+      wpis.ct_moc_aparatow_va,
+      wpis.ct_moc_stykow_va,
+      KRYTERIA_STRINGS.ctMocAparatow,
+    );
     equipment.ct = {
       catalog_ref: wpis.ct_catalog_ref,
       catalog_binding: bindingWyposazenia('CT', wpis.ct_catalog_ref),
       ratio_primary_a: ct.ratio_primary_a,
       ratio_secondary_a: ct.ratio_secondary_a,
+      ...(obwodCt !== null ? { obwod_wtorny: obwodCt } : {}),
     };
   }
 
   const vt = wpis.vt_catalog_ref ? vtTypy.find((t) => t.id === wpis.vt_catalog_ref) : null;
   if (wpis.vt_catalog_ref && vt) {
+    const obwodVt = obwodWtornyDoPayloadu(
+      wpis.vt_dlugosc_m,
+      wpis.vt_przekroj_mm2,
+      wpis.vt_moc_aparatow_va,
+      wpis.vt_moc_stykow_va,
+      KRYTERIA_STRINGS.vtMocAparatow,
+    );
     equipment.vt = {
       catalog_ref: wpis.vt_catalog_ref,
       catalog_binding: bindingWyposazenia('VT', wpis.vt_catalog_ref),
       ratio_primary_v: vt.ratio_primary_v,
       ratio_secondary_v: vt.ratio_secondary_v,
+      ...(obwodVt !== null ? { obwod_wtorny: obwodVt } : {}),
+      vt_uzwojenie: wpis.vt_uzwojenie,
     };
   }
 

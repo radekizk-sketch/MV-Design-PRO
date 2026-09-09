@@ -1217,6 +1217,19 @@ def _obwod_wtorny_pomiaru(
     jest ten o `catalog_ref` zgodnym z wiazaniem wytworcy — w przeciwnym razie
     pierwszy po posortowanym `ref_id` (determinizm, zero zaleznosci od kolejnosci
     zapisu w licie).
+
+    STAN ZMIERZONY 2026-09-09 (poza zakresem karty W3-B, nazwany uczciwie):
+    `Generator.bay_ref` NIE JEST dzis ustawiany zadna droga produkcyjna —
+    `DerGeneratorCreateRequest` nie ma takiego pola, a `DER_BINDING_KEYS`
+    operacji `set_der_catalog_bindings` (jedyna droga edycji wiazan wytworcy
+    PO utworzeniu) go nie zawiera. W praktyce `bay_ref` na tej funkcji jest
+    wiec DZIS zawsze `None` dla KAZDEGO wytworcy w produkcji — ta funkcja
+    (i cala reszta kodu ponizej zaleznego od `bay_ref`, w tym ISTNIEJACE
+    PRZED TA KARTA `_sciezka_zwarcia_dla_pola`) czeka na przyszla karte, ktora
+    doda wytworcy `bay_ref` (przypiecie do pola rozdzielnicy). Droga
+    model → domena → jadro jest POPRAWNA i przetestowana (fixtury reczne
+    ustawiajace `meta.bay_ref`), ale NIEOSIAGALNA z biezacego kreatora DER —
+    to PRE-ISTNIEJACA luka (brak `bay_ref` wytworcy), nie defekt tej karty.
     """
     if not bay_ref:
         return _OBWOD_WTORNY_PUSTY

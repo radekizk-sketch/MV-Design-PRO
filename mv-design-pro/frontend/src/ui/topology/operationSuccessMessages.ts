@@ -64,6 +64,8 @@ export const OPERATION_SUCCESS_MESSAGES: Record<string, string> = {
   // Protection
   add_ct: 'Dodano przekładnik prądowy (CT)',
   add_vt: 'Dodano przekładnik napięciowy (VT)',
+  // Karta W3-B (mapa 4 #3): edycja obwodu wtórnego PO utworzeniu przekładnika.
+  set_measurement_secondary_circuit: 'Zapisano obwód wtórny przekładnika',
   add_relay: 'Dodano przekaźnik zabezpieczeniowy',
   update_relay_settings: 'Zaktualizowano nastawy przekaźnika',
   link_relay_to_field: 'Powiązano przekaźnik z polem',

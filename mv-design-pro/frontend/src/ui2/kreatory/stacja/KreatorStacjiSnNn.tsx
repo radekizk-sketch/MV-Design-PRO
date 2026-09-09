@@ -2228,35 +2228,48 @@ export function KreatorStacjiSnNn() {
                   {/* KD-3: obwody wtórne CT/VT — dane wejściowe kryteriów bilansu.
                       Wartości liczbowe wracają z końcówek solvera (zero fizyki tutaj). */}
                   {wpis?.ct_catalog_ref ? (
-                    <KreatorSiatka kolumny={3}>
-                      <PoleLiczbowe
-                        etykieta={KRYTERIA_STRINGS.ctDlugosc}
-                        jednostka="m"
-                        wartosc={wpis.ct_dlugosc_m}
-                        onZmiana={(v) => zmienWyposazenie(pole.id, { ct_dlugosc_m: v })}
-                        krok={0.5}
-                        min={0}
-                        testid={`mvd-kreator-stacja-ct-dlugosc-${index + 1}`}
-                      />
-                      <PoleLiczbowe
-                        etykieta={KRYTERIA_STRINGS.ctPrzekroj}
-                        jednostka="mm²"
-                        wartosc={wpis.ct_przekroj_mm2}
-                        onZmiana={(v) => zmienWyposazenie(pole.id, { ct_przekroj_mm2: v })}
-                        krok={0.5}
-                        min={0}
-                        testid={`mvd-kreator-stacja-ct-przekroj-${index + 1}`}
-                      />
-                      <PoleLiczbowe
-                        etykieta={KRYTERIA_STRINGS.ctMocAparatow}
-                        jednostka="VA"
-                        wartosc={wpis.ct_moc_aparatow_va}
-                        onZmiana={(v) => zmienWyposazenie(pole.id, { ct_moc_aparatow_va: v })}
-                        krok={0.5}
-                        min={0}
-                        testid={`mvd-kreator-stacja-ct-moc-${index + 1}`}
-                      />
-                    </KreatorSiatka>
+                    <>
+                      <KreatorSiatka kolumny={3}>
+                        <PoleLiczbowe
+                          etykieta={KRYTERIA_STRINGS.ctDlugosc}
+                          jednostka="m"
+                          wartosc={wpis.ct_dlugosc_m}
+                          onZmiana={(v) => zmienWyposazenie(pole.id, { ct_dlugosc_m: v })}
+                          krok={0.5}
+                          min={0}
+                          testid={`mvd-kreator-stacja-ct-dlugosc-${index + 1}`}
+                        />
+                        <PoleLiczbowe
+                          etykieta={KRYTERIA_STRINGS.ctPrzekroj}
+                          jednostka="mm²"
+                          wartosc={wpis.ct_przekroj_mm2}
+                          onZmiana={(v) => zmienWyposazenie(pole.id, { ct_przekroj_mm2: v })}
+                          krok={0.5}
+                          min={0}
+                          testid={`mvd-kreator-stacja-ct-przekroj-${index + 1}`}
+                        />
+                        <PoleLiczbowe
+                          etykieta={KRYTERIA_STRINGS.ctMocAparatow}
+                          jednostka="VA"
+                          wartosc={wpis.ct_moc_aparatow_va}
+                          onZmiana={(v) => zmienWyposazenie(pole.id, { ct_moc_aparatow_va: v })}
+                          krok={0.5}
+                          min={0}
+                          testid={`mvd-kreator-stacja-ct-moc-${index + 1}`}
+                        />
+                      </KreatorSiatka>
+                      <KreatorSiatka kolumny={1}>
+                        <PoleLiczbowe
+                          etykieta={KRYTERIA_STRINGS.ctMocStykow}
+                          jednostka="VA"
+                          wartosc={wpis.ct_moc_stykow_va}
+                          onZmiana={(v) => zmienWyposazenie(pole.id, { ct_moc_stykow_va: v })}
+                          krok={0.1}
+                          min={0}
+                          testid={`mvd-kreator-stacja-ct-moc-stykow-${index + 1}`}
+                        />
+                      </KreatorSiatka>
+                    </>
                   ) : null}
                   {wpis?.vt_catalog_ref ? (
                     <>
@@ -2289,6 +2302,17 @@ export function KreatorStacjiSnNn() {
                           testid={`mvd-kreator-stacja-vt-moc-${index + 1}`}
                         />
                       </KreatorSiatka>
+                      <KreatorSiatka kolumny={1}>
+                        <PoleLiczbowe
+                          etykieta={KRYTERIA_STRINGS.vtMocStykow}
+                          jednostka="VA"
+                          wartosc={wpis.vt_moc_stykow_va}
+                          onZmiana={(v) => zmienWyposazenie(pole.id, { vt_moc_stykow_va: v })}
+                          krok={0.1}
+                          min={0}
+                          testid={`mvd-kreator-stacja-vt-moc-stykow-${index + 1}`}
+                        />
+                      </KreatorSiatka>
                       <PoleWyboru
                         etykieta={KRYTERIA_STRINGS.vtUzwojenie}
                         wartosc={wpis.vt_uzwojenie}
@@ -2312,11 +2336,13 @@ export function KreatorStacjiSnNn() {
                       dlugosc_m: wpis?.ct_dlugosc_m ?? null,
                       przekroj_mm2: wpis?.ct_przekroj_mm2 ?? null,
                       moc_aparatow_va: wpis?.ct_moc_aparatow_va ?? null,
+                      moc_stykow_va: wpis?.ct_moc_stykow_va ?? null,
                     }}
                     obwodVt={{
                       dlugosc_m: wpis?.vt_dlugosc_m ?? null,
                       przekroj_mm2: wpis?.vt_przekroj_mm2 ?? null,
                       moc_aparatow_va: wpis?.vt_moc_aparatow_va ?? null,
+                      moc_stykow_va: wpis?.vt_moc_stykow_va ?? null,
                     }}
                     uzwojenieVt={wpis?.vt_uzwojenie ?? 'POMIAROWE'}
                     testidSufiks={String(index + 1)}

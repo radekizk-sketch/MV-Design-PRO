@@ -18,6 +18,7 @@ export const KRYTERIA_STRINGS = {
   ctDlugosc: 'Długość obwodu wtórnego (w jedną stronę)',
   ctPrzekroj: 'Przekrój żyły obwodu',
   ctMocAparatow: 'Moc aparatów w obwodzie',
+  ctMocStykow: 'Moc tracona na stykach i zaciskach',
   ctMocObliczeniowa: 'Moc obliczeniowa obwodu S2obl',
   ctMocPrzewodow: 'w tym moc tracona w przewodach',
   ctMocZnamionowa: 'Moc znamionowa przekładnika Sn',
@@ -39,6 +40,7 @@ export const KRYTERIA_STRINGS = {
   vtDlugosc: 'Długość obwodu wtórnego (w jedną stronę)',
   vtPrzekroj: 'Przekrój żyły obwodu',
   vtMocAparatow: 'Moc odbiorników w obwodzie',
+  vtMocStykow: 'Moc tracona na stykach i zaciskach',
   vtUzwojenie: 'Sprawdzane uzwojenie',
   vtUzwojenieOpcje: [
     { id: 'POMIAROWE', etykieta: 'pomiarowe (limit 0,5 %)' },

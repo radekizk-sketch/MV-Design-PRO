@@ -74,6 +74,7 @@
 | 24 | `link_relay_to_field`             | Powiazanie przekaznika z polem rozdzielczym                    | Domain / NetworkModel     |
 | 25 | `calculate_tcc_curve`             | Obliczenie krzywej czas-prad (TCC) dla przekaznika             | Analysis / Protection     |
 | 26 | `validate_selectivity`            | Walidacja selektywnosci miedzy urzadzeniami zabezpieczeniowymi | Analysis / Protection     |
+| 26a | `set_measurement_secondary_circuit` (karta W3-B, 2026-09) | Zapis/aktualizacja obwodu wtornego CT/VT na JUZ ISTNIEJACYM przekladniku -- jedyna droga edycji po utworzeniu (`update_element_parameters` odrzuca kolekcje `measurements`, patrz `LEGACY_FIELD_COLLECTIONS`) | Domain / NetworkModel |
 
 ### 1.5 Operacje StudyCase (Przypadki obliczeniowe) -- USUNIETE (CV-3.2, 58e520ce)
 
@@ -714,6 +715,7 @@ obie z pary naraz -- `transformer.hv_bus_ambiguous` / `transformer.lv_bus_ambigu
 | `set_dynamic_profile`       | `source_id`, `profile_name`, `time_series`                     | SetDynamicProfilePayload              |
 | `add_ct`                    | `field_id`, `ct_name`, `ratio_primary_a`, `ratio_secondary_a`, `accuracy_class` | AddCTPayload              |
 | `add_vt`                    | `field_id`, `vt_name`, `ratio_primary_kv`, `ratio_secondary_v`, `accuracy_class` | AddVTPayload              |
+| `set_measurement_secondary_circuit` (karta W3-B, 2026-09) | `measurement_ref`, `obwod_wtorny` (`dlugosc_przewodu_m?`, `przekroj_przewodu_mm2?`, `obciazenia_aparatow?`, `moc_stykow_va?`), `vt_uzwojenie?` (WYLACZNIE gdy measurement jest VT) | `enm/models.py::ObwodWtorny` (patrz `Measurement.obwod_wtorny`) — realne pola operacji, nie schemat aspiracyjny jak sasiednie wiersze `add_ct`/`add_vt` powyzej (`field_id` -> realnie `field_ref`, patrz kod) |
 | `update_relay_settings`     | `relay_id`, `settings`                                         | UpdateRelaySettingsPayload            |
 | `link_relay_to_field`       | `relay_id`, `field_id`                                         | LinkRelayToFieldPayload               |
 | `calculate_tcc_curve`       | `relay_id`, `current_range_a`                                  | CalculateTCCCurvePayload              |
