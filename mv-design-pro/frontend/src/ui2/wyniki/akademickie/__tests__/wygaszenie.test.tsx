@@ -408,4 +408,33 @@ describe('hosting_capacity / opf_loss_lcc — duplikat kanonu schodzi z powierzc
     expect(SCREEN_CANON_REGISTRY['E-46'].visibleInNavigation).toBe(true);
     expect(SCREEN_CANON_REGISTRY['E-50'].visibleInNavigation).toBe(true);
   });
+
+  /*
+   * PIN LICZBY — zmierzony, nie przepisany z prozy karty. Katalog kontraktu ma
+   * 14 rodzajów (`odpowiedziSolvera.json`, fikstura 1:1 z `V126AnalysisType`).
+   * Karta V126-WYGASZENIE (2026-08-07) zdjęła 2 (`benchmark_validation`,
+   * `voltage_stability`) -> lista wyboru pokazywała 12 PRZED tą kartą, nie 14
+   * (test poniżej broni tego stanu wyjściowego niezależnie od `WYCOFANE`, żeby
+   * regresja w rejestrze wcześniejszej karty nie schowała się za sumą). Karta
+   * W3-E zdejmuje kolejne 2 (`hosting_capacity`, `opf_loss_lcc`) -> 12 -> 10.
+   * Test wyżej („znikają z listy wyboru... sąsiedzi zostają") dowodzi SETU;
+   * ten dowodzi LICZBY, żeby regresja o poprawnym składzie, ale złej liczności
+   * (np. filtr odsiewający o jeden kod za dużo/za mało) miała osobny pin.
+   */
+  it('lista wyboru ma dokładnie 10 pozycji (14 katalogu − 4 wycofane: 2 z V126-WYGASZENIE + 2 z W3-E)', async () => {
+    expect(KATALOG_BACKENDU).toHaveLength(14);
+    expect(WYCOFANE).toEqual(
+      expect.arrayContaining([
+        'benchmark_validation',
+        'voltage_stability',
+        'hosting_capacity',
+        'opf_loss_lcc',
+      ]),
+    );
+    expect(WYCOFANE).toHaveLength(4);
+    ustawFetch(KATALOG_BACKENDU);
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    const selektor = (await screen.findByTestId('mvd-akad-rodzaj')) as HTMLSelectElement;
+    expect(selektor.options).toHaveLength(10);
+  });
 });
