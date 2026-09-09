@@ -52,7 +52,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **115** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **116** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -164,6 +164,7 @@ Wszystkie **115** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `protection.settings_incomplete` | PROTECTION | 4 | WARNING | Nastawy przekaźnika niekompletne | panel: `inspector`, tab: `nastawy` |
 | `analysis.blocked_by_readiness` | ANALYSIS | 1 | BLOCKER | Analiza zablokowana przez niezaspokojone wymagania gotowości | panel: `readiness` |
 | `study_case.missing_base_snapshot` | ANALYSIS | 1 | BLOCKER | Przypadek obliczeniowy nie ma bazowego zrzutu stanu | panel: `case_manager` |
+| `analysis.dynamic_stability_scenario_incomplete` | ANALYSIS | 2 | BLOCKER | Ocena progowa stabilności dynamicznej wymaga jawnego scenariusza wyłączenia zwarcia (element zwarty, czas wyłączenia, elementy wyłączające, kąty mocy przed/w czasie/po zwarciu, napięcie i częstotliwość po zwarciu, stała czasowa odbudowy) — podaj komplet pól w opcjach biegu, solver nie ma dla nich wartości domyślnych | panel: `analizy`, tab: `stabilnosc` |
 | `fault.location_on_branch_requires_assembler` | ANALYSIS | 2 | BLOCKER | Zwarcie w punkcie na gałęzi wymaga rozdzielenia modelu w miejscu zwarcia (adapter obliczeniowy) — nieobsługiwane; wybierz lokalizację na węźle | panel: `analizy`, tab: `zwarciowa` |
 | `oltc.deadband_missing` | ANALYSIS | 2 | WARNING | Przełącznik zaczepów nie ma pasma nieczułości regulatora — bez niego nie wiadomo, jaka odchyłka napięcia jest jeszcze dopuszczalna | panel: `inspector`, tab: `regulacja`, focus: `deadband_kv` |
 | `oltc.target_voltage_missing` | ANALYSIS | 2 | WARNING | Badanie doboru zaczepów nie ma napięcia docelowego — podaj napięcie, które ma być utrzymywane na szynie regulowanej | panel: `analizy`, tab: `oltc`, focus: `napiecie_cel` |
@@ -176,10 +177,10 @@ Wszystkie **115** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 
 | Poziom | Liczba kodów |
 |--------|---------------|
-| BLOCKER | 71 |
+| BLOCKER | 72 |
 | WARNING | 43 |
 | INFO | 1 |
-| **Razem** | **115** |
+| **Razem** | **116** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
@@ -189,8 +190,8 @@ Wszystkie **115** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | STATIONS | 12 |
 | GENERATORS | 20 |
 | PROTECTION | 9 |
-| ANALYSIS | 9 |
-| **Razem** | **115** |
+| ANALYSIS | 10 |
+| **Razem** | **116** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 
@@ -242,3 +243,4 @@ Gdzie:
 | 2026-09-09 | 1.1 | CV-4.3 K7 (karta K7-DOCS/PERYFERIA): dodano `source.sk_min_missing` (WARNING) i `source.sk_min_inconsistent` (BLOCKER) -- scenariusz MIN danych zwarciowych źródła sieciowego (IEC 60909-0:2016 §6.2.1 eq. 6 z c_min). Ten wpis NIE zamykał pełnej zgodności dokumentu z `domain/canonical_operations.py::READINESS_CODES` (rejestr miał wtedy więcej pozycji niż ten słownik -- rekoncyliacja całości była wtedy nazwana jako odrębne zadanie). |
 | 2026-09-09 | 2.0 | Karta READINESS-DOC (naprawa KLASY, nie instancji dryfu z wersji 1.1): sekcje "Kompletny słownik kodów gotowości" i "Podsumowanie statystyczne" są odtąd GENEROWANE z rejestru skryptem `scripts/generuj_slownik_kodow_gotowosci.py` i pilnowane w CI przez `scripts/readiness_dictionary_guard.py` (workflow `python-tests.yml`, ten sam krok co `readiness_codes_guard.py`) -- rozjazd dokumentu z rejestrem jest teraz czerwony, nie cichy. Usunięto pojęcie "Fix Action ID" / "akcja naprawcza (lub null)" (skasowane kartą FIX-ACTION-KASACJA -- nie miało żadnego wykonawcy w systemie); `fix_navigation` jest jedyną, obowiązkową ścieżką naprawczą dla KAŻDEGO kodu. Dokument doprowadzony do stanu rejestru: 114 kodów, wszystkie 7 wartości `ReadinessArea` reprezentowane. Naprawiono przy okazji defekt rejestru wykryty tą kartą: 12 komunikatów `message_pl` bloku "Źródła nN" (karta F-K6, V12K-206) było zapisanych bez polskich znaków diakrytycznych -- poprawione w `domain/canonical_operations.py`, przypięte testem `backend/tests/domain/test_rejestr_kodow_komunikaty_pl.py`. |
 | 2026-09-09 | 2.1 | CV-4.3 K7 (odbiór kart, ta sama sesja): rejestr +1 kod `source.u_set_pu_out_of_range` (BLOCKER, napięcie zadane szyny bilansującej `Source.u_set_pu` poza pasmem 0,8–1,2 p.u.; emiter walidator ENM `sources.u_set_pu_out_of_range`) -- sekcje generowane przeliczone generatorem: 115 kodów. |
+| 2026-09-09 | 2.2 | W2 pkt 1 (zero fabrykacji ekranów, 347ee904): rejestr +1 kod `analysis.dynamic_stability_scenario_incomplete` (BLOCKER — ocena progowa stabilności dynamicznej wymaga jawnego scenariusza wyłączenia zwarcia; koniec wartości domyślnych scenariusza) — sekcje generowane przeliczone generatorem: 116 kodów. Dryf wykryty przez `readiness_dictionary_guard` w CI na a4d94615 (scalenie W2 bez ponownego przebiegu generatora) i naprawiony w tym commicie. |

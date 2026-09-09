@@ -224,7 +224,9 @@ describe('EkranStabilnosci — formularz scenariusza (karta W2 pkt 1, zero fabry
 
   it('natywny klik „Uruchom ocenę progową" z kompletem pól wysyła DOKŁADNIE kontrakt opcji biegu', async () => {
     const user = userEvent.setup();
-    const createAndExecuteRun = vi.fn(async () => ({
+    // Sygnatura mocka jawna (caseId, zadanie), zeby `mock.calls[0]` bylo typem krotki bez
+    // rzutowania `[] as [string, unknown]` (dlug typow poza bramka, tsconfig_gate_guard).
+    const createAndExecuteRun = vi.fn(async (_caseId: string, _zadanie: unknown) => ({
       id: 'run-nowy',
       study_case_id: CASE_ID,
       analysis_type: 'DYNAMIC_STABILITY',
@@ -251,7 +253,7 @@ describe('EkranStabilnosci — formularz scenariusza (karta W2 pkt 1, zero fabry
     await user.click(screen.getByTestId('mvd-stabilnosc-formularz-uruchom'));
 
     expect(createAndExecuteRun).toHaveBeenCalledTimes(1);
-    const [wolanyCaseId, zadanie] = createAndExecuteRun.mock.calls[0] as [string, unknown];
+    const [wolanyCaseId, zadanie] = createAndExecuteRun.mock.calls[0];
     expect(wolanyCaseId).toBe(CASE_ID);
     expect(zadanie).toEqual({
       analysis_type: 'DYNAMIC_STABILITY',

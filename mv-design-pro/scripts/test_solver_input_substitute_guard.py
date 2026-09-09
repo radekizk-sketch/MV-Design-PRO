@@ -1186,13 +1186,16 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         "Przeskanowano 545 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
-    assert "Zapadka dlugu (fizyczne): 61 plikow, suma 286." in wyjscie, wyjscie
+    # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
+    # `run.*` z `enm/canonical_analysis.py` — zapadka 61/286 -> 61/280 (CI na a4d94615
+    # zameldowal "Dlug ZMALAL" x6; pomiar guardem na drzewie).
+    assert "Zapadka dlugu (fizyczne): 61 plikow, suma 280." in wyjscie, wyjscie
     assert "Wykluczenia skanera (niefizyczne): 14 plikow, suma 32." in wyjscie, wyjscie
     per_korzen = [
         "  network_model: pliki_skanowane=136, dlug=14 plikow/suma 77, "
         "wykluczenia=3 plikow/suma 6",
         "  solver_input: pliki_skanowane=10, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
-        "  enm: pliki_skanowane=41, dlug=8 plikow/suma 83, wykluczenia=0 plikow/suma 0",
+        "  enm: pliki_skanowane=41, dlug=8 plikow/suma 77, wykluczenia=0 plikow/suma 0",
         "  application: pliki_skanowane=294, dlug=34 plikow/suma 112, "
         "wykluczenia=5 plikow/suma 11",
         "  api: pliki_skanowane=64, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 15",

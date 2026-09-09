@@ -86,6 +86,19 @@ Zakazy respektowane: brak `skip`, brak podnoszenia tolerancji, brak aktualizacji
 
 **Stan bieżący (2026-09-09 ~12:30 UTC, szczyt wypchnięty `105a1113` — PERF-SC-50 + kasacja data-manager + archiwum + 3 luki kanonu + misja): 9/9 zielone na `105a1113`** — Python tests (`34348749692`, run 4928), Frontend checks (`34348749633`, run 3409), Frontend E2E full (`34348749689`, run 381), Frontend E2E smoke (run 2559), Docs (`34348749863`, run 3553), Physics Label (`34348749659`, run 1622), Arch (`34348749708`, run 3176), P0 Extended (run 1623), SLD Determinism (run 3458). Kolejny szczyt (mapa domknięcia produktu — wyłącznie dokumenty + komentarz workflowu e2e): guardy dokumentów i `guardy_z_ci` lokalnie zielone, CI po pushu — patrz następny wpis.
 
+**Stan 2026-09-09, szczyt `a4d94615` (W1-A/B + W2 ×5 + aneks mapy; push 17:27 UTC): 7/9 zielonych, 2 czerwone —**
+Python tests (`34383032822`: krok pytest ZIELONY 13 min, czerwony krok „Testy guardów": 4 testy własne) i P0 Extended
+(`34383032794`: `solver_input_substitute_guard` 6 naruszeń). Klasa (§34): **policy guard po scaleniu bez ponownego
+przebiegu** — commit W2 pkt 1 (`347ee904`, koniec fabrykacji stabilności dynamicznej) zdjął 6 zastępników `run.*`
+z `enm/canonical_analysis.py` (zapadka mówi „dług ZMALAŁ — obniż budżet") i dodał kod
+`analysis.dynamic_stability_scenario_incomplete` (rejestr 115 → 116; generowany słownik
+`READINESS_FIXACTIONS_CANONICAL_PL.md` nieprzeliczony → `readiness_dictionary_guard`). Przyczyna procesowa: regresja
+drzewa połączonego W1-B + W2 objęła pytest/mypy/pandapower/vitest/e2e, ale NIE `guardy_z_ci.py` (uruchomiony tylko na
+W1-B przed cherry-pick) — patrz §G. Naprawa u źródła tego samego dnia: budżety 6 zastępników zdjęte (zapadka 61/286 →
+61/280, enm 8/83 → 8/77, piny self-testu z pomiaru), słownik przeliczony generatorem (116 kodów, historia 2.2),
+`guardy_z_ci.py` na drzewie naprawy — wynik w commicie naprawy. Pozostałe 7 workflowów zielone na `a4d94615` (Docs
+Integrity, Physics Label, Arch/Repo Hygiene, SLD Determinism, Frontend checks, Frontend E2E smoke, Frontend E2E full).
+
 ## B. Ochrona gałęzi `main` (§36) — **OWNER ACTION P0**
 
 Pomiar (GitHub API `list_branches`, 2026-09-04): `main` → `protected: false`; łącznie ponad 400 gałęzi (`claude/*`, `codex/*`, `kopia/*`), żadna chroniona. Sesja agenta nie ma uprawnień administracyjnych do włączenia ochrony (brak narzędzia w MCP; wymaga roli admin repozytorium).
@@ -329,6 +342,7 @@ Metoda: `grep -n "@router\." backend/src/api/power_flow_runs.py` (15 tras potwie
 | 2026-09-09 | Mapa domknięcia — raport badawczy C: „`scripts/backend_no_physics_guard.py` nie istnieje, nie ma go w `guardy_z_ci` ani w workflowach; nic nie pilnuje fizyki poza solverami” | `ls`, `.github/workflows/p0-extended-guards.yml:180`, `guardy_z_ci.py::guardy_z_workflowow()` (czyta workflowy) | **OBALONE w części głównej:** guard istnieje (13,6 kB), biegnie w CI (P0 Extended Guards, zielony na `105a1113`) i w zestawie przedpushowym. **POTWIERDZONE w części szczegółowej:** rodziny wzorców guarda (√3, κ, I²t, R_θ, Z=U²/S, S/cosφ, Q=P·tgφ — K4) nie obejmują IDMT ani prądu gałęzi z mocy, więc 5 kopii IDMT (w tym tor kanoniczny `protection_sn` w `application/protection_analysis/engine.py:191-227`) i `v126_academic.py::_branch_current_a` są dla guarda niewidoczne — rozszerzenie rodzin w W3, nie nowy guard |
 | 2026-09-09 | Mapa domknięcia — „dowód egzekucji reguły 6 kanonu SLD (spisany 2026-09-09, a701152f) pilnuje żywej ścieżki SLD” | inwentarz konsumentów `application/sld/**` i `network_model/sld_projection.py` (grep), konsumenci `network_wizard/service.py` w `api/` i `frontend/src` | **OBALONE:** oba piny leżą na pakiecie bez produkcyjnego konsumenta (jedyny importer `network_wizard/service.py` — 0 tras mutujących, 0 ekranów); żywa ścieżka to klient (`enmToSldAdapter.ts` 6831 linii), który nie ma węzła granicznego z konstrukcji ENM (`pcc_zero_guard`). Nota korekcyjna dopisana do `docs/sld/SLD_SEMANTIC_MODEL_CANONICAL_V1.md`; pin na żywej ścieżce = W7; kasacja pakietu = W1 |
 | 2026-09-09 | Mapa domknięcia — trzy roszczenia dokumentów o braku konsumenta: `protection_settings` pack i PDF wniosku OSD (inwentarz 2026-08-08), `lv_temperature_correction.py` liczy R_θ poza `pochodne/` (ewidencja CI-A) | grep konsumentów; odczyt pliku | **OBALONE we wszystkich trzech:** `protection_settings` ma konsumenta (`pakiet_nastaw.py:23`, `GET …/pakiet-dowodowy-nastaw`), PDF wniosku ma konsumenta (`ui2/oze/wniosek/EkranWniosku.tsx`, `ui2/oze/api.ts`), `lv_temperature_correction.py:30` importuje `rezystancja_w_temperaturze` z `network_model.pochodne`. **POTWIERDZONE:** `qu_regulation` nadal bez konsumenta (23 testy zielone na martwej ścieżce) |
+| 2026-09-09 | W1-B + W2 — „drzewo połączone zweryfikowane w pełni przed pushem" | łańcuch `w1w2_weryfikacja.sh` (pytest 12 812, mypy 736, pandapower 41, vitest 894/12 104, e2e 3/3) vs 9 workflowów CI | **OBALONE w części:** łańcuch nie zawierał `guardy_z_ci.py` (uruchomionego tylko na W1-B przed cherry-pick W2), a W2 pkt 1 zmienił dwie zapadki (zastępniki `run.*` w `canonical_analysis.py`, rejestr kodów gotowości) — CI czerwony 2/9 na `a4d94615`. Reguła od dziś: łańcuch przedpushowy = pytest + mypy + pandapower + **guardy_z_ci** + vitest + e2e, ZAWSZE na drzewie, które idzie na serwer, nigdy na jego części; karty agentów dostają obowiązek `guardy_z_ci` (albo przynajmniej guardów zapadkowych i generatorów dokumentów) przed meldunkiem |
 
 ## H. Pozostałe P0/P1 (tylko realne)
 | ID | Ryzyko | Klasa | Działanie |

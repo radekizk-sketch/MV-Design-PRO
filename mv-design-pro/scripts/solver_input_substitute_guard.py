@@ -1041,12 +1041,10 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "F:dictget:iteration.max_mismatch_pu": 2,
         "F:dictget:p.load_scale": 1,
         "F:dictget:row.event_seq": 1,
-        "F:dictget:run.clearing_time_ms": 1,
-        "F:dictget:run.during_fault_angle_deg": 1,
-        "F:dictget:run.post_fault_angle_deg": 1,
-        "F:dictget:run.post_fault_frequency_pu": 1,
-        "F:dictget:run.post_fault_voltage_pu": 1,
-        "F:dictget:run.pre_fault_angle_deg": 1,
+        # W2 pkt 1 (2026-09-09): szesc zastepnikow scenariusza stabilnosci
+        # (`run.clearing_time_ms`, `run.*_fault_*`) SKASOWANYCH razem z fabrykacja
+        # stabilnosci dynamicznej (scenariusz jawny albo odmowa) — budzety zdjete,
+        # zapadka w dol z pomiaru (CI na a4d94615: "Dlug ZMALAL" x6).
         "F:dictget:run.unbalance_alert_percent": 1,
         "F:dictget:step.max_mismatch_pu": 2,
     },
