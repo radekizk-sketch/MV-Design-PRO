@@ -86,15 +86,29 @@ ALLOWLIST: dict[str, str] = {}
 #: `pochodne/wielkosci_pochodne.py` byłaby pracą do wyrzucenia w kolejnej
 #: podkarcie tej samej fali — TYMCZASOWY dług nazwany, nie cichy.
 #: Rodzina J (karta W3-F, po migracji 2026-09-09): pomiar `--pomiar` PRZED
-#: migracją = 192 wzorce w 59 plikach; PO migracji zostały wyłącznie pliki
-#: kasowane w INNYCH kartach tej samej fali: oba pliki
-#: `application/analyses/protection/line_overcurrent_setting/` (W3-C2) —
+#: migracją = 192 wzorce w 59 plikach; PO migracji zostały pliki z DWOMA
+#: różnymi powodami wyłączenia. TYMCZASOWE (kasowane w INNYCH kartach tej
+#: samej fali, nie w tej — §0.3/§0.5 karty W3-F): oba pliki
+#: `application/analyses/protection/line_overcurrent_setting/` (W3-C2);
 #: `application/reference_networks/station_archetype_substrate.py` (29 wzorców
 #: w pomiarze W3-F na bazie a16f8d2b) leży od K2 pod `backend/tests/`, poza
 #: skanem, a `computation.py` (rodzina G) został skasowany w K2 — oba wpisy
-#: zdjęte przy scaleniu fali 2 (odbiór 2026-09-10). Pozostałe 155 wzorców
-#: w 55 plikach PRZENIESIONE do `network_model/pochodne/jednostki.py` (bit w
-#: bit, testy tożsamości).
+#: zdjęte przy scaleniu fali 2 (odbiór 2026-09-10). Jeden TRWAŁY, odkryty
+#: przez `guardy_z_ci.py` PO F.1 (pełny przebieg pre-raportowy karty W3-F,
+#: 2026-09-09): `application/result_mapping/short_circuit_to_resultset_v1.py`
+#: — `scripts/resultset_v1_schema_guard.py` (ResultSetContractGuard, karta
+#: CV-3.3-A2) trzyma ten plik na liście PROTECTED_FILES: kontrakt SC/
+#: Protection ResultSet v1 jest zamrożony i guard odrzuca KAŻDĄ zmianę
+#: treści niezależnie od semantyki. F.1 omyłkowo zmigrował tu dwa literały
+#: `/1000.0` na `v_na_kv`/`a_na_ka` (semantycznie identyczne, ten sam float)
+#: — B-01 (edycja zamrożonego rdzenia bez zgody właściciela, CLAUDE.md) —
+#: cofnięte bajt-w-bajt do formy sprzed karty. Ten wpis NIE zniknie po
+#: kartach W3-C1/W3-C2: plik nie jest kasowany, kontrakt jest zamrożony na
+#: stałe, więc te 2 wystąpienia zostają w ZASTANE jako trwały wyjątek
+#: architektoniczny (do zdjęcia wyłącznie decyzją właściciela — OD-18
+#: dotyczy siostrzanego `protection_to_resultset_v1.py`). Pozostałe 153
+#: wzorce w 54 plikach PRZENIESIONE do `network_model/pochodne/jednostki.py`
+#: (bit w bit, testy tożsamości).
 ZASTANE: dict[str, dict[str, int]] = {
     "application/analyses/protection/overcurrent/calculator.py": {"E_idmt_shape": 1},
     "application/analyses/protection/line_overcurrent_setting/analyzer.py": {
@@ -103,6 +117,7 @@ ZASTANE: dict[str, dict[str, int]] = {
     "application/analyses/protection/line_overcurrent_setting/spz_lookup.py": {
         "J_skalowanie_jednostek": 1
     },
+    "application/result_mapping/short_circuit_to_resultset_v1.py": {"J_skalowanie_jednostek": 2},
 }
 
 _TIME_RE = re.compile(r"(^|_)(t|tk|time|czas)(_|$)", re.IGNORECASE)

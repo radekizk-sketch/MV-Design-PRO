@@ -544,7 +544,10 @@ def test_zapadka_spadek_i_zniknieciu_to_dlug_zmalal() -> None:
     bledy = porownaj_z_zapadka(
         {"b.py": {"A_sqrt3": 1}}, {"a.py": {"A_sqrt3": 1}, "b.py": {"A_sqrt3": 2}}
     )
-    assert sorted(b.split("]")[0] + "]" for b in bledy) == ["[dlug-zmalal]", "[dlug-zmalal]"]
+    assert sorted(b.split("]")[0] + "]" for b in bledy) == [
+        "[dlug-zmalal]",
+        "[dlug-zmalal]",
+    ]
     assert porownaj_z_zapadka({"b.py": {"A_sqrt3": 1}}, {"b.py": {"A_sqrt3": 1}}) == []
 
 
@@ -557,7 +560,9 @@ def test_zapadka_pusta_pomiar_pusty_jest_zielony() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_solvery_i_pochodne_oba_wykluczone_jako_siostrzane_katalogi(tmp_path: Path) -> None:
+def test_solvery_i_pochodne_oba_wykluczone_jako_siostrzane_katalogi(
+    tmp_path: Path,
+) -> None:
     """Iloczyn cech (KLASA NIE INSTANCJA): plik pod `network_model/solvers/`
     (NIE `pochodne/`, np. rdzeń solvera) I plik pod `network_model/pochodne/`
     (siostrzany katalog, relokacja architekta 2026-09-06 — NIE zagnieżdżony
@@ -596,7 +601,12 @@ def test_pochodne_naprawde_istnieje_i_niesie_wiekszosc_rodzin() -> None:
     # przez świeże wyrażenie `sqrt(3)`/`3**0.5` w tej samej pozycji — dokładnie
     # ten sam, poprawny powód, dla którego rodzina A wymaga bezpośredniego
     # operandu mnożenia/dzielenia (test wyżej), a nie dowolnego wystąpienia.
-    for rodzina in ("B_kappa_exp", "C_i2t_joule", "D_korekta_temperaturowa", "G_z_u2_s"):
+    for rodzina in (
+        "B_kappa_exp",
+        "C_i2t_joule",
+        "D_korekta_temperaturowa",
+        "G_z_u2_s",
+    ):
         assert wzorce.get(rodzina, 0) >= 1, f"pochodne/ powinno nieść rodzinę {rodzina}"
     # Stała SQRT3 jest poprawna (wartość liczbowa, nie zależy od PYTHONPATH
     # backendu — czytamy plik jako tekst, tak jak reszta tego testu).
@@ -661,12 +671,19 @@ def test_pin_stanu_repozytorium() -> None:
     `application/reference_networks/**`; po W3-C1 (kasacja
     `application/analyses/protection/overcurrent/**`) i W3-C2 (kasacja
     `application/analyses/protection/line_overcurrent_setting/**`) zapadka
-    rodzin E i J tych plików jest PUSTA."""
+    rodzin E i J tych plików jest PUSTA — ale zapadka jako całość NIE jest
+    pusta: zostaje jeden trwały wyjątek architektoniczny,
+    `application/result_mapping/short_circuit_to_resultset_v1.py` (2×
+    J_skalowanie_jednostek) — plik jest na PROTECTED_FILES w
+    `scripts/resultset_v1_schema_guard.py` (kontrakt ResultSet v1 zamrożony
+    na stałe, karta CV-3.3-A2), więc te dwa literały `/1000.0` nigdy nie
+    trafią do `pochodne/jednostki.py` (B-01, CLAUDE.md)."""
     assert porownaj_z_zapadka(zmierz(), ZASTANE) == []
     assert set(ZASTANE) <= {
         "application/analyses/protection/overcurrent/calculator.py",
         "application/analyses/protection/line_overcurrent_setting/analyzer.py",
         "application/analyses/protection/line_overcurrent_setting/spz_lookup.py",
+        "application/result_mapping/short_circuit_to_resultset_v1.py",
     }
 
 
