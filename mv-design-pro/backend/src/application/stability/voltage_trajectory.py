@@ -37,9 +37,20 @@ class VoltageTrajectoryPoint:
         }
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class TrajectoryGenerationParams:
-    """Parametry generacji trajectory."""
+    """Parametry generacji trajectory.
+
+    `recovery_time_constant_s` (τ) NIE MA wartości domyślnej (karta W2 pkt 1,
+    zero fabrykacji): stała czasowa odbudowy napięcia/częstotliwości była
+    zaszyta na 0,3 s bez podstawy w danych scenariusza. Wywołujący musi podać
+    ją jawnie — dla `enm/canonical_analysis.py::_execute_dynamic_stability` to
+    pole `recovery_time_constant_s` kontraktu opcji biegu (brak = odmowa
+    biegu, patrz tam); `api/reference_networks.py` już podawał ją jawnie
+    (0,25 s) przed tą kartą. `kw_only=True`, bo pole bez domyślnej wartości nie
+    może następować po polach z domyślną w zwykłej kolejności pozycyjnej —
+    wszyscy dotychczasowi wołający już używają nazwanych argumentów.
+    """
 
     pre_fault_duration_s: float = 0.1  # 100ms before fault
     clearing_time_ms: float = 150.0  # fault duration
@@ -51,7 +62,7 @@ class TrajectoryGenerationParams:
     pre_fault_frequency_pu: float = 1.0
     during_fault_frequency_pu: float = 1.0  # frequency holds in short fault
     post_fault_frequency_pu: float = 1.0
-    recovery_time_constant_s: float = 0.3  # exponential rise τ
+    recovery_time_constant_s: float  # exponential rise τ — jawny, patrz docstring klasy
 
 
 def generate_voltage_trajectory(

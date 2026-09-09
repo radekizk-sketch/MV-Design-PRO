@@ -19,6 +19,7 @@ from application.proof_engine.packs.phase_state_sn import (
     PhaseStateSNProofPackInput,
 )
 from application.stability.dynamic_stability import (
+    DynamicStabilityThresholds,
     FaultClearScenario,
     FaultClearSourceState,
     evaluate_fault_clear_dynamic_stability,
@@ -28,6 +29,7 @@ from application.stability.voltage_trajectory import (
     generate_voltage_trajectory,
 )
 from application.v126_artifacts import build_v126_proof_artifact, build_v126_report_artifact
+from domain.canonical_operations import READINESS_CODES
 from enm.assembler import (
     WejscieRozplywu,
     WejscieZwarcia,
@@ -1471,22 +1473,126 @@ def _execute_phase_state_sn(run: CanonicalRun) -> None:
     run.power_flow_trace = None
 
 
+#: Kod gotowości odmowy biegu stabilności dynamicznej: brak KOMPLETU jawnych pól
+#: scenariusza wyłączenia zwarcia w opcjach biegu (karta W2 pkt 1, zero fabrykacji).
+#: Rejestr: `domain/canonical_operations.py::READINESS_CODES`.
+KOD_SCENARIUSZ_STABILNOSCI_NIEPELNY = "analysis.dynamic_stability_scenario_incomplete"
+
+#: Pola scenariusza `FaultClearScenario`/`FaultClearSourceState` + parametr
+#: trajektorii `recovery_time_constant_s`, KOMPLET jawny wymagany w opcjach
+#: biegu (`run.options`) — (klucz opcji, opis PL do komunikatu odmowy). Brak
+#: JAKIEGOKOLWIEK z nich = odmowa (patrz `_brakujace_pola_scenariusza_stabilnosci`).
+#: Zero wartości domyślnych: żadne z tych pól nie ma fallbacku w tym module.
+_POLA_SCENARIUSZA_STABILNOSCI_DYNAMICZNEJ: tuple[tuple[str, str], ...] = (
+    ("faulted_element_id", "element objęty zwarciem (faulted_element_id)"),
+    ("clearing_time_ms", "czas wyłączenia zwarcia w ms (clearing_time_ms)"),
+    ("cleared_by_element_ids", "elementy wyłączające zwarcie (cleared_by_element_ids)"),
+    ("pre_fault_angle_deg", "kąt mocy przed zwarciem w stopniach (pre_fault_angle_deg)"),
+    (
+        "during_fault_angle_deg",
+        "kąt mocy w czasie zwarcia w stopniach (during_fault_angle_deg)",
+    ),
+    ("post_fault_angle_deg", "kąt mocy po zwarciu w stopniach (post_fault_angle_deg)"),
+    ("post_fault_voltage_pu", "napięcie po zwarciu w p.u. (post_fault_voltage_pu)"),
+    (
+        "post_fault_frequency_pu",
+        "częstotliwość po zwarciu w p.u. (post_fault_frequency_pu)",
+    ),
+    (
+        "recovery_time_constant_s",
+        "stała czasowa odbudowy napięcia/częstotliwości w s (recovery_time_constant_s)",
+    ),
+)
+
+
+class OdmowaBieguStabilnosciDynamicznej(ValueError):
+    """Odmowa biegu stabilności dynamicznej z kodem gotowości kanonu (`READINESS_CODES`).
+
+    Ta sama droga odmowy co rozpływ przy dwóch źródłach sieciowych w jednej
+    wyspie (`enm/assembler.py::OdmowaWejsciaRozplywu` / `KOD_WIELE_ZRODEL_W_WYSPIE`):
+    `kod` trafia do komunikatu wyjątku, `execute_run` łapie go ogólnym
+    `except Exception`, zapisuje status FAILED i `error_message` niosący
+    komunikat PL wraz z kodem — bez liczenia i bez zapisu żadnego wyniku.
+    """
+
+    def __init__(self, kod: str, komunikat: str, *, pola: tuple[str, ...] = ()) -> None:
+        super().__init__(f"{komunikat} (kod gotowości: {kod})")
+        self.kod = kod
+        self.pola = pola
+
+
+def _brakujace_pola_scenariusza_stabilnosci(
+    options: Mapping[str, Any],
+) -> tuple[tuple[str, ...], str]:
+    """(klucze_brakujące, opis_pl) pól scenariusza NIEOBECNYCH w opcjach biegu.
+
+    "Brakujące" = klucz nieobecny, `None`, pusty string albo pusta sekwencja —
+    pole OBECNE, ale puste, nie jest jawnym scenariuszem tak samo jak pole
+    nieobecne (karta W2 pkt 1: KOMPLET jawnych pól, nie samo istnienie klucza).
+    """
+    brakujace_klucze: list[str] = []
+    brakujace_opisy: list[str] = []
+    for klucz, opis in _POLA_SCENARIUSZA_STABILNOSCI_DYNAMICZNEJ:
+        wartosc = options.get(klucz)
+        pusta = (
+            wartosc is None
+            or (isinstance(wartosc, str) and not wartosc.strip())
+            or (isinstance(wartosc, list | tuple) and len(wartosc) == 0)
+        )
+        if pusta:
+            brakujace_klucze.append(klucz)
+            brakujace_opisy.append(opis)
+    return tuple(brakujace_klucze), "; ".join(brakujace_opisy)
+
+
+def _progi_oceny_stabilnosci_z_opcji(options: Mapping[str, Any]) -> DynamicStabilityThresholds:
+    """Progi oceny progowej — kryteria PRZYJĘTE w opcjach biegu, edytowalne, NIE
+    zaszyte na stałe (karta W2 pkt 1). Repo nie niesie cytatu normy dla tych
+    czterech liczb: brak w opcjach biegu spada na dotychczasową wartość
+    `DynamicStabilityThresholds` (odczytaną z klasy, nie zaszytą tu drugi raz),
+    a NIE na twardą stałą tej funkcji — pole podane w opcjach biegu wygrywa.
+    """
+    domyslne = DynamicStabilityThresholds()
+    return DynamicStabilityThresholds(
+        max_clearing_time_ms=float(
+            options.get("max_clearing_time_ms", domyslne.max_clearing_time_ms)
+        ),
+        max_angle_swing_deg=float(options.get("max_angle_swing_deg", domyslne.max_angle_swing_deg)),
+        min_voltage_recovery_pu=float(
+            options.get("min_voltage_recovery_pu", domyslne.min_voltage_recovery_pu)
+        ),
+        min_frequency_recovery_pu=float(
+            options.get("min_frequency_recovery_pu", domyslne.min_frequency_recovery_pu)
+        ),
+    )
+
+
 def _execute_dynamic_stability(run: CanonicalRun) -> None:
     snapshot = run.snapshot or {}
+    brakujace_klucze, opis_brakow = _brakujace_pola_scenariusza_stabilnosci(run.options)
+    if brakujace_klucze:
+        raise OdmowaBieguStabilnosciDynamicznej(
+            KOD_SCENARIUSZ_STABILNOSCI_NIEPELNY,
+            f"{READINESS_CODES[KOD_SCENARIUSZ_STABILNOSCI_NIEPELNY].message_pl} "
+            f"— brakuje: {opis_brakow}",
+            pola=brakujace_klucze,
+        )
     source_ref = _pick_dynamic_source_ref(snapshot, run.options)
+    progi = _progi_oceny_stabilnosci_z_opcji(run.options)
     scenario = FaultClearScenario(
         scenario_id=str(run.options.get("scenario_id") or f"dyn-{run.id}"),
-        faulted_element_id=str(run.options.get("faulted_element_id") or "faulted-element"),
-        clearing_time_ms=float(run.options.get("clearing_time_ms", 120.0)),
-        cleared_by_element_ids=tuple(run.options.get("cleared_by_element_ids") or ("cb-main",)),
+        faulted_element_id=str(run.options["faulted_element_id"]),
+        clearing_time_ms=float(run.options["clearing_time_ms"]),
+        cleared_by_element_ids=tuple(str(x) for x in run.options["cleared_by_element_ids"]),
         source_state=FaultClearSourceState(
             source_id=source_ref,
-            pre_fault_angle_deg=float(run.options.get("pre_fault_angle_deg", 10.0)),
-            during_fault_angle_deg=float(run.options.get("during_fault_angle_deg", 75.0)),
-            post_fault_angle_deg=float(run.options.get("post_fault_angle_deg", 28.0)),
-            post_fault_voltage_pu=float(run.options.get("post_fault_voltage_pu", 0.97)),
-            post_fault_frequency_pu=float(run.options.get("post_fault_frequency_pu", 0.99)),
+            pre_fault_angle_deg=float(run.options["pre_fault_angle_deg"]),
+            during_fault_angle_deg=float(run.options["during_fault_angle_deg"]),
+            post_fault_angle_deg=float(run.options["post_fault_angle_deg"]),
+            post_fault_voltage_pu=float(run.options["post_fault_voltage_pu"]),
+            post_fault_frequency_pu=float(run.options["post_fault_frequency_pu"]),
         ),
+        thresholds=progi,
     )
     stability_result = evaluate_fault_clear_dynamic_stability(scenario)
     topology_effect = build_post_fault_topology_effect(
@@ -1514,6 +1620,7 @@ def _execute_dynamic_stability(run: CanonicalRun) -> None:
             clearing_time_ms=scenario.clearing_time_ms,
             post_fault_voltage_pu=scenario.source_state.post_fault_voltage_pu,
             post_fault_frequency_pu=scenario.source_state.post_fault_frequency_pu,
+            recovery_time_constant_s=float(run.options["recovery_time_constant_s"]),
         )
     )
     time_series_payload = {
@@ -1529,6 +1636,10 @@ def _execute_dynamic_stability(run: CanonicalRun) -> None:
         "analysis_type": "dynamic_stability",
         "scenario": scenario.to_dict(),
         "result": result_payload,
+        # Karta W2 pkt 1: progi oceny progowej JAWNIE nazwani w wyniku (nie tylko
+        # zaszyci w `result.max_clearing_time_ms`) — etykieta PL, jednostka i
+        # nota o pochodzeniu (kryterium przyjęte w opcjach biegu, nie z normy).
+        "threshold_criteria": progi.kryteria_oceny_progowej(),
         "time_series": time_series_payload,
         "automation_trace": automation_trace.to_dict(),
         "topology_effect": topology_payload,
@@ -3298,6 +3409,9 @@ def build_dynamic_stability_results(run: CanonicalRun) -> dict[str, Any]:
                 "faulted_element_kind": rodzaj_elementu(
                     result.get("faulted_element_id"), indeks=indeks_rodzajow
                 ),
+                # Karta W2 pkt 1: progi JAWNIE nazwani w wierszu wyniku (nie tylko
+                # w raw_result nieosiagalnym dla FE) — addytywnie, obok `**result`.
+                "threshold_criteria": (run.raw_result or {}).get("threshold_criteria", []),
                 "proof_ref": (run.raw_result or {}).get("proof_ref"),
                 "proof_status": (run.raw_result or {}).get("proof_status"),
                 "proof_status_pl": (run.raw_result or {}).get("proof_status_pl"),

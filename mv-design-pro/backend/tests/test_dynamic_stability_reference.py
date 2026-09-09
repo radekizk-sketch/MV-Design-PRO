@@ -24,6 +24,7 @@ def _stub_run_with_time_series() -> SimpleNamespace:
             clearing_time_ms=120.0,
             post_fault_voltage_pu=0.97,
             post_fault_frequency_pu=0.99,
+            recovery_time_constant_s=0.3,
         )
     )
     return SimpleNamespace(

@@ -2103,6 +2103,30 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         message_pl="Agregat nie ma określonego rodzaju paliwa",
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "fuel_type"},
     ),
+    # Karta W2 pkt 1 (zero fabrykacji — uczciwość ekranów, 2026-09-09): bieg
+    # stabilności dynamicznej (`enm/canonical_analysis.py::_execute_dynamic_stability`)
+    # liczył werdykt STABLE/UNSTABLE ze scenariusza zaszytego w kodzie (kąty
+    # 10/75/28°, napięcie 0,97 p.u., częstotliwość 0,99 p.u., czas wyłączenia
+    # 120 ms, stała czasowa odbudowy τ=0,3 s), gdy opcje biegu ich nie niosły —
+    # inżynier nie widział, że ocena dotyczy fikcyjnego scenariusza, nie jego
+    # sieci. Ta sama droga odmowy co `source.multiple_grid_sources_in_island`:
+    # brak KOMPLETU jawnych pól scenariusza w opcjach biegu = odmowa tym kodem,
+    # przechwycona przez ogólny `except Exception` w `execute_run` (status
+    # FAILED), zero wartości domyślnych podstawionych za brak.
+    "analysis.dynamic_stability_scenario_incomplete": ReadinessCodeSpec(
+        code="analysis.dynamic_stability_scenario_incomplete",
+        area=ReadinessArea.ANALYSIS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Ocena progowa stabilności dynamicznej wymaga jawnego scenariusza wyłączenia "
+            "zwarcia (element zwarty, czas wyłączenia, elementy wyłączające, kąty mocy "
+            "przed/w czasie/po zwarciu, napięcie i częstotliwość po zwarciu, stała czasowa "
+            "odbudowy) — podaj komplet pól w opcjach biegu, solver nie ma dla nich wartości "
+            "domyślnych"
+        ),
+        fix_navigation={"panel": "analizy", "tab": "stabilnosc"},
+    ),
 }
 
 

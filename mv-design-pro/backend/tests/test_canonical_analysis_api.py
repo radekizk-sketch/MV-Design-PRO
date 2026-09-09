@@ -1050,6 +1050,7 @@ def test_dynamic_stability_run_exposes_results_and_automation_trace(client: Test
                 "post_fault_angle_deg": 28.0,
                 "post_fault_voltage_pu": 0.97,
                 "post_fault_frequency_pu": 0.99,
+                "recovery_time_constant_s": 0.3,
                 "isolated_element_ids": ["load-1"],
             },
         },
@@ -1097,6 +1098,107 @@ def test_dynamic_stability_run_exposes_results_and_automation_trace(client: Test
         f"/api/analysis-runs/{run_id}/results/dynamic-stability/time-series"
     )
     assert time_series_repeat.json()["points"] == ts_payload["points"]
+
+
+#: Scenariusz KOMPLETNY (wszystkie 9 pól jawnych) — punkt odniesienia dla testu
+#: klasy poniżej: iloczyn {brak KAŻDEGO pola z osobna} × {bieg przez
+#: `execution_runs`}. Karta W2 pkt 1 (zero fabrykacji).
+_KOMPLETNY_SCENARIUSZ_STABILNOSCI: dict[str, object] = {
+    "scenario_id": "dyn-brak-pola",
+    "source_ref": "src-grid",
+    "faulted_element_id": "branch-load",
+    "cleared_by_element_ids": ["cb-a", "cb-b"],
+    "clearing_time_ms": 120.0,
+    "pre_fault_angle_deg": 10.0,
+    "during_fault_angle_deg": 75.0,
+    "post_fault_angle_deg": 28.0,
+    "post_fault_voltage_pu": 0.97,
+    "post_fault_frequency_pu": 0.99,
+    "recovery_time_constant_s": 0.3,
+}
+
+#: Pola WYMAGANE (`scenario_id`/`source_ref` mają dostawcę zastępczy — patrz
+#: `_pick_dynamic_source_ref` — więc NIE są w tym zbiorze; te dziewięć nie mają
+#: żadnego fallbacku w `_execute_dynamic_stability`).
+_POLA_WYMAGANE_SCENARIUSZA = (
+    "faulted_element_id",
+    "clearing_time_ms",
+    "cleared_by_element_ids",
+    "pre_fault_angle_deg",
+    "during_fault_angle_deg",
+    "post_fault_angle_deg",
+    "post_fault_voltage_pu",
+    "post_fault_frequency_pu",
+    "recovery_time_constant_s",
+)
+
+
+@pytest.mark.parametrize("brakujace_pole", _POLA_WYMAGANE_SCENARIUSZA)
+def test_dynamic_stability_run_odmawia_bez_kompletu_scenariusza(
+    client: TestClient, brakujace_pole: str
+) -> None:
+    """Karta W2 pkt 1 (zero fabrykacji — uczciwość ekranów): brak KAŻDEGO z 9 pól
+    scenariusza z osobna (iloczyn cech, nie przykład z karty) daje odmowę NAZWANYM
+    kodem gotowości — bieg kończy się FAILED, zero policzonego wyniku, zero
+    zapisanego jako wynik (ta sama droga co `source.multiple_grid_sources_in_island`
+    dla rozpływu: `execute_run` łapie `OdmowaBieguStabilnosciDynamicznej` ogólnym
+    `except Exception`)."""
+    case_id = _nowy_przypadek(client)
+    _seed_power_flow_enm(client, case_id)
+
+    niepelny_scenariusz = dict(_KOMPLETNY_SCENARIUSZ_STABILNOSCI)
+    del niepelny_scenariusz[brakujace_pole]
+
+    create_run = client.post(
+        f"/api/execution/study-cases/{case_id}/runs",
+        json={"analysis_type": "DYNAMIC_STABILITY", "solver_input": niepelny_scenariusz},
+    )
+    assert create_run.status_code == 201
+    run_id = create_run.json()["id"]
+
+    execute_run = client.post(f"/api/execution/runs/{run_id}/execute")
+    assert execute_run.status_code == 200
+    payload = execute_run.json()
+    assert payload["status"] == "FAILED", f"pole {brakujace_pole}: bieg powinien odmówić"
+    assert payload["error_message"] is not None
+    assert (
+        "kod gotowości: analysis.dynamic_stability_scenario_incomplete" in payload["error_message"]
+    )
+    assert brakujace_pole in payload["error_message"], (
+        f"komunikat odmowy nie wymienia brakującego pola {brakujace_pole}: "
+        f"{payload['error_message']}"
+    )
+
+    # Nic nie policzone: kontrakt wyników FROZEN odmawia biegu bez statusu FINISHED.
+    result_set = client.get(f"/api/execution/runs/{run_id}/results")
+    assert result_set.status_code == 409
+
+    # Nic nie zapisane jako wynik: widok stabilności czyta pusty raw_result — brak
+    # wiersza, nie werdykt fabrykowany z domyślnego scenariusza.
+    stability = client.get(f"/api/analysis-runs/{run_id}/results/dynamic-stability")
+    assert stability.status_code == 200
+    assert stability.json()["rows"] == []
+
+
+def test_dynamic_stability_run_odmawia_gdy_wszystkie_pola_brakuja(client: TestClient) -> None:
+    """Kontrola dodatnia iloczynu cech: KOMPLETNY brak scenariusza (nie tylko
+    jedno pole) odmawia tym samym kodem — nie różną ścieżką dla „zero pól"."""
+    case_id = _nowy_przypadek(client)
+    _seed_power_flow_enm(client, case_id)
+
+    create_run = client.post(
+        f"/api/execution/study-cases/{case_id}/runs",
+        json={"analysis_type": "DYNAMIC_STABILITY", "solver_input": {}},
+    )
+    assert create_run.status_code == 201
+    run_id = create_run.json()["id"]
+
+    execute_run = client.post(f"/api/execution/runs/{run_id}/execute")
+    assert execute_run.status_code == 200
+    payload = execute_run.json()
+    assert payload["status"] == "FAILED"
+    for pole in _POLA_WYMAGANE_SCENARIUSZA:
+        assert pole in payload["error_message"], pole
 
 
 def test_source_compliance_run_exposes_reportable_statuses(client: TestClient) -> None:

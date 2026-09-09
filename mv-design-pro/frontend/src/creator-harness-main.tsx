@@ -408,6 +408,38 @@ const STABILNOSC_WYNIK = {
         voltage_recovery: true,
         frequency_recovery: true,
       },
+      // Karta W2 pkt 1: kryteria oceny progowej — komplet jawnych pól scenariusza
+      // niesie też ich pochodzenie (przyjęte w opcjach biegu, nie zaszyte).
+      threshold_criteria: [
+        {
+          key: 'max_clearing_time_ms',
+          label_pl: 'Maksymalny czas wyłączenia zwarcia',
+          value: 150,
+          unit: 'ms',
+          source_pl: 'Kryterium przyjęte w opcjach biegu tej analizy.',
+        },
+        {
+          key: 'max_angle_swing_deg',
+          label_pl: 'Maksymalne wychylenie kąta mocy',
+          value: 120,
+          unit: '°',
+          source_pl: 'Kryterium przyjęte w opcjach biegu tej analizy.',
+        },
+        {
+          key: 'min_voltage_recovery_pu',
+          label_pl: 'Minimalne napięcie po zwarciu',
+          value: 0.95,
+          unit: 'p.u.',
+          source_pl: 'Kryterium przyjęte w opcjach biegu tej analizy.',
+        },
+        {
+          key: 'min_frequency_recovery_pu',
+          label_pl: 'Minimalna częstotliwość po zwarciu',
+          value: 0.98,
+          unit: 'p.u.',
+          source_pl: 'Kryterium przyjęte w opcjach biegu tej analizy.',
+        },
+      ],
       reporting_status_pl: 'raportowalny',
       proof_status_pl: 'pelny',
       reporting_limitations: [],
