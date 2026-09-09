@@ -267,17 +267,24 @@ KODY_KANONU_ZAREZERWOWANE: dict[str, str] = {
     "protection.settings_incomplete": (
         "Zastapiony przez `protection.nominal_current_missing` i "
         "`protection.fault_current_missing` (V12K-189) — kasacja W3-C1 (2026-09) "
-        "usunela ICH JEDYNY emiter razem z metodyka V12K-189 (`application/analyses"
-        "/protection/overcurrent/**`); metodyka nastaw nadpradowych jest odtad "
-        "wylacznie Hoppel/IRiESD (`application/protection_settings/`), ktora nie "
-        "uzywa kodow gotowosci — brak danych wejscia konczy sie jawnym powodem PL "
+        "usunela ICH JEDYNY emiter razem z metodyka V12K-189: skasowany "
+        "`application/analyses/protection/overcurrent/calculator.py` definiowal "
+        "`READINESS_NOMINAL_CURRENT_MISSING`/`READINESS_FAULT_CURRENT_MISSING` i "
+        "dopisywal je do WLASNEJ listy `readiness` (zweryfikowane w historii git na "
+        "`a16f8d2b`, linie 17-18/60/70/84 pliku sprzed kasacji) — wylacznie na "
+        "uzytek prezentacji tamtej metodyki (`settings_presentation.py`, "
+        "`api/protection_overcurrent_settings.py`, oba skasowane razem z nim), bez "
+        "polaczenia z kanonicznym rejestrem `/api/readiness/registry`. Metodyka "
+        "nastaw nadpradowych jest odtad wylacznie Hoppel/IRiESD "
+        "(`application/protection_settings/`), ktora nie uzywa kodow gotowosci — "
+        "brak danych wejscia konczy sie jawnym powodem PL "
         "(`BrakDanychNastawError`), nie kodem kanonu."
     ),
     "protection.nominal_current_missing": (
-        "Brak emitera po kasacji V12K-189 (karta W3-C1, 2026-09): jedynym emiterem "
-        "byl `application/analyses/protection/overcurrent/calculator.py`, skasowany "
-        "razem z cala metodyka — kanon nastaw jest odtad Hoppel/IRiESD, ktora nie "
-        "raportuje brakow kodami gotowosci (patrz `protection.settings_incomplete`)."
+        "Brak emitera po kasacji V12K-189 (karta W3-C1, 2026-09) — patrz "
+        "`protection.settings_incomplete` powyzej: jedynym miejscem, ktore "
+        "kiedykolwiek budowalo TEN kod (nie tylko go deklarowalo w rejestrze "
+        "kanonu), byl skasowany `overcurrent/calculator.py`."
     ),
     "protection.fault_current_missing": (
         "Brak emitera po kasacji V12K-189 (karta W3-C1, 2026-09) — jak "
