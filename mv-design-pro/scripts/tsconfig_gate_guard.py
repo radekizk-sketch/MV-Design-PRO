@@ -225,7 +225,20 @@ POMIJANE_KATALOGI = {
 #: W2-B odbior (2026-09-09): trzy testy `Etap3Configurators.test.tsx` budowaly `routeState`
 #: bez obowiazkowego `route` (dwa nowe + jeden zastany `der-sources`) — naprawione u zrodla,
 #: pomiar guardem 127 -> 126.
-BUDZET_BLEDOW_POZA_BRAMKA = 126
+#: W3-C1 (2026-09-09): 130 -> 125 (dlug PRZED karta stal juz na 130 — 4 bledy
+#: TS6133 w plikach karta nie dotyka, spoza jej zakresu, zmierzone jako
+#: pre-existing: `ui/history/__tests__/HistoryStore.test.ts` (nieuzywany import
+#: `vi`, nieuzywana zmienna `cmd1`), `ui/engineering-readiness/__tests__/
+#: EngineeringReadinessPanel.test.ts` (nieuzywana stala `BY_SEVERITY_THREE_
+#: BLOCKERS`), `ui/fault-scenarios/__tests__/faultScenariosStore.test.ts`
+#: (nieuzywana funkcja `makeScenario`) — naprawione U ZRODLA (usuniete martwe
+#: importy/zmienne/funkcja, zero zmiany zachowania: 41 testow tych 3 plikow
+#: nadal zielone). Usuniecie CALEJ funkcji `makeScenario` zdjelo PRZY OKAZJI
+#: takze jej WLASNY blad TS2322 (literal zwracany z jej ciala nie pasowal do
+#: `FaultScenario`) — martwy kod nie moze naruszac kontraktu, ktorego nikt nie
+#: czyta. Razem -5 bledow (130 -> 125), jeden ponizej progu 126: zapadka w
+#: obie strony wymaga obnizenia, nie tylko braku wzrostu.
+BUDZET_BLEDOW_POZA_BRAMKA = 125
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,
