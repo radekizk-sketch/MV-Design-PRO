@@ -145,11 +145,16 @@ class RunsSection:
     który je pisał (`AnalysisRunService`, legacy `study_runs`/`study_results`) —
     JEDYNY rejestr biegów to odtąd `canonical_runs` (R1, `enm.canonical_analysis
     .CanonicalRun`), pełny zrzut pól (patrz `application/project_archive/service
-    .py::_collect_runs`). `analysis_runs_index` ZOSTAJE bez zmian: to
-    NIEZALEŻNA tabela (`AnalysisRunIndexORM`) obsługująca ekran koordynacji
-    zabezpieczeń (`application/analyses/protection/{catalog,overcurrent}
-    /pipeline.py`, `api/protection_overcurrent_settings.py`) — żywy konsument
-    produkcyjny (`ui2/wyniki/koordynacja`), niezwiązany z R2/R3.
+    .py::_collect_runs`). `analysis_runs_index` ZOSTAJE bez zmian jako
+    NIEZALEŻNA tabela (`AnalysisRunIndexORM`), ale karta W3-C1 (2026-09) skasowała
+    jej JEDYNE dwa produkcyjne miejsca zapisu (`application/analyses/protection
+    /overcurrent/pipeline.py` — cały pakiet `overcurrent/**`, `api
+    /protection_overcurrent_settings.py`, i `catalog/pipeline.py::
+    run_device_mapping_v0`, zero konsumentów `ui2/wyniki/koordynacja` w chwili
+    kasacji, zmierzone grepem) — dobór aparatu jest odtąd CZYSTĄ funkcją
+    (`catalog/pipeline.py::dopasuj_do_aparatu`), bez koperty biegu i bez indeksu.
+    Ta sekcja archiwum pozostaje READ-ONLY odbiorcą historycznych wpisów
+    (odtwarzalność starych archiwów), niezwiązanym z R2/R3 i bez nowego pisarza.
     """
 
     canonical_runs: list[dict[str, Any]]

@@ -1277,3 +1277,74 @@ def test_guard_accepts_current_repo_state_w3a() -> None:
     """Stan repozytorium PO W3-A jest zielony na tej bramce — prawdziwe drzewo
     `backend/src`, nie sztuczne `tmp_path`."""
     assert guard.check_w3a_second_engine_resurrection() == []
+
+
+# ---------------------------------------------------------------------------
+# W3-C1 (2026-09-09): kasacja V12K-189 (metodyka nastaw nadprądowych) nie wraca
+# ---------------------------------------------------------------------------
+
+
+def _patch_w3c1_tree(monkeypatch, tmp_path) -> Path:
+    src = tmp_path / "backend" / "src"
+    src.mkdir(parents=True)
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", src)
+    return src
+
+
+def test_guard_rejects_resurrected_w3c1_module(tmp_path, monkeypatch) -> None:
+    src = _patch_w3c1_tree(monkeypatch, tmp_path)
+    (src / "application" / "analyses" / "protection" / "overcurrent").mkdir(parents=True)
+    (src / "api").mkdir()
+    (src / "api" / "protection_overcurrent_settings.py").write_text("x = 1\n", encoding="utf-8")
+    (src / "application" / "analyses" / "run_envelope.py").write_text("x = 1\n", encoding="utf-8")
+
+    violations = guard.check_w3c1_overcurrent_resurrection()
+
+    assert any("[resurrected-module]" in v and "protection/overcurrent" in v for v in violations)
+    assert any(
+        "[resurrected-module]" in v and "protection_overcurrent_settings.py" in v
+        for v in violations
+    )
+    assert any("[resurrected-module]" in v and "run_envelope.py" in v for v in violations)
+
+
+def test_guard_rejects_resurrected_w3c1_name_under_other_path(tmp_path, monkeypatch) -> None:
+    src = _patch_w3c1_tree(monkeypatch, tmp_path)
+    (src / "application" / "analyses" / "protection").mkdir(parents=True)
+    (src / "application" / "analyses" / "protection" / "cokolwiek.py").write_text(
+        "def compute_overcurrent_settings(x):\n    return x\n\n\n"
+        "class OvercurrentSettingsV0:\n    pass\n\n\n"
+        "RUN_ENVELOPE_ADAPTERS = {}\n",
+        encoding="utf-8",
+    )
+
+    violations = guard.check_w3c1_overcurrent_resurrection()
+
+    assert any(
+        "[resurrected-name]" in v and "compute_overcurrent_settings" in v for v in violations
+    )
+    assert any("[resurrected-name]" in v and "OvercurrentSettingsV0" in v for v in violations)
+    assert any("[resurrected-name]" in v and "RUN_ENVELOPE_ADAPTERS" in v for v in violations)
+
+
+def test_guard_does_not_fire_on_w3c1_names_in_comments_or_strings(tmp_path, monkeypatch) -> None:
+    src = _patch_w3c1_tree(monkeypatch, tmp_path)
+    (src / "application" / "analyses").mkdir(parents=True)
+    (src / "application" / "analyses" / "notatka.py").write_text(
+        "# dawniej: compute_overcurrent_settings, OvercurrentSettingsV0\n"
+        'OPIS = "run_device_mapping_v0 i AnalysisRunEnvelope skasowane w W3-C1"\n',
+        encoding="utf-8",
+    )
+    assert guard.check_w3c1_overcurrent_resurrection() == []
+
+
+def test_guard_accepts_clean_tree_without_w3c1_resurrection(tmp_path, monkeypatch) -> None:
+    _patch_w3c1_tree(monkeypatch, tmp_path)
+    assert guard.check_w3c1_overcurrent_resurrection() == []
+
+
+def test_guard_accepts_current_repo_state_w3c1() -> None:
+    """Stan repozytorium PO W3-C1 jest zielony na tej bramce — prawdziwe drzewo
+    `backend/src`, nie sztuczne `tmp_path`."""
+    assert guard.check_w3c1_overcurrent_resurrection() == []

@@ -37,9 +37,6 @@ from api.proof_pack import router as proof_pack_router
 from api.protection_analysis_runs import router as protection_analysis_runs_router
 from api.protection_comparisons import router as protection_comparisons_router
 from api.protection_coordination import router as protection_coordination_router
-from api.protection_overcurrent_settings import (
-    router as protection_overcurrent_settings_router,
-)
 from api.quality_analysis_runs import router as quality_analysis_runs_router
 from api.readiness_registry import router as readiness_registry_router
 from api.reference_engine import router as reference_engine_router
@@ -161,8 +158,9 @@ app.include_router(protection_analysis_runs_router, prefix="/api")
 # wczesniej odstawiony w SWIADOMIE_ODSTAWIONE (router_mount_guard.py) do czasu
 # decyzji D10 (docs/uiux/DECYZJE_ARCHITEKTONICZNE_2026-08.md) — domkniete.
 app.include_router(protection_coordination_router, prefix="/api")
-# Karta F-K5 (dlug V12K-189): prezentacja nastaw, w tym NIEDOSTEPNYCH, z akcja naprawcza.
-app.include_router(protection_overcurrent_settings_router)
+# Karta F-K5 (V12K-189) skasowana kartą W3-C1 (2026-09): metodyka nastaw
+# nadprądowych jest teraz WYŁĄCZNIE Hoppel/IRiESD (analysis-runs/{id}/nastawy,
+# /nastawy/dopasowanie — router `analysis_runs_router`, montowany niżej).
 # Karta F-K6 (V12K-206): kanoniczny rejestr kodow gotowosci jako jedno zrodlo tresci.
 app.include_router(readiness_registry_router)
 app.include_router(reference_patterns_router)

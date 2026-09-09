@@ -726,35 +726,17 @@ class TestGoldenNetworkIntegration:
 # razem z kasowanym opakowaniem.
 
 
-# ============================================================================
-# TestEnvelopeAdapter
-# ============================================================================
-
-
-class TestEnvelopeAdapter:
-    """Run envelope adapter for energy validation."""
-
-    def test_creates_envelope(self):
-        from application.analyses.energy_validation.envelope_adapter import (
-            to_run_envelope,
-        )
-
-        graph = _build_simple_graph()
-        pf = _build_pf_result(
-            node_voltage_kv={"slack": 110.0, "bus-a": 109.5, "bus-b": 14.8},
-            branch_current_ka={"line-1": 0.1},
-        )
-        view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
-        envelope = to_run_envelope(view, run_id="ev-run-001")
-        assert envelope.analysis_type == "energy_validation.v0"
-        assert envelope.run_id == "ev-run-001"
-        assert len(envelope.fingerprint) == 64
-
-    def test_registered_in_registry(self):
-        from application.analyses.run_registry import get_run_envelope_adapter
-
-        adapter = get_run_envelope_adapter("energy_validation.v0")
-        assert adapter is not None
+# TestEnvelopeAdapter (karta W3-C1, 2026-09): skasowana razem z
+# `application/analyses/run_envelope.py` / `run_registry.py` /
+# `energy_validation/envelope_adapter.py`. `AnalysisRunEnvelope` mial CZTERY
+# adaptery (iec60909, energy_validation, protection.overcurrent.v0,
+# protection.device_mapping.v0); po kasacji V12K-189 (overcurrent + device
+# mapping) pozostale dwa (iec60909, energy_validation) mialy JEDYNEGO wolajacego
+# — `run_registry.get_run_envelope_adapter` — a TEN mial jedynego wolajacego w
+# TYM WLASNIE tescie (zero konsumentow produkcyjnych, zmierzone grepem po
+# `backend/src`). Caly ekosystem koperty biegu byl drugą, nigdy nieuzywaną
+# prawdą o wyniku analizy — fizyka (widok `EnergyValidationBuilder` powyzej)
+# nie ginie razem z opakowaniem, ktore jej nie mialo komu doniesc.
 
 
 # ============================================================================

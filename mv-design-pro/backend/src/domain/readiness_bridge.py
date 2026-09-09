@@ -266,7 +266,22 @@ KODY_KANONU_ZAREZERWOWANE: dict[str, str] = {
     "protection.vt_required": "Brak emitera: wymog VT sprawdzany w kreatorze pola, nie w walidacji ENM.",
     "protection.settings_incomplete": (
         "Zastapiony przez `protection.nominal_current_missing` i "
-        "`protection.fault_current_missing` (V12K-189) — te maja emitery."
+        "`protection.fault_current_missing` (V12K-189) — kasacja W3-C1 (2026-09) "
+        "usunela ICH JEDYNY emiter razem z metodyka V12K-189 (`application/analyses"
+        "/protection/overcurrent/**`); metodyka nastaw nadpradowych jest odtad "
+        "wylacznie Hoppel/IRiESD (`application/protection_settings/`), ktora nie "
+        "uzywa kodow gotowosci — brak danych wejscia konczy sie jawnym powodem PL "
+        "(`BrakDanychNastawError`), nie kodem kanonu."
+    ),
+    "protection.nominal_current_missing": (
+        "Brak emitera po kasacji V12K-189 (karta W3-C1, 2026-09): jedynym emiterem "
+        "byl `application/analyses/protection/overcurrent/calculator.py`, skasowany "
+        "razem z cala metodyka — kanon nastaw jest odtad Hoppel/IRiESD, ktora nie "
+        "raportuje brakow kodami gotowosci (patrz `protection.settings_incomplete`)."
+    ),
+    "protection.fault_current_missing": (
+        "Brak emitera po kasacji V12K-189 (karta W3-C1, 2026-09) — jak "
+        "`protection.nominal_current_missing` powyzej."
     ),
     "ring.endpoints_missing": "Brak emitera: warunek sprawdzany przy operacji domykania pierscienia.",
     "ring.nop_required": "Emiter przez odwzorowanie kodu walidatora I005 (nie literal w kodzie).",

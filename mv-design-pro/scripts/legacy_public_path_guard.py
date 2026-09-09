@@ -454,6 +454,53 @@ FORBIDDEN_W3A_FUNCTION_NAMES = {
     "calculate_tcc_curve",
 }
 
+# Karta W3-C1 (2026-09-09) — bramka wskrzeszenia KASACJI V12K-189. Metodyka nastaw
+# nadprądowych I>/I>> miała TRZY implementacje (rejestr klasy „Metodyka nastaw x3",
+# karta W3 §0.2): Hoppel/IRiESD (`application/protection_settings/`, KANON — zostaje
+# bez zmian), V12K-189 (`application/analyses/protection/overcurrent/**`,
+# `api/protection_overcurrent_settings.py`) i FIX-12D (`line_overcurrent_setting/**`,
+# karta W3-C2, poza zakresem tej bramki). V12K-189 miała ZERO producentów runów
+# `protection.overcurrent.v0` w chwili kasacji (jedyne miejsca `register_run` już
+# usunięte z „drugą prawdą" — `fault_scenario_service.py`) i ZERO konsumentów
+# frontendu (`SekcjaNastaw.tsx` zawsze dostawał 404, zmierzone grepem po
+# `frontend/src`) — skasowana CAŁA, razem z jedynym torem doboru aparatu, który z
+# niej czytał (`catalog/pipeline.py::run_device_mapping_v0`, `protection.device_
+# mapping.v0`). Kasacja odsłoniła DRUGI poziom martwego kodu: ekosystem koperty
+# biegu (`AnalysisRunEnvelope`, `run_registry.get_run_envelope_adapter`) miał
+# WYŁĄCZNIE te dwa adaptery plus iec60909/energy_validation — a TE dwa miały
+# jedynego wołającego w `run_registry.py` samym, który miał jedynego wołającego w
+# JEDNYM teście (zero konsumentów produkcyjnych, zmierzone grepem) — więc cały
+# ekosystem (`run_envelope.py`, `run_registry.py`, cztery `envelope_adapter.py`,
+# `run_index.py::index_run`) zszedł razem, tą samą regułą „0 wołań = kasacja".
+# `AnalysisRunIndexEntry` (dataclass, konsument: `infrastructure/persistence
+# /repositories/analysis_run_index_repository.py`) ZOSTAJE — realny, NIEZWIĄZANY
+# konsument. Dobór aparatu jest odtąd CZYSTĄ funkcją (`catalog/pipeline.py::
+# dopasuj_do_aparatu`) na wymaganiu z Hoppela (`catalog/mapper.py::
+# wymaganie_z_nastaw`), bez koperty/indeksu/persystencji.
+W3C1_OVERCURRENT_RELATIVE_PATHS: dict[str, str] = {
+    "application/analyses/protection/overcurrent": "metodyka nastaw V12K-189 (kalkulator, pipeline, prezentacja)",
+    "api/protection_overcurrent_settings.py": "trasa prezentacyjna V12K-189 (GET /api/protection/overcurrent-settings)",
+    "application/analyses/run_registry.py": "rejestr adapterów koperty biegu (0 wołających poza tym samym torem)",
+    "application/analyses/run_envelope.py": "koperta biegu AnalysisRunEnvelope (0 konsumentów po kasacji V12K-189)",
+    "application/analyses/iec60909/envelope_adapter.py": "adapter koperty iec60909 (jedyny wołający: run_registry.py)",
+    "application/analyses/energy_validation/envelope_adapter.py": "adapter koperty energy_validation (jedyny wołający: run_registry.py)",
+    "application/analyses/protection/catalog/envelope_adapter.py": "adapter koperty doboru aparatu (protection.device_mapping.v0)",
+}
+FORBIDDEN_W3C1_NAMES: frozenset[str] = frozenset(
+    {
+        "compute_overcurrent_settings",
+        "OvercurrentSettingsV0",
+        "OvercurrentConfigV0",
+        "run_overcurrent_v0",
+        "run_overcurrent_skeleton",
+        "run_device_mapping_v0",
+        "get_run_envelope_adapter",
+        "RUN_ENVELOPE_ADAPTERS",
+        "AnalysisRunEnvelope",
+        "fingerprint_envelope",
+    }
+)
+
 
 def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8", errors="ignore")
@@ -977,6 +1024,47 @@ def check_w3a_second_engine_resurrection() -> list[str]:
     return violations
 
 
+def check_w3c1_overcurrent_resurrection() -> list[str]:
+    """W3-C1 (2026-09-09): kasacja V12K-189 (metodyka nastaw nadprądowych, patrz
+    komentarz przy `W3C1_OVERCURRENT_RELATIVE_PATHS`) — jedyna metodyka jest
+    Hoppel/IRiESD (`application/protection_settings/`, NIE dotknięta, bez wpisu
+    tutaj). Sprawdzane: (1) żaden z plików/katalogów W3-C1 nie istnieje,
+    (2) żadna nazwa z `FORBIDDEN_W3C1_NAMES` nie wraca jako DEFINICJA (klasa,
+    funkcja, przypisanie modułowe) gdziekolwiek w `backend/src`."""
+    violations: list[str] = []
+    for rel, label in W3C1_OVERCURRENT_RELATIVE_PATHS.items():
+        path = BACKEND_SRC_DIR / rel
+        if zrodlo_istnieje(path):
+            violations.append(f"[resurrected-module] backend/src/{rel}: {label} (usunięty w W3-C1)")
+    if not BACKEND_SRC_DIR.exists():
+        return violations
+    for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        rel_path = (
+            py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
+        )
+        for node in ast.walk(tree):
+            nazwa: str | None = None
+            rodzaj = "definicja"
+            if isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
+                nazwa = node.name
+                rodzaj = "klasa/funkcja"
+            elif isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name) and target.id in FORBIDDEN_W3C1_NAMES:
+                        violations.append(
+                            f"[resurrected-name] {rel_path}:{node.lineno}: "
+                            f"{target.id} (V12K-189, usunięty w W3-C1) nie może wrócić"
+                        )
+                continue
+            if nazwa is not None and nazwa in FORBIDDEN_W3C1_NAMES:
+                violations.append(
+                    f"[resurrected-name] {rel_path}:{node.lineno}: {rodzaj} {nazwa} "
+                    "(V12K-189, usunięty w W3-C1) nie może wrócić"
+                )
+    return violations
+
+
 def main() -> int:
     violations = (
         check_legacy_public_paths()
@@ -990,6 +1078,7 @@ def main() -> int:
         + check_k2_reference_networks_resurrection()
         + check_w3d_source_compliance_resurrection()
         + check_w3a_second_engine_resurrection()
+        + check_w3c1_overcurrent_resurrection()
     )
     if violations:
         print("legacy-public-path-guard: FAILED")
