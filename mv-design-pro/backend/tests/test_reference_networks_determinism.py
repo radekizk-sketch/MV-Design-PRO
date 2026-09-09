@@ -8,17 +8,18 @@ Zgodnie z wymaganiami:
 - stabilnosc snapshot_hash
 """
 
-import hashlib
-import json
 from typing import Any
 
-
-def _canonical_json(data: Any) -> str:
-    return json.dumps(data, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+from enm.hash import hash_migawki_enm
 
 
 def _snapshot_hash(enm: dict[str, Any]) -> str:
-    return hashlib.sha256(_canonical_json(enm).encode("utf-8")).hexdigest()
+    """Odcisk migawki TĄ SAMĄ regułą co produkcja (``enm.hash.hash_migawki_enm``:
+    bez ``id`` elementów, bez pól zmiennych nagłówka, pola addytywne ``None`` poza
+    haszem). Do CV-4.3 K7 fikstury liczyły własny SHA-256 pełnego zrzutu — drugą
+    prawdę o odcisku, którą każde nowe pole modelu (K7: ``sk3_min_mva`` = ``None``)
+    przestawiało niezależnie od reguły produkcyjnej."""
+    return hash_migawki_enm(enm)
 
 
 class TestGoldenNetworkDeterminism:

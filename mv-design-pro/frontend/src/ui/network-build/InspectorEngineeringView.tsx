@@ -1807,6 +1807,14 @@ function buildSemanticGpzSections(
         { key: 'rx_ratio', label: 'Stosunek R/X', value: source.rx_ratio ?? null },
         { key: 'r_ohm', label: 'Rezystancja R', value: source.r_ohm ?? null, unit: 'ohm' },
         { key: 'x_ohm', label: 'Reaktancja X', value: source.x_ohm ?? null, unit: 'ohm' },
+        // CV-4.3 K7: dane scenariusza MIN (warunki przyłączenia OSD) — brak = scenariusz
+        // MIN biegu liczony z danych MAX z jawnym założeniem source.sk_min_missing.
+        { key: 'sk3_min_mva', label: 'Moc zwarciowa Sk3 (MIN)', value: source.sk3_min_mva ?? null, unit: 'MVA' },
+        { key: 'ik3_min_ka', label: 'Prąd zwarciowy Ik3 (MIN)', value: source.ik3_min_ka ?? null, unit: 'kA' },
+        { key: 'rx_ratio_min', label: 'Stosunek R/X (MIN)', value: source.rx_ratio_min ?? null },
+        // CV-4.3 K7c: napięcie zadane szyny bilansującej — brak = znamionowe
+        // (1,0 p.u.), zero fabrykacji.
+        { key: 'u_set_pu', label: 'Napięcie zadane szyny bilansującej', value: source.u_set_pu ?? null, unit: 'pu' },
       ],
     });
     sections.push({
@@ -2247,6 +2255,14 @@ function buildSectionsForElement(
         { key: 'rx_ratio', label: 'Stosunek R/X', value: source.rx_ratio ?? null },
         { key: 'r_ohm', label: 'Rezystancja R', value: source.r_ohm ?? null, unit: 'Ω' },
         { key: 'x_ohm', label: 'Reaktancja X', value: source.x_ohm ?? null, unit: 'Ω' },
+        // CV-4.3 K7: dane scenariusza MIN (warunki przyłączenia OSD) — brak = scenariusz
+        // MIN biegu liczony z danych MAX z jawnym założeniem source.sk_min_missing.
+        { key: 'sk3_min_mva', label: 'Moc zwarciowa Sk3 (MIN)', value: source.sk3_min_mva ?? null, unit: 'MVA' },
+        { key: 'ik3_min_ka', label: 'Prąd zwarciowy Ik3 (MIN)', value: source.ik3_min_ka ?? null, unit: 'kA' },
+        { key: 'rx_ratio_min', label: 'Stosunek R/X (MIN)', value: source.rx_ratio_min ?? null },
+        // CV-4.3 K7c: napięcie zadane szyny bilansującej — brak = znamionowe
+        // (1,0 p.u.), zero fabrykacji.
+        { key: 'u_set_pu', label: 'Napięcie zadane szyny bilansującej', value: source.u_set_pu ?? null, unit: 'pu' },
       ],
     });
     sections.push({

@@ -5088,8 +5088,99 @@
     "title": "GenerateAudit2ReportRequest",
     "type": "object"
    },
+   "GridSourcePreviewMinResponse": {
+    "description": "Blok scenariusza MIN podglądu (CV-4.3 K7): te same wielkości co dla MAX, policzone\nzamrożonym solverem podglądu z S''_kQmin (albo S''_kQmin = √3·U·I''_kQmin dla danych\nprądowych) i R/X = rx_ratio_min → rx_ratio.",
+    "properties": {
+     "ik1_ka": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ik1 Ka"
+     },
+     "ik3_ka": {
+      "title": "Ik3 Ka",
+      "type": "number"
+     },
+     "ip_ka": {
+      "title": "Ip Ka",
+      "type": "number"
+     },
+     "ith_ka": {
+      "title": "Ith Ka",
+      "type": "number"
+     },
+     "kappa": {
+      "title": "Kappa",
+      "type": "number"
+     },
+     "rx_ratio_zrodlo": {
+      "enum": [
+       "MODEL_MIN",
+       "MODEL_MAX"
+      ],
+      "title": "Rx Ratio Zrodlo",
+      "type": "string"
+     },
+     "sk_mva": {
+      "title": "Sk Mva",
+      "type": "number"
+     },
+     "tryb_danych": {
+      "enum": [
+       "MOC_ZWARCIOWA",
+       "PRAD_ZWARCIOWY"
+      ],
+      "title": "Tryb Danych",
+      "type": "string"
+     },
+     "z0_ohm": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ComplexOhmResponse"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "z1_ohm": {
+      "$ref": "#/components/schemas/ComplexOhmResponse"
+     }
+    },
+    "required": [
+     "sk_mva",
+     "ik3_ka",
+     "ik1_ka",
+     "ip_ka",
+     "ith_ka",
+     "kappa",
+     "z1_ohm",
+     "z0_ohm",
+     "tryb_danych",
+     "rx_ratio_zrodlo"
+    ],
+    "title": "GridSourcePreviewMinResponse",
+    "type": "object"
+   },
    "GridSourcePreviewRequest": {
     "properties": {
+     "ik3_min_ka": {
+      "anyOf": [
+       {
+        "exclusiveMinimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ik3 Min Ka"
+     },
      "r0_ohm": {
       "anyOf": [
        {
@@ -5126,6 +5217,18 @@
       ],
       "title": "Rx Ratio"
      },
+     "rx_ratio_min": {
+      "anyOf": [
+       {
+        "minimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rx Ratio Min"
+     },
      "short_circuit_mode": {
       "default": "SHORT_CIRCUIT_POWER",
       "enum": [
@@ -5134,6 +5237,18 @@
       ],
       "title": "Short Circuit Mode",
       "type": "string"
+     },
+     "sk3_min_mva": {
+      "anyOf": [
+       {
+        "exclusiveMinimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sk3 Min Mva"
      },
      "sk3_mva": {
       "anyOf": [
@@ -5244,6 +5359,16 @@
      "kappa": {
       "title": "Kappa",
       "type": "number"
+     },
+     "scenariusz_min": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/GridSourcePreviewMinResponse"
+       },
+       {
+        "type": "null"
+       }
+      ]
      },
      "sk_mva": {
       "title": "Sk Mva",

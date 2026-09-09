@@ -525,17 +525,26 @@ class MaterializationContract:
 
     solver_fields: tuple of field names copied for solver use
     ui_fields: tuple of (field_name, display_label_pl, unit) for UI preview
+    pola_opcjonalne: podzbiór ``solver_fields`` DODANY PO ZAMROŻENIU odcisków —
+        kopiowany do ``materialized_params`` WYŁĄCZNIE, gdy pozycja katalogu niesie
+        wartość (kontrakt „addytywnie, ``exclude_none``”). ``None`` w katalogu = dana
+        nieznana i NIE jest treścią migawki: bez tej reguły każde nowe pole kontraktu
+        wpisywałoby ``None`` do ``materialized_params`` każdego istniejącego elementu
+        i przestawiało odciski modeli (pomiar CV-4.3 K7: odciski widoku N-1 sieci
+        gn01/gn03 zmieniały się bez żadnej zmiany danych).
     """
 
     namespace: str
     solver_fields: tuple[str, ...]
     ui_fields: tuple[tuple[str, str, str], ...]
+    pola_opcjonalne: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "namespace": self.namespace,
             "solver_fields": list(self.solver_fields),
             "ui_fields": [{"field": f, "label_pl": lbl, "unit": u} for f, lbl, u in self.ui_fields],
+            "pola_opcjonalne": list(self.pola_opcjonalne),
         }
 
 
@@ -3490,6 +3499,12 @@ class SourceSystemType:
     sk3_mva: float | None = None
     ik3_ka: float | None = None
     rx_ratio: float | None = None
+    # CV-4.3 K7: dane scenariusza MIN z warunków przyłączenia (IEC 60909-0:2016 eq. 6 z
+    # c_min). None = OSD nie podał — zero fabrykacji; bieg MIN liczy wtedy z danych MAX
+    # z jawnym założeniem ``source.sk_min_missing``.
+    sk3_min_mva: float | None = None
+    ik3_min_ka: float | None = None
+    rx_ratio_min: float | None = None
     earthing_system: str | None = None
     short_circuit_model: str = "short_circuit_power"
     operator_name: str | None = None
@@ -3512,6 +3527,9 @@ class SourceSystemType:
             "sk3_mva": self.sk3_mva,
             "ik3_ka": self.ik3_ka,
             "rx_ratio": self.rx_ratio,
+            "sk3_min_mva": self.sk3_min_mva,
+            "ik3_min_ka": self.ik3_min_ka,
+            "rx_ratio_min": self.rx_ratio_min,
             "earthing_system": self.earthing_system,
             "short_circuit_model": self.short_circuit_model,
             "operator_name": self.operator_name,
@@ -3538,6 +3556,13 @@ class SourceSystemType:
             sk3_mva=(float(data["sk3_mva"]) if data.get("sk3_mva") is not None else None),
             ik3_ka=(float(data["ik3_ka"]) if data.get("ik3_ka") is not None else None),
             rx_ratio=(float(data["rx_ratio"]) if data.get("rx_ratio") is not None else None),
+            sk3_min_mva=(
+                float(data["sk3_min_mva"]) if data.get("sk3_min_mva") is not None else None
+            ),
+            ik3_min_ka=(float(data["ik3_min_ka"]) if data.get("ik3_min_ka") is not None else None),
+            rx_ratio_min=(
+                float(data["rx_ratio_min"]) if data.get("rx_ratio_min") is not None else None
+            ),
             earthing_system=data.get("earthing_system"),
             short_circuit_model=str(data.get("short_circuit_model", "short_circuit_power")),
             operator_name=data.get("operator_name"),
@@ -4153,13 +4178,26 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
     ),
     CatalogNamespace.ZRODLO_SN.value: MaterializationContract(
         namespace=CatalogNamespace.ZRODLO_SN.value,
-        solver_fields=("voltage_rating_kv", "sk3_mva", "ik3_ka", "rx_ratio"),
+        # CV-4.3 K7: dane scenariusza MIN materializowane TĄ SAMĄ drogą co MAX.
+        solver_fields=(
+            "voltage_rating_kv",
+            "sk3_mva",
+            "ik3_ka",
+            "rx_ratio",
+            "sk3_min_mva",
+            "ik3_min_ka",
+            "rx_ratio_min",
+        ),
         ui_fields=(
             ("voltage_rating_kv", "Un [kV]", "kV"),
             ("sk3_mva", "Sk3 [MVA]", "MVA"),
             ("ik3_ka", "Ik3 [kA]", "kA"),
             ("rx_ratio", "R/X", ""),
+            ("sk3_min_mva", "Sk3 min [MVA]", "MVA"),
+            ("ik3_min_ka", "Ik3 min [kA]", "kA"),
+            ("rx_ratio_min", "R/X min", ""),
         ),
+        pola_opcjonalne=("sk3_min_mva", "ik3_min_ka", "rx_ratio_min"),
     ),
     CatalogNamespace.ZRODLO_NN_PV.value: MaterializationContract(
         namespace=CatalogNamespace.ZRODLO_NN_PV.value,

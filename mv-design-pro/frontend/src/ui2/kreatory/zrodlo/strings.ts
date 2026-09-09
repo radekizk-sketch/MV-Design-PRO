@@ -52,6 +52,30 @@ export const ZRODLO_STRINGS = {
   rxPomoc: 'Stosunek rezystancji do reaktancji źródła (IEC 60909). Wpływa na prąd udarowy ip.',
   czasCieplny: 'Czas cieplny tk',
 
+  // Scenariusz MIN (CV-4.3 K7): warunki przyłączenia OSD — minimalna moc/prąd zwarciowy.
+  zwarcieMinTytul: 'Scenariusz MIN (warunki przyłączenia OSD)',
+  zwarcieMinOpis:
+    'Warunki przyłączenia OSD — minimalna moc zwarciowa; brak = scenariusz MIN liczony '
+    + 'z danych maksymalnych (założenie niekonserwatywne dla czułości zabezpieczeń).',
+  sk3Min: 'Sk″min',
+  sk3MinPomoc:
+    'Minimalna symetryczna moc zwarciowa 3-faz (IEC 60909-0 §6.2.1, c_min). Podaj Sk″min '
+    + 'albo Ik″min — jedno wystarczy.',
+  ik3Min: 'Ik″min',
+  ik3MinPomoc: 'Minimalny prąd zwarciowy 3-faz — alternatywa dla Sk″min, gdy OSD podaje prąd, nie moc.',
+  rxMin: 'Stosunek R/X (MIN)',
+  rxMinPomoc:
+    'Stosunek R/X dla scenariusza MIN. Wymaga podanego Sk″min albo Ik″min — bez nich '
+    + 'nie ma zastosowania (scenariusz MIN liczony z danych maksymalnych).',
+
+  // Napięcie zadane szyny bilansującej (CV-4.3 K7c) — niezależne od scenariusza MIN.
+  uSetPu: 'Napięcie zadane szyny bilansującej',
+  uSetPuPomoc:
+    'Po co: nastawa modułu napięcia szyny bilansującej (MATPOWER Vm węzła slack) '
+    + '— punkt startowy i referencja rozpływu mocy całej sieci SN. Z czego: warunki '
+    + 'przyłączenia OSD albo profil pracy sieci nadrzędnej. Puste = znamionowe '
+    + '(1,0 p.u.). Pasmo dopuszczalne: 0,8–1,2 p.u.',
+
   // Parametry normowe.
   normyTytul: 'Parametry normowe',
   norma: 'Norma obliczeniowa',
@@ -88,6 +112,16 @@ export const ZRODLO_STRINGS = {
   podsumIth: 'Ith (3-faz., tk)',
   podsumZ1: 'Z1 źródła',
   podsumZ0: 'Z0 źródła',
+  // Scenariusz MIN (CV-4.3 K7) — te same wielkości co powyżej, policzone z danych MIN
+  // (renderowane WYŁĄCZNIE gdy backend zwrócił blok `scenariusz_min`, zero fabrykacji).
+  podsumSkMin: 'Sk″ (SN, min.)',
+  podsumIk3Min: 'Ik″ (3-faz. min.)',
+  podsumIk1Min: 'Ik″ (1-faz. min.)',
+  podsumKappaMin: 'κ (min.)',
+  podsumIpMin: 'ip (3-faz. min.)',
+  podsumIthMin: 'Ith (3-faz. min., tk)',
+  podsumZ1Min: 'Z1 źródła (min.)',
+  podsumZ0Min: 'Z0 źródła (min.)',
   podsumZrodlo: 'Źródło wyników',
   podsumZrodloWartosc: 'Obliczenie IEC 60909 po stronie serwera',
   podsumBrak: 'nie wyznaczono',

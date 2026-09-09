@@ -156,3 +156,93 @@ class TestWizardValidator:
     def test_load_flow_available_for_complete(self):
         result = validate_wizard_state(_complete_enm())
         assert result.readiness_matrix.load_flow.available is True
+
+
+# ---------------------------------------------------------------------------
+# CV-4.3 K7: K2 parytet z bramką domenową E008 (`sources.no_short_circuit_params`) —
+# źródło bez Sk''/Ik''/R+jX nie jest "complete", nawet gdy istnieje w modelu.
+# Iloczyn cech: {brak wszystkich danych, tylko Sk'', tylko Ik'', tylko R+jX} ×
+# {jedno źródło, wiele źródeł (jedno dobre + jedno złe)}.
+# ---------------------------------------------------------------------------
+
+
+def _enm_z_zrodlem(**pola_zrodla) -> dict:
+    enm = _empty_enm()
+    enm["header"]["name"] = "Test K2"
+    enm["buses"] = [
+        {
+            "id": "1",
+            "ref_id": "bus_sn_main",
+            "name": "Szyna SN",
+            "tags": ["source"],
+            "meta": {},
+            "voltage_kv": 15,
+            "phase_system": "3ph",
+        },
+    ]
+    enm["sources"] = [
+        {
+            "id": "2",
+            "ref_id": "src_grid",
+            "name": "Siec",
+            "tags": [],
+            "meta": {},
+            "bus_ref": "bus_sn_main",
+            "model": "short_circuit_power",
+            **pola_zrodla,
+        },
+    ]
+    return enm
+
+
+class TestWizardValidatorK2ParametryZwarciowe:
+    def test_zrodlo_bez_zadnych_danych_zwarciowych_jest_blokerem(self):
+        result = validate_wizard_state(_enm_z_zrodlem())
+        k2 = next(s for s in result.steps if s.step_id == "K2")
+        assert k2.status == "error"
+        assert any(i.code == "K2_SOURCE_NO_SHORT_CIRCUIT_PARAMS" for i in k2.issues)
+        blokery = [i for i in k2.issues if i.code == "K2_SOURCE_NO_SHORT_CIRCUIT_PARAMS"]
+        assert blokery[0].severity == "BLOCKER"
+        assert blokery[0].element_ref == "src_grid"
+        assert blokery[0].wizard_step_hint == "K2"
+
+    def test_zrodlo_z_sama_moca_zwarciowa_jest_complete(self):
+        result = validate_wizard_state(_enm_z_zrodlem(sk3_mva=250, rx_ratio=0.1))
+        k2 = next(s for s in result.steps if s.step_id == "K2")
+        assert k2.status == "complete"
+        assert not any(i.code == "K2_SOURCE_NO_SHORT_CIRCUIT_PARAMS" for i in k2.issues)
+
+    def test_zrodlo_z_samym_pradem_zwarciowym_jest_complete(self):
+        """CV-4.3 K7: samo Ik'' (tryb prądowy) jest daną wystarczającą — TEN SAM
+        predykat (`enm.zrodlo_zwarcie.tryb_danych`), którym mapper uznaje źródło
+        za policzalne."""
+        result = validate_wizard_state(_enm_z_zrodlem(ik3_ka=9.6, rx_ratio=0.1))
+        k2 = next(s for s in result.steps if s.step_id == "K2")
+        assert k2.status == "complete"
+        assert not any(i.code == "K2_SOURCE_NO_SHORT_CIRCUIT_PARAMS" for i in k2.issues)
+
+    def test_zrodlo_z_impedancja_jawna_jest_complete(self):
+        result = validate_wizard_state(_enm_z_zrodlem(r_ohm=0.09, x_ohm=0.9))
+        k2 = next(s for s in result.steps if s.step_id == "K2")
+        assert k2.status == "complete"
+        assert not any(i.code == "K2_SOURCE_NO_SHORT_CIRCUIT_PARAMS" for i in k2.issues)
+
+    def test_jedno_zle_zrodlo_wsrod_wielu_jest_wykryte_po_ref_id(self):
+        enm = _enm_z_zrodlem(sk3_mva=250, rx_ratio=0.1)
+        enm["sources"].append(
+            {
+                "id": "3",
+                "ref_id": "src_bad",
+                "name": "Zle zrodlo",
+                "tags": [],
+                "meta": {},
+                "bus_ref": "bus_sn_main",
+                "model": "short_circuit_power",
+            }
+        )
+        result = validate_wizard_state(enm)
+        k2 = next(s for s in result.steps if s.step_id == "K2")
+        assert k2.status == "error"
+        blokery = [i for i in k2.issues if i.code == "K2_SOURCE_NO_SHORT_CIRCUIT_PARAMS"]
+        assert len(blokery) == 1
+        assert blokery[0].element_ref == "src_bad"

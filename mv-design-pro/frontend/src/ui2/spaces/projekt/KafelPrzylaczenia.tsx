@@ -153,16 +153,41 @@ export function KafelPrzylaczenia({ dane }: { dane: PrzylaczenieKafel }) {
                 {fmtLiczbaPL(glowne.napiecieKv, 1)} {PULPIT_STRINGS.jednKv}
               </span>
             </KafelWiersz>
-            <KafelWiersz etykieta={PULPIT_STRINGS.przylaczenieSk}>
+            {/* CV-4.3 K7: „Sk″maks / Sk″min" gdy scenariusz MIN podany, samo „Sk″"
+                gdy nie (bez fabrykacji) — ta sama reguła dla Ik″. */}
+            <KafelWiersz etykieta={glowne.sk3MinMva !== null ? PULPIT_STRINGS.przylaczenieSkMaks : PULPIT_STRINGS.przylaczenieSk}>
               <span className="mvd-num" data-testid="pulpit-przylaczenie-sk">
                 {fmtLiczbaPL(glowne.sk3Mva, 0)} {PULPIT_STRINGS.jednMva}
               </span>
             </KafelWiersz>
-            <KafelWiersz etykieta={PULPIT_STRINGS.przylaczenieIk}>
+            {glowne.sk3MinMva !== null && (
+              <KafelWiersz etykieta={PULPIT_STRINGS.przylaczenieSkMin}>
+                <span className="mvd-num" data-testid="pulpit-przylaczenie-sk-min">
+                  {fmtLiczbaPL(glowne.sk3MinMva, 0)} {PULPIT_STRINGS.jednMva}
+                </span>
+              </KafelWiersz>
+            )}
+            <KafelWiersz etykieta={glowne.ik3MinKa !== null ? PULPIT_STRINGS.przylaczenieIkMaks : PULPIT_STRINGS.przylaczenieIk}>
               <span className="mvd-num">
                 {fmtLiczbaPL(glowne.ik3Ka, 2)} {PULPIT_STRINGS.jednKa}
               </span>
             </KafelWiersz>
+            {glowne.ik3MinKa !== null && (
+              <KafelWiersz etykieta={PULPIT_STRINGS.przylaczenieIkMin}>
+                <span className="mvd-num" data-testid="pulpit-przylaczenie-ik-min">
+                  {fmtLiczbaPL(glowne.ik3MinKa, 2)} {PULPIT_STRINGS.jednKa}
+                </span>
+              </KafelWiersz>
+            )}
+            {/* CV-4.3 K7c: napięcie zadane szyny bilansującej — wiersz WYŁĄCZNIE
+                gdy źródło je niesie (zero fabrykacji), ta sama reguła co MIN wyżej. */}
+            {glowne.uSetPu !== null && (
+              <KafelWiersz etykieta={PULPIT_STRINGS.przylaczenieUZadane}>
+                <span className="mvd-num" data-testid="pulpit-przylaczenie-u-zadane">
+                  {fmtLiczbaPL(glowne.uSetPu, 3)} {PULPIT_STRINGS.jednPu}
+                </span>
+              </KafelWiersz>
+            )}
           </div>
           {dane.zrodlaSieciowe.length > 1 && (
             <p className="mvd-kafel-uwaga" data-testid="pulpit-przylaczenie-wiele">

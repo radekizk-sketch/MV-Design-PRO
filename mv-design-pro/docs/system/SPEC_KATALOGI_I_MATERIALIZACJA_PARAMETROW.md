@@ -25,7 +25,7 @@ Stan aktywny:
 Materializacja:
 - dla odcinkow SN `continue_trunk_segment_sn`, `start_branch_segment_sn` i `connect_secondary_ring_sn` zapisuje `materialized_params` na elemencie oraz kopiuje pola solverowe do instancji,
 - dla transformatorow `insert_station_on_segment_sn`, `add_transformer_sn_nn` i `assign_catalog_to_element` zapisuje `materialized_params` oraz pola `sn_mva`, `uk_percent`, `uhv_kv`, `ulv_kv`,
-- dla zrodel SN `add_grid_source_sn` zapisuje `materialized_params` oraz pola solverowe `voltage_kv`, `sk3_mva`, `ik3_ka`, `rx_ratio`,
+- dla zrodel SN `add_grid_source_sn` zapisuje `materialized_params` oraz pola solverowe `voltage_rating_kv`, `sk3_mva`, `ik3_ka`, `rx_ratio` (scenariusz MAX) oraz `sk3_min_mva`, `ik3_min_ka`, `rx_ratio_min` (scenariusz MIN, CV-4.3 K7, IEC 60909-0:2016 §6.2.1 eq. 6 z c_min — 3 pola opcjonalne, `None` = OSD nie podal danych warunkow przylaczenia dla scenariusza minimalnego; razem 7 pol solverowych),
 - dla PV i BESS materializacja jest wykonywana w `domain_operations_v2.py` i utrwalana na generatorze,
 - `assign_catalog_to_element` wykonuje rematerializacje dla branches, transformers i sources; proba usuniecia katalogu z elementu technicznego zwraca `catalog.clear_forbidden`,
 - odpowiedz operacji domenowej zwraca dodatkowo przekroj `materialized_params` dla UI,

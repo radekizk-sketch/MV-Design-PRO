@@ -288,6 +288,13 @@ def _apply_k2(enm: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
         "tags": [],
         "meta": {},
     }
+    # CV-4.3 K7: ik3_ka i dane scenariusza MIN (sk3_min_mva/ik3_min_ka/rx_ratio_min) — BEZ
+    # domyślnych wartości (zero fabrykacji): klucz trafia do źródła TYLKO, gdy krok kreatora
+    # go podał. `sk3_mva`/`rx_ratio` powyżej mają dług przed K7 (domyślne 250/0.1, zapadka
+    # guarda podstawień) — kasacja toru kreatora osobną kartą CV-4.4, nie tutaj.
+    for pole in ("ik3_ka", "sk3_min_mva", "ik3_min_ka", "rx_ratio_min"):
+        if pole in data:
+            src_data[pole] = data[pole]
     if si is not None:
         sources[si] = {**sources[si], **src_data}
     else:

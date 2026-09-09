@@ -1,0 +1,302 @@
+{
+  "110-15 bez danych MIN (zalozenie)": {
+    "enm": {
+      "input_hash": "4e43f0898d4d7f8dc6cc3e3a83906d508e1463aeb11f372086a63812a48a2c50",
+      "name": "k7-pandapower-110-15"
+    },
+    "lv_tol_percent": 6,
+    "most": {
+      "sha256": "df558ad01ced648b1ca3ffc81c9989a53100cb843e97d607e139f171de698ffa",
+      "wersja": "2"
+    },
+    "pandapower": "3.5.4",
+    "zrodla": {
+      "s1": {
+        "bus_ref": "hv",
+        "c_max": 1.1,
+        "c_min": 1.0,
+        "deklaracja_enm": {
+          "ik3_ka": null,
+          "ik3_min_ka": null,
+          "r_ohm": null,
+          "rx_ratio": 0.1,
+          "rx_ratio_min": null,
+          "sk3_min_mva": null,
+          "sk3_mva": 4000.0,
+          "x_ohm": null
+        },
+        "ext_grid": {
+          "rx_max": 0.10000000000000002,
+          "rx_min": 0.10000000000000002,
+          "s_sc_max_mva": 4000.0,
+          "s_sc_min_mva": 3636.3636363636356
+        },
+        "slad_mappera": {
+          "MAX": {
+            "c": 1.1,
+            "rx_ratio": 0.1,
+            "rx_ratio_zrodlo": "MODEL",
+            "tryb": "MOC_ZWARCIOWA",
+            "z_q_ohm": {
+              "im": 3.3109862504237393,
+              "re": 0.331098625042374
+            },
+            "zalozenie": null
+          },
+          "MIN": {
+            "c": 1.1,
+            "rx_ratio": 0.1,
+            "rx_ratio_zrodlo": "MODEL",
+            "tryb": "MOC_ZWARCIOWA_MAX_JAKO_MIN",
+            "z_q_ohm": {
+              "im": 3.3109862504237393,
+              "re": 0.331098625042374
+            },
+            "zalozenie": "source.sk_min_missing"
+          }
+        },
+        "u_nq_kv": 110.0
+      }
+    }
+  },
+  "110-15 z Ik''min": {
+    "enm": {
+      "input_hash": "5f7986c0fe19860e16c3d922b2cbec36936092afea3d56905cb000a7b5904a77",
+      "name": "k7-pandapower-110-15"
+    },
+    "lv_tol_percent": 6,
+    "most": {
+      "sha256": "df558ad01ced648b1ca3ffc81c9989a53100cb843e97d607e139f171de698ffa",
+      "wersja": "2"
+    },
+    "pandapower": "3.5.4",
+    "zrodla": {
+      "s1": {
+        "bus_ref": "hv",
+        "c_max": 1.1,
+        "c_min": 1.0,
+        "deklaracja_enm": {
+          "ik3_ka": null,
+          "ik3_min_ka": 13.0,
+          "r_ohm": null,
+          "rx_ratio": 0.1,
+          "rx_ratio_min": null,
+          "sk3_min_mva": null,
+          "sk3_mva": 4000.0,
+          "x_ohm": null
+        },
+        "ext_grid": {
+          "rx_max": 0.10000000000000002,
+          "rx_min": 0.1,
+          "s_sc_max_mva": 4000.0,
+          "s_sc_min_mva": 2476.8326548234945
+        },
+        "slad_mappera": {
+          "MAX": {
+            "c": 1.1,
+            "rx_ratio": 0.1,
+            "rx_ratio_zrodlo": "MODEL",
+            "tryb": "MOC_ZWARCIOWA",
+            "z_q_ohm": {
+              "im": 3.3109862504237393,
+              "re": 0.331098625042374
+            },
+            "zalozenie": null
+          },
+          "MIN": {
+            "c": 1.0,
+            "rx_ratio": 0.1,
+            "rx_ratio_zrodlo": "MODEL_MAX",
+            "tryb": "PRAD_ZWARCIOWY_MIN",
+            "z_q_ohm": {
+              "im": 4.861026835258221,
+              "re": 0.4861026835258221
+            },
+            "zalozenie": null
+          }
+        },
+        "u_nq_kv": 110.0
+      }
+    }
+  },
+  "110-15 z danymi MIN (Sk''min, R/X min)": {
+    "enm": {
+      "input_hash": "f4d9eb189913706f087e7ea1ade901a3c64748b10bc31cbc523a5460007ef756",
+      "name": "k7-pandapower-110-15"
+    },
+    "lv_tol_percent": 6,
+    "most": {
+      "sha256": "df558ad01ced648b1ca3ffc81c9989a53100cb843e97d607e139f171de698ffa",
+      "wersja": "2"
+    },
+    "pandapower": "3.5.4",
+    "zrodla": {
+      "s1": {
+        "bus_ref": "hv",
+        "c_max": 1.1,
+        "c_min": 1.0,
+        "deklaracja_enm": {
+          "ik3_ka": null,
+          "ik3_min_ka": null,
+          "r_ohm": null,
+          "rx_ratio": 0.1,
+          "rx_ratio_min": 0.15,
+          "sk3_min_mva": 2500.0,
+          "sk3_mva": 4000.0,
+          "x_ohm": null
+        },
+        "ext_grid": {
+          "rx_max": 0.10000000000000002,
+          "rx_min": 0.15,
+          "s_sc_max_mva": 4000.0,
+          "s_sc_min_mva": 2500.0
+        },
+        "slad_mappera": {
+          "MAX": {
+            "c": 1.1,
+            "rx_ratio": 0.1,
+            "rx_ratio_zrodlo": "MODEL",
+            "tryb": "MOC_ZWARCIOWA",
+            "z_q_ohm": {
+              "im": 3.3109862504237393,
+              "re": 0.331098625042374
+            },
+            "zalozenie": null
+          },
+          "MIN": {
+            "c": 1.0,
+            "rx_ratio": 0.15,
+            "rx_ratio_zrodlo": "MODEL_MIN",
+            "tryb": "MOC_ZWARCIOWA_MIN",
+            "z_q_ohm": {
+              "im": 4.78645194788256,
+              "re": 0.7179677921823839
+            },
+            "zalozenie": null
+          }
+        },
+        "u_nq_kv": 110.0
+      }
+    }
+  },
+  "nN bez danych MIN": {
+    "enm": {
+      "input_hash": "895fc5e0c1765350e7cb6aca4df617b971b572c463601a245d27bd1b506e71c7",
+      "name": "k7-pandapower-nn"
+    },
+    "lv_tol_percent": 6,
+    "most": {
+      "sha256": "df558ad01ced648b1ca3ffc81c9989a53100cb843e97d607e139f171de698ffa",
+      "wersja": "2"
+    },
+    "pandapower": "3.5.4",
+    "zrodla": {
+      "s_nn": {
+        "bus_ref": "nn",
+        "c_max": 1.05,
+        "c_min": 0.95,
+        "deklaracja_enm": {
+          "ik3_ka": null,
+          "ik3_min_ka": null,
+          "r_ohm": null,
+          "rx_ratio": 0.3,
+          "rx_ratio_min": null,
+          "sk3_min_mva": null,
+          "sk3_mva": 10.0,
+          "x_ohm": null
+        },
+        "ext_grid": {
+          "rx_max": 0.3,
+          "rx_min": 0.3,
+          "s_sc_max_mva": 9.999999999999998,
+          "s_sc_min_mva": 9.047619047619046
+        },
+        "slad_mappera": {
+          "MAX": {
+            "c": 1.05,
+            "rx_ratio": 0.3,
+            "rx_ratio_zrodlo": "MODEL",
+            "tryb": "MOC_ZWARCIOWA",
+            "z_q_ohm": {
+              "im": 0.016091481591715348,
+              "re": 0.004827444477514604
+            },
+            "zalozenie": null
+          },
+          "MIN": {
+            "c": 1.05,
+            "rx_ratio": 0.3,
+            "rx_ratio_zrodlo": "MODEL",
+            "tryb": "MOC_ZWARCIOWA_MAX_JAKO_MIN",
+            "z_q_ohm": {
+              "im": 0.016091481591715348,
+              "re": 0.004827444477514604
+            },
+            "zalozenie": "source.sk_min_missing"
+          }
+        },
+        "u_nq_kv": 0.4
+      }
+    }
+  },
+  "nN z danymi MIN": {
+    "enm": {
+      "input_hash": "0a9e8bd1d80c9b59b8f5fea5fed0d72e49949dfe2db5757386dc466a61ef3ce3",
+      "name": "k7-pandapower-nn"
+    },
+    "lv_tol_percent": 6,
+    "most": {
+      "sha256": "df558ad01ced648b1ca3ffc81c9989a53100cb843e97d607e139f171de698ffa",
+      "wersja": "2"
+    },
+    "pandapower": "3.5.4",
+    "zrodla": {
+      "s_nn": {
+        "bus_ref": "nn",
+        "c_max": 1.05,
+        "c_min": 0.95,
+        "deklaracja_enm": {
+          "ik3_ka": null,
+          "ik3_min_ka": null,
+          "r_ohm": null,
+          "rx_ratio": 0.3,
+          "rx_ratio_min": null,
+          "sk3_min_mva": 6.0,
+          "sk3_mva": 10.0,
+          "x_ohm": null
+        },
+        "ext_grid": {
+          "rx_max": 0.3,
+          "rx_min": 0.3,
+          "s_sc_max_mva": 9.999999999999998,
+          "s_sc_min_mva": 6.0
+        },
+        "slad_mappera": {
+          "MAX": {
+            "c": 1.05,
+            "rx_ratio": 0.3,
+            "rx_ratio_zrodlo": "MODEL",
+            "tryb": "MOC_ZWARCIOWA",
+            "z_q_ohm": {
+              "im": 0.016091481591715348,
+              "re": 0.004827444477514604
+            },
+            "zalozenie": null
+          },
+          "MIN": {
+            "c": 0.95,
+            "rx_ratio": 0.3,
+            "rx_ratio_zrodlo": "MODEL_MAX",
+            "tryb": "MOC_ZWARCIOWA_MIN",
+            "z_q_ohm": {
+              "im": 0.024264932558935838,
+              "re": 0.007279479767680751
+            },
+            "zalozenie": null
+          }
+        },
+        "u_nq_kv": 0.4
+      }
+    }
+  }
+}

@@ -121,12 +121,26 @@ def dodaj_zrodlo_slack(
     rx_ratio: float,
     line_fields_count: int,
     source_name: str = "GPZ",
+    u_set_pu: float | None = None,
 ) -> tuple[dict[str, Any], str]:
     """Dodaj szynę bilansującą jako ekwiwalent ręczny WPROST na jej własnym
     napięciu (`skip_hv_transformer=True` — CV-4.3 K1: sieć referencyjna z
     literatury JEST szczytem modelu, bez nadrzędnego układu 110 kV, którego
     publikacja nie opisuje; zob. uzasadnienie w `enm/domain_operations.py::
     _resolve_manual_source_equivalent`). Zwraca (enm, bus_ref źródła/GPZ).
+
+    ``u_set_pu`` — napięcie zadane szyny bilansującej z literatury (MATPOWER ``Vm``
+    szyny slack / pandapower ``ext_grid.vm_pu``); ``None`` = 1,0 p.u. Do 2026-09-09
+    assembler wpisywał 1,0 każdemu źródłu, więc IEEE case14 (1,06) i case39 (0,982)
+    liczyły się z niewłaściwym napięciem bilansującym (case14: Q generatora B1
+    165 Mvar zamiast 43,6 Mvar z pandapower).
+
+    ``sk3_mva``/``rx_ratio`` — ZAŁOŻENIE JAWNE bliźniaka, nie dana literatury:
+    benchmarki rozpływu mocy (IEEE/MATPOWER/CIGRE) opisują szynę bilansującą jako
+    idealne źródło napięcia bez mocy zwarciowej. Rozpływ mocy tej wartości nie
+    czyta (slack jest idealny); zwarcia liczone na bliźniakach PF są wynikiem
+    tego założenia (parytet asemblera pilnuje ich determinizmu, NIE zgodności z
+    literaturą — literatura nie podaje wyniku).
     """
     enm = wykonaj(
         enm,
@@ -138,6 +152,7 @@ def dodaj_zrodlo_slack(
                 "sk3_mva": sk3_mva,
                 "rx_ratio": rx_ratio,
                 "skip_hv_transformer": True,
+                **({"u_set_pu": u_set_pu} if u_set_pu is not None else {}),
             },
             "line_fields_count": max(line_fields_count, 1),
             "source_name": source_name,
@@ -378,14 +393,19 @@ def dodaj_bocznik(
 def dodaj_transformator(
     enm: dict[str, Any],
     *,
-    hv_bus_ref: str,
+    hv_bus_ref: str | None = None,
     catalog_ref: str,
     lv_voltage_kv: float | None = None,
     lv_bus_ref: str | None = None,
+    hv_voltage_kv: float | None = None,
     off_nominal_ratio: float | None = None,
 ) -> tuple[dict[str, Any], str]:
     """Transformator SN/nN — tworzy NOWĄ szynę LV, gdy `lv_bus_ref` nie podano
-    (CV-4.3 K1, rozszerzenie `add_transformer_sn_nn` — zob. jego docstring).
+    (CV-4.3 K1, rozszerzenie `add_transformer_sn_nn` — zob. jego docstring), albo
+    NOWĄ szynę HV nad istniejącą `lv_bus_ref`, gdy zamiast `hv_bus_ref` podano
+    `hv_voltage_kv` (2026-09-09: zaczep MATPOWER po stronie „from" musi zostać na
+    uzwojeniu HV także wtedy, gdy budowa dochodzi do transformatora od strony „to";
+    zwracana szyna to ta NOWO utworzona — LV albo HV).
 
     `off_nominal_ratio` (CV-4.3 K1 — sieci IEEE 14/39-bus, konwencja MATPOWER):
     stosunek pozanominalny strony HV (`t` w `network_model/core/branch.py::
@@ -398,7 +418,15 @@ def dodaj_transformator(
     `(off_nominal_ratio - 1) * 100 %` od neutralnej pozycji 0 do 1, po stronie
     HV — `tau = 1 + (1-0)*step_percent/100 = off_nominal_ratio`.
     """
-    payload: dict[str, Any] = {"hv_bus_ref": hv_bus_ref, "transformer_catalog_ref": catalog_ref}
+    payload: dict[str, Any] = {"transformer_catalog_ref": catalog_ref}
+    if hv_bus_ref is not None:
+        payload["hv_bus_ref"] = hv_bus_ref
+    elif hv_voltage_kv is not None and lv_bus_ref is not None:
+        payload["hv_voltage_kv"] = hv_voltage_kv
+    else:
+        raise BenchmarkBuildError(
+            "dodaj_transformator: podaj hv_bus_ref albo (hv_voltage_kv + lv_bus_ref)."
+        )
     if lv_bus_ref is not None:
         payload["lv_bus_ref"] = lv_bus_ref
     else:
@@ -425,7 +453,7 @@ def dodaj_transformator(
     before = {t["ref_id"] for t in enm.get("transformers", [])}
     enm = wykonaj(enm, "add_transformer_sn_nn", payload)
     tr = next(t for t in enm["transformers"] if t["ref_id"] not in before)
-    return enm, tr["lv_bus_ref"]
+    return enm, tr["hv_bus_ref"] if hv_bus_ref is None else tr["lv_bus_ref"]
 
 
 def zbuduj_topologie(

@@ -45,6 +45,7 @@ from enm.validator import ENMValidator, ValidationResult
 from .profiles import NS_CIM, NS_RDF
 from .refmap import CgmesRefMap
 from .units import (
+    a_to_ka,
     total_ohm_to_per_km,
     total_siemens_to_per_km,
     v_to_kv,
@@ -386,6 +387,15 @@ def import_from_eq_tp(
             continue
         r1 = _float(_text(inj, "ExternalNetworkInjection.maxR1"))
         x1 = _float(_text(inj, "ExternalNetworkInjection.maxX1"))
+        # CV-4.3 K7: deklaracja zwarciowa źródła czytana W CAŁOŚCI — prądy początkowe
+        # MAX/MIN (`*InitialSymShCCurrent`, A -> kA -> `ik3_ka`/`ik3_min_ka`) i stosunki R/X
+        # (`maxR1ToX1Ratio`/`minR1ToX1Ratio` -> `rx_ratio`/`rx_ratio_min`). Stan PRZED czytał
+        # wyłącznie R1/X1: źródło zadeklarowane mocą/prądem zwarciowym wracało z importu BEZ
+        # danych zwarciowych (niepoliczalne, E008), a R/X gubiony po cichu. Atrybut
+        # nieobecny = pole `None` (zero fabrykacji) — o trybie danych rozstrzyga
+        # `enm.zrodlo_zwarcie.tryb_danych` (R+jX > Sk'' > Ik''), nie importer.
+        ik_max_a = _float(_text(inj, "ExternalNetworkInjection.maxInitialSymShCCurrent"))
+        ik_min_a = _float(_text(inj, "ExternalNetworkInjection.minInitialSymShCCurrent"))
         sources.append(
             Source(
                 ref_id=ref,
@@ -394,6 +404,10 @@ def import_from_eq_tp(
                 model="external_grid",
                 r_ohm=r1,
                 x_ohm=x1,
+                ik3_ka=a_to_ka(ik_max_a) if ik_max_a is not None else None,
+                rx_ratio=_float(_text(inj, "ExternalNetworkInjection.maxR1ToX1Ratio")),
+                ik3_min_ka=a_to_ka(ik_min_a) if ik_min_a is not None else None,
+                rx_ratio_min=_float(_text(inj, "ExternalNetworkInjection.minR1ToX1Ratio")),
                 r0_ohm=_float(_text(inj, "ExternalNetworkInjection.maxR0")),
                 x0_ohm=_float(_text(inj, "ExternalNetworkInjection.maxX0")),
                 catalog_ref=None,

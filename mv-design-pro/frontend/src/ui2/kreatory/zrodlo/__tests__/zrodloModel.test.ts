@@ -234,6 +234,294 @@ describe('walidujFormularz — regulacja zaczepów (OLTC)', () => {
   });
 });
 
+describe('zbudujPayloadZrodla — scenariusz MIN (CV-4.3 K7)', () => {
+  it('tryb ręczny SN: manual_equivalent niesie sk3_min_mva/ik3_min_ka/rx_ratio_min gdy podane', () => {
+    const payload = zbudujPayloadZrodla(daneKompletne({
+      manual_mode: true,
+      catalog_ref: null,
+      sk3_mva: 250,
+      rx_ratio: 0.1,
+      sk3_min_mva: 150,
+      ik3_min_ka: 5.8,
+      rx_ratio_min: 0.2,
+    }));
+    expect(payload.manual_equivalent).toMatchObject({
+      sk3_min_mva: 150,
+      ik3_min_ka: 5.8,
+      rx_ratio_min: 0.2,
+    });
+  });
+
+  it('tryb ręczny SN: brak danych MIN → manual_equivalent BEZ tych kluczy (zero fabrykacji)', () => {
+    const payload = zbudujPayloadZrodla(daneKompletne({
+      manual_mode: true,
+      catalog_ref: null,
+      sk3_mva: 250,
+      rx_ratio: 0.1,
+    }));
+    const manual = payload.manual_equivalent as Record<string, unknown>;
+    expect('sk3_min_mva' in manual).toBe(false);
+    expect('ik3_min_ka' in manual).toBe(false);
+    expect('rx_ratio_min' in manual).toBe(false);
+  });
+
+  it('tryb ręczny WN/SN (HV_110): manual_equivalent niesie dane MIN po tej samej stronie', () => {
+    const payload = zbudujPayloadZrodla(daneKompletne({
+      manual_mode: true,
+      catalog_ref: null,
+      short_circuit_input_side: 'HV_110',
+      hv_voltage_kv: 110,
+      sk3_hv_mva: 2500,
+      rx_ratio: 0.1,
+      sk3_min_mva: 1500,
+    }));
+    expect(payload.manual_equivalent).toMatchObject({
+      short_circuit_input_side: 'HV_110',
+      sk3_hv_mva: 2500,
+      sk3_min_mva: 1500,
+    });
+  });
+
+  it('tryb impedancyjny: manual_equivalent NIGDY nie niesie danych MIN (brak wariantu MIN)', () => {
+    const payload = zbudujPayloadZrodla(daneKompletne({
+      manual_mode: true,
+      catalog_ref: null,
+      short_circuit_mode: 'IMPEDANCE',
+      r_ohm: 0.09,
+      x_ohm: 0.9,
+      // Dane MIN mimo wszystko obecne w danych formularza (np. pozostałość po
+      // przełączeniu trybu) — payload ich NIE przenosi (backend odrzuciłby 422).
+      sk3_min_mva: 150,
+      rx_ratio_min: 0.2,
+    }));
+    const manual = payload.manual_equivalent as Record<string, unknown>;
+    expect('sk3_min_mva' in manual).toBe(false);
+    expect('rx_ratio_min' in manual).toBe(false);
+  });
+});
+
+describe('zbudujPayloadZrodla — napięcie zadane szyny bilansującej (CV-4.3 K7c)', () => {
+  it('tryb ręczny, moc zwarciowa (SN): manual_equivalent niesie u_set_pu gdy podane', () => {
+    const payload = zbudujPayloadZrodla(daneKompletne({
+      manual_mode: true,
+      catalog_ref: null,
+      sk3_mva: 250,
+      rx_ratio: 0.1,
+      u_set_pu: 1.06,
+    }));
+    expect(payload.manual_equivalent).toMatchObject({ u_set_pu: 1.06 });
+  });
+
+  // Iloczyn cech: u_set_pu × tryb impedancyjny — backend czyta u_set_pu
+  // BEZWARUNKOWO (przed rozgałęzieniem na short_circuit_mode), więc pole NIE
+  // dzieli losu danych MIN (blokowanych w trybie impedancyjnym) — musi
+  // przejść payload w OBU postaciach parametru zwarciowego.
+  it('tryb ręczny, impedancyjny (R+jX): manual_equivalent NADAL niesie u_set_pu gdy podane', () => {
+    const payload = zbudujPayloadZrodla(daneKompletne({
+      manual_mode: true,
+      catalog_ref: null,
+      short_circuit_mode: 'IMPEDANCE',
+      r_ohm: 0.09,
+      x_ohm: 0.9,
+      u_set_pu: 0.95,
+    }));
+    expect(payload.manual_equivalent).toMatchObject({ u_set_pu: 0.95 });
+  });
+
+  // Iloczyn cech: u_set_pu × strona WN (HV_110) — ta sama bezwarunkowość.
+  it('tryb ręczny WN/SN (HV_110): manual_equivalent niesie u_set_pu gdy podane', () => {
+    const payload = zbudujPayloadZrodla(daneKompletne({
+      manual_mode: true,
+      catalog_ref: null,
+      short_circuit_input_side: 'HV_110',
+      hv_voltage_kv: 110,
+      sk3_hv_mva: 2500,
+      rx_ratio: 0.1,
+      u_set_pu: 1.02,
+    }));
+    expect(payload.manual_equivalent).toMatchObject({
+      short_circuit_input_side: 'HV_110',
+      u_set_pu: 1.02,
+    });
+  });
+
+  it('brak u_set_pu → manual_equivalent BEZ tego klucza (zero fabrykacji, null = znamionowe)', () => {
+    const payload = zbudujPayloadZrodla(daneKompletne({
+      manual_mode: true,
+      catalog_ref: null,
+      sk3_mva: 250,
+      rx_ratio: 0.1,
+    }));
+    const manual = payload.manual_equivalent as Record<string, unknown>;
+    expect('u_set_pu' in manual).toBe(false);
+  });
+
+  it('tryb katalogowy: payload nie niesie w ogóle manual_equivalent, więc u_set_pu nie wycieka', () => {
+    const payload = zbudujPayloadZrodla(daneKompletne({ u_set_pu: 1.06 }));
+    expect('manual_equivalent' in payload).toBe(false);
+  });
+});
+
+describe('zbudujZadaniePodgladu — scenariusz MIN (CV-4.3 K7)', () => {
+  it('tryb mocy zwarciowej: żądanie niesie sk3_min_mva/ik3_min_ka/rx_ratio_min', () => {
+    const req = zbudujZadaniePodgladu(daneKompletne({
+      sk3_mva: 250,
+      rx_ratio: 0.1,
+      sk3_min_mva: 150,
+      ik3_min_ka: 5.8,
+      rx_ratio_min: 0.2,
+    }));
+    expect(req).toMatchObject({ sk3_min_mva: 150, ik3_min_ka: 5.8, rx_ratio_min: 0.2 });
+  });
+
+  it('tryb impedancyjny: żądanie NIGDY nie niesie danych MIN (brak wariantu MIN)', () => {
+    const req = zbudujZadaniePodgladu(daneKompletne({
+      manual_mode: true,
+      catalog_ref: null,
+      short_circuit_mode: 'IMPEDANCE',
+      r_ohm: 0.09,
+      x_ohm: 0.9,
+      sk3_min_mva: 150,
+    }));
+    expect(req).toMatchObject({ sk3_min_mva: null, ik3_min_ka: null, rx_ratio_min: null });
+  });
+
+  it('rx_ratio_min bez sk3_min_mva/ik3_min_ka → null (backend odrzuciłby 422, podgląd nie pyta)', () => {
+    expect(zbudujZadaniePodgladu(daneKompletne({ rx_ratio_min: 0.2 }))).toBeNull();
+  });
+});
+
+describe('walidujFormularz — scenariusz MIN (CV-4.3 K7)', () => {
+  it('bez danych MIN nie zgłasza błędów (pola opcjonalne)', () => {
+    expect(
+      walidujFormularz(daneKompletne({
+        manual_mode: true,
+        catalog_ref: null,
+        sk3_mva: 250,
+        rx_ratio: 0.1,
+      })).some((b) => ['sk3_min_mva', 'ik3_min_ka', 'rx_ratio_min'].includes(b.field)),
+    ).toBe(false);
+  });
+
+  it('Sk″min ujemna/zerowa jest blokowana', () => {
+    const bledy = walidujFormularz(daneKompletne({
+      manual_mode: true,
+      catalog_ref: null,
+      sk3_mva: 250,
+      rx_ratio: 0.1,
+      sk3_min_mva: 0,
+    }));
+    expect(bledy.some((b) => b.field === 'sk3_min_mva')).toBe(true);
+  });
+
+  it('Sk″min większe od Sk″ (maks.) jest blokowane', () => {
+    const bledy = walidujFormularz(daneKompletne({
+      manual_mode: true,
+      catalog_ref: null,
+      sk3_mva: 250,
+      rx_ratio: 0.1,
+      sk3_min_mva: 300,
+    }));
+    expect(bledy.some((b) => b.field === 'sk3_min_mva')).toBe(true);
+  });
+
+  it('Sk″min ≤ Sk″ (maks.) jest dozwolone', () => {
+    const bledy = walidujFormularz(daneKompletne({
+      manual_mode: true,
+      catalog_ref: null,
+      sk3_mva: 250,
+      rx_ratio: 0.1,
+      sk3_min_mva: 150,
+    }));
+    expect(bledy.some((b) => b.field === 'sk3_min_mva')).toBe(false);
+  });
+
+  it('Sk″min (WN/SN, HV_110) porównywane z Sk″ (110 kV), nie z Sk″ (SN)', () => {
+    const bledy = walidujFormularz(daneKompletne({
+      manual_mode: true,
+      catalog_ref: null,
+      short_circuit_input_side: 'HV_110',
+      hv_voltage_kv: 110,
+      sk3_hv_mva: 2500,
+      rx_ratio: 0.1,
+      sk3_min_mva: 1500,
+    }));
+    expect(bledy.some((b) => b.field === 'sk3_min_mva')).toBe(false);
+  });
+
+  it('R/X (MIN) bez Sk″min/Ik″min jest blokowane', () => {
+    const bledy = walidujFormularz(daneKompletne({
+      manual_mode: true,
+      catalog_ref: null,
+      sk3_mva: 250,
+      rx_ratio: 0.1,
+      rx_ratio_min: 0.2,
+    }));
+    expect(bledy.some((b) => b.field === 'rx_ratio_min')).toBe(true);
+  });
+
+  it('R/X (MIN) z Ik″min (bez Sk″min) jest dozwolone', () => {
+    const bledy = walidujFormularz(daneKompletne({
+      manual_mode: true,
+      catalog_ref: null,
+      sk3_mva: 250,
+      rx_ratio: 0.1,
+      ik3_min_ka: 5.8,
+      rx_ratio_min: 0.2,
+    }));
+    expect(bledy.some((b) => b.field === 'rx_ratio_min')).toBe(false);
+  });
+
+  it('tryb impedancyjny z jakimikolwiek danymi MIN jest blokowany (brak wariantu MIN)', () => {
+    const bledy = walidujFormularz(daneKompletne({
+      manual_mode: true,
+      catalog_ref: null,
+      short_circuit_mode: 'IMPEDANCE',
+      r_ohm: 0.09,
+      x_ohm: 0.9,
+      sk3_min_mva: 150,
+    }));
+    expect(bledy.some((b) => b.field === 'sk3_min_mva')).toBe(true);
+  });
+});
+
+describe('walidujFormularz — napięcie zadane szyny bilansującej (CV-4.3 K7c)', () => {
+  it('brak u_set_pu (null) nie zgłasza błędu — pole opcjonalne (zero fabrykacji)', () => {
+    expect(walidujFormularz(daneKompletne({ u_set_pu: null })).some((b) => b.field === 'u_set_pu')).toBe(false);
+  });
+
+  it('wartość w paśmie 0,8–1,2 p.u. jest dozwolona', () => {
+    expect(walidujFormularz(daneKompletne({ u_set_pu: 1.06 })).some((b) => b.field === 'u_set_pu')).toBe(false);
+    expect(walidujFormularz(daneKompletne({ u_set_pu: 0.8 })).some((b) => b.field === 'u_set_pu')).toBe(false);
+    expect(walidujFormularz(daneKompletne({ u_set_pu: 1.2 })).some((b) => b.field === 'u_set_pu')).toBe(false);
+  });
+
+  it('wartość poniżej pasma (< 0,8 p.u.) jest odrzucana', () => {
+    const bledy = walidujFormularz(daneKompletne({ u_set_pu: 0.79 }));
+    expect(bledy.some((b) => b.field === 'u_set_pu')).toBe(true);
+  });
+
+  it('wartość powyżej pasma (> 1,2 p.u.) jest odrzucana', () => {
+    const bledy = walidujFormularz(daneKompletne({ u_set_pu: 1.21 }));
+    expect(bledy.some((b) => b.field === 'u_set_pu')).toBe(true);
+  });
+
+  // Iloczyn cech: walidacja u_set_pu × tryb impedancyjny — w przeciwieństwie do
+  // scenariusza MIN (blokowanego w trybie impedancyjnym), u_set_pu NIE ma
+  // wyjątku trybu — walidacja pasma obowiązuje identycznie w OBU postaciach.
+  it('pasmo obowiązuje TAKŻE w trybie impedancyjnym (u_set_pu nie ma wyjątku trybu jak MIN)', () => {
+    const bledy = walidujFormularz(daneKompletne({
+      manual_mode: true,
+      catalog_ref: null,
+      short_circuit_mode: 'IMPEDANCE',
+      r_ohm: 0.09,
+      x_ohm: 0.9,
+      u_set_pu: 1.5,
+    }));
+    expect(bledy.some((b) => b.field === 'u_set_pu')).toBe(true);
+  });
+});
+
 describe('walidujFormularz', () => {
   it('bez błędów dla kompletnych danych katalogowych', () => {
     expect(walidujFormularz(daneKompletne())).toEqual([]);

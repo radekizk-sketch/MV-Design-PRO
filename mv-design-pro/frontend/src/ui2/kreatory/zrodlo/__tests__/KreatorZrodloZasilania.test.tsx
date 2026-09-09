@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { KreatorZrodloZasilania } from '../KreatorZrodloZasilania';
 import { ZRODLO_STRINGS as T } from '../strings';
+import type { GridSourcePreviewResponse } from '../../../../ui/network-build/forms/gridSourcePreviewApi';
 
 const T_BRAK_ZAKRESU = T.brakZakresu;
 
@@ -95,18 +96,22 @@ vi.mock('../../../../ui/catalog/api', () => ({
 
 // Podgląd IEC 60909 jako vi.fn — liczba wywołań jest realnym sygnałem
 // zakończenia łańcucha montażu (patrz renderujKreator poniżej).
-const fetchGridSourcePreviewMock = vi.fn(() =>
-  Promise.resolve({
-    sk_mva: 310,
-    ik3_ka: 11.93,
-    ik1_ka: 8.1,
-    ip_ka: 30.2,
-    ith_ka: 11.9,
-    kappa: 1.79,
-    z1_ohm: { r_ohm: 0.09, x_ohm: 0.72 },
-    z0_ohm: { r_ohm: 0.28, x_ohm: 2.3 },
-    formula_ref: 'IEC60909',
-  }),
+// Typ odpowiedzi z KONTRAKTU (`gridSourcePreviewApi.ts`), nie z ręcznej kopii kształtu —
+// ręczna kopia (wnioskowany typ literału) nie znała bloku `scenariusz_min` (K7) i odrzucała
+// go w typach testu, choć komponent i kontrakt już go niosły.
+const fetchGridSourcePreviewMock = vi.fn(
+  (): Promise<GridSourcePreviewResponse> =>
+    Promise.resolve({
+      sk_mva: 310,
+      ik3_ka: 11.93,
+      ik1_ka: 8.1,
+      ip_ka: 30.2,
+      ith_ka: 11.9,
+      kappa: 1.79,
+      z1_ohm: { r_ohm: 0.09, x_ohm: 0.72 },
+      z0_ohm: { r_ohm: 0.28, x_ohm: 2.3 },
+      formula_ref: 'IEC60909',
+    }),
 );
 
 vi.mock('../../../../ui/network-build/forms/gridSourcePreviewApi', () => ({
@@ -337,5 +342,344 @@ describe('KreatorZrodloZasilania — realna ścieżka', () => {
       transformer_regulation_type: 'OLTC',
       transformer_control_mode: 'AUTOMATIC',
     });
+  });
+});
+
+/**
+ * CV-4.3 K7 (karta K7-FE) — scenariusz MIN źródła sieciowego (warunki
+ * przyłączenia OSD). Pola opcjonalne, ukryte w trybie impedancyjnym (brak
+ * wariantu MIN), podgląd Ik″min obok Ik″max WYŁĄCZNIE z bloku
+ * `scenariusz_min` odpowiedzi backendu (zero fizyki, zero fabrykacji).
+ */
+describe('KreatorZrodloZasilania — scenariusz MIN (CV-4.3 K7)', () => {
+  beforeEach(() => {
+    closeFormMock.mockReset();
+    collapseSurfaceStackToMock.mockReset();
+    executeDomainOperationMock.mockReset();
+    executeDomainOperationMock.mockResolvedValue({});
+    navigateToSldMock.mockReset();
+    fetchGridSourcePreviewMock.mockClear();
+    fetchSourceSystemTypesMock.mockReset();
+    fetchSourceSystemTypesMock.mockResolvedValue(DOMYSLNY_KATALOG_ZRODEL);
+    appState.activeCaseId = 'case-1';
+  });
+
+  afterEach(cleanup);
+
+  it('tryb ręczny (moc zwarciowa): pola Sk″min/Ik″min/R-X(MIN) są widoczne (klik natywny)', async () => {
+    const user = userEvent.setup();
+    render(<KreatorZrodloZasilania />);
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-dalej'));
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-tryb-przel-reczny'));
+
+    expect(screen.getByTestId('mvd-kreator-zrodlo-min')).toBeTruthy();
+    expect(screen.getByTestId('mvd-kreator-zrodlo-sk3min')).toBeTruthy();
+    expect(screen.getByTestId('mvd-kreator-zrodlo-ik3min')).toBeTruthy();
+    expect(screen.getByTestId('mvd-kreator-zrodlo-rxmin')).toBeTruthy();
+  });
+
+  it('tryb ręczny (impedancja): pola scenariusza MIN są ukryte (brak wariantu MIN, klik natywny)', async () => {
+    const user = userEvent.setup();
+    render(<KreatorZrodloZasilania />);
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-dalej'));
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-tryb-przel-reczny'));
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-trybparam-IMPEDANCE'));
+
+    expect(screen.queryByTestId('mvd-kreator-zrodlo-min')).toBeNull();
+  });
+
+  it('wpisanie Sk″min/Ik″min/R-X(MIN) natywną klawiaturą trafia do manual_equivalent zapisu', async () => {
+    const user = userEvent.setup();
+    render(<KreatorZrodloZasilania />);
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-dalej'));
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-tryb-przel-reczny'));
+
+    const sk3 = screen.getByTestId('mvd-kreator-zrodlo-sk3') as HTMLInputElement;
+    await user.clear(sk3);
+    await user.type(sk3, '250');
+    const rx = screen.getByTestId('mvd-kreator-zrodlo-rx') as HTMLInputElement;
+    await user.clear(rx);
+    await user.type(rx, '0.1');
+    const sk3Min = screen.getByTestId('mvd-kreator-zrodlo-sk3min') as HTMLInputElement;
+    await user.type(sk3Min, '150');
+    const rxMin = screen.getByTestId('mvd-kreator-zrodlo-rxmin') as HTMLInputElement;
+    await user.type(rxMin, '0.2');
+
+    await user.click(
+      screen.getByTestId('mvd-kreator-kroki').querySelector('[data-testid="mvd-kreator-krok-zapis"]') as HTMLElement,
+    );
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-zapisz'));
+
+    await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
+    const [, , payload] = executeDomainOperationMock.mock.calls[0];
+    expect(payload).toMatchObject({
+      manual_equivalent: expect.objectContaining({ sk3_min_mva: 150, rx_ratio_min: 0.2 }),
+    });
+  });
+
+  it('podgląd backendu z blokiem scenariusz_min pokazuje Ik″min obok Ik″max', async () => {
+    fetchGridSourcePreviewMock.mockResolvedValue({
+      sk_mva: 310,
+      ik3_ka: 11.93,
+      ik1_ka: 8.1,
+      ip_ka: 30.2,
+      ith_ka: 11.9,
+      kappa: 1.79,
+      z1_ohm: { r_ohm: 0.09, x_ohm: 0.72 },
+      z0_ohm: { r_ohm: 0.28, x_ohm: 2.3 },
+      formula_ref: 'IEC60909',
+      scenariusz_min: {
+        sk_mva: 150,
+        ik3_ka: 5.78,
+        ik1_ka: 4.1,
+        ip_ka: 14.6,
+        ith_ka: 5.75,
+        kappa: 1.75,
+        z1_ohm: { r_ohm: 0.15, x_ohm: 1.2 },
+        z0_ohm: null,
+        tryb_danych: 'MOC_ZWARCIOWA',
+        rx_ratio_zrodlo: 'MODEL_MIN',
+      },
+    });
+
+    await renderujKreator();
+
+    expect(screen.getByTestId('mvd-kreator-zrodlo-podsum-sk-min')).toHaveTextContent('150.0 MVA');
+    expect(screen.getByTestId('mvd-kreator-zrodlo-podsum-ik3-min')).toHaveTextContent('5.78 kA');
+
+    // Przywróć domyślną odpowiedź (bez scenariusz_min) — nie przecieka do innych testów pliku.
+    fetchGridSourcePreviewMock.mockResolvedValue({
+      sk_mva: 310,
+      ik3_ka: 11.93,
+      ik1_ka: 8.1,
+      ip_ka: 30.2,
+      ith_ka: 11.9,
+      kappa: 1.79,
+      z1_ohm: { r_ohm: 0.09, x_ohm: 0.72 },
+      z0_ohm: { r_ohm: 0.28, x_ohm: 2.3 },
+      formula_ref: 'IEC60909',
+    });
+  });
+
+  it('podgląd backendu BEZ bloku scenariusz_min nie renderuje wierszy MIN (zero fabrykacji)', async () => {
+    await renderujKreator();
+    expect(screen.queryByTestId('mvd-kreator-zrodlo-podsum-sk-min')).toBeNull();
+    expect(screen.queryByTestId('mvd-kreator-zrodlo-podsum-ik3-min')).toBeNull();
+  });
+});
+
+/**
+ * CV-4.3 K7c — napięcie zadane szyny bilansującej (`Source.u_set_pu`). Pole
+ * ręcznego trybu, widoczne NIEZALEŻNIE od postaci parametru zwarciowego
+ * (moc/impedancja) i strony (SN/WN) — backend czyta je bezwarunkowo przed
+ * rozgałęzieniem na tryb (`_resolve_manual_source_equivalent`).
+ */
+describe('KreatorZrodloZasilania — napięcie zadane szyny bilansującej (CV-4.3 K7c)', () => {
+  beforeEach(() => {
+    closeFormMock.mockReset();
+    collapseSurfaceStackToMock.mockReset();
+    executeDomainOperationMock.mockReset();
+    executeDomainOperationMock.mockResolvedValue({});
+    navigateToSldMock.mockReset();
+    fetchGridSourcePreviewMock.mockClear();
+    fetchSourceSystemTypesMock.mockReset();
+    fetchSourceSystemTypesMock.mockResolvedValue(DOMYSLNY_KATALOG_ZRODEL);
+    appState.activeCaseId = 'case-1';
+  });
+
+  afterEach(cleanup);
+
+  it('tryb ręczny (moc zwarciowa): pole napięcia zadanego jest widoczne (klik natywny)', async () => {
+    const user = userEvent.setup();
+    render(<KreatorZrodloZasilania />);
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-dalej'));
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-tryb-przel-reczny'));
+
+    expect(screen.getByTestId('mvd-kreator-zrodlo-uset')).toBeTruthy();
+  });
+
+  // Iloczyn cech: pole u_set_pu × tryb impedancyjny — w przeciwieństwie do
+  // scenariusza MIN (ukrytego w trybie impedancyjnym), pole napięcia zadanego
+  // NIE ma wyjątku trybu — zostaje widoczne w OBU postaciach parametru.
+  it('tryb ręczny (impedancja): pole napięcia zadanego POZOSTAJE widoczne (brak wyjątku trybu, w przeciwieństwie do MIN)', async () => {
+    const user = userEvent.setup();
+    render(<KreatorZrodloZasilania />);
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-dalej'));
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-tryb-przel-reczny'));
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-trybparam-IMPEDANCE'));
+
+    expect(screen.queryByTestId('mvd-kreator-zrodlo-min')).toBeNull();
+    expect(screen.getByTestId('mvd-kreator-zrodlo-uset')).toBeTruthy();
+  });
+
+  it('tryb katalogowy: pole napięcia zadanego jest ukryte (manual_equivalent tego trybu nie dotyczy)', async () => {
+    await renderujKreator();
+    expect(screen.queryByTestId('mvd-kreator-zrodlo-uset')).toBeNull();
+  });
+
+  it('wpisanie napięcia zadanego natywną klawiaturą trafia do manual_equivalent.u_set_pu zapisu', async () => {
+    const user = userEvent.setup();
+    render(<KreatorZrodloZasilania />);
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-dalej'));
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-tryb-przel-reczny'));
+
+    const sk3 = screen.getByTestId('mvd-kreator-zrodlo-sk3') as HTMLInputElement;
+    await user.clear(sk3);
+    await user.type(sk3, '250');
+    const rx = screen.getByTestId('mvd-kreator-zrodlo-rx') as HTMLInputElement;
+    await user.clear(rx);
+    await user.type(rx, '0.1');
+    const uSet = screen.getByTestId('mvd-kreator-zrodlo-uset') as HTMLInputElement;
+    await user.type(uSet, '1.06');
+
+    await user.click(
+      screen.getByTestId('mvd-kreator-kroki').querySelector('[data-testid="mvd-kreator-krok-zapis"]') as HTMLElement,
+    );
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-zapisz'));
+
+    await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
+    const [, , payload] = executeDomainOperationMock.mock.calls[0];
+    expect(payload).toMatchObject({
+      manual_equivalent: expect.objectContaining({ u_set_pu: 1.06 }),
+    });
+  });
+
+  it('puste pole napięcia zadanego → manual_equivalent BEZ klucza u_set_pu (zero fabrykacji, znamionowe)', async () => {
+    const user = userEvent.setup();
+    render(<KreatorZrodloZasilania />);
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-dalej'));
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-tryb-przel-reczny'));
+
+    const sk3 = screen.getByTestId('mvd-kreator-zrodlo-sk3') as HTMLInputElement;
+    await user.clear(sk3);
+    await user.type(sk3, '250');
+    const rx = screen.getByTestId('mvd-kreator-zrodlo-rx') as HTMLInputElement;
+    await user.clear(rx);
+    await user.type(rx, '0.1');
+
+    await user.click(
+      screen.getByTestId('mvd-kreator-kroki').querySelector('[data-testid="mvd-kreator-krok-zapis"]') as HTMLElement,
+    );
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-zapisz'));
+
+    await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
+    const [, , payload] = executeDomainOperationMock.mock.calls[0];
+    const manual = (payload as { manual_equivalent: Record<string, unknown> }).manual_equivalent;
+    expect('u_set_pu' in manual).toBe(false);
+  });
+
+  it('wartość spoza pasma 0,8-1,2 blokuje zapis z komunikatem walidacji (klik natywny)', async () => {
+    const user = userEvent.setup();
+    render(<KreatorZrodloZasilania />);
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-dalej'));
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-tryb-przel-reczny'));
+
+    const sk3 = screen.getByTestId('mvd-kreator-zrodlo-sk3') as HTMLInputElement;
+    await user.clear(sk3);
+    await user.type(sk3, '250');
+    const rx = screen.getByTestId('mvd-kreator-zrodlo-rx') as HTMLInputElement;
+    await user.clear(rx);
+    await user.type(rx, '0.1');
+    const uSet = screen.getByTestId('mvd-kreator-zrodlo-uset') as HTMLInputElement;
+    await user.type(uSet, '1.5');
+
+    await user.click(
+      screen.getByTestId('mvd-kreator-kroki').querySelector('[data-testid="mvd-kreator-krok-zapis"]') as HTMLElement,
+    );
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-zapisz'));
+
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toBe(T.walidacjaStopka));
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * CV-4.3 K7c — synchronizacja pól katalogowych w `wybierzKatalog`. Naprawa
+ * KLASY (nie instancji): `sn_voltage_kv`/`sk3_mva`/`rx_ratio` używały
+ * `selected?.pole ?? p.pole`, więc pozycja katalogowa BEZ własnej wartości (np.
+ * `rx_ratio`, pole opcjonalne kontraktu `SourceSystemCatalogType`) cicho
+ * dziedziczyła wartość POPRZEDNIEJ pozycji zamiast `null` — dokładnie ten sam
+ * defekt, który dane MIN (`sk3_min_mva`/`ik3_min_ka`/`rx_ratio_min`) już miały
+ * naprawiony (karta K7-FE).
+ */
+describe('KreatorZrodloZasilania — synchronizacja katalogu przy przełączeniu pozycji (CV-4.3 K7c)', () => {
+  const KATALOG_DWIE_POZYCJE = [
+    DOMYSLNY_KATALOG_ZRODEL[0],
+    {
+      id: 'GPZ-002',
+      name: 'Zasilanie GPZ 15 kV (bez R/X)',
+      operator_name: 'OSD',
+      series: null,
+      catalog_number: 'SRC-2',
+      voltage_rating_kv: 15,
+      sk3_mva: 400,
+      // rx_ratio CELOWO nieobecne — pozycja katalogowa bez wpisanego R/X (pole
+      // opcjonalne `SourceSystemCatalogType.rx_ratio?: number`). Ten szczyt
+      // reprodukuje dokładnie kombinację danych, w której sieroca wartość się
+      // chowała (poprzednia pozycja MIAŁA rx_ratio, nowa go nie ma).
+    },
+  ];
+
+  beforeEach(() => {
+    closeFormMock.mockReset();
+    collapseSurfaceStackToMock.mockReset();
+    executeDomainOperationMock.mockReset();
+    executeDomainOperationMock.mockResolvedValue({});
+    navigateToSldMock.mockReset();
+    fetchGridSourcePreviewMock.mockClear();
+    fetchSourceSystemTypesMock.mockReset();
+    fetchSourceSystemTypesMock.mockResolvedValue(KATALOG_DWIE_POZYCJE);
+    appState.activeCaseId = 'case-1';
+  });
+
+  afterEach(cleanup);
+
+  it('przełączenie na pozycję BEZ R/X czyści sierocą wartość poprzedniej pozycji (zamiast ją zachować)', async () => {
+    const user = userEvent.setup();
+    render(<KreatorZrodloZasilania />);
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-dalej'));
+
+    const select = screen.getByTestId('mvd-kreator-zrodlo-katalog-select') as HTMLSelectElement;
+    // Auto-wybór pierwszej pozycji (GPZ-001, R/X=0,12) po montażu.
+    await waitFor(() => expect(select.value).toBe('GPZ-001'));
+
+    await user.selectOptions(select, 'GPZ-002');
+    await waitFor(() => expect(select.value).toBe('GPZ-002'));
+
+    await user.click(
+      screen.getByTestId('mvd-kreator-kroki').querySelector('[data-testid="mvd-kreator-krok-zapis"]') as HTMLElement,
+    );
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-zapisz'));
+
+    // PRZED naprawą: R/X pozostawałoby sierocą wartością 0,12 z GPZ-001 (bo
+    // `selected?.rx_ratio ?? p.rx_ratio` z `selected.rx_ratio===undefined` cicho
+    // sięgało po `p.rx_ratio`), więc zapis przechodziłby mimo że GPZ-002 nie
+    // niesie R/X. PO naprawie: przełączenie czyści R/X do `null`, walidacja
+    // katalogowa („R/X musi pochodzić z wybranego katalogu systemowego")
+    // blokuje zapis — obserwowalny dowód, że stara wartość NIE przecieka.
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toBe(T.walidacjaStopka),
+    );
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  it('przełączenie na pozycję BEZ R/X koryguje etykietę powiązania katalogowego do NOWEJ pozycji (Sk″ 400 MVA, nie 310)', async () => {
+    const user = userEvent.setup();
+    render(<KreatorZrodloZasilania />);
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-dalej'));
+
+    const select = screen.getByTestId('mvd-kreator-zrodlo-katalog-select') as HTMLSelectElement;
+    await waitFor(() => expect(select.value).toBe('GPZ-001'));
+
+    await user.selectOptions(select, 'GPZ-002');
+    await waitFor(() => expect(select.value).toBe('GPZ-002'));
+
+    // `wybranaPozycja` (etykieta „Powiązanie katalogowe") czyta z katalogu po
+    // `catalog_ref` — niezależnie od pól kopiowanych do `dane` naprawionych
+    // wyżej — więc Sk3 400 potwierdza, że przełączenie referencji faktycznie
+    // wskazuje NOWĄ pozycję (kontekst dla testu powyżej, który dowodzi, że i
+    // dane STANU formularza, nie tylko referencja, poszły za przełączeniem).
+    // (dwa wystąpienia: opcja <select> i wiersz „Powiązanie katalogowe”.)
+    expect(screen.getAllByText(/Sk3 400 MVA/).length).toBeGreaterThan(0);
   });
 });

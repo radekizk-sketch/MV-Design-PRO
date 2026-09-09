@@ -143,7 +143,7 @@ def test_prad_roboczy_a_tozsamosc(s: float, u: float) -> None:
 @pytest.mark.parametrize("s", _moce())
 def test_prad_znamionowy_a_tozsamosc(s: float, u: float) -> None:
     """machine.py::ir_a (sync + async), der_sn_validation.py::rated_current_a,
-    mapping.py (in_rated_a), cgmes_exporter.py::_ik_from_sk (3.0**0.5 — bit-identyczne)."""
+    mapping.py (in_rated_a), cgmes_exporter.py::_ik_a (3.0**0.5 — bit-identyczne)."""
     oczekiwane = s * 1.0e6 / (math.sqrt(3.0) * u * 1.0e3)
     assert wp.prad_znamionowy_a(s, u) == oczekiwane
     oczekiwane_1e6_literal = s * 1_000_000.0 / (math.sqrt(3.0) * u * 1_000.0)

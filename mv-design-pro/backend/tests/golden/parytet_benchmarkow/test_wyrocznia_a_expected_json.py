@@ -9,15 +9,15 @@ zadeklarowana PER WIERSZ w pliku — `comparator.py`, ta sama infrastruktura co
 starego dialektu). Rozbieżność ponad tolerancję jest DEFEKTEM do wyjaśnienia
 (K1.3) — nigdy nie luzuje się tolerancji, żeby przepchnąć niezgodność.
 
-Sieci NIESYMETRYCZNE (ieee_34bus; ieee_13bus ma dodatkowo swój WŁASNY test bez
+Sieć NIESYMETRYCZNA ieee_34bus (ieee_13bus ma dodatkowo swój WŁASNY test bez
 xfail — patrz `test_ieee_13bus_pf_aproksymacja_pozytywnosekwencyjna`, weryfikuje
 tylko pozytywno-sekwencyjną aproksymację, nie prawdziwą fizykę niesymetryczną)
-i sieć z nierozstrzygniętą rozbieżnością numeryczną (ieee_14bus — rozbiega
-katastroficznie; ieee_39bus — zbiega, ale ma resztkową ~2-4% lukę wobec
-NIEZALEŻNEGO pandapower/MATPOWER case39, dwie hipotezy przyczyny wykluczone
-dowodem, patrz `reason` przy każdym teście) mają jawny status PLANNED —
-`pytest.mark.xfail` z uzasadnieniem w `reason`, NIE cichy skip (K1.4: "nie
-cichy skip").
+ma jawny status PLANNED — `pytest.mark.xfail` z uzasadnieniem w `reason`, NIE
+cichy skip (K1.4: "nie cichy skip"). Markery `xfail` K1 dla ieee_14bus (rozbiegał
+katastroficznie) i ieee_39bus (resztkowa luka 2–4 %) ZDJĘTE w CV-4.3 K7
+(2026-09-09): przyczyny leżały w DANYCH bliźniaków, nie w solverze — patrz
+docstringi `test_ieee_14bus_pf_zgodny_z_wyrocznia_a` i
+`test_ieee_39bus_pf_zgodny_z_wyrocznia_a`.
 """
 
 from __future__ import annotations
@@ -217,51 +217,35 @@ def test_ieee_34bus_pf_planned() -> None:
     _sprawdz_pf(build_ieee_34bus_enm, "ieee_34bus.json")
 
 
-@pytest.mark.xfail(
-    reason=(
-        "CV-4.3 K1 (2026-09-06): kanoniczny PF NIE ZBIEGA (quality_status=failed, napiecia "
-        "10^2-10^3 p.u.). Hipoteza vector_group/Dyn11 (domyslny +30 st. przy braku deklaracji "
-        "w katalogu — patrz naprawa mv_benchmark_catalog.py) SPRAWDZONA i WYKLUCZONA jako "
-        "(jedyna) przyczyna: PO naprawie katalogu siec WCIAZ rozbiega identycznie "
-        "(v_pu 0,40-320, zmierzone ponownie). Pozostaje PLANNED — kandydaci nie wykluczeni: "
-        "ekstremalna rozpietosc poziomow napiecia 135/14/12/0,208 kV (rozstep 649:1, nietypowy "
-        'dla "klasycznego" IEEE 14-bus, ktory normalnie uzywa 69/18/13,8 kV), oraz uk_percent '
-        "do 55,6% (BR16) — prawdopodobny artefakt wiernosci danych starego dialektu "
-        "(pandapower/MATPOWER import), nie zweryfikowany wobec zrodla literaturowego "
-        "(dane, ktorych nie mam — Zero-Debt pkt 4). Status PLANNED, nie brak testu."
-    ),
-    strict=False,
-)
-def test_ieee_14bus_pf_planned() -> None:
+def test_ieee_14bus_pf_zgodny_z_wyrocznia_a() -> None:
+    """IEEE case14 wobec MATPOWER/pandapower (wyrocznia (a) `expected/ieee_14bus.json`).
+
+    Do CV-4.3 K7 (2026-09-09) test nosił `xfail` K1: kanoniczny PF NIE ZBIEGAŁ
+    (|U| 0,40–320 p.u.). Przyczyny — żadna w solverze FROZEN, wszystkie w DANYCH
+    bliźniaka: (1) katalog benchmark stemplował 8 odcinków obszaru 0,208 kV bazą
+    impedancji 135 kV (`mv_benchmark_catalog._POZIOM_LINII_KV`: baza p.u. linii =
+    napięcie jej szyn), (2) brak napięcia zadanego szyny bilansującej 1,06 p.u.
+    (`Source.u_set_pu`), (3) granice Q ±150 Mvar wiązały na stanie przejściowym
+    iteracji przy błędnej bazie (po (1)+(2): 0 przełączeń PV→PQ). Zgodność z
+    `pandapower.networks.case14()` + `runpp`: max|ΔU| 3·10⁻⁵ p.u.
+    (`tests/network_model/test_blizniaki_matpower_napiecia.py`).
+    """
     from application.reference_networks.enm_builders.ieee_14bus import build_ieee_14bus_enm
 
     _sprawdz_pf(build_ieee_14bus_enm, "ieee_14bus.json")
 
 
-@pytest.mark.xfail(
-    reason=(
-        "CV-4.3 K1 (2026-09-06): PO naprawie vector_group/Dyn11 (patrz ieee_14bus wyzej) siec "
-        "ZBIEGA CZYSTO (quality_status: accepted, profil napiec fizyczny 0,957-1,064 pu — "
-        "zmierzone; wczesniej status byl 'nie przetestowane po naprawie kolizji seedow', nie "
-        "potwierdzona rozbieznosc katastroficzna jak ieee_14bus). Wyrocznia (a) tej sieci to "
-        "PRAWDZIWY, NIEZALEZNY pandapower/MATPOWER case39 (nie nasz solver) — 53/78 porownan "
-        "|V|/kat w tolerancji, 25/78 poza (zaniżenie napiecia ~2-4% na szynach odbiorczych "
-        "zdalnych od szyny bilansujacej B30, katy nieco bardziej ujemne). Dwie hipotezy "
-        "SPRAWDZONE i WYKLUCZONE dowodem numerycznym: (1) susceptancja linii (b_us_per_km) — "
-        "wszystkie 35 linii zweryfikowane bajt-w-bajt zgodne z b_pu MATPOWER case39 (indeksowanie "
-        "po type_ref/catalog_ref, nie po (r,x) — dwie pary linii BR1/BR14 i BR11/BR24 maja "
-        "identyczne r_pu/x_pu przy roznym b_pu, co pierwotnie dalo falszywie dodatni sygnal przy "
-        "dopasowaniu tylko po (r,x); pelne dopasowanie po branch_id potwierdza zgodnosc); "
-        "(2) granice mocy biernej generatorow PV — celowo szerokie/nie wiazace z konstrukcji "
-        "(`_q_bound` w mv_benchmark_catalog.py, komentarz: zgodnosc z wyrocznia 'wlasny NR', "
-        "ktora w ogole nie sprawdza granic Q), nie moga byc przyczyna spadku napiecia. "
-        "Przyczyna resztkowej luki NIE zdiagnozowana ostatecznie w tej sesji (dane/czas, ktorych "
-        "nie mam w tej sesji — Zero-Debt pkt 4). Status PLANNED (podniesiony z nieprzetestowanej "
-        "rozbieznosci na zbiezna-czesciowa-zgodnosc), nie brak testu."
-    ),
-    strict=False,
-)
-def test_ieee_39bus_pf_planned() -> None:
+def test_ieee_39bus_pf_zgodny_z_wyrocznia_a() -> None:
+    """IEEE case39 wobec MATPOWER/pandapower (wyrocznia (a) `expected/ieee_39bus.json`).
+
+    Do CV-4.3 K7 (2026-09-09) test nosił `xfail` K1: resztkowa luka 2–4 % na szynach
+    odbiorczych (25/78 porównań poza tolerancją). Przyczyny — w danych bliźniaka, nie
+    w solverze: (1) slack 1,0 zamiast 0,982 p.u. (`Source.u_set_pu`), (2) transformatory
+    BR36 (6–31) i BR38 (12–11) z zaczepem MATPOWER po stronie „from” budowane od strony
+    „to”, więc zaczep siedział na odwrotnym uzwojeniu (`add_transformer_sn_nn` z
+    `hv_voltage_kv`: nowa szyna HV nad istniejącą LV). Zgodność z
+    `pandapower.networks.case39()` + `runpp`: max|ΔU| < 1·10⁻⁵ p.u.
+    """
     from application.reference_networks.enm_builders.ieee_39bus import build_ieee_39bus_enm
 
     _sprawdz_pf(build_ieee_39bus_enm, "ieee_39bus.json")

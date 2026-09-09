@@ -11,6 +11,8 @@ import type {
   ShortCircuitBranchFlow,
   ShortCircuitResults,
   ShortCircuitRow,
+  ZalozenieBieguSlad,
+  ZrodloSiecioweSlad,
 } from '../../../../ui/results-inspector/types';
 import type { WkladZwarciowy } from '../zwarciaModel';
 
@@ -233,6 +235,115 @@ export function shortCircuitResultsFixture(
         branch_contributions: null,
       }),
     ],
+    ...over,
+  };
+}
+
+/**
+ * Ślad WHITE BOX wyprowadzenia Z_Q źródła sieciowego (CV-4.3 K6/K7) — kształt
+ * 1:1 z `enm/mapping.py::impedancja_zasilania_systemowego` (KLUCZE, nie
+ * zgadywane): sprawdzony na żywo przez
+ * `backend/tests/enm/test_k7_sk_min.py::test_z_q_min_z_c_min_i_sk_min` (wpis
+ * MAX: tryb "MOC_ZWARCIOWA" / MIN z danymi: tryb "MOC_ZWARCIOWA_MIN").
+ */
+export function zrodloSiecioweSladMaxFixture(
+  over: Partial<ZrodloSiecioweSlad> = {},
+): ZrodloSiecioweSlad {
+  return {
+    ref_id: 's1',
+    tryb: 'MOC_ZWARCIOWA',
+    scenariusz: 'MAX',
+    u_nq_kv: 15.0,
+    sk3_mva: 250.0,
+    c: 1.1,
+    pasmo_c: 'SN/WN',
+    rx_ratio: 0.1,
+    rx_ratio_zrodlo: 'MODEL',
+    z_q_abs_ohm: 0.66,
+    z_q_ohm: { re: 0.0657, im: 0.6568 },
+    formula: "Z_Q = c·U_nQ²/S''_kQ (IEC 60909-0:2016 §6.2.1 eq. 6; c = c_max); X_Q = Z_Q/√(1+(R/X)²); R_Q = X_Q·(R/X)",
+    ...over,
+  };
+}
+
+/** Wpis MIN Z DANYMI (własny S″kQmin) — `tryb: "MOC_ZWARCIOWA_MIN"`, bez `zalozenie`. */
+export function zrodloSiecioweSladMinZDanymiFixture(
+  over: Partial<ZrodloSiecioweSlad> = {},
+): ZrodloSiecioweSlad {
+  return {
+    ref_id: 's1',
+    tryb: 'MOC_ZWARCIOWA_MIN',
+    scenariusz: 'MIN',
+    u_nq_kv: 15.0,
+    sk3_mva: 150.0,
+    c: 1.0,
+    pasmo_c: 'SN/WN',
+    rx_ratio: 0.2,
+    rx_ratio_zrodlo: 'MODEL_MIN',
+    z_q_abs_ohm: 1.0,
+    z_q_ohm: { re: 0.196, im: 0.9806 },
+    formula: "Z_Q = c·U_nQ²/S''_kQ (IEC 60909-0:2016 §6.2.1 eq. 6; c = c_min); X_Q = Z_Q/√(1+(R/X)²); R_Q = X_Q·(R/X)",
+    ...over,
+  };
+}
+
+/**
+ * Wpis MIN BEZ danych (Z_Q z MAX, karta K7) — `tryb: "MOC_ZWARCIOWA_MAX_JAKO_MIN"`,
+ * niesie `zalozenie: "source.sk_min_missing"` — kształt 1:1 z
+ * `test_bieg_kanoniczny_min_bez_danych_publikuje_zalozenie`.
+ */
+export function zrodloSiecioweSladMinBrakDanychFixture(
+  over: Partial<ZrodloSiecioweSlad> = {},
+): ZrodloSiecioweSlad {
+  return {
+    ref_id: 's1',
+    tryb: 'MOC_ZWARCIOWA_MAX_JAKO_MIN',
+    scenariusz: 'MIN',
+    u_nq_kv: 15.0,
+    sk3_mva: 250.0,
+    c: 1.0,
+    pasmo_c: 'SN/WN',
+    rx_ratio: 0.1,
+    rx_ratio_zrodlo: 'MODEL_MAX',
+    z_q_abs_ohm: 0.6006,
+    z_q_ohm: { re: 0.0597, im: 0.5976 },
+    formula: "Z_Q = c·U_nQ²/S''_kQ (IEC 60909-0:2016 §6.2.1 eq. 6; c = c_max); X_Q = Z_Q/√(1+(R/X)²); R_Q = X_Q·(R/X)",
+    zalozenie: 'source.sk_min_missing',
+    zalozenie_opis:
+      "Brak S''_kQmin/I''_kQmin: Z_Q z danych MAX (c_max, S''_kQmax), c_min tylko w "
+      + "źródle napięciowym — Ik''min(Q) = (c_min/c_max)·I''_kQmax; założenie "
+      + 'niekonserwatywne dla czułości zabezpieczeń (Z_Qmin ≥ Z_Qmax).',
+    ...over,
+  };
+}
+
+/** Wpis impedancji jawnej (bez c, bez wariantu MIN) — `tryb: "IMPEDANCJA_JAWNA"`. */
+export function zrodloSiecioweSladImpedancjaJawnaFixture(
+  over: Partial<ZrodloSiecioweSlad> = {},
+): ZrodloSiecioweSlad {
+  return {
+    ref_id: 's2',
+    tryb: 'IMPEDANCJA_JAWNA',
+    scenariusz: 'MAX',
+    u_nq_kv: 15.0,
+    z_q_ohm: { re: 0.09, im: 0.9 },
+    formula: "Z_Q = R_Q + jX_Q (impedancja jawna z modelu, bez c; scenariusz MIN: c_min wyłącznie w źródle napięciowym)",
+    ...over,
+  };
+}
+
+/** Założenie biegu (raw_result.zalozenia) — kształt 1:1 z `WejscieZwarcia.zalozenia`. */
+export function zalozenieBieguFixture(
+  over: Partial<ZalozenieBieguSlad> = {},
+): ZalozenieBieguSlad {
+  return {
+    code: 'source.sk_min_missing',
+    element_ref: 's1',
+    message_pl:
+      "Brak S''_kQmin/I''_kQmin: Z_Q z danych MAX (c_max, S''_kQmax), c_min tylko w "
+      + "źródle napięciowym — Ik''min(Q) = (c_min/c_max)·I''_kQmax; założenie "
+      + 'niekonserwatywne dla czułości zabezpieczeń (Z_Qmin ≥ Z_Qmax).',
+    scenariusz: 'MIN',
     ...over,
   };
 }

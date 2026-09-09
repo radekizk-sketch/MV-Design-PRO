@@ -35,10 +35,11 @@ from network_model.core.inverter import InverterSource
 from network_model.core.machine import AsynchronousMachineSource, SynchronousMachineSource
 from network_model.core.node import Node, NodeType
 from network_model.core.switch import Switch, SwitchState, SwitchType
-from network_model.core.voltage_factor import c_for_node
+from network_model.core.voltage_factor import Scenario, c_for_node
 from network_model.core.ybus import AdmittanceMatrixBuilder
 from network_model.pochodne import (
     impedancja_z_napiecia_i_mocy_ohm,
+    moc_zwarciowa_z_pradu_mva,
     prad_znamionowy_a,
 )
 from network_model.solvers.power_flow_zip import (
@@ -58,6 +59,7 @@ from .models import (
     liczba_torow,
 )
 from .models import TapChanger as EnmTapChanger
+from .zrodlo_zwarcie import KOD_SK_MIN_BRAK, TrybDanych, dodatnia, tryb_danych
 
 
 def _odmowa_zrodla_bez_szyny(source_ref: str, bus_ref: str) -> str:
@@ -147,6 +149,11 @@ def impedancja_zasilania_systemowego(
     sk3_mva: float | None,
     rx_ratio: float | None,
     u_nq_kv: float,
+    ik3_ka: float | None = None,
+    scenario: Scenario = "MAX",
+    sk3_min_mva: float | None = None,
+    ik3_min_ka: float | None = None,
+    rx_ratio_min: float | None = None,
 ) -> tuple[complex, dict[str, Any]] | None:
     """Impedancja zgodna zasilania systemowego Z_Q [Ω] + ślad WHITE BOX wyprowadzenia.
 
@@ -159,11 +166,19 @@ def impedancja_zasilania_systemowego(
     lub 5 % (nN) ponad wartość deklarowaną; po K6 bieg w węźle przyłączenia odtwarza
     I''_kQ dokładnie (test ``tests/enm/test_z_q_wspolczynnik_c.py``).
 
-    c = c_max pasma U_nQ ZAWSZE — także dla studium MIN: Z_Q jest własnością sieci
-    zasilającej wyprowadzoną z JEDYNEJ deklarowanej danej (S''_kQmax); c_min wchodzi
-    wyłącznie do źródła napięciowego w węźle zwarcia (assembler/solver). Literalne
-    c_min·U²/S''_kQmax dałoby Ik''min(węzeł przyłączenia) = I''_kQmax (niekonserwatywnie
-    dla czułości zabezpieczeń). Model z S''_kQmin — karta K7.
+    Scenariusze (CV-4.3 K7, ``tests/enm/test_k7_sk_min.py``):
+    - MAX: c_max(U_nQ) z S''_kQmax (albo I''_kQmax — eq. (6) zapisana prądem), R/X z
+      ``rx_ratio`` albo IEC 0,1;
+    - MIN z danymi MIN: c_min(U_nQ) z S''_kQmin/I''_kQmin, R/X z ``rx_ratio_min`` →
+      ``rx_ratio`` → IEC 0,1; Ik''(Q, MIN) = I''_kQmin dokładnie (jak pandapower
+      ``case="min"``: z = c_min·U²/s_sc_min);
+    - MIN BEZ danych MIN: Z_Q = Z_Qmax (c_max, S''_kQmax) — impedancja fizyczna z jedynej
+      deklarowanej danej; c_min wchodzi wyłącznie do źródła napięciowego w węźle zwarcia
+      (assembler/solver), więc Ik''min(Q) = (c_min/c_max)·I''_kQmax. Literalne
+      c_min·U²/S''_kQmax dałoby Ik''min(Q) = I''_kQmax. Założenie jest NIEKONSERWATYWNE
+      dla czułości zabezpieczeń (prawdziwe Z_Qmin ≥ Z_Qmax) — dlatego NIGDY cicho:
+      ślad niesie ``zalozenie = source.sk_min_missing`` (kod gotowości), a wykonawca
+      publikuje je w ``raw_result.zalozenia``.
 
     Postać WARTOŚCIOWA (nie ``Source``) — CV-4.3 K1 (KLASA NIE INSTANCJA):
     ``application/reference_networks/computation.py::build_short_circuit_graph_from_enm``
@@ -171,53 +186,102 @@ def impedancja_zasilania_systemowego(
     (``sk_max_mva``/``rx_ratio`` wprost w dict); wrapper ``impedancja_zrodla_sieciowego``
     podaje tu pola pydantic ``Source``. Jedna formuła, zero kopii — druga kopia
     rozjechałaby się przy pierwszej zmianie (dokładnie tak, jak do K6 rozjechał się
-    most pandapower i mapper).
+    most pandapower i mapper). Tryb danych rozstrzyga ``enm.zrodlo_zwarcie.tryb_danych``
+    — TEN SAM predykat, którym walidator i gotowość sprawdzają, czy źródło jest
+    policzalne (predykaty parami).
 
-    Tryb ``r_ohm``/``x_ohm`` (impedancja jawna) = impedancja fizyczna z modelu, bez c.
-    ``None`` znaczy „źródło nie ma z czego policzyć impedancji" (brak jawnego R/X
-    i brak mocy zwarciowej) — wołający POMIJA takie źródło, zamiast wstawiać za
-    nie liczbę.
+    Tryb ``r_ohm``/``x_ohm`` (impedancja jawna) = impedancja fizyczna z modelu, bez c i
+    bez wariantu MIN. ``None`` znaczy „źródło nie ma z czego policzyć impedancji"
+    (brak jawnego R/X, S''_kQ i I''_kQ) — wołający POMIJA takie źródło, zamiast
+    wstawiać za nie liczbę.
     """
-    if r_ohm is not None and x_ohm is not None:
+    tryb = tryb_danych(r_ohm=r_ohm, x_ohm=x_ohm, sk3_mva=sk3_mva, ik3_ka=ik3_ka)
+    if tryb is None:
+        return None
+    if tryb is TrybDanych.IMPEDANCJA_JAWNA:
+        assert r_ohm is not None and x_ohm is not None
         z_ohm = complex(r_ohm, x_ohm)
         return z_ohm, {
             "ref_id": ref_id,
-            "tryb": "IMPEDANCJA_JAWNA",
+            "tryb": TrybDanych.IMPEDANCJA_JAWNA.value,
+            "scenariusz": scenario,
             "u_nq_kv": u_nq_kv,
             "z_q_ohm": {"re": z_ohm.real, "im": z_ohm.imag},
-            "formula": "Z_Q = R_Q + jX_Q (impedancja jawna z modelu, bez c)",
+            "formula": (
+                "Z_Q = R_Q + jX_Q (impedancja jawna z modelu, bez c; "
+                "scenariusz MIN: c_min wyłącznie w źródle napięciowym)"
+            ),
         }
-    if sk3_mva is None or sk3_mva <= 0:
-        return None
-    c_max = c_for_node(u_nq_kv, "MAX")
-    z_abs = c_max * impedancja_z_napiecia_i_mocy_ohm(u_nq_kv, sk3_mva)
-    rx_z_modelu = rx_ratio is not None and rx_ratio > 0
-    rx: float = (
-        rx_ratio if rx_ratio is not None and rx_ratio > 0 else _IEC60909_RX_ZASILANIA_SYSTEMOWEGO
-    )
+    tryb_min = tryb_danych(sk3_mva=sk3_min_mva, ik3_ka=ik3_min_ka)
+    uzyj_min = scenario == "MIN" and tryb_min is not None
+    rx_wartosc: float | None
+    if uzyj_min:
+        assert tryb_min is not None
+        tryb_uzyty = tryb_min
+        c = c_for_node(u_nq_kv, "MIN")
+        sk_deklarowane, ik_deklarowane = sk3_min_mva, ik3_min_ka
+        etykieta = f"{tryb_uzyty.value}_MIN"
+        if dodatnia(rx_ratio_min):
+            rx_zrodlo, rx_wartosc = "MODEL_MIN", rx_ratio_min
+        elif dodatnia(rx_ratio):
+            rx_zrodlo, rx_wartosc = "MODEL_MAX", rx_ratio
+        else:
+            rx_zrodlo, rx_wartosc = "IEC_60909_DOMYSLNY_0_1", _IEC60909_RX_ZASILANIA_SYSTEMOWEGO
+    else:
+        tryb_uzyty = tryb
+        c = c_for_node(u_nq_kv, "MAX")
+        sk_deklarowane, ik_deklarowane = sk3_mva, ik3_ka
+        etykieta = tryb_uzyty.value if scenario == "MAX" else f"{tryb_uzyty.value}_MAX_JAKO_MIN"
+        if dodatnia(rx_ratio):
+            rx_zrodlo, rx_wartosc = "MODEL", rx_ratio
+        else:
+            rx_zrodlo, rx_wartosc = "IEC_60909_DOMYSLNY_0_1", _IEC60909_RX_ZASILANIA_SYSTEMOWEGO
+    assert rx_wartosc is not None
+    rx = float(rx_wartosc)
+    ik: float | None = None
+    if tryb_uzyty is TrybDanych.MOC_ZWARCIOWA:
+        assert sk_deklarowane is not None
+        sk = float(sk_deklarowane)
+    else:
+        assert ik_deklarowane is not None
+        ik = float(ik_deklarowane)
+        sk = moc_zwarciowa_z_pradu_mva(u_nq_kv * 1000.0, ik * 1000.0)
+    z_abs = c * impedancja_z_napiecia_i_mocy_ohm(u_nq_kv, sk)
     x_q_ohm = z_abs / math.sqrt(1.0 + rx**2)
     r_q_ohm = x_q_ohm * rx
     z_ohm = complex(r_q_ohm, x_q_ohm)
-    return z_ohm, {
+    slad: dict[str, Any] = {
         "ref_id": ref_id,
-        "tryb": "MOC_ZWARCIOWA",
+        "tryb": etykieta,
+        "scenariusz": scenario,
         "u_nq_kv": u_nq_kv,
-        "sk3_mva": sk3_mva,
-        "c": c_max,
+        "sk3_mva": sk,
+        **({"ik3_ka": ik} if ik is not None else {}),
+        "c": c,
         "pasmo_c": "nN" if u_nq_kv <= 1.0 else "SN/WN",
         "rx_ratio": rx,
-        "rx_ratio_zrodlo": "MODEL" if rx_z_modelu else "IEC_60909_DOMYSLNY_0_1",
+        "rx_ratio_zrodlo": rx_zrodlo,
         "z_q_abs_ohm": z_abs,
         "z_q_ohm": {"re": z_ohm.real, "im": z_ohm.imag},
         "formula": (
-            "Z_Q = c_max·U_nQ²/S''_kQ (IEC 60909-0:2016 §6.2.1 eq. 6); "
-            "X_Q = Z_Q/√(1+(R/X)²); R_Q = X_Q·(R/X)"
+            ("Z_Q = c·U_nQ/(√3·I''_kQ)" if ik is not None else "Z_Q = c·U_nQ²/S''_kQ")
+            + " (IEC 60909-0:2016 §6.2.1 eq. 6; c = "
+            + ("c_min" if uzyj_min else "c_max")
+            + "); X_Q = Z_Q/√(1+(R/X)²); R_Q = X_Q·(R/X)"
         ),
     }
+    if scenario == "MIN" and not uzyj_min:
+        slad["zalozenie"] = KOD_SK_MIN_BRAK
+        slad["zalozenie_opis"] = (
+            "Brak S''_kQmin/I''_kQmin: Z_Q z danych MAX (c_max, S''_kQmax), c_min tylko w "
+            "źródle napięciowym — Ik''min(Q) = (c_min/c_max)·I''_kQmax; założenie "
+            "niekonserwatywne dla czułości zabezpieczeń (Z_Qmin ≥ Z_Qmax)."
+        )
+    return z_ohm, slad
 
 
 def impedancja_zrodla_sieciowego(
-    source: Source, bus_voltage_kv: float
+    source: Source, bus_voltage_kv: float, scenario: Scenario = "MAX"
 ) -> tuple[complex, dict[str, Any]] | None:
     """Z_Q + ślad dla ``Source`` ENM — wrapper nad ``impedancja_zasilania_systemowego``."""
     return impedancja_zasilania_systemowego(
@@ -227,21 +291,32 @@ def impedancja_zrodla_sieciowego(
         sk3_mva=source.sk3_mva,
         rx_ratio=source.rx_ratio,
         u_nq_kv=bus_voltage_kv,
+        ik3_ka=source.ik3_ka,
+        scenario=scenario,
+        sk3_min_mva=source.sk3_min_mva,
+        ik3_min_ka=source.ik3_min_ka,
+        rx_ratio_min=source.rx_ratio_min,
     )
 
 
-def _source_positive_impedance_ohm(source: Source, bus_voltage_kv: float) -> complex | None:
+def _source_positive_impedance_ohm(
+    source: Source, bus_voltage_kv: float, scenario: Scenario = "MAX"
+) -> complex | None:
     """Impedancja zgodna Z_Q [Ω] albo ``None`` — patrz ``impedancja_zrodla_sieciowego``."""
-    wynik = impedancja_zrodla_sieciowego(source, bus_voltage_kv)
+    wynik = impedancja_zrodla_sieciowego(source, bus_voltage_kv, scenario)
     return None if wynik is None else wynik[0]
 
 
-def _source_zero_impedance_ohm(source: Source, bus_voltage_kv: float) -> complex | None:
+def _source_zero_impedance_ohm(
+    source: Source, bus_voltage_kv: float, scenario: Scenario = "MAX"
+) -> complex | None:
+    """Z0 źródła: jawne R0/X0 (fizyczne, bez scenariusza) albo (Z0/Z1)·Z_Q(scenariusz)."""
     if source.r0_ohm is not None and source.x0_ohm is not None:
         return complex(source.r0_ohm, source.x0_ohm)
-    if source.z0_z1_ratio is None or source.z0_z1_ratio <= 0:
+    if not dodatnia(source.z0_z1_ratio):
         return None
-    z1 = _source_positive_impedance_ohm(source, bus_voltage_kv)
+    assert source.z0_z1_ratio is not None
+    z1 = _source_positive_impedance_ohm(source, bus_voltage_kv, scenario)
     if z1 is None:
         return None
     return z1 * source.z0_z1_ratio
@@ -268,7 +343,7 @@ def _add_series_admittance(
 
 
 def _assemble_zero_sequence_y0(
-    enm: EnergyNetworkModel, graph: NetworkGraph
+    enm: EnergyNetworkModel, graph: NetworkGraph, scenario: Scenario = "MAX"
 ) -> tuple[AdmittanceMatrixBuilder, dict[str, int], int, np.ndarray, list[dict]]:
     """Składa macierz Y0 (składowej zerowej) z pól ENM + ślad WHITE BOX.
 
@@ -406,7 +481,7 @@ def _assemble_zero_sequence_y0(
         # Wlasna nazwa (nie `z0_ohm` z petli galeziowej wyzej): tam wartosc jest
         # ZAWSZE zespolona, tu MOZE byc None (zrodlo bez danych skladowej zerowej).
         # Wspoldzielenie jednej nazwy chowalo te roznice przed analiza typow.
-        z0_source_ohm = _source_zero_impedance_ohm(source, bus_voltage_kv)
+        z0_source_ohm = _source_zero_impedance_ohm(source, bus_voltage_kv, scenario)
         if z0_source_ohm is None:
             continue
         if z0_source_ohm == 0:
@@ -466,7 +541,9 @@ def _assemble_zero_sequence_y0(
     return builder, node_index, size, y0_bus, tracer.to_list() + transformer_trace
 
 
-def build_zero_sequence_zbus(enm: EnergyNetworkModel, graph: NetworkGraph) -> np.ndarray:
+def build_zero_sequence_zbus(
+    enm: EnergyNetworkModel, graph: NetworkGraph, *, scenario: Scenario = "MAX"
+) -> np.ndarray:
     """
     Build the zero-sequence Z-bus from ENM fields without mutating the graph.
 
@@ -488,7 +565,7 @@ def build_zero_sequence_zbus(enm: EnergyNetworkModel, graph: NetworkGraph) -> np
     fabrykacją wyniku — zakazaną. Jawne sprawdzenie rangi wyłapuje ten
     przypadek niezależnie od tego, czy LU akurat zgłosi wyjątek.
     """
-    _, _, size, y0_bus, _ = _assemble_zero_sequence_y0(enm, graph)
+    _, _, size, y0_bus, _ = _assemble_zero_sequence_y0(enm, graph, scenario)
     if np.linalg.matrix_rank(y0_bus) < size:
         raise ValueError(
             "Zero-sequence Y-bus is singular; cannot compute Z0-bus "
@@ -738,7 +815,9 @@ def build_inverter_k_sc_trace(enm: EnergyNetworkModel) -> list[dict]:
     return map_enm_to_network_graph(enm).k_sc_assumptions_trace
 
 
-def build_grid_source_trace(enm: EnergyNetworkModel) -> list[dict[str, Any]]:
+def build_grid_source_trace(
+    enm: EnergyNetworkModel, scenario: Scenario = "MAX"
+) -> list[dict[str, Any]]:
     """Ślad WHITE BOX wyprowadzenia Z_Q każdego źródła sieciowego (CV-4.3 K6).
 
     Ten sam wzorzec co ``build_inverter_k_sc_trace``: funkcja publiczna, do wglądu
@@ -753,14 +832,16 @@ def build_grid_source_trace(enm: EnergyNetworkModel) -> list[dict[str, Any]]:
         u_kv = napiecie.get(source.bus_ref, 0.0)
         if u_kv <= 0:
             continue
-        wynik = impedancja_zrodla_sieciowego(source, u_kv)
+        wynik = impedancja_zrodla_sieciowego(source, u_kv, scenario)
         if wynik is None or wynik[0] == 0:
             continue
         slad.append(wynik[1])
     return slad
 
 
-def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
+def map_enm_to_network_graph(
+    enm: EnergyNetworkModel, *, scenario: Scenario = "MAX"
+) -> NetworkGraph:
     """
     Map ENM to NetworkGraph consumed by existing solvers.
 
@@ -1123,7 +1204,7 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
         # DRUGA, dosłowna kopia obliczenia (z własnym literałem R/X = 0,1): dwie
         # kopie tej samej reguły to defekt czekający na zmianę jednej z nich, a
         # różnica między nimi byłaby niewidoczna, bo obie dawały „jakąś" liczbę.
-        z_ohm = _source_positive_impedance_ohm(source, bus_voltage_kv)
+        z_ohm = _source_positive_impedance_ohm(source, bus_voltage_kv, scenario)
         if z_ohm is None or z_ohm == 0:
             continue
 

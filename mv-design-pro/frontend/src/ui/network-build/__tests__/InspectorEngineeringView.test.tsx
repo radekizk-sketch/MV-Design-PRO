@@ -862,7 +862,6 @@ describe('InspectorEngineeringView', () => {
           },
         }],
       ]),
-      itemsByBayId: new Map(),
       isLoading: false,
       error: null,
     };

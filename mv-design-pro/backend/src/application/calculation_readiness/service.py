@@ -22,6 +22,7 @@ from typing import Any, Literal
 from enm.mapping import FULL_CONVERTER_SC_GEN_TYPES
 from enm.models import EnergyNetworkModel
 from enm.topology import derive
+from enm.zrodlo_zwarcie import TrybDanych, dane_zwarciowe_zrodla
 from pydantic import BaseModel, Field
 
 CalculationType = Literal[
@@ -234,9 +235,12 @@ def _check_short_circuit(enm: EnergyNetworkModel) -> ReadinessTypeReport:
         missing.append('źródło zwarciowe (S_k")')
         blockers.append("project")
 
+    # CV-4.3 K7: predykat wspólny z mapperem (`enm/zrodlo_zwarcie.py`) — do tej karty ta
+    # bramka wymagała WYŁĄCZNIE `sk3_mva`, więc źródło z jawną impedancją R/X albo z
+    # samym I''kQ (oba policzalne) było fałszywie zgłaszane jako brak danych.
     for src in enm.sources:
-        if getattr(src, "sk3_mva", None) is None:
-            missing.append(f"S_k\" źródła '{src.ref_id}'")
+        if not dane_zwarciowe_zrodla(src).policzalne:
+            missing.append(f"parametry zwarciowe (S_k\", I_k\" albo R+jX) źródła '{src.ref_id}'")
             blockers.append(src.ref_id)
 
     for tr in enm.transformers:
@@ -279,6 +283,26 @@ def _check_short_circuit(enm: EnergyNetworkModel) -> ReadinessTypeReport:
             blocking_object_refs=blockers,
             recommended_action_pl='Uzupełnij dane zwarciowe źródła i transformatorów (u_k, S_k").',
         )
+    # CV-4.3 K7: źródła policzalne w MAX, ale bez danych scenariusza MIN (S''kQmin/I''kQmin,
+    # tryb mocy zwarciowej / prądu) — bieg MIN liczy Z_Q z danych MAX z JAWNYM założeniem
+    # (kod 'source.sk_min_missing', ślad `zrodla_sieciowe`, `raw_result.zalozenia`).
+    # Impedancja jawna jest fizyczna i wariantu MIN nie ma, więc nie jest brakiem.
+    bez_danych_min = [
+        src.ref_id
+        for src in enm.sources
+        if (dane := dane_zwarciowe_zrodla(src)).tryb_max is not None
+        and dane.tryb_max is not TrybDanych.IMPEDANCJA_JAWNA
+        and dane.tryb_min is None
+    ]
+    nota_min = (
+        (
+            f" Scenariusz MIN: {len(bez_danych_min)} źródło(-a) bez S''kQmin/I''kQmin "
+            f"({', '.join(bez_danych_min)}) — Z_Q z danych MAX (kod 'source.sk_min_missing', "
+            "założenie niekonserwatywne dla czułości zabezpieczeń)."
+        )
+        if bez_danych_min
+        else ""
+    )
     if zalozone_k_sc_refs:
         return ReadinessTypeReport(
             calculation_type="short_circuit",
@@ -288,13 +312,14 @@ def _check_short_circuit(enm: EnergyNetworkModel) -> ReadinessTypeReport:
                 "Zwarcia można policzyć. Założenie: "
                 f"{len(zalozone_k_sc_refs)} konwerter(ów) bez k_sc w karcie katalogowej "
                 "dostało wartość domyślną IEC 1,1 (kod 'inverter.k_sc_assumed') — "
-                "sprawdź, czy karta producenta nie niesie zmierzonej wartości."
+                "sprawdź, czy karta producenta nie niesie zmierzonej wartości." + nota_min
             ),
         )
     return ReadinessTypeReport(
         calculation_type="short_circuit",
         label_pl=CALCULATION_LABEL_PL["short_circuit"],
         status="ready",
+        recommended_action_pl=("Zwarcia można policzyć." + nota_min) if nota_min else None,
     )
 
 

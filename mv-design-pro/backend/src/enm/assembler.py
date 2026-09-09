@@ -482,6 +482,9 @@ class WejscieZwarcia:
     #: CV-4.3 K6: ślad WHITE BOX wyprowadzenia Z_Q każdego źródła sieciowego
     #: (c wg IEC 60909-0:2016 §6.2.1 eq. 6) — ``enm.mapping.build_grid_source_trace``.
     zrodla_sieciowe_trace: tuple[dict[str, Any], ...]
+    #: CV-4.3 K7: założenia biegu nazwane kodem gotowości (np. ``source.sk_min_missing``:
+    #: scenariusz MIN bez S''_kQmin — Z_Q z danych MAX). Pusta krotka = bieg bez założeń.
+    zalozenia: tuple[dict[str, Any], ...]
 
 
 def wezly_bez_impedancji_do_odniesienia(graph: NetworkGraph) -> frozenset[str]:
@@ -516,6 +519,24 @@ def wezly_bez_impedancji_do_odniesienia(graph: NetworkGraph) -> frozenset[str]:
         if not any(wezel in wezly_odniesienia for wezel in wyspa):
             bez_odniesienia.update(wyspa)
     return frozenset(bez_odniesienia)
+
+
+def _nastawy_u_zrodel(snapshot: dict[str, Any]) -> dict[str, float]:
+    """``ref_id`` źródła sieciowego → napięcie zadane szyny bilansującej [p.u.].
+
+    Źródło bez ``u_set_pu`` (``None``) nie ma wpisu — assembler bierze wtedy 1,0 p.u.
+    (napięcie znamionowe; jawne założenie modelowe ``Source.u_set_pu``). Wartość spoza
+    pasma odrzuca walidator ENM (``sources.u_set_pu_out_of_range``) i operacja domenowa
+    (``source.manual_equivalent_invalid``) — assembler nie poprawia danych po cichu.
+    """
+    wynik: dict[str, float] = {}
+    for zrodlo in snapshot.get("sources") or []:
+        if not isinstance(zrodlo, dict):
+            continue
+        wartosc = zrodlo.get("u_set_pu")
+        if isinstance(wartosc, int | float) and not isinstance(wartosc, bool):
+            wynik[str(zrodlo.get("ref_id"))] = float(wartosc)
+    return wynik
 
 
 def _wyspy_zasilone(snapshot: dict[str, Any], graph: NetworkGraph) -> list[tuple[Wyspa, str, str]]:
@@ -602,6 +623,7 @@ def zloz_wejscie_rozplywu(
     if not wyspy_zasilone:
         raise ValueError("Brak wezla bilansujacego SLACK w kanonicznym snapshotcie ENM")
     slack_node_id = wyspy_zasilone[0][2]
+    nastawa_u_zrodla = _nastawy_u_zrodel(snapshot)
 
     # G-OZE-PF (V12K-051): regulacja falownika OZE dla kanonicznego PF (Q(U)/cosφ).
     # base_mva potrzebne przed budową PQSpec, aby przeliczyć limity/nachylenie na pu.
@@ -793,7 +815,11 @@ def zloz_wejscie_rozplywu(
                 pf_input=PowerFlowInput(
                     graph=graf_wyspy,
                     base_mva=base_mva,
-                    slack=SlackSpec(node_id=slack_wyspy, u_pu=1.0, angle_rad=0.0),
+                    slack=SlackSpec(
+                        node_id=slack_wyspy,
+                        u_pu=nastawa_u_zrodla.get(zrodlo_ref, 1.0),
+                        angle_rad=0.0,
+                    ),
                     pq=pq_wyspy,
                     pv=pv_wyspy,
                     shunts=shunty_wyspy,
@@ -847,9 +873,9 @@ def zloz_wejscie_zwarcia(
     # impedancja transformatora blokowego) od WOŁAJĄCEGO jako dane — assembler nie
     # czyta bazy. Aplikowane przed build_zero_sequence_zbus.
     audit2_extensions_sc = rozszerzenia_audit2
-    if audit2_extensions_sc is not None:
-        from solver_input.audit2_solver_adjuster import apply_audit2_to_network_model
+    from solver_input.audit2_solver_adjuster import apply_audit2_to_network_model
 
+    if audit2_extensions_sc is not None:
         apply_audit2_to_network_model(graph=graph, audit2_extensions=audit2_extensions_sc)
 
     # Karta P0.3b (docs/nn/H_PLAN_IMPLEMENTACJI_NN.md §P0.3, kontynuacja P0.3):
@@ -879,7 +905,14 @@ def zloz_wejscie_zwarcia(
     solve_graph = graph
     temperature_correction_notes: tuple[dict[str, Any], ...] = ()
     if scenario_c == "MIN":
-        min_scenario_graph_result = build_min_scenario_graph(graph)
+        # CV-4.3 K7: graf solvera dla MIN dostaje Z_Qmin źródeł sieciowych (c_min·U²/S''_kQmin,
+        # IEC 60909-0:2016 eq. 6) — albo Z_Qmax z JAWNYM założeniem, gdy S''_kQmin nie ma
+        # (``zalozenia`` niżej). ``graph`` (topologia raportowalna, MAX) bez zmian; te same
+        # rozszerzenia audytu 2 co dla grafu MAX, bo solver widzi WYŁĄCZNIE ``solve_graph``.
+        graf_min = map_enm_to_network_graph(enm, scenario="MIN")
+        if audit2_extensions_sc is not None:
+            apply_audit2_to_network_model(graph=graf_min, audit2_extensions=audit2_extensions_sc)
+        min_scenario_graph_result = build_min_scenario_graph(graf_min)
         solve_graph = min_scenario_graph_result.graph
         temperature_correction_notes = tuple(
             note.to_dict() for note in min_scenario_graph_result.notes
@@ -902,7 +935,7 @@ def zloz_wejscie_zwarcia(
     # impedancje składowej zerowej pochodzą z pól ENM, więc dla grafu bez wysp
     # pływających macierz jest tożsama z liczoną dotąd z ``graph``.
     z0_bus = (
-        build_zero_sequence_zbus(enm, solve_graph)
+        build_zero_sequence_zbus(enm, solve_graph, scenario=scenario_c)
         if _short_circuit_requires_z0(short_circuit_type)
         else None
     )
@@ -954,6 +987,17 @@ def zloz_wejscie_zwarcia(
             )
         else:
             raise ValueError(f"Nieznany typ lokalizacji zwarcia: {location_type!r}")
+    zrodla_sieciowe_trace = tuple(build_grid_source_trace(enm, scenario_c))
+    zalozenia = tuple(
+        {
+            "code": wpis["zalozenie"],
+            "element_ref": wpis["ref_id"],
+            "message_pl": wpis["zalozenie_opis"],
+            "scenariusz": scenario_c,
+        }
+        for wpis in zrodla_sieciowe_trace
+        if wpis.get("zalozenie")
+    )
     return WejscieZwarcia(
         enm=enm,
         graph=graph,
@@ -969,5 +1013,6 @@ def zloz_wejscie_zwarcia(
         graph_nodes=graph_nodes,
         graph_branches=graph_branches,
         wezly_bez_odniesienia=wezly_bez_odniesienia,
-        zrodla_sieciowe_trace=tuple(build_grid_source_trace(enm)),
+        zrodla_sieciowe_trace=zrodla_sieciowe_trace,
+        zalozenia=zalozenia,
     )

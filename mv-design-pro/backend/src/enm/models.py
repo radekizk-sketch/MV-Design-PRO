@@ -403,6 +403,18 @@ class Source(ENMElement):
     r_ohm: float | None = None
     x_ohm: float | None = None
     rx_ratio: float | None = None
+    # CV-4.3 K7: dane zwarciowe scenariusza MIN (IEC 60909-0:2016 §6.2.1 eq. 6 z c_min),
+    # na TEJ SAMEJ szynie/stronie co ``sk3_mva``/``ik3_ka``. Brak = scenariusz MIN liczony
+    # z Z_Q(MAX) i JAWNYM założeniem ``source.sk_min_missing`` (``enm/zrodlo_zwarcie.py``).
+    sk3_min_mva: float | None = None
+    ik3_min_ka: float | None = None
+    rx_ratio_min: float | None = None
+    # Napięcie zadane szyny bilansującej [p.u. napięcia znamionowego szyny] — dana
+    # WEJŚCIOWA rozpływu mocy (MATPOWER/pandapower: ``Vm`` szyny slack / ``ext_grid.vm_pu``).
+    # ``None`` = 1,0 p.u. (napięcie znamionowe; jawne założenie modelowe, nie pomiar).
+    # Dotąd assembler wpisywał 1,0 KAŻDEMU źródłu — bliźniaki literatury ze slackiem
+    # 1,06 p.u. (IEEE case14) / 0,982 p.u. (IEEE case39) nie dały się odwzorować.
+    u_set_pu: float | None = None
     r0_ohm: float | None = None
     x0_ohm: float | None = None
     z0_z1_ratio: float | None = None

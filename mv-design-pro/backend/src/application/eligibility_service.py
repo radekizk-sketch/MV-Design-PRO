@@ -44,6 +44,7 @@ from enm.models import (
 )
 from enm.pole_transformatorowe import pasmo_napieciowe
 from enm.validator import ReadinessResult
+from enm.zrodlo_zwarcie import dane_zwarciowe_zrodla
 
 # Karta G-22: FAULT_LOOP_NN/SWZ_NN reużywają `_transformer_loop_impedance`
 # (kompletność danych transformatora dla impedancji pętli L-PE/L-PEN) i
@@ -548,15 +549,9 @@ class EligibilityService:
         enm: EnergyNetworkModel,
         blockers: list[AnalysisEligibilityIssue],
     ) -> None:
+        # CV-4.3 K7: predykat wspólny z mapperem i walidatorem (`enm/zrodlo_zwarcie.py`).
         for source in enm.sources:
-            has_sk = source.sk3_mva is not None and source.sk3_mva > 0
-            has_rx = (
-                source.r_ohm is not None
-                and source.x_ohm is not None
-                and (source.r_ohm > 0 or source.x_ohm > 0)
-            )
-            has_ik = source.ik3_ka is not None and source.ik3_ka > 0
-            if not (has_sk or has_rx or has_ik):
+            if not dane_zwarciowe_zrodla(source).policzalne:
                 blockers.append(
                     AnalysisEligibilityIssue(
                         code="ELIG_SC3_SOURCE_NO_SC_PARAMS",
@@ -613,10 +608,7 @@ class EligibilityService:
         blockers: list[AnalysisEligibilityIssue],
     ) -> None:
         for source in enm.sources:
-            has_z0 = (
-                source.r0_ohm is not None and source.x0_ohm is not None
-            ) or source.z0_z1_ratio is not None
-            if not has_z0:
+            if not dane_zwarciowe_zrodla(source).z0:
                 blockers.append(
                     AnalysisEligibilityIssue(
                         code="ELIG_SC1_MISSING_Z0",

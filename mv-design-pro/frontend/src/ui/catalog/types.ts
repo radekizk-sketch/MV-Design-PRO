@@ -459,6 +459,10 @@ export interface SourceSystemCatalogType extends CatalogType {
   sk3_mva: number;
   ik3_ka?: number;
   rx_ratio?: number;
+  /** Dane scenariusza MIN (CV-4.3 K7); null = OSD nie podał (zero fabrykacji). */
+  sk3_min_mva?: number | null;
+  ik3_min_ka?: number | null;
+  rx_ratio_min?: number | null;
   earthing_system?: string;
   short_circuit_model?: string;
   operator_name?: string;

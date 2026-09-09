@@ -271,6 +271,22 @@ export interface CanonicalGpzHvSystemSource {
   readonly name: string;
   readonly sk3Mva: number | null;
   readonly ik3Ka: number | null;
+  /**
+   * Dane scenariusza MIN (CV-4.3 K7) — warunki przyłączenia OSD, ta sama szyna
+   * źródła co `sk3Mva`/`ik3Ka`. `null` = OSD ich nie podał (zero fabrykacji);
+   * tabliczka danych (`compose/gpz.ts::gpzSystemSourceDataplateText`) pokazuje
+   * wtedy WYŁĄCZNIE wartość maksymalną, jak dotychczas.
+   */
+  readonly sk3MinMva: number | null;
+  readonly ik3MinKa: number | null;
+  /**
+   * Napięcie zadane szyny bilansującej (CV-4.3 K7c, `Source.u_set_pu`) — ta
+   * sama szyna źródła co `sk3Mva`/`ik3Ka`/`sk3MinMva`/`ik3MinKa` powyżej.
+   * `null` = OSD go nie podał (zero fabrykacji); tabliczka danych
+   * (`compose/gpz.ts::gpzSystemSourceDataplateText`) pomija wtedy człon
+   * napięcia zadanego, jak dotychczas.
+   */
+  readonly uSetPu: number | null;
   /** Napięcie SZYNY ŹRÓDŁA (`Bus.voltage_kv` szyny z `Source.bus_ref`) —
    *  recenzja NO-GO właściciela 2026-07-17 pkt 2: dawna semantyka („zawsze
    *  strona WN") sklejała Sk″/Ik″ ekwiwalentu 15 kV z napięciem 110 kV w

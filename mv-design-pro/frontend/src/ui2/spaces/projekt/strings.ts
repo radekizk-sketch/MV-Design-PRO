@@ -78,6 +78,17 @@ export const PULPIT_STRINGS = {
   przylaczenieNapiecie: 'Napięcie przyłączenia',
   przylaczenieSk: 'Moc zwarciowa Sk″',
   przylaczenieIk: 'Prąd zwarciowy Ik″',
+  // CV-4.3 K7: scenariusz MIN (warunki przyłączenia OSD) — dodatkowe wiersze
+  // renderowane WYŁĄCZNIE gdy źródło niesie dane MIN (zero fabrykacji); bez nich
+  // kafel pokazuje wyłącznie `przylaczenieSk`/`przylaczenieIk` jak dotychczas.
+  przylaczenieSkMaks: 'Moc zwarciowa Sk″ (maks.)',
+  przylaczenieSkMin: 'Moc zwarciowa Sk″ (min.)',
+  przylaczenieIkMaks: 'Prąd zwarciowy Ik″ (maks.)',
+  przylaczenieIkMin: 'Prąd zwarciowy Ik″ (min.)',
+  // CV-4.3 K7c: napięcie zadane szyny bilansującej — wiersz WYŁĄCZNIE gdy
+  // źródło je niesie (zero fabrykacji); bez niego kafel pokazuje wyłącznie
+  // wiersze Sk″/Ik″ jak dotychczas.
+  przylaczenieUZadane: 'U zadane',
   przylaczenieWieleZrodel: (n: number) => `+${n - 1} kolejne źródło sieciowe`,
   przylaczenieGeneracja: 'Generacja zainstalowana',
   przylaczenieOdbiory: 'Obciążenie zainstalowane',
@@ -86,6 +97,7 @@ export const PULPIT_STRINGS = {
   jednKa: 'kA',
   jednKv: 'kV',
   jednMw: 'MW',
+  jednPu: 'pu',
 
   // Warunki przyłączenia OSD (K2 — blok `header.connection_conditions`)
   osdLimit: 'Moc przyłączeniowa (OSD)',

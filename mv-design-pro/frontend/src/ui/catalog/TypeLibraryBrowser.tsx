@@ -10,6 +10,7 @@ import {
 import type {
   CableType,
   LineType,
+  SourceSystemCatalogType,
   SwitchEquipmentType,
   TransformerType,
   TypeCategory,
@@ -260,7 +261,19 @@ function getTypeSummary(type: CatalogListItem, category: TypeCategory): string {
 
 function getGenericDetailEntries(type: CatalogListItem): Array<{ label: string; value: string }> {
   const record = type as unknown as Record<string, unknown>;
-  const hiddenKeys = new Set(['id', 'name', 'manufacturer', 'vendor']);
+  // CV-4.3 K7: sk3_min_mva/ik3_min_ka/rx_ratio_min ukryte tu — panel generyczny
+  // UKRYWA pola null zamiast "brak danych" (K1), więc renderują się WYŁĄCZNIE
+  // przez bespoke `renderSystemSourceMinParams` (etykiety PL + jawny brak danych,
+  // zero duplikatu wartości pod dwiema różnymi etykietami).
+  const hiddenKeys = new Set([
+    'id',
+    'name',
+    'manufacturer',
+    'vendor',
+    'sk3_min_mva',
+    'ik3_min_ka',
+    'rx_ratio_min',
+  ]);
   const presentKeys = Object.keys(record).filter((key) => !hiddenKeys.has(key) && record[key] != null && record[key] !== '');
   const orderedKeys = [
     ...GENERIC_FIELD_ORDER.filter((key) => presentKeys.includes(key)),
@@ -765,6 +778,11 @@ function TypeDetailsPanel({
           {!['LINE', 'CABLE', 'TRANSFORMER', 'SWITCH_EQUIPMENT'].includes(category) ? (
             <GenericTypeDetailsPanel entries={genericEntries} />
           ) : null}
+          {/* CV-4.3 K7: dane scenariusza MIN ZRODLO_SN — bespoke (nie generyczny
+              panel powyżej), bo panel generyczny UKRYWA pola `null` zamiast
+              pokazać "brak danych" (wzór K1: `renderLineParams` / `max_temperature_c`).
+              Dokłada się DO generycznych wpisów (Sk3/Ik3/R-X maks. już tam są). */}
+          {category === 'SYSTEM_SOURCE' ? renderSystemSourceMinParams(type as SourceSystemCatalogType) : null}
         </div>
       </div>
 
@@ -842,6 +860,32 @@ function renderLineParams(type: LineType) {
         label="Maks. temperatura"
         value={type.max_temperature_c == null ? 'brak danych' : type.max_temperature_c.toFixed(0)}
         unit="C"
+      />
+    </>
+  );
+}
+
+/**
+ * CV-4.3 K7: trzy pola scenariusza MIN (warunki przyłączenia OSD) dla ZRODLO_SN —
+ * „brak danych" gdy null (wzór K1, `max_temperature_c` w `renderLineParams`).
+ * Dokładany OBOK generycznego panelu (Sk3/Ik3/R-X MAKS. już renderują tamtędy).
+ */
+function renderSystemSourceMinParams(type: SourceSystemCatalogType) {
+  return (
+    <>
+      <DetailField
+        label="Moc zwarciowa Sk3 min"
+        value={type.sk3_min_mva == null ? 'brak danych' : formatNumber(type.sk3_min_mva)}
+        unit="MVA"
+      />
+      <DetailField
+        label="Prąd zwarciowy Ik3 min"
+        value={type.ik3_min_ka == null ? 'brak danych' : formatNumber(type.ik3_min_ka)}
+        unit="kA"
+      />
+      <DetailField
+        label="Stosunek R/X min"
+        value={type.rx_ratio_min == null ? 'brak danych' : formatNumber(type.rx_ratio_min)}
       />
     </>
   );

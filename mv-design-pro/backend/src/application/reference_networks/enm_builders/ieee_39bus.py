@@ -166,12 +166,17 @@ def build_ieee_39bus_enm() -> BenchmarkEnm:
         rx_ratio=0.1,
         line_fields_count=1,
         source_name="External grid (slack)",
+        u_set_pu=0.982,  # MATPOWER case39 bus 31 Vm (pandapower ext_grid.vm_pu)
     )
+    # BR36 = gałąź MATPOWER 6–31 z zaczepem τ=1,07 przy szynie 6 („from"): szyna 6 (B5)
+    # jest uzwojeniem HV (zaczep), szyna bilansująca 31 (B30) — LV. Budowa dochodzi tu
+    # od strony 31, więc B5 powstaje jako NOWA szyna HV (`hv_voltage_kv`), nie LV —
+    # z odwróconą orientacją bliźniak odbiegał od pandapower o 0,05 p.u. (B4–B7).
     enm, bus_b5 = dodaj_transformator(
         enm,
-        hv_bus_ref=bus_b30,
+        hv_voltage_kv=345.0,
+        lv_bus_ref=bus_b30,
         catalog_ref="bench_ieee39bus_br36",
-        lv_voltage_kv=345.0,
         off_nominal_ratio=1.07,
     )
 
@@ -192,11 +197,13 @@ def build_ieee_39bus_enm() -> BenchmarkEnm:
 
     # B11: WYŁĄCZNIE przez transformatory BR38 (nowa szyna od B10)/BR39
     # (druga, równoległa droga do JUŻ istniejącej B12).
+    # BR38 = gałąź MATPOWER 12–11 z zaczepem τ=1,006 przy szynie 12 (B11): B11 jest
+    # uzwojeniem HV — powstaje jako nowa szyna HV nad istniejącą B10 (szyna 11).
     enm, bus_b11 = dodaj_transformator(
         enm,
-        hv_bus_ref=bus_map["B10"],
+        hv_voltage_kv=345.0,
+        lv_bus_ref=bus_map["B10"],
         catalog_ref="bench_ieee39bus_br38",
-        lv_voltage_kv=345.0,
         off_nominal_ratio=1.006,
     )
     bus_map["B11"] = bus_b11

@@ -6,7 +6,11 @@ Format arkusza (uzgodniony z operatorami sieci):
 - Arkusz "Linie"    (wymagany):  id, szyna_pocz, szyna_kon, typ, długość_km,
                                  R_ohm_km, X_ohm_km [opcjonalnie: B_uS_km, typ_katalogowy]
 - Arkusz "Trafo"    (opcjonalny): id, szyna_HV, szyna_LV, Sn_MVA, uk_pct [opc.: Pk_kW, grupa]
-- Arkusz "Źródła"   (opcjonalny): id, szyna, typ, Sk_MVA, RX_ratio
+- Arkusz "Źródła"   (opcjonalny): id, szyna, typ, RX_ratio + (Sk_MVA i/lub Ik_kA — co
+                                 najmniej jedna z tych dwu kolumn scenariusza MAX) [opcjonalnie
+                                 scenariusz MIN wg IEC 60909-0:2016 §6.2.1 eq. 6 z c_min —
+                                 CV-4.3 K7: Sk_min_MVA, Ik_min_kA, RX_min; U_pu — napięcie
+                                 zadane szyny bilansującej w p.u. (0,8–1,2), puste = 1,0]
 - Arkusz "Odbiory"  (opcjonalny): id, szyna, P_MW, Q_Mvar
 
 ZASADY (naprawa karty XLSX-IMPORT, 2026-08-07):
@@ -26,6 +30,15 @@ ZASADY (naprawa karty XLSX-IMPORT, 2026-08-07):
   brak zostaje brakiem (0.0 = wielkosc nieznana, kryterium niesprawdzalne).
 - Bledy sa strukturalne (arkusz/wiersz/kolumna/komunikat) — front pokazuje je
   przy wierszu, bez parsowania arkusza w przegladarce.
+- CV-4.3 K7 (dane zwarciowe scenariusza MIN): kolumny `Sk_min_MVA`/`Ik_min_kA`/`RX_min`
+  sa OPCJONALNE — puste = klucz pominiety w payloadzie (IEC 60909-0:2016 §6.2.1 eq. 6
+  z c_min; brak danych MIN = biegi scenariusza MIN licza sie z impedancji dla S''kQmax,
+  zalozenie jawnie oznaczone kodem `source.sk_min_missing` w warstwie domenowej). Sprzecznosc
+  danych (Sk_min_MVA > Sk_MVA, Ik_min_kA > Ik_kA, RX_min bez wlasnej mocy zwarciowej MIN)
+  NIE jest tu twardym bledem odrzucajacym import — importer POKAZUJE ja jako ostrzezenie
+  w podgladzie (rozstrzygniecie nalezy do warstwy domenowej, ktora dane docelowo konsumuje).
+  Kolumna `Sk_MVA` jest odtad opcjonalna: zrodlo wymaga co najmniej jednej z `Sk_MVA`/`Ik_kA`
+  (tryb pradowy — I''kQ jako jedyna dana zwarciowa — jest policzalny, jak w kreatorze sieci).
 """
 
 from __future__ import annotations
@@ -34,6 +47,7 @@ import io
 from dataclasses import dataclass, field
 from typing import Any
 
+from enm.zrodlo_zwarcie import PASMO_U_SET_PU, u_set_pu_w_pasmie
 from network_model.catalog.governance import wymaga_referencji_katalogowej
 from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
 from network_model.core.branch import BranchType
@@ -175,8 +189,19 @@ class XlsxNetworkImporter:
         "id": str,
         "szyna": str,
         "typ": str,
-        "Sk_MVA": float,
         "RX_ratio": float,
+    }
+    # `Sk_MVA` opcjonalna (CV-4.3 K7): zrodlo wymaga co najmniej Sk_MVA albo Ik_kA
+    # (tryb pradowy) — sprawdzane w `_waliduj_wartosci`, nie na poziomie kolumn
+    # wymaganych (arkusz bez ZADNEJ z dwoch kolumn nadal ma czytelna strukture).
+    SOURCE_OPTIONAL_COLUMNS: dict[str, type] = {
+        "Sk_MVA": float,
+        "Ik_kA": float,
+        "Sk_min_MVA": float,
+        "Ik_min_kA": float,
+        "RX_min": float,
+        # Napięcie zadane szyny bilansującej [p.u. Un szyny]; puste = 1,0 (znamionowe).
+        "U_pu": float,
     }
     LOAD_COLUMNS: dict[str, type] = {
         "id": str,
@@ -265,7 +290,11 @@ class XlsxNetworkImporter:
             zrodla: list[dict[str, Any]] = []
             if ARKUSZ_ZRODLA in nazwy_arkuszy:
                 zrodla, ok = self._parse_sheet(
-                    wb[ARKUSZ_ZRODLA], self.SOURCE_COLUMNS, {}, ARKUSZ_ZRODLA, bledy
+                    wb[ARKUSZ_ZRODLA],
+                    self.SOURCE_COLUMNS,
+                    self.SOURCE_OPTIONAL_COLUMNS,
+                    ARKUSZ_ZRODLA,
+                    bledy,
                 )
                 struktura_ok &= ok
             odbiory: list[dict[str, Any]] = []
@@ -584,13 +613,35 @@ class XlsxNetworkImporter:
                 )
 
         for zrodlo in zrodla:
-            if zrodlo["Sk_MVA"] <= 0:
+            sk_mva = zrodlo.get("Sk_MVA")
+            ik_ka = zrodlo.get("Ik_kA")
+            if sk_mva is None and ik_ka is None:
+                bledy.append(
+                    BladArkusza(
+                        arkusz=ARKUSZ_ZRODLA,
+                        wiersz=zrodlo["_wiersz"],
+                        komunikat=(
+                            "Źródło musi mieć podaną moc zwarciową Sk_MVA "
+                            "albo prąd zwarciowy Ik_kA (tryb prądowy)"
+                        ),
+                    )
+                )
+            if sk_mva is not None and sk_mva <= 0:
                 bledy.append(
                     BladArkusza(
                         arkusz=ARKUSZ_ZRODLA,
                         wiersz=zrodlo["_wiersz"],
                         kolumna="Sk_MVA",
                         komunikat="Moc zwarciowa musi być większa od zera",
+                    )
+                )
+            if ik_ka is not None and ik_ka <= 0:
+                bledy.append(
+                    BladArkusza(
+                        arkusz=ARKUSZ_ZRODLA,
+                        wiersz=zrodlo["_wiersz"],
+                        kolumna="Ik_kA",
+                        komunikat="Prąd zwarciowy musi być większy od zera",
                     )
                 )
             if zrodlo["RX_ratio"] < 0:
@@ -600,6 +651,53 @@ class XlsxNetworkImporter:
                         wiersz=zrodlo["_wiersz"],
                         kolumna="RX_ratio",
                         komunikat="Stosunek R/X nie może być ujemny",
+                    )
+                )
+            # CV-4.3 K7: dane scenariusza MIN — puste = pominięte (zero fabrykacji), ale
+            # gdy PODANE muszą być fizycznie sensowne (dodatnie / nieujemne). Sprzeczność
+            # MIN > MAX NIE jest tu odrzucana (to rozstrzyga warstwa domenowa, ktora dane
+            # docelowo konsumuje) — patrz ostrzeżenie w `_zbuduj_rekordy`.
+            sk_min_mva = zrodlo.get("Sk_min_MVA")
+            if sk_min_mva is not None and sk_min_mva <= 0:
+                bledy.append(
+                    BladArkusza(
+                        arkusz=ARKUSZ_ZRODLA,
+                        wiersz=zrodlo["_wiersz"],
+                        kolumna="Sk_min_MVA",
+                        komunikat="Minimalna moc zwarciowa musi być większa od zera",
+                    )
+                )
+            ik_min_ka = zrodlo.get("Ik_min_kA")
+            if ik_min_ka is not None and ik_min_ka <= 0:
+                bledy.append(
+                    BladArkusza(
+                        arkusz=ARKUSZ_ZRODLA,
+                        wiersz=zrodlo["_wiersz"],
+                        kolumna="Ik_min_kA",
+                        komunikat="Minimalny prąd zwarciowy musi być większy od zera",
+                    )
+                )
+            rx_min = zrodlo.get("RX_min")
+            if rx_min is not None and rx_min < 0:
+                bledy.append(
+                    BladArkusza(
+                        arkusz=ARKUSZ_ZRODLA,
+                        wiersz=zrodlo["_wiersz"],
+                        kolumna="RX_min",
+                        komunikat="Stosunek R/X (scenariusz MIN) nie może być ujemny",
+                    )
+                )
+            u_pu = zrodlo.get("U_pu")
+            if u_pu is not None and not u_set_pu_w_pasmie(u_pu):
+                bledy.append(
+                    BladArkusza(
+                        arkusz=ARKUSZ_ZRODLA,
+                        wiersz=zrodlo["_wiersz"],
+                        kolumna="U_pu",
+                        komunikat=(
+                            "Napięcie zadane szyny bilansującej musi mieścić się w paśmie "
+                            f"{PASMO_U_SET_PU[0]:g}–{PASMO_U_SET_PU[1]:g} p.u."
+                        ),
                     )
                 )
 
@@ -739,13 +837,46 @@ class XlsxNetworkImporter:
                     # Kanoniczny ksztalt danych zrodla systemowego (jak w kreatorze):
                     # DANE WEJSCIOWE, nie wynik — impedancje liczy warstwa solverowa.
                     "model": "short_circuit_power",
-                    "sk3_mva": zrodlo["Sk_MVA"],
                     "rx_ratio": zrodlo["RX_ratio"],
                     "rodzaj_z_arkusza": zrodlo["typ"],
+                    # Puste w arkuszu = klucz pominięty (zero fabrykacji) — nie 0/None.
+                    **({"sk3_mva": zrodlo["Sk_MVA"]} if "Sk_MVA" in zrodlo else {}),
+                    **({"ik3_ka": zrodlo["Ik_kA"]} if "Ik_kA" in zrodlo else {}),
+                    # CV-4.3 K7: dane scenariusza MIN (IEC 60909-0:2016 §6.2.1 eq. 6 z c_min).
+                    **({"sk3_min_mva": zrodlo["Sk_min_MVA"]} if "Sk_min_MVA" in zrodlo else {}),
+                    **({"ik3_min_ka": zrodlo["Ik_min_kA"]} if "Ik_min_kA" in zrodlo else {}),
+                    **({"rx_ratio_min": zrodlo["RX_min"]} if "RX_min" in zrodlo else {}),
+                    # Napięcie zadane szyny bilansującej (MATPOWER `Vm` slack) — puste = 1,0.
+                    **({"u_set_pu": zrodlo["U_pu"]} if "U_pu" in zrodlo else {}),
                 },
             }
             for zrodlo in zrodla
         ]
+
+        # CV-4.3 K7: sprzeczność MIN/MAX NIE jest błędem odrzucającym import (rozstrzyga ją
+        # warstwa domenowa, która dane docelowo konsumuje — `source.manual_equivalent_invalid`
+        # / `sources.sk_min_exceeds_max`) — importer ją POKAZUJE w podglądzie, nie połyka.
+        for zrodlo in zrodla:
+            sk_min, sk_max = zrodlo.get("Sk_min_MVA"), zrodlo.get("Sk_MVA")
+            if sk_min is not None and sk_max is not None and sk_min > sk_max:
+                ostrzezenia.append(
+                    f"Źródło '{zrodlo['id']}': Sk_min_MVA ({sk_min:g}) przekracza Sk_MVA "
+                    f"({sk_max:g}) — dane scenariusza minimalnego muszą być nie większe "
+                    "niż maksymalnego, sprawdź arkusz przed użyciem tego źródła."
+                )
+            ik_min, ik_max = zrodlo.get("Ik_min_kA"), zrodlo.get("Ik_kA")
+            if ik_min is not None and ik_max is not None and ik_min > ik_max:
+                ostrzezenia.append(
+                    f"Źródło '{zrodlo['id']}': Ik_min_kA ({ik_min:g}) przekracza Ik_kA "
+                    f"({ik_max:g}) — dane scenariusza minimalnego muszą być nie większe "
+                    "niż maksymalnego, sprawdź arkusz przed użyciem tego źródła."
+                )
+            if zrodlo.get("RX_min") is not None and sk_min is None and ik_min is None:
+                ostrzezenia.append(
+                    f"Źródło '{zrodlo['id']}': RX_min podany bez Sk_min_MVA/Ik_min_kA — "
+                    "stosunek R/X scenariusza minimalnego nie ma zastosowania bez własnej "
+                    "mocy zwarciowej minimalnej tego źródła."
+                )
 
         rekordy_odbiorow = [
             {

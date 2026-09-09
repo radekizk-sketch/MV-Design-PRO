@@ -187,6 +187,12 @@ export function KreatorZrodloZasilania() {
       sn_voltage_kv: Number.isFinite(first.voltage_rating_kv) ? first.voltage_rating_kv : p.sn_voltage_kv,
       sk3_mva: Number.isFinite(first.sk3_mva) ? first.sk3_mva : p.sk3_mva,
       rx_ratio: typeof first.rx_ratio === 'number' && Number.isFinite(first.rx_ratio) ? first.rx_ratio : p.rx_ratio,
+      // CV-4.3 K7: dane MIN pochodzą z pozycji katalogowej — TEN SAM zestaw pierwszej
+      // pozycji, co Sk3/R-X powyżej (predykaty parami: jedno źródło prawdy o "jaka
+      // pozycja jest aktywna"). Brak w katalogu = null (zero fabrykacji).
+      sk3_min_mva: typeof first.sk3_min_mva === 'number' && Number.isFinite(first.sk3_min_mva) ? first.sk3_min_mva : null,
+      ik3_min_ka: typeof first.ik3_min_ka === 'number' && Number.isFinite(first.ik3_min_ka) ? first.ik3_min_ka : null,
+      rx_ratio_min: typeof first.rx_ratio_min === 'number' && Number.isFinite(first.rx_ratio_min) ? first.rx_ratio_min : null,
     }));
   }, [katalog, dane.catalog_ref, dane.manual_mode]);
 
@@ -431,9 +437,19 @@ export function KreatorZrodloZasilania() {
     setDane((p) => ({
       ...p,
       catalog_ref: catalogRef,
-      sn_voltage_kv: selected?.voltage_rating_kv ?? p.sn_voltage_kv,
-      sk3_mva: selected?.sk3_mva ?? p.sk3_mva,
-      rx_ratio: selected?.rx_ratio ?? p.rx_ratio,
+      // CV-4.3 K7c: przełączenie pozycji katalogowej ZASTĘPUJE dane WSZYSTKICH pól
+      // katalogowych (nie tylko MIN) danymi NOWEJ pozycji (nie zostawia sierocych
+      // wartości poprzedniej pozycji, gdy ta nowa ich nie ma) — `selected` obecny
+      // ⇒ jego wartość (albo null) wygrywa zawsze; PRZED naprawą `sn_voltage_kv`/
+      // `sk3_mva`/`rx_ratio` używały `selected?.pole ?? p.pole`, więc pozycja BEZ
+      // `rx_ratio` (pole opcjonalne katalogu) cicho zachowywała R/X poprzedniej
+      // pozycji — ta sama klasa co pola MIN poniżej, teraz JEDNYM wzorcem.
+      sn_voltage_kv: selected ? selected.voltage_rating_kv : p.sn_voltage_kv,
+      sk3_mva: selected ? selected.sk3_mva : p.sk3_mva,
+      rx_ratio: selected ? selected.rx_ratio ?? null : p.rx_ratio,
+      sk3_min_mva: selected ? selected.sk3_min_mva ?? null : p.sk3_min_mva,
+      ik3_min_ka: selected ? selected.ik3_min_ka ?? null : p.ik3_min_ka,
+      rx_ratio_min: selected ? selected.rx_ratio_min ?? null : p.rx_ratio_min,
     }));
     setDotkniete((p) => new Set(p).add('catalog_ref'));
   }, [katalog]);
@@ -494,6 +510,16 @@ export function KreatorZrodloZasilania() {
       ? 'brak składowej zerowej'
       : formatujKa(podglad?.ik1_ka);
 
+  // CV-4.3 K7: scenariusz MIN — blok `scenariusz_min` obecny WYŁĄCZNIE gdy formularz
+  // podał Sk″min/Ik″min (backend liczy go DRUGIM wywołaniem tego samego solvera
+  // podglądu); brak = nie renderujemy nic (zero fabrykacji, R2 karty K7-FE).
+  const scenariuszMin = podglad?.scenariusz_min ?? null;
+  const etykietaIk1Min = statusPodgladu === 'loading'
+    ? 'obliczanie…'
+    : scenariuszMin?.ik1_ka === null
+      ? 'brak składowej zerowej'
+      : formatujKa(scenariuszMin?.ik1_ka);
+
   const aside = (
     <>
       <KreatorPodsumowanie
@@ -512,6 +538,18 @@ export function KreatorZrodloZasilania() {
         <RzadWartosci etykieta={T.podsumZ1} wartosc={formatujZespolona(podglad?.z1_ohm)} />
         <RzadWartosci etykieta={T.podsumZ0} wartosc={formatujZespolona(podglad?.z0_ohm)} />
         <RzadWartosci etykieta={T.podsumZrodlo} wartosc={podglad ? T.podsumZrodloWartosc : T.podsumBrak} />
+        {scenariuszMin ? (
+          <>
+            <RzadWartosci etykieta={T.podsumSkMin} wartosc={formatujMva(scenariuszMin.sk_mva)} testid="mvd-kreator-zrodlo-podsum-sk-min" />
+            <RzadWartosci etykieta={T.podsumIk3Min} wartosc={formatujKa(scenariuszMin.ik3_ka)} testid="mvd-kreator-zrodlo-podsum-ik3-min" />
+            <RzadWartosci etykieta={T.podsumIk1Min} wartosc={etykietaIk1Min} ton={scenariuszMin.ik1_ka !== null ? 'ok' : 'warn'} />
+            <RzadWartosci etykieta={T.podsumKappaMin} wartosc={formatujLiczbe(scenariuszMin.kappa, 3)} />
+            <RzadWartosci etykieta={T.podsumIpMin} wartosc={formatujKa(scenariuszMin.ip_ka)} />
+            <RzadWartosci etykieta={T.podsumIthMin} wartosc={formatujKa(scenariuszMin.ith_ka)} />
+            <RzadWartosci etykieta={T.podsumZ1Min} wartosc={formatujZespolona(scenariuszMin.z1_ohm)} />
+            <RzadWartosci etykieta={T.podsumZ0Min} wartosc={formatujZespolona(scenariuszMin.z0_ohm)} />
+          </>
+        ) : null}
       </KreatorPodsumowanie>
       <KreatorGotowosc tytul={T.kontrolaTytul} wiersze={gotowosc} testid="mvd-kreator-zrodlo-kontrola" />
     </>
@@ -682,6 +720,64 @@ export function KreatorZrodloZasilania() {
                   </>
                 )}
               </KreatorSiatka>
+
+              {/* CV-4.3 K7c: napięcie zadane szyny bilansującej — WSPÓLNE dla obu stron
+                  (SN/110 kV) i obu postaci (moc zwarciowa/impedancja); backend czyta je
+                  bezwarunkowo w `_resolve_manual_source_equivalent` (przed rozgałęzieniem
+                  na tryb), więc pole renderuje się niezależnie od `hv`/`impedancja`. Puste
+                  = znamionowe (1,0 p.u.) — zero fabrykacji. */}
+              <PoleLiczbowe
+                etykieta={T.uSetPu}
+                jednostka="pu"
+                wartosc={dane.u_set_pu}
+                onZmiana={(v) => zmien('u_set_pu', v)}
+                krok={0.01}
+                min={0.8}
+                max={1.2}
+                pomoc={T.uSetPuPomoc}
+                blad={bladDlaPola('u_set_pu')}
+                testid="mvd-kreator-zrodlo-uset"
+              />
+
+              {/* CV-4.3 K7: scenariusz MIN — TYLKO w trybie mocy zwarciowej (impedancja
+                  jawna nie ma wariantu MIN, IEC 60909-0 §6.2.1: c_min tylko przy S''_kQ).
+                  Pola opcjonalne (zero fabrykacji) — puste = MIN liczony z danych MAX. */}
+              {!impedancja ? (
+                <div data-testid="mvd-kreator-zrodlo-min">
+                  <KreatorInfo testid="mvd-kreator-zrodlo-min-info">
+                    <strong>{T.zwarcieMinTytul}.</strong> {T.zwarcieMinOpis}
+                  </KreatorInfo>
+                  <KreatorSiatka kolumny={3}>
+                    <PoleLiczbowe
+                      etykieta={T.sk3Min}
+                      jednostka="MVA"
+                      wartosc={dane.sk3_min_mva}
+                      onZmiana={(v) => zmien('sk3_min_mva', v)}
+                      pomoc={T.sk3MinPomoc}
+                      blad={bladDlaPola('sk3_min_mva')}
+                      testid="mvd-kreator-zrodlo-sk3min"
+                    />
+                    <PoleLiczbowe
+                      etykieta={T.ik3Min}
+                      jednostka="kA"
+                      wartosc={dane.ik3_min_ka}
+                      onZmiana={(v) => zmien('ik3_min_ka', v)}
+                      pomoc={T.ik3MinPomoc}
+                      blad={bladDlaPola('ik3_min_ka')}
+                      testid="mvd-kreator-zrodlo-ik3min"
+                    />
+                    <PoleLiczbowe
+                      etykieta={T.rxMin}
+                      wartosc={dane.rx_ratio_min}
+                      onZmiana={(v) => zmien('rx_ratio_min', v)}
+                      krok={0.01}
+                      pomoc={T.rxMinPomoc}
+                      blad={bladDlaPola('rx_ratio_min')}
+                      testid="mvd-kreator-zrodlo-rxmin"
+                    />
+                  </KreatorSiatka>
+                </div>
+              ) : null}
             </KreatorSekcja>
           )}
 

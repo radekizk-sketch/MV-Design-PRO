@@ -24,45 +24,35 @@ listy `transformers`) — tu jako realne `Transformer` (`add_transformer_sn_nn`
 + zaczep DETC), zgodnie z K1.1 (żadna fizyka zmiany napięcia poza
 transformatorem).
 
-ZNALEZISKO (zmierzone, NIE naprawione w tej sesji — Zero-Debt pkt 4, dług
-jawny). ENM zbudowany POPRAWNIE strukturalnie (14 szyn/15 gałęzi/5
-transformatorów/11 odbiorów/4 generatory — zweryfikowane przez `EnergyNetworkModel.
-model_validate`), ale rozpływ mocy kanoniczny (`power_flow_newton`) NIE ZBIEGA
-(`quality_status: failed`, napięcia rzędu 10^2-10^3 p.u. — rozbieżność
-numeryczna, nie fizyczny wynik). Zmierzone bezpośrednio (CV-4.3 K1,
-2026-09-06), przyczyna NIE zdiagnozowana ostatecznie w tej sesji — kandydaci:
-(a) rozpiętość napięć B0..B13 w JEDNYM układzie p.u. sięga 135 kV -> 0,208 kV
-(stosunek ~650:1), skrajnie szeroka jak na klasyczny IEEE 14-bus (system
-przesyłowy — w rzeczywistej literaturze IEEE 14-bus generatory/szyny są na
-poziomach rzędu 69/18/13,8 kV, NIE 0,208/12/14 kV), co sugeruje, że napięcia
-per-szyna w tym starym dialekcie (`u_n_kv` z importu pandapower/MATPOWER)
-mogą same być artefaktem konwersji, nie prawdziwą tabliczką IEEE case14; (b)
-synteyczne uk_percent transformatorów wyprowadzone WPROST z x_pu systemu
-(sn_mva=100 MVA, patrz `mv_benchmark_catalog.py`) sięgają 55,6% (BR16) —
-skrajnie wysokie jak na rzeczywisty transformator, mogące pogłębiać
-uwarunkowanie numeryczne. Diagnoza wymagałaby albo potwierdzenia
-literaturowego prawdziwych poziomów napięć IEEE case14 (poza zasięgiem tego
-wykonawcy w tej sesji), albo audytu przeliczenia p.u.-na-p.u. między
-poziomami napięć w `enm/mapping.py`/Y-bus dla skrajnie różnych baz — POZA
-zakresem tej karty (K1 buduje ENM-bliźniaki i wyrocznie, nie naprawia
-solvera FROZEN — B-01). Wyrocznia (a)/(b) dla tej sieci: NIE ZWERYFIKOWANA
-(status PLANNED w rejestrze, powód: rozbieżność numeryczna, nie brak toru
-obliczeniowego jak 13/34-bus).
+ZNALEZISKO K1 (2026-09-06) — ROZWIĄZANE 2026-09-09 (odbiór K7, CI run 4923 na
+`fc24fc76`). Rozpływ kanoniczny tego bliźniaka ROZBIEGAŁ (30 iteracji, |U| do
+320 p.u.) i miał TRZY przyczyny, żadna w solverze FROZEN:
+(1) katalog `mv_benchmark_catalog.py` stemplował 8 odcinków obszaru 0,208 kV
+    (BR7–BR14) bazą impedancji SYSTEMU 135 kV zamiast bazą ich własnego poziomu —
+    impedancja (135/0,208)² ≈ 4,2·10⁵ razy za duża (`_POZIOM_LINII_KV`, test klasy
+    `tests/network_model/test_mv_benchmark_catalog_poziomy.py`);
+(2) `Source` ENM nie miał napięcia zadanego szyny bilansującej — assembler wpisywał
+    1,0 p.u. każdemu źródłu, a literatura ma 1,06 p.u. (`Source.u_set_pu`);
+(3) granice mocy biernej ±150 Mvar (3× baza) wiązały na stanie przejściowym
+    iteracji 3 (−152,3 Mvar) — po (1)+(2) nie wiążą (0 przełączeń, test klasy
+    `tests/network_model/test_blizniaki_pf_zbieznosc.py`).
+Po naprawie: 5 iteracji, |U| 1,010–1,090 p.u., zgodność z pandapower 3.5.4
+`pn.case14()` co do 3·10⁻⁵ p.u. na wszystkich 14 szynach (wyrocznia
+`tests/golden/wyrocznie/test_pandapower_blizniaki_matpower.py`, przypięte napięcia
+`tests/network_model/test_blizniaki_matpower_napiecia.py`). Hipotezy K1 (a)/(b)
+— rozpiętość poziomów napięć i syntetyczne uk% — okazały się fałszywe: poziomy
+0,208/12/14/135 kV są danymi pandapower `case14` (`vn_kv`), a uk% 55,6 % to
+poprawne przeniesienie x_pu = 0,556 na bazę 100 MVA (pandapower: vk 5506 % przy
+sn 9900 MVA — ta sama wartość p.u.).
 
-HIPOTEZA SPRAWDZONA I WYKLUCZONA (CV-4.3 K1, ta sama sesja, PO powyższym
-pomiarze): równolegle odkryty defekt katalogowy w tej samej karcie —
-`enm/mapping.py` podstawiał domyślnie `vector_group="Dyn11"` (+30°) dla
-transformatorów bez zadeklarowanej grupy połączeń (`vector_group=None`,
-dotyczyło też WSZYSTKICH pięciu transformatorów tej sieci: BR15-19) —
-naprawiony na `vector_group="Yy0"` w całym katalogu benchmarków
-(`mv_benchmark_catalog.py`). Ta naprawa NIE zmienia powyższej diagnozy:
-PO naprawie sieć WCIĄŻ rozbiega identycznie (`quality_status: failed`,
-v_pu 0,40-320 — zmierzone ponownie tą samą metodą). Rozbieżność ma więc
-INNĄ przyczynę niż vector_group (dla porównania: ta sama naprawa
-PRZYWRÓCIŁA zbieżność ieee_39bus i poprawiła kąt pp_simple_four_bus/
-oze_pv_bess — patrz ich pliki/`tests/golden/registry.py`), co wzmacnia
-hipotezę (a)/(b) powyżej (ekstremalna rozpiętość poziomów napięć i/lub
-syntetyczne uk_percent) jako przyczynę WŁAŚCIWĄ tej sieci.
+Granice Q z literatury (MATPOWER: −40/50, 0/40, −6/24, −6/24 Mvar) NIE są użyte
+świadomie: solver FROZEN egzekwuje granice na KAŻDEJ iteracji (także na stanie
+przejściowym z płaskiego startu) i nie przywraca węzła do PV — z granicami z
+literatury przełącza 4 węzły w iteracjach 1–3, choć Q zbieżne każdego generatora
+mieści się w granicach, i oddaje wynik o 0,022 p.u. gorszy od pandapower. To
+znalezisko rdzenia (B-01) jest zgłoszone właścicielowi jako OD-11
+(`docs/evidence/CONVERGENCE_EVIDENCE.md` §I); bliźniak używa granic
+nieograniczających z konstrukcji (`mv_benchmark_catalog.py::_q_bound`).
 """
 
 from __future__ import annotations
@@ -122,6 +112,7 @@ def build_ieee_14bus_enm() -> BenchmarkEnm:
         rx_ratio=0.1,
         line_fields_count=2,
         source_name="External grid (slack)",
+        u_set_pu=1.06,  # MATPOWER case14 bus 1 Vm (pandapower ext_grid.vm_pu)
     )
 
     enm, bus_map, branch_map = zbuduj_topologie(

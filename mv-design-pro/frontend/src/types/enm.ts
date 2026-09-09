@@ -369,6 +369,12 @@ export interface Source extends ENMElement {
   r_ohm?: number | null;
   x_ohm?: number | null;
   rx_ratio?: number | null;
+  /** Dane scenariusza MIN (IEC 60909-0 eq. 6 z c_min) — CV-4.3 K7; brak = bieg MIN z danych MAX z jawnym założeniem. */
+  sk3_min_mva?: number | null;
+  ik3_min_ka?: number | null;
+  rx_ratio_min?: number | null;
+  /** Napięcie zadane szyny bilansującej [p.u. Un szyny]; brak = 1,0 (znamionowe). */
+  u_set_pu?: number | null;
   r0_ohm?: number | null;
   x0_ohm?: number | null;
   z0_z1_ratio?: number | null;

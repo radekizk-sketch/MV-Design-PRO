@@ -185,6 +185,10 @@ def materialize_catalog_binding(
     audit_entries: list[MaterializationAuditEntry] = []
     for field_name in contract.solver_fields:
         value = item_dict.get(field_name)
+        if value is None and field_name in contract.pola_opcjonalne:
+            # Pole addytywne bez wartości w katalogu: NIE trafia do migawki
+            # (``MaterializationContract.pola_opcjonalne``) — brak danej to brak klucza.
+            continue
         solver_fields[field_name] = value
         audit_entries.append(
             MaterializationAuditEntry(

@@ -112,16 +112,21 @@ def _bieg(
 #: dowód dla CI; lokalnie (ta sama maszyna) ``test_harness_jest_deterministyczny``
 #: wymaga równości DOKŁADNEJ także śladu (``slad_sha256`` — skrót pełnych
 #: poddrzew śladu, liczony tylko w pamięci, nie w złotym pliku).
-#: ``pv_to_pq_switches`` (rozpływ NR/GS/FD, FROZEN): lista przełączeń PV→PQ z numerem
-#: ITERACJI i wartością Q w chwili przełączenia — struktura (liczba wpisów, ``iter``) jest
-#: funkcją ścieżki iteracyjnej przy granicy Q, czyli szumu BLAS między maszynami, nie
-#: wejścia. Pomiar: CI run 4920 na ``2c4747a8`` — B-BENCH/03 (IEEE case14, MATPOWER) PF:
-#: szkielet inny WYŁĄCZNIE w ``$.pv_to_pq_switches[1]``/``[2]`` (``iter: 26`` na CI) przy
-#: zerowej rozbieżności liczb kontraktu (12 952 pozostałe testy zielone). Ta sama klasa
-#: co poddrzewa śladu zwarć: obecność (``None``/lista) porównywana, treść poza porównaniem
-#: między maszynami, na tej samej maszynie w ``slad_sha256``.
+#: ``pv_to_pq_switches`` (rozpływ NR, FROZEN) NIE jest poddrzewem śladu: lista przełączeń
+#: PV→PQ (iteracja, Q w chwili przełączenia, granica) jest zapisem FIZYKI biegu
+#: (które węzły regulujące napięcie wyszły poza granice Q) i podlega porównaniu jak
+#: kontrakt. KOREKTA (2026-09-09): commit ``fc24fc76`` dodał ten klucz do maski po CI run
+#: 4920 (``2c4747a8``, B-BENCH/03 IEEE case14: szkielet inny w ``$.pv_to_pq_switches[1..2]``,
+#: ``iter: 26`` na CI) z uzasadnieniem „szum BLAS przy zerowej rozbieżności liczb" — to
+#: uzasadnienie było WNIOSKIEM, nie pomiarem (``porownaj_wpis`` kończy na rozbieżności
+#: szkieletu, więc liczb nie porównał). CI run 4923 na ``fc24fc76`` (maska aktywna)
+#: pokazał 187 rozbieżności liczb kontraktu w tej samej sieci. Przyczyna właściwa: bliźniak
+#: case14 NIE ZBIEGAŁ (30 iteracji, |U| do 320 p.u.; linie obszaru 0,208 kV stemplowane
+#: bazą 135 kV — ``mv_benchmark_catalog._POZIOM_LINII_KV``), a wynik niezbieżny jest z
+#: definicji zależny od maszyny. Po naprawie bliźniaka (zbieżność w 5 iteracjach, parytet z
+#: pandapower) maska jest zbędna — klucz wraca do porównania.
 KLUCZE_SLADU_LICZBOWEGO: frozenset[str] = frozenset(
-    {"branch_contributions", "branch_flow_trace", "white_box_trace", "pv_to_pq_switches"}
+    {"branch_contributions", "branch_flow_trace", "white_box_trace"}
 )
 #: Tolerancja porównania liczb kontraktu między maszynami (jednostki kontraktu:
 #: MW, Mvar, kV, kA, A, pu, Ω, s). ATOL = 10⁻⁶ jednostki (1 W, 1 mV, 1 mA):

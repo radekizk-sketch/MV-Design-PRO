@@ -1155,9 +1155,22 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # GENUINE; formula Z_Q po scaleniu jest WARTOSCIOWA —
     # `impedancja_zasilania_systemowego(rx_ratio=...)` — wiec forma
     # "B:ifexp:source.rx_ratio" nie wraca mimo wchloniecia K6 w te sama funkcje).
-    assert "Pol kontraktow wejsciowych: 3617." in wyjscie, wyjscie
+    # CV-4.3 K7 (2026-09-09, pomiar guarda na drzewie K7): 3625 pol (3617 + 8: trzy pola
+    # MIN `Source`/`AddGridSourceSNPayload`/`SourceSystemType` widziane jako kontrakty
+    # wejsciowe, `GridSourcePreviewRequest` +3 i `scenariusz_min` odpowiedzi; nazwy
+    # `tryb_max`/`tryb_min` w `DaneZwarcioweZrodla` — NIE `max`/`min`, bo pole kontraktu o
+    # nazwie `min` kazalo guardowi traktowac kazde `np.max(...)` w repo jako podstawienie),
+    # 595 plikow (594 + `enm/zrodlo_zwarcie.py`), enm 39; +1 = `pola_opcjonalne` w
+    # `MaterializationContract` (pola addytywne kontraktu materializacji kopiowane tylko
+    # z wartoscia) — razem 3626. Zapadka dlugu i wykluczenia bez zmian: K7 nie dodala
+    # zadnego zastepnika (dane MIN: brak = `None` + zalozenie nazwane).
+    # Karta K7-DOCS (2026-09-09): +1 = `XlsxNetworkImporter.SOURCE_OPTIONAL_COLUMNS`
+    # (adnotowany atrybut klasy importera XLSX, nie pole fizyczne — inwentarz guarda
+    # zbiera adnotowane atrybuty klas w `application/`); zmierzone różnicą zbiorów
+    # `contract_fields()` af2d0f5b → HEAD: dokładnie ten jeden wpis, zero podstawień.
+    assert "Pol kontraktow wejsciowych: 3627." in wyjscie, wyjscie
     assert (
-        "Przeskanowano 594 plikow w zakresie: network_model, solver_input, enm, "
+        "Przeskanowano 595 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     assert "Zapadka dlugu (fizyczne): 63 plikow, suma 289." in wyjscie, wyjscie
@@ -1166,7 +1179,7 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         "  network_model: pliki_skanowane=149, dlug=14 plikow/suma 77, "
         "wykluczenia=4 plikow/suma 7",
         "  solver_input: pliki_skanowane=10, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
-        "  enm: pliki_skanowane=38, dlug=8 plikow/suma 83, wykluczenia=0 plikow/suma 0",
+        "  enm: pliki_skanowane=39, dlug=8 plikow/suma 83, wykluczenia=0 plikow/suma 0",
         "  application: pliki_skanowane=332, dlug=36 plikow/suma 115, "
         "wykluczenia=7 plikow/suma 19",
         "  api: pliki_skanowane=65, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 23",

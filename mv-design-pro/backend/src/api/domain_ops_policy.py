@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from enm.zrodlo_zwarcie import tryb_danych
 from network_model.catalog.materialization import (
     materialize_catalog_binding,
     validate_catalog_binding,
@@ -181,11 +182,13 @@ def _manual_grid_source_equivalent_complete(payload: dict[str, Any]) -> bool:
             and float(x_ohm) > 0
         )
 
+    # CV-4.3 K7: ten sam predykat trybu danych co mapper/walidator (moc zwarciowa ALBO
+    # prąd zwarciowy, IEC 60909-0 eq. 6 zapisana prądem); R/X wymagane jak dotąd.
     sk3_mva = manual.get("sk3_mva", payload.get("sk3_mva"))
+    ik3_ka = manual.get("ik3_ka", payload.get("ik3_ka"))
     rx_ratio = manual.get("rx_ratio", payload.get("rx_ratio"))
     return (
-        isinstance(sk3_mva, int | float)
-        and float(sk3_mva) > 0
+        tryb_danych(sk3_mva=sk3_mva, ik3_ka=ik3_ka) is not None
         and isinstance(rx_ratio, int | float)
         and float(rx_ratio) > 0
     )

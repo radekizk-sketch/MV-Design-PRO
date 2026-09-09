@@ -48,13 +48,36 @@ _ELEMENT_KEYS = (
 )
 
 
+#: Pola elementow DODANE PO ZAMROZENIU odciskow, ktore w postaci kanonicznej hasha
+#: wystepuja WYLACZNIE, gdy niosa wartosc (kontrakt „addytywnie, `exclude_none`" —
+#: dyrektywa wlasciciela 2026-07-19 pkt 11: nowe pole nie moze przestawic odciskow
+#: istniejacych modeli; ten sam wzorzec, co `connection_conditions` w naglowku).
+#: `None` = dana zadeklarowana jako NIEZNANA, wiec nie jest trescia modelu; wartosc
+#: zmienia wynik biegu (Z_Qmin), wiec zmienia odcisk. Kazdy wpis z karta i powodem;
+#: przypiete testem `tests/enm/test_hash_pola_addytywne.py` (odcisk bez danych MIN
+#: rowny odciskowi postaci sprzed karty; z danymi MIN — inny; trzy funkcje hasha zgodne).
+_POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
+    # CV-4.3 K7: dane zwarciowe scenariusza MIN zrodla sieciowego (IEC 60909-0 eq. 6 z c_min).
+    # + napięcie zadane szyny bilansującej (bliźniaki literatury ze slackiem ≠ 1,0 p.u.).
+    "sources": ("sk3_min_mva", "ik3_min_ka", "rx_ratio_min", "u_set_pu"),
+}
+
+
 def _strip_uuids(payload: dict[str, Any]) -> dict[str, Any]:
-    """Usun losowe pola 'id' (UUID) z list elementow — ref_id jest tozsamoscia."""
+    """Postac kanoniczna elementow pod hash: bez losowych `id` (UUID — `ref_id` jest
+    tozsamoscia) i bez pol addytywnych o wartosci `None`
+    (`_POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE`). JEDYNE miejsce tej reguly — wolaja ja
+    `compute_enm_hash`, `_input_payload` i `hash_migawki_enm`, wiec trzy odciski
+    nie moga sie rozjechac."""
     for key in _ELEMENT_KEYS:
         if key in payload and isinstance(payload[key], list):
+            pola_gdy_none = _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE.get(key, ())
             for item in payload[key]:
                 if isinstance(item, dict):
                     item.pop("id", None)
+                    for pole in pola_gdy_none:
+                        if pole in item and item[pole] is None:
+                            del item[pole]
     return payload
 
 

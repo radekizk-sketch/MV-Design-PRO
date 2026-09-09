@@ -502,9 +502,13 @@ Referencja wskazuje na modele Pydantic w `backend/src/domain/domain_ops_models.p
 | `source_name`  | `string` | TAK      | min 1, max 200 znakow           | Nazwa zrodla zasilania (GPZ)      |
 | `bus_name`     | `string` | TAK      | min 1, max 200 znakow           | Nazwa szyny GPZ                   |
 | `voltage_kv`   | `float`  | TAK      | > 0, typowo 6.0 / 10.0 / 15.0 / 20.0 / 30.0 | Napiecie znamionowe [kV] |
-| `sk3_mva`      | `float`  | TAK      | > 0                             | Moc zwarciowa trojfazowa [MVA]    |
-| `ik3_ka`       | `float`  | TAK      | > 0                             | Prad zwarciowy trojfazowy [kA]    |
-| `rx_ratio`     | `float`  | TAK      | > 0, typowo 0.05 -- 0.3         | Stosunek R/X zrodla               |
+| `sk3_mva`      | `float`  | TAK      | > 0                             | Moc zwarciowa trojfazowa scenariusza MAX [MVA] |
+| `ik3_ka`       | `float`  | TAK      | > 0                             | Prad zwarciowy trojfazowy scenariusza MAX [kA] |
+| `rx_ratio`     | `float`  | TAK      | > 0, typowo 0.05 -- 0.3         | Stosunek R/X zrodla (scenariusz MAX) |
+| `sk3_min_mva`  | `float`  | NIE      | > 0, jesli podane                | Minimalna moc zwarciowa trojfazowa -- scenariusz MIN [MVA] (CV-4.3 K7, IEC 60909-0:2016 §6.2.1 eq. 6 z c_min). Brak = scenariusz MIN liczony z impedancji dla `sk3_mva`/`ik3_ka` (scenariusz MAX) z jawnym zalozeniem `source.sk_min_missing` -- ZERO fabrykacji, zaden domyslny ulamek MAX |
+| `ik3_min_ka`   | `float`  | NIE      | > 0, jesli podane                 | Minimalny prad zwarciowy trojfazowy -- scenariusz MIN [kA] (alternatywa dla `sk3_min_mva`, tryb pradowy). `sk3_min_mva` i `ik3_min_ka` nie moga jednoczesnie przekraczac odpowiednio `sk3_mva`/`ik3_ka` -- operacja odrzuca sprzecznosc kodem `source.manual_equivalent_invalid` |
+| `rx_ratio_min` | `float`  | NIE      | > 0, jesli podane                 | Stosunek R/X dla scenariusza MIN. Bez `sk3_min_mva`/`ik3_min_ka` nie ma zastosowania (odrzucane -- scenariusz MIN bez wlasnej mocy zwarciowej liczy sie z danych MAX) |
+| `u_set_pu`     | `float`  | NIE      | 0,8 -- 1,2, jesli podane          | Napiecie zadane szyny bilansujacej [p.u. Un szyny] -- dana wejsciowa rozplywu mocy (MATPOWER `Vm` szyny slack / pandapower `ext_grid.vm_pu`). Brak = 1,0 p.u. (znamionowe, jawne zalozenie modelowe). Poza pasmem: `source.manual_equivalent_invalid` (operacja) / `sources.u_set_pu_out_of_range` (walidator, BLOCKER) |
 
 ### 4.3 `continue_trunk_segment_sn` -- ContinueTrunkSegmentSNPayload
 
@@ -578,22 +582,27 @@ Referencja wskazuje na modele Pydantic w `backend/src/domain/domain_ops_models.p
 
 ### 4.9 `add_transformer_sn_nn` -- AddTransformerSNnNPayload
 
-| Pole               | Typ      | Wymagane | Ograniczenia            | Opis                                    |
-|--------------------|----------|----------|-------------------------|-----------------------------------------|
-| `station_id`       | `string` | TAK      | musi istniec w modelu   | ID stacji                               |
-| `sn_bus_id`        | `string` | TAK      | musi istniec w modelu   | ID szyny SN (strona gorna)              |
-| `transformer_name` | `string` | TAK      | min 1                   | Nazwa transformatora                    |
-| `type_ref`         | `string` | NIE      | musi istniec w katalogu | Referencja do typu transformatora       |
-| `rated_power_mva`  | `float`  | TAK      | > 0                     | Moc znamionowa [MVA]                    |
-| `voltage_hv_kv`    | `float`  | TAK      | > 0                     | Napiecie znamionowe strony gornej [kV]  |
-| `voltage_lv_kv`    | `float`  | TAK      | > 0                     | Napiecie znamionowe strony dolnej [kV]  |
-| `uk_percent`       | `float`  | TAK      | > 0                     | Napiecie zwarcia [%]                    |
-| `pk_kw`            | `float`  | TAK      | >= 0                    | Straty zwarciowe [kW]                   |
-| `i0_percent`       | `float`  | NIE      | >= 0, dom. 0            | Prad jalowy [%]                         |
-| `p0_kw`            | `float`  | NIE      | >= 0, dom. 0            | Straty jalowe [kW]                      |
-| `vector_group`     | `string` | NIE      | dom. "Dyn11"            | Grupa polaczen                          |
-| `tap_position`     | `int`    | NIE      | dom. 0                  | Pozycja zaczepow                        |
-| `nn_bus_name`      | `string` | TAK      | min 1                   | Nazwa szyny nN (strona dolna)           |
+Tabela spisana z kodu (`enm/domain_operations.py::add_transformer_sn_nn`, 2026-09-09) --
+poprzednia wersja opisywala nieistniejacy dialekt (`station_id`/`sn_bus_id`/`nn_bus_name`).
+Szyny: dokladnie JEDNA z pary {`hv_bus_ref`, `hv_voltage_kv`} i dokladnie JEDNA z pary
+{`lv_bus_ref`, `lv_voltage_kv`}; obie nowe naraz sa odrzucane (`transformer.buses_missing`),
+obie z pary naraz -- `transformer.hv_bus_ambiguous` / `transformer.lv_bus_ambiguous`.
+
+| Pole                                 | Typ      | Wymagane | Ograniczenia                          | Opis |
+|--------------------------------------|----------|----------|---------------------------------------|------|
+| `hv_bus_ref`                         | `string` | warunkowo | musi istniec w modelu                | Istniejaca szyna strony HV |
+| `hv_voltage_kv`                      | `float`  | warunkowo | > 0; wymaga `lv_bus_ref`             | NOWA szyna HV nad istniejaca szyna LV (2026-09-09; zaczep MATPOWER po stronie "from" zostaje na uzwojeniu HV, gdy budowa dochodzi od strony "to" -- blizniak IEEE case39) |
+| `lv_bus_ref`                         | `string` | warunkowo | musi istniec w modelu                | Istniejaca szyna strony LV |
+| `lv_voltage_kv`                      | `float`  | warunkowo | > 0; wymaga `hv_bus_ref`             | NOWA szyna LV (CV-4.3 K1) |
+| `transformer_catalog_ref`            | `string` | TAK*     | musi istniec w katalogu TRAFO_SN_NN   | Typ katalogowy (*albo `catalog_binding` / `catalog_ref`) |
+| `catalog_binding`                    | `object` | NIE      | kontrakt CatalogBinding               | Wiazanie katalogowe (alternatywa dla `transformer_catalog_ref`) |
+| `sn_mva` / `uk_percent` / `pk_kw`    | `float`  | NIE      | > 0 / > 0 / >= 0                      | Nadpisania tabliczki (materializacja katalogowa uzupelnia brakujace) |
+| `uhv_kv` / `ulv_kv`                  | `float`  | NIE      | > 0                                   | Napiecia znamionowe uzwojen; brak = napiecia szyn |
+| `transformer_regulation_type`        | `string` | NIE      | `DETC` / `OLTC`                       | Zaczep: staly / regulowany (`_build_gpz_tap_changer`) |
+| `transformer_regulated_winding`      | `string` | NIE      | `HV` / `LV`, dom. `HV`                | Uzwojenie z zaczepem |
+| `transformer_tap_neutral_position` / `transformer_tap_current_position` / `transformer_tap_min_position` / `transformer_tap_max_position` | `int` | NIE | min <= neutral <= max | Pozycje zaczepu |
+| `transformer_tap_step_percent`       | `float`  | NIE      | >= 0                                  | Krok zaczepu [%] |
+| `station_ref`                        | `string` | NIE      | musi istniec w modelu                 | Stacja, do ktorej nalezy transformator |
 
 ### 4.10 `add_nn_load` -- AddNNLoadPayload
 

@@ -54,6 +54,10 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     # „Zrodlo nie jest podlaczone do istniejacej szyny" == zrodlo bez polaczenia
     # (odbior CV-3.3-B: jedyny dawny emiter kanonu byl w skasowanym torze R2).
     "sources.bus_missing": "source.connection_missing",
+    # CV-4.3 K7: „S''kQmin > S''kQmax / I''kQmin > I''kQmax" == dane MIN sprzeczne z MAX.
+    "sources.sk_min_exceeds_max": "source.sk_min_inconsistent",
+    # Napięcie zadane szyny bilansującej poza pasmem == nieprawidłowa nastawa napięcia.
+    "sources.u_set_pu_out_of_range": "source.u_set_pu_out_of_range",
     # „Magistrala pierscieniowa nie ma punktu normalnie otwartego" == wymog NOP.
     "I005": "ring.nop_required",
     # Karta CV-4.1b (A3-04): generator w trybie regulacji napiecia bez nastawy U
@@ -119,6 +123,10 @@ KODY_WALIDATORA_BEZ_KANONU: dict[str, str] = {
     ),
     "sources.sk_ik_voltage_inconsistent": (
         "Kanon nie ma kodu dla niespojnosci Ik''/Sk''/napiecia zrodla."
+    ),
+    "sources.sk_min_ik_min_voltage_inconsistent": (
+        "Ta sama klasa co `sources.sk_ik_voltage_inconsistent` (CV-4.3 K7, dane MIN): "
+        "kanon nie ma kodu dla niespojnosci Ik''min/Sk''min/napiecia zrodla."
     ),
     # ------------------------------------------------------------------
     # P0.1 nN (karta P0.1, topologia obwodow nN — `enm/validator.py::_check_nn_topology`).

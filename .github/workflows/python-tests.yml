@@ -86,6 +86,14 @@ jobs:
       - name: Readiness Codes Guard
         working-directory: mv-design-pro
         run: python scripts/readiness_codes_guard.py
+      # Karta READINESS-DOC (2026-09-09): docs/domain/READINESS_FIXACTIONS_CANONICAL_PL.md
+      # (dokument WIAZACY, priorytet 3 hierarchii) jest odtad GENEROWANY z tego samego
+      # rejestru co Readiness Codes Guard powyzej — ten krok pilnuje, zeby dokument nie
+      # odjechal, tak jak odjechal od lutego do wersji 1.1 (37 kodow w dokumencie vs 114
+      # w rejestrze).
+      - name: Readiness Dictionary Guard
+        working-directory: mv-design-pro
+        run: python scripts/readiness_dictionary_guard.py
       # CV-2-W: status wynikow PRZYPADKU jest wyprowadzany z jego biegow i koperty
       # rewizji (application/study_case/status_wynikow.py). Kolumna
       # `study_cases.result_status` to dane zastane — zaden kod jej nie pisze.

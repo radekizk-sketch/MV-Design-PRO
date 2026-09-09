@@ -136,7 +136,7 @@ def prad_znamionowy_a(moc_pozorna_mva: float, napiecie_miedzyprzewodowe_kv: floa
     znamionowy z tabliczki DER (``enm/der_sn_validation.py::rated_current_a``),
     prąd znamionowy generatora pełnoprzekształtnikowego
     (``enm/mapping.py``) i prąd zwarciowy Ik''=Sk''/(√3·Un) w amperach dla
-    eksportu CGMES (``infrastructure/cgmes/cgmes_exporter.py::_ik_from_sk`` —
+    eksportu CGMES (``infrastructure/cgmes/cgmes_exporter.py::_ik_a`` —
     ta sama formuła algebraiczna z inną fizyczną etykietą S, bit-identyczna
     kolejność działań zweryfikowana testem tożsamości).
     """

@@ -123,6 +123,22 @@ def arkusz_zly_format() -> bytes:
     return b"to nie jest arkusz kalkulacyjny"
 
 
+def _arkusz_ze_zrodlami(naglowek_zrodel: list[str], wiersze_zrodel: list[list]) -> bytes:
+    """Skoroszyt z minimalnymi Szyny+Linie (arkusze wymagane) i podanym arkuszem Źródła.
+
+    CV-4.3 K7: helper do testów kolumn scenariusza MIN (`Sk_min_MVA`/`Ik_min_kA`/
+    `RX_min`) i trybu prądowego (`Ik_kA`) — nagłówek/wiersze podaje wołający, żeby
+    testować dowolną kombinację {kolumna jest/brak} × {wartość/pusto}.
+    """
+    return zbuduj_skoroszyt(
+        [
+            ("Szyny", [NAGLOWEK_SZYN, ["B1", "GPZ", 15.0], ["B2", "Stacja", 15.0]]),
+            ("Linie", [NAGLOWEK_LINII, ["L1", "B1", "B2", "AFL-6 120", 5.0, 0.253, 0.081]]),
+            ("Źródła", [naglowek_zrodel, *wiersze_zrodel]),
+        ]
+    )
+
+
 def _pierwszy_typ_kabla() -> str:
     from network_model.catalog.repository import get_default_mv_catalog
 
@@ -412,3 +428,194 @@ class TestZapisDoModelu:
         assert sorted(br.name for br in graf_a.graph.branches.values()) == sorted(
             br.name for br in graf_b.graph.branches.values()
         )
+
+
+# ---------------------------------------------------------------------------
+# CV-4.3 K7 — dane zwarciowe scenariusza MIN + tryb prądowy (samo Ik'')
+# ---------------------------------------------------------------------------
+#
+# Iloczyn cech: {kolumna jest / brak} × {wartość / pusto} × {min ≤ max / min > max}
+# × {tryb Sk'' / tryb Ik''} × {wartość dodatnia / zero / ujemna}.
+
+_PELNY_NAGLOWEK_ZRODEL = [
+    "id",
+    "szyna",
+    "typ",
+    "RX_ratio",
+    "Sk_MVA",
+    "Ik_kA",
+    "Sk_min_MVA",
+    "Ik_min_kA",
+    "RX_min",
+]
+
+
+class TestZrodloDaneMinITrybPradowy:
+    def test_pelne_dane_min_trafiaja_do_payloadu_bez_zmian(self):
+        dane = _arkusz_ze_zrodlami(
+            _PELNY_NAGLOWEK_ZRODEL,
+            [["Z1", "B1", "system", 0.1, 500.0, 19.2, 150.0, 6.0, 0.2]],
+        )
+        wynik = XlsxNetworkImporter().import_from_bytes(dane)
+        assert wynik.success is True
+        assert wynik.siec is not None
+        payload = wynik.siec.zrodla[0]["payload"]
+        assert payload["sk3_mva"] == 500.0
+        assert payload["ik3_ka"] == 19.2
+        assert payload["sk3_min_mva"] == 150.0
+        assert payload["ik3_min_ka"] == 6.0
+        assert payload["rx_ratio_min"] == 0.2
+
+    def test_kolumny_min_i_ik_nieobecne_w_arkuszu_nie_zostawiaja_kluczy(self):
+        """Arkusz bez kolumn MIN/Ik_kA (jak przed K7) — zero nowych kluczy w payloadzie."""
+        dane = _arkusz_ze_zrodlami(
+            ["id", "szyna", "typ", "Sk_MVA", "RX_ratio"],
+            [["Z1", "B1", "system", 500.0, 0.1]],
+        )
+        wynik = XlsxNetworkImporter().import_from_bytes(dane)
+        assert wynik.success is True
+        assert wynik.siec is not None
+        payload = wynik.siec.zrodla[0]["payload"]
+        assert payload["sk3_mva"] == 500.0
+        zakazane = {"sk3_min_mva", "ik3_min_ka", "rx_ratio_min", "ik3_ka"}
+        assert not (zakazane & set(payload)), "brak kolumn MIN/Ik_kA => zero kluczy MIN"
+
+    def test_puste_komorki_min_pomijaja_klucz_mimo_obecnej_kolumny(self):
+        """Kolumny MIN OBECNE w nagłówku, ale komórki puste — klucz pominięty, nie 0/None."""
+        dane = _arkusz_ze_zrodlami(
+            _PELNY_NAGLOWEK_ZRODEL,
+            [["Z1", "B1", "system", 0.1, 500.0, None, None, None, None]],
+        )
+        wynik = XlsxNetworkImporter().import_from_bytes(dane)
+        assert wynik.success is True
+        assert wynik.siec is not None
+        payload = wynik.siec.zrodla[0]["payload"]
+        assert payload["sk3_mva"] == 500.0
+        for pole in ("ik3_ka", "sk3_min_mva", "ik3_min_ka", "rx_ratio_min"):
+            assert pole not in payload
+
+    def test_sam_prad_bez_mocy_zwarciowej_jest_trybem_pradowym_policzalnym(self):
+        """CV-4.3 K7: samo Ik'' (bez Sk'') jest daną wystarczającą — import się udaje."""
+        dane = _arkusz_ze_zrodlami(
+            ["id", "szyna", "typ", "RX_ratio", "Ik_kA"],
+            [["Z1", "B1", "system", 0.1, 9.6]],
+        )
+        wynik = XlsxNetworkImporter().import_from_bytes(dane)
+        assert wynik.success is True
+        assert wynik.siec is not None
+        payload = wynik.siec.zrodla[0]["payload"]
+        assert payload["ik3_ka"] == 9.6
+        assert "sk3_mva" not in payload
+
+    def test_brak_sk_i_ik_jest_bledem_calego_wiersza(self):
+        dane = _arkusz_ze_zrodlami(
+            ["id", "szyna", "typ", "RX_ratio"],
+            [["Z1", "B1", "system", 0.1]],
+        )
+        wynik = XlsxNetworkImporter().import_from_bytes(dane)
+        assert wynik.success is False
+        assert any(
+            b.arkusz == "Źródła" and b.kolumna is None and b.wiersz == 2 for b in wynik.bledy
+        )
+
+    def test_sk_min_wieksze_od_sk_max_jest_ostrzezeniem_nie_blokuje_importu(self):
+        """Sprzeczność MIN>MAX: importer POKAZUJE (ostrzeżenie), nie POŁYKA i nie blokuje —
+        rozstrzygnięcie należy do warstwy domenowej, gdy dane tam trafią."""
+        dane = _arkusz_ze_zrodlami(
+            ["id", "szyna", "typ", "RX_ratio", "Sk_MVA", "Sk_min_MVA"],
+            [["Z1", "B1", "system", 0.1, 100.0, 150.0]],
+        )
+        wynik = XlsxNetworkImporter().import_from_bytes(dane)
+        assert wynik.success is True
+        assert wynik.siec is not None
+        assert wynik.siec.zrodla[0]["payload"]["sk3_min_mva"] == 150.0
+        assert any("Sk_min_MVA" in o and "Z1" in o for o in wynik.warnings)
+
+    def test_ik_min_wieksze_od_ik_max_jest_ostrzezeniem(self):
+        dane = _arkusz_ze_zrodlami(
+            ["id", "szyna", "typ", "RX_ratio", "Ik_kA", "Ik_min_kA"],
+            [["Z1", "B1", "system", 0.1, 5.0, 8.0]],
+        )
+        wynik = XlsxNetworkImporter().import_from_bytes(dane)
+        assert wynik.success is True
+        assert any("Ik_min_kA" in o and "Z1" in o for o in wynik.warnings)
+
+    def test_rx_min_bez_wlasnej_mocy_zwarciowej_min_jest_ostrzezeniem(self):
+        dane = _arkusz_ze_zrodlami(
+            ["id", "szyna", "typ", "RX_ratio", "Sk_MVA", "RX_min"],
+            [["Z1", "B1", "system", 0.1, 500.0, 0.2]],
+        )
+        wynik = XlsxNetworkImporter().import_from_bytes(dane)
+        assert wynik.success is True
+        assert wynik.siec is not None
+        assert wynik.siec.zrodla[0]["payload"]["rx_ratio_min"] == 0.2
+        assert any("RX_min" in o and "Z1" in o for o in wynik.warnings)
+
+    def test_sk_min_ujemne_lub_zero_jest_bledem_wiersza(self):
+        dane = _arkusz_ze_zrodlami(
+            ["id", "szyna", "typ", "RX_ratio", "Sk_MVA", "Sk_min_MVA"],
+            [["Z1", "B1", "system", 0.1, 500.0, 0.0]],
+        )
+        wynik = XlsxNetworkImporter().import_from_bytes(dane)
+        assert wynik.success is False
+        assert any(b.kolumna == "Sk_min_MVA" for b in wynik.bledy)
+
+    def test_ik_min_ujemny_jest_bledem_wiersza(self):
+        dane = _arkusz_ze_zrodlami(
+            ["id", "szyna", "typ", "RX_ratio", "Ik_kA", "Ik_min_kA"],
+            [["Z1", "B1", "system", 0.1, 9.6, -1.0]],
+        )
+        wynik = XlsxNetworkImporter().import_from_bytes(dane)
+        assert wynik.success is False
+        assert any(b.kolumna == "Ik_min_kA" for b in wynik.bledy)
+
+    def test_rx_min_ujemny_jest_bledem_wiersza(self):
+        dane = _arkusz_ze_zrodlami(
+            ["id", "szyna", "typ", "RX_ratio", "Sk_MVA", "RX_min"],
+            [["Z1", "B1", "system", 0.1, 500.0, -0.1]],
+        )
+        wynik = XlsxNetworkImporter().import_from_bytes(dane)
+        assert wynik.success is False
+        assert any(b.kolumna == "RX_min" for b in wynik.bledy)
+
+    def test_ik_ujemny_jest_bledem_wiersza(self):
+        """Ik_kA (kolumna opcjonalna scenariusza MAX) — ta sama reguła co Sk_MVA."""
+        dane = _arkusz_ze_zrodlami(
+            ["id", "szyna", "typ", "RX_ratio", "Ik_kA"],
+            [["Z1", "B1", "system", 0.1, -5.0]],
+        )
+        wynik = XlsxNetworkImporter().import_from_bytes(dane)
+        assert wynik.success is False
+        assert any(b.kolumna == "Ik_kA" for b in wynik.bledy)
+
+
+class TestKolumnaUPu:
+    """Napięcie zadane szyny bilansującej (`U_pu`, p.u. Un szyny; puste = 1,0 znamionowe)."""
+
+    def test_u_pu_trafia_do_payloadu_jako_u_set_pu(self):
+        dane = _arkusz_ze_zrodlami(
+            ["id", "szyna", "typ", "RX_ratio", "Sk_MVA", "U_pu"],
+            [["Z1", "B1", "system", 0.1, 500.0, 1.06]],
+        )
+        wynik = XlsxNetworkImporter().import_from_bytes(dane)
+        assert wynik.success is True and wynik.siec is not None
+        assert wynik.siec.zrodla[0]["payload"]["u_set_pu"] == 1.06
+
+    def test_puste_u_pu_nie_zostawia_klucza(self):
+        dane = _arkusz_ze_zrodlami(
+            ["id", "szyna", "typ", "RX_ratio", "Sk_MVA", "U_pu"],
+            [["Z1", "B1", "system", 0.1, 500.0, None]],
+        )
+        wynik = XlsxNetworkImporter().import_from_bytes(dane)
+        assert wynik.success is True and wynik.siec is not None
+        assert "u_set_pu" not in wynik.siec.zrodla[0]["payload"]
+
+    @pytest.mark.parametrize("wartosc", [0.0, 0.5, 1.5, -1.0])
+    def test_u_pu_poza_pasmem_jest_bledem_wiersza(self, wartosc):
+        dane = _arkusz_ze_zrodlami(
+            ["id", "szyna", "typ", "RX_ratio", "Sk_MVA", "U_pu"],
+            [["Z1", "B1", "system", 0.1, 500.0, wartosc]],
+        )
+        wynik = XlsxNetworkImporter().import_from_bytes(dane)
+        assert wynik.success is False
+        assert ("Źródła", "U_pu") in {(b.arkusz, b.kolumna) for b in wynik.bledy}

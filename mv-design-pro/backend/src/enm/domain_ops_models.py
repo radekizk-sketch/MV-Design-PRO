@@ -751,6 +751,18 @@ class AddGridSourceSNPayload(_FrozenBase):
     rx_ratio: float | None = None
     """Stosunek R/X impedancji zwarciowej."""
 
+    sk3_min_mva: float | None = None
+    """Minimalna moc zwarciowa trójfazowa [MVA] — scenariusz MIN (CV-4.3 K7)."""
+
+    ik3_min_ka: float | None = None
+    """Minimalny prąd zwarciowy trójfazowy [kA] — scenariusz MIN (CV-4.3 K7)."""
+
+    rx_ratio_min: float | None = None
+    """Stosunek R/X impedancji zwarciowej dla scenariusza MIN (CV-4.3 K7)."""
+
+    u_set_pu: float | None = None
+    """Napięcie zadane szyny bilansującej [p.u. Un szyny], pasmo 0,8–1,2; brak = 1,0."""
+
     line_fields_per_section: int | None = None
     """Liczba pól liniowych odpływowych tworzonych na każdej sekcji GPZ."""
 

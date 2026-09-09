@@ -273,6 +273,11 @@ def test_domain_operation_snapshot_feeds_analysis_result_and_trace(client: TestC
     ):
         assert pole in wiersz, pole
         assert wiersz[pole] is not None, pole
+    # K7: ślad źródeł sieciowych (Z_Q) biegu przechodzi do odpowiedzi HTTP — ekran wyników
+    # zwarć ui2 czyta go stąd; MAX nie publikuje założeń, więc klucz `zalozenia` nie istnieje.
+    assert short_circuit_payload["zrodla_sieciowe"]
+    assert short_circuit_payload["zrodla_sieciowe"][0]["scenariusz"] == "MAX"
+    assert "zalozenia" not in short_circuit_payload
     assert wiersz["zk_ohm"] == pytest.approx(
         math.hypot(wiersz["rk_ohm"], wiersz["xk_ohm"]), rel=1e-9
     )

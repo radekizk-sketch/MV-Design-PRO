@@ -216,7 +216,13 @@ POMIJANE_KATALOGI = {
 #     Usuniety alias, nie prog. Do tego FAB-K skasowala martwy import
 #     `PowerFlowComparisonTab` niezaleznie od CV-3.3-B (ta sama naprawa w obu
 #     kartach) — laczny stan po scaleniu: 128.
-BUDZET_BLEDOW_POZA_BRAMKA = 128
+#   * CV-4.3 K7 odbior (Fable, pomiar 2026-09-09): 128 -> 127. Karta K7-FE dolozyla +1
+#     (mock podgladu IEC 60909 w `KreatorZrodloZasilania.test.tsx` typowany wnioskowanym
+#     literalem bez bloku `scenariusz_min`) -> mock typowany kontraktem
+#     `GridSourcePreviewResponse` (-1); przy okazji naprawiony u zrodla pre-existing TS1117
+#     (duplikat `itemsByBayId` w literale `InspectorEngineeringView.test.tsx`, od #433 — drugi
+#     klucz po cichu zerowal fiksture read-modelu) (-1). Razem 127.
+BUDZET_BLEDOW_POZA_BRAMKA = 127
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

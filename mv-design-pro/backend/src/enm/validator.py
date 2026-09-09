@@ -46,6 +46,7 @@ from .severity import (
     severity_rank,
 )
 from .topology import derive
+from .zrodlo_zwarcie import PASMO_U_SET_PU, dane_zwarciowe_zrodla, u_set_pu_w_pasmie
 
 # V12S-007: voltage band thresholds (kV).
 # Pasma napieciowe domeny:
@@ -319,16 +320,10 @@ class ENMValidator:
                 )
             )
 
-        # E008: Źródło bez parametrów zwarciowych
+        # E008: Źródło bez parametrów zwarciowych — predykat z JEDNEGO źródła prawdy
+        # (`enm/zrodlo_zwarcie.py`, ten sam, którego używa mapper; CV-4.3 K7).
         for source in enm.sources:
-            has_sk = source.sk3_mva is not None and source.sk3_mva > 0
-            has_rx = (
-                source.r_ohm is not None
-                and source.x_ohm is not None
-                and (source.r_ohm > 0 or source.x_ohm > 0)
-            )
-            has_ik = source.ik3_ka is not None and source.ik3_ka > 0
-            if not (has_sk or has_rx or has_ik):
+            if not dane_zwarciowe_zrodla(source).policzalne:
                 issues.append(
                     ValidationIssue(
                         code="sources.no_short_circuit_params",
@@ -509,6 +504,84 @@ class ENMValidator:
                     ),
                 )
             )
+
+        # sources.u_set_pu_out_of_range: napięcie zadane szyny bilansującej poza pasmem
+        # `PASMO_U_SET_PU` (ten sam predykat co operacja domenowa — predykaty parami);
+        # model spoza operacji (import XLSX/CGMES/ZIP) nie może wnieść do solvera
+        # nastawy 0 p.u. albo 10 p.u. jako „napięcia zadanego".
+        for source in enm.sources:
+            if source.u_set_pu is None or u_set_pu_w_pasmie(source.u_set_pu):
+                continue
+            issues.append(
+                ValidationIssue(
+                    code="sources.u_set_pu_out_of_range",
+                    severity=SEVERITY_BLOCKER,
+                    message_pl=(
+                        f"Źródło '{source.ref_id}': napięcie zadane szyny bilansującej "
+                        f"u_set_pu={source.u_set_pu:g} p.u. leży poza pasmem "
+                        f"{PASMO_U_SET_PU[0]:g}–{PASMO_U_SET_PU[1]:g} p.u."
+                    ),
+                    element_refs=[source.ref_id],
+                    wizard_step_hint="K2",
+                    suggested_fix=(
+                        "Podaj napięcie zadane w p.u. napięcia znamionowego szyny "
+                        "(np. 1,0 = znamionowe) albo usuń nastawę."
+                    ),
+                    fix_action=FixAction(
+                        action_type="OPEN_MODAL",
+                        element_ref=source.ref_id,
+                        modal_type="SourceModal",
+                        payload_hint={"required": "u_set_pu_in_band"},
+                    ),
+                )
+            )
+
+        # sources.sk_min_exceeds_max (CV-4.3 K7): dane scenariusza MIN sprzeczne z MAX.
+        # Z definicji S''_kQmin ≤ S''_kQmax i I''_kQmin ≤ I''_kQmax (IEC 60909-0:2016 §6.2.1:
+        # minimum to najsłabszy stan zasilania); odwrotność oznacza zamienione pola albo
+        # dane z różnych szyn — BLOCKER, bo bieg MIN dałby prąd WIĘKSZY niż MAX.
+        for source in enm.sources:
+            sprzeczne: list[str] = []
+            if (
+                source.sk3_min_mva is not None
+                and source.sk3_mva is not None
+                and source.sk3_mva > 0
+                and source.sk3_min_mva > source.sk3_mva
+            ):
+                sprzeczne.append(
+                    f"Sk''min={source.sk3_min_mva:g} MVA > Sk''max={source.sk3_mva:g} MVA"
+                )
+            if (
+                source.ik3_min_ka is not None
+                and source.ik3_ka is not None
+                and source.ik3_ka > 0
+                and source.ik3_min_ka > source.ik3_ka
+            ):
+                sprzeczne.append(f"Ik''min={source.ik3_min_ka:g} kA > Ik''max={source.ik3_ka:g} kA")
+            if sprzeczne:
+                issues.append(
+                    ValidationIssue(
+                        code="sources.sk_min_exceeds_max",
+                        severity=SEVERITY_BLOCKER,
+                        message_pl=(
+                            f"Źródło '{source.ref_id}': dane scenariusza minimalnego przekraczają "
+                            f"maksymalne ({'; '.join(sprzeczne)}) — bieg MIN dałby prąd większy "
+                            f"niż MAX."
+                        ),
+                        element_refs=[source.ref_id],
+                        wizard_step_hint="K2",
+                        suggested_fix=(
+                            "Podaj Sk''min ≤ Sk''max (albo Ik''min ≤ Ik''max) z warunków "
+                            "przyłączenia OSD dla tej samej szyny."
+                        ),
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=source.ref_id,
+                            modal_type="SourceModal",
+                            payload_hint={"required": "sk_min_le_sk_max"},
+                        ),
+                    )
+                )
 
         # generators.voltage_control_profile_missing / generators.voltage_control_not_permitted
         # (domknięcie CV-4.1b przy odbiorze, 2026-09-05): kreator OZE bramkuje tryb
@@ -837,6 +910,45 @@ class ENMValidator:
                 )
             )
 
+        # W033 dla scenariusza MIN (CV-4.3 K7): ta sama reguła 5 % dla pary Sk''min/Ik''min.
+        for source in enm.sources:
+            if not (
+                source.sk3_min_mva
+                and source.sk3_min_mva > 0
+                and source.ik3_min_ka
+                and source.ik3_min_ka > 0
+            ):
+                continue
+            bus = buses_by_ref.get(source.bus_ref) if source.bus_ref else None
+            if bus is None or not bus.voltage_kv or bus.voltage_kv <= 0:
+                continue
+            expected_ik_min_ka = prad_z_mocy_pozornej_ka(source.sk3_min_mva, bus.voltage_kv)
+            if abs(source.ik3_min_ka - expected_ik_min_ka) / expected_ik_min_ka > 0.05:
+                issues.append(
+                    ValidationIssue(
+                        code="sources.sk_min_ik_min_voltage_inconsistent",
+                        severity=SEVERITY_IMPORTANT,
+                        message_pl=(
+                            f"Źródło '{source.ref_id}': Ik''min={source.ik3_min_ka:.2f} kA nie "
+                            f"zgadza się z Sk''min={source.sk3_min_mva:.0f} MVA przy "
+                            f"U={bus.voltage_kv:g} kV (oczekiwane "
+                            f"Ik''min=Sk''min/(√3·U)={expected_ik_min_ka:.2f} kA). "
+                            f"Dane scenariusza minimalnego muszą dotyczyć TEJ SAMEJ szyny."
+                        ),
+                        element_refs=[source.ref_id],
+                        wizard_step_hint="K2",
+                        suggested_fix=(
+                            "Podaj Sk''min i Ik''min wyznaczone dla szyny, na której stoi źródło."
+                        ),
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=source.ref_id,
+                            modal_type="SourceModal",
+                            payload_hint={"required": "short_circuit_min_params_consistent"},
+                        ),
+                    )
+                )
+
         # W035 (Reference Engine V1, spec §6, V12K-060): walidacja referencyjna
         # NA ŻYWO — profile pól IEC 62271 (required/one_of/forbidden/kolejność/
         # aparat boczny w osi) + rodziny producentów dla pól związanych przez
@@ -889,12 +1001,9 @@ class ENMValidator:
                         )
                     )
 
-        # W002: Brak Z₀ źródła
+        # W002: Brak Z₀ źródła — predykat `dane_zerowe` z `enm/zrodlo_zwarcie.py` (K7).
         for source in enm.sources:
-            has_z0 = (
-                source.r0_ohm is not None and source.x0_ohm is not None
-            ) or source.z0_z1_ratio is not None
-            if not has_z0:
+            if not dane_zwarciowe_zrodla(source).z0:
                 issues.append(
                     ValidationIssue(
                         code="W002",

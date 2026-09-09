@@ -110,6 +110,19 @@ export interface ZrodloSieciowe {
   napiecieKv: number | null;
   sk3Mva: number | null;
   ik3Ka: number | null;
+  /**
+   * Dane scenariusza MIN (CV-4.3 K7) — warunki przyłączenia OSD, minimalna
+   * moc/prąd zwarciowy. `null` = OSD ich nie podał (zero fabrykacji); scenariusz
+   * MIN biegu liczy się wtedy z danych maksymalnych (jawne założenie backendu).
+   */
+  sk3MinMva: number | null;
+  ik3MinKa: number | null;
+  /**
+   * Napięcie zadane szyny bilansującej (CV-4.3 K7c) — p.u. napięcia znamionowego;
+   * `null` = OSD go nie podał (zero fabrykacji) — źródło pracuje na napięciu
+   * znamionowym (1,0 p.u., założenie backendu, `enm/assembler.py`).
+   */
+  uSetPu: number | null;
 }
 
 /**
@@ -199,6 +212,9 @@ export function mapujPrzylaczenie(snapshot: EnergyNetworkModel): PrzylaczenieKaf
     napiecieKv: napiecieSzyny.get(s.bus_ref) ?? null,
     sk3Mva: s.sk3_mva ?? null,
     ik3Ka: s.ik3_ka ?? null,
+    sk3MinMva: s.sk3_min_mva ?? null,
+    ik3MinKa: s.ik3_min_ka ?? null,
+    uSetPu: s.u_set_pu ?? null,
   }));
 
   const generacjaMw = snapshot.generators.reduce((acc, g) => acc + g.p_mw, 0);

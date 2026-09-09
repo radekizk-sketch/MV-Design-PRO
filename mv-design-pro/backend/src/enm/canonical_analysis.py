@@ -2085,6 +2085,9 @@ def _execute_short_circuit(run: CanonicalRun, uow_factory: Callable[[], Any] | N
             if wejscie.zrodla_sieciowe_trace
             else {}
         ),
+        # CV-4.3 K7: założenia biegu nazwane kodem gotowości (scenariusz MIN bez S''_kQmin
+        # → Z_Q z danych MAX) — addytywnie, tylko gdy bieg je ma; nigdy cicho.
+        **({"zalozenia": list(wejscie.zalozenia)} if wejscie.zalozenia else {}),
         "results": rows,
         "graph": {
             "nodes": {
@@ -3061,7 +3064,15 @@ def build_short_circuit_results(
             }
         )
     rows.sort(key=lambda row: row["target_id"] or "")
-    return {"run_id": str(run.id), "rows": rows}
+    # CV-4.3 K7: ślad wyprowadzenia Z_Q źródeł sieciowych i założenia biegu (kody
+    # gotowości) — addytywnie, dokładnie wtedy, gdy artefakt biegu je niesie (ekran
+    # wyników zwarć czyta `zrodla_sieciowe`/`zalozenia` z tej odpowiedzi).
+    odpowiedz: dict[str, Any] = {"run_id": str(run.id), "rows": rows}
+    for klucz in ("zrodla_sieciowe", "zalozenia"):
+        wartosc = (run.raw_result or {}).get(klucz)
+        if wartosc:
+            odpowiedz[klucz] = wartosc
+    return odpowiedz
 
 
 def build_short_circuit_rozplyw(run: CanonicalRun, target_id: str) -> dict[str, Any]:

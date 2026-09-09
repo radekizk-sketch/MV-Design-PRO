@@ -23,6 +23,7 @@ import { BilansIEC } from './BilansIEC';
 import { usePokazZwarcieNaSchemacie } from './pokazNaSchemacie';
 import { RozplywZwarciowy } from './RozplywZwarciowy';
 import { SladPodzialuPradu } from './SladPodzialuPradu';
+import { SladZrodelSieciowych } from './SladZrodelSieciowych';
 import { WkladyZwarciowe } from './WkladyZwarciowe';
 import { WykresZwarc } from './WykresZwarc';
 import { ZWARCIA_STRINGS } from './strings';
@@ -121,7 +122,7 @@ export function EkranZwarc({
     <div data-testid="mvd-zwarcia-ekran">
       <EkranAnalizy
         naglowek={{ analizaPL: ZWARCIA_STRINGS.analiza, runId: runId ?? undefined, ...swiezosc }}
-        zalozenia={naZalozeniaZwarc(wspolczynnikC, czasCieplnyS)}
+        zalozenia={naZalozeniaZwarc(wspolczynnikC, czasCieplnyS, wynik.zalozenia)}
         kolumny={KOLUMNY_ZWARC}
         wiersze={naWierszeZwarc(rows)}
         wykres={<WykresZwarc rows={rows} />}
@@ -143,6 +144,14 @@ export function EkranZwarc({
           {ZWARCIA_STRINGS.pokazNaSchemacie}
         </button>
       </div>
+
+      {/* Ślad Z_Q (CV-4.3 K6/K7) — właściwość CAŁEGO biegu (nie wybranego punktu):
+          renderuje się wyżej, obok tabeli głównej, przed sekcjami per-punkt. */}
+      <SladZrodelSieciowych
+        zrodlaSieciowe={wynik.zrodla_sieciowe}
+        trybZaawansowania={trybZaawansowania}
+        onOtworzDowod={onOtworzDowod}
+      />
 
       <BilansIEC row={wierszAktywny} punktNazwa={nazwaAktywnego} />
 

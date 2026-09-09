@@ -4,9 +4,24 @@ Buduje sieć pandapower z ``EnergyNetworkModel`` TYMI SAMYMI regułami, którymi
 ``enm/mapping.py`` buduje IR solvera (semantyka „w ruchu": gałąź ``status == "closed"``,
 transformator zawsze; łączniki i bezpieczniki jako łączniki szyna–szyna; liczba torów
 z ``enm.models.liczba_torow``; Q wytwórcy z ``solver_input.moc_bierna_wytworcy``;
-impedancja źródła z ``enm.mapping._source_positive_impedance_ohm``; współczynnik c
+impedancja źródła z ``enm.mapping._source_positive_impedance_ohm`` — dla MAX i MIN
+osobno (CV-4.3 K7: ``s_sc_max_mva``/``rx_max`` z Z_Qmax, ``s_sc_min_mva``/``rx_min``
+z Z_Qmin, oba z TEJ SAMEJ funkcji mappera); współczynnik c
 z ``network_model.core.voltage_factor.c_for_node``) — most nie ma własnej definicji
 żadnej z tych reguł, więc rozjazd wyniku jest rozjazdem SOLVERA, nie mostu.
+
+PROWENIENCJA (D-2, część Definition of Done K7): ``proweniencja(enm)`` oddaje rekord
+z wersją pandapower, wersją mostu (``WERSJA_MOSTU``) i skrótem SHA-256 tego pliku,
+haszem wejściowym ENM, deklarowanymi S''kQmax/S''kQmin (albo I''kQ), c_max/c_min pasma
+i FAKTYCZNYMI parametrami ``ext_grid`` przekazanymi wyroczni. Rekord jest przypięty
+w ``proweniencja_k7.json`` — rozjazd wersji pandapower albo mostu wobec zapisanej
+wywala test (do tej karty referencje mówiły 3.4.0, CI instalowało 3.5.4 i nic tego
+nie sprawdzało).
+
+ZAKRES scenariusza MIN (jawny): Z_Qmin źródeł + c_min w węźle zwarcia. Korekta
+temperaturowa rezystancji linii/kabli (tor kanoniczny: ``build_min_scenario_graph``)
+NIE jest odwzorowana (pandapower wymagałby ``endtemp_degree`` per linia) — parytet
+MIN dowodzi się na sieci bez gałęzi liniowych; sieć z liniami w MIN = ``ValueError``.
 
 ZAKRES (jawny): szyny, linie/kable (R, X, B na km, tory równoległe), łączniki i
 bezpieczniki, transformatory dwuuzwojeniowe (uk, Pk, i0, P0, grupa połączeń jako
@@ -26,7 +41,13 @@ from __future__ import annotations
 import math
 from typing import Any
 
-from enm.mapping import _source_positive_impedance_ohm
+from enm.hash import compute_input_hash
+from enm.mapping import (
+    _source_positive_impedance_ohm,
+    impedancja_zrodla_sieciowego,
+    map_enm_to_network_graph,
+    ref_to_graph_id,
+)
 from enm.models import (
     Cable,
     EnergyNetworkModel,
@@ -35,7 +56,7 @@ from enm.models import (
     SwitchBranch,
     liczba_torow,
 )
-from network_model.core.voltage_factor import c_for_node
+from network_model.core.voltage_factor import Scenario, c_for_node
 from network_model.solvers.power_flow_newton_internal import transformer_phase_shift_rad
 from network_model.solvers.power_flow_zip import zip_coeffs_from_materialized_params
 from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
@@ -51,6 +72,23 @@ LV_TOL_PERCENT = 6
 #: Grupa połączeń podstawiana przez ``enm/mapping.py`` przy braku w modelu.
 GRUPA_DOMYSLNA = "Dyn11"
 
+#: Wersja reguł mostu (D-2): podnoszona przy KAŻDEJ zmianie odwzorowania ENM → pandapower.
+#: "1" = CV-4.3 K3b (rozpływ per wyspa, zwarcie 3F MAX); "2" = CV-4.3 K7 (ext_grid z
+#: parametrami MIN z Z_Qmin, proweniencja). Skrót SHA-256 pliku w rekordzie proweniencji
+#: identyfikuje dokładną treść mostu niezależnie od tej etykiety.
+WERSJA_MOSTU = "2"
+
+
+def _pandapower_wersja() -> str:
+    return str(_pandapower().__version__)
+
+
+def _skrot_mostu() -> str:
+    import hashlib
+    from pathlib import Path
+
+    return hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+
 
 def _pandapower() -> Any:
     import pandapower as pp  # type: ignore[import-not-found]
@@ -65,6 +103,30 @@ def _stopnie_z_grupy(vector_group: str | None) -> float:
     return (-math.degrees(transformer_phase_shift_rad(vector_group or GRUPA_DOMYSLNA))) % 360.0
 
 
+def _parametry_ext_grid(source: Any, u_kv: float) -> dict[str, float]:
+    """``s_sc_max_mva``/``rx_max`` z Z_Qmax i ``s_sc_min_mva``/``rx_min`` z Z_Qmin —
+    oba z ``enm.mapping._source_positive_impedance_ohm`` (jedna funkcja mappera).
+
+    pandapower: Z_Q = c·U²/s_sc (IEC 60909-0 eq. 6; c_max dla ``case="max"``, c_min dla
+    ``case="min"``) — odtwarzamy s_sc z impedancji IR, żeby po obu stronach stała TA SAMA
+    Z_Q. Po CV-4.3 K6 ``s_sc_max_mva`` jest RÓWNE deklarowanemu ``sk3_mva`` (test
+    ``test_ext_grid_s_sc_rowne_deklarowanemu_sk``); po K7 ``s_sc_min_mva`` jest RÓWNE
+    deklarowanemu ``sk3_min_mva`` (test ``test_ext_grid_s_sc_min_rowne_deklarowanemu_sk_min``),
+    a bez danych MIN wynosi (c_min/c_max)·S''kQmax — dokładnie założenie
+    ``source.sk_min_missing`` mappera (Z_Qmin = Z_Qmax), nie liczba wymyślona przez most.
+    """
+    z_max = _source_positive_impedance_ohm(source, u_kv, "MAX")
+    z_min = _source_positive_impedance_ohm(source, u_kv, "MIN")
+    if z_max is None or z_max == 0 or z_min is None or z_min == 0:
+        raise ValueError(f"Źródło {source.ref_id} bez impedancji zwarciowej")
+    return {
+        "s_sc_max_mva": c_for_node(u_kv, "MAX") * u_kv**2 / abs(z_max),
+        "rx_max": z_max.real / z_max.imag,
+        "s_sc_min_mva": c_for_node(u_kv, "MIN") * u_kv**2 / abs(z_min),
+        "rx_min": z_min.real / z_min.imag,
+    }
+
+
 def zbuduj_siec(
     enm: EnergyNetworkModel, *, z_wytworcami: bool = True
 ) -> tuple[Any, dict[str, int]]:
@@ -72,7 +134,9 @@ def zbuduj_siec(
 
     ``z_wytworcami=False`` pomija wytwórców (porównanie zwarcia z wkładem samej sieci
     Thevenina — ``ik_thevenin_a`` solvera kanonicznego; falownik w IEC 60909 to źródło
-    prądowe o innym modelu wkładu niż ``sgen`` pandapower).
+    prądowe o innym modelu wkładu niż ``sgen`` pandapower). Źródła sieciowe dostają
+    komplet parametrów MAX i MIN (``_parametry_ext_grid``), więc ta sama sieć służy
+    ``calc_sc(case="max")`` i ``calc_sc(case="min")``.
     """
     pp = _pandapower()
     net = pp.create_empty_network(sn_mva=100.0, f_hz=CZESTOTLIWOSC_HZ)
@@ -145,23 +209,13 @@ def zbuduj_siec(
         if source.bus_ref not in szyny:
             raise ValueError(f"Źródło {source.ref_id} na nieznanej szynie {source.bus_ref}")
         u_kv = napiecie[source.bus_ref]
-        z_ohm = _source_positive_impedance_ohm(source, u_kv)
-        if z_ohm is None or z_ohm == 0:
-            raise ValueError(f"Źródło {source.ref_id} bez impedancji zwarciowej")
-        # pandapower: Z_Q = c_max·U²/s_sc_max_mva (IEC 60909-0 eq. 6) — odtwarzamy
-        # s_sc z impedancji IR, żeby po obu stronach stała TA SAMA Z_Q. Po CV-4.3 K6
-        # (Z_Q mappingu = c_max·U²/S''_kQ) ta liczba jest RÓWNA deklarowanemu
-        # ``sk3_mva`` źródła (test ``test_ext_grid_s_sc_rowne_deklarowanemu_sk``);
-        # przed K6 wychodziła c_max·S''_kQ — most maskował brak c w mappingu.
-        c_max = c_for_node(u_kv, "MAX")
         pp.create_ext_grid(
             net,
             szyny[source.bus_ref],
             vm_pu=1.0,
             va_degree=0.0,
             name=source.ref_id,
-            s_sc_max_mva=c_max * u_kv**2 / abs(z_ohm),
-            rx_max=z_ohm.real / z_ohm.imag,
+            **_parametry_ext_grid(source, u_kv),
         )
 
     for load in sorted(enm.loads, key=lambda ld: ld.ref_id):
@@ -236,11 +290,100 @@ def rozplyw(enm: EnergyNetworkModel) -> dict[str, Any]:
     return {"szyny": wynik_szyn, "zrodla": zrodla}
 
 
-def zwarcie_3f(enm: EnergyNetworkModel) -> dict[str, float]:
-    """Ik'' [A] zwarcia trójfazowego (scenariusz MAX) w każdej szynie — sama sieć
-    Thevenina (bez wytwórców), c wg IEC 60909-0 Tab. 1 (nN 1,05; SN/WN 1,10)."""
+def zwarcie_3f(
+    enm: EnergyNetworkModel, scenariusz: Scenario = "MAX", *, k_t_w_min: bool = False
+) -> dict[str, float]:
+    """Ik'' [A] zwarcia trójfazowego w każdej szynie — sama sieć Thevenina (bez
+    wytwórców), c wg IEC 60909-0 Tab. 1 (MAX: nN 1,05 / SN/WN 1,10; MIN: 0,95 / 1,00).
+
+    MIN (CV-4.3 K7): ``case="min"`` bierze ``s_sc_min_mva``/``rx_min`` ext_grid (z Z_Qmin
+    mappera) i c_min w węźle zwarcia. Korekta temperaturowa linii toru kanonicznego nie
+    jest odwzorowana — sieć z gałęziami liniowymi w MIN jest odrzucana z nazwą.
+
+    ROZBIEŻNOŚĆ NORMATYWNA (OD-10, pomiar K7): pandapower stosuje współczynnik korekcyjny
+    transformatora sieciowego K_T = 0,95·c_max/(1+0,6·x_T) WYŁĄCZNIE dla ``case="max"``
+    (``build_branch._transformer_correction_factor``: „shall only be applied in the max
+    case according to IEC 60909-0:2016 section 6.3.3"), a rdzeń MV
+    (``core/branch.py::get_short_circuit_impedance_pu_corrected``, FROZEN) stosuje K_T w obu
+    scenariuszach. ``k_t_w_min=True`` przemnaża ``vk_percent``/``vkr_percent`` każdego
+    transformatora przez K_T ODCZYTANE z gałęzi grafu rdzenia (nie liczone w moście),
+    żeby wyrocznia widziała tę samą impedancję co solver — to ODWZOROWANIE zachowania
+    rdzenia do izolacji rozbieżności, nie rozstrzygnięcie, która strona ma rację
+    (decyzja właściciela, rdzeń FROZEN)."""
     import pandapower.shortcircuit as sc  # type: ignore[import-not-found]
 
+    if scenariusz == "MIN" and any(isinstance(b, OverheadLine | Cable) for b in enm.branches):
+        raise ValueError(
+            "Most pandapower nie odwzorowuje korekty temperaturowej linii scenariusza MIN "
+            "(tor kanoniczny: build_min_scenario_graph) — parytet MIN tylko bez gałęzi liniowych"
+        )
     net, szyny = zbuduj_siec(enm, z_wytworcami=False)
-    sc.calc_sc(net, fault="3ph", case="max", lv_tol_percent=LV_TOL_PERCENT, ip=False, ith=False)
+    if scenariusz == "MIN" and k_t_w_min:
+        graf = map_enm_to_network_graph(enm, scenario="MIN")
+        for idx, wiersz in net.trafo.iterrows():
+            galaz = graf.branches[ref_to_graph_id(str(wiersz["name"]))]
+            k_t = galaz.get_kt_correction_factor()  # type: ignore[attr-defined]
+            net.trafo.at[idx, "vk_percent"] = float(wiersz["vk_percent"]) * k_t
+            net.trafo.at[idx, "vkr_percent"] = float(wiersz["vkr_percent"]) * k_t
+    sc.calc_sc(
+        net,
+        fault="3ph",
+        case="max" if scenariusz == "MAX" else "min",
+        lv_tol_percent=LV_TOL_PERCENT,
+        ip=False,
+        ith=False,
+    )
     return {ref: float(net.res_bus_sc.ikss_ka[idx]) * 1000.0 for ref, idx in szyny.items()}
+
+
+def proweniencja(enm: EnergyNetworkModel) -> dict[str, Any]:
+    """Rekord proweniencji wyroczni (D-2 w DoD K7): co DOKŁADNIE dostał pandapower.
+
+    Dla każdego źródła: deklaracje ENM (S''kQmax/S''kQmin albo I''kQ, R/X), c_max/c_min
+    pasma, tryb danych i scenariusz ze śladu mappera (``impedancja_zrodla_sieciowego``)
+    oraz faktyczne parametry ``ext_grid``. Rekord jest deterministyczny (klucze
+    posortowane, źródła po ``ref_id``) i porównywalny bit w bit z przypiętym JSON.
+    """
+    napiecie = {bus.ref_id: bus.voltage_kv for bus in enm.buses}
+    zrodla: dict[str, Any] = {}
+    for source in sorted(enm.sources, key=lambda s: s.ref_id):
+        u_kv = napiecie[source.bus_ref]
+        slady = {}
+        for scenariusz in ("MAX", "MIN"):
+            wynik = impedancja_zrodla_sieciowego(source, u_kv, scenariusz)  # type: ignore[arg-type]
+            if wynik is None:
+                raise ValueError(f"Źródło {source.ref_id} bez impedancji zwarciowej")
+            _z, slad = wynik
+            slady[scenariusz] = {
+                "tryb": slad["tryb"],
+                "c": slad.get("c"),
+                "rx_ratio": slad.get("rx_ratio"),
+                "rx_ratio_zrodlo": slad.get("rx_ratio_zrodlo"),
+                "z_q_ohm": slad["z_q_ohm"],
+                "zalozenie": slad.get("zalozenie"),
+            }
+        zrodla[source.ref_id] = {
+            "bus_ref": source.bus_ref,
+            "u_nq_kv": u_kv,
+            "deklaracja_enm": {
+                "sk3_mva": source.sk3_mva,
+                "ik3_ka": source.ik3_ka,
+                "rx_ratio": source.rx_ratio,
+                "sk3_min_mva": source.sk3_min_mva,
+                "ik3_min_ka": source.ik3_min_ka,
+                "rx_ratio_min": source.rx_ratio_min,
+                "r_ohm": source.r_ohm,
+                "x_ohm": source.x_ohm,
+            },
+            "c_max": c_for_node(u_kv, "MAX"),
+            "c_min": c_for_node(u_kv, "MIN"),
+            "slad_mappera": slady,
+            "ext_grid": _parametry_ext_grid(source, u_kv),
+        }
+    return {
+        "pandapower": _pandapower_wersja(),
+        "most": {"wersja": WERSJA_MOSTU, "sha256": _skrot_mostu()},
+        "enm": {"name": enm.header.name, "input_hash": compute_input_hash(enm)},
+        "lv_tol_percent": LV_TOL_PERCENT,
+        "zrodla": zrodla,
+    }

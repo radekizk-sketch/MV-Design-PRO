@@ -25,6 +25,16 @@ dlaczego, jaka licencja ma zastosowanie i które niezmienniki zachowano.
 
 Przejrzano 11 donorów i **~50 podsystemów**. Adoptujemy **trzy**. To jest celowe.
 
+
+> **ZAMKNIĘCIE (właściciel, 2026-09-09; pełny zapis: `../evidence/CONVERGENCE_EVIDENCE.md` §I.2 W-1…W-8).**
+> Audyt donorów jest zamknięty — bez trzeciego przeglądu adwersaryjnego i bez dalszych badań bibliotek.
+> TOP-3 obowiązuje w reinterpretacji: **D-1** = konsolidacja (nie adopcja), **nie wcześniej niż po CV-4.4**;
+> **D-2** = utwardzenie wyroczni pandapower jako część Definition of Done **K7** (pierwszy pełny przypadek);
+> **D-3** = reużycie istniejącej topologii (`znajdz_aparat_chroniacy`), Sandia wyłącznie jako przypadki testowe.
+> **B-01-RI** aktywna: `120/(M−1)` = Long-Time Inverse, liczby bez zmian, przemianowanie `RI` → `LONG_TIME_INVERSE`
+> później, prawdziwa RI tylko na potrzebę produktu. **D-11** odłożona jako świadoma migracja danych („nie teraz”).
+> Po K7 priorytet P0 ma **PERF-SC-50** (nie jest kartą donorową). Kolejność programu: `CONVERGENCE_ROADMAP.md` §4.
+
 ### TOP 3 — ADOPTUJEMY
 
 | # | Co | Klasa | Dlaczego TERAZ | Luka |
@@ -46,8 +56,8 @@ Przejrzano 11 donorów i **~50 podsystemów**. Adoptujemy **trzy**. To jest celo
 | Karta | Kiedy | Uzasadnienie |
 |---|---|---|
 | **K7 (`S''_kQmin`)** | **NAJPIERW, bez zmian** | Żadna karta donorowa nie ma zależności technicznej od K7 ani K7 od nich. Nie wstawiam niczego przed K7 dlatego, że jest ciekawe (§13 mandatu). |
-| D-2 (proweniencja wyroczni) | **RÓWNOLEGLE do K7 dopuszczalne** | Dotyka `tests/golden/wyrocznie/` i rekordu biegu, **nie** dotyka solvera ani `assembler.py`. K7 zmienia model źródła — kolizji plików brak. Jedyna karta z realną przesłanką „w trakcie K7". |
-| D-1 (Presentation Store) | **PO CV-4.3** | Warstwa frontu + nowa trwałość; zero związku ze zwarciami. |
+| D-2 (proweniencja wyroczni) | **CZĘŚĆ DoD K7** (właściciel 2026-09-09, W-3) — wcześniej: równolegle dopuszczalne | Dotyka `tests/golden/wyrocznie/` i rekordu biegu, **nie** dotyka solvera ani `assembler.py`. K7 zmienia model źródła — kolizji plików brak. Jedyna karta z realną przesłanką „w trakcie K7". |
+| D-1 (SLD Presentation Convergence) | **PO CV-4.4** (właściciel 2026-09-09, W-2; wcześniej: po CV-4.3) | Warstwa frontu + nowa trwałość; zero związku ze zwarciami. |
 | D-3 (pary zabezpieczeń) | **PO CV-4.3** | Otwiera program ZAB; zbyt duży, żeby wchodzić w tor zwarciowy. |
 | Karty porządkowe (D-6…D-9) | **PO CV-4.3**, dowolnie | Kasacje i korekty. |
 | Profil regresji SC | **niezależny** | Osobny problem wydajności; **nie jest kartą donorową** — żaden donor go nie naprawia. |
@@ -208,6 +218,7 @@ worktree", a CLAUDE.md opisuje go jako „Edycja SLD (geometria CAD, przeciągan
 Opis niezgodny ze stanem repo.
 
 ### D-11 · Migracja polityki haszowania kolekcji ENM (Z7) · **P2** · PO CV-4.3
+**Rozstrzygnięcie właściciela (2026-09-09, W-7):** karta wykonywana jako **świadoma migracja danych**, nie jako sprzątanie — **nie teraz**.
 **Znalezisko zweryfikowane pomiarem:** `EnergyNetworkModel` ma **16 kolekcji listowych**,
 `enm/hash.py::_ELEMENT_KEYS` zna **14**. Poza polityką stoją **`connection_nodes`** i
 **`line_runs`**, więc `_kopia_pod_hash` **nie zdejmuje z nich `id`** przed haszowaniem —
@@ -249,6 +260,7 @@ i **żadna nie jest przez to zablokowana** — clean-room daje pełną wartość
 zobowiązania i ryzyka, **nie opinia prawna**.
 
 ### B-01-RI · Krzywa `RI` to w rzeczywistości Long-Time Inverse
+**Rozstrzygnięcie właściciela (2026-09-09, W-6): bramka AKTYWNA.** `120/(M−1)` to Long-Time Inverse — liczby bez zmian; preferowane w przyszłości przemianowanie `RI` → `LONG_TIME_INVERSE` bez zmiany wartości (wariant A); prawdziwa RI tylko wtedy, gdy produkt jej potrzebuje. Edycja rdzenia FROZEN i treści dowodów nadal wymaga osobnej zgody na plik.
 `protection_iec60255.py`: `IEC60255CurveType.RI = (120.0, 1.0)`, etykieta „Odwrotna RI (120)",
 LaTeX `t = TMS·120/(M−1)`. To są stałe **Long-Time Inverse** wg IEC 60255-151 — i własny
 `protection/curves/iec_curves.py` nazywa tę samą parę `LONG_TIME_INVERSE`. Prawdziwa

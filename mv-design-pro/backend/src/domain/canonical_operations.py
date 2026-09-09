@@ -67,7 +67,12 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         optional_fields=(
             "source_name",
             "sk3_mva",
+            "ik3_ka",
             "rx_ratio",
+            # CV-4.3 K7: dane zwarciowe scenariusza MIN (IEC 60909-0:2016 eq. 6 z c_min).
+            "sk3_min_mva",
+            "ik3_min_ka",
+            "rx_ratio_min",
             "catalog_ref",
             "catalog_binding",
             "sections_count",
@@ -751,6 +756,48 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "źródło sieciowe w wyspie)"
         ),
         fix_navigation={"panel": "inspector", "tab": "polaczenia"},
+    ),
+    # CV-4.3 K7: scenariusz MIN bez S''_kQmin/I''_kQmin — Z_Q z danych MAX z JAWNYM
+    # założeniem (niekonserwatywne dla czułości zabezpieczeń). Emiter:
+    # `enm/zrodlo_zwarcie.py::KOD_SK_MIN_BRAK` → ślad `zrodla_sieciowe` i
+    # `raw_result.zalozenia` biegu zwarciowego MIN (`enm/assembler.py`).
+    "source.sk_min_missing": ReadinessCodeSpec(
+        code="source.sk_min_missing",
+        area=ReadinessArea.SOURCES,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Źródło sieciowe nie ma minimalnej mocy zwarciowej S''kQmin — scenariusz MIN "
+            "liczony z impedancji dla S''kQmax (założenie niekonserwatywne dla czułości "
+            "zabezpieczeń); wprowadź S''kQmin albo I''kQmin z warunków przyłączenia"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "sk3_min_mva"},
+    ),
+    # CV-4.3 K7: dane MIN sprzeczne z MAX (S''kQmin > S''kQmax albo I''kQmin > I''kQmax) —
+    # emiter przez odwzorowanie kodu walidatora `sources.sk_min_exceeds_max`.
+    "source.sk_min_inconsistent": ReadinessCodeSpec(
+        code="source.sk_min_inconsistent",
+        area=ReadinessArea.SOURCES,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Minimalna moc zwarciowa źródła przekracza maksymalną (S''kQmin > S''kQmax "
+            "albo I''kQmin > I''kQmax) — dane warunków przyłączenia są sprzeczne"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "sk3_min_mva"},
+    ),
+    # Napięcie zadane szyny bilansującej (`Source.u_set_pu`) poza pasmem 0,8–1,2 p.u. —
+    # emiter przez odwzorowanie kodu walidatora `sources.u_set_pu_out_of_range`.
+    "source.u_set_pu_out_of_range": ReadinessCodeSpec(
+        code="source.u_set_pu_out_of_range",
+        area=ReadinessArea.SOURCES,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Napięcie zadane szyny bilansującej źródła leży poza pasmem 0,8–1,2 p.u. — "
+            "podaj nastawę w p.u. napięcia znamionowego szyny albo ją usuń"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "u_set_pu"},
     ),
     # Topology
     "trunk.terminal_missing": ReadinessCodeSpec(
@@ -1912,12 +1959,21 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
     # rezerwacji z powodem trzyma `domain/readiness_bridge.py`, a guard
     # `readiness_consumption_guard.py` pilnuje, by rezerwacja nie byla cicha.
     # ------------------------------------------------------------------
+    # Defekt wykryty przy odbiorze karty READINESS-DOC (2026-09-09, generator
+    # slownika kodow gotowosci): dwanascie komunikatow tego bloku (przeniesionych
+    # 1:1 z `docs/ui/UI_UX_10_10_ABSOLUTE_PLUS_ACTIONS_AND_MODALS_CANONICAL.md`)
+    # bylo zapisanych BEZ polskich znakow diakrytycznych — jedyny taki fragment w
+    # calym rejestrze (pozostale 102 kody uzywaja poprawnej polszczyzny). Naprawione
+    # tu, w zrodle (nie tylko w generowanym dokumencie) — `message_pl` jest polem
+    # tresci WYSWIETLANEJ UZYTKOWNIKOWI (patrz naglowek modulu), wiec niepoprawna
+    # polszczyzna jest defektem produktu, nie kosmetyka dokumentacji. Regresja
+    # przypieta w `backend/tests/domain/test_rejestr_kodow_komunikaty_pl.py`.
     "nn.source.field_missing": ReadinessCodeSpec(
         code="nn.source.field_missing",
         area=ReadinessArea.SOURCES,
         priority=1,
         level=ReadinessLevel.BLOCKER,
-        message_pl="Zrodlo nN nie jest przypiete do pola zrodlowego",
+        message_pl="Źródło nN nie jest przypięte do pola źródłowego",
         fix_navigation={"panel": "inspector", "tab": "pole", "focus": "field_ref"},
     ),
     "nn.source.switch_missing": ReadinessCodeSpec(
@@ -1925,7 +1981,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         area=ReadinessArea.SOURCES,
         priority=1,
         level=ReadinessLevel.BLOCKER,
-        message_pl="Pole zrodlowe nN nie posiada aparatu laczeniowego",
+        message_pl="Pole źródłowe nN nie posiada aparatu łączeniowego",
         fix_navigation={"panel": "inspector", "tab": "pole", "focus": "switch_kind"},
     ),
     "nn.source.catalog_missing": ReadinessCodeSpec(
@@ -1933,7 +1989,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         area=ReadinessArea.CATALOGS,
         priority=1,
         level=ReadinessLevel.BLOCKER,
-        message_pl="Zrodlo nN nie ma przypisanego katalogu urzadzenia",
+        message_pl="Źródło nN nie ma przypisanego katalogu urządzenia",
         fix_navigation={
             "panel": "inspector",
             "tab": "katalog",
@@ -1945,7 +2001,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         area=ReadinessArea.SOURCES,
         priority=1,
         level=ReadinessLevel.BLOCKER,
-        message_pl="Zrodlo nN nie ma wymaganych parametrow elektrycznych",
+        message_pl="Źródło nN nie ma wymaganych parametrów elektrycznych",
         fix_navigation={
             "panel": "inspector",
             "tab": "parametry",
@@ -1957,7 +2013,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         area=ReadinessArea.STATIONS,
         priority=1,
         level=ReadinessLevel.BLOCKER,
-        message_pl="Napiecie szyny nN nie jest okreslone",
+        message_pl="Napięcie szyny nN nie jest określone",
         fix_navigation={
             "panel": "inspector",
             "tab": "parametry",
@@ -1969,7 +2025,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         area=ReadinessArea.GENERATORS,
         priority=2,
         level=ReadinessLevel.BLOCKER,
-        message_pl="Falownik PV nie ma okreslonego trybu regulacji",
+        message_pl="Falownik PV nie ma określonego trybu regulacji",
         fix_navigation={
             "panel": "inspector",
             "tab": "regulacja",
@@ -1981,7 +2037,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         area=ReadinessArea.GENERATORS,
         priority=2,
         level=ReadinessLevel.BLOCKER,
-        message_pl="Falownik BESS nie ma przypisanego modulu magazynu energii",
+        message_pl="Falownik BESS nie ma przypisanego modułu magazynu energii",
         fix_navigation={
             "panel": "inspector",
             "tab": "katalog",
@@ -1994,7 +2050,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=2,
         level=ReadinessLevel.BLOCKER,
         message_pl=(
-            "Ograniczenia SOC magazynu BESS sa nieprawidlowe "
+            "Ograniczenia SOC magazynu BESS są nieprawidłowe "
             "(min >= max albo poza zakresem 0-100%)"
         ),
         fix_navigation={
@@ -2008,7 +2064,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         area=ReadinessArea.GENERATORS,
         priority=2,
         level=ReadinessLevel.BLOCKER,
-        message_pl="Czas podtrzymania UPS jest nieprawidlowy (musi byc > 0)",
+        message_pl="Czas podtrzymania UPS jest nieprawidłowy (musi być > 0)",
         fix_navigation={
             "panel": "inspector",
             "tab": "parametry",
@@ -2020,7 +2076,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         area=ReadinessArea.CATALOGS,
         priority=3,
         level=ReadinessLevel.WARNING,
-        message_pl="Aparat laczeniowy pola nN nie ma przypisanego katalogu",
+        message_pl="Aparat łączeniowy pola nN nie ma przypisanego katalogu",
         fix_navigation={
             "panel": "inspector",
             "tab": "katalog",
@@ -2032,7 +2088,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         area=ReadinessArea.SOURCES,
         priority=3,
         level=ReadinessLevel.WARNING,
-        message_pl="Zrodlo nN nie ma przypisanego punktu pomiaru energii",
+        message_pl="Źródło nN nie ma przypisanego punktu pomiaru energii",
         fix_navigation={
             "panel": "inspector",
             "tab": "pomiary",
@@ -2044,7 +2100,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         area=ReadinessArea.GENERATORS,
         priority=4,
         level=ReadinessLevel.INFO,
-        message_pl="Agregat nie ma okreslonego rodzaju paliwa",
+        message_pl="Agregat nie ma określonego rodzaju paliwa",
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "fuel_type"},
     ),
 }

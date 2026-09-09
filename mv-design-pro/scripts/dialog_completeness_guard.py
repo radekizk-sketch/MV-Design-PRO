@@ -16,7 +16,7 @@ CHECKS:
   3. Dialog files use Polish labels (no English UI strings)
 
 MAPPING: operation -> expected modal
-  add_grid_source_sn      -> KreatorZrodloZasilania (ui2) / GridSourceModal (legacy)
+  add_grid_source_sn      -> KreatorZrodloZasilania (ui2)
   continue_trunk_segment_sn -> KreatorMagistralaSn (ui2)
   insert_station_on_segment_sn -> TransformerStationModal (existing)
   start_branch_segment_sn -> BranchModal (existing)

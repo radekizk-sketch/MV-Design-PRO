@@ -19,30 +19,43 @@ zamowic u producenta — to jest jawne odzwierciedlenie w metadanych jakosci
 katalogu, ten sam wzorzec co ``mv_shunt_capacitor_catalog.py``).
 
 Konwersja jednostek — linie/kable: siec referencyjna podaje impedancje w
-PER-UNIT na bazie SYSTEMU (``base_kv``/``base_mva`` z jej naglowka
-``library.py::ReferenceNetwork.builder_fn()().header``). ``_linia_z_pu``
-przelicza na Om/km z konwencja dlugosci=1 km — DOKLADNIE ten sam wzorzec, jaki
-juz stosuje ``application/reference_networks/frozen_solver_input.py``
-(cytat z jego docstringu: "a line is stamped with r_ohm_per_km = r_pu *
-z_base_system and length_km = 1.0 — the global per-unit conversion then
-recovers exactly r_pu") i domenowe operacje budujace odcinek trasy z jawna
-dlugoscia (``continue_trunk_segment_sn`` itd.). Formula ladowania linii —
+PER-UNIT na bazie MOCY systemu (``base_mva`` z jej naglowka
+``library.py::ReferenceNetwork.builder_fn()().header``) i NAPIECIA POZIOMU, na
+ktorym lezy dana linia (pandapower/MATPOWER: ``vn_kv`` szyny poczatkowej; dla
+sieci jednopoziomowej = ``base_kv`` naglowka). ``_linia_z_pu`` przelicza na
+Om/km z konwencja dlugosci=1 km: r_ohm_per_km = r_pu · U_linii²/S_base. Wzorzec
+``application/reference_networks/frozen_solver_input.py`` ("a line is stamped
+with r_ohm_per_km = r_pu * z_base_system and length_km = 1.0 — the global
+per-unit conversion then recovers exactly r_pu") jest poprawny WYLACZNIE dla
+sieci, ktorych wszystkie linie leza na poziomie bazy systemu; tor kanoniczny
+(``enm/mapping.py``) przelicza Om -> p.u. baza WLASNEGO poziomu napiecia szyny,
+wiec linia na innym poziomie stemplowana baza systemu dostaje impedancje
+(U_systemu/U_linii)² razy za duza (ieee14bus, obszar 0,208 kV: ~4,2·10⁵ razy —
+patrz ``_POZIOM_LINII_KV``). Domenowe operacje budujace odcinek trasy z jawna
+dlugoscia (``continue_trunk_segment_sn`` itd.) czytaja juz gotowe Om/km. Formula ladowania linii —
 ``b_us_per_km = (b_pu / z_base) * 1e6`` — jest udokumentowana w TYM SAMYM
 pliku (linia calkowita/1 km, solver dokłada połowę na każdym końcu, sumując
 sie z powrotem do calosci).
 
 Generatory synchroniczne (GENERATOR_SN): tabliczka ``rated_mva``/``rated_kv``/
-``q_min_mvar``/``q_max_mvar``. Zaden z 12 benchmarkow PF nie podaje mocy
-pozornej ani granic mocy biernej maszyny (to sa testy DETERMINISTYCZNEGO
-rozplywu mocy z zadanym |U|/P, nie testy zdolnosci wytworczej) — tabliczka
-``rated_mva`` jest ORIENTACYJNA (nie wplywa na wynik rozplywu: solver czyta
-WYLACZNIE ``p_mw`` z payloadu operacji i ``q_min_mvar``/``q_max_mvar``/
-``rated_kv`` z KATALOGU), a granice mocy biernej sa CELOWO SZEROKIE (nie
-saturuja sie przy zadanym P/|U|) — zgodnie z konwencja istniejacej wyroczni
-"wlasny NR" (`application/reference_networks/computation.py::_classify_buses`),
-ktora w ogole NIE sprawdza granic mocy biernej wezla PV. Zerowanie granic
-byloby fabrykacja zdolnosci maszyny, ktorej literatura nie podaje — zamiast
-tego pole `source_reference` kazdego rekordu generatora nazywa to wprost.
+``q_min_mvar``/``q_max_mvar``. Benchmarki Stevensona/Kerstinga/CIGRE nie podaja
+mocy pozornej ani granic mocy biernej maszyny (testy DETERMINISTYCZNEGO
+rozplywu mocy z zadanym |U|/P); benchmarki MATPOWER (case9/14/39) PODAJA granice
+Q (``gen.Qmin``/``Qmax``), ale sa one tu swiadomie NIEUZYTE (KOREKTA 2026-09-09
+dawnego zdania "zaden z 12 benchmarkow nie podaje granic"): solver FROZEN
+egzekwuje granice na KAZDEJ iteracji, takze na stanie przejsciowym z plaskiego
+startu, i nie przywraca wezla do PV — z granicami z literatury przelacza w
+case14 cztery wezly w iteracjach 1–3, choc Q zbiezne kazdego generatora miesci
+sie w granicach, i oddaje wynik o 0,022 p.u. gorszy od pandapower (OD-11 dla
+wlasciciela, B-01). Tabliczka ``rated_mva`` jest ORIENTACYJNA (nie wplywa na
+wynik rozplywu: solver czyta WYLACZNIE ``p_mw`` z payloadu operacji i
+``q_min_mvar``/``q_max_mvar``/``rated_kv`` z KATALOGU), a granice mocy biernej
+sa NIEOGRANICZAJACE Z KONSTRUKCJI (``_q_bound``; przy 3× bazie case14 wiazal na
+stanie przejsciowym iteracji 3 przy blednej bazie impedancji linii — po
+naprawie bazy i slacka zaden bliznik nie przelacza, co pilnuje test klasy
+`tests/network_model/test_blizniaki_pf_zbieznosc.py`). Zerowanie granic byloby
+fabrykacja zdolnosci maszyny — pole `source_reference` kazdego rekordu
+generatora nazywa zalozenie wprost.
 """
 
 from __future__ import annotations
@@ -366,6 +379,23 @@ _CIGRE_LV_LINES: tuple[tuple[str, float, float, float], ...] = (
     ("l-main-05", 0.045, 0.005, 0.0),
 )
 
+#: Poziom napięcia LINII inny niż baza systemu sieci (slug -> sufiks -> kV).
+#: Impedancja per-unit linii z literatury jest wyrażona na bazie JEJ WŁASNEGO
+#: poziomu napięcia (pandapower/MATPOWER: ``vn_kv`` szyny początkowej), więc Ω/km
+#: = r_pu · U_linii²/S_base — NIE r_pu · U_systemu²/S_base. Konwencja „jedna
+#: globalna z_base" z `frozen_solver_input.py` jest poprawna WYŁĄCZNIE dla sieci
+#: jednopoziomowych (wszystkie pozostałe benchmarki tej tabeli). Znalezisko
+#: (CI run 4923 na `fc24fc76`, 2026-09-09): ieee14bus ma 8 odcinków w obszarze
+#: 0,208 kV (B5/B8–B13; pandapower ``case14`` ``vn_kv``) stemplowanych bazą
+#: 135 kV — impedancja ~4,2·10⁵ razy za duża, rozpływ kanoniczny rozbieżny
+#: (30 iteracji, |U| do 320 p.u.), a złoty parytet asemblera przypinał wynik
+#: NIEZBIEŻNY (zależny od maszyny). Test klasy: `tests/network_model/
+#: test_mv_benchmark_catalog_poziomy.py` (każdy odcinek każdego bliźniaka ma
+#: `voltage_rating_kv` równe napięciu obu swoich szyn).
+_POZIOM_LINII_KV: dict[str, dict[str, float]] = {
+    "ieee14bus": {f"br{i}": 0.208 for i in range(7, 15)},
+}
+
 # (siec_slug, tabela, base_kv, base_mva, source)
 _LINE_NETWORKS: tuple[
     tuple[str, tuple[tuple[str, float, float, float], ...], float, float, str], ...
@@ -387,6 +417,7 @@ def get_all_benchmark_line_records() -> list[dict]:
     """Rekordy LINIA_SN dla wszystkich linii/kabli benchmarkow (K1.2)."""
     records: list[dict] = []
     for slug, table, base_kv, base_mva, source in _LINE_NETWORKS:
+        poziomy_linii = _POZIOM_LINII_KV.get(slug, {})
         for suffix, r_pu, x_pu, b_pu in table:
             type_id = f"bench_{slug}_{suffix}"
             records.append(
@@ -396,7 +427,7 @@ def get_all_benchmark_line_records() -> list[dict]:
                     r_pu=r_pu,
                     x_pu=x_pu,
                     b_pu=b_pu,
-                    base_kv=base_kv,
+                    base_kv=poziomy_linii.get(suffix, base_kv),
                     base_mva=base_mva,
                     source=source,
                 )

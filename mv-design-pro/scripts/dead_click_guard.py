@@ -191,8 +191,15 @@ def check_modal_registry() -> list[str]:
         ids.update(match.group(1) for match in component_pattern.finditer(content))
 
     print(f"  Registered modal ids/components: {len(ids)}")
-    if len(ids) < 10:
-        return [f"Modal registry has only {len(ids)} entries/components; expected at least 10"]
+    # Próg sanity (nie dokładny pin) — chroni przed katastroficznym
+    # wyczyszczeniem rejestru, nie przed pojedynczą, zweryfikowaną kasacją.
+    # Karta K7c-FE: `GridSourceModal` usunięty jako martwy kod (zero
+    # konsumentów w `src`/`e2e`, potwierdzone grepem przed kasacją — kreator
+    # `KreatorZrodloZasilania` (ui2) jest jedynym, żywym dostawcą operacji
+    # `add_grid_source_sn`, patrz `dialog_completeness_guard.py`), więc próg
+    # zmierzony do NOWEJ, poprawnej liczby (10 → 9) zamiast zamrożenia starej.
+    if len(ids) < 9:
+        return [f"Modal registry has only {len(ids)} entries/components; expected at least 9"]
     return []
 
 

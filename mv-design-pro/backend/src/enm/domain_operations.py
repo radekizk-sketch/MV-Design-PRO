@@ -48,6 +48,7 @@ from .topology_ops import (
     delete_branch,
 )
 from .validator import ENMValidator
+from .zrodlo_zwarcie import PASMO_U_SET_PU, u_set_pu_w_pasmie
 
 # ---------------------------------------------------------------------------
 # Canonical operation names
@@ -3211,16 +3212,24 @@ def _compute_materialized_params(enm: dict[str, Any]) -> dict[str, Any]:
             continue
 
         materialized = s.get("materialized_params")
+        # CV-4.3 K7: dane scenariusza MIN (sk3_min_mva/ik3_min_ka/rx_ratio_min) idą TĄ SAMĄ
+        # drogą co MAX — materializacja → element → typ katalogowy (predykaty parami).
         if isinstance(materialized, dict) and materialized:
             voltage_rating_kv = materialized.get("voltage_rating_kv")
             sk3_mva = materialized.get("sk3_mva")
             ik3_ka = materialized.get("ik3_ka")
             rx_ratio = materialized.get("rx_ratio")
+            sk3_min_mva = materialized.get("sk3_min_mva")
+            ik3_min_ka = materialized.get("ik3_min_ka")
+            rx_ratio_min = materialized.get("rx_ratio_min")
         else:
             voltage_rating_kv = None
             sk3_mva = s.get("sk3_mva")
             ik3_ka = s.get("ik3_ka")
             rx_ratio = s.get("rx_ratio")
+            sk3_min_mva = s.get("sk3_min_mva")
+            ik3_min_ka = s.get("ik3_min_ka")
+            rx_ratio_min = s.get("rx_ratio_min")
             if catalog:
                 type_data = getattr(catalog, "get_source_system_type", lambda _id: None)(
                     catalog_ref
@@ -3230,6 +3239,9 @@ def _compute_materialized_params(enm: dict[str, Any]) -> dict[str, Any]:
                     sk3_mva = type_data.sk3_mva
                     ik3_ka = type_data.ik3_ka
                     rx_ratio = type_data.rx_ratio
+                    sk3_min_mva = type_data.sk3_min_mva
+                    ik3_min_ka = type_data.ik3_min_ka
+                    rx_ratio_min = type_data.rx_ratio_min
 
         sources_sn[s["ref_id"]] = {
             "catalog_item_id": catalog_ref,
@@ -3238,6 +3250,9 @@ def _compute_materialized_params(enm: dict[str, Any]) -> dict[str, Any]:
             "sk3_mva": sk3_mva,
             "ik3_ka": ik3_ka,
             "rx_ratio": rx_ratio,
+            "sk3_min_mva": sk3_min_mva,
+            "ik3_min_ka": ik3_min_ka,
+            "rx_ratio_min": rx_ratio_min,
         }
 
     return {
@@ -3424,6 +3439,36 @@ def _resolve_manual_source_equivalent(
         .upper()
     )
     ik3_ka = _as_positive_number(manual.get("ik3_ka", payload.get("ik3_ka")))
+    # CV-4.3 K7: dane scenariusza MIN — po TEJ SAMEJ stronie co ``sk3_mva``/``ik3_ka``
+    # (bez osobnego klucza dla strony WN: strona jest cechą źródła, nie każdej liczby).
+    sk3_min_surowe = manual.get("sk3_min_mva", payload.get("sk3_min_mva"))
+    ik3_min_surowe = manual.get("ik3_min_ka", payload.get("ik3_min_ka"))
+    rx_min_surowe = manual.get("rx_ratio_min", payload.get("rx_ratio_min"))
+    sk3_min_mva = _as_positive_number(sk3_min_surowe)
+    ik3_min_ka = _as_positive_number(ik3_min_surowe)
+    rx_ratio_min = _as_positive_number(rx_min_surowe)
+    for etykieta, surowe, znormalizowane in (
+        ("sk3_min_mva", sk3_min_surowe, sk3_min_mva),
+        ("ik3_min_ka", ik3_min_surowe, ik3_min_ka),
+        ("rx_ratio_min", rx_min_surowe, rx_ratio_min),
+    ):
+        if surowe is not None and znormalizowane is None:
+            return _error_response(
+                f"Ręczna umowa równoważna GPZ: {etykieta} musi być liczbą dodatnią "
+                f"(podano {surowe!r}).",
+                "source.manual_equivalent_invalid",
+            )
+    # Napięcie zadane szyny bilansującej (p.u.): brak = 1,0 (znamionowe); podane musi
+    # mieścić się w paśmie `PASMO_U_SET_PU` (ten sam warunek co walidator ENM
+    # `sources.u_set_pu_out_of_range` — predykaty parami).
+    u_set_surowe = manual.get("u_set_pu", payload.get("u_set_pu"))
+    u_set_pu = _as_positive_number(u_set_surowe)
+    if u_set_surowe is not None and (u_set_pu is None or not u_set_pu_w_pasmie(u_set_pu)):
+        return _error_response(
+            f"Ręczna umowa równoważna GPZ: u_set_pu musi być liczbą z przedziału "
+            f"{PASMO_U_SET_PU[0]:g}–{PASMO_U_SET_PU[1]:g} p.u. (podano {u_set_surowe!r}).",
+            "source.manual_equivalent_invalid",
+        )
 
     if sn_voltage_kv is None:
         return _error_response(
@@ -3470,6 +3515,14 @@ def _resolve_manual_source_equivalent(
         )
 
     if short_circuit_mode == "IMPEDANCE":
+        # Impedancja jawna jest FIZYCZNA (bez c) i nie ma wariantu MIN — c_min wchodzi
+        # wyłącznie do źródła napięciowego w węźle zwarcia (IEC 60909-0:2016 §6.2.1).
+        if sk3_min_mva is not None or ik3_min_ka is not None or rx_ratio_min is not None:
+            return _error_response(
+                "Tryb impedancyjny (R+jX) nie ma wariantu MIN: dane sk3_min_mva/ik3_min_ka/"
+                "rx_ratio_min podaj w trybie mocy zwarciowej albo je usuń.",
+                "source.manual_equivalent_invalid",
+            )
         r_ohm = _as_non_negative_number(manual.get("r_ohm", payload.get("r_ohm")))
         x_ohm = _as_positive_number(manual.get("x_ohm", payload.get("x_ohm")))
         if r_ohm is None or x_ohm is None:
@@ -3501,20 +3554,44 @@ def _resolve_manual_source_equivalent(
             else manual.get("sk3_mva", payload.get("sk3_mva"))
         )
         rx_ratio = _as_positive_number(manual.get("rx_ratio", payload.get("rx_ratio")))
-        if sk3_mva is None:
+        # CV-4.3 K7: samo I''_kQ (tryb PRAD_ZWARCIOWY predykatu `enm/zrodlo_zwarcie.py`)
+        # jest daną WYSTARCZAJĄCĄ — mapper liczy Z_Q = c·U_nQ/(√3·I''_kQ) (eq. 6 zapisana
+        # prądem); do tej karty operacja odrzucała ją, a walidator ją przepuszczał.
+        if sk3_mva is None and ik3_ka is None:
             if input_side == "HV_110":
                 return _error_response(
-                    "Reczna umowa rownowazna GPZ WN/SN wymaga dodatniej mocy zwarciowej Sk3 na szynie 110 kV.",
+                    "Reczna umowa rownowazna GPZ WN/SN wymaga dodatniej mocy zwarciowej Sk3 "
+                    "albo pradu Ik3 na szynie 110 kV.",
                     "source.manual_equivalent_incomplete",
                 )
             return _error_response(
-                "Ręczna umowa równoważna GPZ wymaga dodatniej mocy zwarciowej Sk3.",
+                "Ręczna umowa równoważna GPZ wymaga dodatniej mocy zwarciowej Sk3 albo prądu Ik3.",
                 "source.manual_equivalent_incomplete",
             )
         if rx_ratio is None:
             return _error_response(
                 "Ręczna umowa równoważna GPZ wymaga dodatniego stosunku R/X.",
                 "source.manual_equivalent_incomplete",
+            )
+        # Dane MIN sprzeczne z MAX (ten sam warunek co walidator `sources.sk_min_exceeds_max`,
+        # tu odrzucany na wejściu operacji, żeby model nigdy nie niósł sprzeczności).
+        if sk3_min_mva is not None and sk3_mva is not None and sk3_min_mva > sk3_mva:
+            return _error_response(
+                f"Sk3 min ({sk3_min_mva:g} MVA) przekracza Sk3 max ({sk3_mva:g} MVA) — dane "
+                "scenariusza minimalnego muszą być nie większe niż maksymalnego.",
+                "source.manual_equivalent_invalid",
+            )
+        if ik3_min_ka is not None and ik3_ka is not None and ik3_min_ka > ik3_ka:
+            return _error_response(
+                f"Ik3 min ({ik3_min_ka:g} kA) przekracza Ik3 max ({ik3_ka:g} kA) — dane "
+                "scenariusza minimalnego muszą być nie większe niż maksymalnego.",
+                "source.manual_equivalent_invalid",
+            )
+        if rx_ratio_min is not None and sk3_min_mva is None and ik3_min_ka is None:
+            return _error_response(
+                "rx_ratio_min bez sk3_min_mva/ik3_min_ka nie ma zastosowania — scenariusz MIN "
+                "bez własnej mocy zwarciowej liczy się z danych MAX.",
+                "source.manual_equivalent_invalid",
             )
 
         resolved.update(
@@ -3525,6 +3602,13 @@ def _resolve_manual_source_equivalent(
                 "short_circuit_model": "short_circuit_power",
             }
         )
+        for klucz, wartosc in (
+            ("sk3_min_mva", sk3_min_mva),
+            ("ik3_min_ka", ik3_min_ka),
+            ("rx_ratio_min", rx_ratio_min),
+        ):
+            if wartosc is not None:
+                resolved[klucz] = wartosc
 
     r0_ohm = manual.get("r0_ohm", payload.get("r0_ohm"))
     x0_ohm = manual.get("x0_ohm", payload.get("x0_ohm"))
@@ -3537,6 +3621,8 @@ def _resolve_manual_source_equivalent(
         resolved["z0_z1_ratio"] = float(z0_z1_ratio)
     if ik3_ka is not None:
         resolved["ik3_ka"] = ik3_ka
+    if u_set_pu is not None:
+        resolved["u_set_pu"] = u_set_pu
     return resolved
 
 
@@ -3699,7 +3785,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         catalog_ref = None
         materialized_params = {
             "voltage_rating_kv": manual_equivalent["voltage_kv"],
-            "sk3_mva": manual_equivalent["sk3_mva"],
+            "sk3_mva": manual_equivalent.get("sk3_mva"),
             "rx_ratio": manual_equivalent["rx_ratio"],
             "short_circuit_model": manual_equivalent["short_circuit_model"],
             "short_circuit_mode": manual_equivalent["short_circuit_mode"],
@@ -3711,7 +3797,17 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         }
         if manual_equivalent.get("ik3_ka") is not None:
             materialized_params["ik3_ka"] = manual_equivalent["ik3_ka"]
-        for key in ("r_ohm", "x_ohm", "r0_ohm", "x0_ohm", "z0_z1_ratio"):
+        for key in (
+            "r_ohm",
+            "x_ohm",
+            "r0_ohm",
+            "x0_ohm",
+            "z0_z1_ratio",
+            "sk3_min_mva",
+            "ik3_min_ka",
+            "rx_ratio_min",
+            "u_set_pu",
+        ):
             if manual_equivalent.get(key) is not None:
                 materialized_params[key] = manual_equivalent[key]
     else:
@@ -4055,6 +4151,11 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         "sk3_mva",
         "ik3_ka",
         "rx_ratio",
+        # CV-4.3 K7: dane scenariusza MIN.
+        "sk3_min_mva",
+        "ik3_min_ka",
+        "rx_ratio_min",
+        "u_set_pu",
         "r_ohm",
         "x_ohm",
         "r0_ohm",
@@ -8071,7 +8172,31 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
     # raportowalna dla zwarcia od chwili powstania, zero zmiany zachowania
     # dla wywolan z jawnym `lv_bus_ref` (istniejace wywolania nietkniete).
     auto_lv_voltage_kv = _opt_float_any(payload.get("lv_voltage_kv"))
-    if not hv_bus_ref or (not lv_bus_ref and auto_lv_voltage_kv is None):
+    # Lustro dla strony HV (2026-09-09, bliźniak IEEE case39): `hv_voltage_kv` bez
+    # `hv_bus_ref` tworzy NOWĄ szynę HV nad istniejącą szyną `lv_bus_ref` — jedyny
+    # sposób, żeby transformator z zaczepem po stronie „from" literatury (MATPOWER:
+    # gałąź 6–31 z τ=1,07 przy szynie 6, 12–11 z τ=1,006 przy szynie 12) powstał z
+    # zaczepem na WŁAŚCIWYM uzwojeniu, gdy budowa sieci dochodzi do niego od strony
+    # „to" (szyna bilansująca 31 istnieje pierwsza). Zamiana stron z odwróconym τ nie
+    # jest równoważna: macierz admitancji π-modelu z zaczepem po stronie HV (Y_hh =
+    # y/τ², Y_hl = −y/τ, Y_ll = y) po zamianie ról wymagałaby impedancji odniesionej
+    # przez τ² — tor FROZEN (`ybus.py`) odnosi zaczep zawsze do strony HV.
+    auto_hv_voltage_kv = _opt_float_any(payload.get("hv_voltage_kv"))
+    if hv_bus_ref and auto_hv_voltage_kv is not None:
+        return _error_response(
+            "Podaj albo hv_bus_ref (istniejąca szyna), albo hv_voltage_kv "
+            "(nowa szyna) — nie oba naraz.",
+            "transformer.hv_bus_ambiguous",
+        )
+    if not hv_bus_ref and auto_hv_voltage_kv is not None and not lv_bus_ref:
+        return _error_response(
+            "Nowa szyna HV (hv_voltage_kv) wymaga istniejącej szyny lv_bus_ref — "
+            "transformator nie może powstać między dwiema nowymi szynami.",
+            "transformer.buses_missing",
+        )
+    if (not hv_bus_ref and auto_hv_voltage_kv is None) or (
+        not lv_bus_ref and auto_lv_voltage_kv is None
+    ):
         return _error_response("Brak szyn HV/LV.", "transformer.buses_missing")
     if lv_bus_ref and auto_lv_voltage_kv is not None:
         return _error_response(
@@ -8101,6 +8226,11 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
             "hv": hv_bus_ref,
             "lv": lv_bus_ref,
             "lv_voltage_kv": auto_lv_voltage_kv,
+            # Klucz TYLKO dla nowej szyny HV — dopisanie `None` do ziarna każdego istniejącego
+            # wywołania przestawiłoby deterministyczne ref_id transformatorów i szyn nN
+            # wszystkich bliźniaków/sieci (pomiar 2026-09-09: 30 wpisów złotych parytetu z
+            # permutacją identyfikatorów przy identycznym multizbiorze liczb).
+            **({"hv_voltage_kv": auto_hv_voltage_kv} if auto_hv_voltage_kv is not None else {}),
             "catalog_ref": standalone_catalog,
             "tap_current_position": payload.get("transformer_tap_current_position"),
             "tap_step_percent": payload.get("transformer_tap_step_percent"),
@@ -8112,6 +8242,36 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
     created = []
     events = []
     ev_seq = 0
+
+    if hv_bus_ref is None:
+        assert auto_hv_voltage_kv is not None  # zawężenie typu — sprawdzone wyżej
+        new_hv_bus_ref = f"bus/{seed}/hv_auto"
+        result = create_node(
+            new_enm,
+            {
+                "ref_id": new_hv_bus_ref,
+                "name": f"Szyna {auto_hv_voltage_kv:g} kV (TR {tr_ref[-8:]})",
+                "voltage_kv": auto_hv_voltage_kv,
+                "tags": ["topology_terminal"],
+                "meta": {
+                    "visual_role": "TRANSFORMER_HV_BUS",
+                    "render_on_sld": True,
+                    "show_in_project_tree": True,
+                },
+            },
+        )
+        if not result.success:
+            return _error_response(
+                f"Nie udało się utworzyć szyny HV: {result.issues[0].message_pl if result.issues else '?'}",
+                "transformer.hv_bus_creation_failed",
+            )
+        new_enm = result.enm
+        created.append(new_hv_bus_ref)
+        ev_seq += 1
+        events.append(
+            {"event_seq": ev_seq, "event_type": "BUS_CREATED", "element_id": new_hv_bus_ref}
+        )
+        hv_bus_ref = new_hv_bus_ref
 
     if lv_bus_ref is None:
         assert auto_lv_voltage_kv is not None  # zawężenie typu — sprawdzone wyżej
