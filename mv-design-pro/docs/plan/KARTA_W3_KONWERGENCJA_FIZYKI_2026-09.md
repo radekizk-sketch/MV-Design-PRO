@@ -3,7 +3,8 @@
 **Status:** KANONICZNY, ŻYWY (karta wycinka W3 mapy domknięcia — `MAPA_DOMKNIECIA_PRODUKTU_2026-09.md` §8 W3,
 klasa K-B §4; rozszerzenia z aneksu §3a: D2/D4/D7/D8, E5, G3, J4, J5, J8/K8). Podlega misji
 (`MISJA_DOMKNIECIA_PRODUKTU_2026-09.md`) i bramkom B-01/B-02. Baza: gałąź `claude/mv-design-pro-twin-audit-u4lhy0`
-po W1/W2 (`39794b58`), K2 w toku.
+po W1/W2 (`39794b58`) i K2 (`8e771a5f`, `ead12f70`; W3-A/W3-D/W3-F/W3-C1/W3-C2/W3-E wystartowały z `a16f8d2b`, przed
+scaleniem K2 — odbiór każdej z nich uzgadnia zapadki guardów z pomiaru na drzewie gałęzi).
 
 **Źródło decyzji:** inwentarz klasy zmierzony na drzewie 2026-09-09 (badanie tylko-odczyt, 13 rodzin A–M,
 ścieżki:linie i liczby z grep) — streszczony w §1. Reguła KLASA, NIE INSTANCJA: każda podkarta naprawia całą

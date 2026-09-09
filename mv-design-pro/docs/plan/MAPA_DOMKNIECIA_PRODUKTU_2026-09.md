@@ -87,12 +87,12 @@ edycję rdzeni FROZEN (B-01) pozostają przy właścicielu.
 | 4 | Protection & Measurement | CT/VT burden, TCC, czułość, selektywność, koordynacja, raporty | IDMT ×5; nastawy poza modelem (stub `update_relay_settings`, SPZ bez pisarza); 67/67N/21/87/25/50BF/grupy/TRIP BRAK | ZDUPLIKOWANE / BRAK | W3, W4 |
 | 5 | OZE / BESS / RfG | tryby DER, adekwatność Q, siła sieci, NC RfG 5 profili, dokumenty OSD, kompensacja | BESS bez SOC; grid-forming bez konsumenta; hosting ×2; `source_compliance` osierocone; macierz DER martwy klik; FRT stałe zaszyte | CZĘŚCIOWE / ZDUPLIKOWANE | W2, W3, W6 |
 | 6 | Power Quality & Dynamics | flicker, SSCI, harmoniczne (18 rzędów), ekran Jakość | stabilność dynamiczna = fasada progowa; RMS bez konsumenta; asymetria ≠ VUF; brak raportu EN 50160; harmoniczne pod „akademickimi" | DO-PRZEPROJEKTOWANIA | W2, W6 |
-| 7 | LV / Earthing | pętla TN, SWZ, aparaty nN, ΔU, pakiet dowodowy obwodu, portal nN | model fazowy BRAK; rozpływ niesymetryczny tylko sieci referencyjne; TT/IT/RCD BRAK; most SC_1F→U_dot bez konsumenta; IEEE 80 odcięte od modelu stacji | BRAK / BEZ-KONSUMENTA | W5, W8 |
+| 7 | LV / Earthing | pętla TN, SWZ, aparaty nN, ΔU, pakiet dowodowy obwodu, portal nN | model fazowy BRAK; rozpływ niesymetryczny bez żadnej drogi UI (po K2 2026-09-09 — dawna droga była dialektem benchmarków); TT/IT/RCD BRAK; most SC_1F→U_dot bez konsumenta; IEEE 80 odcięte od modelu stacji | BRAK / BEZ-KONSUMENTA | W5, W8 |
 | 8 | SLD / CAD / GIS | layout, 54 symbole, nakładki, eksport 5 formatów, portal nN, determinizm CI | semantyka SLD tylko w kliencie (6831 linii); backendowy silnik i SLD ORM martwe; nadpisania w pamięci bez konsumenta; CAD round-trip i GIS BRAK; import/eksport CGMES bez trasy i ekranu (8 #13) | DO-PRZEPROJEKTOWANIA / BRAK | W1 (kasacje), W7, W12 |
 | 9 | Optimization & Reliability | N-1 pełny re-solve, straty, OLTC studia, wrażliwość, porównania | ranking N-1/hosting/straty w v126 na błędnym prądzie gałęzi; restoration/NOP/koszty/wielokryterialna/warianty BRAK | ZDUPLIKOWANE / BRAK | W3, W10, OD-16 |
 | 10 | Reporting / WHITE BOX / Compliance | ślad, 18 pakietów, ZIP dowodowy, raporty żywe, porównania, dziennik, rewizje, świeżość, Reference Engine | legacy raporty 8 plików/3574 linii martwe; `qu_regulation` bez konsumenta; BOM tylko DER-SN; pakiet do podpisu i rejestr założeń BRAK; V12.6 dowód równoległy | DO-KASACJI / BRAK | W1, W3, W10 |
 | 11 | Commissioning / As-built | zgodność powykonawcza U/P/Q, estymacja WLS | brak cyklu życia, trwałości, dokumentu, iniekcji wtórnej, FAT/SAT, kalibracji, COMTRADE | BRAK | W11 |
-| 12 | MCP Engineering Control Plane | REST 310 ścieżek / 329 operacji (po W1), transakcje ENM (lock + rollback), dziennik, rewizje | MCP BRAK; uprawnienia BRAK (decyzja 2026-08-05 vs misja §15 — OD-13); CAS nieużywany; rollback nie jest operacją; NBA E6–E8, cel/DoD, role BRAK | BRAK / CZĘŚCIOWE | W9, W12 |
+| 12 | MCP Engineering Control Plane | REST 301 ścieżek / 320 operacji (po K2; po W1: 310/329), transakcje ENM (lock + rollback), dziennik, rewizje | MCP BRAK; uprawnienia BRAK (decyzja 2026-08-05 vs misja §15 — OD-13); CAS nieużywany; rollback nie jest operacją; NBA E6–E8, cel/DoD, role BRAK | BRAK / CZĘŚCIOWE | W9, W12 |
 
 Rodziny przekrojowe A–L (§3a) nie zmieniają macierzy domen: każda ich luka jest przypisana do wycinków §8
 (rozszerzenia zakresu oznaczone „+ aneks 3a").
@@ -127,7 +127,7 @@ Skróty ścieżek: `backend/src/` pomijane dla modułów backendu; `frontend/src
 | 18 | Wiązanie katalogowe | ISTNIEJE-ZWERYFIKOWANE | guardy `catalog_binding/enforcement/gate`; `network_model/catalog/` 46 plików | — | wysoka |
 | 19 | Rejestr biegów i wykonanie | ISTNIEJE-ZWERYFIKOWANE | `api/execution_runs.py` (5 tras), `enm/canonical_analysis.py` (3928) | — | wysoka |
 | 20 | Koperta rewizji i świeżość | ISTNIEJE-ZWERYFIKOWANE | `enm/envelope.py`, `application/result_freshness.py`; `ui2/freshness/` w 12 ekranach | luka nazwana w kodzie `ui2/freshness/opisSwiezosci.ts:17` | wysoka |
-| 21 | Jeden assembler ES→TV→IR | CZĘŚCIOWE (DT-8 EVIDENCE-GATED) | `enm/assembler.py` (1046) jedyny producent wejścia PF/SC toru kanonicznego (guard `solver_input_assembler_guard`) | otwarte: K2 kasacja `application/reference_networks/**`, `TopologyService` 18 implementacji | średnia |
+| 21 | Jeden assembler ES→TV→IR | CZĘŚCIOWE (DT-8 EVIDENCE-GATED) | `enm/assembler.py` (1046) jedyny producent wejścia PF/SC toru kanonicznego (guard `solver_input_assembler_guard`) | K2 WYKONANE 2026-09-09 (`8e771a5f`, `ead12f70`: `application/reference_networks/**` 10 498 linii skasowane — 6 071 przeniesione do `tests/golden/**` i `tests/reference_networks/`, 4 427 bez zastępstwa; 9 tras `/api/v1/reference-networks/*` + ekran E-39 skasowane; 40 plików testów zmigrowanych wg intencji; guard `backend_no_physics_guard` ZASTANE = 0); otwarte: `TopologyService` 18 implementacji | średnia |
 | 22 | Import XLSX → projekt | ISTNIEJE-ZWERYFIKOWANE (W1) | `application/xlsx_import/service.py:27-30,216-257` zapis wyłącznie `Network*ORM` (0 wystąpień `enm`); `POST /api/import/xlsx` (`api/xlsx_import.py:99-131`); ekran `ui2/spaces/projekt/arkusz/EkranImportuArkusza.tsx` (381) nawigujący do projektu; `tests/test_xlsx_import.py:291` asercjuje tylko model legacy; `enm/store.py:221-260` tworzy pusty ENM przy pierwszym dotknięciu | zaimportowana sieć niewidoczna dla 29 tras `/enm/**`, 24 kreatorów, biegów, SLD, raportów — inżynier wprowadza dane drugi raz ręcznie | wysoka — **W1 (2026-09-09):** import → `SiecZArkusza` → `enm/kompilator_grafu.py` → ENM projektu + katalog projektu (`PROJEKTOWY_V1`, proweniencja wiersza); `enm_hash` w odpowiedzi; e2e `import-arkusza-do-wynikow.spec.ts` |
 | 24 | Katalog typów — tabele w bazie (`LineTypeORM`, `CableTypeORM`, `TransformerTypeORM`, `SwitchEquipmentTypeORM`, `InverterTypeORM`, `ProtectionDeviceTypeORM`; `infrastructure/persistence/models.py:311-351`) | ZDUPLIKOWANE (trzecia prawda katalogu) | pisane przez `application/catalog_governance/service.py:262-289,544-657` (`uow.wizard.upsert_*`); czytane WYŁĄCZNIE przez `application/protection_analysis/catalog_lookup.py:63-81` (typy zabezpieczeń, z fallbackiem na katalog statyczny); `api/catalog.py:252-356` i operacje domenowe (`enm/domain_operations.py:2628` `_get_catalog_safe` → `get_default_mv_catalog`, `lru_cache`, wyłącznie moduły statyczne `network_model/catalog/*.py`) nigdy ich nie czytają | typ linii/kabla/transformatora zaimportowany przez governance nie istnieje dla kreatorów ani biegów; W1 rozstrzyga: jedna droga typów użytkownika (typy projektu w ENM z proweniencją) i kasacja tabel martwych wobec toru obliczeń | wysoka |
 | 23 | JEDNA PRAWDA SIECI (ocena systemowa) | ZREALIZOWANE (W1) | legacy ORM 6 tabel (`infrastructure/persistence/models.py:226-398`): pisarz `xlsx_import` (tylko legacy), `application/project_archive/service.py:49-50,298-299` (podwójny zapis), `application/catalog_governance/service.py:301` (czyta `NetworkBranchORM.params_jsonb["type_ref"]`), repozytoria `network_repository.py`/`snapshot_repository.py`/`network_wizard_repository.py` | CV-4.4 niewykonane; naprawa = W1 | wysoka — **W1 (2026-09-09):** 19 tabel legacy (nie 6 — pomiar) zmigrowane (`migracja_legacy_db.py`) i skasowane; pin 15 tabel + bramka wskrzeszenia w `legacy_public_path_guard` |
@@ -250,7 +250,7 @@ Skróty ścieżek: `backend/src/` pomijane dla modułów backendu; `frontend/src
 | # | Zdolność | Klasyfikacja | Dowód | Brakuje / uwaga | Pewność |
 |---|---|---|---|---|---|
 | 1 | Model fazowy nN (L1/L2/L3/N/PE/PEN) | BRAK | domena 1 #11; `ADR-015` PROPOSED | — | wysoka |
-| 2 | Rozpływ niesymetryczny (BFS 3-fazowy, VUF, prąd w N) | BEZ-KONSUMENTA | `network_model/solvers/power_flow_unbalanced.py` (522); jedyny konsument `application/reference_networks/library.py:273,285`; nie w `application/solvers/solver_capability_registry.py` | inżynier nie policzy asymetrii własnej sieci | wysoka |
+| 2 | Rozpływ niesymetryczny (BFS 3-fazowy, VUF, prąd w N) | BEZ-KONSUMENTA | `network_model/solvers/power_flow_unbalanced.py` (522, FROZEN); po K2 (2026-09-09) WYŁĄCZNIE konsumenci testowi: `tests/test_power_flow_unbalanced.py` (fikstury syntetyczne, sprzed K2) + `tests/golden/test_solver_unbalanced_bfs_ieee34.py` (topologia IEEE 34-bus, regresja); ZERO konsumenta produkcyjnego, BEZ niezależnej wyroczni fizyki niesymetrycznej; nie w `application/solvers/solver_capability_registry.py` | inżynier nie policzy asymetrii własnej sieci; S6 w inwentarzu funkcji ◐ → ❌ po kasacji E-39 (jedyna dawna droga UI = dialekt benchmarków, nie model użytkownika) — zdolność produkcyjna dla S6 = W5 | wysoka |
 | 3 | Pętla zwarcia TN (IEC 60364-4-41) | ISTNIEJE-ZWERYFIKOWANE | `fault_loop_iec60364.py`, `fault_loop_builder.py`, `application/analyses/fault_loop/{route,service}.py` (105 testów, krzyżowa z IEC 60909); `api/enm.py:326-361`; `ui2/inspector/SekcjaPetlaZwarcia.tsx` | — | wysoka |
 | 4 | Pętla TT / IT | BRAK | `fault_loop_iec60364.py:189-200` `NotImplementedError`; serwis zwraca „nie dotyczy" (`fault_loop/service.py:76-84`) | kreator pozwala wybrać TT/IT (#11) | wysoka |
 | 5 | `POST /api/fault-loop/compute` (ręczne R+X) | BACKEND-BEZ-TOKU-PRACY → DO-KASACJI | `api/fault_loop.py` (140): 0 testów, 0 FE | następca: #3 (ekstrakcja z modelu) | średnia |
@@ -354,7 +354,7 @@ Skróty ścieżek: `backend/src/` pomijane dla modułów backendu; `frontend/src
 | # | Zdolność | Klasyfikacja | Dowód | Brakuje / uwaga | Pewność |
 |---|---|---|---|---|---|
 | 1 | Warstwa MCP / agentowa | BRAK | 0 trafień w `backend/src` i `frontend/src` | — | wysoka |
-| 2 | Powierzchnia zdolności REST | ISTNIEJE-ZWERYFIKOWANE | 310 ścieżek / 329 operacji / 227 schematów (`backend/schemas/openapi_snapshot.json`, pomiar 2026-09-09 po W1; przed W1: 350 tras) / 61 modułów `api/*.py`; `router_mount_guard.py` (3 routery świadomie odstawione: `archive_diff`, `incremental_archive`, `cloud_backup`) | — | wysoka |
+| 2 | Powierzchnia zdolności REST | ISTNIEJE-ZWERYFIKOWANE | 301 ścieżek / 320 operacji / 218 schematów (`backend/schemas/openapi_snapshot.json`, pomiar 2026-09-09 po K2; po W1: 310/329/227; przed W1: 350 tras) / 61 modułów `api/*.py` (`ls api/*.py` po K2; zapis „61 po W1" był zaniżony o 1 — przed K2 było 62 z `reference_networks.py`); `router_mount_guard.py` (3 routery świadomie odstawione: `archive_diff`, `incremental_archive`, `cloud_backup`) | — | wysoka |
 | 3 | Transakcyjność | CZĘŚCIOWE | `enm/store.py` (RLock per twin, atomowy zapis, wycofanie); `POST /enm/domain-ops` jedyna droga zapisu w produkcji (`api/enm.py:1333-1338`); CAS `snapshot_base_hash` nieużywany przez klientów (`api/enm.py:1216,1236`) | brak ochrony przed zgubioną aktualizacją między sesjami | wysoka |
 | 4 | Uprawnienia / perymetr | BRAK | `api/middleware.py` (tylko request-id), `dependencies.py`; 0 tras chronionych; decyzja właściciela 2026-08-05 (`PLAN_PRZEBUDOWY_10X_2026-07.md:203-225`) | konflikt z misją §15 — OD-13 | wysoka |
 | 5 | Proweniencja | ISTNIEJE (domena 10 #9) | — | — | średnia |
@@ -582,7 +582,7 @@ J6/J10 rozstrzygnięte.
 | K7 | Identyfikatory zewnętrzne i proweniencja importu | CZĘŚCIOWE | `source_reference` per wiersz: XLSX `arkusz:{plik}#{arkusz}:{wiersz}` (`xlsx_import/importer.py:1140,1204`), legacy `legacy:<źródło>:<element>` (`migracja_legacy.py:16,152,191`); `external_id` 0 trafień | ślad jednokierunkowy (skąd), bez indeksu odwrotnego (element ENM dla ID zewnętrznego) — potrzebny przy re-imporcie/aktualizacji (round-trip CGMES/DXF) → W12 | wysoka |
 | K8 | Bramka katalogowa wszystkich dróg wejścia | ISTNIEJE-ZWERYFIKOWANE | `catalog/governance.py:53-70` (`wymaga_referencji_katalogowej`) używana przez ZIP (`project_archive/service.py:61,940`, komentarz antyduplikacyjny), XLSX i ręczne przez E009 (`validator.py:697-727`); testy XLSX + archiwum + pin W1 | = J8 (predykat ×2 → W3) | wysoka |
 | K9 | Round-trip determinizm (ZIP, XLSX) | ISTNIEJE-ZWERYFIKOWANE | ZIP: 76 testów w 3 plikach (`test_roundtrip_export_import_export_is_bit_identical`, `test_archive_hash_itself_is_verified_not_only_sections`); XLSX: `test_ten_sam_arkusz_daje_ten_sam_odcisk_modelu` (z 63); wyrocznia `tests/golden/wyrocznie/test_pandapower_import_arkusza.py` (job CI pandapower) | — | wysoka |
-| K10 | Kontrakt API / OpenAPI i cykl życia tras | ISTNIEJE-ZWERYFIKOWANE | `backend/schemas/openapi_snapshot.json` 4.0.0: 310 ścieżek / 329 operacji / 227 schematów (pomiar 2026-09-09 po W1); 61 modułów `api/*.py`; `docs/v12xx/MACIERZ_KOMPATYBILNOSCI_API.md` (statusy per trasa); `router_mount_guard.py`; test aktualności snapshotu | korekta 12 #2 (350 tras / 63 moduły z bazy a701152f → po kasacjach W1) | wysoka |
+| K10 | Kontrakt API / OpenAPI i cykl życia tras | ISTNIEJE-ZWERYFIKOWANE | `backend/schemas/openapi_snapshot.json` 4.0.0: 301 ścieżek / 320 operacji / 218 schematów (pomiar 2026-09-09 po K2; po W1: 310/329/227); 61 modułów `api/*.py`; `docs/v12xx/MACIERZ_KOMPATYBILNOSCI_API.md` (statusy per trasa); `router_mount_guard.py`; test aktualności snapshotu | korekta 12 #2 (350 tras / 63 moduły z bazy a701152f → po kasacjach W1) | wysoka |
 
 Wycinki: K2/K5/K6/K7 → **W12** (rozszerzenie: CGMES trasa + ekran, healing po imporcie, indeks tożsamości zewnętrznej);
 K4 terminologia → **W9**.
@@ -751,7 +751,7 @@ G11 (transformatory trójuzwojeniowe) → poza kolejką W1–W12 do decyzji zakr
    przez operacje domenowe (`enm.domain_operations.execute_domain_operation`) — nigdy słownikiem ENM
    składanym ręcznie, nigdy w legacy ORM.
 2. **Jeden kompilator grafu węzeł–gałąź → operacje domenowe.** Jądro
-   `application/reference_networks/enm_builders/_kernel.py` (633 linii: `zbuduj_topologie` — BFS od
+   `application/reference_networks/enm_builders/_kernel.py` (skasowany w K2 2026-09-09; 633 linii: `zbuduj_topologie` — BFS od
    źródła przez `network_model.core.topologia.przeglad_wszerz_od`, `continue_trunk_segment_sn` /
    `start_branch_segment_sn` / `connect_secondary_ring_sn`, `dodaj_zrodlo_slack`, `dodaj_transformator`,
    `dodaj_obciazenie`, `dodaj_generator_*`, `dodaj_bocznik`, promocja `bus_name`) przenosi się 1:1 do
@@ -877,6 +877,38 @@ przypięciu pól kontraktów (3530 → 3539, W2-C); vitest 895 plików / 12 153 
 3/3. Wiersze §3 zaktualizowane: 3a.C C8, 3a.J J9, §4 K-C.
 
 ---
+
+### §2 Meldunek wykonania K2 (2026-09-09) — UCZCIWOŚĆ
+
+**Wykonane (agent sonnet, worktree; odbiór Fable):** commity `8e771a5f` (K2) i `ead12f70` (następstwo: generator
+`backend/scripts/generate_ieee_references.py` pisał do skasowanego katalogu — przepięty na
+`tests/golden/parytet_benchmarkow/expected/`, emisja słownikowych builderów usunięta; precyzja „jedyny konsument
+W PRODUKCIE" dla `power_flow_unbalanced.py`). `application/reference_networks/**` (10 498 linii / 40 plików .py)
+nie istnieje: 6 071 linii przeniesione do `tests/golden/**` i `tests/reference_networks/` (buildery ENM, wartości
+oczekiwane, substrat 52 stacji, walidacja krzyżowa jako wyrocznie), 4 427 skasowane bez zastępstwa (własny NR dialektu,
+most słownikowy pandapower zastąpiony bogatszą wyrocznią `tests/golden/wyrocznie/pandapower.py`, harness parytetu
+zamrażający dialekt przed kasacją). `api/reference_networks.py` (9 tras `/api/v1/reference-networks/*`) i ekran E-39
+(`ui/reference-networks/**` 1 448 linii, `ReferenceNetworkSurface`) skasowane (luka w numeracji ekranów, bez
+renumeracji; E-49 przepięty z E-39 na E-35). 40 plików testów: 4 przeniesione, 14 przepięte importem, 11 bez zmian,
+11 skasowane z nazwanym zastępstwem (§E evidence). Nowe: `tests/golden/parytet_benchmarkow/kontrola_v126.py`,
+`tests/golden/test_solver_unbalanced_bfs_ieee34.py`, `tests/reference_networks/test_builders_determinism.py`
+(naprawiona luka pokrycia determinizmu GN04/GN05). OpenAPI 310 → 301 ścieżek (dokładnie 9 usuniętych, 0 dodanych),
+schematy 227 → 218; `ui/` 54 → 53 modułów, `api/` 62 → 61. Złote hashe PF/SC nietknięte (jedyny diff w `zlote*` = kasacja
+`parytet_benchmarkow/zlote_wyniki.json`, którego celem było zamrożenie dialektu przed jego kasacją). B-01: zero linii
+w `network_model/solvers/**`; `core/branch.py` — wyłącznie komentarz. Odbiór: pin pól kontraktów 3484 (baza K2) → 3493
+(drzewo gałęzi po W2-C), snapshot OpenAPI zregenerowany na drzewie scalonym, zapadki `tsconfig_gate` 126/126,
+`backend_no_physics` 0/0, `claude_md_struktura` ui=53/ui2=18, słownik 118 kodów bez dryfu; pełny łańcuch przedpushowy
+— evidence §F („K2 — dowody").
+
+**Nazwane, nie ukryte:** (1) **regresja zdolności S6 „Rozpływ niesymetryczny"** (◐ → ❌ w inwentarzu funkcji): kasacja
+E-39 zdjęła jedyną drogę UI do `power_flow_unbalanced.py` — droga ta liczyła sieci benchmarkowe, nie model użytkownika,
+więc nie była zdolnością produktu; zdolność produkcyjna (asymetria WŁASNEJ sieci nN) = W5 (wiersz 3 #2 wyżej).
+(2) `station_archetype_substrate.py` przeniesiony 1:1 do `tests/reference_networks/` — nadal buduje `NetworkGraph`
+wprost (nie przez `enm/kompilator_grafu.py`); zachowanie zweryfikowane bajtowo (regeneracja `companions/*.ts` +
+`sldNetwork53.ts`: diff wyłącznie w nagłówku + 1 udokumentowany szum ulp). Konsument = izolowany harness e2e ekranu
+stacji v2 (nieprodukcyjny); pełne przepisanie wymaga rekordów governance katalogu dla ~20 archetypów — dług
+testowy z pomiarem (nie produktowy), zamykany razem z wejściem ekranu stacji v2 do produkcji (W8), nie cicho.
+(3) Agent nie uruchomił pełnego `pytest`/`vitest` (host zajęty, zgodnie z kartą) — pełny łańcuch wykonał odbiór (§F).
 
 ## 11. Utrzymanie mapy
 

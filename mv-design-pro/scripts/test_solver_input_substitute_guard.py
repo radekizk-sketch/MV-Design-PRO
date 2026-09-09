@@ -1179,8 +1179,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # wylacznie przez skasowane pliki (network_wizard/service.py, sld/layout.py,
     # power_flow_report_docx.py, project_archive 8 liczb sekcji legacy) — pomiar `--pomiar`
     # na drzewie karty, zero nowych podstawien.
-    # K2 (2026-09-09): 3530 -> 3484 pol (application/reference_networks/** skasowane).
-    assert "Pol kontraktow wejsciowych: 3484." in wyjscie, wyjscie
+    # K2 (2026-09-09): 3530 -> 3484 pol (application/reference_networks/** skasowane);
+    # po scaleniu z W2-C (+9 pol, daf303a3) pomiar na drzewie galezi = 3493 (odbior K2).
+    assert "Pol kontraktow wejsciowych: 3493." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
