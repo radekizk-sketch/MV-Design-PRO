@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+from dataclasses import dataclass
 from typing import Any, Literal
 from uuid import UUID
 
@@ -38,6 +39,7 @@ from enm.store import set_enm as _set_enm
 from fastapi import APIRouter, HTTPException, Request, status
 from network_model.catalog.audit2_catalogs import get_block_transformer
 from network_model.pochodne import kv_na_v, kva_na_mva, mw_na_kw, v_na_kv
+from network_model.solvers.equipment_checks.ct_burden_saturation import CtDeviceBurden
 from pydantic import BaseModel, Field, field_validator
 
 logger = logging.getLogger(__name__)
@@ -1031,6 +1033,9 @@ def get_der_instrument_transformers(
         _pierwsza_wartosc(zrodla, "protection_catalog_ref")
     )
 
+    ct_ref = _pierwsza_wartosc(zrodla, "ct_catalog_ref")
+    obwod_ct = _obwod_wtorny_pomiaru(dane, bay_ref, "CT", ct_ref)
+
     tor_pradowy = WymaganiaToru(
         prad_roboczy_a=prad_roboczy,
         ik_ka=ik_ka,
@@ -1040,22 +1045,39 @@ def get_der_instrument_transformers(
         # regula nazwie go wprost, zamiast podstawic 1 s „bo tak sie zwykle przyjmuje".
         czas_zwarcia_s=None,
         prady_wejsc_przekaznika_a=prady_wejsc,
+        # Karta W3-B (mapa 4 #3): jedno zagregowane VA obwodu wtornego (kryterium
+        # `ct.obciazalnosc`) NIE JEST liczone tutaj — sumowanie devices+styki bez
+        # skladnika I2n^2*Rp bylby S2obl NIEPELNY podpisany jak pelny (fizyka
+        # czesciowa gorsza od uczciwego braku). Rygorystyczny bilans (WSZYSTKIE
+        # skladniki) liczy teraz jadro w kryterium `ct.alf` z `obwod_ct` ponizej;
+        # `ct.obciazalnosc` zostaje `brak_danych` dla DER, dopoki pole wytworcy
+        # nie dostanie wlasnej materializacji obwodu (poza zakresem tej karty —
+        # DER wiaze CT/VT przez `set_der_catalog_bindings`, NIE przez
+        # `Measurement`, wiec nie ma tu jednego elementu modelu do zapisu).
         obciazenie_obwodu_va=None,
         zrodlo_wejsc_pl=zrodlo_wejsc,
         dla_zabezpieczen=True,
+        # Obwod wtorny CT — z `Measurement.obwod_wtorny` modelu (pole tej samej
+        # stacji, GDY zapisany), zero liczenia fizyki w tej warstwie: fakty
+        # przechodza do jadra bez zmian (`sprawdz_dobor_ct` → `ct.alf`).
+        dlugosc_przewodu_m=obwod_ct.dlugosc_przewodu_m,
+        przekroj_przewodu_mm2=obwod_ct.przekroj_przewodu_mm2,
+        obciazenia_aparatow=obwod_ct.obciazenia_aparatow,
+        moc_stykow_va=obwod_ct.moc_stykow_va,
     )
     tor_napieciowy = WymaganiaToruNapieciowego(
         napiecie_sieci_v=napiecie_v,
         tryb_uziemienia=sciezka.get("neutral_grounding_mode") or "nieznany",
         zwarcie_doziemne_wylaczane_automatycznie=None,
         napiecia_wejsc_przekaznika_v=napiecia_wejsc,
+        # Patrz komentarz przy `tor_pradowy.obciazenie_obwodu_va` — ta karta nie
+        # rozbudowuje modelu VT pola wytworcy (poza zakresem W3-B).
         obciazenie_obwodu_va=None,
         zrodlo_napiecia_zerowego=sciezka.get("zero_sequence_voltage_source") or "brak",
         zrodlo_wejsc_pl=zrodlo_wejsc,
         dla_zabezpieczen=True,
     )
 
-    ct_ref = _pierwsza_wartosc(zrodla, "ct_catalog_ref")
     vt_ref = _pierwsza_wartosc(zrodla, "vt_catalog_ref")
     return {
         "generator_ref": generator_ref,
@@ -1159,6 +1181,71 @@ def _wejscia_urzadzenia(
                 urzadzenie.rated_inputs_source,
             )
     return None, None, None
+
+
+@dataclass(frozen=True)
+class _ObwodWtornyPomiaru:
+    """Fakty obwodu wtornego wyluskane z `Measurement.obwod_wtorny` modelu.
+
+    Pusta instancja (wszystkie pola `None`/puste) oznacza „obwod niezapisany" —
+    `sprawdz_dobor_ct` zamienia to w kod gotowosci `ct.secondary_circuit_missing`,
+    NIGDY w wartosc zastepcza (karta W3-B, zero fabrykacji).
+    """
+
+    dlugosc_przewodu_m: float | None = None
+    przekroj_przewodu_mm2: float | None = None
+    obciazenia_aparatow: tuple[CtDeviceBurden, ...] = ()
+    moc_stykow_va: float | None = None
+
+
+_OBWOD_WTORNY_PUSTY = _ObwodWtornyPomiaru()
+
+
+def _obwod_wtorny_pomiaru(
+    dane: dict[str, Any],
+    bay_ref: str | None,
+    measurement_type: Literal["CT", "VT"],
+    catalog_ref: str | None,
+) -> _ObwodWtornyPomiaru:
+    """Obwod wtorny CT/VT z modelu — TOR: model → domena (zero liczenia tutaj).
+
+    Szuka `Measurement` przypietego do TEGO SAMEGO pola (`bay_ref`), co pole
+    wytworcy, o wlasciwym `measurement_type` — obwod wtorny jest cecha FIZYCZNEGO
+    okablowania w polu, wiec obowiazuje niezaleznie od tego, ktory `catalog_ref`
+    jest akurat sprawdzany w kryterium doboru. Gdy w polu jest kilka pomiarow
+    tego samego rodzaju (rzadkie, np. dwa rdzenie osobno modelowane), preferowany
+    jest ten o `catalog_ref` zgodnym z wiazaniem wytworcy — w przeciwnym razie
+    pierwszy po posortowanym `ref_id` (determinizm, zero zaleznosci od kolejnosci
+    zapisu w licie).
+    """
+    if not bay_ref:
+        return _OBWOD_WTORNY_PUSTY
+    kandydaci = [
+        m
+        for m in dane.get("measurements", [])
+        if isinstance(m, dict)
+        and m.get("bay_ref") == bay_ref
+        and m.get("measurement_type") == measurement_type
+    ]
+    if not kandydaci:
+        return _OBWOD_WTORNY_PUSTY
+    dopasowany_katalogowo = [m for m in kandydaci if catalog_ref and m.get("catalog_ref") == catalog_ref]
+    pula = dopasowany_katalogowo or kandydaci
+    wybrany = sorted(pula, key=lambda m: str(m.get("ref_id") or ""))[0]
+    obwod = wybrany.get("obwod_wtorny")
+    if not isinstance(obwod, dict):
+        return _OBWOD_WTORNY_PUSTY
+    aparaty = tuple(
+        CtDeviceBurden(nazwa=str(o.get("nazwa", "")), moc_va=float(o.get("moc_va", 0.0)))
+        for o in (obwod.get("obciazenia_aparatow") or [])
+        if isinstance(o, dict)
+    )
+    return _ObwodWtornyPomiaru(
+        dlugosc_przewodu_m=obwod.get("dlugosc_przewodu_m"),
+        przekroj_przewodu_mm2=obwod.get("przekroj_przewodu_mm2"),
+        obciazenia_aparatow=aparaty,
+        moc_stykow_va=obwod.get("moc_stykow_va"),
+    )
 
 
 def _dobor_przekladnika(

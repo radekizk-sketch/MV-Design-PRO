@@ -1179,6 +1179,159 @@ def test_dobor_przekladnikow_jest_RACHUNKIEM_a_nie_nazwa_katalogowa(app_client) 
     assert "szereg_preferowany" in (prad_wtorny["komentarz_pl"] or "")
 
 
+def test_dobor_ct_uzywa_obwodu_wtornego_z_pomiaru_modelu(app_client) -> None:
+    """Karta W3-B (mapa 4 #3): `ct.alf` czyta obwod wtorny z `Measurement` TEGO
+    SAMEGO pola (`bay_ref`) — tor model -> domena -> jadro, zero liczenia w API.
+
+    Bez zakonczonego przebiegu zwarciowego `alf_wymagany` nie istnieje, wiec
+    werdykt zbiorczy zostaje `brak_danych` (kod `ct.required_alf_missing") —
+    ale bilans mocy wtornej JEST juz POLICZONY z obwodu zapisanego w modelu:
+    dowodem jest slad WHITE BOX z niezerowym S2obl, nie liczba domyslna.
+    """
+    from enm.models import EnergyNetworkModel
+    from enm.store import set_enm
+
+    from tests.test_execution_api import _klucz_modelu
+
+    project_id, case_id = _create_project_and_case(app_client)
+
+    enm = EnergyNetworkModel.model_validate(
+        {
+            "header": {
+                "name": "Model DER obwod",
+                "defaults": {
+                    "frequency_hz": 50.0,
+                    "unit_system": "SI",
+                    "sn_nominal_kv": 15.0,
+                },
+            },
+            "buses": [
+                {"ref_id": "b_sn", "name": "Szyna SN", "voltage_kv": 15.0, "tags": [], "meta": {}}
+            ],
+            "branches": [],
+            "sources": [],
+            "loads": [],
+            "transformers": [],
+            "generators": [
+                {
+                    "ref_id": "gen_1",
+                    "name": "PV pole SN",
+                    "bus_ref": "b_sn",
+                    "p_mw": 1.0,
+                    "meta": {
+                        "bay_ref": "field_der",
+                        "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
+                    },
+                    "tags": [],
+                }
+            ],
+            "substations": [],
+            "bays": [],
+            "junctions": [],
+            "corridors": [],
+            "measurements": [
+                {
+                    "ref_id": "ct_field_der",
+                    "name": "CT pole DER",
+                    "measurement_type": "CT",
+                    "bus_ref": "b_sn",
+                    "bay_ref": "field_der",
+                    "rating": {"ratio_primary": 200.0, "ratio_secondary": 5.0},
+                    "catalog_ref": "ct_200_5_5p10_10va_abb",
+                    "obwod_wtorny": {
+                        "dlugosc_przewodu_m": 60.0,
+                        "przekroj_przewodu_mm2": 1.5,
+                        "obciazenia_aparatow": [{"nazwa": "Przekaźnik", "moc_va": 5.0}],
+                    },
+                }
+            ],
+            "protection_assignments": [],
+            "branch_points": [],
+        }
+    )
+    set_enm(_klucz_modelu(case_id), enm)
+
+    odpowiedz = app_client.get(
+        f"/api/projects/{project_id}/cases/{case_id}"
+        f"/generators/gen_1/instrument-transformers"
+    )
+    assert odpowiedz.status_code == 200, odpowiedz.text
+    dane = odpowiedz.json()
+    ct_alf = next(
+        k for k in dane["przekladnik_pradowy"]["wynik"]["kryteria"] if k["kod"] == "ct.alf"
+    )
+    assert ct_alf["werdykt"] == "brak_danych"
+    assert "ct.required_alf_missing" in ct_alf["kody_gotowosci"]
+    # Bilans wtorny SAM w sobie JEST policzony (obwod przyszedl z modelu, nie
+    # z powietrza) — dowod w sladzie WHITE BOX, nie w liczbie zapisanej na sztywno.
+    assert ct_alf["slad"], "obwod wtorny z modelu powinien dac slad bilansu mocy wtornej"
+    krok_bilansu = next(k for k in ct_alf["slad"] if k["key"] == "ct_bilans_mocy")
+    assert krok_bilansu["result"]["s2obl_va"]["value"] > 0
+
+
+def test_dobor_ct_bez_pomiaru_w_polu_zostaje_brak_danych_obwodu(app_client) -> None:
+    """Kontrola granicy: bez `Measurement` w polu obwod NIE jest zmyslany —
+    `ct.alf` konczy sie kodem `ct.secondary_circuit_missing`, nie fabrykacja."""
+    from enm.models import EnergyNetworkModel
+    from enm.store import set_enm
+
+    from tests.test_execution_api import _klucz_modelu
+
+    project_id, case_id = _create_project_and_case(app_client)
+
+    enm = EnergyNetworkModel.model_validate(
+        {
+            "header": {
+                "name": "Model DER bez obwodu",
+                "defaults": {
+                    "frequency_hz": 50.0,
+                    "unit_system": "SI",
+                    "sn_nominal_kv": 15.0,
+                },
+            },
+            "buses": [
+                {"ref_id": "b_sn", "name": "Szyna SN", "voltage_kv": 15.0, "tags": [], "meta": {}}
+            ],
+            "branches": [],
+            "sources": [],
+            "loads": [],
+            "transformers": [],
+            "generators": [
+                {
+                    "ref_id": "gen_1",
+                    "name": "PV pole SN",
+                    "bus_ref": "b_sn",
+                    "p_mw": 1.0,
+                    "meta": {
+                        "bay_ref": "field_der",
+                        "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
+                    },
+                    "tags": [],
+                }
+            ],
+            "substations": [],
+            "bays": [],
+            "junctions": [],
+            "corridors": [],
+            "measurements": [],
+            "protection_assignments": [],
+            "branch_points": [],
+        }
+    )
+    set_enm(_klucz_modelu(case_id), enm)
+
+    dane = app_client.get(
+        f"/api/projects/{project_id}/cases/{case_id}"
+        f"/generators/gen_1/instrument-transformers"
+    ).json()
+    ct_alf = next(
+        k for k in dane["przekladnik_pradowy"]["wynik"]["kryteria"] if k["kod"] == "ct.alf"
+    )
+    assert ct_alf["werdykt"] == "brak_danych"
+    assert "ct.secondary_circuit_missing" in ct_alf["kody_gotowosci"]
+    assert ct_alf["dostepne"] is None
+
+
 def test_dobor_przekladnikow_bez_wiazania_nie_udaje_werdyktu(app_client) -> None:
     """Brak wiazania katalogowego to nie „dobor niespelniony" — to brak wyboru."""
     project_id, case_id = _create_project_and_case(app_client)
