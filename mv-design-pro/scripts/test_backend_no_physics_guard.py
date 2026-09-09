@@ -339,6 +339,196 @@ def test_rodzina_g_nie_liczy_kwadratu_przez_kwadrat() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Rodzina J — skalowanie jednostek (karta W3-F §0.3)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "kod",
+    [
+        "x = p_kw / 1000.0\n",
+        "x = 1000 * u_kv\n",
+        'x = float(row["ikss_a"]) / 1000.0\n',
+        "x = abs(p_mw) * 1000.0\n",
+        'x = f"{i_a/1000:.2f}"\n',
+        "x = trafo.pk_kw * 1000.0\n",
+        "x = b_us_per_km * 1e-6\n",
+        "x = t_ms / 1000\n",
+        "x = c_nf_per_km * 1e-3\n",
+        "x = float(b_us_per_km) / 1_000_000.0\n",
+        "x = voltage_kv * 1e3\n",
+    ],
+)
+def test_rodzina_j_wykrywa_skalowanie_jednostek(kod: str) -> None:
+    assert _wzorce(kod).get("J_skalowanie_jednostek", 0) == 1
+
+
+@pytest.mark.parametrize(
+    "kod",
+    [
+        "x = abs(a - b) > 1e-6\n",
+        "x = max(u_kv, 0.001)\n",
+        "x = Field(ge=0.001)\n",
+        "x = 1e-6 * max(1.0, abs(b))\n",
+        "x = (t1 - t0) * 1000\n",
+        "x = x_kv * 100.0\n",
+        'x = {"sn_mva": 0.001}\n',
+        "x = complex(1e6, 0.0)\n",
+        'x = "x_kv * 1000"\n',
+        "x = 1000 / x_kv\n",
+    ],
+)
+def test_rodzina_j_nie_liczy_negatywnych_przykladow(kod: str) -> None:
+    assert _wzorce(kod).get("J_skalowanie_jednostek", 0) == 0
+
+
+# --- Iloczyn cech: forma literalu x forma operandu x Mult/Div (KLASA NIE INSTANCJA) ---
+
+
+@pytest.mark.parametrize(
+    "literal",
+    ["1000", "1000.0", "1e3", "1_000.0"],
+)
+def test_rodzina_j_formy_literalu_1000_sa_tym_samym_floatem(literal: str) -> None:
+    assert _wzorce(f"x = u_kv * {literal}\n").get("J_skalowanie_jednostek", 0) == 1
+    assert _wzorce(f"x = u_kv / {literal}\n").get("J_skalowanie_jednostek", 0) == 1
+
+
+@pytest.mark.parametrize(
+    "literal",
+    ["1000000", "1000000.0", "1e6", "1_000_000.0", "1_000_000"],
+)
+def test_rodzina_j_formy_literalu_1e6_sa_tym_samym_floatem(literal: str) -> None:
+    assert _wzorce(f"x = admitancja_s * {literal}\n").get("J_skalowanie_jednostek", 0) == 1
+
+
+@pytest.mark.parametrize("op", ["*", "/"])
+def test_rodzina_j_stala_1e_minus_6_w_obu_kierunkach(op: str) -> None:
+    assert _wzorce(f"x = b_us_per_km {op} 1e-6\n").get("J_skalowanie_jednostek", 0) == 1
+
+
+def test_rodzina_j_div_liczy_stala_wylacznie_po_prawej() -> None:
+    """`1000 / x_kv` NIE jest skalowaniem x_kv (dzielnik jest zmienną, nie
+    literałem) — dla Div rodzina J liczy WYŁĄCZNIE prawy operand jako
+    kandydata na stałą (§0.3 karty, odwrotnie niż Mult, gdzie stała może być
+    po obu stronach)."""
+    assert _wzorce("x = 1000 / x_kv\n").get("J_skalowanie_jednostek", 0) == 0
+    assert _wzorce("x = x_kv / 1000\n").get("J_skalowanie_jednostek", 0) == 1
+
+
+def test_rodzina_j_mult_liczy_stala_po_obu_stronach() -> None:
+    assert _wzorce("x = 1000 * u_kv\n").get("J_skalowanie_jednostek", 0) == 1
+    assert _wzorce("x = u_kv * 1000\n").get("J_skalowanie_jednostek", 0) == 1
+
+
+@pytest.mark.parametrize(
+    "wrapper",
+    ["float({})", "abs({})", "int({})", "float(abs({}))"],
+)
+def test_rodzina_j_zdejmuje_float_abs_int_zagniezdzone(wrapper: str) -> None:
+    operand = wrapper.format("p_kw")
+    assert _wzorce(f"x = {operand} / 1000.0\n").get("J_skalowanie_jednostek", 0) == 1
+
+
+def test_rodzina_j_nie_zdejmuje_innych_wolan() -> None:
+    """Tylko `float`/`abs`/`int` są zdejmowane — `round(p_kw)` zostaje Call,
+    nie Name/Attribute, więc NIE pasuje (miejsce „poza kształtem", migrowane
+    ręcznie — dowodem kompletności jest inwentarz grep karty, nie guard)."""
+    assert _wzorce("x = round(p_kw) / 1000.0\n").get("J_skalowanie_jednostek", 0) == 0
+    assert _wzorce("x = max(p_kw, 0.0) / 1000.0\n").get("J_skalowanie_jednostek", 0) == 0
+
+
+def test_rodzina_j_subscript_z_kluczem_napisowym() -> None:
+    assert _wzorce('x = row["prad_a"] / 1000.0\n').get("J_skalowanie_jednostek", 0) == 1
+    assert _wzorce('x = linia["dlugosc_km"] * 1000.0\n').get("J_skalowanie_jednostek", 0) == 1
+
+
+def test_rodzina_j_subscript_z_kluczem_nienapisowym_nie_liczy_sie() -> None:
+    """Klucz zmienny (nie literał-napis) nie niesie tokenu jednostki do
+    odczytania statycznie — poza kształtem."""
+    assert _wzorce("x = row[klucz] / 1000.0\n").get("J_skalowanie_jednostek", 0) == 0
+
+
+@pytest.mark.parametrize(
+    "identyfikator",
+    [
+        "wartosc_a",
+        "prad_ka",
+        "napiecie_v",
+        "u_kv",
+        "dlugosc_m",
+        "odcinek_km",
+        "moc_kw",
+        "moc_mw",
+        "energia_wh",
+        "energia_kwh",
+        "energia_mwh",
+        "moc_pozorna_va",
+        "moc_pozorna_kva",
+        "moc_pozorna_mva",
+        "moc_bierna_var",
+        "moc_bierna_kvar",
+        "moc_bierna_mvar",
+        "czas_s",
+        "czas_ms",
+        "admitancja_us",
+        "pojemnosc_nf",
+        "rezystancja_ohm",
+        "_SQLITE_BUSY_TIMEOUT_S",
+        "b_us_per_km",
+        "c_nf_per_km",
+        "clearing_time_ms",
+        "MM",
+        "przekroj_mm",
+    ],
+)
+def test_rodzina_j_rozpoznaje_wszystkie_tokeny_jednostek_case_insensitive(
+    identyfikator: str,
+) -> None:
+    assert _wzorce(f"x = {identyfikator} * 1000.0\n").get("J_skalowanie_jednostek", 0) == 1
+    assert _wzorce(f"x = {identyfikator}.upper() * 1000.0\n") == {}
+
+
+def test_rodzina_j_identyfikator_bez_tokenu_jednostki_nie_liczy_sie() -> None:
+    assert _wzorce("x = numeric * 1000.0\n").get("J_skalowanie_jednostek", 0) == 0
+    assert _wzorce("x = ikss * 1000.0\n").get("J_skalowanie_jednostek", 0) == 0
+    assert _wzorce("x = arc_time * 1000.0\n").get("J_skalowanie_jednostek", 0) == 0
+
+
+def test_rodzina_j_attribute_liczy_sie_po_ostatnim_segmencie() -> None:
+    assert _wzorce("x = self.trafo.pk_kw * 1000.0\n").get("J_skalowanie_jednostek", 0) == 1
+    assert _wzorce("x = self.trafo.label * 1000.0\n").get("J_skalowanie_jednostek", 0) == 0
+
+
+def test_rodzina_j_operand_binop_jest_poza_ksztaltem() -> None:
+    """`sum(...) * 1000.0`, `(a - b) * 1000.0`, `r_pu * base_mva * 1000.0` —
+    drugi operand nie jest Name/Attribute/Subscript-z-kluczem-napisowym, więc
+    guard ich NIE liczy (migrowane ręcznie, dowód w inwentarzu karty, nie w
+    guardzie — §0.3)."""
+    assert (
+        _wzorce("x = sum(c.length_km for c in kable) * 1000.0\n").get("J_skalowanie_jednostek", 0)
+        == 0
+    )
+    assert _wzorce("x = (time.monotonic() - start) * 1000\n").get("J_skalowanie_jednostek", 0) == 0
+    assert _wzorce("x = r_pu * base_mva * 1000.0\n").get("J_skalowanie_jednostek", 0) == 0
+
+
+def test_rodzina_j_fstring_wielokrotny_w_jednej_linii() -> None:
+    kod = 'x = f"{a_ka*1000:.1f} A / {b_ka*1000:.1f} A"\n'
+    assert _wzorce(kod).get("J_skalowanie_jednostek", 0) == 2
+
+
+def test_rodzina_j_nie_liczy_napisu_ani_komentarza_ani_docstringu() -> None:
+    kod = (
+        "# przelicznik: wartosc_kw * 1000.0 -> W\n"
+        "def f():\n"
+        '    """b_us_per_km * 1e-6 -> S/km."""\n'
+        '    return "x_kv * 1000"\n'
+    )
+    assert _wzorce(kod).get("J_skalowanie_jednostek", 0) == 0
+
+
+# ---------------------------------------------------------------------------
 # Zapadka — porownaj_z_zapadka (wzrost/spadek, KLASA nie INSTANCJA)
 # ---------------------------------------------------------------------------
 
@@ -413,13 +603,71 @@ def test_pochodne_naprawde_istnieje_i_niesie_wiekszosc_rodzin() -> None:
     assert "SQRT3: float = math.sqrt(3.0)" in plik.read_text(encoding="utf-8")
 
 
+def test_jednostki_naprawde_istnieje_i_niesie_rodzine_j() -> None:
+    """`jednostki.py` (karta W3-F, §0.1) jest siostrą `wielkosci_pochodne.py`
+    w TYM SAMYM pakiecie wykluczonym ze skanu produkcyjnego — sprawdzamy
+    wprost (jak precedens dla `wielkosci_pochodne.py` powyżej), że każda
+    funkcja skalowania faktycznie ma kształt rodziny J (operand = WŁASNY
+    parametr funkcji, kończący się tokenem jednostki — dokładnie ten sam
+    kształt co u wołającego)."""
+    plik = BACKEND_SRC / "network_model" / "pochodne" / "jednostki.py"
+    assert plik.exists()
+    tekst = plik.read_text(encoding="utf-8")
+    # Liść grafu importów: bez importów poza `from __future__ import annotations`
+    # (K4.1/§0.1 karty W3-F — ani `math`, w odróżnieniu od `wielkosci_pochodne.py`).
+    linie_importow = [
+        linia
+        for linia in tekst.splitlines()
+        if linia.startswith("import ") or linia.startswith("from ")
+    ]
+    assert linie_importow == ["from __future__ import annotations"]
+    for nazwa in (
+        "kw_na_mw",
+        "mw_na_kw",
+        "kvar_na_mvar",
+        "mvar_na_kvar",
+        "kva_na_mva",
+        "mva_na_kva",
+        "kw_na_w",
+        "mw_na_w",
+        "mwh_na_kwh",
+        "a_na_ka",
+        "ka_na_a",
+        "v_na_kv",
+        "kv_na_v",
+        "m_na_km",
+        "km_na_m",
+        "ms_na_s",
+        "s_na_ms",
+        "mikrosimens_na_simens",
+        "mikrosimens_na_simens_ybus",
+        "simens_na_mikrosimens",
+    ):
+        assert f"def {nazwa}(" in tekst, f"jednostki.py powinno definiować {nazwa}"
+    wzorce = zlicz_wzorce(ast.parse(tekst))
+    # Pin: dokladnie 20 funkcji, kazda z JEDNA operacja rodziny J na WLASNYM
+    # parametrze (§0.1 karty) — precyzyjny pin silniejszy niz luzny prog,
+    # zgodnie z regula "deklaracja bez testu = falszywa pewnosc".
+    assert wzorce.get("J_skalowanie_jednostek", 0) == 20, (
+        "jednostki.py powinno nieść dokladnie 20 wystapien ksztaltu rodziny J "
+        "(kazda funkcja skaluje WLASNY parametr, ktorego nazwa konczy sie "
+        "tokenem jednostki) — zmiana liczby funkcji wymaga aktualizacji pinu"
+    )
+
+
 def test_pin_stanu_repozytorium() -> None:
     """Zapadka = pomiar (obie strony). Wzrost = formuła fizyczna poza
     pochodne/; spadek = obniż ZASTANE. Karta K2 (2026-09-09) skasowała
-    `application/reference_networks/**`; po W3-C (kasacja
-    `application/analyses/protection/overcurrent/**`) zapadka jest PUSTA."""
+    `application/reference_networks/**`; po W3-C1 (kasacja
+    `application/analyses/protection/overcurrent/**`) i W3-C2 (kasacja
+    `application/analyses/protection/line_overcurrent_setting/**`) zapadka
+    rodzin E i J tych plików jest PUSTA."""
     assert porownaj_z_zapadka(zmierz(), ZASTANE) == []
-    assert set(ZASTANE) <= {"application/analyses/protection/overcurrent/calculator.py"}
+    assert set(ZASTANE) <= {
+        "application/analyses/protection/overcurrent/calculator.py",
+        "application/analyses/protection/line_overcurrent_setting/analyzer.py",
+        "application/analyses/protection/line_overcurrent_setting/spz_lookup.py",
+    }
 
 
 def test_rodzina_e_zastane_ma_jedyny_wpis_overcurrent_kalkulatora() -> None:

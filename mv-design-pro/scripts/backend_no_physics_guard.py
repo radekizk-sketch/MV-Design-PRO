@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Guard: formuły fizyczne poza `network_model/solvers/**` i `network_model/pochodne/**`
-(CV-4.3 K4, C.2.3).
+"""Guard: formuły fizyczne i skalowanie jednostek poza `network_model/solvers/**`
+i `network_model/pochodne/**` (CV-4.3 K4, C.2.3; rodzina J: karta W3-F,
+mapa §8 W3, decyzja architekta §0.3).
 
 Rodziny wykrywane (AST, nie grep — patrz karta `karta_cv43_a3.md`, K4.4, oraz
-`KARTA_W3_KONWERGENCJA_FIZYKI_2026-09.md` §0.13 dla rodziny E):
+`KARTA_W3_KONWERGENCJA_FIZYKI_2026-09.md` §0.13 dla rodziny E, karta W3-F §0.3 dla J):
 √3 (`sqrt(3)`/`3**0.5`/literał `1.7320508...`) w mnożeniu/dzieleniu, κ IEC
 60909 (`1.02 + 0.98*exp(...)` / `exp(-3*x)`), całka Joule'a I²t (`x**2 * t`,
 gdzie `t` to wielkość czasowa — nazwa zawiera „t"/„tk"/„time"/„czas"), korekta
@@ -11,12 +12,20 @@ temperaturowa (`1 + alpha*(theta - cokolwiek)`), IDMT IEC 60255
 t = TMS·A/(M^B−1) (`a / (m**b - 1)`, mianownik `Pow(*, *) − 1` z DOWOLNYM
 wykładnikiem — inline albo przez zmienną lokalną, `math.pow(...)` też się
 liczy), impedancja/moc bazowa Z = U²/S (`u**2 / s`, dzielenie z KWADRATEM
-wprost w liczniku). Napis, komentarz i docstring NIE są liczone — to jest AST
-wyrażeń, nie tekst.
+wprost w liczniku), skalowanie prefiksów SI (`J_skalowanie_jednostek`: `BinOp`
+Mult/Div gdzie jeden operand — dla Div WYŁĄCZNIE prawy — to stała liczbowa
+∈ {1000, 0.001, 1000000, 1e-6}, a drugi operand, po zdjęciu `float(...)`/
+`abs(...)`/`int(...)` i subscriptu z kluczem-napisem, to nazwa/atrybut/klucz
+kończący się tokenem jednostki — `b_us_per_km`, `clearing_time_ms`, `wartosc_a`,
+itd., patrz `_UNIT_SUFFIX_RE`). Napis, komentarz i docstring NIE są liczone —
+to jest AST wyrażeń, nie tekst; f-string LICZY SIĘ (`FormattedValue` → `BinOp`
+jest zwykłym węzłem AST).
 
-Jedyne recenzowane miejsce dla tych formuł: `network_model/pochodne/`
-(karta CV-4.3-A3, K4.1). ALLOWLIST jest PUSTA — żadne miejsce nie ma prawa
-liczyć tych wzorów poza `pochodne/`, poza zapadką `ZASTANE` (tylko w dół).
+Jedyne recenzowane miejsce dla tych formuł i dla skalowania jednostek:
+`network_model/pochodne/` (formuły: `wielkosci_pochodne.py`, karta CV-4.3-A3,
+K4.1; skalowanie: `jednostki.py`, karta W3-F, §0.1). ALLOWLIST jest PUSTA —
+żadne miejsce nie ma prawa liczyć tych wzorów poza `pochodne/`, poza zapadką
+`ZASTANE` (tylko w dół).
 
 `network_model/pochodne/` jest SIOSTRĄ `network_model/core/` i
 `network_model/solvers/`, NIE potomkiem `solvers/` (relokacja architekta,
@@ -76,11 +85,116 @@ ALLOWLIST: dict[str, str] = {}
 #: pipeline zapisu ma 0 wywołań produkcyjnych), więc migracja do
 #: `pochodne/wielkosci_pochodne.py` byłaby pracą do wyrzucenia w kolejnej
 #: podkarcie tej samej fali — TYMCZASOWY dług nazwany, nie cichy.
+#: Rodzina J (karta W3-F, po migracji 2026-09-09): pomiar `--pomiar` PRZED
+#: migracją = 192 wzorce w 59 plikach; PO migracji zostały wyłącznie pliki
+#: kasowane w INNYCH kartach tej samej fali: oba pliki
+#: `application/analyses/protection/line_overcurrent_setting/` (W3-C2) —
+#: `application/reference_networks/station_archetype_substrate.py` (29 wzorców
+#: w pomiarze W3-F na bazie a16f8d2b) leży od K2 pod `backend/tests/`, poza
+#: skanem, a `computation.py` (rodzina G) został skasowany w K2 — oba wpisy
+#: zdjęte przy scaleniu fali 2 (odbiór 2026-09-10). Pozostałe 155 wzorców
+#: w 55 plikach PRZENIESIONE do `network_model/pochodne/jednostki.py` (bit w
+#: bit, testy tożsamości).
 ZASTANE: dict[str, dict[str, int]] = {
     "application/analyses/protection/overcurrent/calculator.py": {"E_idmt_shape": 1},
+    "application/analyses/protection/line_overcurrent_setting/analyzer.py": {
+        "J_skalowanie_jednostek": 7
+    },
+    "application/analyses/protection/line_overcurrent_setting/spz_lookup.py": {
+        "J_skalowanie_jednostek": 1
+    },
 }
 
 _TIME_RE = re.compile(r"(^|_)(t|tk|time|czas)(_|$)", re.IGNORECASE)
+
+#: Rodzina J (karta W3-F §0.3) — stałe skalowania prefiksów SI wykrywane jako
+#: operand `BinOp` Mult/Div. Równość float DOKŁADNA (nie tolerancja): te
+#: cztery literały są wzajemnie zamiennymi formami tego samego bitowego
+#: wzorca IEEE 754 niezależnie od zapisu źródłowego (`1e3 == 1000.0`,
+#: `1e-3 == 0.001`, `1_000_000.0 == 1e6`).
+_J_STALE_JEDNOSTEK: tuple[float, ...] = (1000.0, 0.001, 1_000_000.0, 1e-6)
+
+#: Token jednostki na KOŃCU identyfikatora (case-insensitive) — dopasowanie
+#: po KSZTAŁCIE nazwy, nie po wiedzy domenowej: `b_us_per_km` trafia przez
+#: `km` (mimo że fizyczną jednostką jest µS/km), `_SQLITE_BUSY_TIMEOUT_S`
+#: przez `s`, `wartosc_a` przez `a` (karta W3-F §0.3, self-test poniżej).
+_UNIT_SUFFIX_RE = re.compile(
+    r"(^|_)(w|kw|mw|va|kva|mva|var|kvar|mvar|wh|kwh|mwh|a|ka|v|kv|m|km|mm|"
+    r"s|ms|us|nf|siemens|ohm)$",
+    re.IGNORECASE,
+)
+
+#: Wołania, które WOLNO zdjąć z operandu przed sprawdzeniem nazwy — dokładnie
+#: te trzy (karta W3-F §0.3): `float(...)`, `abs(...)`, `int(...)`, zawsze z
+#: DOKŁADNIE jednym argumentem pozycyjnym (nie wiadomo, co robi wywołanie z
+#: więcej niż jednym argumentem — nie zgadujemy).
+_J_STRIPPABLE_CALLS = frozenset({"float", "abs", "int"})
+
+
+def _j_zdejmij_opakowanie(node: ast.expr) -> ast.expr:
+    """Zdejmuje `float(...)`/`abs(...)`/`int(...)` (dowolną liczbę razy,
+    zagnieżdżone) z operandu, zanim sprawdzimy, czy to nazwa/atrybut/klucz
+    kończący się tokenem jednostki."""
+    while (
+        isinstance(node, ast.Call)
+        and len(node.args) == 1
+        and not node.keywords
+        and (fname := _dotted_name(node.func)) is not None
+        and fname.rsplit(".", 1)[-1] in _J_STRIPPABLE_CALLS
+    ):
+        node = node.args[0]
+    return node
+
+
+def _j_identyfikator(node: ast.expr) -> str | None:
+    """Nazwa do sprawdzenia regexem jednostki: `Name.id`, OSTATNI segment
+    `Attribute.attr`, albo wartość klucza-napisu `Subscript` (np.
+    `row["ikss_a"]` -> `"ikss_a"`). Każdy inny kształt (BinOp, Call inny niż
+    zdjęty wyżej, literał liczbowy, ...) zwraca `None` — NIE jest operandem
+    jednostkowym w rozumieniu rodziny J (te miejsca migrujemy ręcznie, poza
+    kształtem J — patrz karta W3-F §0.3, lista „poza kształtem J" w meldunku)."""
+    node = _j_zdejmij_opakowanie(node)
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        return node.attr
+    if isinstance(node, ast.Subscript):
+        klucz = node.slice
+        if isinstance(klucz, ast.Constant) and isinstance(klucz.value, str):
+            return klucz.value
+    return None
+
+
+def _j_jest_operandem_jednostkowym(node: ast.expr) -> bool:
+    identyfikator = _j_identyfikator(node)
+    return identyfikator is not None and bool(_UNIT_SUFFIX_RE.search(identyfikator))
+
+
+def _is_j_unit_scaling(node: ast.expr) -> bool:
+    """`BinOp` Mult/Div: jeden operand to stała skalowania jednostki (dla Div
+    WYŁĄCZNIE prawy — `1000 / x_kv` NIE jest skalowaniem x_kv, jest czymś
+    innym), drugi operand (po zdjęciu opakowania) kończy się tokenem
+    jednostki. Karta W3-F §0.3 — self-testy w `test_backend_no_physics_guard.py`
+    (pozytywne/negatywne z listy karty)."""
+    if not (isinstance(node, ast.BinOp) and isinstance(node.op, ast.Mult | ast.Div)):
+        return False
+    if isinstance(node.op, ast.Div):
+        stala = _num(node.right)
+        return (
+            stala is not None
+            and stala in _J_STALE_JEDNOSTEK
+            and _j_jest_operandem_jednostkowym(node.left)
+        )
+    # Mult: stała może być po dowolnej stronie.
+    for kandydat_stala, drugi in ((node.left, node.right), (node.right, node.left)):
+        stala = _num(kandydat_stala)
+        if (
+            stala is not None
+            and stala in _J_STALE_JEDNOSTEK
+            and _j_jest_operandem_jednostkowym(drugi)
+        ):
+            return True
+    return False
 
 
 def _dotted_name(node: ast.expr) -> str | None:
@@ -354,6 +468,8 @@ def zlicz_wzorce(tree: ast.AST) -> dict[str, int]:
             licznik["D_korekta_temperaturowa"] += 1
         if _is_z_u2_s_shape(node):
             licznik["G_z_u2_s"] += 1
+        if _is_j_unit_scaling(node):
+            licznik["J_skalowanie_jednostek"] += 1
     # Rodzina E: jedyna wymagająca świadomości zasięgu (przypisanie do
     # zmiennej lokalnej, potem użycie w dzieleniu) — osobny przebieg, nie
     # płaski `_walk_z_rodzicem` powyżej (patrz `_licz_idmt_w_pliku`).
