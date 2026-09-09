@@ -81,11 +81,11 @@ const GPZ_DEFAULT_CARD_IDS = new Set<GpzCardId>([
 
 /** Karta W2-B (klasa `ACTION_ROADMAP_HINT_PL`): deep-link na konkretną kartę
  *  E-10 — wzorzec `stationDefaultCard` z `StationConfiguratorSurface.tsx`.
- *  Akcje menu SLD "Pokaż dane zwarciowe źródła"/"Pokaż dane zwarciowe źródła"
- *  sekcji (`show-sc-source`/`show-sc-data`, `shared/sldActionExecutor.ts`)
- *  otwierają WPROST kartę "Strona 110 kV" zamiast zostawiać użytkownika na
- *  domyślnej "Identyfikacja". Nieznana/brakująca wartość = uczciwy domyślny
- *  start. */
+ *  Akcje menu SLD "Pokaż dane zwarciowe źródła" (GPZ) / "Pokaż dane
+ *  zwarciowe sekcji" (`show-sc-source`/`show-sc-data`,
+ *  `shared/sldActionExecutor.ts`) otwierają WPROST kartę "Strona 110 kV"
+ *  zamiast zostawiać użytkownika na domyślnej "Identyfikacja". Nieznana/
+ *  brakująca wartość = uczciwy domyślny start. */
 function gpzDefaultCard(surface: WorkspaceSurfaceDescriptor): GpzCardId {
   const payload = surface.routeState?.payload;
   const defaultCard = payload && typeof payload === 'object'
