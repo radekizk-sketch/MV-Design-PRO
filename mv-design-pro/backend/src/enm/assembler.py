@@ -158,9 +158,16 @@ def _build_snapshot_graph_element_context(
     }
 
 
-def _study_frequency_hz(snapshot: dict[str, Any] | None) -> float:
+def czestotliwosc_studium_hz(snapshot: dict[str, Any] | None) -> float:
     """ADR-011 (Z-ZIP-04): system frequency for the study, from the ENM header
-    defaults (ENMDefaults.frequency_hz). Falls back to 50.0 Hz."""
+    defaults (ENMDefaults.frequency_hz). Falls back to 50.0 Hz.
+
+    Karta W3-F (§0.6, 2026-09-09): odblokowana z prywatnej (`_study_frequency_hz`
+    -> `czestotliwosc_studium_hz`) — jedyne miejsce prawdy o częstotliwości
+    studium z surowej migawki ENM, reużywane przez `enm/domain_operations.py`
+    i `enm/catalog_completion.py` przy materializacji susceptancji kabla
+    (B=2πfC), zamiast duplikować ten sam odczyt nagłówka w każdym module.
+    """
     defaults = ((snapshot or {}).get("header") or {}).get("defaults") or {}
     try:
         return float(defaults.get("frequency_hz", 50.0))
@@ -793,7 +800,7 @@ def zloz_wejscie_rozplywu(
 
     # ADR-011 (Z-ZIP-04): study frequency from the ENM header defaults
     # (drives the P(f)/Q(f) factor; at f0 the factor is 1.0).
-    base_frequency_hz = _study_frequency_hz(snapshot)
+    base_frequency_hz = czestotliwosc_studium_hz(snapshot)
     # Jedna wyspa zasilona = wejście na PEŁNYM grafie z pełnymi listami (tożsame
     # z wejściem sprzed karty K3b — parytet złotych hashy bit w bit; węzły wysp
     # niezasilonych solver sam pomija jako ``not_solved_nodes``). Kilka wysp

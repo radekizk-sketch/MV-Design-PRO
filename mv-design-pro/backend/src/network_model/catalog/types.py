@@ -36,6 +36,7 @@ from network_model.ir_fields import (
     wymagany_int,
     wymagany_str,
 )
+from network_model.pochodne import simens_na_mikrosimens, susceptancja_z_pojemnosci_s_per_km
 
 # =============================================================================
 # CATALOG NAMESPACE ENUM — kanoniczne nazwy przestrzeni nazw katalogu
@@ -822,15 +823,21 @@ class CableType:
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
 
-    @property
-    def b_us_per_km(self) -> float:
-        """
-        Calculate susceptance from capacitance.
+    def susceptancja_us_per_km(self, czestotliwosc_hz: float) -> float:
+        """Susceptancja z pojemności jednostkowej kabla: B = 2π·f·C [µS/km].
 
-        B [μS/km] = 2 * π * f * C [nF/km] * 1e-3
-        Assuming f = 50 Hz
+        Karta W3-F (§0.6, 2026-09-09) — zastępuje byłą własność `b_us_per_km`
+        (zaszywała f = 50 Hz i π ≈ 3,14159). Typ katalogowy NIE ZNA
+        częstotliwości studium — wołający (resolver, materializacja ENM)
+        przekazuje ją jawnie; datum kabla to WYŁĄCZNIE `c_nf_per_km`.
+
+        Sekwencja identyczna z torem ENM → `enm/mapping.py:1016`:
+        `susceptancja_z_pojemnosci_s_per_km` (S/km, `math.pi`) ->
+        `simens_na_mikrosimens` (S -> µS, ×1e6).
         """
-        return 2 * 3.14159 * 50 * self.c_nf_per_km * 1e-3
+        return simens_na_mikrosimens(
+            susceptancja_z_pojemnosci_s_per_km(self.c_nf_per_km, czestotliwosc_hz)
+        )
 
     @property
     def dane_cieplne_kompletne(self) -> bool:
@@ -895,7 +902,6 @@ class CableType:
             "r_ohm_per_km": self.r_ohm_per_km,
             "x_ohm_per_km": self.x_ohm_per_km,
             "c_nf_per_km": self.c_nf_per_km,
-            "b_us_per_km": self.b_us_per_km,
             "rated_current_a": self.rated_current_a,
             "manufacturer": self.manufacturer,
             "voltage_rating_kv": self.voltage_rating_kv,
@@ -3992,6 +3998,10 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
         ui_fields=(
             ("r_ohm_per_km", "R [Ω/km] @20°C", "Ω/km"),
             ("x_ohm_per_km", "X [Ω/km]", "Ω/km"),
+            # Karta W3-F (§0.6, 2026-09-09): kabel pokazuje datum pojemnościowe
+            # C [nF/km] — B [µS/km] usunięte jako własność katalogowa (typ nie
+            # zna częstotliwości studium, patrz `CableType.susceptancja_us_per_km`).
+            ("c_nf_per_km", "C [nF/km]", "nF/km"),
             ("rated_current_a", "Imax [A]", "A"),
             ("voltage_rating_kv", "U [kV]", "kV"),
             ("cross_section_mm2", "Przekrój", "mm²"),

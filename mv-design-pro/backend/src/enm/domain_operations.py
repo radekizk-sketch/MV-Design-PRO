@@ -19,6 +19,7 @@ from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any
 
 from domain.readiness_bridge import opis_kanoniczny
+from enm.assembler import czestotliwosc_studium_hz
 from network_model.catalog.audit2_catalogs import (
     get_tap_changer,
     tap_changer_fields_from_catalog,
@@ -29,7 +30,17 @@ from network_model.catalog.materialization import materialize_catalog_binding
 if TYPE_CHECKING:
     from network_model.catalog.repository import CatalogRepository
 from network_model.catalog.types import CatalogBinding
-from network_model.pochodne import moc_bierna_z_czynnej_i_cos_phi
+from network_model.pochodne import (
+    km_na_m,
+    kva_na_mva,
+    kvar_na_mvar,
+    kw_na_mw,
+    m_na_km,
+    mikrosimens_na_simens,
+    moc_bierna_z_czynnej_i_cos_phi,
+    mva_na_kva,
+    susceptancja_z_pojemnosci_s_per_km,
+)
 
 from .katalog_projektu import BladKataloguProjektu, katalog_biezacy, kontekst_katalogu
 from .kopia_graniczna import kopia_graniczna_enm
@@ -2695,8 +2706,16 @@ def _materialize_catalog_payload(
 def _apply_materialized_branch_fields(
     target: dict[str, Any],
     materialized_params: dict[str, Any],
+    czestotliwosc_hz: float,
 ) -> None:
-    """Wpisz do gałęzi zarówno fizykę solvera, jak i trwałą materializację."""
+    """Wpisz do gałęzi zarówno fizykę solvera, jak i trwałą materializację.
+
+    `czestotliwosc_hz` — częstotliwość studium (karta W3-F §0.6), WYMAGANA:
+    steruje wyprowadzeniem susceptancji z pojemności kabla (B=2πfC), gdy
+    katalog niesie WYŁĄCZNIE `c_nf_per_km` (typ kabla nie zna częstotliwości).
+    Żaden literał 50 w torze wzoru — wołający przekazuje
+    `czestotliwosc_studium_hz(enm)` z nagłówka ENM.
+    """
     target["materialized_params"] = materialized_params
 
     r_ohm_per_km = materialized_params.get("r_ohm_per_km")
@@ -2709,9 +2728,14 @@ def _apply_materialized_branch_fields(
     b_us_per_km = materialized_params.get("b_us_per_km")
     c_nf_per_km = materialized_params.get("c_nf_per_km")
     if b_us_per_km is not None:
-        target["b_siemens_per_km"] = float(b_us_per_km) / 1_000_000.0
+        target["b_siemens_per_km"] = mikrosimens_na_simens(float(b_us_per_km))
     elif c_nf_per_km is not None:
-        target["b_siemens_per_km"] = 2 * math.pi * 50.0 * float(c_nf_per_km) * 1e-9
+        target["b_siemens_per_km"] = susceptancja_z_pojemnosci_s_per_km(
+            float(c_nf_per_km), czestotliwosc_hz
+        )
+        # Proweniencja (karta W3-F §0.6): z JAKIEJ częstotliwości policzono B,
+        # żeby zmiana częstotliwości projektu po materializacji była wykrywalna.
+        materialized_params["frequency_hz"] = czestotliwosc_hz
 
     rated_current_a = (
         materialized_params.get("rated_current_a")
@@ -3179,15 +3203,15 @@ def _compute_materialized_params(enm: dict[str, Any]) -> dict[str, Any]:
             # zapasowej liczby, zamiast pozostawiać wzorzec wyglądający na
             # fabrykację.
             s_n_kva = (
-                float(rated_power_mva) * 1000
+                mva_na_kva(float(rated_power_mva))
                 if rated_power_mva is not None
-                else float(t["sn_mva"]) * 1000 if t.get("sn_mva") else None
+                else mva_na_kva(float(t["sn_mva"])) if t.get("sn_mva") else None
             )
         else:
             uk_percent = t.get("uk_percent")
             p0_kw = t.get("p0_kw")
             pk_kw = t.get("pk_kw")
-            s_n_kva = float(t["sn_mva"]) * 1000 if t.get("sn_mva") else None
+            s_n_kva = mva_na_kva(float(t["sn_mva"])) if t.get("sn_mva") else None
 
             if catalog:
                 type_data = catalog.get_transformer_type(catalog_ref)
@@ -3195,7 +3219,7 @@ def _compute_materialized_params(enm: dict[str, Any]) -> dict[str, Any]:
                     uk_percent = type_data.uk_percent
                     p0_kw = type_data.p0_kw
                     pk_kw = type_data.pk_kw
-                    s_n_kva = type_data.rated_power_mva * 1000
+                    s_n_kva = mva_na_kva(type_data.rated_power_mva)
 
         transformers_sn_nn[t["ref_id"]] = {
             "catalog_item_id": catalog_ref,
@@ -4659,7 +4683,7 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
         "type": branch_type,
         "from_bus_ref": from_terminal_id,
         "to_bus_ref": new_bus_ref,
-        "length_km": dlugosc_m / 1000.0,
+        "length_km": m_na_km(dlugosc_m),
         "r_ohm_per_km": 0.0,
         "x_ohm_per_km": 0.0,
         "status": "closed",
@@ -4687,7 +4711,9 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
         binding_payload,
         default_namespace="KABEL_SN" if branch_type == "cable" else "LINIA_SN",
     )
-    _apply_materialized_branch_fields(branch_data, materialized_params)
+    _apply_materialized_branch_fields(
+        branch_data, materialized_params, czestotliwosc_studium_hz(enm)
+    )
     _apply_explicit_segment_zero_sequence(branch_data, segment)
 
     result = create_branch(new_enm, branch_data)
@@ -5276,8 +5302,8 @@ def _materialize_station_auxiliary_load(
             "ref_id": load_ref,
             "name": aux.get("name") or "Potrzeby własne stacji",
             "bus_ref": nn_bus_id,
-            "p_mw": p_kw / 1000.0,
-            "q_mvar": q_kvar / 1000.0,
+            "p_mw": kw_na_mw(p_kw),
+            "q_mvar": kvar_na_mvar(q_kvar),
             "model": "pq",
             "source_mode": "EKSPERCKI_RECZNY",
             "parameter_source": "OVERRIDE",
@@ -5408,13 +5434,13 @@ def _nn_source_nameplate_from_catalog(
     if catalog_namespace == "ZRODLO_NN_PV":
         pmax_kw = _as_positive_float(catalog_params.get("p_max_kw"))
         sn_kva = _as_positive_float(catalog_params.get("s_n_kva"))
-        pmax_mw = pmax_kw / 1000.0 if pmax_kw is not None else None
-        sn_mva = sn_kva / 1000.0 if sn_kva is not None else None
+        pmax_mw = kw_na_mw(pmax_kw) if pmax_kw is not None else None
+        sn_mva = kva_na_mva(sn_kva) if sn_kva is not None else None
     elif catalog_namespace == "ZRODLO_NN_BESS":
         pmax_kw = _as_positive_float(catalog_params.get("p_discharge_kw"))
         sn_kva = _as_positive_float(catalog_params.get("s_n_kva"))
-        pmax_mw = pmax_kw / 1000.0 if pmax_kw is not None else None
-        sn_mva = sn_kva / 1000.0 if sn_kva is not None else None
+        pmax_mw = kw_na_mw(pmax_kw) if pmax_kw is not None else None
+        sn_mva = kva_na_mva(sn_kva) if sn_kva is not None else None
     else:
         pmax_mw = _as_positive_float(catalog_params.get("pmax_mw"))
         sn_mva = _as_positive_float(catalog_params.get("sn_mva"))
@@ -6312,7 +6338,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     if insert_mode == "RATIO":
         ratio = float(insert_value)
     elif insert_mode == "ODLEGLOSC_OD_POCZATKU_M":
-        total_m = length_km * 1000.0
+        total_m = km_na_m(length_km)
         ratio = float(insert_value) / total_m if total_m > 0 else 0.5
     else:
         ratio = 0.5
@@ -6424,7 +6450,9 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
             binding_payload,
             default_namespace="KABEL_SN" if seg_type == "cable" else "LINIA_SN",
         )
-        _apply_materialized_branch_fields(left_data, materialized_params)
+        _apply_materialized_branch_fields(
+            left_data, materialized_params, czestotliwosc_studium_hz(enm)
+        )
     result = create_branch(new_enm, left_data)
     if not result.success:
         return _error_response(
@@ -6462,7 +6490,9 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
             binding_payload,
             default_namespace="KABEL_SN" if seg_type == "cable" else "LINIA_SN",
         )
-        _apply_materialized_branch_fields(right_data, materialized_params)
+        _apply_materialized_branch_fields(
+            right_data, materialized_params, czestotliwosc_studium_hz(enm)
+        )
     result = create_branch(new_enm, right_data)
     if not result.success:
         return _error_response(
@@ -6958,7 +6988,7 @@ def _build_split_preview_metadata(
     if insert_mode == "RATIO":
         split_ratio = float(insert_value)
     elif insert_mode == "ODLEGLOSC_OD_POCZATKU_M" and length_km > 0:
-        split_ratio = float(insert_value) / (length_km * 1000.0)
+        split_ratio = float(insert_value) / km_na_m(length_km)
         if split_ratio < 0.0:
             split_ratio = 0.0
         if split_ratio > 1.0:
@@ -7169,7 +7199,7 @@ def _insert_branch_point_on_segment_sn(
     length_km = float(segment.get("length_km", 0.0))
     ratio = float(insert_at.get("value", 0.5))
     if insert_at.get("mode") == "ODLEGLOSC_OD_POCZATKU_M":
-        ratio = float(insert_at.get("value", 0.0)) / (length_km * 1000.0) if length_km > 0 else 0.5
+        ratio = float(insert_at.get("value", 0.0)) / km_na_m(length_km) if length_km > 0 else 0.5
     ratio = _quantize_ratio(max(0.0, min(1.0, ratio)))
 
     seed = _compute_seed(
@@ -7610,7 +7640,7 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
         "type": branch_type,
         "from_bus_ref": from_bus_ref,
         "to_bus_ref": new_bus_ref,
-        "length_km": dlugosc_m / 1000.0,
+        "length_km": m_na_km(dlugosc_m),
         "r_ohm_per_km": 0.0,
         "x_ohm_per_km": 0.0,
         "status": "closed",
@@ -7629,7 +7659,9 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
         binding_payload,
         default_namespace="KABEL_SN" if branch_type == "cable" else "LINIA_SN",
     )
-    _apply_materialized_branch_fields(branch_data, materialized_params)
+    _apply_materialized_branch_fields(
+        branch_data, materialized_params, czestotliwosc_studium_hz(enm)
+    )
     _apply_explicit_segment_zero_sequence(branch_data, segment)
     result = create_branch(new_enm, branch_data)
     if not result.success:
@@ -7765,7 +7797,7 @@ def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
     ratio = (
         insert_value
         if insert_mode == "RATIO"
-        else (insert_value / (length_km * 1000) if length_km > 0 else 0.5)
+        else (insert_value / km_na_m(length_km) if length_km > 0 else 0.5)
     )
 
     seed = _compute_seed(
@@ -8017,7 +8049,7 @@ def connect_secondary_ring_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
         "type": branch_type,
         "from_bus_ref": from_bus_ref,
         "to_bus_ref": to_bus_ref,
-        "length_km": dlugosc_m / 1000.0,
+        "length_km": m_na_km(dlugosc_m),
         "r_ohm_per_km": 0.0,
         "x_ohm_per_km": 0.0,
         "status": "closed",
@@ -8036,7 +8068,7 @@ def connect_secondary_ring_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
         binding_payload,
         default_namespace="KABEL_SN" if branch_type == "cable" else "LINIA_SN",
     )
-    _apply_materialized_branch_fields(ring_data, materialized_params)
+    _apply_materialized_branch_fields(ring_data, materialized_params, czestotliwosc_studium_hz(enm))
     result = create_branch(new_enm, ring_data)
     if not result.success:
         return _error_response("Nie udało się zamknąć pierścienia.", "ring.creation_failed")
@@ -8561,7 +8593,9 @@ def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 target_element, binding_przypisania, default_namespace=catalog_namespace
             )
             if coll == "branches" and target_element.get("type") in {"cable", "line_overhead"}:
-                _apply_materialized_branch_fields(target_element, tabliczka_przypisania)
+                _apply_materialized_branch_fields(
+                    target_element, tabliczka_przypisania, czestotliwosc_studium_hz(enm)
+                )
             elif coll == "transformers":
                 _apply_materialized_transformer_fields(target_element, tabliczka_przypisania)
 

@@ -28,7 +28,14 @@ from network_model.catalog import (
 from network_model.catalog.types import TransformerType
 from network_model.core.voltage_factor import c_for_node
 from network_model.ir_fields import wymagany_float
-from network_model.pochodne import impedancja_z_napiecia_i_mocy_ohm, napiecie_fazowe_v
+from network_model.pochodne import (
+    a_na_ka,
+    impedancja_z_napiecia_i_mocy_ohm,
+    kv_na_v,
+    kw_na_mw,
+    mikrosimens_na_simens_ybus,
+    napiecie_fazowe_v,
+)
 
 
 class BranchType(Enum):
@@ -473,10 +480,10 @@ class LineBranch(Branch):
             Complex shunt admittance Y_sh = jB_total [S].
         """
         if self.impedance_override is not None:
-            b_total = self.impedance_override.b_total_us * 1e-6
+            b_total = mikrosimens_na_simens_ybus(self.impedance_override.b_total_us)
             return complex(0, b_total)
         # Convert from μS/km to S/km, then multiply by length
-        b_s_per_km = self.b_us_per_km * 1e-6
+        b_s_per_km = mikrosimens_na_simens_ybus(self.b_us_per_km)
         b_total = b_s_per_km * self.length_km
         return complex(0, b_total)
 
@@ -492,12 +499,24 @@ class LineBranch(Branch):
         return self.get_shunt_admittance() / 2
 
     def resolve_electrical_params(
-        self, catalog: CatalogRepository | None = None
+        self, catalog: CatalogRepository | None = None, *, czestotliwosc_hz: float
     ) -> ResolvedLineParams:
         """
         Resolve electrical parameters using canonical precedence rules.
 
         Precedence: impedance_override > type_ref > instance
+
+        Args:
+            catalog: Optional catalog repository.
+            czestotliwosc_hz: Częstotliwość studium [Hz] — WYMAGANA (karta W3-F
+                §0.6, bez wartości domyślnej): jedyny konsument jest B=2πfC
+                kabla (`CableType.susceptancja_us_per_km`), gdy `type_ref`
+                wskazuje kabel. Pomiar karty (2026-09-09): TEN kod nie ma
+                obecnie ŻADNEGO wołania produkcyjnego (tylko fikstury testowe
+                — `grep resolve_electrical_params\\|with_resolved_params`) —
+                decyzja o kasacji martwej ścieżki należy do architekta, nie do
+                tej karty; sygnatura mimo to dostaje wymagany parametr, żeby
+                cały tor resolvera miał JEDNĄ regułę bez cichego 50 Hz.
 
         Returns:
             ResolvedLineParams with resolved values and source indicator.
@@ -519,10 +538,13 @@ class LineBranch(Branch):
             instance_b_us_per_km=self.b_us_per_km,
             instance_rated_current_a=self.rated_current_a,
             catalog=catalog,
+            czestotliwosc_hz=czestotliwosc_hz,
         )
 
-    def with_resolved_params(self, catalog: CatalogRepository | None = None) -> "LineBranch":
-        resolved = self.resolve_electrical_params(catalog)
+    def with_resolved_params(
+        self, catalog: CatalogRepository | None = None, *, czestotliwosc_hz: float
+    ) -> "LineBranch":
+        resolved = self.resolve_electrical_params(catalog, czestotliwosc_hz=czestotliwosc_hz)
         return replace(
             self,
             r_ohm_per_km=resolved.r_ohm_per_km,
@@ -860,7 +882,7 @@ class TransformerBranch(Branch):
 
         # Validate discriminant for reactance calculation
         z_pu_sn = self.uk_percent / 100.0
-        r_pu_sn = (self.pk_kw / 1000.0) / self.rated_power_mva
+        r_pu_sn = kw_na_mw(self.pk_kw) / self.rated_power_mva
         discriminant = z_pu_sn * z_pu_sn - r_pu_sn * r_pu_sn
         if discriminant < 0:
             return False
@@ -894,7 +916,7 @@ class TransformerBranch(Branch):
         """
         self._validate_short_circuit_inputs()
         z_pu = self.uk_percent / 100.0
-        r_pu = (self.pk_kw / 1000.0) / self.rated_power_mva
+        r_pu = kw_na_mw(self.pk_kw) / self.rated_power_mva
         x_pu = math.sqrt(max(z_pu * z_pu - r_pu * r_pu, 0.0))
         return complex(r_pu, x_pu)
 
@@ -906,7 +928,7 @@ class TransformerBranch(Branch):
             Short-circuit resistance in per unit.
         """
         self._validate_short_circuit_inputs()
-        return (self.pk_kw / 1000.0) / self.rated_power_mva
+        return kw_na_mw(self.pk_kw) / self.rated_power_mva
 
     def get_short_circuit_reactance_pu(self) -> float:
         """
@@ -917,7 +939,7 @@ class TransformerBranch(Branch):
         """
         self._validate_short_circuit_inputs()
         z_pu = self.uk_percent / 100.0
-        r_pu = (self.pk_kw / 1000.0) / self.rated_power_mva
+        r_pu = kw_na_mw(self.pk_kw) / self.rated_power_mva
         return math.sqrt(max(z_pu * z_pu - r_pu * r_pu, 0.0))
 
     def get_short_circuit_impedance_ohm_lv(self) -> complex:
@@ -978,9 +1000,9 @@ class TransformerBranch(Branch):
         z_th_lv = self.get_short_circuit_impedance_ohm_lv()
         if z_th_lv == 0 or abs(z_th_lv) == 0:
             raise ZeroDivisionError("Short-circuit impedance is zero")
-        u_th = napiecie_fazowe_v(c * (self.voltage_lv_kv * 1e3))
+        u_th = napiecie_fazowe_v(c * kv_na_v(self.voltage_lv_kv))
         ikss = u_th / abs(z_th_lv)
-        return ikss / 1000.0
+        return a_na_ka(ikss)
 
     def get_ikss_lv_cmax_ka(self) -> float:
         """
@@ -1109,7 +1131,7 @@ class TransformerBranch(Branch):
             ValueError: If discriminant is negative (pk too large for uk).
         """
         z_pu_sn = self.uk_percent / 100.0
-        r_pu_sn = (self.pk_kw / 1000.0) / self.rated_power_mva
+        r_pu_sn = kw_na_mw(self.pk_kw) / self.rated_power_mva
 
         discriminant = z_pu_sn * z_pu_sn - r_pu_sn * r_pu_sn
         if discriminant < 0:
@@ -1282,6 +1304,6 @@ def _compute_transformer_impedance_pu(
     *, rated_power_mva: float, uk_percent: float, pk_kw: float
 ) -> complex:
     z_pu = uk_percent / 100.0
-    r_pu = (pk_kw / 1000.0) / rated_power_mva
+    r_pu = kw_na_mw(pk_kw) / rated_power_mva
     x_pu = math.sqrt(max(z_pu * z_pu - r_pu * r_pu, 0.0))
     return complex(r_pu, x_pu)

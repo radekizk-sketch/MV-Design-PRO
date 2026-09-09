@@ -34,6 +34,7 @@ from network_model.catalog.mv_cable_line_catalog import (
     get_manufacturer_cable_type_ids,
 )
 from network_model.catalog.types import CatalogStatus
+from network_model.pochodne import simens_na_mikrosimens, susceptancja_z_pojemnosci_s_per_km
 
 
 class TestCatalogCompleteness:
@@ -483,14 +484,26 @@ class TestCableTypeProperties:
     """Testy właściwości typu CableType."""
 
     def test_cable_type_b_us_per_km_calculation(self) -> None:
-        """Susceptance jest poprawnie obliczane z pojemności."""
+        """Susceptancja jest poprawnie wyprowadzana z pojemności (karta W3-F
+        §0.6) — była własność `CableType.b_us_per_km` (π ≈ 3,14159, f=50 Hz
+        zaszyte) zastąpiona metodą `susceptancja_us_per_km(czestotliwosc_hz)`
+        (math.pi, częstotliwość jawna u wołającego)."""
         catalog = get_default_mv_catalog()
         cable = catalog.get_cable_type("cable-base-xlpe-al-1c-150")
 
         assert cable is not None
-        # B = 2 * π * 50 * C * 1e-3, gdzie C w nF/km
-        expected_b = 2 * 3.14159 * 50 * cable.c_nf_per_km * 1e-3
-        assert cable.b_us_per_km == pytest.approx(expected_b, rel=0.01)
+        assert not hasattr(cable, "b_us_per_km")
+        # B = 2 * π * f * C * 1e-3, gdzie C w nF/km — math.pi, nie przybliżenie.
+        expected_b = simens_na_mikrosimens(
+            susceptancja_z_pojemnosci_s_per_km(cable.c_nf_per_km, 50.0)
+        )
+        assert cable.susceptancja_us_per_km(50.0) == expected_b
+        # f=60 Hz (studium 60 Hz) daje INNĄ wartość — dowód, że częstotliwość
+        # jest parametrem, nie stałą zaszytą w typie katalogowym.
+        assert cable.susceptancja_us_per_km(60.0) == simens_na_mikrosimens(
+            susceptancja_z_pojemnosci_s_per_km(cable.c_nf_per_km, 60.0)
+        )
+        assert cable.susceptancja_us_per_km(60.0) != cable.susceptancja_us_per_km(50.0)
 
     def test_cable_type_to_dict(self) -> None:
         """CableType.to_dict() zawiera wszystkie pola."""

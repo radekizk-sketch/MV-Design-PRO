@@ -32,13 +32,21 @@ from network_model.catalog.switchgear import (
 )
 from network_model.catalog.types import CatalogBinding
 from network_model.pochodne import (
+    km_na_m,
+    kvar_na_mvar,
+    kw_na_mw,
+    m_na_km,
     moc_bierna_z_czynnej_i_cos_phi,
     moc_pozorna_z_czynnej_mva,
+    mva_na_kva,
+    mvar_na_kvar,
+    mw_na_kw,
 )
 from network_model.solvers import cable_ampacity_derating as cable_derating
 from network_model.solvers.protection_iec60255 import compute_idmt_generic
 
 from . import der_sn_validation as der_val
+from .assembler import czestotliwosc_studium_hz
 from .catalog_completion import NN_FIELD_ORIGIN_OPERACJA_DOMENOWA
 from .domain_operations import (
     FUNKCJA_POMIARU_DOMYSLNA_POLA_DOKLADANEGO,
@@ -1321,8 +1329,8 @@ def _validate_converter_transformer_capacity(
 
     return _error_response(
         (
-            f"Moc katalogowa źródła {technology} ({required_mva * 1000:.0f} kVA) "
-            f"przekracza moc transformatora stacji ({capacity_mva * 1000:.0f} kVA). "
+            f"Moc katalogowa źródła {technology} ({mva_na_kva(required_mva):.0f} kVA) "
+            f"przekracza moc transformatora stacji ({mva_na_kva(capacity_mva):.0f} kVA). "
             "Wybierz mniejszy wariant źródła albo zastosuj transformator dedykowany."
         ),
         "converter.transformer_capacity_exceeded",
@@ -2519,8 +2527,8 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         "ref_id": load_ref,
         "name": payload.get("load_name") or "Odbiór nN",
         "bus_ref": feeder_bus_ref,
-        "p_mw": active_power_kw / 1000.0,
-        "q_mvar": reactive_power_kvar / 1000.0,
+        "p_mw": kw_na_mw(active_power_kw),
+        "q_mvar": kvar_na_mvar(reactive_power_kvar),
         # Load.model akceptuje 'pq' | 'zip' — 'pq' = constant power (klasyczny PQ).
         "model": "zip" if zip_odbioru else "pq",
         "catalog_ref": catalog_ref,
@@ -2733,7 +2741,7 @@ def _add_nn_cable_segment_internal(
         "type": "cable",
         "from_bus_ref": from_bus_ref,
         "to_bus_ref": to_bus_ref,
-        "length_km": length_m / 1000.0,
+        "length_km": m_na_km(length_m),
         "r_ohm_per_km": 0.0,
         "x_ohm_per_km": 0.0,
         "status": "closed",
@@ -2748,8 +2756,10 @@ def _add_nn_cable_segment_internal(
 
     branch_data["catalog_ref"] = catalog_ref
     _apply_catalog_metadata(branch_data, binding_payload, default_namespace="KABEL_NN")
-    _apply_materialized_branch_fields(branch_data, materialized_params)
-    branch_data["length_km"] = length_m / 1000.0
+    _apply_materialized_branch_fields(
+        branch_data, materialized_params, czestotliwosc_studium_hz(enm)
+    )
+    branch_data["length_km"] = m_na_km(length_m)
 
     result = create_branch(new_enm, branch_data)
     if not result.success:
@@ -3235,7 +3245,7 @@ def split_nn_segment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
     except DomainInvariantError as blad:
         return _error_response(blad.message_pl, blad.code)
     length_km = pola_odcinka["length_km"]
-    length_m_total = length_km * 1000.0
+    length_m_total = km_na_m(length_km)
 
     split_at_m = _opt_float_any(payload.get("split_at_m"))
     if split_at_m is None:
@@ -3285,7 +3295,7 @@ def split_nn_segment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
         "type": "cable",
         "from_bus_ref": from_bus_ref,
         "to_bus_ref": mid_bus_ref,
-        "length_km": split_at_m / 1000.0,
+        "length_km": m_na_km(split_at_m),
         "r_ohm_per_km": pola_odcinka["r_ohm_per_km"],
         "x_ohm_per_km": pola_odcinka["x_ohm_per_km"],
         "status": segment.get("status", "closed"),
@@ -3306,7 +3316,7 @@ def split_nn_segment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
         "type": "cable",
         "from_bus_ref": mid_bus_ref,
         "to_bus_ref": to_bus_ref,
-        "length_km": (length_m_total - split_at_m) / 1000.0,
+        "length_km": m_na_km(length_m_total - split_at_m),
         "r_ohm_per_km": pola_odcinka["r_ohm_per_km"],
         "x_ohm_per_km": pola_odcinka["x_ohm_per_km"],
         "status": segment.get("status", "closed"),
@@ -3918,7 +3928,7 @@ def _kw_to_mw(value: object) -> float | None:
     numeric = _as_float(value)
     if numeric is None:
         return None
-    return numeric / 1000.0
+    return kw_na_mw(numeric)
 
 
 def _first_number(*candidates: object) -> float | None:
@@ -4743,11 +4753,15 @@ def _materialize_der_mv_cable(
     catalog_ref: object,
     catalog_binding: object,
     length_km: float,
+    czestotliwosc_hz: float,
     laying_conditions: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
     """Zmaterializuj kabel SN przyłączeniowy DER (katalog KABEL_SN), krótki odcinek.
 
     Zwraca (branch_data, None) przy sukcesie albo (None, error_response) przy błędzie.
+
+    `czestotliwosc_hz` (karta W3-F §0.6) — częstotliwość studium, wołający
+    przekazuje `czestotliwosc_studium_hz(enm)`.
     """
     przestrzen_katalogu = "KABEL_SN"
     wiazanie = _wiazanie_w_przestrzeni(catalog_binding, przestrzen_katalogu)
@@ -4790,7 +4804,7 @@ def _materialize_der_mv_cable(
         # w modelu zostaje sam OPIS warunków (jedno źródło reguły to solver).
         branch_data["meta"]["cable_laying_conditions"] = laying_conditions
     _apply_catalog_metadata(branch_data, binding_payload, default_namespace=przestrzen_katalogu)
-    _apply_materialized_branch_fields(branch_data, materialized_params)
+    _apply_materialized_branch_fields(branch_data, materialized_params, czestotliwosc_hz)
     branch_data["length_km"] = length_km
     return branch_data, None
 
@@ -5212,6 +5226,7 @@ def _add_converter_source_der_sn(
         catalog_ref=mv_field_cfg.get("cable_catalog_ref"),
         catalog_binding=mv_field_cfg.get("cable_catalog_binding"),
         length_km=cable_length_km,
+        czestotliwosc_hz=czestotliwosc_studium_hz(enm),
         laying_conditions=laying_conditions,
     )
     if cable_error is not None:
@@ -5776,7 +5791,7 @@ def add_genset_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any
             "Agregat prądotwórczy: współczynnik mocy (power_factor) musi być w przedziale (0, 1].",
             "generator.power_factor_invalid",
         )
-    p_mw = rated_power_kw / 1000.0
+    p_mw = kw_na_mw(rated_power_kw)
     cos_phi = power_factor_jawny
     un_kv = genset_spec.get("rated_voltage_kv") or _bus_voltage_kv(enm, bus_nn_ref)
     sn_mva = moc_pozorna_z_czynnej_mva(p_mw, cos_phi)
@@ -5838,7 +5853,7 @@ def add_ups_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             "UPS: brak mocy znamionowej (rated_power_kw).",
             "generator.power_missing",
         )
-    p_mw = ups_rated_power_kw / 1000.0
+    p_mw = kw_na_mw(ups_rated_power_kw)
     un_kv = _bus_voltage_kv(enm, bus_nn_ref)
     ups_meta: dict[str, Any] = {"sn_mva": p_mw}
     if un_kv:
@@ -5993,7 +6008,7 @@ def add_load_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
 
     active_power_kw = payload.get("active_power_kw")
     if active_power_kw is None and payload.get("p_mw") is not None:
-        active_power_kw = float(payload["p_mw"]) * 1000.0
+        active_power_kw = mw_na_kw(float(payload["p_mw"]))
     if active_power_kw is None:
         return _error_response(
             "Odbiór wymaga mocy czynnej (active_power_kw albo p_mw).", "load.p_missing"
@@ -6007,7 +6022,7 @@ def add_load_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     # Dobór mocy biernej z tabliczki (Q = P·tan(arccos cosφ)) — jak `add_nn_load`.
     reactive_power_kvar = payload.get("reactive_power_kvar")
     if reactive_power_kvar is None and payload.get("q_mvar") is not None:
-        reactive_power_kvar = float(payload["q_mvar"]) * 1000.0
+        reactive_power_kvar = mvar_na_kvar(float(payload["q_mvar"]))
     cos_phi = payload.get("cos_phi")
     if reactive_power_kvar is None and cos_phi is not None:
         try:
@@ -6047,8 +6062,8 @@ def add_load_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         "ref_id": load_ref,
         "name": payload.get("load_name") or "Odbiór",
         "bus_ref": bus_ref,
-        "p_mw": active_power_kw / 1000.0,
-        "q_mvar": float(reactive_power_kvar) / 1000.0,
+        "p_mw": kw_na_mw(active_power_kw),
+        "q_mvar": kvar_na_mvar(float(reactive_power_kvar)),
         "model": "zip" if zip_odbioru else "pq",
         "catalog_ref": catalog_ref,
         "catalog_namespace": przestrzen_katalogu if catalog_ref else None,

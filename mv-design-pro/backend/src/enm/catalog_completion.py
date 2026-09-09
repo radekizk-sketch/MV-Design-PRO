@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 from copy import deepcopy
 from hashlib import sha256
 from typing import Any
@@ -10,7 +9,15 @@ from enm.models import BranchRating, Cable, EnergyNetworkModel, Load, OverheadLi
 from network_model.catalog.materialization import materialize_catalog_binding
 from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
 from network_model.catalog.types import CatalogBinding, LoadType
-from network_model.pochodne import moc_bierna_z_czynnej_i_cos_phi
+from network_model.pochodne import (
+    kvar_na_mvar,
+    kw_na_mw,
+    mikrosimens_na_simens,
+    moc_bierna_z_czynnej_i_cos_phi,
+    mvar_na_kvar,
+    mw_na_kw,
+    susceptancja_z_pojemnosci_s_per_km,
+)
 
 DEFAULT_LOAD_CATALOG_REF = "load_uslugi_30kw"
 #: Karta FAB-D1 (D8): `DEFAULT_LOAD_KW`/`DEFAULT_LOAD_COS_PHI` NIE SĄ już źródłem
@@ -380,7 +387,7 @@ def complete_branch_catalog_materialization(
         branch.catalog_namespace = namespace
         branch.parameter_source = "CATALOG"
         branch.source_mode = "KATALOG"
-        _apply_materialized_branch_values(branch, materialized)
+        _apply_materialized_branch_values(branch, materialized, enm.header.defaults.frequency_hz)
         changed = True
 
     return (completed, True) if changed else (enm, False)
@@ -431,7 +438,13 @@ def _branch_has_materialized_values(
 def _apply_materialized_branch_values(
     branch: Cable | OverheadLine,
     materialized: dict[str, Any],
+    czestotliwosc_hz: float,
 ) -> None:
+    """`czestotliwosc_hz` — częstotliwość studium (karta W3-F §0.6), WYMAGANA:
+    steruje wyprowadzeniem susceptancji z pojemności kabla (B=2πfC), gdy
+    katalog niesie WYŁĄCZNIE `c_nf_per_km`. Żaden literał 50 w torze wzoru —
+    wołający przekazuje `enm.header.defaults.frequency_hz`.
+    """
     for key in (
         "r_ohm_per_km",
         "x_ohm_per_km",
@@ -446,9 +459,13 @@ def _apply_materialized_branch_values(
     b_us_per_km = materialized.get("b_us_per_km")
     c_nf_per_km = materialized.get("c_nf_per_km")
     if b_us_per_km is not None:
-        branch.b_siemens_per_km = float(b_us_per_km) / 1_000_000.0
+        branch.b_siemens_per_km = mikrosimens_na_simens(float(b_us_per_km))
     elif c_nf_per_km is not None:
-        branch.b_siemens_per_km = 2 * math.pi * 50.0 * float(c_nf_per_km) * 1e-9
+        branch.b_siemens_per_km = susceptancja_z_pojemnosci_s_per_km(
+            float(c_nf_per_km), czestotliwosc_hz
+        )
+        # Proweniencja (karta W3-F §0.6): z JAKIEJ częstotliwości policzono B.
+        materialized["frequency_hz"] = czestotliwosc_hz
 
     rated_current_a = (
         materialized.get("rated_current_a")
@@ -564,7 +581,7 @@ def complete_station_loads_from_nn_feeders(
     # emitera byłby fantomem — `readiness_consumption_guard`).
     if load_type is None or not isinstance(load_type.p_kw, int | float) or load_type.p_kw <= 0:
         return enm, False
-    p_mw = float(load_type.p_kw) / 1000.0
+    p_mw = kw_na_mw(float(load_type.p_kw))
     reactive_power = _catalog_load_reactive_power(load_type, p_mw)
     if reactive_power is None:
         # Brak kanonu katalogu dla mocy biernej ⇒ NIE materializujemy odbioru.
@@ -709,7 +726,7 @@ def _catalog_load_reactive_power(
 
     q_kvar = load_type.q_kvar
     if q_kvar is not None:
-        return float(q_kvar) / 1000.0, Q_SOURCE_CATALOG_Q_KVAR
+        return kvar_na_mvar(float(q_kvar)), Q_SOURCE_CATALOG_Q_KVAR
 
     mode = str(load_type.cos_phi_mode or "").strip().upper()
     if mode == "BRAK":
@@ -747,8 +764,8 @@ def _build_default_load(
     """
     seed = sha256(f"catalog-load|{station_ref}|{feeder_ref}".encode()).hexdigest()[:32]
     q_mvar, q_source = reactive_power
-    p_kw = p_mw * 1000.0
-    nameplate: dict[str, Any] = {"q_kvar": q_mvar * 1000.0, "q_source": q_source}
+    p_kw = mw_na_kw(p_mw)
+    nameplate: dict[str, Any] = {"q_kvar": mvar_na_kvar(q_mvar), "q_source": q_source}
     if load_type.cos_phi is not None:
         nameplate["cos_phi"] = float(load_type.cos_phi)
     if load_type.cos_phi_mode:

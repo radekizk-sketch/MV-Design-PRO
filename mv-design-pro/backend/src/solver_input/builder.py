@@ -17,6 +17,7 @@ from typing import Any, Literal
 
 from domain.study_case import StudyCaseConfig
 from network_model.catalog.repository import CatalogRepository
+from network_model.catalog.resolver import susceptancja_katalogowa_us_per_km
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.voltage_factor import c_for_node
@@ -81,6 +82,7 @@ def _build_branch_payloads(
     graph: NetworkGraph,
     catalog: CatalogRepository | None,
     trace_entries: list[ProvenanceEntry],
+    czestotliwosc_hz: float,
 ) -> list[BranchPayload]:
     """Build deterministically sorted branch payloads with provenance trace."""
     payloads: list[BranchPayload] = []
@@ -118,7 +120,7 @@ def _build_branch_payloads(
             if type_data is not None:
                 r = type_data.r_ohm_per_km
                 x = type_data.x_ohm_per_km
-                b_us = type_data.b_us_per_km
+                b_us = susceptancja_katalogowa_us_per_km(type_data, czestotliwosc_hz)
                 rated_a = type_data.rated_current_a
                 source_kind = SourceKind.CATALOG
                 catalog_ref_str = branch.type_ref
@@ -409,6 +411,7 @@ def build_solver_input(
     config: StudyCaseConfig | None = None,
     audit2_station_payload: dict[str, Any] | None = None,
     scenario: Literal["MAX", "MIN"] = "MAX",
+    czestotliwosc_hz: float = 50.0,
 ) -> SolverInputEnvelope:
     """
     Build canonical solver-input envelope from ENM + catalog + case config.
@@ -425,6 +428,14 @@ def build_solver_input(
         scenario: "MAX" (Ik''max, default) or "MIN" (Ik''min) — karta P0.3.
             Only affects SHORT_CIRCUIT_* payloads (per-bus c_factor_iec60909 +
             ShortCircuitPayload.scenario/c_factor); ignored otherwise.
+        czestotliwosc_hz: Częstotliwość studium [Hz] (karta W3-F §0.6) — wołający
+            PRODUKCYJNY (`api/solver_input.py`) przekazuje JAWNIE
+            `enm.header.defaults.frequency_hz`; domyślne 50,0 tutaj lustrzy
+            `enm.models.ENMDefaults.frequency_hz` (ten sam widoczny domyślny
+            projektu, nie cichy 50 Hz solvera) — dla kabli SN steruje
+            wyprowadzeniem B=2πfC z pojemności katalogowej
+            (`CableType.susceptancja_us_per_km`); dla linii napowietrznych B
+            jest datum katalogowym niezależnym od częstotliwości.
 
     Returns:
         SolverInputEnvelope with payload, eligibility, and provenance trace.
@@ -444,7 +455,7 @@ def build_solver_input(
     else:
         # Build common element lists
         buses = _build_bus_payloads(graph, scenario=scenario)
-        branches = _build_branch_payloads(graph, catalog, trace_entries)
+        branches = _build_branch_payloads(graph, catalog, trace_entries, czestotliwosc_hz)
         transformers = _build_transformer_payloads(graph, catalog, trace_entries)
         inverters = _build_inverter_payloads(graph, trace_entries)
         switches = _build_switch_payloads(graph)

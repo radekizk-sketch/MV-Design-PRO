@@ -790,9 +790,20 @@ def test_remis_pelnej_dotkliwosci_rozstrzyga_element_ref_rosnaco() -> None:
 #: widoki są identyczne z dokładnością do pola `ranking[].pozycja` przy równej
 #: dotkliwości; każda liczba fizyczna (dotkliwość, napięcia, przepływy, iteracje NR)
 #: bez zmian. To NIE jest skutek optymalizacji wydajności (intencja odcisku zachowana).
+#: Karta W3-F (§0.6, 2026-09-09): odciski PRZELICZONE po dodaniu znacznika
+#: proweniencji `materialized_params["frequency_hz"]` (skąd policzono susceptancję
+#: kabla z pojemności, B=2πfC) przy materializacji KABEL_SN w
+#: `enm/domain_operations.py::_apply_materialized_branch_fields` — jedno pole
+#: ADDYTYWNE w migawce ENM, którą odcisk widoku niesie w całości (`dane["enm"]`).
+#: DOWÓD (diff pełnego `widok` przed/po, nie tylko odcisku): jedyne różnice to
+#: `snapshot_hash`/`input_hash` (kaskada z dodanego pola przez hash migawki) —
+#: dotkliwość, ranking, napięcia, przepływy, iteracje NR, kolejność i sufiksy
+#: nazw BEZ ZMIAN. Formuła B=2πfC (`math.pi`, f=50.0 Hz ze studium) jest bit
+#: w bit identyczna z formułą sprzed migracji — rozjazd odcisku to WYŁĄCZNIE
+#: nowe pole, nie zmiana fizyki.
 ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
-    "gn01_promieniowa": "69346423d055cc850f27d27d4d54147ef0a755decf8bbadf201b9c2f4cd515cd",
-    "gn03_pierscien": "bc9460fab9ebc629d189fb62c2a81111e03bf61fdc99746bb88a595ddad69519",
+    "gn01_promieniowa": "f53274e473c056d5cb650951bf964e24831e31ad1addd57d1f96e16ef3d38d29",
+    "gn03_pierscien": "824c7e3eb94dd935e5388209a93197d26006d82d2eeba6a42a6efe835ee7de61",
 }
 
 

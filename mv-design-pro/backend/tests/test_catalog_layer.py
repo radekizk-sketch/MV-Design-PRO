@@ -253,12 +253,12 @@ def test_line_branch_resolve_precedence() -> None:
         ),
     )
 
-    resolved = branch.resolve_electrical_params(catalog)
+    resolved = branch.resolve_electrical_params(catalog, czestotliwosc_hz=50.0)
     assert resolved.r_ohm_per_km == pytest.approx(5.0)
     assert resolved.x_ohm_per_km == pytest.approx(6.0)
     assert resolved.b_us_per_km == pytest.approx(7.0)
 
-    branch_no_override = branch.with_resolved_params(catalog)
+    branch_no_override = branch.with_resolved_params(catalog, czestotliwosc_hz=50.0)
     assert branch_no_override.r_ohm_per_km == pytest.approx(5.0)
 
     branch_type_only = LineBranch(
@@ -274,7 +274,7 @@ def test_line_branch_resolve_precedence() -> None:
         rated_current_a=100.0,
         type_ref="type-1",
     )
-    resolved_type = branch_type_only.resolve_electrical_params(catalog)
+    resolved_type = branch_type_only.resolve_electrical_params(catalog, czestotliwosc_hz=50.0)
     assert resolved_type.r_ohm_per_km == pytest.approx(1.0)
     assert resolved_type.x_ohm_per_km == pytest.approx(2.0)
     assert resolved_type.b_us_per_km == pytest.approx(3.0)
@@ -291,7 +291,7 @@ def test_line_branch_resolve_precedence() -> None:
         length_km=10.0,
         rated_current_a=100.0,
     )
-    resolved_inline = branch_inline.resolve_electrical_params(catalog)
+    resolved_inline = branch_inline.resolve_electrical_params(catalog, czestotliwosc_hz=50.0)
     assert resolved_inline.r_ohm_per_km == pytest.approx(9.0)
     assert resolved_inline.x_ohm_per_km == pytest.approx(8.0)
     assert resolved_inline.b_us_per_km == pytest.approx(7.0)

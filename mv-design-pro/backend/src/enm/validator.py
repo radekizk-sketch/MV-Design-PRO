@@ -1552,7 +1552,7 @@ class ENMValidator:
         czestotliwosc na DWOCH poziomach: `header.defaults.frequency_hz` (jedna
         czestotliwosc studium, `models.py:121`) oraz opcjonalnie na szynie
         (`Bus.frequency_hz`, `models.py:181`). Solwery rozplywu i zwarciowe
-        czytaja wylacznie poziom studium (`canonical_analysis::_study_frequency_hz`),
+        czytaja wylacznie poziom studium (`enm/assembler.py::czestotliwosc_studium_hz`),
         ale kontrakt V12.6 bierze czestotliwosc bazowa Z PIERWSZEJ SZYNY
         (`solver_input/v126_contracts.py:555`: `enm.buses[0].frequency_hz or 50.0`).
         Model z szyna 60 Hz w studium 50 Hz jest wiec wewnetrznie sprzeczny, a

@@ -196,6 +196,10 @@ def get_solver_input(
                 }
                 rozszerzenia_audit2 = rozszerzenia_audit2_z_konfiguracji(cfg)
 
+    # Karta W3-F (§0.6): częstotliwość studium z nagłówka ENM — prawda dla
+    # solverów (docstring `enm/validator.py:1552`), przekazana JAWNIE do
+    # `build_solver_input` (B=2πfC kabli SN zamiast milczącego zalozenia 50 Hz).
+    czestotliwosc_hz = get_enm(klucz).header.defaults.frequency_hz
     try:
         graph = _graph_for_analysis(
             klucz=klucz,
@@ -218,6 +222,7 @@ def get_solver_input(
         config=config,
         audit2_station_payload=audit2_payload,
         scenario=scenario_normalized,  # type: ignore[arg-type]
+        czestotliwosc_hz=czestotliwosc_hz,
     )
 
     return SolverInputResponse(

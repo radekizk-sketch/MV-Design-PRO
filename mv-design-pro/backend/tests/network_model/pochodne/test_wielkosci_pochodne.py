@@ -299,6 +299,51 @@ def test_impedancja_z_napiecia_i_mocy_ohm_tozsamosc(u: float, s: float) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Rodzina H — susceptancja z pojemności B = 2πf·C (karta W3-F §0.6)
+# ---------------------------------------------------------------------------
+
+POJEMNOSCI_BRZEGOWE_NF_PER_KM = [0.0, 1e-6, 0.05, 1.0, 10.0, 100.0, 250.0, 1000.0, 1.0e6]
+CZESTOTLIWOSCI_BRZEGOWE_HZ = [1e-6, 16.7, 50.0, 60.0, 400.0, 1000.0, 1.0e6]
+
+
+@pytest.mark.parametrize("f", CZESTOTLIWOSCI_BRZEGOWE_HZ)
+@pytest.mark.parametrize("c", POJEMNOSCI_BRZEGOWE_NF_PER_KM)
+def test_susceptancja_z_pojemnosci_s_per_km_tozsamosc(c: float, f: float) -> None:
+    """enm/catalog_completion.py:451, enm/domain_operations.py:2714 —
+    ``2 * math.pi * 50.0 * float(c_nf_per_km) * 1e-9`` (tu z jawną f, nie
+    zaszytą 50.0 — bit w bit identyczne dla f=50.0 z torem ENM sprzed karty)."""
+    oczekiwane = 2 * math.pi * f * c * 1e-9
+    assert wp.susceptancja_z_pojemnosci_s_per_km(c, f) == oczekiwane
+
+
+@pytest.mark.parametrize("c", POJEMNOSCI_BRZEGOWE_NF_PER_KM)
+def test_susceptancja_z_pojemnosci_s_per_km_50hz_bit_w_bit_z_torem_enm(c: float) -> None:
+    """Tor ENM sprzed karty (``enm/catalog_completion.py``/``domain_operations.py``)
+    liczył DOSŁOWNIE ``2 * math.pi * 50.0 * float(c_nf_per_km) * 1e-9`` — ten
+    test odtwarza tę DOKŁADNĄ linię (literał 50.0, nie parametr) i porównuje
+    bit w bit z wywołaniem funkcji przy f=50.0, jako dowód nietkniętego toru
+    ENM (§0.7.3 karty: "tor ENM przy 50 Hz jest bit w bit; jego hashe bez
+    zmian")."""
+    oczekiwane_tor_enm = 2 * math.pi * 50.0 * float(c) * 1e-9
+    assert wp.susceptancja_z_pojemnosci_s_per_km(c, 50.0) == oczekiwane_tor_enm
+
+
+def test_susceptancja_z_pojemnosci_s_per_km_uzywa_math_pi_nie_przyblizenia() -> None:
+    """Różnica math.pi (15-16 cyfr) kontra 3.14159 (6 cyfr) jest mierzalna —
+    dowód, że funkcja NIE odtwarza starej ścieżki ``catalog/types.py`` (F.2,
+    §0.6 karty: "π = 3,14159 → math.pi")."""
+    z_pi_dokladnym = wp.susceptancja_z_pojemnosci_s_per_km(100.0, 50.0)
+    z_przyblizeniem = 2 * 3.14159 * 50.0 * 100.0 * 1e-9
+    assert z_pi_dokladnym != z_przyblizeniem
+    assert z_pi_dokladnym == pytest.approx(z_przyblizeniem, rel=1e-5)
+
+
+def test_susceptancja_z_pojemnosci_s_per_km_przyklad_podrecznikowy() -> None:
+    # C=10 nF/km @ 50 Hz -> B = 2*pi*50*10*1e-9 = 3.14159e-6 S/km.
+    assert wp.susceptancja_z_pojemnosci_s_per_km(10.0, 50.0) == pytest.approx(3.14159e-6, rel=1e-5)
+
+
+# ---------------------------------------------------------------------------
 # Poprawność inżynierska (wartości podręcznikowe, sanity — nie tylko tożsamość)
 # ---------------------------------------------------------------------------
 

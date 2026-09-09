@@ -61,10 +61,6 @@ from network_model.solvers.power_flow_newton_internal import transformer_phase_s
 from network_model.solvers.power_flow_zip import zip_coeffs_from_materialized_params
 from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
 
-#: Częstotliwość studium do przeliczenia susceptancji B [S/km] na pojemność C [nF/km]
-#: (pandapower przyjmuje C): C = B / (2πf) · 1e9.
-CZESTOTLIWOSC_HZ = 50.0
-
 #: Tolerancja napięcia nN dla pandapower (``lv_tol_percent``): 6 % ⇒ c_max = 1,05 dla
 #: U_n ≤ 1 kV — tak samo jak ``voltage_factor.c_for_node`` (IEC 60909-0 Tab. 1).
 LV_TOL_PERCENT = 6
@@ -139,7 +135,12 @@ def zbuduj_siec(
     ``calc_sc(case="max")`` i ``calc_sc(case="min")``.
     """
     pp = _pandapower()
-    net = pp.create_empty_network(sn_mva=100.0, f_hz=CZESTOTLIWOSC_HZ)
+    # Karta W3-F (§0.6, 2026-09-09): częstotliwość SIECI POD TESTEM (nagłówek
+    # ENM), nie literał modułu (usunięty stąd `CZESTOTLIWOSC_HZ = 50.0`) —
+    # wyrocznia czyta realną częstotliwość studium, żeby sieć 60 Hz (gdyby się
+    # pojawiła w rejestrze złotych sieci) nie dostała po cichu 50 Hz.
+    czestotliwosc_hz = enm.header.defaults.frequency_hz
+    net = pp.create_empty_network(sn_mva=100.0, f_hz=czestotliwosc_hz)
     szyny: dict[str, int] = {}
     napiecie: dict[str, float] = {}
     for bus in sorted(enm.buses, key=lambda b: b.ref_id):
@@ -160,7 +161,7 @@ def zbuduj_siec(
                 length_km=branch.length_km,
                 r_ohm_per_km=branch.r_ohm_per_km,
                 x_ohm_per_km=branch.x_ohm_per_km,
-                c_nf_per_km=b_s_km * 1e9 / (2.0 * math.pi * CZESTOTLIWOSC_HZ),
+                c_nf_per_km=b_s_km * 1e9 / (2.0 * math.pi * czestotliwosc_hz),
                 max_i_ka=1.0,
                 parallel=tory,
                 in_service=branch.status == "closed",

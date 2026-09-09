@@ -20,6 +20,7 @@ from network_model.catalog import (
     resolve_line_params,
     resolve_transformer_params,
 )
+from network_model.pochodne import simens_na_mikrosimens, susceptancja_z_pojemnosci_s_per_km
 
 # ============================================================================
 # FIXTURES
@@ -108,6 +109,7 @@ def test_line_precedence_override_wins(catalog_with_types):
         instance_b_us_per_km=1.0,
         instance_rated_current_a=250.0,
         catalog=catalog_with_types,
+        czestotliwosc_hz=50.0,
     )
     assert result.source == ParameterSource.OVERRIDE
     assert result.r_ohm_per_km == 0.1  # 1.0 / 10.0
@@ -141,6 +143,7 @@ def test_line_incomplete_override_rejected(catalog_with_types, override):
             instance_b_us_per_km=1.0,
             instance_rated_current_a=250.0,
             catalog=catalog_with_types,
+            czestotliwosc_hz=50.0,
         )
 
 
@@ -156,6 +159,7 @@ def test_line_precedence_type_ref_wins(catalog_with_types):
         instance_b_us_per_km=1.0,
         instance_rated_current_a=250.0,
         catalog=catalog_with_types,
+        czestotliwosc_hz=50.0,
     )
     assert result.source == ParameterSource.TYPE_REF
     assert result.r_ohm_per_km == 0.3  # from catalog
@@ -176,6 +180,7 @@ def test_line_precedence_instance_fallback(catalog_with_types):
         instance_b_us_per_km=1.0,
         instance_rated_current_a=250.0,
         catalog=catalog_with_types,
+        czestotliwosc_hz=50.0,
     )
     assert result.source == ParameterSource.INSTANCE
     assert result.r_ohm_per_km == 0.5
@@ -197,6 +202,7 @@ def test_line_type_not_found_raises_error(empty_catalog):
             instance_b_us_per_km=1.0,
             instance_rated_current_a=250.0,
             catalog=empty_catalog,
+            czestotliwosc_hz=50.0,
         )
     assert exc_info.value.type_ref == "nonexistent_line"
     assert exc_info.value.equipment_type == "Line"
@@ -223,6 +229,7 @@ def test_cable_precedence_override_wins(catalog_with_types):
         instance_b_us_per_km=2.0,
         instance_rated_current_a=350.0,
         catalog=catalog_with_types,
+        czestotliwosc_hz=50.0,
     )
     assert result.source == ParameterSource.OVERRIDE
     assert result.r_ohm_per_km == 0.1  # 0.5 / 5.0
@@ -242,12 +249,17 @@ def test_cable_precedence_type_ref_wins(catalog_with_types):
         instance_b_us_per_km=2.0,
         instance_rated_current_a=350.0,
         catalog=catalog_with_types,
+        czestotliwosc_hz=50.0,
     )
     assert result.source == ParameterSource.TYPE_REF
     assert result.r_ohm_per_km == 0.2  # from catalog
     assert result.x_ohm_per_km == 0.08  # from catalog
-    # CableType converts c_nf_per_km=250.0 to b_us_per_km
-    assert result.b_us_per_km == pytest.approx(250.0 * 2 * 3.14159 * 50 / 1000, rel=0.01)
+    # Karta W3-F (§0.6): CableType wyprowadza B z c_nf_per_km=250.0 przez
+    # susceptancja_us_per_km(50.0) — bit w bit z pochodne.jednostki/
+    # wielkosci_pochodne (math.pi, nie przybliżenie 3,14159 sprzed karty).
+    assert result.b_us_per_km == simens_na_mikrosimens(
+        susceptancja_z_pojemnosci_s_per_km(250.0, 50.0)
+    )
     assert result.rated_current_a == 400.0  # from catalog
 
 
@@ -264,6 +276,7 @@ def test_cable_type_not_found_raises_error(empty_catalog):
             instance_b_us_per_km=2.0,
             instance_rated_current_a=350.0,
             catalog=empty_catalog,
+            czestotliwosc_hz=50.0,
         )
     assert exc_info.value.type_ref == "nonexistent_cable"
     assert exc_info.value.equipment_type == "Cable"
@@ -366,6 +379,7 @@ def test_no_type_ref_preserves_legacy_behavior():
         instance_b_us_per_km=2.7,
         instance_rated_current_a=280.0,
         catalog=None,
+        czestotliwosc_hz=50.0,
     )
     assert legacy_line_result.source == ParameterSource.INSTANCE
     assert legacy_line_result.r_ohm_per_km == 0.5
@@ -412,6 +426,7 @@ def test_resolve_line_params_is_deterministic(catalog_with_types):
             instance_b_us_per_km=1.0,
             instance_rated_current_a=250.0,
             catalog=catalog_with_types,
+            czestotliwosc_hz=50.0,
         )
         assert result.source == ParameterSource.TYPE_REF
         assert result.r_ohm_per_km == 0.3

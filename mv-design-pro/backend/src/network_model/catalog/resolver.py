@@ -128,11 +128,24 @@ class TypeNotFoundError(ValueError):
         self.equipment_type = equipment_type
 
 
-def _get_b_us_per_km(type_data: LineType | CableType) -> float:
-    """Extract susceptance from LineType or CableType.
+def susceptancja_katalogowa_us_per_km(
+    type_data: LineType | CableType, czestotliwosc_hz: float
+) -> float:
+    """Susceptancja B [µS/km] z typu katalogowego LineType/CableType — JEDYNE
+    miejsce tej gałęzi poza `CableType` samym (karta W3-F §0.6, reużycie
+    zamiast duplikacji — `solver_input/builder.py` woła TĘ SAMĄ funkcję, nie
+    powtarza rozgałęzienia LineType/CableType osobno, precedens K30-243:
+    "dwa wzory na to samo rozjeżdżają się").
 
-    Both types have b_us_per_km property (CableType converts from c_nf_per_km).
+    LineType niesie B [µS/km] jako WŁASNY datum katalogowy (linia napowietrzna,
+    B niezależne od częstotliwości w tym modelu). CableType NIE zna
+    częstotliwości — B jest wyprowadzane z pojemności jednostkowej
+    (`CableType.susceptancja_us_per_km`, karta W3-F §0.6), więc częstotliwość
+    studium jest tu WYMAGANA (bez wartości domyślnej — żadne miejsce w tym
+    torze nie ma prawa milcząco zakładać 50 Hz).
     """
+    if isinstance(type_data, CableType):
+        return type_data.susceptancja_us_per_km(czestotliwosc_hz)
     return type_data.b_us_per_km
 
 
@@ -147,6 +160,7 @@ def resolve_line_params(
     instance_b_us_per_km: float,
     instance_rated_current_a: float,
     catalog: CatalogRepository | None,
+    czestotliwosc_hz: float,
 ) -> ResolvedLineParams:
     """
     Resolve Line/Cable electrical parameters with canonical precedence.
@@ -163,6 +177,10 @@ def resolve_line_params(
         instance_b_us_per_km: Direct susceptance parameter
         instance_rated_current_a: Direct rated current parameter
         catalog: Optional catalog repository
+        czestotliwosc_hz: Częstotliwość studium [Hz] — WYMAGANA (bez wartości
+            domyślnej, karta W3-F §0.6): jedyny konsument to
+            `susceptancja_katalogowa_us_per_km` dla `CableType` (B = 2πfC, typ
+            katalogowy nie zna częstotliwości).
 
     Returns:
         ResolvedLineParams with source indicator
@@ -222,7 +240,7 @@ def resolve_line_params(
         return ResolvedLineParams(
             r_ohm_per_km=type_data.r_ohm_per_km,
             x_ohm_per_km=type_data.x_ohm_per_km,
-            b_us_per_km=_get_b_us_per_km(type_data),
+            b_us_per_km=susceptancja_katalogowa_us_per_km(type_data, czestotliwosc_hz),
             rated_current_a=type_data.rated_current_a,
             source=ParameterSource.TYPE_REF,
         )

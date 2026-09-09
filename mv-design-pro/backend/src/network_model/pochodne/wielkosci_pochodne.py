@@ -301,3 +301,44 @@ def impedancja_z_napiecia_i_mocy_ohm(napiecie_kv: float, moc_mva: float) -> floa
     inna fizyczna etykieta S.
     """
     return napiecie_kv**2 / moc_mva
+
+
+# =============================================================================
+# Rodzina H — susceptancja z pojemności, B = 2πf·C (karta W3-F §0.6)
+# =============================================================================
+
+
+def susceptancja_z_pojemnosci_s_per_km(
+    pojemnosc_nf_per_km: float, czestotliwosc_hz: float
+) -> float:
+    """Susceptancja poprzeczna linii/kabla z pojemności jednostkowej:
+    B = 2π·f·C, C[nF/km], f[Hz] → B[S/km] (przelicznik nF→F wliczony: ×1e-9).
+
+    Do karty W3-F (2026-09-09) trzy NIEZALEŻNE kopie tej samej fizyki żyły
+    poza solverami, z π zaszytym jako literał ``3.14159`` w jednej z nich i
+    f = 50 Hz zaszytym literałem we WSZYSTKICH trzech:
+    ``network_model/catalog/types.py::CableType.b_us_per_km``
+    (``2 * 3.14159 * 50 * c_nf_per_km * 1e-3``, wynik w µS/km — inna ścieżka
+    skalowania, patrz niżej), ``enm/catalog_completion.py:451`` i
+    ``enm/domain_operations.py:2714`` (obie: ``2 * math.pi * 50.0 *
+    float(c_nf_per_km) * 1e-9``, wynik w S/km).
+
+    Ta funkcja jest KOPIĄ BIT W BIT toru ENM: ``math.pi`` (nie przybliżenie
+    dziesiętne 3,14159) i DOKŁADNIE ta sama kolejność działań
+    ``2 * math.pi * f * C * 1e-9`` co w ``catalog_completion.py``/
+    ``domain_operations.py`` dla f = 50,0 — patrz test tożsamości.
+    Częstotliwość NIE jest zaszyta tutaj — wołający przekazuje częstotliwość
+    studium (``header.defaults.frequency_hz`` ENM), więc przy f = 50 Hz wynik
+    jest bit w bit identyczny ze stanem sprzed karty, a przy f = 60 Hz (albo
+    innej częstotliwości studium) wynik odzwierciedla RZECZYWISTĄ fizykę
+    zamiast milcząco zakładać 50 Hz.
+
+    Była własność katalogowa ``CableType.b_us_per_km`` (µS/km, inny punkt
+    odniesienia jednostki niż S/km tej funkcji) usunięta w tej karcie: typ
+    katalogowy nie zna częstotliwości, więc nie mógł poprawnie liczyć B bez
+    zaszycia f — datum kabla to WYŁĄCZNIE ``c_nf_per_km``. Zamiast niej
+    metoda ``CableType.susceptancja_us_per_km(czestotliwosc_hz)`` woła TĘ
+    funkcję i skaluje wynik przez ``pochodne.jednostki.simens_na_mikrosimens``
+    — DOKŁADNIE ta sama sekwencja co tor ENM → ``enm/mapping.py:1016``.
+    """
+    return 2 * math.pi * czestotliwosc_hz * pojemnosc_nf_per_km * 1e-9
