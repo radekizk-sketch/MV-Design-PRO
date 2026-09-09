@@ -86,7 +86,7 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
     it('payload.defaultCard="hv-side" otwiera od razu kartę Strona 110 kV (deep-link show-sc-source/show-sc-data)', () => {
       render(
         <GpzConfiguratorSurface
-          surface={{ ...minimalSurface, routeState: { payload: { defaultCard: 'hv-side' } } }}
+          surface={{ ...minimalSurface, routeState: { route: 'unknown', payload: { defaultCard: 'hv-side' } } }}
         />,
       );
       expect(screen.getByTestId('gpz-card-content-hv-side')).toBeInTheDocument();
@@ -96,7 +96,7 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
     it('payload.defaultCard nieznane/puste wraca do karty Identyfikacja (uczciwy domyślny start)', () => {
       render(
         <GpzConfiguratorSurface
-          surface={{ ...minimalSurface, routeState: { payload: { defaultCard: 'nie-taka-karta' } } }}
+          surface={{ ...minimalSurface, routeState: { route: 'unknown', payload: { defaultCard: 'nie-taka-karta' } } }}
         />,
       );
       expect(screen.getByTestId('gpz-card-content-identification')).toBeInTheDocument();
@@ -1064,7 +1064,7 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
           surface={{
             ...minimalSurface,
             entityRef: 'stn/station-01/station',
-            routeState: { payload: { defaultCard: 'der-sources' } },
+            routeState: { route: 'unknown', payload: { defaultCard: 'der-sources' } },
           }}
         />,
       );

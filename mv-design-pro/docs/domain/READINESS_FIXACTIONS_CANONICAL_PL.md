@@ -52,7 +52,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **116** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **118** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -141,6 +141,7 @@ Wszystkie **116** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `bess.soc_limits_invalid` | GENERATORS | 2 | BLOCKER | Ograniczenia SOC magazynu BESS są nieprawidłowe (min >= max albo poza zakresem 0-100%) | panel: `inspector`, tab: `parametry`, focus: `soc_min_percent` |
 | `der.dynamic_profile_missing` | GENERATORS | 2 | BLOCKER | Rodzaj źródła DER nie ma mapowania na profil dynamiczny — stabilność RMS i FRT/LVRT/HVRT nie mogą zbudować modelu tego generatora | panel: `inspector`, tab: `parametry`, focus: `gen_type` |
 | `der.inverter_certificate_unlinked` | GENERATORS | 2 | WARNING | Przetwornica źródła DER nie ma powiązanego certyfikatu PTPiREE — wniosek do OSD może zostać odrzucony. Ostateczna akceptacja przyłączeniowa pozostaje po stronie właściwego OSD | panel: `inspector`, tab: `katalog` |
+| `generator.converter_card_missing` | GENERATORS | 2 | BLOCKER | Przekształtnik (PV/BESS/wiatrowy) nie ma karty katalogowej albo karta nie niesie mocy znamionowej — analizy V12.6 (jakość energii, SSCI) nie mogą go uwzględnić | panel: `inspector`, tab: `katalog` |
 | `generator.q_missing` | GENERATORS | 2 | BLOCKER | Moc bierna generatora (Q) nie jest znana ani wyprowadzalna z karty katalogowej — rozpływ mocy nie może przyjąć jej za zero | panel: `inspector`, tab: `parametry`, focus: `q_mvar` |
 | `generator.voltage_control_not_permitted` | GENERATORS | 2 | BLOCKER | Profil NC RfG operatora nie dopuszcza trybu regulacji napięcia (voltage_control) — zmień tryb regulacji albo profil operatora | panel: `inspector`, tab: `parametry`, focus: `control_mode` |
 | `generator.voltage_control_profile_missing` | GENERATORS | 2 | BLOCKER | Generator w trybie regulacji napięcia nie ma profilu NC RfG operatora (albo wskazany profil nie istnieje w katalogu) — tryb wymaga profilu dopuszczającego regulację napięcia | panel: `inspector`, tab: `parametry`, focus: `nc_rfg_profile_ref` |
@@ -151,6 +152,7 @@ Wszystkie **116** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `ups.backup_time_invalid` | GENERATORS | 2 | BLOCKER | Czas podtrzymania UPS jest nieprawidłowy (musi być > 0) | panel: `inspector`, tab: `parametry`, focus: `backup_time_min` |
 | `der.inverter_certificate_conditional` | GENERATORS | 3 | WARNING | Certyfikat PTPiREE przetwornicy DER jest powiązany warunkowo — rekord wykazu niesie notę o warunkach, którą trzeba potwierdzić przed warunkami przyłączenia | panel: `inspector`, tab: `katalog` |
 | `der.dynamic_profile_default` | GENERATORS | 4 | WARNING | Profil dynamiczny źródła DER pochodzi z wartości domyślnej katalogu (nie z jawnego wskazania) — sprawdź, czy pasuje do rzeczywistego urządzenia | panel: `inspector`, tab: `katalog` |
+| `generator.harmonic_spectrum_missing` | GENERATORS | 4 | WARNING | Karta katalogowa przekształtnika nie niesie widma prądu harmonicznych — wkład źródła do analizy jakości energii V12.6 jest pominięty (podaj widmo ręcznie w oknie analizy albo uzupełnij kartę katalogową) | panel: `inspector`, tab: `katalog` |
 | `genset.fuel_type_missing` | GENERATORS | 4 | INFO | Agregat nie ma określonego rodzaju paliwa | panel: `inspector`, tab: `parametry`, focus: `fuel_type` |
 | `inverter.k_sc_assumed` | GENERATORS | 4 | WARNING | Udział zwarciowy falownika (k_sc) nie jest podany w karcie katalogowej konwertera — przyjęto wartość domyślną IEC 60909 (1,1) zamiast zmierzonej | panel: `inspector`, tab: `katalog` |
 | `conductor.fault_duration_missing` | PROTECTION | 2 | WARNING | Brak czasu wyłączenia zabezpieczenia — bez niego nie da się sprawdzić, czy przekrój wytrzyma zwarcie | panel: `analizy`, tab: `zabezpieczenia` |
@@ -177,10 +179,10 @@ Wszystkie **116** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 
 | Poziom | Liczba kodów |
 |--------|---------------|
-| BLOCKER | 72 |
-| WARNING | 43 |
+| BLOCKER | 73 |
+| WARNING | 44 |
 | INFO | 1 |
-| **Razem** | **116** |
+| **Razem** | **118** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
@@ -188,10 +190,10 @@ Wszystkie **116** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | TOPOLOGY | 6 |
 | CATALOGS | 44 |
 | STATIONS | 12 |
-| GENERATORS | 20 |
+| GENERATORS | 22 |
 | PROTECTION | 9 |
 | ANALYSIS | 10 |
-| **Razem** | **116** |
+| **Razem** | **118** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 
@@ -244,3 +246,4 @@ Gdzie:
 | 2026-09-09 | 2.0 | Karta READINESS-DOC (naprawa KLASY, nie instancji dryfu z wersji 1.1): sekcje "Kompletny słownik kodów gotowości" i "Podsumowanie statystyczne" są odtąd GENEROWANE z rejestru skryptem `scripts/generuj_slownik_kodow_gotowosci.py` i pilnowane w CI przez `scripts/readiness_dictionary_guard.py` (workflow `python-tests.yml`, ten sam krok co `readiness_codes_guard.py`) -- rozjazd dokumentu z rejestrem jest teraz czerwony, nie cichy. Usunięto pojęcie "Fix Action ID" / "akcja naprawcza (lub null)" (skasowane kartą FIX-ACTION-KASACJA -- nie miało żadnego wykonawcy w systemie); `fix_navigation` jest jedyną, obowiązkową ścieżką naprawczą dla KAŻDEGO kodu. Dokument doprowadzony do stanu rejestru: 114 kodów, wszystkie 7 wartości `ReadinessArea` reprezentowane. Naprawiono przy okazji defekt rejestru wykryty tą kartą: 12 komunikatów `message_pl` bloku "Źródła nN" (karta F-K6, V12K-206) było zapisanych bez polskich znaków diakrytycznych -- poprawione w `domain/canonical_operations.py`, przypięte testem `backend/tests/domain/test_rejestr_kodow_komunikaty_pl.py`. |
 | 2026-09-09 | 2.1 | CV-4.3 K7 (odbiór kart, ta sama sesja): rejestr +1 kod `source.u_set_pu_out_of_range` (BLOCKER, napięcie zadane szyny bilansującej `Source.u_set_pu` poza pasmem 0,8–1,2 p.u.; emiter walidator ENM `sources.u_set_pu_out_of_range`) -- sekcje generowane przeliczone generatorem: 115 kodów. |
 | 2026-09-09 | 2.2 | W2 pkt 1 (zero fabrykacji ekranów, 347ee904): rejestr +1 kod `analysis.dynamic_stability_scenario_incomplete` (BLOCKER — ocena progowa stabilności dynamicznej wymaga jawnego scenariusza wyłączenia zwarcia; koniec wartości domyślnych scenariusza) — sekcje generowane przeliczone generatorem: 116 kodów. Dryf wykryty przez `readiness_dictionary_guard` w CI na a4d94615 (scalenie W2 bez ponownego przebiegu generatora) i naprawiony w tym commicie. |
+| 2026-09-09 | 2.3 | W2-C (zero fabrykacji wejścia V12.6, daf303a3): rejestr +2 kody `generator.converter_card_missing` (BLOCKER — przekształtnik bez karty katalogowej / bez mocy znamionowej nie wchodzi do wejścia V12.6) i `generator.harmonic_spectrum_missing` (WARNING — karta bez widma prądu harmonicznego: źródło pominięte w analizie harmonicznych zamiast zaszytego widma) — sekcje generowane przeliczone generatorem: 118 kodów. |

@@ -222,7 +222,10 @@ POMIJANE_KATALOGI = {
 #     `GridSourcePreviewResponse` (-1); przy okazji naprawiony u zrodla pre-existing TS1117
 #     (duplikat `itemsByBayId` w literale `InspectorEngineeringView.test.tsx`, od #433 — drugi
 #     klucz po cichu zerowal fiksture read-modelu) (-1). Razem 127.
-BUDZET_BLEDOW_POZA_BRAMKA = 127
+#: W2-B odbior (2026-09-09): trzy testy `Etap3Configurators.test.tsx` budowaly `routeState`
+#: bez obowiazkowego `route` (dwa nowe + jeden zastany `der-sources`) — naprawione u zrodla,
+#: pomiar guardem 127 -> 126.
+BUDZET_BLEDOW_POZA_BRAMKA = 126
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,
