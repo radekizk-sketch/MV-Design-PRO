@@ -1,13 +1,35 @@
 /**
  * CDSE Modal Dispatcher — maps resolved context to modal targets.
  *
- * 1:1 mapping from CdseContextType to canonical modal + operation.
+ * ZERO FABRYKACJI (karta W2 pkt 3, 2026-09-09): mapowanie `PROTECTION_DEVICE`
+ * → `EditProtectionModal` wskazywał komponent, którego NIE MA w `frontend/src`
+ * (`find frontend/src -iname "*EditProtectionModal*"` = 0), a operacja
+ * `update_relay_settings` jest wyłączonym stubem backendu
+ * (`enm/domain_operations_v2.py`, kod `relay.legacy_write_disabled`).
+ * Inwentarz klasy (ta sama kontrola dla WSZYSTKICH 13 wpisów mapy, nie tylko
+ * nazwanego w audycie): `find frontend/src -iname "*<Nazwa>*"` = 0 dla
+ * KAŻDEGO z `CdseModalId` — AddTrunkSegmentModal, InsertStationModal,
+ * AddBranchModal, ConnectRingModal, EditDeviceModal, EditBusSectionModal,
+ * EditLoadModal, EditSourceModal, EditInverterSourceModal, EditProtectionModal,
+ * EditMeasurementModal, EditSwitchModal, PropertyGridModal — ŻADEN nie istnieje
+ * jako komponent. Kanoniczna edycja SLD biegnie inną, żywą ścieżką
+ * (`ui/sld/v2/command/SldCommandService.ts` + `sldActionExecutor.ts`, którą
+ * pilnuje `scripts/dead_click_guard.py`); ten dyspozytor (`modules/sld/cdse/`)
+ * nie ma dziś ŻADNEGO konsumenta w `ui/` poza własnym pakietem
+ * (`sldEventRouter.ts`/`index.ts`/testy) — `routeSldClick`/`routeSldDoubleClick`
+ * nie są wołane z żadnego realnego ekranu.
+ *
+ * Tabela zostaje PUSTA, dopóki nie powstanie REALNY modal pod daną nazwą —
+ * `dispatchModal` zwraca `null` dla każdego kontekstu, co `sldEventRouter.ts`
+ * już poprawnie obsługuje (`SELECTION_ONLY`/`NO_ACTION`, zero zmian tam
+ * potrzebnych). Nowy wpis wolno dodać WYŁĄCZNIE razem z realnym komponentem
+ * modala pod tą samą nazwą — nigdy jako obietnica bez pokrycia.
  *
  * INVARIANTS:
- * - Deterministic: same context → same modal
- * - Every context type has exactly one primary modal
- * - Every modal maps to exactly one canonical operation
+ * - Deterministic: same context → same modal (or `null`, honestly, until built)
+ * - A mapped modal maps to exactly one canonical operation
  * - No fallback logic, no heuristics
+ * - Zero fabrykacji: no modalId here without a real component under that name
  */
 
 import type { CdseContextType, CdseResolvedContext } from './contextResolver';
@@ -54,68 +76,24 @@ export interface ModalDispatchTarget {
 
 /**
  * Context type → modal mapping table.
- * Deterministic, exhaustive, no defaults.
+ *
+ * PUSTA (karta W2 pkt 3): każdy z 13 wpisów, które kiedyś tu stały, mapował na
+ * komponent nieobecny w `frontend/src` — usunięte razem, nie tylko
+ * `PROTECTION_DEVICE` nazwany w audycie (patrz inwentarz klasy w komentarzu
+ * pliku powyżej). Partial, nie total: żaden kontekst nie ma dziś prawa do
+ * modala, którego nie ma — `dispatchModal` zwraca `null` dla każdego z nich.
  */
-const CONTEXT_TO_MODAL: Record<CdseContextType, { modalId: CdseModalId; canonicalOp: string }> = {
-  TRUNK_TERMINAL: {
-    modalId: 'AddTrunkSegmentModal',
-    canonicalOp: 'continue_trunk_segment_sn',
-  },
-  TRUNK_SEGMENT: {
-    modalId: 'InsertStationModal',
-    canonicalOp: 'insert_station_on_segment_sn',
-  },
-  BRANCH_PORT: {
-    modalId: 'AddBranchModal',
-    canonicalOp: 'start_branch_segment_sn',
-  },
-  RING_PORT: {
-    modalId: 'ConnectRingModal',
-    canonicalOp: 'connect_secondary_ring_sn',
-  },
-  STATION_DEVICE: {
-    modalId: 'EditDeviceModal',
-    canonicalOp: 'update_element_parameters',
-  },
-  BUS_SECTION: {
-    modalId: 'EditBusSectionModal',
-    canonicalOp: 'update_element_parameters',
-  },
-  LOAD: {
-    modalId: 'EditLoadModal',
-    canonicalOp: 'update_element_parameters',
-  },
-  SOURCE: {
-    modalId: 'EditSourceModal',
-    canonicalOp: 'update_element_parameters',
-  },
-  INVERTER_SOURCE: {
-    modalId: 'EditInverterSourceModal',
-    canonicalOp: 'update_element_parameters',
-  },
-  PROTECTION_DEVICE: {
-    modalId: 'EditProtectionModal',
-    canonicalOp: 'update_relay_settings',
-  },
-  MEASUREMENT_DEVICE: {
-    modalId: 'EditMeasurementModal',
-    canonicalOp: 'update_element_parameters',
-  },
-  SWITCH: {
-    modalId: 'EditSwitchModal',
-    canonicalOp: 'update_element_parameters',
-  },
-  UNKNOWN: {
-    modalId: 'PropertyGridModal',
-    canonicalOp: 'update_element_parameters',
-  },
-};
+const CONTEXT_TO_MODAL: Partial<
+  Record<CdseContextType, { modalId: CdseModalId; canonicalOp: string }>
+> = {};
 
 /**
  * Dispatch a modal for the given resolved context.
  *
- * Returns a fully-resolved ModalDispatchTarget, or null if context is UNKNOWN
- * and no fallback is appropriate.
+ * Returns a fully-resolved ModalDispatchTarget, or `null` when the context has
+ * no mapped modal — today that is EVERY context (karta W2 pkt 3: the table is
+ * empty until a real modal component exists for it). Zero fabrykacji: never
+ * invents a target the UI cannot actually open.
  *
  * @param context - Resolved context from contextResolver
  * @returns ModalDispatchTarget or null
