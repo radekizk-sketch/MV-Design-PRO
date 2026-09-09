@@ -962,8 +962,8 @@ def set_measurement_secondary_circuit(
     WYŁĄCZNIE dla `measurement_type=='VT'` (walidacja TU, żeby błąd był
     domenowy — z jasnym powodem — a nie surowy `ValidationError` z warstwy
     zapisu snapshotu). Jawne `"obwod_wtorny": null` w payloadzie CZYŚCI obwód
-    (ten sam konwencja co `set_der_catalog_bindings`: klucz obecny + `None` =
-    skasuj, klucz nieobecny = nie dotykaj).
+    (ta sama konwencja co przy zapisie wiązań wytwórcy — funkcja obok wyżej
+    w tym pliku: klucz obecny + `None` = skasuj, klucz nieobecny = nie dotykaj).
     """
     measurement_ref = payload.get("measurement_ref") or payload.get("ref_id")
     if not measurement_ref:

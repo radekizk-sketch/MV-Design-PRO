@@ -311,7 +311,8 @@ def sprawdz_dobor_ct(przekladnik: dict[str, Any], tor: WymaganiaToru) -> WynikDo
                 ),
                 werdykt="informacja",
                 wymagane=f"ALF ≥ {alf_wymagany:.1f} (Ik″ {tor.ik_ka:.2f} kA / In {in_a:.0f} A)",
-                dostepne=f"ALF {alf:.0f}" + (" (wyprowadzony z klasy)" if alf_ze_zrodla_klasy else ""),
+                dostepne=f"ALF {alf:.0f}"
+                + (" (wyprowadzony z klasy)" if alf_ze_zrodla_klasy else ""),
                 komentarz_pl=(
                     "Nasycenie rdzenia zależy od rzeczywistego obciążenia obwodu wtórnego "
                     "(S2obl) — rozstrzyga je kryterium „Nasycenie rdzenia” (ct.alf) niżej, "

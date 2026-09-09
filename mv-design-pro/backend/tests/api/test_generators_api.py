@@ -1252,8 +1252,7 @@ def test_dobor_ct_uzywa_obwodu_wtornego_z_pomiaru_modelu(app_client) -> None:
     set_enm(_klucz_modelu(case_id), enm)
 
     odpowiedz = app_client.get(
-        f"/api/projects/{project_id}/cases/{case_id}"
-        f"/generators/gen_1/instrument-transformers"
+        f"/api/projects/{project_id}/cases/{case_id}" f"/generators/gen_1/instrument-transformers"
     )
     assert odpowiedz.status_code == 200, odpowiedz.text
     dane = odpowiedz.json()
@@ -1321,8 +1320,7 @@ def test_dobor_ct_bez_pomiaru_w_polu_zostaje_brak_danych_obwodu(app_client) -> N
     set_enm(_klucz_modelu(case_id), enm)
 
     dane = app_client.get(
-        f"/api/projects/{project_id}/cases/{case_id}"
-        f"/generators/gen_1/instrument-transformers"
+        f"/api/projects/{project_id}/cases/{case_id}" f"/generators/gen_1/instrument-transformers"
     ).json()
     ct_alf = next(
         k for k in dane["przekladnik_pradowy"]["wynik"]["kryteria"] if k["kod"] == "ct.alf"
@@ -1330,6 +1328,48 @@ def test_dobor_ct_bez_pomiaru_w_polu_zostaje_brak_danych_obwodu(app_client) -> N
     assert ct_alf["werdykt"] == "brak_danych"
     assert "ct.secondary_circuit_missing" in ct_alf["kody_gotowosci"]
     assert ct_alf["dostepne"] is None
+
+
+def test_obwod_wtorny_pomiaru_pomija_aparat_bez_mocy_nie_podstawia_zera() -> None:
+    """Karta W3-B / `scripts/solver_input_substitute_guard.py`: pozycja
+    `obciazenia_aparatow` bez `moc_va` (albo z wartoscia nie-liczbowa) jest
+    POMIJANA w bilansie mocy wtornej — NIGDY zastepowana domyslnym zerem.
+    Zero VA to POMIAR (aparat nic nie pobiera), nie znacznik braku danej;
+    ciche podstawienie zera zanizyloby bilans `S2obl` bez sladu, ze dana byla
+    niekompletna. Test schodzi PONIZEJ warstwy Pydantic (ktora w praktyce
+    wymusza `moc_va: float` na kazdej pozycji zapisanej przez API) — sam
+    `_obwod_wtorny_pomiaru` czyta surowy `dict` ze snapshotu i NIE zaklada
+    poprawnosci cudzej warstwy zapisu, zgodnie z duchem guarda."""
+    from api.generators import _obwod_wtorny_pomiaru
+    from network_model.solvers.equipment_checks.ct_burden_saturation import CtDeviceBurden
+
+    dane: dict = {
+        "measurements": [
+            {
+                "ref_id": "ct_field_der",
+                "measurement_type": "CT",
+                "bay_ref": "field_der",
+                "catalog_ref": "ct_200_5_5p10_10va_abb",
+                "obwod_wtorny": {
+                    "dlugosc_przewodu_m": 60.0,
+                    "przekroj_przewodu_mm2": 1.5,
+                    "obciazenia_aparatow": [
+                        {"nazwa": "Przekaznik OC", "moc_va": 5.0},
+                        {"nazwa": "Uszkodzona pozycja bez mocy"},
+                        {"nazwa": "Uszkodzona pozycja z tekstem", "moc_va": "n/d"},
+                        {"nazwa": "Watomierz", "moc_va": 3.5},
+                    ],
+                },
+            }
+        ]
+    }
+
+    wynik = _obwod_wtorny_pomiaru(dane, "field_der", "CT", "ct_200_5_5p10_10va_abb")
+
+    assert wynik.obciazenia_aparatow == (
+        CtDeviceBurden(nazwa="Przekaznik OC", moc_va=5.0),
+        CtDeviceBurden(nazwa="Watomierz", moc_va=3.5),
+    )
 
 
 def test_dobor_przekladnikow_bez_wiazania_nie_udaje_werdyktu(app_client) -> None:

@@ -1242,16 +1242,22 @@ def _obwod_wtorny_pomiaru(
     ]
     if not kandydaci:
         return _OBWOD_WTORNY_PUSTY
-    dopasowany_katalogowo = [m for m in kandydaci if catalog_ref and m.get("catalog_ref") == catalog_ref]
+    dopasowany_katalogowo = [
+        m for m in kandydaci if catalog_ref and m.get("catalog_ref") == catalog_ref
+    ]
     pula = dopasowany_katalogowo or kandydaci
     wybrany = sorted(pula, key=lambda m: str(m.get("ref_id") or ""))[0]
     obwod = wybrany.get("obwod_wtorny")
     if not isinstance(obwod, dict):
         return _OBWOD_WTORNY_PUSTY
+    # Pozycja bez `moc_va` jest POMIJANA, nie zastepowana zerem — zero VA to
+    # POMIAR (aparat nic nie pobiera), nie znacznik braku danej. Model
+    # (`ObciazenieAparatu.moc_va: float`) czyni to teoretyczne, ale kod NIE
+    # zaklada poprawnosci cudzej warstwy zapisu (solver_input_substitute_guard).
     aparaty = tuple(
-        CtDeviceBurden(nazwa=str(o.get("nazwa", "")), moc_va=float(o.get("moc_va", 0.0)))
+        CtDeviceBurden(nazwa=str(o.get("nazwa", "")), moc_va=float(o["moc_va"]))
         for o in (obwod.get("obciazenia_aparatow") or [])
-        if isinstance(o, dict)
+        if isinstance(o, dict) and isinstance(o.get("moc_va"), int | float)
     )
     return _ObwodWtornyPomiaru(
         dlugosc_przewodu_m=obwod.get("dlugosc_przewodu_m"),
