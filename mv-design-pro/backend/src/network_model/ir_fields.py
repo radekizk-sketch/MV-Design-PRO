@@ -56,6 +56,24 @@ def wymagany_float(data: dict[str, Any], field: str, *, context: str | None = No
     return float(data[field])  # type: ignore[arg-type]
 
 
+def wymagany_float_lub_nieznany(
+    data: dict[str, Any], field: str, *, context: str | None = None
+) -> float | None:
+    """Odczytaj pole liczbowe, które WOLNO zadeklarować jako nieznane JAWNYM ``None``.
+
+    Różnica wobec ``wymagany_float``: brak KLUCZA nadal podnosi wyjątek (autor
+    rekordu zapomniał o polu), ale klucz obecny z wartością ``None`` znaczy
+    „dana fizyczna nieznana z definicji źródła" (np. typ linii z literatury
+    benchmarkowej podaje impedancje, a nie tabliczkę przewodnika — CV-4.3 K1).
+    Nadal nie wolno podstawiać 0.0 ani liczby-zastępnika za nieznaną daną.
+    """
+    if field not in data:
+        raise BrakujacePoleIRError(field, context=context)
+    if data[field] is None:
+        return None
+    return float(data[field])  # type: ignore[arg-type]
+
+
 def wymagany_int(data: dict[str, Any], field: str, *, context: str | None = None) -> int:
     """Odczytaj wymagane pole całkowite (int) — brak klucza/``None`` podnosi wyjątek."""
     if field not in data or data[field] is None:

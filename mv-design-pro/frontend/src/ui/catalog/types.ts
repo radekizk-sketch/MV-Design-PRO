@@ -28,10 +28,11 @@ export interface LineType extends CatalogType {
   b_us_per_km: number;
   rated_current_a: number;
   standard?: string;
-  max_temperature_c: number;
+  /** null = dana tabliczkowa nieznana z definicji źródła (typ z literatury benchmarkowej). */
+  max_temperature_c: number | null;
   voltage_rating_kv: number;
   conductor_material?: string;
-  cross_section_mm2: number;
+  cross_section_mm2: number | null;
 }
 
 /**

@@ -833,8 +833,16 @@ function renderLineParams(type: LineType) {
       <DetailField label="Prąd znamionowy" value={type.rated_current_a.toFixed(0)} unit="A" />
       <DetailField label="Napięcie znamionowe" value={type.voltage_rating_kv.toFixed(1)} unit="kV" />
       <DetailField label="Materiał przewodu" value={type.conductor_material ?? '—'} />
-      <DetailField label="Przekrój" value={type.cross_section_mm2.toFixed(0)} unit="mm2" />
-      <DetailField label="Maks. temperatura" value={type.max_temperature_c.toFixed(0)} unit="C" />
+      <DetailField
+        label="Przekrój"
+        value={type.cross_section_mm2 == null ? 'brak danych' : type.cross_section_mm2.toFixed(0)}
+        unit="mm2"
+      />
+      <DetailField
+        label="Maks. temperatura"
+        value={type.max_temperature_c == null ? 'brak danych' : type.max_temperature_c.toFixed(0)}
+        unit="C"
+      />
     </>
   );
 }

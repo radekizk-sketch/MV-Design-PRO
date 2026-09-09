@@ -779,9 +779,20 @@ def test_remis_pelnej_dotkliwosci_rozstrzyga_element_ref_rosnaco() -> None:
 #: żadna wielkość liczbowa nie ma prawa się różnić — potwierdzone zielenią
 #: wszystkich pozostałych testów enumeracji przy czerwieni wyłącznie tych
 #: dwóch odcisków.
+#: CV-4.3 K1 (odbiór 2026-09-09): odciski PRZELICZONE, bo K1 zmieniła seed identyfikatorów
+#: odcinków budowanych operacjami `continue_trunk_segment_sn`/`start_branch_segment_sn`
+#: (seed niesie odtąd catalog_ref/segment_name/bus_name — usunięcie kolizji ref_id
+#: dwóch różnych odcinków z tej samej szyny). Widok N-1 sortuje kontyngencje i węzły po
+#: identyfikatorach, numeruje powtarzające się nazwy „(1)/(2)" wg tej kolejności i
+#: rozstrzyga remisy rankingu po id — więc zmieniły się WYŁĄCZNIE: kolejność wierszy,
+#: sufiksy nazw i pozycje remisowe w rankingu. DOWÓD (sonda koordynatora, K6 5adc958d vs
+#: drzewo K1): po normalizacji identyfikatorów, sufiksów „(n)" i kolejności list oba
+#: widoki są identyczne z dokładnością do pola `ranking[].pozycja` przy równej
+#: dotkliwości; każda liczba fizyczna (dotkliwość, napięcia, przepływy, iteracje NR)
+#: bez zmian. To NIE jest skutek optymalizacji wydajności (intencja odcisku zachowana).
 ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
-    "gn01_promieniowa": "fbf4ccd6d49375fdb9a43ccf5cd97ab9f1de34fa39e4fb28f730717060f34125",
-    "gn03_pierscien": "b4639a3b1347f4b9e5df80b5eb2e26aec214f252d1a41682fb9e04091d94e22b",
+    "gn01_promieniowa": "69346423d055cc850f27d27d4d54147ef0a755decf8bbadf201b9c2f4cd515cd",
+    "gn03_pierscien": "bc9460fab9ebc629d189fb62c2a81111e03bf61fdc99746bb88a595ddad69519",
 }
 
 

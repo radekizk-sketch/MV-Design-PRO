@@ -85,6 +85,8 @@ REF_FALOWNIK_PV = "conv-pv-nn-0p5mw-0p4kv"
 REF_ZKSN = "ZKSN-2P-630A"
 REF_SLUP_ODG = "SLUP-ODG-12"
 REF_ZACZEPY = "tc_oltc_110sn_19_125"
+#: CV-4.3 K1 (odbior 2026-09-09): generator synchroniczny SN z katalogu benchmarkow (GENERATOR_SN).
+REF_GENERATOR_SN = "bench_ieee4bus_gen4"
 #: Punkt pośredni SN ma WŁASNY katalog (poza `CatalogNamespace`) — kreator podaje
 #: jego nazwę jawnie w `catalog_namespace`, bo brama nie zgaduje kategorii.
 PRZESTRZEN_PUNKTU_POSREDNIEGO = "mv_branch_points"
@@ -583,6 +585,27 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
         lambda: {
             "bus_ref": "bus-1",
             "catalog_binding": _wiazanie("KOMPENSATOR_SN", REF_KOMPENSATOR),
+        },
+        lambda p: _zepsuj_wiazanie(p),
+    ),
+    # --- CV-4.3 K1: odbior i generator synchroniczny WPROST na szynie SN --------
+    IniekcjaBramy(
+        "add_load_sn",
+        "catalog_binding",
+        lambda: {
+            "bus_ref": "bus-1",
+            "active_power_kw": 150.0,
+            "catalog_binding": _wiazanie("OBCIAZENIE", REF_ODBIOR),
+        },
+        lambda p: _zepsuj_wiazanie(p),
+    ),
+    IniekcjaBramy(
+        "add_generator_sn",
+        "catalog_binding",
+        lambda: {
+            "bus_ref": "bus-1",
+            "p_mw": 1.0,
+            "catalog_binding": _wiazanie("GENERATOR_SN", REF_GENERATOR_SN),
         },
         lambda p: _zepsuj_wiazanie(p),
     ),

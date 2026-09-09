@@ -49,6 +49,8 @@ from __future__ import annotations
 
 import math
 
+from network_model.pochodne import prad_roboczy_a
+
 from .types import (
     CatalogStatus,
     CatalogVerificationStatus,
@@ -87,26 +89,31 @@ def _z_base(base_kv: float, base_mva: float) -> float:
 
 
 def _i_base_a(base_kv: float, base_mva: float) -> float:
-    return base_mva * 1000.0 / (math.sqrt(3.0) * base_kv)
+    # Prąd bazowy sieci per-unit: I_base = S_base·1000/(√3·U_base) — TA SAMA formuła
+    # (bit w bit) co ``network_model.pochodne.prad_roboczy_a``; katalog nie niesie
+    # własnej kopii √3 (``backend_no_physics_guard``, rodzina A_sqrt3).
+    return prad_roboczy_a(base_mva, base_kv)
 
 
 #: Sieć referencyjna z literatury (Stevenson/MATPOWER/Kersting/CIGRE) opisuje
 #: linię jako impedancję per-unit — bez przekroju/materiału/temperatury
 #: granicznej przewodnika (to jest abstrakcja rozpływu mocy, nie tabliczka
-#: znamionowa produktu). Te pola SĄ WYMAGANE kontraktem `LineType` (m.in. dla
-#: kontroli termicznej IEC 60949, którą TEN benchmark nie wykonuje), więc
-#: dostają jawnie oznaczoną wartość sentinelową zamiast fabrykowanego
-#: "realnego" przewodnika, którego literatura nie podaje — verification_note
-#: nazywa to wprost i pole NIE wchodzi do Y-bus rozpływu mocy (czytane tam są
+#: znamionowa produktu). Zero fabrykacji: pola tabliczkowe są zadeklarowane
+#: JAWNYM ``None`` (kontrakt `LineType` + `ir_fields.wymagany_float_lub_nieznany`:
+#: brak klucza to nadal błąd autora rekordu, jawne ``None`` to „dana nieznana z
+#: definicji źródła") — kontrola termiczna IEC 60949 oddaje brak wyniku zamiast
+#: fałszywego werdyktu; verification_note nazywa to wprost.
+#: Żadne z tych pól NIE wchodzi do Y-bus rozpływu mocy (czytane tam są
 #: wyłącznie r_ohm_per_km/x_ohm_per_km/b_us_per_km).
 _BRAK_TABLICZKI_TERMICZNEJ = (
     "Model per-unit z literatury nie podaje przekroju/materiału/temperatury "
     "granicznej przewodnika (nie jest to tabliczka znamionowa produktu). "
-    "Wartość sentinelowa — pole nieużywane w torze rozpływu mocy (Y-bus "
-    "czyta wyłącznie r_ohm_per_km/x_ohm_per_km/b_us_per_km)."
+    "Pola tabliczkowe zadeklarowane JAWNIE jako nieznane (None; odbiór CV-4.3 K1, "
+    "2026-09-09; `ir_fields.wymagany_float_lub_nieznany`): kontrola termiczna oddaje "
+    "brak wyniku zamiast fałszywego werdyktu, korekty temperaturowe nie mają danej; "
+    "żadne z tych pól nie wchodzi do Y-bus rozpływu mocy (czytane są wyłącznie "
+    "r_ohm_per_km/x_ohm_per_km/b_us_per_km)."
 )
-_SENTINEL_MAX_TEMPERATURE_C = 90.0
-_SENTINEL_CROSS_SECTION_MM2 = 240.0
 
 
 def _linia_z_pu(
@@ -134,8 +141,8 @@ def _linia_z_pu(
             "b_us_per_km": b_us_per_km,
             "rated_current_a": _i_base_a(base_kv, base_mva),
             "voltage_rating_kv": base_kv,
-            "max_temperature_c": _SENTINEL_MAX_TEMPERATURE_C,
-            "cross_section_mm2": _SENTINEL_CROSS_SECTION_MM2,
+            "max_temperature_c": None,
+            "cross_section_mm2": None,
             "manufacturer": None,
             "verification_status": CatalogVerificationStatus.REFERENCYJNY.value,
             "source_reference": source,
@@ -168,8 +175,8 @@ def _linia_z_ohm(
             "b_us_per_km": b_us_per_km,
             "rated_current_a": rated_current_a,
             "voltage_rating_kv": voltage_rating_kv,
-            "max_temperature_c": _SENTINEL_MAX_TEMPERATURE_C,
-            "cross_section_mm2": _SENTINEL_CROSS_SECTION_MM2,
+            "max_temperature_c": None,
+            "cross_section_mm2": None,
             "manufacturer": None,
             "verification_status": CatalogVerificationStatus.REFERENCYJNY.value,
             "source_reference": source,

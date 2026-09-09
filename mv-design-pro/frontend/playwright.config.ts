@@ -62,7 +62,14 @@ function e2eTempDir(): string {
   // Ustalany raz w procesie uruchamiającym; workery Playwrighta dziedziczą env,
   // więc widzą TEN SAM katalog zamiast tworzyć własne.
   if (!process.env.PLAYWRIGHT_E2E_TMP) {
-    process.env.PLAYWRIGHT_E2E_TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'mvd-e2e-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mvd-e2e-'));
+    process.env.PLAYWRIGHT_E2E_TMP = dir;
+    // Katalog należy do procesu, który go utworzył (runner Playwrighta; workery
+    // dziedziczą zmienną i nie wchodzą w tę gałąź). Sprzątanie przy wyjściu runnera,
+    // czyli PO zatrzymaniu serwerów `webServer` — baza jednego biegu z realnym backendem
+    // ma do ~3 GB (pomiar 2026-09-06: 41 osieroconych katalogów, ~10 GB, po biegach
+    // bez sprzątania na maszynie o stałym przydziale dysku).
+    process.once('exit', () => fs.rmSync(dir, { recursive: true, force: true }));
   }
   return process.env.PLAYWRIGHT_E2E_TMP;
 }

@@ -46,6 +46,7 @@ class TestCatalogNamespace:
             "ZRODLO_NN_BESS",
             "BATERIA_BESS",  # karta FAB-J — pakiet baterii, oddzielny od PCS
             "ZRODLO_SN",
+            "GENERATOR_SN",  # CV-4.3 K1 — generator synchroniczny SN/WN (odbior 2026-09-09)
             "ZABEZPIECZENIE",
             "NASTAWY_ZABEZPIECZEN",
             "CONVERTER",

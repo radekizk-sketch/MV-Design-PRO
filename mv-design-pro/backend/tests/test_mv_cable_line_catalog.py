@@ -33,6 +33,7 @@ from network_model.catalog.mv_cable_line_catalog import (
     get_catalog_statistics,
     get_manufacturer_cable_type_ids,
 )
+from network_model.catalog.types import CatalogStatus
 
 
 class TestCatalogCompleteness:
@@ -74,13 +75,26 @@ class TestCatalogCompleteness:
         for line in lines:
             assert line.id, f"Linia bez ID: {line}"
             assert line.name, f"Linia bez nazwy: {line.id}"
-            assert line.r_ohm_per_km > 0, f"Linia {line.id}: R20 <= 0"
-            assert line.x_ohm_per_km > 0, f"Linia {line.id}: X <= 0"
-            assert line.cross_section_mm2 > 0, f"Linia {line.id}: przekrój <= 0"
-            assert line.conductor_material in (
-                "AL",
-                "AL_ST",
-            ), f"Linia {line.id}: nieznany materiał {line.conductor_material}"
+            # Każdy typ (produkt i literatura): impedancja nieujemna i niezerowa jako
+            # całość — gałąź o R = X = 0 nie jest linią.
+            assert line.r_ohm_per_km >= 0, f"Linia {line.id}: R20 < 0"
+            assert line.x_ohm_per_km >= 0, f"Linia {line.id}: X < 0"
+            assert line.r_ohm_per_km > 0 or line.x_ohm_per_km > 0, f"Linia {line.id}: R = X = 0"
+            # Dane TABLICZKOWE produktu (R20 > 0 realnego przewodnika, przekrój,
+            # materiał): wymagane dla typów produkcyjnych (catalog_status
+            # PRODUKCYJNY_V1). Typy z literatury (benchmarki CV-4.3 K1, REFERENCYJNY_V1)
+            # ich nie podają i NIE dostają liczb-zastępników (None = nieznane); mogą
+            # też być czysto reaktancyjne (MATPOWER case9: gałęzie transformatorowe R = 0).
+            if line.catalog_status == CatalogStatus.PRODUKCYJNY_V1.value:
+                assert line.r_ohm_per_km > 0, f"Linia {line.id}: R20 <= 0"
+                assert line.x_ohm_per_km > 0, f"Linia {line.id}: X <= 0"
+                assert (
+                    line.cross_section_mm2 is not None and line.cross_section_mm2 > 0
+                ), f"Linia {line.id}: przekrój <= 0"
+                assert line.conductor_material in (
+                    "AL",
+                    "AL_ST",
+                ), f"Linia {line.id}: nieznany materiał {line.conductor_material}"
 
     def test_production_cables_have_zero_sequence_parameters(self) -> None:
         """Produkcyjne typy kabli SN mają katalogowe R0/X0 do zwarć doziemnych."""
@@ -99,7 +113,11 @@ class TestCatalogCompleteness:
         catalog = get_default_mv_catalog()
 
         for line in catalog.list_line_types():
-            if "incomplete" in line.id:
+            # „Produkcyjny" = catalog_status PRODUKCYJNY_V1 (atrybut kontraktu, nie
+            # podciąg identyfikatora): typ TESTOWY „incomplete" i typy z literatury
+            # (benchmarki CV-4.3 K1, REFERENCYJNY_V1, R0/X0 poza publikacją) nie są
+            # produktami z tabliczką i nie podlegają temu wymaganiu.
+            if line.catalog_status != CatalogStatus.PRODUKCYJNY_V1.value:
                 continue
             assert line.r0_ohm_per_km is not None, f"Linia {line.id}: brak R0"
             assert line.x0_ohm_per_km is not None, f"Linia {line.id}: brak X0"

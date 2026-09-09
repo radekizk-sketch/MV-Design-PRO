@@ -30,7 +30,12 @@ from enum import Enum
 from typing import Any, Literal
 from uuid import uuid4
 
-from network_model.ir_fields import wymagany_float, wymagany_int, wymagany_str
+from network_model.ir_fields import (
+    wymagany_float,
+    wymagany_float_lub_nieznany,
+    wymagany_int,
+    wymagany_str,
+)
 
 # =============================================================================
 # CATALOG NAMESPACE ENUM — kanoniczne nazwy przestrzeni nazw katalogu
@@ -569,10 +574,12 @@ class LineType:
     rated_current_a: float = 0.0
     manufacturer: str | None = None
     standard: str | None = None
-    max_temperature_c: float = 70.0
+    #: ``None`` = dana tabliczkowa nieznana z definicji źródła (typ z literatury
+    #: benchmarkowej, CV-4.3 K1) — jawnie zadeklarowana, nie liczba-zastępnik.
+    max_temperature_c: float | None = 70.0
     voltage_rating_kv: float = 0.0
     conductor_material: str | None = None
-    cross_section_mm2: float = 0.0
+    cross_section_mm2: float | None = 0.0
     r0_ohm_per_km: float | None = None
     x0_ohm_per_km: float | None = None
     b0_siemens_per_km: float | None = None
@@ -608,6 +615,7 @@ class LineType:
         if (
             self.jth_1s_a_per_mm2 is not None
             and self.jth_1s_a_per_mm2 > 0
+            and self.cross_section_mm2 is not None
             and self.cross_section_mm2 > 0
         ):
             return True
@@ -626,6 +634,7 @@ class LineType:
         if (
             self.jth_1s_a_per_mm2 is not None
             and self.jth_1s_a_per_mm2 > 0
+            and self.cross_section_mm2 is not None
             and self.cross_section_mm2 > 0
         ):
             return self.jth_1s_a_per_mm2 * self.cross_section_mm2
@@ -677,10 +686,14 @@ class LineType:
             rated_current_a=wymagany_float(data, "rated_current_a", context="LineType"),
             manufacturer=data.get("manufacturer"),
             standard=data.get("standard"),
-            max_temperature_c=wymagany_float(data, "max_temperature_c", context="LineType"),
+            max_temperature_c=wymagany_float_lub_nieznany(
+                data, "max_temperature_c", context="LineType"
+            ),
             voltage_rating_kv=wymagany_float(data, "voltage_rating_kv", context="LineType"),
             conductor_material=data.get("conductor_material"),
-            cross_section_mm2=wymagany_float(data, "cross_section_mm2", context="LineType"),
+            cross_section_mm2=wymagany_float_lub_nieznany(
+                data, "cross_section_mm2", context="LineType"
+            ),
             r0_ohm_per_km=(
                 float(data["r0_ohm_per_km"]) if data.get("r0_ohm_per_km") is not None else None
             ),
