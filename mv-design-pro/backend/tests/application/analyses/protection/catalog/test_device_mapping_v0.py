@@ -1,221 +1,254 @@
 from __future__ import annotations
 
-from application.analyses.protection.catalog.pipeline import run_device_mapping_v0
-from application.analyses.run_envelope import (
-    AnalysisRunEnvelope,
-    ArtifactRef,
-    InputsRef,
-    TraceRef,
-    fingerprint_envelope,
+import pytest
+from application.analyses.protection.catalog.mapper import (
+    map_requirement_to_device,
+    wymaganie_z_nastaw,
 )
-from application.analyses.run_index import index_run
-
-from tests.utils.determinism import assert_deterministic
-
-
-def _seed_protection_run(uow_factory, *, settings: dict | None = None, sufiks: str = "seed") -> str:
-    run_id = f"protection.overcurrent.v0:{sufiks}"
-    settings = settings or {
-        "curve": "IEC_NI",
-        "i_pickup_51_a": 120.0,
-        "tms_51": 0.2,
-        "i_inst_50_a": 800.0,
-        "i_pickup_51n_a": 60.0,
-        "tms_51n": 0.3,
-        "i_inst_50n_a": 300.0,
-    }
-    report = {"settings": settings}
-
-    inputs = InputsRef(
-        base_snapshot_id="snapshot-1",
-        spec_ref=None,
-        inline={
-            "connection_node": {
-                "id": "BoundaryNode-1",
-                "label": "BoundaryNode – węzeł przyłączenia",
-            }
-        },
-    )
-    artifacts = (ArtifactRef(type="protection_report_v0", id="protection_report_v0:seed"),)
-    trace = TraceRef(type="white_box", id=None, inline={"steps": ["seed"]})
-    created_at_utc = "2024-01-01T00:00:00+00:00"
-    envelope_dict = {
-        "schema_version": "v0",
-        "run_id": run_id,
-        "analysis_type": "protection.overcurrent.v0",
-        "case_id": "case-1",
-        "inputs": inputs.to_dict(),
-        "artifacts": [artifact.to_dict() for artifact in artifacts],
-        "trace": trace.to_dict(),
-        "created_at_utc": created_at_utc,
-        "fingerprint": "",
-    }
-    fingerprint = fingerprint_envelope(envelope_dict)
-    envelope = AnalysisRunEnvelope(
-        run_id=run_id,
-        analysis_type="protection.overcurrent.v0",
-        case_id="case-1",
-        inputs=inputs,
-        artifacts=artifacts,
-        trace=trace,
-        created_at_utc=created_at_utc,
-        fingerprint=fingerprint,
-    )
-    entry = index_run(
-        envelope,
-        primary_artifact_type="protection_report_v0",
-        primary_artifact_id="protection_report_v0:seed",
-        base_snapshot_id="snapshot-1",
-        case_id="case-1",
-        status="SUCCEEDED",
-        meta={"protection_report_v0": report},
-    )
-
-    with uow_factory() as uow:
-        if uow.analysis_runs_index.get(run_id) is None:
-            uow.analysis_runs_index.add(entry)
-    return run_id
+from application.analyses.protection.catalog.models import (
+    DeviceCapability,
+    ProtectionRequirementV0,
+)
+from application.analyses.protection.catalog.pipeline import dopasuj_do_aparatu
+from application.analyses.protection.catalog.validator import validate_requirement
+from application.protection_settings.engine import (
+    DelayedSettings,
+    InstantaneousSettings,
+    ProtectionSettingsResult,
+    SPZAnalysisResult,
+    ThermalWithstandResult,
+)
 
 
-def test_device_mapping_accepts_supported_device(uow_factory) -> None:
-    protection_run_id = _seed_protection_run(uow_factory)
-
-    envelope = run_device_mapping_v0(
-        protection_run_id=protection_run_id,
-        device_id="REF-OC-EF-500",
-        uow_factory=uow_factory,
+def _wynik_hoppela(
+    *, i_pickup_51_a: float = 120.0, i_inst_50_a: float = 800.0
+) -> ProtectionSettingsResult:
+    return ProtectionSettingsResult(
+        line_id="line-1",
+        line_name="Odcinek testowy",
+        delayed=DelayedSettings(
+            i_setting_a=i_pickup_51_a,
+            t_setting_s=0.6,
+            i_load_max_a=100.0,
+            k_b=1.2,
+            sensitivity_ratio=2.0,
+            is_valid=True,
+            validation_notes=[],
+            trace=[],
+        ),
+        instantaneous=InstantaneousSettings(
+            i_setting_a=i_inst_50_a,
+            i_min_selectivity_a=i_inst_50_a * 0.9,
+            i_max_thermal_a=i_inst_50_a * 1.5,
+            i_max_sensitivity_a=i_inst_50_a * 1.3,
+            range_valid=True,
+            k_b=1.2,
+            k_bth=1.1,
+            is_valid=True,
+            validation_notes=[],
+            trace=[],
+        ),
+        thermal=ThermalWithstandResult(
+            i_th_dop_a=5000.0,
+            j_thn=94.0,
+            cross_section_mm2=120.0,
+            t_fault_s=0.37,
+            ik_max_a=4000.0,
+            is_adequate=True,
+            margin_percent=20.0,
+            trace=[],
+        ),
+        spz=SPZAnalysisResult(
+            spz_allowed=True,
+            total_fault_time_s=0.6,
+            i_th_required_a=4000.0,
+            i_th_available_a=5000.0,
+            blocking_recommended=False,
+            trace=[],
+        ),
+        overall_valid=True,
+        summary_notes=[],
     )
 
-    with uow_factory() as uow:
-        stored = uow.analysis_runs_index.get(envelope.run_id)
-    assert stored is not None
-    report = stored.meta_json["device_mapping_report_v0"]
-    assert report["mapping"]["compatible"] is True
-    assert report["mapping"]["violations"] == []
 
-
-def test_device_mapping_rejects_missing_neutral_functions(uow_factory) -> None:
-    protection_run_id = _seed_protection_run(uow_factory)
-
-    envelope = run_device_mapping_v0(
-        protection_run_id=protection_run_id,
-        device_id="REF-OC-200",
-        uow_factory=uow_factory,
+def _requirement(
+    *,
+    curve: str = "DT",
+    i_pickup_51_a: float | None = 120.0,
+    tms_51: float | None = None,
+    t_51_s: float | None = 0.6,
+    i_inst_50_a: float | None = 800.0,
+) -> ProtectionRequirementV0:
+    return ProtectionRequirementV0(
+        curve=curve,
+        i_pickup_51_a=i_pickup_51_a,
+        tms_51=tms_51,
+        t_51_s=t_51_s,
+        i_inst_50_a=i_inst_50_a,
+        i_pickup_51n_a=None,
+        tms_51n=None,
+        i_inst_50n_a=None,
     )
 
-    with uow_factory() as uow:
-        stored = uow.analysis_runs_index.get(envelope.run_id)
-    assert stored is not None
-    report = stored.meta_json["device_mapping_report_v0"]
-    assert report["mapping"]["compatible"] is False
-    assert "UNSUPPORTED_FUNCTION_50N" in report["mapping"]["violations"]
-    assert "UNSUPPORTED_FUNCTION_51N" in report["mapping"]["violations"]
 
-
-def test_device_mapping_is_deterministic(uow_factory) -> None:
-    protection_run_id = _seed_protection_run(uow_factory)
-
-    envelope1 = run_device_mapping_v0(
-        protection_run_id=protection_run_id,
-        device_id="REF-OC-EF-500",
-        uow_factory=uow_factory,
+def _device(
+    *,
+    curves_supported: tuple[str, ...] = ("DT",),
+    t_51_s_min: float | None = None,
+    t_51_s_max: float | None = None,
+    i_inst_50_a_min: float = 50.0,
+    i_inst_50_a_max: float = 5000.0,
+) -> DeviceCapability:
+    return DeviceCapability(
+        device_id="TEST-DEV",
+        vendor=None,
+        model="TEST",
+        functions_supported=("50", "51"),
+        curves_supported=curves_supported,
+        i_pickup_51_a_min=0.5,
+        i_pickup_51_a_max=1000.0,
+        tms_51_min=0.05,
+        tms_51_max=1.0,
+        t_51_s_min=t_51_s_min,
+        t_51_s_max=t_51_s_max,
+        i_inst_50_a_min=i_inst_50_a_min,
+        i_inst_50_a_max=i_inst_50_a_max,
+        i_pickup_51n_a_min=0.2,
+        i_pickup_51n_a_max=400.0,
+        tms_51n_min=0.05,
+        tms_51n_max=1.0,
+        i_inst_50n_a_min=20.0,
+        i_inst_50n_a_max=2500.0,
+        meta={},
     )
-    envelope2 = run_device_mapping_v0(
-        protection_run_id=protection_run_id,
-        device_id="REF-OC-EF-500",
-        uow_factory=uow_factory,
-    )
-
-    assert envelope1.fingerprint == envelope2.fingerprint
-    assert_deterministic(
-        envelope1.to_dict(),
-        envelope2.to_dict(),
-        scrub_keys=("created_at_utc",),
-    )
-
-    with uow_factory() as uow:
-        stored = uow.analysis_runs_index.get(envelope1.run_id)
-    assert stored is not None
-    report_fingerprint = stored.meta_json["device_mapping_report_v0"]["fingerprint"]
-    assert report_fingerprint in envelope1.artifacts[2].id
 
 
 # ---------------------------------------------------------------------------
-# Karta F-K5: nastawa NIEDOSTEPNA (V12K-189) w doborze aparatu.
-# Adapter wymuszal float() na kazdym polu, wiec po V12K-189 niedostepna nastawa
-# wywalala TypeError w srodku doboru — dokladnie w scenariuszu, ktory V12K-189
-# uczynil normalnym (sam bieg 3F: nastawy ziemnozwarciowe sa niewyznaczalne).
+# Dobór aparatu z wymagania Hoppela (ścieżka realna — karta W3-C1)
 # ---------------------------------------------------------------------------
 
-_NASTAWY_BEZ_ZIEMNOZWARCIOWYCH = {
-    "curve": "IEC_NI",
-    "i_pickup_51_a": 120.0,
-    "tms_51": 0.2,
-    "i_inst_50_a": 800.0,
-    # Bez biegu 1F nie ma podstawy dla nastaw 51N/50N — V12K-189 zwraca None.
-    "i_pickup_51n_a": None,
-    "tms_51n": 0.3,
-    "i_inst_50n_a": None,
-    "readiness_codes": ["protection.fault_current_missing"],
-    "is_complete": False,
-}
+
+def test_device_mapping_accepts_supported_dt_device() -> None:
+    wymaganie = wymaganie_z_nastaw(_wynik_hoppela())
+
+    wynik = dopasuj_do_aparatu(wymaganie, device_id="ABB_REF601")
+
+    assert wynik["compatible"] is True
+    assert wynik["violations"] == ()
 
 
-def test_niedostepna_nastawa_nie_wywala_doboru_i_nie_staje_sie_zerem(uow_factory) -> None:
-    protection_run_id = _seed_protection_run(
-        uow_factory,
-        settings=_NASTAWY_BEZ_ZIEMNOZWARCIOWYCH,
-        sufiks="seed-niedostepne",
+def test_device_mapping_rejects_device_without_dt_curve() -> None:
+    """Aparat czysto odwrotnoczasowy (bez DT) jest niezgodny z wymaganiem Hoppela —
+    kanon = curve, nie zgadywanie „to chyba jest to samo co IEC_NI"."""
+    wymaganie = wymaganie_z_nastaw(_wynik_hoppela())
+
+    wynik = dopasuj_do_aparatu(wymaganie, device_id="REF-OC-100")
+
+    assert wynik["compatible"] is False
+    assert "UNSUPPORTED_CURVE" in wynik["violations"]
+
+
+def test_device_mapping_is_deterministic() -> None:
+    wymaganie = wymaganie_z_nastaw(_wynik_hoppela())
+
+    wynik1 = dopasuj_do_aparatu(wymaganie, device_id="ABB_REF601")
+    wynik2 = dopasuj_do_aparatu(wymaganie, device_id="ABB_REF601")
+
+    assert wynik1 == wynik2
+
+
+def test_device_not_found_is_named_not_silently_incompatible() -> None:
+    wymaganie = wymaganie_z_nastaw(_wynik_hoppela())
+
+    wynik = dopasuj_do_aparatu(wymaganie, device_id="NIE-ISTNIEJE")
+
+    assert wynik["compatible"] is False
+    assert wynik["violations"] == ("DEVICE_NOT_FOUND",)
+    assert wynik["capability"] is None
+    assert wynik["status"] == "FAILED"
+
+
+# ---------------------------------------------------------------------------
+# Karta W3-C1 — walidator/mapper jako infrastruktura WSPÓLNA (nie tylko
+# Hoppel): iloczyn cech {DT, IEC_NI} × {aparat z zakresem DT, bez} ×
+# {I>> wyznaczone, None}. Wymagania budowane RĘCZNIE (nie przez
+# `wymaganie_z_nastaw`) — ten test dowodzi ogólnej poprawności kontraktu
+# `ProtectionRequirementV0`/`validate_requirement`/`map_requirement_to_device`,
+# niezależnie od tego, który silnik go wypełnił.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("curve", ["DT", "IEC_NI"])
+@pytest.mark.parametrize("t_51_s_range_declared", [True, False])
+def test_t51s_zakres_sprawdzany_tylko_gdy_krzywa_dt_i_zakres_zadeklarowany(
+    curve: str, t_51_s_range_declared: bool
+) -> None:
+    """T51S_OUT_OF_RANGE pojawia się WYŁĄCZNIE gdy: krzywa = DT (inaczej wymaganie
+    niesie `t_51_s = None` z definicji krzywej — druga wielkość czasowa, TMS51,
+    jest wtedy w użyciu) I aparat deklaruje zakres (inaczej nie ma czego naruszyć
+    — brak granicy nie jest granicą zerową)."""
+    req = _requirement(
+        curve=curve,
+        tms_51=None if curve == "DT" else 0.2,
+        t_51_s=5.0 if curve == "DT" else None,
+    )
+    cap = _device(
+        curves_supported=(curve,),
+        t_51_s_min=(0.1 if t_51_s_range_declared else None),
+        t_51_s_max=(1.0 if t_51_s_range_declared else None),
     )
 
-    envelope = run_device_mapping_v0(
-        protection_run_id=protection_run_id,
-        device_id="REF-OC-EF-500",
-        uow_factory=uow_factory,
-    )
+    compatible, violations = validate_requirement(req, cap)
 
-    with uow_factory() as uow:
-        stored = uow.analysis_runs_index.get(envelope.run_id)
-    assert stored is not None
-    report = stored.meta_json["device_mapping_report_v0"]
-    wymaganie = report["inputs"]["requirement"]
-    # Nastawa niedostepna zostaje None — 0,0 byloby wymaganiem, ktorego projekt nie policzyl.
-    assert wymaganie["i_pickup_51n_a"] is None
-    assert wymaganie["i_inst_50n_a"] is None
-    # Do przekaznika nie trafia nastawa, ktorej nie ma; brak jest zadeklarowany jawnie.
-    assert "I51N" not in report["mapping"]["mapped_settings"]
-    assert "I50N" not in report["mapping"]["mapped_settings"]
-    assert "SETTINGS_INCOMPLETE_MISSING_INPUT_DATA" in report["mapping"]["assumptions"]
+    naruszenie_oczekiwane = curve == "DT" and t_51_s_range_declared
+    assert ("T51S_OUT_OF_RANGE" in violations) is naruszenie_oczekiwane
+    if naruszenie_oczekiwane:
+        assert compatible is False
 
 
-def test_brak_wartosci_nastawy_nie_moze_naruszyc_zakresu_aparatu(uow_factory) -> None:
-    """Niewyznaczona nastawa nie tworzy naruszenia ZAKRESU — nie ma czego porownac.
+def test_t51s_w_zakresie_nie_narusza_gdy_aparat_deklaruje_zakres() -> None:
+    req = _requirement(curve="DT", tms_51=None, t_51_s=0.5)
+    cap = _device(curves_supported=("DT",), t_51_s_min=0.1, t_51_s_max=1.0)
 
-    Rozroznienie, ktore ten test utrwala: ZAMIAR stopnia i WARTOSC nastawy to dwie
-    rozne rzeczy. Mnoznik czasowy tms_51n = 0,3 jest decyzja projektowa (projekt CHCE
-    stopnia ziemnozwarciowego zwloocznego), wiec wymaganie funkcji 51N wobec aparatu
-    STOI — przekaznik bez 51N tego zamiaru nie zrealizuje. Natomiast prad rozruchowy
-    51N jest niewyznaczalny (brak biegu 1F), wiec nie moze wypasc z zakresu aparatu:
-    „I51N poza zakresem" byloby werdyktem o liczbie, ktorej nie ma.
-    """
-    protection_run_id = _seed_protection_run(
-        uow_factory,
-        settings=_NASTAWY_BEZ_ZIEMNOZWARCIOWYCH,
-        sufiks="seed-niedostepne-zakres",
-    )
+    compatible, violations = validate_requirement(req, cap)
 
-    envelope = run_device_mapping_v0(
-        protection_run_id=protection_run_id,
-        device_id="REF-OC-200",
-        uow_factory=uow_factory,
-    )
+    assert compatible is True
+    assert "T51S_OUT_OF_RANGE" not in violations
 
-    with uow_factory() as uow:
-        stored = uow.analysis_runs_index.get(envelope.run_id)
-    assert stored is not None
-    naruszenia = stored.meta_json["device_mapping_report_v0"]["mapping"]["violations"]
-    assert "I51N_OUT_OF_RANGE" not in naruszenia
-    assert "I50N_OUT_OF_RANGE" not in naruszenia
-    # Zamiar stopnia zwlocznego 51N (tms_51n > 0) nadal stawia wymaganie funkcji:
-    # aparat bez 51N jest realnie niezgodny z projektem, nie „niesprawdzony".
-    assert "UNSUPPORTED_FUNCTION_51N" in naruszenia
+
+@pytest.mark.parametrize("i_inst_50_a", [800.0, None])
+def test_niewyznaczone_i_inst_50_a_nie_wywala_doboru_i_nie_staje_sie_zerem(
+    i_inst_50_a: float | None,
+) -> None:
+    """I>> `None` (niewyznaczalna, V12K-189) nie wywala TypeError w mapowaniu i
+    nie trafia do przekaźnika jako 0,0 — brak jest zadeklarowany jawnie."""
+    req = _requirement(curve="DT", tms_51=None, t_51_s=0.6, i_inst_50_a=i_inst_50_a)
+    cap = _device(curves_supported=("DT",))
+
+    compatible, violations = validate_requirement(req, cap)
+    mapping = map_requirement_to_device(req, cap)
+
+    assert "I50_OUT_OF_RANGE" not in violations
+    if i_inst_50_a is None:
+        assert compatible is True  # brak wartości nie stawia wymagania funkcji 50
+        assert "I50" not in mapping.mapped_settings
+        assert "SETTINGS_INCOMPLETE_MISSING_INPUT_DATA" in mapping.assumptions
+    else:
+        assert "I50" in mapping.mapped_settings
+
+
+def test_tms51_i_t51s_sa_wzajemnie_wykluczajace_w_mapowaniu() -> None:
+    """Wymaganie definite-time (Hoppel) mapuje `T51` (czas określony), nie
+    `TMS51` (mnożnik krzywej odwrotnoczasowej — DRUGA wielkość czasowa, którą ta
+    krzywa po prostu nie używa, nie brakująca wartość TEJ SAMEJ). Jedyny powód
+    niekompletności tego wymagania jest ziemnozwarcie (Hoppel go nie liczy) —
+    nie fantomowy brak TMS51."""
+    req = wymaganie_z_nastaw(_wynik_hoppela())
+    cap = _device(curves_supported=("DT",))
+
+    mapping = map_requirement_to_device(req, cap)
+
+    assert "T51" in mapping.mapped_settings
+    assert "TMS51" not in mapping.mapped_settings
+    brakujace_fazowe = {"I51", "T51", "I50", "CURVE"} - mapping.mapped_settings.keys()
+    assert brakujace_fazowe == set()

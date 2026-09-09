@@ -1331,10 +1331,20 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "F:dictget:payload.tms_51n_max": 1,
         "F:dictget:payload.tms_51n_min": 1,
     },
-    "application/analyses/protection/catalog/pipeline.py": {
-        "F:dictget:settings.tms_51": 1,
-        "F:dictget:settings.tms_51n": 1,
-    },
+    # Karta W3-C1 (2026-09-09): pozycje `F:dictget:settings.tms_51` i
+    # `F:dictget:settings.tms_51n` (budzet 1 kazda) ZNIKAJA z zapadki dla tego
+    # pliku. Funkcja, ktora czytala `settings.get("tms_51", 0.0)`/`settings.get(
+    # "tms_51n", 0.0)` z worka SLOWNIKOWEGO o nieustalonym ksztalcie
+    # (`_settings_to_requirement`/`_extract_requirement`, zywione przez
+    # `protection.overcurrent.v0`), zostala skasowana calkiem — kasacja
+    # V12K-189 (`application/analyses/protection/overcurrent/**`). Nowa sciezka
+    # (`mapper.wymaganie_z_nastaw`, zywiona WYLACZNIE przez typowany
+    # `ProtectionSettingsResult` silnika Hoppela) czyta pola dataclass
+    # (`delayed.time_s`, brak TMS dla definite-time) bez posredniego slownika i
+    # bez domyslnej liczby za brakujaca dana — `ProtectionRequirementV0.tms_51`/
+    # `.t_51_s` sa `float | None` wprost z kontraktu (`None` = definite-time,
+    # nie brak danej). Obnizenie budzetu utrwala poprawe — zapadka dziala w obie
+    # strony.
     "application/analyses/state_estimation/service.py": {
         "F:dictget:run.base_mva": 1,
     },

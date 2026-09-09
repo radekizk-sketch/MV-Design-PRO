@@ -50,6 +50,14 @@ class DeviceCapability:
     rated_voltage_inputs_v: tuple[float, ...] = WEJSCIA_NAPIECIOWE_IEC_60255
     #: Pochodzenie dwoch pol powyzej.
     rated_inputs_source: str = ZRODLO_WEJSC_NORMA
+    #: Zakres nastawy czasu okreslonego stopnia 51 (definite time, karta W3-C1) —
+    #: [s]. `None` = aparat NIE deklaruje zakresu DT (dane addytywne; brak nie jest
+    #: fabrykowany zerem/nieskonczonoscia — `validator.py` pomija wtedy sprawdzenie
+    #: zakresu, tak jak przy niewyznaczonej WARTOSCI nastawy). Wymaganie DT wobec
+    #: aparatu bez krzywej "DT" w `curves_supported` i tak odpada na UNSUPPORTED_CURVE
+    #: — ten zakres dotyczy WYLACZNIE aparatow, ktore DT juz deklaruja.
+    t_51_s_min: float | None = None
+    t_51_s_max: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         payload = {
@@ -65,6 +73,8 @@ class DeviceCapability:
             "i_pickup_51_a_max": self.i_pickup_51_a_max,
             "tms_51_min": self.tms_51_min,
             "tms_51_max": self.tms_51_max,
+            "t_51_s_min": self.t_51_s_min,
+            "t_51_s_max": self.t_51_s_max,
             "i_inst_50_a_min": self.i_inst_50_a_min,
             "i_inst_50_a_max": self.i_inst_50_a_max,
             "i_pickup_51n_a_min": self.i_pickup_51n_a_min,
@@ -84,21 +94,35 @@ class ProtectionRequirementV0:
 
     V12K-189: nastawa ``None`` znaczy „niewyznaczalna z danych projektu" — nie
     stawia wymagania wobec aparatu i nie może być zastąpiona liczbą domyślną.
+
+    Karta W3-C1 (konwergencja na metodykę Hoppela): ``tms_51``/``tms_51n`` są
+    OPCJONALNE — mnożnik czasowy ma sens WYŁĄCZNIE dla krzywej odwrotnoczasowej
+    (IEC_NI/VI/EI/...); dla ``curve = "DT"`` (definite time, jedyna krzywa, jaką
+    wyznacza silnik Hoppela) nastawę czasową niesie ``t_51_s`` (czas określony
+    [s]), a ``tms_51`` zostaje ``None`` — DWIE różne wielkości czasowe, nie jedna
+    z brakującą wartością. 51N/50N Hoppel NIE wyznacza (metoda dotyczy WYŁĄCZNIE
+    stopni fazowych) — ``None`` jest tu semantyką „niewyznaczalne", tą samą, którą
+    V12K-189 ustalił dla braku danych, nie brakiem wymagania fabrykowanym przez ten
+    moduł.
     """
 
     curve: str
     i_pickup_51_a: float | None
-    tms_51: float
+    tms_51: float | None
     i_inst_50_a: float | None
     i_pickup_51n_a: float | None
-    tms_51n: float
+    tms_51n: float | None
     i_inst_50n_a: float | None
+    #: Czas określony stopnia 51 [s] (definite time) — patrz docstring klasy.
+    #: Pole ADDYTYWNE (karta W3-C1); ``None`` dla wymagań krzywej odwrotnoczasowej.
+    t_51_s: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         payload = {
             "curve": self.curve,
             "i_pickup_51_a": self.i_pickup_51_a,
             "tms_51": self.tms_51,
+            "t_51_s": self.t_51_s,
             "i_inst_50_a": self.i_inst_50_a,
             "i_pickup_51n_a": self.i_pickup_51n_a,
             "tms_51n": self.tms_51n,

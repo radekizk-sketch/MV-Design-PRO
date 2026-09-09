@@ -1,154 +1,138 @@
 from __future__ import annotations
 
-from application.analyses.protection.catalog.pipeline import run_device_mapping_v0
-from application.analyses.run_envelope import (
-    AnalysisRunEnvelope,
-    ArtifactRef,
-    InputsRef,
-    TraceRef,
-    fingerprint_envelope,
+from application.analyses.protection.catalog.mapper import wymaganie_z_nastaw
+from application.analyses.protection.catalog.pipeline import dopasuj_do_aparatu
+from application.protection_settings.engine import (
+    DelayedSettings,
+    InstantaneousSettings,
+    ProtectionSettingsResult,
+    SPZAnalysisResult,
+    ThermalWithstandResult,
 )
-from application.analyses.run_index import index_run
-
-from tests.utils.determinism import assert_deterministic
 
 
-def _seed_protection_run(uow_factory) -> str:
-    run_id = "protection.overcurrent.v0:seed-vendor"
-    settings = {
-        "curve": "IEC_NI",
-        "i_pickup_51_a": 120.0,
-        "tms_51": 0.2,
-        "i_inst_50_a": 800.0,
-        "i_pickup_51n_a": 60.0,
-        "tms_51n": 0.3,
-        "i_inst_50n_a": 300.0,
-    }
-    report = {"settings": settings}
+def _wynik_hoppela(
+    *,
+    i_pickup_51_a: float = 120.0,
+    t_setting_s: float = 0.6,
+    i_inst_50_a: float = 800.0,
+) -> ProtectionSettingsResult:
+    """Wynik silnika Hoppela (karta W3-C1) — jedyna metodyka nastaw nadprądowych.
 
-    inputs = InputsRef(
-        base_snapshot_id="snapshot-1",
-        spec_ref=None,
-        inline={
-            "connection_node": {
-                "id": "BoundaryNode-1",
-                "label": "BoundaryNode – węzeł przyłączenia",
-            }
-        },
-    )
-    artifacts = (ArtifactRef(type="protection_report_v0", id="protection_report_v0:seed"),)
-    trace = TraceRef(type="white_box", id=None, inline={"steps": ["seed"]})
-    created_at_utc = "2024-01-01T00:00:00+00:00"
-    envelope_dict = {
-        "schema_version": "v0",
-        "run_id": run_id,
-        "analysis_type": "protection.overcurrent.v0",
-        "case_id": "case-1",
-        "inputs": inputs.to_dict(),
-        "artifacts": [artifact.to_dict() for artifact in artifacts],
-        "trace": trace.to_dict(),
-        "created_at_utc": created_at_utc,
-        "fingerprint": "",
-    }
-    fingerprint = fingerprint_envelope(envelope_dict)
-    envelope = AnalysisRunEnvelope(
-        run_id=run_id,
-        analysis_type="protection.overcurrent.v0",
-        case_id="case-1",
-        inputs=inputs,
-        artifacts=artifacts,
-        trace=trace,
-        created_at_utc=created_at_utc,
-        fingerprint=fingerprint,
-    )
-    entry = index_run(
-        envelope,
-        primary_artifact_type="protection_report_v0",
-        primary_artifact_id="protection_report_v0:seed",
-        base_snapshot_id="snapshot-1",
-        case_id="case-1",
-        status="SUCCEEDED",
-        meta={"protection_report_v0": report},
-    )
-
-    with uow_factory() as uow:
-        if uow.analysis_runs_index.get(run_id) is None:
-            uow.analysis_runs_index.add(entry)
-    return run_id
-
-
-def test_vendor_mapping_for_real_abb_device_is_deterministic(uow_factory) -> None:
-    """Zabezpieczenie realnego producenta (ABB Relion REF601) mapuje sie na jego konwencje nastaw.
-
-    Karta FAB-A/D-33: przed ta karta ten test stal na fikcyjnym urzadzeniu
-    falszywie przypisanym marce ABB — stoi teraz na REALNYM rekordzie katalogu
-    analitycznego (`ABB_REF601`, Relion 601).
+    Silnik nie zwraca ``None`` per pole: gdy dane wejściowe brakują,
+    `zbuduj_wejscie_nastaw` odmawia PRZED wywołaniem silnika (`BrakDanychNastawError`).
+    Fikstura odzwierciedla to: wszystkie pola liczbowe silnika są realnymi liczbami.
     """
-    protection_run_id = _seed_protection_run(uow_factory)
-
-    envelope1 = run_device_mapping_v0(
-        protection_run_id=protection_run_id,
-        device_id="ABB_REF601",
-        uow_factory=uow_factory,
+    return ProtectionSettingsResult(
+        line_id="line-1",
+        line_name="Odcinek testowy",
+        delayed=DelayedSettings(
+            i_setting_a=i_pickup_51_a,
+            t_setting_s=t_setting_s,
+            i_load_max_a=100.0,
+            k_b=1.2,
+            sensitivity_ratio=2.0,
+            is_valid=True,
+            validation_notes=[],
+            trace=[],
+        ),
+        instantaneous=InstantaneousSettings(
+            i_setting_a=i_inst_50_a,
+            i_min_selectivity_a=i_inst_50_a * 0.9,
+            i_max_thermal_a=i_inst_50_a * 1.5,
+            i_max_sensitivity_a=i_inst_50_a * 1.3,
+            range_valid=True,
+            k_b=1.2,
+            k_bth=1.1,
+            is_valid=True,
+            validation_notes=[],
+            trace=[],
+        ),
+        thermal=ThermalWithstandResult(
+            i_th_dop_a=5000.0,
+            j_thn=94.0,
+            cross_section_mm2=120.0,
+            t_fault_s=0.37,
+            ik_max_a=4000.0,
+            is_adequate=True,
+            margin_percent=20.0,
+            trace=[],
+        ),
+        spz=SPZAnalysisResult(
+            spz_allowed=True,
+            total_fault_time_s=0.6,
+            i_th_required_a=4000.0,
+            i_th_available_a=5000.0,
+            blocking_recommended=False,
+            trace=[],
+        ),
+        overall_valid=True,
+        summary_notes=[],
     )
-    envelope2 = run_device_mapping_v0(
-        protection_run_id=protection_run_id,
-        device_id="ABB_REF601",
-        uow_factory=uow_factory,
-    )
 
-    assert envelope1.fingerprint == envelope2.fingerprint
-    assert_deterministic(
-        envelope1.to_dict(),
-        envelope2.to_dict(),
-        scrub_keys=("created_at_utc",),
-    )
 
-    with uow_factory() as uow:
-        stored = uow.analysis_runs_index.get(envelope1.run_id)
-    assert stored is not None
-    report = stored.meta_json["device_mapping_report_v0"]
-    vendor_mapping = report["vendor_mapping"]
+def test_wymaganie_z_nastaw_jest_definite_time_bez_ziemnozwarcia() -> None:
+    """Hoppel wyznacza WYŁĄCZNIE stopnie fazowe metodą czasu określonego (DT)."""
+    wynik = _wynik_hoppela(i_pickup_51_a=120.0, t_setting_s=0.6, i_inst_50_a=800.0)
+    wymaganie = wymaganie_z_nastaw(wynik)
 
+    assert wymaganie.curve == "DT"
+    assert wymaganie.i_pickup_51_a == 120.0
+    assert wymaganie.tms_51 is None
+    assert wymaganie.t_51_s == 0.6
+    assert wymaganie.i_inst_50_a == 800.0
+    # Ziemnozwarciowe — Hoppel ich nie wyznacza; `None` = niewyznaczalna (V12K-189),
+    # nie fabrykowany brak wymagania.
+    assert wymaganie.i_pickup_51n_a is None
+    assert wymaganie.tms_51n is None
+    assert wymaganie.i_inst_50n_a is None
+
+
+def test_vendor_mapping_for_real_abb_device_is_deterministic() -> None:
+    """Zabezpieczenie realnego producenta (ABB Relion, DT-owa rodzina) mapuje się
+    na jego konwencję nastaw — dobór jest funkcją CZYSTĄ (bez biegu/koperty)."""
+    wymaganie = wymaganie_z_nastaw(_wynik_hoppela())
+
+    wynik1 = dopasuj_do_aparatu(wymaganie, device_id="ABB_REF615")
+    wynik2 = dopasuj_do_aparatu(wymaganie, device_id="ABB_REF615")
+
+    assert wynik1 == wynik2  # czysta funkcja: te same wejścia = ten sam wynik
+
+    vendor_mapping = wynik1["vendor_mapping"]
     assert vendor_mapping["vendor"] == "ABB"
     assert vendor_mapping["vendor_violations"] == []
     vendor_settings = vendor_mapping["vendor_settings"]
     assert "ABB.OC.I51_PICKUP_A" in vendor_settings
+    assert "ABB.OC.T51_DELAY_S" in vendor_settings
     assert "ABB.OC.I50_HIGHSET_A" in vendor_settings
-    assert "ABB.EF.I51N_PICKUP_A" in vendor_settings
-    assert "ABB.EF.I50N_HIGHSET_A" in vendor_settings
+    # Metoda Hoppela nie stawia ziemnozwarcia — aparat NIE dostaje kluczy EF,
+    # nawet jeśli sam je obsługuje (bezwarunkowe indeksowanie było defektem,
+    # który ta karta naprawia: KAŻDE wymaganie z Hoppela wywalałoby dawny adapter).
+    assert "ABB.EF.I51N_PICKUP_A" not in vendor_settings
+    assert "ABB.EF.I50N_HIGHSET_A" not in vendor_settings
+    assert wynik1["compatible"] is True
+    assert wynik1["status"] == "SUCCEEDED"
 
 
-def test_vendor_mapping_for_reference_profile_is_not_applicable(uow_factory) -> None:
-    """Profil referencyjny bez marki (karta FAB-A/D-33) nie ma vendor-adaptera.
+def test_vendor_mapping_for_reference_profile_is_not_applicable() -> None:
+    """Profil referencyjny bez marki (karta FAB-A/D-33) nie ma vendor-adaptera —
+    brak producenta jest ZAMIERZONY, więc brak mapowania NIE jest naruszeniem.
 
-    Brak producenta jest ZAMIERZONY (pole `vendor` None — nigdy tekst udajacy
-    producenta), wiec brak mapowania NIE jest naruszeniem: `vendor_violations`
-    zostaje pusty (status analizy NIE degraduje sie), a `vendor_settings`
-    zostaje pusty — wymyslanie tu nienazwanej konwencji kluczy producenta
-    byloby ta sama klasa fabrykacji, ktora ta karta usuwa.
+    ``REF-OC-100`` nie deklaruje krzywej DT (profil czysto odwrotnoczasowy) —
+    wymaganie Hoppela (DT) jest więc NIEZGODNE elektrycznie z tym konkretnym
+    profilem; brak marki i niekompatybilność krzywej to dwie NIEZALEŻNE osie
+    tego samego wyniku, więc test sprawdza obie osobno.
     """
-    protection_run_id = _seed_protection_run(uow_factory)
+    wymaganie = wymaganie_z_nastaw(_wynik_hoppela())
 
-    envelope = run_device_mapping_v0(
-        protection_run_id=protection_run_id,
-        device_id="REF-OC-EF-700",
-        uow_factory=uow_factory,
-    )
+    wynik = dopasuj_do_aparatu(wymaganie, device_id="REF-OC-100")
 
-    with uow_factory() as uow:
-        stored = uow.analysis_runs_index.get(envelope.run_id)
-    assert stored is not None
-    report = stored.meta_json["device_mapping_report_v0"]
-    vendor_mapping = report["vendor_mapping"]
-
+    assert wynik["compatible"] is False
+    assert "UNSUPPORTED_CURVE" in wynik["violations"]
+    vendor_mapping = wynik["vendor_mapping"]
     assert vendor_mapping["vendor"] is None
     assert vendor_mapping["vendor_violations"] == []
     assert vendor_mapping["vendor_settings"] == {}
     assert vendor_mapping["vendor_assumptions"] == [
         "VENDOR_MAPPING_NOT_APPLICABLE_REFERENCE_PROFILE"
     ]
-    # Kompatybilnosc elektryczna (funkcje/zakresy) jest niezalezna od marki —
-    # brak vendor-adaptera NIE degraduje statusu analizy.
-    assert report["mapping"]["compatible"] is True
-    assert report["status"] == "SUCCEEDED"

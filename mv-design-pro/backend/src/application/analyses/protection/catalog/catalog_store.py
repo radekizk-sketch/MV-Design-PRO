@@ -52,6 +52,8 @@ def _parse_device(payload: dict) -> DeviceCapability:
         i_pickup_51_a_max=float(payload.get("i_pickup_51_a_max", 0.0)),
         tms_51_min=float(payload.get("tms_51_min", 0.0)),
         tms_51_max=float(payload.get("tms_51_max", 0.0)),
+        t_51_s_min=_optional_float(payload.get("t_51_s_min")),
+        t_51_s_max=_optional_float(payload.get("t_51_s_max")),
         i_inst_50_a_min=float(payload.get("i_inst_50_a_min", 0.0)),
         i_inst_50_a_max=float(payload.get("i_inst_50_a_max", 0.0)),
         i_pickup_51n_a_min=float(payload.get("i_pickup_51n_a_min", 0.0)),
@@ -63,6 +65,15 @@ def _parse_device(payload: dict) -> DeviceCapability:
         **_wejscia_pomiarowe(payload),
         meta=meta,
     )
+
+
+def _optional_float(wartosc: object) -> float | None:
+    """Liczba opcjonalna z JSON — brak/`null` zostaje ``None`` (karta W3-C1: zakres
+    DT nie ma domyslnej wartosci, bo 0.0 bylby fabrykacja zakresu, ktorego karta
+    urzadzenia nie deklaruje)."""
+    if wartosc is None:
+        return None
+    return float(wartosc)  # type: ignore[arg-type]
 
 
 def _wejscia_pomiarowe(payload: dict) -> dict:

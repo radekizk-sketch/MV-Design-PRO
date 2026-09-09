@@ -116,6 +116,8 @@ def _serialize_analytical_protection_device(device: Any) -> dict[str, Any]:
             "i_pickup_51_a_max": device.i_pickup_51_a_max,
             "tms_51_min": device.tms_51_min,
             "tms_51_max": device.tms_51_max,
+            "t_51_s_min": device.t_51_s_min,
+            "t_51_s_max": device.t_51_s_max,
             "i_inst_50_a_min": device.i_inst_50_a_min,
             "i_inst_50_a_max": device.i_inst_50_a_max,
             "i_pickup_51n_a_min": device.i_pickup_51n_a_min,

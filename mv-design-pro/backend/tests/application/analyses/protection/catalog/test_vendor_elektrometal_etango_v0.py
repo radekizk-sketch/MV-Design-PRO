@@ -1,130 +1,106 @@
 from __future__ import annotations
 
 import pytest
-from application.analyses.protection.catalog.pipeline import run_device_mapping_v0
-from application.analyses.run_envelope import (
-    AnalysisRunEnvelope,
-    ArtifactRef,
-    InputsRef,
-    TraceRef,
-    fingerprint_envelope,
+from application.analyses.protection.catalog.mapper import wymaganie_z_nastaw
+from application.analyses.protection.catalog.pipeline import dopasuj_do_aparatu
+from application.protection_settings.engine import (
+    DelayedSettings,
+    InstantaneousSettings,
+    ProtectionSettingsResult,
+    SPZAnalysisResult,
+    ThermalWithstandResult,
 )
-from application.analyses.run_index import index_run
-
-from tests.utils.determinism import assert_deterministic
 
 
-def _seed_protection_run(uow_factory) -> str:
-    run_id = "protection.overcurrent.v0:seed-elektrometal"
-    settings = {
-        "curve": "IEC_NI",
-        "i_pickup_51_a": 120.0,
-        "tms_51": 0.2,
-        "i_inst_50_a": 800.0,
-        "i_pickup_51n_a": 60.0,
-        "tms_51n": 0.3,
-        "i_inst_50n_a": 300.0,
-    }
-    report = {"settings": settings}
-
-    inputs = InputsRef(
-        base_snapshot_id="snapshot-1",
-        spec_ref=None,
-        inline={
-            "connection_node": {
-                "id": "BoundaryNode-1",
-                "label": "BoundaryNode – węzeł przyłączenia",
-            }
-        },
-    )
-    artifacts = (ArtifactRef(type="protection_report_v0", id="protection_report_v0:seed"),)
-    trace = TraceRef(type="white_box", id=None, inline={"steps": ["seed"]})
-    created_at_utc = "2024-01-01T00:00:00+00:00"
-    envelope_dict = {
-        "schema_version": "v0",
-        "run_id": run_id,
-        "analysis_type": "protection.overcurrent.v0",
-        "case_id": "case-1",
-        "inputs": inputs.to_dict(),
-        "artifacts": [artifact.to_dict() for artifact in artifacts],
-        "trace": trace.to_dict(),
-        "created_at_utc": created_at_utc,
-        "fingerprint": "",
-    }
-    fingerprint = fingerprint_envelope(envelope_dict)
-    envelope = AnalysisRunEnvelope(
-        run_id=run_id,
-        analysis_type="protection.overcurrent.v0",
-        case_id="case-1",
-        inputs=inputs,
-        artifacts=artifacts,
-        trace=trace,
-        created_at_utc=created_at_utc,
-        fingerprint=fingerprint,
-    )
-    entry = index_run(
-        envelope,
-        primary_artifact_type="protection_report_v0",
-        primary_artifact_id="protection_report_v0:seed",
-        base_snapshot_id="snapshot-1",
-        case_id="case-1",
-        status="SUCCEEDED",
-        meta={"protection_report_v0": report},
+def _wynik_hoppela() -> ProtectionSettingsResult:
+    return ProtectionSettingsResult(
+        line_id="line-1",
+        line_name="Odcinek testowy",
+        delayed=DelayedSettings(
+            i_setting_a=120.0,
+            t_setting_s=0.6,
+            i_load_max_a=100.0,
+            k_b=1.2,
+            sensitivity_ratio=2.0,
+            is_valid=True,
+            validation_notes=[],
+            trace=[],
+        ),
+        instantaneous=InstantaneousSettings(
+            i_setting_a=800.0,
+            i_min_selectivity_a=720.0,
+            i_max_thermal_a=1200.0,
+            i_max_sensitivity_a=1040.0,
+            range_valid=True,
+            k_b=1.2,
+            k_bth=1.1,
+            is_valid=True,
+            validation_notes=[],
+            trace=[],
+        ),
+        thermal=ThermalWithstandResult(
+            i_th_dop_a=5000.0,
+            j_thn=94.0,
+            cross_section_mm2=120.0,
+            t_fault_s=0.37,
+            ik_max_a=4000.0,
+            is_adequate=True,
+            margin_percent=20.0,
+            trace=[],
+        ),
+        spz=SPZAnalysisResult(
+            spz_allowed=True,
+            total_fault_time_s=0.6,
+            i_th_required_a=4000.0,
+            i_th_available_a=5000.0,
+            blocking_recommended=False,
+            trace=[],
+        ),
+        overall_valid=True,
+        summary_notes=[],
     )
 
-    with uow_factory() as uow:
-        if uow.analysis_runs_index.get(run_id) is None:
-            uow.analysis_runs_index.add(entry)
-    return run_id
 
+# Rodzina e2TANGO 450/600/800/1000/1200 (karta techniczna producenta, DT wśród
+# krzywych deklarowanych) — rodzina LEGACY 400/600/.../2000_V0 (NIEWERYFIKOWANY,
+# tylko IEC_NI) nie obsługuje DT: wymaganie Hoppela (curve="DT") jest z definicji
+# niezgodne, więc nie nadaje się do testu mapowania kluczy producenta.
+@pytest.mark.parametrize("device_id", ["EM_E2TANGO_450", "EM_E2TANGO_1000"])
+def test_vendor_mapping_for_elektrometal_dt_devices(device_id: str) -> None:
+    wymaganie = wymaganie_z_nastaw(_wynik_hoppela())
 
-@pytest.mark.parametrize(
-    "device_id",
-    ["EM_ETANGO_400_V0", "EM_ETANGO_1000_V0"],
-)
-def test_vendor_mapping_for_elektrometal_devices(uow_factory, device_id: str) -> None:
-    protection_run_id = _seed_protection_run(uow_factory)
+    wynik = dopasuj_do_aparatu(wymaganie, device_id=device_id)
 
-    envelope = run_device_mapping_v0(
-        protection_run_id=protection_run_id,
-        device_id=device_id,
-        uow_factory=uow_factory,
-    )
-
-    with uow_factory() as uow:
-        stored = uow.analysis_runs_index.get(envelope.run_id)
-    assert stored is not None
-    report = stored.meta_json["device_mapping_report_v0"]
-    vendor_mapping = report["vendor_mapping"]
-
+    assert wynik["compatible"] is True
+    vendor_mapping = wynik["vendor_mapping"]
     assert vendor_mapping["vendor"] == "ELEKTROMETAL"
     assert vendor_mapping["vendor_violations"] == []
     vendor_settings = vendor_mapping["vendor_settings"]
     assert "EM.ETANGO.OC.51.PICKUP_A" in vendor_settings
+    assert "EM.ETANGO.OC.51.T_DELAY_S" in vendor_settings
     assert "EM.ETANGO.OC.50.PICKUP_A" in vendor_settings
-    assert "EM.ETANGO.EF.51N.PICKUP_A" in vendor_settings
-    assert "EM.ETANGO.EF.50N.PICKUP_A" in vendor_settings
-    assert report["mapping"]["assumptions"]
-    assert "UNVERIFIED_MODEL" in report["mapping"]["assumptions"]
+    # Metoda Hoppela nie stawia ziemnozwarcia — aparat NIE dostaje kluczy EF,
+    # nawet jeśli sam je obsługuje (bezwarunkowe indeksowanie było defektem,
+    # który ta karta naprawia: KAŻDE wymaganie z Hoppela wywalałoby dawny adapter).
+    assert "EM.ETANGO.EF.51N.PICKUP_A" not in vendor_settings
+    assert "EM.ETANGO.EF.50N.PICKUP_A" not in vendor_settings
 
 
-def test_elektrometal_vendor_mapping_is_deterministic(uow_factory) -> None:
-    protection_run_id = _seed_protection_run(uow_factory)
+def test_elektrometal_dt_family_rejects_legacy_iec_ni_only_device() -> None:
+    """Rodzina legacy (400-2000_V0) deklaruje wyłącznie IEC_NI — wymaganie
+    definite-time Hoppela jest z nią niezgodne krzywą, nie fabrykowaną zgodą."""
+    wymaganie = wymaganie_z_nastaw(_wynik_hoppela())
 
-    envelope1 = run_device_mapping_v0(
-        protection_run_id=protection_run_id,
-        device_id="EM_ETANGO_400_V0",
-        uow_factory=uow_factory,
-    )
-    envelope2 = run_device_mapping_v0(
-        protection_run_id=protection_run_id,
-        device_id="EM_ETANGO_400_V0",
-        uow_factory=uow_factory,
-    )
+    wynik = dopasuj_do_aparatu(wymaganie, device_id="EM_ETANGO_400_V0")
 
-    assert envelope1.fingerprint == envelope2.fingerprint
-    assert_deterministic(
-        envelope1.to_dict(),
-        envelope2.to_dict(),
-        scrub_keys=("created_at_utc",),
-    )
+    assert wynik["compatible"] is False
+    assert "UNSUPPORTED_CURVE" in wynik["violations"]
+
+
+def test_elektrometal_vendor_mapping_is_deterministic() -> None:
+    wymaganie = wymaganie_z_nastaw(_wynik_hoppela())
+
+    wynik1 = dopasuj_do_aparatu(wymaganie, device_id="EM_E2TANGO_450")
+    wynik2 = dopasuj_do_aparatu(wymaganie, device_id="EM_E2TANGO_450")
+
+    assert wynik1 == wynik2
