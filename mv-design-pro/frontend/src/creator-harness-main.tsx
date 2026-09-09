@@ -894,49 +894,87 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     }
     if (url.includes('/results/branches')) return jsonOK(KOORD_WYNIKI_GALEZI);
     if (url.includes('/enm')) return jsonOK(KOORD_MIGAWKA_MODELU);
-    if (url.includes('/protection/overcurrent-settings')) {
-      // Kontrakt `api/protection_overcurrent_settings.py` → `NastawyResponse`.
-      // Dwie nastawy WYZNACZONE i jedna NIEWYZNACZALNA — bo tak wyglada realny
-      // przypadek: brak danej nie znika z tabeli, tylko niesie powod i miejsce naprawy.
+    // Karta W3-C1: metodyka nastaw jest Hoppel/IRiESD. Sekcja próbuje kandydatów
+    // SC_3F DONE od NAJNOWSZEGO — `run-sc-koord-min` (c_min, 08:02) jest tu
+    // celowo NOWSZY niż `run-sc-koord-max` (c_max, 08:00), tak jak w realnej
+    // sieci mogą współistnieć oba warianty; backend (nie UI) osądza c_max, więc
+    // scena pokazuje dokładnie tę odmowę i przejście do kolejnego kandydata.
+    if (url.includes('/analysis-runs/run-sc-koord-min/pakiet-dowodowy-nastaw/dostepnosc')) {
       return jsonOK({
-        case_id: 'case-demo',
+        run_id: 'run-sc-koord-min',
+        dostepny: false,
+        powod_pl: 'Ten przebieg jest wariantem MINIMALNYM (współczynnik napięciowy c < 1,0) — '
+          + 'pakiet nastaw wymaga kotwicy z gałęzi MAKSYMALNEJ (c_max ≥ 1,0).',
+        linie: [],
+      });
+    }
+    if (url.includes('/analysis-runs/run-sc-koord-max/pakiet-dowodowy-nastaw/dostepnosc')) {
+      return jsonOK({
         run_id: 'run-sc-koord-max',
-        analysis_type: 'protection_overcurrent',
-        status: 'DONE',
-        prezentacja: {
-          kompletne: false,
-          kody_gotowosci: ['BRAK_ROZPLYWU_DLA_PRADU_ROBOCZEGO'],
-          podsumowanie_pl:
-            'Wyznaczono 2 z 3 nastaw. Brak prądu rozruchowego stopnia zwłocznego — '
-            + 'wymaga prądu roboczego toru z rozpływu.',
-          brakujace: ['i_pickup_51'],
-          pozycje: [
-            // `stan` MUSI byc z kontraktu backendu (`settings_presentation.py`:
-            // DOSTEPNA / NIEDOSTEPNA). Wczesniej scena podawala 'wyznaczona' /
-            // 'niewyznaczalna' i wiersz bez wartosci renderowal sie jako
-            // „Wyznaczona" — atrapa produkowala dokladnie ten falsz, ktory ekran
-            // ma wykluczac (V12K-262).
-            {
-              klucz: 'i_inst_50', etykieta: 'Prąd zadziałania stopnia bezzwłocznego (50)',
-              jednostka: 'A', wartosc: 2480, stan: 'DOSTEPNA',
-              komunikat_pl: null, powod_pl: null, fix_navigation: null,
-            },
-            {
-              klucz: 'tms_51', etykieta: 'Mnożnik czasowy stopnia zwłocznego (51)',
-              jednostka: '-', wartosc: 0.3, stan: 'DOSTEPNA',
-              komunikat_pl: null, powod_pl: null, fix_navigation: null,
-            },
-            {
-              klucz: 'i_pickup_51', etykieta: 'Prąd rozruchowy stopnia zwłocznego (51)',
-              jednostka: 'A', wartosc: null, stan: 'NIEDOSTEPNA',
-              komunikat_pl: 'Niedostepna — uzupelnij dane wejsciowe',
-              powod_pl: 'Brak prądu roboczego toru — uzupełnij rozpływ mocy dla tego wariantu.',
-              // `panel` — tego klucza czyta `przestrzenDlaPanelu`; `space` bylo
-              // wymyslona nazwa i droga naprawcza w ogole by sie nie pojawila.
-              fix_navigation: { panel: 'analizy' },
-            },
-          ],
+        dostepny: true,
+        powod_pl: null,
+        linie: [
+          { line_id: 'ln-koord-1', nazwa: 'Linia GPZ – Stacja przyłączeniowa', nastepne_szyny_kandydujace: ['bus_1'] },
+        ],
+      });
+    }
+    if (url.includes('/analysis-runs/run-sc-koord-max/nastawy/dopasowanie')) {
+      return jsonOK({
+        status: 'SUCCEEDED',
+        compatible: true,
+        violations: [],
+        mapped_settings: { I51: 132.5, T51: 0.6, I50: 2480.0, CURVE: 'DT' },
+        assumptions: ['LOGICAL_MAPPING_ONLY', 'NO_VENDOR_PARAM_IDS'],
+        vendor_mapping: {
+          vendor: 'ABB',
+          vendor_settings: { 'ABB.OC.I51_PICKUP_A': 132.5, 'ABB.OC.T51_DELAY_S': 0.6, 'ABB.OC.I50_HIGHSET_A': 2480.0 },
+          vendor_violations: [],
+          vendor_assumptions: ['VENDOR_KEYS_SYMBOLIC_V0'],
         },
+        wymaganie: {
+          curve: 'DT', i_pickup_51_a: 132.5, tms_51: null, t_51_s: 0.6, i_inst_50_a: 2480.0,
+          i_pickup_51n_a: null, tms_51n: null, i_inst_50n_a: null,
+        },
+        device_id: 'ABB_REF601',
+        capability: {},
+        proweniencja_nastaw: {
+          kotwica_run_id: 'run-sc-koord-max', c_max: 1.1, c_min: 1.0, line_id: 'ln-koord-1',
+          next_bus_id: 'bus_1', project_name: 'Przyłączenie farmy PV 8 MW', case_name: 'Wariant zimowy',
+          line_name: 'Linia GPZ – Stacja przyłączeniowa', run_timestamp: '2026-07-28T08:00:00+00:00',
+          solver_version: 'IEC_60909;load-flow-newton-raphson-v1', engine_input: {},
+        },
+      });
+    }
+    if (url.includes('/analysis-runs/run-sc-koord-max/nastawy')) {
+      return jsonOK({
+        wynik: {
+          line_id: 'ln-koord-1', line_name: 'Linia GPZ – Stacja przyłączeniowa',
+          delayed: {
+            i_setting_a: 132.5, t_setting_s: 0.6, i_load_max_a: 110.4, k_b: 1.2,
+            sensitivity_ratio: 12.4, is_valid: true, validation_notes: [], trace: [],
+          },
+          instantaneous: {
+            i_setting_a: 2480.0, i_min_selectivity_a: 2200.0, i_max_thermal_a: 3500.0,
+            i_max_sensitivity_a: 3100.0, range_valid: true, k_b: 1.2, k_bth: 1.1,
+            is_valid: true, validation_notes: [], trace: [],
+          },
+          thermal: {
+            i_th_dop_a: 9800.0, j_thn: 94.0, cross_section_mm2: 120.0, t_fault_s: 0.37,
+            ik_max_a: 6200.0, is_adequate: true, margin_percent: 36.7, trace: [],
+          },
+          spz: {
+            spz_allowed: true, total_fault_time_s: 0.6, i_th_required_a: 6200.0,
+            i_th_available_a: 12000.0, blocking_recommended: false, trace: [],
+          },
+          overall_valid: true, summary_notes: [],
+        },
+        wejscie: {
+          kotwica_run_id: 'run-sc-koord-max', c_max: 1.1, c_min: 1.0, line_id: 'ln-koord-1',
+          next_bus_id: 'bus_1', project_name: 'Przyłączenie farmy PV 8 MW', case_name: 'Wariant zimowy',
+          line_name: 'Linia GPZ – Stacja przyłączeniowa', run_timestamp: '2026-07-28T08:00:00+00:00',
+          solver_version: 'IEC_60909;load-flow-newton-raphson-v1', engine_input: {},
+        },
+        dostepnosc_pakietu: true,
       });
     }
     if (url.includes('/api/protection-coordination/') && url.endsWith('/run')) {

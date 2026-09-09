@@ -69,7 +69,11 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
-from application.protection_settings.engine import ProtectionSettingsInput
+from application.protection_settings.engine import (
+    ProtectionSettingsEngine,
+    ProtectionSettingsInput,
+    ProtectionSettingsResult,
+)
 from enm.canonical_analysis import CanonicalRun, bieg_wariantu, wykonaj_bieg_w_pamieci
 from enm.mapping import ref_to_graph_id
 from enm.models import EnergyNetworkModel
@@ -84,7 +88,7 @@ RODZAJE_LINII: frozenset[str] = frozenset({"line_overhead", "cable"})
 #: c_factor rozdzielający gałąź maksymalną (kotwica) od minimalnej. IEC 60909-0
 #: Tabela 1: dla SN c_max >= 1,0. Kotwica MUSI być gałęzią maksymalną — bieg
 #: minimalny liczymy sami jako wariant, nigdy z osobnej kotwicy.
-_C_MAX_MIN_DOPUSZCZALNY = 1.0
+C_MAX_MIN_DOPUSZCZALNY = 1.0
 
 
 class BrakDanychNastawError(ValueError):
@@ -291,10 +295,10 @@ def zbuduj_wejscie_nastaw(
             f"{kotwica_wynik.get('short_circuit_type')!r}."
         )
     c_max = _opcjonalna_liczba(kotwica.options.get("c_factor", 1.10))
-    if c_max is None or c_max < _C_MAX_MIN_DOPUSZCZALNY:
+    if c_max is None or c_max < C_MAX_MIN_DOPUSZCZALNY:
         raise BrakDanychNastawError(
             f"Współczynnik napięciowy kotwicy c={kotwica.options.get('c_factor')!r} "
-            f"nie jest wartością gałęzi maksymalnej (wymagane c >= {_C_MAX_MIN_DOPUSZCZALNY})."
+            f"nie jest wartością gałęzi maksymalnej (wymagane c >= {C_MAX_MIN_DOPUSZCZALNY})."
         )
     if not (0.0 < c_min <= c_max):
         raise BrakDanychNastawError(
@@ -457,3 +461,47 @@ def _znacznik_czasu(run: CanonicalRun) -> datetime:
     if znacznik.tzinfo is None:
         return znacznik.replace(tzinfo=UTC)
     return znacznik
+
+
+@dataclass(frozen=True)
+class NastawyZBiegu:
+    """Wynik silnika Hoppela + pełna proweniencja wejścia — JEDNO obliczenie,
+    które dzielą trasa JSON (`GET .../nastawy`), pakiet dowodowy ZIP
+    (`zbuduj_pakiet_nastaw`) i dobór aparatu (`GET .../nastawy/dopasowanie`)
+    (karta W3-C1, reguła KLASA-NIE-INSTANCJA — predykaty parami: jeden rachunek,
+    wiele renderów, nigdy druga niezależna ścieżka tej samej fizyki)."""
+
+    wynik: ProtectionSettingsResult
+    wejscie: WejscieNastawZBiegow
+
+
+def oblicz_nastawy(
+    run: CanonicalRun,
+    *,
+    line_id: str,
+    next_bus_id: str,
+    c_min: float,
+    delta_t_s: float = 0.3,
+    k_b: float = 1.2,
+    k_bth: float = 1.1,
+    uow_factory: Callable[[], Any] | None = None,
+) -> NastawyZBiegu:
+    """Nastawy I>/I>> dla kotwicy + wyboru inżyniera — silnik Hoppela wywołany
+    RAZ na kompletnym wejściu zbudowanym z trzech biegów (kotwica c_max + wariant
+    c_min + wariant rozpływu, patrz `zbuduj_wejscie_nastaw`).
+
+    Podnosi `BrakDanychNastawError` (powód po polsku) na każdym brakującym
+    ogniwie — dokładnie jak `zbuduj_wejscie_nastaw`, które ta funkcja owija.
+    """
+    wejscie = zbuduj_wejscie_nastaw(
+        run,
+        line_id=line_id,
+        next_bus_id=next_bus_id,
+        c_min=c_min,
+        delta_t_s=delta_t_s,
+        k_b=k_b,
+        k_bth=k_bth,
+        uow_factory=uow_factory,
+    )
+    wynik = ProtectionSettingsEngine.calculate(wejscie.engine_input)
+    return NastawyZBiegu(wynik=wynik, wejscie=wejscie)

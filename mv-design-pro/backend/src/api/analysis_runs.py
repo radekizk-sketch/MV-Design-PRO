@@ -40,6 +40,8 @@ from application.proof_engine.pakiet_biegu import (
 from application.proof_engine.pakiet_nastaw import (
     PakietNastawError,
     dostepnosc_pakietu_nastaw,
+    zbuduj_odpowiedz_dopasowania,
+    zbuduj_odpowiedz_nastaw_json,
     zbuduj_pakiet_nastaw,
 )
 from enm.canonical_analysis import (
@@ -589,6 +591,84 @@ def get_pakiet_dowodowy_nastaw(
         media_type="application/zip",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@router.get("/analysis-runs/{run_id}/nastawy")
+def get_nastawy(
+    run_id: UUID,
+    linia: str = Query(...),
+    nastepna_szyna: str = Query(...),
+    c_min: float = Query(default=1.0),
+    delta_t_s: float = Query(default=0.3),
+    k_b: float = Query(default=1.2),
+    k_bth: float = Query(default=1.1),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
+) -> dict[str, Any]:
+    """Nastawy I>/I>> (JSON): metoda Hoppela, TA SAMA fizyka co pakiet dowodowy
+    ZIP (karta W3-C1) — bez pobierania pliku. Ekran koordynacji czyta tę trasę,
+    a przycisk „Pobierz pakiet dowodowy" woła ZIP z tym samym zapytaniem.
+
+    Serwer sam uruchamia w pamięci wariant zwarcia trójfazowego i dwufazowego przy
+    ``c_min`` oraz wariant rozpływu na migawce kotwicy (``run_id`` = zakończony bieg
+    zwarcia trójfazowego przy c_max) — klient podaje wyłącznie tożsamość kotwicy i
+    trzy wybory inżynierskie: chroniony odcinek, kolejną szynę, c_min.
+    """
+    run = _require_canonical_run(run_id)
+    try:
+        odpowiedz = zbuduj_odpowiedz_nastaw_json(
+            run,
+            line_id=linia,
+            next_bus_id=nastepna_szyna,
+            c_min=c_min,
+            delta_t_s=delta_t_s,
+            k_b=k_b,
+            k_bth=k_bth,
+            uow_factory=uow_factory,
+        )
+    except PakietNastawError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
+    return canonicalize_json(odpowiedz)
+
+
+@router.get("/analysis-runs/{run_id}/nastawy/dopasowanie")
+def get_nastawy_dopasowanie(
+    run_id: UUID,
+    device_id: str = Query(...),
+    linia: str = Query(...),
+    nastepna_szyna: str = Query(...),
+    c_min: float = Query(default=1.0),
+    delta_t_s: float = Query(default=0.3),
+    k_b: float = Query(default=1.2),
+    k_bth: float = Query(default=1.1),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
+) -> dict[str, Any]:
+    """Dopasowanie nastaw Hoppela do aparatu (karta W3-C1, decyzja §0.4).
+
+    Ta sama fizyka co ``.../nastawy`` (jeden bieg zbiorczy, jedno wywołanie
+    silnika), zmapowana na wymaganie wobec przekaźnika (`ProtectionRequirementV0`)
+    i sprawdzona wobec wybranego aparatu z katalogu analitycznego
+    (`GET /api/catalog/protection/device-types` — lista aparatów do wyboru).
+    """
+    run = _require_canonical_run(run_id)
+    try:
+        odpowiedz = zbuduj_odpowiedz_dopasowania(
+            run,
+            device_id=device_id,
+            line_id=linia,
+            next_bus_id=nastepna_szyna,
+            c_min=c_min,
+            delta_t_s=delta_t_s,
+            k_b=k_b,
+            k_bth=k_bth,
+            uow_factory=uow_factory,
+        )
+    except PakietNastawError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
+    return canonicalize_json(odpowiedz)
 
 
 @router.get("/analysis-runs/{run_id}/results/index")

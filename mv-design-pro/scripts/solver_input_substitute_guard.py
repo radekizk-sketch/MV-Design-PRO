@@ -1384,6 +1384,29 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "F:dictget:run.c_factor": 1,
         "F:dictget:run.thermal_time_seconds": 1,
     },
+    # Karta W3-C1 (2026-09-09): `dostepnosc_pakietu_nastaw` (bramka dostepnosci
+    # PRZED budowa) musi odrzucac kotwice spoza galezi maksymalnej DOKLADNIE tym
+    # samym warunkiem, ktorego uzywa budowa (`batch_run.zbuduj_wejscie_nastaw`,
+    # patrz nizej `application/protection_settings/batch_run.py` ->
+    # `F:dictget:kotwica.c_factor`, budzet 1, zaakceptowane) — inaczej
+    # „Predykaty parami" (CLAUDE.md, regula KLASA NIE INSTANCJA #3) peka:
+    # dostepnosc odpowiedzialaby „tak", a budowa zaraz potem 422 tym samym
+    # powodem, ktory dostepnosc mogla nazwac od razu (dokladnie tak bylo PRZED
+    # ta karta — zmierzone i naprawione, patrz historia commitow). Domyslne
+    # 1.10 przy braku `c_factor` w opcjach kotwicy jest DOKLADNIE TA SAMA
+    # wartoscia domyslna, ktorej uzywa `zbuduj_wejscie_nastaw` (i, dla tego
+    # samego worka `run.options`, `pakiet_biegu.py` obok) — CELOWO: gdyby te
+    # dwa miejsca zgadywaly brakujaca dana NIEZALEZNIE (np. inna wartosc
+    # domyslna tu, inna w budowie), dwa predykaty tej samej bramki mogłyby sie
+    # rozjechac na brzegu „brak c_factor w opcjach", co jest DOKLADNIE
+    # defektem, ktory ta karta naprawia (nie nowym). Naprawa TEGO podstawienia
+    # u zrodla (np. odmowa zamiast domysłu przy braku danej) wymagalaby zmiany
+    # OBU stron pary — w tym wnetrza `zbuduj_wejscie_nastaw`, ktorego ta karta
+    # NIE dotyka (poza dokladce `oblicz_nastawy` na koncu pliku, patrz diff) —
+    # i jest poza jej zakresem; nazwane w meldunku karty, nie ukryte.
+    "application/proof_engine/pakiet_nastaw.py": {
+        "F:dictget:run.c_factor": 1,
+    },
     "application/proof_engine/proof_generator.py": {
         "A:or:data.sn_mva": 2,
         "B:ifexp:entry.u_secondary_kv": 1,

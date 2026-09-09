@@ -1221,6 +1221,33 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # jest STANEM ODZIEDZICZONYM na bazie karty (`a16f8d2b`) sprzed W3-I, nie skutkiem tej
     # karty — nazwane tu uczciwie (brak dopasowania spadku 286 -> 280 w diffie W3-I), zeby
     # nie przypisac sobie cudzej naprawy.
+    # W3-C1 (2026-09-09): 3539 -> 3533 pol (-6), 530 plikow (545 - 15) — kasacja V12K-189
+    # (druga z trzech zduplikowanych metodyk nastaw nadpradowych, ZERO producentow biegow
+    # i ZERO konsumentow frontendu, zmierzone): `application/analyses/protection/
+    # overcurrent/**` (9 plikow z dataclassami `OvercurrentSettingsV0` i pokrewnymi),
+    # `api/protection_overcurrent_settings.py`, `application/analyses/run_registry.py`
+    # (0 wolan po zdjeciu wpisow overcurrent), `run_envelope.py` + 3x `envelope_adapter.py`
+    # (iec60909/, energy_validation/, protection/catalog/) po tym, jak ich jedyny
+    # producent/konsument znikl w tej samej kasacji. Zapadka fizyczna: 61/280 -> 61/279
+    # (`application/analyses/protection/catalog/pipeline.py` -2: `settings.tms_51`/
+    # `settings.tms_51n` domyslne 0.0 z workowego slownika ZNIKNELY razem z funkcja,
+    # ktora je czytala — `_settings_to_requirement`, zastapiona typowanym
+    # `mapper.wymaganie_z_nastaw` czytajacym `ProtectionSettingsResult`; nowy plik
+    # `application/proof_engine/pakiet_nastaw.py` +1: `run.c_factor` domyslne 1.10,
+    # DOKLADNIE ten sam ksztalt co juz zaakceptowany `kotwica.c_factor` w
+    # `protection_settings/batch_run.py` obok — predykaty parami, `dostepnosc_pakietu_
+    # nastaw` musi odrzucac kotwice spoza galezi maksymalnej TYM SAMYM warunkiem, ktorego
+    # uzywa budowa). Wykluczenia bez zmian (14/32) — kasacja nie dotkneła zadnego wzorca
+    # skanera. Pomiar guardem na drzewie karty, zero NOWYCH podstawien.
+        # W3-C1: 530 plikow (545 - 15 skasowanych: 9 `overcurrent/**` + `run_registry.py` +
+        # `run_envelope.py` + 3x `envelope_adapter.py` + `protection_overcurrent_settings.py`
+        # zliczony w `api/`, nie w tej sumie `application/**` — patrz rozbicie ponizej).
+    # W3-C1 (2026-09-09): 61/280 -> 61/279, patrz komentarz przy asercji pol kontraktu wyzej.
+    # W3-C1 (2026-09-09): application 294 -> 280 plikow (-14: kasacja V12K-189, patrz
+    # komentarz przy asercji pol kontraktu wyzej), dlug application suma 112 -> 111 (-1:
+    # pipeline.py -2, pakiet_nastaw.py +1); api 64 -> 63 plikow (-1:
+    # `protection_overcurrent_settings.py`). Reszta korzeni (network_model, solver_input,
+    # enm) bez zmian — karta ich nie dotyka.
     # (piny ponizej przeliczane guardem na drzewie scalonym fali 2 — odbior, nie arytmetyka)
     assert "Pol kontraktow wejsciowych: 3491." in wyjscie, wyjscie
     assert (

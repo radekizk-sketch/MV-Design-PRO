@@ -13065,6 +13065,217 @@
     "summary": "Get Gotowosc Dokumentacji Wykonawczej"
    }
   },
+  "/api/analysis-runs/{run_id}/nastawy": {
+   "get": {
+    "description": "Nastawy I>/I>> (JSON): metoda Hoppela, TA SAMA fizyka co pakiet dowodowy\nZIP (karta W3-C1) — bez pobierania pliku. Ekran koordynacji czyta tę trasę,\na przycisk „Pobierz pakiet dowodowy\" woła ZIP z tym samym zapytaniem.\n\nSerwer sam uruchamia w pamięci wariant zwarcia trójfazowego i dwufazowego przy\n``c_min`` oraz wariant rozpływu na migawce kotwicy (``run_id`` = zakończony bieg\nzwarcia trójfazowego przy c_max) — klient podaje wyłącznie tożsamość kotwicy i\ntrzy wybory inżynierskie: chroniony odcinek, kolejną szynę, c_min.",
+    "operationId": "get_nastawy_api_analysis_runs__run_id__nastawy_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "run_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Run Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "linia",
+      "required": true,
+      "schema": {
+       "title": "Linia",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "nastepna_szyna",
+      "required": true,
+      "schema": {
+       "title": "Nastepna Szyna",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "c_min",
+      "required": false,
+      "schema": {
+       "default": 1.0,
+       "title": "C Min",
+       "type": "number"
+      }
+     },
+     {
+      "in": "query",
+      "name": "delta_t_s",
+      "required": false,
+      "schema": {
+       "default": 0.3,
+       "title": "Delta T S",
+       "type": "number"
+      }
+     },
+     {
+      "in": "query",
+      "name": "k_b",
+      "required": false,
+      "schema": {
+       "default": 1.2,
+       "title": "K B",
+       "type": "number"
+      }
+     },
+     {
+      "in": "query",
+      "name": "k_bth",
+      "required": false,
+      "schema": {
+       "default": 1.1,
+       "title": "K Bth",
+       "type": "number"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Get Nastawy Api Analysis Runs  Run Id  Nastawy Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Nastawy"
+   }
+  },
+  "/api/analysis-runs/{run_id}/nastawy/dopasowanie": {
+   "get": {
+    "description": "Dopasowanie nastaw Hoppela do aparatu (karta W3-C1, decyzja §0.4).\n\nTa sama fizyka co ``.../nastawy`` (jeden bieg zbiorczy, jedno wywołanie\nsilnika), zmapowana na wymaganie wobec przekaźnika (`ProtectionRequirementV0`)\ni sprawdzona wobec wybranego aparatu z katalogu analitycznego\n(`GET /api/catalog/protection/device-types` — lista aparatów do wyboru).",
+    "operationId": "get_nastawy_dopasowanie_api_analysis_runs__run_id__nastawy_dopasowanie_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "run_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Run Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "device_id",
+      "required": true,
+      "schema": {
+       "title": "Device Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "linia",
+      "required": true,
+      "schema": {
+       "title": "Linia",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "nastepna_szyna",
+      "required": true,
+      "schema": {
+       "title": "Nastepna Szyna",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "c_min",
+      "required": false,
+      "schema": {
+       "default": 1.0,
+       "title": "C Min",
+       "type": "number"
+      }
+     },
+     {
+      "in": "query",
+      "name": "delta_t_s",
+      "required": false,
+      "schema": {
+       "default": 0.3,
+       "title": "Delta T S",
+       "type": "number"
+      }
+     },
+     {
+      "in": "query",
+      "name": "k_b",
+      "required": false,
+      "schema": {
+       "default": 1.2,
+       "title": "K B",
+       "type": "number"
+      }
+     },
+     {
+      "in": "query",
+      "name": "k_bth",
+      "required": false,
+      "schema": {
+       "default": 1.1,
+       "title": "K Bth",
+       "type": "number"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Get Nastawy Dopasowanie Api Analysis Runs  Run Id  Nastawy Dopasowanie Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Nastawy Dopasowanie"
+   }
+  },
   "/api/analysis-runs/{run_id}/pakiet-dowodowy": {
    "get": {
     "description": "Pakiet dowodowy przebiegu (ZIP: dowód, źródło LaTeX, wykaz plików, odcisk).\n\nCała fizyka po stronie serwera — klient podaje wyłącznie przebieg i punkt\nzwarcia. ``punkt`` pominięty ⇒ pierwszy punkt biegu (deterministycznie).",
@@ -23672,74 +23883,6 @@
     "summary": "Get Protection Run Trace",
     "tags": [
      "protection-analysis"
-    ]
-   }
-  },
-  "/api/protection/overcurrent-settings": {
-   "get": {
-    "description": "Nastawy biegu `protection.overcurrent.v0` + projekcja prezentacyjna.\n\nWskaz `run_id` (konkretny bieg) albo `case_id` (NAJNOWSZY bieg nastaw przypadku\n— wybor nalezy do backendu, bo to on zna porzadek biegow; UI nie sortuje).\n404 gdy biegu nie ma, 422 gdy bieg jest innego typu albo nie niesie nastaw —\nzamiast pustej struktury, ktora w UI wygladalaby jak „brak naruszen\".",
-    "operationId": "get_overcurrent_settings_api_protection_overcurrent_settings_get",
-    "parameters": [
-     {
-      "in": "query",
-      "name": "run_id",
-      "required": false,
-      "schema": {
-       "anyOf": [
-        {
-         "type": "string"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Run Id"
-      }
-     },
-     {
-      "in": "query",
-      "name": "case_id",
-      "required": false,
-      "schema": {
-       "anyOf": [
-        {
-         "type": "string"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Case Id"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "title": "Response Get Overcurrent Settings Api Protection Overcurrent Settings Get",
-         "type": "object"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Get Overcurrent Settings",
-    "tags": [
-     "protection-overcurrent-settings"
     ]
    }
   },
