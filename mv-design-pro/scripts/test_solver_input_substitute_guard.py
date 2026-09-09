@@ -1207,6 +1207,20 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # dlugu i wykluczenia bez zmian (61 plikow/suma 280 dlug; 14 plikow/suma 32 wykluczenia) —
     # pomiar guarda na drzewie karty, zero nowych podstawien (filtr `_obwod_wtorny_pomiaru`
     # pomija pozycje bez `moc_va` zamiast podstawiac zero, patrz `api/generators.py`).
+    # W2-C (2026-09-09, daf303a3): +9 pol kontraktu (karta ConverterType: widmo harmoniczne,
+    # droop P(f)/Q(U); wejscie V12.6: proweniencja widma, pominiete zrodla) — pomiar guardem.
+    # W3-I (2026-09-09): +4 pola kontraktu = `WymagalnoscKatalogu` (`tworzenie`/`walidacja`/
+    # `import_`/`kod_walidacji`, `network_model/catalog/governance.py`) — nowy jedyny predykat
+    # wymagalnosci katalogu (klasa K-A aneksu 3a J8/K8, `docs/plan/KARTA_W3_KONWERGENCJA_
+    # FIZYKI_2026-09.md` §0.15). Zbior nazw (nie suma per-klase, patrz FAB-L powyzej):
+    # wszystkie cztery nazwy nowe w calym CONTRACT_SOURCES, 3539 + 4 = 3543 bez reszty.
+    # Zapadka dlugu (61 plikow, suma 280) i wykluczenia (14 plikow, suma 32) BEZ ZMIAN od
+    # tej karty — zmierzone `git diff a16f8d2b..HEAD` linii DODANYCH: zero nowych wzorcow
+    # "or <liczba>"/".get(..., <liczba>)"/"else <liczba>" w `backend/src/**` (bramka czyta
+    # poziomy z enuma `Poziom`, nie liczby). Suma dlugu 280 (nie 286 z komentarza W1 powyzej)
+    # jest STANEM ODZIEDZICZONYM na bazie karty (`a16f8d2b`) sprzed W3-I, nie skutkiem tej
+    # karty — nazwane tu uczciwie (brak dopasowania spadku 286 -> 280 w diffie W3-I), zeby
+    # nie przypisac sobie cudzej naprawy.
     # (piny ponizej przeliczane guardem na drzewie scalonym fali 2 — odbior, nie arytmetyka)
     assert "Pol kontraktow wejsciowych: 3491." in wyjscie, wyjscie
     assert (
