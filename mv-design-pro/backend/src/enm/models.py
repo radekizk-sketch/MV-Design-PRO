@@ -614,6 +614,40 @@ class Generator(ENMElement):
 # ---------------------------------------------------------------------------
 
 
+class ObciazenieAparatu(BaseModel):
+    """Pojedyncze obciążenie obwodu wtórnego CT/VT (aparat/licznik/przekaźnik).
+
+    Dana PROJEKTOWA (kreator stacji, ekran bilansu) — kształt 1:1 z żądaniem
+    końcówki `POST /api/solver/{ct,vt}-burden-check` (`api/equipment_checks.py`,
+    ``ObciazenieAparatu``), żeby dane wpisane w kreatorze i dane wysyłane do
+    solvera pochodziły z JEDNEGO źródła prawdy.
+    """
+
+    nazwa: str
+    moc_va: float = Field(ge=0.0)
+
+
+class ObwodWtorny(BaseModel):
+    """Obwód wtórny przekładnika CT/VT (karta KD-3/W3-B) — koniec liczenia
+    „na kartce" w ekranie bilansu.
+
+    ADDYTYWNY, opcjonalny blok `Measurement.obwod_wtorny`: kabel łączący
+    zaciski wtórne przekładnika z aparatami (przekaźnik, licznik) opisany
+    wielkościami, jakich wymaga jądro FROZEN `ct_burden_saturation.py`
+    (`check_ct_burden_saturation`) i `vt_burden_voltage_drop.py`. Wszystkie
+    pola opcjonalne, BEZ wartości domyślnych — brak danej zostaje brakiem
+    danej (kod gotowości), nigdy wartością zastępczą (zero fabrykacji).
+    """
+
+    #: Długość przewodu w JEDNĄ stronę [m] — solver liczy obwód dwuprzewodowy
+    #: (R_p = 2·ρ·L/s) sam, więc tu wchodzi odległość, nie droga tam i z powrotem.
+    dlugosc_przewodu_m: float | None = Field(default=None, gt=0)
+    przekroj_przewodu_mm2: float | None = Field(default=None, gt=0)
+    obciazenia_aparatow: list[ObciazenieAparatu] = Field(default_factory=list)
+    #: Moc tracona na stykach i zaciskach [VA] — TYLKO gdy podana jawnie.
+    moc_stykow_va: float | None = Field(default=None, ge=0)
+
+
 class Measurement(ENMElement):
     """Przekładnik prądowy (CT) lub napięciowy (VT)."""
 
@@ -657,6 +691,18 @@ class Measurement(ENMElement):
     # fizyczna montażu). None = dana niedostarczona (uczciwy brak, ZERO
     # fabrykacji).
     vt_mounting: Literal["bus", "cable"] | None = None
+    # KD-3/W3-B (karta W3-B, mapa 4 #3): obwód wtórny CT/VT — dana PROJEKTOWA
+    # (kreator stacji / ekran bilansu), WSPÓLNA dla CT i VT (oba typy mają
+    # zaciski wtórne i przewody do aparatów), więc BEZ ograniczenia do jednego
+    # measurement_type. None = obwód niezapisany (uczciwy brak, zero fabrykacji
+    # — kryterium nasycenia/spadku napięcia kończy się kodem gotowości).
+    obwod_wtorny: ObwodWtorny | None = None
+    # W3-B: które uzwojenie VT opisuje powyższy `obwod_wtorny` (limit ΔU zależy
+    # od kategorii uzwojenia — pomiarowe 0,5 % vs zabezpieczeniowe 1,0 %,
+    # `api/equipment_checks.py::VtBurdenRequest.uzwojenie`). WYŁĄCZNIE dla
+    # measurement_type=='VT': CT ma jedno uzwojenie wtórne na rdzeń, więc
+    # rozróżnienie pomiarowe/zabezpieczeniowe go nie dotyczy.
+    vt_uzwojenie: Literal["POMIAROWE", "ZABEZPIECZENIOWE"] | None = None
 
     @model_validator(mode="after")
     def _validate_arrangement_matches_measurement_type(self) -> Measurement:
@@ -675,15 +721,20 @@ class Measurement(ENMElement):
 
     @model_validator(mode="after")
     def _validate_ctvt_variant_matches_measurement_type(self) -> Measurement:
-        """CTVT-MODEL: `ct_cores`/`vt_mounting` to dane WYŁĄCZNIE dla
-        odpowiadającego `measurement_type` — CT nie ma montażu VT, a VT nie ma
-        rdzeni CT (spójność osi, WHITE BOX, `domain_no_guessing_guard`).
-        Dodatnia liczba rdzeni jest egzekwowana przez `Field(gt=0)`."""
+        """CTVT-MODEL/W3-B: `ct_cores`/`vt_mounting`/`vt_uzwojenie` to dane
+        WYŁĄCZNIE dla odpowiadającego `measurement_type` — CT nie ma montażu
+        VT ani uzwojenia VT, a VT nie ma rdzeni CT (spójność osi, WHITE BOX,
+        `domain_no_guessing_guard`). Dodatnia liczba rdzeni jest egzekwowana
+        przez `Field(gt=0)`."""
         if self.ct_cores is not None and self.measurement_type != "CT":
             raise ValueError(f"Measurement '{self.ref_id}': ct_cores wymaga measurement_type='CT'.")
         if self.vt_mounting is not None and self.measurement_type != "VT":
             raise ValueError(
                 f"Measurement '{self.ref_id}': vt_mounting wymaga measurement_type='VT'."
+            )
+        if self.vt_uzwojenie is not None and self.measurement_type != "VT":
+            raise ValueError(
+                f"Measurement '{self.ref_id}': vt_uzwojenie wymaga measurement_type='VT'."
             )
         return self
 

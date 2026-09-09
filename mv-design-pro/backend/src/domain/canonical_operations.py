@@ -309,7 +309,14 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         description_pl="Dodanie przekładnika prądowego (CT)",
         target_layer="Domain / NetworkModel",
         required_fields=("target_field_ref",),
-        optional_fields=("ratio", "accuracy_class", "burden_va", "catalog_binding"),
+        optional_fields=(
+            "ratio",
+            "accuracy_class",
+            "burden_va",
+            "catalog_binding",
+            # W3-B (mapa 4 #3): obwód wtórny — koniec liczenia „na kartce".
+            "obwod_wtorny",
+        ),
     ),
     "add_vt": OperationSpec(
         canonical_name="add_vt",
@@ -317,7 +324,28 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         description_pl="Dodanie przekładnika napięciowego (VT)",
         target_layer="Domain / NetworkModel",
         required_fields=("target_field_ref",),
-        optional_fields=("ratio", "accuracy_class", "catalog_binding"),
+        optional_fields=(
+            "ratio",
+            "accuracy_class",
+            "catalog_binding",
+            # W3-B (mapa 4 #3): obwód wtórny + uzwojenie, którego dotyczy.
+            "obwod_wtorny",
+            "vt_uzwojenie",
+        ),
+    ),
+    "set_measurement_secondary_circuit": OperationSpec(
+        canonical_name="set_measurement_secondary_circuit",
+        category=OperationCategory.PROTECTION,
+        description_pl=(
+            "Zapis/aktualizacja obwodu wtórnego CT/VT na już istniejącym "
+            "przekładniku (karta W3-B, mapa 4 #3) — jedyna droga edycji po "
+            "utworzeniu; `update_element_parameters` odrzuca kolekcję "
+            "`measurements` (LEGACY_FIELD_COLLECTIONS)."
+        ),
+        target_layer="Domain / NetworkModel",
+        required_fields=("measurement_ref", "obwod_wtorny"),
+        optional_fields=("vt_uzwojenie",),
+        creates_elements=False,
     ),
     "add_relay": OperationSpec(
         canonical_name="add_relay",

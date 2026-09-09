@@ -753,6 +753,13 @@ def add_ct(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
                         "burden_va": payload.get("burden_va"),
                     },
                     "overrides": [],
+                    # W3-B (karta W3-B §0.2, mapa 4 #3): obwód wtórny — koniec
+                    # liczenia „na kartce" w ekranie bilansu. Payload jest
+                    # przekazywany BEZ ZMIAN (jak reszta pól tej operacji);
+                    # walidację kształtu (długość/przekrój > 0, moc ≥ 0) robi
+                    # `Measurement.obwod_wtorny` przy zapisie migawki
+                    # (`EnergyNetworkModel.model_validate` w `enm/store.py`).
+                    "obwod_wtorny": payload.get("obwod_wtorny"),
                 }
             )
             break
@@ -899,6 +906,12 @@ def add_vt(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
                         "burden_va": payload.get("burden_va"),
                     },
                     "overrides": [],
+                    # W3-B (karta W3-B §0.2, mapa 4 #3): obwód wtórny — ten sam
+                    # kontrakt co CT (patrz `add_ct`); `vt_uzwojenie` nazywa,
+                    # które uzwojenie (POMIAROWE/ZABEZPIECZENIOWE) ten obwód
+                    # opisuje — walidacja kształtu przy zapisie migawki.
+                    "obwod_wtorny": payload.get("obwod_wtorny"),
+                    "vt_uzwojenie": payload.get("vt_uzwojenie"),
                 }
             )
             break
@@ -914,6 +927,87 @@ def add_vt(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
                 "event_type": "VT_CREATED",
                 "element_id": measurement_ref,
                 "field_ref": field_ref,
+            }
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# 2b. OCHRONA — set_measurement_secondary_circuit (karta W3-B, mapa 4 #3)
+# ---------------------------------------------------------------------------
+
+
+def set_measurement_secondary_circuit(
+    enm: dict[str, Any], payload: dict[str, Any]
+) -> dict[str, Any]:
+    """Zapisz/zaktualizuj obwód wtórny CT/VT na JUŻ ISTNIEJĄCYM przekładniku.
+
+    DLACZEGO TA OPERACJA ISTNIEJE (karta W3-B §0.2). `add_ct`/`add_vt` zapisują
+    `obwod_wtorny` WYŁĄCZNIE przy TWORZENIU przekładnika. Bez osobnej operacji
+    pole byłoby write-once: błąd wpisanej długości przewodu nie dałby się
+    poprawić bez usunięcia i utworzenia przekładnika od nowa.
+
+    `update_element_parameters` NIE JEST tu alternatywą (zmierzone — karta
+    wymagała sprawdzenia, czy istnieje operacja edycji): kolekcja
+    `measurements` jest na liście `LEGACY_FIELD_COLLECTIONS` (V11, zapis
+    wyłączony architektonicznie — `_error_legacy_field_write_disabled`), więc
+    KAŻDA próba przez tamtą drogę kończy się `field.legacy_write_disabled`
+    niezależnie od allowlisty pól. Ta operacja jest jedyną, dedykowaną drogą
+    zapisu tego pola po utworzeniu przekładnika — „nie twórz drugiej drogi
+    zapisu" odnosi się do KONKURENCYJNYCH operacji tej samej rangi, nie do
+    ścieżki zablokowanej z innego powodu architektonicznego.
+
+    ZERO FABRYKACJI. `obwod_wtorny` jest WYMAGANY (to cały cel operacji — bez
+    niego nie ma czego zapisać); `vt_uzwojenie` jest opcjonalny i dozwolony
+    WYŁĄCZNIE dla `measurement_type=='VT'` (walidacja TU, żeby błąd był
+    domenowy — z jasnym powodem — a nie surowy `ValidationError` z warstwy
+    zapisu snapshotu). Jawne `"obwod_wtorny": null` w payloadzie CZYŚCI obwód
+    (ten sam konwencja co `set_der_catalog_bindings`: klucz obecny + `None` =
+    skasuj, klucz nieobecny = nie dotykaj).
+    """
+    measurement_ref = payload.get("measurement_ref") or payload.get("ref_id")
+    if not measurement_ref:
+        return _error_response(
+            "Brak identyfikatora przekładnika.", "measurement_circuit.ref_missing"
+        )
+    if "obwod_wtorny" not in payload:
+        return _error_response(
+            "Brak obwodu wtórnego w żądaniu — operacja służy WYŁĄCZNIE do jego zapisu.",
+            "measurement_circuit.obwod_missing",
+        )
+
+    new_enm = kopia_graniczna_enm(enm)
+    measurement = next(
+        (m for m in new_enm.get("measurements", []) if m.get("ref_id") == measurement_ref),
+        None,
+    )
+    if measurement is None:
+        return _error_response(
+            f"Przekładnik '{measurement_ref}' nie istnieje w modelu.",
+            "measurement_circuit.not_found",
+        )
+
+    if payload.get("vt_uzwojenie") is not None:
+        if measurement.get("measurement_type") != "VT":
+            return _error_response(
+                f"Przekładnik '{measurement_ref}' nie jest VT — vt_uzwojenie dotyczy "
+                "wyłącznie przekładnika napięciowego.",
+                "measurement_circuit.vt_uzwojenie_wrong_type",
+            )
+        measurement["vt_uzwojenie"] = payload["vt_uzwojenie"]
+
+    measurement["obwod_wtorny"] = payload.get("obwod_wtorny")
+
+    return _response(
+        new_enm,
+        updated=[str(measurement_ref)],
+        selection_id=str(measurement_ref),
+        selection_type="measurement",
+        events=[
+            {
+                "event_seq": 1,
+                "event_type": "MEASUREMENT_SECONDARY_CIRCUIT_SET",
+                "element_id": measurement_ref,
             }
         ],
     )
@@ -6935,6 +7029,7 @@ V2_CANONICAL_OPS: frozenset[str] = frozenset(
         # Ochrona
         "add_ct",
         "add_vt",
+        "set_measurement_secondary_circuit",
         "add_relay",
         "update_relay_settings",
         "link_relay_to_field",
@@ -6974,6 +7069,7 @@ V2_CANONICAL_OPS: frozenset[str] = frozenset(
 ALL_V2_HANDLERS: dict[str, Any] = {
     "add_ct": add_ct,
     "add_vt": add_vt,
+    "set_measurement_secondary_circuit": set_measurement_secondary_circuit,
     "add_relay": add_relay,
     "update_relay_settings": update_relay_settings,
     "link_relay_to_field": link_relay_to_field,

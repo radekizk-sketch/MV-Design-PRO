@@ -40,6 +40,26 @@ export interface MeasurementRating {
   burden_va?: number | null;
 }
 
+/** Karta W3-B (mapa 4 #3): pojedyncze obciążenie obwodu wtórnego CT/VT —
+ *  kształt 1:1 z `api/equipment_checks.py::ObciazenieAparatu` i
+ *  `enm/models.py::ObciazenieAparatu`. */
+export interface ObciazenieAparatuObwoduWtornego {
+  nazwa: string;
+  moc_va: number;
+}
+
+/** Karta W3-B (mapa 4 #3): obwód wtórny przekładnika CT/VT — koniec liczenia
+ *  „na kartce" w ekranie bilansu. Dana PROJEKTOWA (kreator stacji / ekran
+ *  bilansu), BEZ wartości domyślnych; `null`/brak pole = obwód niezapisany
+ *  (kryterium nasycenia/spadku napięcia kończy się kodem gotowości, nie
+ *  wartością zastępczą). */
+export interface ObwodWtorny {
+  dlugosc_przewodu_m?: number | null;
+  przekroj_przewodu_mm2?: number | null;
+  obciazenia_aparatow: ObciazenieAparatuObwoduWtornego[];
+  moc_stykow_va?: number | null;
+}
+
 export interface ProtectionSetting {
   /**
    * FAB-F (2026-09-05): lustro pomijało 4 literały D10 (funkcje ochrony od
@@ -1089,6 +1109,15 @@ export interface Measurement extends ENMElement {
    *  WYŁĄCZNIE dla measurement_type==='VT'. Oś odrębna od `vt_arrangement`
    *  (open_delta/star = oś 3U0). `null`/brak = dana niedostarczona. */
   vt_mounting?: 'bus' | 'cable' | null;
+  /** Karta W3-B (mapa 4 #3): obwód wtórny CT/VT — WSPÓLNY dla obu typów
+   *  (oba mają zaciski wtórne i przewody do aparatów). `null`/brak = obwód
+   *  niezapisany (uczciwy brak, zero fabrykacji). */
+  obwod_wtorny?: ObwodWtorny | null;
+  /** Karta W3-B: które uzwojenie VT opisuje `obwod_wtorny` (limit ΔU zależy
+   *  od kategorii uzwojenia — pomiarowe 0,5 % vs zabezpieczeniowe 1,0 %,
+   *  `api/equipment_checks.py::VtBurdenRequest.uzwojenie`). WYŁĄCZNIE dla
+   *  measurement_type==='VT'. */
+  vt_uzwojenie?: 'POMIAROWE' | 'ZABEZPIECZENIOWE' | null;
 }
 
 // ---------------------------------------------------------------------------

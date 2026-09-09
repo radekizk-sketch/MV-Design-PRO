@@ -582,6 +582,157 @@ class TestDomainOpsCatalogPolicy:
         assert measurement["catalog_namespace"] == "CT"
         assert measurement["source_mode"] == "KATALOG"
 
+    def test_domain_ops_add_ct_persists_obwod_wtorny(self, client):
+        """Karta W3-B (mapa 4 #3): `add_ct` przyjmuje `obwod_wtorny` w payloadzie
+        — koniec liczenia „na kartce" w ekranie bilansu. Zapis/odczyt/rewizja
+        idzie kanonicznym dyspozytorem (`execute_domain_operation`), jak
+        wszystkie pozostale pola tej operacji."""
+        case_id = _nowy_przypadek(client)
+        _seed_enm(client, case_id, _valid_enm_with_field_specs("Field Obwod Wtorny"))
+
+        response = client.post(
+            f"/api/cases/{case_id}/enm/domain-ops",
+            json={
+                "operation": {
+                    "name": "add_ct",
+                    "payload": {
+                        "field_ref": "field_in_1",
+                        "ratio_primary_a": 400.0,
+                        "ratio_secondary_a": 5.0,
+                        "catalog_binding": {
+                            "catalog_namespace": "CT",
+                            "catalog_item_id": "ct_400_5_5p20_15va_abb",
+                            "catalog_item_version": "2024.1",
+                        },
+                        "obwod_wtorny": {
+                            "dlugosc_przewodu_m": 45.0,
+                            "przekroj_przewodu_mm2": 2.5,
+                            "obciazenia_aparatow": [
+                                {"nazwa": "Przekaźnik nadprądowy", "moc_va": 3.0},
+                                {"nazwa": "Amperomierz", "moc_va": 1.0},
+                            ],
+                            "moc_stykow_va": 0.5,
+                        },
+                    },
+                }
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body.get("error") is None
+
+        after = client.get(f"/api/cases/{case_id}/enm").json()
+        obwod = after["measurements"][0]["obwod_wtorny"]
+        assert obwod["dlugosc_przewodu_m"] == 45.0
+        assert obwod["przekroj_przewodu_mm2"] == 2.5
+        assert obwod["obciazenia_aparatow"] == [
+            {"nazwa": "Przekaźnik nadprądowy", "moc_va": 3.0},
+            {"nazwa": "Amperomierz", "moc_va": 1.0},
+        ]
+        assert obwod["moc_stykow_va"] == 0.5
+
+    def test_domain_ops_add_ct_bez_obwodu_wtornego_zostaje_None(self, client):
+        """Pole ADDYTYWNE — operacja bez `obwod_wtorny` w payloadzie zachowuje
+        sie DOKLADNIE jak przed karta W3-B (zero zlamanej zgodnosci wstecznej)."""
+        case_id = _nowy_przypadek(client)
+        _seed_enm(client, case_id, _valid_enm_with_field_specs("Field Bez Obwodu"))
+
+        response = client.post(
+            f"/api/cases/{case_id}/enm/domain-ops",
+            json={
+                "operation": {
+                    "name": "add_ct",
+                    "payload": {
+                        "field_ref": "field_in_1",
+                        "ratio_primary_a": 400.0,
+                        "ratio_secondary_a": 5.0,
+                        "catalog_binding": {
+                            "catalog_namespace": "CT",
+                            "catalog_item_id": "ct_400_5_5p20_15va_abb",
+                            "catalog_item_version": "2024.1",
+                        },
+                    },
+                }
+            },
+        )
+        assert response.status_code == 200, response.text
+
+        after = client.get(f"/api/cases/{case_id}/enm").json()
+        assert after["measurements"][0].get("obwod_wtorny") is None
+
+    def test_domain_ops_add_ct_odrzuca_niepoprawny_obwod_wtorny(self, client):
+        """Ksztalt walidowany PRZY ZAPISIE (`Measurement.obwod_wtorny`, `gt=0`)
+        — ujemna dlugosc NIE zapisuje sie po cichu jako `None`."""
+        case_id = _nowy_przypadek(client)
+        _seed_enm(client, case_id, _valid_enm_with_field_specs("Field Obwod Zly"))
+        before = client.get(f"/api/cases/{case_id}/enm").json()
+
+        response = client.post(
+            f"/api/cases/{case_id}/enm/domain-ops",
+            json={
+                "operation": {
+                    "name": "add_ct",
+                    "payload": {
+                        "field_ref": "field_in_1",
+                        "ratio_primary_a": 400.0,
+                        "ratio_secondary_a": 5.0,
+                        "catalog_binding": {
+                            "catalog_namespace": "CT",
+                            "catalog_item_id": "ct_400_5_5p20_15va_abb",
+                            "catalog_item_version": "2024.1",
+                        },
+                        "obwod_wtorny": {"dlugosc_przewodu_m": -5.0},
+                    },
+                }
+            },
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body.get("error") is not None
+        assert body.get("snapshot") is None
+
+        after = client.get(f"/api/cases/{case_id}/enm").json()
+        assert after["measurements"] == before["measurements"]
+
+    def test_domain_ops_add_vt_persists_obwod_wtorny_i_uzwojenie(self, client):
+        """Karta W3-B: `add_vt` przyjmuje `obwod_wtorny` + `vt_uzwojenie`
+        (ktore uzwojenie VT ten obwod opisuje — POMIAROWE/ZABEZPIECZENIOWE)."""
+        case_id = _nowy_przypadek(client)
+        _seed_enm(client, case_id, _valid_enm_with_field_specs("Field VT Obwod"))
+
+        response = client.post(
+            f"/api/cases/{case_id}/enm/domain-ops",
+            json={
+                "operation": {
+                    "name": "add_vt",
+                    "payload": {
+                        "field_ref": "field_in_1",
+                        "ratio_primary_v": 20000.0,
+                        "ratio_secondary_v": 100.0,
+                        "catalog_binding": {
+                            "catalog_namespace": "VT",
+                            "catalog_item_id": "vt_20kv_100v_3p_abb",
+                            "catalog_item_version": "2024.1",
+                        },
+                        "obwod_wtorny": {
+                            "dlugosc_przewodu_m": 12.0,
+                            "przekroj_przewodu_mm2": 1.5,
+                            "obciazenia_aparatow": [{"nazwa": "Woltomierz", "moc_va": 2.0}],
+                        },
+                        "vt_uzwojenie": "POMIAROWE",
+                    },
+                }
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        after = client.get(f"/api/cases/{case_id}/enm").json()
+        measurement = after["measurements"][0]
+        assert measurement["measurement_type"] == "VT"
+        assert measurement["vt_uzwojenie"] == "POMIAROWE"
+        assert measurement["obwod_wtorny"]["dlugosc_przewodu_m"] == 12.0
+
     def test_domain_ops_add_relay_persists_protection_for_field_spec(self, client):
         case_id = _nowy_przypadek(client)
         payload = _valid_enm_with_field_specs("Relay Adapter")
