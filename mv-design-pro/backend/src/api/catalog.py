@@ -14,7 +14,6 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from typing import Any, Literal
-from uuid import UUID
 
 from api.dependencies import get_uow_factory
 from application.analyses.protection.catalog.catalog_store import (
@@ -24,8 +23,6 @@ from application.analyses.protection.catalog.catalog_store import (
     load_device_capability,
 )
 from application.catalog_governance import CatalogGovernanceService
-from application.network_wizard import NetworkWizardService
-from application.network_wizard.service import NotFound
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.catalog.der_dynamic import get_profile, list_all_profile_ids
@@ -130,28 +127,8 @@ def _serialize_analytical_protection_device(device: Any) -> dict[str, Any]:
     }
 
 
-def _build_service(uow_factory: Any) -> NetworkWizardService:
-    return NetworkWizardService(uow_factory)
-
-
 def _build_governance_service(uow_factory: Any) -> CatalogGovernanceService:
     return CatalogGovernanceService(uow_factory)
-
-
-class AssignTypePayload(BaseModel):
-    """Payload for assigning type_ref to element"""
-
-    type_id: str  # UUID as string
-
-
-class ImportTypeLibraryPayload(BaseModel):
-    """Payload for importing type library"""
-
-    manifest: dict[str, Any]
-    line_types: list[dict[str, Any]]
-    cable_types: list[dict[str, Any]]
-    transformer_types: list[dict[str, Any]]
-    switch_types: list[dict[str, Any]]
 
 
 class ImportProtectionLibraryPayload(BaseModel):
@@ -161,87 +138,6 @@ class ImportProtectionLibraryPayload(BaseModel):
     device_types: list[dict[str, Any]]
     curves: list[dict[str, Any]]
     templates: list[dict[str, Any]]
-
-
-# ============================================================================
-# Type Library Governance (P13b)
-# ============================================================================
-
-
-@router.get("/export")
-def export_type_library(
-    library_name_pl: str = "Biblioteka typów",
-    vendor: str = "MV-DESIGN-PRO",
-    series: str = "Standard",
-    revision: str = "1.0",
-    description_pl: str = "",
-    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-) -> dict[str, Any]:
-    """
-    Export type library with deterministic fingerprint (P13b).
-
-    Returns canonical JSON export with manifest and all types.
-    Deterministic ordering ensures identical fingerprint for same content.
-
-    Query Parameters:
-        library_name_pl: Polish name of the library
-        vendor: Vendor/manufacturer name
-        series: Product series/line
-        revision: Revision string
-        description_pl: Optional Polish description
-    """
-    service = _build_governance_service(uow_factory)
-    return service.export_type_library(
-        library_name_pl=library_name_pl,
-        vendor=vendor,
-        series=series,
-        revision=revision,
-        description_pl=description_pl,
-    )
-
-
-@router.post("/import")
-def import_type_library(
-    payload: ImportTypeLibraryPayload,
-    mode: str = "merge",
-    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-) -> dict[str, Any]:
-    """
-    Import type library with conflict detection (P13b).
-
-    Modes:
-    - merge (default): Add new types, skip existing (no overwrites)
-    - replace: Replace entire library (blocked if types are in use)
-
-    Conflict rules:
-    - Existing type_id with different parameters → 409 Conflict
-    - REPLACE mode with types in use → 409 Conflict
-
-    Returns ImportReport with added/skipped/conflicts lists.
-    """
-    # Validate mode
-    try:
-        import_mode = ImportMode(mode.lower())
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Nieprawidłowy tryb: {mode}. Musi być 'merge' lub 'replace'.",
-        ) from exc
-
-    service = _build_governance_service(uow_factory)
-
-    try:
-        report = service.import_type_library(
-            data=payload.model_dump(),
-            mode=import_mode,
-        )
-        return report
-    except ValueError as exc:
-        # Conflicts detected
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=str(exc),
-        ) from exc
 
 
 # ============================================================================
@@ -663,8 +559,8 @@ def list_protection_device_types(
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> list[dict[str, Any]]:
     """List protection devices from active library or analytical device catalog."""
-    service = _build_service(uow_factory)
-    records = service.list_protection_device_types()
+    with uow_factory() as uow:
+        records = uow.protection_catalog.list_protection_device_types()
     if records:
         return records
     return [
@@ -678,8 +574,8 @@ def list_protection_curves(
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> list[dict[str, Any]]:
     """List all protection curves from catalog (P14a - READ-ONLY)"""
-    service = _build_service(uow_factory)
-    records = service.list_protection_curves()
+    with uow_factory() as uow:
+        records = uow.protection_catalog.list_protection_curves()
     if records:
         return records
     return [item.to_dict() for item in get_default_mv_catalog().list_protection_curves()]
@@ -690,8 +586,8 @@ def list_protection_setting_templates(
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> list[dict[str, Any]]:
     """List all protection setting templates from catalog (P14a - READ-ONLY)"""
-    service = _build_service(uow_factory)
-    records = service.list_protection_setting_templates()
+    with uow_factory() as uow:
+        records = uow.protection_catalog.list_protection_setting_templates()
     if records:
         return records
     return [item.to_dict() for item in get_default_mv_catalog().list_protection_setting_templates()]
@@ -703,8 +599,8 @@ def get_protection_device_type(
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """Get protection device from active library or analytical device catalog."""
-    service = _build_service(uow_factory)
-    result = service.get_protection_device_type(device_type_id)
+    with uow_factory() as uow:
+        result = uow.protection_catalog.get_protection_device_type(device_type_id)
     if result is not None:
         return result
 
@@ -724,8 +620,8 @@ def get_protection_curve(
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """Get single protection curve by ID (P14a - READ-ONLY)"""
-    service = _build_service(uow_factory)
-    result = service.get_protection_curve(curve_id)
+    with uow_factory() as uow:
+        result = uow.protection_catalog.get_protection_curve(curve_id)
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -740,8 +636,8 @@ def get_protection_setting_template(
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     """Get single protection setting template by ID (P14a - READ-ONLY)"""
-    service = _build_service(uow_factory)
-    result = service.get_protection_setting_template(template_id)
+    with uow_factory() as uow:
+        result = uow.protection_catalog.get_protection_setting_template(template_id)
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -829,172 +725,6 @@ def import_protection_library(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(exc),
         ) from exc
-
-
-# ============================================================================
-# Assign type_ref (POST endpoints)
-# ============================================================================
-
-
-@router.post("/projects/{project_id}/branches/{branch_id}/type-ref", status_code=204)
-def assign_type_to_branch(
-    project_id: str,
-    branch_id: str,
-    payload: AssignTypePayload,
-    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-) -> Response:
-    """Assign type_ref to branch (LineBranch)"""
-    try:
-        pid = UUID(project_id)
-        bid = UUID(branch_id)
-        tid = UUID(payload.type_id)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nieprawidłowy format UUID",
-        ) from exc
-
-    service = _build_service(uow_factory)
-    try:
-        service.assign_type_ref_to_branch(pid, bid, tid)
-    except NotFound as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-
-    return Response(status_code=204)
-
-
-@router.post("/projects/{project_id}/transformers/{transformer_id}/type-ref", status_code=204)
-def assign_type_to_transformer(
-    project_id: str,
-    transformer_id: str,
-    payload: AssignTypePayload,
-    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-) -> Response:
-    """Assign type_ref to transformer (TransformerBranch)"""
-    try:
-        pid = UUID(project_id)
-        tid = UUID(transformer_id)
-        type_id = UUID(payload.type_id)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nieprawidłowy format UUID",
-        ) from exc
-
-    service = _build_service(uow_factory)
-    try:
-        service.assign_type_ref_to_transformer(pid, tid, type_id)
-    except NotFound as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-
-    return Response(status_code=204)
-
-
-@router.post("/projects/{project_id}/switches/{switch_id}/equipment-type", status_code=204)
-def assign_equipment_type_to_switch(
-    project_id: str,
-    switch_id: str,
-    payload: AssignTypePayload,
-    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-) -> Response:
-    """Assign equipment_type to switch"""
-    try:
-        pid = UUID(project_id)
-        sid = UUID(switch_id)
-        tid = UUID(payload.type_id)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nieprawidłowy format UUID",
-        ) from exc
-
-    service = _build_service(uow_factory)
-    try:
-        service.assign_equipment_type_to_switch(pid, sid, tid)
-    except NotFound as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-
-    return Response(status_code=204)
-
-
-# ============================================================================
-# Clear type_ref (DELETE endpoints)
-# ============================================================================
-
-
-@router.delete("/projects/{project_id}/branches/{branch_id}/type-ref", status_code=204)
-def clear_type_from_branch(
-    project_id: str,
-    branch_id: str,
-    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-) -> Response:
-    """Clear type_ref from branch (set to null)"""
-    try:
-        pid = UUID(project_id)
-        bid = UUID(branch_id)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nieprawidłowy format UUID",
-        ) from exc
-
-    service = _build_service(uow_factory)
-    try:
-        service.clear_type_ref_from_branch(pid, bid)
-    except NotFound as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-
-    return Response(status_code=204)
-
-
-@router.delete("/projects/{project_id}/transformers/{transformer_id}/type-ref", status_code=204)
-def clear_type_from_transformer(
-    project_id: str,
-    transformer_id: str,
-    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-) -> Response:
-    """Clear type_ref from transformer (set to null)"""
-    try:
-        pid = UUID(project_id)
-        tid = UUID(transformer_id)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nieprawidłowy format UUID",
-        ) from exc
-
-    service = _build_service(uow_factory)
-    try:
-        service.clear_type_ref_from_transformer(pid, tid)
-    except NotFound as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-
-    return Response(status_code=204)
-
-
-@router.delete("/projects/{project_id}/switches/{switch_id}/equipment-type", status_code=204)
-def clear_equipment_type_from_switch(
-    project_id: str,
-    switch_id: str,
-    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-) -> Response:
-    """Clear equipment_type from switch"""
-    try:
-        pid = UUID(project_id)
-        sid = UUID(switch_id)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nieprawidłowy format UUID",
-        ) from exc
-
-    service = _build_service(uow_factory)
-    try:
-        service.clear_equipment_type_from_switch(pid, sid)
-    except NotFound as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-
-    return Response(status_code=204)
 
 
 # =============================================================================
@@ -1430,23 +1160,13 @@ def _auto_populate_inverters(
     )
 
 
-_PRODUCTION_DISABLED_ROUTE_KEYS = {
-    ("/api/catalog/projects/{project_id}/branches/{branch_id}/type-ref", "POST"),
-    ("/api/catalog/projects/{project_id}/transformers/{transformer_id}/type-ref", "POST"),
-    ("/api/catalog/projects/{project_id}/switches/{switch_id}/equipment-type", "POST"),
-    ("/api/catalog/projects/{project_id}/branches/{branch_id}/type-ref", "DELETE"),
-    ("/api/catalog/projects/{project_id}/transformers/{transformer_id}/type-ref", "DELETE"),
-    ("/api/catalog/projects/{project_id}/switches/{switch_id}/equipment-type", "DELETE"),
-}
-
-
 def _build_production_router() -> APIRouter:
+    """Router produkcyjny = pelny router. W1: zbior tras wylaczonych z produkcji
+    (przypisania typow z tabel `network_*`) znikl razem z tymi trasami; wzorzec
+    `production_router = _build_production_router()` zostaje dla guardow tras.
+    """
     production = APIRouter()
     for route in router.routes:
-        path = getattr(route, "path", "")
-        methods = set(getattr(route, "methods", set()))
-        if any((path, method) in _PRODUCTION_DISABLED_ROUTE_KEYS for method in methods):
-            continue
         production.routes.append(route)
     return production
 

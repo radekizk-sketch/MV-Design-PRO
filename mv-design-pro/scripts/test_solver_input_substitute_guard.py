@@ -1171,23 +1171,31 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # PERF-SC-50 (2026-09-09): +1 = `WejscieZwarcia.wklady_w_biegu` (assembler, tryb wkładów
     # gałęziowych: w biegu / na żądanie) — pole sterowania, nie liczba fizyczna; zmierzone
     # guardem na drzewie karty: 3628, zapadka dlugu/wykluczenia bez zmian.
-    assert "Pol kontraktow wejsciowych: 3628." in wyjscie, wyjscie
+    # W1 (2026-09-09): 3628 -> 3530 pol, 596 -> 545 plikow — kasacja legacy persystencji
+    # sieci (NetworkWizardService + dtos, wizard_runtime, application/sld/**, designer,
+    # design_synth, sld_projection, diagnostics/diff, 12 eksporterow reporting/, 7 repozytoriow
+    # legacy, 19 klas ORM) i przepisanie archiwum na format 3.0.0 (ArchiveSummary 12 -> 4
+    # liczb rekordow); zapadka dlugu 63/289 -> 61/286 i wykluczenia 17/49 -> 14/32 ZMALALY
+    # wylacznie przez skasowane pliki (network_wizard/service.py, sld/layout.py,
+    # power_flow_report_docx.py, project_archive 8 liczb sekcji legacy) — pomiar `--pomiar`
+    # na drzewie karty, zero nowych podstawien.
+    assert "Pol kontraktow wejsciowych: 3530." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
-        "Przeskanowano 596 plikow w zakresie: network_model, solver_input, enm, "
+        "Przeskanowano 545 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
-    assert "Zapadka dlugu (fizyczne): 63 plikow, suma 289." in wyjscie, wyjscie
-    assert "Wykluczenia skanera (niefizyczne): 17 plikow, suma 49." in wyjscie, wyjscie
+    assert "Zapadka dlugu (fizyczne): 61 plikow, suma 286." in wyjscie, wyjscie
+    assert "Wykluczenia skanera (niefizyczne): 14 plikow, suma 32." in wyjscie, wyjscie
     per_korzen = [
-        "  network_model: pliki_skanowane=149, dlug=14 plikow/suma 77, "
-        "wykluczenia=4 plikow/suma 7",
+        "  network_model: pliki_skanowane=136, dlug=14 plikow/suma 77, "
+        "wykluczenia=3 plikow/suma 6",
         "  solver_input: pliki_skanowane=10, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
-        "  enm: pliki_skanowane=40, dlug=8 plikow/suma 83, wykluczenia=0 plikow/suma 0",
-        "  application: pliki_skanowane=332, dlug=36 plikow/suma 115, "
-        "wykluczenia=7 plikow/suma 19",
-        "  api: pliki_skanowane=65, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 23",
+        "  enm: pliki_skanowane=41, dlug=8 plikow/suma 83, wykluczenia=0 plikow/suma 0",
+        "  application: pliki_skanowane=294, dlug=34 plikow/suma 112, "
+        "wykluczenia=5 plikow/suma 11",
+        "  api: pliki_skanowane=64, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 15",
     ]
     for linia in per_korzen:
         assert linia in wyjscie, f"Brak pinowanej sumy per korzen: {linia!r}\n{wyjscie}"

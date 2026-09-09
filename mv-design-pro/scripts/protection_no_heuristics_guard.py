@@ -7,11 +7,13 @@ Ensures NO auto-mapping, NO fallback, NO guessing in protection layer.
 
 SCAN FILES:
   backend/src/domain/protection_engine_v1.py
-  backend/src/domain/protection_coordination_v1.py
   backend/src/domain/protection_current_source.py
-  backend/src/domain/protection_report_model.py
   backend/src/application/protection_current_resolver.py
   backend/src/application/result_mapping/protection_to_resultset_v1.py
+
+  W1 (2026-09-09): protection_coordination_v1.py i protection_report_model.py
+  zdjęte z zakresu — skasowane razem z legacy persystencją sieci (0 konsumentów
+  produkcyjnych; jedynym czytelnikiem był tests/test_protection_determinism_guards.py).
 
   Karta CV-3.3-A2 (2026-09-05): protection_to_overlay_v1.py zdjęty z zakresu —
   skasowany (zero konsumenta produkcyjnego; żywa końcówka nakładki w
@@ -43,9 +45,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 SCAN_FILES = [
     "backend/src/domain/protection_engine_v1.py",
-    "backend/src/domain/protection_coordination_v1.py",
     "backend/src/domain/protection_current_source.py",
-    "backend/src/domain/protection_report_model.py",
     "backend/src/application/protection_current_resolver.py",
     "backend/src/application/result_mapping/protection_to_resultset_v1.py",
 ]

@@ -67,6 +67,12 @@ def session_scope(session_factory: sessionmaker[Session]) -> Iterator[Session]:
 def init_db(engine: Engine) -> None:
     Base.metadata.create_all(engine)
     _dolacz_kolumny_addytywne(engine)
+    # W1 (OD-2): baza sprzed W1 ma jeszcze tabele legacy modelu sieci — zrzut, kompilacja
+    # do ENM projektów bez modelu i kasacja tabel (`migracja_legacy_db`). Na bazie po W1
+    # (albo świeżej) to pusty przebieg.
+    from .migracja_legacy_db import migruj_i_usun_tabele_legacy
+
+    migruj_i_usun_tabele_legacy(engine)
 
 
 def _dolacz_kolumny_addytywne(engine: Engine) -> None:

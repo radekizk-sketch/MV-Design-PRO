@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from application.analyses.design_synth.fingerprint import fingerprint_json
+from application.analyses.kanon_json import fingerprint_json
 from application.analyses.run_envelope import (
     AnalysisRunEnvelope,
     ArtifactRef,

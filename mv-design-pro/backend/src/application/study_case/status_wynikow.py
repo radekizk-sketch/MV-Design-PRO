@@ -4,7 +4,7 @@ DLUG, KTORY TEN MODUL ZAMYKA. `StudyCase.result_status` byl POLEM w bazie, a jeg
 prawdziwosc zalezala od tego, czy kazda sciezka mutujaca model pamietala o
 wywolaniu „uniewazniacza”. Pisarzy bylo siedmiu (`ResultInvalidator`,
 `StudyCaseService.mark_*`, `case_repository.mark_*`, dwie koncowki
-`/invalidate*`, `LifecycleService`, regula OUTDATED w `with_network_snapshot_id`),
+`/invalidate*`, `LifecycleService`, regula OUTDATED przy zmianie migawki legacy),
 a mutujacych sciezek wiecej — wiec luka byla nieunikniona: zmiana typu
 katalogowego nie uniewazniala NICZEGO, a przypadek meldowal „wyniki aktualne”
 przy modelu, ktory pojechal dalej. Stan, ktorego nikt nie utrzymuje, nie moze

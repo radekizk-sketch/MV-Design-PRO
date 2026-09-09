@@ -117,22 +117,11 @@ def test_power_flow_router_ignores_legacy_analysis_run_rows(client: TestClient) 
     assert client.get(f"/api/power-flow-runs/{legacy_run.id}/interpretation").status_code == 404
 
 
-def test_sld_overlay_rejects_legacy_run_ids(client: TestClient) -> None:
-    project_id, case_id = _seed_project_and_case(client)
-    legacy_run = _insert_legacy_run(
-        client,
-        project_id=project_id,
-        case_id=case_id,
-        analysis_type="short_circuit_sn",
-    )
-
-    response = client.get(
-        f"/api/projects/{project_id}/sld/{uuid4()}/overlay",
-        params={"run_id": str(legacy_run.id)},
-    )
-
-    assert response.status_code == 404
-    assert response.json()["detail"] == f"Run {legacy_run.id} not found"
+# W1 (2026-09-09): `test_sld_overlay_rejects_legacy_run_ids` usunięty razem z trasą
+# `GET /api/projects/{id}/sld/{diagram_id}/overlay` (SLD ORM + nakładka biegu
+# kanonicznego skasowane — 0 konsumentów; bramka wskrzeszenia w
+# `legacy_public_path_guard`). Własność „tylko tor kanoniczny” dla nakładki jest
+# teraz trywialna: trasy nie ma.
 
 
 def test_main_app_no_longer_exposes_noncanonical_routers(client: TestClient) -> None:

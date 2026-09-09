@@ -31,8 +31,6 @@ from network_model.catalog.switchgear import (
     family_supports_voltage,
 )
 from network_model.catalog.types import CatalogBinding
-
-from .katalog_projektu import katalog_biezacy
 from network_model.pochodne import (
     moc_bierna_z_czynnej_i_cos_phi,
     moc_pozorna_z_czynnej_mva,
@@ -70,6 +68,7 @@ from .domain_operations import (
     wybor_bloku_fabrycznego,
 )
 from .exceptions import DomainInvariantError
+from .katalog_projektu import katalog_biezacy
 from .kopia_graniczna import kopia_graniczna_enm
 from .load_zip_model import KOD_BLEDU_ZIP, zip_odbioru_z_payloadu
 from .migrations.nn_field_specs_promocja import META_KLUCZ_GALAZ_ZRODLO_FIELD_REF
@@ -6467,7 +6466,6 @@ def _nieznane_referencje_katalogowe(wiazania: dict[str, Any]) -> list[str]:
     nie wskazanie typu.
     """
     from application.analyses.protection.catalog.catalog_store import list_devices
-    from network_model.catalog import get_default_mv_catalog
 
     katalog = katalog_biezacy()
     nieznane: list[str] = []

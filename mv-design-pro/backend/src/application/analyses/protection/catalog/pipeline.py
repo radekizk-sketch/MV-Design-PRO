@@ -4,8 +4,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
-from application.analyses.design_synth.canonical import canonicalize_json
-from application.analyses.design_synth.fingerprint import fingerprint_json
+from application.analyses.kanon_json import canonicalize_json, fingerprint_json
 from application.analyses.protection.catalog.catalog_store import load_device_capability
 from application.analyses.protection.catalog.envelope_adapter import to_run_envelope
 from application.analyses.protection.catalog.mapper import map_requirement_to_device

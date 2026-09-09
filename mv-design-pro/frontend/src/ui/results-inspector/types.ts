@@ -515,67 +515,6 @@ export interface ExtendedTrace {
   analysis_case_context?: AnalysisCaseContext | null;
 }
 
-// =============================================================================
-// SLD Overlay
-// =============================================================================
-
-/**
- * SLD bus overlay data.
- */
-export interface SldOverlayBus {
-  symbol_id: string;
-  bus_id: string;
-  /** Alias used by overlay_builder and SLD components */
-  node_id: string;
-  u_pu?: number;
-  u_kv?: number;
-  angle_deg?: number;
-  ikss_ka?: number;
-  sk_mva?: number;
-  /** Energy validation voltage status: PASS | WARNING | FAIL | NOT_COMPUTED */
-  voltage_status?: string;
-  /** Worst energy validation status for this node */
-  ev_status?: string;
-}
-
-/** @deprecated Use SldOverlayBus instead. */
-export type SldOverlayNode = SldOverlayBus;
-
-/**
- * SLD branch overlay data.
- */
-export interface SldOverlayBranch {
-  symbol_id: string;
-  branch_id: string;
-  p_mw?: number;
-  q_mvar?: number;
-  i_a?: number;
-  loading_pct?: number;
-  /** Worst energy validation status for this branch */
-  ev_status?: string;
-}
-
-/**
- * Complete SLD result overlay.
- */
-export interface SldResultOverlay {
-  diagram_id: string;
-  run_id: string;
-  /** Swiezosc wyniku wzgledem modelu: NONE | FRESH | OUTDATED (liczy backend). */
-  result_status: string;
-  /** Kod przyczyny statusu z backendu (np. `model-zmieniony`). */
-  result_status_reason?: string;
-  /** Zdanie po polsku wyjasniajace przyczyne statusu — prosto z backendu. */
-  result_status_reason_pl?: string;
-  /** Node overlay data (primary field used by overlay_builder and SLD components) */
-  nodes: SldOverlayBus[];
-  /** @deprecated Use nodes instead */
-  buses?: SldOverlayBus[];
-  branches: SldOverlayBranch[];
-  /** Overall energy validation status: PASS | WARNING | FAIL */
-  overall_ev_status?: string;
-}
-
 export interface ResultsRunSnapshot {
   run_id: string;
   snapshot_id: string | null;

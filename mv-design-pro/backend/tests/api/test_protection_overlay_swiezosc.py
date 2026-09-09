@@ -12,8 +12,9 @@ TESTY SA ILOCZYNEM CECH, nie przykladem z karty:
   zmieniony po biegu} — 4 kombinacje, kazda z asercja statusu,
   + bieg zapisany BEZ odcisku (dane sprzed K-S) — nie wolno mu udawac aktualnego,
   + kotwica wejscia (bieg zwarciowy) rozbiezna przy zgodnej kotwicy przypadku,
-  + ta sama para {niezmieniony, zmieniony} dla nakladki biegu kanonicznego
-    (dwie koncowki: `/analysis-runs/{id}/overlay` i `/projects/../sld/../overlay`).
+  (nakladka biegu kanonicznego — `/analysis-runs/{id}/overlay` i
+  `/projects/../sld/../overlay` — skasowana w W1, 2026-09-09, razem z ORM
+  diagramow SLD: 0 konsumentow produkcyjnych; jej para testow zeszla z nia).
 
 SCIEZKA NATYWNA. Model zmieniamy JEDYNA produkcyjna droga zmiany modelu —
 `POST /api/cases/{case_id}/enm/domain-ops` — a nie podmiana pola w magazynie:
@@ -24,7 +25,7 @@ przelozyla sie na odcisk modelu.
 from __future__ import annotations
 
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
@@ -282,53 +283,6 @@ def test_tworzenie_biegu_zabezpieczen_odrzuca_zrodlo_z_innego_projektu(app_clien
     )
     assert utworzenie.status_code == 400, utworzenie.text
     assert "innego projektu" in utworzenie.json()["detail"]
-
-
-# =============================================================================
-# NAKLADKA BIEGU KANONICZNEGO — TA SAMA KLASA, DWIE KONCOWKI
-# =============================================================================
-
-
-def _diagram(uow_factory, project_id: str) -> str:
-    with uow_factory() as uow:
-        diagram_id = uow.sld.save(
-            project_id=UUID(project_id),
-            name="Schemat testowy",
-            payload={"nodes": [], "branches": []},
-        )
-    return str(diagram_id)
-
-
-def test_nakladka_biegu_kanonicznego_ma_status_z_porownania(app_client, uow_factory) -> None:
-    project_id, case_id = _projekt_i_przypadek(app_client)
-    sc_run_id = _bieg_zwarciowy(app_client, case_id)
-    diagram_id = _diagram(uow_factory, project_id)
-
-    przed = app_client.get(f"/api/analysis-runs/{sc_run_id}/overlay?diagram_id={diagram_id}")
-    assert przed.status_code == 200, przed.text
-    assert przed.json()["result_status"] == "FRESH"
-    assert przed.json()["result_status_reason"] == FreshnessReason.MODEL_NIEZMIENIONY.value
-
-    sld_przed = app_client.get(
-        f"/api/projects/{project_id}/sld/{diagram_id}/overlay",
-        params={"run_id": sc_run_id},
-    )
-    assert sld_przed.status_code == 200, sld_przed.text
-    assert sld_przed.json()["result_status"] == "FRESH"
-
-    _zmien_model(app_client, case_id)
-
-    po = app_client.get(f"/api/analysis-runs/{sc_run_id}/overlay?diagram_id={diagram_id}")
-    assert po.status_code == 200
-    assert po.json()["result_status"] == "OUTDATED"
-    assert po.json()["result_status_reason"] == FreshnessReason.MODEL_ZMIENIONY.value
-
-    sld_po = app_client.get(
-        f"/api/projects/{project_id}/sld/{diagram_id}/overlay",
-        params={"run_id": sc_run_id},
-    )
-    assert sld_po.status_code == 200
-    assert sld_po.json()["result_status"] == "OUTDATED"
 
 
 # =============================================================================

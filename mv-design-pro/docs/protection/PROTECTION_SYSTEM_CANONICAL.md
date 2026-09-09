@@ -510,7 +510,9 @@ Poziom: `WARNING` (ostrzezenie, nie blokuje obliczeń)
 
 **Implementacja referencyjna:**
 - `domain.protection_device.SelectivityCheck`
-- `domain.protection_coordination_v1.compute_coordination_v1()`
+- ~~`domain.protection_coordination_v1.compute_coordination_v1()`~~ — skasowana w W1 (2026-09-09): 0 konsumentów
+  produkcyjnych (jedyny czytelnik: test determinizmu); koordynacja par upstream/downstream w backendzie
+  bez implementacji do wycinka W4 mapy („zabezpieczenia jako część modelu”)
 
 ### 4.7 Pary selektywnosci
 
@@ -522,7 +524,8 @@ NIE automatycznie wykrywane z topologii.
 - Oba przekazniki MUSZA istniec w wynikach analizy ochrony
 - Identyfikatory par (`pair_id`) MUSZA byc unikalne
 
-**Implementacja referencyjna:** `domain.protection_coordination_v1.ProtectionSelectivityPair`
+**Implementacja referencyjna:** ~~`domain.protection_coordination_v1.ProtectionSelectivityPair`~~ — skasowana w W1 (2026-09-09)
+(0 konsumentów produkcyjnych); niezmienniki par pozostają wymaganiem kontraktu dla implementacji z W4.
 
 ---
 
@@ -1007,7 +1010,7 @@ do audytu.
 | Model przekaznika (RelayV1) | domain.protection_engine_v1 | `backend/src/domain/protection_engine_v1.py` |
 | Nastawy nadpradowe | domain.protection_device | `backend/src/domain/protection_device.py` |
 | Analiza ochrony (wyniki) | domain.protection_analysis | `backend/src/domain/protection_analysis.py` |
-| Koordynacja selektywnosci | domain.protection_coordination_v1 | `backend/src/domain/protection_coordination_v1.py` |
+| Koordynacja selektywnosci | ~~domain.protection_coordination_v1~~ | skasowany w W1 (2026-09-09) (0 konsumentow produkcyjnych); implementacja = wycinek W4 mapy |
 | Krzywe vendor | domain.protection_vendors | `backend/src/domain/protection_vendors.py` |
 | Silnik ochrony (execute) | domain.protection_engine_v1 | `backend/src/domain/protection_engine_v1.py` |
 | Obliczanie IEC IDMT | domain.protection_engine_v1 | `backend/src/domain/protection_engine_v1.py` |

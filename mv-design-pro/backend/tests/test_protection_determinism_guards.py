@@ -8,29 +8,25 @@ Coverage:
 - TestBridgeHashDeterminism: current_source affects hash
 - TestRelayOrderInvariance: relay permutation → same result
 - TestPointOrderInvariance: test point permutation → same result
-- TestPairOrderInvariance: coordination pair permutation → same result
-- TestCoordinationSign: swap upstream/downstream → flipped margin sign
-- TestReportDeterminism: report signature stability + float format
-- TestEndToEndPipeline: full pipeline determinism (engine → coordination → report)
+
+W1 (2026-09-09): `domain/protection_coordination_v1.py` i
+`domain/protection_report_model.py` skasowane razem z legacy persystencją sieci
+(0 konsumentów produkcyjnych — jedynym czytelnikiem obu modułów był ten plik);
+klasy TestPairOrderInvariance/TestCoordinationSign/TestReportDeterminism/
+TestEndToEndPipeline zeszły razem z kodem, który testowały.
 
 Karta CV-3.3-A2 (2026-09-05): `TestOverlayDeterminism` skasowana razem z
 `application/result_mapping/protection_to_overlay_v1.py` (zero konsumenta
 produkcyjnego — żywa końcówka `GET .../protection-overlay` w
 `api/protection_runs.py` buduje nakładkę WŁASNYM, prostszym mechanizmem
 inline, nie przez ten mapper; własna regresja tej końcówki:
-`tests/api/test_protection_overlay_swiezosc.py`). Krok nakładki wycięty też
-z `TestEndToEndPipeline` — determinizm silnika/koordynacji/raportu zostaje
-dowiedziony bez niego.
+`tests/api/test_protection_overlay_swiezosc.py`).
 """
 
 from __future__ import annotations
 
 from uuid import uuid4
 
-from domain.protection_coordination_v1 import (
-    ProtectionSelectivityPair,
-    compute_coordination_v1,
-)
 from domain.protection_current_source import (
     CurrentSourceType,
     ProtectionCurrentSource,
@@ -47,7 +43,6 @@ from domain.protection_engine_v1 import (
     TestPoint,
     execute_protection_v1,
 )
-from domain.protection_report_model import build_protection_report
 
 # =============================================================================
 # FIXTURES
@@ -240,164 +235,3 @@ class TestPointOrderInvariance:
         sig_123 = _run(relays, (t1, t2, t3)).deterministic_signature
         sig_321 = _run(relays, (t3, t2, t1)).deterministic_signature
         assert sig_123 == sig_321
-
-
-# =============================================================================
-# TEST: PAIR ORDER INVARIANCE
-# =============================================================================
-
-
-class TestPairOrderInvariance:
-    """Coordination pair insertion order does not affect result."""
-
-    def test_two_pairs(self):
-        r1 = _relay("r1", "cb1", tms=0.1)
-        r2 = _relay("r2", "cb2", tms=0.3)
-        r3 = _relay("r3", "cb3", tms=0.5)
-        tps = _tps(2000.0)
-        result = _run((r1, r2, r3), tps)
-
-        p1 = ProtectionSelectivityPair("pair-1", "r2", "r1")
-        p2 = ProtectionSelectivityPair("pair-2", "r3", "r2")
-
-        sig_12 = compute_coordination_v1(
-            pairs=(p1, p2), protection_result=result
-        ).deterministic_signature
-        sig_21 = compute_coordination_v1(
-            pairs=(p2, p1), protection_result=result
-        ).deterministic_signature
-        assert sig_12 == sig_21
-
-
-# =============================================================================
-# TEST: COORDINATION SIGN
-# =============================================================================
-
-
-class TestCoordinationSign:
-    """Swapping upstream/downstream reverses margin sign."""
-
-    def test_swap_flips_sign(self):
-        r1 = _relay("r1", "cb1", tms=0.1)
-        r2 = _relay("r2", "cb2", tms=0.3)
-        tps = _tps(2000.0)
-        result = _run((r1, r2), tps)
-
-        pair_normal = ProtectionSelectivityPair("p", "r2", "r1")
-        pair_swapped = ProtectionSelectivityPair("p", "r1", "r2")
-
-        coord_normal = compute_coordination_v1(
-            pairs=(pair_normal,),
-            protection_result=result,
-        )
-        coord_swapped = compute_coordination_v1(
-            pairs=(pair_swapped,),
-            protection_result=result,
-        )
-
-        m_normal = coord_normal.pairs[0].margin_points[0].margin_s
-        m_swapped = coord_swapped.pairs[0].margin_points[0].margin_s
-
-        assert m_normal is not None
-        assert m_swapped is not None
-        assert (
-            abs(m_normal + m_swapped) < 1e-9
-        ), "Swapping upstream/downstream should flip margin sign"
-
-
-# =============================================================================
-# TEST: REPORT DETERMINISM
-# =============================================================================
-
-
-class TestReportDeterminism:
-    """Report produces deterministic output."""
-
-    def test_same_input_same_signature(self):
-        r1 = _relay("r1", "cb1")
-        tps = _tps(2000.0)
-        result = _run((r1,), tps)
-        source = _test_points_source()
-        run_id = str(uuid4())
-
-        sig1 = build_protection_report(
-            run_id=run_id,
-            protection_result=result,
-            current_source=source,
-        ).deterministic_signature
-        sig2 = build_protection_report(
-            run_id=run_id,
-            protection_result=result,
-            current_source=source,
-        ).deterministic_signature
-        assert sig1 == sig2
-
-    def test_float_format_no_comma(self):
-        """Report uses stable float formatting — no locale-dependent commas."""
-        r1 = _relay("r1", "cb1")
-        tps = _tps(2000.0, 4000.0)
-        result = _run((r1,), tps)
-        source = _test_points_source()
-
-        report = build_protection_report(
-            run_id=str(uuid4()),
-            protection_result=result,
-            current_source=source,
-        )
-
-        for summary in report.relay_summaries:
-            for tp in summary.test_point_results:
-                for _key, val in tp.items():
-                    if isinstance(val, float):
-                        # Float should use dot, not comma
-                        assert "," not in str(val)
-
-
-# =============================================================================
-# TEST: END-TO-END PIPELINE
-# =============================================================================
-
-
-class TestEndToEndPipeline:
-    """Full pipeline determinism: engine → coordination → report."""
-
-    def test_full_pipeline_determinism(self):
-        r1 = _relay("r1", "cb1", tms=0.1, f50=True, f50_pickup=5.0)
-        r2 = _relay("r2", "cb2", tms=0.3)
-        r3 = _relay("r3", "cb3", tms=0.5)
-        tps = _tps(2000.0, 4000.0, 6000.0)
-        run_id = uuid4()
-        source = _test_points_source()
-
-        # Run 1
-        prot1 = _run((r1, r2, r3), tps)
-        pairs = (
-            ProtectionSelectivityPair("p1", "r2", "r1"),
-            ProtectionSelectivityPair("p2", "r3", "r2"),
-        )
-        coord1 = compute_coordination_v1(pairs=pairs, protection_result=prot1)
-        report1 = build_protection_report(
-            run_id=str(run_id),
-            protection_result=prot1,
-            current_source=source,
-            coordination_result=coord1,
-        )
-
-        # Run 2 (reversed relay order, reversed pair order)
-        prot2 = _run((r3, r1, r2), tps)
-        pairs_rev = (
-            ProtectionSelectivityPair("p2", "r3", "r2"),
-            ProtectionSelectivityPair("p1", "r2", "r1"),
-        )
-        coord2 = compute_coordination_v1(pairs=pairs_rev, protection_result=prot2)
-        report2 = build_protection_report(
-            run_id=str(run_id),
-            protection_result=prot2,
-            current_source=source,
-            coordination_result=coord2,
-        )
-
-        # All signatures must match
-        assert prot1.deterministic_signature == prot2.deterministic_signature
-        assert coord1.deterministic_signature == coord2.deterministic_signature
-        assert report1.deterministic_signature == report2.deterministic_signature

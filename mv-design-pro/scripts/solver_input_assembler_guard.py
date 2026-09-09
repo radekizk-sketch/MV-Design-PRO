@@ -32,8 +32,8 @@ BACKEND_SRC = PROJECT_ROOT / "backend" / "src"
 
 #: Konstruktory kontraktów wejścia solvera (rozpływ: ``power_flow_types``; zwarcie:
 #: ``solver_input/contracts.py``). ``ShortCircuitInput`` celowo NIE jest na liście —
-#: to DTO kreatora sieci (``network_wizard/dtos.py``), nie kontrakt solvera (pomiar
-#: CV-4.0 §1.3.3); ginie razem z kreatorem w CV-4.2.
+#: to bylo DTO kreatora sieci (``network_wizard/dtos.py``, skasowane w CV-4.2/W1),
+#: nie kontrakt solvera (pomiar CV-4.0 §1.3.3).
 NAZWY: tuple[str, ...] = (
     "PowerFlowInput",
     "ShortCircuitPayload",

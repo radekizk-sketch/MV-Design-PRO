@@ -83,6 +83,10 @@ class ZrodloZmiany:
     #: operacji) — dziennik niesie odtad nie tylko nazwe i listy elementow, ale
     #: tresc komendy, ktora wytworzyla rewizje. `None` = zapis bez komendy.
     ladunek: dict[str, Any] | None = None
+    #: W1: opis rewizji dla zrodel SPOZA kanonu operacji domenowych (import arkusza,
+    #: migracja modelu zastanego) — nazwany przez wolajacego, nigdy zgadywany z
+    #: identyfikatora. `None` = opis z kanonu operacji (`opis_operacji`).
+    opis_pl: str | None = None
 
 
 _enm_store: dict[str, EnergyNetworkModel] = {}
@@ -377,6 +381,7 @@ def _set_enm_pod_blokada(
             hash_sha256=enm.header.hash_sha256,
             rodzic=old_rev if existing is not None else None,
             ladunek=zrodlo_zmiany.ladunek if zrodlo_zmiany else None,
+            opis_pl=zrodlo_zmiany.opis_pl if zrodlo_zmiany else None,
         )
         migawka = przygotuj_rewizje(klucz, enm, hash_sha256=enm.header.hash_sha256)
         _persist_enm(klucz, enm)

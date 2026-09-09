@@ -9,7 +9,6 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     DateTime,
-    Float,
     ForeignKey,
     Index,
     LargeBinary,
@@ -159,7 +158,8 @@ class ProjectORM(Base):
     """
     Project ORM model — P10a root aggregate.
 
-    P10a: active_network_snapshot_id tracks the current state of the network.
+    Model sieci projektu żyje w magazynie ENM (`enm/store.py`, klucz projektu) — projekt
+    nie niesie żadnej migawki modelu (W1: tabele `network_*` skasowane).
 
     Full target schema with:
     - mode: AS-IS (weryfikacja istniejącej sieci) vs TO-BE (projektowanie nowej)
@@ -181,11 +181,9 @@ class ProjectORM(Base):
     # Project mode: AS-IS vs TO-BE
     mode: Mapped[str] = mapped_column(String(10), nullable=False, default="AS-IS")
 
-    # Point of Common Coupling (wymagany dla TO-BE z OZE, NC RfG)
-    connection_node_id: Mapped[UUID | None] = mapped_column(
-        GUID(),
-        ForeignKey("network_nodes.id", use_alter=True, name="fk_projects_connection_node_node"),
-    )
+    # Węzeł przyłączenia (wymagany dla TO-BE z OZE, NC RfG) — identyfikator bez klucza
+    # obcego: dawna tabela `network_nodes` skasowana w W1.
+    connection_node_id: Mapped[UUID | None] = mapped_column(GUID(), nullable=True)
     connection_description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Network parameters
@@ -194,9 +192,6 @@ class ProjectORM(Base):
 
     # Ownership (nullable - FK to users added in future PR)
     owner_id: Mapped[UUID | None] = mapped_column(GUID(), nullable=True)
-
-    # P10a: Reference to the active (current) network snapshot
-    active_network_snapshot_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     sources_jsonb: Mapped[list[dict[str, Any]]] = mapped_column(
         DeterministicJSON(), nullable=False, default=list
@@ -223,33 +218,12 @@ class ProjectORM(Base):
     )
 
 
-class NetworkSnapshotORM(Base):
-    """
-    Network Snapshot ORM model — P10a first-class object.
-
-    P10a: Snapshot has deterministic fingerprint for change detection.
-    """
-
-    __tablename__ = "network_snapshots"
-
-    snapshot_id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    parent_snapshot_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    schema_version: Mapped[str | None] = mapped_column(String(50))
-    network_model_id: Mapped[str | None] = mapped_column(String(64))
-    # P10a: Deterministic fingerprint (SHA-256) of graph content
-    fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    snapshot_json: Mapped[dict[str, Any]] = mapped_column(DeterministicJSON(), nullable=False)
-
-
 class ProjectSettingsORM(Base):
     __tablename__ = "project_settings"
 
     project_id: Mapped[UUID] = mapped_column(GUID(), ForeignKey("projects.id"), primary_key=True)
-    connection_node_id: Mapped[UUID | None] = mapped_column(
-        GUID(),
-        ForeignKey("network_nodes.id", use_alter=True, name="fk_settings_connection_node_node"),
-    )
+    # W1: bez klucza obcego — dawna tabela `network_nodes` skasowana.
+    connection_node_id: Mapped[UUID | None] = mapped_column(GUID(), nullable=True)
     active_case_id: Mapped[UUID | None] = mapped_column(
         GUID(),
         ForeignKey("operating_cases.id", use_alter=True, name="fk_settings_active_case"),
@@ -261,91 +235,6 @@ class ProjectSettingsORM(Base):
     limits_jsonb: Mapped[dict[str, Any]] = mapped_column(
         DeterministicJSON(), nullable=False, default=dict
     )
-
-
-class NetworkNodeORM(Base):
-    __tablename__ = "network_nodes"
-
-    id: Mapped[UUID] = mapped_column(GUID(), primary_key=True)
-    project_id: Mapped[UUID] = mapped_column(GUID(), ForeignKey("projects.id"), nullable=False)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    node_type: Mapped[str] = mapped_column(String(100), nullable=False)
-    base_kv: Mapped[float] = mapped_column(Float, nullable=False)
-    attrs_jsonb: Mapped[dict[str, Any]] = mapped_column(DeterministicJSON(), nullable=False)
-
-
-class NetworkBranchORM(Base):
-    __tablename__ = "network_branches"
-
-    id: Mapped[UUID] = mapped_column(GUID(), primary_key=True)
-    project_id: Mapped[UUID] = mapped_column(GUID(), ForeignKey("projects.id"), nullable=False)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    branch_type: Mapped[str] = mapped_column(String(100), nullable=False)
-    from_node_id: Mapped[UUID] = mapped_column(GUID(), ForeignKey("network_nodes.id"))
-    to_node_id: Mapped[UUID] = mapped_column(GUID(), ForeignKey("network_nodes.id"))
-    in_service: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    params_jsonb: Mapped[dict[str, Any]] = mapped_column(DeterministicJSON(), nullable=False)
-
-
-class NetworkSourceORM(Base):
-    __tablename__ = "network_sources"
-
-    id: Mapped[UUID] = mapped_column(GUID(), primary_key=True)
-    project_id: Mapped[UUID] = mapped_column(GUID(), ForeignKey("projects.id"), nullable=False)
-    node_id: Mapped[UUID] = mapped_column(GUID(), ForeignKey("network_nodes.id"), nullable=False)
-    source_type: Mapped[str] = mapped_column(String(100), nullable=False)
-    payload_jsonb: Mapped[dict[str, Any]] = mapped_column(DeterministicJSON(), nullable=False)
-    in_service: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-
-
-class NetworkLoadORM(Base):
-    __tablename__ = "network_loads"
-
-    id: Mapped[UUID] = mapped_column(GUID(), primary_key=True)
-    project_id: Mapped[UUID] = mapped_column(GUID(), ForeignKey("projects.id"), nullable=False)
-    node_id: Mapped[UUID] = mapped_column(GUID(), ForeignKey("network_nodes.id"), nullable=False)
-    payload_jsonb: Mapped[dict[str, Any]] = mapped_column(DeterministicJSON(), nullable=False)
-    in_service: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-
-
-class LineTypeORM(Base):
-    __tablename__ = "line_types"
-
-    id: Mapped[str] = mapped_column(String(255), primary_key=True)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    params_jsonb: Mapped[dict[str, Any]] = mapped_column(DeterministicJSON(), nullable=False)
-
-
-class CableTypeORM(Base):
-    __tablename__ = "cable_types"
-
-    id: Mapped[str] = mapped_column(String(255), primary_key=True)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    params_jsonb: Mapped[dict[str, Any]] = mapped_column(DeterministicJSON(), nullable=False)
-
-
-class TransformerTypeORM(Base):
-    __tablename__ = "transformer_types"
-
-    id: Mapped[str] = mapped_column(String(255), primary_key=True)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    params_jsonb: Mapped[dict[str, Any]] = mapped_column(DeterministicJSON(), nullable=False)
-
-
-class SwitchEquipmentTypeORM(Base):
-    __tablename__ = "switch_equipment_types"
-
-    id: Mapped[str] = mapped_column(String(255), primary_key=True)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    params_jsonb: Mapped[dict[str, Any]] = mapped_column(DeterministicJSON(), nullable=False)
-
-
-class InverterTypeORM(Base):
-    __tablename__ = "inverter_types"
-
-    id: Mapped[str] = mapped_column(String(255), primary_key=True)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    params_jsonb: Mapped[dict[str, Any]] = mapped_column(DeterministicJSON(), nullable=False)
 
 
 class ProtectionDeviceTypeORM(Base):
@@ -378,25 +267,6 @@ class ProtectionSettingTemplateORM(Base):
     params_jsonb: Mapped[dict[str, Any]] = mapped_column(DeterministicJSON(), nullable=False)
 
 
-class SwitchEquipmentAssignmentORM(Base):
-    __tablename__ = "switch_equipment_assignments"
-
-    id: Mapped[UUID] = mapped_column(GUID(), primary_key=True)
-    project_id: Mapped[UUID] = mapped_column(GUID(), ForeignKey("projects.id"), nullable=False)
-    switch_id: Mapped[UUID] = mapped_column(GUID(), nullable=False)
-    equipment_type_id: Mapped[str] = mapped_column(String(255), nullable=False)
-
-
-class SwitchingStateORM(Base):
-    __tablename__ = "network_switching_states"
-
-    id: Mapped[UUID] = mapped_column(GUID(), primary_key=True)
-    case_id: Mapped[UUID] = mapped_column(GUID(), ForeignKey("operating_cases.id"))
-    element_id: Mapped[UUID] = mapped_column(GUID(), nullable=False)
-    element_type: Mapped[str] = mapped_column(String(50), nullable=False)
-    in_service: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-
-
 class OperatingCaseORM(Base):
     __tablename__ = "operating_cases"
 
@@ -418,7 +288,6 @@ class StudyCaseORM(Base):
     - result_status: NONE / FRESH / OUTDATED lifecycle
     - description: Case description
     - result_refs_jsonb: References to calculation results
-    - network_snapshot_id: P10a binding to specific network snapshot
     """
 
     __tablename__ = "study_cases"
@@ -427,8 +296,6 @@ class StudyCaseORM(Base):
     project_id: Mapped[UUID] = mapped_column(GUID(), ForeignKey("projects.id"), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    # P10a: Reference to the network snapshot this case is bound to
-    network_snapshot_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     study_jsonb: Mapped[dict[str, Any]] = mapped_column(DeterministicJSON(), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     result_status: Mapped[str] = mapped_column(String(20), nullable=False, default="NONE")
@@ -646,89 +513,6 @@ class AnalysisRunIndexORM(Base):
 # (`enm.canonical_analysis`, `analysis_type="protection_sn"`) na R1
 # (`canonical_runs`, `CanonicalRunORM`). Tabele same (bez ORM) usunięte w
 # `infrastructure/migrations/` — patrz wpis tam.
-
-
-class SldDiagramORM(Base):
-    __tablename__ = "sld_diagrams"
-
-    id: Mapped[UUID] = mapped_column(GUID(), primary_key=True)
-    project_id: Mapped[UUID] = mapped_column(GUID(), ForeignKey("projects.id"), nullable=False)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    sld_jsonb: Mapped[dict[str, Any]] = mapped_column(DeterministicJSON(), nullable=False)
-    dirty_flag: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-
-
-class SldNodeSymbolORM(Base):
-    __tablename__ = "sld_node_symbols"
-
-    id: Mapped[UUID] = mapped_column(GUID(), primary_key=True)
-    diagram_id: Mapped[UUID] = mapped_column(GUID(), ForeignKey("sld_diagrams.id"))
-    node_id: Mapped[UUID] = mapped_column(GUID(), nullable=False)
-    x: Mapped[float] = mapped_column(Float, nullable=False)
-    y: Mapped[float] = mapped_column(Float, nullable=False)
-    label: Mapped[str | None] = mapped_column(String(255))
-    is_connection_node: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-
-
-class SldBranchSymbolORM(Base):
-    __tablename__ = "sld_branch_symbols"
-
-    id: Mapped[UUID] = mapped_column(GUID(), primary_key=True)
-    diagram_id: Mapped[UUID] = mapped_column(GUID(), ForeignKey("sld_diagrams.id"))
-    branch_id: Mapped[UUID] = mapped_column(GUID(), nullable=False)
-    from_node_id: Mapped[UUID] = mapped_column(GUID(), nullable=False)
-    to_node_id: Mapped[UUID] = mapped_column(GUID(), nullable=False)
-    points_jsonb: Mapped[list[dict[str, Any]]] = mapped_column(
-        DeterministicJSON(), nullable=False, default=list
-    )
-
-
-class SldAnnotationORM(Base):
-    __tablename__ = "sld_annotations"
-
-    id: Mapped[UUID] = mapped_column(GUID(), primary_key=True)
-    diagram_id: Mapped[UUID] = mapped_column(GUID(), ForeignKey("sld_diagrams.id"))
-    text: Mapped[str] = mapped_column(Text, nullable=False)
-    x: Mapped[float] = mapped_column(Float, nullable=False)
-    y: Mapped[float] = mapped_column(Float, nullable=False)
-
-
-class DesignSpecORM(Base):
-    __tablename__ = "design_specs"
-    __table_args__ = (Index("ix_design_specs_case_id", "case_id"),)
-
-    id: Mapped[UUID] = mapped_column(GUID(), primary_key=True)
-    case_id: Mapped[UUID] = mapped_column(GUID(), ForeignKey("operating_cases.id"), nullable=False)
-    base_snapshot_id: Mapped[str] = mapped_column(String(64), nullable=False)
-    spec_json: Mapped[dict[str, Any]] = mapped_column(DeterministicJSON(), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-
-
-class DesignProposalORM(Base):
-    __tablename__ = "design_proposals"
-    __table_args__ = (Index("ix_design_proposals_case_id", "case_id"),)
-
-    id: Mapped[UUID] = mapped_column(GUID(), primary_key=True)
-    case_id: Mapped[UUID] = mapped_column(GUID(), ForeignKey("operating_cases.id"), nullable=False)
-    input_snapshot_id: Mapped[str] = mapped_column(String(64), nullable=False)
-    proposal_json: Mapped[dict[str, Any]] = mapped_column(DeterministicJSON(), nullable=False)
-    status: Mapped[str] = mapped_column(String(20), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-
-
-class DesignEvidenceORM(Base):
-    __tablename__ = "design_evidence"
-    __table_args__ = (Index("ix_design_evidence_case_id", "case_id"),)
-
-    id: Mapped[UUID] = mapped_column(GUID(), primary_key=True)
-    case_id: Mapped[UUID] = mapped_column(GUID(), ForeignKey("operating_cases.id"), nullable=False)
-    snapshot_id: Mapped[str] = mapped_column(String(64), nullable=False)
-    evidence_json: Mapped[dict[str, Any]] = mapped_column(DeterministicJSON(), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class DocumentRecordORM(Base):

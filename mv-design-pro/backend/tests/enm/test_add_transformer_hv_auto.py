@@ -11,13 +11,13 @@ bliźniak odbiegał od pandapower o 0,05 p.u. Iloczyn cech: {hv_bus_ref, hv_volt
 from __future__ import annotations
 
 import pytest
+from enm.domain_operations import execute_domain_operation
 from enm.kompilator_grafu import (
     BenchmarkBuildError,
     dodaj_transformator,
     dodaj_zrodlo_slack,
     pusty_enm,
 )
-from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
 
 _KATALOG = "bench_ieee39bus_br36"  # 345/345 kV, uk 2,5 %, literatura: zaczep 1,07 przy HV

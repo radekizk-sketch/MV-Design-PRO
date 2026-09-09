@@ -4,8 +4,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
-from application.analyses.design_synth.canonical import canonicalize_json
-from application.analyses.design_synth.fingerprint import fingerprint_json
+from application.analyses.kanon_json import canonicalize_json, fingerprint_json
 from application.analyses.protection.overcurrent.calculator import (
     OvercurrentConfigV0,
     compute_overcurrent_settings,

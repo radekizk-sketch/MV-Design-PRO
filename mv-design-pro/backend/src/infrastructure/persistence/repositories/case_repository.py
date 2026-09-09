@@ -5,7 +5,6 @@ Repository for OperatingCase and StudyCase entities.
 Implements full CRUD, clone, and active case management for StudyCase.
 
 P10a ADDITIONS:
-- network_snapshot_id binding for StudyCase
 - Snapshot-based invalidation methods
 - Snapshot binding update methods
 
@@ -121,7 +120,6 @@ class CaseRepository:
             project_id=row.project_id,
             name=row.name,
             description=row.description or "",
-            network_snapshot_id=row.network_snapshot_id,  # P10a
             config=config,
             protection_config=protection_config,
             is_active=row.is_active or False,
@@ -136,7 +134,6 @@ class CaseRepository:
         # Support both old (study_payload) and new (P10: config, is_active, etc.) models
         is_active = getattr(case, "is_active", False)
         description = getattr(case, "description", "")
-        network_snapshot_id = getattr(case, "network_snapshot_id", None)  # P10a
 
         # Determine study_jsonb from config (P10) or study_payload (legacy)
         if hasattr(case, "config") and case.config is not None:
@@ -159,7 +156,6 @@ class CaseRepository:
                 project_id=case.project_id,
                 name=case.name,
                 description=description,
-                network_snapshot_id=network_snapshot_id,  # P10a
                 study_jsonb=study_jsonb,
                 is_active=is_active,
                 revision=case.revision,
@@ -178,7 +174,6 @@ class CaseRepository:
         # Support both old (study_payload) and new (P10) models
         is_active = getattr(case, "is_active", False)
         description = getattr(case, "description", "")
-        network_snapshot_id = getattr(case, "network_snapshot_id", None)  # P10a
 
         if hasattr(case, "config") and case.config is not None:
             study_jsonb = case.config.to_dict()
@@ -196,7 +191,6 @@ class CaseRepository:
 
         row.name = case.name
         row.description = description
-        row.network_snapshot_id = network_snapshot_id  # P10a
         row.study_jsonb = study_jsonb
         row.is_active = is_active
         row.revision = case.revision

@@ -847,3 +847,90 @@ def test_guard_accepts_missing_cv43_a4_modules(tmp_path, monkeypatch) -> None:
 def test_real_repo_has_no_cv43_a4_resurrection() -> None:
     """Pin na prawdziwym repo: sieroty E2 i słownik `_runs` nie wróciły."""
     assert guard.check_cv43_a4_resurrection() == []
+
+
+# ---------------------------------------------------------------------------
+# W1 (2026-09-09): legacy persystencja sieci nie wraca
+# ---------------------------------------------------------------------------
+
+
+def _patch_w1_tree(monkeypatch, tmp_path) -> Path:
+    src = tmp_path / "backend" / "src"
+    src.mkdir(parents=True)
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", src)
+    return src
+
+
+def _models_z_tabelami(nazwy: list[str]) -> str:
+    return "".join(f'class T{i}(Base):\n    __tablename__ = "{n}"\n\n' for i, n in enumerate(nazwy))
+
+
+def test_guard_rejects_resurrected_w1_legacy_module(tmp_path, monkeypatch) -> None:
+    src = _patch_w1_tree(monkeypatch, tmp_path)
+    (src / "network_model").mkdir()
+    (src / "network_model" / "sld_projection.py").write_text("x = 1\n", encoding="utf-8")
+    (src / "application" / "sld").mkdir(parents=True)
+
+    violations = guard.check_w1_legacy_persistence_resurrection()
+
+    assert any("[resurrected-module]" in v and "sld_projection.py" in v for v in violations)
+    assert any("[resurrected-module]" in v and "application/sld" in v for v in violations)
+
+
+def test_guard_rejects_resurrected_w1_orm_class_and_table_under_other_path(
+    tmp_path, monkeypatch
+) -> None:
+    src = _patch_w1_tree(monkeypatch, tmp_path)
+    (src / "enm").mkdir()
+    (src / "enm" / "cokolwiek.py").write_text(
+        "class NetworkSnapshotORM(Base):\n"
+        '    __tablename__ = "network_snapshots"\n'
+        "\n\nclass Inna(Base):\n"
+        '    __tablename__ = "sld_diagrams"\n'
+        "\n\nclass NetworkWizardService:\n    pass\n",
+        encoding="utf-8",
+    )
+
+    violations = guard.check_w1_legacy_persistence_resurrection()
+
+    assert any("[resurrected-class]" in v and "NetworkSnapshotORM" in v for v in violations)
+    assert any("[resurrected-class]" in v and "NetworkWizardService" in v for v in violations)
+    assert any("[resurrected-table]" in v and "network_snapshots" in v for v in violations)
+    assert any("[resurrected-table]" in v and "sld_diagrams" in v for v in violations)
+
+
+def test_guard_pins_tablename_count_in_models(tmp_path, monkeypatch) -> None:
+    """Nowa tabela w `models.py` bez zmiany pinu = naruszenie; dokladnie pin = zielono."""
+    src = _patch_w1_tree(monkeypatch, tmp_path)
+    models = src / "infrastructure" / "persistence" / "models.py"
+    models.parent.mkdir(parents=True)
+    nazwy = [f"tabela_{i}" for i in range(guard.W1_TABLENAME_PIN)]
+    models.write_text(_models_z_tabelami(nazwy), encoding="utf-8")
+    assert guard.check_w1_legacy_persistence_resurrection() == []
+
+    models.write_text(_models_z_tabelami([*nazwy, "tabela_nowa"]), encoding="utf-8")
+    violations = guard.check_w1_legacy_persistence_resurrection()
+    assert any("[tablename-pin]" in v and str(guard.W1_TABLENAME_PIN) in v for v in violations)
+
+
+def test_guard_does_not_fire_on_w1_names_in_comments_or_strings(tmp_path, monkeypatch) -> None:
+    src = _patch_w1_tree(monkeypatch, tmp_path)
+    (src / "enm").mkdir()
+    (src / "enm" / "notatka.py").write_text(
+        "# dawniej: class NetworkSnapshotORM, tabela network_snapshots\n"
+        'OPIS = "NetworkWizardService i sld_diagrams skasowane w W1"\n',
+        encoding="utf-8",
+    )
+    assert guard.check_w1_legacy_persistence_resurrection() == []
+
+
+def test_guard_accepts_clean_tree_without_w1_resurrection(tmp_path, monkeypatch) -> None:
+    _patch_w1_tree(monkeypatch, tmp_path)
+    assert guard.check_w1_legacy_persistence_resurrection() == []
+
+
+def test_guard_accepts_current_repo_state_w1() -> None:
+    """Stan repozytorium PO W1 jest zielony na tej bramce — prawdziwe drzewo
+    `backend/src` (w tym pin liczby tabel w `models.py`), nie sztuczne `tmp_path`."""
+    assert guard.check_w1_legacy_persistence_resurrection() == []

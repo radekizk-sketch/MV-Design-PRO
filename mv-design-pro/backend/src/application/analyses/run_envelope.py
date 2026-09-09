@@ -5,7 +5,7 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
-from application.analyses.design_synth.canonical import canonicalize_json
+from application.analyses.kanon_json import canonicalize_json
 
 
 @dataclass(frozen=True)

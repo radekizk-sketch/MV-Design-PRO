@@ -1,42 +1,6 @@
-"""Network Wizard application services."""
+"""Kreator sieci — kontroler kroków na modelu ENM (`schema`, `step_controller`, `validator`).
 
-from .dtos import (
-    BranchPayload,
-    BusPayload,
-    CasePayload,
-    ConverterSetpoint,
-    FaultSpecPayload,
-    GroundingPayload,
-    ImportReport,
-    InverterSetpoint,
-    LimitsPayload,
-    LoadPayload,
-    NodePayload,
-    SourcePayload,
-    SwitchingStatePayload,
-    TypePayload,
-)
-from .errors import Conflict, NetworkWizardError, NotFound, ValidationFailed
-from .service import NetworkWizardService
-
-__all__ = [
-    "BranchPayload",
-    "BusPayload",
-    "CasePayload",
-    "FaultSpecPayload",
-    "GroundingPayload",
-    "ImportReport",
-    "ConverterSetpoint",
-    "InverterSetpoint",
-    "LimitsPayload",
-    "LoadPayload",
-    "NodePayload",
-    "SourcePayload",
-    "SwitchingStatePayload",
-    "TypePayload",
-    "Conflict",
-    "NetworkWizardError",
-    "NotFound",
-    "ValidationFailed",
-    "NetworkWizardService",
-]
+W1 (mapa domknięcia §9): `NetworkWizardService` + DTO + eksport/import JSON/CSV kreatora
+legacy (CRUD na skasowanych tabelach `network_*`) usunięte; zostały wyłącznie moduły
+wołane przez `api/enm.py` (kroki kreatora na ENM).
+"""

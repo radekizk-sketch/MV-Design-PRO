@@ -78,6 +78,10 @@ from tests.catalog_test_helpers import gpz_source_record
 #: Liczba rownoleglych zadan w miarze „done" (§3 planu 10x).
 K_ROWNOLEGLYCH = 10
 
+#: Liczba szyn promieniowego lancucha modelu pomiarowego (patrz `_model_sn`) —
+#: dobrana pomiarem 2026-09-09 tak, zeby bieg szeregowy trwal kilkadziesiat ms.
+_LICZBA_SZYN_LANCUCHA = 24
+
 #: Ile lekkich zadan musi zostac obsluzonych OD POCZATKU DO KONCA w czasie, gdy
 #: co najmniej jeden ciezki bieg jest w locie.
 #:
@@ -107,11 +111,78 @@ def _reset_backend_state() -> None:
 
 
 def _model_sn(nazwa: str) -> dict:
-    """Maly, kompletny model SN — zrodlo GPZ, kabel, odbior.
+    """Model SN o rozmiarze MIERZALNYM — zrodlo GPZ, promieniowy lancuch kabli, odbiory.
 
-    Rozmiar dobrany tak, zeby bieg trwal MIERZALNIE (kilkadziesiat ms), ale nie
-    wydluzal suity: miara jest wzgledna, wiec nie potrzebuje duzej sieci.
+    Rozmiar dobrany tak, zeby JEDEN bieg trwal kilkadziesiat ms (nie kilka), ale
+    nie wydluzal suity: miara jest wzgledna, wiec nie potrzebuje duzej sieci —
+    potrzebuje jednak okna partii DLUZSZEGO niz kilka okresow obslugi sondy,
+    inaczej licznik obsluzonych w locie traci margines.
+
+    KOREKTA ROZMIARU (W1, 2026-09-09). Pierwotny model (2 szyny, 1 kabel, 1 odbior)
+    dawal bieg ~15 ms szeregowo, partie K=10 ~190 ms i 6-14 zapytan sondy na
+    partie (pomiar 3x na obu drzewach: przed i po W1 identycznie — przyspieszenia
+    nie sa skutkiem W1, lecz PERF-SC-50 i memoizacji katalogu). Przy 6 zapytaniach
+    najgorszy pomiar poprawnego kodu spadal do 4 obsluzonych w locie — PONIZEJ
+    progu 5 wyprowadzonego z pomiaru przy biegu ~25 ms (docstring
+    `PROG_OBSLUZONYCH_W_LOCIE`). Lancuch `_LICZBA_SZYN_LANCUCHA` szyn przywraca
+    rezim, dla ktorego prog kalibrowano (bieg kilkadziesiat ms), bez zmiany progu
+    ani miary. Nazwy `bus-main`/`bus-load`/`branch-load`/`load-1`/`src-grid`
+    zachowane (pierwsze ogniwa lancucha), reszta ogniw numerowana.
     """
+    szyny: list[dict] = []
+    galezie: list[dict] = []
+    odbiory: list[dict] = []
+    nazwy_szyn = ["bus-main", "bus-load"] + [
+        f"bus-{i:02d}" for i in range(3, _LICZBA_SZYN_LANCUCHA + 1)
+    ]
+    for numer, ref in enumerate(nazwy_szyn, start=1):
+        szyny.append(
+            {
+                "id": f"00000000-0000-0000-0001-{numer:012d}",
+                "ref_id": ref,
+                "name": "Szyna glowna" if ref == "bus-main" else f"Szyna {ref}",
+                "tags": [],
+                "meta": {},
+                "voltage_kv": 15.0,
+                "phase_system": "3ph",
+            }
+        )
+    for numer, (od, do) in enumerate(zip(nazwy_szyn, nazwy_szyn[1:], strict=False), start=1):
+        galezie.append(
+            {
+                "id": f"00000000-0000-0000-0002-{numer:012d}",
+                "ref_id": "branch-load" if numer == 1 else f"branch-{numer:02d}",
+                "name": f"Kabel {od} - {do}",
+                "tags": [],
+                "meta": {},
+                "type": "cable",
+                "from_bus_ref": od,
+                "to_bus_ref": do,
+                "status": "closed",
+                "catalog_ref": "KABEL_SN_TEST",
+                "parameter_source": "CATALOG",
+                "length_km": 0.5,
+                "r_ohm_per_km": 0.253,
+                "x_ohm_per_km": 0.073,
+                "b_siemens_per_km": 2.6e-07,
+                "rating": {"in_a": 270.0},
+            }
+        )
+    for numer, ref in enumerate(nazwy_szyn[1:], start=1):
+        odbiory.append(
+            {
+                "id": f"00000000-0000-0000-0003-{numer:012d}",
+                "ref_id": "load-1" if numer == 1 else f"load-{numer:02d}",
+                "name": f"Odbior SN {ref}",
+                "tags": [],
+                "meta": {},
+                "bus_ref": ref,
+                "p_mw": 0.12,
+                "q_mvar": 0.035,
+                "catalog_ref": "LOAD_TEST",
+                "parameter_source": "OVERRIDE",
+            }
+        )
     return {
         "header": {
             "name": nazwa,
@@ -122,46 +193,8 @@ def _model_sn(nazwa: str) -> dict:
             "revision": 1,
             "hash_sha256": "",
         },
-        "buses": [
-            {
-                "id": "00000000-0000-0000-0000-000000000301",
-                "ref_id": "bus-main",
-                "name": "Szyna glowna",
-                "tags": [],
-                "meta": {},
-                "voltage_kv": 15.0,
-                "phase_system": "3ph",
-            },
-            {
-                "id": "00000000-0000-0000-0000-000000000302",
-                "ref_id": "bus-load",
-                "name": "Szyna odbioru",
-                "tags": [],
-                "meta": {},
-                "voltage_kv": 15.0,
-                "phase_system": "3ph",
-            },
-        ],
-        "branches": [
-            {
-                "id": "00000000-0000-0000-0000-000000000303",
-                "ref_id": "branch-load",
-                "name": "Kabel odbioru",
-                "tags": [],
-                "meta": {},
-                "type": "cable",
-                "from_bus_ref": "bus-main",
-                "to_bus_ref": "bus-load",
-                "status": "closed",
-                "catalog_ref": "KABEL_SN_TEST",
-                "parameter_source": "CATALOG",
-                "length_km": 0.5,
-                "r_ohm_per_km": 0.253,
-                "x_ohm_per_km": 0.073,
-                "b_siemens_per_km": 2.6e-07,
-                "rating": {"in_a": 270.0},
-            }
-        ],
+        "buses": szyny,
+        "branches": galezie,
         "sources": [
             {
                 "id": "00000000-0000-0000-0000-000000000304",
@@ -177,20 +210,7 @@ def _model_sn(nazwa: str) -> dict:
                 ),
             }
         ],
-        "loads": [
-            {
-                "id": "00000000-0000-0000-0000-000000000305",
-                "ref_id": "load-1",
-                "name": "Odbior SN",
-                "tags": [],
-                "meta": {},
-                "bus_ref": "bus-load",
-                "p_mw": 1.2,
-                "q_mvar": 0.35,
-                "catalog_ref": "LOAD_TEST",
-                "parameter_source": "OVERRIDE",
-            }
-        ],
+        "loads": odbiory,
         "transformers": [],
         "generators": [],
         "substations": [],

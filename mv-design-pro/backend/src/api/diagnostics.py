@@ -6,7 +6,6 @@ Endpointy read-only, case-bound. Brak side-effects.
 Endpoints:
     GET /api/cases/{case_id}/diagnostics
     GET /api/cases/{case_id}/diagnostics/preflight
-    GET /api/cases/{case_id}/enm/diff
     GET /api/execution/runs/{run_id}/diagnostics
 
 NAPRAWA MARTWEGO ODCZYTU (karta DIAGNOZA-PRZEBIEGU, D7). Do tej karty WSZYSTKIE
@@ -18,9 +17,9 @@ repozytoriów, KTÓRE NIE ISTNIEJĄ — `uow.snapshots.get_by_case_id`,
 `uow.study_cases` (jednostka pracy wystawia `cases`,
 `infrastructure/persistence/unit_of_work.py:60`). Każde takie wołanie kończyło
 się `AttributeError`, który połykał blok `except Exception`, więc diagnostyka i
-pre-flight zwracały ZAWSZE 404, a diff ZAWSZE 500 — niezależnie od danych.
+pre-flight zwracały ZAWSZE 404 — niezależnie od danych (diff migawek legacy skasowany w W1).
 Defekt przetrwał, bo moduł nie miał ANI JEDNEGO testu trasy (były wyłącznie
-testy silnika i diff-a). Model przypadku rozwiązujemy teraz tak, jak robi to
+testy silnika). Model przypadku rozwiązujemy teraz tak, jak robi to
 żywa ścieżka tworzenia biegu (`enm/canonical_analysis.py::create_run`):
 `enm.store.get_enm(klucz)` + `map_enm_to_network_graph` — `klucz` to klucz
 magazynu ENM projektu, przetłumaczony z `case_id` zależnością `KluczTwin`
@@ -35,12 +34,11 @@ from uuid import UUID
 
 from api.klucz_twin_dep import KluczTwin
 from application.analyses.diagnoza_przebiegu import zbuduj_diagnoze_dla_biegu
-from diagnostics.diff import compute_enm_diff
 from diagnostics.engine import DiagnosticEngine
 from diagnostics.preflight import build_preflight_from_diagnostic_report
 from enm.mapping import map_enm_to_network_graph
 from enm.store import get_enm
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException
 from network_model.core.graph import NetworkGraph
 
 logger = logging.getLogger("mv_design_pro.api.diagnostics")
@@ -102,50 +100,6 @@ def get_preflight(case_id: str, klucz: KluczTwin) -> dict[str, Any]:
     report = engine.run(graph)
     preflight = build_preflight_from_diagnostic_report(report)
     return preflight.to_dict()
-
-
-@router.get("/cases/{case_id}/enm/diff")
-def get_enm_diff(
-    case_id: str,
-    request: Request,
-    from_snapshot: str = Query(alias="from", description="ID snapshotu źródłowego"),
-    to_snapshot: str = Query(alias="to", description="ID snapshotu docelowego"),
-) -> dict[str, Any]:
-    """
-    Porównaj dwie rewizje ENM (techniczny diff).
-
-    Query params:
-        from: ID snapshotu źródłowego (starszego).
-        to: ID snapshotu docelowego (nowszego).
-
-    Returns:
-        EnmDiffReport jako JSON z listą zmian.
-    """
-    uow_factory = getattr(request.app.state, "uow_factory", None)
-    if uow_factory is None:
-        raise HTTPException(status_code=503, detail="Brak dostępu do bazy danych")
-
-    try:
-        with uow_factory() as uow:
-            snap_a = uow.snapshots.get_snapshot(from_snapshot)
-            snap_b = uow.snapshots.get_snapshot(to_snapshot)
-    except Exception as exc:
-        logger.warning("Błąd ładowania snapshotów: %s", exc)
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
-
-    if snap_a is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Nie znaleziono snapshotu '{from_snapshot}'",
-        )
-    if snap_b is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Nie znaleziono snapshotu '{to_snapshot}'",
-        )
-
-    diff_report = compute_enm_diff(snap_a, snap_b)
-    return diff_report.to_dict()
 
 
 @router.get("/execution/runs/{run_id}/diagnostics")

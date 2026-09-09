@@ -46,7 +46,6 @@ from api.reference_engine import router as reference_engine_router
 from api.reference_networks import router as reference_networks_router
 from api.reference_patterns import router as reference_patterns_router
 from api.result_contract_v1 import router as result_contract_v1_router
-from api.sld import router as sld_router
 from api.sld_overrides import router as sld_overrides_router
 from api.solver_capabilities import router as solver_capabilities_router
 from api.solver_input import router as solver_input_router
@@ -169,7 +168,6 @@ app.include_router(protection_overcurrent_settings_router)
 # Karta F-K6 (V12K-206): kanoniczny rejestr kodow gotowosci jako jedno zrodlo tresci.
 app.include_router(readiness_registry_router)
 app.include_router(reference_patterns_router)
-app.include_router(sld_router, prefix="/api")
 app.include_router(station_templates_router)
 app.include_router(study_cases_router)
 app.include_router(xlsx_import_router)

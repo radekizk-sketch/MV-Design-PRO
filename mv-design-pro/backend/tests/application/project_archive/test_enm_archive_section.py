@@ -21,7 +21,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from application.project_archive.service import ProjectArchiveService
-from domain.project_archive import ArchiveImportStatus, dict_to_archive
+from domain.project_archive import ArchiveImportStatus, compute_hash, dict_to_archive
 from enm.klucz_twin import klucz_twin_projektu
 from enm.models import Bus
 from enm.store import get_enm, has_enm, reset_enm_store, set_enm
@@ -49,7 +49,6 @@ def project_with_enm_case(test_db_session, enm_store_tmp):
         name="Projekt z modelem ENM",
         description="Test sekcji ENM archiwum",
         schema_version="1.0.0",
-        active_network_snapshot_id=None,
         connection_node_id=None,
         sources_jsonb=[],
         created_at=now,
@@ -62,7 +61,6 @@ def project_with_enm_case(test_db_session, enm_store_tmp):
         project_id=project_id,
         name="Przypadek z ENM",
         description=None,
-        network_snapshot_id=None,
         study_jsonb={"c_factor_max": 1.1, "c_factor_min": 0.95},
         is_active=True,
         result_status="NONE",
@@ -171,6 +169,23 @@ def test_archive_without_enm_section_is_backward_compatible(
     # Usuń sekcję enm + jej fingerprint (symulacja archiwum sprzed N-D1).
     data.pop("enm")
     data["fingerprints"]["enm_hash"] = ""
+    # W1-B-ARCH §0.3: `verify_archive_integrity` weryfikuje `archive_hash`
+    # NAPRAWDĘ (nie tylko sekcje składowe) — symulacja „archiwum sprzed sekcji
+    # ENM" musi więc przeliczyć `archive_hash` BEZ „enm" w hashu-hashy, dokładnie
+    # jak zrobiłby to eksporter sprzed N-D1 (inaczej fikstura tylko UDAJE
+    # archiwum bez ENM, a naprawdę jest zmanipulowanym archiwum Z ENM —
+    # integralność słusznie by to złapała).
+    fp = data["fingerprints"]
+    data["fingerprints"]["archive_hash"] = compute_hash(
+        {
+            "project_meta": fp["project_meta_hash"],
+            "cases": fp["cases_hash"],
+            "runs": fp["runs_hash"],
+            "results": fp["results_hash"],
+            "interpretations": fp["interpretations_hash"],
+            "issues": fp["issues_hash"],
+        }
+    )
 
     archive = dict_to_archive(data)
     assert archive.enm.models == []
@@ -210,7 +225,6 @@ def test_import_legacy_archive_z_roznymi_snapshotami_per_przypadek_nic_nie_gubi(
         project_id=project.id,
         name="Przypadek nieaktywny",
         description=None,
-        network_snapshot_id=None,
         study_jsonb={},
         is_active=False,
         result_status="NONE",

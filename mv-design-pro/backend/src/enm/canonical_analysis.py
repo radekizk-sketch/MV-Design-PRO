@@ -1737,7 +1737,9 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
             if template.device_type_ref
             else None
         )
-        snapshot_id = case.network_snapshot_id
+        # Tożsamość modelu, na którym powstał bieg — rewizja z koperty biegu (W1: przypadek
+        # nie niesie już migawki legacy).
+        snapshot_id = run.snapshot_hash
         template_ref = protection_config.template_ref
         template_fingerprint = protection_config.template_fingerprint
         library_manifest_ref = protection_config.library_manifest_ref

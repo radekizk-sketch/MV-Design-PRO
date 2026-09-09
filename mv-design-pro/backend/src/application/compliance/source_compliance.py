@@ -4,7 +4,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from application.analyses.design_synth.canonical import canonicalize_json
+from application.analyses.kanon_json import canonicalize_json
 
 SUPPORTED_SOURCE_TYPES = ("BESS", "FW", "FW_DFIG", "FW_PMSG", "FW_SCIG", "PV")
 WIND_SOURCE_TYPES = ("FW_DFIG", "FW_PMSG", "FW_SCIG")

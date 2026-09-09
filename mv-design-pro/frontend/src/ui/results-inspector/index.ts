@@ -3,7 +3,6 @@
  *
  * CANONICAL ALIGNMENT:
  * - wizard_screens.md: RESULT_VIEW mode components
- * - sld_rules.md: SLD overlay integration
  */
 
 // Types
@@ -26,6 +25,3 @@ export {
   useRunResultStatusLabel,
   useIsAnyLoading,
 } from './store';
-
-// Components
-export { SldOverlay } from './SldOverlay';

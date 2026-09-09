@@ -1,5 +1,15 @@
+"""Kanoniczna postać JSON i odcisk SHA-256 ładunku — wspólne narzędzie warstwy analiz.
+
+W1: dawne `application/analyses/design_synth/{canonical,fingerprint}.py` — jedyne żywe
+moduły skasowanego pakietu `design_synth` (atrapa syntezy projektowej bez toru pracy).
+Konsumenci: koperty biegów (`run_envelope`), potoki zabezpieczeń, zgodność źródła,
+dowód doboru aparatury — determinizm odcisków zależy od tej jednej funkcji.
+"""
+
 from __future__ import annotations
 
+import hashlib
+import json
 from typing import Any
 
 
@@ -21,3 +31,9 @@ def _stable_sort_key(value: Any) -> str:
             if key in value and value[key] is not None:
                 return str(value[key])
     return str(value)
+
+
+def fingerprint_json(payload: dict[str, Any]) -> str:
+    canonical_payload = canonicalize_json(payload)
+    encoded = json.dumps(canonical_payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()

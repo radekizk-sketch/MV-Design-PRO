@@ -280,6 +280,10 @@ def test_szablon_i_operacje_domenowe_trafiaja_w_ten_sam_wpis(
 KLUCZ_SUROWY = "SUROWY"
 KLUCZ_UUID_Z_TRASY = "UUID_Z_TRASY"
 KLUCZ_Z_REKORDU = "Z_REKORDU"
+#: Adres magazynu PROJEKTEM (trasa `project_id: UUID`) przez jedyny tłumacz
+#: `application/twin_key.klucz_twin_dla_projektu` — moduł nie wyprowadza klucza
+#: przypadku wcale (W1, 2026-09-09).
+KLUCZ_PROJEKTU_PRZEZ_TLUMACZA = "PROJEKT_PRZEZ_TLUMACZA"
 
 INWENTARZ_KLUCZA_PRZYPADKU: dict[str, str] = {
     "enm.py": KLUCZ_SUROWY,
@@ -307,6 +311,10 @@ INWENTARZ_KLUCZA_PRZYPADKU: dict[str, str] = {
     # `klucz: KluczTwin`, oba rozwiązywane z TEGO SAMEGO segmentu `{case_id}` adresu
     # (bez `UUID(...)`/`str(...)` pomiędzy) — wzorzec identyczny z `diagnostics.py`.
     "solver_input.py": KLUCZ_SUROWY,
+    # W1 (2026-09-09): agregacja odbiorów per stacja dla audytu 2 czyta ENM projektu
+    # (dawniej migawkę legacy `uow.snapshots`, której nikt nie zapisywał) — adres
+    # projektem przez tłumacza, zero własnej konwersji klucza przypadku.
+    "audit2_station_config.py": KLUCZ_PROJEKTU_PRZEZ_TLUMACZA,
 }
 
 #: Dług ZGŁOSZONY, nie naprawiony (pliki poza torem karty U1). Zbiór jest zamknięty:

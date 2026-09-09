@@ -170,9 +170,6 @@ class StudyCase:
     - Results belong to the case, not to the model
     - Exactly one case can be active per project
 
-    P10a ADDITIONS:
-    - network_snapshot_id: Reference to the snapshot this case was configured against
-
     STATUS WYNIKOW: patrz naglowek modulu — przypadek go NIE PRZECHOWUJE.
     """
 
@@ -180,9 +177,6 @@ class StudyCase:
     project_id: UUID
     name: str
     description: str = ""
-
-    # P10a: Reference to the network snapshot this case is bound to
-    network_snapshot_id: str | None = None
 
     # Configuration (calculation parameters only)
     config: StudyCaseConfig = field(default_factory=StudyCaseConfig)
@@ -213,7 +207,6 @@ class StudyCase:
             project_id=self.project_id,
             name=self.name,
             description=self.description,
-            network_snapshot_id=self.network_snapshot_id,
             config=config,
             protection_config=self.protection_config,
             is_active=self.is_active,
@@ -230,7 +223,6 @@ class StudyCase:
             project_id=self.project_id,
             name=self.name,
             description=self.description,
-            network_snapshot_id=self.network_snapshot_id,
             config=self.config,
             protection_config=protection_config,
             is_active=self.is_active,
@@ -247,7 +239,6 @@ class StudyCase:
             project_id=self.project_id,
             name=name,
             description=self.description,
-            network_snapshot_id=self.network_snapshot_id,
             config=self.config,
             protection_config=self.protection_config,
             is_active=self.is_active,
@@ -264,7 +255,6 @@ class StudyCase:
             project_id=self.project_id,
             name=self.name,
             description=description,
-            network_snapshot_id=self.network_snapshot_id,
             config=self.config,
             protection_config=self.protection_config,
             is_active=self.is_active,
@@ -281,7 +271,6 @@ class StudyCase:
             project_id=self.project_id,
             name=self.name,
             description=self.description,
-            network_snapshot_id=self.network_snapshot_id,
             config=self.config,
             protection_config=self.protection_config,
             is_active=True,
@@ -298,7 +287,6 @@ class StudyCase:
             project_id=self.project_id,
             name=self.name,
             description=self.description,
-            network_snapshot_id=self.network_snapshot_id,
             config=self.config,
             protection_config=self.protection_config,
             is_active=False,
@@ -308,37 +296,12 @@ class StudyCase:
             study_payload=self.study_payload,
         )
 
-    def with_network_snapshot_id(self, network_snapshot_id: str) -> StudyCase:
-        """P10a: Bind this case to a new network snapshot.
-
-        Samo PRZYPIECIE migawki — bez reguly uniewazniania. Regula „nowa migawka
-        → wyniki OUTDATED” byla drugim (obok rewizji modelu) zrodlem prawdy o
-        swiezosci i znikla razem z pozostalymi pisarzami statusu (CV-2-W): bieg
-        niesie w kopercie rewizje modelu, na ktorej powstal, wiec rozjazd widac
-        bez przestawiania czegokolwiek na przypadku.
-        """
-        return StudyCase(
-            id=self.id,
-            project_id=self.project_id,
-            name=self.name,
-            description=self.description,
-            network_snapshot_id=network_snapshot_id,
-            config=self.config,
-            protection_config=self.protection_config,
-            is_active=self.is_active,
-            revision=self.revision + 1,
-            created_at=self.created_at,
-            updated_at=datetime.now(UTC),
-            study_payload=self.study_payload,
-        )
-
     def clone(self, new_name: str | None = None) -> StudyCase:
         """
         Clone this case with new ID.
 
         CLONING RULES (canonical-style):
         - Configuration is copied (including protection_config)
-        - network_snapshot_id is copied (same snapshot binding)
         - Results are NOT copied (klon nie ma wlasnych biegow, wiec jego status
           wynikow wychodzi NONE bez zapisywania czegokolwiek)
         - New case is NOT active
@@ -349,7 +312,6 @@ class StudyCase:
             project_id=self.project_id,
             name=new_name or f"{self.name} (kopia)",
             description=self.description,
-            network_snapshot_id=self.network_snapshot_id,  # P10a: Copy snapshot binding
             config=self.config,
             protection_config=self.protection_config,  # P14c: Copy protection config
             is_active=False,  # Clone is not active
@@ -371,7 +333,6 @@ class StudyCase:
             "project_id": str(self.project_id),
             "name": self.name,
             "description": self.description,
-            "network_snapshot_id": self.network_snapshot_id,  # P10a
             "config": self.config.to_dict(),
             "protection_config": self.protection_config.to_dict(),  # P14c
             "is_active": self.is_active,
@@ -390,7 +351,6 @@ class StudyCase:
             project_id=UUID(data["project_id"]),
             name=data["name"],
             description=data.get("description", ""),
-            network_snapshot_id=data.get("network_snapshot_id"),  # P10a
             config=config,
             protection_config=protection_config,  # P14c
             is_active=data.get("is_active", False),
@@ -415,7 +375,6 @@ def new_study_case(
     description: str = "",
     config: StudyCaseConfig | None = None,
     is_active: bool = False,
-    network_snapshot_id: str | None = None,
 ) -> StudyCase:
     """
     Factory function to create a new StudyCase (P10a + P14c).
@@ -426,7 +385,6 @@ def new_study_case(
         description: Optional description
         config: Calculation configuration (defaults to standard values)
         is_active: Whether this case should be active
-        network_snapshot_id: P10a - Snapshot this case is bound to
 
     Returns:
         New StudyCase instance (bez biegow, wiec jego status wynikow wychodzi NONE)
@@ -438,7 +396,6 @@ def new_study_case(
         project_id=project_id,
         name=name,
         description=description,
-        network_snapshot_id=network_snapshot_id,
         config=cfg,
         protection_config=ProtectionConfig(),  # P14c: Empty protection config by default
         is_active=is_active,

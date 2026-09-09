@@ -29,10 +29,9 @@ from network_model.catalog.materialization import materialize_catalog_binding
 if TYPE_CHECKING:
     from network_model.catalog.repository import CatalogRepository
 from network_model.catalog.types import CatalogBinding
-
-from .katalog_projektu import BladKataloguProjektu, katalog_biezacy, kontekst_katalogu
 from network_model.pochodne import moc_bierna_z_czynnej_i_cos_phi
 
+from .katalog_projektu import BladKataloguProjektu, katalog_biezacy, kontekst_katalogu
 from .kopia_graniczna import kopia_graniczna_enm
 from .load_zip_model import KOD_BLEDU_ZIP, zip_odbioru_z_parametrow_materializacji
 from .migrations.nn_field_specs_promocja import META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA

@@ -5,11 +5,10 @@ from copy import deepcopy
 from hashlib import sha256
 from typing import Any
 
+from enm.katalog_projektu import katalog_dla_modelu
 from enm.models import BranchRating, Cable, EnergyNetworkModel, Load, OverheadLine
 from network_model.catalog.materialization import materialize_catalog_binding
 from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
-
-from enm.katalog_projektu import katalog_dla_modelu
 from network_model.catalog.types import CatalogBinding, LoadType
 from network_model.pochodne import moc_bierna_z_czynnej_i_cos_phi
 

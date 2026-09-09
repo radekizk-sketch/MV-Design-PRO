@@ -7,6 +7,7 @@ e2e (`tests/utils/generuj_arkusz_e2e.py`). Kontrakt kolumn: docstring
 from __future__ import annotations
 
 import io
+import re
 import zipfile
 from datetime import UTC, datetime
 from typing import Any
@@ -114,13 +115,23 @@ def _przepisz_zip_z_ustalonym_czasem(dane: bytes, znacznik_czasu: datetime) -> b
     dwa identyczne skoroszyty różnią się bajtami nagłówków wpisów. Wpisy są przepisywane
     BEZ kompresji (ZIP_STORED), żeby plik nie zależał od wersji zlib maszyny."""
     czas = znacznik_czasu.timetuple()[:6]
+    # openpyxl nadpisuje `dcterms:modified` czasem zapisu niezależnie od
+    # `wb.properties.modified` — jedyne zmienne bajty skoroszytu, przypinane tutaj.
+    znacznik_iso = znacznik_czasu.strftime("%Y-%m-%dT%H:%M:%SZ")
     bufor = io.BytesIO()
     with zipfile.ZipFile(io.BytesIO(dane)) as zrodlo, zipfile.ZipFile(bufor, "w") as cel:
         for wpis in zrodlo.infolist():
+            tresc = zrodlo.read(wpis.filename)
+            if wpis.filename == "docProps/core.xml":
+                tresc = re.sub(
+                    rb"(<dcterms:modified[^>]*>)[^<]*(</dcterms:modified>)",
+                    lambda m: m.group(1) + znacznik_iso.encode("ascii") + m.group(2),
+                    tresc,
+                )
             nowy = zipfile.ZipInfo(wpis.filename, date_time=czas)
             nowy.compress_type = zipfile.ZIP_STORED
             nowy.external_attr = wpis.external_attr
-            cel.writestr(nowy, zrodlo.read(wpis.filename))
+            cel.writestr(nowy, tresc)
     return bufor.getvalue()
 
 

@@ -142,7 +142,8 @@ FORBIDDEN_C4_FUNCTION_NAMES = {"export_p24_plus_report_pdf"}
 # testy — 0 konsumentów produkcyjnych). Sprawdza WYŁĄCZNIE DEFINICJE
 # (ast.ClassDef/FunctionDef) gdziekolwiek w `backend/src`, nie dowolne
 # wystąpienie identyfikatora — `network_wizard/dtos.py::InverterSetpoint`/
-# `ConverterSetpoint` i edycyjne operacje kreatora ZOSTAJĄ (poza mandatem karty).
+# `ConverterSetpoint` i edycyjne operacje kreatora ZOSTAŁY wtedy poza mandatem
+# karty (skasowane później w W1, 2026-09-09 — bramka W1 niżej).
 FORBIDDEN_CV42_FILES = {
     BACKEND_SRC_DIR
     / "application"
@@ -196,6 +197,117 @@ CV43_A4_ENM_MODULE = API_DIR / "enm.py"
 FORBIDDEN_CV43_A4_ROUTE_FUNCTION_NAMES = {"run_short_circuit", "run_power_flow"}
 CV43_A4_V126_MODULE = API_DIR / "v126_academic.py"
 FORBIDDEN_CV43_A4_V126_INMEMORY_NAMES = {"_runs"}
+
+
+# Karta W1 (2026-09-09) — bramka wskrzeszenia LEGACY PERSYSTENCJI SIECI. Jedyna
+# prawda sieci to ENM w magazynie projektu (`enm/store.py`). Rownolegly model ORM
+# (`network_snapshots`/`network_nodes`/`network_branches`/`network_sources`/
+# `network_loads`/`switching_states`), biblioteka typow w bazie (`line_types`,
+# `cable_types`, `transformer_types`, `switch_equipment_types`, `inverter_types`,
+# `switch_equipment_assignments`), diagramy SLD w bazie (`sld_diagrams`,
+# `sld_node_symbols`, `sld_branch_symbols`, `sld_annotations`) i syntezator
+# projektowy (`design_specs`, `design_proposals`, `design_evidence`) — 19 tabel,
+# w bazie deweloperskiej 0 wierszy w KAZDEJ (pomiar 2026-09-09) — skasowane
+# procedura: `infrastructure/persistence/migracja_legacy_db.py` zrzuca kazda
+# tabele do JSON, kompiluje pozostalosci do ENM (`application/migracja_legacy.py`)
+# i dopiero potem DROP TABLE. Razem z tabelami zeszly ich jedyni konsumenci oraz
+# eksportery wynikow tej samej klasy „0 importerow w src, tylko wlasne testy"
+# (lista `W1_LEGACY_RELATIVE_PATHS`). Sprawdzane: (1) zaden z plikow/katalogow
+# nie istnieje, (2) zadna klasa z `FORBIDDEN_W1_CLASS_NAMES` nie wraca jako
+# DEFINICJA (ast.ClassDef) gdziekolwiek w `backend/src`, (3) zadna nazwa tabeli z
+# `FORBIDDEN_W1_TABLE_NAMES` nie wraca jako `__tablename__` (przypisanie w ciele
+# klasy) gdziekolwiek w `backend/src`, (4) liczba `__tablename__` w `models.py`
+# jest PRZYPIETA (`W1_TABLENAME_PIN`, pomiar po W1) — nowa tabela wymaga swiadomej
+# zmiany pinu razem z uzasadnieniem w commicie, nie cichego dopisania.
+W1_LEGACY_RELATIVE_PATHS: dict[str, str] = {
+    "application/network_wizard/service.py": "kreator sieci legacy (NetworkWizardService)",
+    "application/network_wizard/dtos.py": "DTO kreatora sieci legacy",
+    "application/network_wizard/errors.py": "wyjątki kreatora sieci legacy",
+    "application/network_wizard/exporters": "eksportery kreatora sieci legacy",
+    "application/network_wizard/importers": "importery XLSX/JSON kreatora sieci legacy",
+    "application/sld": "projekcja/geometria/cross-reference SLD z migawki legacy",
+    "application/designer": "silnik projektanta na migawce legacy",
+    "application/wizard_runtime": "runtime kreatora na migawce legacy",
+    "application/analyses/design_synth": "syntezator projektowy (design_specs/proposals/evidence)",
+    "network_model/sld_projection.py": "projekcja SLD z migawki legacy",
+    "domain/sld.py": "model diagramu SLD w bazie",
+    "api/sld.py": "router diagramów SLD w bazie",
+    "diagnostics/diff.py": "porównanie rewizji z tabel network_*",
+    "enm/migrations/v_ports_001.py": "automigracja portów bez konsumenta",
+    "domain/protection_report_model.py": "model raportu zabezpieczeń bez konsumenta",
+    "domain/protection_coordination_v1.py": "koordynacja zabezpieczeń v1 bez konsumenta",
+    "network_model/reporting/short_circuit_report_docx.py": "raport DOCX zwarć z migawki legacy",
+    "network_model/reporting/short_circuit_report_pdf.py": "raport PDF zwarć z migawki legacy",
+    "network_model/reporting/power_flow_report_docx.py": "raport DOCX rozpływu z migawki legacy",
+    "network_model/reporting/power_flow_report_pdf.py": "raport PDF rozpływu z migawki legacy",
+    "network_model/reporting/analysis_run_report_docx.py": "raport DOCX biegu bez konsumenta (żywy raport: api/analysis_run_exports.py)",
+    "network_model/reporting/analysis_run_report_pdf.py": "raport PDF biegu bez konsumenta (żywy raport: api/analysis_run_exports.py)",
+    "network_model/reporting/export_docx.py": "generator raportów DOCX SC/PF bez konsumenta",
+    "network_model/reporting/export_pdf.py": "generator raportów PDF SC/PF bez konsumenta",
+    "network_model/reporting/export_jsonl.py": "eksport JSONL migawki/śladu bez konsumenta",
+    "network_model/reporting/export_manifest.py": "manifest eksportu bez konsumenta (żywy: domain/export_manifest.py)",
+    "network_model/reporting/power_flow_export.py": "eksport JSON/JSONL rozpływu bez konsumenta",
+    "network_model/reporting/short_circuit_export.py": "eksport JSON/JSONL zwarć bez konsumenta",
+    "infrastructure/persistence/repositories/network_repository.py": "repozytorium tabel network_*",
+    "infrastructure/persistence/repositories/network_wizard_repository.py": "repozytorium kreatora legacy",
+    "infrastructure/persistence/repositories/snapshot_repository.py": "repozytorium migawek legacy",
+    "infrastructure/persistence/repositories/sld_repository.py": "repozytorium diagramów SLD w bazie",
+    "infrastructure/persistence/repositories/design_spec_repository.py": "repozytorium design_specs",
+    "infrastructure/persistence/repositories/design_proposal_repository.py": "repozytorium design_proposals",
+    "infrastructure/persistence/repositories/design_evidence_repository.py": "repozytorium design_evidence",
+}
+FORBIDDEN_W1_CLASS_NAMES = {
+    "CableTypeORM",
+    "DesignEvidenceORM",
+    "DesignProposalORM",
+    "DesignSpecORM",
+    "InverterTypeORM",
+    "LineTypeORM",
+    "NetworkBranchORM",
+    "NetworkLoadORM",
+    "NetworkNodeORM",
+    "NetworkSnapshotORM",
+    "NetworkSourceORM",
+    "SldAnnotationORM",
+    "SldBranchSymbolORM",
+    "SldDiagramORM",
+    "SldNodeSymbolORM",
+    "SwitchEquipmentAssignmentORM",
+    "SwitchEquipmentTypeORM",
+    "SwitchingStateORM",
+    "TransformerTypeORM",
+    "NetworkWizardService",
+    "NetworkRepository",
+    "NetworkWizardRepository",
+    "SnapshotRepository",
+    "SldRepository",
+    "DesignSpecRepository",
+    "DesignProposalRepository",
+    "DesignEvidenceRepository",
+}
+FORBIDDEN_W1_TABLE_NAMES = {
+    "cable_types",
+    "design_evidence",
+    "design_proposals",
+    "design_specs",
+    "inverter_types",
+    "line_types",
+    "network_branches",
+    "network_loads",
+    "network_nodes",
+    "network_snapshots",
+    "network_sources",
+    "network_switching_states",
+    "sld_annotations",
+    "sld_branch_symbols",
+    "sld_diagrams",
+    "sld_node_symbols",
+    "switch_equipment_assignments",
+    "switch_equipment_types",
+    "transformer_types",
+}
+W1_TABLENAME_PIN = 15
+W1_MODELS_RELATIVE_PATH = "infrastructure/persistence/models.py"
 
 # Karta KASACJA-DATA-MANAGER (2026-09-09) — bramka wskrzeszenia FRONTENDOWA (jedyna
 # w tym pliku poza AST-em backendu: `frontend/src` to TypeScript, ktorego `ast`
@@ -448,6 +560,69 @@ def check_cv43_a4_resurrection() -> list[str]:
     return violations
 
 
+def _tablename_w_klasie(node: ast.ClassDef) -> str | None:
+    """Wartosc `__tablename__ = "..."` przypisana wprost w ciele klasy (None, gdy brak)."""
+    for stmt in node.body:
+        targets: list[ast.expr] = []
+        if isinstance(stmt, ast.Assign):
+            targets = stmt.targets
+        elif isinstance(stmt, ast.AnnAssign):
+            targets = [stmt.target]
+        else:
+            continue
+        for target in targets:
+            if isinstance(target, ast.Name) and target.id == "__tablename__":
+                value = stmt.value
+                if isinstance(value, ast.Constant) and isinstance(value.value, str):
+                    return value.value
+    return None
+
+
+def check_w1_legacy_persistence_resurrection() -> list[str]:
+    """W1 (2026-09-09): legacy persystencja sieci (19 tabel, ich ORM, repozytoria,
+    kreator, projekcja SLD, syntezator projektowy, raporty z migawki) nie moze
+    wrocic — jedyna prawda sieci to ENM w magazynie projektu. Pin liczby tabel w
+    `models.py` zamienia ciche dopisanie tabeli w swiadoma decyzje."""
+    violations: list[str] = []
+    for rel, label in W1_LEGACY_RELATIVE_PATHS.items():
+        path = BACKEND_SRC_DIR / rel
+        if path.exists():
+            violations.append(f"[resurrected-module] backend/src/{rel}: {label} (usuniety w W1)")
+    if not BACKEND_SRC_DIR.exists():
+        return violations
+    models_path = BACKEND_SRC_DIR / W1_MODELS_RELATIVE_PATH
+    for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        rel_path = (
+            py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
+        )
+        tablenames = 0
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ClassDef):
+                continue
+            if node.name in FORBIDDEN_W1_CLASS_NAMES:
+                violations.append(
+                    f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
+                    "(legacy persystencja sieci, usunieta w W1) nie moze wrocic"
+                )
+            tablename = _tablename_w_klasie(node)
+            if tablename is None:
+                continue
+            tablenames += 1
+            if tablename in FORBIDDEN_W1_TABLE_NAMES:
+                violations.append(
+                    f"[resurrected-table] {rel_path}:{node.lineno}: __tablename__ = "
+                    f"'{tablename}' (tabela legacy usunieta w W1) nie moze wrocic"
+                )
+        if py_file == models_path and tablenames != W1_TABLENAME_PIN:
+            violations.append(
+                f"[tablename-pin] {rel_path}: {tablenames} tabel ORM, pin W1_TABLENAME_PIN = "
+                f"{W1_TABLENAME_PIN} — nowa/usunieta tabela wymaga swiadomej zmiany pinu "
+                "z uzasadnieniem w commicie"
+            )
+    return violations
+
+
 def _bez_komentarzy_ts(tekst: str) -> str:
     """Tresc pliku TS/TSX bez komentarzy — cytat nazwy w komentarzu to nie definicja."""
     return _TS_LINE_COMMENT.sub("", _TS_BLOCK_COMMENT.sub("", tekst))
@@ -496,6 +671,7 @@ def main() -> int:
         + check_c4_and_p24_plus_resurrection()
         + check_cv42_resurrection()
         + check_cv43_a4_resurrection()
+        + check_w1_legacy_persistence_resurrection()
         + check_data_manager_resurrection()
     )
     if violations:

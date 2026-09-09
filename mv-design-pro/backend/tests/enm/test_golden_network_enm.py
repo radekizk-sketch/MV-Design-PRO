@@ -1,7 +1,9 @@
 """
 Golden Network ENM — testy integracyjne złotej sieci 20 stacji.
 
-PR-07: Weryfikacja pełnego pipeline ENM → Topology → StationGeometry → CrossReference.
+PR-07: Weryfikacja pipeline ENM → Topology. StationGeometry i CrossReference
+(`application/sld/**`) skasowane w W1 (2026-09-09) razem z legacy persystencją
+sieci — 0 konsumentów produkcyjnych; ich klasy testów zeszły razem z kodem.
 
 INVARIANTS testowane:
 - Determinizm: wielokrotne wywołania → identyczny wynik
@@ -9,14 +11,11 @@ INVARIANTS testowane:
 - Spójność referencji: wszystkie ref_id wskazują na istniejące elementy
 - Walidacja: zero blokerów
 - Topologia: trunk pokrywa wszystkie szyny
-- Cross-reference: pełne mapowanie ENM → sekcje raportu
 """
 
 from __future__ import annotations
 
 import pytest
-from application.sld.cross_reference import build_cross_reference_table
-from application.sld.station_geometry import build_station_geometry
 from enm.hash import compute_enm_hash
 from enm.models import EnergyNetworkModel
 from enm.severity import severity_rank
@@ -324,94 +323,3 @@ class TestGoldenNetworkTopology:
         assert topo.stats.corridor_count == 2
         assert topo.stats.junction_count == 3
         assert topo.stats.total_line_length_km > 0
-
-
-# ---------------------------------------------------------------------------
-# PR-07: Testy station geometry
-# ---------------------------------------------------------------------------
-
-
-class TestGoldenNetworkStationGeometry:
-    """Testy geometrii stacji."""
-
-    def test_station_geometry_build(self, golden_enm: EnergyNetworkModel) -> None:
-        """Station geometry builds without error."""
-        topo = build_topology_graph(golden_enm)
-        # Symuluj pozycje szyn
-        bus_positions = {
-            bus.ref_id: (float(i * 200), float(i * 120)) for i, bus in enumerate(golden_enm.buses)
-        }
-        geom = build_station_geometry(golden_enm, topo, bus_positions)
-        assert len(geom.station_boxes) > 0
-        assert len(geom.trunk_path) > 0
-
-    def test_station_boxes_determinism(self, golden_enm: EnergyNetworkModel) -> None:
-        """Station geometry jest deterministyczna."""
-        topo = build_topology_graph(golden_enm)
-        bus_positions = {
-            bus.ref_id: (float(i * 200), float(i * 120)) for i, bus in enumerate(golden_enm.buses)
-        }
-        geom1 = build_station_geometry(golden_enm, topo, bus_positions)
-        geom2 = build_station_geometry(golden_enm, topo, bus_positions)
-        assert len(geom1.station_boxes) == len(geom2.station_boxes)
-        for b1, b2 in zip(geom1.station_boxes, geom2.station_boxes, strict=False):
-            assert b1.substation_ref == b2.substation_ref
-            assert b1.x == b2.x
-            assert b1.y == b2.y
-
-    def test_entry_points(self, golden_enm: EnergyNetworkModel) -> None:
-        """Entry points exist for stations with entry_point_ref."""
-        topo = build_topology_graph(golden_enm)
-        bus_positions = {
-            bus.ref_id: (float(i * 200), float(i * 120)) for i, bus in enumerate(golden_enm.buses)
-        }
-        geom = build_station_geometry(golden_enm, topo, bus_positions)
-        subs_with_entry = [s for s in golden_enm.substations if s.entry_point_ref]
-        assert len(geom.entry_points) == len(subs_with_entry)
-
-
-# ---------------------------------------------------------------------------
-# PR-07: Testy cross-reference
-# ---------------------------------------------------------------------------
-
-
-class TestGoldenNetworkCrossReference:
-    """Testy cross-reference raportu."""
-
-    def test_cross_reference_build(self, golden_enm: EnergyNetworkModel) -> None:
-        """Cross reference table builds without error."""
-        xref = build_cross_reference_table(golden_enm)
-        assert xref.total_elements > 0
-
-    def test_cross_reference_covers_all_elements(self, golden_enm: EnergyNetworkModel) -> None:
-        """Cross reference pokrywa wszystkie elementy ENM."""
-        xref = build_cross_reference_table(golden_enm)
-        expected = (
-            len(golden_enm.buses)
-            + len(golden_enm.sources)
-            + len(golden_enm.branches)
-            + len(golden_enm.transformers)
-            + len(golden_enm.loads)
-            + len(golden_enm.generators)
-            + len(golden_enm.substations)
-            + len(golden_enm.corridors)
-        )
-        assert xref.total_elements == expected
-
-    def test_cross_reference_sections(self, golden_enm: EnergyNetworkModel) -> None:
-        """Wpisy cross-reference mają poprawne sekcje raportu."""
-        xref = build_cross_reference_table(golden_enm)
-        sections = {e.report_section for e in xref.entries}
-        assert "Topologia sieci" in sections
-        assert "Zasilanie" in sections
-        assert "Linie i kable" in sections
-        assert "Stacje" in sections
-
-    def test_cross_reference_determinism(self, golden_enm: EnergyNetworkModel) -> None:
-        """Cross reference jest deterministyczna."""
-        xref1 = build_cross_reference_table(golden_enm)
-        xref2 = build_cross_reference_table(golden_enm)
-        assert xref1.total_elements == xref2.total_elements
-        for e1, e2 in zip(xref1.entries, xref2.entries, strict=False):
-            assert e1.enm_ref_id == e2.enm_ref_id
-            assert e1.report_section == e2.report_section

@@ -250,14 +250,6 @@ describe('TypeLibraryBrowser', () => {
     vi.mocked(catalogApi.fetchTypesByCategory).mockImplementation(async (category) => (
       catalogByCategory[category]
     ));
-    vi.mocked(catalogApi.exportTypeLibrary).mockResolvedValue({ ok: true });
-    vi.mocked(catalogApi.importTypeLibrary).mockResolvedValue({
-      success: true,
-      mode: 'merge',
-      added: [],
-      skipped: [],
-      conflicts: [],
-    });
   });
 
   it('renders the full active catalog tab set', async () => {

@@ -81,7 +81,6 @@ CRITICAL_TODO_TARGETS = [
     "backend/src/api/domain_ops_policy.py",
     "backend/src/api/enm.py",
     "backend/src/api/main.py",
-    "backend/src/api/sld.py",
     "backend/src/domain",
     "backend/src/enm",
     "frontend/src/App.tsx",

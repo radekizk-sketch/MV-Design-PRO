@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from application.analyses.design_synth.canonical import canonicalize_json
-from application.analyses.design_synth.fingerprint import fingerprint_json
+from application.analyses.kanon_json import canonicalize_json, fingerprint_json
 from application.analyses.protection.overcurrent.inputs import ProtectionInput
 from application.analyses.protection.overcurrent.settings import OvercurrentSettingsV0
 from application.analyses.protection.overcurrent.settings_presentation import (

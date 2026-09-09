@@ -197,7 +197,10 @@ def test_kolizja_id_z_katalogiem_statycznym_jest_nazwanym_bledem() -> None:
     wynik = execute_domain_operation(
         enm,
         "add_grid_source_sn",
-        {"voltage_kv": 15.0, "manual_equivalent": {"sn_voltage_kv": 15.0, "sk3_mva": 250.0, "rx_ratio": 0.1}},
+        {
+            "voltage_kv": 15.0,
+            "manual_equivalent": {"sn_voltage_kv": 15.0, "sk3_mva": 250.0, "rx_ratio": 0.1},
+        },
     )
     assert wynik.get("error")
     assert wynik["error_code"] == "katalog_projektu.invalid"

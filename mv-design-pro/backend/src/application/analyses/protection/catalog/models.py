@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from application.analyses.design_synth.canonical import canonicalize_json
+from application.analyses.kanon_json import canonicalize_json
 
 #: Znamionowe wartosci preferowane wejsc pomiarowych przekaznika (IEC 60255-1 tab. 1).
 #:

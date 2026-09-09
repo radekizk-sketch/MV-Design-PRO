@@ -223,93 +223,85 @@ def test_validate_all_uses_real_p_import_from_snapshot_loads(app_client):
     # Status: requires_ramp_down (ratio inf).
 
 
-def test_aggregate_loads_per_station_helper_no_snapshot(app_client):
-    """Phase 49: helper graceful gdy projekt nie ma snapshotu."""
+def _model_stacji_z_odbiorami():
+    """Model ENM: dwie stacje, trzy odbiory (dwa w stacji A, jeden w B) i odbiór na
+    szynie spoza stacji, który nie może być doliczony nigdzie."""
+    from enm.models import Bus, EnergyNetworkModel, ENMHeader, Load, Substation
+
+    return EnergyNetworkModel(
+        header=ENMHeader(name="Audyt 2 — agregacja odbiorów"),
+        buses=[
+            Bus(ref_id="bus-a", name="Szyna A", voltage_kv=0.4),
+            Bus(ref_id="bus-b", name="Szyna B", voltage_kv=0.4),
+            Bus(ref_id="bus-luzna", name="Szyna poza stacją", voltage_kv=0.4),
+        ],
+        substations=[
+            Substation(ref_id="st-A", name="Stacja A", station_type="mv_lv", bus_refs=["bus-a"]),
+            Substation(ref_id="st-B", name="Stacja B", station_type="mv_lv", bus_refs=["bus-b"]),
+        ],
+        loads=[
+            Load(ref_id="ld-1", name="Odbiór 1", bus_ref="bus-a", p_mw=1.5, q_mvar=0.3),
+            Load(ref_id="ld-2", name="Odbiór 2", bus_ref="bus-a", p_mw=0.5, q_mvar=0.1),
+            Load(ref_id="ld-3", name="Odbiór 3", bus_ref="bus-b", p_mw=2.0, q_mvar=0.4),
+            Load(ref_id="ld-4", name="Odbiór luźny", bus_ref="bus-luzna", p_mw=9.0, q_mvar=0.0),
+        ],
+    )
+
+
+def test_aggregate_loads_per_station_helper_no_model(app_client):
+    """Projekt bez modelu ENM ⇒ pusty słownik (uczciwy brak, nie zgadywanie)."""
     from uuid import UUID
 
     from api.audit2_station_config import _aggregate_loads_per_station_for_project
 
     pid = _create_project(app_client)
-    # Backend uzywa app.state.uow_factory.
-    app = app_client.app  # type: ignore[attr-defined]
-    uow_factory = app.state.uow_factory
-    with uow_factory() as uow:
-        result = _aggregate_loads_per_station_for_project(uow=uow, project_id=UUID(pid))
-    assert result == {}
+    uow_factory = app_client.app.state.uow_factory  # type: ignore[attr-defined]
+    assert _aggregate_loads_per_station_for_project(UUID(pid), uow_factory) == {}
 
 
-def test_aggregate_loads_or_chain_zero_value_bug_fix():
-    """Phase 51: explicit None check (or-chain z 0 nie psuje wyniku)."""
-    from unittest.mock import MagicMock
+def test_aggregate_loads_per_station_from_enm(app_client):
+    """W1: moce odbiorów sumują się per stacja z JEDYNEJ prawdy sieci (ENM:
+    `Load.bus_ref` → `Substation.bus_refs`), MW→kW; odbiór na szynie spoza stacji
+    nie jest doliczany nigdzie."""
     from uuid import UUID
 
     from api.audit2_station_config import _aggregate_loads_per_station_for_project
+    from enm.klucz_twin import klucz_twin_projektu
+    from enm.store import set_enm
 
-    # Mock UoW z snapshot zawierajacym load z p=0.
-    mock_uow = MagicMock()
-    mock_session = MagicMock()
-    mock_uow.session = mock_session
+    pid = _create_project(app_client)
+    set_enm(klucz_twin_projektu(UUID(pid)), _model_stacji_z_odbiorami())
+    uow_factory = app_client.app.state.uow_factory  # type: ignore[attr-defined]
 
-    from infrastructure.persistence.models import ProjectORM
-
-    project = MagicMock(spec=ProjectORM)
-    project.active_network_snapshot_id = "snap-1"
-    mock_session.query.return_value.filter.return_value.one_or_none.return_value = project
-
-    # Mock snapshot z 1 load p=0.
-    class _MockLoad:
-        def __init__(self, station, p):
-            self.station_ref = station
-            self.nominal_power_kw = p
-
-    mock_snapshot = MagicMock()
-    mock_snapshot.graph.loads = {"l1": _MockLoad("st-1", 0.0)}  # p=0!
-    mock_uow.snapshots = MagicMock()
-    mock_uow.snapshots.get_snapshot.return_value = mock_snapshot
-
-    result = _aggregate_loads_per_station_for_project(
-        uow=mock_uow, project_id=UUID("00000000-0000-0000-0000-000000000001")
-    )
-    # Bug fix: load z p=0 zostaje uwzgledniony (nie pomijany przez or-chain).
-    assert result == {"st-1": 0.0}
+    assert _aggregate_loads_per_station_for_project(UUID(pid), uow_factory) == {
+        "st-A": 2000.0,
+        "st-B": 2000.0,
+    }
 
 
-def test_aggregate_loads_p_mw_conversion():
-    """Phase 51: p_mw -> kW conversion (* 1000)."""
-    from unittest.mock import MagicMock
+def test_aggregate_loads_zero_power_load_is_counted(app_client):
+    """Odbiór z p_mw = 0 zostaje w agregacie jako 0.0 — ta sama klasa defektu
+    (or-łańcuch gubiący zero), której pilnował dawny test na migawce legacy."""
     from uuid import UUID
 
     from api.audit2_station_config import _aggregate_loads_per_station_for_project
+    from enm.klucz_twin import klucz_twin_projektu
+    from enm.models import Bus, EnergyNetworkModel, ENMHeader, Load, Substation
+    from enm.store import set_enm
 
-    mock_uow = MagicMock()
-    mock_session = MagicMock()
-    mock_uow.session = mock_session
-
-    from infrastructure.persistence.models import ProjectORM
-
-    project = MagicMock(spec=ProjectORM)
-    project.active_network_snapshot_id = "snap-1"
-    mock_session.query.return_value.filter.return_value.one_or_none.return_value = project
-
-    class _MockLoad:
-        def __init__(self, station, p_mw):
-            self.station_ref = station
-            # Brak nominal_power_kw / p_kw, tylko p_mw.
-            self.p_mw = p_mw
-
-    mock_snapshot = MagicMock()
-    mock_snapshot.graph.loads = [
-        _MockLoad("st-A", 1.5),  # 1.5 MW = 1500 kW
-        _MockLoad("st-A", 0.5),  # 0.5 MW = 500 kW (dodaje sie do A: 2000)
-        _MockLoad("st-B", 2.0),  # 2.0 MW = 2000 kW
-    ]
-    mock_uow.snapshots = MagicMock()
-    mock_uow.snapshots.get_snapshot.return_value = mock_snapshot
-
-    result = _aggregate_loads_per_station_for_project(
-        uow=mock_uow, project_id=UUID("00000000-0000-0000-0000-000000000001")
+    pid = _create_project(app_client)
+    model = EnergyNetworkModel(
+        header=ENMHeader(name="Audyt 2 — odbiór zerowy"),
+        buses=[Bus(ref_id="bus-1", name="Szyna 1", voltage_kv=0.4)],
+        substations=[
+            Substation(ref_id="st-1", name="Stacja 1", station_type="mv_lv", bus_refs=["bus-1"])
+        ],
+        loads=[Load(ref_id="ld-0", name="Odbiór zerowy", bus_ref="bus-1", p_mw=0.0, q_mvar=0.0)],
     )
-    assert result == {"st-A": 2000.0, "st-B": 2000.0}
+    set_enm(klucz_twin_projektu(UUID(pid)), model)
+    uow_factory = app_client.app.state.uow_factory  # type: ignore[attr-defined]
+
+    assert _aggregate_loads_per_station_for_project(UUID(pid), uow_factory) == {"st-1": 0.0}
 
 
 def test_validate_all_returns_pack_per_station(app_client):

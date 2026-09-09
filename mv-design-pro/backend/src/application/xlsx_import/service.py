@@ -64,8 +64,10 @@ STATUS_ODRZUCONO = "ODRZUCONO"
 NAZWA_PIERWSZEGO_PRZYPADKU = "Wariant bazowy"
 OPIS_PIERWSZEGO_PRZYPADKU = "Przypadek utworzony przy imporcie arkusza"
 OPIS_PROJEKTU = "Import z arkusza XLSX"
-#: Nazwa operacji w dzienniku zmian modelu (`enm/dziennik_zmian.py`).
-OPERACJA_IMPORTU = "import_arkusza"
+#: Źródło rewizji w dzienniku zmian modelu (`enm/dziennik_zmian.py`): import NIE jest
+#: operacją domenową z kanonu, więc wpis idzie bez operacji, z nazwanym opisem i tym
+#: identyfikatorem w ładunku (`ladunek.zrodlo`).
+ZRODLO_IMPORTU = "import_arkusza"
 #: Zastrzeżenia kompilatora/walidatora nie wskazują pojedynczego arkusza — dotyczą
 #: modelu złożonego ze wszystkich arkuszy naraz.
 ARKUSZ_MODELU = "model"
@@ -268,7 +270,6 @@ class XlsxImportService:
                 connection_node_id=None,
                 connection_description=None,
                 owner_id=None,
-                active_network_snapshot_id=None,
                 sources_jsonb=[],
                 created_at=teraz,
                 updated_at=teraz,
@@ -318,9 +319,11 @@ class XlsxImportService:
             klucz,
             kompilacja.model,
             zrodlo_zmiany=ZrodloZmiany(
-                operacja=OPERACJA_IMPORTU,
+                operacja=None,
                 utworzone=utworzone,
+                opis_pl=f"Import sieci z arkusza XLSX ({nazwa_pliku or 'arkusz'})",
                 ladunek={
+                    "zrodlo": ZRODLO_IMPORTU,
                     "plik": nazwa_pliku,
                     "podsumowanie": _podsumowanie(kompilacja.model).to_dict(),
                     "elementy_typow_projektu": list(kompilacja.elementy_typow_projektu),

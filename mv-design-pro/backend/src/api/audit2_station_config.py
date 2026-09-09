@@ -20,6 +20,8 @@ from typing import Any
 from uuid import UUID
 
 from api.dependencies import get_uow_factory
+from application.twin_key import klucz_twin_dla_projektu
+from enm.store import get_enm, has_enm
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.models import StationAudit2ConfigORM
 from infrastructure.persistence.unit_of_work import UnitOfWork
@@ -61,83 +63,35 @@ class StationAudit2ConfigBody(BaseModel):
 
 
 def _aggregate_loads_per_station_for_project(
-    *, uow: UnitOfWork, project_id: UUID
+    project_id: UUID, uow_factory: Callable[[], object]
 ) -> dict[str, float]:
+    """Moce czynne odbiorów [kW] zsumowane per stacja z MODELU ENM projektu.
+
+    W1: dawna agregacja czytała `project.active_network_snapshot_id` → migawkę legacy
+    (`uow.snapshots`), której żaden tor użytkownika nie zapisywał — zwracała pusty
+    słownik dla każdego projektu z kreatora. Teraz źródłem jest jedyna prawda sieci:
+    `Load.bus_ref` → stacja przez `Substation.bus_refs`. Odbiór na szynie spoza
+    stacji nie należy do żadnej stacji (nie jest doliczany nigdzie, nie jest
+    zgadywany). Przeliczenie MW→kW to zamiana jednostki, nie wielkość elektryczna.
+    Projekt bez modelu ⇒ pusty słownik. Klucz magazynu WYŁĄCZNIE przez tłumacza
+    `application/twin_key.py` (migracja zastanych plików per przypadek przed odczytem).
     """
-    Phase 49: agreguje moce odbiorow per stacja z aktywnego snapshotu projektu.
-
-    Logika:
-    1. Znajdz active_network_snapshot_id w ProjectORM.
-    2. Pobierz NetworkSnapshot z snapshot_repository.
-    3. Iteruj po snapshot.graph.loads (jesli istnieja) — sumuj p_kw per station_ref.
-
-    Zwraca dict {station_id: p_import_kw}. Pusty gdy snapshot nie istnieje
-    lub graph nie ma loads.
-    """
-    if uow.projects is None or uow.snapshots is None:
+    klucz = klucz_twin_dla_projektu(project_id, uow_factory)
+    if not has_enm(klucz):
         return {}
-
-    # CV-4.2b: przez repozytorium projektów, nie własne zapytanie ORM.
-    project = uow.projects.get_orm(project_id)
-    if project is None or not project.active_network_snapshot_id:
-        return {}
-
-    snapshot = uow.snapshots.get_snapshot(project.active_network_snapshot_id)
-    if snapshot is None:
-        return {}
-
+    enm = get_enm(klucz)
+    stacja_szyny: dict[str, str] = {}
+    for stacja in enm.substations:
+        for bus_ref in stacja.bus_refs:
+            stacja_szyny[bus_ref] = stacja.ref_id
     loads_per_station: dict[str, float] = {}
-    # NetworkGraph.loads (jesli istnieja) — agreguj p_kw per station/node attribute.
-    graph = snapshot.graph
-    raw_loads = getattr(graph, "loads", None) or {}
-    if isinstance(raw_loads, dict):
-        loads_iter = raw_loads.values()
-    else:
-        loads_iter = raw_loads
-
-    for load in loads_iter:
-        # Load model moze miec rozne pola: nominal_power_kw / p_kw / station_ref / node_id.
-        # Phase 51: explicit None check (or-chain treat 0 jako falsy bug fix).
-        station_ref = getattr(load, "station_ref", None)
-        if station_ref is None:
-            station_ref = getattr(load, "station_id", None)
-        if station_ref is None:
-            station_ref = getattr(load, "node_id", None)
-        if not station_ref:
+    for load in enm.loads:
+        stacja_ref = stacja_szyny.get(load.bus_ref)
+        if stacja_ref is None:
             continue
-
-        # Phase 51: explicit per-field check + jednostka detection.
-        # nominal_power_kw / p_kw -> juz w kW (no conversion).
-        # p_mw -> konwersja * 1000.
-        p_kw_value: float | None = None
-        if hasattr(load, "nominal_power_kw"):
-            v = load.nominal_power_kw
-            if v is not None:
-                try:
-                    p_kw_value = float(v)
-                except (TypeError, ValueError):
-                    p_kw_value = None
-        if p_kw_value is None and hasattr(load, "p_kw"):
-            v = load.p_kw
-            if v is not None:
-                try:
-                    p_kw_value = float(v)
-                except (TypeError, ValueError):
-                    p_kw_value = None
-        if p_kw_value is None and hasattr(load, "p_mw"):
-            v = load.p_mw
-            if v is not None:
-                try:
-                    p_kw_value = float(v) * 1000.0  # MW -> kW
-                except (TypeError, ValueError):
-                    p_kw_value = None
-        if p_kw_value is None:
-            continue
-
-        loads_per_station[str(station_ref)] = (
-            loads_per_station.get(str(station_ref), 0.0) + p_kw_value
+        loads_per_station[stacja_ref] = (
+            loads_per_station.get(stacja_ref, 0.0) + float(load.p_mw) * 1000.0
         )
-
     return loads_per_station
 
 
@@ -320,7 +274,7 @@ def validate_all_audit2(
         configs = uow.audit2_station_configs.list_for_project(project_id)
         # Phase 49: pobierz aktywny snapshot projektu, aby obliczyc real
         # p_import_kw (loady) dla hosting capacity validation.
-        loads_per_station = _aggregate_loads_per_station_for_project(uow=uow, project_id=project_id)
+        loads_per_station = _aggregate_loads_per_station_for_project(project_id, uow_factory)
 
         per_station_results: list[dict[str, Any]] = []
         all_pass = True

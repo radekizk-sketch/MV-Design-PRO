@@ -5,7 +5,6 @@ import type {
   ResultsIndex,
   ResultsRunSnapshot,
   ShortCircuitResults,
-  SldResultOverlay,
 } from './types';
 import type { EnergyNetworkModel } from '../../types/enm';
 import { mergeAnalysisCaseContexts } from './analysisCaseContextView';
@@ -136,52 +135,6 @@ export async function fetchCurrentCaseSnapshot(caseId: string): Promise<EnergyNe
   return response.json();
 }
 
-/**
- * Nakladka wynikowa SLD dla uruchomienia.
- *
- * STATUS SWIEZOSCI POCHODZI Z SERWERA (K-S). Wczesniej stalo tu
- * `result_status: 'VALID'` WPISANE Z PALCA — bo koncowka statusu nie oddawala
- * (budowala go i wyrzucala). Skutek: baner „Wyniki nieaktualne" w `SldOverlay`
- * porownuje status z `'OUTDATED'`, wiec przy stalej `'VALID'` nie mogl zapalic
- * sie NIGDY, a wynik policzony przed edycja modelu wygladal na aktualny.
- * Backend liczy status z porownania odciskow modelu i oddaje go razem z
- * przyczyna; klient go tylko PRZEPISUJE — zero wlasnych domyslow.
- *
- * Brak pola w odpowiedzi (serwer starszy niz ta naprawa) daje `'NONE'`:
- * uczciwy brak wiedzy o swiezosci, nie domniemana waznosc.
- */
-export async function fetchSldOverlay(
-  _projectId: string,
-  diagramId: string,
-  runId: string,
-): Promise<SldResultOverlay> {
-  const response = await fetch(`${API_BASE}/analysis-runs/${runId}/overlay?diagram_id=${diagramId}`);
-  if (!response.ok) {
-    throw new Error(`Blad pobierania nakladki SLD: ${response.statusText}`);
-  }
-  const payload = await response.json();
-
-  if ('nodes' in payload && 'branches' in payload) {
-    return payload as SldResultOverlay;
-  }
-
-  const nodes = Array.isArray(payload.bus_overlays) ? payload.bus_overlays : [];
-  const branches = Array.isArray(payload.branch_overlays) ? payload.branch_overlays : [];
-  return {
-    diagram_id: diagramId,
-    run_id: runId,
-    result_status: typeof payload.result_status === 'string' ? payload.result_status : 'NONE',
-    result_status_reason:
-      typeof payload.result_status_reason === 'string' ? payload.result_status_reason : undefined,
-    result_status_reason_pl:
-      typeof payload.result_status_reason_pl === 'string'
-        ? payload.result_status_reason_pl
-        : undefined,
-    nodes,
-    buses: nodes,
-    branches,
-  };
-}
 
 /**
  * Eksport raportu uruchomienia w domyslnej kompozycji backendu.

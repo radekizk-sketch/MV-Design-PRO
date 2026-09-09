@@ -37,37 +37,36 @@ Granice aktualnego wdrozenia:
 - `insert_section_switch_sn` nie wykonuje pelnej, analogicznej materializacji rozcietych odcinkow i odcinka lacznika,
 - `branch_points`, `CT`, `VT` i `relay` przechowuja `catalog_ref`, ale nie maja tak samo domknietej sciezki materializacji jak odcinki, transformatory, zrodla SN, PV i BESS,
 - solver nie czyta koperty odpowiedzi `materialized_params`; korzysta z pol instancyjnych ustawionych podczas operacji,
-- aktywne endpointy `type-ref` i `equipment-type` w `backend/src/api/catalog.py` nadal obchodza kanoniczny tor `domain-ops`.
+- (zamkniete w W1, 2026-09-09) koncowki `type-ref`/`equipment-type` w `backend/src/api/catalog.py`, ktore obchodzily kanoniczny tor `domain-ops`, skasowane razem z biblioteka typow w bazie — wiazanie typu wylacznie przez operacje domenowe.
 
-Governance biblioteki typow (P13b, eksport/import/wersjonowanie; spisane 2026-09-09,
-karta ARCHIWUM-CANONICAL-COMPLIANCE-2, z faktycznego zachowania kodu — repo > specy):
-- manifest biblioteki (id, nazwa, producent, seria, rewizja, wersja schematu, znacznik
-  czasu, odcisk SHA-256) jest niemutowalny (`@dataclass(frozen=True)`) i deterministyczny
-  — egzekwuje: `network_model/catalog/governance.py::TypeLibraryManifest`,
-  `TypeLibraryExport.to_canonical_json`, `compute_fingerprint`; pin:
-  `tests/network_model/catalog/test_governance.py::test_fingerprint_is_deterministic`,
-  `test_canonical_json_is_deterministic`, `test_manifest_to_dict_preserves_order`,
-- eksport sortuje kazda kategorie typow deterministycznie (nazwa -> id) przed policzeniem
-  odcisku — egzekwuje: `governance.py::sort_types_deterministically`, wolane z
-  `application/catalog_governance/service.py::CatalogGovernanceService.export_type_library`;
-  pin: `test_governance.py::test_sort_types_deterministically`,
-  `test_export_deterministic_ordering`, `test_export_determinism_with_real_data`,
-- import w trybie MERGE (domyslny) wylacznie dodaje nowe typy; istniejacy `id` jest
-  pomijany, zero nadpisan — egzekwuje:
-  `catalog_governance/service.py::CatalogGovernanceService.import_type_library`; pin:
-  `test_governance.py::test_import_merge_skips_existing`,
-- import w trybie REPLACE jest blokowany (wyjatek, zero zapisu), jesli ktorykolwiek typ
-  jest w uzyciu (`type_ref` na galezi/transformatorze albo przypisanie aparatu na
-  laczniku, w ktorymkolwiek projekcie) — regula "brak masowych migracji" z docstringu
-  `governance.py` — egzekwuje: `service.py::CatalogGovernanceService.import_type_library`
-  + `_get_types_in_use`; pin: `test_governance.py::test_import_replace_blocked_when_types_in_use`,
-- HTTP: `GET /api/catalog/export`, `POST /api/catalog/import?mode=merge|replace` —
-  egzekwuje: `api/catalog.py::export_type_library`, `import_type_library`,
-- ten sam mechanizm (manifest/eksport/import/odcisk/MERGE-REPLACE) jest powielony
-  rownolegle dla biblioteki zabezpieczen (P14b) — egzekwuje:
-  `governance.py::ProtectionLibraryManifest`, `ProtectionLibraryExport`,
-  `compute_protection_fingerprint`, `CatalogGovernanceService.export_protection_library`
-  / `.import_protection_library`; pin:
+Governance biblioteki typow (spisane 2026-09-09, karta ARCHIWUM-CANONICAL-COMPLIANCE-2;
+skorygowane tego samego dnia karta W1 — z faktycznego zachowania kodu, repo > specy):
+- biblioteka typow sieci w bazie (P13b: manifest/eksport/import/odcisk `TypeLibraryManifest`,
+  `TypeLibraryExport`, `compute_fingerprint`, `sort_types_deterministically`, HTTP
+  `GET /api/catalog/export` / `POST /api/catalog/import`) oraz tabele `line_types`,
+  `cable_types`, `transformer_types`, `switch_equipment_types`, `inverter_types`,
+  `switch_equipment_assignments` SKASOWANE w W1 — jedyny konsument koncowek eksportu/importu
+  (dwa przyciski w `ui/catalog/TypeLibraryBrowser.tsx`) skasowany razem z nimi; w bazie
+  deweloperskiej 0 wierszy w kazdej tabeli. Jedyna
+  prawda typow: katalog statyczny (`network_model/catalog/`) + katalog projektu w ENM
+  (`enm/katalog_projektu.py`, status `PROJEKTOWY_V1` — import arkusza XLSX, migracja
+  legacy), wiazanie elementu z typem wylacznie przez `catalog_ref` w operacjach domenowych;
+  bramka wskrzeszenia: `scripts/legacy_public_path_guard.py::check_w1_legacy_persistence_resurrection`,
+- bramka katalogowa importu (ktore rodzaje galezi wymagaja referencji katalogowej) ma
+  JEDNO zrodlo prawdy: `network_model/catalog/governance.py::wymaga_referencji_katalogowej`
+  (normalizuje nazewnictwo ENM `cable`/`line_overhead` i rdzenia `CABLE`/`LINE`;
+  transformator rozstrzyga `domain_ops_policy`, nie bramka); pin:
+  `tests/network_model/catalog/test_governance.py::test_wymaga_referencji_katalogowej_dla_odcinkow_w_obu_nazewnictwach`,
+  `test_wymaga_referencji_katalogowej_nie_dotyczy_pozostalych`,
+- governance biblioteki zabezpieczen (P14b): manifest niemutowalny i deterministyczny,
+  eksport sortuje typy (nazwa -> id) przed odciskiem SHA-256, import MERGE (domyslny)
+  wylacznie dodaje nowe typy (istniejacy `id` pomijany, konflikt raportowany), REPLACE
+  zastepuje biblioteke — egzekwuje: `governance.py::ImportMode`, `ProtectionLibraryManifest`,
+  `ProtectionLibraryExport.to_canonical_json`, `compute_protection_fingerprint`,
+  `sort_protection_types_deterministically`,
+  `application/catalog_governance/service.py::CatalogGovernanceService.export_protection_library`
+  / `.import_protection_library` nad repozytorium
+  `infrastructure/persistence/repositories/protection_catalog_repository.py`; pin:
   `tests/test_protection_library.py::test_protection_export_deterministic_fingerprint`,
   `test_protection_import_merge_adds_new_skips_existing`,
   `test_protection_import_merge_detects_conflicts`.

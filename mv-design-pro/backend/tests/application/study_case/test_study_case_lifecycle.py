@@ -40,7 +40,6 @@ from network_model.core.snapshot import (
     SnapshotMutationError,
     snapshot_read_only_guard,
 )
-from network_model.sld_projection import project_snapshot_to_sld
 
 # =============================================================================
 # Domain Model Tests
@@ -233,11 +232,9 @@ def _build_sample_snapshot() -> NetworkSnapshot:
 class TestStudyCaseImmutability:
     """Immutability checks for case-related snapshot usage."""
 
-    def test_case_does_not_mutate_snapshot_in_place(self):
-        snapshot = _build_sample_snapshot()
-        with snapshot_read_only_guard(snapshot, operation="test_case_does_not_mutate"):
-            diagram = project_snapshot_to_sld(snapshot)
-        assert diagram.snapshot_id == snapshot.meta.snapshot_id
+    # W1 (2026-09-09): `test_case_does_not_mutate_snapshot_in_place` (czystosc
+    # projekcji SLD z migawki) usuniety razem z `network_model/sld_projection.py`;
+    # intencje klasy (przypadek nie mutuje migawki) niosa dwa ponizsze testy.
 
     def test_case_actions_produce_new_snapshot_id(self):
         snapshot = _build_sample_snapshot()

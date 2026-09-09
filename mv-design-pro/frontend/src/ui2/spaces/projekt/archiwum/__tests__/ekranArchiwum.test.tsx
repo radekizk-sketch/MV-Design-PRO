@@ -141,18 +141,10 @@ describe('EkranArchiwum — odtworzenie projektu z paczki', () => {
         exported_at: '2026-07-30T08:15:00Z',
         archive_hash: 'abcdef0123456789ff',
         summary: {
-          nodes_count: 12,
-          branches_count: 11,
-          sources_count: 1,
-          loads_count: 6,
-          snapshots_count: 2,
-          sld_diagrams_count: 1,
           study_cases_count: 3,
           operating_cases_count: 1,
-          analysis_runs_count: 4,
-          study_runs_count: 0,
-          results_count: 4,
-          proofs_count: 2,
+          canonical_runs_count: 4,
+          enm_models_count: 2,
         },
       }),
     }));
@@ -174,13 +166,11 @@ describe('EkranArchiwum — odtworzenie projektu z paczki', () => {
         etykieta,
         '',
       );
-    expect(wartosc(T.podgladWezly)).toBe('12');
-    expect(wartosc(T.podgladOdbiory)).toBe('6');
     // Warianty = przypadki obliczeniowe + warianty pracy (3 + 1).
     expect(wartosc(T.podgladWarianty)).toBe('4');
-    // Przebiegi = przebiegi analiz + przebiegi studium (4 + 0).
+    // Przebiegi = biegi kanoniczne archiwum 3.0.0 (jedyny rejestr biegów).
     expect(wartosc(T.podgladPrzebiegi)).toBe('4');
-    expect(wartosc(T.podgladDowody)).toBe('2');
+    expect(wartosc(T.podgladModele)).toBe('2');
   });
 
   it('import paczki → końcówka importu z polami formularza i raport wyniku', async () => {

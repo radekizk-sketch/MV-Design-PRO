@@ -197,70 +197,30 @@
     "type": "object"
    },
    "ArchiveSummary": {
-    "description": "Podsumowanie zawartości archiwum.",
+    "description": "Podsumowanie zawartości archiwum.\n\nW1-B-ARCH: model sieci żyje wyłącznie w ENM — archiwum formatu 3.0.0 nie\nniesie już sekcji `network_model`/`sld_diagrams`/`proofs` (tabele ORM,\nktóre je zasilały, skasował W1), więc podsumowanie liczy to, co archiwum\nNAPRAWDĘ niesie: przypadki, biegi kanoniczne, wpisy modelu ENM per\nprzypadek (`enm_models_count`).",
     "properties": {
-     "analysis_runs_count": {
-      "title": "Analysis Runs Count",
+     "canonical_runs_count": {
+      "title": "Canonical Runs Count",
       "type": "integer"
      },
-     "branches_count": {
-      "title": "Branches Count",
-      "type": "integer"
-     },
-     "loads_count": {
-      "title": "Loads Count",
-      "type": "integer"
-     },
-     "nodes_count": {
-      "title": "Nodes Count",
+     "enm_models_count": {
+      "title": "Enm Models Count",
       "type": "integer"
      },
      "operating_cases_count": {
       "title": "Operating Cases Count",
       "type": "integer"
      },
-     "proofs_count": {
-      "title": "Proofs Count",
-      "type": "integer"
-     },
-     "results_count": {
-      "title": "Results Count",
-      "type": "integer"
-     },
-     "sld_diagrams_count": {
-      "title": "Sld Diagrams Count",
-      "type": "integer"
-     },
-     "snapshots_count": {
-      "title": "Snapshots Count",
-      "type": "integer"
-     },
-     "sources_count": {
-      "title": "Sources Count",
-      "type": "integer"
-     },
      "study_cases_count": {
       "title": "Study Cases Count",
-      "type": "integer"
-     },
-     "study_runs_count": {
-      "title": "Study Runs Count",
       "type": "integer"
      }
     },
     "required": [
-     "nodes_count",
-     "branches_count",
-     "sources_count",
-     "loads_count",
-     "snapshots_count",
-     "sld_diagrams_count",
      "study_cases_count",
      "operating_cases_count",
-     "analysis_runs_count",
-     "study_runs_count",
-     "results_count",
-     "proofs_count"
+     "canonical_runs_count",
+     "enm_models_count"
     ],
     "title": "ArchiveSummary",
     "type": "object"
@@ -5626,57 +5586,6 @@
      "migrated_from_version"
     ],
     "title": "ImportResponse",
-    "type": "object"
-   },
-   "ImportTypeLibraryPayload": {
-    "description": "Payload for importing type library",
-    "properties": {
-     "cable_types": {
-      "items": {
-       "additionalProperties": true,
-       "type": "object"
-      },
-      "title": "Cable Types",
-      "type": "array"
-     },
-     "line_types": {
-      "items": {
-       "additionalProperties": true,
-       "type": "object"
-      },
-      "title": "Line Types",
-      "type": "array"
-     },
-     "manifest": {
-      "additionalProperties": true,
-      "title": "Manifest",
-      "type": "object"
-     },
-     "switch_types": {
-      "items": {
-       "additionalProperties": true,
-       "type": "object"
-      },
-      "title": "Switch Types",
-      "type": "array"
-     },
-     "transformer_types": {
-      "items": {
-       "additionalProperties": true,
-       "type": "object"
-      },
-      "title": "Transformer Types",
-      "type": "array"
-     }
-    },
-    "required": [
-     "manifest",
-     "line_types",
-     "cable_types",
-     "transformer_types",
-     "switch_types"
-    ],
-    "title": "ImportTypeLibraryPayload",
     "type": "object"
    },
    "LVCircuitReportRequest": {
@@ -13462,58 +13371,6 @@
     "summary": "Get Gotowosc Dokumentacji Wykonawczej"
    }
   },
-  "/api/analysis-runs/{run_id}/overlay": {
-   "get": {
-    "operationId": "get_analysis_run_overlay_api_analysis_runs__run_id__overlay_get",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "run_id",
-      "required": true,
-      "schema": {
-       "format": "uuid",
-       "title": "Run Id",
-       "type": "string"
-      }
-     },
-     {
-      "in": "query",
-      "name": "diagram_id",
-      "required": true,
-      "schema": {
-       "format": "uuid",
-       "title": "Diagram Id",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "title": "Response Get Analysis Run Overlay Api Analysis Runs  Run Id  Overlay Get",
-         "type": "object"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Get Analysis Run Overlay"
-   }
-  },
   "/api/analysis-runs/{run_id}/pakiet-dowodowy": {
    "get": {
     "description": "Pakiet dowodowy przebiegu (ZIP: dowód, źródło LaTeX, wykaz plików, odcisk).\n\nCała fizyka po stronie serwera — klient podaje wyłącznie przebieg i punkt\nzwarcia. ``punkt`` pominięty ⇒ pierwszy punkt biegu (deterministycznie).",
@@ -15010,73 +14867,6 @@
     "summary": "Get Enm",
     "tags": [
      "enm"
-    ]
-   }
-  },
-  "/api/cases/{case_id}/enm/diff": {
-   "get": {
-    "description": "Porównaj dwie rewizje ENM (techniczny diff).\n\nQuery params:\n    from: ID snapshotu źródłowego (starszego).\n    to: ID snapshotu docelowego (nowszego).\n\nReturns:\n    EnmDiffReport jako JSON z listą zmian.",
-    "operationId": "get_enm_diff_api_cases__case_id__enm_diff_get",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "case_id",
-      "required": true,
-      "schema": {
-       "title": "Case Id",
-       "type": "string"
-      }
-     },
-     {
-      "description": "ID snapshotu źródłowego",
-      "in": "query",
-      "name": "from",
-      "required": true,
-      "schema": {
-       "description": "ID snapshotu źródłowego",
-       "title": "From",
-       "type": "string"
-      }
-     },
-     {
-      "description": "ID snapshotu docelowego",
-      "in": "query",
-      "name": "to",
-      "required": true,
-      "schema": {
-       "description": "ID snapshotu docelowego",
-       "title": "To",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "title": "Response Get Enm Diff Api Cases  Case Id  Enm Diff Get",
-         "type": "object"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Get Enm Diff",
-    "tags": [
-     "diagnostics"
     ]
    }
   },
@@ -16934,148 +16724,6 @@
      }
     },
     "summary": "List Der Dynamic Profiles",
-    "tags": [
-     "Type Catalog"
-    ]
-   }
-  },
-  "/api/catalog/export": {
-   "get": {
-    "description": "Export type library with deterministic fingerprint (P13b).\n\nReturns canonical JSON export with manifest and all types.\nDeterministic ordering ensures identical fingerprint for same content.\n\nQuery Parameters:\n    library_name_pl: Polish name of the library\n    vendor: Vendor/manufacturer name\n    series: Product series/line\n    revision: Revision string\n    description_pl: Optional Polish description",
-    "operationId": "export_type_library_api_catalog_export_get",
-    "parameters": [
-     {
-      "in": "query",
-      "name": "library_name_pl",
-      "required": false,
-      "schema": {
-       "default": "Biblioteka typów",
-       "title": "Library Name Pl",
-       "type": "string"
-      }
-     },
-     {
-      "in": "query",
-      "name": "vendor",
-      "required": false,
-      "schema": {
-       "default": "MV-DESIGN-PRO",
-       "title": "Vendor",
-       "type": "string"
-      }
-     },
-     {
-      "in": "query",
-      "name": "series",
-      "required": false,
-      "schema": {
-       "default": "Standard",
-       "title": "Series",
-       "type": "string"
-      }
-     },
-     {
-      "in": "query",
-      "name": "revision",
-      "required": false,
-      "schema": {
-       "default": "1.0",
-       "title": "Revision",
-       "type": "string"
-      }
-     },
-     {
-      "in": "query",
-      "name": "description_pl",
-      "required": false,
-      "schema": {
-       "default": "",
-       "title": "Description Pl",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "title": "Response Export Type Library Api Catalog Export Get",
-         "type": "object"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Export Type Library",
-    "tags": [
-     "Type Catalog"
-    ]
-   }
-  },
-  "/api/catalog/import": {
-   "post": {
-    "description": "Import type library with conflict detection (P13b).\n\nModes:\n- merge (default): Add new types, skip existing (no overwrites)\n- replace: Replace entire library (blocked if types are in use)\n\nConflict rules:\n- Existing type_id with different parameters → 409 Conflict\n- REPLACE mode with types in use → 409 Conflict\n\nReturns ImportReport with added/skipped/conflicts lists.",
-    "operationId": "import_type_library_api_catalog_import_post",
-    "parameters": [
-     {
-      "in": "query",
-      "name": "mode",
-      "required": false,
-      "schema": {
-       "default": "merge",
-       "title": "Mode",
-       "type": "string"
-      }
-     }
-    ],
-    "requestBody": {
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/ImportTypeLibraryPayload"
-       }
-      }
-     },
-     "required": true
-    },
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "title": "Response Import Type Library Api Catalog Import Post",
-         "type": "object"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Import Type Library",
     "tags": [
      "Type Catalog"
     ]
@@ -23351,70 +22999,6 @@
     "tags": [
      "protection-analysis"
     ]
-   }
-  },
-  "/api/projects/{project_id}/sld/{diagram_id}/overlay": {
-   "get": {
-    "operationId": "get_sld_result_overlay_api_projects__project_id__sld__diagram_id__overlay_get",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "project_id",
-      "required": true,
-      "schema": {
-       "format": "uuid",
-       "title": "Project Id",
-       "type": "string"
-      }
-     },
-     {
-      "in": "path",
-      "name": "diagram_id",
-      "required": true,
-      "schema": {
-       "format": "uuid",
-       "title": "Diagram Id",
-       "type": "string"
-      }
-     },
-     {
-      "description": "Analysis run ID for result overlay",
-      "in": "query",
-      "name": "run_id",
-      "required": true,
-      "schema": {
-       "description": "Analysis run ID for result overlay",
-       "format": "uuid",
-       "title": "Run Id",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "title": "Response Get Sld Result Overlay Api Projects  Project Id  Sld  Diagram Id  Overlay Get",
-         "type": "object"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Get Sld Result Overlay"
    }
   },
   "/api/projects/{project_id}/sld/{diagram_id}/protection-overlay": {

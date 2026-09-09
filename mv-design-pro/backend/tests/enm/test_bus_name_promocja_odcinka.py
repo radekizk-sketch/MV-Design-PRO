@@ -29,14 +29,14 @@ from __future__ import annotations
 
 from typing import Any
 
+from enm.assembler import zloz_wejscie_zwarcia
+from enm.domain_operations import execute_domain_operation
 from enm.kompilator_grafu import (
     dodaj_zrodlo_slack,
     kontynuuj_z_pola,
     kontynuuj_z_szyny,
     rozpocznij_z_pola,
 )
-from enm.assembler import zloz_wejscie_zwarcia
-from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 
 CATALOG_LINE = "line-base-al-st-70"

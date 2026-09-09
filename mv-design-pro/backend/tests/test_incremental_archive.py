@@ -1,6 +1,13 @@
 """
 Testy eksportu przyrostowego (Incremental Archive Export).
 
+W1-B-ARCH: `network_model`/`sld_diagrams`/`proofs` skasowane razem z sekcjami
+`ProjectArchive` formatu 3.0.0, którym odpowiadały (W1 skasował tabele ORM,
+które je zasilały). `SECTION_NAMES` niesie odtąd siedem sekcji (`project_meta`,
+`cases`, `runs`, `results`, `interpretations`, `issues`, `enm`) — testy zmian
+sekcji używają `cases.study_cases`/`runs.canonical_runs` (sekcje, które ZOSTAJĄ)
+w miejsce dawnych `network_model.nodes`/`proofs.design_specs`.
+
 Pokrycie:
 - Brak zmian → pusta delta (wszystkie UNCHANGED)
 - Jedna sekcja zmieniona → tylko ta sekcja w delta
@@ -17,6 +24,7 @@ Pokrycie:
 - Weryfikacja fingerprints po apply
 - Serializacja/deserializacja z nieprawidłowym ZIP
 - Deserializacja z brakującym polem
+- §0.1/§0.5: kontrakt siedmiu sekcji jest przypięty testem
 """
 
 from __future__ import annotations
@@ -50,53 +58,41 @@ from domain.project_archive import (
     CasesSection,
     InterpretationsSection,
     IssuesSection,
-    NetworkModelSection,
     ProjectArchive,
     ProjectMeta,
-    ProofsSection,
     ResultsSection,
     RunsSection,
-    SldSection,
     archive_to_dict,
     compute_archive_fingerprints,
 )
 
 # ============================================================================
-# FIXTURES — tworzenie archiwum testowych
+# FIXTURES — tworzenie archiwum testowych (format 3.0.0)
 # ============================================================================
 
 
 def _make_fingerprints(
     project_meta: dict,
-    network_model: dict,
-    sld: dict,
     cases: dict,
     runs: dict,
     results: dict,
-    proofs: dict,
     interpretations: dict | None = None,
     issues: dict | None = None,
 ) -> ArchiveFingerprints:
     """Pomocnicza fabryka fingerprints."""
     return compute_archive_fingerprints(
         project_meta=project_meta,
-        network_model=network_model,
-        sld=sld,
         cases=cases,
         runs=runs,
         results=results,
-        proofs=proofs,
         interpretations=interpretations or {"cached": []},
         issues=issues or {"snapshot": []},
     )
 
 
 def _make_archive(
-    nodes: list | None = None,
-    branches: list | None = None,
     study_cases: list | None = None,
     canonical_runs: list | None = None,
-    design_specs: list | None = None,
     project_name: str = "TestProject",
 ) -> ProjectArchive:
     """Fabryka pełnego archiwum testowego z opcjonalnymi nadpisaniami."""
@@ -105,67 +101,33 @@ def _make_archive(
         "name": project_name,
         "description": "Projekt testowy",
         "schema_version": ARCHIVE_SCHEMA_VERSION,
-        "active_network_snapshot_id": None,
         "connection_node_id": None,
         "sources": [],
         "created_at": "2025-01-01T00:00:00",
         "updated_at": "2025-01-01T00:00:00",
     }
-    nm_dict = {
-        "nodes": nodes or [{"id": "n1", "name": "Bus1", "voltage_kv": 15.0}],
-        "branches": branches or [],
-        "sources": [],
-        "loads": [],
-        "snapshots": [],
-    }
-    sld_dict = {
-        "diagrams": [],
-        "node_symbols": [],
-        "branch_symbols": [],
-        "annotations": [],
-    }
     cases_dict = {
         "study_cases": study_cases or [],
         "operating_cases": [],
-        "switching_states": [],
         "settings": None,
     }
     # CV-3.3-B: wyniki biegow zyja w sekcji `runs` (`canonical_runs`, R1,
     # kazdy bieg niesie `raw_result`); `results` to pusty kontener, ktory
-    # zostaje w strukturze i odcisku archiwum. Testy "zmiana wynikow" mierza
-    # odtad zmiane sekcji `runs` — ta sama intencja (delta tylko po wynikach).
+    # zostaje w strukturze i odcisku archiwum.
     runs_dict = {"canonical_runs": canonical_runs or [], "analysis_runs_index": []}
     results_dict: dict = {}
-    proofs_dict = {
-        "design_specs": design_specs or [],
-        "design_proposals": [],
-        "design_evidence": [],
-    }
     interp_dict = {"cached": []}
     issues_dict = {"snapshot": []}
 
-    fp = _make_fingerprints(
-        pm_dict,
-        nm_dict,
-        sld_dict,
-        cases_dict,
-        runs_dict,
-        results_dict,
-        proofs_dict,
-        interp_dict,
-        issues_dict,
-    )
+    fp = _make_fingerprints(pm_dict, cases_dict, runs_dict, results_dict, interp_dict, issues_dict)
 
     return ProjectArchive(
         schema_version=ARCHIVE_SCHEMA_VERSION,
         format_id=ARCHIVE_FORMAT_ID,
         project_meta=ProjectMeta(**pm_dict),
-        network_model=NetworkModelSection(**nm_dict),
-        sld_diagrams=SldSection(**sld_dict),
         cases=CasesSection(**cases_dict),
         runs=RunsSection(**runs_dict),
         results=ResultsSection(),
-        proofs=ProofsSection(**proofs_dict),
         interpretations=InterpretationsSection(**interp_dict),
         issues=IssuesSection(**issues_dict),
         fingerprints=fp,
@@ -177,6 +139,27 @@ def _make_archive(
 # ============================================================================
 
 
+class TestFormat300Contract:
+    """§0.1/§0.5: siedem sekcji formatu 3.0.0 — kontrakt przypięty testem
+    (KLASA NIE INSTANCJA §4 — deklaracja bez testu jest fałszywą pewnością)."""
+
+    def test_section_names_has_no_deleted_sections(self):
+        deleted = {"network_model", "sld_diagrams", "proofs"}
+        assert deleted.isdisjoint(SECTION_NAMES)
+        assert set(SECTION_NAMES) == {
+            "project_meta",
+            "cases",
+            "runs",
+            "results",
+            "interpretations",
+            "issues",
+            "enm",
+        }
+
+    def test_section_names_has_seven_entries(self):
+        assert len(SECTION_NAMES) == 7
+
+
 class TestComputeSectionDeltas:
     """Testy compute_section_deltas."""
 
@@ -185,30 +168,30 @@ class TestComputeSectionDeltas:
         archive = _make_archive()
         deltas = compute_section_deltas(archive.fingerprints, archive)
 
-        assert len(deltas) == len(SECTION_NAMES)  # komplet sekcji (z enm po N-D1)
+        assert len(deltas) == len(SECTION_NAMES)
         for d in deltas:
             assert d.status == SectionChangeStatus.UNCHANGED
             assert d.data is None
 
     def test_single_section_changed(self) -> None:
-        """Zmiana jednej sekcji (network_model) → tylko ta sekcja MODIFIED."""
+        """Zmiana jednej sekcji (cases) → tylko ta sekcja MODIFIED."""
         base = _make_archive()
         modified = _make_archive(
-            nodes=[
-                {"id": "n1", "name": "Bus1", "voltage_kv": 15.0},
-                {"id": "n2", "name": "Bus2", "voltage_kv": 15.0},
+            study_cases=[
+                {"id": "sc1", "name": "Przypadek 1"},
+                {"id": "sc2", "name": "Przypadek 2"},
             ]
         )
 
         deltas = compute_section_deltas(base.fingerprints, modified)
         delta_map = {d.section_name: d for d in deltas}
 
-        assert delta_map["network_model"].status == SectionChangeStatus.MODIFIED
-        assert delta_map["network_model"].data is not None
-        assert len(delta_map["network_model"].data["nodes"]) == 2
+        assert delta_map["cases"].status == SectionChangeStatus.MODIFIED
+        assert delta_map["cases"].data is not None
+        assert len(delta_map["cases"].data["study_cases"]) == 2
 
         # Inne sekcje powinny być UNCHANGED
-        for name in ("sld_diagrams", "cases", "runs", "results", "proofs"):
+        for name in ("runs", "results", "interpretations", "issues", "enm"):
             assert delta_map[name].status == SectionChangeStatus.UNCHANGED
             assert delta_map[name].data is None
 
@@ -216,10 +199,6 @@ class TestComputeSectionDeltas:
         """Zmiana wielu sekcji → odpowiednie sekcje MODIFIED."""
         base = _make_archive()
         modified = _make_archive(
-            nodes=[
-                {"id": "n1", "name": "Bus1", "voltage_kv": 15.0},
-                {"id": "n2", "name": "Bus2", "voltage_kv": 20.0},
-            ],
             study_cases=[{"id": "sc1", "name": "Przypadek 1"}],
             canonical_runs=[
                 {"id": "r1", "analysis_type": "power_flow", "raw_result": {"value": 42}}
@@ -229,12 +208,11 @@ class TestComputeSectionDeltas:
         deltas = compute_section_deltas(base.fingerprints, modified)
         delta_map = {d.section_name: d for d in deltas}
 
-        assert delta_map["network_model"].status == SectionChangeStatus.MODIFIED
         assert delta_map["cases"].status == SectionChangeStatus.MODIFIED
         assert delta_map["runs"].status == SectionChangeStatus.MODIFIED
 
         # Inne sekcje powinny być UNCHANGED
-        unchanged_names = {"sld_diagrams", "results", "proofs", "interpretations", "issues"}
+        unchanged_names = {"results", "interpretations", "issues", "enm"}
         for name in unchanged_names:
             assert delta_map[name].status == SectionChangeStatus.UNCHANGED
 
@@ -246,12 +224,9 @@ class TestComputeSectionDeltas:
         base_fp = ArchiveFingerprints(
             archive_hash=archive.fingerprints.archive_hash,
             project_meta_hash=archive.fingerprints.project_meta_hash,
-            network_model_hash=archive.fingerprints.network_model_hash,
-            sld_hash=archive.fingerprints.sld_hash,
             cases_hash=archive.fingerprints.cases_hash,
             runs_hash=archive.fingerprints.runs_hash,
             results_hash=archive.fingerprints.results_hash,
-            proofs_hash=archive.fingerprints.proofs_hash,
             interpretations_hash="",  # pusty = sekcja nie istniała
             issues_hash=archive.fingerprints.issues_hash,
         )
@@ -288,21 +263,21 @@ class TestBuildIncrementalArchive:
         """Zmiany w sekcjach → IncrementalArchive z deltami."""
         base = _make_archive()
         modified = _make_archive(
-            nodes=[
-                {"id": "n1", "name": "Bus1", "voltage_kv": 15.0},
-                {"id": "n3", "name": "Bus3", "voltage_kv": 110.0},
+            study_cases=[
+                {"id": "sc1", "name": "Przypadek 1"},
+                {"id": "sc3", "name": "Przypadek 3"},
             ]
         )
         incr = build_incremental_archive(base.fingerprints, modified)
 
         delta_map = {d.section_name: d for d in incr.deltas}
-        assert delta_map["network_model"].status == SectionChangeStatus.MODIFIED
-        assert delta_map["network_model"].data is not None
+        assert delta_map["cases"].status == SectionChangeStatus.MODIFIED
+        assert delta_map["cases"].data is not None
 
     def test_deterministic_signature_consistency(self) -> None:
         """Ta sama delta → taka sama sygnatura (determinizm)."""
         base = _make_archive()
-        modified = _make_archive(branches=[{"id": "b1", "from": "n1", "to": "n2"}])
+        modified = _make_archive(study_cases=[{"id": "sc1", "name": "Przypadek 1"}])
 
         ts = "2025-06-01T12:00:00Z"
         incr1 = build_incremental_archive(base.fingerprints, modified, base_timestamp=ts)
@@ -313,8 +288,8 @@ class TestBuildIncrementalArchive:
     def test_different_changes_different_signature(self) -> None:
         """Różne zmiany → różna sygnatura."""
         base = _make_archive()
-        mod_a = _make_archive(nodes=[{"id": "n1", "name": "X", "voltage_kv": 15.0}])
-        mod_b = _make_archive(nodes=[{"id": "n1", "name": "Y", "voltage_kv": 15.0}])
+        mod_a = _make_archive(study_cases=[{"id": "sc1", "name": "X"}])
+        mod_b = _make_archive(study_cases=[{"id": "sc1", "name": "Y"}])
 
         ts = "2025-06-01T12:00:00Z"
         incr_a = build_incremental_archive(base.fingerprints, mod_a, base_timestamp=ts)
@@ -341,11 +316,10 @@ class TestApplyIncrementalArchive:
         """Nałożenie delty → rekonstrukcja zmodyfikowanego archiwum."""
         base = _make_archive()
         modified = _make_archive(
-            nodes=[
-                {"id": "n1", "name": "Bus1", "voltage_kv": 15.0},
-                {"id": "n2", "name": "Bus2", "voltage_kv": 20.0},
-            ],
-            study_cases=[{"id": "sc1", "name": "Przypadek A"}],
+            study_cases=[
+                {"id": "sc1", "name": "Przypadek A"},
+                {"id": "sc2", "name": "Przypadek B"},
+            ]
         )
 
         incr = build_incremental_archive(base.fingerprints, modified)
@@ -360,7 +334,7 @@ class TestApplyIncrementalArchive:
     def test_apply_base_hash_mismatch_raises(self) -> None:
         """Niezgodność hash bazowego → BaseHashMismatchError."""
         base = _make_archive()
-        other_base = _make_archive(nodes=[{"id": "n99", "name": "Other", "voltage_kv": 1.0}])
+        other_base = _make_archive(study_cases=[{"id": "sc99", "name": "Inny"}])
         modified = _make_archive(
             canonical_runs=[{"id": "r1", "analysis_type": "power_flow", "raw_result": {"val": 100}}]
         )
@@ -375,11 +349,11 @@ class TestApplyIncrementalArchive:
         # Krok 0: baza
         base = _make_archive()
 
-        # Krok 1: dodajemy węzeł
+        # Krok 1: dodajemy przypadek
         step1 = _make_archive(
-            nodes=[
-                {"id": "n1", "name": "Bus1", "voltage_kv": 15.0},
-                {"id": "n2", "name": "Bus2", "voltage_kv": 20.0},
+            study_cases=[
+                {"id": "sc1", "name": "Przypadek 1"},
+                {"id": "sc2", "name": "Przypadek 2"},
             ]
         )
         delta1 = build_incremental_archive(base.fingerprints, step1)
@@ -387,13 +361,13 @@ class TestApplyIncrementalArchive:
 
         assert archive_to_dict(reconstructed1) == archive_to_dict(step1)
 
-        # Krok 2: dodajemy przypadek obliczeniowy
+        # Krok 2: dodajemy bieg kanoniczny
         step2 = _make_archive(
-            nodes=[
-                {"id": "n1", "name": "Bus1", "voltage_kv": 15.0},
-                {"id": "n2", "name": "Bus2", "voltage_kv": 20.0},
+            study_cases=[
+                {"id": "sc1", "name": "Przypadek 1"},
+                {"id": "sc2", "name": "Przypadek 2"},
             ],
-            study_cases=[{"id": "sc1", "name": "Scenariusz"}],
+            canonical_runs=[{"id": "r1", "analysis_type": "power_flow", "raw_result": {}}],
         )
         delta2 = build_incremental_archive(reconstructed1.fingerprints, step2)
         reconstructed2 = apply_incremental_archive(reconstructed1, delta2)
@@ -424,11 +398,11 @@ class TestSerializationRoundtrip:
         """Roundtrip serializacji delty ze zmianami."""
         base = _make_archive()
         modified = _make_archive(
-            nodes=[
-                {"id": "n1", "name": "Bus1", "voltage_kv": 15.0},
-                {"id": "n2", "name": "BusNew", "voltage_kv": 30.0},
+            study_cases=[
+                {"id": "sc1", "name": "Przypadek 1"},
+                {"id": "sc2", "name": "Nowy przypadek"},
             ],
-            design_specs=[{"id": "ds1", "spec": "IEC 60909"}],
+            canonical_runs=[{"id": "r1", "analysis_type": "short_circuit", "raw_result": {}}],
         )
 
         incr = build_incremental_archive(base.fingerprints, modified)
@@ -482,9 +456,7 @@ class TestSizeSavings:
     def test_delta_smaller_than_full(self) -> None:
         """Delta powinna być mniejsza niż pełne archiwum."""
         base = _make_archive(
-            nodes=[{"id": f"n{i}", "name": f"Bus{i}", "voltage_kv": 15.0} for i in range(50)],
-            branches=[{"id": f"b{i}", "from": f"n{i}", "to": f"n{i+1}"} for i in range(49)],
-            study_cases=[{"id": f"sc{i}", "name": f"Przypadek {i}"} for i in range(20)],
+            study_cases=[{"id": f"sc{i}", "name": f"Przypadek {i}"} for i in range(50)],
             canonical_runs=[
                 {"id": f"r{i}", "analysis_type": "power_flow", "raw_result": {"value": i * 1.1}}
                 for i in range(30)
@@ -493,9 +465,7 @@ class TestSizeSavings:
 
         # Niewielka zmiana — tylko wyniki biegow (sekcja `runs`)
         modified = _make_archive(
-            nodes=[{"id": f"n{i}", "name": f"Bus{i}", "voltage_kv": 15.0} for i in range(50)],
-            branches=[{"id": f"b{i}", "from": f"n{i}", "to": f"n{i+1}"} for i in range(49)],
-            study_cases=[{"id": f"sc{i}", "name": f"Przypadek {i}"} for i in range(20)],
+            study_cases=[{"id": f"sc{i}", "name": f"Przypadek {i}"} for i in range(50)],
             canonical_runs=[
                 {"id": f"r{i}", "analysis_type": "power_flow", "raw_result": {"value": i * 2.2}}
                 for i in range(30)  # zmienione wyniki biegow
@@ -516,16 +486,25 @@ class TestSizeSavings:
 
     def test_compute_export_result_metrics(self) -> None:
         """compute_export_result zwraca poprawne metryki."""
-        # Duże archiwum — delta powinna być mniejsza
+        # Duże, NIEZMIENIONE `canonical_runs` w obu archiwach — pełny rozmiar
+        # rośnie, ale delta ich pomija (sekcja `runs` nie zmieniła się), więc
+        # oszczędność jest widoczna dopiero przy realnym rozmiarze archiwum
+        # (jak przy dużej sieci — usuniętej razem z network_model, W1).
+        niezmienione_biegi = [
+            {
+                "id": f"r{i}",
+                "analysis_type": "power_flow",
+                "raw_result": {"value": i, "pad": "x" * 200},
+            }
+            for i in range(100)
+        ]
         base = _make_archive(
-            nodes=[{"id": f"n{i}", "name": f"Bus{i}", "voltage_kv": 15.0} for i in range(100)],
-            branches=[{"id": f"b{i}", "from": f"n{i}", "to": f"n{i+1}"} for i in range(99)],
-            study_cases=[{"id": f"sc{i}", "name": f"Przypadek {i}"} for i in range(50)],
+            study_cases=[{"id": f"sc{i}", "name": f"Przypadek {i}"} for i in range(100)],
+            canonical_runs=niezmienione_biegi,
         )
         modified = _make_archive(
-            nodes=[{"id": f"n{i}", "name": f"Bus{i}", "voltage_kv": 15.0} for i in range(100)],
-            branches=[{"id": f"b{i}", "from": f"n{i}", "to": f"n{i+1}"} for i in range(99)],
-            study_cases=[{"id": f"sc{i}", "name": f"Przypadek zmieniony {i}"} for i in range(50)],
+            study_cases=[{"id": f"sc{i}", "name": f"Przypadek zmieniony {i}"} for i in range(100)],
+            canonical_runs=niezmienione_biegi,
         )
 
         incr = build_incremental_archive(base.fingerprints, modified)
@@ -607,32 +586,31 @@ class TestFingerprintsAfterApply:
         """Fingerprints po apply powinny odpowiadać fingerprints zmodyfikowanego archiwum."""
         base = _make_archive()
         modified = _make_archive(
-            nodes=[
-                {"id": "n1", "name": "Bus1", "voltage_kv": 15.0},
-                {"id": "n2", "name": "Bus2", "voltage_kv": 20.0},
+            study_cases=[
+                {"id": "sc1", "name": "Przypadek 1"},
+                {"id": "sc2", "name": "Test"},
             ],
-            study_cases=[{"id": "sc1", "name": "Test"}],
-            design_specs=[{"id": "ds1", "norm": "IEC"}],
+            canonical_runs=[{"id": "r1", "analysis_type": "power_flow", "raw_result": {}}],
         )
 
         incr = build_incremental_archive(base.fingerprints, modified)
         result = apply_incremental_archive(base, incr)
 
         assert result.fingerprints.archive_hash == modified.fingerprints.archive_hash
-        assert result.fingerprints.network_model_hash == modified.fingerprints.network_model_hash
         assert result.fingerprints.cases_hash == modified.fingerprints.cases_hash
-        assert result.fingerprints.proofs_hash == modified.fingerprints.proofs_hash
+        assert result.fingerprints.runs_hash == modified.fingerprints.runs_hash
 
     def test_unchanged_sections_preserve_hash(self) -> None:
         """Sekcje UNCHANGED zachowują hash po nałożeniu delty."""
         base = _make_archive()
-        modified = _make_archive(nodes=[{"id": "n1", "name": "Changed", "voltage_kv": 99.0}])
+        modified = _make_archive(study_cases=[{"id": "sc1", "name": "Zmieniony"}])
 
         incr = build_incremental_archive(base.fingerprints, modified)
         result = apply_incremental_archive(base, incr)
 
-        # sld nie zmieniło się — hash powinien być taki sam jak w bazie
-        assert result.fingerprints.sld_hash == base.fingerprints.sld_hash
+        # results/interpretations nie zmieniło się — hash powinien być taki sam jak w bazie
+        assert result.fingerprints.results_hash == base.fingerprints.results_hash
+        assert result.fingerprints.interpretations_hash == base.fingerprints.interpretations_hash
         # runs nie zmieniło się
         assert result.fingerprints.runs_hash == base.fingerprints.runs_hash
 
@@ -686,8 +664,8 @@ class TestFrozenDataclasses:
         result = IncrementalExportResult(
             success=True,
             archive_bytes=b"",
-            sections_changed=0,
-            sections_unchanged=9,
+            sections_changed=1,
+            sections_unchanged=6,
             size_full_bytes=100,
             size_delta_bytes=50,
             savings_percent=50.0,

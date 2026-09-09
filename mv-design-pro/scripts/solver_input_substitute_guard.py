@@ -448,7 +448,6 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "analysis/sanity_bounds/short_circuit_bounds.py",
     "analysis/voltage_profile/models.py",
     "catalog/profiles/nc_rfg/loader.py",
-    "diagnostics/diff.py",
     "diagnostics/preflight.py",
     "domain/analysis_run.py",
     "domain/archive_diff.py",
@@ -467,7 +466,6 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "domain/project_archive.py",
     "domain/protection_analysis.py",
     "domain/protection_comparison.py",
-    "domain/protection_coordination_v1.py",
     "domain/protection_current_source.py",
     "domain/protection_device.py",
     "domain/protection_engine_v1.py",
@@ -476,7 +474,6 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "domain/result_contract_v1.py",
     "domain/result_set.py",
     "domain/results.py",
-    "domain/sld.py",
     "domain/switchgear_config.py",
     "domain/trace_v2/artifact.py",
     "domain/trace_v2/equation_registry_v2.py",
@@ -557,35 +554,23 @@ _NUMERIC_CALLS: frozenset[str] = frozenset(
 #:    juz zaakceptowanej (w `ZASTANE_ZASTEPNIKI`) klasy „odczyt WARTOSCI sladu
 #:    solvera" (np. `max_mismatch_pu`, ktore JEST wielkoscia fizyczna — bledem
 #:    zbieznosci w j. pu), patrz `application/trace_emitters/load_flow_emitter.py`.
-#:  * licznik POMINIETYCH REKORDOW przy imporcie (akumulator `.get(k,0)+1`,
-#:    idiom zliczania, nie odczyt danej) — `application/network_wizard/service.py`.
 #:  * ranga/priorytet ZADANIA w kolejce automatyzacji (nie elementu sieci) i
 #:    konfiguracja odpytywania/ponawiania joba (`application/symphony/**`) —
 #:    poza domena elektryczna w calosci.
-#:  * geometria WIZUALNA adnotacji SLD (wspolrzedne x/y etykiety na kanwie) —
-#:    warstwa SLD nie liczy fizyki z definicji (ARCHITECTURE.md, Architecture
-#:    Layer Boundaries) — `application/sld/layout.py`.
 WYKLUCZENIA_SKANERA: dict[str, dict[str, int]] = {
-    # Manifest archiwum projektu: 12 liczb REKORDOW (ile szyn/galezi/zrodel/
-    # odbiorow/migawek/diagramow SLD/przypadkow obliczeniowych/uruchomien/
-    # wynikow/dowodow ISTNIEJE w projekcie) do wyswietlenia w podsumowaniu
-    # eksportu. Zweryfikowane w zrodle (w. 232-243): kazda pozycja to
-    # `summary_data.get("<pole>_count", 0)` budujace `ArchiveSummary` — DTO
-    # WYLACZNIE prezentacyjne, brak dalszego uzycia w arytmetyce. Zero
-    # rekordow przy braku danych jest UCZCIWA wartoscia (nie zalozeniem).
+    # Manifest archiwum projektu (format 3.0.0, W1 2026-09-09): 4 liczby REKORDOW
+    # (ile przypadkow obliczeniowych/roboczych, biegow kanonicznych i zapisow modelu
+    # ENM ISTNIEJE w archiwum) do wyswietlenia w podsumowaniu podgladu. Zweryfikowane
+    # w zrodle: kazda pozycja to `summary_data.get("<pole>_count", 0)` budujace
+    # `ArchiveSummary` — DTO WYLACZNIE prezentacyjne, brak dalszego uzycia w
+    # arytmetyce. Zero rekordow przy braku danych jest UCZCIWA wartoscia (nie
+    # zalozeniem). Dawne 12 liczb sekcji legacy (wezly/galezie/zrodla/odbiory/
+    # migawki/diagramy SLD/uruchomienia/wyniki/dowody) zeszlo razem z sekcjami.
     "api/project_archive.py": {
-        "F:dictget:summary_data.analysis_runs_count": 1,
-        "F:dictget:summary_data.branches_count": 1,
-        "F:dictget:summary_data.loads_count": 1,
-        "F:dictget:summary_data.nodes_count": 1,
+        "F:dictget:summary_data.canonical_runs_count": 1,
+        "F:dictget:summary_data.enm_models_count": 1,
         "F:dictget:summary_data.operating_cases_count": 1,
-        "F:dictget:summary_data.proofs_count": 1,
-        "F:dictget:summary_data.results_count": 1,
-        "F:dictget:summary_data.sld_diagrams_count": 1,
-        "F:dictget:summary_data.snapshots_count": 1,
-        "F:dictget:summary_data.sources_count": 1,
         "F:dictget:summary_data.study_cases_count": 1,
-        "F:dictget:summary_data.study_runs_count": 1,
     },
     # Diff dwoch archiwow: 6 liczb REKORDOW diffa (ile sekcji identycznych/
     # zmienionych/ile elementow dodanych/usunietych/zmodyfikowanych) — jak
@@ -646,15 +631,6 @@ WYKLUCZENIA_SKANERA: dict[str, dict[str, int]] = {
         "F:dictget:summary.pass_count": 1,
         "F:dictget:summary.warning_count": 1,
     },
-    # Zliczenie REKORDOW pominietych przy imporcie XLSX/JSON projektu — idiom
-    # akumulatora `skipped["nodes"] = skipped.get("nodes", 0) + 1`
-    # (zweryfikowane w zrodle, w. 1389 i siostrzane), nie odczyt danej.
-    "application/network_wizard/service.py": {
-        "F:dictget:skipped.branches": 2,
-        "F:dictget:skipped.nodes": 2,
-        "F:dictget:skipped.operating_cases": 1,
-        "F:dictget:skipped.study_cases": 1,
-    },
     # Automatyzacja Symphony (kolejka zadan agentowych, `WorkflowDefinition`/
     # `tracker.kind == "linear"`) — CALKOWICIE POZA DOMENA ELEKTRYCZNA. Ranga
     # priorytetu ZADANIA (nie elementu sieci) w kolejce dyspozytora oraz
@@ -667,31 +643,11 @@ WYKLUCZENIA_SKANERA: dict[str, dict[str, int]] = {
         "F:dictget:polling.retry_max_attempts": 1,
         "F:dictget:polling.retry_max_delay_seconds": 1,
     },
-    # Wspolrzedne x/y adnotacji SLD (etykieta tekstowa na kanwie diagramu) —
-    # geometria WIZUALNA warstwy SLD, ktora z definicji NIE liczy fizyki
-    # (ARCHITECTURE.md, Architecture Layer Boundaries: „SLD (visualization) —
-    # NO physics calculations"). Brakujaca wspolrzedna domyslnie 0.0 (poczatek
-    # kanwy) jest nieszkodliwym polozeniem etykiety, nie zmyslona wielkoscia.
-    "application/sld/layout.py": {
-        "F:dictget:annotation.x": 1,
-        "F:dictget:annotation.y": 1,
-    },
-    # KARTA GUARD-SUB-2 (2026-09-05) — TRZY NOWE KLASY, WSZYSTKIE odslonione
+    # KARTA GUARD-SUB-2 (2026-09-05) — TRZY NOWE KLASY (klasa (d): klucz sortowania
+    # z flaga logiczna w krotce, `network_model/reporting/power_flow_report_docx.py`,
+    # zeszla razem z plikiem w W1, 2026-09-09), WSZYSTKIE odslonione
     # przez forme H (nosnik lokalny), zero fizyki w kazdej.
     #
-    # (d) SORT KEY STRUKTURALNIE OBOJETNY na wynik sortowania. `_klucz_
-    # sortowania_delty` zwraca KROTKE `(delta is not None, abs(delta) if ...
-    # else 0.0)` — PIERWSZY element (flaga logiczna) ROZSTRZYGA porownanie
-    # kazdej pary krotek, w ktorej jedna strona ma brakujacy `delta_v_pu`, a
-    # druga nie (`True`/`False` roznia sie ZAWSZE w takim przypadku, wiec
-    # DRUGI element krotki nigdy nie jest w takiej parze porownywany) —
-    # zweryfikowane w zrodle, komentarz FAB-E wprost: „nie traktujemy None
-    # jako 0 pu". Sam zwracany klucz jest wewnetrzny dla `sorted(...)`
-    # (Python odrzuca go po posortowaniu) — `0.0` nigdy nie trafia do
-    # zadnego pola wyniku ani do arytmetyki elektrycznej.
-    "network_model/reporting/power_flow_report_docx.py": {
-        "H:local:wiersz.delta_v_pu": 1,
-    },
     # (e) REGULA WALIDACJI (nie solver), ktora CELOWO traktuje BRAK mocy
     # odbioru jak jej JAWNE zero — `rule_zero_power_load` (docstring wprost:
     # „najprawdopodobniej placeholder LUB BRAK MATERIALIZACJI KATALOGU")
@@ -1293,15 +1249,6 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "F:dictget:result_v1.base_mva": 1,
         "F:dictget:result_v1.tolerance_used": 1,
     },
-    "application/network_wizard/service.py": {
-        # Karta CV-4.2: `build_power_flow_input`/`build_short_circuit_input`
-        # (jedyny dom `B:ifexp:setpoint.cosphi`, `case.base_mva`,
-        # `case_payload.base_mva`, `data.p_mw`, `payload.p_mw/q_*/u_pu`,
-        # `slack_data.voltage_*`) skasowane — kreator P2/S4 (0 wywołań
-        # produkcyjnych). `node_data.base_kv` zostaje: inna funkcja
-        # (`_upsert_node`, import CSV/JSON), poza zakresem tej karty.
-        "F:dictget:node_data.base_kv": 1,
-    },
     "application/network_wizard/step_controller.py": {
         "F:dictget:data.rx_ratio": 1,
         "F:dictget:data.sk3_mva": 1,
@@ -1573,9 +1520,9 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # `application/analyses/werdykt_projektowy.py`: DWIE funkcje klucza
     # sortowania (`_wiodacy_wiersz_walidacji`/`_wiodaca_galaz`) wybierajace
     # „NAJGORSZY" wiersz walidacji do zaraportowania w podsumowaniu werdyktu
-    # projektowego. W ODROZNIENIU od wykluczenia `power_flow_report_docx.py`
-    # wyzej (gdzie flaga logiczna w krotce strukturalnie gwarantuje obojetnosc
-    # zapasu na wynik), TU zapas (`float("inf")`/`-1.0`) jest JEDYNYM
+    # projektowego. W ODROZNIENIU od dawnego wykluczenia klucza sortowania z flaga
+    # logiczna w krotce (`power_flow_report_docx.py`, skasowany w W1 — flaga
+    # strukturalnie gwarantowala obojetnosc zapasu na wynik), TU zapas (`float("inf")`/`-1.0`) jest JEDYNYM
     # czynnikiem decydujacym o pozycji — wiersz z BRAKUJACYM `margin_pct`/
     # `utilization` (analiza nie policzyla wartosci) dostaje sztucznie
     # „najbezpieczniejsza" pozycje i NIGDY nie zostanie wskazany jako wiodacy

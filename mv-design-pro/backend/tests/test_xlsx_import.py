@@ -20,9 +20,9 @@ from application.xlsx_import import XlsxImportService, XlsxNetworkImporter
 from application.xlsx_import.service import (
     ARKUSZ_MODELU,
     NAZWA_PIERWSZEGO_PRZYPADKU,
-    OPERACJA_IMPORTU,
     STATUS_ODRZUCONO,
     STATUS_ZAIMPORTOWANO,
+    ZRODLO_IMPORTU,
 )
 from enm.dziennik_zmian import wszystkie_wpisy
 from enm.klucz_twin import klucz_twin_projektu
@@ -639,7 +639,11 @@ class TestZapisDoModelu:
     def test_dziennik_zmian_nazywa_import_jako_przyczyne_rewizji(self, serwis, test_db_session):
         wynik = serwis.importuj(arkusz_siec_sn(), "Sieć", "siec.xlsx")
         [wpis] = wszystkie_wpisy(klucz_twin_projektu(UUID(wynik.project_id or "")))
-        assert wpis.operacja == OPERACJA_IMPORTU
+        # Import nie jest operacją domenową z kanonu: wpis bez operacji, z nazwanym opisem
+        # i identyfikatorem źródła w ładunku (kontrakt `dziennik_zmian.przygotuj_dopisanie`).
+        assert wpis.operacja is None
+        assert wpis.opis_pl == "Import sieci z arkusza XLSX (siec.xlsx)"
+        assert wpis.ladunek is not None and wpis.ladunek["zrodlo"] == ZRODLO_IMPORTU
         assert wpis.rewizja == 1
         model = _model_projektu(wynik.project_id or "")
         oczekiwane = sorted(

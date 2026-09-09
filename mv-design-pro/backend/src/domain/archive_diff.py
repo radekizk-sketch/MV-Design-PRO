@@ -32,19 +32,19 @@ from domain.project_archive import (
 # STALE
 # ============================================================================
 
-# Mapowanie sekcji na ich listy elementow i pola ID
+# Mapowanie sekcji na ich listy elementow i pola ID.
+#
+# W1-B-ARCH: sekcje `network_model`/`sld_diagrams`/`proofs` skasowane razem z
+# tabelami ORM, które je zasilały (W1) — `ProjectArchive` formatu 3.0.0 (jedyny
+# format, jaki ten moduł porównuje: `compare_archives` bierze dwa już
+# ZAIMPORTOWANE `ProjectArchive`, więc oba są zawsze 3.0.0, niezależnie od
+# wersji pliku ZIP, z którego powstały — `dict_to_archive` te sekcje ignoruje)
+# już ich nie niesie. Diffowanie sekcji `enm` (model per przypadek) NIE jest tu
+# dodane — kształt `{case_id, snapshot}` nie jest listą elementów z polem "id"
+# jak pozostałe sekcje; potrzebuje osobnej strategii porównania modelu ENM,
+# która jest POZA zakresem karty W1-B-ARCH (nazwane w meldunku karty jako dług
+# nienaprawialny w tej sesji, nie cichy brak).
 SECTION_LIST_KEYS: dict[str, dict[str, str]] = {
-    "network_model": {
-        "nodes": "id",
-        "branches": "id",
-        "sources": "id",
-        "loads": "id",
-    },
-    "sld_diagrams": {
-        "diagrams": "id",
-        "node_symbols": "id",
-        "branch_symbols": "id",
-    },
     "cases": {
         "study_cases": "id",
         "operating_cases": "id",
@@ -55,22 +55,14 @@ SECTION_LIST_KEYS: dict[str, dict[str, str]] = {
         "canonical_runs": "id",
     },
     "results": {},
-    "proofs": {
-        "design_specs": "id",
-        "design_proposals": "id",
-        "design_evidence": "id",
-    },
 }
 
 # Mapowanie nazw sekcji na atrybuty fingerprints
 _SECTION_HASH_MAP: dict[str, str] = {
     "project_meta": "project_meta_hash",
-    "network_model": "network_model_hash",
-    "sld_diagrams": "sld_hash",
     "cases": "cases_hash",
     "runs": "runs_hash",
     "results": "results_hash",
-    "proofs": "proofs_hash",
     "interpretations": "interpretations_hash",
     "issues": "issues_hash",
 }
@@ -78,12 +70,9 @@ _SECTION_HASH_MAP: dict[str, str] = {
 # Mapowanie nazw sekcji na etykiety PL
 _SECTION_LABELS_PL: dict[str, str] = {
     "project_meta": "Metadane projektu",
-    "network_model": "Model sieci",
-    "sld_diagrams": "Diagramy SLD",
     "cases": "Przypadki obliczeniowe",
     "runs": "Wykonania analiz",
     "results": "Wyniki",
-    "proofs": "Dowody",
     "interpretations": "Interpretacje",
     "issues": "Problemy",
 }

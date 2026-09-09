@@ -28,7 +28,6 @@ from api.canonical_run_views import (
     build_run_trace_payload,
     build_short_circuit_results_response,
     build_short_circuit_rozplyw_response,
-    build_sld_overlay,
     build_source_compliance_results_response,
 )
 from api.dependencies import get_uow_factory
@@ -140,52 +139,6 @@ def get_analysis_run_results(run_id: UUID) -> dict[str, Any]:
             detail=f"Wyniki obliczenia {run_id} są niedostępne (status={canonical_run.status})",
         )
     return canonicalize_json(build_result_items(canonical_run))
-
-
-@router.get("/analysis-runs/{run_id}/overlay")
-def get_analysis_run_overlay(
-    run_id: UUID,
-    diagram_id: UUID = Query(...),
-    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-) -> dict[str, Any]:
-    canonical_run = _require_canonical_run(run_id)
-    with uow_factory() as uow:
-        diagram = uow.sld.get(diagram_id)
-    if diagram is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="SLD diagram not found",
-        )
-    diagram_project_id = (
-        str(diagram.get("project_id")) if diagram.get("project_id") is not None else None
-    )
-    if canonical_run.project_id is not None and diagram_project_id not in {
-        None,
-        str(canonical_run.project_id),
-    }:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Run does not belong to this project",
-        )
-    overlay = build_sld_overlay(
-        canonical_run,
-        diagram_id=diagram_id,
-        sld_payload=diagram.get("payload", {}),
-        uow_factory=uow_factory,
-    )
-    # Status swiezosci WCHODZI do odpowiedzi (K-S). Wczesniej byl tu budowany i
-    # WYRZUCANY, wiec klient (`ui/results-inspector/api.ts`) dopisywal sobie
-    # `result_status: 'VALID'` z palca — baner „Wyniki nieaktualne" w
-    # `SldOverlay.tsx` nie mogl zapalic sie nigdy.
-    return canonicalize_json(
-        {
-            "bus_overlays": overlay.get("nodes", []),
-            "branch_overlays": overlay.get("branches", []),
-            "result_status": overlay["result_status"],
-            "result_status_reason": overlay["result_status_reason"],
-            "result_status_reason_pl": overlay["result_status_reason_pl"],
-        }
-    )
 
 
 @router.get("/analysis-runs/{run_id}/trace")

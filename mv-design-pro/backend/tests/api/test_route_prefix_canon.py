@@ -75,8 +75,9 @@ MIGRATED_ROUTES = (
     ("POST", "/api/projects/{project_id}/export"),
     ("POST", "/api/projects/import"),
     ("POST", "/api/projects/import/preview"),
-    # api/sld.py
-    ("GET", "/api/projects/{project_id}/sld/{diagram_id}/overlay"),
+    # api/sld.py — `GET /api/projects/{project_id}/sld/{diagram_id}/overlay` skasowana w W1
+    # (2026-09-09) razem z routerem `sld` i SLD ORM (0 konsumentów; bramka wskrzeszenia
+    # w `legacy_public_path_guard`) — nie ma już adresu kanonicznego do pilnowania.
 )
 
 

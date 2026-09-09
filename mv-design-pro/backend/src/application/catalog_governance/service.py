@@ -1,12 +1,16 @@
 """
-Catalog Governance Service (P13b)
+Zarządzanie biblioteką zabezpieczeń (P14b): deterministyczny eksport z odciskiem oraz
+import scal/zastąp z wykrywaniem konfliktów i walidacją odwołań szablonów.
 
-Implements type library export/import with governance controls:
-- Deterministic export with fingerprint
-- Safe merge/replace import with conflict detection
-- Hard compatibility rules for type_ref
+W1 (mapa domknięcia §9): część „biblioteka typów” (P13b — eksport/import typów linii,
+kabli, transformatorów i łączników przechowywanych w TABELACH bazy `line_types`/…) została
+SKASOWANA razem z tymi tabelami: typy producenta żyją w katalogu statycznym
+(`network_model/catalog`), a typy z danych inżyniera — w sekcji `katalog_projektu` modelu
+(`enm/katalog_projektu.py`). Trzecia prawda katalogu w bazie nie ma już żadnego konsumenta
+(0 wołań z frontendu, 0 elementów modelu wiązanych `type_ref` z bazy).
 
-PowerFactory-grade type library management.
+Biblioteka zabezpieczeń zostaje: jej rekordy (`{id, name_pl, params}`) czyta tor biegu
+zabezpieczeń (`protection_analysis/catalog_lookup`) i `/api/catalog/protection/*`.
 """
 
 from __future__ import annotations
@@ -19,19 +23,13 @@ from application.analyses.protection.catalog.catalog_store import (
     list_devices as list_analytical_protection_devices,
 )
 from network_model.catalog.governance import (
-    ImportConflict,
     ImportMode,
-    ImportReport,
     ProtectionImportConflict,
     ProtectionImportReport,
     ProtectionLibraryExport,
     ProtectionLibraryManifest,
-    TypeLibraryExport,
-    TypeLibraryManifest,
-    compute_fingerprint,
     compute_protection_fingerprint,
     sort_protection_types_deterministically,
-    sort_types_deterministically,
 )
 
 
@@ -90,246 +88,10 @@ def _serialize_analytical_protection_device_for_export(device: Any) -> dict[str,
 
 
 class CatalogGovernanceService:
-    """
-    Catalog governance service for type library management.
-
-    Provides deterministic export/import of type libraries with governance controls.
-    """
+    """Eksport/import biblioteki zabezpieczeń (P14b) na repozytorium `protection_catalog`."""
 
     def __init__(self, uow_factory: Any):
-        """
-        Initialize service.
-
-        Args:
-            uow_factory: Unit of Work factory for database access.
-        """
         self.uow_factory = uow_factory
-
-    def export_type_library(
-        self,
-        *,
-        library_name_pl: str = "Biblioteka typów",
-        vendor: str = "MV-DESIGN-PRO",
-        series: str = "Standard",
-        revision: str = "1.0",
-        description_pl: str = "",
-    ) -> dict[str, Any]:
-        """
-        Export type library with deterministic fingerprint.
-
-        Returns canonical JSON export with manifest and all types.
-        Deterministic ordering: types sorted by (name, id).
-
-        Args:
-            library_name_pl: Polish name of the library.
-            vendor: Vendor/manufacturer name.
-            series: Product series/line.
-            revision: Revision string.
-            description_pl: Optional Polish description.
-
-        Returns:
-            TypeLibraryExport dictionary.
-        """
-        with self.uow_factory() as uow:
-            # Fetch all types (already deterministically sorted by repository)
-            line_types = uow.wizard.list_line_types()
-            cable_types = uow.wizard.list_cable_types()
-            transformer_types = uow.wizard.list_transformer_types()
-            switch_types = uow.wizard.list_switch_equipment_types()
-
-            # Sort types deterministically (name → id)
-            sorted_line_types = sort_types_deterministically(line_types)
-            sorted_cable_types = sort_types_deterministically(cable_types)
-            sorted_transformer_types = sort_types_deterministically(transformer_types)
-            sorted_switch_types = sort_types_deterministically(switch_types)
-
-            # Create export structure (without fingerprint first)
-            export = TypeLibraryExport(
-                manifest=TypeLibraryManifest(
-                    library_id=str(uuid4()),
-                    name_pl=library_name_pl,
-                    vendor=vendor,
-                    series=series,
-                    revision=revision,
-                    schema_version="1.0",
-                    created_at=datetime.utcnow().isoformat(),
-                    fingerprint="",  # Will be computed below
-                    description_pl=description_pl,
-                ),
-                line_types=sorted_line_types,
-                cable_types=sorted_cable_types,
-                transformer_types=sorted_transformer_types,
-                switch_types=sorted_switch_types,
-            )
-
-            # Compute fingerprint
-            fingerprint = compute_fingerprint(export)
-
-            # Rebuild manifest with fingerprint
-            manifest_with_fingerprint = TypeLibraryManifest(
-                library_id=export.manifest.library_id,
-                name_pl=export.manifest.name_pl,
-                vendor=export.manifest.vendor,
-                series=export.manifest.series,
-                revision=export.manifest.revision,
-                schema_version=export.manifest.schema_version,
-                created_at=export.manifest.created_at,
-                fingerprint=fingerprint,
-                description_pl=export.manifest.description_pl,
-            )
-
-            # Final export with fingerprint
-            final_export = TypeLibraryExport(
-                manifest=manifest_with_fingerprint,
-                line_types=sorted_line_types,
-                cable_types=sorted_cable_types,
-                transformer_types=sorted_transformer_types,
-                switch_types=sorted_switch_types,
-            )
-
-            return final_export.to_dict()
-
-    def import_type_library(
-        self,
-        data: dict[str, Any],
-        mode: ImportMode = ImportMode.MERGE,
-    ) -> dict[str, Any]:
-        """
-        Import type library with conflict detection.
-
-        Modes:
-        - MERGE (default): Add new types, skip existing (no overwrites).
-        - REPLACE: Replace entire library (blocked if types are in use).
-
-        Conflict rules:
-        - Existing type_id with different parameters → 409 Conflict.
-        - REPLACE mode with types in use → 409 Conflict.
-
-        Args:
-            data: TypeLibraryExport dictionary.
-            mode: Import mode (MERGE or REPLACE).
-
-        Returns:
-            ImportReport dictionary.
-
-        Raises:
-            ValueError: If import data is invalid or conflicts detected.
-        """
-        # Parse import data
-        export = TypeLibraryExport.from_dict(data)
-        report = ImportReport(mode=mode)
-
-        with self.uow_factory() as uow:
-            # Fetch existing types
-            existing_line_types = {item["id"]: item for item in uow.wizard.list_line_types()}
-            existing_cable_types = {item["id"]: item for item in uow.wizard.list_cable_types()}
-            existing_transformer_types = {
-                item["id"]: item for item in uow.wizard.list_transformer_types()
-            }
-            existing_switch_types = {
-                item["id"]: item for item in uow.wizard.list_switch_equipment_types()
-            }
-
-            # REPLACE mode: check if any types are in use
-            if mode == ImportMode.REPLACE:
-                types_in_use = self._get_types_in_use(uow)
-                if types_in_use:
-                    # Block replace if types are in use
-                    for type_id in types_in_use:
-                        report.conflicts.append(
-                            ImportConflict(
-                                type_id=type_id,
-                                type_category="UNKNOWN",
-                                reason="Type is in use by instances. REPLACE blocked.",
-                            )
-                        )
-                    report.success = False
-                    raise ValueError(
-                        "REPLACE blocked: types are in use by instances. "
-                        "Cannot replace library without migration."
-                    )
-
-            # MERGE mode: add new types, skip existing
-            if mode == ImportMode.MERGE:
-                # Process line types
-                for type_data in export.line_types:
-                    type_id = type_data["id"]
-                    if type_id in existing_line_types:
-                        # Skip existing (no overwrites in MERGE mode)
-                        report.skipped.append(type_id)
-                    else:
-                        # Add new type
-                        uow.wizard.upsert_line_type(type_data, commit=False)
-                        report.added.append(type_id)
-
-                # Process cable types
-                for type_data in export.cable_types:
-                    type_id = type_data["id"]
-                    if type_id in existing_cable_types:
-                        report.skipped.append(type_id)
-                    else:
-                        uow.wizard.upsert_cable_type(type_data, commit=False)
-                        report.added.append(type_id)
-
-                # Process transformer types
-                for type_data in export.transformer_types:
-                    type_id = type_data["id"]
-                    if type_id in existing_transformer_types:
-                        report.skipped.append(type_id)
-                    else:
-                        uow.wizard.upsert_transformer_type(type_data, commit=False)
-                        report.added.append(type_id)
-
-                # Process switch types
-                for type_data in export.switch_types:
-                    type_id = type_data["id"]
-                    if type_id in existing_switch_types:
-                        report.skipped.append(type_id)
-                    else:
-                        uow.wizard.upsert_switch_equipment_type(type_data, commit=False)
-                        report.added.append(type_id)
-
-            uow.commit()
-
-        return report.to_dict()
-
-    def _get_types_in_use(self, uow: Any) -> set[str]:
-        """
-        Get set of type IDs that are in use by instances.
-
-        Scans actual network tables for type_ref usage:
-        - NetworkBranchORM.params_jsonb["type_ref"] (lines/cables)
-        - SwitchEquipmentAssignmentORM.equipment_type_id (switches)
-
-        Args:
-            uow: Unit of Work.
-
-        Returns:
-            Set of type IDs in use.
-        """
-        types_in_use = set()
-
-        # Get all projects to scan their networks
-        projects = uow.projects.list_all()
-
-        for project in projects:
-            # Check branches (lines/cables) for type_ref in params
-            branches = uow.network.list_branches(project.id)
-            for branch in branches:
-                type_ref = branch.get("params", {}).get("type_ref")
-                if type_ref:
-                    types_in_use.add(str(type_ref))
-
-            # Check switch equipment assignments (CV-4.2b: przez repozytorium,
-            # nie własne zapytanie ORM — jedno miejsce odczytu tej tabeli).
-            for assignment in uow.wizard.list_switch_equipment_assignments(project.id):
-                types_in_use.add(str(assignment["equipment_type_id"]))
-
-        return types_in_use
-
-    # ========================================================================
-    # Protection Library Governance (P14b)
-    # ========================================================================
 
     def export_protection_library(
         self,
@@ -358,14 +120,14 @@ class CatalogGovernanceService:
         """
         with self.uow_factory() as uow:
             # Fetch all protection types (already deterministically sorted by repository)
-            device_types_list = uow.wizard.list_protection_device_types()
-            curves_list = uow.wizard.list_protection_curves()
-            templates_list = uow.wizard.list_protection_setting_templates()
+            device_types_list = uow.protection_catalog.list_protection_device_types()
+            curves_list = uow.protection_catalog.list_protection_curves()
+            templates_list = uow.protection_catalog.list_protection_setting_templates()
 
-            # Convert to dict list
-            device_types = [item.to_dict() for item in device_types_list]
-            curves = [item.to_dict() for item in curves_list]
-            templates = [item.to_dict() for item in templates_list]
+            # Rekordy repozytorium mają już kształt eksportu ({id, name_pl, params}).
+            device_types = list(device_types_list)
+            curves = list(curves_list)
+            templates = list(templates_list)
             if not device_types:
                 device_types = [
                     _serialize_analytical_protection_device_for_export(device)
@@ -495,13 +257,13 @@ class CatalogGovernanceService:
 
         with self.uow_factory() as uow:
             # Fetch existing protection types
-            existing_device_types_list = uow.wizard.list_protection_device_types()
-            existing_curves_list = uow.wizard.list_protection_curves()
-            existing_templates_list = uow.wizard.list_protection_setting_templates()
+            existing_device_types_list = uow.protection_catalog.list_protection_device_types()
+            existing_curves_list = uow.protection_catalog.list_protection_curves()
+            existing_templates_list = uow.protection_catalog.list_protection_setting_templates()
 
-            existing_device_types = {item.id: item for item in existing_device_types_list}
-            existing_curves = {item.id: item for item in existing_curves_list}
-            existing_templates = {item.id: item for item in existing_templates_list}
+            existing_device_types = {item["id"]: item for item in existing_device_types_list}
+            existing_curves = {item["id"]: item for item in existing_curves_list}
+            existing_templates = {item["id"]: item for item in existing_templates_list}
 
             # REPLACE mode: check if any types are in use (NOT IMPLEMENTED - P14b is library only)
             # For now, REPLACE is allowed since protection library has no bindings yet
@@ -518,7 +280,7 @@ class CatalogGovernanceService:
                     if type_id in existing_device_types:
                         # Check immutability (same ID must have same data)
                         existing = existing_device_types[type_id]
-                        if existing.to_dict() != type_data:
+                        if existing != type_data:
                             # Conflict: same ID, different data
                             report.conflicts.append(
                                 ProtectionImportConflict(
@@ -541,7 +303,9 @@ class CatalogGovernanceService:
                             )
                     else:
                         # Add new type
-                        uow.wizard.upsert_protection_device_type(type_data, commit=False)
+                        uow.protection_catalog.upsert_protection_device_type(
+                            type_data, commit=False
+                        )
                         report.added.append(
                             ProtectionImportConflict(
                                 kind="device_type",
@@ -556,7 +320,7 @@ class CatalogGovernanceService:
                     type_id = type_data["id"]
                     if type_id in existing_curves:
                         existing = existing_curves[type_id]
-                        if existing.to_dict() != type_data:
+                        if existing != type_data:
                             report.conflicts.append(
                                 ProtectionImportConflict(
                                     kind="curve",
@@ -576,7 +340,7 @@ class CatalogGovernanceService:
                                 )
                             )
                     else:
-                        uow.wizard.upsert_protection_curve(type_data, commit=False)
+                        uow.protection_catalog.upsert_protection_curve(type_data, commit=False)
                         report.added.append(
                             ProtectionImportConflict(
                                 kind="curve",
@@ -591,7 +355,7 @@ class CatalogGovernanceService:
                     type_id = type_data["id"]
                     if type_id in existing_templates:
                         existing = existing_templates[type_id]
-                        if existing.to_dict() != type_data:
+                        if existing != type_data:
                             report.conflicts.append(
                                 ProtectionImportConflict(
                                     kind="template",
@@ -611,7 +375,9 @@ class CatalogGovernanceService:
                                 )
                             )
                     else:
-                        uow.wizard.upsert_protection_setting_template(type_data, commit=False)
+                        uow.protection_catalog.upsert_protection_setting_template(
+                            type_data, commit=False
+                        )
                         report.added.append(
                             ProtectionImportConflict(
                                 kind="template",
@@ -628,11 +394,11 @@ class CatalogGovernanceService:
                 # Future: add usage check here
 
                 # Clear existing types
-                uow.wizard.clear_all_protection_types(commit=False)
+                uow.protection_catalog.clear_all_protection_types(commit=False)
 
                 # Insert all imported types
                 for type_data in export.device_types:
-                    uow.wizard.upsert_protection_device_type(type_data, commit=False)
+                    uow.protection_catalog.upsert_protection_device_type(type_data, commit=False)
                     report.added.append(
                         ProtectionImportConflict(
                             kind="device_type",
@@ -643,7 +409,7 @@ class CatalogGovernanceService:
                     )
 
                 for type_data in export.curves:
-                    uow.wizard.upsert_protection_curve(type_data, commit=False)
+                    uow.protection_catalog.upsert_protection_curve(type_data, commit=False)
                     report.added.append(
                         ProtectionImportConflict(
                             kind="curve",
@@ -654,7 +420,9 @@ class CatalogGovernanceService:
                     )
 
                 for type_data in export.templates:
-                    uow.wizard.upsert_protection_setting_template(type_data, commit=False)
+                    uow.protection_catalog.upsert_protection_setting_template(
+                        type_data, commit=False
+                    )
                     report.added.append(
                         ProtectionImportConflict(
                             kind="template",
