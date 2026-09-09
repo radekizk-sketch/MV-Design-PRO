@@ -70,6 +70,7 @@ from typing import Any
 from enm.katalog_projektu import STATUS_KATALOGU_PROJEKTU, STATUS_WERYFIKACJI_ARKUSZA
 from enm.zrodlo_zwarcie import PASMO_U_SET_PU, u_set_pu_w_pasmie
 from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
+from network_model.pochodne import km_na_m
 
 # Nazwy arkuszy i kolumn — jedyne zrodlo prawdy formatu (uzywane tez przez API/dokumentacje).
 ARKUSZ_SZYNY = "Szyny"
@@ -1151,7 +1152,7 @@ class XlsxNetworkImporter:
                     "to_ref": linia["szyna_kon"],
                     # Jednostka kompilatora (`EdgeSpec.dlugosc_m`) — przeliczenie km→m to
                     # zamiana jednostki długości, nie wielkość elektryczna.
-                    "dlugosc_m": float(linia["długość_km"]) * 1000.0,
+                    "dlugosc_m": km_na_m(float(linia["długość_km"])),
                     "catalog_ref": catalog_ref,
                     "rodzaj": rodzaj,
                     "wiersz": linia["_wiersz"],

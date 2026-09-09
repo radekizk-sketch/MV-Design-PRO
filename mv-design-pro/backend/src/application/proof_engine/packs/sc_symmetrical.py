@@ -40,6 +40,7 @@ from application.proof_engine.proof_pack import (
 )
 from application.proof_engine.types import ProofDocument
 from application.solvers.short_circuit_binding import zwarcie_3f_ze_snapshotu
+from network_model.pochodne import a_na_ka, v_na_kv
 from network_model.solvers.machine_sc_iec60909 import compute_machine_contributions
 
 
@@ -123,11 +124,11 @@ class SC3FProofPack:
             run_timestamp=data.run_timestamp,
             solver_version=data.solver_version,
             c_factor=result.c_factor,
-            u_n_kv=result.un_v / 1000.0,
+            u_n_kv=v_na_kv(result.un_v),
             z_thevenin_ohm=result.zkk_ohm,
-            ikss_ka=result.ikss_a / 1000.0,
-            ip_ka=result.ip_a / 1000.0,
-            ith_ka=result.ith_a / 1000.0,
+            ikss_ka=a_na_ka(result.ikss_a),
+            ip_ka=a_na_ka(result.ip_a),
+            ith_ka=a_na_ka(result.ith_a),
             sk_mva=result.sk_mva,
             kappa=result.kappa,
             rx_ratio=result.rx_ratio,
@@ -143,7 +144,7 @@ class SC3FProofPack:
             machine_result=machine_result if has_machines else None,
             # Karta S-C (2026-07-22): kroki I_b(t_b) i I²t w dowodzie — wartości
             # z FROZEN wyniku solvera (ib_a/tb_s), zero fizyki w proof engine.
-            ib_ka=result.ib_a / 1000.0,
+            ib_ka=a_na_ka(result.ib_a),
             tb_s=result.tb_s,
         )
         proof = ProofGenerator.generate_sc3f_proof(sc3f_input, artifact_id)

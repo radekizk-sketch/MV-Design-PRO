@@ -20,7 +20,11 @@ import math
 import uuid
 from dataclasses import dataclass, field
 
-from network_model.pochodne import impedancja_z_napiecia_i_pradu_ohm, prad_znamionowy_a
+from network_model.pochodne import (
+    impedancja_z_napiecia_i_pradu_ohm,
+    kv_na_v,
+    prad_znamionowy_a,
+)
 
 
 def _synchronous_r_over_x(ur_kv: float, sr_mva: float) -> float:
@@ -157,7 +161,7 @@ class AsynchronousMachineSource:
     def z_abs_ohm(self) -> float:
         """|Z_M| = (1/(I_LR/I_rM))·(U_rM/(√3·I_rM))."""
         return (1.0 / self.i_lr_ratio) * impedancja_z_napiecia_i_pradu_ohm(
-            self.ur_kv * 1.0e3, self.ir_a
+            kv_na_v(self.ur_kv), self.ir_a
         )
 
     @property

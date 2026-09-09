@@ -17,7 +17,7 @@ from enum import Enum
 from typing import Any
 
 from network_model.ir_fields import wymagany_float
-from network_model.pochodne import prad_znamionowy_z_mocy_czynnej_a
+from network_model.pochodne import kv_na_v, mw_na_w, prad_znamionowy_z_mocy_czynnej_a
 
 
 class GeneratorType(Enum):
@@ -138,8 +138,8 @@ class GeneratorSN:
         if self.rated_power_mw <= 0:
             return 0.0
         # P [MW] -> [W] = P * 1e6, U [kV] -> [V] = U * 1e3
-        p_w = self.rated_power_mw * 1e6
-        u_v = voltage_kv * 1e3
+        p_w = mw_na_w(self.rated_power_mw)
+        u_v = kv_na_v(voltage_kv)
         return prad_znamionowy_z_mocy_czynnej_a(p_w, u_v, self.cos_phi)
 
     def get_ik_sc_a(self, voltage_kv: float) -> float:

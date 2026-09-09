@@ -29,6 +29,7 @@ from application.dokumentacja_wykonawcza import (
 from enm.canonical_analysis import CanonicalRun
 from fastapi import HTTPException
 from fastapi.responses import Response
+from network_model.pochodne import a_na_ka
 from network_model.reporting.czcionki import zarejestruj_czcionki
 from network_model.reporting.missing_value import format_wynik
 
@@ -503,7 +504,7 @@ def _amps_to_ka(value: Any) -> float | None:
     if value is None:
         return None
     try:
-        return float(value) / 1000.0
+        return a_na_ka(float(value))
     except (TypeError, ValueError):
         return None
 

@@ -1184,6 +1184,17 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # Odbior W3-D + W3-A + W3-E (2026-09-09, drzewo galezi po K2): 3493 -> 3491 = -3 (W3-D:
     # SourceComplianceResult) -2 (W3-A: bridge SC<->Protection v1) +3 (W3-E: pola 410/
     # wycofany) — pomiar guardem na drzewie scalonym, nie arytmetyka z kart.
+    # W3-F (2026-09-09): +1 plik w korzeniu network_model = `network_model/pochodne/
+    # jednostki.py` (skalowanie jednostek SI, karta W3-F §0.1; ten guard skanuje
+    # CALE `network_model/**` bez wykluczenia `pochodne/`, w odroznieniu od
+    # `backend_no_physics_guard` — patrz uzasadnienie K4 wyzej). Zapadka dlugu
+    # suma spada 280 -> 279 (wpis "H:local:materialized.rated_power_mva" w
+    # `enm/domain_operations.py` zdjety — migracja do `mva_na_kva(...)` zmienila
+    # ksztalt AST z BinOp na Call, patrz komentarz przy wpisie w
+    # `ZASTANE_ZASTEPNIKI`); plikow dlugu bez zmian (61 — plik ma inne wpisy).
+    # Pol kontraktow/wykluczenia bez zmian (funkcje `jednostki.py` sa czystymi
+    # przelicznikami literalow, zero pol kontraktu, zero podstawien).
+    # (piny ponizej przeliczane guardem na drzewie scalonym fali 2 — odbior, nie arytmetyka)
     assert "Pol kontraktow wejsciowych: 3491." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf

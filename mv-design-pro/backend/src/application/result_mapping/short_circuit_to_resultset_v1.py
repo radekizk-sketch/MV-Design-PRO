@@ -25,6 +25,7 @@ from domain.execution import (
     build_result_set,
 )
 from network_model.core.graph import NetworkGraph
+from network_model.pochodne import a_na_ka, v_na_kv
 
 
 def map_short_circuit_to_resultset_v1(
@@ -150,8 +151,8 @@ def _build_global_results(
     # ścieżce konsumpcji wyników (overlay/proof/tabele czytają global_results — jedna
     # prawda, Z15). Czyta zamrożony wynik (un_v, ikss_a), nie modyfikuje solvera (B-01).
     ikss_sanity = evaluate_short_circuit_current(
-        float(sr.un_v) / 1000.0 if sr.un_v else None,
-        float(sr.ikss_a) / 1000.0,
+        v_na_kv(float(sr.un_v)) if sr.un_v else None,
+        a_na_ka(float(sr.ikss_a)),
     ).to_dict()
     global_results: dict[str, Any] = {
         "analysis_type": analysis_type.value,

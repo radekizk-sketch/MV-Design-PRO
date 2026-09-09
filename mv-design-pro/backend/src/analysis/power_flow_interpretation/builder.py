@@ -33,6 +33,7 @@ from analysis.power_flow_interpretation.models import (
     VoltageFinding,
 )
 from analysis.power_flow_interpretation.serializer import SEVERITY_ORDER
+from network_model.pochodne import mvar_na_kvar, mw_na_kw
 
 if TYPE_CHECKING:
     from analysis.power_flow.result import PowerFlowResult
@@ -346,7 +347,7 @@ class PowerFlowInterpretationBuilder:
 
         Deterministyczne: losses_kw = losses_mw * 1000, round(6).
         """
-        losses_kw = round(abs(losses_p_mw) * 1000.0, 6)
+        losses_kw = round(mw_na_kw(abs(losses_p_mw)), 6)
         if losses_kw < BRANCH_LOSSES_INFO_MAX_KW:
             return FindingSeverity.INFO
         elif losses_kw <= BRANCH_LOSSES_WARN_MAX_KW:
@@ -365,8 +366,8 @@ class PowerFlowInterpretationBuilder:
         """Build Polish description for branch finding."""
         branch_short = branch_id[:12] if len(branch_id) > 12 else branch_id
 
-        losses_p_kw = losses_p_mw * 1000.0
-        losses_q_kvar = losses_q_mvar * 1000.0
+        losses_p_kw = mw_na_kw(losses_p_mw)
+        losses_q_kvar = mvar_na_kvar(losses_q_mvar)
 
         loading_info = ""
         if loading_pct is not None:
@@ -431,7 +432,7 @@ class PowerFlowInterpretationBuilder:
                         element_type="branch_loading",
                         element_id=f.branch_id,
                         severity=f.severity,
-                        magnitude=abs(f.losses_p_mw) * 1000.0,  # kW for comparison
+                        magnitude=mw_na_kw(abs(f.losses_p_mw)),  # kW for comparison
                         description_pl=f.description_pl,
                     )
                 )

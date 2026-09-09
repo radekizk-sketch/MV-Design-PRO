@@ -39,8 +39,11 @@ from network_model.core.voltage_factor import Scenario, c_for_node
 from network_model.core.ybus import AdmittanceMatrixBuilder
 from network_model.pochodne import (
     impedancja_z_napiecia_i_mocy_ohm,
+    ka_na_a,
+    kv_na_v,
     moc_zwarciowa_z_pradu_mva,
     prad_znamionowy_a,
+    simens_na_mikrosimens,
 )
 from network_model.solvers.power_flow_zip import (
     ZipCoeffs,
@@ -247,7 +250,7 @@ def impedancja_zasilania_systemowego(
     else:
         assert ik_deklarowane is not None
         ik = float(ik_deklarowane)
-        sk = moc_zwarciowa_z_pradu_mva(u_nq_kv * 1000.0, ik * 1000.0)
+        sk = moc_zwarciowa_z_pradu_mva(kv_na_v(u_nq_kv), ka_na_a(ik))
     z_abs = c * impedancja_z_napiecia_i_mocy_ohm(u_nq_kv, sk)
     x_q_ohm = z_abs / math.sqrt(1.0 + rx**2)
     r_q_ohm = x_q_ohm * rx
@@ -1015,7 +1018,7 @@ def map_enm_to_network_graph(
         if isinstance(branch, OverheadLine | Cable):
             b_us_per_km = 0.0
             if branch.b_siemens_per_km is not None:
-                b_us_per_km = branch.b_siemens_per_km * 1e6  # S/km → μS/km
+                b_us_per_km = simens_na_mikrosimens(branch.b_siemens_per_km)  # S/km → μS/km
 
             rated_a = 0.0
             if branch.rating and branch.rating.in_a:

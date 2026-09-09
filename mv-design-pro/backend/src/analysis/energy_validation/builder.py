@@ -22,6 +22,7 @@ from analysis.energy_validation.serializer import STATUS_ORDER
 from analysis.power_flow.result import PowerFlowResult
 from network_model.core.branch import LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
+from network_model.pochodne import a_na_ka
 
 
 def _znana(wartosc: float | None) -> float | None:
@@ -118,7 +119,7 @@ class EnergyValidationBuilder:
                 )
                 continue
 
-            rated_ka = branch.rated_current_a / 1000.0
+            rated_ka = a_na_ka(branch.rated_current_a)
             if rated_ka <= 0:
                 items.append(
                     EnergyValidationItem(

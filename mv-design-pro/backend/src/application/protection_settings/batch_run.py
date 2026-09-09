@@ -74,6 +74,7 @@ from enm.canonical_analysis import CanonicalRun, bieg_wariantu, wykonaj_bieg_w_p
 from enm.mapping import ref_to_graph_id
 from enm.models import EnergyNetworkModel
 from enm.scenariusze import SCENARIUSZ_NORMALNY, apply_scenario
+from network_model.pochodne import ka_na_a
 
 #: Rodzaje gałęzi ENM kwalifikowane jako "linia chroniona" — mają impedancję
 #: jednostkową, długość i mogą nieść dane katalogowe cieplne (F-K1). Aparat
@@ -406,7 +407,7 @@ def zbuduj_wejscie_nastaw(
             f"Wariant rozpływu mocy nie policzył prądu gałęzi {line_id} — chroniony "
             "odcinek nie jest częścią rozwiązanej wyspy zasilanej."
         )
-    i_load_max_a = i_load_max_a * 1000.0  # kA -> A
+    i_load_max_a = ka_na_a(i_load_max_a)  # kA -> A
 
     pf_solver_version = pf_wynik.get("solver_version")
     solver_version = (

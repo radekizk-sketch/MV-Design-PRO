@@ -20,6 +20,8 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
+from network_model.pochodne import ms_na_s
+
 
 @dataclass(frozen=True)
 class VoltageTrajectoryPoint:
@@ -81,7 +83,7 @@ def generate_voltage_trajectory(
     """
     points: list[VoltageTrajectoryPoint] = []
 
-    clearing_time_s = params.clearing_time_ms / 1000.0
+    clearing_time_s = ms_na_s(params.clearing_time_ms)
     total_time_s = params.pre_fault_duration_s + clearing_time_s + params.recovery_duration_s
     start_time_s = -params.pre_fault_duration_s
     n_samples = int(math.ceil(total_time_s / params.sample_dt_s)) + 1

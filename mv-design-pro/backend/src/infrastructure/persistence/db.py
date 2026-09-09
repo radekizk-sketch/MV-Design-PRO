@@ -4,6 +4,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any
 
+from network_model.pochodne import s_na_ms
 from sqlalchemy import Engine, create_engine, event, inspect, text
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -39,7 +40,7 @@ def create_engine_from_url(url: str, *, echo: bool = False) -> Engine:
             cursor = dbapi_connection.cursor()
             try:
                 cursor.execute("PRAGMA journal_mode=WAL")
-                cursor.execute(f"PRAGMA busy_timeout={_SQLITE_BUSY_TIMEOUT_S * 1000}")
+                cursor.execute(f"PRAGMA busy_timeout={int(s_na_ms(_SQLITE_BUSY_TIMEOUT_S))}")
             finally:
                 cursor.close()
 

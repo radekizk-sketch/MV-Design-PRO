@@ -78,6 +78,7 @@ from enum import Enum, StrEnum
 from typing import Any
 
 from analysis.odcisk_kontekstu import odcisk_kontekstu
+from network_model.pochodne import kv_na_v
 
 # ---------------------------------------------------------------------------
 # Markery, proweniencja i etykiety (maszynowo-czytelne, nienegocjowalne).
@@ -237,7 +238,7 @@ class VoltageAnchor(float, Enum):
     @property
     def voc_v(self) -> int:
         """Napięcie kotwy V_oc [V] (klucz wierszy w pliku danych)."""
-        return int(round(self.value * 1000.0))
+        return int(round(kv_na_v(self.value)))
 
 
 # Granica energii dla granicy łuku AFB: 1,2 cal/cm² (publiczny próg oparzenia

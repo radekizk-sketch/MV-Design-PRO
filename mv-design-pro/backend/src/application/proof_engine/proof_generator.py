@@ -102,9 +102,11 @@ from application.proof_engine.unit_verifier import UnitVerifier
 from network_model.pochodne import (
     SQRT2,
     SQRT3,
+    a_na_ka,
     calka_joule_ka2s,
     czlon_wykladniczy_kappa,
     prad_z_mocy_pozornej_ka,
+    v_na_kv,
 )
 from network_model.solvers.machine_sc_iec60909 import (
     MachinePartialContribution,
@@ -205,18 +207,18 @@ class SC3FInput:
             run_timestamp=datetime.utcnow(),
             solver_version=solver_version,
             c_factor=result.c_factor,
-            u_n_kv=result.un_v / 1000.0,
+            u_n_kv=v_na_kv(result.un_v),
             z_thevenin_ohm=result.zkk_ohm,
-            ikss_ka=result.ikss_a / 1000.0,
-            ip_ka=result.ip_a / 1000.0,
-            ith_ka=result.ith_a / 1000.0,
+            ikss_ka=a_na_ka(result.ikss_a),
+            ip_ka=a_na_ka(result.ip_a),
+            ith_ka=a_na_ka(result.ith_a),
             sk_mva=result.sk_mva,
             kappa=result.kappa,
             rx_ratio=result.rx_ratio,
             tk_s=result.tk_s,
             m_factor=m_factor,
             n_factor=n_factor,
-            ib_ka=result.ib_a / 1000.0,
+            ib_ka=a_na_ka(result.ib_a),
             tb_s=result.tb_s,
         )
 
@@ -745,7 +747,7 @@ class ProofGenerator:
                     steps.append(cls._create_sc3f_step_machine_q(step_number, machine, t_min_s))
                 step_number += 1
                 steps.append(cls._create_sc3f_step_machine_ib(step_number, machine))
-            ib_machines_ka = data.machine_result.ib_machines_a / 1000.0
+            ib_machines_ka = a_na_ka(data.machine_result.ib_machines_a)
 
         # =====================================================================
         # Podsumowanie
@@ -1671,8 +1673,8 @@ class ProofGenerator:
         """Krok maszynowy: współczynnik zanikania μ (§6.6.1)."""
         equation = EQ_SC3F_011
         ratio = machine.ratio_ik_ir
-        ikss_p = machine.ikss_partial_a / 1000.0
-        ir = machine.ir_a / 1000.0
+        ikss_p = a_na_ka(machine.ikss_partial_a)
+        ir = a_na_ka(machine.ir_a)
         if ratio <= 2.0:
             substitution = (
                 f"\\mu = 1 \\quad (I_k''/I_r = {ratio:.3f} \\leq 2,\\ "
@@ -1739,8 +1741,8 @@ class ProofGenerator:
     ) -> ProofStep:
         """Krok maszynowy: prąd wyłączeniowy symetryczny i_b = μ·q·I″k (§6.6)."""
         equation = EQ_SC3F_013
-        ikss_p = machine.ikss_partial_a / 1000.0
-        ib = machine.ib_a / 1000.0
+        ikss_p = a_na_ka(machine.ikss_partial_a)
+        ib = a_na_ka(machine.ib_a)
         substitution = (
             f"i_b = {machine.mu:.4f} \\cdot {machine.q:.4f} \\cdot {ikss_p:.4f} = "
             f"{ib:.4f}\\,\\text{{kA}}"
@@ -3905,7 +3907,7 @@ class ProofGenerator:
             or data.in_a is not None
         )
         i_ka = prad_z_mocy_pozornej_ka(s_mva, data.u_ll_kv) if compute_current else None
-        in_ka = data.in_a / 1000.0 if data.in_a is not None else None
+        in_ka = a_na_ka(data.in_a) if data.in_a is not None else None
 
         k_i_percent = 100.0 * (i_ka / in_ka) if i_ka is not None and in_ka is not None else None
 

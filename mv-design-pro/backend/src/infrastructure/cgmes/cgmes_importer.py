@@ -41,6 +41,7 @@ from enm.models import (
     SwitchBranch,
 )
 from enm.validator import ENMValidator, ValidationResult
+from network_model.pochodne import m_na_km
 
 from .profiles import NS_CIM, NS_RDF
 from .refmap import CgmesRefMap
@@ -255,7 +256,7 @@ def import_from_eq_tp(
         name = _text(seg, "IdentifiedObject.name") or mrid
         ref = ref_of(mrid, name)
         length_m = _float(_text(seg, "Conductor.length")) or 0.0
-        length_km = length_m / 1000.0
+        length_km = m_na_km(length_m)
         a, b = endpoint_bus_refs(mrid)
         if a is None or b is None or length_km <= 0:
             continue

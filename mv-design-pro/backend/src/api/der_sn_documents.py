@@ -28,6 +28,7 @@ from application.analyses.lista_materialowa import build_bom_view
 from application.analyses.raport_zgodnosci import build_compliance_report_from_track
 from enm.store import get_enm, has_enm
 from fastapi import APIRouter, HTTPException, Query, status
+from network_model.pochodne import kv_na_v
 
 router = APIRouter(tags=["der-sn-documents"])
 
@@ -188,7 +189,7 @@ def _compute_d2_deviations(track: Any) -> list[dict[str, Any]] | None:
                 CableSelectionInput(
                     transformer_current_a=tr_current,
                     length_km=float(cable_length_km),
-                    line_voltage_v=float(sn_bus_kv) * 1000.0,
+                    line_voltage_v=kv_na_v(float(sn_bus_kv)),
                     cos_phi=0.95,
                     candidates=_cable_candidates(),
                     derating=_cable_derating_from_model(cable),

@@ -44,6 +44,7 @@ from enm.kompilator_grafu import (
     ZrodloSpec,
 )
 from network_model.catalog.repository import get_default_mv_catalog
+from network_model.pochodne import km_na_m
 
 MODEL_ZRODLA_SYSTEMOWEGO = "short_circuit_power"
 
@@ -111,7 +112,7 @@ def graf_z_modelu_legacy(
         params: Mapping[str, Any] = galaz.get("params_jsonb") or galaz.get("params") or {}
         if rodzaj in ("line", "line_overhead", "cable"):
             type_ref = params.get("type_ref")
-            dlugosc_m = _liczba(params, "length_km", element=element) * 1000.0
+            dlugosc_m = km_na_m(_liczba(params, "length_km", element=element))
             if type_ref:
                 if type_ref in katalog.cable_types:
                     odcinki.append(

@@ -1,10 +1,36 @@
 """Wielkości pochodne — jedno recenzowane miejsce dla formuł algebraicznych
 wyprowadzających jedną wielkość znamionową z drugiej, poza rdzeniami solverów
 (CV-4.3 K4, konstytucja C.2.3). Zobacz `wielkosci_pochodne.py`.
+
+Jednostki — jedno recenzowane miejsce dla skalowania prefiksów SI (k/M/µ),
+poza rdzeniami solverów i poza wzorami fizycznymi powyżej (karta W3-F).
+Zobacz `jednostki.py`.
 """
 
 from __future__ import annotations
 
+from network_model.pochodne.jednostki import (
+    a_na_ka,
+    ka_na_a,
+    km_na_m,
+    kv_na_v,
+    kva_na_mva,
+    kvar_na_mvar,
+    kw_na_mw,
+    kw_na_w,
+    m_na_km,
+    mikrosimens_na_simens,
+    mikrosimens_na_simens_ybus,
+    ms_na_s,
+    mva_na_kva,
+    mvar_na_kvar,
+    mw_na_kw,
+    mw_na_w,
+    mwh_na_kwh,
+    s_na_ms,
+    simens_na_mikrosimens,
+    v_na_kv,
+)
 from network_model.pochodne.wielkosci_pochodne import (
     SQRT2,
     SQRT3,
@@ -28,19 +54,39 @@ from network_model.pochodne.wielkosci_pochodne import (
 __all__ = [
     "SQRT2",
     "SQRT3",
+    "a_na_ka",
     "calka_joule_ka2s",
     "czlon_wykladniczy_kappa",
     "impedancja_z_napiecia_i_mocy_ohm",
     "impedancja_z_napiecia_i_pradu_ohm",
+    "ka_na_a",
+    "km_na_m",
+    "kv_na_v",
+    "kva_na_mva",
+    "kvar_na_mvar",
+    "kw_na_mw",
+    "kw_na_w",
+    "m_na_km",
+    "mikrosimens_na_simens",
+    "mikrosimens_na_simens_ybus",
     "moc_bierna_z_czynnej_i_cos_phi",
     "moc_pozorna_z_czynnej_mva",
     "moc_zwarciowa_z_pradu_mva",
+    "ms_na_s",
+    "mva_na_kva",
+    "mvar_na_kvar",
+    "mw_na_kw",
+    "mw_na_w",
+    "mwh_na_kwh",
     "napiecie_fazowe_v",
     "prad_roboczy_a",
     "prad_z_mocy_pozornej_ka",
     "prad_znamionowy_a",
     "prad_znamionowy_z_mocy_czynnej_a",
     "rezystancja_w_temperaturze",
+    "s_na_ms",
+    "simens_na_mikrosimens",
     "tan_phi_z_cos_phi",
+    "v_na_kv",
     "wspolczynnik_kappa",
 ]

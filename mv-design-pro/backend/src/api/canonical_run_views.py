@@ -42,6 +42,7 @@ from enm.canonical_analysis import (
     build_short_circuit_results,
     build_short_circuit_rozplyw,
 )
+from network_model.pochodne import a_na_ka
 
 
 def build_run_trace_payload(run: CanonicalRun) -> dict[str, Any] | list[dict[str, Any]] | None:
@@ -115,7 +116,7 @@ def build_run_summary_json(run: CanonicalRun) -> dict[str, Any]:
     if run.analysis_type == "short_circuit_sn":
         rows = (run.raw_result or {}).get("results") or []
         ikss_values = [
-            float(row["ikss_a"]) / 1000.0 for row in rows if row.get("ikss_a") is not None
+            a_na_ka(float(row["ikss_a"])) for row in rows if row.get("ikss_a") is not None
         ]
         return {
             "row_count": len(rows),

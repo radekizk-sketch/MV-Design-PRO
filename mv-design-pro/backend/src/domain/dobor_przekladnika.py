@@ -42,7 +42,7 @@ import math
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-from network_model.pochodne import napiecie_fazowe_v
+from network_model.pochodne import ka_na_a, napiecie_fazowe_v
 
 #: Ponizej tego wykorzystania przekladni dokladnosc pomiaru pradu roboczego jest slaba
 #: (blad wzgledny rosnie przy malym wykorzystaniu zakresu). Progu nie ma w normie jako
@@ -249,7 +249,7 @@ def sprawdz_dobor_ct(przekladnik: dict[str, Any], tor: WymaganiaToru) -> WynikDo
             )
         )
     else:
-        wymagany_alf = (tor.ik_ka * 1000.0) / in_a
+        wymagany_alf = ka_na_a(tor.ik_ka) / in_a
         spelnione = alf >= wymagany_alf
         kryteria.append(
             Kryterium(

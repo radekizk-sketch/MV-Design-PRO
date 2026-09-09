@@ -4,6 +4,8 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from functools import lru_cache
 
+from network_model.pochodne import mva_na_kva, mw_na_kw
+
 from .types import (
     BESSBatteryType,
     BESSInverterType,
@@ -184,12 +186,12 @@ def _derive_pv_records(converter_records: Iterable[dict]) -> list[dict]:
                 "name": record.get("name"),
                 "params": {
                     "un_kv": params.get("un_kv"),
-                    "s_n_kva": _wymagana_moc_znamionowa(params, "sn_mva", type_id=record.get("id"))
-                    * 1000.0,
-                    "p_max_kw": _wymagana_moc_znamionowa(
-                        params, "pmax_mw", type_id=record.get("id")
-                    )
-                    * 1000.0,
+                    "s_n_kva": mva_na_kva(
+                        _wymagana_moc_znamionowa(params, "sn_mva", type_id=record.get("id"))
+                    ),
+                    "p_max_kw": mw_na_kw(
+                        _wymagana_moc_znamionowa(params, "pmax_mw", type_id=record.get("id"))
+                    ),
                     "cos_phi_min": params.get("cosphi_min"),
                     "cos_phi_max": params.get("cosphi_max"),
                     # `None` = tryb sterowania nieznany (nie "STALY_COS_PHI" —
@@ -214,7 +216,7 @@ def _derive_bess_records(converter_records: Iterable[dict]) -> list[dict]:
         if _converter_kind_value(record) != "BESS":
             continue
         params = dict(record.get("params") or {})
-        p_max_kw = _wymagana_moc_znamionowa(params, "pmax_mw", type_id=record.get("id")) * 1000.0
+        p_max_kw = mw_na_kw(_wymagana_moc_znamionowa(params, "pmax_mw", type_id=record.get("id")))
         derived.append(
             {
                 "id": record.get("id"),
@@ -224,8 +226,9 @@ def _derive_bess_records(converter_records: Iterable[dict]) -> list[dict]:
                     "p_charge_kw": p_max_kw,
                     "p_discharge_kw": p_max_kw,
                     "e_kwh": _wymagana_moc_znamionowa(params, "e_kwh", type_id=record.get("id")),
-                    "s_n_kva": _wymagana_moc_znamionowa(params, "sn_mva", type_id=record.get("id"))
-                    * 1000.0,
+                    "s_n_kva": mva_na_kva(
+                        _wymagana_moc_znamionowa(params, "sn_mva", type_id=record.get("id"))
+                    ),
                     "manufacturer": params.get("manufacturer"),
                     "dynamic_profile_id": params.get("dynamic_profile_id"),
                     **_copy_catalog_quality(record),

@@ -53,6 +53,7 @@ from domain.results import (
     ShortCircuitComparison,
 )
 from enm.canonical_analysis import CanonicalRun, get_run
+from network_model.pochodne import ka_na_a
 
 
 class ComparisonService:
@@ -226,7 +227,7 @@ class ComparisonService:
         wartosc_b = values_b.get(klucz)
         if wartosc_a is None or wartosc_b is None:
             return None
-        return NumericDelta.compute(float(wartosc_a) * 1000.0, float(wartosc_b) * 1000.0)
+        return NumericDelta.compute(ka_na_a(float(wartosc_a)), ka_na_a(float(wartosc_b)))
 
     @staticmethod
     def _zth_delta(values_a: dict[str, Any], values_b: dict[str, Any]) -> ComplexDelta | None:

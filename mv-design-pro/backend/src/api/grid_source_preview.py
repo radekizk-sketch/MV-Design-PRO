@@ -15,7 +15,7 @@ from fastapi import APIRouter, HTTPException
 from network_model.catalog.mv_cable_line_catalog import get_all_cable_types
 from network_model.catalog.mv_switch_catalog import get_all_switch_equipment_types
 from network_model.catalog.mv_transformer_catalog import get_sn_nn_transformer_types
-from network_model.pochodne import moc_zwarciowa_z_pradu_mva
+from network_model.pochodne import ka_na_a, kv_na_v, moc_zwarciowa_z_pradu_mva
 from network_model.solvers.cable_ampacity_derating import (
     NAZWA_WARUNKI_KATALOGOWE,
     NAZWA_WLASNE,
@@ -135,7 +135,7 @@ def _podglad_min(request: GridSourcePreviewRequest) -> GridSourcePreviewMinRespo
     else:
         assert request.ik3_min_ka is not None
         sk_min_mva = moc_zwarciowa_z_pradu_mva(
-            request.voltage_kv * 1000.0, request.ik3_min_ka * 1000.0
+            kv_na_v(request.voltage_kv), ka_na_a(request.ik3_min_ka)
         )
         tryb = "PRAD_ZWARCIOWY"
     if request.sk3_mva is not None and sk_min_mva > request.sk3_mva:
@@ -886,7 +886,7 @@ def preview_der_selection(
             CableSelectionInput(
                 transformer_current_a=transformer_current_a,
                 length_km=request.cable_length_km,
-                line_voltage_v=request.sn_bus_voltage_kv * 1000.0,
+                line_voltage_v=kv_na_v(request.sn_bus_voltage_kv),
                 cos_phi=cos_phi_load,
                 candidates=_cable_candidates(),
                 reserve_pu=request.cable_reserve_pu,

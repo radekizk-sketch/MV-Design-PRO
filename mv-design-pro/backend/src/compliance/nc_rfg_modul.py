@@ -45,6 +45,7 @@ from __future__ import annotations
 from typing import Literal, get_args
 
 from catalog.profiles.nc_rfg import load_nc_rfg_profile
+from network_model.pochodne import mw_na_kw
 
 NcRfgModul = Literal["A", "B", "C", "D"]
 
@@ -66,7 +67,7 @@ def modul_nc_rfg(p_max_mw: float, napiecie_przylaczenia_kv: float) -> NcRfgModul
         już używa; patrz rozbieżność progów YAML vs URE w module docstring).
     """
     profile = load_nc_rfg_profile(_PROFIL_REFERENCYJNY)
-    module_type = profile.classify_module(p_max_mw * 1000.0, napiecie_przylaczenia_kv)
+    module_type = profile.classify_module(mw_na_kw(p_max_mw), napiecie_przylaczenia_kv)
     if module_type is None or module_type.id not in get_args(NcRfgModul):
         raise ValueError(
             f"NcRfgProfile.classify_module('{_PROFIL_REFERENCYJNY}') zwrócił "

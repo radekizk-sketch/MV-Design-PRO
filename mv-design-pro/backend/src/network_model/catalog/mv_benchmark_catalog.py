@@ -69,7 +69,7 @@ from __future__ import annotations
 
 import math
 
-from network_model.pochodne import prad_roboczy_a
+from network_model.pochodne import mw_na_kw, prad_roboczy_a, simens_na_mikrosimens
 
 from .types import (
     CatalogStatus,
@@ -152,7 +152,7 @@ def _linia_z_pu(
     zb = _z_base(base_kv, base_mva)
     r_ohm_per_km = r_pu * zb
     x_ohm_per_km = x_pu * zb
-    b_us_per_km = (b_pu / zb) * 1e6 if zb else 0.0
+    b_us_per_km = simens_na_mikrosimens(b_pu / zb) if zb else 0.0
     return {
         "id": type_id,
         "name": name,
@@ -510,7 +510,7 @@ def _uk_pk_z_pu(r_pu: float, x_pu: float, base_mva: float) -> tuple[float, float
     ta sama decyzja co `bench_ieee13bus_xfm1`: sn_mva=base_mva, więc r_pu/x_pu
     NIE wymagają przeliczenia bazy). uk% = |Z_pu|*100; pk_kw = R_pu*base_mva*1000
     (straty przy prądzie znamionowym, P_cu = I_n^2*R = S_n*R_pu, w kW)."""
-    return math.sqrt(r_pu**2 + x_pu**2) * 100.0, r_pu * base_mva * 1000.0
+    return math.sqrt(r_pu**2 + x_pu**2) * 100.0, mw_na_kw(r_pu * base_mva)
 
 
 #: IEEE case39 (MATPOWER): BR35-45 — gałęzie transformatorowe z zaczepem
@@ -601,7 +601,7 @@ def get_all_benchmark_transformer_records() -> list[dict]:
             uhv_kv=4.16,
             ulv_kv=0.48,
             uk_percent=math.sqrt(0.001**2 + 0.001**2) * 100.0,
-            pk_kw=0.001 * 1000.0 * 100.0,
+            pk_kw=mw_na_kw(0.001) * 100.0,
             p0_kw=0.0,
             i0_percent=0.0,
             vector_group="Yy0",  # CV-4.3 K1 fix: brak przesuniecia fazowego (SM-2/V12K-180 Dyn11=+30deg domyslne dla None) — literatura PF zaklada brak przesuniecia

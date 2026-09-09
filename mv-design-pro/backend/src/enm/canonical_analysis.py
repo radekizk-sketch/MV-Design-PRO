@@ -69,7 +69,14 @@ from infrastructure.persistence.repositories.canonical_run_repository import (
 from network_model.catalog.odcisk import odcisk_katalogu_domyslnego
 from network_model.core.graph import NetworkGraph
 from network_model.core.voltage_factor import c_for_node
-from network_model.pochodne import calka_joule_ka2s, napiecie_fazowe_v
+from network_model.pochodne import (
+    a_na_ka,
+    calka_joule_ka2s,
+    ka_na_a,
+    kv_na_v,
+    napiecie_fazowe_v,
+    v_na_kv,
+)
 from network_model.solvers.phase_state_sn import (
     OpenPhaseFlags,
     PhaseStateSNInput,
@@ -288,7 +295,7 @@ def _pusty_wiersz_zwarcia(
             "short_circuit_type": short_circuit_type.value,
             "fault_node_id": node_id,
             "c_factor": float(c_factor),
-            "un_v": float(un_kv) * 1000.0,
+            "un_v": kv_na_v(float(un_kv)),
             "zkk_ohm": {"re": math.nan, "im": math.nan},
             "tk_s": float(tk_s),
             "tb_s": _TB_S_DOMYSLNE,
@@ -2916,7 +2923,7 @@ def build_branch_results(run: CanonicalRun) -> dict[str, Any]:
         branch_id = item["branch_id"]
         branch = graph_branches.get(branch_id, {})
         i_ka = branch_current_ka.get(branch_id)
-        i_a = i_ka * 1000.0 if i_ka is not None else None
+        i_a = ka_na_a(i_ka) if i_ka is not None else None
         p_from = item.get("p_from_mw", 0.0)
         q_from = item.get("q_from_mvar", 0.0)
         s_mva = math.sqrt(p_from**2 + q_from**2)
@@ -3002,7 +3009,7 @@ def _sc_pelny_bilans(item: dict[str, Any]) -> dict[str, Any]:
     ith_a = item.get("ith_a")
     tk_s = item.get("tk_s")
     i2t_ka2s = (
-        calka_joule_ka2s(ith_a / 1000.0, tk_s) if ith_a is not None and tk_s is not None else None
+        calka_joule_ka2s(a_na_ka(ith_a), tk_s) if ith_a is not None and tk_s is not None else None
     )
     un_v = item.get("un_v")
     return {
@@ -3013,7 +3020,7 @@ def _sc_pelny_bilans(item: dict[str, Any]) -> dict[str, Any]:
         "xr_ratio": xr,
         "kappa": item.get("kappa"),
         "c_factor": item.get("c_factor"),
-        "un_kv": (un_v / 1000.0) if un_v is not None else None,
+        "un_kv": (v_na_kv(un_v)) if un_v is not None else None,
         "tk_s": tk_s,
         "tb_s": item.get("tb_s"),
         "ib_ka": _amps_to_ka(item.get("ib_a")),
@@ -3381,7 +3388,7 @@ def build_automation_trace_results(run: CanonicalRun) -> dict[str, Any]:
 def _amps_to_ka(value: float | None) -> float | None:
     if value is None:
         return None
-    return float(value) / 1000.0
+    return a_na_ka(float(value))
 
 
 def _build_snapshot_catalog_context(snapshot: dict[str, Any]) -> list[dict[str, Any]]:

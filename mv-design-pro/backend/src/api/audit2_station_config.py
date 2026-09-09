@@ -25,6 +25,7 @@ from enm.store import get_enm, has_enm
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.models import StationAudit2ConfigORM
 from infrastructure.persistence.unit_of_work import UnitOfWork
+from network_model.pochodne import mw_na_kw
 from pydantic import BaseModel, Field
 
 router = APIRouter(
@@ -89,8 +90,8 @@ def _aggregate_loads_per_station_for_project(
         stacja_ref = stacja_szyny.get(load.bus_ref)
         if stacja_ref is None:
             continue
-        loads_per_station[stacja_ref] = (
-            loads_per_station.get(stacja_ref, 0.0) + float(load.p_mw) * 1000.0
+        loads_per_station[stacja_ref] = loads_per_station.get(stacja_ref, 0.0) + mw_na_kw(
+            float(load.p_mw)
         )
     return loads_per_station
 

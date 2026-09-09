@@ -5,7 +5,7 @@ from enum import StrEnum
 from typing import Any
 
 from enm.models import EnergyNetworkModel
-from network_model.pochodne import prad_roboczy_a
+from network_model.pochodne import kva_na_mva, prad_roboczy_a
 from pydantic import BaseModel, Field
 from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
 
@@ -555,7 +555,7 @@ def _oceb_karte_przeksztaltnika(
     rated_mva = _liczba_lub_none(card.get("sn_mva"))
     if rated_mva is None or rated_mva <= 0:
         s_n_kva = _liczba_lub_none(card.get("s_n_kva"))
-        rated_mva = (s_n_kva / 1000.0) if s_n_kva is not None and s_n_kva > 0 else None
+        rated_mva = kva_na_mva(s_n_kva) if s_n_kva is not None and s_n_kva > 0 else None
 
     # Tryb: grid-forming z KARTY (pole istniejące `control_mode`, wartość
     # "GRID_FORMING" — mv_converter_catalog.py:726,1047,1066), nigdy z rodzaju

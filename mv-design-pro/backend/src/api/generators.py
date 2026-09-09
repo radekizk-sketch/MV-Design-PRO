@@ -37,6 +37,7 @@ from enm.store import get_enm as _get_enm
 from enm.store import set_enm as _set_enm
 from fastapi import APIRouter, HTTPException, Request, status
 from network_model.catalog.audit2_catalogs import get_block_transformer
+from network_model.pochodne import kv_na_v, kva_na_mva, mw_na_kw, v_na_kv
 from pydantic import BaseModel, Field, field_validator
 
 logger = logging.getLogger(__name__)
@@ -404,7 +405,7 @@ def _ensure_catalog_block_transformer(
                 "name": block_transformer.label_pl,
                 "hv_bus_ref": hv_bus_ref,
                 "lv_bus_ref": lv_bus_ref,
-                "sn_mva": float(block_transformer.sn_kva) / 1000.0,
+                "sn_mva": kva_na_mva(float(block_transformer.sn_kva)),
                 "uhv_kv": float(block_transformer.hv_kv),
                 "ulv_kv": float(block_transformer.lv_kv),
                 "uk_percent": float(block_transformer.uk_percent),
@@ -800,7 +801,7 @@ def _fakty_pola_wytworcy(
         der_id=str(generator.get("ref_id") or ""),
         der_kind=rodzaj,  # type: ignore[arg-type]
         connection_side=strona,
-        nominal_power_kw=(p_mw * 1000.0 if isinstance(p_mw, int | float) else None),
+        nominal_power_kw=(mw_na_kw(p_mw) if isinstance(p_mw, int | float) else None),
         block_transformer_catalog_ref=(
             zmaterializowane.get("block_transformer_catalog_ref")
             or meta.get("block_transformer_catalog_ref")
@@ -1088,7 +1089,7 @@ def _napiecie_szyny_v(dane: dict[str, Any], bus_ref: Any) -> float | None:
     for szyna in dane.get("buses", []):
         if szyna.get("ref_id") == bus_ref:
             kv = szyna.get("voltage_kv")
-            return float(kv) * 1000.0 if isinstance(kv, int | float) else None
+            return kv_na_v(float(kv)) if isinstance(kv, int | float) else None
     return None
 
 
@@ -1107,10 +1108,10 @@ def _prad_roboczy_pola_a(generator: dict[str, Any], napiecie_v: float | None) ->
     p_mw = generator.get("p_mw")
     if not isinstance(p_mw, int | float) or p_mw <= 0 or not napiecie_v or napiecie_v <= 0:
         return None
-    napiecie_kv = napiecie_v / 1000.0
+    napiecie_kv = v_na_kv(napiecie_v)
     wynik = compute_transformer_rated_currents(
         TransformerRatedCurrentsInput(
-            rated_power_kva=float(p_mw) * 1000.0,
+            rated_power_kva=mw_na_kw(float(p_mw)),
             primary_voltage_kv=napiecie_kv,
             secondary_voltage_kv=napiecie_kv,
         )

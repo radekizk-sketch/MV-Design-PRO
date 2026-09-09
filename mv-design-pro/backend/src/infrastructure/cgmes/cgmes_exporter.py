@@ -54,7 +54,7 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from typing import TYPE_CHECKING
 
-from network_model.pochodne import prad_znamionowy_a
+from network_model.pochodne import kw_na_w, prad_znamionowy_a
 
 from .mrid import mrid_for, urn
 from .profiles import NS_CIM, RDF_ABOUT, RDF_ID, RDF_RESOURCE
@@ -323,7 +323,7 @@ def _emit_transformer(eq: ET.Element, tp: ET.Element, trafo: Transformer) -> Non
     ulv_v = kv_to_v(trafo.ulv_kv)
     z_hv_ohm = (trafo.uk_percent / 100.0) * (uhv_v**2) / sn_va if sn_va else 0.0
     # R from copper losses pk (kW -> W), referred to HV.
-    pk_w = trafo.pk_kw * 1000.0
+    pk_w = kw_na_w(trafo.pk_kw)
     r_hv_ohm = pk_w * (uhv_v**2) / (sn_va**2) if sn_va else 0.0
     x_hv_ohm = (z_hv_ohm**2 - r_hv_ohm**2) ** 0.5 if z_hv_ohm > r_hv_ohm else 0.0
 

@@ -1193,7 +1193,15 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         # 0,4 kV to STANDARDOWE napiecie znamionowe nN, ale nadal ZALOZENIE
         # dla NOWEJ stacji, gdy zadne z dwoch zrodel go nie poda — DLUG
         # NAZWANY, ta sama klasa co typowe wartosci domyslne w `enm/mapping.py`.
-        "H:local:materialized.rated_power_mva": 1,
+        # Karta W3-F (2026-09-09): wpis "H:local:materialized.rated_power_mva"
+        # ZDJETY — migracja skalowania jednostek do `network_model/pochodne/
+        # jednostki.py` (`mva_na_kva(float(rated_power_mva))` zamiast
+        # `float(rated_power_mva) * 1000`) zmienila ksztalt AST z BinOp na Call,
+        # ktorego forma H (nosnik lokalny + operacja arytmetyczna) juz nie widzi
+        # — LANCUCH trzech zrodel (materializacja -> surowe sn_mva -> None) NIE
+        # zostal usuniety semantycznie (nadal ta sama logika warunkowa), tylko
+        # syntaktycznie wypadl z wzorca skanera. Dlug ZMALAL -> zapadka obnizona
+        # (ta sama zasada co "dlug-zmalal" w `backend_no_physics_guard.py`).
         "H:local:payload.nn_voltage_kv": 1,
     },
     # Karta RATCHET-DICT-READ (2026-08-13), zaktualizowana kartą FAB-D1

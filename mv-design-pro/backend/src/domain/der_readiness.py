@@ -35,6 +35,7 @@ from typing import Any, Literal
 from enm.migrations.punkt_przylaczenia_der import (
     KLUCZ_KANONICZNY as KLUCZ_PUNKTU_PRZYLACZENIA,
 )
+from network_model.pochodne import mw_na_kw
 
 StatusOsi = Literal["ready", "partial", "blocked", "not_applicable", "no_module"]
 StronaPrzylaczenia = Literal[
@@ -497,7 +498,7 @@ def wejscie_z_generatora(
     rodzaj = _RODZAJ_Z_TYPU.get(typ, "PV") if isinstance(typ, str) else "PV"
 
     p_mw = generator.get("p_mw")
-    moc_kw = round(p_mw * 1000.0, 6) if isinstance(p_mw, int | float) else None
+    moc_kw = round(mw_na_kw(p_mw), 6) if isinstance(p_mw, int | float) else None
 
     return WejscieGotowosciDer(
         der_id=str(generator.get("ref_id") or generator.get("id") or ""),

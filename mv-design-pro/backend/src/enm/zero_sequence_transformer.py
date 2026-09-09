@@ -57,7 +57,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from network_model.core.ybus import S_BASE_MVA
-from network_model.pochodne import impedancja_z_napiecia_i_mocy_ohm
+from network_model.pochodne import impedancja_z_napiecia_i_mocy_ohm, kw_na_mw
 
 from .models import GroundingConfig, Transformer
 
@@ -207,7 +207,7 @@ def _z_t_leakage_pu_sn(trafo: Transformer) -> complex:
     z = uk/100; r = (pk/1000)/Sn; x = sqrt(z² - r²).
     """
     z_pu = trafo.uk_percent / 100.0
-    r_pu = (trafo.pk_kw / 1000.0) / trafo.sn_mva if trafo.sn_mva > 0 else 0.0
+    r_pu = kw_na_mw(trafo.pk_kw) / trafo.sn_mva if trafo.sn_mva > 0 else 0.0
     disc = z_pu * z_pu - r_pu * r_pu
     x_pu = math.sqrt(disc) if disc > 0 else 0.0
     return complex(r_pu, x_pu)

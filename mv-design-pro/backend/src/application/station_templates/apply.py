@@ -21,6 +21,7 @@ from application.station_templates.schema import StationTemplate
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
 from enm.store import blokada_twin
+from network_model.pochodne import mva_na_kva, mw_na_kw
 
 logger = logging.getLogger(__name__)
 
@@ -891,7 +892,7 @@ def _catalog_choice_rating_kva(option: Any) -> tuple[int | None, str | None]:
     # listy (dobór TR ignorował moc szablonu).
     mva_match = re.search(r"-(\d+(?:p\d+)?)mva-", ref.lower())
     if mva_match is not None:
-        return int(round(float(mva_match.group(1).replace("p", ".")) * 1000)), ref
+        return int(round(mva_na_kva(float(mva_match.group(1).replace("p", "."))))), ref
     match = re.search(r"-(\d+)kva-", ref.lower())
     if match is None:
         return None, ref
@@ -933,7 +934,7 @@ def _template_der_required_kva(
 
     if total_mw <= 0:
         return None
-    return int(round(total_mw * 1000))
+    return int(round(mw_na_kw(total_mw)))
 
 
 def _converter_apparent_power_mva(catalog_ref: object) -> float | None:

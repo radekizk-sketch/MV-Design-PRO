@@ -53,6 +53,7 @@ from application.analyses.protection.line_overcurrent_setting import (
     SPZMode,
     ThermalCriterionResult,
 )
+from network_model.pochodne import a_na_ka
 
 from .base import (
     CheckStatus,
@@ -632,7 +633,7 @@ class LineIDoublePrimeReferencePattern:
         if spz_blocking.spz_allowed:
             status: CheckStatus = "PASS"
             desc = (
-                f"SPZ dozwolone: prąd zwarciowy {spz_blocking.i_fault_start_a/1000:.1f} kA "
+                f"SPZ dozwolone: prąd zwarciowy {a_na_ka(spz_blocking.i_fault_start_a):.1f} kA "
                 f"poniżej progu blokady"
             )
         else:

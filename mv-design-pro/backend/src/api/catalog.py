@@ -42,6 +42,7 @@ from network_model.catalog.switchgear import (
     list_manufacturers as list_switchgear_manufacturers,
 )
 from network_model.catalog.types import normalize_ptpiree_key
+from network_model.pochodne import mva_na_kva
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -882,7 +883,8 @@ def _auto_populate_transformers(req: AutoPopulateRequest) -> AutoPopulateRespons
             dopasowanie = "PELNE"
 
         rationale = (
-            f"Sn={rated_mva*1000:.0f} kVA, U_HV={v_hv} kV, " f"U_LV={v_lv} kV ({manufacturer})"
+            f"Sn={mva_na_kva(rated_mva):.0f} kVA, U_HV={v_hv} kV, "
+            f"U_LV={v_lv} kV ({manufacturer})"
         )
 
         suggestions.append(

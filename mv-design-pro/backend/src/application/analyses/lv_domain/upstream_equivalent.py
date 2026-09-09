@@ -52,7 +52,7 @@ from enm.hash import compute_enm_hash, compute_switching_snapshot_hash
 from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
 from network_model.core.voltage_factor import c_for_node
-from network_model.pochodne import moc_zwarciowa_z_pradu_mva
+from network_model.pochodne import a_na_ka, kv_na_v, moc_zwarciowa_z_pradu_mva
 from network_model.solvers.short_circuit_core import (
     ShortCircuitType,
     build_zbus,
@@ -163,7 +163,7 @@ def _build_upstream_equivalent_snapshot_surowy(
         }
 
     c_factor = c_for_node(trafo.uhv_kv, scenario)
-    un_hv_v = trafo.uhv_kv * 1000.0
+    un_hv_v = kv_na_v(trafo.uhv_kv)
     ikss_a = compute_ikss(
         un_v=un_hv_v,
         c_factor=c_factor,
@@ -216,7 +216,7 @@ def _build_upstream_equivalent_snapshot_surowy(
         "voltage_kv": trafo.uhv_kv,
         "uth_kv": uth_kv,  # werdykt: Uth
         "sk_mva": sk_mva,  # werdykt: Sk″
-        "ikss_ka": ikss_a / 1000.0,  # addytywne: Ik″ towarzyszące Sk″
+        "ikss_ka": a_na_ka(ikss_a),  # addytywne: Ik″ towarzyszące Sk″
         "z1_ohm": {"r": r1_ohm, "x": x1_ohm},  # werdykt: Z1/R1/X1
         "z0_ohm": (
             {"r": z0_ohm.real, "x": z0_ohm.imag} if z0_ohm is not None else None
