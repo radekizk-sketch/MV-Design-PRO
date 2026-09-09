@@ -50,23 +50,27 @@ describe('Property Grid Field Definitions', () => {
       expect(sectionIds[1]).toBe('state');
     });
 
-    it('should have identification section with ID, name, UUID fields', () => {
+    it('should have identification section with ID, name, ref_id fields', () => {
+      // Odbiór K7c-FE (2026-09-09, karta KASACJA-DATA-MANAGER — błąd napotkany przy
+      // pełnym vitest src/ui, naprawiony u źródła): `uuid` nigdy nie było kluczem w
+      // modelu ENM (ma `id` i `ref_id` — identyfikator kanoniczny); ten test
+      // sprawdzał klucz-fantom sprzed naprawy field-definitions.ts w 387024dc.
       const idSection = sections.find((s) => s.id === 'identification');
       expect(idSection).toBeDefined();
 
       const fieldKeys = idSection!.fields.map((f) => f.key);
       expect(fieldKeys).toContain('id');
       expect(fieldKeys).toContain('name');
-      expect(fieldKeys).toContain('uuid');
+      expect(fieldKeys).toContain('ref_id');
     });
 
-    it('should mark ID and UUID as non-editable', () => {
+    it('should mark ID and ref_id as non-editable', () => {
       const idSection = sections.find((s) => s.id === 'identification');
       const idField = idSection!.fields.find((f) => f.key === 'id');
-      const uuidField = idSection!.fields.find((f) => f.key === 'uuid');
+      const refIdField = idSection!.fields.find((f) => f.key === 'ref_id');
 
       expect(idField!.editable).toBe(false);
-      expect(uuidField!.editable).toBe(false);
+      expect(refIdField!.editable).toBe(false);
     });
 
     it('should mark name as editable', () => {
@@ -137,12 +141,14 @@ describe('Property Grid Field Definitions', () => {
     });
 
     it('should have topology section with from_bus and to_bus refs', () => {
+      // Odbiór K7c-FE (2026-09-09): klucze zgodne z modelem ENM `BranchBase`
+      // (były `from_bus_id`/`to_bus_id` — klucze-fantomy naprawione w 387024dc).
       const topoSection = sections.find((s) => s.id === 'topology');
       expect(topoSection).toBeDefined();
 
       const fieldKeys = topoSection!.fields.map((f) => f.key);
-      expect(fieldKeys).toContain('from_bus_id');
-      expect(fieldKeys).toContain('to_bus_id');
+      expect(fieldKeys).toContain('from_bus_ref');
+      expect(fieldKeys).toContain('to_bus_ref');
     });
   });
 
@@ -198,10 +204,12 @@ describe('Property Grid Field Definitions', () => {
     const sections = getSourceFieldDefinitions();
 
     it('should have short_circuit section with editable Sk" and R/X', () => {
+      // Karta K7-FE (2026-09-09): klucz zgodny z modelem ENM `Source.sk3_mva`
+      // (był `sk_mva` — klucz-fantom naprawiony w 387024dc).
       const scSection = sections.find((s) => s.id === 'short_circuit');
       expect(scSection).toBeDefined();
 
-      const skField = scSection!.fields.find((f) => f.key === 'sk_mva');
+      const skField = scSection!.fields.find((f) => f.key === 'sk3_mva');
       expect(skField).toBeDefined();
       expect(skField!.editable).toBe(true);
       expect(skField!.type).toBe('number');
@@ -242,9 +250,11 @@ describe('Property Grid Field Definitions', () => {
       expect(loadTypeField!.enumOptions).toContain('ZIP');
     });
 
-    it('should have topology section with editable bus_id ref', () => {
+    it('should have topology section with editable bus_ref', () => {
+      // Odbiór K7c-FE (2026-09-09): klucz zgodny z modelem ENM `Load.bus_ref`
+      // (był `bus_id` — klucz-fantom naprawiony w 387024dc).
       const topologySection = sections.find((s) => s.id === 'topology');
-      const busField = topologySection!.fields.find((f) => f.key === 'bus_id');
+      const busField = topologySection!.fields.find((f) => f.key === 'bus_ref');
 
       expect(busField).toBeDefined();
       expect(busField!.editable).toBe(true);
