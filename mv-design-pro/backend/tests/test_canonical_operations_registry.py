@@ -64,11 +64,17 @@ class TestCanonicalOperationsRegistry:
             "add_relay",
             "update_relay_settings",
             "link_relay_to_field",
-            "calculate_tcc_curve",
             "validate_selectivity",
         }
         for op in prot_ops:
             assert op in CANONICAL_OP_NAMES, f"Missing protection operation: {op}"
+
+    def test_calculate_tcc_curve_removed_w3a(self):
+        """W3-A: zaslepka `calculate_tcc_curve` (`tcc.legacy_write_disabled`,
+        bez fizyki) skasowana razem z rejestracja — rodzina IDMT KLASA-NIE-
+        INSTANCJA, karta KARTA_W3_KONWERGENCJA_FIZYKI_2026-09.md §0.1."""
+        assert "calculate_tcc_curve" not in CANONICAL_OP_NAMES
+        assert not is_canonical_operation("calculate_tcc_curve")
 
     def test_all_universal_operations_present(self):
         universal_ops = {

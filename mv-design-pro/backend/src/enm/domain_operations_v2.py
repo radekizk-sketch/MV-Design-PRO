@@ -36,6 +36,7 @@ from network_model.pochodne import (
     moc_pozorna_z_czynnej_mva,
 )
 from network_model.solvers import cable_ampacity_derating as cable_derating
+from network_model.solvers.protection_iec60255 import compute_idmt_generic
 
 from . import der_sn_validation as der_val
 from .catalog_completion import NN_FIELD_ORIGIN_OPERACJA_DOMENOWA
@@ -96,6 +97,10 @@ IEC_CURVES = {
     "SI": {"K": 0.14, "alpha": 0.02},  # Standard Inverse
     "VI": {"K": 13.5, "alpha": 1.0},  # Very Inverse
     "EI": {"K": 80.0, "alpha": 2.0},  # Extremely Inverse
+    # "LTI" (Long Time Inverse) tutaj = "RI" w jadrze kanonicznym
+    # (network_model.solvers.protection_iec60255.IEC60255CurveType.RI) — te
+    # same stale K=120,0/alpha=1,0 (IEC 60255-151:2009 Tab.1), inna nazwa
+    # historyczna tego samego wariantu krzywej (alias udokumentowany W3-A).
     "LTI": {"K": 120.0, "alpha": 1.0},  # Long Time Inverse
 }
 
@@ -104,39 +109,35 @@ def _compute_tcc_point(i_ratio: float, tms: float, curve_type: str) -> float | N
     """Oblicz czas zadziałania dla danego I/Is wg IEC 60255.
 
     t = TMS * K / ((I/Is)^alpha - 1)
+
+    W3-A (rodzina KLASA-NIE-INSTANCJA A, karta W3-A): petla obliczeniowa
+    deleguje do generycznego silnika IDMT `network_model.solvers.
+    protection_iec60255.compute_idmt_generic` — JEDYNA implementacja tego
+    wzoru w repozytorium. Ta funkcja dostaje juz gotowy STOSUNEK `i_ratio`
+    (nie prady bezwzgledne — wywolujaca `validate_selectivity` dzieli
+    `ik / ipickup` przed wywolaniem), wiec do jadra przekazywane jest
+    `i_fault_a=i_ratio, is_pickup_a=1.0` — M = i_ratio/1.0 = i_ratio, ten
+    sam ksztalt wzoru bez zmiany sygnatury tej funkcji (2 wywolania w
+    `validate_selectivity` zostaja bez zmian). ``denom_guard=1e-10``
+    ujednolica epsilon kolo M=1 z pozostalymi skonsolidowanymi konsumentami
+    tej samej fizyki (przed konsolidacja kazdy mial WLASNY, niespojny
+    epsilon — patrz raport inwentarza W3 rodzina A).
     """
     params = IEC_CURVES.get(curve_type)
     if not params:
         return None
     if i_ratio <= 1.0:
         return None  # poniżej progu — brak zadziałania
-    denominator = (i_ratio ** params["alpha"]) - 1.0
-    if denominator <= 0:
-        return None
-    return tms * params["K"] / denominator
 
-
-def _compute_tcc_curve(
-    ipickup_a: float, tms: float, curve_type: str, i_max_a: float = 0.0
-) -> list[dict[str, float]]:
-    """Wylicz deterministyczną krzywą TCC (punkty I vs t)."""
-    points: list[dict[str, float]] = []
-    if ipickup_a <= 0:
-        return points
-    max_ratio = max(20.0, (i_max_a / ipickup_a) if i_max_a > 0 else 20.0)
-    # Generuj 50 punktów od 1.05 * Is do max_ratio * Is
-    for n in range(50):
-        ratio = 1.05 + (max_ratio - 1.05) * n / 49
-        t = _compute_tcc_point(ratio, tms, curve_type)
-        if t is not None and t > 0:
-            points.append(
-                {
-                    "i_a": round(ratio * ipickup_a, 2),
-                    "i_ratio": round(ratio, 4),
-                    "t_s": round(t, 4),
-                }
-            )
-    return points
+    generic = compute_idmt_generic(
+        i_fault_a=i_ratio,
+        is_pickup_a=1.0,
+        time_multiplier=tms,
+        a=params["K"],
+        b=params["alpha"],
+        denom_guard=1e-10,
+    )
+    return generic.trip_time_s
 
 
 def _field_ref_exists(enm: dict[str, Any], field_ref: str) -> bool:
@@ -1106,28 +1107,7 @@ def link_relay_to_field(enm: dict[str, Any], payload: dict[str, Any]) -> dict[st
 
 
 # ---------------------------------------------------------------------------
-# 6. OCHRONA — calculate_tcc_curve
-# ---------------------------------------------------------------------------
-
-
-def calculate_tcc_curve(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Wylicz krzywą TCC z nastaw przekaźnika (IEC 60255)."""
-    relay_ref = payload.get("relay_ref")
-    if not relay_ref:
-        return _error_response("Brak identyfikatora przekaźnika.", "tcc.relay_missing")
-
-    return _relay_adapter_error(
-        relay_ref=relay_ref,
-        message=(
-            f"Cache TCC dla przekaźnika '{relay_ref}' nie jest już zapisywany do legacy protection_assignments. "
-            "Użyj read-modelu ochrony lub czystej analizy bez persystencji."
-        ),
-        code="tcc.legacy_write_disabled",
-    )
-
-
-# ---------------------------------------------------------------------------
-# 7. OCHRONA — validate_selectivity
+# 6. OCHRONA — validate_selectivity
 # ---------------------------------------------------------------------------
 
 
@@ -6943,7 +6923,6 @@ V2_CANONICAL_OPS: frozenset[str] = frozenset(
         "add_relay",
         "update_relay_settings",
         "link_relay_to_field",
-        "calculate_tcc_curve",
         "validate_selectivity",
         # nN
         "add_sn_bay",
@@ -6983,7 +6962,6 @@ ALL_V2_HANDLERS: dict[str, Any] = {
     "add_relay": add_relay,
     "update_relay_settings": update_relay_settings,
     "link_relay_to_field": link_relay_to_field,
-    "calculate_tcc_curve": calculate_tcc_curve,
     "validate_selectivity": validate_selectivity,
     "add_sn_bay": add_sn_bay,
     "add_sn_bay_from_catalog": add_sn_bay_from_catalog,

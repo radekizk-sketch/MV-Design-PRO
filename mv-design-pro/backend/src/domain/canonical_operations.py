@@ -298,7 +298,11 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         ),
         creates_elements=False,
     ),
-    # --- Protection (7 operations) ---
+    # --- Protection (6 operations) ---
+    # W3-A (2026-09): "calculate_tcc_curve" skasowana razem z zaslepka w
+    # enm/domain_operations_v2.py (zwracala wylacznie blad
+    # "tcc.legacy_write_disabled", bez fizyki) — rodzina IDMT KLASA-NIE-
+    # INSTANCJA, karta KARTA_W3_KONWERGENCJA_FIZYKI_2026-09.md §0.1.
     "add_ct": OperationSpec(
         canonical_name="add_ct",
         category=OperationCategory.PROTECTION,
@@ -337,15 +341,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         description_pl="Powiązanie przekaźnika z polem rozdzielczym",
         target_layer="Domain / NetworkModel",
         required_fields=("relay_ref", "field_ref"),
-        creates_elements=False,
-    ),
-    "calculate_tcc_curve": OperationSpec(
-        canonical_name="calculate_tcc_curve",
-        category=OperationCategory.PROTECTION,
-        description_pl="Obliczenie krzywej czas-prąd (TCC)",
-        target_layer="Analysis / Protection",
-        required_fields=("relay_ref",),
-        mutates_model=False,
         creates_elements=False,
     ),
     "validate_selectivity": OperationSpec(

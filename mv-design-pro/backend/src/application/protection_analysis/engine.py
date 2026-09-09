@@ -39,6 +39,7 @@ from network_model.catalog.types import (
     ProtectionDeviceType,
     ProtectionSettingTemplate,
 )
+from network_model.solvers.protection_iec60255 import compute_idmt_generic
 
 if TYPE_CHECKING:
     # Rejestr krzywych producenta jest importowany LENIWIE w cialach funkcji
@@ -201,6 +202,17 @@ def compute_iec_inverse_time(
 
     Formula: t = TMS * A / ((I/Ipickup)^B - 1)
 
+    W3-A (rodzina KLASA-NIE-INSTANCJA A, karta W3-A): petla obliczeniowa
+    (M^B, guard, TMS-skalowanie) deleguje do generycznego silnika IDMT
+    `network_model.solvers.protection_iec60255.compute_idmt_generic` —
+    JEDYNA implementacja tego wzoru w repozytorium (wzorzec P0.7,
+    `f4a822bb`, skopiowany 1:1 z `protection.curves.iec_curves`).
+    ``denom_guard=1e-10`` ujednolica epsilon tor kanonicznego `protection_sn`
+    z pozostalymi konsumentami tej samej fizyki (przed konsolidacja kazdy z
+    czterech konsumentow mial WLASNY, niespojny epsilon kolo M=1 — patrz
+    raport inwentarza W3 rodzina A; po konsolidacji dziela JEDEN epsilon
+    zamiast czterech roznych progow "brak wyzwolenia").
+
     Args:
         i_fault_a: Fault current [A]
         i_pickup_a: Pickup current [A]
@@ -216,14 +228,16 @@ def compute_iec_inverse_time(
     if i_fault_a <= i_pickup_a:
         return None  # No trip - current below pickup
 
-    ratio = i_fault_a / i_pickup_a
-    denominator = (ratio**b) - 1.0
-
-    if denominator <= 0:
-        return None
-
-    trip_time = tms * a / denominator
-    return round(trip_time, 6)  # 6 decimal places for determinism
+    generic = compute_idmt_generic(
+        i_fault_a=i_fault_a,
+        is_pickup_a=i_pickup_a,
+        time_multiplier=tms,
+        a=a,
+        b=b,
+        denom_guard=1e-10,
+    )
+    assert generic.trip_time_s is not None  # will_trip gwarantowane (M>1 powyzej)
+    return round(generic.trip_time_s, 6)  # 6 decimal places for determinism
 
 
 def compute_definite_time(
