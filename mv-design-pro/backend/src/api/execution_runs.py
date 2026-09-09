@@ -114,7 +114,13 @@ def _canonical_analysis_type(value: ExecutionAnalysisType) -> str:
     if value == ExecutionAnalysisType.DYNAMIC_STABILITY:
         return "dynamic_stability"
     # V12K-025: PROTECTION ma osobny endpoint (architektoniczna separacja
-    # bo wymaga sc_run_id + protection_case_id + protection_engine_v1).
+    # bo wymaga sc_run_id + protection_case_id). Realny silnik za
+    # POST /protection-runs to application.protection_analysis.engine (tor
+    # "protection_sn") — `domain.protection_engine_v1` to drugi, MARTWY
+    # silnik fizyki (0 konsumentow produkcyjnych, zweryfikowane karta W3-A,
+    # 2026-09) chroniony jako WATCHED_PATHS w
+    # scripts/solver_boundary_guard.py — kasacja wymaga jawnej sankcji
+    # wlasciciela (SANCTIONED_CHANGES), NIE wykonana w tej karcie (B-01 STOP).
     if value == ExecutionAnalysisType.PROTECTION:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

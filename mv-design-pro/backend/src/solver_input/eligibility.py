@@ -260,10 +260,15 @@ def check_eligibility(
         #      _check_common_blockers above.
         #
         # Per-assignment validation (relay settings, CT/VT bindings, curve
-        # parameters) is performed at run-time by protection_engine_v1, not at
+        # parameters) is performed at run-time by
+        # application.protection_analysis.engine (tor "protection_sn"), not at
         # eligibility gating — because eligibility runs before catalog binding /
         # materialization for the protection device tree (ProtectionAssignment
-        # lives in ENM, not in NetworkGraph).
+        # lives in ENM, not in NetworkGraph). `domain.protection_engine_v1` is a
+        # second, DEAD engine (0 production consumers, verified card W3-A,
+        # 2026-09) protected as WATCHED_PATHS in
+        # scripts/solver_boundary_guard.py — deletion needs an explicit owner
+        # sanction (SANCTIONED_CHANGES), NOT done in this card (B-01 STOP).
         protectable_apparatus = [
             switch
             for switch in graph.switches.values()

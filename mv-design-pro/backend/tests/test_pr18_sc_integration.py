@@ -487,13 +487,17 @@ class TestResultMapper:
         # (`application.execution_engine`, skasowany kartą CV-3.3-A, 2026-09-05).
         # ZNALEZISKO (poza tą kartą): `map_short_circuit_to_resultset_v1` i
         # `wzbogac_resultset_o_meta_bindingu` nie mają dziś ŻADNEGO konsumenta
-        # produkcyjnego — E3 był ich jedynym wołającym w `src/`. Ten sam klaster
-        # (`load_flow_to_resultset_v1.py::map_power_flow_to_resultset_v1`,
-        # `protection_to_resultset_v1.py::map_protection_to_resultset_v1`,
-        # `protection_to_overlay_v1.py::map_protection_to_overlay_v1`,
-        # `sc_binding_meta.py`) wymaga osobnej karty kasacji (zbadanie
-        # `_build_element_results`/`_build_global_results`, dzielonych krzyżowo
-        # miedzy short_circuit_to_resultset_v1.py i protection_to_resultset_v1.py).
+        # produkcyjnego (tylko ten test) — E3 był ich jedynym wołającym w `src/`.
+        # Część niegdysiejszego klastra już skasowana: `load_flow_to_resultset_v1.py`
+        # nie istnieje pod tą nazwą, `protection_to_overlay_v1.py` skasowany kartą
+        # CV-3.3-A2 (2026-09-05). `protection_to_resultset_v1.py` (razem z
+        # `domain/protection_engine_v1.py`) ZOSTAJE — B-01 STOP karty W3-A
+        # (2026-09): oba chronione jawnie (`resultset_v1_schema_guard.py`
+        # PROTECTED_FILES, `solver_boundary_guard.py` WATCHED_PATHS), kasacja
+        # wymaga sankcji właściciela, nie zmierzenia „zero importera". Pozostaje
+        # `sc_binding_meta.py` + ten plik (`short_circuit_to_resultset_v1.py`) —
+        # nadal osobna karta kasacji, jeśli architekt zdecyduje (`_build_element_
+        # results`/`_build_global_results` wciąż mają JEDYNEGO wołającego — ten test).
         rs = wzbogac_resultset_o_meta_bindingu(
             map_short_circuit_to_resultset_v1(
                 binding_result=binding_result,
