@@ -440,4 +440,32 @@ describe('strażnik prezentacji — rodzaje prezentowane na realnych odpowiedzia
     expect(tabela).toHaveTextContent('GPZ · sekcja 001 · szyna SN');
     expect(tabela.textContent ?? '').not.toContain('860003b4514aa388b39561d5005ce584');
   });
+
+  it('detekcja doziemień: metoda z uzasadnieniem renderowana, trzy nastawy NIE — z powodem (karta W2 pkt 5)', async () => {
+    // Fixtura REALNEJ odpowiedzi solvera (`odpowiedziSolvera.json`, ta sama, po
+    // stronie backendu pilnowana przez `tests/ci/test_v126_odpowiedzi_fixtury.py`):
+    // `settings.u0_start_percent`/`p0_set_w` SĄ w ładunku (`i5_multiplier` = null).
+    const fixtura = ODPOWIEDZI.earth_fault_detection as Record<string, unknown>;
+    expect(fixtura.settings, 'fixtura bez settings — test straciłby sens').toBeTruthy();
+
+    const ekran = await uruchomRodzaj('earth_fault_detection');
+
+    // Metoda z uzasadnieniem — renderowana JAK DZIŚ (bez zmian).
+    expect(ekran).toHaveTextContent('Sposób uziemienia punktu neutralnego');
+    expect(ekran).toHaveTextContent('Metoda zalecana');
+    expect(ekran).toHaveTextContent('Metoda alternatywna');
+
+    // Trzy nastawy NIE są renderowane — ani etykieta, ani wartość liczbowa.
+    expect(screen.queryByText('Nastawa rozruchowa napięcia zerowego')).not.toBeInTheDocument();
+    expect(screen.queryByText('Nastawa mocy czynnej zerowej')).not.toBeInTheDocument();
+    expect(screen.queryByText('Krotność rozruchu 5. harmonicznej')).not.toBeInTheDocument();
+    expect(screen.queryByText('5,0000 %')).not.toBeInTheDocument();
+
+    // W ich miejscu — powód wprost, bez zaokrąglania w dół do „TODO"/„wkrótce".
+    const pominiete = screen.getByTestId('mvd-akad-wielkosci-pominiete');
+    expect(pominiete).toHaveTextContent(
+      'Nastawy nie są prezentowane: solver nie ma dla nich udokumentowanej podstawy',
+    );
+    expect(pominiete).toHaveTextContent('wymagane wymaganie OSD albo karta przekaźnika');
+  });
 });

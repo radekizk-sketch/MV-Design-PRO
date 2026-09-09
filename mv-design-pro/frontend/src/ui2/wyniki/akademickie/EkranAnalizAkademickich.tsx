@@ -279,7 +279,16 @@ function PanelWielkosci({ rodzaj, payload }: { rodzaj: string; payload: unknown 
     const wartosc = odczytaj(payload, pole.sciezka);
     return wartosc !== undefined && wartosc !== null;
   });
-  if (obecne.length === 0) return null;
+  // Karta W2 pkt 5: pozycja pominięta renderuje się TYLKO gdy solver faktycznie
+  // zwrócił choć jedno z jej pól (uczciwość wobec BIEŻĄCEGO wyniku — nie nota
+  // o polu, którego kontrakt tego biegu w ogóle nie niesie).
+  const pominieteObecne = (projekt.wielkosciPominiete ?? []).filter((pozycja) =>
+    pozycja.sciezki.some((sciezka) => {
+      const wartosc = odczytaj(payload, sciezka);
+      return wartosc !== undefined && wartosc !== null;
+    }),
+  );
+  if (obecne.length === 0 && pominieteObecne.length === 0) return null;
 
   return (
     <section className="mvd-akad-sekcja" data-testid="mvd-akad-wielkosci">
@@ -310,6 +319,15 @@ function PanelWielkosci({ rodzaj, payload }: { rodzaj: string; payload: unknown 
           );
         })}
       </div>
+      {pominieteObecne.map((pozycja) => (
+        <p
+          className="mvd-akad-opis mvd-akad-wielkosc-pominieta"
+          key={pozycja.sciezki.join('|')}
+          data-testid="mvd-akad-wielkosci-pominiete"
+        >
+          {pozycja.powod}
+        </p>
+      ))}
     </section>
   );
 }

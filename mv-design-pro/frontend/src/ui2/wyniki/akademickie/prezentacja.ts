@@ -152,6 +152,25 @@ export interface TabelaObiektow {
   readonly refZParametrem?: boolean;
 }
 
+/**
+ * Wielkości ŚWIADOMIE niepokazywane, choć solver je zwraca w ładunku wyniku —
+ * z powodem renderowanym WPROST na ekranie (karta W2 pkt 5, zero fabrykacji).
+ *
+ * Różnica wobec `nieprezentowane.ts` (`POWODY_NIEPREZENTOWANIA`): tamten
+ * rejestr wygasza CAŁY rodzaj analizy i powód NIE trafia na ekran („ekran ma
+ * być KRÓTSZY"); tu metoda detekcji z uzasadnieniem zostaje renderowana jak
+ * dziś — pomijane są WYŁĄCZNIE te trzy liczby, a powód pominięcia jest
+ * elementem odpowiedzi inżynierskiej (uczciwość wobec BIEŻĄCEGO wyniku), nie
+ * czymś do ukrycia.
+ */
+export interface WielkoscPominieta {
+  /** Ścieżki pól pominiętych — kontrola OBECNOŚCI w ładunku steruje tym, czy
+   *  nota w ogóle się renderuje (zero noty dla pól, których kontrakt nie niesie). */
+  readonly sciezki: readonly string[];
+  /** Powód pominięcia — jedno zdanie, renderowane WPROST w miejscu liczb. */
+  readonly powod: string;
+}
+
 /** Kompletny projekt prezentacji jednego rodzaju analizy. */
 export interface PrezentacjaRodzaju {
   /** Co ta analiza rozstrzyga — jedno zdanie, język inżynierski. */
@@ -162,6 +181,9 @@ export interface PrezentacjaRodzaju {
   readonly norma?: string;
   readonly werdykt: WerdyktRodzaju;
   readonly wielkosciGlowne: readonly WielkoscGlowna[];
+  /** Wielkości ŚWIADOMIE niepokazywane (karta W2 pkt 5) — puste dla rodzajów
+   *  bez takiego pominięcia (dziś: tylko `earth_fault_detection`). */
+  readonly wielkosciPominiete?: readonly WielkoscPominieta[];
   readonly tabele: readonly TabelaObiektow[];
   /** Jawny następny krok projektanta po odczytaniu werdyktu. */
   readonly nastepnyKrok: string;
@@ -488,16 +510,18 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
       { sciezka: 'neutral_grounding', etykieta: 'Sposób uziemienia punktu neutralnego' },
       { sciezka: 'recommended_method', etykieta: 'Metoda zalecana' },
       { sciezka: 'alternative_method', etykieta: 'Metoda alternatywna' },
+    ],
+    // Karta W2 pkt 5 (zero fabrykacji): `settings.u0_start_percent`/`p0_set_w`/
+    // `i5_multiplier` solver FROZEN zwraca jako LITERAŁY bez udokumentowanej
+    // podstawy (`network_model/solvers/*` — nie ruszane tą kartą). Metoda
+    // detekcji z uzasadnieniem zostaje renderowana jak dziś (`wielkosciGlowne`
+    // powyżej); trzy nastawy NIE są renderowane — w ich miejscu powód wprost.
+    wielkosciPominiete: [
       {
-        sciezka: 'settings.u0_start_percent',
-        etykieta: 'Nastawa rozruchowa napięcia zerowego',
-        jednostka: '%',
-      },
-      { sciezka: 'settings.p0_set_w', etykieta: 'Nastawa mocy czynnej zerowej', jednostka: 'W' },
-      {
-        sciezka: 'settings.i5_multiplier',
-        etykieta: 'Krotność rozruchu 5. harmonicznej',
-        jednostka: '×',
+        sciezki: ['settings.u0_start_percent', 'settings.p0_set_w', 'settings.i5_multiplier'],
+        powod:
+          'Nastawy nie są prezentowane: solver nie ma dla nich udokumentowanej podstawy — '
+          + 'wymagane wymaganie OSD albo karta przekaźnika.',
       },
     ],
     tabele: [],
