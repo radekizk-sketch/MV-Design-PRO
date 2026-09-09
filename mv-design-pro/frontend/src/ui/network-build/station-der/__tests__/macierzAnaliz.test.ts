@@ -9,7 +9,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { zlozMacierzAnaliz, POWOD_OSI_PL, stanWynikuPl } from '../macierzAnaliz';
+import { zlozMacierzAnaliz, POWOD_OSI_PL, stanWynikuPl, etykietaDzialaniaPl } from '../macierzAnaliz';
 import type { AggregatedReadinessAxis } from '../readiness';
 import type { ExecutionRun } from '../../../study-cases/types';
 
@@ -127,5 +127,60 @@ describe('macierz analiz — trzy różne sytuacje, trzy różne odpowiedzi', ()
       [przebieg({ analysis_type: 'SC_3F' })],
     );
     expect(wiersz.stanWyniku).toBe('brak_przebiegu');
+  });
+
+  it('ostatni przebieg niesie ID NAJNOWSZEGO zakończonego biegu, nie pierwszego z listy', () => {
+    // Podstawa dzialania `otworz_wynik` (karta W2 pkt 2) — bez ID nawigacja do
+    // dowodu nie ma czego otworzyc.
+    const [wiersz] = zlozMacierzAnaliz(
+      [os('sc_3f', 'ready')],
+      [
+        przebieg({ id: 'run-stary', finished_at: '2026-07-27T09:00:00Z' }),
+        przebieg({ id: 'run-nowy', finished_at: '2026-07-27T11:30:00Z' }),
+      ],
+    );
+    expect(wiersz.ostatniPrzebiegId).toBe('run-nowy');
+  });
+
+  it('ostatni przebieg jest null, gdy nic nie liczono', () => {
+    const [wiersz] = zlozMacierzAnaliz([os('sc_3f', 'ready')], []);
+    expect(wiersz.ostatniPrzebiegId).toBeNull();
+  });
+
+  it('rodzaj przebiegu — jeden na oś z mapowaniem, null dla osi bez własnego przebiegu', () => {
+    const [scWiersz] = zlozMacierzAnaliz([os('sc_3f', 'ready')], []);
+    expect(scWiersz.typPrzebiegu).toBe('SC_3F');
+    const [frtWiersz] = zlozMacierzAnaliz([os('frt', 'ready')], []);
+    expect(frtWiersz.typPrzebiegu).toBe('DYNAMIC_STABILITY');
+    const [protectionWiersz] = zlozMacierzAnaliz([os('protection', 'ready')], []);
+    expect(protectionWiersz.typPrzebiegu).toBeNull();
+  });
+
+  it('etykieta FRT/HVRT/NC RfG mówi WPROST dokąd prowadzi, reszta zostaje generyczna', () => {
+    // Iloczyn cech (KLASA NIE INSTANCJA): {frt,hvrt,nc_rfg,sc_3f,protection} ×
+    // {uruchom_analize,uzupelnij_dane,otworz_wynik} — nie tylko przykład z karty.
+    const [frt] = zlozMacierzAnaliz([os('frt', 'ready')], []);
+    expect(etykietaDzialaniaPl(frt)).toBe('Przejdź do analizy FRT');
+    const [hvrt] = zlozMacierzAnaliz([os('hvrt', 'ready')], []);
+    expect(etykietaDzialaniaPl(hvrt)).toBe('Przejdź do analizy HVRT');
+    const [ncRfg] = zlozMacierzAnaliz([os('nc_rfg', 'ready')], []);
+    expect(etykietaDzialaniaPl(ncRfg)).toBe('Przejdź do zgodności NC RfG');
+
+    // Inna oś z tym samym działaniem `uruchom_analize` NIE dostaje etykiety FRT/HVRT/NC RfG.
+    const [sc3f] = zlozMacierzAnaliz([os('sc_3f', 'ready')], []);
+    expect(etykietaDzialaniaPl(sc3f)).toBe('Uruchom obliczenia');
+
+    // `uzupelnij_dane`/`otworz_wynik` zostają generyczne NAWET dla frt/hvrt/nc_rfg —
+    // etykieta „dokąd prowadzi” dotyczy wyłącznie `uruchom_analize`.
+    const [frtBlocked] = zlozMacierzAnaliz(
+      [os('frt', 'blocked', [blokada('der.dynamic_profile_missing')])],
+      [],
+    );
+    expect(etykietaDzialaniaPl(frtBlocked)).toBe('Uzupełnij brakujące dane');
+    const [ncRfgDone] = zlozMacierzAnaliz(
+      [os('nc_rfg', 'ready')],
+      [przebieg({ analysis_type: 'SOURCE_COMPLIANCE' })],
+    );
+    expect(etykietaDzialaniaPl(ncRfgDone)).toBe('Otwórz wynik');
   });
 });

@@ -22,10 +22,12 @@ import { DerWiazaniaEditor } from '../../network-build/station-der/DerWiazaniaEd
 import { DoborPrzekladnikowSekcja } from '../../network-build/station-der/DoborPrzekladnikowSekcja';
 import { FunkcjeZabezpieczenSekcja } from '../../network-build/station-der/FunkcjeZabezpieczenSekcja';
 import { MacierzAnalizSekcja } from '../../network-build/station-der/MacierzAnalizSekcja';
-import { zlozMacierzAnaliz } from '../../network-build/station-der/macierzAnaliz';
+import { zlozMacierzAnaliz, type WierszMacierzy } from '../../network-build/station-der/macierzAnaliz';
 import { buildAggregatedReadiness } from '../../network-build/station-der/readiness';
 import { useExecutionRunsStore } from '../../study-cases/runStore';
 import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
+import { useShellStore } from '../../../ui2/shell/useShellStore';
+import { uruchomObliczenie } from '../../../ui2/spaces/obliczenia/uruchomObliczenie';
 import {
   EMPTY_DER_CATALOGS,
   EMPTY_DER_PROFILES,
@@ -1302,6 +1304,62 @@ function DerSurfaceShell({
   // przebiegi z magazynu wykonan. Rekord wzbogacony o klase przekladnika z katalogu,
   // zeby powody byly te same, ktore widzi reszta ekranu.
   const przebiegi = useExecutionRunsStore((state) => state.runs);
+  const setActiveSpaceDlaMacierzy = useShellStore((state) => state.setActiveSpace);
+  const setWynikiTabDlaMacierzy = useShellStore((state) => state.setWynikiTab);
+
+  // Dzialanie wiersza macierzy (karta W2 pkt 2, martwy klik — prop `onDzialanie`
+  // byl NIEPRZEKAZANY, wiec KAZDY przycisk macierzy byl martwy, nie tylko
+  // frt/hvrt/nc_rfg). Trzy realne cele, reuzywajace ISTNIEJACYCH mostow, zero
+  // nowego mechanizmu nawigacji (prosledzone `ui2/legacy/LegacyInspektor.tsx`,
+  // `ui2/nav`, `ui2/AppRoot.tsx`):
+  //  - `uzupelnij_dane`  -> `openRouteSurface` z `target_screen`/`target_tab`
+  //     JUZ policzonych przez `readiness.ts` dla kazdego blokera (byly liczone,
+  //     ale nigdy nie skonsumowane zadnym klikiem — druga polowa tego samego
+  //     defektu, znaleziona przy tej karcie, naprawiona tym samym mostem).
+  //  - `uruchom_analize`  -> frt/hvrt/nc_rfg: nawigacja do ekranu, na ktorym
+  //     analiza REALNIE biega (`ui2/oze/frt` przez `openRouteSurface('E-26')`,
+  //     `ui2/oze/macierz` przez zakladke wynikow `ncrfg`); pozostale osie z
+  //     wlasnym przebiegiem (sc_3f/sc_1f/sc_2f/sc_2fg/vdrop/q_u) -> realny bieg
+  //     przez ISTNIEJACY tor `uruchomObliczenie` (ten sam, ktory uzywa przycisk
+  //     „Uruchom obliczenie" w przestrzeni Obliczenia).
+  //  - `otworz_wynik`     -> zakladka wynikow „dowod" najnowszego zakonczonego
+  //     przebiegu tej osi (ten sam wzorzec co „Otworz pelny dowod obliczen"
+  //     w `EkranStabilnosci.tsx`).
+  const obslugaDzialaniaMacierzy = useCallback(
+    (wiersz: WierszMacierzy) => {
+      if (!der) return;
+      if (wiersz.dzialanie === 'uzupelnij_dane') {
+        const blokada = wiersz.blokady[0];
+        if (!blokada) return;
+        openRouteSurface(blokada.target_screen as never, {
+          tabId: blokada.target_tab,
+          entityRef: der.id,
+        });
+        return;
+      }
+      if (wiersz.dzialanie === 'uruchom_analize') {
+        if (wiersz.axis === 'frt' || wiersz.axis === 'hvrt') {
+          openRouteSurface('E-26', { entityRef: der.id });
+          return;
+        }
+        if (wiersz.axis === 'nc_rfg') {
+          setActiveSpaceDlaMacierzy('wyniki');
+          setWynikiTabDlaMacierzy('ncrfg', der.id);
+          return;
+        }
+        if (wiersz.typPrzebiegu) {
+          void uruchomObliczenie(wiersz.typPrzebiegu);
+        }
+        return;
+      }
+      if (wiersz.dzialanie === 'otworz_wynik' && wiersz.ostatniPrzebiegId) {
+        setActiveSpaceDlaMacierzy('wyniki');
+        setWynikiTabDlaMacierzy('dowod', wiersz.ostatniPrzebiegId);
+      }
+    },
+    [der, openRouteSurface, setActiveSpaceDlaMacierzy, setWynikiTabDlaMacierzy],
+  );
+
   const sekcjaMacierzy = useMemo(() => {
     if (!der) return <></>;
     const wStacji = wszystkieDery.filter(
@@ -1310,8 +1368,13 @@ function DerSurfaceShell({
     const osie = buildAggregatedReadiness(wzbogacOKlaseCt(der, katalogiWiazan.ct), {
       otherDersInStation: wStacji,
     });
-    return <MacierzAnalizSekcja wiersze={zlozMacierzAnaliz(osie, przebiegi)} />;
-  }, [der, katalogiWiazan.ct, przebiegi, wszystkieDery]);
+    return (
+      <MacierzAnalizSekcja
+        wiersze={zlozMacierzAnaliz(osie, przebiegi)}
+        onDzialanie={obslugaDzialaniaMacierzy}
+      />
+    );
+  }, [der, katalogiWiazan.ct, przebiegi, wszystkieDery, obslugaDzialaniaMacierzy]);
 
   const stationContext: DerStationContext | undefined = useMemo(() => {
     if (!der) return undefined;

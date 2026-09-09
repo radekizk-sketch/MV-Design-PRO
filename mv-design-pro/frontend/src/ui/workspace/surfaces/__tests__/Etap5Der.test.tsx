@@ -10,8 +10,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useAppStateStore } from '../../../app-state/store';
 import { EMPTY_DER_READINESS, useStationDerStore } from '../../../network-build/station-der';
+import { useNetworkBuildStore } from '../../../network-build/networkBuildStore';
 import { MISSING_DASH } from '../../../shared/formatPolishValue';
 import { useSnapshotStore } from '../../../topology/snapshotStore';
+import { useShellStore } from '../../../../ui2/shell/useShellStore';
 import { BessSurface, FwSurface, PvSourceSurface } from '../DerSurfaces';
 
 const FROZEN_NOW = '2026-05-06T10:00:00Z';
@@ -1028,6 +1030,100 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
         'dane kompletne',
       ),
     );
+  });
+
+  it('natywny klik „Uzupełnij brakujące dane" nawiguje do ekranu i zakładki blokera (karta W2 pkt 2, martwy klik)', async () => {
+    // Przed karta W2: `onDzialanie` nie było przekazane do `MacierzAnalizSekcja`
+    // WCALE — klik na TEN SAM przycisk, na którym poprzedni test tylko czyta
+    // tekst, byl martwy (`onDzialanie?.()` na `undefined`).
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: true, json: async () => [] }) as unknown as Response),
+    );
+    useAppStateStore.getState().setActiveProject('PRJ-1');
+    useAppStateStore.getState().setActiveCase('CASE-1');
+    useStationDerStore.getState().attachDer({
+      id: 'der_klik_macierzy',
+      project_id: 'PRJ-1',
+      station_id: 'station_xyz',
+      der_kind: 'PV',
+      name: 'PV bez przekładnika prądowego',
+      connection_side: 'nN',
+      bus_przylaczenia_ref: 'pcc_y',
+      catalogs: {
+        device_catalog_ref: 'pv_inv_sma_2500',
+        protection_catalog_ref: 'ABB_REB670',
+        vt_catalog_ref: 'vt_10kv_100v_05_abb',
+      },
+      profiles: {},
+      nominal_power_kw: 2500,
+      created_at: FROZEN_NOW,
+    });
+    const openRouteSurface = vi.fn();
+    useNetworkBuildStore.setState({ openRouteSurface } as never);
+
+    const uzytkownik = userEvent.setup();
+    render(<PvSourceSurface surface={makeSurface('der_klik_macierzy')} />);
+    await uzytkownik.click(screen.getByTestId('der-card-tab-readiness'));
+    await screen.findByTestId('macierz-wiersz-protection');
+
+    await uzytkownik.click(screen.getByTestId('macierz-dzialanie-protection'));
+
+    expect(openRouteSurface).toHaveBeenCalledTimes(1);
+    const [screenCode, opcje] = openRouteSurface.mock.calls[0] as [string, Record<string, unknown>];
+    expect(screenCode).toBe('E-21');
+    expect(opcje.entityRef).toBe('der_klik_macierzy');
+    expect(typeof opcje.tabId).toBe('string');
+    expect(opcje.tabId).not.toBe('');
+  });
+
+  it('natywny klik „Przejdź do zgodności NC RfG" otwiera zakładkę wyników NC RfG dla tego wytwórcy (karta W2 pkt 2)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: true, json: async () => [] }) as unknown as Response),
+    );
+    useAppStateStore.getState().setActiveProject('PRJ-1');
+    useAppStateStore.getState().setActiveCase('CASE-1');
+    // Wytwórca z KOMPLETEM danych, żeby oś NC RfG osiągnęła `uruchom_analize`
+    // (bez blokera 'uzupelnij_dane', który ma pierwszeństwo nad `uruchom_analize`).
+    useStationDerStore.getState().attachDer({
+      id: 'der_ncrfg_klik',
+      project_id: 'PRJ-1',
+      station_id: 'station_ncrfg',
+      der_kind: 'PV',
+      name: 'PV z kompletem danych NC RfG',
+      connection_side: 'nN',
+      bus_przylaczenia_ref: 'pcc_ncrfg',
+      catalogs: {
+        device_catalog_ref: 'pv_inv_sma_2500',
+        protection_catalog_ref: 'ABB_REB670',
+        vt_catalog_ref: 'vt_10kv_100v_05_abb',
+        ct_catalog_ref: 'ct_200_5_5p10_10va_abb',
+      },
+      profiles: { nc_rfg_profile_ref: 'energa' },
+      nominal_power_kw: 2500,
+      created_at: FROZEN_NOW,
+    });
+    useShellStore.setState({ activeSpace: 'schemat', wynikiTab: null, wynikiTabElement: null });
+
+    const uzytkownik = userEvent.setup();
+    render(<PvSourceSurface surface={makeSurface('der_ncrfg_klik')} />);
+    await uzytkownik.click(screen.getByTestId('der-card-tab-readiness'));
+    // Profil NC RfG obecny -> `blokady` (podstawa `dzialanie`) puste dla tej osi,
+    // więc działaniem jest `uruchom_analize` — etykieta mówi WPROST, dokąd
+    // prowadzi (karta W2 pkt 2). `status` bywa 'blocked' z INNEGO, szerszego
+    // powodu (lvrt/hvrt curve — poza zakresem tej karty, `readiness.ts` nietknięty);
+    // to `dzialanie`, nie `status`, steruje przyciskiem.
+    const wierszNcRfg = await screen.findByTestId('macierz-wiersz-nc_rfg');
+    expect(wierszNcRfg).toBeInTheDocument();
+    const przycisk = screen.getByTestId('macierz-dzialanie-nc_rfg');
+    expect(przycisk.textContent).toBe('Przejdź do zgodności NC RfG');
+
+    await uzytkownik.click(przycisk);
+
+    expect(useShellStore.getState().activeSpace).toBe('wyniki');
+    expect(useShellStore.getState().wynikiTab).toBe('ncrfg');
+    expect(useShellStore.getState().wynikiTabElement).toBe('der_ncrfg_klik');
   });
 
   it('KPI Profil NC RfG wyświetla kreskę gdy brak profilu', () => {

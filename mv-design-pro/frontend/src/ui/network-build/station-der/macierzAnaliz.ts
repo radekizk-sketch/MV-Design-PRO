@@ -50,7 +50,9 @@ export const POWOD_OSI_PL: Record<keyof DerReadinessMatrix, string> = {
 };
 
 /** Przebiegi, które odpowiadają danej osi. Osie bez przebiegu maja pusta liste. */
-const PRZEBIEGI_OSI: Partial<Record<keyof DerReadinessMatrix, readonly string[]>> = {
+const PRZEBIEGI_OSI: Partial<
+  Record<keyof DerReadinessMatrix, readonly ExecutionRun['analysis_type'][]>
+> = {
   sc_3f: ['SC_3F'],
   sc_1f: ['SC_1F'],
   sc_2f: ['SC_2F'],
@@ -78,6 +80,13 @@ export interface WierszMacierzy {
   readonly stanWyniku: StanWyniku;
   /** Znacznik czasu ostatniego zakonczonego przebiegu; `null` = nie liczono. */
   readonly ostatnieLiczenie: string | null;
+  /** Id ostatniego ZAKONCZONEGO przebiegu tej osi; `null` = nie liczono.
+   *  Podstawa dzialania `otworz_wynik` (karta W2 pkt 2, martwy klik). */
+  readonly ostatniPrzebiegId: string | null;
+  /** Rodzaj przebiegu tej osi (`PRZEBIEGI_OSI[axis][0]`); `null` dla osi bez
+   *  wlasnego przebiegu (equipment/protection/protection_selectivity/report_*) —
+   *  podstawa dzialania `uruchom_analize` poza frt/hvrt/nc_rfg. */
+  readonly typPrzebiegu: ExecutionRun['analysis_type'] | null;
   /** Jedno, konkretne dzialanie dla tego wiersza. */
   readonly dzialanie: 'uzupelnij_dane' | 'uruchom_analize' | 'otworz_wynik' | 'brak';
 }
@@ -109,8 +118,14 @@ export function zlozMacierzAnaliz(
       return 'brak_przebiegu';
     })();
 
-    const znaczniki = zakonczone.map((run) => run.finished_at as string).sort();
-    const ostatnieLiczenie = znaczniki.length > 0 ? znaczniki[znaczniki.length - 1] : null;
+    // Najnowszy zakonczony przebieg (ostatnie liczenie + jego id — podstawa
+    // dzialania `otworz_wynik`), posortowany deterministycznie po finished_at.
+    const posortowane = [...zakonczone].sort((a, b) =>
+      String(a.finished_at).localeCompare(String(b.finished_at)),
+    );
+    const najnowszy = posortowane.length > 0 ? posortowane[posortowane.length - 1] : null;
+    const ostatnieLiczenie = najnowszy?.finished_at ?? null;
+    const ostatniPrzebiegId = najnowszy?.id ?? null;
 
     const dzialanie: WierszMacierzy['dzialanie'] = (() => {
       if (os.blockers.length > 0) return 'uzupelnij_dane';
@@ -127,6 +142,8 @@ export function zlozMacierzAnaliz(
       blokady: os.blockers,
       stanWyniku,
       ostatnieLiczenie,
+      ostatniPrzebiegId,
+      typPrzebiegu: typy[0] ?? null,
       dzialanie,
     };
   });
@@ -158,4 +175,21 @@ export function dzialaniePl(dzialanie: WierszMacierzy['dzialanie']): string {
     case 'brak':
       return '';
   }
+}
+
+/**
+ * Etykieta działania — dla FRT/HVRT/NC RfG mówi WPROST, dokąd prowadzi (karta
+ * W2 pkt 2, martwy klik): cel tych trzech osi jest NAWIGACJĄ do dedykowanego
+ * ekranu (`ui2/oze/frt` dla FRT/HVRT, `ui2/oze/macierz` dla NC RfG), a nie
+ * biegiem inline jak dla pozostałych osi — etykieta ma to nazwać, nie chować
+ * za ogólnikiem „Uruchom obliczenia". Pozostałe kombinacje osi/działania
+ * zostają przy generycznym tekście `dzialaniePl` (ten sam tor dla wszystkich).
+ */
+export function etykietaDzialaniaPl(wiersz: WierszMacierzy): string {
+  if (wiersz.dzialanie === 'uruchom_analize') {
+    if (wiersz.axis === 'frt') return 'Przejdź do analizy FRT';
+    if (wiersz.axis === 'hvrt') return 'Przejdź do analizy HVRT';
+    if (wiersz.axis === 'nc_rfg') return 'Przejdź do zgodności NC RfG';
+  }
+  return dzialaniePl(wiersz.dzialanie);
 }
