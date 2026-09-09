@@ -425,7 +425,7 @@ Note: `POWERFACTORY_COMPLIANCE.md` was removed in the V12.5.1 hard cut (2026-04-
 
 In case of conflict: higher priority wins. Conflicts must be recorded in `docs/v12xx/REJESTR_KONFLIKTOW.md`. The latest canon documents (DOC_INVENTORY_2026-05, AUDYT_BRAKI_2026-05, PLAN_E2E_INDUSTRIAL_2026-05, SLD_INDUSTRIAL_SPEC_v1) live under `mv-design-pro/docs/audit/` and `mv-design-pro/docs/plan/` and `mv-design-pro/docs/sld/`.
 
-Active operational programs (2026-07, subordinate to the canon above): `mv-design-pro/docs/uiux/PROGRAM_UIUX_2026-07.md` (UI/UX rebuild, with the BINDING functional inventory `docs/uiux/INWENTARZ_FUNKCJI_2026-07.md`), `mv-design-pro/docs/plan/PLAN_SLD_REWORK.md` (SLD — separate thread), `mv-design-pro/docs/plan/PLAN_PRZEBUDOWY_10X_2026-07.md` (engineering 10x). See "Active programs" in Project Status below.
+Active operational programs (2026-07, subordinate to the canon above): `mv-design-pro/docs/uiux/PROGRAM_UIUX_2026-07.md` (UI/UX rebuild, with the BINDING functional inventory `docs/uiux/INWENTARZ_FUNKCJI_2026-07.md`), `mv-design-pro/docs/plan/PLAN_SLD_REWORK.md` (SLD — separate thread), `mv-design-pro/docs/plan/PLAN_PRZEBUDOWY_10X_2026-07.md` (engineering 10x). **Nadrzędna misja właściciela od 2026-09-09:** `mv-design-pro/docs/plan/MISJA_DOMKNIECIA_PRODUKTU_2026-09.md` (domknięcie całego produktu w 12 domenach; architektura, kolejność, kontrakty i wdrożenie po stronie architekta; bramki właściciela B-01/B-02 bez zmian; mapa domknięcia budowana z dowodów repo, nie z planów). See "Active programs" in Project Status below.
 
 ## Architecture Layer Boundaries (CRITICAL)
 
@@ -853,6 +853,12 @@ The system is fully functional with:
   PDF/DOCX report generation, ENM v1.0 (EnergyNetworkModel)
 
 ### Active programs (2026-07) — three programs, unified thread (2026-07-21)
+0. **Misja domknięcia produktu (dyrektywa właściciela 2026-09-09, nadrzędna wobec 1–3):**
+   `mv-design-pro/docs/plan/MISJA_DOMKNIECIA_PRODUKTU_2026-09.md` — 12 domen jako jedno środowisko
+   inżynierskie, kontrakt ukończenia CLAIMED DONE → VERIFICATION GATE → ACCEPTED DONE, mapa
+   domknięcia z dowodów repo (istnieje / pozornie / częściowe / zduplikowane / bez konsumenta /
+   UI bez zdolności / backend bez toku pracy / brak / do przeprojektowania / do kasacji), wycinki
+   pionowe wg zależności, ryzyka i wartości. Programy 1–3 są jej częścią, nie konkurencją.
 1. **Program UI/UX klasy przemysłowej** (`mv-design-pro/docs/uiux/PROGRAM_UIUX_2026-07.md`,
    phases U0–U5; orchestration: `docs/uiux/PROMPT_ZARZADCA_FABLE_UIUX.md`).
    Branch: `claude/power-network-design-ui-ir91mv`.

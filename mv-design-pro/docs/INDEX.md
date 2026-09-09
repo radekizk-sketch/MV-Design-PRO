@@ -103,6 +103,7 @@ Wynik mandatu „FINAL MASTER ARCHITECTURE MANDATE" (FAZY A–F, STOP §180). Ni
 - [plan/PLAN_E2E_INDUSTRIAL_2026-05.md](./plan/PLAN_E2E_INDUSTRIAL_2026-05.md) — plan E2E klasy przemysłowej
 - [plan/PLAN_SLD_REWORK.md](./plan/PLAN_SLD_REWORK.md) — fazowany plan reworku SLD (F1–F5)
 - [plan/PLAN_PRZEBUDOWY_10X_2026-07.md](./plan/PLAN_PRZEBUDOWY_10X_2026-07.md) — program inżynieryjny 10x (F0–F4)
+- [plan/MISJA_DOMKNIECIA_PRODUKTU_2026-09.md](./plan/MISJA_DOMKNIECIA_PRODUKTU_2026-09.md) — misja domknięcia produktu (dyrektywa właściciela 2026-09-09; 12 domen, kontrakt ukończenia CLAIMED → VERIFICATION GATE → ACCEPTED, mapa domknięcia z dowodów repo)
 
 ### Program UI/UX 2026-07 (AKTYWNY)
 - [uiux/PROGRAM_UIUX_2026-07.md](./uiux/PROGRAM_UIUX_2026-07.md) — program przebudowy UI/UX do klasy ETAP/PowerFactory (fazy U0–U5; clean-room UI)
