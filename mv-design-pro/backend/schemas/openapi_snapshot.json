@@ -11289,6 +11289,43 @@
     "title": "UpdateStudyCaseRequest",
     "type": "object"
    },
+   "V126AnalizaWycofanaResponse": {
+    "description": "Ciało odmowy 410 dla rodzaju V12.6 zdjętego z powierzchni (karta W3-E).\n\nTen sam kształt jedzie DODATKOWO jako pole addytywne `wycofany` na\nczterech końcówkach GET historycznego biegu tego rodzaju (results, trace,\nproof, report) — odtwarzalność zostaje, powierzchnia do NOWYCH biegów nie.",
+    "properties": {
+     "analysis_type": {
+      "title": "Analysis Type",
+      "type": "string"
+     },
+     "code": {
+      "title": "Code",
+      "type": "string"
+     },
+     "message_pl": {
+      "title": "Message Pl",
+      "type": "string"
+     },
+     "powod_pl": {
+      "title": "Powod Pl",
+      "type": "string"
+     },
+     "zamiennik": {
+      "items": {
+       "$ref": "#/components/schemas/V126ZamiennikTrasy"
+      },
+      "title": "Zamiennik",
+      "type": "array"
+     }
+    },
+    "required": [
+     "code",
+     "analysis_type",
+     "message_pl",
+     "zamiennik",
+     "powod_pl"
+    ],
+    "title": "V126AnalizaWycofanaResponse",
+    "type": "object"
+   },
    "V126AnalysisType": {
     "enum": [
      "power_quality_harmonics",
@@ -11370,6 +11407,24 @@
      "deterministic_hash"
     ],
     "title": "V126RunResponse",
+    "type": "object"
+   },
+   "V126ZamiennikTrasy": {
+    "properties": {
+     "ekran": {
+      "title": "Ekran",
+      "type": "string"
+     },
+     "trasa": {
+      "title": "Trasa",
+      "type": "string"
+     }
+    },
+    "required": [
+     "trasa",
+     "ekran"
+    ],
+    "title": "V126ZamiennikTrasy",
     "type": "object"
    },
    "ValidateOverridesRequest": {
@@ -15771,6 +15826,16 @@
        }
       },
       "description": "Successful Response"
+     },
+     "410": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/V126AnalizaWycofanaResponse"
+        }
+       }
+      },
+      "description": "Rodzaj analizy zszedł z powierzchni V12.6 (duplikuje kanon liczony gdzie indziej) — karta W3-E."
      },
      "422": {
       "content": {
