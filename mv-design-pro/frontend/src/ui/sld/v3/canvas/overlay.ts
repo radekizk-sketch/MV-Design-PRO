@@ -458,7 +458,7 @@ const FLOW_METRIC_CODE_I = 'I_A';
  *  `"LOAD_FLOW"`, przenoszone 1:1 przez `build_execution_result_set` →
  *  `build_resultset_v1(analysis_type=...)` → `/api/execution/runs/{run_id}/
  *  results/v1` → `RawOverlayPayload.analysis_type`). Payload NIEZNANEGO typu
- *  (SC_3F, PHASE_STATE_SN, DYNAMIC_STABILITY, SOURCE_COMPLIANCE, przyszłe)
+ *  (SC_3F, PHASE_STATE_SN, DYNAMIC_STABILITY, przyszłe)
  *  ⇒ nakładka pusta — uczciwe nic zamiast czytania `P_MW` z niewiadomego
  *  przebiegu. Denylista sprzed poprawki przepuszczałaby każdy nowy typ. */
 function isLoadFlowPayload(payload: RawOverlayPayload): boolean {

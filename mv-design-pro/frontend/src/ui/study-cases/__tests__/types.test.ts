@@ -177,7 +177,6 @@ describe('ANALYSIS_TYPE_LABELS', () => {
     'LOAD_FLOW',
     'PHASE_STATE_SN',
     'DYNAMIC_STABILITY',
-    'SOURCE_COMPLIANCE',
   ];
 
   it('should have labels for all analysis types', () => {
@@ -196,7 +195,6 @@ describe('ANALYSIS_TYPE_LABELS', () => {
     expect(ANALYSIS_TYPE_LABELS.LOAD_FLOW).toContain('mocy');
     expect(ANALYSIS_TYPE_LABELS.PHASE_STATE_SN).toContain('Stan');
     expect(ANALYSIS_TYPE_LABELS.DYNAMIC_STABILITY).toContain('dynamiczna');
-    expect(ANALYSIS_TYPE_LABELS.SOURCE_COMPLIANCE).toContain('Zgodność');
   });
 });
 

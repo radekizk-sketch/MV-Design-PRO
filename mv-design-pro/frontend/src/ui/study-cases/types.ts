@@ -236,8 +236,7 @@ export type ExecutionAnalysisType =
   | 'SC_2F_G'
   | 'LOAD_FLOW'
   | 'PHASE_STATE_SN'
-  | 'DYNAMIC_STABILITY'
-  | 'SOURCE_COMPLIANCE';
+  | 'DYNAMIC_STABILITY';
 
 /**
  * Run lifecycle status.
@@ -291,7 +290,6 @@ export const ANALYSIS_TYPE_LABELS: Record<ExecutionAnalysisType, string> = {
   LOAD_FLOW: 'Rozpływ mocy',
   PHASE_STATE_SN: 'Stan fazowy SN',
   DYNAMIC_STABILITY: 'Stabilność dynamiczna',
-  SOURCE_COMPLIANCE: 'Zgodność źródła',
 };
 
 /**

@@ -61,8 +61,25 @@ const PRZEBIEGI_OSI: Partial<
   q_u: ['LOAD_FLOW'],
   frt: ['DYNAMIC_STABILITY'],
   hvrt: ['DYNAMIC_STABILITY'],
-  nc_rfg: ['SOURCE_COMPLIANCE'],
+  // nc_rfg: BEZ wpisu (kasacja source_compliance, karta W3-D, 2026-09-09) —
+  // zgodnosc NC RfG nie ma WLASNEGO ExecutionRun: liczy sie na zywo z modelu
+  // (`GET /api/ncrfg-tests/cases/{case_id}/compliance`) albo z macierzy per DER
+  // (`POST /api/ncrfg-tests/run`, ekran `ui2/oze/macierz`) — zaden z tych torow
+  // nie zapisuje wpisu w rejestrze `ExecutionRun` R1. Ta sama kategoria co
+  // equipment/protection/protection_selectivity/report_* nizej w tym pliku:
+  // brak wpisu -> `stanWyniku === 'nie_dotyczy'` (patrz `zlozMacierzAnaliz`).
 };
+
+/**
+ * Osie ZAWSZE nawigowalne do dedykowanego ekranu, niezaleznie od stanu wyniku
+ * (kasacja source_compliance, karta W3-D, 2026-09-09). `nc_rfg` nie ma
+ * WLASNEGO przebiegu w rejestrze `ExecutionRun` — zgodnosc liczy sie na zywo
+ * z modelu, wiec „stan wyniku" tej osi jest zawsze `nie_dotyczy`
+ * (`stanWynikuPl` -> „bez osobnego przebiegu"), ale DZIALANIE ma pozostac
+ * nawigacja do ekranu zgodnosci (`ui2/oze/macierz`), tak jak przed kasacja —
+ * nie „brak" (ktory ukrylby przycisk calkowicie).
+ */
+const OSIE_ZAWSZE_NAWIGOWALNE: ReadonlySet<keyof DerReadinessMatrix> = new Set(['nc_rfg']);
 
 export type StanWyniku =
   | 'brak_przebiegu'
@@ -129,6 +146,7 @@ export function zlozMacierzAnaliz(
 
     const dzialanie: WierszMacierzy['dzialanie'] = (() => {
       if (os.blockers.length > 0) return 'uzupelnij_dane';
+      if (OSIE_ZAWSZE_NAWIGOWALNE.has(os.axis)) return 'uruchom_analize';
       if (stanWyniku === 'policzony') return 'otworz_wynik';
       if (stanWyniku === 'brak_przebiegu' || stanWyniku === 'blad') return 'uruchom_analize';
       return 'brak';

@@ -70,9 +70,9 @@ describe('useWpiecieWynikow — montaż', () => {
     await waitFor(() => expect(selectRunSc).toHaveBeenCalledWith('run-sc-2'));
   });
 
-  it('analiza bez okna w nowej powłoce (SOURCE_COMPLIANCE): rodzaj=null, bez ładowań', () => {
+  it('analiza bez okna w nowej powłoce (DYNAMIC_STABILITY): rodzaj=null, bez ładowań', () => {
     useExecutionRunsStore.setState({
-      runs: [przebiegFixture({ id: 'run-x', analysis_type: 'SOURCE_COMPLIANCE' })],
+      runs: [przebiegFixture({ id: 'run-x', analysis_type: 'DYNAMIC_STABILITY' })],
     });
     useAppStateStore.setState({ activeRunId: 'run-x' });
     const { result } = renderHook(() => useWpiecieWynikow());

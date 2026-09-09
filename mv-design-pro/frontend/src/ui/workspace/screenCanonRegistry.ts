@@ -689,7 +689,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     areaId: 'ZRODLA_PRZYLACZENIA',
     icon: 'ikona-ekran-frt-lvrt-hvrt',
     canonicalRoute: '/workspace/sources/frt-lvrt-hvrt',
-    legacyAliases: ['frt', 'source_compliance', 'old:E-30'],
+    legacyAliases: ['frt', 'old:E-30'],
     componentKey: 'EkranFrt',
     testId: 'screen-E-26-frt-lvrt-hvrt',
     implemented: true,
