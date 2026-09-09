@@ -79,6 +79,29 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
       expect(screen.queryByTestId('gpz-card-content-transformer')).not.toBeInTheDocument();
     });
 
+    // Karta W2-B (klasa ACTION_ROADMAP_HINT_PL): deep-link 'show-sc-source'/
+    // 'show-sc-data' z sldActionExecutor.ts otwiera E-10 z `payload.defaultCard:
+    // 'hv-side'` zamiast marnego toastu — wzorzec `defaultCard` identyczny jak
+    // StationConfiguratorSurface (der-sources, patrz test niżej w tym pliku).
+    it('payload.defaultCard="hv-side" otwiera od razu kartę Strona 110 kV (deep-link show-sc-source/show-sc-data)', () => {
+      render(
+        <GpzConfiguratorSurface
+          surface={{ ...minimalSurface, routeState: { payload: { defaultCard: 'hv-side' } } }}
+        />,
+      );
+      expect(screen.getByTestId('gpz-card-content-hv-side')).toBeInTheDocument();
+      expect(screen.queryByTestId('gpz-card-content-identification')).not.toBeInTheDocument();
+    });
+
+    it('payload.defaultCard nieznane/puste wraca do karty Identyfikacja (uczciwy domyślny start)', () => {
+      render(
+        <GpzConfiguratorSurface
+          surface={{ ...minimalSurface, routeState: { payload: { defaultCard: 'nie-taka-karta' } } }}
+        />,
+      );
+      expect(screen.getByTestId('gpz-card-content-identification')).toBeInTheDocument();
+    });
+
     it('zmiana karty wyświetla nową zawartość', () => {
       render(<GpzConfiguratorSurface surface={minimalSurface} />);
       fireEvent.click(screen.getByTestId('gpz-card-tab-transformer'));
