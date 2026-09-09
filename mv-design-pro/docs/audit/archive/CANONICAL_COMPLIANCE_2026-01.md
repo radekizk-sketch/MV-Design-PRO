@@ -1,3 +1,13 @@
+> **DEPRECATED — ZARCHIWIZOWANE 2026-09-09** (karta ARCHIWUM-CANONICAL-COMPLIANCE).
+> Ten dokument to migawka audytu (`Status: AUDIT DOCUMENT, Updated 2026-01`) i NIGDY
+> nie należał do wiążącej „Document Hierarchy" w `CLAUDE.md`. Cytuje ścieżki, które już
+> nie istnieją (np. §15.1 wskazuje `frontend/src/ui/project-tree/ProjectTree.tsx`), a
+> liczniki w §15.6 były nieaktualne już przed kasacją modułu data-manager (2026-09-09).
+> Kanon = „Document Hierarchy" w `CLAUDE.md`; reguły katalogu żyją w
+> `docs/system/SPEC_KATALOGI_I_MATERIALIZACJA_PARAMETROW.md`; reguły SLD w
+> `docs/sld/SLD_CONTRACT_FLOW_V1.md` i `docs/sld/SLD_SEMANTIC_MODEL_CANONICAL_V1.md`.
+> Zachowane wyłącznie jako zapis historyczny — treść poniżej NIE jest poprawiana.
+
 # MV-DESIGN-PRO Canonical Compliance Checklist
 
 **Version:** 3.0

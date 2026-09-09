@@ -1,7 +1,9 @@
 """
 SLD Auto-Layout Algorithm.
 
-PowerFactory Alignment (per sld_rules.md § F.6, CANONICAL_COMPLIANCE.md):
+PowerFactory Alignment (per sld_rules.md § F.6; the former SD-060..062 compliance
+checklist entries are archived at docs/audit/archive/CANONICAL_COMPLIANCE_2026-01.md
+§ 7.7 [archiwum] -- sld_rules.md § F.6 remains the live rule source):
 - Deterministic: Same input → identical layout
 - BFS-based hierarchical positioning from BoundaryNode/root
 - Switches affect topology when CLOSED and in_service

@@ -113,9 +113,12 @@ Przegladarka katalogu renderowana inline w panelu inspektora (nie jako overlay m
 
 ### Readonly -- uzasadnienie
 
-Typy katalogowe sa **immutable** po opublikowaniu (benchmark Type Library parity,
-`CANONICAL_COMPLIANCE.md`). Edycja typow katalogowych nie jest dozwolona w warstwie
-UI. Zmiana parametrow elementu po przypisaniu katalogu wymaga:
+Typy katalogowe sa **immutable** po opublikowaniu (benchmark Type Library parity;
+checklista `CANONICAL_COMPLIANCE.md` zarchiwizowana --
+`docs/audit/archive/CANONICAL_COMPLIANCE_2026-01.md` [archiwum], zaden zywy
+dokument nie odtwarza jej wprost -- luka kanonu). Edycja typow katalogowych nie
+jest dozwolona w warstwie UI. Zmiana parametrow elementu po przypisaniu katalogu
+wymaga:
 1. Odlaczenia biezacego typu (`clear_catalog_from_element`)
 2. Przypisania innego typu
 3. Lub: nadpisania parametrow (override) -- jesli architektura na to pozwala

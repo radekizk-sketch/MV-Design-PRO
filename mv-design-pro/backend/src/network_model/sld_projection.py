@@ -154,7 +154,11 @@ class SldSwitchElement:
 # NOTE: SldPccMarkerElement was REMOVED per SYSTEM_SPEC.md § 18.3.4 and sld_rules.md § A.4.
 # BoundaryNode (Point of Common Coupling / węzeł przyłączenia) is interpretation-only
 # overlay from Analysis layer (BoundaryIdentifier). It MUST NOT appear as a base SLD symbol.
-# See: CANONICAL_COMPLIANCE.md SD-020, SD-021.
+# See: docs/audit/archive/CANONICAL_COMPLIANCE_2026-01.md SD-020, SD-021 [archiwum --
+# 2026-01 audit checklist; no living SLD canon doc (SLD_CONTRACT_FLOW_V1.md,
+# SLD_SEMANTIC_MODEL_CANONICAL_V1.md, SLD_INDUSTRIAL_SPEC_v1.md) restates this item --
+# the general prohibition lives in CLAUDE.md "BoundaryNode Prohibition Rule" and
+# "Forbidden Terms in Core Model" (canon gap logged 2026-09-09)].
 
 SldElement = (
     SldBusElement

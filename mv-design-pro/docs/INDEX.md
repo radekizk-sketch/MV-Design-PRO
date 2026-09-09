@@ -131,7 +131,6 @@ Wynik mandatu „FINAL MASTER ARCHITECTURE MANDATE" (FAZY A–F, STOP §180). Ni
 - [INDEX_KANONICZNY.md](./INDEX_KANONICZNY.md) - indeks wiążących dokumentów V12.5
 - [../SYSTEM_SPEC.md](../SYSTEM_SPEC.md) - wykonawcza specyfikacja systemu
 - [../ARCHITECTURE.md](../ARCHITECTURE.md) - architektura referencyjna
-- [../CANONICAL_COMPLIANCE.md](../CANONICAL_COMPLIANCE.md) - checklista zgodności
 - [../PLANS.md](../PLANS.md) - aktywny plan wykonawczy
 - [01-Core.md](./01-Core.md) - kanon domeny i kontraktów rdzenia
 - [04-Application.md](./04-Application.md) - aktywna architektura aplikacji
@@ -180,5 +179,6 @@ Wynik mandatu „FINAL MASTER ARCHITECTURE MANDATE" (FAZY A–F, STOP §180). Ni
 - [spec/](./spec/) [historyczne] - 18 rozdziałów V11, wszystkie z disclaimer "Historical note (V12.5)"
 - [audit/historical_execplans/](./audit/historical_execplans/) [historyczne]
 - [audit/archive/2026-05/](./audit/archive/2026-05/) [archiwum] - 35+ zamkniętych audytów + planów M0 + snapshotów E2E + weryfikacji
+- [audit/archive/CANONICAL_COMPLIANCE_2026-01.md](./audit/archive/CANONICAL_COMPLIANCE_2026-01.md) [archiwum] - checklista zgodności, migawka audytu 2026-01 (poza Document Hierarchy), zarchiwizowana 2026-09-09 (karta ARCHIWUM-CANONICAL-COMPLIANCE)
 - [archive/README.md](./archive/README.md) [historyczne]
 - [archive/](./archive/) [historyczne]
