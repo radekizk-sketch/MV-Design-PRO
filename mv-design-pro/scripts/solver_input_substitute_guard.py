@@ -366,7 +366,11 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     # (lacznie +149 pol, 1658 -> 1807, zero nowych trafien i zero kolizji nazw),
     # wiec decyzja brzmi „do mapy", a nie „poza mapa" — szerszy zasieg bez halasu.
     "application/automation/trace.py",
-    "application/compliance/source_compliance.py",
+    # "application/compliance/source_compliance.py" USUNIETY (karta W3-D,
+    # 2026-09-09) razem z modulem — trzecia sciezka oceny FRT/Q(U)/cosfi(P),
+    # skasowana na rzecz kanonu (`power_flow_inverter.py` + `ncrfg_ptpiree/
+    # engine.py`). Wpis zdjety (nie zastapiony) — zaden pozostaly korzen tej
+    # krotki go nie wymaga.
     "application/proof_engine/packs/phase_state_sn.py",
     # KARTA CI-A (2026-09-04) — pin mapy zazadal decyzji dla dwoch korzeni po
     # dolozeniu importu w `enm/canonical_analysis.py`

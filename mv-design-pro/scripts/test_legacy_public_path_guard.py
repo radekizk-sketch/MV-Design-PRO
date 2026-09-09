@@ -1070,3 +1070,70 @@ def test_guard_accepts_clean_tree_without_k2_resurrection(tmp_path, monkeypatch)
 
 def test_real_repo_has_no_k2_resurrection() -> None:
     assert guard.check_k2_reference_networks_resurrection() == []
+def test_guard_rejects_resurrected_w3d_source_compliance_module(tmp_path, monkeypatch) -> None:
+    src = _patch_w1_tree(monkeypatch, tmp_path)
+    (src / "application" / "compliance").mkdir(parents=True)
+    (src / "application" / "compliance" / "source_compliance.py").write_text(
+        "x = 1\n", encoding="utf-8"
+    )
+
+    violations = guard.check_w3d_source_compliance_resurrection()
+
+    assert any("[resurrected-module]" in v and "application/compliance" in v for v in violations)
+
+
+def test_guard_rejects_resurrected_w3d_def_under_other_path(tmp_path, monkeypatch) -> None:
+    src = _patch_w1_tree(monkeypatch, tmp_path)
+    (src / "application" / "oze").mkdir(parents=True)
+    (src / "application" / "oze" / "cokolwiek.py").write_text(
+        "def evaluate_source_compliance(x):\n    return x\n\n\n"
+        "class SourceComplianceResult:\n    pass\n",
+        encoding="utf-8",
+    )
+
+    violations = guard.check_w3d_source_compliance_resurrection()
+
+    assert any("[resurrected-def]" in v and "evaluate_source_compliance" in v for v in violations)
+    assert any("[resurrected-def]" in v and "SourceComplianceResult" in v for v in violations)
+
+
+def test_guard_rejects_resurrected_w3d_enum_member_under_other_path(tmp_path, monkeypatch) -> None:
+    src = _patch_w1_tree(monkeypatch, tmp_path)
+    (src / "domain").mkdir(parents=True)
+    (src / "domain" / "execution.py").write_text(
+        "from enum import StrEnum\n\n\n"
+        "class ExecutionAnalysisType(StrEnum):\n"
+        '    LOAD_FLOW = "LOAD_FLOW"\n'
+        '    SOURCE_COMPLIANCE = "SOURCE_COMPLIANCE"\n',
+        encoding="utf-8",
+    )
+
+    violations = guard.check_w3d_source_compliance_resurrection()
+
+    assert any(
+        "[resurrected-enum]" in v and "ExecutionAnalysisType.SOURCE_COMPLIANCE" in v
+        for v in violations
+    )
+
+
+def test_guard_does_not_fire_on_w3d_names_in_comments_or_strings(tmp_path, monkeypatch) -> None:
+    src = _patch_w1_tree(monkeypatch, tmp_path)
+    (src / "enm").mkdir()
+    (src / "enm" / "notatka.py").write_text(
+        "# dawniej: evaluate_source_compliance, SourceComplianceResult, "
+        "ExecutionAnalysisType.SOURCE_COMPLIANCE\n"
+        'OPIS = "source_compliance skasowany w karcie W3-D"\n',
+        encoding="utf-8",
+    )
+    assert guard.check_w3d_source_compliance_resurrection() == []
+
+
+def test_guard_accepts_clean_tree_without_w3d_resurrection(tmp_path, monkeypatch) -> None:
+    _patch_w1_tree(monkeypatch, tmp_path)
+    assert guard.check_w3d_source_compliance_resurrection() == []
+
+
+def test_guard_accepts_current_repo_state_w3d() -> None:
+    """Stan repozytorium PO W3-D jest zielony na tej bramce — prawdziwe drzewo
+    `backend/src`, nie sztuczne `tmp_path`."""
+    assert guard.check_w3d_source_compliance_resurrection() == []

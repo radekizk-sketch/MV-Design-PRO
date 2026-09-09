@@ -20,7 +20,13 @@ REQUIRED_REFERENCE_CODES = {
         ROOT / "backend" / "tests" / "proof_engine" / "test_phase_state_sn_pack.py",
     ),
     "V12-GN-004": (
-        ROOT / "backend" / "tests" / "application" / "test_source_compliance.py",
+        # "test_source_compliance.py" USUNIETY (karta W3-D, 2026-09-09) razem z
+        # `application/compliance/source_compliance.py` — trzecia sciezka oceny
+        # FRT/Q(U)/cosfi(P), skasowana na rzecz kanonu. Zastepca dowodzi TEJ SAMEJ
+        # czesci opisu sieci ("FRT i praca po zakloceniu"): scenariusz zaklocenia
+        # i stan zrodla po zakloceniu (`FaultClearScenario`/`FaultClearSourceState`),
+        # ten sam plik co V12-GN-006/007 nizej.
+        ROOT / "backend" / "tests" / "application" / "test_dynamic_stability.py",
         ROOT / "backend" / "tests" / "test_oze_generators.py",
     ),
     "V12-GN-005": (

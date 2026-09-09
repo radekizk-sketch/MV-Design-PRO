@@ -337,6 +337,47 @@ _TS_DATA_MANAGER_ROW_DEF = re.compile(
     re.MULTILINE,
 )
 
+# Karta W3-D (2026-09-09) — bramka wskrzeszenia TRZECIEJ sciezki oceny
+# FRT/Q(U)/cosfi(P) (`application/compliance/source_compliance.py`, rodzaj
+# analizy "source_compliance"). Skasowana obok fizyki regulacji
+# (`network_model/solvers/power_flow_inverter.py`, FROZEN, nietkniety w tej
+# karcie) i kanonicznego testu zgodnosci typu NC RfG (`network_model/solvers/
+# ncrfg_ptpiree/engine.py`, FROZEN, 5 profili operatorow, nietkniety) —
+# porownywala punkty krzywych operatora i zrodla BEZ modelu dynamicznego
+# urzadzenia i z NIESPOJNYM kryterium porownania w tym samym pliku
+# ("source_duration_ms >= required_duration_ms" dla FRT, rownosc DOKLADNA
+# "source_value == required_value" dla Q(U)/cosfi(P)). 0 ekranow ui2 w chwili
+# kasacji (pomiar karty W3-D) — jedyny slad byl wpisem w generycznej macierzy
+# DER (`ui/network-build/station-der/macierzAnaliz.ts`, przycisk bez realnego
+# biegu). Kanon zgodnosci NC RfG dostal odtad przekrojowego konsumenta FE:
+# sekcja "Zgodnosc przekrojowa przypadku" w `ui2/oze/macierz`, czytajaca
+# `GET /api/ncrfg-tests/cases/{case_id}/compliance` (trasa kanonu, bez zmian).
+#
+# Sprawdzane: (1) katalog ponizej nie istnieje, (2) zadna nazwa z
+# FORBIDDEN_W3D_DEF_NAMES nie wraca jako DEFINICJA (ast.FunctionDef/
+# ast.AsyncFunctionDef/ast.ClassDef) gdziekolwiek w `backend/src`, (3) czlon
+# SOURCE_COMPLIANCE nie wraca do zadnej klasy `ExecutionAnalysisType`
+# (domain/execution.py) gdziekolwiek w `backend/src`.
+W3D_SOURCE_COMPLIANCE_RELATIVE_PATHS: dict[str, str] = {
+    "application/compliance": (
+        "trzecia, uboższa sciezka oceny FRT/Q(U)/cosfi(P) (bez modelu "
+        "dynamicznego, z niespojnym kryterium porownania) — usunieta w W3-D"
+    ),
+}
+FORBIDDEN_W3D_DEF_NAMES = {
+    "evaluate_source_compliance",
+    "SourceComplianceResult",
+    "_execute_source_compliance",
+    "run_source_compliance_now",
+    "build_source_compliance_results",
+    "build_source_compliance_results_response",
+    "_pick_compliance_source_ref",
+    "_source_compliance_proof_ref",
+    "get_source_compliance_results",
+}
+W3D_EXECUTION_TYPE_CLASS_NAME = "ExecutionAnalysisType"
+FORBIDDEN_W3D_ENUM_MEMBERS = {"SOURCE_COMPLIANCE"}
+
 
 def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8", errors="ignore")
@@ -760,6 +801,44 @@ def check_k2_reference_networks_resurrection() -> list[str]:
                         f"[resurrected-component] {rel_path}: export ReferenceNetworkSurface "
                         "(usunięty kartą K2) nie może wrócić"
                     )
+def check_w3d_source_compliance_resurrection() -> list[str]:
+    """W3-D (2026-09-09): trzecia, uboższa sciezka oceny FRT/Q(U)/cosfi(P)
+    (`application/compliance/source_compliance.py`, rodzaj analizy
+    "source_compliance") nie moze wrocic — kanon fizyki to
+    `network_model/solvers/power_flow_inverter.py`, kanon testu zgodnosci
+    typu to `network_model/solvers/ncrfg_ptpiree/engine.py`. Trzecia sciezka
+    nie miala modelu dynamicznego i miala niespojne kryterium porownania
+    (nierownosc dla FRT, rownosc dokladna dla Q(U)/cosfi(P))."""
+    violations: list[str] = []
+    for rel, label in W3D_SOURCE_COMPLIANCE_RELATIVE_PATHS.items():
+        path = BACKEND_SRC_DIR / rel
+        if zrodlo_istnieje(path):
+            violations.append(f"[resurrected-module] backend/src/{rel}: {label}")
+    if not BACKEND_SRC_DIR.exists():
+        return violations
+    for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        rel_path = (
+            py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
+        )
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+                if node.name in FORBIDDEN_W3D_DEF_NAMES:
+                    violations.append(
+                        f"[resurrected-def] {rel_path}:{node.lineno}: {node.name} "
+                        "(trzecia sciezka source_compliance, usunieta w W3-D) nie moze wrocic"
+                    )
+            if isinstance(node, ast.ClassDef) and node.name == W3D_EXECUTION_TYPE_CLASS_NAME:
+                for stmt in node.body:
+                    if not isinstance(stmt, ast.Assign):
+                        continue
+                    for target in stmt.targets:
+                        if isinstance(target, ast.Name) and target.id in FORBIDDEN_W3D_ENUM_MEMBERS:
+                            violations.append(
+                                f"[resurrected-enum] {rel_path}:{stmt.lineno}: "
+                                f"{W3D_EXECUTION_TYPE_CLASS_NAME}.{target.id} "
+                                "(usuniety w W3-D) nie moze wrocic"
+                            )
     return violations
 
 
@@ -774,6 +853,7 @@ def main() -> int:
         + check_w1_legacy_persistence_resurrection()
         + check_data_manager_resurrection()
         + check_k2_reference_networks_resurrection()
+        + check_w3d_source_compliance_resurrection()
     )
     if violations:
         print("legacy-public-path-guard: FAILED")
