@@ -75,6 +75,12 @@ describe('UruchomObliczenie — jawny start przebiegu w przestrzeni „Obliczeni
     expect(createAndExecuteRun).toHaveBeenCalledWith(CASE_ID, { analysis_type: 'SC_3F' });
   });
 
+  it('zwarcie trójfazowe: selektor metody rozpływu NIE jest pokazany (metoda dotyczy wyłącznie rozpływu)', () => {
+    render(<UruchomObliczenie />);
+
+    expect(screen.queryByTestId('mvd-uruchom-obliczenie-metoda-blok')).not.toBeInTheDocument();
+  });
+
   it('wybór rodzaju analizy zmienia rodzaj uruchamianego przebiegu', async () => {
     render(<UruchomObliczenie />);
 
@@ -82,7 +88,75 @@ describe('UruchomObliczenie — jawny start przebiegu w przestrzeni „Obliczeni
     await userEvent.click(screen.getByTestId('mvd-uruchom-obliczenie-przycisk'));
 
     await waitFor(() => expect(createAndExecuteRun).toHaveBeenCalledTimes(1));
-    expect(createAndExecuteRun).toHaveBeenCalledWith(CASE_ID, { analysis_type: 'LOAD_FLOW' });
+    // W3-G1: rozpływ bez świadomego wyboru metody wysyła domyślną NR jawnie
+    // (zero fabrykacji — opcja biegu jest tym, co operator widzi w selektorze).
+    expect(createAndExecuteRun).toHaveBeenCalledWith(CASE_ID, {
+      analysis_type: 'LOAD_FLOW',
+      solver_input: { solver_method: 'newton-raphson' },
+    });
+  });
+
+  it('rozpływ mocy: selektor metody pokazuje trzy opcje solvera (NR domyślna, GS, FD)', async () => {
+    render(<UruchomObliczenie />);
+
+    await userEvent.selectOptions(screen.getByTestId('mvd-uruchom-obliczenie-rodzaj'), 'LOAD_FLOW');
+
+    const selektorMetody = screen.getByTestId('mvd-uruchom-obliczenie-metoda') as HTMLSelectElement;
+    expect(selektorMetody.value).toBe('newton-raphson');
+    expect(
+      Array.from(selektorMetody.options).map((o) => o.value),
+    ).toEqual(['newton-raphson', 'gauss-seidel', 'fast-decoupled']);
+    // Świadomy wybór: pod selektorem stoi krótkie „po co" tej metody.
+    expect(screen.getByTestId('mvd-uruchom-obliczenie-metoda-opis').textContent).not.toBe('');
+  });
+
+  it('wybór metody Gaussa–Seidla wysyła solver_input.solver_method do biegu rozpływu', async () => {
+    render(<UruchomObliczenie />);
+
+    await userEvent.selectOptions(screen.getByTestId('mvd-uruchom-obliczenie-rodzaj'), 'LOAD_FLOW');
+    await userEvent.selectOptions(
+      screen.getByTestId('mvd-uruchom-obliczenie-metoda'),
+      'gauss-seidel',
+    );
+    await userEvent.click(screen.getByTestId('mvd-uruchom-obliczenie-przycisk'));
+
+    await waitFor(() => expect(createAndExecuteRun).toHaveBeenCalledTimes(1));
+    expect(createAndExecuteRun).toHaveBeenCalledWith(CASE_ID, {
+      analysis_type: 'LOAD_FLOW',
+      solver_input: { solver_method: 'gauss-seidel' },
+    });
+  });
+
+  it('wybór metody szybkiej rozprzężonej wysyła solver_input.solver_method do biegu rozpływu', async () => {
+    render(<UruchomObliczenie />);
+
+    await userEvent.selectOptions(screen.getByTestId('mvd-uruchom-obliczenie-rodzaj'), 'LOAD_FLOW');
+    await userEvent.selectOptions(
+      screen.getByTestId('mvd-uruchom-obliczenie-metoda'),
+      'fast-decoupled',
+    );
+    await userEvent.click(screen.getByTestId('mvd-uruchom-obliczenie-przycisk'));
+
+    await waitFor(() => expect(createAndExecuteRun).toHaveBeenCalledTimes(1));
+    expect(createAndExecuteRun).toHaveBeenCalledWith(CASE_ID, {
+      analysis_type: 'LOAD_FLOW',
+      solver_input: { solver_method: 'fast-decoupled' },
+    });
+  });
+
+  it('powrót do zwarcia trójfazowego po wyborze metody nie wysyła solver_input (metoda nie dotyczy SC)', async () => {
+    render(<UruchomObliczenie />);
+
+    await userEvent.selectOptions(screen.getByTestId('mvd-uruchom-obliczenie-rodzaj'), 'LOAD_FLOW');
+    await userEvent.selectOptions(
+      screen.getByTestId('mvd-uruchom-obliczenie-metoda'),
+      'fast-decoupled',
+    );
+    await userEvent.selectOptions(screen.getByTestId('mvd-uruchom-obliczenie-rodzaj'), 'SC_3F');
+    await userEvent.click(screen.getByTestId('mvd-uruchom-obliczenie-przycisk'));
+
+    await waitFor(() => expect(createAndExecuteRun).toHaveBeenCalledTimes(1));
+    expect(createAndExecuteRun).toHaveBeenCalledWith(CASE_ID, { analysis_type: 'SC_3F' });
   });
 });
 
