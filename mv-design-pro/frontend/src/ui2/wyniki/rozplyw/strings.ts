@@ -44,10 +44,11 @@ export const ROZPLYW_STRINGS = {
   // WYŁĄCZNIE z backendowej walidacji energetycznej (BRANCH/TRANSFORMER_LOADING).
   kolObciazenie: 'Obciążenie',
 
-  // Podzakładki okna rozpływu (karta E8.3)
+  // Podzakładki okna rozpływu (karta E8.3, uzupełnienie W3-H)
   ariaPodzakladki: 'Podzakładki wyniku rozpływu',
   podzakladkaSzyny: 'Szyny',
   podzakladkaGalezie: 'Gałęzie',
+  podzakladkaRegulacjaOze: 'Regulacja Q OZE',
 
   // Suma strat gałęzi (wiersz podsumowania pod tabelą, karta E8.3)
   sumaStrat: 'Suma strat gałęzi',
@@ -81,6 +82,26 @@ export const ROZPLYW_STRINGS = {
   // Uczciwy brak danych (R3-A): brak pozycji walidacji dla gałęzi lub brak
   // odpowiedzi walidacji → komórka bez wartości i bez werdyktu.
   kreska: '—',
+
+  // Podzakładka „Regulacja Q OZE" (karta W3-H, badanie śladu WHITE BOX —
+  // wariant B, zero fabrykacji, mapa aneks J5 / domena 5 #1 / domena 3 #10).
+  analizaRegulacjaOze: 'Rozpływ mocy — regulacja mocy biernej falowników',
+  regulacjaOzeTytul:
+    'Wykres „Q wstrzyknięte w biegu vs prawo Q(U)/cosφ(P)" niedostępny',
+  regulacjaOzeOpis:
+    'Zbadano ślad WHITE BOX realnych przebiegów solverów rozpływu (Newton-Raphson, ' +
+    'Gauss-Seidel, fast-decoupled): dla żadnego z nich wynik przekazywany dalej do ' +
+    'przebiegu (raport, ślad zapisany w przebiegu) nie niesie per generator trybu ' +
+    'regulacji (stały współczynnik mocy cosφ, cosφ(P), Q(U)), wstrzykniętej mocy ' +
+    'biernej, napięcia w punkcie pracy ani informacji o osiągnięciu ograniczenia Q — ' +
+    'nawet gdy przebieg solvera Newtona-Raphsona wewnętrznie te wartości liczy, ślad ' +
+    'zapisywany dla przebiegu ich nie zachowuje.',
+  regulacjaOzeOpisUzupelnienie:
+    'Krzywa prawa sterowania z nastaw źródła pozostaje dostępna w kreatorze źródła ' +
+    'OZE jako podgląd parametrów (bez punktu pracy z przebiegu, bez fizyki sieci).',
+  regulacjaOzeDecyzja:
+    'Decyzja właściciela OD-15 rozstrzygnie, czy solver dostanie pola addytywne śladu ' +
+    'niosące te wartości per generator.',
 } as const;
 
 /** Format liczby z przecinkiem dziesiętnym (deterministyczny). */
