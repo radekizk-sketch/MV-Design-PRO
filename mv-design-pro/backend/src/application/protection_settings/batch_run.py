@@ -390,8 +390,18 @@ def zbuduj_wejscie_nastaw(
             "na końcu chronionego odcinka."
         )
 
+    # W3-G1 (2026-09-10): kotwica jest ZAWSZE short_circuit_sn (asercja u góry funkcji)
+    # — nie ma bazowego biegu PF, więc `options=None` nie miałby czego dziedziczyć
+    # (`bieg_wariantu` dziedziczy `bazowy.options`, a `kotwica.options` nigdy nie
+    # niesie `solver_method`). Metoda wariantu PF audytu 2 jest więc jawnie NR:
+    # ten sam prąd obciążeniowy referencyjny niezależnie od tego, jaką metodą
+    # policzono INNE, niepowiązane biegi PF w projekcie (dowód pakietu nastaw ma
+    # być powtarzalny, nie zależny od wyboru operatora gdzie indziej).
     wariant_pf = bieg_wariantu(
-        kotwica, migawka_kotwicy, analysis_type="PF", options=_opcje_audit2_kotwicy(kotwica)
+        kotwica,
+        migawka_kotwicy,
+        analysis_type="PF",
+        options={**_opcje_audit2_kotwicy(kotwica), "solver_method": "newton-raphson"},
     )
     try:
         wykonaj_bieg_w_pamieci(wariant_pf, uow_factory=uow_factory)
