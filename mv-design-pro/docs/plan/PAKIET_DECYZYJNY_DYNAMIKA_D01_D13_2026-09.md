@@ -951,16 +951,31 @@ znaczy „wyrocznia zewnętrzna przeszła" — znaczy, że jej nie uruchomiono.
 Sumowanie tych dwóch liczb w jeden wynik byłoby dokładnie tym samym błędem, co
 uśpione testy pandapower opisane w ERRATA karty audytowej.
 
-| Bramka | Co obejmuje | Wynik |
+| Bramka | Co obejmuje | Wynik (środowisko sesji, ANDES ZAINSTALOWANY) |
 |---|---|---|
-| **CORE REGRESSION** | testy niewymagające narzędzia zewnętrznego | patrz meldunek transzy |
-| **EXTERNAL ORACLE REGRESSION** | testy bramkowane `importorskip("andes")` | **pomijane w CI** — ANDES nie jest zależnością |
+| **CORE REGRESSION** | pełna regresja backendu | **11 113 passed, 6 skipped, 0 failed** (18:02) |
+| **EXTERNAL ORACLE REGRESSION** | testy bramkowane `importorskip("andes")` | **118 testów** — w tym środowisku weszły do 11 113 jako PASS; **w CI zostałyby pominięte** |
 
-Pomiar rozdzielenia (zablokowany import `andes`, `pytest -rs tests/research`):
-**158 passed, 1 skipped**, gdzie ten jeden `skipped` to pominięcie MODUŁOWE
-obejmujące cały `test_wzorzec_zewnetrzny.py`. Z zainstalowanym ANDES ten sam
-katalog zbiera **184** testy. Różnica **26 testów** to dokładny rozmiar bramki
-wyroczni w chwili pomiaru (przed dodaniem `test_wzorzec_natywny.py`).
+Sześć pominięć w pełnej regresji NIE dotyczy wyroczni — wszystkie sześć wynika
+z opcjonalnych bibliotek raportowych (`PyMuPDF` nieobecny; `reportlab` i
+`python-docx` OBECNE, więc pomijają się ich warianty „biblioteka
+niedostępna"). Innymi słowy: w tym środowisku wyrocznia zewnętrzna **wykonała
+się w całości**, a w CI nie wykonałaby się wcale — i to jest cała różnica
+między tymi dwiema bramkami.
+
+Pomiar rozdzielenia (zablokowany import `andes`, `pytest -q -rs tests/research`):
+
+| Konfiguracja | Wynik |
+|---|---|
+| **bez ANDES** (stan CI) | **324 passed, 3 skipped** — trzy pominięcia MODUŁOWE: `test_wzorzec_zewnetrzny.py`, `test_wzorzec_natywny.py`, `test_wzorzec_genrou.py` |
+| **z ANDES** | **442 passed** |
+| **EXTERNAL ORACLE REGRESSION** | **442 − 324 = 118 testów**, które w CI nie wykonują się nigdy |
+
+Sto osiemnaście testów to nie drobiazg na marginesie — to cała walidacja wobec
+niezależnego narzędzia: widmo GENROU, regulatory SEXS/TGOV1, mapowanie na
+przypadku natywnym i porównanie SMIB. Raportowanie „regresja zielona" bez
+podania tej liczby byłoby przemilczeniem, ile z walidacji faktycznie nie
+zostało uruchomione.
 
 **LOCAL VERIFICATION ONLY.** Wszystkie wyniki w tym dokumencie i w meldunkach
 transzy pochodzą z uruchomień lokalnych w środowisku sesji. Workflow GitHub
