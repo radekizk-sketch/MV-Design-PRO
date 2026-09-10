@@ -52,6 +52,16 @@ export const AKCJE_STANU_ZEROWEGO_STRINGS = {
   przejdzDoSchematu: 'Przejdź do schematu',
   przejdzDoSchematuOpis:
     'Otwiera schemat (SLD) — stąd uruchomisz obliczenie zwarciowe i bieg zabezpieczeń.',
+  // W3-G1: bieg rozpływu ŚWIADOMIE inną metodą (walidacja krzyżowa NR↔GS↔FD).
+  uruchomMetodaNr: 'Uruchom rozpływ metodą Newtona–Raphsona',
+  uruchomMetodaNrOpis:
+    'Uruchamia przebieg rozpływu mocy metodą Newtona–Raphsona (NR) dla aktywnego zakresu obliczeń.',
+  uruchomMetodaGs: 'Uruchom rozpływ metodą Gaussa–Seidla',
+  uruchomMetodaGsOpis:
+    'Uruchamia przebieg rozpływu mocy metodą Gaussa–Seidla (GS) dla aktywnego zakresu obliczeń.',
+  uruchomMetodaFd: 'Uruchom rozpływ metodą szybką rozprzężoną',
+  uruchomMetodaFdOpis:
+    'Uruchamia przebieg rozpływu mocy metodą szybką rozprzężoną (FD) dla aktywnego zakresu obliczeń.',
 } as const;
 
 /** Etykieta/opis biegu wg rodzaju analizy (jedno miejsce, zero literałów w JSX). */
@@ -69,13 +79,35 @@ function opisBiegu(rodzaj: ExecutionAnalysisType): { etykieta: string; opis: str
 }
 
 /**
+ * Nadpisanie akcji „Uruchom obliczenie" (W3-G1): `solverInput` idzie 1:1 do
+ * `uruchomObliczenie` (pole `solver_input` żądania biegu — istniejący tor,
+ * zero nowego endpointu); `etykieta`/`opis` nadpisują domyślny tekst rodzaju,
+ * gdy akcja uruchamia bieg ze ŚWIADOMIE wybraną konfiguracją (np. metoda
+ * rozpływu inna niż domyślna) — bez nadpisania akcja wygląda 1:1 jak dotąd.
+ */
+export interface NadpisanieAkcjiBiegu {
+  readonly solverInput?: Record<string, unknown>;
+  readonly etykieta?: string;
+  readonly opis?: string;
+}
+
+/**
  * Akcja „Uruchom obliczenie [zwarciowe|rozpływu]" — ten sam tor co przycisk
  * „Oblicz" powłoki (`uruchomObliczenie`), z rodzajem analizy WPROST.
  */
-export function useAkcjaUruchomObliczenie(rodzaj: ExecutionAnalysisType): AkcjaStanuZerowego {
+export function useAkcjaUruchomObliczenie(
+  rodzaj: ExecutionAnalysisType,
+  nadpisanie?: NadpisanieAkcjiBiegu,
+): AkcjaStanuZerowego {
   const { uruchom, wToku } = useUruchomObliczenie();
-  const { etykieta, opis } = opisBiegu(rodzaj);
-  const onKlik = useCallback(() => uruchom(rodzaj), [uruchom, rodzaj]);
+  const domyslne = opisBiegu(rodzaj);
+  const etykieta = nadpisanie?.etykieta ?? domyslne.etykieta;
+  const opis = nadpisanie?.opis ?? domyslne.opis;
+  const solverInput = nadpisanie?.solverInput;
+  const onKlik = useCallback(
+    () => uruchom(rodzaj, solverInput),
+    [uruchom, rodzaj, solverInput],
+  );
   return {
     etykieta: wToku ? AKCJE_STANU_ZEROWEGO_STRINGS.wToku : etykieta,
     opis,

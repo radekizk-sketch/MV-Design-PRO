@@ -29,7 +29,7 @@ export {
   useAkcjaPrzejdzDoSchematu,
   useAkcjaUruchomObliczenie,
 } from './akcjeStanuZerowego';
-export type { AkcjaStanuZerowego } from './akcjeStanuZerowego';
+export type { AkcjaStanuZerowego, NadpisanieAkcjiBiegu } from './akcjeStanuZerowego';
 export { PrzyciskAkcjiStanu } from './PrzyciskAkcjiStanu';
 export type {
   EkranAnalizyProps,

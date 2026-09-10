@@ -27,6 +27,7 @@ import { PrzyciskAkcjiStanu } from '../wzorzec';
 import type { AkcjaStanuZerowego } from '../wzorzec';
 import { PanelDowoduCieplnego } from './PanelDowoduCieplnego';
 import { SekcjaPasmRozplywu } from './SekcjaPasmRozplywu';
+import { SekcjaPorownaniaMetod } from './SekcjaPorownaniaMetod';
 import { useSwiezoscNaglowka } from '../../freshness';
 import {
   fetchArcFlash,
@@ -1544,6 +1545,10 @@ export function EkranJakosci({ trybZaawansowania, onOtworzDowod, onEksport }: Ek
         onOtworzDowod={onOtworzDowod}
         onEksport={onEksport ? eksport : undefined}
       />
+      {/* W3-G1 (aneks D2): walidacja krzyżowa metod rozpływu NR↔FD — sekcja
+          OSOBNA (nie edytuje sekcji powyżej/poniżej), znajduje własne dwa
+          biegi (nie bierze `przebiegPF`, bo potrzebuje DWÓCH biegów naraz). */}
+      <SekcjaPorownaniaMetod trybZaawansowania={trybZaawansowania} onOtworzDowod={onOtworzDowod} />
       <SekcjaWarunkowPrzylaczenia
         przebieg={przebiegPF}
         trybZaawansowania={trybZaawansowania}

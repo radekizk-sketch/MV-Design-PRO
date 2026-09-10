@@ -256,6 +256,44 @@ export const JAKOSC_STRINGS = {
   jednCal: 'cal/cm²',
   jednMm: 'mm',
   jednS: 's',
+  jednPu: 'pu',
+  jednStopnie: '°',
+
+  // W3-G1 — Sekcja „Walidacja krzyżowa metod rozpływu" (NR↔FD, aneks D2)
+  sekcjaMetody: 'Walidacja krzyżowa metod rozpływu',
+  metodyBrakRozplywu: 'Brak zakończonego przebiegu rozpływu mocy',
+  metodyBrakRozplywuOpis:
+    'Uruchom obliczenie rozpływu (metoda Newtona–Raphsona) w przestrzeni „Obliczenia", aby otworzyć walidację krzyżową metod.',
+  metodyBrakFd: 'Brak przebiegu metodą szybką rozprzężoną (FD)',
+  metodyBrakFdOpis:
+    'Bieg referencyjny (NR) jest gotowy. Uruchom ten sam przypadek metodą FD, aby porównać wyniki obu metod per szyna.',
+  metodyBrakNr: 'Brak przebiegu metodą Newtona–Raphsona (NR)',
+  metodyBrakNrOpis:
+    'Bieg metodą FD jest gotowy, ale referencją walidacji krzyżowej jest zawsze NR. Uruchom przypadek metodą NR.',
+  metodyBlad: 'Nie udało się porównać biegów NR i FD',
+  metodyBladOpis: 'Spróbuj ponownie lub sprawdź, czy oba przebiegi mają zapisany wynik.',
+  metodyLadowanie: 'Wyszukiwanie biegów NR/FD i porównywanie wyników…',
+  // Założenia
+  metodyZalMetodaA: 'Metoda A (referencyjna)',
+  metodyZalMetodaB: 'Metoda B (walidacja)',
+  metodyZalZbieznoscA: 'Zbieżność — metoda A',
+  metodyZalZbieznoscB: 'Zbieżność — metoda B',
+  metodyZalIteracjeA: 'Liczba iteracji — metoda A',
+  metodyZalIteracjeB: 'Liczba iteracji — metoda B',
+  zbiezny: 'zbieżny',
+  niezbiezny: 'niezbieżny',
+  // Tabela szyn
+  metodyKolSzyna: 'Szyna',
+  metodyKolNapiecieA: '|U| A',
+  metodyKolNapiecieB: '|U| B',
+  metodyKolDeltaNapiecie: 'Δ|U|',
+  metodyKolKatA: 'Kąt A',
+  metodyKolKatB: 'Kąt B',
+  metodyKolDeltaKat: 'Δ kąt',
+  // Podsumowanie
+  metodySzynRazem: 'Szyn porównanych',
+  metodyMaxDeltaNapiecie: 'Maks. Δ|U|',
+  metodyMaxDeltaKat: 'Maks. Δ kąt',
 
   // --- Sekcja „Pasma zdrowego rozsądku rozpływu" (karta W3-G2) ---
   sekcjaPasmaRozplywu: 'Pasma zdrowego rozsądku rozpływu',
@@ -432,4 +470,26 @@ export function fmtProcent(n: number): string {
 /** Wartość obserwowana (jednostka dowolna) — 2 miejsca po przecinku. */
 export function fmtWartosc(n: number): string {
   return fmtLiczba(n, 2);
+}
+
+/**
+ * Delta ze znakiem (W3-G1, wzorzec `ui2/wyniki/porownanie/strings.ts::fmtDelta`
+ * — lokalna kopia zamiast importu z modułu osobnej przestrzeni: `jakosc` i
+ * `porownanie` mają NIEZALEŻNE, samodzielne słowniki tekstu, jak każda para
+ * ekranów wyników w tym drzewie). `fmtLiczba`/`toFixed` już niesie znak „-";
+ * dopisujemy WYŁĄCZNIE „+" dla wartości dodatnich.
+ */
+function fmtDelta(n: number, miejsca: number): string {
+  const podstawa = fmtLiczba(n, miejsca);
+  return n > 0 ? `+${podstawa}` : podstawa;
+}
+
+/** Delta napięcia [pu] — 4 miejsca po przecinku, ze znakiem. */
+export function fmtDeltaNapiecie(n: number): string {
+  return fmtDelta(n, 4);
+}
+
+/** Delta kąta [°] — 2 miejsca po przecinku, ze znakiem. */
+export function fmtDeltaKat(n: number): string {
+  return fmtDelta(n, 2);
 }
