@@ -11,7 +11,15 @@ Pilnuje granicy ustanowionej w `backend/research/README.md`:
    — dzięki temu izolacja jest strukturalna, a nie umowna.
 4. Kod badawczy nie nadaje sobie statusu dowodowego: w `research/**` nie może
    wystąpić `VALIDATED_SIMULATION` ani `reporting_status = "reportable"`.
-5. Żaden pakiet w `research/` nie ma nazwy kolidującej z pakietem w `src/`.
+5. Spis modułów w `research/README.md` zgadza się z zawartością katalogu —
+   w OBIE strony. Wpis o pliku, którego nie ma, jest tą samą klasą defektu,
+   którą audyt zarzuca systemowi (nazwa w dokumencie bez implementacji za nią);
+   plik bez wpisu znaczy, że spis przestał opisywać laboratorium.
+6. Ten guard jest wywoływany przez co najmniej jeden workflow CI. `README.md`
+   twierdzi: „Guard `research_isolation_guard.py` pilnuje tej granicy w CI" —
+   deklaracja bez przypiętego sprawdzenia jest fałszywą pewnością, a guard
+   niewpięty w CI jest guardem, którego nie ma.
+7. Żaden pakiet w `research/` nie ma nazwy kolidującej z pakietem w `src/`.
    To warunek bezpieczeństwa dla `tests/research/conftest.py`, który dokłada
    `research/` do `sys.path`: dopóki nazwy się nie pokrywają, katalog badawczy
    nie może PRZESŁONIĆ pakietu źródłowego (bramka KD-9,
@@ -34,6 +42,8 @@ KORZEN = Path(__file__).resolve().parents[1]
 SRC = KORZEN / "backend" / "src"
 RESEARCH = KORZEN / "backend" / "research"
 PYPROJECT = KORZEN / "backend" / "pyproject.toml"
+README = RESEARCH / "README.md"
+WORKFLOWS = KORZEN.parent / ".github" / "workflows"
 
 ZAKAZANE_IMPORTY = ("dynamic_lab",)
 WZORZEC_SCIEZKI = re.compile(r"""sys\.path[^\n]*research""")
@@ -136,6 +146,45 @@ def sprawdz_kolizje_nazw() -> list[str]:
     ]
 
 
+def sprawdz_spis_modulow() -> list[str]:
+    """Spis w README musi zgadzać się z katalogiem — w obie strony."""
+    if not README.exists():
+        return [f"Brak {README.relative_to(KORZEN)}"]
+    tresc = README.read_text(encoding="utf-8")
+    wymienione = set(re.findall(r"`(dynamic_lab/[a-z0-9_]+\.py)`", tresc))
+    katalog = RESEARCH / "dynamic_lab"
+    istniejace = {
+        f"dynamic_lab/{p.name}"
+        for p in katalog.glob("*.py")
+        if p.name != "__init__.py"
+    }
+    naruszenia = [
+        f"research/README.md: wymienia `{brak}`, którego NIE MA — "
+        f"dokument obiecuje moduł, za którym nie stoi kod"
+        for brak in sorted(wymienione - istniejace)
+    ]
+    naruszenia += [
+        f"research/README.md: nie wymienia istniejącego modułu `{nowy}` — "
+        f"spis przestał opisywać laboratorium"
+        for nowy in sorted(istniejace - wymienione)
+    ]
+    return naruszenia
+
+
+def sprawdz_wpiecie_w_ci() -> list[str]:
+    """Guard musi być realnie wywoływany przez workflow — inaczej go nie ma."""
+    if not WORKFLOWS.is_dir():
+        return [f"Brak katalogu workflowow: {WORKFLOWS}"]
+    nazwa = Path(__file__).name
+    for plik in sorted(WORKFLOWS.glob("*.y*ml")):
+        if nazwa in plik.read_text(encoding="utf-8"):
+            return []
+    return [
+        f".github/workflows: żaden workflow nie wywołuje `{nazwa}` — "
+        f"README twierdzi, że guard pilnuje granicy W CI, a nie jest tam wpięty"
+    ]
+
+
 def main() -> int:
     print("=" * 62)
     print("GUARD: research_isolation_guard")
@@ -150,6 +199,8 @@ def main() -> int:
         + sprawdz_pyproject()
         + sprawdz_status_dowodowy()
         + sprawdz_kolizje_nazw()
+        + sprawdz_spis_modulow()
+        + sprawdz_wpiecie_w_ci()
     )
     print(f"Plikow produkcyjnych: {len(_pliki(SRC))}")
     print(f"Plikow badawczych:    {len(_pliki(RESEARCH))}")

@@ -44,12 +44,12 @@ z defektów P0 audytu: model nazwany „6-rzędowym" miał 2 stany).
 | `dynamic_lab/urzadzenia.py` | protokół urządzenia + maszyna synchroniczna 4. rzędu + falownik GFL/GFM |
 | `dynamic_lab/regulatory.py` | AVR, governor — pętle ZAMKNIĘTE, z ogranicznikami i anti-windup |
 | `dynamic_lab/zdarzenia.py` | harmonogram zdarzeń (zwarcie, wyłączenie, zmiana topologii) |
-| `dynamic_lab/inicjalizacja.py` | rozpływ → punkt pracy → stany regulatorów → weryfikacja równowagi |
 | `dynamic_lab/calkowanie.py` | integratory (jawne i niejawne) za wspólnym kontraktem |
-| `dynamic_lab/silnik.py` | pętla DAE: `ẋ = f(x,y,u,p,t)`, `0 = g(x,y,u,p,t)` |
+| `dynamic_lab/silnik.py` | pętla DAE: `ẋ = f(x,y,u,p,t)`, `0 = g(x,y,u,p,t)`; inicjalizacja: rozpływ → punkt pracy → stany regulatorów → weryfikacja `‖f(x₀,y₀)‖` |
 | `dynamic_lab/wynik.py` | kandydat kontraktu wyniku dynamicznego (szereg czasowy + tożsamość) |
 | `dynamic_lab/walidacja.py` | metryki zgodności trajektorii + wyrocznie analityczne |
-| `dynamic_lab/benchmarki.py` | drabina walidacyjna L0–L4 |
+| `dynamic_lab/benchmarki.py` | drabina walidacyjna L0–L4 + mierzone porównanie integratorów |
 | `dynamic_lab/frt.py` | ocena FRT: wymaganie (obwiednia) vs wynik (przebieg) — ROZDZIELONE |
+| `dynamic_lab/wzorzec_zewnetrzny.py` | poziom 4: porównanie z NIEZALEŻNYM narzędziem (ANDES) — wymaga `pip install andes` |
 
 Testy: `backend/tests/research/` (uruchamiane przez zwykły bieg pytest).

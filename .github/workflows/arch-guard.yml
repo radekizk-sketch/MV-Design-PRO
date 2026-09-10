@@ -19,3 +19,5 @@ jobs:
         run: python mv-design-pro/scripts/arch_guard.py
       - name: Run catalog-first repo hygiene guard
         run: python mv-design-pro/scripts/repo_hygiene_guard.py
+      - name: Run research isolation guard
+        run: python mv-design-pro/scripts/research_isolation_guard.py

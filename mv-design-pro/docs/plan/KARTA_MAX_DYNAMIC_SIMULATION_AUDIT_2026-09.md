@@ -17,6 +17,39 @@
 
 ---
 
+## 0. ERRATA — sprostowanie do własnego audytu (2026-09-10, po zamknięciu karty)
+
+Karta jest zamknięta, więc jej treść **nie jest cicho przepisywana**: błędne
+ustalenie zostaje widoczne wraz z korektą. Sprostowanie jest jedno i dotyczy
+§27.2.
+
+| Co karta twierdziła | Co jest prawdą (zmierzone) | Skutek dla wniosków karty |
+|---|---|---|
+| „Istnieje **działający wzorzec**: sieć referencyjna + oczekiwany wynik z narzędzia zewnętrznego + test porównawczy" (§27.2) | Porównanie **z żywym narzędziem zewnętrznym nie wykonuje się nigdy**. `pandapower` nie jest w `backend/pyproject.toml`, nie ma go w żadnym z 9 workflowów CI, a testy są bramkowane `importorskip` / `skipif`. Przy nieobecnym `pandapower` (czyli w CI) **10 funkcji testowych jest pomijanych**: 6 z `test_pandapower_cross_validation.py` (pominięcie modułowe) i 4 z `test_pandapower_bridge.py`. Pomiar: `157 passed, 5 skipped` bez `pandapower` vs `167 passed` po jego doinstalowaniu. | Ocena osi **VALIDATION = 1** i wniosek §27.1 („dla dynamiki BRAK wyroczni zewnętrznej") **pozostają w mocy**. Zmienia się natomiast ocena ZASOBU: program dynamiczny **nie dziedziczy** działającego mechanizmu porównania z narzędziem zewnętrznym, bo taki mechanizm w CI nie działa nawet dla stanu ustalonego. |
+
+**Dlaczego to jest ta sama klasa błędu, którą karta zarzuca systemowi.**
+Wnioskowałem z OBECNOŚCI plików testowych o ich WYKONYWANIU — dokładnie tak, jak
+audytowany system wnioskował z obecności nazwy modelu w kontrakcie o istnieniu
+jego równań. Karta w §28 pisze „test kształtu nie odróżnia fizyki od jej braku";
+tu obecność pliku nie odróżniła dowodu od dowodu uśpionego. Ustalenie
+„czy to się w ogóle wykonuje" musi być pomiarem (`pytest -rs`, przegląd
+`pyproject.toml` i workflowów), nie odczytem nazw plików.
+
+**Co w §27.2 było prawdą i nią zostaje** — po rozdzieleniu trzech rzeczy, które
+karta zlepiła w jedno (szczegóły w poprawionym §27.2):
+1. wyrocznia **literaturowa** dla stanu ustalonego (Stevenson 1982, Kersting 2001)
+   — 13 testów, **wykonuje się w CI**;
+2. wyrocznia **analityczna zapisana w fikstury** (m.in. `pandapower_iec60909_radial.json`,
+   którego `source_note` sam mówi, że wartości pochodzą z postaci zamkniętej IEC 60909,
+   a `pandapower` mógłby je *zregenerować*) — **wykonuje się w CI**, ale jest wzorcem
+   własnym, nie zewnętrznym;
+3. wyrocznia **z żywego narzędzia zewnętrznego** — **nie wykonuje się nigdy**.
+
+Sprostowanie **nie zmienia** werdyktu końcowego (1/10), rekomendacji D-00 ani
+klasyfikacji P0/P1/P2/P3.
+
+---
+
 ## 1. Executive Summary
 
 System **nie posiada symulacji dynamicznej sieci** w sensie inżynierskim. Posiada
@@ -1278,10 +1311,16 @@ Brak adaptera, brak eksportu modelu dynamicznego, brak importu trajektorii,
 brak mapowania tożsamości, brak tolerancji, brak zbiorów odniesienia.
 **Zero testów porównujących wynik dynamiczny z jakimkolwiek narzędziem.**
 
-### 27.2 Dla stanu ustalonego: INFRASTRUKTURA ISTNIEJE — to jest zasób
+### 27.2 Dla stanu ustalonego: trzy różne rzeczy, dwie działają — SKORYGOWANE
 
-To ustalenie zmienia ocenę wykonalności programu dynamicznego, więc podaję je
-szczegółowo:
+> **Sprostowanie (§0).** Pierwotna wersja tej podsekcji brzmiała: „INFRASTRUKTURA
+> ISTNIEJE — to jest zasób […] Istnieje więc **działający wzorzec**: sieć
+> referencyjna + oczekiwany wynik z narzędzia zewnętrznego + test porównawczy
+> z tolerancją. Program dynamiczny **nie musi wymyślać tego mechanizmu**".
+> To było **błędne** w części dotyczącej narzędzia zewnętrznego. Poniżej wersja
+> po pomiarze.
+
+Pliki istnieją:
 
 ```
 src/application/reference_networks/expected/
@@ -1292,17 +1331,70 @@ src/application/reference_networks/expected/
     oze_pv_bess.json
 
 tests/application/reference_networks/
-    test_pandapower_bridge.py
-    test_pandapower_cross_validation.py
-    test_ieee_cases_cross_validation.py
-    test_ieee_frozen_solver_cross_validation.py
-    test_ieee_benchmark_wiring.py
-    test_proof_of_correctness.py
+    test_pandapower_bridge.py                    (6 testów, 4 pomijane bez pandapower)
+    test_pandapower_cross_validation.py          (6 testów, WSZYSTKIE pomijane bez pandapower)
+    test_ieee_cases_cross_validation.py          (5 testów, wykonują się)
+    test_ieee_frozen_solver_cross_validation.py  (9 testów, wykonują się)
+    test_ieee_benchmark_wiring.py                (11 testów, wykonują się)
+    test_proof_of_correctness.py                 (13 testów, wykonują się)
 ```
 
-Istnieje więc **działający wzorzec**: sieć referencyjna + oczekiwany wynik
-z narzędzia zewnętrznego + test porównawczy z tolerancją. Program dynamiczny
-**nie musi wymyślać tego mechanizmu** — musi go rozszerzyć o trajektorie.
+Rozdzielenie, którego pierwotna wersja karty nie zrobiła:
+
+| Rodzaj wyroczni | Przykład | Niezależna od nas? | Wykonuje się w CI? |
+|---|---|---|---|
+| **Literaturowa** | `test_proof_of_correctness.py`: IEEE 4-bus vs Stevenson 1982 Table 9.4, IEEE 13-bus vs Kersting 2001, rtol ≤ 1% | **TAK** — wartości opublikowane, nie nasze | **TAK** (13 testów) |
+| **Analityczna w fiksturze** | `pandapower_iec60909_radial.json` — `source_note` mówi wprost: wartości odpowiadają postaci zamkniętej IEC 60909 (`Ik'' = c·U_n/(√3·|Z_k|) = 28,401877872 kA`), a `pandapower` „*mógłby je zregenerować*, gdy opcjonalna zależność jest zainstalowana" | **NIE** — to nasz własny rachunek, mimo nazwy pliku | **TAK** |
+| **Z żywego narzędzia zewnętrznego** | `test_pandapower_cross_validation.py` (`pp = pytest.importorskip("pandapower")`), 4 testy w `test_pandapower_bridge.py` (`skipif(not is_pandapower_available())`) | **TAK** | **NIE — nigdy** |
+
+**Dowód pomiarowy braku wykonania:**
+
+```
+$ grep -rn "pandapower" backend/pyproject.toml            -> BRAK
+$ grep -rln "pandapower" .github/workflows/               -> BRAK (0 z 9 workflowów)
+$ pytest tests/application/reference_networks/ -q -rs     # pandapower zablokowany
+  157 passed, 5 skipped
+  SKIPPED test_pandapower_cross_validation.py:17  (importorskip - cały moduł)
+  SKIPPED test_pandapower_bridge.py:32,40,54,63   (skipif)
+$ pip install pandapower==3.5.4 && pytest ... -q          # ten sam zestaw testów
+  167 passed
+```
+
+Różnica **167 − 157 = 10** to liczba funkcji testowych, które w CI nie wykonują
+się nigdy. Po doinstalowaniu `pandapower` 3.5.4 **wszystkie przechodzą** — więc
+nie są zepsute, są uśpione. To gorszy stan niż brak testu: brak testu jest
+widoczny, uśpiony test wygląda w spisie plików jak pokrycie.
+
+**Wniosek dla programu dynamicznego (skorygowany).** Program **nie dziedziczy**
+działającego porównania z narzędziem zewnętrznym — dziedziczy jego SZKIELET
+(builder sieci → wynik oczekiwany → test z tolerancją) plus **realnie działającą**
+wyrocznię literaturową dla stanu ustalonego. Uruchomienie porównania z żywym
+narzędziem wymaga decyzji o zależności i o bramce CI; bez niej każdy nowy poziom
+walidacji trafi w ten sam stan uśpienia.
+
+### 27.2b Kandydat na wyrocznię dynamiczną — ANDES (ustalenie z 2026-09-10)
+
+`pandapower` **nie nadaje się** na wyrocznię dynamiczną: nie ma symulacji RMS
+(brak modeli maszyn, regulatorów i całkowania w czasie). Zbadano zamiennik.
+
+| Cecha | Ustalenie |
+|---|---|
+| Narzędzie | ANDES 2.0.0 (CURENT), licencja **Apache-2.0**, czysty Python |
+| Zakres | **27 modeli dynamicznych**: GENCLS/GENROU, wzbudnice, turbiny, PSS, modele przekształtnikowe |
+| Co daje ponad trajektorię | **Wartości własne linearyzacji (`EIG`)** — odpowiedź niedzieląca z nami ŻADNEGO założenia o całkowaniu |
+| Instalacja | `pip install andes` — bez zależności natywnych, działa w środowisku sesji |
+| **Pułapka zmierzona** | ANDES domyślnie liczy na **60 Hz**. `ss.config.freq = 50.0` **nie działa** (także ustawione przed `setup()`). Skuteczny jest wyłącznie parametr `fn` **przy urządzeniu** (`GENCLS(..., fn=50)`, `Line(..., fn=50)`). Pominięcie daje błąd `√(60/50) = 1,0954`, czyli **9,5% w częstotliwości wahań** — wynik wyglądający wiarygodnie, a policzony dla innej sieci. |
+| Koszt | ~150 s na 26 testów (ANDES buduje `System` od zera dla każdego przypadku) |
+| Ograniczenie | Nie waliduje modeli falownikowych GFL/GFM w tej postaci ani regulatorów — GENCLS to maszyna klasyczna bez regulacji |
+
+To jest **ustalenie faktograficzne, nie decyzja**. Czy ANDES ma zostać zależnością
+deweloperską i bramką CI, należy do pozycji **D-11** (wyrocznia zewnętrzna dla
+dynamiki) — ANDES jest wariantem, którego §33 nie rozważał, bo w chwili pisania
+karty nie było wiadomo, że istnieje wykonywalna w tym środowisku wyrocznia RMS.
+Rekomendacja §33 dla D-11 brzmiała „(a) PowerFactory + (c) IEC 61400-27
+i literatura"; ANDES nie zastępuje żadnego z nich, ale jako jedyny daje wyrocznię
+uruchamialną w CI **bez licencji komercyjnej** i **z wartościami własnymi**.
+Materiał do rozstrzygnięcia: `docs/plan/PAKIET_DECYZYJNY_DYNAMIKA_D01_D13_2026-09.md`.
 
 Dodatkowo moduł SSCI ma **realne wyroczenie literaturowe**: testy odwołują się
 do Sun 2011 (kryterium bezwarunkowej stabilności `max|L| < 1`) oraz Wen 2016
