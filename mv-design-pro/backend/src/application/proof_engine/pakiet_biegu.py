@@ -47,7 +47,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
-from application.analyses.energy_validation.service import _graph
+from application.analyses.power_flow_reconstruction import graf_z_biegu
 from application.analyses.voltage_profile_view import _power_flow_result_v1
 from application.proof_engine.packs.p14_power_flow import P14PowerFlowInput, P14PowerFlowProof
 from application.proof_engine.packs.p16_losses import P16LossesInput, P16LossesProof
@@ -539,7 +539,7 @@ def _zbuduj_dowod_spadku(
     nie samą gałąź z osobna — REUŻYCIE dekompozycji ΔU per odcinek P0.4
     (``vdrop_chain_binding.lancuch_spadku_napiecia``).
     """
-    graph = _graph(run)
+    graph = graf_z_biegu(run)
     pf_result = _power_flow_result_v1(run)
     try:
         lancuch = lancuch_spadku_napiecia(

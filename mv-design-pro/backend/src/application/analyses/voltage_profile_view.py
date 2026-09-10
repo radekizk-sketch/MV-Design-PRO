@@ -40,11 +40,10 @@ from analysis.voltage_profile.segment_decomposition import (
 )
 
 # Jedno źródło odtwarzania grafu/PowerFlowResult dla widoków tej rodziny
-# (energy-validation, voltage-profile — obie czytają TEN SAM przebieg PF).
-from application.analyses.energy_validation.service import (
-    _graph,
-    _reconstruct_power_flow_result,
-)
+# (energy-validation, voltage-profile, sanity-bounds — wszystkie czytają TEN SAM
+# przebieg PF; karta W3-G2 wyodrębniła je z energy_validation.service do
+# dedykowanego modułu, żeby nie zostawiać duplikatu mechanizmu w trzecim miejscu).
+from application.analyses.power_flow_reconstruction import graf_z_biegu, wynik_rozplywu_z_biegu
 from enm.canonical_analysis import CanonicalRun
 from network_model.solvers.power_flow_result import (
     PowerFlowBranchResult,
@@ -210,8 +209,8 @@ def build_voltage_profile_view(
             aktywnej topologii — komunikat po polsku (422 na granicy API).
     """
     _wymagaj_biegu_rozplywu(run)
-    graph = _graph(run)
-    pf_result = _reconstruct_power_flow_result(run)
+    graph = graf_z_biegu(run)
+    pf_result = wynik_rozplywu_z_biegu(run)
 
     context = VoltageProfileContext(
         project_name=_nazwa_projektu(run),

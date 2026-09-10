@@ -165,7 +165,7 @@ def test_missing_branch_q_from_mvar_drops_branch_from_s_from_mva() -> None:
     zeby ``analysis.energy_validation.builder`` poprawnie odczytal ja jako
     NIEZNANA (a nie jako moc pozorna zlozona z polowy danych).
     """
-    from application.analyses.energy_validation.service import _reconstruct_power_flow_result
+    from application.analyses.power_flow_reconstruction import wynik_rozplywu_z_biegu
 
     run = _pf_run()
     real_branch_rows = run.raw_result["result_v1"]["branch_results"]
@@ -181,7 +181,7 @@ def test_missing_branch_q_from_mvar_drops_branch_from_s_from_mva() -> None:
     synthetic_raw_result["result_v1"] = synthetic_result_v1
 
     run_niekompletny = _synthetic_pf_run(raw_result=synthetic_raw_result)
-    pf_result = _reconstruct_power_flow_result(run_niekompletny)
+    pf_result = wynik_rozplywu_z_biegu(run_niekompletny)
 
     assert (
         branch_id not in pf_result.branch_s_from_mva
