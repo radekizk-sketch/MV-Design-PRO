@@ -257,6 +257,39 @@ export const JAKOSC_STRINGS = {
   jednMm: 'mm',
   jednS: 's',
 
+  // --- Sekcja „Pasma zdrowego rozsądku rozpływu" (karta W3-G2) ---
+  sekcjaPasmaRozplywu: 'Pasma zdrowego rozsądku rozpływu',
+  pasmaNiezbiezny:
+    'Bieg rozpływu nie osiągnął zbieżności — napięcia, obciążenia i straty poniżej '
+    + 'są niewiarygodne (każda pozycja ma status „dane niekompletne" z nazwanym '
+    + 'powodem, nie fabrykowany werdykt).',
+  pasmaSekcjaNapiec: 'Napięcia szyn',
+  pasmaSekcjaObciazen: 'Obciążenia gałęzi',
+  pasmaSekcjaStrat: 'Straty sieciowe',
+  kolSzynaPasma: 'Szyna',
+  kolNapiecieZnamionowe: 'Un',
+  kolNapiecieRzeczywiste: 'U',
+  kolOdchylenieProcent: 'Odchylenie',
+  kolPasmoNapieciowe: 'Pasmo wiarygodności',
+  kolGalazPasma: 'Gałąź',
+  kolPradGalezi: 'Prąd I',
+  kolPradZnamionowy: 'In (katalog)',
+  kolObciazenieProcent: 'Obciążenie',
+  pasmaStratyCzynne: 'Straty czynne',
+  pasmaSumaOdbiorow: 'Suma mocy czynnej odbiorów',
+  pasmaStratyProcentOdbiorow: 'Straty / suma odbiorów',
+  pasmaProgWiarygodnosci: 'Próg wiarygodności',
+  pasmaUzasadnienieProgu: 'Uzasadnienie progu',
+  pasmaNormaNapiecia: 'Norma napięciowa',
+  pasmaSzerokoscPasma: 'Szerokość pasma',
+  pasmaRodzajGalezi: 'Rodzaj gałęzi objęty oceną',
+  pasmaRodzajGaleziWartosc: 'linia / kabel',
+  pasmaRodzajGaleziUwaga:
+    'Transformatory mają odrębną ocenę obciążenia (moc znamionowa Sn, nie prąd In) '
+    + 'w sekcji „Walidacja energetyczna" — inna wielkość znamionowa, inne pasmo.',
+  jednA: 'A',
+  jednMw: 'MW',
+
   // Wartość pusta
   kreska: '—',
 } as const;

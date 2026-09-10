@@ -26,6 +26,7 @@ import { EkranAnalizy, useAkcjaUruchomObliczenie, usePoprawWModelu } from '../wz
 import { PrzyciskAkcjiStanu } from '../wzorzec';
 import type { AkcjaStanuZerowego } from '../wzorzec';
 import { PanelDowoduCieplnego } from './PanelDowoduCieplnego';
+import { SekcjaPasmRozplywu } from './SekcjaPasmRozplywu';
 import { useSwiezoscNaglowka } from '../../freshness';
 import {
   fetchArcFlash,
@@ -108,9 +109,11 @@ import {
 // Zasób jakości — stan pobierania (brak przebiegu / ładowanie / błąd / gotowe)
 // ---------------------------------------------------------------------------
 
-type StanZasobu = 'brakPrzebiegu' | 'ladowanie' | 'blad' | 'gotowe';
+export type StanZasobu = 'brakPrzebiegu' | 'ladowanie' | 'blad' | 'gotowe';
 
-function useZasobJakosci<T>(
+/** Eksportowany dla sekcji w osobnych plikach (karta W3-G2: „Pasma rozpływu") —
+ * jeden hak pobierania dla WSZYSTKICH sekcji ekranu Jakość, zero duplikacji. */
+export function useZasobJakosci<T>(
   runId: string | null,
   pobierz: (id: string) => Promise<T>,
 ): { stan: StanZasobu; dane: T | null } {
@@ -151,7 +154,7 @@ function useZasobJakosci<T>(
 // Elementy wspólne (tag statusu, chip podsumowania, panele stanu)
 // ---------------------------------------------------------------------------
 
-function TagStatusu({ tekst, istotnosc }: { tekst: string; istotnosc: IstotnoscStatusu }) {
+export function TagStatusu({ tekst, istotnosc }: { tekst: string; istotnosc: IstotnoscStatusu }) {
   return (
     <span className={`mvd-jakosc-tag mvd-jakosc-tag--${istotnosc}`} data-testid="mvd-jakosc-tag">
       {tekst}
@@ -159,7 +162,7 @@ function TagStatusu({ tekst, istotnosc }: { tekst: string; istotnosc: IstotnoscS
   );
 }
 
-function Chip({
+export function Chip({
   etykieta,
   wartosc,
   istotnosc,
@@ -176,7 +179,7 @@ function Chip({
   );
 }
 
-function StanSekcji({
+export function StanSekcji({
   tytul,
   komunikat,
   opis,
@@ -211,7 +214,8 @@ function StanSekcji({
 // Sekcja 1 — Wiarygodność zwarciowa
 // ---------------------------------------------------------------------------
 
-interface SekcjaProps {
+/** Eksportowany dla sekcji w osobnych plikach (karta W3-G2). */
+export interface SekcjaProps {
   przebieg: ExecutionRun | null;
   trybZaawansowania: AdvancementMode;
   onOtworzDowod: (ref: string) => void;
@@ -1541,6 +1545,13 @@ export function EkranJakosci({ trybZaawansowania, onOtworzDowod, onEksport }: Ek
         onEksport={onEksport ? eksport : undefined}
       />
       <SekcjaWarunkowPrzylaczenia
+        przebieg={przebiegPF}
+        trybZaawansowania={trybZaawansowania}
+        onOtworzDowod={onOtworzDowod}
+        onEksport={onEksport ? eksport : undefined}
+      />
+      {/* Karta W3-G2: pasma zdrowego rozsądku rozpływu (napięcia/obciążenia/straty) */}
+      <SekcjaPasmRozplywu
         przebieg={przebiegPF}
         trybZaawansowania={trybZaawansowania}
         onOtworzDowod={onOtworzDowod}
