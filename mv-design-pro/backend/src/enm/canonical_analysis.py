@@ -3216,6 +3216,167 @@ def build_short_circuit_rozplyw(
     raise KeyError(f"Brak punktu zwarcia {target_id} w wynikach przebiegu {run.id}")
 
 
+def _scenariusz_z_opcji(options: Mapping[str, Any]) -> str | None:
+    """Scenariusz biegu zwarciowego ('MAX'/'MIN') z opcji — `None` dla wartości
+    nierozpoznanej (kandydat wtedy odpada z doboru pary, nie wywala wołającego)."""
+    surowy = str(options.get("scenario", "max")).strip().lower()
+    if surowy == "max":
+        return "MAX"
+    if surowy == "min":
+        return "MIN"
+    return None
+
+
+def _typ_zwarcia_z_opcji(options: Mapping[str, Any]) -> str:
+    """Typ zwarcia biegu ('3F'/'1F'/'2F'/'2F+Z'…) z opcji — domyślnie '3F', ten sam
+    fallback co `enm.assembler._short_circuit_type_from_options`."""
+    return str(options.get("fault_type") or options.get("short_circuit_type") or "3F")
+
+
+@dataclass(frozen=True)
+class PasmoMinMaxZwarcia:
+    """Para biegów MAX/MIN zwarcia z JEDNEGO przypadku (karta W3-G3, aneks D7,
+    mapa domknięcia 3 #12).
+
+    `bieg_max`/`bieg_min` są `None`, gdy ta strona pasma nie jest dostępna — wtedy
+    `scenariusz_brakujacy` wskazuje którą, a `powod_niedostepnosci` mówi dlaczego
+    (nigdy cichy brak strony). `zrodlo_max`/`zrodlo_min` rozróżnia bieg ZAPISANY
+    (inny, niezależny bieg tego samego przypadku — własny `run_id`, własna
+    rewizja) od biegu OBLICZONEGO NA ŻĄDANIE w pamięci (`bieg_wariantu` z
+    migawki kotwicy) — ten drugi DZIELI `id` z kotwicą (`bieg_wariantu` nie
+    generuje nowego identyfikatora), więc warstwa prezentacji nie wolno wystawić
+    go jako własny, niezależny `run_id` tej strony (zero fabrykacji tożsamości).
+    """
+
+    run_kotwicy_id: UUID
+    scenariusz_kotwicy: str
+    typ_zwarcia: str
+    scenariusz_brakujacy: str | None
+    powod_niedostepnosci: str | None
+    bieg_max: CanonicalRun | None
+    zrodlo_max: str | None
+    bieg_min: CanonicalRun | None
+    zrodlo_min: str | None
+
+
+def dobierz_pasmo_min_max_zwarcia(
+    run: CanonicalRun,
+    *,
+    uow_factory: Callable[[], Any] | None = None,
+) -> PasmoMinMaxZwarcia:
+    """Dobiera parę biegów MAX/MIN zwarcia z JEDNEGO przypadku (karta W3-G3).
+
+    ISTNIEJĄCE WEJŚCIA WYKONANIA, ZERO NOWEJ FIZYKI. Kotwica = `run` (dowolny
+    zakończony bieg `short_circuit_sn` — scenariusz czytany z JEGO WŁASNYCH
+    opcji, nie zakładany „zawsze MAX"). Strona przeciwna dobierana dwoma
+    ISTNIEJĄCYMI torami, w tej kolejności:
+
+    1. ISTNIEJĄCY BIEG PRZYPADKU: inny zakończony bieg `short_circuit_sn` TEGO
+       SAMEGO przypadku (`list_runs_for_case`), tego samego typu zwarcia,
+       przeciwnego scenariusza — najświeższy wg `finished_at`/`started_at`/
+       `created_at`, gdy jest ich kilka (deterministyczny porządek, nie
+       pierwszy z brzegu). Realny, niezależny `run_id` i własna rewizja modelu
+       — mogą się rozjechać z kotwicą (inny moment liczenia); wołający oddaje
+       rewizję OBU stron (`analysis_case_context.rewizja_modelu` per strona w
+       warstwie prezentacji) — ostrzeżenie świeżości liczy front
+       (`ui2/freshness`), nie ten moduł (zero fizyki/interpretacji w module
+       orkiestracji biegów — porównanie dwóch liczb zostaje na warstwie, która
+       już to robi).
+    2. BRAK TAKIEGO BIEGU: dolicza WARIANT W PAMIĘCI (`bieg_wariantu` +
+       `wykonaj_bieg_w_pamieci` — JEDYNA fabryka biegu wariantu, ten sam
+       mechanizm co bieg zbiorczy nastaw `application/protection_settings/
+       batch_run.py`, kontyngencje N-1, hosting capacity) z MIGAWKI KOTWICY
+       (`apply_scenario(enm_kotwicy, SCENARIUSZ_NORMALNY)`), WYŁĄCZNIE gdy
+       kotwica ma jednoznaczny współczynnik c (bez ręcznego nadpisania w
+       opcjach biegu) i SAMA nie jest wariantem scenariusza (`bieg_wariantu`
+       buduje warianty tylko ze stanu normalnego — składanie scenariuszy nie
+       jest modelowane, jak dokumentuje `bieg_wariantu` samo). W obu
+       przypadkach odmowy `powod_niedostepnosci` jest NAZWANY, nigdy cichy.
+
+    Podnosi `ValueError` (wołający API tłumaczy na 404/409), gdy `run` sam nie
+    kwalifikuje się jako kotwica (nie jest zwarciem albo nie jest zakończony)
+    — to nie jest „brak pary" (uczciwy stan pokazywany na ekranie), tylko błąd
+    wywołania.
+    """
+    if run.analysis_type != "short_circuit_sn":
+        raise ValueError(
+            f"Przebieg {run.id} nie jest obliczeniem zwarciowym "
+            f"(analysis_type={run.analysis_type!r}) — pasmo MIN/MAX zwarcia "
+            "dostępne wyłącznie dla zwarć."
+        )
+    if run.status != "FINISHED":
+        raise ValueError(
+            f"Przebieg {run.id} nie jest zakończony (status={run.status}) — "
+            "pasmo MIN/MAX zwarcia wymaga zakończonego obliczenia jako kotwicy."
+        )
+    scenariusz_kotwicy = _scenariusz_z_opcji(run.options) or "MAX"
+    typ_zwarcia = _typ_zwarcia_z_opcji(run.options)
+    scenariusz_brakujacy = "MIN" if scenariusz_kotwicy == "MAX" else "MAX"
+
+    strony: dict[str, CanonicalRun | None] = {scenariusz_kotwicy: run, scenariusz_brakujacy: None}
+    zrodla: dict[str, str | None] = {
+        scenariusz_kotwicy: "biegu_zapisanego",
+        scenariusz_brakujacy: None,
+    }
+    powod_niedostepnosci: str | None = None
+
+    kandydaci = [
+        kandydat
+        for kandydat in list_runs_for_case(run.case_id)
+        if kandydat.id != run.id
+        and kandydat.analysis_type == "short_circuit_sn"
+        and kandydat.status == "FINISHED"
+        and _typ_zwarcia_z_opcji(kandydat.options) == typ_zwarcia
+        and _scenariusz_z_opcji(kandydat.options) == scenariusz_brakujacy
+    ]
+    if kandydaci:
+        najnowszy = max(
+            kandydaci,
+            key=lambda k: (k.finished_at or k.started_at or k.created_at, str(k.id)),
+        )
+        bieg_pelny = get_run(najnowszy.id)
+        if bieg_pelny is not None:
+            strony[scenariusz_brakujacy] = bieg_pelny
+            zrodla[scenariusz_brakujacy] = "biegu_zapisanego"
+
+    if strony[scenariusz_brakujacy] is None:
+        if run.options.get("c_factor") is not None:
+            powod_niedostepnosci = "wspolczynnik_c_recznie_ustawiony"
+        elif run.koperta is not None and run.koperta.scenario_ref is not None:
+            powod_niedostepnosci = "kotwica_jest_wariantem_scenariusza"
+        else:
+            try:
+                enm_kotwicy = EnergyNetworkModel.model_validate(run.snapshot or {})
+                migawka_kotwicy = apply_scenario(enm_kotwicy, SCENARIUSZ_NORMALNY)
+                opcje_wariantu = {**run.options, "scenario": scenariusz_brakujacy.lower()}
+                wariant = bieg_wariantu(
+                    run,
+                    migawka_kotwicy,
+                    analysis_type="short_circuit_sn",
+                    options=opcje_wariantu,
+                )
+                wykonaj_bieg_w_pamieci(wariant, uow_factory=uow_factory)
+            except Exception as exc:  # noqa: BLE001 — niezbieznosc/blad wariantu = odmowa nazwana
+                powod_niedostepnosci = f"blad_solvera_wariantu:{type(exc).__name__}"
+            else:
+                strony[scenariusz_brakujacy] = wariant
+                zrodla[scenariusz_brakujacy] = "obliczony_na_zadanie"
+
+    return PasmoMinMaxZwarcia(
+        run_kotwicy_id=run.id,
+        scenariusz_kotwicy=scenariusz_kotwicy,
+        typ_zwarcia=typ_zwarcia,
+        scenariusz_brakujacy=(
+            None if strony[scenariusz_brakujacy] is not None else scenariusz_brakujacy
+        ),
+        powod_niedostepnosci=powod_niedostepnosci,
+        bieg_max=strony["MAX"],
+        zrodlo_max=zrodla["MAX"],
+        bieg_min=strony["MIN"],
+        zrodlo_min=zrodla["MIN"],
+    )
+
+
 def wiersze_swiezego_biegu_bez_rozplywu(run: CanonicalRun) -> list[dict[str, Any]]:
     """SUROWE wiersze świeżo policzonego biegu BEZ rozpływu inline + flaga dostępności.
 

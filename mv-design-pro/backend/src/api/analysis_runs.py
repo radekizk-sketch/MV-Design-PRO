@@ -26,6 +26,7 @@ from api.canonical_run_views import (
     build_result_items,
     build_results_index_response,
     build_run_trace_payload,
+    build_short_circuit_band_response,
     build_short_circuit_results_response,
     build_short_circuit_rozplyw_response,
 )
@@ -713,6 +714,23 @@ def get_short_circuit_rozplyw(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Brak punktu zwarcia {target_id} w wynikach obliczenia {run_id}",
         ) from exc
+
+
+@router.get("/analysis-runs/{run_id}/results/short-circuit/pasmo")
+def get_short_circuit_band(
+    run_id: UUID,
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
+) -> dict[str, Any]:
+    # Karta W3-G3 (aneks D7, mapa domkniecia 3 #12): oba scenariusze c_max/c_min
+    # JEDNEGO przypadku obok siebie, z proweniencja kazdej strony. `run_id` jest
+    # kotwica (dowolny zakonczony bieg zwarciowy — nie musi byc MAX); orkiestracja
+    # pary (bieg zapisany innego biegu przypadku -> wariant w pamieci -> nazwana
+    # odmowa) w `dobierz_pasmo_min_max_zwarcia`, zero fizyki w tym module.
+    run = _require_canonical_run(run_id)
+    try:
+        return canonicalize_json(build_short_circuit_band_response(run, uow_factory=uow_factory))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
 
 @router.get("/analysis-runs/{run_id}/results/phase-state")

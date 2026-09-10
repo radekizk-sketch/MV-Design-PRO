@@ -13892,6 +13892,48 @@
     "summary": "Get Short Circuit Results"
    }
   },
+  "/api/analysis-runs/{run_id}/results/short-circuit/pasmo": {
+   "get": {
+    "operationId": "get_short_circuit_band_api_analysis_runs__run_id__results_short_circuit_pasmo_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "run_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Run Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Get Short Circuit Band Api Analysis Runs  Run Id  Results Short Circuit Pasmo Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Short Circuit Band"
+   }
+  },
   "/api/analysis-runs/{run_id}/results/short-circuit/rozplyw": {
    "get": {
     "operationId": "get_short_circuit_rozplyw_api_analysis_runs__run_id__results_short_circuit_rozplyw_get",

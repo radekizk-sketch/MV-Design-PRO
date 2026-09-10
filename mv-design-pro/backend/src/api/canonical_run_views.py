@@ -41,6 +41,7 @@ from enm.canonical_analysis import (
     build_results_index,
     build_short_circuit_results,
     build_short_circuit_rozplyw,
+    dobierz_pasmo_min_max_zwarcia,
 )
 from network_model.pochodne import a_na_ka
 
@@ -494,6 +495,87 @@ def build_short_circuit_rozplyw_response(
     payload = build_short_circuit_rozplyw(run, target_id, uow_factory=uow_factory)
     payload["analysis_case_context"] = build_analysis_case_context(run)
     return payload
+
+
+#: Komunikat PL per kod odmowy strony pasma (karta W3-G3) — NAZWANY, nigdy cichy
+#: (KLASA, NIE INSTANCJA §4: deklaracja bez testu = fałszywa pewność — przypięte
+#: `tests/api/test_short_circuit_band.py`). Prefiks `blad_solvera_wariantu:` (typ
+#: wyjątku dołączony w `dobierz_pasmo_min_max_zwarcia`) obsłużony osobno niżej.
+_POWOD_NIEDOSTEPNOSCI_PASMA_PL: dict[str, str] = {
+    "wspolczynnik_c_recznie_ustawiony": (
+        "Bieg kotwicy ma ręcznie ustawiony współczynnik c (niezależny od pasma "
+        "MAX/MIN) — jednoznaczny bieg przeciwnego scenariusza nie jest policzalny "
+        "automatycznie. Uruchom osobny bieg zwarciowy z automatycznym doborem c."
+    ),
+    "kotwica_jest_wariantem_scenariusza": (
+        "Bieg kotwicy sam jest wariantem scenariusza roboczego (nadpisania modelu) "
+        "— pasmo MIN/MAX buduje się wyłącznie ze stanu normalnego. Uruchom bieg "
+        "zwarciowy na stanie normalnym, aby zobaczyć pasmo."
+    ),
+}
+
+
+def _powod_niedostepnosci_pasma_pl(kod: str | None) -> str | None:
+    if kod is None:
+        return None
+    if kod in _POWOD_NIEDOSTEPNOSCI_PASMA_PL:
+        return _POWOD_NIEDOSTEPNOSCI_PASMA_PL[kod]
+    if kod.startswith("blad_solvera_wariantu:"):
+        return (
+            "Obliczenie przeciwnego scenariusza (w pamięci, z tej samej migawki "
+            "kotwicy) zakończyło się błędem solvera — sprawdź dane katalogowe i "
+            "topologię sieci albo uruchom bieg tego scenariusza osobno."
+        )
+    return f"Pasmo MIN/MAX niedostępne (kod: {kod})."
+
+
+def _strona_pasma_zwarcia(bieg: CanonicalRun | None, zrodlo: str | None) -> dict[str, Any] | None:
+    """Projekcja jednej strony pasma (MAX albo MIN) na JSON — `None` = strona
+    niedostępna (wołający czyta `brakujacy_scenariusz`/`powod_niedostepnosci`).
+
+    `run_id` obecny WYŁĄCZNIE dla `zrodlo == "biegu_zapisanego"` — strona
+    `"obliczony_na_zadanie"` dzieli `id` z kotwicą (`bieg_wariantu` go nie
+    generuje na nowo), więc wystawienie go jako `run_id` TEJ strony byłoby
+    fabrykacją niezależnej tożsamości biegu (zero fabrykacji, dyrektywa
+    właściciela). Ta strona niesie za to `bieg_bazowy_id` — z czego policzona.
+    """
+    if bieg is None:
+        return None
+    return {
+        "zrodlo": zrodlo,
+        "run_id": str(bieg.id) if zrodlo == "biegu_zapisanego" else None,
+        "bieg_bazowy_id": str(bieg.id),
+        "wynik": build_short_circuit_results(bieg),
+        "analysis_case_context": build_analysis_case_context(bieg),
+    }
+
+
+def build_short_circuit_band_response(
+    run: CanonicalRun, *, uow_factory: Callable[[], Any] | None = None
+) -> dict[str, Any]:
+    """Pasmo MIN/MAX zwarcia z JEDNEGO przypadku obok siebie (karta W3-G3,
+    aneks D7, mapa domknięcia 3 #12) — projekcja `PasmoMinMaxZwarcia` na JSON.
+
+    Orkiestracja doboru pary (bieg zapisany innego biegu przypadku → wariant w
+    pamięci → nazwana odmowa) żyje w `enm.canonical_analysis.
+    dobierz_pasmo_min_max_zwarcia` (zero fizyki tutaj — ten moduł WYŁĄCZNIE
+    projektuje wynik orkiestracji na JSON, jak `build_short_circuit_results_response`
+    obok). Świeżość PARY (różne rewizje obu stron) NIE jest liczona tutaj —
+    każda strona niesie WŁASNĄ `analysis_case_context.rewizja_modelu`, front
+    (`ui2/freshness`) porównuje obie liczby tym samym mechanizmem, którym już
+    ostrzega o pojedynczym biegu nieaktualnym względem modelu.
+    """
+    pasmo = dobierz_pasmo_min_max_zwarcia(run, uow_factory=uow_factory)
+    return {
+        "run_id_kotwicy": str(pasmo.run_kotwicy_id),
+        "scenariusz_kotwicy": pasmo.scenariusz_kotwicy,
+        "typ_zwarcia_kotwicy": pasmo.typ_zwarcia,
+        "brakujacy_scenariusz": pasmo.scenariusz_brakujacy,
+        "powod_niedostepnosci": pasmo.powod_niedostepnosci,
+        "powod_niedostepnosci_pl": _powod_niedostepnosci_pasma_pl(pasmo.powod_niedostepnosci),
+        "max": _strona_pasma_zwarcia(pasmo.bieg_max, pasmo.zrodlo_max),
+        "min": _strona_pasma_zwarcia(pasmo.bieg_min, pasmo.zrodlo_min),
+    }
 
 
 def build_extended_trace_response(run: CanonicalRun) -> dict[str, Any]:
