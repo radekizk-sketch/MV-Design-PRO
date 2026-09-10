@@ -11,11 +11,10 @@ Kopertę budowało SIEDEM niezależnych kopii tego samego kodu
 TRZY nazwy niezgodne z zawartością:
 
 - ``trace_id`` niosło ``str(run.id)`` — identyfikator PRZEBIEGU. Prawdziwy
-  ``trace_id`` w tym systemie to skrót TREŚCI artefaktu
-  (``application/trace_emitters/deterministic_ids.py``: „identyczne wejście
-  logiczne artefaktu → identyczne trace_id"), i tak jest używany w warstwie
-  analysis — ``analysis/normative/evaluator.py`` ustawia
-  ``trace_id=str(first.artifact_id)``. Jedna nazwa, dwa różne znaczenia w
+  ``trace_id`` w tym systemie to skrót SHA-256 TREŚCI artefaktu
+  („identyczne wejście logiczne artefaktu → identyczne trace_id"), i tak
+  jest używany w warstwie analysis — ``analysis/normative/evaluator.py``
+  ustawia ``trace_id=str(first.artifact_id)``. Jedna nazwa, dwa różne znaczenia w
   dwóch warstwach: kto sięgnie po ``context.trace_id``, żeby pobrać ślad albo
   dowód, zapyta identyfikatorem biegu i dostanie pustkę.
 - ``case_name`` niosło ``str(run.case_id)`` — identyfikator pod kluczem „nazwa".

@@ -1403,3 +1403,160 @@ def test_guard_accepts_current_repo_state_w3c2() -> None:
     """Stan repozytorium PO W3-C2 jest zielony — `line_overcurrent_setting/`
     nie istnieje w prawdziwym drzewie `backend/src`."""
     assert guard.check_w3c2_line_overcurrent_setting_resurrection() == []
+
+
+# ---------------------------------------------------------------------------
+# TRACE-V2 (2026-09-10): bramka wskrzeszenia klastra "slad v2" — testy wg
+# wzorca K2/W3A (kazda galaz `check_trace_v2_resurrection` ma przypadek
+# pozytywny; stan realnego repo ma przypadek negatywny). Karta TRACE-V2
+# skasowala razem z klastrem `scripts/trace_ui_leak_guard.py` (bez wlasnych
+# testow — "deklaracja bez testu = falszywa pewnosc", CLAUDE.md § KLASA NIE
+# INSTANCJA pkt 4); sprawdzenie (5) tu ponizej przejmuje jego zakres nazw TS i
+# dostaje testy, ktorych tamten guard nigdy nie mial.
+# ---------------------------------------------------------------------------
+
+
+def _patch_trace_v2_tree(monkeypatch, tmp_path) -> tuple[Path, Path]:
+    src = _patch_w1_tree(monkeypatch, tmp_path)
+    fe = tmp_path / "frontend" / "src"
+    fe.mkdir(parents=True)
+    monkeypatch.setattr(guard, "FRONTEND_SRC_DIR", fe)
+    monkeypatch.setattr(guard, "TRACE_V2_FRONTEND_DIR", fe / "ui" / "proof" / "trace-v2")
+    return src, fe
+
+
+def test_guard_rejects_resurrected_trace_v2_backend_modules(tmp_path, monkeypatch) -> None:
+    src, _fe = _patch_trace_v2_tree(monkeypatch, tmp_path)
+    (src / "domain" / "trace_v2").mkdir(parents=True)
+    (src / "domain" / "trace_v2" / "artifact.py").write_text("x = 1\n", encoding="utf-8")
+    (src / "application" / "trace_emitters").mkdir(parents=True)
+    (src / "application" / "trace_emitters" / "__init__.py").write_text("", encoding="utf-8")
+    (src / "application" / "trace_export").mkdir(parents=True)
+    (src / "application" / "trace_export" / "latex_generator.py").write_text(
+        "x = 1\n", encoding="utf-8"
+    )
+
+    violations = guard.check_trace_v2_resurrection()
+
+    assert any("[resurrected-module]" in v and "domain/trace_v2" in v for v in violations)
+    assert any(
+        "[resurrected-module]" in v and "application/trace_emitters" in v for v in violations
+    )
+    assert any("[resurrected-module]" in v and "application/trace_export" in v for v in violations)
+
+
+def test_guard_rejects_trace_v2_frontend_dir(tmp_path, monkeypatch) -> None:
+    _src, fe = _patch_trace_v2_tree(monkeypatch, tmp_path)
+    (fe / "ui" / "proof" / "trace-v2").mkdir(parents=True)
+    (fe / "ui" / "proof" / "trace-v2" / "types.ts").write_text(
+        "export type X = 1;\n", encoding="utf-8"
+    )
+
+    violations = guard.check_trace_v2_resurrection()
+
+    assert any("ui/proof/trace-v2" in v for v in violations)
+
+
+def test_guard_rejects_trace_v2_class_under_other_path_and_import_prefix(
+    tmp_path, monkeypatch
+) -> None:
+    src, _fe = _patch_trace_v2_tree(monkeypatch, tmp_path)
+    (src / "application").mkdir()
+    (src / "application" / "inny_modul.py").write_text(
+        "from domain.trace_v2.artifact import TraceArtifactV2\n"
+        "from application.trace_emitters.wynik import cokolwiek\n"
+        "\n\nclass TraceDiffEngine:\n    pass\n",
+        encoding="utf-8",
+    )
+
+    violations = guard.check_trace_v2_resurrection()
+
+    assert any(
+        "[legacy-public-import]" in v and "domain.trace_v2.artifact" in v for v in violations
+    )
+    assert any(
+        "[legacy-public-import]" in v and "application.trace_emitters.wynik" in v
+        for v in violations
+    )
+    assert any("[resurrected-class]" in v and "class TraceDiffEngine" in v for v in violations)
+
+
+def test_guard_does_not_fire_on_trace_v2_near_miss_import_prefix(tmp_path, monkeypatch) -> None:
+    """Granica `startswith(prefix + ".")`: modul o nazwie zaczynajacej sie tak
+    samo, ale bez kropki po prefiksie (`domain.trace_v2_experimental`), to INNY
+    modul, nie import z `domain.trace_v2` — ta sama klasa granicznego testu, co
+    K2 (`application.reference_networks_v2` vs `application.reference_networks`)."""
+    src, _fe = _patch_trace_v2_tree(monkeypatch, tmp_path)
+    (src / "application").mkdir()
+    (src / "application" / "inny_modul.py").write_text(
+        "from domain.trace_v2_experimental import cokolwiek\n",
+        encoding="utf-8",
+    )
+
+    assert guard.check_trace_v2_resurrection() == []
+
+
+def test_guard_rejects_trace_v2_ts_type_under_other_path(tmp_path, monkeypatch) -> None:
+    _src, fe = _patch_trace_v2_tree(monkeypatch, tmp_path)
+    (fe / "ui" / "workspace").mkdir(parents=True)
+    (fe / "ui" / "workspace" / "Ekran.tsx").write_text(
+        "// export type AnalysisTypeV2 = 'SC'; — komentarz nie liczy sie\n"
+        "export interface TraceArtifactV2 { id: string }\n"
+        "export type AnalysisTypeV2 = 'SC' | 'PROTECTION';\n",
+        encoding="utf-8",
+    )
+
+    violations = guard.check_trace_v2_resurrection()
+
+    assert any("[resurrected-type]" in v and "TraceArtifactV2" in v for v in violations)
+    assert any("[resurrected-type]" in v and "AnalysisTypeV2" in v for v in violations)
+    assert sum("[resurrected-type]" in v for v in violations) == 2
+
+
+def test_guard_does_not_fire_on_trace_v2_names_in_comments_or_strings(
+    tmp_path, monkeypatch
+) -> None:
+    src, fe = _patch_trace_v2_tree(monkeypatch, tmp_path)
+    (src / "enm").mkdir()
+    (src / "enm" / "notatka.py").write_text(
+        "# dawniej: class TraceArtifactV2, TraceDiffEngine, import z domain.trace_v2\n"
+        'OPIS = "application.trace_emitters i application.trace_export skasowane"\n',
+        encoding="utf-8",
+    )
+    (fe / "ui" / "workspace").mkdir(parents=True)
+    (fe / "ui" / "workspace" / "Notatka.ts").write_text(
+        "// dawniej: export interface TraceArtifactV2 { }\n"
+        '/* export type AnalysisTypeV2 = "SC"; */\n',
+        encoding="utf-8",
+    )
+
+    assert guard.check_trace_v2_resurrection() == []
+
+
+def test_guard_ignores_orphaned_pycache_only_directories_for_trace_v2(
+    tmp_path, monkeypatch
+) -> None:
+    """Ta sama klasa co W1/K2 (odbior K2, 2026-09-09): bytecode `__pycache__/`
+    osierocony po kasacji nie jest wskrzeszonym zrodlem; nie-TS plik pod
+    katalogiem FE tez nie jest zrodlem (wzorce `*.ts`/`*.tsx`)."""
+    src, fe = _patch_trace_v2_tree(monkeypatch, tmp_path)
+    for rel in ("domain/trace_v2", "application/trace_emitters", "application/trace_export"):
+        cache = src / rel / "__pycache__"
+        cache.mkdir(parents=True)
+        (cache / "modul.cpython-311.pyc").write_bytes(b"\x00")
+    fe_dir = fe / "ui" / "proof" / "trace-v2"
+    fe_dir.mkdir(parents=True)
+    (fe_dir / "README.md").write_text("nie jest zrodlem TS\n", encoding="utf-8")
+
+    assert guard.check_trace_v2_resurrection() == []
+
+
+def test_guard_accepts_clean_tree_without_trace_v2_resurrection(tmp_path, monkeypatch) -> None:
+    _patch_trace_v2_tree(monkeypatch, tmp_path)
+    assert guard.check_trace_v2_resurrection() == []
+
+
+def test_real_repo_has_no_trace_v2_resurrection() -> None:
+    """Stan repozytorium PO karcie TRACE-V2 jest zielony na tej bramce —
+    prawdziwe drzewo `backend/src` + `frontend/src`, nie sztuczne `tmp_path`."""
+    assert guard.check_trace_v2_resurrection() == []

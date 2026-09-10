@@ -21,9 +21,9 @@ obniżenia (działa w obie strony), a bramka odbioru tego nie zobaczyła — CI 
 czerwone przez TRZY szczyty. Narzędzie obiecywało „to, co robi CI", i była to
 obietnica szersza od tego, co sprawdzało. Teraz uruchamia OBIE połowy.
 
-Uruchamiaj interpreterem z venv backendu: część guardów (`trace_determinism`,
-`catalog_enforcement`) importuje `networkx`, którego systemowy Python nie ma, i
-bez venv zgłasza fałszywą czerwień.
+Uruchamiaj interpreterem z venv backendu: część guardów (np. `catalog_enforcement`)
+importuje `networkx`, którego systemowy Python nie ma, i bez venv zgłasza fałszywą
+czerwień.
 
     poetry run python ../scripts/guardy_z_ci.py     # z katalogu backend/
 

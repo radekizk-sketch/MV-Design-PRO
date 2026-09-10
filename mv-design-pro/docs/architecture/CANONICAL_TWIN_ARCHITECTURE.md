@@ -332,7 +332,7 @@ Dziś `Node.id = uuid5(NAMESPACE_DNS, ref_id)` w torze kanonicznym i `uuid4` w l
 - Fizyka poza solverami (A3-08: proof engine 21 wyrażeń, `analysis/arc_flash`, flicker, krzywa IEC w `application/analyses/protection`, R_θ w `application/solvers`) → przeniesiona do `network_model/solvers` z golden dowodami bit-identycznymi.
 
 ## C.4. White Box (§23)
-Lineage minimalny: dane źródłowe → proweniencja → założenia → envelope → migawka efektywna → `TopologyView` → wejście solvera (IR + kontrakt) → wartości pośrednie (Ybus, Zbus, Z1/Z2/Z0, jakobian, iteracje) → wynik → status walidacji → interpretacja. Jeden format śladu `TraceArtifact` (`trace_v2` istnieje 2 404 LOC bez konsumenta — wpiąć, nie pisać trzeciego); `run_hash` niezależny od formatowania; dowody (proof engine) wyłącznie formatują wartości ze śladu. Test snapshotowy nie jest wyrocznią fizyki (§23, §32) — wyrocznie w `../reference-networks/REFERENCE_NETWORK_REGISTRY.md`.
+Lineage minimalny: dane źródłowe → proweniencja → założenia → envelope → migawka efektywna → `TopologyView` → wejście solvera (IR + kontrakt) → wartości pośrednie (Ybus, Zbus, Z1/Z2/Z0, jakobian, iteracje) → wynik → status walidacji → interpretacja. Jeden format śladu `TraceArtifact` (`trace_v2` skasowany 2026-09-10 — jeden ślad inline, nie pisać drugiego); `run_hash` niezależny od formatowania; dowody (proof engine) wyłącznie formatują wartości ze śladu. Test snapshotowy nie jest wyrocznią fizyki (§23, §32) — wyrocznie w `../reference-networks/REFERENCE_NETWORK_REGISTRY.md`.
 
 ## C.5. Determinizm numeryczny — polityka odcisku (§35, przegląd kwantyzacji M0-2)
 

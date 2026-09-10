@@ -297,7 +297,6 @@ wskrzeszenia: `scripts/legacy_public_path_guard.py::check_w1_legacy_persistence_
 | arch_guard | `scripts/arch_guard.py` | Granice warstw |
 | overlay_no_physics | `scripts/overlay_no_physics_guard.py` | Brak fizyki w overlay |
 | solver_boundary | `scripts/solver_boundary_guard.py` | Izolacja solverow |
-| trace_determinism | `scripts/trace_determinism_guard.py` | Determinizm trace |
 | resultset_v1_schema | `scripts/resultset_v1_schema_guard.py` | Schema ResultSet |
 | **no_self_edges** | `scripts/sld_determinism_guards.py` (Guard 8) | Brak self-edges w adapterze (RUN #3C) |
 | **no_string_typology** | `scripts/sld_determinism_guards.py` (Guard 9) | Brak heurystyk stringowych (RUN #3C) |

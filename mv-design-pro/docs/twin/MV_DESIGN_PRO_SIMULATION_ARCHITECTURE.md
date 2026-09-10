@@ -25,7 +25,7 @@ Fizyka w repo jest dobra i zweryfikowana (NR vs pandapower ~5e-8 %, SC IEC 60909
 | fizyka w proof engine, arc flash w `analysis/`, krzywa IEC w `application/`, R_θ w `application/solvers` (A3-08) | guard „no physics outside solvers" dla backendu; proof engine tylko formatuje (§9) |
 | WLS bez modelu pomiaru (A3-09) | `MeasurementSet` z twin (§5.9) |
 | gęsta algebra, SC O(N·n³), N-1 2,64 s/kontyngencję (A3-10) | rdzeń rzadki + kolumny Zbus przez `splu.solve`, bramka wydajności (§4.2, §10) |
-| stałe magiczne w mostach i UI (A3-11), FROZEN porowaty (A3-20), trace_v2 martwe (A3-12) | rejestr stałych normatywnych, guardy, jeden format śladu (§9) |
+| stałe magiczne w mostach i UI (A3-11), FROZEN porowaty (A3-20), trace_v2 martwe (A3-12, skasowany 2026-09-10) | rejestr stałych normatywnych, guardy, jeden format śladu (§9) |
 | DER: `k_sc·In` jedyny model zwarciowy, GFM jako string, BESS bez SOC/sprawności, tryby katalogu nieme w PF (A5-03/04/14) | typowane sterowanie w migawce; PVSpec/GFM; pola karty SC konsumowane przez adapter (§5.2, §5.4) |
 
 ---
@@ -282,6 +282,6 @@ Bramka CI: benchmark na 3 sieciach (S/M/L generowane deterministycznie), próg r
 2. B-01: rozszerzenia rdzenia SC (Ith z n ≠ 1; Z2 jako wejście — już przyjmowane) i NR (slack rozproszony, algebra rzadka) — zgoda na ADR-021?
 3. Kasacja ścieżek legacy z §2.3 (w tym `/api/runs/*` po potwierdzeniu braku klienta).
 4. Determinizm N-1 z ciepłym startem: bit-identyczność czy tolerancja per solver?
-5. `trace_v2` wpiąć czy usunąć?
+5. `trace_v2` wpiąć czy usunąć? — rozstrzygnięte 2026-09-10: usunięty
 6. Celery/Redis: usunąć na rzecz puli procesów (0 tasków dziś)?
 7. Tautologia T14/T15 LVRT (A5-07) — adnotacja w dotychczas wystawionych certyfikatach?

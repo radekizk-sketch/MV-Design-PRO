@@ -1080,6 +1080,136 @@ def check_w3c2_line_overcurrent_setting_resurrection() -> list[str]:
     return violations
 
 
+# Karta TRACE-V2 (2026-09-10) — bramka wskrzeszenia klastra "slad v2"
+# (`domain/trace_v2/**`, `application/trace_emitters/**`, `application/
+# trace_export/**`, `frontend/src/ui/proof/trace-v2/**`). Klaster mial ZERO
+# konsumentow produkcyjnych (pomiar architekta 2026-09-10, grep calego repo):
+# jedynymi importerami byly wlasne testy klastra, guard CI
+# `trace_determinism_guard.py` (pilnowal determinizmu modulu, ktorego nikt nie
+# wolal) i piny `solver_input_substitute_guard.py`. Jedyny zywy slad WHITE BOX
+# produktu to `white_box_trace` wyniku solvera + `application/proof_engine/**`
+# (18 pakietow) + eksport `api/analysis_run_exports.py::
+# build_analysis_run_trace_export_payload` (INNA rzecz, poza zakresem tego
+# sprawdzenia — zostaje). Decyzja architekta: USUNIETY, nie wpiety (wpiecie
+# dawaloby DRUGA prawde sladu obok inline — misja: "one truth", "no eternal
+# legacy"); koryguje rekomendacje D-12 "wpiac" z `docs/twin/
+# OWNER_REVIEW_PACKAGE.md`.
+#
+# Razem z klastrem skasowany `scripts/trace_ui_leak_guard.py` (KLASA NIE
+# INSTANCJA, znalezisko przy kasacji, poza pierwotnym inwentarzem karty:
+# jedynym celem tego guarda byla izolacja typow trace-v2 do 3 dozwolonych
+# sciezek frontendu — po kasacji calego klastra te typy nie istnieja NIGDZIE,
+# wiec guard staje sie trwale pustym sprawdzeniem, czyli sam w sobie dlugiem.
+# Sprawdzenie (5) ponizej PRZEJMUJE zakres nazw typow tamtego guarda, ale BEZ
+# wyjatku sciezek — po kasacji zadna sciezka nie ma prawa ich uzywac).
+#
+# Sprawdzane: (1) zaden z trzech katalogow zrodlowych backendu nie istnieje,
+# (2) katalog FE `ui/proof/trace-v2` nie istnieje (zaden `.ts`/`.tsx`), (3)
+# zadna nazwa z FORBIDDEN_TRACE_V2_CLASS_NAMES nie wraca jako DEFINICJA
+# (ast.ClassDef) gdziekolwiek w `backend/src`, (4) zaden import z prefiksu
+# FORBIDDEN_TRACE_V2_MODULE_PREFIXES nie wraca gdziekolwiek w `backend/src`,
+# (5) zadna nazwa z FORBIDDEN_TRACE_V2_TS_TYPE_NAMES nie wraca jako DEFINICJA
+# (`export type|interface`) gdziekolwiek w `frontend/src`.
+TRACE_V2_BACKEND_RELATIVE_DIRS: dict[str, str] = {
+    "domain/trace_v2": (
+        "domena TraceArtifactV2/EquationRegistryV2/TraceDiffEngine (klaster "
+        '"slad v2", 0 konsumentow) — skasowana karta TRACE-V2'
+    ),
+    "application/trace_emitters": (
+        "emitery sladu v2 (SC/load-flow/protection) — skasowane karta TRACE-V2"
+    ),
+    "application/trace_export": "generator LaTeX sladu v2 — skasowany karta TRACE-V2",
+}
+TRACE_V2_FRONTEND_DIR = FRONTEND_SRC_DIR / "ui" / "proof" / "trace-v2"
+FORBIDDEN_TRACE_V2_CLASS_NAMES = {
+    "TraceArtifactV2",
+    "TraceEquationStep",
+    "EquationRegistryV2",
+    "TraceDiffEngine",
+    "TraceEmitterLoadFlow",
+    "TraceEmitterSC",
+    "TraceEmitterProtection",
+    "LaTeXGenerator",
+}
+FORBIDDEN_TRACE_V2_MODULE_PREFIXES = (
+    "domain.trace_v2",
+    "application.trace_emitters",
+    "application.trace_export",
+)
+#: Zakres nazw dziedziczony po skasowanym `trace_ui_leak_guard.py` (TRACE_V2_PATTERNS)
+#: — 6 typow TS klastra "slad v2", bez wyjatku sciezek (patrz komentarz wyzej).
+FORBIDDEN_TRACE_V2_TS_TYPE_NAMES = {
+    "AnalysisTypeV2",
+    "TraceArtifactV2",
+    "TraceEquationStepV2",
+    "TraceDiffResultV2",
+    "TraceValueV2",
+    "TraceStepDiffV2",
+}
+_TS_TRACE_V2_TYPE_DEF = re.compile(
+    r"^[ \t]*export\s+(?:interface|type)\s+("
+    + "|".join(sorted(FORBIDDEN_TRACE_V2_TS_TYPE_NAMES))
+    + r")\b",
+    re.MULTILINE,
+)
+
+
+def check_trace_v2_resurrection() -> list[str]:
+    """Karta TRACE-V2 (2026-09-10): klaster "slad v2" (`domain/trace_v2/**`,
+    `application/trace_emitters/**`, `application/trace_export/**`,
+    `frontend/src/ui/proof/trace-v2/**`) nie moze wrocic — 0 konsumentow
+    produkcyjnych w chwili kasacji (pomiar architekta, grep calego repo).
+    Kanoniczny slad WHITE BOX zostaje: `white_box_trace` wyniku solvera +
+    `application/proof_engine/**` + `api/analysis_run_exports.py::
+    build_analysis_run_trace_export_payload` (inny kontrakt, poza zakresem
+    tego sprawdzenia). Zobacz komentarz przy `TRACE_V2_BACKEND_RELATIVE_DIRS`
+    dla pelnego uzasadnienia (w tym kasacji `trace_ui_leak_guard.py`, ktorego
+    zakres nazw typow przejmuje sprawdzenie (5))."""
+    violations: list[str] = []
+    for rel, label in TRACE_V2_BACKEND_RELATIVE_DIRS.items():
+        path = BACKEND_SRC_DIR / rel
+        if zrodlo_istnieje(path):
+            violations.append(f"[resurrected-module] backend/src/{rel}: {label}")
+    if zrodlo_istnieje(TRACE_V2_FRONTEND_DIR, ("*.ts", "*.tsx")):
+        violations.append(
+            'frontend/src/ui/proof/trace-v2: klaster "slad v2" (skasowany karta '
+            "TRACE-V2, 2026-09-10) — nie odtwarzaj tego katalogu"
+        )
+    if BACKEND_SRC_DIR.exists():
+        for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+            tree = ast.parse(read_text(py_file), filename=str(py_file))
+            rel_path = py_file.relative_to(ROOT).as_posix()
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_TRACE_V2_CLASS_NAMES:
+                    violations.append(
+                        f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
+                        '(klaster "slad v2", skasowany karta TRACE-V2) nie moze wrocic'
+                    )
+                if (
+                    isinstance(node, ast.ImportFrom)
+                    and node.module is not None
+                    and any(
+                        node.module == prefix or node.module.startswith(prefix + ".")
+                        for prefix in FORBIDDEN_TRACE_V2_MODULE_PREFIXES
+                    )
+                ):
+                    violations.append(
+                        f"[legacy-public-import] {rel_path}:{node.lineno}: {node.module} "
+                        '(klaster "slad v2", skasowany karta TRACE-V2)'
+                    )
+    if FRONTEND_SRC_DIR.exists():
+        for suffix in FORBIDDEN_DATA_MANAGER_TS_EXTENSIONS:
+            for ts_file in sorted(FRONTEND_SRC_DIR.rglob(f"*{suffix}")):
+                tekst = _bez_komentarzy_ts(read_text(ts_file))
+                rel_path = ts_file.relative_to(ROOT).as_posix()
+                for dopasowanie in _TS_TRACE_V2_TYPE_DEF.finditer(tekst):
+                    violations.append(
+                        f"[resurrected-type] {rel_path}: export {dopasowanie.group(1)} "
+                        '(klaster "slad v2", skasowany karta TRACE-V2) nie moze wrocic'
+                    )
+    return violations
+
+
 def main() -> int:
     violations = (
         check_legacy_public_paths()
@@ -1095,6 +1225,7 @@ def main() -> int:
         + check_w3a_second_engine_resurrection()
         + check_w3c1_overcurrent_resurrection()
         + check_w3c2_line_overcurrent_setting_resurrection()
+        + check_trace_v2_resurrection()
     )
     if violations:
         print("legacy-public-path-guard: FAILED")

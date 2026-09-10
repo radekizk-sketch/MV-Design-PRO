@@ -479,9 +479,6 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "domain/result_set.py",
     "domain/results.py",
     "domain/switchgear_config.py",
-    "domain/trace_v2/artifact.py",
-    "domain/trace_v2/equation_registry_v2.py",
-    "domain/trace_v2/math_spec_version.py",
     "domain/validation.py",
     "domain/zwarcia_porownanie.py",
     "infrastructure/cgmes/cgmes_importer.py",
@@ -557,7 +554,7 @@ _NUMERIC_CALLS: frozenset[str] = frozenset(
 #:    — metryka WYDAJNOSCI OBLICZEN, bez jednostki fizycznej, w odroznieniu od
 #:    juz zaakceptowanej (w `ZASTANE_ZASTEPNIKI`) klasy „odczyt WARTOSCI sladu
 #:    solvera" (np. `max_mismatch_pu`, ktore JEST wielkoscia fizyczna — bledem
-#:    zbieznosci w j. pu), patrz `application/trace_emitters/load_flow_emitter.py`.
+#:    zbieznosci w j. pu).
 #:  * ranga/priorytet ZADANIA w kolejce automatyzacji (nie elementu sieci) i
 #:    konfiguracja odpytywania/ponawiania joba (`application/symphony/**`) —
 #:    poza domena elektryczna w calosci.
@@ -1436,10 +1433,6 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "B:ifexp:inp.cross_section_mm2": 1,
         "B:ifexp:inp.ik2_min_end_a": 1,
         "H:local:inp.ik3_max_beginning_a": 1,
-    },
-    "application/trace_emitters/protection_emitter.py": {
-        "F:dictget:tp.i_a_primary": 1,
-        "F:dictget:tp.i_a_secondary": 1,
     },
     # `application/reference_networks/expected_values.py` (F:dictget:item.rtol
     # x3) i `.../station_archetype_substrate.py` (B:ifexp x2 + C:getattr x2):

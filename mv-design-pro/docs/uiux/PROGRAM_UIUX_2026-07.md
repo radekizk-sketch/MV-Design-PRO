@@ -234,7 +234,7 @@ Improwizacja = odrzucenie PR.
 Przed każdym mergem: `npm run type-check`, `npm run lint`, pełny `vitest run --no-file-parallelism`,
 `npm run guard:codenames`, guardy: `forbidden_ui_terms_guard.py`, `ui_terminology_guard.py`,
 `dialog_completeness_guard.py`, `dead_click_guard.py`, `overlay_no_physics_guard.py`,
-`trace_ui_leak_guard.py`, `utf8_mojibake_guard.py`, `docs_guard.py` (przy zmianach doc).
+`utf8_mojibake_guard.py`, `docs_guard.py` (przy zmianach doc).
 Zmiany wizualne: artefakt renderu + samoocena vs makieta zatwierdzona w U0.6.
 Backend (tylko gdy karta jawnie obejmuje API): pełny pytest + guardy backendowe.
 

@@ -142,7 +142,7 @@ Format: **wymaganie** · powód (dowód) · priorytet · wpływ na architekturę
 | D-09 | B-01: rozszerzenia rdzeni (Ith n≠1, szyny PV, slack rozproszony, algebra rzadka) jako ścieżki addytywne z testem tożsamości | symulacja §11.2 | zgoda (ADR-021) |
 | D-10 | Kasacja legacy ścieżek uruchomienia (`/api/runs/*`, `enm/runs`, `power-flow-runs/execute`) po potwierdzeniu braku klientów | symulacja §11.3, A9 Q4 | tak |
 | D-11 | Determinizm N-1 z ciepłym startem: bit-identyczność vs tolerancja per solver | symulacja §11.4, wydajność W-D6 | tolerancja zadeklarowana w rejestrze zdolności i testowana |
-| D-12 | `trace_v2` (2 404 LOC bez konsumenta): wpiąć jako jedyny format śladu vs usunąć | symulacja §11.5 | wpiąć |
+| D-12 | `trace_v2` (2 404 LOC bez konsumenta): wpiąć jako jedyny format śladu vs usunąć | symulacja §11.5 | wpiąć — **korekta architekta 2026-09-10: USUNIĘTY** (mandat misji domknięcia; 0 konsumentów; wpięcie = druga prawda śladu) |
 | D-13 | Adnotacja w wystawionych certyfikatach o tautologicznym teście LVRT T14/T15 | symulacja §11.7, A5-07 | tak (uczciwość) |
 | D-14 | Zatwierdzenie pakietu symboli R3 (wspólny SN+nN) przed migracją renderera SN — werdykt B-02 | SLD §13.1, symbole §5 | procedura z `SLD_SYMBOL_SYSTEM_PLAN.md` §4 |
 | D-15 | Jedna geometria z LOD jako filtrem vs trzy sceny per LOD | SLD §13.2 | jedna geometria |

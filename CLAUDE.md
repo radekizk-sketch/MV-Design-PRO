@@ -386,7 +386,7 @@ MV-Design-PRO/
 │   │   │       ├── theme/             # Motyw i tokeny
 │   │   │       ├── wyniki/            # Ekrany wynikow (rozplyw, zwarcia, porownanie, estymacja, skladowe)
 │   │   └── e2e/                  # Playwright end-to-end tests
-│   ├── scripts/                  # CI/CD guard scripts (86 guards + 35 self-tests, 2026-09-09)
+│   ├── scripts/                  # CI/CD guard scripts (83 guards + 36 self-tests, 2026-09-10)
 │   └── docs/                     # Detailed documentation (150+ files)
 │       ├── spec/                 # DETAILED SPECIFICATION (18 chapters + supplements - SOURCE OF TRUTH)
 │       ├── ui/                   # UI contracts (35+ canonical contracts)
@@ -624,7 +624,10 @@ docker-compose logs -f backend
 docker-compose down
 ```
 
-### Guard Scripts (86 guards + 35 self-tests; list below is a selection)
+### Guard Scripts (83 guards + 36 self-tests; list below is a selection)
+
+Counts measured 2026-09-10 via `ls scripts/*_guard.py scripts/*_guards.py | grep -v test_ | wc -l`
+(guards) and `ls scripts/test_*guard*.py | wc -l` (self-tests).
 ```bash
 cd mv-design-pro
 
@@ -665,14 +668,12 @@ python scripts/ui_no_physics_guard.py             # No network physics in ui2/**
 # Physics separation guards
 python scripts/overlay_no_physics_guard.py        # Overlay layer physics prohibition
 python scripts/physics_label_guard.py             # Physics label validation
-python scripts/trace_ui_leak_guard.py             # Prevent trace data leaking to UI
 python scripts/load_flow_no_heuristics_guard.py   # No heuristics in load flow
 python scripts/protection_no_heuristics_guard.py  # No heuristics in protection
 python scripts/no_direct_fault_params_guard.py    # No direct fault param injection
 
 # SLD & determinism guards
 python scripts/sld_determinism_guards.py          # SLD rendering determinism
-python scripts/trace_determinism_guard.py         # Trace output determinism
 python scripts/fault_scenarios_determinism_guard.py # Fault scenario determinism
 
 # Schema guards
@@ -721,7 +722,7 @@ python scripts/smoke_local.sh                     # Local smoke test
 | SLD Determinism | `sld-determinism.yml` | Python SLD guards + SLD v2/v3 Vitest contract tests + render-odbiór acceptance |
 | Docs Guard | `docs-guard.yml` | Documentation integrity check (broken links, PCC terms) |
 | Architecture & Repo Hygiene | `arch-guard.yml` | arch_guard + repo_hygiene guards |
-| P0 Extended Guards | `p0-extended-guards.yml` | V12K invariant guards (load_flow/protection heuristics, solver_boundary, overlay_no_physics, trace_determinism, fault_scenarios_determinism, ui_terminology, forbidden_ui_terms) |
+| P0 Extended Guards | `p0-extended-guards.yml` | V12K invariant guards (load_flow/protection heuristics, solver_boundary, overlay_no_physics, fault_scenarios_determinism, ui_terminology, forbidden_ui_terms) |
 | Physics Label Guard | `physics-label-guard.yml` | Catalog-first physics field guard for modals |
 | Frontend E2E smoke | `frontend-e2e-smoke.yml` | Playwright e2e against the real backend (`npm run test:e2e:real`) |
 | Frontend E2E full | `frontend-e2e-full.yml` | Full Playwright e2e suite against the real backend (`npm run test:e2e`, all `e2e/*.spec.ts`) |
@@ -846,7 +847,7 @@ The system is fully functional with:
 - 19 analysis modules (incl. Arc Flash, Grid Strength, Reactive Adequacy, SSCI, Sanity Bounds,
   Energy Validation — see inventory)
 - Full frontend (63 UI modules): SLD editor, Results, Study Cases, Proof Inspector, Protection, NC RfG tests
-- ~9 080 backend test functions (`grep def test_`, 2026-09-09); ~10 580 frontend tests in 892 files; 86 guard scripts + 35 guard self-tests
+- ~9 080 backend test functions (`grep def test_`, 2026-09-09); ~10 580 frontend tests in 892 files; 83 guard scripts + 36 guard self-tests (measured 2026-09-10)
 - Project import/export (ZIP, deterministic, versioned), CAD geometry editing in SLD,
   PDF/DOCX report generation, ENM v1.0 (EnergyNetworkModel)
 
@@ -937,11 +938,9 @@ python scripts/catalog_metadata_guard.py
 python scripts/overlay_no_physics_guard.py
 python scripts/load_flow_no_heuristics_guard.py
 python scripts/protection_no_heuristics_guard.py
-python scripts/trace_ui_leak_guard.py
 
 # Determinism & trace guards
 python scripts/sld_determinism_guards.py
-python scripts/trace_determinism_guard.py
 python scripts/fault_scenarios_determinism_guard.py
 python scripts/resultset_v1_schema_guard.py
 

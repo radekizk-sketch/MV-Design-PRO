@@ -199,9 +199,9 @@ function WynikRankingu({
    *
    * Naglowek bral go z `dane.context.trace_id`. Pole jest ZLE NAZWANE po stronie
    * backendu: `hosting_capacity.py` wpisuje tam `str(run.id)`, a prawdziwe
-   * `trace_id` w tym systemie to skrot tresci artefaktu
-   * (`trace_emitters/deterministic_ids.py`), nie identyfikator biegu. Wartosc jest
-   * wiec dzis poprawna, ale nazwa klamie — nowy kod nie moze na niej stac.
+   * `trace_id` w tym systemie to skrot SHA-256 tresci artefaktu, nie
+   * identyfikator biegu. Wartosc jest wiec dzis poprawna, ale nazwa klamie —
+   * nowy kod nie moze na niej stac.
    * Rodzic zna `runId` z rejestru przebiegow i podaje go tu wprost.
    */
   runId: string | null;

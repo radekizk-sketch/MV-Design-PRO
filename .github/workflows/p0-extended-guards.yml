@@ -87,8 +87,9 @@ jobs:
       # CLAUDE.md § Core Rules: Same input MUST produce identical output
       # 2026-07-17: warn-only ZDJĘTE — wszystkie guardy tego workflowu zielone
       # na czystym HEAD (weryfikacja lokalna przy przenosinach z martwego
-      # katalogu mv-design-pro/.github/workflows); trace_determinism wymaga
-      # wyłącznie pydantic (import modeli domeny, bez cięższych zależności).
+      # katalogu mv-design-pro/.github/workflows); karta TRACE-V2 (2026-09-10)
+      # skasowala klaster "slad v2" i jego guard determinizmu bez konsumenta —
+      # bramka wskrzeszenia: legacy_public_path_guard.py::check_trace_v2_resurrection.
       # Karta N-D5-FUSE: bezpiecznik topikowy nie moze byc liczony wzorem IDMT
       # przekaznika (IEC 60255) — jego pasmo (IEC 60282-1) pochodzi z karty
       # katalogowej producenta. Guard sprawdza tekst, strukture I ZACHOWANIE
@@ -99,9 +100,6 @@ jobs:
       # padal na ModuleNotFoundError).
       - name: Protection — bezpiecznik nie liczony jak przekaznik
         run: $GUARD_PY scripts/protection_fuse_band_guard.py
-
-      - name: Trace determinism
-        run: $GUARD_PY scripts/trace_determinism_guard.py
 
       - name: Fault scenarios determinism
         run: $GUARD_PY scripts/fault_scenarios_determinism_guard.py
@@ -185,12 +183,12 @@ jobs:
       - name: Reference networks
         run: $GUARD_PY scripts/reference_networks_guard.py
 
-      # === Warstwy: zero fizyki i zero sladu w prezentacji ===
+      # === Warstwa prezentacji: zero fizyki ===
+      # Karta TRACE-V2 (2026-09-10): krok "Trace v2 — brak wycieku do UI"
+      # (trace_ui_leak_guard.py) skasowany razem z klastrem "slad v2", ktorego
+      # izolacje pilnowal — role przejela bramka wskrzeszenia (patrz wyzej).
       - name: UI — no physics (warstwa prezentacji)
         run: $GUARD_PY scripts/ui_no_physics_guard.py
-
-      - name: Trace v2 — brak wycieku do UI
-        run: $GUARD_PY scripts/trace_ui_leak_guard.py
 
       - name: Brak bezposrednich parametrow zwarcia
         run: $GUARD_PY scripts/no_direct_fault_params_guard.py

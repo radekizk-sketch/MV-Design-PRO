@@ -1014,7 +1014,7 @@ do audytu.
 | Krzywe vendor | domain.protection_vendors | `backend/src/domain/protection_vendors.py` |
 | Silnik ochrony (execute) | domain.protection_engine_v1 | `backend/src/domain/protection_engine_v1.py` |
 | Obliczanie IEC IDMT | domain.protection_engine_v1 | `backend/src/domain/protection_engine_v1.py` |
-| Trace emitter | application.trace_emitters | `backend/src/application/trace_emitters/protection_emitter.py` |
+| Trace emitter | ~~application.trace_emitters~~ | skasowany 2026-09-10 (klaster ślad v2 bez konsumenta; ślad kanoniczny = white_box_trace + application/proof_engine) |
 | API ochrony | api.protection_engine_v1 | `backend/src/api/protection_engine_v1.py` |
 
 ---

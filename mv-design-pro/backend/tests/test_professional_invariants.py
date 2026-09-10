@@ -166,8 +166,9 @@ def _find_any_annotations_in_file(filepath: Path) -> list[tuple[int, str]]:
     - canonicalize family (recursive canonicalizer/hash-of-arbitrary-structure
       by definition uses Any): _canonicalize_value, _canonicalize,
       _canonicalize_for_hash, canonicalize, compute_hash — five names, one
-      class, across domain/project_archive.py, domain/trace_v2/artifact.py,
-      domain/execution.py, domain/result_contract_v1.py, domain/analysis_run.py,
+      class, across domain/project_archive.py, domain/trace_v2/artifact.py
+      (skasowany 2026-09-10), domain/execution.py, domain/result_contract_v1.py,
+      domain/analysis_run.py,
       enm/canonical_analysis.py (domain/study_case_engine.py removed CV-3.2,
       domain/load_flow_input.py removed CV-4.2 — both were listed users of
       this same allowlisted name set, not a separate one)
