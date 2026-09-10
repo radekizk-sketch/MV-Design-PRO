@@ -1,20 +1,24 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 from uuid import UUID
 
 from api.klucz_twin_dep import KluczTwin
 from application.analyses.ssci_stability import build_ssci_stability_view
-from domain.canonical_operations import READINESS_CODES
+from application.analyses.v126_gotowosc import (
+    ocen_gotowosc_v126,
+    odpowiedz_gotowosci,
+    uzupelnij_parametry_z_modelu,
+)
+from application.analyses.v126_katalog import katalog_do_dict
 from enm.canonical_analysis import create_run as _create_canonical_run
 from enm.canonical_analysis import execute_run as _execute_canonical_run
 from enm.canonical_analysis import get_run as _get_canonical_run
 from enm.store import get_enm
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import JSONResponse
-from network_model.solvers.v126_academic import V126AcademicSolver
 from pydantic import BaseModel
-from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
 from solver_input.v126_contracts import (
     V126AcademicInput,
     V126AnalysisType,
@@ -25,7 +29,6 @@ from solver_input.v126_contracts import (
     V126MotorInput,
     V126RunRequest,
     build_v126_input_from_enm,
-    generatory_przeksztaltnikowe_v126,
     pominiete_zrodla_v126,
 )
 
@@ -219,99 +222,35 @@ def run_v126_analysis(
     if wycofanie is not None:
         return JSONResponse(status_code=status.HTTP_410_GONE, content=wycofanie)
     enm = get_enm(klucz)
-    if not enm.buses:
+    # Karta B-02 / W3-E (2026-09-10): gotowość JEDNĄ funkcją dla ekranu
+    # (`GET …/v126/gotowosc`) i dla uruchomienia — predykaty parami (KLASA §3).
+    # Dawne bramki tej trasy (brak węzłów, `generator.q_missing`,
+    # `generator.converter_card_missing`, `generator.harmonic_spectrum_missing`)
+    # żyją w `application/analyses/v126_gotowosc.py` z tymi samymi kodami i
+    # elementami w komunikacie; doszły braki danych, które solver FROZEN
+    # zastępował wartościami z powietrza (uziom stacji, TRV, silniki, wyposażenie
+    # przekaźnika, ograniczniki, liczba odbiorców). Parametry wyprowadzalne
+    # z modelu (najwyższe Un jako napięcie łącznika, sposób uziemienia punktu
+    # neutralnego) trafiają do biegu JAWNIE — proweniencja w zapisie wejścia.
+    parametry = uzupelnij_parametry_z_modelu(enm, analysis_type, request.parameters)
+    gotowosc = ocen_gotowosc_v126(enm, analysis_type, parametry)
+    if not gotowosc.potwierdzona:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Przypadek nie ma committed ENM z węzłami. V12.6 nie uruchamia obliczeń z draftu UI.",
+            detail=gotowosc.komunikat_odmowy(),
         )
     model = _with_parameter_payloads(
-        build_v126_input_from_enm(enm, parameters=request.parameters), request.parameters
+        build_v126_input_from_enm(enm, parameters=parametry), parametry
     )
-    # Karta FAB-H (H2): `_branch_current_a` (network_model/solvers/v126_academic.py,
-    # solver FROZEN — B-01, nie edytujemy go z tej karty) czyta
-    # `bus.generation_mvar`, agregat zbudowany w `build_v126_input_from_enm` z Q
-    # generatorów — a przy Q nieznanym kontrakt podstawia 0,0 jako strukturalne
-    # wypełnienie (ten sam agregat karmi też analizy, które Q w ogóle nie
-    # czytają). Tylko RELIABILITY_CONTINGENCY faktycznie konsumuje
-    # `_branch_current_a` spośród rodzajów jeszcze URUCHAMIALNYCH — OPF_LOSS_LCC
-    # też go czytał, ale ten rodzaj 410-uje wyżej, więc bramka tutaj nie
-    # osiągnęłaby go nigdy (karta W3-E zdjęła OPF_LOSS_LCC z tej krotki razem
-    # z bramką p0_kw, która niegdyś stała tu obok — obie bramki istniały
-    # WYŁĄCZNIE po to, żeby chronić uruchomienie analizy, która teraz w ogóle
-    # się nie uruchamia).
-    if analysis_type == V126AnalysisType.RELIABILITY_CONTINGENCY:
-        bez_mocy_biernej = [
-            gen.ref_id
-            for gen in enm.generators
-            if moc_bierna_wytworcy(gen, gen.materialized_params).brak
-        ]
-        if bez_mocy_biernej:
-            spec = READINESS_CODES["generator.q_missing"]
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=(
-                    f"{spec.message_pl} (generator.q_missing) — "
-                    f"generatory bez mocy biernej: {', '.join(bez_mocy_biernej)}"
-                ),
-            )
-    # Karta FAB-H (domkniecie, B-01): `_z_conv_components` w solverze FROZEN liczy
-    # punkt pracy z `converter.q_mvar or 0.0` — Q nieznane weszloby jako 0,0. Solver
-    # nie jest edytowany (B-01), wiec analiza SSCI jest blokowana TUTAJ dla
-    # przeksztaltnika, ktory solver by wybral (`_ssci_select_converter` — ta sama
-    # regula wyboru, bez duplikatu), gdy jego Q jest nieznane (ten sam predykat
-    # `moc_bierna_wytworcy` co wyzej, przeniesiony do `V126ConverterInput.q_mvar`).
-    if analysis_type == V126AnalysisType.SSCI_IMPEDANCE:
-        przeksztaltnik = V126AcademicSolver()._ssci_select_converter(model)
-        if przeksztaltnik is not None and przeksztaltnik.q_mvar is None:
-            spec = READINESS_CODES["generator.q_missing"]
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=(
-                    f"{spec.message_pl} (generator.q_missing) — przeksztaltnik analizy "
-                    f"SSCI bez mocy biernej: {przeksztaltnik.ref}"
-                ),
-            )
-    # Karta W2-C (zero fabrykacji wejścia V12.6): `power_quality_harmonics` i
-    # `ssci_impedance` są JEDYNE dwa rodzaje V12.6 czytające `harmonic_sources`/
-    # `converters` (`grep -n "converters\|harmonic_sources" v126_academic.py`).
-    # `build_v126_input_from_enm` pomija POJEDYNCZE generatory bez karty/widma
-    # (kod `generator.converter_card_missing`/`generator.harmonic_spectrum_missing`,
-    # patrz `pominiete_zrodla_v126` niżej) — ale gdy TO POMINIĘCIE oznacza, że
-    # ŻADEN kandydujący generator nie wniósł danych, uruchomienie zwróciłoby
-    # wynik prawie pusty (`has_inputs=False` / brak przekształtnika) zamiast
-    # jasnej odmowy z listą generatorów do naprawy — wzorzec identyczny z bramką
-    # `generator.q_missing` powyżej (:156-177).
-    if analysis_type == V126AnalysisType.POWER_QUALITY_HARMONICS:
-        kandydaci = generatory_przeksztaltnikowe_v126(enm)
-        if kandydaci and not model.harmonic_sources:
-            spec = READINESS_CODES["generator.harmonic_spectrum_missing"]
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=(
-                    f"{spec.message_pl} (generator.harmonic_spectrum_missing) — "
-                    f"generatory bez widma harmonicznego: {', '.join(kandydaci)}"
-                ),
-            )
-    if analysis_type == V126AnalysisType.SSCI_IMPEDANCE:
-        kandydaci = generatory_przeksztaltnikowe_v126(enm)
-        if kandydaci and not model.converters:
-            spec = READINESS_CODES["generator.converter_card_missing"]
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=(
-                    f"{spec.message_pl} (generator.converter_card_missing) — "
-                    f"generatory bez karty przekształtnika: {', '.join(kandydaci)}"
-                ),
-            )
     # Karta W2-C: lista generatorów pominiętych CZĘŚCIOWO (część kandydatów ma
     # dane, część nie) — pole addytywne `pominiete_zrodla` w payloadzie biegu,
     # wyliczone TĄ SAMĄ oceną karty co budowa wejścia (`pominiete_zrodla_v126`,
     # reguła KLASA §3). Puste dla rodzajów, które `harmonic_sources`/`converters`
-    # nie czytają (i tam, gdzie wszystkie/żadne kandydaty mają dane — bramki 422
-    # powyżej już to rozstrzygnęły).
+    # nie czytają (i tam, gdzie wszystkie/żadne kandydaty mają dane — gotowość
+    # powyżej już to rozstrzygnęła).
     pominiete_zrodla: list[dict[str, str]] = []
     if analysis_type in (V126AnalysisType.POWER_QUALITY_HARMONICS, V126AnalysisType.SSCI_IMPEDANCE):
-        pominiete_zrodla = pominiete_zrodla_v126(enm, parameters=request.parameters)
+        pominiete_zrodla = pominiete_zrodla_v126(enm, parameters=parametry)
     # CV-4.3-A4 (K5.2, 2026-09-06): bieg V12.6 trafia do rejestru kanonicznego
     # R1 (`CanonicalRun`) zamiast słownika `_runs` w pamięci procesu — przeżywa
     # odtąd restart procesu i jest widoczny każdemu workerowi (`tests/test_v126_
@@ -460,6 +399,10 @@ def get_v126_report(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, 
 def get_v126_catalog(namespace: str) -> dict[str, Any]:
     catalogs: dict[str, Any] = {
         "analysis-types": [item.value for item in V126AnalysisType],
+        # Karta B-02 / W3-E: katalog analiz z ZNACZENIEM inżynierskim (grupa,
+        # pytanie, zakres, wielkości, podstawa oceny, dane wejściowe) —
+        # jedno źródło prawdy dla ekranu „Analizy specjalistyczne".
+        "analysis-catalog": katalog_do_dict(),
         "harmonic-limits": {
             "thdu_pnen50160_percent": 8.0,
             "thdu_ieee519_percent": 5.0,
@@ -492,3 +435,41 @@ def get_v126_catalog(namespace: str) -> dict[str, Any]:
     if namespace not in catalogs:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nieznany katalog V12.6.")
     return {"namespace": namespace, "items": catalogs[namespace]}
+
+
+@router.get("/cases/{case_id}/v126/gotowosc")
+def get_v126_gotowosc(
+    case_id: UUID,
+    klucz: KluczTwin,
+    analysis_type: V126AnalysisType | None = None,
+    parametry: str | None = Query(
+        default=None,
+        description=(
+            "Parametry projektanta (JSON, ten sam kształt co `V126RunRequest.parameters`) — "
+            "gotowość ocenia DOKŁADNIE to wejście, które trafi do uruchomienia."
+        ),
+    ),
+) -> dict[str, Any]:
+    """Gotowość analiz V12.6 na zatwierdzonym modelu przypadku (karta B-02 / W3-E).
+
+    Ta sama funkcja (`odpowiedz_gotowosci` → `ocen_gotowosc_v126`), którą
+    `POST …/runs/v126/{rodzaj}` odmawia 422 — ekran pokazuje projektantowi PRZED
+    uruchomieniem listę sprawdzonych warunków albo braków, a uruchomienie nie
+    może ich ominąć. Bez `analysis_type` zwraca komplet rodzajów (katalog kart);
+    z nim — jeden. Kształt odpowiedzi (`case_id`, `model_hash`, `przedmiot`,
+    `analizy[]`) jest JEDEN z eksportem fixtur harnessu (§1 karty B02-BE-TESTY).
+    """
+    try:
+        dane = json.loads(parametry) if parametry else {}
+    except json.JSONDecodeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Parametry projektanta nie są poprawnym JSON.",
+        ) from exc
+    if not isinstance(dane, dict):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Parametry projektanta muszą być obiektem JSON.",
+        )
+    enm = get_enm(klucz)
+    return odpowiedz_gotowosci(str(case_id), enm, analysis_type, dane)

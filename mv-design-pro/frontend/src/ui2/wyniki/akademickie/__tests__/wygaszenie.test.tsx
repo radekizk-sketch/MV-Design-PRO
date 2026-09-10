@@ -1,174 +1,59 @@
 /*
- * PINY KARTY V126-WYGASZENIE — dwa wycofania z toru projektanta i ich granice.
+ * PINY KARTY V126-WYGASZENIE (i W3-E) — wycofania z toru projektanta i ich granice,
+ * po przebudowie B-02 (katalog KART z backendu zamiast listy rozwijanej).
  *
- * DECYZJA WŁAŚCICIELA 2026-08-07: z ekranu znikają (1) walidacja na sieciach
- * odniesienia — bada NARZĘDZIE, nie projekt użytkownika, oraz (2) margines
- * obciążalności P–U w stabilności napięciowej — nie powstaje z krzywej liczonej
- * rozpływem, tylko z przybliżenia ze sztywności węzła o zaszytych stałych.
+ * DECYZJE WŁAŚCICIELA: z ekranu znikają (1) walidacja na sieciach odniesienia — bada
+ * NARZĘDZIE, nie projekt użytkownika (2026-08-07), (2) stabilność napięciowa — solver
+ * nie wyznacza już żadnej jej wielkości z realnego modelu (QU-FABRYKACJA), (3) zdolność
+ * przyłączeniowa i optymalizacja strat — duplikaty kanonu liczonego gdzie indziej,
+ * 410 na uruchomienie (W3-E). Po B-02 wycofanie jest widoczne w DWÓCH źródłach, które
+ * muszą się zgadzać: rejestr frontu (`nieprezentowane.ts`) i pole `prezentowany`
+ * karty katalogu backendu — rozjazd = czerwień.
  *
- * TESTY SĄ ILOCZYNEM CECH, nie przykładem z karty. Osie, na których defekt
- * mógłby się schować:
+ * TESTY SĄ ILOCZYNEM CECH, nie przykładem z karty. Osie, na których defekt mógłby się
+ * schować:
  *   {rodzaj prezentowany · rodzaj wycofany · rodzaj NIEZNANY frontowi}
- *     × {lista wyboru · wejście trasowe}
- *   {ekran stabilności napięciowej} × {wskaźnik L z progiem · margines P–U}
- * Trzecia wartość pierwszej osi jest tu najważniejsza: filtr, który odsiewa
- * „wszystko, czego front nie zna", byłby cichym wykluczeniem nowego rodzaju
- * backendu — dokładnie tym, czego karta zakazuje.
+ *     × {katalog kart · wejście trasowe}
+ *   {rejestr frontu} × {pole `prezentowany` karty backendu}
+ * Trzecia wartość pierwszej osi jest najważniejsza: filtr odsiewający „wszystko, czego
+ * front nie zna" byłby cichym wykluczeniem nowego rodzaju backendu.
  *
- * GRANICA UCZCIWOŚCI: sprawdzamy część ekranu WIDOCZNĄ DLA PROJEKTANTA. Zwinięty
- * blok audytowy (`data-mvd-zapis-techniczny`, podpisany „Surowy zapis odpowiedzi
- * solvera") nadal zawiera komplet pól odpowiedzi — i ma zawierać, bo kontrakt
- * wyniku jest FROZEN, a blok jest jawnym zrzutem tego kontraktu, nie ofertą
- * wielkości inżynierskich. Te testy NIE dowodzą, że pole zniknęło z odpowiedzi
- * backendu; dowodzą, że zniknęło z oferty ekranu.
+ * GRANICA UCZCIWOŚCI: sprawdzamy część ekranu WIDOCZNĄ DLA PROJEKTANTA. Te testy NIE
+ * dowodzą, że pole zniknęło z odpowiedzi backendu (kontrakty FROZEN); dowodzą, że
+ * zniknęło z oferty ekranu.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 
 import { useAppStateStore } from '../../../../ui/app-state';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { EkranAnalizAkademickich } from '../EkranAnalizAkademickich';
-import {
-  POWODY_NIEPREZENTOWANIA,
-  rodzajPrezentowany,
-  tylkoPrezentowane,
-} from '../nieprezentowane';
+import { POWODY_NIEPREZENTOWANIA, rodzajPrezentowany, tylkoPrezentowane } from '../nieprezentowane';
 import { PREZENTACJA } from '../prezentacja';
-import { ETYKIETY_RODZAJOW, OPISY_RODZAJOW } from '../strings';
+import { ETYKIETY_RODZAJOW } from '../strings';
 import { SCREEN_CANON_REGISTRY } from '../../../../ui/workspace/screenCanonRegistry';
-import odpowiedziSolvera from './odpowiedziSolvera.json';
+import type { KartaKatalogu } from '../api';
+import { CASE_ID, KATALOG, ODPOWIEDZI, migawkaSieciZlotej, ustawFetchV126 } from './atrapyV126';
 
-const CASE_ID = 'case-wygaszenie';
-const RUN_ID = 'run-wygaszenie';
-const REF_GPZ_SZYNA = 'gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn';
-const REF_STACJA_SZYNA = 'station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn';
-
-const ODPOWIEDZI = odpowiedziSolvera as Record<string, Record<string, unknown>>;
-
-/** Komplet rodzajów odsyłany przez katalog backendu — tak jak go widzi front. */
-const KATALOG_BACKENDU = Object.keys(ODPOWIEDZI);
+/** Komplet rodzajów kontraktu — tak jak go wystawia katalog backendu. */
+const KATALOG_BACKENDU = KATALOG.map((karta) => karta.kod);
 
 /** Kody wycofane decyzją właściciela — źródłem jest rejestr, nie druga lista. */
 const WYCOFANE = Object.keys(POWODY_NIEPREZENTOWANIA);
 
-function odpowiedz(dane: unknown): Response {
-  return { ok: true, status: 200, statusText: 'OK', json: async () => dane } as Response;
-}
-
-function ustawFetch(rodzaje: readonly string[], rodzajBiegu = 'voltage_stability'): void {
-  const mock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
-    const adres = String(url);
-    const metoda = init?.method ?? 'GET';
-    if (adres.includes('/api/catalog/v126/analysis-types')) {
-      return odpowiedz({ namespace: 'analysis-types', items: rodzaje });
-    }
-    if (adres.includes('/api/catalog/v126/')) {
-      return odpowiedz({ namespace: 'limits', items: {} });
-    }
-    if (metoda === 'POST' && adres.includes('/runs/v126/')) {
-      return odpowiedz({
-        run_id: RUN_ID,
-        case_id: CASE_ID,
-        analysis_type: rodzajBiegu,
-        status: 'FINISHED',
-        result_url: '',
-        trace_url: '',
-        proof_url: '',
-        report_url: '',
-        deterministic_hash: 'hash-przebiegu',
-      });
-    }
-    if (adres.includes('/trace')) {
-      return odpowiedz({
-        run_id: RUN_ID,
-        analysis_type: rodzajBiegu,
-        trace_version: 'AcademicWhiteBoxTraceV1',
-        deterministic_hash: 'hash-przebiegu',
-        steps: [],
-      });
-    }
-    if (adres.includes('/proof')) {
-      return odpowiedz({
-        contract: 'AcademicProofPackV1',
-        proof_id: 'proof:v126:wygasz:1',
-        run_id: RUN_ID,
-        case_id: CASE_ID,
-        analysis_type: rodzajBiegu,
-        source_result_hash: 'hash-przebiegu',
-        trace_step_count: 0,
-        steps: [],
-        proof_hash: 'hash-dowodu',
-      });
-    }
-    if (adres.includes('/report')) {
-      return odpowiedz({
-        contract: 'AcademicReportV1',
-        report_id: 'report:v126:wygasz:1',
-        run_id: RUN_ID,
-        case_id: CASE_ID,
-        analysis_type: rodzajBiegu,
-        source_result_hash: 'hash-przebiegu',
-        source_proof_hash: 'hash-dowodu',
-        export_policy: 'frozen_result_and_proof_only',
-        sections: [],
-        report_hash: 'hash-raportu',
-      });
-    }
-    if (adres.includes('/results/v126/')) {
-      return odpowiedz({
-        run_id: RUN_ID,
-        case_id: CASE_ID,
-        analysis_type: rodzajBiegu,
-        status: 'FINISHED',
-        created_at: '2026-08-07T10:00:00+00:00',
-        result: {
-          contract: 'AcademicAnalysisResultV1',
-          analysis_type: rodzajBiegu,
-          solver_version: 'v126-1',
-          input_hash: 'hash-wejscia',
-          result: ODPOWIEDZI[rodzajBiegu],
-          white_box_trace: [],
-          deterministic_hash: 'hash-przebiegu',
-        },
-        proof_ref: 'proof:v126:wygasz:1',
-        report_ref: 'report:v126:wygasz:1',
-      });
-    }
-    throw new Error(`Nieoczekiwane wywołanie: ${metoda} ${adres}`);
-  });
-  vi.stubGlobal('fetch', mock);
-}
-
-function ustawMigawke(): void {
-  useSnapshotStore.setState({
-    snapshot: {
-      buses: [
-        { id: REF_GPZ_SZYNA, ref_id: REF_GPZ_SZYNA, name: 'GPZ Zachód — szyny SN' },
-        { id: REF_STACJA_SZYNA, ref_id: REF_STACJA_SZYNA, name: 'Stacja SN/nN Ogrodowa' },
-      ],
-      branches: [],
-    } as never,
-  });
-}
-
-/** Tekst widoczny dla projektanta — bez zwiniętego bloku audytowego. */
-function tekstDlaProjektanta(korzen: HTMLElement): string {
-  const czesci: string[] = [];
-  const odwiedz = (element: Element): void => {
-    if (element.hasAttribute('data-mvd-zapis-techniczny')) return;
-    element.childNodes.forEach((wezel) => {
-      if (wezel.nodeType === Node.TEXT_NODE) czesci.push(wezel.textContent ?? '');
-      else if (wezel.nodeType === Node.ELEMENT_NODE) odwiedz(wezel as Element);
-    });
+/** Karta rodzaju NIEZNANEGO frontowi (nowy rodzaj dopisany w backendzie). */
+function kartaNieznana(): KartaKatalogu {
+  return {
+    ...KATALOG.find((k) => k.kod === 'uncertainty_sensitivity')!,
+    kod: 'rodzaj_dodany_w_backendzie',
+    nazwa_pl: 'Rodzaj dodany w backendzie',
   };
-  odwiedz(korzen);
-  return czesci.join(' ');
 }
 
 beforeEach(() => {
   useAppStateStore.setState({ activeCaseId: CASE_ID, activeCaseResultStatus: 'NONE' });
-  ustawMigawke();
+  useSnapshotStore.setState({ snapshot: migawkaSieciZlotej() as never });
 });
 
 afterEach(() => {
@@ -178,7 +63,7 @@ afterEach(() => {
 });
 
 // ---------------------------------------------------------------------------
-// REJESTR WYCOFAŃ — deklaracje mają piny
+// REJESTR WYCOFAŃ — deklaracje mają piny; dwa źródła prawdy się zgadzają
 // ---------------------------------------------------------------------------
 
 describe('rejestr rodzajów nieprezentowanych', () => {
@@ -187,26 +72,17 @@ describe('rejestr rodzajów nieprezentowanych', () => {
     expect(WYCOFANE).toContain('benchmark_validation');
   });
 
-  /*
-   * PIN DEKLARACJI „wpis wymaga powodu merytorycznego" z `nieprezentowane.ts`.
-   * Bez tego pinu rejestr osunąłby się do listy kodów, czyli do cichego
-   * wykluczenia w przebraniu.
-   */
   it('każdy wpis niesie powód merytoryczny, nie odsyłacz do zakresu karty', () => {
     for (const [kod, powod] of Object.entries(POWODY_NIEPREZENTOWANIA)) {
       expect(powod.trim().length, `${kod}: powód pusty`).toBeGreaterThan(40);
       expect(powod, `${kod}: powód nie jest zdaniem`).toMatch(/\.$/);
-      expect(powod.toLowerCase(), `${kod}: „poza zakresem" nie jest powodem`).not.toContain(
-        'poza zakresem',
-      );
+      expect(powod.toLowerCase(), `${kod}: „poza zakresem" nie jest powodem`).not.toContain('poza zakresem');
     }
   });
 
   it('zbiory prezentowanych i wycofanych są rozłączne', () => {
     for (const kod of WYCOFANE) {
-      expect(Object.keys(PREZENTACJA), `${kod} ma projekt ekranu mimo wycofania`).not.toContain(
-        kod,
-      );
+      expect(Object.keys(PREZENTACJA), `${kod} ma projekt ekranu mimo wycofania`).not.toContain(kod);
       expect(rodzajPrezentowany(kod)).toBe(false);
     }
   });
@@ -215,61 +91,80 @@ describe('rejestr rodzajów nieprezentowanych', () => {
     const suma = [...Object.keys(PREZENTACJA), ...WYCOFANE].sort();
     expect(suma).toEqual([...KATALOG_BACKENDU].sort());
   });
+
+  /*
+   * B-02: wycofanie żyje w DWÓCH miejscach — rejestr frontu i pole `prezentowany`
+   * karty backendu (grupa „wycofane z powierzchni" z powodem). Predykaty parami:
+   * karta nieprezentowana ⇔ kod w rejestrze frontu. Rozjazd w którąkolwiek stronę
+   * = jeden ekran mówiłby „jest", drugi „nie ma".
+   */
+  it('pole `prezentowany` karty backendu i rejestr frontu wskazują TEN SAM zbiór wycofań', () => {
+    const wycofaneBackendu = KATALOG.filter((k) => !k.prezentowany).map((k) => k.kod).sort();
+    expect(wycofaneBackendu).toEqual([...WYCOFANE].sort());
+    for (const karta of KATALOG.filter((k) => !k.prezentowany)) {
+      expect(karta.powod_wycofania_pl, `${karta.kod}: karta wycofana bez powodu`).toBeTruthy();
+      expect(karta.grupa.kod).toBe('wycofane_z_powierzchni');
+    }
+  });
+
+  it('etykieta PL frontu jest lustrem nazwy karty backendu — także dla rodzajów wycofanych', () => {
+    for (const karta of KATALOG) {
+      expect(ETYKIETY_RODZAJOW[karta.kod as keyof typeof ETYKIETY_RODZAJOW], karta.kod).toBe(karta.nazwa_pl);
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
-// FILTR LISTY — iloczyn {prezentowany · wycofany · nieznany}
+// FILTR — iloczyn {prezentowany · wycofany · nieznany}
 // ---------------------------------------------------------------------------
 
 describe('tylkoPrezentowane — co filtr odsiewa, a czego NIE wolno mu ruszyć', () => {
   it('odsiewa wyłącznie rodzaje z rejestru, zachowując kolejność katalogu', () => {
-    expect(tylkoPrezentowane(KATALOG_BACKENDU)).toEqual(
-      KATALOG_BACKENDU.filter((kod) => !WYCOFANE.includes(kod)),
-    );
+    expect(tylkoPrezentowane(KATALOG_BACKENDU)).toEqual(KATALOG_BACKENDU.filter((kod) => !WYCOFANE.includes(kod)));
   });
 
-  /*
-   * OŚ „rodzaj NOWY w backendzie": filtr przepuszcza kod, którego front nie zna.
-   * Gdyby odsiewał nieznane, nowy rodzaj kontraktu znikałby z okna po cichu —
-   * czerwień strażnika parytetu byłaby jedynym ostrzeżeniem, a na ekranie
-   * użytkownika nie byłoby żadnego.
-   */
   it('przepuszcza rodzaj nieznany frontowi (nowy w kontrakcie backendu)', () => {
-    expect(tylkoPrezentowane(['rodzaj_dodany_w_backendzie'])).toEqual([
-      'rodzaj_dodany_w_backendzie',
-    ]);
+    expect(tylkoPrezentowane(['rodzaj_dodany_w_backendzie'])).toEqual(['rodzaj_dodany_w_backendzie']);
     expect(rodzajPrezentowany('rodzaj_dodany_w_backendzie')).toBe(true);
   });
 });
 
-describe('lista wyboru rodzaju — wejście projektanta', () => {
-  it('katalog z kompletem rodzajów → wybór bez rodzajów wycofanych', async () => {
-    ustawFetch(KATALOG_BACKENDU);
+describe('katalog kart — wejście projektanta', () => {
+  it('katalog z kompletem rodzajów → karty bez rodzajów wycofanych', async () => {
+    ustawFetchV126();
     render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
-    const selektor = (await screen.findByTestId('mvd-akad-rodzaj')) as HTMLSelectElement;
-    const opcje = Array.from(selektor.options).map((o) => o.value);
-
-    for (const kod of WYCOFANE) expect(opcje, `${kod} wciąż w wyborze`).not.toContain(kod);
-    // Kontrola dodatnia: pozostałe rodzaje NIE zniknęły przy okazji.
-    expect(opcje).toEqual(KATALOG_BACKENDU.filter((kod) => !WYCOFANE.includes(kod)));
-    expect(opcje).toContain('power_quality_harmonics');
-    expect(opcje).toContain('neutral_earthing_design');
-  });
-
-  it('rodzaj nowy w katalogu backendu trafia do wyboru bez zmiany kodu okna', async () => {
-    ustawFetch([...KATALOG_BACKENDU, 'rodzaj_dodany_w_backendzie']);
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
-    const selektor = (await screen.findByTestId('mvd-akad-rodzaj')) as HTMLSelectElement;
-    expect(Array.from(selektor.options).map((o) => o.value)).toContain(
-      'rodzaj_dodany_w_backendzie',
+    await screen.findByTestId('mvd-akad-katalog-kart');
+    const karty = Array.from(document.querySelectorAll('[data-testid^="mvd-akad-karta-otworz-"]')).map((el) =>
+      (el.getAttribute('data-testid') ?? '').replace('mvd-akad-karta-otworz-', ''),
     );
+    for (const kod of WYCOFANE) expect(karty, `${kod} wciąż w katalogu kart`).not.toContain(kod);
+    // Kontrola dodatnia: pozostałe rodzaje NIE zniknęły przy okazji, kolejność kontraktu.
+    expect(karty).toEqual(KATALOG_BACKENDU.filter((kod) => !WYCOFANE.includes(kod)));
+    expect(karty).toContain('power_quality_harmonics');
+    expect(karty).toContain('neutral_earthing_design');
   });
 
-  it('katalog zwracający WYŁĄCZNIE rodzaj wycofany → uczciwy stan zerowy, nie pusty wybór', async () => {
-    ustawFetch(WYCOFANE);
+  it('rodzaj nowy w katalogu backendu dostaje kartę bez zmiany kodu okna', async () => {
+    ustawFetchV126({ katalog: [...KATALOG, kartaNieznana()] });
     render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
-    expect(await screen.findByTestId('mvd-akad-rodzaje-brak')).toBeInTheDocument();
-    expect(screen.queryByTestId('mvd-akad-rodzaj')).not.toBeInTheDocument();
+    const karta = await screen.findByTestId('mvd-akad-karta-rodzaj_dodany_w_backendzie');
+    expect(karta).toHaveTextContent('Rodzaj dodany w backendzie');
+  });
+
+  it('katalog zwracający WYŁĄCZNIE rodzaje wycofane → uczciwy stan zerowy, nie pusta siatka', async () => {
+    ustawFetchV126({ katalog: KATALOG.filter((k) => WYCOFANE.includes(k.kod)) });
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    expect(await screen.findByTestId('mvd-akad-katalog-pusty')).toBeInTheDocument();
+    expect(document.querySelectorAll('[data-testid^="mvd-akad-karta-otworz-"]')).toHaveLength(0);
+  });
+
+  it('karta oznaczona przez backend jako nieprezentowana nie renderuje się nawet bez wpisu w rejestrze frontu', async () => {
+    // Oś „backend wycofał, front jeszcze nie wie": pole `prezentowany` samo wystarcza,
+    // żeby karta zeszła z ekranu — bez czekania na wpis w rejestrze.
+    ustawFetchV126({ katalog: [...KATALOG, { ...kartaNieznana(), prezentowany: false, powod_wycofania_pl: 'Wycofana decyzją backendu.' }] });
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    await screen.findByTestId('mvd-akad-katalog-kart');
+    expect(screen.queryByTestId('mvd-akad-karta-rodzaj_dodany_w_backendzie')).toBeNull();
   });
 });
 
@@ -277,81 +172,54 @@ describe('lista wyboru rodzaju — wejście projektanta', () => {
 // STABILNOŚĆ NAPIĘCIOWA — CAŁY RODZAJ WYCOFANY (karta QU-FABRYKACJA)
 // ---------------------------------------------------------------------------
 
-/*
- * DLACZEGO TEN BLOK ZMIENIŁ SENS. Karta V126-WYGASZENIE zdjęła stąd rodzinę P–U
- * i BRONIŁA sąsiadów: wskaźnika L („ma jawne kryterium") oraz zapasu mocy biernej
- * (krzywa Q–U). Pomiar karty QU-FABRYKACJA pokazał, że bronieni sąsiedzi stali na
- * tym samym gruncie, co wycięta rodzina — zapas Q–U liczony z krotności mocy
- * czynnej mimo dostępnego `bus.load_mvar` i BEZ jakiejkolwiek danej o zdolności
- * wytwórczej mocy biernej, wskaźnik L z mnożnika bez pokrycia, a wspólne wejście
- * wszystkich (moc zwarciowa węzła) podstawiane z napięcia znamionowego dla
- * 99,7 % szyn sieci odniesienia. Solver przestał wyznaczać cokolwiek, więc ekran
- * nie ma czego pokazać i rodzaj schodzi z toru projektanta w CAŁOŚCI.
- *
- * ILOCZYN CECH TEGO BLOKU:
- *   {rodzaj wycofany} × {rejestr · filtr · lista wyboru · wejście trasowe}
- *   {tekst widoczny} × {nazwa wielkości · fałszywy rodowód metody}
- */
-
 describe('stabilność napięciowa — rodzaj wycofany w całości', () => {
   it('nie ma projektu ekranu — wpis zniknął z PREZENTACJA', () => {
     expect(Object.keys(PREZENTACJA)).not.toContain('voltage_stability');
   });
 
-  it('jest w rejestrze wycofań z powodem merytorycznym', () => {
+  it('jest w rejestrze wycofań z powodem merytorycznym nazywającym POMIAR', () => {
     const powod = POWODY_NIEPREZENTOWANIA.voltage_stability;
     expect(powod.length).toBeGreaterThan(40);
     expect(powod.toLowerCase()).not.toContain('poza zakresem');
-    // Powód nazywa POMIAR, a nie samo „nie działa" — inaczej wycofanie byłoby
-    // opinią, a nie rozstrzygnięciem.
     expect(powod).toContain('zwarciowej');
   });
 
-  it('filtr listy wyboru go odsiewa', () => {
+  it('filtr go odsiewa; karta backendu mówi to samo (prezentowany = false, z powodem)', () => {
     expect(rodzajPrezentowany('voltage_stability')).toBe(false);
     expect(tylkoPrezentowane(KATALOG_BACKENDU)).not.toContain('voltage_stability');
+    const karta = KATALOG.find((k) => k.kod === 'voltage_stability')!;
+    expect(karta.prezentowany).toBe(false);
+    expect((karta.powod_wycofania_pl ?? '').length).toBeGreaterThan(40);
+    // Etykieta PL ZOSTAJE — wynik wczytany z zapisanego przebiegu ma być nazwany
+    // po polsku, a nie kodem kontraktu.
+    expect(ETYKIETY_RODZAJOW.voltage_stability).toBe(karta.nazwa_pl);
   });
 
-  it('znika z listy wyboru okna, a sąsiedzi zostają', async () => {
-    ustawFetch(KATALOG_BACKENDU);
+  it('znika z katalogu kart okna, a sąsiedzi zostają', async () => {
+    ustawFetchV126();
     render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
-    const selektor = (await screen.findByTestId('mvd-akad-rodzaj')) as HTMLSelectElement;
-    const opcje = Array.from(selektor.options).map((o) => o.value);
-    expect(opcje).not.toContain('voltage_stability');
-    // Kontrola dodatnia: analiza sąsiednia z tego samego obszaru ZOSTAŁA.
-    expect(opcje).toContain('reliability_contingency');
+    await screen.findByTestId('mvd-akad-katalog-kart');
+    expect(screen.queryByTestId('mvd-akad-karta-voltage_stability')).toBeNull();
+    expect(screen.getByTestId('mvd-akad-karta-reliability_contingency')).toBeInTheDocument();
   });
 
   /*
-   * FAŁSZYWY RODOWÓD NIE WRACA INNĄ DROGĄ. Karta zdjęła nazwy mówiące, SKĄD
-   * liczba pochodzi, choć nie była to prawda: „krzywa Q–U" (we wzorze nie
-   * występowało napięcie) i „krzywa P–U … z rozpływu" (rozpływu tam nie ma).
-   * Skan obejmuje CAŁY zbiór tekstów prezentacji, a nie jedno pole — poprzednim
-   * razem obietnica wróciła na ekran właśnie obok pinu postawionego punktowo.
+   * FAŁSZYWY RODOWÓD NIE WRACA INNĄ DROGĄ. Skan obejmuje CAŁY zbiór tekstów prezentacji
+   * ORAZ katalog backendu — poprzednim razem obietnica wróciła na ekran obok pinu
+   * postawionego punktowo.
    */
-  it('żaden projekt ekranu nie obiecuje krzywej Q–U ani P–U', () => {
-    const wszystkie = JSON.stringify(PREZENTACJA);
+  it('żaden projekt ekranu ani karta katalogu nie obiecuje krzywej Q–U ani P–U', () => {
+    const wszystkie = JSON.stringify(PREZENTACJA) + JSON.stringify(KATALOG.filter((k) => k.prezentowany));
     for (const falszywy of ['krzywa Q–U', 'krzywej Q–U', 'krzywa P–U', 'krzywej P–U']) {
       expect(wszystkie, `prezentacja obiecuje „${falszywy}"`).not.toContain(falszywy);
     }
-    // Kontrola dodatnia skanu: obiekt prezentacji NIE jest pusty.
     expect(wszystkie.length).toBeGreaterThan(2000);
-  });
-
-  it('opis rodzaju mówi o wstrzymaniu, a nie o wielkościach, których nie ma', () => {
-    expect(OPISY_RODZAJOW.voltage_stability).toContain('wstrzymana');
-    expect(OPISY_RODZAJOW.voltage_stability).not.toContain('Q–U');
-    // Etykieta PL ZOSTAJE — wynik wczytany z zapisanego przebiegu ma być nazwany
-    // po polsku, a nie kodem kontraktu.
-    expect(ETYKIETY_RODZAJOW.voltage_stability).toBe('Stabilność napięciowa');
   });
 
   it('ekran trasowy E-41 zniknął z nawigacji, ale został w kanonie', () => {
     const ekran = SCREEN_CANON_REGISTRY['E-41'];
     expect(ekran, 'E-41 wypadł z kanonu — złamana ciągłość numeracji').toBeDefined();
     expect(ekran.visibleInNavigation).toBe(false);
-    // Kontrola dodatnia: sąsiedni ekran akademicki nadal JEST w nawigacji,
-    // więc asercja wyżej mierzy wycofanie, a nie globalne wyłączenie obszaru.
     expect(SCREEN_CANON_REGISTRY['E-42'].visibleInNavigation).toBe(true);
   });
 });
@@ -360,41 +228,24 @@ describe('stabilność napięciowa — rodzaj wycofany w całości', () => {
 // HOSTING_CAPACITY / OPF_LOSS_LCC — schodzą z powierzchni (karta W3-E)
 // ---------------------------------------------------------------------------
 
-/*
- * DRUGIE WYCOFANIE Z INNEGO POWODU: `voltage_stability`/`benchmark_validation`
- * (powyżej) nie wnoszą wartości projektantowi (narzędzie sprawdza samo siebie
- * / wielkość bez pokrycia w danych). `hosting_capacity`/`opf_loss_lcc` WNOSZĄ
- * wartość merytoryczną — problem jest w tym, że DUPLIKUJĄ kanon liczony
- * gdzie indziej pełnym rozpływem/rzeczywistymi danymi katalogowymi, więc
- * backend odmawia URUCHOMIENIA nowego biegu (410), nie tylko prezentacji.
- * Generyczne testy w bloku „rejestr rodzajów nieprezentowanych" powyżej
- * (pisane jako iloczyn cech na ZBIORZE `WYCOFANE`, nie na przykładzie z karty)
- * już pokrywają OBA nowe wpisy automatycznie — ten blok dopina to, czego
- * generyczne testy NIE mierzą: widoczność w nawigacji ekranów trasowych.
- */
-
 describe('hosting_capacity / opf_loss_lcc — duplikat kanonu schodzi z powierzchni (karta W3-E)', () => {
-  it('oba rodzaje są w rejestrze wycofań z powodem merytorycznym', () => {
-    for (const kod of ['hosting_capacity', 'opf_loss_lcc']) {
-      const powod = POWODY_NIEPREZENTOWANIA[kod as keyof typeof POWODY_NIEPREZENTOWANIA];
+  it('oba rodzaje są w rejestrze wycofań z powodem merytorycznym i w grupie wycofanych katalogu', () => {
+    for (const kod of ['hosting_capacity', 'opf_loss_lcc'] as const) {
+      const powod = POWODY_NIEPREZENTOWANIA[kod];
       expect(powod.length, `${kod}: powód pusty`).toBeGreaterThan(40);
-      expect(powod.toLowerCase(), `${kod}: „poza zakresem" nie jest powodem`).not.toContain(
-        'poza zakresem',
-      );
+      expect(powod.toLowerCase(), `${kod}: „poza zakresem" nie jest powodem`).not.toContain('poza zakresem');
+      expect(KATALOG.find((k) => k.kod === kod)!.prezentowany).toBe(false);
     }
   });
 
-  it('znikają z listy wyboru okna, sąsiedzi z tego samego obszaru zostają', async () => {
-    ustawFetch(KATALOG_BACKENDU);
+  it('znikają z katalogu kart okna, sąsiedzi z tego samego obszaru zostają', async () => {
+    ustawFetchV126();
     render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
-    const selektor = (await screen.findByTestId('mvd-akad-rodzaj')) as HTMLSelectElement;
-    const opcje = Array.from(selektor.options).map((o) => o.value);
-    expect(opcje).not.toContain('hosting_capacity');
-    expect(opcje).not.toContain('opf_loss_lcc');
-    // Kontrola dodatnia: sąsiedzi z tego samego obszaru (rozdzielnia/straty)
-    // ZOSTAJĄ — wycofanie jest wąskie, nie zabrało sąsiednich zdolności.
-    expect(opcje).toContain('earthing_safety');
-    expect(opcje).toContain('reliability_contingency');
+    await screen.findByTestId('mvd-akad-katalog-kart');
+    expect(screen.queryByTestId('mvd-akad-karta-hosting_capacity')).toBeNull();
+    expect(screen.queryByTestId('mvd-akad-karta-opf_loss_lcc')).toBeNull();
+    expect(screen.getByTestId('mvd-akad-karta-earthing_safety')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-akad-karta-reliability_contingency')).toBeInTheDocument();
   });
 
   it('ekrany trasowe E-47 i E-48 znikają z nawigacji, ale zostają w kanonie', () => {
@@ -404,37 +255,26 @@ describe('hosting_capacity / opf_loss_lcc — duplikat kanonu schodzi z powierzc
       expect(ekran.visibleInNavigation, `${kod}: powinien zniknąć z nawigacji`).toBe(false);
       expect(ekran.implemented, `${kod}: zdolność solvera ma zostać implemented`).toBe(true);
     }
-    // Kontrola dodatnia: sąsiednie ekrany akademickie nadal SĄ w nawigacji.
     expect(SCREEN_CANON_REGISTRY['E-46'].visibleInNavigation).toBe(true);
     expect(SCREEN_CANON_REGISTRY['E-50'].visibleInNavigation).toBe(true);
   });
 
   /*
-   * PIN LICZBY — zmierzony, nie przepisany z prozy karty. Katalog kontraktu ma
-   * 14 rodzajów (`odpowiedziSolvera.json`, fikstura 1:1 z `V126AnalysisType`).
-   * Karta V126-WYGASZENIE (2026-08-07) zdjęła 2 (`benchmark_validation`,
-   * `voltage_stability`) -> lista wyboru pokazywała 12 PRZED tą kartą, nie 14
-   * (test poniżej broni tego stanu wyjściowego niezależnie od `WYCOFANE`, żeby
-   * regresja w rejestrze wcześniejszej karty nie schowała się za sumą). Karta
-   * W3-E zdejmuje kolejne 2 (`hosting_capacity`, `opf_loss_lcc`) -> 12 -> 10.
-   * Test wyżej („znikają z listy wyboru... sąsiedzi zostają") dowodzi SETU;
-   * ten dowodzi LICZBY, żeby regresja o poprawnym składzie, ale złej liczności
-   * (np. filtr odsiewający o jeden kod za dużo/za mało) miała osobny pin.
+   * PIN LICZBY — zmierzony, nie przepisany z prozy karty. Katalog kontraktu ma 14
+   * rodzajów (fixtury 1:1 z `V126AnalysisType`). V126-WYGASZENIE zdjęła 2, W3-E kolejne
+   * 2 → katalog kart pokazuje 10. Test wyżej dowodzi SETU; ten dowodzi LICZBY, żeby
+   * regresja o poprawnym składzie, ale złej liczności miała osobny pin.
    */
-  it('lista wyboru ma dokładnie 10 pozycji (14 katalogu − 4 wycofane: 2 z V126-WYGASZENIE + 2 z W3-E)', async () => {
+  it('katalog kart ma dokładnie 10 pozycji (14 kontraktu − 4 wycofane: 2 z V126-WYGASZENIE + 2 z W3-E)', async () => {
     expect(KATALOG_BACKENDU).toHaveLength(14);
+    expect(Object.keys(ODPOWIEDZI).sort()).toEqual([...KATALOG_BACKENDU].sort());
     expect(WYCOFANE).toEqual(
-      expect.arrayContaining([
-        'benchmark_validation',
-        'voltage_stability',
-        'hosting_capacity',
-        'opf_loss_lcc',
-      ]),
+      expect.arrayContaining(['benchmark_validation', 'voltage_stability', 'hosting_capacity', 'opf_loss_lcc']),
     );
     expect(WYCOFANE).toHaveLength(4);
-    ustawFetch(KATALOG_BACKENDU);
+    ustawFetchV126();
     render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
-    const selektor = (await screen.findByTestId('mvd-akad-rodzaj')) as HTMLSelectElement;
-    expect(selektor.options).toHaveLength(10);
+    await screen.findByTestId('mvd-akad-katalog-kart');
+    expect(document.querySelectorAll('[data-testid^="mvd-akad-karta-otworz-"]')).toHaveLength(10);
   });
 });

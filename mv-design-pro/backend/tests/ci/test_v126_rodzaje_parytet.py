@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from typing import Any
 
 from solver_input.v126_contracts import V126AnalysisType
 
@@ -49,6 +50,9 @@ PREZENTACJA_TS = FRONT_AKADEMICKIE / "prezentacja.ts"
 NIEPREZENTOWANE_TS = FRONT_AKADEMICKIE / "nieprezentowane.ts"
 ROUTER_TSX = PROJECT_ROOT / "frontend" / "src" / "ui" / "workspace" / "WorkspaceSurfaceRouter.tsx"
 SOLVER_PY = PROJECT_ROOT / "backend" / "src" / "network_model" / "solvers" / "v126_academic.py"
+#: Most ENM → wejście solvera (karta B-02): część parametrów projektanta czyta MOST,
+#: nie solver (liczba odbiorców per szyna wchodzi do `V126BusInput.customer_count`).
+MOST_PY = PROJECT_ROOT / "backend" / "src" / "solver_input" / "v126_contracts.py"
 #: Plik kontroli jakości dla KAŻDEGO rodzaju wycofanego z toru projektanta.
 #: Wpis w rejestrze wycofań bez pozycji tutaj zapala `test_zdolnosc_wycofana_ma_kontrole_jakosci`
 #: — wycofanie ma PRZENOSIĆ zdolność do kontroli jakości, nie zostawiać jej bez konsumenta.
@@ -87,7 +91,24 @@ KLUCZE_BEZ_KONTROLKI: dict[str, str] = {
     "relay_methods": "wybór wielokrotny — METODY_DETEKCJI",
     # Lista referencji ma własny formularz wierszowy (`POLA_REFERENCJI`).
     "benchmark_references": "lista złożona — POLA_REFERENCJI",
+    # Karta B-02: liczba odbiorców per szyna to lista wierszy (szyna → liczba) z własnym
+    # formularzem `POLA_ODBIORCOW`; czyta ją most (`odbiorcy_z_parametrow`), nie solver.
+    "customer_counts": "lista złożona — POLA_ODBIORCOW (szyna → liczba odbiorców)",
 }
+
+
+def _klucze_czytane() -> set[str]:
+    """Klucze `parameters` czytane przez solver ALBO most (jedno źródło dla obu testów)."""
+    tekst = _tekst(SOLVER_PY) + _tekst(MOST_PY)
+    return set(re.findall(r"param(?:eter)?s\.get\(\s*\"([a-z0-9_]+)\"", tekst))
+
+
+def _kontrolki_frontu() -> tuple[set[str], set[str]]:
+    """(klucze pól, klucze list złożonych) zadeklarowane w `parametry.ts`."""
+    parametry = _tekst(PARAMETRY_TS)
+    pola = set(re.findall(r"klucz:\s*'([a-z0-9_]+)'", parametry))
+    listy = set(re.findall(r"lista:\s*'([a-z0-9_]+)'", parametry))
+    return pola, listy
 
 
 def _tekst(sciezka: Path) -> str:
@@ -95,14 +116,35 @@ def _tekst(sciezka: Path) -> str:
 
 
 def test_kazdy_rodzaj_ma_etykiete_pl_w_oknie() -> None:
-    """Komplet `V126AnalysisType` ma etykietę PL i opis w oknie akademickim."""
+    """Komplet `V126AnalysisType` ma etykietę PL w oknie — TĘ SAMĄ, którą niesie karta katalogu.
+
+    Karta B-02 / W3-E: katalog kart z backendu (`GET /api/catalog/v126/analysis-catalog`)
+    jest JEDYNYM źródłem nazw, pytań inżynierskich, zakresów i podstaw oceny — okno nie
+    trzyma własnych opisów (dawne `OPISY_RODZAJOW` skasowane). Etykieta frontu
+    (`ETYKIETY_RODZAJOW`) zostaje wyłącznie dla wyników wczytanych bez katalogu (zapisany
+    przebieg) i MUSI być lustrem `nazwa_pl` karty — inaczej ten sam rodzaj miałby dwie
+    nazwy na dwóch ekranach.
+    """
+    from application.analyses.v126_katalog import katalog_do_dict
+
     strings = _tekst(STRINGS_TS)
     etykiety = strings.split("ETYKIETY_RODZAJOW", 1)[1].split("};", 1)[0]
-    opisy = strings.split("OPISY_RODZAJOW", 1)[1].split("};", 1)[0]
     brak_etykiety = [item.value for item in V126AnalysisType if f"{item.value}:" not in etykiety]
-    brak_opisu = [item.value for item in V126AnalysisType if f"{item.value}:" not in opisy]
     assert brak_etykiety == [], f"Rodzaje bez etykiety PL w oknie: {brak_etykiety}"
-    assert brak_opisu == [], f"Rodzaje bez opisu inżynierskiego w oknie: {brak_opisu}"
+    assert (
+        "OPISY_RODZAJOW" not in strings
+    ), "Okno znów trzyma własne opisy rodzajów — druga kopia katalogu backendu (karta B-02 §0.1)"
+    etykiety_frontu = dict(
+        re.findall(r"^\s*([a-z0-9_]+):\s*'([^']*)'", etykiety, flags=re.MULTILINE)
+    )
+    nazwy_backendu = {karta["kod"]: karta["nazwa_pl"] for karta in katalog_do_dict()}
+    assert set(nazwy_backendu) == {item.value for item in V126AnalysisType}
+    rozjazd = {
+        kod: (etykiety_frontu.get(kod), nazwa)
+        for kod, nazwa in nazwy_backendu.items()
+        if etykiety_frontu.get(kod) != nazwa
+    }
+    assert rozjazd == {}, f"Etykieta okna ≠ nazwa karty katalogu (front, backend): {rozjazd}"
 
 
 def test_typ_rodzaju_w_kliencie_pokrywa_kontrakt() -> None:
@@ -127,12 +169,11 @@ def test_kazdy_rodzaj_ma_zestaw_parametrow() -> None:
 
 
 def test_kazdy_czytany_parametr_ma_kontrolke() -> None:
-    """Każdy klucz `parameters` czytany przez solver ma kontrolkę albo jawny wyjątek."""
-    solver = _tekst(SOLVER_PY)
-    czytane = set(re.findall(r"param(?:eter)?s\.get\(\s*\"([a-z0-9_]+)\"", solver))
+    """Każdy klucz `parameters` czytany przez solver albo most ma kontrolkę albo jawny wyjątek."""
+    czytane = _klucze_czytane()
     assert czytane, "Nie wykryto żadnego odczytu parameters w solverze — parser do poprawy."
-    parametry = _tekst(PARAMETRY_TS)
-    klucze_frontu = set(re.findall(r"klucz:\s*'([a-z0-9_]+)'", parametry))
+    pola, listy = _kontrolki_frontu()
+    klucze_frontu = pola | listy
     braki = sorted(
         klucz
         for klucz in czytane
@@ -146,10 +187,97 @@ def test_kazdy_czytany_parametr_ma_kontrolke() -> None:
 
 def test_wyjatki_bez_kontrolki_sa_realnie_czytane() -> None:
     """Lista wyjątków nie zawiera pozycji martwych (klucz przestał być czytany)."""
-    solver = _tekst(SOLVER_PY)
-    czytane = set(re.findall(r"param(?:eter)?s\.get\(\s*\"([a-z0-9_]+)\"", solver))
+    czytane = _klucze_czytane()
     martwe = sorted(klucz for klucz in KLUCZE_BEZ_KONTROLKI if klucz not in czytane)
     assert martwe == [], f"Wyjątki wskazujące klucze nieczytane już przez solver: {martwe}"
+
+
+def test_kazdy_parametr_karty_katalogu_ma_kontrolke() -> None:
+    """Karta B-02: każdy parametr `od_uzytkownika` karty katalogu ma kontrolkę w oknie.
+
+    Katalog obiecuje projektantowi pole („dane od użytkownika"), więc pole musi dać się
+    wypełnić — inaczej gotowość NIEPOTWIERDZONA byłaby nie do zamknięcia z ekranu.
+    Klucze złożone: `motors[].rated_kw` → lista `motors` + pole `rated_kw`;
+    `earthing.rho1_ohm_m` → obiekt uziomu + pole `rho1_ohm_m`.
+    """
+    from application.analyses.v126_katalog import katalog_do_dict
+
+    pola, listy = _kontrolki_frontu()
+    braki: list[str] = []
+    for karta in katalog_do_dict():
+        for parametr in karta["dane"]["od_uzytkownika"]:
+            klucz = parametr["klucz"]
+            baza, _, lisc = klucz.replace("[]", "").partition(".")
+            if klucz in pola or klucz in listy:
+                continue
+            if baza in listy and lisc in pola:
+                continue
+            if baza in KLUCZE_BEZ_KONTROLKI and (lisc == "" or lisc in pola):
+                continue
+            braki.append(f"{karta['kod']}: {klucz}")
+    assert braki == [], f"Parametry karty katalogu bez kontrolki w oknie: {braki}"
+
+
+def _zestawy_frontu() -> dict[str, dict[str, Any]]:
+    """Zestaw parametrów okna per rodzaj: pola, listy, obiekt uziomu, metody detekcji."""
+    tekst = _tekst(PARAMETRY_TS)
+    blok = tekst.split("export const PARAMETRY_RODZAJU", 1)[1].split("\n};", 1)[0]
+    wynik: dict[str, dict[str, Any]] = {}
+    biezacy: str | None = None
+    for linia in blok.splitlines():
+        naglowek = re.match(r"^  ([a-z0-9_]+): (.*)$", linia)
+        if naglowek is not None:
+            biezacy = naglowek.group(1)
+            wynik[biezacy] = {"pola": set(), "listy": set(), "uziom": False, "metody": False}
+            linia = naglowek.group(2)
+        if biezacy is None:
+            continue
+        wynik[biezacy]["pola"] |= set(re.findall(r"klucz:\s*'([a-z0-9_]+)'", linia))
+        wynik[biezacy]["listy"] |= set(re.findall(r"lista:\s*'([a-z0-9_]+)'", linia))
+        if re.search(r"uziom:\s*true", linia):
+            wynik[biezacy]["uziom"] = True
+        if re.search(r"metodyDetekcji:\s*true", linia):
+            wynik[biezacy]["metody"] = True
+    return wynik
+
+
+def test_parser_zestawow_frontu_cos_widzi() -> None:
+    """Kontrola dodatnia parsera zestawów — pustka fałszowałaby test fantomów."""
+    zestawy = _zestawy_frontu()
+    assert set(zestawy) == {item.value for item in V126AnalysisType}
+    assert zestawy["motor_starting"]["listy"] == {"motors"}
+    assert zestawy["earthing_safety"]["uziom"] is True
+    assert "neutral_grounding" in zestawy["earth_fault_detection"]["pola"]
+
+
+def test_zadna_kontrolka_okna_nie_jest_fantomem() -> None:
+    """Zero fabrykacji (phantom rule): kontrolka rodzaju PREZENTOWANEGO ma parametr w karcie.
+
+    Kontrolka, której backend nie czyta, jest zakazana (dyrektywa właściciela 3).
+    Rodzaje wycofane z powierzchni (410 na POST) nie renderują formularza — ich zestawy
+    zostają jako dokumentacja kontraktu historycznych biegów i są poza tą regułą.
+    """
+    from application.analyses.v126_katalog import katalog_do_dict
+
+    karty = {karta["kod"]: karta for karta in katalog_do_dict()}
+    fantomy: list[str] = []
+    for kod, zestaw in _zestawy_frontu().items():
+        karta = karty[kod]
+        if not karta["prezentowany"]:
+            continue
+        klucze = {parametr["klucz"] for parametr in karta["dane"]["od_uzytkownika"]}
+        bazy = {re.split(r"[\[.]", klucz)[0] for klucz in klucze}
+        fantomy.extend(
+            f"{kod}: pole {pole}" for pole in sorted(zestaw["pola"]) if pole not in klucze
+        )
+        fantomy.extend(
+            f"{kod}: lista {lista}" for lista in sorted(zestaw["listy"]) if lista not in bazy
+        )
+        if zestaw["uziom"] and "earthing" not in bazy:
+            fantomy.append(f"{kod}: obiekt uziomu bez parametrów `earthing.*` w karcie")
+        if zestaw["metody"] and "relay_methods" not in klucze:
+            fantomy.append(f"{kod}: metody detekcji bez parametru `relay_methods` w karcie")
+    assert fantomy == [], f"Kontrolki bez pokrycia w karcie katalogu (fantomy): {fantomy}"
 
 
 def test_powierzchnia_zastana_nie_wrocila() -> None:

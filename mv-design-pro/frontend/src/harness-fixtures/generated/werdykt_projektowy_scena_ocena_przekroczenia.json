@@ -1,0 +1,760 @@
+{
+  "werdykt": "NARUSZONE",
+  "case_id": "case-demo",
+  "model_hash": "446d5b21892bca43972049b8c422cb3857bacea4c6f6c806bf08c0b34392cb82",
+  "pozycje": [
+    {
+      "kryterium_id": "pwp.moc_przylaczeniowa",
+      "etap": "E1/E5",
+      "nazwa_pl": "Moc w punkcie przylaczenia",
+      "warunek_pl": "$|P| \\le P_{\\text{przyl}}$ (moc przylaczeniowa z warunkow OSD)",
+      "norma_pl": "Warunki przylaczenia OSD (dokument projektu)",
+      "zrodlo": "PF",
+      "element_rodzaj": "szyna",
+      "grupa": "warunki_przylaczenia",
+      "wielkosc_pl": "Moc czynna w punkcie przyłączenia",
+      "symbol": "|P|",
+      "jednostka": "MW",
+      "warunek": "nie_wiecej_niz",
+      "stan": "NIESPRAWDZONE",
+      "liczba_ocenionych": 0,
+      "liczba_naruszen": 0,
+      "liczba_niesprawdzonych": 1,
+      "liczba_ostrzezen": 0,
+      "wiodacy_element_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+      "wiodacy_opis_pl": "Nie mozna ocenic mocy w punkcie przylaczenia — brak danych wejsciowych.",
+      "powod_kod": "connection.power_limit_missing",
+      "powod_pl": "Nie mozna ocenic mocy w punkcie przylaczenia — brak danych wejsciowych.",
+      "run_id": "run-pf-scena-przekroczenia",
+      "elementy": [
+        {
+          "element_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "element_nazwa": null,
+          "element_rodzaj": "szyna",
+          "wynik": "BRAK_PODSTAW",
+          "wartosc": null,
+          "odniesienie": null,
+          "odniesienie_dolne": null,
+          "odniesienie_ostrzegawcze": null,
+          "jednostka": "MW",
+          "margines": null,
+          "margines_jednostka": "",
+          "uwaga_pl": null,
+          "uzasadnienie_pl": "Nie mozna ocenic mocy w punkcie przylaczenia — brak danych wejsciowych.",
+          "wniosek_pl": "Brak podstaw do oceny spełnienia wymagania: Nie mozna ocenic mocy w punkcie przylaczenia — brak danych wejsciowych.",
+          "dowod": {
+            "run_id": "run-pf-scena-przekroczenia",
+            "element_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57"
+          }
+        }
+      ]
+    },
+    {
+      "kryterium_id": "pwp.wspolczynnik_mocy",
+      "etap": "E1/E5",
+      "nazwa_pl": "Wspolczynnik mocy w punkcie przylaczenia",
+      "warunek_pl": "$\\cos\\varphi \\ge \\cos\\varphi_{\\text{wym}}$ (wymaganie warunkow OSD)",
+      "norma_pl": "Warunki przylaczenia OSD (dokument projektu)",
+      "zrodlo": "PF",
+      "element_rodzaj": "szyna",
+      "grupa": "warunki_przylaczenia",
+      "wielkosc_pl": "Współczynnik mocy w punkcie przyłączenia",
+      "symbol": "cos φ",
+      "jednostka": "-",
+      "warunek": "nie_mniej_niz",
+      "stan": "NIESPRAWDZONE",
+      "liczba_ocenionych": 0,
+      "liczba_naruszen": 0,
+      "liczba_niesprawdzonych": 1,
+      "liczba_ostrzezen": 0,
+      "wiodacy_element_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+      "wiodacy_opis_pl": "Nie mozna ocenic cosφ w punkcie przylaczenia — brak danych wejsciowych.",
+      "powod_kod": "connection.cos_phi_required_missing",
+      "powod_pl": "Nie mozna ocenic cosφ w punkcie przylaczenia — brak danych wejsciowych.",
+      "run_id": "run-pf-scena-przekroczenia",
+      "elementy": [
+        {
+          "element_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "element_nazwa": null,
+          "element_rodzaj": "szyna",
+          "wynik": "BRAK_PODSTAW",
+          "wartosc": null,
+          "odniesienie": null,
+          "odniesienie_dolne": null,
+          "odniesienie_ostrzegawcze": null,
+          "jednostka": "-",
+          "margines": null,
+          "margines_jednostka": "",
+          "uwaga_pl": null,
+          "uzasadnienie_pl": "Nie mozna ocenic cosφ w punkcie przylaczenia — brak danych wejsciowych.",
+          "wniosek_pl": "Brak podstaw do oceny spełnienia wymagania: Nie mozna ocenic cosφ w punkcie przylaczenia — brak danych wejsciowych.",
+          "dowod": {
+            "run_id": "run-pf-scena-przekroczenia",
+            "element_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57"
+          }
+        }
+      ]
+    },
+    {
+      "kryterium_id": "napiecie.odchylenie",
+      "etap": "E5",
+      "nazwa_pl": "Odchylenia napiec w wezlach",
+      "warunek_pl": "$|\\Delta U| \\le \\Delta U_{\\text{dop}}$ (dopuszczalne odchylenie napiecia)",
+      "norma_pl": "Kryterium jakosci napiecia (progi z konfiguracji walidacji energetycznej)",
+      "zrodlo": "PF",
+      "element_rodzaj": "szyna",
+      "grupa": "napiecia",
+      "wielkosc_pl": "Odchylenie napięcia od znamionowego",
+      "symbol": "|ΔU|",
+      "jednostka": "%",
+      "warunek": "nie_wiecej_niz",
+      "stan": "NARUSZONE",
+      "liczba_ocenionych": 5,
+      "liczba_naruszen": 1,
+      "liczba_niesprawdzonych": 0,
+      "liczba_ostrzezen": 1,
+      "wiodacy_element_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
+      "wiodacy_opis_pl": "Odchylenie napieciowe 25.17 % przekracza limit 10.0 %.",
+      "powod_kod": null,
+      "powod_pl": null,
+      "run_id": "run-pf-scena-przekroczenia",
+      "elementy": [
+        {
+          "element_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
+          "element_nazwa": "Szyna nN",
+          "element_rodzaj": "szyna",
+          "wynik": "NIE_SPELNIA",
+          "wartosc": 25.167003206141096,
+          "odniesienie": 10.0,
+          "odniesienie_dolne": null,
+          "odniesienie_ostrzegawcze": 5.0,
+          "jednostka": "%",
+          "margines": -15.167003206141096,
+          "margines_jednostka": "pkt proc.",
+          "uwaga_pl": null,
+          "uzasadnienie_pl": "Odchylenie napieciowe 25.17 % przekracza limit 10.0 %.",
+          "wniosek_pl": "Odchylenie napięcia od znamionowego 25,167 % przekracza granicę 10 %; wymaganie nie jest spełnione dla tego elementu.",
+          "dowod": {
+            "run_id": "run-pf-scena-przekroczenia",
+            "element_id": "d70aff7b-d056-5804-acce-c9bc5707612b"
+          }
+        },
+        {
+          "element_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+          "element_nazwa": "Stacja C SN",
+          "element_rodzaj": "szyna",
+          "wynik": "SPELNIA",
+          "wartosc": 7.987734885637347,
+          "odniesienie": 10.0,
+          "odniesienie_dolne": null,
+          "odniesienie_ostrzegawcze": 5.0,
+          "jednostka": "%",
+          "margines": 2.012265114362653,
+          "margines_jednostka": "pkt proc.",
+          "uwaga_pl": "Margines jest niewielki — wartość leży w paśmie ostrzegawczym",
+          "uzasadnienie_pl": "Odchylenie napieciowe 7.99 % zbliza sie do limitu 10.0 %.",
+          "wniosek_pl": "Odchylenie napięcia od znamionowego 7,988 % mieści się w granicy 10 %; zapas 2,012 pkt proc. Margines jest niewielki — wartość leży w paśmie ostrzegawczym.",
+          "dowod": {
+            "run_id": "run-pf-scena-przekroczenia",
+            "element_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989"
+          }
+        },
+        {
+          "element_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+          "element_nazwa": "Stacja B SN",
+          "element_rodzaj": "szyna",
+          "wynik": "SPELNIA",
+          "wartosc": 3.145140202736094,
+          "odniesienie": 10.0,
+          "odniesienie_dolne": null,
+          "odniesienie_ostrzegawcze": 5.0,
+          "jednostka": "%",
+          "margines": 6.854859797263906,
+          "margines_jednostka": "pkt proc.",
+          "uwaga_pl": null,
+          "uzasadnienie_pl": "Odchylenie napieciowe 3.15 % ponizej limitu 5.0 %.",
+          "wniosek_pl": "Odchylenie napięcia od znamionowego 3,145 % mieści się w granicy 10 %; zapas 6,855 pkt proc.",
+          "dowod": {
+            "run_id": "run-pf-scena-przekroczenia",
+            "element_id": "d93618a6-23da-5d59-ae10-a7242961b790"
+          }
+        },
+        {
+          "element_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+          "element_nazwa": "Szyna SN",
+          "element_rodzaj": "szyna",
+          "wynik": "SPELNIA",
+          "wartosc": 3.144357833803255,
+          "odniesienie": 10.0,
+          "odniesienie_dolne": null,
+          "odniesienie_ostrzegawcze": 5.0,
+          "jednostka": "%",
+          "margines": 6.855642166196745,
+          "margines_jednostka": "pkt proc.",
+          "uwaga_pl": null,
+          "uzasadnienie_pl": "Odchylenie napieciowe 3.14 % ponizej limitu 5.0 %.",
+          "wniosek_pl": "Odchylenie napięcia od znamionowego 3,144 % mieści się w granicy 10 %; zapas 6,856 pkt proc.",
+          "dowod": {
+            "run_id": "run-pf-scena-przekroczenia",
+            "element_id": "63203cbc-ac91-5100-a0ee-a275d24514ff"
+          }
+        },
+        {
+          "element_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "element_nazwa": "GPZ 110kV",
+          "element_rodzaj": "szyna",
+          "wynik": "SPELNIA",
+          "wartosc": 0.0,
+          "odniesienie": 10.0,
+          "odniesienie_dolne": null,
+          "odniesienie_ostrzegawcze": 5.0,
+          "jednostka": "%",
+          "margines": 10.0,
+          "margines_jednostka": "pkt proc.",
+          "uwaga_pl": null,
+          "uzasadnienie_pl": "Odchylenie napieciowe 0.00 % ponizej limitu 5.0 %.",
+          "wniosek_pl": "Odchylenie napięcia od znamionowego 0 % mieści się w granicy 10 %; zapas 10 pkt proc.",
+          "dowod": {
+            "run_id": "run-pf-scena-przekroczenia",
+            "element_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57"
+          }
+        }
+      ]
+    },
+    {
+      "kryterium_id": "galaz.obciazenie_dlugotrwale",
+      "etap": "E5",
+      "nazwa_pl": "Obciazenie dlugotrwale galezi",
+      "warunek_pl": "$I_{\\text{rob}} \\le I_{z}$ (obciazalnosc dlugotrwala przewodu)",
+      "norma_pl": "Obciazalnosc katalogowa przewodu (warunki odniesienia)",
+      "zrodlo": "PF",
+      "element_rodzaj": "galaz_liniowa",
+      "grupa": "obciazalnosc",
+      "wielkosc_pl": "Obciążenie gałęzi względem obciążalności długotrwałej",
+      "symbol": "I/I_z",
+      "jednostka": "%",
+      "warunek": "nie_wiecej_niz",
+      "stan": "NARUSZONE",
+      "liczba_ocenionych": 2,
+      "liczba_naruszen": 1,
+      "liczba_niesprawdzonych": 0,
+      "liczba_ostrzezen": 0,
+      "wiodacy_element_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
+      "wiodacy_opis_pl": "Obciazenie 159.99 % przekracza limit 100.0 %.",
+      "powod_kod": null,
+      "powod_pl": null,
+      "run_id": "run-pf-scena-przekroczenia",
+      "elementy": [
+        {
+          "element_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
+          "element_nazwa": "Linia SN 1",
+          "element_rodzaj": "galaz_liniowa",
+          "wynik": "NIE_SPELNIA",
+          "wartosc": 159.99158905792925,
+          "odniesienie": 100.0,
+          "odniesienie_dolne": null,
+          "odniesienie_ostrzegawcze": 80.0,
+          "jednostka": "%",
+          "margines": -59.99158905792925,
+          "margines_jednostka": "pkt proc.",
+          "uwaga_pl": null,
+          "uzasadnienie_pl": "Obciazenie 159.99 % przekracza limit 100.0 %.",
+          "wniosek_pl": "Obciążenie gałęzi względem obciążalności długotrwałej 159,992 % przekracza granicę 100 %; wymaganie nie jest spełnione dla tego elementu.",
+          "dowod": {
+            "run_id": "run-pf-scena-przekroczenia",
+            "element_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85"
+          }
+        },
+        {
+          "element_id": "39aa2231-26fb-59c4-87e3-39a81c06367c",
+          "element_nazwa": "Kabel SN 1",
+          "element_rodzaj": "galaz_liniowa",
+          "wynik": "SPELNIA",
+          "wartosc": 0.18843286146122568,
+          "odniesienie": 100.0,
+          "odniesienie_dolne": null,
+          "odniesienie_ostrzegawcze": 80.0,
+          "jednostka": "%",
+          "margines": 99.81156713853878,
+          "margines_jednostka": "pkt proc.",
+          "uwaga_pl": null,
+          "uzasadnienie_pl": "Obciazenie 0.19 % ponizej limitu 80.0 %.",
+          "wniosek_pl": "Obciążenie gałęzi względem obciążalności długotrwałej 0,188 % mieści się w granicy 100 %; zapas 99,812 pkt proc.",
+          "dowod": {
+            "run_id": "run-pf-scena-przekroczenia",
+            "element_id": "39aa2231-26fb-59c4-87e3-39a81c06367c"
+          }
+        }
+      ]
+    },
+    {
+      "kryterium_id": "transformator.obciazenie",
+      "etap": "E5",
+      "nazwa_pl": "Obciazenie transformatorow",
+      "warunek_pl": "$S_{\\text{rob}} \\le S_{n}$ (moc znamionowa transformatora)",
+      "norma_pl": "Moc znamionowa z typu katalogowego",
+      "zrodlo": "PF",
+      "element_rodzaj": "transformator",
+      "grupa": "obciazalnosc",
+      "wielkosc_pl": "Obciążenie transformatora względem mocy znamionowej",
+      "symbol": "S/S_n",
+      "jednostka": "%",
+      "warunek": "nie_wiecej_niz",
+      "stan": "NARUSZONE",
+      "liczba_ocenionych": 2,
+      "liczba_naruszen": 1,
+      "liczba_niesprawdzonych": 0,
+      "liczba_ostrzezen": 0,
+      "wiodacy_element_id": "158eec95-939b-5b35-97ad-9433334b5506",
+      "wiodacy_opis_pl": "Obciazenie 702.12 % przekracza limit 100.0 %.",
+      "powod_kod": null,
+      "powod_pl": null,
+      "run_id": "run-pf-scena-przekroczenia",
+      "elementy": [
+        {
+          "element_id": "158eec95-939b-5b35-97ad-9433334b5506",
+          "element_nazwa": "TR 15/0.4",
+          "element_rodzaj": "transformator",
+          "wynik": "NIE_SPELNIA",
+          "wartosc": 702.1164546956118,
+          "odniesienie": 100.0,
+          "odniesienie_dolne": null,
+          "odniesienie_ostrzegawcze": 80.0,
+          "jednostka": "%",
+          "margines": -602.1164546956118,
+          "margines_jednostka": "pkt proc.",
+          "uwaga_pl": null,
+          "uzasadnienie_pl": "Obciazenie 702.12 % przekracza limit 100.0 %.",
+          "wniosek_pl": "Obciążenie transformatora względem mocy znamionowej 702,116 % przekracza granicę 100 %; wymaganie nie jest spełnione dla tego elementu.",
+          "dowod": {
+            "run_id": "run-pf-scena-przekroczenia",
+            "element_id": "158eec95-939b-5b35-97ad-9433334b5506"
+          }
+        },
+        {
+          "element_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
+          "element_nazwa": "TR 110/15",
+          "element_rodzaj": "transformator",
+          "wynik": "SPELNIA",
+          "wartosc": 52.647515832905825,
+          "odniesienie": 100.0,
+          "odniesienie_dolne": null,
+          "odniesienie_ostrzegawcze": 80.0,
+          "jednostka": "%",
+          "margines": 47.352484167094175,
+          "margines_jednostka": "pkt proc.",
+          "uwaga_pl": null,
+          "uzasadnienie_pl": "Obciazenie 52.65 % ponizej limitu 80.0 %.",
+          "wniosek_pl": "Obciążenie transformatora względem mocy znamionowej 52,648 % mieści się w granicy 100 %; zapas 47,352 pkt proc.",
+          "dowod": {
+            "run_id": "run-pf-scena-przekroczenia",
+            "element_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a"
+          }
+        }
+      ]
+    },
+    {
+      "kryterium_id": "straty.budzet",
+      "etap": "E5",
+      "nazwa_pl": "Budzet strat mocy",
+      "warunek_pl": "$\\Delta P \\le \\Delta P_{\\text{budzet}}$ (zalozony budzet strat)",
+      "norma_pl": "Zalozenie projektowe (progi z konfiguracji walidacji energetycznej)",
+      "zrodlo": "PF",
+      "element_rodzaj": null,
+      "grupa": "bilans_mocy_i_straty",
+      "wielkosc_pl": "Straty mocy czynnej względem mocy przesyłanej",
+      "symbol": "ΔP/P",
+      "jednostka": "%",
+      "warunek": "nie_wiecej_niz",
+      "stan": "SPELNIONE",
+      "liczba_ocenionych": 1,
+      "liczba_naruszen": 0,
+      "liczba_niesprawdzonych": 0,
+      "liczba_ostrzezen": 1,
+      "wiodacy_element_id": "network",
+      "wiodacy_opis_pl": "Straty sieciowe 6.06 % zbliza sie do limitu 10.0 %.",
+      "powod_kod": null,
+      "powod_pl": null,
+      "run_id": "run-pf-scena-przekroczenia",
+      "elementy": [
+        {
+          "element_id": "network",
+          "element_nazwa": "Sieć",
+          "element_rodzaj": null,
+          "wynik": "SPELNIA",
+          "wartosc": 6.055138541591991,
+          "odniesienie": 10.0,
+          "odniesienie_dolne": null,
+          "odniesienie_ostrzegawcze": 5.0,
+          "jednostka": "%",
+          "margines": 3.944861458408009,
+          "margines_jednostka": "pkt proc.",
+          "uwaga_pl": "Margines jest niewielki — wartość leży w paśmie ostrzegawczym",
+          "uzasadnienie_pl": "Straty sieciowe 6.06 % zbliza sie do limitu 10.0 %.",
+          "wniosek_pl": "Straty mocy czynnej względem mocy przesyłanej 6,055 % mieści się w granicy 10 %; zapas 3,945 pkt proc. Margines jest niewielki — wartość leży w paśmie ostrzegawczym.",
+          "dowod": {
+            "run_id": "run-pf-scena-przekroczenia",
+            "element_id": "network"
+          }
+        }
+      ]
+    },
+    {
+      "kryterium_id": "moc_bierna.bilans",
+      "etap": "E5",
+      "nazwa_pl": "Bilans mocy biernej",
+      "warunek_pl": "bilans Q w zalozonym pasmie",
+      "norma_pl": "Zalozenie projektowe (progi z konfiguracji walidacji energetycznej)",
+      "zrodlo": "PF",
+      "element_rodzaj": null,
+      "grupa": "bilans_mocy_i_straty",
+      "wielkosc_pl": "Współczynnik mocy w węźle bilansującym",
+      "symbol": "cos φ",
+      "jednostka": "-",
+      "warunek": "nie_mniej_niz",
+      "stan": "SPELNIONE",
+      "liczba_ocenionych": 1,
+      "liczba_naruszen": 0,
+      "liczba_niesprawdzonych": 0,
+      "liczba_ostrzezen": 1,
+      "wiodacy_element_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+      "wiodacy_opis_pl": "cos(phi) = 0.873 — bilans mocy biernej na granicy akceptowalnosci.",
+      "powod_kod": null,
+      "powod_pl": null,
+      "run_id": "run-pf-scena-przekroczenia",
+      "elementy": [
+        {
+          "element_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "element_nazwa": "Węzeł bilansujący",
+          "element_rodzaj": null,
+          "wynik": "SPELNIA",
+          "wartosc": 0.873445737521318,
+          "odniesienie": 0.8,
+          "odniesienie_dolne": null,
+          "odniesienie_ostrzegawcze": 0.9,
+          "jednostka": "-",
+          "margines": 9.18071719016475,
+          "margines_jednostka": "%",
+          "uwaga_pl": "Margines jest niewielki — wartość leży w paśmie ostrzegawczym",
+          "uzasadnienie_pl": "cos(phi) = 0.873 — bilans mocy biernej na granicy akceptowalnosci.",
+          "wniosek_pl": "Współczynnik mocy w węźle bilansującym 0,873 osiąga wartość wymaganą 0,8; zapas 9,181 %. Margines jest niewielki — wartość leży w paśmie ostrzegawczym.",
+          "dowod": {
+            "run_id": "run-pf-scena-przekroczenia",
+            "element_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57"
+          }
+        }
+      ]
+    },
+    {
+      "kryterium_id": "przewod.wytrzymalosc_zwarciowa",
+      "etap": "E3/E4",
+      "nazwa_pl": "Wytrzymalosc zwarciowa przewodu",
+      "warunek_pl": "$I_{\\text{th}} \\le I_{\\text{th(1s)}} / \\sqrt{t}$",
+      "norma_pl": "IEC 60949 / PN-HD 60364-5-54",
+      "zrodlo": "short_circuit_sn",
+      "element_rodzaj": "galaz_liniowa",
+      "grupa": "wytrzymalosc_toru",
+      "wielkosc_pl": "Energia cieplna zwarcia względem dopuszczalnej dla żyły",
+      "symbol": "I²t",
+      "jednostka": "A²·s",
+      "warunek": "nie_wiecej_niz",
+      "stan": "NIESPRAWDZONE",
+      "liczba_ocenionych": 1,
+      "liczba_naruszen": 0,
+      "liczba_niesprawdzonych": 1,
+      "liczba_ostrzezen": 0,
+      "wiodacy_element_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
+      "wiodacy_opis_pl": "Brak danych do oceny cieplnej: conductor.thermal_data_missing.",
+      "powod_kod": null,
+      "powod_pl": null,
+      "run_id": "run-sc-scena-przekroczenia",
+      "elementy": [
+        {
+          "element_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
+          "element_nazwa": "Linia SN 1",
+          "element_rodzaj": "galaz_liniowa",
+          "wynik": "BRAK_PODSTAW",
+          "wartosc": null,
+          "odniesienie": null,
+          "odniesienie_dolne": null,
+          "odniesienie_ostrzegawcze": null,
+          "jednostka": "A²·s",
+          "margines": null,
+          "margines_jednostka": "",
+          "uwaga_pl": null,
+          "uzasadnienie_pl": "Brak danych do oceny cieplnej: conductor.thermal_data_missing.",
+          "wniosek_pl": "Brak podstaw do oceny spełnienia wymagania: Brak danych do oceny cieplnej: conductor.thermal_data_missing.",
+          "dowod": {
+            "run_id": "run-sc-scena-przekroczenia",
+            "element_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85"
+          }
+        },
+        {
+          "element_id": "39aa2231-26fb-59c4-87e3-39a81c06367c",
+          "element_nazwa": "Kabel SN 1",
+          "element_rodzaj": "galaz_liniowa",
+          "wynik": "SPELNIA",
+          "wartosc": null,
+          "odniesienie": null,
+          "odniesienie_dolne": null,
+          "odniesienie_ostrzegawcze": null,
+          "jednostka": "A²·s",
+          "margines": null,
+          "margines_jednostka": "",
+          "uwaga_pl": null,
+          "uzasadnienie_pl": "Brak przepływu prądu zwarciowego — gałąź poza drogą zwarcia; kryterium cieplne spełnione trywialnie.",
+          "wniosek_pl": "Wymaganie spełnione: Brak przepływu prądu zwarciowego — gałąź poza drogą zwarcia; kryterium cieplne spełnione trywialnie.",
+          "dowod": {
+            "run_id": "run-sc-scena-przekroczenia",
+            "element_id": "39aa2231-26fb-59c4-87e3-39a81c06367c"
+          }
+        }
+      ]
+    },
+    {
+      "kryterium_id": "wynik.wiarygodnosc_zwarciowa",
+      "etap": "E4",
+      "nazwa_pl": "Wiarygodnosc pradu zwarciowego",
+      "warunek_pl": "$I_{k}''$ w pasmie wiarygodnosci dla poziomu napiecia",
+      "norma_pl": "Kontrola wiarygodnosci wyniku (brama pakietu OSD)",
+      "zrodlo": "short_circuit_sn",
+      "element_rodzaj": "szyna",
+      "grupa": "zwarcia",
+      "wielkosc_pl": "Prąd zwarciowy początkowy",
+      "symbol": "I_k″",
+      "jednostka": "kA",
+      "warunek": "w_pasmie",
+      "stan": "SPELNIONE",
+      "liczba_ocenionych": 5,
+      "liczba_naruszen": 0,
+      "liczba_niesprawdzonych": 0,
+      "liczba_ostrzezen": 0,
+      "wiodacy_element_id": null,
+      "wiodacy_opis_pl": null,
+      "powod_kod": null,
+      "powod_pl": null,
+      "run_id": "run-sc-scena-przekroczenia",
+      "elementy": [
+        {
+          "element_id": "bus_sn_main",
+          "element_nazwa": "Szyna SN",
+          "element_rodzaj": "szyna",
+          "wynik": "SPELNIA",
+          "wartosc": 8.96999734196521,
+          "odniesienie": 50.0,
+          "odniesienie_dolne": 0.1,
+          "odniesienie_ostrzegawcze": null,
+          "jednostka": "kA",
+          "margines": null,
+          "margines_jednostka": "",
+          "uwaga_pl": null,
+          "uzasadnienie_pl": "Ik'' = 8.96999734196521 kA mieści się w zakresie [0.1; 50.0] kA dla SN (15.0 kV).",
+          "wniosek_pl": "Prąd zwarciowy początkowy 8,97 kA mieści się w paśmie wiarygodności [0,1; 50] kA; wynik nadaje się do dalszej oceny.",
+          "dowod": {
+            "run_id": "run-sc-scena-przekroczenia",
+            "element_id": "bus_sn_main"
+          }
+        },
+        {
+          "element_id": "bus_hv",
+          "element_nazwa": "GPZ 110kV",
+          "element_rodzaj": "szyna",
+          "wynik": "SPELNIA",
+          "wartosc": 13.986621846412516,
+          "odniesienie": 63.0,
+          "odniesienie_dolne": 0.5,
+          "odniesienie_ostrzegawcze": null,
+          "jednostka": "kA",
+          "margines": null,
+          "margines_jednostka": "",
+          "uwaga_pl": null,
+          "uzasadnienie_pl": "Ik'' = 13.986621846412516 kA mieści się w zakresie [0.5; 63.0] kA dla WN (110.0 kV).",
+          "wniosek_pl": "Prąd zwarciowy początkowy 13,987 kA mieści się w paśmie wiarygodności [0,5; 63] kA; wynik nadaje się do dalszej oceny.",
+          "dowod": {
+            "run_id": "run-sc-scena-przekroczenia",
+            "element_id": "bus_hv"
+          }
+        },
+        {
+          "element_id": "bus_nn",
+          "element_nazwa": "Szyna nN",
+          "element_rodzaj": "szyna",
+          "wynik": "SPELNIA",
+          "wartosc": 21.092597811767213,
+          "odniesienie": 150.0,
+          "odniesienie_dolne": 0.05,
+          "odniesienie_ostrzegawcze": null,
+          "jednostka": "kA",
+          "margines": null,
+          "margines_jednostka": "",
+          "uwaga_pl": null,
+          "uzasadnienie_pl": "Ik'' = 21.092597811767213 kA mieści się w zakresie [0.05; 150.0] kA dla nN (0.4 kV).",
+          "wniosek_pl": "Prąd zwarciowy początkowy 21,093 kA mieści się w paśmie wiarygodności [0,05; 150] kA; wynik nadaje się do dalszej oceny.",
+          "dowod": {
+            "run_id": "run-sc-scena-przekroczenia",
+            "element_id": "bus_nn"
+          }
+        },
+        {
+          "element_id": "bus_sn_b",
+          "element_nazwa": "Stacja B SN",
+          "element_rodzaj": "szyna",
+          "wynik": "SPELNIA",
+          "wartosc": 8.96999734196521,
+          "odniesienie": 50.0,
+          "odniesienie_dolne": 0.1,
+          "odniesienie_ostrzegawcze": null,
+          "jednostka": "kA",
+          "margines": null,
+          "margines_jednostka": "",
+          "uwaga_pl": null,
+          "uzasadnienie_pl": "Ik'' = 8.96999734196521 kA mieści się w zakresie [0.1; 50.0] kA dla SN (15.0 kV).",
+          "wniosek_pl": "Prąd zwarciowy początkowy 8,97 kA mieści się w paśmie wiarygodności [0,1; 50] kA; wynik nadaje się do dalszej oceny.",
+          "dowod": {
+            "run_id": "run-sc-scena-przekroczenia",
+            "element_id": "bus_sn_b"
+          }
+        },
+        {
+          "element_id": "bus_sn_c",
+          "element_nazwa": "Stacja C SN",
+          "element_rodzaj": "szyna",
+          "wynik": "SPELNIA",
+          "wartosc": 4.611507168332454,
+          "odniesienie": 50.0,
+          "odniesienie_dolne": 0.1,
+          "odniesienie_ostrzegawcze": null,
+          "jednostka": "kA",
+          "margines": null,
+          "margines_jednostka": "",
+          "uwaga_pl": null,
+          "uzasadnienie_pl": "Ik'' = 4.611507168332454 kA mieści się w zakresie [0.1; 50.0] kA dla SN (15.0 kV).",
+          "wniosek_pl": "Prąd zwarciowy początkowy 4,612 kA mieści się w paśmie wiarygodności [0,1; 50] kA; wynik nadaje się do dalszej oceny.",
+          "dowod": {
+            "run_id": "run-sc-scena-przekroczenia",
+            "element_id": "bus_sn_c"
+          }
+        }
+      ]
+    },
+    {
+      "kryterium_id": "dobor.tor_der_sn",
+      "etap": "E3",
+      "nazwa_pl": "Dobory toru przylaczenia zrodla (DER-SN)",
+      "warunek_pl": "zgodnosc napiec, mocy TR blokowego i kaskady pradowej",
+      "norma_pl": "Walidacje doborowe toru DER-SN (dane z tabliczek)",
+      "zrodlo": "model",
+      "element_rodzaj": "zrodlo",
+      "grupa": "dobory_toru_zrodla",
+      "wielkosc_pl": "Zgodność doboru toru źródła z tabliczkami",
+      "symbol": "-",
+      "jednostka": "-",
+      "warunek": "zgodnosc",
+      "stan": "NIE_DOTYCZY",
+      "liczba_ocenionych": 0,
+      "liczba_naruszen": 0,
+      "liczba_niesprawdzonych": 0,
+      "liczba_ostrzezen": 0,
+      "wiodacy_element_id": null,
+      "wiodacy_opis_pl": null,
+      "powod_kod": null,
+      "powod_pl": "Projekt nie zawiera toru przylaczenia zrodla wytworczego (DER-SN).",
+      "run_id": null,
+      "elementy": []
+    }
+  ],
+  "zrodla": [
+    {
+      "rodzaj": "PF",
+      "run_id": "run-pf-scena-przekroczenia",
+      "wykonano": "2026-09-10T08:00:00+00:00",
+      "snapshot_hash": "446d5b21892bca43972049b8c422cb3857bacea4c6f6c806bf08c0b34392cb82",
+      "aktualny": true,
+      "dostepny": true,
+      "powod_pl": null
+    },
+    {
+      "rodzaj": "short_circuit_sn",
+      "run_id": "run-sc-scena-przekroczenia",
+      "wykonano": "2026-09-10T08:00:00+00:00",
+      "snapshot_hash": "446d5b21892bca43972049b8c422cb3857bacea4c6f6c806bf08c0b34392cb82",
+      "aktualny": true,
+      "dostepny": true,
+      "powod_pl": null
+    },
+    {
+      "rodzaj": "model",
+      "run_id": null,
+      "wykonano": null,
+      "snapshot_hash": "446d5b21892bca43972049b8c422cb3857bacea4c6f6c806bf08c0b34392cb82",
+      "aktualny": true,
+      "dostepny": true,
+      "powod_pl": null
+    }
+  ],
+  "podsumowanie": {
+    "spelnione": 3,
+    "naruszone": 3,
+    "niesprawdzone": 3,
+    "nie_dotyczy": 1,
+    "razem": 10
+  },
+  "ocena": {
+    "oceniono": 17,
+    "spelnia": 14,
+    "nie_spelnia": 3,
+    "brak_podstaw": 3
+  },
+  "grupy": [
+    {
+      "kod": "napiecia",
+      "nazwa_pl": "Napięcia"
+    },
+    {
+      "kod": "obciazalnosc",
+      "nazwa_pl": "Obciążalność"
+    },
+    {
+      "kod": "bilans_mocy_i_straty",
+      "nazwa_pl": "Bilans mocy i straty"
+    },
+    {
+      "kod": "zwarcia",
+      "nazwa_pl": "Zwarcia"
+    },
+    {
+      "kod": "wytrzymalosc_toru",
+      "nazwa_pl": "Wytrzymałość toru"
+    },
+    {
+      "kod": "warunki_przylaczenia",
+      "nazwa_pl": "Warunki przyłączenia"
+    },
+    {
+      "kod": "dobory_toru_zrodla",
+      "nazwa_pl": "Dobory toru źródła"
+    }
+  ],
+  "zakres_poza_automatem": [
+    {
+      "kryterium_pl": "Selektywnosc i czulosc zabezpieczen (stopniowanie czasowo-pradowe)",
+      "etap": "E6",
+      "powod_pl": "Analiza koordynacji liczy charakterystyki i czasy, ale nie wystawia werdyktu selektywnosci na poziomie calego modelu — ocena nalezy do projektanta na ekranie koordynacji."
+    },
+    {
+      "kryterium_pl": "Wytrzymalosc aparatury (Icu, Idyn, Ith) na calym modelu",
+      "etap": "E4",
+      "powod_pl": "Dowod wytrzymalosci aparatu istnieje jako pakiet dowodowy dla WSKAZANEGO aparatu; nie ma przebiegu, ktory sprawdza wszystkie aparaty modelu naraz."
+    },
+    {
+      "kryterium_pl": "Obciazalnosc przewodu z korekta warunkow ulozenia na calym modelu",
+      "etap": "E3",
+      "powod_pl": "Korekta warunkow ulozenia dziala w torze doboru kabla DER (zestawy warunkow z udokumentowana podstawa albo wspolczynniki projektanta) i jest zapisana przy kablu w modelu. Nie ma przebiegu, ktory sprawdza obciazalnosc WSZYSTKICH przewodow modelu wobec warunkow ich trasy — magistrala SN dobierana jest inna sciezka, a katalog nie dokumentuje warunkow odniesienia przy typach."
+    },
+    {
+      "kryterium_pl": "Ekonomiczna gestosc pradu przekroju",
+      "etap": "E3",
+      "powod_pl": "Kryterium niewiazace (optymalizacja kosztowa); brak danych ekonomicznych w modelu, wiec ocena byłaby zgadywaniem."
+    }
+  ]
+}

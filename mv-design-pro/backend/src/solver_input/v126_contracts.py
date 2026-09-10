@@ -621,6 +621,49 @@ def _oceb_karte_przeksztaltnika(
     )
 
 
+@dataclass(frozen=True)
+class OdbiorcyZParametrow:
+    """Liczba odbiorców zasilanych z szyn, odczytana z wejścia projektanta.
+
+    ``liczby`` = poprawne wpisy {ref szyny: liczba odbiorców ≥ 0};
+    ``bledne`` = wpisy odrzucone (wartość nie jest liczbą całkowitą ≥ 0), nazwane
+    kluczem — gotowość (`v126_gotowosc._warunki_niezawodnosci`) odmawia biegu, gdy
+    lista nie jest pusta, więc żaden odrzucony wpis nie znika po cichu.
+    """
+
+    liczby: dict[str, int]
+    bledne: tuple[str, ...]
+
+
+def odbiorcy_z_parametrow(parameters: dict[str, Any] | None) -> OdbiorcyZParametrow:
+    """Parametr `customer_counts` (`{ref szyny: liczba odbiorców}`) — karta B-02.
+
+    Model ENM NIE niesie liczby odbiorców zasilanych z szyny (żaden element modelu
+    nie ma takiego pola), a wskaźniki SAIDI/SAIFI/CAIDI analizy niezawodności są
+    tą liczbą ważone. Do tej karty most wpisywał 0 odbiorców na każdej szynie,
+    więc solver liczył wskaźniki „bez odbiorców" — zera z braku danych, nie z
+    pomiaru. Liczba odbiorców wchodzi WYŁĄCZNIE jawnym wejściem projektanta;
+    ta funkcja jest JEDYNYM miejscem odczytu (most buduje `customer_count`
+    szyn, gotowość ocenia ten sam odczyt — predykaty parami)."""
+    if not isinstance(parameters, dict):
+        return OdbiorcyZParametrow({}, ())
+    surowe = parameters.get("customer_counts")
+    if not isinstance(surowe, dict):
+        return OdbiorcyZParametrow({}, ())
+    liczby: dict[str, int] = {}
+    bledne: list[str] = []
+    for ref, liczba in surowe.items():
+        klucz = str(ref)
+        if isinstance(liczba, bool) or not isinstance(liczba, int | float):
+            bledne.append(klucz)
+            continue
+        if float(liczba) < 0 or float(liczba) != int(liczba):
+            bledne.append(klucz)
+            continue
+        liczby[klucz] = int(liczba)
+    return OdbiorcyZParametrow(liczby, tuple(bledne))
+
+
 def pominiete_zrodla_v126(
     enm: EnergyNetworkModel, *, parameters: dict[str, Any] | None = None
 ) -> list[dict[str, str]]:
@@ -675,6 +718,10 @@ def build_v126_input_from_enm(
     napiecie_szyny_kv = {bus.ref_id: bus.voltage_kv for bus in enm.buses}
 
     jawne_widma = _widma_jawne_z_parametrow(parameters)
+    # Karta B-02: liczba odbiorców szyny z jawnego parametru projektanta
+    # (`customer_counts`), bo model jej nie niesie; brak wpisu = 0 (gotowość
+    # niezawodności odmawia biegu przy sumie zerowej, więc 0 nie jest domysłem).
+    odbiorcy_szyn = odbiorcy_z_parametrow(parameters).liczby
     gen_by_bus: dict[str, tuple[float, float]] = {}
     converters: list[V126ConverterInput] = []
     harmonic_sources: list[V126HarmonicSourceInput] = []
@@ -769,6 +816,7 @@ def build_v126_input_from_enm(
             load_mvar=load_by_bus.get(bus.ref_id, (0.0, 0.0))[1],
             generation_mw=gen_by_bus.get(bus.ref_id, (0.0, 0.0))[0],
             generation_mvar=gen_by_bus.get(bus.ref_id, (0.0, 0.0))[1],
+            customer_count=odbiorcy_szyn.get(bus.ref_id, 0),
             fault_level_mva=next(
                 (source.sk3_mva for source in enm.sources if source.bus_ref == bus.ref_id), None
             ),

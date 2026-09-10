@@ -1,7 +1,8 @@
 /**
  * Testy ekranu „Zbieżność rozpływu i zaczepy" (E-30, karta P-2).
  * Kliki natywne (userEvent) — Zero-Debt pkt 5 (żadnych syntetycznych dispatchEvent).
- * Realna ścieżka wejścia: karta huba analiz → powierzchnia E-30.
+ * Realna ścieżka wejścia: obszar „Rozpływ mocy i napięcia" → zakładka
+ * „Zbieżność rozpływu" warsztatu Wyników (test warsztatu).
  * Dane przebiegu mockowane przez `fetch` 1:1 z kontraktem
  * `ui/power-flow-results/api.ts` (GET /power-flow-runs/:id, /results, /trace)
  * — ekran niczego nie liczy, tylko renderuje odpowiedzi backendu.
@@ -20,7 +21,6 @@ import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { useSelectionStore } from '../../../../ui/selection/store';
 import { useShellStore } from '../../../shell/useShellStore';
 import type { ExecutionRun } from '../../../../ui/study-cases/types';
-import { EkranAnalizTechnicznych } from '../../analizy/EkranAnalizTechnicznych';
 import { EkranZbieznosci } from '../EkranZbieznosci';
 import { ZBIEZNOSC_STRINGS as T } from '../strings';
 import {
@@ -216,20 +216,10 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('EkranZbieznosci — realna ścieżka wejścia (karta huba → zakładka warsztatu Wyników)', () => {
-  // INTENCJA bez zmian (karta huba prowadzi do realnego dostawcy); kanon K3-A3:
-  // dostawcą E-30 jest zakładka „zbieznosc" warsztatu Wyników (deep-link
-  // setWynikiTab, wzorzec E-33/E-34), nie powierzchnia trasowa mostu.
-  it('klik „Otwórz" na karcie zbieżności prowadzi do zakładki „zbieznosc" (klik natywny)', async () => {
-    const user = userEvent.setup();
-    render(<EkranAnalizTechnicznych />);
-    const karta = screen.getByTestId('mvd-analizy-karta-zbieznosc');
-    await user.click(within(karta).getByRole('button', { name: 'Otwórz' }));
-    expect(useShellStore.getState().wynikiTab).toBe('zbieznosc');
-    expect(useShellStore.getState().activeSpace).toBe('wyniki');
-    expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
-  });
-});
+// Realna ścieżka wejścia (karta B-02 / W3-E): hub „Analizy techniczne" ZSZEDŁ z
+// ekranu, a jego karta zbieżności (E-30) stała się zakładką „Zbieżność rozpływu"
+// obszaru „Rozpływ mocy i napięcia" warsztatu Wyników — ścieżkę obszar → zakładka
+// → ten ekran ćwiczy `spaces/wyniki/__tests__/wynikiWarsztat.test.tsx` (K3-A3).
 
 describe('EkranZbieznosci — rama prowadząca i uczciwe stany zerowe', () => {
   it('nagłówek: eyebrow obszaru, tytuł i zdanie celu inżynierskiego', () => {

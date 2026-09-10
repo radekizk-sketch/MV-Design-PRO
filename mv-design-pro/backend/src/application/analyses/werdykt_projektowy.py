@@ -107,6 +107,42 @@ ZRODLO_MODEL = "model"
 ELEMENT_SZYNA = "szyna"
 ELEMENT_GALAZ_LINIOWA = "galaz_liniowa"
 ELEMENT_TRANSFORMATOR = "transformator"
+ELEMENT_ZRODLO = "zrodlo"
+
+# --- Grupy techniczne kryteriow (karta B-02 / W3-E, 2026-09-10) -----------
+# Ekran „Ocena techniczna wynikow" grupuje pozycje wg ZNACZENIA technicznego,
+# nie wg dostawcy — grupa jest polem definicji kryterium (backend decyduje,
+# front tylko grupuje). Kolejnosc = kolejnosc prezentacji.
+
+GRUPA_NAPIECIA = "napiecia"
+GRUPA_OBCIAZALNOSC = "obciazalnosc"
+GRUPA_BILANS = "bilans_mocy_i_straty"
+GRUPA_ZWARCIA = "zwarcia"
+GRUPA_WYTRZYMALOSC = "wytrzymalosc_toru"
+GRUPA_PRZYLACZENIE = "warunki_przylaczenia"
+GRUPA_DOBORY = "dobory_toru_zrodla"
+
+GRUPY_KRYTERIOW: tuple[tuple[str, str], ...] = (
+    (GRUPA_NAPIECIA, "Napięcia"),
+    (GRUPA_OBCIAZALNOSC, "Obciążalność"),
+    (GRUPA_BILANS, "Bilans mocy i straty"),
+    (GRUPA_ZWARCIA, "Zwarcia"),
+    (GRUPA_WYTRZYMALOSC, "Wytrzymałość toru"),
+    (GRUPA_PRZYLACZENIE, "Warunki przyłączenia"),
+    (GRUPA_DOBORY, "Dobory toru źródła"),
+)
+
+# --- Wynik oceny per element (trzy stany, nigdy dwa) -----------------------
+
+WYNIK_SPELNIA = "SPELNIA"
+WYNIK_NIE_SPELNIA = "NIE_SPELNIA"
+WYNIK_BRAK_PODSTAW = "BRAK_PODSTAW"
+
+# Kierunek warunku kryterium — steruje zdaniem wniosku i znakiem zapasu.
+WARUNEK_NIE_WIECEJ = "nie_wiecej_niz"
+WARUNEK_NIE_MNIEJ = "nie_mniej_niz"
+WARUNEK_PASMO = "w_pasmie"
+WARUNEK_ZGODNOSC = "zgodnosc"
 
 _STATUS_PASS = "PASS"
 _STATUS_FAIL = "FAIL"
@@ -124,6 +160,12 @@ class DefinicjaKryterium:
     norma_pl: str
     zrodlo: str
     element_rodzaj: str | None = None
+    # Karta B-02 / W3-E: znaczenie techniczne pozycji na ekranie oceny.
+    grupa: str = GRUPA_NAPIECIA
+    wielkosc_pl: str = ""
+    symbol: str = ""
+    jednostka: str = ""
+    warunek: str = WARUNEK_NIE_WIECEJ
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -134,6 +176,11 @@ class DefinicjaKryterium:
             "norma_pl": self.norma_pl,
             "zrodlo": self.zrodlo,
             "element_rodzaj": self.element_rodzaj,
+            "grupa": self.grupa,
+            "wielkosc_pl": self.wielkosc_pl,
+            "symbol": self.symbol,
+            "jednostka": self.jednostka,
+            "warunek": self.warunek,
         }
 
 
@@ -159,6 +206,11 @@ REJESTR_KRYTERIOW: tuple[DefinicjaKryterium, ...] = (
         norma_pl="Warunki przylaczenia OSD (dokument projektu)",
         zrodlo=ZRODLO_PF,
         element_rodzaj=ELEMENT_SZYNA,
+        grupa=GRUPA_PRZYLACZENIE,
+        wielkosc_pl="Moc czynna w punkcie przyłączenia",
+        symbol="|P|",
+        jednostka="MW",
+        warunek=WARUNEK_NIE_WIECEJ,
     ),
     DefinicjaKryterium(
         kryterium_id=KRYTERIUM_PWP_COS_PHI,
@@ -168,6 +220,11 @@ REJESTR_KRYTERIOW: tuple[DefinicjaKryterium, ...] = (
         norma_pl="Warunki przylaczenia OSD (dokument projektu)",
         zrodlo=ZRODLO_PF,
         element_rodzaj=ELEMENT_SZYNA,
+        grupa=GRUPA_PRZYLACZENIE,
+        wielkosc_pl="Współczynnik mocy w punkcie przyłączenia",
+        symbol="cos φ",
+        jednostka="-",
+        warunek=WARUNEK_NIE_MNIEJ,
     ),
     DefinicjaKryterium(
         kryterium_id=KRYTERIUM_NAPIECIE,
@@ -177,6 +234,11 @@ REJESTR_KRYTERIOW: tuple[DefinicjaKryterium, ...] = (
         norma_pl="Kryterium jakosci napiecia (progi z konfiguracji walidacji energetycznej)",
         zrodlo=ZRODLO_PF,
         element_rodzaj=ELEMENT_SZYNA,
+        grupa=GRUPA_NAPIECIA,
+        wielkosc_pl="Odchylenie napięcia od znamionowego",
+        symbol="|ΔU|",
+        jednostka="%",
+        warunek=WARUNEK_NIE_WIECEJ,
     ),
     DefinicjaKryterium(
         kryterium_id=KRYTERIUM_OBCIAZENIE_GALEZI,
@@ -186,6 +248,11 @@ REJESTR_KRYTERIOW: tuple[DefinicjaKryterium, ...] = (
         norma_pl="Obciazalnosc katalogowa przewodu (warunki odniesienia)",
         zrodlo=ZRODLO_PF,
         element_rodzaj=ELEMENT_GALAZ_LINIOWA,
+        grupa=GRUPA_OBCIAZALNOSC,
+        wielkosc_pl="Obciążenie gałęzi względem obciążalności długotrwałej",
+        symbol="I/I_z",
+        jednostka="%",
+        warunek=WARUNEK_NIE_WIECEJ,
     ),
     DefinicjaKryterium(
         kryterium_id=KRYTERIUM_OBCIAZENIE_TRAFO,
@@ -195,6 +262,11 @@ REJESTR_KRYTERIOW: tuple[DefinicjaKryterium, ...] = (
         norma_pl="Moc znamionowa z typu katalogowego",
         zrodlo=ZRODLO_PF,
         element_rodzaj=ELEMENT_TRANSFORMATOR,
+        grupa=GRUPA_OBCIAZALNOSC,
+        wielkosc_pl="Obciążenie transformatora względem mocy znamionowej",
+        symbol="S/S_n",
+        jednostka="%",
+        warunek=WARUNEK_NIE_WIECEJ,
     ),
     DefinicjaKryterium(
         kryterium_id=KRYTERIUM_STRATY,
@@ -203,6 +275,11 @@ REJESTR_KRYTERIOW: tuple[DefinicjaKryterium, ...] = (
         warunek_pl=r"$\Delta P \le \Delta P_{\text{budzet}}$ (zalozony budzet strat)",
         norma_pl="Zalozenie projektowe (progi z konfiguracji walidacji energetycznej)",
         zrodlo=ZRODLO_PF,
+        grupa=GRUPA_BILANS,
+        wielkosc_pl="Straty mocy czynnej względem mocy przesyłanej",
+        symbol="ΔP/P",
+        jednostka="%",
+        warunek=WARUNEK_NIE_WIECEJ,
     ),
     DefinicjaKryterium(
         kryterium_id=KRYTERIUM_BILANS_Q,
@@ -211,6 +288,11 @@ REJESTR_KRYTERIOW: tuple[DefinicjaKryterium, ...] = (
         warunek_pl="bilans Q w zalozonym pasmie",
         norma_pl="Zalozenie projektowe (progi z konfiguracji walidacji energetycznej)",
         zrodlo=ZRODLO_PF,
+        grupa=GRUPA_BILANS,
+        wielkosc_pl="Współczynnik mocy w węźle bilansującym",
+        symbol="cos φ",
+        jednostka="-",
+        warunek=WARUNEK_NIE_MNIEJ,
     ),
     DefinicjaKryterium(
         kryterium_id=KRYTERIUM_PRZEWOD_CIEPLNY,
@@ -220,6 +302,11 @@ REJESTR_KRYTERIOW: tuple[DefinicjaKryterium, ...] = (
         norma_pl="IEC 60949 / PN-HD 60364-5-54",
         zrodlo=ZRODLO_SC,
         element_rodzaj=ELEMENT_GALAZ_LINIOWA,
+        grupa=GRUPA_WYTRZYMALOSC,
+        wielkosc_pl="Energia cieplna zwarcia względem dopuszczalnej dla żyły",
+        symbol="I²t",
+        jednostka="A²·s",
+        warunek=WARUNEK_NIE_WIECEJ,
     ),
     DefinicjaKryterium(
         kryterium_id=KRYTERIUM_WIARYGODNOSC_SC,
@@ -229,6 +316,11 @@ REJESTR_KRYTERIOW: tuple[DefinicjaKryterium, ...] = (
         norma_pl="Kontrola wiarygodnosci wyniku (brama pakietu OSD)",
         zrodlo=ZRODLO_SC,
         element_rodzaj=ELEMENT_SZYNA,
+        grupa=GRUPA_ZWARCIA,
+        wielkosc_pl="Prąd zwarciowy początkowy",
+        symbol="I_k″",
+        jednostka="kA",
+        warunek=WARUNEK_PASMO,
     ),
     DefinicjaKryterium(
         kryterium_id=KRYTERIUM_DOBOR_DER_SN,
@@ -237,6 +329,12 @@ REJESTR_KRYTERIOW: tuple[DefinicjaKryterium, ...] = (
         warunek_pl="zgodnosc napiec, mocy TR blokowego i kaskady pradowej",
         norma_pl="Walidacje doborowe toru DER-SN (dane z tabliczek)",
         zrodlo=ZRODLO_MODEL,
+        element_rodzaj=ELEMENT_ZRODLO,
+        grupa=GRUPA_DOBORY,
+        wielkosc_pl="Zgodność doboru toru źródła z tabliczkami",
+        symbol="-",
+        jednostka="-",
+        warunek=WARUNEK_ZGODNOSC,
     ),
 )
 
@@ -289,6 +387,61 @@ ZAKRES_POZA_AUTOMATEM: tuple[dict[str, str], ...] = (
 
 
 @dataclass(frozen=True)
+class OcenaElementu:
+    """Ocena JEDNEGO elementu wobec kryterium (karta B-02 / W3-E).
+
+    Pozycja ekranu „Ocena techniczna wynikow": PRZEDMIOT (element) · WIELKOSC
+    (z definicji kryterium) · WARTOSC OBLICZONA · WARTOSC ODNIESIENIA · MARGINES ·
+    PODSTAWA (z definicji) · WYNIK · WNIOSEK. Liczby pochodza WPROST z widoku
+    dostawcy (walidacja energetyczna, warunki przylaczenia, wytrzymalosc cieplna,
+    wiarygodnosc Ik'', raport DER-SN) — agregat niczego nie liczy poza zapasem
+    procentowym z dwoch liczb dostawcy. Brak liczby zostaje ``None`` (kreska na
+    ekranie), nigdy wartoscia zastepcza.
+    """
+
+    element_id: str | None
+    element_nazwa: str | None
+    element_rodzaj: str | None
+    wynik: str
+    wartosc: float | None = None
+    odniesienie: float | None = None
+    #: Druga granica pasma (wiarygodnosc Ik'') albo prog ostrzegawczy (walidacja).
+    odniesienie_dolne: float | None = None
+    odniesienie_ostrzegawcze: float | None = None
+    jednostka: str = ""
+    #: Zapas do granicy: dodatni = w granicy. Jednostka zapasu w ``margines_jednostka``.
+    margines: float | None = None
+    margines_jednostka: str = ""
+    #: Uwaga przy wyniku SPELNIA (np. margines w pasmie ostrzegawczym).
+    uwaga_pl: str | None = None
+    #: Uzasadnienie dostawcy (``why_pl`` / ``opis_pl`` / ``powod_decyzji_pl``).
+    uzasadnienie_pl: str | None = None
+    #: Wniosek projektowy — 1–2 zdania w jezyku formalnym.
+    wniosek_pl: str = ""
+    #: Odwolanie do dowodu obliczeniowego: bieg + element (``None`` = brak biegu).
+    dowod: dict[str, str] | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "element_id": self.element_id,
+            "element_nazwa": self.element_nazwa,
+            "element_rodzaj": self.element_rodzaj,
+            "wynik": self.wynik,
+            "wartosc": self.wartosc,
+            "odniesienie": self.odniesienie,
+            "odniesienie_dolne": self.odniesienie_dolne,
+            "odniesienie_ostrzegawcze": self.odniesienie_ostrzegawcze,
+            "jednostka": self.jednostka,
+            "margines": self.margines,
+            "margines_jednostka": self.margines_jednostka,
+            "uwaga_pl": self.uwaga_pl,
+            "uzasadnienie_pl": self.uzasadnienie_pl,
+            "wniosek_pl": self.wniosek_pl,
+            "dowod": self.dowod,
+        }
+
+
+@dataclass(frozen=True)
 class PozycjaWerdyktu:
     """Jedno kryterium projektu w werdykcie (WHITE BOX: liczby + powod braku oceny)."""
 
@@ -303,6 +456,8 @@ class PozycjaWerdyktu:
     powod_kod: str | None = None
     powod_pl: str | None = None
     run_id: str | None = None
+    #: Karta B-02 / W3-E: oceny per element (puste, gdy brak podstawy calego kryterium).
+    elementy: tuple[OcenaElementu, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         payload = self.definicja.to_dict()
@@ -318,6 +473,7 @@ class PozycjaWerdyktu:
                 "powod_kod": self.powod_kod,
                 "powod_pl": self.powod_pl,
                 "run_id": self.run_id,
+                "elementy": [element.to_dict() for element in self.elementy],
             }
         )
         return payload
@@ -367,6 +523,20 @@ class WerdyktProjektowy:
             "razem": len(self.pozycje),
         }
 
+    @property
+    def ocena(self) -> dict[str, int]:
+        """Liczniki PER ELEMENT (naglowek ekranu oceny): OCENIONO = SPELNIA + NIE_SPELNIA."""
+        elementy = [element for pozycja in self.pozycje for element in pozycja.elementy]
+        spelnia = sum(1 for e in elementy if e.wynik == WYNIK_SPELNIA)
+        nie_spelnia = sum(1 for e in elementy if e.wynik == WYNIK_NIE_SPELNIA)
+        brak = sum(1 for e in elementy if e.wynik == WYNIK_BRAK_PODSTAW)
+        return {
+            "oceniono": spelnia + nie_spelnia,
+            "spelnia": spelnia,
+            "nie_spelnia": nie_spelnia,
+            "brak_podstaw": brak,
+        }
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "werdykt": self.werdykt,
@@ -375,6 +545,8 @@ class WerdyktProjektowy:
             "pozycje": [pozycja.to_dict() for pozycja in self.pozycje],
             "zrodla": [zrodlo.to_dict() for zrodlo in self.zrodla],
             "podsumowanie": self.podsumowanie,
+            "ocena": self.ocena,
+            "grupy": [{"kod": kod, "nazwa_pl": nazwa} for kod, nazwa in GRUPY_KRYTERIOW],
             "zakres_poza_automatem": [dict(wpis) for wpis in ZAKRES_POZA_AUTOMATEM],
         }
 
@@ -408,6 +580,192 @@ def _stan_z_licznikow(*, naruszenia: int, niesprawdzone: int) -> str:
     if niesprawdzone > 0:
         return STAN_NIESPRAWDZONE
     return STAN_SPELNIONE
+
+
+# --- Elementy: liczby, zapas, wniosek (karta B-02 / W3-E) -------------------
+
+
+def _liczba(wartosc: Any) -> float | None:
+    if isinstance(wartosc, bool) or not isinstance(wartosc, int | float):
+        return None
+    return float(wartosc)
+
+
+def _tekst_liczby(wartosc: float | None, jednostka: str = "") -> str:
+    """Liczba w zapisie polskim (przecinek dziesietny, do 3 miejsc, bez zer koncowych)."""
+    if wartosc is None:
+        return "—"
+    tekst = f"{wartosc:.3f}".rstrip("0").rstrip(".").replace(".", ",")
+    if tekst in ("", "-0"):
+        tekst = "0"
+    if jednostka and jednostka != "-":
+        return f"{tekst} {jednostka}"
+    return tekst
+
+
+def _zapas(
+    warunek: str, wartosc: float | None, odniesienie: float | None, jednostka: str
+) -> tuple[float | None, str]:
+    """Zapas do granicy z DWOCH liczb dostawcy (arytmetyka prezentacji, nie fizyka).
+
+    Wielkosci wyrazone w % (odchylenie, obciazenie, straty): zapas w punktach
+    procentowych = granica − wartosc. Pozostale: zapas wzgledny w % granicy.
+    Kryterium „nie mniej niz": zapas = (wartosc − granica)/granica. Pasmo i zgodnosc
+    nie maja skalarnego zapasu.
+    """
+    if wartosc is None or odniesienie is None:
+        return None, ""
+    if warunek == WARUNEK_NIE_WIECEJ:
+        if jednostka == "%":
+            return odniesienie - wartosc, "pkt proc."
+        if odniesienie == 0.0:
+            return None, ""
+        return (odniesienie - wartosc) / abs(odniesienie) * 100.0, "%"
+    if warunek == WARUNEK_NIE_MNIEJ:
+        if odniesienie == 0.0:
+            return None, ""
+        return (wartosc - odniesienie) / abs(odniesienie) * 100.0, "%"
+    return None, ""
+
+
+def _wniosek(
+    *,
+    wynik: str,
+    warunek: str,
+    wielkosc_pl: str,
+    wartosc: float | None,
+    odniesienie: float | None,
+    odniesienie_dolne: float | None,
+    jednostka: str,
+    margines: float | None,
+    margines_jednostka: str,
+    uwaga_pl: str | None,
+    uzasadnienie_pl: str | None,
+) -> str:
+    """Wniosek projektowy: 1–2 zdania w jezyku formalnym, WYLACZNIE z liczb dostawcy."""
+    wielkosc = wielkosc_pl[:1].lower() + wielkosc_pl[1:] if wielkosc_pl else "wielkość"
+    if wynik == WYNIK_BRAK_PODSTAW:
+        powod = uzasadnienie_pl or "dostawca nie zwrócił wartości ani granicy dla tego elementu"
+        return f"Brak podstaw do oceny spełnienia wymagania: {powod.rstrip('.')}."
+    if (
+        warunek == WARUNEK_ZGODNOSC
+        or wartosc is None
+        or (odniesienie is None and odniesienie_dolne is None)
+    ):
+        powod = (uzasadnienie_pl or "").rstrip(".")
+        if wynik == WYNIK_SPELNIA:
+            return f"Wymaganie spełnione: {powod}." if powod else "Wymaganie spełnione."
+        return (
+            f"Wymaganie nie jest spełnione: {powod}." if powod else "Wymaganie nie jest spełnione."
+        )
+    w = _tekst_liczby(wartosc, jednostka)
+    if warunek == WARUNEK_PASMO:
+        pasmo = f"[{_tekst_liczby(odniesienie_dolne)}; {_tekst_liczby(odniesienie)}] {jednostka}".strip()
+        if wynik == WYNIK_SPELNIA:
+            return f"{wielkosc_pl} {w} mieści się w paśmie wiarygodności {pasmo}; wynik nadaje się do dalszej oceny."
+        return (
+            f"{wielkosc_pl} {w} leży poza pasmem wiarygodności {pasmo}; wynik nie może być podstawą "
+            "dalszej oceny bez wyjaśnienia przyczyny."
+        )
+    o = _tekst_liczby(odniesienie, jednostka)
+    zapas = (
+        f"; zapas {_tekst_liczby(margines, margines_jednostka).rstrip('.')}"
+        if margines is not None and margines_jednostka
+        else ""
+    )
+    if warunek == WARUNEK_NIE_MNIEJ:
+        if wynik == WYNIK_SPELNIA:
+            zdanie = f"{wielkosc_pl} {w} osiąga wartość wymaganą {o}{zapas}."
+        else:
+            zdanie = (
+                f"{wielkosc_pl} {w} nie osiąga wartości wymaganej {o}; wymaganie nie jest "
+                "spełnione dla tego elementu."
+            )
+    else:
+        if wynik == WYNIK_SPELNIA:
+            zdanie = f"{wielkosc_pl} {w} mieści się w granicy {o}{zapas}."
+        else:
+            zdanie = (
+                f"{wielkosc_pl} {w} przekracza granicę {o}; wymaganie nie jest spełnione "
+                "dla tego elementu."
+            )
+    if uwaga_pl and wynik == WYNIK_SPELNIA:
+        zdanie += f" {uwaga_pl.rstrip('.')}."
+    del wielkosc
+    return zdanie
+
+
+def _ocena_elementu(
+    definicja: DefinicjaKryterium,
+    *,
+    element_id: str | None,
+    element_nazwa: str | None,
+    wynik: str,
+    wartosc: Any = None,
+    odniesienie: Any = None,
+    odniesienie_dolne: Any = None,
+    odniesienie_ostrzegawcze: Any = None,
+    jednostka: str | None = None,
+    margines: Any = None,
+    margines_jednostka: str | None = None,
+    uwaga_pl: str | None = None,
+    uzasadnienie_pl: str | None = None,
+    run_id: str | None = None,
+) -> OcenaElementu:
+    jedn = jednostka if jednostka is not None else definicja.jednostka
+    wart = _liczba(wartosc)
+    odn = _liczba(odniesienie)
+    odn_dolne = _liczba(odniesienie_dolne)
+    zapas, zapas_jedn = (_liczba(margines), margines_jednostka or "")
+    if zapas is None:
+        zapas, zapas_jedn = _zapas(definicja.warunek, wart, odn, jedn)
+    wniosek = _wniosek(
+        wynik=wynik,
+        warunek=definicja.warunek,
+        wielkosc_pl=definicja.wielkosc_pl,
+        wartosc=wart,
+        odniesienie=odn,
+        odniesienie_dolne=odn_dolne,
+        jednostka=jedn,
+        margines=zapas,
+        margines_jednostka=zapas_jedn,
+        uwaga_pl=uwaga_pl,
+        uzasadnienie_pl=uzasadnienie_pl,
+    )
+    dowod = (
+        {"run_id": run_id, "element_id": element_id}
+        if run_id is not None and element_id is not None
+        else None
+    )
+    return OcenaElementu(
+        element_id=element_id,
+        element_nazwa=element_nazwa,
+        element_rodzaj=definicja.element_rodzaj,
+        wynik=wynik,
+        wartosc=wart,
+        odniesienie=odn,
+        odniesienie_dolne=odn_dolne,
+        odniesienie_ostrzegawcze=_liczba(odniesienie_ostrzegawcze),
+        jednostka=jedn,
+        margines=zapas,
+        margines_jednostka=zapas_jedn,
+        uwaga_pl=uwaga_pl,
+        uzasadnienie_pl=uzasadnienie_pl,
+        wniosek_pl=wniosek,
+        dowod=dowod,
+    )
+
+
+_WYNIK_Z_STATUSU: dict[str, str] = {
+    _STATUS_PASS: WYNIK_SPELNIA,
+    "WARNING": WYNIK_SPELNIA,
+    "WARN": WYNIK_SPELNIA,
+    _STATUS_FAIL: WYNIK_NIE_SPELNIA,
+    _STATUS_UNAVAILABLE: WYNIK_BRAK_PODSTAW,
+    "NOT_COMPUTED": WYNIK_BRAK_PODSTAW,
+}
+
+_UWAGA_OSTRZEZENIE_PL = "Margines jest niewielki — wartość leży w paśmie ostrzegawczym"
 
 
 # --- Dostawca: warunki przylaczenia OSD (bieg PF) ----------------------------
@@ -446,31 +804,50 @@ def _pozycje_warunkow_przylaczenia(
             )
             continue
         status = str(surowa.get("status"))
+        definicja = _definicja(kryterium_id)
+        opis = str(surowa.get("opis_pl") or "") or None
+        wartosc = _liczba(surowa.get("wartosc"))
+        # Kryterium mocy dotyczy MODULU mocy czynnej (oba kierunki) — tak jak dostawca.
+        if kryterium_id == KRYTERIUM_PWP_MOC and wartosc is not None:
+            wartosc = abs(wartosc)
+        element = _ocena_elementu(
+            definicja,
+            element_id=punkt,
+            element_nazwa=None,
+            wynik=_WYNIK_Z_STATUSU.get(status, WYNIK_BRAK_PODSTAW),
+            wartosc=wartosc,
+            odniesienie=surowa.get("wymagana"),
+            jednostka=str(surowa.get("jednostka") or definicja.jednostka),
+            uzasadnienie_pl=opis,
+            run_id=run_id,
+        )
         if status == _STATUS_UNAVAILABLE:
             kody = [str(kod) for kod in (surowa.get("readiness_codes") or [])]
             pozycje.append(
                 PozycjaWerdyktu(
-                    definicja=_definicja(kryterium_id),
+                    definicja=definicja,
                     stan=STAN_NIESPRAWDZONE,
                     liczba_niesprawdzonych=1,
                     wiodacy_element_id=punkt,
-                    wiodacy_opis_pl=str(surowa.get("opis_pl") or "") or None,
+                    wiodacy_opis_pl=opis,
                     powod_kod=kody[0] if kody else POWOD_BRAK_DANYCH,
-                    powod_pl=str(surowa.get("opis_pl") or "") or None,
+                    powod_pl=opis,
                     run_id=run_id,
+                    elementy=(element,),
                 )
             )
             continue
         naruszone = status == _STATUS_FAIL
         pozycje.append(
             PozycjaWerdyktu(
-                definicja=_definicja(kryterium_id),
+                definicja=definicja,
                 stan=STAN_NARUSZONE if naruszone else STAN_SPELNIONE,
                 liczba_ocenionych=1,
                 liczba_naruszen=1 if naruszone else 0,
                 wiodacy_element_id=punkt,
-                wiodacy_opis_pl=str(surowa.get("opis_pl") or "") or None,
+                wiodacy_opis_pl=opis,
                 run_id=run_id,
+                elementy=(element,),
             )
         )
     return pozycje
@@ -520,9 +897,14 @@ def _pozycje_walidacji_energetycznej(
         niesprawdzone = [w for w in wiersze if str(w.get("status")) == "NOT_COMPUTED"]
         ostrzezenia = [w for w in wiersze if str(w.get("status")) == "WARNING"]
         wiodacy = _wiodacy_wiersz_walidacji(naruszenia or niesprawdzone or ostrzezenia)
+        definicja = _definicja(kryterium_id)
+        elementy = tuple(
+            _element_walidacji(definicja, wiersz, run_id=run_id)
+            for wiersz in _posortowane_wiersze_walidacji(wiersze)
+        )
         pozycje.append(
             PozycjaWerdyktu(
-                definicja=_definicja(kryterium_id),
+                definicja=definicja,
                 stan=_stan_z_licznikow(
                     naruszenia=len(naruszenia), niesprawdzone=len(niesprawdzone)
                 ),
@@ -533,9 +915,82 @@ def _pozycje_walidacji_energetycznej(
                 wiodacy_element_id=(str(wiodacy.get("target_id")) if wiodacy else None),
                 wiodacy_opis_pl=(str(wiodacy.get("why_pl")) if wiodacy else None),
                 run_id=run_id,
+                elementy=elementy,
             )
         )
     return pozycje
+
+
+_RANGA_STATUSU_WALIDACJI: dict[str, int] = {"FAIL": 0, "WARNING": 1, "PASS": 2, "NOT_COMPUTED": 3}
+
+
+def _posortowane_wiersze_walidacji(
+    wiersze: Sequence[Mapping[str, Any]],
+) -> list[Mapping[str, Any]]:
+    """Kolejność `elementy[]` wewnątrz pozycji: naruszenia najpierw (FAIL, potem
+    WARNING, potem PASS, potem NOT_COMPUTED), wewnątrz statusu — najmniejszy
+    zapas pierwszy, przy remisie `target_id` (determinizm).
+
+    ZERO podstawienia liczby za brakujący `margin_pct` (karta B02-BE-TESTY,
+    `solver_input_substitute_guard`, forma H — znalezisko przy weryfikacji
+    §7): wiersz BEZ zapasu (analiza go nie policzyła, np. status NOT_COMPUTED)
+    NIE dostaje fabrykowanego „najbezpieczniejszego" zapasu (`float("inf")`,
+    poprzednia postać tej funkcji) — trafia do WŁASNEJ grupy „bez danej",
+    posortowanej po `target_id`, nie po zmyślonej liczbie. Grupa „bez danej"
+    ląduje ZA grupą z zapasem w obrębie tej samej rangi statusu — ten sam
+    efekt porządkujący, co dawne `float("inf")` (zmierzone testem
+    `test_elementy_sortuja_niesprawdzone_po_naruszonych_mimo_brakujacego_marginesu`),
+    ale bez podstawienia liczby, której dostawca nie policzył.
+    """
+    posortowane: list[Mapping[str, Any]] = []
+    rangi_obecne = sorted({_RANGA_STATUSU_WALIDACJI.get(str(w.get("status")), 4) for w in wiersze})
+    for ranga in rangi_obecne:
+        w_randze = [
+            w for w in wiersze if _RANGA_STATUSU_WALIDACJI.get(str(w.get("status")), 4) == ranga
+        ]
+        z_zapasem = [w for w in w_randze if isinstance(w.get("margin_pct"), int | float)]
+        bez_zapasu = [w for w in w_randze if not isinstance(w.get("margin_pct"), int | float)]
+        z_zapasem.sort(key=lambda w: (-float(w["margin_pct"]), str(w.get("target_id") or "")))
+        bez_zapasu.sort(key=lambda w: str(w.get("target_id") or ""))
+        posortowane.extend(z_zapasem)
+        posortowane.extend(bez_zapasu)
+    return posortowane
+
+
+def _element_walidacji(
+    definicja: DefinicjaKryterium, wiersz: Mapping[str, Any], *, run_id: str
+) -> OcenaElementu:
+    """Pozycja walidacji energetycznej → ocena elementu (liczby 1:1 z dostawcy).
+
+    ``margin_pct`` dostawcy = wartosc − prog przekroczenia (ujemny = w granicy);
+    zapas ekranu = −margin_pct (dodatni = w granicy), w tej samej jednostce, co
+    wartosc (dla wielkosci w % sa to punkty procentowe).
+    """
+    status = str(wiersz.get("status"))
+    margines = _liczba(wiersz.get("margin_pct"))
+    # Jednostka dostawcy; „cos(phi)" nie jest jednostka fizyczna — definicja
+    # kryterium niesie bezwymiarowe „-" (na ekranie: bez jednostki).
+    jednostka_dostawcy = str(wiersz.get("unit") or "")
+    jednostka = (
+        definicja.jednostka if jednostka_dostawcy in ("", "cos(phi)") else jednostka_dostawcy
+    )
+    return _ocena_elementu(
+        definicja,
+        element_id=str(wiersz.get("target_id")) if wiersz.get("target_id") is not None else None,
+        element_nazwa=(str(wiersz.get("target_name")) if wiersz.get("target_name") else None),
+        wynik=_WYNIK_Z_STATUSU.get(status, WYNIK_BRAK_PODSTAW),
+        wartosc=wiersz.get("observed_value"),
+        odniesienie=wiersz.get("limit_fail"),
+        odniesienie_ostrzegawcze=wiersz.get("limit_warn"),
+        jednostka=jednostka,
+        margines=(-margines if margines is not None else None),
+        margines_jednostka=(
+            ("pkt proc." if jednostka == "%" else jednostka) if margines is not None else None
+        ),
+        uwaga_pl=_UWAGA_OSTRZEZENIE_PL if status == "WARNING" else None,
+        uzasadnienie_pl=(str(wiersz.get("why_pl")) if wiersz.get("why_pl") else None),
+        run_id=run_id,
+    )
 
 
 def _wiodacy_wiersz_walidacji(
@@ -569,8 +1024,30 @@ def _pozycja_cieplna(widok: Mapping[str, Any], *, run_id: str) -> PozycjaWerdykt
     naruszenia = [w for w in wiersze if str(w.get("status")) == _STATUS_FAIL]
     niesprawdzone = [w for w in wiersze if str(w.get("status")) == _STATUS_UNAVAILABLE]
     wiodacy = _wiodaca_galaz(naruszenia or niesprawdzone)
+    definicja = _definicja(KRYTERIUM_PRZEWOD_CIEPLNY)
+    elementy = tuple(
+        _ocena_elementu(
+            definicja,
+            element_id=str(wiersz.get("branch_id")) if wiersz.get("branch_id") else None,
+            element_nazwa=(str(wiersz.get("branch_name")) if wiersz.get("branch_name") else None),
+            wynik=_WYNIK_Z_STATUSU.get(str(wiersz.get("status")), WYNIK_BRAK_PODSTAW),
+            wartosc=wiersz.get("i2t_a2s"),
+            odniesienie=wiersz.get("i2t_dopuszczalne_a2s"),
+            margines=wiersz.get("margines_procent"),
+            margines_jednostka="%" if _liczba(wiersz.get("margines_procent")) is not None else None,
+            uzasadnienie_pl=_opis_galezi(wiersz),
+            run_id=run_id,
+        )
+        for wiersz in sorted(
+            wiersze,
+            key=lambda w: (
+                {"FAIL": 0, "UNAVAILABLE": 1, "PASS": 2}.get(str(w.get("status")), 3),
+                str(w.get("branch_id") or ""),
+            ),
+        )
+    )
     return PozycjaWerdyktu(
-        definicja=_definicja(KRYTERIUM_PRZEWOD_CIEPLNY),
+        definicja=definicja,
         stan=_stan_z_licznikow(naruszenia=len(naruszenia), niesprawdzone=len(niesprawdzone)),
         liczba_ocenionych=len(wiersze) - len(niesprawdzone),
         liczba_naruszen=len(naruszenia),
@@ -578,6 +1055,7 @@ def _pozycja_cieplna(widok: Mapping[str, Any], *, run_id: str) -> PozycjaWerdykt
         wiodacy_element_id=(str(wiodacy.get("branch_id")) if wiodacy else None),
         wiodacy_opis_pl=_opis_galezi(wiodacy),
         run_id=run_id,
+        elementy=elementy,
     )
 
 
@@ -597,6 +1075,9 @@ def _wiodaca_galaz(kandydaci: Sequence[Mapping[str, Any]]) -> Mapping[str, Any] 
 def _opis_galezi(wiersz: Mapping[str, Any] | None) -> str | None:
     if wiersz is None:
         return None
+    powod = wiersz.get("powod_decyzji_pl")
+    if powod:
+        return str(powod)
     uzasadnienie = wiersz.get("uzasadnienie_pl")
     if uzasadnienie:
         return str(uzasadnienie)
@@ -632,8 +1113,35 @@ def _pozycja_wiarygodnosci(widok: Mapping[str, Any], *, run_id: str) -> PozycjaW
         (w for w in wiersze if str(w.get("status")) in (OUT_OF_RANGE, INCOMPLETE)),
         None,
     )
+    definicja = _definicja(KRYTERIUM_WIARYGODNOSC_SC)
+    wynik_ze_statusu = {
+        OUT_OF_RANGE: WYNIK_NIE_SPELNIA,
+        INCOMPLETE: WYNIK_BRAK_PODSTAW,
+    }
+    elementy = tuple(
+        _ocena_elementu(
+            definicja,
+            # Element = referencja ENM szyny (`element_id`), a `target_id` biegu
+            # zostaje identyfikatorem zapasowym, gdy dostawca jej nie zna.
+            element_id=str(wiersz.get("element_id") or wiersz.get("target_id") or "") or None,
+            element_nazwa=(str(wiersz.get("target_name")) if wiersz.get("target_name") else None),
+            wynik=wynik_ze_statusu.get(str(wiersz.get("status")), WYNIK_SPELNIA),
+            wartosc=wiersz.get("ikss_ka"),
+            odniesienie=wiersz.get("upper_ka"),
+            odniesienie_dolne=wiersz.get("lower_ka"),
+            uzasadnienie_pl=(str(wiersz.get("why_pl")) if wiersz.get("why_pl") else None),
+            run_id=run_id,
+        )
+        for wiersz in sorted(
+            wiersze,
+            key=lambda w: (
+                {OUT_OF_RANGE: 0, INCOMPLETE: 1}.get(str(w.get("status")), 2),
+                str(w.get("target_id") or ""),
+            ),
+        )
+    )
     return PozycjaWerdyktu(
-        definicja=_definicja(KRYTERIUM_WIARYGODNOSC_SC),
+        definicja=definicja,
         stan=_stan_z_licznikow(naruszenia=poza_zakresem, niesprawdzone=niekompletne),
         liczba_ocenionych=len(wiersze) - niekompletne,
         liczba_naruszen=poza_zakresem,
@@ -641,6 +1149,7 @@ def _pozycja_wiarygodnosci(widok: Mapping[str, Any], *, run_id: str) -> PozycjaW
         wiodacy_element_id=(str(wiodacy.get("target_id")) if wiodacy else None),
         wiodacy_opis_pl=(str(wiodacy.get("why_pl")) if wiodacy else None),
         run_id=run_id,
+        elementy=elementy,
     )
 
 
@@ -662,15 +1171,63 @@ def _pozycja_der_sn(raport: Mapping[str, Any] | None) -> PozycjaWerdyktu:
     wiodacy = next((p for p in pozycje if str(p.get("status")) == _STATUS_FAIL), None)
     if wiodacy is None:
         wiodacy = next((p for p in pozycje if str(p.get("status")) == "WARN"), None)
+    zrodlo_ref = str(raport.get("source_ref")) if raport.get("source_ref") else None
+    zrodlo_nazwa = str(raport.get("source_name")) if raport.get("source_name") else None
+    elementy = tuple(
+        _ocena_elementu(
+            definicja,
+            element_id=zrodlo_ref,
+            element_nazwa=(
+                f"{zrodlo_nazwa or zrodlo_ref or ''} — {_nazwa_kontroli_der(pozycja)}".strip(" —")
+            ),
+            wynik=_WYNIK_Z_STATUSU.get(str(pozycja.get("status")), WYNIK_BRAK_PODSTAW),
+            uwaga_pl=(
+                "Pozycja z uwagą (odstępstwo lub ostrzeżenie kaskady prądowej)"
+                if str(pozycja.get("status")) == "WARN"
+                else None
+            ),
+            uzasadnienie_pl=_komunikat_der(pozycja),
+        )
+        for pozycja in pozycje
+    )
     return PozycjaWerdyktu(
         definicja=definicja,
         stan=STAN_NARUSZONE if liczba_fail > 0 else STAN_SPELNIONE,
         liczba_ocenionych=len(pozycje),
         liczba_naruszen=liczba_fail,
         liczba_ostrzezen=liczba_warn,
-        wiodacy_element_id=(str(raport.get("source_ref")) if raport.get("source_ref") else None),
+        wiodacy_element_id=zrodlo_ref,
         wiodacy_opis_pl=(str(wiodacy.get("message_pl")) if wiodacy else None),
+        elementy=elementy,
     )
+
+
+def _nazwa_kontroli_der(pozycja: Mapping[str, Any]) -> str:
+    """Nazwa kontroli doborowej po polsku (identyfikator kontroli → nazwa)."""
+    check_id = str(pozycja.get("check_id") or "")
+    nazwy = {
+        "napiecie_falownika": "napięcie falownika a strona nN transformatora blokowego",
+        "napiecie_sn": "strona SN transformatora blokowego a szyna SN",
+        "moc_transformatora": "moc transformatora blokowego a suma mocy falowników",
+        "grupa_polaczen": "układ połączeń transformatora blokowego",
+        "bieg_analiz": "bieg analiz toru",
+    }
+    if check_id in nazwy:
+        return nazwy[check_id]
+    if check_id.startswith("d2."):
+        return f"zgodność doboru „{pozycja.get('parametr') or check_id[3:]}” z propozycją"
+    if "kaskada" in check_id:
+        return "kaskada prądowa toru"
+    return check_id.replace("_", " ")
+
+
+def _komunikat_der(pozycja: Mapping[str, Any]) -> str | None:
+    """Komunikat kontroli bez znakow graficznych statusu (✓/⚠️/❌ — stan niesie `wynik`)."""
+    tekst = str(pozycja.get("message_pl") or "").strip()
+    for znak in ("✓", "⚠️", "⚠", "❌"):
+        if tekst.startswith(znak):
+            tekst = tekst[len(znak) :].strip()
+    return tekst or None
 
 
 # --- Rozstrzyganie dostepnosci biegu ---------------------------------------

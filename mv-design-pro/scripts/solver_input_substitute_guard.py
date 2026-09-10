@@ -1564,6 +1564,22 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # „najbezpieczniejsza" pozycje i NIGDY nie zostanie wskazany jako wiodacy
     # problem, nawet jesli faktycznie jest najgorszy — zapas MOZE ukryc
     # rzeczywiscie krytyczny przypadek w podsumowaniu werdyktu.
+    # KARTA B02-BE-TESTY (2026-09-10): DRUGI odczyt `wiersz.margin_pct` —
+    # `_klucz_wiersza_walidacji`, NOWA funkcja klucza sortowania `elementy[]`
+    # WEWNATRZ jednej pozycji werdyktu (karta B-02 §3.3, pole addytywne
+    # `OcenaElementu`) — NAPRAWIONA U ZRODLA zamiast wpisana tu jako drugi
+    # zastepnik: `float("inf")`/`else` usuniete, wiersze BEZ `margin_pct` sa
+    # PARTYCJONOWANE OSOBNO (grupa „bez danej", posortowana po `target_id`, nie
+    # po zapasie) zamiast dostawac fabrykowany „najbezpieczniejszy" zapas —
+    # zero podstawienia liczby za brakujaca dana, kolejnosc `elementy[]`
+    # BEZ ZMIAN (zmierzone testem `tests/application/analyses/
+    # test_werdykt_projektowy.py::
+    # test_elementy_sortuja_niesprawdzone_po_naruszonych_mimo_brakujacego_marginesu`).
+    # Budzet `margin_pct` ZOSTAJE 1 — to WYLACZNIE `_wiodacy_wiersz_walidacji`,
+    # PRE-ISTNIEJACY, swiadomie zaakceptowany dlug sprzed tej karty; drugie
+    # wystapienie zniklo przez naprawe kodu, nie przez podniesienie budzetu.
+    # `utilization` (`_wiodaca_galaz`) NIETKNIETY przez te karte — budzet 1
+    # bez zmian.
     "application/analyses/werdykt_projektowy.py": {
         "H:local:wiersz.margin_pct": 1,
         "H:local:wiersz.utilization": 1,

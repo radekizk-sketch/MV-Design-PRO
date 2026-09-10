@@ -173,12 +173,15 @@ export interface WielkoscPominieta {
 
 /** Kompletny projekt prezentacji jednego rodzaju analizy. */
 export interface PrezentacjaRodzaju {
-  /** Co ta analiza rozstrzyga — jedno zdanie, język inżynierski. */
-  readonly pytanie: string;
-  /** Wobec czego oceniany jest werdykt (norma albo uczciwe „brak progu"). */
-  readonly kryterium: string;
-  /** Norma/źródło metody — pokazywane przy kryterium. */
-  readonly norma?: string;
+  /*
+   * Karta B-02 (2026-09-10): PYTANIE INŻYNIERSKIE, KRYTERIUM i PODSTAWA (norma)
+   * ZESZŁY z tego pliku — niesie je katalog backendu
+   * (`GET /api/catalog/v126/analysis-catalog`: `pytanie_pl`, `podstawa_oceny`,
+   * `bez_podstawy_pl`). Front miał tu drugą kopię tych samych zdań i progów
+   * (8 % THD, 20 % marginesu BIL, 10 % TRV…) — dwie prawdy o kryterium na
+   * jednym ekranie. Zostaje WYŁĄCZNIE mapa prezentacji ŁADUNKU WYNIKU: która
+   * ścieżka niesie ocenę, które wielkości i tabele pokazać, jaki jest następny krok.
+   */
   readonly werdykt: WerdyktRodzaju;
   readonly wielkosciGlowne: readonly WielkoscGlowna[];
   /** Wielkości ŚWIADOMIE niepokazywane (karta W2 pkt 5) — puste dla rodzajów
@@ -233,13 +236,6 @@ export const MAPA_WIARYGODNOSCI: MapaWerdyktu = {
 export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
   // -------------------------------------------------------------------------
   power_quality_harmonics: {
-    pytanie:
-      'Czy odkształcenie napięcia i prądu w węzłach sieci mieści się w granicach '
-      + 'kompatybilności elektromagnetycznej?',
-    kryterium:
-      'Współczynnik odkształcenia napięcia THD_U ≤ 8 % (PN-EN 50160) i ≤ 5 % '
-      + '(IEEE 519); odkształcenie prądu odbiorcy TDD ≤ 5 % (IEEE 519).',
-    norma: 'PN-EN 50160 · IEEE 519',
     werdykt: {
       rodzaj: 'zbiorczy',
       sciezkaTablicy: 'nodes',
@@ -275,14 +271,6 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
 
   // -------------------------------------------------------------------------
   ssci_impedance: {
-    pytanie:
-      'Czy przekształtnik przyłączony do sieci o danej sztywności nie wejdzie '
-      + 'w interakcję podsynchroniczną (rezonans regulacyjny)?',
-    kryterium:
-      'Werdykt stabilności wg kryterium impedancyjnego Nyquista wystawia okno '
-      + '„Stabilność SSCI" — ma własny kontrakt odpowiedzi i własny model prezentacji. '
-      + 'Tutaj dostępne są wyłącznie tablice impedancji, z których ten werdykt powstaje.',
-    norma: 'kryterium impedancyjne Nyquista (Sun 2011 / Wen 2016)',
     werdykt: {
       rodzaj: 'pojedynczy',
       sciezki: ['sanity.status'],
@@ -333,12 +321,6 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
     // wersja obiecywała „który element sieci jest najgroźniejszy przy awarii"
     // (odpowiedź rankingu), choć ranking zszedł z ekranu (zdjęty razem z
     // wyliczeniem, nie tylko z tabeli — zob. `nastepnyKrok`).
-    pytanie: 'Jak często i jak długo odbiorcy pozostaną bez zasilania z powodu awarii sieci?',
-    kryterium:
-      'Wskaźniki SAIDI/SAIFI/CAIDI/MAIFI są wielkościami projektowymi — solver '
-      + 'nie wystawia dla nich progu normatywnego (wartości docelowe określa operator). '
-      + 'Ranking dotkliwości kontyngencji — patrz następny krok.',
-    norma: 'IEEE 1366 (definicje wskaźników)',
     werdykt: {
       rodzaj: 'pojedynczy',
       sciezki: ['sanity.status'],
@@ -382,14 +364,6 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
 
   // -------------------------------------------------------------------------
   earthing_safety: {
-    pytanie:
-      'Czy przy zwarciu doziemnym napięcia rażenia na terenie stacji nie zagrażają '
-      + 'człowiekowi?',
-    kryterium:
-      'Napięcie dotykowe rażeniowe ≤ dopuszczalne i napięcie krokowe ≤ dopuszczalne, '
-      + 'przy zmierzonym czasie wyłączenia zwarcia. Wartości dopuszczalne liczy solver '
-      + 'z rezystywności warstwy powierzchniowej i czasu wyłączenia.',
-    norma: 'IEEE 80 (metoda Sverak) · PN-EN 50522',
     werdykt: {
       rodzaj: 'pojedynczy',
       sciezki: ['safety_status'],
@@ -431,14 +405,6 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
 
   // -------------------------------------------------------------------------
   insulation_coordination: {
-    pytanie:
-      'Czy dobrane ograniczniki przepięć chronią izolację aparatów z wymaganym '
-      + 'zapasem?',
-    kryterium:
-      'Margines ochrony izolacji ≥ 20 % względem napięcia obniżonego ogranicznika '
-      + 'przy prądzie 10 kA oraz przewidywane przepięcie dorywcze ≤ napięcie znamionowe '
-      + 'ogranicznika.',
-    norma: 'IEC 60071 (koordynacja izolacji)',
     werdykt: {
       rodzaj: 'zbiorczy',
       sciezkaTablicy: 'arresters',
@@ -485,14 +451,6 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
 
   // -------------------------------------------------------------------------
   earth_fault_detection: {
-    pytanie:
-      'Jaką metodą wykryć zwarcie doziemne przy danym sposobie uziemienia punktu '
-      + 'neutralnego i czy przekaźnik w polu ją obsługuje?',
-    kryterium:
-      'Metoda zalecana dla danego sposobu uziemienia punktu neutralnego musi być '
-      + 'dostępna w wyposażeniu przekaźnika. Nastawa rozruchowa napięcia zerowego '
-      + 'w zakresie (0; 100] % napięcia fazowego.',
-    norma: 'praktyka sieci SN kompensowanych i uziemionych przez rezystor',
     werdykt: {
       rodzaj: 'pojedynczy',
       sciezki: ['relay_support_status'],
@@ -530,13 +488,6 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
 
   // -------------------------------------------------------------------------
   transient_trv: {
-    pytanie:
-      'Czy napięcie powrotne po przerwaniu prądu zwarciowego mieści się pod '
-      + 'obwiednią wytrzymałości wyłącznika?',
-    kryterium:
-      'Margines napięcia powrotnego ≥ 10 % względem obwiedni wytrzymałości '
-      + 'wyłącznika w całym przebiegu czasowym.',
-    norma: 'IEC 62271-100 (obwiednia napięcia powrotnego)',
     werdykt: {
       rodzaj: 'pojedynczy',
       sciezki: ['trv_status'],
@@ -573,14 +524,6 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
 
   // -------------------------------------------------------------------------
   motor_starting: {
-    pytanie:
-      'Czy silnik ruszy pod obciążeniem i czy jego rozruch nie zapadnie napięcia '
-      + 'na szynie poniżej dopuszczalnego?',
-    kryterium:
-      'Zapad napięcia na szynie ≤ 15 %, wskaźnik cieplny rozruchu I²t ≤ 1 (czas '
-      + 'rozruchu w granicy czasu utyku) oraz moment rozruchowy większy od momentu '
-      + 'oporowego maszyny napędzanej.',
-    norma: 'kryteria rozruchowe silników SN (zapad napięcia, czas utyku)',
     werdykt: {
       rodzaj: 'zbiorczy',
       sciezkaTablicy: 'motors',
@@ -636,14 +579,6 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
 
   // -------------------------------------------------------------------------
   uncertainty_sensitivity: {
-    pytanie:
-      'Jak bardzo niepewność danych katalogowych przenosi się na wynik i który '
-      + 'parametr o tym decyduje?',
-    kryterium:
-      'Niepewność rozszerzona (k = 2) ≤ 100 % — powyżej tej wartości wynik jest '
-      + 'niewiarygodny. Progu normatywnego solver nie wystawia; wynik służy do '
-      + 'wskazania parametru wymagającego dokładniejszych danych.',
-    norma: 'propagacja niepewności, przedział rozszerzony k = 2',
     werdykt: {
       rodzaj: 'liczbowy',
       sciezka: 'expanded_uncertainty_percent_k2',
@@ -681,14 +616,6 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
 
   // -------------------------------------------------------------------------
   neutral_earthing_design: {
-    pytanie:
-      'Jak uziemić punkt neutralny sieci i jaki dobrać dławik gaszący albo rezystor, '
-      + 'żeby ograniczyć prąd zwarcia doziemnego?',
-    kryterium:
-      'Dla sieci kompensowanej: prąd resztkowy przy przyjętym rozstrojeniu ≤ 10 % '
-      + 'prądu pojemnościowego doziemienia. Dla sieci uziemionej przez rezystor: energia '
-      + 'wydzielona w rezystorze ≤ energia znamionowa aparatu.',
-    norma: 'kompensacja rezonansowa Petersena · IEC 62271-203',
     werdykt: {
       rodzaj: 'pojedynczy',
       sciezki: ['tuning_status', 'thermal_check.status', 'status'],

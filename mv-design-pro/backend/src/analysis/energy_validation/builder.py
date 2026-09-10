@@ -349,7 +349,7 @@ class EnergyValidationBuilder:
                 EnergyValidationItem(
                     check_type=EnergyCheckType.LOSS_BUDGET,
                     target_id="network",
-                    target_name="Siec",
+                    target_name="Sieć",
                     observed_value=None,
                     unit="%",
                     limit_warn=config.loss_warn_pct,
@@ -378,7 +378,7 @@ class EnergyValidationBuilder:
             EnergyValidationItem(
                 check_type=EnergyCheckType.LOSS_BUDGET,
                 target_id="network",
-                target_name="Siec",
+                target_name="Sieć",
                 observed_value=loss_pct,
                 unit="%",
                 limit_warn=config.loss_warn_pct,
@@ -414,7 +414,7 @@ class EnergyValidationBuilder:
                 EnergyValidationItem(
                     check_type=EnergyCheckType.REACTIVE_BALANCE,
                     target_id=pf.slack_node_id,
-                    target_name="Slack bus",
+                    target_name="Węzeł bilansujący",
                     observed_value=None,
                     unit="p.u.",
                     limit_warn=None,
@@ -446,7 +446,7 @@ class EnergyValidationBuilder:
             EnergyValidationItem(
                 check_type=EnergyCheckType.REACTIVE_BALANCE,
                 target_id=pf.slack_node_id,
-                target_name="Slack bus",
+                target_name="Węzeł bilansujący",
                 observed_value=cos_phi,
                 unit="cos(phi)",
                 limit_warn=0.9,

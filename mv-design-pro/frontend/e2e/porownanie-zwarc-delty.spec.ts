@@ -15,6 +15,7 @@
  * Wzorzec seedu i biegów: e2e/deep-link-wyniki.spec.ts.
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { otworzZakladkeWynikow } from './nawigacjaWynikow';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -308,7 +309,7 @@ test('KD-3 poz. 11: delta na ekranie porównania zwarć = pole z końcówki back
   await page.reload({ waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
   await page.getByRole('button', { name: /^Wyniki i dowody \d$/ }).click();
-  await page.getByTestId('mvd-wyniki-zakladka-porownanie').click();
+  await otworzZakladkeWynikow(page, 'porownanie');
   await expect(page.getByTestId('mvd-por-host')).toBeVisible({ timeout: 20000 });
   await page.getByTestId('mvd-por-tryb-zwarcia').click();
   await expect(page.getByTestId('mvd-porz-ekran')).toBeVisible({ timeout: 20000 });
@@ -379,7 +380,7 @@ test('KD-3 poz. 11: delta na ekranie porównania zwarć = pole z końcówki back
   await page.reload({ waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
   await page.getByRole('button', { name: /^Wyniki i dowody \d$/ }).click();
-  await page.getByTestId('mvd-wyniki-zakladka-porownanie').click();
+  await otworzZakladkeWynikow(page, 'porownanie');
   await page.getByTestId('mvd-por-tryb-zwarcia').click();
   await page.getByTestId('mvd-porz-select-a').selectOption(runA);
   await page.getByTestId('mvd-porz-select-b').selectOption(runB);
@@ -470,7 +471,7 @@ test('CV-3.3-B2: porównanie dwóch biegów zabezpieczeń — tabela ekranu = po
   await page.reload({ waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
   await page.getByRole('button', { name: /^Wyniki i dowody \d$/ }).click();
-  await page.getByTestId('mvd-wyniki-zakladka-porownanie').click();
+  await otworzZakladkeWynikow(page, 'porownanie');
   await expect(page.getByTestId('mvd-por-host')).toBeVisible({ timeout: 20000 });
   await page.getByTestId('mvd-por-tryb-zabezpieczenia').click();
   await expect(page.getByTestId('mvd-porzab-ekran')).toBeVisible({ timeout: 20000 });
@@ -531,7 +532,7 @@ test('CV-3.3-B2: porównanie dwóch biegów zabezpieczeń — tabela ekranu = po
   await page.reload({ waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
   await page.getByRole('button', { name: /^Wyniki i dowody \d$/ }).click();
-  await page.getByTestId('mvd-wyniki-zakladka-porownanie').click();
+  await otworzZakladkeWynikow(page, 'porownanie');
   await page.getByTestId('mvd-por-tryb-zabezpieczenia').click();
   await page.getByTestId('mvd-porzab-select-a').selectOption(runA);
   await page.getByTestId('mvd-porzab-select-b').selectOption(runB);

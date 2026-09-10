@@ -24,7 +24,7 @@ import { useAppStateStore } from '../../../ui/app-state';
 import { ProtectionCoordinationPage } from '../../../ui/protection-coordination/ProtectionCoordinationPage';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useShellStore } from '../../shell/useShellStore';
-import { maZakonczonyPrzebieg } from '../analizy/model';
+import { jestPrzebiegiemZwarciowym } from '../jakosc';
 import { SekcjaNastaw } from './SekcjaNastaw';
 import { KOORDYNACJA_STRINGS as T } from './strings';
 
@@ -63,7 +63,12 @@ export function EkranKoordynacji() {
   const przebiegi = useExecutionRunsStore((s) => s.runs);
   const setActiveSpace = useShellStore((s) => s.setActiveSpace);
 
-  const maPrzebiegZwarciowy = maZakonczonyPrzebieg(przebiegi, 'zwarciowy');
+  // Zakończony przebieg zwarciowy — ten sam predykat rodzaju co okno „Jakość
+  // wyników" i wniosek OSD (jedno źródło prawdy, bez drugiej kopii selektora
+  // po kasacji huba „Analizy techniczne" — karta B-02 / W3-E).
+  const maPrzebiegZwarciowy = przebiegi.some(
+    (r) => r.status === 'DONE' && jestPrzebiegiemZwarciowym(r.analysis_type),
+  );
 
   return (
     <div className="mvd-koordynacja" data-testid="mvd-koordynacja">

@@ -21,7 +21,7 @@ export const CO_WYMAGA_UWAGI_STRINGS = {
   // Źródła analiz
   analizaRozplyw: 'Rozpływ mocy',
   /** Kryteria projektowe zebrane przez backend z wielu biegów (K6 / H-5 pkt 5). */
-  analizaWerdykt: 'Werdykt projektowy',
+  analizaWerdykt: 'Ocena techniczna wyników',
   // Opisy przekroczeń (rozpływ — napięcie)
   opisNapiecieWysokie: 'Napięcie powyżej dopuszczalnego zakresu',
   opisNapiecieNiskie: 'Napięcie poniżej dopuszczalnego zakresu',

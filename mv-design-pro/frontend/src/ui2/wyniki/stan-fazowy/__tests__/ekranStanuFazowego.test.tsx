@@ -1,7 +1,8 @@
 /**
  * Testy ekranu „Stan fazowy SN" (E-31, karta P-2).
  * Kliki natywne (userEvent) — Zero-Debt pkt 5. Realna ścieżka wejścia:
- * karta huba analiz → powierzchnia E-31. Dane mockowane przez `fetch`
+ * obszar „Rozpływ mocy i napięcia" → zakładka „Stan fazowy SN" warsztatu Wyników
+ * (test warsztatu). Dane mockowane przez `fetch`
  * 1:1 z kontraktem `api.ts` (GET /api/analysis-runs/:id/results/phase-state)
  * — ekran niczego nie liczy; werdykty asymetrii pochodzą z flag solvera.
  */
@@ -15,7 +16,6 @@ import { useNetworkBuildStore } from '../../../../ui/network-build/networkBuildS
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useShellStore } from '../../../shell/useShellStore';
 import { useSelectionStore } from '../../../../ui/selection/store';
-import { EkranAnalizTechnicznych } from '../../analizy/EkranAnalizTechnicznych';
 import type { WierszStanuFazowego, WynikiStanuFazowego } from '../api';
 import { EkranStanuFazowego } from '../EkranStanuFazowego';
 import { naPozycjeAsymetrii, wybierzPrzebiegFazowy } from '../stanFazowyModel';
@@ -108,37 +108,13 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('EkranStanuFazowego — realna ścieżka wejścia (karta huba → zakładka warsztatu Wyników)', () => {
-  // INTENCJA bez zmian (karta huba prowadzi do realnego dostawcy); kanon K3-A3:
-  // dostawcą E-31 jest zakładka „stan-fazowy" warsztatu Wyników (deep-link
-  // setWynikiTab, wzorzec E-33/E-34), nie powierzchnia trasowa mostu.
-  it('klik „Otwórz" na karcie stanu fazowego prowadzi do zakładki „stan-fazowy" (klik natywny)', async () => {
-    const user = userEvent.setup();
-    render(<EkranAnalizTechnicznych />);
-    const karta = screen.getByTestId('mvd-analizy-karta-fazowy');
-    await user.click(within(karta).getByRole('button', { name: 'Otwórz' }));
-    expect(useShellStore.getState().wynikiTab).toBe('stan-fazowy');
-    expect(useShellStore.getState().activeSpace).toBe('wyniki');
-    expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
-  });
-
-  it('karta huba uczciwie zapowiada wymóg przebiegu stanu fazowego (chip)', () => {
-    useExecutionRunsStore.setState({ runs: [RUN_LF] });
-    render(<EkranAnalizTechnicznych />);
-    const karta = screen.getByTestId('mvd-analizy-karta-fazowy');
-    expect(within(karta).getByText('wymaga przebiegu stanu fazowego')).toBeInTheDocument();
-  });
-
-  it('opis karty huba NIE sugeruje VUF — druga kopia tego samego opisu (karta W2 pkt 4, KLASA NIE INSTANCJA)', () => {
-    // `ui2/wyniki/analizy/model.ts` niesie WŁASNĄ, oddzielną kopię opisu ekranu
-    // E-31 (menu „Analizy techniczne") — ten sam defekt nazewnictwa co
-    // `strings.ts::asymetriaTytul/asymetriaOpis`, w drugim miejscu.
-    render(<EkranAnalizTechnicznych />);
-    const karta = screen.getByTestId('mvd-analizy-karta-fazowy');
-    expect(karta.textContent ?? '').not.toMatch(/asymetri[ae]\s+U\/I\/strat/i);
-    expect(within(karta).getByText(/odchylenie napięcia\/prądu\/strat od średniej faz/i)).toBeInTheDocument();
-  });
-});
+// Realna ścieżka wejścia (karta B-02 / W3-E): hub „Analizy techniczne" ZSZEDŁ z
+// ekranu, a jego karta stanu fazowego (E-31) stała się zakładką „Stan fazowy SN"
+// obszaru „Rozpływ mocy i napięcia" warsztatu Wyników — ścieżkę obszar → zakładka
+// → ten ekran ćwiczy `spaces/wyniki/__tests__/wynikiWarsztat.test.tsx` (K3-A3).
+// Druga kopia opisu ekranu (karta W2 pkt 4, KLASA NIE INSTANCJA: „asymetria
+// U/I/strat" vs „odchylenie od średniej faz") zniknęła RAZEM z hubem — jedyny opis
+// niesie `strings.ts` tego modułu.
 
 describe('EkranStanuFazowego — rama prowadząca i uczciwe stany zerowe', () => {
   it('nagłówek: eyebrow obszaru, tytuł i zdanie celu inżynierskiego', () => {

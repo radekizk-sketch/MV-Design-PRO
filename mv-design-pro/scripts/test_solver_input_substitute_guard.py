@@ -1277,7 +1277,13 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # Hoppla), pliki 502 -> 484 (+1 pochodne/jednostki.py, -15 W3-C1, -4 W3-C2), zapadka
     # 59/273 -> 58/260 (wpisy skasowanych plikow zdjete; enm 77 -> 76 po migracji W3-F),
     # wykluczenia 13/31 bez zmian. Komentarze kart wyzej zachowane jako zapis ich pomiarow.
-    assert "Pol kontraktow wejsciowych: 3471." in wyjscie, wyjscie
+    # B-02 / W3-E (2026-09-10; drzewo z kontraktami gotowosci i katalogu analiz V12.6):
+    # POMIAR guardem: pola 3471 -> 3506 (+35: `application/analyses/v126_gotowosc.py`
+    # — `Warunek`, `DanaZModeluWartosc`, `Proponowana`, `GotowoscAnalizy`;
+    # `application/analyses/v126_katalog.py` — karty katalogu z sekcjami danych,
+    # kryteriow i zakresu), pliki 484 -> 486 (+2: te same dwa moduly, nowe w tej karcie),
+    # zapadka 58/260 i wykluczenia 13/31 bez zmian (zero nowych podstawien).
+    assert "Pol kontraktow wejsciowych: 3506." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1288,7 +1294,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # przeniesiona pod backend/tests/, poza tym skanem juz wczesniej w tej samej karcie).
         # W3-D (-1: application/compliance/source_compliance.py) + W3-A (-1:
         # application/protection_current_resolver.py) na drzewie po K2: 504 -> 502.
-        "Przeskanowano 484 plikow w zakresie: network_model, solver_input, enm, "
+        # B-02 / W3-E (2026-09-10): 484 -> 486 (+2 `application/analyses/v126_gotowosc.py`,
+        # `application/analyses/v126_katalog.py`).
+        "Przeskanowano 486 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1310,7 +1318,8 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         "wykluczenia=3 plikow/suma 6",
         "  solver_input: pliki_skanowane=10, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
         "  enm: pliki_skanowane=41, dlug=8 plikow/suma 76, wykluczenia=0 plikow/suma 0",
-        "  application: pliki_skanowane=234, dlug=31 plikow/suma 93, "
+        # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
+        "  application: pliki_skanowane=236, dlug=31 plikow/suma 93, "
         "wykluczenia=4 plikow/suma 10",
         "  api: pliki_skanowane=62, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 15",
     ]

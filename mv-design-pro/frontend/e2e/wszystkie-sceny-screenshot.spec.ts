@@ -31,8 +31,12 @@ const JUZ_KADROWANE = new Set([
 ]);
 
 const SCENY = [
-  'cieplna', 'dokumentacja', 'edycja-parametrow', 'estymacja', 'frt', 'kompensacja',
-  'kompensacja-wynik', 'lom', 'macierz', 'migotanie', 'odbior-zgodnosc', 'odgalezienie',
+  // B-02 / W3-E (2026-09-10): „akademickie" = katalog kart „Analizy specjalistyczne"
+  // (widok domyślny, bez `rodzaj`); „ocena" / „ocena-przekroczenia" = ekran „Ocena
+  // techniczna wyników" bez przekroczeń i z realnymi NIE SPEŁNIA (obciążenie ×8).
+  'akademickie', 'cieplna', 'dokumentacja', 'edycja-parametrow', 'estymacja', 'frt', 'kompensacja',
+  'kompensacja-wynik', 'lom', 'macierz', 'migotanie', 'ocena', 'ocena-przekroczenia',
+  'odbior-zgodnosc', 'odgalezienie',
   'oltc', 'pole-nn', 'pomiar', 'porownanie', 'przekaznik', 'przypisanie-katalogu', 'pulpit',
   'rozplyw', 'sila-sieci', 'slup-odgalezny', 'ssci', 'swiezosc', 'uwaga', 'walidacja',
   'wyniki-skladowe', 'wyniki-stabilnosc', 'wyniki-stan-fazowy', 'wyniki-zbieznosc', 'zksn',
@@ -106,6 +110,23 @@ test.describe('sceny:screenshot', () => {
           await expect(page.getByTestId('mvd-zmiany-podsumowanie')).toContainText(
             'Wynik trzeba przeliczyć',
           );
+        }
+
+        // B-02 / W3-E: scena „ocena" pokazuje OCENĘ (nie stan blokujący „brak wyników"),
+        // scena przekroczeń niesie co najmniej jedną pozycję NIE SPEŁNIA; katalog kart
+        // „akademickie" pokazuje karty pogrupowane (nie listę rozwijaną).
+        if (scena === 'ocena' || scena === 'ocena-przekroczenia') {
+          await expect(page.getByTestId('mvd-ocena-podsumowanie')).toBeVisible({ timeout: 15000 });
+          await expect(page.getByTestId('mvd-ocena-brak-wynikow')).toHaveCount(0);
+          const nieSpelnia = Number(
+            (await page.getByTestId('mvd-ocena-licznik-nie-spelnia').locator('.mvd-ocena-licznik-liczba').textContent())?.trim(),
+          );
+          if (scena === 'ocena') expect(nieSpelnia).toBe(0);
+          else expect(nieSpelnia).toBeGreaterThan(0);
+        }
+        if (scena === 'akademickie') {
+          await expect(page.getByTestId('mvd-akad-katalog-kart')).toBeVisible({ timeout: 15000 });
+          expect(await page.locator('[data-testid^="mvd-akad-karta-otworz-"]').count()).toBeGreaterThan(0);
         }
 
         await page.waitForTimeout(250);

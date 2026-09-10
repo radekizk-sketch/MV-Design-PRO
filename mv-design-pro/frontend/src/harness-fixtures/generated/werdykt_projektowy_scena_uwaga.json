@@ -11,6 +11,11 @@
       "norma_pl": "Warunki przylaczenia OSD (dokument projektu)",
       "zrodlo": "PF",
       "element_rodzaj": "szyna",
+      "grupa": "warunki_przylaczenia",
+      "wielkosc_pl": "Moc czynna w punkcie przyłączenia",
+      "symbol": "|P|",
+      "jednostka": "MW",
+      "warunek": "nie_wiecej_niz",
       "stan": "NIESPRAWDZONE",
       "liczba_ocenionych": 0,
       "liczba_naruszen": 0,
@@ -20,7 +25,8 @@
       "wiodacy_opis_pl": null,
       "powod_kod": "verdict.run_missing",
       "powod_pl": "Brak zakonczonego biegu rozplywu mocy — uruchom obliczenia, zeby ocenic kryterium.",
-      "run_id": null
+      "run_id": null,
+      "elementy": []
     },
     {
       "kryterium_id": "pwp.wspolczynnik_mocy",
@@ -30,6 +36,11 @@
       "norma_pl": "Warunki przylaczenia OSD (dokument projektu)",
       "zrodlo": "PF",
       "element_rodzaj": "szyna",
+      "grupa": "warunki_przylaczenia",
+      "wielkosc_pl": "Współczynnik mocy w punkcie przyłączenia",
+      "symbol": "cos φ",
+      "jednostka": "-",
+      "warunek": "nie_mniej_niz",
       "stan": "NIESPRAWDZONE",
       "liczba_ocenionych": 0,
       "liczba_naruszen": 0,
@@ -39,7 +50,8 @@
       "wiodacy_opis_pl": null,
       "powod_kod": "verdict.run_missing",
       "powod_pl": "Brak zakonczonego biegu rozplywu mocy — uruchom obliczenia, zeby ocenic kryterium.",
-      "run_id": null
+      "run_id": null,
+      "elementy": []
     },
     {
       "kryterium_id": "napiecie.odchylenie",
@@ -49,6 +61,11 @@
       "norma_pl": "Kryterium jakosci napiecia (progi z konfiguracji walidacji energetycznej)",
       "zrodlo": "PF",
       "element_rodzaj": "szyna",
+      "grupa": "napiecia",
+      "wielkosc_pl": "Odchylenie napięcia od znamionowego",
+      "symbol": "|ΔU|",
+      "jednostka": "%",
+      "warunek": "nie_wiecej_niz",
       "stan": "NIESPRAWDZONE",
       "liczba_ocenionych": 0,
       "liczba_naruszen": 0,
@@ -58,7 +75,8 @@
       "wiodacy_opis_pl": null,
       "powod_kod": "verdict.run_missing",
       "powod_pl": "Brak zakonczonego biegu rozplywu mocy — uruchom obliczenia, zeby ocenic kryterium.",
-      "run_id": null
+      "run_id": null,
+      "elementy": []
     },
     {
       "kryterium_id": "galaz.obciazenie_dlugotrwale",
@@ -68,6 +86,11 @@
       "norma_pl": "Obciazalnosc katalogowa przewodu (warunki odniesienia)",
       "zrodlo": "PF",
       "element_rodzaj": "galaz_liniowa",
+      "grupa": "obciazalnosc",
+      "wielkosc_pl": "Obciążenie gałęzi względem obciążalności długotrwałej",
+      "symbol": "I/I_z",
+      "jednostka": "%",
+      "warunek": "nie_wiecej_niz",
       "stan": "NIESPRAWDZONE",
       "liczba_ocenionych": 0,
       "liczba_naruszen": 0,
@@ -77,7 +100,8 @@
       "wiodacy_opis_pl": null,
       "powod_kod": "verdict.run_missing",
       "powod_pl": "Brak zakonczonego biegu rozplywu mocy — uruchom obliczenia, zeby ocenic kryterium.",
-      "run_id": null
+      "run_id": null,
+      "elementy": []
     },
     {
       "kryterium_id": "transformator.obciazenie",
@@ -87,6 +111,11 @@
       "norma_pl": "Moc znamionowa z typu katalogowego",
       "zrodlo": "PF",
       "element_rodzaj": "transformator",
+      "grupa": "obciazalnosc",
+      "wielkosc_pl": "Obciążenie transformatora względem mocy znamionowej",
+      "symbol": "S/S_n",
+      "jednostka": "%",
+      "warunek": "nie_wiecej_niz",
       "stan": "NIESPRAWDZONE",
       "liczba_ocenionych": 0,
       "liczba_naruszen": 0,
@@ -96,7 +125,8 @@
       "wiodacy_opis_pl": null,
       "powod_kod": "verdict.run_missing",
       "powod_pl": "Brak zakonczonego biegu rozplywu mocy — uruchom obliczenia, zeby ocenic kryterium.",
-      "run_id": null
+      "run_id": null,
+      "elementy": []
     },
     {
       "kryterium_id": "straty.budzet",
@@ -106,6 +136,11 @@
       "norma_pl": "Zalozenie projektowe (progi z konfiguracji walidacji energetycznej)",
       "zrodlo": "PF",
       "element_rodzaj": null,
+      "grupa": "bilans_mocy_i_straty",
+      "wielkosc_pl": "Straty mocy czynnej względem mocy przesyłanej",
+      "symbol": "ΔP/P",
+      "jednostka": "%",
+      "warunek": "nie_wiecej_niz",
       "stan": "NIESPRAWDZONE",
       "liczba_ocenionych": 0,
       "liczba_naruszen": 0,
@@ -115,7 +150,8 @@
       "wiodacy_opis_pl": null,
       "powod_kod": "verdict.run_missing",
       "powod_pl": "Brak zakonczonego biegu rozplywu mocy — uruchom obliczenia, zeby ocenic kryterium.",
-      "run_id": null
+      "run_id": null,
+      "elementy": []
     },
     {
       "kryterium_id": "moc_bierna.bilans",
@@ -125,6 +161,11 @@
       "norma_pl": "Zalozenie projektowe (progi z konfiguracji walidacji energetycznej)",
       "zrodlo": "PF",
       "element_rodzaj": null,
+      "grupa": "bilans_mocy_i_straty",
+      "wielkosc_pl": "Współczynnik mocy w węźle bilansującym",
+      "symbol": "cos φ",
+      "jednostka": "-",
+      "warunek": "nie_mniej_niz",
       "stan": "NIESPRAWDZONE",
       "liczba_ocenionych": 0,
       "liczba_naruszen": 0,
@@ -134,7 +175,8 @@
       "wiodacy_opis_pl": null,
       "powod_kod": "verdict.run_missing",
       "powod_pl": "Brak zakonczonego biegu rozplywu mocy — uruchom obliczenia, zeby ocenic kryterium.",
-      "run_id": null
+      "run_id": null,
+      "elementy": []
     },
     {
       "kryterium_id": "przewod.wytrzymalosc_zwarciowa",
@@ -144,6 +186,11 @@
       "norma_pl": "IEC 60949 / PN-HD 60364-5-54",
       "zrodlo": "short_circuit_sn",
       "element_rodzaj": "galaz_liniowa",
+      "grupa": "wytrzymalosc_toru",
+      "wielkosc_pl": "Energia cieplna zwarcia względem dopuszczalnej dla żyły",
+      "symbol": "I²t",
+      "jednostka": "A²·s",
+      "warunek": "nie_wiecej_niz",
       "stan": "NIESPRAWDZONE",
       "liczba_ocenionych": 0,
       "liczba_naruszen": 0,
@@ -153,7 +200,8 @@
       "wiodacy_opis_pl": null,
       "powod_kod": "verdict.run_missing",
       "powod_pl": "Brak zakonczonego biegu zwarciowego — uruchom obliczenia, zeby ocenic kryterium.",
-      "run_id": null
+      "run_id": null,
+      "elementy": []
     },
     {
       "kryterium_id": "wynik.wiarygodnosc_zwarciowa",
@@ -163,6 +211,11 @@
       "norma_pl": "Kontrola wiarygodnosci wyniku (brama pakietu OSD)",
       "zrodlo": "short_circuit_sn",
       "element_rodzaj": "szyna",
+      "grupa": "zwarcia",
+      "wielkosc_pl": "Prąd zwarciowy początkowy",
+      "symbol": "I_k″",
+      "jednostka": "kA",
+      "warunek": "w_pasmie",
       "stan": "NIESPRAWDZONE",
       "liczba_ocenionych": 0,
       "liczba_naruszen": 0,
@@ -172,7 +225,8 @@
       "wiodacy_opis_pl": null,
       "powod_kod": "verdict.run_missing",
       "powod_pl": "Brak zakonczonego biegu zwarciowego — uruchom obliczenia, zeby ocenic kryterium.",
-      "run_id": null
+      "run_id": null,
+      "elementy": []
     },
     {
       "kryterium_id": "dobor.tor_der_sn",
@@ -181,7 +235,12 @@
       "warunek_pl": "zgodnosc napiec, mocy TR blokowego i kaskady pradowej",
       "norma_pl": "Walidacje doborowe toru DER-SN (dane z tabliczek)",
       "zrodlo": "model",
-      "element_rodzaj": null,
+      "element_rodzaj": "zrodlo",
+      "grupa": "dobory_toru_zrodla",
+      "wielkosc_pl": "Zgodność doboru toru źródła z tabliczkami",
+      "symbol": "-",
+      "jednostka": "-",
+      "warunek": "zgodnosc",
       "stan": "NIE_DOTYCZY",
       "liczba_ocenionych": 0,
       "liczba_naruszen": 0,
@@ -191,7 +250,8 @@
       "wiodacy_opis_pl": null,
       "powod_kod": null,
       "powod_pl": "Projekt nie zawiera toru przylaczenia zrodla wytworczego (DER-SN).",
-      "run_id": null
+      "run_id": null,
+      "elementy": []
     }
   ],
   "zrodla": [
@@ -230,6 +290,42 @@
     "nie_dotyczy": 1,
     "razem": 10
   },
+  "ocena": {
+    "oceniono": 0,
+    "spelnia": 0,
+    "nie_spelnia": 0,
+    "brak_podstaw": 0
+  },
+  "grupy": [
+    {
+      "kod": "napiecia",
+      "nazwa_pl": "Napięcia"
+    },
+    {
+      "kod": "obciazalnosc",
+      "nazwa_pl": "Obciążalność"
+    },
+    {
+      "kod": "bilans_mocy_i_straty",
+      "nazwa_pl": "Bilans mocy i straty"
+    },
+    {
+      "kod": "zwarcia",
+      "nazwa_pl": "Zwarcia"
+    },
+    {
+      "kod": "wytrzymalosc_toru",
+      "nazwa_pl": "Wytrzymałość toru"
+    },
+    {
+      "kod": "warunki_przylaczenia",
+      "nazwa_pl": "Warunki przyłączenia"
+    },
+    {
+      "kod": "dobory_toru_zrodla",
+      "nazwa_pl": "Dobory toru źródła"
+    }
+  ],
   "zakres_poza_automatem": [
     {
       "kryterium_pl": "Selektywnosc i czulosc zabezpieczen (stopniowanie czasowo-pradowe)",

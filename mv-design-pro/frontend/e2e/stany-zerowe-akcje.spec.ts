@@ -19,6 +19,7 @@
  * sieć budowana przez API domain-ops, obliczenie uruchamiane REALNYM klikiem).
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { otworzZakladkeWynikow } from './nawigacjaWynikow';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -329,7 +330,7 @@ async function zrzutObuMotywow(page: Page, nazwa: string): Promise<void> {
 async function otworzZakladkeZwarc(page: Page): Promise<void> {
   await page.getByRole('button', { name: /^Wyniki i dowody \d$/ }).click();
   await expect(page.getByTestId('mvd-wyniki-warsztat')).toBeVisible();
-  await page.getByTestId('mvd-wyniki-zakladka-zwarcia').click();
+  await otworzZakladkeWynikow(page, 'zwarcia');
 }
 
 test('stan zerowy zwarć ma akcję, która realnie uruchamia bieg i wypełnia ekran (H-5)', async ({ page, request }) => {

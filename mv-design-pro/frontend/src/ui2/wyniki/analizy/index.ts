@@ -1,4 +1,4 @@
-export { EkranAnalizTechnicznych } from './EkranAnalizTechnicznych';
-export { MostAnalizTechnicznych } from './MostAnalizTechnicznych';
+export { MostAnalizTechnicznych, WidokiKlasyczne } from './MostAnalizTechnicznych';
 export { ANALIZY_STRINGS } from './strings';
-export { GRUPY_ANALIZ, maZakonczonyPrzebieg, ostatniZakonczonyPrzebieg } from './model';
+export { WIDOKI_KLASYCZNE, jestDawnymHubem } from './model';
+export type { WidokKlasyczny } from './model';

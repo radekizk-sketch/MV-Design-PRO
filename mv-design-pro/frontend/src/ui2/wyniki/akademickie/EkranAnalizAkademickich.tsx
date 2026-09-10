@@ -1,28 +1,30 @@
 /*
- * EkranAnalizAkademickich — okno „Analizy akademickie" (ui2/wyniki/akademickie).
+ * EkranAnalizAkademickich — okno „Analizy specjalistyczne" (ui2/wyniki/akademickie).
  *
- * Domyka wiersz „Pakiet akademicki V12.6" inwentarza (◐): CZTERNAŚCIE rodzajów analiz
- * kontraktu `V126AnalysisType` miało jedną powierzchnię zastaną `V126AcademicSurface`
- * (334 wiersze, ZERO testów) osiągalną tylko przez ekrany E-40…E-50, a dwa rodzaje
- * (`neutral_earthing_design`, `earth_fault_detection`) nie miały żadnego wejścia.
+ * KARTA B-02 / W3-E (dyrektywa właściciela 2026-09-10): okno odpowiada na pytanie
+ * „CO i NA JAKIEJ PODSTAWIE policzę?". Dwa widoki:
  *
- * Okno jest PARAMETRYZOWANE RODZAJEM, a nie powielone czternaście razy — decyzja
- * z pomiaru kontraktu: wszystkie rodzaje dzielą identyczne koperty odpowiedzi
- * (`AcademicAnalysisResultV1`, `AcademicWhiteBoxTraceV1`, `AcademicProofPackV1`,
- * `AcademicReportV1`), a różnią się wyłącznie zawartością słownika `result` i
- * zestawem parametrów wejściowych. Jedyny rodzaj z DODATKOWYM kontraktem —
- * `ssci_impedance` (`…/stability`, werdykt Nyquista) — zachowuje własne okno
- * „Stabilność SSCI"; to okno kieruje do niego zamiast duplikować werdykt.
+ *  1. KATALOG KART — analizy pogrupowane według znaczenia inżynierskiego; każda
+ *     karta niesie NAZWĘ, PYTANIE INŻYNIERSKIE, BADANY ZAKRES, GŁÓWNE WIELKOŚCI,
+ *     PODSTAWĘ OCENY (tylko gdy solver ją faktycznie stosuje) i STAN DANYCH.
+ *     Treść kart i grupy pochodzą WYŁĄCZNIE z katalogu backendu
+ *     (`GET /api/catalog/v126/analysis-catalog`) — okno nie trzyma własnej kopii.
+ *  2. WIDOK ANALIZY (A–G): A. przedmiot analizy (projekt, przypadek, wariant pracy,
+ *     rewizja modelu, zakres modelu, U_n, punkt przyłączenia) → B. pytanie
+ *     inżynierskie → C. dane wejściowe z rozdziałem źródeł (z modelu / z przypadku /
+ *     od użytkownika / domyślne solvera / brakujące) → D. gotowość: POTWIERDZONA z
+ *     listą sprawdzonych warunków albo NIEPOTWIERDZONA z listą braków (ta sama
+ *     funkcja backendu, która odmawia uruchomienia, `GET …/v126/gotowosc`) →
+ *     E. kryteria oceny (wielkość, symbol, warunek, wartość graniczna, jednostka,
+ *     podstawa) albo BRAK PODSTAW → F. zakres obliczeń → G. uruchomienie,
+ *     dostępne wyłącznie przy gotowości POTWIERDZONEJ. Po biegu: wynik oceny,
+ *     wielkości, obiekty, wiarygodność, wniosek, ślad, dowód, raport.
  *
- * Naprawy wobec powierzchni zastanej (klasa, nie instancja):
- *  - ślad, dowód i raport BEZ zaszytych limitów (`slice(0,8)` / `slice(0,3)`);
- *  - wynik spłaszczany W CAŁOŚCI (`slice(0,18)/(0,8)/(0,6)` gubiło do 11 pól);
- *  - lista rodzajów Z KATALOGU backendu, nie z kopii kontraktu w kodzie ekranu;
- *  - ZERO zaszytych danych wejściowych (koniec fabrykowanego silnika 630 kW);
- *  - kolory wyłącznie przez tokeny `--mvd-*`;
- *  - świeżość z JEDNEGO źródła (`useSwiezoscWynikow` — wspólny kontrakt E15.2).
+ * Wspólny łańcuch (prompt właściciela §2): PRZEDMIOT → STAN MODELU → DANE →
+ * KRYTERIUM → OBLICZENIE → WYNIK → OCENA WYMAGANIA → WNIOSEK PROJEKTOWY.
  *
- * Zero fizyki w UI: wszystkie wielkości pochodzą z solvera; okno je porządkuje.
+ * Zero fizyki i zero ocen w UI: wszystkie wielkości, warunki gotowości, progi
+ * i wyniki pochodzą z backendu; okno je porządkuje. Kolory wyłącznie tokenami `--mvd-*`.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -37,20 +39,24 @@ import { PrzyciskAkcjiStanu, useAkcjaPrzejdzDoPrzypadkow } from '../wzorzec';
 import type { AkcjaStanuZerowego } from '../wzorzec';
 import {
   pobierzDowod,
+  pobierzGotowosc,
   pobierzKatalog,
+  pobierzKatalogAnaliz,
   pobierzRaport,
-  pobierzRodzajeAnaliz,
   pobierzSlad,
   pobierzWynik,
   utworzPrzebieg,
+  type GotowoscAnalizy,
+  type KartaKatalogu,
   type OdpowiedzWyniku,
   type OdpowiedzSladu,
   type PakietDowodu,
   type PrzebiegAkademicki,
+  type PrzedmiotAnalizy,
   type RaportAnalizy,
   type RodzajAnalizy,
+  type WarunekGotowosci,
 } from './api';
-import { katalogRodzaju } from './katalog';
 import {
   krokiDowoduDoWidoku,
   krokiSladuDoWidoku,
@@ -71,22 +77,23 @@ import {
   odczytaj,
   type TabelaObiektow,
 } from './prezentacja';
-import { tylkoPrezentowane, type RodzajPrezentowany } from './nieprezentowane';
+import { rodzajPrezentowany, type RodzajPrezentowany } from './nieprezentowane';
 import { maParametry, zbudujParametry, type StanPol, type WierszListy } from './parametry';
 import { FormularzParametrow } from './FormularzParametrow';
 import { useNazwaObiektu } from './useNazwaObiektu';
 import {
   AKADEMICKIE_STRINGS as S,
+  etykietaGotowosci,
   etykietaProweniencjiWidma,
   etykietaRodzaju,
   etykietaStanuPrzebiegu,
+  fmtPoziomyNapiec,
   fmtWartosc,
-  opisRodzaju,
   type IstotnoscStanu,
 } from './strings';
 
 // ---------------------------------------------------------------------------
-// Panele stanu
+// Elementy wspólne
 // ---------------------------------------------------------------------------
 
 function StanPanel({
@@ -114,12 +121,19 @@ function StanPanel({
   );
 }
 
+/** Chip stanu (istotność steruje wyłącznie kolorem tokenowym). */
+function Chip({ tekst, istotnosc, testid }: { tekst: string; istotnosc: IstotnoscStanu; testid?: string }) {
+  return (
+    <span className={`mvd-akad-chip mvd-akad-chip--${istotnosc}`} data-testid={testid}>
+      {tekst}
+    </span>
+  );
+}
+
 /**
- * Sekcja zwijana z UCZCIWYM STANEM ZEROWYM (nadzór 2026-08-07, KLASA nie
- * instancja): sekcja bez zawartości NIE dostaje przycisku „Pokaż…" — przycisk,
- * który nie ma czego pokazać, to martwy klik. Zamiast niego sekcja mówi wprost,
- * że dla tego przebiegu artefakt nie powstał. Warunek pustki i warunek przycisku
- * pochodzą z JEDNEGO pola (`pozycji`), więc nie mogą się rozjechać.
+ * Sekcja zwijana z UCZCIWYM STANEM ZEROWYM: sekcja bez zawartości NIE dostaje
+ * przycisku „Pokaż…" — przycisk, który nie ma czego pokazać, to martwy klik.
+ * Warunek pustki i warunek przycisku pochodzą z JEDNEGO pola (`pozycji`).
  */
 function Zwijana({
   tytul,
@@ -139,9 +153,7 @@ function Zwijana({
   testid: string;
   pokaz: string;
   ukryj: string;
-  /** Liczba pozycji w sekcji — 0 oznacza uczciwy stan zerowy (bez przycisku). */
   pozycji: number;
-  /** Zdanie stanu zerowego: czego nie ma i dlaczego. */
   pustyKomunikat: string;
   domyslnieOtwarte?: boolean;
   children: React.ReactNode;
@@ -183,33 +195,658 @@ function Zwijana({
   );
 }
 
+/** Nazwy elementów modelu (przez most ref → nazwa); długie listy skracane jawnie. */
+function nazwyElementow(
+  refy: readonly string[],
+  nazwaObiektu: (ref: string) => string,
+  limit = 6,
+): string {
+  const nazwy = refy.slice(0, limit).map(nazwaObiektu);
+  const reszta = refy.length - nazwy.length;
+  return reszta > 0 ? `${nazwy.join(', ')} (+${reszta})` : nazwy.join(', ');
+}
+
+/** Tekst wartości granicznej: liczba po polsku albo cytowany opis. */
+function fmtGranica(wartosc: number | string): string {
+  return typeof wartosc === 'number' ? fmtWartosc(wartosc) : wartosc;
+}
+
 // ---------------------------------------------------------------------------
-// EKRAN INŻYNIERSKI — werdykt · wielkości · obiekty · wiarygodność
+// Katalog kart
 // ---------------------------------------------------------------------------
 
-/** Chip werdyktu (istotność steruje wyłącznie kolorem tokenowym). */
-function Chip({ tekst, istotnosc, testid }: { tekst: string; istotnosc: IstotnoscStanu; testid?: string }) {
+interface GrupaKart {
+  readonly kod: string;
+  readonly nazwa: string;
+  readonly karty: readonly KartaKatalogu[];
+}
+
+/** Grupy w kolejności katalogu (pierwsze wystąpienie) — wyłącznie karty prezentowane. */
+export function grupujKarty(karty: readonly KartaKatalogu[]): GrupaKart[] {
+  const kolejnosc: string[] = [];
+  const mapa = new Map<string, { nazwa: string; karty: KartaKatalogu[] }>();
+  karty
+    .filter((karta) => karta.prezentowany && rodzajPrezentowany(karta.kod))
+    .forEach((karta) => {
+      const istniejaca = mapa.get(karta.grupa.kod);
+      if (istniejaca) {
+        istniejaca.karty.push(karta);
+        return;
+      }
+      kolejnosc.push(karta.grupa.kod);
+      mapa.set(karta.grupa.kod, { nazwa: karta.grupa.nazwa_pl, karty: [karta] });
+    });
+  return kolejnosc.map((kod) => {
+    const grupa = mapa.get(kod)!;
+    return { kod, nazwa: grupa.nazwa, karty: grupa.karty };
+  });
+}
+
+type StanKatalogu =
+  | { readonly rodzaj: 'ladowanie' }
+  | { readonly rodzaj: 'blad'; readonly komunikat: string }
+  | { readonly rodzaj: 'gotowe'; readonly karty: readonly KartaKatalogu[] };
+
+type StanGotowosciKart =
+  | { readonly rodzaj: 'ladowanie' }
+  | { readonly rodzaj: 'blad'; readonly komunikat: string }
+  | {
+      readonly rodzaj: 'gotowe';
+      readonly analizy: Readonly<Record<string, GotowoscAnalizy>>;
+      readonly przedmiot: PrzedmiotAnalizy;
+      readonly modelHash: string | null;
+    };
+
+function StanDanychKarty({ stan, gotowosc }: { stan: StanGotowosciKart; gotowosc?: GotowoscAnalizy }) {
+  if (stan.rodzaj === 'ladowanie') {
+    return <span className="mvd-akad-stan-danych">{S.stanDanychSprawdzanie}</span>;
+  }
+  if (stan.rodzaj === 'blad' || gotowosc === undefined) {
+    return <span className="mvd-akad-stan-danych">{S.stanDanychNieustalony}</span>;
+  }
+  if (gotowosc.gotowosc === 'POTWIERDZONA') {
+    return <span className="mvd-akad-stan-danych mvd-akad-stan-danych--ok">{S.stanDanychPotwierdzona}</span>;
+  }
+  if (gotowosc.gotowosc === 'WYCOFANA') {
+    return <span className="mvd-akad-stan-danych">{S.stanDanychWycofana}</span>;
+  }
   return (
-    <span className={`mvd-akad-chip mvd-akad-chip--${istotnosc}`} data-testid={testid}>
-      {tekst}
+    <span className="mvd-akad-stan-danych mvd-akad-stan-danych--brak">
+      {S.stanDanychBrak(gotowosc.braki.length)}
     </span>
   );
 }
 
+function KartaAnalizy({
+  karta,
+  stanGotowosci,
+  onOtworz,
+}: {
+  karta: KartaKatalogu;
+  stanGotowosci: StanGotowosciKart;
+  onOtworz: () => void;
+}) {
+  const gotowosc = stanGotowosci.rodzaj === 'gotowe' ? stanGotowosci.analizy[karta.kod] : undefined;
+  return (
+    <article className="mvd-akad-karta" data-testid={`mvd-akad-karta-${karta.kod}`}>
+      <h4 className="mvd-akad-karta-tytul">{karta.nazwa_pl}</h4>
+      <div className="mvd-akad-karta-pole">
+        <span className="mvd-akad-karta-etyk">{S.kartaPytanie}</span>
+        <p className="mvd-akad-karta-tresc">{karta.pytanie_pl}</p>
+      </div>
+      <div className="mvd-akad-karta-pole">
+        <span className="mvd-akad-karta-etyk">{S.kartaZakres}</span>
+        <p className="mvd-akad-karta-tresc">{karta.zakres_pl}</p>
+      </div>
+      {karta.wielkosci_glowne.length > 0 && (
+        <div className="mvd-akad-karta-pole">
+          <span className="mvd-akad-karta-etyk">{S.kartaWielkosci}</span>
+          <ul className="mvd-akad-karta-lista">
+            {karta.wielkosci_glowne.map((wielkosc) => (
+              <li key={`${wielkosc.symbol}:${wielkosc.nazwa_pl}`}>
+                <span className="mvd-num">{wielkosc.symbol}</span> — {wielkosc.nazwa_pl}
+                {wielkosc.jednostka !== '-' && wielkosc.jednostka !== '' && ` [${wielkosc.jednostka}]`}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <div className="mvd-akad-karta-pole">
+        <span className="mvd-akad-karta-etyk">
+          {karta.podstawa_oceny.length > 0 ? S.kartaPodstawa : S.kartaPodstawaBrak}
+        </span>
+        {karta.podstawa_oceny.length > 0 ? (
+          <ul className="mvd-akad-karta-lista">
+            {karta.podstawa_oceny.map((podstawa) => (
+              <li key={`${podstawa.symbol}:${podstawa.zrodlo_pl}`}>
+                {podstawa.wielkosc_pl} <span className="mvd-num">{podstawa.symbol}</span>{' '}
+                {podstawa.warunek_pl}{' '}
+                <span className="mvd-num">{fmtGranica(podstawa.wartosc_graniczna)}</span>
+                {podstawa.jednostka !== '-' && podstawa.jednostka !== '' && ` ${podstawa.jednostka}`}
+                {' — '}
+                {podstawa.zrodlo_pl}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mvd-akad-karta-tresc">{karta.bez_podstawy_pl}</p>
+        )}
+      </div>
+      <div className="mvd-akad-karta-stopka">
+        <span>
+          <span className="mvd-akad-karta-etyk">{S.kartaStanDanych}: </span>
+          <StanDanychKarty stan={stanGotowosci} gotowosc={gotowosc} />
+        </span>
+        <button
+          type="button"
+          className="mvd-akad-btn"
+          data-testid={`mvd-akad-karta-otworz-${karta.kod}`}
+          onClick={onOtworz}
+        >
+          {S.kartaOtworz}
+        </button>
+      </div>
+    </article>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Sekcje A–F widoku analizy
+// ---------------------------------------------------------------------------
+
+function Podsekcja({ tytul, opis, testid, children }: { tytul: string; opis?: string; testid: string; children: React.ReactNode }) {
+  return (
+    <div className="mvd-akad-podsekcja" data-testid={testid}>
+      <h4 className="mvd-akad-podsekcja-tytul">{tytul}</h4>
+      {opis && <p className="mvd-akad-opis">{opis}</p>}
+      {children}
+    </div>
+  );
+}
+
+function SekcjaPrzedmiot({
+  przedmiot,
+  modelHash,
+  nazwaObiektu,
+}: {
+  przedmiot: PrzedmiotAnalizy | null;
+  modelHash: string | null;
+  nazwaObiektu: (ref: string) => string;
+}) {
+  const activeProjectName = useAppStateStore((s) => s.activeProjectName);
+  const activeCaseName = useAppStateStore((s) => s.activeCaseName);
+  const punkt = przedmiot?.punkt_przylaczenia ?? null;
+  return (
+    <section className="mvd-akad-sekcja" data-testid="mvd-akad-przedmiot">
+      <div className="mvd-akad-sekcja-naglowek">
+        <span className="mvd-akad-krok">A</span>
+        <h3 className="mvd-akad-sekcja-tytul">{S.przedmiotTytul}</h3>
+      </div>
+      <div className="mvd-akad-wiersze">
+        <div className="mvd-akad-wiersz">
+          <span className="mvd-akad-wiersz-etyk">{S.przedmiotProjekt}</span>
+          <span className="mvd-akad-wiersz-wartosc">{activeProjectName ?? S.kreska}</span>
+        </div>
+        <div className="mvd-akad-wiersz">
+          <span className="mvd-akad-wiersz-etyk">{S.przedmiotPrzypadek}</span>
+          <span className="mvd-akad-wiersz-wartosc">{activeCaseName ?? S.kreska}</span>
+        </div>
+        <div className="mvd-akad-wiersz">
+          <span className="mvd-akad-wiersz-etyk">{S.przedmiotWariant}</span>
+          <span className="mvd-akad-wiersz-wartosc">{S.przedmiotWariantOpis}</span>
+        </div>
+        <div className="mvd-akad-wiersz">
+          <span className="mvd-akad-wiersz-etyk">{S.przedmiotModel}</span>
+          <span className="mvd-akad-wiersz-wartosc">
+            {przedmiot ? (
+              <>
+                {przedmiot.nazwa_modelu !== '' ? przedmiot.nazwa_modelu : S.przedmiotBrakNazwy}
+                {' · '}
+                {S.przedmiotRewizja} <span className="mvd-num">{przedmiot.rewizja}</span>
+                {modelHash && (
+                  <>
+                    {' · '}
+                    {S.przedmiotOdcisk} <span className="mvd-num">{modelHash.slice(0, 12)}</span>
+                  </>
+                )}
+              </>
+            ) : (
+              S.kreska
+            )}
+          </span>
+        </div>
+        <div className="mvd-akad-wiersz">
+          <span className="mvd-akad-wiersz-etyk">{S.przedmiotZakres}</span>
+          <span className="mvd-akad-wiersz-wartosc mvd-num">
+            {przedmiot
+              ? S.przedmiotZakresOpis({
+                  szyny: przedmiot.liczba_szyn,
+                  galezie: przedmiot.liczba_galezi,
+                  transformatory: przedmiot.liczba_transformatorow,
+                  wytworcy: przedmiot.liczba_generatorow,
+                  przeksztaltnikowe: przedmiot.liczba_zrodel_przeksztaltnikowych,
+                })
+              : S.kreska}
+          </span>
+        </div>
+        <div className="mvd-akad-wiersz">
+          <span className="mvd-akad-wiersz-etyk">{S.przedmiotNapiecia}</span>
+          <span className="mvd-akad-wiersz-wartosc mvd-num">
+            {przedmiot ? fmtPoziomyNapiec(przedmiot.poziomy_napiec_kv) : S.kreska}
+          </span>
+        </div>
+        <div className="mvd-akad-wiersz">
+          <span className="mvd-akad-wiersz-etyk">{S.przedmiotCzestotliwosc}</span>
+          <span className="mvd-akad-wiersz-wartosc">
+            {przedmiot?.czestotliwosc_hz != null ? (
+              <span className="mvd-num">{fmtWartosc(przedmiot.czestotliwosc_hz)} Hz</span>
+            ) : (
+              S.przedmiotCzestotliwoscBrak
+            )}
+          </span>
+        </div>
+        <div className="mvd-akad-wiersz">
+          <span className="mvd-akad-wiersz-etyk">{S.przedmiotPunkt}</span>
+          <span className="mvd-akad-wiersz-wartosc">
+            {punkt
+              ? `${nazwaObiektu(punkt.ref)} (${S.przedmiotPunktZrodlo}: ${nazwaObiektu(punkt.zrodlo)})`
+              : S.przedmiotPunktBrak}
+          </span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SekcjaPytanie({ karta }: { karta: KartaKatalogu }) {
+  return (
+    <section className="mvd-akad-sekcja" data-testid="mvd-akad-pytanie">
+      <div className="mvd-akad-sekcja-naglowek">
+        <span className="mvd-akad-krok">B</span>
+        <h3 className="mvd-akad-sekcja-tytul">{S.pytanieTytul}</h3>
+      </div>
+      <p className="mvd-akad-cel-tresc">{karta.pytanie_pl}</p>
+      <p className="mvd-akad-opis">
+        <b>{S.zakresBadanyTytul}: </b>
+        {karta.zakres_pl}
+      </p>
+    </section>
+  );
+}
+
+function ListaWarunkow({
+  warunki,
+  wariant,
+  nazwaObiektu,
+  testid,
+}: {
+  warunki: readonly WarunekGotowosci[];
+  wariant: 'sprawdzone' | 'braki' | 'uwagi';
+  nazwaObiektu: (ref: string) => string;
+  testid: string;
+}) {
+  return (
+    <ul className="mvd-akad-warunki" data-testid={testid}>
+      {warunki.map((warunek) => {
+        const klasa = warunek.spelniony
+          ? 'mvd-akad-warunek mvd-akad-warunek--spelniony'
+          : wariant === 'uwagi'
+            ? 'mvd-akad-warunek mvd-akad-warunek--uwaga'
+            : 'mvd-akad-warunek mvd-akad-warunek--niespelniony';
+        return (
+          <li className={klasa} key={warunek.kod} title={warunek.kod}>
+            <span className="mvd-akad-warunek-stan">
+              {warunek.spelniony ? S.warunekSpelniony : S.warunekNiespelniony}
+            </span>
+            <span>
+              {warunek.opis_pl}
+              {warunek.elementy.length > 0 && (
+                <span className="mvd-akad-warunek-elementy">
+                  {S.gotowoscElementy}: {nazwyElementow(warunek.elementy, nazwaObiektu)}
+                </span>
+              )}
+              {!warunek.spelniony && warunek.klucz_parametru !== null && wariant === 'braki' && (
+                <span className="mvd-akad-warunek-elementy">{S.gotowoscUzupelnijPole}</span>
+              )}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+type StanGotowosciAnalizy =
+  | { readonly rodzaj: 'ladowanie'; readonly dane?: GotowoscAnalizy }
+  | { readonly rodzaj: 'blad'; readonly komunikat: string; readonly dane?: GotowoscAnalizy }
+  | { readonly rodzaj: 'gotowe'; readonly dane: GotowoscAnalizy };
+
+function SekcjaDane({
+  karta,
+  gotowosc,
+  modelHash,
+  przedmiot,
+  nazwaObiektu,
+  formularz,
+}: {
+  karta: KartaKatalogu;
+  gotowosc: StanGotowosciAnalizy;
+  modelHash: string | null;
+  przedmiot: PrzedmiotAnalizy | null;
+  nazwaObiektu: (ref: string) => string;
+  formularz: React.ReactNode;
+}) {
+  const dane = gotowosc.dane;
+  const proponowane = dane ? Object.entries(dane.proponowane) : [];
+  return (
+    <section className="mvd-akad-sekcja" data-testid="mvd-akad-dane">
+      <div className="mvd-akad-sekcja-naglowek">
+        <span className="mvd-akad-krok">C</span>
+        <h3 className="mvd-akad-sekcja-tytul">{S.daneTytul}</h3>
+      </div>
+      <p className="mvd-akad-opis">{S.daneOpis}</p>
+
+      <Podsekcja tytul={S.daneZModelu} opis={S.daneZModeluOpis} testid="mvd-akad-dane-z-modelu">
+        {dane && dane.dane_z_modelu.length > 0 ? (
+          <ul className="mvd-akad-dane-lista">
+            {dane.dane_z_modelu.map((pozycja) => (
+              <li className="mvd-akad-dane-pozycja" key={pozycja.nazwa_pl}>
+                <span className="mvd-akad-dane-nazwa">{pozycja.nazwa_pl}</span>
+                <span className="mvd-akad-dane-wartosc mvd-num">{pozycja.wartosc_pl}</span>
+                {pozycja.elementy.length > 0 && (
+                  <span className="mvd-akad-dane-uwaga">
+                    {nazwyElementow(pozycja.elementy, nazwaObiektu)}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : karta.dane.z_modelu.length > 0 ? (
+          <ul className="mvd-akad-dane-lista">
+            {karta.dane.z_modelu.map((pozycja) => (
+              <li className="mvd-akad-dane-pozycja" key={pozycja.nazwa_pl}>
+                <span className="mvd-akad-dane-nazwa">{pozycja.nazwa_pl}</span>
+                <span className="mvd-akad-dane-uwaga">{pozycja.elementy_pl}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mvd-akad-opis">{S.daneZModeluBrak}</p>
+        )}
+      </Podsekcja>
+
+      <Podsekcja tytul={S.daneZPrzypadku} testid="mvd-akad-dane-z-przypadku">
+        <p className="mvd-akad-opis">
+          {S.daneZPrzypadkuOpis}
+          {przedmiot && (
+            <>
+              {' '}
+              {S.przedmiotRewizja} <span className="mvd-num">{przedmiot.rewizja}</span>
+            </>
+          )}
+          {modelHash && (
+            <>
+              {' · '}
+              {S.przedmiotOdcisk} <span className="mvd-num">{modelHash.slice(0, 12)}</span>
+            </>
+          )}
+        </p>
+      </Podsekcja>
+
+      <Podsekcja tytul={S.daneOdUzytkownika} opis={S.daneOdUzytkownikaOpis} testid="mvd-akad-dane-od-uzytkownika">
+        {karta.dane.od_uzytkownika.length === 0 ? (
+          <p className="mvd-akad-opis">{S.daneOdUzytkownikaBrak}</p>
+        ) : (
+          <ul className="mvd-akad-dane-lista">
+            {karta.dane.od_uzytkownika.map((parametr) => (
+              <li className="mvd-akad-dane-pozycja" key={parametr.klucz}>
+                <span className="mvd-akad-dane-nazwa">
+                  {parametr.nazwa_pl}
+                  {parametr.jednostka !== '-' && parametr.jednostka !== '' && ` [${parametr.jednostka}]`}
+                  <span
+                    className={
+                      parametr.wymagane
+                        ? 'mvd-akad-znacznik mvd-akad-znacznik--wymagane'
+                        : 'mvd-akad-znacznik'
+                    }
+                  >
+                    {parametr.wymagane ? S.daneWymagane : S.daneOpcjonalne}
+                  </span>
+                </span>
+                {parametr.opis_pl !== '' && <span className="mvd-akad-dane-uwaga">{parametr.opis_pl}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+        {proponowane.length > 0 && (
+          <div className="mvd-akad-podsekcja" data-testid="mvd-akad-dane-propozycje">
+            <h4 className="mvd-akad-podsekcja-tytul">{S.propozycjaTytul}</h4>
+            <p className="mvd-akad-opis">{S.propozycjaOpis}</p>
+            <ul className="mvd-akad-dane-lista">
+              {proponowane.map(([klucz, propozycja]) => (
+                <li className="mvd-akad-dane-pozycja" key={klucz}>
+                  <span className="mvd-akad-dane-nazwa">
+                    {karta.dane.od_uzytkownika.find((p) => p.klucz === klucz)?.nazwa_pl ?? klucz}
+                  </span>
+                  <span className="mvd-akad-dane-wartosc mvd-num">
+                    {typeof propozycja.wartosc === 'string' && NAZWY_WARTOSCI[propozycja.wartosc] !== undefined
+                      ? NAZWY_WARTOSCI[propozycja.wartosc]
+                      : fmtWartosc(propozycja.wartosc)}
+                  </span>
+                  <span className="mvd-akad-dane-uwaga">
+                    {S.propozycjaZrodlo}: {propozycja.zrodlo_pl}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {formularz}
+      </Podsekcja>
+
+      <Podsekcja tytul={S.daneDomyslne} opis={S.daneDomyslneOpis} testid="mvd-akad-dane-domyslne">
+        {karta.dane.domyslne_solvera.length === 0 ? (
+          <p className="mvd-akad-opis">{S.daneDomyslneBrak}</p>
+        ) : (
+          <ul className="mvd-akad-dane-lista">
+            {karta.dane.domyslne_solvera.map((domyslna) => (
+              <li className="mvd-akad-dane-pozycja" key={domyslna.klucz}>
+                <span className="mvd-akad-dane-nazwa">{domyslna.nazwa_pl}</span>
+                <span className="mvd-akad-dane-wartosc mvd-num">
+                  {fmtGranica(domyslna.wartosc)}
+                  {domyslna.jednostka !== '-' && domyslna.jednostka !== '' && ` ${domyslna.jednostka}`}
+                </span>
+                <span className="mvd-akad-dane-uwaga">{domyslna.uzasadnienie_pl}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Podsekcja>
+
+      <Podsekcja tytul={S.daneBrakujace} testid="mvd-akad-dane-brakujace">
+        {dane === undefined ? (
+          <p className="mvd-akad-opis">
+            {gotowosc.rodzaj === 'blad' ? gotowosc.komunikat : S.gotowoscLadowanie}
+          </p>
+        ) : dane.braki.length === 0 ? (
+          <p className="mvd-akad-opis" data-testid="mvd-akad-dane-brakujace-brak">
+            {S.daneBrakujaceBrak}
+          </p>
+        ) : (
+          <ListaWarunkow
+            warunki={dane.braki}
+            wariant="braki"
+            nazwaObiektu={nazwaObiektu}
+            testid="mvd-akad-dane-brakujace-lista"
+          />
+        )}
+      </Podsekcja>
+    </section>
+  );
+}
+
+function SekcjaGotowosc({
+  gotowosc,
+  nazwaObiektu,
+  onPonow,
+}: {
+  gotowosc: StanGotowosciAnalizy;
+  nazwaObiektu: (ref: string) => string;
+  onPonow: () => void;
+}) {
+  const dane = gotowosc.dane;
+  const stanChipu = dane ? etykietaGotowosci(dane.gotowosc) : null;
+  return (
+    <section
+      className="mvd-akad-sekcja"
+      data-testid="mvd-akad-gotowosc"
+      data-gotowosc={dane?.gotowosc ?? (gotowosc.rodzaj === 'blad' ? 'BLAD' : 'SPRAWDZANIE')}
+    >
+      <div className="mvd-akad-sekcja-naglowek">
+        <span className="mvd-akad-krok">D</span>
+        <h3 className="mvd-akad-sekcja-tytul">{S.gotowoscTytul}</h3>
+        {stanChipu && (
+          <Chip tekst={stanChipu.tekst} istotnosc={stanChipu.istotnosc} testid="mvd-akad-gotowosc-chip" />
+        )}
+        {gotowosc.rodzaj === 'ladowanie' && (
+          <span className="mvd-akad-licznik">{S.gotowoscLadowanie}</span>
+        )}
+      </div>
+      <p className="mvd-akad-opis">{S.gotowoscOpis}</p>
+      {gotowosc.rodzaj === 'blad' && (
+        <StanPanel
+          komunikat={S.gotowoscBlad}
+          opis={gotowosc.komunikat}
+          wariant="blad"
+          testid="mvd-akad-gotowosc-blad"
+          akcja={{ etykieta: S.gotowoscPonow, onKlik: onPonow }}
+        />
+      )}
+      {dane && dane.gotowosc === 'WYCOFANA' && dane.powod_wycofania_pl && (
+        <p className="mvd-akad-opis" data-testid="mvd-akad-gotowosc-wycofana">
+          {dane.powod_wycofania_pl}
+        </p>
+      )}
+      {dane && dane.gotowosc !== 'WYCOFANA' && (
+        <>
+          {dane.braki.length > 0 && (
+            <Podsekcja tytul={S.gotowoscBraki} testid="mvd-akad-gotowosc-braki">
+              <ListaWarunkow
+                warunki={dane.braki}
+                wariant="braki"
+                nazwaObiektu={nazwaObiektu}
+                testid="mvd-akad-gotowosc-braki-lista"
+              />
+            </Podsekcja>
+          )}
+          <Podsekcja tytul={S.gotowoscSprawdzone} testid="mvd-akad-gotowosc-warunki">
+            <ListaWarunkow
+              warunki={dane.warunki.filter((w) => w.blokujacy)}
+              wariant="sprawdzone"
+              nazwaObiektu={nazwaObiektu}
+              testid="mvd-akad-gotowosc-warunki-lista"
+            />
+          </Podsekcja>
+          {dane.uwagi.length > 0 && (
+            <Podsekcja tytul={S.gotowoscUwagi} testid="mvd-akad-gotowosc-uwagi">
+              <ListaWarunkow
+                warunki={dane.uwagi}
+                wariant="uwagi"
+                nazwaObiektu={nazwaObiektu}
+                testid="mvd-akad-gotowosc-uwagi-lista"
+              />
+            </Podsekcja>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+function SekcjaKryteria({ karta }: { karta: KartaKatalogu }) {
+  return (
+    <section className="mvd-akad-sekcja" data-testid="mvd-akad-kryteria">
+      <div className="mvd-akad-sekcja-naglowek">
+        <span className="mvd-akad-krok">E</span>
+        <h3 className="mvd-akad-sekcja-tytul">{S.kryteriaTytul}</h3>
+      </div>
+      <p className="mvd-akad-opis">{S.kryteriaOpis}</p>
+      {karta.podstawa_oceny.length === 0 ? (
+        <p className="mvd-akad-kryteria-brak" data-testid="mvd-akad-kryteria-brak">
+          <span className="mvd-akad-kryteria-brak-tytul">{S.kryteriaBrakTytul}</span>
+          {karta.bez_podstawy_pl}
+        </p>
+      ) : (
+        <div className="mvd-akad-tabela-otoczka">
+          <table className="mvd-akad-tabela" data-testid="mvd-akad-kryteria-tabela">
+            <thead>
+              <tr>
+                <th>{S.kolWielkosc}</th>
+                <th>{S.kolSymbol}</th>
+                <th>{S.kolWarunek}</th>
+                <th>{S.kolGranica}</th>
+                <th>{S.kolJednostka}</th>
+                <th>{S.kolZrodlo}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {karta.podstawa_oceny.map((podstawa, indeks) => (
+                <tr key={`${podstawa.symbol}:${indeks}`}>
+                  <td>{podstawa.wielkosc_pl}</td>
+                  <td className="mvd-num">{podstawa.symbol}</td>
+                  <td>{podstawa.warunek_pl}</td>
+                  <td className="mvd-num">{fmtGranica(podstawa.wartosc_graniczna)}</td>
+                  <td className="mvd-num">{podstawa.jednostka}</td>
+                  <td>{podstawa.zrodlo_pl}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function SekcjaZakres({ karta }: { karta: KartaKatalogu }) {
+  return (
+    <section className="mvd-akad-sekcja" data-testid="mvd-akad-zakres">
+      <div className="mvd-akad-sekcja-naglowek">
+        <span className="mvd-akad-krok">F</span>
+        <h3 className="mvd-akad-sekcja-tytul">{S.zakresTytul}</h3>
+      </div>
+      <p className="mvd-akad-cel-tresc">{karta.zakres_pl}</p>
+      {karta.uwagi_metody_pl.length > 0 && (
+        <Podsekcja tytul={S.zakresUwagi} testid="mvd-akad-zakres-uwagi">
+          <ul className="mvd-akad-karta-lista">
+            {karta.uwagi_metody_pl.map((uwaga) => (
+              <li key={uwaga}>{uwaga}</li>
+            ))}
+          </ul>
+        </Podsekcja>
+      )}
+      {karta.katalog_odniesienia !== null && <PanelOdniesien namespace={karta.katalog_odniesienia} />}
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Ekran wyniku — ocena · wielkości · obiekty · wiarygodność (jak przed kartą B-02)
+// ---------------------------------------------------------------------------
+
 /**
- * Werdykt analizy — CYTAT pola statusu z odpowiedzi solvera. Zero ocen w UI:
- * dla werdyktu zbiorczego okno zlicza wystąpienia wartości statusu (jak licznik
- * wierszy tabeli), a nie porównuje liczb z progiem.
+ * Wynik oceny analizy — CYTAT pola statusu z odpowiedzi solvera. Zero ocen w UI:
+ * dla oceny zbiorczej okno zlicza wystąpienia wartości statusu (jak licznik
+ * wierszy tabeli), a nie porównuje liczb z progiem. Podstawa oceny pochodzi
+ * z karty katalogu (jedno źródło prawdy o kryterium).
  */
-function PanelWerdyktu({ rodzaj, payload }: { rodzaj: string; payload: unknown }) {
+function PanelWerdyktu({ rodzaj, payload, karta }: { rodzaj: string; payload: unknown; karta: KartaKatalogu }) {
   const projekt = PREZENTACJA[rodzaj as RodzajPrezentowany];
   if (!projekt) return null;
   const w = projekt.werdykt;
 
   let tresc: React.ReactNode;
   if (w.rodzaj === 'pojedynczy') {
-    // Pierwsza OBECNA ścieżka wygrywa (dobór uziemienia melduje werdykt pod
-    // innym kluczem, gdy danych wejściowych brakuje) — zero podstawiania.
     const surowa = w.sciezki
       .map((sciezka) => odczytaj(payload, sciezka))
       .find((wartosc) => typeof wartosc === 'string');
@@ -258,15 +895,19 @@ function PanelWerdyktu({ rodzaj, payload }: { rodzaj: string; payload: unknown }
       </div>
       <div className="mvd-akad-wiersze">
         <div className="mvd-akad-wiersz">
-          <span className="mvd-akad-wiersz-etyk">{S.kryteriumEtykieta}</span>
-          <span className="mvd-akad-wiersz-wartosc">{projekt.kryterium}</span>
+          <span className="mvd-akad-wiersz-etyk">{S.podstawaEtykieta}</span>
+          <span className="mvd-akad-wiersz-wartosc">
+            {karta.podstawa_oceny.length > 0
+              ? karta.podstawa_oceny
+                  .map(
+                    (p) =>
+                      `${p.wielkosc_pl} ${p.symbol} ${p.warunek_pl} ${fmtGranica(p.wartosc_graniczna)}`
+                      + `${p.jednostka !== '-' && p.jednostka !== '' ? ` ${p.jednostka}` : ''} (${p.zrodlo_pl})`,
+                  )
+                  .join('; ')
+              : `${S.kryteriaBrakTytul}: ${karta.bez_podstawy_pl}`}
+          </span>
         </div>
-        {projekt.norma !== undefined && (
-          <div className="mvd-akad-wiersz">
-            <span className="mvd-akad-wiersz-etyk">{S.normaEtykieta}</span>
-            <span className="mvd-akad-wiersz-wartosc">{projekt.norma}</span>
-          </div>
-        )}
       </div>
     </section>
   );
@@ -280,9 +921,6 @@ function PanelWielkosci({ rodzaj, payload }: { rodzaj: string; payload: unknown 
     const wartosc = odczytaj(payload, pole.sciezka);
     return wartosc !== undefined && wartosc !== null;
   });
-  // Karta W2 pkt 5: pozycja pominięta renderuje się TYLKO gdy solver faktycznie
-  // zwrócił choć jedno z jej pól (uczciwość wobec BIEŻĄCEGO wyniku — nie nota
-  // o polu, którego kontrakt tego biegu w ogóle nie niesie).
   const pominieteObecne = (projekt.wielkosciPominiete ?? []).filter((pozycja) =>
     pozycja.sciezki.some((sciezka) => {
       const wartosc = odczytaj(payload, sciezka);
@@ -333,11 +971,7 @@ function PanelWielkosci({ rodzaj, payload }: { rodzaj: string; payload: unknown 
   );
 }
 
-/**
- * Formatuje wartość do postaci widocznej dla projektanta: wartości słownikowe
- * solvera (kody metod, sposobów uziemienia, celów optymalizacji) przechodzą
- * przez słownik polski; reszta — przez wspólny formater liczb.
- */
+/** Wartości słownikowe solvera przez słownik polski; reszta — wspólny formater liczb. */
 function fmtPole(wartosc: unknown): string {
   if (typeof wartosc === 'string' && NAZWY_WARTOSCI[wartosc] !== undefined) {
     return NAZWY_WARTOSCI[wartosc];
@@ -355,11 +989,6 @@ function PanelObiektow({
   payload: unknown;
   nazwaObiektu: (ref: string) => string;
 }) {
-  /**
-   * Etykieta obiektu wiersza. Dla rankingu niepewności referencja niesie
-   * DODATKOWO klucz parametru (`<ref>.<parametr>`) — rozbijamy ją, żeby wiersz
-   * mówił „transformator TR1 · napięcie zwarcia", a nie pokazywał ścieżki klucza.
-   */
   const etykietaWiersza = (surowa: string): string => {
     if (!tabela.refZParametrem) return nazwaObiektu(surowa);
     const granica = surowa.lastIndexOf('.');
@@ -412,9 +1041,6 @@ function PanelObiektow({
                           </td>
                         );
                       }
-                      // Kolumna referencyjna (np. szyna przyłączenia silnika) też
-                      // dostaje nazwę ze schematu — inaczej surowy ref wracałby
-                      // bokiem, w innej kolumnie tej samej tabeli.
                       const czyRef = kolumna.klucz.endsWith('_ref');
                       return (
                         <td key={kolumna.klucz} className={czyRef ? undefined : 'mvd-num'}>
@@ -433,11 +1059,7 @@ function PanelObiektow({
   );
 }
 
-/**
- * Uczciwy stan niekompletny — solver melduje brak danych zamiast fabrykować
- * werdykt. Panel pokazuje JEGO komunikat (już po polsku) i listę brakujących
- * danych nazwanych po ludzku, a nie kluczami kontraktu.
- */
+/** Uczciwy stan niekompletny — solver melduje brak danych zamiast fabrykować ocenę. */
 function PanelBrakow({ payload }: { payload: unknown }) {
   const komunikat = odczytaj(payload, SCIEZKA_BRAKOW.komunikat);
   const braki = odczytaj(payload, SCIEZKA_BRAKOW.brakujacePola);
@@ -461,7 +1083,7 @@ function PanelBrakow({ payload }: { payload: unknown }) {
   );
 }
 
-/** Wiarygodność wyniku — blok `sanity` solvera (kontrola granic fizycznych). */
+/** Wiarygodność wyniku — blok kontroli granic fizycznych solvera. */
 function PanelWiarygodnosci({ payload }: { payload: unknown }) {
   const status = odczytaj(payload, SCIEZKA_WIARYGODNOSCI.status);
   if (typeof status !== 'string') return null;
@@ -495,16 +1117,7 @@ function PanelWiarygodnosci({ payload }: { payload: unknown }) {
   );
 }
 
-/**
- * Ranking N-1 nieprezentowany (karta W3-E) — PAYLOAD-DRIVEN jak `PanelBrakow`/
- * `PanelWiarygodnosci`: renderuje się dla KAŻDEGO rodzaju, którego odpowiedź
- * niesie `ranking_n1` (dziś wyłącznie `reliability_contingency` — backend
- * dokłada pole, front go tylko odczytuje; ZERO logiki rodzaju tutaj, zero
- * fizyki). Ranking liczony z prądu gałęzi bez sprzężenia sieci NIE jest
- * kanonem (kanon = pełny re-solve rozpływu, ekran „Wyniki › Kontyngencje") —
- * sekcja pokazuje STAN z powodem po polsku i przejściem do ekranu kanonicznego,
- * zamiast tabeli, którą backend już nie wysyła.
- */
+/** Ranking N-1 nieprezentowany (karta W3-E) — stan z powodem i przejściem do kanonu. */
 function PanelRankinguNieprezentowanego({
   payload,
   onPrzejdzDoKontyngencji,
@@ -532,17 +1145,7 @@ function PanelRankinguNieprezentowanego({
   );
 }
 
-/**
- * Źródła przekształtnikowe wejścia V12.6 (karta W2-C, zero fabrykacji): dla
- * `power_quality_harmonics`/`ssci_impedance` pokazuje (a) proweniencję widma
- * (KATALOG/RECZNE) źródeł, które DO wejścia solvera trafiły, i (b) listę
- * generatorów POMINIĘTYCH (brak karty katalogowej albo brak jej widma), z
- * kodem gotowości i powodem po polsku. Pola pochodzą wprost z odpowiedzi API
- * (`OdpowiedzWyniku.pominiete_zrodla`/`.zrodla_widma`), NIE z odczytu po
- * ścieżce w `wynik.result.result` — to dane O WEJŚCIU solvera, nie o jego
- * wyniku. Uczciwy stan zerowy: brak obu list = sekcja się nie renderuje
- * (nie ma czego pokazać, martwy nagłówek to gorszy stan niż jego brak).
- */
+/** Źródła przekształtnikowe wejścia (karta W2-C): proweniencja widma i źródła pominięte. */
 function PanelZrodelHarmonicznych({ wynik }: { wynik: OdpowiedzWyniku }) {
   const nazwaObiektu = useNazwaObiektu();
   const zrodlaWidma = wynik.zrodla_widma ?? [];
@@ -571,9 +1174,8 @@ function PanelZrodelHarmonicznych({ wynik }: { wynik: OdpowiedzWyniku }) {
           <p className="mvd-akad-opis">{S.zrodlaPominieteOpis}</p>
           <ul className="mvd-akad-naruszenia" data-testid="mvd-akad-zrodla-pominiete-lista">
             {pominieteZrodla.map((zrodlo) => (
-              <li key={zrodlo.ref}>
-                {nazwaObiektu(zrodlo.ref)} — {zrodlo.powod} ({S.zrodlaPominieteKodEtykieta}:{' '}
-                <span className="mvd-num">{zrodlo.kod}</span>)
+              <li key={zrodlo.ref} title={zrodlo.kod}>
+                {nazwaObiektu(zrodlo.ref)} — {S.zrodlaPominietePowod}: {zrodlo.powod}
               </li>
             ))}
           </ul>
@@ -583,12 +1185,7 @@ function PanelZrodelHarmonicznych({ wynik }: { wynik: OdpowiedzWyniku }) {
   );
 }
 
-/**
- * Zapis techniczny odpowiedzi solvera — ZWINIĘTY, jawnie opisany jako materiał
- * audytowy. Pełne spłaszczenie zostaje (karta V126-OKNA: limit ma wynikać
- * z danych), ale przestaje udawać ekran projektanta: nazwy pól są tu nazwami
- * kontraktu obliczeniowego i tak są podpisane.
- */
+/** Zapis techniczny odpowiedzi solvera — ZWINIĘTY materiał audytowy. */
 function PanelZapisuTechnicznego({ wynik }: { wynik: OdpowiedzWyniku }) {
   const wiersze = useMemo(() => splaszczWynik(wynik.result.result), [wynik]);
   const grupy = useMemo(() => pogrupujWynik(wiersze), [wiersze]);
@@ -604,36 +1201,24 @@ function PanelZapisuTechnicznego({ wynik }: { wynik: OdpowiedzWyniku }) {
       pozycji={wiersze.length}
       pustyKomunikat={S.wynikPusty}
     >
-      {(
-        <div data-mvd-zapis-techniczny="1">
-          {grupy.map((grupa) => (
-            <div
-              className="mvd-akad-grupa"
-              key={grupa.klucz}
-              data-testid={`mvd-akad-grupa-${grupa.klucz}`}
-            >
-              <h4 className="mvd-akad-grupa-tytul">{grupa.klucz}</h4>
-              <div className="mvd-akad-wiersze">
-                {grupa.wiersze.map((wiersz) => (
-                  <div className="mvd-akad-wiersz" key={wiersz.sciezka}>
-                    <span className="mvd-akad-wiersz-etyk">{wiersz.sciezka}</span>
-                    <span className="mvd-akad-wiersz-wartosc mvd-num">
-                      {fmtWartosc(wiersz.wartosc)}
-                    </span>
-                  </div>
-                ))}
-              </div>
+      <div data-mvd-zapis-techniczny="1">
+        {grupy.map((grupa) => (
+          <div className="mvd-akad-grupa" key={grupa.klucz} data-testid={`mvd-akad-grupa-${grupa.klucz}`}>
+            <h4 className="mvd-akad-grupa-tytul">{grupa.klucz}</h4>
+            <div className="mvd-akad-wiersze">
+              {grupa.wiersze.map((wiersz) => (
+                <div className="mvd-akad-wiersz" key={wiersz.sciezka}>
+                  <span className="mvd-akad-wiersz-etyk">{wiersz.sciezka}</span>
+                  <span className="mvd-akad-wiersz-wartosc mvd-num">{fmtWartosc(wiersz.wartosc)}</span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          </div>
+        ))}
+      </div>
     </Zwijana>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Ślad WHITE BOX — komplet kroków
-// ---------------------------------------------------------------------------
 
 function PanelSladu({ slad }: { slad: OdpowiedzSladu }) {
   const kroki = krokiSladuDoWidoku(slad.steps);
@@ -648,39 +1233,33 @@ function PanelSladu({ slad }: { slad: OdpowiedzSladu }) {
       pozycji={kroki.length}
       pustyKomunikat={S.sladPusty}
     >
-      {(
-        <div className="mvd-akad-tabela-otoczka">
-          <table className="mvd-akad-tabela">
-            <thead>
-              <tr>
-                <th>{S.sladKolKrok}</th>
-                <th>{S.sladKolWzor}</th>
-                <th>{S.sladKolPodstawienie}</th>
-                <th>{S.sladKolWynik}</th>
-                <th>{S.sladKolJednostka}</th>
+      <div className="mvd-akad-tabela-otoczka">
+        <table className="mvd-akad-tabela">
+          <thead>
+            <tr>
+              <th>{S.sladKolKrok}</th>
+              <th>{S.sladKolWzor}</th>
+              <th>{S.sladKolPodstawienie}</th>
+              <th>{S.sladKolWynik}</th>
+              <th>{S.sladKolJednostka}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {kroki.map((krok) => (
+              <tr key={krok.proof_ref} data-testid={`mvd-akad-slad-krok-${krok.step}`}>
+                <td className="mvd-num">{krok.step}</td>
+                <td className="mvd-num">{krok.formula}</td>
+                <td>{krok.substitution}</td>
+                <td className="mvd-num">{krok.result_pl ?? S.kreska}</td>
+                <td>{krok.unit_check}</td>
               </tr>
-            </thead>
-            <tbody>
-              {kroki.map((krok) => (
-                <tr key={krok.proof_ref} data-testid={`mvd-akad-slad-krok-${krok.step}`}>
-                  <td className="mvd-num">{krok.step}</td>
-                  <td className="mvd-num">{krok.formula}</td>
-                  <td>{krok.substitution}</td>
-                  <td className="mvd-num">{krok.result_pl ?? S.kreska}</td>
-                  <td>{krok.unit_check}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            ))}
+          </tbody>
+        </table>
+      </div>
     </Zwijana>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Dowód — komplet kroków pakietu
-// ---------------------------------------------------------------------------
 
 function PanelDowodu({ dowod }: { dowod: PakietDowodu }) {
   const kroki = krokiDowoduDoWidoku(dowod.steps);
@@ -709,39 +1288,33 @@ function PanelDowodu({ dowod }: { dowod: PakietDowodu }) {
           <span className="mvd-akad-wiersz-wartosc mvd-num">{dowod.trace_step_count}</span>
         </div>
       </div>
-      {(
-        <div className="mvd-akad-tabela-otoczka">
-          <table className="mvd-akad-tabela">
-            <thead>
-              <tr>
-                <th>{S.sladKolKrok}</th>
-                <th>{S.sladKolWzor}</th>
-                <th>{S.sladKolPodstawienie}</th>
-                <th>{S.sladKolWynik}</th>
-                <th>{S.sladKolJednostka}</th>
+      <div className="mvd-akad-tabela-otoczka">
+        <table className="mvd-akad-tabela">
+          <thead>
+            <tr>
+              <th>{S.sladKolKrok}</th>
+              <th>{S.sladKolWzor}</th>
+              <th>{S.sladKolPodstawienie}</th>
+              <th>{S.sladKolWynik}</th>
+              <th>{S.sladKolJednostka}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {kroki.map((krok) => (
+              <tr key={krok.proof_ref} data-testid={`mvd-akad-dowod-krok-${krok.ordinal}`}>
+                <td className="mvd-num">{krok.ordinal}</td>
+                <td className="mvd-num">{krok.formula ?? S.kreska}</td>
+                <td>{krok.substitution ?? S.kreska}</td>
+                <td className="mvd-num">{krok.result_pl ?? S.kreska}</td>
+                <td>{krok.unit_check ?? S.kreska}</td>
               </tr>
-            </thead>
-            <tbody>
-              {kroki.map((krok) => (
-                <tr key={krok.proof_ref} data-testid={`mvd-akad-dowod-krok-${krok.ordinal}`}>
-                  <td className="mvd-num">{krok.ordinal}</td>
-                  <td className="mvd-num">{krok.formula ?? S.kreska}</td>
-                  <td>{krok.substitution ?? S.kreska}</td>
-                  <td className="mvd-num">{krok.result_pl ?? S.kreska}</td>
-                  <td>{krok.unit_check ?? S.kreska}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            ))}
+          </tbody>
+        </table>
+      </div>
     </Zwijana>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Raport — komplet sekcji i metryk
-// ---------------------------------------------------------------------------
 
 function PanelRaportu({ raport }: { raport: RaportAnalizy }) {
   const sekcje = sekcjeRaportuDoWidoku(raport);
@@ -770,37 +1343,32 @@ function PanelRaportu({ raport }: { raport: RaportAnalizy }) {
           <span className="mvd-akad-wiersz-wartosc">{fmtPole(raport.export_policy)}</span>
         </div>
       </div>
-      {(
-        sekcje.map((sekcja) => (
-          <div className="mvd-akad-grupa" key={sekcja.section_id} data-testid={`mvd-akad-raport-sekcja-${sekcja.section_id}`}>
-            <h4 className="mvd-akad-grupa-tytul">{sekcja.title}</h4>
-            <div className="mvd-akad-wiersze">
-              {sekcja.metrics.map((metryka) => (
-                <div className="mvd-akad-wiersz" key={`${sekcja.section_id}:${metryka.label}`}>
-                  <span className="mvd-akad-wiersz-etyk">{metryka.label}</span>
-                  <span className="mvd-akad-wiersz-wartosc mvd-num">{fmtWartosc(metryka.value)}</span>
-                </div>
-              ))}
-            </div>
+      {sekcje.map((sekcja) => (
+        <div className="mvd-akad-grupa" key={sekcja.section_id} data-testid={`mvd-akad-raport-sekcja-${sekcja.section_id}`}>
+          <h4 className="mvd-akad-grupa-tytul">{sekcja.title}</h4>
+          <div className="mvd-akad-wiersze">
+            {sekcja.metrics.map((metryka) => (
+              <div className="mvd-akad-wiersz" key={`${sekcja.section_id}:${metryka.label}`}>
+                <span className="mvd-akad-wiersz-etyk">{metryka.label}</span>
+                <span className="mvd-akad-wiersz-wartosc mvd-num">{fmtWartosc(metryka.value)}</span>
+              </div>
+            ))}
           </div>
-        ))
-      )}
+        </div>
+      ))}
     </Zwijana>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Dane odniesienia (katalog V12.6)
-// ---------------------------------------------------------------------------
-
-type StanKatalogu =
+type StanOdniesien =
   | { readonly rodzaj: 'idle' }
   | { readonly rodzaj: 'ladowanie' }
   | { readonly rodzaj: 'blad'; readonly komunikat: string }
   | { readonly rodzaj: 'gotowe'; readonly pozycje: readonly { sciezka: string; wartosc: unknown }[] };
 
-function PanelKatalogu({ namespace }: { namespace: string }) {
-  const [stan, setStan] = useState<StanKatalogu>({ rodzaj: 'idle' });
+/** Dane odniesienia (katalog wartości odniesienia rodzaju) — wczytywane na żądanie. */
+function PanelOdniesien({ namespace }: { namespace: string }) {
+  const [stan, setStan] = useState<StanOdniesien>({ rodzaj: 'idle' });
   const [otwarte, setOtwarte] = useState(false);
 
   const wczytaj = useCallback(() => {
@@ -814,14 +1382,14 @@ function PanelKatalogu({ namespace }: { namespace: string }) {
         setStan({ rodzaj: 'gotowe', pozycje });
       })
       .catch((err: unknown) => {
-        setStan({ rodzaj: 'blad', komunikat: err instanceof Error ? err.message : S.katalogBlad });
+        setStan({ rodzaj: 'blad', komunikat: err instanceof Error ? err.message : S.odniesieniaBlad });
       });
   }, [namespace]);
 
   return (
-    <section className="mvd-akad-sekcja" data-testid="mvd-akad-katalog">
+    <div className="mvd-akad-podsekcja" data-testid="mvd-akad-katalog">
       <div className="mvd-akad-sekcja-naglowek">
-        <h3 className="mvd-akad-sekcja-tytul">{S.katalogTytul}</h3>
+        <h4 className="mvd-akad-podsekcja-tytul">{S.odniesieniaTytul}</h4>
         <button
           type="button"
           className="mvd-akad-btn-wtorny"
@@ -833,23 +1401,18 @@ function PanelKatalogu({ namespace }: { namespace: string }) {
             if (nastepny && stan.rodzaj === 'idle') wczytaj();
           }}
         >
-          {otwarte ? S.katalogUkryj : S.katalogPokaz}
+          {otwarte ? S.odniesieniaUkryj : S.odniesieniaPokaz}
         </button>
       </div>
       {otwarte && (
         <>
-          <p className="mvd-akad-opis">{S.katalogOpis}</p>
-          {stan.rodzaj === 'ladowanie' && <p className="mvd-akad-opis">{S.katalogLadowanie}</p>}
+          <p className="mvd-akad-opis">{S.odniesieniaOpis}</p>
+          {stan.rodzaj === 'ladowanie' && <p className="mvd-akad-opis">{S.odniesieniaLadowanie}</p>}
           {stan.rodzaj === 'blad' && (
-            <StanPanel
-              komunikat={S.katalogBlad}
-              opis={stan.komunikat}
-              wariant="blad"
-              testid="mvd-akad-katalog-blad"
-            />
+            <StanPanel komunikat={S.odniesieniaBlad} opis={stan.komunikat} wariant="blad" testid="mvd-akad-katalog-blad" />
           )}
           {stan.rodzaj === 'gotowe' && (
-            <div className="mvd-akad-wiersze">
+            <div className="mvd-akad-wiersze" data-mvd-zapis-techniczny="1">
               {stan.pozycje.map((pozycja) => (
                 <div className="mvd-akad-wiersz" key={pozycja.sciezka}>
                   <span className="mvd-akad-wiersz-etyk">{pozycja.sciezka}</span>
@@ -860,20 +1423,15 @@ function PanelKatalogu({ namespace }: { namespace: string }) {
           )}
         </>
       )}
-    </section>
+    </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Stany zasobów
+// Stany biegu
 // ---------------------------------------------------------------------------
 
 interface KompletArtefaktow {
-  /**
-   * Rewizja modelu w chwili wykonania przebiegu — DRUGI koniec pary predykatu
-   * świeżości (`swiezoscWyniku`). Bez niej nagłówek meldowałby „brak wyników"
-   * przy zakończonym przebiegu (defekt naprawiony u źródła, V126-JEZYK).
-   */
   readonly rewizjaPrzyBiegu: number;
   readonly przebieg: PrzebiegAkademicki;
   readonly wynik: OdpowiedzWyniku;
@@ -888,10 +1446,8 @@ type StanBiegu =
   | { readonly rodzaj: 'blad'; readonly komunikat: string }
   | { readonly rodzaj: 'gotowe'; readonly dane: KompletArtefaktow };
 
-type StanRodzajow =
-  | { readonly rodzaj: 'ladowanie' }
-  | { readonly rodzaj: 'blad'; readonly komunikat: string }
-  | { readonly rodzaj: 'gotowe'; readonly kody: readonly string[] };
+/** Opóźnienie sprawdzania gotowości po zmianie danych od użytkownika [ms]. */
+const OPOZNIENIE_GOTOWOSCI_MS = 250;
 
 // ---------------------------------------------------------------------------
 // Okno
@@ -900,12 +1456,9 @@ type StanRodzajow =
 export interface EkranAnalizAkademickichProps {
   readonly trybZaawansowania: AdvancementMode;
   /**
-   * Rodzaj wybrany z góry (wejście z ekranu trasowego) — użytkownik może go zmienić.
-   *
-   * V126-WYGASZENIE: typ zawężony do rodzajów PREZENTOWANYCH. Rodzaj wycofany
-   * przekazany tutaj nie znalazłby się na liście wyboru i okno po cichu
-   * pokazałoby pierwszą pozycję z katalogu — czyli inną analizę niż obiecywało
-   * wejście. Typ zamyka tę drogę w czasie pisania kodu.
+   * Analiza otwarta z góry (wejście z ekranu trasowego E-40…E-50) — okno startuje
+   * w widoku tej analizy; przycisk „Katalog analiz" wraca do kart. Typ zawężony do
+   * rodzajów PREZENTOWANYCH (V126-WYGASZENIE): rodzaj wycofany nie ma karty.
    */
   readonly rodzajPoczatkowy?: RodzajPrezentowany;
 }
@@ -918,61 +1471,108 @@ export function EkranAnalizAkademickich({
   const setWynikiTab = useShellStore((s) => s.setWynikiTab);
   const akcjaPrzypadki = useAkcjaPrzejdzDoPrzypadkow();
   const trybEkspercki = isModeAtLeast(trybZaawansowania, 'expert');
-  // Rewizja bieżącego modelu — JEDNO źródło (S9-11 / W-5), to samo, z którego
-  // korzysta wspólny kontrakt świeżości E15.2.
   const rewizjaModelu = useSnapshotStore((s) => s.rewizjaBiezacegoModelu ?? 0);
-  // Most ref → nazwa obiektu ze schematu (jedno źródło nazw z migawką ENM).
   const nazwaObiektu = useNazwaObiektu();
 
-  const [rodzaje, setRodzaje] = useState<StanRodzajow>({ rodzaj: 'ladowanie' });
+  const [katalog, setKatalog] = useState<StanKatalogu>({ rodzaj: 'ladowanie' });
+  const [gotowoscKart, setGotowoscKart] = useState<StanGotowosciKart>({ rodzaj: 'ladowanie' });
   const [wybrany, setWybrany] = useState<string>(rodzajPoczatkowy ?? '');
   const [stan, setStan] = useState<StanBiegu>({ rodzaj: 'idle' });
+  const [gotowoscWybranej, setGotowoscWybranej] = useState<StanGotowosciAnalizy>({ rodzaj: 'ladowanie' });
+  const [licznikSprawdzen, setLicznikSprawdzen] = useState(0);
 
   const [pola, setPola] = useState<StanPol>({});
   const [uziom, setUziom] = useState<StanPol>({});
   const [metody, setMetody] = useState<readonly string[]>([]);
   const [wiersze, setWiersze] = useState<readonly WierszListy[]>([]);
-  const [parametryOtwarte, setParametryOtwarte] = useState(false);
 
-  // V126-WYGASZENIE: lista rodzajów pochodzi z katalogu backendu (jedno źródło
-  // zbioru), ale przed pokazaniem przechodzi przez REJESTR WYCOFAŃ
-  // (`nieprezentowane.ts`). Rodzaj wycofany decyzją właściciela nie pojawia się
-  // w wyborze, choć backend dalej go wystawia — zdolność zostaje, znika
-  // prezentacja. Filtr jest w warstwie prezentacji, nie w kliencie API, bo to
-  // decyzja o EKRANIE, a nie o kontrakcie transportu.
-  const wczytajRodzaje = useCallback(() => {
-    setRodzaje({ rodzaj: 'ladowanie' });
-    pobierzRodzajeAnaliz()
-      .then((wszystkie) => {
-        const kody = tylkoPrezentowane(wszystkie);
-        setRodzaje({ rodzaj: 'gotowe', kody });
-        setWybrany((biezacy) => {
-          if (biezacy !== '' && kody.includes(biezacy)) return biezacy;
-          return kody[0] ?? '';
-        });
-      })
+  // Katalog kart i gotowość wszystkich analiz (dla „stanu danych" kart) — dwa
+  // niezależne wołania, każde z własnym uczciwym stanem błędu.
+  const wczytajKatalog = useCallback(() => {
+    setKatalog({ rodzaj: 'ladowanie' });
+    pobierzKatalogAnaliz()
+      .then((karty) => setKatalog({ rodzaj: 'gotowe', karty }))
       .catch((err: unknown) => {
-        setRodzaje({
-          rodzaj: 'blad',
-          komunikat: err instanceof Error ? err.message : S.rodzajeBlad,
-        });
+        setKatalog({ rodzaj: 'blad', komunikat: err instanceof Error ? err.message : S.katalogBlad });
       });
   }, []);
 
-  // Bez aktywnego przypadku okno nie ma czego uruchomić, więc NIE pyta backendu
-  // o katalog rodzajów — stan zerowy jest w pełni lokalny (wzór `EkranSsci`).
-  // V126-JEZYK: za bramą opracowania okno też milczy — brama zamyka również
-  // ruch sieciowy, nie tylko rysunek (inaczej „ukryte" okno dalej pyta backend).
+  const wczytajGotowoscKart = useCallback((caseId: string) => {
+    setGotowoscKart({ rodzaj: 'ladowanie' });
+    pobierzGotowosc(caseId)
+      .then((odpowiedz) => {
+        const analizy: Record<string, GotowoscAnalizy> = {};
+        odpowiedz.analizy.forEach((analiza) => {
+          analizy[analiza.kod] = analiza;
+        });
+        setGotowoscKart({
+          rodzaj: 'gotowe',
+          analizy,
+          przedmiot: odpowiedz.przedmiot,
+          modelHash: odpowiedz.model_hash,
+        });
+      })
+      .catch((err: unknown) => {
+        setGotowoscKart({ rodzaj: 'blad', komunikat: err instanceof Error ? err.message : S.gotowoscBlad });
+      });
+  }, []);
+
+  // Bez aktywnego przypadku i poza bramą trybu okno NIE pyta backendu.
   useEffect(() => {
     if (activeCaseId === null || !trybEkspercki) return;
-    wczytajRodzaje();
-  }, [activeCaseId, trybEkspercki, wczytajRodzaje]);
+    wczytajKatalog();
+    wczytajGotowoscKart(activeCaseId);
+  }, [activeCaseId, trybEkspercki, wczytajKatalog, wczytajGotowoscKart]);
 
-  // Zmiana rodzaju zeruje wynik i formularz — parametry jednego rodzaju nie mogą
-  // wyciec do żądania innego (klucze są rozłączne wg kontraktu solvera).
-  const zmienRodzaj = (kod: string) => {
+  // Parametry biegu = to, co pójdzie do POST; gotowość sprawdzana DOKŁADNIE dla nich.
+  const parametry = useMemo(
+    () => zbudujParametry({ rodzaj: wybrany, pola, uziom, metody, wiersze }),
+    [wybrany, pola, uziom, metody, wiersze],
+  );
+  const parametryJson = JSON.stringify(parametry);
+
+  useEffect(() => {
+    if (activeCaseId === null || !trybEkspercki || wybrany === '') return;
+    let aktualne = true;
+    setGotowoscWybranej((poprzedni) => ({ rodzaj: 'ladowanie', dane: poprzedni.dane }));
+    const uchwyt = window.setTimeout(() => {
+      pobierzGotowosc(activeCaseId, wybrany as RodzajAnalizy, JSON.parse(parametryJson) as Record<string, unknown>)
+        .then((odpowiedz) => {
+          if (!aktualne) return;
+          const analiza = odpowiedz.analizy.find((a) => a.kod === wybrany) ?? odpowiedz.analizy[0];
+          if (analiza === undefined) {
+            setGotowoscWybranej({ rodzaj: 'blad', komunikat: S.gotowoscBlad });
+            return;
+          }
+          setGotowoscWybranej({ rodzaj: 'gotowe', dane: analiza });
+          // Przedmiot i odcisk modelu — z tej samej odpowiedzi (gdy karty jeszcze nie mają).
+          setGotowoscKart((poprzedni) =>
+            poprzedni.rodzaj === 'gotowe'
+              ? { ...poprzedni, analizy: { ...poprzedni.analizy, [analiza.kod]: analiza } }
+              : { rodzaj: 'gotowe', analizy: { [analiza.kod]: analiza }, przedmiot: odpowiedz.przedmiot, modelHash: odpowiedz.model_hash },
+          );
+        })
+        .catch((err: unknown) => {
+          if (!aktualne) return;
+          setGotowoscWybranej((poprzedni) => ({
+            rodzaj: 'blad',
+            komunikat: err instanceof Error ? err.message : S.gotowoscBlad,
+            dane: poprzedni.dane,
+          }));
+        });
+    }, OPOZNIENIE_GOTOWOSCI_MS);
+    return () => {
+      aktualne = false;
+      window.clearTimeout(uchwyt);
+    };
+  }, [activeCaseId, trybEkspercki, wybrany, parametryJson, licznikSprawdzen]);
+
+  // Zmiana analizy zeruje wynik i formularz — parametry jednej analizy nie mogą
+  // wyciec do żądania innej (klucze są rozłączne wg kontraktu solvera).
+  const otworzAnalize = (kod: string) => {
     setWybrany(kod);
     setStan({ rodzaj: 'idle' });
+    setGotowoscWybranej({ rodzaj: 'ladowanie' });
     setPola({});
     setUziom({});
     setMetody([]);
@@ -981,8 +1581,8 @@ export function EkranAnalizAkademickich({
 
   const uruchom = () => {
     if (activeCaseId === null || wybrany === '') return;
+    if (gotowoscWybranej.dane?.gotowosc !== 'POTWIERDZONA') return;
     const rodzajBiegu = wybrany as RodzajAnalizy;
-    const parametry = zbudujParametry({ rodzaj: wybrany, pola, uziom, metody, wiersze });
     setStan({ rodzaj: 'ladowanie' });
     utworzPrzebieg(activeCaseId, rodzajBiegu, parametry)
       .then(async (przebieg) => {
@@ -1002,11 +1602,8 @@ export function EkranAnalizAkademickich({
       });
   };
 
-  // V126-JEZYK: brama opracowania. Poza trybem eksperckim okno NIE renderuje
-  // treści analizy — projektant na torze podstawowym nie ogląda pakietu, którego
-  // część rodzajów nie ma jeszcze werdyktu z kryterium. Brama jest w oknie
-  // (a nie tylko w pasku zakładek), bo wejść do zdolności są DWA: zakładka
-  // warsztatu Wyników i powierzchnia trasowa E-40…E-50.
+  // Brama opracowania (V126-JEZYK): poza trybem eksperckim okno NIE renderuje
+  // treści i NIE pyta backendu — wejść do zdolności są dwa (zakładka i trasa).
   if (!trybEkspercki) {
     return (
       <div className="mvd-akad" data-testid="mvd-akad-ekran">
@@ -1023,7 +1620,6 @@ export function EkranAnalizAkademickich({
     );
   }
 
-  // Bez aktywnego przypadku — uczciwa instrukcja z akcją (bez wołań API).
   if (activeCaseId === null) {
     return (
       <div className="mvd-akad" data-testid="mvd-akad-ekran">
@@ -1042,231 +1638,278 @@ export function EkranAnalizAkademickich({
     );
   }
 
-  const namespaceKatalogu = wybrany === '' ? null : katalogRodzaju(wybrany);
-  const rodzajMaParametry = wybrany !== '' && maParametry(wybrany);
+  const karty = katalog.rodzaj === 'gotowe' ? katalog.karty : [];
+  const karta = wybrany === '' ? undefined : karty.find((k) => k.kod === wybrany);
+  const przedmiot = gotowoscKart.rodzaj === 'gotowe' ? gotowoscKart.przedmiot : null;
+  const modelHash = gotowoscKart.rodzaj === 'gotowe' ? gotowoscKart.modelHash : null;
+  const gotowoscAnalizy = gotowoscWybranej.dane?.gotowosc;
+  const uruchomienieDostepne =
+    gotowoscWybranej.rodzaj === 'gotowe' && gotowoscAnalizy === 'POTWIERDZONA' && stan.rodzaj !== 'ladowanie';
 
+  const naglowek = (
+    <header className="mvd-akad-naglowek">
+      <div className="mvd-akad-pasek">
+        {wybrany !== '' && (
+          <button
+            type="button"
+            className="mvd-akad-btn-wtorny"
+            data-testid="mvd-akad-powrot"
+            title={S.powrotDoKataloguOpis}
+            onClick={() => otworzAnalize('')}
+          >
+            ← {S.powrotDoKatalogu}
+          </button>
+        )}
+        <h2 className="mvd-akad-tytul">
+          {karta ? karta.nazwa_pl : wybrany !== '' ? etykietaRodzaju(wybrany) : S.tytul}
+        </h2>
+        {karta && <span className="mvd-akad-licznik">{karta.grupa.nazwa_pl}</span>}
+      </div>
+      {wybrany === '' && <p className="mvd-akad-opis">{S.opisWstep}</p>}
+      <p className="mvd-akad-swiezosc" data-testid="mvd-akad-swiezosc">
+        {S.swiezoscEtykieta}:{' '}
+        <span className="mvd-num">
+          {opisSwiezosci(
+            swiezoscWyniku(stan.rodzaj === 'gotowe' ? stan.dane.rewizjaPrzyBiegu : null, rewizjaModelu),
+          )}
+        </span>
+      </p>
+    </header>
+  );
+
+  // ---- WIDOK 1: katalog kart -------------------------------------------------
+  if (wybrany === '') {
+    return (
+      <div className="mvd-akad" data-testid="mvd-akad-ekran">
+        {naglowek}
+        <section className="mvd-akad-sekcja" data-testid="mvd-akad-katalog-kart">
+          <h3 className="mvd-akad-sekcja-tytul">{S.katalogTytul}</h3>
+          <p className="mvd-akad-opis">{S.katalogOpis}</p>
+          {katalog.rodzaj === 'ladowanie' && <p className="mvd-akad-opis">{S.katalogLadowanie}</p>}
+          {katalog.rodzaj === 'blad' && (
+            <StanPanel
+              komunikat={S.katalogBlad}
+              opis={katalog.komunikat}
+              wariant="blad"
+              testid="mvd-akad-katalog-blad"
+              akcja={{ etykieta: S.katalogPonow, onKlik: wczytajKatalog }}
+            />
+          )}
+          {katalog.rodzaj === 'gotowe' && grupujKarty(katalog.karty).length === 0 && (
+            <StanPanel
+              komunikat={S.katalogBrak}
+              opis={S.katalogBrakOpis}
+              wariant="info"
+              testid="mvd-akad-katalog-pusty"
+              akcja={{ etykieta: S.katalogPonow, onKlik: wczytajKatalog }}
+            />
+          )}
+          {katalog.rodzaj === 'gotowe' &&
+            grupujKarty(katalog.karty).map((grupa) => (
+              <div className="mvd-akad-katalog-grupa" key={grupa.kod} data-testid={`mvd-akad-katalog-grupa-${grupa.kod}`}>
+                <h4 className="mvd-akad-katalog-grupa-tytul">{grupa.nazwa}</h4>
+                <div className="mvd-akad-karty">
+                  {grupa.karty.map((pozycja) => (
+                    <KartaAnalizy
+                      key={pozycja.kod}
+                      karta={pozycja}
+                      stanGotowosci={gotowoscKart}
+                      onOtworz={() => otworzAnalize(pozycja.kod)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+        </section>
+      </div>
+    );
+  }
+
+  // ---- WIDOK 2: analiza A–G --------------------------------------------------
   return (
     <div className="mvd-akad" data-testid="mvd-akad-ekran">
-      <header className="mvd-akad-naglowek">
-        <h2 className="mvd-akad-tytul">{S.tytul}</h2>
-        <p className="mvd-akad-opis">{S.opisWstep}</p>
-        <p className="mvd-akad-swiezosc" data-testid="mvd-akad-swiezosc">
-          {S.swiezoscEtykieta}:{' '}
-          <span className="mvd-num">
-            {opisSwiezosci(
-              swiezoscWyniku(
-                stan.rodzaj === 'gotowe' ? stan.dane.rewizjaPrzyBiegu : null,
-                rewizjaModelu,
-              ),
-            )}
-          </span>
-        </p>
-      </header>
-
-      <section className="mvd-akad-sekcja" data-testid="mvd-akad-wybor">
-        <h3 className="mvd-akad-sekcja-tytul">{S.wyborTytul}</h3>
-        <p className="mvd-akad-opis">{S.wyborOpis}</p>
-        {rodzaje.rodzaj === 'ladowanie' && <p className="mvd-akad-opis">{S.rodzajeLadowanie}</p>}
-        {rodzaje.rodzaj === 'blad' && (
-          <StanPanel
-            komunikat={S.rodzajeBlad}
-            opis={rodzaje.komunikat}
-            wariant="blad"
-            testid="mvd-akad-rodzaje-blad"
-            akcja={{ etykieta: S.rodzajePonow, onKlik: wczytajRodzaje }}
-          />
-        )}
-        {rodzaje.rodzaj === 'gotowe' && rodzaje.kody.length === 0 && (
-          <StanPanel
-            komunikat={S.rodzajeBrak}
-            opis={S.rodzajeBrakOpis}
-            wariant="info"
-            testid="mvd-akad-rodzaje-brak"
-            akcja={{ etykieta: S.rodzajePonow, onKlik: wczytajRodzaje }}
-          />
-        )}
-        {rodzaje.rodzaj === 'gotowe' && rodzaje.kody.length > 0 && (
-          <label className="mvd-akad-pole" htmlFor="mvd-akad-rodzaj">
-            <span className="mvd-akad-pole-etyk">{S.wyborEtykieta}</span>
-            <select
-              id="mvd-akad-rodzaj"
-              className="mvd-akad-pole-kontrolka"
-              value={wybrany}
-              data-testid="mvd-akad-rodzaj"
-              onChange={(zdarzenie) => zmienRodzaj(zdarzenie.target.value)}
-            >
-              {rodzaje.kody.map((kod) => (
-                <option key={kod} value={kod}>
-                  {etykietaRodzaju(kod)}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        {wybrany !== '' && PREZENTACJA[wybrany as RodzajPrezentowany] !== undefined && (
-          <div className="mvd-akad-cel" data-testid="mvd-akad-cel">
-            <span className="mvd-akad-wiersz-etyk">{S.celTytul}</span>
-            <p className="mvd-akad-cel-tresc">{PREZENTACJA[wybrany as RodzajPrezentowany].pytanie}</p>
-          </div>
-        )}
-        {wybrany !== '' && <p className="mvd-akad-opis">{opisRodzaju(wybrany)}</p>}
-        {wybrany === 'ssci_impedance' && (
-          <div className="mvd-akad-odeslanie" data-testid="mvd-akad-odeslanie-ssci">
-            <p className="mvd-akad-opis">{S.odeslanieSsci}</p>
-            <button
-              type="button"
-              className="mvd-akad-btn-wtorny"
-              data-testid="mvd-akad-przejdz-ssci"
-              onClick={() => setWynikiTab('ssci')}
-            >
-              {etykietaRodzaju('ssci_impedance')}
-            </button>
-          </div>
-        )}
-      </section>
-
-      {wybrany !== '' && (
-        <section className="mvd-akad-sekcja" data-testid="mvd-akad-uruchomienie">
-          <div className="mvd-akad-sekcja-naglowek">
-            <h3 className="mvd-akad-sekcja-tytul">{S.parametryTytul}</h3>
-            {rodzajMaParametry && (
+      {naglowek}
+      {katalog.rodzaj === 'ladowanie' && <p className="mvd-akad-opis">{S.katalogLadowanie}</p>}
+      {katalog.rodzaj === 'blad' && (
+        <StanPanel
+          komunikat={S.katalogBlad}
+          opis={katalog.komunikat}
+          wariant="blad"
+          testid="mvd-akad-katalog-blad"
+          akcja={{ etykieta: S.katalogPonow, onKlik: wczytajKatalog }}
+        />
+      )}
+      {katalog.rodzaj === 'gotowe' && karta === undefined && (
+        <StanPanel
+          komunikat={S.katalogBrak}
+          opis={S.katalogBrakOpis}
+          wariant="info"
+          testid="mvd-akad-katalog-pusty"
+          akcja={{ etykieta: S.powrotDoKatalogu, onKlik: () => otworzAnalize('') }}
+        />
+      )}
+      {karta && (
+        <>
+          <SekcjaPrzedmiot przedmiot={przedmiot} modelHash={modelHash} nazwaObiektu={nazwaObiektu} />
+          <SekcjaPytanie karta={karta} />
+          {wybrany === 'ssci_impedance' && (
+            <div className="mvd-akad-odeslanie" data-testid="mvd-akad-odeslanie-ssci">
+              <p className="mvd-akad-opis">{S.odeslanieSsci}</p>
               <button
                 type="button"
                 className="mvd-akad-btn-wtorny"
-                aria-expanded={parametryOtwarte}
-                data-testid="mvd-akad-parametry-przelacz"
-                onClick={() => setParametryOtwarte((otwarte) => !otwarte)}
+                data-testid="mvd-akad-przejdz-ssci"
+                onClick={() => setWynikiTab('ssci')}
               >
-                {parametryOtwarte ? S.parametryUkryj : S.parametryPokaz}
+                {etykietaRodzaju('ssci_impedance')}
               </button>
-            )}
-          </div>
-          {!rodzajMaParametry && <p className="mvd-akad-opis">{S.parametryBrak}</p>}
-          {rodzajMaParametry && parametryOtwarte && (
-            <FormularzParametrow
-              rodzaj={wybrany}
-              pola={pola}
-              uziom={uziom}
-              metody={metody}
-              wiersze={wiersze}
-              onPole={(klucz, wartosc) => setPola((stanPol) => ({ ...stanPol, [klucz]: wartosc }))}
-              onUziom={(klucz, wartosc) => setUziom((stanPol) => ({ ...stanPol, [klucz]: wartosc }))}
-              onMetoda={(metoda, wlaczona) =>
-                setMetody((lista) =>
-                  wlaczona ? [...lista, metoda] : lista.filter((pozycja) => pozycja !== metoda),
-                )
-              }
-              onWiersz={(indeks, klucz, wartosc) =>
-                setWiersze((lista) =>
-                  lista.map((wiersz, i) => (i === indeks ? { ...wiersz, [klucz]: wartosc } : wiersz)),
-                )
-              }
-              onDodajWiersz={() => setWiersze((lista) => [...lista, {}])}
-              onUsunWiersz={(indeks) =>
-                setWiersze((lista) => lista.filter((_, i) => i !== indeks))
-              }
-            />
-          )}
-          <p className="mvd-akad-opis">{S.uruchomOpis}</p>
-          <button
-            type="button"
-            className="mvd-akad-btn"
-            onClick={uruchom}
-            disabled={stan.rodzaj === 'ladowanie'}
-            data-testid="mvd-akad-uruchom"
-          >
-            {stan.rodzaj === 'gotowe' || stan.rodzaj === 'blad' ? S.uruchomPonownie : S.uruchom}
-          </button>
-        </section>
-      )}
-
-      {stan.rodzaj === 'ladowanie' && (
-        <StanPanel komunikat={S.ladowanie} wariant="info" testid="mvd-akad-ladowanie" />
-      )}
-      {stan.rodzaj === 'blad' && (
-        <StanPanel komunikat={S.blad} opis={stan.komunikat} wariant="blad" testid="mvd-akad-blad" />
-      )}
-
-      {stan.rodzaj === 'gotowe' && (
-        <div data-testid="mvd-akad-wyniki">
-          <section className="mvd-akad-sekcja" data-testid="mvd-akad-przebieg">
-            <div className="mvd-akad-wiersze">
-              <div className="mvd-akad-wiersz">
-                <span className="mvd-akad-wiersz-etyk">{S.statusPrzebiegu}</span>
-                <span className="mvd-akad-wiersz-wartosc">
-                  {etykietaStanuPrzebiegu(stan.dane.przebieg.status)}
-                </span>
-              </div>
-              <div className="mvd-akad-wiersz">
-                <span className="mvd-akad-wiersz-etyk">{S.odcisk}</span>
-                <span className="mvd-akad-wiersz-wartosc mvd-num">
-                  {stan.dane.przebieg.deterministic_hash}
-                </span>
-              </div>
-              {/* V126-JEZYK: po bramie opracowania całe okno jest ekspercke,
-                  więc drugi warunek `trybEkspercki` tutaj byłby MARTWY (zawsze
-                  prawdziwy) — identyfikatory techniczne renderują się wprost. */}
-              <div className="mvd-akad-wiersz">
-                <span className="mvd-akad-wiersz-etyk">{S.runId}</span>
-                <span className="mvd-akad-wiersz-wartosc mvd-num">{stan.dane.przebieg.run_id}</span>
-              </div>
-              <div className="mvd-akad-wiersz">
-                <span className="mvd-akad-wiersz-etyk">{S.wersjaSolwera}</span>
-                <span className="mvd-akad-wiersz-wartosc mvd-num">
-                  {stan.dane.wynik.result.solver_version}
-                </span>
-              </div>
-              <div className="mvd-akad-wiersz">
-                <span className="mvd-akad-wiersz-etyk">{S.odciskWejscia}</span>
-                <span className="mvd-akad-wiersz-wartosc mvd-num">
-                  {stan.dane.wynik.result.input_hash}
-                </span>
-              </div>
-              <div className="mvd-akad-wiersz">
-                <span className="mvd-akad-wiersz-etyk">{S.utworzono}</span>
-                <span className="mvd-akad-wiersz-wartosc mvd-num">{stan.dane.wynik.created_at}</span>
-              </div>
             </div>
+          )}
+          <SekcjaDane
+            karta={karta}
+            gotowosc={gotowoscWybranej}
+            modelHash={modelHash}
+            przedmiot={przedmiot}
+            nazwaObiektu={nazwaObiektu}
+            formularz={
+              maParametry(wybrany) ? (
+                <FormularzParametrow
+                  rodzaj={wybrany}
+                  pola={pola}
+                  uziom={uziom}
+                  metody={metody}
+                  wiersze={wiersze}
+                  onPole={(klucz, wartosc) => setPola((stanPol) => ({ ...stanPol, [klucz]: wartosc }))}
+                  onUziom={(klucz, wartosc) => setUziom((stanPol) => ({ ...stanPol, [klucz]: wartosc }))}
+                  onMetoda={(metoda, wlaczona) =>
+                    setMetody((lista) =>
+                      wlaczona ? [...lista, metoda] : lista.filter((pozycja) => pozycja !== metoda),
+                    )
+                  }
+                  onWiersz={(indeks, klucz, wartosc) =>
+                    setWiersze((lista) =>
+                      lista.map((wiersz, i) => (i === indeks ? { ...wiersz, [klucz]: wartosc } : wiersz)),
+                    )
+                  }
+                  onDodajWiersz={() => setWiersze((lista) => [...lista, {}])}
+                  onUsunWiersz={(indeks) => setWiersze((lista) => lista.filter((_, i) => i !== indeks))}
+                />
+              ) : null
+            }
+          />
+          <SekcjaGotowosc
+            gotowosc={gotowoscWybranej}
+            nazwaObiektu={nazwaObiektu}
+            onPonow={() => setLicznikSprawdzen((n) => n + 1)}
+          />
+          <SekcjaKryteria karta={karta} />
+          <SekcjaZakres karta={karta} />
+
+          <section className="mvd-akad-sekcja" data-testid="mvd-akad-uruchomienie">
+            <div className="mvd-akad-sekcja-naglowek">
+              <span className="mvd-akad-krok">G</span>
+              <h3 className="mvd-akad-sekcja-tytul">{S.uruchomienieTytul}</h3>
+            </div>
+            <p className="mvd-akad-opis">{S.uruchomienieOpis}</p>
+            <button
+              type="button"
+              className="mvd-akad-btn"
+              onClick={uruchom}
+              disabled={!uruchomienieDostepne}
+              data-testid="mvd-akad-uruchom"
+            >
+              {stan.rodzaj === 'gotowe' || stan.rodzaj === 'blad' ? S.uruchomPonownie : S.uruchom}
+            </button>
+            {gotowoscWybranej.rodzaj === 'gotowe' && gotowoscAnalizy === 'NIEPOTWIERDZONA' && (
+              <p className="mvd-akad-blokada" data-testid="mvd-akad-uruchom-blokada">
+                {S.uruchomZablokowane}
+              </p>
+            )}
+            {gotowoscWybranej.rodzaj === 'gotowe' && gotowoscAnalizy === 'WYCOFANA' && (
+              <p className="mvd-akad-blokada" data-testid="mvd-akad-uruchom-blokada">
+                {S.uruchomWycofane}
+              </p>
+            )}
+            {gotowoscWybranej.rodzaj !== 'gotowe' && (
+              <p className="mvd-akad-opis" data-testid="mvd-akad-uruchom-sprawdzanie">
+                {S.uruchomSprawdzanie}
+              </p>
+            )}
           </section>
 
-          {/* EKRAN INŻYNIERSKI (V126-JEZYK): werdykt z kryterium → wielkości
-              z jednostkami → obiekty nazwane jak na schemacie → wiarygodność
-              → następny krok. Zapis techniczny i ślad zostają, ale ZWINIĘTE. */}
-          <PanelWerdyktu rodzaj={wybrany} payload={stan.dane.wynik.result.result} />
-          {(wybrany === 'power_quality_harmonics' || wybrany === 'ssci_impedance') && (
-            <PanelZrodelHarmonicznych wynik={stan.dane.wynik} />
+          {stan.rodzaj === 'ladowanie' && (
+            <StanPanel komunikat={S.ladowanie} wariant="info" testid="mvd-akad-ladowanie" />
           )}
-          <PanelWielkosci rodzaj={wybrany} payload={stan.dane.wynik.result.result} />
-          {(PREZENTACJA[wybrany as RodzajPrezentowany]?.tabele ?? []).map((tabela) => (
-            <PanelObiektow
-              key={tabela.sciezka}
-              tabela={tabela}
-              payload={stan.dane.wynik.result.result}
-              nazwaObiektu={nazwaObiektu}
-            />
-          ))}
-          <PanelBrakow payload={stan.dane.wynik.result.result} />
-          <PanelWiarygodnosci payload={stan.dane.wynik.result.result} />
-          <PanelRankinguNieprezentowanego
-            payload={stan.dane.wynik.result.result}
-            onPrzejdzDoKontyngencji={() => setWynikiTab('kontyngencje')}
-          />
-          {PREZENTACJA[wybrany as RodzajPrezentowany] !== undefined && (
-            <section className="mvd-akad-sekcja" data-testid="mvd-akad-nastepny-krok">
-              <h3 className="mvd-akad-sekcja-tytul">{S.nastepnyKrokTytul}</h3>
-              <p className="mvd-akad-opis">
-                {PREZENTACJA[wybrany as RodzajPrezentowany].nastepnyKrok}
-              </p>
-            </section>
+          {stan.rodzaj === 'blad' && (
+            <StanPanel komunikat={S.blad} opis={stan.komunikat} wariant="blad" testid="mvd-akad-blad" />
           )}
-          <PanelSladu slad={stan.dane.slad} />
-          <PanelDowodu dowod={stan.dane.dowod} />
-          <PanelRaportu raport={stan.dane.raport} />
-          <PanelZapisuTechnicznego wynik={stan.dane.wynik} />
-        </div>
-      )}
 
-      {namespaceKatalogu !== null && <PanelKatalogu namespace={namespaceKatalogu} />}
+          {stan.rodzaj === 'gotowe' && (
+            <div data-testid="mvd-akad-wyniki">
+              <section className="mvd-akad-sekcja" data-testid="mvd-akad-przebieg">
+                <div className="mvd-akad-wiersze">
+                  <div className="mvd-akad-wiersz">
+                    <span className="mvd-akad-wiersz-etyk">{S.statusPrzebiegu}</span>
+                    <span className="mvd-akad-wiersz-wartosc">
+                      {etykietaStanuPrzebiegu(stan.dane.przebieg.status)}
+                    </span>
+                  </div>
+                  <div className="mvd-akad-wiersz">
+                    <span className="mvd-akad-wiersz-etyk">{S.odcisk}</span>
+                    <span className="mvd-akad-wiersz-wartosc mvd-num">{stan.dane.przebieg.deterministic_hash}</span>
+                  </div>
+                  <div className="mvd-akad-wiersz">
+                    <span className="mvd-akad-wiersz-etyk">{S.runId}</span>
+                    <span className="mvd-akad-wiersz-wartosc mvd-num">{stan.dane.przebieg.run_id}</span>
+                  </div>
+                  <div className="mvd-akad-wiersz">
+                    <span className="mvd-akad-wiersz-etyk">{S.wersjaSolwera}</span>
+                    <span className="mvd-akad-wiersz-wartosc mvd-num">{stan.dane.wynik.result.solver_version}</span>
+                  </div>
+                  <div className="mvd-akad-wiersz">
+                    <span className="mvd-akad-wiersz-etyk">{S.odciskWejscia}</span>
+                    <span className="mvd-akad-wiersz-wartosc mvd-num">{stan.dane.wynik.result.input_hash}</span>
+                  </div>
+                  <div className="mvd-akad-wiersz">
+                    <span className="mvd-akad-wiersz-etyk">{S.utworzono}</span>
+                    <span className="mvd-akad-wiersz-wartosc mvd-num">{stan.dane.wynik.created_at}</span>
+                  </div>
+                </div>
+              </section>
+
+              <PanelWerdyktu rodzaj={wybrany} payload={stan.dane.wynik.result.result} karta={karta} />
+              {(wybrany === 'power_quality_harmonics' || wybrany === 'ssci_impedance') && (
+                <PanelZrodelHarmonicznych wynik={stan.dane.wynik} />
+              )}
+              <PanelWielkosci rodzaj={wybrany} payload={stan.dane.wynik.result.result} />
+              {(PREZENTACJA[wybrany as RodzajPrezentowany]?.tabele ?? []).map((tabela) => (
+                <PanelObiektow
+                  key={tabela.sciezka}
+                  tabela={tabela}
+                  payload={stan.dane.wynik.result.result}
+                  nazwaObiektu={nazwaObiektu}
+                />
+              ))}
+              <PanelBrakow payload={stan.dane.wynik.result.result} />
+              <PanelWiarygodnosci payload={stan.dane.wynik.result.result} />
+              <PanelRankinguNieprezentowanego
+                payload={stan.dane.wynik.result.result}
+                onPrzejdzDoKontyngencji={() => setWynikiTab('kontyngencje')}
+              />
+              {PREZENTACJA[wybrany as RodzajPrezentowany] !== undefined && (
+                <section className="mvd-akad-sekcja" data-testid="mvd-akad-nastepny-krok">
+                  <h3 className="mvd-akad-sekcja-tytul">{S.nastepnyKrokTytul}</h3>
+                  <p className="mvd-akad-opis">{PREZENTACJA[wybrany as RodzajPrezentowany].nastepnyKrok}</p>
+                </section>
+              )}
+              <PanelSladu slad={stan.dane.slad} />
+              <PanelDowodu dowod={stan.dane.dowod} />
+              <PanelRaportu raport={stan.dane.raport} />
+              <PanelZapisuTechnicznego wynik={stan.dane.wynik} />
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

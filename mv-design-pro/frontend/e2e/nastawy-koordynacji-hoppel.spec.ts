@@ -22,6 +22,7 @@
  * wymaga.
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { otworzZakladkeWynikow } from './nawigacjaWynikow';
 
 type OdczytGotowosci = {
   ready: boolean;
@@ -291,7 +292,7 @@ async function zbudujSiecGotowaDoObliczen(
 async function otworzZakladkeKoordynacji(page: Page): Promise<void> {
   await page.getByRole('button', { name: /^Wyniki i dowody \d$/ }).click();
   await expect(page.getByTestId('mvd-wyniki-warsztat')).toBeVisible();
-  await page.getByTestId('mvd-wyniki-zakladka-koordynacja').click();
+  await otworzZakladkeWynikow(page, 'koordynacja');
 }
 
 test('kotwica → wybór odcinka → tabela nastaw I>/I>> widoczna (real backend, metoda Hoppela)', async ({

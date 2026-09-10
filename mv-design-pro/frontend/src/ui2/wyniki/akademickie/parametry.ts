@@ -20,6 +20,13 @@
  * solverem, gdzie widmo harmoniczne staje się częścią `harmonic_sources`. Ta sama
  * zasada zero fabrykacji obowiązuje jeden krok wcześniej w łańcuchu — pole puste
  * = solver liczy wyłącznie ze źródeł, których karta katalogowa niesie widmo.
+ *
+ * DRUGI WYJĄTEK JAWNY (karta B-02): `customer_counts` (rodzaj
+ * `reliability_contingency`, `POLA_ODBIORCOW`) — także czytany przez MOST
+ * (`odbiorcy_z_parametrow` → `V126BusInput.customer_count`), bo model ENM nie
+ * niesie liczby odbiorców zasilanych z szyny, a wskaźniki niezawodności są nią
+ * ważone. Bez wpisu gotowość analizy odmawia uruchomienia (`parametr.customer_counts`)
+ * zamiast liczyć wskaźniki z zerowej liczby odbiorców.
  */
 
 import type { RodzajAnalizy } from './api';
@@ -29,7 +36,7 @@ import type { RodzajAnalizy } from './api';
 // ---------------------------------------------------------------------------
 
 /** Rodzaj kontrolki pola parametru. */
-export type RodzajPola = 'liczba' | 'tekst' | 'wybor' | 'metody';
+export type RodzajPola = 'liczba' | 'tekst' | 'wybor' | 'metody' | 'szyna';
 
 /** Opcja pola wyboru (wartość kontraktu + etykieta PL). */
 export interface OpcjaPola {
@@ -101,7 +108,7 @@ export const POLA_UZIOMU: readonly DefinicjaPola[] = [
 /** Pola wiersza silnika (`V126MotorInput`) — dane spoza modelu sieci. */
 export const POLA_SILNIKA: readonly DefinicjaPola[] = [
   { klucz: 'ref', etykieta: 'Oznaczenie', rodzaj: 'tekst' },
-  { klucz: 'bus_ref', etykieta: 'Węzeł przyłączenia', rodzaj: 'tekst' },
+  { klucz: 'bus_ref', etykieta: 'Szyna przyłączenia', rodzaj: 'szyna' },
   { klucz: 'rated_kw', etykieta: 'Moc znamionowa', rodzaj: 'liczba', jednostka: 'kW' },
   { klucz: 'rated_voltage_kv', etykieta: 'Napięcie znamionowe', rodzaj: 'liczba', jednostka: 'kV' },
   { klucz: 'locked_rotor_multiplier', etykieta: 'Krotność prądu rozruchowego', rodzaj: 'liczba' },
@@ -145,6 +152,21 @@ export const POLA_WIDMA: readonly DefinicjaPola[] = [
   },
 ];
 
+/**
+ * Pola wiersza liczby odbiorców (`customer_counts`, karta B-02): szyna modelu +
+ * liczba odbiorców zasilanych z tej szyny. Agregowane do mapy `{ref szyny: liczba}`
+ * w `zbudujParametry` — kształt czytany przez most `odbiorcy_z_parametrow`.
+ */
+export const POLA_ODBIORCOW: readonly DefinicjaPola[] = [
+  { klucz: 'bus_ref', etykieta: 'Szyna zasilająca odbiorców', rodzaj: 'szyna' },
+  {
+    klucz: 'liczba',
+    etykieta: 'Liczba odbiorców',
+    rodzaj: 'liczba',
+    opis: 'Liczba całkowita nieujemna — odbiorcy zasilani z tej szyny.',
+  },
+];
+
 /** Pola wiersza referencji benchmarkowej (`benchmark_references`). */
 export const POLA_REFERENCJI: readonly DefinicjaPola[] = [
   { klucz: 'network', etykieta: 'Sieć odniesienia', rodzaj: 'tekst' },
@@ -156,7 +178,7 @@ export const POLA_REFERENCJI: readonly DefinicjaPola[] = [
 ];
 
 /** Listy złożone obsługiwane przez formularz (poza polami prostymi). */
-export type ListaZlozona = 'motors' | 'benchmark_references' | 'harmonic_spectra';
+export type ListaZlozona = 'motors' | 'benchmark_references' | 'harmonic_spectra' | 'customer_counts';
 
 /** Zestaw parametrów rodzaju analizy. */
 export interface ZestawParametrow {
@@ -199,7 +221,10 @@ export const PARAMETRY_RODZAJU: Record<RodzajAnalizy, ZestawParametrow> = {
   },
 
   voltage_stability: PUSTY,
-  reliability_contingency: PUSTY,
+
+  // Most `odbiorcy_z_parametrow` (karta B-02): liczba odbiorców per szyna —
+  // model jej nie niesie, a wskaźniki SAIDI/SAIFI/CAIDI są nią ważone.
+  reliability_contingency: { pola: [], uziom: false, lista: 'customer_counts', metodyDetekcji: false },
 
   // `_earthing`: model.earthing albo model.parameters["earthing"].
   earthing_safety: { pola: [], uziom: true, lista: null, metodyDetekcji: false },
@@ -400,6 +425,28 @@ function wierszeWidmaDoMapy(
   return Object.keys(mapa).length === 0 ? null : mapa;
 }
 
+/**
+ * Agreguje wiersze (szyna, liczba) do mapy `{ref szyny: liczba odbiorców}` oczekiwanej
+ * przez most (`customer_counts`, karta B-02). Wiersz bez szyny albo bez liczby jest
+ * POMIJANY (nic do przekazania); wartość liczbowa trafia tak, jak ją wpisano —
+ * poprawność (całkowita, nieujemna, szyna w modelu) ocenia gotowość backendu
+ * (`parametr.customer_counts`), która nazywa błędny wpis zamiast go cicho odrzucać.
+ */
+function wierszeOdbiorcowDoMapy(
+  wiersze: readonly WierszListy[],
+): Record<string, number> | null {
+  const mapa: Record<string, number> = {};
+  wiersze.forEach((wiersz) => {
+    const ref = (wiersz.bus_ref ?? '').trim();
+    const liczbaTekst = (wiersz.liczba ?? '').trim();
+    if (ref === '' || liczbaTekst === '') return;
+    const liczba = Number(liczbaTekst.replace(',', '.'));
+    if (!Number.isFinite(liczba)) return;
+    mapa[ref] = liczba;
+  });
+  return Object.keys(mapa).length === 0 ? null : mapa;
+}
+
 function wierszDoObiektu(
   definicje: readonly DefinicjaPola[],
   wiersz: WierszListy,
@@ -447,6 +494,9 @@ export function zbudujParametry(wejscie: WejscieParametrow): Record<string, unkn
   if (zestaw.lista === 'harmonic_spectra') {
     const mapa = wierszeWidmaDoMapy(wejscie.wiersze);
     if (mapa !== null) parametry.harmonic_spectra = mapa;
+  } else if (zestaw.lista === 'customer_counts') {
+    const mapa = wierszeOdbiorcowDoMapy(wejscie.wiersze);
+    if (mapa !== null) parametry.customer_counts = mapa;
   } else if (zestaw.lista !== null) {
     const definicje = zestaw.lista === 'motors' ? POLA_SILNIKA : POLA_REFERENCJI;
     const wiersze = wejscie.wiersze

@@ -32,6 +32,7 @@
  * elementów — element bez danej przechodziłby test tak samo jak element z daną.
  */
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { otworzZakladkeWynikow } from './nawigacjaWynikow';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -237,7 +238,7 @@ async function otworzPowloke(
 async function otworzMacierzZgodnosci(page: Page): Promise<void> {
   await page.getByRole('button', { name: /^Wyniki i dowody \d$/ }).click();
   await expect(page.getByTestId('mvd-wyniki-warsztat')).toBeVisible({ timeout: 30000 });
-  await page.getByTestId('mvd-wyniki-zakladka-ncrfg').click();
+  await otworzZakladkeWynikow(page, 'ncrfg');
   await expect(page.getByTestId('mvd-oze-macierz-ncrfg')).toBeVisible({ timeout: 30000 });
 }
 

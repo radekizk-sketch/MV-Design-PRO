@@ -16065,6 +16065,85 @@
     ]
    }
   },
+  "/api/cases/{case_id}/v126/gotowosc": {
+   "get": {
+    "description": "Gotowość analiz V12.6 na zatwierdzonym modelu przypadku (karta B-02 / W3-E).\n\nTa sama funkcja (`odpowiedz_gotowosci` → `ocen_gotowosc_v126`), którą\n`POST …/runs/v126/{rodzaj}` odmawia 422 — ekran pokazuje projektantowi PRZED\nuruchomieniem listę sprawdzonych warunków albo braków, a uruchomienie nie\nmoże ich ominąć. Bez `analysis_type` zwraca komplet rodzajów (katalog kart);\nz nim — jeden. Kształt odpowiedzi (`case_id`, `model_hash`, `przedmiot`,\n`analizy[]`) jest JEDEN z eksportem fixtur harnessu (§1 karty B02-BE-TESTY).",
+    "operationId": "get_v126_gotowosc_api_cases__case_id__v126_gotowosc_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "case_id",
+      "required": true,
+      "schema": {
+       "title": "Case Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "analysis_type",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/V126AnalysisType"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Analysis Type"
+      }
+     },
+     {
+      "description": "Parametry projektanta (JSON, ten sam kształt co `V126RunRequest.parameters`) — gotowość ocenia DOKŁADNIE to wejście, które trafi do uruchomienia.",
+      "in": "query",
+      "name": "parametry",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Parametry projektanta (JSON, ten sam kształt co `V126RunRequest.parameters`) — gotowość ocenia DOKŁADNIE to wejście, które trafi do uruchomienia.",
+       "title": "Parametry"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Get V126 Gotowosc Api Cases  Case Id  V126 Gotowosc Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get V126 Gotowosc",
+    "tags": [
+     "v12.6-academic"
+    ]
+   }
+  },
   "/api/cases/{case_id}/wizard/can-proceed": {
    "get": {
     "description": "Check if step transition is allowed.\n\nForward transitions require no BLOCKER in current step\nand no BLOCKER preconditions for target step.\nBackward transitions are always allowed.",

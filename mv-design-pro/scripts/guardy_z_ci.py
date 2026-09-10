@@ -113,6 +113,55 @@ def _lint_jak_ci() -> list[str]:
     return czerwone
 
 
+#: Kroki `npm run <skrypt>` z `frontend-checks.yml`, ktore CI uruchamia w TYM
+#: SAMYM workflowie co guardy frontendu (type-check, eslint). Czwarta czesc
+#: bramki, dopisana 2026-09-10 po czerwonych runach 34449933541/34449937286:
+#: `eslint --report-unused-disable-directives` zapalil sie na dyrektywie
+#: zostawionej przy przepisaniu `SekcjaNastaw.tsx`, a lancuch odbioru fali 2
+#: uruchamial vitest i guardy Pythona, wiec meldowal komplet zielony. Lista jest
+#: sprawdzana wobec workflowu (test wlasny + kontrola w biegu): krok, ktorego
+#: workflow nie wola, to blad, nie cicha nadwyzka.
+NPM_JAK_CI: tuple[str, ...] = ("type-check", "lint")
+WORKFLOW_FRONTEND = WORKFLOWS_DIR / "frontend-checks.yml"
+
+
+def _npm_jak_ci() -> list[str]:
+    """Uruchom kroki npm dokladnie tak, jak CI (`frontend-checks.yml`); zwroc
+    nazwy czerwonych wywolan. Brak `node_modules` jest czerwony, nie pominiety:
+    CI te kroki wykonuje zawsze, wiec bramka bez nich nie ma prawa meldowac
+    zieleni (`npm ci` albo dowiazanie katalogu z innego drzewa roboczego)."""
+    frontend = PROJECT_ROOT / "frontend"
+    tekst_workflowu = WORKFLOW_FRONTEND.read_text(encoding="utf-8")
+    czerwone: list[str] = []
+    if not (frontend / "node_modules").is_dir():
+        print(
+            "[CZERWONY] frontend/node_modules nieobecne — kroki npm z frontend-checks.yml "
+            "nie moga sie wykonac (npm ci albo dowiazanie katalogu).",
+            file=sys.stderr,
+        )
+        return [f"npm run {skrypt}" for skrypt in NPM_JAK_CI]
+    for skrypt in NPM_JAK_CI:
+        nazwa = f"npm run {skrypt}"
+        if nazwa not in tekst_workflowu:
+            czerwone.append(nazwa)
+            print(f"[CZERWONY] {nazwa}: frontend-checks.yml nie wola tego kroku", file=sys.stderr)
+            continue
+        wynik = subprocess.run(
+            ["npm", "run", skrypt],
+            cwd=frontend,
+            capture_output=True,
+            text=True,
+        )
+        if wynik.returncode != 0:
+            czerwone.append(nazwa)
+            print(f"[CZERWONY] {nazwa} RC={wynik.returncode}", file=sys.stderr)
+            for linia in (wynik.stdout + wynik.stderr).splitlines()[-12:]:
+                print(f"    {linia}", file=sys.stderr)
+        else:
+            print(f"[zielony ] {nazwa}")
+    return czerwone
+
+
 def main() -> int:
     if not WORKFLOWS_DIR.is_dir():
         print(f"BLAD: brak katalogu workflowow: {WORKFLOWS_DIR}", file=sys.stderr)
@@ -169,6 +218,10 @@ def main() -> int:
     print("\n--- lint jak CI (black/ruff: src tests, ../scripts) ---")
     lint_czerwone = _lint_jak_ci()
 
+    # Czwarta czesc: kroki npm z `frontend-checks.yml` (type-check, eslint).
+    print("\n--- kroki npm jak CI (frontend-checks.yml: type-check, lint) ---")
+    npm_czerwone = _npm_jak_ci()
+
     # Druga polowa kroku CI: wlasne testy guardow (poza `testpaths` backendu).
     print("\n--- testy wlasne guardow (`python -m pytest ../scripts`) ---")
     testy = subprocess.run(
@@ -187,7 +240,7 @@ def main() -> int:
             print(f"    {linia}", file=sys.stderr)
         print("CZERWONE: testy wlasne guardow", file=sys.stderr)
 
-    if czerwone or brakujace or testy.returncode != 0 or lint_czerwone:
+    if czerwone or brakujace or testy.returncode != 0 or lint_czerwone or npm_czerwone:
         if czerwone:
             print(
                 "CZERWONE: " + ", ".join(f"{n} (RC={rc})" for n, rc in czerwone),
@@ -195,6 +248,8 @@ def main() -> int:
             )
         if lint_czerwone:
             print("CZERWONE: lint jak CI: " + ", ".join(lint_czerwone), file=sys.stderr)
+        if npm_czerwone:
+            print("CZERWONE: kroki npm jak CI: " + ", ".join(npm_czerwone), file=sys.stderr)
         return 1
     print("KOMPLET ZIELONY.")
     return 0

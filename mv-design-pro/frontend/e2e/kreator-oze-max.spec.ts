@@ -13,6 +13,7 @@
  * (bramka K5-B b — akcja „Przyłącz źródło w tym węźle" ekranu zdolności).
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { otworzZakladkeWynikow } from './nawigacjaWynikow';
 
 
 /** Odczyt gotowosci inzynierskiej przypadku (`GET /api/cases/{id}/engineering-readiness`).
@@ -349,7 +350,7 @@ async function przeladujPowloke(page: Page): Promise<void> {
 async function otworzKreatorOzeZeZdolnosci(page: Page, busRef: string): Promise<void> {
   await page.getByRole('button', { name: /^Wyniki i dowody \d$/ }).click();
   await expect(page.getByTestId('mvd-wyniki-warsztat')).toBeVisible({ timeout: 20000 });
-  await page.getByTestId('mvd-wyniki-zakladka-zdolnosc').click();
+  await otworzZakladkeWynikow(page, 'zdolnosc');
   await expect(page.getByTestId('mvd-zdol-parametry')).toBeVisible({ timeout: 20000 });
 
   await page.getByTestId('mvd-zdol-krok').fill('1');

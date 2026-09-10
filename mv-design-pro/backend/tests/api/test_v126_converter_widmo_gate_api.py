@@ -11,8 +11,11 @@ bramką `generator.q_missing` (`tests/api/test_v126_generator_q_missing_api.py`)
 * ŻADNE źródło nie ma danych => 422 z kodem gotowości i listą generatorów
   (`power_quality_harmonics` czyta `harmonic_sources`, `ssci_impedance` czyta
   `converters` — jedyne dwa rodzaje V12.6, które te pola w ogóle czytają);
-* BRAK kandydatów (sieć bez PV/BESS/wiatru) NIE jest blokowany — solver ma
-  własną uczciwą ścieżkę „dane niekompletne"/`has_inputs=False`;
+* BRAK kandydatów (sieć bez PV/BESS/wiatru) NIE jest blokowany bramką widma —
+  od karty B-02 (2026-09-10) gotowość analizy odmawia go JAWNYM warunkiem
+  `zrodla.odksztalcajace` („brak źródeł odkształcających do wstrzyknięcia" —
+  bieg dałby zerowe odkształcenie z braku danych, nie z pomiaru), a NIE kodem
+  `generator.harmonic_spectrum_missing`; test pilnuje, że oba kody się nie mylą;
 * CZĘŚĆ źródeł ma dane => bieg przechodzi, `pominiete_zrodla` w odpowiedzi
   nazywa pominięte źródła, `zrodla_widma` niesie proweniencję (KATALOG/RECZNE)
   źródeł, które DO wejścia trafiły;
@@ -137,13 +140,16 @@ def test_ssci_impedance_zadne_zrodlo_nie_ma_karty_zwraca_422() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_power_quality_harmonics_bez_zadnych_przeksztaltnikow_liczy_normalnie() -> None:
-    """Sieć bez PV/BESS/wiatru: brak kandydatów nie jest odmową — to legalny
-    stan „nic do zbadania", solver melduje go sam (`has_inputs=False`)."""
+def test_power_quality_harmonics_bez_zadnych_przeksztaltnikow_odmawia_brakiem_zrodel() -> None:
+    """Sieć bez PV/BESS/wiatru: bramka widma NIE strzela (nie ma kandydatów bez
+    widma) — odmawia gotowość, warunkiem nazwanym po tym, czego brakuje
+    (`zrodla.odksztalcajace`), zamiast biegu z zerowym THD z braku danych."""
     with TestClient(app) as client:
         case_id = _seed_case(client, _model(generators=[]))
         resp = _uruchom(client, case_id, "power_quality_harmonics")
-    assert resp.status_code == 200, resp.text
+    assert resp.status_code == 422, resp.text
+    assert "zrodla.odksztalcajace" in resp.text
+    assert "generator.harmonic_spectrum_missing" not in resp.text
 
 
 # ---------------------------------------------------------------------------
@@ -217,9 +223,12 @@ def test_widmo_reczne_w_zadaniu_daje_proweniencje_reczne_w_odpowiedzi() -> None:
 
 
 def test_inna_analiza_v126_nie_jest_blokowana_brakiem_widma() -> None:
+    """`uncertainty_sensitivity` nie czyta `harmonic_sources` ani `converters`
+    (świadomie NIE `earthing_safety`: od karty B-02 ten rodzaj odmawia biegu bez
+    danych uziomu projektanta, `parametr.earthing`, niezależnie od widma)."""
     with TestClient(app) as client:
         case_id = _seed_case(
             client, _model(generators=[_generator("PV-1", materialized_params=_KARTA_BEZ_WIDMA)])
         )
-        resp = _uruchom(client, case_id, "earthing_safety")
+        resp = _uruchom(client, case_id, "uncertainty_sensitivity")
     assert resp.status_code == 200, resp.text

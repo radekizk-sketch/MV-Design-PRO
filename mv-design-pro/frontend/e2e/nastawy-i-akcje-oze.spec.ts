@@ -15,6 +15,7 @@
  * budowana przez API domain-ops; interakcje NATYWNE — zero dispatchEvent).
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { otworzZakladkeWynikow } from './nawigacjaWynikow';
 
 
 /** Odczyt gotowosci inzynierskiej przypadku (`GET /api/cases/{id}/engineering-readiness`).
@@ -325,7 +326,7 @@ async function przeladujPowloke(page: Page): Promise<void> {
 async function otworzKoordynacje(page: Page): Promise<void> {
   await page.getByRole('button', { name: /^Wyniki i dowody \d$/ }).click();
   await expect(page.getByTestId('mvd-wyniki-warsztat')).toBeVisible({ timeout: 20000 });
-  await page.getByTestId('mvd-wyniki-zakladka-pozostale').click();
+  await otworzZakladkeWynikow(page, 'pozostale');
   const karta = page.getByTestId('mvd-analizy-karta-koordynacja');
   await expect(karta).toBeVisible({ timeout: 20000 });
   await karta.getByRole('button', { name: 'Otwórz' }).click();
@@ -410,7 +411,7 @@ test('OZE: „Przyłącz źródło w tym węźle" otwiera formularz źródła z 
   // Wyniki → zakładka „Zdolność przyłączeniowa" (grupa OZE).
   await page.getByRole('button', { name: /^Wyniki i dowody \d$/ }).click();
   await expect(page.getByTestId('mvd-wyniki-warsztat')).toBeVisible({ timeout: 20000 });
-  await page.getByTestId('mvd-wyniki-zakladka-zdolnosc').click();
+  await otworzZakladkeWynikow(page, 'zdolnosc');
   await expect(page.getByTestId('mvd-zdol-parametry')).toBeVisible({ timeout: 20000 });
 
   // Węzeł-kandydat = szyna SN STACJI (bus_ref rozwiązywalny na stację przez FK

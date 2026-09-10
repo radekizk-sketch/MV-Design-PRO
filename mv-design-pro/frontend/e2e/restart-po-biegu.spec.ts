@@ -11,6 +11,7 @@
  * przez API domain-ops, obliczenie uruchamiane REALNYM klikiem „Oblicz").
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { otworzZakladkeWynikow } from './nawigacjaWynikow';
 
 
 /** Odczyt gotowosci inzynierskiej przypadku (`GET /api/cases/{id}/engineering-readiness`).
@@ -281,7 +282,7 @@ async function przeladujPowloke(page: Page): Promise<void> {
 async function otworzZakladkeZwarc(page: Page): Promise<void> {
   await page.getByRole('button', { name: /^Wyniki i dowody \d$/ }).click();
   await expect(page.getByTestId('mvd-wyniki-warsztat')).toBeVisible();
-  await page.getByTestId('mvd-wyniki-zakladka-zwarcia').click();
+  await otworzZakladkeWynikow(page, 'zwarcia');
 }
 
 // DEFEKT H-0 (hydratacja) NAPRAWIONY w K2: powłoka hydratuje stan zależny

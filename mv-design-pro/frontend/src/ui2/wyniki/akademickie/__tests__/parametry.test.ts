@@ -193,9 +193,11 @@ describe('zestaw parametrów rodzaju', () => {
     // (karta W2-C): liczy WPROST z modelu (widmo karty katalogowej), ale
     // przyjmuje TEŻ jawne wejście `harmonic_spectra` — ten sam wzorzec, co
     // `ssci_impedance` (liczy z modelu, a `ssci_converter_ref` jest polem).
+    // `reliability_contingency` PRZENIESIONY niżej (karta B-02): liczba
+    // odbiorców per szyna to dana, której model nie niesie — bez niej SAIDI/SAIFI
+    // byłyby zerami z braku danych, nie z pomiaru.
     expect(maParametry('insulation_coordination')).toBe(false);
     expect(maParametry('voltage_stability')).toBe(false);
-    expect(maParametry('reliability_contingency')).toBe(false);
     expect(maParametry('uncertainty_sensitivity')).toBe(false);
   });
 
@@ -205,6 +207,7 @@ describe('zestaw parametrów rodzaju', () => {
     expect(maParametry('neutral_earthing_design')).toBe(true);
     expect(maParametry('earth_fault_detection')).toBe(true);
     expect(maParametry('power_quality_harmonics')).toBe(true);
+    expect(maParametry('reliability_contingency')).toBe(true);
   });
 });
 
@@ -293,5 +296,62 @@ describe('zbudujParametry — widmo harmoniczne jawne (karta W2-C)', () => {
       ],
     });
     expect(parametry).toEqual({ harmonic_spectra: { 'PV-1': { '5': 4.5 } } });
+  });
+});
+
+describe('zbudujParametry — liczba odbiorców per szyna (karta B-02)', () => {
+  it('wiersze szyna → liczba agregują się do mapy `customer_counts` (liczby całkowite)', () => {
+    const parametry = zbudujParametry({
+      rodzaj: 'reliability_contingency',
+      pola: {},
+      uziom: {},
+      metody: [],
+      wiersze: [
+        { bus_ref: 'bus_sn_b', liczba: '120' },
+        { bus_ref: 'bus_sn_c', liczba: '35' },
+      ],
+    });
+    expect(parametry).toEqual({ customer_counts: { bus_sn_b: 120, bus_sn_c: 35 } });
+  });
+
+  it('brak wierszy NIE tworzy klucza — zero odbiorców z fabrykacji', () => {
+    const parametry = zbudujParametry({
+      rodzaj: 'reliability_contingency',
+      pola: {},
+      uziom: {},
+      metody: [],
+      wiersze: [],
+    });
+    expect(parametry).toEqual({});
+    expect('customer_counts' in parametry).toBe(false);
+  });
+
+  it.each([
+    ['bez szyny', { bus_ref: '', liczba: '120' }],
+    ['bez liczby', { bus_ref: 'bus_sn_b', liczba: '' }],
+    ['liczba nienumeryczna', { bus_ref: 'bus_sn_b', liczba: 'dużo' }],
+  ])('wiersz niekompletny (%s) jest pomijany, nie fabrykuje wpisu', (_opis, wiersz) => {
+    const parametry = zbudujParametry({
+      rodzaj: 'reliability_contingency',
+      pola: {},
+      uziom: {},
+      metody: [],
+      wiersze: [wiersz],
+    });
+    expect(parametry).toEqual({});
+  });
+
+  it('wartość ujemna albo niecałkowita jedzie do backendu JAK WPISANA — odrzuca ją most (jedno źródło reguły)', () => {
+    // Reguła „liczba odbiorców = liczba całkowita ≥ 0" żyje w `odbiorcy_z_parametrow`
+    // (backend, ten sam kod dla gotowości i biegu). Okno NIE dubluje jej po cichu:
+    // przekazuje wpis, a backend melduje odrzucony wpis w warunku gotowości.
+    const parametry = zbudujParametry({
+      rodzaj: 'reliability_contingency',
+      pola: {},
+      uziom: {},
+      metody: [],
+      wiersze: [{ bus_ref: 'bus_sn_b', liczba: '-3' }, { bus_ref: 'bus_sn_c', liczba: '2,5' }],
+    });
+    expect(parametry).toEqual({ customer_counts: { bus_sn_b: -3, bus_sn_c: 2.5 } });
   });
 });

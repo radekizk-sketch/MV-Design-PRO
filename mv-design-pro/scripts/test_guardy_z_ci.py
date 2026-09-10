@@ -78,6 +78,52 @@ def test_wywolania_z_workflowow_niosa_argumenty_kroku(monkeypatch, tmp_path) -> 
     assert runner.guardy_z_workflowow() == ["docs_guard", "port_binding_guard", "x_guard"]
 
 
+def test_npm_jak_ci_odwzorowuje_kroki_workflowa_frontendu() -> None:
+    """Kazdy krok `NPM_JAK_CI` jest krokiem `run:` w `frontend-checks.yml` i
+    odwrotnie: kazdy `npm run <skrypt>` workflowu poza `npm ci`/testami jest na
+    liscie (2026-09-10: eslint z `--report-unused-disable-directives` czerwony
+    na CI, bramka odbioru bez tego kroku meldowala komplet zielony)."""
+    tekst = runner.WORKFLOW_FRONTEND.read_text(encoding="utf-8")
+    for skrypt in runner.NPM_JAK_CI:
+        assert f"run: npm run {skrypt}" in tekst, f"workflow nie wola: npm run {skrypt}"
+    wolane = set(re.findall(r"run: npm run ([a-z:-]+)", tekst))
+    # Testy jednostkowe (vitest) sa osobna, ciezka czescia lancucha odbioru —
+    # poza ta bramka, tak jak pelny pytest jest poza nia po stronie backendu.
+    assert wolane - {"test:ci", "test"} == set(runner.NPM_JAK_CI)
+
+
+def test_npm_jak_ci_melduje_czerwony_krok_po_nazwie(monkeypatch, tmp_path) -> None:
+    (tmp_path / "node_modules").mkdir()
+    monkeypatch.setattr(runner, "PROJECT_ROOT", tmp_path.parent)
+    (tmp_path.parent / "frontend").mkdir(exist_ok=True)
+    (tmp_path.parent / "frontend" / "node_modules").mkdir(exist_ok=True)
+    wywolane: list[list[str]] = []
+
+    def _run(polecenie, **_kwargs):
+        wywolane.append(list(polecenie))
+        czerwone = polecenie[-1] == "lint"
+        return subprocess.CompletedProcess(polecenie, 1 if czerwone else 0, "", "1 problem")
+
+    monkeypatch.setattr(runner.subprocess, "run", _run)
+
+    assert runner._npm_jak_ci() == ["npm run lint"]
+    assert [p[:2] for p in wywolane] == [["npm", "run"]] * len(runner.NPM_JAK_CI)
+
+
+def test_npm_jak_ci_bez_node_modules_jest_czerwone_nie_pominiete(monkeypatch, tmp_path) -> None:
+    """Brak `node_modules` = kroki CI niewykonane = bramka czerwona (zero cichego
+    pominiecia: CI te kroki wykonuje zawsze)."""
+    monkeypatch.setattr(runner, "PROJECT_ROOT", tmp_path)
+    (tmp_path / "frontend").mkdir()
+
+    def _run(polecenie, **_kwargs):
+        raise AssertionError("bez node_modules nic nie powinno sie uruchomic")
+
+    monkeypatch.setattr(runner.subprocess, "run", _run)
+
+    assert runner._npm_jak_ci() == ["npm run type-check", "npm run lint"]
+
+
 def test_realne_workflowy_wolaja_port_binding_guard_ze_strict() -> None:
     """Pin stanu repozytorium: P0 Extended wola `port_binding_guard.py --strict`
     — jesli ten wpis zniknie, zmienil sie workflow, nie ten test."""

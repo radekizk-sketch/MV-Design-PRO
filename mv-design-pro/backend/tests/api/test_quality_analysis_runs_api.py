@@ -584,3 +584,58 @@ def test_design_verdict_endpoint_is_deterministic(app_client) -> None:
     # niewłaściwego powodu (test maskujący defekt).
     assert resp1.status_code == 200, resp1.text
     assert resp1.json() == resp2.json()
+
+
+# --------------------------------------------------------------------------
+# Ocena per element (karta B02-BE-TESTY §5): `ocena`, `grupy`, `pozycje[].elementy[]`
+# --------------------------------------------------------------------------
+
+#: Kontrakt `OcenaElementu.to_dict()` (`application/analyses/werdykt_projektowy.py`)
+#: — pin listy kluczy widocznych przez API (karta B-02 / W3-E, 2026-09-10).
+_KLUCZE_OCENY_ELEMENTU = {
+    "element_id",
+    "element_nazwa",
+    "element_rodzaj",
+    "wynik",
+    "wartosc",
+    "odniesienie",
+    "odniesienie_dolne",
+    "odniesienie_ostrzegawcze",
+    "jednostka",
+    "margines",
+    "margines_jednostka",
+    "uwaga_pl",
+    "uzasadnienie_pl",
+    "wniosek_pl",
+    "dowod",
+}
+
+
+def test_design_verdict_endpoint_niesie_ocene_grupy_i_elementy_per_pozycja(app_client) -> None:
+    case_id = _nowy_przypadek(app_client)
+    klucz = _klucz(app_client, case_id)
+    set_enm(klucz, build_golden_enm())
+    execute_run(create_run(case_id=case_id, klucz_twin=klucz, analysis_type="PF").id)
+    execute_run(create_run(case_id=case_id, klucz_twin=klucz, analysis_type="short_circuit_sn").id)
+
+    resp = app_client.get(DESIGN_VERDICT, params={"case_id": case_id})
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+
+    assert set(data["ocena"].keys()) == {"oceniono", "spelnia", "nie_spelnia", "brak_podstaw"}
+    assert data["ocena"]["oceniono"] == data["ocena"]["spelnia"] + data["ocena"]["nie_spelnia"]
+
+    assert data["grupy"], "brak grup na odpowiedzi API"
+    for grupa in data["grupy"]:
+        assert set(grupa.keys()) == {"kod", "nazwa_pl"}
+        assert grupa["nazwa_pl"].strip()
+
+    co_najmniej_jeden_element = False
+    for pozycja in data["pozycje"]:
+        assert "elementy" in pozycja
+        assert isinstance(pozycja["grupa"], str) and pozycja["grupa"]
+        for element in pozycja["elementy"]:
+            co_najmniej_jeden_element = True
+            assert set(element.keys()) == _KLUCZE_OCENY_ELEMENTU, pozycja["kryterium_id"]
+            assert element["wynik"] in ("SPELNIA", "NIE_SPELNIA", "BRAK_PODSTAW")
+    assert co_najmniej_jeden_element, "złota sieć z PF+SC musi dać co najmniej jeden element"

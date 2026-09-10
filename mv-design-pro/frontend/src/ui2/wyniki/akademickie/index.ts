@@ -1,6 +1,6 @@
-/* Barrel okna „Analizy akademickie" (ui2/wyniki/akademickie). */
+/* Barrel okna „Analizy specjalistyczne" (ui2/wyniki/akademickie; karta B-02). */
 export { EkranAnalizAkademickich, type EkranAnalizAkademickichProps } from './EkranAnalizAkademickich';
-export type { RodzajAnalizy } from './api';
+export type { RodzajAnalizy, KartaKatalogu, GotowoscAnalizy, OdpowiedzGotowosci } from './api';
 export {
   POWODY_NIEPREZENTOWANIA,
   rodzajPrezentowany,

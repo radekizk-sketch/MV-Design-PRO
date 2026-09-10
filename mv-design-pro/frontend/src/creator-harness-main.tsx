@@ -74,6 +74,18 @@ import odpowiedziV126 from './ui2/wyniki/akademickie/__tests__/odpowiedziSolvera
 // samymi funkcjami, co trasy; JSON w repo pilnuje `tests/ci/test_fixtury_harnessu.py`.
 import zgodnoscPrzekrojowaScenyMacierz from './harness-fixtures/generated/ncrfg_zgodnosc_przekrojowa_scena_macierz.json';
 import werdyktProjektowyScenyUwaga from './harness-fixtures/generated/werdykt_projektowy_scena_uwaga.json';
+// B-02 / W3-E (2026-09-10): katalog kart „Analizy specjalistyczne", gotowość analiz
+// (bez parametrów i z parametrami sceny) oraz werdykty scen ekranu „Ocena techniczna
+// wyników" — policzone BACKENDEM tym samym skryptem (realne biegi PF/SC złotej sieci,
+// identyfikatory biegów stabilizowane). Migawka z nazwami sieci złotej — jedno
+// miejsce z atrapą testów jednostkowych.
+import katalogAnalizV126 from './harness-fixtures/generated/katalog_analiz_v126.json';
+import gotowoscV126ScenyAkademickie from './harness-fixtures/generated/gotowosc_v126_scena_akademickie.json';
+import gotowoscV126ScenyAkademickieParametry from './harness-fixtures/generated/gotowosc_v126_scena_akademickie_parametry.json';
+import werdyktProjektowyScenyOcena from './harness-fixtures/generated/werdykt_projektowy_scena_ocena.json';
+import werdyktProjektowyScenyOcenaPrzekroczenia from './harness-fixtures/generated/werdykt_projektowy_scena_ocena_przekroczenia.json';
+import { REWIZJA_SIECI_ZLOTEJ, migawkaSieciZlotej } from './harness-fixtures/migawkaSieciZlotej';
+import { EkranOceny } from './ui2/wyniki/ocena';
 import { SekcjaSilySieci } from './ui2/oze/pulpit';
 import { EkranRozplywu } from './ui2/wyniki/rozplyw';
 import { EkranZwarc } from './ui2/wyniki/zwarcia';
@@ -1944,6 +1956,48 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
   }
+  // ---- B-02 / W3-E: katalog kart „Analizy specjalistyczne" i gotowość analiz —
+  // odpowiedzi policzone BACKENDEM (`scripts/eksport_fixtur_harnessu.py`:
+  // `katalog_do_dict`, `odpowiedz_gotowosci` na złotej sieci). Gotowość Z parametrami
+  // wraca WYŁĄCZNIE, gdy zapytanie niesie DOKŁADNIE parametry sceny dla rodzaju
+  // (formularz wypełniony wartościami z fixtury `parametry`) — w każdym innym razie
+  // stan bez parametrów. Atrapa NIE liczy gotowości sama (częściowo wypełniony
+  // formularz dostaje stan bazowy, nie „policzone na oko"): liczy ją wyłącznie backend.
+  if (url.includes('/api/catalog/v126/analysis-catalog')) return jsonOK(katalogAnalizV126);
+  if (url.includes('/v126/gotowosc')) {
+    const kanonJson = (dane: unknown): string =>
+      JSON.stringify(dane, (_klucz, wartosc: unknown) =>
+        wartosc !== null && typeof wartosc === 'object' && !Array.isArray(wartosc)
+          ? Object.fromEntries(
+              Object.entries(wartosc as Record<string, unknown>).sort(([a], [b]) =>
+                a < b ? -1 : a > b ? 1 : 0,
+              ),
+            )
+          : wartosc,
+      );
+    const zapytanie = new URL(url, location.origin).searchParams;
+    const rodzaj = zapytanie.get('analysis_type');
+    const parametry = zapytanie.get('parametry');
+    if (rodzaj === null) return jsonOK(gotowoscV126ScenyAkademickie);
+    const zParametrami = gotowoscV126ScenyAkademickieParametry as unknown as {
+      parametry: Record<string, unknown>;
+      analizy: { kod: string }[];
+    };
+    const oczekiwane = zParametrami.parametry[rodzaj];
+    const zgodne =
+      parametry !== null && oczekiwane !== undefined && kanonJson(JSON.parse(parametry)) === kanonJson(oczekiwane);
+    const zrodlo = zgodne
+      ? zParametrami.analizy
+      : (gotowoscV126ScenyAkademickie as unknown as { analizy: { kod: string }[] }).analizy;
+    const analiza = zrodlo.find((pozycja) => pozycja.kod === rodzaj);
+    if (analiza === undefined) {
+      return new Response(JSON.stringify({ detail: `Nieznany rodzaj analizy: ${rodzaj}` }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    return jsonOK({ ...gotowoscV126ScenyAkademickie, analizy: [analiza] });
+  }
   // ---- Scena "akademickie" (V126-JEZYK): pakiet analiz specjalistycznych V12.6.
   // Wszystkie rodzaje karmione REALNYMI odpowiedziami solvera z fixtury CI.
   if (url.includes('/api/catalog/v126/analysis-types')) {
@@ -3374,6 +3428,11 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     // wszystkie kryteria „niesprawdzone", a rejestr „Co wymaga uwagi" bierze
     // przekroczenia ze store'u rozpływu (`co-wymaga-uwagi/model.ts`). Bez atrapy
     // zapytanie leciało do realnego backendu i wracało 404 przy każdym renderze.
+    // B-02 / W3-E: sceny ekranu „Ocena techniczna wyników" dostają werdykt z REALNYCH
+    // biegów PF + zwarć złotej sieci (scena przekroczeń: obciążenie ×8 — realne
+    // NIE SPEŁNIA napięć/gałęzi/transformatora), policzony tym samym agregatem.
+    if (creator === 'ocena') return jsonOK(werdyktProjektowyScenyOcena);
+    if (creator === 'ocena-przekroczenia') return jsonOK(werdyktProjektowyScenyOcenaPrzekroczenia);
     return jsonOK(werdyktProjektowyScenyUwaga);
   }
   if (url.includes('/api/study-cases/') && url.endsWith('/protection-config')) {
@@ -3707,33 +3766,29 @@ if (creator === 'arcflash') {
   } as unknown as ExecutionRun;
   useExecutionRunsStore.setState({ runs: [runLf6], activeRunId: 'run-lf-6' } as never);
 } else if (creator === 'akademickie') {
-  // V126-JEZYK: migawka modelu z NAZWAMI obiektow pod referencjami produkcyjnymi
-  // (te same, ktore niesie fixtura odpowiedzi solvera) — scena pokazuje most
-  // referencja→nazwa w dzialaniu, a nie etykiete zapasowa.
+  // B-02 / W3-E: migawka z NAZWAMI obiektów sieci złotej (te same referencje, które
+  // niosą fixtury gotowości liczone backendem — `bus_sn_b` → „Stacja B SN") oraz
+  // obiektów pod referencjami produkcyjnymi fixtury odpowiedzi solvera — most
+  // referencja → nazwa działa dla obu źródeł, nie etykieta zapasowa. Bez `rodzaj` w
+  // adresie scena startuje w KATALOGU KART (widok domyślny okna).
   useSnapshotStore.setState({
-    rewizjaBiezacegoModelu: 4,
-    snapshot: {
-      header: { name: 'Przylaczenie farmy PV 8 MW', revision: 4 },
-      buses: [
-        {
-          id: 'gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn',
-          ref_id: 'gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn',
-          name: 'GPZ Zachod — szyny SN, sekcja I',
-        },
-        {
-          id: 'station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn',
-          ref_id: 'station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn',
-          name: 'Stacja SN/nN Ogrodowa',
-        },
-      ],
-      branches: [
-        {
-          id: 'corridor/6d2b81f0c4e34a1b9f5d70ae2c8b4913/segment/001',
-          ref_id: 'corridor/6d2b81f0c4e34a1b9f5d70ae2c8b4913/segment/001',
-          name: 'Kabel SN GPZ — Ogrodowa',
-        },
-      ],
-    },
+    rewizjaBiezacegoModelu: REWIZJA_SIECI_ZLOTEJ,
+    snapshot: migawkaSieciZlotej(),
+  } as never);
+} else if (creator === 'ocena' || creator === 'ocena-przekroczenia') {
+  // B-02 / W3-E: ekran „Ocena techniczna wyników" — nazwy projektu/przypadku do
+  // nagłówka PODSTAWA OCENY, migawka złotej sieci (nazwy obiektów pod referencjami
+  // fixtury werdyktu), rewizja migawki = rewizja biegów fixtury (znacznik AKTUALNE).
+  // Werdykt z podmienionego fetch — policzony backendem na realnych biegach.
+  useAppStateStore.setState({
+    activeProjectId: 'proj-demo',
+    activeProjectName: 'CGMES Golden Net',
+    activeCaseId: 'case-demo',
+    activeCaseName: creator === 'ocena' ? 'Stan normalny' : 'Obciążenie ×8',
+  } as never);
+  useSnapshotStore.setState({
+    rewizjaBiezacegoModelu: REWIZJA_SIECI_ZLOTEJ,
+    snapshot: migawkaSieciZlotej(),
   } as never);
 } else if (creator === 'ssci' || creator === 'migotanie') {
   // Runda dowodowa V-B: ssci — aktywny przypadek 'case-demo' zasiany globalnie;
@@ -4260,15 +4315,17 @@ function Harness() {
         onOtworzDokumentacje={() => undefined}
       />
     );
-  else if (creator === 'akademickie')
+  else if (creator === 'akademickie') {
+    // Bez `rodzaj` w adresie: katalog kart (widok domyślny); z nim — widok analizy.
+    const rodzajZAdresu = new URLSearchParams(location.search).get('rodzaj');
     node = (
       <EkranAnalizAkademickich
         trybZaawansowania="expert"
-        rodzajPoczatkowy={
-          (new URLSearchParams(location.search).get('rodzaj') ?? 'earthing_safety') as never
-        }
+        rodzajPoczatkowy={(rodzajZAdresu ?? undefined) as never}
       />
     );
+  } else if (creator === 'ocena' || creator === 'ocena-przekroczenia')
+    node = <EkranOceny trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
   else if (creator === 'migotanie')
     node = (
       <SekcjaMigotania
@@ -4325,6 +4382,7 @@ function Harness() {
         width: [
           'kompensacja-wynik', 'sila-sieci', 'odbior-zgodnosc', 'estymacja', 'ssci', 'migotanie', 'cieplna',
           'wyniki-skladowe', 'wyniki-zbieznosc', 'wyniki-stan-fazowy', 'wyniki-stabilnosc', 'akademickie',
+          'ocena', 'ocena-przekroczenia',
         ].includes(creator)
           ? 1400
           : 1180,
