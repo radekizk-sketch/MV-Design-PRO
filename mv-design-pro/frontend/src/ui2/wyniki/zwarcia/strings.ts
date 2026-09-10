@@ -139,6 +139,48 @@ export const ZWARCIA_STRINGS = {
   zrodlaKolZq: '|Z_Q|',
   zrodlaKolWzor: 'Wzór',
 
+  // Sekcja „Pasmo MIN/MAX" (karta W3-G3, aneks D7) — oba scenariusze c_max/c_min
+  // JEDNEGO przypadku obok siebie, z proweniencją każdej strony.
+  pasmoTytul: 'Pasmo MIN/MAX (IEC 60909)',
+  pasmoOpis:
+    'Wielkości zwarciowe przy c_max i c_min tego samego przypadku obok siebie — '
+    + 'dwa biegi kanoniczne z jednej migawki modelu, zero obliczeń w interfejsie.',
+  pasmoKolIkssMax: 'Ik" (max)',
+  pasmoKolIkssMin: 'Ik" (min)',
+  pasmoKolIpMax: 'ip (max)',
+  pasmoKolIpMin: 'ip (min)',
+  pasmoKolIthMax: 'Ith (max)',
+  pasmoKolIthMin: 'Ith (min)',
+  pasmoKolSkMax: 'Sk" (max)',
+  pasmoKolSkMin: 'Sk" (min)',
+  pasmoKolRkMax: 'Rk (max)',
+  pasmoKolRkMin: 'Rk (min)',
+  pasmoKolXkMax: 'Xk (max)',
+  pasmoKolXkMin: 'Xk (min)',
+  pasmoKolZkMax: '|Zk| (max)',
+  pasmoKolZkMin: '|Zk| (min)',
+  pasmoKolXRMax: 'X/R (max)',
+  pasmoKolXRMin: 'X/R (min)',
+  pasmoKolKappaMax: 'κ (max)',
+  pasmoKolKappaMin: 'κ (min)',
+  pasmoWczytywanie: 'Wczytywanie pasma MIN/MAX…',
+  pasmoBladPobrania: 'Nie udało się pobrać pasma MIN/MAX dla tego przebiegu.',
+  pasmoBladPobraniaOpis: 'Błąd pobrania z serwera (sieć albo backend). Spróbuj ponownie później.',
+  pasmoBrakScenariusz: (scenariusz: 'MAX' | 'MIN') =>
+    `Brak biegu ${scenariusz === 'MAX' ? 'MAX (c_max)' : 'MIN (c_min)'} tego przypadku.`,
+  pasmoUruchomScenariusz: (scenariusz: 'MAX' | 'MIN') =>
+    `Uruchom bieg ${scenariusz === 'MAX' ? 'MAX (c_max)' : 'MIN (c_min)'}`,
+  pasmoUruchomScenariuszOpis: (scenariusz: 'MAX' | 'MIN') =>
+    `Uruchamia przebieg zwarciowy IEC 60909 przy scenariuszu ${scenariusz === 'MAX' ? 'maksymalnym (c_max)' : 'minimalnym (c_min)'} dla tego przypadku i dokłada go do pasma.`,
+  pasmoProwenencjaZapisany: (id: string) => `Bieg zapisany · ${id}`,
+  pasmoProwenencjaObliczony: (idKotwicy: string) =>
+    `Policzone na żądanie z biegu ${idKotwicy} (bez zapisu)`,
+  pasmoRewizja: (rewizja: number | null | undefined) =>
+    rewizja === null || rewizja === undefined ? 'rewizja nieznana' : `rewizja modelu ${rewizja}`,
+  pasmoRozbieznoscRewizji: 'Bieg MAX i bieg MIN pochodzą z różnych rewizji modelu — porównanie jest orientacyjne.',
+  pasmoScenariuszKotwicy: (scenariusz: 'MAX' | 'MIN') =>
+    `Bieg kotwicy: scenariusz ${scenariusz === 'MAX' ? 'MAX (c_max)' : 'MIN (c_min)'}.`,
+
   // Sekcja ZAŁOŻENIA — wpisy `raw_result.zalozenia` (CV-4.3 K7): jedno założenie
   // = jeden element + scenariusz, treść (message_pl) wprost z backendu (WHITE BOX).
   zalozenieEtykieta: (elementRef: string) => `Źródło ${elementRef}`,

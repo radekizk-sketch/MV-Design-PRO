@@ -439,8 +439,12 @@ describe('EkranZwarc - realny dostawca wkladow (R3-B / K3-G3)', () => {
     vi.unstubAllGlobals();
   });
 
-  it('props wklady ma pierwszenstwo - dostawca nie pobiera (1:1 dla testow)', () => {
-    const fetchMock = vi.fn();
+  it('props wklady ma pierwszenstwo - dostawca wkladow nie pobiera (1:1 dla testow)', () => {
+    // Karta W3-G3: ekran ma DRUGI dostawca na zadanie (pasmo MIN/MAX, właściwość
+    // CAŁEGO biegu — niezależny od wybranego punktu/propsu `wklady`), więc
+    // asercja celuje w KONKRETNĄ końcówkę wkładów (jak w innych testach tego
+    // pliku), nie w brak JAKIEGOKOLWIEK zapytania sieciowego ekranu.
+    const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 404 });
     vi.stubGlobal('fetch', fetchMock);
     render(
       <EkranZwarc
@@ -449,7 +453,9 @@ describe('EkranZwarc - realny dostawca wkladow (R3-B / K3-G3)', () => {
         wklady={wkladyFixture()}
       />,
     );
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(
+      fetchMock.mock.calls.some(([url]) => String(url).includes('/api/proof/sc3f/contributions')),
+    ).toBe(false);
     vi.unstubAllGlobals();
   });
 });

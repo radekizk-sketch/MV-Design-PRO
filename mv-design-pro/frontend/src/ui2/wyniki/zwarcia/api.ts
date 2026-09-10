@@ -15,6 +15,7 @@ import { useEffect, useState } from 'react';
 import type { EnergyNetworkModel } from '../../../types/enm';
 import type {
   ShortCircuitBranchFlow,
+  ShortCircuitResults,
   ShortCircuitRow,
   TraceStep,
 } from '../../../ui/results-inspector/types';
@@ -253,4 +254,87 @@ export function useRozplywZwarciowy(runId: string | null, row: ShortCircuitRow |
   const wpis = cache[punkt];
   if (wpis === 'blad') return { flows: null, trace: null, blad: true };
   return { flows: wpis?.flows ?? null, trace: wpis?.trace ?? null, blad: false };
+}
+
+// ---------------------------------------------------------------------------
+// Pasmo MIN/MAX zwarcia z JEDNEGO przypadku (karta W3-G3, aneks D7,
+// mapa domknięcia 3 #12) — dostawca `GET …/results/short-circuit/pasmo`.
+// ---------------------------------------------------------------------------
+
+/** Kontekst przypadku strony pasma — podzbiór pól konsumowanych (świeżość). */
+export interface AnalysisCaseContextPasma {
+  readonly rewizja_modelu?: number | null;
+}
+
+/**
+ * Jedna strona pasma (MAX albo MIN) — kształt 1:1 odpowiedzi backendu
+ * (`api/canonical_run_views.py::_strona_pasma_zwarcia`). `run_id` obecny
+ * WYŁĄCZNIE dla `zrodlo === 'biegu_zapisanego'` — strona `'obliczony_na_zadanie'`
+ * dzieli identyfikator z kotwicą po stronie backendu, więc go tu NIE dostaje
+ * (zero fabrykacji niezależnej tożsamości biegu).
+ */
+export interface StronaPasmaOdpowiedz {
+  readonly zrodlo: 'biegu_zapisanego' | 'obliczony_na_zadanie';
+  readonly run_id: string | null;
+  readonly bieg_bazowy_id: string;
+  readonly wynik: ShortCircuitResults;
+  readonly analysis_case_context: AnalysisCaseContextPasma;
+}
+
+/** Kształt 1:1 odpowiedzi `GET …/results/short-circuit/pasmo`. */
+export interface PasmoZwarciaOdpowiedz {
+  readonly run_id_kotwicy: string;
+  readonly scenariusz_kotwicy: 'MAX' | 'MIN';
+  readonly typ_zwarcia_kotwicy: string;
+  readonly brakujacy_scenariusz: 'MAX' | 'MIN' | null;
+  readonly powod_niedostepnosci: string | null;
+  readonly powod_niedostepnosci_pl: string | null;
+  readonly max: StronaPasmaOdpowiedz | null;
+  readonly min: StronaPasmaOdpowiedz | null;
+}
+
+/** Pobiera pasmo MIN/MAX zwarcia dla biegu kotwicy (dowolny scenariusz). */
+export async function fetchPasmoZwarcia(runId: string): Promise<PasmoZwarciaOdpowiedz> {
+  const response = await fetch(`/api/analysis-runs/${runId}/results/short-circuit/pasmo`);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return (await response.json()) as PasmoZwarciaOdpowiedz;
+}
+
+/** Stan uczciwy pasma MIN/MAX — jedna dana pochodna na cały czas życia hooka. */
+export type StanPasmaZwarcia =
+  | { readonly rodzaj: 'brak-biegu' }
+  | { readonly rodzaj: 'wczytywanie' }
+  | { readonly rodzaj: 'blad' }
+  | { readonly rodzaj: 'gotowe'; readonly dane: PasmoZwarciaOdpowiedz };
+
+/**
+ * Hook dostawcy pasma MIN/MAX dla biegu KOTWICY (dowolny scenariusz — nie
+ * musi być MAX). Cache per `runId` na życie ekranu (deterministyczny bieg →
+ * deterministyczna odpowiedź), jak `useWkladyZwarciowe`/`useRozplywZwarciowy`
+ * obok. `runId = null` → `'brak-biegu'` (ekran jeszcze bez przebiegu — stan
+ * pusty CAŁEGO okna już to obsługuje, sekcja się nie montuje).
+ */
+export function usePasmoZwarcia(runId: string | null): StanPasmaZwarcia {
+  const [cache, setCache] = useState<Record<string, PasmoZwarciaOdpowiedz | 'blad'>>({});
+
+  useEffect(() => {
+    if (!runId || runId in cache) return;
+    let anulowane = false;
+    fetchPasmoZwarcia(runId)
+      .then((dane) => {
+        if (!anulowane) setCache((c) => ({ ...c, [runId]: dane }));
+      })
+      .catch(() => {
+        if (!anulowane) setCache((c) => ({ ...c, [runId]: 'blad' }));
+      });
+    return () => {
+      anulowane = true;
+    };
+  }, [runId, cache]);
+
+  if (!runId) return { rodzaj: 'brak-biegu' };
+  const wpis = cache[runId];
+  if (wpis === undefined) return { rodzaj: 'wczytywanie' };
+  if (wpis === 'blad') return { rodzaj: 'blad' };
+  return { rodzaj: 'gotowe', dane: wpis };
 }

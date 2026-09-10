@@ -188,8 +188,11 @@ ALLOWLIST: dict[tuple[str, int], str] = {
         # `branch_flow_trace`/hooka `useRozplywZwarciowy` WCZEŚNIEJ w pliku
         # (ślad WHITE BOX podziału prądu zwarciowego, TH-1). Wpis dotyczy TEGO
         # SAMEGO napisu (skalowanie A→kA), tylko pod aktualnym wierszem.
+        # W3-G3 (2026-09-10): kolejny dryf o 1 wiersz (dodanie `ShortCircuitResults`
+        # do importu typów WCZEŚNIEJ w pliku, dla hooka `usePasmoZwarcia` — karta
+        # pasma MIN/MAX zwarcia) — TEN SAM napis, wiersz 81 → 82.
         "frontend/src/ui2/wyniki/zwarcia/api.ts",
-        81,
+        82,
     ): "b: przeliczenie jednostki A→kA wartości otrzymanej z backendu (ikss_partial_a / 1000) — wprost dozwolone skalowanie jednostek",
 }
 

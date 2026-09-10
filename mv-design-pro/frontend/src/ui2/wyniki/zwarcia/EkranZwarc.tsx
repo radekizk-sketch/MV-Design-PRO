@@ -20,6 +20,7 @@ import { EkranAnalizy, PrzyciskAkcjiStanu, useAkcjaUruchomObliczenie } from '../
 import { useRozplywZwarciowy, useWkladyZwarciowe } from './api';
 import { useOtworzKonfiguracjeStacji, WeryfikacjaAparatury } from './aparatura';
 import { BilansIEC } from './BilansIEC';
+import { PasmoMinMax } from './PasmoMinMax';
 import { usePokazZwarcieNaSchemacie } from './pokazNaSchemacie';
 import { RozplywZwarciowy } from './RozplywZwarciowy';
 import { SladPodzialuPradu } from './SladPodzialuPradu';
@@ -152,6 +153,11 @@ export function EkranZwarc({
         trybZaawansowania={trybZaawansowania}
         onOtworzDowod={onOtworzDowod}
       />
+
+      {/* Karta W3-G3 (aneks D7): pasmo MIN/MAX — właściwość CAŁEGO biegu (jak
+          ślad Z_Q wyżej), oba scenariusze c_max/c_min JEDNEGO przypadku obok
+          siebie, z proweniencją każdej strony. */}
+      <PasmoMinMax runId={runId} trybZaawansowania={trybZaawansowania} onOtworzDowod={onOtworzDowod} />
 
       <BilansIEC row={wierszAktywny} punktNazwa={nazwaAktywnego} />
 

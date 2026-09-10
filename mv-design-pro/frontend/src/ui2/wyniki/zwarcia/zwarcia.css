@@ -230,3 +230,56 @@
   font-size: 12px;
   white-space: nowrap;
 }
+
+/* ---- sekcja pasma MIN/MAX (karta W3-G3, aneks D7) ---- */
+.mvd-zwarcia-pasmo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 4px;
+}
+.mvd-zwarcia-pasmo-swiezosc {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+}
+.mvd-zwarcia-pasmo-swiezosc-opis {
+  margin: 0;
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+.mvd-zwarcia-pasmo-strony {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 12px;
+  margin-top: 4px;
+}
+.mvd-zwarcia-pasmo-strona {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+}
+.mvd-zwarcia-pasmo-strona--brak {
+  border-style: dashed;
+  background: var(--mvd-panel);
+}
+.mvd-zwarcia-pasmo-strona-tytul {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-zwarcia-pasmo-prowenencja {
+  margin: 0;
+  font-size: 12px;
+  color: var(--mvd-muted);
+}

@@ -11,6 +11,8 @@ export { RozplywZwarciowy } from './RozplywZwarciowy';
 export type { RozplywZwarciowyProps } from './RozplywZwarciowy';
 export { SladZrodelSieciowych } from './SladZrodelSieciowych';
 export type { SladZrodelSieciowychProps } from './SladZrodelSieciowych';
+export { PasmoMinMax } from './PasmoMinMax';
+export type { PasmoMinMaxProps } from './PasmoMinMax';
 export { usePokazZwarcieNaSchemacie } from './pokazNaSchemacie';
 export { WykresIkssChart } from './WykresIkssChart';
 export { WykresZwarc } from './WykresZwarc';
@@ -49,6 +51,24 @@ export type {
   WielkoscWykresu,
   WynikZwarciowy,
 } from './zwarciaModel';
+export {
+  KLUCZ_PASMO,
+  KOLUMNY_PASMO,
+  naWierszePasma,
+  sparujWierszePasma,
+  swiezoscParyPasma,
+  typZwarciaNaAnalysisType,
+} from './pasmoModel';
+export type { WierszPasma, SwiezoscParyPasma } from './pasmoModel';
+export {
+  fetchPasmoZwarcia,
+  usePasmoZwarcia,
+} from './api';
+export type {
+  PasmoZwarciaOdpowiedz,
+  StronaPasmaOdpowiedz,
+  StanPasmaZwarcia,
+} from './api';
 export {
   ZWARCIA_STRINGS,
   rodzajZwarciaPL,
