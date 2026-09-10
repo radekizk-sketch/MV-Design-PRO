@@ -40,6 +40,7 @@ from dynamic_lab.urzadzenia_oze import (
     PozaZakresemWaznosciModeluError,
     RegulatorElektrowniPPC,
     SkokObciazeniaBocznikowego,
+    _ogranicz,
     _ogranicz_prad,
     ogranicz_okregiem,
 )
@@ -164,40 +165,66 @@ def test_magazyn_oddajacy_moc_nie_jest_rownowaga(p_pu: float) -> None:
         silnik.inicjalizuj(moce)
 
 
-def test_magazyn_bez_energii_startuje_z_zerowa_moca() -> None:
-    """Rozładowany magazyn nie może wystartować z dyspozycji, której nie wykona.
+def test_magazyn_bez_energii_odrzuca_dyspozycje_rozladowania() -> None:
+    """Rozładowany magazyn nie przyjmuje dyspozycji, której nie wykona — i mówi dlaczego.
 
-    Punkt startowy jest przycinany do ZDOLNOŚCI urządzenia (okrąg falownika i okno
-    SOC), więc magazyn przy dolnej granicy energii startuje z zerem zamiast udawać,
-    że oddaje zadane 0,4 p.u. — i dopiero dzięki temu jest równowagą. Model, który
-    przyjąłby zadanie, twierdziłby, że pusty magazyn oddaje moc.
+    Ciche przycięcie zadania do zera dałoby punkt startowy, w którym rozpływ założył
+    0,4 p.u., a urządzenie oddaje 0 — czyli napięcia z rozpływu opisywałyby inną sieć.
+    Model z pętlą synchronizacji wykryłby to i tak (start z rozsynchronizowaną fazą
+    daje ||f(x0)|| ~ 6, więc silnik odrzuca punkt), ale komunikat wskazywałby skutek,
+    a nie przyczynę. Dlatego przyczyna zgłaszana jest tam, gdzie jest znana.
     """
     magazyn = _magazyn(soc_poczatkowy=0.1, soc_min=0.1)
     model, moce = _model_na_sieci_benchmarkowej(magazyn, complex(0.4, 0.0))
-    silnik, x0 = _uruchom(model, moce)
-    stan = x0[silnik.uklad.wycinki["BAT"]]
-    assert float(stan[0]) == pytest.approx(0.0)
-    assert magazyn.p_ref_pu == pytest.approx(0.0)
-    assert silnik.norma_pochodnej(x0) < TOL_ROWNOWAGI
+    silnik = SilnikRMS(model)
+    with pytest.raises(ValueError, match="okno SOC"):
+        silnik.inicjalizuj(moce)
+
+
+def test_magazyn_odrzuca_dyspozycje_ponad_moc_falownika() -> None:
+    """Ta sama klasa błędu po drugiej granicy: okrąg falownika, nie okno energii."""
+    magazyn = _magazyn(s_falownika_pu=0.3)
+    model, moce = _model_na_sieci_benchmarkowej(magazyn, complex(0.0, 0.5))
+    silnik = SilnikRMS(model)
+    with pytest.raises(ValueError, match="okrąg falownika"):
+        silnik.inicjalizuj(moce)
 
 
 @pytest.mark.parametrize("liczba_modulow", [1, 2, 3])
-@pytest.mark.parametrize("limit", [None, 0.25])
+@pytest.mark.parametrize("limit", [None, 0.1])
 def test_elektrownia_startuje_w_rownowadze(liczba_modulow: int, limit: float | None) -> None:
-    """Iloczyn (liczba modułów) × (limit eksportu aktywny / nieaktywny).
+    """Iloczyn (liczba modułów) × (limit eksportu nieaktywny / wiążący).
 
-    Elektrownia zadysponowana ponad limit startuje NA LIMICIE i to też jest
-    równowaga — inaczej model nie umiałby wystartować z pracy ograniczonej, która
-    dla farm z ograniczeniem eksportu jest stanem normalnym.
+    Przy limicie 0,1 p.u. elektrownia pracuje DOKŁADNIE na ograniczeniu i to też musi
+    być równowagą — praca pod ograniczeniem eksportu jest dla farm stanem normalnym,
+    a nie stanem przejściowym. Jeden moduł o mocy 0,6 p.u. też musi się rozdzielić
+    poprawnie: strategia dla jednego elementu jest przypadkiem brzegowym alokacji.
     """
+    dyspozycja = 0.1 if limit is not None else 0.5
     ppc = RegulatorElektrowniPPC(
         ref="EL", szyna="PCC", jednostki=_moduly(liczba_modulow), limit_eksportu_pu=limit
     )
     model = ModelDynamiczny(topologia=_siec_pcc(), urzadzenia=[ppc])
-    silnik, x0 = _uruchom(model, {"EL": complex(0.5, 0.05)})
+    silnik, x0 = _uruchom(model, {"EL": complex(dyspozycja, 0.05)})
     assert silnik.norma_pochodnej(x0) < TOL_ROWNOWAGI
-    if limit is not None:
-        assert x0[0] == pytest.approx(limit)
+    assert x0[0] == pytest.approx(dyspozycja)
+
+
+def test_elektrownia_odrzuca_dyspozycje_ponad_limit_eksportu() -> None:
+    """Dyspozycja ponad limit to BŁĄD DANYCH, nie punkt pracy do przycięcia.
+
+    Elektrownię ograniczoną zadaje się mocą, którą oddaje; badanie „limit zaczyna
+    wiązać" robi się zmianą dyspozycji PO inicjalizacji — tak, jak dzieje się to w
+    ruchu. Ciche przycięcie w inicjalizacji dałoby rozpływ policzony dla mocy, której
+    elektrownia nie wystawi.
+    """
+    ppc = RegulatorElektrowniPPC(
+        ref="EL", szyna="PCC", jednostki=_moduly(2), limit_eksportu_pu=0.25
+    )
+    model = ModelDynamiczny(topologia=_siec_pcc(), urzadzenia=[ppc])
+    silnik = SilnikRMS(model)
+    with pytest.raises(ValueError, match="limit eksportu"):
+        silnik.inicjalizuj({"EL": complex(0.5, 0.05)})
 
 
 @pytest.mark.parametrize("omega_wirnika", [0.90, 1.00, 1.15])
@@ -419,6 +446,12 @@ def test_prad_magazynu_nie_przekracza_ogranicznika(v_mod: float) -> None:
     x = np.array([1.0, 0.3, 0.5, 0.0, 1.0], dtype=np.float64)
     prad = magazyn.wstrzykniecie(x, complex(v_mod, 0.0))
     assert abs(prad) <= magazyn.i_max_pu + 1e-12
+
+
+def test_ogranicznik_odrzuca_odwrocony_przedzial() -> None:
+    """Odwrócony przedział cicho zwracałby granicę dolną — to byłby ogranicznik-atrapa."""
+    with pytest.raises(ValueError, match="Pusty przedział"):
+        _ogranicz(0.5, 1.0, 0.0)
 
 
 def test_ogranicznik_okregu_odrzuca_niedodatnia_moc() -> None:
@@ -927,6 +960,14 @@ def test_maszyna_zglasza_wyjscie_poza_zakres_waznosci_przy_zapadzie() -> None:
 
     zapad = complex(0.15, 0.0)
     assert not maszyna.czy_w_zakresie_waznosci(x0, zapad)
+    # Wiążące jest kryterium PRĄDOWE — i tak jest fizycznie: crowbar chroni
+    # przekształtnik przed przetężeniem wirnika, a nie przed przepięciem. Napięcie
+    # zadane pozostaje w granicy, bo regulator ma niewielkie wzmocnienie; gdyby
+    # kryterium było tylko napięciowe, model milczałby przy prądzie 2,5-krotnie
+    # przekraczającym możliwości przekształtnika.
+    diagnostyka = maszyna.diagnostyka_wirnika(x0, zapad)
+    assert diagnostyka["i_wirnika_pu"] > diagnostyka["i_wirnika_max_pu"]
+    assert diagnostyka["u_wirnika_zadane_pu"] < diagnostyka["u_wirnika_max_pu"]
     with pytest.raises(PozaZakresemWaznosciModeluError, match="crowbar"):
         maszyna.sprawdz_zakres_waznosci(x0, zapad)
 

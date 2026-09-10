@@ -1,4 +1,4 @@
-"""Prototypy urządzeń OZE: magazyn z energią, regulator elektrowni, maszyna DFIG.
+"""Prototypy urządzeń OZE: magazyn z energią, regulator elektrowni, maszyna dwustronnie zasilana.
 
 KOD BADAWCZY — patrz `backend/research/README.md`. Nie jest dowodem regulacyjnym.
 
@@ -113,6 +113,34 @@ def _ogranicz_prad(
         zapas = math.sqrt(max(i_max_pu**2 - i_czynny**2, 0.0))
         i_bierny = _ogranicz(wzgledny.imag, -zapas, zapas)
     return complex(complex(i_czynny, i_bierny) * faza)
+
+
+def _sprawdz_wykonalnosc_punktu_pracy(
+    ref: str, s_zadane: complex, p_osiagalne: float, q_osiagalne: float, powod: str
+) -> None:
+    """Punkt pracy z rozpływu MUSI być wykonalny — inaczej start jest niespójny.
+
+    PO CO TO ISTNIEJE (własność zmierzona, nie ostrożnościowa). ``rozplyw_ustalony``
+    liczy napięcia PRZY ZAŁOŻENIU, że urządzenie wstrzykuje zadaną moc. Jeżeli
+    urządzenie tej mocy nie wystawi — bo ogranicza je okrąg falownika, okno SOC albo
+    limit eksportu — to napięcia z rozpływu opisują sieć, której nie ma, a wszystko,
+    co z nich wyprowadzimy (kąty, punkty pracy pozostałych urządzeń, stan pętli
+    synchronizacji), jest liczone w złym punkcie.
+
+    Cicha korekta zadania do wartości wykonalnej wygląda uprzejmie i jest gorsza:
+    zamienia BŁĄD DANYCH w niezauważalne przesunięcie punktu pracy. Model z pętlą
+    synchronizacji wykrywa to i tak — startuje z rozsynchronizowaną fazą, więc silnik
+    odrzuca punkt jako nierównowagowy, tyle że z komunikatem, który nie wskazuje
+    przyczyny. Dlatego przyczyna jest zgłaszana tutaj, w miejscu, w którym jest znana.
+    """
+    osiagalne = complex(p_osiagalne, q_osiagalne)
+    if abs(osiagalne - s_zadane) <= 1.0e-9:
+        return
+    raise ValueError(
+        f"{ref}: rozpływ zakłada wstrzyknięcie {s_zadane:.4f} p.u., a urządzenie wystawi "
+        f"{osiagalne:.4f} p.u. ({powod}). Punkt startowy byłby niespójny z siecią — "
+        "zadaj moc wykonalną albo zmień zdolności urządzenia."
+    )
 
 
 @dataclass(frozen=True)
@@ -319,6 +347,9 @@ class JednostkaSterowanaPQ:
     def inicjalizuj(self, v_szyny: complex, s_zadane: complex) -> NDArray[np.float64]:
         p0, q0 = ogranicz_okregiem(
             s_zadane.real, s_zadane.imag, self.s_zn_pu, priorytet_biernej=self.priorytet_biernej
+        )
+        _sprawdz_wykonalnosc_punktu_pracy(
+            self.ref, s_zadane, p0, q0, f"moc pozorna modułu {self.s_zn_pu:.3f} p.u."
         )
         return np.array([p0, q0], dtype=np.float64)
 
@@ -530,10 +561,13 @@ class MagazynEnergiiBESS:
     def inicjalizuj(self, v_szyny: complex, s_zadane: complex) -> NDArray[np.float64]:
         """Punkt pracy z rozpływu; ``soc`` z parametru, PLL zsynchronizowany.
 
-        Zadanie ``(P, Q)`` jest ograniczane okręgiem falownika i dostępnością
-        energii — punkt startowy poza zdolnościami urządzenia nie może udawać
-        równowagi. Zwrócony stan jest równowagą TYLKO dla ``P = 0`` (patrz
-        docstring klasy).
+        Zadanie ``(P, Q)`` niewykonalne — bo wykracza poza okrąg falownika albo poza
+        okno SOC — jest ODRZUCANE, a nie po cichu przycinane: magazyn rozładowany do
+        ``soc_min`` nie odda zadanej mocy, więc rozpływ, który ją założył, opisuje
+        inną sieć (patrz `_sprawdz_wykonalnosc_punktu_pracy`).
+
+        Zwrócony stan jest równowagą TYLKO dla ``P = 0`` — magazyn pod obciążeniem
+        zmienia energię, więc stanem ustalonym nie jest (patrz docstring klasy).
         """
         p0, q0 = ogranicz_okregiem(
             s_zadane.real,
@@ -543,6 +577,14 @@ class MagazynEnergiiBESS:
         )
         rozladowanie, ladowanie = self.dostepnosc_energii(self.soc_poczatkowy)
         p0 = p0 * (rozladowanie if p0 > 0.0 else ladowanie)
+        _sprawdz_wykonalnosc_punktu_pracy(
+            self.ref,
+            s_zadane,
+            p0,
+            q0,
+            f"okrąg falownika {self.s_falownika_pu:.3f} p.u. oraz okno SOC "
+            f"[{self.soc_min:.2f}, {self.soc_max:.2f}] przy soc = {self.soc_poczatkowy:.3f}",
+        )
         self.p_ref_pu = p0
         self.q_ref_pu = q0
         theta0, omega0 = self.pll.stan_poczatkowy(v_szyny)
@@ -735,15 +777,25 @@ class RegulatorElektrowniPPC:
         }
 
     def inicjalizuj(self, v_szyny: complex, s_zadane: complex) -> NDArray[np.float64]:
-        """Punkt pracy: zadanie z rozpływu, OGRANICZONE limitem, rozdzielone na moduły.
+        """Punkt pracy: zadanie z rozpływu rozdzielone na moduły; stan = polecenie.
 
-        Elektrownia zadysponowana powyżej limitu eksportu startuje NA LIMICIE —
-        tak pracuje elektrownia ograniczana, a nie „na zadaniu z rezerwą do
-        odrobienia". Stan polecenia jest równy celowi, więc punkt jest równowagą.
+        Dyspozycja PONAD limit eksportu albo ponad moc zainstalowaną jest ODRZUCANA,
+        a nie przycinana do limitu: rozpływ policzyłby napięcia dla mocy, której
+        elektrownia nie wystawi. Elektrownię pracującą pod ograniczeniem zadaje się
+        mocą, którą faktycznie oddaje — a scenariusz „limit zaczyna wiązać" bada się
+        zmianą dyspozycji PO inicjalizacji, czyli tak, jak dzieje się to naprawdę.
         """
         self.p_zadane_pu = s_zadane.real
         self.q_zadane_pu = s_zadane.imag
         p_cel, q_cel = self.cel_plantu()
+        _sprawdz_wykonalnosc_punktu_pracy(
+            self.ref,
+            s_zadane,
+            p_cel,
+            q_cel,
+            f"moc zainstalowana {self.moc_zainstalowana_pu:.3f} p.u., limit eksportu "
+            f"{self.limit_eksportu_pu}",
+        )
         stan: list[float] = [p_cel, q_cel]
         for jednostka, (p_zad, q_zad) in zip(
             self.jednostki, self.alokacja(p_cel, q_cel), strict=True

@@ -29,7 +29,7 @@ nie cichą edycją. Sześć twierdzeń z rundy 1 było za mocnych albo błędnyc
 
 | # | Twierdzenie z rundy 1 | Co jest prawdą (zmierzone) | Gdzie poprawione |
 |---|---|---|---|
-| 1 | „maszyna 4. rzędu + AVR + turbina, **zgodna z ANDES do 8e-09**" | Zwalidowano wobec ANDES **wyłącznie redukcję klasyczną**: równanie wahań, stojan, transformację dq i inicjalizację. Dynamika `E'q`/`E'd` (`Td0'`, `Tq0'`) **znika przy `Xd = Xd'`**, więc nie weszła do porównania. AVR, turbina i PSS — nie porównywane. | §5.1 (tabela równanie po równaniu) |
+| 1 | „maszyna 4. rzędu + AVR + turbina, **zgodna z ANDES do 8e-09**" | Twierdzenie było za mocne **dla przypadku, na którym je oparto**: GENCLS z redukcją `Xd = Xd'` nie obejmuje dynamiki `E'`, AVR ani turbiny. Luka **została zamknięta w rundzie 2** osobnym przypadkiem GENROU + SEXS + TGOV1 — widmo zgodne 1,2e-08 … 3,0e-08, mody bez odpowiednika NAZWANE (`−1/Td0''`, `−1/Tq0''`, `−1/TB`). Poza zakresem pozostają PSS, nasycenie i ograniczniki. | §5.1 (co obejmował GENCLS) + §5.1b (czym domknięto) |
 | 2 | Jedna liczba „8e-09" jako dokładność walidacji | To był błąd JEDNEJ wielkości. Metryki są różne i rozdzielone: kąt 8,4e-09, SEM 7,1e-09, moduł napięcia 7,5e-09, kąt napięcia 5,4e-08, częstotliwość 6,0e-06. **Błąd trajektorii punkt-po-punkcie: NIE ZMIERZONY.** | §5.2 |
 | 3 | „**pełny rdzeń DAE**" | To **schemat rozdzielony z eliminacją algebraiczną** (sekwencyjny niejawny), a nie solver rozwiązujący Newtonem jednocześnie po `x` i `y`. Integrator widzi zwykłe ODE. | §3.1, §3.2 |
 | 4 | „wszystkie cztery integratory zbiegają **na układzie sztywnym**" | Zadanie porównawcze było **niesztywne** (jedna maszyna klasyczna, brak szybkich stałych). Twierdzenie o sztywności było nieprawdziwe. | §18, `sztywnosc.py` |
@@ -73,7 +73,7 @@ nie opierała się na cudzej ocenie — także nie na mojej.
 | **D-01** | Struktura programu (W1–W12 czy `PLANS.md`) | materiał | inwentarz dokumentów, koszt obu wariantów | planowanie |
 | **D-02** | Rdzeń RMS: rozszerzyć czy wymienić | **PROTOTYP DZIAŁA** | działający rdzeń DAE ze sprzężeniem sieciowym; `‖f(x₀,y₀)‖ = 2,98e-13` | ścieżkę krytyczną |
 | **D-03** | Zgoda B-01 na wymianę kontraktów FROZEN | materiał + kandydat | inwentarz phantomów, kandydat kontraktu wyniku | D-02 |
-| **D-04** | Kolejność rodzin źródeł | **PROTOTYP; walidacja zewnętrzna WĄSKA** | zaimplementowano maszynę 4. rzędu + AVR + turbinę; wobec ANDES zwalidowano **wyłącznie redukcję klasyczną** (bez dynamiki E′, bez regulatorów) — zakres w §5.1 | D-02 |
+| **D-04** | Kolejność rodzin źródeł | **PROTOTYP + WALIDACJA ZEWNĘTRZNA O NAZWANYM ZAKRESIE** | maszyna 4. rzędu, AVR i turbina zwalidowane wobec ANDES GENROU/SEXS/TGOV1 (widmo 1,2e-08 … 3,0e-08); poza zakresem: PSS, nasycenie, ograniczniki — §5.1 i §5.1b | D-02 |
 | **D-05** | Rozdzielenie ewaluatora od fizyki | **KONSTRUKCYJNIE POKAZANE** | w prototypie ocena FRT jest typowo niemożliwa do zapętlenia | przyczynę P0-01 |
 | **D-06** | Dwie ścieżki stabilności / dwie implementacje NC RfG | **ZMIERZONE — są TRZY** | trzecia (martwa) implementacja we froncie, trzeci słownik werdyktów | rozjazd |
 | **D-07** | Zakres PPC / hybryd | materiał | wymagania z PCC, czego brakuje w modelu urządzenia | ewaluator |
@@ -261,18 +261,71 @@ Przy tej redukcji człony `(Xd − Xd')·Id` i `(Xq − Xq')·Iq` **znikają**, 
 | równania stojana `Id, Iq` z `E'd, E'q, Ra, Xd', Xq'` | **TAK** |
 | transformacja `dq ↔ sieć` przez `δ − π/2` | **TAK** |
 | inicjalizacja `E = V + (Ra + jXq)·I`, `δ = arg(E)` | **TAK** |
-| `dE'q/dt = (Efd − E'q − (Xd − Xd')·Id) / Td0'` | **NIE** — człon zeruje się z założenia, `Td0'` nie wpływa na wynik |
-| `dE'd/dt = (−E'd + (Xq − Xq')·Iq) / Tq0'` | **NIE** — jw., `Tq0'` nie wpływa |
-| AVR (`RegulatorNapiecia`) | **NIE** — GENCLS nie ma wzbudnicy; w porównaniu `Efd = const` |
-| regulator turbiny (`RegulatorTurbiny`) | **NIE** — w porównaniu `Pm = const` |
+| `dE'q/dt = (Efd − E'q − (Xd − Xd')·Id) / Td0'` | **NIE w przypadku GENCLS** — człon zeruje się z założenia |
+| `dE'd/dt = (−E'd + (Xq − Xq')·Iq) / Tq0'` | **NIE w przypadku GENCLS** — jw. |
+| AVR (`RegulatorNapiecia`) | **NIE w przypadku GENCLS** — GENCLS nie ma wzbudnicy |
+| regulator turbiny (`RegulatorTurbiny`) | **NIE w przypadku GENCLS** — `Pm = const` |
 | PSS | **NIE** — nie ma go w laboratorium |
 | ogranicznik AVR (żądanie i pochodna) | **NIE** — wyłącznie testy własne |
 
-Zwalidowane zewnętrznie jest zatem **jądro elektromechaniczne wraz z warstwą
-algebraiczną i inicjalizacją**, a nie „dynamika 4. rzędu z regulatorami".
-Domknięcie tej luki jest przedmiotem osobnego przypadku GENROU + wzbudnica
-(patrz `wzorzec_genrou.py`, jeśli powstał w tej transzy — jego zakres zgodności
-jest wynikiem, nie założeniem).
+Na przypadku GENCLS zwalidowane zewnętrznie jest zatem **jądro
+elektromechaniczne wraz z warstwą algebraiczną i inicjalizacją**, a nie
+„dynamika 4. rzędu z regulatorami".
+
+### 5.1b DOMKNIĘCIE LUKI — przypadek GENROU + wzbudnica + turbina
+
+Luka z tabeli wyżej **została zamknięta w tej samej transzy**
+(`research/dynamic_lab/wzorzec_genrou.py`). Zakres zgodności jest WYNIKIEM
+pomiaru, nie założeniem — i okazał się szerszy, niż zakładałem:
+
+**Ustalenie 1: GENROU redukuje się DOKŁADNIE do modelu dwuosiowego** — na dwa
+niezależne sposoby, oba zmierzone:
+
+*Droga R1* (`Xd'' = Xd'`, `Xq'' = Xq'`, `S10 = 0`): współczynniki podziału
+strumienia stają się `γd1 = γq1 = 1`, `γd2 = γq2 = 0`, jakobian jest blokowo
+trójkątny i stany tłumików odsprzęgają się.
+
+| Wielkość (SMIB, `Xd`=1,9 `Xq`=1,7 `Xd'`=`Xq'`=0,3 `Td0'`=8 s `Tq0'`=0,8 s) | Błąd względny lab vs ANDES |
+|---|---|
+| `δ₀` | 4,06e-09 |
+| `E'q` | 1,01e-08 |
+| `E'd` | 1,16e-09 |
+| `Efd` | 3,71e-10 |
+| **całe widmo 4 modów** | **1,21e-08** |
+
+Dwa mody ANDES bez odpowiednika po naszej stronie to **dokładnie** `−1/Td0''`
+i `−1/Tq0''` — zgodność **co do bitu**, sprawdzona dla czterech par stałych
+tłumików. To nie jest zbieżność przypadkowa: to identyfikacja modów, których
+nasz model 4. rzędu z założenia nie ma.
+
+*Droga R2* (`Td0'' → 0` przy CZYNNYM odstępie `Xd'' = 0,20`): błąd modu maleje
+**liniowo** — 5,92e-02 (50 ms) → 1,26e-03 (1 ms), iloraz stały ≈ 1,25 s⁻¹. To
+dowodzi, że różnica pochodzi z dynamiki tłumików, a nie z błędu modelu.
+
+**Ustalenie 2: regulatory zwalidowane w części wspólnej.**
+
+| Porównanie | Warunek równoważności | Zmierzony błąd widma |
+|---|---|---|
+| `RegulatorNapiecia` ↔ **SEXS** | `TA = TB` (człon lead-lag tożsamościowy) | 1,15e-08 … 1,10e-07 na iloczynie `K_a ∈ {50, 200, 400}` × `T_a ∈ {0,02; 0,05; 0,2}` |
+| `RegulatorTurbiny` ↔ **TGOV1** | `T2 = T3`, `Dt = 0` | 1,19e-08 … 1,24e-08 na iloczynie `R ∈ {0,02; 0,05; 0,10}` × `T_g ∈ {0,2; 0,5; 1,5}` |
+| **oba naraz** | j.w. | 1,55e-08 … 3,04e-08, sześć modów, **zero** zer strukturalnych |
+
+Mody ANDES bez odpowiednika są nazwane: `−1/Td0''`, `−1/Tq0''`, `−1/TB`.
+
+**Ustalenie 3: zwalidowane jest też CAŁKOWANIE, nie tylko równania.** Mod
+odczytany z trajektorii RK4 (regresja po ekstremach) wobec wartości własnej
+ANDES: **6,1e-05** przy zaburzeniu 0,5°, 5,1e-05 przy 2° — tym razem z
+niezerowym tłumieniem (`σ = −1,0263`), którego przypadek GENCLS nie miał.
+
+**Ustalenie 4 — luka wykryta i zamknięta w tej samej pracy.** ANDES wymusza
+`Xd'' = Xq''`, więc droga R1 wymaga `Xd' = Xq'`, a domyślna, realistyczna
+parametryzacja laboratorium (`Xd' = 0,30`, `Xq' = 0,55`) zostawałaby poza
+walidacją. Domknięte drogą R2: punkt pracy dokładny (1,0e-08) niezależnie od
+`Td0''`, a błąd widma maleje jak `1,096 · Td0''`.
+
+**Co po tym pozostaje niezwalidowane zewnętrznie:** PSS (nie ma go w
+laboratorium), ograniczniki AVR (ANDES SEXS ma inne), nasycenie obwodu
+magnetycznego (`S10`/`S12` — nasz model go nie ma), oraz modele przekształtnikowe.
 
 ### 5.2 Zgodność liczbowa — OSOBNE metryki, nie jedna liczba
 
@@ -1097,6 +1150,79 @@ w sposób, który jest przedmiotem osobnego projektu (przejście źródło napi�
 źródło prądowe pod ograniczeniem). **Liczba 1,977 p.u. jest więc własnością tej
 konfiguracji modelu, a nie stwierdzeniem o zachowaniu sprzętu.** To jest znana
 luka prototypu, nie wynik.
+
+### 19.2b OGRANICZNIK PRĄDU GFM — dwie strategie, zmierzone, żadna nie wybrana
+
+Runda 1 zapisała jako ograniczenie, że prototypowy GFM nie ma ogranicznika
+prądu (1,977 p.u. przy zwarciu). Zbudowane w rundzie 2, jako **dwaj jawnie
+nazwani kandydaci**, ogranicznik **domyślnie WYŁĄCZONY** (dzięki czemu wszystkie
+wcześniejsze pomiary pozostają porównywalne — 52 testy `test_dynamic_lab.py`
+dają identyczny wynik przed i po).
+
+| Wariant | I_max (`x_f`=0,05 / 0,01) | P(0,60 s) | Q(0,60 s) | U_min DER |
+|---|---|---|---|---|
+| bez ogranicznika | **2,4425 / 3,5916** | +0,3122 | 1,3558 | 0,6287 |
+| impedancja wirtualna `k`=0,10 | 1,3801 / 1,4203 | +0,1706 | 0,6869 | 0,5133 |
+| impedancja wirtualna `k`=0,20 | 1,1928 / 1,1994 | +0,0960 | 0,3675 | 0,4430 |
+| nasycenie zadania prądu | 1,2000 / 1,2000 | −0,0000 | 0,5876 | 0,4897 |
+
+Kres twardości impedancji wirtualnej **wyprowadzony**, nie dobrany: limit jest
+twardy dla `k ≥ |Z_w|/i_max = 0,125277`, poniżej miękki z asymptotą `|Z_w|/k`.
+
+**Cztery pomiary numeryczne, o które prosił przegląd — w tym DWA WYNIKI
+NEGATYWNE, zaraportowane jako wyniki:**
+
+1. **Nieciągłość: funkcja `f` pozostaje CIĄGŁA, skacze JAKOBIAN.**
+   `‖f(δ+ε) − f(δ−ε)‖` maleje 10-krotnie na dekadę `ε` (1e-4 → 1e-7) w każdym
+   wariancie. Skok pochodnej jednostronnej na progu: 0,0093 (bez ogranicznika,
+   czyli szum) wobec **97,81 / 195,59 / 247,92**, liniowo w `k`; nasycenie
+   najtwardsze. To rozróżnienie jest istotne: nieciągłość `f` psułaby całkowanie,
+   nieciągłość jakobianu psuje tylko Newtona metody niejawnej.
+2. **Utrata zbieżności Newtona: NIE WYSTĘPUJE.** 4 integratory × 3 konfiguracje
+   × 2 głębokości = **32/32 biegów zbieżnych**, rozrzut `I_max` między metodami
+   < 2 %. Wynik negatywny, zmierzony — nie domniemany.
+3. **Zmiana charakteru źródła — i ODWRÓCENIE RANKINGU.** Sztywność napięciowa
+   `|dU/dP|`: bez zwarcia **0,02010 identycznie dla wszystkich** (ogranicznik
+   nieaktywny — przebiegi zgodne co do bitu). Przy `x_f` = 0,05 najgorsze jest
+   nasycenie (0,09713); przy `x_f` = 0,01 najgorsza jest impedancja `k`=0,20
+   (**1,08097**), a nasycenie wypada lepiej (0,16770). **Teza „impedancja
+   wirtualna zachowuje charakter źródła napięciowego" jest FAŁSZYWA bez podania
+   punktu pracy** — to jest wynik obalający intuicję, nie ją potwierdzający.
+4. **Zwarcie bliskie metalicznemu.** Bez ogranicznika i obie nastawy impedancji
+   liczą się do `x_f = 0` włącznie. **Nasycenie zadania traci zbieżność algebry
+   sieci**; próg zawężony bisekcją do **(0,004559; 0,004565) p.u.**
+
+**Nie wybieram strategii.** Materiał mówi, że wybór jest kompromisem zależnym
+od punktu pracy: nasycenie daje twardszy limit i lepiej znosi płytkie zwarcie,
+impedancja wirtualna przeżywa zwarcie metaliczne. To jest decyzja
+architektoniczna dla Fable (D-07/GFM).
+
+### 19.2c BESS z SOC, PPC i maszyna dwustronnie zasilana
+
+**BESS** (5 stanów, w tym własna PLL): kluczowa własność, o którą chodziło —
+LFSM-U bez SOC jest deklaracją, nie zdolnością. Zmierzone na wyspie
+(wydzielenie 0,2 s → skok obciążenia 0,5 s):
+
+| Skok | Pojemność | `f_min` | `f_koniec` | `P_koniec` | Wsparcie do |
+|---|---|---|---|---|---|
+| 0,20 | 0,02 MWh | 49,472 | 49,531 | **0,0000** | **5,23 s** |
+| 0,20 | 2,0 MWh | 49,549 | 49,658 | 0,0569 | 8,00 s (całe okno) |
+| 0,40 | 0,02 MWh | 48,909 | 49,051 | **0,0000** | **2,26 s** |
+| 0,40 | 2,0 MWh | 49,223 | 49,415 | 0,1539 | 8,00 s |
+
+Szczyt mocy **identyczny** dla obu pojemności — różni je wyłącznie ENERGIA.
+Bilans `∫P dt` wobec `Δsoc·E` zgodny do 0,001–0,003 % we wszystkich biegach.
+Ograniczenie falownika przyjęto jako **OKRĄG** `|S| ≤ S_n` z uzasadnieniem:
+prostokąt dopuszczałby `|S| = √2·S_n`, czyli 41 % przetężenia zaworów.
+
+**PPC**: limit eksportu 0,5 p.u. przy dyspozycji 0,9 → PCC = 0,5000 (również
+maksimum po drodze). Alokacja proporcjonalna 0,3333/0,1667, priorytetowa
+0,5000/0,0000 — obie zmierzone. Bez limitu PCC = **0,8986**, a nie 0,9000, bo
+moduł 0,6 p.u. domyka okrąg mocą bierną; **model tego nie ukrywa**.
+
+**`MaszynaDwustronnieZasilana3Rzedu`** — świadomie NIE nazwana „DFIG", bo nie
+modeluje dynamiki strumienia stojana, crowbaru, przekształtnika sieciowego ani
+wału dwumasowego. Uczciwa wąska implementacja zamiast szerokiej atrapy.
 
 ### 19.3 Co te pomiary rozstrzygają, a czego nie
 

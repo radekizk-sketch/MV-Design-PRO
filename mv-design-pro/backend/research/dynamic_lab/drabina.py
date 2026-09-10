@@ -203,6 +203,47 @@ DRABINA: tuple[PozycjaDrabiny, ...] = (
         ),
         realizacja="tests/research/test_wzorzec_natywny.py",
     ),
+    PozycjaDrabiny(
+        identyfikator="dynamika-4-rzedu-andes-genrou",
+        zlozonosc=ZlozonoscPrzypadku.C1_MASZYNA_NA_SZYNIE_SZTYWNEJ,
+        wyrocznia=PoziomWyroczni.W3_WYROCZNIA_ZEWNETRZNA,
+        opis_pl=(
+            "Punkt pracy i PEŁNE widmo modelu 4. rzędu (Td0', Tq0', sprzężenie E' "
+            "z prądem) wobec ANDES GENROU zredukowanego do dwuosiowego"
+        ),
+        realizacja="tests/research/test_wzorzec_genrou.py",
+    ),
+    PozycjaDrabiny(
+        identyfikator="regulatory-andes-sexs-tgov1",
+        zlozonosc=ZlozonoscPrzypadku.C1_MASZYNA_NA_SZYNIE_SZTYWNEJ,
+        wyrocznia=PoziomWyroczni.W3_WYROCZNIA_ZEWNETRZNA,
+        opis_pl=(
+            "AVR i governor — część wspólna z ANDES SEXS i TGOV1 (lead-lag "
+            "unieczynniony, ograniczniki nieaktywne, więc anti-windup poza zakresem)"
+        ),
+        realizacja="tests/research/test_wzorzec_genrou.py",
+    ),
+    PozycjaDrabiny(
+        identyfikator="ogranicznik-gfm-kres-analityczny",
+        zlozonosc=ZlozonoscPrzypadku.C0_JEDNO_ROWNANIE,
+        wyrocznia=PoziomWyroczni.W2_WYROCZNIA_ANALITYCZNA,
+        opis_pl=(
+            "Kres prądu ogranicznika impedancyjnego GFM = max(i_max, |Z_w|/k), "
+            "wyprowadzony ze znaku g'(y); próg twardości k* = |Z_w|/i_max = 0,125277"
+        ),
+        realizacja="test_kres_gorny_impedancji_wirtualnej_zgadza_sie_z_wyprowadzeniem",
+    ),
+    PozycjaDrabiny(
+        identyfikator="ogranicznik-pradu-gfm",
+        zlozonosc=ZlozonoscPrzypadku.C4_SIEC_SN_Z_DER,
+        wyrocznia=PoziomWyroczni.W1_WLASNOSC,
+        opis_pl=(
+            "Ogranicznik prądu GFM (impedancja wirtualna vs nasycenie zadania) ścina prąd "
+            "zwarciowy, osłabia sztywność napięciową i skraca zwarcie, po którym falownik "
+            "zachowuje synchronizm"
+        ),
+        realizacja="test_ogranicznik_skraca_najdluzsze_zwarcie_z_synchronizmem",
+    ),
 )
 
 

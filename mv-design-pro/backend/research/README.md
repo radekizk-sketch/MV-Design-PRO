@@ -41,7 +41,7 @@ z defektów P0 audytu: model nazwany „6-rzędowym" miał 2 stany).
 |---|---|
 | `dynamic_lab/konwencje.py` | jednostki, bazy, konwencje znaków, transformacja dq↔sieć |
 | `dynamic_lab/siec.py` | warstwa algebraiczna sieci: Ybus, wstrzyknięcia prądu, rozwiązanie `g(x,V)=0` |
-| `dynamic_lab/urzadzenia.py` | protokół urządzenia + maszyna synchroniczna 4. rzędu + falownik GFL/GFM |
+| `dynamic_lab/urzadzenia.py` | protokół urządzenia + maszyna synchroniczna 4. rzędu + falownik GFL/GFM; **D-07/GFM**: dwie EKSPERYMENTALNE strategie ograniczenia prądu GFM (impedancja wirtualna, nasycenie zadania) — domyślnie WYŁĄCZONE, z wyprowadzonym kresem prądu i zmierzoną ceną numeryczną |
 | `dynamic_lab/urzadzenia_oze.py` | prototypy **D-07** i **D-12**: magazyn ze stanem energii (SOC) i regulacją częstotliwościową, regulator elektrowni (PPC) z limitem eksportu ocenianym w PCC, maszyna dwustronnie zasilana 3. rzędu BEZ crowbaru (z jawnym zakresem ważności) |
 | `dynamic_lab/regulatory.py` | AVR, governor — pętle ZAMKNIĘTE, z ogranicznikami i anti-windup |
 | `dynamic_lab/zdarzenia.py` | harmonogram zdarzeń (zwarcie, wyłączenie, zmiana topologii) |
@@ -54,6 +54,7 @@ z defektów P0 audytu: model nazwany „6-rzędowym" miał 2 stany).
 | `dynamic_lab/sztywnosc.py` | dowód **D-02**: przypadek JAWNIE SZTYWNY (wskaźnik sztywności z widma jakobianu) + porównanie integratorów na nim — kroki graniczne wobec zamkniętego wzoru `2/\|λ\|` |
 | `dynamic_lab/frt.py` | ocena FRT: wymaganie (obwiednia) vs wynik (przebieg) — ROZDZIELONE |
 | `dynamic_lab/wzorzec_zewnetrzny.py` | dowód **C1/W3**: porównanie z NIEZALEŻNYM narzędziem (ANDES) — wymaga `pip install andes` |
+| `dynamic_lab/wzorzec_genrou.py` | dowód **C1/W3** dla modelu 4. rzędu i regulatorów: ANDES GENROU (+SEXS, +TGOV1) — z ZMIERZONYM zakresem zgodności (tłumiki, nasycenie) zamiast założonego |
 | `dynamic_lab/wzorzec_natywny.py` | walidacja MAPOWANIA parametrów na przypadku autorstwa ANDES (`cases/smib/SMIB.xlsx`) — sprawdza, czy rozumiemy wejście |
 | `dynamic_lab/dowod_walidacji.py` | PROTOTYP D-09: stopień dowodowy WYPROWADZANY z zakresu walidacji, nie nadawany |
 
