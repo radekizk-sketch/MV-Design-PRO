@@ -109,14 +109,11 @@ ALLOWLIST: dict[str, str] = {}
 #: dotyczy siostrzanego `protection_to_resultset_v1.py`). Pozostałe 153
 #: wzorce w 54 plikach PRZENIESIONE do `network_model/pochodne/jednostki.py`
 #: (bit w bit, testy tożsamości).
+#: Odbior fali 2 W3 (2026-09-10, drzewo scalone W3-F/B/I/C1/C2): W3-C1 skasowala
+#: `overcurrent/calculator.py` (jedyny wpis rodziny E), W3-C2 skasowala oba pliki
+#: `line_overcurrent_setting/` (wpisy J) — pomiar `--pomiar` na drzewie scalonym:
+#: 1 plik / 2 wzorce, wylacznie trwaly wyjatek ResultSet v1 ponizej.
 ZASTANE: dict[str, dict[str, int]] = {
-    "application/analyses/protection/overcurrent/calculator.py": {"E_idmt_shape": 1},
-    "application/analyses/protection/line_overcurrent_setting/analyzer.py": {
-        "J_skalowanie_jednostek": 7
-    },
-    "application/analyses/protection/line_overcurrent_setting/spz_lookup.py": {
-        "J_skalowanie_jednostek": 1
-    },
     "application/result_mapping/short_circuit_to_resultset_v1.py": {"J_skalowanie_jednostek": 2},
 }
 

@@ -12,6 +12,8 @@ from application.analyses.protection.catalog.models import (
 from application.analyses.protection.catalog.pipeline import dopasuj_do_aparatu
 from application.analyses.protection.catalog.validator import validate_requirement
 from application.protection_settings.engine import (
+    InstantaneousSettingWindow,
+    LocalGenerationDiagnostic,
     DelayedSettings,
     InstantaneousSettings,
     ProtectionSettingsResult,
@@ -64,6 +66,32 @@ def _wynik_hoppela(
             i_th_required_a=4000.0,
             i_th_available_a=5000.0,
             blocking_recommended=False,
+            trace=[],
+        ),
+        # W3-C2 (2026-09-09) rozszerzyla wynik Hoppla o diagnostyke generacji lokalnej
+        # i okno nastaw I>> — pola WYMAGANE; helper buduje wynik bez E-L (aktywna=False,
+        # zera = brak wkladu zrodla lokalnego, nie fabrykacja pomiaru) i okno spojne
+        # z `instantaneous` powyzej (odbior fali 2 W3, 2026-09-10).
+        local_generation=LocalGenerationDiagnostic(
+            aktywna=False,
+            typ_zrodla=None,
+            prad_widziany_lacznie_a=0.0,
+            wklad_el_a=0.0,
+            wklad_systemu_a=0.0,
+            udzial_el=None,
+            prog_udzialu_zsz=None,
+            ryzyko_blokady_zsz=None,
+            uwagi_pl=[],
+            trace=[],
+        ),
+        setting_window=InstantaneousSettingWindow(
+            i_min_a=i_inst_50_a * 0.9,
+            i_max_a=i_inst_50_a * 1.3,
+            limiting_criterion_min="selektywnosc",
+            limiting_criterion_max="czulosc",
+            window_valid=True,
+            conflict_pl=None,
+            recommendations_pl=[],
             trace=[],
         ),
         overall_valid=True,

@@ -959,14 +959,14 @@
   "missing_data": [],
   "model_snapshot": {
     "case_id": "fixture-16_stale_result",
-    "model_hash": "63affe9f31ee5113e671a174f016ae9143a93966e29e86b40ba9b3b619dfd402",
+    "model_hash": "80325a5666a40644a33f78206ad4b9dd92f68d1b6fcdf42e0529b90e94a790b5",
     "operating_state_id": "7b13a7b48d5efd8098b86178ba1b429f7e2eba0be6da9ef14fb8cc1245c1cf43",
     "revision": 1,
-    "run_snapshot_hash": "016003aeadc8bca9e881b293745066138e8696bc73e4feb8376b8873323b1ffa",
+    "run_snapshot_hash": "c996a35cb2fd269c0ec8eea7b7f05326b2c26cede7bae9ccce33985387692a4b",
     "scenario_id": "MAX",
     "station_ref": "stC"
   },
-  "projection_hash": "017a0045fd0a49650bd6c4fc2966aec3a1079f9740c204e99900a4d1580b41b2",
+  "projection_hash": "55439e8c04887418488a68f2add85845f88eb98ef1f46402eb6fcaf387458a83",
   "result_snapshot": {
     "analysis_type": "LOAD_FLOW",
     "overlay_payload": {
@@ -1689,7 +1689,7 @@
     "result_signature": "sygnatura-16_stale_result",
     "run_finished_at": "2026-09-02T00:00:00+00:00",
     "run_id": "przebieg-16_stale_result",
-    "run_model_hash": "016003aeadc8bca9e881b293745066138e8696bc73e4feb8376b8873323b1ffa",
+    "run_model_hash": "c996a35cb2fd269c0ec8eea7b7f05326b2c26cede7bae9ccce33985387692a4b",
     "status": "OUTDATED",
     "voltage_profile": {
       "context": {
@@ -2990,12 +2990,12 @@
   "upstream_equivalents": [
     {
       "c_factor": 1.1,
-      "calculation_run_id": "43da0501-f8f2-5bf9-bfdc-844e7ee6d987",
+      "calculation_run_id": "b40411d3-1e11-553f-b029-ef1f9c7be5fe",
       "case_id": "fixture-16_stale_result",
-      "equivalent_id": "55157d9b-7be6-5d04-9d4e-476827a009d3",
+      "equivalent_id": "679275e2-3a47-5506-aef3-1cb81e7104f8",
       "ikss_ka": 18.6825711,
       "missing_data": [],
-      "model_hash": "63affe9f31ee5113e671a174f016ae9143a93966e29e86b40ba9b3b619dfd402",
+      "model_hash": "80325a5666a40644a33f78206ad4b9dd92f68d1b6fcdf42e0529b90e94a790b5",
       "model_revision": 1,
       "note_pl": "Równoważnik Thevenina sieci SN w punkcie HV transformatora — granica wizualna domeny nN (L2) jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten snapshot jest dokładnie tym wejściem, którym solver pętli zwarcia nN liczy stronę SN (application.analyses.fault_loop).",
       "operating_state_id": "7b13a7b48d5efd8098b86178ba1b429f7e2eba0be6da9ef14fb8cc1245c1cf43",

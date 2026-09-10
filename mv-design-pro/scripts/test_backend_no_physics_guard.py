@@ -679,25 +679,22 @@ def test_pin_stanu_repozytorium() -> None:
     na stałe, karta CV-3.3-A2), więc te dwa literały `/1000.0` nigdy nie
     trafią do `pochodne/jednostki.py` (B-01, CLAUDE.md)."""
     assert porownaj_z_zapadka(zmierz(), ZASTANE) == []
-    assert set(ZASTANE) <= {
-        "application/analyses/protection/overcurrent/calculator.py",
-        "application/analyses/protection/line_overcurrent_setting/analyzer.py",
-        "application/analyses/protection/line_overcurrent_setting/spz_lookup.py",
-        "application/result_mapping/short_circuit_to_resultset_v1.py",
-    }
+    assert set(ZASTANE) == {"application/result_mapping/short_circuit_to_resultset_v1.py"}
 
 
-def test_rodzina_e_zastane_ma_jedyny_wpis_overcurrent_kalkulatora() -> None:
-    """Rodzina E, DoD W3-A §4.1: `--pomiar` = 0 trafień poza ZASTANE, a jedyny
-    dopuszczalny wpis ZASTANE dla tej rodziny to `overcurrent/calculator.py`
-    (W3-C kasuje razem z V12K-189) — żadne inne miejsce nie ma prawa mieć
-    tego kształtu w ZASTANE."""
+def test_rodzina_e_zastane_jest_pusta_po_w3c1() -> None:
+    """Rodzina E (IDMT), DoD W3-A §4.1 + W3-C1: `--pomiar` = 0 trafień poza
+    ZASTANE, a po kasacji `overcurrent/calculator.py` (W3-C1, V12K-189) ŻADEN
+    plik poza solverami nie ma prawa mieć kształtu IDMT — zapadka rodziny E
+    jest pusta i może wyłącznie taka zostać (nowy wpis = nowa pętla IDMT poza
+    jądrem `protection_iec60255.py`)."""
     e_zastane = {
         plik: licznik["E_idmt_shape"]
         for plik, licznik in ZASTANE.items()
         if "E_idmt_shape" in licznik
     }
-    assert e_zastane == {"application/analyses/protection/overcurrent/calculator.py": 1}
+    assert e_zastane == {}
+    assert all("E_idmt_shape" not in licznik for licznik in zmierz().values())
 
 
 def test_wykluczone_prefiksy_to_solvery_i_siostrzany_pochodne() -> None:

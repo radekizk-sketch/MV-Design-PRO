@@ -1239,9 +1239,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # nastaw` musi odrzucac kotwice spoza galezi maksymalnej TYM SAMYM warunkiem, ktorego
     # uzywa budowa). Wykluczenia bez zmian (14/32) — kasacja nie dotkneła zadnego wzorca
     # skanera. Pomiar guardem na drzewie karty, zero NOWYCH podstawien.
-        # W3-C1: 530 plikow (545 - 15 skasowanych: 9 `overcurrent/**` + `run_registry.py` +
-        # `run_envelope.py` + 3x `envelope_adapter.py` + `protection_overcurrent_settings.py`
-        # zliczony w `api/`, nie w tej sumie `application/**` — patrz rozbicie ponizej).
+    # W3-C1: 530 plikow (545 - 15 skasowanych: 9 `overcurrent/**` + `run_registry.py` +
+    # `run_envelope.py` + 3x `envelope_adapter.py` + `protection_overcurrent_settings.py`
+    # zliczony w `api/`, nie w tej sumie `application/**` — patrz rozbicie ponizej).
     # W3-C1 (2026-09-09): 61/280 -> 61/279, patrz komentarz przy asercji pol kontraktu wyzej.
     # W3-C1 (2026-09-09): application 294 -> 280 plikow (-14: kasacja V12K-189, patrz
     # komentarz przy asercji pol kontraktu wyzej), dlug application suma 112 -> 111 (-1:
@@ -1267,12 +1267,17 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # Zapadka 60/269 -> suma per plik: -6 (analyzer.py usuniety) -5 (13->8 dla pattern file) = -11
     # z 280 = 269. Pliki zapadki: -1 (tylko analyzer.py znika jako PLIK; pattern file zostaje
     # plikiem, zmieniaja sie tylko jego klucze) = 61-1 = 60.
-        # W3-C2 (2026-09-09): 541 plikow (545 - 4 skasowane pliki `line_overcurrent_setting/`).
+    # W3-C2 (2026-09-09): 541 plikow (545 - 4 skasowane pliki `line_overcurrent_setting/`).
     # W3-C2 (2026-09-09): zapadka 61/280 -> 60/269 (patrz uzasadnienie wyzej).
-        # W3-C2 (2026-09-09): application 294->290 plikow (-4 line_overcurrent_setting/),
-        # dlug 34->33 plikow/112->101 suma (-1 plik/-11 suma, patrz uzasadnienie wyzej).
-    # (piny ponizej przeliczane guardem na drzewie scalonym fali 2 — odbior, nie arytmetyka)
-    assert "Pol kontraktow wejsciowych: 3491." in wyjscie, wyjscie
+    # W3-C2 (2026-09-09): application 294->290 plikow (-4 line_overcurrent_setting/),
+    # dlug 34->33 plikow/112->101 suma (-1 plik/-11 suma, patrz uzasadnienie wyzej).
+    # Odbior fali 2 W3 (2026-09-10; drzewo scalone W3-F/W3-B/W3-I/W3-C1/W3-C2 na a1b40e9a):
+    # POMIAR guardem, nie arytmetyka z kart: pola 3491 -> 3471 (W3-B +4, W3-I +4, W3-C1
+    # -15 plikow overcurrent/koperty, W3-C2 -4 pliki FIX-12D i wzorzec na plaskim schemacie
+    # Hoppla), pliki 502 -> 484 (+1 pochodne/jednostki.py, -15 W3-C1, -4 W3-C2), zapadka
+    # 59/273 -> 58/260 (wpisy skasowanych plikow zdjete; enm 77 -> 76 po migracji W3-F),
+    # wykluczenia 13/31 bez zmian. Komentarze kart wyzej zachowane jako zapis ich pomiarow.
+    assert "Pol kontraktow wejsciowych: 3471." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1283,7 +1288,7 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # przeniesiona pod backend/tests/, poza tym skanem juz wczesniej w tej samej karcie).
         # W3-D (-1: application/compliance/source_compliance.py) + W3-A (-1:
         # application/protection_current_resolver.py) na drzewie po K2: 504 -> 502.
-        "Przeskanowano 502 plikow w zakresie: network_model, solver_input, enm, "
+        "Przeskanowano 484 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1298,16 +1303,16 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # z ekranem). api 64 -> 63 plikow (api/reference_networks.py skasowany, zero wlasnego
     # wpisu w zapadce/wykluczeniach tego guarda). Globalna zapadka 61/280 -> 59/273,
     # wykluczenia 14/32 -> 13/31 — pomiar guardem na drzewie karty, zero nowych podstawien.
-    assert "Zapadka dlugu (fizyczne): 59 plikow, suma 273." in wyjscie, wyjscie
+    assert "Zapadka dlugu (fizyczne): 58 plikow, suma 260." in wyjscie, wyjscie
     assert "Wykluczenia skanera (niefizyczne): 13 plikow, suma 31." in wyjscie, wyjscie
     per_korzen = [
-        "  network_model: pliki_skanowane=136, dlug=14 plikow/suma 77, "
+        "  network_model: pliki_skanowane=137, dlug=14 plikow/suma 77, "
         "wykluczenia=3 plikow/suma 6",
         "  solver_input: pliki_skanowane=10, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
-        "  enm: pliki_skanowane=41, dlug=8 plikow/suma 77, wykluczenia=0 plikow/suma 0",
-        "  application: pliki_skanowane=252, dlug=32 plikow/suma 105, "
+        "  enm: pliki_skanowane=41, dlug=8 plikow/suma 76, wykluczenia=0 plikow/suma 0",
+        "  application: pliki_skanowane=234, dlug=31 plikow/suma 93, "
         "wykluczenia=4 plikow/suma 10",
-        "  api: pliki_skanowane=63, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 15",
+        "  api: pliki_skanowane=62, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 15",
     ]
     for linia in per_korzen:
         assert linia in wyjscie, f"Brak pinowanej sumy per korzen: {linia!r}\n{wyjscie}"

@@ -70,6 +70,7 @@ from application.protection_settings.engine import (
     ProtectionSettingsResult,
     SPZAnalysisResult,
 )
+from network_model.pochodne import a_na_ka
 
 from .base import (
     CheckStatus,
@@ -622,16 +623,16 @@ class LineIDoublePrimeReferencePattern:
         if spz.spz_allowed:
             status: CheckStatus = "PASS"
             desc = (
-                f"SPZ dozwolone: wymagana wytrzymałość {spz.i_th_required_a/1000:.2f} kA "
-                f"<= dostępna {spz.i_th_available_a/1000:.2f} kA w cyklu "
+                f"SPZ dozwolone: wymagana wytrzymałość {a_na_ka(spz.i_th_required_a):.2f} kA "
+                f"<= dostępna {a_na_ka(spz.i_th_available_a):.2f} kA w cyklu "
                 f"{spz.total_fault_time_s:.2f} s"
             )
         else:
             status = "FAIL"
             desc = (
                 f"SPZ powinno być zablokowane: wymagana wytrzymałość "
-                f"{spz.i_th_required_a/1000:.2f} kA > dostępna "
-                f"{spz.i_th_available_a/1000:.2f} kA w cyklu {spz.total_fault_time_s:.2f} s"
+                f"{a_na_ka(spz.i_th_required_a):.2f} kA > dostępna "
+                f"{a_na_ka(spz.i_th_available_a):.2f} kA w cyklu {spz.total_fault_time_s:.2f} s"
             )
 
         return build_check(

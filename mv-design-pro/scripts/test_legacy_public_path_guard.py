@@ -1367,9 +1367,11 @@ def test_guard_rejects_resurrected_line_overcurrent_setting_directory(
     tmp_path, monkeypatch
 ) -> None:
     src = _patch_w3c2_tree(monkeypatch, tmp_path)
-    (src / "application" / "analyses" / "protection" / "line_overcurrent_setting").mkdir(
-        parents=True
-    )
+    katalog = src / "application" / "analyses" / "protection" / "line_overcurrent_setting"
+    katalog.mkdir(parents=True)
+    # Bramka liczy ZRODLO (`zrodlo_istnieje`, klasa z odbioru K2: osierocony
+    # `__pycache__`/pusty katalog to nie wskrzeszenie) — wskrzeszony pakiet ma plik .py.
+    (katalog / "__init__.py").write_text("", encoding="utf-8")
 
     violations = guard.check_w3c2_line_overcurrent_setting_resurrection()
 
