@@ -5,8 +5,6 @@ from contextlib import AbstractContextManager
 from types import TracebackType
 from typing import Literal
 
-from sqlalchemy.orm import Session, sessionmaker
-
 from infrastructure.persistence.repositories.analysis_run_index_repository import (
     AnalysisRunIndexRepository,
 )
@@ -19,6 +17,7 @@ from infrastructure.persistence.repositories.protection_catalog_repository impor
 from infrastructure.persistence.repositories.station_audit2_config_repository import (
     StationAudit2ConfigRepository,
 )
+from sqlalchemy.orm import Session, sessionmaker
 
 
 class UnitOfWork(AbstractContextManager["UnitOfWork"]):
