@@ -238,7 +238,16 @@ POMIJANE_KATALOGI = {
 #: `FaultScenario`) — martwy kod nie moze naruszac kontraktu, ktorego nikt nie
 #: czyta. Razem -5 bledow (130 -> 125), jeden ponizej progu 126: zapadka w
 #: obie strony wymaga obnizenia, nie tylko braku wzrostu.
-BUDZET_BLEDOW_POZA_BRAMKA = 125
+#: Odbior fali 2 W3 (2026-09-10): drzewo scalone W3-F/B/I/C1/C2 mialo 126 (budzet 125):
+#: W3-C1 zmierzyla 125 PRZED wlasnymi testami ekranu koordynacji (4 bledy w
+#: `SekcjaNastaw.test.tsx` — typ mocka fetch `ReturnType<typeof vi.fn>` vs
+#: implementacja — i `EkranKoordynacji.test.tsx` — mock bez parametru, `c[0]` na
+#: krotce `[]`), W3-B dolozyla 1 (`konfiguratorRozdzielnicy.test.ts` — literal bez
+#: `ct_moc_stykow_va`/`vt_moc_stykow_va` wlasnego typu). Wszystkie naprawione
+#: U ZRODLA (typy zgodne z implementacja, zero wyciszen); ta sama naprawa zdjela
+#: tez wczesniejszy blad `c[0]` w `EkranKoordynacji.test.tsx` (ten sam mock bez
+#: parametru) — pomiar guardem po naprawie: 126 -> 119, zapadka w dol.
+BUDZET_BLEDOW_POZA_BRAMKA = 119
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

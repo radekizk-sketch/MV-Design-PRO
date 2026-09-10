@@ -7,6 +7,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Mock } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
@@ -130,7 +131,10 @@ const DOPASOWANIE_ZGODNE = {
   proweniencja_nastaw: WYNIK_NASTAW.wejscie,
 };
 
-let fetchMock: ReturnType<typeof vi.fn>;
+// Typ mocka = sygnatura implementacji (vitest 1.x: `Mock<TArgs, TReturn>`); `ReturnType<typeof vi.fn>`
+// dawal `Mock<any[], unknown>`, do ktorego `vi.fn(async (input) => Response)` nie jest przypisywalny (TS2322).
+type FetchMock = Mock<[input: RequestInfo | URL], Promise<Response>>;
+let fetchMock: FetchMock;
 
 function ustawKontekst() {
   useAppStateStore.getState().setActiveProject('project-1', 'GPZ Wschód');

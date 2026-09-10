@@ -1009,23 +1009,6 @@ def check_w3a_second_engine_resurrection() -> list[str]:
             py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
         )
         for node in ast.walk(tree):
-            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
-                if node.name in FORBIDDEN_W3D_DEF_NAMES:
-                    violations.append(
-                        f"[resurrected-def] {rel_path}:{node.lineno}: {node.name} "
-                        "(trzecia sciezka source_compliance, usunieta w W3-D) nie moze wrocic"
-                    )
-            if isinstance(node, ast.ClassDef) and node.name == W3D_EXECUTION_TYPE_CLASS_NAME:
-                for stmt in node.body:
-                    if not isinstance(stmt, ast.Assign):
-                        continue
-                    for target in stmt.targets:
-                        if isinstance(target, ast.Name) and target.id in FORBIDDEN_W3D_ENUM_MEMBERS:
-                            violations.append(
-                                f"[resurrected-enum] {rel_path}:{stmt.lineno}: "
-                                f"{W3D_EXECUTION_TYPE_CLASS_NAME}.{target.id} "
-                                "(usuniety w W3-D) nie moze wrocic"
-                            )
             if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_W3A_CLASS_NAMES:
                 violations.append(
                     f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "

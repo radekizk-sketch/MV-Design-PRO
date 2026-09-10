@@ -1273,6 +1273,22 @@ def test_guard_accepts_clean_tree_without_w3a_resurrection(tmp_path, monkeypatch
     assert guard.check_w3a_second_engine_resurrection() == []
 
 
+def test_w3a_gate_does_not_fire_on_w3d_names(tmp_path, monkeypatch) -> None:
+    """Bramka W3-A pilnuje WYLACZNIE drugiego silnika IDMT (docstring: 3 sprawdzenia).
+    Odbior fali 1 (4750d101) wkleil do niej hunkiem zduplikowany blok sprawdzen W3-D
+    (`FORBIDDEN_W3D_DEF_NAMES`, `ExecutionAnalysisType.SOURCE_COMPLIANCE`) — dwa
+    predykaty tej samej klasy w dwoch funkcjach = dryf oczekujacy na dane brzegowe.
+    Nazwy W3-D pod inna sciezka lapie bramka W3-D (osobny test), NIE ta."""
+    src = _patch_w3a_tree(monkeypatch, tmp_path)
+    (src / "application").mkdir()
+    (src / "application" / "cokolwiek.py").write_text(
+        "def evaluate_source_compliance(x):\n    return x\n\n\n"
+        "class ExecutionAnalysisType:\n    SOURCE_COMPLIANCE = 1\n",
+        encoding="utf-8",
+    )
+    assert guard.check_w3a_second_engine_resurrection() == []
+
+
 def test_guard_accepts_current_repo_state_w3a() -> None:
     """Stan repozytorium PO W3-A jest zielony na tej bramce — prawdziwe drzewo
     `backend/src`, nie sztuczne `tmp_path`."""

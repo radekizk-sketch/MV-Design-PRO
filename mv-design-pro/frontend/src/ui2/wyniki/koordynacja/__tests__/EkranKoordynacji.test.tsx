@@ -298,7 +298,10 @@ describe('EkranKoordynacji — nastawy z analizy (karta W3-C1)', () => {
     // dokładnie stan „projekt jest, przypadku nie ma".
     ustawKompletnyKontekst();
     useAppStateStore.setState({ activeCaseId: null } as never);
-    const fetchMock = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({}) }) as Response);
+    // Parametr w sygnaturze mocka: bez niego typ krotki wywolan to `[]` i `c[0]` jest bledem TS2493.
+    const fetchMock = vi.fn(
+      async (_input: RequestInfo | URL) => ({ ok: true, status: 200, json: async () => ({}) }) as Response,
+    );
     vi.stubGlobal('fetch', fetchMock);
 
     render(<EkranKoordynacji />);
