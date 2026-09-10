@@ -182,7 +182,7 @@ Skróty ścieżek: `backend/src/` pomijane dla modułów backendu; `frontend/src
 
 | # | Zdolność | Klasyfikacja | Dowód | Brakuje / uwaga | Pewność |
 |---|---|---|---|---|---|
-| 1 | Fizyka IDMT IEC 60255-151 | ZDUPLIKOWANE ×5 | (1) `network_model/solvers/protection_iec60255.py:370-598` KEEP → adapter `protection/curves/iec_curves.py`; (2) `domain/protection_engine_v1.py:483-560`; (3) `application/protection_analysis/engine.py:191-227` — **tor kanoniczny `protection_sn`** (`enm/canonical_analysis.py:1796`); (4) `application/analyses/protection/overcurrent/calculator.py:121-124`; (5) `enm/domain_operations_v2.py:95-116` | stałe dziś identyczne (0,14/0,02) — rozjazd nieuchronny bez guarda; `backend_no_physics_guard.py` istnieje (§6) ale nie zna IDMT | wysoka |
+| 1 | Fizyka IDMT IEC 60255-151 | CZĘŚCIOWO SKONSOLIDOWANE (W3-A; było ZDUPLIKOWANE ×5) | KEEP: `network_model/solvers/protection_iec60255.py:370-598` (kanon, FROZEN) → adaptery `protection/curves/{iec,ieee}_curves.py` (P0.7, `f4a822bb`); **W3-A (2026-09-09):** `application/protection_analysis/engine.py::compute_iec_inverse_time` (tor kanoniczny `protection_sn`) i `enm/domain_operations_v2.py::_compute_tcc_point` (operacja `validate_selectivity`; alias `LTI` = `RI` jądra) przełączone na adapter — zero własnej pętli, `denom_guard=1e-10` ujednolicony; bridge SC↔v1 (`application/protection_current_resolver.py`, `domain/protection_current_source.py`; 0 konsumentów) skasowany z bramką wskrzeszenia `check_w3a_second_engine_resurrection`; parytet z podstawieniem do normy `tests/network_model/solvers/test_protection_idmt_w3a_merge.py` | pozostają NIE skonsolidowane: `overcurrent/calculator.py:121-127` (żywa; ginie z V12K-189 w W3-C1 — jedyne trafienie rodziny `E_idmt_shape` poza `ZASTANE`) i `domain/protection_engine_v1.py:483-559` (martwa, 0 konsumentów, ale **B-01 STOP**: `solver_boundary_guard.py::WATCHED_PATHS` — kasacja = **OD-18**; rodzina `E_idmt_shape` jej nie łapie: warunkowe ponowne przypisanie floora, ograniczenie przypięte testem); `backend_no_physics_guard.py` zna IDMT od W3-A | wysoka |
 | 2 | Metodyka nastaw nadprądowych | ZDUPLIKOWANE ×3 | `application/protection_settings/engine.py:211+` (Hoppel/IRiESD) · `overcurrent/calculator.py:9-13` (inny endpoint/ekran) · `line_overcurrent_setting/` (1880; konsument tylko generator wzorców) | — | wysoka |
 | 3 | Kryterium ALF / nasycenie CT | ZDUPLIKOWANE ×2 | `domain/dobor_przekladnika.py:252-253` (bez obciążenia wtórnego) vs `equipment_checks/ct_burden_saturation.py` (pełne ALF_eff) | prosty check może dać PASS tam, gdzie pełny FAIL | wysoka |
 | 4 | Bilans obciążenia CT / spadek VT | ISTNIEJE-ZWERYFIKOWANE | `equipment_checks/{ct_burden_saturation,vt_burden_voltage_drop}.py` (42 testy); `ui2/kryteria/SekcjaBilansuCtVt.tsx` | — | wysoka |
@@ -218,12 +218,12 @@ Skróty ścieżek: `backend/src/` pomijane dla modułów backendu; `frontend/src
 | 5 | Q(U), cosφ(P), LFSM P(f) | ISTNIEJE-ZWERYFIKOWANE | `power_flow_inverter.py:93-108`; 45 testów | — | wysoka |
 | 6 | Adekwatność mocy biernej | ISTNIEJE-ZWERYFIKOWANE | `application/analyses/reactive_adequacy.py`; `GET /api/oze-analysis/reactive-adequacy`; `ui2/oze/pulpit/SekcjaAdekwatnosciQ.tsx` | — | wysoka |
 | 7 | Siła sieci (SCR/WSCR) | ISTNIEJE-ZWERYFIKOWANE | `application/analyses/grid_strength.py` czyta wynik biegu SC; `ui2/oze/pulpit/SekcjaSilySieci.tsx` | — | wysoka |
-| 8 | Hosting capacity | ZDUPLIKOWANE | (a) `application/analyses/hosting_capacity.py` (pełny rozpływ; 35 testów; `ui2/oze/zdolnosc`) vs (b) `v126_academic.py:1978-2077` (Monte Carlo, wrażliwość lokalna bez sprzężenia sieciowego; testy tylko izolacji RNG) | dwie liczby bez uzgodnienia | wysoka |
+| 8 | Hosting capacity | ISTNIEJE-ZWERYFIKOWANE (kanon) / WYCOFANE Z POWIERZCHNI (V12.6, W3-E) | (a) `application/analyses/hosting_capacity.py` (pełny rozpływ; 35 testów; `ui2/oze/zdolnosc`) = jedyna prezentowana liczba; (b) `v126_academic.py:1978-2077` (Monte Carlo, wrażliwość lokalna bez sprzężenia sieciowego) — **W3-E (2026-09-09):** `POST /api/cases/{case_id}/runs/v126/hosting_capacity` → `410 v126.analysis_withdrawn` z zamiennikiem (kanon), GET historycznych biegów z addytywnym polem `wycofany`; lista wyboru okna akademickiego 12 → 10 (E-47/E-48 `visibleInNavigation: false`); rejestr zdolności `availability: "withdrawn"` | kod rodzaju zostaje w solverze FROZEN (enum `V126AnalysisType` bez zmian) — kasacja = OD-15(d) | wysoka |
 | 9 | Rozszerzony model wkładu zwarciowego DER | BEZ-KONSUMENTA | `network_model/catalog/types.py:303-306,347-353,1277` (`sc_pq_split`, `sc_transient_k`, `sc_sustained_k`) — 0 odwołań w `src`/`tests` | pola katalogu, których nic nie czyta | wysoka |
 | 10 | FRT / HVRT | ISTNIEJE-ZWERYFIKOWANE (z zastrzeżeniem) | `network_model/solvers/frt_hvrt/engine.py`; adaptery `frt_trajektorie.py`, `frt_sekwencja.py`; `ui2/oze/frt/` | stałe `tp=0.1`, `tiq=0.02`, `K=2.0` (`engine.py:39-40,65`) jednakowe dla każdego urządzenia — OD-15(b) | wysoka |
 | 11 | Ochrona przed pracą wyspową (LoM) | CZĘŚCIOWE | `ochrona_lom.py` (446); `ui2/oze/lom/` | koordynacja z SPZ strukturalnie niemożliwa (spz=None) | wysoka |
-| 12 | NC RfG / PTPiREE macierz | CZĘŚCIOWE | `ncrfg_ptpiree/engine.py` (972); 5 profili operatorów; `ui2/oze/macierz/` | `GET /api/ncrfg-tests/cases/{case_id}/compliance` (przekrojowa) bez UI | wysoka |
-| 13 | `source_compliance` | BACKEND-BEZ-TOKU-PRACY / ZDUPLIKOWANE wobec #12 | `application/compliance/source_compliance.py` (322); `_execute_source_compliance`; 0 plików `ui2` | trzecia ścieżka FRT/Q(U)/cosφ(P) | wysoka |
+| 12 | NC RfG / PTPiREE macierz | ISTNIEJE-ZWERYFIKOWANE | `ncrfg_ptpiree/engine.py` (972); 5 profili operatorów; `ui2/oze/macierz/` — **W3-D (2026-09-09):** `SekcjaZgodnosciPrzekrojowej.tsx` (+ `zgodnoscPrzekrojowaModel.ts`, klient `ui/ncrfg-tests/api.ts::fetchNcRfGCaseCompliance`) czyta `GET /api/ncrfg-tests/cases/{case_id}/compliance` na żywo z ENM, renderowana zawsze obok macierzy per DER (jeden stan operatora `ncRfgStore.operatorId`; stany brak_przypadku / ładowanie / brak_der / gotowe / błąd); e2e `critical-oze-evidence.spec.ts` +2 punkty kontrolne | — | wysoka |
+| 13 | `source_compliance` | SKASOWANE (W3-D) | `application/compliance/source_compliance.py` (322) usunięty w całości wraz z okablowaniem backendu (rodzaj `ExecutionAnalysisType.SOURCE_COMPLIANCE`, 17 miejsc dyspozytora `enm/canonical_analysis.py`, trasa `GET /api/analysis-runs/{run_id}/results/source-compliance`, eksporty DOCX/PDF, 2 pozycje rejestru zdolności 25 → 23, 11 testów wyłącznie tego modułu) i frontendu (typ, wiersze, etykiety; `OSIE_ZAWSZE_NAWIGOWALNE` w `macierzAnaliz.ts`, żeby nawigacja do NC RfG nie stała się martwym klikiem) | następca: #12; bramka wskrzeszenia `legacy_public_path_guard.py::check_w3d_source_compliance_resurrection`; OpenAPI bez trasy (`MACIERZ_KOMPATYBILNOSCI_API.md`: `usuniety`) | wysoka |
 | 14 | Macierz gotowości DER (przycisk „Uruchom obliczenia") | UI-BEZ-ZDOLNOŚCI (martwy klik) | `ui/network-build/station-der/macierzAnaliz.ts:58-61,118,154` → `MacierzAnalizSekcja.tsx:18,38,93` (`onDzialanie?`) → `ui/workspace/surfaces/DerSurfaces.tsx:1313` bez propa; osiągalne przez `ui2/legacy/LegacyInspektor.tsx:20,35` | W2 | wysoka |
 | 15 | Warunki przyłączenia OSD | ISTNIEJE-ZWERYFIKOWANE | `application/analyses/warunki_przylaczenia.py`; `GET /api/quality/connection-conditions`; `ui2/wyniki/jakosc/` | — | średnia-wysoka |
 | 16 | Dokumenty OSD (wniosek, certyfikat, studium, odpowiedź) | ISTNIEJE-ZWERYFIKOWANE | 6 modułów w `api/oze_analysis_runs.py:41-89`; `ui2/oze/{osd,wniosek,studium}`; PDF wniosku ma konsumenta `ui2/oze/wniosek/EkranWniosku.tsx` + `ui2/oze/api.ts` (KOREKTA §6) | — | wysoka |
@@ -296,15 +296,15 @@ Skróty ścieżek: `backend/src/` pomijane dla modułów backendu; `frontend/src
 | # | Zdolność | Klasyfikacja | Dowód | Brakuje / uwaga | Pewność |
 |---|---|---|---|---|---|
 | 1 | Kontyngencje N-1 | ISTNIEJE-ZWERYFIKOWANE | `application/analyses/kontyngencje_n1.py` (pełny re-solve, `build_energy_validation_view`; 43 testy); `ui2/wyniki/kontyngencje/` | — | wysoka |
-| 2 | Niezawodność (SAIDI/SAIFI) + ranking N-1 | ZDUPLIKOWANE / DO-PRZEPROJEKTOWANIA | `v126_academic.py:1069-1180`; `_branch_current_a` (1060-1067) = S szyny docelowej/(√3·U); testy tylko `saidi>=0` (`test_v126_academic_solver.py:149-152`) | fizycznie błędne dla gałęzi nieliściowych; brak ostrzeżenia w UI | wysoka |
+| 2 | Niezawodność (SAIDI/SAIFI) + ranking N-1 | CZĘŚCIOWE (wskaźniki) / RANKING NIEPREZENTOWANY (W3-E) | `v126_academic.py:1069-1180` (SAIDI/SAIFI/CAIDI/MAIFI — jedyna implementacja, bez zmian); **W3-E (2026-09-09):** ranking N-1/N-2 z `_branch_current_a` (1060-1067; S szyny docelowej/(√3·U), fizycznie błędny dla gałęzi nieliściowych) zdjęty z results/proof/report jedną funkcją `application/v126_artifacts.py::bez_rankingu_n1` (wołana raz w `enm/canonical_analysis.py::_execute_v126`), w jego miejsce stan `ranking_n1` z odnośnikiem do ekranu Kontyngencje (kanon `application/analyses/kontyngencje_n1.py`); `sanity.status` przeliczony tym samym predykatem co solver; FE `PanelRankinguNieprezentowanego` payload-driven; `tests/api/test_v126_reliability_ranking_nieprezentowany.py` | testy SAIDI nadal tylko `saidi>=0`; kod rankingu w solverze FROZEN = OD-15(d) | wysoka |
 | 3 | Odtwarzanie zasilania (restoration) | BRAK | 0 trafień | — | wysoka |
 | 4 | Optymalizacja NOP / rekonfiguracja | BRAK | katalog `analysis/optimization/` nie istnieje | — | wysoka |
 | 5 | Ranking słabych punktów w stanie normalnym | CZĘŚCIOWE | tylko w kontekście N-1 | — | średnia |
 | 6 | Straty (obliczenie) | ISTNIEJE-ZWERYFIKOWANE | `power_flow_result.py:99-117,237-262`; `ui2/wyniki/rozplyw/TabelaGalezi.tsx` | — | wysoka |
-| 7 | Optymalizacja strat | POZORNIE-ISTNIEJE / ZDUPLIKOWANE | `v126_academic.py:2114-2178` `_opf_loss_lcc`: `oltc_tap_position: 0` zaszyte, NOP nieoceniany; prawdziwa `optimize_tap_positions` (domena 3 #8) | — | wysoka |
+| 7 | Optymalizacja strat | WYCOFANE Z POWIERZCHNI (W3-E; było POZORNIE-ISTNIEJE / ZDUPLIKOWANE) | `v126_academic.py:2114-2178` `_opf_loss_lcc` (`oltc_tap_position: 0` zaszyte, NOP nieoceniany) — **W3-E (2026-09-09):** `POST /api/cases/{case_id}/runs/v126/opf_loss_lcc` → `410 v126.analysis_withdrawn` z zamiennikiem (`transformer_losses.py` + badania OLTC `power_flow_oltc_studies.py`, domena 3 #8); lista wyboru 12 → 10; `availability: "withdrawn"` | kod w solverze FROZEN = OD-15(d); LCC/koszty = OD-16 | wysoka |
 | 8 | Planer wzmocnień | DO-KASACJI | `design_synth` (domena 2 #7) | — | wysoka |
 | 9 | Alternatywy punktów przyłączenia | BRAK | 0 trafień | — | wysoka |
-| 10 | Hosting capacity | ZDUPLIKOWANE | domena 5 #8 | — | wysoka |
+| 10 | Hosting capacity | ISTNIEJE-ZWERYFIKOWANE (kanon) / WYCOFANE Z POWIERZCHNI (V12.6, W3-E) | domena 5 #8 | — | wysoka |
 | 11 | Optymalizacja wielokryterialna | BRAK | 0/9 klas z `docs/twin/MV_DESIGN_PRO_DESIGN_OPTIMIZATION_ARCHITECTURE.md` (PROPOZYCJA) | — | wysoka |
 | 12 | Model ekonomiczny / CAPEX | BRAK | 0 pól kosztu w `network_model/catalog/**` | OD-16 (źródło danych) | wysoka |
 | 13 | Wrażliwość ∂U/∂P, ∂U/∂Q | ISTNIEJE | `analysis/sensitivity/`, `analysis/lf_sensitivity/` (perturbacje) | metoda droższa niż jakobian | średnia |
@@ -334,7 +334,7 @@ Skróty ścieżek: `backend/src/` pomijane dla modułów backendu; `frontend/src
 | 17 | Pakiet projektu do podpisu | BRAK (spec bez kodu) | `docs/export/PAKIET_PROJEKTU_DO_PODPISU.md` (BINDING v1.0) — 0 trafień w `api/`/`application/` | — | wysoka |
 | 18 | Rejestr założeń | BRAK | 0 trafień; `ProofStep` bez pola założeń | — | wysoka |
 | 19 | Raport as-built / arc flash | ISTNIEJE-ZWERYFIKOWANE | `api/quality_analysis_runs.py` (`/as-built-compliance`, `/arc-flash/report`) | as-built bezstanowe (domena 11) | średnia |
-| 20 | V12.6 „akademicki" dowód/raport | ZDUPLIKOWANE (architektura równoległa) | `v126_academic.py` + `api/v126_academic.py` + `application/v126_artifacts.py` nie importują `application/proof_engine` | — | wysoka |
+| 20 | V12.6 „akademicki" dowód/raport | ZDUPLIKOWANE (architektura równoległa) | `v126_academic.py` + `api/v126_academic.py` + `application/v126_artifacts.py` nie importują `application/proof_engine`; **W3-E (2026-09-09):** artefakty results/proof/report przechodzą przez jedną funkcję `v126_artifacts.py::bez_rankingu_n1` (ranking N-1 zdjęty spójnie z trzech wyjść), 2 rodzaje zdjęte z powierzchni (410) | architektura równoległa wobec `proof_engine` bez zmian — poza W3 | wysoka |
 
 ### 3.11 Domena 11 — Commissioning / As-built
 
@@ -699,7 +699,7 @@ odległość ochronna (H2, H6). 36. Wymiana CIM/CGMES bez trasy (K2). 37. Macier
 
 ---
 
-## 7. Decyzje wymagające właściciela (nowe: OD-13…OD-17; stan OD-2/OD-3)
+## 7. Decyzje wymagające właściciela (nowe: OD-13…OD-18; stan OD-2/OD-3)
 
 | ID | Pytanie | Dlaczego nie da się rozstrzygnąć samodzielnie |
 |---|---|---|
@@ -708,6 +708,7 @@ odległość ochronna (H2, H6). 36. Wymiana CIM/CGMES bez trasy (K2). 37. Macier
 | OD-15 | **Pakiet B-01 „zero fabrykacji w rdzeniach"** (jedna zgoda, parytet per pozycja): (a) `v126_academic.py::_earth_fault_detection` — nastawy jako wejście jawne albo pominięte z powodem; (b) `frt_hvrt/engine.py` — `tp/tiq/K` z katalogu `der_dynamic` (resolver istnieje) z proweniencją w śladzie, brak = odmowa nazwana; (c) `phase_state_sn.py` — VUF wg składowych symetrycznych jako pole addytywne obok dzisiejszego wskaźnika; (d) kasacja rodzajów V12.6 zduplikowanych z torem kanonicznym (`reliability_contingency` ranking, `hosting_capacity` MC, `opf_loss_lcc`) po ich wycofaniu z prezentacji w W3; (e) W-6 `RI` → `LONG_TIME_INVERSE` w `protection_iec60255.py` bez zmiany liczb | każda pozycja = edycja `network_model/solvers/**` |
 | OD-16 | **Dane kosztowe (CAPEX/OPEX) katalogu:** źródło (cenniki producentów, wskaźniki OSD, własne), format (pole katalogu per typ, waluta, data), zasada aktualizacji — bez tego W10 (model kosztowy, porównanie wariantów, wielokryterialna) nie ma danych | dane spoza repo |
 | OD-17 | **Źródła danych zewnętrznych dla klasy K-H „mechanizm pełny, dane śladowe" (aneks 3a):** (a) katalog przekształtników zasilany realnymi modelami z wykazu PTPiREE (dziś 1 zmierzone dopasowanie na 176 pozycji o nazwach ilustracyjnych — J3); (b) pakiety Reference Engine dla pozostałych OSD (Energa, Tauron, PGE) z IRiESD (dziś tylko ENEA — L2); (c) karty producentów z BIL/LIWL per pozycja (H4), tolerancjami parametrów (D8) i krzywymi degradacji baterii (I5). Kod i UI są gotowe; bez danych wynik dla użytkownika jest pusty | dane spoza repo (licencje wykazów, praca redakcyjna na IRiESD, karty producentów) |
+| OD-18 | **Kasacja martwego drugiego silnika zabezpieczeń chronionego guardami (B-01):** `domain/protection_engine_v1.py` (0 konsumentów produkcyjnych; własna pętla IDMT 483-559 niewidoczna dla rodziny `E_idmt_shape`) pod `solver_boundary_guard.py::WATCHED_PATHS` oraz `application/result_mapping/protection_to_resultset_v1.py` pod `resultset_v1_schema_guard.py::PROTECTED_FILES` (+ `tests/test_protection_engine_v1.py`). W3-A skasowała je wstępnie, `guardy_z_ci` ujawnił ochronę, pliki przywrócone bit w bit (2026-09-09). Propozycja architekta: kasacja obu z wpisem `SANCTIONED_CHANGES` i zdjęciem z `PROTECTED_FILES`, parytet = 0 importerów (grep) + pełna regresja + złote hashe bez zmian | oba pliki są jawnie chronione jako zamrożony rdzeń — zgoda właściciela, nie pomiar |
 | OD-2 (stan) | Projekty w legacy ORM przed kasacją | **Rozstrzygnięte technicznie w W1:** migracja jednorazowa legacy → ENM przez ten sam kompilator co import XLSX, wykonana przed kasacją tabel; żaden projekt nie ginie — decyzja właściciela niepotrzebna |
 | OD-3 (stan) | Publikowane wyrocznie dla G01 (sieć kompensowana) | **Nadal otwarte** — blokuje część wyroczni W8; propozycja: IEC 60909-3 (przykłady liczbowe) + analityczne wzory zamknięte już przypięte w rejestrze (`_ANALITYCZNA_G01`) jako wyrocznia pierwsza, literaturowa druga |
 
@@ -909,6 +910,28 @@ wprost (nie przez `enm/kompilator_grafu.py`); zachowanie zweryfikowane bajtowo (
 stacji v2 (nieprodukcyjny); pełne przepisanie wymaga rekordów governance katalogu dla ~20 archetypów — dług
 testowy z pomiarem (nie produktowy), zamykany razem z wejściem ekranu stacji v2 do produkcji (W8), nie cicho.
 (3) Agent nie uruchomił pełnego `pytest`/`vitest` (host zajęty, zgodnie z kartą) — pełny łańcuch wykonał odbiór (§F).
+
+### §3 Meldunek wykonania W3 — fala 1: W3-A / W3-D / W3-E (2026-09-09/10) — UCZCIWOŚĆ
+
+**Wykonane (agenci w worktree z bazy `a16f8d2b`; odbiór Fable `4750d101` + naprawa CI `28854780`):** W3-A — IDMT:
+2 żywe pętle poza solverami (`application/protection_analysis/engine.py`, `enm/domain_operations_v2.py`) na adapter
+jądra `protection_iec60255`, bridge SC↔v1 skasowany, rodzina `E_idmt_shape` w `backend_no_physics_guard.py` (pętli
+4 → 2; obie nazwane: `overcurrent/calculator.py` ginie w W3-C1, `domain/protection_engine_v1.py` = **B-01 STOP → OD-18**);
+W3-D — `source_compliance` skasowany end-to-end (rodzaj, dyspozytor, trasa, eksporty, rejestr zdolności 25 → 23, FE),
+sekcja „Zgodność przekrojowa przypadku" jako konsument `GET /api/ncrfg-tests/cases/{case_id}/compliance` (wiersze 5 #12/#13);
+W3-E — `hosting_capacity`/`opf_loss_lcc` V12.6 → 410 z zamiennikami, ranking N-1 nieprezentowany jedną funkcją dla
+results/proof/report, parytet BIL testem, lista wyboru 12 → 10 (wiersze 5 #8, 9 #2/#7/#10, 10 #20). Szczegóły, liczby
+przebiegów agentów i korekty: `KARTA_W3_KONWERGENCJA_FIZYKI_2026-09.md` §5; dowody pełnego łańcucha na drzewie
+scalonym: evidence §F („W3 fala 1 — dowody").
+
+**Nazwane, nie ukryte:** (1) **OD-18** — kasacja `protection_engine_v1.py` i `protection_to_resultset_v1.py` chronionych
+guardami (B-01); (2) **OD-15(d)** obejmuje też kod rankingu N-1 (`_branch_current_a`) i obu wycofanych rodzajów V12.6
+w solverze FROZEN; (3) korekta arytmetyki karty W3: lista wyboru 12 → 10, nie 14 → 12 (V126-WYGASZENIE zdjęło 2
+wcześniej) — pin z pomiaru; (4) CI na `04ea94b6` (K2): P0 Extended czerwony (run `34417626793`) — `guardy_z_ci.py`
+uruchamiał guardy BEZ argumentów z linii `run:` workflowa (`port_binding_guard.py --strict`), lokalna bramka świeciła
+fałszywie na zielono; naprawa klasy `28854780` (wywołania (nazwa, argumenty) 1:1 z workflowów + testy + fixture golden
+`test_sld_substrate_power_flow.py` z jawnymi portami końcówek); (5) fala 2 w toku: W3-B, W3-C1, W3-C2, W3-F, W3-I —
+odbiór po meldunkach, każdy z pełnym łańcuchem na drzewie scalonym.
 
 ## 11. Utrzymanie mapy
 

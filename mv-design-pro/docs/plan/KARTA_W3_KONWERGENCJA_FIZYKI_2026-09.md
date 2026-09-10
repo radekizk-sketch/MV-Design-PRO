@@ -106,4 +106,104 @@ guardy_z_ci, vitest, e2e) na drzewie gałęzi + push + CI 9/9.
 
 ## §5 Meldunek wykonania (uzupełniany przy odbiorze podkart)
 
-_(pusty — 2026-09-09)_
+### Odbiór fali 1 (W3-A, W3-D, W3-E) — 2026-09-09/10
+
+**Model:** trzy podkarty wykonane równolegle przez agentów w osobnych worktree z bazy `a16f8d2b`, commity BEZ push;
+odbiór Fable = cherry-pick na gałąź (`4750d101` = 15 commitów + uzgodnienie), ponowny pomiar wszystkich zapadek na
+drzewie scalonym, pełny łańcuch przedpushowy na dokładnie tym drzewie (evidence §F „W3 fala 1 — dowody").
+Konflikty cherry-picka (KLASA: każda podkarta niezależnie przesuwała te same piny i te same guardy): tabela rejestru
+sieci (regenerowana generatorem `generuj_rejestr_sieci.py`), piny `test_solver_input_substitute_guard.py` (z pomiaru na
+drzewie scalonym: 3491 pól / 502 pliki / `application` 252 / `api` 63; zapadka 59/273, wykluczenia 13/31),
+`legacy_public_path_guard.py` + self-test (scalenie „both" ucięło ogon funkcji na granicy hunka — brak
+`return violations` w bramce K2 i ogon bramki W3-D; naprawione ręcznie, dowód: `py_compile` + self-testy +
+uruchomienie guarda; lekcja w evidence §G), `backend_no_physics_guard.py` (`ZASTANE` = wyłącznie
+`overcurrent/calculator.py: {E_idmt_shape: 1}`, self-test dopuszcza tylko ten wpis),
+`test_advanced_solver_capability_registry.py` (23 pozycje po W3-D; `niedostepne == ["HOSTING_CAPACITY", "OPF_LOSS_LCC"]`
+po W3-E). Bramki wskrzeszenia K2 / W3-D / W3-A liczą ŹRÓDŁO (`zrodlo_istnieje`), nie osierocone `__pycache__`.
+
+### W3-A (2026-09-09) — IDMT + drugi silnik + guard — UCZCIWOŚĆ
+
+**Wykonane (agent, worktree, 5 commitów na `a16f8d2b` → na gałęzi `cf07ad9b`, `ad0a965e`, `f4e7380e`, `35cba1b6`,
+`cb9b281f`):** `application/protection_analysis/engine.py::compute_iec_inverse_time` (tor kanoniczny `protection_sn`)
+i `enm/domain_operations_v2.py::_compute_tcc_point` (operacja `validate_selectivity`; alias `LTI` = `RI` jądra
+udokumentowany) przełączone na adapter jądra `protection_iec60255` — zero własnej pętli IDMT, `denom_guard=1e-10`
+ujednolicony. Bridge SC↔Protection v1 (`application/protection_current_resolver.py`, `domain/protection_current_source.py`;
+0 konsumentów produkcyjnych, 35 testów wyłącznie o martwym moście) skasowany razem z martwą `_compute_tcc_curve`
+i zaślepką `calculate_tcc_curve` (`tcc.legacy_write_disabled`; `V2_CANONICAL_OPS`/`ALL_V2_HANDLERS` zaktualizowane);
+bramka wskrzeszenia `legacy_public_path_guard.py::check_w3a_second_engine_resurrection`; nowa rodzina `E_idmt_shape`
+w `backend_no_physics_guard.py` (inline, `math.pow`, zmienna pośrednia do 2 poziomów; `ZASTANE` =
+`overcurrent/calculator.py: 1`, ginie w W3-C1); parytet z podstawieniem do normy IEC 60255-151
+(`tests/network_model/solvers/test_protection_idmt_w3a_merge.py`, 13 funkcji sparametryzowanych) + 11 self-testów
+guarda + 8 self-testów bramki + 1 w rejestrze kanonicznym. Pętli IDMT poza solverami: 4 → 2 (obie nazwane).
+
+**B-01 STOP (zatrzymanie dozwolone, nie odroczenie):** karta literalnie kazała skasować 4 pliki „drugiego silnika";
+`guardy_z_ci.py` ujawnił, że `domain/protection_engine_v1.py` leży pod `solver_boundary_guard.py::WATCHED_PATHS`,
+a `application/result_mapping/protection_to_resultset_v1.py` pod `resultset_v1_schema_guard.py::PROTECTED_FILES`
+(docstring guarda: kasacja pliku chronionego = edycja zamrożonego rdzenia). Oba pliki + `tests/test_protection_engine_v1.py`
+przywrócone bit w bit do `a16f8d2b`; artefakty zależne (komentarze, bramka, guard, pin) skorygowane. Decyzja
+właściciela: mapa §7 **OD-18**. Ograniczenie guarda nazwane i przypięte testem: pętla w `protection_engine_v1.py:483-559`
+ma warunkowe ponowne przypisanie floora (`if denominator <= 1e-12: …`) niewidoczne dla `E_idmt_shape`.
+
+**Nazwane, nie ukryte:** (1) `application/trace_emitters/protection_emitter.py` (`TraceEmitterProtection`) — 0 importerów
+produkcyjnych poza własnym `__init__`; pomiar klasy w odbiorze (2026-09-10): martwy jest CAŁY klaster ślad v2 —
+`domain/trace_v2/**` (1084 linie), `application/trace_emitters/**` (1353), `application/trace_export/**` (224),
+`frontend/src/ui/proof/trace-v2/types.ts`, 5 plików testów, guard CI `trace_determinism_guard.py` pilnujący
+determinizmu modułu bez konsumenta, 4 dokumenty `docs/analysis/TRACE_*` bez linków przychodzących; jedyny ślad
+WHITE BOX produktu = `white_box_trace` wyniku + `application/proof_engine/**`; decyzja architekta (koryguje D-12
+pakietu właściciela „wpiąć"): USUNĄĆ — kasacja zlecona kartą TRACE-V2 (agent, fala 2; `karta_trace_v2_kasacja.md`);
+(2) klaster ResultSet v1 SC (`sc_binding_meta.py`,
+`short_circuit_to_resultset_v1.py`) ma żywego wołającego (`test_pr18_sc_integration.py`) — osobna karta;
+(3) `tsconfig_gate_guard` czerwony w worktree agenta wyłącznie z braku `node_modules` (środowiskowe; zielony w odbiorze).
+Weryfikacja agenta: celowane 3007 RC=0, `tests/golden` 226 passed / 1 xfailed, kolekcja `tests/` 13 143 bez błędów
+importu, mypy 0, black/ruff 0, `guardy_z_ci` 88/89 (jw.) + 665 self-testów.
+
+### W3-D (2026-09-09) — `source_compliance` → NC RfG — UCZCIWOŚĆ
+
+**Wykonane (agent, worktree, 5 commitów na `a16f8d2b` → na gałęzi `2a734569`, bramka + piny scalone w `4750d101`,
+`a42a42d3`, `218f751b`, `9ff95b6b`):** `application/compliance/source_compliance.py` (322) skasowany w całości wraz
+z całym okablowaniem: rodzaj `ExecutionAnalysisType.SOURCE_COMPLIANCE`, 17 miejsc dyspozytora `enm/canonical_analysis.py`,
+gałęzie `api/{execution_runs,analysis_case_context,canonical_run_views,analysis_run_exports,v125_contracts}.py`, trasa
+`GET /api/analysis-runs/{run_id}/results/source-compliance` (OpenAPI bez trasy; `MACIERZ_KOMPATYBILNOSCI_API.md`:
+`usuniety`), 2 pozycje rejestru zdolności solverów (`SOURCE_COMPLIANCE`, `SOURCE_FRT_LVRT_HVRT`; 25 → 23), 11 testów
+wyłącznie tego modułu skasowanych, 3 pliki testów i `tests/golden/registry.py` (G06) przepisane do kanonu, ewidencja
+`reference_networks_guard.py` przepięta. Frontend: typ/etykiety/wiersze (`ui/study-cases/types.ts`, `AnContextPanel.tsx`,
+`screenCanonRegistry.ts` E-26, `contracts/verification.ts`), w `macierzAnaliz.ts` naprawa klasy `OSIE_ZAWSZE_NAWIGOWALNE`
+(nawigacja „Przejdź do zgodności NC RfG" nie staje się martwym klikiem — biegi `SOURCE_COMPLIANCE` w produkcji nigdy nie
+powstawały). Nowy konsument kanonu: `ui2/oze/macierz/SekcjaZgodnosciPrzekrojowej.tsx` + `zgodnoscPrzekrojowaModel.ts`
+(klient `ui/ncrfg-tests/api.ts::fetchNcRfGCaseCompliance`, trasa `GET /api/ncrfg-tests/cases/{case_id}/compliance`,
+backend bez zmian), renderowana zawsze obok macierzy per DER, jeden stan operatora; e2e `critical-oze-evidence.spec.ts`
++2 punkty kontrolne. Bramka wskrzeszenia `check_w3d_source_compliance_resurrection`.
+
+**Weryfikacja agenta:** backend celowane 247 passed, `tests/golden` 226 passed / 1 xfailed, mypy 0, black/ruff 0,
+`guardy_z_ci` KOMPLET 89/89 + lint 4/4 + 646 self-testów, type-check 0, eslint 0, vitest celowany 160 plików / 1961 testów;
+e2e NIE uruchomione przez agenta (realny backend) — uruchomione w odbiorze (§F). **Nazwane:** rejestry historyczne
+`docs/v12xx/REJESTR_*.md`, `MACIERZ_*`, `docs/audit/archive/**` wspominają `source_compliance` jako zapis pomiaru sprzed
+kasacji (precedens `851e4a60`, data-manager) — nie edytowane; kanon / `docs/system` / `docs/domain` / inwentarz: 0 trafień.
+
+### W3-E (2026-09-09) — V12.6 z powierzchni — UCZCIWOŚĆ
+
+**Wykonane (agent, worktree; na gałęzi `ffaf6ad0`, `0c8874cc`, `8c1f160c`, `f55499c6`, `e0103101`; pin `5c4d9fdb` pusty
+po uzgodnieniu — pominięty; `9e94641c` z 12 regenerowanymi PNG nie scalony — PNG nie wchodzą do repo):**
+`POST /api/cases/{case_id}/runs/v126/{hosting_capacity,opf_loss_lcc}` → `410 v126.analysis_withdrawn` z zamiennikiem
+(kanon `application/analyses/hosting_capacity.py`, `transformer_losses.py` + badania OLTC); GET historycznych biegów
+(results/trace/proof/report) z addytywnym polem `wycofany`; bramki 422 `p0_kw`/Q generatora zdjęte razem z rodzajami
+(dla `reliability_contingency` bramka Q zostaje); solver FROZEN i enum `V126AnalysisType` NIETKNIĘTE (zdolność
+odtwarzalna z historii, uruchamialna wprost w testach solvera). `reliability_contingency` bez rankingu N-1/N-2
+z `_branch_current_a`: jedna funkcja `application/v126_artifacts.py::bez_rankingu_n1` (wołana raz w
+`enm/canonical_analysis.py::_execute_v126`) dla results/proof/report, w miejsce rankingu stan `ranking_n1` z odnośnikiem
+do ekranu Kontyngencje; `sanity.status` przeliczony tym samym predykatem co solver
+(`tests/api/test_v126_reliability_ranking_nieprezentowany.py`). Tabela BIL (IEC 60071-1) zduplikowana katalog API ↔
+solver: test parytetu `tests/test_v126_bil_parytet.py` zamiast deklaracji. Rejestr zdolności: `availability: "withdrawn"`
+(`implementation_status` zostaje `implemented`). FE: `nieprezentowane.ts` +2 rodzaje z powodem merytorycznym, lista
+wyboru **12 → 10** (`Record<RodzajPrezentowany, …>` wymusza w czasie kompilacji), tabela rankingu skasowana
+z `prezentacja.ts`, `PanelRankinguNieprezentowanego` payload-driven (dla każdego rodzaju niosącego `ranking_n1`),
+E-47/E-48 `visibleInNavigation: false`; OpenAPI 310 ścieżek / 229 schematów (+65 linii czysto addytywnie);
+`KANON_V12_6_PROFESORSKI.md`, `MACIERZ_KOMPATYBILNOSCI_API.md`, `INWENTARZ_FUNKCJI_2026-07.md`, `REJESTR_KONFLIKTOW.md`
+uzupełnione.
+
+**Korekta w obie strony:** proza tej karty (§0.4) zakładała „14 → 12" prezentowanych rodzajów; pomiar: karta
+V126-WYGASZENIE (2026-08-07) zdjęła już 2 (`benchmark_validation`, `voltage_stability`), więc stan PRZED = 12, PO = **10**
+— pin liczby z pomiaru w `wygaszenie.test.tsx`. **Nazwane, nie ukryte:** kod obu rodzajów i rankingu (`_branch_current_a`,
+`oltc_tap_position: 0`, lokalne Monte Carlo) pozostaje w solverze FROZEN — kasacja = **OD-15(d)**; LCC/koszty = **OD-16**.
+Weryfikacja agenta (wpis rejestru `e0103101`): celowane 119 backend + 246 frontend, wyrocznia pandapower 41, e2e realny
+backend 12 — zielone; pełny łańcuch = odbiór (§F).
