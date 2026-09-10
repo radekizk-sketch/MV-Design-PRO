@@ -71,6 +71,19 @@ def _pf_run_id():
     return execute_run(create_run(case_id="c-pf", klucz_twin="c-pf", analysis_type="PF").id).id
 
 
+def _unsupported_sanity_bounds_run_id():
+    """Rodzaj przebiegu, dla którego sanity-bounds NIE ma oceny (ani SC, ani PF).
+
+    Bez ``execute_run`` — dispatch analysis_type zachodzi PRZED sprawdzeniem
+    statusu (``build_sanity_bounds_view``/``build_power_flow_sanity_bounds_view``),
+    więc przebieg nieuruchomiony wystarcza do przetestowania 422.
+    """
+    set_enm("c-unsupported", build_golden_enm())
+    return create_run(
+        case_id="c-unsupported", klucz_twin="c-unsupported", analysis_type="phase_state_sn"
+    ).id
+
+
 # --------------------------------------------------------------------------
 # Sanity bounds Ik''
 # --------------------------------------------------------------------------
@@ -102,10 +115,47 @@ def test_sanity_bounds_unknown_run_returns_404(app_client) -> None:
 
 
 def test_sanity_bounds_wrong_analysis_type_returns_422(app_client) -> None:
-    run_id = _pf_run_id()  # rozpływ, nie zwarcie
+    # Karta W3-G2: PF ma teraz WŁASNĄ ocenę (pasma rozpływu, 200 — patrz testy
+    # niżej), więc „zły rodzaj" testujemy rodzajem bez ŻADNEJ oceny sanity-bounds.
+    run_id = _unsupported_sanity_bounds_run_id()
     resp = app_client.get(SANITY_BOUNDS, params={"run_id": str(run_id)})
     assert resp.status_code == 422
     assert "przebiegu zwarciowego" in resp.json()["detail"]
+
+
+def test_sanity_bounds_pf_endpoint_returns_power_flow_bands(app_client) -> None:
+    """Karta W3-G2: rozszerzenie ADDYTYWNE — PF na tej samej końcówce zwraca
+    pasma napięć/obciążeń/strat zamiast dawnego 422."""
+    run_id = _pf_run_id()
+    resp = app_client.get(SANITY_BOUNDS, params={"run_id": str(run_id)})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["analysis_id"] == str(run_id)
+    assert data["converged"] is True
+    assert "napiecia" in data and "obciazenia" in data and "straty" in data
+    assert len(data["napiecia"]["items"]) >= 5
+    assert {item["status"] for item in data["napiecia"]["items"]} == {"zweryfikowany"}
+    assert "PN-EN 50160" in data["napiecia"]["norm_ref"]
+    assert data["napiecia"]["band_pct"] == 10.0
+    assert data["straty"]["threshold_pct"] == 10.0
+    assert data["straty"]["threshold_why_pl"]
+
+
+def test_sanity_bounds_pf_endpoint_is_deterministic(app_client) -> None:
+    run_id = _pf_run_id()
+    first = app_client.get(SANITY_BOUNDS, params={"run_id": str(run_id)}).json()
+    second = app_client.get(SANITY_BOUNDS, params={"run_id": str(run_id)}).json()
+    assert first == second
+
+
+def test_sanity_bounds_sc_endpoint_unchanged_by_pf_addition(app_client) -> None:
+    """Regresja addytywności: ścieżka SC pozostaje BIT W BIT tą samą funkcją —
+    ten sam kształt odpowiedzi (items/summary), bez kluczy PF."""
+    run_id = _sc_run_id()
+    resp = app_client.get(SANITY_BOUNDS, params={"run_id": str(run_id)})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert set(data.keys()) == {"analysis_id", "context", "items", "summary"}
 
 
 # --------------------------------------------------------------------------

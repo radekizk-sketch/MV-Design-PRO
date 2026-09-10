@@ -24499,6 +24499,7 @@
   },
   "/api/quality/sanity-bounds": {
    "get": {
+    "description": "Pasma wiarygodności — dispatch wg rodzaju przebiegu (karta W3-G2, addytywnie).\n\n``PF`` → nowe pasma rozpływu (napięcia/obciążenia/straty); każdy inny rodzaj\n(WŁĄCZNIE z ``short_circuit_sn``) idzie do ``build_sanity_bounds_view`` —\nścieżka zwarciowa jest BIT W BIT tą samą funkcją i tym samym wynikiem co\nprzed kartą.",
     "operationId": "get_sanity_bounds_api_quality_sanity_bounds_get",
     "parameters": [
      {
