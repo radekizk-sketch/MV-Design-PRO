@@ -4,10 +4,10 @@ import pytest
 from application.analyses.protection.catalog.mapper import wymaganie_z_nastaw
 from application.analyses.protection.catalog.pipeline import dopasuj_do_aparatu
 from application.protection_settings.engine import (
-    InstantaneousSettingWindow,
-    LocalGenerationDiagnostic,
     DelayedSettings,
     InstantaneousSettings,
+    InstantaneousSettingWindow,
+    LocalGenerationDiagnostic,
     ProtectionSettingsResult,
     SPZAnalysisResult,
     ThermalWithstandResult,

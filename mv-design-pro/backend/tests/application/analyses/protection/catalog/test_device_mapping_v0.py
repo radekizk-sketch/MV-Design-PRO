@@ -12,10 +12,10 @@ from application.analyses.protection.catalog.models import (
 from application.analyses.protection.catalog.pipeline import dopasuj_do_aparatu
 from application.analyses.protection.catalog.validator import validate_requirement
 from application.protection_settings.engine import (
-    InstantaneousSettingWindow,
-    LocalGenerationDiagnostic,
     DelayedSettings,
     InstantaneousSettings,
+    InstantaneousSettingWindow,
+    LocalGenerationDiagnostic,
     ProtectionSettingsResult,
     SPZAnalysisResult,
     ThermalWithstandResult,
