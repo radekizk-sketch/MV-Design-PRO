@@ -112,6 +112,11 @@ export const ODBIOR_STRINGS = {
   anuluj: 'Anuluj',
   brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem odbioru.',
   walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać odbiór.',
+  // S9-5 (klasa: bramka enable bez sygnału gotowości, `karta_e2e_s95.md`) —
+  // katalog odbiorów ładuje się asynchronicznie; zapis z KATALOGOWEJ ścieżki
+  // pochodzenia bez niego byłby cichym no-op na pustym `catalog_ref`, więc
+  // blokujemy JAWNIE (tryb ręczny katalogu nie potrzebuje — patrz `stanGotowosci`).
+  katalogLadowanieStopka: 'Ładowanie katalogu typów odbiorów nN — zapis będzie dostępny po wczytaniu.',
 
   // Panel teorii (V12K-066: standard „must-have")
   teoriaTytul: 'Teoria: odbiór nN — moc, współczynnik mocy i model obciążenia',

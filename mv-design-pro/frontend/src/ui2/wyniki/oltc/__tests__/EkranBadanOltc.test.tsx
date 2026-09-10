@@ -29,7 +29,6 @@ const REJESTR_GOTOWOSCI = new Map([
         'Przełącznik zaczepów nie ma pasma nieczułości regulatora — bez niego nie '
         + 'wiadomo, jaka odchyłka napięcia jest jeszcze dopuszczalna',
       level: 'WARNING',
-      fix_action_id: 'fix_oltc_deadband',
     },
   ],
   [
@@ -40,7 +39,6 @@ const REJESTR_GOTOWOSCI = new Map([
         'Badanie doboru zaczepów nie ma napięcia docelowego — podaj napięcie, '
         + 'które ma być utrzymywane na szynie regulowanej',
       level: 'WARNING',
-      fix_action_id: 'fix_oltc_target_voltage',
     },
   ],
 ]);

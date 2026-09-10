@@ -42,7 +42,6 @@ WZORZEC = ReadinessCodeSpec(
     priority=2,
     level=ReadinessLevel.BLOCKER,
     message_pl="Wzorcowy komunikat kontrolny",
-    fix_action_id="akcja.naprawcza",
     fix_navigation={"panel": "inspector", "tab": "parametry"},
 )
 
@@ -68,8 +67,13 @@ def test_iloczyn_cech_kazda_kontrola_osobno_zapala() -> None:
         "nawigacja z pusta wartoscia": {
             "test.wzorzec": replace(WZORZEC, fix_navigation={"panel": "  "})
         },
-        "BLOCKER bez zadnej sciezki naprawczej": {
-            "test.wzorzec": replace(WZORZEC, fix_action_id=None, fix_navigation=None)
+        # Fantomowy identyfikator akcji naprawczej skasowany z `ReadinessCodeSpec`
+        # (karta FIX-ACTION-KASACJA, REJESTR_KONFLIKTOW.md V12K-338) — `fix_navigation`
+        # jest jedyna sciezka naprawcza i jest OBOWIAZKOWA dla KAZDEGO kodu, nie tylko
+        # BLOCKER.
+        "kod bez fix_navigation": {"test.wzorzec": replace(WZORZEC, fix_navigation=None)},
+        "nieznany panel": {
+            "test.wzorzec": replace(WZORZEC, fix_navigation={"panel": "panel-spoza-zbioru"})
         },
     }
     for nazwa, rejestr in przypadki.items():
@@ -80,10 +84,21 @@ def test_iloczyn_cech_kazda_kontrola_osobno_zapala() -> None:
         ), f"{nazwa}: naruszenie nie nazywa wpisu: {naruszenia}"
 
 
-def test_blocker_z_sama_nawigacja_jest_poprawny() -> None:
-    """Metakod (naprawa = usuniecie blokad zrodlowych) niesie sama nawigacje."""
-    metakod = replace(WZORZEC, fix_action_id=None)
-    assert waliduj_rejestr({"test.wzorzec": metakod}) == []
+def test_poziom_niebedacy_blockerem_wymaga_nawigacji_tak_samo() -> None:
+    """Nawigacja jest obowiazkowa dla KAZDEGO poziomu, nie tylko dla BLOCKER.
+
+    Przed karta FIX-ACTION-KASACJA (REJESTR_KONFLIKTOW.md V12K-338) obecnosc sciezki
+    naprawczej byla wymuszana WYLACZNIE dla BLOCKER — kod WARNING/INFO bez zadnej
+    sciezki przechodzil bez ostrzezenia. To byla furtka tej samej klasy defektu, ktora
+    kasacja zamyka: `fix_navigation` jest teraz jedynym polem sciezki naprawczej i
+    guard wymaga go od kazdego poziomu, nie tylko od BLOCKER.
+    """
+    ostrzezenie_bez_nawigacji = replace(WZORZEC, level=ReadinessLevel.WARNING, fix_navigation=None)
+    naruszenia = waliduj_rejestr({"test.wzorzec": ostrzezenie_bez_nawigacji})
+    assert naruszenia, "WARNING bez fix_navigation powinien byc czerwony (nie tylko BLOCKER)"
+
+    ostrzezenie_z_nawigacja = replace(WZORZEC, level=ReadinessLevel.WARNING)
+    assert waliduj_rejestr({"test.wzorzec": ostrzezenie_z_nawigacja}) == []
 
 
 def test_duplikat_klucza_w_zrodle_jest_wykrywany() -> None:

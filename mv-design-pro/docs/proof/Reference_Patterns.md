@@ -3,6 +3,19 @@
 > **BINDING** — This document defines authoritative calculation rules.
 >
 > **UI-HIDDEN** — Internal engineering documentation. Not exposed in user interface.
+>
+> **SUPERSEDED (karta W3-C2, 2026-09-09)** — Pattern A (`RP-LINE-I2-THERMAL-SPZ`)
+> no longer consumes FIX-12D (`line_overcurrent_setting`, deleted). It now runs
+> `application.protection_settings.engine.ProtectionSettingsEngine` (Hoppel/
+> IRiESD) exclusively — see `docs/plan/KARTA_W3_KONWERGENCJA_FIZYKI_2026-09.md`
+> §0.2. The formulas below (Section "Input Source", code snippets importing
+> `line_overcurrent_setting`) describe the RETIRED methodology and are kept for
+> historical reference only; they are NOT rewritten line-by-line in this pass
+> (787-line document, out of this card's explicit scope) — do not use them to
+> derive expected values for Pattern A. Current field names, formulas, and
+> fixture-based expected values live in
+> `backend/src/application/reference_patterns/pattern_line_i_doubleprime_thermal_spz.py`
+> and `backend/tests/application/reference_patterns/test_pattern_a_line_i_doubleprime.py`.
 
 ---
 

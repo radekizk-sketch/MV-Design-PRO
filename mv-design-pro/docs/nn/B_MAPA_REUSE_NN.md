@@ -53,7 +53,7 @@ jest zweryfikowana audytem A — istnieje, działa i ma zostać WPIĘTA, nie prz
 |---|---|---|
 | Pak dowodowy weryfikacji obwodu nN | seam `ProofType`+`EquationRegistry.merge`+`ProofPackBuilder` (deterministyczny ZIP) + wzorzec Equipment P12 | pak `LV_CIRCUIT_VERIFICATION` (Ib≤In≤Iz, ΔU, SWZ, I²t) wg 10-krokowej procedury (raport A10 §9) |
 | ΔU dowód | `packs/vdrop.py` + `EQ_VDROP_*` | multi-segment + konsumpcja `cable_voltage_drop`/PF (jedna fizyka) |
-| Raport nN (PDF/DOCX) | `analysis_run_exports.py` (sekcje/poziomy szczegółu) + wzorzec `p24_plus_report.py` (raport skonsolidowany) | sekcje nN wg spisu z §63 zlecenia |
+| Raport nN (PDF/DOCX) | `analysis_run_exports.py` (sekcje/poziomy szczegółu) | sekcje nN wg spisu z §63 zlecenia; wzorzec raportu skonsolidowanego wielu analiz (`p24_plus_report.py`) usunięty CV-3.2 (0 wołających, 0 tras HTTP) — projektować od zera na `analysis_run_exports.py`, nie kopiować nieistniejącego wzorca |
 | White Box A–D | struktura `ProofStep` (Teoria→Dane→Podstawienie→Wynik) + binarna bramka ekspercka | nic nowego — nie budować 4-poziomowego przełącznika |
 
 ## 5. UI

@@ -1306,6 +1306,22 @@ export function formatOltcBadgeLabel(entry: TransformerOltcOverlay): string {
  * kładzie badge NA PRAWO od symbolu, wyśrodkowany pionowo. Brak wpisu ⇒ brak
  * badge (§14.2 „overlay wyłączony bez wyniku" — zero atrap). Deterministyczne:
  * kolejność = kolejność symboli sceny.
+ *
+ * FE-HIGIENA (2026-09-05, karta „dwa zastane długi frontendu"): `ownerRef`
+ * jest TOŻSAMOŚCIĄ POLA/BAY-a, nie pojedynczej instancji symbolu z
+ * KONSTRUKCJI — `scene/buildScene.ts` (komentarz przy `ownerRef` symbolu
+ * stacji: „nadal bayRef, nakładka energizacji kluczuje po refie POLA, nie
+ * per-aparat") i analogicznie `compose/gpz.ts::buildFieldStack`
+ * (`metaExtra` niesie TEN SAM `bayRef`/`transformerRef` do KAŻDEJ instancji
+ * stosu pola — pole z dwoma aparatami, np. odłącznik+wyłącznik, jest normą).
+ * `energizedByOwnerRef` już traktuje ten współdzielony ref jako JEDNĄ
+ * jednostkę (jeden wpis koloruje wszystkie symbole, które go niosą) — ta
+ * funkcja musi być SPÓJNA z tym kontraktem: jeden wpis nakładki ⇒ NAJWYŻEJ
+ * jedna odznaka, nie jedna na KAŻDY symbol dzielący ref (bez tego dwa
+ * symbole z tym samym `ownerRef` dawały dwa placementy o TEJ SAMEJ
+ * tożsamości ⇒ React „Encountered two children with the same key" w warstwie
+ * `sld-v3-oltc-overlay`). Pierwsze trafienie w kolejności sceny wygrywa
+ * (deterministyczne, ta sama reguła co `computeFaultPointMarkerPlacement`).
  */
 export function computeOltcBadgePlacements(
   scene: SceneV3,
@@ -1313,11 +1329,14 @@ export function computeOltcBadgePlacements(
 ): readonly OltcBadgePlacement[] {
   if (!oltcByOwnerRef) return [];
   const placements: OltcBadgePlacement[] = [];
+  const umieszczoneOwnerRefy = new Set<string>();
   for (const symbol of scene.symbols) {
     const ownerRef = symbol.meta?.ownerRef;
     if (!ownerRef || symbol.meta?.elementKind !== 'transformer') continue;
+    if (umieszczoneOwnerRefy.has(ownerRef)) continue;
     const entry = oltcByOwnerRef[ownerRef];
     if (!entry) continue;
+    umieszczoneOwnerRefy.add(ownerRef);
     const def = SYMBOL_DEFS[symbol.symbolId];
     const label = formatOltcBadgeLabel(entry);
     const width = measureLabelWidth(label, 't4') + GRID;
@@ -1367,6 +1386,17 @@ function swzBadgeLetter(tone: 'ok' | 'fail' | 'unknown'): string {
  * `swzByOwnerRef` kładzie mały krążek tonowy W PRAWYM GÓRNYM rogu symbolu.
  * Brak wpisu ⇒ brak odznaki (zero fabrykacji werdyktu). Deterministyczne:
  * kolejność = kolejność symboli sceny.
+ *
+ * FE-HIGIENA (2026-09-05, karta „dwa zastane długi frontendu"): TA SAMA
+ * zasada spójności co `computeOltcBadgePlacements` wyżej — `ownerRef` jest
+ * tożsamością POLA (bay), niesioną identycznie przez KAŻDĄ instancję jego
+ * stosu aparatów z konstrukcji (`scene/buildScene.ts`/`compose/gpz.ts`), nie
+ * gwarancją „jeden symbol". Jeden wpis nakładki ⇒ najwyżej jedna odznaka —
+ * bez dedupu pole z dwoma aparatami (norma: odłącznik + wyłącznik) dawało
+ * dwa placementy o TEJ SAMEJ tożsamości (dowód, karta FE-HIGIENA: `swz-gpz/
+ * …/bay/001/001` — „Encountered two children with the same key" w warstwie
+ * `sld-v3-swz-overlay`, `swzBadge.test.tsx`). Pierwsze trafienie w kolejności
+ * sceny wygrywa (deterministyczne).
  */
 export function computeSwzBadgePlacements(
   scene: SceneV3,
@@ -1374,11 +1404,14 @@ export function computeSwzBadgePlacements(
 ): readonly SwzBadgePlacement[] {
   if (!swzByOwnerRef) return [];
   const placements: SwzBadgePlacement[] = [];
+  const umieszczoneOwnerRefy = new Set<string>();
   for (const symbol of scene.symbols) {
     const ownerRef = symbol.meta?.ownerRef;
     if (!ownerRef || symbol.meta?.elementKind !== 'apparatus') continue;
+    if (umieszczoneOwnerRefy.has(ownerRef)) continue;
     const entry = swzByOwnerRef[ownerRef];
     if (!entry) continue;
+    umieszczoneOwnerRefy.add(ownerRef);
     const def = SYMBOL_DEFS[symbol.symbolId];
     const tone = swzPresentationTone(entry.status);
     const radius = GRID / 4;

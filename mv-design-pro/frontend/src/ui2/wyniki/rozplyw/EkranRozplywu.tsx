@@ -24,6 +24,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { AdvancementMode } from '../../shell/modeModel';
+import { RegulacjaOze } from './RegulacjaOze';
 import { TabelaGalezi } from './TabelaGalezi';
 import { TabelaSzyn } from './TabelaSzyn';
 import { ROZPLYW_STRINGS } from './strings';
@@ -33,6 +34,10 @@ import './rozplyw.css';
 const PODZAKLADKI = [
   { id: 'szyny', etykieta: ROZPLYW_STRINGS.podzakladkaSzyny },
   { id: 'galezie', etykieta: ROZPLYW_STRINGS.podzakladkaGalezie },
+  // Karta W3-H (wariant B, zero fabrykacji): uczciwy stan zerowy — ślad
+  // przebiegu nie niesie Q per generator (decyzja właściciela OD-15), patrz
+  // `RegulacjaOze.tsx`.
+  { id: 'regulacja-oze', etykieta: ROZPLYW_STRINGS.podzakladkaRegulacjaOze },
 ] as const;
 
 type PodzakladkaId = (typeof PODZAKLADKI)[number]['id'];
@@ -147,6 +152,7 @@ export function EkranRozplywu({
             onWybierzWiersz={setWybranaGalaz}
           />
         )}
+        {podzakladka === 'regulacja-oze' && <RegulacjaOze />}
       </div>
     </div>
   );

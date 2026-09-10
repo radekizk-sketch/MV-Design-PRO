@@ -16,7 +16,7 @@ CHECKS:
   3. Dialog files use Polish labels (no English UI strings)
 
 MAPPING: operation -> expected modal
-  add_grid_source_sn      -> KreatorZrodloZasilania (ui2) / GridSourceModal (legacy)
+  add_grid_source_sn      -> KreatorZrodloZasilania (ui2)
   continue_trunk_segment_sn -> KreatorMagistralaSn (ui2)
   insert_station_on_segment_sn -> TransformerStationModal (existing)
   start_branch_segment_sn -> BranchModal (existing)
@@ -128,15 +128,6 @@ NO_MODAL_NEEDED = {
     "link_relay_to_field",  # drag-drop or inline
     "calculate_tcc_curve",  # automatic action
     "validate_selectivity",  # automatic action
-    "create_study_case",  # CreateCaseDialog (separate module)
-    "run_short_circuit",  # button action
-    "run_power_flow",  # button action
-    "run_time_series_power_flow",  # button action
-    "compare_study_cases",  # comparison UI
-    "set_case_switch_state",
-    "set_case_normal_state",
-    "set_case_source_mode",
-    "set_case_time_profile",
     # P0.9 (nN STUDIO): edycja warunków ułożenia odcinka nN jest edycją INLINE
     # w tabeli ODCINKI, tak jak `update_element_parameters` powyżej — bez
     # osobnego formularza modalnego.

@@ -15,7 +15,7 @@ import { render } from '@testing-library/react';
 
 import { SldScaleRuler } from '../SldScaleRuler';
 
-describe('SldScaleRuler — K30-43 drawing scale per PN-EN ISO 5455', () => {
+describe('SldScaleRuler — drawing scale per PN-EN ISO 5455', () => {
   it('visible=true (default) → root group renderowany', () => {
     const { container } = render(<svg><SldScaleRuler /></svg>);
     expect(container.querySelector('[data-testid="sld-v2-scale-ruler"]')).toBeTruthy();

@@ -1,0 +1,1100 @@
+{
+  "case_id": "case-demo",
+  "model_hash": "3bb9b0c774d41911779ccc2e8f5e5e5bcb26370d2bd488d52d4b1668cb8b3ec6",
+  "przedmiot": {
+    "liczba_szyn": 5,
+    "liczba_galezi": 4,
+    "liczba_transformatorow": 2,
+    "liczba_zrodel_przeksztaltnikowych": 1,
+    "liczba_generatorow": 2,
+    "poziomy_napiec_kv": [
+      0.4,
+      15.0,
+      110.0
+    ],
+    "czestotliwosc_hz": null,
+    "punkt_przylaczenia": {
+      "ref": "bus_hv",
+      "nazwa": "GPZ 110kV",
+      "zrodlo": "src_gpz"
+    },
+    "nazwa_modelu": "CGMES Golden Net",
+    "rewizja": 1
+  },
+  "analizy": [
+    {
+      "kod": "power_quality_harmonics",
+      "gotowosc": "NIEPOTWIERDZONA",
+      "warunki": [
+        {
+          "kod": "model.wezly",
+          "opis_pl": "Model ma węzły (zatwierdzony model sieci przypadku)",
+          "spelniony": true,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": null
+        },
+        {
+          "kod": "generator.converter_card_missing",
+          "opis_pl": "Przekształtniki bez karty katalogowej z mocą znamionową (z niej liczony jest prąd bazowy wstrzyknięcia; widmo ręczne jej nie zastępuje) — generatory bez karty przekształtnika",
+          "spelniony": false,
+          "elementy": [
+            "gen_pv"
+          ],
+          "blokujacy": true,
+          "klucz_parametru": null
+        }
+      ],
+      "braki": [
+        {
+          "kod": "generator.converter_card_missing",
+          "opis_pl": "Przekształtniki bez karty katalogowej z mocą znamionową (z niej liczony jest prąd bazowy wstrzyknięcia; widmo ręczne jej nie zastępuje) — generatory bez karty przekształtnika",
+          "spelniony": false,
+          "elementy": [
+            "gen_pv"
+          ],
+          "blokujacy": true,
+          "klucz_parametru": null
+        }
+      ],
+      "uwagi": [],
+      "dane_z_modelu": [
+        {
+          "nazwa_pl": "Szyny (napięcia znamionowe)",
+          "wartosc_pl": "5",
+          "elementy": [
+            "bus_hv",
+            "bus_sn_main",
+            "bus_sn_b",
+            "bus_sn_c",
+            "bus_nn"
+          ]
+        },
+        {
+          "nazwa_pl": "Gałęzie (impedancje, długości)",
+          "wartosc_pl": "3",
+          "elementy": [
+            "cab_main_b",
+            "line_b_c",
+            "sw_coupler"
+          ]
+        },
+        {
+          "nazwa_pl": "Transformatory (S_n, u_k)",
+          "wartosc_pl": "2",
+          "elementy": [
+            "tr_hv_sn",
+            "tr_sn_nn"
+          ]
+        },
+        {
+          "nazwa_pl": "Częstotliwość sieci",
+          "wartosc_pl": "brak w modelu — solver przyjmie 50 Hz jako wartość domyślną",
+          "elementy": []
+        },
+        {
+          "nazwa_pl": "Przekształtniki z kartą katalogową",
+          "wartosc_pl": "0",
+          "elementy": []
+        },
+        {
+          "nazwa_pl": "Źródła harmoniczne z widmem",
+          "wartosc_pl": "0",
+          "elementy": []
+        },
+        {
+          "nazwa_pl": "Szyny z mocą zwarciową źródła",
+          "wartosc_pl": "1",
+          "elementy": [
+            "bus_hv"
+          ]
+        }
+      ],
+      "proponowane": {},
+      "powod_wycofania_pl": null
+    },
+    {
+      "kod": "ssci_impedance",
+      "gotowosc": "NIEPOTWIERDZONA",
+      "warunki": [
+        {
+          "kod": "model.wezly",
+          "opis_pl": "Model ma węzły (zatwierdzony model sieci przypadku)",
+          "spelniony": true,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": null
+        },
+        {
+          "kod": "generator.converter_card_missing",
+          "opis_pl": "Żaden przekształtnik nie ma karty katalogowej z mocą znamionową — generatory bez karty przekształtnika",
+          "spelniony": false,
+          "elementy": [
+            "gen_pv"
+          ],
+          "blokujacy": true,
+          "klucz_parametru": null
+        }
+      ],
+      "braki": [
+        {
+          "kod": "generator.converter_card_missing",
+          "opis_pl": "Żaden przekształtnik nie ma karty katalogowej z mocą znamionową — generatory bez karty przekształtnika",
+          "spelniony": false,
+          "elementy": [
+            "gen_pv"
+          ],
+          "blokujacy": true,
+          "klucz_parametru": null
+        }
+      ],
+      "uwagi": [],
+      "dane_z_modelu": [
+        {
+          "nazwa_pl": "Szyny (napięcia znamionowe)",
+          "wartosc_pl": "5",
+          "elementy": [
+            "bus_hv",
+            "bus_sn_main",
+            "bus_sn_b",
+            "bus_sn_c",
+            "bus_nn"
+          ]
+        },
+        {
+          "nazwa_pl": "Gałęzie (impedancje, długości)",
+          "wartosc_pl": "3",
+          "elementy": [
+            "cab_main_b",
+            "line_b_c",
+            "sw_coupler"
+          ]
+        },
+        {
+          "nazwa_pl": "Transformatory (S_n, u_k)",
+          "wartosc_pl": "2",
+          "elementy": [
+            "tr_hv_sn",
+            "tr_sn_nn"
+          ]
+        },
+        {
+          "nazwa_pl": "Częstotliwość sieci",
+          "wartosc_pl": "brak w modelu — solver przyjmie 50 Hz jako wartość domyślną",
+          "elementy": []
+        },
+        {
+          "nazwa_pl": "Przekształtniki z kartą katalogową",
+          "wartosc_pl": "0",
+          "elementy": []
+        },
+        {
+          "nazwa_pl": "Szyny z mocą zwarciową źródła",
+          "wartosc_pl": "1",
+          "elementy": [
+            "bus_hv"
+          ]
+        }
+      ],
+      "proponowane": {},
+      "powod_wycofania_pl": null
+    },
+    {
+      "kod": "voltage_stability",
+      "gotowosc": "POTWIERDZONA",
+      "warunki": [
+        {
+          "kod": "model.wezly",
+          "opis_pl": "Model ma węzły (zatwierdzony model sieci przypadku)",
+          "spelniony": true,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": null
+        }
+      ],
+      "braki": [],
+      "uwagi": [],
+      "dane_z_modelu": [
+        {
+          "nazwa_pl": "Szyny (napięcia znamionowe)",
+          "wartosc_pl": "5",
+          "elementy": [
+            "bus_hv",
+            "bus_sn_main",
+            "bus_sn_b",
+            "bus_sn_c",
+            "bus_nn"
+          ]
+        },
+        {
+          "nazwa_pl": "Gałęzie (impedancje, długości)",
+          "wartosc_pl": "3",
+          "elementy": [
+            "cab_main_b",
+            "line_b_c",
+            "sw_coupler"
+          ]
+        },
+        {
+          "nazwa_pl": "Transformatory (S_n, u_k)",
+          "wartosc_pl": "2",
+          "elementy": [
+            "tr_hv_sn",
+            "tr_sn_nn"
+          ]
+        },
+        {
+          "nazwa_pl": "Częstotliwość sieci",
+          "wartosc_pl": "brak w modelu — solver przyjmie 50 Hz jako wartość domyślną",
+          "elementy": []
+        },
+        {
+          "nazwa_pl": "Szyny z mocą zwarciową źródła",
+          "wartosc_pl": "1",
+          "elementy": [
+            "bus_hv"
+          ]
+        }
+      ],
+      "proponowane": {},
+      "powod_wycofania_pl": null
+    },
+    {
+      "kod": "reliability_contingency",
+      "gotowosc": "NIEPOTWIERDZONA",
+      "warunki": [
+        {
+          "kod": "model.wezly",
+          "opis_pl": "Model ma węzły (zatwierdzony model sieci przypadku)",
+          "spelniony": true,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": null
+        },
+        {
+          "kod": "generator.q_missing",
+          "opis_pl": "Moc bierna każdego wytwórcy jest znana (pole jawne albo nastawa Q karty katalogowej)",
+          "spelniony": true,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": null
+        },
+        {
+          "kod": "model.galezie",
+          "opis_pl": "Gałęzie do zdarzeń N-1: 3",
+          "spelniony": true,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": null
+        },
+        {
+          "kod": "parametr.customer_counts",
+          "opis_pl": "Brak liczby odbiorców zasilanych z szyn — model sieci nie niesie tej danej, a wskaźniki SAIDI/SAIFI liczone bez odbiorców byłyby zerami z braku danych, nie z pomiaru",
+          "spelniony": false,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": "customer_counts"
+        },
+        {
+          "kod": "galezie.bez_obciazalnosci",
+          "opis_pl": "1 z 3 gałęzi bez obciążalności długotrwałej (model ani karta) — dla nich dotkliwość bez członu przeciążeniowego",
+          "spelniony": false,
+          "elementy": [
+            "sw_coupler"
+          ],
+          "blokujacy": false,
+          "klucz_parametru": null
+        }
+      ],
+      "braki": [
+        {
+          "kod": "parametr.customer_counts",
+          "opis_pl": "Brak liczby odbiorców zasilanych z szyn — model sieci nie niesie tej danej, a wskaźniki SAIDI/SAIFI liczone bez odbiorców byłyby zerami z braku danych, nie z pomiaru",
+          "spelniony": false,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": "customer_counts"
+        }
+      ],
+      "uwagi": [
+        {
+          "kod": "galezie.bez_obciazalnosci",
+          "opis_pl": "1 z 3 gałęzi bez obciążalności długotrwałej (model ani karta) — dla nich dotkliwość bez członu przeciążeniowego",
+          "spelniony": false,
+          "elementy": [
+            "sw_coupler"
+          ],
+          "blokujacy": false,
+          "klucz_parametru": null
+        }
+      ],
+      "dane_z_modelu": [
+        {
+          "nazwa_pl": "Szyny (napięcia znamionowe)",
+          "wartosc_pl": "5",
+          "elementy": [
+            "bus_hv",
+            "bus_sn_main",
+            "bus_sn_b",
+            "bus_sn_c",
+            "bus_nn"
+          ]
+        },
+        {
+          "nazwa_pl": "Gałęzie (impedancje, długości)",
+          "wartosc_pl": "3",
+          "elementy": [
+            "cab_main_b",
+            "line_b_c",
+            "sw_coupler"
+          ]
+        },
+        {
+          "nazwa_pl": "Transformatory (S_n, u_k)",
+          "wartosc_pl": "2",
+          "elementy": [
+            "tr_hv_sn",
+            "tr_sn_nn"
+          ]
+        },
+        {
+          "nazwa_pl": "Częstotliwość sieci",
+          "wartosc_pl": "brak w modelu — solver przyjmie 50 Hz jako wartość domyślną",
+          "elementy": []
+        },
+        {
+          "nazwa_pl": "Szyny z mocą zwarciową źródła",
+          "wartosc_pl": "1",
+          "elementy": [
+            "bus_hv"
+          ]
+        }
+      ],
+      "proponowane": {},
+      "powod_wycofania_pl": null
+    },
+    {
+      "kod": "earthing_safety",
+      "gotowosc": "NIEPOTWIERDZONA",
+      "warunki": [
+        {
+          "kod": "model.wezly",
+          "opis_pl": "Model ma węzły (zatwierdzony model sieci przypadku)",
+          "spelniony": true,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": null
+        },
+        {
+          "kod": "parametr.earthing",
+          "opis_pl": "Brak danych uziomu stacji: Rezystywność warstwy górnej gruntu, Długość uziomu kratowego, Szerokość uziomu kratowego, Rozstaw oczek siatki, Głębokość ułożenia siatki, Sumaryczna długość uziomów pionowych, Współczynnik podziału prądu zwarciowego, Prąd zwarcia doziemnego, Czas wyłączenia zwarcia, Rezystywność warstwy powierzchniowej, Współczynnik redukcji warstwy powierzchniowej",
+          "spelniony": false,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": "earthing"
+        }
+      ],
+      "braki": [
+        {
+          "kod": "parametr.earthing",
+          "opis_pl": "Brak danych uziomu stacji: Rezystywność warstwy górnej gruntu, Długość uziomu kratowego, Szerokość uziomu kratowego, Rozstaw oczek siatki, Głębokość ułożenia siatki, Sumaryczna długość uziomów pionowych, Współczynnik podziału prądu zwarciowego, Prąd zwarcia doziemnego, Czas wyłączenia zwarcia, Rezystywność warstwy powierzchniowej, Współczynnik redukcji warstwy powierzchniowej",
+          "spelniony": false,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": "earthing"
+        }
+      ],
+      "uwagi": [],
+      "dane_z_modelu": [
+        {
+          "nazwa_pl": "Szyny (napięcia znamionowe)",
+          "wartosc_pl": "5",
+          "elementy": [
+            "bus_hv",
+            "bus_sn_main",
+            "bus_sn_b",
+            "bus_sn_c",
+            "bus_nn"
+          ]
+        },
+        {
+          "nazwa_pl": "Gałęzie (impedancje, długości)",
+          "wartosc_pl": "3",
+          "elementy": [
+            "cab_main_b",
+            "line_b_c",
+            "sw_coupler"
+          ]
+        },
+        {
+          "nazwa_pl": "Transformatory (S_n, u_k)",
+          "wartosc_pl": "2",
+          "elementy": [
+            "tr_hv_sn",
+            "tr_sn_nn"
+          ]
+        },
+        {
+          "nazwa_pl": "Częstotliwość sieci",
+          "wartosc_pl": "brak w modelu — solver przyjmie 50 Hz jako wartość domyślną",
+          "elementy": []
+        },
+        {
+          "nazwa_pl": "Szyny z mocą zwarciową źródła",
+          "wartosc_pl": "1",
+          "elementy": [
+            "bus_hv"
+          ]
+        }
+      ],
+      "proponowane": {},
+      "powod_wycofania_pl": null
+    },
+    {
+      "kod": "insulation_coordination",
+      "gotowosc": "NIEPOTWIERDZONA",
+      "warunki": [
+        {
+          "kod": "model.wezly",
+          "opis_pl": "Model ma węzły (zatwierdzony model sieci przypadku)",
+          "spelniony": true,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": null
+        },
+        {
+          "kod": "model.ograniczniki",
+          "opis_pl": "Model nie zawiera ograniczników przepięć (aparaty pierwotne pól i stacji)",
+          "spelniony": false,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": null
+        }
+      ],
+      "braki": [
+        {
+          "kod": "model.ograniczniki",
+          "opis_pl": "Model nie zawiera ograniczników przepięć (aparaty pierwotne pól i stacji)",
+          "spelniony": false,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": null
+        }
+      ],
+      "uwagi": [],
+      "dane_z_modelu": [
+        {
+          "nazwa_pl": "Szyny (napięcia znamionowe)",
+          "wartosc_pl": "5",
+          "elementy": [
+            "bus_hv",
+            "bus_sn_main",
+            "bus_sn_b",
+            "bus_sn_c",
+            "bus_nn"
+          ]
+        },
+        {
+          "nazwa_pl": "Gałęzie (impedancje, długości)",
+          "wartosc_pl": "3",
+          "elementy": [
+            "cab_main_b",
+            "line_b_c",
+            "sw_coupler"
+          ]
+        },
+        {
+          "nazwa_pl": "Transformatory (S_n, u_k)",
+          "wartosc_pl": "2",
+          "elementy": [
+            "tr_hv_sn",
+            "tr_sn_nn"
+          ]
+        },
+        {
+          "nazwa_pl": "Częstotliwość sieci",
+          "wartosc_pl": "brak w modelu — solver przyjmie 50 Hz jako wartość domyślną",
+          "elementy": []
+        },
+        {
+          "nazwa_pl": "Miejsca zainstalowania ograniczników",
+          "wartosc_pl": "0",
+          "elementy": []
+        },
+        {
+          "nazwa_pl": "Szyny z mocą zwarciową źródła",
+          "wartosc_pl": "1",
+          "elementy": [
+            "bus_hv"
+          ]
+        }
+      ],
+      "proponowane": {},
+      "powod_wycofania_pl": null
+    },
+    {
+      "kod": "earth_fault_detection",
+      "gotowosc": "NIEPOTWIERDZONA",
+      "warunki": [
+        {
+          "kod": "model.wezly",
+          "opis_pl": "Model ma węzły (zatwierdzony model sieci przypadku)",
+          "spelniony": true,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": null
+        },
+        {
+          "kod": "parametr.neutral_grounding",
+          "opis_pl": "Sposób uziemienia punktu neutralnego (z modelu albo od projektanta)",
+          "spelniony": false,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": "neutral_grounding"
+        },
+        {
+          "kod": "parametr.relay_methods",
+          "opis_pl": "Brak wyposażenia przekaźnika — wskaż metody detekcji dostępne w przekaźniku",
+          "spelniony": false,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": "relay_methods"
+        }
+      ],
+      "braki": [
+        {
+          "kod": "parametr.neutral_grounding",
+          "opis_pl": "Sposób uziemienia punktu neutralnego (z modelu albo od projektanta)",
+          "spelniony": false,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": "neutral_grounding"
+        },
+        {
+          "kod": "parametr.relay_methods",
+          "opis_pl": "Brak wyposażenia przekaźnika — wskaż metody detekcji dostępne w przekaźniku",
+          "spelniony": false,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": "relay_methods"
+        }
+      ],
+      "uwagi": [],
+      "dane_z_modelu": [
+        {
+          "nazwa_pl": "Szyny (napięcia znamionowe)",
+          "wartosc_pl": "5",
+          "elementy": [
+            "bus_hv",
+            "bus_sn_main",
+            "bus_sn_b",
+            "bus_sn_c",
+            "bus_nn"
+          ]
+        },
+        {
+          "nazwa_pl": "Gałęzie (impedancje, długości)",
+          "wartosc_pl": "3",
+          "elementy": [
+            "cab_main_b",
+            "line_b_c",
+            "sw_coupler"
+          ]
+        },
+        {
+          "nazwa_pl": "Transformatory (S_n, u_k)",
+          "wartosc_pl": "2",
+          "elementy": [
+            "tr_hv_sn",
+            "tr_sn_nn"
+          ]
+        },
+        {
+          "nazwa_pl": "Częstotliwość sieci",
+          "wartosc_pl": "brak w modelu — solver przyjmie 50 Hz jako wartość domyślną",
+          "elementy": []
+        },
+        {
+          "nazwa_pl": "Szyny z mocą zwarciową źródła",
+          "wartosc_pl": "1",
+          "elementy": [
+            "bus_hv"
+          ]
+        }
+      ],
+      "proponowane": {},
+      "powod_wycofania_pl": null
+    },
+    {
+      "kod": "transient_trv",
+      "gotowosc": "NIEPOTWIERDZONA",
+      "warunki": [
+        {
+          "kod": "model.wezly",
+          "opis_pl": "Model ma węzły (zatwierdzony model sieci przypadku)",
+          "spelniony": true,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": null
+        },
+        {
+          "kod": "parametr.trv_natural_frequency_hz",
+          "opis_pl": "Częstotliwość własna napięcia powrotnego obwodu",
+          "spelniony": false,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": "trv_natural_frequency_hz"
+        },
+        {
+          "kod": "parametr.trv_tau_s",
+          "opis_pl": "Stała czasowa napięcia powrotnego",
+          "spelniony": false,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": "trv_tau_s"
+        },
+        {
+          "kod": "parametr.inrush_multiple_in",
+          "opis_pl": "Krotność prądu załączania transformatora",
+          "spelniony": false,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": "inrush_multiple_in"
+        },
+        {
+          "kod": "parametr.neutral_grounding",
+          "opis_pl": "Sposób uziemienia punktu neutralnego (z modelu albo od projektanta)",
+          "spelniony": false,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": "neutral_grounding"
+        }
+      ],
+      "braki": [
+        {
+          "kod": "parametr.trv_natural_frequency_hz",
+          "opis_pl": "Częstotliwość własna napięcia powrotnego obwodu",
+          "spelniony": false,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": "trv_natural_frequency_hz"
+        },
+        {
+          "kod": "parametr.trv_tau_s",
+          "opis_pl": "Stała czasowa napięcia powrotnego",
+          "spelniony": false,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": "trv_tau_s"
+        },
+        {
+          "kod": "parametr.inrush_multiple_in",
+          "opis_pl": "Krotność prądu załączania transformatora",
+          "spelniony": false,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": "inrush_multiple_in"
+        },
+        {
+          "kod": "parametr.neutral_grounding",
+          "opis_pl": "Sposób uziemienia punktu neutralnego (z modelu albo od projektanta)",
+          "spelniony": false,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": "neutral_grounding"
+        }
+      ],
+      "uwagi": [],
+      "dane_z_modelu": [
+        {
+          "nazwa_pl": "Szyny (napięcia znamionowe)",
+          "wartosc_pl": "5",
+          "elementy": [
+            "bus_hv",
+            "bus_sn_main",
+            "bus_sn_b",
+            "bus_sn_c",
+            "bus_nn"
+          ]
+        },
+        {
+          "nazwa_pl": "Gałęzie (impedancje, długości)",
+          "wartosc_pl": "3",
+          "elementy": [
+            "cab_main_b",
+            "line_b_c",
+            "sw_coupler"
+          ]
+        },
+        {
+          "nazwa_pl": "Transformatory (S_n, u_k)",
+          "wartosc_pl": "2",
+          "elementy": [
+            "tr_hv_sn",
+            "tr_sn_nn"
+          ]
+        },
+        {
+          "nazwa_pl": "Częstotliwość sieci",
+          "wartosc_pl": "brak w modelu — solver przyjmie 50 Hz jako wartość domyślną",
+          "elementy": []
+        },
+        {
+          "nazwa_pl": "Szyny z mocą zwarciową źródła",
+          "wartosc_pl": "1",
+          "elementy": [
+            "bus_hv"
+          ]
+        }
+      ],
+      "proponowane": {
+        "breaker_rated_voltage_kv": {
+          "wartosc": 110.0,
+          "zrodlo_pl": "najwyższe napięcie znamionowe szyny modelu (110 kV)"
+        }
+      },
+      "powod_wycofania_pl": null
+    },
+    {
+      "kod": "motor_starting",
+      "gotowosc": "NIEPOTWIERDZONA",
+      "warunki": [
+        {
+          "kod": "model.wezly",
+          "opis_pl": "Model ma węzły (zatwierdzony model sieci przypadku)",
+          "spelniony": true,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": null
+        },
+        {
+          "kod": "parametr.motors",
+          "opis_pl": "Brak silników do zbadania — model sieci nie zawiera silników, podaj je jawnie",
+          "spelniony": false,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": "motors"
+        }
+      ],
+      "braki": [
+        {
+          "kod": "parametr.motors",
+          "opis_pl": "Brak silników do zbadania — model sieci nie zawiera silników, podaj je jawnie",
+          "spelniony": false,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": "motors"
+        }
+      ],
+      "uwagi": [],
+      "dane_z_modelu": [
+        {
+          "nazwa_pl": "Szyny (napięcia znamionowe)",
+          "wartosc_pl": "5",
+          "elementy": [
+            "bus_hv",
+            "bus_sn_main",
+            "bus_sn_b",
+            "bus_sn_c",
+            "bus_nn"
+          ]
+        },
+        {
+          "nazwa_pl": "Gałęzie (impedancje, długości)",
+          "wartosc_pl": "3",
+          "elementy": [
+            "cab_main_b",
+            "line_b_c",
+            "sw_coupler"
+          ]
+        },
+        {
+          "nazwa_pl": "Transformatory (S_n, u_k)",
+          "wartosc_pl": "2",
+          "elementy": [
+            "tr_hv_sn",
+            "tr_sn_nn"
+          ]
+        },
+        {
+          "nazwa_pl": "Częstotliwość sieci",
+          "wartosc_pl": "brak w modelu — solver przyjmie 50 Hz jako wartość domyślną",
+          "elementy": []
+        },
+        {
+          "nazwa_pl": "Szyny z mocą zwarciową źródła",
+          "wartosc_pl": "1",
+          "elementy": [
+            "bus_hv"
+          ]
+        }
+      ],
+      "proponowane": {},
+      "powod_wycofania_pl": null
+    },
+    {
+      "kod": "hosting_capacity",
+      "gotowosc": "WYCOFANA",
+      "warunki": [],
+      "braki": [],
+      "uwagi": [],
+      "dane_z_modelu": [],
+      "proponowane": {},
+      "powod_wycofania_pl": "Lokalna impedancja Thevenina per szyna, metodą Monte Carlo, bez sprzężenia sieci — kanon liczy zdolność przyłączeniową pełnym rozpływem przez wariant sieci (ekran „OZE › Zdolność przyłączeniowa”). Uruchomienie nowego biegu jest odmawiane."
+    },
+    {
+      "kod": "opf_loss_lcc",
+      "gotowosc": "WYCOFANA",
+      "warunki": [],
+      "braki": [],
+      "uwagi": [],
+      "dane_z_modelu": [],
+      "proponowane": {},
+      "powod_wycofania_pl": "Straty ze współczynnikiem obciążenia 0,45 zaszytym w solverze i zaczepem zawsze zerowym — kanon czyta straty z karty katalogowej transformatora (ekran „Kryteria › Wyposażenie”) i optymalizuje zaczep w badaniach OLTC. Uruchomienie nowego biegu jest odmawiane."
+    },
+    {
+      "kod": "benchmark_validation",
+      "gotowosc": "POTWIERDZONA",
+      "warunki": [
+        {
+          "kod": "model.wezly",
+          "opis_pl": "Model ma węzły (zatwierdzony model sieci przypadku)",
+          "spelniony": true,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": null
+        }
+      ],
+      "braki": [],
+      "uwagi": [],
+      "dane_z_modelu": [
+        {
+          "nazwa_pl": "Szyny (napięcia znamionowe)",
+          "wartosc_pl": "5",
+          "elementy": [
+            "bus_hv",
+            "bus_sn_main",
+            "bus_sn_b",
+            "bus_sn_c",
+            "bus_nn"
+          ]
+        },
+        {
+          "nazwa_pl": "Gałęzie (impedancje, długości)",
+          "wartosc_pl": "3",
+          "elementy": [
+            "cab_main_b",
+            "line_b_c",
+            "sw_coupler"
+          ]
+        },
+        {
+          "nazwa_pl": "Transformatory (S_n, u_k)",
+          "wartosc_pl": "2",
+          "elementy": [
+            "tr_hv_sn",
+            "tr_sn_nn"
+          ]
+        },
+        {
+          "nazwa_pl": "Częstotliwość sieci",
+          "wartosc_pl": "brak w modelu — solver przyjmie 50 Hz jako wartość domyślną",
+          "elementy": []
+        },
+        {
+          "nazwa_pl": "Szyny z mocą zwarciową źródła",
+          "wartosc_pl": "1",
+          "elementy": [
+            "bus_hv"
+          ]
+        }
+      ],
+      "proponowane": {},
+      "powod_wycofania_pl": null
+    },
+    {
+      "kod": "uncertainty_sensitivity",
+      "gotowosc": "POTWIERDZONA",
+      "warunki": [
+        {
+          "kod": "model.wezly",
+          "opis_pl": "Model ma węzły (zatwierdzony model sieci przypadku)",
+          "spelniony": true,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": null
+        },
+        {
+          "kod": "model.parametry_propagacji",
+          "opis_pl": "Parametry z tolerancją katalogową do propagacji: 6 (transformatory, gałęzie, szyny z mocą zwarciową)",
+          "spelniony": true,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": null
+        }
+      ],
+      "braki": [],
+      "uwagi": [],
+      "dane_z_modelu": [
+        {
+          "nazwa_pl": "Szyny (napięcia znamionowe)",
+          "wartosc_pl": "5",
+          "elementy": [
+            "bus_hv",
+            "bus_sn_main",
+            "bus_sn_b",
+            "bus_sn_c",
+            "bus_nn"
+          ]
+        },
+        {
+          "nazwa_pl": "Gałęzie (impedancje, długości)",
+          "wartosc_pl": "3",
+          "elementy": [
+            "cab_main_b",
+            "line_b_c",
+            "sw_coupler"
+          ]
+        },
+        {
+          "nazwa_pl": "Transformatory (S_n, u_k)",
+          "wartosc_pl": "2",
+          "elementy": [
+            "tr_hv_sn",
+            "tr_sn_nn"
+          ]
+        },
+        {
+          "nazwa_pl": "Częstotliwość sieci",
+          "wartosc_pl": "brak w modelu — solver przyjmie 50 Hz jako wartość domyślną",
+          "elementy": []
+        },
+        {
+          "nazwa_pl": "Szyny z mocą zwarciową źródła",
+          "wartosc_pl": "1",
+          "elementy": [
+            "bus_hv"
+          ]
+        }
+      ],
+      "proponowane": {},
+      "powod_wycofania_pl": null
+    },
+    {
+      "kod": "neutral_earthing_design",
+      "gotowosc": "NIEPOTWIERDZONA",
+      "warunki": [
+        {
+          "kod": "model.wezly",
+          "opis_pl": "Model ma węzły (zatwierdzony model sieci przypadku)",
+          "spelniony": true,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": null
+        },
+        {
+          "kod": "galezie.b0",
+          "opis_pl": "Linie i kable z susceptancją zerową (pojemność doziemna): 1 z 2",
+          "spelniony": true,
+          "elementy": [
+            "cab_main_b"
+          ],
+          "blokujacy": true,
+          "klucz_parametru": null
+        },
+        {
+          "kod": "model.napiecie_sieci",
+          "opis_pl": "Napięcie znamionowe sieci znane (najwyższe napięcie szyny modelu)",
+          "spelniony": true,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": null
+        },
+        {
+          "kod": "parametr.neutral_earthing_type",
+          "opis_pl": "Schemat uziemienia punktu neutralnego (dławik albo rezystor; z modelu albo od projektanta)",
+          "spelniony": false,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": "neutral_earthing_type"
+        },
+        {
+          "kod": "galezie.bez_b0",
+          "opis_pl": "1 z 2 linii/kabli bez susceptancji zerowej — pominięte w sumie pojemności doziemnej",
+          "spelniony": false,
+          "elementy": [
+            "line_b_c"
+          ],
+          "blokujacy": false,
+          "klucz_parametru": null
+        }
+      ],
+      "braki": [
+        {
+          "kod": "parametr.neutral_earthing_type",
+          "opis_pl": "Schemat uziemienia punktu neutralnego (dławik albo rezystor; z modelu albo od projektanta)",
+          "spelniony": false,
+          "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": "neutral_earthing_type"
+        }
+      ],
+      "uwagi": [
+        {
+          "kod": "galezie.bez_b0",
+          "opis_pl": "1 z 2 linii/kabli bez susceptancji zerowej — pominięte w sumie pojemności doziemnej",
+          "spelniony": false,
+          "elementy": [
+            "line_b_c"
+          ],
+          "blokujacy": false,
+          "klucz_parametru": null
+        }
+      ],
+      "dane_z_modelu": [
+        {
+          "nazwa_pl": "Szyny (napięcia znamionowe)",
+          "wartosc_pl": "5",
+          "elementy": [
+            "bus_hv",
+            "bus_sn_main",
+            "bus_sn_b",
+            "bus_sn_c",
+            "bus_nn"
+          ]
+        },
+        {
+          "nazwa_pl": "Gałęzie (impedancje, długości)",
+          "wartosc_pl": "3",
+          "elementy": [
+            "cab_main_b",
+            "line_b_c",
+            "sw_coupler"
+          ]
+        },
+        {
+          "nazwa_pl": "Transformatory (S_n, u_k)",
+          "wartosc_pl": "2",
+          "elementy": [
+            "tr_hv_sn",
+            "tr_sn_nn"
+          ]
+        },
+        {
+          "nazwa_pl": "Częstotliwość sieci",
+          "wartosc_pl": "brak w modelu — solver przyjmie 50 Hz jako wartość domyślną",
+          "elementy": []
+        },
+        {
+          "nazwa_pl": "Szyny z mocą zwarciową źródła",
+          "wartosc_pl": "1",
+          "elementy": [
+            "bus_hv"
+          ]
+        }
+      ],
+      "proponowane": {},
+      "powod_wycofania_pl": null
+    }
+  ]
+}

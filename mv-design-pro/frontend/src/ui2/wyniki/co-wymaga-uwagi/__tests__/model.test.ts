@@ -6,7 +6,7 @@
 import { describe, it, expect } from 'vitest';
 
 import { przekroczeniaRozplywu, przekroczeniaWerdyktu, przekroczeniaZbieznosci } from '../model';
-import type { PozycjaWerdyktu, WerdyktResponse } from '../../werdykt/api';
+import type { OdpowiedzOceny, PozycjaOceny } from '../../ocena/api';
 import { CO_WYMAGA_UWAGI_STRINGS as T } from '../strings';
 import { busResultFixture, powerFlowResultFixture } from '../../rozplyw/__tests__/fixtures';
 
@@ -93,7 +93,7 @@ describe('przekroczeniaZbieznosci — brak zbieżności to przekroczenie (lit. d
   });
 });
 
-function pozycjaWerdyktu(over: Partial<PozycjaWerdyktu> = {}): PozycjaWerdyktu {
+function pozycjaWerdyktu(over: Partial<PozycjaOceny> = {}): PozycjaOceny {
   return {
     kryterium_id: 'galaz.obciazenie_dlugotrwale',
     etap: 'E5',
@@ -112,11 +112,17 @@ function pozycjaWerdyktu(over: Partial<PozycjaWerdyktu> = {}): PozycjaWerdyktu {
     powod_kod: null,
     powod_pl: null,
     run_id: 'run-1',
+    grupa: 'obciazalnosc',
+    wielkosc_pl: 'Obciążenie długotrwałe',
+    symbol: 'I',
+    jednostka: '%',
+    warunek: 'nie_wiecej_niz',
+    elementy: [],
     ...over,
   };
 }
 
-function werdyktFixture(pozycje: PozycjaWerdyktu[]): WerdyktResponse {
+function werdyktFixture(pozycje: PozycjaOceny[]): OdpowiedzOceny {
   return {
     werdykt: 'NARUSZONE',
     case_id: 'case-1',
@@ -125,6 +131,8 @@ function werdyktFixture(pozycje: PozycjaWerdyktu[]): WerdyktResponse {
     zrodla: [],
     podsumowanie: { spelnione: 0, naruszone: pozycje.length, niesprawdzone: 0, nie_dotyczy: 0, razem: pozycje.length },
     zakres_poza_automatem: [],
+    ocena: { oceniono: 0, spelnia: 0, nie_spelnia: 0, brak_podstaw: 0 },
+    grupy: [{ kod: 'obciazalnosc', nazwa_pl: 'Obciążalność' }],
   };
 }
 

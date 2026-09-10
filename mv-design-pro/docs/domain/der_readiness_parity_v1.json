@@ -31,7 +31,6 @@
         "vt_catalog_ref": "vt_10kv_100v_05_abb",
         "ct_accuracy_class": "5P10",
         "ct_application": "protection",
-        "fault_current_data_ref": "fc_pv_2500",
         "dynamic_model_ref": "dyn_grid_following_pv",
         "nc_rfg_profile_ref": "pse",
         "lvrt_curve_ref": "lvrt_pse",
@@ -57,20 +56,19 @@
       "kody_blokad": {}
     },
     {
-      "nazwa": "brak skladowej zerowej — tylko zwarcia z ziemia (IEC 60909-3)",
+      "nazwa": "sc_1f/sc_2f/sc_2fg pokrywaja sie z sc_3f (rowniez zablokowanym) — karta FAB-L",
       "wejscie": {
         "der_id": "DER-2",
         "der_kind": "PV",
         "connection_side": "SN",
         "bus_przylaczenia_ref": "BUS-SN-1",
         "nominal_power_kw": 1000.0,
-        "device_catalog_ref": "pv_inv_sma_2500",
+        "device_catalog_ref": null,
         "protection_catalog_ref": "ABB_REB670",
         "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
         "vt_catalog_ref": "vt_10kv_100v_05_abb",
         "ct_accuracy_class": "5P10",
         "ct_application": "protection",
-        "fault_current_data_ref": null,
         "dynamic_model_ref": "dyn_grid_following_pv",
         "nc_rfg_profile_ref": "pse",
         "lvrt_curve_ref": "lvrt_pse",
@@ -78,14 +76,16 @@
         "other_ders_in_station": 1
       },
       "oczekiwane": {
-        "sc_3f": "ready",
-        "sc_2f": "ready",
-        "sc_1f": "partial",
-        "sc_2fg": "partial"
+        "sc_3f": "blocked",
+        "sc_1f": "blocked",
+        "sc_2f": "blocked",
+        "sc_2fg": "blocked"
       },
       "kody_blokad": {
-        "sc_1f": ["der.fault_current_data.missing"],
-        "sc_2fg": ["der.fault_current_data.missing"]
+        "sc_3f": ["der.device_catalog.missing"],
+        "sc_1f": ["der.device_catalog.missing"],
+        "sc_2f": ["der.device_catalog.missing"],
+        "sc_2fg": ["der.device_catalog.missing"]
       }
     },
     {

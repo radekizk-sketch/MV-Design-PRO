@@ -130,6 +130,7 @@ NAMESPACE_TO_TYPE_CLASS: dict[str, str] = {
     "KOMPENSATOR_SN": "ShuntCapacitorType",
     "ZRODLO_NN_PV": "PVInverterType",
     "ZRODLO_NN_BESS": "BESSInverterType",
+    "BATERIA_BESS": "BESSBatteryType",
     "ZABEZPIECZENIE": "ProtectionDeviceType",
     "NASTAWY_ZABEZPIECZEN": "ProtectionSettingTemplate",
     "CONVERTER": "ConverterType",

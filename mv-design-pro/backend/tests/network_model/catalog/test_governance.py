@@ -1,273 +1,37 @@
 """
-Tests for Type Library Governance (P13b)
+Testy governance katalogu: tryb importu, biblioteka zabezpieczeń, bramka
+katalogowa (`wymagalnosc_katalogu`) — karta W3-I (2026-09-09).
 
-Verifies:
-- Deterministic export (same state → identical JSON)
-- Fingerprint stability
-- Import merge (add new, skip existing)
-- Import replace (blocked when types in use)
-- Conflict detection (409)
+W1 (2026-09-09): governance biblioteki typów sieci (P13b — `TypeLibraryManifest`,
+`TypeLibraryExport`, `compute_fingerprint`, `sort_types_deterministically`,
+końcówki `GET|POST /api/catalog/export|import`) skasowane razem z tabelami typów
+w bazie (`line_types`, `cable_types`, `transformer_types`, `switch_equipment_types`,
+`inverter_types`) — jedyny konsument końcówek (przyciski eksportu/importu w
+`ui/catalog/TypeLibraryBrowser.tsx`) skasowany razem z nimi; w bazie deweloperskiej
+0 wierszy w każdej tabeli. Jedyna prawda typów: katalog
+statyczny + katalog projektu w ENM (`enm/katalog_projektu.py`). Testy eksportu/
+importu zeszły razem z kodem; `ImportMode` zostaje, bo steruje importem biblioteki
+zabezpieczeń (`CatalogGovernanceService.import_protection_library`, pin:
+`tests/test_protection_library.py`).
+
+W3-I (2026-09-09): `wymaga_referencji_katalogowej` skasowana (0 wołających w
+produkcji po migracji wszystkich sześciu konsumentów na `wymagalnosc_katalogu` —
+patrz `network_model/catalog/governance.py`, sekcja „Bramka katalogowa"). Testy
+poniżej pokrywają TABELĘ jako iloczyn cech: rodzaj × oś (tworzenie/walidacja/
+import) × (`catalog_ref` obecny/brak) × (`parameter_source` MANUAL_EQUIVALENT/
+inny) × (`gen_type` przekształtnikowy/inny) — zgodnie z kartą W3-I §0 pkt 3.
 """
 
-from datetime import UTC
+from __future__ import annotations
 
 import pytest
 from network_model.catalog.governance import (
     ImportMode,
-    TypeLibraryExport,
-    TypeLibraryManifest,
-    compute_fingerprint,
-    sort_types_deterministically,
+    Poziom,
+    WymagalnoscKatalogu,
+    brakuje_wymaganej_referencji,
+    wymagalnosc_katalogu,
 )
-
-
-def _has_whitespace_outside_strings(s: str) -> bool:
-    """
-    Check if JSON string contains whitespace outside of string values.
-
-    Returns True if structural whitespace (spaces, newlines, tabs) exists
-    outside of JSON string literals. Spacje wewnątrz stringów (np. "Line A")
-    są legalne i nie są wykrywane.
-
-    Args:
-        s: JSON string to check
-
-    Returns:
-        True if whitespace found outside strings, False otherwise
-    """
-    in_str = False
-    esc = False
-    for ch in s:
-        if in_str:
-            if esc:
-                esc = False
-                continue
-            if ch == "\\":
-                esc = True
-                continue
-            if ch == '"':
-                in_str = False
-            continue
-        else:
-            if ch == '"':
-                in_str = True
-                continue
-            if ch in (" ", "\n", "\t", "\r"):
-                return True
-    return False
-
-
-def test_sort_types_deterministically():
-    """Types are sorted by (name, id)."""
-    types = [
-        {"id": "id3", "name": "ZZZ"},
-        {"id": "id1", "name": "AAA"},
-        {"id": "id2", "name": "AAA"},
-    ]
-
-    sorted_types = sort_types_deterministically(types)
-
-    assert sorted_types[0]["id"] == "id1"  # AAA, id1
-    assert sorted_types[1]["id"] == "id2"  # AAA, id2
-    assert sorted_types[2]["id"] == "id3"  # ZZZ, id3
-
-
-def test_export_deterministic_ordering():
-    """Same types → same export structure (deterministic)."""
-    line_types = [
-        {"id": "line2", "name": "Line B", "r_ohm_per_km": 0.2},
-        {"id": "line1", "name": "Line A", "r_ohm_per_km": 0.1},
-    ]
-    cable_types = [
-        {"id": "cable2", "name": "Cable B"},
-        {"id": "cable1", "name": "Cable A"},
-    ]
-
-    manifest = TypeLibraryManifest(
-        library_id="lib1",
-        name_pl="Test Library",
-        vendor="Test Vendor",
-        series="Test Series",
-        revision="1.0",
-        schema_version="1.0",
-        created_at="2026-01-01T00:00:00",
-        fingerprint="",
-    )
-
-    export = TypeLibraryExport(
-        manifest=manifest,
-        line_types=sort_types_deterministically(line_types),
-        cable_types=sort_types_deterministically(cable_types),
-        transformer_types=[],
-        switch_types=[],
-    )
-
-    # Types should be sorted by (name, id)
-    assert export.line_types[0]["id"] == "line1"
-    assert export.line_types[1]["id"] == "line2"
-    assert export.cable_types[0]["id"] == "cable1"
-    assert export.cable_types[1]["id"] == "cable2"
-
-
-def test_fingerprint_is_deterministic():
-    """Same export → identical fingerprint."""
-    manifest = TypeLibraryManifest(
-        library_id="lib1",
-        name_pl="Test",
-        vendor="Vendor",
-        series="Series",
-        revision="1.0",
-        schema_version="1.0",
-        created_at="2026-01-01T00:00:00",
-        fingerprint="",
-    )
-
-    export1 = TypeLibraryExport(
-        manifest=manifest,
-        line_types=[{"id": "line1", "name": "Line A"}],
-        cable_types=[],
-        transformer_types=[],
-        switch_types=[],
-    )
-
-    export2 = TypeLibraryExport(
-        manifest=manifest,
-        line_types=[{"id": "line1", "name": "Line A"}],
-        cable_types=[],
-        transformer_types=[],
-        switch_types=[],
-    )
-
-    fp1 = compute_fingerprint(export1)
-    fp2 = compute_fingerprint(export2)
-
-    assert fp1 == fp2
-    assert len(fp1) == 64  # SHA-256 hex digest
-
-
-def test_fingerprint_changes_with_content():
-    """Different export → different fingerprint."""
-    manifest = TypeLibraryManifest(
-        library_id="lib1",
-        name_pl="Test",
-        vendor="Vendor",
-        series="Series",
-        revision="1.0",
-        schema_version="1.0",
-        created_at="2026-01-01T00:00:00",
-        fingerprint="",
-    )
-
-    export1 = TypeLibraryExport(
-        manifest=manifest,
-        line_types=[{"id": "line1", "name": "Line A"}],
-        cable_types=[],
-        transformer_types=[],
-        switch_types=[],
-    )
-
-    export2 = TypeLibraryExport(
-        manifest=manifest,
-        line_types=[{"id": "line2", "name": "Line B"}],  # Different
-        cable_types=[],
-        transformer_types=[],
-        switch_types=[],
-    )
-
-    fp1 = compute_fingerprint(export1)
-    fp2 = compute_fingerprint(export2)
-
-    assert fp1 != fp2
-
-
-def test_canonical_json_is_deterministic():
-    """Same export → identical canonical JSON (no structural whitespace variance)."""
-    manifest = TypeLibraryManifest(
-        library_id="lib1",
-        name_pl="Test",
-        vendor="Vendor",
-        series="Series",
-        revision="1.0",
-        schema_version="1.0",
-        created_at="2026-01-01T00:00:00",
-        fingerprint="",
-    )
-
-    export = TypeLibraryExport(
-        manifest=manifest,
-        line_types=[{"id": "line1", "name": "Line A", "r_ohm_per_km": 0.1}],
-        cable_types=[],
-        transformer_types=[],
-        switch_types=[],
-    )
-
-    json1 = export.to_canonical_json()
-    json2 = export.to_canonical_json()
-
-    assert json1 == json2
-    assert not _has_whitespace_outside_strings(
-        json1
-    )  # No structural whitespace outside JSON strings
-
-
-def test_manifest_to_dict_preserves_order():
-    """Manifest.to_dict() returns canonical order."""
-    manifest = TypeLibraryManifest(
-        library_id="lib1",
-        name_pl="Test",
-        vendor="Vendor",
-        series="Series",
-        revision="1.0",
-        schema_version="1.0",
-        created_at="2026-01-01T00:00:00",
-        fingerprint="abc123",
-        description_pl="Description",
-    )
-
-    data = manifest.to_dict()
-
-    # Check all fields present
-    assert data["library_id"] == "lib1"
-    assert data["name_pl"] == "Test"
-    assert data["vendor"] == "Vendor"
-    assert data["series"] == "Series"
-    assert data["revision"] == "1.0"
-    assert data["schema_version"] == "1.0"
-    assert data["created_at"] == "2026-01-01T00:00:00"
-    assert data["fingerprint"] == "abc123"
-    assert data["description_pl"] == "Description"
-
-
-def test_export_to_dict_has_all_fields():
-    """Export.to_dict() includes manifest + all type categories."""
-    manifest = TypeLibraryManifest(
-        library_id="lib1",
-        name_pl="Test",
-        vendor="Vendor",
-        series="Series",
-        revision="1.0",
-        schema_version="1.0",
-        created_at="2026-01-01T00:00:00",
-        fingerprint="",
-    )
-
-    export = TypeLibraryExport(
-        manifest=manifest,
-        line_types=[{"id": "line1"}],
-        cable_types=[{"id": "cable1"}],
-        transformer_types=[{"id": "trafo1"}],
-        switch_types=[{"id": "switch1"}],
-    )
-
-    data = export.to_dict()
-
-    assert "manifest" in data
-    assert "line_types" in data
-    assert "cable_types" in data
-    assert "transformer_types" in data
-    assert "switch_types" in data
-    assert len(data["line_types"]) == 1
-    assert len(data["cable_types"]) == 1
 
 
 def test_import_mode_enum():
@@ -278,246 +42,173 @@ def test_import_mode_enum():
     assert ImportMode("replace") == ImportMode.REPLACE
 
 
-### Integration Tests (require database)
-# These tests verify full export/import cycle with persistence
+# ---------------------------------------------------------------------------
+# `wymagalnosc_katalogu` — tabela jako iloczyn cech (karta W3-I §0 pkt 3)
+# ---------------------------------------------------------------------------
+
+#: Rodzaj (w OBU nazewnictwach, gdzie ma to znaczenie) -> oczekiwana wymagalność
+#: na trzech osiach, dla DOMYŚLNYCH wartości `parameter_source`/`gen_type` (bez
+#: żadnego z wyjątków — gałąź "inna" tabeli). Każdy wiersz odpowiada JEDNEJ
+#: komórce §0.15 karty W3-I, zmierzonej z pliku:linii cytowanych w
+#: `network_model/catalog/governance.py`.
+_RODZAJE_BEZ_WYJATKOW: tuple[tuple[str, WymagalnoscKatalogu], ...] = (
+    ("cable", WymagalnoscKatalogu(Poziom.BLOCKER, Poziom.BLOCKER, Poziom.BLOCKER, "E009")),
+    ("line_overhead", WymagalnoscKatalogu(Poziom.BLOCKER, Poziom.BLOCKER, Poziom.BLOCKER, "E009")),
+    ("line", WymagalnoscKatalogu(Poziom.BLOCKER, Poziom.BLOCKER, Poziom.BLOCKER, "E009")),
+    (
+        "overhead_line",
+        WymagalnoscKatalogu(Poziom.BLOCKER, Poziom.BLOCKER, Poziom.BLOCKER, "E009"),
+    ),
+    ("CABLE", WymagalnoscKatalogu(Poziom.BLOCKER, Poziom.BLOCKER, Poziom.BLOCKER, "E009")),
+    ("LINE", WymagalnoscKatalogu(Poziom.BLOCKER, Poziom.BLOCKER, Poziom.BLOCKER, "E009")),
+    (
+        "transformer",
+        WymagalnoscKatalogu(Poziom.BLOCKER, Poziom.BLOCKER, Poziom.BLOCKER, "E009"),
+    ),
+    (
+        "TRANSFORMER",
+        WymagalnoscKatalogu(Poziom.BLOCKER, Poziom.BLOCKER, Poziom.BLOCKER, "E009"),
+    ),
+    ("load", WymagalnoscKatalogu(Poziom.BLOCKER, Poziom.NIE, Poziom.NIE, None)),
+    ("switch", WymagalnoscKatalogu(Poziom.BLOCKER, Poziom.NIE, Poziom.NIE, None)),
+    ("breaker", WymagalnoscKatalogu(Poziom.BLOCKER, Poziom.NIE, Poziom.NIE, None)),
+    ("fuse", WymagalnoscKatalogu(Poziom.BLOCKER, Poziom.NIE, Poziom.NIE, None)),
+    ("measurement", WymagalnoscKatalogu(Poziom.BLOCKER, Poziom.NIE, Poziom.NIE, None)),
+    ("protection", WymagalnoscKatalogu(Poziom.BLOCKER, Poziom.NIE, Poziom.NIE, None)),
+    ("shunt_capacitor", WymagalnoscKatalogu(Poziom.NIE, Poziom.NIE, Poziom.NIE, None)),
+    ("", WymagalnoscKatalogu(Poziom.NIE, Poziom.NIE, Poziom.NIE, None)),
+    ("nieznany_rodzaj_xyz", WymagalnoscKatalogu(Poziom.NIE, Poziom.NIE, Poziom.NIE, None)),
+)
 
 
-@pytest.mark.integration
-def test_export_import_round_trip(test_db_session):
-    """Export → Import → Export should yield same data (deterministic)."""
-    from application.catalog_governance.service import CatalogGovernanceService
-    from infrastructure.persistence.repositories.unit_of_work import UnitOfWorkFactory
+@pytest.mark.parametrize("rodzaj,oczekiwane", _RODZAJE_BEZ_WYJATKOW)
+def test_wymagalnosc_katalogu_rodzaje_bez_wyjatkow(
+    rodzaj: str, oczekiwane: WymagalnoscKatalogu
+) -> None:
+    """Rodzaje bez żadnego wyjątku (nie źródło, nie generator) — jedna wartość
+    niezależna od `parameter_source`/`gen_type`."""
+    assert wymagalnosc_katalogu(rodzaj) == oczekiwane
 
-    uow_factory = UnitOfWorkFactory(lambda: test_db_session)
-    service = CatalogGovernanceService(uow_factory)
 
-    # Add initial types
-    with uow_factory() as uow:
-        uow.wizard.upsert_line_type(
-            {"id": "line1", "name": "Line A", "params": {"r_ohm_per_km": 0.1}},
-            commit=False,
-        )
-        uow.wizard.upsert_cable_type(
-            {"id": "cable1", "name": "Cable A", "params": {"r_ohm_per_km": 0.2}},
-            commit=False,
-        )
-        uow.commit()
-
-    # Export
-    export1 = service.export_type_library(
-        library_name_pl="Test Library",
-        vendor="Test Vendor",
-        series="Standard",
-        revision="1.0",
+def test_wymagalnosc_katalogu_rodzaj_none_nie_fabrykuje_wymogu() -> None:
+    """`rodzaj=None` normalizuje jak pusty łańcuch — zero fabrykacji wymogu."""
+    assert wymagalnosc_katalogu(None) == WymagalnoscKatalogu(  # type: ignore[arg-type]
+        Poziom.NIE, Poziom.NIE, Poziom.NIE, None
     )
 
-    # Clear catalog
-    with uow_factory() as uow:
-        from infrastructure.persistence.models import CableTypeORM, LineTypeORM
 
-        test_db_session.query(LineTypeORM).delete()
-        test_db_session.query(CableTypeORM).delete()
-        uow.commit()
-
-    # Import
-    report = service.import_type_library(export1, mode=ImportMode.MERGE)
-
-    assert report["success"] is True
-    assert len(report["added"]) == 2
-    assert len(report["skipped"]) == 0
-    assert len(report["conflicts"]) == 0
-
-    # Export again
-    export2 = service.export_type_library(
-        library_name_pl="Test Library",
-        vendor="Test Vendor",
-        series="Standard",
-        revision="1.0",
-    )
-
-    # Compare (excluding timestamps and fingerprints)
-    assert len(export1["line_types"]) == len(export2["line_types"])
-    assert len(export1["cable_types"]) == len(export2["cable_types"])
-    assert export1["line_types"][0]["id"] == export2["line_types"][0]["id"]
-    assert export1["cable_types"][0]["id"] == export2["cable_types"][0]["id"]
+@pytest.mark.parametrize("biale_znaki", [" cable ", "Cable", "CaBlE", "\tcable\n"])
+def test_wymagalnosc_katalogu_normalizuje_wielkosc_liter_i_biale_znaki(biale_znaki: str) -> None:
+    assert wymagalnosc_katalogu(biale_znaki).walidacja is Poziom.BLOCKER
 
 
-@pytest.mark.integration
-def test_import_merge_skips_existing(test_db_session):
-    """MERGE mode skips existing types (no overwrites)."""
-    from application.catalog_governance.service import CatalogGovernanceService
-    from infrastructure.persistence.repositories.unit_of_work import UnitOfWorkFactory
-
-    uow_factory = UnitOfWorkFactory(lambda: test_db_session)
-    service = CatalogGovernanceService(uow_factory)
-
-    # Add initial type
-    with uow_factory() as uow:
-        uow.wizard.upsert_line_type(
-            {"id": "line1", "name": "Original Name", "params": {"r_ohm_per_km": 0.1}},
-            commit=False,
-        )
-        uow.commit()
-
-    # Import with same ID but different name
-    export_data = {
-        "manifest": {
-            "library_id": "lib1",
-            "name_pl": "Test",
-            "vendor": "Vendor",
-            "series": "Series",
-            "revision": "1.0",
-            "schema_version": "1.0",
-            "created_at": "2026-01-01T00:00:00",
-            "fingerprint": "abc",
-        },
-        "line_types": [
-            {"id": "line1", "name": "Modified Name", "params": {"r_ohm_per_km": 0.2}},
-            {"id": "line2", "name": "New Type", "params": {"r_ohm_per_km": 0.3}},
-        ],
-        "cable_types": [],
-        "transformer_types": [],
-        "switch_types": [],
-    }
-
-    report = service.import_type_library(export_data, mode=ImportMode.MERGE)
-
-    assert report["success"] is True
-    assert "line1" in report["skipped"]  # Existing type skipped
-    assert "line2" in report["added"]  # New type added
-
-    # Verify original name preserved (not modified)
-    with uow_factory() as uow:
-        types = uow.wizard.list_line_types()
-        line1 = next(t for t in types if t["id"] == "line1")
-        assert line1["name"] == "Original Name"  # Not modified
+# --- Źródło systemowe: iloczyn parameter_source × (obecność catalog_ref przez
+#     brakuje_wymaganej_referencji, osobny test niżej) --------------------------
 
 
-@pytest.mark.integration
-def test_import_replace_blocked_when_types_in_use(test_db_session):
-    """REPLACE mode blocked when types are referenced by instances."""
-    from datetime import datetime
-    from uuid import uuid4
-
-    from application.catalog_governance.service import CatalogGovernanceService
-    from infrastructure.persistence.models import NetworkBranchORM, NetworkNodeORM, ProjectORM
-    from infrastructure.persistence.repositories.unit_of_work import UnitOfWorkFactory
-
-    uow_factory = UnitOfWorkFactory(lambda: test_db_session)
-    service = CatalogGovernanceService(uow_factory)
-
-    type_id = str(uuid4())
-    project_id = uuid4()
-    node_from_id = uuid4()
-    node_to_id = uuid4()
-    branch_id = uuid4()
-
-    # Add type
-    with uow_factory() as uow:
-        uow.wizard.upsert_line_type(
-            {"id": type_id, "name": "In-Use Type", "params": {"r_ohm_per_km": 0.1}},
-            commit=False,
-        )
-
-        # Add project (required for FK)
-        project = ProjectORM(
-            id=project_id,
-            name="Test Project",
-            description="Test",
-            schema_version="1.0",
-            sources_jsonb=[],
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
-        )
-        test_db_session.add(project)
-
-        # Add nodes (required for FK)
-        node_from = NetworkNodeORM(
-            id=node_from_id,
-            project_id=project_id,
-            name="Node From",
-            node_type="bus",
-            base_kv=15.0,
-            attrs_jsonb={},
-        )
-        node_to = NetworkNodeORM(
-            id=node_to_id,
-            project_id=project_id,
-            name="Node To",
-            node_type="bus",
-            base_kv=15.0,
-            attrs_jsonb={},
-        )
-        test_db_session.add(node_from)
-        test_db_session.add(node_to)
-
-        # Add branch with type_ref in params
-        branch = NetworkBranchORM(
-            id=branch_id,
-            project_id=project_id,
-            name="Branch 1",
-            branch_type="line",
-            from_node_id=node_from_id,
-            to_node_id=node_to_id,
-            in_service=True,
-            params_jsonb={"type_ref": type_id},  # This references the type
-        )
-        test_db_session.add(branch)
-
-        uow.commit()
-
-    # Try to REPLACE
-    export_data = {
-        "manifest": {
-            "library_id": "lib1",
-            "name_pl": "Test",
-            "vendor": "Vendor",
-            "series": "Series",
-            "revision": "1.0",
-            "schema_version": "1.0",
-            "created_at": "2026-01-01T00:00:00",
-            "fingerprint": "abc",
-        },
-        "line_types": [
-            {"id": "new_type", "name": "Replacement Type", "params": {"r_ohm_per_km": 0.2}}
-        ],
-        "cable_types": [],
-        "transformer_types": [],
-        "switch_types": [],
-    }
-
-    with pytest.raises(ValueError, match="REPLACE blocked"):
-        service.import_type_library(export_data, mode=ImportMode.REPLACE)
+@pytest.mark.parametrize("parameter_source", [None, "CATALOG", "OVERRIDE", "cokolwiek_innego", ""])
+def test_wymagalnosc_katalogu_zrodlo_bez_manual_equivalent_jest_blocker(
+    parameter_source: str | None,
+) -> None:
+    """Źródło BEZ `parameter_source == "MANUAL_EQUIVALENT"` — BLOCKER na
+    wszystkich trzech osiach, kod E009."""
+    wynik = wymagalnosc_katalogu("source", parameter_source=parameter_source)
+    assert wynik == WymagalnoscKatalogu(Poziom.BLOCKER, Poziom.BLOCKER, Poziom.BLOCKER, "E009")
 
 
-@pytest.mark.integration
-def test_export_determinism_with_real_data(test_db_session):
-    """Same catalog state → identical export (deterministic)."""
-    from application.catalog_governance.service import CatalogGovernanceService
-    from infrastructure.persistence.repositories.unit_of_work import UnitOfWorkFactory
+def test_wymagalnosc_katalogu_zrodlo_manual_equivalent_jest_nie_na_wszystkich_osiach() -> None:
+    """K1.2 — źródło z jawnym Sk''/RX (`parameter_source == "MANUAL_EQUIVALENT"`)
+    nie wymaga katalogu na ŻADNEJ z trzech osi."""
+    wynik = wymagalnosc_katalogu("source", parameter_source="MANUAL_EQUIVALENT")
+    assert wynik == WymagalnoscKatalogu(Poziom.NIE, Poziom.NIE, Poziom.NIE, None)
 
-    uow_factory = UnitOfWorkFactory(lambda: test_db_session)
-    service = CatalogGovernanceService(uow_factory)
 
-    # Add types
-    with uow_factory() as uow:
-        uow.wizard.upsert_line_type(
-            {"id": "line2", "name": "Line B", "params": {"r_ohm_per_km": 0.2}},
-            commit=False,
-        )
-        uow.wizard.upsert_line_type(
-            {"id": "line1", "name": "Line A", "params": {"r_ohm_per_km": 0.1}},
-            commit=False,
-        )
-        uow.commit()
+def test_wymagalnosc_katalogu_zrodlo_bez_parameter_source_ignoruje_gen_type() -> None:
+    """`gen_type` nie ma znaczenia dla rodzaju `source` (parametr tego rodzaju nie
+    dotyczy) — obecność/brak nie zmienia wyniku."""
+    bez = wymagalnosc_katalogu("source")
+    z_gen_type = wymagalnosc_katalogu("source", gen_type="pv_inverter")
+    assert bez == z_gen_type
 
-    # Export twice
-    export1 = service.export_type_library()
-    export2 = service.export_type_library()
 
-    # Fingerprints should match
-    assert export1["manifest"]["fingerprint"] == export2["manifest"]["fingerprint"]
+# --- Generator: iloczyn gen_type (przekształtnikowy / inny / None) -------------
 
-    # Types should be sorted (line1 before line2)
-    assert export1["line_types"][0]["id"] == "line1"
-    assert export1["line_types"][1]["id"] == "line2"
+_GEN_TYPES_PRZEKSZTALTNIKOWE_SC = ("pv_inverter", "bess", "wind_inverter", "fw_pmsg")
+#: `fw_dfig`/`fw_scig` są maszynami WIRUJĄCYMI w klasyfikacji zwarciowej
+#: (`enm/mapping.py::FULL_CONVERTER_SC_GEN_TYPES` ich NIE zawiera) — mimo że
+#: `enm/models.py::GEN_TYPES_PRZEKSZTALTNIKOWE` (INNE pytanie: czy DER) je
+#: zawiera. Test przypina tę różnicę: gdyby tabela kiedyś pomyliła oba zbiory
+#: (regresja zmierzona w karcie W3-I — `v2_projection.py` miał własną,
+#: 6-elementową kopię pokrywającą się z `GEN_TYPES_PRZEKSZTALTNIKOWE`, NIE z
+#: `FULL_CONVERTER_SC_GEN_TYPES`), ten test poczerwienieje.
+_GEN_TYPES_NIE_ZWARCIOWO_PRZEKSZTALTNIKOWE = (
+    "synchronous",
+    "fw_dfig",
+    "fw_scig",
+    None,
+    "nieznany_typ_generatora",
+)
+
+
+@pytest.mark.parametrize("gen_type", _GEN_TYPES_PRZEKSZTALTNIKOWE_SC)
+@pytest.mark.parametrize("catalog_ref_obecny", [True, False])
+def test_wymagalnosc_katalogu_generator_przeksztaltnikowy(
+    gen_type: str, catalog_ref_obecny: bool
+) -> None:
+    """Generator przekształtnikowy (sens zwarciowy IEC 60909 §6.7) — tworzenie
+    BLOCKER niezależnie od `catalog_ref` (oś `tworzenie` nie zależy od
+    obecności referencji — to inny wymiar), walidacja/import WARNING kod W010
+    na walidacji."""
+    wynik = wymagalnosc_katalogu("generator", gen_type=gen_type)
+    assert wynik.tworzenie is Poziom.BLOCKER
+    assert wynik.walidacja is Poziom.WARNING
+    assert wynik.import_ is Poziom.WARNING
+    assert wynik.kod_walidacji == "W010"
+
+
+@pytest.mark.parametrize("gen_type", _GEN_TYPES_NIE_ZWARCIOWO_PRZEKSZTALTNIKOWE)
+def test_wymagalnosc_katalogu_generator_inny(gen_type: str | None) -> None:
+    """Generator inny niż przekształtnikowy (w tym `"synchronous"`, DFIG/SCIG
+    wirujące i `gen_type=None`) — tworzenie WCIĄŻ BLOCKER (zmierzone:
+    `add_generator_sn` i `add_converter_source` nie mają wyjątku dla ŻADNEGO
+    gen_type), ale walidacja/import NIE (brak kodu E0xx/W0xx, brak
+    sprawdzenia w ZIP/CGMES/XLSX dla generatorów innych niż przekształtnikowe)."""
+    wynik = wymagalnosc_katalogu("generator", gen_type=gen_type)
+    assert wynik == WymagalnoscKatalogu(Poziom.BLOCKER, Poziom.NIE, Poziom.NIE, None)
+
+
+def test_wymagalnosc_katalogu_generator_tworzenie_zawsze_blocker() -> None:
+    """Oś `tworzenie` dla `rodzaj="generator"` jest BLOCKER dla KAŻDEGO
+    zmierzonego gen_type — żaden tor tworzenia generatora (`add_generator_sn`,
+    `add_converter_source`) nie ma wyjątku (K1.2: „element fizyczny, bez
+    wyjątku dla generatorów")."""
+    wszystkie = _GEN_TYPES_PRZEKSZTALTNIKOWE_SC + _GEN_TYPES_NIE_ZWARCIOWO_PRZEKSZTALTNIKOWE
+    for gen_type in wszystkie:
+        assert wymagalnosc_katalogu("generator", gen_type=gen_type).tworzenie is Poziom.BLOCKER
+
+
+# ---------------------------------------------------------------------------
+# `brakuje_wymaganej_referencji` — iloczyn (poziom × obecność catalog_ref)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("catalog_ref", [None, "", "  ", "poz-1"])
+def test_brakuje_wymaganej_referencji_poziom_nie_zawsze_false(catalog_ref: str | None) -> None:
+    """Poziom `NIE` nigdy nie zgłasza braku, niezależnie od `catalog_ref`."""
+    assert brakuje_wymaganej_referencji(Poziom.NIE, catalog_ref) is False
+
+
+@pytest.mark.parametrize("poziom", [Poziom.BLOCKER, Poziom.WARNING])
+@pytest.mark.parametrize("catalog_ref", [None, ""])
+def test_brakuje_wymaganej_referencji_brak_referencji(
+    poziom: Poziom, catalog_ref: str | None
+) -> None:
+    """BLOCKER i WARNING oba zgłaszają brak, gdy `catalog_ref` jest puste —
+    severity wybiera WOŁAJĄCY (`SEVERITY_BLOCKER`/`SEVERITY_IMPORTANT`), nie
+    ta funkcja."""
+    assert brakuje_wymaganej_referencji(poziom, catalog_ref) is True
+
+
+@pytest.mark.parametrize("poziom", [Poziom.BLOCKER, Poziom.WARNING])
+def test_brakuje_wymaganej_referencji_referencja_obecna(poziom: Poziom) -> None:
+    assert brakuje_wymaganej_referencji(poziom, "poz-1") is False

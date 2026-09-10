@@ -29,11 +29,28 @@ function branchTypeLabel(type: string): string {
   }
 }
 
+/** Etykieta PL źródła parametru — wyczerpujące wg unii `OverheadLine['parameter_source']`
+ *  (Record wymusza obsłużenie KAŻDEJ wartości; brakująca powodowałaby błąd
+ *  kompilacji). FAB-F: `MANUAL_EQUIVALENT` dawniej wpadał w gałąź „else" i
+ *  pokazywał mylącą etykietę „Wariant katalogowy wymagany", mimo że
+ *  parametr źródła BYŁ ustawiony. */
+const PARAMETER_SOURCE_LABELS_PL: Record<NonNullable<OverheadLine['parameter_source']>, string> = {
+  CATALOG: 'Katalog (zablokowane)',
+  OVERRIDE: 'Nadpisanie ręczne',
+  MANUAL_EQUIVALENT: 'Zastępczy ręczny',
+};
+
 function insulationLabel(insulation: string | null | undefined): string {
   if (!insulation) return '—';
   switch (insulation) {
     case 'XLPE':
       return 'XLPE (usieciowany polietylen)';
+    case 'EPR':
+      // FAB-F: brakujący przypadek unii `Cable['insulation']` (backend + katalog
+      // SN mają rekordy EPR — patrz `types/enm.ts` i `enm_contract_parity_guard.py`
+      // docstring o tej samej klasie luki). Bez tego karta pokazywała surowy
+      // literał "EPR" zamiast etykiety materiału.
+      return 'EPR (guma etylenowo-propylenowa)';
     case 'PVC':
       return 'PVC';
     case 'PAPER':
@@ -240,11 +257,9 @@ export function LineSegmentCard({ elementId }: { elementId: string }) {
         {
           key: 'param_source',
           label: 'Źródło parametrów',
-          value: branch.parameter_source === 'CATALOG'
-            ? 'Katalog (zablokowane)'
-            : branch.parameter_source === 'OVERRIDE'
-              ? 'Nadpisanie ręczne'
-              : 'Wariant katalogowy wymagany',
+          value: branch.parameter_source
+            ? PARAMETER_SOURCE_LABELS_PL[branch.parameter_source]
+            : 'Wariant katalogowy wymagany',
           severity: branch.catalog_ref == null ? 'warning' : 'ok',
         },
       ],

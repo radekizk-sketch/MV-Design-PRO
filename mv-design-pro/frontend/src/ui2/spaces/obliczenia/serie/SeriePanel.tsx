@@ -28,6 +28,7 @@ import './serie.css';
 import { useAppStateStore } from '../../../../ui/app-state';
 import { useFaultScenariosStore } from '../../../../ui/fault-scenarios/store';
 import { useBatchRunsStore } from '../../../../ui/study-cases/batchStore';
+import type { RunStatus } from '../../../../ui/study-cases/types';
 import type { AdvancementMode } from '../../../shell/modeModel';
 import type { SeriaWiersz } from './adapters/serieAdapter';
 import {
@@ -38,12 +39,39 @@ import {
 import { etykietaStatusu } from '../przebiegi/strings';
 import { SERIE_STRINGS as T } from './strings';
 
-const WARIANT_STATUSU: Record<SeriaWiersz['status'], string> = {
+/** Wariant tagu statusu SERII — słownik `BatchStatus` (karta CV-3.3-C, PIĘĆ
+ * wartości: CREATED/RUNNING/FINISHED/FAILED/PARTIAL). NIE mylić z wariantem
+ * statusu POJEDYNCZEGO BIEGU pozycji serii, który ma WŁASNY, INNY słownik
+ * (`RunStatus` — `WARIANT_STATUSU_BIEGU` niżej): dwie różne osie tego samego
+ * ekranu, przypadkowo współdzielące cztery z pięciu nazw wartości przed tą
+ * kartą (`PENDING/RUNNING/DONE/FAILED` batcha == `RunStatus`) — zbieżność,
+ * która maskowała pomyłkę indeksowania złym słownikiem aż do zmiany nazw
+ * batcha (napotknięty błąd typów, naprawiony u źródła: `WierszPrzebiegu.tsx`
+ * ma dokładnie ten sam, poprawnie typowany wzorzec dla biegów). */
+const WARIANT_STATUSU_SERII: Record<SeriaWiersz['status'], string> = {
+  CREATED: 'mvd-tag-mut',
+  RUNNING: 'mvd-tag-warn',
+  FINISHED: 'mvd-tag-ok',
+  FAILED: 'mvd-tag-err',
+  PARTIAL: 'mvd-tag-warn',
+};
+
+/** Wariant tagu statusu BIEGU pozycji serii — słownik `RunStatus` (TEN SAM
+ * wzorzec co `ui2/spaces/obliczenia/przebiegi/WierszPrzebiegu.tsx`). */
+const WARIANT_STATUSU_BIEGU: Record<RunStatus, string> = {
   PENDING: 'mvd-tag-mut',
   RUNNING: 'mvd-tag-warn',
   DONE: 'mvd-tag-ok',
   FAILED: 'mvd-tag-err',
 };
+
+/** Ogłoszenie PO WYKONANIU serii — trójstanowe (karta CV-3.3-C: PARTIAL
+ * pomiędzy sukcesem i porażką, nie binarne jak dawniej). */
+function ogloszeniePoWykonaniu(status: SeriaWiersz['status']): string {
+  if (status === 'FINISHED') return T.seriaZakonczona;
+  if (status === 'PARTIAL') return T.seriaCzesciowa;
+  return T.seriaNieudana;
+}
 
 export interface SeriePanelProps {
   /** Tryb zaawansowania powłoki — odsłania odcisk serii (§2.7). */
@@ -73,6 +101,7 @@ export function SeriePanel({
 
   const [zaznaczone, setZaznaczone] = useState<ReadonlySet<string>>(new Set());
   const [ogloszenie, setOgloszenie] = useState('');
+  const [nazwa, setNazwa] = useState('');
 
   useEffect(() => {
     setStudyCaseId(activeCaseId ?? null);
@@ -82,6 +111,7 @@ export function SeriePanel({
     // panel serii jest samowystarczalny także bez panelu scenariuszy.
     useFaultScenariosStore.getState().setStudyCaseId(activeCaseId ?? null);
     setZaznaczone(new Set());
+    setNazwa('');
   }, [activeCaseId, setStudyCaseId]);
 
   const przelacz = (id: string) => {
@@ -100,9 +130,14 @@ export function SeriePanel({
     if (!activeCaseId || zaznaczone.size === 0) return;
     setOgloszenie('');
     try {
-      const seria = await utworzIWykonajSerie(activeCaseId, [...zaznaczone]);
-      setOgloszenie(seria.status === 'DONE' ? T.seriaZakonczona : T.seriaNieudana);
+      const seria = await utworzIWykonajSerie(
+        activeCaseId,
+        [...zaznaczone],
+        nazwa.trim() || undefined,
+      );
+      setOgloszenie(ogloszeniePoWykonaniu(seria.status));
       setZaznaczone(new Set());
+      setNazwa('');
     } catch {
       /* komunikat błędu żyje w store (pokazany niżej) */
     }
@@ -112,7 +147,7 @@ export function SeriePanel({
     setOgloszenie('');
     try {
       const seria = await wykonajSerie(batchId);
-      setOgloszenie(seria.status === 'DONE' ? T.seriaZakonczona : T.seriaNieudana);
+      setOgloszenie(ogloszeniePoWykonaniu(seria.status));
     } catch {
       /* komunikat błędu żyje w store */
     }
@@ -196,6 +231,17 @@ export function SeriePanel({
                 </li>
               ))}
             </ul>
+            <label className="mvd-serie-nazwa">
+              <span className="mvd-serie-nazwa-etykieta">{T.nazwaSerii}</span>
+              <input
+                type="text"
+                data-testid="mvd-serie-nazwa"
+                value={nazwa}
+                maxLength={200}
+                placeholder={T.nazwaSeriiPodpowiedz}
+                onChange={(e) => setNazwa(e.target.value)}
+              />
+            </label>
             <div className="mvd-serie-nowa-stopka">
               <button
                 type="button"
@@ -250,7 +296,15 @@ export function SeriePanel({
               data-testid={`mvd-serie-wiersz-${seria.id}`}
             >
               <header className="mvd-serie-karta-glowa">
-                <span className={`mvd-tag ${WARIANT_STATUSU[seria.status]}`}>
+                {seria.nazwa && (
+                  <span
+                    className="mvd-serie-karta-nazwa"
+                    data-testid={`mvd-serie-nazwa-${seria.id}`}
+                  >
+                    {seria.nazwa}
+                  </span>
+                )}
+                <span className={`mvd-tag ${WARIANT_STATUSU_SERII[seria.status]}`}>
                   {seria.statusEtykieta}
                 </span>
                 <span className="mvd-serie-karta-meta">
@@ -267,7 +321,7 @@ export function SeriePanel({
                     {T.etykietaOdcisk}: <span className="mvd-num">{seria.odcisk}</span>
                   </span>
                 )}
-                {seria.status === 'PENDING' && (
+                {seria.status === 'CREATED' && (
                   <button
                     type="button"
                     className="mvd-serie-akcja mvd-serie-akcja--wtorna"
@@ -301,7 +355,7 @@ export function SeriePanel({
                             {/* Etykieta analizy z rekordu biegu — jedno źródło biegów. */}
                             {seria.rodzajEtykieta}
                           </span>
-                          <span className={`mvd-tag ${WARIANT_STATUSU[bieg.status]}`}>
+                          <span className={`mvd-tag ${WARIANT_STATUSU_BIEGU[bieg.status]}`}>
                             {/* Etykieta statusu z JEDNEGO słownika biegów (importuj, nie duplikuj). */}
                             {etykietaStatusu(bieg.status)}
                           </span>

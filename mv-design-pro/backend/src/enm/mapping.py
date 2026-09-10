@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import math
 import uuid
+from typing import Any, Literal
 
 import numpy as np
 from network_model.catalog.types import ConverterKind
@@ -34,7 +35,16 @@ from network_model.core.inverter import InverterSource
 from network_model.core.machine import AsynchronousMachineSource, SynchronousMachineSource
 from network_model.core.node import Node, NodeType
 from network_model.core.switch import Switch, SwitchState, SwitchType
+from network_model.core.voltage_factor import Scenario, c_for_node
 from network_model.core.ybus import AdmittanceMatrixBuilder
+from network_model.pochodne import (
+    impedancja_z_napiecia_i_mocy_ohm,
+    ka_na_a,
+    kv_na_v,
+    moc_zwarciowa_z_pradu_mva,
+    prad_znamionowy_a,
+    simens_na_mikrosimens,
+)
 from network_model.solvers.power_flow_zip import (
     ZipCoeffs,
     aggregate_zip,
@@ -49,8 +59,26 @@ from .models import (
     OverheadLine,
     Source,
     SwitchBranch,
+    liczba_torow,
 )
 from .models import TapChanger as EnmTapChanger
+from .zrodlo_zwarcie import KOD_SK_MIN_BRAK, TrybDanych, dodatnia, tryb_danych
+
+
+def _odmowa_zrodla_bez_szyny(source_ref: str, bus_ref: str) -> str:
+    """Odmowa assemblera dla źródła wskazującego nieistniejącą szynę (odbiór CV-3.3-B).
+
+    Do tej karty oba miejsca składania źródeł (Z_Q składowej zgodnej i Y0)
+    POMIJAŁY takie źródło cichym `continue` — sieć liczyła się bez zasilania,
+    bez śladu i bez kodu gotowości (klasa cichych podstawień A6-12). Walidator
+    ENM zgłasza to jako BLOKADĘ `sources.bus_missing` (kanon
+    `source.connection_missing`); assembler odmawia z nazwą, gdyby ktoś ominął
+    walidację.
+    """
+    return (
+        f"Źródło '{source_ref}' wskazuje nieistniejącą szynę '{bus_ref}' — "
+        "walidator ENM zgłasza `sources.bus_missing`; assembler nie pomija źródeł po cichu."
+    )
 
 
 def ref_to_graph_id(ref_id: str) -> str:
@@ -116,34 +144,184 @@ def _map_tap_changer(
 _IEC60909_RX_ZASILANIA_SYSTEMOWEGO = 0.1
 
 
-def _source_positive_impedance_ohm(source: Source, bus_voltage_kv: float) -> complex | None:
-    """Impedancja zgodna zasilania systemowego Z_Q [Ω] albo ``None``.
+def impedancja_zasilania_systemowego(
+    *,
+    ref_id: str,
+    r_ohm: float | None,
+    x_ohm: float | None,
+    sk3_mva: float | None,
+    rx_ratio: float | None,
+    u_nq_kv: float,
+    ik3_ka: float | None = None,
+    scenario: Scenario = "MAX",
+    sk3_min_mva: float | None = None,
+    ik3_min_ka: float | None = None,
+    rx_ratio_min: float | None = None,
+) -> tuple[complex, dict[str, Any]] | None:
+    """Impedancja zgodna zasilania systemowego Z_Q [Ω] + ślad WHITE BOX wyprowadzenia.
 
-    ``None`` znaczy „źródło nie ma z czego policzyć impedancji" (brak jawnego
-    R/X i brak mocy zwarciowej) — wołający POMIJA takie źródło, zamiast wstawiać
-    za nie liczbę.
+    IEC 60909-0:2016 §6.2.1 eq. (6): Z_Q = c·U_nQ / (√3·I''_kQ) = c·U_nQ²/S''_kQ —
+    współczynnik napięciowy c (Tab. 1, pasmo napięcia węzła przyłączenia Q,
+    ``c_for_node``) jest CZĘŚCIĄ definicji impedancji zastępczej sieci zasilającej,
+    bo deklarowana przez OSD moc zwarciowa S''_kQ została policzona ze źródłem
+    zastępczym c·U_nQ/√3 za tą impedancją. Bez c (stan do CV-4.3 K6, 2026-09-06)
+    prąd zwarciowy w samym węźle przyłączenia wychodził c·I''_kQ — o 10 % (SN/WN)
+    lub 5 % (nN) ponad wartość deklarowaną; po K6 bieg w węźle przyłączenia odtwarza
+    I''_kQ dokładnie (test ``tests/enm/test_z_q_wspolczynnik_c.py``).
+
+    Scenariusze (CV-4.3 K7, ``tests/enm/test_k7_sk_min.py``):
+    - MAX: c_max(U_nQ) z S''_kQmax (albo I''_kQmax — eq. (6) zapisana prądem), R/X z
+      ``rx_ratio`` albo IEC 0,1;
+    - MIN z danymi MIN: c_min(U_nQ) z S''_kQmin/I''_kQmin, R/X z ``rx_ratio_min`` →
+      ``rx_ratio`` → IEC 0,1; Ik''(Q, MIN) = I''_kQmin dokładnie (jak pandapower
+      ``case="min"``: z = c_min·U²/s_sc_min);
+    - MIN BEZ danych MIN: Z_Q = Z_Qmax (c_max, S''_kQmax) — impedancja fizyczna z jedynej
+      deklarowanej danej; c_min wchodzi wyłącznie do źródła napięciowego w węźle zwarcia
+      (assembler/solver), więc Ik''min(Q) = (c_min/c_max)·I''_kQmax. Literalne
+      c_min·U²/S''_kQmax dałoby Ik''min(Q) = I''_kQmax. Założenie jest NIEKONSERWATYWNE
+      dla czułości zabezpieczeń (prawdziwe Z_Qmin ≥ Z_Qmax) — dlatego NIGDY cicho:
+      ślad niesie ``zalozenie = source.sk_min_missing`` (kod gotowości), a wykonawca
+      publikuje je w ``raw_result.zalozenia``.
+
+    Postać WARTOŚCIOWA (nie ``Source``) — CV-4.3 K1 (KLASA NIE INSTANCJA): do karty
+    K2 (2026-09-09) ``application/reference_networks/computation.py::
+    build_short_circuit_graph_from_enm`` potrzebował TEJ SAMEJ formuły dla źródła
+    w starym dialekcie słownikowym (``sk_max_mva``/``rx_ratio`` wprost w dict);
+    ten plik i całe `computation.py` skasowane kartą K2 — wrapper
+    ``impedancja_zrodla_sieciowego`` (jedyny żyjący konsument dziś) podaje tu pola
+    pydantic ``Source``. Jedna formuła, zero kopii — druga kopia rozjechałaby się
+    przy pierwszej zmianie (dokładnie tak, jak do K6 rozjechał się most pandapower
+    i mapper). Tryb danych rozstrzyga ``enm.zrodlo_zwarcie.tryb_danych``
+    — TEN SAM predykat, którym walidator i gotowość sprawdzają, czy źródło jest
+    policzalne (predykaty parami).
+
+    Tryb ``r_ohm``/``x_ohm`` (impedancja jawna) = impedancja fizyczna z modelu, bez c i
+    bez wariantu MIN. ``None`` znaczy „źródło nie ma z czego policzyć impedancji"
+    (brak jawnego R/X, S''_kQ i I''_kQ) — wołający POMIJA takie źródło, zamiast
+    wstawiać za nie liczbę.
     """
-    if source.r_ohm is not None and source.x_ohm is not None:
-        return complex(source.r_ohm, source.x_ohm)
-    if source.sk3_mva is None or source.sk3_mva <= 0:
+    tryb = tryb_danych(r_ohm=r_ohm, x_ohm=x_ohm, sk3_mva=sk3_mva, ik3_ka=ik3_ka)
+    if tryb is None:
         return None
-    z_abs = (bus_voltage_kv**2) / source.sk3_mva
-    rx = (
-        source.rx_ratio
-        if source.rx_ratio is not None and source.rx_ratio > 0
-        else _IEC60909_RX_ZASILANIA_SYSTEMOWEGO
+    if tryb is TrybDanych.IMPEDANCJA_JAWNA:
+        assert r_ohm is not None and x_ohm is not None
+        z_ohm = complex(r_ohm, x_ohm)
+        return z_ohm, {
+            "ref_id": ref_id,
+            "tryb": TrybDanych.IMPEDANCJA_JAWNA.value,
+            "scenariusz": scenario,
+            "u_nq_kv": u_nq_kv,
+            "z_q_ohm": {"re": z_ohm.real, "im": z_ohm.imag},
+            "formula": (
+                "Z_Q = R_Q + jX_Q (impedancja jawna z modelu, bez c; "
+                "scenariusz MIN: c_min wyłącznie w źródle napięciowym)"
+            ),
+        }
+    tryb_min = tryb_danych(sk3_mva=sk3_min_mva, ik3_ka=ik3_min_ka)
+    uzyj_min = scenario == "MIN" and tryb_min is not None
+    rx_wartosc: float | None
+    if uzyj_min:
+        assert tryb_min is not None
+        tryb_uzyty = tryb_min
+        c = c_for_node(u_nq_kv, "MIN")
+        sk_deklarowane, ik_deklarowane = sk3_min_mva, ik3_min_ka
+        etykieta = f"{tryb_uzyty.value}_MIN"
+        if dodatnia(rx_ratio_min):
+            rx_zrodlo, rx_wartosc = "MODEL_MIN", rx_ratio_min
+        elif dodatnia(rx_ratio):
+            rx_zrodlo, rx_wartosc = "MODEL_MAX", rx_ratio
+        else:
+            rx_zrodlo, rx_wartosc = "IEC_60909_DOMYSLNY_0_1", _IEC60909_RX_ZASILANIA_SYSTEMOWEGO
+    else:
+        tryb_uzyty = tryb
+        c = c_for_node(u_nq_kv, "MAX")
+        sk_deklarowane, ik_deklarowane = sk3_mva, ik3_ka
+        etykieta = tryb_uzyty.value if scenario == "MAX" else f"{tryb_uzyty.value}_MAX_JAKO_MIN"
+        if dodatnia(rx_ratio):
+            rx_zrodlo, rx_wartosc = "MODEL", rx_ratio
+        else:
+            rx_zrodlo, rx_wartosc = "IEC_60909_DOMYSLNY_0_1", _IEC60909_RX_ZASILANIA_SYSTEMOWEGO
+    assert rx_wartosc is not None
+    rx = float(rx_wartosc)
+    ik: float | None = None
+    if tryb_uzyty is TrybDanych.MOC_ZWARCIOWA:
+        assert sk_deklarowane is not None
+        sk = float(sk_deklarowane)
+    else:
+        assert ik_deklarowane is not None
+        ik = float(ik_deklarowane)
+        sk = moc_zwarciowa_z_pradu_mva(kv_na_v(u_nq_kv), ka_na_a(ik))
+    z_abs = c * impedancja_z_napiecia_i_mocy_ohm(u_nq_kv, sk)
+    x_q_ohm = z_abs / math.sqrt(1.0 + rx**2)
+    r_q_ohm = x_q_ohm * rx
+    z_ohm = complex(r_q_ohm, x_q_ohm)
+    slad: dict[str, Any] = {
+        "ref_id": ref_id,
+        "tryb": etykieta,
+        "scenariusz": scenario,
+        "u_nq_kv": u_nq_kv,
+        "sk3_mva": sk,
+        **({"ik3_ka": ik} if ik is not None else {}),
+        "c": c,
+        "pasmo_c": "nN" if u_nq_kv <= 1.0 else "SN/WN",
+        "rx_ratio": rx,
+        "rx_ratio_zrodlo": rx_zrodlo,
+        "z_q_abs_ohm": z_abs,
+        "z_q_ohm": {"re": z_ohm.real, "im": z_ohm.imag},
+        "formula": (
+            ("Z_Q = c·U_nQ/(√3·I''_kQ)" if ik is not None else "Z_Q = c·U_nQ²/S''_kQ")
+            + " (IEC 60909-0:2016 §6.2.1 eq. 6; c = "
+            + ("c_min" if uzyj_min else "c_max")
+            + "); X_Q = Z_Q/√(1+(R/X)²); R_Q = X_Q·(R/X)"
+        ),
+    }
+    if scenario == "MIN" and not uzyj_min:
+        slad["zalozenie"] = KOD_SK_MIN_BRAK
+        slad["zalozenie_opis"] = (
+            "Brak S''_kQmin/I''_kQmin: Z_Q z danych MAX (c_max, S''_kQmax), c_min tylko w "
+            "źródle napięciowym — Ik''min(Q) = (c_min/c_max)·I''_kQmax; założenie "
+            "niekonserwatywne dla czułości zabezpieczeń (Z_Qmin ≥ Z_Qmax)."
+        )
+    return z_ohm, slad
+
+
+def impedancja_zrodla_sieciowego(
+    source: Source, bus_voltage_kv: float, scenario: Scenario = "MAX"
+) -> tuple[complex, dict[str, Any]] | None:
+    """Z_Q + ślad dla ``Source`` ENM — wrapper nad ``impedancja_zasilania_systemowego``."""
+    return impedancja_zasilania_systemowego(
+        ref_id=source.ref_id,
+        r_ohm=source.r_ohm,
+        x_ohm=source.x_ohm,
+        sk3_mva=source.sk3_mva,
+        rx_ratio=source.rx_ratio,
+        u_nq_kv=bus_voltage_kv,
+        ik3_ka=source.ik3_ka,
+        scenario=scenario,
+        sk3_min_mva=source.sk3_min_mva,
+        ik3_min_ka=source.ik3_min_ka,
+        rx_ratio_min=source.rx_ratio_min,
     )
-    x_ohm = z_abs / math.sqrt(1.0 + rx**2)
-    r_ohm = x_ohm * rx
-    return complex(r_ohm, x_ohm)
 
 
-def _source_zero_impedance_ohm(source: Source, bus_voltage_kv: float) -> complex | None:
+def _source_positive_impedance_ohm(
+    source: Source, bus_voltage_kv: float, scenario: Scenario = "MAX"
+) -> complex | None:
+    """Impedancja zgodna Z_Q [Ω] albo ``None`` — patrz ``impedancja_zrodla_sieciowego``."""
+    wynik = impedancja_zrodla_sieciowego(source, bus_voltage_kv, scenario)
+    return None if wynik is None else wynik[0]
+
+
+def _source_zero_impedance_ohm(
+    source: Source, bus_voltage_kv: float, scenario: Scenario = "MAX"
+) -> complex | None:
+    """Z0 źródła: jawne R0/X0 (fizyczne, bez scenariusza) albo (Z0/Z1)·Z_Q(scenariusz)."""
     if source.r0_ohm is not None and source.x0_ohm is not None:
         return complex(source.r0_ohm, source.x0_ohm)
-    if source.z0_z1_ratio is None or source.z0_z1_ratio <= 0:
+    if not dodatnia(source.z0_z1_ratio):
         return None
-    z1 = _source_positive_impedance_ohm(source, bus_voltage_kv)
+    assert source.z0_z1_ratio is not None
+    z1 = _source_positive_impedance_ohm(source, bus_voltage_kv, scenario)
     if z1 is None:
         return None
     return z1 * source.z0_z1_ratio
@@ -170,7 +348,7 @@ def _add_series_admittance(
 
 
 def _assemble_zero_sequence_y0(
-    enm: EnergyNetworkModel, graph: NetworkGraph
+    enm: EnergyNetworkModel, graph: NetworkGraph, scenario: Scenario = "MAX"
 ) -> tuple[AdmittanceMatrixBuilder, dict[str, int], int, np.ndarray, list[dict]]:
     """Składa macierz Y0 (składowej zerowej) z pól ENM + ślad WHITE BOX.
 
@@ -278,14 +456,37 @@ def _assemble_zero_sequence_y0(
     for source in sorted(enm.sources, key=lambda s: s.ref_id):
         bus_id = ref_to_node_id.get(source.bus_ref)
         if bus_id not in node_index:
+            raise ValueError(_odmowa_zrodla_bez_szyny(source.ref_id, source.bus_ref))
+        # Karta FAB-D1 (D7): `bus_voltage`/`ref_to_node_id` powstają z TEGO SAMEGO
+        # `enm.buses` (w. 198-199), więc szyna, która przeszła kontrolę `bus_id
+        # not in node_index` wyżej, ma zawsze wpis w `bus_voltage` — sentinel
+        # 0.0 nie mógł się tu wykonać ani razu. Jawny warunek (zamiast cichego
+        # `.get(ref, 0.0)`) sygnalizuje ślad WHITE BOX, gdyby ten niezmiennik
+        # kiedyś pękł, zamiast po cichu policzyć fizykę z zerowym napięciem.
+        if source.bus_ref not in bus_voltage:
+            tracer.add(
+                key=f"z0_source_bus_voltage_missing[{source.ref_id}]",
+                title=(
+                    f"Źródło {source.name or source.ref_id}: pominięte w Y0 "
+                    "(brak napięcia szyny)"
+                ),
+                formula_latex=r"\text{brak } U_n(\mathrm{bus})",
+                inputs={"ref_id": source.ref_id, "bus_ref": source.bus_ref},
+                substitution=(
+                    "Szyna źródła nie ma zarejestrowanego napięcia znamionowego — "
+                    "pominięto wkład do macierzy Y0."
+                ),
+                result={},
+                notes="OSTRZEZENIE: brak napiecia szyny zrodla w sieci skladowej zerowej.",
+            )
             continue
-        bus_voltage_kv = bus_voltage.get(source.bus_ref, 0.0)
+        bus_voltage_kv = bus_voltage[source.bus_ref]
         if bus_voltage_kv <= 0:
             continue
         # Wlasna nazwa (nie `z0_ohm` z petli galeziowej wyzej): tam wartosc jest
         # ZAWSZE zespolona, tu MOZE byc None (zrodlo bez danych skladowej zerowej).
         # Wspoldzielenie jednej nazwy chowalo te roznice przed analiza typow.
-        z0_source_ohm = _source_zero_impedance_ohm(source, bus_voltage_kv)
+        z0_source_ohm = _source_zero_impedance_ohm(source, bus_voltage_kv, scenario)
         if z0_source_ohm is None:
             continue
         if z0_source_ohm == 0:
@@ -345,7 +546,9 @@ def _assemble_zero_sequence_y0(
     return builder, node_index, size, y0_bus, tracer.to_list() + transformer_trace
 
 
-def build_zero_sequence_zbus(enm: EnergyNetworkModel, graph: NetworkGraph) -> np.ndarray:
+def build_zero_sequence_zbus(
+    enm: EnergyNetworkModel, graph: NetworkGraph, *, scenario: Scenario = "MAX"
+) -> np.ndarray:
     """
     Build the zero-sequence Z-bus from ENM fields without mutating the graph.
 
@@ -367,7 +570,7 @@ def build_zero_sequence_zbus(enm: EnergyNetworkModel, graph: NetworkGraph) -> np
     fabrykacją wyniku — zakazaną. Jawne sprawdzenie rangi wyłapuje ten
     przypadek niezależnie od tego, czy LU akurat zgłosi wyjątek.
     """
-    _, _, size, y0_bus, _ = _assemble_zero_sequence_y0(enm, graph)
+    _, _, size, y0_bus, _ = _assemble_zero_sequence_y0(enm, graph, scenario)
     if np.linalg.matrix_rank(y0_bus) < size:
         raise ValueError(
             "Zero-sequence Y-bus is singular; cannot compute Z0-bus "
@@ -393,7 +596,12 @@ def build_zero_sequence_trace(enm: EnergyNetworkModel, graph: NetworkGraph) -> l
 # short-circuit source model. Full converters (§6.7 bounded current source) →
 # InverterSource; rotating machines → voltage-behind-Z″ (§6.3 synchronous / §6.7
 # asynchronous, incl. DFIG Type 3 crowbar).
-_FULL_CONVERTER_SC_GEN_TYPES: dict[str, ConverterKind] = {
+# Public (no leading underscore): karta FAB-H reuses this exact set as the
+# single source of truth for "which gen_type needs a catalog k_sc" in
+# application/calculation_readiness/service.py — importing the SAME dict
+# instead of re-deriving an independent copy (reguła KLASA NIE INSTANCJA:
+# two independently-maintained sets are a defect waiting for drift).
+FULL_CONVERTER_SC_GEN_TYPES: dict[str, ConverterKind] = {
     "pv_inverter": ConverterKind.PV,
     "bess": ConverterKind.BESS,
     "wind_inverter": ConverterKind.WIND,
@@ -407,8 +615,14 @@ _ASYNC_GEN_TYPES: dict[str, bool] = {
 
 
 def _gen_quantity(gen: Generator) -> int:
-    """Number of parallel units the generator element represents (≥ 1)."""
-    q = gen.quantity or gen.n_parallel or 1
+    """Number of parallel units the generator element represents (≥ 1).
+
+    ``quantity`` (explicit unit count) takes priority over ``n_parallel``
+    (identical-units-in-parallel neutral-element reading via
+    ``enm.models.liczba_torow`` — karta CI-A 2026-09-04, jedyna definicja tej
+    reguly, wspolna z Cable/Transformer wyzej w tym pliku).
+    """
+    q = gen.quantity or liczba_torow(gen)
     return q if q >= 1 else 1
 
 
@@ -450,7 +664,7 @@ def _add_generator_sc_sources(
     enm: EnergyNetworkModel,
     graph: NetworkGraph,
     ref_to_node_id: dict[str, str],
-) -> None:
+) -> list[dict]:
     """G-SCM (V12K-054): wire ``enm.generators`` as IEC 60909 short-circuit sources.
 
     Closes the forward-phantom where DER/machines placed by the designer contributed
@@ -460,14 +674,34 @@ def _add_generator_sc_sources(
     generator becomes the IEC-correct SC source for its ``gen_type``.
 
     Zero fabrication: a source is built ONLY from a real nameplate (rated power +
-    voltage). The decay/reactance factors (x″d, k_sc, I_LR) use the domain models'
-    documented IEC-typical defaults (``core/machine.py`` / ``core/inverter.py``) —
-    WHITE BOX, the same defaulting pattern as the external-source ``rx`` ratio.
+    voltage). The decay/reactance factor x″d uses the domain models' documented
+    IEC-typical default (``core/machine.py``) — WHITE BOX, the same defaulting
+    pattern as the external-source ``rx`` ratio.
+
+    ``k_sc`` (udział zwarciowy falownika wg IEC 60909) — karta FAB-H (naprawa
+    znaleziska FAB-D1/D7): katalog konwertera (``ConverterType``/``PVInverterType``/
+    ``BESSInverterType``) MOŻE nieść ``k_sc`` z karty producenta (odczytany tu z
+    ``materialized_params["k_sc"]``). Gdy karta go NIE niesie, przyjmuje się IEC
+    1,1 jako ZAREJESTROWANE ZAŁOŻENIE — nie cichy numer: ``InverterSource.k_sc_zrodlo``
+    (IR, ``core/inverter.py``) niesie proweniencję ("KATALOG"/"ZALOZENIE"), a ta
+    funkcja zwraca ślad WHITE BOX (jeden wpis na każde takie założenie) surowany
+    przez wywołującego na ``graph.k_sc_assumptions_trace``; gotowość zgłasza WARNING
+    ``inverter.k_sc_assumed`` (`application/calculation_readiness/service.py`). Sieć
+    bez k_sc w KAŻDEJ karcie daje DOKŁADNIE ten sam wynik zwarciowy co przed tą
+    kartą (1,1) — zmienia się wyłącznie proweniencja i ślad, nigdy liczba.
     Deterministic: iteration is id-sorted and each source id is the generator ref_id.
     A no-op when there are no generators, so machine-free networks keep a
     byte-identical SC Y-bus (the ybus machine shunt / inverter superposition are
     themselves no-ops without sources).
+
+    Returns:
+        WHITE BOX trace entries (possibly empty) — one per generator whose k_sc
+        was a REGISTERED ASSUMPTION (catalog card silent on k_sc), sorted by
+        generator ref_id (same determinism as the generator iteration above).
     """
+    from network_model.whitebox.tracer import WhiteBoxTracer
+
+    tracer = WhiteBoxTracer()
     bus_voltage_by_ref = {b.ref_id: b.voltage_kv for b in enm.buses}
     for gen in sorted(enm.generators, key=lambda g: g.ref_id):
         gen_type = gen.gen_type
@@ -481,21 +715,52 @@ def _add_generator_sc_sources(
         if un_kv is None:
             continue
 
-        if gen_type in _FULL_CONVERTER_SC_GEN_TYPES:
+        if gen_type in FULL_CONVERTER_SC_GEN_TYPES:
             sr_mva = _gen_rated_apparent_mva(gen, mp)
             if sr_mva is None:
                 continue
-            in_rated_a = sr_mva * 1.0e6 / (math.sqrt(3.0) * un_kv * 1.0e3)
-            k_sc = mp.get("k_sc")
+            in_rated_a = prad_znamionowy_a(sr_mva, un_kv)
+            k_sc_raw = mp.get("k_sc")
+            if (
+                isinstance(k_sc_raw, int | float)
+                and not isinstance(k_sc_raw, bool)
+                and k_sc_raw > 0
+            ):
+                k_sc_value = float(k_sc_raw)
+                k_sc_zrodlo: Literal["KATALOG", "ZALOZENIE"] = "KATALOG"
+            else:
+                k_sc_value = 1.1
+                k_sc_zrodlo = "ZALOZENIE"
+                tracer.add(
+                    key=f"k_sc_zalozenie_{gen.ref_id}",
+                    title="Założenie: udział zwarciowy falownika k_sc",
+                    formula_latex=r"I_k = k_{sc} \cdot I_n",
+                    inputs={
+                        "generator_ref": gen.ref_id,
+                        "catalog_ref": gen.catalog_ref,
+                    },
+                    substitution=(
+                        "k_sc = 1,1 przyjęte — brak danych karty katalogowej konwertera "
+                        f"{gen.catalog_ref or '(brak referencji katalogowej)'}"
+                    ),
+                    result={"k_sc": k_sc_value},
+                    notes=(
+                        "ZAREJESTROWANE ZAŁOŻENIE (karta FAB-H): karta katalogowa "
+                        "konwertera nie niesie k_sc — przyjęto wartość domyślną IEC "
+                        "60909 (1,1). Wpisz k_sc w karcie katalogowej, aby zastąpić "
+                        "założenie zmierzoną wartością producenta."
+                    ),
+                )
             graph.add_inverter_source(
                 InverterSource(
                     id=gen.ref_id,
                     name=gen.name,
                     node_id=node_id,
                     type_ref=gen.catalog_ref,
-                    converter_kind=_FULL_CONVERTER_SC_GEN_TYPES[gen_type],
+                    converter_kind=FULL_CONVERTER_SC_GEN_TYPES[gen_type],
                     in_rated_a=in_rated_a,
-                    k_sc=float(k_sc) if isinstance(k_sc, int | float) and k_sc > 0 else 1.1,
+                    k_sc=k_sc_value,
+                    k_sc_zrodlo=k_sc_zrodlo,
                     contributes_negative_sequence=True,
                     contributes_zero_sequence=False,
                 )
@@ -541,8 +806,47 @@ def _add_generator_sc_sources(
                 async_kwargs["i_lr_ratio"] = float(i_lr)
             graph.add_asynchronous_machine_source(AsynchronousMachineSource(**async_kwargs))
 
+    return tracer.to_list()
 
-def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
+
+def build_inverter_k_sc_trace(enm: EnergyNetworkModel) -> list[dict]:
+    """Ślad WHITE BOX zarejestrowanych założeń k_sc (udziału zwarciowego falownika).
+
+    Karta FAB-H — ten sam wzorzec co ``build_zero_sequence_trace`` powyżej: funkcja
+    publiczna, wywoływalna niezależnie od pełnego biegu SC, do wglądu/testów w ślad
+    założeń bez konieczności uruchamiania solvera. Pusta lista, gdy każdy konwerter
+    ma jawne ``k_sc`` w karcie katalogowej (albo gdy sieć nie ma konwerterów).
+    """
+    return map_enm_to_network_graph(enm).k_sc_assumptions_trace
+
+
+def build_grid_source_trace(
+    enm: EnergyNetworkModel, scenario: Scenario = "MAX"
+) -> list[dict[str, Any]]:
+    """Ślad WHITE BOX wyprowadzenia Z_Q każdego źródła sieciowego (CV-4.3 K6).
+
+    Ten sam wzorzec co ``build_inverter_k_sc_trace``: funkcja publiczna, do wglądu
+    bez biegu solvera; jeden wpis na źródło z policzalną impedancją (tryb mocy
+    zwarciowej z c wg IEC 60909-0 eq. (6) albo impedancja jawna), w kolejności
+    ``ref_id`` źródeł. Źródło bez danych (``None``) nie ma wpisu — tak samo jak nie
+    ma bocznika Y_Q w grafie (``map_enm_to_network_graph``): jeden predykat.
+    """
+    napiecie = {bus.ref_id: bus.voltage_kv for bus in enm.buses}
+    slad: list[dict[str, Any]] = []
+    for source in sorted(enm.sources, key=lambda s: s.ref_id):
+        u_kv = napiecie.get(source.bus_ref, 0.0)
+        if u_kv <= 0:
+            continue
+        wynik = impedancja_zrodla_sieciowego(source, u_kv, scenario)
+        if wynik is None or wynik[0] == 0:
+            continue
+        slad.append(wynik[1])
+    return slad
+
+
+def map_enm_to_network_graph(
+    enm: EnergyNetworkModel, *, scenario: Scenario = "MAX"
+) -> NetworkGraph:
     """
     Map ENM to NetworkGraph consumed by existing solvers.
 
@@ -577,9 +881,53 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
                 zip_coeffs_from_materialized_params(load.materialized_params),
             )
         )
+    # Karta FAB-H (H2, KLASA NIE INSTANCJA): moc bierna wytwórcy rozstrzygana przez
+    # JEDNO wspólne źródło prawdy (moc_bierna_wytworcy), tak samo jak w
+    # canonical_analysis.py/v126_contracts.py i w bramce gotowości
+    # (calculation_readiness/service.py::_generator_q_mvar_jawne). BRAK => 0,0
+    # jako WYŁĄCZNIE strukturalne wypełnienie grafu (ten sam graf służy też
+    # zwarciom, gdzie Q nie jest potrzebne) — rozpływ mocy jest zablokowany PRZED
+    # tym punktem przez BLOCKER `generator.q_missing`, gdy Q jest naprawdę
+    # nieznane (nie wyprowadzalne z jawnego Q-set-pointu karty).
+    from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
+
     for gen in enm.generators:
         bus_p[gen.bus_ref] = bus_p.get(gen.bus_ref, 0.0) + gen.p_mw
-        bus_q[gen.bus_ref] = bus_q.get(gen.bus_ref, 0.0) + (gen.q_mvar or 0.0)
+        wynik_q = moc_bierna_wytworcy(gen, gen.materialized_params)
+        # Q nieznane = wklad POMINIETY, nie 0,0 (ten sam predykat co BLOCKER
+        # `generator.q_missing` w bramce gotowosci — jedno zrodlo prawdy).
+        if wynik_q.q_mvar is not None:
+            bus_q[gen.bus_ref] = bus_q.get(gen.bus_ref, 0.0) + wynik_q.q_mvar
+
+    # Karta CV-4.1b (A3-04): generator w trybie regulacji napięcia
+    # (`meta.control_mode == "REGULACJA_NAPIECIA"`) czyni swoją szynę węzłem PV
+    # (napięcie zadane, moc bierna wynikiem solvera) zamiast PQ — konstytucja A3-04
+    # ("pv_bus_ids=[] zawsze" był defektem: generator z regulacją napięcia był
+    # liczony jak węzeł obciążeniowy). JEDNA CHARAKTERYSTYKA NA WĘZEŁ (jak
+    # `_build_converter_control_by_node` w `enm/assembler.py` dla cosφ/Q(U)): dwa
+    # generatory z aktywną regulacją napięcia na tej samej szynie są nieprzedstawialne
+    # w kontrakcie solvera (`PowerFlowInput.pv` niesie jedną nastawę na węzeł) —
+    # odrzucane jawnym błędem, nigdy po cichu (ostatni wygrywa).
+    bus_voltage_control: dict[str, float | None] = {}
+    bus_voltage_control_gen_ref: dict[str, str] = {}
+    for gen in sorted(enm.generators, key=lambda g: g.ref_id):
+        meta = gen.meta or {}
+        if str(meta.get("control_mode") or "").strip() != "REGULACJA_NAPIECIA":
+            continue
+        if gen.bus_ref in bus_voltage_control_gen_ref:
+            raise ValueError(
+                f"Szyna '{gen.bus_ref}' ma więcej niż jeden generator w trybie "
+                f"regulacji napięcia ('{bus_voltage_control_gen_ref[gen.bus_ref]}' i "
+                f"'{gen.ref_id}') — kontrakt rozpływu dopuszcza jedną nastawę "
+                "napięcia na węzeł."
+            )
+        u_set_raw = meta.get("u_set_pu")
+        bus_voltage_control[gen.bus_ref] = (
+            float(u_set_raw)
+            if isinstance(u_set_raw, int | float) and not isinstance(u_set_raw, bool)
+            else None
+        )
+        bus_voltage_control_gen_ref[gen.bus_ref] = gen.ref_id
 
     # Map ref_id → node_id for cross-referencing
     ref_to_node_id: dict[str, str] = {}
@@ -601,8 +949,19 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
         # scale, so nothing is carried (historical path, unchanged).
         zip_load_p = bus_load_p.get(bus.ref_id, 0.0) if bus_zip is not None else None
         zip_load_q = bus_load_q.get(bus.ref_id, 0.0) if bus_zip is not None else None
+        has_voltage_control = bus.ref_id in bus_voltage_control
 
         if is_slack:
+            # Karta CV-4.1b (A3-04): szyna bilansująca (SLACK) ma już zadane napięcie
+            # (moduł I kąt) — nie może JEDNOCZEŚNIE być węzłem PV regulowanym przez
+            # generator (dwie sprzeczne nastawy modułu napięcia tej samej szyny).
+            if has_voltage_control:
+                raise ValueError(
+                    f"Szyna bilansująca '{bus.ref_id}' nie może być jednocześnie "
+                    f"węzłem regulacji napięcia generatora "
+                    f"'{bus_voltage_control_gen_ref[bus.ref_id]}' — szyna SLACK ma "
+                    "już zadane napięcie źródła zasilania."
+                )
             node = Node(
                 id=node_id,
                 name=bus.name,
@@ -615,6 +974,23 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
                 zip_coeffs=bus_zip,
                 zip_load_active_power=zip_load_p,
                 zip_load_reactive_power=zip_load_q,
+            )
+        elif has_voltage_control:
+            # Karta CV-4.1b (A3-04): węzeł PV — napięcie ZADANE (nastawa generatora
+            # z regulacją), moc bierna WYNIKIEM solvera (nie jest tu deklarowana —
+            # tak jak na szynie SLACK powyżej). `voltage_magnitude=None` (nastawa
+            # niekompletna, np. bieg z pominięciem walidatora ENM) daje jawny błąd
+            # KONSTRUKCJI węzła (Node.__post_init__: „Węzeł PV wymaga zdefiniowanej
+            # amplitudy napięcia") — solver FROZEN nigdy nie dostaje fabrykowanej
+            # nastawy 1,0 pu za brakującą.
+            node = Node(
+                id=node_id,
+                name=bus.name,
+                node_type=NodeType.PV,
+                voltage_level=bus.voltage_kv,
+                voltage_magnitude=bus_voltage_control[bus.ref_id],
+                active_power=p,
+                reactive_power=q if q != 0.0 else None,
             )
         else:
             node = Node(
@@ -642,7 +1018,7 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
         if isinstance(branch, OverheadLine | Cable):
             b_us_per_km = 0.0
             if branch.b_siemens_per_km is not None:
-                b_us_per_km = branch.b_siemens_per_km * 1e6  # S/km → μS/km
+                b_us_per_km = simens_na_mikrosimens(branch.b_siemens_per_km)  # S/km → μS/km
 
             rated_a = 0.0
             if branch.rating and branch.rating.in_a:
@@ -651,12 +1027,14 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
             # P0.1 nN (karta P0.1, add_nn_cable_segment): n torow identycznych
             # kabli na TEJ SAMEJ trasie. TA SAMA zasada co Transformer.n_parallel
             # (Z/n, Sn*n) — n identycznych impedancji w rownoleglym polaczeniu
-            # dziela sie na n, obciazalnosc mnozy sie przez n. getattr z None
+            # dziela sie na n, obciazalnosc mnozy sie przez n. `liczba_torow`
             # obejmuje OverheadLine (pole nie istnieje na tym typie — brak zmiany
-            # zachowania linii napowietrznych). None/1 = pojedynczy tor
-            # (reduce-to-current-behavior, bajtowo identyczne dla istniejacych
-            # kabli SN i nN bez tego pola).
-            n_parallel_cable = getattr(branch, "n_parallel", None) or 1
+            # zachowania linii napowietrznych, patrz jej docstring). None/1 =
+            # pojedynczy tor (reduce-to-current-behavior, bajtowo identyczne dla
+            # istniejacych kabli SN i nN bez tego pola). Karta CI-A
+            # (2026-09-04): JEDYNA definicja tej reguly zyje w
+            # `enm.models.liczba_torow` — byla tu wlasna kopia `or 1`.
+            n_parallel_cable = liczba_torow(branch)
             r_ohm_per_km_eff = branch.r_ohm_per_km / n_parallel_cable
             x_ohm_per_km_eff = branch.x_ohm_per_km / n_parallel_cable
             b_us_per_km_eff = b_us_per_km * n_parallel_cable
@@ -685,8 +1063,9 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
                 # kryterium niesprawdzalne": `analysis/energy_validation/builder.py`
                 # (pozycja NOT_COMPUTED „Brak pradu znamionowego galezi"),
                 # `analysis/power_flow/analysis.py`, `application/sld/overlay_builder.py`
-                # i `application/reference_networks/station_archetype_substrate.py`
-                # bramkuja `rated > 0`. Ta sama klasa defektu zostala juz naprawiona
+                # i `backend/tests/reference_networks/station_archetype_substrate.py`
+                # (przeniesiony z `application/reference_networks/` karta K2,
+                # 2026-09-09) bramkuja `rated > 0`. Ta sama klasa defektu zostala juz naprawiona
                 # w imporcie XLSX (`application/xlsx_import/importer.py`: „ZERO
                 # WARTOSCI FIKCYJNYCH … 0.0 = wielkosc nieznana") oraz w moscie
                 # wejsciowym V12.6 (630 A / 300 A per aparat) — tu byla ostatnia
@@ -769,7 +1148,9 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
         # G-STK-6: n identycznych jednostek równoległych → impedancja zastępcza
         # Z/n. Solver liczy Z z Sn i uk (Z = uk%·Un²/Sn), więc agregat = Sn×n daje
         # dokładnie Z/n. Domyślnie n=1 (bez zmiany dla istniejących modeli).
-        n_parallel = trafo.n_parallel or 1
+        # Karta CI-A (2026-09-04): JEDYNA definicja tej reguly — wspolna z
+        # Cable wyzej — zyje w `enm.models.liczba_torow`.
+        n_parallel = liczba_torow(trafo)
         tb = TransformerBranch(
             id=_ref_to_uuid(trafo.ref_id),
             name=trafo.name,
@@ -813,7 +1194,7 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
     for source in sorted(enm.sources, key=lambda s: s.ref_id):
         bus_node_id = ref_to_node_id.get(source.bus_ref)
         if bus_node_id is None:
-            continue
+            raise ValueError(_odmowa_zrodla_bez_szyny(source.ref_id, source.bus_ref))
 
         # Find bus voltage
         bus_voltage_kv = 0.0
@@ -829,7 +1210,7 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
         # DRUGA, dosłowna kopia obliczenia (z własnym literałem R/X = 0,1): dwie
         # kopie tej samej reguły to defekt czekający na zmianę jednej z nich, a
         # różnica między nimi byłaby niewidoczna, bo obie dawały „jakąś" liczbę.
-        z_ohm = _source_positive_impedance_ohm(source, bus_voltage_kv)
+        z_ohm = _source_positive_impedance_ohm(source, bus_voltage_kv, scenario)
         if z_ohm is None or z_ohm == 0:
             continue
 
@@ -845,6 +1226,6 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
     # 5. Generators (DER / rotating machines) → IEC 60909 SC sources (G-SCM, V12K-054).
     #    Without this the designer's PV/BESS/wind/synchronous sources contributed only
     #    P/Q to the load flow and ZERO fault current to the short circuit.
-    _add_generator_sc_sources(enm, graph, ref_to_node_id)
+    graph.k_sc_assumptions_trace = _add_generator_sc_sources(enm, graph, ref_to_node_id)
 
     return graph

@@ -12,9 +12,7 @@ AnalysisCapability = Literal[
     "LOAD_FLOW_GS_DIAGNOSTIC",
     "LOAD_FLOW_FD_PERFORMANCE",
     "PHASE_STATE_SN",
-    "SOURCE_FRT_LVRT_HVRT",
     "DYNAMIC_STABILITY",
-    "SOURCE_COMPLIANCE",
     "POWER_QUALITY_HARMONICS",
     "SSCI_IMPEDANCE",
     "VOLTAGE_STABILITY",
@@ -36,7 +34,13 @@ AnalysisCapability = Literal[
 class SolverCapability:
     capability: AnalysisCapability
     analysis_type: str
-    availability: Literal["available"]
+    # Karta W3-E: "withdrawn" dla `HOSTING_CAPACITY`/`OPF_LOSS_LCC` — solver
+    # zdolność ma i wykonuje (`implementation_status` zostaje "implemented"),
+    # ale API odmawia URUCHOMIENIA nowego biegu (410, duplikuje kanon liczony
+    # gdzie indziej). "available" znaczyłoby TU nieprawdę: rodzaj przestał być
+    # dostępny do nowych biegów, choć pozostaje odtwarzalny z biegów
+    # historycznych i uruchamialny wprost w testach solvera.
+    availability: Literal["available", "withdrawn"]
     implementation_status: Literal["implemented"]
     solver_version: str
     required_inputs: tuple[str, ...]
@@ -166,19 +170,14 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         reference_test="phase-state-sn-reference.test.py::test_phase_state_has_proof",
         applicability="Analiza stanu fazowego SN dla asymetrii, przerw fazowych i niezrownowazenia.",
     ),
-    "SOURCE_FRT_LVRT_HVRT": SolverCapability(
-        capability="SOURCE_FRT_LVRT_HVRT",
-        analysis_type="source_compliance",
-        availability="available",
-        implementation_status="implemented",
-        solver_version="source-compliance-v1",
-        required_inputs=("source_type", "operator_profile", "source_profile", "frt_curve"),
-        output_contract="SourceComplianceResultV1",
-        proof_support=True,
-        reportable=True,
-        reference_test="frt-lvrt-hvrt-compliance.test.py::test_source_frt_compliance_for_supported_sources",
-        applicability="PV, BESS oraz farmy wiatrowe PMSG, DFIG i SCIG z LVRT/HVRT/FRT.",
-    ),
+    # USUNIETE (karta W3-D, 2026-09-09): "SOURCE_FRT_LVRT_HVRT" i "SOURCE_COMPLIANCE"
+    # (obie analysis_type="source_compliance", `application/compliance/source_compliance.py`,
+    # skasowany). Kanon fizyki regulacji: `network_model/solvers/power_flow_inverter.py`
+    # (FROZEN); kanon testu zgodnosci typu NC RfG: `network_model/solvers/ncrfg_ptpiree/
+    # engine.py` (FROZEN, 5 profili operatorow) przez `POST /api/ncrfg-tests/run` i
+    # `GET /api/ncrfg-tests/cases/{case_id}/compliance` — poza tym rejestrem
+    # (dyspozycja `analysis_type`-owa `canonical_analysis.py`), wiec nowej pozycji
+    # capability nie dopisano.
     "DYNAMIC_STABILITY": SolverCapability(
         capability="DYNAMIC_STABILITY",
         analysis_type="dynamic_stability",
@@ -191,19 +190,6 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         reportable=True,
         reference_test="dynamic-stability-reference.test.py::test_fault_clear_stability_reportable",
         applicability="Ocena stabilnosci w zdefiniowanym zakresie zaklocen i czasu wylaczenia.",
-    ),
-    "SOURCE_COMPLIANCE": SolverCapability(
-        capability="SOURCE_COMPLIANCE",
-        analysis_type="source_compliance",
-        availability="available",
-        implementation_status="implemented",
-        solver_version="source-compliance-v1",
-        required_inputs=("source_type", "operator_profile", "source_profile", "grid_code_profile"),
-        output_contract="SourceComplianceResultV1",
-        proof_support=True,
-        reportable=True,
-        reference_test="advanced-results-reportability.test.py::test_source_compliance_reportable",
-        applicability="Zgodnosc przyłączeniowa z profilami operatora, Q(U), cos phi(P), FRT/LVRT/HVRT.",
     ),
     "POWER_QUALITY_HARMONICS": SolverCapability(
         capability="POWER_QUALITY_HARMONICS",
@@ -347,7 +333,7 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
     "HOSTING_CAPACITY": SolverCapability(
         capability="HOSTING_CAPACITY",
         analysis_type="hosting_capacity",
-        availability="available",
+        availability="withdrawn",
         implementation_status="implemented",
         solver_version="v126-academic-whitebox-1.0",
         required_inputs=("committed_enm", "stochastic_profiles", "limits"),
@@ -355,12 +341,17 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         proof_support=True,
         reportable=True,
         reference_test="test_v126_academic_solver.py::test_hosting_capacity_is_seeded",
-        applicability="Stochastyczna hosting capacity OZE z deterministycznym Monte Carlo.",
+        applicability=(
+            "Stochastyczna hosting capacity OZE z deterministycznym Monte Carlo — "
+            "wycofana z powierzchni nowych biegów (karta W3-E, 2026-09-09): lokalna "
+            "impedancja Thevenina bez sprzężenia sieci, duplikuje kanon "
+            "`GET /api/oze-analysis/hosting-capacity` (pełny rozpływ)."
+        ),
     ),
     "OPF_LOSS_LCC": SolverCapability(
         capability="OPF_LOSS_LCC",
         analysis_type="opf_loss_lcc",
-        availability="available",
+        availability="withdrawn",
         implementation_status="implemented",
         solver_version="v126-academic-whitebox-1.0",
         required_inputs=("committed_enm", "branch_limits", "cost_profile"),
@@ -368,7 +359,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         proof_support=True,
         reportable=True,
         reference_test="test_v126_academic_solver.py::test_opf_losses_lcc_contract",
-        applicability="Minimalizacja strat, energia strat, LCC i emisja CO2.",
+        applicability=(
+            "Minimalizacja strat, energia strat, LCC i emisja CO2 — wycofana z "
+            "powierzchni nowych biegów (karta W3-E, 2026-09-09): β = 0,45 zaszyte, "
+            "zaczep 0, prąd gałęzi z jednej szyny; duplikuje kanon "
+            "`POST /api/solver/transformer-losses` + badania OLTC."
+        ),
     ),
     "BENCHMARK_VALIDATION": SolverCapability(
         capability="BENCHMARK_VALIDATION",

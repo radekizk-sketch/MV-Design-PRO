@@ -380,7 +380,7 @@ describe('MiniBlockRmuRenderer - PV po stronie nN', () => {
     expect(root?.querySelectorAll('[data-element-kind="pv_inverter"]').length).toBe(2);
   });
 
-  it('K30-116: earthing scheme TN-S badge renderowany w detail variant', () => {
+  it('earthing scheme TN-S badge renderowany w detail variant', () => {
     const { container } = r('detail', { earthingScheme: 'TN-S' });
     const badge = container.querySelector('[data-testid="sld-v2-mini-rmu-earthing-scheme-st-1"]');
     expect(badge).toBeTruthy();
@@ -389,12 +389,12 @@ describe('MiniBlockRmuRenderer - PV po stronie nN', () => {
     expect(text?.getAttribute('data-earthing-scheme')).toBe('TN-S');
   });
 
-  it('K30-116: earthing scheme ukryty w overview variant (clutter prevention)', () => {
+  it('earthing scheme ukryty w overview variant (clutter prevention)', () => {
     const { container } = r('overview', { earthingScheme: 'TN-C-S' });
     expect(container.querySelector('[data-testid="sld-v2-mini-rmu-earthing-scheme-st-1"]')).toBeFalsy();
   });
 
-  it('K30-116: bez earthingScheme prop → brak badge (backward-compat)', () => {
+  it('bez earthingScheme prop → brak badge (backward-compat)', () => {
     const { container } = r('detail');
     expect(container.querySelector('[data-testid="sld-v2-mini-rmu-earthing-scheme-st-1"]')).toBeFalsy();
   });
@@ -647,7 +647,7 @@ describe('MiniBlockFootprints — deriveFootprintType', () => {
   });
 });
 
-describe('MiniBlockRmuRenderer — K30-40 voltage-aware bus', () => {
+describe('MiniBlockRmuRenderer — voltage-aware bus', () => {
   function querySnBus(container: HTMLElement): SVGLineElement | null {
     return container.querySelector('[data-parity-key="station.mini.bus.sn"]');
   }

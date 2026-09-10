@@ -43,6 +43,8 @@ TYPOSZEREG PRZEMYSLOWY:
 
 from typing import Any
 
+from network_model.pochodne import kva_na_mva, mva_na_kva
+
 # =============================================================================
 # TRANSFORMATORY WN/SN (110/15 kV) — Yd11
 # Zrodlo: PN-EN 60076-1:2011 / ZREW Transformatory specyfikacja typ T-42
@@ -926,7 +928,7 @@ def _catalog_token(value: float) -> str:
 
 
 def _kva_label(power_mva: float) -> str:
-    kva = power_mva * 1000
+    kva = mva_na_kva(power_mva)
     return f"{int(kva)} kVA" if kva < 1000 else f"{power_mva:g} MVA"
 
 
@@ -1119,7 +1121,7 @@ def _polish_transformer(
         "id": item_id,
         "name": name,
         "params": {
-            "rated_power_mva": rated_kva / 1000.0,
+            "rated_power_mva": kva_na_mva(rated_kva),
             "voltage_hv_kv": voltage_hv_kv,
             "voltage_lv_kv": voltage_lv_kv,
             "uk_percent": uk_percent,

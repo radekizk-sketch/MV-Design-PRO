@@ -1,6 +1,6 @@
 ﻿# SLD E2E Pipeline Map
 
-**Status:** KANONICZNY | **Wersja:** 1.1 | **Data:** 2026-02-13
+**Status:** KANONICZNY | **Wersja:** 1.2 | **Data:** 2026-09-09 (W1: łańcuch backendowy SLD skasowany)
 **Kontekst:** RUN #3A PR-3A-01 + RUN #3C (topology hardening) — Mapa przeplywa danych E2E dla systemu SLD
 
 ---
@@ -8,53 +8,20 @@
 ## 1. Diagram przeplywa E2E
 
 ```
-NetworkModel (backend)
+EnergyNetworkModel (backend, magazyn projektu `enm/store.py`)
       │
       ▼
 ┌─────────────────────────────────┐
-│  SNAPSHOT                       │
-│  NetworkSnapshot (frozen)       │
-│  fingerprint: SHA-256           │
-│  backend/src/network_model/     │
-│    core/snapshot.py             │
+│  ENM SNAPSHOT (backend)         │
+│  GET /api/cases/{id}/enm        │
+│  backend/src/api/enm.py         │
+│  OUT: EnergyNetworkModel (JSON) │
+│  hash_sha256 = odcisk modelu    │
 └─────────────┬───────────────────┘
-              │
-              ▼
-┌─────────────────────────────────┐
-│  PROJEKCJA SLD (backend)        │
-│  project_snapshot_to_sld()      │
-│  backend/src/network_model/     │
-│    sld_projection.py            │
-│  OUT: SldDiagram(elements)      │
-└─────────────┬───────────────────┘
-              │
-              ▼
-┌─────────────────────────────────┐
-│  ADAPTER NetworkGraph → SLD     │
-│  convert_graph_to_sld_payload() │
-│  build_sld_from_network_graph() │
-│  backend/src/application/sld/   │
-│    network_graph_to_sld.py      │
-│  OUT: SldDiagram + id_map       │
-└─────────────┬───────────────────┘
-              │
-              ▼
-┌─────────────────────────────────┐
-│  LAYOUT (backend)               │
-│  build_auto_layout_diagram()    │
-│  backend/src/application/sld/   │
-│    layout.py                    │
-│  OUT: SldDiagram z pozycjami    │
-└─────────────┬───────────────────┘
-              │
-              ▼ (API REST)
-┌─────────────────────────────────┐
-│  API ENDPOINT                   │
-│  GET /projects/{id}/sld/...     │
-│  backend/src/api/sld.py         │
-│  OUT: SldDiagramDTO (JSON)      │
-└─────────────┬───────────────────┘
-              │
+              │  W1 (2026-09-09): backendowa projekcja/layout/API SLD
+              │  (sld_projection.py, application/sld/**, api/sld.py, SLD ORM)
+              │  SKASOWANE — 0 konsumentów; projekcja ENM → SLD po stronie
+              │  klienta (ui/sld/v2/canvas/enmToSldAdapter.ts)
               ▼ (HTTP → frontend store)
 ┌══════════════════════════════════════════════════════════════════════════┐
 ║                         FRONTEND                                       ║
@@ -184,11 +151,11 @@ NetworkModel (backend)
 
 ### 2.2 Projekcja SLD (backend)
 
-| Plik | Funkcja | Wejscie | Wyjscie |
-|------|---------|---------|---------|
-| `backend/src/network_model/sld_projection.py` | `project_snapshot_to_sld(snapshot)` | NetworkSnapshot | SldDiagram(elements: Bus/Branch/Transformer/Source/Load/Switch) |
-| `backend/src/application/sld/network_graph_to_sld.py` | `convert_graph_to_sld_payload(graph)` | NetworkGraph | SldPayload + id_map (UUID5 deterministic) |
-| `backend/src/application/sld/layout.py` | `build_auto_layout_diagram(payload)` | SldPayload | SldDiagram z pozycjami (BFS od SLACK) |
+SKASOWANA w W1 (2026-09-09): `network_model/sld_projection.py`, `application/sld/network_graph_to_sld.py`,
+`application/sld/layout.py` (i reszta `application/sld/**`), `api/sld.py`, SLD ORM — 0 konsumentów
+produkcyjnych (jedynym pisarzem był skasowany `NetworkWizardService`). Projekcja ENM → SLD żyje po
+stronie klienta (§2.3); projekcja semantyczna backendu = wycinek W7 mapy domknięcia. Bramka
+wskrzeszenia: `scripts/legacy_public_path_guard.py::check_w1_legacy_persistence_resurrection`.
 
 ### 2.3 Topology Adapter (frontend) — DOMAIN-DRIVEN (RUN #3C)
 
@@ -288,13 +255,7 @@ NetworkModel (backend)
 | Plik | Pokrycie |
 |------|----------|
 | `backend/tests/golden/golden_network_sn.py` | Fixture: GPZ + 20 stacji + OZE (PV/BESS) |
-| `backend/tests/application/sld/test_golden_network_sld.py` | Bijekcja, determinizm, topologia, pozycje, skala, payload |
-| `backend/tests/application/sld/test_layout.py` | Algorytm layoutu backend |
-| `backend/tests/application/sld/test_overlay_builder.py` | Budowanie overlay wynikow |
-| `backend/tests/application/sld/test_sld_parity.py` | Parytet z benchmark, brak PCC |
-| `backend/tests/application/sld/test_sld_integration.py` | Integracja E2E backend |
-| `backend/tests/test_sld_projection.py` | Projekcja snapshot → SLD |
-| `backend/tests/test_wizard_sld_unity.py` | Jednosc Wizard-SLD, determinizm |
+| ~~`backend/tests/application/sld/*`, `test_sld_projection.py`, `test_wizard_sld_unity.py`~~ | usunięte w W1 (2026-09-09) razem z kodem backendowego łańcucha SLD (103 testy) |
 
 ### 3.2 Testy frontend (Vitest)
 

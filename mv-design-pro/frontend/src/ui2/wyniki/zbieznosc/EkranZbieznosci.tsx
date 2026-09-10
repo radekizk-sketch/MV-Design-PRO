@@ -33,6 +33,7 @@ import { akcjaNaprawcza, SekcjaZalozen, usePoprawWModelu, WZORZEC_STRINGS } from
 import {
   naBilansPrzebiegu,
   naWierszeIteracji,
+  naWierszeWysp,
   naWierszeOltcPrzebiegu,
   naWierszeZaczepowModelu,
   naZalozeniaZbieznosci,
@@ -110,6 +111,7 @@ export function EkranZbieznosci() {
   const wynikAktualny = przebieg && selectedRunId === przebieg.id ? wynik : null;
   const sladAktualny = przebieg && selectedRunId === przebieg.id ? slad : null;
   const oltc = sladAktualny?.oltc_control ?? null;
+  const wierszeWysp = naWierszeWysp(sladAktualny);
   const wierszeModelu = naWierszeZaczepowModelu(snapshot);
   const poprawWModelu = usePoprawWModelu();
 
@@ -200,6 +202,39 @@ export function EkranZbieznosci() {
               ))}
             </dl>
           </section>
+
+          {wierszeWysp.length >= 2 && (
+            <section className="mvd-zbieznosc-sekcja" aria-label={T.wyspyTytul}>
+              <h4>{T.wyspyTytul}</h4>
+              <p className="mvd-zbieznosc-nota">{T.wyspyOpis}</p>
+              <div className="mvd-zbieznosc-tabela-wrap">
+                <table className="mvd-zbieznosc-tabela" data-testid="mvd-zbieznosc-wyspy-tabela">
+                  <thead>
+                    <tr>
+                      <th>{T.wyspyKolSzyna}</th>
+                      <th>{T.wyspyKolZrodlo}</th>
+                      <th>{T.wyspyKolSzynyPq}</th>
+                      <th>{T.wyspyKolSzynyPv}</th>
+                      <th>{T.wyspyKolIteracje}</th>
+                      <th>{T.wyspyKolZbieznosc}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {wierszeWysp.map((w) => (
+                      <tr key={w.szynaBilansujaca} data-testid={`mvd-zbieznosc-wyspa-${w.szynaBilansujaca}`}>
+                        <td className="mvd-zbieznosc-id">{w.szynaBilansujaca}</td>
+                        <td className="mvd-zbieznosc-id">{w.zrodloRef}</td>
+                        <td className="mvd-num">{w.liczbaSzynPq}</td>
+                        <td className="mvd-num">{w.liczbaSzynPv}</td>
+                        <td className="mvd-num">{w.iteracje}</td>
+                        <td>{w.zbiezna ? T.wyspyZbiezna : T.wyspyNiezbiezna}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
 
           <section className="mvd-zbieznosc-sekcja" aria-label={T.oltcTytul}>
             <h4>{T.oltcTytul}</h4>

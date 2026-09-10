@@ -360,6 +360,47 @@ def test_empty_power_flow_result() -> None:
     assert result.summary.info_count == 0
 
 
+def test_branch_missing_one_side_is_skipped_not_zero(caplog: pytest.LogCaptureFixture) -> None:
+    """FAB-E (E1): brak jednej strony mocy pozornej galezi nie jest moca zerowa.
+
+    ``branch_2`` ma KOMPLETNA strone "from", ale brakuje jej w
+    ``branch_s_to_mva`` (np. bo solver nie zapisal drugiego konca). Przed
+    poprawka brakujaca strona byla czytana jako 0+0j, wiec straty galezi
+    (`p_from + p_to`) liczyly sie z fikcyjnej polowy danych. Po poprawce galaz
+    jest pomijana z jawnym powodem w logu — NIE dostaje sfabrykowanego wyniku
+    strat.
+    """
+    import logging
+
+    result = PowerFlowResult(
+        converged=True,
+        iterations=5,
+        tolerance=1e-8,
+        max_mismatch_pu=1e-9,
+        base_mva=100.0,
+        slack_node_id="bus_slack",
+        node_u_mag_pu={},
+        node_angle_rad={},
+        branch_s_from_mva={
+            "branch_1": {"re": 0.5, "im": 0.2},
+            "branch_2": {"re": 1.0, "im": 0.3},  # brak odpowiednika w branch_s_to_mva
+        },
+        branch_s_to_mva={
+            "branch_1": {"re": -0.495, "im": -0.19},
+        },
+    )
+
+    builder = PowerFlowInterpretationBuilder(context=None)
+    with caplog.at_level(logging.WARNING, logger="analysis.power_flow_interpretation.builder"):
+        interpretation = builder.build(result, "run-missing-side")
+
+    branch_ids = {finding.branch_id for finding in interpretation.branch_findings}
+    assert branch_ids == {"branch_1"}, "branch_2 bez kompletu danych nie moze dostac wyniku"
+    assert any(
+        "branch_2" in record.message and "pominieta" in record.message for record in caplog.records
+    ), "brak strony 'to' musi zostac zalogowany z jawnym powodem"
+
+
 # =============================================================================
 # P22b: Deterministic Tie-Breaker Tests
 # =============================================================================

@@ -27,7 +27,7 @@
  *    transformatorów, wytrzymałość cieplna przewodu, wiarygodność prądu
  *    zwarciowego, bilans mocy biernej, budżet strat, moc i cos φ w punkcie
  *    przyłączenia. Liczby, stany i elementy wiodące są policzone przez backend —
- *    UI wyłącznie je przepisuje (reużycie mapowań `werdykt/werdyktModel.ts`).
+ *    UI wyłącznie je przepisuje (reużycie mapowań `ocena/model.ts`).
  *
  * DEDUPLIKACJA (deterministyczna): kryterium napięciowe werdyktu jest pomijane,
  * gdy synchroniczny kolektor rozpływu (1) wniósł już pozycje per szyna — ta sama
@@ -50,8 +50,8 @@ import { useAppStateStore } from '../../../ui/app-state';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import type { ElementType } from '../../../ui/types';
 import type { RodzajPrzekroczenia } from '../wzorzec';
-import { fetchWerdyktProjektowy, type PozycjaWerdyktu, type WerdyktResponse } from '../werdykt/api';
-import { rodzajPrzekroczeniaKryterium, typElementuKryterium } from '../werdykt/werdyktModel';
+import { fetchOcenaTechniczna, type PozycjaOceny, type OdpowiedzOceny } from '../ocena/api';
+import { rodzajPrzekroczeniaKryterium, typElementuKryterium } from '../ocena/model';
 import { subskrybuj } from '../../events';
 import { fmtPU, napiecePozaZakresem, NAPIECIE_MAX_PU } from '../rozplyw/strings';
 import { CO_WYMAGA_UWAGI_STRINGS as T } from './strings';
@@ -137,7 +137,7 @@ export function przekroczeniaZbieznosci(wynik: PowerFlowResultV1 | null): Przekr
  * `pomijajNapiecia` — deduplikacja z kolektorem rozpływu (patrz nagłówek pliku).
  */
 export function przekroczeniaWerdyktu(
-  werdykt: WerdyktResponse | null,
+  werdykt: OdpowiedzOceny | null,
   pomijajNapiecia: boolean,
 ): Przekroczenie[] {
   // Odpowiedź niezgodna z kontraktem (brak tablicy `pozycje`) NIE MOŻE wywrócić
@@ -150,7 +150,7 @@ export function przekroczeniaWerdyktu(
     .map((pozycja) => naPrzekroczenieWerdyktu(pozycja));
 }
 
-function naPrzekroczenieWerdyktu(pozycja: PozycjaWerdyktu): Przekroczenie {
+function naPrzekroczenieWerdyktu(pozycja: PozycjaOceny): Przekroczenie {
   const typ = typElementuKryterium(pozycja);
   const ref = typ ? pozycja.wiodacy_element_id : null;
   return {
@@ -179,9 +179,9 @@ export interface RejestrPrzekroczen {
  * pokazywał stanu sprzed przeliczenia. Błąd/brak przypadku = brak pozycji
  * werdyktu (rejestr degraduje się do źródeł synchronicznych, bez zgadywania).
  */
-function useWerdyktPrzypadku(): WerdyktResponse | null {
+function useWerdyktPrzypadku(): OdpowiedzOceny | null {
   const caseId = useAppStateStore((s) => s.activeCaseId);
-  const [werdykt, setWerdykt] = useState<WerdyktResponse | null>(null);
+  const [werdykt, setWerdykt] = useState<OdpowiedzOceny | null>(null);
   const [odswiezenie, setOdswiezenie] = useState(0);
 
   useEffect(() => subskrybuj('wyniki-gotowe', () => setOdswiezenie((n) => n + 1)), []);
@@ -192,7 +192,7 @@ function useWerdyktPrzypadku(): WerdyktResponse | null {
       return;
     }
     let anulowane = false;
-    fetchWerdyktProjektowy(caseId)
+    fetchOcenaTechniczna(caseId)
       .then((odpowiedz) => {
         if (!anulowane) setWerdykt(odpowiedz);
       })

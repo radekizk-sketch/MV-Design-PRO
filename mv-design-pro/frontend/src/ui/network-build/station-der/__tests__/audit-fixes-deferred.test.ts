@@ -6,35 +6,91 @@ import { describe, it, expect } from 'vitest';
 
 import {
   // B.5 — block_transformer
-  BLOCK_TRANSFORMER_CATALOG,
   selectBlockTransformersForDer,
   getBlockTransformer,
 } from '..';
+import type { BlockTransformerItem } from '../audit2-api';
 
-describe('Naprawa B.5 — BlockTransformerCatalog', () => {
-  it('katalog ma ≥5 pozycji obejmujących PV/BESS/FW + SN/SN', () => {
-    expect(BLOCK_TRANSFORMER_CATALOG.length).toBeGreaterThanOrEqual(5);
-    const types = BLOCK_TRANSFORMER_CATALOG;
-    expect(types.some((t) => t.applicable_der_kinds.includes('PV'))).toBe(true);
-    expect(types.some((t) => t.applicable_der_kinds.includes('BESS'))).toBe(true);
-    expect(types.some((t) => t.applicable_der_kinds.includes('FW'))).toBe(true);
+/**
+ * Karta FAB-J: `BLOCK_TRANSFORMER_CATALOG` usunięty z `catalogs.ts` — jedyne
+ * źródło jest teraz snapshot audytu 2 backendu (`useAudit2CatalogSnapshot`,
+ * `audit2-api.ts::BlockTransformerItem`). `selectBlockTransformersForDer`/
+ * `getBlockTransformer` przyjmują listę jako parametr zamiast czytać statyk
+ * modułowy — testy podają ją fikstury jawnie.
+ */
+function blockTransformerFixture(
+  id: string,
+  overrides: Partial<BlockTransformerItem> = {},
+): BlockTransformerItem {
+  return {
+    id,
+    catalog_namespace: 'block_transformer',
+    catalog_version: '1.0',
+    label_pl: `Transformator dedykowany ${overrides.hv_kv ?? 15}/${overrides.lv_kv ?? 0.69} kV`,
+    transformer_type_ref: `tr-test-${id}`,
+    sn_kva: 1000,
+    hv_kv: 15,
+    lv_kv: 0.69,
+    uk_percent: 6,
+    pk_kw: 10,
+    p0_kw: 2,
+    i0_percent: 0.5,
+    vector_group: 'Dyn11',
+    is_mv_to_mv: false,
+    applicable_der_kinds: ['PV'],
+    galvanic_isolation: true,
+    source_reference: 'Fikstura testowa',
+    verification_status: 'VERIFIED',
+    ...overrides,
+  };
+}
+
+const BLOCK_TRANSFORMER_FIXTURES: readonly BlockTransformerItem[] = [
+  blockTransformerFixture('btr_pv_15_069_800', {
+    sn_kva: 800, hv_kv: 15, lv_kv: 0.69, applicable_der_kinds: ['PV', 'BESS'],
+  }),
+  blockTransformerFixture('btr_pv_15_069_1250', {
+    sn_kva: 1250, hv_kv: 15, lv_kv: 0.69, applicable_der_kinds: ['PV', 'BESS', 'FW'],
+  }),
+  blockTransformerFixture('btr_bess_15_04_1000', {
+    sn_kva: 1000, hv_kv: 15, lv_kv: 0.4, applicable_der_kinds: ['BESS'], galvanic_isolation: true,
+  }),
+  blockTransformerFixture('btr_bess_15_04_500_no_iso', {
+    sn_kva: 500, hv_kv: 15, lv_kv: 0.4, applicable_der_kinds: ['BESS'], galvanic_isolation: false,
+  }),
+  blockTransformerFixture('btr_fw_15_3', {
+    sn_kva: 5000, hv_kv: 15, lv_kv: 3, applicable_der_kinds: ['FW'], is_mv_to_mv: true, vector_group: 'YNd11',
+  }),
+];
+
+describe('Naprawa B.5 — BlockTransformerCatalog (przez fikstury audytu 2)', () => {
+  it('front NIE MA już własnego katalogu transformatorów dedykowanych', async () => {
+    const modul = (await import('../catalogs')) as Record<string, unknown>;
+    expect(modul.BLOCK_TRANSFORMER_CATALOG).toBeUndefined();
+  });
+
+  it('katalog (fikstura) ma ≥5 pozycji obejmujących PV/BESS/FW + SN/SN', () => {
+    expect(BLOCK_TRANSFORMER_FIXTURES.length).toBeGreaterThanOrEqual(5);
+    expect(BLOCK_TRANSFORMER_FIXTURES.some((t) => t.applicable_der_kinds.includes('PV'))).toBe(true);
+    expect(BLOCK_TRANSFORMER_FIXTURES.some((t) => t.applicable_der_kinds.includes('BESS'))).toBe(true);
+    expect(BLOCK_TRANSFORMER_FIXTURES.some((t) => t.applicable_der_kinds.includes('FW'))).toBe(true);
   });
 
   it('zawiera transformator SN/SN dla turbinowni FW (15/3+ kV)', () => {
-    const mvToMv = BLOCK_TRANSFORMER_CATALOG.filter((t) => t.is_mv_to_mv);
+    const mvToMv = BLOCK_TRANSFORMER_FIXTURES.filter((t) => t.is_mv_to_mv);
     expect(mvToMv.length).toBeGreaterThan(0);
     expect(mvToMv[0].applicable_der_kinds).toContain('FW');
     expect(mvToMv[0].lv_kv).toBeGreaterThan(1.0);
   });
 
   it('selectBlockTransformersForDer filtruje po DER kind', () => {
-    const fwOnly = selectBlockTransformersForDer({ derKind: 'FW' });
+    const fwOnly = selectBlockTransformersForDer(BLOCK_TRANSFORMER_FIXTURES, { derKind: 'FW' });
     expect(fwOnly.length).toBeGreaterThan(0);
     expect(fwOnly.every((t) => t.applicable_der_kinds.includes('FW'))).toBe(true);
   });
 
   it('selectBlockTransformersForDer filtruje po napięciu HV/LV', () => {
-    const pv15to069 = selectBlockTransformersForDer({
+    const pv15to069 = selectBlockTransformersForDer(BLOCK_TRANSFORMER_FIXTURES, {
       derKind: 'PV',
       hvKv: 15,
       lvKv: 0.69,
@@ -44,7 +100,7 @@ describe('Naprawa B.5 — BlockTransformerCatalog', () => {
   });
 
   it('selectBlockTransformersForDer wymusza galwaniczną izolację dla BESS', () => {
-    const bessIsolated = selectBlockTransformersForDer({
+    const bessIsolated = selectBlockTransformersForDer(BLOCK_TRANSFORMER_FIXTURES, {
       derKind: 'BESS',
       requiresGalvanicIsolation: true,
     });
@@ -53,12 +109,12 @@ describe('Naprawa B.5 — BlockTransformerCatalog', () => {
   });
 
   it('getBlockTransformer zwraca null dla unknown id', () => {
-    expect(getBlockTransformer('unknown_xyz')).toBeNull();
+    expect(getBlockTransformer(BLOCK_TRANSFORMER_FIXTURES, 'unknown_xyz')).toBeNull();
   });
 
   it('getBlockTransformer pobiera szczegóły katalogowe', () => {
-    const item = BLOCK_TRANSFORMER_CATALOG[0];
-    expect(getBlockTransformer(item.id)?.label_pl).toBe(item.label_pl);
+    const item = BLOCK_TRANSFORMER_FIXTURES[0];
+    expect(getBlockTransformer(BLOCK_TRANSFORMER_FIXTURES, item.id)?.label_pl).toBe(item.label_pl);
   });
 });
 

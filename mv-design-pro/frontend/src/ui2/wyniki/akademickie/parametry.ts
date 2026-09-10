@@ -13,6 +13,20 @@
  * Lista pól jest ZAMKNIĘTA kontraktem solvera: strażnikiem drugiego końca pary jest
  * test CI `backend/tests/ci/test_v126_rodzaje_parytet.py` (klucz czytany przez
  * solver i nieobsłużony tutaj = czerwony test).
+ *
+ * WYJĄTEK JAWNY (karta W2-C): `harmonic_spectra` (rodzaj `power_quality_harmonics`,
+ * `POLA_WIDMA`) nie jest czytany przez SOLVER — jest czytany przez MOST
+ * (`solver_input/v126_contracts.py::build_v126_input_from_enm`), warstwę PRZED
+ * solverem, gdzie widmo harmoniczne staje się częścią `harmonic_sources`. Ta sama
+ * zasada zero fabrykacji obowiązuje jeden krok wcześniej w łańcuchu — pole puste
+ * = solver liczy wyłącznie ze źródeł, których karta katalogowa niesie widmo.
+ *
+ * DRUGI WYJĄTEK JAWNY (karta B-02): `customer_counts` (rodzaj
+ * `reliability_contingency`, `POLA_ODBIORCOW`) — także czytany przez MOST
+ * (`odbiorcy_z_parametrow` → `V126BusInput.customer_count`), bo model ENM nie
+ * niesie liczby odbiorców zasilanych z szyny, a wskaźniki niezawodności są nią
+ * ważone. Bez wpisu gotowość analizy odmawia uruchomienia (`parametr.customer_counts`)
+ * zamiast liczyć wskaźniki z zerowej liczby odbiorców.
  */
 
 import type { RodzajAnalizy } from './api';
@@ -22,7 +36,7 @@ import type { RodzajAnalizy } from './api';
 // ---------------------------------------------------------------------------
 
 /** Rodzaj kontrolki pola parametru. */
-export type RodzajPola = 'liczba' | 'tekst' | 'wybor' | 'metody';
+export type RodzajPola = 'liczba' | 'tekst' | 'wybor' | 'metody' | 'szyna';
 
 /** Opcja pola wyboru (wartość kontraktu + etykieta PL). */
 export interface OpcjaPola {
@@ -94,7 +108,7 @@ export const POLA_UZIOMU: readonly DefinicjaPola[] = [
 /** Pola wiersza silnika (`V126MotorInput`) — dane spoza modelu sieci. */
 export const POLA_SILNIKA: readonly DefinicjaPola[] = [
   { klucz: 'ref', etykieta: 'Oznaczenie', rodzaj: 'tekst' },
-  { klucz: 'bus_ref', etykieta: 'Węzeł przyłączenia', rodzaj: 'tekst' },
+  { klucz: 'bus_ref', etykieta: 'Szyna przyłączenia', rodzaj: 'szyna' },
   { klucz: 'rated_kw', etykieta: 'Moc znamionowa', rodzaj: 'liczba', jednostka: 'kW' },
   { klucz: 'rated_voltage_kv', etykieta: 'Napięcie znamionowe', rodzaj: 'liczba', jednostka: 'kV' },
   { klucz: 'locked_rotor_multiplier', etykieta: 'Krotność prądu rozruchowego', rodzaj: 'liczba' },
@@ -111,6 +125,48 @@ export const POLA_SILNIKA: readonly DefinicjaPola[] = [
   { klucz: 'load_start_torque_pu', etykieta: 'Moment obciążenia przy rozruchu', rodzaj: 'liczba', jednostka: 'j.w.' },
 ];
 
+/**
+ * Pola wiersza jawnego widma harmonicznego (`harmonic_spectra`, karta W2-C).
+ * Kształt WEJŚCIA solvera niesie tu WYJĄTEK od reguły „każde pole = klucz
+ * czytany przez solver" z nagłówka pliku: `harmonic_spectra` jest czytany
+ * przez MOST (`solver_input/v126_contracts.py::build_v126_input_from_enm`),
+ * o warstwę PRZED solverem — solver widzi już gotowe `harmonic_sources`. Wiersz
+ * (generator, rząd, %) jest agregowany do zagnieżdżonej mapy
+ * `{generator_ref: {rząd: %}}` w `zbudujParametry` (nie jest to lista płaska,
+ * jak `motors`/`benchmark_references`).
+ */
+export const POLA_WIDMA: readonly DefinicjaPola[] = [
+  { klucz: 'generator_ref', etykieta: 'Oznaczenie przekształtnika', rodzaj: 'tekst' },
+  {
+    klucz: 'rzad',
+    etykieta: 'Rząd harmonicznej',
+    rodzaj: 'liczba',
+    opis: 'Liczba całkowita w zakresie 2–50.',
+  },
+  {
+    klucz: 'procent',
+    etykieta: 'Udział w prądzie znamionowym',
+    rodzaj: 'liczba',
+    jednostka: '%',
+    opis: 'Zakres 0–100 %.',
+  },
+];
+
+/**
+ * Pola wiersza liczby odbiorców (`customer_counts`, karta B-02): szyna modelu +
+ * liczba odbiorców zasilanych z tej szyny. Agregowane do mapy `{ref szyny: liczba}`
+ * w `zbudujParametry` — kształt czytany przez most `odbiorcy_z_parametrow`.
+ */
+export const POLA_ODBIORCOW: readonly DefinicjaPola[] = [
+  { klucz: 'bus_ref', etykieta: 'Szyna zasilająca odbiorców', rodzaj: 'szyna' },
+  {
+    klucz: 'liczba',
+    etykieta: 'Liczba odbiorców',
+    rodzaj: 'liczba',
+    opis: 'Liczba całkowita nieujemna — odbiorcy zasilani z tej szyny.',
+  },
+];
+
 /** Pola wiersza referencji benchmarkowej (`benchmark_references`). */
 export const POLA_REFERENCJI: readonly DefinicjaPola[] = [
   { klucz: 'network', etykieta: 'Sieć odniesienia', rodzaj: 'tekst' },
@@ -122,7 +178,7 @@ export const POLA_REFERENCJI: readonly DefinicjaPola[] = [
 ];
 
 /** Listy złożone obsługiwane przez formularz (poza polami prostymi). */
-export type ListaZlozona = 'motors' | 'benchmark_references';
+export type ListaZlozona = 'motors' | 'benchmark_references' | 'harmonic_spectra' | 'customer_counts';
 
 /** Zestaw parametrów rodzaju analizy. */
 export interface ZestawParametrow {
@@ -143,8 +199,11 @@ const PUSTY: ZestawParametrow = { pola: [], uziom: false, lista: null, metodyDet
  * w solverze — komentarz przy zestawie podaje wiersz kontraktu.
  */
 export const PARAMETRY_RODZAJU: Record<RodzajAnalizy, ZestawParametrow> = {
-  // Liczy wprost z modelu (źródła harmoniczne z ENM).
-  power_quality_harmonics: PUSTY,
+  // `build_v126_input_from_enm`: widmo źródeł harmonicznych z karty katalogowej
+  // przekształtnika, ALBO z jawnego wejścia tutaj (`harmonic_spectra`, karta
+  // W2-C) — proweniencja RECZNE nadpisuje proweniencję KATALOG. Puste = solver
+  // liczy wyłącznie ze źródeł, których karta katalogowa niesie widmo.
+  power_quality_harmonics: { pola: [], uziom: false, lista: 'harmonic_spectra', metodyDetekcji: false },
 
   // `_ssci_impedance`: model.parameters["ssci_converter_ref"] — wskazanie przekształtnika.
   ssci_impedance: {
@@ -162,7 +221,10 @@ export const PARAMETRY_RODZAJU: Record<RodzajAnalizy, ZestawParametrow> = {
   },
 
   voltage_stability: PUSTY,
-  reliability_contingency: PUSTY,
+
+  // Most `odbiorcy_z_parametrow` (karta B-02): liczba odbiorców per szyna —
+  // model jej nie niesie, a wskaźniki SAIDI/SAIFI/CAIDI są nią ważone.
+  reliability_contingency: { pola: [], uziom: false, lista: 'customer_counts', metodyDetekcji: false },
 
   // `_earthing`: model.earthing albo model.parameters["earthing"].
   earthing_safety: { pola: [], uziom: true, lista: null, metodyDetekcji: false },
@@ -337,6 +399,54 @@ function wartoscPola(definicja: DefinicjaPola, tekst: string | undefined): unkno
   return Number.isFinite(liczba) ? liczba : undefined;
 }
 
+/**
+ * Agreguje wiersze (generator, rząd, %) do mapy `{generator_ref: {rząd: %}}`
+ * oczekiwanej przez `V126RunRequest.parameters.harmonic_spectra` — kształt
+ * ZAGNIEŻDŻONY, więc NIE reużywa `wierszDoObiektu` (ten buduje listę płaskich
+ * obiektów, jak `motors`/`benchmark_references`). Wiersz z rzędem poza 2–50 albo
+ * procentem poza 0–100 jest POMIJANY — okno nie fabrykuje widma z błędnego
+ * wpisu, tak samo jak backend (`_widma_jawne_z_parametrow`).
+ */
+function wierszeWidmaDoMapy(
+  wiersze: readonly WierszListy[],
+): Record<string, Record<string, number>> | null {
+  const mapa: Record<string, Record<string, number>> = {};
+  wiersze.forEach((wiersz) => {
+    const ref = (wiersz.generator_ref ?? '').trim();
+    const rzadTekst = (wiersz.rzad ?? '').trim();
+    const procentTekst = (wiersz.procent ?? '').trim();
+    if (ref === '' || rzadTekst === '' || procentTekst === '') return;
+    const rzad = Number(rzadTekst.replace(',', '.'));
+    const procent = Number(procentTekst.replace(',', '.'));
+    if (!Number.isInteger(rzad) || rzad < 2 || rzad > 50) return;
+    if (!Number.isFinite(procent) || procent < 0 || procent > 100) return;
+    mapa[ref] = { ...(mapa[ref] ?? {}), [String(rzad)]: procent };
+  });
+  return Object.keys(mapa).length === 0 ? null : mapa;
+}
+
+/**
+ * Agreguje wiersze (szyna, liczba) do mapy `{ref szyny: liczba odbiorców}` oczekiwanej
+ * przez most (`customer_counts`, karta B-02). Wiersz bez szyny albo bez liczby jest
+ * POMIJANY (nic do przekazania); wartość liczbowa trafia tak, jak ją wpisano —
+ * poprawność (całkowita, nieujemna, szyna w modelu) ocenia gotowość backendu
+ * (`parametr.customer_counts`), która nazywa błędny wpis zamiast go cicho odrzucać.
+ */
+function wierszeOdbiorcowDoMapy(
+  wiersze: readonly WierszListy[],
+): Record<string, number> | null {
+  const mapa: Record<string, number> = {};
+  wiersze.forEach((wiersz) => {
+    const ref = (wiersz.bus_ref ?? '').trim();
+    const liczbaTekst = (wiersz.liczba ?? '').trim();
+    if (ref === '' || liczbaTekst === '') return;
+    const liczba = Number(liczbaTekst.replace(',', '.'));
+    if (!Number.isFinite(liczba)) return;
+    mapa[ref] = liczba;
+  });
+  return Object.keys(mapa).length === 0 ? null : mapa;
+}
+
 function wierszDoObiektu(
   definicje: readonly DefinicjaPola[],
   wiersz: WierszListy,
@@ -381,7 +491,13 @@ export function zbudujParametry(wejscie: WejscieParametrow): Record<string, unkn
     parametry.relay_methods = [...wejscie.metody];
   }
 
-  if (zestaw.lista !== null) {
+  if (zestaw.lista === 'harmonic_spectra') {
+    const mapa = wierszeWidmaDoMapy(wejscie.wiersze);
+    if (mapa !== null) parametry.harmonic_spectra = mapa;
+  } else if (zestaw.lista === 'customer_counts') {
+    const mapa = wierszeOdbiorcowDoMapy(wejscie.wiersze);
+    if (mapa !== null) parametry.customer_counts = mapa;
+  } else if (zestaw.lista !== null) {
     const definicje = zestaw.lista === 'motors' ? POLA_SILNIKA : POLA_REFERENCJI;
     const wiersze = wejscie.wiersze
       .map((wiersz) => wierszDoObiektu(definicje, wiersz))

@@ -1,18 +1,52 @@
 """Tests for ENM topology and readiness endpoints."""
 
+from uuid import uuid4
+
 import pytest
 from api.enm import router as enm_router
+from domain.models import Project
+from domain.study_case import StudyCase
 from enm.canonical_analysis import reset_canonical_runs
-from enm.models import EnergyNetworkModel
-from enm.store import reset_enm_store, set_enm
+from enm.store import reset_enm_store
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from tests.catalog_test_helpers import gpz_source_record
 
 
-def _seed_enm(case_id: str, payload: dict) -> None:
-    set_enm(case_id, EnergyNetworkModel.model_validate(payload))
+def _seed_enm(client: TestClient, case_id: str, payload: dict) -> None:
+    """Zasiej ENM przez REALNA koncowke `PUT /enm` (jedyna droga zapisu z API).
+
+    CV-1-W: magazyn jest kluczowany kluczem projektu, nie surowym `case_id` —
+    pisanie wprost przez `enm.store.set_enm(case_id, ...)` ladowalo dane pod
+    klucz, ktorego zaden odczyt API juz nie widzi. `PUT /api/cases/{case_id}/enm`
+    przechodzi przez to samo tlumaczenie `KluczTwin`, co kazdy odczyt.
+    """
+    resp = client.put(f"/api/cases/{case_id}/enm", json=payload)
+    assert resp.status_code == 200, resp.text
+
+
+def _nowy_przypadek(client: TestClient) -> str:
+    """Utworz REALNY projekt + przypadek wprost przez UoW; zwroc `case_id`.
+
+    CV-1-W: przypadek bez wiersza w bazie dostaje teraz 404 z magazynu ENM
+    (inwariant I-2). Ta aplikacja testowa montuje WYLACZNIE `enm_router` (bez
+    tras projektow/przypadkow), wiec pary nie da sie utworzyc przez HTTP —
+    tworzymy ja tak samo jak `tests/invariants/test_wlasnosc_modelu_projektu.py
+    ::_projekt_z_przypadkami`, wprost przez `uow_factory` zawieszony na
+    `client.app.state`.
+    """
+    uow_factory = client.app.state.uow_factory
+    project_id = uuid4()
+    case_id = uuid4()
+    with uow_factory() as uow:
+        uow.projects.add(Project(id=project_id, name="Test topology API"), commit=False)
+        uow.cases.add_study_case(
+            StudyCase(id=case_id, project_id=project_id, name="Przypadek testu"),
+            commit=False,
+        )
+        uow.commit()
+    return str(case_id)
 
 
 @pytest.fixture(autouse=True)
@@ -25,10 +59,11 @@ def reset_state():
 
 
 @pytest.fixture
-def client():
-    """Lekka aplikacja z routerem ENM."""
+def client(uow_factory):
+    """Lekka aplikacja z routerem ENM, spieta z realnym uow_factory (CV-1)."""
     test_app = FastAPI()
     test_app.include_router(enm_router)
+    test_app.state.uow_factory = uow_factory
     return TestClient(test_app)
 
 
@@ -211,7 +246,8 @@ def _valid_enm_with_topology():
 
 class TestTopologyEndpoint:
     def test_get_topology_empty(self, client):
-        response = client.get("/api/cases/topo-test-1/enm/topology")
+        case_id = _nowy_przypadek(client)
+        response = client.get(f"/api/cases/{case_id}/enm/topology")
         assert response.status_code == 200
         data = response.json()
         assert data["substations"] == []
@@ -220,9 +256,10 @@ class TestTopologyEndpoint:
         assert data["corridors"] == []
 
     def test_get_topology_with_data(self, client):
-        _seed_enm("topo-test-2", _valid_enm_with_topology())
+        case_id = _nowy_przypadek(client)
+        _seed_enm(client, case_id, _valid_enm_with_topology())
 
-        response = client.get("/api/cases/topo-test-2/enm/topology")
+        response = client.get(f"/api/cases/{case_id}/enm/topology")
         assert response.status_code == 200
         data = response.json()
         assert len(data["substations"]) == 2
@@ -236,7 +273,8 @@ class TestTopologyEndpoint:
 
 class TestReadinessEndpoint:
     def test_readiness_empty_enm(self, client):
-        response = client.get("/api/cases/ready-test-1/enm/readiness")
+        case_id = _nowy_przypadek(client)
+        response = client.get(f"/api/cases/{case_id}/enm/readiness")
         assert response.status_code == 200
         data = response.json()
         assert data["validation"]["status"] == "FAIL"
@@ -246,9 +284,10 @@ class TestReadinessEndpoint:
         assert data["topology_completeness"]["has_substations"] is False
 
     def test_readiness_with_topology(self, client):
-        _seed_enm("ready-test-2", _valid_enm_with_topology())
+        case_id = _nowy_przypadek(client)
+        _seed_enm(client, case_id, _valid_enm_with_topology())
 
-        response = client.get("/api/cases/ready-test-2/enm/readiness")
+        response = client.get(f"/api/cases/{case_id}/enm/readiness")
         assert response.status_code == 200
         data = response.json()
         assert data["validation"]["status"] == "WARN"
@@ -265,7 +304,8 @@ class TestReadinessEndpoint:
         assert data["element_counts"]["buses"] == 3
 
     def test_readiness_contract_shape(self, client):
-        response = client.get("/api/cases/shape-test-1/enm/readiness")
+        case_id = _nowy_przypadek(client)
+        response = client.get(f"/api/cases/{case_id}/enm/readiness")
         assert response.status_code == 200
         data = response.json()
         assert set(data.keys()) == {
@@ -312,11 +352,12 @@ class TestReadinessEndpoint:
         }
 
     def test_readiness_false_blocker_e009(self, client):
+        case_id = _nowy_przypadek(client)
         enm = _valid_enm_with_topology()
         enm["branches"][0]["catalog_ref"] = None
-        _seed_enm("ready-test-3", enm)
+        _seed_enm(client, case_id, enm)
 
-        response = client.get("/api/cases/ready-test-3/enm/readiness")
+        response = client.get(f"/api/cases/{case_id}/enm/readiness")
         assert response.status_code == 200
         data = response.json()
         assert data["validation"]["status"] == "FAIL"
@@ -326,9 +367,10 @@ class TestReadinessEndpoint:
 
 class TestENMRoundtripExtensions:
     def test_roundtrip_get_with_extensions(self, client):
-        _seed_enm("put-ext-2", _valid_enm_with_topology())
+        case_id = _nowy_przypadek(client)
+        _seed_enm(client, case_id, _valid_enm_with_topology())
 
-        response = client.get("/api/cases/put-ext-2/enm")
+        response = client.get(f"/api/cases/{case_id}/enm")
         assert response.status_code == 200
         data = response.json()
         assert data["substations"][0]["ref_id"] == "sub_gpz"

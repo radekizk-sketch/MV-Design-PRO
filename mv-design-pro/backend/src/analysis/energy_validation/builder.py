@@ -22,6 +22,7 @@ from analysis.energy_validation.serializer import STATUS_ORDER
 from analysis.power_flow.result import PowerFlowResult
 from network_model.core.branch import LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
+from network_model.pochodne import a_na_ka
 
 
 def _znana(wartosc: float | None) -> float | None:
@@ -118,7 +119,7 @@ class EnergyValidationBuilder:
                 )
                 continue
 
-            rated_ka = branch.rated_current_a / 1000.0
+            rated_ka = a_na_ka(branch.rated_current_a)
             if rated_ka <= 0:
                 items.append(
                     EnergyValidationItem(
@@ -348,7 +349,7 @@ class EnergyValidationBuilder:
                 EnergyValidationItem(
                     check_type=EnergyCheckType.LOSS_BUDGET,
                     target_id="network",
-                    target_name="Siec",
+                    target_name="Sieć",
                     observed_value=None,
                     unit="%",
                     limit_warn=config.loss_warn_pct,
@@ -377,7 +378,7 @@ class EnergyValidationBuilder:
             EnergyValidationItem(
                 check_type=EnergyCheckType.LOSS_BUDGET,
                 target_id="network",
-                target_name="Siec",
+                target_name="Sieć",
                 observed_value=loss_pct,
                 unit="%",
                 limit_warn=config.loss_warn_pct,
@@ -413,7 +414,7 @@ class EnergyValidationBuilder:
                 EnergyValidationItem(
                     check_type=EnergyCheckType.REACTIVE_BALANCE,
                     target_id=pf.slack_node_id,
-                    target_name="Slack bus",
+                    target_name="Węzeł bilansujący",
                     observed_value=None,
                     unit="p.u.",
                     limit_warn=None,
@@ -445,7 +446,7 @@ class EnergyValidationBuilder:
             EnergyValidationItem(
                 check_type=EnergyCheckType.REACTIVE_BALANCE,
                 target_id=pf.slack_node_id,
-                target_name="Slack bus",
+                target_name="Węzeł bilansujący",
                 observed_value=cos_phi,
                 unit="cos(phi)",
                 limit_warn=0.9,

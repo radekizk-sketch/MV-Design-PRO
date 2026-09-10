@@ -1,5 +1,5 @@
 """
-Fault Scenarios API — PR-19 + PR-24
+Fault Scenarios API — PR-19 + PR-24 + C6-PERSIST
 
 REST API endpoints for managing fault scenarios as first-class domain objects.
 
@@ -15,6 +15,16 @@ Endpoints:
 
 All responses use Polish error messages for UI consistency.
 ZERO heuristics. ZERO auto-completion.
+
+KLUCZ MAGAZYNU (karta C6-PERSIST). Scenariusze żyją w magazynie scenariuszy per
+projekt (`enm/scenariusze.py`), adresowanym kluczem Canonical Project Twin — nie
+`case_id`. Końcówki adresowane `{case_id}` w ścieżce tłumaczą go przez
+`api/klucz_twin_dep.klucz_twin_z_sciezki` (JEDYNE tłumaczenie). Końcówki
+adresowane WYŁĄCZNIE `{scenario_id}` (bez `case_id` w ścieżce) nie znają
+projektu z góry — klucz jest odnajdywany PRZEGLĄDANIEM magazynu scenariuszy
+(`enm.scenariusze.znajdz_klucz_scenariusza`, `_wymagany_klucz` niżej): każdy
+plik scenariusza niesie własny klucz, więc nie ma tu drugiej prawdy (indeksu
+osobnego) do utrzymania w zgodzie z rzeczywistymi plikami.
 """
 
 from __future__ import annotations
@@ -22,6 +32,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from api.klucz_twin_dep import klucz_twin_z_sciezki
 from application.fault_scenario_service import (
     FaultScenarioDuplicateError,
     FaultScenarioHasRunsError,
@@ -34,18 +45,49 @@ from domain.fault_scenario import (
     FaultScenarioValidationError,
     FaultType,
 )
-from fastapi import APIRouter, HTTPException, status
+from enm.scenariusze import znajdz_klucz_scenariusza
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 router = APIRouter(tags=["fault-scenarios"])
 
-# Singleton service (in-memory for PR-19/PR-24)
+# Serwis jest BEZSTANOWY (karta C6-PERSIST) — singleton pozostaje wyłącznie
+# jako wygodny punkt wstrzyknięcia w testach (`get_fault_scenario_service`),
+# nie jako nośnik treści.
 _service = FaultScenarioService()
 
 
 def get_fault_scenario_service() -> FaultScenarioService:
     """Get the fault scenario service singleton."""
     return _service
+
+
+def _wymagany_klucz(scenario_id: UUID) -> str:
+    """Klucz magazynu scenariusza adresowanego WYŁĄCZNIE `scenario_id`.
+
+    JEDYNE tłumaczenie dla końcówek bez `case_id` w ścieżce (§0 karty
+    C6-PERSIST, pkt 2) — przeglądanie magazynu (`znajdz_klucz_scenariusza`),
+    nigdy osobny indeks. Brak dopasowania = uczciwy `FaultScenarioNotFoundError`
+    (404), nieodróżnialny od „scenariusz nigdy nie istniał" — z perspektywy
+    wołającego to ten sam brak.
+    """
+    klucz = znajdz_klucz_scenariusza(str(scenario_id))
+    if klucz is None:
+        raise FaultScenarioNotFoundError(str(scenario_id))
+    return klucz
+
+
+def _payload_scenariusza(
+    service: FaultScenarioService, klucz: str, scenario_id: UUID
+) -> dict[str, Any]:
+    """Payload API scenariusza z polem addytywnym `revision` (§0 pkt 7 karty
+    C6-PERSIST) — rewizja czytana Z MAGAZYNU (`OperatingScenario.revision`),
+    nigdy zakładana (np. „nowy scenariusz to zawsze rewizja 1")."""
+    wpis = service.get_scenario_ze_wpisem(klucz, scenario_id)
+    assert wpis.fault_spec is not None  # gwarantowane przez get_scenario_ze_wpisem
+    dane = wpis.fault_spec.to_dict()
+    dane["revision"] = wpis.revision
+    return dane
 
 
 # =============================================================================
@@ -119,7 +161,7 @@ class UpdateFaultScenarioRequest(BaseModel):
 
 
 class FaultScenarioResponse(BaseModel):
-    """Fault scenario response model (v1 + v2)."""
+    """Fault scenario response model (v1 + v2 + C6-PERSIST)."""
 
     scenario_id: str
     study_case_id: str
@@ -136,6 +178,10 @@ class FaultScenarioResponse(BaseModel):
     created_at: str
     updated_at: str
     content_hash: str
+    #: Rewizja w magazynie scenariuszy (karta C6-PERSIST, §0 pkt 7 — pole
+    #: addytywne; 1 dla scenariusza nowo utworzonego, rośnie przy każdym
+    #: zapisie zmieniającym treść).
+    revision: int
 
 
 class FaultScenarioListResponse(BaseModel):
@@ -226,6 +272,7 @@ def _parse_fault_mode(value: str) -> str:
 def create_fault_scenario(
     case_id: str,
     request: CreateFaultScenarioRequest,
+    http_request: Request,
 ) -> dict[str, Any]:
     """
     Utwórz nowy scenariusz zwarcia.
@@ -237,6 +284,7 @@ def create_fault_scenario(
     _parse_fault_type(request.fault_type)
     if request.fault_mode is not None:
         _parse_fault_mode(request.fault_mode)
+    klucz = klucz_twin_z_sciezki(case_id, http_request)
     service = get_fault_scenario_service()
 
     location_dict = {
@@ -262,6 +310,7 @@ def create_fault_scenario(
 
     try:
         scenario = service.create_scenario(
+            klucz=klucz,
             study_case_id=parsed_case_id,
             name=request.name,
             fault_type=request.fault_type,
@@ -272,7 +321,7 @@ def create_fault_scenario(
             arc_params=request.arc_params,
             z0_bus_data=request.z0_bus_data,
         )
-        return scenario.to_dict()
+        return _payload_scenariusza(service, klucz, scenario.scenario_id)
     except FaultScenarioValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -289,18 +338,19 @@ def create_fault_scenario(
     "/api/execution/study-cases/{case_id}/fault-scenarios",
     response_model=FaultScenarioListResponse,
 )
-def list_fault_scenarios(case_id: str) -> dict[str, Any]:
+def list_fault_scenarios(case_id: str, http_request: Request) -> dict[str, Any]:
     """
     Lista scenariuszy zwarcia dla przypadku obliczeniowego.
 
     Posortowane deterministycznie po (fault_type, element_ref).
     """
     parsed_case_id = _parse_uuid(case_id, "case_id")
+    klucz = klucz_twin_z_sciezki(case_id, http_request)
     service = get_fault_scenario_service()
 
-    scenarios = service.list_scenarios(parsed_case_id)
+    scenarios = service.list_scenarios(klucz, parsed_case_id)
     return {
-        "scenarios": [s.to_dict() for s in scenarios],
+        "scenarios": [_payload_scenariusza(service, klucz, s.scenario_id) for s in scenarios],
         "count": len(scenarios),
     }
 
@@ -317,8 +367,8 @@ def get_fault_scenario(scenario_id: str) -> dict[str, Any]:
     service = get_fault_scenario_service()
 
     try:
-        scenario = service.get_scenario(parsed_id)
-        return scenario.to_dict()
+        klucz = _wymagany_klucz(parsed_id)
+        return _payload_scenariusza(service, klucz, parsed_id)
     except FaultScenarioNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -335,7 +385,7 @@ def update_fault_scenario(
     request: UpdateFaultScenarioRequest,
 ) -> dict[str, Any]:
     """
-    Zaktualizuj scenariusz zwarcia (copy-on-write).
+    Zaktualizuj scenariusz zwarcia (copy-on-write, nowa rewizja w magazynie).
 
     Waliduje invarianty po aktualizacji. Przelicza content_hash.
     """
@@ -376,7 +426,9 @@ def update_fault_scenario(
         }
 
     try:
-        scenario = service.update_scenario(
+        klucz = _wymagany_klucz(parsed_id)
+        service.update_scenario(
+            klucz,
             parsed_id,
             name=request.name,
             fault_type=fault_type_str,
@@ -387,7 +439,7 @@ def update_fault_scenario(
             arc_params=request.arc_params,
             z0_bus_data=request.z0_bus_data,
         )
-        return scenario.to_dict()
+        return _payload_scenariusza(service, klucz, parsed_id)
     except FaultScenarioNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -409,13 +461,15 @@ def delete_fault_scenario(scenario_id: str) -> None:
     """
     Usuń scenariusz zwarcia.
 
-    Blokada usunięcia jeśli scenariusz ma powiązane przebiegi.
+    Blokada usunięcia jeśli scenariusz ma powiązane przebiegi (wyprowadzone
+    z koperty biegu — karta C6-PERSIST).
     """
     parsed_id = _parse_uuid(scenario_id, "scenario_id")
     service = get_fault_scenario_service()
 
     try:
-        service.delete_scenario(parsed_id)
+        klucz = _wymagany_klucz(parsed_id)
+        service.delete_scenario(klucz, parsed_id)
     except FaultScenarioNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -442,7 +496,8 @@ def get_scenario_eligibility(scenario_id: str) -> dict[str, Any]:
     service = get_fault_scenario_service()
 
     try:
-        result = service.check_scenario_eligibility(parsed_id)
+        klucz = _wymagany_klucz(parsed_id)
+        result = service.check_scenario_eligibility(klucz, parsed_id)
         return result.to_dict()
     except FaultScenarioNotFoundError as exc:
         raise HTTPException(
@@ -465,7 +520,8 @@ def get_scenario_sld_overlay(scenario_id: str) -> dict[str, Any]:
     service = get_fault_scenario_service()
 
     try:
-        overlay = service.get_scenario_sld_overlay(parsed_id)
+        klucz = _wymagany_klucz(parsed_id)
+        overlay = service.get_scenario_sld_overlay(klucz, parsed_id)
         return overlay
     except FaultScenarioNotFoundError as exc:
         raise HTTPException(
@@ -492,15 +548,18 @@ def create_run_from_scenario(
     service = get_fault_scenario_service()
 
     try:
-        scenario = service.get_scenario(parsed_id)
+        klucz = _wymagany_klucz(parsed_id)
+        wpis = service.get_scenario_ze_wpisem(klucz, parsed_id)
     except FaultScenarioNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
+    scenario = wpis.fault_spec
+    assert scenario is not None  # gwarantowane przez get_scenario_ze_wpisem
 
     # Check eligibility before creating run
-    eligibility = service.check_scenario_eligibility(parsed_id)
+    eligibility = service.check_scenario_eligibility(klucz, parsed_id)
     if eligibility.status.value == "INELIGIBLE":
         blocker_msgs = [b.message_pl for b in eligibility.blockers]
         raise HTTPException(
@@ -528,16 +587,19 @@ def create_run_from_scenario(
     from enm.store import get_enm
 
     try:
-        get_enm(str(scenario.study_case_id))
+        get_enm(klucz)
         run = create_canonical_run(
             case_id=str(scenario.study_case_id),
+            klucz_twin=klucz,
             project_id=None,
             analysis_type="short_circuit_sn",
             options=solver_input,
+            # Koperta niesie referencję scenariusza (`scenario_ref`, wersja 2)
+            # — karta C6-PERSIST: „ma powiązane biegi" (blokada usunięcia) jest
+            # odtąd wyprowadzana z koperty biegu, nie z osobnego rejestru
+            # (`register_run` usunięty razem z drugą prawdą, którą niósł).
+            scenariusz=wpis,
         )
-
-        # Register run association
-        service.register_run(parsed_id, run.id)
 
         return {
             "id": str(run.id),

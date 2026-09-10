@@ -37,7 +37,7 @@ describe('apparatusStackForRole — IEC 60617 mapping', () => {
     expect(apparatusStackForRole(FIELD_ROLE.RMU_TRANSFORMER)).toEqual(['DS', 'CB']);
   });
 
-  it('K30-120: MEASUREMENT → DS + VT + CT + ES (per BAY_DEVICE_ORDER_POLICY)', () => {
+  it('MEASUREMENT → DS + VT + CT + ES (per BAY_DEVICE_ORDER_POLICY)', () => {
     // K30-120 audyt fix: zgodne z bayDeviceOrder.ts MEASUREMENT_ORDER
     // (DS mandatory → FUSE optional → VT mandatory → ES mandatory).
     expect(apparatusStackForRole(FIELD_ROLE.MEASUREMENT)).toEqual(['DS', 'VT', 'CT', 'ES']);
@@ -156,7 +156,7 @@ describe('computeMiniBlockLayout — basic structure', () => {
     expect(layout.trCenterY).toBeNull();
   });
 
-  it('Multi-feeder K30-25 demo: 5 feeders w 5 distinct columns', () => {
+  it('Multi-feeder demo: 5 feeders w 5 distinct columns', () => {
     const layout = computeMiniBlockLayout(
       'detail',
       [mkBay('LINE_IN', 'B01'), mkBay('TRANSFORMER', 'B02')],

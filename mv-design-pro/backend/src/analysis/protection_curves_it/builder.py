@@ -12,6 +12,7 @@ from analysis.protection_curves_it.models import (
 )
 from analysis.protection_insight.models import ProtectionInsightItem, ProtectionInsightView
 from application.proof_engine.types import ProofDocument, ProofValue
+from network_model.pochodne import ka_na_a
 
 _P18_RULE_IDS = (
     "NR_P18_001",
@@ -255,7 +256,7 @@ def _build_markers(
             markers.append(
                 ITMarker(
                     kind=ITMarkerKind.IKSS,
-                    i_a=ikss * 1000.0,
+                    i_a=ka_na_a(ikss),
                     t_s=None,
                     source_proof_id=str(proof.document_id),
                 )
@@ -267,7 +268,7 @@ def _build_markers(
             markers.append(
                 ITMarker(
                     kind=ITMarkerKind.IP,
-                    i_a=ip * 1000.0,
+                    i_a=ka_na_a(ip),
                     t_s=None,
                     source_proof_id=str(proof.document_id),
                 )
@@ -279,7 +280,7 @@ def _build_markers(
             markers.append(
                 ITMarker(
                     kind=ITMarkerKind.ITH,
-                    i_a=ith * 1000.0,
+                    i_a=ka_na_a(ith),
                     t_s=None,
                     source_proof_id=str(proof.document_id),
                 )

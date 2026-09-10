@@ -44,6 +44,8 @@ from enm.models import (
 )
 from enm.pole_transformatorowe import pasmo_napieciowe
 from enm.validator import ReadinessResult
+from enm.zrodlo_zwarcie import dane_zwarciowe_zrodla
+from network_model.catalog.governance import brakuje_wymaganej_referencji, wymagalnosc_katalogu
 
 # Karta G-22: FAULT_LOOP_NN/SWZ_NN reużywają `_transformer_loop_impedance`
 # (kompletność danych transformatora dla impedancji pętli L-PE/L-PEN) i
@@ -448,8 +450,24 @@ class EligibilityService:
         enm: EnergyNetworkModel,
         blockers: list[AnalysisEligibilityIssue],
     ) -> None:
+        """Katalog wymagany dla gałęzi/transformatorów/źródeł — czyta JEDYNE
+        źródło prawdy (`catalog.governance.wymagalnosc_katalogu`, oś
+        `walidacja`, karta W3-I), wspólne z walidatorem E009, bramką ZIP i
+        CGMES. Karta W3-I (2026-09-09): SIÓDME, wcześniej nienazwane miejsce
+        powielające dosłownie ten sam warunek dla gałęzi/transformatorów —
+        nazwane w meldunku karty, naprawione tu. Sprawdzenie źródeł ZYSKUJE
+        (wcześniej ten kontrolny punkt sprawdzał WYŁĄCZNIE gałęzie i
+        transformatory) — w praktyce nieobserwowalne osobno, bo reguła A
+        (globalna bramka `readiness.ready`) już blokuje cały model, gdy E009
+        zgłasza źródło bez katalogu; dopisane dla spójności z pozostałymi
+        sześcioma miejscami, nie jako nowe zachowanie.
+        """
         for branch in enm.branches:
-            if isinstance(branch, OverheadLine | Cable) and not branch.catalog_ref:
+            if not isinstance(branch, OverheadLine | Cable):
+                continue
+            if brakuje_wymaganej_referencji(
+                wymagalnosc_katalogu(branch.type).walidacja, branch.catalog_ref
+            ):
                 blockers.append(
                     AnalysisEligibilityIssue(
                         code="ELIG_SC3_MISSING_CATALOG_REF",
@@ -470,7 +488,9 @@ class EligibilityService:
                 )
 
         for trafo in enm.transformers:
-            if not trafo.catalog_ref:
+            if brakuje_wymaganej_referencji(
+                wymagalnosc_katalogu("transformer").walidacja, trafo.catalog_ref
+            ):
                 blockers.append(
                     AnalysisEligibilityIssue(
                         code="ELIG_SC3_MISSING_CATALOG_REF",
@@ -485,6 +505,30 @@ class EligibilityService:
                             action_type="SELECT_CATALOG",
                             element_ref=trafo.ref_id,
                             modal_type="TransformerModal",
+                            payload_hint={"required": "catalog_ref"},
+                        ),
+                    )
+                )
+
+        for source in enm.sources:
+            poziom = wymagalnosc_katalogu(
+                "source", parameter_source=source.parameter_source
+            ).walidacja
+            if brakuje_wymaganej_referencji(poziom, source.catalog_ref):
+                blockers.append(
+                    AnalysisEligibilityIssue(
+                        code="ELIG_SC3_MISSING_CATALOG_REF",
+                        severity=IssueSeverity.BLOCKER,
+                        message_pl=(
+                            f"Źródło '{source.ref_id}' nie ma referencji katalogowej (catalog_ref). "
+                            f"Wybierz źródło systemowe z katalogu."
+                        ),
+                        element_ref=source.ref_id,
+                        element_type="source",
+                        fix_action=FixAction(
+                            action_type="SELECT_CATALOG",
+                            element_ref=source.ref_id,
+                            modal_type="SourceModal",
                             payload_hint={"required": "catalog_ref"},
                         ),
                     )
@@ -548,15 +592,9 @@ class EligibilityService:
         enm: EnergyNetworkModel,
         blockers: list[AnalysisEligibilityIssue],
     ) -> None:
+        # CV-4.3 K7: predykat wspólny z mapperem i walidatorem (`enm/zrodlo_zwarcie.py`).
         for source in enm.sources:
-            has_sk = source.sk3_mva is not None and source.sk3_mva > 0
-            has_rx = (
-                source.r_ohm is not None
-                and source.x_ohm is not None
-                and (source.r_ohm > 0 or source.x_ohm > 0)
-            )
-            has_ik = source.ik3_ka is not None and source.ik3_ka > 0
-            if not (has_sk or has_rx or has_ik):
+            if not dane_zwarciowe_zrodla(source).policzalne:
                 blockers.append(
                     AnalysisEligibilityIssue(
                         code="ELIG_SC3_SOURCE_NO_SC_PARAMS",
@@ -613,10 +651,7 @@ class EligibilityService:
         blockers: list[AnalysisEligibilityIssue],
     ) -> None:
         for source in enm.sources:
-            has_z0 = (
-                source.r0_ohm is not None and source.x0_ohm is not None
-            ) or source.z0_z1_ratio is not None
-            if not has_z0:
+            if not dane_zwarciowe_zrodla(source).z0:
                 blockers.append(
                     AnalysisEligibilityIssue(
                         code="ELIG_SC1_MISSING_Z0",

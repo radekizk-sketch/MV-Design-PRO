@@ -42,6 +42,19 @@ import math
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+from domain.readiness_bridge import opis_kanoniczny
+from network_model.pochodne import ka_na_a, napiecie_fazowe_v
+from network_model.solvers.equipment_checks.ct_burden_saturation import (
+    CtBurdenInput,
+    CtDeviceBurden,
+    alf_z_klasy,
+    check_ct_burden_saturation,
+)
+from network_model.solvers.equipment_checks.slad import (
+    STATUS_FAIL,
+    STATUS_PASS,
+)
+
 #: Ponizej tego wykorzystania przekladni dokladnosc pomiaru pradu roboczego jest slaba
 #: (blad wzgledny rosnie przy malym wykorzystaniu zakresu). Progu nie ma w normie jako
 #: wymagania — to praktyka projektowa, wiec kryterium jest INFORMACJA, nie werdyktem.
@@ -71,6 +84,16 @@ class WymaganiaToru:
     obciazenie_obwodu_va: float | None = None
     #: Czy przekladnik ma zasilac funkcje zabezpieczeniowe.
     dla_zabezpieczen: bool = True
+    # --- Obwod wtorny CT (karta W3-B, mapa 4 #3) — z `Measurement.obwod_wtorny`
+    # modelu (`enm/models.py`), GDY zapisany. Zasila WYLACZNIE bilans nasycenia
+    # kryterium `ct.alf` (jadro FROZEN `ct_burden_saturation.py`); brak = jadro
+    # samo zwraca NIEDOSTEPNY z kodem gotowosci `ct.secondary_circuit_missing`
+    # (zero fabrykacji — modul NIE podstawia „typowych" wartosci).
+    dlugosc_przewodu_m: float | None = None
+    przekroj_przewodu_mm2: float | None = None
+    obciazenia_aparatow: tuple[CtDeviceBurden, ...] = ()
+    #: Moc tracona na stykach i zaciskach [VA] — TYLKO gdy podana jawnie.
+    moc_stykow_va: float | None = None
 
 
 @dataclass(frozen=True)
@@ -83,6 +106,13 @@ class Kryterium:
     wymagane: str | None = None
     dostepne: str | None = None
     komentarz_pl: str | None = None
+    #: Kody gotowosci jadra (karta W3-B) — ADDYTYWNE, puste dla kryteriow bez
+    #: wlasnego solvera. Zrodlo: `CtBurdenResult.readiness_codes`.
+    kody_gotowosci: tuple[str, ...] = ()
+    #: Slad WHITE BOX jadra (karta W3-B) — ADDYTYWNY, puste dla kryteriow bez
+    #: wlasnego solvera. Zrodlo: `CtBurdenResult.white_box_trace`; do rozwiniecia
+    #: w UI (nic tu nie jest liczone od nowa).
+    slad: tuple[dict[str, Any], ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -93,6 +123,8 @@ class Kryterium:
             "wymagane": self.wymagane,
             "dostepne": self.dostepne,
             "komentarz_pl": self.komentarz_pl,
+            "kody_gotowosci": list(self.kody_gotowosci),
+            "slad": list(self.slad),
         }
 
 
@@ -233,13 +265,35 @@ def sprawdz_dobor_ct(przekladnik: dict[str, Any], tor: WymaganiaToru) -> WynikDo
                 )
             )
 
-    # --- 4. Nasycenie: ALF wobec pradu zwarciowego -------------------------------
-    if tor.ik_ka is None or in_a is None or alf is None:
+    # --- 4a. ALF katalogowy: warunek KONIECZNY, NIGDY werdykt (karta W3-B) ------
+    # Ten kryterium nie orzeka o nasyceniu — sam ALF katalogowy nie wie NIC o
+    # obciazeniu obwodu wtornego (milczace zalozenie S2obl = Sn bylo defektem,
+    # ktory ta karta zamyka: „spelnione" bez podstawy do oceny nasycenia).
+    # Rozstrzygniecie przenosi sie do `ct.alf` (4b), ktore liczy PRAWDZIWY
+    # bilans mocy wtornej w jadrze FROZEN.
+    if alf is None and przekladnik.get("accuracy_class") is not None:
+        # `accuracy_limit_factor` z `CTType.to_dict()` bywa None dla danych
+        # zmaterializowanych bez pelnego przeliczenia katalogu — jadro niesie
+        # TEN SAM wyprowadzacz klasy, wiec wynik jest identyczny, ze zrodlem
+        # nazwanym w komentarzu ponizej.
+        alf = alf_z_klasy(przekladnik.get("accuracy_class"))
+        alf_ze_zrodla_klasy = alf is not None
+    else:
+        alf_ze_zrodla_klasy = False
+    alf_wymagany = (
+        ka_na_a(tor.ik_ka) / in_a
+        if tor.ik_ka is not None and in_a is not None and in_a > 0
+        else None
+    )
+    if alf_wymagany is None or alf is None:
         kryteria.append(
             Kryterium(
-                kod="ct.alf",
-                nazwa_pl="Zapas do nasycenia (ALF)",
-                podstawa_pl="ALF·In musi pokryć prąd zwarciowy odniesiony do przekładni (IEC 61869-2).",
+                kod="ct.alf_katalogowy",
+                nazwa_pl="ALF katalogowy wobec prądu zwarciowego",
+                podstawa_pl=(
+                    "Warunek KONIECZNY ALF ≥ Ik″/I1n, bez obciążenia wtórnego "
+                    "(IEC 61869-2) — nie rozstrzyga nasycenia rdzenia."
+                ),
                 werdykt="brak_danych",
                 wymagane=_liczba(tor.ik_ka, "kA"),
                 dostepne=(f"ALF {alf:.0f}" if alf is not None else None),
@@ -247,24 +301,82 @@ def sprawdz_dobor_ct(przekladnik: dict[str, Any], tor: WymaganiaToru) -> WynikDo
             )
         )
     else:
-        wymagany_alf = (tor.ik_ka * 1000.0) / in_a
-        spelnione = alf >= wymagany_alf
         kryteria.append(
             Kryterium(
-                kod="ct.alf",
-                nazwa_pl="Zapas do nasycenia (ALF)",
-                podstawa_pl="ALF·In musi pokryć prąd zwarciowy odniesiony do przekładni (IEC 61869-2).",
-                werdykt="spelnione" if spelnione else "niespelnione",
-                wymagane=f"ALF ≥ {wymagany_alf:.1f} (Ik″ {tor.ik_ka:.2f} kA / In {in_a:.0f} A)",
-                dostepne=f"ALF {alf:.0f}",
+                kod="ct.alf_katalogowy",
+                nazwa_pl="ALF katalogowy wobec prądu zwarciowego",
+                podstawa_pl=(
+                    "Warunek KONIECZNY ALF ≥ Ik″/I1n, bez obciążenia wtórnego "
+                    "(IEC 61869-2) — nie rozstrzyga nasycenia rdzenia."
+                ),
+                werdykt="informacja",
+                wymagane=f"ALF ≥ {alf_wymagany:.1f} (Ik″ {tor.ik_ka:.2f} kA / In {in_a:.0f} A)",
+                dostepne=f"ALF {alf:.0f}"
+                + (" (wyprowadzony z klasy)" if alf_ze_zrodla_klasy else ""),
                 komentarz_pl=(
-                    None
-                    if spelnione
-                    else "Rdzeń nasyci się przed osiągnięciem prądu zwarciowego — "
-                    "zabezpieczenie zobaczy prąd mniejszy od rzeczywistego."
+                    "Nasycenie rdzenia zależy od rzeczywistego obciążenia obwodu wtórnego "
+                    "(S2obl) — rozstrzyga je kryterium „Nasycenie rdzenia” (ct.alf) niżej, "
+                    "nie ten warunek konieczny."
                 ),
             )
         )
+
+    # --- 4b. Nasycenie rdzenia: bilans mocy wtornej (jadro FROZEN, W3-B) --------
+    # Kryterium 4 przestaje liczyc wlasny warunek — deleguje do jadra, ktore
+    # bierze pod uwage RZECZYWISTE obciazenie obwodu wtornego (S2obl) zamiast
+    # milczaco zakladac S2obl = Sn. Obwod wtorny (`tor.dlugosc_przewodu_m` itd.)
+    # pochodzi z `Measurement.obwod_wtorny` modelu, GDY zapisany — w przeciwnym
+    # razie jadro samo zwraca NIEDOSTEPNY z kodem `ct.secondary_circuit_missing`.
+    wynik_nasycenia = check_ct_burden_saturation(
+        CtBurdenInput(
+            i2n_a=in_wtorny,
+            sn_va=obciazalnosc,
+            alf=alf,
+            dlugosc_przewodu_m=tor.dlugosc_przewodu_m,
+            przekroj_przewodu_mm2=tor.przekroj_przewodu_mm2,
+            obciazenia_aparatow=tor.obciazenia_aparatow,
+            rct_ohm=przekladnik.get("rct_ohm"),
+            alf_wymagany=alf_wymagany,
+            moc_stykow_va=tor.moc_stykow_va,
+        )
+    )
+    if wynik_nasycenia.status_nasycenia == STATUS_PASS:
+        werdykt_nasycenia: Werdykt = "spelnione"
+    elif wynik_nasycenia.status_nasycenia == STATUS_FAIL:
+        werdykt_nasycenia = "niespelnione"
+    else:
+        werdykt_nasycenia = "brak_danych"
+    if wynik_nasycenia.alf_efektywny is not None:
+        dostepne_nasycenia = (
+            f"ALF_eff {wynik_nasycenia.alf_efektywny:.1f} ({wynik_nasycenia.wariant_alf}; "
+            f"S2obl {wynik_nasycenia.moc_obliczeniowa_va:.1f} VA / Sn {obciazalnosc:.1f} VA)"
+        )
+    else:
+        dostepne_nasycenia = None
+    # Komentarz PL: gdy jadro zglosilo kody gotowosci (brak danej ALBO wariant
+    # uproszczony), ich kanoniczna tresc jest KONKRETNA (nazywa BRAKUJACA dana) —
+    # ma pierwszenstwo przed ogolnym zalozeniem formuly. `assumptions` jadra
+    # (rezystywnosc, wariant PELNY/UPROSZCZONY) zostaje fallbackiem, gdy kodow
+    # nie ma (bilans PELNY, kompletne dane) — WHITE BOX bez pustego komentarza.
+    tresc_kodow_pl = "; ".join(
+        opis["canonical_message_pl"]
+        for kod in wynik_nasycenia.readiness_codes
+        if (opis := opis_kanoniczny(kod)) is not None
+    )
+    komentarz_nasycenia = tresc_kodow_pl or "; ".join(wynik_nasycenia.assumptions) or None
+    kryteria.append(
+        Kryterium(
+            kod="ct.alf",
+            nazwa_pl="Nasycenie rdzenia (bilans mocy wtórnej)",
+            podstawa_pl=wynik_nasycenia.formula_ref,
+            werdykt=werdykt_nasycenia,
+            wymagane=(f"ALF_eff ≥ {alf_wymagany:.1f}" if alf_wymagany is not None else None),
+            dostepne=dostepne_nasycenia,
+            komentarz_pl=komentarz_nasycenia,
+            kody_gotowosci=wynik_nasycenia.readiness_codes,
+            slad=wynik_nasycenia.white_box_trace,
+        )
+    )
 
     # --- 5. Wytrzymalosc cieplna -------------------------------------------------
     if tor.ik_ka is None or tor.czas_zwarcia_s is None or ith is None:
@@ -557,7 +669,7 @@ def sprawdz_dobor_vt(przekladnik: dict[str, Any], tor: WymaganiaToruNapieciowego
             )
         )
     else:
-        faza_ziemia = tor.napiecie_sieci_v / math.sqrt(3.0)
+        faza_ziemia = napiecie_fazowe_v(tor.napiecie_sieci_v)
         if _blisko(un_pierwotne, faza_ziemia, TOLERANCJA_PRZEKLADNI_NAPIECIOWEJ):
             uklad = "faza_ziemia"
         elif _blisko(un_pierwotne, tor.napiecie_sieci_v, TOLERANCJA_PRZEKLADNI_NAPIECIOWEJ):
@@ -752,11 +864,11 @@ def sprawdz_dobor_vt(przekladnik: dict[str, Any], tor: WymaganiaToruNapieciowego
     else:
         pasuje = any(
             _blisko(un_wtorne, w, TOLERANCJA_PRZEKLADNI_NAPIECIOWEJ)
-            or _blisko(un_wtorne, w / math.sqrt(3.0), TOLERANCJA_PRZEKLADNI_NAPIECIOWEJ)
+            or _blisko(un_wtorne, napiecie_fazowe_v(w), TOLERANCJA_PRZEKLADNI_NAPIECIOWEJ)
             for w in tor.napiecia_wejsc_przekaznika_v
         )
         wykaz = " / ".join(
-            f"{w:.0f} V (albo {w / math.sqrt(3.0):.1f} V faza–ziemia)"
+            f"{w:.0f} V (albo {napiecie_fazowe_v(w):.1f} V faza–ziemia)"
             for w in tor.napiecia_wejsc_przekaznika_v
         )
         kryteria.append(

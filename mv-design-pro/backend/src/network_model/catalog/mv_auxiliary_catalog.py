@@ -1735,93 +1735,105 @@ def get_all_protection_device_types() -> list[dict]:
             "verification_note": verification_note,
         }
 
-    abb_source_reference = "ABB REX / dane referencyjne MV-DESIGN-PRO"
+    # Karta FAB-A/D-33 (2026-09, decyzja wlasciciela): poprzednie identyfikatory
+    # tych piecu pozycji byly fikcyjna nazwa producenta i modelu, falszywie
+    # przypisana marce ABB (prawdziwa rodzina ABB to Relion REF6xx/RET6xx/
+    # REB670/REG670, obecna osobno w katalogu analitycznym — zob. devices_v0.json).
+    # Zastapione jawnymi PROFILAMI REFERENCYJNYMI bez marki: nazwa opisuje funkcje
+    # (OC = nadpradowy, EF = ziemnozwarciowy), nie producenta. `vendor`/`series`
+    # sa NIEOBECNE — nigdy tekst udajacy producenta.
+    referencyjny_source_reference = (
+        "Profil referencyjny MV-DESIGN-PRO / IEC 60255 — nie dane producenta"
+    )
+    referencyjny_note = (
+        "Profil referencyjny (nie produkt producenta): parametry sa zalozeniem "
+        "projektowym wg IEC 60255, nie karta katalogowa producenta."
+    )
     etango_source_reference = "Elektrometal e2TANGO / dane referencyjne MV-DESIGN-PRO"
-    abb_note = "Rekord czesciowo zweryfikowany; zakres funkcji i parametrow wymaga potwierdzenia w karcie producenta."
     etango_note = "Rekord analityczny; zakresy i warianty wymagaja weryfikacji producenta przed uzyciem produkcyjnym."
     return [
         {
-            "id": "ACME_REX500_v1",
-            "name_pl": "Przekaznik ABB REX-500",
+            "id": "REF-OC-EF-500",
+            "name_pl": "Profil referencyjny (nie produkt producenta) OC/EF 500",
             "params": {
-                "vendor": "ABB",
-                "series": "REX",
+                "vendor": None,
+                "series": None,
                 "revision": "v1",
-                "analytical_library_ref": "ACME_REX500_v1",
+                "analytical_library_ref": "REF-OC-EF-500",
                 "notes_pl": "Rekord zgodny z katalogiem analitycznym ochrony.",
                 **_device_meta(
-                    verification_status="CZESCIOWO_ZWERYFIKOWANY",
-                    source_reference=abb_source_reference,
-                    catalog_status="ANALITYCZNY_V1",
-                    verification_note=abb_note,
+                    verification_status="REFERENCYJNY",
+                    source_reference=referencyjny_source_reference,
+                    catalog_status="REFERENCYJNY_V1",
+                    verification_note=referencyjny_note,
                 ),
             },
         },
         {
-            "id": "ACME_REX200_v1",
-            "name_pl": "Przekaznik ABB REX-200",
+            "id": "REF-OC-200",
+            "name_pl": "Profil referencyjny (nie produkt producenta) OC 200",
             "params": {
-                "vendor": "ABB",
-                "series": "REX",
+                "vendor": None,
+                "series": None,
                 "revision": "v1",
-                "analytical_library_ref": "ACME_REX200_v1",
+                "analytical_library_ref": "REF-OC-200",
                 "notes_pl": "Rekord zgodny z katalogiem analitycznym ochrony.",
                 **_device_meta(
-                    verification_status="CZESCIOWO_ZWERYFIKOWANY",
-                    source_reference=abb_source_reference,
-                    catalog_status="ANALITYCZNY_V1",
-                    verification_note=abb_note,
+                    verification_status="REFERENCYJNY",
+                    source_reference=referencyjny_source_reference,
+                    catalog_status="REFERENCYJNY_V1",
+                    verification_note=referencyjny_note,
                 ),
             },
         },
         {
-            "id": "ACME_REX100_v1",
-            "name_pl": "Przekaznik ABB REX-100",
+            "id": "REF-OC-100",
+            "name_pl": "Profil referencyjny (nie produkt producenta) OC 100",
             "params": {
-                "vendor": "ABB",
-                "series": "REX",
+                "vendor": None,
+                "series": None,
                 "revision": "v1",
-                "analytical_library_ref": "ACME_REX100_v1",
-                "notes_pl": "Rekord referencyjny rodziny REX dla nizszych zakresow linii i transformatorow.",
+                "analytical_library_ref": "REF-OC-100",
+                "notes_pl": "Rekord referencyjny dla nizszych zakresow linii i transformatorow.",
                 **_device_meta(
-                    verification_status="CZESCIOWO_ZWERYFIKOWANY",
-                    source_reference=abb_source_reference,
-                    catalog_status="ANALITYCZNY_V1",
-                    verification_note=abb_note,
+                    verification_status="REFERENCYJNY",
+                    source_reference=referencyjny_source_reference,
+                    catalog_status="REFERENCYJNY_V1",
+                    verification_note=referencyjny_note,
                 ),
             },
         },
         {
-            "id": "ACME_REX300_v1",
-            "name_pl": "Przekaznik ABB REX-300",
+            "id": "REF-OC-EF-300",
+            "name_pl": "Profil referencyjny (nie produkt producenta) OC/EF 300",
             "params": {
-                "vendor": "ABB",
-                "series": "REX",
+                "vendor": None,
+                "series": None,
                 "revision": "v1",
-                "analytical_library_ref": "ACME_REX300_v1",
-                "notes_pl": "Rekord referencyjny rodziny REX dla typowych pol SN.",
+                "analytical_library_ref": "REF-OC-EF-300",
+                "notes_pl": "Rekord referencyjny dla typowych pol SN.",
                 **_device_meta(
-                    verification_status="CZESCIOWO_ZWERYFIKOWANY",
-                    source_reference=abb_source_reference,
-                    catalog_status="ANALITYCZNY_V1",
-                    verification_note=abb_note,
+                    verification_status="REFERENCYJNY",
+                    source_reference=referencyjny_source_reference,
+                    catalog_status="REFERENCYJNY_V1",
+                    verification_note=referencyjny_note,
                 ),
             },
         },
         {
-            "id": "ACME_REX700_v1",
-            "name_pl": "Przekaznik ABB REX-700",
+            "id": "REF-OC-EF-700",
+            "name_pl": "Profil referencyjny (nie produkt producenta) OC/EF 700",
             "params": {
-                "vendor": "ABB",
-                "series": "REX",
+                "vendor": None,
+                "series": None,
                 "revision": "v1",
-                "analytical_library_ref": "ACME_REX700_v1",
-                "notes_pl": "Rekord referencyjny rodziny REX dla rozbudowanych zastosowan SN.",
+                "analytical_library_ref": "REF-OC-EF-700",
+                "notes_pl": "Rekord referencyjny dla rozbudowanych zastosowan SN.",
                 **_device_meta(
-                    verification_status="CZESCIOWO_ZWERYFIKOWANY",
-                    source_reference=abb_source_reference,
-                    catalog_status="ANALITYCZNY_V1",
-                    verification_note=abb_note,
+                    verification_status="REFERENCYJNY",
+                    source_reference=referencyjny_source_reference,
+                    catalog_status="REFERENCYJNY_V1",
+                    verification_note=referencyjny_note,
                 ),
             },
         },
@@ -2064,43 +2076,43 @@ def get_all_protection_setting_templates() -> list[dict]:
 
     return [
         {
-            "id": "template_rex500_oc",
-            "name_pl": "Szablon ABB REX-500 - nadpradowy",
+            "id": "template_ref_oc_ef_500",
+            "name_pl": "Szablon profilu referencyjnego OC/EF 500 - nadpradowy",
             "params": {
-                "device_type_ref": "ACME_REX500_v1",
+                "device_type_ref": "REF-OC-EF-500",
                 "curve_ref": "curve_iec_normal_inverse",
                 "setting_fields": [
                     {"name": "I>", "unit": "A", "min": 0.1, "max": 10.0},
                     {"name": "t>", "unit": "s", "min": 0.0, "max": 5.0},
                 ],
-                **_template_meta(name="ABB REX-500 - nadpradowy"),
+                **_template_meta(name="profilu referencyjnego OC/EF 500 - nadpradowy"),
             },
         },
         {
-            "id": "template_rex300_oc",
-            "name_pl": "Szablon ABB REX-300 - nadpradowy",
+            "id": "template_ref_oc_ef_300",
+            "name_pl": "Szablon profilu referencyjnego OC/EF 300 - nadpradowy",
             "params": {
-                "device_type_ref": "ACME_REX300_v1",
+                "device_type_ref": "REF-OC-EF-300",
                 "curve_ref": "curve_iec_very_inverse",
                 "setting_fields": [
                     {"name": "I>", "unit": "A", "min": 0.1, "max": 12.0},
                     {"name": "t>", "unit": "s", "min": 0.0, "max": 6.0},
                     {"name": "I>>", "unit": "A", "min": 1.0, "max": 80.0},
                 ],
-                **_template_meta(name="ABB REX-300 - nadpradowy"),
+                **_template_meta(name="profilu referencyjnego OC/EF 300 - nadpradowy"),
             },
         },
         {
-            "id": "template_rex100_oc",
-            "name_pl": "Szablon ABB REX-100 - nadpradowy",
+            "id": "template_ref_oc_100",
+            "name_pl": "Szablon profilu referencyjnego OC 100 - nadpradowy",
             "params": {
-                "device_type_ref": "ACME_REX100_v1",
+                "device_type_ref": "REF-OC-100",
                 "curve_ref": "curve_iec_normal_inverse",
                 "setting_fields": [
                     {"name": "I>", "unit": "A", "min": 0.1, "max": 8.0},
                     {"name": "t>", "unit": "s", "min": 0.0, "max": 5.0},
                 ],
-                **_template_meta(name="ABB REX-100 - nadpradowy"),
+                **_template_meta(name="profilu referencyjnego OC 100 - nadpradowy"),
             },
         },
         {

@@ -29,6 +29,8 @@ import {
   AddDerWizard,
   deryStacjiZModelu,
   mergeStationDers,
+  useAudit2CatalogSnapshot,
+  useNcRfgOperatorCatalog,
   useStationAudit2Config,
   useStationDerStore,
   useUpdateStationAudit2Config,
@@ -81,6 +83,9 @@ function buildBaseStationProps(stationName: string, localConfig: StationLocalCon
       nnVoltageLevels: [0.4],
       completeness: 'missing' as const,
       mvNeutralGroundingRef: localConfig.mvNeutralGroundingRef,
+      // Karta FAB-L: nadpisane niżej danymi ze snapshotu audytu 2 — pusta
+      // lista jest stanem PRZED pobraniem, nie brakiem katalogu.
+      mvNeutralGroundings: [],
     },
     topology: {
       externalPorts: [],
@@ -99,8 +104,11 @@ function buildBaseStationProps(stationName: string, localConfig: StationLocalCon
       reservesCount: 0,
       readinessLabelPl: 'do konfiguracji',
     },
-    bays: { bays: [] },
-    transformer: { transformers: [], availableLvVoltages: [0.4] },
+    // Karta FAB-M: `hvFuses` nadpisane niżej danymi ze snapshotu audytu 2 —
+    // pusta lista jest stanem PRZED pobraniem, nie brakiem katalogu.
+    bays: { bays: [], hvFuses: [] },
+    // Karta FAB-L: `tapChangers` nadpisane niżej danymi ze snapshotu audytu 2.
+    transformer: { transformers: [], availableLvVoltages: [0.4], tapChangers: [] },
     // Krok "Strona nN" zawiera rozdzielnice nN i odbiory techniczne.
     nnSwitchgear: { switchgears: [], loads: [] },
     protection: {
@@ -651,9 +659,24 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const activeRunId = useAppStateStore((state) => state.activeRunId);
   const defaultCard = useMemo(() => stationDefaultCard(surface), [surface]);
+  // Karta FAB-J: snapshot audytu 2 dla inferencji transformatora dedykowanego
+  // (`inferBlockTransformerCatalogRef`) — bez niego wytwórcy legacy bez
+  // `meta.block_transformer_catalog_ref` nie dostaną wywnioskowanej pozycji.
+  // Karta FAB-L: TEN SAM snapshot niesie też `mv_neutral_groundings`/
+  // `tap_changers` — zero drugiego zapytania sieciowego dla katalogów, które
+  // konfigurator już potrzebuje (Karta 1/Uziemienie, Karta 5 transformatora).
+  const audit2CatalogSnapshotQuery = useAudit2CatalogSnapshot();
+  const blockTransformers = audit2CatalogSnapshotQuery.data?.block_transformers ?? [];
+  const mvNeutralGroundings = audit2CatalogSnapshotQuery.data?.mv_neutral_groundings ?? [];
+  const tapChangers = audit2CatalogSnapshotQuery.data?.tap_changers ?? [];
+  // Karta FAB-M: katalog bezpieczników HV (eng.17) — ten sam snapshot audytu 2
+  // (zero nowego zapytania sieciowego); front nie ma już własnej kopii
+  // (`HV_FUSE_CATALOG` usunięty z `protection-catalogs.ts`).
+  const hvFuses = audit2CatalogSnapshotQuery.data?.hv_fuses ?? [];
+  const ncRfgOperators = useNcRfgOperatorCatalog().data ?? [];
   const snapshotDers = useMemo(
-    () => deryStacjiZModelu(snapshot, stationRef, projectId),
-    [snapshot, stationRef, projectId],
+    () => deryStacjiZModelu(snapshot, stationRef, projectId, blockTransformers),
+    [snapshot, stationRef, projectId, blockTransformers],
   );
   const ders = useMemo(
     () => mergeStationDers(snapshotDers, localDers),
@@ -1055,6 +1078,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
           stationBays.length > 0 && stationTransformers.length > 0
             ? 'complete' as const
             : 'partial' as const,
+        mvNeutralGroundings,
         onChange: (changes: { mvNeutralGroundingRef?: string | null }) => {
           if ('mvNeutralGroundingRef' in changes) {
             mutateAudit2({ mv_neutral_grounding_ref: changes.mvNeutralGroundingRef ?? null });
@@ -1092,6 +1116,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
         transformerCatalogOptions: stationTransformerCatalogOptions,
         transformerCatalogLoading,
         transformerCatalogError,
+        tapChangers,
         onAddTransformer: handleAddTransformer,
         onChange: (transformerId: string, changes: Partial<StationConfigTransformerRow>) => {
           if ('catalogRef' in changes) {
@@ -1114,6 +1139,8 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
           ...b,
           hvFuseCatalogRef: bayFuses[b.bayId] ?? null,
         })),
+        // Karta FAB-M: katalog bezpieczników HV — ze snapshotu audytu 2.
+        hvFuses,
         // Phase 18: HV fuse onChange propaguje do mutateAudit2.
         onChangeHvFuse: (bayId: string, fuseId: string | null) => {
           mutateAudit2({
@@ -1152,6 +1179,8 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
         onAddDer: handleAddDer,
         onDetachDer: requestDetach,
         canDetachDer: (derId: string) => localDers.some((der) => der.id === derId),
+        blockTransformers,
+        ncRfgOperators,
       },
     };
   }, [
@@ -1177,6 +1206,11 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     mutateAudit2,
     transformerCatalogError,
     transformerCatalogLoading,
+    blockTransformers,
+    mvNeutralGroundings,
+    tapChangers,
+    hvFuses,
+    ncRfgOperators,
   ]);
 
   return (

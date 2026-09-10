@@ -18,12 +18,19 @@ def test_rejestr_wystawia_kanon_z_akcjami(app_client) -> None:
     assert dane["summary"]["codes_total"] >= 60
 
     po_kodzie = {k["code"]: k for k in dane["codes"]}
-    # Kod z realnym emiterem (V12K-189) niesie komplet tresci naprawczej.
-    prad = po_kodzie["protection.fault_current_missing"]
-    assert prad["level"] == "WARNING"
-    assert prad["fix_action_id"] == "fix_protection_run_short_circuit"
-    assert prad["fix_navigation"]["panel"] == "analizy"
-    assert prad["reserved_reason"] is None
+    # Kod z realnym emiterem niesie komplet tresci naprawczej. Karta W3-C1
+    # (2026-09, kasacja V12K-189): dawny przyklad tego testu,
+    # `protection.fault_current_missing`, stracil SWOJ JEDYNY emiter razem ze
+    # skasowana metodyka (`overcurrent/calculator.py` — patrz
+    # `readiness_bridge.KODY_KANONU_ZAREZERWOWANE`, kod trafil do rezerwacji) —
+    # zamiana na `protection.curve_library_missing`, ktorego emiter zyje
+    # (`api/catalog.py::get_analytical_device_curves`, zwraca ten kod, gdy
+    # pozycja katalogowa nie ma `analytical_library_ref`). Intencja testu bez
+    # zmian: kod NIE zarezerwowany niesie level + fix_navigation.panel.
+    krzywa = po_kodzie["protection.curve_library_missing"]
+    assert krzywa["level"] == "WARNING"
+    assert krzywa["fix_navigation"]["panel"] == "katalog"
+    assert krzywa["reserved_reason"] is None
 
 
 def test_rejestr_nie_ukrywa_luk(app_client) -> None:
@@ -49,3 +56,23 @@ def test_rejestr_jest_deterministyczny(app_client) -> None:
     pierwszy = app_client.get("/api/readiness/registry").json()
     drugi = app_client.get("/api/readiness/registry").json()
     assert pierwszy == drugi
+
+
+def test_rejestr_niesie_kody_przeksztaltnika_v126_karta_w2c(app_client) -> None:
+    """Karta W2-C (zero fabrykacji wejścia V12.6): dwa nowe kody gotowości —
+    `converter_card_missing` (BLOCKER, brak karty/mocy znamionowej) i
+    `harmonic_spectrum_missing` (WARNING, karta bez widma) — muszą nieść treść
+    naprawczą przez TEN SAM kanał co reszta rejestru (deklaracja bez testu =
+    fałszywa pewność, reguła KLASA §4)."""
+    dane = app_client.get("/api/readiness/registry").json()
+    po_kodzie = {k["code"]: k for k in dane["codes"]}
+
+    karta_brak = po_kodzie["generator.converter_card_missing"]
+    assert karta_brak["level"] == "BLOCKER"
+    assert karta_brak["fix_navigation"]["panel"] == "inspector"
+    assert len(karta_brak["message_pl"]) >= 5
+
+    widmo_brak = po_kodzie["generator.harmonic_spectrum_missing"]
+    assert widmo_brak["level"] == "WARNING"
+    assert widmo_brak["fix_navigation"]["panel"] == "inspector"
+    assert len(widmo_brak["message_pl"]) >= 5

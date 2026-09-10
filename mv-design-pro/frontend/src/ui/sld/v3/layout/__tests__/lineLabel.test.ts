@@ -51,7 +51,6 @@ describe('W3 §7/§6 — formatLineTechnicalLabel (człon techniczny bez relacji
         typeLabel: 'YAKXS 3×1×240 mm²',
         ratedVoltageKv: 20,
         lengthKm: 0.68,
-        overhead: false,
       }),
     ).toBe('YAKXS 3×1×240 mm² · Un=20 kV · l = 680 m');
   });
@@ -62,7 +61,6 @@ describe('W3 §7/§6 — formatLineTechnicalLabel (człon techniczny bez relacji
         typeLabel: 'Kabel SN XLPE Al 3×120 mm²',
         ratedVoltageKv: null,
         lengthKm: 0.25,
-        overhead: false,
       }),
     ).toBe('Kabel SN XLPE Al 3×120 mm² · l = 250 m');
   });
@@ -73,7 +71,6 @@ describe('W3 §7/§6 — formatLineTechnicalLabel (człon techniczny bez relacji
         typeLabel: 'Kabel SN XLPE Al 3×120 mm²',
         ratedVoltageKv: 20,
         lengthKm: 1.24,
-        overhead: false,
         hasJoint: true,
       }),
     ).toBe('Kabel SN XLPE Al 3×120 mm² · Un=20 kV · l = 1,24 km · mufa');
@@ -86,19 +83,18 @@ describe('W3 §7/§6 — formatLineTechnicalLabel (człon techniczny bez relacji
         typeLabel: 'Linia napowietrzna Al 120 mm²',
         ratedVoltageKv: null,
         lengthKm: 0.35,
-        overhead: true,
       }),
     ).toBe('Linia napowietrzna Al 120 mm² · l = 350 m');
   });
 
   it('brak WSZYSTKICH składowych ⇒ null (uczciwy brak — wołający degraduje do relacji)', () => {
     expect(
-      formatLineTechnicalLabel({ typeLabel: null, ratedVoltageKv: null, lengthKm: null, overhead: false }),
+      formatLineTechnicalLabel({ typeLabel: null, ratedVoltageKv: null, lengthKm: null }),
     ).toBeNull();
   });
 
   it('determinizm: ten sam wynik dla tego samego wejścia', () => {
-    const input = { typeLabel: 'YAKXS 3×1×240 mm²', ratedVoltageKv: 20, lengthKm: 0.68, overhead: false } as const;
+    const input = { typeLabel: 'YAKXS 3×1×240 mm²', ratedVoltageKv: 20, lengthKm: 0.68 } as const;
     expect(formatLineTechnicalLabel(input)).toBe(formatLineTechnicalLabel(input));
   });
 });

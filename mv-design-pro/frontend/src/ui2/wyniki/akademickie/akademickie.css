@@ -305,3 +305,214 @@
 .mvd-akad-naruszenia li {
   margin-bottom: 4px;
 }
+
+/* ---- karta B-02: katalog kart analiz ---- */
+.mvd-akad-pasek {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+.mvd-akad-katalog-grupa {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mvd-akad-katalog-grupa-tytul {
+  margin: 4px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mvd-muted);
+}
+.mvd-akad-karty {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 10px;
+}
+.mvd-akad-karta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  background: var(--mvd-panel-2);
+}
+.mvd-akad-karta-tytul {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-akad-karta-pole {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-akad-karta-etyk {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mvd-muted);
+}
+.mvd-akad-karta-tresc {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--mvd-ink);
+}
+.mvd-akad-karta-lista {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--mvd-ink);
+}
+.mvd-akad-karta-stopka {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 6px;
+}
+.mvd-akad-stan-danych {
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+.mvd-akad-stan-danych--ok {
+  color: var(--mvd-ok);
+}
+.mvd-akad-stan-danych--brak {
+  color: var(--mvd-warn);
+}
+
+/* ---- karta B-02: widok analizy A–G ---- */
+.mvd-akad-krok {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--mvd-accent);
+  font-family: var(--mvd-font-mono);
+}
+.mvd-akad-podsekcja {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+.mvd-akad-podsekcja-tytul {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-akad-warunki {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mvd-akad-warunek {
+  display: grid;
+  grid-template-columns: 108px 1fr;
+  gap: 8px;
+  padding: 5px 8px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-bg);
+  font-size: 12.5px;
+}
+.mvd-akad-warunek-stan {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.mvd-akad-warunek--spelniony .mvd-akad-warunek-stan {
+  color: var(--mvd-ok);
+}
+.mvd-akad-warunek--niespelniony .mvd-akad-warunek-stan {
+  color: var(--mvd-err);
+}
+.mvd-akad-warunek--uwaga .mvd-akad-warunek-stan {
+  color: var(--mvd-warn);
+}
+.mvd-akad-warunek-elementy {
+  display: block;
+  margin-top: 2px;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+.mvd-akad-gotowosc-brak {
+  color: var(--mvd-muted);
+  font-size: 12.5px;
+}
+.mvd-akad-dane-lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mvd-akad-dane-pozycja {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 5px 8px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-bg);
+  font-size: 12.5px;
+}
+.mvd-akad-dane-nazwa {
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-akad-dane-wartosc {
+  color: var(--mvd-ink);
+}
+.mvd-akad-dane-uwaga {
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+.mvd-akad-znacznik {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid var(--mvd-line);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mvd-muted);
+}
+.mvd-akad-znacznik--wymagane {
+  border-color: var(--mvd-warn);
+  color: var(--mvd-warn);
+}
+.mvd-akad-blokada {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  color: var(--mvd-warn);
+}
+.mvd-akad-kryteria-brak {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px dashed var(--mvd-warn);
+  border-radius: 4px;
+  font-size: 12.5px;
+  color: var(--mvd-ink);
+}
+.mvd-akad-kryteria-brak-tytul {
+  display: block;
+  margin-bottom: 2px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--mvd-warn);
+}

@@ -1,7 +1,11 @@
 """Tests for ENM → NetworkGraph mapping and roundtrip to solver."""
 
 import pytest
-from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
+from enm.mapping import (
+    build_inverter_k_sc_trace,
+    build_zero_sequence_zbus,
+    map_enm_to_network_graph,
+)
 from enm.models import (
     BranchRating,
     Bus,
@@ -207,6 +211,58 @@ class TestBasicMapping:
         # Load is negative convention (consumed)
         assert node.active_power == -1.0
         assert node.reactive_power == -0.3
+
+    def test_generator_q_mvar_jawne_applied_to_node(self):
+        """Q wytwórcy jawne — konwencja generatorowa (dodatnia = wstrzyk)."""
+        enm = _make_enm(
+            buses=[Bus(ref_id="b1", name="B1", voltage_kv=15)],
+            generators=[Generator(ref_id="g1", name="G1", bus_ref="b1", p_mw=1.0, q_mvar=0.42)],
+        )
+        graph = map_enm_to_network_graph(enm)
+        node = list(graph.nodes.values())[0]
+        assert node.active_power == 1.0
+        assert node.reactive_power == 0.42
+
+    def test_generator_q_set_point_karty_applied_to_node(self):
+        """PIN NA DEFEKT (karta FAB-H, KLASA NIE INSTANCJA): Q nieznane wprost
+        (``q_mvar=None``), ale karta katalogowa niesie zdegenerowany Q-set-point
+        (``qmin_mvar == qmax_mvar``) — przed naprawą ten agregat czytał WYŁĄCZNIE
+        ``gen.q_mvar``, więc karta katalogowa była ignorowana i węzeł dostawał
+        0,0 mimo jawnej liczby w karcie, DOKŁADNIE gdy bramka gotowości
+        (`calculation_readiness/service.py::_generator_q_mvar_jawne`) już wtedy
+        czytała tę samą kartę i zgłaszała sieć jako gotową — dwa niezależne
+        warunki, które "dziś się zgadzają", są defektem (reguła KLASA NIE
+        INSTANCJA)."""
+        enm = _make_enm(
+            buses=[Bus(ref_id="b1", name="B1", voltage_kv=15)],
+            generators=[
+                Generator(
+                    ref_id="g1",
+                    name="G1",
+                    bus_ref="b1",
+                    p_mw=1.0,
+                    q_mvar=None,
+                    materialized_params={"qmin_mvar": 0.3, "qmax_mvar": 0.3},
+                )
+            ],
+        )
+        graph = map_enm_to_network_graph(enm)
+        node = list(graph.nodes.values())[0]
+        assert node.reactive_power == pytest.approx(0.3, rel=1e-9)
+
+    def test_generator_q_brak_jest_wylacznie_strukturalnym_zerem_wezla(self):
+        """Q naprawdę nieznane (brak pola, brak Q-set-pointu karty) => 0,0 jako
+        WYŁĄCZNIE strukturalne wypełnienie węzła (ten sam graf służy też
+        zwarciom, gdzie Q nie jest potrzebne) — rozpływ mocy jest zablokowany
+        PRZED tym punktem przez BLOCKER `generator.q_missing`, gdy Q jest
+        naprawdę nieznane."""
+        enm = _make_enm(
+            buses=[Bus(ref_id="b1", name="B1", voltage_kv=15)],
+            generators=[Generator(ref_id="g1", name="G1", bus_ref="b1", p_mw=1.0, q_mvar=None)],
+        )
+        graph = map_enm_to_network_graph(enm)
+        node = list(graph.nodes.values())[0]
+        assert node.reactive_power == 0.0
 
 
 class TestDeterminism:
@@ -416,6 +472,7 @@ class TestGeneratorShortCircuitSources:
             name="Blok PV",
             p_mw=2.0,
             gen_type="pv_inverter",
+            catalog_ref="conv-pv-test",
             materialized_params={"un_kv": 15.0, "sn_mva": 2.5},
         )
         graph = map_enm_to_network_graph(enm)
@@ -429,6 +486,81 @@ class TestGeneratorShortCircuitSources:
         assert src.ik_sc_a == pytest.approx(1.1 * expected_in, rel=1e-6)
         # No rotating-machine sources for a converter.
         assert len(graph.get_synchronous_machine_sources()) == 0
+        # Karta FAB-H: karta katalogowa nie niesie k_sc => ZAREJESTROWANE
+        # ZAŁOŻENIE (proweniencja + ślad WHITE BOX), tożsame co do liczby z
+        # dotychczasowym 1,1 — sieć bez k_sc w karcie daje IDENTYCZNY wynik.
+        assert src.k_sc == pytest.approx(1.1)
+        assert src.k_sc_zrodlo == "ZALOZENIE"
+        assert graph.k_sc_assumptions_trace == build_inverter_k_sc_trace(enm)
+        trace = graph.k_sc_assumptions_trace
+        assert len(trace) == 1
+        assert trace[0]["key"] == "k_sc_zalozenie_pv1"
+        assert trace[0]["result"] == {"k_sc": 1.1}
+        assert "1,1 przyjęte" in trace[0]["substitution"]
+        assert "conv-pv-test" in trace[0]["substitution"]
+
+    def test_pv_inverter_with_explicit_k_sc_from_catalog_changes_result(self):
+        """Karta z jawnym k_sc zmienia wynik jawnie — nie ma śladu założenia."""
+        enm = self._enm_with_generator(
+            ref_id="pv1",
+            name="Blok PV",
+            p_mw=2.0,
+            gen_type="pv_inverter",
+            catalog_ref="conv-pv-datasheet",
+            materialized_params={"un_kv": 15.0, "sn_mva": 2.5, "k_sc": 1.3},
+        )
+        graph = map_enm_to_network_graph(enm)
+        src = graph.get_inverter_sources()[0]
+        expected_in = 2.5 * 1.0e6 / (3.0**0.5 * 15.0 * 1.0e3)
+        # k_sc z karty (1,3), NIE domyślne 1,1 — wkład prądowy skaluje się ×1,3/1,1.
+        assert src.k_sc == pytest.approx(1.3)
+        assert src.k_sc_zrodlo == "KATALOG"
+        assert src.ik_sc_a == pytest.approx(1.3 * expected_in, rel=1e-6)
+        assert src.ik_sc_a != pytest.approx(1.1 * expected_in, rel=1e-6)
+        # Karta jawna => brak wpisu w śladzie WHITE BOX założeń.
+        assert graph.k_sc_assumptions_trace == []
+
+    def test_pv_inverter_k_sc_niedodatnie_w_karcie_traktowane_jak_brak(self):
+        """k_sc <= 0 w karcie jest danym niefizycznym — traktowany jak BRAK,
+        nie jak jawna (bezsensowna fizycznie) wartość."""
+        enm = self._enm_with_generator(
+            ref_id="pv1",
+            name="Blok PV",
+            p_mw=2.0,
+            gen_type="pv_inverter",
+            materialized_params={"un_kv": 15.0, "sn_mva": 2.5, "k_sc": 0.0},
+        )
+        graph = map_enm_to_network_graph(enm)
+        src = graph.get_inverter_sources()[0]
+        assert src.k_sc == pytest.approx(1.1)
+        assert src.k_sc_zrodlo == "ZALOZENIE"
+        assert len(graph.k_sc_assumptions_trace) == 1
+
+    def test_pv_inverter_bez_zadnego_katalogu_dostaje_takie_samo_zalozenie(self):
+        """Trzecia kratka iloczynu (H3): konwerter BEZ ŻADNEGO katalogu
+        (``catalog_ref=None`` — stan REALNY, brama katalogowa go tu nie
+        wyklucza, patrz `inverter.k_sc_missing`) przechodzi PRZEZ TĘ SAMĄ
+        ścieżkę mapowania co karta obecna-ale-bez-k_sc: k_sc=1,1 przyjęte,
+        proweniencja ZALOZENIE, wpis w śladzie WHITE BOX — mapping.py samo nie
+        rozróżnia „katalog bez k_sc” od „brak katalogu” (to rozróżnienie robi
+        WYŁĄCZNIE bramka gotowości: WARNING vs BLOCKER), więc oba muszą dawać
+        identyczny wynik tutaj."""
+        enm = self._enm_with_generator(
+            ref_id="pv1",
+            name="Blok PV",
+            p_mw=2.0,
+            gen_type="pv_inverter",
+            catalog_ref=None,
+        )
+        graph = map_enm_to_network_graph(enm)
+        src = graph.get_inverter_sources()[0]
+        assert src.type_ref is None
+        assert src.k_sc == pytest.approx(1.1)
+        assert src.k_sc_zrodlo == "ZALOZENIE"
+        trace = graph.k_sc_assumptions_trace
+        assert len(trace) == 1
+        assert "brak referencji katalogowej" in trace[0]["substitution"]
+        assert len(graph.k_sc_assumptions_trace) == 1
 
     def test_synchronous_becomes_machine_source(self):
         enm = self._enm_with_generator(
@@ -584,6 +716,114 @@ class TestGeneratorShortCircuitSources:
         assert snap_a.meta.fingerprint == snap_b.meta.fingerprint
 
 
+class TestGeneratorVoltageControlPV:
+    """Karta CV-4.1b (A3-04): generator w trybie regulacji napięcia
+    (`meta.control_mode == "REGULACJA_NAPIECIA"`) czyni swoją szynę węzłem PV
+    (napięcie zadane) zamiast PQ.
+
+    Iloczyn cech: pojedynczy generator regulujący × dwa generatory regulujące na
+    tej samej szynie (odmowa) × szyna bilansująca jako węzeł regulowany (odmowa) ×
+    nastawa niekompletna (odmowa Node) × inny tryb na tej samej szynie (bez zmian).
+    """
+
+    @staticmethod
+    def _enm_pv(**gen_fields) -> EnergyNetworkModel:
+        return _make_enm(
+            buses=[
+                Bus(ref_id="bus_sn", name="Szyna SN", voltage_kv=15),
+                Bus(ref_id="bus_oze", name="Szyna OZE", voltage_kv=15),
+            ],
+            sources=[
+                Source(
+                    ref_id="src_grid",
+                    name="Sieć",
+                    bus_ref="bus_sn",
+                    model="short_circuit_power",
+                    sk3_mva=220,
+                ),
+            ],
+            branches=[
+                OverheadLine(
+                    ref_id="ln_1",
+                    name="L1",
+                    from_bus_ref="bus_sn",
+                    to_bus_ref="bus_oze",
+                    length_km=2.0,
+                    r_ohm_per_km=0.25,
+                    x_ohm_per_km=0.32,
+                ),
+            ],
+            generators=[Generator(bus_ref="bus_oze", **gen_fields)],
+        )
+
+    def test_generator_regulujacy_napiecie_daje_wezel_pv(self):
+        enm = self._enm_pv(
+            ref_id="gen_1",
+            name="Falownik PV",
+            p_mw=0.5,
+            meta={"control_mode": "REGULACJA_NAPIECIA", "u_set_pu": 1.02},
+        )
+        graph = map_enm_to_network_graph(enm)
+        node = next(n for n in graph.nodes.values() if n.name == "Szyna OZE")
+        assert node.node_type == NodeType.PV
+        assert node.voltage_magnitude == pytest.approx(1.02)
+        assert node.active_power == pytest.approx(0.5)
+
+    def test_inny_tryb_na_tej_samej_szynie_zostaje_pq(self):
+        """Regresja: STALY_COS_PHI/Q_OD_U/brak trybu nie zmieniają typu węzła."""
+        enm = self._enm_pv(
+            ref_id="gen_1",
+            name="Falownik PV",
+            p_mw=0.5,
+            meta={"control_mode": "STALY_COS_PHI", "cos_phi": 0.95},
+        )
+        graph = map_enm_to_network_graph(enm)
+        node = next(n for n in graph.nodes.values() if n.name == "Szyna OZE")
+        assert node.node_type == NodeType.PQ
+
+    def test_dwa_generatory_regulujace_napiecie_na_jednej_szynie_jest_odmowa(self):
+        enm = self._enm_pv(
+            ref_id="gen_1",
+            name="Falownik PV 1",
+            p_mw=0.3,
+            meta={"control_mode": "REGULACJA_NAPIECIA", "u_set_pu": 1.02},
+        )
+        drugi = Generator(
+            ref_id="gen_2",
+            name="Falownik PV 2",
+            bus_ref="bus_oze",
+            p_mw=0.2,
+            meta={"control_mode": "REGULACJA_NAPIECIA", "u_set_pu": 1.01},
+        )
+        enm = enm.model_copy(update={"generators": [*enm.generators, drugi]})
+        with pytest.raises(ValueError, match="więcej niż jeden generator"):
+            map_enm_to_network_graph(enm)
+
+    def test_szyna_bilansujaca_nie_moze_byc_wezlem_pv(self):
+        enm = self._enm_pv(
+            ref_id="gen_1",
+            name="Falownik na GPZ",
+            p_mw=0.5,
+            meta={"control_mode": "REGULACJA_NAPIECIA", "u_set_pu": 1.02},
+        )
+        gen_na_slacku = enm.generators[0].model_copy(update={"bus_ref": "bus_sn"})
+        enm = enm.model_copy(update={"generators": [gen_na_slacku]})
+        with pytest.raises(ValueError, match="[Ss]zyna bilansująca"):
+            map_enm_to_network_graph(enm)
+
+    def test_nastawa_niekompletna_odmawia_przez_konstrukcje_wezla(self):
+        """Brak `u_set_pu` w meta -> `Node.__post_init__` odmawia (PV bez |U| nie
+        istnieje) — druga linia obrony niezależna od walidatora ENM."""
+        enm = self._enm_pv(
+            ref_id="gen_1",
+            name="Falownik PV",
+            p_mw=0.5,
+            meta={"control_mode": "REGULACJA_NAPIECIA"},
+        )
+        with pytest.raises(ValueError, match="amplitudy napięcia"):
+            map_enm_to_network_graph(enm)
+
+
 class TestObciazalnoscGalezi:
     """Brak obciazalnosci dlugotrwalej ZOSTAJE BRAKIEM (karta N-1-BACKEND).
 
@@ -657,3 +897,28 @@ class TestObciazalnoscGalezi:
         assert [i.status for i in pozycje] == [EnergyValidationStatus.NOT_COMPUTED]
         assert pozycje[0].why_pl == "Brak pradu znamionowego galezi."
         assert pozycje[0].observed_value is None
+
+
+class TestZrodloBezSzyny:
+    """Odbiór CV-3.3-B: źródło wskazujące nieistniejącą szynę NIE jest cicho pomijane.
+
+    Do tej karty assembler przechodził nad takim źródłem `continue` — graf
+    powstawał bez zasilania, bez śladu i bez kodu gotowości. Teraz odmowa z nazwą
+    źródła i szyny (walidator ENM zgłasza to wcześniej jako `sources.bus_missing`).
+    """
+
+    def test_assembler_odmawia_z_nazwa_zrodla_i_szyny(self):
+        enm = _make_enm(
+            buses=[Bus(ref_id="b1", name="Bus 1", voltage_kv=15)],
+            sources=[
+                Source(
+                    ref_id="s1",
+                    name="Grid",
+                    bus_ref="b_widmo",
+                    model="short_circuit_power",
+                    sk3_mva=200,
+                )
+            ],
+        )
+        with pytest.raises(ValueError, match=r"'s1'.*'b_widmo'"):
+            map_enm_to_network_graph(enm)

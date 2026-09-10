@@ -315,7 +315,7 @@ class TestIbZBieguRozplywu:
     def test_ib_z_biegu_gdy_dostarczony(self) -> None:
         enm = _siec_referencyjna()
         _wgraj_siec(enm)
-        run = execute_run(create_run(case_id=CASE_ID, analysis_type="PF").id)
+        run = execute_run(create_run(case_id=CASE_ID, klucz_twin=CASE_ID, analysis_type="PF").id)
         assert run.status == "FINISHED", run.error_message
 
         wynik = build_nn_circuit_sheet(enm=enm, station_ref="stn", load_flow_run=run)
@@ -330,7 +330,7 @@ class TestIbZBieguRozplywu:
     def test_delta_u_dostepne_z_biegu(self) -> None:
         enm = _siec_referencyjna()
         _wgraj_siec(enm)
-        run = execute_run(create_run(case_id=CASE_ID, analysis_type="PF").id)
+        run = execute_run(create_run(case_id=CASE_ID, klucz_twin=CASE_ID, analysis_type="PF").id)
         wynik = build_nn_circuit_sheet(enm=enm, station_ref="stn", load_flow_run=run)
         mcb = next(w for w in wynik["wiersze"] if w["feeder_root_branch_ref"] == "ap_mcb")
         assert mcb["delta_u"]["status"] == "OK"
@@ -341,7 +341,7 @@ class TestIbZBieguRozplywu:
     def test_swiezosc_prowenencji_gdy_model_niezmieniony(self) -> None:
         enm = _siec_referencyjna()
         _wgraj_siec(enm)
-        run = execute_run(create_run(case_id=CASE_ID, analysis_type="PF").id)
+        run = execute_run(create_run(case_id=CASE_ID, klucz_twin=CASE_ID, analysis_type="PF").id)
         wynik = build_nn_circuit_sheet(enm=enm, station_ref="stn", load_flow_run=run)
         assert wynik["provenance"]["swiezosc"]["load_flow_aktualny"] is True
         assert wynik["provenance"]["load_flow_run_id"] == str(run.id)
@@ -351,7 +351,9 @@ class TestIkZBieguZwarciowego:
     def test_ik_max_z_biegu_sc(self) -> None:
         enm = _siec_referencyjna()
         _wgraj_siec(enm)
-        run = execute_run(create_run(case_id=CASE_ID, analysis_type="short_circuit_sn").id)
+        run = execute_run(
+            create_run(case_id=CASE_ID, klucz_twin=CASE_ID, analysis_type="short_circuit_sn").id
+        )
         assert run.status == "FINISHED", run.error_message
         wynik = build_nn_circuit_sheet(enm=enm, station_ref="stn", short_circuit_run=run)
         mcb = next(w for w in wynik["wiersze"] if w["feeder_root_branch_ref"] == "ap_mcb")
@@ -412,7 +414,9 @@ class TestStanyTrzecie:
     def test_brak_czasu_wylaczenia_daje_brak_dla_i2t(self) -> None:
         enm = _siec_referencyjna()
         _wgraj_siec(enm)
-        sc_run = execute_run(create_run(case_id=CASE_ID, analysis_type="short_circuit_sn").id)
+        sc_run = execute_run(
+            create_run(case_id=CASE_ID, klucz_twin=CASE_ID, analysis_type="short_circuit_sn").id
+        )
         wynik = build_nn_circuit_sheet(
             enm=enm, station_ref="stn", short_circuit_run=sc_run, fault_duration_s=None
         )
@@ -423,7 +427,9 @@ class TestStanyTrzecie:
     def test_i2t_policzony_gdy_ith_i_czas_dostarczone(self) -> None:
         enm = _siec_referencyjna()
         _wgraj_siec(enm)
-        sc_run = execute_run(create_run(case_id=CASE_ID, analysis_type="short_circuit_sn").id)
+        sc_run = execute_run(
+            create_run(case_id=CASE_ID, klucz_twin=CASE_ID, analysis_type="short_circuit_sn").id
+        )
         wynik = build_nn_circuit_sheet(
             enm=enm, station_ref="stn", short_circuit_run=sc_run, fault_duration_s=0.2
         )
@@ -491,8 +497,10 @@ class TestDeterminizm:
     def test_dwa_biegi_identyczny_json_z_biegami(self) -> None:
         enm = _siec_referencyjna()
         _wgraj_siec(enm)
-        pf = execute_run(create_run(case_id=CASE_ID, analysis_type="PF").id)
-        sc = execute_run(create_run(case_id=CASE_ID, analysis_type="short_circuit_sn").id)
+        pf = execute_run(create_run(case_id=CASE_ID, klucz_twin=CASE_ID, analysis_type="PF").id)
+        sc = execute_run(
+            create_run(case_id=CASE_ID, klucz_twin=CASE_ID, analysis_type="short_circuit_sn").id
+        )
         a = build_nn_circuit_sheet(
             enm=enm,
             station_ref="stn",

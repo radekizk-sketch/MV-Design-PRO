@@ -18,29 +18,29 @@ from __future__ import annotations
 from typing import Any
 
 from application.trace_emitters.deterministic_ids import deterministic_trace_id
+from application.trace_emitters.wynik import BRAK_DANYCH as _BRAK_DANYCH
+from application.trace_emitters.wynik import fmt as _fmt
+from application.trace_emitters.wynik import wynik as _wynik
 from domain.trace_v2.artifact import (
     AnalysisTypeV2,
     TraceArtifactV2,
     TraceEquationStep,
     TraceValue,
     build_trace_artifact_v2,
-    canonical_float,
     compute_run_hash,
 )
 from domain.trace_v2.equation_registry_v2 import EquationRegistryV2
 from domain.trace_v2.math_spec_version import CURRENT_MATH_SPEC_VERSION
 
 
-def _fmt(x: float) -> str:
-    return f"{x:.6g}"
-
-
-def _convergence_substitution(mismatch: float, converged: bool, tolerance: float) -> str:
+def _convergence_substitution(
+    mismatch: float | str, converged: bool, tolerance: float | str
+) -> str:
     comp = "<" if converged else r"\geq"
     return r"\max(|\Delta P|, |\Delta Q|) = " + _fmt(mismatch) + " " + comp + " " + _fmt(tolerance)
 
 
-def _bus_voltage_substitution(bus_id: str, v_pu: float, angle_deg: float) -> str:
+def _bus_voltage_substitution(bus_id: str, v_pu: float | str, angle_deg: float | str) -> str:
     return f"U_{{{bus_id}}} = {_fmt(v_pu)}" + r" \angle " + f"{_fmt(angle_deg)}" + r"°"
 
 
@@ -114,19 +114,19 @@ class TraceEmitterLoadFlow:
         )
         inputs["tolerance"] = TraceValue(
             name="tolerance",
-            value=canonical_float(trace.get("tolerance", 1e-6)),
+            value=_wynik(trace.get("tolerance")),
             unit="p.u.",
             label_pl="Tolerancja zbieżności",
         )
         inputs["max_iterations"] = TraceValue(
             name="max_iterations",
-            value=trace.get("max_iterations", 100),
+            value=_wynik(trace.get("max_iterations")),
             unit="—",
             label_pl="Limit iteracji",
         )
         inputs["base_mva"] = TraceValue(
             name="base_mva",
-            value=canonical_float(trace.get("base_mva", 100.0)),
+            value=_wynik(trace.get("base_mva")),
             unit="MVA",
             label_pl="Moc bazowa",
         )
@@ -154,17 +154,20 @@ class TraceEmitterLoadFlow:
 
         slack_bus = trace.get("slack_bus_id", "network")
         converged = trace.get("converged", False)
-        iter_count = trace.get("final_iterations_count", 0)
+        iter_count = _wynik(trace.get("final_iterations_count"))
 
         # Step 1: Convergence
         step_counter += 1
         eq_conv = self._registry.get("LF_CONVERGENCE")
-        tolerance = trace.get("tolerance", 1e-6)
+        tolerance = _wynik(trace.get("tolerance"))
         iterations = trace.get("iterations", [])
-        last_mismatch = 0.0
+        last_mismatch: float | str = _BRAK_DANYCH
         if iterations:
             last_iter = iterations[-1]
-            last_mismatch = last_iter.get("max_mismatch_pu", last_iter.get("norm_mismatch", 0.0))
+            mismatch_raw = last_iter.get("max_mismatch_pu")
+            if mismatch_raw is None:
+                mismatch_raw = last_iter.get("norm_mismatch")
+            last_mismatch = _wynik(mismatch_raw)
 
         steps.append(
             TraceEquationStep(
@@ -190,13 +193,13 @@ class TraceEmitterLoadFlow:
                     ),
                     "final_mismatch": TraceValue(
                         name="final_mismatch",
-                        value=canonical_float(last_mismatch),
+                        value=last_mismatch,
                         unit="p.u.",
                         label_pl="Końcowy mismatch",
                     ),
                     "tolerance": TraceValue(
                         name="tolerance",
-                        value=canonical_float(tolerance),
+                        value=tolerance,
                         unit="p.u.",
                         label_pl="Tolerancja",
                     ),
@@ -213,8 +216,8 @@ class TraceEmitterLoadFlow:
 
         # Step 2: Power balance P
         summary = result.get("summary", {})
-        total_losses_p = summary.get("total_losses_p_mw", 0.0)
-        slack_p = summary.get("slack_p_mw", 0.0)
+        total_losses_p = _wynik(summary.get("total_losses_p_mw"))
+        slack_p = _wynik(summary.get("slack_p_mw"))
 
         step_counter += 1
         eq_pb_p = self._registry.get("LF_POWER_BALANCE_P")
@@ -233,20 +236,20 @@ class TraceEmitterLoadFlow:
                 intermediate_values={
                     "total_losses_p_mw": TraceValue(
                         name="total_losses_p_mw",
-                        value=canonical_float(total_losses_p),
+                        value=total_losses_p,
                         unit="MW",
                         label_pl="Straty P",
                     ),
                     "slack_p_mw": TraceValue(
                         name="slack_p_mw",
-                        value=canonical_float(slack_p),
+                        value=slack_p,
                         unit="MW",
                         label_pl="P slack",
                     ),
                 },
                 result=TraceValue(
                     name="total_losses_p_mw",
-                    value=canonical_float(total_losses_p),
+                    value=total_losses_p,
                     unit="MW",
                     label_pl="Całkowite straty P",
                 ),
@@ -255,8 +258,8 @@ class TraceEmitterLoadFlow:
         )
 
         # Step 3: Power balance Q
-        total_losses_q = summary.get("total_losses_q_mvar", 0.0)
-        slack_q = summary.get("slack_q_mvar", 0.0)
+        total_losses_q = _wynik(summary.get("total_losses_q_mvar"))
+        slack_q = _wynik(summary.get("slack_q_mvar"))
 
         step_counter += 1
         eq_pb_q = self._registry.get("LF_POWER_BALANCE_Q")
@@ -275,20 +278,20 @@ class TraceEmitterLoadFlow:
                 intermediate_values={
                     "total_losses_q_mvar": TraceValue(
                         name="total_losses_q_mvar",
-                        value=canonical_float(total_losses_q),
+                        value=total_losses_q,
                         unit="Mvar",
                         label_pl="Straty Q",
                     ),
                     "slack_q_mvar": TraceValue(
                         name="slack_q_mvar",
-                        value=canonical_float(slack_q),
+                        value=slack_q,
                         unit="Mvar",
                         label_pl="Q slack",
                     ),
                 },
                 result=TraceValue(
                     name="total_losses_q_mvar",
-                    value=canonical_float(total_losses_q),
+                    value=total_losses_q,
                     unit="Mvar",
                     label_pl="Całkowite straty Q",
                 ),
@@ -301,8 +304,8 @@ class TraceEmitterLoadFlow:
         for bus in sorted(result.get("bus_results", []), key=lambda b: b.get("bus_id", "")):
             step_counter += 1
             bus_id = bus["bus_id"]
-            v_pu = bus.get("v_pu", 0.0)
-            angle_deg = bus.get("angle_deg", 0.0)
+            v_pu = _wynik(bus.get("v_pu"))
+            angle_deg = _wynik(bus.get("angle_deg"))
 
             steps.append(
                 TraceEquationStep(
@@ -316,20 +319,20 @@ class TraceEmitterLoadFlow:
                     intermediate_values={
                         "v_pu": TraceValue(
                             name="v_pu",
-                            value=canonical_float(v_pu),
+                            value=v_pu,
                             unit="p.u.",
                             label_pl="Napięcie",
                         ),
                         "angle_deg": TraceValue(
                             name="angle_deg",
-                            value=canonical_float(angle_deg),
+                            value=angle_deg,
                             unit="°",
                             label_pl="Kąt",
                         ),
                     },
                     result=TraceValue(
                         name="v_pu",
-                        value=canonical_float(v_pu),
+                        value=v_pu,
                         unit="p.u.",
                         label_pl="Napięcie węzła",
                     ),
@@ -344,10 +347,10 @@ class TraceEmitterLoadFlow:
             branch_id = br["branch_id"]
 
             step_counter += 1
-            p_from = br.get("p_from_mw", 0.0)
-            q_from = br.get("q_from_mvar", 0.0)
-            p_to = br.get("p_to_mw", 0.0)
-            q_to = br.get("q_to_mvar", 0.0)
+            p_from = _wynik(br.get("p_from_mw"))
+            q_from = _wynik(br.get("q_from_mvar"))
+            p_to = _wynik(br.get("p_to_mw"))
+            q_to = _wynik(br.get("q_to_mvar"))
 
             steps.append(
                 TraceEquationStep(
@@ -364,22 +367,22 @@ class TraceEmitterLoadFlow:
                     intermediate_values={
                         "p_from_mw": TraceValue(
                             name="p_from_mw",
-                            value=canonical_float(p_from),
+                            value=p_from,
                             unit="MW",
                             label_pl="P from",
                         ),
                         "q_from_mvar": TraceValue(
                             name="q_from_mvar",
-                            value=canonical_float(q_from),
+                            value=q_from,
                             unit="Mvar",
                             label_pl="Q from",
                         ),
                         "p_to_mw": TraceValue(
-                            name="p_to_mw", value=canonical_float(p_to), unit="MW", label_pl="P to"
+                            name="p_to_mw", value=p_to, unit="MW", label_pl="P to"
                         ),
                         "q_to_mvar": TraceValue(
                             name="q_to_mvar",
-                            value=canonical_float(q_to),
+                            value=q_to,
                             unit="Mvar",
                             label_pl="Q to",
                         ),
@@ -395,8 +398,8 @@ class TraceEmitterLoadFlow:
             )
 
             step_counter += 1
-            losses_p = br.get("losses_p_mw", 0.0)
-            losses_q = br.get("losses_q_mvar", 0.0)
+            losses_p = _wynik(br.get("losses_p_mw"))
+            losses_q = _wynik(br.get("losses_q_mvar"))
 
             steps.append(
                 TraceEquationStep(
@@ -413,20 +416,20 @@ class TraceEmitterLoadFlow:
                     intermediate_values={
                         "losses_p_mw": TraceValue(
                             name="losses_p_mw",
-                            value=canonical_float(losses_p),
+                            value=losses_p,
                             unit="MW",
                             label_pl="Straty P",
                         ),
                         "losses_q_mvar": TraceValue(
                             name="losses_q_mvar",
-                            value=canonical_float(losses_q),
+                            value=losses_q,
                             unit="Mvar",
                             label_pl="Straty Q",
                         ),
                     },
                     result=TraceValue(
                         name="losses_p_mw",
-                        value=canonical_float(losses_p),
+                        value=losses_p,
                         unit="MW",
                         label_pl="Straty gałęzi",
                     ),
@@ -448,31 +451,31 @@ class TraceEmitterLoadFlow:
         )
         outputs["iterations_count"] = TraceValue(
             name="iterations_count",
-            value=result.get("iterations_count", 0),
+            value=_wynik(result.get("iterations_count")),
             unit="—",
             label_pl="Liczba iteracji",
         )
         outputs["total_losses_p_mw"] = TraceValue(
             name="total_losses_p_mw",
-            value=canonical_float(summary.get("total_losses_p_mw", 0.0)),
+            value=_wynik(summary.get("total_losses_p_mw")),
             unit="MW",
             label_pl="Całkowite straty P",
         )
         outputs["total_losses_q_mvar"] = TraceValue(
             name="total_losses_q_mvar",
-            value=canonical_float(summary.get("total_losses_q_mvar", 0.0)),
+            value=_wynik(summary.get("total_losses_q_mvar")),
             unit="Mvar",
             label_pl="Całkowite straty Q",
         )
         outputs["min_v_pu"] = TraceValue(
             name="min_v_pu",
-            value=canonical_float(summary.get("min_v_pu", 0.0)),
+            value=_wynik(summary.get("min_v_pu")),
             unit="p.u.",
             label_pl="Minimum napięcia",
         )
         outputs["max_v_pu"] = TraceValue(
             name="max_v_pu",
-            value=canonical_float(summary.get("max_v_pu", 0.0)),
+            value=_wynik(summary.get("max_v_pu")),
             unit="p.u.",
             label_pl="Maksimum napięcia",
         )

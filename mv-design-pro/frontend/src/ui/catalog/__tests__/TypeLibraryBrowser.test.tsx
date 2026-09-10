@@ -250,14 +250,6 @@ describe('TypeLibraryBrowser', () => {
     vi.mocked(catalogApi.fetchTypesByCategory).mockImplementation(async (category) => (
       catalogByCategory[category]
     ));
-    vi.mocked(catalogApi.exportTypeLibrary).mockResolvedValue({ ok: true });
-    vi.mocked(catalogApi.importTypeLibrary).mockResolvedValue({
-      success: true,
-      mode: 'merge',
-      added: [],
-      skipped: [],
-      conflicts: [],
-    });
   });
 
   it('renders the full active catalog tab set', async () => {
@@ -304,6 +296,42 @@ describe('TypeLibraryBrowser', () => {
     expect(screen.getAllByText('OSD Północ').length).toBeGreaterThan(1);
     expect(screen.getByText('Moc zwarciowa Sk3 [MVA]')).toBeInTheDocument();
     expect(screen.getByText('350')).toBeInTheDocument();
+    // CV-4.3 K7: trzy pola scenariusza MIN — „brak danych" gdy null (wzór K1,
+    // `renderLineParams`/`max_temperature_c`), NIE ukryte jak w panelu generycznym.
+    expect(screen.getByText('Moc zwarciowa Sk3 min')).toBeInTheDocument();
+    expect(screen.getByText('Prąd zwarciowy Ik3 min')).toBeInTheDocument();
+    expect(screen.getByText('Stosunek R/X min')).toBeInTheDocument();
+    expect(screen.getAllByText('brak danych')).toHaveLength(3);
+  });
+
+  it('CV-4.3 K7: ZRODLO_SN z danymi scenariusza MIN pokazuje realne wartości (nie "brak danych")', async () => {
+    const user = userEvent.setup();
+    vi.mocked(catalogApi.fetchTypesByCategory).mockImplementation((category: TypeCategory) => {
+      if (category === 'SYSTEM_SOURCE') {
+        return Promise.resolve([
+          {
+            ...catalogByCategory.SYSTEM_SOURCE[0],
+            sk3_min_mva: 210,
+            ik3_min_ka: 8.1,
+            rx_ratio_min: 0.22,
+          },
+        ]);
+      }
+      return Promise.resolve(catalogByCategory[category] ?? []);
+    });
+    render(<TypeLibraryBrowser />);
+
+    await user.click(screen.getByRole('button', { name: /Typy zasilania systemowego SN/i }));
+    await waitFor(() => {
+      expect(catalogApi.fetchTypesByCategory).toHaveBeenCalledWith('SYSTEM_SOURCE');
+    });
+    await user.click(screen.getByText('GPZ 110/15 kV'));
+
+    expect(screen.getByText('Moc zwarciowa Sk3 min')).toBeInTheDocument();
+    expect(screen.getByText('210')).toBeInTheDocument();
+    expect(screen.getByText('8.1')).toBeInTheDocument();
+    expect(screen.getByText('0.22')).toBeInTheDocument();
+    expect(screen.queryByText('brak danych')).not.toBeInTheDocument();
   });
 
   it('filters visible types by search query', async () => {

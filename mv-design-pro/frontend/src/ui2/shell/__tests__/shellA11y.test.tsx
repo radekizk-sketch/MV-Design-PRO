@@ -7,6 +7,10 @@ import { AppShell } from '../AppShell';
 import { useShellStore } from '../useShellStore';
 import { SHELL_STRINGS } from '../strings';
 import { App } from '../../../App';
+// Karta FAB-J: `AppRoot` (pod `App`) czyta snapshot audytu 2 przez React Query —
+// produkcja dostaje `QueryClientProvider` w `main.tsx`; test montujący pełne
+// drzewo dostaje go tym samym helperem co pozostałe testy korzenia aplikacji.
+import { renderWithQueryClient } from '../../../test/queryClientTestUtils';
 import { useThemeModeStore } from '../../theme/themeMode';
 
 // Kanwa SLD (ciężki komponent canvas) jest atrapowana — ten test sprawdza
@@ -100,7 +104,7 @@ describe('Powłoka — przełącznik motywu (jeden sterownik)', () => {
 
   it('natywny klik w przełącznik zmienia html[data-theme] i wrapper App RAZEM', async () => {
     const user = userEvent.setup();
-    const { container } = render(<App />);
+    const { container } = renderWithQueryClient(<App />);
 
     // Start: tryb dyspozytorski — html[data-theme] i wrapper zgodne.
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark_scada');

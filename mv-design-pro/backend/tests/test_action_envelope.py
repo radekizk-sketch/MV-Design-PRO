@@ -42,6 +42,10 @@ def _build_snapshot() -> tuple[NetworkGraph, str]:
                 "branch_type": "LINE",
                 "from_node_id": "node-1",
                 "to_node_id": "node-2",
+                "r_ohm_per_km": 0.206,
+                "x_ohm_per_km": 0.118,
+                "length_km": 2.5,
+                "rated_current_a": 300.0,
             }
         )
     )

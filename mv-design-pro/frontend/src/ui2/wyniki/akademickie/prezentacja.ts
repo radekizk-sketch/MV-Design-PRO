@@ -152,16 +152,41 @@ export interface TabelaObiektow {
   readonly refZParametrem?: boolean;
 }
 
+/**
+ * Wielkości ŚWIADOMIE niepokazywane, choć solver je zwraca w ładunku wyniku —
+ * z powodem renderowanym WPROST na ekranie (karta W2 pkt 5, zero fabrykacji).
+ *
+ * Różnica wobec `nieprezentowane.ts` (`POWODY_NIEPREZENTOWANIA`): tamten
+ * rejestr wygasza CAŁY rodzaj analizy i powód NIE trafia na ekran („ekran ma
+ * być KRÓTSZY"); tu metoda detekcji z uzasadnieniem zostaje renderowana jak
+ * dziś — pomijane są WYŁĄCZNIE te trzy liczby, a powód pominięcia jest
+ * elementem odpowiedzi inżynierskiej (uczciwość wobec BIEŻĄCEGO wyniku), nie
+ * czymś do ukrycia.
+ */
+export interface WielkoscPominieta {
+  /** Ścieżki pól pominiętych — kontrola OBECNOŚCI w ładunku steruje tym, czy
+   *  nota w ogóle się renderuje (zero noty dla pól, których kontrakt nie niesie). */
+  readonly sciezki: readonly string[];
+  /** Powód pominięcia — jedno zdanie, renderowane WPROST w miejscu liczb. */
+  readonly powod: string;
+}
+
 /** Kompletny projekt prezentacji jednego rodzaju analizy. */
 export interface PrezentacjaRodzaju {
-  /** Co ta analiza rozstrzyga — jedno zdanie, język inżynierski. */
-  readonly pytanie: string;
-  /** Wobec czego oceniany jest werdykt (norma albo uczciwe „brak progu"). */
-  readonly kryterium: string;
-  /** Norma/źródło metody — pokazywane przy kryterium. */
-  readonly norma?: string;
+  /*
+   * Karta B-02 (2026-09-10): PYTANIE INŻYNIERSKIE, KRYTERIUM i PODSTAWA (norma)
+   * ZESZŁY z tego pliku — niesie je katalog backendu
+   * (`GET /api/catalog/v126/analysis-catalog`: `pytanie_pl`, `podstawa_oceny`,
+   * `bez_podstawy_pl`). Front miał tu drugą kopię tych samych zdań i progów
+   * (8 % THD, 20 % marginesu BIL, 10 % TRV…) — dwie prawdy o kryterium na
+   * jednym ekranie. Zostaje WYŁĄCZNIE mapa prezentacji ŁADUNKU WYNIKU: która
+   * ścieżka niesie ocenę, które wielkości i tabele pokazać, jaki jest następny krok.
+   */
   readonly werdykt: WerdyktRodzaju;
   readonly wielkosciGlowne: readonly WielkoscGlowna[];
+  /** Wielkości ŚWIADOMIE niepokazywane (karta W2 pkt 5) — puste dla rodzajów
+   *  bez takiego pominięcia (dziś: tylko `earth_fault_detection`). */
+  readonly wielkosciPominiete?: readonly WielkoscPominieta[];
   readonly tabele: readonly TabelaObiektow[];
   /** Jawny następny krok projektanta po odczytaniu werdyktu. */
   readonly nastepnyKrok: string;
@@ -211,13 +236,6 @@ export const MAPA_WIARYGODNOSCI: MapaWerdyktu = {
 export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
   // -------------------------------------------------------------------------
   power_quality_harmonics: {
-    pytanie:
-      'Czy odkształcenie napięcia i prądu w węzłach sieci mieści się w granicach '
-      + 'kompatybilności elektromagnetycznej?',
-    kryterium:
-      'Współczynnik odkształcenia napięcia THD_U ≤ 8 % (PN-EN 50160) i ≤ 5 % '
-      + '(IEEE 519); odkształcenie prądu odbiorcy TDD ≤ 5 % (IEEE 519).',
-    norma: 'PN-EN 50160 · IEEE 519',
     werdykt: {
       rodzaj: 'zbiorczy',
       sciezkaTablicy: 'nodes',
@@ -253,14 +271,6 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
 
   // -------------------------------------------------------------------------
   ssci_impedance: {
-    pytanie:
-      'Czy przekształtnik przyłączony do sieci o danej sztywności nie wejdzie '
-      + 'w interakcję podsynchroniczną (rezonans regulacyjny)?',
-    kryterium:
-      'Werdykt stabilności wg kryterium impedancyjnego Nyquista wystawia okno '
-      + '„Stabilność SSCI" — ma własny kontrakt odpowiedzi i własny model prezentacji. '
-      + 'Tutaj dostępne są wyłącznie tablice impedancji, z których ten werdykt powstaje.',
-    norma: 'kryterium impedancyjne Nyquista (Sun 2011 / Wen 2016)',
     werdykt: {
       rodzaj: 'pojedynczy',
       sciezki: ['sanity.status'],
@@ -307,14 +317,10 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
 
   // -------------------------------------------------------------------------
   reliability_contingency: {
-    pytanie:
-      'Jak często i jak długo odbiorcy pozostaną bez zasilania i który element '
-      + 'sieci jest najgroźniejszy przy awarii?',
-    kryterium:
-      'Obciążenie gałęzi po wyłączeniu pojedynczego elementu (N-1) ≤ 100 % '
-      + 'obciążalności. Wskaźniki SAIDI/SAIFI są wielkościami projektowymi — solver '
-      + 'nie wystawia dla nich progu normatywnego (wartości docelowe określa operator).',
-    norma: 'IEEE 1366 (definicje wskaźników); kryterium N-1',
+    // Karta W3-E (2026-09-09): pytanie i kryterium przepisane — poprzednia
+    // wersja obiecywała „który element sieci jest najgroźniejszy przy awarii"
+    // (odpowiedź rankingu), choć ranking zszedł z ekranu (zdjęty razem z
+    // wyliczeniem, nie tylko z tabeli — zob. `nastepnyKrok`).
     werdykt: {
       rodzaj: 'pojedynczy',
       sciezki: ['sanity.status'],
@@ -342,34 +348,22 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
         jednostka: '1/rok',
       },
     ],
-    tabele: [
-      {
-        sciezka: 'contingency_ranking',
-        tytul: 'Ranking awarii wg dotkliwości',
-        kluczRef: 'contingency',
-        etykietaRef: 'Wyłączany element',
-        kolumny: [
-          { klucz: 'order', etykieta: 'Rodzaj awarii' },
-          { klucz: 'severity', etykieta: 'Dotkliwość (wskaźnik rankingowy)' },
-          { klucz: 'max_loading_percent', etykieta: 'Obciążenie gałęzi po awarii', jednostka: '%' },
-        ],
-      },
-    ],
+    // Karta W3-E (2026-09-09): tabela `contingency_ranking` SKASOWANA — ranking
+    // jest liczony z `_branch_current_a` (prąd gałęzi z obciążenia węzła
+    // docelowego, bez sprzężenia sieci) i NIE jest kanonem (kanon = pełny
+    // re-solve w `application/analyses/kontyngencje_n1.py`, ekran „Wyniki ›
+    // Kontyngencje"). Backend zdejmuje klucz z odpowiedzi (`bez_rankingu_n1`) i
+    // dokłada `ranking_n1` — okno pokazuje go jako STAN, nie tabelę
+    // (`PanelRankinguNieprezentowanego`, payload-driven, renderuje się dla
+    // KAŻDEGO rodzaju niosącego `ranking_n1`, nie tylko dla tego).
+    tabele: [],
     nastepnyKrok:
-      'Element z czoła rankingu zabezpiecz rezerwą: punkt podziału do przełączenia, '
-      + 'drugie zasilanie albo skrócenie czasu odtworzenia (automatyka SZR).',
+      'Ranking dotkliwości kontyngencji policz na ekranie „Wyniki › Kontyngencje" '
+      + '(pełny re-solve rozpływu) — ta analiza daje wyłącznie wskaźniki niezawodności.',
   },
 
   // -------------------------------------------------------------------------
   earthing_safety: {
-    pytanie:
-      'Czy przy zwarciu doziemnym napięcia rażenia na terenie stacji nie zagrażają '
-      + 'człowiekowi?',
-    kryterium:
-      'Napięcie dotykowe rażeniowe ≤ dopuszczalne i napięcie krokowe ≤ dopuszczalne, '
-      + 'przy zmierzonym czasie wyłączenia zwarcia. Wartości dopuszczalne liczy solver '
-      + 'z rezystywności warstwy powierzchniowej i czasu wyłączenia.',
-    norma: 'IEEE 80 (metoda Sverak) · PN-EN 50522',
     werdykt: {
       rodzaj: 'pojedynczy',
       sciezki: ['safety_status'],
@@ -411,14 +405,6 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
 
   // -------------------------------------------------------------------------
   insulation_coordination: {
-    pytanie:
-      'Czy dobrane ograniczniki przepięć chronią izolację aparatów z wymaganym '
-      + 'zapasem?',
-    kryterium:
-      'Margines ochrony izolacji ≥ 20 % względem napięcia obniżonego ogranicznika '
-      + 'przy prądzie 10 kA oraz przewidywane przepięcie dorywcze ≤ napięcie znamionowe '
-      + 'ogranicznika.',
-    norma: 'IEC 60071 (koordynacja izolacji)',
     werdykt: {
       rodzaj: 'zbiorczy',
       sciezkaTablicy: 'arresters',
@@ -465,14 +451,6 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
 
   // -------------------------------------------------------------------------
   earth_fault_detection: {
-    pytanie:
-      'Jaką metodą wykryć zwarcie doziemne przy danym sposobie uziemienia punktu '
-      + 'neutralnego i czy przekaźnik w polu ją obsługuje?',
-    kryterium:
-      'Metoda zalecana dla danego sposobu uziemienia punktu neutralnego musi być '
-      + 'dostępna w wyposażeniu przekaźnika. Nastawa rozruchowa napięcia zerowego '
-      + 'w zakresie (0; 100] % napięcia fazowego.',
-    norma: 'praktyka sieci SN kompensowanych i uziemionych przez rezystor',
     werdykt: {
       rodzaj: 'pojedynczy',
       sciezki: ['relay_support_status'],
@@ -488,16 +466,18 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
       { sciezka: 'neutral_grounding', etykieta: 'Sposób uziemienia punktu neutralnego' },
       { sciezka: 'recommended_method', etykieta: 'Metoda zalecana' },
       { sciezka: 'alternative_method', etykieta: 'Metoda alternatywna' },
+    ],
+    // Karta W2 pkt 5 (zero fabrykacji): `settings.u0_start_percent`/`p0_set_w`/
+    // `i5_multiplier` solver FROZEN zwraca jako LITERAŁY bez udokumentowanej
+    // podstawy (`network_model/solvers/*` — nie ruszane tą kartą). Metoda
+    // detekcji z uzasadnieniem zostaje renderowana jak dziś (`wielkosciGlowne`
+    // powyżej); trzy nastawy NIE są renderowane — w ich miejscu powód wprost.
+    wielkosciPominiete: [
       {
-        sciezka: 'settings.u0_start_percent',
-        etykieta: 'Nastawa rozruchowa napięcia zerowego',
-        jednostka: '%',
-      },
-      { sciezka: 'settings.p0_set_w', etykieta: 'Nastawa mocy czynnej zerowej', jednostka: 'W' },
-      {
-        sciezka: 'settings.i5_multiplier',
-        etykieta: 'Krotność rozruchu 5. harmonicznej',
-        jednostka: '×',
+        sciezki: ['settings.u0_start_percent', 'settings.p0_set_w', 'settings.i5_multiplier'],
+        powod:
+          'Nastawy nie są prezentowane: solver nie ma dla nich udokumentowanej podstawy — '
+          + 'wymagane wymaganie OSD albo karta przekaźnika.',
       },
     ],
     tabele: [],
@@ -508,13 +488,6 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
 
   // -------------------------------------------------------------------------
   transient_trv: {
-    pytanie:
-      'Czy napięcie powrotne po przerwaniu prądu zwarciowego mieści się pod '
-      + 'obwiednią wytrzymałości wyłącznika?',
-    kryterium:
-      'Margines napięcia powrotnego ≥ 10 % względem obwiedni wytrzymałości '
-      + 'wyłącznika w całym przebiegu czasowym.',
-    norma: 'IEC 62271-100 (obwiednia napięcia powrotnego)',
     werdykt: {
       rodzaj: 'pojedynczy',
       sciezki: ['trv_status'],
@@ -551,14 +524,6 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
 
   // -------------------------------------------------------------------------
   motor_starting: {
-    pytanie:
-      'Czy silnik ruszy pod obciążeniem i czy jego rozruch nie zapadnie napięcia '
-      + 'na szynie poniżej dopuszczalnego?',
-    kryterium:
-      'Zapad napięcia na szynie ≤ 15 %, wskaźnik cieplny rozruchu I²t ≤ 1 (czas '
-      + 'rozruchu w granicy czasu utyku) oraz moment rozruchowy większy od momentu '
-      + 'oporowego maszyny napędzanej.',
-    norma: 'kryteria rozruchowe silników SN (zapad napięcia, czas utyku)',
     werdykt: {
       rodzaj: 'zbiorczy',
       sciezkaTablicy: 'motors',
@@ -590,128 +555,30 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
       + 'przemiennik) albo wzmocnij tor zasilania szyny rozruchowej.',
   },
 
-  // -------------------------------------------------------------------------
-  hosting_capacity: {
-    pytanie:
-      'Ile mocy generacji można przyłączyć w węźle, żeby nie przekroczyć granic '
-      + 'napięcia ani obciążalności gałęzi?',
-    kryterium:
-      'Napięcie w zakresie 0,90–1,10 j.w. i prąd gałęzi ≤ obciążalność długotrwała, '
-      + 'z prawdopodobieństwem ≥ 95 % w losowaniu obciążenia i generacji.',
-    norma: 'metoda probabilistyczna Monte Carlo; granice napięcia PN-EN 50160',
-    werdykt: {
-      rodzaj: 'pojedynczy',
-      sciezki: ['sanity.status'],
-      mapa: MAPA_WIARYGODNOSCI,
-    },
-    wielkosciGlowne: [],
-    tabele: [
-      {
-        sciezka: 'hosting_capacity',
-        tytul: 'Zdolność przyłączeniowa węzłów',
-        kluczRef: 'bus_ref',
-        etykietaRef: 'Szyna',
-        kolumny: [
-          {
-            klucz: 'hosting_capacity_mw',
-            etykieta: 'Moc generacji możliwa do przyłączenia',
-            jednostka: 'MW',
-          },
-          {
-            klucz: 'critical_limit',
-            etykieta: 'Ograniczenie rozstrzygające',
-            mapaStatusu: {
-              U_max: { tekst: 'granica napięcia', istotnosc: 'warn' },
-              I_galaz: { tekst: 'obciążalność gałęzi', istotnosc: 'warn' },
-            },
-          },
-          { klucz: 'confidence_percent', etykieta: 'Poziom ufności', jednostka: '%' },
-          { klucz: 'monte_carlo_n', etykieta: 'Liczba losowań' },
-          // Uczciwy stan zerowy (karta MOST-WEJSCIA-V126): szyna, do której nie
-          // wchodzi żaden element z obciążalnością długotrwałą, ma wynik oparty
-          // WYŁĄCZNIE na kryterium napięciowym. Bez tej kolumny ekran pokazywałby
-          // „granica napięcia" jako rozstrzygnięcie, przemilczając, że drugiego
-          // kryterium w ogóle nie zastosowano — a przed tą kartą liczono je
-          // z obciążalności 300 A wziętej z powietrza.
-          { klucz: 'brak_danych', etykieta: 'Czego zabrakło' },
-        ],
-      },
-    ],
-    nastepnyKrok:
-      'Za mała moc przyłączeniowa: wzmocnij tor (przekrój, drugie zasilanie), '
-      + 'zastosuj regulację mocy biernej źródła albo przesuń punkt przyłączenia bliżej stacji.',
-  },
-
-  // -------------------------------------------------------------------------
-  opf_loss_lcc: {
-    pytanie:
-      'Ile energii traci sieć w ciągu roku i ile te straty kosztują w całym '
-      + 'cyklu życia?',
-    kryterium:
-      'Straty i koszt cyklu życia są wielkościami projektowymi — solver nie wystawia '
-      + 'dla nich progu normatywnego. Porównuje się je między wariantami sieci.',
-    norma: 'rachunek kosztu cyklu życia (wartość bieżąca strat)',
-    werdykt: {
-      rodzaj: 'liczbowy',
-      sciezka: 'total_losses_kw',
-      jednostka: 'kW',
-    },
-    wielkosciGlowne: [
-      { sciezka: 'total_losses_kw', etykieta: 'Straty mocy w sieci', jednostka: 'kW' },
-      {
-        sciezka: 'transformer_losses_kw',
-        etykieta: 'w tym straty w transformatorach',
-        jednostka: 'kW',
-      },
-      { sciezka: 'annual_losses_kwh', etykieta: 'Straty energii w roku', jednostka: 'kWh/rok' },
-      {
-        sciezka: 'lcc_loss_opex_pv_pln',
-        etykieta: 'Koszt strat w cyklu życia (wartość bieżąca)',
-        jednostka: 'zł',
-      },
-      { sciezka: 'annual_co2_kg', etykieta: 'Emisja towarzysząca stratom', jednostka: 'kg CO₂/rok' },
-      {
-        sciezka: 'decision_variables.nop_position_ref',
-        etykieta: 'Punkt podziału sieci przyjęty w wariancie',
-      },
-    ],
-    tabele: [
-      {
-        sciezka: 'branch_losses',
-        tytul: 'Straty w gałęziach',
-        kluczRef: 'branch_ref',
-        etykietaRef: 'Gałąź',
-        kolumny: [
-          { klucz: 'loss_kw', etykieta: 'Straty mocy', jednostka: 'kW' },
-          { klucz: 'current_a', etykieta: 'Prąd obciążenia', jednostka: 'A' },
-        ],
-      },
-    ],
-    nastepnyKrok:
-      'Gałąź o największych stratach: rozważ większy przekrój albo przesunięcie '
-      + 'punktu podziału sieci — i porównaj warianty w oknie porównania A/B.',
-  },
-
   /*
    * V126-WYGASZENIE (decyzja właściciela 2026-08-07): `benchmark_validation` NIE
    * MA tu projektu ekranu, bo został wycofany z toru projektanta — bada, czy
    * solver odtwarza sieci odniesienia, czyli sprawdza NARZĘDZIE, nie projekt
    * użytkownika. Zdolność żyje dalej w backendzie i w kontroli jakości
-   * (`backend/tests/application/reference_networks/test_ieee_benchmark_wiring.py`).
+   * (`backend/tests/golden/parytet_benchmarkow/test_ieee_benchmark_wiring.py`,
+   * przeniesiony kartą K2, 2026-09-09).
    * Powód wycofania: `nieprezentowane.ts`; rozstrzygnięcie:
    * `docs/v12xx/REJESTR_KONFLIKTOW.md`, wiersz V126-WYGASZENIE.
+   *
+   * Karta W3-E (2026-09-09): `hosting_capacity` i `opf_loss_lcc` NIE MAJĄ tu
+   * projektu ekranu — DUPLIKUJĄ kanon liczony pełnym rozpływem/rzeczywistymi
+   * danymi katalogowymi gdzie indziej (`hosting_capacity`: lokalna impedancja
+   * Thevenina bez sprzężenia sieci wobec `application/analyses/
+   * hosting_capacity.py`; `opf_loss_lcc`: β = 0,45 zaszyte i zaczep OLTC
+   * zawsze 0 wobec `equipment_checks/transformer_losses.py` + badań OLTC).
+   * Backend odmawia URUCHOMIENIA nowego biegu (410 `v126.analysis_withdrawn`)
+   * — ekran nie ma czego renderować, bo POST nigdy się nie powiedzie. Powód
+   * wycofania: `nieprezentowane.ts`; rozstrzygnięcie: `docs/v12xx/
+   * REJESTR_KONFLIKTOW.md`, wiersz W3-E.
    */
 
   // -------------------------------------------------------------------------
   uncertainty_sensitivity: {
-    pytanie:
-      'Jak bardzo niepewność danych katalogowych przenosi się na wynik i który '
-      + 'parametr o tym decyduje?',
-    kryterium:
-      'Niepewność rozszerzona (k = 2) ≤ 100 % — powyżej tej wartości wynik jest '
-      + 'niewiarygodny. Progu normatywnego solver nie wystawia; wynik służy do '
-      + 'wskazania parametru wymagającego dokładniejszych danych.',
-    norma: 'propagacja niepewności, przedział rozszerzony k = 2',
     werdykt: {
       rodzaj: 'liczbowy',
       sciezka: 'expanded_uncertainty_percent_k2',
@@ -749,14 +616,6 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
 
   // -------------------------------------------------------------------------
   neutral_earthing_design: {
-    pytanie:
-      'Jak uziemić punkt neutralny sieci i jaki dobrać dławik gaszący albo rezystor, '
-      + 'żeby ograniczyć prąd zwarcia doziemnego?',
-    kryterium:
-      'Dla sieci kompensowanej: prąd resztkowy przy przyjętym rozstrojeniu ≤ 10 % '
-      + 'prądu pojemnościowego doziemienia. Dla sieci uziemionej przez rezystor: energia '
-      + 'wydzielona w rezystorze ≤ energia znamionowa aparatu.',
-    norma: 'kompensacja rezonansowa Petersena · IEC 62271-203',
     werdykt: {
       rodzaj: 'pojedynczy',
       sciezki: ['tuning_status', 'thermal_check.status', 'status'],

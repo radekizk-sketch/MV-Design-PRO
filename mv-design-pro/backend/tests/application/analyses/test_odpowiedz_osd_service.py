@@ -12,6 +12,8 @@ ZERO nowej fizyki: rozpływ liczy istniejący solver przez istniejącą ścieżk
 
 from __future__ import annotations
 
+import copy
+import dataclasses
 import json
 from datetime import UTC, datetime
 from uuid import uuid4
@@ -43,7 +45,7 @@ def _reset() -> None:
 
 def _golden_pf_run() -> CanonicalRun:
     set_enm("c-pf", build_golden_enm())
-    return execute_run(create_run(case_id="c-pf", analysis_type="PF").id)
+    return execute_run(create_run(case_id="c-pf", klucz_twin="c-pf", analysis_type="PF").id)
 
 
 def _synthetic_run(
@@ -277,3 +279,50 @@ def test_rejects_unfinished_run() -> None:
     run = _synthetic_run(build_golden_enm(), status="RUNNING")
     with pytest.raises(ValueError, match="nie jest zakończony"):
         build_osd_response_view(run, source_ref=SOURCE, command="ograniczenie_p", p_limit_pct=50)
+
+
+# --------------------------------------------------------------------------
+# FAB-E (E1): brak pola bazowego źródła podnosi wyjątek, nie fabrykuje zera.
+# --------------------------------------------------------------------------
+
+
+def test_missing_p_mw_raises_not_zero() -> None:
+    """Brak ``p_mw`` źródła w migawce → wyjątek nazywający pole i źródło, nie
+    cicha zerowa moc bazowa (zniekształciłaby KAŻDE polecenie liczące
+    względem punktu bazowego P — ``ograniczenie_p``/``cosfi``/LFSM)."""
+    run = _golden_pf_run()
+    snapshot = copy.deepcopy(run.snapshot)
+    for gen in snapshot["generators"]:
+        if gen["ref_id"] == SOURCE:
+            del gen["p_mw"]
+    zmieniony_run = dataclasses.replace(run, snapshot=snapshot)
+    with pytest.raises(ValueError, match=f"{SOURCE}.*p_mw|p_mw.*{SOURCE}"):
+        build_osd_response_view(
+            zmieniony_run, source_ref=SOURCE, command="ograniczenie_p", p_limit_pct=50
+        )
+
+
+def test_missing_q_mvar_raises_not_zero() -> None:
+    """Brak ``q_mvar`` źródła w migawce → wyjątek. Dla poleceń
+    ``ograniczenie_p``/``lfsm_o``/``lfsm_u`` wartość bazowa Q przechodzi BEZ
+    ZMIAN do migawki biegu „z poleceniem" — fabrykowane zero zmieniłoby nastaw
+    Q jako SKUTEK UBOCZNY polecenia dotyczącego wyłącznie mocy czynnej."""
+    run = _golden_pf_run()
+    snapshot = copy.deepcopy(run.snapshot)
+    for gen in snapshot["generators"]:
+        if gen["ref_id"] == SOURCE:
+            del gen["q_mvar"]
+    zmieniony_run = dataclasses.replace(run, snapshot=snapshot)
+    with pytest.raises(ValueError, match=f"{SOURCE}.*q_mvar|q_mvar.*{SOURCE}"):
+        build_osd_response_view(
+            zmieniony_run, source_ref=SOURCE, command="ograniczenie_p", p_limit_pct=50
+        )
+
+
+def test_complete_source_fields_regression() -> None:
+    """Regresja: źródło z kompletem pól (golden, bez modyfikacji) liczy się
+    identycznie jak przed FAB-E — brak wyjątku, punkt bazowy zgodny z golden."""
+    run = _golden_pf_run()
+    view = build_osd_response_view(run, source_ref=SOURCE, command="ograniczenie_p", p_limit_pct=50)
+    assert view["source"]["p_setpoint_before_mw"] == 2.0
+    assert view["source"]["q_setpoint_before_mvar"] == 0.6

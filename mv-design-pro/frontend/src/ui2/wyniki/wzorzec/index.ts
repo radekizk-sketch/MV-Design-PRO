@@ -26,6 +26,7 @@ export {
   useAkcjaOtworzDokumentacje,
   useAkcjaPorownajWarianty,
   useAkcjaPrzejdzDoPrzypadkow,
+  useAkcjaPrzejdzDoSchematu,
   useAkcjaUruchomObliczenie,
 } from './akcjeStanuZerowego';
 export type { AkcjaStanuZerowego } from './akcjeStanuZerowego';

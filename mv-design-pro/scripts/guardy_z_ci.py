@@ -46,7 +46,17 @@ SCRIPTS_DIR = PROJECT_ROOT / "scripts"
 
 #: Wywołanie guarda w kroku workflowa: `python scripts/nazwa.py`, także z
 #: przedrostkiem katalogu (`python mv-design-pro/scripts/nazwa.py`).
-WYWOLANIE_GUARDA = re.compile(r"python3?\s+(?:\S*/)?scripts/([a-z0-9_]+)\.py")
+#: Workflow P0 wskazuje interpreter srodowiska poetry przez zmienna `$GUARD_PY`
+#: (jedno srodowisko guardow = srodowisko testow); skan musi widziec obie formy.
+#: Grupa 2 = argumenty wywolania z tej samej linii `run:` (np. `--strict`), do
+#: konca linii albo do operatora powloki. Guard uruchomiony BEZ argumentow
+#: workflowa jest innym programem niz na CI: `port_binding_guard.py --strict`
+#: zwraca 1 przy brakujacych portach, bez `--strict` melduje je i zwraca 0 —
+#: bramka odbioru K2 (2026-09-09) swiecila na zielono, a P0 Extended na CI
+#: (run 34417626793) byl czerwony. Argumenty sa czescia wywolania 1:1.
+WYWOLANIE_GUARDA = re.compile(
+    r"(?:python3?|\$\{?GUARD_PY\}?)\s+(?:\S*/)?scripts/([a-z0-9_]+)\.py([^\n&|;#]*)"
+)
 
 #: Zapadka na pusty skan — repozytorium ma osiem workflowów i kilkadziesiąt
 #: guardów. Mniej niż tyle znaczy, że zmienił się układ katalogów albo składnia
@@ -54,13 +64,102 @@ WYWOLANIE_GUARDA = re.compile(r"python3?\s+(?:\S*/)?scripts/([a-z0-9_]+)\.py")
 MIN_GUARDOW = 30
 
 
-def guardy_z_workflowow() -> list[str]:
-    """Nazwy guardów wywoływanych przez workflowy CI, bez powtórzeń."""
-    nazwy: set[str] = set()
+def wywolania_z_workflowow() -> list[tuple[str, tuple[str, ...]]]:
+    """Wywołania guardów z workflowów CI: (nazwa, argumenty), bez powtórzeń,
+    posortowane. Ten sam guard wołany z różnymi argumentami (np. z `--strict`
+    i bez) to dwa wywołania — oba muszą być zielone, jak na CI."""
+    wywolania: set[tuple[str, tuple[str, ...]]] = set()
     for plik in sorted(WORKFLOWS_DIR.glob("*.y*ml")):
         for dopasowanie in WYWOLANIE_GUARDA.finditer(plik.read_text(encoding="utf-8")):
-            nazwy.add(dopasowanie.group(1))
-    return sorted(nazwy)
+            argumenty = tuple(dopasowanie.group(2).split())
+            wywolania.add((dopasowanie.group(1), argumenty))
+    return sorted(wywolania)
+
+
+def guardy_z_workflowow() -> list[str]:
+    """Nazwy guardów wywoływanych przez workflowy CI, bez powtórzeń."""
+    return sorted({nazwa for nazwa, _argumenty in wywolania_z_workflowow()})
+
+
+#: Wywolania lintu z `python-tests.yml` (krok "black/ruff"), 1:1 co do sciezek i konfiguracji.
+LINT_JAK_CI: tuple[tuple[str, list[str]], ...] = (
+    ("black src tests", ["black", "--check", "src", "tests"]),
+    ("ruff src tests", ["ruff", "check", "src", "tests"]),
+    (
+        "black ../scripts",
+        ["black", "--check", "--config", "pyproject.toml", "../scripts"],
+    ),
+    ("ruff ../scripts", ["ruff", "check", "../scripts"]),
+)
+
+
+def _lint_jak_ci() -> list[str]:
+    """Uruchom lint dokladnie tak, jak CI; zwroc nazwy czerwonych wywolan."""
+    czerwone: list[str] = []
+    for nazwa, polecenie in LINT_JAK_CI:
+        wynik = subprocess.run(
+            [sys.executable, "-m", *polecenie],
+            cwd=PROJECT_ROOT / "backend",
+            capture_output=True,
+            text=True,
+        )
+        if wynik.returncode != 0:
+            czerwone.append(nazwa)
+            print(f"[CZERWONY] {nazwa} RC={wynik.returncode}", file=sys.stderr)
+            for linia in (wynik.stdout + wynik.stderr).splitlines()[-12:]:
+                print(f"    {linia}", file=sys.stderr)
+        else:
+            print(f"[zielony ] {nazwa}")
+    return czerwone
+
+
+#: Kroki `npm run <skrypt>` z `frontend-checks.yml`, ktore CI uruchamia w TYM
+#: SAMYM workflowie co guardy frontendu (type-check, eslint). Czwarta czesc
+#: bramki, dopisana 2026-09-10 po czerwonych runach 34449933541/34449937286:
+#: `eslint --report-unused-disable-directives` zapalil sie na dyrektywie
+#: zostawionej przy przepisaniu `SekcjaNastaw.tsx`, a lancuch odbioru fali 2
+#: uruchamial vitest i guardy Pythona, wiec meldowal komplet zielony. Lista jest
+#: sprawdzana wobec workflowu (test wlasny + kontrola w biegu): krok, ktorego
+#: workflow nie wola, to blad, nie cicha nadwyzka.
+NPM_JAK_CI: tuple[str, ...] = ("type-check", "lint")
+WORKFLOW_FRONTEND = WORKFLOWS_DIR / "frontend-checks.yml"
+
+
+def _npm_jak_ci() -> list[str]:
+    """Uruchom kroki npm dokladnie tak, jak CI (`frontend-checks.yml`); zwroc
+    nazwy czerwonych wywolan. Brak `node_modules` jest czerwony, nie pominiety:
+    CI te kroki wykonuje zawsze, wiec bramka bez nich nie ma prawa meldowac
+    zieleni (`npm ci` albo dowiazanie katalogu z innego drzewa roboczego)."""
+    frontend = PROJECT_ROOT / "frontend"
+    tekst_workflowu = WORKFLOW_FRONTEND.read_text(encoding="utf-8")
+    czerwone: list[str] = []
+    if not (frontend / "node_modules").is_dir():
+        print(
+            "[CZERWONY] frontend/node_modules nieobecne — kroki npm z frontend-checks.yml "
+            "nie moga sie wykonac (npm ci albo dowiazanie katalogu).",
+            file=sys.stderr,
+        )
+        return [f"npm run {skrypt}" for skrypt in NPM_JAK_CI]
+    for skrypt in NPM_JAK_CI:
+        nazwa = f"npm run {skrypt}"
+        if nazwa not in tekst_workflowu:
+            czerwone.append(nazwa)
+            print(f"[CZERWONY] {nazwa}: frontend-checks.yml nie wola tego kroku", file=sys.stderr)
+            continue
+        wynik = subprocess.run(
+            ["npm", "run", skrypt],
+            cwd=frontend,
+            capture_output=True,
+            text=True,
+        )
+        if wynik.returncode != 0:
+            czerwone.append(nazwa)
+            print(f"[CZERWONY] {nazwa} RC={wynik.returncode}", file=sys.stderr)
+            for linia in (wynik.stdout + wynik.stderr).splitlines()[-12:]:
+                print(f"    {linia}", file=sys.stderr)
+        else:
+            print(f"[zielony ] {nazwa}")
+    return czerwone
 
 
 def main() -> int:
@@ -80,24 +179,26 @@ def main() -> int:
     czerwone: list[tuple[str, int]] = []
     brakujace: list[str] = []
 
-    for nazwa in nazwy:
+    for nazwa, argumenty in wywolania_z_workflowow():
         sciezka = SCRIPTS_DIR / f"{nazwa}.py"
         if not sciezka.exists():
-            brakujace.append(nazwa)
+            if nazwa not in brakujace:
+                brakujace.append(nazwa)
             continue
+        etykieta = " ".join((nazwa, *argumenty))
         wynik = subprocess.run(
-            [sys.executable, str(sciezka)],
+            [sys.executable, str(sciezka), *argumenty],
             cwd=PROJECT_ROOT,
             capture_output=True,
             text=True,
         )
         if wynik.returncode != 0:
-            czerwone.append((nazwa, wynik.returncode))
-            print(f"[CZERWONY] {nazwa} RC={wynik.returncode}", file=sys.stderr)
+            czerwone.append((etykieta, wynik.returncode))
+            print(f"[CZERWONY] {etykieta} RC={wynik.returncode}", file=sys.stderr)
             for linia in (wynik.stdout + wynik.stderr).splitlines()[-12:]:
                 print(f"    {linia}", file=sys.stderr)
         else:
-            print(f"[zielony ] {nazwa}")
+            print(f"[zielony ] {etykieta}")
 
     if brakujace:
         print(
@@ -106,6 +207,20 @@ def main() -> int:
         )
 
     print(f"\nUruchomiono {len(nazwy) - len(brakujace)} guardow z {len(nazwy)} wolanych przez CI.")
+
+    # Trzecia czesc kroku CI (dopisana 2026-09-05 po CZERWONYCH runach 4879/4881:
+    # `black --check --config pyproject.toml ../scripts` zapalil sie na dwoch
+    # skryptach guardow, a bramka odbioru meldowala "KOMPLET ZIELONY" — bo nie
+    # uruchamiala lintu, ktory CI uruchamia w TYM SAMYM kroku co pytest). Dokladnie
+    # cztery wywolania z `python-tests.yml`: black/ruff dla `src tests` oraz — OSOBNO,
+    # z jawna konfiguracja — dla `../scripts` (black bez `--config` szuka pyproject
+    # w gore od pliku i trafia poza projekt backendu).
+    print("\n--- lint jak CI (black/ruff: src tests, ../scripts) ---")
+    lint_czerwone = _lint_jak_ci()
+
+    # Czwarta czesc: kroki npm z `frontend-checks.yml` (type-check, eslint).
+    print("\n--- kroki npm jak CI (frontend-checks.yml: type-check, lint) ---")
+    npm_czerwone = _npm_jak_ci()
 
     # Druga polowa kroku CI: wlasne testy guardow (poza `testpaths` backendu).
     print("\n--- testy wlasne guardow (`python -m pytest ../scripts`) ---")
@@ -125,12 +240,16 @@ def main() -> int:
             print(f"    {linia}", file=sys.stderr)
         print("CZERWONE: testy wlasne guardow", file=sys.stderr)
 
-    if czerwone or brakujace or testy.returncode != 0:
+    if czerwone or brakujace or testy.returncode != 0 or lint_czerwone or npm_czerwone:
         if czerwone:
             print(
                 "CZERWONE: " + ", ".join(f"{n} (RC={rc})" for n, rc in czerwone),
                 file=sys.stderr,
             )
+        if lint_czerwone:
+            print("CZERWONE: lint jak CI: " + ", ".join(lint_czerwone), file=sys.stderr)
+        if npm_czerwone:
+            print("CZERWONE: kroki npm jak CI: " + ", ".join(npm_czerwone), file=sys.stderr)
         return 1
     print("KOMPLET ZIELONY.")
     return 0

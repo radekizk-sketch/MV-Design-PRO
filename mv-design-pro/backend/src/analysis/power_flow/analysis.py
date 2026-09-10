@@ -5,6 +5,7 @@ from typing import Any
 
 from network_model.core.branch import LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
+from network_model.pochodne import a_na_ka
 from network_model.solvers.power_flow_newton_internal import options_to_trace
 
 from .result import PowerFlowResult
@@ -224,7 +225,7 @@ def _build_violations(
             if isinstance(branch, TransformerBranch) and branch.rated_power_mva > 0:
                 s_limit = branch.rated_power_mva
             if isinstance(branch, LineBranch) and branch.rated_current_a > 0:
-                i_limit = branch.rated_current_a / 1000.0
+                i_limit = a_na_ka(branch.rated_current_a)
 
         if s_limit is not None:
             s_from = abs(branch_s_from_mva.get(branch_id, 0.0 + 0.0j))

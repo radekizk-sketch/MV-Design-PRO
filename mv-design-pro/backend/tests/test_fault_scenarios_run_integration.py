@@ -13,33 +13,63 @@ from fastapi.testclient import TestClient
 
 from tests.catalog_test_helpers import gpz_source_record
 
-client = TestClient(app)
-
-CASE_ID = str(uuid4())
+client: TestClient
+CASE_ID: str
 BASE_URL = "/api/execution"
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _lifespan_i_przypadek():
+    """Zwiąż `client`/`CASE_ID` z realnym `uow_factory` i realnym StudyCase.
+
+    CV-1-W: `create_run_from_scenario` (`POST /fault-scenarios/{id}/runs`)
+    tłumaczy `scenario.study_case_id` na klucz magazynu ENM (`klucz_twin_z_
+    sciezki`), więc bez wiersza StudyCase w bazie dostaje 404 z magazynu ENM
+    (inwariant I-2). Bez `with` (lifespan) `app.state.uow_factory` też nie
+    byłby wiązany. `client`/`CASE_ID` zostają modułowymi globalami (styl
+    pliku sprzed karty) — ta fikstura tylko wiąże je RAZ, zamiast tworzyć je
+    przy imporcie modułu, poza cyklem życia testów.
+    """
+    global client, CASE_ID
+    with TestClient(app) as test_client:
+        client = test_client
+        project_resp = client.post("/api/projects", json={"name": "Scenariusze zwarciowe — test"})
+        assert project_resp.status_code == 201, project_resp.text
+        case_resp = client.post(
+            "/api/study-cases",
+            json={"project_id": project_resp.json()["id"], "name": "Przypadek testu"},
+        )
+        assert case_resp.status_code == 201, case_resp.text
+        CASE_ID = str(case_resp.json()["id"])
+        yield
 
 
 @pytest.fixture(autouse=True)
 def _reset_services():
-    """Reset legacy and canonical in-memory services between tests."""
-    from api.execution_runs import get_engine
-    from api.fault_scenarios import get_fault_scenario_service
+    """Reset legacy and canonical in-memory services between tests.
+
+    Scenariusze zwarciowe żyją odtąd w magazynie na dysku (karta C6-PERSIST,
+    `enm/scenariusze.py`), nie w atrybutach `FaultScenarioService` — reset
+    magazynu ENM (`reset_enm_store`) czyści JE RÓWNIEŻ (`usun_wszystkie_
+    scenariusze` wołane wewnątrz), więc osobny wpis serwisu nie jest już
+    potrzebny.
+
+    Reset silnika E3 (`api.execution_runs.get_engine`) zdjęty karta CV-3.3-A
+    (2026-09-05): `ExecutionEngineService` skasowany (zero konsumenta
+    produkcyjnego), tor tego pliku od zawsze idzie przez `enm.canonical_
+    analysis`, który resetuje `reset_canonical_runs`.
+    """
+    from application.twin_key import zapomnij_migracje
     from enm.canonical_analysis import reset_canonical_runs
     from enm.store import reset_enm_store
 
-    service = get_fault_scenario_service()
-    service._scenarios.clear()
-    service._case_scenarios.clear()
-    service._scenario_runs.clear()
-
-    engine = get_engine()
-    engine._runs.clear()
-    engine._result_sets.clear()
-    engine._study_cases.clear()
-    engine._case_runs.clear()
-
     reset_canonical_runs()
     reset_enm_store()
+    # `CASE_ID` (i jego projekt) są modułowe — bez `zapomnij_migracje` drugi i
+    # kolejny test tej klasy widziałby projekt jako JUŻ zmigrowany (pamięć
+    # migracji przeżywa `reset_enm_store`, `application/twin_key.py`) i nie
+    # adoptowałby świeżo zasianego wpisu `_seed_valid_enm` pod surowym kluczem.
+    zapomnij_migracje()
     yield
 
 
@@ -239,3 +269,105 @@ class TestGoldenFixture:
             location=FaultLocation(element_ref="bus-x", location_type="BUS"),
         )
         assert compute_scenario_content_hash(first) == compute_scenario_content_hash(second)
+
+
+# =============================================================================
+# Karta C6-PERSIST — testy klasy dodane wraz z trwałością magazynu
+# =============================================================================
+
+
+class TestDeleteScenarioWithRun:
+    """(c) Usunięcie scenariusza z istniejącym biegiem = 409, wyprowadzone z
+    koperty biegu kanonicznego (nie z osobnego rejestru w pamięci — `register_run`
+    nie istnieje już w tym serwisie)."""
+
+    def test_delete_blocked_when_run_exists(self):
+        _seed_valid_enm(CASE_ID)
+        scenario = _create_scenario(name="Blokada usunięcia", element_ref="bus-main")
+        sid = scenario["scenario_id"]
+
+        run_resp = client.post(f"{BASE_URL}/fault-scenarios/{sid}/runs", json={})
+        assert run_resp.status_code == 201, run_resp.text
+
+        delete_resp = client.delete(f"{BASE_URL}/fault-scenarios/{sid}")
+        assert delete_resp.status_code == 409
+        assert "powiązanymi przebiegami" in delete_resp.json()["detail"]
+
+
+class TestCreateRunLocationOnBranch:
+    """(e) Lokalizacja BRANCH_POINT — 409 „Analiza zablokowana" (kontrakt
+    eligibility istniejący, teraz z kodem kanonu `fault.location_on_branch_
+    requires_assembler`, karta C6-PERSIST)."""
+
+    def test_branch_point_location_blocks_run_creation(self):
+        _seed_valid_enm(CASE_ID)
+        resp = client.post(
+            f"{BASE_URL}/study-cases/{CASE_ID}/fault-scenarios",
+            json={
+                "name": "Zwarcie na gałęzi",
+                "fault_type": "SC_3F",
+                "location": {
+                    "element_ref": "branch-1",
+                    "location_type": "BRANCH_POINT",
+                    "position": 0.5,
+                },
+            },
+        )
+        assert resp.status_code == 201, resp.text
+        sid = resp.json()["scenario_id"]
+
+        response = client.post(f"{BASE_URL}/fault-scenarios/{sid}/runs", json={})
+        assert response.status_code == 409
+        assert "zablokowana" in response.json()["detail"].lower()
+
+
+class TestRunEnvelopeScenarioRef:
+    """(f) Bieg utworzony ze scenariusza ma kopertę WERSJI 2 z
+    `scenario_ref == (scenario_id, revision)` — dowód, że `create_run_from_
+    scenario` przekazuje `scenariusz=` do `create_run` (karta C6-PERSIST)."""
+
+    def test_run_from_scenario_envelope_carries_scenario_ref(self):
+        from uuid import UUID as _UUID
+
+        from enm.canonical_analysis import get_run
+
+        _seed_valid_enm(CASE_ID)
+        scenario = _create_scenario(name="Koperta scenariusza", element_ref="bus-main")
+        sid = scenario["scenario_id"]
+
+        run_resp = client.post(f"{BASE_URL}/fault-scenarios/{sid}/runs", json={})
+        assert run_resp.status_code == 201, run_resp.text
+        run_id = run_resp.json()["id"]
+
+        run = get_run(_UUID(run_id))
+        assert run is not None
+        koperta = run.koperta
+        assert koperta is not None
+        assert koperta.wersja == 2
+        assert koperta.scenario_ref == (sid, 1)
+
+    def test_run_from_scenario_after_update_carries_new_revision(self):
+        """Aktualizacja scenariusza PRZED utworzeniem biegu -> koperta niesie
+        NOWĄ rewizję (nie rewizję 1 z chwili utworzenia scenariusza)."""
+        from uuid import UUID as _UUID
+
+        from enm.canonical_analysis import get_run
+
+        _seed_valid_enm(CASE_ID)
+        scenario = _create_scenario(name="Przed aktualizacją", element_ref="bus-main")
+        sid = scenario["scenario_id"]
+
+        update_resp = client.put(
+            f"{BASE_URL}/fault-scenarios/{sid}",
+            json={"name": "Po aktualizacji"},
+        )
+        assert update_resp.status_code == 200, update_resp.text
+        assert update_resp.json()["revision"] == 2
+
+        run_resp = client.post(f"{BASE_URL}/fault-scenarios/{sid}/runs", json={})
+        assert run_resp.status_code == 201, run_resp.text
+
+        run = get_run(_UUID(run_resp.json()["id"]))
+        assert run is not None
+        assert run.koperta is not None
+        assert run.koperta.scenario_ref == (sid, 2)

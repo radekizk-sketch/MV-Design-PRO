@@ -2,7 +2,7 @@
 Domain model dla Project Archive — P31.
 
 Project Import/Export jako funkcja pierwszej klasy:
-- pełny projekt (model + SLD + cases + runs + results + proof + interpretation)
+- pełny projekt (model ENM + cases + runs + interpretation)
 - deterministyczny format
 - gotowy do archiwizacji i przenoszenia
 
@@ -12,6 +12,20 @@ KANON:
 - Determinizm absolutny
 - 100% PL
 - Kompatybilność wsteczna (versioned format)
+
+Karta W1-B-ARCH (2026-09, mapa domknięcia „jedna prawda sieci"): W1 skasował tabele
+legacy modelu sieci i ich klasy ORM (`NetworkSnapshotORM`, `NetworkNodeORM`,
+`NetworkBranchORM`, `NetworkSourceORM`, `NetworkLoadORM`, `SwitchingStateORM`,
+`Sld*ORM`, `Design*ORM`) — model sieci projektu żyje WYŁĄCZNIE w magazynie ENM
+(`enm/store.py`). Format archiwum 3.0.0 odzwierciedla to wprost: sekcje
+`network_model`, `sld_diagrams`, `proofs` (i ich hashe) ZNIKAJĄ ze struktury —
+nie ma dla nich już żadnego źródła danych. Sekcja `enm` (model per przypadek)
+zostaje jedynym nośnikiem sieci — była nim faktycznie od N-D1/CV-1-W, teraz jest
+nim też formalnie. Archiwa 2.x (z tymi sekcjami) pozostają WCZYTYWALNE
+(`_is_compatible_version`): `dict_to_archive` po prostu ich nie czyta, a
+warstwa importu (`application/project_archive/service.py`) sięga po SUROWY
+słownik `network_model`, gdy trzeba skompilować model z danych legacy
+(`application.migracja_legacy.graf_z_modelu_legacy` + `enm.kompilator_grafu`).
 """
 
 from __future__ import annotations
@@ -27,7 +41,13 @@ from typing import Any
 # STAŁE WERSJI
 # ============================================================================
 
-ARCHIVE_SCHEMA_VERSION = "1.0.0"
+# W1-B-ARCH: bump MAJOR — sekcje `network_model`/`sld_diagrams`/`proofs` (i ich
+# hashe) znikają ze struktury razem z tabelami ORM, które je zasilały (W1).
+# Archiwa 1.x/2.x pozostają WCZYTYWALNE (`_is_compatible_version`: major <=
+# current_major) — `dict_to_archive` po prostu ich nie czyta („usuń, nie
+# migruj"); import archiwum 2.x z `network_model.nodes`, ale bez `enm.models`,
+# kompiluje model z danych legacy (patrz `application/project_archive/service.py`).
+ARCHIVE_SCHEMA_VERSION = "3.0.0"
 ARCHIVE_FORMAT_ID = "MV-DESIGN-PRO-ARCHIVE"
 
 
@@ -101,7 +121,6 @@ class ProjectMeta:
     name: str
     description: str | None
     schema_version: str
-    active_network_snapshot_id: str | None
     connection_node_id: str | None
     sources: list[dict[str, Any]]
     created_at: str  # ISO 8601
@@ -110,59 +129,49 @@ class ProjectMeta:
 
 
 @dataclass(frozen=True)
-class NetworkModelSection:
-    """Sekcja modelu sieci w archiwum."""
-
-    nodes: list[dict[str, Any]]
-    branches: list[dict[str, Any]]
-    sources: list[dict[str, Any]]
-    loads: list[dict[str, Any]]
-    snapshots: list[dict[str, Any]]
-
-
-@dataclass(frozen=True)
-class SldSection:
-    """Sekcja diagramów SLD w archiwum."""
-
-    diagrams: list[dict[str, Any]]
-    node_symbols: list[dict[str, Any]]
-    branch_symbols: list[dict[str, Any]]
-    annotations: list[dict[str, Any]]
-
-
-@dataclass(frozen=True)
 class CasesSection:
     """Sekcja przypadków obliczeniowych w archiwum."""
 
     study_cases: list[dict[str, Any]]
     operating_cases: list[dict[str, Any]]
-    switching_states: list[dict[str, Any]]
     settings: dict[str, Any] | None
 
 
 @dataclass(frozen=True)
 class RunsSection:
-    """Sekcja wykonań analiz w archiwum."""
+    """Sekcja wykonań analiz w archiwum.
 
-    analysis_runs: list[dict[str, Any]]
+    CV-3.3-B: `analysis_runs` (R2) + `study_runs` (R3) usunięte razem z torem,
+    który je pisał (`AnalysisRunService`, legacy `study_runs`/`study_results`) —
+    JEDYNY rejestr biegów to odtąd `canonical_runs` (R1, `enm.canonical_analysis
+    .CanonicalRun`), pełny zrzut pól (patrz `application/project_archive/service
+    .py::_collect_runs`). `analysis_runs_index` ZOSTAJE bez zmian jako
+    NIEZALEŻNA tabela (`AnalysisRunIndexORM`), ale karta W3-C1 (2026-09) skasowała
+    jej JEDYNE dwa produkcyjne miejsca zapisu (`application/analyses/protection
+    /overcurrent/pipeline.py` — cały pakiet `overcurrent/**`, `api
+    /protection_overcurrent_settings.py`, i `catalog/pipeline.py::
+    run_device_mapping_v0`, zero konsumentów `ui2/wyniki/koordynacja` w chwili
+    kasacji, zmierzone grepem) — dobór aparatu jest odtąd CZYSTĄ funkcją
+    (`catalog/pipeline.py::dopasuj_do_aparatu`), bez koperty biegu i bez indeksu.
+    Ta sekcja archiwum pozostaje READ-ONLY odbiorcą historycznych wpisów
+    (odtwarzalność starych archiwów), niezwiązanym z R2/R3 i bez nowego pisarza.
+    """
+
+    canonical_runs: list[dict[str, Any]]
     analysis_runs_index: list[dict[str, Any]]
-    study_runs: list[dict[str, Any]]
 
 
 @dataclass(frozen=True)
 class ResultsSection:
-    """Sekcja wyników w archiwum."""
+    """Sekcja wyników w archiwum.
 
-    study_results: list[dict[str, Any]]
-
-
-@dataclass(frozen=True)
-class ProofsSection:
-    """Sekcja dowodów w archiwum."""
-
-    design_specs: list[dict[str, Any]]
-    design_proposals: list[dict[str, Any]]
-    design_evidence: list[dict[str, Any]]
+    CV-3.3-B: `study_results` (R3, `StudyResultORM`) usunięty razem z torem,
+    który go pisał — wynik biegu jest odtąd częścią samego `canonical_runs`
+    (`CanonicalRun.raw_result`), nie osobnym rekordem. Sekcja zostaje jako
+    pusty kontener: klucz `results` jest częścią WYMAGANEJ struktury archiwum
+    (`required_keys` w `dict_to_archive`), a hash sekcji (`results_hash`)
+    zostaje stabilnym polem odcisku nawet bez zawartości.
+    """
 
 
 @dataclass(frozen=True)
@@ -189,8 +198,8 @@ class EnmSection:
 
     Każdy wpis: {"case_id": str, "snapshot": dict} — pełny zrzut modelu ENM
     (model_dump) dla przypadku, posortowane po case_id dla determinizmu.
-    ENM jest jedynym nośnikiem stacji/transformatorów/strony nN — bez tej
-    sekcji dane ENM znikały przy eksporcie/imporcie projektu (dług N-D1).
+    ENM jest JEDYNYM nośnikiem sieci (stacje/transformatory/strona nN/gałęzie) —
+    od W1-B-ARCH formalnie też jedyną sekcją archiwum, która sieć niesie.
     """
 
     models: list[dict[str, Any]] = field(default_factory=list)
@@ -198,16 +207,19 @@ class EnmSection:
 
 @dataclass(frozen=True)
 class ArchiveFingerprints:
-    """Fingerprints (hashe) wszystkich sekcji archiwum."""
+    """Fingerprints (hashe) wszystkich sekcji archiwum formatu 3.0.0.
+
+    W1-B-ARCH: `network_model_hash`/`sld_hash`/`proofs_hash` skasowane razem z
+    sekcjami, które hashowały (nie ma już dla nich żadnego źródła danych).
+    Archiwa 2.x, które te pola JESZCZE niosą, weryfikuje `verify_archive_integrity`
+    na SUROWYM słowniku JSON (poniżej) — niezależnie od tej klasy.
+    """
 
     archive_hash: str  # Hash całego archiwum
     project_meta_hash: str
-    network_model_hash: str
-    sld_hash: str
     cases_hash: str
     runs_hash: str
     results_hash: str
-    proofs_hash: str
     interpretations_hash: str
     issues_hash: str
     enm_hash: str = ""  # puste w archiwach sprzed sekcji ENM
@@ -216,32 +228,30 @@ class ArchiveFingerprints:
 @dataclass(frozen=True)
 class ProjectArchive:
     """
-    Pełne archiwum projektu MV-DESIGN PRO.
+    Pełne archiwum projektu MV-DESIGN PRO (format 3.0.0).
 
     Format:
     - schema_version: wersja schematu archiwum
     - format_id: identyfikator formatu (MV-DESIGN-PRO-ARCHIVE)
     - project_meta: metadane projektu
-    - network_model: model sieci
-    - sld_diagrams: diagramy SLD
     - cases: przypadki obliczeniowe
     - runs: wykonania analiz
-    - results: wyniki
+    - results: wyniki (pusty kontener — patrz ResultsSection)
     - interpretations: interpretacje
-    - proofs: dowody
     - issues: problemy/walidacje
+    - enm: model(e) ENM (JEDYNY nośnik sieci — W1-B-ARCH)
     - fingerprints: hashe wszystkich sekcji
+
+    Sekcje `network_model`/`sld_diagrams`/`proofs` NIE ISTNIEJĄ w tym formacie
+    (W1-B-ARCH) — ich dane żywe wyparowały razem z tabelami ORM w W1.
     """
 
     schema_version: str
     format_id: str
     project_meta: ProjectMeta
-    network_model: NetworkModelSection
-    sld_diagrams: SldSection
     cases: CasesSection
     runs: RunsSection
     results: ResultsSection
-    proofs: ProofsSection
     interpretations: InterpretationsSection
     issues: IssuesSection
     fingerprints: ArchiveFingerprints
@@ -286,38 +296,35 @@ def compute_hash(data: Any) -> str:
 
 def compute_archive_fingerprints(
     project_meta: dict[str, Any],
-    network_model: dict[str, Any],
-    sld: dict[str, Any],
     cases: dict[str, Any],
     runs: dict[str, Any],
     results: dict[str, Any],
-    proofs: dict[str, Any],
     interpretations: dict[str, Any],
     issues: dict[str, Any],
     enm: dict[str, Any] | None = None,
 ) -> ArchiveFingerprints:
-    """Oblicz fingerprints dla wszystkich sekcji archiwum."""
+    """Oblicz fingerprints dla wszystkich sekcji archiwum formatu 3.0.0.
+
+    W1-B-ARCH: sygnatura niesie WYŁĄCZNIE sekcje formatu 3.0.0 — ten serwis
+    eksportuje TYLKO 3.0.0 (nigdy 2.x), więc nie ma tu wariantu z
+    `network_model`/`sld`/`proofs`. Weryfikacja archiwów 2.x (z tymi sekcjami)
+    liczy je osobno, wprost z surowego słownika — `verify_archive_integrity`.
+    """
     project_meta_hash = compute_hash(project_meta)
-    network_model_hash = compute_hash(network_model)
-    sld_hash = compute_hash(sld)
     cases_hash = compute_hash(cases)
     runs_hash = compute_hash(runs)
     results_hash = compute_hash(results)
-    proofs_hash = compute_hash(proofs)
     interpretations_hash = compute_hash(interpretations)
     issues_hash = compute_hash(issues)
     enm_hash = compute_hash(enm if enm is not None else {"models": []})
 
-    # Hash całego archiwum to hash wszystkich hash'y
+    # Hash całego archiwum to hash wszystkich hash'y sekcji formatu 3.0.0.
     archive_hash = compute_hash(
         {
             "project_meta": project_meta_hash,
-            "network_model": network_model_hash,
-            "sld": sld_hash,
             "cases": cases_hash,
             "runs": runs_hash,
             "results": results_hash,
-            "proofs": proofs_hash,
             "interpretations": interpretations_hash,
             "issues": issues_hash,
             "enm": enm_hash,
@@ -327,12 +334,9 @@ def compute_archive_fingerprints(
     return ArchiveFingerprints(
         archive_hash=archive_hash,
         project_meta_hash=project_meta_hash,
-        network_model_hash=network_model_hash,
-        sld_hash=sld_hash,
         cases_hash=cases_hash,
         runs_hash=runs_hash,
         results_hash=results_hash,
-        proofs_hash=proofs_hash,
         interpretations_hash=interpretations_hash,
         issues_hash=issues_hash,
         enm_hash=enm_hash,
@@ -345,7 +349,7 @@ def compute_archive_fingerprints(
 
 
 def archive_to_dict(archive: ProjectArchive) -> dict[str, Any]:
-    """Konwersja archiwum do słownika (do JSON)."""
+    """Konwersja archiwum do słownika (do JSON) — zawsze format 3.0.0."""
     return canonicalize(
         {
             "schema_version": archive.schema_version,
@@ -355,44 +359,21 @@ def archive_to_dict(archive: ProjectArchive) -> dict[str, Any]:
                 "name": archive.project_meta.name,
                 "description": archive.project_meta.description,
                 "schema_version": archive.project_meta.schema_version,
-                "active_network_snapshot_id": archive.project_meta.active_network_snapshot_id,
                 "connection_node_id": archive.project_meta.connection_node_id,
                 "sources": archive.project_meta.sources,
                 "created_at": archive.project_meta.created_at,
                 "updated_at": archive.project_meta.updated_at,
             },
-            "network_model": {
-                "nodes": archive.network_model.nodes,
-                "branches": archive.network_model.branches,
-                "sources": archive.network_model.sources,
-                "loads": archive.network_model.loads,
-                "snapshots": archive.network_model.snapshots,
-            },
-            "sld_diagrams": {
-                "diagrams": archive.sld_diagrams.diagrams,
-                "node_symbols": archive.sld_diagrams.node_symbols,
-                "branch_symbols": archive.sld_diagrams.branch_symbols,
-                "annotations": archive.sld_diagrams.annotations,
-            },
             "cases": {
                 "study_cases": archive.cases.study_cases,
                 "operating_cases": archive.cases.operating_cases,
-                "switching_states": archive.cases.switching_states,
                 "settings": archive.cases.settings,
             },
             "runs": {
-                "analysis_runs": archive.runs.analysis_runs,
+                "canonical_runs": archive.runs.canonical_runs,
                 "analysis_runs_index": archive.runs.analysis_runs_index,
-                "study_runs": archive.runs.study_runs,
             },
-            "results": {
-                "study_results": archive.results.study_results,
-            },
-            "proofs": {
-                "design_specs": archive.proofs.design_specs,
-                "design_proposals": archive.proofs.design_proposals,
-                "design_evidence": archive.proofs.design_evidence,
-            },
+            "results": {},
             "interpretations": {
                 "cached": archive.interpretations.cached,
             },
@@ -405,12 +386,9 @@ def archive_to_dict(archive: ProjectArchive) -> dict[str, Any]:
             "fingerprints": {
                 "archive_hash": archive.fingerprints.archive_hash,
                 "project_meta_hash": archive.fingerprints.project_meta_hash,
-                "network_model_hash": archive.fingerprints.network_model_hash,
-                "sld_hash": archive.fingerprints.sld_hash,
                 "cases_hash": archive.fingerprints.cases_hash,
                 "runs_hash": archive.fingerprints.runs_hash,
                 "results_hash": archive.fingerprints.results_hash,
-                "proofs_hash": archive.fingerprints.proofs_hash,
                 "interpretations_hash": archive.fingerprints.interpretations_hash,
                 "issues_hash": archive.fingerprints.issues_hash,
                 "enm_hash": archive.fingerprints.enm_hash,
@@ -420,18 +398,24 @@ def archive_to_dict(archive: ProjectArchive) -> dict[str, Any]:
 
 
 def dict_to_archive(data: dict[str, Any]) -> ProjectArchive:
-    """Konwersja słownika (z JSON) do archiwum."""
-    # Walidacja podstawowej struktury
+    """Konwersja słownika (z JSON) do archiwum — akceptuje format 3.0.0 I 2.x.
+
+    W1-B-ARCH: `ProjectArchive` formatu 3.0.0 nie ma pól dla `network_model`/
+    `sld_diagrams`/`proofs` — jeśli `data` (archiwum 2.x) je niesie, są tu po
+    prostu IGNOROWANE (żadnego pola „dla zgodności"). Surowy słownik `data`
+    (z tymi sekcjami) zostaje jednak dostępny wołającemu PRZED tym wywołaniem
+    (`json.loads(project.json)`) — `application/project_archive/service.py`
+    sięga po `data["network_model"]` wprost, gdy trzeba skompilować model z
+    danych legacy (archiwum 2.x bez `enm.models`).
+    """
+    # Walidacja podstawowej struktury — sekcje formatu 3.0.0.
     required_keys = [
         "schema_version",
         "format_id",
         "project_meta",
-        "network_model",
-        "sld_diagrams",
         "cases",
         "runs",
         "results",
-        "proofs",
         "fingerprints",
     ]
     for key in required_keys:
@@ -448,12 +432,8 @@ def dict_to_archive(data: dict[str, Any]) -> ProjectArchive:
         raise ArchiveVersionError(ARCHIVE_SCHEMA_VERSION, schema_version)
 
     pm = data["project_meta"]
-    nm = data["network_model"]
-    sld = data["sld_diagrams"]
     cases = data["cases"]
     runs = data["runs"]
-    results = data["results"]
-    proofs = data["proofs"]
     interpretations = data.get("interpretations", {"cached": []})
     issues = data.get("issues", {"snapshot": []})
     enm = data.get("enm", {"models": []})
@@ -467,44 +447,21 @@ def dict_to_archive(data: dict[str, Any]) -> ProjectArchive:
             name=pm["name"],
             description=pm.get("description"),
             schema_version=pm["schema_version"],
-            active_network_snapshot_id=pm.get("active_network_snapshot_id"),
             connection_node_id=pm.get("connection_node_id"),
             sources=pm.get("sources", []),
             created_at=pm["created_at"],
             updated_at=pm["updated_at"],
         ),
-        network_model=NetworkModelSection(
-            nodes=nm.get("nodes", []),
-            branches=nm.get("branches", []),
-            sources=nm.get("sources", []),
-            loads=nm.get("loads", []),
-            snapshots=nm.get("snapshots", []),
-        ),
-        sld_diagrams=SldSection(
-            diagrams=sld.get("diagrams", []),
-            node_symbols=sld.get("node_symbols", []),
-            branch_symbols=sld.get("branch_symbols", []),
-            annotations=sld.get("annotations", []),
-        ),
         cases=CasesSection(
             study_cases=cases.get("study_cases", []),
             operating_cases=cases.get("operating_cases", []),
-            switching_states=cases.get("switching_states", []),
             settings=cases.get("settings"),
         ),
         runs=RunsSection(
-            analysis_runs=runs.get("analysis_runs", []),
+            canonical_runs=runs.get("canonical_runs", []),
             analysis_runs_index=runs.get("analysis_runs_index", []),
-            study_runs=runs.get("study_runs", []),
         ),
-        results=ResultsSection(
-            study_results=results.get("study_results", []),
-        ),
-        proofs=ProofsSection(
-            design_specs=proofs.get("design_specs", []),
-            design_proposals=proofs.get("design_proposals", []),
-            design_evidence=proofs.get("design_evidence", []),
-        ),
+        results=ResultsSection(),
         interpretations=InterpretationsSection(
             cached=interpretations.get("cached", []),
         ),
@@ -517,12 +474,9 @@ def dict_to_archive(data: dict[str, Any]) -> ProjectArchive:
         fingerprints=ArchiveFingerprints(
             archive_hash=fp["archive_hash"],
             project_meta_hash=fp["project_meta_hash"],
-            network_model_hash=fp["network_model_hash"],
-            sld_hash=fp["sld_hash"],
             cases_hash=fp["cases_hash"],
             runs_hash=fp["runs_hash"],
             results_hash=fp["results_hash"],
-            proofs_hash=fp["proofs_hash"],
             interpretations_hash=fp.get("interpretations_hash", ""),
             issues_hash=fp.get("issues_hash", ""),
             enm_hash=fp.get("enm_hash", ""),
@@ -544,60 +498,84 @@ def _is_compatible_version(version: str) -> bool:
         return False
 
 
-def verify_archive_integrity(archive: ProjectArchive) -> list[str]:
+# Klucz sekcji (jak w słowniku JSON archiwum) -> (nazwa pola hasha w
+# fingerprints, nazwa klucza sekcji wewnątrz `archive_hash` = hash-hashy).
+# W1-B-ARCH §0.3: weryfikacja integralności działa na SUROWYM słowniku, więc
+# ta tabela musi obejmować RÓWNIEŻ sekcje, których format 3.0.0 już nie ma
+# (`network_model`/`sld_diagrams`/`proofs`) — inaczej archiwa 2.x weryfikowałyby
+# się „w przybliżeniu" (bez tych trzech sekcji), nie DOKŁADNIE. Nazwa "sld" (nie
+# "sld_diagrams") wewnątrz `archive_hash` jest CELOWA — dokładnie tak liczyła tę
+# sekcję historyczna `compute_archive_fingerprints` formatu 2.x, a `archive_hash`
+# musi się odtworzyć BIT W BIT, żeby weryfikacja była dokładna, nie przybliżona.
+_SECTION_HASH_FIELDS: tuple[tuple[str, str, str], ...] = (
+    ("project_meta", "project_meta_hash", "project_meta"),
+    ("network_model", "network_model_hash", "network_model"),
+    ("sld_diagrams", "sld_hash", "sld"),
+    ("cases", "cases_hash", "cases"),
+    ("runs", "runs_hash", "runs"),
+    ("results", "results_hash", "results"),
+    ("proofs", "proofs_hash", "proofs"),
+    ("interpretations", "interpretations_hash", "interpretations"),
+    ("issues", "issues_hash", "issues"),
+    ("enm", "enm_hash", "enm"),
+)
+
+
+def verify_archive_integrity(data: dict[str, Any]) -> list[str]:
     """
-    Weryfikacja integralności archiwum.
+    Weryfikacja integralności archiwum NA SUROWYM słowniku JSON (§0.3).
+
+    Działa identycznie dla KAŻDEJ wczytywalnej wersji formatu, bo nie przechodzi
+    przez `ProjectArchive` (ta klasa formatu 3.0.0 nie niesie już sekcji
+    `network_model`/`sld_diagrams`/`proofs`, więc przeliczanie z niej pomijałoby
+    je w archiwum 2.x — "w przybliżeniu", nie dokładnie). Sekcje do sprawdzenia
+    wyznacza `fingerprints` SAMEGO archiwum: dla 3.0.0 to `project_meta/cases/
+    runs/results/interpretations/issues/enm` (siedem pól); dla 2.x DODATKOWO
+    `network_model_hash`/`sld_hash`/`proofs_hash` — dokładnie te klucze, które
+    `compute_archive_fingerprints` DANEJ wersji policzyła przy eksporcie.
+
+    `archive_hash` jest weryfikowany NAPRAWDĘ (hash słownika hashy sekcji, w
+    dokładnie tej postaci) — nie tylko sekcje składowe.
 
     Zwraca listę błędów (pusta = OK).
     """
     errors: list[str] = []
+    fingerprints = data.get("fingerprints") or {}
+    if not isinstance(fingerprints, dict):
+        return ["Błąd integralności: sekcja 'fingerprints' nie jest słownikiem"]
 
-    # Przelicz hashe i porównaj
-    archive_dict = archive_to_dict(archive)
-
-    computed = compute_archive_fingerprints(
-        project_meta=archive_dict["project_meta"],
-        network_model=archive_dict["network_model"],
-        sld=archive_dict["sld_diagrams"],
-        cases=archive_dict["cases"],
-        runs=archive_dict["runs"],
-        results=archive_dict["results"],
-        proofs=archive_dict["proofs"],
-        interpretations=archive_dict.get("interpretations", {"cached": []}),
-        issues=archive_dict.get("issues", {"snapshot": []}),
-        enm=archive_dict.get("enm", {"models": []}),
-    )
-
-    checks = [
-        ("project_meta", computed.project_meta_hash, archive.fingerprints.project_meta_hash),
-        ("network_model", computed.network_model_hash, archive.fingerprints.network_model_hash),
-        ("sld", computed.sld_hash, archive.fingerprints.sld_hash),
-        ("cases", computed.cases_hash, archive.fingerprints.cases_hash),
-        ("runs", computed.runs_hash, archive.fingerprints.runs_hash),
-        ("results", computed.results_hash, archive.fingerprints.results_hash),
-        ("proofs", computed.proofs_hash, archive.fingerprints.proofs_hash),
-    ]
-
-    # Opcjonalne sekcje (mogą mieć pusty hash w starszych wersjach)
-    if archive.fingerprints.interpretations_hash:
-        checks.append(
-            (
-                "interpretations",
-                computed.interpretations_hash,
-                archive.fingerprints.interpretations_hash,
+    hashy_sekcji: dict[str, str] = {}
+    for section_key, fp_field, archive_hash_key in _SECTION_HASH_FIELDS:
+        stored_hash = fingerprints.get(fp_field)
+        if not stored_hash:
+            # Pole nieobecne albo puste = sekcja nie istniała w TEJ wersji formatu
+            # (np. network_model_hash w archiwum 3.0.0, albo interpretations_hash
+            # w archiwum sprzed tej sekcji) — nic do sprawdzenia, zgodnie z zamysłem.
+            continue
+        if section_key not in data:
+            errors.append(
+                f"Błąd integralności: fingerprints wymaga sekcji '{section_key}', "
+                "a archiwum jej nie zawiera"
             )
-        )
-    if archive.fingerprints.issues_hash:
-        checks.append(("issues", computed.issues_hash, archive.fingerprints.issues_hash))
-    if archive.fingerprints.enm_hash:
-        checks.append(("enm", computed.enm_hash, archive.fingerprints.enm_hash))
-
-    for section, computed_hash, stored_hash in checks:
+            continue
+        computed_hash = compute_hash(data[section_key])
+        hashy_sekcji[archive_hash_key] = computed_hash
         if computed_hash != stored_hash:
             errors.append(
-                f"Błąd integralności sekcji '{section}': "
+                f"Błąd integralności sekcji '{section_key}': "
                 f"oczekiwano {stored_hash}, obliczono {computed_hash}"
             )
+
+    stored_archive_hash = fingerprints.get("archive_hash")
+    if stored_archive_hash:
+        computed_archive_hash = compute_hash(hashy_sekcji)
+        if computed_archive_hash != stored_archive_hash:
+            errors.append(
+                "Błąd integralności archiwum: "
+                f"oczekiwano {stored_archive_hash}, obliczono {computed_archive_hash}"
+            )
+    else:
+        errors.append("Błąd integralności: brak 'archive_hash' w fingerprints")
 
     return errors
 

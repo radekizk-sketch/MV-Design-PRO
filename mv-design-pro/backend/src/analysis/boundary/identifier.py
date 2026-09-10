@@ -9,11 +9,14 @@ PowerFactory alignment:
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
 from network_model.core.graph import NetworkGraph
 from network_model.core.snapshot import NetworkSnapshot, snapshot_read_only_guard
+
+logger = logging.getLogger(__name__)
 
 EXTERNAL_GRID_SOURCE_TYPES = {"GRID", "EXTERNAL_GRID"}
 
@@ -174,7 +177,19 @@ class BoundaryIdentifier:
             if node_id not in net_injection:
                 continue
             payload = source.get("payload") or {}
-            net_injection[node_id] += self._as_float(payload.get("p_mw", 0.0))
+            p_mw = payload.get("p_mw")
+            if p_mw is None:
+                # Brak wyniku/pola NIE jest liczba 0 (karta FAB-E, E1): zrodlo bez
+                # zmaterializowanej mocy czynnej jest pomijane w sumie wstrzykniecia
+                # netto zamiast fałszywie liczyc sie jako zrodlo zerowej mocy — to
+                # mogłoby odwrocic znak heurystyki "przewaga generacji".
+                logger.warning(
+                    "BoundaryIdentifier: zrodlo w wezle %s bez payload.p_mw — "
+                    "pominiete w heurystyce generator_dominant (nie liczone jako 0).",
+                    node_id,
+                )
+                continue
+            net_injection[node_id] += self._as_float(p_mw)
 
         for load in loads:
             if not load.get("in_service", True):
@@ -183,7 +198,15 @@ class BoundaryIdentifier:
             if node_id not in net_injection:
                 continue
             payload = load.get("payload") or {}
-            net_injection[node_id] -= self._as_float(payload.get("p_mw", 0.0))
+            p_mw = payload.get("p_mw")
+            if p_mw is None:
+                logger.warning(
+                    "BoundaryIdentifier: odbior w wezle %s bez payload.p_mw — "
+                    "pominiety w heurystyce generator_dominant (nie liczony jako 0).",
+                    node_id,
+                )
+                continue
+            net_injection[node_id] -= self._as_float(p_mw)
 
         if not sources and not loads:
             for node_id, node in graph.nodes.items():

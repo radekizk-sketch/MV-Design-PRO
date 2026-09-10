@@ -1,0 +1,351 @@
+/*
+ * Style ekranu „Ocena techniczna wyników" (karta B-02). Kolory WYŁĄCZNIE przez
+ * tokeny --mvd-* (zero literałów hex), więc oba motywy działają bez osobnych reguł.
+ * Liczby: `.mvd-num` (mono + tabular-nums, współdzielone z wzorcem ekranu).
+ */
+
+.mvd-ocena {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  color: var(--mvd-ink);
+  font-family: var(--mvd-font-sans);
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 4px;
+}
+.mvd-ocena :focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+
+/* ---- nagłówek ---- */
+.mvd-ocena-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-ocena-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.mvd-ocena-cel {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+.mvd-ocena-podtytul {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ---- podstawa oceny ---- */
+.mvd-ocena-podstawa {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+}
+.mvd-ocena-podstawa-siatka {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 6px 14px;
+}
+.mvd-ocena-podstawa-wiersz {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.mvd-ocena-podstawa-etyk {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mvd-muted);
+}
+.mvd-ocena-podstawa-wartosc {
+  font-size: 12.5px;
+}
+.mvd-ocena-przebiegi {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.mvd-ocena-przebieg {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 10px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-panel-2);
+  min-width: 220px;
+}
+.mvd-ocena-przebieg--uwaga {
+  border-color: var(--mvd-warn);
+}
+.mvd-ocena-przebieg-nazwa {
+  font-weight: 600;
+}
+.mvd-ocena-przebieg-stan,
+.mvd-ocena-przebieg-meta {
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
+/* ---- podsumowanie ---- */
+.mvd-ocena-podsumowanie {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--mvd-line);
+  border-left-width: 4px;
+  border-left-color: var(--mvd-accent);
+  border-radius: 4px;
+  background: var(--mvd-panel);
+  box-shadow: var(--mvd-shadow);
+}
+.mvd-ocena-liczniki {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+}
+.mvd-ocena-licznik {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.mvd-ocena-licznik-etyk {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--mvd-muted);
+}
+.mvd-ocena-licznik-liczba {
+  font-size: 18px;
+  font-weight: 700;
+}
+.mvd-ocena-licznik--spelnia .mvd-ocena-licznik-liczba {
+  color: var(--mvd-ok);
+}
+.mvd-ocena-licznik--nie-spelnia .mvd-ocena-licznik-liczba {
+  color: var(--mvd-err);
+}
+.mvd-ocena-licznik--brak .mvd-ocena-licznik-liczba {
+  color: var(--mvd-warn);
+}
+.mvd-ocena-calosciowa {
+  margin: 0;
+  font-size: 12.5px;
+}
+
+/* ---- grupy i pozycje ---- */
+.mvd-ocena-grupa {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mvd-ocena-grupa-tytul {
+  margin: 4px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mvd-muted);
+}
+.mvd-ocena-pozycja {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+}
+.mvd-ocena-pozycja-glowa {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.mvd-ocena-pozycja-tytul {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.mvd-ocena-pozycja-licznik {
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+.mvd-ocena-etap {
+  white-space: nowrap;
+  color: var(--mvd-muted);
+  font-size: 11px;
+}
+.mvd-ocena-tabela-otoczka {
+  overflow-x: auto;
+}
+.mvd-ocena-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.mvd-ocena-tabela th,
+.mvd-ocena-tabela td {
+  text-align: left;
+  vertical-align: top;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--mvd-line);
+}
+.mvd-ocena-tabela th {
+  color: var(--mvd-muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.mvd-ocena-wiersz {
+  border-left: 3px solid transparent;
+}
+.mvd-ocena-przedmiot-nazwa,
+.mvd-ocena-przedmiot-id,
+.mvd-ocena-uwaga {
+  display: block;
+}
+.mvd-ocena-przedmiot-nazwa {
+  font-weight: 600;
+}
+.mvd-ocena-przedmiot-id,
+.mvd-ocena-uwaga {
+  color: var(--mvd-muted);
+  font-size: 11px;
+}
+.mvd-ocena-podstawa-kryterium {
+  min-width: 180px;
+  color: var(--mvd-muted);
+  font-size: 11.5px;
+}
+.mvd-ocena-wynik {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.mvd-ocena-wynik--spelnia td.mvd-ocena-wynik {
+  color: var(--mvd-ok);
+}
+.mvd-ocena-wynik--nie-spelnia td.mvd-ocena-wynik {
+  color: var(--mvd-err);
+}
+.mvd-ocena-wynik--brak-podstaw td.mvd-ocena-wynik {
+  color: var(--mvd-warn);
+  white-space: normal;
+  min-width: 160px;
+}
+.mvd-ocena-wiersz.mvd-ocena-wynik--nie-spelnia {
+  background: var(--mvd-err-bg);
+}
+.mvd-ocena-wniosek {
+  min-width: 220px;
+}
+.mvd-ocena-dzialania {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-bottom: 0;
+}
+.mvd-ocena-akcja {
+  border: 1px solid var(--mvd-accent);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--mvd-accent);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11.5px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+.mvd-ocena-akcja:hover {
+  background: var(--mvd-sel);
+}
+
+/* ---- kryteria bez podstawy / poza automatem ---- */
+.mvd-ocena-zakres-opis {
+  margin: 0 0 6px;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+.mvd-ocena-zakres-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mvd-ocena-zakres-wpis {
+  display: grid;
+  grid-template-columns: 48px minmax(180px, 1fr) 2fr;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px dashed var(--mvd-line);
+  border-radius: 4px;
+  font-size: 12px;
+}
+.mvd-ocena-zakres-nazwa {
+  font-weight: 600;
+}
+.mvd-ocena-zakres-powod {
+  color: var(--mvd-muted);
+}
+
+/* ---- stan blokujący, stany zerowe, błędy ---- */
+.mvd-ocena-blokada {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--mvd-warn);
+  border-left-width: 4px;
+  border-radius: 4px;
+  background: var(--mvd-panel);
+}
+.mvd-ocena-blokada-tytul {
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  color: var(--mvd-warn);
+}
+.mvd-ocena-blokada-opis {
+  margin: 0;
+  font-size: 12.5px;
+}
+.mvd-ocena-pusty {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px;
+  border: 1px dashed var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-panel);
+}
+.mvd-ocena-pusty-glowny {
+  margin: 0;
+}
+.mvd-ocena-pusty-krok {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+.mvd-ocena-ladowanie {
+  margin: 0;
+  color: var(--mvd-muted);
+}
+.mvd-ocena-blad {
+  margin: 0;
+  color: var(--mvd-err);
+}

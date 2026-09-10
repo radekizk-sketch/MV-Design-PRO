@@ -105,7 +105,17 @@ def test_no_todo_fixme_in_catalog_first_critical_paths() -> None:
 
 def test_catalog_optional_language_is_absent_in_active_modals() -> None:
     targets = [
-        REPO_ROOT / "frontend" / "src" / "ui" / "topology" / "modals" / "GridSourceModal.tsx",
+        # Źródło sieciowe: kanoniczny kreator ui2 (`GridSourceModal.tsx` skasowany kartą
+        # K7c-FE jako martwy kod — zero konsumentów; ten test czytał ścieżkę, której nie ma,
+        # i był jedynym odwołaniem poza inwentarzem karty — odbiór K7, 2026-09-09).
+        REPO_ROOT
+        / "frontend"
+        / "src"
+        / "ui2"
+        / "kreatory"
+        / "zrodlo"
+        / "KreatorZrodloZasilania.tsx",
+        REPO_ROOT / "frontend" / "src" / "ui2" / "kreatory" / "zrodlo" / "strings.ts",
         # Ciąg SN: kanoniczny kreator ui2 (retirowany TrunkContinueModal/ContinueTrunkForm).
         REPO_ROOT
         / "frontend"

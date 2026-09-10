@@ -105,10 +105,16 @@ export function KreatorOdbioruNn() {
   const [podglad, setPodglad] = useState<CableRatedCurrentResponse | null>(null);
   const [bladPodgladu, setBladPodgladu] = useState<string | null>(null);
   const previewSeq = useRef(0);
+  // S9-5 (klasa: bramka enable bez sygnału gotowości) — jawny znacznik
+  // ładowania katalogu, niezależny od `typy.length` (katalog pusty PO
+  // wczytaniu wygląda inaczej niż katalog W TRAKCIE wczytywania). Odbiór ma
+  // wyjście awaryjne `manual_mode` (zapis bez katalogu) — patrz `stanGotowosci`.
+  const [katalogLadowanie, setKatalogLadowanie] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     setBladKatalogu(null);
+    setKatalogLadowanie(true);
     fetchLoadTypes()
       .then((t) => {
         if (!cancelled) setTypy(Array.isArray(t) ? t : []);
@@ -117,6 +123,9 @@ export function KreatorOdbioruNn() {
         if (cancelled) return;
         setTypy([]);
         setBladKatalogu(getCatalogErrorMessage(e));
+      })
+      .finally(() => {
+        if (!cancelled) setKatalogLadowanie(false);
       });
     return () => {
       cancelled = true;
@@ -255,6 +264,23 @@ export function KreatorOdbioruNn() {
   );
 
   const krokIndex = KROKI.findIndex((k) => k.id === krok);
+  /**
+   * S9-5 (klasa: bramka enable bez sygnału gotowości) — jedno źródło prawdy
+   * dla `disabled` i `data-status` (patrz `KreatorMagistralaSn.tsx`, ta sama
+   * karta i ten sam mechanizm powtórzony w tym pliku). Odbiór ma DWIE
+   * ścieżki pochodzenia parametrów (`walidujFormularz`: katalog ALBO
+   * `manual_mode`) — bramka ładowania katalogu dotyczy WYŁĄCZNIE ścieżki
+   * katalogowej; w trybie ręcznym katalog jest nieużywany, więc jego stan
+   * ładowania nie może blokować zapisu (inaczej user w trybie ręcznym
+   * czekałby na zasób, którego nie potrzebuje).
+   */
+  const stanGotowosci: 'ladowanie' | 'zablokowany' | 'gotowy' =
+    !hasOdplyw || !activeCaseId
+      ? 'zablokowany'
+      : katalogLadowanie && !dane.manual_mode
+        ? 'ladowanie'
+        : 'gotowy';
+  const zapisZablokowany = stanGotowosci !== 'gotowy';
 
   return (
     <KreatorRama
@@ -268,8 +294,17 @@ export function KreatorOdbioruNn() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={bledy.length > 0 ? T.walidacjaStopka : !hasOdplyw ? T.brakOdplywuOpis : null}
-      akcjaGlowna={{ etykieta: T.zapisz, onClick: onZapisz, zablokowana: !hasOdplyw || !activeCaseId, testid: 'mvd-kreator-odbior-zapisz' }}
+      walidacja={
+        stanGotowosci === 'ladowanie'
+          ? T.katalogLadowanieStopka
+          : bledy.length > 0
+            ? T.walidacjaStopka
+            : !hasOdplyw
+              ? T.brakOdplywuOpis
+              : null
+      }
+      status={stanGotowosci}
+      akcjaGlowna={{ etykieta: T.zapisz, onClick: onZapisz, zablokowana: zapisZablokowany, testid: 'mvd-kreator-odbior-zapisz' }}
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-odbior-anuluj' }}
       krokWstecz={
         krokIndex > 0

@@ -39,6 +39,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
+from network_model.pochodne import mva_na_kva
+
 #: Wersja katalogow audytu 2 = DATA PRZEGLADU PROWENIENCJI (ISO-8601).
 #:
 #: Do karty K-Q pozycje deklarowaly `catalog_version = "2024.1"` — numer, ktory
@@ -931,7 +933,7 @@ class BlockTransformerItem:
 
     @property
     def sn_kva(self) -> float:
-        return float(self._params["rated_power_mva"]) * 1000.0
+        return mva_na_kva(float(self._params["rated_power_mva"]))
 
     @property
     def hv_kv(self) -> float:

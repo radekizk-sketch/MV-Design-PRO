@@ -46,12 +46,19 @@ vi.mock('../../../../ui/selection', () => ({
     selector({ selectElement: selectElementMock, centerSldOnElement: centerMock }),
 }));
 
-vi.mock('../../../../ui/catalog/api', () => ({
-  fetchBranchPointTypes: () =>
+// `vi.hoisted` + `vi.fn()` (S9-5): pozwala nadpisać implementację per test
+// (`mockReturnValueOnce`), żeby symulować katalog W TRAKCIE ładowania.
+const { fetchBranchPointTypesMock } = vi.hoisted(() => ({
+  fetchBranchPointTypesMock: vi.fn((_kind: string) =>
     Promise.resolve([
       { id: 'zk-1', name: 'ZK przelotowe', kind: 'ZKSN', medium: 'CABLE', branch_ports_count: 1, switch_device_kind: 'ROZLACZNIK' },
       { id: 'zk-2', name: 'ZK odgałęźne', kind: 'ZKSN', medium: 'CABLE', branch_ports_count: 2, switch_device_kind: 'ROZLACZNIK' },
     ]),
+  ),
+}));
+
+vi.mock('../../../../ui/catalog/api', () => ({
+  fetchBranchPointTypes: (kind: string) => fetchBranchPointTypesMock(kind),
 }));
 
 async function pick(id = 'zk-2') {
@@ -72,6 +79,7 @@ describe('KreatorZksn — realna ścieżka', () => {
     navigateToSldMock.mockReset();
     selectElementMock.mockReset();
     centerMock.mockReset();
+    fetchBranchPointTypesMock.mockClear();
   });
 
   afterEach(() => cleanup());
@@ -123,6 +131,22 @@ describe('KreatorZksn — realna ścieżka', () => {
     render(<KreatorZksn />);
     await screen.findByTestId('mvd-kreator-zksn-brak');
     expect(screen.getByTestId('mvd-kreator-zksn-zapisz')).toBeDisabled();
+    expect(screen.getByTestId('mvd-kreator-zksn')).toHaveAttribute('data-status', 'zablokowany');
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  /**
+   * S9-5 (`karta_e2e_s95.md`, klasa: bramka enable bez sygnału gotowości) —
+   * TEN SAM mechanizm jak w `KreatorMagistralaSn.tsx`, powtórzony w tym pliku:
+   * `zapisMozliwy` nie sprawdzał, czy katalog wariantów ZKSN już doszedł.
+   */
+  it('iloczyn cech: katalog jeszcze się ładuje × odcinek poprawny → zapis zablokowany z komunikatem', async () => {
+    fetchBranchPointTypesMock.mockReturnValueOnce(new Promise(() => {}));
+    render(<KreatorZksn />);
+
+    expect(screen.getByTestId('mvd-kreator-zksn-zapisz')).toBeDisabled();
+    expect(screen.getByTestId('mvd-kreator-zksn')).toHaveAttribute('data-status', 'ladowanie');
+    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/[Łł]adowanie katalogu/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 });

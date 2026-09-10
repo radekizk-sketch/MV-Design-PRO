@@ -185,6 +185,8 @@ test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
+    hv_voltage_kv: 110.0,
+    transformer_sn_mva: 25.0,
   });
 
   // Krok 2: Magistrala SN (3 segmenty)
@@ -322,28 +324,24 @@ test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -
   expect(snapshotHashBefore).toBeTruthy();
 
   // Krok 7: Realne obliczenie + przejście do wyników
+  // K5.1 (CV-4.3-A4, 2026-09-06): fallback na `POST /api/cases/{id}/runs/
+  // short-circuit` usunięty razem z trasą (skasowana procedurą siedmiu
+  // kroków — 0 konsumentów produkcyjnych; jedyny inny konsument tej trasy
+  // był ten test, nazywający ją wprost "legacy"). Tor kanoniczny jest
+  // JEDYNYM torem uruchomienia zwarcia.
   const createRunResponse = await request.post(
     `${BACKEND_BASE}/api/execution/study-cases/${caseId}/runs`,
     { data: { analysis_type: 'SC_3F' } },
   );
-  let runId: string;
-  if (createRunResponse.ok()) {
-    const createRunPayload = (await createRunResponse.json()) as { id: string };
-    runId = createRunPayload.id;
+  expect(createRunResponse.ok()).toBeTruthy();
+  const createRunPayload = (await createRunResponse.json()) as { id: string };
+  const runId = createRunPayload.id;
 
-    const executeRunResponse = await request.post(
-      `${BACKEND_BASE}/api/execution/runs/${createRunPayload.id}/execute`,
-    );
-    expect(executeRunResponse.ok()).toBeTruthy();
-    await waitForAnalysisRunIndex(request, runId);
-  } else {
-    const legacyRunResponse = await request.post(`${BACKEND_BASE}/api/cases/${caseId}/runs/short-circuit`);
-    if (legacyRunResponse.ok()) {
-      const legacyPayload = (await legacyRunResponse.json()) as { results?: unknown[] };
-      expect((legacyPayload.results ?? []).length).toBeGreaterThan(0);
-    }
-    runId = `legacy-sc-${caseId}`;
-  }
+  const executeRunResponse = await request.post(
+    `${BACKEND_BASE}/api/execution/runs/${createRunPayload.id}/execute`,
+  );
+  expect(executeRunResponse.ok()).toBeTruthy();
+  await waitForAnalysisRunIndex(request, runId);
 
   await page.goto(`/#analysis?run=${runId}`, { waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 90000 });
@@ -368,11 +366,9 @@ test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -
   // PR-5c: stary panel "Przebieg obliczeń analizy" wygaszony razem z proof inspector v1.
 
   // Krok 8: Realne wyniki backend
-  if (!runId.startsWith('legacy-sc-')) {
-    const resultResponse = await request.get(`${BACKEND_BASE}/api/execution/runs/${runId}/results`);
-    if (resultResponse.ok()) {
-      expect(resultResponse.ok()).toBeTruthy();
-    }
+  const resultResponse = await request.get(`${BACKEND_BASE}/api/execution/runs/${runId}/results`);
+  if (resultResponse.ok()) {
+    expect(resultResponse.ok()).toBeTruthy();
   }
 
   // Krok 9: Geometria bazowa snapshotu bez zmian po wynikach

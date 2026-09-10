@@ -26,11 +26,18 @@ export type KodDziedzinyEkranu =
   | 'RAPORTY_UZASADNIENIA'
   | 'HISTORIA_AUDYT';
 
+// E-39 skasowane karta K2 (2026-09-09, "Walidacja sieci referencyjnych" —
+// ReferenceNetworkSurface): druga ścieżka fizyki (dialekt benchmarków), zero
+// konsumentów produkcyjnych poza sobą. LUKA w numeracji celowa (E-39 był raz
+// już usuwany i ponownie przydzielany — Phase 0 #1, `technicalDebtRegistry.ts`
+// — trzecie przydzielenie nowemu ekranowi wymaga świadomej decyzji, nie
+// przypadkowego "następnego wolnego numeru"), NIE renumerujemy E-40..E-50 (są
+// zajęte, w odróżnieniu od Phase 0 #1, gdzie E-39 był wtedy ostatnim ekranem).
 export type CanonScreenId =
   | 'E-00' | 'E-01' | 'E-02' | 'E-03' | 'E-04' | 'E-05' | 'E-06' | 'E-07' | 'E-08' | 'E-09'
   | 'E-10' | 'E-11' | 'E-12' | 'E-13' | 'E-14' | 'E-15' | 'E-16' | 'E-17' | 'E-18' | 'E-19'
   | 'E-20' | 'E-21' | 'E-22' | 'E-23' | 'E-24' | 'E-25' | 'E-26' | 'E-27' | 'E-28' | 'E-29'
-  | 'E-30' | 'E-31' | 'E-32' | 'E-33' | 'E-34' | 'E-35' | 'E-36' | 'E-37' | 'E-38' | 'E-39'
+  | 'E-30' | 'E-31' | 'E-32' | 'E-33' | 'E-34' | 'E-35' | 'E-36' | 'E-37' | 'E-38'
   | 'E-40' | 'E-41' | 'E-42' | 'E-43' | 'E-44' | 'E-45' | 'E-46' | 'E-47' | 'E-48' | 'E-49'
   | 'E-50';
 
@@ -682,7 +689,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     areaId: 'ZRODLA_PRZYLACZENIA',
     icon: 'ikona-ekran-frt-lvrt-hvrt',
     canonicalRoute: '/workspace/sources/frt-lvrt-hvrt',
-    legacyAliases: ['frt', 'source_compliance', 'old:E-30'],
+    legacyAliases: ['frt', 'old:E-30'],
     componentKey: 'EkranFrt',
     testId: 'screen-E-26-frt-lvrt-hvrt',
     implemented: true,
@@ -974,32 +981,6 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     supportsChildren: false,
     requiresSession: true,
   }),
-  // E-39 reaktywowane (po Phase 0 #1) jako Walidacja sieci referencyjnych
-  // Stary scope "Historia migawek" przeniesiony do E-09. Nowy scope:
-  // walidacja solverów vs publikowane benchmarki IEEE/IEC/CIGRE/pandapower.
-  'E-39': screen({
-    id: 'E-39',
-    labelFull: 'Walidacja sieci referencyjnych',
-    labelShort: 'Sieci ref.',
-    areaId: 'WYNIKI_ANALIZY',
-    icon: 'ikona-ekran-wyniki-porownania',
-    canonicalRoute: '/workspace/reference-networks',
-    legacyAliases: [],
-    componentKey: 'ReferenceNetworkSurface',
-    testId: 'screen-E-39-reference-networks',
-    implemented: true,
-    requiresProject: false,
-    requiresSelection: false,
-    requiresStudyCase: false,
-    requiresOperatingVariant: false,
-    visibleInNavigation: true,
-    surfaceKind: 'analityczny',
-    subjectKind: 'helper_context',
-    sizeClass: 'C',
-    supportsMiniSld: false,
-    supportsChildren: false,
-    requiresSession: true,
-  }),
   'E-40': screen({
     id: 'E-40',
     labelFull: 'Jakosc energii i harmoniczne',
@@ -1184,7 +1165,17 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     requiresSelection: false,
     requiresStudyCase: true,
     requiresOperatingVariant: true,
-    visibleInNavigation: true,
+    // Karta W3-E (2026-09-09): lokalna impedancja Thevenina per szyna metodą
+    // Monte Carlo, BEZ sprzężenia sieci — duplikuje kanon
+    // `application/analyses/hosting_capacity.py` (pełny rozpływ przez wariant
+    // sieci), który ma WŁASNY ekran „OZE › Zdolność przyłączeniowa"
+    // (`ui2/oze/zdolnosc`). Backend odmawia URUCHOMIENIA nowego biegu tego
+    // rodzaju (410 `v126.analysis_withdrawn`) — ekran zostaje w kanonie
+    // (zdolność solvera istnieje, biegi historyczne odtwarzalne z polem
+    // `wycofany`, ciągłość numeracji E-00…E-50), ale nie ma go w nawigacji:
+    // pozycja „Hosting OZE" obiecywałaby analizę, której okno już nie
+    // oferuje do uruchomienia. Rozstrzygnięcie: docs/v12xx/REJESTR_KONFLIKTOW.md.
+    visibleInNavigation: false,
     surfaceKind: 'analityczny',
     subjectKind: 'analysis_case',
     sizeClass: 'C',
@@ -1207,7 +1198,15 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     requiresSelection: false,
     requiresStudyCase: true,
     requiresOperatingVariant: true,
-    visibleInNavigation: true,
+    // Karta W3-E (2026-09-09): β = 0,45 zaszyte i zaczep OLTC zawsze 0 —
+    // duplikuje DWA kanony naraz (`equipment_checks/transformer_losses.py`,
+    // ekran „Kryteria › Wyposażenie"; badania OLTC, ekran „Wyniki › OLTC").
+    // Backend odmawia URUCHOMIENIA nowego biegu (410 `v126.analysis_withdrawn`)
+    // — ekran zostaje w kanonie (zdolność solvera istnieje, biegi historyczne
+    // odtwarzalne z polem `wycofany`), ale nie ma go w nawigacji: pozycja
+    // „OPF straty" obiecywałaby analizę, której okno już nie oferuje do
+    // uruchomienia. Rozstrzygnięcie: docs/v12xx/REJESTR_KONFLIKTOW.md.
+    visibleInNavigation: false,
     surfaceKind: 'analityczny',
     subjectKind: 'analysis_case',
     sizeClass: 'C',

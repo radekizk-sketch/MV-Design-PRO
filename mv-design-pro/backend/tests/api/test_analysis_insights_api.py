@@ -31,14 +31,40 @@ def _reset() -> None:
     reset_enm_store()
 
 
+def _nowy_przypadek(client) -> str:
+    """Utwórz REALNY projekt + przypadek przez API; zwróć `case_id`.
+
+    CV-1-W: przypadek bez wiersza w bazie dostaje teraz 404 z magazynu ENM
+    (inwariant I-2) — testy „granicy sieci" (`?case_id=`, nie `?run_id=`)
+    potrzebują prawdziwej pary projekt+przypadek.
+    """
+    project_resp = client.post("/api/projects", json={"name": "Insights — test"})
+    assert project_resp.status_code == 201, project_resp.text
+    project_id = project_resp.json()["id"]
+    case_resp = client.post(
+        "/api/study-cases", json={"project_id": project_id, "name": "Przypadek testu"}
+    )
+    assert case_resp.status_code == 201, case_resp.text
+    return str(case_resp.json()["id"])
+
+
+def _klucz(client, case_id: str) -> str:
+    """Klucz magazynu ENM dla `case_id` — TO SAMO tłumaczenie co warstwa API (CV-1)."""
+    from application.twin_key import klucz_twin_dla_przypadku
+
+    return klucz_twin_dla_przypadku(case_id, client.app.state.uow_factory)
+
+
 def _pf_run_id(case_id: str = "c-pf"):
     set_enm(case_id, build_golden_enm())
-    return execute_run(create_run(case_id=case_id, analysis_type="PF").id).id
+    return execute_run(create_run(case_id=case_id, klucz_twin=case_id, analysis_type="PF").id).id
 
 
 def _sc_run_id(case_id: str = "c-sc"):
     set_enm(case_id, build_golden_enm())
-    return execute_run(create_run(case_id=case_id, analysis_type="short_circuit_sn").id).id
+    return execute_run(
+        create_run(case_id=case_id, klucz_twin=case_id, analysis_type="short_circuit_sn").id
+    ).id
 
 
 # --------------------------------------------------------------------------
@@ -157,8 +183,9 @@ def test_coverage_is_deterministic(app_client) -> None:
 
 
 def test_boundary_identifies_external_grid_node(app_client) -> None:
-    set_enm("c-gr", build_golden_enm())
-    resp = app_client.get(BOUNDARY, params={"case_id": "c-gr"})
+    case_id = _nowy_przypadek(app_client)
+    set_enm(_klucz(app_client, case_id), build_golden_enm())
+    resp = app_client.get(BOUNDARY, params={"case_id": case_id})
     assert resp.status_code == 200, resp.text
     data = resp.json()
     assert data["znaleziono"] is True
@@ -175,15 +202,17 @@ def test_boundary_identifies_external_grid_node(app_client) -> None:
 
 def test_boundary_works_without_any_run(app_client) -> None:
     """Granica = interpretacja modelu: działa bez ani jednego przebiegu."""
-    set_enm("c-bez-biegu", build_golden_enm())
-    resp = app_client.get(BOUNDARY, params={"case_id": "c-bez-biegu"})
+    case_id = _nowy_przypadek(app_client)
+    set_enm(_klucz(app_client, case_id), build_golden_enm())
+    resp = app_client.get(BOUNDARY, params={"case_id": case_id})
     assert resp.status_code == 200
     assert resp.json()["znaleziono"] is True
 
 
 def test_boundary_empty_model_reports_honest_diagnostics(app_client) -> None:
     """Świeży przypadek (model domyślny bez węzłów) → uczciwa diagnostyka PL."""
-    resp = app_client.get(BOUNDARY, params={"case_id": "c-swiezy"})
+    case_id = _nowy_przypadek(app_client)
+    resp = app_client.get(BOUNDARY, params={"case_id": case_id})
     assert resp.status_code == 200
     data = resp.json()
     assert data["znaleziono"] is False
@@ -195,7 +224,12 @@ def test_boundary_empty_model_reports_honest_diagnostics(app_client) -> None:
 
 
 def test_boundary_is_deterministic(app_client) -> None:
-    set_enm("c-gr-det", build_golden_enm())
-    first = app_client.get(BOUNDARY, params={"case_id": "c-gr-det"}).json()
-    second = app_client.get(BOUNDARY, params={"case_id": "c-gr-det"}).json()
-    assert first == second
+    case_id = _nowy_przypadek(app_client)
+    set_enm(_klucz(app_client, case_id), build_golden_enm())
+    resp1 = app_client.get(BOUNDARY, params={"case_id": case_id})
+    resp2 = app_client.get(BOUNDARY, params={"case_id": case_id})
+    # Asercja statusu ZANIM porówna treść — bez niej dwie identyczne odpowiedzi
+    # błędu (np. 404 przy nieprzetłumaczalnym `case_id`) „zdałyby" ten test z
+    # niewłaściwego powodu (test maskujący defekt).
+    assert resp1.status_code == 200, resp1.text
+    assert resp1.json() == resp2.json()

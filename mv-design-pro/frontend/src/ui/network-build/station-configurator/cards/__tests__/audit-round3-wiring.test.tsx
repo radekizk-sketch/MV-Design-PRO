@@ -11,6 +11,52 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { StationConfigTransformerCard } from '../StationConfigTransformerCard';
 import { StationConfigBaysCard } from '../StationConfigBaysCard';
 import { StationConfigProtectionCard } from '../StationConfigProtectionCard';
+import type { HvFuseItem, TapChangerItem } from '../../../station-der/audit2-api';
+
+// Karta FAB-L: katalog WYŁĄCZNIE ze snapshotu audytu 2 — kształt 1:1 z backendu
+// (`audit2_catalogs.py::TapChangerItem.to_dict`), nie statyk modułowy.
+const TAP_CHANGER_FIXTURES: readonly TapChangerItem[] = [
+  {
+    id: 'tc_oltc_110sn_19_125', catalog_namespace: 'tap_changer', catalog_version: '2026-08-14',
+    label_pl: 'OLTC 110/SN 19 zaczepów', type: 'oltc', neutral_position: 0, tap_count: 19,
+    step_percent: 1.25, range_percent: 11.25, regulated_side: 'hv', supports_avr: true,
+    applicable_to: ['transformer_110_15', 'transformer_110_20'],
+  },
+  {
+    id: 'tc_oltc_110sn_17_125', catalog_namespace: 'tap_changer', catalog_version: '2026-08-14',
+    label_pl: 'OLTC 110/SN 17 zaczepów', type: 'oltc', neutral_position: 0, tap_count: 17,
+    step_percent: 1.25, range_percent: 10.0, regulated_side: 'hv', supports_avr: true,
+    applicable_to: ['transformer_110_15', 'transformer_110_20'],
+  },
+];
+
+// Karta FAB-M: katalog WYŁĄCZNIE ze snapshotu audytu 2 — kształt 1:1 z backendu
+// (`audit2_catalogs.py::HvFuseItem.to_dict`), nie statyk modułowy. Pozycje i
+// zdanie proweniencji (`pasmo_brak_powod_pl`) skopiowane z realnego backendu
+// (`POWOD_BRAK_PASMA_WKLADKI_PL`), nie wymyślone na potrzeby testu.
+const POWOD_BRAK_PASMA_PL =
+  'Pasmo topikowe (krzywa przedłukowa i krzywa wyłączania) odczytuje się z karty '
+  + 'katalogowej producenta wg IEC 60282-1. Ta pozycja katalogowa nie niesie punktów '
+  + 'pasma, więc czasu zadziałania nie wyznaczono — nie zastąpiono go żadnym '
+  + 'przybliżeniem.';
+const HV_FUSE_FIXTURES: readonly HvFuseItem[] = [
+  {
+    id: 'fuse_15kv_50a_full', catalog_namespace: 'hv_fuse', catalog_version: '2026-08-14',
+    label_pl: 'Bezpiecznik SN 15 kV / 50 A · full-range · pole transformatorowe',
+    nominal_voltage_kv: 15, nominal_current_a: 50, class: 'full_range',
+    application: 'transformer', pasmo_tcc: null,
+    pasmo_brak_powod_pl: POWOD_BRAK_PASMA_PL,
+    pasmo_brak_etykieta_pl: 'pasmo wymaga karty producenta',
+  },
+  {
+    id: 'fuse_20kv_25a_gp', catalog_namespace: 'hv_fuse', catalog_version: '2026-08-14',
+    label_pl: 'Bezpiecznik SN 20 kV / 25 A · general-purpose · pole odpływowe',
+    nominal_voltage_kv: 20, nominal_current_a: 25, class: 'general_purpose',
+    application: 'feeder', pasmo_tcc: null,
+    pasmo_brak_powod_pl: POWOD_BRAK_PASMA_PL,
+    pasmo_brak_etykieta_pl: 'pasmo wymaga karty producenta',
+  },
+];
 
 describe('Pakiet G — wiring katalogów do UI cards', () => {
   describe('TransformerCard wire eng.13 (TAP_CHANGER_CATALOG)', () => {
@@ -30,6 +76,7 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
             },
           ]}
           availableLvVoltages={[15]}
+          tapChangers={TAP_CHANGER_FIXTURES}
         />,
       );
 
@@ -62,6 +109,7 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
             },
           ]}
           availableLvVoltages={[15]}
+          tapChangers={TAP_CHANGER_FIXTURES}
           onChange={(_id, changes) => {
             lastChange = changes as never;
           }}
@@ -78,7 +126,7 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
     });
   });
 
-  describe('BaysCard wire eng.17 (HV_FUSE_CATALOG)', () => {
+  describe('BaysCard wire eng.17 (snapshot audytu 2, karta FAB-M)', () => {
     it('renderuje kolumnę "HV fuse" w tabeli pól', () => {
       render(
         <StationConfigBaysCard
@@ -94,6 +142,7 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
               hvFuseCatalogRef: 'fuse_15kv_50a_full',
             },
           ]}
+          hvFuses={HV_FUSE_FIXTURES}
         />,
       );
 
@@ -120,6 +169,7 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
               hvFuseCatalogRef: 'fuse_15kv_50a_full',
             },
           ]}
+          hvFuses={HV_FUSE_FIXTURES}
         />,
       );
 
@@ -144,6 +194,7 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
               hvFuseCatalogRef: null,
             },
           ]}
+          hvFuses={HV_FUSE_FIXTURES}
         />,
       );
       expect(screen.queryByTestId('bay-fuse-brak-pasma-b9')).toBeNull();
@@ -164,6 +215,7 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
               hvFuseCatalogRef: null,
             },
           ]}
+          hvFuses={HV_FUSE_FIXTURES}
         />,
       );
       const fuseCell = screen.getByTestId('bay-fuse-b2');

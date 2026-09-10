@@ -141,13 +141,17 @@ class CloudBackupEntry:
     Wpis kopii zapasowej na liście.
 
     Reprezentuje pojedynczą kopię zapasową w chmurze.
+
+    FAB-E (E1): size_bytes to ``int | None`` — GCS ``Blob.size`` bywa ``None``
+    (metadane nie zawsze wypełnione zależnie od SDK), a rozmiar nieznany NIGDY
+    nie jest fabrykowanym 0 B (wyglądałoby jak pusty/uszkodzony plik kopii).
     """
 
     backup_id: str
     project_id: str
     archive_hash: str
     timestamp: str  # ISO 8601
-    size_bytes: int
+    size_bytes: int | None
     url: str
     key: str  # Pełna ścieżka/klucz w storage
 
@@ -847,7 +851,9 @@ class GCSBackupProvider(CloudBackupProvider):
                     project_id=project_id,
                     archive_hash=archive_hash_short,
                     timestamp=ts_part.replace("-", ":", 2).replace("p", "+"),
-                    size_bytes=blob.size or 0,
+                    # FAB-E (E1): brak rozmiaru w metadanych GCS -> None, nie
+                    # fikcyjne 0 B (wygladaloby jak pusty/uszkodzony plik).
+                    size_bytes=blob.size,
                     url=f"gs://{self._config.bucket_name}/{key}",
                     key=key,
                 )

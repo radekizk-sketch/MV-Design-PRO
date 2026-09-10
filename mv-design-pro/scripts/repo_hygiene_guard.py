@@ -81,7 +81,6 @@ CRITICAL_TODO_TARGETS = [
     "backend/src/api/domain_ops_policy.py",
     "backend/src/api/enm.py",
     "backend/src/api/main.py",
-    "backend/src/api/sld.py",
     "backend/src/domain",
     "backend/src/enm",
     "frontend/src/App.tsx",
@@ -102,6 +101,12 @@ NO_GUESSING_TARGETS = [
     "frontend/src/ui/network-build/forms",
     "frontend/src/ui/sld",
     "frontend/src/ui/topology/modals",
+    # Odbior K7 (2026-09-09): kreatory ui2 sa od programu UI/UX 2026-07 AKTYWNYMI formularzami
+    # operacji domenowych (zrodlo, magistrala, pierscien, stacja, OZE) - lista celow zostala
+    # przy katalogach legacy, wiec kanoniczne kreatory NIE byly skanowane (ten sam dryf, co
+    # test hygiene czytajacy skasowany `GridSourceModal.tsx`). Klasa: cel = kazdy katalog
+    # aktywnych formularzy, nie migawka sprzed migracji.
+    "frontend/src/ui2/kreatory",
 ]
 
 NO_GUESSING_PATTERNS = [

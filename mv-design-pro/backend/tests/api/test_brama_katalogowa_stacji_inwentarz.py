@@ -59,7 +59,7 @@ REF_TRAFO = "tr-sn-nn-15-04-630kva-dyn11"
 REF_APARAT_SN = "sw-cb-abb-vd4-17kv-630a"
 REF_CT = "ct_400_5_5p20_15va_abb"
 REF_VT = "vt_15kv_100v_3p_abb"
-REF_PRZEKAZNIK = "ACME_REX100_v1"
+REF_PRZEKAZNIK = "REF-OC-100"
 REF_ZABEZPIECZENIE_ZRODLA = "EM_ETANGO_400_V0"
 # Falownik PV nN: 0,4 kV, Pmax 500 kW, Sn 550 kVA (rzeczywista pozycja katalogu).
 REF_FALOWNIK_PV = "conv-pv-nn-0p5mw-0p4kv"
@@ -93,7 +93,13 @@ def _ciag_sn() -> tuple[dict[str, Any], str, str]:
     snapshot = _wykonaj(
         _pusty_enm(),
         "add_grid_source_sn",
-        {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": REF_ZRODLO},
+        {
+            "voltage_kv": 15.0,
+            "sk3_mva": 250.0,
+            "catalog_ref": REF_ZRODLO,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
+        },
     )
     snapshot = _wykonaj(
         snapshot,
@@ -258,13 +264,36 @@ PRZYPADKI = [
 
 
 @pytest.fixture()
-def klient(tmp_path, monkeypatch) -> TestClient:
+def klient(tmp_path, monkeypatch, uow_factory) -> TestClient:
+    from api.dependencies import get_uow_factory
+
     monkeypatch.setenv("ENM_STORE_DIR", str(tmp_path))
     reset_enm_store()
     wyczysc_dziennik()
+    app.dependency_overrides[get_uow_factory] = lambda: uow_factory
+    app.state.uow_factory = uow_factory
     yield TestClient(app)
+    app.dependency_overrides.pop(get_uow_factory, None)
+    app.state.uow_factory = None
     reset_enm_store()
     wyczysc_dziennik()
+
+
+def _nowy_przypadek(klient: TestClient) -> str:
+    """Utwórz REALNY projekt + przypadek przez API; zwróć `case_id`.
+
+    CV-1-W: przypadek bez wiersza w bazie dostaje teraz 404 z magazynu ENM
+    (inwariant I-2) — testy bramy katalogowej potrzebują prawdziwej pary
+    projekt+przypadek zamiast dowolnego napisu.
+    """
+    project_resp = klient.post("/api/projects", json={"name": "Brama katalogowa — test"})
+    assert project_resp.status_code == 201, project_resp.text
+    project_id = project_resp.json()["id"]
+    case_resp = klient.post(
+        "/api/study-cases", json={"project_id": project_id, "name": "Przypadek testu"}
+    )
+    assert case_resp.status_code == 201, case_resp.text
+    return str(case_resp.json()["id"])
 
 
 # ---------------------------------------------------------------------------
@@ -385,13 +414,19 @@ def test_literowka_odrzucona_w_torze_payloadu(
 ) -> None:
     """Tor payloadu (brama API): 422 `catalog.item_not_found` dla KAŻDEJ referencji."""
     snapshot, endpoint_bus_ref, segment_ref = _ciag_sn()
-    case_id = f"tor-payload-{abs(hash((pozycja.sciezka, operacja)))}"
+    case_id = _nowy_przypadek(klient)
     klient.post(
         f"/api/cases/{case_id}/enm/domain-ops",
         json={
             "operation": {
                 "name": "add_grid_source_sn",
-                "payload": {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": REF_ZRODLO},
+                "payload": {
+                    "voltage_kv": 15.0,
+                    "sk3_mva": 250.0,
+                    "catalog_ref": REF_ZRODLO,
+                    "hv_voltage_kv": 110.0,
+                    "transformer_sn_mva": 25.0,
+                },
             }
         },
     )

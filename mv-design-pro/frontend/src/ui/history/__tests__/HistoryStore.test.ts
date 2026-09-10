@@ -5,7 +5,7 @@
  * Tests undo/redo functionality, transactions, and mode gating.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { useHistoryStore } from '../HistoryStore';
 import type { Command } from '../Command';
 import { generateCommandId } from '../Command';
@@ -185,8 +185,6 @@ describe('HistoryStore', () => {
     });
 
     it('should rollback transaction', () => {
-      const cmd1 = new MockCommand('Command 1');
-
       useHistoryStore.getState().beginTransaction('Transaction');
       // Normally would push commands here, but we're testing rollback
       useHistoryStore.getState().rollbackTransaction();

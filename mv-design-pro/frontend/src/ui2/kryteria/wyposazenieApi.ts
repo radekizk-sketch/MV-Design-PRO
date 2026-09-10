@@ -158,6 +158,7 @@ export function pobierzBilansCt(
     przekroj_przewodu_mm2?: number | null;
     obciazenia_aparatow?: readonly ObciazenieAparatu[];
     alf_wymagany?: number | null;
+    moc_stykow_va?: number | null;
   },
   signal?: AbortSignal,
 ): Promise<BilansCtOdpowiedz> {
@@ -172,6 +173,7 @@ export function pobierzBilansVt(
     dlugosc_przewodu_m?: number | null;
     przekroj_przewodu_mm2?: number | null;
     obciazenia_aparatow?: readonly ObciazenieAparatu[];
+    moc_stykow_va?: number | null;
   },
   signal?: AbortSignal,
 ): Promise<BilansVtOdpowiedz> {

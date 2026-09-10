@@ -75,7 +75,7 @@
         "bus_ref": "station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn",
         "confidence_percent": 95,
         "critical_limit": "U_max",
-        "hosting_capacity_mw": 7.6,
+        "hosting_capacity_mw": 7.8,
         "monte_carlo_n": 64
       }
     ],
@@ -122,8 +122,8 @@
     "status": "dane niekompletne"
   },
   "opf_loss_lcc": {
-    "annual_co2_kg": 67385.92,
-    "annual_losses_kwh": 93591.556,
+    "annual_co2_kg": 119225.92,
+    "annual_losses_kwh": 165591.556,
     "branch_losses": [
       {
         "branch_ref": "corridor/6d2b81f0c4e34a1b9f5d70ae2c8b4913/segment/001",
@@ -136,7 +136,7 @@
       "oltc_tap_position": 0,
       "q_set_strategy": "minimize_losses_with_voltage_limits"
     },
-    "lcc_loss_opex_pv_pln": 935175.54,
+    "lcc_loss_opex_pv_pln": 1654606.25,
     "objective": "min_delta_p_losses",
     "sanity": {
       "checks_passed": 5,
@@ -144,8 +144,8 @@
       "status": "zweryfikowany",
       "violations": []
     },
-    "total_losses_kw": 23.39789,
-    "transformer_losses_kw": 18.225
+    "total_losses_kw": 41.39789,
+    "transformer_losses_kw": 36.225
   },
   "power_quality_harmonics": {
     "nodes": [

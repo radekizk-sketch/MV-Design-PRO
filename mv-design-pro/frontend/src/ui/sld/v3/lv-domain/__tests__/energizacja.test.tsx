@@ -184,18 +184,20 @@ describe('Tożsamość zasilania SN (§10/§11) — wspólne źródło NIE jest 
     expect(screen.getByTestId('lv-domain-node-boundary:QS-B9').textContent).toContain('Stacja OBCA');
   });
 
-  it('[05] dwa NIEZALEŻNE systemy SN: dwie kotwice „system SN 1 z 2 / 2 z 2", każda z uczciwym „brak danych" równoważnika po polsku', () => {
+  it('[05] dwa NIEZALEŻNE systemy SN: dwie kotwice „system SN 1 z 2 / 2 z 2", każda z własnym równoważnikiem (Sk″ SN) po polsku', () => {
+    // CV-4.3 K3b: każda kotwica liczy równoważnik ze SWOJEJ wyspy (do K3b: „brak danych").
     renderuj('05_independent_upstream');
     const kotwice = [...document.querySelectorAll('[data-node-kind="anchorBar"]')];
     expect(kotwice).toHaveLength(2);
     expect(kotwice.map((k) => k.getAttribute('data-shared'))).toEqual(['false', 'false']);
-    expect(kotwice.map((k) => k.getAttribute('data-anchor-status'))).toEqual(['brak danych', 'brak danych']);
+    expect(kotwice.map((k) => k.getAttribute('data-anchor-status'))).toEqual(['OK', 'OK']);
     const tekst = kotwice.map((k) => k.textContent).join('\n');
     expect(tekst).toContain('system SN 1 z 2');
     expect(tekst).toContain('system SN 2 z 2');
     expect(tekst).toContain('GPZ Północ');
     expect(tekst).toContain('GPZ Południe');
-    expect(tekst).toContain('brak danych');
+    expect(tekst).toContain('Sk″ SN');
+    expect(tekst).not.toContain('brak danych');
     expect(tekst).not.toContain('upstream_network_topology_invalid');
   });
 });

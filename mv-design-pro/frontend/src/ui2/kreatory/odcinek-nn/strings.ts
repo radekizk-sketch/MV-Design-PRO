@@ -18,7 +18,7 @@ export const ODCINEK_NN_STRINGS = {
   kabelPlaceholder: '— wybierz kabel z katalogu —',
   kabelBlad: 'Nie udało się pobrać katalogu kabli nN.',
   nazwa: 'Nazwa odcinka',
-  nazwaPlaceholder: 'np. Kabel nN K1',
+  nazwaPlaceholder: 'np. Kabel nN nr 1',
   szynaZrodlowa: 'Szyna źródłowa',
 
   sekcjaParametryTytul: 'Parametry odcinka',

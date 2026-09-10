@@ -19,6 +19,7 @@ from .resolver import (
     resolve_line_params,
     resolve_thermal_params,
     resolve_transformer_params,
+    susceptancja_katalogowa_us_per_km,
 )
 from .types import (
     MATERIALIZATION_CONTRACTS,
@@ -85,4 +86,5 @@ __all__ = [
     "resolve_line_params",
     "resolve_thermal_params",
     "resolve_transformer_params",
+    "susceptancja_katalogowa_us_per_km",
 ]

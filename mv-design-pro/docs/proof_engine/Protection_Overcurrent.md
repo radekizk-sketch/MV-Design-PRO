@@ -1,5 +1,14 @@
 # Protection Overcurrent Proof Documentation — FIX-12D
 
+> **SUPERSEDED (karta W3-C2, 2026-09-09)** — FIX-12D
+> (`application/analyses/protection/line_overcurrent_setting/**`) was deleted;
+> the methodology it implemented had no norm citation for several coefficients
+> (kb/kc ranges, SPZ threshold table). The canonical I>/I>> methodology is now
+> Hoppel/IRiESD exclusively (`backend/src/application/protection_settings/
+> engine.py`, cited formulas). This document is kept as a historical record of
+> the retired FIX-12D formulas and is NOT rewritten section-by-section in this
+> pass (out of this card's explicit scope) — do not use it as a live spec.
+
 ## Dobór I>> dla linii SN: selektywność, czułość, cieplne, SPZ
 
 Dokument ten opisuje metodykę wyznaczania nastaw zabezpieczenia zwarciowego I>> (50) dla linii SN zgodnie z zasadami NOT-A-SOLVER i WHITE BOX.

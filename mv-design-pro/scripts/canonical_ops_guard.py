@@ -141,9 +141,7 @@ def main() -> int:
     # 3. Alias targets must be canonical.
     for alias, target in aliases.items():
         if target not in canonical:
-            violations.append(
-                f"ALIAS '{alias}' -> '{target}': target is NOT a canonical operation"
-            )
+            violations.append(f"ALIAS '{alias}' -> '{target}': target is NOT a canonical operation")
 
     # 4. No duplicate names across registry + alias sources.
     all_names = list(canonical) + list(alias_sources)

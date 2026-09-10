@@ -19,6 +19,19 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    // WEJŚCIA PRE-BUNDLINGU (E2E-FIX, 2026-09-05): Vite domyślnie skanuje pod
+    // kątem zależności wyłącznie `index.html`. Pierwsze wejście na osobny punkt
+    // wejścia (`*-harness.html`, np. `screenshot-harness.html` w e2e) odkrywało
+    // nowe zależności i uruchamiało ponowną optymalizację z PEŁNYM przeładowaniem
+    // strony — `page.goto` czekał na drugie zdarzenie `load` i pod obciążeniem
+    // CPU przekraczał limit nawigacji (30 s), mimo że harness już się
+    // wyrenderował. Jawna lista wejść pre-bundluje WSZYSTKIE punkty wejścia przy
+    // starcie serwera (klasa: każdy harness, także przyszły — wzorzec, nie
+    // wyliczenie), więc żaden test nie płaci za optymalizację w trakcie biegu.
+    // To naprawa przyczyny; limity czasu Playwrighta pozostają bez zmian.
+    optimizeDeps: {
+      entries: ['index.html', '*-harness.html'],
+    },
     server: {
       host: '0.0.0.0',
       port: 5173,

@@ -55,13 +55,11 @@ export const SHELL_STRINGS = {
   resultsFresh: 'Wyniki: aktualne',
   resultsOutdated: 'Wyniki: nieaktualne',
   resultsNone: 'Wyniki: brak',
-  /* Stan bez odpowiednika w `StudyCaseResultStatus` (dług V12K-309 poz. 2):
-     serwer melduje wynik jako aktualny, ale rewizji, na której go policzono,
-     w chromie NIE MA — świeżości nie da się wtedy rozstrzygnąć porównaniem
-     rewizji, a „aktualne" byłoby werdyktem bez podstawy. Słowo „nieustalone"
-     jest już produktowym słownikiem stanu bez werdyktu (weryfikacja aparatury,
-     badania OLTC) — nie nowa fraza. */
-  resultsUnknown: 'Wyniki: nieustalone',
+  /* CV-2-W: stan „nieustalone" ZNIKNĄŁ. Istniał, bo chrom liczył świeżość sam z
+     pary rewizji i przy nieznanej rewizji nie miał werdyktu. Status wyników
+     przypadku jest teraz WYPROWADZANY przez backend (z biegów i koperty rewizji),
+     więc werdykt jest zawsze jeden z trzech słownikowych, a jego PRZYCZYNĘ
+     (`result_status_reason_pl`) chip pokazuje zdaniem z serwera. */
   resultsOutdatedHint: 'Przejdź do przestrzeni Obliczenia, aby przeliczyć wyniki',
 
   searchPlaceholder: 'Szukaj poleceń, obiektów, okien…',

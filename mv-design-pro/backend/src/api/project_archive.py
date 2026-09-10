@@ -50,20 +50,19 @@ class ImportResponse(BaseModel):
 
 
 class ArchiveSummary(BaseModel):
-    """Podsumowanie zawartości archiwum."""
+    """Podsumowanie zawartości archiwum.
 
-    nodes_count: int
-    branches_count: int
-    sources_count: int
-    loads_count: int
-    snapshots_count: int
-    sld_diagrams_count: int
+    W1-B-ARCH: model sieci żyje wyłącznie w ENM — archiwum formatu 3.0.0 nie
+    niesie już sekcji `network_model`/`sld_diagrams`/`proofs` (tabele ORM,
+    które je zasilały, skasował W1), więc podsumowanie liczy to, co archiwum
+    NAPRAWDĘ niesie: przypadki, biegi kanoniczne, wpisy modelu ENM per
+    przypadek (`enm_models_count`).
+    """
+
     study_cases_count: int
     operating_cases_count: int
-    analysis_runs_count: int
-    study_runs_count: int
-    results_count: int
-    proofs_count: int
+    canonical_runs_count: int
+    enm_models_count: int
 
 
 class PreviewResponse(BaseModel):
@@ -229,17 +228,9 @@ async def preview_archive(
         exported_at=preview.get("exported_at"),
         archive_hash=preview.get("archive_hash"),
         summary=ArchiveSummary(
-            nodes_count=summary_data.get("nodes_count", 0),
-            branches_count=summary_data.get("branches_count", 0),
-            sources_count=summary_data.get("sources_count", 0),
-            loads_count=summary_data.get("loads_count", 0),
-            snapshots_count=summary_data.get("snapshots_count", 0),
-            sld_diagrams_count=summary_data.get("sld_diagrams_count", 0),
             study_cases_count=summary_data.get("study_cases_count", 0),
             operating_cases_count=summary_data.get("operating_cases_count", 0),
-            analysis_runs_count=summary_data.get("analysis_runs_count", 0),
-            study_runs_count=summary_data.get("study_runs_count", 0),
-            results_count=summary_data.get("results_count", 0),
-            proofs_count=summary_data.get("proofs_count", 0),
+            canonical_runs_count=summary_data.get("canonical_runs_count", 0),
+            enm_models_count=summary_data.get("enm_models_count", 0),
         ),
     )

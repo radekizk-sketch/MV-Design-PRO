@@ -95,6 +95,14 @@ export function caseListItem(
     description: `Konfiguracja ${name}`,
     result_status: status,
     results_valid: status === 'FRESH',
+    result_status_reason: status === 'FRESH' ? 'model-niezmieniony' : 'brak-wyniku',
+    result_status_reason_pl:
+      status === 'FRESH'
+        ? 'Model nie zmienił się od chwili obliczenia.'
+        : 'Brak zapisanego wyniku dla tego przebiegu — nie ma czego nałożyć na schemat.',
+    rewizja_biegu: status === 'FRESH' ? 4 : null,
+    rewizja_biezaca: 4,
+    zmiany_od_biegu: [],
     is_active: false,
     updated_at: '2026-07-15T11:05:00Z',
     ...over,
@@ -113,8 +121,15 @@ export function activeCaseFixture(
     config: configFixture,
     result_status: status,
     results_valid: status === 'FRESH',
+    result_status_reason: status === 'FRESH' ? 'model-niezmieniony' : 'brak-wyniku',
+    result_status_reason_pl:
+      status === 'FRESH'
+        ? 'Model nie zmienił się od chwili obliczenia.'
+        : 'Brak zapisanego wyniku dla tego przebiegu — nie ma czego nałożyć na schemat.',
+    rewizja_biegu: status === 'FRESH' ? 4 : null,
+    rewizja_biezaca: 4,
+    zmiany_od_biegu: [],
     is_active: true,
-    result_refs: [],
     revision: 3,
     created_at: '2026-07-10T09:00:00Z',
     updated_at: '2026-07-15T14:32:00Z',

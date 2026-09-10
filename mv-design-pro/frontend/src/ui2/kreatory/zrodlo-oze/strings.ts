@@ -62,6 +62,7 @@ export const OZE_STRINGS = {
   katalog: 'Układ PV/BESS/FW',
   katalogPlaceholder: '— wybierz układ z katalogu —',
   katalogBlad: 'Nie udało się pobrać katalogu układów PV/BESS/FW.',
+  katalogLadowanieStopka: 'Ładowanie katalogu przekształtników i aparatury nN — zapis chwilę poczeka.',
   katalogPomoc: 'Tabliczka wnosi napięcie, moc znamionową i zdolność Q — z katalogu (ZERO fizyki w UI).',
   liczba: 'Liczba jednostek',
   liczbaPomoc: 'Moc zagregowana = liczba × Pmax jednostki; agregacja po stronie backendu.',
@@ -83,6 +84,8 @@ export const OZE_STRINGS = {
     + 'rozpływu mocy (kanoniczny model falownika). Stały cosφ — Q proporcjonalna do P wg '
     + 'zadanego cosφ; Q(U) (napięciowo-jałowa) — Q zależna od napięcia szyny (statyzm); '
     + 'P(U) — ograniczanie mocy czynnej od napięcia (nie modelowane w rozpływie ustalonym); '
+    + 'regulacja napięcia (U = const) — falownik trzyma zadany moduł napięcia szyny, Q jest '
+    + 'WYNIKIEM rozpływu w granicach Q min/Q max (węzeł PV, nie PQ); '
     + '„Bez regulacji" — źródło pasywne ($Q = 0$).',
   cosPhiCel: 'Docelowy współczynnik mocy cosφ',
   cosPhiCelPomoc:
@@ -99,6 +102,13 @@ export const OZE_STRINGS = {
     'Napięciowe pasmo nieczułości charakterystyki Q(U) [pu U]: w zakresie dolne–górne źródło '
     + 'nie oddaje/pobiera Q ($Q = 0$), reakcja włącza się dopiero poza pasmem. Sugerowane: '
     + '0,95–1,05 pu (NC RfG). Puste = punkt 1,0/1,0 (reakcja natychmiastowa przy dowolnej odchyłce).',
+  uSetPu: 'Nastawa napięcia U',
+  uSetPuPomoc:
+    'Po co: wartość rządząca trybem regulacji napięcia — moduł napięcia [pu], który falownik '
+    + 'ma trzymać na swojej szynie (węzeł PV rozpływu). Solver oddaje Q wynikowe w granicach '
+    + 'Q min/Q max poniżej; przy nasyceniu granic falownik traci regulację i pracuje dalej jako '
+    + 'źródło o stałej mocy biernej (przełączenie na węzeł obciążeniowy, widoczne w wyniku). '
+    + 'Pasmo dopuszczalne: 0,9–1,1 pu.',
   qMin: 'Q min (pobór, podwzbudzenie)',
   qMax: 'Q max (oddawanie, nadwzbudzenie)',
   qPomoc:
@@ -130,6 +140,13 @@ export const OZE_STRINGS = {
     { id: 'nie', etykieta: 'Nie / brak danych' },
     { id: 'tak', etykieta: 'Tak — zaprogramowana' },
   ],
+  regulacjaNapieciaKatalogNiedostepny:
+    'Nie udało się pobrać katalogu operatorów NC RfG — dopuszczalność trybu regulacji napięcia '
+    + 'dla wybranego profilu jest nieznana. Wybór pozostaje bez zmian; przed uruchomieniem biegu '
+    + 'sprawdzi go walidator modelu.',
+  regulacjaNapieciaCofnieta: (operator: string) =>
+    `Profil operatora „${operator}” nie dopuszcza regulacji napięcia (U = const) — tryb `
+    + 'przywrócono na „Bez regulacji”.',
   regulacjaPasywnaOstrzezenie:
     'Wybrany tryb regulacji jest nieaktywny — uzupełnij wartość rządzącą (cosφ albo nachylenie '
     + 'Q(U)), inaczej źródło pracuje pasywnie ($Q = 0$) i wybór trybu nie wpływa na rozpływ.',
@@ -156,21 +173,13 @@ export const OZE_STRINGS = {
     + '„Zabezpieczenia" i ocenę doboru funkcji.',
   aparaturaKatalogPlaceholder: '— wybierz typ z katalogu —',
   aparaturaKatalogBlad: 'Nie udało się pobrać katalogu aparatury.',
-  // Dane bez katalogu w systemie — pola jawnie bez walidacji katalogowej (dług nazwany).
-  aparaturaBezKataloguTytul: 'Dane producenta bez walidacji katalogowej',
-  aparaturaBezKatalogu:
-    'System nie ma katalogu danych zwarciowych ani modeli dynamicznych falowników — poniższe '
-    + 'referencje są zapisywane bez sprawdzenia w katalogu (odpowiedzialność projektanta). '
-    + 'Źródło danych: karta katalogowa albo protokół badań producenta.',
-  aparaturaDaneZwarciowe: 'Referencja danych zwarciowych urządzenia',
-  aparaturaDaneZwarciowePomoc:
-    'Składowe symetryczne urządzenia — bez nich zwarcia niesymetryczne (1-fazowe, '
-    + '2-fazowe z ziemią) pozostają zablokowane (IEC 60909-3).',
-  aparaturaModelDynamiczny: 'Referencja modelu dynamicznego urządzenia',
+  // Karta FAB-L: model dynamiczny ma już katalog backendu (`der_dynamic`) — pole jest
+  // pickerem jak CT/VT/zabezpieczenie powyżej, nie referencją wpisaną ręcznie. Dawne
+  // dane zwarciowe (`fault_current_data_ref`) USUNIĘTE z kontraktu w tej samej karcie.
+  aparaturaModelDynamiczny: 'Model dynamiczny urządzenia',
   aparaturaModelDynamicznyPomoc:
     'Opis zachowania przekształtnika w stanach przejściowych — wymagany do badań '
     + 'przejścia przez zapad (LVRT) i wzrost napięcia (HVRT).',
-  aparaturaRefPlaceholder: 'np. oznaczenie dokumentu producenta',
   teoriaAparaturaTytul: 'Teoria: aparatura pola wytwórcy',
   teoriaAparaturaOpis:
     'Pole wytwórcy wymaga toru pomiarowego (przekładnik prądowy i napięciowy) oraz '
@@ -535,6 +544,21 @@ export const NCRFG_TEORIA = {
     jakCzytac:
       'Płaski odcinek = pasmo nieczułości ($P = 100\\ \\%$). Opadające ramię w prawo = redukcja '
       + 'przy nadczęstotliwości (LFSM-O); rosnące ramię w lewo (jeśli aktywne) = LFSM-U.',
+  },
+  regulacjaNapiecia: {
+    tytul: 'Regulacja napięcia (U = const)',
+    opis:
+      'Falownik trzyma zadany moduł napięcia $|U| = U_{set}$ na swojej szynie (węzeł PV rozpływu '
+      + 'mocy) — moc bierna NIE jest tu zadawana, jest WYNIKIEM rozpływu potrzebnym do utrzymania '
+      + 'nastawy. Gdy wymagane Q mieści się w granicach Qmin/Qmax, $|U|$ = nastawa dokładnie. Przy '
+      + 'nasyceniu granic falownik traci regulację i przechodzi na stałą, graniczną moc bierną '
+      + '(węzeł zmienia się na obciążeniowy — widoczne w wyniku jako przełączenie PV→PQ).',
+    wymog:
+      'NC RfG dopuszcza tryb regulacji napięcia tylko, gdy profil operatora go wymienia w zdolnych '
+      + 'trybach regulacji mocy biernej (voltage_control_modes) — poza tym pasmem nastawa 0,9–1,1 pu.',
+    jakCzytac:
+      'Brak charakterystyki Q(U)/cosφ do narysowania — regulator działa na napięciu WPROST '
+      + '(zamknięta pętla), nie na z góry zadanej zależności Q od P lub U.',
   },
   wylaczone: {
     tytul: 'Bez regulacji (źródło pasywne)',

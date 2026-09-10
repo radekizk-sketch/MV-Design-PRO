@@ -140,6 +140,71 @@ describe('PulpitProjektu — kafle z danymi ze store read-only', () => {
     expect(screen.getByTestId('pulpit-przylaczenie-brak')).toBeInTheDocument();
   });
 
+  // CV-4.3 K7: scenariusz MIN (warunki przyłączenia OSD) — „Sk″maks/Sk″min" gdy
+  // podane, samo „Sk″" gdy nie (już pokryte testem powyżej — zero fabrykacji).
+  it('KafelPrzylaczenia: dane MIN → wiersze maks./min. Sk″ i Ik″ obok siebie', () => {
+    useSnapshotStore.setState({
+      snapshot: snapshotFixture({
+        buses: [{ ref_id: 'B-GPZ', id: 'B-GPZ', voltage_kv: 15 }] as never,
+        sources: [
+          {
+            ref_id: 'S',
+            id: 'S',
+            name: 'GPZ',
+            bus_ref: 'B-GPZ',
+            sk3_mva: 250,
+            ik3_ka: 9.6,
+            sk3_min_mva: 150,
+            ik3_min_ka: 5.8,
+          },
+        ] as never,
+      }),
+    });
+    render(<PulpitProjektu {...props()} />);
+    expect(screen.getByText(PULPIT_STRINGS.przylaczenieSkMaks)).toBeInTheDocument();
+    expect(screen.getByTestId('pulpit-przylaczenie-sk')).toHaveTextContent('250');
+    expect(screen.getByTestId('pulpit-przylaczenie-sk-min')).toHaveTextContent('150');
+    expect(screen.getByText(PULPIT_STRINGS.przylaczenieIkMaks)).toBeInTheDocument();
+    expect(screen.getByTestId('pulpit-przylaczenie-ik-min')).toHaveTextContent('5,80');
+  });
+
+  // CV-4.3 K7c: napięcie zadane szyny bilansującej — wiersz WYŁĄCZNIE gdy
+  // źródło je niesie (zero fabrykacji), ta sama reguła jak scenariusz MIN.
+  it('KafelPrzylaczenia: „U zadane" WYŁĄCZNIE gdy źródło niesie u_set_pu (zero fabrykacji)', () => {
+    useSnapshotStore.setState({
+      snapshot: snapshotFixture({
+        buses: [{ ref_id: 'B-GPZ', id: 'B-GPZ', voltage_kv: 15 }] as never,
+        sources: [
+          { ref_id: 'S', id: 'S', name: 'GPZ', bus_ref: 'B-GPZ', sk3_mva: 250, ik3_ka: 9.6 },
+        ] as never,
+      }),
+    });
+    render(<PulpitProjektu {...props()} />);
+    expect(screen.queryByTestId('pulpit-przylaczenie-u-zadane')).toBeNull();
+  });
+
+  it('KafelPrzylaczenia: „U zadane" pokazuje wartość z pola źródła gdy podane', () => {
+    useSnapshotStore.setState({
+      snapshot: snapshotFixture({
+        buses: [{ ref_id: 'B-GPZ', id: 'B-GPZ', voltage_kv: 15 }] as never,
+        sources: [
+          {
+            ref_id: 'S',
+            id: 'S',
+            name: 'GPZ',
+            bus_ref: 'B-GPZ',
+            sk3_mva: 250,
+            ik3_ka: 9.6,
+            u_set_pu: 1.06,
+          },
+        ] as never,
+      }),
+    });
+    render(<PulpitProjektu {...props()} />);
+    expect(screen.getByText(PULPIT_STRINGS.przylaczenieUZadane)).toBeInTheDocument();
+    expect(screen.getByTestId('pulpit-przylaczenie-u-zadane')).toHaveTextContent('1,060');
+  });
+
   it('warunki OSD nie podane → uczciwa informacja + przycisk „Uzupełnij warunki OSD"', () => {
     render(<PulpitProjektu {...props()} />);
     expect(screen.getByTestId('pulpit-osd-nie-podano')).toBeInTheDocument();

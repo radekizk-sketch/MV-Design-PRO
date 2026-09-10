@@ -1,11 +1,16 @@
 /**
  * Karta 5 — Transformator SN/nN (multi-voltage nN, PR-8a brief §8 karta 5 + §13).
  *
- * Naprawa eng.13: wybór przełącznika zaczepów z `TAP_CHANGER_CATALOG`
+ * Naprawa eng.13: wybór przełącznika zaczepów z katalogu audytu 2
  * (OLTC vs DETC, ±10% / ±5%, AVR support).
+ *
+ * Karta FAB-L: katalog WYŁĄCZNIE ze snapshotu audytu 2 (`tapChangers` prop,
+ * dostarczony przez `StationConfiguratorSurface.tsx`) — zero statyku
+ * modułowego (`TAP_CHANGER_CATALOG` usunięty z `catalogs.ts`).
  */
 
-import { TAP_CHANGER_CATALOG, getTapChanger, type TapChangerItem } from '../../station-der/catalogs';
+import { getTapChanger, selectTapChangersForTransformer } from '../../station-der/catalogs';
+import type { TapChangerItem } from '../../station-der/audit2-api';
 
 export interface StationTransformerCatalogOption {
   readonly id: string;
@@ -52,6 +57,8 @@ export interface StationConfigTransformerCardProps {
   readonly transformerCatalogOptions?: Readonly<Record<string, readonly StationTransformerCatalogOption[]>>;
   readonly transformerCatalogLoading?: boolean;
   readonly transformerCatalogError?: string | null;
+  /** Karta FAB-L: katalog przełączników zaczepów — ze snapshotu audytu 2. */
+  readonly tapChangers: readonly TapChangerItem[];
   readonly onChange?: (transformerId: string, changes: Partial<StationConfigTransformerRow>) => void;
   readonly onAddTransformer?: () => void;
 }
@@ -69,21 +76,22 @@ const STATUS_LABEL: Record<'gotowe' | 'częściowe' | 'brak danych', string> = {
 };
 
 /**
- * Helper: filtruje TAP_CHANGER_CATALOG po napięciach pierwotnym/wtórnym
- * transformatora. 110/SN → transformer_110_15 lub transformer_110_20.
- * SN/nN → transformer_15_04. Inne → block_transformer.
+ * Helper: filtruje katalog przełączników zaczepów (ze snapshotu audytu 2) po
+ * napięciach pierwotnym/wtórnym transformatora. 110/SN → transformer_110_15
+ * lub transformer_110_20. SN/nN → transformer_15_04. Inne → block_transformer.
  */
 function selectTapChangersForTransformerByVoltage(
+  tapChangers: readonly TapChangerItem[],
   hvKv: number,
   lvKv: number,
 ): readonly TapChangerItem[] {
-  const transformerType = ((): TapChangerItem['applicable_to'][number] => {
+  const transformerType: 'transformer_110_15' | 'transformer_110_20' | 'transformer_15_04' | 'block_transformer' = (() => {
     if (hvKv >= 100 && hvKv < 130 && Math.abs(lvKv - 15) < 1) return 'transformer_110_15';
     if (hvKv >= 100 && hvKv < 130 && Math.abs(lvKv - 20) < 1) return 'transformer_110_20';
     if (hvKv > 1 && lvKv < 1) return 'transformer_15_04';
     return 'block_transformer';
   })();
-  return TAP_CHANGER_CATALOG.filter((tc) => tc.applicable_to.includes(transformerType));
+  return selectTapChangersForTransformer(tapChangers, transformerType);
 }
 
 function optionLabel(option: StationTransformerCatalogOption): string {
@@ -100,6 +108,7 @@ export function StationConfigTransformerCard(
     transformerCatalogOptions = {},
     transformerCatalogLoading = false,
     transformerCatalogError = null,
+    tapChangers,
     onChange,
     onAddTransformer,
   } = props;
@@ -299,14 +308,14 @@ export function StationConfigTransformerCard(
                   className="rounded border border-scada-border bg-scada-bg px-1 py-0.5"
                 >
                   <option value="">— wybierz z katalogu —</option>
-                  {selectTapChangersForTransformerByVoltage(tr.uhvKv, tr.ulvKv).map((tc) => (
+                  {selectTapChangersForTransformerByVoltage(tapChangers, tr.uhvKv, tr.ulvKv).map((tc) => (
                     <option key={tc.id} value={tc.id}>
                       {tc.label_pl}
                     </option>
                   ))}
                 </select>
                 {tr.tapChangerCatalogRef && (() => {
-                  const tc = getTapChanger(tr.tapChangerCatalogRef);
+                  const tc = getTapChanger(tapChangers, tr.tapChangerCatalogRef);
                   if (!tc) return null;
                   return (
                     <div className="mt-1 rounded bg-scada-panel-raised px-2 py-1 text-[10px]">

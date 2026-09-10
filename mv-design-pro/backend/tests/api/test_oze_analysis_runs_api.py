@@ -44,12 +44,14 @@ def _augmented_enm():
 
 def _sc_run_id():
     set_enm("c-sc", _augmented_enm())
-    return execute_run(create_run(case_id="c-sc", analysis_type="short_circuit_sn").id).id
+    return execute_run(
+        create_run(case_id="c-sc", klucz_twin="c-sc", analysis_type="short_circuit_sn").id
+    ).id
 
 
 def _pf_run_id():
     set_enm("c-pf", _augmented_enm())
-    return execute_run(create_run(case_id="c-pf", analysis_type="PF").id).id
+    return execute_run(create_run(case_id="c-pf", klucz_twin="c-pf", analysis_type="PF").id).id
 
 
 # --------------------------------------------------------------------------

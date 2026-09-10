@@ -9,12 +9,23 @@ Routes:
   GET  /api/cases/{case_id}/enm/topology/summary → TopologySummary (graph view: adjacency, spine, laterals)
   GET  /api/cases/{case_id}/enm/readiness    → ReadinessMatrix (SC/PF/PR)
   POST /api/cases/{case_id}/enm/ops          → Topology operations (atomic graph CRUD)
-  POST /api/cases/{case_id}/runs/short-circuit → dispatch SC run via ENM
-  POST /api/cases/{case_id}/runs/power-flow    → dispatch PF run via ENM
   GET  /api/cases/{case_id}/enm/lv-domain/{station_ref}
                                               → graf domeny nN (LOD L2, karta T5b)
   GET  /api/cases/{case_id}/enm/lv-domain/{station_ref}/upstream-equivalent
                                               → UpstreamEquivalentSnapshot (kotwica SN, karta T5b)
+  GET  /api/cases/{case_id}/enm/dziennik-zmian → wpisy dziennika PO wskazanej rewizji
+  GET  /api/cases/{case_id}/enm/rewizje/{rewizja}
+                                              → migawka modelu DOKLADNIE w tej rewizji
+
+Karta CV-4.3-A4 (K5.1, 2026-09-06): `POST /api/cases/{case_id}/runs/short-circuit`
+i `.../runs/power-flow` USUNIETE procedura siedmiu krokow — 0 konsumentow
+produkcyjnych (jedyny byl e2e nazywajacy je wprost "legacy" we wlasnym kodzie).
+Tor kanoniczny: `POST /api/execution/study-cases/{case_id}/runs` (`analysis_type=
+SC_3F/SC_1F/SC_2F/SC_2F_G/LOAD_FLOW`) -> `POST /api/execution/runs/{id}/execute`
+-> `GET /api/analysis-runs/{run_id}/results/...` (`api/execution_runs.py`,
+`api/analysis_runs.py`). `run_short_circuit_now`/`run_power_flow_now`
+(`enm/canonical_analysis.py`) zostaja — maja innych wolajacych bezposrednich
+(testy silnika, `tests/e2e/test_nn_full_chain.py`) niezaleznych od tej trasy.
 """
 
 from __future__ import annotations
@@ -27,6 +38,7 @@ from api.domain_ops_policy import (
     extract_catalog_binding,
     validate_and_materialize_catalog_binding,
 )
+from api.klucz_twin_dep import KluczTwin
 from application.analyses.fault_loop.service import (
     build_fault_loop_view_at_point,
     build_feeder_fault_loop_view,
@@ -53,25 +65,21 @@ from application.analyses.swz.service import build_swz_view
 from application.analyses.wytrzymalosc_aparatury_pol import (
     zbuduj_widok_wytrzymalosci_aparatury,
 )
-from application.analysis_run.result_invalidator import ResultInvalidator
 from application.eligibility_service import EligibilityService
 from application.field_read_model import build_field_read_model
 from application.protection_read_model import build_protection_read_model
-from domain.canonical_operations import CANONICAL_OPERATIONS, resolve_operation_name
+from domain.canonical_operations import resolve_operation_name
 from domain.readiness_bridge import opis_kanoniczny
 from enm.canonical_analysis import (
     get_run as _get_canonical_run,
 )
-from enm.canonical_analysis import (
-    run_power_flow_now,
-    run_short_circuit_now,
-    wiersze_swiezego_biegu_bez_rozplywu,
-)
 from enm.dziennik_zmian import wpisy_od as wpisy_dziennika_od
 from enm.hash import compute_enm_hash
 from enm.models import EnergyNetworkModel
-from enm.severity import empty_severity_counts, is_failed_status
-from enm.store import ZrodloZmiany, blokada_przypadku
+from enm.rewizje import RewizjaNieistniejeError, RewizjaUszkodzonaError
+from enm.severity import empty_severity_counts
+from enm.store import ZrodloZmiany, blokada_twin
+from enm.store import checkout as _checkout_rewizji
 from enm.store import get_enm as _get_enm
 from enm.store import set_enm as _set_enm
 from enm.topology_ops import (
@@ -92,9 +100,8 @@ from enm.topology_ops import (
     update_protection,
 )
 from enm.v2_projection import project_enm_v1_to_v2
-from enm.validator import ENMValidator, ValidationResult
+from enm.validator import ENMValidator
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
@@ -105,17 +112,6 @@ router = APIRouter(prefix="/api/cases", tags=["enm"])
 class WizardStepRequestModel(BaseModel):
     step_id: str
     data: dict[str, Any] = Field(default_factory=dict)
-
-
-def _wczytaj_i_zwaliduj(case_id: str) -> tuple[EnergyNetworkModel, ValidationResult]:
-    """Odczyt modelu + walidacja — blokujący blok wydzielony do puli wątków.
-
-    Wydzielony, bo `run_in_threadpool` przyjmuje funkcję, a nie fragment ciała.
-    Zwraca model RAZEM z wynikiem walidacji, żeby wołający nie musiał czytać
-    modelu drugi raz (odczyt to IO pliku + uzupełnianie danych katalogowych).
-    """
-    enm = _get_enm(case_id)
-    return enm, ENMValidator().validate(enm)
 
 
 def _resolve_project_id(case_id: str, request: Request) -> str | None:
@@ -133,67 +129,28 @@ def _resolve_project_id(case_id: str, request: Request) -> str | None:
     return None
 
 
-def _invaliduj_wyniki_po_operacji(case_id: str, resolved_name: str, request: Request) -> None:
-    """Unieważnij wyniki projektu po udanej operacji MUTUJĄCEJ model (D §6.2, karta P0.1).
-
-    Dispatcher operacji domenowych (`POST /domain-ops`, JEDYNY produkcyjny tor
-    zapisu ENM — `/enm/ops`/`/enm/ops/batch` są wyłączone w
-    `_PRODUCTION_DISABLED_ROUTE_KEYS`) był drugim — obok legacy wizardu,
-    `network_wizard/service.py:1590` — miejscem mutującym model, które NIE
-    wywoływało `ResultInvalidator`. Bez tego plakietki świeżości UI
-    (`StudyCase.result_status`) kłamały po KAŻDEJ operacji domenowej — nie
-    tylko po nowej rodzinie `NN_NETWORK` (P0.1): luka była KLASĄ (dispatcher),
-    nie instancją (jedna operacja), więc naprawa siedzi na poziomie dispatchera,
-    nie w pojedynczym handlerze.
-
-    Bezskutkowe (nigdy nie podnosi wyjątku), gdy:
-    - operacja nie mutuje modelu (`mutates_model=False`, np. `refresh_snapshot`),
-    - w tym środowisku nie ma warstwy DB (`uow_factory=None` — testy jednostkowe
-      operacji domenowych wołają `execute_domain_operation` wprost, z pominięciem
-      tej końcówki API, i nie mają czego unieważniać),
-    - `case_id` nie jest UUID albo nie ma odpowiadającego `StudyCase` w DB — ENM
-      istnieje NIEZALEŻNIE od DB (`enm/store.py` tworzy domyślny model dla
-      dowolnego `case_id`), więc brak wiersza nie jest błędem tej funkcji.
-    """
-    spec = CANONICAL_OPERATIONS.get(resolved_name)
-    if spec is not None and not spec.mutates_model:
-        return
-    uow_factory = getattr(request.app.state, "uow_factory", None)
-    if uow_factory is None:
-        return
-    project_id = _resolve_project_id(case_id, request)
-    if project_id is None:
-        return
-    try:
-        parsed_project_id = UUID(project_id)
-    except ValueError:
-        return
-    with uow_factory() as uow:
-        ResultInvalidator().invalidate_project_results(uow, parsed_project_id)
-
-
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
 
 
 @router.get("/{case_id}/enm")
-def get_enm(case_id: str) -> dict[str, Any]:
+def get_enm(case_id: str, klucz: KluczTwin) -> dict[str, Any]:
     """Return current EnergyNetworkModel for case."""
-    enm = _get_enm(case_id)
+    enm = _get_enm(klucz)
     return enm.model_dump(mode="json")
 
 
 @router.get("/{case_id}/enm/v2-projection")
-def get_enm_v2_projection(case_id: str) -> dict[str, Any]:
+def get_enm_v2_projection(case_id: str, klucz: KluczTwin) -> dict[str, Any]:
     """Return the read-only ENM v2.0 projection used by V12.xx M1 migration."""
-    enm = _get_enm(case_id)
+    enm = _get_enm(klucz)
     projection = project_enm_v1_to_v2(enm)
     return projection.model_dump(mode="json")
 
 
 @router.get("/{case_id}/enm/dziennik-zmian")
-def get_dziennik_zmian(case_id: str, od_rewizji: int = 0) -> dict[str, Any]:
+def get_dziennik_zmian(case_id: str, klucz: KluczTwin, od_rewizji: int = 0) -> dict[str, Any]:
     """Zmiany modelu PO wskazanej rewizji — odpowiedz na „co uniewaznilo moj wynik".
 
     V12K-264. Model niosl dotad wylacznie FAKT zmiany (`header.revision` rosnie,
@@ -209,19 +166,66 @@ def get_dziennik_zmian(case_id: str, od_rewizji: int = 0) -> dict[str, Any]:
     ma `operacja: null` i opis nazywajacy ten stan — nie jest ukrywana ani
     uzupelniana zgadnieta nazwa.
     """
-    enm = _get_enm(case_id)
-    wpisy = wpisy_dziennika_od(case_id, od_rewizji)
+    enm = _get_enm(klucz)
+    wpisy = wpisy_dziennika_od(klucz, od_rewizji)
     return {
         "case_id": case_id,
         "rewizja_biezaca": enm.header.revision,
         "od_rewizji": od_rewizji,
         "aktualny": enm.header.revision <= od_rewizji,
+        # CV-2: `WpisDziennika.to_dict` niesie takze `hash_sha256` (odcisk migawki
+        # tej rewizji), `rodzic` (rewizja, z ktorej powstala) i `ladunek` (PELNA
+        # komende, ktora ja wytworzyla). Zadne pole nie jest tu filtrowane —
+        # dziennik oddaje dokladnie to, co zapisal (pin: test kontraktu koncowki).
         "wpisy": [w.to_dict() for w in wpisy],
     }
 
 
+@router.get("/{case_id}/enm/rewizje/{rewizja}")
+def get_rewizja_modelu(case_id: str, klucz: KluczTwin, rewizja: int) -> dict[str, Any]:
+    """Model DOKLADNIE w rewizji `rewizja` — tresc adresu, ktory niesie bieg (CV-2).
+
+    Koperta rewizji biegu (`RevisionEnvelope.model_revision`) wskazywala dotad
+    rewizje, ktorej NIE DALO SIE odczytac: system znal wylacznie model biezacy,
+    wiec „wynik policzono na rewizji 7" bylo adresem bez tresci — nie dalo sie ani
+    obejrzec tamtego modelu, ani potwierdzic, ze bieg opisuje to, co deklaruje.
+    Ta koncowka zamyka luke: `enm.store.checkout` oddaje migawke rewizji
+    zweryfikowana hashem tresci.
+
+    404 — rewizja nie ma migawki (rewizja sprzed rejestru rewizji albo numer,
+    ktory nigdy nie powstal). 409 — migawka istnieje, ale jej tresc nie zgadza sie
+    z zapisanym odciskiem: to uszkodzenie nosnika albo reczna ingerencja, wiec
+    odpowiedz nazywa stan wprost, zamiast oddawac model, ktoremu nie mozna ufac.
+    """
+    try:
+        model = _checkout_rewizji(klucz, rewizja)
+    except RewizjaNieistniejeError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                f"Rewizja {rewizja} modelu tego przypadku nie ma zapisanej migawki — "
+                "powstala przed wprowadzeniem rejestru rewizji albo nigdy nie istniala."
+            ),
+        ) from exc
+    except RewizjaUszkodzonaError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Migawka rewizji {rewizja} jest niespójna z własnym odciskiem — "
+                "zapis został zmieniony poza systemem i nie da się go uznać za "
+                "wiarygodny model."
+            ),
+        ) from exc
+    return {
+        "case_id": case_id,
+        "rewizja": rewizja,
+        "hash_sha256": compute_enm_hash(model),
+        "snapshot": model.model_dump(mode="json"),
+    }
+
+
 @router.put("/{case_id}/enm")
-def put_enm(case_id: str, payload: EnergyNetworkModel) -> dict[str, Any]:
+def put_enm(case_id: str, klucz: KluczTwin, payload: EnergyNetworkModel) -> dict[str, Any]:
     """Autosave ENM: revision++, hash recomputed.
 
     WSPÓŁBIEŻNOŚĆ: ta końcówka NIE ma cyklu odczyt → przeliczenie → zapis — model
@@ -230,23 +234,23 @@ def put_enm(case_id: str, payload: EnergyNetworkModel) -> dict[str, Any]:
     blokady na końcówkę niczego by nie dało: model, który autosave nadpisuje,
     został odczytany po stronie przeglądarki, poza zasięgiem blokady w procesie.
     """
-    saved = _set_enm(case_id, payload)
+    saved = _set_enm(klucz, payload)
     return saved.model_dump(mode="json")
 
 
 @router.get("/{case_id}/enm/validate")
-def validate_enm(case_id: str) -> dict[str, Any]:
+def validate_enm(case_id: str, klucz: KluczTwin) -> dict[str, Any]:
     """Validate ENM and return readiness gate result."""
-    enm = _get_enm(case_id)
+    enm = _get_enm(klucz)
     validator = ENMValidator()
     result = validator.validate(enm)
     return result.model_dump(mode="json")
 
 
 @router.get("/{case_id}/enm/topology")
-def get_enm_topology(case_id: str) -> dict[str, Any]:
+def get_enm_topology(case_id: str, klucz: KluczTwin) -> dict[str, Any]:
     """Zwróć podsumowanie topologii (stacje, pola, węzły T, magistrale)."""
-    enm = _get_enm(case_id)
+    enm = _get_enm(klucz)
     return {
         "case_id": case_id,
         "substations": [s.model_dump(mode="json") for s in enm.substations],
@@ -260,9 +264,9 @@ def get_enm_topology(case_id: str) -> dict[str, Any]:
 
 
 @router.get("/{case_id}/enm/readiness")
-def get_enm_readiness(case_id: str) -> dict[str, Any]:
+def get_enm_readiness(case_id: str, klucz: KluczTwin) -> dict[str, Any]:
     """Zwróć macierz gotowości dla wszystkich typów analiz."""
-    enm = _get_enm(case_id)
+    enm = _get_enm(klucz)
     validator = ENMValidator()
     validation = validator.validate(enm)
     readiness = validator.readiness(validation)
@@ -306,32 +310,34 @@ def get_enm_readiness(case_id: str) -> dict[str, Any]:
 
 
 @router.get("/{case_id}/enm/protection-view")
-def get_enm_protection_view(case_id: str) -> dict[str, Any]:
+def get_enm_protection_view(case_id: str, klucz: KluczTwin) -> dict[str, Any]:
     """Return read-only protection view derived directly from ENM."""
-    enm = _get_enm(case_id)
+    enm = _get_enm(klucz)
     return build_protection_read_model(case_id, enm)
 
 
 @router.get("/{case_id}/enm/field-view")
-def get_enm_field_view(case_id: str) -> dict[str, Any]:
+def get_enm_field_view(case_id: str, klucz: KluczTwin) -> dict[str, Any]:
     """Return canonical bay field view derived directly from ENM."""
-    enm = _get_enm(case_id)
+    enm = _get_enm(klucz)
     return build_field_read_model(case_id, enm)
 
 
 @router.get("/{case_id}/enm/station-fault-loop")
-def get_station_fault_loop(case_id: str, station_ref: str) -> dict[str, Any]:
+def get_station_fault_loop(case_id: str, klucz: KluczTwin, station_ref: str) -> dict[str, Any]:
     """Pętla zwarcia u źródła stacji (nN) z modelu (G-STK-4).
 
     Domyka łańcuch uziemienia: układ sieci nN + impedancja transformatora →
     Ik/Z_loop u źródła (IEC 60364-4-41). Read-only; solver liczy fizykę.
     """
-    enm = _get_enm(case_id)
+    enm = _get_enm(klucz)
     return build_station_fault_loop_view(enm, station_ref)
 
 
 @router.get("/{case_id}/enm/fault-loop-point")
-def get_fault_loop_point(case_id: str, station_ref: str, bus_ref: str) -> dict[str, Any]:
+def get_fault_loop_point(
+    case_id: str, klucz: KluczTwin, station_ref: str, bus_ref: str
+) -> dict[str, Any]:
     """Pętla zwarcia w DOWOLNYM punkcie nN (karta P0.6, G-05).
 
     Trasa REALNA z grafu (BFS od punktu do zacisków nN transformatora) — kabel
@@ -339,24 +345,24 @@ def get_fault_loop_point(case_id: str, station_ref: str, bus_ref: str) -> dict[s
     (składowa zgodna z grupą połączeń) i upstream Thevenin SN co widok „u
     źródła". Read-only; solver liczy fizykę.
     """
-    enm = _get_enm(case_id)
+    enm = _get_enm(klucz)
     return build_fault_loop_view_at_point(enm, station_ref, bus_ref)
 
 
 @router.get("/{case_id}/enm/fault-loop-feeders")
-def get_fault_loop_feeders(case_id: str, station_ref: str) -> dict[str, Any]:
+def get_fault_loop_feeders(case_id: str, klucz: KluczTwin, station_ref: str) -> dict[str, Any]:
     """Pętla zwarcia we WSZYSTKICH punktach nN, pogrupowana per odpływ (karta P0.6, G-05).
 
     Kontrakt danych kompletny (każdy osiągalny punkt każdego odpływu, ze
     wskazaniem punktu najgorszego per odpływ) — heatmapa/UI nN STUDIO w P0.9,
     tu tylko dane. Read-only; solver liczy fizykę.
     """
-    enm = _get_enm(case_id)
+    enm = _get_enm(klucz)
     return build_feeder_fault_loop_view(enm, station_ref)
 
 
 @router.get("/{case_id}/enm/lv-domain/{station_ref}")
-def get_lv_domain_view(case_id: str, station_ref: str) -> dict[str, Any]:
+def get_lv_domain_view(case_id: str, klucz: KluczTwin, station_ref: str) -> dict[str, Any]:
     """Graf domeny nN stacji — spójna składowa 0,4 kV wyprowadzona Z GRAFU
     (karta T5b, docs/nn/KONCEPCJA_LOD_NN_2026-08.md §0 rozstrzygnięcie 2).
 
@@ -367,13 +373,14 @@ def get_lv_domain_view(case_id: str, station_ref: str) -> dict[str, Any]:
     własnego transformatora (rozdzielnica_nn) są WCHŁONIĘTE — to ta sama
     domena elektryczna. Read-only; zero fizyki (topologia, nie solver).
     """
-    enm = _get_enm(case_id)
+    enm = _get_enm(klucz)
     return build_lv_domain_view(enm, station_ref)
 
 
 @router.get("/{case_id}/enm/lv-domain/{station_ref}/upstream-equivalent")
 def get_lv_domain_upstream_equivalent(
     case_id: str,
+    klucz: KluczTwin,
     station_ref: str,
     scenario: UpstreamEquivalentScenario = "MAX",
     transformer_ref: str | None = None,
@@ -393,7 +400,7 @@ def get_lv_domain_upstream_equivalent(
     stacji posortowany po ref_id — determinizm). Read-only; solver liczy
     fizykę, ten endpoint tylko wyławia i zwraca.
     """
-    enm = _get_enm(case_id)
+    enm = _get_enm(klucz)
     return build_upstream_equivalent_snapshot(
         enm,
         case_id,
@@ -406,6 +413,7 @@ def get_lv_domain_upstream_equivalent(
 @router.get("/{case_id}/enm/lv-domain/{station_ref}/projection/v1")
 def get_lv_domain_projection_v1(
     case_id: str,
+    klucz: KluczTwin,
     station_ref: str,
     scenario: UpstreamEquivalentScenario = "MAX",
     run_id: UUID | None = None,
@@ -417,7 +425,7 @@ def get_lv_domain_projection_v1(
     daje jawny stan wyniku ``NONE``. Wskazany przebieg musi należeć do tego
     przypadku i być zakończony — nie ma cichego wyboru innego wyniku.
     """
-    enm = _get_enm(case_id)
+    enm = _get_enm(klucz)
     run = None
     if run_id is not None:
         run = _get_canonical_run(run_id)
@@ -436,7 +444,9 @@ def get_lv_domain_projection_v1(
 
 
 @router.get("/{case_id}/enm/swz")
-def get_swz(case_id: str, station_ref: str, bus_ref: str, breaker_ref: str) -> dict[str, Any]:
+def get_swz(
+    case_id: str, klucz: KluczTwin, station_ref: str, bus_ref: str, breaker_ref: str
+) -> dict[str, Any]:
     """Werdykt SWZ (samoczynne wyłączenie zasilania, IEC 60364-4-41) per obwód
     (karta P0.6, G-06).
 
@@ -446,13 +456,14 @@ def get_swz(case_id: str, station_ref: str, bus_ref: str, breaker_ref: str) -> d
     gG) vs t_wymagany z Tab. 41.1 IEC 60364-4-41. Read-only; solver/analiza
     liczą fizykę i interpretację, endpoint tylko wyławia i zwraca.
     """
-    enm = _get_enm(case_id)
+    enm = _get_enm(klucz)
     return build_swz_view(enm, station_ref, bus_ref, breaker_ref)
 
 
 @router.get("/{case_id}/enm/nn-device-selection")
 def get_nn_device_selection(
     case_id: str,
+    klucz: KluczTwin,
     station_ref: str,
     bus_ref: str,
     ib_a: float,
@@ -470,7 +481,7 @@ def get_nn_device_selection(
     endpoint ich nie przelicza). Read-only; analiza interpretuje gotowe
     wyniki solverów i katalog.
     """
-    enm = _get_enm(case_id)
+    enm = _get_enm(klucz)
     return wybierz_aparat_dla_obwodu_nn(
         enm=enm,
         station_ref=station_ref,
@@ -524,6 +535,7 @@ def _resolve_run_for_sheet(
 @router.get("/{case_id}/enm/nn-circuit-sheet")
 def get_nn_circuit_sheet(
     case_id: str,
+    klucz: KluczTwin,
     station_ref: str,
     load_flow_run_id: str | None = None,
     short_circuit_run_id: str | None = None,
@@ -545,7 +557,7 @@ def get_nn_circuit_sheet(
     kolumny zależne od biegu dostają uczciwy trzeci stan „brak danych" z
     akcją naprawczą po stronie UI („uruchom bieg"), nie fabrykowaną liczbę.
     """
-    enm = _get_enm(case_id)
+    enm = _get_enm(klucz)
     load_flow_run = _resolve_run_for_sheet(
         case_id=case_id,
         run_id=load_flow_run_id,
@@ -581,7 +593,7 @@ class WytrzymaloscAparaturyRequestModel(BaseModel):
 
 @router.post("/{case_id}/enm/wytrzymalosc-aparatury")
 def post_wytrzymalosc_aparatury(
-    case_id: str, body: WytrzymaloscAparaturyRequestModel, request: Request
+    case_id: str, klucz: KluczTwin, body: WytrzymaloscAparaturyRequestModel, request: Request
 ) -> dict[str, Any]:
     """Werdykty wytrzymałości aparatury WSZYSTKICH pól stacji (KD-6 poz. 2-3).
 
@@ -590,7 +602,7 @@ def post_wytrzymalosc_aparatury(
     każdy wiersz niesie jawne ``zrodlo``. Fizyka porównania siedzi w jądrze
     werdyktu K7-B; ten endpoint tylko zestawia źródła danych.
     """
-    enm = _get_enm(case_id)
+    enm = _get_enm(klucz)
     project_id = _resolve_project_id(case_id, request)
     zapisana = _bay_device_withstand(project_id, body.station_ref, request)
     # Czas wyłączenia z NASTAW pól (KD-6 poz. 3) — konfiguracja stacji pozostaje
@@ -617,23 +629,13 @@ def _bay_device_withstand(
     uow_factory = getattr(request.app.state, "uow_factory", None)
     if uow_factory is None or project_id is None:
         return None
-    from infrastructure.persistence.models import StationAudit2ConfigORM
-
     try:
         parsed_project_id = UUID(project_id)
     except ValueError:
         return None
     with uow_factory() as uow:
-        if uow.session is None:
-            return None
-        row = (
-            uow.session.query(StationAudit2ConfigORM)
-            .filter(
-                StationAudit2ConfigORM.project_id == parsed_project_id,
-                StationAudit2ConfigORM.station_id == station_ref,
-            )
-            .one_or_none()
-        )
+        # CV-4.2b: odczyt przez repozytorium (jedno miejsce zapytań o tę tabelę).
+        row = uow.audit2_station_configs.get(parsed_project_id, station_ref)
         if row is None:
             return None
         return dict(row.bay_device_withstand or {})
@@ -645,7 +647,7 @@ def _bay_device_withstand(
 
 
 @router.get("/{case_id}/engineering-readiness")
-def get_engineering_readiness(case_id: str) -> dict[str, Any]:
+def get_engineering_readiness(case_id: str, klucz: KluczTwin) -> dict[str, Any]:
     """Agregacyjny endpoint inżynierskiej gotowości modelu.
 
     Łączy walidację + readiness + fix_action w jeden response
@@ -653,7 +655,7 @@ def get_engineering_readiness(case_id: str) -> dict[str, Any]:
     NIE zmienia istniejącego /readiness — to nowy endpoint UX.
     Deterministyczny: ten sam ENM → identyczny wynik.
     """
-    enm = _get_enm(case_id)
+    enm = _get_enm(klucz)
     validator = ENMValidator()
     validation = validator.validate(enm)
     readiness = validator.readiness(validation)
@@ -704,7 +706,7 @@ def get_engineering_readiness(case_id: str) -> dict[str, Any]:
 
 
 @router.get("/{case_id}/analysis-eligibility")
-def get_analysis_eligibility(case_id: str) -> dict[str, Any]:
+def get_analysis_eligibility(case_id: str, klucz: KluczTwin) -> dict[str, Any]:
     """Macierz zdolności uruchomienia analiz (eligibility).
 
     Dla każdego typu analizy (SC_3F, SC_2F, SC_1F, LOAD_FLOW) zwraca:
@@ -716,7 +718,7 @@ def get_analysis_eligibility(case_id: str) -> dict[str, Any]:
     Niezależna od walidacji i readiness — osobna warstwa.
     Deterministyczny: identyczny ENM -> identyczny wynik.
     """
-    enm = _get_enm(case_id)
+    enm = _get_enm(klucz)
     validator = ENMValidator()
     validation = validator.validate(enm)
     readiness = validator.readiness(validation)
@@ -737,13 +739,13 @@ def get_analysis_eligibility(case_id: str) -> dict[str, Any]:
 
 
 @router.get("/{case_id}/enm/topology/summary")
-def get_topology_summary(case_id: str) -> dict[str, Any]:
+def get_topology_summary(case_id: str, klucz: KluczTwin) -> dict[str, Any]:
     """Zwróć podsumowanie topologiczne: adjacency, spine, laterals.
 
     Używane przez Tree i SLD do wyświetlania struktury sieci.
     DETERMINISTYCZNE: ten sam ENM → identyczny wynik.
     """
-    enm = _get_enm(case_id)
+    enm = _get_enm(klucz)
     enm_dict = enm.model_dump(mode="json")
     summary = compute_topology_summary(enm_dict)
     return {
@@ -823,7 +825,7 @@ _OP_DISPATCH = {
 
 
 @router.post("/{case_id}/enm/ops")
-def topology_ops(case_id: str, req: TopologyOpRequest) -> dict[str, Any]:
+def topology_ops(case_id: str, klucz: KluczTwin, req: TopologyOpRequest) -> dict[str, Any]:
     """Atomic topology operation: validate → mutate → persist.
 
     Supports: create/update/delete for nodes, branches, devices,
@@ -844,22 +846,22 @@ def topology_ops(case_id: str, req: TopologyOpRequest) -> dict[str, Any]:
             f"Dostępne: {', '.join(sorted(_OP_DISPATCH.keys()))}",
         )
 
-    with blokada_przypadku(case_id):
-        return _topology_ops_pod_blokada(case_id, req, handler)
+    with blokada_twin(klucz):
+        return _topology_ops_pod_blokada(klucz, req, handler)
 
 
 def _topology_ops_pod_blokada(
-    case_id: str,
+    klucz: str,
     req: TopologyOpRequest,
     handler: Any,
 ) -> dict[str, Any]:
-    enm = _get_enm(case_id)
+    enm = _get_enm(klucz)
     enm_dict = enm.model_dump(mode="json")
 
     result = handler(enm_dict, req.data)
 
     if result.success:
-        saved = _set_enm(case_id, EnergyNetworkModel.model_validate(result.enm))
+        saved = _set_enm(klucz, EnergyNetworkModel.model_validate(result.enm))
         return {
             "success": True,
             "op": req.op,
@@ -902,7 +904,7 @@ class BatchOpsRequest(BaseModel):
 
 
 @router.post("/{case_id}/enm/ops/batch")
-def topology_ops_batch(case_id: str, req: BatchOpsRequest) -> dict[str, Any]:
+def topology_ops_batch(case_id: str, klucz: KluczTwin, req: BatchOpsRequest) -> dict[str, Any]:
     """Batch topology operations: execute sequentially, rollback all on BLOCKER.
 
     Each operation is applied sequentially on the result of the previous one.
@@ -913,12 +915,12 @@ def topology_ops_batch(case_id: str, req: BatchOpsRequest) -> dict[str, Any]:
     równoległy zapis wchodził w środek serii, a jej rollback i tak odtwarzał
     model sprzed serii, kasując cudzą pracę.
     """
-    with blokada_przypadku(case_id):
-        return _topology_ops_batch_pod_blokada(case_id, req)
+    with blokada_twin(klucz):
+        return _topology_ops_batch_pod_blokada(klucz, req)
 
 
-def _topology_ops_batch_pod_blokada(case_id: str, req: BatchOpsRequest) -> dict[str, Any]:
-    enm = _get_enm(case_id)
+def _topology_ops_batch_pod_blokada(klucz: str, req: BatchOpsRequest) -> dict[str, Any]:
+    enm = _get_enm(klucz)
     enm_dict = enm.model_dump(mode="json")
 
     results: list[dict[str, Any]] = []
@@ -963,7 +965,7 @@ def _topology_ops_batch_pod_blokada(case_id: str, req: BatchOpsRequest) -> dict[
         current_enm = result.enm
 
     # All operations succeeded — persist
-    saved = _set_enm(case_id, EnergyNetworkModel.model_validate(current_enm))
+    saved = _set_enm(klucz, EnergyNetworkModel.model_validate(current_enm))
     return {
         "success": True,
         "results": results,
@@ -973,132 +975,12 @@ def _topology_ops_batch_pod_blokada(case_id: str, req: BatchOpsRequest) -> dict[
 
 
 # ---------------------------------------------------------------------------
-# Run dispatch: ENM → NetworkGraph → Solver → Result
-# ---------------------------------------------------------------------------
-
-# Cache: (case_id, enm_hash) → result
-
-
-@router.post("/{case_id}/runs/short-circuit")
-async def run_short_circuit(case_id: str, request: Request) -> dict[str, Any]:
-    """
-    Dispatch short-circuit 3F run:
-    1. Load ENM
-    2. Validate (must not FAIL)
-    3. Map ENM → NetworkGraph
-    4. Run solver
-    5. Cache + return
-
-    WSPÓŁBIEŻNOŚĆ: ta końcówka MUSI zostać `async def`, bo czyta treść żądania
-    (`await request.json()`) — końcówka `def` nie ma jak tego wykonać. Blokujące
-    jest natomiast wszystko dookoła: odczyt modelu z pliku, walidacja i bieg
-    solvera IEC 60909 (zmierzone 91,3 ms na sieci 2-szynowej, czyli MINIMALNEJ).
-    Na pętli zdarzeń zatrzymywało to cały proces na czas biegu — kilka analiz
-    puszczonych równolegle wykonywało się szeregowo, a UI zamierało.
-    Dlatego blokujące części idą do puli wątków, a `await` zostaje między nimi.
-
-    KOLEJNOŚĆ ZACHOWANA CO DO KROKU: walidacja biegnie PRZED odczytem treści
-    żądania, dokładnie jak dotąd — model, który nie przechodzi walidacji, kończy
-    się 422 niezależnie od tego, co przyszło w ciele. Rozbicie na dwa wejścia do
-    puli (zamiast jednego obejmującego całość) jest ceną tej wierności.
-    """
-    enm, validation = await run_in_threadpool(_wczytaj_i_zwaliduj, case_id)
-    if is_failed_status(validation.status):
-        raise HTTPException(
-            status_code=422,
-            detail=[i.model_dump(mode="json") for i in validation.issues],
-        )
-
-    try:
-        body = await request.json()
-    except Exception:
-        body = {}
-    allowed_options = {
-        key: body[key]
-        for key in (
-            "fault_type",
-            "short_circuit_type",
-            "c_factor",
-            "thermal_time_seconds",
-            # Karta P0.3b: scenariusz MAX/MIN (c per pasmo IEC 60909 Tab. 1 +
-            # korekta temperaturowa R_θ dla MIN) — addytywne, patrz
-            # enm/canonical_analysis.py::_execute_short_circuit.
-            "scenario",
-        )
-        if isinstance(body, dict) and key in body
-    }
-
-    def _policz() -> dict[str, Any]:
-        # `_resolve_project_id` odpytuje bazę (sync SQLAlchemy) — musi być PO tej
-        # stronie granicy, razem z biegiem. Zostawienie go przed nią byłoby tym
-        # samym defektem, który ta karta usuwa, tyle że mniejszym: pojedyncze
-        # zapytanie zamiast całego biegu, ale wciąż na pętli zdarzeń.
-        run = run_short_circuit_now(
-            case_id=case_id,
-            project_id=_resolve_project_id(case_id, request),
-            options=allowed_options,
-        )
-        # Map ENM → NetworkGraph
-        return {
-            "case_id": case_id,
-            "enm_revision": enm.header.revision,
-            "enm_hash": compute_enm_hash(enm),
-            "analysis_type": (run.raw_result or {}).get("analysis_type", "short_circuit_3f"),
-            "short_circuit_type": (run.raw_result or {}).get("short_circuit_type", "3F"),
-            "reporting_status": (run.raw_result or {}).get("reporting_status"),
-            "proof_status": (run.raw_result or {}).get("proof_status"),
-            "proof_engine_version": (run.raw_result or {}).get("proof_engine_version"),
-            "run_id": str(run.id),
-            "input_hash": run.input_hash,
-            "readiness": run.readiness,
-            # V12K-284: wiersze świeżego biegu BEZ rozpływu gałęziowego inline —
-            # każdy wiersz niesie flagę `branch_contributions_available`, a treść
-            # rozpływu WSKAZANEGO punktu pobiera się końcówką
-            # /api/analysis-runs/{run_id}/results/short-circuit/rozplyw?target_id=…
-            # (ten sam wzorzec co wiersze kanoniczne w V12K-281).
-            "results": wiersze_swiezego_biegu_bez_rozplywu(run),
-        }
-
-    return await run_in_threadpool(_policz)
-
-
-@router.post("/{case_id}/runs/power-flow")
-def run_power_flow(case_id: str, request: Request) -> dict[str, Any]:
-    """Dispatch power-flow run from the canonical ENM snapshot."""
-    enm = _get_enm(case_id)
-
-    validator = ENMValidator()
-    validation = validator.validate(enm)
-    if is_failed_status(validation.status):
-        raise HTTPException(
-            status_code=422,
-            detail=[i.model_dump(mode="json") for i in validation.issues],
-        )
-
-    run = run_power_flow_now(
-        case_id=case_id,
-        project_id=_resolve_project_id(case_id, request),
-    )
-    return {
-        "case_id": case_id,
-        "enm_revision": enm.header.revision,
-        "enm_hash": compute_enm_hash(enm),
-        "analysis_type": "power_flow",
-        "run_id": str(run.id),
-        "input_hash": run.input_hash,
-        "readiness": run.readiness,
-        "result": ((run.raw_result or {}).get("result_v1") or {}),
-        "trace": run.power_flow_trace or {},
-    }
-
-
-# ---------------------------------------------------------------------------
 # Wizard step controller endpoints
 # ---------------------------------------------------------------------------
 
 
 @router.get("/{case_id}/wizard/state")
-def get_wizard_state(case_id: str) -> dict[str, Any]:
+def get_wizard_state(case_id: str, klucz: KluczTwin) -> dict[str, Any]:
     """Return full wizard state for case (deterministic).
 
     Computes K1-K10 step states, readiness matrix, element counts.
@@ -1106,14 +988,16 @@ def get_wizard_state(case_id: str) -> dict[str, Any]:
     """
     from application.network_wizard.validator import validate_wizard_state
 
-    enm = _get_enm(case_id)
+    enm = _get_enm(klucz)
     enm_dict = enm.model_dump(mode="json")
     ws = validate_wizard_state(enm_dict)
     return ws.model_dump(mode="json")
 
 
 @router.post("/{case_id}/wizard/apply-step")
-def wizard_apply_step(case_id: str, req: WizardStepRequestModel) -> dict[str, Any]:
+def wizard_apply_step(
+    case_id: str, klucz: KluczTwin, req: WizardStepRequestModel
+) -> dict[str, Any]:
     """Atomic step application: preconditions → mutate → postconditions.
 
     If preconditions fail → original ENM unchanged, success=False.
@@ -1124,23 +1008,23 @@ def wizard_apply_step(case_id: str, req: WizardStepRequestModel) -> dict[str, An
     atomowość kroku („preconditions → mutate → postconditions") jest prawdziwa
     tylko wtedy, gdy nikt nie zapisze modelu między odczytem a zapisem.
     """
-    with blokada_przypadku(case_id):
-        return _wizard_apply_step_pod_blokada(case_id, req)
+    with blokada_twin(klucz):
+        return _wizard_apply_step_pod_blokada(klucz, req)
 
 
-def _wizard_apply_step_pod_blokada(case_id: str, req: WizardStepRequestModel) -> dict[str, Any]:
+def _wizard_apply_step_pod_blokada(klucz: str, req: WizardStepRequestModel) -> dict[str, Any]:
     from application.network_wizard.schema import ApplyStepResponse
     from application.network_wizard.step_controller import apply_step as ctrl_apply_step
     from application.network_wizard.validator import validate_wizard_state
 
-    enm = _get_enm(case_id)
+    enm = _get_enm(klucz)
     enm_dict = enm.model_dump(mode="json")
 
     result = ctrl_apply_step(enm_dict, req.step_id, req.data)
 
     if result.success:
         # Persist mutated ENM
-        saved = _set_enm(case_id, EnergyNetworkModel.model_validate(result.enm))
+        saved = _set_enm(klucz, EnergyNetworkModel.model_validate(result.enm))
         saved_dict = saved.model_dump(mode="json")
         ws = validate_wizard_state(saved_dict)
         return ApplyStepResponse(
@@ -1171,7 +1055,9 @@ def _wizard_apply_step_pod_blokada(case_id: str, req: WizardStepRequestModel) ->
 
 
 @router.get("/{case_id}/wizard/can-proceed")
-def wizard_can_proceed(case_id: str, from_step: str = "K1", to_step: str = "K2") -> dict[str, Any]:
+def wizard_can_proceed(
+    case_id: str, klucz: KluczTwin, from_step: str = "K1", to_step: str = "K2"
+) -> dict[str, Any]:
     """Check if step transition is allowed.
 
     Forward transitions require no BLOCKER in current step
@@ -1183,7 +1069,7 @@ def wizard_can_proceed(case_id: str, from_step: str = "K1", to_step: str = "K2")
         can_proceed as ctrl_can_proceed,
     )
 
-    enm = _get_enm(case_id)
+    enm = _get_enm(klucz)
     enm_dict = enm.model_dump(mode="json")
     result = ctrl_can_proceed(from_step, to_step, enm_dict)
     return CanProceedResponse(
@@ -1305,7 +1191,7 @@ def rozbieznosc_wobec_bramy(
 
 
 @router.post("/{case_id}/enm/domain-ops")
-def domain_ops(case_id: str, req: DomainOpEnvelopeModel, request: Request) -> dict[str, Any]:
+def domain_ops(case_id: str, klucz: KluczTwin, req: DomainOpEnvelopeModel) -> dict[str, Any]:
     """Kanoniczny endpoint operacji domenowych V1.
 
     Wspólny kontrakt dla wszystkich operacji budowy sieci SN:
@@ -1335,16 +1221,14 @@ def domain_ops(case_id: str, req: DomainOpEnvelopeModel, request: Request) -> di
     do puli wątków. Blokada jest per przypadek obliczeniowy, więc operacje na
     RÓŻNYCH przypadkach nadal biegną równolegle.
     """
-    with blokada_przypadku(case_id):
-        return _domain_ops_pod_blokada(case_id, req, request)
+    with blokada_twin(klucz):
+        return _domain_ops_pod_blokada(case_id, klucz, req)
 
 
-def _domain_ops_pod_blokada(
-    case_id: str, req: DomainOpEnvelopeModel, request: Request
-) -> dict[str, Any]:
+def _domain_ops_pod_blokada(case_id: str, klucz: str, req: DomainOpEnvelopeModel) -> dict[str, Any]:
     from enm.domain_operations import execute_domain_operation
 
-    enm = _get_enm(case_id)
+    enm = _get_enm(klucz)
     enm_dict = enm.model_dump(mode="json")
 
     # Walidacja snapshot_base_hash (optimistic concurrency)
@@ -1407,14 +1291,20 @@ def _domain_ops_pod_blokada(
             # snapshotem. Nazwa operacji jest KANONICZNA (`resolve_operation_name`
             # rozwiazuje aliasy), a listy elementow pochodza wprost z `changes`
             # zwroconych przez operacje — nic tu nie jest wyliczane ani zgadywane.
+            # CV-2: dziennik niesie takze PELNY ladunek komendy — dokladnie to, co
+            # przyszlo w zadaniu operacji, bez przepisywania i bez wyboru pol.
+            # Nazwa operacji i listy elementow nie wystarczaly, zeby odtworzyc, CO
+            # projektant zrobil (dwie operacje o tej samej nazwie na tym samym
+            # elemencie roznia sie wylacznie ladunkiem).
             zmiany = result.get("changes") or {}
             zrodlo = ZrodloZmiany(
                 operacja=resolved_name,
                 utworzone=tuple(zmiany.get("created_element_ids") or ()),
                 zmienione=tuple(zmiany.get("updated_element_ids") or ()),
                 usuniete=tuple(zmiany.get("deleted_element_ids") or ()),
+                ladunek=req.operation.payload,
             )
-            saved = _set_enm(case_id, new_enm, zrodlo_zmiany=zrodlo)
+            saved = _set_enm(klucz, new_enm, zrodlo_zmiany=zrodlo)
             result["snapshot"] = saved.model_dump(mode="json")
         except Exception:
             # Szczegół techniczny (typ wyjątku, ścieżka pliku) idzie do dziennika
@@ -1428,19 +1318,14 @@ def _domain_ops_pod_blokada(
             )
             result["error_code"] = "api.snapshot_validation_failed"
             result["snapshot"] = None
-        else:
-            # D §6.2 (karta P0.1): unieważnienie wyników PO udanym zapisie —
-            # tylko wtedy model faktycznie się zmienił. Awaria unieważnienia
-            # (DB niedostępna, brak StudyCase) NIE cofa raportowanego sukcesu
-            # zapisu modelu — plakietka świeżości pozostaje wtedy nieaktualna
-            # (znany, nazwany dług tej awarii), ale model jest zapisany poprawnie.
-            try:
-                _invaliduj_wyniki_po_operacji(case_id, resolved_name, request)
-            except Exception:
-                logger.exception(
-                    "Unieważnienie wyników po operacji domenowej nie powiodło się "
-                    "(model zapisany poprawnie — plakietki świeżości mogą być nieaktualne)."
-                )
+
+    # CV-2-W: po udanym zapisie NIE unieważniamy niczego. Nowa rewizja modelu
+    # SAMA czyni wyniki nieaktualnymi, bo świeżość jest WYPROWADZANA z koperty
+    # rewizji biegu (`application/result_freshness.py`), a nie z osobnego stanu,
+    # który ktoś musiał pamiętać przestawić. Poprzednia wersja wołała tu
+    # `ResultInvalidator` — i była to jedyna obrona przed „plakietką, która
+    # kłamie", więc każda ścieżka zapisu pominięta w tym wywołaniu (kreator,
+    # zmiana typu katalogowego) zostawiała wynik oznaczony jako aktualny.
 
     return result
 

@@ -35,6 +35,10 @@ GPZ = {
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
             "catalog_ref": REF_ZRODLO,
+            # Karta FAB-G: transformator WN/SN GPZ wymaga jawnej pary
+            # hv_voltage_kv + transformer_sn_mva (albo transformer_catalog_ref).
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
         },
     }
 }
@@ -54,13 +58,36 @@ MAGISTRALA = {
 
 
 @pytest.fixture()
-def klient(tmp_path, monkeypatch) -> TestClient:
+def klient(tmp_path, monkeypatch, uow_factory) -> TestClient:
+    from api.dependencies import get_uow_factory
+
     monkeypatch.setenv("ENM_STORE_DIR", str(tmp_path))
     reset_enm_store()
     wyczysc_dziennik()
+    app.dependency_overrides[get_uow_factory] = lambda: uow_factory
+    app.state.uow_factory = uow_factory
     yield TestClient(app)
+    app.dependency_overrides.pop(get_uow_factory, None)
+    app.state.uow_factory = None
     reset_enm_store()
     wyczysc_dziennik()
+
+
+def _nowy_przypadek(klient: TestClient) -> str:
+    """Utwórz REALNY projekt + przypadek przez API; zwróć `case_id`.
+
+    CV-1-W: przypadek bez wiersza w bazie dostaje teraz 404 z magazynu ENM
+    (inwariant I-2) — testy bramy katalogowej potrzebują prawdziwej pary
+    projekt+przypadek zamiast dowolnego napisu.
+    """
+    project_resp = klient.post("/api/projects", json={"name": "Brama katalogowa — test"})
+    assert project_resp.status_code == 201, project_resp.text
+    project_id = project_resp.json()["id"]
+    case_resp = klient.post(
+        "/api/study-cases", json={"project_id": project_id, "name": "Przypadek testu"}
+    )
+    assert case_resp.status_code == 201, case_resp.text
+    return str(case_resp.json()["id"])
 
 
 def _zbuduj_ciag(klient: TestClient, case_id: str) -> tuple[str, str]:
@@ -113,8 +140,10 @@ def _payload_stacji_w_odcinku(
 
 def test_ta_sama_literowka_w_obu_torach_daje_ten_sam_blad_katalogu(klient: TestClient) -> None:
     """(a) PARYTET: identyczny zły ref → 422 catalog.item_not_found w OBU operacjach."""
-    endpoint_koniec, _ = _zbuduj_ciag(klient, "parytet-koniec")
-    _, odcinek_srodek = _zbuduj_ciag(klient, "parytet-srodek")
+    case_koniec = _nowy_przypadek(klient)
+    case_srodek = _nowy_przypadek(klient)
+    endpoint_koniec, _ = _zbuduj_ciag(klient, case_koniec)
+    _, odcinek_srodek = _zbuduj_ciag(klient, case_srodek)
 
     tabliczka = {
         "transformer_catalog_ref": REF_TRAFO_LITEROWKA,
@@ -124,11 +153,11 @@ def test_ta_sama_literowka_w_obu_torach_daje_ten_sam_blad_katalogu(klient: TestC
     }
 
     koniec = klient.post(
-        "/api/cases/parytet-koniec/enm/domain-ops",
+        f"/api/cases/{case_koniec}/enm/domain-ops",
         json=_payload_stacji_koncowej(endpoint_koniec, tabliczka),
     )
     srodek = klient.post(
-        "/api/cases/parytet-srodek/enm/domain-ops",
+        f"/api/cases/{case_srodek}/enm/domain-ops",
         json=_payload_stacji_w_odcinku(odcinek_srodek, tabliczka),
     )
 
@@ -145,10 +174,11 @@ def test_zly_ref_bez_tabliczki_tez_odrzucony_zamiast_blokady_o_braku_uk(
     klient: TestClient,
 ) -> None:
     """(b) Wariant bez tabliczki → też 422 catalog.item_not_found, nie E006 (brak uk)."""
-    endpoint, _ = _zbuduj_ciag(klient, "bez-tabliczki")
+    case_id = _nowy_przypadek(klient)
+    endpoint, _ = _zbuduj_ciag(klient, case_id)
 
     odp = klient.post(
-        "/api/cases/bez-tabliczki/enm/domain-ops",
+        f"/api/cases/{case_id}/enm/domain-ops",
         json=_payload_stacji_koncowej(endpoint, {"transformer_catalog_ref": REF_TRAFO_LITEROWKA}),
     )
 
@@ -156,7 +186,7 @@ def test_zly_ref_bez_tabliczki_tez_odrzucony_zamiast_blokady_o_braku_uk(
     assert odp.json()["detail"]["code"] == "catalog.item_not_found"
 
     # Model NIE został zmieniony: żadnego transformatora ani stacji z literówką.
-    migawka = klient.get("/api/cases/bez-tabliczki/enm").json()
+    migawka = klient.get(f"/api/cases/{case_id}/enm").json()
     assert all(
         tr.get("catalog_ref") != REF_TRAFO_LITEROWKA for tr in migawka.get("transformers", [])
     )
@@ -164,10 +194,11 @@ def test_zly_ref_bez_tabliczki_tez_odrzucony_zamiast_blokady_o_braku_uk(
 
 def test_poprawny_ref_przechodzi_i_daje_fizyke_z_katalogu(klient: TestClient) -> None:
     """Kontrola: dobry ref → 200, materializacja obecna, uk% z katalogu (nie z payloadu)."""
-    endpoint, _ = _zbuduj_ciag(klient, "dobry-ref")
+    case_id = _nowy_przypadek(klient)
+    endpoint, _ = _zbuduj_ciag(klient, case_id)
 
     odp = klient.post(
-        "/api/cases/dobry-ref/enm/domain-ops",
+        f"/api/cases/{case_id}/enm/domain-ops",
         json=_payload_stacji_koncowej(
             endpoint,
             # Tabliczka w payloadzie jest CELOWO sprzeczna z katalogiem (uk 4,0 % vs 5,0 %):
@@ -199,10 +230,11 @@ def test_stacja_bez_transformatora_nie_wymaga_pozycji_katalogowej_trafo(
     Operacja domenowa tworzy transformator wyłącznie, gdy podano jego ref —
     bez refa nie powstaje żaden element wiązany katalogiem TRAFO_SN_NN.
     """
-    endpoint, _ = _zbuduj_ciag(klient, "bez-trafo")
+    case_id = _nowy_przypadek(klient)
+    endpoint, _ = _zbuduj_ciag(klient, case_id)
 
     odp = klient.post(
-        "/api/cases/bez-trafo/enm/domain-ops",
+        f"/api/cases/{case_id}/enm/domain-ops",
         json=_payload_stacji_koncowej(endpoint, {}),
     )
 

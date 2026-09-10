@@ -95,13 +95,17 @@ class BackupResponse(BaseModel):
 
 
 class BackupEntryResponse(BaseModel):
-    """Wpis kopii zapasowej."""
+    """Wpis kopii zapasowej.
+
+    FAB-E (E1): size_bytes to `| None` — rozmiar nieznany (GCS bez metadanych)
+    daje None, nigdy fabrykowane 0 B.
+    """
 
     backup_id: str
     project_id: str
     archive_hash: str
     timestamp: str
-    size_bytes: int
+    size_bytes: int | None
     url: str
 
 

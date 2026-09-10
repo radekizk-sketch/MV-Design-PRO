@@ -50,7 +50,6 @@ import {
   type StationConfigReadinessCardProps,
 } from './cards/StationConfigReadinessCard';
 import type { StationConfigMeasurementsCardProps } from './cards/StationConfigMeasurementsCard';
-import { MV_NEUTRAL_GROUNDING_CATALOG } from '../station-der/catalogs';
 
 export type StationConfigVisibleCardId =
   | 'basic'
@@ -585,7 +584,7 @@ function StationEarthingPanel({
   readonly basic: StationConfigBasicCardProps;
   readonly protection: StationConfigProtectionCardProps;
 }): JSX.Element {
-  const selected = MV_NEUTRAL_GROUNDING_CATALOG.find((item) => item.id === basic.mvNeutralGroundingRef);
+  const selected = basic.mvNeutralGroundings.find((item) => item.id === basic.mvNeutralGroundingRef);
   const requires67N = selected
     ? selected.grounding_type === 'isolated' || selected.grounding_type === 'petersen_coil'
     : false;
@@ -601,7 +600,7 @@ function StationEarthingPanel({
             className="rounded border border-scada-border bg-scada-bg px-2 py-1 text-scada-text"
           >
             <option value="">wybierz wariant z katalogu</option>
-            {MV_NEUTRAL_GROUNDING_CATALOG.map((item) => (
+            {basic.mvNeutralGroundings.map((item) => (
               <option key={item.id} value={item.id}>{item.label_pl}</option>
             ))}
           </select>

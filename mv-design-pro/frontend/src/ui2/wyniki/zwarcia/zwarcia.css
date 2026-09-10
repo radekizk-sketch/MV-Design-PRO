@@ -41,6 +41,20 @@
   padding: 4px;
 }
 
+/* ---- sekcja śladu WHITE BOX podziału prądu zwarciowego (karta WB-ROZPLYW) ---- */
+.mvd-zwarcia-slad-rozplywu {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 4px;
+}
+.mvd-zwarcia-slad-rozplywu-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 /* ---- sekcja wkładów ---- */
 .mvd-zwarcia-wklady {
   display: flex;

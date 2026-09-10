@@ -7,6 +7,7 @@ export { TabelaSzyn } from './TabelaSzyn';
 export type { TabelaSzynProps } from './TabelaSzyn';
 export { TabelaGalezi } from './TabelaGalezi';
 export type { TabelaGaleziProps } from './TabelaGalezi';
+export { RegulacjaOze } from './RegulacjaOze';
 export { EkranRozplywu } from './EkranRozplywu';
 export type { EkranRozplywuProps } from './EkranRozplywu';
 export { ProfilNapiecChart } from './ProfilNapiecChart';

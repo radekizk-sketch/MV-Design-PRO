@@ -19,6 +19,17 @@ import type { SwitchBranch, FuseBranch } from '../../../types/enm';
 // Helpers
 // =============================================================================
 
+/** Etykieta PL źródła parametru — wyczerpujące wg unii `SwitchBranch['parameter_source']`
+ *  (Record wymusza obsłużenie KAŻDEJ wartości; brakująca powodowałaby błąd
+ *  kompilacji). FAB-F: `MANUAL_EQUIVALENT` dawniej wpadał w gałąź „else" i
+ *  pokazywał mylącą etykietę „Wariant katalogowy wymagany", mimo że
+ *  parametr źródła BYŁ ustawiony. */
+const PARAMETER_SOURCE_LABELS_PL: Record<NonNullable<SwitchBranch['parameter_source']>, string> = {
+  CATALOG: 'Katalog (zablokowane)',
+  OVERRIDE: 'Nadpisanie ręczne',
+  MANUAL_EQUIVALENT: 'Zastępczy ręczny',
+};
+
 function switchTypeLabel(type: string): string {
   switch (type) {
     case 'switch':
@@ -241,11 +252,9 @@ export function SwitchCard({ elementId }: { elementId: string }) {
         {
           key: 'param_source',
           label: 'Źródło parametrów',
-          value: branch.parameter_source === 'CATALOG'
-            ? 'Katalog (zablokowane)'
-            : branch.parameter_source === 'OVERRIDE'
-              ? 'Nadpisanie ręczne'
-              : 'Wariant katalogowy wymagany',
+          value: branch.parameter_source
+            ? PARAMETER_SOURCE_LABELS_PL[branch.parameter_source]
+            : 'Wariant katalogowy wymagany',
           severity: branch.catalog_ref == null ? 'warning' : 'ok',
         },
       ],

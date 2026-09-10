@@ -349,20 +349,29 @@ def test_enumeruje_wszystkie_kwalifikowane_elementy_po_sortowanym_ref() -> None:
 def test_kazdy_rodzaj_elementu_znika_z_grafu_wariantu() -> None:
     """Warunek WYJŚCIA wariantu jest jeden dla wszystkich rodzajów elementu.
 
-    Gałąź i transformator schodzą z ruchu tym samym mechanizmem, więc test
-    sprawdza oba: krawędź elementu jest w grafie bazowym i nie ma jej w grafie
-    wariantu. Bez tej pary rozjazd mechanizmów byłby niewidoczny.
+    Gałąź i transformator schodzą z ruchu tym samym mechanizmem —
+    ``enm.scenariusze.apply_scenario`` ze scenariuszem
+    ``out_of_service=(element.ref,)`` (karta CV-3-W, 2026-09-05; przed migracją:
+    prywatny pomocnik ``_wariant_bez_elementu``, USUNIĘTY) — więc test sprawdza
+    oba: krawędź elementu jest w grafie bazowym i nie ma jej w grafie wariantu.
+    Bez tej pary rozjazd mechanizmów byłby niewidoczny.
     """
     from application.analyses.kontyngencje_n1 import (  # noqa: PLC0415 — szczegół wewnętrzny
         _inwentarz_elementow,
-        _wariant_bez_elementu,
     )
+    from enm.scenariusze import OperatingScenario, RodzajScenariusza, apply_scenario
 
     enm = _promien_z_transformatorem()
     snapshot = enm.model_dump(mode="json")
     graf_bazowy = map_enm_to_network_graph(enm)
     for element in _inwentarz_elementow(snapshot):
-        wariant = _wariant_bez_elementu(snapshot, element)
+        scenariusz = OperatingScenario(
+            scenario_id=f"__test_n1__{element.ref}",
+            name="Test wariantu N-1",
+            kind=RodzajScenariusza.N_1,
+            out_of_service=(element.ref,),
+        )
+        wariant = apply_scenario(enm, scenariusz).snapshot
         graf_wariantu = map_enm_to_network_graph(EnergyNetworkModel.model_validate(wariant))
         id_elementu = ref_to_graph_id(element.ref)
         assert id_elementu in graf_bazowy.branches, element.ref
@@ -494,7 +503,7 @@ def test_brak_obciazalnosci_pomija_kryterium_pradowe_jawnie() -> None:
 
 def test_enumeracja_nie_mutuje_modelu_ani_migawki_biegu() -> None:
     set_enm("c-n1", build_golden_enm())
-    bieg = execute_run(create_run(case_id="c-n1", analysis_type="PF").id)
+    bieg = execute_run(create_run(case_id="c-n1", klucz_twin="c-n1", analysis_type="PF").id)
     hash_przed = compute_enm_hash(get_enm("c-n1"))
     migawka_przed = copy.deepcopy(bieg.snapshot)
 
@@ -770,9 +779,31 @@ def test_remis_pelnej_dotkliwosci_rozstrzyga_element_ref_rosnaco() -> None:
 #: żadna wielkość liczbowa nie ma prawa się różnić — potwierdzone zielenią
 #: wszystkich pozostałych testów enumeracji przy czerwieni wyłącznie tych
 #: dwóch odcisków.
+#: CV-4.3 K1 (odbiór 2026-09-09): odciski PRZELICZONE, bo K1 zmieniła seed identyfikatorów
+#: odcinków budowanych operacjami `continue_trunk_segment_sn`/`start_branch_segment_sn`
+#: (seed niesie odtąd catalog_ref/segment_name/bus_name — usunięcie kolizji ref_id
+#: dwóch różnych odcinków z tej samej szyny). Widok N-1 sortuje kontyngencje i węzły po
+#: identyfikatorach, numeruje powtarzające się nazwy „(1)/(2)" wg tej kolejności i
+#: rozstrzyga remisy rankingu po id — więc zmieniły się WYŁĄCZNIE: kolejność wierszy,
+#: sufiksy nazw i pozycje remisowe w rankingu. DOWÓD (sonda koordynatora, K6 5adc958d vs
+#: drzewo K1): po normalizacji identyfikatorów, sufiksów „(n)" i kolejności list oba
+#: widoki są identyczne z dokładnością do pola `ranking[].pozycja` przy równej
+#: dotkliwości; każda liczba fizyczna (dotkliwość, napięcia, przepływy, iteracje NR)
+#: bez zmian. To NIE jest skutek optymalizacji wydajności (intencja odcisku zachowana).
+#: Karta W3-F (§0.6, 2026-09-09): odciski PRZELICZONE po dodaniu znacznika
+#: proweniencji `materialized_params["frequency_hz"]` (skąd policzono susceptancję
+#: kabla z pojemności, B=2πfC) przy materializacji KABEL_SN w
+#: `enm/domain_operations.py::_apply_materialized_branch_fields` — jedno pole
+#: ADDYTYWNE w migawce ENM, którą odcisk widoku niesie w całości (`dane["enm"]`).
+#: DOWÓD (diff pełnego `widok` przed/po, nie tylko odcisku): jedyne różnice to
+#: `snapshot_hash`/`input_hash` (kaskada z dodanego pola przez hash migawki) —
+#: dotkliwość, ranking, napięcia, przepływy, iteracje NR, kolejność i sufiksy
+#: nazw BEZ ZMIAN. Formuła B=2πfC (`math.pi`, f=50.0 Hz ze studium) jest bit
+#: w bit identyczna z formułą sprzed migracji — rozjazd odcisku to WYŁĄCZNIE
+#: nowe pole, nie zmiana fizyki.
 ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
-    "gn01_promieniowa": "fbf4ccd6d49375fdb9a43ccf5cd97ab9f1de34fa39e4fb28f730717060f34125",
-    "gn03_pierscien": "b4639a3b1347f4b9e5df80b5eb2e26aec214f252d1a41682fb9e04091d94e22b",
+    "gn01_promieniowa": "f53274e473c056d5cb650951bf964e24831e31ad1addd57d1f96e16ef3d38d29",
+    "gn03_pierscien": "824c7e3eb94dd935e5388209a93197d26006d82d2eeba6a42a6efe835ee7de61",
 }
 
 
@@ -971,18 +1002,19 @@ def test_zakres_nie_uruchamia_solvera() -> None:
 
     Gdyby zapowiedź liczyła cokolwiek rozpływem, ekran płaciłby pełny koszt N-1
     zanim inżynier zdecydował o biegu — czyli dokładnie ten koszt, przed którym
-    ma go chronić. Pin: podmieniona ścieżka wykonania rozpływu nie może zostać
-    wywołana ani razu.
+    ma go chronić. Pin: podmieniona ścieżka wykonania rozpływu
+    (``enm.canonical_analysis.wykonaj_bieg_w_pamieci``, karta CV-3-W; przed
+    migracją: prywatny ``_execute_power_flow``) nie może zostać wywołana ani razu.
     """
     import application.analyses.kontyngencje_n1 as modul
 
     wywolania: list[object] = []
-    oryginal = modul._execute_power_flow
-    modul._execute_power_flow = lambda bieg: wywolania.append(bieg)  # type: ignore[assignment]
+    oryginal = modul.wykonaj_bieg_w_pamieci
+    modul.wykonaj_bieg_w_pamieci = lambda bieg, graf=None: wywolania.append(bieg)  # type: ignore[assignment]
     try:
         build_kontyngencje_n1_zakres_view(_bieg(_pierscien()))
     finally:
-        modul._execute_power_flow = oryginal  # type: ignore[assignment]
+        modul.wykonaj_bieg_w_pamieci = oryginal  # type: ignore[assignment]
 
     assert wywolania == []
 
@@ -995,3 +1027,34 @@ def test_zakres_nie_mutuje_migawki_biegu() -> None:
     build_kontyngencje_n1_zakres_view(bieg)
 
     assert json.dumps(bieg.snapshot, sort_keys=True, ensure_ascii=False) == przed
+
+
+def test_jedna_budowa_grafu_na_kontyngencje(monkeypatch) -> None:
+    """Pin optymalizacji #2 (nagłówek modułu): graf wariantu budowany RAZ na
+    kontyngencję — odczyt topologii zasilania i rozpływ dzielą ten sam obiekt
+    (`wykonaj_bieg_w_pamieci(bieg, graf=)`), zamiast budować go dwa razy z tej
+    samej migawki. Liczymy wywołania mostu ENM→graf: jedno na kontyngencję plus
+    jedno na przypadek bazowy."""
+    import application.analyses.kontyngencje_n1 as modul
+
+    budowy: list[object] = []
+    oryginal = modul.map_enm_to_network_graph
+
+    def _liczony(enm):  # type: ignore[no-untyped-def]
+        budowy.append(enm)
+        return oryginal(enm)
+
+    monkeypatch.setattr(modul, "map_enm_to_network_graph", _liczony)
+    grafy_rozplywu: list[object] = []
+    oryginal_bieg = modul.wykonaj_bieg_w_pamieci
+
+    def _z_grafem(bieg, graf=None):  # type: ignore[no-untyped-def]
+        grafy_rozplywu.append(graf)
+        return oryginal_bieg(bieg, graf=graf)
+
+    monkeypatch.setattr(modul, "wykonaj_bieg_w_pamieci", _z_grafem)
+    widok = build_kontyngencje_n1_view(_bieg(_pierscien()))
+    liczba_kontyngencji = len(widok["kontyngencje"])
+    assert liczba_kontyngencji >= 3
+    assert len(budowy) == liczba_kontyngencji + 1, "graf budowany raz na kontyngencję + raz na bazę"
+    assert all(graf is not None for graf in grafy_rozplywu), "rozpływ dostaje gotowy graf"

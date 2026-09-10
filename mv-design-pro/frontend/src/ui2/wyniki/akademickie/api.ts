@@ -81,6 +81,19 @@ export interface KopertaWyniku {
   readonly deterministic_hash: string;
 }
 
+/** Jedno źródło pominięte w wejściu V12.6 (karta katalogowa niekompletna). */
+export interface ZrodloPominiete {
+  readonly ref: string;
+  readonly kod: string;
+  readonly powod: string;
+}
+
+/** Proweniencja widma harmonicznego źródła, które DO wejścia trafiło. */
+export interface ProweniencjaZrodlaWidma {
+  readonly ref: string;
+  readonly proweniencja: string;
+}
+
 /** Odpowiedź `GET …/results/v126/{analysis_type}` (`get_v126_result`). */
 export interface OdpowiedzWyniku {
   readonly run_id: string;
@@ -91,6 +104,15 @@ export interface OdpowiedzWyniku {
   readonly result: KopertaWyniku;
   readonly proof_ref: string;
   readonly report_ref: string;
+  /**
+   * Karta W2-C (zero fabrykacji wejścia V12.6): przekształtniki PV/BESS/wiatrowe
+   * pominięte w wejściu solvera (brak karty katalogowej albo brak jej widma
+   * harmonicznego) — pole ADDYTYWNE, obecne tylko dla `power_quality_harmonics`/
+   * `ssci_impedance` i tylko gdy jest CO pominąć.
+   */
+  readonly pominiete_zrodla?: readonly ZrodloPominiete[];
+  /** Proweniencja widma (KATALOG/RECZNE) źródeł, które DO wejścia trafiły. */
+  readonly zrodla_widma?: readonly ProweniencjaZrodlaWidma[];
 }
 
 /** Krok śladu WHITE BOX (`TraceBuilder.add`). */
@@ -287,4 +309,167 @@ export async function pobierzRodzajeAnaliz(): Promise<readonly string[]> {
   const odpowiedz = await pobierzKatalog('analysis-types');
   if (!Array.isArray(odpowiedz.items)) return [];
   return odpowiedz.items.filter((item): item is string => typeof item === 'string');
+}
+
+// ---------------------------------------------------------------------------
+// Karta B-02: katalog analiz ze ZNACZENIEM inżynierskim i gotowość analizy
+// ---------------------------------------------------------------------------
+
+/** Wielkość główna analizy (`WielkoscGlowna.to_dict`). */
+export interface WielkoscKatalogu {
+  readonly symbol: string;
+  readonly nazwa_pl: string;
+  readonly jednostka: string;
+}
+
+/**
+ * Kryterium stosowane PRZEZ SOLVER (`PodstawaOceny.to_dict`): wielkość, symbol,
+ * jednostka, warunek, wartość graniczna i ŹRÓDŁO. Zasada normowa (prompt
+ * właściciela §8): pokazanie normy wymaga kompletu tych pól — inaczej karta
+ * niesie `bez_podstawy_pl` i ekran mówi „brak podstaw do oceny".
+ */
+export interface PodstawaOceny {
+  readonly wielkosc_pl: string;
+  readonly symbol: string;
+  readonly jednostka: string;
+  readonly warunek_pl: string;
+  readonly wartosc_graniczna: number | string;
+  readonly zrodlo_pl: string;
+}
+
+/** Dana czytana z modelu sieci (`DanaZModelu.to_dict`) — opis, nie wartość. */
+export interface DanaZModeluKatalogu {
+  readonly nazwa_pl: string;
+  readonly elementy_pl: string;
+}
+
+/** Dana, której model nie niesie — podaje ją projektant (`ParametrUzytkownika`). */
+export interface ParametrUzytkownikaKatalogu {
+  readonly klucz: string;
+  readonly nazwa_pl: string;
+  readonly jednostka: string;
+  readonly wymagane: boolean;
+  readonly opis_pl: string;
+}
+
+/** Parametr metody z udokumentowaną wartością domyślną solvera (`DomyslnaSolvera`). */
+export interface DomyslnaSolveraKatalogu {
+  readonly klucz: string;
+  readonly nazwa_pl: string;
+  readonly wartosc: number | string;
+  readonly jednostka: string;
+  readonly uzasadnienie_pl: string;
+}
+
+/**
+ * Karta katalogu analiz (`KartaAnalizy.to_dict`, `GET /api/catalog/v126/analysis-catalog`).
+ * JEDYNE źródło nazw, grup, pytań inżynierskich, zakresów i podstaw oceny —
+ * okno nie trzyma własnej kopii katalogu (karta B-02 §0.1).
+ */
+export interface KartaKatalogu {
+  readonly kod: string;
+  readonly nazwa_pl: string;
+  readonly grupa: { readonly kod: string; readonly nazwa_pl: string };
+  readonly pytanie_pl: string;
+  readonly zakres_pl: string;
+  readonly wielkosci_glowne: readonly WielkoscKatalogu[];
+  readonly podstawa_oceny: readonly PodstawaOceny[];
+  readonly bez_podstawy_pl: string;
+  readonly dane: {
+    readonly z_modelu: readonly DanaZModeluKatalogu[];
+    readonly od_uzytkownika: readonly ParametrUzytkownikaKatalogu[];
+    readonly domyslne_solvera: readonly DomyslnaSolveraKatalogu[];
+  };
+  readonly prezentowany: boolean;
+  readonly powod_wycofania_pl: string | null;
+  readonly katalog_odniesienia: string | null;
+  readonly uwagi_metody_pl: readonly string[];
+}
+
+/** Pobiera katalog kart analiz Z BACKENDU (kolejność = kolejność grup i kart kontraktu). */
+export async function pobierzKatalogAnaliz(): Promise<readonly KartaKatalogu[]> {
+  const odpowiedz = await pobierzKatalog('analysis-catalog');
+  if (!Array.isArray(odpowiedz.items)) return [];
+  return odpowiedz.items as readonly KartaKatalogu[];
+}
+
+/** Stan gotowości analizy (`v126_gotowosc.GOTOWOSC_*`). */
+export type StanGotowosci = 'POTWIERDZONA' | 'NIEPOTWIERDZONA' | 'WYCOFANA';
+
+/** Warunek gotowości (`Warunek.to_dict`): spełniony/niespełniony, elementy modelu, klucz parametru. */
+export interface WarunekGotowosci {
+  readonly kod: string;
+  readonly opis_pl: string;
+  readonly spelniony: boolean;
+  readonly elementy: readonly string[];
+  readonly blokujacy: boolean;
+  readonly klucz_parametru: string | null;
+}
+
+/** Dana faktycznie odczytana z modelu (`DanaZModeluWartosc.to_dict`). */
+export interface DanaZModeluWartosc {
+  readonly nazwa_pl: string;
+  readonly wartosc_pl: string;
+  readonly elementy: readonly string[];
+}
+
+/** Wartość parametru wyprowadzona z modelu, z nazwanym źródłem (`Proponowana.to_dict`). */
+export interface ProponowanaWartosc {
+  readonly wartosc: unknown;
+  readonly zrodlo_pl: string;
+}
+
+/** Gotowość jednej analizy (`GotowoscAnalizy.to_dict`) — ta sama funkcja, która odmawia 422. */
+export interface GotowoscAnalizy {
+  readonly kod: string;
+  readonly gotowosc: StanGotowosci;
+  readonly warunki: readonly WarunekGotowosci[];
+  readonly braki: readonly WarunekGotowosci[];
+  readonly uwagi: readonly WarunekGotowosci[];
+  readonly dane_z_modelu: readonly DanaZModeluWartosc[];
+  readonly proponowane: Readonly<Record<string, ProponowanaWartosc>>;
+  readonly powod_wycofania_pl: string | null;
+}
+
+/** Przedmiot analiz — co opisuje zatwierdzony model przypadku (`przedmiot_modelu`). */
+export interface PrzedmiotAnalizy {
+  readonly liczba_szyn: number;
+  readonly liczba_galezi: number;
+  readonly liczba_transformatorow: number;
+  readonly liczba_zrodel_przeksztaltnikowych: number;
+  readonly liczba_generatorow: number;
+  readonly poziomy_napiec_kv: readonly number[];
+  readonly czestotliwosc_hz: number | null;
+  readonly punkt_przylaczenia: { readonly ref: string; readonly nazwa: string; readonly zrodlo: string } | null;
+  readonly nazwa_modelu: string;
+  readonly rewizja: number;
+}
+
+/** Odpowiedź `GET /api/cases/{case_id}/v126/gotowosc` (`get_v126_gotowosc`). */
+export interface OdpowiedzGotowosci {
+  readonly case_id: string;
+  readonly model_hash: string | null;
+  readonly przedmiot: PrzedmiotAnalizy;
+  readonly analizy: readonly GotowoscAnalizy[];
+}
+
+/**
+ * Pobiera gotowość analiz na zatwierdzonym modelu przypadku. Bez `rodzaj` —
+ * komplet rodzajów (katalog kart); z nim — jedna pozycja oceniona DOKŁADNIE
+ * dla parametrów, które trafią do uruchomienia (predykaty parami z bramką 422).
+ */
+export function pobierzGotowosc(
+  caseId: string,
+  rodzaj?: RodzajAnalizy | null,
+  parametry?: Record<string, unknown>,
+): Promise<OdpowiedzGotowosci> {
+  const zapytanie = new URLSearchParams();
+  if (rodzaj) zapytanie.set('analysis_type', rodzaj);
+  if (parametry && Object.keys(parametry).length > 0) {
+    zapytanie.set('parametry', JSON.stringify(parametry));
+  }
+  const sufiks = zapytanie.toString();
+  return getJsonZDetalem<OdpowiedzGotowosci>(
+    `/api/cases/${encodeURIComponent(caseId)}/v126/gotowosc${sufiks ? `?${sufiks}` : ''}`,
+  );
 }

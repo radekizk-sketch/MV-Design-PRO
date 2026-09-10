@@ -14,7 +14,8 @@ fix; only R/X → κ → ip move.
 import math
 
 import pytest
-from application.reference_networks.station_archetype_substrate import (
+
+from tests.reference_networks.station_archetype_substrate import (
     build_g5_wind_t4,
     build_g6_wind_dfig,
 )

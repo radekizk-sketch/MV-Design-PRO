@@ -16,7 +16,7 @@ import { render, fireEvent, cleanup, renderHook, act } from '@testing-library/re
 
 import { useDerDragDrop, DerPaletteButton } from '../useDerDragDrop';
 
-describe('useDerDragDrop — K30-77 drag-drop hook', () => {
+describe('useDerDragDrop — drag-drop hook', () => {
   it('initial state = null', () => {
     const { result } = renderHook(() => useDerDragDrop());
     expect(result.current.state).toBeNull();
@@ -63,7 +63,7 @@ describe('useDerDragDrop — K30-77 drag-drop hook', () => {
   });
 });
 
-describe('DerPaletteButton — K30-77 palette UI', () => {
+describe('DerPaletteButton — palette UI', () => {
   it('renders PV/BESS/FW variants z poprawnymi labels', () => {
     const { container: c1, getByText: g1 } = render(<DerPaletteButton kind="PV" onStart={vi.fn()} />);
     expect(c1.querySelector('[data-testid="der-palette-btn-PV"]')).toBeTruthy();
@@ -120,7 +120,7 @@ describe('DerPaletteButton — K30-77 palette UI', () => {
     cleanup();
   });
 
-  it('K30-92: active=true → aria-pressed + data-der-active=true', () => {
+  it('active=true → aria-pressed + data-der-active=true', () => {
     const { container } = render(<DerPaletteButton kind="PV" onStart={vi.fn()} active />);
     const btn = container.querySelector('[data-testid="der-palette-btn-PV"]') as HTMLButtonElement;
     expect(btn.getAttribute('data-der-active')).toBe('true');
@@ -128,7 +128,7 @@ describe('DerPaletteButton — K30-77 palette UI', () => {
     cleanup();
   });
 
-  it('K30-92: active=false (default) → data-der-active=false, brak aria-pressed', () => {
+  it('active=false (default) → data-der-active=false, brak aria-pressed', () => {
     const { container } = render(<DerPaletteButton kind="PV" onStart={vi.fn()} />);
     const btn = container.querySelector('[data-testid="der-palette-btn-PV"]') as HTMLButtonElement;
     expect(btn.getAttribute('data-der-active')).toBe('false');

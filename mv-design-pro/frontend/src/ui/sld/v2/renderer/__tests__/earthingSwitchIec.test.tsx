@@ -8,7 +8,7 @@ import { ApparatusEarthingSwitch } from '../GpzApparatusSymbols';
 
 afterEach(() => cleanup());
 
-describe('ApparatusEarthingSwitch — K30-108 IEC 60617-7-13-05 compliance', () => {
+describe('ApparatusEarthingSwitch — IEC 60617-7-13-05 compliance', () => {
   it('state=closed → solid vertical line + arrowhead ▼ wskazujący ziemię', () => {
     const { container } = render(
       <svg>

@@ -130,6 +130,15 @@ export const MAGISTRALA_STRINGS = {
   anuluj: 'Anuluj',
   brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem odcinka.',
   walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać odcinek.',
+  // S9-5 (klasa: bramka enable bez sygnału gotowości) — katalog kabli/linii
+  // ładuje się asynchronicznie z backendu; bez typu z katalogu zapis nie ma
+  // z czego policzyć odcinka, więc zapis jest w tym oknie ŚWIADOMIE
+  // zablokowany, a nie milczący.
+  katalogLadowanieStopka: 'Ładowanie katalogu typów odcinków SN — zapis będzie dostępny po wczytaniu.',
+  // S9-5: druga jawna przyczyna blokady zapisu — pole „Długość odcinka" bez
+  // dodatniej wartości (klasa: zapis musi ODZWIERCIEDLAĆ to, co realnie
+  // wpisano, nie być klikalny niezależnie od stanu pola).
+  dlugoscWymaganaStopka: 'Podaj dodatnią długość odcinka, aby odblokować zapis.',
 
   // Panel teorii (V12K-066: standard „must-have")
   teoriaTytul: 'Teoria: magistrala SN — odcinek linii/kabla i spadek napięcia',

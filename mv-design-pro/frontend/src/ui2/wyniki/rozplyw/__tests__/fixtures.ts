@@ -110,11 +110,15 @@ export function walidacjaItemFixture(over: Partial<WalidacjaItem> = {}): Walidac
     margin_pct: 8.0,
     status: 'WARNING',
     why_pl: 'Obciążenie gałęzi 92% — powyżej progu ostrzeżenia 80%.',
+    // Ksztalt 1:1 z buildera (R3-D): { tekst, latex } — patrz `jakosc/__tests__/fixtures.ts`.
     white_box: [
-      'Wzor: obciazenie = S / S_dop * 100%',
-      'Wynik: obciazenie = 92.00 %',
-      'Progi: ostrzezenie 80.0 %, przekroczenie 100.0 %',
-      'Werdykt: OSTRZEZENIE',
+      { tekst: 'Wzor: obciazenie = S / S_dop * 100%', latex: '\\text{obciazenie} = \\frac{S}{S_{dop}} \\cdot 100\\%' },
+      {
+        tekst: 'Wynik: obciazenie = 92.00 %',
+        latex: '\\text{obciazenie} = \\frac{S}{S_{dop}} \\cdot 100\\% = 92.00\\%',
+      },
+      { tekst: 'Progi: ostrzezenie 80.0 %, przekroczenie 100.0 %', latex: null },
+      { tekst: 'Werdykt: OSTRZEZENIE', latex: null },
     ],
     ...over,
   };
@@ -136,10 +140,13 @@ export function walidacjaResponseFixture(
       status: 'PASS',
       why_pl: 'Obciążenie gałęzi 65% — poniżej progu ostrzeżenia 80%.',
       white_box: [
-        'Wzor: obciazenie = S / S_dop * 100%',
-        'Wynik: obciazenie = 65.00 %',
-        'Progi: ostrzezenie 80.0 %, przekroczenie 100.0 %',
-        'Werdykt: ZGODNE',
+        { tekst: 'Wzor: obciazenie = S / S_dop * 100%', latex: '\\text{obciazenie} = \\frac{S}{S_{dop}} \\cdot 100\\%' },
+        {
+          tekst: 'Wynik: obciazenie = 65.00 %',
+          latex: '\\text{obciazenie} = \\frac{S}{S_{dop}} \\cdot 100\\% = 65.00\\%',
+        },
+        { tekst: 'Progi: ostrzezenie 80.0 %, przekroczenie 100.0 %', latex: null },
+        { tekst: 'Werdykt: ZGODNE', latex: null },
       ],
     }),
   ],
@@ -152,9 +159,10 @@ export function walidacjaResponseFixture(
     context: {
       project_name: 'Sieć testowa',
       case_name: 'sc-1',
+      case_id: 'case-1',
       run_timestamp: '2026-07-15T10:00:05+00:00',
-      snapshot_id: 'snap-pf-1',
-      trace_id: 'pf-run-1',
+      snapshot_hash: 'snap-pf-1',
+      run_id: 'pf-run-1',
     },
     config: {
       loading_warn_pct: 80.0,

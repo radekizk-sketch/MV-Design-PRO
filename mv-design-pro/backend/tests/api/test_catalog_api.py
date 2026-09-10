@@ -26,9 +26,9 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
         ("/api/catalog/ct-types", "ct_400_5_5p20_15va_abb"),
         ("/api/catalog/vt-types", "vt_15kv_100v_05_abb"),
         ("/api/catalog/wind-inverter-types", "conv-wind-2mw-15kv"),
-        ("/api/catalog/protection/device-types", "ACME_REX500_v1"),
+        ("/api/catalog/protection/device-types", "REF-OC-EF-500"),
         ("/api/catalog/protection/curves", "curve_iec_normal_inverse"),
-        ("/api/catalog/protection/templates", "template_rex500_oc"),
+        ("/api/catalog/protection/templates", "template_ref_oc_ef_500"),
     ],
 )
 def test_catalog_api_exposes_extended_namespaces(
@@ -180,6 +180,61 @@ def test_source_and_converter_catalog_api_expose_quality_metadata(
     assert all(item["source_reference"] for item in pv_payload)
     assert all(item["source_reference"] for item in bess_payload)
     assert all(item["source_reference"] for item in wind_payload)
+
+
+def test_der_dynamic_profiles_endpoint_exposes_white_box_parameters(client: TestClient) -> None:
+    """Karta FAB-L: `catalogs.ts::DER_DYNAMIC_MODEL_CATALOG` (nazwy pól zmyślone,
+    zero konsumenta solvera) zastąpiony jedynym źródłem — `der_dynamic` — z
+    parametrami, które faktycznie czyta `stability_rms`/`frt_hvrt`."""
+    response = client.get("/api/catalog/der-dynamic-profiles")
+    assert response.status_code == 200
+    payload = response.json()
+    assert isinstance(payload, list)
+    assert len(payload) >= 8
+
+    inverter_profiles = [p for p in payload if p["der_kind"] in ("PV", "BESS")]
+    wind_profiles = [p for p in payload if p["der_kind"] == "FW"]
+    assert len(inverter_profiles) >= 4
+    assert len(wind_profiles) >= 4
+
+    for item in inverter_profiles:
+        assert item["profile_id"]
+        assert item["profile_name_pl"]
+        assert item["control_mode"] in ("grid_following", "grid_forming")
+        assert item["tp_s"] > 0
+        assert item["tq_s"] > 0
+        assert item["frt_response_time_ms"] > 0
+        assert item["p_recovery_rate_pu_per_s"] > 0
+
+    for item in wind_profiles:
+        assert item["profile_id"]
+        assert item["profile_name_pl"]
+        assert item["iec_type"] in ("type_1", "type_2", "type_3", "type_4")
+        assert item["h_total_s"] > 0
+        assert item["frt_response_time_ms"] > 0
+
+    # profile_id jest unikalny w całym katalogu (front klucze `<select>` po nim).
+    profile_ids = [p["profile_id"] for p in payload]
+    assert len(profile_ids) == len(set(profile_ids))
+
+
+def test_bess_battery_types_endpoint_exposes_pack_catalog(client: TestClient) -> None:
+    """Karta FAB-J: pakiet baterii BESS — sprzęt oddzielny od PCS/inwertera
+    (`/bess-inverter-types` powyżej), backend nie miał tego katalogu wcale."""
+    response = client.get("/api/catalog/bess-battery-types")
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload) >= 2
+
+    for item in payload:
+        assert item["chemistry"] in ("LFP", "NMC", "LTO")
+        assert item["capacity_kwh"] > 0
+        assert item["nominal_voltage_dc_v"] > 0
+        assert item["c_rate"] > 0
+        assert item["verification_status"]
+        assert item["source_reference"].strip()
+        assert item["catalog_status"]
+        assert item["contract_version"] == "2.0"
 
 
 # ---------------------------------------------------------------------------

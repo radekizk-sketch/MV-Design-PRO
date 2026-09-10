@@ -9,7 +9,7 @@ InverterControl do węzłów OZE, ale WYŁĄCZNIE dla realnie aktywnych regulacj
 from __future__ import annotations
 
 import pytest
-from enm.canonical_analysis import _build_converter_control_by_node, _graph_id_from_ref
+from enm.assembler import _build_converter_control_by_node, _graph_id_from_ref
 from network_model.solvers.power_flow_inverter import (
     InverterMode,
     inverter_control_from_params,
@@ -82,6 +82,36 @@ def test_binding_carries_the_source_own_power() -> None:
     ]
     assert binding.p_mw == 1.0  # dodatnia = wstrzyk do sieci
     assert binding.q_mvar == -0.25
+
+
+def test_binding_reads_q_set_point_from_catalog_card_when_q_mvar_unknown() -> None:
+    """Karta FAB-H (H2, KLASA NIE INSTANCJA): `q_mvar` nieznane wprost (None), ale
+    karta katalogowa niesie zdegenerowany Q-set-point (qmin_mvar == qmax_mvar) —
+    ten sam warunek, który bramka gotowości (`calculation_readiness/service.py`)
+    już odczytywała, a to miejsce dotąd (przed naprawą) czytało WYŁĄCZNIE
+    `q_mvar` i cicho podstawiało 0,0 mimo jawnej liczby w karcie."""
+    snapshot = _snapshot({"control_mode": "STALY_COS_PHI", "cos_phi": 0.9})
+    snapshot["generators"][0]["q_mvar"] = None
+    snapshot["generators"][0]["materialized_params"] = {"qmin_mvar": 0.3, "qmax_mvar": 0.3}
+    binding = _build_converter_control_by_node(snapshot, base_mva=100.0)[
+        _graph_id_from_ref("bus-oze")
+    ]
+    assert binding.q_mvar == pytest.approx(0.3)
+
+
+def test_binding_q_brak_jest_nazwanym_brakiem_nie_zerem() -> None:
+    """Q naprawdę nieznane (brak pola, brak Q-set-pointu karty) => `None` w
+    powiązaniu, NIE 0,0 (domknięcie FAB-H: „strukturalne zero" było drugim,
+    niezależnym predykatem obok BLOCKER-a `generator.q_missing` — guard podstawień
+    wykrył je jako nowe podstawienie liczby za nieobecną daną). Rozpływ z Q
+    nieznanym jest blokowany PRZED tym punktem tym samym predykatem
+    (`moc_bierna_wytworcy`), a powiązanie mówi prawdę: Q nieznane."""
+    snapshot = _snapshot({"control_mode": "STALY_COS_PHI", "cos_phi": 0.9})
+    snapshot["generators"][0]["q_mvar"] = None
+    binding = _build_converter_control_by_node(snapshot, base_mva=100.0)[
+        _graph_id_from_ref("bus-oze")
+    ]
+    assert binding.q_mvar is None
 
 
 def test_two_regulated_sources_on_one_bus_are_refused() -> None:

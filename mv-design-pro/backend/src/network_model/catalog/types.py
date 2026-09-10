@@ -30,6 +30,14 @@ from enum import Enum
 from typing import Any, Literal
 from uuid import uuid4
 
+from network_model.ir_fields import (
+    wymagany_float,
+    wymagany_float_lub_nieznany,
+    wymagany_int,
+    wymagany_str,
+)
+from network_model.pochodne import simens_na_mikrosimens, susceptancja_z_pojemnosci_s_per_km
+
 # =============================================================================
 # CATALOG NAMESPACE ENUM — kanoniczne nazwy przestrzeni nazw katalogu
 # =============================================================================
@@ -62,11 +70,28 @@ class CatalogNamespace(Enum):
     ZRODLO_SN = "ZRODLO_SN"
     ZRODLO_NN_PV = "ZRODLO_NN_PV"
     ZRODLO_NN_BESS = "ZRODLO_NN_BESS"
+    #: Karta FAB-J: pakiet baterii magazynu BESS — sprzęt ODDZIELNY od PCS/
+    #: przekształtnika (`ZRODLO_NN_BESS`/`ConverterType`): pojemność [kWh],
+    #: napięcie DC, C-rate, chemia. Backend nie miał tego katalogu wcale.
+    BATERIA_BESS = "BATERIA_BESS"
     ZABEZPIECZENIE = "ZABEZPIECZENIE"
     NASTAWY_ZABEZPIECZEN = "NASTAWY_ZABEZPIECZEN"
     PTPIREE_CERTYFIKAT_GENERATORA = "PTPIREE_CERTYFIKAT_GENERATORA"
     CONVERTER = "CONVERTER"
     INVERTER = "INVERTER"
+    #: CV-4.3 K1: generator SYNCHRONICZNY dołączony wprost do szyny SN/WN (bez
+    #: przekształtnika) — np. blok wytwórczy modelowany jako węzeł PV w
+    #: rozpływie mocy (napięcie zadane + granice mocy biernej). ODRĘBNA
+    #: przestrzeń od CONVERTER/INVERTER: `ConverterKind` = {PV, WIND, BESS}
+    #: opisuje WYŁĄCZNIE źródła przekształtnikowe (falownikowe) — fizyka
+    #: zwarciowa i regulacyjna maszyny synchronicznej jest inna niż falownika,
+    #: więc reużycie CONVERTER zniekształcałoby oba typy fizyczne pod jedną
+    #: etykietą. Luka nazwana wprost w kodzie PRZED tą kartą:
+    #: `enm/domain_operations_v2.py::_add_converter_source_der_sn` odmawia
+    #: przyłączenia falownika do SN bez transformatora blokowego z komentarzem
+    #: "zarezerwowane dla generatora synchronicznego (osobna operacja)" —
+    #: ta operacja (`add_generator_sn`) i ten namespace domykają tę lukę.
+    GENERATOR_SN = "GENERATOR_SN"
 
 
 # =============================================================================
@@ -89,6 +114,10 @@ class CatalogStatus(Enum):
     REFERENCYJNY_V1 = "REFERENCYJNY_V1"
     ANALITYCZNY_V1 = "ANALITYCZNY_V1"
     TESTOWY = "TESTOWY"
+    #: W1 (mapa domknięcia 2026-09): pozycja PROJEKTU — dane inżyniera spoza katalogu
+    #: producenckiego (arkusz XLSX), ważna w obrębie modelu, który ją niesie
+    #: (`enm/katalog_projektu.py`); nigdy w modułach katalogu statycznego.
+    PROJEKTOWY_V1 = "PROJEKTOWY_V1"
 
 
 def _normalize_verification_status(
@@ -96,6 +125,16 @@ def _normalize_verification_status(
     *,
     default: CatalogVerificationStatus = CatalogVerificationStatus.REFERENCYJNY,
 ) -> str:
+    """Znormalizuj status weryfikacji — brak != nierozpoznany łańcuch (D7).
+
+    Brak wartości (pole nie podane w karcie) legalnie dostaje `default` — to
+    udokumentowana konwencja klasyfikacji ("nikt jeszcze nie ocenił"), nie
+    podstawienie za nieznaną fizykę. Natomiast NIEPUSTY łańcuch, który nie
+    pasuje do żadnej wartości ``CatalogVerificationStatus`` (literówka,
+    uszkodzony zapis, migracja ze starego słownika), oznacza rekord katalogu
+    USZKODZONY — po cichu awansowanie go na `default` ukrywałoby błąd danych
+    zamiast go zgłosić.
+    """
     if isinstance(value, CatalogVerificationStatus):
         return value.value
     text = str(value or "").strip().upper()
@@ -104,7 +143,12 @@ def _normalize_verification_status(
     try:
         return CatalogVerificationStatus(text).value
     except ValueError:
-        return default.value
+        dozwolone = ", ".join(status.value for status in CatalogVerificationStatus)
+        raise ValueError(
+            f"Nierozpoznany status weryfikacji katalogu: {value!r}. "
+            f"Dozwolone wartości: {dozwolone} (albo brak pola dla domyślnego "
+            f"{default.value})."
+        ) from None
 
 
 def _normalize_catalog_status(
@@ -112,6 +156,7 @@ def _normalize_catalog_status(
     *,
     default: CatalogStatus = CatalogStatus.REFERENCYJNY_V1,
 ) -> str:
+    """Znormalizuj status katalogu — brak != nierozpoznany łańcuch (D7, jak wyżej)."""
     if isinstance(value, CatalogStatus):
         return value.value
     text = str(value or "").strip().upper()
@@ -120,7 +165,12 @@ def _normalize_catalog_status(
     try:
         return CatalogStatus(text).value
     except ValueError:
-        return default.value
+        dozwolone = ", ".join(status.value for status in CatalogStatus)
+        raise ValueError(
+            f"Nierozpoznany status katalogu: {value!r}. "
+            f"Dozwolone wartości: {dozwolone} (albo brak pola dla domyślnego "
+            f"{default.value})."
+        ) from None
 
 
 def _normalize_source_reference(value: Any, *, default: str) -> str:
@@ -249,8 +299,12 @@ def _uf_control_kwargs(data: dict[str, Any]) -> dict[str, Any]:
 # quality says how trustworthy each value is — see solver_input.provenance).
 # =============================================================================
 
-# SC fault-model card fields (feeds short-circuit beyond the simple k_sc*In).
+# SC fault-model card fields. `k_sc` feeds the LIVE short-circuit model
+# (Ik = k_sc * In — InverterSource/short_circuit_iec60909.py, mapped from the
+# catalog by enm/mapping.py::_add_generator_sc_sources); the other three fields
+# are reserved for a future model beyond that simple k_sc*In factor.
 _CARD_SC_MODEL_FIELDS: tuple[str, ...] = (
+    "k_sc",
     "sc_model",
     "sc_pq_split",
     "sc_transient_k",
@@ -297,6 +351,7 @@ def _card_schema_kwargs(data: dict[str, Any]) -> dict[str, Any]:
 
     sc_model = data.get("sc_model")
     return {
+        "k_sc": _opt_float("k_sc"),
         "sc_model": str(sc_model) if sc_model is not None else None,
         "sc_pq_split": _opt_float("sc_pq_split"),
         "sc_transient_k": _opt_float("sc_transient_k"),
@@ -377,6 +432,20 @@ def _pq_curve_from_raw(
     return tuple(tuple(float(v) for v in point) for point in raw)  # type: ignore[misc]
 
 
+def _harmonic_spectrum_from_raw(raw: Any) -> dict[int, float] | None:
+    """Parse a converter harmonic-spectrum dict (round-trips the ``to_dict``
+    stringified-key form: JSON object keys are always strings). Order/range
+    are NOT enforced here so malformed input surfaces the explicit Polish
+    message from ``__post_init__`` instead of a generic ``ValueError``."""
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        raise ValueError(
+            f"Widmo harmonicznych musi byc obiektem {{rzad: procent}}, otrzymano {raw!r}."
+        )
+    return {int(rzad): float(procent) for rzad, procent in raw.items()}
+
+
 # =============================================================================
 # NASTAWIALNOSC APARATU nN ("capability-driven UI") — para (min, max) dla pol
 # nastaw wyprowadzanych z aparatu (Ir/Isd/Ii/tr/tsd). Optional/None-default —
@@ -441,6 +510,20 @@ class CatalogBinding:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "CatalogBinding":
+        """Odczytaj wiązanie katalogowe — TOLERANCYJNIE (brak pola = "").
+
+        WYJĄTEK OD OGÓLNEJ REGUŁY karty FAB-D2 (D4), świadomy i sprawdzony testem
+        `tests/enm/test_enm_api.py::test_domain_ops_rejects_malformed_catalog_binding_and_keeps_snapshot`:
+        `catalog_namespace`/`catalog_item_id`/`catalog_item_version` NIE stają się
+        wymaganymi polami IR (nie podnoszą `BrakujacePoleIRError`), bo jedynym
+        celem tej metody jest naskarmienie `validate_catalog_binding`
+        (`network_model/catalog/materialization.py`) — funkcji, której WŁASNYM
+        mechanizmem walidacji jest sprawdzenie `if not binding.catalog_namespace`
+        i zgłoszenie GRZECZNEGO błędu (`catalog.namespace_missing` itd.), a nie
+        wyjątku. Twarde podniesienie wyjątku TUTAJ zamieniałoby zwyczajne,
+        oczekiwane „powiązanie niekompletne" w nieobsłużony 500 zamiast czystej
+        odpowiedzi walidacyjnej — dokładnie to zaobserwowano przy naprawie D4.
+        """
         return cls(
             catalog_namespace=str(data.get("catalog_namespace", "")),
             catalog_item_id=str(data.get("catalog_item_id", "")),
@@ -461,17 +544,26 @@ class MaterializationContract:
 
     solver_fields: tuple of field names copied for solver use
     ui_fields: tuple of (field_name, display_label_pl, unit) for UI preview
+    pola_opcjonalne: podzbiór ``solver_fields`` DODANY PO ZAMROŻENIU odcisków —
+        kopiowany do ``materialized_params`` WYŁĄCZNIE, gdy pozycja katalogu niesie
+        wartość (kontrakt „addytywnie, ``exclude_none``”). ``None`` w katalogu = dana
+        nieznana i NIE jest treścią migawki: bez tej reguły każde nowe pole kontraktu
+        wpisywałoby ``None`` do ``materialized_params`` każdego istniejącego elementu
+        i przestawiało odciski modeli (pomiar CV-4.3 K7: odciski widoku N-1 sieci
+        gn01/gn03 zmieniały się bez żadnej zmiany danych).
     """
 
     namespace: str
     solver_fields: tuple[str, ...]
     ui_fields: tuple[tuple[str, str, str], ...]
+    pola_opcjonalne: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "namespace": self.namespace,
             "solver_fields": list(self.solver_fields),
             "ui_fields": [{"field": f, "label_pl": lbl, "unit": u} for f, lbl, u in self.ui_fields],
+            "pola_opcjonalne": list(self.pola_opcjonalne),
         }
 
 
@@ -510,10 +602,12 @@ class LineType:
     rated_current_a: float = 0.0
     manufacturer: str | None = None
     standard: str | None = None
-    max_temperature_c: float = 70.0
+    #: ``None`` = dana tabliczkowa nieznana z definicji źródła (typ z literatury
+    #: benchmarkowej, CV-4.3 K1) — jawnie zadeklarowana, nie liczba-zastępnik.
+    max_temperature_c: float | None = 70.0
     voltage_rating_kv: float = 0.0
     conductor_material: str | None = None
-    cross_section_mm2: float = 0.0
+    cross_section_mm2: float | None = 0.0
     r0_ohm_per_km: float | None = None
     x0_ohm_per_km: float | None = None
     b0_siemens_per_km: float | None = None
@@ -549,6 +643,7 @@ class LineType:
         if (
             self.jth_1s_a_per_mm2 is not None
             and self.jth_1s_a_per_mm2 > 0
+            and self.cross_section_mm2 is not None
             and self.cross_section_mm2 > 0
         ):
             return True
@@ -567,6 +662,7 @@ class LineType:
         if (
             self.jth_1s_a_per_mm2 is not None
             and self.jth_1s_a_per_mm2 > 0
+            and self.cross_section_mm2 is not None
             and self.cross_section_mm2 > 0
         ):
             return self.jth_1s_a_per_mm2 * self.cross_section_mm2
@@ -612,16 +708,20 @@ class LineType:
         return cls(
             id=str(data.get("id", str(uuid4()))),
             name=str(data.get("name", "")),
-            r_ohm_per_km=float(data.get("r_ohm_per_km", 0.0)),
-            x_ohm_per_km=float(data.get("x_ohm_per_km", 0.0)),
-            b_us_per_km=float(data.get("b_us_per_km", 0.0)),
-            rated_current_a=float(data.get("rated_current_a", 0.0)),
+            r_ohm_per_km=wymagany_float(data, "r_ohm_per_km", context="LineType"),
+            x_ohm_per_km=wymagany_float(data, "x_ohm_per_km", context="LineType"),
+            b_us_per_km=wymagany_float(data, "b_us_per_km", context="LineType"),
+            rated_current_a=wymagany_float(data, "rated_current_a", context="LineType"),
             manufacturer=data.get("manufacturer"),
             standard=data.get("standard"),
-            max_temperature_c=float(data.get("max_temperature_c", 70.0)),
-            voltage_rating_kv=float(data.get("voltage_rating_kv", 0.0)),
+            max_temperature_c=wymagany_float_lub_nieznany(
+                data, "max_temperature_c", context="LineType"
+            ),
+            voltage_rating_kv=wymagany_float(data, "voltage_rating_kv", context="LineType"),
             conductor_material=data.get("conductor_material"),
-            cross_section_mm2=float(data.get("cross_section_mm2", 0.0)),
+            cross_section_mm2=wymagany_float_lub_nieznany(
+                data, "cross_section_mm2", context="LineType"
+            ),
             r0_ohm_per_km=(
                 float(data["r0_ohm_per_km"]) if data.get("r0_ohm_per_km") is not None else None
             ),
@@ -723,15 +823,21 @@ class CableType:
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
 
-    @property
-    def b_us_per_km(self) -> float:
-        """
-        Calculate susceptance from capacitance.
+    def susceptancja_us_per_km(self, czestotliwosc_hz: float) -> float:
+        """Susceptancja z pojemności jednostkowej kabla: B = 2π·f·C [µS/km].
 
-        B [μS/km] = 2 * π * f * C [nF/km] * 1e-3
-        Assuming f = 50 Hz
+        Karta W3-F (§0.6, 2026-09-09) — zastępuje byłą własność `b_us_per_km`
+        (zaszywała f = 50 Hz i π ≈ 3,14159). Typ katalogowy NIE ZNA
+        częstotliwości studium — wołający (resolver, materializacja ENM)
+        przekazuje ją jawnie; datum kabla to WYŁĄCZNIE `c_nf_per_km`.
+
+        Sekwencja identyczna z torem ENM → `enm/mapping.py:1016`:
+        `susceptancja_z_pojemnosci_s_per_km` (S/km, `math.pi`) ->
+        `simens_na_mikrosimens` (S -> µS, ×1e6).
         """
-        return 2 * 3.14159 * 50 * self.c_nf_per_km * 1e-3
+        return simens_na_mikrosimens(
+            susceptancja_z_pojemnosci_s_per_km(self.c_nf_per_km, czestotliwosc_hz)
+        )
 
     @property
     def dane_cieplne_kompletne(self) -> bool:
@@ -796,7 +902,6 @@ class CableType:
             "r_ohm_per_km": self.r_ohm_per_km,
             "x_ohm_per_km": self.x_ohm_per_km,
             "c_nf_per_km": self.c_nf_per_km,
-            "b_us_per_km": self.b_us_per_km,
             "rated_current_a": self.rated_current_a,
             "manufacturer": self.manufacturer,
             "voltage_rating_kv": self.voltage_rating_kv,
@@ -835,16 +940,16 @@ class CableType:
         return cls(
             id=str(data.get("id", str(uuid4()))),
             name=str(data.get("name", "")),
-            r_ohm_per_km=float(data.get("r_ohm_per_km", 0.0)),
-            x_ohm_per_km=float(data.get("x_ohm_per_km", 0.0)),
-            c_nf_per_km=float(data.get("c_nf_per_km", 0.0)),
-            rated_current_a=float(data.get("rated_current_a", 0.0)),
+            r_ohm_per_km=wymagany_float(data, "r_ohm_per_km", context="CableType"),
+            x_ohm_per_km=wymagany_float(data, "x_ohm_per_km", context="CableType"),
+            c_nf_per_km=wymagany_float(data, "c_nf_per_km", context="CableType"),
+            rated_current_a=wymagany_float(data, "rated_current_a", context="CableType"),
             manufacturer=data.get("manufacturer"),
-            voltage_rating_kv=float(data.get("voltage_rating_kv", 0.0)),
+            voltage_rating_kv=wymagany_float(data, "voltage_rating_kv", context="CableType"),
             insulation_type=data.get("insulation_type"),
             standard=data.get("standard"),
             conductor_material=data.get("conductor_material"),
-            cross_section_mm2=float(data.get("cross_section_mm2", 0.0)),
+            cross_section_mm2=wymagany_float(data, "cross_section_mm2", context="CableType"),
             return_conductor_cross_section_mm2=(
                 float(data["return_conductor_cross_section_mm2"])
                 if data.get("return_conductor_cross_section_mm2") is not None
@@ -877,13 +982,13 @@ class CableType:
                 if data.get("b0_siemens_per_km") is not None
                 else None
             ),
-            max_temperature_c=float(data.get("max_temperature_c", 90.0)),
+            max_temperature_c=wymagany_float(data, "max_temperature_c", context="CableType"),
             short_circuit_temperature_c=(
                 float(data["short_circuit_temperature_c"])
                 if data.get("short_circuit_temperature_c") is not None
                 else None
             ),
-            number_of_cores=int(data.get("number_of_cores", 1)),
+            number_of_cores=wymagany_int(data, "number_of_cores", context="CableType"),
             ith_1s_a=(float(data["ith_1s_a"]) if data.get("ith_1s_a") is not None else None),
             jth_1s_a_per_mm2=(
                 float(data["jth_1s_a_per_mm2"])
@@ -934,9 +1039,29 @@ class TransformerType:
     uk_percent: float
     pk_kw: float = 0.0
     manufacturer: str | None = None
-    i0_percent: float = 0.0
-    p0_kw: float = 0.0
-    vector_group: str = "Dyn11"
+    # Karta FAB-D2 (D2): brak w karcie katalogowej != 0. Gałąź magnesująca ma
+    # znamiona i0/p0 RÓŻNE dla każdego wykonania — 0.0 podstawione za brak
+    # danej fałszowałoby "transformator bez strat jałowych", co IEC 60076
+    # nie przewiduje dla żadnej realnej jednostki. `None` = dana nieznana;
+    # konsument (budowniczy wejścia solvera) pomija gałąź magnesującą i
+    # zapisuje to jawnie w śladzie White Box + kod gotowości WARNING
+    # `transformer.no_load_params_missing` (nie BLOCKER: IEC 60909 ich nie
+    # potrzebuje, traci na tym wyłącznie dokładność strat w rozpływie).
+    # Typ Optional (pole MOZE niesc None), ale domyslna wartosc dla konstrukcji
+    # BEZPOSREDNIEJ (bez `from_dict`) zostaje 0.0/"Dyn11" — dowod empiryczny
+    # (pelna regresja): generatory sieci referencyjnych konstruuja
+    # `TransformerType(...)` wprost, pomijajac te pola i licząc na domyslne
+    # Dyn11 (kat przesuniecia fazowego solvera Newtona zalezy od vector_group
+    # — patrz analogiczny komentarz w `core/branch.py::TransformerBranch`).
+    # `from_dict` ponizej i tak jawnie przekazuje `None`, gdy klucz brakuje.
+    i0_percent: float | None = 0.0
+    p0_kw: float | None = 0.0
+    # Grupa połączeń nieznana = `None` (nie "Dyn11" — to byłoby zmyślenie
+    # KONKRETNEGO układu połączeń, który dla składowej zerowej/doziemień
+    # zmienia wynik jakościowo, nie tylko ilościowo). Konsument grupy
+    # (składowa zerowa) przy `None` zgłasza BLOCKER
+    # `transformer.vector_group_missing` dla analiz doziemnych/niesymetrycznych.
+    vector_group: str | None = "Dyn11"
     cooling_class: str | None = None
     tap_min: int = -5
     tap_max: int = 5
@@ -980,19 +1105,23 @@ class TransformerType:
         return cls(
             id=str(data.get("id", str(uuid4()))),
             name=str(data.get("name", "")),
-            rated_power_mva=float(data.get("rated_power_mva", 0.0)),
-            voltage_hv_kv=float(data.get("voltage_hv_kv", 0.0)),
-            voltage_lv_kv=float(data.get("voltage_lv_kv", 0.0)),
-            uk_percent=float(data.get("uk_percent", 0.0)),
-            pk_kw=float(data.get("pk_kw", 0.0)),
+            rated_power_mva=wymagany_float(data, "rated_power_mva", context="TransformerType"),
+            voltage_hv_kv=wymagany_float(data, "voltage_hv_kv", context="TransformerType"),
+            voltage_lv_kv=wymagany_float(data, "voltage_lv_kv", context="TransformerType"),
+            uk_percent=wymagany_float(data, "uk_percent", context="TransformerType"),
+            pk_kw=wymagany_float(data, "pk_kw", context="TransformerType"),
             manufacturer=data.get("manufacturer"),
-            i0_percent=float(data.get("i0_percent", 0.0)),
-            p0_kw=float(data.get("p0_kw", 0.0)),
-            vector_group=str(data.get("vector_group", "Dyn11")),
+            # i0_percent/p0_kw/vector_group: `None` gdy brak w karcie katalogowej
+            # (D2) — nigdy 0.0/"Dyn11" podstawione za nieznaną daną.
+            i0_percent=(float(data["i0_percent"]) if data.get("i0_percent") is not None else None),
+            p0_kw=(float(data["p0_kw"]) if data.get("p0_kw") is not None else None),
+            vector_group=(
+                str(data["vector_group"]) if data.get("vector_group") is not None else None
+            ),
             cooling_class=data.get("cooling_class"),
-            tap_min=int(data.get("tap_min", -5)),
-            tap_max=int(data.get("tap_max", 5)),
-            tap_step_percent=float(data.get("tap_step_percent", 2.5)),
+            tap_min=wymagany_int(data, "tap_min", context="TransformerType"),
+            tap_max=wymagany_int(data, "tap_max", context="TransformerType"),
+            tap_step_percent=wymagany_float(data, "tap_step_percent", context="TransformerType"),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog transformatorow MV-DESIGN-PRO / PN-EN 60076",
@@ -1081,10 +1210,10 @@ class SwitchEquipmentType:
             name=str(data.get("name", "")),
             manufacturer=data.get("manufacturer"),
             equipment_kind=str(data.get("equipment_kind", "CIRCUIT_BREAKER")),
-            un_kv=float(data.get("un_kv", 0.0)),
-            in_a=float(data.get("in_a", 0.0)),
-            ik_ka=float(data.get("ik_ka", 0.0)),
-            icw_ka=float(data.get("icw_ka", 0.0)),
+            un_kv=wymagany_float(data, "un_kv", context="SwitchEquipmentType"),
+            in_a=wymagany_float(data, "in_a", context="SwitchEquipmentType"),
+            ik_ka=wymagany_float(data, "ik_ka", context="SwitchEquipmentType"),
+            icw_ka=wymagany_float(data, "icw_ka", context="SwitchEquipmentType"),
             medium=data.get("medium"),
             u_m_kv=(float(data["u_m_kv"]) if data.get("u_m_kv") is not None else None),
             i_cu_ka=(float(data["i_cu_ka"]) if data.get("i_cu_ka") is not None else None),
@@ -1122,9 +1251,15 @@ class ConverterType:
         e_kwh: Nameplate energy [kWh] (optional, BESS only).
         manufacturer: Manufacturer name (optional).
         model: Model designation (optional).
-        control_mode: Default converter control mode (optional).
+        control_mode: Default converter control mode (optional). ``"GRID_FORMING"``
+            is the existing, reused signal of grid-forming capability (V126-W2-C) —
+            no separate boolean field.
         grid_code: Grid-code / NC RfG profile marker (optional).
         dynamic_profile_id: Dynamic model profile reference (optional).
+        harmonic_spectrum_percent: Manufacturer-declared current harmonic spectrum
+            (optional, order -> % of rated current). See field comment for provenance.
+        droop_p_f_percent: Grid-forming P/f droop statism [%] (optional).
+        droop_q_u_percent: Grid-forming Q/U droop statism [%] (optional).
     """
 
     id: str
@@ -1159,9 +1294,16 @@ class ConverterType:
     lfsm_deadband_hz: float | None = None
     lfsm_allow_increase: bool = False
     f0_hz: float | None = None
-    # Inverter-card ("karta falownika") SC fault-model fields. Feed the
-    # short-circuit solver beyond the simple k_sc*In contribution. All optional
-    # (None) so published types round-trip byte-identically.
+    # Inverter-card ("karta falownika") SC fault-model fields.
+    # k_sc: manufacturer-card short-circuit current contribution factor
+    # (Ik = k_sc * In, IEC 60909-0 for converter-connected units) — the value
+    # from the DATASHEET, never a normative default. None => enm/mapping.py
+    # falls back to the IEC-typical 1.1 as a REGISTERED assumption (WHITE BOX
+    # trace + `inverter.k_sc_assumed` readiness warning), never a silent number.
+    k_sc: float | None = None
+    # The remaining fields feed the short-circuit solver beyond the simple
+    # k_sc*In contribution. All optional (None) so published types round-trip
+    # byte-identically.
     sc_model: Literal["simple_k_factor", "pq_component", "from_datasheet"] | None = None
     sc_pq_split: float | None = None  # P/(P+Q) split for the SC contribution
     sc_transient_k: float | None = None  # fast/transient fault factor k*In
@@ -1193,6 +1335,36 @@ class ConverterType:
     # Pst_i = c * Sn / Ssc. None => not declared, so published converter types
     # round-trip byte-identically. NOT a solver field.
     flicker_c: float | None = None
+    # Karta W2-C (zero fabrykacji wejscia V12.6). Trzy pola opcjonalne z KARTY
+    # KATALOGOWEJ producenta — ZADEN katalog opublikowany w tym repo (168 pozycji,
+    # `mv_converter_catalog.py`) ich dzis nie ustawia, bo zaden wpis nie ma zrodla
+    # (karty PDF/dokumentu) z tymi wartosciami; podanie liczby bez zrodla byloby
+    # dokladnie fabrykacja, ktora ta karta usuwa z `solver_input/v126_contracts.py`
+    # (`build_v126_input_from_enm` czytal je wczesniej jako STALA dla KAZDEGO
+    # przeksztaltnika PV/BESS/wiatrowego). Pozycja dostaje wartosc TYLKO gdy w repo
+    # istnieje przywolywalne zrodlo (karta producenta) — do tego czasu `None`
+    # jest jedyna uczciwa wartoscia, a solver_input traktuje brak jako "dana
+    # nieznana", nie jako zero.
+    #
+    # widmo pradu harmonicznych wg deklaracji producenta (IEC 61000-3-12 —
+    # dopuszczalne poziomy emisji harmonicznych dla odbiornikow > 16 A/faza;
+    # IEEE 519 — limity TDD). Klucz = rzad harmonicznej (2..50), wartosc = %
+    # pradu znamionowego przeksztaltnika (Sn/Un). Zrodlo wejscia solvera V12.6
+    # `power_quality_harmonics` (`V126HarmonicSourceInput.spectrum_percent`,
+    # via `solver_input/v126_contracts.py::build_v126_input_from_enm`).
+    harmonic_spectrum_percent: dict[int, float] | None = None
+    # statyzm regulacji mocy czynnej wzgledem czestotliwosci przeksztaltnika
+    # grid-forming (VSM/droop control), w %: df/f * (1/statyzm) = dP/Pn. Karta
+    # katalogowa producenta (typowe zakresy IEEE 2800-2022: 2-10 %). Nie mylic
+    # z `lfsm_droop_pct` (aktywny udzial redukcji mocy LFSM-O wg NC RfG — INNY
+    # parametr, INNA norma, ustawiony na czesci pozycji katalogu). Zrodlo
+    # `V126ConverterInput.droop_p_f_percent`, tylko dla przeksztaltnikow
+    # zadeklarowanych jako `control_mode == "GRID_FORMING"`.
+    droop_p_f_percent: float | None = None
+    # statyzm regulacji napiecia wzgledem mocy biernej przeksztaltnika
+    # grid-forming (VSM/droop control), w %. Karta katalogowa producenta.
+    # Zrodlo `V126ConverterInput.droop_q_u_percent`, jak wyzej.
+    droop_q_u_percent: float | None = None
     # Per-card data-quality override ("karta falownika" provenance). A serialized
     # {field_name -> CardFieldStatus.to_dict()} map declaring, per field, how
     # trustworthy each value is (DATASHEET / ESTIMATED / SYSTEM_DEFAULT). Stored as
@@ -1218,7 +1390,7 @@ class ConverterType:
     verification_note: str | None = None
 
     def __post_init__(self) -> None:
-        """Validate optional additive fields (P-Q curve, flicker coefficient)."""
+        """Validate optional additive fields (P-Q curve, flicker coefficient, k_sc)."""
         if self.pq_curve is not None:
             _validate_pq_curve(self.pq_curve)
         if self.flicker_c is not None and self.flicker_c <= 0:
@@ -1226,6 +1398,36 @@ class ConverterType:
                 "Wspolczynnik emisji migotania flicker_c musi byc > 0, "
                 f"otrzymano flicker_c={self.flicker_c}."
             )
+        if self.k_sc is not None and self.k_sc <= 0:
+            raise ValueError(
+                f"Wspolczynnik udzialu zwarciowego k_sc musi byc > 0, otrzymano k_sc={self.k_sc}."
+            )
+        if self.droop_p_f_percent is not None and self.droop_p_f_percent <= 0:
+            raise ValueError(
+                "Statyzm P/f przeksztaltnika grid-forming (droop_p_f_percent) musi byc > 0, "
+                f"otrzymano {self.droop_p_f_percent}."
+            )
+        if self.droop_q_u_percent is not None and self.droop_q_u_percent <= 0:
+            raise ValueError(
+                "Statyzm Q/U przeksztaltnika grid-forming (droop_q_u_percent) musi byc > 0, "
+                f"otrzymano {self.droop_q_u_percent}."
+            )
+        if self.harmonic_spectrum_percent is not None:
+            if not self.harmonic_spectrum_percent:
+                raise ValueError(
+                    "Widmo harmonicznych (harmonic_spectrum_percent) nie moze byc puste."
+                )
+            for rzad, procent in self.harmonic_spectrum_percent.items():
+                if not isinstance(rzad, int) or isinstance(rzad, bool) or rzad < 2 or rzad > 50:
+                    raise ValueError(
+                        "Rzad harmonicznej w widmie musi byc liczba calkowita 2..50, "
+                        f"otrzymano {rzad!r}."
+                    )
+                if not (0.0 <= float(procent) <= 100.0):
+                    raise ValueError(
+                        f"Udzial {rzad}. harmonicznej musi byc w zakresie 0..100 % pradu "
+                        f"znamionowego, otrzymano {procent}."
+                    )
 
     def validate_power_hierarchy(self) -> None:
         """Assert Pzainst >= Pn,AC >= Pprzylacz >= Posiagl for the fields present.
@@ -1279,6 +1481,29 @@ class ConverterType:
             # Flicker emission coefficient: emitted only when declared so converters
             # without it (flicker_c=None) round-trip byte-identically.
             **({"flicker_c": self.flicker_c} if self.flicker_c is not None else {}),
+            # Karta W2-C: widmo harmonicznych / statyzmy GFM — emitowane WYLACZNIE gdy
+            # zadeklarowane (zaden opublikowany typ ich dzis nie ma), zeby istniejace
+            # pozycje katalogu zostaly bajtowo identyczne (materializacja +
+            # `materialization_hash`/odciski V12.6 nietkniete tam, gdzie danej nie ma).
+            **(
+                {
+                    "harmonic_spectrum_percent": {
+                        str(k): v for k, v in self.harmonic_spectrum_percent.items()
+                    }
+                }
+                if self.harmonic_spectrum_percent is not None
+                else {}
+            ),
+            **(
+                {"droop_p_f_percent": self.droop_p_f_percent}
+                if self.droop_p_f_percent is not None
+                else {}
+            ),
+            **(
+                {"droop_q_u_percent": self.droop_q_u_percent}
+                if self.droop_q_u_percent is not None
+                else {}
+            ),
             "ptpiree_status": self.ptpiree_status,
             "ptpiree_certificate_ref": self.ptpiree_certificate_ref,
             "ptpiree_document_number": self.ptpiree_document_number,
@@ -1311,9 +1536,9 @@ class ConverterType:
             id=str(data.get("id", str(uuid4()))),
             name=str(data.get("name", "")),
             kind=resolved_kind,
-            un_kv=float(data.get("un_kv", 0.0)),
-            sn_mva=float(data.get("sn_mva", 0.0)),
-            pmax_mw=float(data.get("pmax_mw", 0.0)),
+            un_kv=wymagany_float(data, "un_kv", context="ConverterType"),
+            sn_mva=wymagany_float(data, "sn_mva", context="ConverterType"),
+            pmax_mw=wymagany_float(data, "pmax_mw", context="ConverterType"),
             qmin_mvar=_opcjonalny_float(data, "qmin_mvar"),
             qmax_mvar=_opcjonalny_float(data, "qmax_mvar"),
             cosphi_min=_opcjonalny_float(data, "cosphi_min"),
@@ -1334,6 +1559,11 @@ class ConverterType:
             ),
             pq_curve=_pq_curve_from_raw(data.get("pq_curve")),
             flicker_c=(float(data["flicker_c"]) if data.get("flicker_c") is not None else None),
+            harmonic_spectrum_percent=_harmonic_spectrum_from_raw(
+                data.get("harmonic_spectrum_percent")
+            ),
+            droop_p_f_percent=_opcjonalny_float(data, "droop_p_f_percent"),
+            droop_q_u_percent=_opcjonalny_float(data, "droop_q_u_percent"),
             ptpiree_status=data.get("ptpiree_status"),
             ptpiree_certificate_ref=data.get("ptpiree_certificate_ref"),
             ptpiree_document_number=data.get("ptpiree_document_number"),
@@ -1348,6 +1578,97 @@ class ConverterType:
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog przeksztaltnikow MV-DESIGN-PRO / profile typowe OZE i BESS",
+                default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
+                default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
+            ),
+        )
+
+
+BESSChemistry = Literal["LFP", "NMC", "LTO"]
+
+
+@dataclass(frozen=True)
+class BESSBatteryType:
+    """Immutable BESS battery PACK type definition (karta FAB-J).
+
+    Sprzęt ODDZIELNY od przekształtnika/PCS (`ConverterType`/`ZRODLO_NN_BESS`):
+    magazyn BESS to zawsze DWIE pozycje zakupowe — przekształtnik (moc, Q,
+    cosφ — niesie `ConverterType`) i pakiet baterii (energia, napięcie DC,
+    C-rate, chemia — niesie ta klasa). Backend NIE MIAŁ tego katalogu wcale;
+    front trzymał dwie pozycje w statycznej liście frontendowej
+    (`station-der/catalogs.ts::BESS_BATTERY_CATALOG`) — jedyne źródło jest
+    teraz tutaj.
+
+    Attributes:
+        id: Unique identifier (bez marki producenta — profil referencyjny).
+        name: Type name.
+        chemistry: Chemia ogniwa (LFP / NMC / LTO).
+        capacity_kwh: Pojemność znamionowa pakietu [kWh].
+        nominal_voltage_dc_v: Napięcie znamionowe szyny DC [V].
+        c_rate: Szybkość ładowania/rozładowania jako wielokrotność pojemności
+            [1/h] (0.5 = pełne naładowanie/rozładowanie w 2 h).
+    """
+
+    id: str
+    name: str
+    chemistry: BESSChemistry
+    capacity_kwh: float
+    nominal_voltage_dc_v: float
+    c_rate: float
+    verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
+    source_reference: str = "Katalog przeksztaltnikow MV-DESIGN-PRO / profil przemyslowy V1"
+    catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
+    contract_version: str = CATALOG_CONTRACT_VERSION
+    verification_note: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.capacity_kwh <= 0:
+            raise ValueError(f"{self.id}: capacity_kwh musi być > 0 (jest {self.capacity_kwh}).")
+        if self.nominal_voltage_dc_v <= 0:
+            raise ValueError(
+                f"{self.id}: nominal_voltage_dc_v musi być > 0 (jest {self.nominal_voltage_dc_v})."
+            )
+        if self.c_rate <= 0:
+            raise ValueError(f"{self.id}: c_rate musi być > 0 (jest {self.c_rate}).")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "chemistry": self.chemistry,
+            "capacity_kwh": self.capacity_kwh,
+            "nominal_voltage_dc_v": self.nominal_voltage_dc_v,
+            "c_rate": self.c_rate,
+            **_catalog_metadata_to_dict(
+                verification_status=self.verification_status,
+                source_reference=self.source_reference,
+                catalog_status=self.catalog_status,
+                contract_version=self.contract_version,
+                verification_note=self.verification_note,
+            ),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "BESSBatteryType":
+        chemistry = str(data.get("chemistry", "LFP")).upper()
+        if chemistry not in ("LFP", "NMC", "LTO"):
+            raise ValueError(
+                f"Nierozpoznana chemia baterii BESS: {chemistry!r}. Dozwolone: LFP, NMC, LTO."
+            )
+        return cls(
+            id=str(data.get("id", str(uuid4()))),
+            name=str(data.get("name", "")),
+            chemistry=chemistry,  # type: ignore[arg-type]
+            capacity_kwh=wymagany_float(data, "capacity_kwh", context="BESSBatteryType"),
+            nominal_voltage_dc_v=wymagany_float(
+                data, "nominal_voltage_dc_v", context="BESSBatteryType"
+            ),
+            c_rate=wymagany_float(data, "c_rate", context="BESSBatteryType"),
+            **_catalog_metadata_kwargs(
+                data,
+                default_source_reference=(
+                    "Katalog przeksztaltnikow MV-DESIGN-PRO / profil przemyslowy V1"
+                ),
                 default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
                 default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
             ),
@@ -1462,9 +1783,9 @@ class InverterType:
         return cls(
             id=str(data.get("id", str(uuid4()))),
             name=str(data.get("name", "")),
-            un_kv=float(data.get("un_kv", 0.0)),
-            sn_mva=float(data.get("sn_mva", 0.0)),
-            pmax_mw=float(data.get("pmax_mw", 0.0)),
+            un_kv=wymagany_float(data, "un_kv", context="InverterType"),
+            sn_mva=wymagany_float(data, "sn_mva", context="InverterType"),
+            pmax_mw=wymagany_float(data, "pmax_mw", context="InverterType"),
             qmin_mvar=_opcjonalny_float(data, "qmin_mvar"),
             qmax_mvar=_opcjonalny_float(data, "qmax_mvar"),
             cosphi_min=_opcjonalny_float(data, "cosphi_min"),
@@ -1550,16 +1871,35 @@ class SurgeArresterType:
         return cls(
             id=str(data.get("id", str(uuid4()))),
             name=str(data.get("name", "")),
-            u_m_kv=float(data.get("u_m_kv", data.get("um_kv", 0.0))),
-            mcov_kv=float(data.get("mcov_kv", 0.0)),
-            u_rated_kv=float(data.get("u_rated_kv", data.get("ur_kv", 0.0))),
-            u_residual_at_10ka_kv=float(
-                data.get("u_residual_at_10ka_kv", data.get("u_residual_10ka_kv", 0.0))
+            # Aliasy nazw pol (um_kv/ur_kv/u_residual_10ka_kv) sa PRZEDMIGRACYJNE i
+            # zostaja (nie ta karta) — brak WSZYSTKICH wariantow klucza podnosi
+            # wyjatek zamiast cichego 0.0.
+            u_m_kv=wymagany_float(
+                {"u_m_kv": data.get("u_m_kv", data.get("um_kv"))},
+                "u_m_kv",
+                context="SurgeArresterType",
             ),
-            tov_10s_kv=float(data.get("tov_10s_kv", 0.0)),
-            energy_class=int(data.get("energy_class", 1)),
-            energy_absorption_kj_per_kv=float(data.get("energy_absorption_kj_per_kv", 0.0)),
-            bil_protected_kv=float(data.get("bil_protected_kv", 0.0)),
+            mcov_kv=wymagany_float(data, "mcov_kv", context="SurgeArresterType"),
+            u_rated_kv=wymagany_float(
+                {"u_rated_kv": data.get("u_rated_kv", data.get("ur_kv"))},
+                "u_rated_kv",
+                context="SurgeArresterType",
+            ),
+            u_residual_at_10ka_kv=wymagany_float(
+                {
+                    "u_residual_at_10ka_kv": data.get(
+                        "u_residual_at_10ka_kv", data.get("u_residual_10ka_kv")
+                    )
+                },
+                "u_residual_at_10ka_kv",
+                context="SurgeArresterType",
+            ),
+            tov_10s_kv=wymagany_float(data, "tov_10s_kv", context="SurgeArresterType"),
+            energy_class=wymagany_int(data, "energy_class", context="SurgeArresterType"),
+            energy_absorption_kj_per_kv=wymagany_float(
+                data, "energy_absorption_kj_per_kv", context="SurgeArresterType"
+            ),
+            bil_protected_kv=wymagany_float(data, "bil_protected_kv", context="SurgeArresterType"),
             application=str(data.get("application") or "MV_FEEDER"),
             neutral_system=data.get("neutral_system"),
             manufacturer=data.get("manufacturer"),
@@ -1679,14 +2019,20 @@ class PtpireeGeneratorCertificate:
     def from_dict(cls, data: dict[str, Any]) -> "PtpireeGeneratorCertificate":
         return cls(
             id=str(data.get("id", str(uuid4()))),
-            manufacturer=str(data.get("manufacturer", "")),
-            model=str(data.get("model", "")),
-            device_type=str(data.get("device_type", "")),
-            document_number=str(data.get("document_number", "")),
-            document_acceptance_date=str(data.get("document_acceptance_date", "")),
-            wos_version=str(data.get("wos_version", "")),
-            wipwc_version=str(data.get("wipwc_version", "")),
-            ppm_scope=str(data.get("ppm_scope", "")),
+            manufacturer=wymagany_str(data, "manufacturer", context="PtpireeGeneratorCertificate"),
+            model=wymagany_str(data, "model", context="PtpireeGeneratorCertificate"),
+            device_type=wymagany_str(data, "device_type", context="PtpireeGeneratorCertificate"),
+            document_number=wymagany_str(
+                data, "document_number", context="PtpireeGeneratorCertificate"
+            ),
+            document_acceptance_date=wymagany_str(
+                data, "document_acceptance_date", context="PtpireeGeneratorCertificate"
+            ),
+            wos_version=wymagany_str(data, "wos_version", context="PtpireeGeneratorCertificate"),
+            wipwc_version=wymagany_str(
+                data, "wipwc_version", context="PtpireeGeneratorCertificate"
+            ),
+            ppm_scope=wymagany_str(data, "ppm_scope", context="PtpireeGeneratorCertificate"),
             firmware_version=(
                 str(data.get("firmware_version"))
                 if data.get("firmware_version") is not None
@@ -2044,15 +2390,15 @@ class LVCableType:
         return cls(
             id=str(data.get("id", str(uuid4()))),
             name=str(data.get("name", "")),
-            u_n_kv=float(data.get("u_n_kv", 0.4)),
-            r_ohm_per_km=float(data.get("r_ohm_per_km", 0.0)),
-            x_ohm_per_km=float(data.get("x_ohm_per_km", 0.0)),
-            i_max_a=float(data.get("i_max_a", 0.0)),
+            u_n_kv=wymagany_float(data, "u_n_kv", context="LVCableType"),
+            r_ohm_per_km=wymagany_float(data, "r_ohm_per_km", context="LVCableType"),
+            x_ohm_per_km=wymagany_float(data, "x_ohm_per_km", context="LVCableType"),
+            i_max_a=wymagany_float(data, "i_max_a", context="LVCableType"),
             manufacturer=data.get("manufacturer"),
             conductor_material=data.get("conductor_material"),
             insulation_type=data.get("insulation_type"),
-            cross_section_mm2=float(data.get("cross_section_mm2", 0.0)),
-            number_of_cores=int(data.get("number_of_cores", 4)),
+            cross_section_mm2=wymagany_float(data, "cross_section_mm2", context="LVCableType"),
+            number_of_cores=wymagany_int(data, "number_of_cores", context="LVCableType"),
             r0_ohm_per_km=(
                 float(data["r0_ohm_per_km"]) if data.get("r0_ohm_per_km") is not None else None
             ),
@@ -2193,12 +2539,15 @@ class LoadType:
             id=str(data.get("id", str(uuid4()))),
             name=str(data.get("name", "")),
             model=str(data.get("model", "PQ")),
-            p_kw=float(data.get("p_kw", 0.0)),
+            p_kw=wymagany_float(data, "p_kw", context="LoadType"),
             q_kvar=(float(data["q_kvar"]) if data.get("q_kvar") is not None else None),
             cos_phi=(float(data["cos_phi"]) if data.get("cos_phi") is not None else None),
             cos_phi_mode=str(data.get("cos_phi_mode", "IND")),
             profile_id=data.get("profile_id"),
             manufacturer=data.get("manufacturer"),
+            # ZIP a/b/c/v0/k/f0: brak w karcie = "ZIP nieaktywny", udokumentowany
+            # reduce-to-NR (moc stala, patrz docstring klasy) — NIE fabrykacja
+            # nieznanej fizyki, zostaje domyslne (ADR-011 Z-ZIP-04).
             a_p=float(data.get("a_p", 0.0)),
             b_p=float(data.get("b_p", 0.0)),
             c_p=float(data.get("c_p", 1.0)),
@@ -2275,13 +2624,84 @@ class ShuntCapacitorType:
         return cls(
             id=str(data.get("id", str(uuid4()))),
             name=str(data.get("name", "")),
-            rated_mvar=float(data.get("rated_mvar", 0.0)),
-            rated_kv=float(data.get("rated_kv", 0.0)),
+            rated_mvar=wymagany_float(data, "rated_mvar", context="ShuntCapacitorType"),
+            rated_kv=wymagany_float(data, "rated_kv", context="ShuntCapacitorType"),
             loss_kw=(float(data["loss_kw"]) if data.get("loss_kw") is not None else None),
             manufacturer=data.get("manufacturer"),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog kompensatorow MV-DESIGN-PRO",
+                default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
+                default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
+            ),
+        )
+
+
+@dataclass(frozen=True)
+class SynchronousGeneratorType:
+    """Immutable synchronous-generator type definition for catalog (GENERATOR_SN).
+
+    Tabliczka znamionowa maszyny synchronicznej dołączonej WPROST do szyny
+    SN/WN (bez przekształtnika) — węzeł PV rozpływu mocy: moc czynna jest
+    NASTAWĄ STUDIUM (payload operacji `add_generator_sn`), a moc bierna jest
+    WYNIKIEM solvera w granicach [q_min_mvar, q_max_mvar] tabliczki. Odrębna
+    od `ConverterType`/`InverterType` (falowniki) — inna fizyka zwarciowa
+    (reaktancje synchroniczne, nie prąd ograniczony przez IGBT).
+
+    Attributes:
+        id: Unique identifier.
+        name: Type name.
+        rated_mva: Rated apparent power [MVA].
+        rated_kv: Rated (nameplate) voltage [kV].
+        q_min_mvar: Minimum reactive power capability [Mvar] (generator convention).
+        q_max_mvar: Maximum reactive power capability [Mvar] (generator convention).
+        manufacturer: Manufacturer/source (optional).
+    """
+
+    id: str
+    name: str
+    rated_mva: float = 0.0
+    rated_kv: float = 0.0
+    q_min_mvar: float = 0.0
+    q_max_mvar: float = 0.0
+    manufacturer: str | None = None
+    verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
+    source_reference: str = "Katalog generatorow synchronicznych MV-DESIGN-PRO"
+    catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
+    contract_version: str = CATALOG_CONTRACT_VERSION
+    verification_note: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "rated_mva": self.rated_mva,
+            "rated_kv": self.rated_kv,
+            "q_min_mvar": self.q_min_mvar,
+            "q_max_mvar": self.q_max_mvar,
+            "manufacturer": self.manufacturer,
+            **_catalog_metadata_to_dict(
+                verification_status=self.verification_status,
+                source_reference=self.source_reference,
+                catalog_status=self.catalog_status,
+                contract_version=self.contract_version,
+                verification_note=self.verification_note,
+            ),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "SynchronousGeneratorType":
+        return cls(
+            id=str(data.get("id", str(uuid4()))),
+            name=str(data.get("name", "")),
+            rated_mva=wymagany_float(data, "rated_mva", context="SynchronousGeneratorType"),
+            rated_kv=wymagany_float(data, "rated_kv", context="SynchronousGeneratorType"),
+            q_min_mvar=wymagany_float(data, "q_min_mvar", context="SynchronousGeneratorType"),
+            q_max_mvar=wymagany_float(data, "q_max_mvar", context="SynchronousGeneratorType"),
+            manufacturer=data.get("manufacturer"),
+            **_catalog_metadata_kwargs(
+                data,
+                default_source_reference="Katalog generatorow synchronicznych MV-DESIGN-PRO",
                 default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
                 default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
             ),
@@ -2428,8 +2848,8 @@ class MVApparatusType:
             id=str(data.get("id", str(uuid4()))),
             name=str(data.get("name", "")),
             device_kind=str(data.get("device_kind", "WYLACZNIK")),
-            u_n_kv=float(data["u_n_kv"]) if data.get("u_n_kv") is not None else 0.0,
-            i_n_a=float(data["i_n_a"]) if data.get("i_n_a") is not None else 0.0,
+            u_n_kv=wymagany_float(data, "u_n_kv", context="MVApparatusType"),
+            i_n_a=wymagany_float(data, "i_n_a", context="MVApparatusType"),
             breaking_capacity_ka=(
                 float(data["breaking_capacity_ka"])
                 if data.get("breaking_capacity_ka") is not None
@@ -2599,8 +3019,8 @@ class LVApparatusType:
             id=str(data.get("id", str(uuid4()))),
             name=str(data.get("name", "")),
             device_kind=str(data.get("device_kind", "WYLACZNIK_GLOWNY")),
-            u_n_kv=float(data.get("u_n_kv", 0.4)),
-            i_n_a=float(data.get("i_n_a", 0.0)),
+            u_n_kv=wymagany_float(data, "u_n_kv", context="LVApparatusType"),
+            i_n_a=wymagany_float(data, "i_n_a", context="LVApparatusType"),
             breaking_capacity_ka=(
                 float(data["breaking_capacity_ka"])
                 if data.get("breaking_capacity_ka") is not None
@@ -2696,11 +3116,11 @@ class LVBreakerMcbType:
         return cls(
             id=str(data.get("id", str(uuid4()))),
             name=str(data.get("name", "")),
-            in_a=float(data.get("in_a", 0.0)),
-            curve_class=str(data.get("curve_class", "")),
-            icn_ka=float(data.get("icn_ka", 0.0)),
+            in_a=wymagany_float(data, "in_a", context="LVBreakerMcbType"),
+            curve_class=wymagany_str(data, "curve_class", context="LVBreakerMcbType"),
+            icn_ka=wymagany_float(data, "icn_ka", context="LVBreakerMcbType"),
             poles=(int(data["poles"]) if data.get("poles") is not None else None),
-            u_n_kv=float(data.get("u_n_kv", 0.4)),
+            u_n_kv=wymagany_float(data, "u_n_kv", context="LVBreakerMcbType"),
             manufacturer=data.get("manufacturer"),
             **_catalog_metadata_kwargs(
                 data,
@@ -2807,9 +3227,9 @@ class LVFuseLinkType:
         return cls(
             id=str(data.get("id", str(uuid4()))),
             name=str(data.get("name", "")),
-            in_a=float(data.get("in_a", 0.0)),
-            fuse_class=str(data.get("fuse_class", "")),
-            size=str(data.get("size", "")),
+            in_a=wymagany_float(data, "in_a", context="LVFuseLinkType"),
+            fuse_class=wymagany_str(data, "fuse_class", context="LVFuseLinkType"),
+            size=wymagany_str(data, "size", context="LVFuseLinkType"),
             i2t_prearc_a2s=(
                 float(data["i2t_prearc_a2s"]) if data.get("i2t_prearc_a2s") is not None else None
             ),
@@ -2818,7 +3238,7 @@ class LVFuseLinkType:
                 if data.get("breaking_capacity_ka") is not None
                 else None
             ),
-            u_n_kv=float(data.get("u_n_kv", 0.4)),
+            u_n_kv=wymagany_float(data, "u_n_kv", context="LVFuseLinkType"),
             manufacturer=data.get("manufacturer"),
             **_catalog_metadata_kwargs(
                 data,
@@ -2997,8 +3417,8 @@ class CTType:
         return cls(
             id=str(data.get("id", str(uuid4()))),
             name=str(data.get("name", "")),
-            ratio_primary_a=float(data.get("ratio_primary_a", 0.0)),
-            ratio_secondary_a=float(data.get("ratio_secondary_a", 5.0)),
+            ratio_primary_a=wymagany_float(data, "ratio_primary_a", context="CTType"),
+            ratio_secondary_a=wymagany_float(data, "ratio_secondary_a", context="CTType"),
             accuracy_class=data.get("accuracy_class"),
             burden_va=(float(data["burden_va"]) if data.get("burden_va") is not None else None),
             manufacturer=data.get("manufacturer"),
@@ -3145,8 +3565,8 @@ class VTType:
         return cls(
             id=str(data.get("id", str(uuid4()))),
             name=str(data.get("name", "")),
-            ratio_primary_v=float(data.get("ratio_primary_v", 0.0)),
-            ratio_secondary_v=float(data.get("ratio_secondary_v", 100.0)),
+            ratio_primary_v=wymagany_float(data, "ratio_primary_v", context="VTType"),
+            ratio_secondary_v=wymagany_float(data, "ratio_secondary_v", context="VTType"),
             accuracy_class=data.get("accuracy_class"),
             manufacturer=data.get("manufacturer"),
             # Kazde nowe pole MUSI byc tu wymienione: jawny mapper milczaco gubi to,
@@ -3193,6 +3613,12 @@ class SourceSystemType:
     sk3_mva: float | None = None
     ik3_ka: float | None = None
     rx_ratio: float | None = None
+    # CV-4.3 K7: dane scenariusza MIN z warunków przyłączenia (IEC 60909-0:2016 eq. 6 z
+    # c_min). None = OSD nie podał — zero fabrykacji; bieg MIN liczy wtedy z danych MAX
+    # z jawnym założeniem ``source.sk_min_missing``.
+    sk3_min_mva: float | None = None
+    ik3_min_ka: float | None = None
+    rx_ratio_min: float | None = None
     earthing_system: str | None = None
     short_circuit_model: str = "short_circuit_power"
     operator_name: str | None = None
@@ -3215,6 +3641,9 @@ class SourceSystemType:
             "sk3_mva": self.sk3_mva,
             "ik3_ka": self.ik3_ka,
             "rx_ratio": self.rx_ratio,
+            "sk3_min_mva": self.sk3_min_mva,
+            "ik3_min_ka": self.ik3_min_ka,
+            "rx_ratio_min": self.rx_ratio_min,
             "earthing_system": self.earthing_system,
             "short_circuit_model": self.short_circuit_model,
             "operator_name": self.operator_name,
@@ -3237,10 +3666,17 @@ class SourceSystemType:
         return cls(
             id=str(data.get("id", str(uuid4()))),
             name=str(data.get("name", "")),
-            voltage_rating_kv=float(data.get("voltage_rating_kv", 0.0)),
+            voltage_rating_kv=wymagany_float(data, "voltage_rating_kv", context="SourceSystemType"),
             sk3_mva=(float(data["sk3_mva"]) if data.get("sk3_mva") is not None else None),
             ik3_ka=(float(data["ik3_ka"]) if data.get("ik3_ka") is not None else None),
             rx_ratio=(float(data["rx_ratio"]) if data.get("rx_ratio") is not None else None),
+            sk3_min_mva=(
+                float(data["sk3_min_mva"]) if data.get("sk3_min_mva") is not None else None
+            ),
+            ik3_min_ka=(float(data["ik3_min_ka"]) if data.get("ik3_min_ka") is not None else None),
+            rx_ratio_min=(
+                float(data["rx_ratio_min"]) if data.get("rx_ratio_min") is not None else None
+            ),
             earthing_system=data.get("earthing_system"),
             short_circuit_model=str(data.get("short_circuit_model", "short_circuit_power")),
             operator_name=data.get("operator_name"),
@@ -3291,6 +3727,10 @@ class PVInverterType:
     grid_code: str | None = None
     manufacturer: str | None = None
     dynamic_profile_id: str | None = None
+    # Udział zwarciowy prądu z karty producenta (Ik = k_sc * In, IEC 60909-0).
+    # None => enm/mapping.py przyjmuje 1,1 jako ZAREJESTROWANE ZAŁOŻENIE (karta
+    # FAB-H) — patrz ConverterType.k_sc dla pełnego kontraktu tego pola.
+    k_sc: float | None = None
     ptpiree_status: str | None = None
     ptpiree_certificate_ref: str | None = None
     ptpiree_document_number: str | None = None
@@ -3326,6 +3766,7 @@ class PVInverterType:
             "grid_code": self.grid_code,
             "manufacturer": self.manufacturer,
             "dynamic_profile_id": self.dynamic_profile_id,
+            "k_sc": self.k_sc,
             "ptpiree_status": self.ptpiree_status,
             "ptpiree_certificate_ref": self.ptpiree_certificate_ref,
             "ptpiree_document_number": self.ptpiree_document_number,
@@ -3351,9 +3792,11 @@ class PVInverterType:
         return cls(
             id=str(data.get("id", str(uuid4()))),
             name=str(data.get("name", "")),
-            s_n_kva=float(data.get("s_n_kva", 0.0)),
-            p_max_kw=float(data.get("p_max_kw", 0.0)),
-            un_kv=float(data.get("un_kv", data.get("u_n_kv", 0.4))),
+            s_n_kva=wymagany_float(data, "s_n_kva", context="PVInverterType"),
+            p_max_kw=wymagany_float(data, "p_max_kw", context="PVInverterType"),
+            un_kv=wymagany_float(
+                {"un_kv": data.get("un_kv", data.get("u_n_kv"))}, "un_kv", context="PVInverterType"
+            ),
             cos_phi_min=(
                 float(data["cos_phi_min"]) if data.get("cos_phi_min") is not None else None
             ),
@@ -3364,6 +3807,7 @@ class PVInverterType:
             grid_code=data.get("grid_code"),
             manufacturer=data.get("manufacturer"),
             dynamic_profile_id=data.get("dynamic_profile_id"),
+            k_sc=(float(data["k_sc"]) if data.get("k_sc") is not None else None),
             ptpiree_status=data.get("ptpiree_status"),
             ptpiree_certificate_ref=data.get("ptpiree_certificate_ref"),
             ptpiree_document_number=data.get("ptpiree_document_number"),
@@ -3413,6 +3857,10 @@ class BESSInverterType:
     s_n_kva: float | None = None
     manufacturer: str | None = None
     dynamic_profile_id: str | None = None
+    # Udział zwarciowy prądu z karty producenta (Ik = k_sc * In, IEC 60909-0).
+    # None => enm/mapping.py przyjmuje 1,1 jako ZAREJESTROWANE ZAŁOŻENIE (karta
+    # FAB-H) — patrz ConverterType.k_sc dla pełnego kontraktu tego pola.
+    k_sc: float | None = None
     ptpiree_status: str | None = None
     ptpiree_certificate_ref: str | None = None
     ptpiree_document_number: str | None = None
@@ -3446,6 +3894,7 @@ class BESSInverterType:
             "s_n_kva": self.s_n_kva,
             "manufacturer": self.manufacturer,
             "dynamic_profile_id": self.dynamic_profile_id,
+            "k_sc": self.k_sc,
             "ptpiree_status": self.ptpiree_status,
             "ptpiree_certificate_ref": self.ptpiree_certificate_ref,
             "ptpiree_document_number": self.ptpiree_document_number,
@@ -3471,13 +3920,18 @@ class BESSInverterType:
         return cls(
             id=str(data.get("id", str(uuid4()))),
             name=str(data.get("name", "")),
-            p_charge_kw=float(data.get("p_charge_kw", 0.0)),
-            p_discharge_kw=float(data.get("p_discharge_kw", 0.0)),
-            e_kwh=float(data.get("e_kwh", 0.0)),
-            un_kv=float(data.get("un_kv", data.get("u_n_kv", 0.4))),
+            p_charge_kw=wymagany_float(data, "p_charge_kw", context="BESSInverterType"),
+            p_discharge_kw=wymagany_float(data, "p_discharge_kw", context="BESSInverterType"),
+            e_kwh=wymagany_float(data, "e_kwh", context="BESSInverterType"),
+            un_kv=wymagany_float(
+                {"un_kv": data.get("un_kv", data.get("u_n_kv"))},
+                "un_kv",
+                context="BESSInverterType",
+            ),
             s_n_kva=(float(data["s_n_kva"]) if data.get("s_n_kva") is not None else None),
             manufacturer=data.get("manufacturer"),
             dynamic_profile_id=data.get("dynamic_profile_id"),
+            k_sc=(float(data["k_sc"]) if data.get("k_sc") is not None else None),
             ptpiree_status=data.get("ptpiree_status"),
             ptpiree_certificate_ref=data.get("ptpiree_certificate_ref"),
             ptpiree_document_number=data.get("ptpiree_document_number"),
@@ -3544,6 +3998,10 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
         ui_fields=(
             ("r_ohm_per_km", "R [Ω/km] @20°C", "Ω/km"),
             ("x_ohm_per_km", "X [Ω/km]", "Ω/km"),
+            # Karta W3-F (§0.6, 2026-09-09): kabel pokazuje datum pojemnościowe
+            # C [nF/km] — B [µS/km] usunięte jako własność katalogowa (typ nie
+            # zna częstotliwości studium, patrz `CableType.susceptancja_us_per_km`).
+            ("c_nf_per_km", "C [nF/km]", "nF/km"),
             ("rated_current_a", "Imax [A]", "A"),
             ("voltage_rating_kv", "U [kV]", "kV"),
             ("cross_section_mm2", "Przekrój", "mm²"),
@@ -3821,19 +4279,50 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             ("loss_kw", "Straty [kW]", "kW"),
         ),
     ),
+    CatalogNamespace.GENERATOR_SN.value: MaterializationContract(
+        namespace=CatalogNamespace.GENERATOR_SN.value,
+        solver_fields=(
+            "rated_mva",
+            "rated_kv",
+            "q_min_mvar",
+            "q_max_mvar",
+        ),
+        ui_fields=(
+            ("rated_mva", "Sn [MVA]", "MVA"),
+            ("rated_kv", "Un [kV]", "kV"),
+            ("q_min_mvar", "Qmin [Mvar]", "Mvar"),
+            ("q_max_mvar", "Qmax [Mvar]", "Mvar"),
+        ),
+    ),
     CatalogNamespace.ZRODLO_SN.value: MaterializationContract(
         namespace=CatalogNamespace.ZRODLO_SN.value,
-        solver_fields=("voltage_rating_kv", "sk3_mva", "ik3_ka", "rx_ratio"),
+        # CV-4.3 K7: dane scenariusza MIN materializowane TĄ SAMĄ drogą co MAX.
+        solver_fields=(
+            "voltage_rating_kv",
+            "sk3_mva",
+            "ik3_ka",
+            "rx_ratio",
+            "sk3_min_mva",
+            "ik3_min_ka",
+            "rx_ratio_min",
+        ),
         ui_fields=(
             ("voltage_rating_kv", "Un [kV]", "kV"),
             ("sk3_mva", "Sk3 [MVA]", "MVA"),
             ("ik3_ka", "Ik3 [kA]", "kA"),
             ("rx_ratio", "R/X", ""),
+            ("sk3_min_mva", "Sk3 min [MVA]", "MVA"),
+            ("ik3_min_ka", "Ik3 min [kA]", "kA"),
+            ("rx_ratio_min", "R/X min", ""),
         ),
+        pola_opcjonalne=("sk3_min_mva", "ik3_min_ka", "rx_ratio_min"),
     ),
     CatalogNamespace.ZRODLO_NN_PV.value: MaterializationContract(
         namespace=CatalogNamespace.ZRODLO_NN_PV.value,
-        solver_fields=("un_kv", "s_n_kva", "p_max_kw", "control_mode"),
+        # Karta FAB-H: k_sc dopisane obok pozostalych pol karty falownika PV —
+        # ten sam kontrakt co CONVERTER (ConverterType.k_sc), None = zalozenie
+        # 1,1 w enm/mapping.py, nigdy cichy numer bez sladu.
+        solver_fields=("un_kv", "s_n_kva", "p_max_kw", "control_mode", "k_sc"),
         ui_fields=(
             ("un_kv", "Un [kV]", "kV"),
             ("s_n_kva", "Sn [kVA]", "kVA"),
@@ -3841,16 +4330,34 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             ("control_mode", "Tryb sterowania", ""),
             ("cos_phi_min", "cos φ min", ""),
             ("cos_phi_max", "cos φ max", ""),
+            ("k_sc", "k_sc (udział zwarciowy)", ""),
         ),
     ),
     CatalogNamespace.ZRODLO_NN_BESS.value: MaterializationContract(
         namespace=CatalogNamespace.ZRODLO_NN_BESS.value,
-        solver_fields=("un_kv", "p_charge_kw", "p_discharge_kw", "e_kwh", "s_n_kva"),
+        # Karta FAB-H: k_sc jak w ZRODLO_NN_PV powyzej — sam kontrakt, ten sam powod.
+        solver_fields=("un_kv", "p_charge_kw", "p_discharge_kw", "e_kwh", "s_n_kva", "k_sc"),
         ui_fields=(
             ("un_kv", "Un [kV]", "kV"),
             ("p_charge_kw", "Pład [kW]", "kW"),
             ("p_discharge_kw", "Prozł [kW]", "kW"),
             ("e_kwh", "E [kWh]", "kWh"),
+            ("k_sc", "k_sc (udział zwarciowy)", ""),
+        ),
+    ),
+    CatalogNamespace.BATERIA_BESS.value: MaterializationContract(
+        namespace=CatalogNamespace.BATERIA_BESS.value,
+        # Karta FAB-J: pakiet baterii — sprzęt oddzielny od PCS (ZRODLO_NN_BESS
+        # powyżej). Zero konsumentów solverowych dziś (żaden solver w tym
+        # repo nie modeluje elektrochemii pakietu) — kontrakt deklaruje, co
+        # BYŁOBY materializowane, gdyby element domenowy referencjonował tę
+        # pozycję (dziś: wyłącznie prezentacja/dobór w warsztacie DER).
+        solver_fields=("capacity_kwh", "nominal_voltage_dc_v", "c_rate", "chemistry"),
+        ui_fields=(
+            ("capacity_kwh", "Pojemność [kWh]", "kWh"),
+            ("nominal_voltage_dc_v", "Napięcie DC [V]", "V"),
+            ("c_rate", "C-rate", "1/h"),
+            ("chemistry", "Chemia", ""),
         ),
     ),
     CatalogNamespace.ZABEZPIECZENIE.value: MaterializationContract(
@@ -3920,6 +4427,7 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             "lfsm_allow_increase",
             "f0_hz",
             # Inverter-card ("karta falownika") schema fields.
+            "k_sc",
             "sc_model",
             "sc_pq_split",
             "sc_transient_k",
@@ -3934,6 +4442,13 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             "pn_ac_mw",
             "p_connection_mw",
             "p_achievable_mw",
+            # Karta W2-C: widmo harmonicznych / statyzmy GFM — brak w katalogu dla
+            # WSZYSTKICH 168 pozycji dzisiaj (`pola_opcjonalne` niżej), więc dodanie
+            # tych kluczy do materializacji NIE zmienia odcisku żadnego istniejącego
+            # elementu (ten sam wzorzec, co pola SSCI dodane wcześniej do tej listy).
+            "harmonic_spectrum_percent",
+            "droop_p_f_percent",
+            "droop_q_u_percent",
         ),
         ui_fields=(
             ("un_kv", "Un [kV]", "kV"),
@@ -3942,7 +4457,9 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             ("qmin_mvar", "Qmin [Mvar]", "Mvar"),
             ("qmax_mvar", "Qmax [Mvar]", "Mvar"),
             ("kind", "Technologia", ""),
+            ("k_sc", "k_sc (udział zwarciowy)", ""),
         ),
+        pola_opcjonalne=("harmonic_spectrum_percent", "droop_p_f_percent", "droop_q_u_percent"),
     ),
     CatalogNamespace.INVERTER.value: MaterializationContract(
         namespace=CatalogNamespace.INVERTER.value,

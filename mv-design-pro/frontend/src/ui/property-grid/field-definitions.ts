@@ -66,7 +66,10 @@ export function getBusFieldDefinitions(): PropertySection[] {
       fields: [
         { key: 'id', label: 'ID', value: '', type: 'string', editable: false, source: 'instance' },
         { key: 'name', label: 'Nazwa', value: '', type: 'string', editable: true, source: 'instance' },
-        { key: 'uuid', label: 'UUID', value: '', type: 'string', editable: false, source: 'instance' },
+        // Odbiór K7c-FE (klasa fantomów kluczy vs model ENM, ta sama co bus_ref/sn_voltage_kv):
+        // `ENMElement` ma `id` (UUID, wiersz wyżej) i `ref_id` (identyfikator kanoniczny) —
+        // klucz `uuid` nie istnieje w żadnym elemencie, pole zawsze pokazywało puste „—".
+        { key: 'ref_id', label: 'Identyfikator kanoniczny', value: '', type: 'string', editable: false, source: 'instance' },
         { key: 'element_type', label: 'Typ obiektu', value: 'Bus', type: 'string', editable: false, source: 'instance' },
       ],
     },
@@ -83,17 +86,14 @@ export function getBusFieldDefinitions(): PropertySection[] {
       label: SECTION_LABELS.electrical_params,
       fields: [
         { key: 'voltage_kv', label: 'Napięcie znamionowe', value: 15.0, type: 'number', unit: 'kV', editable: true, source: 'instance' },
-        { key: 'bus_type', label: 'Typ szyny', value: 'ZBIORCZA', type: 'enum', editable: true, enumOptions: ['ZBIORCZA', 'SEKCYJNA', 'ODCZEPOWA'], source: 'instance' },
-        { key: 'rated_current_a', label: 'Prąd znamionowy', value: 1000, type: 'number', unit: 'A', editable: true, source: 'instance' },
-      ],
-    },
-    {
-      id: 'nameplate',
-      label: SECTION_LABELS.nameplate,
-      fields: [
-        { key: 'manufacturer', label: 'Producent', value: '', type: 'string', editable: true, source: 'instance' },
-        { key: 'switchgear_type', label: 'Typ rozdzielnicy', value: '', type: 'string', editable: true, source: 'instance' },
-        { key: 'installation_year', label: 'Rok instalacji', value: null, type: 'number', editable: true, source: 'instance' },
+        // Karta K7c-FE (grep property-grid vs modelem ENM Bus, ta sama klasa co
+        // naprawione Source.voltage_kv→sn_voltage_kv): `Bus` ENM (`types/enm.ts`,
+        // `backend/src/enm/models.py::Bus`) NIE MA pól `bus_type`/`rated_current_a` —
+        // pokazywały zaszyte wartości domyślne ('ZBIORCZA'/1000) i zapisywały klucze,
+        // których nic w modelu nie czyta (fantom; `update_element_parameters` dla
+        // kolekcji `buses` nie ma allowlisty, więc zapis nie sygnalizuje błędu —
+        // po prostu ląduje w nieczytanym polu surowego rekordu). Usunięte, nie
+        // przemianowane: żaden realny odpowiednik w modelu Bus nie istnieje.
       ],
     },
     {
@@ -131,7 +131,10 @@ export function getLineBranchFieldDefinitions(): PropertySection[] {
       fields: [
         { key: 'id', label: 'ID', value: '', type: 'string', editable: false, source: 'instance' },
         { key: 'name', label: 'Nazwa', value: '', type: 'string', editable: true, source: 'instance' },
-        { key: 'uuid', label: 'UUID', value: '', type: 'string', editable: false, source: 'instance' },
+        // Odbiór K7c-FE (klasa fantomów kluczy vs model ENM, ta sama co bus_ref/sn_voltage_kv):
+        // `ENMElement` ma `id` (UUID, wiersz wyżej) i `ref_id` (identyfikator kanoniczny) —
+        // klucz `uuid` nie istnieje w żadnym elemencie, pole zawsze pokazywało puste „—".
+        { key: 'ref_id', label: 'Identyfikator kanoniczny', value: '', type: 'string', editable: false, source: 'instance' },
         { key: 'element_type', label: 'Typ obiektu', value: 'LineBranch', type: 'string', editable: false, source: 'instance' },
       ],
     },
@@ -147,8 +150,11 @@ export function getLineBranchFieldDefinitions(): PropertySection[] {
       id: 'topology',
       label: SECTION_LABELS.topology,
       fields: [
-        { key: 'from_bus_id', label: 'Szyna początkowa', value: '', type: 'ref', refType: 'Bus', editable: true, source: 'instance' },
-        { key: 'to_bus_id', label: 'Szyna końcowa', value: '', type: 'ref', refType: 'Bus', editable: true, source: 'instance' },
+        // Odbiór K7c-FE: klucze zgodne z modelem ENM `BranchBase.from_bus_ref`/`to_bus_ref`
+        // (były `from_bus_id`/`to_bus_id` — ta sama klasa fantomu co `Source.bus_id`→`bus_ref`:
+        // pola zawsze puste, edycja zapisywała klucz, którego nic nie czyta).
+        { key: 'from_bus_ref', label: 'Szyna początkowa', value: '', type: 'ref', refType: 'Bus', editable: true, source: 'instance' },
+        { key: 'to_bus_ref', label: 'Szyna końcowa', value: '', type: 'ref', refType: 'Bus', editable: true, source: 'instance' },
       ],
     },
     {
@@ -220,7 +226,10 @@ export function getTransformerBranchFieldDefinitions(): PropertySection[] {
       fields: [
         { key: 'id', label: 'ID', value: '', type: 'string', editable: false, source: 'instance' },
         { key: 'name', label: 'Nazwa', value: '', type: 'string', editable: true, source: 'instance' },
-        { key: 'uuid', label: 'UUID', value: '', type: 'string', editable: false, source: 'instance' },
+        // Odbiór K7c-FE (klasa fantomów kluczy vs model ENM, ta sama co bus_ref/sn_voltage_kv):
+        // `ENMElement` ma `id` (UUID, wiersz wyżej) i `ref_id` (identyfikator kanoniczny) —
+        // klucz `uuid` nie istnieje w żadnym elemencie, pole zawsze pokazywało puste „—".
+        { key: 'ref_id', label: 'Identyfikator kanoniczny', value: '', type: 'string', editable: false, source: 'instance' },
         { key: 'element_type', label: 'Typ obiektu', value: 'TransformerBranch', type: 'string', editable: false, source: 'instance' },
       ],
     },
@@ -236,8 +245,10 @@ export function getTransformerBranchFieldDefinitions(): PropertySection[] {
       id: 'topology',
       label: SECTION_LABELS.topology,
       fields: [
-        { key: 'hv_bus_id', label: 'Szyna GN', value: '', type: 'ref', refType: 'Bus', editable: true, source: 'instance' },
-        { key: 'lv_bus_id', label: 'Szyna DN', value: '', type: 'ref', refType: 'Bus', editable: true, source: 'instance' },
+        // Odbiór K7c-FE: klucze zgodne z modelem ENM `Transformer.hv_bus_ref`/`lv_bus_ref`
+        // (były `hv_bus_id`/`lv_bus_id` — ta sama klasa fantomu co `Source.bus_id`→`bus_ref`).
+        { key: 'hv_bus_ref', label: 'Szyna GN', value: '', type: 'ref', refType: 'Bus', editable: true, source: 'instance' },
+        { key: 'lv_bus_ref', label: 'Szyna DN', value: '', type: 'ref', refType: 'Bus', editable: true, source: 'instance' },
       ],
     },
     {
@@ -311,7 +322,10 @@ export function getSwitchFieldDefinitions(): PropertySection[] {
       fields: [
         { key: 'id', label: 'ID', value: '', type: 'string', editable: false, source: 'instance' },
         { key: 'name', label: 'Nazwa', value: '', type: 'string', editable: true, source: 'instance' },
-        { key: 'uuid', label: 'UUID', value: '', type: 'string', editable: false, source: 'instance' },
+        // Odbiór K7c-FE (klasa fantomów kluczy vs model ENM, ta sama co bus_ref/sn_voltage_kv):
+        // `ENMElement` ma `id` (UUID, wiersz wyżej) i `ref_id` (identyfikator kanoniczny) —
+        // klucz `uuid` nie istnieje w żadnym elemencie, pole zawsze pokazywało puste „—".
+        { key: 'ref_id', label: 'Identyfikator kanoniczny', value: '', type: 'string', editable: false, source: 'instance' },
         { key: 'element_type', label: 'Typ obiektu', value: 'Switch', type: 'string', editable: false, source: 'instance' },
         { key: 'switch_type', label: 'Podtyp', value: 'BREAKER', type: 'enum', editable: false, enumOptions: ['BREAKER', 'DISCONNECTOR', 'LOAD_SWITCH', 'FUSE'], source: 'instance' },
       ],
@@ -401,7 +415,10 @@ export function getSourceFieldDefinitions(): PropertySection[] {
       fields: [
         { key: 'id', label: 'ID', value: '', type: 'string', editable: false, source: 'instance' },
         { key: 'name', label: 'Nazwa', value: '', type: 'string', editable: true, source: 'instance' },
-        { key: 'uuid', label: 'UUID', value: '', type: 'string', editable: false, source: 'instance' },
+        // Odbiór K7c-FE (klasa fantomów kluczy vs model ENM, ta sama co bus_ref/sn_voltage_kv):
+        // `ENMElement` ma `id` (UUID, wiersz wyżej) i `ref_id` (identyfikator kanoniczny) —
+        // klucz `uuid` nie istnieje w żadnym elemencie, pole zawsze pokazywało puste „—".
+        { key: 'ref_id', label: 'Identyfikator kanoniczny', value: '', type: 'string', editable: false, source: 'instance' },
         { key: 'element_type', label: 'Typ obiektu', value: 'Source', type: 'string', editable: false, source: 'instance' },
       ],
     },
@@ -417,16 +434,39 @@ export function getSourceFieldDefinitions(): PropertySection[] {
       id: 'topology',
       label: SECTION_LABELS.topology,
       fields: [
-        { key: 'bus_id', label: 'Szyna przyłączenia', value: '', type: 'ref', refType: 'Bus', editable: true, source: 'instance' },
+        // Karta K7c-FE (grep property-grid vs modelem ENM Source): klucz zgodny
+        // z polem modelu ENM `Source.bus_ref` (był `bus_id` — niedopasowany,
+        // ta sama klasa co `sk_mva`→`sk3_mva`/`voltage_kv`→`sn_voltage_kv`
+        // niżej: pole ZAWSZE pokazywało puste „—" zamiast realnej szyny
+        // przyłączenia, a edycja zapisywała klucz, którego nic nie czyta —
+        // zmiana przyłączenia przez property-grid była martwa).
+        { key: 'bus_ref', label: 'Szyna przyłączenia', value: '', type: 'ref', refType: 'Bus', editable: true, source: 'instance' },
       ],
     },
     {
       id: 'short_circuit',
       label: SECTION_LABELS.short_circuit,
       fields: [
-        { key: 'sk_mva', label: "Moc zwarciowa Sk\"", value: 5000, type: 'number', unit: 'MVA', editable: true, source: 'instance' },
+        // Karta K7-FE: klucz zgodny z polem modelu ENM `Source.sk3_mva` (był
+        // `sk_mva` — niedopasowany do `elementData`, więc PropertyGrid ZAWSZE
+        // pokazywał zaszytą wartość przykładową 5000 zamiast rzeczywistej mocy
+        // źródła, a edycja zapisywała klucz, którego nic w modelu nie czyta;
+        // ten sam defekt co niżej w `applyCaseConfigRules`/`validation.ts` —
+        // naprawione w komplecie, KLASA NIE INSTANCJA).
+        { key: 'sk3_mva', label: "Moc zwarciowa Sk\"", value: 5000, type: 'number', unit: 'MVA', editable: true, source: 'instance' },
         { key: 'rx_ratio', label: 'Stosunek R/X', value: 0.1, type: 'number', editable: true, source: 'instance' },
-        { key: 'voltage_kv', label: 'Napięcie znamionowe Un', value: 110.0, type: 'number', unit: 'kV', editable: true, source: 'instance' },
+        // Karta K7c-FE: klucz zgodny z polem modelu ENM `Source.sn_voltage_kv`
+        // (był `voltage_kv` — `Source` NIE MA takiego pola, ma `sn_voltage_kv`;
+        // ta sama klasa fantomu co `sk_mva` powyżej — etykieta bez zmian).
+        { key: 'sn_voltage_kv', label: 'Napięcie znamionowe Un', value: 110.0, type: 'number', unit: 'kV', editable: true, source: 'instance' },
+        // CV-4.3 K7: dane scenariusza MIN (warunki przyłączenia OSD) — opcjonalne,
+        // brak wartości domyślnej (zero fabrykacji; `null` = nie podano).
+        { key: 'sk3_min_mva', label: "Moc zwarciowa Sk\"min", value: null, type: 'number', unit: 'MVA', editable: true, source: 'instance' },
+        { key: 'ik3_min_ka', label: "Prąd zwarciowy Ik\"min", value: null, type: 'number', unit: 'kA', editable: true, source: 'instance' },
+        { key: 'rx_ratio_min', label: 'Stosunek R/X (MIN)', value: null, type: 'number', editable: true, source: 'instance' },
+        // CV-4.3 K7c: napięcie zadane szyny bilansującej — opcjonalne (brak =
+        // znamionowe, zero fabrykacji), ta sama klasa mutowalności co MIN wyżej.
+        { key: 'u_set_pu', label: 'Napięcie zadane szyny bilansującej', value: null, type: 'number', unit: 'pu', editable: true, source: 'instance' },
       ],
     },
     {
@@ -466,7 +506,10 @@ export function getLoadFieldDefinitions(): PropertySection[] {
       fields: [
         { key: 'id', label: 'ID', value: '', type: 'string', editable: false, source: 'instance' },
         { key: 'name', label: 'Nazwa', value: '', type: 'string', editable: true, source: 'instance' },
-        { key: 'uuid', label: 'UUID', value: '', type: 'string', editable: false, source: 'instance' },
+        // Odbiór K7c-FE (klasa fantomów kluczy vs model ENM, ta sama co bus_ref/sn_voltage_kv):
+        // `ENMElement` ma `id` (UUID, wiersz wyżej) i `ref_id` (identyfikator kanoniczny) —
+        // klucz `uuid` nie istnieje w żadnym elemencie, pole zawsze pokazywało puste „—".
+        { key: 'ref_id', label: 'Identyfikator kanoniczny', value: '', type: 'string', editable: false, source: 'instance' },
         { key: 'element_type', label: 'Typ obiektu', value: 'Load', type: 'string', editable: false, source: 'instance' },
       ],
     },
@@ -482,7 +525,9 @@ export function getLoadFieldDefinitions(): PropertySection[] {
       id: 'topology',
       label: SECTION_LABELS.topology,
       fields: [
-        { key: 'bus_id', label: 'Szyna przyłączenia', value: '', type: 'ref', refType: 'Bus', editable: true, source: 'instance' },
+        // Odbiór K7c-FE: klucz zgodny z modelem ENM `Load.bus_ref` (był `bus_id` — ta sama
+        // klasa fantomu co `Source.bus_id`→`bus_ref`).
+        { key: 'bus_ref', label: 'Szyna przyłączenia', value: '', type: 'ref', refType: 'Bus', editable: true, source: 'instance' },
       ],
     },
     {
@@ -676,8 +721,12 @@ function applyCaseConfigRules(
       editableFields.add('cos_phi');
       break;
     case 'Source':
-      editableFields.add('sk_mva');
+      editableFields.add('sk3_mva');
       editableFields.add('rx_ratio');
+      // CV-4.3 K7: dane scenariusza MIN dzielą tę samą mutowalność co Sk3/R-X.
+      editableFields.add('sk3_min_mva');
+      editableFields.add('ik3_min_ka');
+      editableFields.add('rx_ratio_min');
       break;
   }
 

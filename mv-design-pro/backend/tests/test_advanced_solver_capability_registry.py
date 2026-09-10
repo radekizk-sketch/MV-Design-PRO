@@ -14,9 +14,7 @@ def test_advanced_solver_capability_registry_is_complete_and_real() -> None:
         "LOAD_FLOW_GS_DIAGNOSTIC",
         "LOAD_FLOW_FD_PERFORMANCE",
         "PHASE_STATE_SN",
-        "SOURCE_FRT_LVRT_HVRT",
         "DYNAMIC_STABILITY",
-        "SOURCE_COMPLIANCE",
         "POWER_QUALITY_HARMONICS",
         "SSCI_IMPEDANCE",
         "VOLTAGE_STABILITY",
@@ -33,9 +31,17 @@ def test_advanced_solver_capability_registry_is_complete_and_real() -> None:
         "UNCERTAINTY_SENSITIVITY",
     }
 
+    # Karta W3-E (2026-09-09): HOSTING_CAPACITY i OPF_LOSS_LCC duplikują kanon
+    # liczony gdzie indziej (impedancja Thevenina lokalna / β zaszyte) i nie
+    # uruchamiają już NOWYCH biegów (410) — `availability` "withdrawn" dla tych
+    # dwóch jest UCZCIWE (solver je nadal implementuje i solver_version/
+    # proof_support/reportable zostają bez zmian; "available" na tej
+    # powierzchni sugerowałoby nieprawdę: że nowy bieg jest możliwy).
+    wycofane = {"HOSTING_CAPACITY", "OPF_LOSS_LCC"}
     assert set(SOLVER_CAPABILITY_REGISTRY) == expected
     for capability in SOLVER_CAPABILITY_REGISTRY.values():
-        assert capability.availability == "available"
+        oczekiwana_dostepnosc = "withdrawn" if capability.capability in wycofane else "available"
+        assert capability.availability == oczekiwana_dostepnosc, capability.capability
         assert capability.implementation_status == "implemented"
         assert capability.proof_support is True
         assert capability.reportable is True
@@ -47,8 +53,20 @@ def test_advanced_solver_capability_contract_reports_full_support() -> None:
     contract = solver_capabilities_contract()
 
     assert contract["contract"] == "SolverCapabilityRegistryV1"
-    assert contract["all_available"] is True
+    # Karta W3-E: dwie zdolności "withdrawn" — `all_available` jest teraz
+    # UCZCIWIE False (nie fabrykujemy "wszystko dostępne", gdy dwie z 25
+    # zdolności nie przyjmują już nowego biegu). Pozostałe trzy agregaty
+    # (implemented/proof/reportable) opisują SOLVER, nie powierzchnię API, i
+    # zostają True bez zmian — żadnej zdolności nie odebrano implementacji.
+    assert contract["all_available"] is False
     assert contract["all_implemented"] is True
     assert contract["all_proof_supported"] is True
     assert contract["all_reportable"] is True
-    assert len(contract["capabilities"]) == 25
+    # W3-D (2026-09-09): 25 -> 23 (kasacja source_compliance x2); W3-E: 2 pozycje "withdrawn", nie skasowane.
+    assert len(contract["capabilities"]) == 23
+    niedostepne = sorted(
+        item["capability"]
+        for item in contract["capabilities"]
+        if item["availability"] != "available"
+    )
+    assert niedostepne == ["HOSTING_CAPACITY", "OPF_LOSS_LCC"]

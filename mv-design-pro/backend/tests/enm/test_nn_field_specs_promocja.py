@@ -22,7 +22,15 @@ from enm.migrations.nn_field_specs_promocja import (
     migruj,
     wymaga_migracji,
 )
-from enm.models import Bus, EnergyNetworkModel, ENMDefaults, ENMHeader, Load, Substation
+from enm.models import (
+    Bus,
+    EnergyNetworkModel,
+    ENMDefaults,
+    ENMHeader,
+    Load,
+    Substation,
+    SwitchBranch,
+)
 from enm.store import get_enm, reset_enm_store, set_enm
 from enm.validator import ENMValidator
 
@@ -262,7 +270,14 @@ def test_add_nn_load_po_promocji_wpina_odbior_za_aparatem() -> None:
     wynik = execute_domain_operation(
         snap,
         "add_nn_load",
-        {"feeder_ref": "nn/legacy/outgoing-1", "active_power_kw": 5.0, "load_name": "Nowy odbiór"},
+        {
+            "feeder_ref": "nn/legacy/outgoing-1",
+            "active_power_kw": 5.0,
+            "load_name": "Nowy odbiór",
+            # cos_phi jawny: `add_nn_load` wymaga rozstrzygalnej mocy biernej
+            # (FAB-D1 D5) — ten test sprawdza promocję pola, nie moc bierną.
+            "cos_phi": 0.9,
+        },
     )
     assert not wynik.get("error"), wynik.get("error")
     nowy = wynik["snapshot"]["loads"][-1]
@@ -296,6 +311,77 @@ def test_walidator_po_promocji_z_wiazaniem_nie_ma_ani_e061_ani_w061() -> None:
     kody = {i.code for i in wynik.issues}
     assert "E061" not in kody
     assert "W061" not in kody
+
+
+# ---------------------------------------------------------------------------
+# Regresja #472 / karta CI-D: DWA ŹRÓDŁA gotowości muszą się zgadzać (predykaty
+# parami, CLAUDE.md reguła KLASA NIE INSTANCJA). `/api/cases/{id}/engineering-
+# readiness` liczy WYŁĄCZNIE `ENMValidator` (testy wyżej: W061, nie E061).
+# Odpowiedź operacji domenowej `refresh_snapshot` — JEDYNE źródło
+# `useSnapshotStore.readiness` we froncie, czyli chip powłoki „Model: …" (H-6,
+# `ui2/shell/shellStatus.ts`) — ma WŁASNY, odrębny domenowy check "łącznik bez
+# catalog_ref = BLOKER" (`domain_operations._build_readiness`), który NIE znał
+# znacznika migracji `nn_promocja_bez_wiazania_katalogowej` i dokładał DRUGI,
+# sprzeczny blocker dla TEJ SAMEJ gałęzi, którą walidator już poprawnie liczył
+# jako ostrzeżenie. Efekt zmierzony w e2e: `/engineering-readiness` mówiła
+# `ready: true`, chrom mówił „Model: w budowie" (`stany-zerowe-akcje.spec.ts`
+# H-6, `gotowosc-po-biegu.spec.ts`, `restart-po-biegu.spec.ts` i inne specy
+# budujące sieć wzorcem `insert_station_on_segment_sn` + strona nN stacji).
+# ---------------------------------------------------------------------------
+
+
+def test_gotowosc_operacji_domenowej_po_promocji_bez_wiazania_nie_ma_blokera_lacznika() -> None:
+    """Odpowiedź `refresh_snapshot` (chip H-6) zgadza się z ENMValidator: W061, nie BLOKER."""
+    case_id = "case-gotowosc-domenowa-po-promocji"
+    set_enm(case_id, _stary_model())
+    promowany = get_enm(case_id)
+    snap = promowany.model_dump(mode="json")
+
+    wynik = execute_domain_operation(snap, "refresh_snapshot", {})
+    assert not wynik.get("error"), wynik.get("error")
+    readiness = wynik["readiness"]
+
+    kody_blokad = {b["code"] for b in readiness["blockers"]}
+    kody_ostrzezen = {w["code"] for w in readiness["warnings"]}
+    assert "switch.catalog_ref_missing" not in kody_blokad
+    assert "W061" in kody_ostrzezen
+
+
+def test_gotowosc_operacji_domenowej_recznego_lacznika_bez_katalogu_nadal_blokuje() -> None:
+    """Kontrola graniczna (iloczyn cech): wyjątek migracji NIE zwalnia RĘCZNIE
+
+    utworzonego łącznika (poza automigracją) bez wiązania katalogowego — inaczej
+    naprawa regresji #472 poszłaby ZA SZEROKO i ukryłaby realny brak danych
+    katalogowych, którego walidator też nie zna (bez znacznika migracji trafia
+    w E009/`catalog.binding_missing`, a domenowy check ma to wykryć niezależnie).
+    """
+    case_id = "case-gotowosc-domenowa-lacznik-reczny"
+    reczny = EnergyNetworkModel(
+        header=ENMHeader(name="reczny", defaults=ENMDefaults()),
+        buses=[
+            Bus(ref_id="bus-a", name="Szyna A", voltage_kv=0.4),
+            Bus(ref_id="bus-b", name="Szyna B", voltage_kv=0.4),
+        ],
+        branches=[
+            SwitchBranch(
+                ref_id="sw-reczny",
+                name="Łącznik ręczny",
+                type="breaker",
+                from_bus_ref="bus-a",
+                to_bus_ref="bus-b",
+                status="closed",
+                catalog_ref=None,
+            )
+        ],
+    )
+    set_enm(case_id, reczny)
+    snap = get_enm(case_id).model_dump(mode="json")
+
+    wynik = execute_domain_operation(snap, "refresh_snapshot", {})
+    assert not wynik.get("error"), wynik.get("error")
+    readiness = wynik["readiness"]
+    kody_blokad = {b["code"] for b in readiness["blockers"]}
+    assert "switch.catalog_ref_missing" in kody_blokad
 
 
 # ---------------------------------------------------------------------------

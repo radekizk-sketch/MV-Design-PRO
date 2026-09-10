@@ -46,16 +46,22 @@ const VALIDATION_RULES: Record<string, ValidatorFn[]> = {
 
   // Bus-specific
   'Bus.voltage_kv': [requiredNumber, positiveNumber, maxValue(500)],
-  'Bus.rated_current_a': [positiveNumber],
+  // Karta K7c-FE: `Bus.rated_current_a` USUNIĘTE — pole nie istnieje w modelu
+  // ENM `Bus` (`types/enm.ts`/`backend/src/enm/models.py::Bus`), reguła nigdy
+  // się nie uruchamiała dla realnych danych (patrz `field-definitions.ts`,
+  // ta sama karta usunęła fantomowe pole z sekcji `electrical_params` Bus).
 
   // LineBranch-specific
   'LineBranch.length_km': [requiredNumber, positiveNumber, maxValue(500)],
-  'LineBranch.from_bus_id': [requiredRef],
-  'LineBranch.to_bus_id': [requiredRef],
+  // Odbiór K7c-FE: klucze zgodne z modelem ENM (`from_bus_ref`/`to_bus_ref`,
+  // `hv_bus_ref`/`lv_bus_ref`, `Load.bus_ref`) — ta sama klasa co `Source.bus_ref` niżej;
+  // z kluczami `*_bus_id` reguły `requiredRef` nigdy się nie uruchamiały.
+  'LineBranch.from_bus_ref': [requiredRef],
+  'LineBranch.to_bus_ref': [requiredRef],
 
   // TransformerBranch-specific
-  'TransformerBranch.hv_bus_id': [requiredRef],
-  'TransformerBranch.lv_bus_id': [requiredRef],
+  'TransformerBranch.hv_bus_ref': [requiredRef],
+  'TransformerBranch.lv_bus_ref': [requiredRef],
   'TransformerBranch.tap_position': [integerValue, rangeValue(-20, 20)],
 
   // Switch-specific
@@ -65,13 +71,32 @@ const VALIDATION_RULES: Record<string, ValidatorFn[]> = {
   'Switch.breaking_current_ka': [positiveNumber],
 
   // Source-specific
-  'Source.bus_id': [requiredRef],
-  'Source.sk_mva': [requiredNumber, positiveNumber],
+  // Karta K7c-FE: klucz zgodny z polem modelu ENM `Source.bus_ref` (był
+  // 'Source.bus_id' — ta sama klasa fantomu co `sk_mva`/`voltage_kv` niżej;
+  // patrz `field-definitions.ts::getSourceFieldDefinitions` sekcja `topology`).
+  'Source.bus_ref': [requiredRef],
+  // Karta K7-FE: klucz zgodny z `field-definitions.ts::getSourceFieldDefinitions`
+  // (był 'Source.sk_mva', niedopasowany do klucza pola 'sk3_mva' — reguła nigdy
+  // się nie uruchamiała; ten sam defekt naprawiony w komplecie, KLASA NIE INSTANCJA).
+  'Source.sk3_mva': [requiredNumber, positiveNumber],
   'Source.rx_ratio': [positiveNumber, maxValue(1)],
-  'Source.voltage_kv': [requiredNumber, positiveNumber, maxValue(500)],
+  // Karta K7c-FE: klucz zgodny z polem modelu ENM `Source.sn_voltage_kv` (był
+  // 'Source.voltage_kv' — `Source` nie ma pola `voltage_kv`, ta sama klasa
+  // fantomu co `bus_ref` powyżej).
+  'Source.sn_voltage_kv': [requiredNumber, positiveNumber, maxValue(500)],
+  // CV-4.3 K7: dane scenariusza MIN — opcjonalne (bez `requiredNumber`), dodatnie
+  // gdy podane. Spójność min <= max jest semantyczna (backend, ENMValidator
+  // `sources.sk_min_exceeds_max`) — poza zakresem walidacji SYNTAKTYCZNEJ tego pliku.
+  'Source.sk3_min_mva': [positiveNumber],
+  'Source.ik3_min_ka': [positiveNumber],
+  'Source.rx_ratio_min': [positiveNumber],
+  // CV-4.3 K7c: napięcie zadane szyny bilansującej — opcjonalne, pasmo 0,8-1,2
+  // p.u. (ten sam przedział co backend, `zrodlo_zwarcie.py::PASMO_U_SET_PU`,
+  // i kreator, `zrodloModel.ts::PASMO_U_SET_PU`).
+  'Source.u_set_pu': [rangeValue(0.8, 1.2)],
 
   // Load-specific
-  'Load.bus_id': [requiredRef],
+  'Load.bus_ref': [requiredRef],
   'Load.p_mw': [requiredNumber], // Can be negative (generation)
   'Load.cos_phi': [rangeValue(0, 1)],
 };

@@ -15,6 +15,9 @@ from __future__ import annotations
 from typing import Any
 
 from application.trace_emitters.deterministic_ids import deterministic_trace_id
+from application.trace_emitters.wynik import BRAK_DANYCH as _BRAK_DANYCH
+from application.trace_emitters.wynik import fmt as _fmt
+from application.trace_emitters.wynik import wynik as _wynik
 from domain.trace_v2.artifact import (
     AnalysisTypeV2,
     TraceArtifactV2,
@@ -26,11 +29,6 @@ from domain.trace_v2.artifact import (
 )
 from domain.trace_v2.equation_registry_v2 import EquationRegistryV2
 from domain.trace_v2.math_spec_version import CURRENT_MATH_SPEC_VERSION
-
-
-def _fmt(x: float) -> str:
-    """Format float for substitution LaTeX."""
-    return f"{x:.6g}"
 
 
 def _complex_fmt(z: complex) -> str:
@@ -204,7 +202,7 @@ class TraceEmitterSC:
             # Extract result
             result_dict = wb_step.get("result", {})
             result_key = next(iter(result_dict), "result")
-            result_val = result_dict.get(result_key, 0.0)
+            result_val = result_dict.get(result_key)
             result_unit = "—"
             if "_a" in result_key:
                 result_unit = "A"
@@ -217,10 +215,16 @@ class TraceEmitterSC:
 
             result_tv = TraceValue(
                 name=result_key,
+                # FAB-E (E1): krok white_box_trace bez wartosci wyniku (result_dict
+                # pusty) NIE jest wynikiem 0 — to uszkodzony/niekompletny wpis sladu.
                 value=(
-                    canonical_float(result_val)
-                    if isinstance(result_val, int | float)
-                    else str(result_val)
+                    _BRAK_DANYCH
+                    if result_val is None
+                    else (
+                        canonical_float(result_val)
+                        if isinstance(result_val, int | float)
+                        else str(result_val)
+                    )
                 ),
                 unit=result_unit,
                 label_pl=eq.label_pl,
@@ -243,8 +247,7 @@ class TraceEmitterSC:
             )
 
         # I_dyn step (adapter-derived, always present)
-        r.get("ikss_a", 0.0)
-        ip_a = r.get("ip_a", 0.0)
+        ip_a = _wynik(r.get("ip_a"))
         if self._registry.contains("SC_IDYN"):
             eq_idyn = self._registry.get("SC_IDYN")
             steps.append(
@@ -259,14 +262,14 @@ class TraceEmitterSC:
                     intermediate_values={
                         "ip_a": TraceValue(
                             name="ip_a",
-                            value=canonical_float(ip_a),
+                            value=ip_a,
                             unit="A",
                             label_pl="Prąd udarowy",
                         ),
                     },
                     result=TraceValue(
                         name="idyn_a",
-                        value=canonical_float(ip_a),
+                        value=ip_a,
                         unit="A",
                         label_pl="Prąd dynamiczny",
                     ),
@@ -298,11 +301,11 @@ class TraceEmitterSC:
                     label_pl=label,
                 )
 
-        # I_dyn always present (= ip_a)
-        ip = r.get("ip_a", 0.0)
+        # I_dyn always present (= ip_a); FAB-E (E1): brak ip_a w wyniku SC to
+        # "brak danych", nie fikcyjne 0.0 A pradu dynamicznego.
         outputs["idyn_a"] = TraceValue(
             name="idyn_a",
-            value=canonical_float(ip),
+            value=_wynik(r.get("ip_a")),
             unit="A",
             label_pl="Prąd dynamiczny",
         )

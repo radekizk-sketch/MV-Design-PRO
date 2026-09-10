@@ -10,12 +10,17 @@
  * wyłącznie je pokazuje.
  */
 
-import { dzialaniePl, stanWynikuPl, type WierszMacierzy } from './macierzAnaliz';
+import { etykietaDzialaniaPl, stanWynikuPl, type WierszMacierzy } from './macierzAnaliz';
 
 export interface MacierzAnalizSekcjaProps {
   readonly wiersze: readonly WierszMacierzy[];
-  /** Wywoływane działaniem wiersza; wołający wie, gdzie prowadzi każdy krok. */
-  readonly onDzialanie?: (wiersz: WierszMacierzy) => void;
+  /**
+   * Wywoływane działaniem wiersza — WYMAGANE (karta W2 pkt 2, zero fabrykacji):
+   * przycisk bez tego callbacku był martwym klikiem, bo `onDzialanie?.()` na
+   * `undefined` nie robił nic. Wołający (`DerSurfaces.tsx`) wie, gdzie prowadzi
+   * każdy krok — most `ui/`→`ui2/` jest po jego stronie.
+   */
+  readonly onDzialanie: (wiersz: WierszMacierzy) => void;
 }
 
 function statusPl(status: WierszMacierzy['status']): string {
@@ -90,10 +95,10 @@ export function MacierzAnalizSekcja({
                 <button
                   type="button"
                   className="min-h-[44px] rounded border border-scada-border px-3 py-2 text-xs text-scada-text hover:bg-scada-surface"
-                  onClick={() => onDzialanie?.(wiersz)}
+                  onClick={() => onDzialanie(wiersz)}
                   data-testid={`macierz-dzialanie-${os}`}
                 >
-                  {dzialaniePl(wiersz.dzialanie)}
+                  {etykietaDzialaniaPl(wiersz)}
                 </button>
               )}
             </div>

@@ -40,7 +40,7 @@ const sampleProjection: SldProtectionZoneProjection = {
   ],
 };
 
-describe('SldProtectionZoneOverlay — K30-46 distance protection zones', () => {
+describe('SldProtectionZoneOverlay — distance protection zones', () => {
   it('projection=null → null', () => {
     const { container } = render(<svg><SldProtectionZoneOverlay projection={null} /></svg>);
     expect(container.querySelector('[data-testid="sld-v2-protection-zones-overlay"]')).toBeFalsy();

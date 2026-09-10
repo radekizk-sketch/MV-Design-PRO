@@ -10,10 +10,15 @@
  * wyboru (V12K-237, samokorekta wpisu).
  *
  * ZAKRES ŚWIADOMIE OGRANICZONY do wiązań, dla których backend MA katalog: zabezpieczenie,
- * przekładnik prądowy, przekładnik napięciowy. Dane prądu zwarciowego i model dynamiczny
- * NIE mają katalogu po stronie backendu, więc nie dostają tu pickera — kontrolka
- * wybierająca z listy, której backend nie zna, byłaby fabrykacją (zakaz „phantom"), a jej
- * zapis i tak zostałby odrzucony przez walidację referencji. Brak jest NAZWANY na ekranie.
+ * przekładnik prądowy, przekładnik napięciowy. Model dynamiczny MA już katalog backendu
+ * (`network_model.catalog.der_dynamic`, `GET /api/catalog/der-dynamic-profiles` — karta
+ * FAB-L) — ten ekran nie dostaje dla niego pickera TYLKO dlatego, że mechanizm pickera
+ * tego ekranu (`TypeCategory`/`TypePicker`) jest zamknięty na kategorie z generycznego
+ * katalogu (`ui/catalog/**`), a resolver DER-dynamic jest osobnym, bespoke endpointem —
+ * rozszerzenie `TypeCategory` o tę kategorię jest odrębną kartą (dług NAZWANY, nie
+ * zamaskowany). Dane prądu zwarciowego (dawne `fault_current_data_ref`) USUNIĘTE z
+ * kontraktu w tej samej karcie — nie mają katalogu i solver IEC 60909 nigdy ich nie
+ * czytał (κ i składowe symetryczne liczy solver z modelu, nie z deklaracji urządzenia).
  *
  * KAŻDA ZMIANA IDZIE DO MODELU. Wybór wysyła WYŁĄCZNIE zmienione pole (kontrakt
  * „pominięcie ≠ null" — pominięte pola zostawiają pozostałe wiązania nietknięte),
@@ -76,14 +81,6 @@ export const WIAZANIA_BEZ_KATALOGU: readonly {
   readonly zaleznosci: string;
   readonly skadDane: string;
 }[] = [
-  {
-    etykieta: 'Model zwarciowy urządzenia',
-    powod:
-      'Składowe symetryczne (R₀/X₀, Z₀·Z₁⁻¹) określają udział źródła w zwarciach '
-      + 'niesymetrycznych — bez nich prądu doziemnego nie da się policzyć (IEC 60909-3).',
-    zaleznosci: 'zwarcie doziemne (SC1F), zwarcie 2-fazowe z ziemią (SC2FG)',
-    skadDane: 'karta katalogowa falownika albo protokół badań producenta',
-  },
   {
     etykieta: 'Model dynamiczny urządzenia',
     powod:

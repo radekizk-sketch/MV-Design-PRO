@@ -1,10 +1,17 @@
-/* Stringi PL warsztatu przestrzeni „Wyniki" (scalenie U3 #1). */
+/* Stringi PL warsztatu przestrzeni „Wyniki" (scalenie U3 #1; nawigacja
+ * obszar → analiza wg karty B-02 / W3-E). */
 
 export const WYNIKI_WARSZTAT_STRINGS = {
-  ariaZakladki: 'Widoki wyników',
-  grupaAnalizy: 'Analizy sieci',
-  grupaOze: 'OZE i przyłączenia',
-  zakladkaWerdykt: 'Werdykt projektowy',
+  ariaObszary: 'Obszary wyników',
+  ariaZakladki: 'Analizy obszaru',
+  obszarOcena: 'Ocena i przegląd',
+  obszarRozplyw: 'Rozpływ mocy i napięcia',
+  obszarZwarcia: 'Zwarcia i zabezpieczenia',
+  obszarStabilnosc: 'Stabilność i przekształtniki',
+  obszarSpecjalistyczne: 'Analizy specjalistyczne',
+  obszarOze: 'OZE i przyłączenia',
+  obszarKlasyczne: 'Widoki klasyczne',
+  zakladkaOcena: 'Ocena techniczna wyników',
   zakladkaCoWymagaUwagi: 'Co wymaga uwagi',
   zakladkaRozplyw: 'Rozpływ mocy',
   zakladkaRegulacjaOltc: 'Regulacja OLTC',
@@ -34,8 +41,8 @@ export const WYNIKI_WARSZTAT_STRINGS = {
   zakladkaOdbior: 'Zgodność powykonawcza',
   zakladkaEstymacja: 'Estymacja stanu',
   zakladkaSsci: 'Stabilność SSCI',
-  zakladkaAkademickie: 'Analizy akademickie',
+  zakladkaAkademickie: 'Analizy specjalistyczne',
   porownanieBezProjektu: 'Otwórz projekt, aby porównywać przebiegi obliczeń.',
-  zakladkaPozostale: 'Pozostałe analizy',
+  zakladkaPozostale: 'Widoki klasyczne',
   dowodBezPrzebiegu: 'Analiza',
 } as const;

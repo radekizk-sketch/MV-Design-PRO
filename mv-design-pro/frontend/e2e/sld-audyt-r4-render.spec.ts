@@ -16,8 +16,9 @@
  * treści rysunku (poza brakiem błędów konsoli), tylko RAPORTUJE stan do logu.
  */
 import { test, expect, type Page } from '@playwright/test';
+import { adresHarnessu } from './adresHarnessu';
 
-const HARNESS_URL = 'http://127.0.0.1:5173/screenshot-harness.html';
+const HARNESS_URL = adresHarnessu('screenshot-harness.html');
 const POZIOMY = [0, 1, 2] as const;
 
 async function otworz(page: Page, lod: number): Promise<void> {

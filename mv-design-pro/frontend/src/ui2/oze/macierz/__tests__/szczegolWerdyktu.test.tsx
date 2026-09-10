@@ -9,7 +9,7 @@ import { derFixture, katalogFixture, wynikFixture } from './fixtures';
 const moduly = zbudujModuly([
   derFixture({ id: 'pv-1', name: 'PV Dach A' }),
   derFixture({ id: 'bess-1', name: 'Magazyn energii 1', der_kind: 'BESS', nominal_power_kw: 800 }),
-  derFixture({ id: 'fw-1', name: 'Farma wiatrowa', der_kind: 'FW', voltage_level_ref: null }),
+  derFixture({ id: 'fw-1', name: 'Farma wiatrowa', der_kind: 'FW', connection_voltage_kv: null }),
 ]);
 const wiersze = mapujMacierz(katalogFixture(), wynikFixture(), moduly);
 const slad = wynikFixture().white_box_trace;

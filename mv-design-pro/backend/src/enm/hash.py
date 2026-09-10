@@ -48,13 +48,40 @@ _ELEMENT_KEYS = (
 )
 
 
+#: Pola elementow DODANE PO ZAMROZENIU odciskow, ktore w postaci kanonicznej hasha
+#: wystepuja WYLACZNIE, gdy niosa wartosc (kontrakt „addytywnie, `exclude_none`" —
+#: dyrektywa wlasciciela 2026-07-19 pkt 11: nowe pole nie moze przestawic odciskow
+#: istniejacych modeli; ten sam wzorzec, co `connection_conditions` w naglowku).
+#: `None` = dana zadeklarowana jako NIEZNANA, wiec nie jest trescia modelu; wartosc
+#: zmienia wynik biegu (Z_Qmin), wiec zmienia odcisk. Kazdy wpis z karta i powodem;
+#: przypiete testem `tests/enm/test_hash_pola_addytywne.py` (odcisk bez danych MIN
+#: rowny odciskowi postaci sprzed karty; z danymi MIN — inny; trzy funkcje hasha zgodne).
+_POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
+    # CV-4.3 K7: dane zwarciowe scenariusza MIN zrodla sieciowego (IEC 60909-0 eq. 6 z c_min).
+    # + napięcie zadane szyny bilansującej (bliźniaki literatury ze slackiem ≠ 1,0 p.u.).
+    "sources": ("sk3_min_mva", "ik3_min_ka", "rx_ratio_min", "u_set_pu"),
+}
+
+
 def _strip_uuids(payload: dict[str, Any]) -> dict[str, Any]:
-    """Usun losowe pola 'id' (UUID) z list elementow — ref_id jest tozsamoscia."""
+    """Postac kanoniczna elementow pod hash: bez losowych `id` (UUID — `ref_id` jest
+    tozsamoscia) i bez pol addytywnych o wartosci `None`
+    (`_POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE`). JEDYNE miejsce tej reguly — wolaja ja
+    `compute_enm_hash`, `_input_payload` i `hash_migawki_enm`, wiec trzy odciski
+    nie moga sie rozjechac."""
+    # W1: sekcja `katalog_projektu` jest addytywna — brak sekcji i `None` to ten sam
+    # model (odciski sprzed pola bajtowo niezmienione); obecna sekcja wchodzi do hasha.
+    if payload.get("katalog_projektu") is None:
+        payload.pop("katalog_projektu", None)
     for key in _ELEMENT_KEYS:
         if key in payload and isinstance(payload[key], list):
+            pola_gdy_none = _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE.get(key, ())
             for item in payload[key]:
                 if isinstance(item, dict):
                     item.pop("id", None)
+                    for pole in pola_gdy_none:
+                        if pole in item and item[pole] is None:
+                            del item[pole]
     return payload
 
 
@@ -263,6 +290,53 @@ def compute_variant_hash(variant_payload: dict[str, Any]) -> str:
     return _canonical_sha256(variant_payload)
 
 
+#: Pola naglowka wykluczane z hasha modelu — JEDNA lista dla `compute_enm_hash`
+#: (hash z obiektu) i `hash_migawki_enm` (hash ze slownika `model_dump`): oba
+#: odciski musza byc rowne co do bitu dla tej samej tresci (przypiete testem
+#: `tests/enm/test_scenariusze.py::test_hash_migawki_rowny_hashowi_modelu`).
+_POLA_NAGLOWKA_POZA_HASHEM = (
+    "updated_at",
+    "created_at",
+    "hash_sha256",
+    # Warunki przyłączenia OSD (dane WEJŚCIOWE dokumentu, czytane w warstwie
+    # interpretacji — nie przez solver). Wykluczone jak pozostałe pola zmienne
+    # nagłówka: deklaracja pola w ENMHeader (naprawa defektu utrwalania, karta
+    # POMIAR-RODZAJ) nie może przestawić odcisków istniejących modeli.
+    "connection_conditions",
+)
+
+
+def hash_migawki_enm(snapshot: dict[str, Any]) -> str:
+    """Hash modelu policzony ze SLOWNIKA migawki (`EnergyNetworkModel.model_dump(mode="json")`).
+
+    Ta sama regula co `compute_enm_hash` (te same wykluczenia naglowka, te same
+    usuniete UUID elementow, ten sam kanoniczny JSON), ale bez odtwarzania obiektu
+    modelu — dla migawek efektywnych scenariuszy (CV-3.1, `enm/scenariusze.py`),
+    ktore powstaja jako slowniki z narzuconymi nadpisaniami i sa hashowane
+    setki razy (sondy zdolnosci przylaczeniowej). Rownosc z `compute_enm_hash`
+    dla migawki bez nadpisan jest przypieta testem; migawka przekazana przez
+    wolajacego NIE jest modyfikowana (praca na glebokiej kopii).
+    """
+    data = _kopia_pod_hash(snapshot)
+    _strip_uuids(data)
+    return _canonical_sha256(data)
+
+
+def _kopia_pod_hash(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Kopia migawki dokladnie tak gleboka, jak siegaja mutacje hashowania:
+    naglowek bez pol zmiennych, elementy list skopiowane plytko (z nich znika
+    wylacznie `id`). Zadna struktura wolajacego nie jest dotykana."""
+    data: dict[str, Any] = {}
+    for klucz, wartosc in snapshot.items():
+        if klucz == "header" and isinstance(wartosc, dict):
+            data[klucz] = {k: v for k, v in wartosc.items() if k not in _POLA_NAGLOWKA_POZA_HASHEM}
+        elif klucz in _ELEMENT_KEYS and isinstance(wartosc, list):
+            data[klucz] = [dict(item) if isinstance(item, dict) else item for item in wartosc]
+        else:
+            data[klucz] = wartosc
+    return data
+
+
 def compute_enm_hash(enm: EnergyNetworkModel) -> str:
     """DEPRECATED w docstring (BEZ runtime warning — determinizm zachowany).
 
@@ -277,26 +351,6 @@ def compute_enm_hash(enm: EnergyNetworkModel) -> str:
       compute_case_hash               — parametry przypadku
       compute_variant_hash            — delty wariantu
     """
-    data = enm.model_dump(
-        mode="json",
-        exclude={
-            "header": {
-                "updated_at",
-                "created_at",
-                "hash_sha256",
-                "semantic_hash",
-                "input_hash",
-                "case_hash",
-                "variant_hash",
-                "switching_snapshot_hash",
-                # Warunki przyłączenia OSD (dane WEJŚCIOWE dokumentu, czytane
-                # w warstwie interpretacji — nie przez solver). Wykluczone jak
-                # pozostałe pola zmienne nagłówka: deklaracja pola w ENMHeader
-                # (naprawa defektu utrwalania, karta POMIAR-RODZAJ) nie może
-                # przestawić odcisków istniejących modeli.
-                "connection_conditions",
-            }
-        },
-    )
+    data = enm.model_dump(mode="json", exclude={"header": set(_POLA_NAGLOWKA_POZA_HASHEM)})
     _strip_uuids(data)
     return _canonical_sha256(data)

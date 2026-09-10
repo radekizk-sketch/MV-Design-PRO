@@ -13,7 +13,35 @@ import type {
   PowerFlowComparisonSummary,
   PowerFlowRankingIssue,
   PowerFlowRunItem,
+  RunProvenance,
 } from '../../../../ui/power-flow-comparison/types';
+
+/**
+ * Proweniencja biegu R1 (B1/B5, karta CV-3.3-B) — fixture 1:1 z realnym
+ * kształtem `RunProvenanceResponse`. Koperta domyślnie WYPEŁNIONA (przypadek
+ * typowy w produkcji); test przypadku „bieg sprzed CV-2" nadpisuje
+ * `envelope: null` jawnie przez `over`.
+ */
+export function provenanceFixture(over: Partial<RunProvenance> = {}): RunProvenance {
+  return {
+    run_id: 'run-a',
+    analysis_type: 'PF',
+    status: 'FINISHED',
+    snapshot_hash: 'snap-a',
+    input_hash: 'hash-a',
+    finished_at: '2026-07-10T08:16:00Z',
+    envelope: {
+      wersja: 1,
+      project_id: 'proj-1',
+      model_revision: 1,
+      snapshot_hash: 'snap-a',
+      catalog_fingerprint: 'cat-a',
+      options_hash: 'opt-a',
+      semantic_fingerprint: 'sem-a',
+    },
+    ...over,
+  };
+}
 
 export function busDiffFixture(over: Partial<PowerFlowBusDiffRow> = {}): PowerFlowBusDiffRow {
   return {
@@ -140,6 +168,23 @@ export function comparisonFixture(
     ranking: rankingFixture(),
     summary: summaryFixture(),
     input_hash: 'hash-abc',
+    // B1 (karta CV-3.3-B): dowód CO było porównywane — proweniencja obu biegów.
+    provenance_a: provenanceFixture(),
+    provenance_b: provenanceFixture({
+      run_id: 'run-b',
+      snapshot_hash: 'snap-b',
+      input_hash: 'hash-b',
+      finished_at: '2026-07-10T09:21:00Z',
+      envelope: {
+        wersja: 1,
+        project_id: 'proj-1',
+        model_revision: 2,
+        snapshot_hash: 'snap-b',
+        catalog_fingerprint: 'cat-a',
+        options_hash: 'opt-a',
+        semantic_fingerprint: 'sem-b',
+      },
+    }),
     created_at: '2026-07-10T09:30:00Z',
     ...over,
   };
@@ -155,6 +200,10 @@ export function runFixture(over: Partial<PowerFlowRunItem> = {}): PowerFlowRunIt
     created_at: '2026-07-10T08:15:00Z',
     finished_at: '2026-07-10T08:16:00Z',
     input_hash: 'hash-a',
+    // B5 (karta CV-3.3-B): dowód KTÓRY stan modelu bieg opisuje.
+    snapshot_hash: 'snap-a',
+    model_revision: 1,
+    scenario_ref: null,
     converged: true,
     iterations: 4,
     ...over,
@@ -169,6 +218,8 @@ export function runsFixture(): PowerFlowRunItem[] {
       created_at: '2026-07-10T09:20:00Z',
       finished_at: '2026-07-10T09:21:00Z',
       input_hash: 'hash-b',
+      snapshot_hash: 'snap-b',
+      model_revision: 2,
       converged: false,
     }),
   ];

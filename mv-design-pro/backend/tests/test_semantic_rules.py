@@ -24,6 +24,7 @@ from network_model.validation.semantic_validator import (
     validate_semantic,
     validate_semantic_as_dicts,
 )
+from network_model.validation.validator import Severity
 
 
 def _make_branch_point(ref_id: str, bp_type: str, parent_seg_id: str) -> dict:
@@ -251,6 +252,37 @@ class TestTransformerVoltagePolarity:
         }
         issues = rule_transformer_voltage_polarity(enm)
         assert issues == []
+
+    def test_missing_hv_voltage_reports_own_code_not_silent_pass(self):
+        """Karta FAB-D2: brak voltage_kv szyny != 0 kV — musi dostac wlasny kod,
+        a nie ciche "OK" (0 > 0 jest False, wiec kontrola polaryzacji nigdy sie
+        nie wykonywala, gdy ktoras szyna nie miala jawnego napiecia)."""
+        enm = {
+            "transformers": [{"ref_id": "TR-1", "hv_bus_ref": "B-HV", "lv_bus_ref": "B-LV"}],
+            "buses": [
+                {"ref_id": "B-HV"},  # brak voltage_kv
+                {"ref_id": "B-LV", "voltage_kv": 15.0},
+            ],
+        }
+        issues = rule_transformer_voltage_polarity(enm)
+        assert len(issues) == 1
+        assert issues[0].code == "semantic.transformer_bus_voltage_missing"
+        assert issues[0].severity == Severity.WARNING
+        assert issues[0].element_id == "TR-1"
+
+    def test_missing_lv_voltage_reports_own_code_not_silent_pass(self):
+        """Ta sama klasa co wyzej, ale brak danej po stronie LV (predykaty parami)."""
+        enm = {
+            "transformers": [{"ref_id": "TR-1", "hv_bus_ref": "B-HV", "lv_bus_ref": "B-LV"}],
+            "buses": [
+                {"ref_id": "B-HV", "voltage_kv": 110.0},
+                {"ref_id": "B-LV"},  # brak voltage_kv
+            ],
+        }
+        issues = rule_transformer_voltage_polarity(enm)
+        assert len(issues) == 1
+        assert issues[0].code == "semantic.transformer_bus_voltage_missing"
+        assert issues[0].severity == Severity.WARNING
 
 
 class TestNoOrphanBranchPoints:

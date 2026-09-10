@@ -18,7 +18,7 @@ function scPayload(
   };
 }
 
-describe('computeScProjection — K30-50 SC payload → SldShortCircuitProjection', () => {
+describe('computeScProjection — SC payload → SldShortCircuitProjection', () => {
   it('payload=null → null', () => {
     expect(computeScProjection(null, [])).toBeNull();
   });

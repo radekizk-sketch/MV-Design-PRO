@@ -22,6 +22,7 @@ from domain.results import (
     AnalysisTypeMismatchError,
     ProjectMismatchError,
     ResultNotFoundError,
+    RunNotFinishedError,
     RunNotFoundError,
 )
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -69,13 +70,18 @@ class ComplexDeltaResponse(BaseModel):
 
 
 class ShortCircuitComparisonResponse(BaseModel):
-    """Short circuit comparison response."""
+    """Short circuit comparison response.
 
-    ikss_delta: NumericDeltaResponse
-    sk_delta: NumericDeltaResponse
-    zth_delta: ComplexDeltaResponse
-    ip_delta: NumericDeltaResponse
-    ith_delta: NumericDeltaResponse
+    FAB-E (E1): pola delt to ``| None`` — brak wartości w payloadzie run A LUB
+    run B (niekompletny/starszy zapis wyniku) daje ``None``, nigdy fabrykowaną
+    deltę liczoną od milczącego 0.
+    """
+
+    ikss_delta: NumericDeltaResponse | None = None
+    sk_delta: NumericDeltaResponse | None = None
+    zth_delta: ComplexDeltaResponse | None = None
+    ip_delta: NumericDeltaResponse | None = None
+    ith_delta: NumericDeltaResponse | None = None
     # Karta S-C (2026-07-22): addytywne delty pełnego bilansu IEC 60909;
     # None dla starszych wyników bez rx_ratio / ith_a+tk_s (uczciwy brak).
     xr_ratio_delta: NumericDeltaResponse | None = None
@@ -83,11 +89,14 @@ class ShortCircuitComparisonResponse(BaseModel):
 
 
 class BusVoltageComparisonResponse(BaseModel):
-    """Bus voltage comparison response."""
+    """Bus voltage comparison response.
+
+    FAB-E (E1): ``None`` gdy szyna nie ma wartości w run A LUB run B.
+    """
 
     bus_id: str
-    u_kv_delta: NumericDeltaResponse
-    u_pu_delta: NumericDeltaResponse
+    u_kv_delta: NumericDeltaResponse | None = None
+    u_pu_delta: NumericDeltaResponse | None = None
 
 
 # Backward-compat alias
@@ -95,20 +104,27 @@ NodeVoltageComparisonResponse = BusVoltageComparisonResponse
 
 
 class BranchPowerComparisonResponse(BaseModel):
-    """Branch power comparison response."""
+    """Branch power comparison response.
+
+    FAB-E (E1): ``None`` gdy gałąź nie ma wartości w run A LUB run B.
+    """
 
     branch_id: str
-    p_mw_delta: NumericDeltaResponse
-    q_mvar_delta: NumericDeltaResponse
+    p_mw_delta: NumericDeltaResponse | None = None
+    q_mvar_delta: NumericDeltaResponse | None = None
 
 
 class PowerFlowComparisonResponse(BaseModel):
-    """Power flow comparison response."""
+    """Power flow comparison response.
 
-    total_losses_p_delta: NumericDeltaResponse
-    total_losses_q_delta: NumericDeltaResponse
-    slack_p_delta: NumericDeltaResponse
-    slack_q_delta: NumericDeltaResponse
+    FAB-E (E1): agregaty to ``| None`` — brak klucza w payloadzie run A LUB
+    run B daje ``None``, nigdy fabrykowane 0.0.
+    """
+
+    total_losses_p_delta: NumericDeltaResponse | None = None
+    total_losses_q_delta: NumericDeltaResponse | None = None
+    slack_p_delta: NumericDeltaResponse | None = None
+    slack_q_delta: NumericDeltaResponse | None = None
     bus_voltages: list[BusVoltageComparisonResponse]
     branch_powers: list[BranchPowerComparisonResponse]
 
@@ -125,12 +141,30 @@ class ProtectionEvaluationComparisonResponse(BaseModel):
 
 
 class ProtectionComparisonResponse(BaseModel):
-    """Protection comparison response."""
+    """Protection comparison response.
+
+    FAB-E (E1): count-delty to ``| None`` — brak klucza "summary" w payloadzie
+    run A LUB run B daje ``None``, nigdy fabrykowane 0.
+    """
 
     evaluations: list[ProtectionEvaluationComparisonResponse]
-    trip_count_delta: NumericDeltaResponse
-    no_trip_count_delta: NumericDeltaResponse
-    invalid_count_delta: NumericDeltaResponse
+    trip_count_delta: NumericDeltaResponse | None = None
+    no_trip_count_delta: NumericDeltaResponse | None = None
+    invalid_count_delta: NumericDeltaResponse | None = None
+
+
+class RunProvenanceResponse(BaseModel):
+    """Proweniencja jednego biegu R1 wewnątrz odpowiedzi porównania (B1, karta
+    CV-3.3-B): porównanie bez tego jest porównaniem bez dowodu CO było
+    porównywane. `envelope` bywa `None` dla biegów sprzed CV-2 (uczciwy brak)."""
+
+    run_id: str
+    analysis_type: str
+    status: str
+    snapshot_hash: str
+    input_hash: str
+    finished_at: str | None
+    envelope: dict[str, Any] | None
 
 
 class RunComparisonResponse(BaseModel):
@@ -145,6 +179,8 @@ class RunComparisonResponse(BaseModel):
     project_id: str
     analysis_type: str
     compared_at: str
+    provenance_a: RunProvenanceResponse
+    provenance_b: RunProvenanceResponse
     short_circuit: ShortCircuitComparisonResponse | None = None
     power_flow: PowerFlowComparisonResponse | None = None
     protection: ProtectionComparisonResponse | None = None
@@ -206,13 +242,18 @@ def compare_runs(
         )
     except ProjectMismatchError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Runs należą do różnych projektów: {e.run_a_project} vs {e.run_b_project}",
         )
     except AnalysisTypeMismatchError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Runs mają różne typy analiz: {e.type_a} vs {e.type_b}",
+        )
+    except RunNotFinishedError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Run nie zakończony (status: {e.status}): {e.run_id}",
         )
     except ResultNotFoundError as e:
         raise HTTPException(

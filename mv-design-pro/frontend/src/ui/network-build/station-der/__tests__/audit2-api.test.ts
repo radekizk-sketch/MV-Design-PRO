@@ -102,41 +102,6 @@ describe('audit2 API client', () => {
     );
   });
 
-  it('runAudit2PowerFlow parsuje wynik z audit trail (Phase 37)', async () => {
-    const { runAudit2PowerFlow } = await import('../audit2-api');
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        case_id: 'case-1',
-        project_id: 'proj-1',
-        station_id: 'st-1',
-        audit2_applied: { tap_position_changes: { tr_001: { new_tap_position: 0 } } },
-        solver_attempted: true,
-        solver_error: 'Empty graph',
-        audit2_extensions_keys: ['power_flow_extensions', 'sc_iec60909_extensions'],
-        graph_branch_count: 0,
-        graph_node_count: 0,
-        graph_inverter_source_count: 0,
-        snapshot_id_loaded: null,
-      }),
-    });
-
-    const res = await runAudit2PowerFlow({
-      case_id: 'case-1',
-      project_id: 'proj-1',
-      station_id: 'st-1',
-    });
-    expect(res.solver_attempted).toBe(true);
-    expect(res.audit2_extensions_keys).toContain('power_flow_extensions');
-    expect(global.fetch).toHaveBeenCalledWith(
-      '/api/cases/audit2-power-flow',
-      expect.objectContaining({
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    );
-  });
-
   it('validateHostingCapacityExportApi parsuje wynik no_export', async () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       ok: true,

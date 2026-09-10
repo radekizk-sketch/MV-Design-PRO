@@ -139,13 +139,6 @@ async function fetchCatalogJson<T>(endpoint: string): Promise<T> {
   return requestCatalog<T>(endpoint);
 }
 
-async function postCatalogJson<T>(endpoint: string, body: unknown): Promise<T> {
-  return requestCatalog<T>(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-}
 
 export async function fetchLineTypes(): Promise<LineType[]> {
   return fetchCatalogJson<LineType[]>('/api/catalog/line-types');
@@ -678,29 +671,3 @@ export async function clearEquipmentTypeFromSwitch(
   throw new Error(DECATALOGING_BLOCKED_MESSAGE);
 }
 
-export async function exportTypeLibrary(params?: {
-  library_name_pl?: string;
-  vendor?: string;
-  series?: string;
-  revision?: string;
-  description_pl?: string;
-}): Promise<any> {
-  const queryParams = new URLSearchParams();
-  if (params?.library_name_pl) queryParams.set('library_name_pl', params.library_name_pl);
-  if (params?.vendor) queryParams.set('vendor', params.vendor);
-  if (params?.series) queryParams.set('series', params.series);
-  if (params?.revision) queryParams.set('revision', params.revision);
-  if (params?.description_pl) queryParams.set('description_pl', params.description_pl);
-
-  const queryString = queryParams.toString();
-  const endpoint = `/api/catalog/export${queryString ? `?${queryString}` : ''}`;
-  return fetchCatalogJson<any>(endpoint);
-}
-
-export async function importTypeLibrary(
-  data: any,
-  mode: 'merge' | 'replace' = 'merge',
-): Promise<any> {
-  const endpoint = `/api/catalog/import?mode=${mode}`;
-  return postCatalogJson<any>(endpoint, data);
-}

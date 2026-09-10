@@ -116,7 +116,9 @@ export async function fetchProtectionRuns(
   );
 
   if (!response.ok) {
-    // If endpoint doesn't exist, return empty list
+    // Obronnie: pusty projekt (brak przypadku/biegów) — endpoint istnieje
+    // (`GET /projects/{id}/protection-runs`, karta CV-3.3-B) i normalnie
+    // zwraca 200 z pustą listą; 404 tu oznacza brak samego projektu.
     if (response.status === 404) {
       return [];
     }

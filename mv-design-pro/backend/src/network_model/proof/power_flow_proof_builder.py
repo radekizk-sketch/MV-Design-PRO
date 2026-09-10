@@ -603,8 +603,21 @@ Metoda iteracyjna rozwiązywania równań rozpływu mocy:
         substitution_parts: list[str] = []
 
         for bus_id, state in sorted(state_next.items()):
-            v_pu = state.get("v_pu", 1.0)
-            theta_rad = state.get("theta_rad", 0.0)
+            v_pu = state.get("v_pu")
+            theta_rad = state.get("theta_rad")
+            if v_pu is None or theta_rad is None:
+                # FAB-E (E1): stan iteracji NR aktualizuje CALY wektor stanu na
+                # raz — kontrakt frozen (`power_flow_newton.py`) gwarantuje
+                # komplet v_pu/theta_rad dla kazdej szyny w state_next. Brak
+                # ktoregos oznacza uszkodzony slad obliczen, wiec Proof Engine
+                # (czysta interpretacja, ZERO wtornych obliczen) nie wolno
+                # fabrykowac plaskiego startu (1.0 p.u./0 rad) w formalnym
+                # dowodzie — to bylby fikcyjny wynik podpisany jako obliczony.
+                raise ValueError(
+                    f"Slad iteracji {k}: state_next['{bus_id}'] bez pola "
+                    f"{'v_pu' if v_pu is None else 'theta_rad'} — uszkodzony slad NR, "
+                    "Proof Engine nie moze fabrykowac stanu poczatkowego."
+                )
             theta_deg = math.degrees(theta_rad)
 
             input_values.append(
@@ -758,9 +771,19 @@ Metoda iteracyjna rozwiązywania równań rozpływu mocy:
 
         if self._trace.iterations and self._trace.iterations[-1].state_next:
             for bus_id, state in self._trace.iterations[-1].state_next.items():
+                v_pu = state.get("v_pu")
+                theta_rad = state.get("theta_rad")
+                if v_pu is None or theta_rad is None:
+                    # FAB-E (E1): jak w _build_state_update_step — stan
+                    # koncowy NR ma komplet v_pu/theta_rad z kontraktu frozen;
+                    # brak = uszkodzony slad, nie plaski start 1.0/0 rad.
+                    raise ValueError(
+                        f"Stan koncowy: state_next['{bus_id}'] bez pola "
+                        f"{'v_pu' if v_pu is None else 'theta_rad'} — uszkodzony slad NR."
+                    )
                 final_state[bus_id] = {
-                    "v_pu": state.get("v_pu", 1.0),
-                    "theta_rad": state.get("theta_rad", 0.0),
+                    "v_pu": v_pu,
+                    "theta_rad": theta_rad,
                 }
 
         # Dodaj wyniki mocy z result

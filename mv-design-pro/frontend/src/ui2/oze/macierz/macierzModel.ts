@@ -24,10 +24,9 @@ import type {
   NcRfgTestResult,
   NcRfgVerdict,
 } from '../../../ui/ncrfg-tests/api';
-import {
-  getLvVoltageLevel,
-  type DerKindUnified,
-  type StationDerConnection,
+import type {
+  DerKindUnified,
+  StationDerConnection,
 } from '../../../ui/network-build/station-der';
 
 // =============================================================================
@@ -143,24 +142,17 @@ export interface PodsumowanieProjektu {
 // =============================================================================
 
 /**
- * Napięcie przyłączenia [kV] z modelu — DWIE realne dane modelowe, w kolejności:
- *   1. `voltage_level_ref` → katalog poziomów napięć nN/SN (`nominal_kv`) — wybór
- *      projektanta zapisany kreatorem stacji,
- *   2. `connection_voltage_kv` — napięcie SZYNY PRZYŁĄCZENIA odczytane z migawki
- *      (wytwórca zapisany kreatorem źródła OZE nie ma referencji poziomu, a katalog
- *      poziomów nie zna np. 0,8 kV falowników string — bez tego kroku moduł obecny
- *      w modelu meldował „brak danych" i bieg zgodności był dla niego zablokowany).
+ * Napięcie przyłączenia [kV] z modelu — `connection_voltage_kv`, napięcie SZYNY
+ * PRZYŁĄCZENIA odczytane z migawki (`buses[].voltage_kv` szyny wytwórcy).
  *
- * Brak obu → `null` (moduł trafi w stan „brak danych"). NIE stosujemy domyślnej
+ * Karta FAB-K: JEDYNE źródło od tej karty — dawny `voltage_level_ref` (osobna
+ * referencja katalogu poziomów, zapisywana WYŁĄCZNIE przez kreator stacji) był
+ * FANTOMEM (backend go nie przyjmuje) i USUNIĘTY z kontraktu.
+ *
+ * Brak → `null` (moduł trafi w stan „brak danych"). NIE stosujemy domyślnej
  * wartości 15 kV ani wnioskowania z `connection_side`.
  */
 export function rozwiazNapiecieKv(der: StationDerConnection): number | null {
-  if (der.voltage_level_ref) {
-    const poziom = getLvVoltageLevel(der.voltage_level_ref);
-    if (poziom && Number.isFinite(poziom.nominal_kv) && poziom.nominal_kv > 0) {
-      return poziom.nominal_kv;
-    }
-  }
   const zModelu = der.connection_voltage_kv;
   if (typeof zModelu === 'number' && Number.isFinite(zModelu) && zModelu > 0) {
     return zModelu;
@@ -199,8 +191,13 @@ function zdolnosciWstepne(der: StationDerConnection): {
 } {
   const lvrt = Boolean(der.profiles.lvrt_curve_ref);
   const hvrt = Boolean(der.profiles.hvrt_curve_ref);
-  const pf = Boolean(der.profiles.pf_curve_ref || der.profiles.regulation_profile_ref);
-  const qu = Boolean(der.profiles.regulation_profile_ref);
+  const pf = Boolean(der.profiles.pf_curve_ref);
+  // Karta FAB-K: `regulation_profile_ref` (referencja „profilu regulacji Q(U)")
+  // był FANTOMEM — backend nie ma katalogu nazwanych profili regulacji; Q(U)
+  // jest liczbą (`qu_slope_pu_per_pu`) zapisywaną wprost na generatorze, nie
+  // referencją katalogową. Brak sygnału zostaje BRAKIEM (false), nie zgadywaniem
+  // z pola, które nigdy nie miało zapisu produkcyjnego.
+  const qu = false;
   const dyn = Boolean(der.catalogs.dynamic_model_ref);
 
   const zdolnosci: ZdolnosciModulu = {

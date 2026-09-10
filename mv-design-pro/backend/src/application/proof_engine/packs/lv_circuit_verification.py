@@ -86,6 +86,7 @@ from application.proof_engine.types import (
     UnitCheckResult,
 )
 from network_model.catalog.lv_mcb_bands_iec60898 import PROG_CIEPLNY_WYZWALA_X_IN
+from network_model.pochodne import ka_na_a, prad_z_mocy_pozornej_ka
 from network_model.solvers.cable_ampacity_derating import (
     WspolczynnikiObciazalnosciNN,
     obciazalnosc_skorygowana,
@@ -484,8 +485,8 @@ class LVCircuitVerificationProofPack:
         # ---------------------------------------------------------------
         # Krok 2: Ib = S/(sqrt(3)*U_LL)                          REUSE EQ_LC_002
         # ---------------------------------------------------------------
-        ib_ka = s_mva / (3**0.5 * data.u_ll_kv)
-        ib_a = ib_ka * 1000.0
+        ib_ka = prad_z_mocy_pozornej_ka(s_mva, data.u_ll_kv)
+        ib_a = ka_na_a(ib_ka)
         eq2 = _eq(
             "EQ_LC_002",
             r"I = \frac{S}{\sqrt{3}\,U_{LL}}",

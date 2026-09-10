@@ -1,12 +1,34 @@
 """
-Warstwa topologiczna ENM — identyfikacja TRUNK, corridors, entry points, T-nodes.
+Warstwa topologiczna ENM — JEDYNY serwis topologii (konstytucja C.2.2, CV-4.3).
 
-Czysta funkcja: ENM → TopologyGraph (bez efektów ubocznych, deterministyczna).
+Dwie czyste, deterministyczne funkcje ENM → widok:
+
+* ``derive(snapshot) -> TopologyView`` — topologia WYPROWADZANA z migawki (nigdy
+  zapisywana jako prawda, konstytucja C.2.1): węzły topologiczne (szyny scalone
+  przez ZAMKNIĘTE łączniki), wyspy (składowe po gałęziach w ruchu i transformatorach),
+  sekcje (składowe BEZ transformatorów — domeny napięciowe), źródła odniesienia per
+  wyspa (źródło sieciowe / maszyna synchroniczna / asynchroniczna — IEC 60909-0 §4.2),
+  punkty otwarte. Konsumenci: assembler IR, wykonawcy biegów, walidator, projekcja nN,
+  gotowość, N-1. Algorytmy grafowe pochodzą WYŁĄCZNIE z
+  ``network_model.core.topologia`` (to samo jądro woła IR: ``NetworkGraph``,
+  ``AdmittanceMatrixBuilder``) — jedna implementacja, dwa poziomy identyfikatorów.
+* ``build_topology_graph(enm) -> TopologyGraph`` — identyfikacja TRUNK, korytarzy,
+  punktów wejścia, węzłów T (SLD / geometria stacji).
+
+Semantyka „w ruchu" jest TA SAMA co w ``enm/mapping.py`` (ENM → IR): gałąź
+(linia, kabel, łącznik, bezpiecznik) łączy szyny wtedy i tylko wtedy, gdy
+``status == "closed"``; transformator łączy zawsze; element z końcem poza szynami
+migawki nie łączy niczego (jest wykazany w ``krawedzie_pominiete``, nie gubiony
+cicho). Element NIEOBECNY w migawce efektywnej (``out_of_service`` scenariusza,
+konstytucja B.3) po prostu nie istnieje — nie ma osobnej flagi ``in_service``.
 """
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
+
+from network_model.core.topologia import przeglad_wszerz, scal_wezly, skladowe_spojne
 
 from .models import (
     Cable,
@@ -14,6 +36,174 @@ from .models import (
     Junction,
     OverheadLine,
 )
+
+#: Typy gałęzi ENM będące łącznikami: zamknięty łącznik SCALA szyny w jeden węzeł
+#: topologiczny (CN → TN), linia/kabel — nie (to impedancja między dwoma węzłami).
+#: Zbiór zgodny z ``enm/mapping.py`` (``SwitchBranch.type`` + ``FuseBranch.type``).
+TYPY_LACZNIKOW_ENM: frozenset[str] = frozenset(
+    {"switch", "breaker", "bus_coupler", "disconnector", "fuse"}
+)
+#: Generatory będące maszynami z impedancją do odniesienia w zwarciu (IEC 60909-0 §4.2,
+#: równoważne źródło napięciowe): synchroniczne oraz asynchroniczne (Type 3 DFIG,
+#: SCIG). Falownik (pv_inverter, bess, wind_inverter, fw_pmsg) jest źródłem
+#: PRĄDOWYM bez impedancji (§6.8) — wyspa zasilana wyłącznie falownikami nie ma
+#: odniesienia. Jedno źródło prawdy dla ``enm/mapping.py`` i wykonawców.
+TYPY_MASZYN_SYNCHRONICZNYCH: frozenset[str] = frozenset({"synchronous"})
+TYPY_MASZYN_ASYNCHRONICZNYCH: frozenset[str] = frozenset({"fw_dfig", "fw_scig"})
+
+
+def _kolekcja(snapshot: object, nazwa: str) -> list[object]:
+    if isinstance(snapshot, Mapping):
+        wartosc = snapshot.get(nazwa) or []
+    else:
+        wartosc = getattr(snapshot, nazwa, None) or []
+    return list(wartosc)
+
+
+def _pole(element: object, nazwa: str, domyslne: object = None) -> object:
+    if isinstance(element, Mapping):
+        return element.get(nazwa, domyslne)
+    return getattr(element, nazwa, domyslne)
+
+
+@dataclass(frozen=True)
+class Wyspa:
+    """Wyspa = składowa spójna szyn po gałęziach w ruchu i transformatorach."""
+
+    szyny: tuple[str, ...]
+    #: ``ref_id`` źródeł sieciowych (``Source``) na szynach wyspy.
+    zrodla_sieciowe: tuple[str, ...]
+    #: ``ref_id`` generatorów będących maszynami synchronicznymi/asynchronicznymi.
+    maszyny: tuple[str, ...]
+    #: ``ref_id`` WSZYSTKICH generatorów na szynach wyspy (maszyny + falowniki).
+    generatory: tuple[str, ...]
+
+    @property
+    def zasilona(self) -> bool:
+        """Zasilenie = obecność źródła sieciowego (semantyka E003 walidatora i
+        energizacji nN: generator NIE zasila wyspy — może zniknąć ze scenariusza)."""
+        return bool(self.zrodla_sieciowe)
+
+    @property
+    def ma_odniesienie(self) -> bool:
+        """Impedancja do odniesienia w zwarciu: źródło sieciowe albo maszyna
+        (``canonical_analysis._wezly_bez_impedancji_do_odniesienia``, CI-PARYTET-5)."""
+        return bool(self.zrodla_sieciowe or self.maszyny)
+
+
+@dataclass(frozen=True)
+class TopologyView:
+    """Topologia wyprowadzona z migawki efektywnej. Wszystkie krotki posortowane;
+    kolejność wysp i sekcji: malejąco po liczbie szyn, potem po pierwszej szynie."""
+
+    szyny: tuple[str, ...]
+    #: szyna → reprezentant węzła topologicznego (najmniejszy ``ref_id`` klasy
+    #: scalonej ZAMKNIĘTYMI łącznikami); szyna bez łącznika reprezentuje samą siebie.
+    wezel_topologiczny: Mapping[str, str]
+    wyspy: tuple[Wyspa, ...]
+    #: składowe po gałęziach w ruchu BEZ transformatorów (domeny napięciowe).
+    sekcje: tuple[tuple[str, ...], ...]
+    laczniki_otwarte: tuple[str, ...]
+    galezie_otwarte: tuple[str, ...]
+    #: ``ref_id`` gałęzi/transformatorów z końcem poza szynami migawki (nie łączą).
+    krawedzie_pominiete: tuple[str, ...]
+
+    def wyspa_szyny(self, ref_id: str) -> Wyspa | None:
+        for wyspa in self.wyspy:
+            if ref_id in wyspa.szyny:
+                return wyspa
+        return None
+
+    def szyny_bez_odniesienia(self) -> frozenset[str]:
+        return frozenset(s for w in self.wyspy if not w.ma_odniesienie for s in w.szyny)
+
+    def szyny_niezasilone(self) -> frozenset[str]:
+        return frozenset(s for w in self.wyspy if not w.zasilona for s in w.szyny)
+
+    @property
+    def wezly_topologiczne(self) -> tuple[str, ...]:
+        return tuple(sorted(set(self.wezel_topologiczny.values())))
+
+
+def _uporzadkuj(skladowe: Iterable[tuple[str, ...]]) -> tuple[tuple[str, ...], ...]:
+    return tuple(sorted(skladowe, key=lambda s: (-len(s), s[0])))
+
+
+def derive(snapshot: EnergyNetworkModel | Mapping[str, object]) -> TopologyView:
+    """Wyprowadź ``TopologyView`` z migawki (``EnergyNetworkModel`` albo słownik ENM).
+
+    Czysta funkcja: ten sam model → identyczny widok, niezależnie od kolejności
+    elementów w kolekcjach (szyny sortowane po ``ref_id``).
+    """
+    szyny = tuple(sorted(str(_pole(b, "ref_id")) for b in _kolekcja(snapshot, "buses")))
+    znane = set(szyny)
+
+    krawedzie_wysp: list[tuple[str, str]] = []
+    krawedzie_sekcji: list[tuple[str, str]] = []
+    pary_laczen: list[tuple[str, str]] = []
+    laczniki_otwarte: list[str] = []
+    galezie_otwarte: list[str] = []
+    pominiete: list[str] = []
+
+    for galaz in sorted(_kolekcja(snapshot, "branches"), key=lambda g: str(_pole(g, "ref_id"))):
+        ref = str(_pole(galaz, "ref_id"))
+        a = str(_pole(galaz, "from_bus_ref"))
+        b = str(_pole(galaz, "to_bus_ref"))
+        if a not in znane or b not in znane:
+            pominiete.append(ref)
+            continue
+        lacznik = str(_pole(galaz, "type")) in TYPY_LACZNIKOW_ENM
+        if _pole(galaz, "status", "closed") != "closed":
+            (laczniki_otwarte if lacznik else galezie_otwarte).append(ref)
+            continue
+        krawedzie_wysp.append((a, b))
+        krawedzie_sekcji.append((a, b))
+        if lacznik:
+            pary_laczen.append((a, b))
+
+    for trafo in sorted(_kolekcja(snapshot, "transformers"), key=lambda t: str(_pole(t, "ref_id"))):
+        hv = str(_pole(trafo, "hv_bus_ref"))
+        lv = str(_pole(trafo, "lv_bus_ref"))
+        if hv not in znane or lv not in znane:
+            pominiete.append(str(_pole(trafo, "ref_id")))
+            continue
+        krawedzie_wysp.append((hv, lv))
+
+    zrodla_szyny: dict[str, list[str]] = {}
+    for zrodlo in _kolekcja(snapshot, "sources"):
+        szyna = str(_pole(zrodlo, "bus_ref"))
+        if szyna in znane:
+            zrodla_szyny.setdefault(szyna, []).append(str(_pole(zrodlo, "ref_id")))
+    maszyny_szyny: dict[str, list[str]] = {}
+    generatory_szyny: dict[str, list[str]] = {}
+    for gen in _kolekcja(snapshot, "generators"):
+        szyna = str(_pole(gen, "bus_ref"))
+        if szyna not in znane:
+            continue
+        ref = str(_pole(gen, "ref_id"))
+        generatory_szyny.setdefault(szyna, []).append(ref)
+        typ = _pole(gen, "gen_type")
+        if typ in TYPY_MASZYN_SYNCHRONICZNYCH or typ in TYPY_MASZYN_ASYNCHRONICZNYCH:
+            maszyny_szyny.setdefault(szyna, []).append(ref)
+
+    wyspy = tuple(
+        Wyspa(
+            szyny=skladowa,
+            zrodla_sieciowe=tuple(sorted(r for s in skladowa for r in zrodla_szyny.get(s, ()))),
+            maszyny=tuple(sorted(r for s in skladowa for r in maszyny_szyny.get(s, ()))),
+            generatory=tuple(sorted(r for s in skladowa for r in generatory_szyny.get(s, ()))),
+        )
+        for skladowa in _uporzadkuj(skladowe_spojne(szyny, krawedzie_wysp))
+    )
+    return TopologyView(
+        szyny=szyny,
+        wezel_topologiczny=scal_wezly(szyny, pary_laczen),
+        wyspy=wyspy,
+        sekcje=_uporzadkuj(skladowe_spojne(szyny, krawedzie_sekcji)),
+        laczniki_otwarte=tuple(laczniki_otwarte),
+        galezie_otwarte=tuple(galezie_otwarte),
+        krawedzie_pominiete=tuple(pominiete),
+    )
 
 
 @dataclass(frozen=True)
@@ -273,35 +463,35 @@ def _identify_trunk(
         bus_branches.setdefault(trafo.hv_bus_ref, []).append((trafo.ref_id, trafo.lv_bus_ref, 0.0))
         bus_branches.setdefault(trafo.lv_bus_ref, []).append((trafo.ref_id, trafo.hv_bus_ref, 0.0))
 
-    # BFS od szyn źródłowych
+    # Przegląd wszerz od kolejnych szyn źródłowych ze wspólnym zbiorem odwiedzonych —
+    # jedyne jądro (``network_model.core.topologia.przeglad_wszerz``); kolejność
+    # segmentów = kolejność odkrycia szyn, jak dotąd.
     visited: set[str] = set()
     trunk: list[TrunkSegment] = []
-    order = 0
 
-    for src_bus in source_bus_refs:
-        if src_bus in visited:
-            continue
-        queue = [src_bus]
-        visited.add(src_bus)
-        while queue:
-            current = queue.pop(0)
+    def _sasiedzi(current: str) -> list[tuple[tuple[str, float], str]]:
+        return [
+            ((br_ref, length), next_bus)
             for br_ref, next_bus, length in sorted(
                 bus_branches.get(current, []), key=lambda x: x[0]
-            ):
-                if next_bus in visited:
-                    continue
-                visited.add(next_bus)
-                trunk.append(
-                    TrunkSegment(
-                        branch_ref=br_ref,
-                        from_bus_ref=current,
-                        to_bus_ref=next_bus,
-                        length_km=length,
-                        order=order,
-                    )
+            )
+        ]
+
+    for src_bus in source_bus_refs:
+        drzewo = przeglad_wszerz(src_bus, _sasiedzi, odwiedzone=visited)
+        for next_bus, rodzic in drzewo.items():
+            if rodzic is None:
+                continue
+            (br_ref, length), current = rodzic
+            trunk.append(
+                TrunkSegment(
+                    branch_ref=br_ref,
+                    from_bus_ref=current,
+                    to_bus_ref=next_bus,
+                    length_km=length,
+                    order=len(trunk),
                 )
-                order += 1
-                queue.append(next_bus)
+            )
 
     return trunk
 

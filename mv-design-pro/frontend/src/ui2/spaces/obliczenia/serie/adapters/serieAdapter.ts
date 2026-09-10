@@ -49,6 +49,8 @@ export interface BiegSerii {
 /** Wiersz listy serii — projekcja `BatchJob` na etykiety PL. */
 export interface SeriaWiersz {
   id: string;
+  /** Nazwa nadana przez projektanta; null = seria bez nazwy. */
+  nazwa: string | null;
   utworzona: string;
   rodzajEtykieta: string;
   liczbaScenariuszy: number;
@@ -78,6 +80,7 @@ export function mapujSerie(batches: BatchJob[], runs: ExecutionRun[]): SeriaWier
   const biegPoId = new Map(runs.map((r) => [r.id, r]));
   return batches.map((b) => ({
     id: b.batch_id,
+    nazwa: b.name,
     utworzona: formatCzas(b.created_at),
     rodzajEtykieta: etykietaAnalizy(b.analysis_type),
     liczbaScenariuszy: b.scenario_ids.length,

@@ -257,7 +257,7 @@ def test_real_power_flow_run_produces_view_with_provenance() -> None:
     )
     enm = enm.model_copy(update={"generators": gens})
     set_enm("c1", enm)
-    run = execute_run(create_run(case_id="c1", analysis_type="PF").id)
+    run = execute_run(create_run(case_id="c1", klucz_twin="c1", analysis_type="PF").id)
     assert run.status == "FINISHED", run.error_message
 
     view = build_reactive_adequacy_view(run)

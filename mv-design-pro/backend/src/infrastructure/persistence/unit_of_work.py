@@ -10,22 +10,13 @@ from infrastructure.persistence.repositories.analysis_run_index_repository impor
 )
 from infrastructure.persistence.repositories.analysis_run_repository import AnalysisRunRepository
 from infrastructure.persistence.repositories.case_repository import CaseRepository
-from infrastructure.persistence.repositories.design_evidence_repository import (
-    DesignEvidenceRepository,
-)
-from infrastructure.persistence.repositories.design_proposal_repository import (
-    DesignProposalRepository,
-)
-from infrastructure.persistence.repositories.design_spec_repository import DesignSpecRepository
-from infrastructure.persistence.repositories.network_repository import NetworkRepository
-from infrastructure.persistence.repositories.network_wizard_repository import (
-    NetworkWizardRepository,
-)
 from infrastructure.persistence.repositories.project_repository import ProjectRepository
-from infrastructure.persistence.repositories.result_repository import ResultRepository
-from infrastructure.persistence.repositories.sld_repository import SldRepository
-from infrastructure.persistence.repositories.snapshot_repository import SnapshotRepository
-from infrastructure.persistence.repositories.study_run_repository import StudyRunRepository
+from infrastructure.persistence.repositories.protection_catalog_repository import (
+    ProtectionCatalogRepository,
+)
+from infrastructure.persistence.repositories.station_audit2_config_repository import (
+    StationAudit2ConfigRepository,
+)
 from sqlalchemy.orm import Session, sessionmaker
 
 
@@ -33,41 +24,43 @@ class UnitOfWork(AbstractContextManager["UnitOfWork"]):
     """
     Unit of Work pattern for transactional operations.
 
-    P10a: Added study_runs repository for Run lifecycle management.
+    W1 (mapa domknięcia §9, 2026-09-09): repozytoria legacy modelu sieci
+    (`network`, `snapshots`, `wizard`, `sld`, `design_*`) skasowane razem z tabelami
+    `network_*`, katalogiem typów w bazie, SLD ORM i `design_synth` — model sieci
+    projektu żyje WYŁĄCZNIE w magazynie ENM (`enm/store.py`, klucz projektu).
+    Z dawnego repozytorium kreatora została biblioteka zabezpieczeń
+    (`protection_catalog`, tabele `protection_*`), bo ma żywych konsumentów.
+
+    CV-3.3-B: `results` (R3 `study_results`) i `study_runs` (R3) usunięte — zero
+    konsumentów po przepięciu porównań i biegów na R1 (`enm.canonical_analysis`).
+    `analysis_runs`/`analysis_runs_index` ZOSTAJĄ: pierwsza żyje dla
+    `ResultInvalidator`, druga jest NIEZALEŻNĄ tabelą — karta W3-C1 (2026-09)
+    skasowała jej jedyne dwa produkcyjne miejsca zapisu
+    (`application/analyses/protection/overcurrent/**`, `catalog/pipeline.py::
+    run_device_mapping_v0`; dobór aparatu jest odtąd CZYSTĄ funkcją,
+    `catalog/pipeline.py::dopasuj_do_aparatu`, bez tego indeksu), więc tabela
+    zostaje jako READ-ONLY odbiorca historycznych wpisów (odtwarzalność
+    starych archiwów), bez nowego pisarza.
     """
 
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
         self.session: Session | None = None
         self.projects: ProjectRepository | None = None
-        self.network: NetworkRepository | None = None
         self.cases: CaseRepository | None = None
-        self.wizard: NetworkWizardRepository | None = None
-        self.sld: SldRepository | None = None
-        self.results: ResultRepository | None = None
         self.analysis_runs: AnalysisRunRepository | None = None
         self.analysis_runs_index: AnalysisRunIndexRepository | None = None
-        self.snapshots: SnapshotRepository | None = None
-        self.study_runs: StudyRunRepository | None = None  # P10a
-        self.design_specs: DesignSpecRepository | None = None
-        self.design_proposals: DesignProposalRepository | None = None
-        self.design_evidence: DesignEvidenceRepository | None = None
+        self.protection_catalog: ProtectionCatalogRepository | None = None
+        self.audit2_station_configs: StationAudit2ConfigRepository | None = None
 
     def __enter__(self) -> UnitOfWork:
         self.session = self._session_factory()
         self.projects = ProjectRepository(self.session)
-        self.network = NetworkRepository(self.session)
         self.cases = CaseRepository(self.session)
-        self.wizard = NetworkWizardRepository(self.session)
-        self.sld = SldRepository(self.session)
-        self.results = ResultRepository(self.session)
         self.analysis_runs = AnalysisRunRepository(self.session)
         self.analysis_runs_index = AnalysisRunIndexRepository(self.session)
-        self.snapshots = SnapshotRepository(self.session)
-        self.study_runs = StudyRunRepository(self.session)  # P10a
-        self.design_specs = DesignSpecRepository(self.session)
-        self.design_proposals = DesignProposalRepository(self.session)
-        self.design_evidence = DesignEvidenceRepository(self.session)
+        self.protection_catalog = ProtectionCatalogRepository(self.session)
+        self.audit2_station_configs = StationAudit2ConfigRepository(self.session)
         return self
 
     def __exit__(

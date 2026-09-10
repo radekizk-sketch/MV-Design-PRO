@@ -140,6 +140,8 @@ async function zbudujProjektZeStacja(
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: catalogBinding('ZRODLO_SN', SOURCE_ID),
+    hv_voltage_kv: 110.0,
+    transformer_sn_mva: 25.0,
   });
 
   let op: DomainOpResponse = {};

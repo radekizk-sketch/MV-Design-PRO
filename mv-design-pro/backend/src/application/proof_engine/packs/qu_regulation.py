@@ -34,6 +34,7 @@ from application.proof_engine.types import (
     SymbolDefinition,
     UnitCheckResult,
 )
+from network_model.reporting.missing_value import BRAK_DANYCH
 
 
 @dataclass
@@ -206,8 +207,36 @@ class QURegulationProofPack:
         qu_compliant = True
 
         for i, gen_level in enumerate(data.generation_levels):
-            u_oze = data.voltages_at_oze_pu[i] if i < len(data.voltages_at_oze_pu) else 1.0
-            q_inj = data.q_injected_mvar[i] if i < len(data.q_injected_mvar) else 0.0
+            # FAB-E (E1): brak pomiaru napiecia/mocy biernej dla tego poziomu
+            # generacji NIE jest wynikiem 1.0 p.u./0.0 Mvar (wygladaloby jak
+            # napiecie nominalne / brak wstrzykniecia) - krok dokumentuje
+            # jawny brak, pomijajac ten poziom w werdykcie zgodnosci (nie
+            # liczy sie ani jako spelniony, ani jako naruszony).
+            if i >= len(data.voltages_at_oze_pu) or i >= len(data.q_injected_mvar):
+                uc_brak = UnitCheckResult(passed=True, expected_unit="-", computed_unit="-")
+                unit_checks.append(uc_brak)
+                steps.append(
+                    ProofStep(
+                        step_id=ProofStep.generate_step_id("QU", 2 + i),
+                        step_number=2 + i,
+                        title_pl=f"Punkt pracy: generacja {gen_level * 100:.0f}% P_n (brak pomiaru)",
+                        equation=eq_voltage,
+                        input_values=(_pv("P/P_n", gen_level, "-", "gen_level"),),
+                        substitution_latex="Brak danych pomiarowych dla tego poziomu generacji.",
+                        result=ProofValue(
+                            symbol="\\mathrm{within\\_limits}",
+                            value=BRAK_DANYCH,
+                            unit="-",
+                            formatted=BRAK_DANYCH,
+                            source_key="within_limits",
+                        ),
+                        unit_check=uc_brak,
+                    )
+                )
+                continue
+
+            u_oze = data.voltages_at_oze_pu[i]
+            q_inj = data.q_injected_mvar[i]
 
             within = data.u_min_pu <= u_oze <= data.u_max_pu
             if not within:

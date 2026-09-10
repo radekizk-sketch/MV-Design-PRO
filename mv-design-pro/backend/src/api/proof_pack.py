@@ -16,6 +16,7 @@ from application.proof_engine.packs.sc_symmetrical import SC3FPackInput, SC3FPro
 from application.proof_engine.proof_pack import ProofPackContext, resolve_mv_design_pro_version
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
+from network_model.pochodne import a_na_ka
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/proof", tags=["proof-pack"])
@@ -174,15 +175,15 @@ def _krok_reguly_malych_silnikow(result: Any) -> dict[str, Any]:
     return {
         "tekst": (
             "Regula malych silnikow (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; "
-            f"wartosc graniczna 0.05 * I''k = {limit_a / 1000.0:.3f} kA; "
-            f"wartosc obliczona suma I''k,M = {async_a / 1000.0:.3f} kA "
-            f"({async_a / 1000.0:.3f} {rel_tekst} {limit_a / 1000.0:.3f}) -> "
+            f"wartosc graniczna 0.05 * I''k = {a_na_ka(limit_a):.3f} kA; "
+            f"wartosc obliczona suma I''k,M = {a_na_ka(async_a):.3f} kA "
+            f"({a_na_ka(async_a):.3f} {rel_tekst} {a_na_ka(limit_a):.3f}) -> "
             f"{werdykt} ({wplyw})"
         ),
         "latex": (
-            rf"\sum_m I''_{{k,M}} = {async_a / 1000.0:.3f}\;\mathrm{{kA}} \;{rel_latex}\; "
-            rf"0.05 \cdot I''_k = 0.05 \cdot {ikss_total_a / 1000.0:.3f}\;\mathrm{{kA}} "
-            rf"= {limit_a / 1000.0:.3f}\;\mathrm{{kA}} "
+            rf"\sum_m I''_{{k,M}} = {a_na_ka(async_a):.3f}\;\mathrm{{kA}} \;{rel_latex}\; "
+            rf"0.05 \cdot I''_k = 0.05 \cdot {a_na_ka(ikss_total_a):.3f}\;\mathrm{{kA}} "
+            rf"= {a_na_ka(limit_a):.3f}\;\mathrm{{kA}} "
             rf"\;\Rightarrow\; \text{{{werdykt}}}"
         ),
     }
@@ -208,7 +209,7 @@ def _wywod_sekcje_wkladow(result: Any) -> list[dict[str, Any]]:
             {
                 "tekst": (
                     f"Punkt zwarcia: I''k (calkowity, z Z-bus) = "
-                    f"{ikss_total_a / 1000.0:.3f} kA, c = {result.c_factor:.2f}, "
+                    f"{a_na_ka(ikss_total_a):.3f} kA, c = {result.c_factor:.2f}, "
                     f"t_min = {result.t_min_s:.2f} s"
                 ),
                 "latex": None,
@@ -233,8 +234,8 @@ def _wywod_sekcje_wkladow(result: Any) -> list[dict[str, Any]]:
             "kroki": [
                 {
                     "tekst": (
-                        f"Suma wkladow maszyn: I''k,M = {result.ikss_machines_a / 1000.0:.3f} kA, "
-                        f"I_b,M = {result.ib_machines_a / 1000.0:.3f} kA"
+                        f"Suma wkladow maszyn: I''k,M = {a_na_ka(result.ikss_machines_a):.3f} kA, "
+                        f"I_b,M = {a_na_ka(result.ib_machines_a):.3f} kA"
                     ),
                     "latex": r"I''_{k,M} = \sum_m I''_{k,m}, \qquad I_{b,M} = \sum_m I_{b,m}",
                 },
@@ -280,7 +281,7 @@ def _walidacja_iec(result: Any, input_hash: str) -> list[dict[str, str]]:
         regula_wartosc = "NIESPELNIONA — silniki niepomijalne, wklady uwzglednione w Ib"
     if async_a is not None and limit_a is not None:
         regula_wartosc += (
-            f" (suma I''k,M = {async_a / 1000.0:.3f} kA, prog = {limit_a / 1000.0:.3f} kA)"
+            f" (suma I''k,M = {a_na_ka(async_a):.3f} kA, prog = {a_na_ka(limit_a):.3f} kA)"
         )
     return [
         {

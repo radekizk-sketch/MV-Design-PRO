@@ -56,6 +56,32 @@ const MV_APPARATUS_TYPE = {
   i_n_a: 630,
 };
 
+/**
+ * Karta FAB-G: kreator GPZ wymaga jawnego transformatora 110/SN z katalogu
+ * (`zrodloModel.ts`: `transformer_catalog_ref` — „Dobierz transformator
+ * 110/SN z katalogu"), filtrowanego wg strony SN (`|voltage_lv_kv - sn_voltage_kv| <= 6`)
+ * i strony WN (`voltage_hv_kv >= 60`) — patrz `filtrowaneTransformatory` w
+ * `KreatorZrodloZasilania.tsx`. Ta sama pozycja co jedyna istniejąca fikstura
+ * transformatora w repo (`ui2/kreatory/zrodlo/__tests__/KreatorZrodloZasilania.test.tsx`
+ * — grep `frontend/e2e` na `transformer-types` nie znajduje ŻADNEGO innego
+ * mocka; ten spec jest pierwszym e2e, który go potrzebuje) — jedna prawda
+ * fikstury zamiast wymyślania nowych wartości.
+ */
+const TRANSFORMER_TYPE = {
+  id: 'TR-110-15-25',
+  name: 'TR 110/15 25 MVA',
+  rated_power_mva: 25,
+  voltage_hv_kv: 110,
+  voltage_lv_kv: 15,
+  uk_percent: 12.5,
+  pk_kw: 120,
+  i0_percent: 0.2,
+  p0_kw: 25,
+  vector_group: 'YNd11',
+  tap_min: -9,
+  tap_max: 9,
+};
+
 /** Snapshot z jednym węzłem GPZ (po udanej operacji) — minimalny ważny ENM. */
 function snapshotWithGpz() {
   return {
@@ -91,9 +117,17 @@ interface MockOptions {
   withSemanticIssues?: boolean;
 }
 
-async function mockBackend(page: Page, options: MockOptions = {}): Promise<void> {
+/** Stan przechwycony przez mocka, czytany PO teście — dowód kontraktu
+ *  (karta E2E-FIX): nie tylko "toast się pojawił", ale "ładunek faktycznie
+ *  niósł to, czego wymaga backend (FAB-G)". */
+interface MockState {
+  lastAddGridSourcePayload: Record<string, unknown> | null;
+}
+
+async function mockBackend(page: Page, options: MockOptions = {}): Promise<MockState> {
   let projectCreated = false;
   let caseCreated = false;
+  const state: MockState = { lastAddGridSourcePayload: null };
 
   await page.route('**/api/**', async (route) => {
     const request = route.request();
@@ -126,7 +160,7 @@ async function mockBackend(page: Page, options: MockOptions = {}): Promise<void>
       caseCreated = true;
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
         id: 'case-ux', project_id: 'proj-ux', name: 'Wariant 1', description: '',
-        case_type: 'ShortCircuitCase', is_active: true, result_status: 'NONE',
+        case_type: 'ShortCircuitCase', is_active: true, result_status: 'NONE', results_valid: false, result_status_reason: 'brak-wyniku', result_status_reason_pl: 'Brak zapisanego wyniku dla tego przebiegu — nie ma czego nałożyć na schemat.', rewizja_biegu: null, rewizja_biezaca: 1, zmiany_od_biegu: [],
         created_at: '2026-05-23T10:00:01Z', updated_at: '2026-05-23T10:00:01Z', config: {},
       }) });
       return;
@@ -135,7 +169,7 @@ async function mockBackend(page: Page, options: MockOptions = {}): Promise<void>
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(
         caseCreated ? [{
           id: 'case-ux', name: 'Wariant 1', description: '', case_type: 'ShortCircuitCase',
-          is_active: true, result_status: 'NONE', updated_at: '2026-05-23T10:00:01Z',
+          is_active: true, result_status: 'NONE', results_valid: false, result_status_reason: 'brak-wyniku', result_status_reason_pl: 'Brak zapisanego wyniku dla tego przebiegu — nie ma czego nałożyć na schemat.', rewizja_biegu: null, rewizja_biezaca: 1, zmiany_od_biegu: [], updated_at: '2026-05-23T10:00:01Z',
         }] : [],
       ) });
       return;
@@ -146,7 +180,7 @@ async function mockBackend(page: Page, options: MockOptions = {}): Promise<void>
         contentType: 'application/json',
         body: projectCreated && caseCreated ? JSON.stringify({
           id: 'case-ux', project_id: 'proj-ux', name: 'Wariant 1', description: '',
-          case_type: 'ShortCircuitCase', is_active: true, result_status: 'NONE',
+          case_type: 'ShortCircuitCase', is_active: true, result_status: 'NONE', results_valid: false, result_status_reason: 'brak-wyniku', result_status_reason_pl: 'Brak zapisanego wyniku dla tego przebiegu — nie ma czego nałożyć na schemat.', rewizja_biegu: null, rewizja_biezaca: 1, zmiany_od_biegu: [],
           created_at: '2026-05-23T10:00:01Z', updated_at: '2026-05-23T10:00:01Z', config: {},
         }) : '',
       });
@@ -160,6 +194,22 @@ async function mockBackend(page: Page, options: MockOptions = {}): Promise<void>
     }
     if (method === 'GET' && pathname === '/api/catalog/mv-apparatus-types') {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([MV_APPARATUS_TYPE]) });
+      return;
+    }
+    // Karta FAB-G: transformator 110/SN GPZ jest teraz WYMAGANY — bez tej
+    // pozycji `filtrowaneTransformatory` w kreatorze zostaje pustą listą,
+    // walidacja blokuje `zapisz`, i C2/C3 nigdy nie widzą toastu/bannera
+    // (kreator w ogóle nie wysyła operacji domenowej).
+    if (method === 'GET' && pathname === '/api/catalog/transformer-types') {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([TRANSFORMER_TYPE]) });
+      return;
+    }
+    // Katalog przełączników zaczepów (OLTC/DETC) — kreator go pobiera, ale
+    // domyślny `oltc_regulation_type` to 'NONE' (walidacja OLTC pomijana
+    // całkowicie w tym stanie, `zrodloModel.ts: walidujOltc`), więc pusta
+    // lista nie blokuje zapisu — kreator po prostu nie proponuje regulacji.
+    if (method === 'GET' && pathname === '/api/v1/catalog/audit2/tap-changers') {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
       return;
     }
 
@@ -184,8 +234,46 @@ async function mockBackend(page: Page, options: MockOptions = {}): Promise<void>
       // nigdy się nie montował (model od razu "niepusty"), a asercja
       // `createProjectAndOpenSld` wisiała do timeoutu. Realną operację GPZ
       // (`add_grid_source_sn`) rozpoznajemy z payloadu żądania.
-      const body = request.postDataJSON() as { operation?: { name?: string } } | null;
+      const body = request.postDataJSON() as {
+        operation?: { name?: string; payload?: Record<string, unknown> };
+      } | null;
       const opName = body?.operation?.name;
+      const payload = body?.operation?.payload ?? {};
+      if (opName === 'add_grid_source_sn') {
+        state.lastAddGridSourcePayload = payload;
+      }
+      // Karta FAB-G: bez `transformer_catalog_ref` backend odrzuca operację
+      // kodem `catalog.ref_required` (`enm/domain_operations.py:
+      // _resolve_gpz_wn_sn_transformer_catalog_ref`) — mock ODTWARZA to
+      // zachowanie zamiast je omijać, żeby ten test dowodził kontraktu: gdyby
+      // kreator kiedyś przestał wysyłać ten atrybut, C2/C3 zgłoszą brak
+      // toastu/bannera (błąd domenowy zamiast sukcesu), nie fałszywy zielony.
+      const transformerRef =
+        typeof payload.transformer_catalog_ref === 'string'
+          ? payload.transformer_catalog_ref.trim()
+          : '';
+      if (opName === 'add_grid_source_sn' && !transformerRef) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            error: 'Transformator WN/SN GPZ wymaga pozycji katalogowej: podaj transformer_catalog_ref.',
+            error_code: 'catalog.ref_required',
+            snapshot: null,
+            logical_views: {},
+            readiness: { ready: false, blockers: [], warnings: [] },
+            fix_actions: [],
+            changes: { created_element_ids: [], updated_element_ids: [], deleted_element_ids: [] },
+            selection_hint: null,
+            audit_trail: [],
+            domain_events: [],
+            materialized_params: { lines_sn: {}, transformers_sn_nn: {}, sources_sn: {} },
+            layout: { layout_hash: '', layout_version: '1.0' },
+            semantic_issues: [],
+          }),
+        });
+        return;
+      }
       const response = opName === 'add_grid_source_sn'
         ? (snapshotWithGpz() as Record<string, unknown>)
         : pustaOdpowiedzDomainOps('case-ux');
@@ -207,6 +295,7 @@ async function mockBackend(page: Page, options: MockOptions = {}): Promise<void>
 
     await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
   });
+  return state;
 }
 
 async function createProjectAndOpenSld(page: Page): Promise<void> {
@@ -273,7 +362,7 @@ test.describe('UX 10/10 — dowód w przeglądarce (toast / banner / pomoc pola)
 
   test('C2: po dodaniu GPZ pojawia się toast sukcesu', async ({ page }) => {
     const guards = installConsoleGuards(page);
-    await mockBackend(page);
+    const mock = await mockBackend(page);
     await createProjectAndOpenSld(page);
 
     await openGpzCreator(page);
@@ -292,6 +381,23 @@ test.describe('UX 10/10 — dowód w przeglądarce (toast / banner / pomoc pola)
       .filter({ hasText: 'Dodano źródło zasilające GPZ' })
       .first();
     await expect(toast).toBeVisible({ timeout: 10000 });
+
+    // Karta FAB-G (dowód kontraktu, nie tylko obecności toastu): ładunek
+    // faktycznie wysłany do domain-ops niósł transformator 110/SN z katalogu
+    // + parę hv_voltage_kv/transformer_sn_mva, którą `zbudujPayloadZrodla`
+    // dokłada razem z nim (`zrodloModel.ts`).
+    expect(
+      mock.lastAddGridSourcePayload?.transformer_catalog_ref,
+      'payload GPZ musi nieść transformer_catalog_ref (FAB-G)',
+    ).toBe(TRANSFORMER_TYPE.id);
+    expect(
+      mock.lastAddGridSourcePayload?.hv_voltage_kv,
+      'payload GPZ musi nieść hv_voltage_kv (FAB-G)',
+    ).toBe(110);
+    expect(
+      mock.lastAddGridSourcePayload?.transformer_sn_mva,
+      'payload GPZ musi nieść transformer_sn_mva (FAB-G)',
+    ).toBe(TRANSFORMER_TYPE.rated_power_mva);
 
     expect(guards.pageErrors, `pageerror: ${guards.pageErrors.join('\n')}`).toEqual([]);
   });

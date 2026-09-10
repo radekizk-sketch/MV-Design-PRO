@@ -51,7 +51,7 @@ Legenda stanu: **PEŁNY** = realny solver + test + podpięcie API · **CZĘŚCIO
 | Rozpływ Newton-Raphson | PEŁNY | `power_flow_newton.py`, `power_flow_newton_internal.py` |
 | Rozpływ Gauss-Seidel / Fast-Decoupled | PEŁNY | `power_flow_gauss_seidel.py`, `power_flow_fast_decoupled.py` |
 | Rozpływ niesymetryczny | PEŁNY | `power_flow_unbalanced.py` |
-| Rozpływ w szeregu czasowym (QSTS) | PEŁNY | `enm/domain_operations_v2.py:run_time_series_power_flow` (operacja kanoniczna) |
+| Rozpływ w szeregu czasowym (QSTS) | CZĘŚCIOWY | Korekta CV-3.2, 58e520ce: cytowana operacja `run_time_series_power_flow` (`enm/domain_operations_v2.py`) byla fantomem zapisujacym `study_cases[]` do nieistniejacego pola ENM -- usunieta procedura 7 krokow, nigdy nie byla PEŁNA. Realny, embrionalny odpowiednik: `run_annual_oltc_profile` (`network_model/solvers/power_flow_oltc_studies.py`, `enm/canonical_analysis.py`) -- jeden globalny `load_scale` per krok, bez magazynu serii/profili per element (patrz `docs/twin/MV_DESIGN_PRO_DIGITAL_TWIN_AUDIT.md` A2-12). |
 | Zabezpieczenia nadprądowe/IDMT (50/51, TCC) | PEŁNY | `protection_iec60255.py`, `protection/curves/` |
 | Sanity-checks nastaw (27/59/59N, 81U/81O/ROCOF, 50/51, SPZ) | PEŁNY | `application/analyses/protection/sanity_checks/rules.py` |
 | Pętla zwarcia IEC 60364 (TN-S/TN-C/TN-C-S) | CZĘŚCIOWY | `solvers/fault_loop_iec60364.py` — TT/IT: `NotImplementedError` (501) |

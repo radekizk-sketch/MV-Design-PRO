@@ -22,20 +22,16 @@
 /** Status importu wg backendu (`ImportStatus` + bramka katalogowa). */
 export type StatusImportu = 'SUCCESS' | 'PARTIAL' | 'FAILED' | 'CATALOG_MAPPING_REQUIRED';
 
-/** Podsumowanie zawartości archiwum (`ArchiveSummary`). */
+/**
+ * Podsumowanie zawartości archiwum (`ArchiveSummary`, format 3.0.0 — W1 2026-09-09):
+ * archiwum niesie przypadki, biegi kanoniczne i zapisy modelu ENM; sekcje legacy
+ * (węzły/gałęzie/źródła/odbiory/migawki/schematy/dowody) zeszły razem z tabelami ORM.
+ */
 export interface ZawartoscArchiwum {
-  readonly nodes_count: number;
-  readonly branches_count: number;
-  readonly sources_count: number;
-  readonly loads_count: number;
-  readonly snapshots_count: number;
-  readonly sld_diagrams_count: number;
   readonly study_cases_count: number;
   readonly operating_cases_count: number;
-  readonly analysis_runs_count: number;
-  readonly study_runs_count: number;
-  readonly results_count: number;
-  readonly proofs_count: number;
+  readonly canonical_runs_count: number;
+  readonly enm_models_count: number;
 }
 
 /** Podgląd archiwum bez importu (`PreviewResponse`). */

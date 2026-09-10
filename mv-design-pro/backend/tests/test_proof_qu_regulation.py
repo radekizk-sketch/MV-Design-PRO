@@ -85,6 +85,33 @@ class TestQURegulationProofPack:
         result = QURegulationProofPack.generate(inp)
         assert result.qu_compliance is False
 
+    def test_missing_measurement_shows_brak_danych_not_zero(self):
+        """FAB-E (E1): poziom generacji bez pomiaru (voltages_at_oze_pu/
+        q_injected_mvar krotsze niz generation_levels) NIE dostaje fikcyjnego
+        1.0 p.u./0.0 Mvar — krok dokumentuje jawny brak, a werdykt zgodnosci
+        NIE liczy tego poziomu (ani jako spelniony, ani jako naruszony)."""
+        inp = _make_input(
+            # 5 poziomow generacji (domyslne), ale tylko 3 pomiary — poziomy
+            # 4 i 5 (indeksy 3, 4) bez danych.
+            voltages_at_oze_pu=[1.00, 1.01, 1.02],
+            q_injected_mvar=[0.0, 0.0, 0.0],
+        )
+        result = QURegulationProofPack.generate(inp)
+
+        # Wszystkie 3 zmierzone poziomy sa w deadbandzie/zgodne -> werdykt
+        # zgodny, mimo brakow na poziomach 4/5 (pominiete, nie naruszone).
+        assert result.voltages_within_limits is True
+        assert result.qu_compliance is True
+
+        # Krok dla brakujacego poziomu istnieje i mowi wprost o braku danych.
+        steps_bez_danych = [
+            step for step in result.proof.steps if "brak pomiaru" in step.title_pl.lower()
+        ]
+        assert len(steps_bez_danych) == 2
+        for step in steps_bez_danych:
+            assert step.result.value == "brak danych"
+            assert "Brak danych pomiarowych" in step.substitution_latex
+
     def test_step_count_matches_generation_levels(self):
         """1 (characteristic) + N (gen levels) + 1 (summary)."""
         inp = _make_input()

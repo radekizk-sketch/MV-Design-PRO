@@ -1,0 +1,20 @@
+{
+  "network_id": "oze-pv-bess",
+  "source": "Custom; PF expected via deterministic Newton-Raphson cross-check; NC RfG Annex II compliant",
+  "source_note": "PF: Newton-Raphson convergence. Dynamic: NC RfG Annex II FRT envelope verified. Short-circuit reference validation is covered by pandapower-iec60909-radial. KOREKTA 1 (CV-4.3 K1, 2026-09-06): poprzednie v_pu BUS-2/BUS-3 (1.005/0.998) byly niezweryfikowane — `application/reference_networks/computation.py::_power_flow_newton_raphson` (wlasny NR, wyrocznia (b)) NIE ZBIEGA na biezacej topologii tej sieci (`converged: False`, zmierzone bezposrednio przed ta karta) i nie mogl byc ich zrodlem; wartosc BUS-2=1,005 byla tez matematycznie niemozliwa dla wezla PV o nastawie literaturowej u_set_pu=1,0 (PV-2, zero przelaczen PV->PQ). KOREKTA 2 (CV-4.3 K1, ta sama karta, tuz po KOREKCIE 1): kat z KOREKTY 1 (BUS-2=29,811916 / BUS-3=29,796443 stopni) byl BLEDNY. Przyczyna: `enm/mapping.py` domyslnie podstawia `vector_group=\"Dyn11\"`, gdy katalog nie deklaruje grupy polaczen (`Transformer.vector_group=None`), a `network_model/solvers/power_flow_newton_internal.py::transformer_phase_shift_rad` (SM-2/V12K-180, FROZEN, poprawny i zamierzony) stosuje wtedy przesuniecie fazowe Dyn11 (+30 stopni) w rozplywie skladowej zgodnej. Katalogowy rekord `bench_ozepvbess_tr110_15` mial `vector_group=None`, wiec kat na BUS-2/BUS-3 z KOREKTY 1 byl podbity o dokladnie +30 stopni ponad wartosc fizyczna (roznica zmierzona: 30,000000114 i 29,999999916 stopnia — identyfikacja jednoznaczna, nie przyblizenie). Naprawa u zrodla: katalog ustawia `vector_group=\"Yy0\"` (brak przesuniecia fazowego — literatura PF dla tej sieci go nie zaklada; patrz komentarz w `network_model/catalog/mv_benchmark_catalog.py`). Wartosci ponizej to PONOWNY odczyt toru kanonicznego (`enm/assembler.py` -> FROZEN power_flow_newton) PO tej naprawie: PV-2 w trybie REGULACJA_NAPIECIA, BESS-2 jako wstrzyk PQ Q=0 na tej samej szynie (enm_builders/oze_pv_bess.py), `quality_status: accepted`, zbiega bez nasycenia granic Q. v_pu jest niezmienione wzgledem KOREKTY 1 (przesuniecie fazowe nie wplywa na modul napiecia) — zmienil sie WYLACZNIE kat. Rezydualna roznica v_pu wzgledem oryginalu sprzed KOREKTY 1 (1,005/0,998) jest oczekiwana i nie jest bledem: oryginal pochodzil z odrebnego, `\"Custom\"`, nieudokumentowanego obliczenia starego dialektu sprzed tej karty, nie z tego samego buildera ENM/katalogu typow `benchmark`. Wyrocznia (b) dla tej sieci pozostaje PLANNED/NIE_DOTYCZY — wlasny NR nie dostarcza baseline'u (nie zbiega), nie jest to rozbieznosc do wyjasnienia miedzy dwiema fizykami, tylko brak jednej z nich.",
+  "power_flow": [
+    {"bus_id": "BUS-1", "v_pu": 1.0000, "angle_deg": 0.000, "rtol": 5e-3, "note": "Slack 110 kV"},
+    {"bus_id": "BUS-2", "v_pu": 1.000000, "angle_deg": -0.188084, "rtol": 1e-4, "note": "Wezel PV (PV-2, u_set_pu=1.0 z literatury) - |U| dokladnie na nastawie, kat z toru kanonicznego PO korekcie vector_group (KOREKTA 2)"},
+    {"bus_id": "BUS-3", "v_pu": 0.999810, "angle_deg": -0.203557, "rtol": 1e-4, "note": "Load bus downstream - z toru kanonicznego PO korekcie vector_group (KOREKTA 2)"}
+  ],
+  "power_flow_branches": [],
+  "short_circuit": [],
+  "dynamic_samples": [
+    {"t_s": -0.05, "voltage_pu_min": 0.99, "voltage_pu_max": 1.01, "note": "Pre-fault steady state"},
+    {"t_s": 0.05, "voltage_pu_min": 0.00, "voltage_pu_max": 0.30, "note": "During fault depression"},
+    {"t_s": 0.15, "voltage_pu_min": 0.10, "voltage_pu_max": 0.50, "note": "End of fault, DER FRT engaged"},
+    {"t_s": 0.5, "voltage_pu_min": 0.60, "voltage_pu_max": 1.10, "note": "Mid-recovery"},
+    {"t_s": 1.5, "voltage_pu_min": 0.85, "voltage_pu_max": 1.15, "note": "Late recovery per NC RfG"},
+    {"t_s": 3.0, "voltage_pu_min": 0.90, "voltage_pu_max": 1.10, "note": "Steady state restored"}
+  ]
+}

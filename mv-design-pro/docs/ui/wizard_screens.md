@@ -3224,11 +3224,11 @@ Gdzie:
 
 | Dokument | Ścieżka | Opis |
 |----------|---------|------|
-| SYSTEM_SPEC.md | /docs/SYSTEM_SPEC.md | Specyfikacja systemu |
-| ARCHITECTURE.md | /docs/ARCHITECTURE.md | Architektura aplikacji |
-| PLANS.md | /docs/PLANS.md | Plany rozwoju |
+| SYSTEM_SPEC.md | /SYSTEM_SPEC.md | Specyfikacja systemu |
+| ARCHITECTURE.md | /ARCHITECTURE.md | Architektura aplikacji |
+| PLANS.md | /PLANS.md | Plany rozwoju |
 | sld_rules.md | /docs/ui/sld_rules.md | Reguły SLD |
-| CANONICAL_COMPLIANCE.md | /docs/CANONICAL_COMPLIANCE.md | Zgodność z benchmark |
+| CANONICAL_COMPLIANCE_2026-01.md | /docs/audit/archive/CANONICAL_COMPLIANCE_2026-01.md | Zgodność z benchmark (checklista archiwalna, audyt 2026-01) |
 
 ### 12.2 Standardy Zewnętrzne
 

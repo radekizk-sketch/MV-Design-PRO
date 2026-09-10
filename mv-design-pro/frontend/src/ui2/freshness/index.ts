@@ -10,6 +10,8 @@ export { opisSwiezosci, BRAK_WYNIKOW_LABEL, NIEAKTUALNE_BEZ_PARY_LABEL } from '.
 // V12K-264: odpowiedz na „ktora zmiana uniewaznila wynik" — dziennik zmian modelu.
 export { PanelCoSieZmienilo } from './PanelCoSieZmienilo';
 export type { PanelCoSieZmieniloProps } from './PanelCoSieZmienilo';
+export { ListaZmianOdBiegu } from './ListaZmianOdBiegu';
+export type { ListaZmianOdBieguProps } from './ListaZmianOdBiegu';
 export { pobierzDziennikZmian, podsumowaniePl } from './dziennikApi';
 export type { DziennikZmian, WpisDziennika } from './dziennikApi';
 export { useSwiezoscNaglowka } from './useSwiezoscNaglowka';

@@ -62,6 +62,10 @@ export const ODGALEZIENIE_STRINGS = {
   anuluj: 'Anuluj',
   brakZakresu: 'Wybierz aktywny zakres obliczeń przed rozpoczęciem odgałęzienia.',
   walidacjaStopka: 'Uzupełnij wymagane pola, aby rozpocząć odgałęzienie.',
+  // S9-5 (klasa: bramka enable bez sygnału gotowości, `karta_e2e_s95.md`) —
+  // katalog kabli/linii ładuje się asynchronicznie; zapis bez niego byłby
+  // cichym no-op na pustym `catalog_ref`, więc blokujemy JAWNIE.
+  katalogLadowanieStopka: 'Ładowanie katalogu typów odcinków SN — zapis będzie dostępny po wczytaniu.',
 
   // Panel teorii (V12K-066)
   teoriaTytul: 'Teoria: podział prądu i dobór przekroju odgałęzienia',

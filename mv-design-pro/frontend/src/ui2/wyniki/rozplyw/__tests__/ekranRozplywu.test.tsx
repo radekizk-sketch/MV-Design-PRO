@@ -74,6 +74,35 @@ describe('EkranRozplywu — kompozycja podzakładek Szyny/Gałęzie (karta E8.3)
     render(<EkranRozplywu {...props()} />);
     expect(screen.getByRole('tablist', { name: ROZPLYW_STRINGS.ariaPodzakladki })).toBeInTheDocument();
   });
+
+  // Karta W3-H (wariant B): trzecia podzakładka „Regulacja Q OZE" — uczciwy
+  // stan zerowy (ślad przebiegu nie niesie Q per generator, decyzja OD-15).
+  it('trzecia podzakładka „Regulacja Q OZE" obecna w tablist', () => {
+    render(<EkranRozplywu {...props()} />);
+    expect(screen.getByTestId('mvd-rozplyw-podzakladka-regulacja-oze')).toBeInTheDocument();
+    expect(screen.getByText(ROZPLYW_STRINGS.podzakladkaRegulacjaOze)).toBeInTheDocument();
+  });
+
+  it('klik na „Regulacja Q OZE" pokazuje jej treść i ukrywa Szyny/Gałęzie', () => {
+    render(<EkranRozplywu {...props()} />);
+    fireEvent.click(screen.getByTestId('mvd-rozplyw-podzakladka-regulacja-oze'));
+    expect(screen.getByTestId('mvd-rozplyw-regulacja-oze')).toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-rozplyw-szyny')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-rozplyw-galezie')).not.toBeInTheDocument();
+  });
+
+  it('roving tabindex obejmuje trzecią podzakładkę (strzałka w prawo z Gałęzi)', () => {
+    render(<EkranRozplywu {...props()} />);
+    fireEvent.click(screen.getByTestId('mvd-rozplyw-podzakladka-galezie'));
+    fireEvent.keyDown(screen.getByTestId('mvd-rozplyw-podzakladka-galezie'), { key: 'ArrowRight' });
+    expect(screen.getByTestId('mvd-rozplyw-regulacja-oze')).toBeInTheDocument();
+    const regulacjaTab = screen.getByTestId('mvd-rozplyw-podzakladka-regulacja-oze');
+    expect(regulacjaTab).toHaveAttribute('tabindex', '0');
+    expect(regulacjaTab).toHaveAttribute('aria-selected', 'true');
+    // Zawinięcie: strzałka w prawo z ostatniej podzakładki wraca do pierwszej.
+    fireEvent.keyDown(regulacjaTab, { key: 'ArrowRight' });
+    expect(screen.getByTestId('mvd-rozplyw-szyny')).toBeInTheDocument();
+  });
 });
 
 describe('EkranRozplywu — preselekcja elementu z deep-linku SLD (karta D-2)', () => {

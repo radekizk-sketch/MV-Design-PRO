@@ -9,9 +9,18 @@ czyli tej samej ścieżki, którą liczy macierz frontendu:
 żadnego testu — cytuje istniejące werdykty, ich podsumowania i odcisk wejścia.
 
 Uczciwa bramka kompletności (wzór „lista braków przed generacją"):
-- werdykt ``no_data`` na teście wymaganym, brak klasy modułu lub moduł bez
-  żadnego testu wymaganego → certyfikat NIE powstaje, zwracana jest lista
-  braków po polsku;
+- werdykt ``no_data`` na teście wymaganym, brak klasy modułu, lub moduł BEZ
+  żadnego testu wymaganego I BEZ zweryfikowanego certyfikatu PTPiREE
+  (``certificate_status != "ptpiree_verified"``) → certyfikat NIE powstaje,
+  zwracana jest lista braków po polsku;
+- moduł bez testu wymaganego, ale ZE zweryfikowanym certyfikatem PTPiREE
+  (karta FAB-K), NIE jest brakiem — certyfikat z wykazu producenta jest
+  SAMODZIELNĄ, silniejszą podstawą niż bieg testów NC RfG w warsztacie; zero
+  testów wymaganych jest tu WNIOSKIEM klasyfikacji (typ modułu A, PPM), nie
+  luką dowodową. Precedens defektu: przed tą kartą front czytał
+  `ptpiree_certificate_ref` z pola, którego zapis nigdy go nie wypełniał —
+  `certificate_status` był więc ZAWSZE `"unknown"`, więc ta gałąź nigdy się
+  nie uruchamiała i luka była niewidoczna;
 - werdykt negatywny (``fail``, moduł ``niezgodny``) NIE blokuje — dokument
   stwierdza stan (certyfikat z jednoznacznym werdyktem negatywnym).
 
@@ -96,7 +105,8 @@ def zbierz_braki(run_result: NcRfgPtpireeRunResult) -> list[str]:
 
     Braki (per moduł, w kolejności macierzy):
     - brak klasy modułu (``module_type == '?'``),
-    - moduł bez żadnego testu wymaganego (nie ma czego certyfikować),
+    - moduł bez żadnego testu wymaganego I bez zweryfikowanego certyfikatu
+      PTPiREE (nie ma czego certyfikować — ani biegu, ani wykazu producenta),
     - test wymagany z werdyktem ``no_data`` (brak danych do oceny).
     """
     braki: list[str] = []
@@ -108,7 +118,7 @@ def zbierz_braki(run_result: NcRfgPtpireeRunResult) -> list[str]:
                 "(moc/napięcie poza zakresem profilu operatora)."
             )
             continue
-        if module.required_count == 0:
+        if module.required_count == 0 and module.certificate_status != "ptpiree_verified":
             braki.append(
                 f"Moduł „{etykieta}”: brak testów wymaganych — brak podstawy " "do certyfikacji."
             )

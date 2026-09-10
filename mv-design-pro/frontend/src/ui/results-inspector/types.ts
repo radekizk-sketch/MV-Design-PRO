@@ -246,12 +246,84 @@ export interface ShortCircuitRow {
 }
 
 /**
+ * Impedancja zespolona (Ω) w postaci re/im — kształt WPROST z solvera (backend
+ * `ComplexOhmResponse`-owy dict, ślad WHITE BOX `enm/mapping.py::impedancja_zasilania_systemowego`).
+ */
+export interface ZQOhm {
+  re: number;
+  im: number;
+}
+
+/**
+ * CV-4.3 K7: jeden wpis śladu WHITE BOX wyprowadzenia Z_Q źródła sieciowego
+ * (IEC 60909-0:2016 §6.2.1 eq. 6) — `raw_result.zrodla_sieciowe[]`
+ * (`enm/mapping.py::build_grid_source_trace` → `impedancja_zasilania_systemowego`,
+ * karta `backend/tests/enm/test_k7_sk_min.py`). Kolejność pól = kolejność ref_id
+ * (deterministyczna, sort backendu).
+ *
+ * Tryb `IMPEDANCJA_JAWNA` niesie WYŁĄCZNIE `ref_id`/`tryb`/`scenariusz`/`u_nq_kv`/
+ * `z_q_ohm`/`formula` (impedancja fizyczna, bez c, bez wariantu MIN) — reszta pól
+ * jest wtedy nieobecna (`undefined`), nie `null` (backend nie wysyła klucza wcale).
+ */
+export interface ZrodloSiecioweSlad {
+  ref_id: string;
+  /**
+   * Token trybu danych + scenariusza: „MOC_ZWARCIOWA" | „MOC_ZWARCIOWA_MIN" |
+   * „PRAD_ZWARCIOWY" | „PRAD_ZWARCIOWY_MIN" | „IMPEDANCJA_JAWNA" | jeden z nich
+   * + sufiks „_MAX_JAKO_MIN" (scenariusz MIN bez własnych danych — Z_Q z MAX).
+   */
+  tryb: string;
+  scenariusz: 'MAX' | 'MIN';
+  u_nq_kv: number;
+  sk3_mva?: number;
+  ik3_ka?: number;
+  /** Współczynnik napięciowy c (IEC 60909-0 Tab. 1) — nieobecny dla impedancji jawnej. */
+  c?: number;
+  pasmo_c?: 'nN' | 'SN/WN';
+  rx_ratio?: number;
+  rx_ratio_zrodlo?: 'MODEL_MIN' | 'MODEL_MAX' | 'MODEL' | 'IEC_60909_DOMYSLNY_0_1';
+  z_q_abs_ohm?: number;
+  z_q_ohm: ZQOhm;
+  formula: string;
+  /** Kod gotowości (np. „source.sk_min_missing") — obecny WYŁĄCZNIE gdy scenariusz
+   *  MIN liczył się z danych MAX (brak S″kQmin/I″kQmin); nigdy cicho. */
+  zalozenie?: string;
+  zalozenie_opis?: string;
+}
+
+/**
+ * CV-4.3 K7: jedno założenie biegu nazwane kodem gotowości — `raw_result.zalozenia[]`
+ * (`enm/assembler.py::WejscieZwarcia.zalozenia`, wyprowadzone z wpisów
+ * `zrodla_sieciowe` niosących `zalozenie`). Pusta/nieobecna lista = bieg bez założeń
+ * (`"zalozenia" not in raw_result"` po stronie backendu — pole wtedy nie istnieje).
+ */
+export interface ZalozenieBieguSlad {
+  code: string;
+  element_ref: string;
+  message_pl: string;
+  scenariusz: 'MAX' | 'MIN';
+}
+
+/**
  * Short-circuit results table.
  */
 export interface ShortCircuitResults {
   run_id: string;
   rows: ShortCircuitRow[];
   analysis_case_context?: AnalysisCaseContext | null;
+  /**
+   * CV-4.3 K6/K7: ślad WHITE BOX wyprowadzenia Z_Q źródeł sieciowych biegu —
+   * addytywne, obecne WYŁĄCZNIE gdy bieg ma źródło sieciowe (`raw_result.zrodla_sieciowe`,
+   * `enm/canonical_analysis.py::_execute_short_circuit`). Starszy wynik / bieg bez
+   * źródła sieciowego → pole nieobecne (uczciwy brak, nie pusta tablica).
+   */
+  zrodla_sieciowe?: ZrodloSiecioweSlad[];
+  /**
+   * CV-4.3 K7: założenia biegu nazwane kodem gotowości (scenariusz MIN bez S″kQmin
+   * → Z_Q z danych MAX) — addytywne, obecne WYŁĄCZNIE gdy bieg je ma. Nigdy cicho:
+   * projektant MUSI widzieć, że bieg MIN liczył z danych MAX.
+   */
+  zalozenia?: ZalozenieBieguSlad[];
 }
 
 // =============================================================================
@@ -324,11 +396,22 @@ export interface TraceStep {
 
 /**
  * Trace value with unit and optional label.
+ *
+ * Wariant zespolony (`re`/`im`): niektore kroki WHITE BOX (impedancja
+ * zastepcza Z = R + jX, `ElementCalculationProofPanel` `firstComplexValue`/
+ * `complexParts`) niosa liczbe zespolona zamiast skalara — solver realnie
+ * to emituje, komponent to juz konsumuje (duck-typing na `unknown`); pola
+ * dodane addytywnie (oba opcjonalne), zeby nie zlamac istniejacych
+ * konsumentow skalara `value`.
  */
 export interface TraceValue {
-  value: number | string | boolean | null;
+  value?: number | string | boolean | null;
   unit?: string;
   label?: string;
+  /** Skladowa rzeczywista Z = R + jX — obecna razem z `im`, `value` wtedy nieistotne. */
+  re?: number;
+  /** Skladowa urojona Z = R + jX. */
+  im?: number;
 }
 
 export interface TraceRelatedElement {
@@ -430,67 +513,6 @@ export interface ExtendedTrace {
     manual_override_count?: number;
   };
   analysis_case_context?: AnalysisCaseContext | null;
-}
-
-// =============================================================================
-// SLD Overlay
-// =============================================================================
-
-/**
- * SLD bus overlay data.
- */
-export interface SldOverlayBus {
-  symbol_id: string;
-  bus_id: string;
-  /** Alias used by overlay_builder and SLD components */
-  node_id: string;
-  u_pu?: number;
-  u_kv?: number;
-  angle_deg?: number;
-  ikss_ka?: number;
-  sk_mva?: number;
-  /** Energy validation voltage status: PASS | WARNING | FAIL | NOT_COMPUTED */
-  voltage_status?: string;
-  /** Worst energy validation status for this node */
-  ev_status?: string;
-}
-
-/** @deprecated Use SldOverlayBus instead. */
-export type SldOverlayNode = SldOverlayBus;
-
-/**
- * SLD branch overlay data.
- */
-export interface SldOverlayBranch {
-  symbol_id: string;
-  branch_id: string;
-  p_mw?: number;
-  q_mvar?: number;
-  i_a?: number;
-  loading_pct?: number;
-  /** Worst energy validation status for this branch */
-  ev_status?: string;
-}
-
-/**
- * Complete SLD result overlay.
- */
-export interface SldResultOverlay {
-  diagram_id: string;
-  run_id: string;
-  /** Swiezosc wyniku wzgledem modelu: NONE | FRESH | OUTDATED (liczy backend). */
-  result_status: string;
-  /** Kod przyczyny statusu z backendu (np. `model-zmieniony`). */
-  result_status_reason?: string;
-  /** Zdanie po polsku wyjasniajace przyczyne statusu — prosto z backendu. */
-  result_status_reason_pl?: string;
-  /** Node overlay data (primary field used by overlay_builder and SLD components) */
-  nodes: SldOverlayBus[];
-  /** @deprecated Use nodes instead */
-  buses?: SldOverlayBus[];
-  branches: SldOverlayBranch[];
-  /** Overall energy validation status: PASS | WARNING | FAIL */
-  overall_ev_status?: string;
 }
 
 export interface ResultsRunSnapshot {

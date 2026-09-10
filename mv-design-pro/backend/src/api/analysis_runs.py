@@ -28,8 +28,6 @@ from api.canonical_run_views import (
     build_run_trace_payload,
     build_short_circuit_results_response,
     build_short_circuit_rozplyw_response,
-    build_sld_overlay,
-    build_source_compliance_results_response,
 )
 from api.dependencies import get_uow_factory
 from api.document_store import store_generated_document_from_response
@@ -42,6 +40,8 @@ from application.proof_engine.pakiet_biegu import (
 from application.proof_engine.pakiet_nastaw import (
     PakietNastawError,
     dostepnosc_pakietu_nastaw,
+    zbuduj_odpowiedz_dopasowania,
+    zbuduj_odpowiedz_nastaw_json,
     zbuduj_pakiet_nastaw,
 )
 from enm.canonical_analysis import (
@@ -140,51 +140,6 @@ def get_analysis_run_results(run_id: UUID) -> dict[str, Any]:
             detail=f"Wyniki obliczenia {run_id} są niedostępne (status={canonical_run.status})",
         )
     return canonicalize_json(build_result_items(canonical_run))
-
-
-@router.get("/analysis-runs/{run_id}/overlay")
-def get_analysis_run_overlay(
-    run_id: UUID,
-    diagram_id: UUID = Query(...),
-    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-) -> dict[str, Any]:
-    canonical_run = _require_canonical_run(run_id)
-    with uow_factory() as uow:
-        diagram = uow.sld.get(diagram_id)
-    if diagram is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="SLD diagram not found",
-        )
-    diagram_project_id = (
-        str(diagram.get("project_id")) if diagram.get("project_id") is not None else None
-    )
-    if canonical_run.project_id is not None and diagram_project_id not in {
-        None,
-        str(canonical_run.project_id),
-    }:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Run does not belong to this project",
-        )
-    overlay = build_sld_overlay(
-        canonical_run,
-        diagram_id=diagram_id,
-        sld_payload=diagram.get("payload", {}),
-    )
-    # Status swiezosci WCHODZI do odpowiedzi (K-S). Wczesniej byl tu budowany i
-    # WYRZUCANY, wiec klient (`ui/results-inspector/api.ts`) dopisywal sobie
-    # `result_status: 'VALID'` z palca — baner „Wyniki nieaktualne" w
-    # `SldOverlay.tsx` nie mogl zapalic sie nigdy.
-    return canonicalize_json(
-        {
-            "bus_overlays": overlay.get("nodes", []),
-            "branch_overlays": overlay.get("branches", []),
-            "result_status": overlay["result_status"],
-            "result_status_reason": overlay["result_status_reason"],
-            "result_status_reason_pl": overlay["result_status_reason_pl"],
-        }
-    )
 
 
 @router.get("/analysis-runs/{run_id}/trace")
@@ -606,6 +561,7 @@ def get_pakiet_dowodowy_nastaw(
     delta_t_s: float = Query(default=0.3),
     k_b: float = Query(default=1.2),
     k_bth: float = Query(default=1.1),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> Response:
     """Pakiet dowodowy nastaw I>/I>> (ZIP: dowód, źródło LaTeX, wykaz plików, odcisk).
 
@@ -624,6 +580,7 @@ def get_pakiet_dowodowy_nastaw(
             delta_t_s=delta_t_s,
             k_b=k_b,
             k_bth=k_bth,
+            uow_factory=uow_factory,
         )
     except PakietNastawError as exc:
         raise HTTPException(
@@ -634,6 +591,84 @@ def get_pakiet_dowodowy_nastaw(
         media_type="application/zip",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@router.get("/analysis-runs/{run_id}/nastawy")
+def get_nastawy(
+    run_id: UUID,
+    linia: str = Query(...),
+    nastepna_szyna: str = Query(...),
+    c_min: float = Query(default=1.0),
+    delta_t_s: float = Query(default=0.3),
+    k_b: float = Query(default=1.2),
+    k_bth: float = Query(default=1.1),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
+) -> dict[str, Any]:
+    """Nastawy I>/I>> (JSON): metoda Hoppela, TA SAMA fizyka co pakiet dowodowy
+    ZIP (karta W3-C1) — bez pobierania pliku. Ekran koordynacji czyta tę trasę,
+    a przycisk „Pobierz pakiet dowodowy" woła ZIP z tym samym zapytaniem.
+
+    Serwer sam uruchamia w pamięci wariant zwarcia trójfazowego i dwufazowego przy
+    ``c_min`` oraz wariant rozpływu na migawce kotwicy (``run_id`` = zakończony bieg
+    zwarcia trójfazowego przy c_max) — klient podaje wyłącznie tożsamość kotwicy i
+    trzy wybory inżynierskie: chroniony odcinek, kolejną szynę, c_min.
+    """
+    run = _require_canonical_run(run_id)
+    try:
+        odpowiedz = zbuduj_odpowiedz_nastaw_json(
+            run,
+            line_id=linia,
+            next_bus_id=nastepna_szyna,
+            c_min=c_min,
+            delta_t_s=delta_t_s,
+            k_b=k_b,
+            k_bth=k_bth,
+            uow_factory=uow_factory,
+        )
+    except PakietNastawError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
+    return canonicalize_json(odpowiedz)
+
+
+@router.get("/analysis-runs/{run_id}/nastawy/dopasowanie")
+def get_nastawy_dopasowanie(
+    run_id: UUID,
+    device_id: str = Query(...),
+    linia: str = Query(...),
+    nastepna_szyna: str = Query(...),
+    c_min: float = Query(default=1.0),
+    delta_t_s: float = Query(default=0.3),
+    k_b: float = Query(default=1.2),
+    k_bth: float = Query(default=1.1),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
+) -> dict[str, Any]:
+    """Dopasowanie nastaw Hoppela do aparatu (karta W3-C1, decyzja §0.4).
+
+    Ta sama fizyka co ``.../nastawy`` (jeden bieg zbiorczy, jedno wywołanie
+    silnika), zmapowana na wymaganie wobec przekaźnika (`ProtectionRequirementV0`)
+    i sprawdzona wobec wybranego aparatu z katalogu analitycznego
+    (`GET /api/catalog/protection/device-types` — lista aparatów do wyboru).
+    """
+    run = _require_canonical_run(run_id)
+    try:
+        odpowiedz = zbuduj_odpowiedz_dopasowania(
+            run,
+            device_id=device_id,
+            line_id=linia,
+            next_bus_id=nastepna_szyna,
+            c_min=c_min,
+            delta_t_s=delta_t_s,
+            k_b=k_b,
+            k_bth=k_bth,
+            uow_factory=uow_factory,
+        )
+    except PakietNastawError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
+    return canonicalize_json(odpowiedz)
 
 
 @router.get("/analysis-runs/{run_id}/results/index")
@@ -657,14 +692,22 @@ def get_short_circuit_results(run_id: UUID) -> dict[str, Any]:
 
 
 @router.get("/analysis-runs/{run_id}/results/short-circuit/rozplyw")
-def get_short_circuit_rozplyw(run_id: UUID, target_id: str = Query(...)) -> dict[str, Any]:
+def get_short_circuit_rozplyw(
+    run_id: UUID,
+    target_id: str = Query(...),
+    uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
+) -> dict[str, Any]:
     # V12K-281 (K13): rozpływ gałęziowy JEDNEGO punktu zwarcia na żądanie —
     # wiersze zbiorcze `/results/short-circuit` nie niosą już rozpływu
     # (iloczyn źródło×gałąź per wiersz dawał odpowiedź/raport 730 MB).
     # `target_id` jako parametr zapytania: refy węzłów ENM zawierają ukośniki.
     run = _require_canonical_run(run_id)
     try:
-        return canonicalize_json(build_short_circuit_rozplyw_response(run, target_id))
+        # PERF-SC-50: wkłady na żądanie z wejścia biegu — fabryka UoW jak przy biegu
+        # (opcje audytu 2 czytane tą samą bazą, którą zapisano konfigurację).
+        return canonicalize_json(
+            build_short_circuit_rozplyw_response(run, target_id, uow_factory=uow_factory)
+        )
     except KeyError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -695,13 +738,6 @@ def get_dynamic_stability_time_series(run_id: UUID) -> dict[str, Any]:
 def get_automation_trace_results(run_id: UUID) -> dict[str, Any]:
     return canonicalize_json(
         build_automation_trace_results_response(_require_canonical_run(run_id))
-    )
-
-
-@router.get("/analysis-runs/{run_id}/results/source-compliance")
-def get_source_compliance_results(run_id: UUID) -> dict[str, Any]:
-    return canonicalize_json(
-        build_source_compliance_results_response(_require_canonical_run(run_id))
     )
 
 

@@ -11,6 +11,8 @@ import type {
   ShortCircuitBranchFlow,
   ShortCircuitResults,
   ShortCircuitRow,
+  ZalozenieBieguSlad,
+  ZrodloSiecioweSlad,
 } from '../../../../ui/results-inspector/types';
 import type { WkladZwarciowy } from '../zwarciaModel';
 
@@ -81,6 +83,111 @@ export function rozplywFixture(): ShortCircuitBranchFlow[] {
   ];
 }
 
+/**
+ * Ślad WHITE BOX podziału prądu zwarciowego Thevenina (TH-1, karta WB-ROZPLYW)
+ * — skopiowany BAJT-W-BAJT z `test_branch_flow_trace_is_whitebox`
+ * (`backend/tests/test_short_circuit_iec60909.py`), wyprowadzony na
+ * `build_slack_radial_graph()` solvera (transformator T1 A→B, linia L1 B→C,
+ * zwarcie 3F w C). Kształt REALNY solvera (`WhiteBoxTracer.add`, patrz
+ * `dowod/dowodModel.ts` nagłówek): `inputs`/`result` niosą skalar/liczbę
+ * zespoloną `{re,im}` WPROST, nie opakowany `TraceValue` — celowo BEZ adnotacji
+ * `: TraceStep[]` (żeby nie wymuszać rzutowania na inny kształt niż realny).
+ */
+export function branchFlowTraceFixture() {
+  return [
+    {
+      key: 'thevenin_flow_setup',
+      title: 'Podział prądu Thevenina — iniekcja jednostkowa w węźle zwarcia',
+      formula_latex:
+        '\\underline{V} = \\underline{Z}_{bus} \\cdot \\underline{i}_{inj},\\quad \\underline{i}_{inj,k} = -1',
+      inputs: {
+        fault_node_id: 'C',
+        fault_index: 2,
+        ik_thevenin_a: 5611.281490619905,
+        n_nodes: 3,
+      },
+      substitution: 'i_inj[2] = -1 (pu); V = Z_bus @ i_inj',
+      substitution_latex: '\\underline{i}_{inj,2} = -1',
+      result: {
+        v_nodes_pu: [
+          { re: -0.000001, im: 6.358554899650295e-23 },
+          { re: -0.01893053694727093, im: -0.3939107821975983 },
+          { re: -0.14393053694727095, im: -0.49391078219759826 },
+        ],
+      },
+      notes:
+        'Napięcia węzłowe ze zwarcia z macierzy Z-bus sieci zgodnej (build_zbus, ta sama macierz co tor superpozycji falownikowej).',
+    },
+    {
+      key: 'thevenin_flow_T1',
+      title: 'Prąd zwarciowy Thevenina w gałęzi T1',
+      formula_latex:
+        "I_{ga\\l} = \\left| (\\underline{V}_i - \\underline{V}_j)\\,\\underline{y}_{ij} \\right| \\cdot I_k''^{(Th)}",
+      inputs: {
+        branch_id: 'T1',
+        from_node_id: 'A',
+        to_node_id: 'B',
+        v_from_pu: { re: -0.000001, im: 6.358554899650295e-23 },
+        v_to_pu: { re: -0.01893053694727093, im: -0.3939107821975983 },
+        y_series_pu: { re: 0.12171454623628124, im: -2.5327968796231715 },
+        ik_thevenin_a: 5611.281490619905,
+      },
+      substitution:
+        '|(-1e-06+j6.35855e-23 - -0.0189305-j0.393911) * 0.121715-j2.5328| * 5611.28',
+      substitution_latex:
+        '\\left| \\left(\\left(-1e-06 + j 6.35855e-23\\right) - \\left(-0.0189305 - j 0.393911\\right)\\right) \\cdot \\left(0.121715 - j 2.5328\\right)\\right| \\cdot 5611.28',
+      result: {
+        fraction: 0.9999999999999997,
+        i_contrib_a: 5611.281490619903,
+        direction: 'from_to',
+      },
+      notes: null,
+    },
+    {
+      key: 'thevenin_flow_L1',
+      title: 'Prąd zwarciowy Thevenina w gałęzi L1',
+      formula_latex:
+        "I_{ga\\l} = \\left| (\\underline{V}_i - \\underline{V}_j)\\,\\underline{y}_{ij} \\right| \\cdot I_k''^{(Th)}",
+      inputs: {
+        branch_id: 'L1',
+        from_node_id: 'B',
+        to_node_id: 'C',
+        v_from_pu: { re: -0.01893053694727093, im: -0.3939107821975983 },
+        v_to_pu: { re: -0.14393053694727095, im: -0.49391078219759826 },
+        y_series_pu: { re: 4.878048780487805, im: -3.902439024390244 },
+        ik_thevenin_a: 5611.281490619905,
+      },
+      substitution:
+        '|(-0.0189305-j0.393911 - -0.143931-j0.493911) * 4.87805-j3.90244| * 5611.28',
+      substitution_latex:
+        '\\left| \\left(\\left(-0.0189305 - j 0.393911\\right) - \\left(-0.143931 - j 0.493911\\right)\\right) \\cdot \\left(4.87805 - j 3.90244\\right)\\right| \\cdot 5611.28',
+      result: {
+        fraction: 1.0,
+        i_contrib_a: 5611.281490619905,
+        direction: 'from_to',
+      },
+      notes: null,
+    },
+    {
+      key: 'thevenin_flow_balance',
+      title: 'Suma kontrolna bilansu prądu w węźle zwarcia (KCL)',
+      formula_latex: '\\sum_{ga\\l \\to k} I_{ga\\l} = I_k\'\'^{(Th)}',
+      inputs: {
+        fault_node_id: 'C',
+        ik_thevenin_a: 5611.281490619905,
+      },
+      substitution: 'Σ = 5611.28 ≈ 5611.28',
+      substitution_latex: '\\sum = 5611.28 \\approx 5611.28',
+      result: {
+        sum_into_fault_a: 5611.281490619905,
+        fraction_sum: 1.0,
+      },
+      notes:
+        'KCL: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc Σ prądów gałęziowych = Ik\'\'(Thevenin).',
+    },
+  ];
+}
+
 export function shortCircuitResultsFixture(
   over: Partial<ShortCircuitResults> = {},
 ): ShortCircuitResults {
@@ -128,6 +235,115 @@ export function shortCircuitResultsFixture(
         branch_contributions: null,
       }),
     ],
+    ...over,
+  };
+}
+
+/**
+ * Ślad WHITE BOX wyprowadzenia Z_Q źródła sieciowego (CV-4.3 K6/K7) — kształt
+ * 1:1 z `enm/mapping.py::impedancja_zasilania_systemowego` (KLUCZE, nie
+ * zgadywane): sprawdzony na żywo przez
+ * `backend/tests/enm/test_k7_sk_min.py::test_z_q_min_z_c_min_i_sk_min` (wpis
+ * MAX: tryb "MOC_ZWARCIOWA" / MIN z danymi: tryb "MOC_ZWARCIOWA_MIN").
+ */
+export function zrodloSiecioweSladMaxFixture(
+  over: Partial<ZrodloSiecioweSlad> = {},
+): ZrodloSiecioweSlad {
+  return {
+    ref_id: 's1',
+    tryb: 'MOC_ZWARCIOWA',
+    scenariusz: 'MAX',
+    u_nq_kv: 15.0,
+    sk3_mva: 250.0,
+    c: 1.1,
+    pasmo_c: 'SN/WN',
+    rx_ratio: 0.1,
+    rx_ratio_zrodlo: 'MODEL',
+    z_q_abs_ohm: 0.66,
+    z_q_ohm: { re: 0.0657, im: 0.6568 },
+    formula: "Z_Q = c·U_nQ²/S''_kQ (IEC 60909-0:2016 §6.2.1 eq. 6; c = c_max); X_Q = Z_Q/√(1+(R/X)²); R_Q = X_Q·(R/X)",
+    ...over,
+  };
+}
+
+/** Wpis MIN Z DANYMI (własny S″kQmin) — `tryb: "MOC_ZWARCIOWA_MIN"`, bez `zalozenie`. */
+export function zrodloSiecioweSladMinZDanymiFixture(
+  over: Partial<ZrodloSiecioweSlad> = {},
+): ZrodloSiecioweSlad {
+  return {
+    ref_id: 's1',
+    tryb: 'MOC_ZWARCIOWA_MIN',
+    scenariusz: 'MIN',
+    u_nq_kv: 15.0,
+    sk3_mva: 150.0,
+    c: 1.0,
+    pasmo_c: 'SN/WN',
+    rx_ratio: 0.2,
+    rx_ratio_zrodlo: 'MODEL_MIN',
+    z_q_abs_ohm: 1.0,
+    z_q_ohm: { re: 0.196, im: 0.9806 },
+    formula: "Z_Q = c·U_nQ²/S''_kQ (IEC 60909-0:2016 §6.2.1 eq. 6; c = c_min); X_Q = Z_Q/√(1+(R/X)²); R_Q = X_Q·(R/X)",
+    ...over,
+  };
+}
+
+/**
+ * Wpis MIN BEZ danych (Z_Q z MAX, karta K7) — `tryb: "MOC_ZWARCIOWA_MAX_JAKO_MIN"`,
+ * niesie `zalozenie: "source.sk_min_missing"` — kształt 1:1 z
+ * `test_bieg_kanoniczny_min_bez_danych_publikuje_zalozenie`.
+ */
+export function zrodloSiecioweSladMinBrakDanychFixture(
+  over: Partial<ZrodloSiecioweSlad> = {},
+): ZrodloSiecioweSlad {
+  return {
+    ref_id: 's1',
+    tryb: 'MOC_ZWARCIOWA_MAX_JAKO_MIN',
+    scenariusz: 'MIN',
+    u_nq_kv: 15.0,
+    sk3_mva: 250.0,
+    c: 1.0,
+    pasmo_c: 'SN/WN',
+    rx_ratio: 0.1,
+    rx_ratio_zrodlo: 'MODEL_MAX',
+    z_q_abs_ohm: 0.6006,
+    z_q_ohm: { re: 0.0597, im: 0.5976 },
+    formula: "Z_Q = c·U_nQ²/S''_kQ (IEC 60909-0:2016 §6.2.1 eq. 6; c = c_max); X_Q = Z_Q/√(1+(R/X)²); R_Q = X_Q·(R/X)",
+    zalozenie: 'source.sk_min_missing',
+    zalozenie_opis:
+      "Brak S''_kQmin/I''_kQmin: Z_Q z danych MAX (c_max, S''_kQmax), c_min tylko w "
+      + "źródle napięciowym — Ik''min(Q) = (c_min/c_max)·I''_kQmax; założenie "
+      + 'niekonserwatywne dla czułości zabezpieczeń (Z_Qmin ≥ Z_Qmax).',
+    ...over,
+  };
+}
+
+/** Wpis impedancji jawnej (bez c, bez wariantu MIN) — `tryb: "IMPEDANCJA_JAWNA"`. */
+export function zrodloSiecioweSladImpedancjaJawnaFixture(
+  over: Partial<ZrodloSiecioweSlad> = {},
+): ZrodloSiecioweSlad {
+  return {
+    ref_id: 's2',
+    tryb: 'IMPEDANCJA_JAWNA',
+    scenariusz: 'MAX',
+    u_nq_kv: 15.0,
+    z_q_ohm: { re: 0.09, im: 0.9 },
+    formula: "Z_Q = R_Q + jX_Q (impedancja jawna z modelu, bez c; scenariusz MIN: c_min wyłącznie w źródle napięciowym)",
+    ...over,
+  };
+}
+
+/** Założenie biegu (raw_result.zalozenia) — kształt 1:1 z `WejscieZwarcia.zalozenia`. */
+export function zalozenieBieguFixture(
+  over: Partial<ZalozenieBieguSlad> = {},
+): ZalozenieBieguSlad {
+  return {
+    code: 'source.sk_min_missing',
+    element_ref: 's1',
+    message_pl:
+      "Brak S''_kQmin/I''_kQmin: Z_Q z danych MAX (c_max, S''_kQmax), c_min tylko w "
+      + "źródle napięciowym — Ik''min(Q) = (c_min/c_max)·I''_kQmax; założenie "
+      + 'niekonserwatywne dla czułości zabezpieczeń (Z_Qmin ≥ Z_Qmax).',
+    scenariusz: 'MIN',
     ...over,
   };
 }

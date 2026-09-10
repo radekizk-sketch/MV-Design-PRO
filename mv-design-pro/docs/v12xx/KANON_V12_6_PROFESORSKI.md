@@ -77,6 +77,54 @@ Dodatkowym torem wykonawczym V12.6 jest zakładka `E-35 / ncrfg-tests`, która r
 > „prezentowane + nieprezentowane = komplet kontraktu" pilnuje
 > `backend/tests/ci/test_v126_rodzaje_parytet.py`.
 
+> **Nota wykonawcza (2026-09-09, karta W3-E — KARTA_W3_KONWERGENCJA_FIZYKI_2026-09.md
+> §0 rodziny D/E/F, 5 #8/9 #7/9 #10) — E-47/E-48 schodzą z powierzchni NOWYCH
+> biegów; `reliability_contingency` traci ranking N-1/N-2.**
+>
+> - **E-47 / `hosting_capacity`** — solver liczy lokalną impedancję Thevenina
+>   per szyna metodą Monte Carlo, BEZ sprzężenia sieci (sąsiednie szyny nie
+>   wpływają na wynik danej szyny). Duplikuje kanon `application/analyses/
+>   hosting_capacity.py` (pełny rozpływ przez wariant sieci,
+>   `GET /api/oze-analysis/hosting-capacity`, ekran „OZE › Zdolność
+>   przyłączeniowa"). `POST /api/cases/{case_id}/runs/v126/hosting_capacity`
+>   zwraca teraz `410 v126.analysis_withdrawn` z tym zamiennikiem.
+> - **E-48 / `opf_loss_lcc`** — solver ma zaszyte β = 0,45 (zamiast β
+>   rzeczywistego z karty katalogowej) i `decision_variables.oltc_tap_position`
+>   ZAWSZE 0 (zaczep nigdy nie jest optymalizowany), prąd gałęzi liczony z
+>   obciążenia JEDNEJ szyny docelowej, nie z rozpływu. Duplikuje DWA kanony:
+>   straty transformatorów (`equipment_checks/transformer_losses.py`,
+>   `POST /api/solver/transformer-losses`, ekran „Kryteria › Wyposażenie") i
+>   optymalizację zaczepu (`power_flow_oltc_studies.py`, badania OLTC, ekran
+>   „Wyniki › OLTC"). Koszt cyklu życia (LCC, Σ annual_kwh·cena/(1+r)^t) nie ma
+>   dziś kanonu — ekonomia jest decyzją właściciela poza tą kartą (OD-16).
+>   `POST /api/cases/{case_id}/runs/v126/opf_loss_lcc` zwraca `410`.
+> - **`reliability_contingency` (E-42) NIE jest wycofany** — wskaźniki
+>   SAIDI/SAIFI/CAIDI/MAIFI mają JEDYNĄ implementację w solverze i zostają
+>   widoczne bez zmian. Traci wyłącznie ranking dotkliwości kontyngencji N-1/
+>   N-2 (dziś liczony z `_branch_current_a` — prąd gałęzi z obciążenia węzła
+>   docelowego, bez sprzężenia sieci, czyli bez rozpływu): odpowiedź (results/
+>   proof/report) nie niesie już `contingency_ranking` — w jego miejsce stan
+>   `ranking_n1: {status: "NIEPREZENTOWANY", powod_pl, ekran: "Wyniki ›
+>   Kontyngencje", trasa: "/api/insights/n-1-contingency"}` (kanon rankingu =
+>   `application/analyses/kontyngencje_n1.py`, pełny re-solve rozpływu).
+>
+> Kontrakt, solver (`network_model/solvers/v126_academic.py`) i katalog
+> `analysis-types` — NIETKNIĘTE (B-01): oba rodzaje V12.6 zostają zdolnością
+> solvera, odtwarzalną z historycznych biegów (`wycofany` — pole addytywne na
+> czterech końcówkach GET) i uruchamialną wprost w testach solvera
+> (`backend/tests/test_v126_sanity_bounds.py`). E-47/E-48 dostają
+> `visibleInNavigation: false` i znikają z mapy `RODZAJ_EKRANU_V126` (ten sam
+> wzorzec co E-41/E-49) — ekrany zostają w kanonie (ciągłość numeracji
+> E-00…E-50). Tabela BIL (IEC 60071-1, katalog `insulation-levels` vs
+> `_insulation` solvera) była zapisana dwa razy bez wspólnego źródła — jedna
+> prawda przez test parytetu (`backend/tests/test_v126_bil_parytet.py`), nie
+> przez deklarację.
+>
+> Rejestr rodzajów nieprezentowanych zaktualizowany: `frontend/src/ui2/wyniki/
+> akademickie/nieprezentowane.ts` (`hosting_capacity`, `opf_loss_lcc` z powodem
+> merytorycznym każdy). Rozstrzygnięcie: `docs/v12xx/REJESTR_KONFLIKTOW.md`,
+> wiersz W3-E.
+
 ## 4. API
 
 Aktywny tor V12.6:

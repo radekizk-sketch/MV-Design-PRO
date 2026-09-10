@@ -59,6 +59,10 @@ export const LACZNIK_STRINGS = {
   anuluj: 'Anuluj',
   brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem łącznika.',
   walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać łącznik.',
+  // S9-5 (klasa: bramka enable bez sygnału gotowości, `karta_e2e_s95.md`) —
+  // katalog aparatów SN ładuje się asynchronicznie; zapis bez niego byłby
+  // cichym no-op na pustym `catalog_ref`, więc blokujemy JAWNIE.
+  katalogLadowanieStopka: 'Ładowanie katalogu aparatów SN — zapis będzie dostępny po wczytaniu.',
 
   // Panel teorii (V12K-066: standard „must-have")
   teoriaTytul: 'Teoria: łącznik sekcyjny i punkt podziału sieci',

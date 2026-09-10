@@ -1,15 +1,14 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
 import {
-  exportTypeLibrary,
   fetchPtpireeGeneratorCertificatesPage,
   fetchTypesByCategory,
-  importTypeLibrary,
   type CatalogListItem,
 } from './api';
 import type {
   CableType,
   LineType,
+  SourceSystemCatalogType,
   SwitchEquipmentType,
   TransformerType,
   TypeCategory,
@@ -160,14 +159,6 @@ interface TypeLibraryBrowserProps {
   initialTab?: TypeCategory;
 }
 
-interface ImportReport {
-  mode: string;
-  added: string[];
-  skipped: string[];
-  conflicts: Array<{ type_id: string; type_category: string; reason: string }>;
-  success: boolean;
-}
-
 function getCatalogManufacturer(type: CatalogListItem): string | null {
   const record = type as unknown as Record<string, unknown>;
   if (typeof record.manufacturer === 'string' && record.manufacturer.trim()) {
@@ -260,7 +251,19 @@ function getTypeSummary(type: CatalogListItem, category: TypeCategory): string {
 
 function getGenericDetailEntries(type: CatalogListItem): Array<{ label: string; value: string }> {
   const record = type as unknown as Record<string, unknown>;
-  const hiddenKeys = new Set(['id', 'name', 'manufacturer', 'vendor']);
+  // CV-4.3 K7: sk3_min_mva/ik3_min_ka/rx_ratio_min ukryte tu — panel generyczny
+  // UKRYWA pola null zamiast "brak danych" (K1), więc renderują się WYŁĄCZNIE
+  // przez bespoke `renderSystemSourceMinParams` (etykiety PL + jawny brak danych,
+  // zero duplikatu wartości pod dwiema różnymi etykietami).
+  const hiddenKeys = new Set([
+    'id',
+    'name',
+    'manufacturer',
+    'vendor',
+    'sk3_min_mva',
+    'ik3_min_ka',
+    'rx_ratio_min',
+  ]);
   const presentKeys = Object.keys(record).filter((key) => !hiddenKeys.has(key) && record[key] != null && record[key] !== '');
   const orderedKeys = [
     ...GENERIC_FIELD_ORDER.filter((key) => presentKeys.includes(key)),
@@ -297,13 +300,10 @@ export function TypeLibraryBrowser({
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTypeId, setSelectedTypeId] = useState<string | null>(null);
-  const [importReport, setImportReport] = useState<ImportReport | null>(null);
-  const [showImportDialog, setShowImportDialog] = useState(false);
   // Liczność wykazu PO serwerowym filtrze (null = kategoria bez stron serwera).
   const [serverTotal, setServerTotal] = useState<number | null>(null);
   // Zapytanie z opóźnieniem — strona serwera nie leci na każdą literę.
   const [odroczoneZapytanie, setOdroczoneZapytanie] = useState('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setOdroczoneZapytanie(searchQuery), 300);
@@ -399,70 +399,6 @@ export function TypeLibraryBrowser({
     onSelectType?.(typeId, activeTab);
   };
 
-  const handleExport = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const exportData = await exportTypeLibrary();
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-        type: 'application/json',
-      });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = `type_library_export_${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      document.body.removeChild(anchor);
-      URL.revokeObjectURL(url);
-      setLoading(false);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Błąd eksportu biblioteki.');
-      setLoading(false);
-    }
-  };
-
-  const handleImportClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-      const fileText = await file.text();
-      const importData = JSON.parse(fileText);
-      const report = await importTypeLibrary(importData, 'merge');
-      setImportReport(report);
-      setShowImportDialog(true);
-
-      if (KATEGORIE_SZUKANE_SERWEROWO.has(activeTab)) {
-        const strona = await fetchPtpireeGeneratorCertificatesPage(
-          odroczoneZapytanie,
-          LIMIT_STRONY_CERTYFIKATOW,
-        );
-        setTypes(strona.items);
-        setServerTotal(strona.total);
-      } else {
-        const fetchedTypes = await fetchTypesByCategory(activeTab);
-        setTypes(fetchedTypes);
-      }
-      setLoading(false);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Błąd importu biblioteki.');
-      setLoading(false);
-    } finally {
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  };
-
   return (
     <div className="flex h-full flex-col bg-gray-50">
       <div className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
@@ -471,29 +407,6 @@ export function TypeLibraryBrowser({
           <p className="mt-1 text-sm text-gray-600">
             Przeglądanie aktywnych katalogów technicznych elementów sieci.
           </p>
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={handleExport}
-            disabled={loading}
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
-          >
-            Eksportuj bibliotekę typów
-          </button>
-          <button
-            onClick={handleImportClick}
-            disabled={loading}
-            className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-400"
-          >
-            Importuj bibliotekę typów
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json"
-            onChange={handleFileChange}
-            className="hidden"
-          />
         </div>
       </div>
 
@@ -621,110 +534,10 @@ export function TypeLibraryBrowser({
           )}
         </div>
       </div>
-
-      {showImportDialog && importReport ? (
-        <ImportReportDialog
-          report={importReport}
-          onClose={() => {
-            setShowImportDialog(false);
-            setImportReport(null);
-          }}
-        />
-      ) : null}
     </div>
   );
 }
 
-function ImportReportDialog({
-  report,
-  onClose,
-}: {
-  report: ImportReport;
-  onClose: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg bg-white shadow-xl">
-        <div className="border-b border-gray-200 px-6 py-4">
-          <h2 className="text-xl font-semibold text-gray-800">Raport importu biblioteki typów</h2>
-          <p className="mt-1 text-sm text-gray-600">
-            Tryb: {report.mode === 'merge' ? 'MERGE (dodaj nowe)' : 'REPLACE (zamień)'}
-          </p>
-        </div>
-
-        <div className="flex-1 space-y-6 overflow-y-auto px-6 py-4">
-          <div
-            className={clsx(
-              'rounded-md border px-4 py-3',
-              report.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50',
-            )}
-          >
-            <p className={clsx('font-medium', report.success ? 'text-green-800' : 'text-red-800')}>
-              {report.success ? 'Import zakończony sukcesem' : 'Import zakończony błędami'}
-            </p>
-          </div>
-
-          {report.added.length > 0 ? (
-            <div>
-              <h3 className="mb-2 text-sm font-semibold uppercase tracking-wider text-gray-700">
-                Dodano ({report.added.length})
-              </h3>
-              <ul className="space-y-1">
-                {report.added.map((typeId) => (
-                  <li key={typeId} className="font-mono text-sm text-gray-600">
-                    + {typeId}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-
-          {report.skipped.length > 0 ? (
-            <div>
-              <h3 className="mb-2 text-sm font-semibold uppercase tracking-wider text-gray-700">
-                Pominięto ({report.skipped.length})
-              </h3>
-              <ul className="space-y-1">
-                {report.skipped.map((typeId) => (
-                  <li key={typeId} className="font-mono text-sm text-gray-500">
-                    — {typeId}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-
-          {report.conflicts.length > 0 ? (
-            <div>
-              <h3 className="mb-2 text-sm font-semibold uppercase tracking-wider text-red-700">
-                Konflikty ({report.conflicts.length})
-              </h3>
-              <ul className="space-y-2">
-                {report.conflicts.map((conflict, index) => (
-                  <li key={`${conflict.type_id}-${index}`} className="rounded-md border border-red-200 bg-red-50 px-3 py-2">
-                    <p className="font-mono text-sm text-red-800">{conflict.type_id}</p>
-                    <p className="mt-1 text-xs text-red-600">
-                      {conflict.type_category}: {conflict.reason}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-        </div>
-
-        <div className="flex justify-end border-t border-gray-200 px-6 py-4">
-          <button
-            onClick={onClose}
-            className="rounded-md bg-gray-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700"
-          >
-            Zamknij
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function TypeDetailsPanel({
   type,
@@ -765,6 +578,11 @@ function TypeDetailsPanel({
           {!['LINE', 'CABLE', 'TRANSFORMER', 'SWITCH_EQUIPMENT'].includes(category) ? (
             <GenericTypeDetailsPanel entries={genericEntries} />
           ) : null}
+          {/* CV-4.3 K7: dane scenariusza MIN ZRODLO_SN — bespoke (nie generyczny
+              panel powyżej), bo panel generyczny UKRYWA pola `null` zamiast
+              pokazać "brak danych" (wzór K1: `renderLineParams` / `max_temperature_c`).
+              Dokłada się DO generycznych wpisów (Sk3/Ik3/R-X maks. już tam są). */}
+          {category === 'SYSTEM_SOURCE' ? renderSystemSourceMinParams(type as SourceSystemCatalogType) : null}
         </div>
       </div>
 
@@ -833,8 +651,42 @@ function renderLineParams(type: LineType) {
       <DetailField label="Prąd znamionowy" value={type.rated_current_a.toFixed(0)} unit="A" />
       <DetailField label="Napięcie znamionowe" value={type.voltage_rating_kv.toFixed(1)} unit="kV" />
       <DetailField label="Materiał przewodu" value={type.conductor_material ?? '—'} />
-      <DetailField label="Przekrój" value={type.cross_section_mm2.toFixed(0)} unit="mm2" />
-      <DetailField label="Maks. temperatura" value={type.max_temperature_c.toFixed(0)} unit="C" />
+      <DetailField
+        label="Przekrój"
+        value={type.cross_section_mm2 == null ? 'brak danych' : type.cross_section_mm2.toFixed(0)}
+        unit="mm2"
+      />
+      <DetailField
+        label="Maks. temperatura"
+        value={type.max_temperature_c == null ? 'brak danych' : type.max_temperature_c.toFixed(0)}
+        unit="C"
+      />
+    </>
+  );
+}
+
+/**
+ * CV-4.3 K7: trzy pola scenariusza MIN (warunki przyłączenia OSD) dla ZRODLO_SN —
+ * „brak danych" gdy null (wzór K1, `max_temperature_c` w `renderLineParams`).
+ * Dokładany OBOK generycznego panelu (Sk3/Ik3/R-X MAKS. już renderują tamtędy).
+ */
+function renderSystemSourceMinParams(type: SourceSystemCatalogType) {
+  return (
+    <>
+      <DetailField
+        label="Moc zwarciowa Sk3 min"
+        value={type.sk3_min_mva == null ? 'brak danych' : formatNumber(type.sk3_min_mva)}
+        unit="MVA"
+      />
+      <DetailField
+        label="Prąd zwarciowy Ik3 min"
+        value={type.ik3_min_ka == null ? 'brak danych' : formatNumber(type.ik3_min_ka)}
+        unit="kA"
+      />
+      <DetailField
+        label="Stosunek R/X min"
+        value={type.rx_ratio_min == null ? 'brak danych' : formatNumber(type.rx_ratio_min)}
+      />
     </>
   );
 }

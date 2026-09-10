@@ -91,9 +91,14 @@ export const KRZYWE_STRINGS = {
   wiazaniaKrzywaPf: 'Charakterystyka P(f)',
   wiazaniaKrzywaLvrt: 'Krzywa LVRT',
   wiazaniaKrzywaHvrt: 'Krzywa HVRT',
+  // Karta FAB-J: backend niesie JEDNĄ krzywą ride-through na operatora NC RfG
+  // (nie katalog wariantów) — LVRT/HVRT są tu read-only, wywiedzione z profilu
+  // już przypisanego modułowi, nie niezależnym wyborem.
+  wiazaniaBrakProfiluOperatora:
+    'Moduł nie ma jeszcze przypisanego profilu operatora NC RfG — krzywa LVRT/HVRT nieznana.',
   wiazaniaBezZmiany: '— bez zmiany —',
   wiazaniaZapisz: 'Zapisz krzywe w wiązaniach modułu',
-  wiazaniaZadnaZmiana: 'Wybierz przynajmniej jedną krzywą do zapisania.',
+  wiazaniaZadnaZmiana: 'Wybierz krzywą P(f) do zapisania.',
   wiazaniaBrakKontekstu:
     'Wybierz projekt i przypadek obliczeniowy, aby zapisać wiązania w modelu.',
   wiazaniaZapisano: 'Krzywe zapisane w wiązaniach modułu wytwórczego',

@@ -96,7 +96,11 @@ describe('DerConfigurator - stationContext breadcrumb', () => {
           projectName: 'Projekt Test',
           gpzName: 'GPZ Wschód',
           trunkName: 'Ciąg główny K-12',
-          connectionSide: 'SN',
+          // Karta FAB-K (§0 R3): dawny gołosłowny `'SN'` USUNIĘTY —
+          // transformator dedykowany na ZK SN (patrz też test niżej dla
+          // ILOCZYNU rodzajów punktu SN, `punktPrzylaczeniaOpisPl`).
+          connectionSide: 'dedicated_transformer',
+          snConnectionPointKind: 'zksn',
         }}
       />,
     );
@@ -107,7 +111,39 @@ describe('DerConfigurator - stationContext breadcrumb', () => {
     expect(breadcrumb.textContent).toContain('Ciąg główny K-12');
     expect(breadcrumb.textContent).toContain('Stacja Centralna');
     expect(breadcrumb.textContent).toContain('PV / FV');
-    expect(breadcrumb.textContent).toContain('po stronie SN');
+    expect(breadcrumb.textContent).toContain('przez transformator dedykowany na złączu kablowym SN');
+  });
+
+  it('KLASA — rodzaj punktu SN (iloczyn cech): każda wartość `snConnectionPointKind` daje WŁASNĄ etykietę', () => {
+    // Karta FAB-K (§0 R3, KLASA NIE INSTANCJA): breadcrumb czyta `punktPrzylaczeniaOpisPl`
+    // (JEDYNE źródło — reużyte z `readiness.ts`, nie druga kopia) — ten test pokrywa
+    // ILOCZYN wszystkich czterech rodzajów punktu SN, nie jeden przykład z karty.
+    const przypadki: ReadonlyArray<
+      readonly [import('../../station-der').SnConnectionPointKind | null | undefined, string]
+    > = [
+      ['station_bus', 'przez transformator dedykowany na szynie SN stacji'],
+      ['branch_pole', 'przez transformator dedykowany na słupie rozgałęźnym'],
+      ['zksn', 'przez transformator dedykowany na złączu kablowym SN'],
+      ['junction', 'przez transformator dedykowany na odgałęzieniu'],
+      [null, 'przez transformator dedykowany'],
+      [undefined, 'przez transformator dedykowany'],
+    ];
+    for (const [kind, oczekiwanaTresc] of przypadki) {
+      const { unmount } = render(
+        <DerConfigurator
+          derId="pv_kind"
+          derKind="PV"
+          stationContext={{
+            stationId: 's',
+            stationName: 'S',
+            connectionSide: 'dedicated_transformer',
+            snConnectionPointKind: kind,
+          }}
+        />,
+      );
+      expect(screen.getByTestId('der-breadcrumb').textContent).toContain(oczekiwanaTresc);
+      unmount();
+    }
   });
 
   it('breadcrumb stacji wywołuje onNavigateToStation gdy klikany', () => {
@@ -146,6 +182,6 @@ describe('DerConfigurator - stationContext breadcrumb', () => {
       />,
     );
     expect(screen.getByTestId('der-breadcrumb').textContent).toContain('Farma wiatrowa');
-    expect(screen.getByTestId('der-breadcrumb').textContent).toContain('transformator dedykowany');
+    expect(screen.getByTestId('der-breadcrumb').textContent).toContain('przez transformator dedykowany');
   });
 });

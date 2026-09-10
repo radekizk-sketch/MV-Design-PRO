@@ -31,7 +31,6 @@ BACKEND_SRC = Path(__file__).parents[1] / "src"
 DOMAIN_DIR = BACKEND_SRC / "domain"
 ENM_DIR = BACKEND_SRC / "enm"
 NETWORK_MODEL_DIR = BACKEND_SRC / "network_model"
-SLD_PROJECTION_PATH = NETWORK_MODEL_DIR / "sld_projection.py"
 VALIDATOR_PATH = NETWORK_MODEL_DIR / "validation" / "validator.py"
 
 
@@ -99,7 +98,6 @@ def test_complete_elementtype_record():
     """
     Verify every element type in ENM models.py has:
     - A corresponding collection in EnergyNetworkModel
-    - An SLD symbol mapping in sld_projection.py
     No orphan types allowed.
     """
     collection_names = _get_enm_collection_names()
@@ -125,15 +123,6 @@ def test_complete_elementtype_record():
     assert "generators" in collection_names, "Missing 'generators' collection"
     assert "measurements" in collection_names, "Missing 'measurements' collection"
     assert "protection_assignments" in collection_names, "Missing 'protection_assignments'"
-
-    # SLD projection must cover the core element types
-    sld_source = SLD_PROJECTION_PATH.read_text(encoding="utf-8")
-    core_sld_types = ["bus", "branch", "transformer", "source", "load", "switch"]
-    for sld_type in core_sld_types:
-        assert sld_type in sld_source.lower(), (
-            f"SLD projection is missing mapping for element type '{sld_type}'. "
-            f"Every core element type must have an SLD symbol."
-        )
 
     # NetworkValidator must reference core element categories
     validator_source = VALIDATOR_PATH.read_text(encoding="utf-8")
@@ -177,10 +166,11 @@ def _find_any_annotations_in_file(filepath: Path) -> list[tuple[int, str]]:
     - canonicalize family (recursive canonicalizer/hash-of-arbitrary-structure
       by definition uses Any): _canonicalize_value, _canonicalize,
       _canonicalize_for_hash, canonicalize, compute_hash — five names, one
-      class, across domain/project_archive.py, domain/study_case_engine.py,
-      domain/trace_v2/artifact.py, domain/execution.py,
-      domain/load_flow_input.py, domain/result_contract_v1.py,
-      domain/analysis_run.py, enm/canonical_analysis.py
+      class, across domain/project_archive.py, domain/trace_v2/artifact.py,
+      domain/execution.py, domain/result_contract_v1.py, domain/analysis_run.py,
+      enm/canonical_analysis.py (domain/study_case_engine.py removed CV-3.2,
+      domain/load_flow_input.py removed CV-4.2 — both were listed users of
+      this same allowlisted name set, not a separate one)
     - stable sort key (heterogeneous item → deterministic sort key, by
       definition uses Any): _stable_sort_key
     - protection interop (domain layer reads a protection-analysis result
@@ -783,7 +773,6 @@ def test_case_immutability_enforcement():
 
     from domain.study_case import (
         StudyCaseConfig,
-        StudyCaseResultStatus,
         new_study_case,
     )
 
@@ -805,9 +794,6 @@ def test_case_immutability_enforcement():
         case.name = "Mutated!"  # type: ignore[misc]
 
     with pytest.raises((FrozenInstanceError, AttributeError)):
-        case.result_status = StudyCaseResultStatus.FRESH  # type: ignore[misc]
-
-    with pytest.raises((FrozenInstanceError, AttributeError)):
         case.is_active = True  # type: ignore[misc]
 
     # Verify that modification methods return NEW instances (not mutate)
@@ -816,10 +802,12 @@ def test_case_immutability_enforcement():
     assert updated_case.name == "Updated Name"
     assert case.name == "Test Case", "Original case must be unchanged"
 
-    # Clone must have NONE status and new ID
+    # Clone must have a new ID and no results of its own. Status wynikow klonu nie
+    # jest tu POLEM (CV-2-W) — klon nie ma wlasnych biegow, wiec wychodzi NONE z
+    # derywacji; pin tego zachowania przez HTTP:
+    # `tests/api/test_status_wynikow_przypadku.py::test_wszystkie_odpowiedzi_z_przypadkiem_daja_ten_sam_werdykt`.
     cloned = case.clone("Cloned Case")
     assert cloned.id != case.id, "Clone must have new ID"
-    assert cloned.result_status == StudyCaseResultStatus.NONE, "Clone must have NONE status"
     assert cloned.is_active is False, "Clone must not be active"
 
 
@@ -1033,82 +1021,3 @@ def test_determinism_same_input_same_output_pf():
         assert (
             result1.branch_current_ka[branch_id] == result2.branch_current_ka[branch_id]
         ), f"Branch current for {branch_id} not deterministic"
-
-
-# ===========================================================================
-# Additional invariant: SLD projection purity (read-only guard)
-# ===========================================================================
-
-
-def test_sld_projection_does_not_mutate_snapshot():
-    """
-    Verify that SLD projection is a pure function —
-    it does not modify the input snapshot.
-
-    This tests the SnapshotReadOnlyGuard mechanism.
-    """
-    from network_model.core.branch import BranchType, LineBranch
-    from network_model.core.graph import NetworkGraph
-    from network_model.core.node import Node, NodeType
-    from network_model.core.snapshot import create_network_snapshot, runtime_fingerprint
-    from network_model.sld_projection import project_snapshot_to_sld
-
-    graph = NetworkGraph()
-    graph.add_node(
-        Node(
-            id="A",
-            name="Bus A",
-            node_type=NodeType.SLACK,
-            voltage_level=20.0,
-            voltage_magnitude=1.0,
-            voltage_angle=0.0,
-        )
-    )
-    graph.add_node(
-        Node(
-            id="B",
-            name="Bus B",
-            node_type=NodeType.PQ,
-            voltage_level=20.0,
-            active_power=5.0,
-            reactive_power=2.0,
-        )
-    )
-    graph.add_branch(
-        LineBranch(
-            id="L1",
-            name="Line 1",
-            branch_type=BranchType.LINE,
-            from_node_id="A",
-            to_node_id="B",
-            r_ohm_per_km=0.4,
-            x_ohm_per_km=0.8,
-            b_us_per_km=0.0,
-            length_km=5.0,
-            rated_current_a=300.0,
-        )
-    )
-
-    snapshot = create_network_snapshot(
-        graph,
-        snapshot_id="sld-test-001",
-        network_model_id="nm-001",
-    )
-
-    # Capture fingerprint before SLD projection
-    fp_before = runtime_fingerprint(snapshot)
-
-    # Run SLD projection
-    diagram = project_snapshot_to_sld(snapshot)
-
-    # Verify snapshot was not mutated
-    fp_after = runtime_fingerprint(snapshot)
-    assert fp_before == fp_after, (
-        f"SLD projection mutated the snapshot!\n"
-        f"  fp_before: {fp_before}\n"
-        f"  fp_after:  {fp_after}"
-    )
-
-    # Verify diagram is valid
-    assert diagram.elements, "SLD diagram has no elements"
-    assert diagram.snapshot_id == "sld-test-001"

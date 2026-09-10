@@ -73,45 +73,105 @@ def _nazwa_projektu(run: CanonicalRun) -> str | None:
     return str(nazwa) if nazwa else None
 
 
+def _fizyczna_lub_nan(row: dict[str, Any], klucz: str) -> float:
+    """Pole fizyczne szyny: brak (solver nie policzył — poza wyspą SLACK,
+    ``PowerFlowBusResult.to_dict`` serializuje NaN jako ``None``) -> NaN, nigdy
+    fikcyjne 0.0 (jednolita konwencja z ``analysis/energy_validation``)."""
+    wartosc = row.get(klucz)
+    return float(wartosc) if wartosc is not None else float("nan")
+
+
+def _wymagana_liczba_galezi(row: dict[str, Any], klucz: str, branch_id: str) -> float:
+    """Pole gałęzi bez odpowiednika NaN->None w zamrożonym kontrakcie
+    (``PowerFlowBranchResult.to_dict`` serializuje pola wprost — solver NIGDY
+    nie zwraca tu NaN) — brak pola oznacza uszkodzony zapis biegu, nie gałąź
+    poza wyspą SLACK, więc odmowa z nazwą pola, nie fikcyjne 0.0."""
+    wartosc = row.get(klucz)
+    if wartosc is None:
+        raise ValueError(
+            f"Profil napięć: gałąź {branch_id!r} w zapisie biegu rozpływu nie ma pola "
+            f"{klucz!r} — zamrożony wynik (PowerFlowBranchResult) nie dopuszcza tu braku, "
+            "zapis biegu jest uszkodzony."
+        )
+    return float(wartosc)
+
+
+def _wymagana_liczba_podsumowania(summary_raw: dict[str, Any], klucz: str) -> float:
+    """Pole podsumowania rozpływu — jak wyżej, zamrożony kontrakt
+    (``PowerFlowSummary.to_dict``) nigdy nie serializuje tu NaN/braku."""
+    wartosc = summary_raw.get(klucz)
+    if wartosc is None:
+        raise ValueError(
+            f"Profil napięć: podsumowanie przebiegu rozpływu nie ma pola {klucz!r} — "
+            "zamrożony wynik (PowerFlowSummary) nie dopuszcza tu braku, zapis biegu "
+            "jest uszkodzony."
+        )
+    return float(wartosc)
+
+
 def _power_flow_result_v1(run: CanonicalRun) -> PowerFlowResultV1:
     """Odtwórz ``PowerFlowResultV1`` (frozen Result API) z zapisanego wyniku
-    przebiegu — mapowanie JSON→dataclass 1:1 pól, zero fizyki."""
+    przebiegu — mapowanie JSON→dataclass 1:1 pól, zero fizyki.
+
+    FAB-E (E1): odczyt TOLERANCYJNY na status szyny — w odróżnieniu od
+    ``application.solvers.power_flow_binding._odtworz_wynik`` (dowód rozpływu,
+    wymaga KOMPLETU rozwiązanych szyn — odmawia inaczej), ten widok MA
+    pokazywać profil napięć również gdy solver nie objął części szyn (poza
+    wyspą SLACK): ten przypadek zgłasza czytelnie
+    ``VoltageProfileSegmentBuilder``/``find_worst_nn_path`` (NaN v_pu ->
+    ``VoltageProfileSegmentPathError``/pominięcie z listy kandydatów), nie
+    wyjątek już przy budowie tego obiektu — stąd DWIE, świadomie różne,
+    odtwórki tego samego zamrożonego typu (różna zasada dla „solver nie
+    dotarł do szyny": tu tolerowana, w dowodzie — odmowa całości).
+
+    branch_results/summary i iterations_count/tolerance_used/base_mva są dziś
+    martwe dla jedynych konsumentów tego obiektu w tym pliku
+    (``VoltageProfileSegmentBuilder``/``find_worst_nn_path`` czytają WYŁĄCZNIE
+    ``bus_results[].bus_id``/``.v_pu`` — patrz docstring modułu
+    ``segment_decomposition.py``) — ale ZERO FABRYKACJI obowiązuje mimo braku
+    dzisiejszego czytelnika: branch_results/summary to wielkości fizyczne
+    (gałąź/agregat sieci), więc brak pola -> odmowa z nazwą pola (nie 0.0);
+    iterations_count/tolerance_used/base_mva to metadane solvera (NIE
+    wielkości fizyczne) — bezpieczny, udokumentowany domyślny odczyt, spójny
+    z tym samym ustaleniem dla siostrzanego typu ``PowerFlowResult`` w
+    ``application/analyses/energy_validation/service.py``.
+    """
     raw_result = run.raw_result or {}
     result_v1 = raw_result.get("result_v1") or {}
 
     bus_results = tuple(
         PowerFlowBusResult(
             bus_id=str(row["bus_id"]),
-            v_pu=(float(row["v_pu"]) if row.get("v_pu") is not None else float("nan")),
-            angle_deg=(
-                float(row["angle_deg"]) if row.get("angle_deg") is not None else float("nan")
-            ),
-            p_injected_mw=float(row.get("p_injected_mw") or 0.0),
-            q_injected_mvar=float(row.get("q_injected_mvar") or 0.0),
+            v_pu=_fizyczna_lub_nan(row, "v_pu"),
+            angle_deg=_fizyczna_lub_nan(row, "angle_deg"),
+            p_injected_mw=_fizyczna_lub_nan(row, "p_injected_mw"),
+            q_injected_mvar=_fizyczna_lub_nan(row, "q_injected_mvar"),
             status=str(row.get("status", "solved")),
         )
         for row in result_v1.get("bus_results", [])
     )
-    branch_results = tuple(
-        PowerFlowBranchResult(
-            branch_id=str(row["branch_id"]),
-            p_from_mw=float(row.get("p_from_mw", 0.0)),
-            q_from_mvar=float(row.get("q_from_mvar", 0.0)),
-            p_to_mw=float(row.get("p_to_mw", 0.0)),
-            q_to_mvar=float(row.get("q_to_mvar", 0.0)),
-            losses_p_mw=float(row.get("losses_p_mw", 0.0)),
-            losses_q_mvar=float(row.get("losses_q_mvar", 0.0)),
+    branch_results_list: list[PowerFlowBranchResult] = []
+    for row in result_v1.get("branch_results", []):
+        galaz_id = str(row["branch_id"])
+        branch_results_list.append(
+            PowerFlowBranchResult(
+                branch_id=galaz_id,
+                p_from_mw=_wymagana_liczba_galezi(row, "p_from_mw", galaz_id),
+                q_from_mvar=_wymagana_liczba_galezi(row, "q_from_mvar", galaz_id),
+                p_to_mw=_wymagana_liczba_galezi(row, "p_to_mw", galaz_id),
+                q_to_mvar=_wymagana_liczba_galezi(row, "q_to_mvar", galaz_id),
+                losses_p_mw=_wymagana_liczba_galezi(row, "losses_p_mw", galaz_id),
+                losses_q_mvar=_wymagana_liczba_galezi(row, "losses_q_mvar", galaz_id),
+            )
         )
-        for row in result_v1.get("branch_results", [])
-    )
     summary_raw = result_v1.get("summary") or {}
     summary = PowerFlowSummary(
-        total_losses_p_mw=float(summary_raw.get("total_losses_p_mw", 0.0)),
-        total_losses_q_mvar=float(summary_raw.get("total_losses_q_mvar", 0.0)),
-        min_v_pu=float(summary_raw.get("min_v_pu", 0.0)),
-        max_v_pu=float(summary_raw.get("max_v_pu", 0.0)),
-        slack_p_mw=float(summary_raw.get("slack_p_mw", 0.0)),
-        slack_q_mvar=float(summary_raw.get("slack_q_mvar", 0.0)),
+        total_losses_p_mw=_wymagana_liczba_podsumowania(summary_raw, "total_losses_p_mw"),
+        total_losses_q_mvar=_wymagana_liczba_podsumowania(summary_raw, "total_losses_q_mvar"),
+        min_v_pu=_wymagana_liczba_podsumowania(summary_raw, "min_v_pu"),
+        max_v_pu=_wymagana_liczba_podsumowania(summary_raw, "max_v_pu"),
+        slack_p_mw=_wymagana_liczba_podsumowania(summary_raw, "slack_p_mw"),
+        slack_q_mvar=_wymagana_liczba_podsumowania(summary_raw, "slack_q_mvar"),
     )
     return PowerFlowResultV1(
         result_version=str(result_v1.get("result_version", "")),
@@ -121,7 +181,7 @@ def _power_flow_result_v1(run: CanonicalRun) -> PowerFlowResultV1:
         base_mva=float(result_v1.get("base_mva", 100.0)) or 100.0,
         slack_bus_id=str(result_v1.get("slack_bus_id", "")),
         bus_results=bus_results,
-        branch_results=branch_results,
+        branch_results=tuple(branch_results_list),
         summary=summary,
         unsolved_node_ids=tuple(str(x) for x in result_v1.get("unsolved_node_ids", [])),
     )

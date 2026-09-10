@@ -21,6 +21,27 @@ Concepts with no standard CIM target are preserved ONLY in the side-car
 interpretation classes (no point-of-common-coupling, BoundaryNode, or
 ConnectionPoint elements).
 
+Source short-circuit data (CV-4.3 K7): CIM ``ExternalNetworkInjection`` carries
+BOTH ``maxInitialSymShCCurrent`` and ``minInitialSymShCCurrent`` — the profile
+DOES have a minimum-scenario attribute (unlike an earlier note in this area
+assumed). ``_emit_source`` writes the real MIN value from ``Source.sk3_min_mva``/
+``ik3_min_ka`` when the model carries it; when the model does NOT (``None`` — the
+OSD never gave S''kQmin/I''kQmin, same condition as readiness code
+``source.sk_min_missing``), the attribute is OMITTED, not guessed — CGMES export
+never claims min=max and never invents a minimum the model does not declare.
+``maxInitialSymShCCurrent``/``minInitialSymShCCurrent`` also derive from ``ik3_ka``/
+``ik3_min_ka`` directly when ``sk3_mva``/``sk3_min_mva`` is absent (current-only
+source, IEC 60909-0:2016 §6.2.1 eq. 6 read as current — the same data mode
+``enm.zrodlo_zwarcie.tryb_danych`` accepts elsewhere in the system). The declared
+R/X ratios travel on the standard CIM attributes ``maxR1ToX1Ratio`` (``rx_ratio``,
+MAX) and ``minR1ToX1Ratio`` (``rx_ratio_min``, MIN); without them a round-trip
+through a third-party importer would silently fall back to the IEC 60909 default
+R/X = 0.1 in the mapper — a change of physics the model never declared. The
+importer (``cgmes_importer.py``) reads all four attributes back, so the third-party
+path (EQ+TP, no side-car) preserves the source's short-circuit declaration:
+Sk''-mode sources come back as current-mode (Ik'' = Sk''/(√3·Un), the same
+Z_Q in the mapper), Ik''-mode and R+jX-mode sources come back unchanged.
+
 Determinism: every collection is iterated sorted by ``ref_id``; mRIDs are pure
 functions of ref_id; floats use ``units.fmt_float``; no timestamps.
 
@@ -33,10 +54,13 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from typing import TYPE_CHECKING
 
+from network_model.pochodne import kw_na_w, prad_znamionowy_a
+
 from .mrid import mrid_for, urn
 from .profiles import NS_CIM, RDF_ABOUT, RDF_ID, RDF_RESOURCE
 from .units import (
     fmt_float,
+    ka_to_a,
     km_to_m,
     kv_to_v,
     mva_to_va,
@@ -299,7 +323,7 @@ def _emit_transformer(eq: ET.Element, tp: ET.Element, trafo: Transformer) -> Non
     ulv_v = kv_to_v(trafo.ulv_kv)
     z_hv_ohm = (trafo.uk_percent / 100.0) * (uhv_v**2) / sn_va if sn_va else 0.0
     # R from copper losses pk (kW -> W), referred to HV.
-    pk_w = trafo.pk_kw * 1000.0
+    pk_w = kw_na_w(trafo.pk_kw)
     r_hv_ohm = pk_w * (uhv_v**2) / (sn_va**2) if sn_va else 0.0
     x_hv_ohm = (z_hv_ohm**2 - r_hv_ohm**2) ** 0.5 if z_hv_ohm > r_hv_ohm else 0.0
 
@@ -356,18 +380,27 @@ def _emit_source(eq: ET.Element, tp: ET.Element, source: Source, bus_kv: float |
     mrid = mrid_for("ExternalNetworkInjection", source.ref_id)
     inj = _obj(eq, "ExternalNetworkInjection", mrid)
     _prop(inj, "IdentifiedObject.name", source.name)
-    if source.sk3_mva is not None:
-        # maxInitialSymShCCurrent expressed via Sk -> Ik if bus voltage known.
-        _prop(
-            inj,
-            "ExternalNetworkInjection.maxInitialSymShCCurrent",
-            fmt_float(_ik_from_sk(source.sk3_mva, bus_kv)),
-        )
-        _prop(
-            inj,
-            "ExternalNetworkInjection.minInitialSymShCCurrent",
-            fmt_float(_ik_from_sk(source.sk3_mva, bus_kv)),
-        )
+    ik_max_a = _ik_a(source.sk3_mva, source.ik3_ka, bus_kv)
+    if ik_max_a is not None:
+        _prop(inj, "ExternalNetworkInjection.maxInitialSymShCCurrent", fmt_float(ik_max_a))
+    # CV-4.3 K7: scenariusz MIN (IEC 60909-0:2016 §6.2.1) — CIM `ExternalNetworkInjection`
+    # NIESIE osobny atrybut `minInitialSymShCCurrent`. Stan PRZED (bug sprzed K7, nie
+    # ograniczenie profilu CIM) duplikował tu wartość MAX — eksport twierdził
+    # min=max, mimo że model tej równości nie deklarował. Teraz: prawdziwa wartość MIN,
+    # gdy źródło ją niesie (`sk3_min_mva`/`ik3_min_ka`); BRAK danych MIN = atrybut
+    # POMINIĘTY (zero fabrykacji — eksporter nie zgaduje minimum), to samo założenie co
+    # `source.sk_min_missing` w warstwie domenowej (`enm/zrodlo_zwarcie.py`).
+    ik_min_a = _ik_a(source.sk3_min_mva, source.ik3_min_ka, bus_kv)
+    if ik_min_a is not None:
+        _prop(inj, "ExternalNetworkInjection.minInitialSymShCCurrent", fmt_float(ik_min_a))
+    # Stosunki R/X deklarowane przez źródło — standardowe atrybuty CIM (`maxR1ToX1Ratio`
+    # dla MAX, `minR1ToX1Ratio` dla MIN). Bez nich obcy importer (i nasz tor EQ+TP bez
+    # side-cara) traciłby R/X i mapper liczyłby Z_Q z domyślnego R/X = 0,1 IEC 60909 —
+    # zmiana fizyki, której model nie zadeklarował. Brak w modelu = atrybut pominięty.
+    if source.rx_ratio is not None:
+        _prop(inj, "ExternalNetworkInjection.maxR1ToX1Ratio", fmt_float(source.rx_ratio))
+    if source.rx_ratio_min is not None:
+        _prop(inj, "ExternalNetworkInjection.minR1ToX1Ratio", fmt_float(source.rx_ratio_min))
     if source.r_ohm is not None:
         _prop(inj, "ExternalNetworkInjection.maxR1", fmt_float(source.r_ohm))
     if source.x_ohm is not None:
@@ -381,11 +414,24 @@ def _emit_source(eq: ET.Element, tp: ET.Element, source: Source, bus_kv: float |
     _connect_terminal_tp(tp, t1, source.bus_ref)
 
 
-def _ik_from_sk(sk3_mva: float, bus_kv: float | None) -> float:
-    """Ik'' [A] = Sk'' / (sqrt(3) * Un). Pure algebraic conversion, not a solve."""
-    if not bus_kv or bus_kv <= 0:
-        return 0.0
-    return (sk3_mva * 1.0e6) / (3.0**0.5 * bus_kv * 1.0e3)
+def _ik_a(sk3_mva: float | None, ik3_ka: float | None, bus_kv: float | None) -> float | None:
+    """I'' [A] z danych zwarciowych deklarowanych przez źródło (MAX albo MIN, ten sam
+    wzorzec dla obu — wołający podaje właściwą parę pól).
+
+    Pierwszeństwo Sk'' nad Ik'' zgodne z `enm.zrodlo_zwarcie.tryb_danych` (ta sama
+    kolejność, którą stosuje mapper solvera): Sk'' → Ik'' = Sk''/(√3·Un) — algebra
+    czysta, bez współczynnika c (eksport modelu WEJŚCIOWEGO, nie wyniku solvera);
+    samo Ik'' → jednostka wprost (kA → A). Brak obu ALBO brak napięcia szyny (Sk''
+    bez referencji U nie da się przeliczyć) = `None` — właściwość CIM zostaje
+    POMINIĘTA, nie zapisana jako zgadywane 0.
+    """
+    if sk3_mva is not None:
+        if not bus_kv or bus_kv <= 0:
+            return None
+        return prad_znamionowy_a(sk3_mva, bus_kv)
+    if ik3_ka is not None:
+        return ka_to_a(ik3_ka)
+    return None
 
 
 # ---------------------------------------------------------------------------

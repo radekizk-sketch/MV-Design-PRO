@@ -1,12 +1,21 @@
 /**
- * Test ProofSurface (E-36) audit2 Power Flow button click flow (Phase 40).
+ * Test ProofSurface (E-36) — przycisk "Rozpływ mocy rozszerzony" (karta CV-4.2).
+ *
+ * Karta CV-4.2 usunęła fabrykowany backend `POST /api/cases/audit2-power-flow`
+ * (`pq=[]`, `slack_node_id or "slack-stub"` — zero fizyki, zawsze empty graph
+ * stub) i przepięła przycisk na bieg KANONICZNY:
+ *   POST /api/execution/study-cases/{caseId}/runs
+ *   POST /api/execution/runs/{runId}/execute
+ *   GET  /api/execution/runs/{runId}/results
+ * (`ui/study-cases/api.ts::createRun/executeRun/getRunResults`, orkiestrowane
+ * przez `useRunExtendedPowerFlow`, `ui/network-build/station-der/audit2-hooks.ts`).
  *
  * Pokrywa:
  *  - Button widoczny i renderowany.
- *  - Disabled gdy brak aktywnego runId / projectu / config'u.
- *  - Po kliknieciu wywoluje POST /api/cases/audit2-power-flow z prawidlowymi danymi.
- *  - Auto-inject snapshot_id z useSnapshotStore (Phase 39).
- *  - Snapshot status hint renderowany correctly.
+ *  - Disabled gdy brak aktywnego przypadku (`activeCaseId`).
+ *  - Po kliknieciu woła createRun -> executeRun -> getRunResults z prawidlowymi danymi.
+ *  - Wynik liczy węzły/gałęzie/źródła z `element_results` (dane solvera, nie fabrykacja).
+ *  - Publiczny widok dowodów nie pokazuje wewnętrznej nazwy audit2 ani endpointu API.
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -73,7 +82,7 @@ function basicFetchStub(url: string | URL): Promise<Response> {
   return Promise.resolve({ ok: true, json: async () => ({}) } as never);
 }
 
-describe('ProofSurface — audit2 Power Flow button (Phase 40)', () => {
+describe('ProofSurface — przycisk rozpływu mocy rozszerzonego (CV-4.2)', () => {
   beforeEach(() => {
     useAppStateStore.getState().reset();
     useSnapshotStore.getState().reset();
@@ -81,13 +90,13 @@ describe('ProofSurface — audit2 Power Flow button (Phase 40)', () => {
   });
 
   it('button widoczny w ProofSurface', () => {
-    useAppStateStore.setState({ activeProjectId: 'proj-1', activeRunId: 'run-1' });
+    useAppStateStore.setState({ activeProjectId: 'proj-1', activeCaseId: 'case-1' });
     renderWithFetchStub(<WorkspaceSurfaceRouter region="main" />, basicFetchStub);
     expect(screen.getByTestId('audit2-power-flow-run')).toBeDefined();
   });
 
   it('publiczny widok dowodów nie pokazuje wewnętrznej nazwy audit2 ani endpointu API', () => {
-    useAppStateStore.setState({ activeProjectId: 'proj-1', activeRunId: 'run-1' });
+    useAppStateStore.setState({ activeProjectId: 'proj-1', activeCaseId: 'case-1' });
     renderWithFetchStub(<WorkspaceSurfaceRouter region="main" />, basicFetchStub);
 
     expect(screen.getByText('Uzasadnienia rozszerzonej walidacji')).toBeInTheDocument();
@@ -97,15 +106,15 @@ describe('ProofSurface — audit2 Power Flow button (Phase 40)', () => {
     );
   });
 
-  it('button disabled gdy brak activeRunId', () => {
-    useAppStateStore.setState({ activeProjectId: 'proj-1', activeRunId: null });
+  it('button disabled gdy brak activeCaseId', () => {
+    useAppStateStore.setState({ activeProjectId: 'proj-1', activeCaseId: null });
     renderWithFetchStub(<WorkspaceSurfaceRouter region="main" />, basicFetchStub);
     const btn = screen.getByTestId('audit2-power-flow-run') as HTMLButtonElement;
     expect(btn.disabled).toBe(true);
   });
 
   it('status wersji układu nie pokazuje surowego snapshotu gdy snapshot null', () => {
-    useAppStateStore.setState({ activeProjectId: 'proj-1', activeRunId: 'run-1' });
+    useAppStateStore.setState({ activeProjectId: 'proj-1', activeCaseId: 'case-1' });
     useSnapshotStore.setState({ snapshot: null });
     renderWithFetchStub(<WorkspaceSurfaceRouter region="main" />, basicFetchStub);
     const status = screen.getByTestId('audit2-pf-snapshot-status');
@@ -114,7 +123,7 @@ describe('ProofSurface — audit2 Power Flow button (Phase 40)', () => {
   });
 
   it('status wersji układu ukrywa aktywny hash gdy snapshot loaded', () => {
-    useAppStateStore.setState({ activeProjectId: 'proj-1', activeRunId: 'run-1' });
+    useAppStateStore.setState({ activeProjectId: 'proj-1', activeCaseId: 'case-1' });
     useSnapshotStore.setState({
       snapshot: {
         header: { hash_sha256: 'abc123def456abc123def456789012345678901234567890123456789abcdef' },
@@ -126,13 +135,10 @@ describe('ProofSurface — audit2 Power Flow button (Phase 40)', () => {
     expect(status.textContent).not.toMatch(/snapshot|abc123def456abc1/i);
   });
 
-  it('po kliknieciu wywoluje POST z prawidlowymi danymi + snapshot_id', async () => {
-    useAppStateStore.setState({ activeProjectId: 'proj-1', activeRunId: 'run-1' });
-    useSnapshotStore.setState({
-      snapshot: { header: { hash_sha256: 'snap-hash-1234' } } as never,
-    });
+  it('po kliknieciu woła createRun -> executeRun -> getRunResults z prawidlowymi danymi', async () => {
+    useAppStateStore.setState({ activeProjectId: 'proj-1', activeCaseId: 'case-1' });
 
-    let powerFlowCallBody: Record<string, unknown> | null = null;
+    let createRunBody: Record<string, unknown> | null = null;
     renderWithFetchStub(
       <WorkspaceSurfaceRouter region="main" />,
       (url, init) => {
@@ -162,17 +168,47 @@ describe('ProofSurface — audit2 Power Flow button (Phase 40)', () => {
             ],
           } as never);
         }
-        if (urlStr.includes('audit2-power-flow')) {
-          powerFlowCallBody = init?.body ? JSON.parse(init.body as string) : null;
+        if (urlStr === '/api/execution/study-cases/case-1/runs') {
+          createRunBody = init?.body ? JSON.parse(init.body as string) : null;
           return Promise.resolve({
             ok: true,
             json: async () => ({
-              case_id: 'run-1', project_id: 'proj-1', station_id: 'station-A',
-              audit2_applied: { tap_position_changes: {}, grounding_z0_z1_ratio: 50.0 },
-              solver_attempted: true, solver_error: null,
-              audit2_extensions_keys: ['power_flow_extensions'],
-              graph_branch_count: 3, graph_node_count: 5, graph_inverter_source_count: 1,
-              snapshot_id_loaded: 'snap-hash-1234',
+              id: 'run-1', study_case_id: 'case-1', analysis_type: 'LOAD_FLOW',
+              solver_input_hash: 'hash-1', status: 'PENDING',
+              started_at: null, finished_at: null, error_message: null,
+            }),
+          } as never);
+        }
+        if (urlStr === '/api/execution/runs/run-1/execute') {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              id: 'run-1', study_case_id: 'case-1', analysis_type: 'LOAD_FLOW',
+              solver_input_hash: 'hash-1', status: 'DONE',
+              started_at: '2026-01-01T00:00:00Z', finished_at: '2026-01-01T00:00:01Z',
+              error_message: null,
+            }),
+          } as never);
+        }
+        if (urlStr === '/api/execution/runs/run-1/results') {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              run_id: 'run-1', analysis_type: 'LOAD_FLOW',
+              validation_snapshot: {}, readiness_snapshot: {},
+              element_results: [
+                { element_ref: 'b1', element_type: 'Bus', values: {} },
+                { element_ref: 'b2', element_type: 'Bus', values: {} },
+                { element_ref: 'b3', element_type: 'Bus', values: {} },
+                { element_ref: 'b4', element_type: 'Bus', values: {} },
+                { element_ref: 'b5', element_type: 'Bus', values: {} },
+                { element_ref: 'l1', element_type: 'Branch', values: {} },
+                { element_ref: 'l2', element_type: 'Branch', values: {} },
+                { element_ref: 'l3', element_type: 'Branch', values: {} },
+                { element_ref: 's1', element_type: 'Source', values: {} },
+              ],
+              global_results: { audit2_applied: { tap_position_changes: { tr_001: {} } } },
+              deterministic_signature: 'sig-1',
             }),
           } as never);
         }
@@ -189,13 +225,15 @@ describe('ProofSurface — audit2 Power Flow button (Phase 40)', () => {
     fireEvent.click(screen.getByTestId('audit2-power-flow-run'));
 
     await waitFor(() => {
-      expect(powerFlowCallBody).not.toBeNull();
+      expect(createRunBody).not.toBeNull();
     });
-    expect(powerFlowCallBody).toMatchObject({
-      case_id: 'run-1',
-      project_id: 'proj-1',
-      station_id: 'station-A',
-      snapshot_id: 'snap-hash-1234',
+    expect(createRunBody).toEqual({
+      analysis_type: 'LOAD_FLOW',
+      solver_input: {
+        base_mva: 100.0,
+        audit2_project_id: 'proj-1',
+        audit2_station_id: 'station-A',
+      },
     });
 
     await waitFor(() => {
@@ -205,7 +243,8 @@ describe('ProofSurface — audit2 Power Flow button (Phase 40)', () => {
     expect(result.textContent).toContain('uruchomione');
     expect(result.textContent).toContain('5 węzłów');
     expect(result.textContent).toContain('3 gałęzi');
-    expect(result.textContent).toContain('rozszerzony rozpływ mocy');
+    expect(result.textContent).toContain('1 źródeł');
+    expect(result.textContent).toContain('zastosowana');
     expect(result.textContent).not.toMatch(/Audit2|audit2|station-A|power_flow_extensions/i);
   });
 });

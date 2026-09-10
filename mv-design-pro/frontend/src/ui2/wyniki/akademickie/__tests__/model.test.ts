@@ -14,6 +14,8 @@
 
 import { describe, expect, it } from 'vitest';
 
+import { at } from '../../../../test/arrayAt';
+
 import {
   krokiDowoduDoWidoku,
   krokiSladuDoWidoku,
@@ -53,7 +55,7 @@ describe('splaszczWynik — pełne spłaszczenie (limit z danych, nie ze stałej
     for (let i = 0; i < 40; i += 1) payload[`pole_${i}`] = i;
     const wiersze = splaszczWynik(payload);
     expect(wiersze).toHaveLength(40);
-    expect(wiersze.at(-1)?.sciezka).toBe('pole_39');
+    expect(at(wiersze, -1)?.sciezka).toBe('pole_39');
   });
 
   it('zagnieżdżenie głębsze niż 8 poziomów — komplet liści (próg 8 zastanej)', () => {
@@ -158,7 +160,7 @@ describe('ślad / dowód / raport — bez limitu po stronie okna', () => {
   it('ślad dłuższy niż 8 kroków przechodzi w całości (próg 8 zastanej)', () => {
     const kroki = Array.from({ length: 25 }, (_, i) => krokSladu(i + 1));
     expect(krokiSladuDoWidoku(kroki)).toHaveLength(25);
-    expect(krokiSladuDoWidoku(kroki).at(-1)?.step).toBe(25);
+    expect(at(krokiSladuDoWidoku(kroki), -1)?.step).toBe(25);
   });
 
   it('dowód dłuższy niż 8 kroków przechodzi w całości', () => {

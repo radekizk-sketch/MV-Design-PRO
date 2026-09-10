@@ -64,7 +64,12 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
     /* K5-A (H-4): wejście do kreatora baterii kondensatorów SN — realna
      * operacja add_shunt_compensator_sn (bus_ref = kliknięta szyna). */
     { id: 'add-compensator', labelPl: 'Dodaj kompensator mocy biernej', group: 'budowa' },
-    { id: 'show-sc-data', labelPl: 'Pokaż dane zwarciowe źródła', group: 'widok' },
+    // Karta W2-B: etykieta byla identyczna z 'show-sc-source' menu GPZ
+    // ('Pokaz dane zwarciowe zrodla') mimo innego przedmiotu akcji (sekcja,
+    // nie zrodlo) — naprawione przy okazji wpiecia realnej nawigacji dla obu
+    // akcji (byly wczesniej dwoma zaslepkami roadmapy, jedna dokladnie
+    // skopiowana etykieta z drugiej).
+    { id: 'show-sc-data', labelPl: 'Pokaż dane zwarciowe sekcji', group: 'widok' },
     { id: 'show-readiness', labelPl: 'Pokaż kontrolę konfiguracji', group: 'widok' },
   ],
   bay: [

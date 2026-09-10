@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import { GRID } from '../../core/grid';
 import { SYMBOL_DEFS } from '../../symbols/defs';
+import { at } from '../../../../../test/arrayAt';
 import { FIELD_ROLE, ALL_FIELD_ROLES, type FieldRole } from '../../../v2/domain/apparatusContracts';
 import type { BayPrimaryDeviceView, MiniBlockBayDescriptor } from '../../../v2/renderer/MiniBlockRmuRenderer';
 import {
@@ -38,7 +39,6 @@ import {
   planApparatusSymbolIds,
   planBayApparatus,
 } from '../apparatusSequence';
-import type { FieldRole } from '../../../v2/domain/apparatusContracts';
 
 /** F10.1: oczekiwana KOLEJNOŚĆ instancji kompozycji = tor główny, potem
  *  aparaty boczne (buildBayStack dokleja laterale na końcu). */
@@ -1148,7 +1148,7 @@ describe('V3 compose/station — F10.5 §20.1: linia pomiarowa CT→przekaźnik 
     expect(composition.measurementSegments[0].points[0]).toEqual(ctTopPort);
     const relaySymbol = composition.protectionSymbols.find((s) => s.symbolId === 'protectionRelay')!;
     const relayLinkPort = { x: relaySymbol.x, y: relaySymbol.y + 8 }; // 'link' port (dir W), offset (0,8)
-    const lastPoint = composition.measurementSegments[0].points.at(-1);
+    const lastPoint = at(composition.measurementSegments[0].points, -1);
     expect(lastPoint).toEqual(relayLinkPort);
 
     expect(composition.missingData).not.toContain('bay.protection.measurement_link_unresolved');

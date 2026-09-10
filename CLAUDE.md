@@ -305,7 +305,7 @@ MV-Design-PRO/
 │   │   │   │   └── sld-layout/   # SLD auto-layout engine (7-phase pipeline)
 │   │   │   ├── types/            # Shared TypeScript type definitions
 │   │   │   ├── test/             # Test infrastructure (setup.ts)
-│   │   │   ├── ui/               # React components — 56 modulow (stan zmierzony, pin: scripts/claude_md_struktura_guard.py)
+│   │   │   ├── ui/               # React components — 53 moduly (stan zmierzony, pin: scripts/claude_md_struktura_guard.py)
 │   │   │   │   ├── analysis-eligibility/  # Wynik pre-kontroli analizy
 │   │   │   │   ├── app-state/             # Globalny store Zustand
 │   │   │   │   ├── audit/                 # Narzedzia audytowe
@@ -316,7 +316,6 @@ MV-Design-PRO/
 │   │   │   │   ├── config/                # Konfiguracja
 │   │   │   │   ├── context-menu/          # Akcje menu kontekstowego
 │   │   │   │   ├── contracts/             # Definicje kontraktow API
-│   │   │   │   ├── data-manager/          # Panel zarzadzania danymi
 │   │   │   │   ├── engineering-readiness/ # Bramka gotowosci inzynierskiej
 │   │   │   │   ├── enm-inspector/         # Inspektor modelu ENM
 │   │   │   │   ├── fault-scenarios/       # Konfiguracja scenariuszy zwarciowych
@@ -335,7 +334,6 @@ MV-Design-PRO/
 │   │   │   │   ├── power-distribution/    # Analiza rozdzialu mocy
 │   │   │   │   ├── power-flow-comparison/ # Porownanie A/B rozplywu
 │   │   │   │   ├── power-flow-results/    # Wyniki rozplywu mocy
-│   │   │   │   ├── project-archive/       # Import/eksport projektu (ZIP)
 │   │   │   │   ├── projects/              # Lista i zarzadzanie projektami
 │   │   │   │   ├── proof/                 # Prezentacja pakietu dowodowego
 │   │   │   │   ├── property-grid/         # Edytor wlasciwosci elementu
@@ -343,7 +341,6 @@ MV-Design-PRO/
 │   │   │   │   ├── protection-comparison/ # Porownanie A/B zabezpieczen
 │   │   │   │   ├── protection-coordination/ # Wykresy TCC, koordynacja
 │   │   │   │   ├── protection-curves/     # Rysowanie krzywych zabezpieczen
-│   │   │   │   ├── reference-networks/    # Sieci referencyjne (fikstury)
 │   │   │   │   ├── reference-patterns/    # Wzorce sieci referencyjnych
 │   │   │   │   ├── reports/               # Raporty
 │   │   │   │   ├── results/               # Modul wynikow
@@ -389,7 +386,7 @@ MV-Design-PRO/
 │   │   │       ├── theme/             # Motyw i tokeny
 │   │   │       ├── wyniki/            # Ekrany wynikow (rozplyw, zwarcia, porownanie, estymacja, skladowe)
 │   │   └── e2e/                  # Playwright end-to-end tests
-│   ├── scripts/                  # CI/CD guard scripts (64+ scripts)
+│   ├── scripts/                  # CI/CD guard scripts (86 guards + 35 self-tests, 2026-09-09)
 │   └── docs/                     # Detailed documentation (150+ files)
 │       ├── spec/                 # DETAILED SPECIFICATION (18 chapters + supplements - SOURCE OF TRUTH)
 │       ├── ui/                   # UI contracts (35+ canonical contracts)
@@ -426,7 +423,7 @@ Note: `POWERFACTORY_COMPLIANCE.md` was removed in the V12.5.1 hard cut (2026-04-
 
 In case of conflict: higher priority wins. Conflicts must be recorded in `docs/v12xx/REJESTR_KONFLIKTOW.md`. The latest canon documents (DOC_INVENTORY_2026-05, AUDYT_BRAKI_2026-05, PLAN_E2E_INDUSTRIAL_2026-05, SLD_INDUSTRIAL_SPEC_v1) live under `mv-design-pro/docs/audit/` and `mv-design-pro/docs/plan/` and `mv-design-pro/docs/sld/`.
 
-Active operational programs (2026-07, subordinate to the canon above): `mv-design-pro/docs/uiux/PROGRAM_UIUX_2026-07.md` (UI/UX rebuild, with the BINDING functional inventory `docs/uiux/INWENTARZ_FUNKCJI_2026-07.md`), `mv-design-pro/docs/plan/PLAN_SLD_REWORK.md` (SLD — separate thread), `mv-design-pro/docs/plan/PLAN_PRZEBUDOWY_10X_2026-07.md` (engineering 10x). See "Active programs" in Project Status below.
+Active operational programs (2026-07, subordinate to the canon above): `mv-design-pro/docs/uiux/PROGRAM_UIUX_2026-07.md` (UI/UX rebuild, with the BINDING functional inventory `docs/uiux/INWENTARZ_FUNKCJI_2026-07.md`), `mv-design-pro/docs/plan/PLAN_SLD_REWORK.md` (SLD — separate thread), `mv-design-pro/docs/plan/PLAN_PRZEBUDOWY_10X_2026-07.md` (engineering 10x). **Nadrzędna misja właściciela od 2026-09-09:** `mv-design-pro/docs/plan/MISJA_DOMKNIECIA_PRODUKTU_2026-09.md` (domknięcie całego produktu w 12 domenach; architektura, kolejność, kontrakty i wdrożenie po stronie architekta; bramki właściciela B-01/B-02 bez zmian; mapa domknięcia budowana z dowodów repo, nie z planów). **Mapa domknięcia (2026-09-09):** `mv-design-pro/docs/plan/MAPA_DOMKNIECIA_PRODUKTU_2026-09.md` — klasyfikacja każdej zdolności 12 domen z dowodem, klasy defektów, kolejność wycinków W1–W12; pierwszy wycinek W1 (jedna prawda sieci: import XLSX → ENM, kasacja legacy ORM). See "Active programs" in Project Status below.
 
 ## Architecture Layer Boundaries (CRITICAL)
 
@@ -480,6 +477,8 @@ Active operational programs (2026-07, subordinate to the canon above): `mv-desig
 ### 1. NOT-A-SOLVER Rule
 Only dedicated solvers in `network_model/solvers/` compute physics. These components **CANNOT** contain physics calculations:
 - Protection, Frontend, Reporting, Wizard, SLD, Validation, Proof Engine, Analysis
+
+Addendum (CV-4.3 K4, 2026-09-06): jedyne poza solverami miejsce dla algebry wielkości pochodnych (U/√3, S/cosφ, Q=P·tgφ, I=S/(√3·U), I²t, R_θ=R20·[1+α(θ−20)], Z=U²/S) to liściowy pakiet `network_model/pochodne/wielkosci_pochodne.py` (importuje wyłącznie `math`; rodzeństwo `core/` i `solvers/`, NIE potomek `solvers/`, bo gorliwy `solvers/__init__.py` zamknąłby import z `core/` w cyklu). Poza `network_model/solvers/**` i `network_model/pochodne/**` te wzory są zakazane — pilnuje `scripts/backend_no_physics_guard.py` (AST, allowlista pusta, zapadka tylko w dół); import z `pochodne/` do rdzeni FROZEN jest zabroniony.
 
 ### 2. WHITE BOX Rule
 All solvers **MUST**:
@@ -577,7 +576,7 @@ npm run test:watch
 # Run tests with coverage
 npm run test:coverage
 
-# Run e2e tests (Playwright, mock backend)
+# Run e2e tests (Playwright, REAL backend — playwright-run.mjs forces PLAYWRIGHT_REAL_BACKEND=1; all 90 spec files)
 npm run test:e2e
 
 # Run e2e against real backend (critical path)
@@ -625,7 +624,7 @@ docker-compose logs -f backend
 docker-compose down
 ```
 
-### Guard Scripts (64+ total)
+### Guard Scripts (86 guards + 35 self-tests; list below is a selection)
 ```bash
 cd mv-design-pro
 
@@ -790,7 +789,8 @@ python scripts/smoke_local.sh                     # Local smoke test
   aktualizuj tę listę, inaczej wróci fikcja):
   - `sld/v2/geometry/__tests__/layoutEngine.substrate.test.ts`
   - `sld/v2/geometry/__tests__/portAnchoredGeometry.substrate.test.ts`
-  - `sld/v2/__tests__/{ViewportController,LodPolicy,renderers,StationInternalView}.test.ts(x)`
+  - `sld/v2/__tests__/{ViewportController,LodPolicy,renderers}.test.ts(x)` (StationInternalView.test.tsx
+    usunięty w `08ccf7c9`; martwy krok workflowa zdjęty 2026-09-02 — M0-1, pilnuje `verification_phantom_paths_guard`)
   - `sld/v2/command/__tests__/SldCommandService.test.ts` · `sld/v2/core/__tests__/ports.test.ts`
   - `sld/v3/scene/__tests__/{lodContinuity,buildScene.sheetRows,buildScene.gpzCollapsed,busbarLabelClearance}.test.ts`
   - `sld/v3/canvas/__tests__/{minSymbolSize,kadrTresci,toolbarLayout,tozsamoscEtykiet}.contract.test.ts(x)`
@@ -846,11 +846,17 @@ The system is fully functional with:
 - 19 analysis modules (incl. Arc Flash, Grid Strength, Reactive Adequacy, SSCI, Sanity Bounds,
   Energy Validation — see inventory)
 - Full frontend (63 UI modules): SLD editor, Results, Study Cases, Proof Inspector, Protection, NC RfG tests
-- ~5,400 backend test functions; ~7,350 frontend tests (537 files); 79 guard scripts
+- ~9 080 backend test functions (`grep def test_`, 2026-09-09); ~10 580 frontend tests in 892 files; 86 guard scripts + 35 guard self-tests
 - Project import/export (ZIP, deterministic, versioned), CAD geometry editing in SLD,
   PDF/DOCX report generation, ENM v1.0 (EnergyNetworkModel)
 
 ### Active programs (2026-07) — three programs, unified thread (2026-07-21)
+0. **Misja domknięcia produktu (dyrektywa właściciela 2026-09-09, nadrzędna wobec 1–3):**
+   `mv-design-pro/docs/plan/MISJA_DOMKNIECIA_PRODUKTU_2026-09.md` — 12 domen jako jedno środowisko
+   inżynierskie, kontrakt ukończenia CLAIMED DONE → VERIFICATION GATE → ACCEPTED DONE, mapa
+   domknięcia z dowodów repo (istnieje / pozornie / częściowe / zduplikowane / bez konsumenta /
+   UI bez zdolności / backend bez toku pracy / brak / do przeprojektowania / do kasacji), wycinki
+   pionowe wg zależności, ryzyka i wartości. Programy 1–3 są jej częścią, nie konkurencją.
 1. **Program UI/UX klasy przemysłowej** (`mv-design-pro/docs/uiux/PROGRAM_UIUX_2026-07.md`,
    phases U0–U5; orchestration: `docs/uiux/PROMPT_ZARZADCA_FABLE_UIUX.md`).
    Branch: `claude/power-network-design-ui-ir91mv`.

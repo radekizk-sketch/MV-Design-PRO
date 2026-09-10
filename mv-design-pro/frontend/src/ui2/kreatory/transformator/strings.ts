@@ -89,6 +89,10 @@ export const TRANSFORMATOR_STRINGS = {
   anuluj: 'Anuluj',
   brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem transformatora.',
   walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać transformator.',
+  // S9-5 (klasa: bramka enable bez sygnału gotowości, `karta_e2e_s95.md`) —
+  // katalog transformatorów ładuje się asynchronicznie; zapis bez niego
+  // byłby cichym no-op na pustym `catalog_ref`, więc blokujemy JAWNIE.
+  katalogLadowanieStopka: 'Ładowanie katalogu transformatorów SN/nN — zapis będzie dostępny po wczytaniu.',
 
   // Panel teorii (V12K-066: standard „must-have")
   teoriaSzynyTytul: 'Teoria: transformator SN/nN — przekładnia i impedancja zwarcia',

@@ -56,6 +56,19 @@ export interface WierszStabilnosci {
   readonly reporting_status?: string | null;
   readonly reporting_status_pl?: string | null;
   readonly reporting_limitations?: readonly string[];
+  /** Kryteria oceny progowej JAWNIE nazwane (karta W2 pkt 1) — etykieta PL,
+   *  jednostka, wartość i nota o pochodzeniu (kryterium przyjęte w opcjach
+   *  biegu, nie zaszyte). Starsze zapisy bez pola → uczciwy brak sekcji. */
+  readonly threshold_criteria?: readonly KryteriumOcenyProgowej[];
+}
+
+/** Jedno kryterium oceny progowej — lustro `DynamicStabilityThresholds.kryteria_oceny_progowej`. */
+export interface KryteriumOcenyProgowej {
+  readonly key: string;
+  readonly label_pl: string;
+  readonly value: number;
+  readonly unit: string;
+  readonly source_pl: string;
 }
 
 export interface OdpowiedzStabilnosci {
@@ -110,6 +123,140 @@ export interface OdpowiedzPrzebieguStabilnosci {
   readonly criteria_version?: string | null;
   readonly quantities: readonly WielkoscPrzebiegu[];
   readonly points: readonly PunktPrzebiegu[];
+}
+
+// ---------------------------------------------------------------------------
+// Formularz scenariusza wyłączenia zwarcia (karta W2 pkt 1, zero fabrykacji)
+// ---------------------------------------------------------------------------
+
+/**
+ * Pola formularza scenariusza — DOKŁADNIE kontrakt opcji biegu
+ * (`enm/canonical_analysis.py::_POLA_SCENARIUSZA_STABILNOSCI_DYNAMICZNEJ`, ten
+ * sam klucz w `run.options`, ten sam komplet dziewięciu pól, ten sam powód
+ * odmowy przy braku). `typ` steruje WYŁĄCZNIE walidacją i parsowaniem w tym
+ * pliku — backend jest jedynym źródłem prawdy o tym, co pole znaczy fizycznie.
+ */
+export type TypPolaScenariusza = 'tekst' | 'liczba' | 'lista';
+
+export interface PoleScenariusza {
+  readonly klucz: string;
+  readonly etykieta: string;
+  readonly jednostka?: string;
+  readonly typ: TypPolaScenariusza;
+  /** Wartość musi być > 0 (kontrakt: `clearing_time_ms`/`recovery_time_constant_s`
+   *  wchodzą jako dzielnik/czas dodatni — backend odrzuca <= 0 albo dzieli przez τ). */
+  readonly wymagaDodatniej?: boolean;
+}
+
+export const POLA_SCENARIUSZA_STABILNOSCI: readonly PoleScenariusza[] = [
+  { klucz: 'faulted_element_id', etykieta: T.poleElement, typ: 'tekst' },
+  {
+    klucz: 'clearing_time_ms',
+    etykieta: T.poleCzasWylaczenia,
+    jednostka: T.jednMs,
+    typ: 'liczba',
+    wymagaDodatniej: true,
+  },
+  { klucz: 'cleared_by_element_ids', etykieta: T.poleElementyWylaczajace, typ: 'lista' },
+  { klucz: 'pre_fault_angle_deg', etykieta: T.poleKatPrzed, jednostka: T.jednDeg, typ: 'liczba' },
+  {
+    klucz: 'during_fault_angle_deg',
+    etykieta: T.poleKatWCzasie,
+    jednostka: T.jednDeg,
+    typ: 'liczba',
+  },
+  { klucz: 'post_fault_angle_deg', etykieta: T.poleKatPo, jednostka: T.jednDeg, typ: 'liczba' },
+  {
+    klucz: 'post_fault_voltage_pu',
+    etykieta: T.poleNapiecie,
+    jednostka: T.jednPu,
+    typ: 'liczba',
+  },
+  {
+    klucz: 'post_fault_frequency_pu',
+    etykieta: T.poleCzestotliwosc,
+    jednostka: T.jednPu,
+    typ: 'liczba',
+  },
+  {
+    klucz: 'recovery_time_constant_s',
+    etykieta: T.poleStalaCzasowa,
+    jednostka: T.jednS,
+    typ: 'liczba',
+    wymagaDodatniej: true,
+  },
+] as const;
+
+/** Wartości formularza — wszystkie pola jako tekst wpisany przez inżyniera (kontrolowane inputy). */
+export type WartosciFormularzaScenariusza = Record<string, string>;
+
+/** Formularz startuje PUSTY — zero wartości podpowiadanych jako „typowe" (karta W2 pkt 1). */
+export function pusteWartosciScenariusza(): WartosciFormularzaScenariusza {
+  return Object.fromEntries(POLA_SCENARIUSZA_STABILNOSCI.map((pole) => [pole.klucz, '']));
+}
+
+/** Błąd walidacji jednego pola formularza (klucz pola → treść błędu PL). */
+export type BledyFormularzaScenariusza = Record<string, string>;
+
+/**
+ * Waliduje formularz WYŁĄCZNIE względem tego, co kontrakt backendu faktycznie
+ * sprawdza (`FaultClearScenario.__post_init__`: pole wymagane, `clearing_time_ms`
+ * i `recovery_time_constant_s` > 0, `cleared_by_element_ids` niepuste) — zero
+ * progów inżynierskich wymyślonych w UI (zakaz fizyki w interfejsie).
+ */
+export function walidujFormularzScenariusza(
+  wartosci: WartosciFormularzaScenariusza,
+): BledyFormularzaScenariusza {
+  const bledy: BledyFormularzaScenariusza = {};
+  for (const pole of POLA_SCENARIUSZA_STABILNOSCI) {
+    const surowa = (wartosci[pole.klucz] ?? '').trim();
+    if (pole.typ === 'lista') {
+      const wpisy = surowa
+        .split(',')
+        .map((wpis) => wpis.trim())
+        .filter((wpis) => wpis !== '');
+      if (wpisy.length === 0) bledy[pole.klucz] = T.bladListaPusta;
+      continue;
+    }
+    if (surowa === '') {
+      bledy[pole.klucz] = T.bladWymagane;
+      continue;
+    }
+    if (pole.typ === 'liczba') {
+      const liczba = Number(surowa.replace(',', '.'));
+      if (!Number.isFinite(liczba)) {
+        bledy[pole.klucz] = T.bladWymagane;
+      } else if (pole.wymagaDodatniej && liczba <= 0) {
+        bledy[pole.klucz] = T.bladDodatnie;
+      }
+    }
+  }
+  return bledy;
+}
+
+/**
+ * Buduje `options` biegu z formularza — 1:1 kontrakt opcji biegu backendu.
+ * Wołający MUSI sprawdzić `walidujFormularzScenariusza` wcześniej (zero pól
+ * pustych/błędnych trafia tu) — funkcja nie waliduje ponownie, tylko rzutuje.
+ */
+export function zbudujOpcjeScenariusza(
+  wartosci: WartosciFormularzaScenariusza,
+): Record<string, unknown> {
+  const opcje: Record<string, unknown> = {};
+  for (const pole of POLA_SCENARIUSZA_STABILNOSCI) {
+    const surowa = wartosci[pole.klucz]?.trim() ?? '';
+    if (pole.typ === 'lista') {
+      opcje[pole.klucz] = surowa
+        .split(',')
+        .map((wpis) => wpis.trim())
+        .filter((wpis) => wpis !== '');
+    } else if (pole.typ === 'liczba') {
+      opcje[pole.klucz] = Number(surowa.replace(',', '.'));
+    } else {
+      opcje[pole.klucz] = surowa;
+    }
+  }
+  return opcje;
 }
 
 // ---------------------------------------------------------------------------
@@ -267,6 +414,17 @@ export function naWielkosciStabilnosci(row: WierszStabilnosci): PozycjaWielkosci
       T.jednPu,
     ),
   ];
+}
+
+/**
+ * Kryteria oceny progowej do wyświetlenia — WPROST z wiersza backendu
+ * (`threshold_criteria`), zero progów wymyślonych w UI. Starszy wiersz bez
+ * pola → pusta lista (sekcja się nie renderuje, uczciwy brak zamiast zgadywania).
+ */
+export function naKryteriaOcenyProgowej(
+  row: WierszStabilnosci,
+): readonly KryteriumOcenyProgowej[] {
+  return row.threshold_criteria ?? [];
 }
 
 /** Zdarzenia śladu automatyki posortowane deterministycznie po event_seq. */

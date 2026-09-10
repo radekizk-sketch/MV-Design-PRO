@@ -16,23 +16,30 @@ import {
   BranchSurface,
   NopSurface,
 } from '../InfrastructureSurfaces';
+import type { WorkspaceSurfaceDescriptor } from '../../types';
 
-const minimalSurface = {
+// Kompletny `WorkspaceSurfaceDescriptor` (nie `as never`) — `never` przechodzi
+// bezposrednie przypisanie do propa `surface`, ale `{ ...minimalSurface, ... }`
+// wymaga realnego typu obiektowego (TS2698), wiec kazde uzycie musi byc
+// prawdziwie typowane, nie obchodzone rzutowaniem.
+const minimalSurface: WorkspaceSurfaceDescriptor = {
   surfaceId: 'surface-test',
-  screenCode: 'E-12' as const,
+  screenCode: 'E-12',
+  surfaceKind: 'pomocniczy',
   titlePl: 'Test',
   entityRef: null,
   entityType: null,
-  routeState: { payload: {} },
+  parentSurfaceId: null,
+  tabId: null,
+  routeState: { route: 'unknown', payload: {} },
   breadcrumbs: [],
   supportsMiniSld: false,
-  supportsChildren: false,
-  sizeClass: 'C' as const,
-  stackLevel: 0 as const,
-  openMode: 'expand_workspace' as const,
-  subjectKind: 'helper_context' as const,
+  sizeClass: 'C',
+  stackLevel: 0,
+  openMode: 'expand_workspace',
+  subjectKind: 'helper_context',
   subjectRef: null,
-} as never;
+};
 
 const segmentSurface = {
   ...minimalSurface,

@@ -2,9 +2,9 @@
   "schema_version": "v1",
   "devices": [
     {
-      "device_id": "ACME_REX100_v1",
-      "vendor": "ABB",
-      "model": "REX-100",
+      "device_id": "REF-OC-100",
+      "vendor": null,
+      "model": "OC-100",
       "functions_supported": [
         "50",
         "51"
@@ -26,22 +26,19 @@
       "i_inst_50n_a_min": 20.0,
       "i_inst_50n_a_max": 2500.0,
       "meta": {
-        "series": "REX",
         "rated": 100,
-        "source_ref": "ABB REX series / dane referencyjne MV-DESIGN-PRO",
-        "source_reference": "ABB REX series / dane referencyjne MV-DESIGN-PRO",
-        "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
-        "verification_note": "Rekord czesciowo zweryfikowany; wariant bez funkcji ziemnozwarciowych wymaga potwierdzenia w karcie producenta.",
-        "catalog_status": "ANALITYCZNY_V1",
-        "contract_version": "2.0",
-        "unverified": false,
-        "unverified_ranges": false
+        "source_ref": "Profil referencyjny MV-DESIGN-PRO / IEC 60255 - nie dane producenta",
+        "source_reference": "Profil referencyjny MV-DESIGN-PRO / IEC 60255 - nie dane producenta",
+        "verification_status": "REFERENCYJNY",
+        "verification_note": "Profil referencyjny (nie produkt producenta): parametry sa zalozeniem projektowym wg IEC 60255, nie karta katalogowa producenta.",
+        "catalog_status": "REFERENCYJNY_V1",
+        "contract_version": "2.0"
       }
     },
     {
-      "device_id": "ACME_REX200_v1",
-      "vendor": "ABB",
-      "model": "REX-200",
+      "device_id": "REF-OC-200",
+      "vendor": null,
+      "model": "OC-200",
       "functions_supported": [
         "50",
         "51"
@@ -63,22 +60,19 @@
       "i_inst_50n_a_min": 20.0,
       "i_inst_50n_a_max": 3000.0,
       "meta": {
-        "series": "REX",
         "rated": 200,
-        "source_ref": "ABB REX series / dane referencyjne MV-DESIGN-PRO",
-        "source_reference": "ABB REX series / dane referencyjne MV-DESIGN-PRO",
-        "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
-        "verification_note": "Rekord czesciowo zweryfikowany; wariant bez funkcji ziemnozwarciowych wymaga potwierdzenia w karcie producenta.",
-        "catalog_status": "ANALITYCZNY_V1",
-        "contract_version": "2.0",
-        "unverified": false,
-        "unverified_ranges": false
+        "source_ref": "Profil referencyjny MV-DESIGN-PRO / IEC 60255 - nie dane producenta",
+        "source_reference": "Profil referencyjny MV-DESIGN-PRO / IEC 60255 - nie dane producenta",
+        "verification_status": "REFERENCYJNY",
+        "verification_note": "Profil referencyjny (nie produkt producenta): parametry sa zalozeniem projektowym wg IEC 60255, nie karta katalogowa producenta.",
+        "catalog_status": "REFERENCYJNY_V1",
+        "contract_version": "2.0"
       }
     },
     {
-      "device_id": "ACME_REX300_v1",
-      "vendor": "ABB",
-      "model": "REX-300",
+      "device_id": "REF-OC-EF-300",
+      "vendor": null,
+      "model": "OC-EF-300",
       "functions_supported": [
         "50",
         "51",
@@ -102,22 +96,19 @@
       "i_inst_50n_a_min": 20.0,
       "i_inst_50n_a_max": 3500.0,
       "meta": {
-        "series": "REX",
         "rated": 300,
-        "source_ref": "ABB REX series / dane referencyjne MV-DESIGN-PRO",
-        "source_reference": "ABB REX series / dane referencyjne MV-DESIGN-PRO",
-        "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
-        "verification_note": "Rekord czesciowo zweryfikowany; parametry wymagaja potwierdzenia w karcie producenta.",
-        "catalog_status": "ANALITYCZNY_V1",
-        "contract_version": "2.0",
-        "unverified": false,
-        "unverified_ranges": false
+        "source_ref": "Profil referencyjny MV-DESIGN-PRO / IEC 60255 - nie dane producenta",
+        "source_reference": "Profil referencyjny MV-DESIGN-PRO / IEC 60255 - nie dane producenta",
+        "verification_status": "REFERENCYJNY",
+        "verification_note": "Profil referencyjny (nie produkt producenta): parametry sa zalozeniem projektowym wg IEC 60255, nie karta katalogowa producenta.",
+        "catalog_status": "REFERENCYJNY_V1",
+        "contract_version": "2.0"
       }
     },
     {
-      "device_id": "ACME_REX500_v1",
-      "vendor": "ABB",
-      "model": "REX-500",
+      "device_id": "REF-OC-EF-500",
+      "vendor": null,
+      "model": "OC-EF-500",
       "functions_supported": [
         "50",
         "51",
@@ -140,22 +131,19 @@
       "i_inst_50n_a_min": 20.0,
       "i_inst_50n_a_max": 5000.0,
       "meta": {
-        "series": "REX",
         "rated": 500,
-        "source_ref": "ABB REX series / dane referencyjne MV-DESIGN-PRO",
-        "source_reference": "ABB REX series / dane referencyjne MV-DESIGN-PRO",
-        "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
-        "verification_note": "Rekord czesciowo zweryfikowany; zakres funkcji i parametrow wymaga potwierdzenia w karcie producenta.",
-        "catalog_status": "ANALITYCZNY_V1",
-        "contract_version": "2.0",
-        "unverified": false,
-        "unverified_ranges": false
+        "source_ref": "Profil referencyjny MV-DESIGN-PRO / IEC 60255 - nie dane producenta",
+        "source_reference": "Profil referencyjny MV-DESIGN-PRO / IEC 60255 - nie dane producenta",
+        "verification_status": "REFERENCYJNY",
+        "verification_note": "Profil referencyjny (nie produkt producenta): parametry sa zalozeniem projektowym wg IEC 60255, nie karta katalogowa producenta.",
+        "catalog_status": "REFERENCYJNY_V1",
+        "contract_version": "2.0"
       }
     },
     {
-      "device_id": "ACME_REX700_v1",
-      "vendor": "ABB",
-      "model": "REX-700",
+      "device_id": "REF-OC-EF-700",
+      "vendor": null,
+      "model": "OC-EF-700",
       "functions_supported": [
         "50",
         "51",
@@ -179,16 +167,13 @@
       "i_inst_50n_a_min": 20.0,
       "i_inst_50n_a_max": 6000.0,
       "meta": {
-        "series": "REX",
         "rated": 700,
-        "source_ref": "ABB REX series / dane referencyjne MV-DESIGN-PRO",
-        "source_reference": "ABB REX series / dane referencyjne MV-DESIGN-PRO",
-        "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
-        "verification_note": "Rekord czesciowo zweryfikowany; zakres funkcji i parametrow wymaga potwierdzenia w karcie producenta.",
-        "catalog_status": "ANALITYCZNY_V1",
-        "contract_version": "2.0",
-        "unverified": false,
-        "unverified_ranges": false
+        "source_ref": "Profil referencyjny MV-DESIGN-PRO / IEC 60255 - nie dane producenta",
+        "source_reference": "Profil referencyjny MV-DESIGN-PRO / IEC 60255 - nie dane producenta",
+        "verification_status": "REFERENCYJNY",
+        "verification_note": "Profil referencyjny (nie produkt producenta): parametry sa zalozeniem projektowym wg IEC 60255, nie karta katalogowa producenta.",
+        "catalog_status": "REFERENCYJNY_V1",
+        "contract_version": "2.0"
       }
     },
     {

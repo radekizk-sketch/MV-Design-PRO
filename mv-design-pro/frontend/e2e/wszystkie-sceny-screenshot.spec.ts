@@ -18,9 +18,11 @@ import { test, expect } from '@playwright/test';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { adresHarnessu } from './adresHarnessu';
+import { zbierajNieudaneZadaniaApi } from './nieudaneZadaniaApi';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
-const HARNESS_URL = 'http://127.0.0.1:5173/creator-harness.html';
+const HARNESS_URL = adresHarnessu('creator-harness.html');
 const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/sceny');
 
 /** Sceny kadrowane przez `creator-screenshot.spec.ts` — tam mają własne interakcje. */
@@ -29,8 +31,12 @@ const JUZ_KADROWANE = new Set([
 ]);
 
 const SCENY = [
-  'cieplna', 'dokumentacja', 'edycja-parametrow', 'estymacja', 'frt', 'kompensacja',
-  'kompensacja-wynik', 'lom', 'macierz', 'migotanie', 'odbior-zgodnosc', 'odgalezienie',
+  // B-02 / W3-E (2026-09-10): „akademickie" = katalog kart „Analizy specjalistyczne"
+  // (widok domyślny, bez `rodzaj`); „ocena" / „ocena-przekroczenia" = ekran „Ocena
+  // techniczna wyników" bez przekroczeń i z realnymi NIE SPEŁNIA (obciążenie ×8).
+  'akademickie', 'cieplna', 'dokumentacja', 'edycja-parametrow', 'estymacja', 'frt', 'kompensacja',
+  'kompensacja-wynik', 'lom', 'macierz', 'migotanie', 'ocena', 'ocena-przekroczenia',
+  'odbior-zgodnosc', 'odgalezienie',
   'oltc', 'pole-nn', 'pomiar', 'porownanie', 'przekaznik', 'przypisanie-katalogu', 'pulpit',
   'rozplyw', 'sila-sieci', 'slup-odgalezny', 'ssci', 'swiezosc', 'uwaga', 'walidacja',
   'wyniki-skladowe', 'wyniki-stabilnosc', 'wyniki-stan-fazowy', 'wyniki-zbieznosc', 'zksn',
@@ -54,6 +60,7 @@ test.describe('sceny:screenshot', () => {
           if (m.type() === 'error' && !isNoise(m.text())) errs.push(m.text());
         });
         page.on('pageerror', (e) => errs.push(`PAGEERROR: ${e.message}`));
+        zbierajNieudaneZadaniaApi(page, errs);
 
         await page.setViewportSize({ width: 1220, height: 900 });
         await page.goto(`${HARNESS_URL}?creator=${scena}&theme=${theme}`, {
@@ -105,6 +112,23 @@ test.describe('sceny:screenshot', () => {
           );
         }
 
+        // B-02 / W3-E: scena „ocena" pokazuje OCENĘ (nie stan blokujący „brak wyników"),
+        // scena przekroczeń niesie co najmniej jedną pozycję NIE SPEŁNIA; katalog kart
+        // „akademickie" pokazuje karty pogrupowane (nie listę rozwijaną).
+        if (scena === 'ocena' || scena === 'ocena-przekroczenia') {
+          await expect(page.getByTestId('mvd-ocena-podsumowanie')).toBeVisible({ timeout: 15000 });
+          await expect(page.getByTestId('mvd-ocena-brak-wynikow')).toHaveCount(0);
+          const nieSpelnia = Number(
+            (await page.getByTestId('mvd-ocena-licznik-nie-spelnia').locator('.mvd-ocena-licznik-liczba').textContent())?.trim(),
+          );
+          if (scena === 'ocena') expect(nieSpelnia).toBe(0);
+          else expect(nieSpelnia).toBeGreaterThan(0);
+        }
+        if (scena === 'akademickie') {
+          await expect(page.getByTestId('mvd-akad-katalog-kart')).toBeVisible({ timeout: 15000 });
+          expect(await page.locator('[data-testid^="mvd-akad-karta-otworz-"]').count()).toBeGreaterThan(0);
+        }
+
         await page.waitForTimeout(250);
         await root.screenshot({ path: path.join(OUTPUT_DIR, `scena_${scena}_${theme}.png`) });
 
@@ -134,6 +158,7 @@ test.describe('koordynacja:screenshot', () => {
         if (m.type() === 'error' && !isNoise(m.text())) errs.push(m.text());
       });
       page.on('pageerror', (e) => errs.push(`PAGEERROR: ${e.message}`));
+      zbierajNieudaneZadaniaApi(page, errs);
 
       await page.setViewportSize({ width: 1220, height: 1400 });
       await page.goto(`${HARNESS_URL}?creator=koordynacja&theme=${theme}`, {

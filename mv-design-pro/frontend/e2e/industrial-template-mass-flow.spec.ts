@@ -268,6 +268,8 @@ test('pełny przepływ przemysłowy: 50 szablonów stacji, OZE, analizy, dowody 
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
+    hv_voltage_kv: 110.0,
+    transformer_sn_mva: 25.0,
   });
 
   const appliedTemplateIds: string[] = [];
@@ -346,8 +348,22 @@ test('pełny przepływ przemysłowy: 50 szablonów stacji, OZE, analizy, dowody 
   // Pomiar 2026-07-29 (karta K1/D): synchroniczny POST /execute dla sieci
   // 50 stacji + OZE trwa realnie ~32 s na tym kontenerze — domyślny limit
   // żądania API (30 s) ucinał odpowiedź tuż przed końcem obliczeń.
-  // 240 s = ~7× pomiaru — zapas na współbieżne obciążenie własne specu
-  // i wolniejszy przebieg CI (obliczenie solvera, nie tor eksportu K13).
+  // 240 s = ~7× TAMTEGO pomiaru — zapas na współbieżne obciążenie własne
+  // specu i wolniejszy przebieg CI (obliczenie solvera, nie tor eksportu K13).
+  //
+  // PONOWNY POMIAR 2026-09-06 (karta CV-4.3-A4/K5, host bezczynny, zero
+  // procesów pytest sąsiadów, ta sama trasa PO przepięciu create→execute):
+  // 170 866,7 ms z logu backendu (`HTTP POST .../execute -> 200
+  // (170866.7ms)`) — margines do budżetu skurczył się z ~7× do ~1,4×
+  // (240 000 / 170 867). Solver i assembler są w tej karcie NIETKNIĘTE
+  // (FROZEN) — wzrost 32 s -> 171 s nie jest efektem przepięcia trasy (ten
+  // sam wywoływany kod fizyki), tylko skumulowanego wzrostu modelu/analiz
+  // sieci 50 stacji między 2026-07-29 a dziś. DŁUG NAZWANY, NIE naprawiony w
+  // tej karcie (poza jej mandatem — K5 nie dotyka solverów/assemblera):
+  // przyczyna 5-krotnego spowolnienia wymaga osobnego pomiaru profilującego,
+  // nie zgadywania tutaj. Timeout 240 000 ms CELOWO NIE podniesiony (Zero-Debt
+  // zakazuje ślepego podniesienia progu) — margines 1,4× wciąż dodatni, ale
+  // ciasny; kolejny wzrost kosztu modelu może go przekroczyć.
   const executeRunResponse = await request.post(
     `${BACKEND_BASE}/api/execution/runs/${scRun.id}/execute`,
     { timeout: 240000 },
@@ -403,70 +419,108 @@ test('pełny przepływ przemysłowy: 50 szablonów stacji, OZE, analizy, dowody 
   expect(proofLatexText).toContain('I_dyn');
   expect(proofLatexText).toContain('I_th');
 
-  // V12K-284 (KD-2): bramka rozmiaru odpowiedzi ŚWIEŻEGO biegu zwarciowego.
-  // Odpowiedź POST niosła pełny rozpływ gałęziowy każdego punktu (iloczyn
-  // źródło×gałąź) — na tej sieci setki MB. Po odchudzeniu wiersz niesie FLAGĘ
-  // dostępności, a treść rozpływu pobiera się dla WSKAZANEGO punktu.
+  // V12K-284 (KD-2): bramka rozmiaru odpowiedzi biegu zwarciowego bez rozpływu
+  // inline. Wiersz niesie FLAGĘ dostępności, a treść rozpływu pobiera się dla
+  // WSKAZANEGO punktu. K5.1 (CV-4.3-A4, 2026-09-06): `POST /api/cases/{id}/
+  // runs/short-circuit` skasowany procedurą siedmiu kroków — pomiar czyta
+  // odtąd `GET /api/analysis-runs/{id}/results/short-circuit` DLA JUŻ
+  // WYKONANEGO `scRun` (ten sam bieg, jedno wykonanie solvera na tej sieci
+  // zamiast dwóch niezależnych — mierzone POST-y liczyły to samo zwarcie
+  // dwukrotnie).
   //
-  // LIMIT SKALIBROWANY DO POMIARU (2026-07-31, ta sieć 50 stacji): odpowiedź po
-  // odchudzeniu ma 22,9 MiB — resztę stanowi ślad WHITE BOX każdego punktu
-  // zwarcia (pole `white_box_trace`), który MUSI zostać (jawność obliczeń).
-  // Z rozpływem inline ta sama odpowiedź miała 339,3 MiB (pomiar regresją
-  // wstrzykniętą na tej samej sieci), więc 60 MB odróżnia stan poprawny od
-  // defektu z zapasem w obie strony: powrót rozpływu do odpowiedzi POST jest
-  // CZERWONY (zweryfikowane — 355 787 873 B > limitu).
-  const swiezyBiegStart = Date.now();
-  const swiezyBiegResponse = await request.post(
-    `${BACKEND_BASE}/api/cases/${seed.caseId}/runs/short-circuit`,
-    { data: {}, timeout: 240000 },
+  // LIMIT SKALIBROWANY DO POMIARU (2026-07-31, ta sieć 50 stacji, skasowana
+  // trasa POST): odpowiedź po odchudzeniu miała 22,9 MiB — resztę stanowił
+  // ślad WHITE BOX każdego punktu zwarcia. Z rozpływem inline ta sama
+  // odpowiedź miała 339,3 MiB (pomiar regresją wstrzykniętą na tej samej
+  // sieci), więc 60 MB odróżnia stan poprawny od defektu z zapasem w obie
+  // strony niezależnie od tego, którą trasą kanoniczną wiersze są czytane
+  // (ta sama funkcja budująca wiersze, `build_short_circuit_results`, karmi
+  // obie — POST skasowaną i GET wyników).
+  //
+  // KLASA, NIE INSTANCJA (2026-09-05): po odchudzeniu z samego
+  // `branch_contributions` odpowiedź urosła do 105 289 825 B (E2E full czerwony
+  // na 930f1ada), bo ślad WHITE BOX podziału prądu `branch_flow_trace` (TH-1) —
+  // ten sam ładunek per gałąź, ~5× większy od wkładów — został w wierszu. Odtąd
+  // z wiersza wycinana jest CAŁA klasa `KLUCZE_ROZPLYWU` (backend
+  // `canonical_run_repository.py`), a ślad punktu oddaje ta sama końcówka
+  // rozpływu co wkłady.
+  const wynikiZwarciaStart = Date.now();
+  const wynikiZwarciaResponse = await request.get(
+    `${BACKEND_BASE}/api/analysis-runs/${scRun.id}/results/short-circuit`,
+    { timeout: 120000 },
   );
-  const swiezyBiegBody = await swiezyBiegResponse.body();
+  const wynikiZwarciaBody = await wynikiZwarciaResponse.body();
   console.log(
-    `[pomiar] POST /api/cases/{case}/runs/short-circuit: `
-      + `${(swiezyBiegBody.byteLength / 1048576).toFixed(1)} MiB w ${Date.now() - swiezyBiegStart} ms`,
+    `[pomiar] GET /api/analysis-runs/{id}/results/short-circuit: `
+      + `${(wynikiZwarciaBody.byteLength / 1048576).toFixed(1)} MiB w ${Date.now() - wynikiZwarciaStart} ms`,
   );
   expect(
-    swiezyBiegResponse.ok(),
-    swiezyBiegBody.subarray(0, 2048).toString('utf-8'),
+    wynikiZwarciaResponse.ok(),
+    wynikiZwarciaBody.subarray(0, 2048).toString('utf-8'),
   ).toBeTruthy();
-  expect(swiezyBiegBody.byteLength).toBeLessThan(60 * 1024 * 1024);
-  const swiezyBieg = JSON.parse(swiezyBiegBody.toString('utf-8')) as {
-    run_id: string;
-    results: Array<{
-      fault_node_id?: string;
+  expect(wynikiZwarciaBody.byteLength).toBeLessThan(60 * 1024 * 1024);
+  const wynikiZwarcia = JSON.parse(wynikiZwarciaBody.toString('utf-8')) as {
+    rows: Array<{
+      target_id?: string;
       branch_contributions?: unknown;
       branch_contributions_available?: boolean;
     }>;
   };
-  expect(swiezyBieg.results.length).toBeGreaterThan(0);
-  for (const wiersz of swiezyBieg.results) {
-    expect(wiersz.branch_contributions).toBeUndefined();
+  expect(wynikiZwarcia.rows.length).toBeGreaterThan(0);
+  for (const wiersz of wynikiZwarcia.rows) {
+    // Kontrakt kanoniczny (`build_short_circuit_results`, `include_rozplyw=
+    // False` domyślnie) niesie klucz `branch_contributions` ZAWSZE, z wartością
+    // `null` — inaczej niż skasowana trasa, która klucz w ogóle pomijała. Ten
+    // sam fakt fizyczny ("rozpływ nie tu, pobierz go osobno"), inny odcisk.
+    expect(wiersz.branch_contributions).toBeNull();
   }
-  const punktZRozplywem = swiezyBieg.results.find((w) => w.branch_contributions_available === true);
-  expect(punktZRozplywem?.fault_node_id).toBeTruthy();
-  // Parytet treści: to, czego POST już nie niesie, jest osiągalne na żądanie.
+  const punktZRozplywem = wynikiZwarcia.rows.find((w) => w.branch_contributions_available === true);
+  expect(punktZRozplywem?.target_id).toBeTruthy();
+  // Parytet treści: to, czego lista wierszy już nie niesie, jest osiągalne na żądanie.
   const rozplywResponse = await request.get(
-    `${BACKEND_BASE}/api/analysis-runs/${swiezyBieg.run_id}/results/short-circuit/rozplyw`,
-    { params: { target_id: String(punktZRozplywem?.fault_node_id) }, timeout: 120000 },
+    `${BACKEND_BASE}/api/analysis-runs/${scRun.id}/results/short-circuit/rozplyw`,
+    { params: { target_id: String(punktZRozplywem?.target_id) }, timeout: 120000 },
   );
   expect(rozplywResponse.ok(), await rozplywResponse.text()).toBeTruthy();
   const rozplyw = (await rozplywResponse.json()) as { branch_contributions?: unknown[] | null };
   expect(Array.isArray(rozplyw.branch_contributions)).toBe(true);
   expect((rozplyw.branch_contributions ?? []).length).toBeGreaterThan(0);
 
-  const powerFlowResponse = await request.post(
-    `${BACKEND_BASE}/api/cases/${seed.caseId}/runs/power-flow`,
-    { data: {}, timeout: 60000 },
+  // K5.1 (CV-4.3-A4, 2026-09-06): `POST /api/cases/{id}/runs/power-flow`
+  // skasowany procedurą siedmiu kroków — bieg PF powstaje odtąd torem
+  // kanonicznym (ta sama sieć 50 stacji, ten sam skutek obserwowalny: wynik
+  // i ślad rozpływu niepuste).
+  const powerFlowCreateResponse = await request.post(
+    `${BACKEND_BASE}/api/execution/study-cases/${seed.caseId}/runs`,
+    { data: { analysis_type: 'LOAD_FLOW' }, timeout: 60000 },
   );
-  expect(powerFlowResponse.ok(), await powerFlowResponse.text()).toBeTruthy();
-  const powerFlow = (await powerFlowResponse.json()) as {
-    run_id?: string;
-    result?: Record<string, unknown>;
-    trace?: Record<string, unknown>;
+  expect(powerFlowCreateResponse.ok(), await powerFlowCreateResponse.text()).toBeTruthy();
+  const powerFlowRun = (await powerFlowCreateResponse.json()) as { id: string };
+  const powerFlowExecuteResponse = await request.post(
+    `${BACKEND_BASE}/api/execution/runs/${powerFlowRun.id}/execute`,
+    { timeout: 60000 },
+  );
+  expect(powerFlowExecuteResponse.ok(), await powerFlowExecuteResponse.text()).toBeTruthy();
+  const powerFlowResultsResponse = await request.get(
+    `${BACKEND_BASE}/api/power-flow-runs/${powerFlowRun.id}/results`,
+    { timeout: 60000 },
+  );
+  expect(powerFlowResultsResponse.ok(), await powerFlowResultsResponse.text()).toBeTruthy();
+  const powerFlowResults = (await powerFlowResultsResponse.json()) as {
+    converged?: boolean;
+    bus_results?: unknown;
+    branch_results?: unknown;
   };
-  expect(powerFlow.run_id).toBeTruthy();
-  expect(powerFlow.result).toBeTruthy();
-  expect(powerFlow.trace).toBeTruthy();
+  expect(powerFlowResults.converged).toBe(true);
+  expect(powerFlowResults.bus_results).toBeTruthy();
+  expect(powerFlowResults.branch_results).toBeTruthy();
+  const powerFlowTraceResponse = await request.get(
+    `${BACKEND_BASE}/api/power-flow-runs/${powerFlowRun.id}/trace`,
+    { timeout: 60000 },
+  );
+  expect(powerFlowTraceResponse.ok(), await powerFlowTraceResponse.text()).toBeTruthy();
+  const powerFlowTrace = (await powerFlowTraceResponse.json()) as { iterations?: unknown };
+  expect(powerFlowTrace.iterations).toBeTruthy();
 
   const protectionViewResponse = await request.get(
     `${BACKEND_BASE}/api/cases/${seed.caseId}/enm/protection-view`,

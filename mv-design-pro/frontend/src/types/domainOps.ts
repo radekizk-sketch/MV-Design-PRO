@@ -618,6 +618,12 @@ export interface AddGridSourceSNPayload {
   sk3_mva?: number;
   ik3_ka?: number;
   rx_ratio?: number;
+  /** Dane scenariusza MIN (CV-4.3 K7) — po tej samej stronie co sk3_mva/ik3_ka. */
+  sk3_min_mva?: number;
+  ik3_min_ka?: number;
+  rx_ratio_min?: number;
+  /** Napięcie zadane szyny bilansującej [p.u.]; 0,8–1,2; brak = 1,0. */
+  u_set_pu?: number;
   catalog_binding?: CatalogBindingPayload | null;
   /** @deprecated Pole kompatybilności; kanonicznie używaj catalog_binding. */
   catalog_ref?: string | null;

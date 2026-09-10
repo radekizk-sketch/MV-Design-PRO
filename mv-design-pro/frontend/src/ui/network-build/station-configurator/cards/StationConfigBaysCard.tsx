@@ -1,14 +1,17 @@
 /**
  * Karta 4 — Pola SN (lista) (PR-8a, brief 2 §8 karta 4).
  *
- * Naprawa eng.17: bezpieczniki HV z katalogu (HV_FUSE_CATALOG).
+ * Naprawa eng.17: bezpieczniki HV z katalogu.
+ *
+ * Karta FAB-M: katalog WYŁĄCZNIE ze snapshotu audytu 2 (`hvFuses` prop,
+ * dostarczony przez `StationConfiguratorSurface.tsx`) — zero statyku
+ * modułowego (`HV_FUSE_CATALOG` usunięty z `protection-catalogs.ts`, gdzie
+ * był DRUGĄ kopią backendowego katalogu). Powód braku pasma czytany wprost z
+ * pozycji (`pasmo_brak_powod_pl`/`pasmo_brak_etykieta_pl`, liczone przez
+ * backend) — nie z lokalnej kopii tych samych dwóch zdań PL.
  */
 
-import {
-  ETYKIETA_BRAK_PASMA_BEZPIECZNIKA_PL,
-  HV_FUSE_CATALOG,
-  POWOD_BRAK_PASMA_BEZPIECZNIKA_PL,
-} from '../../station-der/protection-catalogs';
+import type { HvFuseItem } from '../../station-der/audit2-api';
 
 export type BayTypePl =
   | 'liniowe wejściowe'
@@ -45,6 +48,8 @@ export interface StationConfigBaysCardProps {
   readonly onShowOnSld?: (bayId: string) => void;
   readonly onCopyConfig?: (bayId: string) => void;
   readonly onDeleteBay?: (bayId: string) => void;
+  /** Karta FAB-M: katalog bezpieczników HV — ze snapshotu audytu 2. */
+  readonly hvFuses: readonly HvFuseItem[];
   /** Phase 18: HV fuse onChange (per bay). */
   readonly onChangeHvFuse?: (bayId: string, fuseId: string | null) => void;
 }
@@ -62,7 +67,7 @@ const STATUS_LABEL: Record<StationConfigBayRow['statusPl'], string> = {
 };
 
 export function StationConfigBaysCard(props: StationConfigBaysCardProps): JSX.Element {
-  const { bays, onOpenBay, onShowOnSld, onCopyConfig, onDeleteBay, onChangeHvFuse } = props;
+  const { bays, hvFuses, onOpenBay, onShowOnSld, onCopyConfig, onDeleteBay, onChangeHvFuse } = props;
 
   return (
     <div data-testid="station-config-bays" className="flex flex-col gap-2 text-xs">
@@ -113,14 +118,14 @@ export function StationConfigBaysCard(props: StationConfigBaysCardProps): JSX.El
                       className="rounded border border-scada-border bg-scada-bg px-1 py-0.5 text-[10px]"
                     >
                       <option value="">—</option>
-                      {HV_FUSE_CATALOG.map((f) => (
+                      {hvFuses.map((f) => (
                         <option key={f.id} value={f.id}>
                           {f.nominal_voltage_kv}kV/{f.nominal_current_a}A · {f.class.replace('_', '-')}
                         </option>
                       ))}
                     </select>
                   ) : b.hvFuseCatalogRef ? (() => {
-                    const fuse = HV_FUSE_CATALOG.find((f) => f.id === b.hvFuseCatalogRef);
+                    const fuse = hvFuses.find((f) => f.id === b.hvFuseCatalogRef);
                     return fuse ? (
                       <span className="flex flex-col" title={fuse.label_pl}>
                         <span className="font-mono text-scada-text">
@@ -130,14 +135,17 @@ export function StationConfigBaysCard(props: StationConfigBaysCardProps): JSX.El
                           Karta K-O: pozycja bez pasma topikowego NIE znika i NIE
                           udaje kompletnej — mówi wprost, czego brakuje. Wzorzec
                           backendowy `BRAK_PASMA_BEZPIECZNIKA` (karta N-D5-FUSE).
+                          Karta FAB-M: powód/etykieta czytane WPROST z pozycji
+                          (backend liczy je per pozycja — `HvFuseItem.to_dict()`),
+                          nie z lokalnej kopii tych samych dwóch zdań PL.
                         */}
-                        {fuse.pasmo_tcc === null && (
+                        {fuse.pasmo_brak_powod_pl !== null && (
                           <span
                             data-testid={`bay-fuse-brak-pasma-${b.bayId}`}
                             className="text-status-warn"
-                            title={POWOD_BRAK_PASMA_BEZPIECZNIKA_PL}
+                            title={fuse.pasmo_brak_powod_pl}
                           >
-                            {ETYKIETA_BRAK_PASMA_BEZPIECZNIKA_PL}
+                            {fuse.pasmo_brak_etykieta_pl}
                           </span>
                         )}
                       </span>

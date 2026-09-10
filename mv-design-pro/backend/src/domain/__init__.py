@@ -20,7 +20,6 @@ from .models import (
     Project,
     Scenario,
     StudyCase,
-    StudyRun,
 )
 from .project_design_mode import ProjectDesignMode
 from .readiness import (
@@ -46,7 +45,6 @@ from .result_join import (
     join_results,
 )
 from .result_set import OverlayElement, OverlayLegendEntry, OverlayPayloadV1
-from .sld import SldAnnotation, SldBranchSymbol, SldDiagram, SldNodeSymbol
 from .sources import Source
 from .station_field_validation import (
     DeviceBindingV1 as StationDeviceBindingV1,
@@ -116,12 +114,7 @@ __all__ = [
     "SldOverlayTokenV1",
     "Source",
     "StudyCase",
-    "StudyRun",
     "SubstationMetadata",
-    "SldAnnotation",
-    "SldBranchSymbol",
-    "SldDiagram",
-    "SldNodeSymbol",
     "UnitSystem",
     "ValidationIssue",
     "ValidationReport",

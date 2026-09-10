@@ -53,14 +53,22 @@ function derZPrzypadku(wejscie: Record<string, unknown>): StationDerConnection {
     station_id: 'ST-1',
     der_kind: wejscie.der_kind as StationDerConnection['der_kind'],
     name: String(wejscie.der_id ?? 'DER'),
+    // Karta FAB-K (§0 R3): kontrakt parzystości (`der_readiness_parity_v1.json`)
+    // jest wspólny z regułą kanoniczną backendu (`domain/der_readiness.py`),
+    // której WŁASNY typ `StronaPrzylaczenia` NIE jest tą kartą ruszany (poza
+    // zakresem — dług przekraczający sesję, patrz meldunek) i nadal dopuszcza
+    // szersze słownictwo niż front. Rzutowanie przez `unknown` (przez `as`)
+    // celowo NIE zawęża wartości u źródła — ocenia się DOKŁADNIE ten sam fakt,
+    // który dostaje backend, żeby test parzystości pytał o to samo pytanie.
     connection_side: wejscie.connection_side as StationDerConnection['connection_side'],
     bus_przylaczenia_ref: tekst('bus_przylaczenia_ref'),
     bay_ref: null,
     transformer_ref: null,
     lv_busbar_ref: null,
-    connection_node_ref: null,
-    internal_cable_ref: null,
-    voltage_level_ref: null,
+    sn_connection_bus_ref: null,
+    sn_connection_point_kind: null,
+    connection_voltage_kv: null,
+    unit_count: null,
     catalogs: {
       ...EMPTY_DER_CATALOGS,
       device_catalog_ref: tekst('device_catalog_ref'),
@@ -68,7 +76,6 @@ function derZPrzypadku(wejscie: Record<string, unknown>): StationDerConnection {
       protection_catalog_ref: tekst('protection_catalog_ref'),
       ct_catalog_ref: tekst('ct_catalog_ref'),
       vt_catalog_ref: tekst('vt_catalog_ref'),
-      fault_current_data_ref: tekst('fault_current_data_ref'),
       dynamic_model_ref: tekst('dynamic_model_ref'),
     },
     profiles: {

@@ -39,9 +39,16 @@ jobs:
       - name: Install dependencies
         working-directory: mv-design-pro/backend
         run: poetry install --no-interaction --with dev
+      # Marker `pandapower` (pyproject.toml [tool.pytest.ini_options] markers):
+      # walidacja krzyzowa z pandapower<3.6 wymaga scipy<1.17, niezgodne z pinem
+      # scipy 1.17.0 tego venv (zlote hashe solverow). Testy oznaczone tym
+      # markerem biegna WYLACZNIE w izolowanym jobie ponizej
+      # (`pandapower-cross-validation`) — tu sa jawnie DESELEKCJONOWANE, nie
+      # pomijane warunkowo (brak biblioteki w tym venv jest stanem stalym z
+      # architektury, nie przypadkiem srodowiska).
       - name: Run pytest
         working-directory: mv-design-pro/backend
-        run: poetry run pytest -q
+        run: poetry run pytest -q -m "not pandapower"
       # KD-9: testy WLASNE guardow leza w `mv-design-pro/scripts`, czyli POZA
       # `testpaths = ["tests"]` backendu — `poetry run pytest -q` powyzej nigdy
       # ich nie zbieral, a zaden workflow ich nie wolal. 10 plikow / 71 testow
@@ -79,6 +86,26 @@ jobs:
       - name: Readiness Codes Guard
         working-directory: mv-design-pro
         run: python scripts/readiness_codes_guard.py
+      # Karta READINESS-DOC (2026-09-09): docs/domain/READINESS_FIXACTIONS_CANONICAL_PL.md
+      # (dokument WIAZACY, priorytet 3 hierarchii) jest odtad GENEROWANY z tego samego
+      # rejestru co Readiness Codes Guard powyzej — ten krok pilnuje, zeby dokument nie
+      # odjechal, tak jak odjechal od lutego do wersji 1.1 (37 kodow w dokumencie vs 114
+      # w rejestrze).
+      - name: Readiness Dictionary Guard
+        working-directory: mv-design-pro
+        run: python scripts/readiness_dictionary_guard.py
+      # CV-2-W: status wynikow PRZYPADKU jest wyprowadzany z jego biegow i koperty
+      # rewizji (application/study_case/status_wynikow.py). Kolumna
+      # `study_cases.result_status` to dane zastane — zaden kod jej nie pisze.
+      - name: Result Status Writer Guard
+        working-directory: mv-design-pro
+        run: python scripts/result_status_writer_guard.py
+      # CV-2 (H2/H3): pole proweniencji biegu (wersja solvera, tozsamosc katalogu,
+      # wariant, migawka lacznikowa) nie moze byc literalem bez zrodla — wartosc
+      # pochodzi z koperty rewizji, sladu solvera albo opcji biegu, inaczej jest None.
+      - name: Provenance Constant Guard
+        working-directory: mv-design-pro
+        run: python scripts/provenance_constant_guard.py
       # V12K-206 (karta F-K6): guard KONSUMPCJI kodow gotowosci. Wymaga zaleznosci
       # backendu (importuje rejestr), dlatego biegnie tu, a nie w workflow guardow.
       - name: Readiness Consumption Guard
@@ -99,17 +126,15 @@ jobs:
       - name: Fix Action Completeness Guard
         working-directory: mv-design-pro/backend
         run: poetry run python ../scripts/fix_action_completeness_guard.py
-      # V12K-263: oba guardy wymagaja zaleznosci backendu (`numpy` przez
-      # `application/reference_networks/computation.py`). Poza `poetry run`
-      # przerywaly sie ModuleNotFoundError, wiec nikt ich nie wpial i nigdy
-      # niczego nie bronily — mimo ze na HEAD sa ZIELONE. Ich miejsce jest tutaj,
-      # bo tylko ten workflow instaluje srodowisko backendu.
-      - name: Reference Networks Validation Guard
-        working-directory: mv-design-pro/backend
-        run: poetry run python ../scripts/reference_networks_validation_guard.py
-      - name: Solver Output Drift Guard
-        working-directory: mv-design-pro/backend
-        run: poetry run python ../scripts/solver_output_drift_guard.py
+      # Reference Networks Validation Guard / Solver Output Drift Guard usuniete
+      # karta K2 (2026-09-09): oba czytaly WYLACZNIE dawny
+      # `application.reference_networks.REFERENCE_NETWORK_REGISTRY` (has_der/
+      # is_unbalanced/expected_path — pola bez odpowiednika w nowym rejestrze),
+      # skasowany w calosci razem z reszta dawnego dialektu benchmarkow. Ten sam
+      # rodzaj sprawdzen (buildery wykonalne, wyrocznia niezalezna ma zrodlo, PF/SC
+      # w expected/*.json) niesie dzis `backend/tests/golden/test_registry.py` +
+      # `backend/tests/golden/parytet_benchmarkow/test_wyrocznia_a_expected_json.py`
+      # (uruchamiane w kroku pytest ponizej).
       - name: Audit Contract Guard
         working-directory: mv-design-pro
         run: python scripts/audit_contract_guard.py
@@ -162,3 +187,130 @@ jobs:
           # (laczenie sciezek w jednym wywolaniu psuje wykrywanie tak samo).
           poetry run black --check --config pyproject.toml ../scripts
           poetry run ruff check ../scripts
+
+  # Decyzja Fable (opcja 2, po meldunku bramki §0 karty PANDAPOWER-DEP): walidacja
+  # krzyzowa nasz solver vs pandapower biegnie w IZOLOWANYM srodowisku, ROWNOLEGLE
+  # do jobu `pytest` (brak `needs:` celowo — job nie czeka na `pytest` i odwrotnie).
+  # POWOD IZOLACJI: pandapower<3.6 wymaga scipy<1.17 (sprawdzone dry-runem i
+  # metadanymi wheela dla 3.5.4/3.5.3/3.4.0/3.3.3/3.0.0 — kazda wersja ogranicza
+  # scipy ponizej 1.17 na Pythonie 3.11), a job `pytest` powyzej pinuje scipy
+  # 1.17.0 (zlote hashe solverow, FROZEN core). Instalacja pandapower w TYM jobie
+  # SWIADOMIE obniza scipy do 1.16.x — WYLACZNIE w jego wlasnym, efemerycznym
+  # venv, ktory znika z runnerem po zakonczeniu joba.
+  #
+  # IZOLACJA CACHE (nie tylko izolacja runnera): klucz cache tego joba ma
+  # sufiks `-pandapower`, ROZNY od klucza joba `pytest`. Gdyby oba joby uzywaly
+  # tego samego klucza `poetry-${{ runner.os }}-${{ hashFiles(...) }}`, wyscig
+  # zapisu cache w tym samym biegu workflow moglby sprawic, ze PRZYSZLY bieg
+  # jobu `pytest` odczytalby cache zapisany PRZEZ ten job — czyli venv z
+  # obnizonym scipy trafilby do glownego venv solverow. Osobny klucz eliminuje
+  # to ryzyko z konstrukcji, a nie z dyscypliny.
+  pandapower-cross-validation:
+    name: Pandapower cross-validation (izolowany venv, scipy<1.17)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # tests/ci/test_guard_diff_base.py wymaga fetch-depth: 0 przy KAZDYM
+          # checkoucie w kazdym workflowie wolajacym pytest — ten job wola
+          # `poetry run pytest`, wiec podlega tej samej regule co job `pytest`
+          # powyzej, mimo ze sam nie uruchamia zadnego guarda delta-owego.
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11.x'
+          cache: pip
+          cache-dependency-path: mv-design-pro/backend/poetry.lock
+      - name: Install Poetry
+        run: pipx install poetry
+      - name: Cache Poetry and virtualenv (klucz IZOLOWANY od jobu pytest)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+            ~/.cache/pypoetry/virtualenvs
+          key: poetry-pandapower-${{ runner.os }}-${{ hashFiles('mv-design-pro/backend/poetry.lock') }}
+          restore-keys: |
+            poetry-pandapower-${{ runner.os }}-
+      - name: Install dependencies
+        working-directory: mv-design-pro/backend
+        run: poetry install --no-interaction --with dev
+      - name: Install pandapower (IZOLOWANE — obniza scipy TYLKO w tym jobie)
+        working-directory: mv-design-pro/backend
+        run: poetry run pip install "pandapower==3.5.4"
+      # Ten sam katalog `tests` co job `pytest`, dzielony JEDNYM markerem
+      # (`-m pandapower` tu, `-m "not pandapower"` tam) — zaden test nie moze
+      # wypasc z obu jobow (do CV-4.3 K3b job czytal tylko
+      # `tests/application/reference_networks`, wiec wyrocznia poza tym katalogiem
+      # nigdy by nie pobiegla).
+      - name: Run pandapower cross-validation (marker `pandapower`, caly katalog tests)
+        working-directory: mv-design-pro/backend
+        run: poetry run pytest -q -m pandapower tests
+
+  # ZNALEZISKO BRAMKI ADWERSARIALNEJ (2026-09-08, Z-3): dialekt PRODUKCYJNY nie mial
+  # zadnego pokrycia w CI. `tests/conftest.py` wymusza SQLite dla kazdego testu, a
+  # `docker-compose.yml` uruchamia backend na `postgresql+psycopg://` (DT-13:
+  # „Postgres docelowo, SQLite dev/test"). Skutkiem tej luki byl CZYNNY defekt
+  # `models.py::GUID.process_result_value` — bezwarunkowe `UUID(value)` przy
+  # `PG_UUID(as_uuid=True)` wywalalo KAZDY odczyt kolumny GUID na Postgresie i
+  # przechodzilo przez cale CI niezauwazone. Naprawa defektu bez tego joba
+  # zamykalaby INSTANCJE i zostawiala KLASE (regula KLASA, NIE INSTANCJA).
+  #
+  # Job jest WASKI z rozmyslu: uruchamia testy oznaczone `MV_TEST_POSTGRES_URL`
+  # (atomowosc przejecia biegu) plus warstwe persystencji — czyli to, co faktycznie
+  # rozni sie miedzy dialektami. Nie duplikuje pelnego zestawu.
+  postgres-dialect:
+    name: Dialekt produkcyjny (PostgreSQL 16)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: mvtest
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Ten sam powod co w jobie `pytest`: `tests/ci/test_guard_diff_base.py`
+          # wymaga pelnej historii przy kazdym checkoucie wolajacym pytest.
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11.x'
+          cache: pip
+          cache-dependency-path: mv-design-pro/backend/poetry.lock
+      - name: Install Poetry
+        run: pipx install poetry
+      - name: Cache Poetry and virtualenv (klucz IZOLOWANY od pozostalych jobow)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+            ~/.cache/pypoetry/virtualenvs
+          key: poetry-postgres-${{ runner.os }}-${{ hashFiles('mv-design-pro/backend/poetry.lock') }}
+          restore-keys: |
+            poetry-postgres-${{ runner.os }}-
+      - name: Install dependencies
+        working-directory: mv-design-pro/backend
+        run: poetry install --no-interaction --with dev
+      - name: Testy dialektu produkcyjnego (atomowosc przejecia + persystencja)
+        working-directory: mv-design-pro/backend
+        env:
+          MV_TEST_POSTGRES_URL: postgresql+psycopg://postgres:postgres@127.0.0.1:5432/mvtest
+        run: poetry run pytest -q -m "not pandapower" tests/enm/test_przejecie_biegu_atomowe.py tests/infrastructure

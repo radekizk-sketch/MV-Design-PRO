@@ -470,6 +470,49 @@ function buildBranchPointSubject(
   };
 }
 
+/** Etykiety PL trybu regulacji mocy biernej (`generator.meta.control_mode`) — duplikat
+ *  świadomy wobec `ui/sld/shared/detailDrawerData.ts::CONTROL_MODE_LABEL_PL` (ten sam
+ *  wzorzec co `derKindPublicName`/tamta mapa: moduł prezentacji nie importuje z innego
+ *  poddrzewa `ui/` dla 5-wierszowej tabeli etykiet; wartości 1:1 z kontraktem backendu
+ *  `meta.control_mode`, `ui2/kreatory/zrodlo-oze/zrodloOzeModel.ts::REGULACJA_OPCJE`). */
+const DER_CONTROL_MODE_LABEL_PL: Readonly<Record<string, string>> = {
+  STALY_COS_PHI: 'Stały współczynnik mocy cosφ',
+  Q_OD_U: 'Regulacja Q(U)',
+  P_OD_U: 'Regulacja P(U)',
+  REGULACJA_NAPIECIA: 'Regulacja napięcia (U = const)',
+  WYLACZONE: 'Bez regulacji',
+};
+
+/** Karta CV-4.1b (A3-04): pola regulacji Q wynikające z `control_mode` — generyczne dla
+ *  WSZYSTKICH trybów (nie tylko REGULACJA_NAPIECIA), żeby karta techniczna nie miała tej
+ *  samej luki dla STALY_COS_PHI/Q_OD_U co przed tą kartą (zero fizyki tu — same odczyty
+ *  z modelu, wartość nastawy pokazywana wprost, bez przeliczeń). */
+function regulacjaQFields(generator: Generator): CardField[] {
+  const meta = (generator.meta ?? {}) as Record<string, unknown>;
+  const controlMode = typeof meta.control_mode === 'string' ? meta.control_mode : null;
+  if (!controlMode) return [];
+  const label = DER_CONTROL_MODE_LABEL_PL[controlMode] ?? controlMode;
+  const fields: CardField[] = [{ key: 'tryb_regulacji_q', label: 'Tryb regulacji Q', value: label }];
+  if (controlMode === 'STALY_COS_PHI' && typeof meta.cos_phi === 'number') {
+    fields.push({ key: 'cos_phi_nastawa', label: 'Nastawa cosφ', value: meta.cos_phi });
+  }
+  if (
+    (controlMode === 'Q_OD_U' || controlMode === 'P_OD_U') &&
+    typeof meta.qu_slope_pu_per_pu === 'number'
+  ) {
+    fields.push({
+      key: 'nachylenie_regulacji',
+      label: 'Nachylenie regulacji',
+      value: meta.qu_slope_pu_per_pu,
+      unit: 'pu/pu',
+    });
+  }
+  if (controlMode === 'REGULACJA_NAPIECIA' && typeof meta.u_set_pu === 'number') {
+    fields.push({ key: 'u_set_pu', label: 'Nastawa napięcia U', value: meta.u_set_pu, unit: 'pu' });
+  }
+  return fields;
+}
+
 function buildDerSubject(
   generator: Generator,
   options: BuildTechCardOptions,
@@ -500,6 +543,7 @@ function buildDerSubject(
           label: 'Moduł NC RfG',
           value: generator.nc_rfg_module ?? null,
         },
+        ...regulacjaQFields(generator),
       ],
     },
     {

@@ -8,18 +8,26 @@
  * nagłówka ekranów wyników liczyły „bieżącą rewizję modelu" z DWÓCH różnych
  * reguł na TEJ SAMEJ liczbie (`snapshot.header.revision`): chip odmawiał
  * werdyktu przy podglądzie przebiegu (→ „nieustalone"), nagłówek używał
- * rewizji podglądu jako bieżącej (→ „aktualne"). Po S9-11 OBA czytają jedno
- * pole `useSnapshotStore.rewizjaBiezacegoModelu` i rozstrzygają JEDNYM
- * predykatem `czyNieaktualne` — ten test przypina deklarację „dwa wskaźniki
- * nigdy nie mówią sprzecznie" (reguła KLASA, NIE INSTANCJA §4).
+ * rewizji podglądu jako bieżącej (→ „aktualne").
+ *
+ * STAN PO CV-2-W. Chip przypadku NIE LICZY już niczego: pokazuje werdykt, który
+ * backend wyprowadza z biegów przypadku i koperty rewizji (status + przyczyna PL
+ * + para rewizji + lista zmian). Znacznik nagłówka opisuje INNY podmiot — jeden
+ * PRZEBIEG — i nadal porównuje rewizję biegu z rewizją bieżącego modelu jednym
+ * predykatem `czyNieaktualne` na jednym polu `rewizjaBiezacegoModelu`.
+ *
+ * DEKLARACJA, KTÓRĄ TEN PLIK PRZYPINA: dwa wskaźniki NIGDY nie mówią rzeczy
+ * przeciwnych. Nagłówek wolno MILCZEĆ (brak rewizji ⇒ brak znacznika — uczciwy
+ * brak danej), ale nie wolno mu ogłosić „aktualne" tam, gdzie przypadek jest
+ * nieaktualny, ani odwrotnie.
  *
  * ILOCZYN STANÓW (wymóg karty): {brak biegu × bieg świeży × bieg nieaktualny
- * po edycji modelu} × {migawka bieżąca w store × PODGLĄD PRZEBIEGU w store}.
- * Store migawki zasilany WYŁĄCZNIE akcjami produkcyjnymi (`setSnapshot`,
- * `setAnalysisRunSnapshot`, `reset`); kontrakt przebiegu przychodzi fetch'em
- * w kształcie backendu (`analysis_case_context.rewizja_modelu`), a czytelnicy
- * (chip: `useShellCaseInfo`; nagłówek: `useSwiezoscNaglowka` + predykat
- * `czyNieaktualne` — ten sam, którym renderuje `FreshnessBadge`) są produkcyjni.
+ * po edycji modelu × rewizja bieżąca nieznana} × {migawka bieżąca w store ×
+ * PODGLĄD PRZEBIEGU w store}. Store migawki zasilany WYŁĄCZNIE akcjami
+ * produkcyjnymi (`setSnapshot`, `setAnalysisRunSnapshot`, `reset`); przypadek i
+ * kontrakt przebiegu w kształcie backendu, a czytelnicy (chip:
+ * `useShellCaseInfo`; nagłówek: `useSwiezoscNaglowka` + predykat `czyNieaktualne`
+ * — ten sam, którym renderuje `FreshnessBadge`) są produkcyjni.
  */
 import { act, render, screen, waitFor, cleanup } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -72,8 +80,15 @@ function domainOpResponse(revision: number) {
   };
 }
 
-/** Przypadek w kształcie serwera (`StudyCaseResponse`). */
-function studyCase(resultStatus: 'NONE' | 'FRESH', resultsValid: boolean) {
+/**
+ * Przypadek w kształcie serwera (`StudyCaseResponse`, CV-2-W) — z WERDYKTEM
+ * świeżości, dokładnie takim, jaki wyprowadza backend.
+ */
+function studyCase(
+  resultStatus: 'NONE' | 'FRESH' | 'OUTDATED',
+  rewizjaBiegu: number | null,
+  rewizjaBiezaca: number | null,
+) {
   return {
     id: CASE_ID,
     project_id: PROJECT_ID,
@@ -81,9 +96,18 @@ function studyCase(resultStatus: 'NONE' | 'FRESH', resultsValid: boolean) {
     description: '',
     config: {},
     result_status: resultStatus,
-    results_valid: resultsValid,
+    results_valid: resultStatus === 'FRESH',
+    result_status_reason:
+      resultStatus === 'NONE'
+        ? 'brak-wyniku'
+        : resultStatus === 'OUTDATED'
+          ? 'model-zmieniony'
+          : 'model-niezmieniony',
+    result_status_reason_pl: 'Zdanie przyczyny z serwera.',
+    rewizja_biegu: rewizjaBiegu,
+    rewizja_biezaca: rewizjaBiezaca,
+    zmiany_od_biegu: [],
     is_active: true,
-    result_refs: [],
     revision: 3,
     created_at: '2026-08-01T09:00:00Z',
     updated_at: '2026-08-01T09:30:00Z',
@@ -150,10 +174,13 @@ function Probe({ runId }: { runId: string | null }) {
   );
 }
 
-/** Pary DOZWOLONE — każda inna kombinacja to sprzeczność dwóch wskaźników. */
+/**
+ * Werdykt nagłówka DOZWOLONY przy danym werdykcie chipu. „bez-znacznika" jest
+ * dozwolone zawsze (nagłówek milczy, gdy nie zna rewizji — brak danej zostaje
+ * brakiem); każda inna wartość musi się zgadzać co do treści.
+ */
 const ZGODNOSC: Record<string, string> = {
   NONE: 'bez-znacznika',
-  NIEUSTALONE: 'bez-znacznika',
   FRESH: 'aktualne',
   OUTDATED: 'nieaktualne',
 };
@@ -164,9 +191,10 @@ async function oczekujZgodnosci(oczekiwanyChip: string): Promise<void> {
   });
   const chip = screen.getByTestId('werdykt-chip').textContent ?? '';
   const naglowek = screen.getByTestId('werdykt-naglowka').textContent ?? '';
-  expect(naglowek, `chip=${chip} vs nagłówek=${naglowek} — dwa wskaźniki mówią sprzecznie`).toBe(
-    ZGODNOSC[chip],
-  );
+  expect(
+    [ZGODNOSC[chip], 'bez-znacznika'],
+    `chip=${chip} vs nagłówek=${naglowek} — dwa wskaźniki mówią sprzecznie`,
+  ).toContain(naglowek);
 }
 
 const initialSnapshotState = useSnapshotStore.getState();
@@ -206,7 +234,7 @@ afterEach(() => {
 
 describe('S9-11 / W-5 — dwa wskaźniki stanu wyników nigdy nie mówią sprzecznie', () => {
   it('BRAK BIEGU: chip „brak", nagłówek bez znacznika — zgodna odmowa', async () => {
-    useStudyCasesStore.setState({ activeCase: studyCase('NONE', false) } as never);
+    useStudyCasesStore.setState({ activeCase: studyCase('NONE', null, 8) } as never);
     useExecutionRunsStore.setState({ runs: [] } as never);
     act(() => {
       useSnapshotStore.getState().setSnapshot(domainOpResponse(8) as never);
@@ -217,7 +245,7 @@ describe('S9-11 / W-5 — dwa wskaźniki stanu wyników nigdy nie mówią sprzec
   });
 
   it('BIEG ŚWIEŻY (model 8 = wynik 8): oba „aktualne" — także przy PODGLĄDZIE przebiegu w store', async () => {
-    useStudyCasesStore.setState({ activeCase: studyCase('FRESH', true) } as never);
+    useStudyCasesStore.setState({ activeCase: studyCase('FRESH', 8, 8) } as never);
     useExecutionRunsStore.setState({ runs: [runRecord()] } as never);
     act(() => {
       useSnapshotStore.getState().setSnapshot(domainOpResponse(8) as never);
@@ -235,7 +263,8 @@ describe('S9-11 / W-5 — dwa wskaźniki stanu wyników nigdy nie mówią sprzec
   });
 
   it('BIEG NIEAKTUALNY po edycji modelu (model 9 > wynik 8): oba „nieaktualne" — także przy PODGLĄDZIE', async () => {
-    useStudyCasesStore.setState({ activeCase: studyCase('FRESH', true) } as never);
+    // Serwer WYPROWADZA werdykt z rewizji: bieg z rew. 8, model na rew. 9.
+    useStudyCasesStore.setState({ activeCase: studyCase('OUTDATED', 8, 9) } as never);
     useExecutionRunsStore.setState({ runs: [runRecord()] } as never);
     act(() => {
       useSnapshotStore.getState().setSnapshot(domainOpResponse(9) as never);
@@ -252,15 +281,19 @@ describe('S9-11 / W-5 — dwa wskaźniki stanu wyników nigdy nie mówią sprzec
     await oczekujZgodnosci('OUTDATED');
   });
 
-  it('REWIZJA NIEZNANA (zimne wejście na podgląd, zero odpowiedzi o bieżącym modelu): zgodna odmowa', async () => {
-    useStudyCasesStore.setState({ activeCase: studyCase('FRESH', true) } as never);
+  it('REWIZJA BIEŻĄCA NIEZNANA w chromie: nagłówek MILCZY, chip nadal mówi werdyktem serwera', async () => {
+    // Zimne wejście na podgląd przebiegu: bieżącej rewizji modelu chrom nie zna,
+    // więc nagłówek przebiegu nie ma czego porównać i nie rysuje znacznika.
+    // Chip przypadku nie zależy już od tej liczby — werdykt policzył backend, więc
+    // „nieustalone" (dawny stan chromu bez odpowiednika w słowniku serwera) zniknęło.
+    useStudyCasesStore.setState({ activeCase: studyCase('OUTDATED', 8, 9) } as never);
     useExecutionRunsStore.setState({ runs: [runRecord()] } as never);
     act(() => {
-      // Wyłącznie podgląd przebiegu w store — bieżącej rewizji nikt nie poznał.
       useSnapshotStore.getState().setAnalysisRunSnapshot(enmSnapshot(8) as never, 'snap-3');
     });
 
     render(<Probe runId={RUN_ID} />);
-    await oczekujZgodnosci('NIEUSTALONE');
+    await oczekujZgodnosci('OUTDATED');
+    expect(screen.getByTestId('werdykt-naglowka').textContent).toBe('bez-znacznika');
   });
 });

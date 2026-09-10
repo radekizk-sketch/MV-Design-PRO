@@ -38,6 +38,23 @@
  *    `zrodloRozplywuPL`); strzałki v3 dostają pełny rozpływ. Pusta lista =
  *    policzono, brak prądu w gałęziach (sieć bez źródła zastępczego i bez
  *    falowników zasilających zwarcie).
+ *    GAP DOMKNIĘTY (karta WB-ROZPLYW): sam `branch_flow_trace` (WHITE BOX
+ *    podziału, TH-1) był od `1e9f21c5` dostępny WYŁĄCZNIE na żądanie
+ *    (`GET …/results/short-circuit/rozplyw`), niewpięty w żaden ekran (dług
+ *    — treść WHITE BOX istniejąca tylko w magazynie). Sekcja `SladPodzialuPradu`
+ *    (pod `RozplywZwarciowy`) renderuje kroki tego śladu REUŻYWAJĄC istniejący
+ *    kanon pięciu pól (`KrokDowodu`/`mapujKroki`, `ui2/wyniki/dowod` — ten sam
+ *    komponent, którym ekran „Dowód obliczeń" pokazuje `white_box_trace`).
+ *    Dostawca `useRozplywZwarciowy` (`zwarcia/api.ts`) zwraca teraz PARĘ
+ *    `{flows, trace, blad}` z jednego wywołania endpointu (`RozplywOdpowiedz`
+ *    rozszerzony o `branch_flow_trace`) — jedno źródło prawdy dla obu sekcji,
+ *    nie dwa niezależne wołania. Naprawiono PRZY OKAZJI defekt klasy w
+ *    `dowod/dowodModel.ts` (`mapujWielkosci`): adapter zakładał WYŁĄCZNIE
+ *    opakowany kształt `TraceValue` ({value, unit, label}), a REALNY solver
+ *    (`WhiteBoxTracer.add`) emituje skalar/liczbę zespoloną `{re, im}` wprost —
+ *    każda wartość realnego śladu (SC/PF/branch_flow_trace) renderowała się
+ *    jako pusta kreska (KLASA NIE INSTANCJA — naprawa u źródła, nie lokalna
+ *    obejście w tej sekcji).
  * 2. ŚWIEŻOŚĆ (FreshnessBadge): kontrakt wyników zwarciowych nie niesie LICZBOWEJ
  *    rewizji modelu z chwili liczenia → nagłówek nie podaje rewizji (badge
  *    pominięty, jak w oknie rozpływu). Numeryczną świeżość dostarczy karta
@@ -54,6 +71,8 @@ import type {
   ShortCircuitBranchFlow,
   ShortCircuitResults,
   ShortCircuitRow,
+  ZalozenieBieguSlad,
+  ZrodloSiecioweSlad,
 } from '../../../ui/results-inspector/types';
 import { useResultsInspectorStore } from '../../../ui/results-inspector/store';
 import type {
@@ -73,6 +92,8 @@ import {
   fmtProcent,
   fmtWspolczynnik,
   rodzajZwarciaPL,
+  rxRatioZrodloPL,
+  trybZrodlaSiecowegoPL,
   typMaszynyPL,
   uwagiZwarciaPL,
   zrodloRozplywuPL,
@@ -180,12 +201,18 @@ export function naWierszeZwarc(rows: ShortCircuitRow[]): WierszTabeli[] {
  * Buduje sekcję ZAŁOŻENIA (W-602). Metoda „IEC 60909" — stała normatywna rodziny
  * solvera. Współczynnik c i czas cieplny pochodzą z konfiguracji przebiegu
  * (props); przy braku prezentowana jest „—" z uwagą o pochodzeniu (TODO-KARTA 3).
+ *
+ * CV-4.3 K7: `zalozeniaBiegu` (opcjonalny, `raw_result.zalozenia`) dokłada po
+ * jednym wierszu na każde założenie biegu nazwane kodem gotowości (np. scenariusz
+ * MIN bez S″kQmin — Z_Q z danych MAX) — treść (`message_pl`) WPROST z backendu,
+ * nigdy cicho. Brak/pusta lista = bieg bez założeń (wiersze bazowe bez zmian).
  */
 export function naZalozeniaZwarc(
   wspolczynnikC?: number,
   czasCieplnyS?: number,
+  zalozeniaBiegu?: readonly ZalozenieBieguSlad[],
 ): WierszZalozenia[] {
-  return [
+  const bazowe: WierszZalozenia[] = [
     { etykieta: ZWARCIA_STRINGS.zalMetoda, wartosc: ZWARCIA_STRINGS.zalMetodaWartosc },
     {
       etykieta: ZWARCIA_STRINGS.zalWspolczynnikC,
@@ -199,6 +226,12 @@ export function naZalozeniaZwarc(
       uwaga: czasCieplnyS === undefined ? ZWARCIA_STRINGS.zalWartoscZKonfiguracji : undefined,
     },
   ];
+  const zZaZrodel: WierszZalozenia[] = (zalozeniaBiegu ?? []).map((z) => ({
+    etykieta: ZWARCIA_STRINGS.zalozenieEtykieta(z.element_ref),
+    wartosc: z.message_pl,
+    uwaga: ZWARCIA_STRINGS.zalozenieUwaga(z.code, z.scenariusz),
+  }));
+  return [...bazowe, ...zZaZrodel];
 }
 
 // ---------------------------------------------------------------------------
@@ -520,6 +553,69 @@ export function naWierszeRozplywu(flows: ShortCircuitBranchFlow[]): WierszTabeli
  */
 export function rozplywDlaWiersza(row: ShortCircuitRow): ShortCircuitBranchFlow[] | null {
   return row.branch_contributions ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Źródła sieciowe (Z_Q) — ślad WHITE BOX wyprowadzenia impedancji zastępczej
+// (CV-4.3 K6/K7, IEC 60909-0:2016 §6.2.1 eq. 6) — projekcja read-only
+// `ShortCircuitResults.zrodla_sieciowe`, zero fizyki (formatowanie wyłącznie).
+// ---------------------------------------------------------------------------
+
+/** Kolumny tabeli źródeł sieciowych (deklaratywne — jednostka w nagłówku gdy stała). */
+export const KLUCZ_ZRODLA_SIECIOWE = 'identyfikator';
+
+export const KOLUMNY_ZRODEL_SIECIOWYCH: DefinicjaKolumny[] = [
+  { klucz: 'zrodlo', etykieta: ZWARCIA_STRINGS.zrodlaKolZrodlo, wyrownanie: 'lewo' },
+  { klucz: 'scenariusz', etykieta: ZWARCIA_STRINGS.zrodlaKolScenariusz, wyrownanie: 'lewo' },
+  { klucz: 'tryb', etykieta: ZWARCIA_STRINGS.zrodlaKolTryb, wyrownanie: 'lewo' },
+  // S″kQ/I″kQ niesie własną jednostkę w tekście (MVA albo kA różnią się per
+  // wiersz — tryb prądowy vs mocowy), więc kolumna nie deklaruje `jednostka`.
+  { klucz: 'mocPrad', etykieta: ZWARCIA_STRINGS.zrodlaKolMocPrad, mono: true },
+  { klucz: 'c', etykieta: ZWARCIA_STRINGS.zrodlaKolC, mono: true },
+  { klucz: 'rx', etykieta: ZWARCIA_STRINGS.zrodlaKolRx, wyrownanie: 'lewo' },
+  { klucz: 'zq', etykieta: ZWARCIA_STRINGS.zrodlaKolZq, jednostka: ZWARCIA_STRINGS.jednOhm, mono: true },
+  { klucz: 'wzor', etykieta: ZWARCIA_STRINGS.zrodlaKolWzor, wyrownanie: 'lewo', sortowalna: false },
+  {
+    klucz: KLUCZ_ZRODLA_SIECIOWE,
+    etykieta: ZWARCIA_STRINGS.kolIdentyfikator,
+    mono: true,
+    wyrownanie: 'lewo',
+    tylkoEkspercki: true,
+  },
+];
+
+/**
+ * Mapuje ślad źródeł sieciowych (`ShortCircuitResults.zrodla_sieciowe`) na wiersze
+ * tabeli wzorca (kolejność źródłowa — backend sortuje po `ref_id`). Tryb
+ * `IMPEDANCJA_JAWNA` nie niesie `sk3_mva`/`ik3_ka`/`c`/`rx_ratio`/`z_q_abs_ohm`
+ * (impedancja fizyczna, bez c, bez wariantu MIN) — komórki wtedy „—" (uczciwy
+ * brak, nie zero fabrykowane).
+ */
+export function naWierszeZrodelSieciowych(slad: readonly ZrodloSiecioweSlad[]): WierszTabeli[] {
+  return slad.map((wpis) => {
+    const mocPrad = wpis.sk3_mva !== undefined
+      ? `${fmtMVA(wpis.sk3_mva)} ${ZWARCIA_STRINGS.jednMVA}`
+      : wpis.ik3_ka !== undefined
+        ? `${fmtKA(wpis.ik3_ka)} ${ZWARCIA_STRINGS.jednKA}`
+        : ZWARCIA_STRINGS.kreska;
+    const rx = wpis.rx_ratio !== undefined && wpis.rx_ratio_zrodlo !== undefined
+      ? `${fmtWspolczynnik(wpis.rx_ratio)} (${rxRatioZrodloPL(wpis.rx_ratio_zrodlo)})`
+      : ZWARCIA_STRINGS.kreska;
+    return {
+      zrodlo: { wartosc: wpis.ref_id },
+      scenariusz: { wartosc: wpis.scenariusz },
+      tryb: { wartosc: trybZrodlaSiecowegoPL(wpis.tryb) },
+      mocPrad: { wartosc: mocPrad },
+      c: { wartosc: wpis.c !== undefined ? fmtWspolczynnik(wpis.c) : ZWARCIA_STRINGS.kreska },
+      rx: { wartosc: rx },
+      zq: {
+        wartosc: wpis.z_q_abs_ohm !== undefined ? fmtOhm(wpis.z_q_abs_ohm) : ZWARCIA_STRINGS.kreska,
+        sortKey: wpis.z_q_abs_ohm ?? Number.NEGATIVE_INFINITY,
+      },
+      wzor: { wartosc: wpis.formula },
+      [KLUCZ_ZRODLA_SIECIOWE]: { wartosc: `${wpis.ref_id}::${wpis.scenariusz}` },
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------

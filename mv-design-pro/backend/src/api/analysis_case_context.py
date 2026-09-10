@@ -24,8 +24,6 @@ def _infer_case_kind(run: CanonicalRun) -> str:
         return "STAN_FAZOWY_SN"
     if run.analysis_type == "dynamic_stability":
         return "PRACA_PO_ZAKLOCENIU"
-    if run.analysis_type == "source_compliance":
-        return "ZGODNOSC_PRZYLACZENIOWA"
     return "RAPORTOWY_BAZOWY"
 
 
@@ -53,8 +51,6 @@ def _infer_applicability_scope(run: CanonicalRun) -> list[str]:
         return ["PHASE_STATE_SN", "REPORT"]
     if run.analysis_type == "dynamic_stability":
         return ["DYNAMIC_STABILITY", "AUTOMATION", "REPORT"]
-    if run.analysis_type == "source_compliance":
-        return ["SOURCE_COMPLIANCE", "REPORT"]
     return ["REPORT"]
 
 
@@ -71,11 +67,7 @@ def _build_assumptions(run: CanonicalRun) -> dict[str, Any]:
                 else (
                     "dynamic_fault_source_state"
                     if run.analysis_type == "dynamic_stability"
-                    else (
-                        "source_profile_snapshot"
-                        if run.analysis_type == "source_compliance"
-                        else "pf_source_nominal"
-                    )
+                    else "pf_source_nominal"
                 )
             )
         ),
@@ -89,7 +81,10 @@ def _build_assumptions(run: CanonicalRun) -> dict[str, Any]:
                 else "sc_load_snapshot"
             )
         ),
-        "switching_state_ref": options.get("switching_state_ref") or "snapshot_switching_state",
+        # CV-2 (H3): brak jawnej migawki lacznikowej = `None`, nie etykieta
+        # „snapshot_switching_state" udajaca referencje (stan lacznikow biegu
+        # kanonicznego JEST w migawce biegu — `CanonicalRun.snapshot`).
+        "switching_state_ref": options.get("switching_state_ref"),
         "grounding_assumptions_ref": options.get("grounding_assumptions_ref")
         or "network_grounding_snapshot",
         "temperature_assumptions_ref": options.get("temperature_assumptions_ref")

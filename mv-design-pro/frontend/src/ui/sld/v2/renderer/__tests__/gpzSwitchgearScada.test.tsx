@@ -2078,7 +2078,7 @@ describe('GpzSwitchgearRenderer — commit 9: BAY_DEVICE_ORDER_POLICY pełna ite
     expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-transformer-earthing"]')).not.toBeNull();
   });
 
-  it('K30-104: ApparatusTransformerSymbol z vector group + tap changer (IEC 60617-2)', async () => {
+  it('ApparatusTransformerSymbol z vector group + tap changer (IEC 60617-2)', async () => {
     const { ApparatusTransformerSymbol } = await import('../GpzApparatusSymbols');
     const { container } = render(
       <svg>
@@ -2127,7 +2127,7 @@ describe('GpzSwitchgearRenderer — commit 9: BAY_DEVICE_ORDER_POLICY pełna ite
     expect(container.querySelector('[data-testid="sld-v2-gpz-bay-transformer-oltc"]')).toBeNull();
   });
 
-  it('K30-104: ApparatusTransformerSymbol bez tap changer (default) → brak strzałki OLTC', async () => {
+  it('ApparatusTransformerSymbol bez tap changer (default) → brak strzałki OLTC', async () => {
     const { ApparatusTransformerSymbol } = await import('../GpzApparatusSymbols');
     const { container } = render(
       <svg>

@@ -23,7 +23,7 @@ Jezeli istnieja duplikaty — wskazanie ktore sa legacy i plan usuniecia.
 | **Role assignment (topologia → role)** | `assignTopologicalRoles()` | `frontend/src/ui/sld-editor/utils/topological-layout/roleAssigner.ts` |
 | **Geometric skeleton (tiers, busbars, slots)** | `buildGeometricSkeleton()` | `frontend/src/ui/sld-editor/utils/topological-layout/geometricSkeleton.ts` |
 | **Collision detection** | `detectSymbolCollisions()` | `frontend/src/ui/sld-editor/utils/topological-layout/collisionGuard.ts` |
-| **Backend layout (BFS)** | `build_auto_layout_diagram()` | `backend/src/application/sld/layout.py` |
+| ~~Backend layout (BFS)~~ | ~~`build_auto_layout_diagram()`~~ | skasowany w W1 (2026-09-09) — `application/sld/**` bez konsumenta produkcyjnego |
 | **Geometry config (benchmark tokens)** | `DEFAULT_GEOMETRY_CONFIG` | `frontend/src/ui/sld-editor/utils/topological-layout/types.ts` |
 
 **Uwaga — dwa pipeline'y layoutu:**
@@ -57,8 +57,8 @@ Pipeline C: Backend Layout (backend)
 | **Bridge migracyjny: symbole → TopologyInput** | `readTopologyFromSymbols()` | `frontend/src/ui/sld/core/topologyInputReader.ts` |
 | **Adapter V2: TopologyInput → VisualGraphV1** | `buildVisualGraphFromTopology()` | `frontend/src/ui/sld/core/topologyAdapterV2.ts` |
 | **Adapter V1 (deleguje do V2)** | `convertToVisualGraph()` | `frontend/src/ui/sld/core/topologyAdapterV1.ts` |
-| **Backend: graph → SLD payload** | `convert_graph_to_sld_payload()` | `backend/src/application/sld/network_graph_to_sld.py` |
-| **Backend: snapshot → SLD elements** | `project_snapshot_to_sld()` | `backend/src/network_model/sld_projection.py` |
+| ~~Backend: graph → SLD payload~~ | ~~`convert_graph_to_sld_payload()`~~ | skasowany w W1 (2026-09-09) (0 konsumentów) |
+| ~~Backend: snapshot → SLD elements~~ | ~~`project_snapshot_to_sld()`~~ | skasowany w W1 (2026-09-09) (0 konsumentów); projekcja backendowa ENM → SLD = wycinek W7 mapy |
 
 **Zmiana RUN #3C:** Frontend adapter jest teraz **domain-driven** (NetworkGraph/ENM), nie symbol-driven.
 - Sciezka glowna: `readTopologyFromENM()` → `buildVisualGraphFromTopology()`
@@ -95,7 +95,7 @@ Pipeline C: Backend Layout (backend)
 | **Overlay engine (pure mapping)** | `OverlayEngine.ts` | `frontend/src/ui/sld-overlay/OverlayEngine.ts` |
 | **Overlay payload (Zustand)** | `overlayStore.ts` | `frontend/src/ui/sld-overlay/overlayStore.ts` |
 | **LoadFlow adapter** | `LoadFlowOverlayAdapter.ts` | `frontend/src/ui/sld-overlay/LoadFlowOverlayAdapter.ts` |
-| **Backend overlay builder** | `build_sld_overlay()` | `backend/src/application/sld/overlay_builder.py` |
+| ~~Backend overlay builder~~ | ~~`build_sld_overlay()`~~ | skasowany w W1 (2026-09-09) razem z `GET /analysis-runs/{id}/overlay` (0 konsumentów FE); nakładka zabezpieczeń: `backend/src/api/protection_runs.py` |
 
 **Status:** Frontend i backend overlay sa oddzielne warstwy (backend buduje dane, frontend renderuje). Brak duplikacji.
 

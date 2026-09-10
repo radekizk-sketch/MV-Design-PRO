@@ -11,8 +11,9 @@
  * solver, końcówki API i katalog `analysis-types` pozostają NIETKNIĘTE — wycofanie
  * dotyczy wyłącznie warstwy prezentacji. Zdolność jest dalej wykonywana i pilnowana
  * w kontroli jakości przez
- * `backend/tests/application/reference_networks/test_ieee_benchmark_wiring.py`
- * (referencje z niezależnej implementacji, wynik z naszego solvera produkcyjnego).
+ * `backend/tests/golden/parytet_benchmarkow/test_ieee_benchmark_wiring.py`
+ * (przeniesiony z `tests/application/reference_networks/` kartą K2, 2026-09-09;
+ * referencje z niezależnej implementacji, wynik z naszego solvera produkcyjnego).
  *
  * DLACZEGO REJESTR, A NIE CICHE USUNIĘCIE WPISU: parytet front↔backend pilnuje
  * `backend/tests/ci/test_v126_rodzaje_parytet.py`. Gdyby rodzaj po prostu zniknął
@@ -35,7 +36,11 @@ import type { RodzajAnalizy } from './api';
  * z powodem w `POWODY_NIEPREZENTOWANIA` (typ wymusza to w czasie pisania kodu)
  * oraz wiersza w `docs/v12xx/REJESTR_KONFLIKTOW.md`.
  */
-export type RodzajNieprezentowany = 'benchmark_validation' | 'voltage_stability';
+export type RodzajNieprezentowany =
+  | 'benchmark_validation'
+  | 'voltage_stability'
+  | 'hosting_capacity'
+  | 'opf_loss_lcc';
 
 /** Rodzaje analiz obecne na ekranie projektanta — dopełnienie rejestru wycofań. */
 export type RodzajPrezentowany = Exclude<RodzajAnalizy, RodzajNieprezentowany>;
@@ -58,6 +63,33 @@ export const POWODY_NIEPREZENTOWANIA: Record<RodzajNieprezentowany, string> = {
     + 'ze sztywności węzła, wskaźnik L z mnożnika 4. Ekran nie ma czego pokazać, '
     + 'dopóki wielkości nie zostaną policzone rozpływem na modelu przypadku '
     + '(karta QU-FABRYKACJA, 2026-08-08).',
+  // Karta W3-E (2026-09-09, KARTA_W3 §0 rodzina D): duplikuje kanon
+  // `application/analyses/hosting_capacity.py` (`GET /api/oze-analysis/
+  // hosting-capacity`, ekran „OZE › Zdolność przyłączeniowa"), który liczy
+  // PEŁNYM ROZPŁYWEM przez wariant sieci. Solver V12.6 liczy lokalną
+  // impedancję Thevenina per szyna metodą Monte Carlo — BEZ sprzężenia
+  // sieci (sąsiednie szyny nie wpływają na wynik danej szyny), więc nie
+  // widzi ograniczeń narzuconych przez resztę sieci. Zdolność solwera
+  // zostaje (410 na POST z odesłaniem do kanonu, historyczne biegi
+  // odtwarzalne z polem `wycofany`).
+  hosting_capacity:
+    'Lokalna impedancja Thevenina per szyna, metodą Monte Carlo — BEZ sprzężenia '
+    + 'sieci, więc wynik jednej szyny nie widzi ograniczeń narzuconych przez resztę '
+    + 'sieci. Kanon liczy PEŁNYM ROZPŁYWEM przez wariant sieci: ekran '
+    + '„OZE › Zdolność przyłączeniowa" (GET /api/oze-analysis/hosting-capacity).',
+  // Karta W3-E: duplikuje DWA kanony naraz — straty transformatorów liczone
+  // z β RZECZYWISTEGO karty katalogowej (`POST /api/solver/transformer-losses`,
+  // ekran „Kryteria › Wyposażenie", solver V12.6 ma β = 0,45 ZASZYTE) oraz
+  // optymalizację zaczepu OLTC (badania OLTC, ekran „Wyniki › OLTC", solver
+  // V12.6 ma zaczep 0 ZAWSZE, `decision_variables.oltc_tap_position` nigdy
+  // się nie zmienia). Prąd gałęzi liczony z obciążenia JEDNEJ szyny docelowej
+  // (`_branch_current_a`), nie z rozpływu. Koszt cyklu życia (LCC) nie ma dziś
+  // kanonu — ekonomia jest decyzją właściciela poza tą kartą.
+  opf_loss_lcc:
+    'β = 0,45 zaszyte (kanon czyta β rzeczywisty z karty katalogowej), zaczep OLTC '
+    + 'zawsze 0 (kanon optymalizuje zaczep), prąd gałęzi z obciążenia jednej szyny '
+    + '(nie z rozpływu). Kanon strat: ekran „Kryteria › Wyposażenie" '
+    + '(POST /api/solver/transformer-losses); kanon zaczepu: ekran „Wyniki › OLTC".',
 };
 
 /** Zbiór kodów wycofanych — pochodna rejestru, nie druga lista do utrzymania. */

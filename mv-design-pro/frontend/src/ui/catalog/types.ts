@@ -28,10 +28,11 @@ export interface LineType extends CatalogType {
   b_us_per_km: number;
   rated_current_a: number;
   standard?: string;
-  max_temperature_c: number;
+  /** null = dana tabliczkowa nieznana z definicji źródła (typ z literatury benchmarkowej). */
+  max_temperature_c: number | null;
   voltage_rating_kv: number;
   conductor_material?: string;
-  cross_section_mm2: number;
+  cross_section_mm2: number | null;
 }
 
 /**
@@ -458,6 +459,10 @@ export interface SourceSystemCatalogType extends CatalogType {
   sk3_mva: number;
   ik3_ka?: number;
   rx_ratio?: number;
+  /** Dane scenariusza MIN (CV-4.3 K7); null = OSD nie podał (zero fabrykacji). */
+  sk3_min_mva?: number | null;
+  ik3_min_ka?: number | null;
+  rx_ratio_min?: number | null;
   earthing_system?: string;
   short_circuit_model?: string;
   operator_name?: string;

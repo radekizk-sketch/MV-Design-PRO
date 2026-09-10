@@ -3,54 +3,55 @@
  * (karta K4 / brak D1 audytu FLOW: inżynier widzi „wyniki nieaktualne"
  * w pasku aktywnego przypadku, nie dopiero na ekranie wyniku).
  *
- * Czysta funkcja: `StudyCase | null` + para rewizji → model znacznika
- * (testowalna fixture'ami, bez Reacta).
+ * Czysta funkcja: `StudyCase | null` → model znacznika (testowalna fixture'ami,
+ * bez Reacta, bez zapytań).
  *
- * DŁUG V12K-309 poz. 2 (naprawiony tutaj). Do tej pory świeżość brał wyłącznie
- * z serwerowego `result_status`, a ten zmienia się dopiero, gdy KTOŚ unieważni
- * przypadek. Edycja modelu następująca PO biegu nie przechodzi przez tę ścieżkę,
- * więc chip trwał na „Wyniki: aktualne" przy modelu, który zdążył pojechać dalej
- * (pomiar audytu: model rew. 9, wynik z rew. 8, chip „aktualne"). Kanon mówi
- * wprost: zmiana modelu unieważnia wyniki przypadku (Case Immutability Rule) —
- * więc świeżość liczy się PORÓWNANIEM REWIZJI, tym samym predykatem
- * `czyNieaktualne`, którym żyje wspólny `FreshnessBadge` ekranów analizy
- * (V12K-264). Jedno źródło predykatu, nie dwa „dziś zgodne" warunki.
+ * CO SIĘ TU ZMIENIŁO I DLACZEGO (CV-2-W). Wcześniej chip liczył świeżość SAM:
+ * brał serwerowy `result_status`, a potem NADPISYWAŁ go własnym porównaniem pary
+ * rewizji (rewizja ostatniego zakończonego biegu z kontraktu przebiegu vs rewizja
+ * migawki), bo serwerowy status zmieniał się dopiero, gdy KTOŚ unieważnił
+ * przypadek — a edycja modelu po biegu przez tę ścieżkę nie przechodziła. Były to
+ * DWIE PRAWDY o jednym stanie: chip i ekran wyniku mogły powiedzieć co innego, a
+ * przy nieznanej rewizji chip wchodził w stan „nieustalone", którego backend
+ * nigdy nie orzekł.
  *
- * Źródła (zero fizyki i zero domysłu w UI — obie liczby pochodzą z backendu):
- * - `result_status` (NONE|FRESH|OUTDATED) + `results_valid` z
- *   `useStudyCasesStore.activeCase`,
- * - `rewizjaWyniku` — rewizja modelu, NA KTÓREJ policzono bieg
- *   (`analysis_case_context.rewizja_modelu` kontraktu przebiegu, V12K-264),
- * - `rewizjaModelu` — bieżąca rewizja migawki (`snapshot.header.revision`).
+ * Teraz status wyników przypadku jest WYPROWADZANY po stronie backendu z jego
+ * biegów i koperty rewizji (`application/study_case/status_wynikow.py`), więc chip
+ * ma dokładnie jedno źródło: werdykt serwera. Razem ze statusem przychodzi
+ * PRZYCZYNA po polsku (`result_status_reason_pl`) i lista zmian, które unieważniły
+ * wynik (`zmiany_od_biegu`) — UI ich nie tłumaczy i nie uzupełnia (zero fizyki,
+ * zero domysłu w prezentacji).
  *
- * Brak którejkolwiek rewizji NIE jest aktualnością: znacznik przechodzi wtedy
- * w stan nieustalony (patrz `StatusZnacznikaWynikow`), nigdy w „aktualne".
  * Etykiety spójne ze STATUS_WYNIKOW_LABEL (brak/aktualne/nieaktualne) —
  * spójność pilnowana testem w __tests__/znacznikSwiezosci.test.ts.
  */
 
-import type { StudyCase, StudyCaseResultStatus } from '../../ui/study-cases/types';
-import { czyNieaktualne } from '../inspector/inspectorModel';
+import type {
+  StudyCase,
+  StudyCaseResultStatus,
+  ZmianaOdBiegu,
+} from '../../ui/study-cases/types';
 import { SHELL_STRINGS } from './strings';
 
-/**
- * Status chipu wyników: trzy stany serwerowe + `NIEUSTALONE` — stan chromu dla
- * sytuacji „wynik istnieje, ale nie da się rozstrzygnąć jego świeżości".
- */
-export type StatusZnacznikaWynikow = StudyCaseResultStatus | 'NIEUSTALONE';
-
-/** Para rewizji, na której opiera się werdykt świeżości. `null` = liczba nieznana. */
-export interface RewizjeSwiezosci {
-  /** Rewizja modelu, z której powstał wynik (kontrakt przebiegu). */
-  readonly rewizjaWyniku: number | null;
-  /** Bieżąca rewizja modelu (migawka). */
-  readonly rewizjaModelu: number | null;
-}
+/** Status chipu wyników — dokładnie słownik kontraktu HTTP, bez stanów własnych UI. */
+export type StatusZnacznikaWynikow = StudyCaseResultStatus;
 
 export interface ZnacznikSwiezosci {
   status: StatusZnacznikaWynikow;
   /** Etykieta chipu („Wyniki: …"). */
   etykieta: string;
+  /**
+   * Zdanie z backendu wyjaśniające status (`result_status_reason_pl`) — jedyne
+   * źródło tekstu przyczyny; `null` gdy nie ma przypadku, o którym można coś
+   * powiedzieć.
+   */
+  przyczynaPl: string | null;
+  /** Rewizja modelu, na której policzono wynik (`null` = brak wyniku). */
+  rewizjaBiegu: number | null;
+  /** Bieżąca rewizja modelu (`null` = model przypadku niedostępny). */
+  rewizjaModelu: number | null;
+  /** Które zmiany unieważniły wynik — z backendu, puste dla FRESH i NONE. */
+  zmiany: readonly ZmianaOdBiegu[];
   /** Tylko „nieaktualne" prowadzi do akcji (przejście do przestrzeni „Obliczenia"). */
   klikalny: boolean;
 }
@@ -59,41 +60,30 @@ const ETYKIETA: Record<StatusZnacznikaWynikow, string> = {
   NONE: SHELL_STRINGS.resultsNone,
   FRESH: SHELL_STRINGS.resultsFresh,
   OUTDATED: SHELL_STRINGS.resultsOutdated,
-  NIEUSTALONE: SHELL_STRINGS.resultsUnknown,
 };
 
-/** Mapuje aktywny przypadek (lub jego brak) + parę rewizji na model znacznika. */
-export function znacznikSwiezosci(
-  przypadek: StudyCase | null,
-  rewizje: RewizjeSwiezosci,
-): ZnacznikSwiezosci {
-  const status = statusWynikow(przypadek, rewizje);
-  return { status, etykieta: ETYKIETA[status], klikalny: status === 'OUTDATED' };
-}
-
-function statusWynikow(
-  przypadek: StudyCase | null,
-  rewizje: RewizjeSwiezosci,
-): StatusZnacznikaWynikow {
-  if (przypadek == null || przypadek.result_status === 'NONE') {
-    // Nie ma wyniku — nie ma czego porównywać z rewizją modelu.
-    return 'NONE';
+/** Mapuje aktywny przypadek (lub jego brak) na model znacznika. */
+export function znacznikSwiezosci(przypadek: StudyCase | null): ZnacznikSwiezosci {
+  if (przypadek == null) {
+    // Brak przypadku to brak wyniku — nie ma o czym orzekać ani czego tłumaczyć.
+    return {
+      status: 'NONE',
+      etykieta: ETYKIETA.NONE,
+      przyczynaPl: null,
+      rewizjaBiegu: null,
+      rewizjaModelu: null,
+      zmiany: [],
+      klikalny: false,
+    };
   }
-  if (przypadek.result_status === 'OUTDATED') {
-    return 'OUTDATED';
-  }
-  // `results_valid` to jawna flaga kontraktu (PR-4: true wyłącznie dla FRESH).
-  // Niespójna para FRESH + results_valid=false jest traktowana jako nieaktualne —
-  // kierunek bezpieczny: nie ogłaszamy aktualności, której flaga zaprzecza.
-  if (!przypadek.results_valid) {
-    return 'OUTDATED';
-  }
-  // Serwer twierdzi „aktualne" — ale ostatnie słowo ma porównanie rewizji.
-  const { rewizjaWyniku, rewizjaModelu } = rewizje;
-  if (rewizjaWyniku === null || rewizjaModelu === null) {
-    // BRAK KONTRAKTU (zgłoszony w meldunku karty): bez pary rewizji świeżość
-    // jest nierozstrzygalna. Uczciwe „nieustalone" zamiast wygodnego „aktualne".
-    return 'NIEUSTALONE';
-  }
-  return czyNieaktualne(rewizjaWyniku, rewizjaModelu) ? 'OUTDATED' : 'FRESH';
+  const status = przypadek.result_status;
+  return {
+    status,
+    etykieta: ETYKIETA[status],
+    przyczynaPl: przypadek.result_status_reason_pl,
+    rewizjaBiegu: przypadek.rewizja_biegu,
+    rewizjaModelu: przypadek.rewizja_biezaca,
+    zmiany: przypadek.zmiany_od_biegu,
+    klikalny: status === 'OUTDATED',
+  };
 }

@@ -7,8 +7,9 @@
 export const STAN_FAZOWY_STRINGS = {
   eyebrow: 'ANALIZA FAZOWA',
   tytul: 'Stan fazowy SN',
-  cel: 'Zweryfikuj napięcia i prądy fazowe celu analizy oraz wskaźniki asymetrii '
-    + 'U/I/strat — na podstawie wyniku zakończonego przebiegu stanu fazowego SN.',
+  cel: 'Zweryfikuj napięcia i prądy fazowe celu analizy oraz odchylenie napięcia/'
+    + 'prądu/strat od średniej faz — na podstawie wyniku zakończonego przebiegu '
+    + 'stanu fazowego SN.',
 
   // Stany zerowe (uczciwe — bez podstawiania wartości).
   brakProjektuTytul: 'Brak aktywnego projektu',
@@ -17,8 +18,8 @@ export const STAN_FAZOWY_STRINGS = {
   brakProjektuAkcja: 'Wybierz projekt',
   brakPrzebieguTytul: 'Brak zakończonego przebiegu stanu fazowego SN',
   brakPrzebieguOpis: 'Ten ekran pokazuje wynik ZAKOŃCZONEGO przebiegu analizy stanu '
-    + 'fazowego (napięcia i prądy per faza, asymetrie). Uruchom analizę w przestrzeni '
-    + 'Obliczenia, aby zobaczyć wartości.',
+    + 'fazowego (napięcia i prądy per faza, odchylenie od średniej faz). Uruchom '
+    + 'analizę w przestrzeni Obliczenia, aby zobaczyć wartości.',
   brakPrzebieguAkcja: 'Przejdź do obliczeń',
   ladowanie: 'Ładowanie wyników stanu fazowego…',
   bladTytul: 'Nie udało się pobrać wyników stanu fazowego',
@@ -42,13 +43,19 @@ export const STAN_FAZOWY_STRINGS = {
   fazaB: 'B',
   fazaC: 'C',
 
-  // Asymetrie z werdyktem solvera.
-  asymetriaTytul: 'Wskaźniki asymetrii',
+  // Odchylenie od średniej faz z werdyktem solvera (karta W2 pkt 4, zero
+  // fabrykacji): `phase_state_sn.py::_compute_unbalance_percent` liczy
+  // ODCHYLENIE MAKSYMALNE OD ŚREDNIEJ TRZECH FAZ w % — NIE współczynnik
+  // asymetrii wg składowych symetrycznych (VUF, IEC 61000-4-30/EN 50160).
+  // Etykieta i opis mówią dokładnie to, nie sugerują VUF.
+  asymetriaTytul: 'Odchylenie od średniej faz [%]',
   asymetriaOpis: 'Werdykt pochodzi z flag alarmowych solvera — próg alarmu jest '
-    + 'jawnym wejściem przebiegu, nie progiem interfejsu.',
-  asymetriaU: 'Asymetria napięcia',
-  asymetriaI: 'Asymetria prądu',
-  asymetriaStrat: 'Asymetria strat',
+    + 'jawnym wejściem przebiegu, nie progiem interfejsu. Wskaźnik to odchylenie '
+    + 'maksymalne od średniej trzech faz w procentach — nie jest współczynnikiem '
+    + 'asymetrii wg składowych symetrycznych (VUF); ten wskaźnik nie jest dziś liczony.',
+  asymetriaU: 'Odchylenie napięcia od średniej faz',
+  asymetriaI: 'Odchylenie prądu od średniej faz',
+  asymetriaStrat: 'Odchylenie strat od średniej faz',
   werdyktPrzekroczenie: 'PRZEKROCZENIE',
   werdyktWNormie: 'w normie',
   werdyktBrak: 'bez werdyktu',

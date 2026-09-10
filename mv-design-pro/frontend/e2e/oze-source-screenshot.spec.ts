@@ -9,9 +9,10 @@ import { test, expect } from '@playwright/test';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { adresHarnessu } from './adresHarnessu';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
-const HARNESS_URL = 'http://127.0.0.1:5173/oze-source-harness.html';
+const HARNESS_URL = adresHarnessu('oze-source-harness.html');
 const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual');
 
 const ARCHETYPES = ['G1', 'G2', 'G3', 'G4-PVTR', 'G5-BESS', 'G5-WIND-T4', 'G8-BIOGAZ', 'G7-WIND-ASYNC', 'G6-WIND-DFIG'] as const;

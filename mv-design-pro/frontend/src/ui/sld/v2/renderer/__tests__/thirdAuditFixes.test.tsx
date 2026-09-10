@@ -12,7 +12,7 @@ afterEach(() => cleanup());
 
 const wrap = (children: React.ReactNode) => <svg>{children}</svg>;
 
-describe('K30-125 — Designation label truncation per LOD', () => {
+describe('Designation label truncation per LOD', () => {
   it('overview maxChars=6: "Q12-LONG" → "Q12-L…"', () => {
     const { container } = render(
       wrap(
@@ -54,7 +54,7 @@ describe('K30-125 — Designation label truncation per LOD', () => {
   });
 });
 
-describe('K30-126 — FUSE + SA cases w BayColumnSn switch', () => {
+describe('FUSE + SA cases w BayColumnSn switch', () => {
   it('FUSE w apparatusStack → renderowany ApparatusFuse', () => {
     const { container } = render(
       wrap(
@@ -92,7 +92,7 @@ describe('K30-126 — FUSE + SA cases w BayColumnSn switch', () => {
   });
 });
 
-describe('K30-127 — Bus topology VISUAL differentiation', () => {
+describe('Bus topology VISUAL differentiation', () => {
   const baseProps = {
     id: 'st-1',
     x: 0,

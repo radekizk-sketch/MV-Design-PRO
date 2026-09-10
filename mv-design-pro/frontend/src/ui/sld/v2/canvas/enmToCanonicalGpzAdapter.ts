@@ -268,6 +268,9 @@ function deriveHvSystemSource(
     name,
     sk3Mva: source.sk3_mva ?? null,
     ik3Ka: source.ik3_ka ?? null,
+    sk3MinMva: source.sk3_min_mva ?? null,
+    ik3MinKa: source.ik3_min_ka ?? null,
+    uSetPu: source.u_set_pu ?? null,
     voltageKv: sourceBus?.voltage_kv ?? null,
     // WN-WYNIK (uczciwość w obrębie pliku): „czy źródło stoi po stronie WN" to
     // pytanie o ZBIÓR szyn WN stacji, nie o pierwszą z nich — GPZ 2×TR ma dwie

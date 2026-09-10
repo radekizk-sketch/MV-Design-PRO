@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from typing import Literal
 
+from network_model.pochodne import ms_na_s
 from pydantic import BaseModel, ConfigDict, Field
 
 DerKind = Literal["PV", "BESS", "FW"]
@@ -129,9 +130,9 @@ class InverterDynamicProfile(BaseModel):
         """Parametry konsumowane przez `frt_hvrt.engine` dla pojedynczego DER."""
         return {
             "iq_max_during_fault_pu": self.iq_max_during_fault_pu,
-            "frt_response_time_s": self.frt_response_time_ms / 1000.0,
+            "frt_response_time_s": ms_na_s(self.frt_response_time_ms),
             "p_recovery_rate_pu_per_s": self.p_recovery_rate_pu_per_s,
-            "p_recovery_delay_s": self.p_recovery_delay_ms / 1000.0,
+            "p_recovery_delay_s": ms_na_s(self.p_recovery_delay_ms),
             "v_min_continuous_pu": self.v_min_continuous_pu,
             "v_max_continuous_pu": self.v_max_continuous_pu,
             "iq_priority": 1.0 if self.iq_priority_during_fault else 0.0,
@@ -219,9 +220,9 @@ class WindTurbineDynamicProfile(BaseModel):
     def to_frt_parameters(self) -> dict[str, float]:
         return {
             "iq_max_during_fault_pu": self.iq_max_during_fault_pu,
-            "frt_response_time_s": self.frt_response_time_ms / 1000.0,
+            "frt_response_time_s": ms_na_s(self.frt_response_time_ms),
             "p_recovery_rate_pu_per_s": self.p_recovery_rate_pu_per_s,
-            "p_recovery_delay_s": self.p_recovery_delay_ms / 1000.0,
+            "p_recovery_delay_s": ms_na_s(self.p_recovery_delay_ms),
             "v_min_continuous_pu": self.v_min_continuous_pu,
             "v_max_continuous_pu": self.v_max_continuous_pu,
             "iq_priority": 1.0,

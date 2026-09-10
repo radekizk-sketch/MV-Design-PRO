@@ -18,6 +18,7 @@ import {
   EMPTY_DER_CATALOGS,
   EMPTY_DER_PROFILES,
   EMPTY_DER_READINESS,
+  type ReadinessAxisStatus,
   type StationDerConnection,
 } from '../types';
 
@@ -32,16 +33,21 @@ function makeDer(
     station_id: 'station_1',
     der_kind: 'PV',
     name: 'PV Test',
-    connection_side: 'SN',
+    // Karta FAB-K (§0 R3): dawny gołosłowny wariant `'SN'` (bez transformatora
+    // dedykowanego) USUNIĘTY — domyślnie nN (najmniej specjalnych gałęzi reguł
+    // gotowości; poniższe testy nadpisują jawnie, gdzie topologia SN ma znaczenie).
+    connection_side: 'nN',
     bus_przylaczenia_ref: 'pcc_1',
     bay_ref: null,
     transformer_ref: null,
     lv_busbar_ref: null,
-    internal_cable_ref: null,
-    voltage_level_ref: null,
+    sn_connection_bus_ref: null,
+    sn_connection_point_kind: null,
+    connection_voltage_kv: null,
     catalogs: { ...EMPTY_DER_CATALOGS, device_catalog_ref: 'pv_inv_sma_2500' },
     profiles: { ...EMPTY_DER_PROFILES, nc_rfg_profile_ref: 'ncrfg_pse' },
     nominal_power_kw: 2500,
+    unit_count: null,
     completeness: 'complete',
     readiness: { ...EMPTY_DER_READINESS },
     created_at: FROZEN_NOW,
@@ -51,14 +57,15 @@ function makeDer(
 }
 
 describe('computeDerReadinessMatrix — agregacja gotowości DER', () => {
-  it('Pełny minimalny DER (device + pcc + nc_rfg) → SC3F ready, SC1F/SC2FG partial (Naprawa A.1), FRT/HVRT/NC_RFG blocked', () => {
+  it('Pełny minimalny DER (device + pcc + nc_rfg) → SC3F/SC1F/SC2F/SC2FG ready (karta FAB-L), FRT/HVRT/NC_RFG blocked', () => {
     const matrix = computeDerReadinessMatrix(makeDer());
     expect(matrix.sc_3f).toBe('ready');
     expect(matrix.sc_2f).toBe('ready');
-    // Naprawa A.1: SC1F/SC2FG wymagają fault_current_data_ref (Z₀/Z₁) — bez
-    // tego status partial nawet z pełnymi pcc + device.
-    expect(matrix.sc_1f).toBe('partial');
-    expect(matrix.sc_2fg).toBe('partial');
+    // Karta FAB-L: solver nie wymaga od TEGO wytwórcy żadnej dodatkowej danej
+    // dla zwarć z udziałem ziemi (`fault_current_data_ref` usunięty razem z
+    // `DER_FAULT_CURRENT_DATA_CATALOG` — zero konsumenta solvera).
+    expect(matrix.sc_1f).toBe('ready');
+    expect(matrix.sc_2fg).toBe('ready');
     expect(matrix.q_u).toBe('ready');
     // Brak LVRT/HVRT curve → frt/hvrt blocked
     expect(matrix.frt).toBe('blocked');
@@ -70,10 +77,10 @@ describe('computeDerReadinessMatrix — agregacja gotowości DER', () => {
     const matrix = computeDerReadinessMatrix(
       makeDer({
         profiles: {
+          ...EMPTY_DER_PROFILES,
           nc_rfg_profile_ref: 'ncrfg_pse',
           lvrt_curve_ref: 'lvrt_pse_b',
           hvrt_curve_ref: 'hvrt_pse_b',
-          regulation_profile_ref: null,
         },
         catalogs: {
           ...EMPTY_DER_CATALOGS,
@@ -328,71 +335,68 @@ describe('sumStationLoadImportKw (V12K-226)', () => {
   });
 });
 
-describe('osie niesymetryczne: powod stanu „czesciowo" (V12K-226)', () => {
-  function derBezDanychZwarciowych(): StationDerConnection {
+describe('osie niesymetryczne: SC1F/SC2FG pokrywają się z SC3F/SC2F (karta FAB-L)', () => {
+  // Karta FAB-L (inwentarz solvera IEC 60909, `enm/mapping.py`): dawny
+  // `fault_current_data_ref` nie miał ŻADNEGO solvera, który by go czytał —
+  // wkład składowej zerowej falownika jest STAŁĄ solvera
+  // (`contributes_zero_sequence=False`), niezależną od karty katalogowej.
+  // Kompletność Z₀ CAŁEJ sieci jest bramką MODELU (`analysis-eligibility`
+  // SC_1F), złożoną osobno (`zlozZBramkaModelu` niżej), nie osią per-DER —
+  // te testy pilnują, że SC1F/SC2FG NIE dostają już drugiego, per-DER
+  // predykatu tej samej fizyki (dawna intencja V12K-226 — „os niegotowa bez
+  // powodu to ślepy zaułek" — zostaje spełniona przez to, że oś w ogóle nie
+  // jest niegotowa z powodu składowej zerowej na tym poziomie).
+  function der(overrides: Partial<StationDerConnection> = {}): StationDerConnection {
     return {
       id: 'DER-1',
+      project_id: 'p',
       station_id: 'ST-1',
       der_kind: 'PV',
-      connection_side: 'mv_bay',
+      name: 'PV Test',
+      connection_side: 'nN',
       bus_przylaczenia_ref: 'BUS-1',
-      bay_ref: 'BAY-1',
-      lv_busbar_ref: null,
-      connection_node_ref: null,
+      bay_ref: null,
+      transformer_ref: null,
+      lv_busbar_ref: 'BUS-1',
+      sn_connection_bus_ref: null,
+      sn_connection_point_kind: null,
       nominal_power_kw: 500,
-      voltage_level_ref: null,
-      catalogs: {
-        device_catalog_ref: 'INV-1',
-        block_transformer_catalog_ref: null,
-        protection_catalog_ref: null,
-        ct_catalog_ref: null,
-        vt_catalog_ref: null,
-        fault_current_data_ref: null,
-        dynamic_model_ref: null,
-      },
-      profiles: { nc_rfg_profile_ref: null, lvrt_curve_ref: null, hvrt_curve_ref: null },
-    } as unknown as StationDerConnection;
+      unit_count: null,
+      connection_voltage_kv: null,
+      catalogs: { ...EMPTY_DER_CATALOGS, device_catalog_ref: 'INV-1' },
+      profiles: { ...EMPTY_DER_PROFILES },
+      completeness: 'complete',
+      readiness: { ...EMPTY_DER_READINESS },
+      created_at: FROZEN_NOW,
+      updated_at: FROZEN_NOW,
+      ...overrides,
+    };
   }
 
-  it('brak modelu zwarciowego daje POWOD na osiach niesymetrycznych, nie pusta liste', () => {
-    // POMIAR PRZED NAPRAWĄ: sc_1f = 'partial', blokery = [] — projektant widział
-    // „niegotowe" bez żadnej akcji naprawczej (ślepy zaułek w torze pracy).
-    const der = derBezDanychZwarciowych();
-    const matrix = computeDerReadinessMatrix(der);
-    const axes = buildAggregatedReadiness(der);
+  it.each([{}, { catalogs: { ...EMPTY_DER_CATALOGS } }, { bus_przylaczenia_ref: null }])(
+    'sc_1f/sc_2fg == sc_3f/sc_2f dla dowolnego stanu urządzenia/PCC (iloczyn cech, wariant %j)',
+    (overrides) => {
+      const matrix = computeDerReadinessMatrix(der(overrides as Partial<StationDerConnection>));
+      expect(matrix.sc_1f).toBe(matrix.sc_3f);
+      expect(matrix.sc_2fg).toBe(matrix.sc_2f);
+      expect(matrix.sc_2f).toBe(matrix.sc_3f);
+    },
+  );
 
-    expect(matrix.sc_1f).toBe('partial');
-    for (const nazwa of ['sc_1f', 'sc_2fg'] as const) {
-      const os = axes.find((a) => a.axis === nazwa);
-      const kody = (os?.blockers ?? []).map((b) => b.code);
-      expect(kody).toContain('der.fault_current_data.missing');
-    }
+  it('powody SC1F/SC2FG pokrywają się DOKŁADNIE z powodami SC3F/SC2F', () => {
+    const axes = buildAggregatedReadiness(der({ catalogs: { ...EMPTY_DER_CATALOGS } }));
+    const kodyOsi = (nazwa: string) =>
+      (axes.find((a) => a.axis === nazwa)?.blockers ?? []).map((b) => b.code);
+
+    expect(kodyOsi('sc_1f')).toEqual(kodyOsi('sc_3f'));
+    expect(kodyOsi('sc_2fg')).toEqual(kodyOsi('sc_2f'));
+    expect(kodyOsi('sc_2f')).toEqual(kodyOsi('sc_3f'));
   });
 
-  it('bloker prowadzi na zakladke, na ktorej model zwarciowy sie ustawia', () => {
-    // Akcja naprawcza bez celu jest bezużyteczna: „Model zwarciowy" jest polem
-    // zakładki zgodności przyłączeniowej, nie topologii.
-    const axes = buildAggregatedReadiness(derBezDanychZwarciowych());
-    const bloker = axes
-      .find((a) => a.axis === 'sc_1f')
-      ?.blockers.find((b) => b.code === 'der.fault_current_data.missing');
-
-    expect(bloker?.target_tab).toBe('ncrfg');
-  });
-
-  it('SC3F i SC2F nie dostaja tego blokera — skladowa zerowa ich nie dotyczy', () => {
-    // Kontrola odwrotna, WYPROWADZONA Z FIZYKI, nie z kodu: zwarcie 3-fazowe jest
-    // symetryczne (sama skladowa zgodna), a dwufazowe BEZ ZIEMI rozklada sie na
-    // zgodna i przeciwna (Z1, Z2). Zadna z nich nie ma drogi powrotnej przez ziemie,
-    // wiec zadanie danych Z0 byloby FALSZYWYM BRAKIEM — ta sama klasa bledu co
-    // „brak izolacji" zglaszany dla przewodu golego (V12K-211).
-    //
-    // Ten test zlapal blad w PIERWSZEJ wersji naprawy, ktora dodawala bloker
-    // wszystkim osiom poza SC3F, czyli takze zwarciu dwufazowemu.
-    const axes = buildAggregatedReadiness(derBezDanychZwarciowych());
-    for (const nazwa of ['sc_3f', 'sc_2f'] as const) {
-      const kody = (axes.find((a) => a.axis === nazwa)?.blockers ?? []).map((b) => b.code);
-      expect(kody).not.toContain('der.fault_current_data.missing');
+  it('kod usuniętego blokera (der.fault_current_data.missing) nie pojawia się już na żadnej osi', () => {
+    const axes = buildAggregatedReadiness(der({ catalogs: { ...EMPTY_DER_CATALOGS } }));
+    for (const os of axes) {
+      expect(os.blockers.map((b) => b.code)).not.toContain('der.fault_current_data.missing');
     }
   });
 });
@@ -471,14 +475,18 @@ describe('zlozZBramkaModelu — ocena DER + bramka modelu (V12K-231)', () => {
 
 describe('klasa przekladnika: DANA z modelu, nie szukanie w rownoleglym katalogu (V12K-232)', () => {
   function derZCt(over: Partial<StationDerConnection>): StationDerConnection {
+    // Karta FAB-K (§0 R3, KLASA NIE INSTANCJA): dawny `'mv_bay'` nigdy nie był
+    // realną wartością `ConnectionSide` — topologia przyłączenia jest tu
+    // nieistotna (testy sprawdzają wyłącznie rozwiązanie klasy przekładnika CT).
     return {
-      id: 'DER-1', station_id: 'ST-1', der_kind: 'PV', connection_side: 'mv_bay',
-      bus_przylaczenia_ref: 'BUS-1', bay_ref: 'BAY-1', lv_busbar_ref: null, connection_node_ref: null,
-      nominal_power_kw: 500, voltage_level_ref: null,
+      id: 'DER-1', station_id: 'ST-1', der_kind: 'PV', connection_side: 'nN',
+      bus_przylaczenia_ref: 'BUS-1', bay_ref: null, lv_busbar_ref: 'BUS-1',
+      sn_connection_bus_ref: null, sn_connection_point_kind: null,
+      nominal_power_kw: 500, connection_voltage_kv: null,
       catalogs: {
         device_catalog_ref: 'INV-1', block_transformer_catalog_ref: null,
         protection_catalog_ref: 'REL-1', ct_catalog_ref: 'ct_200_5_5p10_10va_abb',
-        vt_catalog_ref: 'VT-1', fault_current_data_ref: 'FC-1', dynamic_model_ref: null,
+        vt_catalog_ref: 'VT-1', dynamic_model_ref: null,
       },
       profiles: { nc_rfg_profile_ref: null, lvrt_curve_ref: null, hvrt_curve_ref: null },
       ...over,

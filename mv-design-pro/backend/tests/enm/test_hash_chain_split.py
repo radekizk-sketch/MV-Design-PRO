@@ -198,15 +198,29 @@ class TestBackwardCompatibility:
         assert h1 == h2
         assert len(h1) == 64  # SHA-256 hex
 
-    def test_compute_enm_hash_excludes_new_chain_fields_in_header(self) -> None:
-        """compute_enm_hash NIE wlicza pol semantic_hash/input_hash/itd. w header."""
+    def test_naglowek_nie_ma_pol_lancucha_hashy(self) -> None:
+        """CV-2 (H1): pola `semantic_hash`/`input_hash`/`case_hash`/`variant_hash`/
+        `switching_snapshot_hash` USUNIETE z `ENMHeader` — nigdy nie byly
+        wypelniane. Guard wskrzeszenia: pole wraca tylko z pisarzem i testem,
+        nie jako „opcjonalne na przyszlosc". Hash modelu nie moze od nich zalezec,
+        bo ich nie ma — a snapshot zastany z takim polem nadal sie wczytuje
+        (pydantic ignoruje nieznane pola naglowka) z TYM SAMYM hashem."""
+        from enm.models import ENMHeader
+
+        usuniete = (
+            "semantic_hash",
+            "input_hash",
+            "case_hash",
+            "variant_hash",
+            "switching_snapshot_hash",
+        )
+        for pole in usuniete:
+            assert pole not in ENMHeader.model_fields, pole
         enm1 = _enm()
-        enm2 = _enm()
-        enm2.header.semantic_hash = "deadbeef"
-        enm2.header.input_hash = "cafebabe"
-        enm2.header.case_hash = "12345678"
-        enm2.header.variant_hash = "abcdef00"
-        enm2.header.switching_snapshot_hash = "00ff00ff"
+        zastany = enm1.model_dump(mode="json")
+        zastany["header"]["semantic_hash"] = "deadbeef"
+        zastany["header"]["switching_snapshot_hash"] = "00ff00ff"
+        enm2 = type(enm1).model_validate(zastany)
         assert compute_enm_hash(enm1) == compute_enm_hash(enm2)
 
 

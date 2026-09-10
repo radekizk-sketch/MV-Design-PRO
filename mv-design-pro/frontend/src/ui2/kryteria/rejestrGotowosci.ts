@@ -19,7 +19,6 @@ export interface WpisRejestruGotowosci {
   readonly code: string;
   readonly message_pl: string;
   readonly level: string;
-  readonly fix_action_id: string | null;
 }
 
 let pamiec: Map<string, WpisRejestruGotowosci> | null = null;

@@ -33,7 +33,6 @@ const REJESTR = async () =>
         code: 'ct.winding_resistance_missing',
         message_pl: 'Brak rezystancji uzwojenia wtórnego przekładnika',
         level: 'WARNING',
-        fix_action_id: 'fix_ct_winding_resistance',
       },
     ],
     [
@@ -44,7 +43,6 @@ const REJESTR = async () =>
           'Nierozpoznana klasa uzwojenia przekładnika napięciowego — bez kategorii '
           + '(pomiarowe/zabezpieczeniowe) nie ma limitu zmiany napięcia',
         level: 'WARNING',
-        fix_action_id: 'fix_vt_winding_category',
       },
     ],
   ]);
@@ -112,8 +110,8 @@ describe('SekcjaBilansuCtVt — readout bilansu obwodów wtórnych', () => {
       <SekcjaBilansuCtVt
         ctRef="ct-1"
         vtRef="vt-1"
-        obwodCt={{ dlugosc_m: 25, przekroj_mm2: 4, moc_aparatow_va: 3.5 }}
-        obwodVt={{ dlugosc_m: 40, przekroj_mm2: 2.5, moc_aparatow_va: 12 }}
+        obwodCt={{ dlugosc_m: 25, przekroj_mm2: 4, moc_aparatow_va: 3.5, moc_stykow_va: null }}
+        obwodVt={{ dlugosc_m: 40, przekroj_mm2: 2.5, moc_aparatow_va: 12, moc_stykow_va: null }}
         uzwojenieVt="POMIAROWE"
         testidSufiks="1"
         klientCt={klientCt}
@@ -147,8 +145,8 @@ describe('SekcjaBilansuCtVt — readout bilansu obwodów wtórnych', () => {
       <SekcjaBilansuCtVt
         ctRef="ct-1"
         vtRef={null}
-        obwodCt={{ dlugosc_m: 25, przekroj_mm2: 4, moc_aparatow_va: 3.5 }}
-        obwodVt={{ dlugosc_m: null, przekroj_mm2: null, moc_aparatow_va: null }}
+        obwodCt={{ dlugosc_m: 25, przekroj_mm2: 4, moc_aparatow_va: 3.5, moc_stykow_va: null }}
+        obwodVt={{ dlugosc_m: null, przekroj_mm2: null, moc_aparatow_va: null, moc_stykow_va: null }}
         uzwojenieVt="POMIAROWE"
         testidSufiks="1"
         klientCt={klientCt}
@@ -186,8 +184,8 @@ describe('SekcjaBilansuCtVt — readout bilansu obwodów wtórnych', () => {
       <SekcjaBilansuCtVt
         ctRef={null}
         vtRef="vt-1"
-        obwodCt={{ dlugosc_m: null, przekroj_mm2: null, moc_aparatow_va: null }}
-        obwodVt={{ dlugosc_m: 100, przekroj_mm2: 1.5, moc_aparatow_va: 30 }}
+        obwodCt={{ dlugosc_m: null, przekroj_mm2: null, moc_aparatow_va: null, moc_stykow_va: null }}
+        obwodVt={{ dlugosc_m: 100, przekroj_mm2: 1.5, moc_aparatow_va: 30, moc_stykow_va: null }}
         uzwojenieVt="ZABEZPIECZENIOWE"
         testidSufiks="1"
         klientCt={vi.fn(async () => bilansCt())}
@@ -220,8 +218,8 @@ describe('SekcjaBilansuCtVt — readout bilansu obwodów wtórnych', () => {
       <SekcjaBilansuCtVt
         ctRef={null}
         vtRef="vt-1"
-        obwodCt={{ dlugosc_m: null, przekroj_mm2: null, moc_aparatow_va: null }}
-        obwodVt={{ dlugosc_m: 100, przekroj_mm2: 1.5, moc_aparatow_va: 30 }}
+        obwodCt={{ dlugosc_m: null, przekroj_mm2: null, moc_aparatow_va: null, moc_stykow_va: null }}
+        obwodVt={{ dlugosc_m: 100, przekroj_mm2: 1.5, moc_aparatow_va: 30, moc_stykow_va: null }}
         uzwojenieVt="POMIAROWE"
         testidSufiks="1"
         klientCt={vi.fn(async () => bilansCt())}
@@ -259,8 +257,8 @@ describe('SekcjaBilansuCtVt — readout bilansu obwodów wtórnych', () => {
       <SekcjaBilansuCtVt
         ctRef={null}
         vtRef={null}
-        obwodCt={{ dlugosc_m: null, przekroj_mm2: null, moc_aparatow_va: null }}
-        obwodVt={{ dlugosc_m: null, przekroj_mm2: null, moc_aparatow_va: null }}
+        obwodCt={{ dlugosc_m: null, przekroj_mm2: null, moc_aparatow_va: null, moc_stykow_va: null }}
+        obwodVt={{ dlugosc_m: null, przekroj_mm2: null, moc_aparatow_va: null, moc_stykow_va: null }}
         uzwojenieVt="POMIAROWE"
         testidSufiks="1"
         klientCt={vi.fn(async () => bilansCt())}
@@ -347,7 +345,7 @@ describe('komunikatyKodow', () => {
     const rejestr = new Map([
       [
         'a.b',
-        { code: 'a.b', message_pl: 'Zdanie kanonu', level: 'WARNING', fix_action_id: null },
+        { code: 'a.b', message_pl: 'Zdanie kanonu', level: 'WARNING' },
       ],
     ]);
     expect(komunikatyKodow(['a.b', 'nie.ma.takiego'], rejestr)).toEqual(['Zdanie kanonu']);

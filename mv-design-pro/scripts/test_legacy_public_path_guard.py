@@ -62,6 +62,109 @@ def read_run(run_id: str):
     assert any("[legacy-public-string]" in violation for violation in violations)
 
 
+def test_guard_rejects_public_router_importing_deleted_e3_engine(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    """Karta CV-3.3-A (2026-09-05): E3 (`ExecutionEngineService`, zero
+    konsumenta produkcyjnego) skasowany — zadna aktywna trasa nie moze go
+    wskrzesic, ani przez import modulu, ani przez sama nazwe klasy."""
+    module_path = write_module(
+        tmp_path,
+        "resurrected_e3_router.py",
+        """
+from application.execution_engine.service import ExecutionEngineService
+from fastapi import APIRouter
+
+router = APIRouter(prefix="/api/legacy-e3")
+
+@router.get("/{run_id}")
+def read_run(run_id: str):
+    engine = ExecutionEngineService()
+    return {"run_id": run_id, "engine": engine}
+""",
+    )
+    monkeypatch.setattr(guard, "active_api_module_paths", lambda: [module_path])
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+
+    violations = guard.check_legacy_public_paths()
+
+    assert any("[legacy-public-import]" in v and "execution_engine" in v for v in violations)
+    assert any("[legacy-public-name]" in v and "ExecutionEngineService" in v for v in violations)
+
+
+def test_guard_rejects_public_router_importing_deleted_unified_runs_and_r2(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    """Karta CV-3.3-A: E2-widmo (`unified_runs`/`unified_run_dispatch`) i
+    podmoduly martwe R2 (`AnalysisRunExportService`, `ResultsInspectorService`,
+    `AnalysisOrchestrator`) skasowane — ta sama zapadka pilnuje calego
+    klastra, nie jednej nazwy z karty."""
+    module_path = write_module(
+        tmp_path,
+        "resurrected_e2_r2_router.py",
+        """
+from application.analysis_run.orchestrator import AnalysisOrchestrator
+from application.unified_run_dispatch import UnifiedRunDispatchService
+from fastapi import APIRouter
+
+router = APIRouter(prefix="/api/legacy-e2")
+
+@router.get("/{run_id}")
+def read_run(run_id: str):
+    orch = AnalysisOrchestrator()
+    return {"run_id": run_id, "orch": orch, "dispatch": UnifiedRunDispatchService}
+""",
+    )
+    monkeypatch.setattr(guard, "active_api_module_paths", lambda: [module_path])
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+
+    violations = guard.check_legacy_public_paths()
+
+    assert any("orchestrator" in v for v in violations)
+    assert any("unified_run_dispatch" in v for v in violations)
+    assert any("AnalysisOrchestrator" in v for v in violations)
+
+
+def test_guard_rejects_public_router_importing_orphaned_result_mapping_cluster(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    """Karta CV-3.3-A2 (2026-09-05): `load_flow_to_resultset_v1.py`,
+    `protection_to_overlay_v1.py` i `domain/analysis_kind.py` skasowane —
+    jedyny wolajacy w `src/` byl E3/E2-widmo, oba skasowane karta CV-3.3-A.
+    `sc_binding_meta.py` i `short_circuit_to_resultset_v1.py`/
+    `protection_to_resultset_v1.py` NIE sa w tej liscie — zostaja, zamrozone
+    przez `resultset_v1_schema_guard.py` (decyzja wlasciciela, B-01)."""
+    module_path = write_module(
+        tmp_path,
+        "resurrected_result_mapping_router.py",
+        """
+from application.result_mapping.load_flow_to_resultset_v1 import map_power_flow_to_resultset_v1
+from application.result_mapping.protection_to_overlay_v1 import map_protection_to_overlay_v1
+from domain.analysis_kind import AnalysisKind
+from fastapi import APIRouter
+
+router = APIRouter(prefix="/api/legacy-result-mapping")
+
+@router.get("/{run_id}")
+def read_run(run_id: str):
+    kind = AnalysisKind.SHORT_CIRCUIT
+    return {"run_id": run_id, "kind": kind, "pf": map_power_flow_to_resultset_v1, "ov": map_protection_to_overlay_v1}
+""",
+    )
+    monkeypatch.setattr(guard, "active_api_module_paths", lambda: [module_path])
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+
+    violations = guard.check_legacy_public_paths()
+
+    assert any("load_flow_to_resultset_v1" in v for v in violations)
+    assert any("protection_to_overlay_v1" in v for v in violations)
+    assert any("analysis_kind" in v for v in violations)
+    assert any("AnalysisKind" in v for v in violations)
+
+
 def test_guard_accepts_canonical_public_router(tmp_path, monkeypatch) -> None:
     module_path = write_module(
         tmp_path,
@@ -80,3 +183,1223 @@ def read_run(run_id: str):
     monkeypatch.setattr(guard, "ROOT", tmp_path)
 
     assert guard.check_legacy_public_paths() == []
+
+
+# ---------------------------------------------------------------------------
+# CV-3.2: bramka wskrzeszenia C2 (`StudyCaseEngine`/`SolverProtocol`)
+# ---------------------------------------------------------------------------
+
+
+def test_guard_rejects_resurrected_study_case_engine_module(tmp_path, monkeypatch) -> None:
+    engine_dir = tmp_path / "backend" / "src" / "domain"
+    engine_dir.mkdir(parents=True)
+    engine_path = engine_dir / "study_case_engine.py"
+    engine_path.write_text("class StudyCaseEngine:\n    pass\n", encoding="utf-8")
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "STUDY_CASE_ENGINE_MODULE", engine_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", tmp_path / "backend" / "src")
+
+    violations = guard.check_study_case_engine_resurrection()
+
+    assert any("[resurrected-module]" in v for v in violations)
+    assert any("[resurrected-class]" in v and "StudyCaseEngine" in v for v in violations)
+
+
+def test_guard_rejects_resurrected_engine_class_in_unrelated_file(tmp_path, monkeypatch) -> None:
+    """Klasa moze wrocic pod INNA nazwa pliku — guard skanuje CALY `src`,
+    nie tylko `domain/study_case_engine.py`."""
+    src_dir = tmp_path / "backend" / "src" / "domain"
+    src_dir.mkdir(parents=True)
+    other = src_dir / "somewhere_else.py"
+    other.write_text("class SolverProtocol:\n    def solve(self) -> None: ...\n", encoding="utf-8")
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(
+        guard,
+        "STUDY_CASE_ENGINE_MODULE",
+        tmp_path / "backend" / "src" / "domain" / "missing.py",
+    )
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", tmp_path / "backend" / "src")
+
+    violations = guard.check_study_case_engine_resurrection()
+
+    assert any("[resurrected-class]" in v and "SolverProtocol" in v for v in violations)
+
+
+def test_guard_accepts_clean_tree_without_engine(tmp_path, monkeypatch) -> None:
+    src_dir = tmp_path / "backend" / "src" / "domain"
+    src_dir.mkdir(parents=True)
+    (src_dir / "study_case.py").write_text("class StudyCase:\n    pass\n", encoding="utf-8")
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(
+        guard,
+        "STUDY_CASE_ENGINE_MODULE",
+        tmp_path / "backend" / "src" / "domain" / "missing.py",
+    )
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", tmp_path / "backend" / "src")
+
+    assert guard.check_study_case_engine_resurrection() == []
+
+
+def test_guard_does_not_fire_on_engine_name_in_comment_text(tmp_path, monkeypatch) -> None:
+    """Wzmianka tekstowa (komentarz/dokstring) NIE jest definicja klasy —
+    tylko `ast.ClassDef` liczy sie jako wskrzeszenie."""
+    src_dir = tmp_path / "backend" / "src" / "domain"
+    src_dir.mkdir(parents=True)
+    (src_dir / "study_case.py").write_text(
+        '"""Patrz historyczny StudyCaseEngine (usuniety CV-3.2) po kontekst."""\n'
+        "class StudyCase:\n    pass\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(
+        guard,
+        "STUDY_CASE_ENGINE_MODULE",
+        tmp_path / "backend" / "src" / "domain" / "missing.py",
+    )
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", tmp_path / "backend" / "src")
+
+    assert guard.check_study_case_engine_resurrection() == []
+
+
+# ---------------------------------------------------------------------------
+# CV-3.2: bramka wskrzeszenia C3 (9 operacji domenowych "Study Case" v2)
+# ---------------------------------------------------------------------------
+
+
+def test_guard_rejects_resurrected_c3_op_in_canonical_operations_registry(
+    tmp_path, monkeypatch
+) -> None:
+    registry = tmp_path / "canonical_operations.py"
+    registry.write_text(
+        "CANONICAL_OPERATIONS = {\n"
+        '    "create_study_case": OperationSpec(\n'
+        '        canonical_name="create_study_case",\n'
+        "    ),\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "CANONICAL_OPS_REGISTRY", registry)
+    monkeypatch.setattr(guard, "V2_HANDLERS_MODULE", tmp_path / "missing_v2.py")
+    monkeypatch.setattr(guard, "FRONTEND_DOMAIN_OPS", tmp_path / "missing_domainOps.ts")
+
+    violations = guard.check_domain_op_registry_resurrection()
+
+    assert any("[resurrected-registry-entry]" in v and "create_study_case" in v for v in violations)
+
+
+def test_guard_rejects_resurrected_c3_op_in_v2_handlers(tmp_path, monkeypatch) -> None:
+    handlers = tmp_path / "domain_operations_v2.py"
+    handlers.write_text(
+        "def compare_study_cases(a, b):\n"
+        "    return {}\n\n\n"
+        "ALL_V2_HANDLERS = {\n"
+        '    "compare_study_cases": compare_study_cases,\n'
+        "}\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "CANONICAL_OPS_REGISTRY", tmp_path / "missing_registry.py")
+    monkeypatch.setattr(guard, "V2_HANDLERS_MODULE", handlers)
+    monkeypatch.setattr(guard, "FRONTEND_DOMAIN_OPS", tmp_path / "missing_domainOps.ts")
+
+    violations = guard.check_domain_op_registry_resurrection()
+
+    assert any(
+        "[resurrected-handler-entry]" in v and "compare_study_cases" in v for v in violations
+    )
+
+
+def test_guard_rejects_resurrected_c3_op_in_frontend_whitelist(tmp_path, monkeypatch) -> None:
+    frontend = tmp_path / "domainOps.ts"
+    frontend.write_text(
+        "export const CANONICAL_OPERATION_NAMES = [\n"
+        "  'run_time_series_power_flow',\n"
+        "] as const;\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "CANONICAL_OPS_REGISTRY", tmp_path / "missing_registry.py")
+    monkeypatch.setattr(guard, "V2_HANDLERS_MODULE", tmp_path / "missing_v2.py")
+    monkeypatch.setattr(guard, "FRONTEND_DOMAIN_OPS", frontend)
+
+    violations = guard.check_domain_op_registry_resurrection()
+
+    assert any(
+        "[resurrected-frontend-whitelist]" in v and "run_time_series_power_flow" in v
+        for v in violations
+    )
+
+
+def test_guard_does_not_fire_on_name_collisions_outside_registry(tmp_path, monkeypatch) -> None:
+    """Kolizje nazw (C1 `api/study_cases.py`/`domain/study_case.py`, E2
+    `api/enm.py`) NIE sa rejestrem — guard sprawdza WYLACZNIE 3 wskazane
+    pliki rejestru/whitelisty, wiec zywy kod pod ta sama nazwa gdziekolwiek
+    indziej w drzewie nie moze go zapalic."""
+    registry = tmp_path / "canonical_operations.py"
+    registry.write_text(
+        "CANONICAL_OPERATIONS = {\n"
+        '    "add_grid_source_sn": OperationSpec(\n'
+        '        canonical_name="add_grid_source_sn",\n'
+        "    ),\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    handlers = tmp_path / "domain_operations_v2.py"
+    handlers.write_text(
+        "def add_ct(enm, payload):\n"
+        "    return enm\n\n\n"
+        "ALL_V2_HANDLERS = {\n"
+        '    "add_ct": add_ct,\n'
+        "}\n",
+        encoding="utf-8",
+    )
+    # Zywa kolizja nazw — inny plik, inna warstwa (C1/E2), gdzie indziej w drzewie.
+    collision_dir = tmp_path / "backend" / "src" / "api"
+    collision_dir.mkdir(parents=True)
+    (collision_dir / "study_cases.py").write_text(
+        "def create_study_case(name: str) -> dict:\n"
+        '    """Zywy C1 endpoint — ta sama nazwa co skasowany C3, inna warstwa."""\n'
+        '    return {"name": name}\n\n\n'
+        "def compare_study_cases(a, b):\n"
+        '    return {"a": a, "b": b}\n\n\n'
+        "def run_short_circuit(case_id: str) -> dict:\n"
+        '    return {"case_id": case_id}\n',
+        encoding="utf-8",
+    )
+    frontend = tmp_path / "domainOps.ts"
+    frontend.write_text(
+        "export const CANONICAL_OPERATION_NAMES = [\n  'add_grid_source_sn',\n] as const;\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "CANONICAL_OPS_REGISTRY", registry)
+    monkeypatch.setattr(guard, "V2_HANDLERS_MODULE", handlers)
+    monkeypatch.setattr(guard, "FRONTEND_DOMAIN_OPS", frontend)
+
+    assert guard.check_domain_op_registry_resurrection() == []
+
+
+def test_guard_accepts_current_repo_state() -> None:
+    """Integracyjny pin: bramka na PRAWDZIWYM drzewie repo (bez monkeypatch)
+    musi byc czysta PO kasacji CV-3.2."""
+    assert guard.check_study_case_engine_resurrection() == []
+    assert guard.check_domain_op_registry_resurrection() == []
+    assert guard.check_c4_and_p24_plus_resurrection() == []
+
+
+# ---------------------------------------------------------------------------
+# CV-3.2 (drugi commit): bramka wskrzeszenia C4 (`ScenarioComparisonBuilder`,
+# `application.study_scenario`, `analysis.scenario_comparison`) + P24+
+# (`p24_plus_report`, `export_p24_plus_report_pdf`)
+# ---------------------------------------------------------------------------
+
+
+def _patch_c4_dirs(
+    monkeypatch, tmp_path, *, study_scenario=None, scenario_comparison=None, pdf=None
+):
+    """Podmien wszystkie trzy katalogi C4/P24+ na podane sciezki (domyslnie:
+    nieistniejace w tmp_path — czysty stan)."""
+    dirs = {
+        (
+            study_scenario or (tmp_path / "missing_study_scenario")
+        ): "application/study_scenario (C4)",
+        (scenario_comparison or (tmp_path / "missing_scenario_comparison")): (
+            "analysis/scenario_comparison (C4)"
+        ),
+        (pdf or (tmp_path / "missing_pdf")): "analysis/reporting/pdf (P24+)",
+    }
+    monkeypatch.setattr(guard, "FORBIDDEN_C4_DIRECTORIES", dirs)
+
+
+def test_guard_rejects_resurrected_study_scenario_directory(tmp_path, monkeypatch) -> None:
+    resurrected = tmp_path / "backend" / "src" / "application" / "study_scenario"
+    resurrected.mkdir(parents=True)
+    (resurrected / "models.py").write_text("class Study:\n    pass\n", encoding="utf-8")
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", tmp_path / "backend" / "src")
+    _patch_c4_dirs(monkeypatch, tmp_path, study_scenario=resurrected)
+
+    violations = guard.check_c4_and_p24_plus_resurrection()
+
+    assert any(
+        "[resurrected-module]" in v and "application/study_scenario" in v for v in violations
+    )
+
+
+def test_guard_rejects_resurrected_scenario_comparison_directory(tmp_path, monkeypatch) -> None:
+    resurrected = tmp_path / "backend" / "src" / "analysis" / "scenario_comparison"
+    resurrected.mkdir(parents=True)
+    (resurrected / "builder.py").write_text(
+        "class ScenarioComparisonBuilder:\n    pass\n", encoding="utf-8"
+    )
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", tmp_path / "backend" / "src")
+    _patch_c4_dirs(monkeypatch, tmp_path, scenario_comparison=resurrected)
+
+    violations = guard.check_c4_and_p24_plus_resurrection()
+
+    assert any(
+        "[resurrected-module]" in v and "analysis/scenario_comparison" in v for v in violations
+    )
+    assert any("[resurrected-class]" in v and "ScenarioComparisonBuilder" in v for v in violations)
+
+
+def test_guard_rejects_resurrected_p24_plus_directory(tmp_path, monkeypatch) -> None:
+    resurrected = tmp_path / "backend" / "src" / "analysis" / "reporting" / "pdf"
+    resurrected.mkdir(parents=True)
+    (resurrected / "p24_plus_report.py").write_text(
+        "def export_p24_plus_report_pdf():\n    pass\n", encoding="utf-8"
+    )
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", tmp_path / "backend" / "src")
+    _patch_c4_dirs(monkeypatch, tmp_path, pdf=resurrected)
+
+    violations = guard.check_c4_and_p24_plus_resurrection()
+
+    assert any("[resurrected-module]" in v and "analysis/reporting/pdf" in v for v in violations)
+    assert any(
+        "[resurrected-function]" in v and "export_p24_plus_report_pdf" in v for v in violations
+    )
+
+
+def test_guard_rejects_resurrected_class_or_function_under_other_path(
+    tmp_path, monkeypatch
+) -> None:
+    """Klasa/funkcja moze wrocic pod INNYM plikiem/katalogiem — guard skanuje
+    caly `src`, nie tylko trzy nazwane katalogi."""
+    src_dir = tmp_path / "backend" / "src" / "somewhere"
+    src_dir.mkdir(parents=True)
+    (src_dir / "sneaky.py").write_text(
+        "class ScenarioComparisonBuilder:\n    pass\n\n\n"
+        "def export_p24_plus_report_pdf():\n    pass\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", tmp_path / "backend" / "src")
+    _patch_c4_dirs(monkeypatch, tmp_path)
+
+    violations = guard.check_c4_and_p24_plus_resurrection()
+
+    assert any("[resurrected-class]" in v and "ScenarioComparisonBuilder" in v for v in violations)
+    assert any(
+        "[resurrected-function]" in v and "export_p24_plus_report_pdf" in v for v in violations
+    )
+
+
+def test_guard_does_not_fire_on_orphaned_pycache_directory(tmp_path, monkeypatch) -> None:
+    """Katalog istnieje na dysku (osierocony __pycache__ z sesji SPRZED
+    kasacji), ale nie zawiera ANI JEDNEGO .py — to NIE jest wskrzeszenie."""
+    stale = tmp_path / "backend" / "src" / "application" / "study_scenario"
+    (stale / "__pycache__").mkdir(parents=True)
+    (stale / "__pycache__" / "models.cpython-311.pyc").write_bytes(b"\x00")
+    src_dir = tmp_path / "backend" / "src"
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", src_dir)
+    _patch_c4_dirs(monkeypatch, tmp_path, study_scenario=stale)
+
+    assert guard.check_c4_and_p24_plus_resurrection() == []
+
+
+def test_guard_accepts_clean_tree_without_c4_or_p24_plus(tmp_path, monkeypatch) -> None:
+    src_dir = tmp_path / "backend" / "src" / "analysis"
+    src_dir.mkdir(parents=True)
+    (src_dir / "koperta_kontekstu.py").write_text(
+        "def pola_koperty(x):\n    return {}\n", encoding="utf-8"
+    )
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", tmp_path / "backend" / "src")
+    _patch_c4_dirs(monkeypatch, tmp_path)
+
+    assert guard.check_c4_and_p24_plus_resurrection() == []
+
+
+# ---------------------------------------------------------------------------
+# CV-4.2 (2026-09-05) — kasacja kreatora P2/S4, P5, P13.
+# ---------------------------------------------------------------------------
+
+
+def _patch_cv42_files(monkeypatch, tmp_path, **files) -> None:
+    """Podmien wszystkie trzy pliki CV-4.2 na podane sciezki (domyslnie:
+    nieistniejace w tmp_path — czysty stan)."""
+    mapping = {
+        (files.get("power_flow_input_builder") or (tmp_path / "missing_pfib.py")): (
+            "application/power_flow_input_builder.py (P5) usunięty procedurą w CV-4.2"
+        ),
+        (files.get("load_flow_input") or (tmp_path / "missing_lfi.py")): (
+            "domain/load_flow_input.py (P13) usunięty procedurą w CV-4.2"
+        ),
+        (files.get("load_flow_validation") or (tmp_path / "missing_lfv.py")): (
+            "domain/load_flow_validation.py (P13) usunięty procedurą w CV-4.2"
+        ),
+    }
+    monkeypatch.setattr(guard, "FORBIDDEN_CV42_FILES", mapping)
+
+
+def test_guard_rejects_resurrected_power_flow_input_builder_module(tmp_path, monkeypatch) -> None:
+    resurrected = tmp_path / "backend" / "src" / "application" / "power_flow_input_builder.py"
+    resurrected.parent.mkdir(parents=True)
+    resurrected.write_text("def build_power_flow_input():\n    pass\n", encoding="utf-8")
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", tmp_path / "backend" / "src")
+    _patch_cv42_files(monkeypatch, tmp_path, power_flow_input_builder=resurrected)
+
+    violations = guard.check_cv42_resurrection()
+
+    assert any(
+        "[resurrected-module]" in v and "application/power_flow_input_builder.py" in v
+        for v in violations
+    )
+    assert any("[resurrected-function]" in v and "build_power_flow_input" in v for v in violations)
+
+
+def test_guard_rejects_resurrected_load_flow_input_module(tmp_path, monkeypatch) -> None:
+    resurrected = tmp_path / "backend" / "src" / "domain" / "load_flow_input.py"
+    resurrected.parent.mkdir(parents=True)
+    resurrected.write_text("class LoadFlowRunInput:\n    pass\n", encoding="utf-8")
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", tmp_path / "backend" / "src")
+    _patch_cv42_files(monkeypatch, tmp_path, load_flow_input=resurrected)
+
+    violations = guard.check_cv42_resurrection()
+
+    assert any("[resurrected-module]" in v and "domain/load_flow_input.py" in v for v in violations)
+    assert any("[resurrected-class]" in v and "LoadFlowRunInput" in v for v in violations)
+
+
+def test_guard_rejects_resurrected_cv42_class_or_function_under_other_path(
+    tmp_path, monkeypatch
+) -> None:
+    """Klasa/funkcja moze wrocic pod INNYM plikiem — guard skanuje caly `src`,
+    nie tylko trzy nazwane pliki."""
+    src_dir = tmp_path / "backend" / "src" / "somewhere"
+    src_dir.mkdir(parents=True)
+    (src_dir / "sneaky.py").write_text(
+        "class ShortCircuitInput:\n    pass\n\n\n"
+        "def build_short_circuit_input():\n    pass\n\n\n"
+        "def merge_bus_components():\n    pass\n\n\n"
+        "def validate_load_flow_input():\n    pass\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", tmp_path / "backend" / "src")
+    _patch_cv42_files(monkeypatch, tmp_path)
+
+    violations = guard.check_cv42_resurrection()
+
+    assert any("[resurrected-class]" in v and "ShortCircuitInput" in v for v in violations)
+    assert any(
+        "[resurrected-function]" in v and "build_short_circuit_input" in v for v in violations
+    )
+    assert any("[resurrected-function]" in v and "merge_bus_components" in v for v in violations)
+    assert any(
+        "[resurrected-function]" in v and "validate_load_flow_input" in v for v in violations
+    )
+
+
+def test_guard_accepts_clean_tree_without_cv42_resurrection(tmp_path, monkeypatch) -> None:
+    src_dir = tmp_path / "backend" / "src" / "application" / "network_wizard"
+    src_dir.mkdir(parents=True)
+    (src_dir / "service.py").write_text(
+        "class NetworkWizardService:\n    def add_node(self, *a, **kw):\n        pass\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", tmp_path / "backend" / "src")
+    _patch_cv42_files(monkeypatch, tmp_path)
+
+    assert guard.check_cv42_resurrection() == []
+
+
+def test_guard_accepts_current_repo_state_cv42() -> None:
+    """Stan repozytorium PO karcie CV-4.2 jest zielony na tej bramce —
+    prawdziwe drzewo `backend/src`, nie sztuczne `tmp_path`."""
+    assert guard.check_cv42_resurrection() == []
+
+
+def test_guard_rejects_resurrected_own_db_engine_helpers_cv42b(tmp_path, monkeypatch) -> None:
+    """CV-4.2b: `_uow_factory_biezacy`/`_maybe_load_audit2_extensions` (wlasny silnik
+    z DATABASE_URL w torze biegow) nie moga wrocic pod ZADNYM plikiem `src`."""
+    src_dir = tmp_path / "backend" / "src" / "enm"
+    src_dir.mkdir(parents=True)
+    (src_dir / "assembler.py").write_text(
+        "def _uow_factory_biezacy():\n    pass\n\n\n"
+        "def _maybe_load_audit2_extensions(*, project_id_str, station_id):\n    pass\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", tmp_path / "backend" / "src")
+    _patch_cv42_files(monkeypatch, tmp_path)
+
+    violations = guard.check_cv42_resurrection()
+
+    assert any(
+        "[resurrected-function]" in v and "_uow_factory_biezacy" in v and "CV-4.2b" in v
+        for v in violations
+    )
+    assert any(
+        "[resurrected-function]" in v and "_maybe_load_audit2_extensions" in v for v in violations
+    )
+
+
+def test_guard_does_not_fire_on_cv42b_names_in_comments_or_strings(tmp_path, monkeypatch) -> None:
+    """Nazwa w komentarzu/dokstringu (np. opis kasacji) to nie definicja."""
+    src_dir = tmp_path / "backend" / "src" / "enm"
+    src_dir.mkdir(parents=True)
+    (src_dir / "assembler.py").write_text(
+        '"""Wlasny silnik (`_uow_factory_biezacy`/`_maybe_load_audit2_extensions`) skasowany."""\n'
+        "# _uow_factory_biezacy nie wraca\n"
+        "def zloz_wejscie_rozplywu():\n    pass\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", tmp_path / "backend" / "src")
+    _patch_cv42_files(monkeypatch, tmp_path)
+
+    assert guard.check_cv42_resurrection() == []
+
+
+# ---------------------------------------------------------------------------
+# Karta KASACJA-DATA-MANAGER (2026-09-09) — bramka wskrzeszenia frontendowa
+# (`ui/data-manager/**`, komponent `DataManager`, typ `DataManagerRow`).
+# ---------------------------------------------------------------------------
+
+
+def _patch_data_manager_dirs(monkeypatch, tmp_path, *, data_manager_dir=None) -> None:
+    """Podmien katalog danych/frontend na sciezki pod `tmp_path` (domyslnie:
+    nieistniejacy `data-manager/` i pusty `frontend/src` — czysty stan)."""
+    frontend_src = tmp_path / "frontend" / "src"
+    frontend_src.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "FRONTEND_SRC_DIR", frontend_src)
+    monkeypatch.setattr(
+        guard, "DATA_MANAGER_DIR", data_manager_dir or (frontend_src / "ui" / "data-manager")
+    )
+
+
+def test_guard_rejects_resurrected_data_manager_directory(tmp_path, monkeypatch) -> None:
+    dm_dir = tmp_path / "frontend" / "src" / "ui" / "data-manager"
+    dm_dir.mkdir(parents=True)
+    (dm_dir / "DataManager.tsx").write_text(
+        "export function DataManager() { return null; }\n", encoding="utf-8"
+    )
+    _patch_data_manager_dirs(monkeypatch, tmp_path, data_manager_dir=dm_dir)
+
+    violations = guard.check_data_manager_resurrection()
+
+    assert any(
+        "[resurrected-module]" in v and "ui/data-manager" in v and "DataManager.tsx" in v
+        for v in violations
+    )
+    assert any("[resurrected-component]" in v and "DataManager.tsx" in v for v in violations)
+
+
+def test_guard_rejects_resurrected_component_under_other_path(tmp_path, monkeypatch) -> None:
+    """Komponent moze wrocic pod INNYM plikiem/katalogiem — guard skanuje CALY
+    `frontend/src`, nie tylko stary katalog `ui/data-manager`."""
+    sneaky_dir = tmp_path / "frontend" / "src" / "ui" / "elsewhere"
+    sneaky_dir.mkdir(parents=True)
+    (sneaky_dir / "sneaky.tsx").write_text(
+        "export const DataManager = () => null;\n", encoding="utf-8"
+    )
+    _patch_data_manager_dirs(monkeypatch, tmp_path)
+
+    violations = guard.check_data_manager_resurrection()
+
+    assert any("[resurrected-component]" in v and "sneaky.tsx" in v for v in violations)
+    # Katalog stary nie istnieje w tym scenariuszu — [resurrected-module] nie pada.
+    assert not any("[resurrected-module]" in v for v in violations)
+
+
+def test_guard_rejects_resurrected_data_manager_row_type_under_other_path(
+    tmp_path, monkeypatch
+) -> None:
+    sneaky_dir = tmp_path / "frontend" / "src" / "ui"
+    sneaky_dir.mkdir(parents=True)
+    (sneaky_dir / "types.ts").write_text(
+        "export interface DataManagerRow {\n  id: string;\n}\n", encoding="utf-8"
+    )
+    _patch_data_manager_dirs(monkeypatch, tmp_path)
+
+    violations = guard.check_data_manager_resurrection()
+
+    assert any("[resurrected-type]" in v and "types.ts" in v for v in violations)
+
+
+def test_guard_does_not_fire_on_data_manager_name_in_comment_text(tmp_path, monkeypatch) -> None:
+    """Naglowek testu cytujacy nazwe kasacji (jak `ui/__tests__/project-tree.test.ts`
+    po karcie KASACJA-DATA-MANAGER) to komentarz, nie definicja — guard milczy."""
+    ui_dir = tmp_path / "frontend" / "src" / "ui" / "__tests__"
+    ui_dir.mkdir(parents=True)
+    (ui_dir / "project-tree.test.ts").write_text(
+        "/**\n"
+        " * Kasacja 2026-09-09 (karta KASACJA-DATA-MANAGER): `ui/data-manager/**`\n"
+        " * (DataManager, DataManagerRow) usuniete razem z martwym modulem.\n"
+        " */\n"
+        "// DataManager nie wraca\n"
+        "export const cos_innego = 1;\n",
+        encoding="utf-8",
+    )
+    _patch_data_manager_dirs(monkeypatch, tmp_path)
+
+    assert guard.check_data_manager_resurrection() == []
+
+
+def test_guard_accepts_clean_tree_without_data_manager(tmp_path, monkeypatch) -> None:
+    src_dir = tmp_path / "frontend" / "src" / "ui" / "topology"
+    src_dir.mkdir(parents=True)
+    (src_dir / "ProjectTree.tsx").write_text(
+        "export function ProjectTree() { return null; }\n", encoding="utf-8"
+    )
+    _patch_data_manager_dirs(monkeypatch, tmp_path)
+
+    assert guard.check_data_manager_resurrection() == []
+
+
+def test_guard_accepts_current_repo_state_data_manager() -> None:
+    """Integracyjny pin: bramka na PRAWDZIWYM drzewie repo (bez monkeypatch)
+    musi byc czysta PO kasacji KASACJA-DATA-MANAGER."""
+    assert guard.check_data_manager_resurrection() == []
+
+
+# ---------------------------------------------------------------------------
+# CV-4.3-A4/K5 (2026-09-06) — bramka wskrzeszenia sierot E2 (`api/enm.py`
+# POST runs/{short-circuit,power-flow}) i słownika biegów V12.6 w pamięci
+# (`api/v126_academic.py::_runs`). Self-testy dopisane 2026-09-09 (odbiór karty
+# KASACJA-DATA-MANAGER: deklaracja bez testu = fałszywa pewność).
+# ---------------------------------------------------------------------------
+
+
+def _patch_cv43_a4_modules(monkeypatch, tmp_path, *, enm_src: str | None, v126_src: str | None):
+    api_dir = tmp_path / "backend" / "src" / "api"
+    api_dir.mkdir(parents=True, exist_ok=True)
+    enm_module = api_dir / "enm.py"
+    v126_module = api_dir / "v126_academic.py"
+    if enm_src is not None:
+        enm_module.write_text(enm_src, encoding="utf-8")
+    if v126_src is not None:
+        v126_module.write_text(v126_src, encoding="utf-8")
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "CV43_A4_ENM_MODULE", enm_module)
+    monkeypatch.setattr(guard, "CV43_A4_V126_MODULE", v126_module)
+
+
+def test_guard_rejects_resurrected_e2_route_functions(tmp_path, monkeypatch) -> None:
+    _patch_cv43_a4_modules(
+        monkeypatch,
+        tmp_path,
+        enm_src=(
+            "from fastapi import APIRouter\n"
+            "router = APIRouter()\n"
+            "@router.post('/api/enm/{case_id}/runs/short-circuit')\n"
+            "def run_short_circuit(case_id: str):\n"
+            "    return {}\n"
+            "@router.post('/api/enm/{case_id}/runs/power-flow')\n"
+            "async def run_power_flow(case_id: str):\n"
+            "    return {}\n"
+        ),
+        v126_src=None,
+    )
+
+    violations = guard.check_cv43_a4_resurrection()
+
+    assert [v for v in violations if "[resurrected-route]" in v and "run_short_circuit" in v]
+    assert [v for v in violations if "[resurrected-route]" in v and "run_power_flow" in v]
+    assert len(violations) == 2
+
+
+def test_guard_rejects_resurrected_v126_inmemory_registry(tmp_path, monkeypatch) -> None:
+    _patch_cv43_a4_modules(
+        monkeypatch,
+        tmp_path,
+        enm_src=None,
+        v126_src="from typing import Any\n_runs: dict[str, Any] = {}\n",
+    )
+
+    violations = guard.check_cv43_a4_resurrection()
+
+    assert len(violations) == 1
+    assert "[resurrected-inmemory-registry]" in violations[0]
+    assert "_runs" in violations[0] and "v126_academic.py:2" in violations[0]
+
+
+def test_guard_ignores_local_variable_named_like_registry(tmp_path, monkeypatch) -> None:
+    """Zmienna lokalna `_runs` w funkcji pomocniczej nie jest rejestrem w pamięci
+    procesu — guard patrzy wyłącznie na przypisania najwyższego poziomu."""
+    _patch_cv43_a4_modules(
+        monkeypatch,
+        tmp_path,
+        enm_src="def zdrowy_endpoint():\n    return {}\n",
+        v126_src=(
+            "def _zbierz(biegi):\n" "    _runs = {b.id: b for b in biegi}\n" "    return _runs\n"
+        ),
+    )
+
+    assert guard.check_cv43_a4_resurrection() == []
+
+
+def test_guard_accepts_missing_cv43_a4_modules(tmp_path, monkeypatch) -> None:
+    _patch_cv43_a4_modules(monkeypatch, tmp_path, enm_src=None, v126_src=None)
+
+    assert guard.check_cv43_a4_resurrection() == []
+
+
+def test_real_repo_has_no_cv43_a4_resurrection() -> None:
+    """Pin na prawdziwym repo: sieroty E2 i słownik `_runs` nie wróciły."""
+    assert guard.check_cv43_a4_resurrection() == []
+
+
+# ---------------------------------------------------------------------------
+# W1 (2026-09-09): legacy persystencja sieci nie wraca
+# ---------------------------------------------------------------------------
+
+
+def _patch_w1_tree(monkeypatch, tmp_path) -> Path:
+    src = tmp_path / "backend" / "src"
+    src.mkdir(parents=True)
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", src)
+    return src
+
+
+def _models_z_tabelami(nazwy: list[str]) -> str:
+    return "".join(f'class T{i}(Base):\n    __tablename__ = "{n}"\n\n' for i, n in enumerate(nazwy))
+
+
+def test_guard_rejects_resurrected_w1_legacy_module(tmp_path, monkeypatch) -> None:
+    src = _patch_w1_tree(monkeypatch, tmp_path)
+    (src / "network_model").mkdir()
+    (src / "network_model" / "sld_projection.py").write_text("x = 1\n", encoding="utf-8")
+    # Wskrzeszony PAKIET = zrodlo w srodku (goly katalog to nie modul — patrz
+    # `zrodlo_istnieje` i test osieroconego `__pycache__` nizej).
+    (src / "application" / "sld").mkdir(parents=True)
+    (src / "application" / "sld" / "__init__.py").write_text("", encoding="utf-8")
+
+    violations = guard.check_w1_legacy_persistence_resurrection()
+
+    assert any("[resurrected-module]" in v and "sld_projection.py" in v for v in violations)
+    assert any("[resurrected-module]" in v and "application/sld" in v for v in violations)
+
+
+def test_guard_ignores_orphaned_pycache_only_directories(tmp_path, monkeypatch) -> None:
+    """Klasa (odbior K2, 2026-09-09): git usuwa tylko sledzone pliki, wiec po
+    kasacji pakietu na dysku zostaje `__pycache__/` z bytecode sprzed kasacji.
+    Zadna z czterech bramek wskrzeszenia (C4, CV-4.2, W1, K2) nie moze tego
+    liczyc jako wskrzeszonego modulu; zrodlo w PODPAKIECIE nadal jest lapane."""
+    src = _patch_w1_tree(monkeypatch, tmp_path)
+    monkeypatch.setattr(guard, "FRONTEND_SRC_DIR", tmp_path / "frontend" / "src")
+    monkeypatch.setattr(
+        guard,
+        "K2_REFERENCE_NETWORKS_FRONTEND_DIR",
+        tmp_path / "frontend" / "src" / "ui" / "reference-networks",
+    )
+    for rel in ("application/sld", "application/reference_networks/builders"):
+        cache = src / rel / "__pycache__"
+        cache.mkdir(parents=True)
+        (cache / "modul.cpython-311.pyc").write_bytes(b"\x00")
+    c4_dir = src / "application" / "study_scenario"
+    (c4_dir / "__pycache__").mkdir(parents=True)
+    (c4_dir / "__pycache__" / "x.cpython-311.pyc").write_bytes(b"\x00")
+    monkeypatch.setattr(
+        guard, "FORBIDDEN_C4_DIRECTORIES", {c4_dir: "application/study_scenario (C4)"}
+    )
+
+    assert guard.check_w1_legacy_persistence_resurrection() == []
+    assert guard.check_k2_reference_networks_resurrection() == []
+    assert guard.check_c4_and_p24_plus_resurrection() == []
+
+    # Zrodlo w podpakiecie — nadal wskrzeszenie (rekurencja, nie plytki glob).
+    (src / "application" / "reference_networks" / "builders" / "__init__.py").write_text(
+        "", encoding="utf-8"
+    )
+    (c4_dir / "glebiej").mkdir()
+    (c4_dir / "glebiej" / "__init__.py").write_text("", encoding="utf-8")
+    assert any(
+        "application/reference_networks" in v
+        for v in guard.check_k2_reference_networks_resurrection()
+    )
+    assert any("study_scenario" in v for v in guard.check_c4_and_p24_plus_resurrection())
+
+
+def test_guard_rejects_resurrected_w1_orm_class_and_table_under_other_path(
+    tmp_path, monkeypatch
+) -> None:
+    src = _patch_w1_tree(monkeypatch, tmp_path)
+    (src / "enm").mkdir()
+    (src / "enm" / "cokolwiek.py").write_text(
+        "class NetworkSnapshotORM(Base):\n"
+        '    __tablename__ = "network_snapshots"\n'
+        "\n\nclass Inna(Base):\n"
+        '    __tablename__ = "sld_diagrams"\n'
+        "\n\nclass NetworkWizardService:\n    pass\n",
+        encoding="utf-8",
+    )
+
+    violations = guard.check_w1_legacy_persistence_resurrection()
+
+    assert any("[resurrected-class]" in v and "NetworkSnapshotORM" in v for v in violations)
+    assert any("[resurrected-class]" in v and "NetworkWizardService" in v for v in violations)
+    assert any("[resurrected-table]" in v and "network_snapshots" in v for v in violations)
+    assert any("[resurrected-table]" in v and "sld_diagrams" in v for v in violations)
+
+
+def test_guard_pins_tablename_count_in_models(tmp_path, monkeypatch) -> None:
+    """Nowa tabela w `models.py` bez zmiany pinu = naruszenie; dokladnie pin = zielono."""
+    src = _patch_w1_tree(monkeypatch, tmp_path)
+    models = src / "infrastructure" / "persistence" / "models.py"
+    models.parent.mkdir(parents=True)
+    nazwy = [f"tabela_{i}" for i in range(guard.W1_TABLENAME_PIN)]
+    models.write_text(_models_z_tabelami(nazwy), encoding="utf-8")
+    assert guard.check_w1_legacy_persistence_resurrection() == []
+
+    models.write_text(_models_z_tabelami([*nazwy, "tabela_nowa"]), encoding="utf-8")
+    violations = guard.check_w1_legacy_persistence_resurrection()
+    assert any("[tablename-pin]" in v and str(guard.W1_TABLENAME_PIN) in v for v in violations)
+
+
+def test_guard_does_not_fire_on_w1_names_in_comments_or_strings(tmp_path, monkeypatch) -> None:
+    src = _patch_w1_tree(monkeypatch, tmp_path)
+    (src / "enm").mkdir()
+    (src / "enm" / "notatka.py").write_text(
+        "# dawniej: class NetworkSnapshotORM, tabela network_snapshots\n"
+        'OPIS = "NetworkWizardService i sld_diagrams skasowane w W1"\n',
+        encoding="utf-8",
+    )
+    assert guard.check_w1_legacy_persistence_resurrection() == []
+
+
+def test_guard_accepts_clean_tree_without_w1_resurrection(tmp_path, monkeypatch) -> None:
+    _patch_w1_tree(monkeypatch, tmp_path)
+    assert guard.check_w1_legacy_persistence_resurrection() == []
+
+
+def test_guard_accepts_current_repo_state_w1() -> None:
+    """Stan repozytorium PO W1 jest zielony na tej bramce — prawdziwe drzewo
+    `backend/src` (w tym pin liczby tabel w `models.py`), nie sztuczne `tmp_path`."""
+    assert guard.check_w1_legacy_persistence_resurrection() == []
+
+
+# ---------------------------------------------------------------------------
+# K2 (2026-09-09): bramka wskrzeszenia dialektu benchmarkow — testy dopisane przy
+# odbiorze (agent K2 zostawil bramke BEZ testow wlasnych: deklaracja bez testu =
+# falszywa pewnosc). Kazda galaz `check_k2_reference_networks_resurrection` ma
+# przypadek pozytywny; stan realnego repo ma przypadek negatywny.
+# ---------------------------------------------------------------------------
+
+
+def _patch_k2_tree(monkeypatch, tmp_path) -> tuple[Path, Path]:
+    src = _patch_w1_tree(monkeypatch, tmp_path)
+    fe = tmp_path / "frontend" / "src"
+    fe.mkdir(parents=True)
+    monkeypatch.setattr(guard, "FRONTEND_SRC_DIR", fe)
+    monkeypatch.setattr(
+        guard, "K2_REFERENCE_NETWORKS_FRONTEND_DIR", fe / "ui" / "reference-networks"
+    )
+    return src, fe
+
+
+def test_guard_rejects_resurrected_k2_backend_package_and_api_module(tmp_path, monkeypatch) -> None:
+    src, _fe = _patch_k2_tree(monkeypatch, tmp_path)
+    (src / "application" / "reference_networks").mkdir(parents=True)
+    (src / "application" / "reference_networks" / "__init__.py").write_text("", encoding="utf-8")
+    (src / "api").mkdir()
+    (src / "api" / "reference_networks.py").write_text("router = None\n", encoding="utf-8")
+
+    violations = guard.check_k2_reference_networks_resurrection()
+
+    assert any(
+        "[resurrected-module]" in v and "application/reference_networks" in v for v in violations
+    )
+    assert any("[resurrected-module]" in v and "api/reference_networks.py" in v for v in violations)
+
+
+def test_guard_rejects_k2_import_prefix_and_class_name_under_other_path(
+    tmp_path, monkeypatch
+) -> None:
+    src, _fe = _patch_k2_tree(monkeypatch, tmp_path)
+    (src / "application").mkdir()
+    (src / "application" / "inny_modul.py").write_text(
+        "from application.reference_networks.library import cokolwiek\n"
+        "\n\nclass ReferenceNetwork:\n    pass\n",
+        encoding="utf-8",
+    )
+
+    violations = guard.check_k2_reference_networks_resurrection()
+
+    assert any("[legacy-public-import]" in v and "inny_modul.py" in v for v in violations)
+    assert any("[resurrected-class]" in v and "class ReferenceNetwork" in v for v in violations)
+
+
+def test_guard_does_not_fire_on_k2_names_in_strings_or_unrelated_prefix(
+    tmp_path, monkeypatch
+) -> None:
+    src, _fe = _patch_k2_tree(monkeypatch, tmp_path)
+    (src / "application").mkdir()
+    (src / "application" / "inny_modul.py").write_text(
+        'OPIS = "application.reference_networks bylo dialektem"\n'
+        "from application.reference_networks_v2 import x\n",
+        encoding="utf-8",
+    )
+
+    assert guard.check_k2_reference_networks_resurrection() == []
+
+
+def test_guard_rejects_k2_frontend_dir_and_surface_component(tmp_path, monkeypatch) -> None:
+    _src, fe = _patch_k2_tree(monkeypatch, tmp_path)
+    (fe / "ui" / "reference-networks").mkdir(parents=True)
+    (fe / "ui" / "reference-networks" / "api.ts").write_text(
+        "export const x = 1;\n", encoding="utf-8"
+    )
+    (fe / "ui" / "workspace").mkdir(parents=True)
+    (fe / "ui" / "workspace" / "Ekran.tsx").write_text(
+        "// export function ReferenceNetworkSurface() {} — komentarz nie liczy sie\n"
+        "export function ReferenceNetworkSurface() { return null; }\n",
+        encoding="utf-8",
+    )
+
+    violations = guard.check_k2_reference_networks_resurrection()
+
+    assert any("[resurrected-module]" in v and "ui/reference-networks" in v for v in violations)
+    assert sum("[resurrected-component]" in v for v in violations) == 1
+
+
+def test_guard_accepts_clean_tree_without_k2_resurrection(tmp_path, monkeypatch) -> None:
+    _patch_k2_tree(monkeypatch, tmp_path)
+    assert guard.check_k2_reference_networks_resurrection() == []
+
+
+def test_real_repo_has_no_k2_resurrection() -> None:
+    assert guard.check_k2_reference_networks_resurrection() == []
+
+
+def test_guard_rejects_resurrected_w3d_source_compliance_module(tmp_path, monkeypatch) -> None:
+    src = _patch_w1_tree(monkeypatch, tmp_path)
+    (src / "application" / "compliance").mkdir(parents=True)
+    (src / "application" / "compliance" / "source_compliance.py").write_text(
+        "x = 1\n", encoding="utf-8"
+    )
+
+    violations = guard.check_w3d_source_compliance_resurrection()
+
+    assert any("[resurrected-module]" in v and "application/compliance" in v for v in violations)
+
+
+def test_guard_rejects_resurrected_w3d_def_under_other_path(tmp_path, monkeypatch) -> None:
+    src = _patch_w1_tree(monkeypatch, tmp_path)
+    (src / "application" / "oze").mkdir(parents=True)
+    (src / "application" / "oze" / "cokolwiek.py").write_text(
+        "def evaluate_source_compliance(x):\n    return x\n\n\n"
+        "class SourceComplianceResult:\n    pass\n",
+        encoding="utf-8",
+    )
+
+    violations = guard.check_w3d_source_compliance_resurrection()
+
+    assert any("[resurrected-def]" in v and "evaluate_source_compliance" in v for v in violations)
+    assert any("[resurrected-def]" in v and "SourceComplianceResult" in v for v in violations)
+
+
+def test_guard_rejects_resurrected_w3d_enum_member_under_other_path(tmp_path, monkeypatch) -> None:
+    src = _patch_w1_tree(monkeypatch, tmp_path)
+    (src / "domain").mkdir(parents=True)
+    (src / "domain" / "execution.py").write_text(
+        "from enum import StrEnum\n\n\n"
+        "class ExecutionAnalysisType(StrEnum):\n"
+        '    LOAD_FLOW = "LOAD_FLOW"\n'
+        '    SOURCE_COMPLIANCE = "SOURCE_COMPLIANCE"\n',
+        encoding="utf-8",
+    )
+
+    violations = guard.check_w3d_source_compliance_resurrection()
+
+    assert any(
+        "[resurrected-enum]" in v and "ExecutionAnalysisType.SOURCE_COMPLIANCE" in v
+        for v in violations
+    )
+
+
+# ---------------------------------------------------------------------------
+# W3-A (2026-09): drugi silnik fizyki IDMT nie wraca
+# ---------------------------------------------------------------------------
+
+
+def _patch_w3a_tree(monkeypatch, tmp_path) -> Path:
+    src = tmp_path / "backend" / "src"
+    src.mkdir(parents=True)
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", src)
+    return src
+
+
+def test_guard_rejects_resurrected_w3a_second_engine_module(tmp_path, monkeypatch) -> None:
+    """B-01 STOP (odkryty `guardy_z_ci.py`/`verification_phantom_paths_guard`):
+    tylko DWA z czterech plikow bridge'a SC<->Protection Engine v1 zostaly
+    faktycznie skasowane — `domain/protection_engine_v1.py` (WATCHED_PATHS
+    `solver_boundary_guard.py`) i `application/result_mapping/
+    protection_to_resultset_v1.py` (PROTECTED_FILES `resultset_v1_schema_
+    guard.py`) ZOSTALY PRZYWROCONE i NIE sa juz w `W3A_LEGACY_RELATIVE_PATHS`
+    (patrz test ponizej, ktory to jawnie pinuje)."""
+    src = _patch_w3a_tree(monkeypatch, tmp_path)
+    (src / "domain").mkdir()
+    (src / "domain" / "protection_current_source.py").write_text("x = 1\n", encoding="utf-8")
+    (src / "application").mkdir()
+    (src / "application" / "protection_current_resolver.py").write_text("x = 1\n", encoding="utf-8")
+
+    violations = guard.check_w3a_second_engine_resurrection()
+
+    assert any(
+        "[resurrected-module]" in v and "domain/protection_current_source.py" in v
+        for v in violations
+    )
+    assert any(
+        "[resurrected-module]" in v and "application/protection_current_resolver.py" in v
+        for v in violations
+    )
+
+
+def test_guard_does_not_fire_on_w3d_names_in_comments_or_strings(tmp_path, monkeypatch) -> None:
+    src = _patch_w1_tree(monkeypatch, tmp_path)
+    (src / "enm").mkdir()
+    (src / "enm" / "notatka.py").write_text(
+        "# dawniej: evaluate_source_compliance, SourceComplianceResult, "
+        "ExecutionAnalysisType.SOURCE_COMPLIANCE\n"
+        'OPIS = "source_compliance skasowany w karcie W3-D"\n',
+        encoding="utf-8",
+    )
+    assert guard.check_w3d_source_compliance_resurrection() == []
+
+
+def test_guard_accepts_clean_tree_without_w3d_resurrection(tmp_path, monkeypatch) -> None:
+    _patch_w1_tree(monkeypatch, tmp_path)
+    assert guard.check_w3d_source_compliance_resurrection() == []
+
+
+def test_guard_accepts_current_repo_state_w3d() -> None:
+    """Stan repozytorium PO W3-D jest zielony na tej bramce — prawdziwe drzewo
+    `backend/src`, nie sztuczne `tmp_path`."""
+    assert guard.check_w3d_source_compliance_resurrection() == []
+
+
+def test_guard_rejects_resurrected_w3a_class_under_other_path(tmp_path, monkeypatch) -> None:
+    """Iloczyn cech: klasa resolvera bridge'a (`ProtectionCurrentResolver`) I
+    typ błędu bridge'a (`AmbiguousMappingError`) — DWIE różne rodziny nazw
+    (serwis, wyjątek domenowy), obie muszą złapać się pod DOWOLNĄ ścieżką,
+    nie tylko pod oryginalną (już skasowaną)."""
+    src = _patch_w3a_tree(monkeypatch, tmp_path)
+    (src / "enm").mkdir()
+    (src / "enm" / "cokolwiek.py").write_text(
+        "class ProtectionCurrentResolver:\n    pass\n\n\n"
+        "class AmbiguousMappingError(Exception):\n    pass\n",
+        encoding="utf-8",
+    )
+
+    violations = guard.check_w3a_second_engine_resurrection()
+
+    assert any("[resurrected-class]" in v and "ProtectionCurrentResolver" in v for v in violations)
+    assert any("[resurrected-class]" in v and "AmbiguousMappingError" in v for v in violations)
+
+
+def test_guard_rejects_resurrected_w3a_function_under_other_path(tmp_path, monkeypatch) -> None:
+    """Zaślepka bez fizyki skasowana z `domain_operations_v2.py`
+    (`calculate_tcc_curve`, `tcc.legacy_write_disabled`) — jedyna pozostała
+    pozycja `FORBIDDEN_W3A_FUNCTION_NAMES` po B-01 STOP (funkcje
+    `protection_engine_v1.py`/`protection_to_resultset_v1.py` ZOSTAJĄ, patrz
+    test poniżej)."""
+    src = _patch_w3a_tree(monkeypatch, tmp_path)
+    (src / "enm").mkdir()
+    (src / "enm" / "cokolwiek.py").write_text(
+        "def calculate_tcc_curve(enm, payload):\n    return {}\n",
+        encoding="utf-8",
+    )
+
+    violations = guard.check_w3a_second_engine_resurrection()
+
+    assert any("[resurrected-function]" in v and "calculate_tcc_curve" in v for v in violations)
+
+
+def test_guard_does_not_fire_on_w3a_b01_stopped_names(tmp_path, monkeypatch) -> None:
+    """B-01 STOP jest CELOWY, nie przeoczeniem: `domain/protection_engine_v1.py`
+    i `application/result_mapping/protection_to_resultset_v1.py` istnieją
+    LEGALNIE (chronione, nie skasowane) — ich klasy/funkcje NIE mogą być na
+    listach zakazanych, inaczej ten guard fałszywie zapaliłby się na plikach,
+    które mają prawo istnieć. Deklaracja bez testu = fałszywa pewność
+    (CLAUDE.md, reguła KLASA NIE INSTANCJA pkt 4) — ten test PRZYPINA tę
+    obietnicę z komentarza przy `W3A_LEGACY_RELATIVE_PATHS`."""
+    src = _patch_w3a_tree(monkeypatch, tmp_path)
+    (src / "domain").mkdir()
+    (src / "domain" / "protection_engine_v1.py").write_text(
+        "class ProtectionResultSetV1:\n    pass\n\n\n"
+        "def execute_protection_v1(x):\n    return x\n",
+        encoding="utf-8",
+    )
+    (src / "application" / "result_mapping").mkdir(parents=True)
+    (src / "application" / "result_mapping" / "protection_to_resultset_v1.py").write_text(
+        "def map_protection_to_resultset_v1(x):\n    return x\n",
+        encoding="utf-8",
+    )
+    assert guard.check_w3a_second_engine_resurrection() == []
+
+
+def test_guard_does_not_fire_on_w3a_names_in_comments_or_strings(tmp_path, monkeypatch) -> None:
+    src = _patch_w3a_tree(monkeypatch, tmp_path)
+    (src / "enm").mkdir()
+    (src / "enm" / "notatka.py").write_text(
+        "# dawniej: ProtectionCurrentResolver, klasa AmbiguousMappingError\n"
+        'OPIS = "calculate_tcc_curve skasowana, domain/protection_current_source.py '
+        'skasowany w W3-A"\n',
+        encoding="utf-8",
+    )
+    assert guard.check_w3a_second_engine_resurrection() == []
+
+
+def test_guard_does_not_fire_on_w3a_shared_private_helper_names(tmp_path, monkeypatch) -> None:
+    """`_build_element_results`/`_build_global_results` (prywatne funkcje
+    skasowanego `protection_to_resultset_v1.py`) NIE są na liście zakazanych
+    nazw — te same nazwy żyją w `short_circuit_to_resultset_v1.py` (żywy
+    mapper SC, poza zakresem W3-A); zakaz nazwy złapałby fałsz-pozytyw na
+    module z tej samej rodziny plików, ale INNEGO silnika fizyki."""
+    src = _patch_w3a_tree(monkeypatch, tmp_path)
+    (src / "application").mkdir()
+    (src / "application" / "short_circuit_to_resultset_v1.py").write_text(
+        "def _build_element_results(x):\n    return x\n\n\n"
+        "def _build_global_results(x):\n    return x\n",
+        encoding="utf-8",
+    )
+    assert guard.check_w3a_second_engine_resurrection() == []
+
+
+def test_guard_accepts_clean_tree_without_w3a_resurrection(tmp_path, monkeypatch) -> None:
+    _patch_w3a_tree(monkeypatch, tmp_path)
+    assert guard.check_w3a_second_engine_resurrection() == []
+
+
+def test_w3a_gate_does_not_fire_on_w3d_names(tmp_path, monkeypatch) -> None:
+    """Bramka W3-A pilnuje WYLACZNIE drugiego silnika IDMT (docstring: 3 sprawdzenia).
+    Odbior fali 1 (4750d101) wkleil do niej hunkiem zduplikowany blok sprawdzen W3-D
+    (`FORBIDDEN_W3D_DEF_NAMES`, `ExecutionAnalysisType.SOURCE_COMPLIANCE`) — dwa
+    predykaty tej samej klasy w dwoch funkcjach = dryf oczekujacy na dane brzegowe.
+    Nazwy W3-D pod inna sciezka lapie bramka W3-D (osobny test), NIE ta."""
+    src = _patch_w3a_tree(monkeypatch, tmp_path)
+    (src / "application").mkdir()
+    (src / "application" / "cokolwiek.py").write_text(
+        "def evaluate_source_compliance(x):\n    return x\n\n\n"
+        "class ExecutionAnalysisType:\n    SOURCE_COMPLIANCE = 1\n",
+        encoding="utf-8",
+    )
+    assert guard.check_w3a_second_engine_resurrection() == []
+
+
+def test_guard_accepts_current_repo_state_w3a() -> None:
+    """Stan repozytorium PO W3-A jest zielony na tej bramce — prawdziwe drzewo
+    `backend/src`, nie sztuczne `tmp_path`."""
+    assert guard.check_w3a_second_engine_resurrection() == []
+
+
+# ---------------------------------------------------------------------------
+# W3-C1 (2026-09-09): kasacja V12K-189 (metodyka nastaw nadprądowych) nie wraca
+# ---------------------------------------------------------------------------
+
+
+def _patch_w3c1_tree(monkeypatch, tmp_path) -> Path:
+    src = tmp_path / "backend" / "src"
+    src.mkdir(parents=True)
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", src)
+    return src
+
+
+def test_guard_rejects_resurrected_w3c1_module(tmp_path, monkeypatch) -> None:
+    src = _patch_w3c1_tree(monkeypatch, tmp_path)
+    (src / "application" / "analyses" / "protection" / "overcurrent").mkdir(parents=True)
+    (src / "api").mkdir()
+    (src / "api" / "protection_overcurrent_settings.py").write_text("x = 1\n", encoding="utf-8")
+    (src / "application" / "analyses" / "run_envelope.py").write_text("x = 1\n", encoding="utf-8")
+
+    violations = guard.check_w3c1_overcurrent_resurrection()
+
+    assert any("[resurrected-module]" in v and "protection/overcurrent" in v for v in violations)
+    assert any(
+        "[resurrected-module]" in v and "protection_overcurrent_settings.py" in v
+        for v in violations
+    )
+    assert any("[resurrected-module]" in v and "run_envelope.py" in v for v in violations)
+
+
+def test_guard_rejects_resurrected_w3c1_name_under_other_path(tmp_path, monkeypatch) -> None:
+    src = _patch_w3c1_tree(monkeypatch, tmp_path)
+    (src / "application" / "analyses" / "protection").mkdir(parents=True)
+    (src / "application" / "analyses" / "protection" / "cokolwiek.py").write_text(
+        "def compute_overcurrent_settings(x):\n    return x\n\n\n"
+        "class OvercurrentSettingsV0:\n    pass\n\n\n"
+        "RUN_ENVELOPE_ADAPTERS = {}\n",
+        encoding="utf-8",
+    )
+
+    violations = guard.check_w3c1_overcurrent_resurrection()
+
+    assert any(
+        "[resurrected-name]" in v and "compute_overcurrent_settings" in v for v in violations
+    )
+    assert any("[resurrected-name]" in v and "OvercurrentSettingsV0" in v for v in violations)
+    assert any("[resurrected-name]" in v and "RUN_ENVELOPE_ADAPTERS" in v for v in violations)
+
+
+def test_guard_does_not_fire_on_w3c1_names_in_comments_or_strings(tmp_path, monkeypatch) -> None:
+    src = _patch_w3c1_tree(monkeypatch, tmp_path)
+    (src / "application" / "analyses").mkdir(parents=True)
+    (src / "application" / "analyses" / "notatka.py").write_text(
+        "# dawniej: compute_overcurrent_settings, OvercurrentSettingsV0\n"
+        'OPIS = "run_device_mapping_v0 i AnalysisRunEnvelope skasowane w W3-C1"\n',
+        encoding="utf-8",
+    )
+    assert guard.check_w3c1_overcurrent_resurrection() == []
+
+
+def test_guard_accepts_clean_tree_without_w3c1_resurrection(tmp_path, monkeypatch) -> None:
+    _patch_w3c1_tree(monkeypatch, tmp_path)
+    assert guard.check_w3c1_overcurrent_resurrection() == []
+
+
+def test_guard_accepts_current_repo_state_w3c1() -> None:
+    """Stan repozytorium PO W3-C1 jest zielony na tej bramce — prawdziwe drzewo
+    `backend/src`, nie sztuczne `tmp_path`."""
+    assert guard.check_w3c1_overcurrent_resurrection() == []
+
+
+# ---------------------------------------------------------------------------
+# W3-C2 (2026-09-09): trzecia metodyka nastaw I>> (FIX-12D) nie wraca
+# ---------------------------------------------------------------------------
+
+
+def _patch_w3c2_tree(monkeypatch, tmp_path) -> Path:
+    src = tmp_path / "backend" / "src"
+    src.mkdir(parents=True)
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", src)
+    return src
+
+
+def test_guard_rejects_resurrected_line_overcurrent_setting_directory(
+    tmp_path, monkeypatch
+) -> None:
+    src = _patch_w3c2_tree(monkeypatch, tmp_path)
+    katalog = src / "application" / "analyses" / "protection" / "line_overcurrent_setting"
+    katalog.mkdir(parents=True)
+    # Bramka liczy ZRODLO (`zrodlo_istnieje`, klasa z odbioru K2: osierocony
+    # `__pycache__`/pusty katalog to nie wskrzeszenie) — wskrzeszony pakiet ma plik .py.
+    (katalog / "__init__.py").write_text("", encoding="utf-8")
+
+    violations = guard.check_w3c2_line_overcurrent_setting_resurrection()
+
+    assert any("[resurrected-module]" in v and "line_overcurrent_setting" in v for v in violations)
+
+
+def test_guard_accepts_clean_tree_without_w3c2_resurrection(tmp_path, monkeypatch) -> None:
+    _patch_w3c2_tree(monkeypatch, tmp_path)
+    assert guard.check_w3c2_line_overcurrent_setting_resurrection() == []
+
+
+def test_guard_accepts_current_repo_state_w3c2() -> None:
+    """Stan repozytorium PO W3-C2 jest zielony — `line_overcurrent_setting/`
+    nie istnieje w prawdziwym drzewie `backend/src`."""
+    assert guard.check_w3c2_line_overcurrent_setting_resurrection() == []

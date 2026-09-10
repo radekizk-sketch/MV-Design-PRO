@@ -15,11 +15,16 @@ brak nastaw — defekt wygladajacy jak brak danych projektanta.
 
 from __future__ import annotations
 
+import copy
+import dataclasses
+from uuid import uuid4
+
 import pytest
 from application.analyses.wytrzymalosc_cieplna_przewodow import (
     build_wytrzymalosc_cieplna_view,
     zbuduj_dowod_cieplny,
 )
+from application.twin_key import klucz_twin_dla_przypadku
 from enm.canonical_analysis import create_run, execute_run, get_run, reset_canonical_runs
 from enm.models import Cable, ProtectionAssignment, ProtectionSetting
 from enm.store import reset_enm_store, set_enm
@@ -36,7 +41,30 @@ def _czysty_rejestr():
     reset_enm_store()
 
 
-def _przebieg(*, z_zabezpieczeniem: bool, prog_a: float = 100.0):
+def _nowy_przypadek(uow_factory) -> str:
+    """Utworz REALNY projekt + przypadek wprost przez UoW; zwroc `case_id`.
+
+    CV-1-W: `_aktualnosc_wobec_modelu` tlumaczy `run.case_id` na klucz magazynu
+    ENM przez `klucz_twin_dla_przypadku`, ktora wymaga PRAWDZIWEGO wiersza
+    StudyCase (inwariant I-2) — bez niego zwraca uczciwy stan „nie da sie
+    potwierdzic aktualnosci" (aktualny=None), nie True/False.
+    """
+    from domain.models import Project
+    from domain.study_case import StudyCase
+
+    project_id = uuid4()
+    case_id = uuid4()
+    with uow_factory() as uow:
+        uow.projects.add(Project(id=project_id, name="Test wytrzymalosci cieplnej"), commit=False)
+        uow.cases.add_study_case(
+            StudyCase(id=case_id, project_id=project_id, name="Przypadek testu"),
+            commit=False,
+        )
+        uow.commit()
+    return str(case_id)
+
+
+def _przebieg(*, z_zabezpieczeniem: bool, prog_a: float = 100.0, case_id: str = "c-cieplna"):
     """Bieg zwarciowy na sieci wzorcowej, opcjonalnie z zabezpieczeniem na sprzegle.
 
     ``sw_coupler`` to jedyny wylacznik sieci wzorcowej i lezy miedzy zasilaniem a
@@ -60,8 +88,10 @@ def _przebieg(*, z_zabezpieczeniem: bool, prog_a: float = 100.0):
                 ],
             )
         )
-    set_enm("c-cieplna", model)
-    run = execute_run(create_run(case_id="c-cieplna", analysis_type="short_circuit_sn").id)
+    set_enm(case_id, model)
+    run = execute_run(
+        create_run(case_id=case_id, klucz_twin=case_id, analysis_type="short_circuit_sn").id
+    )
     return get_run(run.id)
 
 
@@ -139,18 +169,27 @@ def test_dowod_nieznanej_galezi_jest_bledem_z_komunikatem_po_polsku() -> None:
         zbuduj_dowod_cieplny(run, "nie-ma-takiej-galezi")
 
 
-def test_raport_mowi_czy_liczby_dotycza_biezacej_wersji_modelu() -> None:
+def test_raport_mowi_czy_liczby_dotycza_biezacej_wersji_modelu(uow_factory) -> None:
     """Uwaga 12 wlasciciela: kazda zmiana modelu musi byc widoczna w raporcie.
 
     Wynik sprzed zmiany wyglada IDENTYCZNIE jak aktualny — bez tej informacji
-    projekt moglby zostac odebrany na nieaktualnym dowodzie.
+    projekt moglby zostac odebrany na nieaktualnym dowodzie. Bierze REALNY
+    przypadek (nie literal bez wiersza w bazie): bez niego `_aktualnosc_wobec_
+    modelu` nie znajduje z czym porownac model i zwraca uczciwe `aktualny=None`
+    zamiast rozstrzygniecia True/False, ktorego ten test naprawde dowodzi.
     """
-    run = _przebieg(z_zabezpieczeniem=True)
-    widok = build_wytrzymalosc_cieplna_view(run)
+    case_id = _nowy_przypadek(uow_factory)
+    run = _przebieg(z_zabezpieczeniem=True, case_id=case_id)
+    widok = build_wytrzymalosc_cieplna_view(run, uow_factory)
     assert widok["aktualnosc"]["aktualny"] is True
     assert widok["aktualnosc"]["model_hash"] == widok["aktualnosc"]["snapshot_hash"]
 
     # Zmiana modelu (nowy kabel) unieważnia podstawe biegu — raport ma to nazwac.
+    # Zapis idzie pod klucz PROJEKTU (nie surowy case_id): odczyt powyzej juz
+    # zmigrowal legacy wpis pod klucz kanoniczny (migracja jest per-projekt,
+    # jednorazowa), wiec dalsze zapisy surowym kluczem bylyby martwym legacy
+    # wpisem, ktorego kanoniczny odczyt juz nigdy nie zobaczy.
+    klucz = klucz_twin_dla_przypadku(case_id, uow_factory)
     model = build_golden_enm()
     model.branches.append(
         Cable(
@@ -163,9 +202,9 @@ def test_raport_mowi_czy_liczby_dotycza_biezacej_wersji_modelu() -> None:
             x_ohm_per_km=0.1,
         )
     )
-    set_enm("c-cieplna", model)
+    set_enm(klucz, model)
 
-    po_zmianie = build_wytrzymalosc_cieplna_view(run)
+    po_zmianie = build_wytrzymalosc_cieplna_view(run, uow_factory)
     assert po_zmianie["aktualnosc"]["aktualny"] is False
     assert "WCZESNIEJSZEJ" in po_zmianie["aktualnosc"]["powod_pl"]
 
@@ -173,3 +212,59 @@ def test_raport_mowi_czy_liczby_dotycza_biezacej_wersji_modelu() -> None:
 def test_ocena_jest_deterministyczna() -> None:
     run = _przebieg(z_zabezpieczeniem=True)
     assert build_wytrzymalosc_cieplna_view(run) == build_wytrzymalosc_cieplna_view(run)
+
+
+# --------------------------------------------------------------------------
+# FAB-E (E1): odtworzenie ShortCircuitResult/wkladow galeziowych z zapisu
+# biegu — brak wymaganego pola to uszkodzony zapis, nie fikcyjne 0.
+# --------------------------------------------------------------------------
+
+
+def _z_wierszem_wyniku(run, mutate):
+    """Kopia biegu z ZMUTOWANYM pierwszym wierszem `raw_result["results"]`."""
+    raw_result = copy.deepcopy(run.raw_result)
+    mutate(raw_result["results"][0])
+    return dataclasses.replace(run, raw_result=raw_result)
+
+
+def test_brak_pola_wyniku_zwarciowego_podnosi_wyjatek_nie_fabrykuje_zera() -> None:
+    """FAB-E (E1): brak np. ikss_a w zapisanym wierszu wyniku zwarciowego to
+    uszkodzony zapis biegu — odmowa z nazwa pola, nie fikcyjny prad 0 A
+    wpiety w ocene wytrzymalosci cieplnej przewodow."""
+    run = _przebieg(z_zabezpieczeniem=False)
+
+    def _usun_ikss(wiersz: dict) -> None:
+        del wiersz["ikss_a"]
+
+    zmutowany = _z_wierszem_wyniku(run, _usun_ikss)
+    with pytest.raises(ValueError, match="ikss_a"):
+        build_wytrzymalosc_cieplna_view(zmutowany)
+
+
+def test_brak_i_contrib_a_pomija_wklad_galeziowy_nie_fabrykuje_zera(caplog) -> None:
+    """FAB-E (E1): brak i_contrib_a w jednym wpisie wkladu galeziowego (inline,
+    KLUCZ_ROZPLYWU="branch_contributions" — patrz `pobierz_rozplyw_biegu`)
+    pomija TEN wpis (z ostrzezeniem w logu), nie fabrykuje zerowego wkladu
+    galezi w ocenie wytrzymalosci cieplnej."""
+    run = _przebieg(z_zabezpieczeniem=False)
+    fault_node_id = run.raw_result["results"][0]["fault_node_id"]
+    branch_id = next(iter(run.snapshot.get("branches", [{}])))["ref_id"]
+
+    def _dopisz_wklad_bez_i_contrib(wiersz: dict) -> None:
+        wiersz["branch_contributions"] = [
+            {
+                "source_id": "src-1",
+                "branch_id": branch_id,
+                "from_node_id": fault_node_id,
+                "to_node_id": fault_node_id,
+                "direction": "from_to",
+                # i_contrib_a CELOWO pominiete — uszkodzony wpis.
+            }
+        ]
+
+    zmutowany = _z_wierszem_wyniku(run, _dopisz_wklad_bez_i_contrib)
+    with caplog.at_level("WARNING"):
+        widok = build_wytrzymalosc_cieplna_view(zmutowany)
+    assert "i_contrib_a" in caplog.text
+    # Widok sie zbudowal (nie wyjatek) — pominiety wpis, reszta oceny dziala dalej.
+    assert widok["ocena"]["items"]

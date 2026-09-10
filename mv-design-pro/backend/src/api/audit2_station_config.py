@@ -17,12 +17,15 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from api.dependencies import get_uow_factory
+from application.twin_key import klucz_twin_dla_projektu
+from enm.store import get_enm, has_enm
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.models import StationAudit2ConfigORM
 from infrastructure.persistence.unit_of_work import UnitOfWork
+from network_model.pochodne import mw_na_kw
 from pydantic import BaseModel, Field
 
 router = APIRouter(
@@ -61,84 +64,35 @@ class StationAudit2ConfigBody(BaseModel):
 
 
 def _aggregate_loads_per_station_for_project(
-    *, uow: UnitOfWork, project_id: UUID
+    project_id: UUID, uow_factory: Callable[[], object]
 ) -> dict[str, float]:
+    """Moce czynne odbiorów [kW] zsumowane per stacja z MODELU ENM projektu.
+
+    W1: dawna agregacja czytała `project.active_network_snapshot_id` → migawkę legacy
+    (`uow.snapshots`), której żaden tor użytkownika nie zapisywał — zwracała pusty
+    słownik dla każdego projektu z kreatora. Teraz źródłem jest jedyna prawda sieci:
+    `Load.bus_ref` → stacja przez `Substation.bus_refs`. Odbiór na szynie spoza
+    stacji nie należy do żadnej stacji (nie jest doliczany nigdzie, nie jest
+    zgadywany). Przeliczenie MW→kW to zamiana jednostki, nie wielkość elektryczna.
+    Projekt bez modelu ⇒ pusty słownik. Klucz magazynu WYŁĄCZNIE przez tłumacza
+    `application/twin_key.py` (migracja zastanych plików per przypadek przed odczytem).
     """
-    Phase 49: agreguje moce odbiorow per stacja z aktywnego snapshotu projektu.
-
-    Logika:
-    1. Znajdz active_network_snapshot_id w ProjectORM.
-    2. Pobierz NetworkSnapshot z snapshot_repository.
-    3. Iteruj po snapshot.graph.loads (jesli istnieja) — sumuj p_kw per station_ref.
-
-    Zwraca dict {station_id: p_import_kw}. Pusty gdy snapshot nie istnieje
-    lub graph nie ma loads.
-    """
-    from infrastructure.persistence.models import ProjectORM
-
-    if uow.session is None or uow.snapshots is None:
+    klucz = klucz_twin_dla_projektu(project_id, uow_factory)
+    if not has_enm(klucz):
         return {}
-
-    project = uow.session.query(ProjectORM).filter(ProjectORM.id == project_id).one_or_none()
-    if project is None or not project.active_network_snapshot_id:
-        return {}
-
-    snapshot = uow.snapshots.get_snapshot(project.active_network_snapshot_id)
-    if snapshot is None:
-        return {}
-
+    enm = get_enm(klucz)
+    stacja_szyny: dict[str, str] = {}
+    for stacja in enm.substations:
+        for bus_ref in stacja.bus_refs:
+            stacja_szyny[bus_ref] = stacja.ref_id
     loads_per_station: dict[str, float] = {}
-    # NetworkGraph.loads (jesli istnieja) — agreguj p_kw per station/node attribute.
-    graph = snapshot.graph
-    raw_loads = getattr(graph, "loads", None) or {}
-    if isinstance(raw_loads, dict):
-        loads_iter = raw_loads.values()
-    else:
-        loads_iter = raw_loads
-
-    for load in loads_iter:
-        # Load model moze miec rozne pola: nominal_power_kw / p_kw / station_ref / node_id.
-        # Phase 51: explicit None check (or-chain treat 0 jako falsy bug fix).
-        station_ref = getattr(load, "station_ref", None)
-        if station_ref is None:
-            station_ref = getattr(load, "station_id", None)
-        if station_ref is None:
-            station_ref = getattr(load, "node_id", None)
-        if not station_ref:
+    for load in enm.loads:
+        stacja_ref = stacja_szyny.get(load.bus_ref)
+        if stacja_ref is None:
             continue
-
-        # Phase 51: explicit per-field check + jednostka detection.
-        # nominal_power_kw / p_kw -> juz w kW (no conversion).
-        # p_mw -> konwersja * 1000.
-        p_kw_value: float | None = None
-        if hasattr(load, "nominal_power_kw"):
-            v = load.nominal_power_kw
-            if v is not None:
-                try:
-                    p_kw_value = float(v)
-                except (TypeError, ValueError):
-                    p_kw_value = None
-        if p_kw_value is None and hasattr(load, "p_kw"):
-            v = load.p_kw
-            if v is not None:
-                try:
-                    p_kw_value = float(v)
-                except (TypeError, ValueError):
-                    p_kw_value = None
-        if p_kw_value is None and hasattr(load, "p_mw"):
-            v = load.p_mw
-            if v is not None:
-                try:
-                    p_kw_value = float(v) * 1000.0  # MW -> kW
-                except (TypeError, ValueError):
-                    p_kw_value = None
-        if p_kw_value is None:
-            continue
-
-        loads_per_station[str(station_ref)] = (
-            loads_per_station.get(str(station_ref), 0.0) + p_kw_value
+        loads_per_station[stacja_ref] = loads_per_station.get(stacja_ref, 0.0) + mw_na_kw(
+            float(load.p_mw)
         )
-
     return loads_per_station
 
 
@@ -166,13 +120,7 @@ def list_station_audit2_configs(
 ) -> list[dict[str, Any]]:
     """Lista wszystkich konfiguracji audytu 2 dla projektu."""
     with uow_factory() as uow:
-        assert uow.session is not None
-        rows = (
-            uow.session.query(StationAudit2ConfigORM)
-            .filter(StationAudit2ConfigORM.project_id == project_id)
-            .order_by(StationAudit2ConfigORM.station_id)
-            .all()
-        )
+        rows = uow.audit2_station_configs.list_for_project(project_id)
         return [_to_dict(row) for row in rows]
 
 
@@ -184,15 +132,7 @@ def get_station_audit2_config(
 ) -> dict[str, Any]:
     """Pobiera konfiguracje audytu 2 dla (project_id, station_id)."""
     with uow_factory() as uow:
-        assert uow.session is not None
-        row = (
-            uow.session.query(StationAudit2ConfigORM)
-            .filter(
-                StationAudit2ConfigORM.project_id == project_id,
-                StationAudit2ConfigORM.station_id == station_id,
-            )
-            .one_or_none()
-        )
+        row = uow.audit2_station_configs.get(project_id, station_id)
         if row is None:
             # 404 gdy brak — frontend traktuje jako pusta konfiguracja.
             raise HTTPException(
@@ -216,32 +156,11 @@ def upsert_station_audit2_config(
     Jesli nie - insert nowy.
     """
     with uow_factory() as uow:
-        assert uow.session is not None
-        existing = (
-            uow.session.query(StationAudit2ConfigORM)
-            .filter(
-                StationAudit2ConfigORM.project_id == project_id,
-                StationAudit2ConfigORM.station_id == station_id,
-            )
-            .one_or_none()
-        )
-        if existing is not None:
-            existing.mv_neutral_grounding_ref = body.mv_neutral_grounding_ref
-            existing.tap_changer_refs = list(body.tap_changer_refs)
-            existing.der_specs = [spec.model_dump() for spec in body.der_specs]
-            existing.transformer_tap_changers = dict(body.transformer_tap_changers)
-            existing.bay_hv_fuses = dict(body.bay_hv_fuses)
-            existing.bay_vts = dict(body.bay_vts)
-            existing.bay_device_withstand = {
-                k: v.model_dump() for k, v in body.bay_device_withstand.items()
-            }
-            uow.session.flush()
-            return _to_dict(existing)
-
-        new_row = StationAudit2ConfigORM(
-            id=uuid4(),
-            project_id=project_id,
-            station_id=station_id,
+        # CV-4.2b: UPSERT przez repozytorium (identyfikator istniejącego wiersza
+        # zachowany — pin `test_put_upserts_existing_config`).
+        row = uow.audit2_station_configs.upsert(
+            project_id,
+            station_id,
             mv_neutral_grounding_ref=body.mv_neutral_grounding_ref,
             tap_changer_refs=list(body.tap_changer_refs),
             der_specs=[spec.model_dump() for spec in body.der_specs],
@@ -250,9 +169,7 @@ def upsert_station_audit2_config(
             bay_vts=dict(body.bay_vts),
             bay_device_withstand={k: v.model_dump() for k, v in body.bay_device_withstand.items()},
         )
-        uow.session.add(new_row)
-        uow.session.flush()
-        return _to_dict(new_row)
+        return _to_dict(row)
 
 
 @router.delete("/{station_id:path}", status_code=status.HTTP_204_NO_CONTENT)
@@ -263,16 +180,7 @@ def delete_station_audit2_config(
 ) -> Response:
     """Usuwa konfiguracje audytu 2 dla (project_id, station_id)."""
     with uow_factory() as uow:
-        assert uow.session is not None
-        deleted = (
-            uow.session.query(StationAudit2ConfigORM)
-            .filter(
-                StationAudit2ConfigORM.project_id == project_id,
-                StationAudit2ConfigORM.station_id == station_id,
-            )
-            .delete(synchronize_session=False)
-        )
-        if deleted == 0:
+        if not uow.audit2_station_configs.delete(project_id, station_id):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Brak konfiguracji")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -291,33 +199,16 @@ def apply_audit2_to_network_model_endpoint(
 
     Endpoint dla diagnostyki + integracji UI (uruchamia adjustment przed run'em).
     """
-    from solver_input.audit2_der_payload import (
-        build_station_audit2_payload,
-        extract_solver_extensions_from_payload,
-    )
+    from solver_input.audit2_der_payload import rozszerzenia_audit2_z_konfiguracji
     from solver_input.audit2_solver_adjuster import apply_audit2_to_network_model
 
     with uow_factory() as uow:
-        assert uow.session is not None
-        cfg = (
-            uow.session.query(StationAudit2ConfigORM)
-            .filter(
-                StationAudit2ConfigORM.project_id == project_id,
-                StationAudit2ConfigORM.station_id == station_id,
-            )
-            .one_or_none()
-        )
+        cfg = uow.audit2_station_configs.get(project_id, station_id)
         if cfg is None:
             raise HTTPException(status_code=404, detail="Brak audit2 config")
 
-        payload = build_station_audit2_payload(
-            station_id=cfg.station_id,
-            mv_neutral_grounding_ref=cfg.mv_neutral_grounding_ref,
-            tap_changer_refs=list(cfg.tap_changer_refs or []),
-            der_specs=list(cfg.der_specs or []),
-            transformer_tap_changers=dict(cfg.transformer_tap_changers or {}),
-        )
-        extensions = extract_solver_extensions_from_payload(payload)
+        # CV-4.2b: ta sama droga wiersz -> rozszerzenia co w biegu kanonicznym.
+        extensions = rozszerzenia_audit2_z_konfiguracji(cfg)
 
         # Dummy graph z transformerami z config'u (do diagnostyki integracji).
         class _DummyTr:
@@ -381,15 +272,10 @@ def validate_all_audit2(
     )
 
     with uow_factory() as uow:
-        assert uow.session is not None
-        configs = (
-            uow.session.query(StationAudit2ConfigORM)
-            .filter(StationAudit2ConfigORM.project_id == project_id)
-            .all()
-        )
+        configs = uow.audit2_station_configs.list_for_project(project_id)
         # Phase 49: pobierz aktywny snapshot projektu, aby obliczyc real
         # p_import_kw (loady) dla hosting capacity validation.
-        loads_per_station = _aggregate_loads_per_station_for_project(uow=uow, project_id=project_id)
+        loads_per_station = _aggregate_loads_per_station_for_project(project_id, uow_factory)
 
         per_station_results: list[dict[str, Any]] = []
         all_pass = True

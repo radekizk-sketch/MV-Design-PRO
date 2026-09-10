@@ -182,16 +182,17 @@ FRONTEND_PATH_EXCEPTIONS: dict[str, str] = {
         "`adresWyniku(runId, rodzaj, '/report')`, realny adres "
         "`/api/analysis-runs/{id}/results/v126/{rodzaj}/report`."
     ),
-    "/test-fixtures/sldSubstrate52s.powerflow.json": (
-        "frontend/src/screenshot-harness-main.tsx: fixtura wizualna serwowana przez "
-        "Vite jako plik statyczny z `frontend/public/test-fixtures/` (harness zrzutow "
-        "ekranu, `screenshot-harness.html`, poza glowna aplikacja SPA) — backend nigdy "
-        "nie serwuje tej sciezki i nie ma jej serwowac."
-    ),
     "/test-fixtures/{p}.enm.json": (
         "frontend/src/screenshot-harness-main.tsx: jak wyzej, nazwa fixtury wybierana "
         "parametrem `?fixture=` (`fetch(`/test-fixtures/${fixtureNameFromQuery()}.enm.json`)`) "
         "— plik statyczny Vite, nie adres backendu."
+    ),
+    "/test-fixtures/sldSubstrate52s.powerflow{p}.json": (
+        "frontend/src/screenshot-harness-main.tsx (E2E-FIX, 2026-09-05): jak "
+        "`/test-fixtures/sldSubstrate52s.powerflow.json` powyzej, sufiks wybierany "
+        "parametrem `?case=` (`fetch(`/test-fixtures/sldSubstrate52s.powerflow${suffix}.json`)`, "
+        "suffix = '' albo '.maintenance') — plik statyczny Vite z drugiego, "
+        "scenariuszowego companiona (konserwacja stacji), nie adres backendu."
     ),
 }
 

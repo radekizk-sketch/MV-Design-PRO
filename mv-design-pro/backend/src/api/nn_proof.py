@@ -14,6 +14,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
+from api.klucz_twin_dep import klucz_twin_z_sciezki
 from application.proof_engine.lv_circuit_verification_binding import (
     zbuduj_wejscie_dowodu_obwodu_nn,
 )
@@ -23,7 +24,7 @@ from application.proof_engine.packs.lv_circuit_verification import (
 )
 from application.proof_engine.proof_pack import ProofPackContext, resolve_mv_design_pro_version
 from enm.store import get_enm
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from network_model.solvers.cable_ampacity_derating import wspolczynniki_nn
 from network_model.solvers.conductor_thermal_withstand import (
     ConductorThermalInput,
@@ -96,14 +97,17 @@ class LVCircuitVerificationPackRequest(BaseModel):
 
 
 @router.post("/circuit/pack")
-def download_lv_circuit_verification_pack(payload: LVCircuitVerificationPackRequest) -> Response:
+def download_lv_circuit_verification_pack(
+    payload: LVCircuitVerificationPackRequest, request: Request
+) -> Response:
     """Pakiet dowodowy LV_CIRCUIT_VERIFICATION (ZIP) dla obwodu nN.
 
     10 kroków (Ib → Iz′ → dobór → I2 → zdolność wyłączania → I²t → ΔU →
     Ik1_min → SWZ), Formula→Data→Substitution→Result→Unit, deterministyczny
     dla identycznego modelu ENM i identycznych parametrów wejściowych.
     """
-    enm = get_enm(payload.case_id)
+    klucz = klucz_twin_z_sciezki(payload.case_id, request)
+    enm = get_enm(klucz)
 
     wspolczynniki = wspolczynniki_nn(
         srodowisko=payload.srodowisko,
@@ -180,9 +184,12 @@ def download_lv_circuit_verification_pack(payload: LVCircuitVerificationPackRequ
 
 
 @router.post("/circuit/preview")
-def preview_lv_circuit_verification_pack(payload: LVCircuitVerificationPackRequest) -> dict:
+def preview_lv_circuit_verification_pack(
+    payload: LVCircuitVerificationPackRequest, request: Request
+) -> dict:
     """Podgląd JSON pakietu (bez ZIP) — do prezentacji w UI (kroki + podsumowanie)."""
-    enm = get_enm(payload.case_id)
+    klucz = klucz_twin_z_sciezki(payload.case_id, request)
+    enm = get_enm(klucz)
 
     wspolczynniki = wspolczynniki_nn(
         srodowisko=payload.srodowisko,
@@ -264,13 +271,14 @@ class LVCircuitReportRequest(BaseModel):
 
 
 @router.post("/circuit/report")
-def build_lv_circuit_report(payload: LVCircuitReportRequest) -> dict[str, Any]:
+def build_lv_circuit_report(payload: LVCircuitReportRequest, request: Request) -> dict[str, Any]:
     """Sekcje nN raportu dla obwodu (dane źródłowe, TR, odcinki, ΔU, Ik max/min,
     SWZ, dobór) — zakres minimalny P0 (karta P0.10 §0.4, pełny spis §63 w P1).
     """
     from api.analysis_run_exports import build_nn_circuit_report_section
 
-    enm = get_enm(payload.case_id)
+    klucz = klucz_twin_z_sciezki(payload.case_id, request)
+    enm = get_enm(klucz)
     return build_nn_circuit_report_section(
         enm=enm,
         station_ref=payload.station_ref,

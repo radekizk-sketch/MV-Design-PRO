@@ -19,6 +19,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
+from network_model.ir_fields import wymagany_float
+
 
 class StationType(Enum):
     """
@@ -245,7 +247,7 @@ class Station:
             id=str(data.get("id", str(uuid.uuid4()))),
             name=str(data.get("name", "")),
             station_type=station_type,
-            voltage_level_kv=float(data.get("voltage_level_kv", 0.0)),
+            voltage_level_kv=wymagany_float(data, "voltage_level_kv", context="Station"),
             bus_ids=list(data.get("bus_ids", [])),
             branch_ids=list(data.get("branch_ids", [])),
             switch_ids=list(data.get("switch_ids", [])),

@@ -1,4 +1,4 @@
-"""Import sieci z arkusza XLSX — odczyt arkusza i zapis do modelu projektu."""
+"""Import sieci z arkusza XLSX — odczyt arkusza, kompilacja grafu do ENM i zapis modelu projektu."""
 
 from .importer import (
     BladArkusza,

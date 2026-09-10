@@ -94,7 +94,7 @@ Score: 4.38 → 9.07 / 10  (+107%, 90.7% to 10/10 target)
 - **Topology:** 105 buses, 83 branches, 21 transformers, 1 source, 11 loads, 8 generators, 1 CT + 1 VT + 1 relay
 - **20 stations unique config:** PV/BESS/FW/odbiór/hybrid/prosument
 - **3 solver runs DONE:** SC_3F (96 ms) + LF (118 ms) + PROTECTION (56 ms)
-- **Protection trip @ 165.6 ms** (IEC 60255 IDMT REX-100 ACME)
+- **Protection trip @ 165.6 ms** (IEC 60255 IDMT REF-OC-100, profil referencyjny)
 - **6/6 export formats:** DOCX 38 KB + PDF 4 KB + JSON 183 KB + proof JSON 593 KB + proof LaTeX 106 KB + proof PDF 56 KB = **982 KB deterministic per run**
 - **NC RFG:** 5 operators (ENEA active) × 4 modules (A/B/C/D)
 - **8/8 PV inverters:** NC RFG Module A compliant setpoints
@@ -194,7 +194,7 @@ follow-up**.
 | Score | **9.07 / 10** |
 | % to 10/10 | **90.7%** |
 | K20 topology | 105 buses + 8 gens + 11 loads + CT/VT/Relay |
-| Protection trip | **165.6 ms** (IEC 60255 IDMT REX-100) |
+| Protection trip | **165.6 ms** (IEC 60255 IDMT REF-OC-100) |
 | Export formats | 6/6 (982 KB deterministic per run) |
 | NC RFG | 5 operators × 4 modules |
 | Performance | <500ms 60% margin |

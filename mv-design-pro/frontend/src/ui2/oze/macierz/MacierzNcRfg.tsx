@@ -28,6 +28,7 @@ import {
 } from '../api';
 import { useNcRfgStore } from '../ncRfgStore';
 import { PanelModulu } from './PanelModulu';
+import { SekcjaZgodnosciPrzekrojowej } from './SekcjaZgodnosciPrzekrojowej';
 import { SzczegolWerdyktu } from './SzczegolWerdyktu';
 import {
   mapujMacierz,
@@ -107,6 +108,12 @@ export function MacierzNcRfg({
   const opisyBazowe = useMemo(() => zbudujModuly(ders), [ders]);
   // K6 / H-5: stan zerowy strumienia OZE prowadzi do dodania modulu wytworczego.
   const akcjaZrodlo = useAkcjaDodajZrodloOze();
+  // W3-D: nazwy modulow dla sekcji zgodnosci przekrojowej (ten sam zrodlo co
+  // kolumny macierzy — der_ref -> nazwa czytelna, zamiast surowego identyfikatora).
+  const nazwyModulowPrzekrojowe = useMemo(
+    () => Object.fromEntries(opisyBazowe.map((opis) => [opis.derRef, opis.nazwa])),
+    [opisyBazowe],
+  );
 
   // Stan biegu NC RfG — wspólny store (widoczny również w pulpicie instalacji OZE).
   const katalog = useNcRfgStore((s) => s.katalog);
@@ -401,6 +408,16 @@ export function MacierzNcRfg({
           {MACIERZ_STRINGS.bladBiegu}: {bladBiegu}
         </div>
       ) : null}
+
+      {/* W3-D (2026-09-09): zgodnosc przekrojowa — wszystkie DER modelu naraz,
+          liczona na zywo z ENM (`GET /api/ncrfg-tests/cases/{case_id}/compliance`),
+          niezaleznie od macierzy per DER ponizej (ktora wymaga recznego biegu).
+          Konsument kanonu, ktory wczesniej nie mial zadnego ekranu ui2. */}
+      <SekcjaZgodnosciPrzekrojowej
+        caseId={aktywnyPrzypadek}
+        operatorId={operatorId}
+        nazwyModulow={nazwyModulowPrzekrojowe}
+      />
 
       {certyfikat || certBraki || certBlad || certLadowanie ? (
         <section className="mvd-oze-cert" data-testid="mvd-oze-certyfikat">

@@ -43,9 +43,10 @@ vi.mock('../../../../ui/navigation/routes', () => ({
   navigateToSld: () => navigateToSldMock(),
 }));
 
-vi.mock('../../../../ui/catalog/api', () => ({
-  getCatalogErrorMessage: () => 'błąd katalogu',
-  fetchSurgeArresterTypes: () =>
+// `vi.hoisted` + `vi.fn()` (S9-5): pozwala nadpisać implementację per test
+// (`mockReturnValueOnce`), żeby symulować katalog W TRAKCIE ładowania.
+const { fetchSurgeArresterTypesMock } = vi.hoisted(() => ({
+  fetchSurgeArresterTypesMock: vi.fn(() =>
     Promise.resolve([
       {
         id: 'arrester-abb-polim-d-24kv-10ka',
@@ -60,6 +61,12 @@ vi.mock('../../../../ui/catalog/api', () => ({
         bil_protected_kv: 125,
       },
     ]),
+  ),
+}));
+
+vi.mock('../../../../ui/catalog/api', () => ({
+  getCatalogErrorMessage: () => 'błąd katalogu',
+  fetchSurgeArresterTypes: () => fetchSurgeArresterTypesMock(),
 }));
 
 async function pickType() {
@@ -81,6 +88,7 @@ describe('KreatorOgranicznikaSn — realna ścieżka', () => {
     closeFormMock.mockReset();
     executeDomainOperationMock.mockReset();
     navigateToSldMock.mockReset();
+    fetchSurgeArresterTypesMock.mockClear();
   });
 
   afterEach(() => cleanup());
@@ -130,6 +138,22 @@ describe('KreatorOgranicznikaSn — realna ścieżka', () => {
     await screen.findByRole('option', { name: /ABB POLIM-D/ });
     expect(screen.getByTestId('mvd-kreator-ogranicznik-brak-miejsca')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-kreator-ogranicznik-zapisz')).toBeDisabled();
+    expect(screen.getByTestId('mvd-kreator-ogranicznik')).toHaveAttribute('data-status', 'zablokowany');
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  /**
+   * S9-5 (`karta_e2e_s95.md`, klasa: bramka enable bez sygnału gotowości) —
+   * TEN SAM mechanizm jak w `KreatorMagistralaSn.tsx`, powtórzony w tym pliku:
+   * `zapisZablokowany` nie sprawdzał, czy katalog ograniczników już doszedł.
+   */
+  it('iloczyn cech: katalog jeszcze się ładuje × miejsce dostępne → zapis zablokowany z komunikatem', async () => {
+    fetchSurgeArresterTypesMock.mockReturnValueOnce(new Promise(() => {}));
+    render(<KreatorOgranicznikaSn />);
+
+    expect(screen.getByTestId('mvd-kreator-ogranicznik-zapisz')).toBeDisabled();
+    expect(screen.getByTestId('mvd-kreator-ogranicznik')).toHaveAttribute('data-status', 'ladowanie');
+    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/[Łł]adowanie katalogu/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 

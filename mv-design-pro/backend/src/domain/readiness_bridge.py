@@ -4,8 +4,9 @@ ROZSTRZYGNIECIE ZNALEZISKA Z8 audytu FLOW. Do tej pory w systemie zylo CZTERY re
 kodow gotowosci, prawie rozlaczne:
 
   1. `READINESS_CODES` (`domain/canonical_operations.py`) — kanon tresci: komunikat PL,
-     poziom, priorytet, `fix_action_id`, nawigacja naprawcza. Do V12K-204 nie mial
-     ZADNEGO konsumenta w czasie dzialania.
+     poziom, priorytet, nawigacja naprawcza (jedyna REALNA sciezka naprawcza — kasacja
+     fantoma bez wykonawcy opisana w `docs/v12xx/REJESTR_KONFLIKTOW.md` V12K-338).
+     Do V12K-204 nie mial ZADNEGO konsumenta w czasie dzialania.
   2. `ValidationIssue` walidatora ENM (`enm/validator.py`, kody E001..W040 i kilka
      kropkowanych) — JEDYNY realny dostawca sygnalu do UI, bo tylko walidator zna stan
      modelu. Kodow wspolnych z kanonem: ZERO.
@@ -50,8 +51,34 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     "W041": "transformer.bay_missing",
     # „Magistrala nie ma segmentow" == brak segmentu magistrali.
     "I004": "trunk.segment_missing",
+    # „Zrodlo nie jest podlaczone do istniejacej szyny" == zrodlo bez polaczenia
+    # (odbior CV-3.3-B: jedyny dawny emiter kanonu byl w skasowanym torze R2).
+    "sources.bus_missing": "source.connection_missing",
+    # CV-4.3 K7: „S''kQmin > S''kQmax / I''kQmin > I''kQmax" == dane MIN sprzeczne z MAX.
+    "sources.sk_min_exceeds_max": "source.sk_min_inconsistent",
+    # Napięcie zadane szyny bilansującej poza pasmem == nieprawidłowa nastawa napięcia.
+    "sources.u_set_pu_out_of_range": "source.u_set_pu_out_of_range",
     # „Magistrala pierscieniowa nie ma punktu normalnie otwartego" == wymog NOP.
     "I005": "ring.nop_required",
+    # Karta CV-4.1b (A3-04): generator w trybie regulacji napiecia bez nastawy U
+    # albo bez granic Q == generator w trybie regulacji napiecia bez kompletnej
+    # nastawy (ten sam warunek, `enm/validator.py` -> `domain/canonical_operations.py`).
+    "generators.voltage_control_incomplete": "generator.voltage_setpoint_missing",
+    # Domkniecie CV-4.1b (odbior): tryb regulacji napiecia bez profilu NC RfG operatora
+    # / z profilem nieznanym == brak profilu; profil bez zdolnosci voltage_control ==
+    # tryb niedopuszczony (ten sam warunek co bramka kreatora OZE, `enm/validator.py`).
+    "generators.voltage_control_profile_missing": "generator.voltage_control_profile_missing",
+    "generators.voltage_control_not_permitted": "generator.voltage_control_not_permitted",
+    # Karta W3-I (§0.15 karty konwergencji fizyki): „generator przekształtnikowy
+    # nie ma referencji katalogowej" == ten sam fakt, który gotowość zwarciowa
+    # zgłasza jako `inverter.k_sc_missing` (`application/calculation_readiness/
+    # service.py`, ta sama tabela `catalog.governance.wymagalnosc_katalogu`
+    # decyduje o obu). Poziomy się różnią (W010 = IMPORTANT: model jako całość
+    # pozostaje użyteczny; kanon = BLOCKER: TA konkretna analiza zwarciowa jest
+    # zablokowana) — to różna DOTKLIWOŚĆ tego samego faktu na różnych warstwach
+    # (walidacja modelu vs gotowość jednej analizy), nie różny warunek; most
+    # łączy fakty, nie poziomy.
+    "W010": "inverter.k_sc_missing",
 }
 
 # ---------------------------------------------------------------------------
@@ -106,6 +133,10 @@ KODY_WALIDATORA_BEZ_KANONU: dict[str, str] = {
     ),
     "sources.sk_ik_voltage_inconsistent": (
         "Kanon nie ma kodu dla niespojnosci Ik''/Sk''/napiecia zrodla."
+    ),
+    "sources.sk_min_ik_min_voltage_inconsistent": (
+        "Ta sama klasa co `sources.sk_ik_voltage_inconsistent` (CV-4.3 K7, dane MIN): "
+        "kanon nie ma kodu dla niespojnosci Ik''min/Sk''min/napiecia zrodla."
     ),
     # ------------------------------------------------------------------
     # P0.1 nN (karta P0.1, topologia obwodow nN — `enm/validator.py::_check_nn_topology`).
@@ -169,7 +200,12 @@ KODY_KANONU_ZAREZERWOWANE: dict[str, str] = {
     "nn.source.catalog_missing": _POWOD_NN,
     "nn.source.parameters_missing": _POWOD_NN,
     "nn.voltage_missing": _POWOD_NN,
-    "pv.control_mode_missing": _POWOD_NN,
+    # "pv.control_mode_missing" USUNIETE z rezerwacji (karta FAB-D2, D6):
+    # emiter jest teraz w application/calculation_readiness/service.py
+    # (`_check_power_flow`) — falownik PV bez `control_mode` w
+    # zmaterializowanych parametrach zglasza ten kod jako BLOCKER. Kod ma
+    # droge do projektanta, wiec rezerwacja bylaby od tej chwili falszywa
+    # (por. `readiness_consumption_guard.py`, niezmiennik (a)).
     "bess.energy_module_missing": _POWOD_NN,
     "bess.soc_limits_invalid": _POWOD_NN,
     "ups.backup_time_invalid": _POWOD_NN,
@@ -230,7 +266,29 @@ KODY_KANONU_ZAREZERWOWANE: dict[str, str] = {
     "protection.vt_required": "Brak emitera: wymog VT sprawdzany w kreatorze pola, nie w walidacji ENM.",
     "protection.settings_incomplete": (
         "Zastapiony przez `protection.nominal_current_missing` i "
-        "`protection.fault_current_missing` (V12K-189) — te maja emitery."
+        "`protection.fault_current_missing` (V12K-189) — kasacja W3-C1 (2026-09) "
+        "usunela ICH JEDYNY emiter razem z metodyka V12K-189: skasowany "
+        "`application/analyses/protection/overcurrent/calculator.py` definiowal "
+        "`READINESS_NOMINAL_CURRENT_MISSING`/`READINESS_FAULT_CURRENT_MISSING` i "
+        "dopisywal je do WLASNEJ listy `readiness` (zweryfikowane w historii git na "
+        "`a16f8d2b`, linie 17-18/60/70/84 pliku sprzed kasacji) — wylacznie na "
+        "uzytek prezentacji tamtej metodyki (`settings_presentation.py`, "
+        "`api/protection_overcurrent_settings.py`, oba skasowane razem z nim), bez "
+        "polaczenia z kanonicznym rejestrem `/api/readiness/registry`. Metodyka "
+        "nastaw nadpradowych jest odtad wylacznie Hoppel/IRiESD "
+        "(`application/protection_settings/`), ktora nie uzywa kodow gotowosci — "
+        "brak danych wejscia konczy sie jawnym powodem PL "
+        "(`BrakDanychNastawError`), nie kodem kanonu."
+    ),
+    "protection.nominal_current_missing": (
+        "Brak emitera po kasacji V12K-189 (karta W3-C1, 2026-09) — patrz "
+        "`protection.settings_incomplete` powyzej: jedynym miejscem, ktore "
+        "kiedykolwiek budowalo TEN kod (nie tylko go deklarowalo w rejestrze "
+        "kanonu), byl skasowany `overcurrent/calculator.py`."
+    ),
+    "protection.fault_current_missing": (
+        "Brak emitera po kasacji V12K-189 (karta W3-C1, 2026-09) — jak "
+        "`protection.nominal_current_missing` powyzej."
     ),
     "ring.endpoints_missing": "Brak emitera: warunek sprawdzany przy operacji domykania pierscienia.",
     "ring.nop_required": "Emiter przez odwzorowanie kodu walidatora I005 (nie literal w kodzie).",
@@ -275,7 +333,6 @@ def opis_kanoniczny(kod_zgloszenia: str) -> dict[str, Any] | None:
         "canonical_priority": spec.priority,
         "canonical_area": spec.area.value,
         "canonical_message_pl": spec.message_pl,
-        "canonical_fix_action_id": spec.fix_action_id,
         "canonical_fix_navigation": spec.fix_navigation,
     }
 
@@ -303,7 +360,6 @@ def widok_rejestru() -> dict[str, Any]:
             "level": spec.level.value,
             "priority": spec.priority,
             "message_pl": spec.message_pl,
-            "fix_action_id": spec.fix_action_id,
             "fix_navigation": spec.fix_navigation,
             "reserved_reason": KODY_KANONU_ZAREZERWOWANE.get(spec.code),
         }

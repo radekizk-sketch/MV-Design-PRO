@@ -78,6 +78,11 @@ import {
   type TrybRegulacji,
   type WariantPrzylaczenia,
 } from './zrodloOzeModel';
+import {
+  fetchNcRfgOperators,
+  getNcRfgOperator,
+  type NcRfgOperatorItem,
+} from '../../../ui/network-build/station-der';
 import { DoborToruSn } from './DoborToruSn';
 import { KrokAparatura, KrokZgodnosc } from './KrokiAparaturaZgodnosc';
 import { GotowoscDer } from './GotowoscDer';
@@ -120,7 +125,8 @@ function zbudujKroki(zTorem: boolean): readonly KrokKreatora[] {
 
 const OPCJE_TECH = TECHNOLOGIA_OPCJE.map((o) => ({ id: o.value, etykieta: o.label }));
 const OPCJE_WARIANT = WARIANT_OPCJE.map((o) => ({ id: o.value, etykieta: o.label }));
-const OPCJE_REGULACJA = REGULACJA_OPCJE.map((o) => ({ id: o.value, etykieta: o.label }));
+// Karta CV-4.1b (A3-04): pełna lista `REGULACJA_OPCJE` (import zamiast stałej modułowej)
+// jest bramkowana profilem NC RfG per-render — patrz `opcjeRegulacjaDostepne` w komponencie.
 const OPCJE_BESS = BESS_OPCJE.map((o) => ({ id: o.value, etykieta: o.label }));
 const OPCJE_UMIEJSCOWIENIE = [
   { id: 'NEW_FIELD', etykieta: T.umiejscowienieNowe },
@@ -133,6 +139,9 @@ const OPCJE_TRYB_PRACY = [{ id: '', etykieta: T.trybPracyBrak }, ...T.trybPracyO
 function trimmed(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
+
+type StanKataloguNcRfg = 'ladowanie' | 'gotowy' | 'blad';
+type DostepnoscTrybu = 'tak' | 'nie' | 'nieznana';
 
 export function KreatorZrodlaOze() {
   const context = useActiveOperationContext() as Record<string, unknown> | null;
@@ -191,6 +200,11 @@ export function KreatorZrodlaOze() {
   const [konwertery, setKonwertery] = useState<ConverterType[]>([]);
   const [aparaty, setAparaty] = useState<LVApparatusType[]>([]);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
+  // R5 (karta FAB-K, wzorzec E2E-S95): katalog przekształtników/aparatury nN
+  // ładuje się asynchronicznie (`fetchConverterTypes`/`fetchLvApparatusTypes`
+  // niżej) — bez tej flagi `stanGotowosci` nie mógłby odróżnić „katalog jeszcze
+  // w locie" od „katalog odpowiedział pustą listą".
+  const [katalogLadowanie, setKatalogLadowanie] = useState(true);
 
   // D4: auto-bieg obliczeń po zapisie + raport zgodności + BOM (opt-in, domyślnie tak).
   const [autoBieg, setAutoBieg] = useState(true);
@@ -212,6 +226,7 @@ export function KreatorZrodlaOze() {
   useEffect(() => {
     let cancelled = false;
     setBladKatalogu(null);
+    setKatalogLadowanie(true);
     Promise.all([fetchConverterTypes(), fetchLvApparatusTypes()])
       .then(([conv, apar]) => {
         if (cancelled) return;
@@ -223,6 +238,10 @@ export function KreatorZrodlaOze() {
         setKonwertery([]);
         setAparaty([]);
         setBladKatalogu(getCatalogErrorMessage(e));
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setKatalogLadowanie(false);
       });
     return () => {
       cancelled = true;
@@ -262,6 +281,88 @@ export function KreatorZrodlaOze() {
 
   const isBlock = dane.connection_variant === 'block_transformer';
   const KROKI = useMemo(() => zbudujKroki(isBlock), [isBlock]);
+
+  // Karta CV-4.1b (A3-04): pozycja „regulacja napięcia (U = const)" widoczna WYŁĄCZNIE,
+  // gdy profil operatora (krok „Zgodność przyłączeniowa", `dane.nc_rfg_profile_ref`)
+  // dopuszcza `voltage_control` w `reactive_power.voltage_control_modes` — kontrakt
+  // backendu (`GET /api/ncrfg-tests/catalog`), zero drugiej kopii katalogu w froncie.
+  // Pobranie WPROST (nie hak React Query `useNcRfgOperatorCatalog`) — ten sam wzorzec
+  // co `KrokZgodnosc` (`KrokiAparaturaZgodnosc.tsx`): kreator nie jest osadzony pod
+  // `QueryClientProvider` we wszystkich miejscach montowania. Pobranie BRAMKOWANE
+  // dotarciem do kroku „zgodność"/„regulacja" (nie na starcie kreatora) — `KrokZgodnosc`
+  // bramkuje swoje IDENTYCZNE pobranie samym montowaniem warunkowym (`krok === 'zgodnosc'
+  // ? <KrokZgodnosc/> : null`); tu dane są potrzebne na poziomie rodzica (opcje selecta
+  // trybu), więc bramka jest jawna w zależnościach efektu, nie w montowaniu. Bez tej
+  // bramki efekt odpalał się na KAŻDYM montowaniu kreatora (także testy, które nigdy nie
+  // docierają do kroku regulacji) i zostawiał nierozstrzygniętą aktualizację stanu poza
+  // `act()` w testach synchronicznych renderujących tylko krok początkowy.
+  const potrzebujeKatalNcRfgRegulacji =
+    krok === 'zgodnosc' || krok === 'regulacja' || krok === 'zapis';
+  const [ncRfgOperatorzyRegulacja, setNcRfgOperatorzyRegulacja] = useState<NcRfgOperatorItem[]>([]);
+  const [stanKataloguNcRfg, setStanKataloguNcRfg] = useState<StanKataloguNcRfg>('ladowanie');
+  useEffect(() => {
+    if (!potrzebujeKatalNcRfgRegulacji) return;
+    let cancelled = false;
+    setStanKataloguNcRfg('ladowanie');
+    fetchNcRfgOperators()
+      .then((operatorzy) => {
+        if (cancelled) return;
+        setNcRfgOperatorzyRegulacja(Array.isArray(operatorzy) ? [...operatorzy] : []);
+        setStanKataloguNcRfg('gotowy');
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setNcRfgOperatorzyRegulacja([]);
+        setStanKataloguNcRfg('blad');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [potrzebujeKatalNcRfgRegulacji]);
+  const profilNcRfgRegulacja = useMemo(
+    () => getNcRfgOperator(ncRfgOperatorzyRegulacja, dane.nc_rfg_profile_ref),
+    [ncRfgOperatorzyRegulacja, dane.nc_rfg_profile_ref],
+  );
+  // Dopuszczalność trybu REGULACJA_NAPIECIA jest ZNANA wyłącznie, gdy katalog operatorów
+  // NC RfG jest pobrany I profil wybrany; katalog w trakcie pobierania, błąd pobrania
+  // albo brak profilu = 'nieznana'. Stan nieznany NIE zmienia danych użytkownika —
+  // poprzedni cichy reset przy pustej liście operatorów był fallbackiem klasy A6-12
+  // (wybrany tryb znikał przed nadejściem odpowiedzi katalogu albo po jej błędzie).
+  // Wyrocznią dopuszczalności dla MODELU jest walidator ENM
+  // (`generators.voltage_control_profile_missing` / `..._not_permitted`), nie UI.
+  const dostepnoscRegulacjiNapiecia: DostepnoscTrybu = useMemo(() => {
+    if (stanKataloguNcRfg !== 'gotowy' || !profilNcRfgRegulacja) return 'nieznana';
+    return profilNcRfgRegulacja.reactive_power.voltage_control_modes.includes('voltage_control')
+      ? 'tak'
+      : 'nie';
+  }, [stanKataloguNcRfg, profilNcRfgRegulacja]);
+  // Opcja widoczna, gdy dopuszczalność jest znana i dodatnia (fail-closed bez profilu)
+  // ALBO gdy jest już wybrana przy dopuszczalności nieznanej — select nigdy nie pokazuje
+  // wartości spoza listy (zero stanu fantomowego w obie strony).
+  const opcjeRegulacjaDostepne = useMemo(
+    () =>
+      REGULACJA_OPCJE.filter(
+        (o) =>
+          o.value !== 'REGULACJA_NAPIECIA' ||
+          dostepnoscRegulacjiNapiecia === 'tak' ||
+          (dostepnoscRegulacjiNapiecia === 'nieznana' && dane.control_mode === 'REGULACJA_NAPIECIA'),
+      ).map((o) => ({ id: o.value, etykieta: o.label })),
+    [dostepnoscRegulacjiNapiecia, dane.control_mode],
+  );
+  const [komunikatRegulacjiNapiecia, setKomunikatRegulacjiNapiecia] = useState<string | null>(null);
+  // Predykat PAROWY: ten sam warunek 'nie' rządzi zniknięciem opcji i cofnięciem wyboru —
+  // profil, który cofnął dopuszczenie, cofa tryb na „Bez regulacji" Z WIDOCZNYM
+  // komunikatem (nigdy po cichu); stan nieznany zostawia wybór użytkownika nietknięty.
+  useEffect(() => {
+    if (dane.control_mode === 'REGULACJA_NAPIECIA' && dostepnoscRegulacjiNapiecia === 'nie') {
+      setDane((d) => ({ ...d, control_mode: 'WYLACZONE', u_set_pu: null }));
+      setKomunikatRegulacjiNapiecia(
+        T.regulacjaNapieciaCofnieta(
+          profilNcRfgRegulacja?.operator_name_pl ?? dane.nc_rfg_profile_ref ?? '',
+        ),
+      );
+    }
+  }, [dane.control_mode, dostepnoscRegulacjiNapiecia, profilNcRfgRegulacja, dane.nc_rfg_profile_ref]);
 
   // Szyna SN stacji (punkt przyłączenia toru DER-SN) + jej napięcie — z realnego snapshotu.
   const snBusRef = useMemo(
@@ -594,6 +695,27 @@ export function KreatorZrodlaOze() {
   const krokIndex = KROKI.findIndex((k) => k.id === krok);
   const wToku = faza === 'bieg' || faza === 'dokumenty';
 
+  /**
+   * R5 (karta FAB-K, wzorzec E2E-S95 — `KreatorMagistralaSn.tsx`): JEDNO
+   * źródło prawdy dla DWÓCH obserwowalnych powierzchni — `zablokowana`
+   * przycisku zapisu ORAZ `status`/`data-status` korzenia `KreatorRama` —
+   * żeby te dwie powierzchnie nie mogły rozjechać się w dwa niezależne
+   * warunki (reguła KLASA NIE INSTANCJA, „Predykaty parami"). Poprzednia
+   * wersja miała TYLKO `zablokowana: !hasKontekst || !activeCaseId` — bez
+   * stanu ładowania katalogu przekształtników/aparatury nN, więc przycisk
+   * był klikalny (i `KreatorRama` nie niosła żadnego `status`) w chwili, gdy
+   * katalog jeszcze leciał — zapis wtedy widziałby pustą listę urządzeń.
+   * Dotyczy WYŁĄCZNIE fazy „formularz" — `wToku`/`'gotowe"` mają WŁASNE,
+   * jawnie nazwane stany (bieg/dokumenty/zakończ), nieporównywalne z
+   * gotowością formularza przed pierwszym zapisem.
+   */
+  const stanGotowosci: 'ladowanie' | 'zablokowany' | 'gotowy' =
+    !hasKontekst || !activeCaseId
+      ? 'zablokowany'
+      : katalogLadowanie
+        ? 'ladowanie'
+        : 'gotowy';
+
   const akcjaGlowna =
     faza === 'gotowe'
       ? { etykieta: P.zakoncz, onClick: zakonczPoZapisie, testid: 'mvd-kreator-oze-zapisz' }
@@ -607,7 +729,7 @@ export function KreatorZrodlaOze() {
       : {
           etykieta: T.zapisz,
           onClick: onZapisz,
-          zablokowana: !hasKontekst || !activeCaseId,
+          zablokowana: stanGotowosci !== 'gotowy',
           testid: 'mvd-kreator-oze-zapisz',
         };
 
@@ -623,7 +745,18 @@ export function KreatorZrodlaOze() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={bledy.length > 0 ? T.walidacjaStopka : !hasKontekst ? T.brakStacjiOpis : null}
+      walidacja={
+        faza === 'gotowe' || wToku
+          ? null
+          : stanGotowosci === 'ladowanie'
+            ? T.katalogLadowanieStopka
+            : bledy.length > 0
+              ? T.walidacjaStopka
+              : !hasKontekst
+                ? T.brakStacjiOpis
+                : null
+      }
+      status={faza === 'gotowe' || wToku ? undefined : stanGotowosci}
       akcjaGlowna={akcjaGlowna}
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-oze-anuluj' }}
       krokWstecz={
@@ -829,10 +962,23 @@ export function KreatorZrodlaOze() {
             <PoleWyboru
               etykieta={T.regulacja}
               wartosc={dane.control_mode}
-              onZmiana={(v) => zmien('control_mode', v as TrybRegulacji)}
-              opcje={OPCJE_REGULACJA}
+              onZmiana={(v) => {
+                setKomunikatRegulacjiNapiecia(null);
+                zmien('control_mode', v as TrybRegulacji);
+              }}
+              opcje={opcjeRegulacjaDostepne}
               testid="mvd-kreator-oze-tryb"
             />
+            {stanKataloguNcRfg === 'blad' ? (
+              <KreatorInfo testid="mvd-kreator-oze-regulacja-katalog-blad">
+                {T.regulacjaNapieciaKatalogNiedostepny}
+              </KreatorInfo>
+            ) : null}
+            {komunikatRegulacjiNapiecia ? (
+              <KreatorInfo testid="mvd-kreator-oze-regulacja-cofnieta">
+                {komunikatRegulacjiNapiecia}
+              </KreatorInfo>
+            ) : null}
             {dane.control_mode === 'STALY_COS_PHI' ? (
               <PoleLiczbowe
                 etykieta={T.cosPhiCel}
@@ -884,6 +1030,20 @@ export function KreatorZrodlaOze() {
                   />
                 </KreatorSiatka>
               </>
+            ) : null}
+            {dane.control_mode === 'REGULACJA_NAPIECIA' ? (
+              <PoleLiczbowe
+                etykieta={T.uSetPu}
+                jednostka="pu"
+                wartosc={dane.u_set_pu}
+                onZmiana={(v) => zmien('u_set_pu', v)}
+                krok={0.001}
+                min={0.9}
+                max={1.1}
+                pomoc={T.uSetPuPomoc}
+                blad={bladDlaPola('u_set_pu')}
+                testid="mvd-kreator-oze-u-set-pu"
+              />
             ) : null}
             {trybQWymagaWartosci(dane) ? (
               <KreatorInfo><TekstZWzorami tekst={T.regulacjaPasywnaOstrzezenie} /></KreatorInfo>
@@ -1010,6 +1170,12 @@ export function KreatorZrodlaOze() {
               <RzadWartosci etykieta={T.wierszTechnologia} wartosc={technologiaLabel(dane.source_technology)} />
               <RzadWartosci etykieta={T.wierszPrzylaczenie} wartosc={wariantLabel(dane.connection_variant)} />
               <RzadWartosci etykieta={T.wierszRegulacja} wartosc={regulacjaLabel(dane.control_mode)} />
+              {dane.control_mode === 'REGULACJA_NAPIECIA' ? (
+                <RzadWartosci
+                  etykieta={T.uSetPu}
+                  wartosc={dane.u_set_pu !== null ? `${dane.u_set_pu} pu` : T.doKonfiguracji}
+                />
+              ) : null}
               {dane.source_technology === 'BESS' ? (
                 <RzadWartosci etykieta={T.bessTryb} wartosc={bessLabel(dane.bess_mode)} />
               ) : null}

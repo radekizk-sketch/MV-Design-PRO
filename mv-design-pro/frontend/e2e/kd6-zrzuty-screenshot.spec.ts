@@ -24,7 +24,7 @@ const TRAFO_ID = 'tr-sn-nn-15-04-630kva-dyn11';
 const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
 const APARAT_POLA_ID = 'sw-cb-abb-vd4-17kv-630a';
 const CT_ID = 'ct_400_5_5p20_15va_abb';
-const PRZEKAZNIK_ID = 'ACME_REX100_v1';
+const PRZEKAZNIK_ID = 'REF-OC-100';
 const CATALOG_VERSION = '2024.1';
 
 const THEMES = [
@@ -126,6 +126,8 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: catalogBinding('ZRODLO_SN', SOURCE_ID),
+    hv_voltage_kv: 110.0,
+    transformer_sn_mva: 25.0,
   });
 
   let op: DomainOpResponse = {};

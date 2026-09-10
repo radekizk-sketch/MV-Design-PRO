@@ -17,7 +17,6 @@ from api.canonical_run_views import (
     build_power_flow_export_bundle,
     build_results_index_response,
     build_short_circuit_results_response,
-    build_source_compliance_results_response,
 )
 from api.v125_contracts import build_export_artifact, build_export_policy, resolve_proof_pack_ref
 from application.analysis_run.read_model import build_trace_summary, canonicalize_json
@@ -30,7 +29,9 @@ from application.dokumentacja_wykonawcza import (
 from enm.canonical_analysis import CanonicalRun
 from fastapi import HTTPException
 from fastapi.responses import Response
+from network_model.pochodne import a_na_ka
 from network_model.reporting.czcionki import zarejestruj_czcionki
+from network_model.reporting.missing_value import format_wynik
 
 ReportProfile = Literal["osd", "wykonawczy", "audytowy"]
 ReportDetailLevel = Literal["minimalny", "standardowy", "pelny"]
@@ -44,7 +45,6 @@ ReportFocusTable = (
         "phase_state",
         "dynamic_stability",
         "automation_trace",
-        "source_compliance",
         "trace",
     ]
     | None
@@ -110,7 +110,6 @@ def normalize_report_options(
             "phase_state",
             "dynamic_stability",
             "automation_trace",
-            "source_compliance",
             "trace",
         }
         else None
@@ -147,8 +146,6 @@ def _analysis_title(run: CanonicalRun) -> str:
         return "Raport stanu fazowego SN"
     if run.analysis_type == "dynamic_stability":
         return "Raport stabilności dynamicznej"
-    if run.analysis_type == "source_compliance":
-        return "Raport zgodności źródła"
     return "Raport analizy sieci"
 
 
@@ -173,7 +170,6 @@ def _build_report_results_section(
     phase_state_results = build_phase_state_results_response(run)
     dynamic_stability_results = build_dynamic_stability_results_response(run)
     automation_trace_results = build_automation_trace_results_response(run)
-    source_compliance_results = build_source_compliance_results_response(run)
 
     if scope != "active_table" or focus_table is None:
         return {
@@ -184,7 +180,6 @@ def _build_report_results_section(
             "phase_state": phase_state_results,
             "dynamic_stability": dynamic_stability_results,
             "automation_trace": automation_trace_results,
-            "source_compliance": source_compliance_results,
         }
 
     filtered_tables = [
@@ -217,11 +212,6 @@ def _build_report_results_section(
         "automation_trace": (
             automation_trace_results
             if focus_table == "automation_trace"
-            else {"run_id": str(run.id), "rows": []}
-        ),
-        "source_compliance": (
-            source_compliance_results
-            if focus_table == "source_compliance"
             else {"run_id": str(run.id), "rows": []}
         ),
     }
@@ -379,8 +369,6 @@ def _build_generic_export_bundle(run: CanonicalRun) -> dict[str, Any]:
     elif run.analysis_type == "dynamic_stability":
         bundle["dynamic_stability"] = build_dynamic_stability_results_response(run)
         bundle["automation_trace"] = build_automation_trace_results_response(run)
-    elif run.analysis_type == "source_compliance":
-        bundle["source_compliance"] = build_source_compliance_results_response(run)
     return bundle
 
 
@@ -496,8 +484,6 @@ def build_analysis_run_export_payload(run: CanonicalRun) -> dict[str, Any]:
         payload["dynamic_stability"] = bundle["dynamic_stability"]
     if "automation_trace" in bundle:
         payload["automation_trace"] = bundle["automation_trace"]
-    if "source_compliance" in bundle:
-        payload["source_compliance"] = bundle["source_compliance"]
     return payload
 
 
@@ -518,7 +504,7 @@ def _amps_to_ka(value: Any) -> float | None:
     if value is None:
         return None
     try:
-        return float(value) / 1000.0
+        return a_na_ka(float(value))
     except (TypeError, ValueError):
         return None
 
@@ -850,10 +836,10 @@ def export_run_docx_response(
     add_row("Status zbieżności", "Zbieżny" if result.get("converged") else "Niezbieżny")
     add_row("Liczba iteracji", result.get("iterations_count"))
     add_row("Węzeł bilansujący", result.get("slack_bus_id"))
-    add_row("Całkowite straty P [MW]", f"{summary.get('total_losses_p_mw', 0):.4g}")
-    add_row("Całkowite straty Q [Mvar]", f"{summary.get('total_losses_q_mvar', 0):.4g}")
-    add_row("Min. napięcie [pu]", f"{summary.get('min_v_pu', 0):.4g}")
-    add_row("Max. napięcie [pu]", f"{summary.get('max_v_pu', 0):.4g}")
+    add_row("Całkowite straty P [MW]", format_wynik(summary.get("total_losses_p_mw"), ".4g"))
+    add_row("Całkowite straty Q [Mvar]", format_wynik(summary.get("total_losses_q_mvar"), ".4g"))
+    add_row("Min. napięcie [pu]", format_wynik(summary.get("min_v_pu"), ".4g"))
+    add_row("Max. napięcie [pu]", format_wynik(summary.get("max_v_pu"), ".4g"))
     add_row("Elementy z katalogiem", metadata.get("catalog_context_count"))
 
     doc.add_paragraph()
@@ -897,10 +883,10 @@ def export_run_docx_response(
         for bus in bus_results[:30]:
             row = bus_table.add_row().cells
             row[0].text = str(bus.get("bus_id", "—"))[:16]
-            row[1].text = f"{bus.get('v_pu', 0):.4g}"
-            row[2].text = f"{bus.get('angle_deg', 0):.2f}"
-            row[3].text = f"{bus.get('p_injected_mw', 0):.3g}"
-            row[4].text = f"{bus.get('q_injected_mvar', 0):.3g}"
+            row[1].text = format_wynik(bus.get("v_pu"), ".4g")
+            row[2].text = format_wynik(bus.get("angle_deg"), ".2f")
+            row[3].text = format_wynik(bus.get("p_injected_mw"), ".3g")
+            row[4].text = format_wynik(bus.get("q_injected_mvar"), ".3g")
         if len(bus_results) > 30:
             doc.add_paragraph(f"... oraz {len(bus_results) - 30} dodatkowych węzłów")
     else:
@@ -973,10 +959,10 @@ def export_run_pdf_response(
     summary = result.get("summary", {})
     summary_lines = [
         f"Węzeł bilansujący: {result.get('slack_bus_id', '—')}",
-        f"Całkowite straty P: {summary.get('total_losses_p_mw', 0):.4g} MW",
-        f"Całkowite straty Q: {summary.get('total_losses_q_mvar', 0):.4g} Mvar",
-        f"Min. napięcie: {summary.get('min_v_pu', 0):.4g} pu",
-        f"Max. napięcie: {summary.get('max_v_pu', 0):.4g} pu",
+        f"Całkowite straty P: {format_wynik(summary.get('total_losses_p_mw'), '.4g')} MW",
+        f"Całkowite straty Q: {format_wynik(summary.get('total_losses_q_mvar'), '.4g')} Mvar",
+        f"Min. napięcie: {format_wynik(summary.get('min_v_pu'), '.4g')} pu",
+        f"Max. napięcie: {format_wynik(summary.get('max_v_pu'), '.4g')} pu",
         f"Elementy z katalogiem: {metadata.get('catalog_context_count', 0)}",
     ]
     for line in summary_lines:
@@ -1044,8 +1030,8 @@ def export_run_pdf_response(
     for bus in result.get("bus_results", [])[:20]:
         text = (
             f"{str(bus.get('bus_id', '—'))[:12]}: "
-            f"V={bus.get('v_pu', 0):.4g} pu, "
-            f"kat={bus.get('angle_deg', 0):.2f} deg"
+            f"V={format_wynik(bus.get('v_pu'), '.4g')} pu, "
+            f"kat={format_wynik(bus.get('angle_deg'), '.2f')} deg"
         )
         canvas_obj.drawString(left_margin, y, text)
         y -= line_height
@@ -1242,21 +1228,6 @@ def export_run_report_docx_response(
                             ]
                         )
                     )
-            elif table_id == "source_compliance":
-                rows = (results_section.get("source_compliance", {}) or {}).get("rows", [])[
-                    : limits["rows"]
-                ]
-                for row_data in rows:
-                    doc.add_paragraph(
-                        " | ".join(
-                            [
-                                str(row_data.get("source_ref") or "—"),
-                                str(row_data.get("source_type") or "—"),
-                                str(row_data.get("verdict") or "—"),
-                                str(row_data.get("reporting_status") or "—"),
-                            ]
-                        )
-                    )
             else:
                 doc.add_paragraph("Brak danych tabelarycznych dla wybranego zakresu.")
 
@@ -1425,13 +1396,6 @@ def export_run_report_pdf_response(
                 ]:
                     draw_line(
                         f"{row_data.get('event_seq') or '—'} | {row_data.get('event_type') or '—'} | {row_data.get('element_id') or '—'} | {row_data.get('detail') or '—'}"
-                    )
-            elif table.get("table_id") == "source_compliance":
-                for row_data in (results_section.get("source_compliance", {}) or {}).get(
-                    "rows", []
-                )[: limits["rows"]]:
-                    draw_line(
-                        f"{row_data.get('source_ref') or '—'} | {row_data.get('source_type') or '—'} | {row_data.get('verdict') or '—'} | {row_data.get('reporting_status') or '—'}"
                     )
         y -= 2 * mm
 

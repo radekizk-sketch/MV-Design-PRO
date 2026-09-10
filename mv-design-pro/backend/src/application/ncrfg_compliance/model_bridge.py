@@ -18,6 +18,7 @@ OZE (Regulacja), zasilają koordynację/zgodność.
 from __future__ import annotations
 
 from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE, EnergyNetworkModel, Generator
+from network_model.pochodne import mw_na_kw
 
 from .checker import DerDataForCompliance
 
@@ -49,7 +50,7 @@ def build_der_compliance_from_generator(
 
     return DerDataForCompliance(
         der_ref=generator.ref_id,
-        p_max_kw=abs(generator.p_mw) * 1000.0,
+        p_max_kw=mw_na_kw(abs(generator.p_mw)),
         voltage_kv=voltage_kv,
         has_lvrt_curve=_bool_flag(meta, "has_lvrt_curve"),
         has_hvrt_curve=_bool_flag(meta, "has_hvrt_curve"),

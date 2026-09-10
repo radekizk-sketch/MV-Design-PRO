@@ -69,12 +69,12 @@ describe('GpzRenderer — kanoniczna struktura stacyjna', () => {
 
   it('LOD0 skraca długą nazwę GPZ z kodem technicznym do czytelnego oznaczenia', () => {
     const { container, queryByText, getByText } = r('gpz-a', {
-      name: 'GPZ-A Główny 110/15 kV (K30)',
+      name: 'GPZ-A Główny 110/15 kV',
     });
     const root = container.querySelector('[data-testid="sld-v2-gpz-gpz-a"]');
     expect(getByText('GPZ-A')).toBeTruthy();
-    expect(queryByText('GPZ-A Główny 110/15 kV (K30)')).toBeNull();
-    expect(root?.getAttribute('data-gpz-name')).toBe('GPZ-A Główny 110/15 kV (K30)');
+    expect(queryByText('GPZ-A Główny 110/15 kV')).toBeNull();
+    expect(root?.getAttribute('data-gpz-name')).toBe('GPZ-A Główny 110/15 kV');
   });
 });
 

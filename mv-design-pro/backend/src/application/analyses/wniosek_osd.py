@@ -189,7 +189,11 @@ def _bilans_mocy_sekcja(pf_run: CanonicalRun, bus_ref: str) -> dict[str, Any]:
     straty = next((i for i in items if i.get("check_type") == "LOSS_BUDGET"), None)
 
     installed_by_bus = _installed_mva_by_bus(pf_run.snapshot or {})
-    moc_calkowita = round(sum(installed_by_bus.values()), 6) if installed_by_bus else 0.0
+    # Suma WYŁĄCZNIE węzłów o ZNANEJ mocy zainstalowanej — węzeł z nieznaną mocą
+    # (``None``, np. źródło bez materializacji Sn) jest pominięty w sumie, a nie
+    # liczony jako 0 MVA (FAB-E, E1: brak wyniku ≠ zero; suma zaczyna się od 0.0
+    # dla zbioru pustego, co jest matematycznie poprawne — E3 klasa (b)).
+    moc_calkowita = round(sum((v for v in installed_by_bus.values() if v is not None), 0.0), 6)
     moc_w_punkcie = installed_by_bus.get(bus_ref)
 
     return {

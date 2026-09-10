@@ -27,6 +27,11 @@ import type { CSSProperties, JSX } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm, type FieldError, type FieldErrors, type Resolver, type UseFormReturn } from 'react-hook-form';
 import { z } from 'zod';
+import { useProtectionAssignment, type ElementProtectionAssignment } from '../../../protection';
+import { formatProtectionFunction } from '../../../inspector/formatProtection';
+import { fetchDerConverterTypes } from '../../../catalog/api';
+import type { ConverterType } from '../../../catalog/types';
+import { fetchNcRfgModuleClassification } from '../../../network-build/station-der/derRemoteCatalogs';
 
 export type SldDetailKind =
   | 'station'
@@ -69,8 +74,19 @@ export interface SldDetailDrawerData {
   readonly accentColor?: string;
   /** K30-78: pre-filled DER kind when drawer opened via drag-drop. */
   readonly derKind?: 'PV' | 'BESS' | 'FW';
-  /** K30-78: pre-filled connection variant when drawer opened via drag-drop. */
-  readonly derConnectionVariant?: 'nn_side' | 'sn_side' | 'dedicated';
+  /**
+   * K30-78: pre-filled connection variant when drawer opened via drag-drop.
+   *
+   * Karta FAB-K (§0 R3, KLASA NIE INSTANCJA): JEDYNA wartość. Ten formularz nie
+   * zbiera punktu przyłączenia SN (`sn_connection_bus_ref`) — bez niego backend
+   * odrzuca `block_transformer` 422-ką `generator.sn_connection_bus_missing` przy
+   * KAŻDYM zapisie. Dawne `sn_side`/`dedicated` dawały tu dokładnie ten sam
+   * gwarantowany-422 co usunięty 6-wariantowy `ConnectionSide` w AddDerWizard —
+   * usunięte jako phantom (radio bez ścieżki zapisu), nie jako uproszczenie
+   * funkcji: przyłączenie SN przez transformator dedykowany zostaje dostępne w
+   * pełnym kreatorze DER (`AddDerWizard`), który ma realny picker punktu SN.
+   */
+  readonly derConnectionVariant?: 'nn_side';
   /** K30-79: real transformer spec from ENM snapshot (gdy kind='station'). */
   readonly transformerSpec?: SldTransformerDrawerSpec | null;
   /** K30-80: bay list dla rozdzielnica tab (kind='station'). */
@@ -99,6 +115,11 @@ export interface SldDetailDrawerData {
     readonly kind: 'PV' | 'BESS' | 'FW' | null;
     readonly name: string | null;
     readonly pMw: number | null;
+    /** Karta CV-4.1b (A3-04): tryb regulacji mocy biernej — etykieta polska, gdy
+     *  generator go deklaruje (`meta.control_mode`); `null` = brak wskazania. */
+    readonly controlModePl?: string | null;
+    /** Nastawa napięcia [pu] — WYŁĄCZNIE dla trybu regulacji napięcia (`meta.u_set_pu`). */
+    readonly voltageSetpointPu?: number | null;
   }>;
   /** K30-83: bay apparatus list (kind='bay' apparatus tab). */
   readonly apparatusSpec?: ReadonlyArray<{
@@ -146,6 +167,13 @@ export interface SldDetailDrawerData {
     readonly maxLoadingPct?: number | null;
     /** K30-93: max voltage drop ΔU % (deviation pomiędzy stacjami końcowymi). */
     readonly maxVoltageDropPct?: number | null;
+    /** FAB-C: dane katalogowe odcinka (Cable/OverheadLine) z ENM — brak pola
+     *  w modelu = null, NIGDY wartość zastępcza (usunięta fabrykacja K30-89). */
+    readonly catalogRef?: string | null;
+    readonly conductorMaterial?: string | null;
+    readonly crossSectionMm2?: number | null;
+    readonly insulation?: 'XLPE' | 'EPR' | 'PVC' | 'PAPER' | null;
+    readonly ratingInA?: number | null;
   } | null;
   /** Obiekt wezlowy magistrali SN: ZKSN, slup rozgalezny, NMO. */
   readonly nodeSpec?: {
@@ -159,7 +187,8 @@ export interface SldDetailDrawerData {
 }
 
 export type SldDerKind = 'PV' | 'BESS' | 'FW';
-export type SldDerConnectionVariant = 'nn_side' | 'sn_side' | 'dedicated';
+/** Karta FAB-K (§0 R3): patrz `SldDetailDrawerData.derConnectionVariant` wyżej. */
+export type SldDerConnectionVariant = 'nn_side';
 export type SldNcRfgModule = 'A' | 'B' | 'C' | 'D';
 
 export interface SldDerConfigFormValues {
@@ -287,45 +316,203 @@ function formatKvarPl(value: number): string {
   return `${formatTechnicalNumberPl(value, 1)} kvar`;
 }
 
-const DER_CATALOG_OPTIONS: Readonly<
-  Record<SldDerKind, Record<'nn' | 'sn', ReadonlyArray<{ value: string; label: string }>>>
-> = {
-  PV: {
-    nn: [
-      { value: 'conv-pv-nn-0p5mw-0p4kv', label: 'Falownik PV 0,5 MW / 0,4 kV nN' },
-      { value: 'conv-pv-nn-1mw-0p4kv', label: 'Falownik PV 1 MW / 0,4 kV nN' },
-      { value: 'conv-pv-nn-2mw-0p4kv', label: 'Falownik PV 2 MW / 0,4 kV nN' },
-    ],
-    sn: [
-      { value: 'conv-pv-0.5mw-15kv', label: 'Farma PV 0,5 MW / 15 kV' },
-      { value: 'conv-pv-1mw-15kv', label: 'Farma PV 1 MW / 15 kV' },
-      { value: 'conv-pv-2mw-15kv', label: 'Farma PV 2 MW / 15 kV' },
-    ],
-  },
-  BESS: {
-    nn: [
-      { value: 'conv-bess-nn-0p5mw-0p4kv', label: 'PCS BESS 0,5 MW / 0,4 kV nN' },
-      { value: 'conv-bess-nn-1mw-0p4kv', label: 'PCS BESS 1 MW / 0,4 kV nN' },
-      { value: 'conv-bess-nn-2mw-0p4kv', label: 'PCS BESS 2 MW / 0,4 kV nN' },
-    ],
-    sn: [
-      { value: 'conv-bess-0.5mw-1mwh-15kv', label: 'BESS 0,5 MW / 1 MWh / 15 kV' },
-      { value: 'conv-bess-1mw-2mwh-15kv', label: 'BESS 1 MW / 2 MWh / 15 kV' },
-      { value: 'conv-bess-2mw-4mwh-15kv', label: 'BESS 2 MW / 4 MWh / 15 kV' },
-    ],
-  },
-  FW: {
-    nn: [
-      { value: 'conv-wind-nn-2mw-0p4kv', label: 'Falownik FW 2 MW / 0,4 kV nN' },
-      { value: 'conv-wind-nn-3mw-0p4kv', label: 'Falownik FW 3 MW / 0,4 kV nN' },
-      { value: 'conv-wind-nn-5mw-0p4kv', label: 'Falownik FW 5 MW / 0,4 kV nN' },
-    ],
-    sn: [
-      { value: 'conv-wind-2mw-15kv', label: 'Turbina wiatrowa 2 MW / 15 kV' },
-      { value: 'conv-wind-3mw-15kv', label: 'Turbina wiatrowa 3 MW / 15 kV' },
-      { value: 'conv-wind-4mw-20kv', label: 'Turbina wiatrowa 4 MW / 20 kV' },
-    ],
-  },
+/**
+ * Opcje przekształtnika DER — WYŁĄCZNIE z katalogu backendu (FAB-F usunęła
+ * zaszytą listę `DER_CATALOG_OPTIONS`: 18 identyfikatorów utrzymywanych
+ * ręcznie obok katalogu, czyli drugie źródło prawdy o tym, co wolno wybrać).
+ *
+ * KOREKTA 2026-09-05 (pomiar `get_default_mv_catalog()` na backendzie):
+ * wszystkie 18 dawnych identyfikatorów ISTNIEJE w katalogu, a katalog MA
+ * przekształtniki nN (`conv-*-nn-*-0p4kv`…, `un_kv` 0,4–0,8 kV). Wcześniejszy
+ * komentarz twierdził, że „9/18 nie istniało" i że „backend nie ma żadnego
+ * przekształtnika poniżej 1 kV" — oba zdania były nieprawdziwe. Powodem
+ * usunięcia listy jest duplikacja katalogu, nie fantomy.
+ *
+ * Reużywa istniejący klient `fetchDerConverterTypes` (`ui/catalog/api.ts`,
+ * `/api/catalog/converter-types?kind=…`). Ten sam zbiór identyfikatorów backend
+ * wiąże w przestrzeniach `ZRODLO_NN_PV` / `ZRODLO_NN_BESS` / `CONVERTER`
+ * (`api/generators.py::_catalog_namespace`; zmierzone: zbiory PV i BESS są
+ * identyczne z `pv-inverter-types` / `bess-inverter-types`). Filtr nN/SN po
+ * `un_kv` TYPU Z KATALOGU (rzeczywiste napięcie znamionowe), nie po sufiksie
+ * nazwy.
+ *
+ * WYBÓR JEST JAWNY. Typ przekształtnika to dana projektowa (moc pozorna,
+ * k_sc, zakres cos φ, napięcie znamionowe), nie ustawienie interfejsu —
+ * szuflada NIE podstawia pierwszej pozycji katalogu. Pusty wybór blokuje zapis
+ * (schemat zod) i przełącza szufladę na zakładkę „Falownik". Regresja
+ * 2026-09-05 (E2E `critical-der-config`, CI od FAB-F): przy leniwym pobieraniu
+ * katalogu I cichym podstawianiu pierwszej pozycji zapis z zakładki „Moc"
+ * nigdy nie wysyłał żądania — wartość była pusta, a błąd walidacji wskazywał
+ * zakładkę, której użytkownik nie oglądał.
+ */
+interface DerConverterCatalogState {
+  readonly status: 'loading' | 'ready' | 'empty' | 'error';
+  readonly options: ReadonlyArray<{ value: string; label: string }>;
+  readonly errorMessage: string | null;
+}
+
+const DER_CATALOG_STATE_LOADING: DerConverterCatalogState = {
+  status: 'loading',
+  options: [],
+  errorMessage: null,
+};
+
+function toConverterKind(kind: SldDerKind): ConverterType['kind'] {
+  return kind === 'FW' ? 'WIND' : kind;
+}
+
+/** Etykieta = pola katalogu (nazwa, a w jej braku producent+model, a w ich
+ *  braku identyfikator) — NIGDY literał zaszyty w UI. */
+function converterOptionLabel(item: ConverterType): string {
+  const name = item.name?.trim();
+  if (name) return name;
+  const manufacturerModel = [item.manufacturer, item.model].filter(Boolean).join(' ');
+  return manufacturerModel || item.id;
+}
+
+const DER_KIND_LABEL_PL: Readonly<Record<SldDerKind, string>> = {
+  PV: 'PV',
+  BESS: 'BESS',
+  FW: 'FW',
+};
+
+/** Klucz pary (technologia, wariant przyłączenia), dla której lista opcji
+ *  przekształtnika jest ważna — JEDNO źródło prawdy dla haka katalogu i dla
+ *  efektu czyszczącego wybór w formularzu (predykaty parami). */
+function derCatalogKey(derKind: SldDerKind, connectionVariant: SldDerConnectionVariant): string {
+  return `${derKind}|${connectionVariant}`;
+}
+
+/** Pobiera opcje przekształtnika z katalogu backendu dla (rodzaj DER, wariant
+ *  przyłączenia). Stan pusty (katalog nie zwrócił typów dla tego poziomu
+ *  napięcia) i błąd (zapytanie nie powiodło się) są UCZCIWE — bez listy
+ *  zastępczej.
+ *
+ *  `enabled` odracza zapytanie do chwili, gdy zakładka „Falownik" jest
+ *  faktycznie oglądana — wybór jest jawny, więc lista jest potrzebna dopiero
+ *  tam (a bez tej bramki hak odpalał `fetch` przy KAŻDYM renderze szuflady
+ *  z danymi DER, niezależnie od zakładki, co łamało asercje liczby wywołań
+ *  `fetch` w testach portalu nN L0-L2).
+ *
+ *  Stan jest KLUCZOWANY parą (technologia, wariant): wynik pobrany dla PV nie
+ *  jest nigdy raportowany jako aktualny po zmianie technologii na BESS —
+ *  dopóki zakładka „Falownik" nie pobierze listy dla nowej pary, hak zgłasza
+ *  `loading`. Bez klucza stara lista „ready" uzasadniałaby wybór z innej
+ *  przestrzeni katalogu. */
+function useDerConverterCatalog(
+  derKind: SldDerKind,
+  connectionVariant: SldDerConnectionVariant,
+  enabled: boolean,
+): DerConverterCatalogState {
+  const key = derCatalogKey(derKind, connectionVariant);
+  const [state, setState] = useState<{ key: string; value: DerConverterCatalogState }>({
+    key,
+    value: DER_CATALOG_STATE_LOADING,
+  });
+
+  useEffect(() => {
+    if (!enabled) return;
+    let active = true;
+    setState({ key, value: DER_CATALOG_STATE_LOADING });
+    const isNn = connectionVariant === 'nn_side';
+    void fetchDerConverterTypes(toConverterKind(derKind))
+      .then((records) => {
+        if (!active) return;
+        if (!Array.isArray(records)) {
+          throw new Error('Backend nie zwrócił listy przekształtników z katalogu.');
+        }
+        const filtered = records.filter((item) => (isNn ? item.un_kv < 1 : item.un_kv >= 1));
+        const options = filtered.map((item) => ({
+          value: item.id,
+          label: converterOptionLabel(item),
+        }));
+        if (options.length > 0) {
+          setState({ key, value: { status: 'ready', options, errorMessage: null } });
+        } else {
+          setState({
+            key,
+            value: {
+              status: 'empty',
+              options: [],
+              errorMessage:
+                `Katalog nie zawiera przekształtników ${isNn ? 'nN' : 'SN'} dla technologii ` +
+                `${DER_KIND_LABEL_PL[derKind]}.`,
+            },
+          });
+        }
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setState({
+          key,
+          value: {
+            status: 'error',
+            options: [],
+            errorMessage:
+              error instanceof Error ? error.message : 'Nie udało się pobrać katalogu przekształtników.',
+          },
+        });
+      });
+    return () => {
+      active = false;
+    };
+  }, [derKind, connectionVariant, enabled, key]);
+
+  return state.key === key ? state.value : DER_CATALOG_STATE_LOADING;
+}
+
+/**
+ * Klasyfikacja modułu NC RfG (karta FAB-J, decyzja #5) — WYŁĄCZNIE z backendu
+ * (`compliance/nc_rfg_modul.py` przez `GET /api/ncrfg-tests/modul`), zero
+ * duplikacji progów ustawowych w froncie. `enabled` odracza zapytanie do
+ * zakładki „NC RfG" — ten sam wzorzec co `useDerConverterCatalog` powyżej
+ * (zero fetchu przy każdym renderze szuflady niezależnie od zakładki).
+ */
+function useNcRfgModuleClassificationState(
+  powerMw: number,
+  pointVoltageKv: number,
+  enabled: boolean,
+): { readonly status: 'loading' | 'ready' | 'error'; readonly modul: SldNcRfgModule | null } {
+  const [state, setState] = useState<{
+    status: 'loading' | 'ready' | 'error';
+    modul: SldNcRfgModule | null;
+  }>({ status: 'loading', modul: null });
+
+  useEffect(() => {
+    if (!enabled || !(powerMw > 0) || !(pointVoltageKv > 0)) {
+      setState({ status: 'loading', modul: null });
+      return undefined;
+    }
+    let active = true;
+    setState({ status: 'loading', modul: null });
+    void fetchNcRfgModuleClassification({ pMaxMw: powerMw, napiecieKv: pointVoltageKv })
+      .then((modul) => {
+        if (active) setState({ status: 'ready', modul });
+      })
+      .catch(() => {
+        if (active) setState({ status: 'error', modul: null });
+      });
+    return () => {
+      active = false;
+    };
+  }, [enabled, powerMw, pointVoltageKv]);
+
+  return state;
+}
+
+/** Etykieta pozycji zastępczej listy przekształtników — wybór jest jawny, więc
+ *  lista zaczyna się od pustej pozycji, a nie od pierwszego typu z katalogu. */
+const DER_INVERTER_PLACEHOLDER_LABEL = '— wybierz z katalogu —';
+
+/** Zakładka, na której edytuje się dane pole formularza DER — żeby błąd
+ *  walidacji zawsze prowadził do miejsca, gdzie da się go naprawić. */
+const DER_FIELD_TAB: Readonly<Record<keyof SldDerConfigFormValues, string>> = {
+  derKind: 'typ',
+  powerMw: 'moc',
+  connectionVariant: 'punkt',
+  pointVoltageKv: 'punkt',
+  inverterCatalogRef: 'inverter',
+  ncRfgModule: 'rfg',
 };
 
 const sldDerConfigSchema = z.object({
@@ -334,23 +521,19 @@ const sldDerConfigSchema = z.object({
     .number({ invalid_type_error: 'Podaj moc czynną DER w MW.' })
     .min(0.1, 'Moc czynna DER musi być nie mniejsza niż 0,1 MW.')
     .max(10, 'Moc czynna DER musi być nie większa niż 10 MW.'),
-  connectionVariant: z.enum(['nn_side', 'sn_side', 'dedicated']),
+  connectionVariant: z.literal('nn_side'),
   pointVoltageKv: z.coerce.number().positive('Napięcie punktu przyłączenia musi być dodatnie.'),
-  inverterCatalogRef: z.string().min(1, 'Wybierz typ przekształtnika z katalogu.'),
+  inverterCatalogRef: z.string().min(1, 'Wybierz typ przekształtnika z katalogu (zakładka „Falownik").'),
   ncRfgModule: z.enum(['A', 'B', 'C', 'D']),
 }).superRefine((value, ctx) => {
-  if (value.connectionVariant === 'nn_side' && value.pointVoltageKv >= 1) {
+  // Karta FAB-K (§0 R3): JEDYNY wariant to nN — punkt przyłączenia musi więc
+  // leżeć poniżej 1 kV (szyna nN stacji). Przyłączenie SN przez transformator
+  // dedykowany zbiera pełny kreator DER (`AddDerWizard`), nie ten formularz.
+  if (value.pointVoltageKv >= 1) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['connectionVariant'],
       message: 'Wariant nN wymaga punktu przyłączenia poniżej 1 kV.',
-    });
-  }
-  if (value.connectionVariant !== 'nn_side' && value.pointVoltageKv < 1) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['connectionVariant'],
-      message: 'Wariant SN wymaga punktu przyłączenia co najmniej 1 kV.',
     });
   }
 });
@@ -393,23 +576,18 @@ function tabsForKind(data: SldDetailDrawerData | null): readonly { id: string; l
   return [];
 }
 
-function pointVoltageForVariant(
-  variant: SldDerConnectionVariant,
-  stationVoltageKv: number | null | undefined,
-): number {
-  if (variant === 'nn_side') return 0.4;
-  return stationVoltageKv != null && stationVoltageKv >= 1 ? stationVoltageKv : 15;
-}
-
-function catalogSideForVariant(variant: SldDerConnectionVariant): 'nn' | 'sn' {
-  return variant === 'nn_side' ? 'nn' : 'sn';
-}
-
-function getDerCatalogOptions(
-  kind: SldDerKind,
-  variant: SldDerConnectionVariant,
-): ReadonlyArray<{ value: string; label: string }> {
-  return DER_CATALOG_OPTIONS[kind][catalogSideForVariant(variant)];
+/**
+ * Napięcie punktu przyłączenia dla `nn_side` — JEDYNY wariant tego formularza
+ * (karta FAB-K, §0 R3). REALNA szyna nN stacji (`nnSpec.busVoltageKv`, ta sama
+ * migawka ENM co `buildStationDetailDrawerData` — `selectStationDistributionTransformers`
+ * → `lv_bus_ref` → `buses[].voltage_kv`), nie zgadywane „zawsze 0,4 kV": dawny
+ * kod ignorował napięcie modelu dla nN i wpisywał stałą niezależnie od
+ * rzeczywistej szyny stacji. Fallback 0,4 kV zostaje WYŁĄCZNIE, gdy migawka
+ * faktycznie nie niesie tej danej (stacja bez transformatora w ENM jeszcze) —
+ * ten sam `dataQuality: 'sld_fallback'`, co `transformerSpec` w tym module.
+ */
+function pointVoltageForVariant(nnBusVoltageKv: number | null | undefined): number {
+  return nnBusVoltageKv != null && nnBusVoltageKv > 0 && nnBusVoltageKv < 1 ? nnBusVoltageKv : 0.4;
 }
 
 function defaultDerPowerMw(kind: SldDerKind): number {
@@ -420,13 +598,21 @@ function defaultDerPowerMw(kind: SldDerKind): number {
 
 function makeDefaultDerFormValues(data: SldDetailDrawerData | null): SldDerConfigFormValues {
   const derKind = data?.derKind ?? 'PV';
-  const connectionVariant = data?.derConnectionVariant ?? 'nn_side';
   return {
     derKind,
     powerMw: defaultDerPowerMw(derKind),
-    connectionVariant,
-    pointVoltageKv: pointVoltageForVariant(connectionVariant, data?.voltageKv),
-    inverterCatalogRef: getDerCatalogOptions(derKind, connectionVariant)[0]?.value ?? '',
+    connectionVariant: 'nn_side',
+    pointVoltageKv: pointVoltageForVariant(data?.nnSpec?.busVoltageKv),
+    // Wybór typu przekształtnika jest JAWNY (zakładka „Falownik", lista z
+    // katalogu backendu) — wartość wstępna zostaje pusta i nikt jej nie
+    // podstawia. Formularz odrzuca zapis z pustym `inverterCatalogRef`
+    // (schemat zod poniżej) i przełącza szufladę na tę zakładkę.
+    inverterCatalogRef: '',
+    // Wartość WSTĘPNA i PROWIZORYCZNA — `useNcRfgModuleClassificationState`
+    // nadpisuje ją realną klasyfikacją backendu (moc × napięcie przyłączenia)
+    // w chwili, gdy zakładka „NC RfG" jest oglądana (karta FAB-J, decyzja #5).
+    // Zero duplikacji progów ustawowych w froncie — to jedyne miejsce, gdzie
+    // literał 'A' w ogóle występuje, i nie jest on progiem, tylko placeholderem.
     ncRfgModule: 'A',
   };
 }
@@ -474,6 +660,11 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
   } = props;
   const tabs = tabsForKind(data);
   const [activeTab, setActiveTab] = useState<string>(tabs[0]?.id ?? '');
+  // Ten sam wynik co `currentTab` niżej (po wczesnym `return`) — JEDNO źródło
+  // prawdy o aktywnej zakładce, policzone też PRZED hakami (zasada hooków),
+  // żeby `useDerConverterCatalog` mogło odroczyć zapytanie do chwili, gdy
+  // zakładka „Falownik" jest faktycznie oglądana.
+  const resolvedTab = tabs.find((t) => t.id === activeTab)?.id ?? tabs[0]?.id ?? '';
   const derForm = useForm<SldDerConfigFormValues>({
     resolver: sldDerConfigResolver,
     mode: 'onChange',
@@ -481,6 +672,31 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
   });
   const watchedDerKind = derForm.watch('derKind');
   const watchedConnectionVariant = derForm.watch('connectionVariant');
+  const watchedPowerMw = derForm.watch('powerMw');
+  const watchedPointVoltageKv = derForm.watch('pointVoltageKv');
+  const derCatalog = useDerConverterCatalog(
+    watchedDerKind,
+    watchedConnectionVariant,
+    data?.kind === 'der' && resolvedTab === 'inverter',
+  );
+  // Karta FAB-J: NIE odraczamy do zakładki „NC RfG" (inaczej niż katalog
+  // przekształtników powyżej) — moduł jest częścią payloadu zapisu niezależnie
+  // od tego, którą zakładkę projektant akurat ogląda. Odroczenie do zakładki
+  // pozwoliłoby zapisać z zakładki „Moc"/„Falownik" wartość niespójną z realną
+  // (mocą, napięciem) — gwarantowany 422 backendu bez ostrzeżenia w UI.
+  const ncRfgClassification = useNcRfgModuleClassificationState(
+    Number(watchedPowerMw),
+    Number(watchedPointVoltageKv),
+    data?.kind === 'der',
+  );
+  // Moduł NC RfG jest DERYWOWANY z (moc, napięcie), nie wolnym wyborem — gdy
+  // backend rozstrzygnie klasyfikację, wartość formularza zawsze ją odzwierciedla
+  // (karta FAB-J, decyzja #5: „ten sam kontrakt, ta sama weryfikacja" co kreator DER).
+  useEffect(() => {
+    if (ncRfgClassification.status !== 'ready' || !ncRfgClassification.modul) return;
+    if (derForm.getValues('ncRfgModule') === ncRfgClassification.modul) return;
+    derForm.setValue('ncRfgModule', ncRfgClassification.modul, { shouldValidate: true });
+  }, [derForm, ncRfgClassification.modul, ncRfgClassification.status]);
   const saveError = data?.kind === 'der' ? firstDerFormError(derForm.formState.errors) : null;
   // K30-96: auto-focus close button when drawer opens (ARIA dialog pattern)
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -494,35 +710,83 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
     };
   }, [open, data?.elementId]);
 
+  // Karta FAB-K (§0 R3): drugi efekt, który wcześniej przeliczał
+  // `pointVoltageKv` PRZY ZMIANIE `connectionVariant` (radio SN/dedicated),
+  // USUNIĘTY jako martwy — jedyny wariant (`nn_side`) nie jest już wyborem
+  // interaktywnym, więc przeliczenie na zmianę `data` wystarcza (poniżej).
   useEffect(() => {
     if (!open || data?.kind !== 'der') return;
     derForm.reset(makeDefaultDerFormValues(data));
-  }, [open, data?.elementId, data?.kind, data?.derKind, data?.derConnectionVariant, data?.voltageKv, derForm]);
+  }, [open, data?.elementId, data?.kind, data?.derKind, data?.nnSpec?.busVoltageKv, derForm]);
 
+  // Zmiana pary (technologia, wariant) unieważnia wybrany typ przekształtnika:
+  // identyfikator PV nie może „przejść" do BESS ani typ SN do wariantu nN.
+  // Ten sam klucz co w `useDerConverterCatalog` (predykaty parami). Czyścimy
+  // na PUSTO, nie na pierwszą pozycję nowej listy — wybór jest jawny.
+  const derCatalogKeyValue = derCatalogKey(watchedDerKind, watchedConnectionVariant);
+  const previousDerCatalogKeyRef = useRef(derCatalogKeyValue);
+  useEffect(() => {
+    if (previousDerCatalogKeyRef.current === derCatalogKeyValue) return;
+    previousDerCatalogKeyRef.current = derCatalogKeyValue;
+    if (!open || data?.kind !== 'der') return;
+    if (derForm.getValues('inverterCatalogRef') !== '') {
+      derForm.setValue('inverterCatalogRef', '', { shouldValidate: false });
+    }
+  }, [derCatalogKeyValue, open, data?.kind, derForm]);
+
+  // Wybór, którego nie ma na aktualnej liście z katalogu (katalog zmienił się
+  // między otwarciami, pozycja zniknęła), też jest unieważniany — na pusto.
+  // Dopóki zapytanie trwa, nie ruszamy wartości (lista nie jest jeszcze znana).
   useEffect(() => {
     if (!open || data?.kind !== 'der') return;
-    const nextPointVoltage = pointVoltageForVariant(watchedConnectionVariant, data.voltageKv);
-    if (derForm.getValues('pointVoltageKv') !== nextPointVoltage) {
-      derForm.setValue('pointVoltageKv', nextPointVoltage, { shouldValidate: true });
-    }
-
-    const options = getDerCatalogOptions(watchedDerKind, watchedConnectionVariant);
+    if (derCatalog.status === 'loading') return;
     const currentCatalogRef = derForm.getValues('inverterCatalogRef');
-    if (!options.some((option) => option.value === currentCatalogRef)) {
-      derForm.setValue('inverterCatalogRef', options[0]?.value ?? '', { shouldValidate: true });
+    if (currentCatalogRef !== '' && !derCatalog.options.some((option) => option.value === currentCatalogRef)) {
+      derForm.setValue('inverterCatalogRef', '', { shouldValidate: true });
     }
-  }, [open, data?.kind, data?.voltageKv, watchedDerKind, watchedConnectionVariant, derForm]);
+  }, [open, data?.kind, derForm, derCatalog.status, derCatalog.options]);
 
   const handleSaveClick = useCallback(() => {
     if (!onSave || !data) return;
     if (data.kind === 'der') {
-      void derForm.handleSubmit(async (values) => {
-        await onSave({
-          kind: data.kind,
-          elementId: data.elementId,
-          derConfig: values,
-        });
-      })();
+      void derForm.handleSubmit(
+        async (values) => {
+          // Naprawa (2026-09-05, ta sama klasa co decyzja #5 powyżej): moduł
+          // NC RfG w `values.ncRfgModule` pochodzi z efektu synchronizującego
+          // się z `ncRfgClassification` W TLE — po zmianie mocy/napięcia
+          // (np. na zakładce „Moc" tuż przed zapisem) klasyfikacja liczy się
+          // NA NOWO, a klik „Zapisz" nie czeka na jej rozstrzygnięcie. Zamiast
+          // BLOKOWAĆ przycisk (co złamałoby zapis natychmiast po otwarciu
+          // szuflady, zanim jakakolwiek klasyfikacja zdąży się policzyć),
+          // pobieramy klasyfikację ŚWIEŻO tu, dla DOKŁADNIE mocy/napięcia
+          // wysyłanych w tym zapisie — jedyne źródło prawdy w chwili wysyłki,
+          // niezależne od tego, czy efekt w tle już zdążył zaktualizować pole
+          // formularza. Błąd pobrania nie blokuje zapisu: zostaje ostatnia
+          // znana wartość formularza, a backend i tak zweryfikuje ją ponownie.
+          const freshModul = await fetchNcRfgModuleClassification({
+            pMaxMw: values.powerMw,
+            napiecieKv: values.pointVoltageKv,
+          }).catch(() => null);
+          await onSave({
+            kind: data.kind,
+            elementId: data.elementId,
+            derConfig: freshModul ? { ...values, ncRfgModule: freshModul } : values,
+          });
+        },
+        (errors) => {
+          // Błąd pola z NIEWIDOCZNEJ zakładki był dla użytkownika ślepym
+          // zaułkiem (regresja E2E 2026-09-05: pusty wybór przekształtnika na
+          // zakładce „Falownik" blokował zapis z zakładki „Moc"). Reguła dla
+          // całej klasy pól, nie jednego: jeśli oglądana zakładka sama ma błąd,
+          // zostajemy na niej; inaczej pokazujemy pierwszą zakładkę z błędem.
+          const fieldsWithErrors = Object.keys(errors) as (keyof SldDerConfigFormValues)[];
+          const tabsWithErrors: string[] = DER_TABS
+            .map((tab): string => tab.id)
+            .filter((tabId) => fieldsWithErrors.some((field) => DER_FIELD_TAB[field] === tabId));
+          if (tabsWithErrors.length === 0) return;
+          setActiveTab((current) => (tabsWithErrors.includes(current) ? current : tabsWithErrors[0]));
+        },
+      )();
       return;
     }
 
@@ -560,8 +824,9 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
 
   if (!open || !data || data.kind === null || tabs.length === 0) return null;
 
-  // Reset active tab when data.kind changes
-  const currentTab = tabs.find((t) => t.id === activeTab) ? activeTab : tabs[0].id;
+  // Reset active tab when data.kind changes (resolvedTab — policzone wyżej,
+  // przed hakami — jest tym samym źródłem prawdy).
+  const currentTab = resolvedTab;
   const showFooter = Boolean(onSave && data.kind === 'der');
   const showActionToolbar = Boolean(onOpenFullView || onOpenConfiguration || actions.length > 0);
 
@@ -825,6 +1090,8 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
           tab={currentTab}
           data={data}
           derForm={derForm}
+          derCatalog={derCatalog}
+          ncRfgClassification={ncRfgClassification}
           onOpenConfiguration={onOpenConfiguration}
         />
       </div>
@@ -943,10 +1210,17 @@ interface TabContentProps {
   readonly tab: string;
   readonly data: SldDetailDrawerData;
   readonly derForm: UseFormReturn<SldDerConfigFormValues>;
+  readonly derCatalog: DerConverterCatalogState;
+  readonly ncRfgClassification: {
+    readonly status: 'loading' | 'ready' | 'error';
+    readonly modul: SldNcRfgModule | null;
+  };
   readonly onOpenConfiguration?: () => void;
 }
 
-function TabContent({ kind, tab, data, derForm, onOpenConfiguration }: TabContentProps): JSX.Element {
+function TabContent({
+  kind, tab, data, derForm, derCatalog, ncRfgClassification, onOpenConfiguration,
+}: TabContentProps): JSX.Element {
   return (
     <div data-testid={`sld-v2-detail-drawer-tab-content-${tab}`}>
       <div style={{ color: 'rgb(var(--scada-muted))', fontStyle: 'italic', marginBottom: 12 }}>
@@ -955,6 +1229,7 @@ function TabContent({ kind, tab, data, derForm, onOpenConfiguration }: TabConten
       <PlaceholderTabBody
         kind={kind}
         tab={tab}
+        elementId={data.elementId}
         voltageKv={data.voltageKv ?? null}
         transformerSpec={data.transformerSpec ?? null}
         baysSpec={data.baysSpec}
@@ -966,6 +1241,8 @@ function TabContent({ kind, tab, data, derForm, onOpenConfiguration }: TabConten
         nodeSpec={data.nodeSpec ?? null}
         apparatusState={data.apparatusState ?? null}
         derForm={derForm}
+        derCatalog={derCatalog}
+        ncRfgClassification={ncRfgClassification}
         onOpenConfiguration={onOpenConfiguration}
       />
     </div>
@@ -1316,9 +1593,117 @@ function NodeEngineeringPanel({
   );
 }
 
+/**
+ * FAB-B (fantom nastaw, M0 — dyrektywa właściciela „usunięte fabrykacje
+ * użytkowe"): panel nastaw zabezpieczeń współdzielony przez TRZY miejsca
+ * wpięcia — zakładka `der`/`protection`, `bay`/`protection` i
+ * `apparatus`/`settings` (reguła KLASA NIE INSTANCJA — jeden mechanizm,
+ * nie trzy kopie). Wcześniej każde z tych miejsc renderowało zaszytą,
+ * fikcyjną listę funkcji/nastaw (stałe wartości `setpoint`/`delay` zaszyte
+ * wprost w tablicy obiektów) NIEZALEŻNIE od tego, co jest w modelu.
+ *
+ * ŹRÓDŁO DANYCH: DOKŁADNIE ta sama ścieżka co widok zabezpieczeń w
+ * inspektorze (`ui/inspector/ProtectionSection.tsx`) —
+ * `useProtectionAssignment(elementId)` → `useProtectionView()` → realny
+ * read model `GET /api/cases/{caseId}/enm/protection-view`
+ * (`application/protection_read_model` backendu) → `assignmentsForElement`.
+ * Formatowanie przez `formatProtectionFunction` (czyste przepisanie
+ * kształtu, ZERO fizyki/obliczeń w UI — ta sama funkcja co w inspektorze).
+ *
+ * Brak przypisania zabezpieczenia dla `elementId` w modelu ⇒ uczciwy stan
+ * zerowy („Brak nastaw w modelu dla tego elementu.") — NIGDY wartość
+ * zastępcza/zmyślona.
+ */
+function ElementProtectionFunctionsPanel({
+  elementId,
+  headingPl,
+  testId,
+}: {
+  readonly elementId: string | null;
+  readonly headingPl: string;
+  readonly testId: string;
+}): JSX.Element {
+  const { assignments, hasProtection, isLoading, error } = useProtectionAssignment(elementId);
+
+  return (
+    <div data-testid={testId}>
+      <div style={{ fontSize: 10, color: 'rgb(var(--scada-muted))', marginBottom: 6, fontWeight: 700 }}>
+        {headingPl}
+      </div>
+      {isLoading ? (
+        <div data-testid={`${testId}-loading`} style={{ fontSize: 10, color: 'rgb(var(--scada-muted))', fontStyle: 'italic' }}>
+          Ładowanie nastaw…
+        </div>
+      ) : error ? (
+        <div data-testid={`${testId}-error`} style={{ fontSize: 10, color: 'rgb(var(--scada-status-err))' }}>
+          Nie udało się pobrać nastaw: {error}
+        </div>
+      ) : hasProtection ? (
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {assignments.map((assignment) => (
+            <ProtectionAssignmentSettingsRow key={assignment.device_id} assignment={assignment} />
+          ))}
+        </ul>
+      ) : (
+        <div data-testid={`${testId}-empty`} style={{ fontSize: 10, color: 'rgb(var(--scada-muted))', fontStyle: 'italic' }}>
+          Brak nastaw w modelu dla tego elementu.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProtectionAssignmentSettingsRow({
+  assignment,
+}: {
+  readonly assignment: ElementProtectionAssignment;
+}): JSX.Element {
+  const functions = assignment.settings_summary?.functions ?? [];
+  return (
+    <li
+      data-testid={`drawer-protection-device-${assignment.device_id}`}
+      style={{
+        background: 'rgb(var(--scada-surface))',
+        border: '1px solid rgb(var(--scada-panel-raised))',
+        borderRadius: 3,
+        padding: '6px 8px',
+        fontSize: 10,
+      }}
+    >
+      <div style={{ color: 'rgb(var(--scada-text))', fontWeight: 700 }}>{assignment.device_name_pl}</div>
+      {functions.length === 0 ? (
+        <div style={{ color: 'rgb(var(--scada-muted))', fontStyle: 'italic', marginTop: 2 }}>
+          Nastawy do konfiguracji
+        </div>
+      ) : (
+        functions.map((func, index) => {
+          const formatted = formatProtectionFunction(func);
+          return (
+            <div
+              key={`${func.code}-${index}`}
+              data-testid={formatted.testId}
+              style={{ display: 'flex', justifyContent: 'space-between', gap: 6, marginTop: 3, fontFamily: 'monospace' }}
+            >
+              <span style={{ color: 'rgb(var(--scada-status-warn-ink))', fontWeight: 700 }}>
+                [{formatted.ansiCodes}] {formatted.shortcut}
+              </span>
+              <span style={{ color: 'rgb(var(--scada-text))', textAlign: 'right' }}>
+                {formatted.setpoint}
+                {formatted.computed ? ` ${formatted.computed}` : ''}
+                {formatted.time ? `, ${formatted.time}` : ''}
+              </span>
+            </div>
+          );
+        })
+      )}
+    </li>
+  );
+}
+
 function PlaceholderTabBody({
   kind,
   tab,
+  elementId,
   voltageKv,
   transformerSpec,
   baysSpec,
@@ -1330,10 +1715,16 @@ function PlaceholderTabBody({
   nodeSpec,
   apparatusState,
   derForm,
+  derCatalog,
+  ncRfgClassification,
   onOpenConfiguration,
 }: {
   kind: SldDetailKind;
   tab: string;
+  /** FAB-B: id elementu (bijection z ElementProtectionAssignment.element_id)
+   *  — źródło nastaw zabezpieczeń dla zakładek der/protection, bay/protection,
+   *  apparatus/settings (patrz ElementProtectionFunctionsPanel). */
+  elementId: string | null;
   voltageKv: number | null;
   transformerSpec?: SldTransformerDrawerSpec | null;
   baysSpec?: ReadonlyArray<{
@@ -1358,6 +1749,8 @@ function PlaceholderTabBody({
     readonly kind: 'PV' | 'BESS' | 'FW' | null;
     readonly name: string | null;
     readonly pMw: number | null;
+    readonly controlModePl?: string | null;
+    readonly voltageSetpointPu?: number | null;
   }>;
   apparatusSpec?: ReadonlyArray<{
     readonly id: string;
@@ -1373,6 +1766,13 @@ function PlaceholderTabBody({
     readonly segmentKind: 'cable_sn' | 'overhead_line_sn' | null;
     readonly maxLoadingPct?: number | null;
     readonly maxVoltageDropPct?: number | null;
+    /** FAB-C: dane katalogowe odcinka (Cable/OverheadLine) z ENM — brak pola
+     *  w modelu = null, NIGDY wartość zastępcza (usunięta fabrykacja K30-89). */
+    readonly catalogRef?: string | null;
+    readonly conductorMaterial?: string | null;
+    readonly crossSectionMm2?: number | null;
+    readonly insulation?: 'XLPE' | 'EPR' | 'PVC' | 'PAPER' | null;
+    readonly ratingInA?: number | null;
   } | null;
   nodeSpec?: NonNullable<SldDetailDrawerData['nodeSpec']> | null;
   apparatusState?: {
@@ -1383,6 +1783,11 @@ function PlaceholderTabBody({
     readonly lastChangeAt: string | null;
   } | null;
   derForm: UseFormReturn<SldDerConfigFormValues>;
+  derCatalog: DerConverterCatalogState;
+  ncRfgClassification: {
+    readonly status: 'loading' | 'ready' | 'error';
+    readonly modul: SldNcRfgModule | null;
+  };
   onOpenConfiguration?: () => void;
 }): JSX.Element {
   // Tab-specific scaffolding — actual editor forms wired w K30-72+
@@ -1439,37 +1844,50 @@ function PlaceholderTabBody({
   if (kind === 'der' && tab === 'inverter') {
     const currentDerKind = derForm.watch('derKind');
     const currentConnectionVariant = derForm.watch('connectionVariant');
-    const options = getDerCatalogOptions(currentDerKind, currentConnectionVariant);
+    const wariantLabel = currentConnectionVariant === 'nn_side' ? 'nN' : 'SN';
     return (
       <div data-testid="drawer-der-inverter">
         <label style={{ display: 'block', marginBottom: 6, color: 'rgb(var(--scada-muted))', fontSize: 10, fontWeight: 700 }}>
           Przekształtnik z katalogu
         </label>
-        <select
-          data-testid="drawer-der-inverter-select"
-          {...derForm.register('inverterCatalogRef')}
-          style={{
-            background: 'rgb(var(--scada-surface))',
-            color: 'rgb(var(--scada-text))',
-            border: '1px solid rgb(var(--scada-border))',
-            padding: 6,
-            borderRadius: 3,
-            width: '100%',
-            fontSize: 11,
-            fontFamily: 'monospace',
-          }}
-        >
-          {options.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
+        {derCatalog.status === 'loading' && (
+          <div data-testid="drawer-der-inverter-loading" style={{ color: 'rgb(var(--scada-muted))', fontSize: 11 }}>
+            Wczytywanie katalogu przekształtników…
+          </div>
+        )}
+        {(derCatalog.status === 'empty' || derCatalog.status === 'error') && (
+          <div data-testid="drawer-der-inverter-empty" style={{ color: 'rgb(var(--scada-status-warn))', fontSize: 11 }}>
+            {derCatalog.errorMessage ?? 'Katalog przekształtników jest niedostępny.'}
+          </div>
+        )}
+        {derCatalog.status === 'ready' && (
+          <select
+            data-testid="drawer-der-inverter-select"
+            {...derForm.register('inverterCatalogRef')}
+            style={{
+              background: 'rgb(var(--scada-surface))',
+              color: 'rgb(var(--scada-text))',
+              border: '1px solid rgb(var(--scada-border))',
+              padding: 6,
+              borderRadius: 3,
+              width: '100%',
+              fontSize: 11,
+              fontFamily: 'monospace',
+            }}
+          >
+            <option value="">{DER_INVERTER_PLACEHOLDER_LABEL}</option>
+            {derCatalog.options.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        )}
         {derForm.formState.errors.inverterCatalogRef?.message && (
           <div data-testid="drawer-der-inverter-error" style={{ marginTop: 6, color: 'rgb(var(--scada-status-err))', fontSize: 10 }}>
             {derForm.formState.errors.inverterCatalogRef.message}
           </div>
         )}
         <div style={{ marginTop: 8, fontSize: 9, color: 'rgb(var(--scada-muted))' }}>
-          Powiązanie katalogowe dla {currentDerKind}; lista jest dopasowana do wariantu {currentConnectionVariant === 'nn_side' ? 'nN' : 'SN'}.
+          Powiązanie katalogowe dla {currentDerKind}; lista jest dopasowana do wariantu {wariantLabel}.
         </div>
       </div>
     );
@@ -1537,50 +1955,32 @@ function PlaceholderTabBody({
     );
   }
   if (kind === 'der' && tab === 'punkt') {
-    const selectedVariant = derForm.watch('connectionVariant');
+    // Karta FAB-K (§0 R3, KLASA NIE INSTANCJA): radio SN/„dedicated" USUNIĘTE —
+    // dawały gwarantowany 422 (ten sam mechanizm co dawny 6-wariantowy
+    // `ConnectionSide` w AddDerWizard), bo ten formularz nie zbiera punktu
+    // przyłączenia SN (`sn_connection_bus_ref`). JEDYNY wariant tego formularza
+    // to strona nN — informacja, nie wybór; napięcie to REALNA szyna nN stacji
+    // (`nnSpec.busVoltageKv`), nie zgadywane 0,4 kV. Przyłączenie SN przez
+    // transformator dedykowany zbiera pełny kreator DER (`AddDerWizard`).
     const pointVoltage = Number(derForm.watch('pointVoltageKv') ?? 0);
-    const connectionRegister = derForm.register('connectionVariant');
+    const nnBusVoltageKnown = nnSpec?.busVoltageKv != null;
     return (
       <div data-testid="drawer-der-connection-variant">
         <label style={{ display: 'block', marginBottom: 6, color: 'rgb(var(--scada-muted))' }}>Punkt podłączenia</label>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {[
-            { value: 'nn_side', label: 'Strona nN (po transformatorze SN/nN)' },
-            { value: 'sn_side', label: 'Strona SN (przez dedykowane pole)' },
-            { value: 'dedicated', label: 'Dedykowane przyłącze (osobna linia)' },
-          ].map((opt) => (
-            <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'rgb(var(--scada-text))' }}>
-              <input
-                type="radio"
-                name={connectionRegister.name}
-                ref={connectionRegister.ref}
-                onBlur={connectionRegister.onBlur}
-                value={opt.value}
-                data-testid={`drawer-der-connection-${opt.value}`}
-                checked={selectedVariant === opt.value}
-                onChange={() => {
-                  const nextVariant = opt.value as SldDerConnectionVariant;
-                  derForm.setValue('connectionVariant', nextVariant, {
-                    shouldDirty: true,
-                    shouldValidate: true,
-                  });
-                  derForm.setValue(
-                    'pointVoltageKv',
-                    pointVoltageForVariant(nextVariant, voltageKv),
-                    { shouldDirty: true, shouldValidate: true },
-                  );
-                }}
-              />
-              {opt.label}
-            </label>
-          ))}
+        <div data-testid="drawer-der-connection-nn_side" style={{ color: 'rgb(var(--scada-text))' }}>
+          Strona nN (po transformatorze SN/nN stacji)
+        </div>
+        <div style={{ marginTop: 4, color: 'rgb(var(--scada-muted))', fontSize: 10 }}>
+          Przyłączenie po stronie SN (przez transformator dedykowany) wymaga wskazania
+          punktu przyłączenia istniejącego w modelu — dostępne w pełnym kreatorze DER.
         </div>
         <div data-testid="drawer-der-point-voltage" style={{ marginTop: 10, color: 'rgb(var(--scada-text))', fontSize: 10, fontFamily: 'monospace' }}>
           Punkt przyłączenia: {pointVoltage.toFixed(3)} kV
+          {!nnBusVoltageKnown && ' (wariant katalogowy — stacja bez transformatora w modelu)'}
         </div>
-        {(derForm.formState.errors.connectionVariant?.message || derForm.formState.errors.pointVoltageKv?.message) && (
+        {derForm.formState.errors.pointVoltageKv?.message && (
           <div data-testid="drawer-der-connection-error" style={{ marginTop: 6, color: 'rgb(var(--scada-status-err))', fontSize: 10 }}>
-            {derForm.formState.errors.connectionVariant?.message ?? derForm.formState.errors.pointVoltageKv?.message}
+            {derForm.formState.errors.pointVoltageKv.message}
           </div>
         )}
       </div>
@@ -1588,69 +1988,45 @@ function PlaceholderTabBody({
   }
   if (kind === 'der' && tab === 'protection') {
     return (
-      <div data-testid="drawer-der-protection">
-        <div style={{ fontSize: 10, color: 'rgb(var(--scada-muted))', marginBottom: 6, fontWeight: 700 }}>
-          Funkcje zabezpieczeniowe DER (PN-EN 50549-2 / IEC 60255)
-        </div>
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {[
-            { code: '27', name: 'Podnapięciowe (U<)', defaultEnabled: true, setpoint: '0.85 Un' },
-            { code: '59', name: 'Nadnapięciowe (U>)', defaultEnabled: true, setpoint: '1.15 Un' },
-            { code: '81U', name: 'Podczęstotliwościowe (f<)', defaultEnabled: true, setpoint: '47.5 Hz' },
-            { code: '81O', name: 'Nadczęstotliwościowe (f>)', defaultEnabled: true, setpoint: '51.5 Hz' },
-            { code: '78', name: 'Anti-islanding (ROCOF/ROCOPP)', defaultEnabled: true, setpoint: '1 Hz/s' },
-            { code: '32R', name: 'Zwrotno-mocowe (P_rev)', defaultEnabled: false, setpoint: '-5% Sn' },
-          ].map((p) => (
-            <li
-              key={p.code}
-              data-testid={`drawer-der-protection-${p.code}`}
-              style={{
-                background: 'rgb(var(--scada-surface))',
-                border: '1px solid rgb(var(--scada-panel-raised))',
-                borderRadius: 3,
-                padding: '5px 8px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                fontSize: 10,
-              }}
-            >
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'rgb(var(--scada-text))', cursor: 'pointer' }}>
-                <input type="checkbox" defaultChecked={p.defaultEnabled} />
-                <span style={{ color: 'rgb(var(--scada-status-warn-ink))', fontFamily: 'monospace', fontWeight: 700 }}>[{p.code}]</span>
-                <span>{p.name}</span>
-              </label>
-              <span style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace' }}>{p.setpoint}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
+      <ElementProtectionFunctionsPanel
+        elementId={elementId}
+        headingPl="Funkcje zabezpieczeniowe DER (PN-EN 50549-2 / IEC 60255)"
+        testId="drawer-der-protection"
+      />
     );
   }
   if (kind === 'der' && tab === 'rfg') {
+    // Karta FAB-J (decyzja #5): moduł NC RfG jest klasyfikacją normatywną z
+    // (mocy, napięcia przyłączenia) — JEDYNE źródło progów to backend
+    // (`compliance/nc_rfg_modul.py`). Poprzednio 4 przyciski radio pozwalały
+    // wybrać DOWOLNY moduł niezależnie od mocy/napięcia; `POST .../generators`
+    // teraz weryfikuje zgodność (422 przy rozjeździe), więc wolny wybór byłby
+    // gwarantowanym błędem zapisu dla 3 z 4 opcji. Pole jest więc dowodem
+    // White Box, nie kontrolką do wypełnienia.
     const selectedModule = derForm.watch('ncRfgModule');
-    const rfgRegister = derForm.register('ncRfgModule');
     return (
       <div data-testid="drawer-der-rfg">
-        <label style={{ display: 'block', marginBottom: 6, color: 'rgb(var(--scada-muted))' }}>NC RfG typ</label>
-        <div data-testid="drawer-der-rfg-types" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {['A', 'B', 'C', 'D'].map((t) => (
-            <label key={t} style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'rgb(var(--scada-text))' }}>
-              <input
-                type="radio"
-                name={rfgRegister.name}
-                ref={rfgRegister.ref}
-                onBlur={rfgRegister.onBlur}
-                value={t}
-                checked={selectedModule === t}
-                onChange={() => derForm.setValue('ncRfgModule', t as SldNcRfgModule, {
-                  shouldDirty: true,
-                  shouldValidate: true,
-                })}
-              />
-              {`Typ ${t}`}
-            </label>
-          ))}
+        <label style={{ display: 'block', marginBottom: 6, color: 'rgb(var(--scada-muted))' }}>
+          Moduł NC RfG (klasyfikacja backendu wg mocy i napięcia przyłączenia)
+        </label>
+        <div
+          data-testid="drawer-der-rfg-types"
+          style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}
+        >
+          <span data-testid="drawer-der-rfg-selected" style={{ color: 'rgb(var(--scada-text))', fontWeight: 700 }}>
+            {`Typ ${selectedModule}`}
+          </span>
+          {ncRfgClassification.status === 'loading' && (
+            <span style={{ color: 'rgb(var(--scada-muted))', fontSize: 10 }}>(wyznaczam z backendu…)</span>
+          )}
+          {ncRfgClassification.status === 'error' && (
+            <span
+              data-testid="drawer-der-rfg-error"
+              style={{ color: 'rgb(var(--scada-status-err))', fontSize: 10 }}
+            >
+              Nie udało się wyznaczyć modułu z katalogu backendu — zapis zweryfikuje go ponownie.
+            </span>
+          )}
         </div>
         <div style={{ marginTop: 12, color: 'rgb(var(--scada-muted))', fontSize: 10 }}>
           Grid code: PN-EN 50549 / IEEE 1547 / IEC 61400-21 (FW)
@@ -1660,41 +2036,11 @@ function PlaceholderTabBody({
   }
   if (kind === 'bay' && tab === 'protection') {
     return (
-      <div data-testid="drawer-bay-protection">
-        <div style={{ fontSize: 10, color: 'rgb(var(--scada-muted))', marginBottom: 6, fontWeight: 700 }}>
-          Zabezpieczenia pola (PN-EN 60255)
-        </div>
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {[
-            { code: '50', name: 'I≫ zwarciowe', tier: 'pierwotne' },
-            { code: '51', name: 'I> zwłoczne', tier: 'pierwotne' },
-            { code: '67', name: 'Kierunkowe', tier: 'rezerwa' },
-            { code: '50N/51N', name: 'Zwarcie do ziemi', tier: 'pierwotne' },
-            { code: '79', name: 'Auto-reclose (SPZ)', tier: 'opcjonalne' },
-          ].map((p) => (
-            <li
-              key={p.code}
-              data-testid={`drawer-bay-protection-${p.code.replace('/', '-')}`}
-              style={{
-                background: 'rgb(var(--scada-surface))',
-                border: '1px solid rgb(var(--scada-panel-raised))',
-                borderRadius: 3,
-                padding: '5px 8px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                fontSize: 10,
-              }}
-            >
-              <div>
-                <span style={{ color: 'rgb(var(--scada-status-warn-ink))', fontFamily: 'monospace', fontWeight: 700 }}>[{p.code}]</span>
-                <span style={{ color: 'rgb(var(--scada-text))', marginLeft: 6 }}>{p.name}</span>
-              </div>
-              <span style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace', fontSize: 9 }}>{p.tier}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
+      <ElementProtectionFunctionsPanel
+        elementId={elementId}
+        headingPl="Zabezpieczenia pola (PN-EN 60255)"
+        testId="drawer-bay-protection"
+      />
     );
   }
   if (kind === 'cable_run' && tab === 'trasa') {
@@ -1736,19 +2082,51 @@ function PlaceholderTabBody({
     );
   }
   if (kind === 'cable_run' && tab === 'parametry') {
+    // FAB-C (fantom danych katalogowych K30-89): wszystkie wartości poniżej
+    // pochodzą WYŁĄCZNIE z cableRunSpec zbudowanego w detailDrawerData.ts
+    // (ENM Cable/OverheadLine: catalog_ref/conductor_material/
+    // cross_section_mm2/insulation/rating.in_a). Brak pola w modelu = uczciwy
+    // stan zerowy „Brak w modelu" — NIGDY wartość zastępcza. Usunięta zaszyta
+    // „Norma" (PN-HD 620 S2): model ENM nie niesie normy konstrukcyjnej kabla
+    // (ani Cable, ani OverheadLine, ani BranchRating) — wiersz bez pokrycia w
+    // kontrakcie danych jest fabrykacją, nie „brakiem do uzupełnienia".
+    const NO_DATA = 'Brak w modelu';
+    const crossSectionText = cableRunSpec?.crossSectionMm2 != null
+      ? `${formatTechnicalNumberPl(cableRunSpec.crossSectionMm2)} mm²`
+      : NO_DATA;
+    const ratingText = cableRunSpec?.ratingInA != null
+      ? `${formatTechnicalNumberPl(cableRunSpec.ratingInA)} A`
+      : NO_DATA;
+    // Linia napowietrzna (przewód goły) strukturalnie NIE MA izolacji (ENM
+    // `OverheadLine` nie ma pola `insulation` — nie da się go „uzupełnić").
+    // To NIE jest brak danych, tylko brak zastosowania — rozróżnienie po
+    // segmentKind (jedyne źródło prawdy o rodzaju odcinka w tym kontrakcie).
+    const insulationText = cableRunSpec?.segmentKind === 'overhead_line_sn'
+      ? 'Nie dotyczy (przewód goły)'
+      : (cableRunSpec?.insulation ?? NO_DATA);
     return (
       <div data-testid="drawer-cable-parametry">
         <dl style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px' }}>
           <dt style={{ color: 'rgb(var(--scada-muted))' }}>Typ kabla</dt>
-          <dd style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace' }}>XRUHKXS 1×120</dd>
+          <dd data-testid="drawer-cable-catalog-ref" style={{ color: cableRunSpec?.catalogRef ? 'rgb(var(--scada-text))' : 'rgb(var(--scada-muted))', fontFamily: 'monospace' }}>
+            {cableRunSpec?.catalogRef ?? NO_DATA}
+          </dd>
           <dt style={{ color: 'rgb(var(--scada-muted))' }}>Przekrój żyły</dt>
-          <dd style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace' }}>120 mm²</dd>
+          <dd data-testid="drawer-cable-cross-section" style={{ color: cableRunSpec?.crossSectionMm2 != null ? 'rgb(var(--scada-text))' : 'rgb(var(--scada-muted))', fontFamily: 'monospace' }}>
+            {crossSectionText}
+          </dd>
           <dt style={{ color: 'rgb(var(--scada-muted))' }}>Materiał</dt>
-          <dd style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace' }}>Al</dd>
+          <dd data-testid="drawer-cable-material" style={{ color: cableRunSpec?.conductorMaterial ? 'rgb(var(--scada-text))' : 'rgb(var(--scada-muted))', fontFamily: 'monospace' }}>
+            {cableRunSpec?.conductorMaterial ?? NO_DATA}
+          </dd>
+          <dt style={{ color: 'rgb(var(--scada-muted))' }}>Izolacja</dt>
+          <dd data-testid="drawer-cable-insulation" style={{ color: cableRunSpec?.insulation ? 'rgb(var(--scada-text))' : 'rgb(var(--scada-muted))', fontFamily: 'monospace' }}>
+            {insulationText}
+          </dd>
           <dt style={{ color: 'rgb(var(--scada-muted))' }}>Ampacity I_max</dt>
-          <dd style={{ color: 'rgb(var(--scada-status-warn-ink))', fontFamily: 'monospace' }}>270 A</dd>
-          <dt style={{ color: 'rgb(var(--scada-muted))' }}>Norma</dt>
-          <dd style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace', fontSize: 10 }}>PN-HD 620 S2</dd>
+          <dd data-testid="drawer-cable-ampacity" style={{ color: cableRunSpec?.ratingInA != null ? 'rgb(var(--scada-text))' : 'rgb(var(--scada-muted))', fontFamily: 'monospace' }}>
+            {ratingText}
+          </dd>
         </dl>
       </div>
     );
@@ -1824,37 +2202,11 @@ function PlaceholderTabBody({
   }
   if (kind === 'apparatus' && tab === 'settings') {
     return (
-      <div data-testid="drawer-apparatus-settings">
-        <div style={{ fontSize: 10, color: 'rgb(var(--scada-muted))', marginBottom: 6, fontWeight: 700 }}>
-          Nastawy (IEC 60255 / ANSI)
-        </div>
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {[
-            { code: '50', name: 'Nadprądowe zwarciowe (I≫)', setpoint: '8.0 × In', delay: '0.05 s' },
-            { code: '51', name: 'Nadprądowe zwłoczne (I>)', setpoint: '1.5 × In', delay: '1.2 s' },
-            { code: '67', name: 'Kierunkowe nadprądowe', setpoint: 'auto', delay: '0.4 s' },
-          ].map((p) => (
-            <li
-              key={p.code}
-              data-testid={`drawer-apparatus-setting-${p.code}`}
-              style={{
-                background: 'rgb(var(--scada-surface))',
-                border: '1px solid rgb(var(--scada-panel-raised))',
-                borderRadius: 3,
-                padding: '6px 8px',
-                fontSize: 10,
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'rgb(var(--scada-status-warn-ink))', fontFamily: 'monospace', fontWeight: 700 }}>[{p.code}]</span>
-                <span style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace' }}>{p.delay}</span>
-              </div>
-              <div style={{ color: 'rgb(var(--scada-text))', marginTop: 2 }}>{p.name}</div>
-              <div style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace', marginTop: 2 }}>I_set = {p.setpoint}</div>
-            </li>
-          ))}
-        </ul>
-      </div>
+      <ElementProtectionFunctionsPanel
+        elementId={elementId}
+        headingPl="Nastawy (IEC 60255 / ANSI)"
+        testId="drawer-apparatus-settings"
+      />
     );
   }
   if (kind === 'bay' && tab === 'apparatus') {
@@ -1943,18 +2295,31 @@ function PlaceholderTabBody({
                   borderRadius: 3,
                   padding: '6px 8px',
                   display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
+                  flexDirection: 'column',
+                  gap: 2,
                   fontSize: 11,
                 }}
               >
-                <div>
-                  <span style={{ color: colorFor(der.kind), fontWeight: 700 }}>{der.kind ?? 'DER'}</span>
-                  <span style={{ color: 'rgb(var(--scada-text))', marginLeft: 6 }}>{formatExistingDerName(der, derIndex)}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <span style={{ color: colorFor(der.kind), fontWeight: 700 }}>{der.kind ?? 'DER'}</span>
+                    <span style={{ color: 'rgb(var(--scada-text))', marginLeft: 6 }}>{formatExistingDerName(der, derIndex)}</span>
+                  </div>
+                  <span style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace', fontSize: 10 }}>
+                    {der.pMw != null ? formatMwPl(der.pMw) : '—'}
+                  </span>
                 </div>
-                <span style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace', fontSize: 10 }}>
-                  {der.pMw != null ? formatMwPl(der.pMw) : '—'}
-                </span>
+                {/* Karta CV-4.1b (A3-04): tryb regulacji + nastawa — WYŁĄCZNIE gdy generator
+                   go deklaruje (`meta.control_mode`); zero fabrykacji dla źródeł pasywnych. */}
+                {der.controlModePl ? (
+                  <div
+                    data-testid={`drawer-station-der-${der.id}-regulacja`}
+                    style={{ color: 'rgb(var(--scada-muted))', fontSize: 10 }}
+                  >
+                    {der.controlModePl}
+                    {der.voltageSetpointPu != null ? ` · U = ${der.voltageSetpointPu} pu` : ''}
+                  </div>
+                ) : null}
               </li>
             ))}
           </ul>

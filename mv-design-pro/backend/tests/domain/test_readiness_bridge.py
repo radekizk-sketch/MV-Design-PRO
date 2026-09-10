@@ -27,7 +27,6 @@ def test_kod_walidatora_dostaje_kanoniczna_tresc() -> None:
     assert opis is not None
     assert opis["canonical_code"] == "source.grid_supply_missing"
     assert opis["canonical_level"] == "BLOCKER"
-    assert opis["canonical_fix_action_id"]
     assert opis["canonical_fix_navigation"]
     # Tresc pochodzi z kanonu, nie z kopii w module mostu.
     assert opis["canonical_message_pl"] == READINESS_CODES["source.grid_supply_missing"].message_pl
@@ -96,6 +95,12 @@ def test_kody_nn_przeniesione_z_frontu_maja_komplet_pol() -> None:
     Kody przeniesiono w V12K-206 z `ui/engineering-readiness/nnSourceReadinessCodes.ts`,
     ktora nie miala ani emitera w backendzie, ani konsumenta produkcyjnego. Ten test
     zastepuje 28 testow struktury tamtej tablicy — sprawdza to samo, ale na kanonie.
+
+    `pv.control_mode_missing` dostal realny emiter w karcie FAB-D2 (D6,
+    `application/calculation_readiness/service.py::_check_power_flow`) — rezerwacja
+    w `readiness_bridge.py` zostala zdjeta, bo kod ma juz droge do projektanta.
+    Ten JEDEN kod z listy jest wiec sprawdzany odwrotnie: MUSI NIE byc zarezerwowany
+    (inaczej rezerwacja bylaby falszywa deklaracja "brak emitera").
     """
     przeniesione = [
         "nn.source.field_missing",
@@ -111,13 +116,18 @@ def test_kody_nn_przeniesione_z_frontu_maja_komplet_pol() -> None:
         "nn.measurement.required_missing",
         "genset.fuel_type_missing",
     ]
+    kody_z_emiterem_juz = {"pv.control_mode_missing"}
     for kod in przeniesione:
         spec = READINESS_CODES[kod]
         assert spec.message_pl.strip(), f"{kod}: pusty komunikat PL"
-        assert spec.fix_action_id, f"{kod}: brak akcji naprawczej"
         assert spec.fix_navigation, f"{kod}: brak nawigacji naprawczej"
         assert 1 <= spec.priority <= 5, f"{kod}: priorytet poza zakresem"
-        assert kod in KODY_KANONU_ZAREZERWOWANE, f"{kod}: brak jawnej rezerwacji"
+        if kod in kody_z_emiterem_juz:
+            assert (
+                kod not in KODY_KANONU_ZAREZERWOWANE
+            ), f"{kod}: ma emiter (FAB-D2/D6) — rezerwacja powinna byc zdjeta"
+        else:
+            assert kod in KODY_KANONU_ZAREZERWOWANE, f"{kod}: brak jawnej rezerwacji"
 
 
 def test_widok_rejestru_niesie_luki_i_jest_deterministyczny() -> None:

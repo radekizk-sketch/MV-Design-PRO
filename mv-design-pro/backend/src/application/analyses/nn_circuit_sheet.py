@@ -141,6 +141,7 @@ from enm.hash import compute_enm_hash
 from enm.mapping import ref_to_graph_id
 from enm.models import Cable, EnergyNetworkModel, Substation, Transformer
 from network_model.catalog.lv_mcb_bands_iec60898 import PROG_CIEPLNY_WYZWALA_X_IN
+from network_model.pochodne import ka_na_a, km_na_m, prad_roboczy_a
 from network_model.solvers.cable_ampacity_derating import (
     obciazalnosc_skorygowana,
     wspolczynniki_nn,
@@ -351,7 +352,7 @@ def _ib_z_tabliczki(p_mw: float, q_mvar: float, u_ll_kv: float) -> float:
     s_mva = math.hypot(p_mw, q_mvar)
     if u_ll_kv <= 0:
         return 0.0
-    return s_mva * 1000.0 / (math.sqrt(3.0) * u_ll_kv)
+    return prad_roboczy_a(s_mva, u_ll_kv)
 
 
 # =============================================================================
@@ -449,7 +450,7 @@ def _i2t_dla_kabla(
         )
     wynik = check_conductor_thermal_withstand(
         ConductorThermalInput(
-            ith_a=ith_ka * 1000.0,
+            ith_a=ka_na_a(ith_ka),
             fault_duration_s=fault_duration_s,
             ith_1s_a=cable.ith_1s_a,
             jth_1s_a_per_mm2=cable.jth_1s_a_per_mm2,
@@ -491,7 +492,7 @@ def _kable_na_trasie(path: LvBusPath) -> tuple[Cable, ...]:
 
 
 def _dlugosc_calkowita_m(kable: tuple[Cable, ...]) -> float:
-    return sum(c.length_km for c in kable) * 1000.0
+    return km_na_m(sum(c.length_km for c in kable))
 
 
 def _przewod_z_kabla(cable: Cable) -> dict[str, Any]:

@@ -40,9 +40,36 @@ export interface MeasurementRating {
   burden_va?: number | null;
 }
 
+/** Karta W3-B (mapa 4 #3): pojedyncze obciążenie obwodu wtórnego CT/VT —
+ *  kształt 1:1 z `api/equipment_checks.py::ObciazenieAparatu` i
+ *  `enm/models.py::ObciazenieAparatu`. */
+export interface ObciazenieAparatuObwoduWtornego {
+  nazwa: string;
+  moc_va: number;
+}
+
+/** Karta W3-B (mapa 4 #3): obwód wtórny przekładnika CT/VT — koniec liczenia
+ *  „na kartce" w ekranie bilansu. Dana PROJEKTOWA (kreator stacji / ekran
+ *  bilansu), BEZ wartości domyślnych; `null`/brak pole = obwód niezapisany
+ *  (kryterium nasycenia/spadku napięcia kończy się kodem gotowości, nie
+ *  wartością zastępczą). */
+export interface ObwodWtorny {
+  dlugosc_przewodu_m?: number | null;
+  przekroj_przewodu_mm2?: number | null;
+  obciazenia_aparatow: ObciazenieAparatuObwoduWtornego[];
+  moc_stykow_va?: number | null;
+}
+
 export interface ProtectionSetting {
+  /**
+   * FAB-F (2026-09-05): lustro pomijało 4 literały D10 (funkcje ochrony od
+   * pracy wyspowej / Loss of Mains — dodane addytywnie w backendzie, patrz
+   * `enm/models.py::ProtectionSetting.function_type`), niewidoczne dla
+   * guarda parytetu, bo sprawdzał obecność POLA, nie zbiór wartości unii.
+   */
   function_type: 'overcurrent_50' | 'overcurrent_51' | 'earth_fault_50N'
-    | 'earth_fault_51N' | 'directional_67' | 'directional_67N';
+    | 'earth_fault_51N' | 'directional_67' | 'directional_67N'
+    | 'rocof_81R' | 'vector_shift_78' | 'underfrequency_81U' | 'overfrequency_81O';
   threshold_a?: number | null;
   time_delay_s?: number | null;
   curve_type?: 'DT' | 'IEC_SI' | 'IEC_VI' | 'IEC_EI' | 'IEC_LI' | null;
@@ -63,6 +90,17 @@ export interface ProtectionSetting {
 // ---------------------------------------------------------------------------
 
 export type ParameterSource = 'CATALOG' | 'OVERRIDE';
+/**
+ * FAB-F (2026-09-05): `parameter_source` NIE ma jednej unii w backendzie —
+ * `BranchBase`, `Source` i `ShuntCapacitor` (enm/models.py) dopuszczają
+ * dodatkowo `MANUAL_EQUIVALENT` ("zastępczy ręczny" — wartość wpisana
+ * ręcznie jako odpowiednik danej katalogowej, bez `catalog_ref`); pozostałe
+ * encje (`Transformer`, `Load`, `Generator`, `Measurement`,
+ * `ProtectionAssignment`) mają WYŁĄCZNIE `CATALOG`/`OVERRIDE` — parytet
+ * literałów unii jest per-pole, nie globalny (patrz
+ * `scripts/enm_contract_parity_guard.py`, sekcja literałów).
+ */
+export type ParameterSourceWithManualEquivalent = ParameterSource | 'MANUAL_EQUIVALENT';
 export type CatalogSourceMode = 'KATALOG' | 'MIGRACJA' | 'EKSPERCKI_RECZNY';
 
 export interface ParameterOverride {
@@ -112,15 +150,6 @@ export interface ENMHeader {
   defaults: ENMDefaults;
   /** Blok addytywny (backend `set_connection_conditions`); brak = nie podano. */
   connection_conditions?: ConnectionConditions | null;
-  /**
-   * V12K-230: hashe TOZSAMOSCI modelu i przypadku. Bez nich front nie ma typowanego
-   * dostepu do danych, ktore rozstrzygaja, czy wynik jest AKTUALNY wobec modelu.
-   */
-  input_hash?: string | null;
-  semantic_hash?: string | null;
-  case_hash?: string | null;
-  variant_hash?: string | null;
-  switching_snapshot_hash?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -146,7 +175,7 @@ export interface BranchBase extends ENMElement {
   status: 'closed' | 'open';
   catalog_ref?: string | null;
   catalog_namespace?: string | null;
-  parameter_source?: ParameterSource | null;
+  parameter_source?: ParameterSourceWithManualEquivalent | null;
   source_mode?: CatalogSourceMode | null;
   materialized_params?: Record<string, unknown> | null;
   overrides?: ParameterOverride[] | null;
@@ -203,6 +232,8 @@ export interface Cable extends BranchBase {
   return_conductor_cross_section_mm2?: number | null;
   return_conductor_material?: string | null;
   return_conductor_r_ohm_per_km_20c?: number | null;
+  /** Reaktancja zyly powrotnej PE/PEN (karta P0.6 nN); brak = brak danej, nie zero. */
+  return_conductor_x_ohm_per_km?: number | null;
   return_conductor_jth_1s_a_per_mm2?: number | null;
   return_conductor_ith_1s_a?: number | null;
   rating?: BranchRating | null;
@@ -358,6 +389,12 @@ export interface Source extends ENMElement {
   r_ohm?: number | null;
   x_ohm?: number | null;
   rx_ratio?: number | null;
+  /** Dane scenariusza MIN (IEC 60909-0 eq. 6 z c_min) — CV-4.3 K7; brak = bieg MIN z danych MAX z jawnym założeniem. */
+  sk3_min_mva?: number | null;
+  ik3_min_ka?: number | null;
+  rx_ratio_min?: number | null;
+  /** Napięcie zadane szyny bilansującej [p.u. Un szyny]; brak = 1,0 (znamionowe). */
+  u_set_pu?: number | null;
   r0_ohm?: number | null;
   x0_ohm?: number | null;
   z0_z1_ratio?: number | null;
@@ -365,7 +402,7 @@ export interface Source extends ENMElement {
   c_min?: number | null;
   catalog_ref?: string | null;
   catalog_namespace?: string | null;
-  parameter_source?: ParameterSource | null;
+  parameter_source?: ParameterSourceWithManualEquivalent | null;
   source_mode?: CatalogSourceMode | null;
   materialized_params?: Record<string, unknown> | null;
   overrides?: ParameterOverride[] | null;
@@ -1072,6 +1109,15 @@ export interface Measurement extends ENMElement {
    *  WYŁĄCZNIE dla measurement_type==='VT'. Oś odrębna od `vt_arrangement`
    *  (open_delta/star = oś 3U0). `null`/brak = dana niedostarczona. */
   vt_mounting?: 'bus' | 'cable' | null;
+  /** Karta W3-B (mapa 4 #3): obwód wtórny CT/VT — WSPÓLNY dla obu typów
+   *  (oba mają zaciski wtórne i przewody do aparatów). `null`/brak = obwód
+   *  niezapisany (uczciwy brak, zero fabrykacji). */
+  obwod_wtorny?: ObwodWtorny | null;
+  /** Karta W3-B: które uzwojenie VT opisuje `obwod_wtorny` (limit ΔU zależy
+   *  od kategorii uzwojenia — pomiarowe 0,5 % vs zabezpieczeniowe 1,0 %,
+   *  `api/equipment_checks.py::VtBurdenRequest.uzwojenie`). WYŁĄCZNIE dla
+   *  measurement_type==='VT'. */
+  vt_uzwojenie?: 'POMIAROWE' | 'ZABEZPIECZENIOWE' | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -1157,12 +1203,27 @@ export interface ConnectionNode {
   parent_ref: string;
 }
 
-/** Bateria kondensatorow rownoleglych (kompensacja mocy biernej). */
+/**
+ * Bateria kondensatorow rownoleglych (kompensacja mocy biernej).
+ *
+ * FAB-F (2026-09-05): lustro pomijalo 6 pol katalogowych, ktore
+ * `ShuntCapacitor` (enm/models.py) ma jako WLASNE (nie dziedziczone z
+ * `BranchBase` — ten element rozszerza wylacznie `ENMElement`). Guard
+ * parytetu (`enm_contract_parity_guard.py`) tego nie lapal: liczyl pola
+ * `BranchBase` jako "widoczne" dla KAZDEJ sprawdzanej encji, niezaleznie od
+ * tego, czy faktycznie po niej dziedziczy — poprawione tą samą kartą.
+ */
 export interface ShuntCapacitor extends ENMElement {
   bus_ref: string;
   rated_mvar: number;
   rated_kv: number;
   status?: 'closed' | 'open';
+  catalog_ref?: string | null;
+  catalog_namespace?: string | null;
+  parameter_source?: ParameterSourceWithManualEquivalent | null;
+  source_mode?: CatalogSourceMode | null;
+  materialized_params?: Record<string, unknown> | null;
+  overrides?: ParameterOverride[] | null;
 }
 
 /** Kompensacja spadku napiecia w linii (regulacja OLTC wg punktu zdalnego). */
@@ -1198,6 +1259,27 @@ export interface EnergyNetworkModel {
   logical_views?: LogicalViewsV1;
   /** Phase 0B-4: ciągi liniowe — explicit order stacji (zamiast wnioskowania z grafu). */
   line_runs?: LineRunV1[];
+  /**
+   * W1 (mapa domknięcia 2026-09): typy katalogowe niesione przez model — dane
+   * inżyniera z arkusza XLSX jako pozycje katalogu z proweniencją
+   * (`backend/src/enm/katalog_projektu.py`). Brak sekcji = model wyłącznie na
+   * katalogu statycznym.
+   */
+  katalog_projektu?: KatalogProjektu | null;
+}
+
+/** W1: pozycja katalogu projektu — kształt rekordu `CatalogRepository.from_records`. */
+export interface RekordTypuProjektu {
+  id: string;
+  name: string;
+  params: Record<string, unknown>;
+}
+
+/** W1: sekcja `katalog_projektu` modelu (listy posortowane po `id`, id unikalne). */
+export interface KatalogProjektu {
+  line_types: RekordTypuProjektu[];
+  cable_types: RekordTypuProjektu[];
+  transformer_types: RekordTypuProjektu[];
 }
 
 // ---------------------------------------------------------------------------
@@ -1561,7 +1643,6 @@ export type ReadinessEntry = {
   canonical_priority?: number;
   canonical_area?: string;
   canonical_message_pl?: string;
-  canonical_fix_action_id?: string | null;
   canonical_fix_navigation?: Record<string, string> | null;
 };
 

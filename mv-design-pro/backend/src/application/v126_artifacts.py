@@ -10,6 +10,13 @@ JsonDict = dict[str, Any]
 V126_PROOF_VERSION = "AcademicProofPackV1"
 V126_REPORT_VERSION = "AcademicReportV1"
 
+#: Trasa kanoniczna rankingu N-1/N-2 (pełny re-solve solvera rozpływu) — karta
+#: W3-E. `reliability_contingency` V12.6 liczy dotkliwość z `_branch_current_a`
+#: (prąd gałęzi z obciążenia węzła docelowego, bez sprzężenia sieci) i NIE jest
+#: kanonem rankingu; kanon = `application/analyses/kontyngencje_n1.py`.
+RANKING_N1_TRASA_KANONICZNA = "/api/insights/n-1-contingency"
+RANKING_N1_EKRAN_KANONICZNY = "Wyniki › Kontyngencje"
+
 
 def _canonical_payload(payload: Any) -> str:
     return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
@@ -50,6 +57,87 @@ def _metric_rows(value: Any, prefix: str = "", limit: int = 24) -> list[JsonDict
         else:
             rows.append({"label": label, "value": item})
     return rows[:limit]
+
+
+#: Klucze rankingu N-1/N-2 zdejmowane z wyniku `reliability_contingency`
+#: (karta W3-E, KARTA_W3 §0 rodzina E) — zmierzone w `_reliability`
+#: (`network_model/solvers/v126_academic.py:1069-1188`): `contingency_ranking`
+#: (lista pozycji rankingu, klucz w kluczu wyniku) i dwa klucze towarzyszące
+#: WYŁĄCZNIE rankingowi (meldunek zbiorczy o brakujących obciążalnościach,
+#: sensowny tylko jako komentarz DO rankingu, który po zdjęciu rankingu byłby
+#: osieroconym, mylącym fragmentem — sugerowałby, że "reszta" ma poprawny
+#: ranking N-1, podczas gdy ranking nie jest prezentowany w CAŁOŚCI).
+_KLUCZE_RANKINGU_N1 = ("contingency_ranking", "brak_danych", "elementy_bez_obciazalnosci")
+
+
+def bez_rankingu_n1(result: Mapping[str, Any]) -> JsonDict:
+    """Zdejmuje z wyniku `reliability_contingency` ranking N-1/N-2 pochodny od
+    `_branch_current_a` (solver FROZEN — B-01, funkcja NIE zmienia solvera,
+    tylko postprocessuje jego wynik w warstwie aplikacyjnej) i dokłada stan
+    `ranking_n1` z odnośnikiem do rankingu kanonicznego.
+
+    Karta W3-E (KARTA_W3 §0 rodzina E, 9 #2): `_reliability` liczy dotkliwość
+    kontyngencji z `_branch_current_a` — prąd wyliczony z obciążenia WĘZŁA
+    DOCELOWEGO gałęzi, bez sprzężenia sieci (nie jest to rozpływ). Kanon
+    rankingu N-1 = `application/analyses/kontyngencje_n1.py` (pełny re-solve
+    solvera rozpływu dla każdej kontyngencji). Wskaźniki niezawodności
+    (SAIDI/SAIFI/CAIDI/MAIFI, klucz `indices`) NIE są dotknięte — to JEDYNA
+    implementacja tych wskaźników w systemie i zostają widoczne bez zmian.
+
+    Funkcja jest CZYSTA (ten sam wynik solvera → ten sam wynik postprocessu —
+    determinizm) i wywoływana RAZ, w `enm/canonical_analysis.py::_execute_v126`,
+    zanim wynik trafi do `run_record["result"]` — stąd jeden punkt wywołania
+    zasila WSZYSTKICH trzech konsumentów payloadu: końcówkę `results` (czyta
+    `run_record["result"]` wprost), końcówkę `report` (`build_v126_report_artifact`
+    czyta `result_payload["result"]` — TEN SAM słownik) i końcówkę `proof`
+    (`build_v126_proof_artifact` czyta WYŁĄCZNIE `white_box_trace`, który nigdy
+    nie niósł klucza rankingu — trzeci konsument jest więc czysty z konstrukcji,
+    bez potrzeby osobnego wywołania). `trace` (`GET .../trace`) zostaje SUROWY —
+    WHITE BOX solvera jest audytowalny w całości; adnotacja `ranking_n1` jedzie
+    tam DODATKOWO jako pole na poziomie odpowiedzi trasy (nie w krokach śladu).
+    """
+    wynik: JsonDict = dict(result)
+    for klucz in _KLUCZE_RANKINGU_N1:
+        wynik.pop(klucz, None)
+
+    sanity = wynik.get("sanity")
+    if isinstance(sanity, Mapping):
+        naruszenia = sanity.get("violations")
+        if isinstance(naruszenia, list):
+            # `n1_overload` jest DRUGIM, zagnieżdżonym kluczem pochodnym od
+            # `_branch_current_a` (filtr `overloaded` w `_reliability` czyta
+            # `max_loading_percent` — ten sam prąd gałęzi bez rozpływu) —
+            # KLASA, nie instancja: usuwamy WSZYSTKIE klucze rankingu, nie
+            # tylko ten nazwany w audycie.
+            przefiltrowane = [
+                naruszenie
+                for naruszenie in naruszenia
+                if not (
+                    isinstance(naruszenie, Mapping) and naruszenie.get("check") == "n1_overload"
+                )
+            ]
+            if len(przefiltrowane) != len(naruszenia):
+                nowy_sanity = dict(sanity)
+                nowy_sanity["violations"] = przefiltrowane
+                # Ten sam predykat status<->violations co `_sanity_block`
+                # solvera (`_status`/`"zweryfikowany" if not violations else
+                # …`) — reużyty tutaj, nie wymyślony na nowo (predykaty parami,
+                # jedno źródło prawdy o tym, co oznacza pusta lista naruszeń).
+                nowy_sanity["status"] = (
+                    "zweryfikowany" if not przefiltrowane else "poza zakresem wiarygodności"
+                )
+                wynik["sanity"] = nowy_sanity
+
+    wynik["ranking_n1"] = {
+        "status": "NIEPREZENTOWANY",
+        "powod_pl": (
+            "ranking liczony z prądu gałęzi bez rozpływu (V12.6); ranking "
+            "kanoniczny = pełny re-solve"
+        ),
+        "ekran": RANKING_N1_EKRAN_KANONICZNY,
+        "trasa": RANKING_N1_TRASA_KANONICZNA,
+    }
+    return wynik
 
 
 def build_v126_proof_artifact(run_record: Mapping[str, Any]) -> JsonDict:

@@ -7,7 +7,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { runNcRfgPtpireeTests, type NcRfgRunRequest } from '../api';
+import { fetchNcRfgCaseCompliance, runNcRfgPtpireeTests, type NcRfgRunRequest } from '../api';
 
 const ZADANIE: NcRfgRunRequest = { modules: [] };
 
@@ -54,6 +54,22 @@ describe('runNcRfgPtpireeTests — adres biegu', () => {
     expect(fetchMock).toHaveBeenLastCalledWith(
       '/api/ncrfg-tests/run',
       expect.objectContaining({ method: 'POST' }),
+    );
+  });
+});
+
+describe('fetchNcRfgCaseCompliance — adres zgodności przekrojowej (karta W3-D)', () => {
+  it('woła GET z case_id w ścieżce i operator_id w zapytaniu', async () => {
+    const fetchMock = mockFetchOk();
+    await fetchNcRfgCaseCompliance('case-77', 'enea');
+    expect(fetchMock).toHaveBeenCalledWith('/api/ncrfg-tests/cases/case-77/compliance?operator_id=enea');
+  });
+
+  it('koduje case_id i operator_id w adresie (znaki spoza URL nie rozrywają zapytania)', async () => {
+    const fetchMock = mockFetchOk();
+    await fetchNcRfgCaseCompliance('przypadek 7&x', 'pge dystrybucja');
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/ncrfg-tests/cases/przypadek%207%26x/compliance?operator_id=pge%20dystrybucja',
     );
   });
 });

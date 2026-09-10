@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   KLUCZ_PUNKT,
+  KLUCZ_ZRODLA_SIECIOWE,
   KOLUMNY_ZWARC,
+  KOLUMNY_ZRODEL_SIECIOWYCH,
   KONFIG_WYKRESU_ZWARC,
   WIELKOSCI_WYKRESU,
   filtrujWierszeWkladow,
@@ -11,6 +13,7 @@ import {
   naSlupkiUdzialow,
   naSlupkiWielkosci,
   naWierszeWkladow,
+  naWierszeZrodelSieciowych,
   naWierszeZwarc,
   naZalozeniaZwarc,
 } from '../zwarciaModel';
@@ -21,6 +24,8 @@ import {
   fmtMVA,
   fmtWspolczynnik,
   rodzajZwarciaPL,
+  rxRatioZrodloPL,
+  trybZrodlaSiecowegoPL,
   typMaszynyPL,
   uwagiZwarciaPL,
 } from '../strings';
@@ -29,6 +34,11 @@ import {
   shortCircuitRowFixture,
   wkladyFixture,
   wkladyZeSzczegolemFixture,
+  zalozenieBieguFixture,
+  zrodloSiecioweSladImpedancjaJawnaFixture,
+  zrodloSiecioweSladMaxFixture,
+  zrodloSiecioweSladMinBrakDanychFixture,
+  zrodloSiecioweSladMinZDanymiFixture,
 } from './fixtures';
 
 describe('mapujWierszZwarcia — projekcja ShortCircuitRow → wiersz wzorca (fixture 1:1)', () => {
@@ -135,6 +145,87 @@ describe('naZalozeniaZwarc — założenia (metoda IEC 60909, c, czas cieplny)',
     expect(zalozenia[1].uwaga).toBe(ZWARCIA_STRINGS.zalWartoscZKonfiguracji);
     expect(zalozenia[2].wartosc).toBe(ZWARCIA_STRINGS.kreska);
     expect(zalozenia[2].jednostka).toBeUndefined();
+  });
+
+  // CV-4.3 K7: `raw_result.zalozenia` — jedno wiersz na założenie biegu, treść
+  // (message_pl) WPROST z backendu, nigdy cicho.
+  it('dokłada wiersz na każde założenie biegu (raw_result.zalozenia) — treść z backendu', () => {
+    const zalozenieA = zalozenieBieguFixture({ element_ref: 's1' });
+    const zalozenieB = zalozenieBieguFixture({ element_ref: 's2', code: 'source.sk_min_missing' });
+    const zalozenia = naZalozeniaZwarc(1.1, 1.0, [zalozenieA, zalozenieB]);
+    expect(zalozenia).toHaveLength(5); // 3 bazowe + 2 ze źródeł
+    expect(zalozenia[3]).toEqual({
+      etykieta: ZWARCIA_STRINGS.zalozenieEtykieta('s1'),
+      wartosc: zalozenieA.message_pl,
+      uwaga: ZWARCIA_STRINGS.zalozenieUwaga('source.sk_min_missing', 'MIN'),
+    });
+    expect(zalozenia[4].etykieta).toBe(ZWARCIA_STRINGS.zalozenieEtykieta('s2'));
+  });
+
+  it('bez założeń biegu (undefined/pusta lista) → tylko 3 wiersze bazowe (bez zmian)', () => {
+    expect(naZalozeniaZwarc(1.1, 1.0, undefined)).toHaveLength(3);
+    expect(naZalozeniaZwarc(1.1, 1.0, [])).toHaveLength(3);
+  });
+});
+
+describe('naWierszeZrodelSieciowych — ślad Z_Q źródeł sieciowych (CV-4.3 K6/K7)', () => {
+  it('tryb MOC_ZWARCIOWA (MAX): mapuje S″kQ, c, R/X + źródło, |Z_Q|, wzór', () => {
+    const [w] = naWierszeZrodelSieciowych([zrodloSiecioweSladMaxFixture()]);
+    expect(w.zrodlo).toEqual({ wartosc: 's1' });
+    expect(w.scenariusz).toEqual({ wartosc: 'MAX' });
+    expect(w.tryb).toEqual({ wartosc: trybZrodlaSiecowegoPL('MOC_ZWARCIOWA') });
+    expect(w.mocPrad).toEqual({ wartosc: `${fmtMVA(250.0)} ${ZWARCIA_STRINGS.jednMVA}` });
+    expect(w.c).toEqual({ wartosc: fmtWspolczynnik(1.1) });
+    expect(w.rx.wartosc).toBe(`${fmtWspolczynnik(0.1)} (${rxRatioZrodloPL('MODEL')})`);
+    expect(w.zq).toMatchObject({ wartosc: expect.stringContaining('0,6600') });
+    expect(w.wzor).toEqual({ wartosc: zrodloSiecioweSladMaxFixture().formula });
+    expect(w[KLUCZ_ZRODLA_SIECIOWE]).toEqual({ wartosc: 's1::MAX' });
+  });
+
+  it('tryb MOC_ZWARCIOWA_MIN (MIN z danymi): scenariusz MIN, R/X źródło MODEL_MIN, brak zalozenia w tekście', () => {
+    const [w] = naWierszeZrodelSieciowych([zrodloSiecioweSladMinZDanymiFixture()]);
+    expect(w.scenariusz).toEqual({ wartosc: 'MIN' });
+    expect(w.tryb.wartosc).toBe(trybZrodlaSiecowegoPL('MOC_ZWARCIOWA_MIN'));
+    expect(w.tryb.wartosc).toContain('MIN');
+    expect(w.rx.wartosc).toContain(rxRatioZrodloPL('MODEL_MIN'));
+  });
+
+  it('tryb *_MAX_JAKO_MIN (MIN bez danych): etykieta trybu nazywa brak danych własnych', () => {
+    const [w] = naWierszeZrodelSieciowych([zrodloSiecioweSladMinBrakDanychFixture()]);
+    expect(w.tryb.wartosc).toBe(trybZrodlaSiecowegoPL('MOC_ZWARCIOWA_MAX_JAKO_MIN'));
+    expect(w.tryb.wartosc).toMatch(/brak własnych danych MIN/);
+  });
+
+  it('tryb IMPEDANCJA_JAWNA: brak S″kQ/c/R-X/|Z_Q| → komórki „—" (uczciwy brak, nie 0)', () => {
+    const [w] = naWierszeZrodelSieciowych([zrodloSiecioweSladImpedancjaJawnaFixture()]);
+    expect(w.mocPrad).toEqual({ wartosc: ZWARCIA_STRINGS.kreska });
+    expect(w.c).toEqual({ wartosc: ZWARCIA_STRINGS.kreska });
+    expect(w.rx).toEqual({ wartosc: ZWARCIA_STRINGS.kreska });
+    expect(w.zq.wartosc).toBe(ZWARCIA_STRINGS.kreska);
+  });
+
+  it('tryb PRAD_ZWARCIOWY (I″kQ zamiast S″kQ): kolumna S″kQ/I″kQ pokazuje prąd w kA', () => {
+    const [w] = naWierszeZrodelSieciowych([
+      zrodloSiecioweSladMaxFixture({ tryb: 'PRAD_ZWARCIOWY', sk3_mva: undefined, ik3_ka: 9.6 }),
+    ]);
+    expect(w.mocPrad).toEqual({ wartosc: `${fmtKA(9.6)} ${ZWARCIA_STRINGS.jednKA}` });
+  });
+
+  it('zachowuje kolejność źródłową (kolejność backendu, bez ponownego sortowania)', () => {
+    const wiersze = naWierszeZrodelSieciowych([
+      zrodloSiecioweSladMaxFixture({ ref_id: 's2' }),
+      zrodloSiecioweSladMaxFixture({ ref_id: 's1' }),
+    ]);
+    expect(wiersze.map((w) => w.zrodlo.wartosc)).toEqual(['s2', 's1']);
+  });
+});
+
+describe('KOLUMNY_ZRODEL_SIECIOWYCH — kolumny deklaratywne', () => {
+  it('niesie kolumny źródło/scenariusz/tryb/moc-prąd/c/R-X/|Z_Q|/wzór', () => {
+    const klucze = KOLUMNY_ZRODEL_SIECIOWYCH.map((k) => k.klucz);
+    expect(klucze).toEqual(
+      expect.arrayContaining(['zrodlo', 'scenariusz', 'tryb', 'mocPrad', 'c', 'rx', 'zq', 'wzor']),
+    );
   });
 });
 

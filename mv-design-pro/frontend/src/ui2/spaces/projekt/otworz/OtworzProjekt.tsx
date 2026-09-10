@@ -71,6 +71,12 @@ export interface OtworzProjektProps {
   onWrocDoPulpitu?: () => void;
   /** Operacja (tworzenie / otwarcie / usunięcie) w toku. */
   wToku?: boolean;
+  /**
+   * Inne drogi zdobycia projektu (E1): import z arkusza XLSX i odtworzenie z
+   * archiwum ZIP. Brak funkcji = wejście się nie renderuje (zero martwych kontrolek).
+   */
+  onOtworzImportArkusza?: () => void;
+  onOtworzArchiwum?: () => void;
 }
 
 export function OtworzProjekt({
@@ -86,6 +92,8 @@ export function OtworzProjekt({
   aktywnyProjekt = null,
   onWrocDoPulpitu,
   wToku = false,
+  onOtworzImportArkusza,
+  onOtworzArchiwum,
 }: OtworzProjektProps) {
   const [zaznaczonyId, setZaznaczonyId] = useState<string | null>(null);
   const [doUsunieciaId, setDoUsunieciaId] = useState<string | null>(null);
@@ -134,6 +142,38 @@ export function OtworzProjekt({
         >
           {OTWORZ_STRINGS.wlasnaNazwa}
         </button>
+      )}
+
+      {(onOtworzImportArkusza || onOtworzArchiwum) && (
+        <section
+          className="mvd-otworz-przyklady"
+          aria-label={OTWORZ_STRINGS.inneDrogiTytul}
+          data-testid="mvd-projekty-inne-drogi"
+        >
+          <h3 className="mvd-pulpit-cases-title">{OTWORZ_STRINGS.inneDrogiTytul}</h3>
+          <div className="mvd-otworz-przyklady-grid">
+            {onOtworzImportArkusza && (
+              <Kafel
+                tytul={OTWORZ_STRINGS.drogaArkusz}
+                onKlik={onOtworzImportArkusza}
+                ariaLabel={OTWORZ_STRINGS.drogaArkuszAkcja}
+                testId="mvd-projekty-droga-arkusz"
+              >
+                <p className="mvd-otworz-przyklad-opis">{OTWORZ_STRINGS.drogaArkuszOpis}</p>
+              </Kafel>
+            )}
+            {onOtworzArchiwum && (
+              <Kafel
+                tytul={OTWORZ_STRINGS.drogaArchiwum}
+                onKlik={onOtworzArchiwum}
+                ariaLabel={OTWORZ_STRINGS.drogaArchiwumAkcja}
+                testId="mvd-projekty-droga-archiwum"
+              >
+                <p className="mvd-otworz-przyklad-opis">{OTWORZ_STRINGS.drogaArchiwumOpis}</p>
+              </Kafel>
+            )}
+          </div>
+        </section>
       )}
 
       {przyklady.length > 0 && (

@@ -107,36 +107,39 @@ def create_switch(
 
 
 # =============================================================================
-# Test: add_node allows single SLACK and rejects second SLACK
+# Test: wiele węzłów SLACK w grafie (po jednym na wyspę) — CV-4.3 K3b
 # =============================================================================
 
 
 class TestAddNodeSlackConstraint:
-    """Testy walidacji pojedynczego węzła SLACK."""
+    """Węzeł SLACK = szyna o zadanym napięciu; graf niesie ich tyle, ile źródeł.
 
-    def test_add_node_allows_single_slack_and_rejects_second_slack(self):
-        """
-        Dodanie jednego węzła SLACK powinno się powieść,
-        ale dodanie drugiego powinno rzucić ValueError.
-        """
+    Intencja dawnego testu (do CV-4.3 K3b: „drugi SLACK rzuca ValueError") była
+    regułą WEJŚCIA rozpływu wpisaną w IR — odmawiała całej sieci z dwoma GPZ w
+    osobnych wyspach (pomiar A3-05: 4 sieci rejestru). Regułą wejścia rządzi
+    assembler (jedna szyna bilansująca na wyspę); IR przechowuje wszystkie szyny
+    o zadanym napięciu, a wybór JEDNEJ zostaje ścisły w ``get_slack_node``.
+    """
+
+    def test_add_node_allows_many_slack_nodes_and_get_slack_node_stays_strict(self):
         graph = NetworkGraph()
 
-        # Dodanie pierwszego węzła SLACK - powinno się powieść
         slack1 = create_slack_node("SLACK1", "GPZ Główny")
         graph.add_node(slack1)
-
-        # Sprawdź, że węzeł został dodany
         assert "SLACK1" in graph.nodes
         assert graph.get_slack_node() is slack1
+        assert graph.get_slack_node_ids() == ["SLACK1"]
 
-        # Dodanie drugiego węzła SLACK - powinno rzucić ValueError
         slack2 = create_slack_node("SLACK2", "GPZ Zapasowy")
-        with pytest.raises(ValueError, match="SLACK"):
-            graph.add_node(slack2)
+        graph.add_node(slack2)
+        assert "SLACK2" in graph.nodes
+        assert len(graph.nodes) == 2
+        assert graph.get_slack_node_ids() == ["SLACK1", "SLACK2"]
 
-        # Sprawdź, że drugi węzeł nie został dodany
-        assert "SLACK2" not in graph.nodes
-        assert len(graph.nodes) == 1
+        # Wybór JEDNEJ szyny bilansującej z dwóch jest niejednoznaczny — jawna odmowa
+        # z instrukcją (a nie ciche wzięcie pierwszej).
+        with pytest.raises(ValueError, match="SLACK1, SLACK2"):
+            graph.get_slack_node()
 
     def test_add_multiple_pq_nodes_allowed(self):
         """Dodanie wielu węzłów PQ powinno się powieść."""

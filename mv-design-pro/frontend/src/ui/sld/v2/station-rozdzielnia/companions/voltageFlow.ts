@@ -4,11 +4,11 @@
  * Per-archetype VOLTAGE + POWER-FLOW companions (gate F). Produced by running the
  * FROZEN Newton-Raphson solver (`solve_power_flow_physics`) on a two-voltage
  * substrate (real SN/nN TransformerBranch) in
- * `backend/src/application/reference_networks/station_archetype_substrate.py`
+ * `backend/tests/reference_networks/station_archetype_substrate.py`
  * (READ-ONLY w.r.t. the solver, B-01). Regenerate with:
  *
  *   cd mv-design-pro/backend && poetry run python -m \
- *     application.reference_networks.station_archetype_substrate --write
+ *     tests.reference_networks.station_archetype_substrate --write
  *
  * Every busbar carries U [kV] + [p.u./%] + deviation; every branch carries
  * I/P/Q/S + direction + loading %. The renderer INTERPRETS these on L2 — it

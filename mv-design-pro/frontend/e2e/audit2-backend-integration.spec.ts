@@ -318,13 +318,32 @@ test.describe('Audit2 Backend Integration (A-P)', () => {
     expect(body.all_pass).toBeTruthy();
   });
 
-  test('Q. POST /api/cases/audit2-power-flow uruchamia wrapper z DB', async ({ request }) => {
-    // Create project + audit2 config dla full e2e flow.
+  test('Q. bieg kanoniczny LOAD_FLOW z audit2_project_id/audit2_station_id stosuje config z DB', async ({ request }) => {
+    // Karta CV-4.2: fabrykowany stub POST /api/cases/audit2-power-flow
+    // (pq=[], slack_node_id or "slack-stub" — zero fizyki, zawsze empty
+    // graph, case_id NIGDY nie wskazywal realnego przypadku) USUNIETY.
+    // Test Q dowodzi TEJ SAMEJ wlasnosci ("konfiguracja stacji z DB dociera
+    // do wejscia solvera, bez zmyslonej drabinki grounding_z0_z1_ratio") na
+    // torze KANONICZNYM: createRun -> executeRun -> results, na REALNYM
+    // przypadku z REALNA siecia (assembler wymaga wezla SLACK — pusty graf
+    // starego stubu nie jest juz droga, ktora da sie przejsc).
     const projectRes = await request.post(`${BACKEND_BASE}/api/projects`, {
       data: { name: `E2E Audit2 PowerFlow ${Date.now()}` },
     });
     expect(projectRes.status()).toBe(201);
     const pid = (await projectRes.json()).id;
+
+    const caseRes = await request.post(`${BACKEND_BASE}/api/study-cases`, {
+      data: {
+        project_id: pid,
+        name: 'Przypadek audit2 e2e',
+        description: '',
+        config: {},
+        set_active: true,
+      },
+    });
+    expect(caseRes.ok()).toBeTruthy();
+    const caseId = (await caseRes.json()).id;
 
     const cfgRes = await request.put(
       `${BACKEND_BASE}/api/v1/projects/${pid}/audit2-station-config/station-pf-test`,
@@ -339,33 +358,128 @@ test.describe('Audit2 Backend Integration (A-P)', () => {
     );
     expect(cfgRes.ok()).toBeTruthy();
 
-    const pfRes = await request.post(`${BACKEND_BASE}/api/cases/audit2-power-flow`, {
-      data: {
-        case_id: 'case-e2e',
-        project_id: pid,
-        station_id: 'station-pf-test',
-        slack_node_id: 'n1',
+    // Siec zdolna do rozplywu mocy: GPZ (SLACK) + magistrala + stacja z
+    // potrzebami wlasnymi (JEDYNY odbior — rozplyw mocy wymaga co najmniej
+    // jednego odbioru/generatora, enm/validator.py::_compute_availability)
+    // i deklaracja ukladu uziemienia sieci nN (bramka gotowosci rozplywu).
+    let opCounter = 0;
+    async function domainOp(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+      opCounter += 1;
+      const res = await request.post(`${BACKEND_BASE}/api/cases/${caseId}/enm/domain-ops`, {
+        data: {
+          project_id: '',
+          snapshot_base_hash: '',
+          operation: {
+            name: payload.name,
+            idempotency_key: `e2e-audit2-pf-${Date.now()}-${opCounter}`,
+            payload: payload.payload,
+          },
+        },
+      });
+      expect(res.ok()).toBeTruthy();
+      const body = (await res.json()) as Record<string, unknown>;
+      expect(body.error ?? null).toBeNull();
+      return body;
+    }
+
+    await domainOp({
+      name: 'add_grid_source_sn',
+      payload: {
+        voltage_kv: 15.0,
+        sk3_mva: 250.0,
+        rx_ratio: 0.1,
+        catalog_binding: {
+          catalog_namespace: 'ZRODLO_SN',
+          catalog_item_id: 'src-gpz-15kv-250mva-rx010',
+          catalog_item_version: '2024.1',
+        },
+        hv_voltage_kv: 110.0,
+        transformer_sn_mva: 25.0,
       },
     });
-    expect(pfRes.ok()).toBeTruthy();
-    const body = await pfRes.json();
-    expect(body.solver_attempted).toBe(true);
-    // audit2_extensions populated z DB.
-    expect(body.audit2_extensions_keys).toContain('power_flow_extensions');
-    // INTENCJA (bez zmian): wrapper FAKTYCZNIE zadzialal — slad `audit2_applied`
-    // niesie komplet kanalow, ktore modul realnie mapuje na model przed
-    // wywolaniem solvera (tap, statyzm P(f), impedancja transformatora blokowego).
-    expect(body.audit2_applied).toHaveProperty('tap_position_changes');
-    expect(body.audit2_applied).toHaveProperty('pf_droop_changes');
-    expect(body.audit2_applied).toHaveProperty('block_transformer_z_changes');
-    // KANON PO KARCIE K-Q (2026-08-14): ze sladu ZNIKNAL `grounding_z0_z1_ratio`.
+
+    const magistrala = await domainOp({
+      name: 'continue_trunk_segment_sn',
+      payload: {
+        segment: {
+          rodzaj: 'KABEL',
+          dlugosc_m: 500,
+          catalog_binding: {
+            catalog_namespace: 'KABEL_SN',
+            catalog_item_id: 'cable-tfk-yakxs-3x120',
+            catalog_item_version: '2024.1',
+          },
+        },
+      },
+    });
+    const snapshot = magistrala.snapshot as { corridors?: Array<{ ordered_segment_refs?: string[] }> };
+    const segmentRefs = snapshot?.corridors?.[0]?.ordered_segment_refs ?? [];
+    expect(segmentRefs.length).toBeGreaterThan(0);
+
+    await domainOp({
+      name: 'insert_station_on_segment_sn',
+      payload: {
+        field_apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
+        segment_id: segmentRefs[segmentRefs.length - 1],
+        station_type: 'B',
+        insert_at: { value: 0.5 },
+        station: {
+          sn_voltage_kv: 15.0,
+          nn_voltage_kv: 0.4,
+          station_auxiliary: { active_power_kw: 10.0, cos_phi: 0.95 },
+          nn_earthing: { lv_system: 'TN-S' },
+        },
+        sn_fields: ['IN', 'OUT', 'FEEDER', 'TR'],
+        transformer: {
+          create: true,
+          catalog_binding: {
+            catalog_namespace: 'TRAFO_SN_NN',
+            catalog_item_id: 'tr-sn-nn-15-04-630kva-dyn11',
+            catalog_item_version: '2024.1',
+          },
+        },
+      },
+    });
+
+    const createRunRes = await request.post(
+      `${BACKEND_BASE}/api/execution/study-cases/${caseId}/runs`,
+      {
+        data: {
+          analysis_type: 'LOAD_FLOW',
+          solver_input: {
+            audit2_project_id: pid,
+            audit2_station_id: 'station-pf-test',
+          },
+        },
+      },
+    );
+    expect(createRunRes.ok()).toBeTruthy();
+    const runId = (await createRunRes.json()).id;
+
+    const executeRes = await request.post(`${BACKEND_BASE}/api/execution/runs/${runId}/execute`);
+    expect(executeRes.ok()).toBeTruthy();
+    const executed = await executeRes.json();
+    expect(executed.status).toBe('DONE');
+
+    const resultsRes = await request.get(`${BACKEND_BASE}/api/execution/runs/${runId}/results`);
+    expect(resultsRes.ok()).toBeTruthy();
+    const results = await resultsRes.json();
+    const applied = results.global_results.audit2_applied;
+    // INTENCJA (bez zmian): audit2 config z DB FAKTYCZNIE dotarl do wejscia
+    // solvera — slad niesie komplet trzech kanalow, ktore modul realnie
+    // mapuje na model przed wywolaniem solvera (tap, statyzm P(f), impedancja
+    // transformatora blokowego).
+    expect(applied).toHaveProperty('tap_position_changes');
+    expect(applied).toHaveProperty('pf_droop_changes');
+    expect(applied).toHaveProperty('block_transformer_z_changes');
+    // KANON PO KARCIE K-Q (2026-08-14): ze sladu ZNIKNAL grounding_z0_z1_ratio.
     // Modul mapowal ETYKIETE uziemienia na drabinke stalych (izolowana 100,
     // skompensowana 50, przez rezystor 5, bezposrednia 1) i meldowal ja jako
-    // „zastosowana" — zadna z tych liczb nie miala zrodla. Fizycznie Z0/Z1 zalezy
+    // "zastosowana" — zadna z tych liczb nie miala zrodla. Fizycznie Z0/Z1 zalezy
     // od pojemnosci doziemnej sieci, nastrojenia dlawika/rezystora i impedancji
-    // petli; niesie je model (`Source.z0_z1_ratio` / `r0_ohm` / `x0_ohm`), z ktorego
+    // petli; niesie je model (Source.z0_z1_ratio / r0_ohm / x0_ohm), z ktorego
     // liczy SC1F. Asercja NEGATYWNA jest bramka regresji — drabinka stalych nie
-    // moze wrocic bocznymi drzwiami mimo `mv_neutral_grounding_ref` w konfiguracji.
-    expect(body.audit2_applied).not.toHaveProperty('grounding_z0_z1_ratio');
+    // moze wrocic bocznymi drzwiami mimo mv_neutral_grounding_ref w konfiguracji.
+    expect(applied).not.toHaveProperty('grounding_z0_z1_ratio');
   });
 });

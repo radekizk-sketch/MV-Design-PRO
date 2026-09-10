@@ -310,7 +310,6 @@ NetworkValidator runs BEFORE any solver execution (13 industrial-grade rules).
 | Protection Specs | [`docs/protection/*.md`](docs/protection/), [`docs/analysis/PROTECTION_*.md`](docs/analysis/) |
 | Analysis Specs | [`docs/analysis/*.md`](docs/analysis/) |
 | Catalog Specs | [`docs/catalog/CATALOG_*_V1_SPEC.md`](docs/catalog/) |
-| Canonical Compliance | [`CANONICAL_COMPLIANCE.md`](CANONICAL_COMPLIANCE.md) |
 | Documentation Index | [`docs/INDEX.md`](docs/INDEX.md), [`docs/INDEX_KANONICZNY.md`](docs/INDEX_KANONICZNY.md) |
 | 2026-05 cleanup audits | [`docs/audit/DOC_INVENTORY_2026-05.md`](docs/audit/DOC_INVENTORY_2026-05.md), [`docs/audit/AUDYT_BRAKI_2026-05.md`](docs/audit/AUDYT_BRAKI_2026-05.md), [`docs/audit/DOCUMENTATION_CLEANUP_AUDIT.md`](docs/audit/DOCUMENTATION_CLEANUP_AUDIT.md), [`docs/audit/SLD_VISUAL_QUALITY_AUDIT.md`](docs/audit/SLD_VISUAL_QUALITY_AUDIT.md), [`docs/audit/ENGINEER_WORKFLOW_AUDIT.md`](docs/audit/ENGINEER_WORKFLOW_AUDIT.md), [`docs/audit/IMPLEMENTATION_GAP_ANALYSIS.md`](docs/audit/IMPLEMENTATION_GAP_ANALYSIS.md) |
 
@@ -322,6 +321,7 @@ NetworkValidator runs BEFORE any solver execution (13 industrial-grade rules).
 | Historical spec-vs-code audit | [`docs/spec/AUDIT_SPEC_VS_CODE.md`](docs/spec/AUDIT_SPEC_VS_CODE.md) |
 | Historical spec expansion plan | [`docs/spec/SPEC_EXPANSION_PLAN.md`](docs/spec/SPEC_EXPANSION_PLAN.md) |
 | Closed audits & ExecPlans | [`docs/audit/archive/`](docs/audit/archive/), [`docs/audit/historical_execplans/`](docs/audit/historical_execplans/) |
+| Canonical Compliance (audit snapshot 2026-01, archived 2026-09-09) | [`docs/audit/archive/CANONICAL_COMPLIANCE_2026-01.md`](docs/audit/archive/CANONICAL_COMPLIANCE_2026-01.md) |
 
 ---
 

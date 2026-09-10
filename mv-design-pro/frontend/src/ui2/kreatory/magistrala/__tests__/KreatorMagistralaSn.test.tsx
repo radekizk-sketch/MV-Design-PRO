@@ -71,32 +71,44 @@ vi.mock('../../../../ui/navigation/routes', () => ({
   navigateToSld: () => navigateToSldMock(),
 }));
 
+// `vi.hoisted` (nie zwykłe `const` nad `vi.mock`): S9-5 nadpisuje implementację
+// per test (`mockReturnValueOnce`), żeby symulować katalog W TRAKCIE ładowania
+// (Promise, który świadomie NIE rozstrzyga się w obrębie testu) — wymaga
+// realnych `vi.fn()` dostępnych już w chwili ewaluacji hoistowanej fabryki
+// `vi.mock` niżej, nie samej konwencji nazewniczej.
+const { fetchCableTypesMock, fetchLineTypesMock } = vi.hoisted(() => {
+  const KABLE_DOMYSLNE = [
+    {
+      id: 'kab-120',
+      name: 'XRUHAKXS 1x120',
+      r_ohm_per_km: 0.253,
+      x_ohm_per_km: 0.118,
+      rated_current_a: 255,
+      voltage_rating_kv: 15,
+      cross_section_mm2: 120,
+    },
+  ];
+  const LINIE_DOMYSLNE = [
+    {
+      id: 'afl-70',
+      name: 'AFL-6 70',
+      r_ohm_per_km: 0.443,
+      x_ohm_per_km: 0.36,
+      rated_current_a: 230,
+      voltage_rating_kv: 15,
+      cross_section_mm2: 70,
+    },
+  ];
+  return {
+    fetchCableTypesMock: vi.fn(() => Promise.resolve(KABLE_DOMYSLNE)),
+    fetchLineTypesMock: vi.fn(() => Promise.resolve(LINIE_DOMYSLNE)),
+  };
+});
+
 vi.mock('../../../../ui/catalog/api', () => ({
   getCatalogErrorMessage: () => 'błąd katalogu',
-  fetchCableTypes: () =>
-    Promise.resolve([
-      {
-        id: 'kab-120',
-        name: 'XRUHAKXS 1x120',
-        r_ohm_per_km: 0.253,
-        x_ohm_per_km: 0.118,
-        rated_current_a: 255,
-        voltage_rating_kv: 15,
-        cross_section_mm2: 120,
-      },
-    ]),
-  fetchLineTypes: () =>
-    Promise.resolve([
-      {
-        id: 'afl-70',
-        name: 'AFL-6 70',
-        r_ohm_per_km: 0.443,
-        x_ohm_per_km: 0.36,
-        rated_current_a: 230,
-        voltage_rating_kv: 15,
-        cross_section_mm2: 70,
-      },
-    ]),
+  fetchCableTypes: () => fetchCableTypesMock(),
+  fetchLineTypes: () => fetchLineTypesMock(),
 }));
 
 vi.mock('../../../../ui/network-build/forms/cableVoltageDropApi', () => ({
@@ -126,6 +138,11 @@ describe('KreatorMagistralaSn — realna ścieżka', () => {
     executeDomainOperationMock.mockReset();
     navigateToSldMock.mockReset();
     selectElementMock.mockReset();
+    // `mockClear` (NIE `mockReset`): czyści historię wywołań, ale zachowuje
+    // implementację domyślną (`vi.hoisted` powyżej) — `mockReset` wymazałby ją
+    // i kolejne testy dostałyby katalog `undefined`.
+    fetchCableTypesMock.mockClear();
+    fetchLineTypesMock.mockClear();
   });
 
   afterEach(() => cleanup());
@@ -275,6 +292,9 @@ describe('KreatorMagistralaSn — realna ścieżka', () => {
 
     expect(screen.getByTestId('mvd-kreator-magistrala-brak-startu')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-kreator-magistrala-zapisz')).toBeDisabled();
+    // S9-5: sygnał gotowości (data-status) jest JEDNYM źródłem prawdy z `disabled`
+    // (KLASA NIE INSTANCJA, predykaty parami) — musi zgadzać się z przyciskiem.
+    expect(screen.getByTestId('mvd-kreator-magistrala')).toHaveAttribute('data-status', 'zablokowany');
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
@@ -284,6 +304,56 @@ describe('KreatorMagistralaSn — realna ścieżka', () => {
     await pickCable();
 
     expect(screen.getByTestId('mvd-kreator-magistrala-zapisz')).toBeDisabled();
+    expect(screen.getByTestId('mvd-kreator-magistrala')).toHaveAttribute('data-status', 'zablokowany');
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  /**
+   * S9-5 (`karta_e2e_s95.md`) — PRZYCZYNA nazwana w kodzie: `zapisZablokowany`
+   * (`KreatorMagistralaSn.tsx`) w OGÓLE nie sprawdzał, czy katalog kabli/linii
+   * (`GET /api/catalog/...`, efekt montujący komponent) już doszedł — przycisk
+   * „Zapisz" był klikalny od pierwszego renderu, niezależnie od tego async
+   * zależności. Test poniżej pokrywa dokładnie ILOCZYN CECH z karty: „katalog
+   * jeszcze się ładuje" (fetch świadomie nierozstrzygnięty w tym teście) ×
+   * „pole poprawne" (`dlugosc_m` ma poprawną wartość domyślną z
+   * `DANE_DOMYSLNE`, zanim użytkownik cokolwiek wpisze) → zapis MUSI być
+   * zablokowany, i to JAWNIE (komunikat w stopce), nie w ciszy.
+   */
+  it('iloczyn cech: katalog jeszcze się ładuje × pole poprawne → zapis zablokowany z komunikatem, nie w ciszy', async () => {
+    fetchCableTypesMock.mockReturnValueOnce(new Promise(() => {}));
+    fetchLineTypesMock.mockReturnValueOnce(new Promise(() => {}));
+    render(<KreatorMagistralaSn />);
+
+    // Pole „poprawne" od startu (wartość domyślna `DANE_DOMYSLNE.dlugosc_m`),
+    // katalog NIGDY nie rozstrzygnie się w tym teście (Promise zawieszony celowo).
+    expect(screen.getByTestId('mvd-kreator-magistrala-zapisz')).toBeDisabled();
+    expect(screen.getByTestId('mvd-kreator-magistrala')).toHaveAttribute('data-status', 'ladowanie');
+    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/[Łł]adowanie katalogu/);
+    expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  /**
+   * S9-5 — test PRZEJŚCIA disabled→enabled po realnym wpisaniu długości
+   * (`userEvent.type`, nie `fireEvent`), tą samą ścieżką co spec e2e
+   * `s95-budowa-z-kanwy.spec.ts` (`zapiszMagistrale`): katalog → „Dalej" →
+   * długość → sygnał gotowości `data-status="gotowy"` I dopiero wtedy
+   * `toBeEnabled`. Regresja tej ścieżki na poziomie jednostkowym jest
+   * milisekundowa — nie wymaga realnego backendu ani przeglądarki.
+   */
+  it('przejście disabled→enabled: pusta długość blokuje zapis, poprawna długość (userEvent.type) odblokowuje', async () => {
+    render(<KreatorMagistralaSn />);
+    await pickCable();
+    await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-dalej'));
+
+    const dlugosc = screen.getByTestId('mvd-kreator-magistrala-dlugosc');
+    await userEvent.clear(dlugosc);
+    expect(screen.getByTestId('mvd-kreator-magistrala-zapisz')).toBeDisabled();
+    expect(screen.getByTestId('mvd-kreator-magistrala')).toHaveAttribute('data-status', 'zablokowany');
+    expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/dodatnią długość/);
+
+    await userEvent.type(dlugosc, '300');
+
+    expect(screen.getByTestId('mvd-kreator-magistrala-zapisz')).toBeEnabled();
+    expect(screen.getByTestId('mvd-kreator-magistrala')).toHaveAttribute('data-status', 'gotowy');
   });
 });

@@ -50,7 +50,9 @@ export const POWOD_OSI_PL: Record<keyof DerReadinessMatrix, string> = {
 };
 
 /** Przebiegi, które odpowiadają danej osi. Osie bez przebiegu maja pusta liste. */
-const PRZEBIEGI_OSI: Partial<Record<keyof DerReadinessMatrix, readonly string[]>> = {
+const PRZEBIEGI_OSI: Partial<
+  Record<keyof DerReadinessMatrix, readonly ExecutionRun['analysis_type'][]>
+> = {
   sc_3f: ['SC_3F'],
   sc_1f: ['SC_1F'],
   sc_2f: ['SC_2F'],
@@ -59,8 +61,25 @@ const PRZEBIEGI_OSI: Partial<Record<keyof DerReadinessMatrix, readonly string[]>
   q_u: ['LOAD_FLOW'],
   frt: ['DYNAMIC_STABILITY'],
   hvrt: ['DYNAMIC_STABILITY'],
-  nc_rfg: ['SOURCE_COMPLIANCE'],
+  // nc_rfg: BEZ wpisu (kasacja source_compliance, karta W3-D, 2026-09-09) —
+  // zgodnosc NC RfG nie ma WLASNEGO ExecutionRun: liczy sie na zywo z modelu
+  // (`GET /api/ncrfg-tests/cases/{case_id}/compliance`) albo z macierzy per DER
+  // (`POST /api/ncrfg-tests/run`, ekran `ui2/oze/macierz`) — zaden z tych torow
+  // nie zapisuje wpisu w rejestrze `ExecutionRun` R1. Ta sama kategoria co
+  // equipment/protection/protection_selectivity/report_* nizej w tym pliku:
+  // brak wpisu -> `stanWyniku === 'nie_dotyczy'` (patrz `zlozMacierzAnaliz`).
 };
+
+/**
+ * Osie ZAWSZE nawigowalne do dedykowanego ekranu, niezaleznie od stanu wyniku
+ * (kasacja source_compliance, karta W3-D, 2026-09-09). `nc_rfg` nie ma
+ * WLASNEGO przebiegu w rejestrze `ExecutionRun` — zgodnosc liczy sie na zywo
+ * z modelu, wiec „stan wyniku" tej osi jest zawsze `nie_dotyczy`
+ * (`stanWynikuPl` -> „bez osobnego przebiegu"), ale DZIALANIE ma pozostac
+ * nawigacja do ekranu zgodnosci (`ui2/oze/macierz`), tak jak przed kasacja —
+ * nie „brak" (ktory ukrylby przycisk calkowicie).
+ */
+const OSIE_ZAWSZE_NAWIGOWALNE: ReadonlySet<keyof DerReadinessMatrix> = new Set(['nc_rfg']);
 
 export type StanWyniku =
   | 'brak_przebiegu'
@@ -78,6 +97,13 @@ export interface WierszMacierzy {
   readonly stanWyniku: StanWyniku;
   /** Znacznik czasu ostatniego zakonczonego przebiegu; `null` = nie liczono. */
   readonly ostatnieLiczenie: string | null;
+  /** Id ostatniego ZAKONCZONEGO przebiegu tej osi; `null` = nie liczono.
+   *  Podstawa dzialania `otworz_wynik` (karta W2 pkt 2, martwy klik). */
+  readonly ostatniPrzebiegId: string | null;
+  /** Rodzaj przebiegu tej osi (`PRZEBIEGI_OSI[axis][0]`); `null` dla osi bez
+   *  wlasnego przebiegu (equipment/protection/protection_selectivity/report_*) —
+   *  podstawa dzialania `uruchom_analize` poza frt/hvrt/nc_rfg. */
+  readonly typPrzebiegu: ExecutionRun['analysis_type'] | null;
   /** Jedno, konkretne dzialanie dla tego wiersza. */
   readonly dzialanie: 'uzupelnij_dane' | 'uruchom_analize' | 'otworz_wynik' | 'brak';
 }
@@ -109,11 +135,18 @@ export function zlozMacierzAnaliz(
       return 'brak_przebiegu';
     })();
 
-    const znaczniki = zakonczone.map((run) => run.finished_at as string).sort();
-    const ostatnieLiczenie = znaczniki.length > 0 ? znaczniki[znaczniki.length - 1] : null;
+    // Najnowszy zakonczony przebieg (ostatnie liczenie + jego id — podstawa
+    // dzialania `otworz_wynik`), posortowany deterministycznie po finished_at.
+    const posortowane = [...zakonczone].sort((a, b) =>
+      String(a.finished_at).localeCompare(String(b.finished_at)),
+    );
+    const najnowszy = posortowane.length > 0 ? posortowane[posortowane.length - 1] : null;
+    const ostatnieLiczenie = najnowszy?.finished_at ?? null;
+    const ostatniPrzebiegId = najnowszy?.id ?? null;
 
     const dzialanie: WierszMacierzy['dzialanie'] = (() => {
       if (os.blockers.length > 0) return 'uzupelnij_dane';
+      if (OSIE_ZAWSZE_NAWIGOWALNE.has(os.axis)) return 'uruchom_analize';
       if (stanWyniku === 'policzony') return 'otworz_wynik';
       if (stanWyniku === 'brak_przebiegu' || stanWyniku === 'blad') return 'uruchom_analize';
       return 'brak';
@@ -127,6 +160,8 @@ export function zlozMacierzAnaliz(
       blokady: os.blockers,
       stanWyniku,
       ostatnieLiczenie,
+      ostatniPrzebiegId,
+      typPrzebiegu: typy[0] ?? null,
       dzialanie,
     };
   });
@@ -158,4 +193,21 @@ export function dzialaniePl(dzialanie: WierszMacierzy['dzialanie']): string {
     case 'brak':
       return '';
   }
+}
+
+/**
+ * Etykieta działania — dla FRT/HVRT/NC RfG mówi WPROST, dokąd prowadzi (karta
+ * W2 pkt 2, martwy klik): cel tych trzech osi jest NAWIGACJĄ do dedykowanego
+ * ekranu (`ui2/oze/frt` dla FRT/HVRT, `ui2/oze/macierz` dla NC RfG), a nie
+ * biegiem inline jak dla pozostałych osi — etykieta ma to nazwać, nie chować
+ * za ogólnikiem „Uruchom obliczenia". Pozostałe kombinacje osi/działania
+ * zostają przy generycznym tekście `dzialaniePl` (ten sam tor dla wszystkich).
+ */
+export function etykietaDzialaniaPl(wiersz: WierszMacierzy): string {
+  if (wiersz.dzialanie === 'uruchom_analize') {
+    if (wiersz.axis === 'frt') return 'Przejdź do analizy FRT';
+    if (wiersz.axis === 'hvrt') return 'Przejdź do analizy HVRT';
+    if (wiersz.axis === 'nc_rfg') return 'Przejdź do zgodności NC RfG';
+  }
+  return dzialaniePl(wiersz.dzialanie);
 }

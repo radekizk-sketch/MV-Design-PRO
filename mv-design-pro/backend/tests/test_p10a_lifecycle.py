@@ -4,18 +4,15 @@ P10a Lifecycle Tests — Deterministic Fingerprint and Result Invalidation
 TESTS:
 1. Fingerprint determinism - same network = same hash
 2. Fingerprint changes when network changes
-3. StudyCase invalidation when snapshot changes
+3. StudyCase snapshot binding (status wynikow: WYPROWADZANY, patrz tests/api/test_status_wynikow_przypadku.py)
 4. Run invalidation when snapshot changes
 5. Project active snapshot tracking
 """
 
 from uuid import uuid4
 
-import pytest
-from domain.models import new_project, new_study_run
+from domain.models import new_project
 from domain.study_case import (
-    StudyCase,
-    StudyCaseResultStatus,
     new_study_case,
 )
 from network_model.core.graph import NetworkGraph
@@ -202,136 +199,27 @@ class TestComputeFingerprint:
         assert fp1 == fp2
 
 
-class TestProjectWithActiveSnapshot:
-    """Test Project domain model with active_network_snapshot_id (P10a)."""
+class TestStudyCaseBezPrzypiecMigawkiLegacy:
+    """W1 (2026-09-09): `Project.active_network_snapshot_id`, `StudyCase.network_snapshot_id`
+    (+ `with_network_snapshot_id`) i `StudyRun` zeszły razem z legacy persystencją sieci
+    (tabele `network_*`); jedyna prawda sieci to ENM w magazynie projektu, a świeżość
+    wyniku wynika z koperty rewizji biegu. Dawne klasy TestProjectWithActiveSnapshot /
+    TestStudyCaseWithSnapshot / TestStudyRunWithSnapshot usunięte razem z polami;
+    zachowana intencja: przypadek nie przechowuje ani statusu wyników, ani przypięcia
+    migawki — i klon tego nie przywraca."""
 
-    def test_new_project_has_no_active_snapshot(self):
-        """New project should have no active snapshot."""
-        project = new_project("Test Project")
-        assert project.active_network_snapshot_id is None
-
-    def test_new_project_with_active_snapshot(self):
-        """Can create project with active snapshot."""
-        project = new_project(
-            "Test Project",
-            active_network_snapshot_id="snapshot-123",
-        )
-        assert project.active_network_snapshot_id == "snapshot-123"
-
-
-class TestStudyCaseWithSnapshot:
-    """Test StudyCase with network_snapshot_id (P10a)."""
-
-    def test_new_study_case_has_no_snapshot(self):
-        """New study case should have no snapshot binding."""
-        case = new_study_case(
-            project_id=uuid4(),
-            name="Test Case",
-        )
-        assert case.network_snapshot_id is None
-
-    def test_new_study_case_with_snapshot(self):
-        """Can create study case with snapshot binding."""
-        case = new_study_case(
-            project_id=uuid4(),
-            name="Test Case",
-            network_snapshot_id="snapshot-123",
-        )
-        assert case.network_snapshot_id == "snapshot-123"
-
-    def test_with_network_snapshot_id_creates_new_instance(self):
-        """with_network_snapshot_id must return new instance."""
-        case = new_study_case(
-            project_id=uuid4(),
-            name="Test Case",
-            network_snapshot_id="snapshot-old",
-        )
-        updated = case.with_network_snapshot_id("snapshot-new")
-
-        assert case.network_snapshot_id == "snapshot-old"
-        assert updated.network_snapshot_id == "snapshot-new"
-
-    def test_with_network_snapshot_id_invalidates_fresh_results(self):
-        """Changing snapshot must invalidate FRESH results."""
-        case = new_study_case(
-            project_id=uuid4(),
-            name="Test Case",
-            network_snapshot_id="snapshot-old",
-        )
-        # Manually set to FRESH
-        case = StudyCase(
-            id=case.id,
-            project_id=case.project_id,
-            name=case.name,
-            network_snapshot_id=case.network_snapshot_id,
-            config=case.config,
-            result_status=StudyCaseResultStatus.FRESH,
-            is_active=case.is_active,
-            result_refs=case.result_refs,
-            revision=case.revision,
-            created_at=case.created_at,
-            updated_at=case.updated_at,
-            study_payload=case.study_payload,
-        )
-
-        updated = case.with_network_snapshot_id("snapshot-new")
-
-        assert updated.result_status == StudyCaseResultStatus.OUTDATED
-
-    def test_with_network_snapshot_id_keeps_none_status(self):
-        """Changing snapshot must keep NONE status as NONE."""
-        case = new_study_case(
-            project_id=uuid4(),
-            name="Test Case",
-        )
-        assert case.result_status == StudyCaseResultStatus.NONE
-
-        updated = case.with_network_snapshot_id("snapshot-new")
-
-        assert updated.result_status == StudyCaseResultStatus.NONE
-
-    def test_clone_preserves_snapshot_binding(self):
-        """Clone must preserve snapshot binding."""
-        case = new_study_case(
-            project_id=uuid4(),
-            name="Original",
-            network_snapshot_id="snapshot-123",
-        )
+    def test_przypadek_nie_ma_statusu_wynikow_ani_migawki_legacy(self):
+        case = new_study_case(project_id=uuid4(), name="Test Case")
         cloned = case.clone("Cloned")
 
-        assert cloned.network_snapshot_id == "snapshot-123"
-        assert cloned.result_status == StudyCaseResultStatus.NONE
-
-
-class TestStudyRunWithSnapshot:
-    """Test StudyRun with network_snapshot_id (P10a)."""
-
-    def test_new_study_run_with_snapshot(self):
-        """Can create study run with snapshot binding."""
-        run = new_study_run(
-            project_id=uuid4(),
-            case_id=uuid4(),
-            analysis_type="short_circuit",
-            input_hash="abc123",
-            network_snapshot_id="snapshot-123",
-            solver_version_hash="solver-v1.0",
-        )
-
-        assert run.network_snapshot_id == "snapshot-123"
-        assert run.solver_version_hash == "solver-v1.0"
-        assert run.result_state == "VALID"
-
-    def test_study_run_is_immutable(self):
-        """StudyRun must be immutable (frozen dataclass)."""
-        run = new_study_run(
-            project_id=uuid4(),
-            case_id=uuid4(),
-            analysis_type="short_circuit",
-            input_hash="abc123",
-        )
-
-        with pytest.raises(AttributeError):
-            run.status = "completed"  # type: ignore
+        for obiekt in (case, cloned):
+            assert not hasattr(
+                obiekt, "result_status"
+            ), "przypadek nie moze znowu przechowywac statusu wynikow"
+            assert not hasattr(
+                obiekt, "network_snapshot_id"
+            ), "przypiecie migawki legacy skasowane w W1 nie moze wrocic"
+        assert not hasattr(new_project(name="Projekt"), "active_network_snapshot_id")
 
 
 def _create_test_graph() -> NetworkGraph:

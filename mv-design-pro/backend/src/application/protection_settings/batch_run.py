@@ -15,17 +15,24 @@ POWÓD ARCHITEKTONICZNY (dlaczego istniejąca brama pakietu przebiegu nie wystar
 pakiet — a dobór nastaw metodą Hoppela z definicji potrzebuje TRZECH: zwarcia
 trójfazowego przy c_max (wytrzymałość aparatury, selektywność), zwarcia trójfazowego
 PRZY c_min (czułość I>>) i zwarcia dwufazowego przy c_min (czułość I>), oraz rozpływu
-(prąd obciążenia maksymalnego). Jeden bieg kanoniczny niesie JEDEN `c_factor` — tor
-nadprądowy `application/analyses/protection/overcurrent/input_adapter.py::_build_fault_levels`
-dokumentuje to wprost (klucz gałęzi min ALBO max, drugi zostaje `None`).
+(prąd obciążenia maksymalnego). Jeden bieg kanoniczny niesie JEDEN `c_factor`
+— sam kontrakt wejścia zwarciowego (`enm/canonical_analysis.py::_c_factor_punktu`,
+klucz `c_factor` w `_KLUCZE_WEJSCIOWE_WIERSZA_ZWARCIA`) niesie WYŁĄCZNIE tę
+jedną wartość na bieg (klucz gałęzi min ALBO max, drugi zostaje `None`; przed
+kasacją V12K-189 — karta W3-C1, 2026-09 — tę samą konwencję dokumentował też
+skasowany `overcurrent/input_adapter.py::_build_fault_levels`).
 
-MECHANIZM WARIANTOWANIA (ta sama reguła Case Immutability, ten sam wzorzec co
-`application/analyses/kontyngencje_n1.py`, `pq_area.py`, `hosting_capacity.py`).
+MECHANIZM WARIANTOWANIA (CV-3-W: JEDYNA fabryka kopii migawki z nadpisaniami
+`enm.scenariusze.apply_scenario` + JEDYNA fabryka biegu wariantu w pamięci
+`enm.canonical_analysis.bieg_wariantu` — ten sam mechanizm, którego po migracji
+używają `application/analyses/kontyngencje_n1.py`, `pq_area.py`,
+`hosting_capacity.py`, `odpowiedz_osd.py`, `dobor_kompensacji.py`).
 Bazą jest ISTNIEJĄCY, PERSYSTOWANY, zakończony bieg zwarcia trójfazowego przy c_max
 („kotwica") — z jego zamrożonego wyniku CZYTAMY (bez przeliczania) prądy c_max na
 początku, końcu odcinka i na sąsiedniej szynie (te trzy pola JUŻ miały dostawcę —
 kotwica liczy zwarcie na WSZYSTKICH szynach jednym biegiem). Gałąź c_min i rozpływ
-to WARIANTY WEJŚCIA na kopii migawki kotwicy (`copy.deepcopy` — model w magazynie
+to WARIANTY WEJŚCIA na migawce `apply_scenario(model_kotwicy, SCENARIUSZ_NORMALNY)`
+(model kotwicy walidowany RAZ, migawka bez nadpisań — model w magazynie
 nietknięty), uruchamiane ISTNIEJĄCYM solverem przez ISTNIEJĄCĄ ścieżkę wykonania
 (`enm.canonical_analysis.wykonaj_bieg_w_pamieci` — ta sama dyspozycja, której
 używa bieg kanoniczny `execute_run`), W PAMIĘCI, bez persystencji — dokładnie jak
@@ -59,15 +66,22 @@ kodu (ten sam princyp co wybór odcinka w `voltage_drop_binding.py`).
 
 from __future__ import annotations
 
-import copy
 import math
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
-from application.protection_settings.engine import ProtectionSettingsInput
-from enm.canonical_analysis import CanonicalRun, wykonaj_bieg_w_pamieci
+from application.protection_settings.engine import (
+    ProtectionSettingsEngine,
+    ProtectionSettingsInput,
+    ProtectionSettingsResult,
+)
+from enm.canonical_analysis import CanonicalRun, bieg_wariantu, wykonaj_bieg_w_pamieci
 from enm.mapping import ref_to_graph_id
+from enm.models import EnergyNetworkModel
+from enm.scenariusze import SCENARIUSZ_NORMALNY, apply_scenario
+from network_model.pochodne import ka_na_a
 
 #: Rodzaje gałęzi ENM kwalifikowane jako "linia chroniona" — mają impedancję
 #: jednostkową, długość i mogą nieść dane katalogowe cieplne (F-K1). Aparat
@@ -77,7 +91,7 @@ RODZAJE_LINII: frozenset[str] = frozenset({"line_overhead", "cable"})
 #: c_factor rozdzielający gałąź maksymalną (kotwica) od minimalnej. IEC 60909-0
 #: Tabela 1: dla SN c_max >= 1,0. Kotwica MUSI być gałęzią maksymalną — bieg
 #: minimalny liczymy sami jako wariant, nigdy z osobnej kotwicy.
-_C_MAX_MIN_DOPUSZCZALNY = 1.0
+C_MAX_MIN_DOPUSZCZALNY = 1.0
 
 
 class BrakDanychNastawError(ValueError):
@@ -202,48 +216,33 @@ def _opcjonalna_liczba(wartosc: Any) -> float | None:
     return liczba if math.isfinite(liczba) else None
 
 
-def _wariant_zwarciowy(kotwica: CanonicalRun, *, fault_type: str, c_factor: float) -> CanonicalRun:
-    """Wariant zwarciowy w pamięci: kopia migawki kotwicy, INNY c_factor/rodzaj.
+def _opcje_audit2_kotwicy(kotwica: CanonicalRun) -> dict[str, Any]:
+    """Para opcji konfiguracji audytu 2 stacji przejęta z kotwicy (CV-4.2b).
 
-    Wzorzec `kontyngencje_n1.py::_bieg_wariantu` — bez persystencji, model w
-    magazynie i kotwica bazowa nietknięte.
+    Warianty nastaw liczą TEN SAM model co kotwica — jeśli kotwicę policzono z
+    korektami audytu 2 (uziemienie punktu neutralnego → Z0, zaczepy), warianty
+    bez tej pary liczyłyby inną sieć (do tej karty: cicho, bez korekt). Brak
+    pary w kotwicy = brak pary w wariantach.
     """
-    return CanonicalRun(
-        id=kotwica.id,
-        case_id=kotwica.case_id,
-        project_id=kotwica.project_id,
-        analysis_type="short_circuit_sn",
-        status="FINISHED",
-        created_at=kotwica.created_at,
-        snapshot_hash=kotwica.snapshot_hash,
-        input_hash=kotwica.input_hash,
-        snapshot=copy.deepcopy(kotwica.snapshot or {}),
-        validation={},
-        readiness={},
-        options={
-            "fault_type": fault_type,
-            "c_factor": c_factor,
-            "thermal_time_seconds": float(kotwica.options.get("thermal_time_seconds", 1.0)),
-        },
-    )
+    return {
+        klucz: kotwica.options[klucz]
+        for klucz in ("audit2_project_id", "audit2_station_id")
+        if klucz in kotwica.options
+    }
 
 
-def _wariant_rozplywu(kotwica: CanonicalRun) -> CanonicalRun:
-    """Wariant rozpływu w pamięci na TEJ SAMEJ migawce co kotwica (spójność)."""
-    return CanonicalRun(
-        id=kotwica.id,
-        case_id=kotwica.case_id,
-        project_id=kotwica.project_id,
-        analysis_type="PF",
-        status="FINISHED",
-        created_at=kotwica.created_at,
-        snapshot_hash=kotwica.snapshot_hash,
-        input_hash=kotwica.input_hash,
-        snapshot=copy.deepcopy(kotwica.snapshot or {}),
-        validation={},
-        readiness={},
-        options={},
-    )
+def _opcje_wariantu_zwarciowego(
+    kotwica: CanonicalRun, *, fault_type: str, c_factor: float
+) -> dict[str, Any]:
+    """Opcje wariantu zwarciowego (CV-3-W): `fault_type`/`c_factor` WŁASNE wariantu,
+    `thermal_time_seconds` i para audytu 2 przejęte z opcji kotwicy (SC nie zna
+    innej wartości; ten sam model stacji co kotwica)."""
+    return {
+        "fault_type": fault_type,
+        "c_factor": c_factor,
+        "thermal_time_seconds": float(kotwica.options.get("thermal_time_seconds", 1.0)),
+        **_opcje_audit2_kotwicy(kotwica),
+    }
 
 
 def _prad_zwarciowy_w_wezle(raw_result: dict[str, Any] | None, graph_node_id: str) -> float | None:
@@ -269,12 +268,17 @@ def zbuduj_wejscie_nastaw(
     t_upstream_s: float = 0.0,
     spz_enabled: bool = True,
     spz_pause_s: float = 0.5,
+    uow_factory: Callable[[], Any] | None = None,
 ) -> WejscieNastawZBiegow:
     """Zbuduj komplet wejścia silnika nastaw z kotwicy + dwóch wariantów zwarciowych
     + jednego wariantu rozpływu — WSZYSTKIE trzy na migawce kotwicy.
 
     Podnosi `BrakDanychNastawError` (powód po polsku) na każdym brakującym ogniwie —
     nigdy nie zwraca wejścia z podstawioną wartością.
+
+    `uow_factory` (CV-4.2b): fabryka `UnitOfWork` wołającego — trzy warianty
+    dziedziczą parę audytu 2 kotwicy, więc kotwica z konfiguracją audytu 2
+    stacji wymaga jej do odczytu tej konfiguracji (`wykonaj_bieg_w_pamieci`).
     """
     if kotwica.status != "FINISHED":
         raise BrakDanychNastawError(
@@ -294,10 +298,10 @@ def zbuduj_wejscie_nastaw(
             f"{kotwica_wynik.get('short_circuit_type')!r}."
         )
     c_max = _opcjonalna_liczba(kotwica.options.get("c_factor", 1.10))
-    if c_max is None or c_max < _C_MAX_MIN_DOPUSZCZALNY:
+    if c_max is None or c_max < C_MAX_MIN_DOPUSZCZALNY:
         raise BrakDanychNastawError(
             f"Współczynnik napięciowy kotwicy c={kotwica.options.get('c_factor')!r} "
-            f"nie jest wartością gałęzi maksymalnej (wymagane c >= {_C_MAX_MIN_DOPUSZCZALNY})."
+            f"nie jest wartością gałęzi maksymalnej (wymagane c >= {C_MAX_MIN_DOPUSZCZALNY})."
         )
     if not (0.0 < c_min <= c_max):
         raise BrakDanychNastawError(
@@ -338,9 +342,21 @@ def zbuduj_wejscie_nastaw(
             "wszystkie trzy szyny są w migawce kotwicy raportowalnymi punktami zwarcia."
         )
 
-    wariant_3f_cmin = _wariant_zwarciowy(kotwica, fault_type="3F", c_factor=c_min)
+    # CV-3-W: model kotwicy walidowany RAZ, migawka bez nadpisań (SCENARIUSZ_NORMALNY)
+    # zbudowana RAZ i dzielona przez WSZYSTKIE trzy warianty — jedyna fabryka
+    # kopii migawki (`apply_scenario`) i jedyna fabryka biegu wariantu w pamięci
+    # (`bieg_wariantu`); model w magazynie i kotwica bazowa nietknięte.
+    enm_kotwicy = EnergyNetworkModel.model_validate(kotwica.snapshot or {})
+    migawka_kotwicy = apply_scenario(enm_kotwicy, SCENARIUSZ_NORMALNY)
+
+    wariant_3f_cmin = bieg_wariantu(
+        kotwica,
+        migawka_kotwicy,
+        analysis_type="short_circuit_sn",
+        options=_opcje_wariantu_zwarciowego(kotwica, fault_type="3F", c_factor=c_min),
+    )
     try:
-        wykonaj_bieg_w_pamieci(wariant_3f_cmin)
+        wykonaj_bieg_w_pamieci(wariant_3f_cmin, uow_factory=uow_factory)
     except Exception as exc:  # noqa: BLE001 — niezbieznosc/blad solvera = odmowa z powodem
         raise BrakDanychNastawError(
             f"Wariant zwarcia trójfazowego przy c_min={c_min} przerwany błędem "
@@ -354,9 +370,14 @@ def zbuduj_wejscie_nastaw(
             "na początku albo końcu chronionego odcinka."
         )
 
-    wariant_2f_cmin = _wariant_zwarciowy(kotwica, fault_type="2F", c_factor=c_min)
+    wariant_2f_cmin = bieg_wariantu(
+        kotwica,
+        migawka_kotwicy,
+        analysis_type="short_circuit_sn",
+        options=_opcje_wariantu_zwarciowego(kotwica, fault_type="2F", c_factor=c_min),
+    )
     try:
-        wykonaj_bieg_w_pamieci(wariant_2f_cmin)
+        wykonaj_bieg_w_pamieci(wariant_2f_cmin, uow_factory=uow_factory)
     except Exception as exc:  # noqa: BLE001 — jak wyzej
         raise BrakDanychNastawError(
             f"Wariant zwarcia dwufazowego przy c_min={c_min} przerwany błędem "
@@ -369,9 +390,11 @@ def zbuduj_wejscie_nastaw(
             "na końcu chronionego odcinka."
         )
 
-    wariant_pf = _wariant_rozplywu(kotwica)
+    wariant_pf = bieg_wariantu(
+        kotwica, migawka_kotwicy, analysis_type="PF", options=_opcje_audit2_kotwicy(kotwica)
+    )
     try:
-        wykonaj_bieg_w_pamieci(wariant_pf)
+        wykonaj_bieg_w_pamieci(wariant_pf, uow_factory=uow_factory)
     except Exception as exc:  # noqa: BLE001 — niezbieznosc rozplywu = odmowa z powodem
         raise BrakDanychNastawError(
             f"Wariant rozpływu mocy migawki kotwicy przerwany błędem solvera: "
@@ -391,7 +414,7 @@ def zbuduj_wejscie_nastaw(
             f"Wariant rozpływu mocy nie policzył prądu gałęzi {line_id} — chroniony "
             "odcinek nie jest częścią rozwiązanej wyspy zasilanej."
         )
-    i_load_max_a = i_load_max_a * 1000.0  # kA -> A
+    i_load_max_a = ka_na_a(i_load_max_a)  # kA -> A
 
     pf_solver_version = pf_wynik.get("solver_version")
     solver_version = (
@@ -441,3 +464,47 @@ def _znacznik_czasu(run: CanonicalRun) -> datetime:
     if znacznik.tzinfo is None:
         return znacznik.replace(tzinfo=UTC)
     return znacznik
+
+
+@dataclass(frozen=True)
+class NastawyZBiegu:
+    """Wynik silnika Hoppela + pełna proweniencja wejścia — JEDNO obliczenie,
+    które dzielą trasa JSON (`GET .../nastawy`), pakiet dowodowy ZIP
+    (`zbuduj_pakiet_nastaw`) i dobór aparatu (`GET .../nastawy/dopasowanie`)
+    (karta W3-C1, reguła KLASA-NIE-INSTANCJA — predykaty parami: jeden rachunek,
+    wiele renderów, nigdy druga niezależna ścieżka tej samej fizyki)."""
+
+    wynik: ProtectionSettingsResult
+    wejscie: WejscieNastawZBiegow
+
+
+def oblicz_nastawy(
+    run: CanonicalRun,
+    *,
+    line_id: str,
+    next_bus_id: str,
+    c_min: float,
+    delta_t_s: float = 0.3,
+    k_b: float = 1.2,
+    k_bth: float = 1.1,
+    uow_factory: Callable[[], Any] | None = None,
+) -> NastawyZBiegu:
+    """Nastawy I>/I>> dla kotwicy + wyboru inżyniera — silnik Hoppela wywołany
+    RAZ na kompletnym wejściu zbudowanym z trzech biegów (kotwica c_max + wariant
+    c_min + wariant rozpływu, patrz `zbuduj_wejscie_nastaw`).
+
+    Podnosi `BrakDanychNastawError` (powód po polsku) na każdym brakującym
+    ogniwie — dokładnie jak `zbuduj_wejscie_nastaw`, które ta funkcja owija.
+    """
+    wejscie = zbuduj_wejscie_nastaw(
+        run,
+        line_id=line_id,
+        next_bus_id=next_bus_id,
+        c_min=c_min,
+        delta_t_s=delta_t_s,
+        k_b=k_b,
+        k_bth=k_bth,
+        uow_factory=uow_factory,
+    )
+    wynik = ProtectionSettingsEngine.calculate(wejscie.engine_input)
+    return NastawyZBiegu(wynik=wynik, wejscie=wejscie)

@@ -71,9 +71,34 @@ function emptyGpzData(): GpzData {
   };
 }
 
+const GPZ_DEFAULT_CARD_IDS = new Set<GpzCardId>([
+  'identification',
+  'hv-side',
+  'transformer',
+  'sections',
+  'bays-balance',
+]);
+
+/** Karta W2-B (klasa `ACTION_ROADMAP_HINT_PL`): deep-link na konkretną kartę
+ *  E-10 — wzorzec `stationDefaultCard` z `StationConfiguratorSurface.tsx`.
+ *  Akcje menu SLD "Pokaż dane zwarciowe źródła" (GPZ) / "Pokaż dane
+ *  zwarciowe sekcji" (`show-sc-source`/`show-sc-data`,
+ *  `shared/sldActionExecutor.ts`) otwierają WPROST kartę "Strona 110 kV"
+ *  zamiast zostawiać użytkownika na domyślnej "Identyfikacja". Nieznana/
+ *  brakująca wartość = uczciwy domyślny start. */
+function gpzDefaultCard(surface: WorkspaceSurfaceDescriptor): GpzCardId {
+  const payload = surface.routeState?.payload;
+  const defaultCard = payload && typeof payload === 'object'
+    ? (payload as Record<string, unknown>).defaultCard
+    : null;
+  return typeof defaultCard === 'string' && GPZ_DEFAULT_CARD_IDS.has(defaultCard as GpzCardId)
+    ? (defaultCard as GpzCardId)
+    : 'identification';
+}
+
 export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.Element {
   const { surface } = props;
-  const [activeCard, setActiveCard] = useState<GpzCardId>('identification');
+  const [activeCard, setActiveCard] = useState<GpzCardId>(() => gpzDefaultCard(surface));
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const gpzRef = surface.entityRef ?? null;
   const [data, setData] = useState<GpzData>(() => emptyGpzData());

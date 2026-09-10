@@ -130,9 +130,7 @@ function payloadZwarciowy(runId: string): RawOverlayPayload {
 }
 
 beforeEach(() => {
-  // @ts-expect-error jsdom shim
   if (typeof URL.createObjectURL !== 'function') URL.createObjectURL = () => 'blob:shim';
-  // @ts-expect-error jsdom shim
   if (typeof URL.revokeObjectURL !== 'function') URL.revokeObjectURL = () => {};
   useSnapshotStore.getState().reset();
   useSelectionStore.getState().clearSelection();

@@ -36,7 +36,6 @@ równoważnika; jedyny nietrywialny krok fizyczny (Ik'' z Z_equiv, solver IEC
 
 from __future__ import annotations
 
-import math
 from typing import Any, Literal
 from uuid import NAMESPACE_URL, uuid5
 
@@ -48,10 +47,12 @@ from application.analyses.fault_loop.service import (
     resolve_station_transformer,
     restrict_graph_to_island_of,
 )
+from application.analyses.kontrakt_liczb import kwantyzuj_kontrakt
 from enm.hash import compute_enm_hash, compute_switching_snapshot_hash
 from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
 from network_model.core.voltage_factor import c_for_node
+from network_model.pochodne import a_na_ka, kv_na_v, moc_zwarciowa_z_pradu_mva
 from network_model.solvers.short_circuit_core import (
     ShortCircuitType,
     build_zbus,
@@ -108,7 +109,7 @@ def _hv_zero_sequence_ohm(
     return z0_ohm, None
 
 
-def build_upstream_equivalent_snapshot(
+def _build_upstream_equivalent_snapshot_surowy(
     enm: EnergyNetworkModel,
     case_id: str,
     station_ref: str,
@@ -162,14 +163,14 @@ def build_upstream_equivalent_snapshot(
         }
 
     c_factor = c_for_node(trafo.uhv_kv, scenario)
-    un_hv_v = trafo.uhv_kv * 1000.0
+    un_hv_v = kv_na_v(trafo.uhv_kv)
     ikss_a = compute_ikss(
         un_v=un_hv_v,
         c_factor=c_factor,
         short_circuit_type=ShortCircuitType.THREE_PHASE,
         z_equiv=hv_equiv.z_hv_ohm,
     )
-    sk_mva = (math.sqrt(3.0) * un_hv_v * ikss_a) / 1_000_000.0
+    sk_mva = moc_zwarciowa_z_pradu_mva(un_hv_v, ikss_a)
     uth_kv = c_factor * trafo.uhv_kv
 
     r1_ohm = hv_equiv.z_hv_ohm.real
@@ -215,7 +216,7 @@ def build_upstream_equivalent_snapshot(
         "voltage_kv": trafo.uhv_kv,
         "uth_kv": uth_kv,  # werdykt: Uth
         "sk_mva": sk_mva,  # werdykt: Sk″
-        "ikss_ka": ikss_a / 1000.0,  # addytywne: Ik″ towarzyszące Sk″
+        "ikss_ka": a_na_ka(ikss_a),  # addytywne: Ik″ towarzyszące Sk″
         "z1_ohm": {"r": r1_ohm, "x": x1_ohm},  # werdykt: Z1/R1/X1
         "z0_ohm": (
             {"r": z0_ohm.real, "x": z0_ohm.imag} if z0_ohm is not None else None
@@ -237,3 +238,29 @@ def build_upstream_equivalent_snapshot(
             "zwarcia nN liczy stronę SN (application.analyses.fault_loop)."
         ),
     }
+
+
+def build_upstream_equivalent_snapshot(
+    enm: EnergyNetworkModel,
+    case_id: str,
+    station_ref: str,
+    *,
+    scenario: Scenario = "MAX",
+    transformer_ref: str | None = None,
+) -> dict[str, Any]:
+    """Równoważnik Thevenina SN dla stacji — kontrakt z liczbami skwantyzowanymi.
+
+    ADR-018 / M0-2: wartości z odwrócenia Zbus (`z1_ohm`, `sk_mva`, `ikss_ka`,
+    `rx_ratio`, `z0_ohm`) różniły się o 1 ULP między maszynami (jądro BLAS), co
+    zmieniało odciski projekcji nN w CI. Kanonizacja stoi NA GRANICY kontraktu —
+    fizyka (`compute_upstream_hv_thevenin`, `compute_ikss`) jest nietknięta.
+    """
+    return kwantyzuj_kontrakt(
+        _build_upstream_equivalent_snapshot_surowy(
+            enm,
+            case_id,
+            station_ref,
+            scenario=scenario,
+            transformer_ref=transformer_ref,
+        )
+    )

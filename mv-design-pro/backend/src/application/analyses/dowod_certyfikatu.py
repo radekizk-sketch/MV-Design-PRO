@@ -28,7 +28,6 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from typing import Any
-from uuid import UUID
 
 from enm.store import get_enm
 from pydantic import BaseModel
@@ -99,11 +98,15 @@ _WIDOK_Z_DOWODU: tuple[tuple[str, str], ...] = (
 )
 
 
-def _tabliczki(case_id: UUID | None) -> dict[str, dict[str, Any]]:
-    """Tabliczki urządzeń modelu przypadku (ref_id → parametry zmaterializowane)."""
-    if case_id is None:
+def _tabliczki(klucz_twin: str | None) -> dict[str, dict[str, Any]]:
+    """Tabliczki urządzeń modelu przypadku (ref_id → parametry zmaterializowane).
+
+    `klucz_twin` — klucz magazynu ENM (Canonical Project Twin, CV-1-W),
+    przetłumaczony z `case_id` na granicy API (`api/klucz_twin_dep.py`).
+    """
+    if klucz_twin is None:
         return {}
-    enm = get_enm(str(case_id))
+    enm = get_enm(klucz_twin)
     return {generator.ref_id: generator.materialized_params or {} for generator in enm.generators}
 
 
@@ -116,7 +119,7 @@ def _dowod(der_ref: str, tabliczka: dict[str, Any]) -> NcRfgCertificateEvidence:
 
 
 def dowody_certyfikatu(
-    case_id: UUID | None,
+    klucz_twin: str | None,
     der_refs: Sequence[str],
 ) -> list[NcRfgCertificateEvidence]:
     """Dowód certyfikatu per WSKAZANE urządzenie, w podanej kolejności referencji.
@@ -124,12 +127,12 @@ def dowody_certyfikatu(
     Dopasowanie idzie PO REFERENCJI urządzenia — nigdy „pierwszy lepszy DER
     w modelu". Referencja spoza modelu daje dowód z pustymi polami.
     """
-    tabliczki = _tabliczki(case_id)
+    tabliczki = _tabliczki(klucz_twin)
     return [_dowod(der_ref, tabliczki.get(der_ref, {})) for der_ref in der_refs]
 
 
 def dowody_certyfikatu_typu(
-    case_id: UUID | None,
+    klucz_twin: str | None,
     catalog_item_id: str,
 ) -> list[NcRfgCertificateEvidence]:
     """Dowód certyfikatu urządzeń modelu związanych z danym TYPEM katalogowym.
@@ -140,11 +143,11 @@ def dowody_certyfikatu_typu(
     w modelu (deterministyczna). Brak dopasowania → pusta lista (uczciwy stan
     zerowy), nigdy dowód urządzenia innego typu.
     """
-    if case_id is None:
+    if klucz_twin is None:
         return []
     return [
         _dowod(ref_id, tabliczka)
-        for ref_id, tabliczka in _tabliczki(case_id).items()
+        for ref_id, tabliczka in _tabliczki(klucz_twin).items()
         if tabliczka.get("catalog_item_id") == catalog_item_id
     ]
 

@@ -7,8 +7,9 @@ Brak domyslowania: parametry zwarciowe i napieciowe pochodza z katalogu.
 
 from __future__ import annotations
 
-from math import sqrt
 from typing import Any
+
+from network_model.pochodne import prad_z_mocy_pozornej_ka
 
 from .types import CATALOG_CONTRACT_VERSION, CatalogStatus, CatalogVerificationStatus
 
@@ -28,7 +29,7 @@ def _source_quality(note: str) -> dict[str, Any]:
 
 
 def _build_source_record(voltage_kv: float, sk3_mva: float, rx_ratio: float) -> dict[str, Any]:
-    ik3_ka = round(sk3_mva / (sqrt(3.0) * voltage_kv), 2)
+    ik3_ka = round(prad_z_mocy_pozornej_ka(sk3_mva, voltage_kv), 2)
     rx_tag = f"{int(round(rx_ratio * 100)):03d}"
     return {
         "id": f"src-gpz-{int(voltage_kv)}kv-{int(sk3_mva)}mva-rx{rx_tag}",
@@ -372,7 +373,7 @@ for _source_type in SOURCE_SYSTEM_TYPES:
         and _params.get("voltage_rating_kv")
     ):
         _params["ik3_ka"] = round(
-            float(_params["sk3_mva"]) / (sqrt(3.0) * float(_params["voltage_rating_kv"])),
+            prad_z_mocy_pozornej_ka(float(_params["sk3_mva"]), float(_params["voltage_rating_kv"])),
             2,
         )
     _params.setdefault("verification_status", _DEFAULT_VERIFICATION_STATUS)

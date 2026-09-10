@@ -7,13 +7,15 @@
  * (temperatura, stan łączeń) → wiersze „wkrótce" (bez zgadywania — karta §2).
  *
  * Status wyników renderowany jako tag PL (aktualne/nieaktualne/brak) — spójnie z
- * E15.2. `FreshnessBadge` (ui2/inspector) NIE pasuje: wymaga porównania rewizji
- * (dana vs model), a przypadek niesie kategorię `result_status`, nie numer rewizji
- * z chwili liczenia (ta sama uwaga co `projekt/pulpitAdapter.ts` TODO-KARTA #2).
+ * E15.2, RAZEM z przyczyną i listą zmian, które unieważniły wynik (CV-2-W:
+ * odpowiedź z przypadkiem niesie `result_status_reason_pl`, parę rewizji i
+ * `zmiany_od_biegu`, więc karta nie musi już mówić „nieaktualne" bez powodu ani
+ * dopytywać osobnym zapytaniem).
  */
 
 import type { StudyCase, StudyCaseConfig } from '../../../ui/study-cases/types';
 import { CONFIG_FIELD_LABELS } from '../../../ui/study-cases/types';
+import { ListaZmianOdBiegu } from '../../freshness';
 import {
   PRZYPADKI_STRINGS as T,
   STATUS_WYNIKOW_LABEL,
@@ -106,6 +108,7 @@ export function KartaPrzypadku({ przypadek, ladowanie, blad }: KartaPrzypadkuPro
         <span
           className={`mvd-tag ${WARIANT_STATUSU[przypadek.result_status]}`}
           data-testid="mvd-karta-status"
+          title={przypadek.result_status_reason_pl}
         >
           {STATUS_WYNIKOW_LABEL[przypadek.result_status]}
         </span>
@@ -113,6 +116,8 @@ export function KartaPrzypadku({ przypadek, ladowanie, blad }: KartaPrzypadkuPro
           <p className="mvd-karta-opis">{przypadek.description}</p>
         )}
       </header>
+
+      <ListaZmianOdBiegu status={przypadek} />
 
       <section className="mvd-karta-sekcja mvd-karta-zalozenia" aria-label={T.sekcjaZalozenia}>
         <h4 className="mvd-karta-sekcja-tytul">{T.sekcjaZalozenia}</h4>

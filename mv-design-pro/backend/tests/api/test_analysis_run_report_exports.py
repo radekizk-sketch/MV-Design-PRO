@@ -201,8 +201,10 @@ def test_build_analysis_run_report_payload_filters_to_active_bus_table() -> None
     assert reproducibility["case_ref"] == "case-pf"
     assert reproducibility["snapshot_ref"] == "snapshot-pf"
     assert reproducibility["enm_hash"] == "snapshot-pf"
-    assert reproducibility["variant_ref"] == "variant.uklad_normalny"
-    assert reproducibility["switching_snapshot_ref"] == "switching.uklad_normalny.base"
+    # CV-2 (H3): bieg bez wybranego wariantu/migawki lacznikowej oddaje UCZCIWY brak
+    # (`None`), nie etykiete „uklad normalny" bez encji za nia.
+    assert reproducibility["variant_ref"] is None
+    assert reproducibility["switching_snapshot_ref"] is None
     assert reproducibility["catalog_materialization_status"] == "materialized"
     assert reproducibility["catalog_materialization_ref"].startswith("catalog-materialization:")
     assert len(reproducibility["catalog_materialization_hash"]) == 64
@@ -281,6 +283,37 @@ def test_export_run_report_docx_includes_full_iec60909_balance() -> None:
         "Bilans IEC 60909: Rk=0.5 Ohm | Xk=1.5 Ohm | |Zk|=1.58114 Ohm | X/R=3 | kappa=1.4" in text
     )
     assert "c=1.1 | Un=15 kV | tk=1 s | tb=0.1 s | I2t=22.09 kA2s" in text
+
+
+def test_export_run_docx_response_shows_missing_fields_as_brak_danych() -> None:
+    """FAB-E (E1): brak pola WYNIKU w DOCX to napis „brak danych", nie 0.
+
+    ``_build_pf_run`` ma podsumowanie BEZ ``total_losses_q_mvar`` i wiersze
+    szyn BEZ ``p_injected_mw``/``q_injected_mvar`` — przed poprawka te
+    kolumny renderowaly sfabrykowane „0.000"/„0" (`.get(pole, 0)`), co w
+    raporcie inzynierskim wygladalo jak realny wynik obliczen.
+    """
+    import dataclasses
+    import io as _io
+
+    from api.analysis_run_exports import export_run_docx_response
+    from docx import Document as _Document
+
+    run = dataclasses.replace(_build_pf_run(), power_flow_trace={})
+    response = export_run_docx_response(run, filename_stem="power_flow")
+
+    document = _Document(_io.BytesIO(response.body))
+    cell_texts = [
+        cell.text for table in document.tables for row in table.rows for cell in row.cells
+    ]
+
+    assert "brak danych" in cell_texts, (
+        "brakujace total_losses_q_mvar/p_injected_mw/q_injected_mvar musza renderowac "
+        "sie jako 'brak danych', nie jako sfabrykowane 0"
+    )
+    # Pole OBECNE (total_losses_p_mw=0.1) MUSI zostac wyswietlone normalnie —
+    # poprawka nie moze ukryc prawdziwych wartosci za "brak danych".
+    assert "0.1" in cell_texts
 
 
 def test_export_run_report_pdf_generates_for_short_circuit_run() -> None:
@@ -402,47 +435,6 @@ def _build_dynamic_stability_run() -> CanonicalRun:
     )
 
 
-def _build_source_compliance_run() -> CanonicalRun:
-    return CanonicalRun(
-        id=uuid4(),
-        case_id="case-comp",
-        project_id="project-1",
-        analysis_type="source_compliance",
-        status="FINISHED",
-        created_at=datetime.now(UTC),
-        snapshot_hash="snapshot-comp",
-        input_hash="hash-comp",
-        snapshot={"sources": [{"ref_id": "src-main"}]},
-        validation={},
-        readiness={},
-        result_status="VALID",
-        raw_result={
-            "analysis_type": "source_compliance",
-            "source_ref": "src-main",
-            "proof_ref": "proof:source-compliance:src-main",
-            "proof_status": "complete",
-            "reporting_status": "reportable",
-            "result": {
-                "source_type": "PV",
-                "verdict": "compliant",
-                "reporting_status": "reportable",
-                "proof_status": "complete",
-                "limitations": [],
-                "checks": {"frt": {"verdict": "compliant"}},
-            },
-        },
-        white_box_trace=[
-            {
-                "step": 1,
-                "title": "Krok zgodnosci zrodla",
-                "proof_ref": "proof:source-compliance:src-main",
-                "proof_status": "complete",
-                "reporting_status": "reportable",
-            }
-        ],
-    )
-
-
 def test_export_payload_supports_asymmetric_short_circuit_proof_status() -> None:
     payload = build_analysis_run_export_payload(_build_sc_run())
 
@@ -552,15 +544,6 @@ def test_export_payload_supports_dynamic_stability_bundle() -> None:
     assert payload["dynamic_stability"]["rows"][0]["status"] == "STABLE"
     assert payload["automation_trace"]["rows"][-1]["event_type"] == "DYNAMIC_STABILITY_EVALUATED"
     assert payload["metadata"]["proof_status"] == "complete"
-
-
-def test_export_payload_supports_source_compliance_bundle() -> None:
-    payload = build_analysis_run_export_payload(_build_source_compliance_run())
-
-    assert payload["report_type"] == "source_compliance"
-    assert payload["source_compliance"]["rows"][0]["verdict"] == "compliant"
-    assert payload["source_compliance"]["rows"][0]["reporting_status"] == "reportable"
-    assert payload["metadata"]["analysis_type"] == "source_compliance"
 
 
 def test_report_payload_marks_readiness_blockers_as_partial_with_missing_prerequisites() -> None:

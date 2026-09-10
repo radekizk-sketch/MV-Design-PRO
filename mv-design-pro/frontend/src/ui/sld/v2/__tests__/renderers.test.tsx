@@ -336,7 +336,7 @@ describe('StationOnRunRenderer', () => {
     expect(getByText('NOP')).toBeInTheDocument();
   });
 
-  it('K30-102: sekcyjna station → enhanced open-point marker z circle + rotated line (IEC 60617)', () => {
+  it('sekcyjna station → enhanced open-point marker z circle + rotated line (IEC 60617)', () => {
     const { container } = render(
       <svg>
         <StationOnRunRenderer
@@ -469,7 +469,7 @@ describe('StationOnRunRenderer', () => {
     expect(container.querySelector('[data-testid="sld-v2-station-rated-kva-st-no-kva"]')).toBeFalsy();
   });
 
-  it('K30-7: switchStateByColumn[0]="open" → connector ma stroke COLOR_DEVICE_OPEN i dashed', () => {
+  it('switchStateByColumn[0]="open" → connector ma stroke COLOR_DEVICE_OPEN i dashed', () => {
     const { container } = render(
       <svg>
         <StationOnRunRenderer
@@ -493,7 +493,7 @@ describe('StationOnRunRenderer', () => {
     expect(poly1?.getAttribute('fill')).toBe('#0A8D43');
   });
 
-  it('K30-7: switchStateByColumn[0]="unknown" → pokazuje neutralne kreskowanie aparatu', () => {
+  it('switchStateByColumn[0]="unknown" → pokazuje neutralne kreskowanie aparatu', () => {
     const { container } = render(
       <svg>
         <StationOnRunRenderer
@@ -512,7 +512,7 @@ describe('StationOnRunRenderer', () => {
       .toBe('neutral-hatch');
   });
 
-  it('K30-7: switchStateByColumn brak → wszystkie connectors w stanie "closed" (default back-compat)', () => {
+  it('switchStateByColumn brak → wszystkie connectors w stanie "closed" (default back-compat)', () => {
     const { container } = render(
       <svg>
         <StationOnRunRenderer
@@ -528,7 +528,7 @@ describe('StationOnRunRenderer', () => {
     expect(conn0?.getAttribute('data-switch-state')).toBe('closed');
   });
 
-  it('K30-36: stacja przelotowa default → bay-role labels "WE" + "WY"', () => {
+  it('stacja przelotowa default → bay-role labels "WE" + "WY"', () => {
     const { container, getByText } = render(
       <svg>
         <StationOnRunRenderer
@@ -550,7 +550,7 @@ describe('StationOnRunRenderer', () => {
     expect(container.querySelector('[data-testid="sld-v2-station-connector-st-pl-0"]')?.getAttribute('data-bay-role')).toBe('WE');
   });
 
-  it('K30-36: stacja odgałęźna 3-kolumnowa → WE / TR / WY', () => {
+  it('stacja odgałęźna 3-kolumnowa → WE / TR / WY', () => {
     const { container } = render(
       <svg>
         <StationOnRunRenderer
@@ -567,7 +567,7 @@ describe('StationOnRunRenderer', () => {
     expect(container.querySelector('[data-testid="sld-v2-station-bay-role-st-od-2"]')?.textContent).toBe('WY');
   });
 
-  it('K30-36: stacja sekcyjna default → SPR + WE', () => {
+  it('stacja sekcyjna default → SPR + WE', () => {
     const { container } = render(
       <svg>
         <StationOnRunRenderer
@@ -583,7 +583,7 @@ describe('StationOnRunRenderer', () => {
     expect(container.querySelector('[data-testid="sld-v2-station-bay-role-st-sk-1"]')?.textContent).toBe('WE');
   });
 
-  it('K30-36: explicit bayRoleByColumn override defaults', () => {
+  it('explicit bayRoleByColumn override defaults', () => {
     const { container } = render(
       <svg>
         <StationOnRunRenderer
@@ -600,7 +600,7 @@ describe('StationOnRunRenderer', () => {
     expect(container.querySelector('[data-testid="sld-v2-station-bay-role-st-ov-1"]')?.textContent).toBe('ODG');
   });
 
-  it('K30-37: busVoltageKv=110 → szyna czerwona (WN)', () => {
+  it('busVoltageKv=110 → szyna czerwona (WN)', () => {
     const { container } = render(
       <svg>
         <StationOnRunRenderer
@@ -618,7 +618,7 @@ describe('StationOnRunRenderer', () => {
     expect(bus?.getAttribute('data-bus-voltage-kv')).toBe('110');
   });
 
-  it('K30-37: busVoltageKv=15 → szyna SN (energized green)', () => {
+  it('busVoltageKv=15 → szyna SN (energized green)', () => {
     const { container } = render(
       <svg>
         <StationOnRunRenderer
@@ -635,7 +635,7 @@ describe('StationOnRunRenderer', () => {
     expect(bus?.getAttribute('stroke')).toBe('#13C45A');
   });
 
-  it('K30-37: busVoltageKv=0.4 → szyna nN (light blue)', () => {
+  it('busVoltageKv=0.4 → szyna nN (light blue)', () => {
     const { container } = render(
       <svg>
         <StationOnRunRenderer
@@ -652,7 +652,7 @@ describe('StationOnRunRenderer', () => {
     expect(bus?.getAttribute('stroke')).toBe('#7DD3FC');
   });
 
-  it('K30-37: brak busVoltageKv → fallback do energized green (backward-compat)', () => {
+  it('brak busVoltageKv → fallback do energized green (backward-compat)', () => {
     const { container } = render(
       <svg>
         <StationOnRunRenderer
@@ -669,7 +669,7 @@ describe('StationOnRunRenderer', () => {
     expect(bus?.getAttribute('data-bus-voltage-kv')).toBe('');
   });
 
-  it('K30-37: terminatory szyny dziedziczą voltage tint', () => {
+  it('terminatory szyny dziedziczą voltage tint', () => {
     const { container } = render(
       <svg>
         <StationOnRunRenderer
@@ -688,7 +688,7 @@ describe('StationOnRunRenderer', () => {
     expect(right?.getAttribute('stroke')).toBe('#E74C3C');
   });
 
-  it('K30-44: voltageDeviationPct=1.0 → ring green (OK ≤ 2%)', () => {
+  it('voltageDeviationPct=1.0 → ring green (OK ≤ 2%)', () => {
     const { container } = render(
       <svg>
         <StationOnRunRenderer
@@ -707,7 +707,7 @@ describe('StationOnRunRenderer', () => {
     expect(code?.querySelector('rect')?.getAttribute('stroke')).toBe('#13C45A');
   });
 
-  it('K30-44: voltageDeviationPct=3.5 → ring amber (warn 2-5%)', () => {
+  it('voltageDeviationPct=3.5 → ring amber (warn 2-5%)', () => {
     const { container } = render(
       <svg>
         <StationOnRunRenderer
@@ -726,7 +726,7 @@ describe('StationOnRunRenderer', () => {
     expect(code?.querySelector('rect')?.getAttribute('stroke')).toBe('#FFD166');
   });
 
-  it('K30-44: voltageDeviationPct=-7.5 → ring orange (significant 5-10%, sign-aware)', () => {
+  it('voltageDeviationPct=-7.5 → ring orange (significant 5-10%, sign-aware)', () => {
     const { container } = render(
       <svg>
         <StationOnRunRenderer
@@ -745,7 +745,7 @@ describe('StationOnRunRenderer', () => {
     expect(code?.querySelector('rect')?.getAttribute('stroke')).toBe('#FF8B5C');
   });
 
-  it('K30-44: voltageDeviationPct=12 → ring red (out-of-spec >10% PN-EN 50160)', () => {
+  it('voltageDeviationPct=12 → ring red (out-of-spec >10% PN-EN 50160)', () => {
     const { container } = render(
       <svg>
         <StationOnRunRenderer
@@ -764,7 +764,7 @@ describe('StationOnRunRenderer', () => {
     expect(code?.querySelector('rect')?.getAttribute('stroke')).toBe('#FF6B6B');
   });
 
-  it('K30-44: voltageDeviationPct renderuje ΔU label "+3.5%" / "-7.5%"', () => {
+  it('voltageDeviationPct renderuje ΔU label "+3.5%" / "-7.5%"', () => {
     const { container, getByText } = render(
       <svg>
         <StationOnRunRenderer
@@ -782,7 +782,7 @@ describe('StationOnRunRenderer', () => {
     expect(getByText('ΔU +3.5%')).toBeInTheDocument();
   });
 
-  it('K30-44: brak voltageDeviationPct → ring default cyan (back-compat K30-4)', () => {
+  it('brak voltageDeviationPct → ring default cyan (back-compat)', () => {
     const { container } = render(
       <svg>
         <StationOnRunRenderer

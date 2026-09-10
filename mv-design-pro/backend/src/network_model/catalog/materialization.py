@@ -104,11 +104,13 @@ _NAMESPACE_ACCESSOR: dict[str, str] = {
     CatalogNamespace.ZRODLO_SN.value: "get_source_system_type",
     CatalogNamespace.ZRODLO_NN_PV.value: "get_pv_inverter_type",
     CatalogNamespace.ZRODLO_NN_BESS.value: "get_bess_inverter_type",
+    CatalogNamespace.BATERIA_BESS.value: "get_bess_battery_type",
     CatalogNamespace.ZABEZPIECZENIE.value: "get_protection_device_type",
     CatalogNamespace.NASTAWY_ZABEZPIECZEN.value: "get_protection_setting_template",
     CatalogNamespace.PTPIREE_CERTYFIKAT_GENERATORA.value: "get_ptpiree_generator_certificate",
     CatalogNamespace.CONVERTER.value: "get_converter_type",
     CatalogNamespace.INVERTER.value: "get_inverter_type",
+    CatalogNamespace.GENERATOR_SN.value: "get_synchronous_generator_type",
 }
 
 # Fallbacks for switch equipment
@@ -183,6 +185,10 @@ def materialize_catalog_binding(
     audit_entries: list[MaterializationAuditEntry] = []
     for field_name in contract.solver_fields:
         value = item_dict.get(field_name)
+        if value is None and field_name in contract.pola_opcjonalne:
+            # Pole addytywne bez wartości w katalogu: NIE trafia do migawki
+            # (``MaterializationContract.pola_opcjonalne``) — brak danej to brak klucza.
+            continue
         solver_fields[field_name] = value
         audit_entries.append(
             MaterializationAuditEntry(

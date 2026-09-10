@@ -33,6 +33,8 @@ from network_model.catalog.mv_cable_line_catalog import (
     get_catalog_statistics,
     get_manufacturer_cable_type_ids,
 )
+from network_model.catalog.types import CatalogStatus
+from network_model.pochodne import simens_na_mikrosimens, susceptancja_z_pojemnosci_s_per_km
 
 
 class TestCatalogCompleteness:
@@ -74,13 +76,26 @@ class TestCatalogCompleteness:
         for line in lines:
             assert line.id, f"Linia bez ID: {line}"
             assert line.name, f"Linia bez nazwy: {line.id}"
-            assert line.r_ohm_per_km > 0, f"Linia {line.id}: R20 <= 0"
-            assert line.x_ohm_per_km > 0, f"Linia {line.id}: X <= 0"
-            assert line.cross_section_mm2 > 0, f"Linia {line.id}: przekrój <= 0"
-            assert line.conductor_material in (
-                "AL",
-                "AL_ST",
-            ), f"Linia {line.id}: nieznany materiał {line.conductor_material}"
+            # Każdy typ (produkt i literatura): impedancja nieujemna i niezerowa jako
+            # całość — gałąź o R = X = 0 nie jest linią.
+            assert line.r_ohm_per_km >= 0, f"Linia {line.id}: R20 < 0"
+            assert line.x_ohm_per_km >= 0, f"Linia {line.id}: X < 0"
+            assert line.r_ohm_per_km > 0 or line.x_ohm_per_km > 0, f"Linia {line.id}: R = X = 0"
+            # Dane TABLICZKOWE produktu (R20 > 0 realnego przewodnika, przekrój,
+            # materiał): wymagane dla typów produkcyjnych (catalog_status
+            # PRODUKCYJNY_V1). Typy z literatury (benchmarki CV-4.3 K1, REFERENCYJNY_V1)
+            # ich nie podają i NIE dostają liczb-zastępników (None = nieznane); mogą
+            # też być czysto reaktancyjne (MATPOWER case9: gałęzie transformatorowe R = 0).
+            if line.catalog_status == CatalogStatus.PRODUKCYJNY_V1.value:
+                assert line.r_ohm_per_km > 0, f"Linia {line.id}: R20 <= 0"
+                assert line.x_ohm_per_km > 0, f"Linia {line.id}: X <= 0"
+                assert (
+                    line.cross_section_mm2 is not None and line.cross_section_mm2 > 0
+                ), f"Linia {line.id}: przekrój <= 0"
+                assert line.conductor_material in (
+                    "AL",
+                    "AL_ST",
+                ), f"Linia {line.id}: nieznany materiał {line.conductor_material}"
 
     def test_production_cables_have_zero_sequence_parameters(self) -> None:
         """Produkcyjne typy kabli SN mają katalogowe R0/X0 do zwarć doziemnych."""
@@ -99,7 +114,11 @@ class TestCatalogCompleteness:
         catalog = get_default_mv_catalog()
 
         for line in catalog.list_line_types():
-            if "incomplete" in line.id:
+            # „Produkcyjny" = catalog_status PRODUKCYJNY_V1 (atrybut kontraktu, nie
+            # podciąg identyfikatora): typ TESTOWY „incomplete" i typy z literatury
+            # (benchmarki CV-4.3 K1, REFERENCYJNY_V1, R0/X0 poza publikacją) nie są
+            # produktami z tabliczką i nie podlegają temu wymaganiu.
+            if line.catalog_status != CatalogStatus.PRODUKCYJNY_V1.value:
                 continue
             assert line.r0_ohm_per_km is not None, f"Linia {line.id}: brak R0"
             assert line.x0_ohm_per_km is not None, f"Linia {line.id}: brak X0"
@@ -465,14 +484,26 @@ class TestCableTypeProperties:
     """Testy właściwości typu CableType."""
 
     def test_cable_type_b_us_per_km_calculation(self) -> None:
-        """Susceptance jest poprawnie obliczane z pojemności."""
+        """Susceptancja jest poprawnie wyprowadzana z pojemności (karta W3-F
+        §0.6) — była własność `CableType.b_us_per_km` (π ≈ 3,14159, f=50 Hz
+        zaszyte) zastąpiona metodą `susceptancja_us_per_km(czestotliwosc_hz)`
+        (math.pi, częstotliwość jawna u wołającego)."""
         catalog = get_default_mv_catalog()
         cable = catalog.get_cable_type("cable-base-xlpe-al-1c-150")
 
         assert cable is not None
-        # B = 2 * π * 50 * C * 1e-3, gdzie C w nF/km
-        expected_b = 2 * 3.14159 * 50 * cable.c_nf_per_km * 1e-3
-        assert cable.b_us_per_km == pytest.approx(expected_b, rel=0.01)
+        assert not hasattr(cable, "b_us_per_km")
+        # B = 2 * π * f * C * 1e-3, gdzie C w nF/km — math.pi, nie przybliżenie.
+        expected_b = simens_na_mikrosimens(
+            susceptancja_z_pojemnosci_s_per_km(cable.c_nf_per_km, 50.0)
+        )
+        assert cable.susceptancja_us_per_km(50.0) == expected_b
+        # f=60 Hz (studium 60 Hz) daje INNĄ wartość — dowód, że częstotliwość
+        # jest parametrem, nie stałą zaszytą w typie katalogowym.
+        assert cable.susceptancja_us_per_km(60.0) == simens_na_mikrosimens(
+            susceptancja_z_pojemnosci_s_per_km(cable.c_nf_per_km, 60.0)
+        )
+        assert cable.susceptancja_us_per_km(60.0) != cable.susceptancja_us_per_km(50.0)
 
     def test_cable_type_to_dict(self) -> None:
         """CableType.to_dict() zawiera wszystkie pola."""
