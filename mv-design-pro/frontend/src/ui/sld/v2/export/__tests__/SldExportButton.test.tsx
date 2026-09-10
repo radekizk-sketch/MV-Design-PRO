@@ -16,14 +16,10 @@ import { SldExportButton } from '../SldExportButton';
 
 beforeEach(() => {
   // jsdom does not implement URL.createObjectURL — shim before spy
-  // @ts-expect-error jsdom shim
   if (typeof URL.createObjectURL !== 'function') {
-    // @ts-expect-error jsdom shim
     URL.createObjectURL = () => 'blob:shim';
   }
-  // @ts-expect-error jsdom shim
   if (typeof URL.revokeObjectURL !== 'function') {
-    // @ts-expect-error jsdom shim
     URL.revokeObjectURL = () => {};
   }
   vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');

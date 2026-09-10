@@ -287,9 +287,7 @@ describe('MacierzNcRfg — certyfikat zgodności (karta P39c)', () => {
     vi.mocked(pobierzCertyfikatDocx).mockResolvedValue(blob);
 
     // jsdom nie implementuje URL.createObjectURL — shim + spy.
-    // @ts-expect-error shim jsdom
     if (typeof URL.createObjectURL !== 'function') URL.createObjectURL = () => 'blob:shim';
-    // @ts-expect-error shim jsdom
     if (typeof URL.revokeObjectURL !== 'function') URL.revokeObjectURL = () => {};
     const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
@@ -388,9 +386,7 @@ describe('MacierzNcRfg — dowód certyfikacji PTPiREE w certyfikacie zgodności
   it('eksport DOCX certyfikatu też niesie aktywny przypadek', async () => {
     vi.mocked(pobierzCertyfikat).mockResolvedValue(certyfikatZDowodemFixture());
     vi.mocked(pobierzCertyfikatDocx).mockResolvedValue(new Blob(['docx']));
-    // @ts-expect-error shim jsdom
     if (typeof URL.createObjectURL !== 'function') URL.createObjectURL = () => 'blob:shim';
-    // @ts-expect-error shim jsdom
     if (typeof URL.revokeObjectURL !== 'function') URL.revokeObjectURL = () => {};
     vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});

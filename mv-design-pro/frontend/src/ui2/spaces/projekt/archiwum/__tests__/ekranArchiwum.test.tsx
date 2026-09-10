@@ -26,9 +26,7 @@ function plikArchiwum(nazwa = 'projekt.mvdp.zip'): File {
 
 /** Shim pobierania pliku (jsdom nie implementuje `URL.createObjectURL`). */
 function przechwycPobranie(): { nazwa: () => string } {
-  // @ts-expect-error shim jsdom
   if (typeof URL.createObjectURL !== 'function') URL.createObjectURL = () => 'blob:shim';
-  // @ts-expect-error shim jsdom
   if (typeof URL.revokeObjectURL !== 'function') URL.revokeObjectURL = () => {};
   vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
   vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});

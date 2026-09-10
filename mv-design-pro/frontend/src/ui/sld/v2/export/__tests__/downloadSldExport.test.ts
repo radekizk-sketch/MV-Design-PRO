@@ -24,14 +24,10 @@ function makeSvgElement(): SVGSVGElement {
 // jsdom does not implement URL.createObjectURL / revokeObjectURL — we have to
 // shim them on the URL object so vi.spyOn can hook into them.
 beforeEach(() => {
-  // @ts-expect-error jsdom shim
   if (typeof URL.createObjectURL !== 'function') {
-    // @ts-expect-error jsdom shim
     URL.createObjectURL = () => 'blob:shim';
   }
-  // @ts-expect-error jsdom shim
   if (typeof URL.revokeObjectURL !== 'function') {
-    // @ts-expect-error jsdom shim
     URL.revokeObjectURL = () => {};
   }
 });
@@ -93,8 +89,13 @@ describe('downloadSldSvg — pipeline integration', () => {
   it('creates Blob with image/svg+xml MIME type', () => {
     let blobCaptured: Blob | null = null;
     const origCreateObjectURL = URL.createObjectURL;
-    vi.spyOn(URL, 'createObjectURL').mockImplementation((b: Blob) => {
-      blobCaptured = b;
+    // Sygnatura mocka MUSI byc ta sama co kontraktu DOM
+    // (`(obj: Blob | MediaSource) => string`); zawezenie parametru do `Blob`
+    // bylo bledem typu, nie asercja. Zawezenie robimy w ciele — dzieki temu
+    // `blobCaptured` zostaje `null`, gdyby eksport podal cokolwiek innego niz
+    // Blob, i asercja `not.toBeNull()` ponizej to WYLAPIE.
+    vi.spyOn(URL, 'createObjectURL').mockImplementation((obj: Blob | MediaSource) => {
+      blobCaptured = obj instanceof Blob ? obj : null;
       return 'blob:captured';
     });
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});

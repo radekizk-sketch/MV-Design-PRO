@@ -162,12 +162,42 @@ POMIJANE_KATALOGI = {
 #     `base_template`, więc przestały być niezgodne z typem.
 # `e2e/` i `playwright.config.ts` weszły DO bramki (0 błędów) — nie są już
 # długiem, tylko zasięgiem.
-BUDZET_BLEDOW_POZA_BRAMKA = 531
+#
+# POMIAR 2026-09-10 (karta TSCONFIG-GATE-CZERWONA). Zapadka złapała WZROST:
+# na gałęzi stało 658 błędów (531 -> 658, +127), więc `frontend-checks.yml`
+# świecił czerwono. Dług zdjęty U ŹRÓDŁA, bez ani jednego nowego wyciszenia:
+#   * 254 błędy: TRZY pliki testowe wołały `describe`/`it`/`expect` jako
+#     GLOBALE, nie importując ich z `vitest` (`cadSymbolRegistry.test.tsx` 122,
+#     `power-flow-comparison.test.ts` 88, `protection-comparison.test.ts` 45).
+#     Wykonywały się poprawnie (`globals: true` w `vite.config.ts`), ale dla
+#     `tsc` każde `expect(...)` było nieznaną nazwą — jeden brakujący import
+#     generował setki błędów i skutecznie ukrywał, co jeszcze w tych plikach
+#     nie typuje się. Naprawa: jawny import z `vitest`, jak w każdym innym
+#     teście repozytorium.
+#   * 38 błędów TS2578 „Unused '@ts-expect-error'": martwe dyrektywy nad
+#     shimem `URL.createObjectURL`/`revokeObjectURL` dla jsdom — kod pod nimi
+#     typuje się poprawnie (DOM lib deklaruje obie metody, a shim jest
+#     przypisywalny), więc dyrektywa nie tłumiła NICZEGO i zarazem wygaszała
+#     czujność na wypadek przyszłego błędu w tej linii. Usunięte; patrz
+#     `BUDZET_WYCISZEN` niżej.
+#   * 10 błędów w czterech testach, które zostały w STARYM KANONIE i zostały
+#     przepisane do obecnego z zachowaniem intencji (TS2367 martwa gałąź
+#     `CASE_CONFIG` w `selection-store.test.ts`, TS2339 pole widmo `debtCode`
+#     w `coverage-matrix.test.ts`, TS6133 urwane asercje w
+#     `property-grid.test.ts` i `power-flow-comparison.test.ts`, TS2345
+#     zawężona sygnatura mocka w `downloadSldExport.test.ts`).
+BUDZET_BLEDOW_POZA_BRAMKA = 356
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,
-#: WSZYSTKIE w plikach testowych.
-BUDZET_WYCISZEN = 35
+#: WSZYSTKIE w plikach testowych. Pomiar 2026-09-10: 39 (dług urósł o 4).
+#: Po karcie TSCONFIG-GATE-CZERWONA zostaje **1** — 38 z 39 to były dyrektywy
+#: MARTWE (`tsc` meldował je jako TS2578 „Unused"), powielony wzorzec shimu
+#: jsdom nad kodem, który typuje się bez żadnej pomocy. Jedyne pozostałe
+#: wyciszenie (`sld/v3/export/__tests__/eksportDokumentu.test.ts`) jest
+#: UŻYWANE i jest asercją: dowodzi, że format spoza rejestru odpada i na
+#: typach, i w czasie wykonania.
+BUDZET_WYCISZEN = 1
 
 #: Zapadka na pusty skan: `frontend/src` to tysiące modułów. Mniej niż tyle
 #: znaczy, że zmienił się układ katalogów, a nie że kodu ubyło.

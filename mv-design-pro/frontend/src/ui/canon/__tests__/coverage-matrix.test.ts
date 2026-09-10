@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { COVERAGE_MATRIX } from '../coverageMatrix';
-import { hasRegisteredDebt } from '../technicalDebtRegistry';
+import { TECHNICAL_DEBT_REGISTRY, hasRegisteredDebt } from '../technicalDebtRegistry';
 import { hasTechnicalIcon } from '../../icons/technicalIconRegistry';
 
 const REQUIRED_SCOPES = [
@@ -59,10 +59,43 @@ describe('coverage-matrix - zakres obowiązkowy', () => {
       expect(row.result).toBeTruthy();
       expect(row.report).toBeTruthy();
       expect(row.status).toBeTruthy();
-      if (row.status.startsWith('dług techniczny')) {
-        expect(row.debtCode).toBeTruthy();
-        expect(hasRegisteredDebt(row.debtCode!)).toBe(true);
-      }
+      // INTENCJA (zachowana): zaden wiersz macierzy nie moze po cichu zglosic
+      // dlugu technicznego. Poprzednia wersja pilnowala tego galezia
+      // `if (row.status.startsWith('dług techniczny')) → row.debtCode`, ktora
+      // NIGDY nie mogla sie wykonac: `CoverageStatus` jest unia
+      // JEDNOELEMENTOWA ('pełne pokrycie'), a pola `debtCode` kontrakt
+      // `CoverageMatrixRow` nie ma (TS2339 — test powstal w tym samym commicie
+      // co kontrakt i od poczatku celowal w pole widmo). Ten sam warunek,
+      // sprawdzalny: status kazdego wiersza jest DOKLADNIE kanonicznym
+      // pelnym pokryciem, wiec wpisanie dlugu wymaga zmiany kontraktu — i
+      // wywroci ten test razem z typem.
+      expect(row.status).toBe('pełne pokrycie');
     }
+  });
+});
+
+/**
+ * Rejestr dlugu, na ktory wskazywala martwa galaz powyzej, byl do tej pory bez
+ * ZADNEJ wyroczni — a niesie mocne deklaracje ("ZAMKNIĘTY"). Deklaracja bez
+ * testu to falszywa pewnosc (CLAUDE.md, regula KLASA, pkt 4).
+ */
+describe('rejestr dlugu technicznego', () => {
+  it('nie zawiera pozycji otwartej — kazda ma status ZAMKNIĘTY i unikalny kod', () => {
+    expect(TECHNICAL_DEBT_REGISTRY.length).toBeGreaterThan(0);
+    for (const pozycja of TECHNICAL_DEBT_REGISTRY) {
+      expect(pozycja.status).toBe('ZAMKNIĘTY');
+      expect(pozycja.closedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(pozycja.changedFiles.length).toBeGreaterThan(0);
+      expect(pozycja.tests.length).toBeGreaterThan(0);
+    }
+    const kody = TECHNICAL_DEBT_REGISTRY.map((pozycja) => pozycja.code);
+    expect(new Set(kody).size).toBe(kody.length);
+  });
+
+  it('hasRegisteredDebt odpowiada zgodnie z rejestrem', () => {
+    for (const pozycja of TECHNICAL_DEBT_REGISTRY) {
+      expect(hasRegisteredDebt(pozycja.code)).toBe(true);
+    }
+    expect(hasRegisteredDebt('KOD-SPOZA-REJESTRU')).toBe(false);
   });
 });

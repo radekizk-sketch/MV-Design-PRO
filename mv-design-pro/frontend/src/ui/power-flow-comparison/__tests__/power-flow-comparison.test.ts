@@ -8,6 +8,8 @@
  * - Polish labels coverage
  */
 
+import { describe, expect, it } from 'vitest';
+
 import {
   ISSUE_CODE_LABELS,
   SEVERITY_LABELS,
@@ -95,6 +97,19 @@ describe('P20c Power Flow Comparison Types', () => {
     it('should have deterministic tab order', () => {
       const tabs = Object.keys(COMPARISON_TAB_LABELS);
       expect(tabs).toEqual(['BUSES', 'BRANCHES', 'RANKING', 'TRACE']);
+    });
+
+    // Asercja przywrocona (typ `PowerFlowComparisonTab` byl importowany, ale
+    // nigdy nieuzyty — urwana asercja). INTENCJA, ta sama co w „should cover all
+    // issue codes" i „should cover all severity levels 1-5": lista jest TYPOWANA
+    // unia zakladek, wiec dopisanie zakladki do kontraktu bez etykiety wywala
+    // sie tu na typach, a usuniecie etykiety — w czasie biegu.
+    it('should cover all comparison tabs', () => {
+      const tabs: PowerFlowComparisonTab[] = ['BUSES', 'BRANCHES', 'RANKING', 'TRACE'];
+      tabs.forEach((tab) => {
+        expect(COMPARISON_TAB_LABELS[tab]).toBeDefined();
+      });
+      expect(Object.keys(COMPARISON_TAB_LABELS)).toHaveLength(tabs.length);
     });
   });
 
