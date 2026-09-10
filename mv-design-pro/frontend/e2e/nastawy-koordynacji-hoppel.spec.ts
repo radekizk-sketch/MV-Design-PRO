@@ -8,10 +8,18 @@
  * (metoda Hoppela). Droga: kotwica (bieg SC_3F przez realny klik „Oblicz") →
  * wybór chronionego odcinka i kolejnej szyny → tabela nastaw → dobór aparatu.
  *
- * Wzorzec seedu sieci i uruchomienia biegu: e2e/restart-po-biegu.spec.ts /
- * e2e/critical-run-flow.spec.ts (real backend; magistrala SN trzech odcinków w
- * SZEREGU przez API domain-ops — odcinek 1 ma odcinek 2 jako kandydata
- * kolejnej strefy selektywności, dokładnie kontrakt, którego ten ekran wymaga).
+ * Wzorzec URUCHOMIENIA BIEGU (klik „Oblicz", toast, zakładka koordynacji):
+ * e2e/restart-po-biegu.spec.ts / e2e/critical-run-flow.spec.ts (real backend).
+ * Wzorzec SIECI CELOWO INNY niż tamte specy — patrz `zbudujSiecGotowaDoObliczen`
+ * niżej: magistrala trzech odcinków `continue_trunk_segment_sn` (wzorzec
+ * critical-run-flow) ma końce `bus/.../downstream` otagowane `helper_bus`
+ * (`enm/assembler.py::skip_short_circuit_target`), więc bieg 3F świadomie
+ * pomija je jako punkty raportowalne — nastawy wymagają prądu zwarciowego na
+ * POCZĄTKU, KOŃCU chronionego odcinka I kolejnej szynie, więc magistrala z tego
+ * wzorca nigdy nie da kompletu trzech realnych punktów. Ta sieć ma zamiast tego
+ * DWIE stacje SN wprost połączone jednym odcinkiem (obie szyny SN stacji są
+ * realnymi punktami raportowalnymi) — dokładnie kontrakt, którego ten ekran
+ * wymaga.
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 
@@ -37,7 +45,7 @@ type DomainOpResponse = {
   error?: string | null;
   snapshot?: {
     corridors?: Array<{ ordered_segment_refs?: string[] }>;
-    branches?: Array<{ ref_id: string; type?: string }>;
+    branches?: Array<{ ref_id: string; type?: string; to_bus_ref?: string }>;
     transformers?: Array<{ ref_id: string }>;
   };
 };
@@ -139,9 +147,32 @@ async function createCaseFromUi(page: Page, request: APIRequestContext): Promise
   return caseId;
 }
 
-/** Magistrala SN trzech odcinków w SZEREGU (wzorzec restart-po-biegu/critical-run-flow) —
- * odcinek 1 ma odcinek 2 jako kandydata kolejnej strefy selektywności. */
-async function zbudujSiecGotowaDoObliczen(request: APIRequestContext, caseId: string): Promise<void> {
+/**
+ * Dwie stacje w SZEREGU na JEDNYM odcinku źródłowym (nie magistrala trzech
+ * odcinków wzorca restart-po-biegu/critical-run-flow — patrz uzasadnienie
+ * niżej). Topologia: GPZ →(segment_L)→ Stacja 1 →(segment_R_L)→ Stacja 2
+ * →(segment_R_R)→ kikut magistrali.
+ *
+ * DLACZEGO NIE trzy odcinki `continue_trunk_segment_sn` + JEDNA stacja na
+ * końcu (wzorzec innych e2e): końce zwykłych odcinków magistrali
+ * (`bus/.../downstream`) niosą tag `helper_bus`
+ * (`enm/assembler.py::skip_short_circuit_target`) — bieg zwarciowy 3F ŚWIADOMIE
+ * pomija je jako punkty raportowalne (to punkty prowizoryczne „w trakcie
+ * budowy", nie realne miejsca pomiaru). Chroniony odcinek nastaw wymaga
+ * prądu zwarciowego na POCZĄTKU, KOŃCU i KOLEJNEJ SZYNIE — wszystkie trzy
+ * muszą być realnymi (nie-`helper`) punktami. Jedyne realne punkty w tej
+ * rodzinie operacji budowy sieci to szyny SN stacji (`sn_bus`) i szyna
+ * źródła — więc chroniony odcinek musi łączyć DWIE stacje wprost, bez
+ * kikuta magistrali pomiędzy nimi. Osiąga się to WSTAWIAJĄC DRUGĄ stację na
+ * odcinku `_R` pozostałym po wstawieniu pierwszej (nie przez kolejne
+ * `continue_trunk_segment_sn`, które zawsze wraca do STAREGO kikuta
+ * magistrali, nie do nowo wstawionej stacji — zmierzone bezpośrednim
+ * odtworzeniem sekwencji operacji przy diagnozie tej karty).
+ */
+async function zbudujSiecGotowaDoObliczen(
+  request: APIRequestContext,
+  caseId: string,
+): Promise<{ chronionyOdcinek: string; kolejnaSzyna: string }> {
   let op = await executeDomainOp(request, caseId, 'add_grid_source_sn', {
     voltage_kv: 15.0,
     sk3_mva: 250.0,
@@ -151,32 +182,52 @@ async function zbudujSiecGotowaDoObliczen(request: APIRequestContext, caseId: st
     transformer_sn_mva: 25.0,
   });
 
-  for (const [idx, length] of [300, 250, 200].entries()) {
-    op = await executeDomainOp(request, caseId, 'continue_trunk_segment_sn', {
-      segment: {
-        rodzaj: 'KABEL',
-        dlugosc_m: length,
-        name: `Odcinek ${idx + 1}`,
-        catalog_binding: buildCatalogBinding('KABEL_SN', CABLE_ID),
-      },
-    });
-  }
-
+  op = await executeDomainOp(request, caseId, 'continue_trunk_segment_sn', {
+    segment: {
+      rodzaj: 'KABEL',
+      dlugosc_m: 300,
+      name: 'Odcinek źródłowy',
+      catalog_binding: buildCatalogBinding('KABEL_SN', CABLE_ID),
+    },
+  });
   const segmentRefs = op.snapshot?.corridors?.[0]?.ordered_segment_refs ?? [];
   expect(segmentRefs.length).toBeGreaterThan(0);
+  const segmentZrodlowy = segmentRefs[segmentRefs.length - 1];
 
-  op = await executeDomainOp(request, caseId, 'insert_station_on_segment_sn', {
+  const stacja = {
     field_apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
-    segment_id: segmentRefs[segmentRefs.length - 1],
     station_type: 'B',
     insert_at: { value: 0.5 },
     station: { sn_voltage_kv: 15.0, nn_voltage_kv: 0.4 },
     sn_fields: ['IN', 'OUT', 'FEEDER', 'TR'],
-    transformer: {
-      create: true,
-      catalog_binding: buildCatalogBinding('TRAFO_SN_NN', TRAFO_ID),
-    },
+    transformer: { create: true, catalog_binding: buildCatalogBinding('TRAFO_SN_NN', TRAFO_ID) },
+  };
+
+  // Stacja 1: dzieli odcinek źródłowy na `segment_L` (GPZ -> Stacja 1) i
+  // `segment_R` (Stacja 1 -> stary kikut magistrali).
+  op = await executeDomainOp(request, caseId, 'insert_station_on_segment_sn', {
+    ...stacja,
+    segment_id: segmentZrodlowy,
   });
+  const chronionyOdcinek = (op.snapshot?.branches ?? []).find(
+    (b) => b.ref_id === `${segmentZrodlowy}_L`,
+  )?.ref_id;
+  expect(chronionyOdcinek).toBeTruthy();
+  const segmentR = (op.snapshot?.branches ?? []).find((b) => b.ref_id === `${segmentZrodlowy}_R`)
+    ?.ref_id;
+  expect(segmentR).toBeTruthy();
+
+  // Stacja 2: dzieli `segment_R` na `segment_R_L` (Stacja 1 -> Stacja 2,
+  // ODCINEK REALNY MIĘDZY DWIEMA SZYNAMI STACYJNYMI — kandydat kolejnej
+  // strefy selektywności chronionego odcinka) i `segment_R_R` (Stacja 2 ->
+  // stary kikut magistrali, poza zakresem tego testu).
+  op = await executeDomainOp(request, caseId, 'insert_station_on_segment_sn', {
+    ...stacja,
+    segment_id: segmentR,
+  });
+  const kolejnaSzyna = (op.snapshot?.branches ?? []).find((b) => b.ref_id === `${segmentR}_L`)
+    ?.to_bus_ref;
+  expect(kolejnaSzyna).toBeTruthy();
 
   const odcinkiLiniowe = (op.snapshot?.branches ?? []).filter(
     (branch) => branch.type === 'cable' || branch.type === 'line_overhead',
@@ -233,6 +284,8 @@ async function zbudujSiecGotowaDoObliczen(request: APIRequestContext, caseId: st
     }
   }
   expect(readiness?.ready).toBe(true);
+
+  return { chronionyOdcinek: chronionyOdcinek as string, kolejnaSzyna: kolejnaSzyna as string };
 }
 
 async function otworzZakladkeKoordynacji(page: Page): Promise<void> {
@@ -248,7 +301,7 @@ test('kotwica → wybór odcinka → tabela nastaw I>/I>> widoczna (real backend
   test.setTimeout(240000);
 
   const caseId = await createCaseFromUi(page, request);
-  await zbudujSiecGotowaDoObliczen(request, caseId);
+  const { chronionyOdcinek, kolejnaSzyna } = await zbudujSiecGotowaDoObliczen(request, caseId);
   await page.reload({ waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
 
@@ -266,27 +319,16 @@ test('kotwica → wybór odcinka → tabela nastaw I>/I>> widoczna (real backend
   await expect(page.getByTestId('mvd-koordynacja-nastawy')).toBeVisible({ timeout: 20000 });
   await expect(page.getByTestId('mvd-koordynacja-nastawy-brak')).toHaveCount(0);
 
+  // Chroniony odcinek i kolejna szyna są jednoznaczne — topologia z
+  // `zbudujSiecGotowaDoObliczen` ma DOKŁADNIE jedną parę (Stacja 1 -> Stacja
+  // 2) z realnymi (nie-`helper`) prądami zwarciowymi na obu końcach.
   const selectLinia = page.getByTestId('mvd-koordynacja-nastawy-select-linia');
   await expect(selectLinia).toBeVisible();
-  const wartosciLinii = await selectLinia.locator('option').evaluateAll((opcje) =>
-    opcje.map((o) => (o as HTMLOptionElement).value).filter((v) => v.length > 0),
-  );
-  expect(wartosciLinii.length).toBeGreaterThan(0);
+  await selectLinia.selectOption(chronionyOdcinek);
 
-  // Magistrala jest w SZEREGU — próbuj odcinków po kolei, aż trafisz na taki,
-  // który ma kandydata kolejnej strefy selektywności (odcinek 1 ma odcinek 2
-  // jako sąsiada — patrz nagłówek modułu), bez zakładania konkretnego ref_id.
-  let maSzyne = false;
-  for (const wartosc of wartosciLinii) {
-    await selectLinia.selectOption(wartosc);
-    const selectSzyna = page.getByTestId('mvd-koordynacja-nastawy-select-szyna');
-    if (await selectSzyna.count()) {
-      await selectSzyna.selectOption({ index: 1 });
-      maSzyne = true;
-      break;
-    }
-  }
-  expect(maSzyne).toBe(true);
+  const selectSzyna = page.getByTestId('mvd-koordynacja-nastawy-select-szyna');
+  await expect(selectSzyna).toBeVisible();
+  await selectSzyna.selectOption(kolejnaSzyna);
 
   await page.getByTestId('mvd-koordynacja-nastawy-policz').click();
 
