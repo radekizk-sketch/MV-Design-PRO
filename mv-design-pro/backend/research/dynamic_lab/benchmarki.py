@@ -94,9 +94,7 @@ def smib(
         avr=RegulatorNapiecia() if z_regulatorami else None,
         governor=RegulatorTurbiny() if z_regulatorami else None,
     )
-    return ModelDynamiczny(topologia=topo, urzadzenia=[zespol]), {
-        "G1": complex(0.5, 0.1)
-    }
+    return ModelDynamiczny(topologia=topo, urzadzenia=[zespol]), {"G1": complex(0.5, 0.1)}
 
 
 def dwie_maszyny() -> tuple[ModelDynamiczny, dict[str, complex]]:
@@ -115,16 +113,12 @@ def dwie_maszyny() -> tuple[ModelDynamiczny, dict[str, complex]]:
         szyny_sztywne={"SYS": complex(1.0, 0.0)},
     )
     z1 = ZespolSynchroniczny(
-        maszyna=MaszynaSynchroniczna4Rzedu(
-            ref="G1", szyna="G1B", h_s=4.0, d_tlumienie=2.0
-        ),
+        maszyna=MaszynaSynchroniczna4Rzedu(ref="G1", szyna="G1B", h_s=4.0, d_tlumienie=2.0),
         avr=RegulatorNapiecia(),
         governor=RegulatorTurbiny(),
     )
     z2 = ZespolSynchroniczny(
-        maszyna=MaszynaSynchroniczna4Rzedu(
-            ref="G2", szyna="G2B", h_s=6.0, d_tlumienie=3.0
-        ),
+        maszyna=MaszynaSynchroniczna4Rzedu(ref="G2", szyna="G2B", h_s=6.0, d_tlumienie=3.0),
         avr=RegulatorNapiecia(),
         governor=RegulatorTurbiny(),
     )
@@ -213,9 +207,7 @@ def porownaj_integratory(
     """
     from dynamic_lab.walidacja import zmierz_czestotliwosc_oscylacji
 
-    def przebieg(
-        nazwa_integratora: str, krok: float
-    ) -> tuple[np.ndarray, np.ndarray, int, bool]:
+    def przebieg(nazwa_integratora: str, krok: float) -> tuple[np.ndarray, np.ndarray, int, bool]:
         model, moce = smib(d_tlumienie=1.0)
         silnik = SilnikRMS(model, integrator=nazwa_integratora, krok_s=krok)
         x0 = silnik.inicjalizuj(moce)
@@ -262,3 +254,71 @@ def porownaj_integratory(
                 )
             )
     return wyniki
+
+
+def czas_krytyczny_zwarcia(
+    *,
+    h_s: float = 4.0,
+    x_linii_pu: float = 0.15,
+    szyna_zwarcia: str = "GEN",
+    krok_s: float = 0.002,
+    czas_koncowy_s: float = 4.0,
+    dolna_granica_s: float = 0.005,
+    gorna_granica_s: float = 1.000,
+    dokladnosc_s: float = 0.005,
+) -> float:
+    """Czas krytyczny wyłączenia zwarcia (CCT) — bisekcja po czasie trwania zwarcia.
+
+    Defekt P0-06 audytu: produkcyjny silnik zwracał dla zwarcia trójfazowego
+    stałą ``return 0.05``, identyczną dla każdego elementu, niezależnie od
+    miejsca zwarcia i impedancji; pole ``target_ref`` nie było odczytywane.
+    Tutaj CCT jest WYNIKIEM całkowania — zwarcie zmienia Ybus, a utrata
+    synchronizmu jest rozpoznawana po wybiegu kąta wirnika.
+
+    Kryterium utraty synchronizmu: ``max|delta(t) − delta(0)| >= pi``. To jest
+    kryterium PIERWSZEGO wybiegu, więc nie wykrywa niestabilności oscylacyjnej
+    narastającej powoli — dla maszyny bez tłumienia i bez regulatorów, jaką
+    liczy ta funkcja, jest właściwe, ale poza tym zakresem NIE jest.
+
+    Bisekcja zakłada MONOTONICZNOŚĆ (dłuższe zwarcie nie może pomóc). Założenie
+    jest pinowane osobnym testem ``test_dluzsze_zwarcie_nie_poprawia_wyniku``;
+    bez niego bisekcja mogłaby trafić w dowolny punkt przedziału.
+
+    Returns:
+        Największy czas trwania zwarcia [s], przy którym maszyna zachowuje
+        synchronizm, z dokładnością ``dokladnosc_s``.
+    """
+    import math
+
+    def przetrwal(czas_trwania_s: float) -> bool:
+        model, moce = smib(h_s=h_s, x_linii_pu=x_linii_pu, d_tlumienie=0.0)
+        silnik = SilnikRMS(model, integrator="rk4", krok_s=krok_s)
+        x0 = silnik.inicjalizuj(moce)
+        wynik = silnik.symuluj(
+            x0,
+            czas_koncowy_s=czas_koncowy_s,
+            harmonogram=harmonogram_zwarcia(
+                szyna=szyna_zwarcia, chwila_s=0.2, czas_trwania_s=czas_trwania_s
+            ),
+        )
+        delta = np.array(wynik.sygnal("delta_rad", "G1").wartosci)
+        return bool(np.max(np.abs(delta - delta[0])) < math.pi)
+
+    if not przetrwal(dolna_granica_s):
+        raise ValueError(
+            f"Maszyna traci synchronizm już przy {dolna_granica_s * 1000:.0f} ms — "
+            "CCT jest poza badanym przedziałem od dołu."
+        )
+    if przetrwal(gorna_granica_s):
+        raise ValueError(
+            f"Maszyna przetrwała {gorna_granica_s * 1000:.0f} ms — CCT jest poza "
+            "badanym przedziałem od góry (albo zwarcie nie działa)."
+        )
+    dol, gora = dolna_granica_s, gorna_granica_s
+    while gora - dol > dokladnosc_s:
+        srodek = 0.5 * (dol + gora)
+        if przetrwal(srodek):
+            dol = srodek
+        else:
+            gora = srodek
+    return dol

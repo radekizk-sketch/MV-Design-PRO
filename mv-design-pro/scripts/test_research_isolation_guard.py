@@ -112,9 +112,7 @@ def test_brak_kolizji_przepuszcza(tmp_path, monkeypatch) -> None:
 def test_kod_badawczy_nie_moze_nadac_sobie_statusu_dowodowego(tmp_path, monkeypatch) -> None:
     research = tmp_path / "research"
     research.mkdir()
-    (research / "silnik.py").write_text(
-        'reporting_status = "reportable"\n', encoding="utf-8"
-    )
+    (research / "silnik.py").write_text('reporting_status = "reportable"\n', encoding="utf-8")
     monkeypatch.setattr(guard, "KORZEN", tmp_path)
     monkeypatch.setattr(guard, "RESEARCH", research)
     naruszenia = guard.sprawdz_status_dowodowy()

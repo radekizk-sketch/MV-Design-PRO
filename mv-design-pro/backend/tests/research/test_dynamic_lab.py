@@ -74,9 +74,7 @@ def test_konwencja_dq_daje_kanoniczne_pe() -> None:
     i_d = (e_prim - v_q) / x_prim
     i_q = v_d / x_prim
     pe = v_d * i_d + v_q * i_q
-    assert pe == pytest.approx(
-        e_prim * v_mod * math.sin(delta - theta) / x_prim, rel=1e-12
-    )
+    assert pe == pytest.approx(e_prim * v_mod * math.sin(delta - theta) / x_prim, rel=1e-12)
 
 
 def test_transformacja_dq_jest_odwracalna() -> None:
@@ -96,9 +94,7 @@ def test_transformacja_dq_jest_odwracalna() -> None:
 @pytest.mark.parametrize("x_linii_pu", [0.08, 0.15, 0.35])
 def test_maszyna_startuje_w_rownowadze(h_s: float, x_linii_pu: float) -> None:
     """``||f(x0, y0)|| ~ 0`` dla iloczynu bezwładności i impedancji sieci."""
-    model, moce = smib(
-        h_s=h_s, x_linii_pu=x_linii_pu, klasyczna=False, z_regulatorami=True
-    )
+    model, moce = smib(h_s=h_s, x_linii_pu=x_linii_pu, klasyczna=False, z_regulatorami=True)
     silnik, x0 = _uruchom(model, moce)
     assert silnik.norma_pochodnej(x0) < TOL_ROWNOWAGI
 
@@ -150,9 +146,7 @@ def test_czestotliwosc_wahan_zgadza_sie_z_wyrocznia(h_s: float, x_linii: float) 
     regulatorów, bez tłumienia.
     """
     x_masz = 0.30
-    model, moce = smib(
-        x_linii_pu=x_linii, r_linii_pu=0.0, h_s=h_s, d_tlumienie=0.0, klasyczna=True
-    )
+    model, moce = smib(x_linii_pu=x_linii, r_linii_pu=0.0, h_s=h_s, d_tlumienie=0.0, klasyczna=True)
     silnik = SilnikRMS(model, integrator="rk4", krok_s=0.001)
     x0 = silnik.inicjalizuj(moce)
     assert silnik.norma_pochodnej(x0) < TOL_ROWNOWAGI
@@ -193,9 +187,7 @@ def test_wyrocznia_odmawia_poza_zakresem_stosowalnosci() -> None:
 
 
 def _przebieg_zwarciowy(*, x_linii=0.15, h_s=4.0, t_wyl=0.15, x_f=0.0):
-    model, moce = smib(
-        x_linii_pu=x_linii, h_s=h_s, klasyczna=False, z_regulatorami=True
-    )
+    model, moce = smib(x_linii_pu=x_linii, h_s=h_s, klasyczna=False, z_regulatorami=True)
     silnik, x0 = _uruchom(model, moce, integrator="rk4", krok_s=0.002)
     harmonogram = HarmonogramZdarzen(
         [ZwarcieDoziemne(0.5, "GEN", x_f_pu=x_f), ZdjecieZwarcia(0.5 + t_wyl, "GEN")]
@@ -304,9 +296,7 @@ def test_gfm_i_gfl_roznia_sie_trajektoria() -> None:
     żadnej konsekwencji obliczeniowej.
     """
     u_gfl, p_gfl, _ = _przebieg_der(FalownikGFL(ref="D", szyna="DER", i_max_pu=1.2))
-    u_gfm, p_gfm, _ = _przebieg_der(
-        FalownikGFM(ref="D", szyna="DER", h_wirtualna_s=4.0)
-    )
+    u_gfm, p_gfm, _ = _przebieg_der(FalownikGFM(ref="D", szyna="DER", h_wirtualna_s=4.0))
     assert abs(u_gfl.min() - u_gfm.min()) > 0.05
     # Źródło napięciowe trzyma napięcie lepiej niż źródło prądowe.
     assert u_gfm.min() > u_gfl.min()
@@ -357,9 +347,7 @@ def test_przebieg_nie_moze_pochodzic_z_obwiedni() -> None:
 
 def test_frt_moze_wypasc_negatywnie() -> None:
     """Test FRT MUSI być falsyfikowalny — w produkcji T14/T15 nie mogły dać `fail`."""
-    obwiednia = ObwiedniaFrt(
-        rodzaj="lvrt", punkty=((0.0, 0.15), (0.15, 0.15), (1.5, 0.85))
-    )
+    obwiednia = ObwiedniaFrt(rodzaj="lvrt", punkty=((0.0, 0.15), (0.15, 0.15), (1.5, 0.85)))
     przebieg = PrzebiegNapiecia(
         czas_s=(0.0, 0.1, 0.2, 0.5, 1.0),
         napiecie_pu=(1.0, 0.02, 0.05, 0.20, 0.40),
@@ -377,9 +365,7 @@ def test_frt_margines_nie_jest_tozsamosciowo_zerowy() -> None:
     W produkcji ``margin = simulated - limiting`` przy ``simulated := limiting``
     dawało dokładnie 0,0 dla każdego wejścia i werdykt zawsze `pass`.
     """
-    obwiednia = ObwiedniaFrt(
-        rodzaj="lvrt", punkty=((0.0, 0.15), (0.15, 0.15), (1.5, 0.85))
-    )
+    obwiednia = ObwiedniaFrt(rodzaj="lvrt", punkty=((0.0, 0.15), (0.15, 0.15), (1.5, 0.85)))
     poziomy = (0.20, 0.45, 0.70, 0.95)
     marginesy = []
     for poziom in poziomy:
@@ -401,9 +387,7 @@ def test_frt_margines_nie_jest_tozsamosciowo_zerowy() -> None:
 
 def test_hvrt_moze_wypasc_negatywnie() -> None:
     """Reprodukcja: HVRT w produkcji był strukturalnie niefalsyfikowalny."""
-    obwiednia = ObwiedniaFrt(
-        rodzaj="hvrt", punkty=((0.0, 1.30), (0.5, 1.20), (60.0, 1.10))
-    )
+    obwiednia = ObwiedniaFrt(rodzaj="hvrt", punkty=((0.0, 1.30), (0.5, 1.20), (60.0, 1.10)))
     przebieg = PrzebiegNapiecia(
         czas_s=(0.0, 0.1, 1.0, 5.0),
         napiecie_pu=(1.0, 1.45, 1.25, 1.05),
@@ -432,9 +416,7 @@ def test_czas_odbudowy_mocy_zalezy_od_przebiegu() -> None:
     czas = np.linspace(0.0, 2.0, 201)
     for tau in (0.05, 0.20, 0.50):
         moc = 1.0 - 0.8 * np.exp(-(czas - 0.6) / tau) * (czas >= 0.6)
-        wynik = czas_odbudowy_mocy(
-            czas, moc, moc_przed_zaklocaniem_pu=1.0, chwila_wylaczenia_s=0.6
-        )
+        wynik = czas_odbudowy_mocy(czas, moc, moc_przed_zaklocaniem_pu=1.0, chwila_wylaczenia_s=0.6)
         assert wynik is not None
     szybki = czas_odbudowy_mocy(
         czas,
@@ -455,10 +437,7 @@ def test_brak_odbudowy_daje_none() -> None:
     czas = np.linspace(0.0, 2.0, 201)
     moc = np.full_like(czas, 0.2)
     assert (
-        czas_odbudowy_mocy(
-            czas, moc, moc_przed_zaklocaniem_pu=1.0, chwila_wylaczenia_s=0.6
-        )
-        is None
+        czas_odbudowy_mocy(czas, moc, moc_przed_zaklocaniem_pu=1.0, chwila_wylaczenia_s=0.6) is None
     )
 
 
@@ -509,12 +488,9 @@ def test_kolejnosc_zdarzen_rownoczesnych_jest_deterministyczna() -> None:
         ZdjecieZwarcia(czas_s=1.0, szyna="A"),
         ZwarcieDoziemne(czas_s=1.0, szyna="B"),
     ]
-    kolejnosc = [
-        type(z).__name__ for z in HarmonogramZdarzen(zdarzenia).do_chwili(0.5, 1.5)
-    ]
+    kolejnosc = [type(z).__name__ for z in HarmonogramZdarzen(zdarzenia).do_chwili(0.5, 1.5)]
     kolejnosc_odwrotna = [
-        type(z).__name__
-        for z in HarmonogramZdarzen(list(reversed(zdarzenia))).do_chwili(0.5, 1.5)
+        type(z).__name__ for z in HarmonogramZdarzen(list(reversed(zdarzenia))).do_chwili(0.5, 1.5)
     ]
     assert kolejnosc == kolejnosc_odwrotna == ["ZwarcieDoziemne", "ZdjecieZwarcia"]
 
@@ -538,9 +514,7 @@ def test_nieznane_wylaczenie_podnosi_blad() -> None:
 
 def test_maszyna_odrzuca_niespojne_reaktancje() -> None:
     with pytest.raises(ValueError):
-        MaszynaSynchroniczna4Rzedu(
-            ref="X", szyna="B", h_s=4.0, xd_pu=0.2, xd_prim_pu=0.3
-        )
+        MaszynaSynchroniczna4Rzedu(ref="X", szyna="B", h_s=4.0, xd_pu=0.2, xd_prim_pu=0.3)
 
 
 def test_nazwa_modelu_odpowiada_liczbie_stanow() -> None:
@@ -560,3 +534,58 @@ def test_solver_sieci_wykrywa_osobliwosc() -> None:
             lambda v: np.zeros(2, dtype=np.complex128) + 1.0,
             np.ones(2, dtype=np.complex128),
         )
+
+
+# ---------------------------------------------------------------------------
+# Czas krytyczny wyłączenia zwarcia — defekt P0-06 (stała `return 0.05`)
+# ---------------------------------------------------------------------------
+
+
+def test_cct_rosnie_z_bezwladnoscia_jak_pierwiastek() -> None:
+    """CCT ∝ √H — klasyczny wynik kryterium równych pól, TU NIEZAPROGRAMOWANY.
+
+    To jest najmocniejszy dostępny test tego rdzenia bez narzędzia zewnętrznego:
+    nigdzie w kodzie nie ma wzoru na CCT ani na kryterium równych pól. Ta
+    zależność może wyjść wyłącznie z całkowania równania wahań przy zwarciu
+    zmieniającym Ybus. Gdyby zwarcie było stałą (defekt P0-06), CCT byłoby
+    identyczne dla każdego H.
+
+    Czterokrotny wzrost H musi dać dwukrotny wzrost CCT.
+    """
+    from dynamic_lab.benchmarki import czas_krytyczny_zwarcia
+
+    cct_2 = czas_krytyczny_zwarcia(h_s=2.0, dokladnosc_s=0.01)
+    cct_8 = czas_krytyczny_zwarcia(h_s=8.0, dokladnosc_s=0.01)
+    assert cct_8 > cct_2
+    assert cct_8 / cct_2 == pytest.approx(2.0, rel=0.05), (
+        f"CCT(H=8)/CCT(H=2) = {cct_8 / cct_2:.4f}, oczekiwane ~2,0 (bo ∝ √H). "
+        "Odstępstwo znaczy, że zwarcie albo bezwładność nie wchodzą do wyniku."
+    )
+
+
+def test_cct_maleje_gdy_siec_slabnie() -> None:
+    """Słabsza sieć → mniejsza moc synchronizująca → krótszy czas krytyczny.
+
+    Kierunek jest fizyczny i niezależny od skali. Gdyby wynik nie zależał od
+    impedancji sieci (P0-02: brak warstwy sieciowej), oba CCT byłyby równe.
+    """
+    from dynamic_lab.benchmarki import czas_krytyczny_zwarcia
+
+    cct_sztywna = czas_krytyczny_zwarcia(x_linii_pu=0.05, dokladnosc_s=0.01)
+    cct_slaba = czas_krytyczny_zwarcia(x_linii_pu=0.40, dokladnosc_s=0.01)
+    assert cct_slaba < cct_sztywna, (
+        f"CCT w sieci słabej ({cct_slaba * 1000:.0f} ms) nie jest krótszy niż "
+        f"w sztywnej ({cct_sztywna * 1000:.0f} ms) — sieć nie wpływa na wynik."
+    )
+
+
+def test_bisekcja_cct_odmawia_gdy_zakres_jest_zly() -> None:
+    """Brak CCT w przedziale to BŁĄD, nie wartość brzegowa.
+
+    Zwrócenie granicy przedziału jako „wyniku" byłoby cichym zgadywaniem —
+    tą samą klasą, którą audyt nazwał kaskadą wartości domyślnych.
+    """
+    from dynamic_lab.benchmarki import czas_krytyczny_zwarcia
+
+    with pytest.raises(ValueError, match="poza badanym przedziałem"):
+        czas_krytyczny_zwarcia(h_s=4.0, dolna_granica_s=0.9, gorna_granica_s=0.95)

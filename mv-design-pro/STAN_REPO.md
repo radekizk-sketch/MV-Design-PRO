@@ -41,8 +41,14 @@
 > dziś przydatna jako **dowód regulacyjny** — wyniki są diagnostyczno-inżynierskie.
 > Egzekwuje to bezpiecznik `EvidenceTier` w `solver_input/provenance.py`; pozytywny
 > certyfikat NC RfG oparty o te zdolności nie powstaje. Podstawa i pełny materiał
-> decyzyjny: `docs/plan/KARTA_MAX_DYNAMIC_SIMULATION_AUDIT_2026-09.md`;
-> zakres wdrożenia: `PLANS.md` § 3.-3.
+> decyzyjny: `docs/plan/KARTA_MAX_DYNAMIC_SIMULATION_AUDIT_2026-09.md`
+> (uwaga: karta ma **§0 ERRATA** — jej §27.2 był błędny co do wyroczni zewnętrznej);
+> zakres wdrożenia: `PLANS.md` § 3.-3 i § 3.-4.
+> **Trzynaście pozycji decyzyjnych D-01…D-13** doprowadzonych do wykonanych
+> eksperymentów i zmierzonych wariantów — bez rozstrzygania:
+> `docs/plan/PAKIET_DECYZYJNY_DYNAMIKA_D01_D13_2026-09.md`. Prototyp badawczy
+> stojący za tymi pomiarami leży w `backend/research/` i jest strukturalnie
+> odcięty od produkcji (`research_isolation_guard` w `arch-guard.yml`).
 - **NC RfG / PTPiREE** bateria zgodności (LFSM-O/U, FSM, FRT, Q(U), harmoniczne, typy A/B/C/D, profile OSD) + API `/api/ncrfg-tests`
 - **V12.6 E-35…E-45** (11 analiz): jakość energii, stabilność napięciowa (CPF/modalna/L-index), niezawodność N-1/N-2 MC, uziemienia IEEE 80, koordynacja izolacji, TRV/inrush, rozruch silników, hosting capacity MC, OPF/straty/LCC, walidacja benchmarkowa IEEE 9/14/39, niepewność k=2 — wszystkie z API + White Box
 - **Detekcja ziemnozwarciowa** sieci kompensowanych

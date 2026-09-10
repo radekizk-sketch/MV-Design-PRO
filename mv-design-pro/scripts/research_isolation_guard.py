@@ -153,11 +153,7 @@ def sprawdz_spis_modulow() -> list[str]:
     tresc = README.read_text(encoding="utf-8")
     wymienione = set(re.findall(r"`(dynamic_lab/[a-z0-9_]+\.py)`", tresc))
     katalog = RESEARCH / "dynamic_lab"
-    istniejace = {
-        f"dynamic_lab/{p.name}"
-        for p in katalog.glob("*.py")
-        if p.name != "__init__.py"
-    }
+    istniejace = {f"dynamic_lab/{p.name}" for p in katalog.glob("*.py") if p.name != "__init__.py"}
     naruszenia = [
         f"research/README.md: wymienia `{brak}`, którego NIE MA — "
         f"dokument obiecuje moduł, za którym nie stoi kod"

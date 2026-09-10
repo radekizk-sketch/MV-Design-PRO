@@ -95,9 +95,7 @@ def test_wzor_analityczny_zgodny_z_wartoscia_wlasna(porownanie_bazowe):
 
 def test_wzorzec_liczy_na_tej_samej_bazie_co_laboratorium(porownanie_bazowe):
     assert porownanie_bazowe.wzorzec.baza_czestotliwosci_hz == pytest.approx(F_BAZOWA_HZ)
-    assert porownanie_bazowe.laboratorium.baza_czestotliwosci_hz == pytest.approx(
-        F_BAZOWA_HZ
-    )
+    assert porownanie_bazowe.laboratorium.baza_czestotliwosci_hz == pytest.approx(F_BAZOWA_HZ)
 
 
 def test_raport_wymienia_zrodlo_wzorca(porownanie_bazowe):
@@ -125,17 +123,11 @@ def test_zgodnosc_w_iloczynie_bezwladnosci_i_impedancji(h_s, x_linii_pu):
     przypadek = PrzypadekSMIB(h_s=h_s, x_linii_pu=x_linii_pu)
     wzorzec = wynik_wzorca(przypadek)
     lab = wynik_laboratorium(przypadek, q_gen_pu=wzorzec.q_gen_pu)
-    ana = wynik_analityczny(
-        przypadek, delta0_rad=wzorzec.delta0_rad, e_prim_pu=wzorzec.e_prim_pu
-    )
+    ana = wynik_analityczny(przypadek, delta0_rad=wzorzec.delta0_rad, e_prim_pu=wzorzec.e_prim_pu)
     assert lab.delta0_rad == pytest.approx(wzorzec.delta0_rad, rel=TOL_PUNKT_PRACY)
     assert lab.e_prim_pu == pytest.approx(wzorzec.e_prim_pu, rel=TOL_PUNKT_PRACY)
-    assert lab.f_oscylacji_hz == pytest.approx(
-        wzorzec.f_oscylacji_hz, rel=TOL_CZESTOTLIWOSC_LAB
-    )
-    assert ana.f_oscylacji_hz == pytest.approx(
-        wzorzec.f_oscylacji_hz, rel=TOL_CZESTOTLIWOSC_WZORU
-    )
+    assert lab.f_oscylacji_hz == pytest.approx(wzorzec.f_oscylacji_hz, rel=TOL_CZESTOTLIWOSC_LAB)
+    assert ana.f_oscylacji_hz == pytest.approx(wzorzec.f_oscylacji_hz, rel=TOL_CZESTOTLIWOSC_WZORU)
 
 
 @pytest.mark.parametrize("p_gen_pu", [0.20, 0.50, 0.80])
@@ -150,9 +142,7 @@ def test_zgodnosc_w_roznych_punktach_obciazenia(p_gen_pu):
     wzorzec = wynik_wzorca(przypadek)
     lab = wynik_laboratorium(przypadek, q_gen_pu=wzorzec.q_gen_pu)
     assert lab.delta0_rad == pytest.approx(wzorzec.delta0_rad, rel=TOL_PUNKT_PRACY)
-    assert lab.f_oscylacji_hz == pytest.approx(
-        wzorzec.f_oscylacji_hz, rel=TOL_CZESTOTLIWOSC_LAB
-    )
+    assert lab.f_oscylacji_hz == pytest.approx(wzorzec.f_oscylacji_hz, rel=TOL_CZESTOTLIWOSC_LAB)
 
 
 def test_wieksza_bezwladnosc_daje_wolniejsze_wahania_w_OBU_narzedziach():
@@ -191,9 +181,7 @@ def test_pominiecie_bazy_dalo_by_blad_o_zmierzonej_wielkosci():
     ss50 = _zbuduj_andes(PrzypadekSMIB(), fn_hz=50.0)
 
     def f_osc(ss):
-        return min(
-            abs(w.imag) / (2.0 * math.pi) for w in ss.EIG.mu if abs(w.imag) > 1.0e-9
-        )
+        return min(abs(w.imag) / (2.0 * math.pi) for w in ss.EIG.mu if abs(w.imag) > 1.0e-9)
 
     stosunek = f_osc(ss60) / f_osc(ss50)
     assert stosunek == pytest.approx(math.sqrt(60.0 / 50.0), rel=1.0e-4)
@@ -237,7 +225,7 @@ def test_rozbieznosc_znika_gdy_amplituda_dazy_do_zera():
     )
     assert bledy[-1] < 1.0e-4
     # monotoniczność (z zapasem na podłogę kwantyzacji pomiaru)
-    for wczesniejszy, pozniejszy in zip(bledy, bledy[1:]):
+    for wczesniejszy, pozniejszy in zip(bledy, bledy[1:], strict=False):
         assert pozniejszy <= wczesniejszy * 1.05
 
 
@@ -248,9 +236,7 @@ def test_rozbieznosc_znika_gdy_amplituda_dazy_do_zera():
 
 def test_brak_wzorca_podnosi_wyjatek_zamiast_cicho_przejsc(monkeypatch):
     """Gdy narzędzia nie ma, funkcja MUSI odmówić, a nie zwrócić pusty sukces."""
-    monkeypatch.setattr(
-        "dynamic_lab.wzorzec_zewnetrzny.czy_wzorzec_dostepny", lambda: False
-    )
+    monkeypatch.setattr("dynamic_lab.wzorzec_zewnetrzny.czy_wzorzec_dostepny", lambda: False)
     with pytest.raises(BrakWzorcaError) as info:
         wynik_wzorca()
     assert "BRAK PORÓWNANIA" in str(info.value)

@@ -130,8 +130,7 @@ KONSUMENCI_DYNAMIKI: dict[str, str] = {
         "końcówka surowego biegu — zwraca wynik ze statusem dowodowym, nie dokument"
     ),
     "api/oze_analysis_runs.py": (
-        "końcówki certyfikatu i wniosku OSD — obie przez bramkowane funkcje, "
-        "422 z listą braków"
+        "końcówki certyfikatu i wniosku OSD — obie przez bramkowane funkcje, " "422 z listą braków"
     ),
 }
 
@@ -176,9 +175,7 @@ def test_inwentarz_konsumentow_jest_kompletny() -> None:
         f"{sorted(nowe)}. Dopisz go do KONSUMENCI_DYNAMIKI wraz z opisem, JAK "
         "jest domknięty bezpiecznikiem — albo domknij go najpierw."
     )
-    assert not znikniete, (
-        f"Inwentarz wymienia moduły, których już nie ma: {sorted(znikniete)}"
-    )
+    assert not znikniete, f"Inwentarz wymienia moduły, których już nie ma: {sorted(znikniete)}"
 
 
 # ---------------------------------------------------------------------------
@@ -263,9 +260,9 @@ def test_certyfikat_odmawia_we_wszystkich_formatach(app_client, format_pliku) ->
         f"Format „{format_pliku or 'JSON'}" + "” wystawił dokument mimo braku dowodu"
     )
     braki = odpowiedz.json()["detail"]["braki"]
-    assert any(BRAK_DOWODU_PL in b for b in braki), (
-        f"Odmowa nie nazywa przyczyny dowodowej; braki: {braki}"
-    )
+    assert any(
+        BRAK_DOWODU_PL in b for b in braki
+    ), f"Odmowa nie nazywa przyczyny dowodowej; braki: {braki}"
 
 
 @pytest.mark.parametrize("format_pliku", FORMATY)
@@ -277,9 +274,9 @@ def test_wniosek_osd_odmawia_we_wszystkich_formatach(app_client, format_pliku) -
     )
     assert odpowiedz.status_code == 422
     braki = odpowiedz.json()["detail"]["braki"]
-    assert any(BRAK_DOWODU_PL in b for b in braki), (
-        f"Wniosek OSD odmawia, ale nie z powodu dowodowego; braki: {braki}"
-    )
+    assert any(
+        BRAK_DOWODU_PL in b for b in braki
+    ), f"Wniosek OSD odmawia, ale nie z powodu dowodowego; braki: {braki}"
     assert any(b.startswith("Zgodność NC RfG:") for b in braki), (
         "Wniosek OSD nie przeniósł braków z certyfikatu — bramka jest własna, "
         f"nie odziedziczona; braki: {braki}"

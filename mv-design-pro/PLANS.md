@@ -82,6 +82,72 @@ MV-DESIGN-PRO is a functional Medium Voltage network design and analysis system 
 
 ## 3. Active Work
 
+### 3.-4 Sesja 2026-09-10 — PAKIET DECYZYJNY D-01…D-13 + laboratorium badawcze — PRZEKAZANIE DO FABLE
+
+> **Zdanie kluczowe dla następnego agenta prowadzącego:**
+> **Trzynaście pozycji decyzyjnych zostało doprowadzonych do wykonanych
+> eksperymentów i zmierzonych wariantów. Żadna nie została rozstrzygnięta,
+> żaden kontrakt nie stał się kanoniczny, żadnej zdolności nie nadano statusu
+> dowodowego.**
+
+**Gałąź:** `claude/opus5-dynamic-prearchitecture-lab` (baza: gałąź containmentu).
+**Główny dokument:** `docs/plan/PAKIET_DECYZYJNY_DYNAMIKA_D01_D13_2026-09.md`.
+
+**Co powstało (poza produkcją, w izolacji strukturalnej).**
+`backend/research/dynamic_lab/` — 13 modułów, ~3 300 linii: warstwa algebraiczna
+sieci (Ybus, Norton, iteracja), pętla DAE z inicjalizacją i weryfikacją
+równowagi, cztery integratory za jednym kontraktem, zdarzenia zmieniające model
+sieci, pięć modeli urządzeń (maszyna 4. rzędu, zespół z AVR i turbiną, GFL, GFM,
+odbiór), ocena FRT z rozdzielonymi typami wymagania i wyniku, wyrocznia
+analityczna, drabina walidacyjna L0–L4 oraz **poziom 4 — wyrocznia zewnętrzna
+ANDES**. Katalog jest poza `pyproject.toml::packages`; `research_isolation_guard`
+(wpięty w `arch-guard.yml`) pilnuje, żeby produkcja go nie importowała.
+**Skasowanie tego katalogu nie psuje niczego produkcyjnego** — taka była idea.
+
+**Walidacja zewnętrzna (nowość względem §3.-3).** ANDES 2.0.0 (Apache-2.0) jako
+niezależna wyrocznia RMS z wartościami własnymi. Zgodność trójstronna na SMIB
+50 Hz: `delta0` 8,4e-09, `E'` 7,1e-09, `|V|` 7,5e-09, `f_oscylacji` 6,0e-06;
+wzór analityczny vs ANDES 3,9e-09. **Pułapka:** ANDES liczy domyślnie na 60 Hz,
+`ss.config.freq` nie działa, skuteczny jest `fn` przy urządzeniu; pominięcie
+daje 9,5 % błędu. Harness odrzuca niezgodną bazę wyjątkiem zamiast przeskalować.
+
+**Sprostowanie własnego audytu.** Karta §27.2 twierdziła, że dla stanu ustalonego
+„istnieje działający wzorzec" porównania z narzędziem zewnętrznym. Nieprawda:
+`pandapower` nie jest zależnością, nie ma go w CI, 10 funkcji testowych nie
+wykonuje się nigdy (`157 passed, 5 skipped` bez niego vs `167 passed` z nim).
+Sprostowanie w karcie jako **§0 ERRATA** — widoczne, nie przez cichą edycję.
+
+**Domknięcie D-00 (rozszerzenie §3.-3).** `tests/api/test_dynamic_evidence_bypass.py`
+(14 testów): inwentarz konsumentów wyprowadzony **skanem AST** `src/**` z
+pilnowaną kompletnością, iloczyn dokument × format (certyfikat i wniosek OSD ×
+JSON/DOCX/PDF), oraz kierunek przeciwny (klasa A nadal certyfikuje się legalnie).
+Mutacja kontrolna (`if False` w bramce) → 9 failed / 5 passed, czyli testy realnie
+mierzą bezpiecznik, a nie tylko przechodzą.
+
+**Zmierzone, przypięte testami własności fizyczne.** `CCT ∝ √H` (297/421/596 ms
+dla H = 2/4/8 — stosunki 1,4175 i 1,4157 wobec `√2 = 1,4142`), CCT malejące ze
+słabnięciem sieci (440/421/370 ms dla x = 0,05/0,15/0,40), GFL vs GFM jako
+**różne modele** (4 vs 9 sygnałów; GFL bez stanu kątowego, GFM z inercją
+wirtualną i odpowiedzią częstotliwościową 49,78…50,21 Hz).
+
+**Nowe ustalenie o produkcji (nie było w audycie).**
+`calculation_readiness/service.py:87` zwraca globalny status **`ready`**, gdy
+wszystkie pozycje są w `("ready", "n_a", "no_module")` — projekt, w którym KAŻDE
+obliczenie nie ma modułu numerycznego, raportuje gotowość. Zmierzony zasięg
+naprawy: **0 testów** (`10720 passed, 6 skipped, 0 failed` po usunięciu
+`"no_module"` z krotki, w izolowanym worktree). Reguła nie jest pinowana w żadną
+stronę. NIE zmieniona — wybór statusu docelowego jest decyzją o komunikacie dla
+projektanta.
+
+**Dług ZASTANY, zweryfikowany na punkcie odgałęzienia `7e84753a`** (czyli sprzed
+tej i poprzedniej sesji): czerwone `enm_contract_parity_guard`,
+`solver_input_substitute_guard`, `success_toast_guard`, `tsconfig_gate_guard`
+oraz 2 testy `scripts/test_solver_input_substitute_guard.py`. Nienaprawione
+świadomie — kontrakt sesji nakazuje zapisać zastaną czerwień precyzyjnie, a nie
+rozszerzać o nią zakres. **To jest dług otwarty, nie stan zaakceptowany.**
+
+---
+
 ### 3.-3 Sesja 2026-09-10 — BEZPIECZNIK DOWODOWY warstwy dynamicznej (D-00 + α + β) — PRZEKAZANIE DO FABLE
 
 > **Zdanie kluczowe dla następnego agenta prowadzącego:**

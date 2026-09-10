@@ -154,9 +154,7 @@ class PorownanieWzorca:
 
     @property
     def blad_delta0(self) -> float:
-        return self._blad_wzgledny(
-            self.wzorzec.delta0_rad, self.laboratorium.delta0_rad
-        )
+        return self._blad_wzgledny(self.wzorzec.delta0_rad, self.laboratorium.delta0_rad)
 
     @property
     def blad_e_prim(self) -> float:
@@ -164,27 +162,19 @@ class PorownanieWzorca:
 
     @property
     def blad_napiecia_modul(self) -> float:
-        return self._blad_wzgledny(
-            self.wzorzec.v_gen_modul_pu, self.laboratorium.v_gen_modul_pu
-        )
+        return self._blad_wzgledny(self.wzorzec.v_gen_modul_pu, self.laboratorium.v_gen_modul_pu)
 
     @property
     def blad_napiecia_kat(self) -> float:
-        return self._blad_wzgledny(
-            self.wzorzec.v_gen_kat_rad, self.laboratorium.v_gen_kat_rad
-        )
+        return self._blad_wzgledny(self.wzorzec.v_gen_kat_rad, self.laboratorium.v_gen_kat_rad)
 
     @property
     def blad_czestotliwosci_lab(self) -> float:
-        return self._blad_wzgledny(
-            self.wzorzec.f_oscylacji_hz, self.laboratorium.f_oscylacji_hz
-        )
+        return self._blad_wzgledny(self.wzorzec.f_oscylacji_hz, self.laboratorium.f_oscylacji_hz)
 
     @property
     def blad_czestotliwosci_analitycznej(self) -> float:
-        return self._blad_wzgledny(
-            self.wzorzec.f_oscylacji_hz, self.analityczne.f_oscylacji_hz
-        )
+        return self._blad_wzgledny(self.wzorzec.f_oscylacji_hz, self.analityczne.f_oscylacji_hz)
 
     def raport(self) -> str:
         w, lab, ana = self.wzorzec, self.laboratorium, self.analityczne
@@ -229,23 +219,72 @@ def _zbuduj_andes(przypadek: PrzypadekSMIB, *, fn_hz: float) -> Any:
     import andes
 
     ss = andes.System()
-    ss.add("Bus", {"idx": 1, "Vn": przypadek.u_znamionowe_kv,
-                   "v0": przypadek.v_gen_pu, "name": "GEN"})
-    ss.add("Bus", {"idx": 2, "Vn": przypadek.u_znamionowe_kv,
-                   "v0": przypadek.v_sys_pu, "a0": 0.0, "name": "SYS"})
-    ss.add("Line", {"idx": 1, "bus1": 1, "bus2": 2, "r": 0.0,
-                    "x": przypadek.x_linii_pu, "b": 0.0, "fn": fn_hz,
-                    "Sn": przypadek.s_bazowa_mva})
-    ss.add("PV", {"idx": 1, "bus": 1, "p0": przypadek.p_gen_pu,
-                  "v0": przypadek.v_gen_pu, "Sn": przypadek.s_bazowa_mva,
-                  "qmax": 99.0, "qmin": -99.0})
-    ss.add("Slack", {"idx": 2, "bus": 2, "v0": przypadek.v_sys_pu, "a0": 0.0,
-                     "Sn": przypadek.s_bazowa_mva, "qmax": 99.0, "qmin": -99.0})
-    ss.add("GENCLS", {"idx": 1, "bus": 1, "gen": 1,
-                      "Sn": przypadek.s_bazowa_mva, "Vn": przypadek.u_znamionowe_kv,
-                      "fn": fn_hz, "D": przypadek.d_tlumienie,
-                      "M": 2.0 * przypadek.h_s, "ra": 0.0,
-                      "xd1": przypadek.xd_prim_pu, "xl": 0.0})
+    ss.add(
+        "Bus", {"idx": 1, "Vn": przypadek.u_znamionowe_kv, "v0": przypadek.v_gen_pu, "name": "GEN"}
+    )
+    ss.add(
+        "Bus",
+        {
+            "idx": 2,
+            "Vn": przypadek.u_znamionowe_kv,
+            "v0": przypadek.v_sys_pu,
+            "a0": 0.0,
+            "name": "SYS",
+        },
+    )
+    ss.add(
+        "Line",
+        {
+            "idx": 1,
+            "bus1": 1,
+            "bus2": 2,
+            "r": 0.0,
+            "x": przypadek.x_linii_pu,
+            "b": 0.0,
+            "fn": fn_hz,
+            "Sn": przypadek.s_bazowa_mva,
+        },
+    )
+    ss.add(
+        "PV",
+        {
+            "idx": 1,
+            "bus": 1,
+            "p0": przypadek.p_gen_pu,
+            "v0": przypadek.v_gen_pu,
+            "Sn": przypadek.s_bazowa_mva,
+            "qmax": 99.0,
+            "qmin": -99.0,
+        },
+    )
+    ss.add(
+        "Slack",
+        {
+            "idx": 2,
+            "bus": 2,
+            "v0": przypadek.v_sys_pu,
+            "a0": 0.0,
+            "Sn": przypadek.s_bazowa_mva,
+            "qmax": 99.0,
+            "qmin": -99.0,
+        },
+    )
+    ss.add(
+        "GENCLS",
+        {
+            "idx": 1,
+            "bus": 1,
+            "gen": 1,
+            "Sn": przypadek.s_bazowa_mva,
+            "Vn": przypadek.u_znamionowe_kv,
+            "fn": fn_hz,
+            "D": przypadek.d_tlumienie,
+            "M": 2.0 * przypadek.h_s,
+            "ra": 0.0,
+            "xd1": przypadek.xd_prim_pu,
+            "xl": 0.0,
+        },
+    )
     # ANDES pisze obszerny log na stdout — ucisz go, ale NIE ukrywaj wyjątków.
     cisza = io.StringIO()
     with contextlib.redirect_stdout(cisza), contextlib.redirect_stderr(cisza):
@@ -422,9 +461,7 @@ def zaleznosc_od_amplitudy(
     wzorzec = wynik_wzorca(przypadek)
     pomiary: list[tuple[float, float, float]] = []
     for amplituda in amplitudy_stopnie:
-        lab = wynik_laboratorium(
-            przypadek, q_gen_pu=wzorzec.q_gen_pu, zaburzenie_stopni=amplituda
-        )
+        lab = wynik_laboratorium(przypadek, q_gen_pu=wzorzec.q_gen_pu, zaburzenie_stopni=amplituda)
         blad = abs(lab.f_oscylacji_hz - wzorzec.f_oscylacji_hz) / wzorzec.f_oscylacji_hz
         pomiary.append((amplituda, lab.f_oscylacji_hz, blad))
     return pomiary
@@ -450,7 +487,5 @@ def porownaj_z_wzorcem(
         krok_s=krok_s,
         czas_koncowy_s=czas_koncowy_s,
     )
-    ana = wynik_analityczny(
-        przypadek, delta0_rad=wzorzec.delta0_rad, e_prim_pu=wzorzec.e_prim_pu
-    )
+    ana = wynik_analityczny(przypadek, delta0_rad=wzorzec.delta0_rad, e_prim_pu=wzorzec.e_prim_pu)
     return PorownanieWzorca(wzorzec=wzorzec, laboratorium=lab, analityczne=ana)
