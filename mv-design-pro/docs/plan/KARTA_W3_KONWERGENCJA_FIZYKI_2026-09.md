@@ -34,7 +34,7 @@ rodzinę, inwentarz idzie do meldunku, testy jako iloczyn cech, predykaty parami
 | 16 | **Metoda rozpływu NR/GS/FD** (aneks D2) | `enm/assembler.py:838-847` (`solver_method`) | Opcja biegu w `ui2/spaces/obliczenia` (domyślnie NR, wybór GS/FD jawny) + porównanie NR↔FD w ekranie „Jakość" (różnica napięć per szyna, iteracje); kasacja sieroty `ui/study-cases/CaseConfigPage.tsx`. | nie |
 | 17 | **Pasma zdrowego rozsądku rozpływu** (aneks D4) | `analysis/sanity_bounds/` (dziś tylko zwarcia) | Pasma dla rozpływu: napięcia szyn (Un ± 10 %), obciążenia gałęzi (≤ In katalogu), straty (≤ 10 % mocy czynnej sumarycznej) — progi jako dane z cytatem (PN-EN 50160 dla napięć) albo jawne parametry; `GET /api/quality/sanity-bounds` rozszerzony addytywnie; ekran „Jakość". | nie |
 | 18 | **Pasmo MIN/MAX zwarć** (aneks D7) | `enm/zrodlo_zwarcie.py`, scenariusze c_min/c_max | Ekran zwarć pokazuje oba scenariusze z jednego przypadku obok siebie (Ik″ max/min per szyna, ip, Ith) z proweniencją każdego biegu; bez nowej fizyki (dwa biegi kanoniczne). | nie |
-| 19 | **Q wstrzyknięte vs prawo Q(U)** (aneks J5) | `power_flow_inverter.py` (FROZEN) + ślad WHITE BOX biegu | Badanie śladu: jeśli ślad niesie tryb i osiągnięcie limitu Q per generator → wykres w `ui2/wyniki/rozplyw` z tych danych; jeśli nie → wpis OD-15 (pole addytywne śladu), bez fabrykacji. | badanie: nie; ewentualne pole śladu: tak |
+| 19 | **Q wstrzyknięte vs prawo Q(U)** (aneks J5) | `power_flow_inverter.py` (FROZEN) + ślad WHITE BOX biegu | Badanie śladu: jeśli ślad niesie tryb i osiągnięcie limitu Q per generator → wykres w `ui2/wyniki/rozplyw` z tych danych; jeśli nie → wpis OD-15 (pole addytywne śladu), bez fabrykacji. **Zamknięte 2026-09-10 (W3-H, agent): ślad NIE niesie (dowód biegiem na NR/GS/FD i przez tor kanoniczny) → wariant B: OD-15(g), stan zerowy w `RegulacjaOze.tsx`.** | badanie: nie; ewentualne pole śladu: tak |
 
 ---
 
@@ -214,7 +214,7 @@ backend 12 — zielone; pełny łańcuch = odbiór (§F).
 ### Odbiór fali 2 (W3-F, W3-B, W3-I, W3-C1, W3-C2) — 2026-09-10
 
 **Model:** pięć podkart z bazy `a16f8d2b`, 26 commitów cherry-pickowanych na `a1b40e9a` w osobnym worktree
-`fable-w3f2` (łańcuch fali 1 biegł równolegle w `fable-cv3`), uzgodnienie `32d01cf8`, pełny łańcuch przedpushowy na
+`fable-w3f2` (łańcuch fali 1 biegł równolegle w `fable-cv3`), uzgodnienie `31ccf65a`, pełny łańcuch przedpushowy na
 drzewie scalonym — evidence §F „W3 fala 2 — dowody". Konflikty (KLASA: piny i guardy przesuwane niezależnie przez
 każdą kartę): `test_solver_input_substitute_guard.py` ×5 (piny zawsze z pomiaru na końcu, komentarze kart zachowane),
 `backend_no_physics_guard.py` + self-test ×2 (rodzina E z W3-A i J z W3-F; wpisy K2 z bazy W3-F zdjęte),
@@ -237,7 +237,7 @@ także z W3-C1); fixtury nN 51/51; `readiness_dictionary` 118; `claude_md_strukt
 
 ### W3-F (2026-09-09) — jednostki — UCZCIWOŚĆ
 
-**Wykonane (agent; `710fcdd9`, `5aefecb5`, `92e2bcff`, `6835dc34`, `b70a6482` → na gałęzi `52531d48`…`ff3e965e`; 88 plików,
+**Wykonane (agent; `710fcdd9`, `5aefecb5`, `92e2bcff`, `6835dc34`, `b70a6482` → na gałęzi `7b2de6dc`…`7f7ce00f`; 88 plików,
 +1583/−294):** `network_model/pochodne/jednostki.py` (20 funkcji: kW↔MW, kvar↔Mvar, kVA↔MVA, A↔kA, V↔kV, m↔km, ms↔s,
 µS↔S) — 153 wzorce w 54 plikach przeniesione bit w bit (testy tożsamości); rodzina `J_skalowanie_jednostek` w
 `backend_no_physics_guard.py` (pomiar PRZED 192 wzorce / 59 plików); B = 2πfC z jednej formuły
@@ -261,7 +261,7 @@ domknięte pełnym łańcuchem odbioru (§F).
 
 ### W3-B (2026-09-09) — ALF ×2 → jądro + obwód wtórny CT/VT — UCZCIWOŚĆ
 
-**Wykonane (agent; 6 commitów → na gałęzi `470001bb`…`e4fb0020`; 32 pliki, +1883/−124):** kryterium `ct.alf`
+**Wykonane (agent; 6 commitów → na gałęzi `b2ea1ff9`…`b2db9af5`; 32 pliki, +1883/−124):** kryterium `ct.alf`
 w `domain/dobor_przekladnika.py` deleguje w 100 % do jądra FROZEN `check_ct_burden_saturation` (ALF_eff z rzeczywistym
 obciążeniem wtórnym, Rct, przewodem), dawny warunek konieczny → `ct.alf_katalogowy` (werdykt wyłącznie `informacja`);
 addytywne `Kryterium.kody_gotowosci`/`slad`; `Measurement.obwod_wtorny` (`ObwodWtorny`: długość/przekrój przewodu,
@@ -278,7 +278,7 @@ pandapower 41, mypy 736/0, `guardy_z_ci` 88/89 (czerwony wyłącznie `tsconfig_g
 
 ### W3-I (2026-09-09) — jeden predykat wymagalności katalogu — UCZCIWOŚĆ
 
-**Wykonane (agent; 5 commitów → na gałęzi `3a09c46f`…`8c2f4139`; 18 plików):** tabela `wymagalnosc_katalogu(rodzaj)`
+**Wykonane (agent; 5 commitów → na gałęzi `0839647d`…`f0514366`; 18 plików):** tabela `wymagalnosc_katalogu(rodzaj)`
 (`catalog/governance.py:202-344`; poziomy per rodzaj × {tworzenie, walidacja, import}; `MANUAL_EQUIVALENT` = NIE) czytana
 przez 8 miejsc (inwentarz: 6 z karty + `eligibility_service.py::_check_catalog_refs` znaleziony grepem DoD +
 `readiness_bridge.py` znaleziony przez `readiness_consumption_guard`); rozjazdy naprawione: CGMES side-car bez wyjątku
@@ -293,7 +293,7 @@ celowane 452, lv_domain 234. **Nazwane:** `add_generator_sn` bez bramy API/FE (`
 
 ### W3-C1 (2026-09-09) — nastawy nadprądowe → Hoppel (kasacja V12K-189) — UCZCIWOŚĆ
 
-**Wykonane (agent; 8 commitów → na gałęzi `65734597`…`f75690f1`; 67 plików, +3466/−3619):** kasacja V12K-189 — 20 plików
+**Wykonane (agent; 8 commitów → na gałęzi `a245dbda`…`306aaa31`; 67 plików, +3466/−3619):** kasacja V12K-189 — 20 plików
 (`overcurrent/**` 9, `api/protection_overcurrent_settings.py`, `run_registry.py`, `run_envelope.py`, 3× `envelope_adapter.py`,
 5 martwych testów; konsumenci po kasacji 0 — grep; `AnalysisRunIndexEntry` zostaje, ma realnego konsumenta);
 `oblicz_nastawy()` (`batch_run.py`) współdzielona przez ZIP i nowe trasy `GET /analysis-runs/{id}/nastawy[/dopasowanie]`;
@@ -310,7 +310,7 @@ implementacji IDMT" w `docs/twin/MV_DESIGN_PRO_PROTECTION_ARCHITECTURE.md` nieak
 
 ### W3-C2 (2026-09-09) — analizator FIX-12D → Hoppel, wzorzec referencyjny na kanonie — UCZCIWOŚĆ
 
-**Wykonane (agent; `b038ff43` + `45845bc9` → na gałęzi `e9f11e76`, `e5dacf9d`; 30 plików, +1571/−3549):** silnik Hoppla
+**Wykonane (agent; `b038ff43` + `45845bc9` → na gałęzi `c7ee8276`, `e1903251`; 30 plików, +1571/−3549):** silnik Hoppla
 rozszerzony ADDYTYWNIE (`generacja_lokalna` z jawnym progiem — brak = None/NIEDOSTĘPNY, silnik nie zgaduje; `okno_nastaw`
 = dolna granica selektywność, górna min(cieplne, czułość), konflikt i rekomendacje po polsku), test tożsamości PRZED/PO na
 6 wejściach 7/7; kasacja FIX-12D (`line_overcurrent_setting/{__init__,analyzer,models,spz_lookup}.py` 1880 linii + test 841
@@ -330,3 +330,55 @@ z W3-C1 parytet 30/30 bez kolejnej regeneracji. Weryfikacja agenta: pełny pytes
 odbioru (§F); pandapower 41, mypy 732/0, `guardy_z_ci` 89/89 + 643 (drugi bieg po OOM tsc), tsc 0, eslint 0, vitest 315.
 **Nazwane:** `docs/proof/Reference_Patterns.md` i `docs/proof_engine/Protection_Overcurrent.md` oznaczone SUPERSEDED
 (odsyłacz do kanonu), nie przepisane (787 + 391 linii); progi „kb>1,3 / kc<1,2" bez cytatu NIE przeniesione.
+
+### W3-H (2026-09-10) — Q z biegu vs prawo Q(U)/cosφ(P): badanie śladu, wariant B — UCZCIWOŚĆ
+
+**Wykonane (agent, worktree z bazy `beaa59bb`; odbiór Fable: commit `ba401660` w `fable-w3f2`, drugi commit agenta —
+duplikat naprawy ruff I001 z `a511a173` — pominięty):** badanie z dowodem na realnych przebiegach (nie z lektury): tabela per tryb
+DER (Q_CONST/COSPHI_CONST/COSPHI_P/Q_U/LFSM-O/-U) × droga biegu (zwykły/wariant/seria) × metoda (NR/GS/FD) w meldunku
+wykonawcy. Wynik: ślad Newtona przy `trace_level="full"` niesie `mode`/Q/pośrednio-U, ale nigdy limit ani flagę ograniczenia
+(dowód: Q(U) nasycone do `qu_q_max_pu` nierozróżnialne od nienasyconego); GS/FD nie budują takiego rekordu w ogóle (zbadane
+biegiem: `inverter_sources` nieobecny w żadnej z 55/50 iteracji); tor kanoniczny (`_build_power_flow_trace_steps`) odrzuca cały
+rekord przed zapisaniem przebiegu nawet dla pól, które Newton liczy. Decyzja: wariant B — trzecia podzakładka „Regulacja Q OZE"
+w `EkranRozplywu.tsx` (`RegulacjaOze.tsx`) z uczciwym stanem zerowym i odesłaniem do OD-15(g); test iloczynu cech „nie
+fabrykuje" (4 fixtury skrajnie różnych wyników → identyczny statyczny komunikat, zero liczb, zero nazw trybów w DOM).
+Znalezisko poza zakresem, nazwane: `COSPHI_P` nigdy nie dociera od kreatora OZE/ENM do solvera
+(`enm/assembler.py::_build_converter_control_by_node` nie wysyła `cosphi_p_points`; kreator nie ma opcji cosφ(P)) — osobna
+karta. Weryfikacja agenta: mypy 674/0, black/ruff 0/0, tsc 0, eslint 0, vitest celowany 90/90 (`ui2/wyniki/rozplyw`) i
+1150/1150 (`ui2/wyniki` + `ui2/spaces/wyniki`), pytest celowany 72/72, `guardy_z_ci` 86/87 + 763 (jedyny czerwony
+`tsconfig_gate_guard` 126 > 125 — pomiar na bazie `beaa59bb`, ta sama liczba co przy odbiorze fali 2; na drzewie scalonym budżet
+119/119 po naprawie u źródła w `a7fc7cb0`). Odbiór na drzewie scalonym: evidence §F („W3 fala 2 — dowody", łańcuch k5).
+
+### Dogrywka odbioru fali 2 (2026-09-10) — E2E-FULL-FIX-3: sceny harnessu bez atrap — UCZCIWOŚĆ
+
+**Przyczyna:** CI Frontend E2E full na `72f867d1` (fala 1; run `34441338813`/PR `34441341216`) czerwony: 2/417 — `wszystkie-sceny-screenshot`
+scena `macierz` (light/dark). Sekcja W3-D „Zgodność przekrojowa przypadku" woła `GET /api/ncrfg-tests/cases/case-demo/compliance`,
+harness nie miał atrapy, realny backend odpowiadał 404, ekran pokazywał „Nie udało się sprawdzić zgodności przekrojowej".
+Łańcuch k3 fali 1 tego nie złapał, bo jego e2e to wyłącznie ścieżka krytyczna (3 specy) — pełny katalog scen biegnie tylko w CI.
+
+**Inwentarz klasy (z logu CI, 4xx przy `case-demo` zasiewu harnessu):** `POST /api/cases/case-demo/enm/domain-ops` 404 ×14
+(scena `stacja`: podgląd `dry_run` kreatora przy każdej zmianie formularza → nagłówek kroku pól INVALID z komunikatem „Przypadek
+case-demo nie należy do żadnego projektu" w zrzutach `mini-rmu-podglad`/`kreator-stacji-pole-tr`), zgodność przekrojowa 404 ×6
+(`macierz`), `protection-config` 400 ×6 (`koordynacja`: notyfikacja „Błąd zapisu" po każdym natywnym zapisie urządzenia),
+`design-verdict` 404 ×4 (`uwaga`: werdykt połykany po cichu). Tylko pierwsza instancja pokazywała „Nie udało się" — bramka treści
+speca była bramką instancji, nie klasy.
+
+**Naprawa (`c844d481`):** (1) bramka KLASY `e2e/nieudaneZadaniaApi.ts` — każda odpowiedź sieciowa `/api/*` ze statusem ≥ 400
+zatrzymuje test (atrapa nigdy nie wchodzi w sieć, więc to z definicji brak atrapy albo realna awaria); wpięta w `wszystkie-sceny-screenshot`
+(35 scen + koordynacja), `creator-screenshot` (8 scen) i `dowody-oze-screenshot`; (2) atrapy końcówek czytających STAN przypadku liczone
+z backendu tymi samymi funkcjami, co trasy: `backend/scripts/eksport_fixtur_harnessu.py` (`NcRfgComplianceChecker.check` + `model_dump`
+dla modułów sceny; `zbuduj_werdykt_projektowy` bez biegów) → `frontend/src/harness-fixtures/generated/*.json`, test świeżości i determinizmu
+`tests/ci/test_fixtury_harnessu.py` (6); atrapa zgodności odmawia 409, gdy raporty nie opisują modułów zasianych w scenie (para predykatów);
+(3) bieg NC RfG/PTPiREE sceny `macierz` idzie do REALNEGO solvera (`case_id` zdejmowany — dopina tylko dowód certyfikatu z tabliczek modelu):
+ręczna atrapa niosła klasę modułu „B" dla 0,8 MW przy 0,4 kV (progi OD-5: A < 1 MW) i werdykty dla danych, których scena nie wysyłała —
+zasiew przeseedowany na moduły klasy B (BESS 1,5 MW = 3 × ABB PCS100 500 kW, PV 1,9 MW = 9 × Huawei SUN2000-215KTL, 15 kV przez
+transformator blokowy); spec dowodowy wpisuje odbudowę P 1,8 s natywnie w panelu modułu → T16 magazynu niespełniony z otwartym
+śladem `1.800 <= 1.000` (realny solver: magazyn niezgodny 4/10, PV brak danych 6/8); (4) scena `stacja` buduje REALNY przypadek tą
+samą drogą co `critical-run-flow.spec.ts` (projekt → przypadek → GPZ → odcinek 1,2 km) — werdykt walidatora w nagłówku kroku pól jest
+prawdziwy, nie 404; (5) konfiguracja zabezpieczeń przypadku (P14c) i werdykt projektowy z atrap 1:1 z `ProtectionConfig.to_dict` /
+`WerdyktProjektowy.to_dict` (PUT trzyma stan jak backend). **Przy okazji, regresja fali 2:** bramka klasy zatrzymała trzy testy sceny
+`wiazania` na białym ekranie — atrapa doboru przekładników `DOBOR_PRZEKLADNIKOW_WIAZANIA` sprzed W3-B nie niosła `kody_gotowosci`/`slad`,
+a `kryterium.slad.length` na `undefined` wywracało całą kartę gotowości wytwórcy (potwierdzone na drzewie fali 2 BEZ tej naprawy: 3/3
+czerwone); atrapa uzupełniona, `maKsztaltKryterium` w `DoborPrzekladnikowSekcja.tsx` sprawdza pola W3-B (nazwany błąd kształtu zamiast
+białego ekranu), test klasy. **Reguła odbioru:** łańcuch przedpushowy obejmuje odtąd specy harnessu (`wszystkie-sceny-screenshot`,
+`creator-screenshot`, `dowody-oze-screenshot`) obok ścieżki krytycznej. Dowody: evidence §F.
