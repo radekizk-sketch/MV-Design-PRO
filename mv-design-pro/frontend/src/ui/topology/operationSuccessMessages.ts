@@ -84,6 +84,44 @@ export const OPERATION_SUCCESS_MESSAGES: Record<string, string> = {
   source_field_nn_add_converter_source_bess: 'Dodano magazyn BESS w polu źródłowym nN',
   source_field_nn_add_converter_source_bess_energy: 'Dodano magazyn BESS (energetyczny) nN',
   source_field_nn_add_converter_source_fw: 'Dodano farmę wiatrową w polu źródłowym nN',
+  // Sekcje szyn GPZ — operacje działają na `substation.{lv,hv}_sections` stacji
+  // typu 'gpz' (domain_operations.py: add/update/delete_gpz_section). Komunikat
+  // mówi „sekcja szyn", bo sekcja jest zakotwiczona na szynie (`bus_ref`), a nie
+  // na polu; strona (SN/WN) nie wchodzi do treści, bo jest wyborem w formularzu.
+  add_gpz_section: 'Dodano sekcję szyn GPZ',
+  update_gpz_section: 'Zaktualizowano sekcję szyn GPZ',
+  delete_gpz_section: 'Usunięto sekcję szyn GPZ',
+  // Zakończenie ciągu SN stacją (append_station_on_endpoint): operacja addytywna
+  // — wolny terminal staje się pierwszą szyną nowej stacji, żaden istniejący
+  // odcinek NIE jest rozcinany. Dlatego „Dołączono … na końcu ciągu", a nie
+  // „Wstawiono" (to czasownik operacji rozcinających segment).
+  append_station_on_endpoint: 'Dołączono stację na końcu ciągu SN',
+  // Aparatura SN dokładana katalogiem (domain_operations_v2.py). Bateria trafia do
+  // kolekcji `shunt_capacitors` czytanej przez rozpływ mocy; ogranicznik siada na
+  // field_spec pola SN i zasila koordynację izolacji.
+  add_shunt_compensator_sn: 'Dodano baterię kondensatorów SN',
+  add_surge_arrester_sn: 'Dodano ogranicznik przepięć w polu SN',
+  // Sieć nN (domain_operations_v2.py). Nazewnictwo wprost z description_pl
+  // operacji kanonicznych, skrócone do potwierdzenia:
+  add_nn_cable_segment: 'Dodano odcinek kabla nN',
+  add_nn_distribution_board: 'Dodano rozdzielnicę nN z szyną główną',
+  // „aparat w torze nN", nie „aparat łączeniowy" — operacja tworzy wyłącznik,
+  // rozłącznik ALBO bezpiecznik (device_class), a bezpiecznik aparatem
+  // łączeniowym nie jest; szersza nazwa nie kłamie o żadnym z trzech przypadków.
+  add_nn_switch_device: 'Dodano aparat w torze nN',
+  add_nn_section_coupler: 'Dodano sekcję szyn i sprzęgło w rozdzielnicy nN',
+  // Rozcięcie zachowuje sumę długości i wprowadza szynę pośrednią — to ona jest
+  // widocznym skutkiem operacji, więc stoi w komunikacie.
+  split_nn_segment: 'Rozcięto odcinek kabla nN nową szyną',
+  merge_nn_segments: 'Scalono dwa odcinki kabla nN w jeden',
+  // Warunki ułożenia to META odcinka (środowisko/izolacja/temperatura/obwody/
+  // rezystywność gruntu). Obciążalność skorygowaną liczy z nich solver, więc
+  // komunikat mówi „Zapisano", a NIE „Obliczono" — UI niczego tu nie przelicza.
+  set_nn_cable_laying_conditions: 'Zapisano warunki ułożenia odcinka kabla nN',
+  // Jedna operacja obsługuje kabel, aparat, szynę-liść i odbiór — komunikat
+  // celowo mówi „element nN", bo rodzaj rozstrzyga się dopiero w backendzie.
+  remove_nn_element: 'Usunięto element nN',
+  copy_nn_feeder: 'Skopiowano odpływ nN wraz z poddrzewem',
 };
 
 /**

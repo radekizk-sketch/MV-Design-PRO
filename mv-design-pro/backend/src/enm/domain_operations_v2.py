@@ -51,6 +51,7 @@ from .domain_operations import (
     _error_response,
     _find_element,
     _find_legacy_field_element_collection,
+    _fizyka_odcinka,
     _make_id,
     _materialize_catalog_payload,
     _opt_float_any,
@@ -3244,8 +3245,22 @@ def add_nn_section_coupler(enm: dict[str, Any], payload: dict[str, Any]) -> dict
     bus_refs = station.get("bus_refs") or []
     sekcje = [s for s in (station.get("nn_sections") or []) if isinstance(s, dict)]
     if sekcje:
-        ostatnia = max(sekcje, key=lambda s: s.get("order", 0))
-        last_order = ostatnia.get("order", 0)
+        # Numer porzadkowy sekcji jest STRUKTURA modelu, nie pomiarem, ale
+        # podstawienie zera za jego brak dawalo `last_order + 1 == 1`, czyli
+        # numer JUZ ZAJETY przez szyne glowna — cicha kolizja porzadku sekcji.
+        # Kazda sekcja tworzona w tym module `order` zapisuje (w. 3046/3348/3357),
+        # wiec jego brak znaczy rekord z zewnatrz, a nie przypadek roboczy.
+        if any(
+            not isinstance(s.get("order"), int) or isinstance(s.get("order"), bool) for s in sekcje
+        ):
+            return _error_response(
+                f"Rozdzielnica nN '{station_ref}' ma sekcję bez numeru porządkowego "
+                "(order). Kolejność sekcji musi wynikać z modelu, a nie z wartości "
+                "zastępczej.",
+                "nn.coupler_section_order_missing",
+            )
+        ostatnia = max(sekcje, key=lambda s: int(s["order"]))
+        last_order = int(ostatnia["order"])
         last_bus_ref = ostatnia.get("bus_ref")
     else:
         if not bus_refs:
@@ -3417,8 +3432,15 @@ def split_nn_segment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
             "nn.split_segment_not_nn_band",
         )
 
-    length_km = _opt_float_any(segment.get("length_km")) or 0.0
-    length_m_total = length_km * 1000.0
+    fizyka, brakujace_pole = _fizyka_odcinka(segment)
+    if fizyka is None:
+        return _error_response(
+            f"Odcinek '{segment_ref}' nie niesie wymaganej danej '{brakujace_pole}'. "
+            "Rozcięcie wymaga kompletu długość/R/X odcinka źródłowego — "
+            "operacja nie podstawia za nie liczby.",
+            "nn.split_segment_missing_physics",
+        )
+    length_m_total = fizyka["length_km"] * 1000.0
 
     split_at_m = _opt_float_any(payload.get("split_at_m"))
     if split_at_m is None:
@@ -3469,8 +3491,8 @@ def split_nn_segment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
         "from_bus_ref": from_bus_ref,
         "to_bus_ref": mid_bus_ref,
         "length_km": split_at_m / 1000.0,
-        "r_ohm_per_km": segment.get("r_ohm_per_km", 0.0),
-        "x_ohm_per_km": segment.get("x_ohm_per_km", 0.0),
+        "r_ohm_per_km": fizyka["r_ohm_per_km"],
+        "x_ohm_per_km": fizyka["x_ohm_per_km"],
         "status": segment.get("status", "closed"),
     }
     _copy_split_segment_fields(left_data, segment)
@@ -3490,8 +3512,8 @@ def split_nn_segment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
         "from_bus_ref": mid_bus_ref,
         "to_bus_ref": to_bus_ref,
         "length_km": (length_m_total - split_at_m) / 1000.0,
-        "r_ohm_per_km": segment.get("r_ohm_per_km", 0.0),
-        "x_ohm_per_km": segment.get("x_ohm_per_km", 0.0),
+        "r_ohm_per_km": fizyka["r_ohm_per_km"],
+        "x_ohm_per_km": fizyka["x_ohm_per_km"],
         "status": segment.get("status", "closed"),
     }
     _copy_split_segment_fields(right_data, segment)
@@ -3626,8 +3648,42 @@ def merge_nn_segments(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
                 "nn.merge_shared_bus_not_isolated",
             )
 
-    dlugosc_a = segment_a.get("length_km") or 0.0
-    dlugosc_b = segment_b.get("length_km") or 0.0
+    fizyka_a, brak_a = _fizyka_odcinka(segment_a)
+    if fizyka_a is None:
+        return _error_response(
+            f"Odcinek '{segment_a_ref}' nie niesie wymaganej danej '{brak_a}'. "
+            "Scalenie wymaga kompletu długość/R/X obu odcinków — "
+            "operacja nie podstawia za nie liczby.",
+            "nn.merge_segment_missing_physics",
+        )
+    fizyka_b, brak_b = _fizyka_odcinka(segment_b)
+    if fizyka_b is None:
+        return _error_response(
+            f"Odcinek '{segment_b_ref}' nie niesie wymaganej danej '{brak_b}'. "
+            "Scalenie wymaga kompletu długość/R/X obu odcinków — "
+            "operacja nie podstawia za nie liczby.",
+            "nn.merge_segment_missing_physics",
+        )
+    # PREDYKATY PARAMI (CLAUDE.md, regula KLASA §3). Warunek WEJSCIA do scalenia
+    # (ta sama pozycja katalogowa) i warunek WYJSCIA (impedancja jednostkowa
+    # scalonego kabla) musza pochodzic z JEDNEGO zrodla prawdy. Wczesniej
+    # scalony odcinek brał R/X WYLACZNIE z odcinka A i rozciagal je na sume
+    # dlugosci, a zgodnosc z odcinkiem B wynikala tylko z tego, ze brama
+    # katalogowa "dzis sie zgadza". Dane brzegowe, w ktorych sie nie zgadza,
+    # juz istnieja: `set_nn_cable_laying_conditions` przelicza R odcinka wzgledem
+    # warunkow ulozenia, wiec dwa odcinki tej samej pozycji katalogowej moga miec
+    # rozne R/km. Wtedy kopia z A po cichu kasowala impedancje odcinka B.
+    if (fizyka_a["r_ohm_per_km"], fizyka_a["x_ohm_per_km"]) != (
+        fizyka_b["r_ohm_per_km"],
+        fizyka_b["x_ohm_per_km"],
+    ):
+        return _error_response(
+            "Scalane odcinki mają różne impedancje jednostkowe (R/X na km) — "
+            "pojedyncza gałąź kabla nie może wyrazić obu naraz.",
+            "nn.merge_impedance_mismatch",
+        )
+    dlugosc_a = fizyka_a["length_km"]
+    dlugosc_b = fizyka_b["length_km"]
 
     seed = _compute_seed({"op": "merge_nn_segments", "a": segment_a_ref, "b": segment_b_ref})
     merged_ref = _make_id("nn", seed, "merged")
@@ -3654,8 +3710,8 @@ def merge_nn_segments(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
         "from_bus_ref": zewnetrzna_a,
         "to_bus_ref": zewnetrzna_b,
         "length_km": dlugosc_a + dlugosc_b,
-        "r_ohm_per_km": segment_a.get("r_ohm_per_km", 0.0),
-        "x_ohm_per_km": segment_a.get("x_ohm_per_km", 0.0),
+        "r_ohm_per_km": fizyka_a["r_ohm_per_km"],
+        "x_ohm_per_km": fizyka_a["x_ohm_per_km"],
         "status": "closed",
     }
     _copy_split_segment_fields(merged_data, segment_a)

@@ -108,6 +108,30 @@ _LITERA += "\u0105\u0107\u0119\u0142\u0144\u00f3\u015b\u017a\u017c"
 #: ani parametrow zapytania w adresach (te wycinamy nizej).
 ZNAK_ZASTEPCZY_W_SLOWIE = re.compile(rf"[{_LITERA}]\?[{_LITERA}]")
 
+#: DWA znaki zastepcze pod rzad PO literze = dwie polskie litery zjedzone naraz
+#: (konwersja stratna na koncu slowa). Klasa dolozona 2026-09-10 po znalezisku
+#: w `enm/domain_operations.py`: komunikat operatora "Najpierw przepi[?][?]/
+#: usun[?][?] pola." i docstring obok. Regula wyzej ich NIE WIDZIALA, bo wymaga
+#: litery po OBU stronach '?', a tu po prawej stronie stoi '/' albo koniec
+#: slowa — mimo ze naglowek modulu deklarowal klase "polska litera zamieniona
+#: na ASCII '?'" jako pokryta. Deklaracja szersza niz detekcja jest grozniejsza
+#: niz sama luka (CLAUDE.md, regula KLASA §4), wiec zamiast poprawiac opis
+#: dolozono brakujaca forme.
+#: POMIAR PRZED DOLOZENIEM (5034 pliki, caly zakres guarda): 0 trafien po
+#: naprawie dwoch znalezionych miejsc, wiec regula nie wnosi ani jednego
+#: falszywego alarmu. Operatory TS pisze sie ze spacjami ("a ?? b"), a ta
+#: regula wymaga litery BEZPOSREDNIO przed pierwszym znakiem zapytania.
+ZNAKI_ZASTEPCZE_NA_KONCU_SLOWA = re.compile(rf"[{_LITERA}]\?\?")
+
+#: GRANICA NAZWANA, NIE UDAWANA. Pojedynczy '?' na KONCU slowa ("Dodano
+#: sekcj[?] LV") zostaje POZA detekcja. Pomiar kandydata na te regule na calym
+#: zakresie: 43 trafienia, z czego przytlaczajaca wiekszosc to zdania pytajne
+#: w dokumentacji ("Czy suma wkladow = calosc?") i notacja pola opcjonalnego
+#: ("sn_voltage_kv?, nn_voltage_kv"). Bramka zlozona w wiekszosci z falszywych
+#: alarmow uczy ignorowac bramke — to samo rozstrzygniecie i ten sam powod, co
+#: przy granicy nr 2 w `solver_input_substitute_guard`. Ta forma pozostaje do
+#: wychwycenia przegladem tekstu, nie automatem.
+
 #: Parametr zapytania w adresie ("/api/quality/flicker?run_id=") \u2014 to NIE jest
 #: uszkodzenie tekstu, tylko dokumentacja koncowki. Wycinany przed sprawdzeniem.
 _PARAMETR_ZAPYTANIA = re.compile(r"[\w./{}-]+\?[\w]+=")
@@ -284,6 +308,12 @@ def znajdz_trafienia(linie: list[str]) -> list[tuple[int, str, str]]:
         trafienie = ZNAK_ZASTEPCZY_W_SLOWIE.search(linia_bez_skladni)
         if trafienie:
             powody.append(f"polska litera zamieniona na znak zapytania ({trafienie.group(0)!r})")
+        trafienie_konca = ZNAKI_ZASTEPCZE_NA_KONCU_SLOWA.search(linia_bez_skladni)
+        if trafienie_konca:
+            powody.append(
+                "dwie polskie litery zamienione na znaki zapytania "
+                f"({trafienie_konca.group(0)!r})"
+            )
         if not powody or _probka_celowa(linie, indeks):
             continue
         for powod in powody:
