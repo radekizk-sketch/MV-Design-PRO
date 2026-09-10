@@ -1560,3 +1560,81 @@ def test_real_repo_has_no_trace_v2_resurrection() -> None:
     """Stan repozytorium PO karcie TRACE-V2 jest zielony na tej bramce —
     prawdziwe drzewo `backend/src` + `frontend/src`, nie sztuczne `tmp_path`."""
     assert guard.check_trace_v2_resurrection() == []
+
+
+# ---------------------------------------------------------------------------
+# W3-G1 (2026-09-10) — sieroty "droga uruchomienia biegu rozplywu"
+# (CaseConfigPage.tsx + PowerFlowRunDialog.tsx) nie moga wrocic
+# ---------------------------------------------------------------------------
+
+
+def _patch_w3g1_tree(monkeypatch, tmp_path) -> Path:
+    fe = tmp_path / "frontend" / "src"
+    fe.mkdir(parents=True)
+    monkeypatch.setattr(guard, "FRONTEND_SRC_DIR", fe)
+    return fe
+
+
+def test_guard_rejects_resurrected_w3g1_case_config_page(tmp_path, monkeypatch) -> None:
+    fe = _patch_w3g1_tree(monkeypatch, tmp_path)
+    (fe / "ui" / "study-cases").mkdir(parents=True)
+    (fe / "ui" / "study-cases" / "CaseConfigPage.tsx").write_text(
+        "export function CaseConfigPage() { return null; }\n", encoding="utf-8"
+    )
+
+    violations = guard.check_w3g1_run_trigger_orphan_resurrection()
+
+    assert any(
+        "[resurrected-module]" in v and "ui/study-cases/CaseConfigPage.tsx" in v for v in violations
+    )
+    assert len(violations) == 1
+
+
+def test_guard_rejects_resurrected_w3g1_power_flow_run_dialog(tmp_path, monkeypatch) -> None:
+    fe = _patch_w3g1_tree(monkeypatch, tmp_path)
+    (fe / "ui" / "power-flow-results").mkdir(parents=True)
+    (fe / "ui" / "power-flow-results" / "PowerFlowRunDialog.tsx").write_text(
+        "export function PowerFlowRunDialog() { return null; }\n", encoding="utf-8"
+    )
+
+    violations = guard.check_w3g1_run_trigger_orphan_resurrection()
+
+    assert any(
+        "[resurrected-module]" in v and "ui/power-flow-results/PowerFlowRunDialog.tsx" in v
+        for v in violations
+    )
+    assert len(violations) == 1
+
+
+def test_guard_rejects_resurrected_w3g1_power_flow_run_dialog_test_alone(
+    tmp_path, monkeypatch
+) -> None:
+    """Wskrzeszony PLIK TESTU bez komponentu jest tez sieroca — bramka pilnuje
+    obu plikow niezaleznie (predykaty parami, nie „test = wystarczajacy dowod
+    zycia")."""
+    fe = _patch_w3g1_tree(monkeypatch, tmp_path)
+    (fe / "ui" / "power-flow-results" / "__tests__").mkdir(parents=True)
+    (fe / "ui" / "power-flow-results" / "__tests__" / "PowerFlowRunDialog.test.tsx").write_text(
+        "test('x', () => {});\n", encoding="utf-8"
+    )
+
+    violations = guard.check_w3g1_run_trigger_orphan_resurrection()
+
+    assert any(
+        "[resurrected-module]" in v
+        and "ui/power-flow-results/__tests__/PowerFlowRunDialog.test.tsx" in v
+        for v in violations
+    )
+    assert len(violations) == 1
+
+
+def test_guard_accepts_clean_tree_without_w3g1_resurrection(tmp_path, monkeypatch) -> None:
+    _patch_w3g1_tree(monkeypatch, tmp_path)
+    assert guard.check_w3g1_run_trigger_orphan_resurrection() == []
+
+
+def test_guard_accepts_current_repo_state_w3g1() -> None:
+    """Stan repozytorium PO W3-G1 jest zielony — `CaseConfigPage.tsx` i
+    `PowerFlowRunDialog.tsx` (+ jego test) nie istnieja w prawdziwym drzewie
+    `frontend/src`."""
+    assert guard.check_w3g1_run_trigger_orphan_resurrection() == []

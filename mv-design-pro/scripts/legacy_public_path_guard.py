@@ -519,6 +519,35 @@ W3C2_LEGACY_RELATIVE_PATHS: dict[str, str] = {
     ),
 }
 
+# Karta W3-G1 (2026-09-10) — metoda rozplywu NR/GS/FD jako jawna opcja biegu:
+# jedyny, kanoniczny selektor jest odtad w `ui2/spaces/obliczenia/
+# UruchomObliczenie.tsx` (wysyla `solver_input.solver_method` do `POST
+# /api/execution/study-cases/{id}/runs`). Dwa sieroty tej samej klasy
+# („droga uruchomienia biegu rozplywu" — inwentarz karty, 0 importerow
+# produkcyjnych w chwili kasacji, wylacznie wlasny plik testu) skasowane
+# razem: `CaseConfigPage.tsx` (mapa aneks D2 — jedyny selektor metody PRZED
+# karta, nigdy niezaimportowany do `App.tsx`; trasa `#case-config`
+# przekierowuje do przestrzeni `obliczenia` BEZ renderu tego komponentu —
+# `ui2/legacy/mostObszarow.ts::REJESTR_TRAS[ROUTES.CASE_CONFIG.hash]`,
+# `wygaszona: true` — most zostaje NIETKNIETY, to przekierowanie starego
+# adresu, nie wskrzeszenie) i `PowerFlowRunDialog.tsx` (znaleziony w TYM
+# SAMYM inwentarzu klasy — drugi, rownolegly dialog wyboru NR/GS/FD z
+# `onRun` bez zadnego wolajacego, 0 importerow).
+W3G1_RUN_TRIGGER_ORPHAN_RELATIVE_PATHS: dict[str, str] = {
+    "ui/study-cases/CaseConfigPage.tsx": (
+        "sierocy selektor metody rozplywu + konfiguracji przypadku (0 importerow, "
+        "handleSave = komentarz bez zapisu) - kanon: "
+        "ui2/spaces/obliczenia/UruchomObliczenie.tsx"
+    ),
+    "ui/power-flow-results/PowerFlowRunDialog.tsx": (
+        "drugi, rownolegly dialog wyboru algorytmu NR/GS/FD (0 importerow) - "
+        "kanon: ui2/spaces/obliczenia/UruchomObliczenie.tsx"
+    ),
+    "ui/power-flow-results/__tests__/PowerFlowRunDialog.test.tsx": (
+        "testy sieroty PowerFlowRunDialog (bez komponentu do testowania)"
+    ),
+}
+
 
 def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8", errors="ignore")
@@ -1210,6 +1239,25 @@ def check_trace_v2_resurrection() -> list[str]:
     return violations
 
 
+def check_w3g1_run_trigger_orphan_resurrection() -> list[str]:
+    """W3-G1 (2026-09-10): jedyny selektor metody rozplywu (NR/GS/FD) jest
+    `ui2/spaces/obliczenia/UruchomObliczenie.tsx` — dwa martwe, rownolegle
+    ekrany/dialogi TEJ SAMEJ zdolnosci (klasa K-D: istnieje, ale sierota) nie
+    moga wrocic (patrz `W3G1_RUN_TRIGGER_ORPHAN_RELATIVE_PATHS`). Trasa
+    `#case-config` (`ui/navigation/routes.ts::ROUTES.CASE_CONFIG`) i wpis
+    przekierowania w `ui2/legacy/mostObszarow.ts` ZOSTAJA (przekierowanie
+    starego adresu do przestrzeni `obliczenia`, nie render skasowanego
+    komponentu) — bramka pilnuje WYLACZNIE plikow komponentow/testow."""
+    violations: list[str] = []
+    for rel, label in W3G1_RUN_TRIGGER_ORPHAN_RELATIVE_PATHS.items():
+        path = FRONTEND_SRC_DIR / rel
+        if zrodlo_istnieje(path, ("*.ts", "*.tsx")):
+            violations.append(
+                f"[resurrected-module] frontend/src/{rel}: {label} (usuniety w W3-G1)"
+            )
+    return violations
+
+
 def main() -> int:
     violations = (
         check_legacy_public_paths()
@@ -1226,6 +1274,7 @@ def main() -> int:
         + check_w3c1_overcurrent_resurrection()
         + check_w3c2_line_overcurrent_setting_resurrection()
         + check_trace_v2_resurrection()
+        + check_w3g1_run_trigger_orphan_resurrection()
     )
     if violations:
         print("legacy-public-path-guard: FAILED")
