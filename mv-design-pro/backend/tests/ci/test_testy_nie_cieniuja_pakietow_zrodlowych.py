@@ -49,6 +49,14 @@ DOZWOLONE_ODSTEPSTWA = {
     # `scripts/`, zeby podproces zobaczyl testowany guard. Sciezka importu
     # BIEZACEGO procesu pozostaje nietknieta.
     "tests/ci/test_guard_diff_base.py": "SCRIPTS_DIR",
+    # Udostepnia `backend/research` (kod BADAWCZY, poza pakietami produkcyjnymi
+    # `pyproject.toml::packages`) wylacznie testom laboratorium. NIE MOZE cieniowac
+    # zrodel, bo `research/` zawiera tylko pakiet `dynamic_lab`, ktorego nazwa nie
+    # wystepuje w `src/` — a warunek braku kolizji nazw jest EGZEKWOWANY osobno
+    # przez `scripts/research_isolation_guard.py::sprawdz_kolizje_nazw`. Bez tego
+    # wstrzykniecia laboratorium bylo by nieuruchamialne z CI, bo celowo nie jest
+    # pakietem instalowanym.
+    "tests/research/conftest.py": "_RESEARCH",
 }
 
 
