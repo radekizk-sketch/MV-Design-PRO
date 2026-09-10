@@ -19,6 +19,7 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
+import { zbierajNieudaneZadaniaApi } from './nieudaneZadaniaApi';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('creator-harness.html');
@@ -55,6 +56,7 @@ test.describe('sceny:screenshot', () => {
           if (m.type() === 'error' && !isNoise(m.text())) errs.push(m.text());
         });
         page.on('pageerror', (e) => errs.push(`PAGEERROR: ${e.message}`));
+        zbierajNieudaneZadaniaApi(page, errs);
 
         await page.setViewportSize({ width: 1220, height: 900 });
         await page.goto(`${HARNESS_URL}?creator=${scena}&theme=${theme}`, {
@@ -135,6 +137,7 @@ test.describe('koordynacja:screenshot', () => {
         if (m.type() === 'error' && !isNoise(m.text())) errs.push(m.text());
       });
       page.on('pageerror', (e) => errs.push(`PAGEERROR: ${e.message}`));
+      zbierajNieudaneZadaniaApi(page, errs);
 
       await page.setViewportSize({ width: 1220, height: 1400 });
       await page.goto(`${HARNESS_URL}?creator=koordynacja&theme=${theme}`, {

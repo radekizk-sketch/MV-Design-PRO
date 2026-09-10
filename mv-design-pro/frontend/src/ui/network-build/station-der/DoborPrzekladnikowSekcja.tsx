@@ -117,7 +117,28 @@ function maKsztaltGniazda(wartosc: unknown): boolean {
   if (!('catalog_ref' in gniazdo) || !('wynik' in gniazdo)) return false;
   if (gniazdo.wynik === null) return true;
   const wynik = gniazdo.wynik as Record<string, unknown>;
-  return Array.isArray(wynik.kryteria) && typeof wynik.dobor_potwierdzony === 'boolean';
+  return (
+    Array.isArray(wynik.kryteria)
+    && typeof wynik.dobor_potwierdzony === 'boolean'
+    && wynik.kryteria.every(maKsztaltKryterium)
+  );
+}
+
+/**
+ * Kryterium niesie pola addytywne karty W3-B (`kody_gotowosci`, `slad`) ZAWSZE —
+ * kontrakt `KryteriumDoboru.to_dict` (`domain/dobor_przekladnika.py`). Odpowiedź
+ * bez nich (dryf atrapy albo starsza wersja API) wywracała CAŁĄ kartę gotowości
+ * wytwórcy (`kryterium.slad.length` na `undefined` — biały ekran w harnessie
+ * scen, E2E-FULL-FIX-3, 2026-09-10); teraz jest nazwanym błędem kształtu sekcji.
+ */
+function maKsztaltKryterium(wartosc: unknown): boolean {
+  if (typeof wartosc !== 'object' || wartosc === null) return false;
+  const kryterium = wartosc as Record<string, unknown>;
+  return (
+    typeof kryterium.kod === 'string'
+    && Array.isArray(kryterium.kody_gotowosci)
+    && Array.isArray(kryterium.slad)
+  );
 }
 
 export function werdyktPl(werdykt: WerdyktKryterium): string {

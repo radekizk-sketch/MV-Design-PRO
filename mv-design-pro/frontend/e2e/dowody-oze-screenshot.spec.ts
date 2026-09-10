@@ -20,6 +20,7 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
+import { zbierajNieudaneZadaniaApi } from './nieudaneZadaniaApi';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('creator-harness.html');
@@ -35,6 +36,7 @@ function zbierajBledy(page: Page): string[] {
     if (m.type() === 'error' && !szum(m.text())) errs.push(m.text());
   });
   page.on('pageerror', (e) => errs.push(`PAGEERROR: ${e.message}`));
+  zbierajNieudaneZadaniaApi(page, errs);
   return errs;
 }
 
@@ -173,17 +175,36 @@ test.describe('dowody-oze:screenshot', () => {
       const errs = zbierajBledy(page);
       await otworzScene(page, 'macierz', theme);
 
+      // Sekcja zgodności przekrojowej (W3-D) MUSI dojechać z werdyktami per moduł —
+      // atrapa liczona z backendu (`scripts/eksport_fixtur_harnessu.py`), nie 404
+      // realnego backendu (E2E-FULL-FIX-3: dawny zrzut niósł „Nie udało się…").
+      await expect(page.getByTestId('mvd-oze-zgodnosc-przekrojowa-wiersz')).toHaveCount(2);
+      await expect(page.getByTestId('mvd-oze-zgodnosc-przekrojowa-blad')).toHaveCount(0);
+
+      // Bieg idzie do REALNEGO solvera (E2E-FULL-FIX-3). Odbudowa P po zakłóceniu
+      // to dana DEKLAROWANA przez projektanta w panelu modułu (nie z katalogu):
+      // wpis 1,8 s dla magazynu natywnie w polu panelu — profil operatora wymaga
+      // ≤ 1,0 s, więc T16 magazynu jest niespełniony, z otwartym śladem.
+      await page.getByTestId('mvd-oze-modul-bess-1').click();
+      const odbudowaP = page.getByTestId('mvd-oze-param-pRecoveryTimeS');
+      await odbudowaP.fill('1.8');
+      await expect(odbudowaP).toHaveValue('1.8');
+
       // Jawny bieg testów zgodności (przycisk aktywny — moduły kompletne).
       const przeprowadz = page.getByTestId('mvd-oze-przeprowadz');
       await expect(przeprowadz).toBeEnabled();
       await przeprowadz.click();
 
       // Macierz wypełniona werdyktami z odpowiedzi solvera (pass/fail/no_data).
-      await expect(page.getByTestId('mvd-oze-komorka-wynik').first()).toBeVisible();
+      await expect(page.getByTestId('mvd-oze-komorka-wynik').first()).toBeVisible({ timeout: 20000 });
       const tabela = page.getByTestId('mvd-oze-macierz-tabela');
       await expect(tabela).toContainText('LVRT - pozostanie w pracy przy zapadzie napięcia');
+      // Magazyn: niezgodny (T16); instalacja PV: brak danych (T05/T11/T15 bez
+      // deklaracji) — realny solver, nie ręczna atrapa z werdyktem „zgodny".
+      await expect(page.getByTestId('mvd-oze-podsum-modul-klasa-bess-1')).toContainText('B');
+      await expect(page.getByTestId('mvd-oze-podsum-modul-klasa-pv-1')).toContainText('B');
       await expect(page.getByTestId('mvd-oze-podsum-moduly')).toContainText('niezgodny');
-      await expect(page.getByTestId('mvd-oze-podsum-moduly')).toContainText('zgodny');
+      await expect(page.getByTestId('mvd-oze-podsum-moduly')).toContainText('brak danych');
 
       // Klik komórki „niespełniony" (T16 × BESS) → szczegół werdyktu + ślad.
       await page

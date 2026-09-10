@@ -1,0 +1,251 @@
+{
+  "case_id": "case-demo",
+  "operator_id": "enea",
+  "der_count": 2,
+  "reports": [
+    {
+      "operator_id": "enea",
+      "operator_name_pl": "Enea Operator",
+      "der_ref": "bess-1",
+      "module_type": "B",
+      "p_max_kw": 1500.0,
+      "voltage_kv": 15.0,
+      "test_results": [
+        {
+          "test_id": "T1",
+          "test_name_pl": "Test LVRT",
+          "verdict": "no_data",
+          "message_pl": "Brak krzywej LVRT — wymagane do testu RMS."
+        },
+        {
+          "test_id": "T2",
+          "test_name_pl": "Test HVRT",
+          "verdict": "no_data",
+          "message_pl": "Brak krzywej HVRT — wymagane do testu RMS."
+        },
+        {
+          "test_id": "T3",
+          "test_name_pl": "Test P(f) droop",
+          "verdict": "fail",
+          "message_pl": "Brak konfiguracji droop P(f) — wymagane dla modułów B/C/D."
+        },
+        {
+          "test_id": "T4",
+          "test_name_pl": "Test Q(U)",
+          "verdict": "fail",
+          "message_pl": "Brak krzywej Q(U) — wymagane dla pracy w trybie q_of_u."
+        },
+        {
+          "test_id": "T5",
+          "test_name_pl": "Test cos φ stały",
+          "verdict": "no_data",
+          "message_pl": "Brak danych cos φ."
+        },
+        {
+          "test_id": "T6",
+          "test_name_pl": "Test ramp rate",
+          "verdict": "no_data",
+          "message_pl": "Test wymaga dodatkowych danych konfiguracyjnych."
+        },
+        {
+          "test_id": "T7",
+          "test_name_pl": "Test dead-band częstotliwości",
+          "verdict": "no_data",
+          "message_pl": "Test wymaga dodatkowych danych konfiguracyjnych."
+        },
+        {
+          "test_id": "T8",
+          "test_name_pl": "Test stabilności małosygnałowej",
+          "verdict": "no_module",
+          "message_pl": "Pełen testbench RMS dla testów dynamicznych (T1/T2/T16/T17/T18) wymaga solvera FrtHvrtSolverAdapter (PR-16-impl). Static rules (T3-T15) są implementowane teraz."
+        },
+        {
+          "test_id": "T9",
+          "test_name_pl": "Test pracy wyspowej",
+          "verdict": "no_data",
+          "message_pl": "Test wymaga dodatkowych danych konfiguracyjnych."
+        },
+        {
+          "test_id": "T10",
+          "test_name_pl": "Test odzysku mocy czynnej",
+          "verdict": "no_module",
+          "message_pl": "Pełen testbench RMS dla testów dynamicznych (T1/T2/T16/T17/T18) wymaga solvera FrtHvrtSolverAdapter (PR-16-impl). Static rules (T3-T15) są implementowane teraz."
+        },
+        {
+          "test_id": "T11",
+          "test_name_pl": "Test prądu biernego podczas FRT",
+          "verdict": "no_module",
+          "message_pl": "Pełen testbench RMS dla testów dynamicznych (T1/T2/T16/T17/T18) wymaga solvera FrtHvrtSolverAdapter (PR-16-impl). Static rules (T3-T15) są implementowane teraz."
+        },
+        {
+          "test_id": "T12",
+          "test_name_pl": "Test ograniczenia mocy",
+          "verdict": "no_data",
+          "message_pl": "Test wymaga dodatkowych danych konfiguracyjnych."
+        },
+        {
+          "test_id": "T13",
+          "test_name_pl": "Test zakresu U/Q",
+          "verdict": "no_data",
+          "message_pl": "Test wymaga dodatkowych danych konfiguracyjnych."
+        },
+        {
+          "test_id": "T14",
+          "test_name_pl": "Test SCADA operatora",
+          "verdict": "fail",
+          "message_pl": "Brak komunikacji SCADA z operatorem."
+        },
+        {
+          "test_id": "T15",
+          "test_name_pl": "Test rejestracji zakłóceń",
+          "verdict": "fail",
+          "message_pl": "Brak rejestratora zakłóceń."
+        },
+        {
+          "test_id": "T16",
+          "test_name_pl": "Test FRT 3F",
+          "verdict": "no_module",
+          "message_pl": "Pełen testbench RMS dla testów dynamicznych (T1/T2/T16/T17/T18) wymaga solvera FrtHvrtSolverAdapter (PR-16-impl). Static rules (T3-T15) są implementowane teraz."
+        },
+        {
+          "test_id": "T17",
+          "test_name_pl": "Test FRT 1F",
+          "verdict": "no_module",
+          "message_pl": "Pełen testbench RMS dla testów dynamicznych (T1/T2/T16/T17/T18) wymaga solvera FrtHvrtSolverAdapter (PR-16-impl). Static rules (T3-T15) są implementowane teraz."
+        },
+        {
+          "test_id": "T18",
+          "test_name_pl": "Test harmonicznych",
+          "verdict": "no_module",
+          "message_pl": "Pełen testbench RMS dla testów dynamicznych (T1/T2/T16/T17/T18) wymaga solvera FrtHvrtSolverAdapter (PR-16-impl). Static rules (T3-T15) są implementowane teraz."
+        }
+      ],
+      "overall_pass": false,
+      "total_tests": 18,
+      "passed_count": 0,
+      "no_module_count": 6
+    },
+    {
+      "operator_id": "enea",
+      "operator_name_pl": "Enea Operator",
+      "der_ref": "pv-1",
+      "module_type": "B",
+      "p_max_kw": 1935.0,
+      "voltage_kv": 15.0,
+      "test_results": [
+        {
+          "test_id": "T1",
+          "test_name_pl": "Test LVRT",
+          "verdict": "pass",
+          "message_pl": "DER pozostał w pracy podczas LVRT (margin 0.000 p.u.)."
+        },
+        {
+          "test_id": "T2",
+          "test_name_pl": "Test HVRT",
+          "verdict": "no_data",
+          "message_pl": "Brak krzywej HVRT — wymagane do testu RMS."
+        },
+        {
+          "test_id": "T3",
+          "test_name_pl": "Test P(f) droop",
+          "verdict": "fail",
+          "message_pl": "Brak konfiguracji droop P(f) — wymagane dla modułów B/C/D."
+        },
+        {
+          "test_id": "T4",
+          "test_name_pl": "Test Q(U)",
+          "verdict": "fail",
+          "message_pl": "Brak krzywej Q(U) — wymagane dla pracy w trybie q_of_u."
+        },
+        {
+          "test_id": "T5",
+          "test_name_pl": "Test cos φ stały",
+          "verdict": "no_data",
+          "message_pl": "Brak danych cos φ."
+        },
+        {
+          "test_id": "T6",
+          "test_name_pl": "Test ramp rate",
+          "verdict": "no_data",
+          "message_pl": "Test wymaga dodatkowych danych konfiguracyjnych."
+        },
+        {
+          "test_id": "T7",
+          "test_name_pl": "Test dead-band częstotliwości",
+          "verdict": "no_data",
+          "message_pl": "Test wymaga dodatkowych danych konfiguracyjnych."
+        },
+        {
+          "test_id": "T8",
+          "test_name_pl": "Test stabilności małosygnałowej",
+          "verdict": "no_module",
+          "message_pl": "Pełen testbench RMS dla testów dynamicznych (T1/T2/T16/T17/T18) wymaga solvera FrtHvrtSolverAdapter (PR-16-impl). Static rules (T3-T15) są implementowane teraz."
+        },
+        {
+          "test_id": "T9",
+          "test_name_pl": "Test pracy wyspowej",
+          "verdict": "no_data",
+          "message_pl": "Test wymaga dodatkowych danych konfiguracyjnych."
+        },
+        {
+          "test_id": "T10",
+          "test_name_pl": "Test odzysku mocy czynnej",
+          "verdict": "no_module",
+          "message_pl": "Pełen testbench RMS dla testów dynamicznych (T1/T2/T16/T17/T18) wymaga solvera FrtHvrtSolverAdapter (PR-16-impl). Static rules (T3-T15) są implementowane teraz."
+        },
+        {
+          "test_id": "T11",
+          "test_name_pl": "Test prądu biernego podczas FRT",
+          "verdict": "no_module",
+          "message_pl": "Pełen testbench RMS dla testów dynamicznych (T1/T2/T16/T17/T18) wymaga solvera FrtHvrtSolverAdapter (PR-16-impl). Static rules (T3-T15) są implementowane teraz."
+        },
+        {
+          "test_id": "T12",
+          "test_name_pl": "Test ograniczenia mocy",
+          "verdict": "no_data",
+          "message_pl": "Test wymaga dodatkowych danych konfiguracyjnych."
+        },
+        {
+          "test_id": "T13",
+          "test_name_pl": "Test zakresu U/Q",
+          "verdict": "no_data",
+          "message_pl": "Test wymaga dodatkowych danych konfiguracyjnych."
+        },
+        {
+          "test_id": "T14",
+          "test_name_pl": "Test SCADA operatora",
+          "verdict": "fail",
+          "message_pl": "Brak komunikacji SCADA z operatorem."
+        },
+        {
+          "test_id": "T15",
+          "test_name_pl": "Test rejestracji zakłóceń",
+          "verdict": "fail",
+          "message_pl": "Brak rejestratora zakłóceń."
+        },
+        {
+          "test_id": "T16",
+          "test_name_pl": "Test FRT 3F",
+          "verdict": "no_module",
+          "message_pl": "Pełen testbench RMS dla testów dynamicznych (T1/T2/T16/T17/T18) wymaga solvera FrtHvrtSolverAdapter (PR-16-impl). Static rules (T3-T15) są implementowane teraz."
+        },
+        {
+          "test_id": "T17",
+          "test_name_pl": "Test FRT 1F",
+          "verdict": "no_module",
+          "message_pl": "Pełen testbench RMS dla testów dynamicznych (T1/T2/T16/T17/T18) wymaga solvera FrtHvrtSolverAdapter (PR-16-impl). Static rules (T3-T15) są implementowane teraz."
+        },
+        {
+          "test_id": "T18",
+          "test_name_pl": "Test harmonicznych",
+          "verdict": "no_module",
+          "message_pl": "Pełen testbench RMS dla testów dynamicznych (T1/T2/T16/T17/T18) wymaga solvera FrtHvrtSolverAdapter (PR-16-impl). Static rules (T3-T15) są implementowane teraz."
+        }
+      ],
+      "overall_pass": false,
+      "total_tests": 18,
+      "passed_count": 1,
+      "no_module_count": 6
+    }
+  ]
+}

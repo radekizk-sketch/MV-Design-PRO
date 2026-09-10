@@ -10,6 +10,7 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
+import { zbierajNieudaneZadaniaApi } from './nieudaneZadaniaApi';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('creator-harness.html');
@@ -33,6 +34,7 @@ test.describe('kreatory:screenshot', () => {
           if (msg.type() === 'error' && !isNoise(msg.text())) consoleErrors.push(msg.text());
         });
         page.on('pageerror', (err) => consoleErrors.push(`PAGEERROR: ${err.message}`));
+        zbierajNieudaneZadaniaApi(page, consoleErrors);
 
         await page.setViewportSize({ width: 1220, height: 900 });
         await page.goto(`${HARNESS_URL}?creator=${creator}&theme=${theme}`, {
@@ -79,6 +81,7 @@ test.describe('kreatory:screenshot', () => {
         if (m.type() === 'error' && !isNoise(m.text())) errs.push(m.text());
       });
       page.on('pageerror', (e) => errs.push(`PAGEERROR: ${e.message}`));
+      zbierajNieudaneZadaniaApi(page, errs);
 
       await page.setViewportSize({ width: 1220, height: 900 });
       await page.goto(`${HARNESS_URL}?creator=oze&theme=${theme}`, {
@@ -173,6 +176,7 @@ test.describe('kreatory:screenshot', () => {
         if (m.type() === 'error' && !isNoise(m.text())) errs.push(m.text());
       });
       page.on('pageerror', (e) => errs.push(`PAGEERROR: ${e.message}`));
+      zbierajNieudaneZadaniaApi(page, errs);
 
       await page.setViewportSize({ width: 1220, height: 900 });
       await page.goto(`${HARNESS_URL}?creator=transformator&theme=${theme}`, {
@@ -212,6 +216,7 @@ test.describe('kreatory:screenshot', () => {
           if (m.type() === 'error' && !isNoise(m.text())) errs.push(m.text());
         });
         page.on('pageerror', (e) => errs.push(`PAGEERROR: ${e.message}`));
+        zbierajNieudaneZadaniaApi(page, errs);
 
         await page.setViewportSize({ width: 1220, height: 900 });
         await page.goto(`${HARNESS_URL}?creator=${c}&theme=${theme}`, {
@@ -272,6 +277,7 @@ test.describe('kreatory:screenshot', () => {
       if (m.type() === 'error' && !isNoise(m.text())) errs.push(m.text());
     });
     page.on('pageerror', (e) => errs.push(`PAGEERROR: ${e.message}`));
+    zbierajNieudaneZadaniaApi(page, errs);
 
     const tloPanelu = async (theme: string): Promise<{ panel: string; token: string }> => {
       await page.goto(`${HARNESS_URL}?creator=wiazania&theme=${theme}`, {
@@ -402,6 +408,7 @@ test.describe('kreatory:screenshot', () => {
         if (m.type() === 'error' && !isNoise(m.text())) errs.push(m.text());
       });
       page.on('pageerror', (e) => errs.push(`PAGEERROR: ${e.message}`));
+      zbierajNieudaneZadaniaApi(page, errs);
 
       await page.setViewportSize({ width: widok.width, height: widok.height });
       await page.goto(`${HARNESS_URL}?creator=wiazania&theme=dark`, {
@@ -522,6 +529,7 @@ test.describe('kreatory:screenshot', () => {
           if (m.type() === 'error' && !isNoise(m.text())) errs.push(m.text());
         });
         page.on('pageerror', (e) => errs.push(`PAGEERROR: ${e.message}`));
+        zbierajNieudaneZadaniaApi(page, errs);
 
         await page.setViewportSize({ width: 1220, height: 900 });
         await page.goto(`${HARNESS_URL}?creator=${c}&theme=${theme}`, {

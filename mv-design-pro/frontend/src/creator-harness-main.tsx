@@ -69,6 +69,11 @@ import { WynikiWarsztat } from './ui2/spaces/wyniki/WynikiWarsztat';
 // (ta sama fixtura, na ktorej stoi straznik prezentacji) - zrzut pokazuje
 // dokladnie to, co zobaczy projektant, a nie wyidealizowana atrape.
 import odpowiedziV126 from './ui2/wyniki/akademickie/__tests__/odpowiedziSolvera.json';
+// E2E-FULL-FIX-3 (2026-09-10): atrapy końcówek czytających STAN przypadku (committed
+// ENM, rejestr przebiegów) liczy BACKEND — `scripts/eksport_fixtur_harnessu.py` tymi
+// samymi funkcjami, co trasy; JSON w repo pilnuje `tests/ci/test_fixtury_harnessu.py`.
+import zgodnoscPrzekrojowaScenyMacierz from './harness-fixtures/generated/ncrfg_zgodnosc_przekrojowa_scena_macierz.json';
+import werdyktProjektowyScenyUwaga from './harness-fixtures/generated/werdykt_projektowy_scena_uwaga.json';
 import { SekcjaSilySieci } from './ui2/oze/pulpit';
 import { EkranRozplywu } from './ui2/wyniki/rozplyw';
 import { EkranZwarc } from './ui2/wyniki/zwarcia';
@@ -86,6 +91,7 @@ import {
   EMPTY_DER_CATALOGS,
   EMPTY_DER_PROFILES,
   EMPTY_DER_READINESS,
+  selectAllDers,
   useStationDerStore,
   type StationDerConnection,
 } from './ui/network-build/station-der';
@@ -767,6 +773,10 @@ const DOBOR_PRZEKLADNIKOW_WIAZANIA = {
           komentarz_pl:
             'Prąd roboczy przekracza prąd pierwotny — przekładnik pracowałby w '
             + 'przeciążeniu, a pomiar byłby zafałszowany.',
+          // Karta W3-B: pola addytywne kontraktu `KryteriumDoboru.to_dict` (kody gotowosci
+          // z jadra `ct_burden_saturation` + slad WHITE BOX) — puste dla kryteriow bez wlasnego jadra.
+          kody_gotowosci: [],
+          slad: [],
         },
         {
           kod: 'ct.rodzaj_rdzenia',
@@ -777,6 +787,10 @@ const DOBOR_PRZEKLADNIKOW_WIAZANIA = {
           wymagane: 'rdzeń zabezpieczeniowy (klasa z literą P)',
           dostepne: '5P10',
           komentarz_pl: null,
+          // Karta W3-B: pola addytywne kontraktu `KryteriumDoboru.to_dict` (kody gotowosci
+          // z jadra `ct_burden_saturation` + slad WHITE BOX) — puste dla kryteriow bez wlasnego jadra.
+          kody_gotowosci: [],
+          slad: [],
         },
         {
           kod: 'ct.wytrzymalosc_cieplna',
@@ -787,6 +801,10 @@ const DOBOR_PRZEKLADNIKOW_WIAZANIA = {
           dostepne: '20.0 kA / 1 s',
           komentarz_pl:
             'Brakuje prądu zwarciowego, czasu jego trwania albo prądu cieplnego przekładnika.',
+          // Karta W3-B: pola addytywne kontraktu `KryteriumDoboru.to_dict` (kody gotowosci
+          // z jadra `ct_burden_saturation` + slad WHITE BOX) — puste dla kryteriow bez wlasnego jadra.
+          kody_gotowosci: [],
+          slad: [],
         },
       ],
       dobor_potwierdzony: false,
@@ -817,6 +835,18 @@ const RUN_KONTRAKT_SCENY: Record<string, string> = {
 };
 
 const originalFetch = window.fetch.bind(window);
+/**
+ * Konfiguracja zabezpieczeń przypadku zasiewu (`GET`/`PUT /api/study-cases/{id}/
+ * protection-config`, P14c) — stan atrapy trzymany jak w backendzie (zapis widoczny
+ * w kolejnym odczycie), kształt 1:1 z `domain/study_case.py::ProtectionConfig.to_dict`.
+ */
+let konfiguracjaZabezpieczenPrzypadku: Record<string, unknown> = {
+  template_ref: null,
+  template_fingerprint: null,
+  library_manifest_ref: null,
+  overrides: {},
+  bound_at: null,
+};
 /**
  * Slad WHITE BOX sceny "akademickie" (V126-JEZYK) - ksztalt 1:1 z krokiem
  * `TraceBuilder.add` po naprawie u zrodla: kolumna "Wynik" niesie POLSKA
@@ -2904,110 +2934,40 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   // (krok zgodności czyta `ride_through`). Katalog jest bezstanowy i deterministyczny,
   // więc druga prawda w harnessie nie ma uzasadnienia — backend jest jedynym źródłem.
   if (url.includes('/api/ncrfg-tests/run')) {
-    // Scena "macierz": wynik biegu zgodnosci — ksztalt 1:1 z
-    // `NcRfgPtpireeSolver.run` (engine.py): moduly (kolejnosc = selectAllDers,
-    // sort po id: bess-1, pv-1), werdykty z `_ok_fail`/`_missing`, slad
-    // `TraceBuilder.add` (Wzor -> Dane -> Podstawienie -> Wynik -> jednostki).
-    // Liczby spojne miedzy krokami: T16 BESS 1.800 s > 1.000 s -> fail.
-    // Podsumowania testow 1:1 z formatami silnika: `_active_power_control`,
-    // `_reactive_voltage_test`, `_pmax_pmin_test`, `_p_recovery_test` — liczby
-    // wyliczone z mocy modulu (Pn 500/800 kW, ramp 10 %/min, zakres Q ±33% Pn).
-    const testyBazowe = (pMaxKw: number) => [
-      { test_id: 'T05', ability_pl: 'Możliwość regulacji mocy czynnej', required: true, required_reason_pl: 'Wymagany dla modułu typu B.', verdict: 'pass', summary_pl: 'Regulacja P do 50% PMAX: czas ustalenia 5.0 min.', metrics: { settling_time_min: 5.0 }, trace_refs: [], fix_actions: [] },
-      { test_id: 'T09', ability_pl: 'Zdolność do generacji mocy biernej', required: true, required_reason_pl: 'Wymagany dla modułu typu B.', verdict: 'pass', summary_pl: `Zakres Q: ${(-0.33 * pMaxKw).toFixed(1)} do ${(0.33 * pMaxKw).toFixed(1)} kvar.`, metrics: { q_min_kvar: -0.33 * pMaxKw, q_max_kvar: 0.33 * pMaxKw }, trace_refs: [], fix_actions: [] },
-      { test_id: 'T10', ability_pl: 'Potwierdzenie mocy maksymalnej PMAX', required: true, required_reason_pl: 'Wymagany dla modułu typu B.', verdict: 'pass', summary_pl: `PMAX potwierdzone z danych katalogowych/deklaracji: ${pMaxKw.toFixed(1)} kW.`, metrics: { pmax_kw: pMaxKw }, trace_refs: [], fix_actions: [] },
-    ];
-    return new Response(
-      JSON.stringify({
-        contract: 'NcRfgPtpireeTestResultV1',
-        procedure_version: 'PTPiREE Procedura testowania v3.0',
-        solver_version: 'ncrfg-ptpiree-1.0.0',
-        input_hash: 'ncrfg-in-4f2a9c1d',
-        deterministic_hash: 'ncrfg-det-7b3e5a90',
-        modules: [
-          {
-            der_ref: 'bess-1', der_name: 'Magazyn energii 0,8 MW', operator_id: 'enea',
-            operator_name_pl: 'Enea Operator', module_type: 'B', module_family: 'PPM',
-            p_max_kw: 800, voltage_kv: 0.4,
-            required_count: 5, pass_count: 3, fail_count: 1, no_data_count: 1,
-            not_required_count: 0, overall_status: 'niezgodny',
-            tests: [
-              ...testyBazowe(800),
-              {
-                test_id: 'T14', ability_pl: 'LVRT - pozostanie w pracy przy zapadzie napięcia',
-                required: true, required_reason_pl: 'Wymagany dla modułu typu B.', verdict: 'no_data',
-                summary_pl: 'Brak krzywej FRT/HVRT, profilu operatora albo modelu dynamicznego.',
-                metrics: {}, trace_refs: [],
-                fix_actions: ['Brak krzywej FRT/HVRT, profilu operatora albo modelu dynamicznego.'],
-              },
-              {
-                test_id: 'T16', ability_pl: 'Odbudowa mocy czynnej po zakłóceniu', required: true,
-                required_reason_pl: 'Wymagany dla modułu typu B.', verdict: 'fail',
-                summary_pl: 'Odbudowa P po zakłóceniu: 1.800s.',
-                metrics: { p_recovery_time_s: 1.8 },
-                trace_refs: ['proof:ncrfg-ptpiree:T16:active_power_recovery:2'],
-                fix_actions: ['Uzupełnij nastawy odbudowy P po FRT lub model dynamiczny.'],
-              },
-            ],
-          },
-          {
-            der_ref: 'pv-1', der_name: 'Instalacja PV 0,5 MW', operator_id: 'enea',
-            operator_name_pl: 'Enea Operator', module_type: 'B', module_family: 'PPM',
-            p_max_kw: 500, voltage_kv: 0.4,
-            required_count: 5, pass_count: 5, fail_count: 0, no_data_count: 0,
-            not_required_count: 0, overall_status: 'zgodny',
-            tests: [
-              ...testyBazowe(500),
-              { test_id: 'T14', ability_pl: 'LVRT - pozostanie w pracy przy zapadzie napięcia', required: true, required_reason_pl: 'Wymagany dla modułu typu B.', verdict: 'pass', summary_pl: 'LVRT: margines 0.0 p.u. w punkcie 0.15s.', metrics: { margin_pu: 0.0, critical_time_s: 0.15 }, trace_refs: [], fix_actions: [] },
-              {
-                test_id: 'T16', ability_pl: 'Odbudowa mocy czynnej po zakłóceniu', required: true,
-                required_reason_pl: 'Wymagany dla modułu typu B.', verdict: 'pass',
-                summary_pl: 'Odbudowa P po zakłóceniu: 0.310s.',
-                metrics: { p_recovery_time_s: 0.31 },
-                trace_refs: ['proof:ncrfg-ptpiree:T16:active_power_recovery:1'], fix_actions: [],
-              },
-            ],
-          },
-        ],
-        // Dowod certyfikatu PTPiREE 1:1 z `NcRfgPtpireeRunResponse` (api):
-        // pv-1 z tabliczka urzadzenia, bess-1 bez (uczciwy stan zerowy, pola null).
-        certificate_evidence: [
-          { der_ref: 'bess-1', document_number: null, acceptance_date: null, wos_version: null, wipwc_version: null, ppm_scope: null, source_url: null },
-          { der_ref: 'pv-1', document_number: 'PTPiREE/WiPWC/3254/2025', acceptance_date: '2025-10-14', wos_version: 'WOS 2021', wipwc_version: '1.2', ppm_scope: 'moduł typu B', source_url: null },
-        ],
-        test_catalog: [
-          { test_id: 'T05', ability_pl: 'Możliwość regulacji mocy czynnej', procedure_basis_pl: 'Program ramowy testów PPM oraz sprawdzenia dodatkowe dla regulacji P.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
-          { test_id: 'T09', ability_pl: 'Zdolność do generacji mocy biernej', procedure_basis_pl: 'Zakres testów zgodności PPM typu B, C i D.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
-          { test_id: 'T10', ability_pl: 'Potwierdzenie mocy maksymalnej PMAX', procedure_basis_pl: 'Sprawdzenia dodatkowe procedury PTPiREE dla typu B, C i D.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
-          { test_id: 'T14', ability_pl: 'LVRT - pozostanie w pracy przy zapadzie napięcia', procedure_basis_pl: 'Test FRT dla modułów B/C/D oraz profili operatora.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
-          { test_id: 'T16', ability_pl: 'Odbudowa mocy czynnej po zakłóceniu', procedure_basis_pl: 'Wymaganie profilu operatora dla modułów B/C/D.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
-        ],
-        // Slad WHITE BOX 1:1 z `TraceBuilder.add` (`_p_recovery_test`):
-        // formula ASCII, dane, podstawienie, wynik, weryfikacja jednostek.
-        white_box_trace: [
-          {
-            step: 1, test_id: 'T16', key: 'active_power_recovery',
-            formula: 't_recovery,module <= t_recovery,profile',
-            data: { module_s: 0.31, profile_s: 1.0 },
-            substitution: '0.310 <= 1.000',
-            result: { ok: true, margin_s: 0.69 },
-            unit_check: 's - s = s.',
-            proof_ref: 'proof:ncrfg-ptpiree:T16:active_power_recovery:1',
-          },
-          {
-            step: 2, test_id: 'T16', key: 'active_power_recovery',
-            formula: 't_recovery,module <= t_recovery,profile',
-            data: { module_s: 1.8, profile_s: 1.0 },
-            substitution: '1.800 <= 1.000',
-            result: { ok: false, margin_s: -0.8 },
-            unit_check: 's - s = s.',
-            proof_ref: 'proof:ncrfg-ptpiree:T16:active_power_recovery:2',
-          },
-        ],
-        report_pl: 'Raport zgodności NC RfG (PTPiREE Procedura testowania v3.0): 1 moduł zgodny, 1 moduł niezgodny.',
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // Scena „macierz" (E2E-FULL-FIX-3, 2026-09-10): bieg NC RfG/PTPiREE idzie do
+    // REALNEGO solvera (bezstanowy i deterministyczny jak katalog wyżej). Dawna
+    // ręczna atrapa niosła klasę modułu B dla 0,8 MW przy 0,4 kV (progi OD-5:
+    // A < 1 MW) oraz werdykty dla danych, których scena nie wysyłała — trzeci
+    // dryf tej samej klasy co katalog. Parametr `case_id` jest ZDEJMOWANY: dopina
+    // on wyłącznie dowód certyfikatu z tabliczek modelu, a `case-demo` zasiewu nie
+    // istnieje w backendzie (404); bez przypadku backend odsyła dowód z pustymi
+    // polami (`dowody_certyfikatu(None, …)` — uczciwy stan zerowy).
+    return originalFetch('/api/ncrfg-tests/run', init);
+  }
+  if (url.includes('/api/ncrfg-tests/cases/') && url.includes('/compliance')) {
+    // Zgodność przekrojowa przypadku (W3-D) czyta committed ENM, którego harness nie
+    // ma — odpowiedź liczy `scripts/eksport_fixtur_harnessu.py` tym samym checkerem,
+    // co trasa `run_ncrfg_compliance_from_model`. Para predykatów (KLASA, NIE
+    // INSTANCJA): raporty MUSZĄ opisywać moduły zasiane w tej scenie — rozjazd
+    // ref/mocy/napięcia to odmowa 409 (łapie ją bramka „Nie udało się" specu),
+    // nie cicha atrapa z poprzedniego zasiewu.
+    const zasiane = selectAllDers(useStationDerStore.getState())
+      .map((der) => `${der.id}|${der.nominal_power_kw}|${der.connection_voltage_kv}`)
+      .sort();
+    const zAtrapy = zgodnoscPrzekrojowaScenyMacierz.reports
+      .map((raport) => `${raport.der_ref}|${raport.p_max_kw}|${raport.voltage_kv}`)
+      .sort();
+    if (zasiane.join(';') !== zAtrapy.join(';')) {
+      return new Response(
+        JSON.stringify({
+          detail:
+            `atrapa zgodności przekrojowej opisuje moduły [${zAtrapy.join(', ')}], scena zasiewa `
+            + `[${zasiane.join(', ')}] — uruchom scripts/eksport_fixtur_harnessu.py`,
+        }),
+        { status: 409, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    return jsonOK(zgodnoscPrzekrojowaScenyMacierz);
   }
   if (url.includes('/api/oze-analysis/lom-protection')) {
     // Scena "lom": ocena ochrony od pracy wyspowej — ksztalt 1:1 z
@@ -3406,6 +3366,34 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
+  }
+  if (url.includes('/api/quality/design-verdict')) {
+    // Werdykt projektowy (`build_werdykt_projektowy_view`) czyta rejestr przebiegów
+    // backendu, którego zasiew harnessu nie zna — odpowiedź policzona przez
+    // `scripts/eksport_fixtur_harnessu.py` tym samym agregatem, bez biegów:
+    // wszystkie kryteria „niesprawdzone", a rejestr „Co wymaga uwagi" bierze
+    // przekroczenia ze store'u rozpływu (`co-wymaga-uwagi/model.ts`). Bez atrapy
+    // zapytanie leciało do realnego backendu i wracało 404 przy każdym renderze.
+    return jsonOK(werdyktProjektowyScenyUwaga);
+  }
+  if (url.includes('/api/study-cases/') && url.endsWith('/protection-config')) {
+    // Konfiguracja zabezpieczeń przypadku (P14c) — scena „koordynacja" zapisuje
+    // urządzenia NATYWNYM klikiem (`zapiszUrzadzeniaKoordynacji` → PUT). Bez atrapy
+    // realny backend odpowiadał 400 dla `case-demo`, a zrzut do oceny niósł
+    // notyfikację „Błąd zapisu" po każdym zapisie. PUT zachowuje się jak
+    // `StudyCaseService.update_protection_config`: zapisana konfiguracja wraca
+    // w odpowiedzi i w kolejnym GET, `bound_at` tylko przy związaniu szablonu.
+    if ((init?.method ?? 'GET').toUpperCase() === 'PUT') {
+      const zadanie = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
+      konfiguracjaZabezpieczenPrzypadku = {
+        template_ref: zadanie.template_ref ?? null,
+        template_fingerprint: zadanie.template_fingerprint ?? null,
+        library_manifest_ref: zadanie.library_manifest_ref ?? null,
+        overrides: zadanie.overrides ?? {},
+        bound_at: zadanie.template_ref ? '2026-07-28T08:10:00+00:00' : null,
+      };
+    }
+    return jsonOK(konfiguracjaZabezpieczenPrzypadku);
   }
   return originalFetch(input as RequestInfo, init);
 }) as typeof window.fetch;
@@ -3853,17 +3841,28 @@ if (creator === 'arcflash') {
     activeProjectName: 'Przyłączenie farmy PV 8 MW',
     activeCaseName: 'Stan normalny',
   } as never);
+  // Zasiew (E2E-FULL-FIX-3, 2026-09-10): moduły klasy B wg progów OD-5 (1 MW / 50 MW),
+  // przyłączone transformatorem blokowym do szyny 15 kV stacji — dawne 0,8/0,5 MW
+  // przy 0,4 kV były klasą A, a ręczna atrapa biegu twierdziła „B". Moce = liczba
+  // jednostek × moc katalogowa (ABB PCS100 500 kW; Huawei SUN2000-215KTL 215 kW).
   useStationDerStore.setState({
     ders: {
       'bess-1': derDemo({
         id: 'bess-1',
         der_kind: 'BESS',
-        name: 'Magazyn energii 0,8 MW',
-        nominal_power_kw: 800,
+        name: 'Magazyn energii 1,5 MW',
+        connection_side: 'dedicated_transformer',
+        bus_przylaczenia_ref: 'st-demo__szyna-sn__15',
+        lv_busbar_ref: null,
+        transformer_ref: 'tr-blok-bess-1',
+        sn_connection_bus_ref: 'st-demo__szyna-sn__15',
+        sn_connection_point_kind: 'station_bus',
+        connection_voltage_kv: 15,
+        nominal_power_kw: 1500,
+        unit_count: 3,
         catalogs: {
           ...EMPTY_DER_CATALOGS,
-          // Karta FAB-L (§0 L6): dawne zmyślone `bess-pcs-800`/`bess-bat-1600`
-          // → realne identyfikatory katalogu backendu
+          // Karta FAB-L (§0 L6): realne identyfikatory katalogu backendu
           // (`GET /api/catalog/bess-inverter-types`, `.../bess-battery-types`).
           device_catalog_ref: 'bess_pcs_abb_500',
           battery_catalog_ref: 'bess_bat_lfp_2880kwh_1230vdc',
@@ -3873,14 +3872,21 @@ if (creator === 'arcflash') {
       'pv-1': derDemo({
         id: 'pv-1',
         der_kind: 'PV',
-        name: 'Instalacja PV 0,5 MW',
-        nominal_power_kw: 500,
+        name: 'Instalacja PV 1,9 MW',
+        connection_side: 'dedicated_transformer',
+        bus_przylaczenia_ref: 'st-demo__szyna-sn__15',
+        lv_busbar_ref: null,
+        transformer_ref: 'tr-blok-pv-1',
+        sn_connection_bus_ref: 'st-demo__szyna-sn__15',
+        sn_connection_point_kind: 'station_bus',
+        connection_voltage_kv: 15,
+        nominal_power_kw: 1935,
+        unit_count: 9,
         catalogs: {
           ...EMPTY_DER_CATALOGS,
-          // Karta FAB-L (§0 L6): dawne zmyślone `pv-falownik-500-ptpiree` /
-          // `WOŚ/2024/PV-500` / `dyn-grid-following-pv` → jedyny realny
-          // falownik PV z powiązanym certyfikatem PTPiREE w katalogu backendu
-          // (`GET /api/catalog/pv-inverter-types`) i realny profil dynamiczny.
+          // Karta FAB-L (§0 L6): jedyny realny falownik PV z powiązanym certyfikatem
+          // PTPiREE w katalogu backendu (`GET /api/catalog/pv-inverter-types`) i realny
+          // profil dynamiczny (`GET /api/catalog/der-dynamic-profiles`).
           device_catalog_ref: 'conv-pv-card-huawei-sun2000-215ktl',
           ptpiree_certificate_ref:
             'ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3',
@@ -4078,37 +4084,8 @@ if (creator === 'arcflash') {
     catalog_item_id: 'trafo-630-15-04',
   });
 } else if (creator === 'stacja') {
-  // KOMPLETNOSC-POLA-TR: kreator stacji SN/nN wstawianej w odcinek magistrali.
-  // Kontekst operacji = ten sam, który daje kanwa (świadomy podział odcinka).
-  useSnapshotStore.setState({
-    rewizjaBiezacegoModelu: 1,
-    snapshot: {
-      header: { name: 'Projekt demonstracyjny', revision: 1 },
-      substations: [{ ref_id: 'st-demo', name: 'GPZ-01', bus_refs: ['bus-sn-demo'] }],
-      transformers: [],
-      buses: [
-        { ref_id: 'bus-sn-demo', name: 'Szyna SN', voltage_kv: 15 },
-        { ref_id: 'bus-sn-koniec', name: 'Koniec ciągu', voltage_kv: 15 },
-      ],
-      branches: [
-        {
-          ref_id: 'seg-demo',
-          name: 'Odcinek magistrali',
-          type: 'cable',
-          from_bus_ref: 'bus-sn-demo',
-          to_bus_ref: 'bus-sn-koniec',
-          length_km: 1.2,
-        },
-      ],
-      sources: [],
-      loads: [],
-      bays: [],
-    },
-  } as never);
-  useNetworkBuildStore.getState().openOperationForm('insert_station_on_segment_sn' as never, {
-    segment_id: 'seg-demo',
-    position_on_segment: 0.5,
-  });
+  // Scena „stacja" zasiewa REALNY przypadek w backendzie biegu — patrz
+  // `zasiejSceneStacji` niżej (zasiew asynchroniczny przed montażem).
 } else if (creator === 'edycja-parametrow') {
   // Karta Z-2: ekspercki override parametru istniejącego elementu (transformator demo).
   useNetworkBuildStore.getState().openOperationForm('update_element_parameters' as never, {
@@ -4367,8 +4344,100 @@ function Harness() {
   );
 }
 
-createRoot(document.getElementById('root')!).render(
-  <QueryClientProvider client={queryClient}>
-    <Harness />
-  </QueryClientProvider>,
+/**
+ * Scena „stacja" (E2E-FULL-FIX-3, 2026-09-10): kreator stacji SN/nN woła TĘ SAMĄ
+ * operację domenową co zapis z flagą `dry_run` (`pobierzPodgladStacji`) przy każdej
+ * zmianie formularza, a werdykt walidatora backendu trafia do nagłówka kroku pól
+ * (`statusKonfiguracji`). Zasiew `case-demo` nie istnieje w backendzie, więc realny
+ * backend odpowiadał 404 „Przypadek case-demo nie należy do żadnego projektu", a
+ * zrzuty do oceny (`mini-rmu-podglad`, `kreator-stacji-pole-tr`) niosły werdykt
+ * INVALID z tym komunikatem. Atrapa werdyktu byłaby fabrykacją (walidator nie ma
+ * prawa żyć w UI), dlatego scena buduje REALNY przypadek tą samą drogą co projektant
+ * i testy krytyczne (`critical-run-flow.spec.ts`): projekt → przypadek → GPZ →
+ * odcinek magistrali (1,2 km kabla) → kontekst „wstaw stację w odcinek" wskazujący
+ * realny odcinek z migawki backendu.
+ */
+async function zasiejSceneStacji(): Promise<void> {
+  const naglowki = { 'Content-Type': 'application/json' };
+  const projektOdp = await originalFetch('/api/projects', {
+    method: 'POST',
+    headers: naglowki,
+    body: JSON.stringify({
+      name: 'Harness — kreator stacji SN/nN',
+      description: 'Scena harnessu: stacja wstawiana w odcinek magistrali',
+      mode: 'TO-BE',
+      voltage_level_kv: 15,
+      frequency_hz: 50,
+    }),
+  });
+  if (!projektOdp.ok) throw new Error(`POST /api/projects → ${projektOdp.status}`);
+  const projekt = (await projektOdp.json()) as { id: string };
+  const przypadekOdp = await originalFetch('/api/study-cases', {
+    method: 'POST',
+    headers: naglowki,
+    body: JSON.stringify({
+      project_id: projekt.id,
+      name: 'Stan normalny',
+      description: '',
+      config: {},
+      set_active: true,
+    }),
+  });
+  if (!przypadekOdp.ok) throw new Error(`POST /api/study-cases → ${przypadekOdp.status}`);
+  const przypadek = (await przypadekOdp.json()) as { id: string };
+
+  const wiazanie = (przestrzen: string, pozycja: string) => ({
+    catalog_namespace: przestrzen,
+    catalog_item_id: pozycja,
+    catalog_item_version: '2024.1',
+  });
+  const wykonaj = useSnapshotStore.getState().executeDomainOperation;
+  const gpz = await wykonaj(przypadek.id, 'add_grid_source_sn', {
+    voltage_kv: 15,
+    sk3_mva: 250,
+    rx_ratio: 0.1,
+    catalog_binding: wiazanie('ZRODLO_SN', 'src-gpz-15kv-250mva-rx010'),
+    hv_voltage_kv: 110,
+    transformer_sn_mva: 25,
+  });
+  if (!gpz || gpz.error) throw new Error(`add_grid_source_sn: ${gpz?.error ?? 'brak odpowiedzi'}`);
+  const odcinek = await wykonaj(przypadek.id, 'continue_trunk_segment_sn', {
+    segment: {
+      rodzaj: 'KABEL',
+      dlugosc_m: 1200,
+      name: 'Odcinek magistrali',
+      catalog_binding: wiazanie('KABEL_SN', 'cable-tfk-yakxs-3x120'),
+    },
+  });
+  if (!odcinek || odcinek.error) {
+    throw new Error(`continue_trunk_segment_sn: ${odcinek?.error ?? 'brak odpowiedzi'}`);
+  }
+  const odcinki = odcinek.snapshot?.corridors?.[0]?.ordered_segment_refs ?? [];
+  const segmentRef = odcinki[odcinki.length - 1];
+  if (!segmentRef) throw new Error('backend nie zwrócił odcinka magistrali w migawce');
+
+  useAppStateStore.getState().setActiveProject(projekt.id, 'Harness — kreator stacji SN/nN');
+  useAppStateStore.getState().setActiveCase(przypadek.id, 'Stan normalny', null, 'NONE');
+  // Kontekst operacji = ten sam, który daje kanwa (świadomy podział odcinka).
+  useNetworkBuildStore.getState().openOperationForm('insert_station_on_segment_sn' as never, {
+    segment_id: segmentRef,
+    position_on_segment: 0.5,
+  });
+}
+
+const zasiewSceny: Promise<void> = creator === 'stacja' ? zasiejSceneStacji() : Promise.resolve();
+zasiewSceny.then(
+  () => {
+    createRoot(document.getElementById('root')!).render(
+      <QueryClientProvider client={queryClient}>
+        <Harness />
+      </QueryClientProvider>,
+    );
+  },
+  (blad: unknown) => {
+    // Bez korzenia `creator-harness-root` spec zatrzymuje się na bramce gotowości
+    // z NAZWANĄ przyczyną zamiast zrzucać scenę bez zasiewu.
+    document.getElementById('root')!.textContent =
+      `Zasiew sceny „${creator}" nie powiódł się: ${blad instanceof Error ? blad.message : String(blad)}`;
+  },
 );

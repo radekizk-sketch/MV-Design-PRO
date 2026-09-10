@@ -207,6 +207,26 @@ describe('DoborPrzekladnikowSekcja — rachunek zamiast nazwy katalogowej', () =
     const blad = await screen.findByTestId('dobor-blad');
     expect(blad.textContent).toContain('nieoczekiwany kształt');
   });
+
+  it('kryterium bez pól karty W3-B (kody_gotowosci, slad) to nazwany błąd kształtu, nie biały ekran', async () => {
+    // KLASA (E2E-FULL-FIX-3, 2026-09-10): atrapa harnessu sprzed W3-B nie niosła
+    // `kody_gotowosci`/`slad`; `kryterium.slad.length` na `undefined` wywracało całą
+    // kartę gotowości wytwórcy. Kształt kryterium jest SPRAWDZANY, nie zakładany.
+    const kryteriaBezPolW3B = ODPOWIEDZ.przekladnik_pradowy.wynik.kryteria.map(
+      ({ kody_gotowosci: _kody, slad: _slad, ...reszta }) => reszta,
+    );
+    zamontuj({
+      ...ODPOWIEDZ,
+      przekladnik_pradowy: {
+        ...ODPOWIEDZ.przekladnik_pradowy,
+        wynik: { ...ODPOWIEDZ.przekladnik_pradowy.wynik, kryteria: kryteriaBezPolW3B },
+      },
+    });
+    render(<DoborPrzekladnikowSekcja derId="DER-1" projectId="PRJ-1" caseId="CASE-1" />);
+    const blad = await screen.findByTestId('dobor-blad');
+    expect(blad.textContent).toContain('nieoczekiwany kształt');
+    expect(screen.queryByTestId('dobor-przekladnik-pradowy')).toBeNull();
+  });
 });
 
 describe('DoborPrzekladnikowSekcja — karta W3-B: kody gotowości i ślad jądra', () => {
