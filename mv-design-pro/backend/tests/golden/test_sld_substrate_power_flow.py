@@ -27,7 +27,7 @@ from __future__ import annotations
 import uuid
 
 import pytest
-from enm.models import Bus, Cable, EnergyNetworkModel, ENMHeader, Load, Source
+from enm.models import Bus, Cable, EnergyNetworkModel, ENMHeader, Load, PortRef, Source
 from enm.scenariusze import OperatingScenario
 from network_model.solvers.power_flow_newton import solve_power_flow_physics
 
@@ -124,6 +124,8 @@ def test_energized_and_de_energized_partition() -> None:
                 name="b1-b2",
                 from_bus_ref="b1",
                 to_bus_ref="b2",
+                endpoint_a_port=PortRef(port_id="b1:sn"),
+                endpoint_b_port=PortRef(port_id="b2:sn"),
                 length_km=0.2,
                 r_ohm_per_km=0.2,
                 x_ohm_per_km=0.1,
@@ -134,6 +136,8 @@ def test_energized_and_de_energized_partition() -> None:
                 name="b2-b3 (NO)",
                 from_bus_ref="b2",
                 to_bus_ref="b3",
+                endpoint_a_port=PortRef(port_id="b2:sn"),
+                endpoint_b_port=PortRef(port_id="b3:sn"),
                 length_km=0.2,
                 r_ohm_per_km=0.2,
                 x_ohm_per_km=0.1,

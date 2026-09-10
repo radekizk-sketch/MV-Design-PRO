@@ -52,3 +52,33 @@ def test_lint_jak_ci_uruchamia_z_katalogu_backendu(monkeypatch) -> None:
 
     assert runner._lint_jak_ci() == []
     assert set(katalogi) == {runner.PROJECT_ROOT / "backend"}
+
+
+def test_wywolania_z_workflowow_niosa_argumenty_kroku(monkeypatch, tmp_path) -> None:
+    """Regresja odbioru K2 (2026-09-09): `port_binding_guard.py --strict` na CI
+    zwraca 1 przy brakujacych portach, bez `--strict` zwraca 0 — bramka odbioru
+    swiecila na zielono, P0 Extended na CI byl czerwony. Argumenty z linii `run:`
+    sa czescia wywolania; rozne zestawy argumentow = rozne wywolania."""
+    (tmp_path / "a.yml").write_text(
+        "steps:\n"
+        "  - run: $GUARD_PY scripts/port_binding_guard.py --strict\n"
+        "  - run: python scripts/port_binding_guard.py\n"
+        "  - run: python3 mv-design-pro/scripts/docs_guard.py  # komentarz\n"
+        "  - run: python scripts/x_guard.py --a 1 && echo ok\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(runner, "WORKFLOWS_DIR", tmp_path)
+
+    assert runner.wywolania_z_workflowow() == [
+        ("docs_guard", ()),
+        ("port_binding_guard", ()),
+        ("port_binding_guard", ("--strict",)),
+        ("x_guard", ("--a", "1")),
+    ]
+    assert runner.guardy_z_workflowow() == ["docs_guard", "port_binding_guard", "x_guard"]
+
+
+def test_realne_workflowy_wolaja_port_binding_guard_ze_strict() -> None:
+    """Pin stanu repozytorium: P0 Extended wola `port_binding_guard.py --strict`
+    — jesli ten wpis zniknie, zmienil sie workflow, nie ten test."""
+    assert ("port_binding_guard", ("--strict",)) in runner.wywolania_z_workflowow()

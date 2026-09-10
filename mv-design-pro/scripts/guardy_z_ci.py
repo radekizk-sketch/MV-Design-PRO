@@ -48,7 +48,15 @@ SCRIPTS_DIR = PROJECT_ROOT / "scripts"
 #: przedrostkiem katalogu (`python mv-design-pro/scripts/nazwa.py`).
 #: Workflow P0 wskazuje interpreter srodowiska poetry przez zmienna `$GUARD_PY`
 #: (jedno srodowisko guardow = srodowisko testow); skan musi widziec obie formy.
-WYWOLANIE_GUARDA = re.compile(r"(?:python3?|\$\{?GUARD_PY\}?)\s+(?:\S*/)?scripts/([a-z0-9_]+)\.py")
+#: Grupa 2 = argumenty wywolania z tej samej linii `run:` (np. `--strict`), do
+#: konca linii albo do operatora powloki. Guard uruchomiony BEZ argumentow
+#: workflowa jest innym programem niz na CI: `port_binding_guard.py --strict`
+#: zwraca 1 przy brakujacych portach, bez `--strict` melduje je i zwraca 0 —
+#: bramka odbioru K2 (2026-09-09) swiecila na zielono, a P0 Extended na CI
+#: (run 34417626793) byl czerwony. Argumenty sa czescia wywolania 1:1.
+WYWOLANIE_GUARDA = re.compile(
+    r"(?:python3?|\$\{?GUARD_PY\}?)\s+(?:\S*/)?scripts/([a-z0-9_]+)\.py([^\n&|;#]*)"
+)
 
 #: Zapadka na pusty skan — repozytorium ma osiem workflowów i kilkadziesiąt
 #: guardów. Mniej niż tyle znaczy, że zmienił się układ katalogów albo składnia
@@ -56,13 +64,21 @@ WYWOLANIE_GUARDA = re.compile(r"(?:python3?|\$\{?GUARD_PY\}?)\s+(?:\S*/)?scripts
 MIN_GUARDOW = 30
 
 
-def guardy_z_workflowow() -> list[str]:
-    """Nazwy guardów wywoływanych przez workflowy CI, bez powtórzeń."""
-    nazwy: set[str] = set()
+def wywolania_z_workflowow() -> list[tuple[str, tuple[str, ...]]]:
+    """Wywołania guardów z workflowów CI: (nazwa, argumenty), bez powtórzeń,
+    posortowane. Ten sam guard wołany z różnymi argumentami (np. z `--strict`
+    i bez) to dwa wywołania — oba muszą być zielone, jak na CI."""
+    wywolania: set[tuple[str, tuple[str, ...]]] = set()
     for plik in sorted(WORKFLOWS_DIR.glob("*.y*ml")):
         for dopasowanie in WYWOLANIE_GUARDA.finditer(plik.read_text(encoding="utf-8")):
-            nazwy.add(dopasowanie.group(1))
-    return sorted(nazwy)
+            argumenty = tuple(dopasowanie.group(2).split())
+            wywolania.add((dopasowanie.group(1), argumenty))
+    return sorted(wywolania)
+
+
+def guardy_z_workflowow() -> list[str]:
+    """Nazwy guardów wywoływanych przez workflowy CI, bez powtórzeń."""
+    return sorted({nazwa for nazwa, _argumenty in wywolania_z_workflowow()})
 
 
 #: Wywolania lintu z `python-tests.yml` (krok "black/ruff"), 1:1 co do sciezek i konfiguracji.
@@ -114,24 +130,26 @@ def main() -> int:
     czerwone: list[tuple[str, int]] = []
     brakujace: list[str] = []
 
-    for nazwa in nazwy:
+    for nazwa, argumenty in wywolania_z_workflowow():
         sciezka = SCRIPTS_DIR / f"{nazwa}.py"
         if not sciezka.exists():
-            brakujace.append(nazwa)
+            if nazwa not in brakujace:
+                brakujace.append(nazwa)
             continue
+        etykieta = " ".join((nazwa, *argumenty))
         wynik = subprocess.run(
-            [sys.executable, str(sciezka)],
+            [sys.executable, str(sciezka), *argumenty],
             cwd=PROJECT_ROOT,
             capture_output=True,
             text=True,
         )
         if wynik.returncode != 0:
-            czerwone.append((nazwa, wynik.returncode))
-            print(f"[CZERWONY] {nazwa} RC={wynik.returncode}", file=sys.stderr)
+            czerwone.append((etykieta, wynik.returncode))
+            print(f"[CZERWONY] {etykieta} RC={wynik.returncode}", file=sys.stderr)
             for linia in (wynik.stdout + wynik.stderr).splitlines()[-12:]:
                 print(f"    {linia}", file=sys.stderr)
         else:
-            print(f"[zielony ] {nazwa}")
+            print(f"[zielony ] {etykieta}")
 
     if brakujace:
         print(
