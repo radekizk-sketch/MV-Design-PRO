@@ -27,8 +27,22 @@
 - **Zwarcia** IEC 60909 (K3/K2/K1/K2E, Ik''/ip/Ith/Ib, κ, Z1/Z2/Z0) — FROZEN
 - **Rozpływy** Newton-Raphson, Gauss-Seidel, Fast-Decoupled, niesymetryczny, **QSTS** (szereg czasowy)
 - **Zabezpieczenia** 50/51 IDMT/TCC + sanity-checks (27/59/59N, 81U/81O/ROCOF, SPZ)
-- **FRT/LVRT/HVRT** (RMS time-domain) — PODPIĘTE i liczą
-- **Stabilność dynamiczna RMS** — PODPIĘTE
+- **FRT/LVRT/HVRT** (RMS time-domain) — PODPIĘTE i liczą; **NIEDOWODOWE** (2026-09-10)
+- **Stabilność dynamiczna RMS** — **KOREKTA 2026-09-10**: wcześniejszy wpis
+  „PODPIĘTE" był nieprawdziwy. Silnik `solvers/stability_rms/engine.py` nie ma
+  ANI JEDNEGO wywołania poza własnym pakietem (zgodnie z
+  `docs/uiux/INWENTARZ_FUNKCJI_2026-07.md` z 2026-08-06). Ekran wyników żywi się
+  osobną ścieżką `DYNAMIC_STABILITY`, która jest porównaniem progowym wielkości
+  podanych w opcjach biegu, nie całkowaniem — i od 2026-09-10 jest jawnie
+  oznaczona jako **nieraportowalna dowodowo**.
+
+> **Granica dowodowa warstwy dynamicznej (2026-09-10).** Żadna zdolność
+> dynamiczna (FRT/HVRT, stabilność RMS, ride-through NC RfG, odbudowa P) nie jest
+> dziś przydatna jako **dowód regulacyjny** — wyniki są diagnostyczno-inżynierskie.
+> Egzekwuje to bezpiecznik `EvidenceTier` w `solver_input/provenance.py`; pozytywny
+> certyfikat NC RfG oparty o te zdolności nie powstaje. Podstawa i pełny materiał
+> decyzyjny: `docs/plan/KARTA_MAX_DYNAMIC_SIMULATION_AUDIT_2026-09.md`;
+> zakres wdrożenia: `PLANS.md` § 3.-3.
 - **NC RfG / PTPiREE** bateria zgodności (LFSM-O/U, FSM, FRT, Q(U), harmoniczne, typy A/B/C/D, profile OSD) + API `/api/ncrfg-tests`
 - **V12.6 E-35…E-45** (11 analiz): jakość energii, stabilność napięciowa (CPF/modalna/L-index), niezawodność N-1/N-2 MC, uziemienia IEEE 80, koordynacja izolacji, TRV/inrush, rozruch silników, hosting capacity MC, OPF/straty/LCC, walidacja benchmarkowa IEEE 9/14/39, niepewność k=2 — wszystkie z API + White Box
 - **Detekcja ziemnozwarciowa** sieci kompensowanych

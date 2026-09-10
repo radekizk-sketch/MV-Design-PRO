@@ -13,6 +13,7 @@ from typing import Literal
 
 from catalog.profiles.nc_rfg import load_nc_rfg_profile
 from pydantic import BaseModel, Field
+from solver_input.provenance import BRAK_DOWODU_PL, classify_dynamic_capability
 
 ComplianceVerdict = Literal["pass", "fail", "no_data", "no_module"]
 
@@ -24,6 +25,8 @@ class ComplianceTestResult(BaseModel):
     test_name_pl: str
     verdict: ComplianceVerdict
     message_pl: str | None = None
+    evidence: dict[str, object] | None = None
+    """Klasyfikacja dowodowa zdolnosci liczacej test (``solver_input.provenance``)."""
 
 
 class NcRfgComplianceReport(BaseModel):
@@ -40,6 +43,48 @@ class NcRfgComplianceReport(BaseModel):
     @property
     def overall_pass(self) -> bool:
         return all(r.verdict == "pass" for r in self.test_results)
+
+    @property
+    def evidence_limitations(self) -> list[str]:
+        """Testy oparte o zdolnosci nieprzydatne dowodowo (posortowane)."""
+        return sorted(
+            {
+                f"{r.test_id}:{(r.evidence or {}).get('tier')}"
+                for r in self.test_results
+                if r.evidence is not None
+                and not bool((r.evidence or {}).get("regulatory_evidence_eligible", False))
+            }
+        )
+
+    @property
+    def reporting_status(self) -> str:
+        """``reportable`` wymaga POZYTYWNEJ przydatnosci dowodowej, nie tylko braku bledu.
+
+        Trzy warunki, wszystkie konieczne (fail-closed):
+        1. sa jakiekolwiek testy — pusta lista niczego nie wykazuje, a ``all([])``
+           jest prawdziwe z definicji, wiec bez tego warunku raport bez testow
+           bylby "raportowalny";
+        2. wszystkie testy pozytywne;
+        3. zaden test nie opiera sie na zdolnosci nieprzydatnej dowodowo.
+        """
+        if not self.test_results:
+            return "not_reportable"
+        if self.evidence_limitations or not self.overall_pass:
+            return "not_reportable"
+        return "reportable"
+
+    @property
+    def proof_status(self) -> str:
+        return "complete" if self.reporting_status == "reportable" else "incomplete"
+
+    @property
+    def evidence_note_pl(self) -> str:
+        if self.reporting_status == "reportable":
+            return ""
+        return (
+            f"{BRAK_DOWODU_PL}: raport ma charakter diagnostyczno-inzynierski i nie "
+            "stanowi dowodu zgodnosci przylaczeniowej."
+        )
 
     @property
     def total_tests(self) -> int:
@@ -229,21 +274,35 @@ class NcRfgComplianceChecker:
                     scenario_id=f"{test_id}_{der_data.der_ref}",
                 ),
             )
-            if result.scenario_results and result.scenario_results[0].stayed_connected:
+            # Silnik FRT jest uruchamiany dalej (wartość diagnostyczna zachowana),
+            # ale jego `stayed_connected` NIE może stać się werdyktem `pass`:
+            # zdolność `frt_hvrt.trajectory` nie ma ustalonej poprawności fizycznej,
+            # więc jej wynik nie wykazuje spełnienia wymagania przyłączeniowego.
+            evidence = classify_dynamic_capability("frt_hvrt.trajectory")
+            stayed_connected = bool(
+                result.scenario_results and result.scenario_results[0].stayed_connected
+            )
+            if not stayed_connected:
+                # Wynik negatywny pozostaje negatywny — bezpiecznik działa w jedną
+                # stronę: nie wolno uzyskać fałszywego POZYTYWU, ale sygnał o
+                # potencjalnym problemie nie jest wyciszany.
                 return ComplianceTestResult(
                     test_id=test_id,
                     test_name_pl=test_name_pl,
-                    verdict="pass",
-                    message_pl=(
-                        f"DER pozostał w pracy podczas {test_kind.upper()} "
-                        f"(margin {result.scenario_results[0].margin_to_curve_pu:.3f} p.u.)."
-                    ),
+                    verdict="fail",
+                    message_pl=f"DER wypadł z pracy podczas testu {test_kind.upper()}.",
+                    evidence=evidence.to_dict(),
                 )
             return ComplianceTestResult(
                 test_id=test_id,
                 test_name_pl=test_name_pl,
-                verdict="fail",
-                message_pl=f"DER wypadł z pracy podczas testu {test_kind.upper()}.",
+                verdict="no_data",
+                message_pl=(
+                    f"{test_kind.upper()}: przebieg z modelu bez ustalonej poprawności "
+                    "fizycznej nie wykazuje zdolności przejścia przez zakłócenie. "
+                    f"{BRAK_DOWODU_PL}."
+                ),
+                evidence=evidence.to_dict(),
             )
         if test_id in self.DYNAMIC_TEST_IDS:
             return ComplianceTestResult(

@@ -27,6 +27,7 @@ from catalog.profiles.nc_rfg.loader import NcRfgProfile
 from network_model.catalog.types import ConverterType
 from network_model.solvers.frt_hvrt import FrtHvrtSolverAdapter
 from network_model.solvers.frt_hvrt.contracts import FrtScenario, FrtScenarioResult
+from solver_input.provenance import classify_dynamic_capability
 
 # Zaokrąglenie wartości wyjściowych — determinizm i czytelność.
 _ROUND = 6
@@ -246,6 +247,11 @@ def build_frt_trajectories_view(
         },
         "test_kind": kind,
         "status_solvera": result.status,
+        # Widok DIAGNOSTYCZNY: przebieg pochodzi z modelu bez ustalonej
+        # poprawnosci fizycznej, wiec nie wykazuje spelnienia wymagania.
+        # Klasyfikacja jedzie razem z danymi — konsument nie musi jej znac
+        # z zewnatrz i nie moze jej pominac przez przypadek.
+        "evidence": classify_dynamic_capability("frt_hvrt.trajectory").to_dict(),
         "obwiednia_profilu": {
             "rodzaj": kind,
             "opis": (

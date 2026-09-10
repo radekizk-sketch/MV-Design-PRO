@@ -69,4 +69,8 @@ def test_ncrfg_run_endpoint_returns_trace_and_hash(client: TestClient) -> None:
     assert payload["deterministic_hash"]
     assert payload["modules"][0]["module_type"] == "B"
     assert payload["white_box_trace"]
-    assert payload["report_pl"].startswith("Raport symulacyjny NC RfG / PTPiREE")
+    # Kanon: pakiet oparty o zdolnosci bez ustalonej poprawnosci fizycznej jest
+    # raportem diagnostycznym, a nie dowodem — tytul i status musza to niesc.
+    assert payload["report_pl"].startswith("Raport diagnostyczny NC RfG / PTPiREE")
+    assert payload["reporting_status"] == "not_reportable"
+    assert payload["proof_status"] == "incomplete"

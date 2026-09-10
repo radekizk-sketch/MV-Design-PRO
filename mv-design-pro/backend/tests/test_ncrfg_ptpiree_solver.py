@@ -40,6 +40,18 @@ def _complete_module() -> NcRfgPtpireeModuleInput:
 
 
 def test_ncrfg_ptpiree_solver_runs_full_required_pack_with_trace() -> None:
+    """Pelen pakiet 20 testow, slad White Box, hash i klasyfikacja modulu.
+
+    INTENCJA (zachowana): dla w pelni zadeklarowanego modulu solver wykonuje caly
+    pakiet, klasyfikuje modul i produkuje audytowalny slad z odciskiem.
+
+    ZMIANA KANONU: wczesniej test wymagal `overall_status == "zgodny"` i zerowego
+    `no_data_count`. Ten stan byl osiagalny wylacznie dzieki temu, ze testy
+    ride-through (T14/T15) zwracaly `pass` bez jakiejkolwiek symulacji. Obecny
+    kanon: brak przebiegu U(t) => `no_data`, a pakiet nie jest dowodem
+    regulacyjnym. Sam werdykt `zgodny` nie jest juz mozliwy do uzyskania na
+    deklaracjach i to jest wlasciwe zachowanie.
+    """
     solver = NcRfgPtpireeSolver()
 
     result = solver.run(NcRfgPtpireeRunRequest(modules=[_complete_module()]))
@@ -50,12 +62,16 @@ def test_ncrfg_ptpiree_solver_runs_full_required_pack_with_trace() -> None:
     assert module.module_type == "B"
     assert module.required_count > 0
     assert module.fail_count == 0
-    assert module.no_data_count == 0
-    assert module.overall_status == "zgodny"
     assert len(module.tests) == 20
     assert result.white_box_trace
     assert all(step.proof_ref for step in result.white_box_trace)
-    assert "Raport symulacyjny NC RfG / PTPiREE" in result.report_pl
+    assert "NC RfG / PTPiREE" in result.report_pl
+
+    ride_through = {t.test_id: t for t in module.tests if t.test_id in {"T14", "T15"}}
+    assert {t.verdict for t in ride_through.values()} == {"no_data"}
+    assert module.overall_status == "brak_danych"
+    assert module.reporting_status == "not_reportable"
+    assert result.reporting_status == "not_reportable"
 
 
 def test_ncrfg_ptpiree_solver_is_deterministic() -> None:

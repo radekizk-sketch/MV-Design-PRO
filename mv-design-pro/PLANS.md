@@ -82,6 +82,115 @@ MV-DESIGN-PRO is a functional Medium Voltage network design and analysis system 
 
 ## 3. Active Work
 
+### 3.-3 Sesja 2026-09-10 — BEZPIECZNIK DOWODOWY warstwy dynamicznej (D-00 + α + β) — PRZEKAZANIE DO FABLE
+
+> **Zdanie kluczowe dla następnego agenta prowadzącego:**
+> **Zabezpieczenie dowodowe jest wdrożone; wymiana architektury symulacji
+> dynamicznej celowo NIE została rozpoczęta.**
+
+**Wejście:** karta audytowa `docs/plan/KARTA_MAX_DYNAMIC_SIMULATION_AUDIT_2026-09.md`
+(commit audytu `7ab9d7a0`, audytowany HEAD aplikacji `7e84753a`; 11×P0, 17×P1).
+**Gałąź wdrożenia:** `claude/opus5-dynamic-evidence-containment` (baza: `7ab9d7a0`).
+
+**Decyzja właściciela D-00 (wykonana):** FAIL CLOSED. Pozytywny certyfikat
+zgodności NC RfG NIE powstaje, gdy jego wniosek zależy od obecnych implementacji
+dynamicznych. Raport diagnostyczny nadal powstaje, ale jawnie mówi, że nie jest
+dowodem. Nie wybrano wariantu „żółta etykieta przy nadal wystawianym certyfikacie".
+
+**β — klasyfikacja dowodowa (rozszerzenie istniejącego mechanizmu).**
+`solver_input/provenance.py` dostał TRZECIĄ oś obok `SourceKind` i `FieldQuality`:
+`EvidenceTier` (`VALIDATED_SIMULATION` / `DECLARATION` / `UNVALIDATED_MODEL` /
+`NOT_SIMULATED`) + rejestr `classify_dynamic_capability()`. Nie powstał równoległy
+podsystem proweniencji. Dowodowy jest wyłącznie `VALIDATED_SIMULATION`;
+**dziś żadna zdolność dynamiczna nie jest dowodowa**, a zdolność nieznana
+rejestrowi jest domyślnie niedowodowa (fail-closed).
+
+Sklasyfikowane: `ncrfg_ptpiree.ride_through` (NOT_SIMULATED),
+`ncrfg_ptpiree.{p_recovery,reactive_current_frt,frequency_response}` (DECLARATION),
+`frt_hvrt.trajectory`, `stability_rms.{time_domain,small_signal}` (UNVALIDATED_MODEL),
+`dynamic_stability.fault_clear` (DECLARATION).
+
+**α — co bezpiecznik faktycznie blokuje.**
+1. `ncrfg_ptpiree` T14/T15 nie zwracają już `pass` bez przebiegu U(t) → `no_data`;
+   ślad White Box przestał podawać limit profilu jako wielkość „symulowaną".
+2. `application/ncrfg_compliance/checker.py` (druga ścieżka NC RfG) nie zamienia
+   `stayed_connected` silnika FRT na `pass`.
+3. `certyfikat_zgodnosci.zbierz_braki` ma **jawną, niezależną bramkę dowodową** na
+   `reporting_status` — działa nawet gdy wszystkie werdykty są pozytywne. Blokuje
+   równocześnie JSON, DOCX i PDF certyfikatu oraz — przez `wniosek_osd` — wniosek OSD.
+4. `_execute_dynamic_stability` przestał deklarować `proof_status=complete` /
+   `reporting_status=reportable`; statusy idą z klasyfikacji, nie ze stałej.
+5. Widoki diagnostyczne FRT (trajektorie, sekwencja) niosą `evidence` w danych.
+6. Końcówka `GET /api/ncrfg-tests/cases/{id}/compliance` wystawia
+   `reporting_status`/`proof_status` razem z `overall_pass`.
+7. `report_pl` (wolny tekst renderowany wprost w UI) nazywa się „Raport
+   diagnostyczny … NIE JEST DOWODEM ZGODNOŚCI".
+
+**Granica utrzymana — rozróżnienie 4 stanów.** „Wynik istnieje" ≠ „wynik jest
+pozytywny" ≠ „wynik jest dowodem" ≠ „wymaganie wykazane". Bezpiecznik działa
+w JEDNĄ stronę: blokuje fałszywy POZYTYW, ale **nie wycisza realnej niezgodności**
+— moduł z wykazaną niezgodnością pozostaje raportowalny i dokument ją stwierdza
+(pin: `test_niezgodnosc_pozostaje_raportowalna`). Moduł klasy A, którego pakiet
+nie wymaga żadnego testu ride-through, nadal certyfikuje się legalnie — bo jego
+wniosek nie opiera się na zdolnościach objętych kwarantanną.
+
+**Kwarantanna silników.** `stability_rms` i `frt_hvrt` NIE zostały usunięte ani
+„naprawione" — ich równania są nietknięte. Pozostają dostępne diagnostycznie.
+
+**Pokrycie regresyjne:** `backend/tests/test_dynamic_evidence_containment.py`
+(108 testów). Niezmiennik pisany jako ILOCZYN CECH (5 operatorów × 3 klasy modułu
+× 4 rodzaje DER × ścieżki konsumenta), nie jako powtórzenie przypadku z audytu.
+Kluczowy test `test_bezpiecznik_dziala_takze_gdy_wszystkie_testy_zwrocily_pozytyw`
+konstruuje wynik z samymi werdyktami `pass` i sprawdza, że bramka i tak blokuje.
+Osobno przypięta pułapka `all([]) == True`: raport bez ani jednego testu nie może
+być „raportowalny" (dowód przez nieobecność dowodu) — `NcRfgComplianceReport`
+wymaga niepustej listy testów.
+
+**Wykonane potwierdzenia (kody wyjścia łapane bezpośrednio):**
+- `poetry run pytest -q` → **10621 passed, 11 skipped, 0 failed** (kod wyjścia 0)
+- `poetry run mypy` (zmienione moduły) → Success; `mypy_ratchet_guard` → OK
+- `ruff check src tests` → czysto; `black --check` na plikach tej zmiany → czysto
+- guardy: arch, pcc_zero, domain_no_guessing, canonical_ops, readiness_codes,
+  catalog_binding, catalog_gate, audit_contract, repo_hygiene, solver_boundary,
+  load_flow/protection_no_heuristics, overlay_no_physics, trace_determinism,
+  fault_scenarios_determinism, ui_terminology, forbidden_ui_terms, no_codenames,
+  resultset_v1_schema, severity_contract, docs, local_truth, utf8_mojibake,
+  import_graph → **wszystkie OK**
+- frontend: `vitest` dla `ui2/oze` + `ui/ncrfg-tests` → 488 passed (0 plików
+  frontendu zmienionych w tej transzy)
+
+**Dług ZASTANY (NIE z tej transzy, nienaprawiony świadomie — poza zakresem):**
+- `black --check src tests` jest czerwony na commicie bazowym `7ab9d7a0` dla
+  DWÓCH niezwiązanych plików: `tests/application/analyses/lv_domain/test_audit.py`
+  i `.../scenariusze_nn.py`. Zweryfikowane przez `git stash` na bazie. Krok lintu
+  w `python-tests.yml` jest przez to czerwony niezależnie od tej zmiany.
+- Niespójność słownictwa: `proof_status` przyjmuje `partial` (PF/SC) albo
+  `incomplete` (source_compliance, NC RfG) — dwa literały na ten sam stan.
+- `frontend/src/ui/network-build/station-der/NcRfgComplianceBadge.tsx` liczy
+  własny werdykt „Zgodny NC RfG" po stronie klienta, bez backendu. Kod martwy
+  (jedyny konsument `DerValidationBanner.tsx` nie jest nigdzie importowany poza
+  własnym testem), ale to mina na przyszłość.
+- Dwie niekompatybilne numeracje testów NC RfG (P0-11 karty) — NIE ruszona:
+  ujednolicenie zmienia znaczenie identyfikatorów w dokumentach i jest decyzją
+  właściciela, nie skutkiem ubocznym bezpiecznika.
+
+**Granica zostawiona świadomie dla Fable (NIE zaczęte):** wybór modelu fizycznego
+i architektury — DAE vs ODE, topologia wektora stanu, model maszyny synchronicznej,
+GFL/GFM, regulatory AVR/governor/PSS, sprzężenie z Ybus, integrator, kontrakt
+wyniku dynamicznego z serią czasową, rejestr modeli dynamicznych, adapter wyroczni
+zewnętrznej. Materiał decyzyjny: §32–§37 karty audytowej (decyzje D-01…D-13).
+
+**Pliki istotnie zmienione:** `solver_input/provenance.py`,
+`network_model/solvers/ncrfg_ptpiree/{contracts,engine}.py`,
+`application/ncrfg_compliance/checker.py`,
+`application/analyses/{certyfikat_zgodnosci,frt_trajektorie,frt_sekwencja}.py`,
+`enm/canonical_analysis.py`, `api/ncrfg_ptpiree_tests.py`,
+`tests/test_dynamic_evidence_containment.py` (nowy) + 5 plików testowych
+przepisanych do obecnego kanonu (intencja zachowana, powód w komentarzu).
+
+**Ograniczenie środowiska:** zależności backendu doinstalowane w sesji
+(`poetry install --with dev`); pliki `pyproject.toml`/`poetry.lock` NIE zmienione.
+
 ### 3.-2 Sesja 2026-07-22 — ZWARCIA-PRO + zasada wywodów KaTeX (zamknięte programy)
 
 Pełny zapis: `docs/v12xx/REJESTR_KONFLIKTOW.md` V12K-098…V12K-120; dokumenty BINDING:

@@ -96,6 +96,13 @@ class NcRfgPtpireeTestResult(BaseModel):
     metrics: dict[str, Any] = Field(default_factory=dict)
     trace_refs: list[str] = Field(default_factory=list)
     fix_actions: list[str] = Field(default_factory=list)
+    evidence: dict[str, Any] | None = None
+    """Klasyfikacja dowodowa zdolnosci liczacej ten test.
+
+    Serializacja ``CapabilityEvidence`` z ``solver_input.provenance``. Ustawiana
+    dla testow opartych o zdolnosci dynamiczne; ``None`` dla testow, ktore nie
+    korzystaja z zadnej zdolnosci dynamicznej (np. kontrola nastaw katalogowych).
+    """
 
 
 class NcRfgPtpireeModuleResult(BaseModel):
@@ -114,6 +121,18 @@ class NcRfgPtpireeModuleResult(BaseModel):
     not_required_count: int
     overall_status: Literal["zgodny", "niezgodny", "brak_danych"]
     tests: list[NcRfgPtpireeTestResult]
+    reporting_status: Literal["reportable", "not_reportable"] = "not_reportable"
+    """Czy wynik modulu wolno przedstawic jako dowod regulacyjny.
+
+    Ta sama semantyka i to samo slownictwo co ``application.compliance
+    .source_compliance.SourceComplianceResult``. ``not_reportable`` oznacza, ze
+    pakiet nadaje sie do celow diagnostyczno-inzynierskich, ale NIE stanowi
+    dowodu spelnienia wymagania przylaczeniowego.
+    """
+    proof_status: Literal["complete", "incomplete"] = "incomplete"
+    evidence_limitations: list[str] = Field(default_factory=list)
+    """Maszynowo czytelne powody braku przydatnosci dowodowej (posortowane)."""
+    evidence_note_pl: str = ""
 
 
 class NcRfgPtpireeRunResult(BaseModel):
@@ -126,3 +145,9 @@ class NcRfgPtpireeRunResult(BaseModel):
     test_catalog: list[NcRfgPtpireeTestDefinition]
     white_box_trace: list[NcRfgTraceStep]
     report_pl: str
+    reporting_status: Literal["reportable", "not_reportable"] = "not_reportable"
+    """Zbiorcza przydatnosc dowodowa biegu — ``reportable`` tylko gdy KAZDY modul
+    jest ``reportable``. Konsument budujacy dokument regulacyjny czyta to pole."""
+    proof_status: Literal["complete", "incomplete"] = "incomplete"
+    evidence_limitations: list[str] = Field(default_factory=list)
+    evidence_note_pl: str = ""

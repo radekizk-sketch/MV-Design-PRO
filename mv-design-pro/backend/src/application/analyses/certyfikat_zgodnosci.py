@@ -8,6 +8,11 @@ czyli tej samej ścieżki, którą liczy macierz frontendu:
 ``api/ncrfg_ptpiree_tests.py:41`` oraz ``engine.py:208``). Serwis NIE przelicza
 żadnego testu — cytuje istniejące werdykty, ich podsumowania i odcisk wejścia.
 
+Bezpiecznik dowodowy: certyfikat NIE powstaje, gdy pakiet zgodności nie jest
+przydatny jako dowód regulacyjny (``reporting_status != "reportable"``) — także
+wtedy, gdy wszystkie testy zwróciły werdykt pozytywny. Werdykt pozytywny ze
+zdolności bez ustalonej poprawności fizycznej nie wykazuje spełnienia wymagania.
+
 Uczciwa bramka kompletności (wzór „lista braków przed generacją"):
 - werdykt ``no_data`` na teście wymaganym, brak klasy modułu lub moduł bez
   żadnego testu wymaganego → certyfikat NIE powstaje, zwracana jest lista
@@ -37,6 +42,7 @@ from network_model.solvers.ncrfg_ptpiree import (
     NcRfgPtpireeRunResult,
 )
 from pydantic import BaseModel, Field
+from solver_input.provenance import BRAK_DOWODU_PL
 
 try:  # pragma: no cover - zależy od środowiska
     from docx import Document
@@ -94,12 +100,30 @@ class CertyfikatBrakiError(Exception):
 def zbierz_braki(run_result: NcRfgPtpireeRunResult) -> list[str]:
     """Zbierz braki kompletności blokujące generację (deterministyczna kolejność).
 
-    Braki (per moduł, w kolejności macierzy):
-    - brak klasy modułu (``module_type == '?'``),
-    - moduł bez żadnego testu wymaganego (nie ma czego certyfikować),
-    - test wymagany z werdyktem ``no_data`` (brak danych do oceny).
+    Dwie NIEZALEŻNE bramki — obie muszą przepuścić, żeby certyfikat powstał:
+
+    1. **Bramka dowodowa** (``reporting_status``): czy wyniki, na których miałby
+       się oprzeć certyfikat, w ogóle wolno przedstawić jako dowód regulacyjny.
+       Sprawdzana JAWNIE, a nie pośrednio przez werdykty testów — werdykt
+       pozytywny ze zdolności bez ustalonej poprawności fizycznej nie może
+       otworzyć tej bramki. To jest bezpiecznik: gdyby test kiedykolwiek zaczął
+       ponownie zwracać ``pass`` bez zwalidowanego modelu, certyfikat nadal nie
+       powstanie, dopóki zdolność nie zostanie sklasyfikowana jako dowodowa.
+    2. **Bramka kompletności danych** (per moduł, w kolejności macierzy):
+       brak klasy modułu (``module_type == '?'``), moduł bez żadnego testu
+       wymaganego, test wymagany z werdyktem ``no_data``.
+
+    „Wynik istnieje", „wynik jest pozytywny" i „wynik jest dowodem" to trzy różne
+    stany; tylko trzeci uprawnia do wydania certyfikatu.
     """
     braki: list[str] = []
+    if run_result.reporting_status != "reportable":
+        powod = run_result.evidence_note_pl or (
+            f"{BRAK_DOWODU_PL}: wynik nie jest przydatny jako dowód regulacyjny."
+        )
+        braki.append(f"Pakiet zgodności: {powod}")
+        for ograniczenie in run_result.evidence_limitations:
+            braki.append(f"Pakiet zgodności: zdolność nieprzydatna dowodowo — {ograniczenie}.")
     for module in run_result.modules:
         etykieta = module.der_name or module.der_ref
         if module.module_type == "?":

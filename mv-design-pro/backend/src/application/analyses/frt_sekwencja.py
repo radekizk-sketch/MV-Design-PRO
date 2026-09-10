@@ -40,6 +40,7 @@ from application.ncrfg_compliance.frt_input import build_frt_sekwencja_input
 from catalog.profiles.nc_rfg.loader import NcRfgProfile
 from network_model.catalog.types import ConverterType
 from network_model.solvers.frt_hvrt import FrtHvrtSolverAdapter
+from solver_input.provenance import classify_dynamic_capability
 
 # Zaokrąglenie wartości wyjściowych — determinizm i czytelność (jak D6).
 _ROUND = 6
@@ -192,6 +193,8 @@ def build_frt_sekwencja_view(
             "nazwa": profile.operator_name_pl,
         },
         "status_solvera": result.status,
+        # Widok DIAGNOSTYCZNY — patrz `frt_trajektorie.build_frt_trajectories_view`.
+        "evidence": classify_dynamic_capability("frt_hvrt.trajectory").to_dict(),
         "obwiednia_profilu": {
             "rodzaj": "lvrt",
             "opis": (
