@@ -22,6 +22,25 @@
 
 ---
 
+## 0.0 ERRATA — sprostowania po przeglądzie kontradyktoryjnym (runda 2)
+
+Dokument jest materiałem decyzyjnym, więc jego błędy prostuję **widocznie**, a
+nie cichą edycją. Sześć twierdzeń z rundy 1 było za mocnych albo błędnych.
+
+| # | Twierdzenie z rundy 1 | Co jest prawdą (zmierzone) | Gdzie poprawione |
+|---|---|---|---|
+| 1 | „maszyna 4. rzędu + AVR + turbina, **zgodna z ANDES do 8e-09**" | Zwalidowano wobec ANDES **wyłącznie redukcję klasyczną**: równanie wahań, stojan, transformację dq i inicjalizację. Dynamika `E'q`/`E'd` (`Td0'`, `Tq0'`) **znika przy `Xd = Xd'`**, więc nie weszła do porównania. AVR, turbina i PSS — nie porównywane. | §5.1 (tabela równanie po równaniu) |
+| 2 | Jedna liczba „8e-09" jako dokładność walidacji | To był błąd JEDNEJ wielkości. Metryki są różne i rozdzielone: kąt 8,4e-09, SEM 7,1e-09, moduł napięcia 7,5e-09, kąt napięcia 5,4e-08, częstotliwość 6,0e-06. **Błąd trajektorii punkt-po-punkcie: NIE ZMIERZONY.** | §5.2 |
+| 3 | „**pełny rdzeń DAE**" | To **schemat rozdzielony z eliminacją algebraiczną** (sekwencyjny niejawny), a nie solver rozwiązujący Newtonem jednocześnie po `x` i `y`. Integrator widzi zwykłe ODE. | §3.1, §3.2 |
+| 4 | „wszystkie cztery integratory zbiegają **na układzie sztywnym**" | Zadanie porównawcze było **niesztywne** (jedna maszyna klasyczna, brak szybkich stałych). Twierdzenie o sztywności było nieprawdziwe. | §18, `sztywnosc.py` |
+| 5 | CCT „85 / 100 / 300 ms" dla `H` = 2 / 4 / 8 | Wartości **błędne i nieodtwarzalne** (pochodziły ze skryptu roboczego, którego nie ma). Obowiązują **298 / 422 / 599 ms**, zgodne z zamkniętym wzorem kryterium równych pól w granicach 0,04–0,51 %. Fizyka laboratorium jest przy tym **bajtowo identyczna** od pierwszego commitu — to była różnica pomiaru, nie modelu. | §19.1 |
+| 6 | D-00: „**graf konsumentów domknięty**", „6 końcówek dokumentowych" | **Obalone pomiarem.** Polowanie na obejścia (87 kandydatów, 15 potwierdzonych, 72 odrzucone) znalazło m.in.: bramkę dowodową działającą **fail-open** (pomijała 12 z 20 testów bez klasyfikacji), eksport DOCX/PDF przebiegu drukujący „Status=STABLE" bez statusu dowodowego, oraz zielone werdykty FRT we froncie z pola `evidence`, które warstwa UI gubiła. | §20.5, `test_dynamic_evidence_dokumenty.py` |
+
+Sprostowania **nie zmieniają** żadnej rekomendacji ani żadnego pytania
+decyzyjnego. Zmieniają to, ile wolno na podstawie tego materiału twierdzić.
+
+---
+
 ## 0. Jak czytać ten dokument
 
 Każda pozycja D-xx ma pięć części i **żadna z nich nie jest decyzją**:
@@ -54,7 +73,7 @@ nie opierała się na cudzej ocenie — także nie na mojej.
 | **D-01** | Struktura programu (W1–W12 czy `PLANS.md`) | materiał | inwentarz dokumentów, koszt obu wariantów | planowanie |
 | **D-02** | Rdzeń RMS: rozszerzyć czy wymienić | **PROTOTYP DZIAŁA** | działający rdzeń DAE ze sprzężeniem sieciowym; `‖f(x₀,y₀)‖ = 2,98e-13` | ścieżkę krytyczną |
 | **D-03** | Zgoda B-01 na wymianę kontraktów FROZEN | materiał + kandydat | inwentarz phantomów, kandydat kontraktu wyniku | D-02 |
-| **D-04** | Kolejność rodzin źródeł | **PROTOTYP + WALIDACJA ZEWNĘTRZNA** | maszyna 4. rzędu + AVR + turbina, zgodna z ANDES do 8e-09 | D-02 |
+| **D-04** | Kolejność rodzin źródeł | **PROTOTYP; walidacja zewnętrzna WĄSKA** | zaimplementowano maszynę 4. rzędu + AVR + turbinę; wobec ANDES zwalidowano **wyłącznie redukcję klasyczną** (bez dynamiki E′, bez regulatorów) — zakres w §5.1 | D-02 |
 | **D-05** | Rozdzielenie ewaluatora od fizyki | **KONSTRUKCYJNIE POKAZANE** | w prototypie ocena FRT jest typowo niemożliwa do zapętlenia | przyczynę P0-01 |
 | **D-06** | Dwie ścieżki stabilności / dwie implementacje NC RfG | **ZMIERZONE — są TRZY** | trzecia (martwa) implementacja we froncie, trzeci słownik werdyktów | rozjazd |
 | **D-07** | Zakres PPC / hybryd | materiał | wymagania z PCC, czego brakuje w modelu urządzenia | ewaluator |
@@ -119,11 +138,46 @@ topologii), więc „rozszerzenie" oznacza i tak jego wymianę.
 `Ybus·V = I_wstrzyk(x,V)`, a nie stałą. Zdarzenie musi zmieniać MODEL SIECI
 (bocznik zwarciowy `Zf`, wyłączenie gałęzi), a napięcie ma być tego skutkiem.
 
-**SPIKE — WYKONANY, DZIAŁA.** `backend/research/dynamic_lab/` implementuje pełny
+**SPIKE — WYKONANY, DZIAŁA.** `backend/research/dynamic_lab/` implementuje
 rdzeń: `siec.py` (Ybus, ekwiwalenty Nortona, iteracja części nieliniowej),
-`silnik.py` (pętla DAE + inicjalizacja + weryfikacja równowagi), `zdarzenia.py`
+`silnik.py` (pętla + inicjalizacja + weryfikacja równowagi), `zdarzenia.py`
 (zdarzenia jako zmiana topologii), `calkowanie.py` (cztery integratory za jednym
 kontraktem).
+
+### 3.1 CZYM DOKŁADNIE JEST TEN RDZEŃ — klasyfikacja, nie hasło
+
+Określenie „pełny rdzeń DAE" jest mylące i tu je precyzuję, bo sugeruje solver
+monolityczny, którym ten prototyp NIE jest.
+
+| Cecha | Ten prototyp |
+|---|---|
+| Sformułowanie | `ẋ = f(x, y)`, `0 = g(x, y)` — **układ DAE indeksu 1** |
+| Sposób rozwiązania | **eliminacja algebraiczna wewnątrz ewaluacji `f`**: dla zadanego `x` rozwiązywane jest `g(x, y) = 0` względem `y`, po czym integrator dostaje `dx/dt = F(x, t) = f(x, y(x), t)` |
+| Co widzi integrator | zwykłe **ODE** — nie ma zmiennych algebraicznych w wektorze stanu |
+| Jakobian metody niejawnej | wyłącznie po `x` (wymiar = liczba stanów dynamicznych) |
+| Sprzężenie z siecią | **realne**: zmiana `Ybus` zmienia `y`, a przez nie prądy, moce i pochodne wszystkich urządzeń |
+
+Nazwa właściwa: **schemat rozdzielony (partitioned) z eliminacją algebraiczną**,
+wariant „sekwencyjny niejawny" w klasyfikacji narzędzi RMS. **NIE** jest to
+solver DAE rozwiązujący Newtonem jednocześnie po `x` i `y` (schemat
+symultaniczny / „simultaneous implicit"), którego jakobian ma wymiar
+`len(x) + 2·len(y)`.
+
+Docstring `silnik.py` mówił to od początku poprawnie („schemat rozdzielony…
+integrator widzi zwykłe ODE"); mylące było streszczenie w tym pakiecie.
+
+### 3.2 Ograniczenia schematu rozdzielonego — materiał dla Fable, nie decyzja
+
+| Zjawisko | Konsekwencja dla schematu rozdzielonego |
+|---|---|
+| **Silna sztywność** | Metoda niejawna stabilizuje tylko część `x`; algebra sieci jest rozwiązywana do zbieżności w każdej ewaluacji, więc koszt rośnie liniowo z liczbą ewaluacji, a nie z liczbą kroków. Przy szybkich pętlach regulatorów rośnie gwałtownie. |
+| **Ograniczniki i przełączenia** | Nieciągłość `f` wewnątrz kroku psuje jakobian numeryczny; schemat symultaniczny może wykryć przełączenie jako zdarzenie algebraiczne, rozdzielony musi je „przecałkować". Zmierzone w tym prototypie: ogranicznik AVR ograniczający pochodną, ale nie żądanie, dawał cykl graniczny Newtona dokładnie w chwili zwarcia. |
+| **Osobliwość algebraiczna** | Gdy `g` traci rozwiązanie (wyspa bez źródła, zwarcie metaliczne w węźle bez admitancji), ewaluacja `f` **rzuca wyjątek** zamiast zwrócić pochodną. Schemat symultaniczny widzi to jako osobliwość jakobianu i może zredukować krok. |
+| **Wyspy** | Każda wyspa musi mieć własne odniesienie kątowe; przy eliminacji algebraicznej brak odniesienia objawia się jako osobliwość, a nie jako brak fizyki. |
+| **GFM z ograniczeniem prądu** | Przejście źródło napięciowe → źródło prądowe zmienia STRUKTURĘ `g`, nie tylko jego wartość. To najtrudniejszy przypadek dla obu schematów; zmierzone zachowanie prototypu jest osobnym eksperymentem. |
+| **PLL** | Wnosi szybką dynamikę do `x` i sprzężenie zwrotne przez `y`; w schemacie rozdzielonym opóźnienie o jedną ewaluację może zaniżyć tłumienie. |
+| **Zmiany topologii** | Tanie: przebudowa `Ybus` między krokami. Zaleta schematu rozdzielonego. |
+| **Wiele urządzeń na jednej szynie** | Obsługiwane przez sumowanie wstrzyknięć; problem pojawia się dopiero, gdy dwa urządzenia narzucają napięcie tej samej szyny (dwa GFM bez impedancji wirtualnej) — wtedy `g` jest źle uwarunkowane. |
 
 Zmierzone własności:
 
@@ -182,16 +236,70 @@ z samymi maszynami synchronicznymi komunikatem „nie dotyczy" (§24.1).
 **WYMAGANIE.** Pierwsza rodzina musi (a) definiować problem stabilności
 kątowej, żeby rdzeń dało się zwalidować, (b) mieć dostępną wyrocznię.
 
-**SPIKE — WYKONANY, ZWALIDOWANY ZEWNĘTRZNIE.** Zaimplementowano maszynę
-synchroniczną 4. rzędu (`delta, omega, E'q, E'd`) z równaniami stojana,
-transformacją `dq↔sieć` przez `delta − π/2`, oraz zespół z AVR i regulatorem
-turbiny o **zamkniętych** pętlach (6 stanów). Procedura inicjalizacji jest
-wyprowadzona krok po kroku, nie zgadnięta (`urzadzenia.punkt_pracy`).
+**SPIKE — WYKONANY; WALIDACJA ZEWNĘTRZNA O WĄSKIM, NAZWANYM ZAKRESIE.**
+Zaimplementowano maszynę synchroniczną 4. rzędu (`delta, omega, E'q, E'd`) z
+równaniami stojana, transformacją `dq↔sieć` przez `delta − π/2`, oraz zespół z
+AVR i regulatorem turbiny o **zamkniętych** pętlach (6 stanów). Procedura
+inicjalizacji jest wyprowadzona krok po kroku, nie zgadnięta
+(`urzadzenia.punkt_pracy`).
 
-Walidacja zewnętrzna (ANDES 2.0.0, wartości własne linearyzacji):
-`delta₀` 8,4e-09 · `E'` 7,1e-09 · `f_oscylacji` 6,0e-06 (błąd względny).
-Trzecia, niezależna droga — zamknięty wzór `ωₙ = √(ω_s·P_s/2H)` — zgadza się z
-ANDES do 3,9e-09.
+### 5.1 Co ANDES zwalidował, a czego NIE — rozstrzygnięcie sprzeczności
+
+Pierwsza wersja tego pakietu pisała w tabeli skrótu „maszyna 4. rzędu + AVR +
+turbina, zgodna z ANDES do 8e-09", a w §12 poprawnie zastrzegała, że przypadek
+używa GENCLS i nie waliduje regulatorów. **Sprzeczność rozstrzygam na korzyść
+§12**: tabela skrótu była za mocna.
+
+Przyczyna jest równaniowa, nie redakcyjna. Przypadek porównawczy używa
+`benchmarki.maszyna_klasyczna`, czyli modelu 4. rzędu z `Xd = Xd'` i `Xq = Xq'`.
+Przy tej redukcji człony `(Xd − Xd')·Id` i `(Xq − Xq')·Iq` **znikają**, więc:
+
+| Równanie modelu 4. rzędu | Czy weszło do porównania z ANDES |
+|---|---|
+| `dδ/dt = ω_s (ω − 1)` | **TAK** |
+| `2H dω/dt = Pm − Pe − D(ω−1)` | **TAK** |
+| równania stojana `Id, Iq` z `E'd, E'q, Ra, Xd', Xq'` | **TAK** |
+| transformacja `dq ↔ sieć` przez `δ − π/2` | **TAK** |
+| inicjalizacja `E = V + (Ra + jXq)·I`, `δ = arg(E)` | **TAK** |
+| `dE'q/dt = (Efd − E'q − (Xd − Xd')·Id) / Td0'` | **NIE** — człon zeruje się z założenia, `Td0'` nie wpływa na wynik |
+| `dE'd/dt = (−E'd + (Xq − Xq')·Iq) / Tq0'` | **NIE** — jw., `Tq0'` nie wpływa |
+| AVR (`RegulatorNapiecia`) | **NIE** — GENCLS nie ma wzbudnicy; w porównaniu `Efd = const` |
+| regulator turbiny (`RegulatorTurbiny`) | **NIE** — w porównaniu `Pm = const` |
+| PSS | **NIE** — nie ma go w laboratorium |
+| ogranicznik AVR (żądanie i pochodna) | **NIE** — wyłącznie testy własne |
+
+Zwalidowane zewnętrznie jest zatem **jądro elektromechaniczne wraz z warstwą
+algebraiczną i inicjalizacją**, a nie „dynamika 4. rzędu z regulatorami".
+Domknięcie tej luki jest przedmiotem osobnego przypadku GENROU + wzbudnica
+(patrz `wzorzec_genrou.py`, jeśli powstał w tej transzy — jego zakres zgodności
+jest wynikiem, nie założeniem).
+
+### 5.2 Zgodność liczbowa — OSOBNE metryki, nie jedna liczba
+
+Podawanie jednego „8e-09" jako dokładności całej walidacji było mylące: to był
+błąd JEDNEJ wielkości, a nie wspólna miara. Rozdzielone:
+
+| Metryka | Co porównuje | Wartość (błąd względny) |
+|---|---|---|
+| **Błąd punktu pracy — kąt** | `δ₀` z inicjalizacji vs ANDES | 8,4e-09 |
+| **Błąd punktu pracy — SEM** | `E'` z inicjalizacji vs ANDES | 7,1e-09 |
+| **Błąd napięcia — moduł** | `\|V_gen\|` z `Ybus·V = I` vs ANDES | 7,5e-09 |
+| **Błąd napięcia — kąt** | `arg(V_gen)` vs ANDES | 5,4e-08 |
+| **Błąd częstotliwości małosygnałowej** | `f_osc` z trajektorii vs wartość własna ANDES | 6,0e-06 |
+| **Błąd wzoru analitycznego** | `ωₙ = √(ω_s·P_s/2H)` vs wartość własna ANDES | 3,9e-09 |
+| **Błąd trajektorii (punkt po punkcie)** | — | **NIE ZMIERZONY** |
+
+Ostatni wiersz jest istotny: porównywane są *wielkości skalarne wyprowadzone z*
+trajektorii, a nie trajektoria z trajektorią. Porównanie punkt-po-punkcie
+wymagałoby wyeksportowania przebiegu z ANDES na wspólnej siatce i nie zostało
+zrobione.
+
+### 5.3 Trzecia oś — zachowanie DUŻOSYGNAŁOWE
+
+Wszystkie metryki wyżej dotyczą MAŁYCH zaburzeń. Model może być poprawny
+małosygnałowo i błędny dużosygnałowo. Domyka to niezależna wyrocznia
+analityczna kryterium równych pól (§19.1): CCT z symulacji zgadza się z
+zamkniętym wzorem w granicach **0,04–0,51 %** dla `H` od 1 do 16 s.
 
 **Znaleziony i naprawiony w prototypie defekt klasy, która wróci w produkcji:**
 ogranicznik AVR ograniczał POCHODNĄ wzbudzenia, ale nie ŻĄDANIE regulatora.
@@ -470,6 +578,44 @@ Napięcie **nie jest przepisane** z wyroczni: laboratorium dostaje samą moc
 zespoloną i musi odtworzyć `V` z własnego `Ybus·V = I`. Zgodność w siatce
 3 × bezwładność × 3 × impedancja + 3 punkty obciążenia.
 
+### 12.1 Co dokładnie waliduje przekazanie `Q` z ANDES — rozbite na warstwy
+
+Punkt pracy ustala ANDES (węzeł PV), a laboratorium dostaje `S = P + jQ`.
+Warstwy rozdzielone, żeby nie nazywać tego walidacją całego rozpływu:
+
+| Warstwa | Walidowana? | Dlaczego |
+|---|---|---|
+| **Rozpływ z węzłami PV** (utrzymanie `\|V\|` przez regulację `Q`) | **NIE** | Laboratorium go nie ma — `rozplyw_ustalony` obsługuje PQ + szynę sztywną. `Q` jest DANE, a nie znalezione. |
+| **Ybus i rozwiązanie sieci** | **TAK** | Z samego `S` i szyny sztywnej laboratorium musi trafić w `V` wyroczni — moduł 7,5e-09, kąt 5,4e-08. Gdyby Ybus był zły, ta liczba by nie wyszła. |
+| **Rekonstrukcja napięcia z `S`** | **TAK** | To jest ta sama rzecz co wyżej, widziana od strony wejścia: `V` jest jedyną niewiadomą. |
+| **Inicjalizacja maszyny** | **TAK** | `δ₀` i `E'` liczone z `V` i `S` po naszej stronie, porównane z ANDES (8,4e-09 / 7,1e-09). |
+| **Dynamika małosygnałowa** | **TAK, w zakresie §5.1** | Częstotliwość wahań vs wartość własna (6,0e-06). |
+| **Dynamika dużosygnałowa** | **NIE przez ANDES** | Domyka ją wyrocznia analityczna równych pól (§19.1). |
+
+### 12.2 RYZYKO RESZTKOWE: mapowanie parametrów piszemy MY
+
+ANDES jest niezależną IMPLEMENTACJĄ, ale adapter przypadku — przypisanie
+`M = 2H`, `xd1 = X'd`, `fn`, oraz konstrukcja `PV`/`Slack`/`Line` — jest naszym
+kodem. Wspólny błąd interpretacji wejścia skaziłby OBIE strony porównania i
+zgodność do 1e-9 by go nie wykryła.
+
+**MAPOWANIE ANDES ↔ MV-DESIGN-PRO NIE JEST JESZCZE NIEZALEŻNIE ZWALIDOWANE.**
+
+Piszę to wprost, bo zgodność dwóch programów nie zastępuje tego sprawdzenia.
+Co zostało zrobione, żeby ryzyko zawęzić — i co nadal zostaje:
+
+| Kontrola | Status |
+|---|---|
+| `fn` — sprawdzone, że wpływa na wynik i jak (`f ∝ √fn`, zmierzony stosunek `√(60/50)` z dokładnością 1e-4) | **wykonana** |
+| `M` — sprawdzone, że wchodzi jak bezwładność (`CCT ∝ √H` na 5 punktach, `f_osc ∝ 1/√H`) | **wykonana** |
+| `xd1` — sprawdzone przez zgodność `E'` liczonego niezależnie z `V + jX·I` | **wykonana** |
+| Porównanie z **natywnym przypadkiem ANDES** (`cases/smib/SMIB.xlsx`, `cases/kundur/*`) i z opublikowanymi wartościami własnymi z literatury | **NIE wykonana** — ANDES dostarcza takie przypadki, ich użycie jest naturalnym następnym krokiem |
+
+Trzy pierwsze kontrole są **niezależne od ANDES** (opierają się na zamkniętych
+relacjach skalowania), więc wykluczają najgroźniejszą klasę pomyłki — parametr
+wpisany w niewłaściwe pole. Nie wykluczają pomyłki w konwencji bazy mocy albo
+w interpretacji `Sn` urządzenia względem `Sn` sieci.
+
 **PUŁAPKA, KTÓRA MUSI TRAFIĆ DO DECYZJI.** ANDES domyślnie liczy na **60 Hz**,
 a `ss.config.freq = 50.0` **nie działa** (także ustawione przed `setup()`).
 Skuteczny jest wyłącznie parametr `fn` **przy urządzeniu**. Pominięcie daje błąd
@@ -649,6 +795,44 @@ który nie udaje ani gotowości, ani częściowej gotowości. Nie zmieniłem teg
 bo wybór statusu docelowego jest decyzją produktową o komunikacie dla projektanta.
 
 ---
+## 15.5 Podział pozycji nierozstrzygniętych: co WYMAGA Fable, a co dało się zrobić
+
+Runda 1 wymieniała listę rzeczy niezrobionych, uzasadniając je zbiorczo
+„to architektura". Przegląd słusznie zauważył, że to uzasadnienie było
+nadużywane: **brak decyzji produkcyjnej nie blokuje eksperymentu badawczego**.
+Poniżej podział na dwie grupy i wykonanie grupy B.
+
+### Grupa A — NIE DA SIĘ bez decyzji Fable (techniczna blokada, nie ostrożność)
+
+| Pozycja | Techniczna blokada |
+|---|---|
+| Wymiana produkcyjnego solvera prototypem | Wymaga wymiany kontraktów FROZEN (D-03). Bez tego nowy rdzeń nie ma jak dostać topologii — `StabilitySolverInput` jej nie niesie. |
+| Ogłoszenie kontraktu wyniku kanonicznym | `ResultSetV1` jest FROZEN; dodanie osi czasu to zmiana major (D-08). |
+| Nadanie stopnia zwalidowanej symulacji | Wymaga modelu zaufania w PRODUKCJI (D-09) — prototyp pokazuje wariant, ale wdrożenie zmienia kontrakt proweniencji. |
+| Usunięcie jednej z trzech implementacji NC RfG | To JEST wykonanie D-06. |
+| Zmiana wymagalności T01 dla PPM klasy A/B | Zmienia to, co narzędzie twierdzi o prawie (NC RfG art. 13(2) vs zapis katalogu „zależy od certyfikatu i decyzji OS"). Pomyłka w każdą stronę jest szkodliwa. |
+| Zmiana semantyki `no_module` w readiness | Wybór statusu docelowego jest decyzją o komunikacie dla projektanta. |
+| Wpięcie ANDES do `pyproject.toml` i CI | Decyzja o zależnościach projektu. |
+
+### Grupa B — DAŁO SIĘ zrobić jako odizolowany spike i ZOSTAŁO zrobione
+
+| Pozycja | Co powstało | Gdzie |
+|---|---|---|
+| Realny benchmark **sztywny** | wskaźnik sztywności 4286,9; metody jawne rozbiegają się od 5 ms, niejawne nie; kroki graniczne zgodne z zamkniętym wzorem w 1–2 % | §18.1, `sztywnosc.py` |
+| **Ogranicznik prądu GFM** | strategie ograniczenia + pomiar wpływu na ciągłość, zbieżność i charakter źródła | `urzadzenia.py` (GFM), `test_gfm_ogranicznik.py` |
+| **BESS z SOC**, **PPC**, **DFIG** | trzy modele z jawnie opisanym zakresem; BESS traci zdolność wsparcia po wyczerpaniu energii | `urzadzenia_oze.py` |
+| Walidacja **regulatorów** wyrocznią | przypadek GENROU + wzbudnica; zakres zgodności jest WYNIKIEM, nie założeniem | `wzorzec_genrou.py` |
+| Walidacja **mapowania** na cudzym przypadku | przypadek natywny ANDES, błąd 6,5e-08 | §12.2, `wzorzec_natywny.py` |
+| Druga wyrocznia analityczna (**CCT**) | zgodność 0,04–0,51 % dla `H` = 1…16 s | §19.1 |
+| **Forensyka błędu solvera** | `BladSolvera` z fazą, chwilą, krokiem i lokalizacją stanu | `wynik.py`, `silnik.py` |
+
+Zasada, którą stąd wyprowadzam na przyszłość: „to jest architektura" wolno
+podać jako powód zatrzymania **tylko wtedy, gdy da się nazwać techniczną
+blokadę**. Jeżeli kod może powstać w `research/` bez wejścia do produkcji —
+powinien powstać, bo zmienia pytanie decyzyjne z „czy się da" na „co wybrać".
+
+---
+
 ## 16. Czego NIE zrobiono i dlaczego — uczciwy rejestr
 
 Ta sekcja istnieje, żeby dokument nie był mocniejszy, niż jest.
@@ -706,6 +890,30 @@ cd backend && poetry run python -m pytest -q ../scripts/test_research_isolation_
 poetry run python -m pytest tests/application/reference_networks/ -q -rs
 ```
 
+### DWIE OSOBNE BRAMKI — nigdy sumowane w jeden zielony wynik
+
+Wyrocznia zewnętrzna jest bramkowana `importorskip("andes")`, a ANDES nie jest
+zależnością repozytorium. Na maszynie bez ANDES „pełna regresja zielona" NIE
+znaczy „wyrocznia zewnętrzna przeszła" — znaczy, że jej nie uruchomiono.
+Sumowanie tych dwóch liczb w jeden wynik byłoby dokładnie tym samym błędem, co
+uśpione testy pandapower opisane w ERRATA karty audytowej.
+
+| Bramka | Co obejmuje | Wynik |
+|---|---|---|
+| **CORE REGRESSION** | testy niewymagające narzędzia zewnętrznego | patrz meldunek transzy |
+| **EXTERNAL ORACLE REGRESSION** | testy bramkowane `importorskip("andes")` | **pomijane w CI** — ANDES nie jest zależnością |
+
+Pomiar rozdzielenia (zablokowany import `andes`, `pytest -rs tests/research`):
+**158 passed, 1 skipped**, gdzie ten jeden `skipped` to pominięcie MODUŁOWE
+obejmujące cały `test_wzorzec_zewnetrzny.py`. Z zainstalowanym ANDES ten sam
+katalog zbiera **184** testy. Różnica **26 testów** to dokładny rozmiar bramki
+wyroczni w chwili pomiaru (przed dodaniem `test_wzorzec_natywny.py`).
+
+**LOCAL VERIFICATION ONLY.** Wszystkie wyniki w tym dokumencie i w meldunkach
+transzy pochodzą z uruchomień lokalnych w środowisku sesji. Workflow GitHub
+Actions dla tej gałęzi **nie został uruchomiony i nie został sprawdzony**;
+nazywanie tego „CI zielone" byłoby twierdzeniem bez pokrycia.
+
 ### Zastana czerwień na punkcie odgałęzienia (`7e84753a`) — do rejestru
 
 Zweryfikowane w osobnym worktree na commicie `7e84753a`, czyli **przed**
@@ -756,9 +964,62 @@ znaczy „poprawny": błąd 16,6 rad to wynik oderwany od rozwiązania.
 **niesztywne** (jedna maszyna, brak szybkich stałych czasowych regulatorów,
 brak modeli przekształtnikowych o stałych rzędu milisekund). Przewaga metod
 A-stabilnych ujawnia się dopiero przy sztywności, której to zadanie nie ma.
-Uczciwy wniosek brzmi: **rdzeń musi mieć wymienny integrator** (prototyp ma
-cztery za jednym kontraktem), a wybór domyślnego wymaga pomiaru na zadaniu
-sztywnym, którego jeszcze nie zbudowano.
+
+**SPROSTOWANIE.** Wcześniejszy meldunek pisał, że „wszystkie cztery integratory
+zbiegają na układzie sztywnym". To było nieprawdą: mierzone zadanie było
+niesztywne, a zadania sztywnego wtedy nie było. Zostało zbudowane i zmierzone —
+patrz §18.1. Wniosek z niego jest **przeciwny** do wniosku z tabeli wyżej.
+
+### 18.1 To samo pytanie na zadaniu REALNIE SZTYWNYM
+
+`research/dynamic_lab/sztywnosc.py`: sieć `GEN—SN—SYS`, maszyna 4. rzędu
+(`H = 4 s`, `Td0' = 8 s`) obok falownika z **kaskadą regulacji** (pętla mocy
+200 ms → pętla prądowa **1 ms**). Rozstaw skal czasowych 1 ms ↔ 8 s.
+
+Sztywność jest **zmierzona, nie zadeklarowana** — z wartości własnych `df/dx`
+liczonych różnicami centralnymi w punkcie pracy:
+
+```
+λ = −1000,00 · −999,96 · −5,13 · −5,00 · −4,87 · −0,826 ± 7,376j · −0,233 · 0 · 0
+max|Re λ| = 1000,0 s⁻¹     min|Re λ|≠0 = 0,2333 s⁻¹
+WSKAŹNIK SZTYWNOŚCI = 4286,9
+```
+
+(Dwie zerowe wartości własne są strukturalne: `Efd` i `Pm` są bez AVR/governora
+stanami stałymi, więc ich wiersze jakobianu są identycznie zerowe. Wskaźnik nie
+zmienia się przy zmianie progu zera o pięć rzędów wielkości.)
+
+Błąd maksymalny wobec `scipy.integrate.solve_ivp` metodą **Radau** (`rtol` 1e-10),
+zaburzenie 5°, `T = 1 s`:
+
+| Integrator | 1 ms | 2 ms | 5 ms | 10 ms | 20 ms |
+|---|---|---|---|---|---|
+| Euler jawny | 1,08e−3 | 2,19e−3 | **ROZBIEGŁ** | **ROZBIEGŁ** | **ROZBIEGŁ** |
+| RK4 | 7,92e−9 | 2,20e−7 | **ROZBIEGŁ** | **ROZBIEGŁ** | **ROZBIEGŁ** |
+| Euler niejawny | 1,06e−3 | 2,09e−3 | 5,04e−3 | 9,53e−3 | 1,71e−2 |
+| **Trapez niejawny** | 1,38e−6 | 5,50e−6 | 3,44e−5 | 1,38e−4 | **5,49e−4** |
+
+Krok graniczny stabilności (bisekcja) wobec **zamkniętego wzoru** dla obszaru
+stabilności metody — czyli trzeci, niezależny sprawdzian, że to naprawdę
+sztywność, a nie błąd implementacji:
+
+| Metoda | Zmierzony krok graniczny | Wzór | Zgodność |
+|---|---|---|---|
+| Euler jawny | 2,034 ms | `2/\|λ\| = 2,000 ms` | +1,7 % |
+| RK4 | 2,812 ms | `2,7853/\|λ\| = 2,785 ms` | +1,0 % |
+| Euler niejawny | brak ograniczenia w badanym przedziale | A-stabilna | — |
+| Trapez niejawny | brak ograniczenia w badanym przedziale | A-stabilna | — |
+
+**Wniosek, który się ODWRACA.** Na zadaniu niesztywnym RK4 wygrywał o trzy rzędy
+wielkości. Na zadaniu sztywnym RK4 **nie da się w ogóle uruchomić** powyżej
+2,8 ms, a trapez przy 20 ms daje błąd 5,5e−04 za 992 ewaluacje pochodnych —
+czyli mniej niż RK4 potrzebuje przy 2 ms. To jest dokładnie ta różnica, której
+poprzedni pomiar nie mógł pokazać, bo mierzył niewłaściwe zadanie.
+
+Materiał dla D-02: **wymienny integrator jest konieczny** (oba reżimy istnieją
+w tym samym produkcie), a wybór domyślnego zależy od tego, czy rdzeń ma unieść
+modele przekształtnikowe z pętlą prądową. Jeśli tak — metoda jawna odpada.
+**Wyboru nie dokonuję**: to jest decyzja architektoniczna.
 
 **Znaleziona przy okazji pułapka, która wróci w produkcji.** Drabina tolerancji
 musi być spójna: przy rozwiązywaniu sieci z tolerancją `1e-10` i różniczkowaniu
@@ -866,6 +1127,78 @@ przestał wpisywać status dowodowy na sztywno.
 
 Bezpiecznik **działa w jedną stronę**: blokuje fałszywy pozytyw, nigdy nie
 wycisza wykazanej niezgodności (pinowane osobnym testem).
+
+### 20.1b D-00 RUNDA 2 — piętnaście potwierdzonych obejść i co z nimi zrobiono
+
+Runda 1 ogłosiła „graf konsumentów domknięty". **Nie był.** Wielosoczewkowe
+polowanie na obejścia (87 kandydatów zweryfikowanych adwersaryjnie, **15
+potwierdzonych jako osiągalne na żywo**, 72 odrzucone) znalazło trzy KLASY
+obejść. Wszystkie zamknięte w tej transzy, każda naprawą klasy, nie instancji.
+
+**Klasa A — bramka dowodowa działała FAIL-OPEN.** `_module_evidence_status`
+pomijała każdy wynik, którego `evidence` było `None`, a klasyfikację doklejało
+**8 ewaluatorów z 20**. Rejestr proweniencji był fail-closed, a jego konsument
+fail-open — czyli „rozdziel szerzej, niż doklejasz z powrotem".
+
+Najgroźniejsza instancja: **T18** („Praca wyspowa, rozruch autonomiczny i
+tłumienie oscylacji") orzekał `pass` z trzech flag wejściowych, bez żadnego
+obliczenia, i był dla bramki **niewidoczny** — a to trzy jednoznacznie
+DYNAMICZNE zdolności. Certyfikat „Projekt zgodny z wymaganiami NC RfG"
+powstawał w całości.
+
+Naprawa: `capability_id` jest polem OBOWIĄZKOWYM **definicji testu**, a
+`_result()` klasyfikuje z definicji — ewaluator nie może zapomnieć. Brak
+klasyfikacji jest teraz ograniczeniem (`BRAK_KLASYFIKACJI`), nie zgodą.
+
+Klasyfikacja wszystkich 20 testów wymusiła drugie rozróżnienie, którego runda 1
+nie miała: **rodzaj twierdzenia** (`ClaimKind`). Deklaracja wnioskodawcy JEST
+właściwym dowodem faktu „moduł ma rejestrator zakłóceń", a NIE jest dowodem
+„moduł przetrwa zapad 150 ms". Różnica nie leży w stopniu dowodowym, tylko w
+tym, CO jest twierdzone — dlatego eligibility zależy od pary (tier, claim_kind),
+a nie od samego tieru.
+
+**Klasa B — dokumenty gubiły status dowodowy przy renderowaniu.** Eksport
+DOCX/PDF przebiegu drukował `Status=STABLE | t_wyl=120,0 ms | Margines=30,0 ms`
+dla przebiegu oznaczonego `not_reportable`; wiersz `source_compliance` trzydzieści
+linii niżej status drukował. Ta sama asymetria w sekcji „Podsumowanie" i w
+kontrakcie kolumn.
+
+Naprawa jest **regułą RENDERERA, nie gałęzi**: `wiersze_niedowodowe()` czyta
+DANE każdego wiersza każdej tabeli i emituje blok `BRAK WYSTARCZAJĄCEGO DOWODU`
+przed tabelami. Nowa tabela dodana kiedyś do raportu jest objęta regułą bez
+zmiany kodu — sprawdzone testem na tabeli, której jeszcze nie ma.
+
+**Klasa C — front gubił pole `evidence`.** Backend wystawia je od rundy 1;
+interfejs `WidokTrajektoriiFrt` deklarował zgodność „1:1 z odpowiedzią" i tego
+pola **nie miał w ogóle**. Skutek: zielony baner „Model odzwierciedla wymagania
+profilu operatora" z modelu bez ustalonej poprawności fizycznej, przenoszony
+przyciskiem „Zapisz wynik" do macierzy NC RfG. Dodatkowo `werdyktCalosciFrt`
+zwracał ten sam zielony werdykt dla **pustej listy scenariuszy** — pułapka
+`all([]) === true` w wersji prezentacyjnej.
+
+Naprawa: `evidence` w kontrakcie UI; pozytyw ze zdolności nieprzydatnej
+dowodowo schodzi do ostrzeżenia z jawnym dopiskiem; pusta lista scenariuszy ma
+własny stan. Werdykt NEGATYWNY nie jest zmiękczany — ostrzeżenie dowodowe nigdy
+nie maskuje naruszenia.
+
+**Czego NIE naprawiono i dlaczego (pozycja decyzyjna).** Polowanie zgłosiło
+jako P0, że `module_family="PPM"` nie czyni T01 (LFSM-O) wymaganym dla klas A/B,
+podczas gdy reguła kompensacyjna istnieje wyłącznie dla `SyPGM`, a NC RfG art.
+13(2) wymaga LFSM-O od typu A wzwyż. **Obejście dowodowe jest zamknięte**
+(każdy test jest teraz sklasyfikowany, więc raportowalność klasy A wynika z
+jawnego faktu, że wszystkie jej testy wymagane są twierdzeniami
+konfiguracyjnymi). **Otwarte pozostaje pytanie NORMATYWNE**: czy PPM klasy A/B
+bez certyfikatu powinien mieć T01 wymagany. Zmiana wymagalności testu zmienia
+to, co narzędzie twierdzi o prawie — i pomyłka w którąkolwiek stronę jest
+szkodliwa. To jest decyzja właściciela/Fable, nie skutek uboczny sprzątania.
+
+**Pomiar wiarygodności napraw.** Każda naprawa przeszła mutację kontrolną:
+przywrócenie fail-open → 1 test czerwony; błędna klasyfikacja T18 jako faktu
+konfiguracyjnego → 3 testy czerwone; usunięcie reguły renderera → 9 testów
+czerwonych. Pierwsza wersja testu dokumentów mutacji **nie wykrywała** (łączyła
+dwa sygnały spójnikiem „lub") i została wzmocniona — to też jest zapisane.
+
+---
 
 ### 20.2 Trzynaście pytań do rozstrzygnięcia
 

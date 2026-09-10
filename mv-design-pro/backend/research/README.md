@@ -42,6 +42,7 @@ z defektów P0 audytu: model nazwany „6-rzędowym" miał 2 stany).
 | `dynamic_lab/konwencje.py` | jednostki, bazy, konwencje znaków, transformacja dq↔sieć |
 | `dynamic_lab/siec.py` | warstwa algebraiczna sieci: Ybus, wstrzyknięcia prądu, rozwiązanie `g(x,V)=0` |
 | `dynamic_lab/urzadzenia.py` | protokół urządzenia + maszyna synchroniczna 4. rzędu + falownik GFL/GFM |
+| `dynamic_lab/urzadzenia_oze.py` | prototypy **D-07** i **D-12**: magazyn ze stanem energii (SOC) i regulacją częstotliwościową, regulator elektrowni (PPC) z limitem eksportu ocenianym w PCC, maszyna dwustronnie zasilana 3. rzędu BEZ crowbaru (z jawnym zakresem ważności) |
 | `dynamic_lab/regulatory.py` | AVR, governor — pętle ZAMKNIĘTE, z ogranicznikami i anti-windup |
 | `dynamic_lab/zdarzenia.py` | harmonogram zdarzeń (zwarcie, wyłączenie, zmiana topologii) |
 | `dynamic_lab/calkowanie.py` | integratory (jawne i niejawne) za wspólnym kontraktem |
@@ -50,8 +51,10 @@ z defektów P0 audytu: model nazwany „6-rzędowym" miał 2 stany).
 | `dynamic_lab/walidacja.py` | metryki zgodności + wyrocznie analityczne (W2): wahania małosygnałowe i CCT z kryterium równych pól |
 | `dynamic_lab/drabina.py` | JEDNA taksonomia dowodów: oś C (złożoność przypadku) × oś W (poziom wyroczni) |
 | `dynamic_lab/benchmarki.py` | przypadki odniesienia (oś C: C1…C4), CCT przez bisekcję, porównanie integratorów |
+| `dynamic_lab/sztywnosc.py` | dowód **D-02**: przypadek JAWNIE SZTYWNY (wskaźnik sztywności z widma jakobianu) + porównanie integratorów na nim — kroki graniczne wobec zamkniętego wzoru `2/\|λ\|` |
 | `dynamic_lab/frt.py` | ocena FRT: wymaganie (obwiednia) vs wynik (przebieg) — ROZDZIELONE |
 | `dynamic_lab/wzorzec_zewnetrzny.py` | dowód **C1/W3**: porównanie z NIEZALEŻNYM narzędziem (ANDES) — wymaga `pip install andes` |
+| `dynamic_lab/wzorzec_natywny.py` | walidacja MAPOWANIA parametrów na przypadku autorstwa ANDES (`cases/smib/SMIB.xlsx`) — sprawdza, czy rozumiemy wejście |
 | `dynamic_lab/dowod_walidacji.py` | PROTOTYP D-09: stopień dowodowy WYPROWADZANY z zakresu walidacji, nie nadawany |
 
 Testy: `backend/tests/research/` (uruchamiane przez zwykły bieg pytest).

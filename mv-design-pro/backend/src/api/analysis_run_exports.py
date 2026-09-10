@@ -31,6 +31,7 @@ from enm.canonical_analysis import CanonicalRun
 from fastapi import HTTPException
 from fastapi.responses import Response
 from network_model.reporting.czcionki import zarejestruj_czcionki
+from solver_input.provenance import BRAK_DOWODU_PL
 
 ReportProfile = Literal["osd", "wykonawczy", "audytowy"]
 ReportDetailLevel = Literal["minimalny", "standardowy", "pelny"]
@@ -1064,6 +1065,89 @@ def export_run_pdf_response(
     )
 
 
+#: Klucze wierszy, po ktorych probujemy nazwac element w adnotacji dowodowej.
+_KLUCZE_TOZSAMOSCI_WIERSZA = (
+    "source_id",
+    "source_ref",
+    "element_id",
+    "target_name",
+    "bus_id",
+    "branch_id",
+    "name",
+)
+
+
+def _tozsamosc_wiersza(row_data: dict[str, Any]) -> str:
+    for klucz in _KLUCZE_TOZSAMOSCI_WIERSZA:
+        wartosc = row_data.get(klucz)
+        if wartosc:
+            return str(wartosc)
+    return "—"
+
+
+def wiersze_niedowodowe(
+    results_section: dict[str, Any], limit_wierszy: int
+) -> list[tuple[str, str, str, list[str]]]:
+    """Znajdz KAZDY wiersz wyniku, ktory nie jest przydatny dowodowo.
+
+    REGULA RENDERERA, NIE GALEZI. Wczesniej status dowodowy drukowala tylko ta
+    galaz, ktora ktos o tym pamietal: wiersz ``source_compliance`` go mial, a
+    wiersz ``dynamic_stability`` nie — wiec eksport DOCX/PDF przebiegu
+    stabilnosci drukowal samo ``Status=STABLE``, mimo ze przebieg byl oznaczony
+    ``not_reportable``. Dokument profilu OSD twierdzil wiec cos, czego dane
+    biegu nie twierdzily.
+
+    Ta funkcja czyta DANE wierszy, a nie ich formatowanie, wiec nowa tabela
+    dodana kiedys do raportu jest objeta ta sama regula bez zadnej zmiany tutaj.
+    Brak pola ``reporting_status`` w wierszu NIE jest traktowany jako brak
+    problemu — patrz nizej.
+
+    Zwraca listę ``(table_id, tozsamosc_wiersza, reporting_status, ograniczenia)``.
+    """
+    znalezione: list[tuple[str, str, str, list[str]]] = []
+    for tabela in (results_section.get("index", {}) or {}).get("tables", []):
+        table_id = str(tabela.get("table_id") or "")
+        if not table_id:
+            continue
+        wiersze = (results_section.get(table_id, {}) or {}).get("rows", [])[:limit_wierszy]
+        for row_data in wiersze:
+            if not isinstance(row_data, dict):
+                continue
+            status = row_data.get("reporting_status")
+            if status is None or status == "reportable":
+                continue
+            ograniczenia = row_data.get("evidence_limitations") or []
+            znalezione.append(
+                (
+                    table_id,
+                    _tozsamosc_wiersza(row_data),
+                    str(status),
+                    [str(x) for x in ograniczenia],
+                )
+            )
+    return znalezione
+
+
+def adnotacja_dowodowa_pl(
+    niedowodowe: list[tuple[str, str, str, list[str]]],
+) -> list[str]:
+    """Zdania adnotacji dowodowej do wstawienia w dokumencie (pusta lista = brak)."""
+    if not niedowodowe:
+        return []
+    linie = [
+        BRAK_DOWODU_PL,
+        (
+            "Ponizsze wiersze pochodza ze zdolnosci bez ustalonej poprawnosci "
+            "fizycznej albo wylacznie z deklaracji wnioskodawcy. Maja charakter "
+            "diagnostyczno-inzynierski i NIE stanowia dowodu spelnienia wymagania."
+        ),
+    ]
+    for table_id, tozsamosc, status, ograniczenia in niedowodowe:
+        powod = f" ({', '.join(ograniczenia)})" if ograniczenia else ""
+        linie.append(f"  - {table_id}: {tozsamosc} — {status}{powod}")
+    return linie
+
+
 def export_run_report_docx_response(
     run: CanonicalRun,
     *,
@@ -1153,6 +1237,8 @@ def export_run_report_docx_response(
     if "results" in options["sections"]:
         doc.add_paragraph()
         doc.add_heading("Wyniki tabelaryczne", level=1)
+        for linia in adnotacja_dowodowa_pl(wiersze_niedowodowe(results_section, limits["rows"])):
+            doc.add_paragraph(linia)
         for table in results_section.get("index", {}).get("tables", []):
             table_id = table.get("table_id")
             label = table.get("label_pl") or table_id or "Tabela"
@@ -1224,6 +1310,7 @@ def export_run_report_docx_response(
                                 f"t_wyl={row_data.get('clearing_time_ms') or '—'} ms",
                                 f"Margines={row_data.get('clearing_margin_ms') or '—'} ms",
                                 f"Indeks={row_data.get('stability_index') or '—'}",
+                                str(row_data.get("reporting_status") or "—"),
                             ]
                         )
                     )
@@ -1375,6 +1462,8 @@ def export_run_report_pdf_response(
         canvas_obj.setFont("DejaVuSans-Bold", 12)
         canvas_obj.drawString(left_margin, y, "Wyniki tabelaryczne")
         y -= line_height
+        for linia in adnotacja_dowodowa_pl(wiersze_niedowodowe(results_section, limits["rows"])):
+            draw_line(linia)
         for table in results_section.get("index", {}).get("tables", []):
             draw_line(
                 str(table.get("label_pl") or table.get("table_id") or "Tabela"),
@@ -1417,7 +1506,7 @@ def export_run_report_pdf_response(
                     "rows", []
                 )[: limits["rows"]]:
                     draw_line(
-                        f"{row_data.get('source_id')}: status={row_data.get('status') or '—'}, t_wyl={row_data.get('clearing_time_ms') or '—'} ms, indeks={row_data.get('stability_index') or '—'}"
+                        f"{row_data.get('source_id')}: status={row_data.get('status') or '—'}, t_wyl={row_data.get('clearing_time_ms') or '—'} ms, indeks={row_data.get('stability_index') or '—'}, status dowodowy={row_data.get('reporting_status') or '—'}"
                     )
             elif table.get("table_id") == "automation_trace":
                 for row_data in (results_section.get("automation_trace", {}) or {}).get("rows", [])[

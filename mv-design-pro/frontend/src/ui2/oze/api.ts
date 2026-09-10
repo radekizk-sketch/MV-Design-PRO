@@ -714,6 +714,26 @@ export interface OperatorFrt {
   readonly nazwa: string;
 }
 
+/**
+ * Klasyfikacja dowodowa zdolności, z której pochodzi wynik.
+ *
+ * Backend wystawia to pole od 2026-09-10 (`solver_input.provenance`), a warstwa
+ * UI je GUBIŁA — interfejs widoku deklarował zgodność „1:1" z odpowiedzią, nie
+ * mając tego pola w ogóle. Skutkiem był zielony werdykt „Model odzwierciedla
+ * wymagania profilu operatora" wystawiany na podstawie zdolności oznaczonej
+ * jako model bez ustalonej poprawności fizycznej.
+ */
+export interface KlasyfikacjaDowodowa {
+  readonly capability_id: string;
+  readonly tier: string;
+  readonly tier_pl: string;
+  readonly claim_kind?: string;
+  readonly claim_kind_pl?: string;
+  readonly regulatory_evidence_eligible: boolean;
+  readonly rationale_pl: string;
+  readonly audit_ref: string;
+}
+
 /** Widok trajektorii FRT/HVRT (odpowiedź frt-trajectories, 1:1 z `build_frt_trajectories_view`). */
 export interface WidokTrajektoriiFrt {
   readonly modul_der: ModulDerFrt;
@@ -722,6 +742,8 @@ export interface WidokTrajektoriiFrt {
   readonly status_solvera: StatusSolveraFrt;
   readonly obwiednia_profilu: ObwiedniaProfiluFrt;
   readonly scenariusze: readonly ScenariuszFrt[];
+  /** Nieobecne w starszych odpowiedziach — brak traktujemy jako BRAK DOWODU. */
+  readonly evidence?: KlasyfikacjaDowodowa;
 }
 
 /** Parametry jawnego biegu trajektorii FRT (moduł DER + operator + rodzaj testu). */
@@ -965,6 +987,8 @@ export interface WidokSekwencjiFrt {
   readonly kontekst_sily_sieci: WpisSilyWezla | null;
   readonly kontekst_sily_sieci_powod_pl: string | null;
   readonly input_hash: string;
+  /** Nieobecne w starszych odpowiedziach — brak traktujemy jako BRAK DOWODU. */
+  readonly evidence?: KlasyfikacjaDowodowa;
 }
 
 /** Jeden zapad w edytorze sekwencji (para głębokość p.u. + czas s). */

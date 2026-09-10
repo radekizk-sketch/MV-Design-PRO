@@ -16,10 +16,25 @@ testu bezpiecznika. Audyt pokazał dokładnie ten wzorzec w innym miejscu (dwie
 równoległe implementacje NC RfG, jedna z tautologią), więc zakładam, że wzorzec
 się powtórzy, i sprawdzam go WPROST.
 
+SPROSTOWANIE ZAKRESU (2026-09-10, po przeglądzie kontradyktoryjnym).
+Pierwsza wersja tego pliku nazywała poniższy mechanizm „pełnym grafem
+konsumentów". **To było za mocne i zostało obalone pomiarem**: polowanie na
+obejścia znalazło konsumenta, którego ten skan NIE WIDZI — eksport raportu
+`api/analysis_run_exports.py` czyta `run.raw_result` i nie importuje żadnej z
+poszukiwanych nazw, a mimo to drukował werdykt „Status=STABLE" bez statusu
+dowodowego.
+
+Ten skan jest zatem **regresyjnym inwentarzem znanych konsumentów backendu**,
+a nie granicą architektoniczną. Wykrywa nowego konsumenta, który sięgnie po te
+same nazwy; nie wykryje konsumenta czytającego surowy wynik, dodanego we
+froncie, ani powielającego logikę. Granica realna jest gdzie indziej: w tym, że
+klasyfikacja dowodowa jest przypięta do DEFINICJI testu i że adnotacja w
+dokumencie powstaje z DANYCH wiersza — patrz `test_dynamic_evidence_dokumenty.py`.
+
 Metoda (reguła KLASA, NIE INSTANCJA):
 1. inwentarz konsumentów jest DANYMI, nie prozą (`KONSUMENCI_DYNAMIKI`);
-2. kompletność inwentarza jest sprawdzana SKANEM ŹRÓDEŁ — nowy konsument dopisany
-   kiedyś do `src/` wywala test, zamiast po cichu dołożyć obejście;
+2. inwentarz jest pilnowany SKANEM ŹRÓDEŁ w ZAKRESIE OPISANYM WYŻEJ — nowy
+   konsument sięgający po te nazwy wywala test, zamiast po cichu dołożyć obejście;
 3. odmowa jest sprawdzana w ILOCZYNIE dokument x format (2 x 3), a nie na jednym
    przykładzie, bo eksport DOCX/PDF bywa osobną ścieżką kodu;
 4. sprawdzany jest też kierunek PRZECIWNY: moduł klasy A (bez wymagań
@@ -160,8 +175,13 @@ def _moduly_konsumujace() -> set[str]:
     return znalezione
 
 
-def test_inwentarz_konsumentow_jest_kompletny() -> None:
-    """Nowy konsument dynamiki MUSI zostać świadomie dopisany do inwentarza.
+def test_regresyjny_inwentarz_znanych_konsumentow_jest_aktualny() -> None:
+    """Nowy konsument SIĘGAJĄCY PO TE NAZWY musi zostać świadomie dopisany.
+
+    Nazwa testu mówi teraz dokładnie tyle, ile test sprawdza. Poprzednia
+    („inwentarz konsumentów jest kompletny") obiecywała granicę, której skan
+    importów dać nie może — i obietnica została obalona realnym obejściem
+    w eksporcie raportu.
 
     Bez tego testu zdanie „lista jest zamknięta" byłoby deklaracją bez pokrycia —
     a deklaracja bez przypiętego sprawdzenia wyłącza czujność skuteczniej, niż
@@ -349,3 +369,92 @@ def test_zbieranie_brakow_wniosku_przenosi_przyczyne_dowodowa() -> None:
         "Przyczyna dowodowa musi być przypisana do sekcji zgodności, "
         f"żeby projektant wiedział, czego dotyczy: {dowodowe}"
     )
+
+
+# ---------------------------------------------------------------------------
+# L2 — DRUGI, KOMPLEMENTARNY SPIS: kto w ogóle produkuje dokument wyjściowy
+# ---------------------------------------------------------------------------
+
+#: Moduły produkcyjne, które renderują dokument (DOCX/PDF). Każdy z nich jest
+#: potencjalnym miejscem, w którym status dowodowy może zginąć — bo dokument
+#: jest ostatnim punktem, w którym wynik zamienia się w twierdzenie na papierze.
+#: Wartość mówi, JAK dany moduł niesie zastrzeżenie dowodowe.
+PRODUCENCI_DOKUMENTOW: dict[str, str] = {
+    "api/analysis_run_exports.py": (
+        "reguła renderera: `wiersze_niedowodowe` + `adnotacja_dowodowa_pl` "
+        "przed tabelami (DOCX i PDF); wiersz dynamic_stability niesie status"
+    ),
+    "application/analyses/certyfikat_zgodnosci.py": (
+        "bramka `zbierz_braki` blokuje wydanie; wydany dokument niesie kolumnę "
+        "Podstawa" + " per test i sekcję podstawa_dowodowa"
+    ),
+    "application/analyses/wniosek_osd.py": (
+        "dziedziczy bramkę certyfikatu przed zbudowaniem sekcji"
+    ),
+    "application/analyses/dokument_studium.py": (
+        "nie konsumuje wyniku dynamicznego; niesie dowód certyfikacji PTPiREE "
+        "(deklaracja z tabliczki), nie werdykt symulacyjny"
+    ),
+    # --- Poniższe renderują dokumenty dla analiz SPOZA warstwy dynamicznej.
+    # Sprawdzone grepem na `dynamic_stability|frt_hvrt|stability_rms|ncrfg|
+    # reporting_status`: zero trafień poza jednym wyjątkiem opisanym niżej.
+    # Nie znaczy to, że są bez zarzutu — znaczy, że NIE SĄ konsumentami
+    # bezpiecznika D-00 i ich ewentualne braki należą do innej karty.
+    "analysis/power_flow/violations_report.py": "rozpływ mocy — poza warstwą dynamiczną",
+    "analysis/protection_curves_it/renderer_pdf.py": "krzywe zabezpieczeń — poza warstwą dynamiczną",
+    "analysis/reporting/arc_flash_report.py": "łuk elektryczny — poza warstwą dynamiczną",
+    "analysis/reporting/audit2_report.py": "raport audytowy — poza warstwą dynamiczną",
+    "analysis/reporting/pdf/p24_plus_report.py": "raport analityczny — poza warstwą dynamiczną",
+    "api/power_flow_comparisons.py": "porównanie rozpływów — poza warstwą dynamiczną",
+    "api/power_flow_runs.py": (
+        "rozpływ mocy; JEDYNY producent spoza warstwy dynamicznej, który czyta "
+        "`reporting_status` (kroku dowodu) — czyli niesie status, nie gubi go"
+    ),
+    "api/reference_patterns.py": "wzorce referencyjne — poza warstwą dynamiczną",
+    "application/proof_engine/proof_inspector/exporters.py": "pakiety dowodowe SC/PF",
+    "application/reference_networks/report_export.py": "sieci referencyjne — stan ustalony",
+    "application/reference_patterns/reporting.py": "wzorce referencyjne — poza warstwą dynamiczną",
+    "network_model/proof/power_flow_proof_export.py": "dowód rozpływu — poza warstwą dynamiczną",
+    "network_model/reporting/analysis_run_report_docx.py": "raport przebiegu (starsza ścieżka)",
+    "network_model/reporting/analysis_run_report_pdf.py": "raport przebiegu (starsza ścieżka)",
+    "network_model/reporting/czcionki.py": "rejestracja czcionek — nie renderuje treści",
+    "network_model/reporting/export_docx.py": "wspólne narzędzia DOCX",
+    "network_model/reporting/export_pdf.py": "wspólne narzędzia PDF",
+    "network_model/reporting/power_flow_report_docx.py": "rozpływ mocy",
+    "network_model/reporting/power_flow_report_pdf.py": "rozpływ mocy",
+    "network_model/reporting/protection_report_docx.py": "zabezpieczenia",
+    "network_model/reporting/protection_report_pdf.py": "zabezpieczenia",
+    "network_model/reporting/short_circuit_report_docx.py": "zwarcia",
+    "network_model/reporting/short_circuit_report_pdf.py": "zwarcia",
+}
+
+_SYGNATURY_RENDEROWANIA = ("from docx import", "import docx", "from reportlab")
+
+
+def _moduly_renderujace_dokumenty() -> set[str]:
+    znalezione: set[str] = set()
+    for plik in sorted(SRC.rglob("*.py")):
+        tresc = plik.read_text(encoding="utf-8")
+        if any(sygnatura in tresc for sygnatura in _SYGNATURY_RENDEROWANIA):
+            znalezione.add(plik.relative_to(SRC).as_posix())
+    return znalezione
+
+
+def test_kazdy_producent_dokumentu_jest_rozpatrzony() -> None:
+    """Drugi spis, o INNEJ osi niż spis importów — i dlatego komplementarny.
+
+    Skan importów pytał „kto sięga po wynik NC RfG". Ten pyta „kto w ogóle
+    zamienia dane w dokument", czyli obejmuje także moduł czytający surowy
+    `raw_result` — dokładnie ten, którego pierwsza wersja nie widziała.
+    Dwa spisy o różnych osiach wykrywają różne klasy pominięcia; żaden z nich
+    nie jest sam w sobie granicą.
+    """
+    znalezione = _moduly_renderujace_dokumenty()
+    nowe = znalezione - set(PRODUCENCI_DOKUMENTOW)
+    assert not nowe, (
+        "Nowy moduł renderujący dokument poza spisem: "
+        f"{sorted(nowe)}. Dopisz go do PRODUCENCI_DOKUMENTOW wraz z opisem, JAK "
+        "niesie zastrzeżenie dowodowe — albo najpierw spraw, żeby je niósł."
+    )
+    znikniete = set(PRODUCENCI_DOKUMENTOW) - znalezione
+    assert not znikniete, f"Spis wymienia moduły, które już nie renderują: {sorted(znikniete)}"

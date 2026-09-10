@@ -17,6 +17,45 @@ import type {
   WidokTrajektoriiFrt,
 } from '../../api';
 
+
+/**
+ * Klasyfikacja dowodowa, ktora backend REALNIE wystawia dla widokow FRT
+ * (`frt_trajektorie.py` i `frt_sekwencja.py` wolaja
+ * `classify_dynamic_capability("frt_hvrt.trajectory")`).
+ *
+ * Fikstury pomijaly to pole, przez co testy cwiczyly sciezke, ktorej w
+ * produkcie nie ma — i zielona odznaka „w obwiedni" wygladala na poprawna.
+ * Fikstura ma odwzorowywac odpowiedz, a nie jej wygodny podzbior.
+ */
+export function klasyfikacjaFrtNiedowodowa() {
+  return {
+    capability_id: 'frt_hvrt.trajectory',
+    tier: 'UNVALIDATED_MODEL',
+    tier_pl: 'model_niezwalidowany',
+    claim_kind: 'DYNAMIC_PERFORMANCE',
+    claim_kind_pl: 'zachowanie_dynamiczne',
+    regulatory_evidence_eligible: false,
+    rationale_pl:
+      'Przebieg napiecia jest funkcja zadana z parametru wejsciowego, a nie rozwiazaniem sieci.',
+    audit_ref: 'docs/plan/KARTA_MAX_DYNAMIC_SIMULATION_AUDIT_2026-09.md §15',
+  } as const;
+}
+
+/**
+ * Klasyfikacja HIPOTETYCZNA: zdolnosc przydatna dowodowo. Dzis zaden modul
+ * dynamiczny jej nie ma — istnieje wylacznie po to, zeby pozytywna galaz
+ * prezentacji (zielona odznaka) tez byla przetestowana. Bez tego naprawa
+ * zostawilaby te galaz bez pokrycia.
+ */
+export function klasyfikacjaFrtDowodowa() {
+  return {
+    ...klasyfikacjaFrtNiedowodowa(),
+    tier: 'VALIDATED_SIMULATION',
+    tier_pl: 'symulacja_zwalidowana',
+    regulatory_evidence_eligible: true,
+  } as const;
+}
+
 /** Katalog NC RfG: dwóch operatorów (progi klas nieistotne dla okna FRT). */
 export function katalogNcRfgFixture(): OdpowiedzKatalogNcRfg {
   return {
@@ -106,6 +145,7 @@ function operatorPse() {
 export function widokLvrtWObwiedniFixture(): WidokTrajektoriiFrt {
   const trajektoria = trajektoriaLvrtBazowa();
   return {
+    evidence: klasyfikacjaFrtNiedowodowa(),
     modul_der: modulPv1Mw(),
     operator: operatorPse(),
     test_kind: 'lvrt',
@@ -165,6 +205,7 @@ export function widokPozaObwiedniaFixture(): WidokTrajektoriiFrt {
       : pt,
   );
   return {
+    evidence: klasyfikacjaFrtNiedowodowa(),
     modul_der: modulPv1Mw(),
     operator: operatorPse(),
     test_kind: 'lvrt',
@@ -197,6 +238,7 @@ export function widokModulWypadlFixture(): WidokTrajektoriiFrt {
       : pt,
   );
   return {
+    evidence: klasyfikacjaFrtNiedowodowa(),
     modul_der: modulPv1Mw(),
     operator: operatorPse(),
     test_kind: 'lvrt',
@@ -228,6 +270,7 @@ export function widokHvrtWObwiedniFixture(): WidokTrajektoriiFrt {
     { czas_s: 1.0, napiecie_pu: 1.0, iq_bierny_pu: 0.0, p_czynna_pu: 1.0 },
   ];
   return {
+    evidence: klasyfikacjaFrtNiedowodowa(),
     modul_der: modulPv1Mw(),
     operator: operatorPse(),
     test_kind: 'hvrt',
@@ -269,6 +312,7 @@ function wejscieSekwencji(depth: number, czas: number) {
  */
 export function widokSekwencjiZaliczonaFixture(): WidokSekwencjiFrt {
   return {
+    evidence: klasyfikacjaFrtNiedowodowa(),
     modul_der: modulPv1Mw(),
     operator: operatorPse(),
     status_solvera: 'ok',
@@ -321,6 +365,7 @@ export function widokSekwencjiZaliczonaFixture(): WidokSekwencjiFrt {
  */
 export function widokSekwencjiNiezaliczonaFixture(): WidokSekwencjiFrt {
   return {
+    evidence: klasyfikacjaFrtNiedowodowa(),
     modul_der: modulPv1Mw(),
     operator: operatorPse(),
     status_solvera: 'der_dropped',

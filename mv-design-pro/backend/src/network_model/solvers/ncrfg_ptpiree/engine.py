@@ -67,13 +67,32 @@ def _module_evidence_status(
     pozytywnego: raz ukrywałoby realną niezgodność, raz udawało dowód.
     Kompletność danych (werdykty ``no_data``) jest osobną bramką po stronie
     konsumenta dokumentu — patrz ``application.analyses.certyfikat_zgodnosci``.
+
+    NAPRAWA FAIL-OPEN (2026-09-10, znalezione przeglądem kontradyktoryjnym).
+    Pierwsza wersja tej bramki pomijała każdy wynik, którego ``evidence`` było
+    ``None`` — a klasyfikację doklejało 8 ewaluatorów z 20, więc 12 testów było
+    dla bramki NIEWIDOCZNYCH. Skutek zmierzony na HEAD: moduł klasy A z rodziny
+    ``PPM`` osiągał ``reportable``/``complete`` **nie mając ani jednego
+    sklasyfikowanego testu wymaganego**, a T18 (praca wyspowa, rozruch
+    autonomiczny, tłumienie oscylacji — trzy zdolności DYNAMICZNE orzekane
+    z trzech flag wejściowych) przechodził jako wymagany pozytyw.
+
+    Rejestr proweniencji był fail-closed, a jego KONSUMENT fail-open — czyli
+    dokładnie ten wzorzec „rozdziel szerzej, niż doklejasz z powrotem", przed
+    którym ostrzega reguła KLASA, NIE INSTANCJA. Teraz brak klasyfikacji JEST
+    ograniczeniem (``BRAK_KLASYFIKACJI``), a klasyfikację niesie DEFINICJA testu,
+    więc nie da się jej pominąć przez zapomnienie w ewaluatorze.
     """
     limitations = sorted(
         {
-            f"{test.test_id}:{(test.evidence or {}).get('tier')}"
+            (
+                f"{test.test_id}:BRAK_KLASYFIKACJI"
+                if test.evidence is None
+                else f"{test.test_id}:{test.evidence.get('tier')}"
+            )
             for test in required_tests
-            if test.evidence is not None
-            and not bool((test.evidence or {}).get("regulatory_evidence_eligible", False))
+            if test.evidence is None
+            or not bool(test.evidence.get("regulatory_evidence_eligible", False))
         }
     )
     if not limitations:
@@ -89,6 +108,7 @@ def _module_evidence_status(
 TEST_CATALOG: list[NcRfgPtpireeTestDefinition] = [
     NcRfgPtpireeTestDefinition(
         test_id="T01",
+        capability_id="ncrfg_ptpiree.frequency_response",
         ability_pl="LFSM-O - ograniczanie mocy przy nadczęstotliwości",
         procedure_basis_pl="Zakres testów zgodności NC RfG dla PPM/SyPGM typu C i D; dla części A/B gdy brak certyfikatu.",
         default_for_modules=["C", "D"],
@@ -96,66 +116,77 @@ TEST_CATALOG: list[NcRfgPtpireeTestDefinition] = [
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T02",
+        capability_id="ncrfg_ptpiree.frequency_response",
         ability_pl="LFSM-U - zwiększanie mocy przy podczęstotliwości",
         procedure_basis_pl="Zakres testów zgodności NC RfG dla modułów typu C i D.",
         default_for_modules=["C", "D"],
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T03",
+        capability_id="ncrfg_ptpiree.frequency_response",
         ability_pl="FSM - regulacja częstotliwości w paśmie normalnym",
         procedure_basis_pl="Zakres testów zgodności NC RfG dla modułów typu C i D.",
         default_for_modules=["C", "D"],
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T04",
+        capability_id="ncrfg_ptpiree.frequency_response",
         ability_pl="Regulacja odbudowy częstotliwości",
         procedure_basis_pl="Zakres testów zgodności NC RfG dla modułów typu C i D.",
         default_for_modules=["C", "D"],
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T05",
+        capability_id="ncrfg_ptpiree.active_power_control",
         ability_pl="Możliwość regulacji mocy czynnej",
         procedure_basis_pl="Program ramowy testów PPM oraz sprawdzenia dodatkowe dla regulacji P.",
         default_for_modules=["B", "C", "D"],
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T06",
+        capability_id="ncrfg_ptpiree.reactive_voltage_mode",
         ability_pl="Tryb regulacji napięcia",
         procedure_basis_pl="Zakres testów zgodności PPM typu C i D.",
         default_for_modules=["C", "D"],
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T07",
+        capability_id="ncrfg_ptpiree.reactive_voltage_mode",
         ability_pl="Tryb regulacji mocy biernej Q",
         procedure_basis_pl="Zakres testów zgodności PPM typu C i D.",
         default_for_modules=["C", "D"],
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T08",
+        capability_id="ncrfg_ptpiree.reactive_voltage_mode",
         ability_pl="Tryb regulacji współczynnika mocy cosφ",
         procedure_basis_pl="Zakres testów zgodności PPM typu C i D.",
         default_for_modules=["C", "D"],
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T09",
+        capability_id="ncrfg_ptpiree.reactive_voltage_mode",
         ability_pl="Zdolność do generacji mocy biernej",
         procedure_basis_pl="Zakres testów zgodności PPM typu B, C i D.",
         default_for_modules=["B", "C", "D"],
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T10",
+        capability_id="ncrfg_ptpiree.power_limits",
         ability_pl="Potwierdzenie mocy maksymalnej PMAX",
         procedure_basis_pl="Sprawdzenia dodatkowe procedury PTPiREE dla typu B, C i D.",
         default_for_modules=["B", "C", "D"],
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T11",
+        capability_id="ncrfg_ptpiree.power_limits",
         ability_pl="Potwierdzenie mocy minimalnej PMIN",
         procedure_basis_pl="Sprawdzenia dodatkowe procedury PTPiREE dla typu B, C i D.",
         default_for_modules=["B", "C", "D"],
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T12",
+        capability_id="ncrfg_ptpiree.remote_power_command",
         ability_pl="Zaprzestanie generacji mocy czynnej",
         procedure_basis_pl="Dodatkowy test zgodności, wymagany dla typu A/B przy braku certyfikatu.",
         default_for_modules=[],
@@ -163,6 +194,7 @@ TEST_CATALOG: list[NcRfgPtpireeTestDefinition] = [
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T13",
+        capability_id="ncrfg_ptpiree.remote_power_command",
         ability_pl="Zmniejszenie generacji mocy czynnej",
         procedure_basis_pl="Dodatkowy test zgodności, wymagany dla typu B przy braku certyfikatu.",
         default_for_modules=[],
@@ -170,30 +202,35 @@ TEST_CATALOG: list[NcRfgPtpireeTestDefinition] = [
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T14",
+        capability_id="ncrfg_ptpiree.ride_through",
         ability_pl="LVRT - pozostanie w pracy przy zapadzie napięcia",
         procedure_basis_pl="Test FRT dla modułów B/C/D oraz profili operatora.",
         default_for_modules=["B", "C", "D"],
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T15",
+        capability_id="ncrfg_ptpiree.ride_through",
         ability_pl="HVRT - pozostanie w pracy przy wzroście napięcia",
         procedure_basis_pl="Test HVRT dla modułów B/C/D oraz profili operatora.",
         default_for_modules=["B", "C", "D"],
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T16",
+        capability_id="ncrfg_ptpiree.p_recovery",
         ability_pl="Odbudowa mocy czynnej po zakłóceniu",
         procedure_basis_pl="Wymaganie profilu operatora dla modułów B/C/D.",
         default_for_modules=["B", "C", "D"],
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T17",
+        capability_id="ncrfg_ptpiree.reactive_current_frt",
         ability_pl="Prąd bierny podczas FRT",
         procedure_basis_pl="Sprawdzenie wsparcia napięcia w czasie FRT.",
         default_for_modules=["B", "C", "D"],
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T18",
+        capability_id="ncrfg_ptpiree.extended_dynamic_capability",
         ability_pl="Praca wyspowa, rozruch autonomiczny i tłumienie oscylacji",
         procedure_basis_pl="Sprawdzenia dodatkowe wykonywane, gdy zdolność jest wymagana przez właściwego OS/OSP.",
         default_for_modules=[],
@@ -201,12 +238,14 @@ TEST_CATALOG: list[NcRfgPtpireeTestDefinition] = [
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T19",
+        capability_id="ncrfg_ptpiree.observability",
         ability_pl="Rejestracja zakłóceń i komunikacja z operatorem",
         procedure_basis_pl="Dane pomocnicze wymagane do wiarygodnego programu szczegółowego testów.",
         default_for_modules=["C", "D"],
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T20",
+        capability_id="ncrfg_ptpiree.harmonics",
         ability_pl="Jakość energii - THD_U źródła",
         procedure_basis_pl="Kontrola uzupełniająca dla przyłączenia PPM z falownikami.",
         default_for_modules=[],
@@ -1053,6 +1092,19 @@ class NcRfgPtpireeSolver:
         fix_actions: list[str] | None = None,
         evidence: CapabilityEvidence | None = None,
     ) -> NcRfgPtpireeTestResult:
+        # JEDNO ŹRÓDŁO PRAWDY: klasyfikacja pochodzi z DEFINICJI testu, nie od
+        # ewaluatora. Parametr `evidence` pozostaje wyłącznie jako nadpisanie dla
+        # przypadku, w którym ten sam test liczy inna zdolność — i musi wtedy
+        # dotyczyć TEJ SAMEJ zdolności, inaczej definicja i wynik rozjeżdżają się
+        # po cichu.
+        klasyfikacja = evidence or classify_dynamic_capability(definition.capability_id)
+        if evidence is not None and evidence.capability_id != definition.capability_id:
+            raise ValueError(
+                f"Test {definition.test_id}: ewaluator podał zdolność "
+                f"{evidence.capability_id!r}, a definicja deklaruje "
+                f"{definition.capability_id!r}. Dwa źródła prawdy o tym, na czym "
+                "opiera się werdykt, są zakazane."
+            )
         return NcRfgPtpireeTestResult(
             test_id=definition.test_id,
             ability_pl=definition.ability_pl,
@@ -1063,7 +1115,7 @@ class NcRfgPtpireeSolver:
             metrics=metrics,
             trace_refs=trace_refs,
             fix_actions=fix_actions or [],
-            evidence=evidence.to_dict() if evidence is not None else None,
+            evidence=klasyfikacja.to_dict(),
         )
 
     def _build_report(self, modules: list[NcRfgPtpireeModuleResult], procedure_version: str) -> str:

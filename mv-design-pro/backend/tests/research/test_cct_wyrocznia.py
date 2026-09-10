@@ -144,3 +144,67 @@ def test_rozdzielczosc_bisekcji_ogranicza_raportowana_dokladnosc() -> None:
     zgrubne = czas_krytyczny_zwarcia(h_s=4.0, krok_s=KROK_S, dokladnosc_s=0.020)
     dokladne = czas_krytyczny_zwarcia(h_s=4.0, krok_s=KROK_S, dokladnosc_s=0.001)
     assert abs(zgrubne - dokladne) <= 0.020
+
+
+# ---------------------------------------------------------------------------
+# D3 — ZAKRES KRYTERIUM jest EGZEKWOWANY, nie tylko opisany
+# ---------------------------------------------------------------------------
+
+
+def test_kryterium_pierwszego_wybiegu_odmawia_w_ukladzie_wielomaszynowym() -> None:
+    """W układzie wielomaszynowym liczy się kąt WZGLĘDNY, nie bezwzględny.
+
+    Zwrócenie tam liczby nazwanej „CCT" byłoby wynikiem wyglądającym
+    wiarygodnie, a policzonym złym kryterium — czyli tą samą klasą, którą audyt
+    zarzuca produkcji.
+    """
+    from dynamic_lab.benchmarki import (
+        KryteriumPozaZakresemError,
+        _sprawdz_zakres_kryterium,
+        dwie_maszyny,
+    )
+
+    with pytest.raises(KryteriumPozaZakresemError, match="JEDNEJ maszyny"):
+        _sprawdz_zakres_kryterium(dwie_maszyny()[0])
+
+
+def test_kryterium_odmawia_dla_sieci_z_falownikami() -> None:
+    """Falownik GFL nie ma kąta wirnika — kryterium nie orzeka o nim nic."""
+    from dynamic_lab.benchmarki import (
+        KryteriumPozaZakresemError,
+        _sprawdz_zakres_kryterium,
+        siec_sn_z_der,
+    )
+
+    with pytest.raises(KryteriumPozaZakresemError):
+        _sprawdz_zakres_kryterium(siec_sn_z_der()[0])
+
+
+def test_kryterium_odmawia_bez_szyny_sztywnej() -> None:
+    """Bez odniesienia kątowego „kąt bezwzględny" nie ma sensu fizycznego."""
+    from dynamic_lab.benchmarki import (
+        KryteriumPozaZakresemError,
+        _sprawdz_zakres_kryterium,
+        maszyna_klasyczna,
+    )
+    from dynamic_lab.siec import Galaz, TopologiaSieci
+    from dynamic_lab.silnik import ModelDynamiczny
+    from dynamic_lab.urzadzenia import ZespolSynchroniczny
+
+    model = ModelDynamiczny(
+        topologia=TopologiaSieci(
+            szyny=("GEN", "SYS"),
+            galezie=[Galaz("GEN", "SYS", 0.0, 0.15)],
+            szyny_sztywne={},
+        ),
+        urzadzenia=[ZespolSynchroniczny(maszyna=maszyna_klasyczna(), avr=None, governor=None)],
+    )
+    with pytest.raises(KryteriumPozaZakresemError, match="szyny sztywnej"):
+        _sprawdz_zakres_kryterium(model)
+
+
+def test_kryterium_przepuszcza_uklad_dla_ktorego_obowiazuje() -> None:
+    """Strażnik, który blokuje wszystko, jest równie bezużyteczny jak jego brak."""
+    from dynamic_lab.benchmarki import _sprawdz_zakres_kryterium, smib
+
+    _sprawdz_zakres_kryterium(smib()[0])  # nie podnosi

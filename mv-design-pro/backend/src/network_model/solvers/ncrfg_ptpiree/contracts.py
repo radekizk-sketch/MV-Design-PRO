@@ -79,10 +79,21 @@ class NcRfgTraceStep(BaseModel):
 
 
 class NcRfgPtpireeTestDefinition(BaseModel):
+    """Definicja testu zgodności.
+
+    ``capability_id`` jest polem OBOWIĄZKOWYM i jest JEDYNYM źródłem klasyfikacji
+    dowodowej testu. Wcześniej klasyfikację doklejał każdy ewaluator osobno i
+    robiło to 8 ewaluatorów z 20 — a bramka dowodowa pomijała wyniki bez
+    klasyfikacji, więc 12 testów było dla niej niewidocznych. Powiązanie
+    zdolności z DEFINICJĄ, a nie z ewaluatorem, czyni pominięcie niemożliwym:
+    nie da się dodać testu bez zadeklarowania, na czym opiera się jego werdykt.
+    """
+
     test_id: str
     ability_pl: str
     procedure_basis_pl: str
     default_for_modules: list[str]
+    capability_id: str
     conditional_pl: str | None = None
 
 
@@ -97,11 +108,17 @@ class NcRfgPtpireeTestResult(BaseModel):
     trace_refs: list[str] = Field(default_factory=list)
     fix_actions: list[str] = Field(default_factory=list)
     evidence: dict[str, Any] | None = None
-    """Klasyfikacja dowodowa zdolnosci liczacej ten test.
+    """Klasyfikacja dowodowa zdolnosci liczacej ten test — ZAWSZE wypelniona.
 
-    Serializacja ``CapabilityEvidence`` z ``solver_input.provenance``. Ustawiana
-    dla testow opartych o zdolnosci dynamiczne; ``None`` dla testow, ktore nie
-    korzystaja z zadnej zdolnosci dynamicznej (np. kontrola nastaw katalogowych).
+    Serializacja ``CapabilityEvidence`` z ``solver_input.provenance``, brana z
+    ``capability_id`` DEFINICJI testu, a nie doklejana przez ewaluator.
+
+    Typ dopuszcza ``None`` wylacznie ze wzgledu na zgodnosc deserializacji
+    starszych ladunkow. Wynik wytworzony przez ten solver ma to pole wypelnione
+    zawsze, a konsument MUSI traktowac ``None`` jako BRAK KLASYFIKACJI, czyli
+    stan nieprzydatny dowodowo — nigdy jako "wszystko w porzadku".
+    Poprzednia wersja bramki pomijala wyniki z ``None`` i przez to 12 z 20
+    testow bylo dla niej niewidocznych.
     """
 
 

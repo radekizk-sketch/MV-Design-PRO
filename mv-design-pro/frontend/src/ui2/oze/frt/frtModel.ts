@@ -245,15 +245,42 @@ const WERDYKT_CALOSCI: Record<number, WerdyktCalosciFrt> = {
 
 /**
  * Werdykt całości = prezentacyjna AGREGACJA SŁOWNIKOWA najgorszego werdyktu
- * scenariusza (najwyższa ranga). Brak scenariuszy → stan „w obwiedni" jako neutralny
- * (nic nie naruszone). To NIE jest odrębna ocena fizyczna — jedynie rzut najgorszego
- * werdyktu z pól solvera. Werdykt nieznany (spoza słownika) traktowany jako najgorszy.
+ * scenariusza (najwyższa ranga). To NIE jest odrębna ocena fizyczna — jedynie
+ * rzut najgorszego werdyktu z pól solvera. Werdykt nieznany (spoza słownika)
+ * traktowany jako najgorszy.
+ *
+ * DWIE NAPRAWY (2026-09-10, przegląd kontradyktoryjny):
+ *
+ * 1. **Pusta lista scenariuszy nie jest sukcesem.** Poprzednia wersja zwracała
+ *    dla niej zielone „Model odzwierciedla wymagania profilu operatora" —
+ *    czyli pozytyw z braku sprawdzenia, ta sama pułapka co `all([]) === true`
+ *    po stronie backendu. Nic nie sprawdzono to WŁASNY stan, nie „w porządku".
+ *
+ * 2. **Klasyfikacja dowodowa nie może być gubiona w prezentacji.** Backend
+ *    wystawia `evidence`; gdy zdolność nie jest przydatna dowodowo (albo pola
+ *    w ogóle nie ma — starsza odpowiedź), werdykt NIE MOŻE być pokazany jako
+ *    zwykły pozytyw. Wynik pozostaje diagnostyczny, więc istotność schodzi do
+ *    ostrzeżenia, a tekst mówi to wprost.
+ *
+ * Kolejność jest istotna: najpierw fizyka (czy coś naruszono), potem
+ * przydatność dowodowa. Ostrzeżenie dowodowe nigdy nie MASKUJE naruszenia —
+ * może je tylko dopisać.
  */
 export function werdyktCalosciFrt(widok: WidokTrajektoriiFrt): WerdyktCalosciFrt {
+  if (widok.scenariusze.length === 0) {
+    return { tekst: FRT_STRINGS.werdyktBrakScenariuszy, istotnosc: 'warn' };
+  }
   let najgorszaRanga = 0;
   for (const sc of widok.scenariusze) {
     const ranga = RANGA_WERDYKTU[sc.werdykt_pl];
     najgorszaRanga = Math.max(najgorszaRanga, ranga ?? 2);
   }
-  return WERDYKT_CALOSCI[najgorszaRanga];
+  const bazowy = WERDYKT_CALOSCI[najgorszaRanga];
+  if (widok.evidence?.regulatory_evidence_eligible === true) {
+    return bazowy;
+  }
+  return {
+    tekst: `${bazowy.tekst} — ${FRT_STRINGS.werdyktNieprzydatnyDowodowo}`,
+    istotnosc: najgorszaRanga === 0 ? 'warn' : bazowy.istotnosc,
+  };
 }

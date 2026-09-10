@@ -48,6 +48,9 @@ export const FRT_STRINGS = {
 
   // Werdykt całości (agregacja prezentacyjna najgorszego statusu per scenariusz)
   werdyktWObwiedni: 'Model odzwierciedla wymagania profilu operatora',
+  werdyktBrakScenariuszy: 'Brak scenariuszy — nic nie zostało sprawdzone',
+  werdyktNieprzydatnyDowodowo:
+    'Wynik diagnostyczny — NIE stanowi dowodu spełnienia wymagania',
   werdyktPozaObwiednia: 'Trajektoria wychodzi poza obwiednię profilu operatora',
   werdyktModulWypadl: 'Moduł wypadł z pracy podczas zakłócenia',
   werdyktOpisAgregacja:

@@ -260,6 +260,42 @@ def porownaj_integratory(
     return wyniki
 
 
+class KryteriumPozaZakresemError(RuntimeError):
+    """Kryterium pierwszego wybiegu użyte poza układem, dla którego obowiązuje."""
+
+
+def _sprawdz_zakres_kryterium(model: ModelDynamiczny) -> None:
+    """Egzekwuj zakres stosowalności kryterium ``|Δδ| < π``.
+
+    Kryterium pierwszego wybiegu obowiązuje dla JEDNEJ maszyny synchronicznej
+    pracującej na szynę sztywną. W układzie wielomaszynowym utrata synchronizmu
+    jest własnością kąta WZGLĘDNEGO, a dla falowników kąt wirnika w ogóle nie
+    istnieje. Zwrócenie w takim układzie liczby nazwanej „CCT" byłoby wynikiem
+    wyglądającym wiarygodnie i policzonym złym kryterium.
+    """
+    from dynamic_lab.urzadzenia import ZespolSynchroniczny
+
+    maszyny = [u for u in model.urzadzenia if isinstance(u, ZespolSynchroniczny)]
+    inne = [u for u in model.urzadzenia if not isinstance(u, ZespolSynchroniczny)]
+    if len(maszyny) != 1:
+        raise KryteriumPozaZakresemError(
+            f"Kryterium |Δδ| < π obowiązuje dla JEDNEJ maszyny synchronicznej; "
+            f"model ma {len(maszyny)}. W układzie wielomaszynowym utrata "
+            "synchronizmu jest własnością kąta WZGLĘDNEGO."
+        )
+    if inne:
+        rodzaje = sorted({type(u).__name__ for u in inne})
+        raise KryteriumPozaZakresemError(
+            f"Model zawiera urządzenia spoza zakresu kryterium: {rodzaje}. "
+            "Falownik nie ma kąta wirnika, więc |Δδ| < π nie orzeka o nim nic."
+        )
+    if not model.topologia.szyny_sztywne:
+        raise KryteriumPozaZakresemError(
+            "Kryterium pierwszego wybiegu wymaga szyny sztywnej jako odniesienia "
+            "kątowego; model jej nie ma."
+        )
+
+
 def czas_krytyczny_zwarcia(
     *,
     h_s: float = 4.0,
@@ -279,10 +315,23 @@ def czas_krytyczny_zwarcia(
     Tutaj CCT jest WYNIKIEM całkowania — zwarcie zmienia Ybus, a utrata
     synchronizmu jest rozpoznawana po wybiegu kąta wirnika.
 
+    KRYTERIUM I JEGO GRANICA — egzekwowana, nie tylko opisana
+    ---------------------------------------------------------
     Kryterium utraty synchronizmu: ``max|delta(t) − delta(0)| >= pi``. To jest
-    kryterium PIERWSZEGO wybiegu, więc nie wykrywa niestabilności oscylacyjnej
-    narastającej powoli — dla maszyny bez tłumienia i bez regulatorów, jaką
-    liczy ta funkcja, jest właściwe, ale poza tym zakresem NIE jest.
+    kryterium PIERWSZEGO WYBIEGU dla maszyny na szynie sztywnej. NIE wykrywa:
+
+      - niestabilności oscylacyjnej narastającej powoli (mody ujemnie tłumione),
+      - utraty synchronizmu w układzie wielomaszynowym, gdzie istotny jest kąt
+        WZGLĘDNY między maszynami, a nie kąt bezwzględny każdej z nich,
+      - niestabilności napięciowej ani utraty synchronizmu falownika (GFL nie ma
+        kąta wirnika; GFM ma kąt o zupełnie innym znaczeniu),
+      - niestabilności po drugim i kolejnych wybiegach.
+
+    Dlatego funkcja **ODMAWIA** pracy poza zakresem, zamiast zwrócić liczbę,
+    która wygląda na CCT. Sprawdza to ``_sprawdz_zakres_kryterium``: dokładnie
+    jedna maszyna synchroniczna, co najmniej jedna szyna sztywna, brak innych
+    urządzeń dynamicznych. Opis granicy w docstringu bez egzekwowania byłby
+    deklaracją, którą pierwszy użytkownik ominie nieświadomie.
 
     Bisekcja zakłada MONOTONICZNOŚĆ (dłuższe zwarcie nie może pomóc). Założenie
     jest pinowane osobnym testem ``test_dluzsze_zwarcie_nie_poprawia_wyniku``;
@@ -293,6 +342,8 @@ def czas_krytyczny_zwarcia(
         synchronizm, z dokładnością ``dokladnosc_s``.
     """
     import math
+
+    _sprawdz_zakres_kryterium(smib(h_s=h_s, x_linii_pu=x_linii_pu)[0])
 
     def przetrwal(czas_trwania_s: float) -> bool:
         model, moce = smib(h_s=h_s, x_linii_pu=x_linii_pu, d_tlumienie=0.0)

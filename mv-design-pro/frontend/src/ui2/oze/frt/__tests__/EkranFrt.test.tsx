@@ -201,7 +201,7 @@ describe('EkranFrt — prezentacja wyniku (kryteria 2, 3, 4)', () => {
     await wczytajISkonfiguruj();
     fireEvent.click(screen.getByTestId('mvd-frt-oblicz'));
     const werdykt = await screen.findByTestId('mvd-frt-werdykt');
-    expect(werdykt.className).toContain('mvd-frt-werdykt--ok');
+    expect(werdykt.className).toContain('mvd-frt-werdykt--warn');
     expect(werdykt).toHaveTextContent('odzwierciedla wymagania profilu');
   });
 
@@ -308,7 +308,7 @@ describe('EkranFrt — sekcja „Sekwencja zapadów"', () => {
     await wczytajISkonfiguruj();
     fireEvent.click(screen.getByTestId('mvd-frt-sekw-oblicz'));
     const werdykt = await screen.findByTestId('mvd-frt-sekw-werdykt');
-    expect(werdykt.className).toContain('mvd-frt-sekw-odznaka--ok');
+    expect(werdykt.className).toContain('mvd-frt-sekw-odznaka--warn');
     expect(werdykt).toHaveTextContent('sekwencja w obwiedni');
     expect(screen.getByTestId('mvd-frt-sekw-zalozenia')).toHaveTextContent(
       'nie jest modelowany',
@@ -452,7 +452,11 @@ describe('EkranFrt — zapis wyniku do zgodności NC RfG (K5-B / H-3 pkt 4)', ()
 
     const zapisany = useNcRfgStore.getState().wynikiFrt['der-1']?.lvrt;
     expect(zapisany).toBeDefined();
-    expect(zapisany?.istotnosc).toBe('ok');
+    // Werdykt zapisany do macierzy NC RfG NIESIE zastrzeżenie dowodowe: FRT
+    // opiera się na zdolności bez ustalonej poprawności fizycznej, więc
+    // pętla „werdykt → zgodność" nie może wnieść tam czystego pozytywu.
+    expect(zapisany?.istotnosc).toBe('warn');
+    expect(zapisany?.tekst).toContain('NIE stanowi dowodu');
     expect(zapisany?.operatorId).toBe('pse');
     // Klucz to id MODUŁU (tożsamość kolumn macierzy), nie ref typu z katalogu.
     expect(useNcRfgStore.getState().wynikiFrt[DER_REF]).toBeUndefined();
@@ -479,7 +483,9 @@ describe('EkranFrt — zapis wyniku do zgodności NC RfG (K5-B / H-3 pkt 4)', ()
     fireEvent.click(screen.getByTestId('mvd-frt-zapisz-wynik'));
 
     const wyniki = useNcRfgStore.getState().wynikiFrt['der-1'];
-    expect(wyniki?.lvrt?.istotnosc).toBe('ok');
+    // LVRT „w obwiedni" ze zdolności nieprzydatnej dowodowo → ostrzeżenie;
+    // HVRT „moduł wypadł" → błąd, którego zastrzeżenie dowodowe NIE zmiękcza.
+    expect(wyniki?.lvrt?.istotnosc).toBe('warn');
     expect(wyniki?.hvrt?.istotnosc).toBe('err');
     useNcRfgStore.getState().reset();
   });

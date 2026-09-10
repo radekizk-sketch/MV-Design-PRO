@@ -131,6 +131,45 @@ _EVIDENCE_TIER_LABEL_PL: dict[EvidenceTier, str] = {
 }
 
 
+class ClaimKind(StrEnum):
+    """What KIND of statement a capability's result supports.
+
+    Added 2026-09-10 after an adversarial hunt found the evidence gate was
+    fail-OPEN: it skipped every test result whose classification was absent, and
+    only 8 of the 20 NC RfG tests attached one. A class-A module could therefore
+    reach ``reportable`` with no classified required test at all.
+
+    Fixing that by classifying every test exposed a second problem: tier alone
+    cannot decide eligibility, because a DECLARATION is *proper* evidence for
+    "the module has a disturbance recorder" and *improper* evidence for
+    "the module rides through a 150 ms voltage dip". The difference is not the
+    tier — it is what is being CLAIMED.
+
+    - ``DYNAMIC_PERFORMANCE``: the tool asserts how the plant BEHAVES in time
+      (ride-through, active-power recovery, frequency response, island operation,
+      black start, oscillation damping, transient/small-signal stability).
+      Only a validated simulation can support such a claim.
+    - ``DECLARED_CONFIGURATION``: the tool asserts a declared or catalogued FACT
+      about the plant compared against a requirement (telemetry present, remote
+      command available, THD from the type record, P/Q range on the nameplate).
+      A declaration is the proper basis for such a claim, provided the document
+      says so.
+    """
+
+    DYNAMIC_PERFORMANCE = "DYNAMIC_PERFORMANCE"
+    DECLARED_CONFIGURATION = "DECLARED_CONFIGURATION"
+
+    @property
+    def label_pl(self) -> str:
+        return _CLAIM_KIND_LABEL_PL[self]
+
+
+_CLAIM_KIND_LABEL_PL: dict[ClaimKind, str] = {
+    ClaimKind.DYNAMIC_PERFORMANCE: "zachowanie_dynamiczne",
+    ClaimKind.DECLARED_CONFIGURATION: "konfiguracja_zadeklarowana",
+}
+
+
 @dataclass(frozen=True)
 class CapabilityEvidence:
     """Evidence classification of one computation capability.
@@ -141,22 +180,43 @@ class CapabilityEvidence:
         tier: Evidence tier of results produced by that capability.
         rationale_pl: Technical reason for the tier (no soft language).
         audit_ref: Reference to the evidence backing the classification.
+        claim_kind: What kind of statement this capability supports. Defaults to
+            ``DYNAMIC_PERFORMANCE`` — the STRICTER reading — so a capability
+            registered without thinking about it cannot become eligible by
+            omission.
     """
 
     capability_id: str
     tier: EvidenceTier
     rationale_pl: str
     audit_ref: str
+    claim_kind: ClaimKind = ClaimKind.DYNAMIC_PERFORMANCE
 
     @property
     def regulatory_evidence_eligible(self) -> bool:
-        return self.tier.regulatory_evidence_eligible
+        """May THIS capability's result support THIS claim as regulatory evidence?
+
+        Fail-closed in both axes:
+
+        - a dynamic-performance claim needs ``VALIDATED_SIMULATION``;
+        - a declared-configuration claim additionally accepts ``DECLARATION``,
+          because a declaration IS the proper basis for a declared fact — but
+          never accepts ``UNVALIDATED_MODEL`` or ``NOT_SIMULATED``, which would
+          mean the capability was mis-registered.
+        """
+        if self.tier is EvidenceTier.VALIDATED_SIMULATION:
+            return True
+        if self.claim_kind is ClaimKind.DECLARED_CONFIGURATION:
+            return self.tier is EvidenceTier.DECLARATION
+        return False
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "capability_id": self.capability_id,
             "tier": self.tier.value,
             "tier_pl": self.tier.label_pl,
+            "claim_kind": self.claim_kind.value,
+            "claim_kind_pl": self.claim_kind.label_pl,
             "regulatory_evidence_eligible": self.regulatory_evidence_eligible,
             "rationale_pl": self.rationale_pl,
             "audit_ref": self.audit_ref,
@@ -215,6 +275,80 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
                 "zaszytej czestotliwosci testowej; brak przebiegu f(t) i P(t)."
             ),
             audit_ref=f"{_AUDIT_CARD} §16",
+        ),
+        CapabilityEvidence(
+            capability_id="ncrfg_ptpiree.extended_dynamic_capability",
+            tier=EvidenceTier.DECLARATION,
+            claim_kind=ClaimKind.DYNAMIC_PERFORMANCE,
+            rationale_pl=(
+                "Praca wyspowa, rozruch autonomiczny i tlumienie oscylacji sa "
+                "orzekane z trzech flag zadeklarowanych na wejsciu; zadne z tych "
+                "zjawisk nie jest liczone. To sa twierdzenia o ZACHOWANIU "
+                "dynamicznym, wiec deklaracja ich nie dowodzi."
+            ),
+            audit_ref=f"{_AUDIT_CARD} §19, §20",
+        ),
+        CapabilityEvidence(
+            capability_id="ncrfg_ptpiree.active_power_control",
+            tier=EvidenceTier.DECLARATION,
+            claim_kind=ClaimKind.DECLARED_CONFIGURATION,
+            rationale_pl=(
+                "Sprawdzana jest ZADEKLAROWANA zdolnosc do regulacji mocy czynnej "
+                "i szybkosc narastania z karty urzadzenia — fakt konfiguracyjny, "
+                "nie zachowanie w czasie."
+            ),
+            audit_ref=f"{_AUDIT_CARD} §22",
+        ),
+        CapabilityEvidence(
+            capability_id="ncrfg_ptpiree.reactive_voltage_mode",
+            tier=EvidenceTier.DECLARATION,
+            claim_kind=ClaimKind.DECLARED_CONFIGURATION,
+            rationale_pl=(
+                "Tryby regulacji U/Q/cosfi i zakres mocy biernej pochodza z "
+                "deklaracji i profilu operatora — fakty konfiguracyjne."
+            ),
+            audit_ref=f"{_AUDIT_CARD} §18, §22",
+        ),
+        CapabilityEvidence(
+            capability_id="ncrfg_ptpiree.power_limits",
+            tier=EvidenceTier.DECLARATION,
+            claim_kind=ClaimKind.DECLARED_CONFIGURATION,
+            rationale_pl=(
+                "Potwierdzenie PMAX/PMIN jest porownaniem wartosci z tabliczki "
+                "z wymaganiem profilu — fakt konfiguracyjny."
+            ),
+            audit_ref=f"{_AUDIT_CARD} §22",
+        ),
+        CapabilityEvidence(
+            capability_id="ncrfg_ptpiree.remote_power_command",
+            tier=EvidenceTier.DECLARATION,
+            claim_kind=ClaimKind.DECLARED_CONFIGURATION,
+            rationale_pl=(
+                "Zaprzestanie i zmniejszenie generacji na polecenie operatora sa "
+                "zadeklarowanymi zdolnosciami ukladu sterowania — fakty "
+                "konfiguracyjne, nie przebiegi."
+            ),
+            audit_ref=f"{_AUDIT_CARD} §22",
+        ),
+        CapabilityEvidence(
+            capability_id="ncrfg_ptpiree.observability",
+            tier=EvidenceTier.DECLARATION,
+            claim_kind=ClaimKind.DECLARED_CONFIGURATION,
+            rationale_pl=(
+                "Obecnosc rejestratora zaklocen i lacza SCADA jest faktem "
+                "wyposazeniowym deklarowanym przez wnioskodawce."
+            ),
+            audit_ref=f"{_AUDIT_CARD} §22",
+        ),
+        CapabilityEvidence(
+            capability_id="ncrfg_ptpiree.harmonics",
+            tier=EvidenceTier.DECLARATION,
+            claim_kind=ClaimKind.DECLARED_CONFIGURATION,
+            rationale_pl=(
+                "THD_U pochodzi z rekordu katalogowego zrodla i jest porownywane "
+                "z limitem profilu — fakt katalogowy, nie wynik symulacji."
+            ),
+            audit_ref=f"{_AUDIT_CARD} §22",
         ),
         CapabilityEvidence(
             capability_id="frt_hvrt.trajectory",

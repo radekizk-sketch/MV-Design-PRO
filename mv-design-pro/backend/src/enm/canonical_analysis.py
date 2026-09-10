@@ -2127,6 +2127,12 @@ def build_results_index(run: CanonicalRun) -> dict[str, Any]:
                             "unit": "pu",
                         },
                         {"key": "stability_index", "label_pl": "Wskaznik stabilnosci"},
+                        # Kolumny dowodowe — obecne w kontrakcie short_circuit i
+                        # source_compliance, brakowalo ich TUTAJ, wiec kazdy
+                        # konsument sterowany kolumnami (UI, eksport) gubil
+                        # status dowodowy przebiegu stabilnosci.
+                        {"key": "reporting_status", "label_pl": "Status raportowy"},
+                        {"key": "proof_status", "label_pl": "Status uzasadnienia"},
                     ],
                 },
                 {

@@ -156,6 +156,53 @@ DRABINA: tuple[PozycjaDrabiny, ...] = (
         opis_pl="GFL i GFM dają różne trajektorie; parametry urządzenia zmieniają wynik",
         realizacja="test_gfm_i_gfl_roznia_sie_trajektoria",
     ),
+    PozycjaDrabiny(
+        identyfikator="sztywnosc-widmo-i-krok-graniczny",
+        zlozonosc=ZlozonoscPrzypadku.C2_WIELE_URZADZEN,
+        wyrocznia=PoziomWyroczni.W2_WYROCZNIA_ANALITYCZNA,
+        opis_pl=("Wskaźnik sztywności 4,3·10³; najszybsze wartości własne = −1/T pętli prądowej"),
+        realizacja="test_najszybsze_wartosci_wlasne_zgadzaja_sie_z_odwrotnoscia_stalej_czasowej",
+    ),
+    PozycjaDrabiny(
+        identyfikator="sztywnosc-a-stabilnosc",
+        zlozonosc=ZlozonoscPrzypadku.C2_WIELE_URZADZEN,
+        wyrocznia=PoziomWyroczni.W1_WLASNOSC,
+        opis_pl=(
+            "Przyspieszenie pętli prądowej skraca krok graniczny metod jawnych, "
+            "nie zmieniając niejawnych"
+        ),
+        realizacja="test_zaostrzenie_petli_pradowej_skraca_krok_jawny_a_nie_niejawny",
+    ),
+    PozycjaDrabiny(
+        identyfikator="magazyn-energia-ogranicza-wsparcie",
+        zlozonosc=ZlozonoscPrzypadku.C4_SIEC_SN_Z_DER,
+        wyrocznia=PoziomWyroczni.W1_WLASNOSC,
+        opis_pl=(
+            "Magazyn o małej pojemności przestaje wspierać częstotliwość po wyczerpaniu "
+            "okna SOC, o dużej — nie (iloczyn: pojemność × głębokość zapadu)"
+        ),
+        realizacja="test_mala_pojemnosc_przestaje_wspierac_czestotliwosc",
+    ),
+    PozycjaDrabiny(
+        identyfikator="dwustronnie-zasilana-vs-falownik",
+        zlozonosc=ZlozonoscPrzypadku.C4_SIEC_SN_Z_DER,
+        wyrocznia=PoziomWyroczni.W1_WLASNOSC,
+        opis_pl=(
+            "Maszyna dwustronnie zasilana i falownik pełnomocowy dają na tym samym "
+            "zwarciu różny prąd, różny zapad napięcia i różny przebieg mocy"
+        ),
+        realizacja="test_maszyna_dwustronnie_zasilana_i_falownik_daja_rozne_prady_zwarciowe",
+    ),
+    PozycjaDrabiny(
+        identyfikator="mapowanie-na-przypadku-natywnym",
+        zlozonosc=ZlozonoscPrzypadku.C1_MASZYNA_NA_SZYNIE_SZTYWNEJ,
+        wyrocznia=PoziomWyroczni.W3_WYROCZNIA_ZEWNETRZNA,
+        opis_pl=(
+            "Interpretacja pól M/xd1/fn/D odtwarza wartość własną przypadku "
+            "AUTORSTWA ANDES (cases/smib/SMIB.xlsx) — walidacja mapowania, nie fizyki"
+        ),
+        realizacja="tests/research/test_wzorzec_natywny.py",
+    ),
 )
 
 

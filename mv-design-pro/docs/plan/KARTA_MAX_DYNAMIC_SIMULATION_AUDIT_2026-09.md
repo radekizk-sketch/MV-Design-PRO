@@ -17,6 +17,37 @@
 
 ---
 
+## 0.0 POLITYKA INTEGRALNOŚCI ZAMKNIĘTEJ KARTY (rozstrzygnięcie, 2026-09-10)
+
+Karta została ogłoszona ZAMKNIĘTĄ na commicie `7ab9d7a0`, a następnie
+zmodyfikowana (przepisany §27.2 + sekcja ERRATA). Bieżący plik nie jest więc
+bajtowo tym samym artefaktem co zamknięty audyt i wymaga to jawnej reguły.
+
+**Przyjęty wariant: A — APPEND-ONLY Z SEKCJĄ ERRATA.** Nie wariant B (karta
+niezmienna + osobny dokument erraty), bo sprostowanie oderwane od miejsca błędu
+jest w praktyce niewidoczne: czytelnik §27.2 musiałby wiedzieć, że ma szukać
+gdzie indziej. Korekta jest najbardziej użyteczna dokładnie tam, gdzie leży błąd.
+
+Reguły, które czynią wariant A bezpiecznym — obowiązują każdą przyszłą zmianę:
+
+1. **Oryginalne brzmienie cytowane dosłownie.** Poprawiona sekcja MUSI zawierać
+   zacytowane zdanie, które prostuje. Bez tego korekta jest nieodróżnialna od
+   przepisania historii.
+2. **Wpis w tabeli ERRATA.** Każda korekta ma wiersz: co twierdzono, co jest
+   prawdą (z pomiarem), gdzie poprawione.
+3. **Werdykty i klasyfikacja są NIENARUSZALNE.** Ocena końcowa (1/10), oceny
+   osi i liczby znalezisk P0/P1/P2/P3 nie mogą zostać zmienione korektą.
+   Zmiana ustalenia audytowego wymaga NOWEGO audytu, nie edycji starego.
+   Pilnuje tego test `scripts/test_karta_audytowa_integralnosc.py`.
+4. **Zakres edycji ograniczony do sprostowania.** Sprawdzone dla obecnej
+   edycji: `git diff 7ab9d7a0..HEAD` na tym pliku usuwa **12 linii, wszystkie
+   w obrębie §27.2**, i wszystkie zacytowane w treści korekty.
+
+Historia Git pozostaje rozstrzygająca: `git show 7ab9d7a0:` daje artefakt
+zamknięcia bez żadnych korekt.
+
+---
+
 ## 0. ERRATA — sprostowanie do własnego audytu (2026-09-10, po zamknięciu karty)
 
 Karta jest zamknięta, więc jej treść **nie jest cicho przepisywana**: błędne

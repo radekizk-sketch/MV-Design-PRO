@@ -42,6 +42,7 @@ from network_model.solvers.ncrfg_ptpiree.contracts import (
     NcRfgPtpireeTestResult,
 )
 from solver_input.provenance import (
+    ClaimKind,
     EvidenceTier,
     classify_dynamic_capability,
     registered_dynamic_capabilities,
@@ -110,11 +111,27 @@ def test_zadna_zdolnosc_dynamiczna_nie_jest_dowodowa() -> None:
     walidacji, więc musi być świadomą zmianą kontraktu, a nie efektem ubocznym.
     """
     assert registered_dynamic_capabilities(), "rejestr zdolnosci nie moze byc pusty"
+    dynamiczne = 0
     for capability_id in registered_dynamic_capabilities():
         evidence = classify_dynamic_capability(capability_id)
-        assert evidence.regulatory_evidence_eligible is False, capability_id
+        # ŻADNA zdolność nie jest dziś zwalidowaną symulacją — to jest twierdzenie
+        # o stanie repozytorium i ma paść, gdy pojawi się dowód walidacji.
+        assert evidence.tier is not EvidenceTier.VALIDATED_SIMULATION, capability_id
+        if evidence.claim_kind is ClaimKind.DYNAMIC_PERFORMANCE:
+            dynamiczne += 1
+            assert evidence.regulatory_evidence_eligible is False, capability_id
+        else:
+            # Deklaracja JEST właściwym dowodem faktu zadeklarowanego (obecność
+            # rejestratora, THD z karty katalogowej), ale nigdy nie jest dowodem
+            # ZACHOWANIA dynamicznego — to rozróżnienie robi `ClaimKind`.
+            assert evidence.tier is EvidenceTier.DECLARATION, capability_id
+            assert evidence.regulatory_evidence_eligible is True, capability_id
         assert evidence.rationale_pl.strip(), capability_id
         assert evidence.audit_ref.strip(), capability_id
+    assert dynamiczne >= 8, (
+        f"Tylko {dynamiczne} zdolności sklasyfikowano jako dynamiczne — rejestr "
+        "przestał obejmować warstwę objętą bezpiecznikiem D-00."
+    )
 
 
 @pytest.mark.parametrize(
