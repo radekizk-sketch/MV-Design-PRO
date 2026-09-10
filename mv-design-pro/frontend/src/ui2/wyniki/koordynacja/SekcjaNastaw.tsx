@@ -220,7 +220,6 @@ export function SekcjaNastaw({ caseId }: { caseId: string }) {
     })();
 
     return () => controller.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kandydaci, caseId]);
 
   // Lista aparatów katalogu — niezależna od kotwicy, wczytana raz.
