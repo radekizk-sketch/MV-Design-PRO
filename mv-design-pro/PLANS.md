@@ -139,6 +139,21 @@ naprawy: **0 testów** (`10720 passed, 6 skipped, 0 failed` po usunięciu
 stronę. NIE zmieniona — wybór statusu docelowego jest decyzją o komunikacie dla
 projektanta.
 
+**Wykonane potwierdzenia (kody wyjścia łapane bezpośrednio, nie przez pipe):**
+- `poetry run pytest -q` (backend, pełna regresja) → **10736 passed, 6 skipped,
+  0 failed**, kod wyjścia 0
+- `pytest tests/research` → 91 passed (49 własności + 26 wyrocznia zewnętrzna
+  + 3 CCT + 13 prototyp modelu zaufania)
+- `poetry run python ../scripts/guardy_z_ci.py` → czerwone **dokładnie te same
+  cztery** guardy co na `7e84753a`; **żaden nowy nie zaczerwienił się**
+- `mypy` na zmienionych modułach produkcyjnych → Success; `mypy_ratchet_guard` → OK
+- `black --check src tests` oraz `black --check --config pyproject.toml ../scripts`
+  → czysto na wszystkich plikach tej transzy; `ruff check` → czysto
+- `docs_guard`, `utf8_mojibake_guard`, `local_truth_guard`,
+  `research_isolation_guard` → OK
+- mutacja kontrolna bezpiecznika D-00 (`if False` w bramce) → 9 failed / 5 passed,
+  czyli testy realnie mierzą bezpiecznik
+
 **Dług ZASTANY, zweryfikowany na punkcie odgałęzienia `7e84753a`** (czyli sprzed
 tej i poprzedniej sesji): czerwone `enm_contract_parity_guard`,
 `solver_input_substitute_guard`, `success_toast_guard`, `tsconfig_gate_guard`
