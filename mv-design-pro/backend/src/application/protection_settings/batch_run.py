@@ -15,9 +15,12 @@ POWÓD ARCHITEKTONICZNY (dlaczego istniejąca brama pakietu przebiegu nie wystar
 pakiet — a dobór nastaw metodą Hoppela z definicji potrzebuje TRZECH: zwarcia
 trójfazowego przy c_max (wytrzymałość aparatury, selektywność), zwarcia trójfazowego
 PRZY c_min (czułość I>>) i zwarcia dwufazowego przy c_min (czułość I>), oraz rozpływu
-(prąd obciążenia maksymalnego). Jeden bieg kanoniczny niesie JEDEN `c_factor` — tor
-nadprądowy `application/analyses/protection/overcurrent/input_adapter.py::_build_fault_levels`
-dokumentuje to wprost (klucz gałęzi min ALBO max, drugi zostaje `None`).
+(prąd obciążenia maksymalnego). Jeden bieg kanoniczny niesie JEDEN `c_factor`
+— sam kontrakt wejścia zwarciowego (`enm/canonical_analysis.py::_c_factor_punktu`,
+klucz `c_factor` w `_KLUCZE_WEJSCIOWE_WIERSZA_ZWARCIA`) niesie WYŁĄCZNIE tę
+jedną wartość na bieg (klucz gałęzi min ALBO max, drugi zostaje `None`; przed
+kasacją V12K-189 — karta W3-C1, 2026-09 — tę samą konwencję dokumentował też
+skasowany `overcurrent/input_adapter.py::_build_fault_levels`).
 
 MECHANIZM WARIANTOWANIA (CV-3-W: JEDYNA fabryka kopii migawki z nadpisaniami
 `enm.scenariusze.apply_scenario` + JEDYNA fabryka biegu wariantu w pamięci

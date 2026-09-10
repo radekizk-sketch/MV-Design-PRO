@@ -393,13 +393,14 @@ class ProjectArchiveService:
             for cr in canonical_runs
         ]
 
-        # Analysis runs index — CV-3.3-B: NIEZALEŻNA tabela (koordynacja
-        # zabezpieczeń, `application/analyses/protection/{catalog,overcurrent}
-        # /pipeline.py`), nie R2. Naprawa u źródła: filtr PO `case_id`
-        # (kolumna istnieje na wpisie), nie po członkostwie w R2 `analysis_runs`
-        # — poprzedni filtr (`run_id IN (id R2 tego projektu)`) pomijał KAŻDY
-        # wpis indeksu zapisany przez ten pipeline, bo jego identyfikatory
-        # biegów nigdy nie były wierszami `AnalysisRunORM`.
+        # Analysis runs index — CV-3.3-B: NIEZALEŻNA tabela, nie R2 (pełne
+        # uzasadnienie i historia kasacji jej producentów: pkt 16 niżej, przy
+        # eksporcie). Naprawa u źródła: filtr PO `case_id` (kolumna istnieje
+        # na wpisie), nie po członkostwie w R2 `analysis_runs` — poprzedni
+        # filtr (`run_id IN (id R2 tego projektu)`) pomijał KAŻDY historyczny
+        # wpis indeksu, bo jego identyfikatory biegów nigdy nie były wierszami
+        # `AnalysisRunORM` (dwa niezależne byty od zawsze, nie dopiero po
+        # kasacji karty W3-C1).
         case_ids_query = select(StudyCaseORM.id).where(StudyCaseORM.project_id == project_id)
         case_ids = [str(cid) for cid in self._session.execute(case_ids_query).scalars().all()]
         analysis_runs_index_data = []
@@ -705,12 +706,20 @@ class ProjectArchiveService:
 
         self._session.flush()
 
-        # 16. Analysis runs index — CV-3.3-B: NIEZALEŻNA tabela (koordynacja
-        # zabezpieczeń, `application/analyses/protection/{catalog,overcurrent}
-        # /pipeline.py` — żywy konsument produkcyjny niezwiązany z R2/R3).
-        # `run_id` NIE jest przemapowywany: identyfikatory tego pipeline'u nie
-        # są id `CanonicalRun` (własny `AnalysisRunEnvelope`) — przemapowanie
-        # przez `id_map` podstawiłoby losowy, niepowiązany identyfikator.
+        # 16. Analysis runs index — CV-3.3-B: NIEZALEŻNA tabela
+        # (`AnalysisRunIndexORM`, R1-niezwiązana). Karta W3-C1 (2026-09)
+        # skasowała jej JEDYNE dwa produkcyjne miejsca zapisu
+        # (`application/analyses/protection/overcurrent/**` — cały pakiet —
+        # i `catalog/pipeline.py::run_device_mapping_v0`, zero konsumentów
+        # `ui2/wyniki/koordynacja` w chwili kasacji, zmierzone grepem; dobór
+        # aparatu jest odtąd CZYSTĄ funkcją, `catalog/pipeline.py::
+        # dopasuj_do_aparatu`, bez koperty biegu i bez tego indeksu) — sekcja
+        # archiwum pozostaje READ-ONLY odbiorcą HISTORYCZNYCH wpisów
+        # (odtwarzalność starych archiwów), bez nowego pisarza. `run_id` NIE
+        # jest przemapowywany: identyfikatory tego historycznego indeksu nie
+        # są id `CanonicalRun` (własny `AnalysisRunEnvelope`, także skasowany
+        # razem z resztą V12K-189) — przemapowanie przez `id_map` podstawiłoby
+        # losowy, niepowiązany identyfikator.
         # `base_snapshot_id` (W1: pole bez klucza obcego, String(64) — nie
         # dosłowny `NetworkSnapshotORM.snapshot_id`, tabela snapshotów już nie
         # istnieje) przechodzi WPROST, bez próby przemapowania.

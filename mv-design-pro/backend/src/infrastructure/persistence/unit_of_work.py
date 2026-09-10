@@ -5,6 +5,8 @@ from contextlib import AbstractContextManager
 from types import TracebackType
 from typing import Literal
 
+from sqlalchemy.orm import Session, sessionmaker
+
 from infrastructure.persistence.repositories.analysis_run_index_repository import (
     AnalysisRunIndexRepository,
 )
@@ -17,7 +19,6 @@ from infrastructure.persistence.repositories.protection_catalog_repository impor
 from infrastructure.persistence.repositories.station_audit2_config_repository import (
     StationAudit2ConfigRepository,
 )
-from sqlalchemy.orm import Session, sessionmaker
 
 
 class UnitOfWork(AbstractContextManager["UnitOfWork"]):
@@ -34,8 +35,13 @@ class UnitOfWork(AbstractContextManager["UnitOfWork"]):
     CV-3.3-B: `results` (R3 `study_results`) i `study_runs` (R3) usunięte — zero
     konsumentów po przepięciu porównań i biegów na R1 (`enm.canonical_analysis`).
     `analysis_runs`/`analysis_runs_index` ZOSTAJĄ: pierwsza żyje dla
-    `ResultInvalidator`, druga jest NIEZALEŻNĄ tabelą koordynacji zabezpieczeń
-    (`application/analyses/protection/{catalog,overcurrent}/pipeline.py`).
+    `ResultInvalidator`, druga jest NIEZALEŻNĄ tabelą — karta W3-C1 (2026-09)
+    skasowała jej jedyne dwa produkcyjne miejsca zapisu
+    (`application/analyses/protection/overcurrent/**`, `catalog/pipeline.py::
+    run_device_mapping_v0`; dobór aparatu jest odtąd CZYSTĄ funkcją,
+    `catalog/pipeline.py::dopasuj_do_aparatu`, bez tego indeksu), więc tabela
+    zostaje jako READ-ONLY odbiorca historycznych wpisów (odtwarzalność
+    starych archiwów), bez nowego pisarza.
     """
 
     def __init__(self, session_factory: sessionmaker[Session]) -> None:

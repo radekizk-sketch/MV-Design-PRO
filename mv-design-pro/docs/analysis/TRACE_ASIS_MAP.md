@@ -5,6 +5,11 @@ hierarchią `CLAUDE.md`. `load_flow_to_resultset_v1.py` (wzmiankowany niżej)
 skasowany — zero konsumenta produkcyjnego. Szczegóły →
 `docs/architecture/CONVERGENCE_ROADMAP.md` CV-3.3-A2.
 
+**KOREKTA 2026-09-10 (karta W3-C1):** `application/analyses/protection/overcurrent/
+pipeline.py` (§2.6 niżej, cały pakiet `overcurrent/`) skasowany — kasacja
+V12K-189, zero konsumenta produkcyjnego; metodyka nastaw nadprądowych
+ujednolicona na Hoppel/IRiESD (`application/protection_settings/`).
+
 **Status (pierwotny)**: BINDING (Commit 1 — RUN #2B)
 **Data**: Pełny skan repozytorium z dnia 2026-02-13
 **Cel**: Dokumentacja stanu zastanego warstwy trace/white-box przed implementacją Trace v2
