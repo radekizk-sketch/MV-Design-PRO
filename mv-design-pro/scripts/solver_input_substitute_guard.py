@@ -449,6 +449,17 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "analysis/reactive_adequacy/models.py",
     "analysis/reporting/arc_flash_report.py",
     "analysis/reporting/audit2_report.py",
+    # Karta W3-G2 (2026-09-10) — siostra `short_circuit_bounds.py` powyzej: ten
+    # sam wzorzec werdyktu wiarygodnosci (dataclass WYNIKU interpretacji, nie
+    # dana wejsciowa fizyki), importowana przez `application/analyses/sanity_
+    # bounds.py` (warstwa objeta skanem). Modul deklaruje 13 pol; trzy
+    # (nominal_kv, current_ka, rated_current_a) byly juz w mapie przez inne
+    # korzenie, `status`/`in_range`/`why_pl` przez `short_circuit_bounds.py`
+    # nizej — pomiar (3471 -> 3481): +10 REALNIE nowych pol (actual_kv,
+    # lower_kv, upper_kv, deviation_pct, loading_pct, losses_active_mw,
+    # load_active_total_mw, losses_pct_of_load, threshold_pct,
+    # threshold_why_pl), ZERO nowych trafien (RC=0 niezmieniony).
+    "analysis/sanity_bounds/power_flow_bounds.py",
     "analysis/sanity_bounds/short_circuit_bounds.py",
     "analysis/voltage_profile/models.py",
     "catalog/profiles/nc_rfg/loader.py",
