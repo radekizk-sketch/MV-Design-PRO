@@ -94,7 +94,10 @@ guardy_z_ci, vitest, e2e) na drzewie gałęzi + push + CI 9/9.
 
 1. Dla rodzin A–H każda pętla fizyki poza `network_model/solvers/**` i `pochodne/**` = adapter na jądro albo
    skasowana; `backend_no_physics_guard.py --pomiar` = 0 trafień rodzin `E_idmt_shape` i `J_skalowanie_jednostek`
-   poza `ZASTANE` (a `ZASTANE` puste dla tych rodzin).
+   poza `ZASTANE` (a `ZASTANE` puste dla tych rodzin — z JEDNYM trwałym wyjątkiem architektonicznym odkrytym w W3-F:
+   `application/result_mapping/short_circuit_to_resultset_v1.py`, 2× `J_skalowanie_jednostek`, plik pod
+   `PROTECTED_FILES` `resultset_v1_schema_guard.py` (B-01) — te dwa literały `/1000.0` nigdy nie trafią do `pochodne/`;
+   zdjęcie wyjątku wyłącznie decyzją właściciela, jak OD-18).
 2. Trzy metodyki nastaw → jedna (Hoppel) z pakietem dowodowym osiągalnym z ekranu koordynacji; wzorzec
    referencyjny liczony tą samą metodyką.
 3. V12.6: `hosting_capacity`/`opf_loss_lcc` niedostępne jako nowe biegi (410 z odesłaniem), ranking N-1 poza
@@ -207,3 +210,123 @@ V126-WYGASZENIE (2026-08-07) zdjęła już 2 (`benchmark_validation`, `voltage_s
 `oltc_tap_position: 0`, lokalne Monte Carlo) pozostaje w solverze FROZEN — kasacja = **OD-15(d)**; LCC/koszty = **OD-16**.
 Weryfikacja agenta (wpis rejestru `e0103101`): celowane 119 backend + 246 frontend, wyrocznia pandapower 41, e2e realny
 backend 12 — zielone; pełny łańcuch = odbiór (§F).
+
+### Odbiór fali 2 (W3-F, W3-B, W3-I, W3-C1, W3-C2) — 2026-09-10
+
+**Model:** pięć podkart z bazy `a16f8d2b`, 26 commitów cherry-pickowanych na `a1b40e9a` w osobnym worktree
+`fable-w3f2` (łańcuch fali 1 biegł równolegle w `fable-cv3`), uzgodnienie `32d01cf8`, pełny łańcuch przedpushowy na
+drzewie scalonym — evidence §F „W3 fala 2 — dowody". Konflikty (KLASA: piny i guardy przesuwane niezależnie przez
+każdą kartę): `test_solver_input_substitute_guard.py` ×5 (piny zawsze z pomiaru na końcu, komentarze kart zachowane),
+`backend_no_physics_guard.py` + self-test ×2 (rodzina E z W3-A i J z W3-F; wpisy K2 z bazy W3-F zdjęte),
+`legacy_public_path_guard.py` + self-test ×2 (bramki W3-C1/W3-C2 dopisane z PEŁNYCH wersji plików, nie z hunków —
+lekcja fali 1; `path.exists()` → `zrodlo_istnieje`), `api/generators.py`/`dobor_przekladnika.py` (W3-B vs migracje
+jednostek W3-F), `cgmes_importer.py` (importy W3-I vs W3-F), fixtury nN 16/17 (W3-B vs W3-I → regeneracja skryptem),
+wzorzec `pattern_line_i_doubleprime_thermal_spz.py` (wersja W3-C2 w całości + migracja 4 f-stringów na `a_na_ka`).
+
+**Defekty integracji (każda karta zielona w izolacji, czerwone dopiero razem — naprawione u źródła):** (1) trzy helpery
+testów doboru aparatu W3-C1 (`test_device_mapping_v0.py`, `test_vendor_adapter_v0.py`,
+`test_vendor_elektrometal_etango_v0.py`) budowały `ProtectionSettingsResult` ręcznie bez pól wymaganych od W3-C2
+(`local_generation`, `setting_window`) — 12 czerwonych → uzupełnione (E-L nieaktywne, okno spójne z `instantaneous`),
+22/22; (2) nowy kod W3-B (`ik_ka * 1000.0`) i W3-C2 (4× `x/1000` w f-stringach) wobec rodziny J guarda W3-F — przepisane na
+`ka_na_a`/`a_na_ka`; (3) `ZASTANE` guarda fizyki po W3-C1/W3-C2 miało 3 wpisy plików skasowanych (guard: `dlug-zmalal`)
+→ zapadka = wyłącznie trwały wyjątek ResultSet v1 (1 plik / 2 wzorce); (4) self-test bramki W3-C2 wskrzeszał pakiet
+PUSTYM katalogiem (działał tylko z `exists()`) → wskrzeszony pakiet ma plik `.py`. Pomiary na drzewie scalonym:
+`solver_input_substitute_guard` 3471 pól / 484 pliki / zapadka 58 plików suma 260 / wykluczenia 13 suma 31; snapshot OpenAPI
+301 ścieżek / 220 schematów (generator bez diffu, test 2/2); parytet scenariuszy nastaw 30/30 (złote hashe W3-C2 zgodne
+także z W3-C1); fixtury nN 51/51; `readiness_dictionary` 118; `claude_md_struktura` ui=53/ui2=18.
+
+### W3-F (2026-09-09) — jednostki — UCZCIWOŚĆ
+
+**Wykonane (agent; `710fcdd9`, `5aefecb5`, `92e2bcff`, `6835dc34`, `b70a6482` → na gałęzi `52531d48`…`ff3e965e`; 88 plików,
++1583/−294):** `network_model/pochodne/jednostki.py` (20 funkcji: kW↔MW, kvar↔Mvar, kVA↔MVA, A↔kA, V↔kV, m↔km, ms↔s,
+µS↔S) — 153 wzorce w 54 plikach przeniesione bit w bit (testy tożsamości); rodzina `J_skalowanie_jednostek` w
+`backend_no_physics_guard.py` (pomiar PRZED 192 wzorce / 59 plików); B = 2πfC z jednej formuły
+(`susceptancja_katalogowa_us_per_km`) i częstotliwością studium z danych (`header.defaults.frequency_hz` →
+`api/solver_input.py` → `solver_input/builder.py`; `50.0` zostaje wyłącznie jako domyślna sygnatury publicznej dla
+innego wołającego). Inwentarz 261 surowych linii: 142 zmigrowane, 97 NIE-J (dowiedzione zamkniętym skanem guarda:
+komentarze/tolerancje/stałe kwantyzacji), 20 wykluczone regułą karty (`line_overcurrent_setting` — skasowane w W3-C2),
+2 wykluczone zamrożonym kontraktem. Zmienione piny (kaskada z addytywnego pola proweniencji
+`materialized_params["frequency_hz"]` i edycji mostu `enm/mapping.py`): hashe `test_kontyngencje_n1_service.py`
+(gn01/gn03), `sldNetwork53.ts::source_hash`, `proweniencja_k7.json::most.sha256` ×5 (pin hashuje ŹRÓDŁO `mapping.py`,
+nie fizykę) — każdy z diffem PRZED/PO tylko w polu niosącym hash.
+
+**B-01 STOP w trakcie (naprawiony przez agenta):** F.1 zmigrował dwa `/1000.0` w `short_circuit_to_resultset_v1.py`
+(PROTECTED_FILES `resultset_v1_schema_guard.py`) — cofnięte bajt w bajt, zapadka J podniesiona o 2 z uzasadnieniem jako
+wyjątek TRWAŁY (DoD §4.1 doprecyzowany). **Nazwane:** `Branch.resolve_electrical_params`/`with_resolved_params` — 0
+wołających produkcyjnych; `api/projects.py` bez trasy zapisu częstotliwości do ENM (osobne karty). Weryfikacja agenta:
+golden 226/1 xfail, `tests/network_model` 4743, pozostałe katalogi 1451, proof_engine+infra 413, `tests/application` 1749,
+pandapower 41, `guardy_z_ci` 89/89 + 715 self-testów, mypy 737/0, black/ruff 0, tsc/eslint 0, vitest 121/4 (1 flake
+wydajnościowy pod obciążeniem, izolowana powtórka 8/8); `tests/api` i luźne testy root-level — przerwane restartem hosta,
+domknięte pełnym łańcuchem odbioru (§F).
+
+### W3-B (2026-09-09) — ALF ×2 → jądro + obwód wtórny CT/VT — UCZCIWOŚĆ
+
+**Wykonane (agent; 6 commitów → na gałęzi `470001bb`…`e4fb0020`; 32 pliki, +1883/−124):** kryterium `ct.alf`
+w `domain/dobor_przekladnika.py` deleguje w 100 % do jądra FROZEN `check_ct_burden_saturation` (ALF_eff z rzeczywistym
+obciążeniem wtórnym, Rct, przewodem), dawny warunek konieczny → `ct.alf_katalogowy` (werdykt wyłącznie `informacja`);
+addytywne `Kryterium.kody_gotowosci`/`slad`; `Measurement.obwod_wtorny` (`ObwodWtorny`: długość/przekrój przewodu,
+obciążenia aparatów, moc styków) i `vt_uzwojenie` w ENM, `add_ct`/`add_vt` przyjmują obwód, nowa operacja
+`set_measurement_secondary_circuit` (jedyna droga edycji na kolekcji `measurements`, w `CANONICAL_OPERATIONS` i
+`V2_CANONICAL_OPS`); 5 kodów gotowości jądra już zarejestrowanych PRZED kartą (zero nowych); FE: kreator stacji,
+`SekcjaBilansuCtVt.tsx`, `DoborPrzekladnikowSekcja.tsx` (chipy kodów + ślad), fixtury nN 7 plików. Parytet dowiedziony
+end-to-end (`POST /api/solver/ct-burden-check` vs `sprawdz_dobor_ct` na realnym katalogu); iloczyn cech 6 testów z realnymi
+kodami jądra (`ct.secondary_circuit_missing` itd. — kod „`ct.secondary_burden_unknown`" z §0.3 był przybliżeniem sprzed
+inwentaryzacji jądra, skorygowane). Weryfikacja agenta: pełny pytest 12 890 passed / 1 skipped / 1 xfailed (3406 s),
+pandapower 41, mypy 736/0, `guardy_z_ci` 88/89 (czerwony wyłącznie `tsconfig_gate` — środowiskowe, zielony w odbiorze) +
+640, vitest celowany 122 + 74, tsc 0, e2e realny backend `kreator-stacji-max.spec.ts` 2/2. **Nazwane:** pole wytwórcy
+`obciazenie_obwodu_va=None` z powodem w kodzie (CT/VT pola bez elementu `Measurement`).
+
+### W3-I (2026-09-09) — jeden predykat wymagalności katalogu — UCZCIWOŚĆ
+
+**Wykonane (agent; 5 commitów → na gałęzi `3a09c46f`…`8c2f4139`; 18 plików):** tabela `wymagalnosc_katalogu(rodzaj)`
+(`catalog/governance.py:202-344`; poziomy per rodzaj × {tworzenie, walidacja, import}; `MANUAL_EQUIVALENT` = NIE) czytana
+przez 8 miejsc (inwentarz: 6 z karty + `eligibility_service.py::_check_catalog_refs` znaleziony grepem DoD +
+`readiness_bridge.py` znaleziony przez `readiness_consumption_guard`); rozjazdy naprawione: CGMES side-car bez wyjątku
+MANUAL_EQUIVALENT, walidator milczący dla generatorów (nowy W010, WARNING, `inverter.k_sc_missing`), `v2_projection.py`
+z błędnym 6-elementowym zbiorem DER zamiast 4-elementowego SC (`fw_dfig`/`fw_scig` dostawały fałszywe ostrzeżenie migracji),
+pin substitute-guarda (+4 unikalne nazwy pól `WymagalnoscKatalogu`), fixtury nN 16/17 (W010 poprawnie zgłasza
+`QF-03_zrodlo`, 11 → 12 ostrzeżeń, 2 z 18 scenariuszy). Korekta zlecenia: wiersz klasy defektu = **K-A** (mapa §4), nie K-C.
+Weryfikacja agenta: pełny pytest 12 932 passed / 1 skipped / 1 xfailed (2790 s), pandapower 41, mypy 736/0, `guardy_z_ci`
+89/89 + 640 (dwukrotnie, po wykryciu kolizji nazw plików wyników ze współbieżną kartą W3-B), tsc 0, vitest 143 (fixtury),
+celowane 452, lv_domain 234. **Nazwane:** `add_generator_sn` bez bramy API/FE (`_ROZJAZD_TWORZENIE_ZNANY`, osobna karta);
+`add_load_sn` bez katalogu = decyzja architekta; grupy „klasa CIM" i „wariant przyłączenia" = inne mechanizmy, do własnych kart.
+
+### W3-C1 (2026-09-09) — nastawy nadprądowe → Hoppel (kasacja V12K-189) — UCZCIWOŚĆ
+
+**Wykonane (agent; 8 commitów → na gałęzi `65734597`…`f75690f1`; 67 plików, +3466/−3619):** kasacja V12K-189 — 20 plików
+(`overcurrent/**` 9, `api/protection_overcurrent_settings.py`, `run_registry.py`, `run_envelope.py`, 3× `envelope_adapter.py`,
+5 martwych testów; konsumenci po kasacji 0 — grep; `AnalysisRunIndexEntry` zostaje, ma realnego konsumenta);
+`oblicz_nastawy()` (`batch_run.py`) współdzielona przez ZIP i nowe trasy `GET /analysis-runs/{id}/nastawy[/dopasowanie]`;
+`t_51_s_min/max` w serializerze katalogu; `SekcjaNastaw.tsx` przebudowany na kanon (zero fizyki w UI, `ui_no_physics_guard`);
+predykat sparowany `dostepnosc_pakietu_nastaw`/`zbuduj_wejscie_nastaw` na jednym c_max; dobór aparatu jako czysta funkcja
+(`catalog/pipeline.py::dopasuj_do_aparatu` na `catalog/mapper.py::wymaganie_z_nastaw`); OpenAPI +2 trasy. Kolejność commitów
+inna niż proza karty (dobór aparatu przed trasami — zależność kodu, nazwana). KLASA-NIE-INSTANCJA: 7 miejsc tej samej klasy
+„`overcurrent`/`analysis_runs_index` nadal żywe" w 6 plikach (w tym 2 w `project_archive/service.py`) naprawione.
+Weryfikacja agenta: pełny pytest 12 839 passed / 0 failed / 1 skipped / 1 xfailed (3012 s), pandapower 41 (izolowany venv po
+incydencie klonowania venv — naprawiony, zero wpływu na kod), mypy 721/0, `guardy_z_ci` 89/89 + 645, tsc 0, eslint 0,
+vitest 59, e2e realny backend `nastawy-koordynacji-hoppel.spec.ts` 1/1, snapshot OpenAPI 2/2. **Nazwane:** wiersz „5
+implementacji IDMT" w `docs/twin/MV_DESIGN_PRO_PROTECTION_ARCHITECTURE.md` nieaktualny o jeden po tej kasacji (mandat W3-A);
+`REJESTR_KONFLIKTOW.md` — wpis dopisany przy odbiorze.
+
+### W3-C2 (2026-09-09) — analizator FIX-12D → Hoppel, wzorzec referencyjny na kanonie — UCZCIWOŚĆ
+
+**Wykonane (agent; `b038ff43` + `45845bc9` → na gałęzi `e9f11e76`, `e5dacf9d`; 30 plików, +1571/−3549):** silnik Hoppla
+rozszerzony ADDYTYWNIE (`generacja_lokalna` z jawnym progiem — brak = None/NIEDOSTĘPNY, silnik nie zgaduje; `okno_nastaw`
+= dolna granica selektywność, górna min(cieplne, czułość), konflikt i rekomendacje po polsku), test tożsamości PRZED/PO na
+6 wejściach 7/7; kasacja FIX-12D (`line_overcurrent_setting/{__init__,analyzer,models,spz_lookup}.py` 1880 linii + test 841
+linii; `TestFix12Integration` 5 testów `domain.protection_device` przeniesione bez utraty pokrycia do
+`test_overcurrent_coordination.py`); wzorzec RP-LINE-I2-THERMAL-SPZ na `ProtectionSettingsInput`/`ProtectionSettingsEngine`
+(6 checków, werdykt ZGODNE/GRANICZNE/NIEZGODNE, ryzyko blokady ZSZ i blokada SPZ), 3 fixtury przepisane + nowy
+`case_D_generacja_lokalna.json`, liczby `_expected_results` z faktycznych przebiegów (tabela 8 różnic FIX-12D→Hoppel:
+selektywność bez CT, czułość z k_b, cieplne przy 0,05 s, okno nazwane, SPZ z analizy cyklu, E-L jawny próg, rekomendacje bez
+kb/kc, I> osobno); `recommended_setting_secondary_a` → `_primary_a` (Hoppel bez przekładni CT), martwe `*_secondary_a`
+skasowane; FE `ui/reference-patterns/` (rzeczywisty konsument — karta wskazywała `ui2/referencje/`, INNĄ zdolność) +14
+testów; API `api/reference_patterns.py` etykiety; nowy `tests/api/test_reference_patterns_api.py` (HTTP + PDF/DOCX);
+bramka wskrzeszenia + 3 self-testy; substitute-guard: martwy wpis analyzera zdjęty, 2 nowe podstawienia `or 0.0` naprawione
+U ŹRÓDŁA (None-check + `ValueError`). Złote hashe `nastawy/*` (4/4 rodziny) przeliczone świadomie: hash całego
+`ProtectionSettingsInput` zmienia się z definicji przy polu addytywnym, `parametry` identyczne PRZED/PO; na drzewie scalonym
+z W3-C1 parytet 30/30 bez kolejnej regeneracji. Weryfikacja agenta: pełny pytest (pierwszy bieg) 12 851 passed / 5 failed →
+4 hashe (jw.) + 1 artefakt cwd testu CGMES (0 zmian kodu), drugi bieg przerwany restartem hosta — domknięty łańcuchem
+odbioru (§F); pandapower 41, mypy 732/0, `guardy_z_ci` 89/89 + 643 (drugi bieg po OOM tsc), tsc 0, eslint 0, vitest 315.
+**Nazwane:** `docs/proof/Reference_Patterns.md` i `docs/proof_engine/Protection_Overcurrent.md` oznaczone SUPERSEDED
+(odsyłacz do kanonu), nie przepisane (787 + 391 linii); progi „kb>1,3 / kc<1,2" bez cytatu NIE przeniesione.
