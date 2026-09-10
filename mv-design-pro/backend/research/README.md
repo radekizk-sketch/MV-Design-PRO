@@ -51,5 +51,6 @@ z defektów P0 audytu: model nazwany „6-rzędowym" miał 2 stany).
 | `dynamic_lab/benchmarki.py` | drabina walidacyjna L0–L4 + mierzone porównanie integratorów |
 | `dynamic_lab/frt.py` | ocena FRT: wymaganie (obwiednia) vs wynik (przebieg) — ROZDZIELONE |
 | `dynamic_lab/wzorzec_zewnetrzny.py` | poziom 4: porównanie z NIEZALEŻNYM narzędziem (ANDES) — wymaga `pip install andes` |
+| `dynamic_lab/dowod_walidacji.py` | PROTOTYP D-09: stopień dowodowy WYPROWADZANY z zakresu walidacji, nie nadawany |
 
 Testy: `backend/tests/research/` (uruchamiane przez zwykły bieg pytest).

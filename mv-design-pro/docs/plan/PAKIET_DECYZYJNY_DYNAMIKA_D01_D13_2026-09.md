@@ -59,7 +59,7 @@ nie opierała się na cudzej ocenie — także nie na mojej.
 | **D-06** | Dwie ścieżki stabilności / dwie implementacje NC RfG | **ZMIERZONE — są TRZY** | trzecia (martwa) implementacja we froncie, trzeci słownik werdyktów | rozjazd |
 | **D-07** | Zakres PPC / hybryd | materiał | wymagania z PCC, czego brakuje w modelu urządzenia | ewaluator |
 | **D-08** | Kanoniczny model wyniku dynamicznego | **KANDYDAT KONTRAKTU** | `WynikDynamiczny` z tożsamością, diagnostyką i odciskiem | dowody, walidację |
-| **D-09** | Tryby EXPLORATORY / ENGINEERING / REGULATORY_EVIDENCE | **CZĘŚCIOWO WDROŻONE** | oś `EvidenceTier` + reguła fail-closed; brak modelu zaufania | całą klasę P0 |
+| **D-09** | Tryby EXPLORATORY / ENGINEERING / REGULATORY_EVIDENCE | **WDROŻONE (produkcja) + PROTOTYP (model zaufania)** | oś `EvidenceTier` + reguła fail-closed; osobno działający prototyp „status wyprowadzany, nie nadawany” | całą klasę P0 |
 | **D-10** | Wersjonowanie profili WOS | materiał | pomiar identyczności 5 profili | dezaktualizację |
 | **D-11** | Wyrocznia zewnętrzna dla dynamiki | **WYROCZNIA URUCHOMIONA** | ANDES 2.0.0, zgodność trójstronna, pułapka 60 Hz zakodowana | dowód poprawności |
 | **D-12** | Zakres modeli OEM | materiał | interfejs urządzenia z prototypu jako kandydat na punkt wtyczkowy | — |
@@ -354,11 +354,38 @@ brzmiałby „istnieje `ValidationEvidence`, którego `validation_scope` **zawie
 bieżący punkt pracy, a `acceptance_metrics` są spełnione". Model poza zakresem
 walidacji traci status automatycznie, zamiast go nieść dalej.
 
-**SPIKE — CZĘŚCIOWY.** Zaimplementowana jest oś i reguła fail-closed
-(108 + 14 testów, w tym mutacja kontrolna dowodząca, że bezpiecznik jest realnie
-sprawdzany). **Nie** zaimplementowano modelu zaufania powyżej — bo `EvidenceTier`
-jest już w produkcji, a rozbudowa go o `ValidationEvidence` byłaby ustanawianiem
-architektury proweniencji, nie przygotowaniem decyzji.
+**SPIKE — WYKONANY W IZOLACJI.** Dwie części:
+
+1. **W produkcji** (D-00): oś `EvidenceTier` + reguła fail-closed, 108 + 14
+   testów, w tym mutacja kontrolna dowodząca, że bezpiecznik jest realnie
+   sprawdzany, a nie tylko przechodzi.
+2. **W laboratorium** (`research/dynamic_lab/dowod_walidacji.py`, 13 testów):
+   **działający prototyp** modelu zaufania. Stopień dowodowy jest tam
+   `RejestrDowodow.orzeknij(model, punkt_pracy)` — funkcją, nie literałem.
+   Prototyp używa **własnych, polskich nazw stopni**, żeby nie dało się go
+   pomylić z kontraktem produkcji (pilnuje tego `research_isolation_guard`).
+
+Zmierzone własności prototypu — każda odpowiada sposobowi, w jaki dziś fałszywy
+pozytyw byłby osiągalny:
+
+| Sytuacja | Orzeczenie prototypu |
+|---|---|
+| model bez zapisanego dowodu | niedowodowy (fail-closed, jak w produkcji) |
+| model zwalidowany, punkt pracy **w** zakresie | dowodowy, z nazwą wyroczni i liczbą przypadków |
+| ten sam model, punkt pracy **poza** zakresem (U, P, SCR, rodzaj zdarzenia) | **traci** stopień automatycznie, z podaniem który wymiar zawiódł |
+| wymiar w ogóle niebadany | brak pokrycia — „nie badano" ≠ „dowolny" |
+| **cicha zmiana parametru modelu** (`H` 4,0 → 4,5) | dowód znika: rejestr indeksuje ODCISKIEM parametrów, nie nazwą |
+| walidacja wykonana, ale metryka niespełniona | niedowodowy — „wykonana" ≠ „zdana" |
+| dowód z pustą listą przypadków | **odrzucony w konstruktorze** (pułapka `all([]) == True`) |
+| nowa wersja wyroczni | inny odcisk dowodu → wymaga przeglądu |
+
+Sedno: **dowód jest relacją model–zakres–punkt pracy, nie atrybutem modelu.**
+Dlatego prototypu nie da się „oszukać przypisaniem wartości" — nie ma wartości
+do przypisania.
+
+To nadal **nie jest** propozycja zmiany `provenance.py`. Rozbudowa produkcyjnej
+proweniencji jest ustanawianiem architektury i należy do Fable; prototyp
+pokazuje tylko, że wariant „status wyprowadzany" jest wykonalny i jak wygląda.
 
 **DECYZJA FABLE.** Czy `VALIDATED_SIMULATION` ma pozostać wartością nadawaną,
 czy stać się statusem WYPROWADZANYM z `ValidationEvidence`. Do czasu decyzji
@@ -663,6 +690,14 @@ PYTHONPATH=research poetry run python -c \
 poetry run python -m pytest tests/test_dynamic_evidence_containment.py \
                             tests/api/test_dynamic_evidence_bypass.py -q
 
+# Czas krytyczny zwarcia (bisekcja, ~75 s na 6 pomiarow)
+PYTHONPATH=research poetry run python -c \
+  "from dynamic_lab.benchmarki import czas_krytyczny_zwarcia as c; \
+   print([round(c(h_s=h)*1000) for h in (2.0,4.0,8.0)])"
+
+# Prototyp modelu zaufania D-09 (status dowodowy wyprowadzany, nie nadawany)
+PYTHONPATH=research poetry run python -m pytest tests/research/test_dowod_walidacji.py -q
+
 # Izolacja kodu badawczego od produkcji
 cd .. && python scripts/research_isolation_guard.py
 cd backend && poetry run python -m pytest -q ../scripts/test_research_isolation_guard.py
@@ -734,12 +769,12 @@ Rozwiązanie zastosowane w prototypie: tolerancja względna, krok różnicowy
 tolerancji zewnętrznej.
 
 ---
-## 18b. Zmierzone własności fizyczne — materiał do D-04 i D-07
+## 19. Zmierzone własności fizyczne — materiał do D-04 i D-07
 
 Trzy pomiary, z których każdy odpowiada na jeden z defektów P0 audytu. Wszystkie
 z tego samego prototypu, na tej samej sieci, tym samym integratorem.
 
-### 18b.1 Czas krytyczny wyłączenia zwarcia (CCT) — defekt P0-06
+### 19.1 Czas krytyczny wyłączenia zwarcia (CCT) — defekt P0-06
 
 Produkcyjny silnik zwracał dla zwarcia trójfazowego **stałą `return 0.05`**,
 identyczną dla każdego elementu, niezależnie od miejsca zwarcia i impedancji.
@@ -773,7 +808,7 @@ zgodnie w granicach kroku przemiatania.
 Kierunek poprawny: słabsza sieć → mniejsza moc synchronizująca → krótszy czas
 krytyczny. Wynik zależy od sieci, nie od stałej.
 
-### 18b.2 GFL kontra GFM — defekt P0-07
+### 19.2 GFL kontra GFM — defekt P0-07
 
 Audyt ustalił, że w produkcji **GFM ≡ GFL**: ten sam zestaw równań pod dwiema
 nazwami, a wynik nie zależał od urządzenia (`pv_1` ≡ `dfig_60MW`, `p_recov`
@@ -802,7 +837,7 @@ w sposób, który jest przedmiotem osobnego projektu (przejście źródło napi�
 konfiguracji modelu, a nie stwierdzeniem o zachowaniu sprzętu.** To jest znana
 luka prototypu, nie wynik.
 
-### 18b.3 Co te pomiary rozstrzygają, a czego nie
+### 19.3 Co te pomiary rozstrzygają, a czego nie
 
 Rozstrzygają: że sprzężenie z siecią, zdarzenia jako zmiana modelu i
 zróżnicowanie urządzeń są **osiągalne** w rdzeniu tej wielkości, i że dają
@@ -813,9 +848,9 @@ MV-DESIGN-PRO. To jest D-02, i to jest pytanie do Fable.
 
 ---
 
-## 19. Blok przekazania — FABLE HANDOFF
+## 20. Blok przekazania — FABLE HANDOFF
 
-### 19.1 Co jest już rozstrzygnięte i wdrożone (nie wymaga decyzji)
+### 20.1 Co jest już rozstrzygnięte i wdrożone (nie wymaga decyzji)
 
 **D-00 — FAIL CLOSED.** Decyzja właściciela z 2026-09-10: pozytywny certyfikat
 zgodności NC RfG **nie powstaje jako dowód regulacyjny**, jeżeli jego pozytywny
@@ -832,7 +867,7 @@ przestał wpisywać status dowodowy na sztywno.
 Bezpiecznik **działa w jedną stronę**: blokuje fałszywy pozytyw, nigdy nie
 wycisza wykazanej niezgodności (pinowane osobnym testem).
 
-### 19.2 Trzynaście pytań do rozstrzygnięcia
+### 20.2 Trzynaście pytań do rozstrzygnięcia
 
 | ID | Pytanie w jednym zdaniu |
 |---|---|
@@ -853,7 +888,7 @@ wycisza wykazanej niezgodności (pinowane osobnym testem).
 **Plus cztery sprawy kanoniczne z §15**, z których §15.4 (`no_module` → `ready`)
 działa **dziś** i nie jest pinowana żadnym testem w żadną stronę.
 
-### 19.3 Co wolno zrobić z prototypem
+### 20.3 Co wolno zrobić z prototypem
 
 Przyjąć w całości, przyjąć fragmentami, przepisać, albo **skasować katalog
 `backend/research/` jednym poleceniem** — nic produkcyjnego z niego nie korzysta
@@ -864,7 +899,7 @@ Jeżeli którykolwiek fragment ma trafić do produkcji, to **nie przez przeniesi
 plików**, tylko przez decyzję D-02/D-03/D-08 i normalną ścieżkę: kontrakt →
 implementacja → testy → guardy → determinizm.
 
-### 19.4 Trzy rzeczy, których ten dokument świadomie NIE zrobił
+### 20.4 Trzy rzeczy, których ten dokument świadomie NIE zrobił
 
 1. **Nie podmienił produkcyjnego solvera** prototypem.
 2. **Nie ogłosił żadnego kontraktu kanonicznym.**
