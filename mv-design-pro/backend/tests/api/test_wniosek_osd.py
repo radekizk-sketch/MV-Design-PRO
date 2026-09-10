@@ -51,7 +51,8 @@ OSD_PDF = "/api/oze-analysis/osd-application.pdf"
 # bez ustalonej poprawności fizycznej — certyfikat może dla niego legalnie
 # powstać. Wcześniej fikstura miała 2 MW (klasa B); po wprowadzeniu bezpiecznika
 # dowodowego klasa B jest blokowana i to jest zachowanie pożądane, sprawdzane
-# osobnym testem niżej.
+# w `tests/api/test_dynamic_evidence_bypass.py` (nie „niżej" w tym pliku —
+# poprzednia wersja tego komentarza wskazywała test, którego nie było).
 _MODULE_FULL: dict = {
     "der_ref": "pv-1",
     "der_name": "PV 0,8 MW",
