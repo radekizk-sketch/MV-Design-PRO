@@ -263,10 +263,12 @@ describe('Naprawa C.6 — klasy CT (reguly normowe, bez katalogu syntetycznego)'
 // (+ selektor `selectSpzCompatibleWithDer`) USUNIĘTE z `protection-
 // catalogs.ts` — ZERO konsumentów produkcyjnych (zmierzone grepem: jedyny
 // importer SPZ_CATALOG poza definicją to ten plik i `audit-round2-fixes.
-// test.ts`; SZR_CATALOG tylko ten plik). Backendowy `application/analyses/
-// protection/line_overcurrent_setting/spz_lookup.py` jest INNĄ zdolnością
-// (progi blokady SPZ wg prądu/czasu zwarcia), nie katalogiem profili cykli —
-// nie ma tu duplikatu do migracji. Dług widniał otwarty w `docs/v12xx/
+// test.ts`; SZR_CATALOG tylko ten plik). W chwili tej karty (FAB-M)
+// backendowy `application/analyses/protection/line_overcurrent_setting/
+// spz_lookup.py` (progi blokady SPZ wg prądu/czasu zwarcia) był INNĄ
+// zdolnością niż katalog profili cykli — nie było tu duplikatu do migracji;
+// `spz_lookup.py` skasowany karta W3-C2 (2026-09-09), kanon SPZ: `protection_
+// settings/engine.py::_analyze_spz`. Dług widniał otwarty w `docs/v12xx/
 // REJESTR_KONFLIKTOW.md` (wiersz K-O) i `docs/plan/
 // PLAN_DOKONCZENIA_100_2026-08-14.md` (punkt 3 po K-O) — FAB-M go zamyka.
 // Eksport bez konsumenta produktu = dług L4 (wzorzec FAB-L) — kasacja z

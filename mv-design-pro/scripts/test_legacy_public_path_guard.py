@@ -1348,3 +1348,40 @@ def test_guard_accepts_current_repo_state_w3c1() -> None:
     """Stan repozytorium PO W3-C1 jest zielony na tej bramce — prawdziwe drzewo
     `backend/src`, nie sztuczne `tmp_path`."""
     assert guard.check_w3c1_overcurrent_resurrection() == []
+
+
+# ---------------------------------------------------------------------------
+# W3-C2 (2026-09-09): trzecia metodyka nastaw I>> (FIX-12D) nie wraca
+# ---------------------------------------------------------------------------
+
+
+def _patch_w3c2_tree(monkeypatch, tmp_path) -> Path:
+    src = tmp_path / "backend" / "src"
+    src.mkdir(parents=True)
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", src)
+    return src
+
+
+def test_guard_rejects_resurrected_line_overcurrent_setting_directory(
+    tmp_path, monkeypatch
+) -> None:
+    src = _patch_w3c2_tree(monkeypatch, tmp_path)
+    (src / "application" / "analyses" / "protection" / "line_overcurrent_setting").mkdir(
+        parents=True
+    )
+
+    violations = guard.check_w3c2_line_overcurrent_setting_resurrection()
+
+    assert any("[resurrected-module]" in v and "line_overcurrent_setting" in v for v in violations)
+
+
+def test_guard_accepts_clean_tree_without_w3c2_resurrection(tmp_path, monkeypatch) -> None:
+    _patch_w3c2_tree(monkeypatch, tmp_path)
+    assert guard.check_w3c2_line_overcurrent_setting_resurrection() == []
+
+
+def test_guard_accepts_current_repo_state_w3c2() -> None:
+    """Stan repozytorium PO W3-C2 jest zielony — `line_overcurrent_setting/`
+    nie istnieje w prawdziwym drzewie `backend/src`."""
+    assert guard.check_w3c2_line_overcurrent_setting_resurrection() == []

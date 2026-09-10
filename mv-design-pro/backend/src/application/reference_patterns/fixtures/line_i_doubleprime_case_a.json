@@ -1,51 +1,41 @@
 {
-  "_description": "Wzorzec A — Przypadek referencyjny ZGODNY dla doboru I>> linii SN",
+  "_description": "Wzorzec A — Przypadek referencyjny ZGODNY dla doboru I>> linii SN (fixture zgodnosci wstecznej w katalogu glownym)",
   "_pattern_id": "RP-LINE-I2-THERMAL-SPZ",
   "_expected_verdict": "ZGODNE",
-  "_notes_pl": "Typowa linia kablowa SN 15kV, Al 150mm2, SPZ jednokrotne, prawidlowe okno nastaw",
+  "_notes_pl": "Typowa linia SN 15kV, Al 150mm2, SPZ wlaczone, prawidlowe okno nastaw. Dane identyczne z case_A_zgodne.json (karta W3-C2) — inny line_id dla odroznienia fixture'u zgodnosci wstecznej od katalogu pattern_a_line_i_doubleprime_thermal_spz/.",
 
-  "line_id": "line-ref-001",
+  "line_id": "linia-ref-001",
   "line_name": "Linia SN 15kV Stacja A - Stacja B (referencja)",
-  "ct_ratio": 80.0,
 
-  "conductor": {
-    "material": "XLPE_AL",
-    "cross_section_mm2": 150.0,
-    "jthn_a_mm2": 94.0,
-    "theta_b_deg": 40.0,
-    "theta_k_deg": 250.0
-  },
+  "cross_section_mm2": 150.0,
+  "conductor_material": "Al",
+  "length_km": 8.0,
+  "i_nominal_a": 300.0,
 
-  "spz_config": {
-    "mode": "SINGLE",
-    "t_dead_1_s": 0.5,
-    "t_dead_2_s": 15.0,
-    "t_fault_max_s": 0.5
-  },
+  "ik3_max_beginning_a": 3500.0,
+  "ik3_min_beginning_a": 3000.0,
+  "ik3_max_end_a": 1800.0,
+  "ik3_min_end_a": 1500.0,
+  "ik2_min_end_a": 1300.0,
+  "ik_max_next_bus_a": 1200.0,
 
-  "local_generation": {
-    "enabled": false
-  },
+  "i_load_max_a": 150.0,
 
-  "ik_max_busbars_a": 3500.0,
-  "ik_min_busbars_a": 3000.0,
-  "ik_max_next_protection_a": 1200.0,
-  "ik_min_2f_busbars_a": 2600.0,
+  "delta_t_s": 0.3,
+  "k_b": 1.2,
+  "k_bth": 1.1,
+  "t_upstream_s": 0.0,
+  "spz_enabled": true,
+  "spz_pause_s": 0.5,
 
-  "t_nast_1_s": 0.5,
-  "t_nast_2_s": 0.0,
-  "t_breaker_s": 0.05,
-
-  "kb": 1.2,
-  "kc": 1.5,
-  "kbth": 0.9,
+  "lokalna_generacja_aktywna": false,
+  "lokalna_generacja_typ_zrodla": null,
+  "lokalna_generacja_wklad_a": 0.0,
+  "lokalna_generacja_prog_udzialu_zsz": null,
 
   "_expected_results": {
     "i_min_sel_primary_a": 1440.0,
-    "i_max_sens_primary_a": 1733.3,
-    "ithn_a": 14100.0,
-    "tk_s": 1.1,
-    "ithdop_a": 13442.0,
+    "i_max_sens_primary_a": 2500.0,
     "window_valid": true,
     "spz_allowed": true
   }

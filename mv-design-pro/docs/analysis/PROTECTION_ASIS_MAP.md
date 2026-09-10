@@ -695,7 +695,6 @@ Key assertions in `test_solver_input_determinism.py`:
 | `tests/test_proof_protection_settings.py` | Proof generation for settings |
 | `tests/application/analyses/protection/catalog/` | Device mapping, vendor adapters (Elektrometal ETANGO) |
 | `tests/application/analyses/protection/coordination/` | Overcurrent selectivity coordination |
-| `tests/application/analyses/protection/line_overcurrent_setting/` | Line protection settings |
 | `tests/application/analyses/protection/test_base_values_resolver.py` | Base values resolver |
 | `tests/application/analyses/protection/test_overcurrent_settings_v0.py` | Overcurrent settings API |
 | `tests/application/analyses/protection/test_overcurrent_skeleton.py` | Overcurrent algorithm skeleton |

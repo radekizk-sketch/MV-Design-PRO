@@ -348,9 +348,11 @@ describe('eng.15 — Hosting capacity export check', () => {
 // Osobne znalezisko tej samej klasy w TYM PLIKU (zero konsumenta produktu,
 // wzorzec L4 z FAB-L): `SPZ_CATALOG` (import usunięty razem z HV_FUSE powyżej)
 // nie miał ŻADNEGO konsumenta produkcyjnego — usunięty z `protection-
-// catalogs.ts` w tej samej karcie (backendowy `spz_lookup.py` to INNA
-// zdolność — progi blokady SPZ wg prądu/czasu zwarcia, nie katalog profili
-// cykli — nie ma tu duplikatu do migracji).
+// catalogs.ts` w tej samej karcie (w chwili FAB-M backendowy `spz_lookup.py`
+// był INNĄ zdolnością — progi blokady SPZ wg prądu/czasu zwarcia, nie
+// katalog profili cykli — nie było tu duplikatu do migracji; `spz_lookup.py`
+// skasowany karta W3-C2 2026-09-09, kanon SPZ: `protection_settings/
+// engine.py::_analyze_spz`).
 //
 // Pokrycie:
 //   - zawartość katalogu HV_FUSE (≥4 pozycje, napięcie 6-36 kV, lista pól

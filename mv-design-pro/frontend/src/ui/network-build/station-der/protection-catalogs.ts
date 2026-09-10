@@ -44,10 +44,13 @@
  *     (wzorzec FAB-L) — kasacja z testem.
  *   * `SPZ_CATALOG` (+ `SpzCatalogItem`/`selectSpzCompatibleWithDer`) — ZERO
  *     konsumentów produkcyjnych (ten sam wpis rejestru/planu co wyżej).
- *     Backendowy `application/analyses/protection/line_overcurrent_setting/
- *     spz_lookup.py` jest INNĄ zdolnością (progi blokady SPZ wg prądu/czasu
- *     zwarcia), nie katalogiem profili cykli — nie ma tu duplikatu do
- *     migracji, jest tylko martwy eksport.
+ *     W chwili tej karty (FAB-M) backendowy `application/analyses/protection/
+ *     line_overcurrent_setting/spz_lookup.py` (tabela progów blokady SPZ wg
+ *     prądu/czasu zwarcia, bez cytatu normy) był INNĄ zdolnością niż katalog
+ *     profili cykli — nie było tu duplikatu do migracji, tylko martwy eksport.
+ *     Karta W3-C2 (2026-09-09) skasowała `spz_lookup.py` — kanon SPZ to teraz
+ *     analiza cieplna pełnego cyklu w `protection_settings/engine.py::
+ *     _analyze_spz`; ścieżka wymieniona wyżej już NIE ISTNIEJE w repo.
  *   * `SZR_CATALOG` (+ `SzrCatalogItem`) — ZERO konsumentów produkcyjnych (ten
  *     sam wpis rejestru/planu co wyżej).
  *   * `isCtClassValidForMetering` — ZERO konsumentów produkcyjnych (zmierzone

@@ -30,6 +30,16 @@ Thermal withstand tables (from Hoppel article):
 - Copper: j_thn = 142 A/mm² (for 1s)
 - Aluminium: j_thn = 94 A/mm² (for 1s)
 - ACSR (AlFe): j_thn = 87 A/mm² (for 1s)
+
+Extensions (karta W3-C2, 2026-09-09; ADDYTYWNE, opcjonalne wejścia, nowe bloki
+wyniku — istniejące liczby I>/I>>/cieplne/SPZ dla dotychczasowych wejść bez
+zmian, patrz tests/test_protection_settings_w3c2_identity.py):
+4. Local generation (generacja_lokalna): diagnostics of E-L (distributed
+   generation) contribution to fault current and ZSZ (busbar protection)
+   blocking risk — explicit inputs, no guessed thresholds.
+5. Setting window (okno_nastaw): I>> window bounds with named limiting
+   criteria, conflict text (with numeric deficit) and recommendations when
+   the window is empty.
 """
 
 from __future__ import annotations

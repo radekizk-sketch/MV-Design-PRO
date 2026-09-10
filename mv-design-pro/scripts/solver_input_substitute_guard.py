@@ -1446,19 +1446,37 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # karta K2 (2026-09-09) przeniosla oba pliki pod `backend/tests/` (poza
     # BACKEND_SRC, wiec poza skanem tego guarda) bez zmiany wlasnej tresci —
     # wpisy zdjete, nie dlug naprawiony (zapadka dziala w obie strony).
+    # Karta W3-C2 (2026-09-09): plik przebudowany na `ProtectionSettingsInput`
+    # (Hoppel/IRiESD) zamiast `LineOvercurrentSettingInput` (FIX-12D, skasowany)
+    # — schemat fixture PLASKI (bez zagniezdzonych `conductor_data`/`spz_data`),
+    # nazwy pol inne. `B:ifexp:window.i_min_primary_a` -> `B:ifexp:setting_
+    # window.i_min_a` (TA SAMA klasa: dzielenie szerokosci okna przez dolna
+    # granice oslonione `> 0`, ten sam powod — degenerowany `i_min_a <= 0`
+    # oznaczalby `ik_max_next_bus_a <= 0`, dana niepoprawna z solvera SC, nie
+    # brak; okno i tak jest wtedy nieprawidlowe niezaleznie od tej galezi).
+    # `fixture.kb/kbth/kc/t_breaker_s/t_nast_1_s/t_nast_2_s` (FIX-12D) ->
+    # `fixture.delta_t_s/k_b/k_bth/t_upstream_s/spz_pause_s/lokalna_generacja_
+    # wklad_a` (Hoppel) — domyslne wartosci w `fixture.get(pole, domyslna)`
+    # MIRRORUJA wprost domyslne `ProtectionSettingsInput` (`k_b=1.2`/`k_bth=1.1`
+    # z cytatu Hoppel/IRiESD w naglowku silnika, `delta_t_s=0.3` IRiESD ENEA,
+    # `spz_pause_s=0.5`, `t_upstream_s=0.0`, wklad E-L=0.0 gdy nieaktywne) —
+    # NIE nowa fabrykacja, kontynuacja tej samej, juz zaakceptowanej klasy
+    # (forma F, „domyslna wartosc fixture = domyslna wartosc kontraktu wejscia").
+    # `conductor_data.theta_b_deg/theta_k_deg` i `spz_data.t_dead_*`/
+    # `t_fault_max_s` ZNIKNELY calkowicie — Hoppel nie ma tych pol (nie liczy
+    # temperatury przewodu ani osobnych czasow martwych SPZ), nie sa gdziekolwiek
+    # odczytywane — dlug ZMALAL, nie przeniesiony. Dwa odczyty `local_generation.
+    # udzial_el`/`prog_udzialu_zsz` (`or 0.0`) NAPRAWIONE u zrodla (jawne
+    # sprawdzenie None + wyjatek nazywajacy niezmiennik, patrz kod) — NIE
+    # wpisane do zapadki, bo to NOWY kod tej karty, nie odziedziczony dlug.
     "application/reference_patterns/pattern_line_i_doubleprime_thermal_spz.py": {
-        "B:ifexp:window.i_min_primary_a": 2,
-        "F:dictget:conductor_data.theta_b_deg": 1,
-        "F:dictget:conductor_data.theta_k_deg": 1,
-        "F:dictget:fixture.kb": 1,
-        "F:dictget:fixture.kbth": 1,
-        "F:dictget:fixture.kc": 1,
-        "F:dictget:fixture.t_breaker_s": 1,
-        "F:dictget:fixture.t_nast_1_s": 1,
-        "F:dictget:fixture.t_nast_2_s": 1,
-        "F:dictget:spz_data.t_dead_1_s": 1,
-        "F:dictget:spz_data.t_dead_2_s": 1,
-        "F:dictget:spz_data.t_fault_max_s": 1,
+        "B:ifexp:setting_window.i_min_a": 2,
+        "F:dictget:fixture.delta_t_s": 1,
+        "F:dictget:fixture.k_b": 1,
+        "F:dictget:fixture.k_bth": 1,
+        "F:dictget:fixture.lokalna_generacja_wklad_a": 1,
+        "F:dictget:fixture.spz_pause_s": 1,
+        "F:dictget:fixture.t_upstream_s": 1,
     },
     # GRUPA 4 — KATALOG I MODEL DOMENOWY (`network_model/catalog/**`,
     # `network_model/core/branch.py`). Materializacja parametrow katalogu
@@ -1528,27 +1546,13 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # a nie bezposrednio. DLUG NAZWANY dla kazdego: dana <= 0 jest bledem
     # WEJSCIA (przekladnik/prog/prad zwarciowy nie moze byc zerowy/ujemny w
     # realnej sieci), nie brakiem — wynikowy margines/prad wtorny=0 UDAJE
-    # pomiar zamiast zglosic odmowe z powodem.
-    #
-    # `application/analyses/protection/line_overcurrent_setting/analyzer.py`:
-    # TRZY NIEZALEZNE funkcje (`_check_selectivity`/`_check_sensitivity`/
-    # `_check_thermal`) powtarzaja IDENTYCZNY idiom „przelicz prad strony
-    # pierwotnej na wtorna dzielac przez `ct_ratio`, oslaniajac `> 0`" —
-    # KLASA NIE INSTANCJA: TRZY miejsca tego samego mostu CT, nie jedno.
-    # Wynik (`i_min_secondary_a`/`i_max_secondary_a`) trafia wprost do
-    # `SelectivityCriterionResult`/`SensitivityCriterionResult`/
-    # `ThermalCriterionResult` — nastawy przekaznika w amperach. `kc`
-    # (wspolczynnik czulosci) jest mianownikiem `ik_min/kc` w tej samej
-    # funkcji sensitivity. `ik_max_busbars_a` (prad zwarciowy na szynach,
-    # `_check_local_generation`) jest mianownikiem stosunku wkladu generacji
-    # lokalnej `el_ratio = ik_el/ik_total`, uzywanego do progu ryzyka blokady
-    # ZSZ (>=30%) — DWA niezalezne odczyty tej samej wielkosci w tej samej
-    # funkcji (raz do `notes_pl`, raz zduplikowane w `trace["calculation"]`).
-    "application/analyses/protection/line_overcurrent_setting/analyzer.py": {
-        "H:local:input_data.ct_ratio": 3,
-        "H:local:input_data.ik_max_busbars_a": 2,
-        "H:local:input_data.kc": 1,
-    },
+    # pomiar zamiast zglosic odmowe z powodem. Pierwotnie PIEC plikow — karta
+    # W3-C2 (2026-09-09) skasowala `application/analyses/protection/
+    # line_overcurrent_setting/analyzer.py` w calosci (trzecia metodyka nastaw
+    # I>>, FIX-12D, kanon = `application/protection_settings/engine.py`,
+    # Hoppel/IRiESD) — dlug zniknal RAZEM Z PLIKIEM, nie zostal naprawiony w
+    # miejscu; wpis zdjety z zapadki (zapadka dziala w obie strony), zostaja
+    # CZTERY.
     # `application/analyses/werdykt_projektowy.py`: DWIE funkcje klucza
     # sortowania (`_wiodacy_wiersz_walidacji`/`_wiodaca_galaz`) wybierajace
     # „NAJGORSZY" wiersz walidacji do zaraportowania w podsumowaniu werdyktu

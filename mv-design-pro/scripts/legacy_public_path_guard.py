@@ -501,6 +501,24 @@ FORBIDDEN_W3C1_NAMES: frozenset[str] = frozenset(
     }
 )
 
+# Karta W3-C2 (2026-09-09) — trzecia metodyka nastaw nadpradowych I>> (FIX-12D,
+# "from lecture materials", bez cytatu normy) skasowana. Kanon metodyki to
+# WYLACZNIE Hoppel/IRiESD (`application/protection_settings/engine.py`) —
+# rozszerzony w tej samej karcie o `generacja_lokalna`/`okno_nastaw` (funkcje
+# przeniesione z analizatora, wejscia JAWNE). Jedyny konsument analizatora
+# (wzorzec referencyjny RP-LINE-I2-THERMAL-SPZ,
+# `application/reference_patterns/pattern_line_i_doubleprime_thermal_spz.py`)
+# przebudowany na silnik Hoppla. Tabele progow blokady SPZ "from lecture
+# materials" (`spz_lookup.py`) bez cytatu normy — kanon SPZ to analiza cieplna
+# pelnego cyklu w `ProtectionSettingsEngine._analyze_spz` (juz istniejaca,
+# bez zmian w tej karcie).
+W3C2_LEGACY_RELATIVE_PATHS: dict[str, str] = {
+    "application/analyses/protection/line_overcurrent_setting": (
+        "trzecia metodyka nastaw I>> FIX-12D (analyzer/models/spz_lookup) - "
+        "kanon: application/protection_settings/engine.py (Hoppel/IRiESD)"
+    ),
+}
+
 
 def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8", errors="ignore")
@@ -1065,6 +1083,20 @@ def check_w3c1_overcurrent_resurrection() -> list[str]:
     return violations
 
 
+def check_w3c2_line_overcurrent_setting_resurrection() -> list[str]:
+    """W3-C2 (2026-09-09): trzecia metodyka nastaw I>> (FIX-12D) nie może
+    wrócić — jedyna metodyka to Hoppel/IRiESD (`application/protection_settings/
+    engine.py`), rozszerzony o generację lokalną i okno nastaw w tej samej
+    karcie. Wzorzec referencyjny RP-LINE-I2-THERMAL-SPZ liczy nim, nie
+    analizatorem FIX-12D."""
+    violations: list[str] = []
+    for rel, label in W3C2_LEGACY_RELATIVE_PATHS.items():
+        path = BACKEND_SRC_DIR / rel
+        if zrodlo_istnieje(path):
+            violations.append(f"[resurrected-module] backend/src/{rel}: {label} (usuniety w W3-C2)")
+    return violations
+
+
 def main() -> int:
     violations = (
         check_legacy_public_paths()
@@ -1079,6 +1111,7 @@ def main() -> int:
         + check_w3d_source_compliance_resurrection()
         + check_w3a_second_engine_resurrection()
         + check_w3c1_overcurrent_resurrection()
+        + check_w3c2_line_overcurrent_setting_resurrection()
     )
     if violations:
         print("legacy-public-path-guard: FAILED")

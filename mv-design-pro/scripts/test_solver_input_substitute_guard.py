@@ -1248,6 +1248,29 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # pipeline.py -2, pakiet_nastaw.py +1); api 64 -> 63 plikow (-1:
     # `protection_overcurrent_settings.py`). Reszta korzeni (network_model, solver_input,
     # enm) bez zmian — karta ich nie dotyka.
+    # W3-C2 (2026-09-09): kasacja `application/analyses/protection/line_overcurrent_setting/`
+    # (4 pliki, w tym `analyzer.py` — jedyny konsument metodyki FIX-12D, zastapiony kanonem
+    # Hoppel/IRiESD `application/protection_settings/engine.py`) zdjela 22 pola kontraktu
+    # (dataclassy `LineOvercurrentSettingInput`/`Result`/kryteria w `models.py`) i 4 pliki ze
+    # skanu (3539->3517 pol, 545->541 plikow). Ten sam plik: wpis zapadki `analyzer.py`
+    # (3 podstawienia: ct_ratio/ik_max_busbars_a/kc) usuniety RAZEM z plikiem — zdjety, nie
+    # przeniesiony (61->60 plikow zapadki, suma 280->274). Rownolegle `application/
+    # reference_patterns/pattern_line_i_doubleprime_thermal_spz.py` przebudowany na
+    # `ProtectionSettingsInput` (schemat plaski, inne nazwy pol) — 12 starych sygnatur (schemat
+    # FIX-12D: `window.i_min_primary_a`, `conductor_data.theta_*`, `fixture.kb/kbth/kc/
+    # t_breaker_s/t_nast_*`, `spz_data.t_dead_*/t_fault_max_s`, suma 13) zastapionych 7 nowymi
+    # (schemat Hoppel: `setting_window.i_min_a`, `fixture.delta_t_s/k_b/k_bth/t_upstream_s/
+    # spz_pause_s/lokalna_generacja_wklad_a`, suma 8) — domyslne wartosci MIRRORUJA domyslne
+    # `ProtectionSettingsInput` (cytowane w naglowku silnika), nie nowa fabrykacja. Dwa odczyty
+    # `local_generation.udzial_el`/`prog_udzialu_zsz` (`or 0.0`) NAPRAWIONE u zrodla (jawne
+    # None-sprawdzenie + wyjatek), nie wpisane do zapadki — nowy kod tej karty, nie dlug.
+    # Zapadka 60/269 -> suma per plik: -6 (analyzer.py usuniety) -5 (13->8 dla pattern file) = -11
+    # z 280 = 269. Pliki zapadki: -1 (tylko analyzer.py znika jako PLIK; pattern file zostaje
+    # plikiem, zmieniaja sie tylko jego klucze) = 61-1 = 60.
+        # W3-C2 (2026-09-09): 541 plikow (545 - 4 skasowane pliki `line_overcurrent_setting/`).
+    # W3-C2 (2026-09-09): zapadka 61/280 -> 60/269 (patrz uzasadnienie wyzej).
+        # W3-C2 (2026-09-09): application 294->290 plikow (-4 line_overcurrent_setting/),
+        # dlug 34->33 plikow/112->101 suma (-1 plik/-11 suma, patrz uzasadnienie wyzej).
     # (piny ponizej przeliczane guardem na drzewie scalonym fali 2 — odbior, nie arytmetyka)
     assert "Pol kontraktow wejsciowych: 3491." in wyjscie, wyjscie
     assert (
