@@ -77,9 +77,7 @@ def porownaj_trajektorie(
         blad_sredniokwadratowy=float(np.sqrt(np.mean((a - b) ** 2))),
         blad_ustalony=float(np.mean(roznica[-n_ust:])),
         blad_wzgledny_szczytu=(
-            float(abs(np.max(np.abs(b)) - szczyt_a) / szczyt_a)
-            if szczyt_a > 1e-12
-            else 0.0
+            float(abs(np.max(np.abs(b)) - szczyt_a) / szczyt_a) if szczyt_a > 1e-12 else 0.0
         ),
     )
 
@@ -111,9 +109,7 @@ def czas_ustalenia(
     return float(t[ostatni + 1])
 
 
-def przeregulowanie(
-    sygnal: NDArray[np.float64] | list[float], *, wartosc_ustalona: float
-) -> float:
+def przeregulowanie(sygnal: NDArray[np.float64] | list[float], *, wartosc_ustalona: float) -> float:
     """Względne przeregulowanie ponad wartość ustaloną (0.0 = brak)."""
     y = np.asarray(sygnal, dtype=np.float64)
     if abs(wartosc_ustalona) < 1e-12:
@@ -157,12 +153,7 @@ class WyroczniaWahan:
 
     @property
     def moc_synchronizujaca(self) -> float:
-        return (
-            self.e_prim_pu
-            * self.v_sys_pu
-            * math.cos(self.delta0_rad)
-            / self.x_calkowite_pu
-        )
+        return self.e_prim_pu * self.v_sys_pu * math.cos(self.delta0_rad) / self.x_calkowite_pu
 
     @property
     def pulsacja_wlasna_rad_s(self) -> float:
@@ -206,3 +197,85 @@ def zmierz_czestotliwosc_oscylacji(
     if okresy.size == 0 or float(np.mean(okresy)) <= 0.0:
         return None
     return float(1.0 / np.mean(okresy))
+
+
+@dataclass(frozen=True)
+class WyroczniaRownychPol:
+    """Analityczna wyrocznia CZASU KRYTYCZNEGO zwarcia (kryterium równych pól).
+
+    Uzupełnia ``WyroczniaWahan`` o drugą, NIEZALEŻNĄ oś: tamta sprawdza
+    zachowanie MAŁOSYGNAŁOWE (częstotliwość wahań w granicy amplitudy → 0),
+    ta sprawdza zachowanie DUŻOSYGNAŁOWE — nieliniowe równanie wahań przy
+    zwarciu i jego zdjęciu. Model może być poprawny małosygnałowo i błędny
+    dużosygnałowo (np. gdy zwarcie jest stałą, a nie zmianą sieci), więc
+    zgodność z jedną wyrocznią nie zastępuje drugiej.
+
+    Zakres stosowalności (poza nim wyrocznia NIE obowiązuje):
+      - maszyna klasyczna: ``Xd = Xd' = Xq = Xq'``, ``Ra = 0``, ``E' = const``
+        (bez AVR i bez regulatora turbiny),
+      - zwarcie **metaliczne na zaciskach maszyny**, więc ``Pe = 0`` w czasie
+        zwarcia — dla zwarcia przez impedancję albo w innym węźle moc w czasie
+        zwarcia jest niezerowa i wzór wymaga trzeciej charakterystyki,
+      - **pełna odbudowa sieci** po zdjęciu zwarcia (nic nie zostaje wyłączone),
+      - ``D = 0`` — tłumienie zwiększa rzeczywisty czas krytyczny, więc wyrocznia
+        jest wtedy oszacowaniem OSTROŻNYM, nie dokładnym,
+      - ``Pm = const`` w czasie zakłócenia.
+
+    Wyprowadzenie (Kundur, *Power System Stability and Control*, rozdz. 13):
+
+        pole przyspieszające   A1 = P0 · (δ_kr − δ0)
+        pole hamujące          A2 = Pmax(cos δ_kr − cos δ_max) − P0(δ_max − δ_kr)
+        A1 = A2  ⟹  cos δ_kr = P0 (δ_max − δ0) / Pmax + cos δ_max
+        δ_max = π − δ0                       [punkt niestabilnej równowagi]
+
+    a ponieważ w czasie zwarcia ``Pe = 0``:
+
+        2H/ω_s · d²δ/dt² = P0   ⟹   δ(t) = δ0 + ω_s P0 t² / (4H)
+        t_kr = sqrt( 4H (δ_kr − δ0) / (ω_s P0) )
+    """
+
+    e_prim_pu: float
+    v_sys_pu: float
+    x_calkowite_pu: float
+    delta0_rad: float
+    p0_pu: float
+    h_s: float
+
+    @property
+    def moc_maksymalna(self) -> float:
+        return self.e_prim_pu * self.v_sys_pu / self.x_calkowite_pu
+
+    @property
+    def delta_maksymalny_rad(self) -> float:
+        """Punkt niestabilnej równowagi ``π − δ0``."""
+        return math.pi - self.delta0_rad
+
+    @property
+    def delta_krytyczny_rad(self) -> float:
+        """Kąt, powyżej którego pole hamujące nie wystarcza."""
+        p_max = self.moc_maksymalna
+        if p_max <= 0.0:
+            raise ValueError("Zerowa moc maksymalna — wyrocznia nie obowiązuje")
+        cos_kr = self.p0_pu * (self.delta_maksymalny_rad - self.delta0_rad) / p_max + math.cos(
+            self.delta_maksymalny_rad
+        )
+        if not (-1.0 <= cos_kr <= 1.0):
+            raise ValueError(
+                f"cos(delta_kr) = {cos_kr:.6f} poza [-1, 1] — punkt pracy leży poza "
+                "obszarem, w którym kryterium równych pól ma rozwiązanie "
+                "(maszyna nie przetrwa nawet zwarcia chwilowego albo jest "
+                "trwale stabilna w tym modelu)."
+            )
+        return math.acos(cos_kr)
+
+    @property
+    def czas_krytyczny_s(self) -> float:
+        """CCT — największy czas trwania zwarcia zachowujący synchronizm."""
+        if self.p0_pu <= 0.0:
+            raise ValueError(
+                "Kryterium wymaga dodatniej mocy początkowej — przy P0 = 0 "
+                "wirnik nie przyspiesza i czas krytyczny nie istnieje."
+            )
+        return math.sqrt(
+            4.0 * self.h_s * (self.delta_krytyczny_rad - self.delta0_rad) / (OMEGA_S * self.p0_pu)
+        )

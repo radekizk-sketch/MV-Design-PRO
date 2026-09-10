@@ -1,0 +1,173 @@
+"""JEDNA taksonomia walidacji — dwie ORTOGONALNE osie.
+
+KOD BADAWCZY — patrz `backend/research/README.md`.
+
+DLACZEGO POWSTAŁ TEN MODUŁ. Laboratorium miało dwie sprzeczne definicje „poziomu
+4": ``benchmarki.py`` nazywał tak *sieć SN z DER* (złożoność przypadku), a
+``wzorzec_zewnetrzny.py`` nazywał tak *porównanie z ANDES* (rodzaj wyroczni).
+Ten sam identyfikator znaczył dwie różne rzeczy, więc zdanie „przypadek na
+poziomie 4" nie niosło informacji. Komentarz tego nie naprawia — naprawia to
+jeden zbiór identyfikatorów.
+
+DLACZEGO DWIE OSIE, A NIE JEDNA DŁUŻSZA DRABINA. Bo te wymiary są niezależne:
+ten sam przypadek fizyczny (SMIB) bywa sprawdzany na czterech różnych poziomach
+dowodowych — od testu kształtu, przez własność metamorficzną i wzór analityczny,
+po narzędzie zewnętrzne. Sklejenie ich w jeden ciąg wymusiłoby wybór, który z
+dwóch wymiarów zignorować; audyt (§28) pokazał, co się dzieje, gdy się je myli:
+84 % produkcyjnych testów dynamicznych sprawdzało wyłącznie kształt kontraktu,
+a całość raportowano jako działającą.
+
+Oś **C** (*case*) mówi, CO liczymy. Oś **W** (*wyrocznia*) mówi, WOBEC CZEGO
+sprawdzamy, że wynik jest poprawny. Test ma zawsze parę ``(C, W)``.
+
+Taksonomia jest **neutralna architektonicznie**: nie przesądza ani rdzenia, ani
+kontraktu, ani wyboru narzędzia wzorcowego. To wyłącznie sposób nazywania
+dowodów, żeby dwa różne dowody nie nosiły tej samej etykiety.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from enum import StrEnum
+
+
+class ZlozonoscPrzypadku(StrEnum):
+    """Oś C — złożoność przypadku fizycznego (co jest liczone)."""
+
+    C0_JEDNO_ROWNANIE = "C0"
+    """Pojedyncze równanie / transformacja bez sieci (konwencje dq, integrator)."""
+
+    C1_MASZYNA_NA_SZYNIE_SZTYWNEJ = "C1"
+    """SMIB: jedno urządzenie, jedna gałąź, szyna sztywna."""
+
+    C2_WIELE_URZADZEN = "C2"
+    """Co najmniej dwa urządzenia dzielące sieć — sprawdza INTERAKCJĘ."""
+
+    C3_ZDARZENIE_ZMIENIAJACE_SIEC = "C3"
+    """Zwarcie / wyłączenie gałęzi — zdarzenie zmienia model, nie napięcie."""
+
+    C4_SIEC_SN_Z_DER = "C4"
+    """Sieć SN zdominowana przez źródła przekształtnikowe (przypadek produktu)."""
+
+
+class PoziomWyroczni(StrEnum):
+    """Oś W — wobec czego sprawdzamy poprawność (jak mocny jest dowód)."""
+
+    W0_KSZTALT = "W0"
+    """Test kontraktu/kształtu: czy się wykonuje, czy pola są. NIE dowodzi fizyki."""
+
+    W1_WLASNOSC = "W1"
+    """Własność metamorficzna: „zmiana X musi zmienić Y w tę stronę".
+
+    Silniejsze od W0, bo wykrywa brak fizyki (np. wynik niezależny od urządzenia),
+    ale nie orzeka o WARTOŚCI — model może być konsekwentnie przesunięty.
+    """
+
+    W2_WYROCZNIA_ANALITYCZNA = "W2"
+    """Zamknięty wzór wyprowadzony niezależnie od implementacji.
+
+    Orzeka o wartości. Ryzyko resztkowe: wzór i model mogą dzielić ten sam błąd
+    koncepcyjny, bo autor jest ten sam.
+    """
+
+    W3_WYROCZNIA_ZEWNETRZNA = "W3"
+    """Niezależne narzędzie o własnej implementacji równań (np. ANDES).
+
+    Najmocniejszy dostępny poziom. Ryzyko resztkowe: **mapowanie parametrów**
+    do narzędzia piszemy my, więc wspólny błąd interpretacji wejścia nadal jest
+    możliwy — dlatego W3 nie jest tożsame z „udowodnione".
+    """
+
+
+@dataclass(frozen=True)
+class PozycjaDrabiny:
+    """Jeden dowód: co liczy, wobec czego sprawdza, czym jest realizowany."""
+
+    identyfikator: str
+    zlozonosc: ZlozonoscPrzypadku
+    wyrocznia: PoziomWyroczni
+    opis_pl: str
+    realizacja: str
+    """Nazwa funkcji/testu, który ten dowód wykonuje."""
+
+    @property
+    def etykieta(self) -> str:
+        """Np. ``C1/W3`` — jednoznacznie, bez kolizji „poziomu 4"."""
+        return f"{self.zlozonosc.value}/{self.wyrocznia.value}"
+
+
+#: Rejestr dowodów laboratorium. Lista jest ZAMKNIĘTA — pilnuje jej
+#: `tests/research/test_drabina.py`, więc nowy dowód wymaga świadomego wpisu,
+#: a nie tylko nowego testu gdzieś obok.
+DRABINA: tuple[PozycjaDrabiny, ...] = (
+    PozycjaDrabiny(
+        identyfikator="konwencje-dq",
+        zlozonosc=ZlozonoscPrzypadku.C0_JEDNO_ROWNANIE,
+        wyrocznia=PoziomWyroczni.W2_WYROCZNIA_ANALITYCZNA,
+        opis_pl="Transformacja dq daje kanoniczne Pe = E'·V·sin(δ−θ)/X'd",
+        realizacja="test_konwencja_dq_daje_kanoniczne_pe",
+    ),
+    PozycjaDrabiny(
+        identyfikator="integratory-zbieznosc",
+        zlozonosc=ZlozonoscPrzypadku.C1_MASZYNA_NA_SZYNIE_SZTYWNEJ,
+        wyrocznia=PoziomWyroczni.W1_WLASNOSC,
+        opis_pl="Wszystkie integratory zbiegają na wspólnym zadaniu odniesienia",
+        realizacja="test_wszystkie_integratory_zbiegaja_na_zadaniu_referencyjnym",
+    ),
+    PozycjaDrabiny(
+        identyfikator="wahania-malosygnalowe",
+        zlozonosc=ZlozonoscPrzypadku.C1_MASZYNA_NA_SZYNIE_SZTYWNEJ,
+        wyrocznia=PoziomWyroczni.W2_WYROCZNIA_ANALITYCZNA,
+        opis_pl="Częstotliwość wahań = √(ω_s·Ps/2H) z linearyzacji",
+        realizacja="test_czestotliwosc_wahan_zgadza_sie_z_wyrocznia",
+    ),
+    PozycjaDrabiny(
+        identyfikator="punkt-pracy-i-wahania-andes",
+        zlozonosc=ZlozonoscPrzypadku.C1_MASZYNA_NA_SZYNIE_SZTYWNEJ,
+        wyrocznia=PoziomWyroczni.W3_WYROCZNIA_ZEWNETRZNA,
+        opis_pl="δ0, E', V oraz częstotliwość wahań wobec wartości własnych ANDES",
+        realizacja="tests/research/test_wzorzec_zewnetrzny.py",
+    ),
+    PozycjaDrabiny(
+        identyfikator="interakcja-dwoch-maszyn",
+        zlozonosc=ZlozonoscPrzypadku.C2_WIELE_URZADZEN,
+        wyrocznia=PoziomWyroczni.W1_WLASNOSC,
+        opis_pl="Dwie maszyny dzielące sieć oddziałują na siebie",
+        realizacja="test_maszyny_oddzialuja_na_siebie",
+    ),
+    PozycjaDrabiny(
+        identyfikator="cct-rowne-pola",
+        zlozonosc=ZlozonoscPrzypadku.C3_ZDARZENIE_ZMIENIAJACE_SIEC,
+        wyrocznia=PoziomWyroczni.W2_WYROCZNIA_ANALITYCZNA,
+        opis_pl="Czas krytyczny zwarcia wobec kryterium równych pól (H = 1…16 s)",
+        realizacja="tests/research/test_cct_wyrocznia.py",
+    ),
+    PozycjaDrabiny(
+        identyfikator="zdarzenie-zmienia-siec",
+        zlozonosc=ZlozonoscPrzypadku.C3_ZDARZENIE_ZMIENIAJACE_SIEC,
+        wyrocznia=PoziomWyroczni.W1_WLASNOSC,
+        opis_pl="Miejsce, głębokość i czas trwania zwarcia zmieniają wynik",
+        realizacja="test_zdarzenie_na_wskazanej_szynie_ma_znaczenie",
+    ),
+    PozycjaDrabiny(
+        identyfikator="der-rozroznialne",
+        zlozonosc=ZlozonoscPrzypadku.C4_SIEC_SN_Z_DER,
+        wyrocznia=PoziomWyroczni.W1_WLASNOSC,
+        opis_pl="GFL i GFM dają różne trajektorie; parametry urządzenia zmieniają wynik",
+        realizacja="test_gfm_i_gfl_roznia_sie_trajektoria",
+    ),
+)
+
+
+def pozycje_o_wyroczni(poziom: PoziomWyroczni) -> tuple[PozycjaDrabiny, ...]:
+    return tuple(p for p in DRABINA if p.wyrocznia is poziom)
+
+
+def podsumowanie() -> str:
+    """Tabela do meldunku — żeby nie przepisywać jej ręcznie i nie rozjechać."""
+    wiersze = ["| Etykieta | Dowód | Realizacja |", "|---|---|---|"]
+    wiersze += [
+        f"| `{p.etykieta}` | {p.opis_pl} | `{p.realizacja}` |"
+        for p in sorted(DRABINA, key=lambda q: (q.zlozonosc.value, q.wyrocznia.value))
+    ]
+    return "\n".join(wiersze)

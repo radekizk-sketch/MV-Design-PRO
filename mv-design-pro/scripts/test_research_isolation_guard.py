@@ -145,3 +145,59 @@ def test_produkcja_dokladajaca_research_do_sys_path_jest_wykrywana(tmp_path, mon
     naruszenia = guard.sprawdz_manipulacje_sciezka()
     assert len(naruszenia) == 1
     assert "sys.path" in naruszenia[0]
+
+
+# --- wyprowadzanie zakazanych importów (naprawa KLASY, nie instancji) --------
+
+
+def test_nowy_pakiet_badawczy_jest_blokowany_automatycznie(tmp_path, monkeypatch) -> None:
+    """Guard chroni KAŻDY pakiet w research/, nie tylko wpisany ręcznie.
+
+    Poprzednia wersja miała `ZAKAZANE_IMPORTY = ("dynamic_lab",)` na sztywno.
+    Dodanie kiedyś `research/inny_lab/` otworzyłoby produkcji drogę do importu,
+    nie zapalając żadnego światła — guard deklarował ochronę całego katalogu,
+    a chronił jeden pakiet.
+    """
+    research = tmp_path / "research"
+    (research / "inny_lab").mkdir(parents=True)
+    (research / "inny_lab" / "__init__.py").write_text("", encoding="utf-8")
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "modul.py").write_text("from inny_lab.cos import X\n", encoding="utf-8")
+
+    monkeypatch.setattr(guard, "KORZEN", tmp_path)
+    monkeypatch.setattr(guard, "RESEARCH", research)
+    monkeypatch.setattr(guard, "SRC", src)
+    assert guard.importowalne_pakiety_badawcze() == ("inny_lab",)
+    naruszenia = guard.sprawdz_importy_produkcji()
+    assert len(naruszenia) == 1
+    assert "inny_lab.cos" in naruszenia[0]
+
+
+def test_modul_jednoplikowy_w_research_tez_jest_blokowany(tmp_path, monkeypatch) -> None:
+    """`research/pomocnik.py` jest importowalny tak samo jak pakiet — i tak samo zakazany."""
+    research = tmp_path / "research"
+    research.mkdir()
+    (research / "pomocnik.py").write_text("x = 1\n", encoding="utf-8")
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "modul.py").write_text("import pomocnik\n", encoding="utf-8")
+
+    monkeypatch.setattr(guard, "KORZEN", tmp_path)
+    monkeypatch.setattr(guard, "RESEARCH", research)
+    monkeypatch.setattr(guard, "SRC", src)
+    assert guard.importowalne_pakiety_badawcze() == ("pomocnik",)
+    assert len(guard.sprawdz_importy_produkcji()) == 1
+
+
+def test_katalog_bez_init_nie_jest_importowalny(tmp_path, monkeypatch) -> None:
+    """Katalog bez `__init__.py` nie jest pakietem — guard nie może zgłaszać fałszywek."""
+    research = tmp_path / "research"
+    (research / "dane").mkdir(parents=True)
+    (research / "dane" / "wynik.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(guard, "RESEARCH", research)
+    assert guard.importowalne_pakiety_badawcze() == ()
+
+
+def test_prawdziwe_repozytorium_wyprowadza_dynamic_lab() -> None:
+    assert "dynamic_lab" in guard.importowalne_pakiety_badawcze()

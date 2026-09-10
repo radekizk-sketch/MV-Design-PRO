@@ -159,9 +159,7 @@ class MaszynaSynchroniczna4Rzedu:
         p_e = v_d * i_d + v_q * i_q + self.ra_pu * (i_d**2 + i_q**2)
         d_delta = OMEGA_S * (omega - 1.0)
         d_omega = (pm_pu - p_e - self.d_tlumienie * (omega - 1.0)) / (2.0 * self.h_s)
-        d_e_q = (
-            efd_pu - e_q_prim - (self.xd_pu - self.xd_prim_pu) * i_d
-        ) / self.td0_prim_s
+        d_e_q = (efd_pu - e_q_prim - (self.xd_pu - self.xd_prim_pu) * i_d) / self.td0_prim_s
         d_e_d = (-e_d_prim + (self.xq_pu - self.xq_prim_pu) * i_q) / self.tq0_prim_s
         return np.array([d_delta, d_omega, d_e_q, d_e_d], dtype=np.float64)
 
@@ -199,9 +197,7 @@ class MaszynaSynchroniczna4Rzedu:
         delta = math.atan2(e_wektor.imag, e_wektor.real)
 
         v_d, v_q = dq_z_sieci(v_szyny, delta)
-        i_dq = i_net * complex(
-            math.cos(delta - math.pi / 2.0), -math.sin(delta - math.pi / 2.0)
-        )
+        i_dq = i_net * complex(math.cos(delta - math.pi / 2.0), -math.sin(delta - math.pi / 2.0))
         i_d, i_q = i_dq.real, i_dq.imag
 
         e_d_prim = (self.xq_pu - self.xq_prim_pu) * i_q
@@ -254,9 +250,7 @@ class ZespolSynchroniczny:
     def pochodne(self, x: NDArray[np.float64], v_szyny: complex) -> NDArray[np.float64]:
         efd = float(x[4])
         pm = float(x[5])
-        d_masz = self.maszyna.pochodne_bez_regulatorow(
-            x[:4], v_szyny, pm_pu=pm, efd_pu=efd
-        )
+        d_masz = self.maszyna.pochodne_bez_regulatorow(x[:4], v_szyny, pm_pu=pm, efd_pu=efd)
         # SPRZĘŻENIE ZWROTNE: pomiar z rzeczywistego rozwiązania, nie ze stałej.
         v_t = abs(v_szyny)
         omega = float(x[1])
@@ -377,9 +371,7 @@ class FalownikGFL:
         """Płynny udział trybu FRT: 0 = praca normalna, 1 = pełny tryb FRT."""
         if self.pasmo_przejscia_frt_pu <= 0.0:
             return 1.0 if v_mod < self.u_frt_pu else 0.0
-        return float(
-            min(1.0, max(0.0, (self.u_frt_pu - v_mod) / self.pasmo_przejscia_frt_pu))
-        )
+        return float(min(1.0, max(0.0, (self.u_frt_pu - v_mod) / self.pasmo_przejscia_frt_pu)))
 
     def pochodne(self, x: NDArray[np.float64], v_szyny: complex) -> NDArray[np.float64]:
         v_mod = abs(v_szyny)
@@ -395,9 +387,7 @@ class FalownikGFL:
         w = self.udzial_frt(v_mod)
         p_cel = (1.0 - w) * p_norm + w * p_frt
         q_cel = (1.0 - w) * q_norm + w * q_frt
-        return np.array(
-            [(p_cel - p) / self.t_p_s, (q_cel - q) / self.t_q_s], dtype=np.float64
-        )
+        return np.array([(p_cel - p) / self.t_p_s, (q_cel - q) / self.t_q_s], dtype=np.float64)
 
     def wstrzykniecie(self, x: NDArray[np.float64], v_szyny: complex) -> complex:
         v_mod = abs(v_szyny)
@@ -480,9 +470,7 @@ class FalownikGFM:
         i = self.wstrzykniecie(x, v_szyny)
         s = v_szyny * np.conj(i)
         d_delta = OMEGA_S * (omega - 1.0)
-        d_omega = (self.p_ref_pu - p_f - self.d_p * (omega - 1.0)) / (
-            2.0 * self.h_wirtualna_s
-        )
+        d_omega = (self.p_ref_pu - p_f - self.d_p * (omega - 1.0)) / (2.0 * self.h_wirtualna_s)
         d_p = (s.real - p_f) / self.t_f_s
         d_q = (s.imag - q_f) / self.t_f_s
         return np.array([d_delta, d_omega, d_p, d_q], dtype=np.float64)

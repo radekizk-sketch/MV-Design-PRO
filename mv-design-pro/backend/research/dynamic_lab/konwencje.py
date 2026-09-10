@@ -74,9 +74,7 @@ def dq_z_sieci(v_siec: complex, delta_rad: float) -> tuple[float, float]:
     Returns:
         ``(V_d, V_q)`` [p.u.].
     """
-    obrot = complex(
-        math.cos(delta_rad - math.pi / 2.0), -math.sin(delta_rad - math.pi / 2.0)
-    )
+    obrot = complex(math.cos(delta_rad - math.pi / 2.0), -math.sin(delta_rad - math.pi / 2.0))
     v_dq = v_siec * obrot
     return v_dq.real, v_dq.imag
 
@@ -86,9 +84,7 @@ def siec_z_dq(i_d: float, i_q: float, delta_rad: float) -> complex:
 
     ``I_siec = (I_d + j*I_q) * exp(+j*(delta - pi/2))``
     """
-    obrot = complex(
-        math.cos(delta_rad - math.pi / 2.0), math.sin(delta_rad - math.pi / 2.0)
-    )
+    obrot = complex(math.cos(delta_rad - math.pi / 2.0), math.sin(delta_rad - math.pi / 2.0))
     return complex(i_d, i_q) * obrot
 
 

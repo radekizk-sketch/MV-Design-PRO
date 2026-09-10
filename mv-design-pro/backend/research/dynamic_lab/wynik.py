@@ -76,6 +76,58 @@ class TozsamoscModelu:
 
 
 @dataclass(frozen=True)
+class BladSolvera:
+    """Forensyka niepowodzenia — dlaczego, kiedy i na czym symulacja padła.
+
+    PO CO. Pierwsza wersja tego laboratorium redukowała KAŻDE niepowodzenie do
+    jednego ``zbiegl = False``. Pod tym Booleanem chowały się cztery zupełnie
+    różne zdarzenia, wymagające czterech różnych reakcji inżyniera:
+
+      - Newton integratora się rozjechał  -> zmniejsz krok albo zmień metodę,
+      - macierz sieci osobliwa            -> wyspa bez źródła / błąd topologii,
+      - model zwrócił NaN/Inf             -> błąd równań urządzenia,
+      - przekroczono limit iteracji sieci -> zaostrz/poluzuj tolerancję.
+
+    Wynik, z którego nie da się odczytać, KTÓRE z nich zaszło, nie nadaje się
+    ani na ślad White Box, ani na materiał dowodowy — a to jest deklarowany cel
+    kandydata kontraktu. Ten typ jest odpowiedzią na tę lukę.
+    """
+
+    klasa: str
+    """Nazwa klasy wyjątku, np. ``BrakZbieznosciSieciError``."""
+    komunikat: str
+    faza: str
+    """Gdzie padło: ``"algebra_sieci"``, ``"calkowanie"`` albo ``"probkowanie"``."""
+    czas_s: float
+    """Chwila symulacji, w której nastąpiło niepowodzenie."""
+    krok_s: float
+    """Długość kroku, na którym padło (może być krótsza od nominalnej)."""
+    numer_kroku: int
+    residuum_sieci: float
+    """Największe residuum algebraiczne zaobserwowane do tej chwili."""
+    stan_skonczony: bool
+    """Czy wektor stanu był skończony tuż przed niepowodzeniem (NaN/Inf = False)."""
+    stany_niesksonczone: tuple[str, ...] = ()
+    """Nazwy stanów (``urzadzenie.stan``), które przestały być skończone."""
+    szyny_niesksonczone: tuple[str, ...] = ()
+    """Szyny, których napięcie przestało być skończone."""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "klasa": self.klasa,
+            "komunikat": self.komunikat,
+            "faza": self.faza,
+            "czas_s": self.czas_s,
+            "krok_s": self.krok_s,
+            "numer_kroku": self.numer_kroku,
+            "residuum_sieci": self.residuum_sieci,
+            "stan_skonczony": self.stan_skonczony,
+            "stany_niesksonczone": list(self.stany_niesksonczone),
+            "szyny_niesksonczone": list(self.szyny_niesksonczone),
+        }
+
+
+@dataclass(frozen=True)
 class DiagnostykaSolvera:
     """Czy wynikowi wolno ufać od strony NUMERYCZNEJ (to nie to samo co fizycznie)."""
 
@@ -88,6 +140,21 @@ class DiagnostykaSolvera:
     zbiegl: bool
     norma_pochodnej_w_t0: float
     """``||f(x0, y0)||`` — dowód (lub jego brak), że start jest w równowadze."""
+    blad: BladSolvera | None = None
+    """Wypełnione DOKŁADNIE wtedy, gdy ``zbiegl`` jest ``False``."""
+    czas_osiagniety_s: float = 0.0
+    """Do której chwili symulacja realnie doszła (przy błędzie < żądany koniec)."""
+    kroki_skrocone: int = 0
+    """Ile kroków zostało skróconych, żeby trafić dokładnie w zdarzenie/koniec."""
+
+    def __post_init__(self) -> None:
+        if self.zbiegl and self.blad is not None:
+            raise ValueError("Wynik zbieżny nie może nieść opisu błędu")
+        if not self.zbiegl and self.blad is None:
+            raise ValueError(
+                "Wynik niezbieżny MUSI nieść opis błędu — sam `zbiegl=False` "
+                "nie pozwala odróżnić rozjechanego Newtona od osobliwej sieci."
+            )
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -99,6 +166,9 @@ class DiagnostykaSolvera:
             "maks_iteracji_sieci": self.maks_iteracji_sieci,
             "zbiegl": self.zbiegl,
             "norma_pochodnej_w_t0": self.norma_pochodnej_w_t0,
+            "blad": self.blad.to_dict() if self.blad is not None else None,
+            "czas_osiagniety_s": self.czas_osiagniety_s,
+            "kroki_skrocone": self.kroki_skrocone,
         }
 
 
@@ -122,9 +192,7 @@ class WynikDynamiczny:
     def sygnal(self, klucz: str, element_ref: str | None = None) -> Sygnal:
         """Pobierz przebieg po kluczu (i opcjonalnie elemencie)."""
         for s in self.sygnaly:
-            if s.klucz == klucz and (
-                element_ref is None or s.element_ref == element_ref
-            ):
+            if s.klucz == klucz and (element_ref is None or s.element_ref == element_ref):
                 return s
         dostepne = sorted({f"{s.klucz}@{s.element_ref}" for s in self.sygnaly})
         raise KeyError(f"Brak sygnału {klucz}@{element_ref}. Dostępne: {dostepne}")

@@ -47,10 +47,11 @@ z defektów P0 audytu: model nazwany „6-rzędowym" miał 2 stany).
 | `dynamic_lab/calkowanie.py` | integratory (jawne i niejawne) za wspólnym kontraktem |
 | `dynamic_lab/silnik.py` | pętla DAE: `ẋ = f(x,y,u,p,t)`, `0 = g(x,y,u,p,t)`; inicjalizacja: rozpływ → punkt pracy → stany regulatorów → weryfikacja `‖f(x₀,y₀)‖` |
 | `dynamic_lab/wynik.py` | kandydat kontraktu wyniku dynamicznego (szereg czasowy + tożsamość) |
-| `dynamic_lab/walidacja.py` | metryki zgodności trajektorii + wyrocznie analityczne |
-| `dynamic_lab/benchmarki.py` | drabina walidacyjna L0–L4 + mierzone porównanie integratorów |
+| `dynamic_lab/walidacja.py` | metryki zgodności + wyrocznie analityczne (W2): wahania małosygnałowe i CCT z kryterium równych pól |
+| `dynamic_lab/drabina.py` | JEDNA taksonomia dowodów: oś C (złożoność przypadku) × oś W (poziom wyroczni) |
+| `dynamic_lab/benchmarki.py` | przypadki odniesienia (oś C: C1…C4), CCT przez bisekcję, porównanie integratorów |
 | `dynamic_lab/frt.py` | ocena FRT: wymaganie (obwiednia) vs wynik (przebieg) — ROZDZIELONE |
-| `dynamic_lab/wzorzec_zewnetrzny.py` | poziom 4: porównanie z NIEZALEŻNYM narzędziem (ANDES) — wymaga `pip install andes` |
+| `dynamic_lab/wzorzec_zewnetrzny.py` | dowód **C1/W3**: porównanie z NIEZALEŻNYM narzędziem (ANDES) — wymaga `pip install andes` |
 | `dynamic_lab/dowod_walidacji.py` | PROTOTYP D-09: stopień dowodowy WYPROWADZANY z zakresu walidacji, nie nadawany |
 
 Testy: `backend/tests/research/` (uruchamiane przez zwykły bieg pytest).

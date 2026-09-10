@@ -1,4 +1,10 @@
-"""Poziom 4 drabiny: zgodność z NIEZALEŻNYM narzędziem dynamicznym (ANDES).
+"""Dowód **C1/W3**: przypadek SMIB wobec NIEZALEŻNEGO narzędzia (ANDES).
+
+Identyfikatory pochodzą z `dynamic_lab.drabina`: oś **C** to złożoność
+przypadku (C1 = maszyna na szynie sztywnej), oś **W** to poziom wyroczni
+(W3 = niezależne narzędzie o własnej implementacji równań). Wcześniej ten
+moduł nazywał się „poziomem 4", co kolidowało z „L4 = sieć SN z DER"
+w `benchmarki.py` — dwie różne rzeczy pod jednym identyfikatorem.
 
 KOD BADAWCZY — patrz `backend/research/README.md`.
 

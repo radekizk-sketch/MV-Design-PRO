@@ -11,6 +11,14 @@ Pilnuje granicy ustanowionej w `backend/research/README.md`:
    — dzięki temu izolacja jest strukturalna, a nie umowna.
 4. Kod badawczy nie nadaje sobie statusu dowodowego: w `research/**` nie może
    wystąpić `VALIDATED_SIMULATION` ani `reporting_status = "reportable"`.
+
+   ZAKRES TEJ OCHRONY — nazwany uczciwie. To jest **wyszukiwanie literałów**,
+   czyli zapadka przeciwko naruszeniu PRZEZ NIEUWAGĘ (skopiowana stała, odruch
+   „ustawię status"). To NIE jest granica bezpieczeństwa: kod celowo omijający
+   guard złoży ten sam literał ze sklejenia łańcuchów, wczyta go z pliku albo
+   nazwie inaczej. Granicą realną jest punkt 3 — `research/` nie jest pakietem
+   instalowanym, więc produkcja nie może go zaimportować, choćby chciała.
+   Mylenie zapadki z granicą było jednym z mechanizmów opisanych w audycie.
 5. Spis modułów w `research/README.md` zgadza się z zawartością katalogu —
    w OBIE strony. Wpis o pliku, którego nie ma, jest tą samą klasą defektu,
    którą audyt zarzuca systemowi (nazwa w dokumencie bez implementacji za nią);
@@ -45,13 +53,36 @@ PYPROJECT = KORZEN / "backend" / "pyproject.toml"
 README = RESEARCH / "README.md"
 WORKFLOWS = KORZEN.parent / ".github" / "workflows"
 
-ZAKAZANE_IMPORTY = ("dynamic_lab",)
 WZORZEC_SCIEZKI = re.compile(r"""sys\.path[^\n]*research""")
 ZAKAZANE_W_BADAWCZYM = (
     "VALIDATED_SIMULATION",
     'reporting_status = "reportable"',
     "reporting_status='reportable'",
 )
+
+
+def importowalne_pakiety_badawcze() -> tuple[str, ...]:
+    """Nazwy, pod którymi kod badawczy JEST importowalny — wyprowadzone, nie wpisane.
+
+    Poprzednia wersja miała ``ZAKAZANE_IMPORTY = ("dynamic_lab",)`` wpisane
+    ręcznie. Guard deklarował ochronę całego ``backend/research/**``, a chronił
+    jeden pakiet: dodanie kiedyś ``research/inny_lab/`` otworzyłoby produkcji
+    drogę do importu, nie zapalając żadnego światła. To jest naprawa KLASY, nie
+    instancji — lista powstaje z zawartości katalogu przy każdym uruchomieniu.
+
+    Importowalne są: katalogi z ``__init__.py`` (pakiety) oraz moduły ``*.py``
+    leżące bezpośrednio w ``research/`` — bo ``tests/research/conftest.py``
+    dokłada właśnie ``research/`` do ``sys.path``.
+    """
+    if not RESEARCH.exists():
+        return ()
+    nazwy: set[str] = set()
+    for wpis in RESEARCH.iterdir():
+        if wpis.is_dir() and (wpis / "__init__.py").exists():
+            nazwy.add(wpis.name)
+        elif wpis.is_file() and wpis.suffix == ".py" and wpis.stem != "__init__":
+            nazwy.add(wpis.stem)
+    return tuple(sorted(nazwy))
 
 
 def _pliki(katalog: Path) -> list[Path]:
@@ -61,8 +92,11 @@ def _pliki(katalog: Path) -> list[Path]:
 
 
 def sprawdz_importy_produkcji() -> list[str]:
-    """Produkcja nie może importować laboratorium."""
+    """Produkcja nie może importować ŻADNEGO pakietu badawczego."""
     naruszenia: list[str] = []
+    zakazane = importowalne_pakiety_badawcze()
+    if not zakazane:
+        return naruszenia
     for plik in _pliki(SRC):
         try:
             drzewo = ast.parse(plik.read_text(encoding="utf-8"))
@@ -76,7 +110,7 @@ def sprawdz_importy_produkcji() -> list[str]:
             elif isinstance(wezel, ast.ImportFrom) and wezel.module:
                 nazwy = [wezel.module]
             for nazwa in nazwy:
-                for zakazany in ZAKAZANE_IMPORTY:
+                for zakazany in zakazane:
                     if nazwa == zakazany or nazwa.startswith(f"{zakazany}."):
                         naruszenia.append(
                             f"{plik.relative_to(KORZEN)}:{wezel.lineno}: "
@@ -112,7 +146,12 @@ def sprawdz_pyproject() -> list[str]:
 
 
 def sprawdz_status_dowodowy() -> list[str]:
-    """Laboratorium nie może przyznawać sobie statusu dowodowego."""
+    """ZAPADKA na przypadkowe nadanie statusu dowodowego (nie granica bezpieczeństwa).
+
+    Wyszukiwanie literałów wykrywa naruszenie przez nieuwagę; nie wykrywa kodu,
+    który celowo obchodzi guard. Realną granicą jest izolacja strukturalna
+    (`sprawdz_pyproject`).
+    """
     naruszenia: list[str] = []
     for plik in _pliki(RESEARCH):
         tresc = plik.read_text(encoding="utf-8")

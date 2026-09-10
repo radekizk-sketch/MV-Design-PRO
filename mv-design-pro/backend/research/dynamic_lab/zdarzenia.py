@@ -37,12 +37,29 @@ class Zdarzenie(Protocol):
 
 
 @dataclass(frozen=True)
-class ZwarcieDoziemne:
-    """Zwarcie na szynie przez impedancję ``Zf`` (bocznik admitancyjny).
+class ZwarcieTrojfazowe:
+    """Zwarcie TRÓJFAZOWE SYMETRYCZNE przez impedancję ``Zf`` (bocznik admitancyjny).
 
     ``r_f_pu``/``x_f_pu`` = 0 oznacza zwarcie metaliczne. Napięcie w miejscu
     zwarcia NIE jest zadawane — wynika z rozwiązania sieci, więc zależy od
     impedancji zwarcia, mocy zwarciowej i odległości elektrycznej odbiorcy.
+
+    GRANICA MODELU — dlaczego to NIE jest zwarcie doziemne
+    -----------------------------------------------------
+    Całe laboratorium liczy w JEDNEJ macierzy ``Ybus``, czyli wyłącznie w sieci
+    **składowej zgodnej** (Z1). Zwarcie niesymetryczne — jednofazowe doziemne,
+    dwufazowe, dwufazowe z ziemią — wymaga rozwiązania układu ze składowymi
+    **przeciwną (Z2) i zerową (Z0)** oraz połączenia sieci składowych zgodnie
+    z rodzajem zwarcia; ani Z2, ani Z0 w tym modelu nie istnieją.
+
+    Bocznik dodany do sieci zgodnej **reprezentuje wyłącznie zwarcie symetryczne**.
+    Poprzednia nazwa tej klasy (``ZwarcieTrojfazowe``) sugerowała zwarcie
+    jednofazowe i była **semantycznie błędna** — model nie ma czym go policzyć.
+    Zmiana nazwy jest naprawą tej pomyłki, nie kosmetyką: nazwa typu jest tu
+    jedyną informacją, która trafia do śladu wyniku (``zdarzenia[].typ``).
+
+    Zwarcia niesymetryczne w tym prototypie są **nieobsługiwane** — nie ma dla
+    nich zaślepki zwracającej „coś", bo zaślepka byłaby fabrykacją.
     """
 
     czas_s: float
@@ -50,7 +67,7 @@ class ZwarcieDoziemne:
     r_f_pu: float = 0.0
     x_f_pu: float = 0.0
     priorytet: int = 10
-    opis: str = "zwarcie"
+    opis: str = "zwarcie trójfazowe symetryczne"
 
     def zastosuj(self, topologia: TopologiaSieci) -> TopologiaSieci:
         z_f = complex(self.r_f_pu, self.x_f_pu)
@@ -59,9 +76,7 @@ class ZwarcieDoziemne:
             y_f = complex(1.0e6, 0.0)
         else:
             y_f = 1.0 / z_f
-        return topologia.z_bocznikiem(
-            Bocznik(szyna=self.szyna, g_pu=y_f.real, b_pu=y_f.imag)
-        )
+        return topologia.z_bocznikiem(Bocznik(szyna=self.szyna, g_pu=y_f.real, b_pu=y_f.imag))
 
 
 @dataclass(frozen=True)
@@ -114,3 +129,32 @@ class HarmonogramZdarzen:
 
     def czasy(self) -> tuple[float, ...]:
         return tuple(z.czas_s for _, z in self._uporzadkowane)
+
+
+@dataclass(frozen=True)
+class ZwarcieNiesymetryczne:
+    """Zwarcie niesymetryczne — JAWNIE NIEOBSŁUGIWANE, nigdy ciche przybliżenie.
+
+    Istnieje po to, żeby próba policzenia zwarcia 1F/2F/2FE kończyła się
+    **głośnym błędem**, a nie podstawieniem zwarcia trójfazowego „bo i tak
+    podobne". Defekt P0-06 audytu polegał między innymi na tym, że kontrakt
+    obiecywał sześć typów zdarzeń, a dwa cokolwiek robiły — reszta była cicha.
+
+    Aby to policzyć, model musiałby nieść ``Ybus`` składowej przeciwnej i zerowej
+    oraz regułę łączenia sieci składowych. To jest zakres, którego prototyp NIE
+    ma i którego nie udaje.
+    """
+
+    czas_s: float
+    szyna: str
+    rodzaj: str = "1F"
+    priorytet: int = 10
+    opis: str = "zwarcie niesymetryczne (nieobsługiwane)"
+
+    def zastosuj(self, topologia: TopologiaSieci) -> TopologiaSieci:
+        raise NieobslugiwaneZdarzenieError(
+            f"Zwarcie niesymetryczne „{self.rodzaj}" + "” na szynie "
+            f"{self.szyna} wymaga sieci składowych Z1/Z2/Z0; laboratorium liczy "
+            "wyłącznie w składowej zgodnej. Model NIE podstawia zwarcia "
+            "trójfazowego w jego miejsce — to byłaby fabrykacja."
+        )

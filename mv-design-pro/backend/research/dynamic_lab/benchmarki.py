@@ -1,22 +1,26 @@
-"""Drabina walidacyjna L0–L4 + mierzone porównanie integratorów.
+"""Przypadki odniesienia (oś C taksonomii) + mierzone porównanie integratorów.
 
 KOD BADAWCZY — patrz `backend/research/README.md`.
+Taksonomia i jej identyfikatory: `dynamic_lab.drabina`.
 
-Drabina jest tak zbudowana, żeby WYKRYWAŁA defekty znalezione w audycie —
-to jest kryterium doboru przypadków, nie estetyka:
+UWAGA NAZEWNICZA (naprawa kolizji). Wcześniejsza wersja tego modułu nazywała
+przypadki „L0…L4", a `wzorzec_zewnetrzny.py` nazywał „poziomem 4" coś zupełnie
+innego — porównanie z ANDES. Ten sam identyfikator znaczył dwie różne rzeczy.
+Obowiązuje teraz JEDNA taksonomia o dwóch ortogonalnych osiach: **C** (złożoność
+przypadku) i **W** (poziom wyroczni). Ten moduł dostarcza oś **C**; oś **W**
+zależy od tego, jak dany przypadek jest sprawdzany.
 
-| Poziom | Przypadek | Jaki defekt wykrywa |
+Przypadki dobrane tak, żeby WYKRYWAŁY defekty znalezione w audycie — to jest
+kryterium doboru, nie estetyka:
+
+| Oś C | Przypadek | Jaki defekt wykrywa |
 |---|---|---|
-| L0 | wyrocznia analityczna wahań | błędne równania maszyny (P0-03) |
-| L1 | maszyna vs szyna sztywna | brak sprzężenia z siecią (P0-02), zły punkt startowy (P0-04) |
-| L2 | dwie maszyny | brak interakcji między elementami (P0-02) |
-| L3 | zwarcie z wyłączeniem | zdarzenie jako stała zamiast modelu (P0-06) |
-| L4 | sieć SN z DER | niezależność wyniku od urządzenia (P0-07) |
+| C1 | maszyna vs szyna sztywna (`smib`) | brak sprzężenia z siecią (P0-02), zły punkt startowy (P0-04) |
+| C2 | dwie maszyny (`dwie_maszyny`) | brak interakcji między elementami (P0-02) |
+| C3 | zwarcie z wyłączeniem (`harmonogram_zwarcia`, `czas_krytyczny_zwarcia`) | zdarzenie jako stała zamiast modelu (P0-06) |
+| C4 | sieć SN z DER (`siec_sn_z_der`) | niezależność wyniku od urządzenia (P0-07) |
 
-Świadoma granica: nie ma tu poziomu „zgodność z narzędziem zewnętrznym" —
-w środowisku sesji nie było dostępnego, niezależnego narzędzia dynamicznego.
-Ta luka jest zapisana w pakiecie decyzyjnym, a NIE zasłonięta porównaniem
-implementacji z samą sobą.
+(C0 — pojedyncze równania i konwencje — nie potrzebuje budowniczego przypadku.)
 """
 
 from __future__ import annotations
@@ -35,7 +39,7 @@ from dynamic_lab.urzadzenia import (
     OdbiorStalejMocy,
     ZespolSynchroniczny,
 )
-from dynamic_lab.zdarzenia import HarmonogramZdarzen, ZdjecieZwarcia, ZwarcieDoziemne
+from dynamic_lab.zdarzenia import HarmonogramZdarzen, ZdjecieZwarcia, ZwarcieTrojfazowe
 
 
 def maszyna_klasyczna(
@@ -174,7 +178,7 @@ def harmonogram_zwarcia(
     """L3: zwarcie z wyłączeniem — zdarzenie zmieniające MODEL, nie napięcie."""
     return HarmonogramZdarzen(
         [
-            ZwarcieDoziemne(czas_s=chwila_s, szyna=szyna, x_f_pu=x_f_pu),
+            ZwarcieTrojfazowe(czas_s=chwila_s, szyna=szyna, x_f_pu=x_f_pu),
             ZdjecieZwarcia(czas_s=chwila_s + czas_trwania_s, szyna=szyna),
         ]
     )

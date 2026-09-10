@@ -29,6 +29,7 @@ from dynamic_lab.konwencje import czestotliwosc_hz
 from dynamic_lab.siec import SolverSieci, TopologiaSieci
 from dynamic_lab.wynik import (
     KONTRAKT,
+    BladSolvera,
     DiagnostykaSolvera,
     TozsamoscModelu,
     WynikDynamiczny,
@@ -98,9 +99,7 @@ class SilnikRMS:
         probkowanie_co: int = 1,
     ) -> None:
         self.model = model
-        self.integrator = (
-            INTEGRATORY[integrator] if isinstance(integrator, str) else integrator
-        )
+        self.integrator = INTEGRATORY[integrator] if isinstance(integrator, str) else integrator
         self.krok_s = krok_s
         self.tolerancja_rownowagi = tolerancja_rownowagi
         self.probkowanie_co = max(1, probkowanie_co)
@@ -167,9 +166,7 @@ class SilnikRMS:
 
     # -- inicjalizacja --------------------------------------------------------
 
-    def rozplyw_ustalony(
-        self, moce_zadane: dict[str, complex]
-    ) -> NDArray[np.complex128]:
+    def rozplyw_ustalony(self, moce_zadane: dict[str, complex]) -> NDArray[np.complex128]:
         """Rozpływ ustalony: szyny sztywne + wstrzyknięcia o stałej mocy.
 
         To jest krok, z którego pochodzi ``y0`` (napięcia) i punkt pracy urządzeń.
@@ -218,9 +215,7 @@ class SilnikRMS:
             if wycinek.stop == wycinek.start:
                 continue
             s = moce_zadane.get(u.ref, 0j)  # type: ignore[attr-defined]
-            x0[wycinek] = u.inicjalizuj(  # type: ignore[attr-defined]
-                complex(v0[idx[u.szyna]]), s
-            )
+            x0[wycinek] = u.inicjalizuj(complex(v0[idx[u.szyna]]), s)  # type: ignore[attr-defined]
         norma = self.norma_pochodnej(x0)
         if norma > self.tolerancja_rownowagi:
             raise RownowagaNieosiagnietaError(
@@ -237,6 +232,76 @@ class SilnikRMS:
 
     # -- symulacja ------------------------------------------------------------
 
+    # -- siatka czasu ---------------------------------------------------------
+
+    #: Tolerancja scalania bliskich chwil na siatce (ułamek kroku nominalnego).
+    _TOLERANCJA_CZASU = 1.0e-9
+
+    def siatka_czasu(self, czas_koncowy_s: float, harmonogram: HarmonogramZdarzen) -> list[float]:
+        """Zbuduj siatkę czasu zawierającą DOKŁADNIE chwile zdarzeń i koniec.
+
+        Pierwsza wersja tego silnika liczyła ``t = krok * dt`` i stosowała
+        zdarzenie na NAJBLIŻSZYM PÓŹNIEJSZYM punkcie siatki, zapisując w śladzie
+        czas NOMINALNY. Dla ``dt = 2 ms`` i zdarzenia w ``103 ms`` ślad mówił
+        „103 ms", a model zmieniał się w ``104 ms``. Ta sama arytmetyka gubiła
+        koniec symulacji: dla ``Tend = 1,003 s`` i ``dt = 5 ms`` przebieg kończył
+        się w ``1,005 s``, choć wynik twierdził, że policzył zadany przedział.
+
+        Oba są błędami ŚLADU, nie tylko dokładności: wynik twierdził coś, czego
+        nie zrobił. Tutaj siatka jest sumą punktów nominalnych, chwil zdarzeń i
+        dokładnego końca, więc krok bywa krótszy — i jest to jedyny sposób, żeby
+        zapisany czas zdarzenia był czasem faktycznym.
+        """
+        if czas_koncowy_s <= 0.0:
+            raise ValueError("czas_koncowy_s musi być dodatni")
+        tol = self.krok_s * self._TOLERANCJA_CZASU
+
+        obowiazkowe = {0.0, float(czas_koncowy_s)}
+        for t_zdarzenia in harmonogram.czasy():
+            if tol < t_zdarzenia < czas_koncowy_s - tol:
+                obowiazkowe.add(float(t_zdarzenia))
+
+        nominalne: list[float] = []
+        krok = 1
+        while krok * self.krok_s < czas_koncowy_s - tol:
+            nominalne.append(krok * self.krok_s)
+            krok += 1
+
+        kandydaci = sorted(obowiazkowe | set(nominalne))
+        obowiazkowe_posort = sorted(obowiazkowe)
+        siatka: list[float] = []
+        for t in kandydaci:
+            if siatka and t - siatka[-1] <= tol:
+                # Ta sama chwila co poprzednia — zostaw wersję OBOWIĄZKOWĄ.
+                if any(abs(t - o) <= tol for o in obowiazkowe_posort):
+                    siatka[-1] = t
+                continue
+            siatka.append(t)
+        return siatka
+
+    # -- symulacja ------------------------------------------------------------
+
+    def _stany_niesksonczone(self, x: NDArray[np.float64]) -> tuple[str, ...]:
+        """Nazwy stanów, które przestały być skończone — adres defektu, nie flaga."""
+        zle: list[str] = []
+        for u in self.model.urzadzenia:
+            wycinek = self.uklad.wycinki[u.ref]  # type: ignore[attr-defined]
+            nazwy = u.nazwy_stanow()  # type: ignore[attr-defined]
+            for i, nazwa in enumerate(nazwy):
+                wartosc = float(x[wycinek.start + i])
+                if not np.isfinite(wartosc):
+                    zle.append(f"{u.ref}.{nazwa}")  # type: ignore[attr-defined]
+        return tuple(zle)
+
+    def _szyny_niesksonczone(self, v: NDArray[np.complex128] | None) -> tuple[str, ...]:
+        if v is None:
+            return ()
+        return tuple(
+            szyna
+            for szyna, i in self.model.topologia.indeks.items()
+            if not np.isfinite(v[i].real) or not np.isfinite(v[i].imag)
+        )
+
     def symuluj(
         self,
         x0: NDArray[np.float64],
@@ -251,38 +316,93 @@ class SilnikRMS:
         self._maks_iteracji_sieci = 0
 
         norma_t0 = self.norma_pochodnej(x0)
-        n_krokow = max(1, int(round(czas_koncowy_s / self.krok_s)))
+        siatka = self.siatka_czasu(czas_koncowy_s, harmonogram)
+        n_krokow = len(siatka) - 1
+        kroki_skrocone = sum(
+            1
+            for a, b in zip(siatka[:-1], siatka[1:], strict=True)
+            if abs((b - a) - self.krok_s) > self.krok_s * self._TOLERANCJA_CZASU
+        )
+
         zbieracz = ZbieraczPrzebiegow()
         zastosowane: list[dict[str, object]] = []
         topologia = self.model.topologia
         x = x0.astype(np.float64).copy()
         czasy: list[float] = []
-        zbiegl = True
+        blad: BladSolvera | None = None
+        v: NDArray[np.complex128] | None = None
+        t = siatka[0]
 
-        for krok in range(n_krokow + 1):
-            t = krok * self.krok_s
-            nowe = harmonogram.do_chwili(t - self.krok_s, t) if krok else []
-            for zdarzenie in nowe:
-                topologia = zdarzenie.zastosuj(topologia)
-                self.solver_sieci.ustaw_topologie(topologia)
-                zastosowane.append(
-                    {
-                        "czas_s": zdarzenie.czas_s,
-                        "opis": zdarzenie.opis,
-                        "typ": type(zdarzenie).__name__,
-                    }
+        for krok, t in enumerate(siatka):
+            if krok:
+                nowe = harmonogram.do_chwili(siatka[krok - 1], t)
+                for zdarzenie in nowe:
+                    topologia = zdarzenie.zastosuj(topologia)
+                    self.solver_sieci.ustaw_topologie(topologia)
+                    zastosowane.append(
+                        {
+                            "czas_s": zdarzenie.czas_s,
+                            "czas_zastosowania_s": t,
+                            "blad_czasu_s": abs(t - zdarzenie.czas_s),
+                            "opis": zdarzenie.opis,
+                            "typ": type(zdarzenie).__name__,
+                        }
+                    )
+            try:
+                v = self.rozwiaz_siec(x)
+            except Exception as wyjatek:  # noqa: BLE001 - zapisujemy PRZYCZYNĘ
+                blad = BladSolvera(
+                    klasa=type(wyjatek).__name__,
+                    komunikat=str(wyjatek),
+                    faza="algebra_sieci",
+                    czas_s=t,
+                    krok_s=(siatka[krok] - siatka[krok - 1]) if krok else 0.0,
+                    numer_kroku=krok,
+                    residuum_sieci=self._maks_residuum,
+                    stan_skonczony=bool(np.all(np.isfinite(x))),
+                    stany_niesksonczone=self._stany_niesksonczone(x),
+                    szyny_niesksonczone=self._szyny_niesksonczone(v),
                 )
-            v = self.rozwiaz_siec(x)
+                break
             self.zatwierdz_punkt_pracy(v)
             if krok % self.probkowanie_co == 0 or krok == n_krokow:
                 czasy.append(t)
                 self._zapisz_probki(zbieracz, x, v)
             if krok == n_krokow:
                 break
+            dt = siatka[krok + 1] - t
             try:
-                x, _ = self.integrator.krok(self.pochodne, x, t, self.krok_s)
-            except Exception:  # noqa: BLE001 - zachowujemy dowód niepowodzenia
-                zbiegl = False
+                x, _ = self.integrator.krok(self.pochodne, x, t, dt)
+            except Exception as wyjatek:  # noqa: BLE001 - zapisujemy PRZYCZYNĘ
+                blad = BladSolvera(
+                    klasa=type(wyjatek).__name__,
+                    komunikat=str(wyjatek),
+                    faza="calkowanie",
+                    czas_s=t,
+                    krok_s=dt,
+                    numer_kroku=krok,
+                    residuum_sieci=self._maks_residuum,
+                    stan_skonczony=bool(np.all(np.isfinite(x))),
+                    stany_niesksonczone=self._stany_niesksonczone(x),
+                    szyny_niesksonczone=self._szyny_niesksonczone(v),
+                )
+                break
+            if not np.all(np.isfinite(x)):
+                blad = BladSolvera(
+                    klasa="NieskonczonyStanError",
+                    komunikat=(
+                        "Integrator zwrócił stan zawierający NaN/Inf — równania "
+                        "urządzenia albo krok są niewłaściwe."
+                    ),
+                    faza="calkowanie",
+                    czas_s=siatka[krok + 1],
+                    krok_s=dt,
+                    numer_kroku=krok,
+                    residuum_sieci=self._maks_residuum,
+                    stan_skonczony=False,
+                    stany_niesksonczone=self._stany_niesksonczone(x),
+                    szyny_niesksonczone=self._szyny_niesksonczone(v),
+                )
                 break
 
         diagnostyka = DiagnostykaSolvera(
@@ -292,8 +412,11 @@ class SilnikRMS:
             ewaluacje_pochodnych=self._ewaluacje,
             maks_residuum_sieci=self._maks_residuum,
             maks_iteracji_sieci=self._maks_iteracji_sieci,
-            zbiegl=zbiegl,
+            zbiegl=blad is None,
             norma_pochodnej_w_t0=norma_t0,
+            blad=blad,
+            czas_osiagniety_s=czasy[-1] if czasy else 0.0,
+            kroki_skrocone=kroki_skrocone,
         )
         return WynikDynamiczny(
             kontrakt=KONTRAKT,
@@ -363,9 +486,7 @@ class SilnikRMS:
                 etykieta_pl="Moc bierna",
                 jednostka="p.u.",
             )
-            zbieracz.dodaj(
-                "i_pu", abs(i), element_ref=ref, etykieta_pl="Prąd", jednostka="p.u."
-            )
+            zbieracz.dodaj("i_pu", abs(i), element_ref=ref, etykieta_pl="Prąd", jednostka="p.u.")
             for nazwa, wartosc in zip(
                 u.nazwy_stanow(), x[wycinek], strict=True  # type: ignore[attr-defined]
             ):

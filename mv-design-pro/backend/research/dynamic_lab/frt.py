@@ -134,19 +134,14 @@ def ocen_frt(
             chwila_krytyczna_s=None,
             napiecie_zmierzone_pu=None,
             napiecie_wymagane_pu=None,
-            uzasadnienie_pl=(
-                "Przebieg nie pokrywa okna oceny — brak podstawy do orzeczenia."
-            ),
+            uzasadnienie_pl=("Przebieg nie pokrywa okna oceny — brak podstawy do orzeczenia."),
             liczba_probek_ocenionych=0,
         )
 
     t_ocena = t[maska]
     u_ocena = u[maska]
     wymagane = np.array(
-        [
-            obwiednia.wymagane_napiecie(float(ti) - chwila_zaklocenia_s)
-            for ti in t_ocena
-        ],
+        [obwiednia.wymagane_napiecie(float(ti) - chwila_zaklocenia_s) for ti in t_ocena],
         dtype=np.float64,
     )
     if obwiednia.rodzaj == "lvrt":

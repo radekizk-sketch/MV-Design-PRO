@@ -42,7 +42,7 @@ from dynamic_lab.urzadzenia import (
     ZespolSynchroniczny,
 )
 from dynamic_lab.walidacja import WyroczniaWahan, zmierz_czestotliwosc_oscylacji
-from dynamic_lab.zdarzenia import HarmonogramZdarzen, ZdjecieZwarcia, ZwarcieDoziemne
+from dynamic_lab.zdarzenia import HarmonogramZdarzen, ZdjecieZwarcia, ZwarcieTrojfazowe
 
 TOL_ROWNOWAGI = 1.0e-8
 
@@ -190,7 +190,7 @@ def _przebieg_zwarciowy(*, x_linii=0.15, h_s=4.0, t_wyl=0.15, x_f=0.0):
     model, moce = smib(x_linii_pu=x_linii, h_s=h_s, klasyczna=False, z_regulatorami=True)
     silnik, x0 = _uruchom(model, moce, integrator="rk4", krok_s=0.002)
     harmonogram = HarmonogramZdarzen(
-        [ZwarcieDoziemne(0.5, "GEN", x_f_pu=x_f), ZdjecieZwarcia(0.5 + t_wyl, "GEN")]
+        [ZwarcieTrojfazowe(0.5, "GEN", x_f_pu=x_f), ZdjecieZwarcia(0.5 + t_wyl, "GEN")]
     )
     wynik = silnik.symuluj(x0, czas_koncowy_s=4.0, harmonogram=harmonogram)
     return (
@@ -244,7 +244,7 @@ def test_zdarzenie_na_wskazanej_szynie_ma_znaczenie() -> None:
     for szyna in ("G1B", "G2B"):
         silnik, x0 = _uruchom(model, moce, integrator="rk4", krok_s=0.002)
         harmonogram = HarmonogramZdarzen(
-            [ZwarcieDoziemne(0.5, szyna, x_f_pu=0.02), ZdjecieZwarcia(0.62, szyna)]
+            [ZwarcieTrojfazowe(0.5, szyna, x_f_pu=0.02), ZdjecieZwarcia(0.62, szyna)]
         )
         wynik = silnik.symuluj(x0, czas_koncowy_s=3.0, harmonogram=harmonogram)
         wyniki[szyna] = np.array(wynik.sygnal("delta_rad", "G1").wartosci).max()
@@ -256,7 +256,7 @@ def test_maszyny_oddzialuja_na_siebie() -> None:
     model, moce = dwie_maszyny()
     silnik, x0 = _uruchom(model, moce, integrator="rk4", krok_s=0.002)
     harmonogram = HarmonogramZdarzen(
-        [ZwarcieDoziemne(0.5, "G2B", x_f_pu=0.02), ZdjecieZwarcia(0.62, "G2B")]
+        [ZwarcieTrojfazowe(0.5, "G2B", x_f_pu=0.02), ZdjecieZwarcia(0.62, "G2B")]
     )
     wynik = silnik.symuluj(x0, czas_koncowy_s=3.0, harmonogram=harmonogram)
     delta_g1 = np.array(wynik.sygnal("delta_rad", "G1").wartosci)
@@ -279,7 +279,7 @@ def _przebieg_der(urzadzenie):
         model, {urzadzenie.ref: complex(0.6, 0.0)}, integrator="rk4", krok_s=0.002
     )
     harmonogram = HarmonogramZdarzen(
-        [ZwarcieDoziemne(0.5, "MID", x_f_pu=0.05), ZdjecieZwarcia(0.65, "MID")]
+        [ZwarcieTrojfazowe(0.5, "MID", x_f_pu=0.05), ZdjecieZwarcia(0.65, "MID")]
     )
     wynik = silnik.symuluj(x0, czas_koncowy_s=3.0, harmonogram=harmonogram)
     return (
@@ -322,7 +322,7 @@ def test_regulatory_maja_wplyw_na_przebieg() -> None:
     model, moce = smib(klasyczna=False, z_regulatorami=False)
     silnik, x0 = _uruchom(model, moce, integrator="rk4", krok_s=0.002)
     harmonogram = HarmonogramZdarzen(
-        [ZwarcieDoziemne(0.5, "GEN", x_f_pu=0.0), ZdjecieZwarcia(0.65, "GEN")]
+        [ZwarcieTrojfazowe(0.5, "GEN", x_f_pu=0.0), ZdjecieZwarcia(0.65, "GEN")]
     )
     wynik = silnik.symuluj(x0, czas_koncowy_s=4.0, harmonogram=harmonogram)
     d_bez_reg = np.array(wynik.sygnal("delta_rad", "G1").wartosci)
@@ -486,13 +486,13 @@ def test_zmiana_parametru_zmienia_odcisk_modelu() -> None:
 def test_kolejnosc_zdarzen_rownoczesnych_jest_deterministyczna() -> None:
     zdarzenia = [
         ZdjecieZwarcia(czas_s=1.0, szyna="A"),
-        ZwarcieDoziemne(czas_s=1.0, szyna="B"),
+        ZwarcieTrojfazowe(czas_s=1.0, szyna="B"),
     ]
     kolejnosc = [type(z).__name__ for z in HarmonogramZdarzen(zdarzenia).do_chwili(0.5, 1.5)]
     kolejnosc_odwrotna = [
         type(z).__name__ for z in HarmonogramZdarzen(list(reversed(zdarzenia))).do_chwili(0.5, 1.5)
     ]
-    assert kolejnosc == kolejnosc_odwrotna == ["ZwarcieDoziemne", "ZdjecieZwarcia"]
+    assert kolejnosc == kolejnosc_odwrotna == ["ZwarcieTrojfazowe", "ZdjecieZwarcia"]
 
 
 def test_wylaczenie_galezi_zmienia_ybus() -> None:

@@ -198,9 +198,7 @@ def _newton_niejawny(
         try:
             delta = np.linalg.solve(g_jak, -residuum)
         except np.linalg.LinAlgError as exc:  # pragma: no cover - zależy od danych
-            raise BrakZbieznosciIntegratoraError(
-                "Jakobian integratora osobliwy"
-            ) from exc
+            raise BrakZbieznosciIntegratoraError("Jakobian integratora osobliwy") from exc
         x1 = x1 + delta
     raise BrakZbieznosciIntegratoraError(
         f"Integrator niejawny nie zbiegł w {maks} iteracjach (residuum {norma:.3e}, "

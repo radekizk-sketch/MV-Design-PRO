@@ -63,9 +63,7 @@ class Galaz:
     def admitancja_szeregowa(self) -> complex:
         z = complex(self.r_pu, self.x_pu)
         if z == 0:
-            raise ValueError(
-                f"Gałąź {self.od_szyny}->{self.do_szyny} ma zerową impedancję"
-            )
+            raise ValueError(f"Gałąź {self.od_szyny}->{self.do_szyny} ma zerową impedancję")
         return 1.0 / z
 
 
@@ -100,9 +98,7 @@ class TopologiaSieci:
         znane = set(self.szyny)
         for g in self.galezie:
             if g.od_szyny not in znane or g.do_szyny not in znane:
-                raise ValueError(
-                    f"Gałąź {g.od_szyny}->{g.do_szyny} wskazuje nieznaną szynę"
-                )
+                raise ValueError(f"Gałąź {g.od_szyny}->{g.do_szyny} wskazuje nieznaną szynę")
         for b in self.boczniki:
             if b.szyna not in znane:
                 raise ValueError(f"Bocznik na nieznanej szynie {b.szyna}")
@@ -245,9 +241,7 @@ class SolverSieci:
                 r[i] = 0.0
             norma = float(np.max(np.abs(r))) if n else 0.0
             if norma < self.tolerancja:
-                return RozwiazanieSieci(
-                    napiecia=v, iteracje=iteracja - 1, residuum=norma
-                )
+                return RozwiazanieSieci(napiecia=v, iteracje=iteracja - 1, residuum=norma)
 
             jak = self._jakobian(y, wstrzykniecia, v, sztywne)
             rez = np.concatenate([r.real, r.imag])
@@ -325,7 +319,5 @@ def ybus_z_produkcji(
     """
     szyny = tuple(sorted(mapa_indeksow, key=lambda s: mapa_indeksow[s]))
     if ybus_pu.shape != (len(szyny), len(szyny)):
-        raise ValueError(
-            f"Kształt Ybus {ybus_pu.shape} nie zgadza się z liczbą szyn {len(szyny)}"
-        )
+        raise ValueError(f"Kształt Ybus {ybus_pu.shape} nie zgadza się z liczbą szyn {len(szyny)}")
     return szyny, np.asarray(ybus_pu, dtype=np.complex128)
