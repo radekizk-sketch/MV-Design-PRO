@@ -174,3 +174,39 @@ ignorować bramkę.
 | 9 podstawień w `network_model/core/branch.py` i `catalog/types.py` | zamrożony rdzeń — bramka B-01, wymaga zgody właściciela |
 | 4 podstawienia w `application/reference_networks/**` | ruszają golden/determinizm; wymagają osobnego pomiaru hashy przed zmianą |
 | `genset_spec.rated_power_kw` / `ups_spec.rated_power_kw` | dług nazwany w zapadce; tabliczka znamionowa z payloadu kreatora — wymaga decyzji, jak katalog ma walidować komplet pól |
+
+## 6. Weryfikacja końcowa (stan `2d34f341`)
+
+Kody wyjścia łapane BEZPOŚREDNIO (`cmd > plik 2>&1; echo "EXIT=$?"`), nigdy
+przez `| tail` — pipe zwraca kod ostatniego członu i na początku tej sesji
+sam się na tym złapałem, meldując EXIT=0 dla czerwonych bramek.
+
+| Pomiar | Wynik |
+|---|---|
+| Klaster bramek (42 skrypty) | **0 czerwonych** |
+| `pytest -q -rs` (backend, stan zacommitowany) | **11 127 passed, 6 skipped, 0 failed** (19:27) |
+| `npm run test:ci` (frontend) | **887 plików, 11 989 passed, 1 skipped, 14 todo, 0 failed** (25:07) |
+| `npm run type-check` | EXIT=0, zero błędów |
+| `npm run lint` (`--max-warnings 0`) | EXIT=0 |
+
+Regresję backendu puszczono DWA razy: pierwszy bieg wystartował przed
+`black`/`ruff --fix`, więc mierzył drzewo o innym formatowaniu niż
+zacommitowane. Powtórka na stanie zacommitowanym dała **tę samą liczbę**
+(11 127), co potwierdza, że zmiana była wyłącznie formatem.
+
+Zestaw frontendu zmierzono NIEZALEŻNIE dwa razy (wykonawca i prowadzący) —
+oba biegi dały identyczne liczby. Commit `34b565e0` zostawił ten pomiar jawnie
+jako niewykonany; ten akapit go domyka.
+
+### Błąd prowadzącego w tej samej fali
+
+`e2ce9d01` zamknął trzy bramki i **zapalił czwartą**: rozszerzyłem
+`utf8_mojibake_guard` o nową formę, po czym napisałem ten dokument, który tę
+formę cytuje dosłownie — i nie powtórzyłem przebiegu bramki po napisaniu
+dokumentu. Znalazł to wykonawca karty długu typów i zgłosił, zamiast
+przemilczeć. Naprawione w `2d34f341` znacznikiem próbki celowej.
+
+Przyczyna źródłowa leżała w KOLEJNOŚCI, nie w kodzie: klaster bramek
+uruchomiłem PRZED napisaniem dokumentacji. Wniosek do stosowania: klaster
+idzie na sam koniec, po ostatniej zmianie w repozytorium, cokolwiek ta zmiana
+obejmuje — dokumentacja też zapala bramki.
