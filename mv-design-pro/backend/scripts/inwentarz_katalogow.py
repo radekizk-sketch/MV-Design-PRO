@@ -60,71 +60,109 @@ _ZRODLO_PROJEKTOWE = re.compile(
     re.I,
 )
 
-#: Pola wymagane przez obliczenia korzystające z rodziny — nazwy Z KONTRAKTU.
-WYMAGANE: dict[str, tuple[str, ...]] = {
-    "cable_types": (
-        "r_ohm_per_km",
-        "x_ohm_per_km",
-        "rated_current_a",
-        "cross_section_mm2",
-        "voltage_rating_kv",
-        "conductor_material",
-    ),
-    "line_types": (
-        "r_ohm_per_km",
-        "x_ohm_per_km",
-        "rated_current_a",
-        "cross_section_mm2",
-        "voltage_rating_kv",
-        "conductor_material",
-    ),
-    "lv_cable_types": (
-        "r_ohm_per_km",
-        "x_ohm_per_km",
-        "i_max_a",
-        "cross_section_mm2",
-        "u_n_kv",
-        "conductor_material",
-    ),
-    "transformer_types": (
-        "rated_power_mva",
-        "voltage_hv_kv",
-        "voltage_lv_kv",
-        "uk_percent",
-        "pk_kw",
-        "vector_group",
-    ),
-    "mv_apparatus_types": ("u_n_kv", "i_n_a", "device_kind"),
-    "switch_equipment_types": ("un_kv", "in_a", "equipment_kind", "u_m_kv"),
-    "lv_apparatus_types": ("u_n_kv", "i_n_a", "device_kind", "u_m_kv"),
-    "lv_breaker_mcb_types": ("in_a", "icn_ka", "u_n_kv", "curve_class"),
-    "lv_fuse_link_types": ("in_a", "u_n_kv", "breaking_capacity_ka", "fuse_class"),
-    "ct_types": (
-        "ratio_primary_a",
-        "ratio_secondary_a",
-        "accuracy_class",
-        "burden_va",
-        "ith_ka_1s",
-    ),
-    "vt_types": (
-        "ratio_primary_v",
-        "ratio_secondary_v",
-        "accuracy_class",
-        "burden_va",
-        "rated_voltage_factor",
-    ),
-    "surge_arrester_types": ("u_rated_kv", "mcov_kv", "u_residual_at_10ka_kv", "energy_class"),
-    "shunt_capacitor_types": ("rated_mvar", "rated_kv", "loss_kw"),
-    "source_system_types": ("voltage_rating_kv", "sk3_mva", "rx_ratio", "earthing_system"),
-    "load_types": ("p_kw", "a_p", "b_p", "c_p", "a_q", "b_q", "c_q"),
-    "converter_types": ("sn_mva", "un_kv", "pmax_mw", "qmin_mvar", "qmax_mvar"),
-    "inverter_types": ("sn_mva", "un_kv", "pmax_mw", "qmin_mvar", "qmax_mvar"),
-    "pv_inverter_types": ("s_n_kva", "un_kv", "p_max_kw", "cos_phi_min", "cos_phi_max"),
-    "bess_inverter_types": ("s_n_kva", "un_kv", "p_charge_kw", "p_discharge_kw", "e_kwh"),
-    "protection_device_types": ("vendor", "series"),
-    "protection_curves": (),
-    "protection_setting_templates": (),
-    "ptpiree_generator_certificates": (),
+#: Pola wymagane PRZEZ KONKRETNĄ ZDOLNOŚĆ, nie „przez rodzinę" (korekta po
+#: recenzji niezależnej). Poprzednia wersja miała JEDEN zbiór na rodzinę, przez
+#: co `transformer_types` nie wymagało `p0_kw` ani `i0_percent` — a testy
+#: niezmienników pomijają wartości nieobecne. Rekord z zewnętrznym dokumentem,
+#: ale bez tych pól, mógł więc zostać sklasyfikowany PRODUCTION_READY, choć
+#: solver strat nie miałby z czego liczyć (recenzent wykonał:
+#: `_klasyfikacja(1, 100, {"DOKUMENT_ZEWNETRZNY": 1}) -> "PRODUCTION_READY"`).
+#:
+#: Przypisania są WYPROWADZONE Z KONSUMENTÓW, nie z nazw pól:
+#:   * `p0_kw` — `network_model/solvers/equipment_checks/transformer_losses.py`
+#:     (brak albo zero → wynik NIEDOSTEPNY z kodem gotowości) oraz
+#:     `v126_academic.py`; NIE wchodzi do impedancji zwarciowej;
+#:   * `i0_percent` — `solver_input/builder.py` → `TransformerPayload`
+#:     (gałąź magnesująca rozpływu);
+#:   * `uk_percent`, `pk_kw` — impedancja: rozpływ ORAZ zwarcie.
+#:
+#: Transformator MOŻE być gotowy dla rozpływu i niegotowy dla modelu strat —
+#: i macierz ma to pokazać, zamiast uśredniać do jednej etykiety.
+WYMAGANE: dict[str, dict[str, tuple[str, ...]]] = {
+    "cable_types": {
+        "LOAD_FLOW": ("r_ohm_per_km", "x_ohm_per_km", "cross_section_mm2", "conductor_material"),
+        "SHORT_CIRCUIT": ("r_ohm_per_km", "x_ohm_per_km", "cross_section_mm2"),
+        "AMPACITY": ("rated_current_a", "voltage_rating_kv"),
+    },
+    "line_types": {
+        "LOAD_FLOW": ("r_ohm_per_km", "x_ohm_per_km", "cross_section_mm2", "conductor_material"),
+        "SHORT_CIRCUIT": ("r_ohm_per_km", "x_ohm_per_km", "cross_section_mm2"),
+        "AMPACITY": ("rated_current_a", "voltage_rating_kv"),
+    },
+    "lv_cable_types": {
+        "LOAD_FLOW": ("r_ohm_per_km", "x_ohm_per_km", "cross_section_mm2", "conductor_material"),
+        "SHORT_CIRCUIT": ("r_ohm_per_km", "x_ohm_per_km", "cross_section_mm2"),
+        "AMPACITY": ("i_max_a", "u_n_kv"),
+    },
+    "transformer_types": {
+        "LOAD_FLOW": (
+            "rated_power_mva",
+            "voltage_hv_kv",
+            "voltage_lv_kv",
+            "uk_percent",
+            "pk_kw",
+            "i0_percent",
+            "vector_group",
+        ),
+        "SHORT_CIRCUIT": (
+            "rated_power_mva",
+            "voltage_hv_kv",
+            "voltage_lv_kv",
+            "uk_percent",
+            "pk_kw",
+        ),
+        "LOSS_MODEL": ("rated_power_mva", "p0_kw", "pk_kw"),
+    },
+    "mv_apparatus_types": {"APPARATUS_SELECTION": ("u_n_kv", "i_n_a", "device_kind")},
+    "switch_equipment_types": {
+        "APPARATUS_SELECTION": ("un_kv", "in_a", "equipment_kind", "u_m_kv")
+    },
+    "lv_apparatus_types": {"APPARATUS_SELECTION": ("u_n_kv", "i_n_a", "device_kind", "u_m_kv")},
+    "lv_breaker_mcb_types": {"PROTECTION": ("in_a", "icn_ka", "u_n_kv", "curve_class")},
+    "lv_fuse_link_types": {"PROTECTION": ("in_a", "u_n_kv", "breaking_capacity_ka", "fuse_class")},
+    "ct_types": {
+        "MEASUREMENT": ("ratio_primary_a", "ratio_secondary_a", "accuracy_class", "burden_va"),
+        "SC_WITHSTAND": ("ith_ka_1s",),
+    },
+    "vt_types": {
+        "MEASUREMENT": (
+            "ratio_primary_v",
+            "ratio_secondary_v",
+            "accuracy_class",
+            "burden_va",
+            "rated_voltage_factor",
+        )
+    },
+    "surge_arrester_types": {
+        "OVERVOLTAGE_PROTECTION": (
+            "u_rated_kv",
+            "mcov_kv",
+            "u_residual_at_10ka_kv",
+            "energy_class",
+        )
+    },
+    "shunt_capacitor_types": {"REACTIVE_COMPENSATION": ("rated_mvar", "rated_kv", "loss_kw")},
+    "source_system_types": {
+        "SHORT_CIRCUIT": ("voltage_rating_kv", "sk3_mva", "rx_ratio"),
+        "EARTHING": ("earthing_system",),
+    },
+    "load_types": {"LOAD_FLOW": ("p_kw", "a_p", "b_p", "c_p", "a_q", "b_q", "c_q")},
+    "converter_types": {
+        "LOAD_FLOW": ("sn_mva", "un_kv", "pmax_mw", "qmin_mvar", "qmax_mvar"),
+    },
+    "inverter_types": {
+        "LOAD_FLOW": ("sn_mva", "un_kv", "pmax_mw", "qmin_mvar", "qmax_mvar"),
+    },
+    "pv_inverter_types": {
+        "LOAD_FLOW": ("s_n_kva", "un_kv", "p_max_kw", "cos_phi_min", "cos_phi_max"),
+    },
+    "bess_inverter_types": {
+        "LOAD_FLOW": ("s_n_kva", "un_kv", "p_charge_kw", "p_discharge_kw", "e_kwh"),
+    },
+    "protection_device_types": {"PROTECTION": ("vendor", "series")},
+    "protection_curves": {},
+    "protection_setting_templates": {},
+    "ptpiree_generator_certificates": {},
 }
 
 #: Pola, których katalog świadomie NIE trzyma, bo wyprowadza je norma z danych,
@@ -181,21 +219,36 @@ def _klasa_zrodla(dane: dict[str, object]) -> str:
     return "OPIS_BEZ_NUMERU"
 
 
-def _klasyfikacja(liczba: int, kompletnosc: float | None, zrodla: dict[str, int]) -> str:
-    """Klasa gotowości rodziny wg §17 — wyłącznie z POMIARU, bez oceny uznaniowej."""
+def _klasyfikacja(
+    liczba: int, kompletnosc_per_zdolnosc: dict[str, float], zrodla: dict[str, int]
+) -> str:
+    """Klasa gotowości rodziny — wyłącznie z POMIARU, bez oceny uznaniowej.
+
+    KOMPLETNOŚĆ LICZONA PER ZDOLNOŚĆ (korekta po recenzji niezależnej). Rodzina
+    jest kompletna danymi dopiero wtedy, gdy KAŻDA zdolność, którą zasila, ma
+    komplet swoich pól. Poprzednia wersja liczyła jeden wskaźnik na rodzinę, więc
+    brak pola potrzebnego WYŁĄCZNIE modelowi strat rozpływał się w średniej i
+    rekord mógł wyjść PRODUCTION_READY mimo luki w danych solvera.
+
+    ROZDZIELENIE KOMPLETNOŚCI OD PROWENIENCJI jest zamierzone: komplet pól
+    oprogramowania to NIE to samo, co zweryfikowana dana inżynierska. Rodzina z
+    kompletem pól, ale bez wskazania dokumentu, zostaje PARTIAL — i tak ma być.
+    """
     if liczba == 0:
         return "MISSING"
-    if kompletnosc is not None and kompletnosc < 100.0:
+    if kompletnosc_per_zdolnosc and any(
+        wartosc < 100.0 for wartosc in kompletnosc_per_zdolnosc.values()
+    ):
         return "DATA_INCOMPLETE"
     zewnetrzne = zrodla.get("DOKUMENT_ZEWNETRZNY", 0)
     projektowe = zrodla.get("ZRODLO_PROJEKTOWE_OSD", 0)
     if zewnetrzne + projektowe == liczba:
         # Pozycja o źródle projektowym/OSD jest kompletna tak samo jak pozycja z
         # kartą producenta — po prostu jej źródłem nie jest producent.
-        return "PRODUCTION_READY"
+        return "FIELD_COMPLETE_SOURCE_VERIFIED"
     if zewnetrzne + projektowe == 0:
-        return "PARTIAL_BEZ_ZRODLA_ZEWNETRZNEGO"
-    return "PARTIAL_ZRODLA_MIESZANE"
+        return "FIELD_COMPLETE_BEZ_ZRODLA_ZEWNETRZNEGO"
+    return "FIELD_COMPLETE_ZRODLA_MIESZANE"
 
 
 def zmierz() -> dict[str, dict[str, object]]:
@@ -209,25 +262,36 @@ def zmierz() -> dict[str, dict[str, object]]:
             wynik[rodzina] = {"blad": f"{type(blad).__name__}: {blad}"}
             continue
         slowniki = [_slownik(p) for p in pozycje]
-        wymagane = WYMAGANE.get(rodzina, ())
-        braki: collections.Counter[str] = collections.Counter()
-        for dane in slowniki:
-            for pole in wymagane:
-                if dane.get(pole) in (None, ""):
-                    braki[pole] += 1
+        zdolnosci = WYMAGANE.get(rodzina, {})
+        braki: dict[str, dict[str, int]] = {}
+        kompletnosc_per_zdolnosc: dict[str, float] = {}
+        for zdolnosc, pola in sorted(zdolnosci.items()):
+            braki_zdolnosci: collections.Counter[str] = collections.Counter()
+            for dane in slowniki:
+                for pole in pola:
+                    if dane.get(pole) in (None, ""):
+                        braki_zdolnosci[pole] += 1
+            if braki_zdolnosci:
+                braki[zdolnosc] = dict(braki_zdolnosci)
+            if slowniki and pola:
+                kompletnosc_per_zdolnosc[zdolnosc] = round(
+                    100.0 * (1 - sum(braki_zdolnosci.values()) / (len(slowniki) * len(pola))), 1
+                )
         zrodla = collections.Counter(_klasa_zrodla(d) for d in slowniki)
         identyfikatory = collections.Counter(str(d.get("id")) for d in slowniki)
         kompletnosc = (
-            round(100.0 * (1 - sum(braki.values()) / (len(slowniki) * len(wymagane))), 1)
-            if slowniki and wymagane
-            else None
+            round(min(kompletnosc_per_zdolnosc.values()), 1) if kompletnosc_per_zdolnosc else None
         )
         wynik[rodzina] = {
             "liczba": len(slowniki),
-            "klasa": _klasyfikacja(len(slowniki), kompletnosc, dict(zrodla)),
+            "klasa": _klasyfikacja(len(slowniki), kompletnosc_per_zdolnosc, dict(zrodla)),
+            # NAJGORSZA zdolność, nie średnia: rodzina jest tak kompletna, jak jej
+            # najsłabsza zdolność. Średnia ukrywałaby lukę pod dobrym wynikiem
+            # pozostałych — to był mechanizm luki wskazanej przez recenzenta.
             "kompletnosc_pct": kompletnosc,
-            "pola_wymagane": list(wymagane),
-            "braki_pol": dict(braki),
+            "kompletnosc_per_zdolnosc": kompletnosc_per_zdolnosc,
+            "pola_wymagane": {k: list(v) for k, v in sorted(zdolnosci.items())},
+            "braki_pol": braki,
             "pola_wyprowadzalne": WYPROWADZALNE.get(rodzina, {}),
             "zrodla": dict(zrodla),
             "verification_status": {

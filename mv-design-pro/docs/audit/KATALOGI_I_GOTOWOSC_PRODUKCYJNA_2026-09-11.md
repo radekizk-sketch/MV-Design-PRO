@@ -7,23 +7,53 @@ dało się je powtórzyć bez zaufania do prozy.
 
 Gałąź: `claude/max-dynamic-audit-kzbivg`. Baza: `1e962025`.
 
+> **STATUS:** delta `1e962025..cac842855` została ODRZUCONA przez niezależny
+> shadow review (`docs/audit/WORK_SHADOW_REVIEW_LATEST.md`). Ten dokument
+> został skorygowany w miejscach, gdzie twierdził więcej, niż dowodził kod.
+> Przebieg remediacji: `docs/audit/WORK_SHADOW_REVIEW_REMEDIATION_2026-09-11.md`.
+
 ---
 
-## 1. Pokrycie szablonów stacji — 0/57 → 57/57
+## 1. Pokrycie szablonów stacji — miary ROZŁĄCZNE, nie jedna liczba
 
-**Pomiar** (apply KAŻDEGO szablonu przez API + `engineering-readiness`, żywy
-backend):
+> **KOREKTA PO NIEZALEŻNEJ RECENZJI (P1-DELTA-05).** Pierwsza wersja tej sekcji
+> nosiła tytuł „0/57 → 57/57" i mówiła o „gotowości". Recenzent wykazał, że
+> wykonywalna bramka sprawdzała WYŁĄCZNIE brak jednego kodu
+> (`switch.catalog_ref_missing`) i nie asertowała nawet `ready is True`. Liczba
+> była szersza niż dowód. Poniżej miary rozłączne, każda ze swoim testem.
 
-| Stan | `ready=True` | `switch.catalog_ref_missing` | `W061` | `W041` |
-|------|--------------|------------------------------|--------|--------|
-| Baza (2026-09-11 rano) | **0 / 57** | 57 / 57 | 38 / 57 | 15 / 57 |
-| Po naprawie wyłącznika głównego nN | 31 / 57 | 26 / 57 | 7 / 57 | 0 / 57 |
-| Po naprawie aparatu pola źródłowego DER | **57 / 57** | **0 / 57** | 0 / 57 | 0 / 57 |
+**Pomiar** (apply KAŻDEGO szablonu przez API + `engineering-readiness` +
+`analysis-eligibility`, ta sama ścieżka, którą idzie kreator):
 
-Pozostałe `W002` na 57/57 to artefakt sondy pomiarowej (jej payload
-`add_grid_source_sn` nie podaje Z₀), nie defekt produktu: backend bez Z₀ zwraca
-`None` i uczciwie melduje niedostępność zwarć doziemnych (`enm/mapping.py`
-`_source_zero_impedance_ohm`), a kreator źródła pole Z₀ wystawia.
+| Miara | Wynik | Co dokładnie znaczy |
+|-------|-------|---------------------|
+| materializacja szablonu | **57/57** | `apply` kończy się 200/201 |
+| brak `switch.catalog_ref_missing` | **57/57** | każdy łącznik ma wiązanie katalogowe |
+| `engineering-readiness.ready` | **57/57** | model kompletny wg kontraktu gotowości |
+| LOAD_FLOW eligible | **57/57** | rozpływ mocy wykonalny |
+| SC_3F eligible | **31/57** | 26 szablonów DER blokuje granica `k_sc` |
+| SC_1F eligible | **0/57** | brak Z₀ źródła (kod `W002`) |
+| SC_2F eligible | **0/57** | kontrakt Z₂ nieukończony |
+| FAULT_LOOP_NN / SWZ_NN eligible | **0/57** | brak odcinków kablowych nN |
+
+**Stan wyjściowy dla porównania:** `ready` 0/57, `switch.catalog_ref_missing`
+57/57, `W061` 38/57, `W041` 15/57.
+
+**SC_3F = 31/57 jest ZAMIERZONE.** To działanie granicy miarodajności `k_sc`
+(sekcja 2): szablon z czynnym źródłem przekształtnikowym bez deklaracji
+współczynnika NIE MOŻE dać miarodajnego wyniku zwarciowego. Bramka sprawdza
+predykat parzysty — zbiór zablokowanych MUSI równać się zbiorowi szablonów z
+falownikiem, bo sama liczba 31 przeszłaby też dla blokady przypadkowej.
+
+**Czego te liczby NIE znaczą.** Żadna z nich nie jest dowodem przydatności
+projektowej: nie mówią nic o doborze aparatury wobec prądu zwarciowego,
+selektywności, `Icu`/`Iz′` ani o dopuszczalności regulacyjnej. Gotowość modelu
+i gotowość zdolności to dwie różne rzeczy i dlatego są tu mierzone osobno.
+
+Pozostałe `W002` (ostrzeżenie, nie blokada) to brak Z₀ źródła w fiksturze
+pomiarowej: backend bez Z₀ zwraca `None` i uczciwie melduje niedostępność zwarć
+doziemnych (`enm/mapping.py` `_source_zero_impedance_ohm`), a kreator źródła pole
+Z₀ wystawia.
 
 ### 1.1 Wyłącznik główny nN — wariant „B + A"
 
@@ -189,32 +219,40 @@ cd mv-design-pro/backend && poetry run python scripts/inwentarz_katalogow.py
 
 | Rodzina | N | kompl. pól | dok. zewn. | źródło projektowe | etykieta wewn. | Klasa |
 |---------|---|-----------|-----------|------------------|----------------|-------|
-| ptpiree_generator_certificates | 6887 | — | 6887 | 0 | 0 | PRODUCTION_READY |
-| transformer_types | 192 | 100 % | 37 | 0 | 0 | PARTIAL (mieszane) |
-| converter_types | 176 | 100 % | 1 | 0 | 175 | PARTIAL (mieszane) |
-| inverter_types | 176 | 100 % | 1 | 0 | 175 | PARTIAL (mieszane) |
-| pv_inverter_types | 66 | 100 % | 1 | 0 | 65 | PARTIAL (mieszane) |
-| bess_inverter_types | 64 | 100 % | 0 | 0 | 64 | PARTIAL (bez zewn.) |
-| cable_types | 63 | 100 % | 58 | 4 | 1 | PARTIAL (mieszane) |
-| lv_breaker_mcb_types | 60 | 100 % | 60 | 0 | 0 | PRODUCTION_READY |
-| mv_apparatus_types | 48 | 100 % | 20 | 0 | 0 | PARTIAL (mieszane) |
-| switch_equipment_types | 48 | 100 % | 20 | 0 | 0 | PARTIAL (mieszane) |
-| lv_fuse_link_types | 30 | 100 % | 30 | 0 | 0 | PRODUCTION_READY |
-| line_types | 26 | 100 % | 25 | 0 | 1 | PARTIAL (mieszane) |
-| source_system_types | 22 | 100 % | 0 | 22 | 0 | PRODUCTION_READY |
-| lv_apparatus_types | 18 | 100 % | 15 | 0 | 0 | PARTIAL (mieszane) |
-| lv_cable_types | 17 | 100 % | 17 | 0 | 0 | PRODUCTION_READY |
-| vt_types | 13 | 100 % | 13 | 0 | 0 | PRODUCTION_READY |
-| ct_types | 12 | 100 % | 12 | 0 | 0 | PRODUCTION_READY |
-| protection_device_types | 12 | 100 % | 0 | 0 | 12 | PARTIAL (bez zewn.) |
-| surge_arrester_types | 12 | 100 % | 12 | 0 | 0 | PRODUCTION_READY |
-| protection_curves | 8 | — | 8 | 0 | 0 | PRODUCTION_READY |
-| protection_setting_templates | 8 | — | 8 | 0 | 0 | PRODUCTION_READY |
-| shunt_capacitor_types | 5 | 100 % | 0 | 0 | 5 | PARTIAL (bez zewn.) |
-| load_types | 3 | 100 % | 0 | 3 | 0 | PRODUCTION_READY |
+| ptpiree_generator_certificates | 6887 | — | 6887 | 0 | 0 | FIELD_COMPLETE_SOURCE_VERIFIED |
+| transformer_types | 192 | 100 % | 37 | 0 | 0 | FIELD_COMPLETE_ZRODLA_MIESZANE |
+| converter_types | 176 | 100 % | 1 | 0 | 175 | FIELD_COMPLETE_ZRODLA_MIESZANE |
+| inverter_types | 176 | 100 % | 1 | 0 | 175 | FIELD_COMPLETE_ZRODLA_MIESZANE |
+| pv_inverter_types | 66 | 100 % | 1 | 0 | 65 | FIELD_COMPLETE_ZRODLA_MIESZANE |
+| bess_inverter_types | 64 | 100 % | 0 | 0 | 64 | FIELD_COMPLETE_BEZ_ZRODLA_ZEWNETRZNEGO |
+| cable_types | 63 | 100 % | 58 | 4 | 1 | FIELD_COMPLETE_ZRODLA_MIESZANE |
+| lv_breaker_mcb_types | 60 | 100 % | 60 | 0 | 0 | FIELD_COMPLETE_SOURCE_VERIFIED |
+| mv_apparatus_types | 48 | 100 % | 20 | 0 | 0 | FIELD_COMPLETE_ZRODLA_MIESZANE |
+| switch_equipment_types | 48 | 100 % | 20 | 0 | 0 | FIELD_COMPLETE_ZRODLA_MIESZANE |
+| lv_fuse_link_types | 30 | 100 % | 30 | 0 | 0 | FIELD_COMPLETE_SOURCE_VERIFIED |
+| line_types | 26 | 100 % | 25 | 0 | 1 | FIELD_COMPLETE_ZRODLA_MIESZANE |
+| source_system_types | 22 | 100 % | 0 | 22 | 0 | FIELD_COMPLETE_SOURCE_VERIFIED |
+| lv_apparatus_types | 18 | 100 % | 15 | 0 | 0 | FIELD_COMPLETE_ZRODLA_MIESZANE |
+| lv_cable_types | 17 | 100 % | 17 | 0 | 0 | FIELD_COMPLETE_SOURCE_VERIFIED |
+| vt_types | 13 | 100 % | 13 | 0 | 0 | FIELD_COMPLETE_SOURCE_VERIFIED |
+| ct_types | 12 | 100 % | 12 | 0 | 0 | FIELD_COMPLETE_SOURCE_VERIFIED |
+| protection_device_types | 12 | 100 % | 0 | 0 | 12 | FIELD_COMPLETE_BEZ_ZRODLA_ZEWNETRZNEGO |
+| surge_arrester_types | 12 | 100 % | 12 | 0 | 0 | FIELD_COMPLETE_SOURCE_VERIFIED |
+| protection_curves | 8 | — | 8 | 0 | 0 | FIELD_COMPLETE_SOURCE_VERIFIED |
+| protection_setting_templates | 8 | — | 8 | 0 | 0 | FIELD_COMPLETE_SOURCE_VERIFIED |
+| shunt_capacitor_types | 5 | 100 % | 0 | 0 | 5 | FIELD_COMPLETE_BEZ_ZRODLA_ZEWNETRZNEGO |
+| load_types | 3 | 100 % | 0 | 3 | 0 | FIELD_COMPLETE_SOURCE_VERIFIED |
 
-**Kompletność pól wymaganych wynosi 100 % w KAŻDEJ rodzinie.** Schemat jest
-pełny; różnicuje je PROWENIENCJA, nie braki danych.
+**Kompletność pól wymaganych wynosi 100 % w KAŻDEJ rodzinie** — licząc PER
+ZDOLNOŚĆ, którą rodzina zasila, i biorąc NAJGORSZĄ z nich (korekta po recenzji:
+wcześniej był jeden wskaźnik na rodzinę, więc brak pola potrzebnego wyłącznie
+modelowi strat rozpływał się w średniej).
+
+**KOMPLET PÓL TO NIE KWALIFIKACJA PRODUKCYJNA.** Klasy nazywają się teraz
+`FIELD_COMPLETE_*` właśnie dlatego: mówią o kompletności pól oprogramowania i o
+klasie proweniencji, a NIE o zweryfikowaniu danych wobec dokumentu producenta.
+Żadna rodzina nie jest tu oznaczona jako PRODUCTION_QUALIFIED — takiej etykiety
+nie przyznaje sobie pomiar wewnętrzny.
 
 ### 3.1 Klasy proweniencji
 

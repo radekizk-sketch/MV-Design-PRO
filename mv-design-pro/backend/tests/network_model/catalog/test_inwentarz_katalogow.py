@@ -44,11 +44,41 @@ def test_kazde_pole_wymagane_istnieje_w_kontrakcie(rodzina: str) -> None:
     pola = _pola_kontraktu(f"list_{rodzina}")
     if not pola:
         pytest.skip(f"rodzina '{rodzina}' jest pusta — nie ma z czym porównać")
-    nieznane = sorted(set(WYMAGANE[rodzina]) - pola)
-    assert not nieznane, (
-        f"Miernik pyta rodzinę '{rodzina}' o pola spoza kontraktu: {nieznane}. "
-        f"Dostępne: {sorted(pola)}"
+    for zdolnosc, wymagane_pola in WYMAGANE[rodzina].items():
+        nieznane = sorted(set(wymagane_pola) - pola)
+        assert not nieznane, (
+            f"Miernik pyta rodzinę '{rodzina}' (zdolność {zdolnosc}) o pola spoza "
+            f"kontraktu: {nieznane}. Dostępne: {sorted(pola)}"
+        )
+
+
+def test_transformator_ma_rozdzielone_wymagania_rozplywu_i_modelu_strat() -> None:
+    """LUKA METRYKI Z RECENZJI (P1, dodatkowe znalezisko) — zamknięta strukturalnie.
+
+    Recenzent pokazał, że `WYMAGANE["transformer_types"]` pomijało ``p0_kw`` i
+    ``i0_percent``, a testy niezmienników pomijają wartości nieobecne — więc
+    rekord z dokumentem zewnętrznym, ale bez tych pól, mógł wyjść
+    PRODUCTION_READY, choć solver strat nie miałby z czego liczyć
+    (`_klasyfikacja(1, 100, {"DOKUMENT_ZEWNETRZNY": 1}) -> "PRODUCTION_READY"`).
+
+    Przypisania są WYPROWADZONE Z KONSUMENTÓW, nie z nazw:
+    ``p0_kw`` czyta `equipment_checks/transformer_losses.py` (brak albo zero →
+    wynik NIEDOSTEPNY), ``i0_percent`` — `solver_input/builder.py` (gałąź
+    magnesująca rozpływu), ``uk_percent``/``pk_kw`` — impedancja, czyli rozpływ
+    ORAZ zwarcie.
+
+    Transformator MOŻE być gotowy dla rozpływu i niegotowy dla modelu strat —
+    macierz ma to pokazać, a nie uśrednić.
+    """
+    zdolnosci = WYMAGANE["transformer_types"]
+    assert "p0_kw" in zdolnosci["LOSS_MODEL"], "model strat bez P0 nie ma z czego liczyć"
+    assert "pk_kw" in zdolnosci["LOSS_MODEL"]
+    assert "i0_percent" in zdolnosci["LOAD_FLOW"], "gałąź magnesująca rozpływu bez I0"
+    assert "p0_kw" not in zdolnosci["SHORT_CIRCUIT"], (
+        "P0 nie wchodzi do impedancji zwarciowej — wymaganie go tam byłoby "
+        "blokadą bez przyczyny (recenzja zakazuje wymuszania pól w cudzych zdolnościach)"
     )
+    assert "i0_percent" not in zdolnosci["SHORT_CIRCUIT"]
 
 
 @pytest.mark.parametrize("rodzina", sorted(WYPROWADZALNE))
@@ -96,14 +126,31 @@ def test_kazda_rodzina_ma_deklaracje_pol_wymaganych() -> None:
     """Nowa rodzina katalogu MUSI dostać wpis — także pusty, ale ŚWIADOMIE pusty.
 
     Brak wpisu dawałby `kompletnosc_pct = None`, czyli rodzinę nieocenianą w
-    macierzy. Pusta krotka jest deklaracją „ta rodzina nie zasila obliczeń",
+    macierzy. Pusty słownik jest deklaracją „ta rodzina nie zasila obliczeń",
     a nie przeoczeniem.
     """
     brak_deklaracji = sorted(set(zmierz()) - set(WYMAGANE))
     assert not brak_deklaracji, (
         f"Rodziny bez deklaracji pól wymaganych (dopisz wpis w WYMAGANE, także "
-        f"pustą krotką, jeśli rodzina nie zasila obliczeń): {brak_deklaracji}"
+        f"pustym słownikiem, jeśli rodzina nie zasila obliczeń): {brak_deklaracji}"
     )
+
+
+def test_klasyfikacja_nie_uzywa_juz_etykiety_production_ready() -> None:
+    """KOMPLET PÓL ≠ ZWERYFIKOWANA DANA INŻYNIERSKA (§8 zlecenia remediacji).
+
+    Etykieta „PRODUCTION_READY" zlepiała dwie różne rzeczy: kompletność pól
+    oprogramowania i weryfikację danych wobec dokumentu. Recenzja wskazała to
+    wprost. Klasy nazywają się teraz `FIELD_COMPLETE_*`, a kwalifikacji
+    produkcyjnej NIE przyznaje sobie żaden pomiar wewnętrzny.
+    """
+    klasy = {str(dane.get("klasa")) for dane in zmierz().values()}
+    assert (
+        "PRODUCTION_READY" not in klasy
+    ), "Miernik znów twierdzi, że sam ustala gotowość produkcyjną: " + str(sorted(klasy))
+    assert all(
+        k.startswith("FIELD_COMPLETE_") or k in {"DATA_INCOMPLETE", "MISSING"} for k in klasy
+    ), sorted(klasy)
 
 
 def test_zaden_katalog_nie_ma_zduplikowanych_identyfikatorow() -> None:

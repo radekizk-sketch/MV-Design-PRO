@@ -17,6 +17,26 @@ dokładania reguł „uniwersalnych" tam, gdzie norma dopuszcza wyjątki. Dlateg
 np. ``I_n > 0`` NIE obejmuje uziemnika (nie ma prądu ciągłego z definicji), a
 ``Icu`` sprawdzamy WYŁĄCZNIE tam, gdzie rodzaj aparatu ma zdolność wyłączania
 zwarć — rozłącznik i odłącznik jej nie mają i brak wartości nie jest tam luką.
+
+PRZEKLASYFIKOWANIE PO RECENZJI NIEZALEŻNEJ (§12–13 remediacji). Pięć reguł było
+TWARDYMI bramkami bez podstawy w konieczności fizycznej ani w normie. Recenzent
+zakwestionował je co do zakresu i miał rację: reguła, która dziś przechodzi na
+wszystkich rekordach, nie staje się przez to prawem — odrzuciłaby pierwszy
+poprawny rekord spoza dotychczasowego zbioru.
+
+    R0 >= R1          TWARDA -> WIARYGODNOSC
+    P0 < Pk           TWARDA -> WIARYGODNOSC
+    Icw <= Icu (SN)   TWARDA -> WIARYGODNOSC
+    0 < R/X < 1       TWARDA -> WIARYGODNOSC
+    0 < i0% < 10      TWARDA -> WIARYGODNOSC
+
+Uzasadnienie każdej zmiany, z pomiarem, siedzi w
+`network_model.catalog.niezmienniki_katalogu.PRZEKLASYFIKOWANE` — nie w tym
+komentarzu, żeby dało się je czytać z kodu produkcyjnego.
+
+REGUŁA WIARYGODNOŚCI NIE ZNIKA — zmienia skutek. Nadal jest mierzona i nadal
+raportuje odstępstwa; po prostu melduje „do przeglądu", a nie „odmowa". Ukrycie
+jej byłoby utratą sygnału, a utrzymanie jako bramki — fałszywą pewnością.
 """
 
 from __future__ import annotations
@@ -25,6 +45,10 @@ from collections.abc import Callable, Iterable
 from typing import Any
 
 import pytest
+from network_model.catalog.niezmienniki_katalogu import (
+    PRZEKLASYFIKOWANE,
+    KlasaNiezmiennika,
+)
 from network_model.catalog.repository import get_default_mv_catalog
 
 #: Zapas na zaokrąglenia przy porównaniach „nie większe niż" — dane katalogowe
@@ -123,14 +147,26 @@ def test_aparatura_sn_ma_dodatnie_napiecie_i_prad() -> None:
     )
 
 
-def test_wytrzymalosc_krotkotrwala_sn_nie_przekracza_zdolnosci_wylaczalnej() -> None:
-    """``Icw ≤ Icu`` dla aparatów, które zdolność wyłączalną w ogóle mają."""
+def test_wytrzymalosc_krotkotrwala_sn_wobec_zdolnosci_wylaczalnej_WIARYGODNOSC() -> None:
+    """``Icw ≤ Icu`` — OSTRZEŻENIE, nie odmowa (przeklasyfikowane po recenzji).
+
+    Icw (wytrzymałość krótkotrwała) i Icu (zdolność wyłączalna) to RÓŻNE
+    wielkości znamionowe, a poprzednia reguła porównywała je globalnie przez
+    rodziny aparatów o różnym zakresie zastosowania normy. Pomiar: 28 par w
+    katalogu, WSZYSTKIE równe — reguła i tak niczego dziś nie rozstrzyga, a
+    mogłaby odrzucić poprawny rekord aparatu, dla którego norma tej relacji nie
+    narzuca.
+
+    Test RAPORTUJE odstępstwa (żeby sygnał nie zniknął), ale ich nie blokuje.
+    """
     mv = get_default_mv_catalog().list_mv_apparatus_types()
-    _sprawdz(
+    odstepstwa = _naruszenia(
         [a for a in mv if a.i_th_ka is not None and a.breaking_capacity_ka],
         lambda a: a.i_th_ka <= a.breaking_capacity_ka * LUZ,
-        "Icw <= Icu",
     )
+    assert PRZEKLASYFIKOWANE["Icw <= Icu (SN)"][0] is KlasaNiezmiennika.WIARYGODNOSC
+    if odstepstwa:
+        print(f"DO PRZEGLĄDU (Icw > Icu, relacja nienormowana globalnie): {odstepstwa}")
 
 
 # ---------------------------------------------------------------------------
@@ -146,26 +182,43 @@ def test_transformatory_maja_spojna_tabliczke() -> None:
     """
     tr = get_default_mv_catalog().list_transformer_types()
     _sprawdz(tr, lambda t: t.uk_percent > 0, "uk% > 0")
-    _sprawdz(tr, lambda t: t.uk_percent < 30, "uk% < 30 (kontrola jednostki)")
     _sprawdz(tr, lambda t: t.rated_power_mva > 0, "Sn > 0")
     _sprawdz(tr, lambda t: t.voltage_hv_kv > t.voltage_lv_kv, "U_HV > U_LV")
     _sprawdz(tr, lambda t: t.tap_min <= t.tap_max, "tap_min <= tap_max")
 
 
-def test_straty_transformatora_zachowuja_relacje_fizyczna() -> None:
-    """``P0 < Pk`` — straty jałowe są rzędy wielkości niższe od obciążeniowych.
+def test_straty_transformatora_sa_dodatnie() -> None:
+    """``Pk > 0`` — strata obciążeniowa zerowa opisuje transformator bezstratny.
 
-    Odwrócenie tej pary zwykle oznacza zamienione kolumny przy imporcie i daje
-    zawyżone straty sieci w każdym rozpływie.
+    To zostaje TWARDE: zerowa strata obciążeniowa nie jest nietypową konstrukcją,
+    tylko brakiem danej podanym jako liczba.
     """
     tr = get_default_mv_catalog().list_transformer_types()
-    _sprawdz([t for t in tr if t.pk_kw], lambda t: t.pk_kw > 0, "Pk > 0")
-    _sprawdz([t for t in tr if t.p0_kw and t.pk_kw], lambda t: t.p0_kw < t.pk_kw, "P0 < Pk")
-    _sprawdz(
-        [t for t in tr if t.i0_percent],
-        lambda t: 0 < t.i0_percent < 10,
-        "0 < i0% < 10 (kontrola jednostki)",
-    )
+    _sprawdz([t for t in tr if t.pk_kw is not None], lambda t: t.pk_kw > 0, "Pk > 0")
+
+
+def test_relacje_strat_i_pradu_jalowego_WIARYGODNOSC() -> None:
+    """``P0 < Pk`` i ``0 < i0% < 10`` — OSTRZEŻENIA, nie odmowy.
+
+    PRZEKLASYFIKOWANE PO RECENZJI. ``P0 < Pk`` jest relacją typową dla
+    transformatorów rozdzielczych (pomiar: P0/Pk od 0,11 do 0,22), ale nie
+    koniecznością matematyczną dla każdej rodziny konstrukcyjnej. ``i0% < 10``
+    było kontrolą jednostki, nie wielkością normowaną, i nie obejmuje
+    transformatorów specjalnych.
+
+    Odwrócenie pary P0/Pk zwykle oznacza zamienione kolumny przy imporcie — i o
+    tym ma powiedzieć OSTRZEŻENIE, a nie odmowa wczytania pozycji.
+    """
+    tr = get_default_mv_catalog().list_transformer_types()
+    assert PRZEKLASYFIKOWANE["P0 < Pk"][0] is KlasaNiezmiennika.WIARYGODNOSC
+    assert PRZEKLASYFIKOWANE["0 < i0% < 10"][0] is KlasaNiezmiennika.WIARYGODNOSC
+    for opis, pozycje, warunek in (
+        ("P0 < Pk", [t for t in tr if t.p0_kw and t.pk_kw], lambda t: t.p0_kw < t.pk_kw),
+        ("0 < i0% < 10", [t for t in tr if t.i0_percent], lambda t: 0 < t.i0_percent < 10),
+    ):
+        odstepstwa = _naruszenia(pozycje, warunek)
+        if odstepstwa:
+            print(f"DO PRZEGLĄDU ({opis}): {odstepstwa}")
 
 
 # ---------------------------------------------------------------------------
@@ -215,11 +268,18 @@ def test_przewody_maja_dodatnie_parametry_i_spojne_temperatury(akcesor: str) -> 
     _sprawdz(przewody, lambda t: (t.r_ohm_per_km or 0) > 0, "R > 0")
     _sprawdz(przewody, lambda t: (t.x_ohm_per_km or 0) > 0, "X > 0")
     _sprawdz(przewody, lambda t: (t.cross_section_mm2 or 0) > 0, "S > 0")
-    _sprawdz(
+    # ``R0 >= R1`` PRZEKLASYFIKOWANE na WIARYGODNOSC — patrz nagłówek pliku i
+    # `PRZEKLASYFIKOWANE`. Rezystancja składowej zerowej zależy od konstrukcji
+    # żyły powrotnej, ekranu i drogi powrotu przez ziemię; dla konstrukcji z
+    # powrotem ziemnym R0 jest zwykle kilkukrotnie większe (pomiar: 3,0–6,5),
+    # ale nie jest to nierówność uniwersalna.
+    assert PRZEKLASYFIKOWANE["R0 >= R1"][0] is KlasaNiezmiennika.WIARYGODNOSC
+    odstepstwa_r0 = _naruszenia(
         [t for t in przewody if t.r0_ohm_per_km],
         lambda t: t.r0_ohm_per_km >= t.r_ohm_per_km,
-        "R0 >= R1",
     )
+    if odstepstwa_r0:
+        print(f"DO PRZEGLĄDU (R0 < R1 — sprawdź konstrukcję drogi powrotnej): {odstepstwa_r0}")
     _sprawdz(
         [
             t
@@ -237,12 +297,32 @@ def test_przewody_maja_dodatnie_parametry_i_spojne_temperatury(akcesor: str) -> 
 # ---------------------------------------------------------------------------
 
 
-def test_zrodla_systemowe_maja_sensowna_moc_zwarciowa() -> None:
-    """``Sk3 > 0`` i ``0 < R/X < 1`` — sieć SN jest zdecydowanie indukcyjna."""
+def test_zrodla_systemowe_maja_dodatnia_moc_zwarciowa() -> None:
+    """``Sk3 > 0``, ``Ik3 > 0``, ``R/X > 0`` — wielkości niedodatnie nie opisują źródła.
+
+    GÓRNA granica ``R/X < 1`` PRZEKLASYFIKOWANA (patrz test niżej): dodatniość
+    zostaje twarda, bo zerowy albo ujemny stosunek R/X nie jest nietypowym
+    równoważnikiem, tylko błędem danej.
+    """
     src = get_default_mv_catalog().list_source_system_types()
     _sprawdz(src, lambda s: s.sk3_mva > 0, "Sk3 > 0")
-    _sprawdz(src, lambda s: 0 < s.rx_ratio < 1, "0 < R/X < 1")
+    _sprawdz(src, lambda s: s.rx_ratio > 0, "R/X > 0")
     _sprawdz([s for s in src if s.ik3_ka], lambda s: s.ik3_ka > 0, "Ik3 > 0")
+
+
+def test_stosunek_rx_zrodla_WIARYGODNOSC() -> None:
+    """``R/X < 1`` — OSTRZEŻENIE, nie odmowa (przeklasyfikowane po recenzji).
+
+    Umowa równoważna sieci SN jest zwykle silnie indukcyjna (pomiar: 0,08–0,12),
+    ale równoważnik rezystancyjny albo specjalnie zdefiniowany może mieć
+    ``R/X ≥ 1``. Ograniczenie należy do zakresu produktu, nie do fizyki — a
+    dopóki zakres nie jest zadeklarowany, twarda bramka jest nieuzasadniona.
+    """
+    src = get_default_mv_catalog().list_source_system_types()
+    assert PRZEKLASYFIKOWANE["0 < R/X < 1"][0] is KlasaNiezmiennika.WIARYGODNOSC
+    odstepstwa = _naruszenia(src, lambda s: s.rx_ratio < 1)
+    if odstepstwa:
+        print(f"DO PRZEGLĄDU (R/X >= 1 — równoważnik rezystancyjny?): {odstepstwa}")
 
 
 def test_zabezpieczenia_nn_maja_dodatnie_prady_i_zdolnosci() -> None:
