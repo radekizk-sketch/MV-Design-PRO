@@ -43,9 +43,27 @@ def _prosument(
         schema=TemplateSchema(
             transformer_options=TR_OPTIONS_SMALL,
             sn_bays_count=TemplateParamInt(
-                default=1, min_value=1, max_value=2, label_pl="Liczba pól SN"
+                default=2, min_value=2, max_value=3, label_pl="Liczba pól SN"
             ),
-            sn_bay_roles=(BayRoleSpec(role="IN", label_pl="Pole liniowe IN"),),
+            # POLE TRANSFORMATOROWE (rola TR) — zmierzony brak, nie kosmetyka.
+            # Stacja z transformatorem przyłączonym do szyny SN BEZ pola roli
+            # `TR` jest konfiguracją niekompletną: domena melduje `W041`
+            # (`enm/pole_transformatorowe.py` — jedno źródło predykatu), a
+            # bramka dokumentacji wykonawczej ją odrzuca. Odejście od szyny
+            # rozdzielni realizuje się POLEM, bo bez aparatu w polu nie da się
+            # ani odłączyć transformatora do prac, ani zbudować selektywności
+            # między nim a szyną.
+            #
+            # POMIAR 2026-09-11 (apply każdego z 57 szablonów przez API,
+            # `engineering-readiness`): W041 dotyczył 15 szablonów w trzech
+            # kategoriach — `prosument_pv` (6), `slupowa` (6), `sekcyjna` (3).
+            # Pozostałe 42 mają pole TR albo transformator blokowy toru DER
+            # (`Generator.blocking_transformer_ref` — jawna, zmierzona granica
+            # reguły, nie cichy wyjątek).
+            sn_bay_roles=(
+                BayRoleSpec(role="IN", label_pl="Pole liniowe IN"),
+                BayRoleSpec(role="TR", label_pl="Pole transformatorowe"),
+            ),
             sn_bay_protection_options=PROT_FEEDER_OPTIONS,
             sn_bay_apparatus_options=SN_APPARATUS_OPTIONS,
             nn_feeders_count=TemplateParamInt(
