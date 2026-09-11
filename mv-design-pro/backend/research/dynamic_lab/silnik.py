@@ -19,7 +19,7 @@ a przez nie prądy, moce i pochodne wszystkich urządzeń.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 import numpy as np
 from numpy.typing import NDArray
@@ -131,6 +131,10 @@ class SilnikRMS:
         # zbieżności Newtona na układzie sztywnym. To był realny defekt tego
         # laboratorium, znaleziony pomiarem, nie przeglądem kodu.
         self._v_zatwierdzone: NDArray[np.complex128] | None = None
+        self._v_startowe: NDArray[np.complex128] | None = None
+        """Ziarno Newtona z rozpływu tej inicjalizacji — przywracane na starcie
+        KAŻDEGO biegu. Zależy wyłącznie od (model, moce_zadane), nigdy od
+        poprzedniej symulacji."""
 
     # -- warstwa algebraiczna -------------------------------------------------
 
@@ -207,6 +211,11 @@ class SilnikRMS:
             start[idx[szyna]] = v_zadane
         wynik = self.solver_sieci.rozwiaz(wstrzykniecia, start)
         self._v_zatwierdzone = wynik.napiecia
+        # ZIARNO BIEGU, nie pozostałość po biegu. Rozwiązanie rozpływu jest
+        # wyprowadzone z (model, moce_zadane), więc jest legalnym punktem
+        # startowym Newtona dla KAŻDEGO biegu z tej inicjalizacji — w
+        # przeciwieństwie do napięć zostawionych przez POPRZEDNIĄ symulację.
+        self._v_startowe = wynik.napiecia.copy()
         return wynik.napiecia
 
     def _urzadzenie(self, ref: str) -> object:
@@ -407,11 +416,56 @@ class SilnikRMS:
         czas_koncowy_s: float,
         harmonogram: HarmonogramZdarzen | None = None,
     ) -> WynikDynamiczny:
-        """Przeprowadź symulację i zwróć kandydat kontraktu wyniku."""
+        """Przeprowadź symulację i zwróć kandydat kontraktu wyniku.
+
+        KAŻDY BIEG ZACZYNA OD STANU MODELU, NIE OD STANU POPRZEDNIEGO BIEGU.
+
+        Defekt (P0, runda 3): silnik trzymał stan mutowalny MIĘDZY biegami.
+        Zdarzenie wołało ``solver_sieci.ustaw_topologie(...)``, a ``symuluj``
+        zerowało wyłącznie liczniki — więc topologia po ostatnim zdarzeniu i
+        ostatnie zatwierdzone napięcia przechodziły do kolejnego biegu.
+
+        ZMIERZONY SKUTEK (SMIB, rk4, dt=5 ms). Bieg B kończy się W TRAKCIE
+        zwarcia, po nim bieg A BEZ ŻADNYCH ZDARZEŃ na zdrowej sieci:
+
+            U_GEN(A po B)        = 0,3213 … 0,3374 p.u.
+            U_GEN(A świeży)      = 1,0121 p.u.
+            max|różnica|         = 6,908e-01 p.u.
+
+        a wynik biegu A deklarował przy tym ``odcisk_topologii`` sieci ZDROWEJ,
+        bo odcisk czytał ``self.model.topologia``, podczas gdy solver liczył na
+        zmutowanej. Wynik nie był więc tylko błędny — twierdził, że policzył
+        inną sieć niż policzył. Ten sam mechanizm wywrócił
+        ``test_gfm_ogranicznik`` w CI (residuum 6,890e-01), choć lokalnie plik
+        uruchamiany osobno przechodził: w pełnym biegu kolejność jest inna.
+
+        Dla danego ``(model, wejście, scenariusz)`` wynik musi być funkcją
+        WYŁĄCZNIE tych danych, a nie historii obiektu Pythona.
+
+        ZAKRES RESETU JEST WĄSKI I TO JEST ISTOTNE. Przywracamy topologię modelu
+        oraz ziarno Newtona Z ROZPŁYWU TEJ INICJALIZACJI (`_v_startowe`), a nie
+        „nic". Pierwsza wersja tej naprawy zerowała ziarno do ``None``, czyli
+        wyrzucała też wynik rozpływu — i tym samym zamieniała start z punktu
+        pracy na start płaski. Skutek był zmierzony:
+        ``test_ogranicznik_nieaktywny_nie_zmienia_ani_jednej_probki`` przestawał
+        przechodzić, bo dłuższa droga Newtona nagłaśniała różnicę zaokrągleń
+        między ścieżką z ogranicznikiem a bez niego, choć ogranicznik nigdy nie
+        wchodził w nasycenie. Reset ma usuwać stan POPRZEDNIEGO BIEGU, a nie
+        dane wyprowadzone z wejścia TEGO biegu.
+
+        MECHANIZM PRZEJŚCIOWY, NIE DOCELOWY: bieg dostaje własną KOPIĘ topologii
+        i własne ziarno. Docelowo model powinien być niemutowalny, a stan biegu —
+        osobnym obiektem (`RunState`); to jest decyzja architektoniczna dla
+        właściciela.
+        """
         harmonogram = harmonogram or HarmonogramZdarzen([])
         self._ewaluacje = 0
         self._maks_residuum = 0.0
         self._maks_iteracji_sieci = 0
+        self._v_zatwierdzone = (
+            None if self._v_startowe is None else self._v_startowe.copy()
+        )
+        self.solver_sieci.ustaw_topologie(self._kopia_topologii_modelu())
 
         norma_t0 = self.norma_pochodnej(x0)
         siatka = self.siatka_czasu(czas_koncowy_s, harmonogram)
@@ -616,6 +670,21 @@ class SilnikRMS:
                         jednostka="Hz",
                         przestrzen=PrzestrzenSygnalu.WYJSCIE,
                     )
+
+    def _kopia_topologii_modelu(self) -> TopologiaSieci:
+        """Świeża, niezależna kopia topologii modelu na potrzeby JEDNEGO biegu.
+
+        ``dataclasses.replace`` nie wystarcza: ``TopologiaSieci`` niesie listy i
+        słownik, które zostałyby WSPÓŁDZIELONE z modelem, więc zdarzenie
+        w jednym biegu mutowałoby definicję modelu widzianą przez następny.
+        """
+        t = self.model.topologia
+        return replace(
+            t,
+            galezie=list(t.galezie),
+            boczniki=list(t.boczniki),
+            szyny_sztywne=dict(t.szyny_sztywne),
+        )
 
     def _odcisk_topologii(self) -> str:
         """Odcisk topologii — KOMPLET tego, co wchodzi do ``Ybus``, plus baza mocy.

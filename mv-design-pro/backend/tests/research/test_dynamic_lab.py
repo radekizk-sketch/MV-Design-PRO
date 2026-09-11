@@ -26,6 +26,7 @@ from dynamic_lab.benchmarki import (
 )
 from dynamic_lab.calkowanie import INTEGRATORY
 from dynamic_lab.frt import (
+    DziedzinaOdbudowy,
     KryteriumOdbudowyMocy,
     ObwiedniaFrt,
     PrzebiegNapiecia,
@@ -426,11 +427,19 @@ def test_czas_odbudowy_mocy_zalezy_od_przebiegu() -> None:
 
     Intencja testu zachowana z wersji sprzed pakietu C; zmieniło się API, bo
     „pierwsza próbka powyżej progu" przestała być definicją odbudowy (C5).
-    Tutaj ``czas_utrzymania_s=0`` odtwarza dawną semantykę ŚWIADOMIE, żeby
-    porównanie stałych czasowych mierzyło to samo, co mierzyło wcześniej.
+    Tutaj ``czas_utrzymania_s=0`` odtwarza dawną semantykę ŚWIADOMIE — od rundy 3
+    wymaga to jawnej deklaracji ``dopuszcza_przekroczenie_chwilowe``, żeby zero
+    nie mogło wejść jako wartość domyślna. Porównanie stałych czasowych mierzy
+    dzięki temu dokładnie to, co mierzyło wcześniej.
     """
     czas = np.linspace(0.0, 2.0, 201)
-    bez_utrzymania = KryteriumOdbudowyMocy(prog_wzgledny=0.9, czas_utrzymania_s=0.0)
+    bez_utrzymania = KryteriumOdbudowyMocy(
+        prog_wzgledny=0.9,
+        czas_utrzymania_s=0.0,
+        dziedzina=DziedzinaOdbudowy.GENERACJA,
+        minimalna_moc_odniesienia_pu=0.05,
+        dopuszcza_przekroczenie_chwilowe=True,
+    )
 
     def _ocena(tau: float):
         moc = 1.0 - 0.8 * np.exp(-(czas - 0.6) / tau) * (czas >= 0.6)
@@ -470,7 +479,12 @@ def test_brak_odbudowy_daje_werdykt_negatywny() -> None:
     )
     ocena = ocen_odbudowe_mocy(
         przebieg,
-        KryteriumOdbudowyMocy(prog_wzgledny=0.9, czas_utrzymania_s=0.1),
+        KryteriumOdbudowyMocy(
+            prog_wzgledny=0.9,
+            czas_utrzymania_s=0.1,
+            dziedzina=DziedzinaOdbudowy.GENERACJA,
+            minimalna_moc_odniesienia_pu=0.05,
+        ),
         moc_przed_zaklocaniem_pu=1.0,
         chwila_wylaczenia_s=0.6,
     )
