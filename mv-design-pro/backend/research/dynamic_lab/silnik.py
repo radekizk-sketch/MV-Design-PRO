@@ -131,6 +131,9 @@ class SilnikRMS:
         # zbieżności Newtona na układzie sztywnym. To był realny defekt tego
         # laboratorium, znaleziony pomiarem, nie przeglądem kodu.
         self._v_zatwierdzone: NDArray[np.complex128] | None = None
+        self._moce_zadane: dict[str, complex] = {}
+        """Dyspozycja z ostatniej inicjalizacji — część zagadnienia początkowego,
+        więc część tożsamości biegu."""
         self._v_startowe: NDArray[np.complex128] | None = None
         """Ziarno Newtona z rozpływu tej inicjalizacji — przywracane na starcie
         KAŻDEGO biegu. Zależy wyłącznie od (model, moce_zadane), nigdy od
@@ -244,6 +247,10 @@ class SilnikRMS:
              ``ẋ = 0``, a wstrzyknięcie do sieci było PRZYCIĘTE. Punkt startowy
              opisywał wtedy inny punkt pracy niż rozpływ i nic tego nie zgłaszało.
         """
+        # Dyspozycja jest WEJŚCIEM zagadnienia początkowego, więc wchodzi do
+        # tożsamości biegu. Bez niej `P_G = 0,2` i `P_G = 0,9` na tej samej sieci
+        # dawały ten sam odcisk scenariusza, choć to dwa różne zagadnienia.
+        self._moce_zadane = {ref: complex(moc) for ref, moc in moce_zadane.items()}
         v0 = self.rozplyw_ustalony(moce_zadane)
         idx = self.model.topologia.indeks
         x0 = np.zeros(self.uklad.dlugosc, dtype=np.float64)
@@ -462,9 +469,7 @@ class SilnikRMS:
         self._ewaluacje = 0
         self._maks_residuum = 0.0
         self._maks_iteracji_sieci = 0
-        self._v_zatwierdzone = (
-            None if self._v_startowe is None else self._v_startowe.copy()
-        )
+        self._v_zatwierdzone = None if self._v_startowe is None else self._v_startowe.copy()
         self.solver_sieci.ustaw_topologie(self._kopia_topologii_modelu())
 
         norma_t0 = self.norma_pochodnej(x0)
@@ -595,7 +600,7 @@ class SilnikRMS:
             modele=self._tozsamosci(),
             zdarzenia=tuple(zastosowane),
             diagnostyka=diagnostyka,
-            odcisk_scenariusza=self._odcisk_scenariusza(czas_koncowy_s, harmonogram),
+            odcisk_scenariusza=self._odcisk_scenariusza(czas_koncowy_s, harmonogram, x0),
             odcisk_topologii=self._odcisk_topologii(),
         )
 
@@ -697,7 +702,41 @@ class SilnikRMS:
         """
         return odcisk_topologii(self.model.topologia, s_bazowa_mva=self.model.s_bazowa_mva)
 
-    def _odcisk_scenariusza(self, czas_koncowy_s: float, harmonogram: HarmonogramZdarzen) -> str:
+    def _wejscie_zagadnienia_poczatkowego(self, x0: NDArray[np.float64]) -> dict[str, object]:
+        """Liczbowe WEJŚCIE zagadnienia początkowego: dyspozycja, ``x0``, ``V0``.
+
+        Symulacja dynamiczna rozwiązuje
+
+            ẋ = f(x, y, p, u, t),   0 = g(x, y, p, u, t),   x(0)=x₀, y(0)=y₀
+
+        więc bieg jest wyznaczony dopiero przez KOMPLET tych danych. Poprzednia
+        wersja odcisku scenariusza znała topologię, konfigurację solvera,
+        horyzont i harmonogram — ale ani dyspozycji, ani ``x0``, ani ``V0``. Ta
+        sama sieć przy ``P_G = 0,2`` i ``P_G = 0,9`` dawała więc TEN SAM odcisk,
+        choć to dwa różne zagadnienia dynamiczne.
+
+        Wartości zaokrąglone do 12 cyfr znaczących, żeby odcisk nie zmieniał się
+        od ostatniego bitu reprezentacji przy tym samym zagadnieniu.
+        """
+
+        def _l(wartosc: float) -> float:
+            return float(f"{float(wartosc):.12e}")
+
+        v0 = self.rozwiaz_siec(x0)
+        return {
+            "dyspozycja": {
+                ref: [_l(moc.real), _l(moc.imag)] for ref, moc in sorted(self._moce_zadane.items())
+            },
+            "x0": [_l(v) for v in np.asarray(x0, dtype=np.float64).tolist()],
+            "v0": [[_l(v.real), _l(v.imag)] for v in np.asarray(v0).tolist()],
+        }
+
+    def _odcisk_scenariusza(
+        self,
+        czas_koncowy_s: float,
+        harmonogram: HarmonogramZdarzen,
+        x0: NDArray[np.float64],
+    ) -> str:
         """Odcisk scenariusza — razem z MIGAWKĄ wejścia i nastawami solvera.
 
         Poprzednia wersja brała ``{zdarzenia, krok_s, czas_koncowy_s, integrator}``,
@@ -723,6 +762,7 @@ class SilnikRMS:
             ),
             czas_koncowy_s=float(czas_koncowy_s),
             harmonogram=tuple(harmonogram.zdarzenia),
+            parametry=self._wejscie_zagadnienia_poczatkowego(x0),
         ).odcisk
 
     def _tozsamosci(self) -> tuple[TozsamoscModelu, ...]:

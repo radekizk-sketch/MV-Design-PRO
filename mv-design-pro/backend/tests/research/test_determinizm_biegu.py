@@ -67,9 +67,9 @@ def test_bieg_nie_zalezy_od_historii_silnika(poprzedzajace: str) -> None:
 
     wynik = _bieg_a(silnik, x0)
 
-    assert wynik.odcisk_wyniku() == referencja.odcisk_wyniku(), (
-        f"historia „{poprzedzajace}” zmieniła TOŻSAMOŚĆ wyniku"
-    )
+    assert (
+        wynik.odcisk_wyniku() == referencja.odcisk_wyniku()
+    ), f"historia „{poprzedzajace}” zmieniła TOŻSAMOŚĆ wyniku"
     u = np.array(wynik.sygnal("u_pu", "GEN").wartosci)
     u_ref = np.array(referencja.sygnal("u_pu", "GEN").wartosci)
     assert np.array_equal(u, u_ref), (
@@ -98,9 +98,9 @@ def test_solver_zaczyna_kazdy_bieg_od_topologii_modelu() -> None:
     bocznikow_przed = len(silnik.solver_sieci.topologia.boczniki)
 
     _bieg_b_urwany_w_zwarciu(silnik, x0)
-    assert len(silnik.solver_sieci.topologia.boczniki) == bocznikow_przed + 1, (
-        "test przestałby mierzyć cokolwiek, gdyby zwarcie nie dodało bocznika"
-    )
+    assert (
+        len(silnik.solver_sieci.topologia.boczniki) == bocznikow_przed + 1
+    ), "test przestałby mierzyć cokolwiek, gdyby zwarcie nie dodało bocznika"
 
     _bieg_a(silnik, x0)
     assert len(silnik.solver_sieci.topologia.boczniki) == bocznikow_przed
