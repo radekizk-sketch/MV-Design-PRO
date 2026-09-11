@@ -5151,17 +5151,44 @@ def _build_nn_field_specs(
             main_bindings = kandydat if isinstance(kandydat, dict) else None
         else:
             main_bindings = None
-    nn_field_specs = [
-        _build_field_spec(
-            field_ref=nn_main_ref,
-            name="Wyłącznik główny nN",
-            bay_role="IN",
-            bus_ref=nn_bus_id,
-            tags=["nn_main_breaker"],
-            meta=({"catalog_bindings": main_bindings} if main_bindings else None),
+    # WYŁĄCZNIK GŁÓWNY nN POWSTAJE TYLKO TAM, GDZIE JEST ROZDZIELNICA nN
+    # (dyrektywa właściciela, wariant B+A).
+    #
+    # Do tej zmiany pole `nn_main_breaker` powstawało BEZWARUNKOWO — także dla
+    # stacji generacyjnej z transformatorem blokowym (np. 2,5 MVA / 0,4 kV),
+    # która rozdzielnicy nN NIE MA: falowniki łączą się własnym torem AC, a
+    # `outgoing_feeders_nn_count` takiego szablonu wynosi 0. Wyłącznik główny był
+    # tam elementem WYMYŚLONYM — sprzęt istniał, bo spodziewała się go ścieżka
+    # kodu, a nie dlatego, że zawiera go układ. To jest phantom w rozumieniu
+    # dyrektywy #3 (zero fabrykacji), a jego skutkiem była blokada gotowości
+    # `switch.catalog_ref_missing` na aparacie, którego nie da się poprawnie
+    # dobrać, bo w tej stacji nie ma czego zabezpieczać.
+    #
+    # PREDYKAT PARZYSTY, nie drugi warunek obok: „czy jest rozdzielnica nN"
+    # czytamy z TEGO SAMEGO źródła prawdy, co liczbę odpływów — z jawnie
+    # podanego `outgoing_feeders_nn_count` (patrz docstring wyżej). Rozdzielnica
+    # nN to zbiór odpływów; zero odpływów = brak rozdzielnicy = brak wyłącznika
+    # głównego. Dwa niezależne warunki, które „dziś się zgadzają", byłyby
+    # defektem czekającym na dane brzegowe.
+    #
+    # Strona A dyrektywy zostaje nietknięta: tam, gdzie rozdzielnica JEST,
+    # wyłącznik główny jest realnym obiektem inżynierskim, a jego wiązanie
+    # katalogowe pozostaje warunkiem gotowości — NIE degradujemy go do
+    # ostrzeżenia i NIE wiążemy aparatu niedobranego.
+    liczba_odplywow = max(feeder_count, len(feeders))
+    nn_field_specs = []
+    if liczba_odplywow > 0:
+        nn_field_specs.append(
+            _build_field_spec(
+                field_ref=nn_main_ref,
+                name="Wyłącznik główny nN",
+                bay_role="IN",
+                bus_ref=nn_bus_id,
+                tags=["nn_main_breaker"],
+                meta=({"catalog_bindings": main_bindings} if main_bindings else None),
+            )
         )
-    ]
-    for idx in range(max(feeder_count, len(feeders))):
+    for idx in range(liczba_odplywow):
         feeder_ref = _make_id("stn", station_seed, f"nn_feeder/{idx:03d}")
         feeder_spec = feeders[idx] if idx < len(feeders) else {}
         feeder_meta: dict[str, Any] = {

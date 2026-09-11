@@ -46,10 +46,9 @@ CATALOG_VERSION = "2024.1"
 CABLE_ID = "cable-tfk-yakxs-3x120"
 SOURCE_ID = "src-gpz-15kv-250mva-rx010"
 
-#: Górna granica rodziny „Wyłącznik główny nN" w katalogu APARAT_NN (pomiar 2026-09-11).
-MAKS_WYLACZNIK_GLOWNY_NN_A = 1600.0
-#: Liczba szablonów, których strona nN przekracza tę granicę (pomiar 2026-09-11).
-MIN_SZABLONOW_POZA_KATALOGIEM = 20
+#: Górna granica rodziny „Wyłącznik główny nN" w katalogu APARAT_NN (pomiar
+#: 2026-09-11 po imporcie ABB SACE Emax 2, dokument 1SDC200023D0205).
+MAKS_WYLACZNIK_GLOWNY_NN_A = 4000.0
 
 
 def _binding(namespace: str, item_id: str) -> dict[str, str]:
@@ -185,38 +184,55 @@ def test_kazdy_szablon_deklaruje_transformator() -> None:
     assert not bez_trafo, f"Szablony bez transformatora: {bez_trafo}"
 
 
-def test_rodzina_wylacznikow_glownych_nn_konczy_sie_na_1600A() -> None:
-    """DŁUG NAZWANY, przypięty pomiarem — nie obietnica w dokumencie.
+def test_rodzina_wylacznikow_glownych_nn_siega_4000A() -> None:
+    """DŁUG SPŁACONY, pomiar przypięty dalej — granica rodziny nie może cicho spaść.
 
-    Wyłącznik główny nN dobiera się do prądu znamionowego strony dolnej
-    transformatora ``I_n = S_n / (√3·U_nN)``. Rodzina „Wyłącznik główny nN"
-    (APARAT_NN) kończy się na 1600 A. Szablony sięgają 3608 A (blok 2,5 MVA /
-    0,4 kV), więc dla nich NIE ISTNIEJE pozycja katalogu, którą wolno związać:
+    HISTORIA (żeby nie wrócić). Do 2026-09-11 rodzina „Wyłącznik główny nN"
+    kończyła się na 1600 A, a szablony sięgały 3608 A (blok 2,5 MVA / 0,4 kV).
+    Dla tych szablonów NIE ISTNIAŁA pozycja katalogu, którą wolno związać —
     dobranie mniejszej byłoby fabrykacją aparatu niezdolnego do przewodzenia
-    prądu roboczego. Dlatego droga wiązania wyłącznika głównego nN dla szablonów
-    pozostaje długiem do decyzji właściciela (audyt RUNDA_3, sekcja 4.7), a nie
-    cichym „dobierz największy, jaki jest".
+    prądu roboczego — więc wiązanie zostawało puste, a gotowość zablokowana.
+    Ten test pilnował wtedy SKALI długu.
 
-    Test jest POMIAREM przypiętym do liczby: gdy katalog urośnie, wywali się i
-    zmusi do aktualizacji dokumentu razem z kodem.
+    DŁUG ZAMKNIĘTO IMPORTEM, NIE ZAOKRĄGLENIEM: cztery pozycje 2000/2500/3200/
+    4000 A pochodzą z tabel zamówieniowych ABB SACE Emax 2 (1SDC200023D0205,
+    ed. 2017.01), przypiętych sumą SHA-256 dokumentu i potwierdzonych niezależną
+    tabelą zbiorczą tego samego katalogu — patrz `scripts/import_katalog_abb_emax2.py`
+    i `docs/katalog/zrodla/abb_emax2_1SDC200023D0205.json`.
+
+    Test zostaje jako POMIAR w drugą stronę: usunięcie pozycji albo podmiana
+    rodziny na węższą zaświeci tutaj, zanim zdąży zniknąć dobór w szablonach.
     """
     from network_model.catalog.repository import get_default_mv_catalog
 
     glowne = [
         a
         for a in get_default_mv_catalog().list_lv_apparatus_types()
-        if a.id.startswith("cb_nn_") and not a.id.endswith("_odp")
+        if a.device_kind == "WYLACZNIK_GLOWNY"
     ]
     assert glowne, "Rodzina wyłączników głównych nN zniknęła z katalogu."
-    maks_a = max(float(a.id.removeprefix("cb_nn_").removesuffix("a")) for a in glowne)
+    maks_a = max(float(a.i_n_a) for a in glowne)
     assert (
         maks_a == MAKS_WYLACZNIK_GLOWNY_NN_A
     ), f"Zakres rodziny zmienił się na {maks_a} A — zaktualizuj sekcję 4.6 audytu RUNDA_3."
 
 
-def test_ponad_dwadziescia_szablonow_wykracza_poza_zakres_katalogu(app_client: Any) -> None:
-    """Skala długu z sekcji 4.7, liczona z modelu — nie przepisana z dokumentu."""
-    poza = []
+def test_zaden_szablon_nie_wykracza_poza_zakres_rodziny_wylacznikow_glownych(
+    app_client: Any,
+) -> None:
+    """BRAMKA POKRYCIA: żaden wspierany szablon nie zostaje bez doboru.
+
+    Poprzednia wersja tego testu mierzyła, ILE szablonów wypada poza katalog
+    (było ≥ 20 z 57). Po imporcie Emax 2 właściwym pomiarem jest ZERO — i to
+    jest warunek, nie obserwacja: jeżeli ktoś doda szablon z transformatorem
+    większym niż rodzina, test wywali się ZANIM taki szablon trafi do
+    biblioteki z niemożliwym do związania wyłącznikiem głównym.
+
+    Liczymy z ZMATERIALIZOWANEGO modelu, nie z deklaracji szablonu: dopiero
+    materializacja zna tabliczkę wybranego transformatora, a prąd strony dolnej
+    bierze się z niej, nie z nazwy pozycji.
+    """
+    poza: list[tuple[str, float]] = []
     for template in ALL_TEMPLATES:
         model = _zastosuj(app_client, template.id)
         for tr in model.transformers:
@@ -224,16 +240,18 @@ def test_ponad_dwadziescia_szablonow_wykracza_poza_zakres_katalogu(app_client: A
                 continue
             params = tr.materialized_params or {}
             # Tabliczka bywa w `materialized_params` (materializacja katalogu)
-            # ALBO wprost na rekordzie — czytamy OBA kanały, bo predykat długu
+            # ALBO wprost na rekordzie — czytamy OBA kanały, bo predykat bramki
             # nie może zależeć od tego, którym z nich szablon ją zapisał.
             s_mva = params.get("sn_mva") or getattr(tr, "sn_mva", None)
             u_lv = params.get("ulv_kv") or getattr(tr, "ulv_kv", None)
             if not s_mva or not u_lv:
                 continue
-            if float(s_mva) * 1e6 / (math.sqrt(3) * float(u_lv) * 1e3) > MAKS_WYLACZNIK_GLOWNY_NN_A:
-                poza.append(template.id)
+            prad_a = float(s_mva) * 1e6 / (math.sqrt(3) * float(u_lv) * 1e3)
+            if prad_a > MAKS_WYLACZNIK_GLOWNY_NN_A:
+                poza.append((template.id, round(prad_a)))
                 break
-    assert len(poza) >= MIN_SZABLONOW_POZA_KATALOGIEM, (
-        f"Zmierzono {len(poza)} szablonów poza zakresem katalogu (było ≥"
-        f"{MIN_SZABLONOW_POZA_KATALOGIEM}) — zaktualizuj sekcję 4.6 audytu RUNDA_3."
+    assert not poza, (
+        f"Szablony bez możliwego doboru wyłącznika głównego nN (I_n > "
+        f"{MAKS_WYLACZNIK_GLOWNY_NN_A:.0f} A): {poza}. Rozszerz katalog o "
+        f"zweryfikowane pozycje producenta — NIE wiąż aparatu mniejszego."
     )

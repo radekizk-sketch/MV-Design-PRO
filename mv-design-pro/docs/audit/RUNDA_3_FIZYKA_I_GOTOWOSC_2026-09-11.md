@@ -359,54 +359,94 @@ nie klasę. Teraz klasa zamknięta, pilnuje jej `tests/enm/test_pole_nn_wiazanie
 
 ---
 
-### 4.6 CAŁA biblioteka szablonów stacji nie osiąga gotowości — DECYZJA WŁAŚCICIELA
+### 4.6 Gotowość biblioteki szablonów — dług ZAMKNIĘTY decyzją właściciela „B + A"
 
-Pomiar wyczerpujący (apply KAŻDEGO z 57 szablonów przez API + `engineering-readiness`):
+Pomiar wyczerpujący (apply KAŻDEGO z 57 szablonów przez API + `engineering-readiness`),
+**dwa stany, ten sam skrypt**:
 
-| Zbiór | Liczność | Kody |
-|-------|----------|------|
-| wszystkie szablony | **57/57** | `ready = False` |
-| z `switch.catalog_ref_missing` + `W061` | **57/57** | wyłącznik główny nN bez wiązania (`glowny_meta = None`) |
-| dodatkowo `W041` | 15 | `prosument_pv` (6), `slupowa` (6), `sekcyjna` (3) |
+| Zbiór | Przed (2026-09-11 rano) | Po naprawie |
+|-------|-------------------------|-------------|
+| `ready = True` | **0 / 57** | **31 / 57** |
+| `switch.catalog_ref_missing` | 57 / 57 | 26 / 57 |
+| `W061` (wyłącznik główny nN bez wiązania) | 38 / 57 | 7 / 57 |
+| `W041` (transformator bez pola SN) | 15 / 57 | **0 / 57** |
+| pole `nn_main_breaker` BEZ wiązania | 57 / 57 | **0 / 57** |
 
-**Co naprawione:** `W041` dla wszystkich 15 — stacja z transformatorem na szynie
-SN musi mieć pole roli `TR` (bez aparatu w polu nie da się ani odłączyć
-transformatora do prac, ani zbudować selektywności wobec szyny). Pozostałe 42
-miały pole TR albo transformator blokowy toru DER. Pilnuje
-`tests/api/test_szablony_pole_transformatorowe.py` — **parametryzacja po CAŁEJ
-bibliotece**, mierząca SKUTEK predykatem domeny (`transformatory_bez_pola_sn`),
+**W041** — naprawione dla wszystkich 15 (`prosument_pv` 6, `slupowa` 6,
+`sekcyjna` 3): stacja z transformatorem na szynie SN musi mieć pole roli `TR`,
+bo bez aparatu w polu nie da się ani odłączyć transformatora do prac, ani
+zbudować selektywności wobec szyny. Pilnuje
+`tests/api/test_szablony_pole_transformatorowe.py` — parametryzacja po CAŁEJ
+bibliotece, mierząca SKUTEK predykatem domeny (`transformatory_bez_pola_sn`),
 nie deklarację szablonu; obie legalne drogi (pole TR, blok DER) jednym warunkiem.
 
-**Czego NIE naprawiam i dlaczego.** Wiązanie wyłącznika głównego nN wymaga doboru
-do prądu znamionowego strony dolnej transformatora, `I_n = S_n/(√3·U_nN)`.
-Zmierzony rozrzut biblioteki: **90,9 A … 3608,4 A**. Rodzina „Wyłącznik główny nN"
-w katalogu APARAT_NN kończy się na **1600 A** (`cb_nn_400a/630a/800a/1000a/1250a/1600a`).
-Dla **ponad dwudziestu** szablonów nie istnieje pozycja, którą wolno związać —
-dobranie mniejszej byłoby fabrykacją aparatu niezdolnego do przewodzenia prądu
-roboczego, czyli dokładnie tym, czego zakazuje reguła zero-fabrykacji.
+**Wyłącznik główny nN** — wariant **B + A** (decyzja właściciela), oba człony
+wdrożone:
 
-Głębszy problem jest projektowy: `_build_nn_field_specs` tworzy `nn_main_breaker`
-BEZWARUNKOWO, także dla stacji generacyjnej z transformatorem blokowym 2,5 MVA /
-0,4 kV, która nie ma rozdzielnicy nN — tam sam wyłącznik główny nN jest elementem
-wymyślonym, a nie niedobranym. Trzy rozłączne drogi wyjścia, każda to decyzja
-produktowa:
+* **B — nie tworzymy aparatu, którego układ nie zawiera.** `_build_nn_field_specs`
+  tworzyło `nn_main_breaker` BEZWARUNKOWO, także dla stacji generacyjnej z
+  transformatorem blokowym 2,5 MVA / 0,4 kV, która rozdzielnicy nN NIE MA
+  (falowniki łączą się własnym torem AC, `outgoing_feeders_nn_count = 0`).
+  Tam wyłącznik główny był elementem WYMYŚLONYM — sprzęt istniał, bo spodziewała
+  się go ścieżka kodu. Teraz pole powstaje wyłącznie przy niezerowej liczbie
+  odpływów, a predykat „czy jest rozdzielnica nN" czyta TO SAMO źródło prawdy,
+  co liczba odpływów (reguła predykatów parami). Skutek: 26 stacji blokowych
+  bez fantomu, `W061` z 38 na 7.
+* **A — tam, gdzie rozdzielnica JEST, aparat jest dobierany, nie przyklejany.**
+  `dobierz_wylacznik_glowny_nn` wybiera NAJMNIEJSZĄ pozycję o
+  `I_n ≥ S_n/(√3·U_nN)` w klasie napięciowej `U_e ≥ U_szyny`. Przewymiarowanie
+  psuje selektywność wobec odpływów, więc „największy, jaki jest" nie jest
+  doborem. Brak dopasowania zwraca BRAK (pole bez wiązania, gotowość
+  zablokowana) — nigdy podmianki.
 
-* **(A)** rozszerzyć katalog APARAT_NN do 4000 A i dobierać z prądu znamionowego;
-* **(B)** nie tworzyć `nn_main_breaker` dla stacji bez rozdzielnicy nN (bloki
-  generacyjne) — wtedy nie ma czego wiązać;
-* **(C)** uznać brak wiązania AUTOMATYCZNIE utworzonego wyłącznika głównego za
-  ostrzeżenie, nie blokadę gotowości, do czasu konfiguracji rozdzielnicy nN
-  przez projektanta.
+**Katalog rozszerzony ZWERYFIKOWANYMI danymi, nie zaokrągleniem.** Rodzina
+„Wyłącznik główny nN" kończyła się na 1600 A, a biblioteka sięga 3608 A
+(blok 2,5 MVA / 0,4 kV). Dopisano cztery pozycje 2000 / 2500 / 3200 / 4000 A z
+tabel zamówieniowych **ABB SACE Emax 2** (dokument `1SDC200023D0205`, ed. 2017.01),
+z kodami zamówieniowymi 3P, `Icu(440 V)` i `Icw(1 s)`. Proweniencja jest
+odtwarzalna, nie deklaratywna: `scripts/import_katalog_abb_emax2.py` przypina
+dokument sumą SHA-256, parsuje tabele zamówieniowe i **przerywa import**, gdy
+niezależna tabela zbiorcza tego samego katalogu nie potwierdzi wartości;
+wyciąg leży w `docs/katalog/zrodla/abb_emax2_1SDC200023D0205.json`. Metodę
+waliduje reprodukcja istniejącego wpisu `cb_nn_1600a` (rama E1.2 C, Icu 440 V =
+50 kA) ze strony 17 tego samego dokumentu.
 
-Pomiary są PRZYPIĘTE testami (`test_rodzina_wylacznikow_glownych_nn_konczy_sie_na_1600A`,
-`test_ponad_dwadziescia_szablonow_wykracza_poza_zakres_katalogu`), więc gdy
-którakolwiek strona się zmieni, ta sekcja wywali się razem z kodem.
+**Granica doboru nazwana, nie przemilczana.** Kryterium prądowe jest warunkiem
+KONIECZNYM, nie wystarczającym: zdolności wyłączalnej `Icu` wobec spodziewanego
+prądu zwarciowego nie da się sprawdzić na etapie materializacji szablonu, bo
+prąd zwarciowy nie jest jeszcze policzony. Sprawdza to warstwa zabezpieczeń/SWZ
+na gotowym modelu, a uzasadnienie doboru mówi to wprost.
+
+**Bramka klasy napięciowej — defekt złapany PRZY naprawie.** Dobór po samym
+prądzie wiązał aparat 690 V do szyny 15 kV: transformator WN/SN 110/15 kV daje
+`I_n = 385 A`, więc kryterium prądowe spełniała pierwsza pozycja rodziny nN.
+Warunek `U_e ≥ U_szyny` jest sprawdzany PRZED prądowym, a test krzyżuje obie
+cechy — sprawdzanie samego prądu ten przypadek przepuszcza.
+
+**Co ZOSTAJE otwarte (26 szablonów, zmierzone).** `switch.catalog_ref_missing`
+na aparacie pola źródłowego DER — `nn/<seed>/feeder_device`, powstającym przy
+promocji `nn_field_specs` do realnych elementów. Rozkład klas:
+
+| Klasa | Liczność | Szyna | Prąd | Rodzina właściwa |
+|-------|----------|-------|------|------------------|
+| pole źródłowe DER po stronie SN | 66 / 78 | 15 kV | 21–127 A | APARAT_SN |
+| pole źródłowe prosumenckie nN | 12 / 78 | 0,4 kV | 79 A | APARAT_NN |
+
+To ta sama klasa defektu, co bramka napięciowa wyżej: `_blad_aparatu_pola`
+wymusza przestrzeń `APARAT_NN` niezależnie od napięcia szyny, więc dla 66 pól
+SN żądałby aparatu 690 V na szynie 15 kV. Naprawa wymaga wyprowadzenia
+przestrzeni katalogu z napięcia szyny — pozycja otwarta, prowadzona dalej w tej
+samej kolejce.
 
 **Uczciwie: to moja naprawa fail-open z sekcji 3 ODSŁONIŁA ten dług.** Przed nią
 `/engineering-readiness` meldował `ready: true` dla każdego z 57 szablonów, bo
 nie znał kontroli domenowych. Dług istniał w całości wcześniej — był niewidoczny.
-Odwrót od naprawy byłby przywróceniem kłamstwa, więc dług zostaje nazwany, nie
-schowany. `industrial-template-mass-flow` pozostaje przez to czerwony.
+
+Pomiary są PRZYPIĘTE testami (`test_rodzina_wylacznikow_glownych_nn_siega_4000A`,
+`test_zaden_szablon_nie_wykracza_poza_zakres_rodziny_wylacznikow_glownych`,
+`tests/application/station_templates/test_dobor_wylacznika_glownego_nn.py` — 29
+przypadków), więc gdy którakolwiek strona się zmieni, ta sekcja wywali się razem
+z kodem.
 
 ---
 

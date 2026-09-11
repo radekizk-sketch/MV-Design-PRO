@@ -14,6 +14,7 @@ Returns: { created_element_refs, snapshot, readiness }
 from __future__ import annotations
 
 import logging
+import math
 import re
 from typing import Any
 from uuid import UUID
@@ -143,10 +144,30 @@ def _zastosuj_szablon_pod_blokada(
         "nn_voltage_kv": nn_voltage_kv,
     }
     transformer_spec = {"transformer_catalog_ref": transformer_ref}
-    nn_block_spec = {
+    nn_block_spec: dict[str, Any] = {
         "outgoing_feeders_nn_count": max(0, nn_feeders_requested),
         "outgoing_feeders_nn": nn_feeder_specs,
     }
+    # WIĄZANIE WYŁĄCZNIKA GŁÓWNEGO nN — tylko tam, gdzie rozdzielnica nN ISTNIEJE.
+    # Stacja bez odpływów nN (blok generacyjny) nie ma rozdzielnicy, więc nie ma
+    # też wyłącznika głównego do związania — `_build_nn_field_specs` takiego pola
+    # w ogóle nie tworzy. Predykat jest TEN SAM po obu stronach: liczba odpływów.
+    if max(0, nn_feeders_requested) > 0:
+        glowny_ref, uzasadnienie = dobierz_wylacznik_glowny_nn(
+            transformer_ref=transformer_ref, nn_voltage_kv=nn_voltage_kv
+        )
+        if glowny_ref is not None:
+            nn_block_spec["main_breaker_catalog_bindings"] = _catalog_binding(
+                "APARAT_NN", glowny_ref
+            )
+        operations_log.append(
+            {
+                "op": "dobor_wylacznika_glownego_nn",
+                "status": "OK" if glowny_ref else "BRAK",
+                "wybrano": glowny_ref,
+                "uzasadnienie": uzasadnienie,
+            }
+        )
 
     # KLASA PRZYŁĄCZENIA decyduje o DRODZE zabudowy (kontrakt
     # `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md` §3): stacja abonencka z układem
@@ -866,18 +887,140 @@ def _transformer_lv_voltage_kv(transformer_ref: str | None) -> float | None:
         from network_model.catalog import get_default_mv_catalog
     except ImportError:
         return None
-    catalog = get_default_mv_catalog()
-    item = catalog.get_transformer_type(transformer_ref)
+    item = get_default_mv_catalog().get_transformer_type(transformer_ref)
     if item is None:
         return None
-    value = getattr(item, "voltage_lv_kv", None) or getattr(item, "ulv_kv", None)
-    if value is None:
+    # `voltage_lv_kv` jest polem OBOWIĄZKOWYM `TransformerType` (nie-opcjonalny
+    # `float`), więc odczytujemy je wprost. Wcześniejszy łańcuch
+    # `voltage_lv_kv or ulv_kv` sięgał po nazwę, której w kontrakcie katalogu nie
+    # ma — udawał odporność na wariant, który nie istnieje, a jednocześnie
+    # zamieniał legalne 0 na „brak". Pole o wartości 0 jest błędem danych
+    # katalogu i ma być widoczne jako brak doboru, nie zamaskowane.
+    parsed = float(item.voltage_lv_kv)
+    return parsed if parsed > 0 else None
+
+
+def _transformer_rated_mva(transformer_ref: str | None) -> float | None:
+    """Katalogowa moc znamionowa wybranego transformatora [MVA], albo ``None``.
+
+    Czytamy `rated_power_mva` — jedyną nazwę tego pola w kontrakcie
+    `TransformerType`. Bez łańcucha nazw zapasowych: `sn_mva` należy do rodziny
+    falowników, a `s_n_mva` nie istnieje nigdzie, więc taki łańcuch nie zwiększa
+    odporności, tylko ukrywa rozjazd kontraktu pod cichym `None`.
+    """
+    if not isinstance(transformer_ref, str) or not transformer_ref.strip():
         return None
     try:
-        parsed = float(value)
-    except (TypeError, ValueError):
+        from network_model.catalog import get_default_mv_catalog
+    except ImportError:
         return None
+    item = get_default_mv_catalog().get_transformer_type(transformer_ref)
+    if item is None:
+        return None
+    parsed = float(item.rated_power_mva)
     return parsed if parsed > 0 else None
+
+
+def dobierz_wylacznik_glowny_nn(
+    *, transformer_ref: str | None, nn_voltage_kv: float
+) -> tuple[str | None, str]:
+    """Dobierz wyłącznik główny nN do PRĄDU ZNAMIONOWEGO strony dolnej transformatora.
+
+    KRYTERIUM JEST INŻYNIERSKIE, NIE WYGODNE. Wyłącznik główny rozdzielnicy nN
+    prowadzi cały prąd strony dolnej transformatora, więc warunkiem KONIECZNYM
+    doboru jest ``I_n(wyłącznika) >= I_n(transformatora)``, gdzie::
+
+        I_n = S_n / (√3 · U_nN)
+
+    Wybieramy pozycję NAJMNIEJSZĄ spełniającą ten warunek — przewymiarowanie
+    wyłącznika głównego pogarsza selektywność wobec odpływów i zabezpieczenia
+    zwarciowego transformatora, więc „największy, jaki jest" NIE jest doborem.
+
+    CZEGO TA FUNKCJA NIE ROBI (granica zmierzona, nie przemilczana). Nie
+    sprawdza zdolności wyłączalnej ``Icu`` wobec spodziewanego prądu zwarciowego
+    w miejscu zabudowy, bo na etapie materializacji szablonu prąd zwarciowy nie
+    jest jeszcze policzony — to robi warstwa zabezpieczeń/SWZ na gotowym modelu.
+    Dobór według prądu roboczego jest więc warunkiem KONIECZNYM, nie
+    wystarczającym, i tak jest opisany w proweniencji wiązania.
+
+    KLASA NAPIĘCIOWA JEST WARUNKIEM PIERWSZYM, NIE DODATKIEM. Sprawdzamy
+    ``U_e(aparatu) >= U_n(szyny)`` ZANIM porównamy prądy, gdzie ``U_e`` to
+    znamionowe napięcie łączeniowe wg IEC 60947-2 (pole ``u_m_kv``; gdy brak —
+    ``u_n_kv``). Bez tego warunku dobór po samym prądzie wiązał aparat 690 V do
+    szyny 15 kV: transformator WN/SN 110/15 kV daje ``I_n = 385 A``, więc
+    kryterium prądowe spełnia pierwsza pozycja rodziny nN. Byłby to aparat
+    nieistniejący w tej klasie napięciowej — fabrykacja, nie dobór. Rodzina nN
+    kończy się na 690 V, więc dla szyny SN nie ma i nie może być dopasowania:
+    wyłącznik takiej szyny jest aparatem SN, czyli inną rodziną katalogu.
+
+    BRAK DOPASOWANIA NIE JEST BŁĘDEM DO OBEJŚCIA. Gdy żadna pozycja katalogu nie
+    spełnia obu warunków, zwracamy ``None`` — pole powstaje BEZ wiązania, a
+    gotowość inżynierska słusznie zostaje zablokowana. Związanie aparatu
+    mniejszego niż prąd roboczy albo o niższej klasie napięciowej byłoby
+    fabrykacją urządzenia niezdolnego do pracy w tym miejscu.
+
+    Zwraca ``(catalog_item_id | None, uzasadnienie_pl)``.
+    """
+    s_mva = _transformer_rated_mva(transformer_ref)
+    if s_mva is None or nn_voltage_kv <= 0:
+        return None, (
+            "Brak katalogowej mocy znamionowej transformatora albo napięcia nN — "
+            "prądu znamionowego nie da się policzyć, więc dobór nie jest wykonywany."
+        )
+    i_n_a = s_mva * 1.0e6 / (math.sqrt(3.0) * nn_voltage_kv * 1.0e3)
+
+    try:
+        from network_model.catalog import get_default_mv_catalog
+    except ImportError:
+        return None, "Katalog niedostępny."
+    rodzina = [
+        a
+        for a in get_default_mv_catalog().list_lv_apparatus_types()
+        if getattr(a, "device_kind", None) == "WYLACZNIK_GLOWNY"
+    ]
+    w_klasie = [a for a in rodzina if _napiecie_lacznikowe_kv(a) >= nn_voltage_kv]
+    if not w_klasie:
+        najwyzsze = max((_napiecie_lacznikowe_kv(a) for a in rodzina), default=0.0)
+        return None, (
+            f"Szyna ma napięcie {nn_voltage_kv:.3f} kV, a najwyższe znamionowe napięcie "
+            f"łączeniowe w rodzinie wyłączników głównych nN wynosi {najwyzsze:.3f} kV. "
+            f"Dobór nie jest wykonywany: aparat tej szyny należy do rodziny SN, nie nN. "
+            f"Pole powstaje bez wiązania — związanie aparatu o niższej klasie napięciowej "
+            f"byłoby fabrykacją."
+        )
+    kandydaci = [a for a in w_klasie if float(a.i_n_a) >= i_n_a]
+    if not kandydaci:
+        najwiekszy = max(float(a.i_n_a) for a in w_klasie)
+        return None, (
+            f"Prąd znamionowy strony nN wynosi {i_n_a:.0f} A i przekracza największą "
+            f"pozycję rodziny wyłączników głównych nN w klasie {nn_voltage_kv:.3f} kV "
+            f"({najwiekszy:.0f} A). Pole powstaje bez wiązania — dobranie mniejszego "
+            f"aparatu byłoby fabrykacją urządzenia niezdolnego do przewodzenia prądu "
+            f"roboczego."
+        )
+    wybrany = min(kandydaci, key=lambda a: (float(a.i_n_a), a.id))
+    return wybrany.id, (
+        f"I_n(nN) = S_n/(√3·U_nN) = {s_mva:.3f} MVA / (√3 · {nn_voltage_kv:.3f} kV) = "
+        f"{i_n_a:.0f} A; z pozycji o U_e ≥ {nn_voltage_kv:.3f} kV dobrano najmniejszą "
+        f"o I_n ≥ tej wartości: {wybrany.id} ({wybrany.i_n_a:.0f} A, "
+        f"U_e = {_napiecie_lacznikowe_kv(wybrany):.3f} kV). Zdolność wyłączalna Icu wobec "
+        f"spodziewanego prądu zwarciowego pozostaje do sprawdzenia przez warstwę "
+        f"zabezpieczeń — dobór prądowy jest warunkiem koniecznym, nie wystarczającym."
+    )
+
+
+def _napiecie_lacznikowe_kv(aparat: Any) -> float:
+    """Znamionowe napięcie łączeniowe ``U_e`` aparatu nN [kV] wg IEC 60947-2.
+
+    Pole ``u_m_kv`` (``U_e`` z karty katalogowej) jest właściwą podstawą doboru
+    klasy napięciowej i to ono decyduje, gdy jest podane. ``u_n_kv`` opisuje
+    poziom sieci, do którego pozycja została wpisana, i służy wyłącznie jako
+    odczyt zastępczy dla wpisów bez ``U_e`` — nigdy jako uzupełnienie „albo".
+    """
+    u_e = getattr(aparat, "u_m_kv", None)
+    if u_e is not None:
+        return float(u_e)
+    return float(getattr(aparat, "u_n_kv", 0.0) or 0.0)
 
 
 def _catalog_choice_rating_kva(option: Any) -> tuple[int | None, str | None]:
