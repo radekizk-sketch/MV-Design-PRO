@@ -149,20 +149,23 @@ Wariantu „domyślny aparat z katalogu" NIE ma na liście świadomie: domyślna
 pozycja katalogowa jest zgadywaniem wielkości rozstrzygającej wynik
 (Zero fabrykacji — dyrektywa właściciela #3).
 
-### 4.2 Pięć specyfikacji e2e nadal czerwonych — osobne defekty
+### 4.2 Pięć specyfikacji e2e — cztery naprawione u źródła, jedna z długiem
 
-Po naprawie rozjazdu gotowości z 12 czerwonych zostało 5, każda z INNEJ przyczyny:
+PROWENIENCJA ZMIERZONA, nie założona. `Frontend E2E full` na checkpoincie rundy 2
+(`9349b3ed`, bieg 409): **12 failed / 396 passed / 2 skipped**. Na `89f0d7de` po
+naprawie rozjazdu gotowości: **5 failed / 403 passed / 2 skipped** — pozostała
+piątka to ŚCISŁY PODZBIÓR tamtej dwunastki, zero nowych czerwieni. Dalsza praca
+tej sekcji zamyka cztery z pięciu.
 
-| Specyfikacja | Objaw |
-|--------------|-------|
-| `industrial-template-mass-flow` | 128 nieobwiązanych łączników nN — patrz 4.1 (ścieżka szablonowa nie przechodzi przez `nn_block`) |
-| `kreator-oze-max` | readout gotowości kreatora OZE |
-| `legenda-na-zadanie` | panel legendy — element nieznaleziony |
-| `nastawy-i-akcje-oze` | „Analiza rozpływu mocy nie jest dostępna dla bieżącego snapshotu ENM" |
-| `sld-audyt-powykonawczy-screenshot` | niezmiennik niezależności kanwy od motywu |
+| Specyfikacja | Zmierzona przyczyna | Stan |
+|--------------|---------------------|------|
+| `kreator-oze-max` | sieć bez odbioru i bez generatora ⇒ `POST /runs {LOAD_FLOW}` → **409** | naprawiona (4.5) |
+| `nastawy-i-akcje-oze` | ta sama przyczyna | naprawiona (4.5) |
+| `legenda-na-zadanie` | asercja opisywała zachowanie, którego produkt nigdy nie miał | naprawiona (4.7) |
+| `industrial-template-mass-flow` | `switch.catalog_ref_missing` na wyłączniku głównym nN — **57/57 szablonów** | CZĘŚCIOWO (4.6) |
+| `sld-audyt-powykonawczy-screenshot` | niezmiennik niezależności kanwy od motywu | naprawiona (4.8) |
 
-Żadna z nich nie wynika z pracy tej rundy; wszystkie są czerwone na `main`
-od `a1ab2959`. Nie są maskowane ani wyciszone.
+---
 
 ### 4.3 Osiem testów czerwonych W CI, zielonych lokalnie — dwie przyczyny zmierzone
 
@@ -246,11 +249,227 @@ jeden wspólny `e2e/helpers/gotowosc.ts` zamiast jedenastu kopii.
 
 ---
 
+### 4.5 Phantom cosφ w DRODZE PROJEKTANTA — `add_nn_load` nie czytała katalogu
+
+DWIE specyfikacje OZE padały na `POST /runs {analysis_type: LOAD_FLOW}` → **409
+`Analiza rozpływu mocy nie jest dostępna dla bieżącego snapshotu ENM`**. Produkt
+miał rację: obie fikstury nazywają się `zbudujSiecGotowaDoObliczen`, a budowały
+stację SN/nN zasilającą NIC (`loads: 0`, `generators: 0`). Domena mówi to wprost —
+`W003` z akcją naprawczą w kroku K6 — tylko że pętla samonaprawiająca fikstury
+(patrz 4.4) filtruje wyłącznie kody `*catalog*` i `E005`.
+
+Naprawa poszła DROGĄ REALNĄ (dwie operacje kanoniczne: `add_nn_outgoing_field` →
+`add_nn_load`), a nie osłabieniem bramki dostępności analizy. I ta droga
+natychmiast odsłoniła **dwa defekty produktu**.
+
+#### (a) Odbiór katalogowy szedł do rozpływu z Q = 0
+
+`add_nn_load` pobierała pozycję katalogu WYŁĄCZNIE po to, żeby sprawdzić jej
+istnienie (`_, blad = _pozycja_katalogu(...)` — tabliczka wyrzucana), po czym
+budowała rekord z `q_mvar` z samego payloadu. Zmierzone na żywym backendzie dla
+`load_przem_75kw` (katalog: `q_kvar = 28,0`, `cos_phi = 0,94` IND):
+
+| Pole | PRZED | PO |
+|------|-------|-----|
+| `q_mvar` | **0.0** | **0.028** |
+| `materialized_params` | `null` | `{q_source: KATALOG_Q_KVAR, catalog_p_kw: 75.0, catalog_cos_phi: 0.94, …}` |
+| `parameter_source` | `CATALOG` | `CATALOG` |
+| `source_mode` | `KATALOG` | `KATALOG` |
+
+Rachunek szedł z cosφ = 1,0, a rekord twierdził „parametry z katalogu" — to
+DOKŁADNIE phantom cosφ V12K-050. Bliźniacza migracja legacy
+(`catalog_completion.complete_station_loads_from_nn_feeders`) broniła się przed
+nim od dawna, a JEJ docstring deklarował „parytet z naprawionym `add_nn_load`".
+**Deklaracja była nieprawdziwa** — klasa była zamknięta w JEDNYM z dwóch pisarzy.
+Obietnica bez przypiętego testu jest groźniejsza niż sam defekt, bo wyłącza
+czujność; docstring poprawiony, parytet pilnuje
+`tests/enm/test_add_nn_load_katalog_q.py` (10 testów, iloczyn cech: źródło Q ×
+obecność katalogu × wielomian ZIP).
+
+Hierarchia Q ma teraz JEDNO źródło prawdy (`moc_bierna_odbioru_katalogowego`),
+wspólne dla obu pisarzy. Katalog milczący (bez `q_kvar` i bez cosφ) ODRZUCA
+operację kodem `catalog.load_reactive_power_unresolved` — parytet z migracją,
+zamiast cichego Q = 0 pod pieczątką „CATALOG".
+
+#### (b) Pole nN nie miało DROGI wskazania aparatu z katalogu
+
+Promocja pól nN (`enm/migrations/nn_field_specs_promocja.migruj`) CZYTA z meta
+wpisu `catalog_binding`/`catalog_bindings` i buduje `SwitchBranch` z `catalog_ref`,
+`source_mode: KATALOG` i `materialized_params`. Czytelnik istniał — w klasie
+CZTERECH pisarzy `nn_field_specs` karmiły go tylko DWA:
+
+| Pisarz | wiązanie w meta (PRZED) |
+|--------|------------------------|
+| `domain_operations._build_nn_field_specs` (wyłącznik główny nN) | TAK (naprawione 2026-09-11) |
+| `_append_converter_field_if_needed` (pole przekształtnika) | TAK |
+| `_add_nn_outgoing_field_internal` (rola FEEDER) | **NIE** |
+| `_append_nn_source_meta_field` (rola SOURCE) | **NIE** |
+
+Oba brakujące siedzą za JEDYNYM publicznym write-pathem pola nN
+(`add_nn_outgoing_field`), więc projektant tworzący odpływ nN nie miał ŻADNEJ
+drogi związania jego aparatu. Zmierzone przed naprawą: `ready = False`, kody
+`['W002', 'W061', 'switch.catalog_ref_missing']` na `nn/<seed>/feeder_device`.
+Po naprawie (obie role, z bramką istnienia pozycji): `ready = True`.
+
+To ta sama KLASA co wyłącznik główny nN — wtedy naprawiono INSTANCJĘ z karty,
+nie klasę. Teraz klasa zamknięta, pilnuje jej `tests/enm/test_pole_nn_wiazanie_aparatu.py`
+(8 testów, PARAMI: tor pozytywny i negatywny dla KAŻDEJ z dwóch ról).
+
+---
+
+### 4.6 CAŁA biblioteka szablonów stacji nie osiąga gotowości — DECYZJA WŁAŚCICIELA
+
+Pomiar wyczerpujący (apply KAŻDEGO z 57 szablonów przez API + `engineering-readiness`):
+
+| Zbiór | Liczność | Kody |
+|-------|----------|------|
+| wszystkie szablony | **57/57** | `ready = False` |
+| z `switch.catalog_ref_missing` + `W061` | **57/57** | wyłącznik główny nN bez wiązania (`glowny_meta = None`) |
+| dodatkowo `W041` | 15 | `prosument_pv` (6), `slupowa` (6), `sekcyjna` (3) |
+
+**Co naprawione:** `W041` dla wszystkich 15 — stacja z transformatorem na szynie
+SN musi mieć pole roli `TR` (bez aparatu w polu nie da się ani odłączyć
+transformatora do prac, ani zbudować selektywności wobec szyny). Pozostałe 42
+miały pole TR albo transformator blokowy toru DER. Pilnuje
+`tests/api/test_szablony_pole_transformatorowe.py` — **parametryzacja po CAŁEJ
+bibliotece**, mierząca SKUTEK predykatem domeny (`transformatory_bez_pola_sn`),
+nie deklarację szablonu; obie legalne drogi (pole TR, blok DER) jednym warunkiem.
+
+**Czego NIE naprawiam i dlaczego.** Wiązanie wyłącznika głównego nN wymaga doboru
+do prądu znamionowego strony dolnej transformatora, `I_n = S_n/(√3·U_nN)`.
+Zmierzony rozrzut biblioteki: **90,9 A … 3608,4 A**. Rodzina „Wyłącznik główny nN"
+w katalogu APARAT_NN kończy się na **1600 A** (`cb_nn_400a/630a/800a/1000a/1250a/1600a`).
+Dla **ponad dwudziestu** szablonów nie istnieje pozycja, którą wolno związać —
+dobranie mniejszej byłoby fabrykacją aparatu niezdolnego do przewodzenia prądu
+roboczego, czyli dokładnie tym, czego zakazuje reguła zero-fabrykacji.
+
+Głębszy problem jest projektowy: `_build_nn_field_specs` tworzy `nn_main_breaker`
+BEZWARUNKOWO, także dla stacji generacyjnej z transformatorem blokowym 2,5 MVA /
+0,4 kV, która nie ma rozdzielnicy nN — tam sam wyłącznik główny nN jest elementem
+wymyślonym, a nie niedobranym. Trzy rozłączne drogi wyjścia, każda to decyzja
+produktowa:
+
+* **(A)** rozszerzyć katalog APARAT_NN do 4000 A i dobierać z prądu znamionowego;
+* **(B)** nie tworzyć `nn_main_breaker` dla stacji bez rozdzielnicy nN (bloki
+  generacyjne) — wtedy nie ma czego wiązać;
+* **(C)** uznać brak wiązania AUTOMATYCZNIE utworzonego wyłącznika głównego za
+  ostrzeżenie, nie blokadę gotowości, do czasu konfiguracji rozdzielnicy nN
+  przez projektanta.
+
+Pomiary są PRZYPIĘTE testami (`test_rodzina_wylacznikow_glownych_nn_konczy_sie_na_1600A`,
+`test_ponad_dwadziescia_szablonow_wykracza_poza_zakres_katalogu`), więc gdy
+którakolwiek strona się zmieni, ta sekcja wywali się razem z kodem.
+
+**Uczciwie: to moja naprawa fail-open z sekcji 3 ODSŁONIŁA ten dług.** Przed nią
+`/engineering-readiness` meldował `ready: true` dla każdego z 57 szablonów, bo
+nie znał kontroli domenowych. Dług istniał w całości wcześniej — był niewidoczny.
+Odwrót od naprawy byłby przywróceniem kłamstwa, więc dług zostaje nazwany, nie
+schowany. `industrial-template-mass-flow` pozostaje przez to czerwony.
+
+---
+
+### 4.7 Asercja e2e opisująca zachowanie, którego produkt NIGDY nie miał
+
+`legenda-na-zadanie.spec.ts` twierdziła, że backend materializuje „potrzeby
+własne" stacji „bezwarunkowo przy KAŻDYM tworzeniu transformatora", więc sieć ma
+agregat 0,4 kV i `loadArrow` jest asercją POZYTYWNĄ.
+
+Twierdzenie było nieprawdziwe **od chwili napisania**: `_materialize_station_auxiliary_load`
+wprowadzono TYM SAMYM commitem (`4e9ca9d9`) i od początku zaczyna się od
+`if not isinstance(aux, dict) or not aux: return None`, a builder tej specyfikacji
+nie podaje bloku `station_auxiliary`. Pomiar: `loads: 0`. Spec był czerwony
+nieprzerwanie od tego commitu.
+
+Naprawa przywraca spójność z własną nazwą buildera (`buildStationNetworkWithoutDer`)
+i nagłówkiem pliku („BEZ kroku dodania odbioru/Load"): `loadArrow` wraca do roli
+NEGATYWU, więc bramka „legenda pokazuje WYŁĄCZNIE symbole obecne w projekcie"
+ma teraz dwa niezależne negatywy (brak DER, brak odbioru) i dwa pozytywy
+(transformator, źródło SN). PARA dla `loadArrow` po stronie pozytywnej: test
+jednostkowy `src/ui/sld/v3/sheet/__tests__/projectLegend.test.ts` — bez niej sama
+negacja przepuściłaby legendę, która nie pokazuje NICZEGO.
+
+### 4.8 Niezmiennik motywu SLD został w tyle za produktem — POMIAR PIKSELOWY
+
+`sld-audyt-powykonawczy-screenshot.spec.ts` żądał, żeby para zrzutów
+jasny/ciemny była BAJTOWO IDENTYCZNA: kanwa v3 miała mieć stałe tło techniczne,
+więc sześć plików nazwanych „light"/„dark" nie niosłoby żadnego pokrycia
+motywów. Sama asercja nazywała oba możliwe rozstrzygnięcia — „render zaczął
+reagować na motyw" albo „do zrzutu wszedł chrome harnessu".
+
+ZMIERZONE (dekodowany PNG, nie porównanie bajtów skompresowanych — filtry PNG
+kodują RÓŻNICE, więc jednolite tło daje identyczne bajty filtrowane i pierwszy,
+naiwny pomiar pokazał mylące „0,6 % bajtów"):
+
+| Poziom | tło jasny | tło ciemny | wiersze z różnicą | kolumny z różnicą |
+|--------|-----------|------------|-------------------|-------------------|
+| L0 | `#FFFFFF` | `#0B0F14` | 1080/1080 | 1920/1920 |
+| L1 | `#FFFFFF` | `#0B0F14` | 1080/1080 | 1920/1920 |
+| L2 | `#FFFFFF` | `#0B0F14` | 1080/1080 | 1920/1920 |
+
+Rozstrzygnięcie jest więc pierwsze z dwóch: kanwa v3 ma DZIŚ dwie palety ekranu
+(`ui/sld/v3/theme/palette.ts`), `SldCanvasV3` honoruje prop `paletteMode`
+(pin: `canvas/__tests__/motywRenderuStatycznego.test.tsx`), a harness podaje go
+wprost. Niezmiennik pochodzi sprzed tej zmiany i nigdy nie został zaktualizowany.
+
+Naprawa idzie DOKŁADNIE tam, gdzie kieruje komunikat asercji: niezmiennik
+odwraca się i dopiero teraz pilnuje tego, po co powstał — nazwa pliku
+„light"/„dark" ma być FAKTEM SPRAWDZONYM. Test żąda, żeby para się RÓŻNIŁA i
+żeby tło każdego zrzutu było tłem deklarowanej palety (odczyt ze stylu
+obliczonego kanwy, nie z założenia). Geometria zostaje niezależna od motywu —
+to orzeczenie ma własny pin jednostkowy (`v3/theme/__tests__/palette.test.ts`:
+„hash geometrii sceny identyczny niezależnie od aktywnej palety"), więc nie
+dubluje się w e2e.
+
+TO NIE JEST WERDYKT WIZUALNY. Rozstrzygnięcie opiera się na pomiarze piksela i
+na istniejącym, jednostkowym pinie zdolności produktu — nie na ocenie, czy
+rysunek wygląda dobrze. Ocena jakości rysunku zostaje właścicielowi (B-02) i
+dotyczy sekcji niżej.
+
+---
+
+### 4.9 Bramka SLD ozyla i NATYCHMIAST zlapala nagromadzony regres — B-02
+
+Po usunieciu martwego odwolania bramka `SLD Determinism Guards` przeszla
+wszystkie 14 wczesniej zablokowanych krokow i zatrzymala sie na OSTATNIM:
+odbiorze renderu (`npm run accept:sld-v3`). Sonda `vertical_length_probe`
+(§15.1) melduje przekroczenie zapadki sumy dlugosci pionow:
+
+| LOD | zapadka | wartosc |
+|-----|---------|---------|
+| 0 | 22 440 | **22 672** (+1,0 %) |
+| 1 | 39 448 | **45 656** (+15,7 %) |
+| 2 | 39 448 | **45 656** (+15,7 %) |
+
+PROWENIENCJA ZMIERZONA, NIE ZALOZONA. Ta sama sonda daje IDENTYCZNE liczby na
+`main` @ `7e84753a` (uruchomione na odlaczonej glowie, ta sama komenda) —
+regres jest w calosci odziedziczony. Zapadka nie zmienila sie na `main` od
+`2031fc75`; urosl RYSUNEK, po stronie portalu nN (osiem commitow pod
+`src/ui/sld/v3/` po `2031fc75`). Ta galaz nie dotyka geometrii SLD: jej jedyne
+zmiany pod `sld/v3/` to pliki TESTOWE (dlug typow, karta czterech bramek).
+
+Czyli: bramka byla martwa przez dziesiec dni, rysunek przez ten czas urosl o
+15,7 % w pionie na L1/L2, i dowiedzielismy sie o tym DOPIERO po jej naprawie.
+To jest dokladnie ta szkoda, ktora opisuje sekcja 2 — tylko widziana od strony
+skutku, a nie mechanizmu.
+
+**DLACZEGO NIE PODNOSZE ZAPADKI.** Sonda pionow jest miara JAKOSCI RYSUNKU, a
+werdykt wizualny SLD wystawia wlasciciel (ZASADA NR 2 kanonu, bramka B-02) —
+nie agent. Podniesienie zapadki do zmierzonej wartosci byloby samocertyfikacja
+jakosci wizualnej: uznaniem 15,7 % wiekszego rozciagniecia w pionie za
+zamierzone, bez obejrzenia rysunku. To jedno z TRZECH dozwolonych zatrzyman
+kanonu, nie odlozenie.
+
+Do rozstrzygniecia po obejrzeniu renderu: czy wzrost jest CENA portalu nN
+(wtedy zapadka idzie w gore razem z uzasadnieniem), czy REGRESEM ukladu
+(wtedy naprawa jest po stronie geometrii, a zapadka zostaje).
+
+---
+
 ## 5. Weryfikacja
 
 | Stos | Komenda | Wynik |
 |------|---------|-------|
-| Laboratorium | `poetry run pytest tests/research -q` | 826 passed, RC=0 |
+| Laboratorium | `poetry run pytest tests/research -q` | 827 passed, RC=0 |
 | Backend (komplet) | `poetry run pytest -q` | patrz stopka commita |
 | Lint/format backend | `ruff check src tests` · `black --check src tests` | RC=0 · RC=0 |
 | Typy frontendu | `npx tsc --noEmit` | RC=0 |
