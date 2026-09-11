@@ -285,6 +285,21 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "network_model/catalog/materialization.py",
     "network_model/catalog/repository.py",
     "network_model/catalog/types.py",
+    # DWA KORZENIE DOLOZONE 2026-09-11 (bramka `Python tests`, krok testow
+    # guardow). Pin mapy zazadal o nie decyzji, gdy warstwa nN zaczela je
+    # importowac. Pomiar przyrostowy, ta sama metoda co wyzej: RAZEM +8 pol
+    # (1868 -> 1876) i ZERO nowych trafien — czysty zysk precyzji, wiec decyzja
+    # brzmi „do mapy", a nie „poza mapa".
+    #
+    # `lv_temperature_correction.py` deklaruje pola dekoracji WEJSCIA solvera
+    # zwarciowego (korekta R_theta wg IEC 60909 dla scenariusza MIN); to jest
+    # model danych wejsciowych, wiec jego pola musza byc w mapie, zeby bramka
+    # widziala ich podstawianie.
+    # `lv_mcb_bands_iec60898.py` deklaruje pasma wyzwolenia MCB (IEC 60898-1,
+    # Tabela 3) — stale NORMATYWNE, ale niesione polami modelu czytanymi przez
+    # warstwe objeta skanem.
+    "application/solvers/lv_temperature_correction.py",
+    "network_model/catalog/lv_mcb_bands_iec60898.py",
     "network_model/solvers/cable_ampacity_derating.py",
     "network_model/solvers/cable_voltage_drop.py",
     "network_model/solvers/conductor_thermal_withstand.py",

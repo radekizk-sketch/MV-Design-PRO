@@ -189,12 +189,35 @@ rośnie) od kulenia (maleje, ale wolno), a zapas iteracji stał się wielkości�
 PILNOWANĄ — `test_najtrudniejsze_zadanie_sieci_ma_margines_iteracji` zaświeci,
 gdy zadanie zacznie wymagać więcej niż połowy limitu.
 
-**(b) `test_scenariusze_nn::test_json_w_repo_rowny_odpowiedzi_backendu[17_sc_results]`
+**(a-bis) POTWIERDZENIE NA CI.** Po podniesieniu limitu bieg `Python tests` na
+`89f0d7de` dal **11394 passed, 14 skipped, 0 failed** w kroku pytest — wszystkie
+OSIEM czerwonych testow zgaslo jedna zmiana. Liczba zgadza sie co do jednego z
+biegiem lokalnym w srodowisku odwzorowujacym CI (11394 passed, 14 skipped;
++1 wzgledem CI sprzed naprawy to nowy test marginesu).
+
+**(b) `test_scenariusze_nn::test_json_w_repo_rowny_odpowiedzi_backendu`
 — NAZWANE, NIENAPRAWIONE.** Test porównuje zapisaną w repo fiksturę z odpowiedzią
 backendu operatorem `==`. Zmierzone: `17_sc_results.json` zawiera **333 liczby o
 co najmniej dziewieciu cyfrach po przecinku** — pelna precyzje podwojna wynikow
 solvera zwarciowego. Rownosc dokladna takich liczb MIEDZY MASZYNAMI wymaga
 bit-identycznego stosu numerycznego.
+
+MECHANIZM UDOWODNIONY POMIAREM, NIE HIPOTEZA. Ta sama maszyna, to samo
+srodowisko, ten sam kod — zmieniana WYLACZNIE liczba watkow biblioteki algebry:
+
+| `OPENBLAS_NUM_THREADS` | iteracje sieci (najtrudniejsze zadanie) | sztywnosc [p.u./p.u.] | pelna suita |
+|---|---|---|---|
+| domyslne (4 rdzenie) | 34 | 0,16769623308515585 | 11394 passed, **0 failed** |
+| 1 | **33** | 0,167696233085**49447** | 11392 passed, **2 failed** |
+| 2 | 34 | 0,16769623308515585 | — |
+| 4 | 34 | 0,16769623308515585 | — |
+
+Przy jednym watku wynik rozni sie na dwunastej cyfrze znaczacej, zmienia sie
+liczba iteracji Newtona, a DWIE fikstury przestaja sie zgadzac
+(`13_loads_via_fields` i `17_sc_results`). To jest naruszenie reguly nr 7
+kanonu („to samo wejscie MUSI dawac identyczne wyjscie") przez wielkosc, ktorej
+zaden test nie kontroluje: liczbe watkow BLAS. Rozjazd CI vs lokalnie jest tego
+samego rodzaju — inny procesor to inne jadro obliczeniowe tej samej biblioteki.
 
 Rozstrzygniecie nalezy do wlasciciela, bo dotyczy ZNACZENIA reguly determinizmu:
 
@@ -202,6 +225,10 @@ Rozstrzygniecie nalezy do wlasciciela, bo dotyczy ZNACZENIA reguly determinizmu:
   przypiac (wersja BLAS/LAPACK w obrazie CI i w srodowisku deweloperskim);
 * **(b)** „bit-identycznie dla struktury, z tolerancja dla wielkosci
   fizycznych" — wtedy porownanie fikstur musi te roznice honorowac.
+
+Samo przypiecie `OPENBLAS_NUM_THREADS=1` jest naprawa CZESCIOWA: usuwa jedno
+zrodlo (liczbe watkow), nie usuwa drugiego (dobor jadra pod procesor). Dlatego
+nie zostalo wprowadzone jednostronnie — i dlatego wariant (b) jest mocniejszy.
 
 Regeneracja fikstury z mojej maszyny NIE jest naprawa — przeniosalaby jedynie
 czerwien z CI na inne srodowisko.
