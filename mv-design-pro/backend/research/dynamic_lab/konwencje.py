@@ -127,3 +127,35 @@ class BazyMocy:
         jak moc: ``H_s = H_u * S_u/S_s``.
         """
         return h_s_urzadzenia / self.wspolczynnik
+
+
+#: Jednostka zwracana, gdy model NIE zadeklarował jednostki swojego stanu.
+#: Fail-closed: „nieznana" jest uczciwym meldunkiem braku, a poprzednia wspólna
+#: etykieta ``"p.u./rad"`` była TWIERDZENIEM — i to fałszywym dla ``soc`` (liczba
+#: niemianowana), ``efd_pu`` (p.u.) i ``delta_rad`` (rad) naraz.
+JEDNOSTKA_NIEZNANA = "nieznana"
+
+
+def jednostki_stanow(urzadzenie: object) -> tuple[str, ...]:
+    """Jednostki stanów urządzenia — Z MODELU, nie zgadywane z nazwy.
+
+    Model wie, co liczy, więc to model deklaruje jednostki swoich stanów przez
+    metodę ``jednostki_stanow()``. Centralna mapa „nazwa stanu -> jednostka"
+    byłaby drugą prawdą: nowy model z nazwą spoza mapy dostawałby jednostkę
+    cudzej wielkości, a nikt by tego nie zauważył.
+
+    Model, który jednostek nie deklaruje, dostaje ``JEDNOSTKA_NIEZNANA`` dla
+    każdego stanu — brak deklaracji jest widoczny w wyniku zamiast być zastąpiony
+    wspólnym napisem sugerującym, że jednostka jest znana.
+    """
+    nazwy = tuple(urzadzenie.nazwy_stanow())  # type: ignore[attr-defined]
+    deklaracja = getattr(urzadzenie, "jednostki_stanow", None)
+    if deklaracja is None:
+        return tuple(JEDNOSTKA_NIEZNANA for _ in nazwy)
+    zadeklarowane = tuple(deklaracja())
+    if len(zadeklarowane) != len(nazwy):
+        raise ValueError(
+            f"{type(urzadzenie).__name__}: zadeklarowano {len(zadeklarowane)} jednostek "
+            f"dla {len(nazwy)} stanów — deklaracja niespójna z modelem."
+        )
+    return zadeklarowane

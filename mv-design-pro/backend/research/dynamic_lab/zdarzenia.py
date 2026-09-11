@@ -19,6 +19,14 @@ from typing import Protocol
 
 from dynamic_lab.siec import Bocznik, TopologiaSieci
 
+#: Admitancja zastępcza zwarcia METALICZNEGO [p.u.]. To jest REGULARIZACJA
+#: NUMERYCZNA, nie wielkość fizyczna: zwarcie o zerowej impedancji ma admitancję
+#: nieskończoną, której macierz nie przyjmie. Wartość jest arbitralna, więc jej
+#: wpływ na wynik inżynierski MUSI być zmierzony, a nie założony — patrz
+#: `tests/research/test_regularizacja_zwarcia.py`, który przemiata 1e4/1e6/1e8
+#: i pilnuje, że wielkości inżynierskie nie zależą istotnie od tego wyboru.
+ADMITANCJA_ZWARCIA_METALICZNEGO_PU = 1.0e6
+
 
 class NieobslugiwaneZdarzenieError(RuntimeError):
     """Zdarzenie nie ma implementacji — świadomie głośne, nigdy ciche pominięcie."""
@@ -66,30 +74,91 @@ class ZwarcieTrojfazowe:
     szyna: str
     r_f_pu: float = 0.0
     x_f_pu: float = 0.0
+    admitancja_metaliczna_pu: float | None = None
+    """Nadpisanie REGULARIZACJI zwarcia metalicznego [p.u.]; ``None`` = wartość
+    domyślna modułu. Parametr istnieje po to, żeby arbitralność tej stałej dała
+    się ZMIERZYĆ (sweep 1e4/1e6/1e8), a nie tylko opisać w komentarzu."""
     priorytet: int = 10
     opis: str = "zwarcie trójfazowe symetryczne"
 
-    def zastosuj(self, topologia: TopologiaSieci) -> TopologiaSieci:
+    @property
+    def identyfikator(self) -> str:
+        """TOŻSAMOŚĆ tego zwarcia — deterministyczna, z miejsca i chwili.
+
+        Bocznik zwarciowy niesie ją jako ``Bocznik.zrodlo``, dzięki czemu zdjęcie
+        zwarcia usuwa DOKŁADNIE ten bocznik, a nie wszystko, co na tej szynie
+        wisi (defekt E1 audytu). Dwa zwarcia na tej samej szynie w różnych
+        chwilach mają różne tożsamości i są zdejmowane niezależnie.
+        """
+        return f"zwarcie:{self.szyna}:{self.czas_s!r}"
+
+    def admitancja_zwarcia(self) -> complex:
+        """Admitancja bocznika zwarciowego [p.u.] — z jawną regularizacją metaliczną."""
         z_f = complex(self.r_f_pu, self.x_f_pu)
         if abs(z_f) < 1.0e-9:
-            # Zwarcie metaliczne — bardzo duża admitancja bocznikowa.
-            y_f = complex(1.0e6, 0.0)
-        else:
-            y_f = 1.0 / z_f
-        return topologia.z_bocznikiem(Bocznik(szyna=self.szyna, g_pu=y_f.real, b_pu=y_f.imag))
+            y = (
+                ADMITANCJA_ZWARCIA_METALICZNEGO_PU
+                if self.admitancja_metaliczna_pu is None
+                else self.admitancja_metaliczna_pu
+            )
+            return complex(y, 0.0)
+        return 1.0 / z_f
+
+    def zastosuj(self, topologia: TopologiaSieci) -> TopologiaSieci:
+        y_f = self.admitancja_zwarcia()
+        return topologia.z_bocznikiem(
+            Bocznik(
+                szyna=self.szyna,
+                g_pu=y_f.real,
+                b_pu=y_f.imag,
+                zrodlo=self.identyfikator,
+            )
+        )
 
 
 @dataclass(frozen=True)
 class ZdjecieZwarcia:
-    """Wyłączenie zwarcia — usuwa boczniki zwarciowe ze wskazanej szyny."""
+    """Wyłączenie zwarcia — usuwa DOKŁADNIE JEDEN bocznik: bocznik tego zwarcia.
+
+    Defekt E1 audytu: poprzednia wersja wołała ``bez_bocznikow_na(szyna)``, czyli
+    kasowała wszystkie boczniki szyny. Szyna z baterią kondensatorów traciła ją
+    bezpowrotnie w chwili zdjęcia zwarcia, więc ``Ybus`` po zdjęciu NIE wracał do
+    ``Ybus`` sprzed zwarcia, a cała dalsza symulacja dotyczyła innej sieci niż ta,
+    którą scenariusz opisywał. Nic tego nie sygnalizowało.
+
+    ``identyfikator_zwarcia`` pozwala wskazać zwarcie wprost. Gdy go nie podano,
+    a na szynie jest DOKŁADNIE JEDNO zwarcie, zdejmowane jest ono; gdy jest ich
+    więcej, operacja jest błędem, bo „zdejmij zwarcie" przestaje być
+    jednoznaczne — cisza w tym miejscu byłaby zgadywaniem, którą awarię
+    operator miał na myśli.
+    """
 
     czas_s: float
     szyna: str
+    identyfikator_zwarcia: str | None = None
     priorytet: int = 20
     opis: str = "zdjęcie zwarcia"
 
     def zastosuj(self, topologia: TopologiaSieci) -> TopologiaSieci:
-        return topologia.bez_bocznikow_na(self.szyna)
+        if self.identyfikator_zwarcia is not None:
+            return topologia.bez_bocznika_o_zrodle(self.identyfikator_zwarcia)
+
+        zwarcia = [
+            zrodlo
+            for zrodlo in topologia.zrodla_bocznikow_na(self.szyna)
+            if zrodlo.startswith("zwarcie:")
+        ]
+        if not zwarcia:
+            raise ValueError(
+                f"Na szynie {self.szyna} nie ma bocznika zwarciowego do zdjęcia. "
+                f"Boczniki na tej szynie: {topologia.zrodla_bocznikow_na(self.szyna)}."
+            )
+        if len(zwarcia) > 1:
+            raise ValueError(
+                f"Na szynie {self.szyna} jest {len(zwarcia)} zwarć ({zwarcia}). "
+                "Podaj `identyfikator_zwarcia` — które z nich zdejmujemy."
+            )
+        return topologia.bez_bocznika_o_zrodle(zwarcia[0])
 
 
 @dataclass(frozen=True)
@@ -123,9 +192,24 @@ class HarmonogramZdarzen:
             key=lambda para: (para[1].czas_s, para[1].priorytet, para[0]),
         )
 
+    #: Tolerancja rozpoznania chwili zerowej [s].
+    TOLERANCJA_ZERA_S = 1.0e-12
+
     def do_chwili(self, od_s: float, do_s: float) -> list[Zdarzenie]:
         """Zdarzenia w przedziale ``(od_s, do_s]`` w kolejności deterministycznej."""
         return [z for _, z in self._uporzadkowane if od_s < z.czas_s <= do_s]
+
+    def w_chwili_zero(self) -> list[Zdarzenie]:
+        """Zdarzenia o czasie 0 — stosowane PRZED pierwszym rozwiązaniem sieci.
+
+        Wydzielone z ``do_chwili``, bo tamten przedział jest otwarty od lewej i
+        chwila 0 nie należy do żadnego przedziału ``(t_{k-1}, t_k]``. Bez tej
+        metody zdarzenie zadane na t = 0 nie było stosowane NIGDY, a harmonogram
+        nadal je wymieniał (defekt E2 audytu: wynik opisywał scenariusz, którego
+        nie policzył). Ujemne czasy zdarzeń są tu również łapane — należą do
+        stanu 0-, czyli do warunku początkowego, a nie do przebiegu.
+        """
+        return [z for _, z in self._uporzadkowane if z.czas_s <= self.TOLERANCJA_ZERA_S]
 
     def czasy(self) -> tuple[float, ...]:
         return tuple(z.czas_s for _, z in self._uporzadkowane)

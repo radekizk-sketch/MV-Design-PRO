@@ -26,11 +26,13 @@ from dynamic_lab.benchmarki import (
 )
 from dynamic_lab.calkowanie import INTEGRATORY
 from dynamic_lab.frt import (
+    KryteriumOdbudowyMocy,
     ObwiedniaFrt,
     PrzebiegNapiecia,
+    PrzebiegSkalarny,
     WerdyktFrt,
-    czas_odbudowy_mocy,
-    ocen_frt,
+    ocen_obwiednie_napiecia,
+    ocen_odbudowe_mocy,
 )
 from dynamic_lab.konwencje import dq_z_sieci, siec_z_dq
 from dynamic_lab.siec import Galaz, SolverSieci, TopologiaSieci
@@ -42,6 +44,7 @@ from dynamic_lab.urzadzenia import (
     ZespolSynchroniczny,
 )
 from dynamic_lab.walidacja import WyroczniaWahan, zmierz_czestotliwosc_oscylacji
+from dynamic_lab.wynik import PrzestrzenSygnalu
 from dynamic_lab.zdarzenia import HarmonogramZdarzen, ZdjecieZwarcia, ZwarcieTrojfazowe
 
 TOL_ROWNOWAGI = 1.0e-8
@@ -284,7 +287,14 @@ def _przebieg_der(urzadzenie):
     wynik = silnik.symuluj(x0, czas_koncowy_s=3.0, harmonogram=harmonogram)
     return (
         np.array(wynik.sygnal("u_pu", "DER").wartosci),
-        np.array(wynik.sygnal("p_pu", urzadzenie.ref).wartosci),
+        # PRZESTRZEN JAWNIE (pakiet B1). `FalownikGFL` ma STANY nazwane `p_pu`/
+        # `q_pu`, a silnik zapisuje pod tymi samymi nazwami moc policzoną
+        # z wstrzyknięcia. Przed rozdzieleniem przestrzeni obie serie trafiały do
+        # jednego ciągu NAPRZEMIENNIE, więc ten test czytał przeplot dwóch różnych
+        # wielkości — i miał dwa razy więcej próbek niż oś czasu. Tutaj pytamy
+        # o WYJŚCIE, bo porównujemy zachowanie DER na zacisku, spójnie z `u_pu`
+        # i `i_pu` obok.
+        np.array(wynik.sygnal("p_pu", urzadzenie.ref, PrzestrzenSygnalu.WYJSCIE).wartosci),
         np.array(wynik.sygnal("i_pu", urzadzenie.ref).wartosci),
     )
 
@@ -354,7 +364,7 @@ def test_frt_moze_wypasc_negatywnie() -> None:
         zrodlo="symulacja_laboratoryjna",
         element_ref="D",
     )
-    ocena = ocen_frt(przebieg, obwiednia, chwila_zaklocenia_s=0.0)
+    ocena = ocen_obwiednie_napiecia(przebieg, obwiednia, chwila_zaklocenia_s=0.0)
     assert ocena.werdykt is WerdyktFrt.NIE_SPELNIA
     assert ocena.margines_pu is not None and ocena.margines_pu < 0.0
 
@@ -377,7 +387,7 @@ def test_frt_margines_nie_jest_tozsamosciowo_zerowy() -> None:
             zrodlo="symulacja_laboratoryjna",
             element_ref="D",
         )
-        ocena = ocen_frt(przebieg, obwiednia, chwila_zaklocenia_s=0.0)
+        ocena = ocen_obwiednie_napiecia(przebieg, obwiednia, chwila_zaklocenia_s=0.0)
         marginesy.append(round(ocena.margines_pu or 0.0, 6))
     # Kazdy poziom daje INNY margines — w produkcji byla jedna wartosc: 0.0.
     assert len(set(marginesy)) == len(poziomy)
@@ -394,7 +404,7 @@ def test_hvrt_moze_wypasc_negatywnie() -> None:
         zrodlo="symulacja_laboratoryjna",
         element_ref="D",
     )
-    ocena = ocen_frt(przebieg, obwiednia, chwila_zaklocenia_s=0.0)
+    ocena = ocen_obwiednie_napiecia(przebieg, obwiednia, chwila_zaklocenia_s=0.0)
     assert ocena.werdykt is WerdyktFrt.NIE_SPELNIA
 
 
@@ -407,38 +417,65 @@ def test_brak_pokrycia_okna_daje_nierozstrzygalne() -> None:
         zrodlo="symulacja_laboratoryjna",
         element_ref="D",
     )
-    ocena = ocen_frt(przebieg, obwiednia, chwila_zaklocenia_s=5.0)
+    ocena = ocen_obwiednie_napiecia(przebieg, obwiednia, chwila_zaklocenia_s=5.0)
     assert ocena.werdykt is WerdyktFrt.NIEROZSTRZYGALNE
 
 
 def test_czas_odbudowy_mocy_zalezy_od_przebiegu() -> None:
-    """``p_recovery`` MUSI wynikać z P(t), a nie być deklaracją (defekt P0-08)."""
+    """``p_recovery`` MUSI wynikać z P(t), a nie być deklaracją (defekt P0-08).
+
+    Intencja testu zachowana z wersji sprzed pakietu C; zmieniło się API, bo
+    „pierwsza próbka powyżej progu" przestała być definicją odbudowy (C5).
+    Tutaj ``czas_utrzymania_s=0`` odtwarza dawną semantykę ŚWIADOMIE, żeby
+    porównanie stałych czasowych mierzyło to samo, co mierzyło wcześniej.
+    """
     czas = np.linspace(0.0, 2.0, 201)
-    for tau in (0.05, 0.20, 0.50):
+    bez_utrzymania = KryteriumOdbudowyMocy(prog_wzgledny=0.9, czas_utrzymania_s=0.0)
+
+    def _ocena(tau: float):
         moc = 1.0 - 0.8 * np.exp(-(czas - 0.6) / tau) * (czas >= 0.6)
-        wynik = czas_odbudowy_mocy(czas, moc, moc_przed_zaklocaniem_pu=1.0, chwila_wylaczenia_s=0.6)
-        assert wynik is not None
-    szybki = czas_odbudowy_mocy(
-        czas,
-        1.0 - 0.8 * np.exp(-(czas - 0.6) / 0.05) * (czas >= 0.6),
-        moc_przed_zaklocaniem_pu=1.0,
-        chwila_wylaczenia_s=0.6,
-    )
-    wolny = czas_odbudowy_mocy(
-        czas,
-        1.0 - 0.8 * np.exp(-(czas - 0.6) / 0.50) * (czas >= 0.6),
-        moc_przed_zaklocaniem_pu=1.0,
-        chwila_wylaczenia_s=0.6,
-    )
+        przebieg = PrzebiegSkalarny(
+            czas_s=tuple(czas),
+            wartosci=tuple(moc),
+            wielkosc="moc_czynna",
+            jednostka="p.u.",
+            zrodlo="symulacja_laboratoryjna",
+            element_ref="D",
+        )
+        return ocen_odbudowe_mocy(
+            przebieg,
+            bez_utrzymania,
+            moc_przed_zaklocaniem_pu=1.0,
+            chwila_wylaczenia_s=0.6,
+        )
+
+    for tau in (0.05, 0.20, 0.50):
+        assert _ocena(tau).czas_odbudowy_s is not None
+
+    szybki = _ocena(0.05).czas_odbudowy_s
+    wolny = _ocena(0.50).czas_odbudowy_s
     assert szybki is not None and wolny is not None and szybki < wolny
 
 
-def test_brak_odbudowy_daje_none() -> None:
+def test_brak_odbudowy_daje_werdykt_negatywny() -> None:
+    """Moc trwale poniżej progu: NIE_SPELNIA — to obserwacja braku, nie brak obserwacji."""
     czas = np.linspace(0.0, 2.0, 201)
-    moc = np.full_like(czas, 0.2)
-    assert (
-        czas_odbudowy_mocy(czas, moc, moc_przed_zaklocaniem_pu=1.0, chwila_wylaczenia_s=0.6) is None
+    przebieg = PrzebiegSkalarny(
+        czas_s=tuple(czas),
+        wartosci=tuple(np.full_like(czas, 0.2)),
+        wielkosc="moc_czynna",
+        jednostka="p.u.",
+        zrodlo="symulacja_laboratoryjna",
+        element_ref="D",
     )
+    ocena = ocen_odbudowe_mocy(
+        przebieg,
+        KryteriumOdbudowyMocy(prog_wzgledny=0.9, czas_utrzymania_s=0.1),
+        moc_przed_zaklocaniem_pu=1.0,
+        chwila_wylaczenia_s=0.6,
+    )
+    assert ocena.werdykt is WerdyktFrt.NIE_SPELNIA
+    assert ocena.czas_odbudowy_s is None
 
 
 # ---------------------------------------------------------------------------

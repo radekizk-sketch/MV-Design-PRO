@@ -44,7 +44,7 @@ from dynamic_lab.urzadzenia_oze import (
     _ogranicz_prad,
     ogranicz_okregiem,
 )
-from dynamic_lab.wynik import WynikDynamiczny
+from dynamic_lab.wynik import PrzestrzenSygnalu, WynikDynamiczny
 from dynamic_lab.zdarzenia import (
     HarmonogramZdarzen,
     WylaczenieGalezi,
@@ -105,27 +105,35 @@ def _uruchom(model, moce, **kw) -> tuple[SilnikRMS, np.ndarray]:
     return silnik, silnik.inicjalizuj(moce)
 
 
-def _tablica(wynik: WynikDynamiczny, klucz: str, ref: str) -> np.ndarray:
-    """Przebieg przycięty do osi czasu, z JAWNĄ obsługą kolizji kluczy w silniku.
+def _tablica(
+    wynik: WynikDynamiczny,
+    klucz: str,
+    ref: str,
+    przestrzen: PrzestrzenSygnalu | None = None,
+) -> np.ndarray:
+    """Przebieg jednego sygnału, z INWARIANTEM długości równej osi czasu.
 
-    `SilnikRMS._zapisz_probki` zapisuje najpierw wielkości wyjściowe urządzenia
-    (``p_pu``, ``q_pu``, ``i_pu``), a potem KAŻDY jego stan pod nazwą stanu. Gdy
-    urządzenie nazywa stan tak samo jak wielkość wyjściową — a tak robi
-    `urzadzenia.FalownikGFL` ze stanami ``p_pu``/``q_pu`` — pod jednym kluczem
-    lądują dwie próbki na krok: moc ODDANA i moc ZADANA. Przebieg ma wtedy podwójną
-    długość i miesza dwie różne wielkości.
+    HISTORIA TEJ FUNKCJI. Do pakietu B audytu rozplatała ona przeplot: silnik
+    zapisywał wielkości wyjściowe urządzenia (``p_pu``/``q_pu``/``i_pu``) i jego
+    STANY pod jednym kluczem, więc `FalownikGFL` ze stanami nazwanymi ``p_pu``/
+    ``q_pu`` dawał ciąg podwójnej długości, w którym na przemian leżały moc oddana
+    i zmienna stanu. Funkcja brała wtedy próbki parzyste i mówiła wprost, że robi
+    to z powodu defektu silnika.
 
-    Ta funkcja tego NIE ukrywa: rozplata przeplot, biorąc próbki parzyste (wielkość
-    wyjściowa zapisywana jako pierwsza), i mówi wprost, że robi to z powodu defektu
-    zbierania przebiegów w silniku. Gdy defekt zostanie naprawiony u źródła, warunek
-    przestanie się spełniać i funkcja zwróci przebieg bez zmian — test nie utrwala
-    więc błędnego zachowania.
+    Defekt jest naprawiony u ŹRÓDŁA: tożsamością sygnału jest trójka
+    ``(przestrzen, klucz, element_ref)``, a `ZbieraczPrzebiegow` podnosi
+    `KolizjaSygnaluError`, gdy ten sam sygnał zostanie zapisany dwa razy w jednej
+    chwili. Rozplatanie zniknęło razem z przeplotem, a zostało po nim ASERCJA:
+    długość każdego przebiegu MUSI równać się długości osi czasu. Gdyby przeplot
+    kiedykolwiek wrócił, ta asercja zapali się natychmiast, zamiast zostać
+    po cichu skompensowana.
     """
-    wartosci = np.array(wynik.sygnal(klucz, ref).wartosci, dtype=np.float64)
+    wartosci = np.array(wynik.sygnal(klucz, ref, przestrzen).wartosci, dtype=np.float64)
     oczekiwana = len(wynik.czas_s)
-    if wartosci.size == 2 * oczekiwana:
-        return wartosci[0::2]
-    assert wartosci.size == oczekiwana, f"{klucz}@{ref}: {wartosci.size} != {oczekiwana}"
+    assert wartosci.size == oczekiwana, (
+        f"{klucz}@{ref}: {wartosci.size} próbek przy osi czasu o {oczekiwana} — "
+        "przebieg nie odpowiada osi czasu (przeplot dwóch sygnałów?)."
+    )
     return wartosci
 
 
@@ -936,8 +944,12 @@ def test_maszyna_dwustronnie_zasilana_i_falownik_daja_rozne_prady_zwarciowe() ->
     u_gfl = _tablica(gfl, "u_pu", "DER")
     assert u_dfig.min() > u_gfl.min() + 0.10
 
-    p_dfig = _tablica(dfig, "p_pu", "D")
-    p_gfl = _tablica(gfl, "p_pu", "D")
+    # PRZESTRZEŃ JAWNIE: `FalownikGFL` ma stan nazwany `p_pu`, więc bez wskazania
+    # przestrzeni pytanie „daj p_pu@D" jest niejednoznaczne. Porównujemy moc
+    # ODDANĄ na zacisku (WYJŚCIE), spójnie z napięciem wyżej — nie zmienną stanu
+    # regulatora, której DFIG w ogóle nie ma.
+    p_dfig = _tablica(dfig, "p_pu", "D", PrzestrzenSygnalu.WYJSCIE)
+    p_gfl = _tablica(gfl, "p_pu", "D", PrzestrzenSygnalu.WYJSCIE)
     assert p_dfig.min() < p_gfl.min() - 0.10
     assert float(np.max(np.abs(p_dfig - p_gfl))) > 0.2
 

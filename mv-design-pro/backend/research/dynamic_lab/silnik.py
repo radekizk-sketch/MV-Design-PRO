@@ -25,12 +25,14 @@ import numpy as np
 from numpy.typing import NDArray
 
 from dynamic_lab.calkowanie import INTEGRATORY, Integrator
-from dynamic_lab.konwencje import czestotliwosc_hz
+from dynamic_lab.konwencje import czestotliwosc_hz, jednostki_stanow
 from dynamic_lab.siec import SolverSieci, TopologiaSieci
 from dynamic_lab.wynik import (
     KONTRAKT,
     BladSolvera,
     DiagnostykaSolvera,
+    KompletnoscPrzebiegu,
+    PrzestrzenSygnalu,
     TozsamoscModelu,
     WynikDynamiczny,
     ZbieraczPrzebiegow,
@@ -334,20 +336,32 @@ class SilnikRMS:
         t = siatka[0]
 
         for krok, t in enumerate(siatka):
-            if krok:
-                nowe = harmonogram.do_chwili(siatka[krok - 1], t)
-                for zdarzenie in nowe:
-                    topologia = zdarzenie.zastosuj(topologia)
-                    self.solver_sieci.ustaw_topologie(topologia)
-                    zastosowane.append(
-                        {
-                            "czas_s": zdarzenie.czas_s,
-                            "czas_zastosowania_s": t,
-                            "blad_czasu_s": abs(t - zdarzenie.czas_s),
-                            "opis": zdarzenie.opis,
-                            "typ": type(zdarzenie).__name__,
-                        }
-                    )
+            # SEMANTYKA CHWILI ZERO (poprawka E2 audytu). Wektor `x0` opisuje stan
+            # 0-, czyli PRZED zdarzeniem. Zdarzenia o czasie 0 stosowane są tutaj,
+            # PRZED pierwszym rozwiązaniem algebraicznym, więc próbka zapisana dla
+            # t = 0 opisuje stan 0+ — sieć już po zmianie topologii.
+            #
+            # Poprzednia wersja gubiła je BEZ ŚLADU: `siatka_czasu` odrzucała
+            # chwilę 0 warunkiem `tol < t_zdarzenia`, a pętla pytała
+            # `do_chwili(siatka[krok-1], t)` dopiero od kroku 1, na przedziale
+            # otwartym od lewej. Zwarcie zadane na t = 0 nie zmieniało więc ani
+            # topologii, ani wyniku, a harmonogram nadal je wymieniał — wynik
+            # opisywał scenariusz, którego nie policzył.
+            nowe = (
+                harmonogram.do_chwili(siatka[krok - 1], t) if krok else harmonogram.w_chwili_zero()
+            )
+            for zdarzenie in nowe:
+                topologia = zdarzenie.zastosuj(topologia)
+                self.solver_sieci.ustaw_topologie(topologia)
+                zastosowane.append(
+                    {
+                        "czas_s": zdarzenie.czas_s,
+                        "czas_zastosowania_s": t,
+                        "blad_czasu_s": abs(t - zdarzenie.czas_s),
+                        "opis": zdarzenie.opis,
+                        "typ": type(zdarzenie).__name__,
+                    }
+                )
             try:
                 v = self.rozwiaz_siec(x)
             except Exception as wyjatek:  # noqa: BLE001 - zapisujemy PRZYCZYNĘ
@@ -415,7 +429,13 @@ class SilnikRMS:
             zbiegl=blad is None,
             norma_pochodnej_w_t0=norma_t0,
             blad=blad,
+            czas_zadany_s=float(czas_koncowy_s),
             czas_osiagniety_s=czasy[-1] if czasy else 0.0,
+            kompletnosc=(
+                KompletnoscPrzebiegu.PELNY
+                if blad is None
+                else KompletnoscPrzebiegu.PRZERWANY_BLEDEM
+            ),
             kroki_skrocone=kroki_skrocone,
         )
         return WynikDynamiczny(
@@ -457,6 +477,7 @@ class SilnikRMS:
         x: NDArray[np.float64],
         v: NDArray[np.complex128],
     ) -> None:
+        zbieracz.rozpocznij_probke()
         idx = self.model.topologia.indeks
         for szyna in self.model.topologia.szyny:
             zbieracz.dodaj(
@@ -465,6 +486,7 @@ class SilnikRMS:
                 element_ref=szyna,
                 etykieta_pl="Napięcie",
                 jednostka="p.u.",
+                przestrzen=PrzestrzenSygnalu.WYJSCIE,
             )
         for u in self.model.urzadzenia:
             wycinek = self.uklad.wycinki[u.ref]  # type: ignore[attr-defined]
@@ -478,6 +500,7 @@ class SilnikRMS:
                 element_ref=ref,
                 etykieta_pl="Moc czynna",
                 jednostka="p.u.",
+                przestrzen=PrzestrzenSygnalu.WYJSCIE,
             )
             zbieracz.dodaj(
                 "q_pu",
@@ -485,17 +508,30 @@ class SilnikRMS:
                 element_ref=ref,
                 etykieta_pl="Moc bierna",
                 jednostka="p.u.",
+                przestrzen=PrzestrzenSygnalu.WYJSCIE,
             )
-            zbieracz.dodaj("i_pu", abs(i), element_ref=ref, etykieta_pl="Prąd", jednostka="p.u.")
-            for nazwa, wartosc in zip(
-                u.nazwy_stanow(), x[wycinek], strict=True  # type: ignore[attr-defined]
+            zbieracz.dodaj(
+                "i_pu",
+                abs(i),
+                element_ref=ref,
+                etykieta_pl="Prąd",
+                jednostka="p.u.",
+                przestrzen=PrzestrzenSygnalu.WYJSCIE,
+            )
+            jednostki = jednostki_stanow(u)
+            for nazwa, wartosc, jednostka in zip(
+                u.nazwy_stanow(),  # type: ignore[attr-defined]
+                x[wycinek],
+                jednostki,
+                strict=True,
             ):
                 zbieracz.dodaj(
                     nazwa,
                     float(wartosc),
                     element_ref=ref,
                     etykieta_pl=nazwa,
-                    jednostka="p.u./rad",
+                    jednostka=jednostka,
+                    przestrzen=PrzestrzenSygnalu.STAN,
                 )
                 if nazwa == "omega_pu":
                     zbieracz.dodaj(
@@ -504,6 +540,7 @@ class SilnikRMS:
                         element_ref=ref,
                         etykieta_pl="Częstotliwość",
                         jednostka="Hz",
+                        przestrzen=PrzestrzenSygnalu.WYJSCIE,
                     )
 
     def _tozsamosci(self) -> tuple[TozsamoscModelu, ...]:

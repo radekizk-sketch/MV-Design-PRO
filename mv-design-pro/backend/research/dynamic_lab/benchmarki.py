@@ -174,11 +174,17 @@ def harmonogram_zwarcia(
     chwila_s: float = 0.5,
     czas_trwania_s: float = 0.15,
     x_f_pu: float = 0.0,
+    admitancja_metaliczna_pu: float | None = None,
 ) -> HarmonogramZdarzen:
     """L3: zwarcie z wyłączeniem — zdarzenie zmieniające MODEL, nie napięcie."""
     return HarmonogramZdarzen(
         [
-            ZwarcieTrojfazowe(czas_s=chwila_s, szyna=szyna, x_f_pu=x_f_pu),
+            ZwarcieTrojfazowe(
+                czas_s=chwila_s,
+                szyna=szyna,
+                x_f_pu=x_f_pu,
+                admitancja_metaliczna_pu=admitancja_metaliczna_pu,
+            ),
             ZdjecieZwarcia(czas_s=chwila_s + czas_trwania_s, szyna=szyna),
         ]
     )
@@ -306,6 +312,7 @@ def czas_krytyczny_zwarcia(
     dolna_granica_s: float = 0.005,
     gorna_granica_s: float = 1.000,
     dokladnosc_s: float = 0.005,
+    admitancja_metaliczna_pu: float | None = None,
 ) -> float:
     """Czas krytyczny wyłączenia zwarcia (CCT) — bisekcja po czasie trwania zwarcia.
 
@@ -353,7 +360,10 @@ def czas_krytyczny_zwarcia(
             x0,
             czas_koncowy_s=czas_koncowy_s,
             harmonogram=harmonogram_zwarcia(
-                szyna=szyna_zwarcia, chwila_s=0.2, czas_trwania_s=czas_trwania_s
+                szyna=szyna_zwarcia,
+                chwila_s=0.2,
+                czas_trwania_s=czas_trwania_s,
+                admitancja_metaliczna_pu=admitancja_metaliczna_pu,
             ),
         )
         delta = np.array(wynik.sygnal("delta_rad", "G1").wartosci)

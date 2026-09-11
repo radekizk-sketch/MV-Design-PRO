@@ -26,24 +26,76 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, field
+from enum import StrEnum
 from typing import Any
 
 KONTRAKT = "DynamicResultSetKandydatV1"
 
 
+class PrzestrzenSygnalu(StrEnum):
+    """Skąd pochodzi przebieg — WYJŚCIE modelu czy ZMIENNA STANU integratora.
+
+    Bez tego rozróżnienia klucz sygnału nie był tożsamością. ``FalownikGFL`` ma
+    stany nazwane ``p_pu``/``q_pu``, a silnik zapisuje pod tymi samymi nazwami
+    moc czynną i bierną policzoną z wstrzyknięcia. Obie serie trafiały więc do
+    JEDNEGO ciągu i przeplatały się próbka po próbce: wynik ``p_pu@DER`` był
+    naprzemiennie mocą wyjściową i zmienną stanu. Nic tego nie zgłaszało, a
+    testy OZE radziły sobie braniem co drugiej próbki — czyli utrwalały defekt
+    zamiast go pokazać.
+    """
+
+    WYJSCIE = "output"
+    """Wielkość policzona z modelu i napięcia sieci (P, Q, I, U, f)."""
+    STAN = "state"
+    """Zmienna stanu całkowana przez integrator."""
+
+
+class KompletnoscPrzebiegu(StrEnum):
+    """Czy przebieg pokrywa ŻĄDANY przedział czasu.
+
+    ``zbiegl=False`` nie wystarczało: solver, który miał policzyć do 2,0 s i padł
+    w 0,4 s, oddawał 0,4 s poprawnych danych. Konsument czytający wyłącznie
+    przebiegi widział komplet liczb i nie miał jak stwierdzić, że okno jest
+    niedomknięte (defekt B3/H audytu).
+    """
+
+    PELNY = "pelny"
+    PRZERWANY_BLEDEM = "przerwany_bledem"
+
+
+class KolizjaSygnaluError(RuntimeError):
+    """Dwa zapisy TEGO SAMEGO sygnału w jednej chwili — dane by się przeplotły."""
+
+
+#: Tolerancja porównań czasu w diagnostyce [s].
+_TOLERANCJA_CZASU_S = 1.0e-9
+
+
 @dataclass(frozen=True)
 class Sygnal:
-    """Pojedynczy przebieg czasowy z jawną jednostką i przypisaniem."""
+    """Pojedynczy przebieg czasowy z jawną jednostką i przypisaniem.
+
+    TOŻSAMOŚCIĄ sygnału jest trójka ``(przestrzen, klucz, element_ref)``, a nie
+    sama para ``(klucz, element_ref)``. Patrz ``PrzestrzenSygnalu``.
+    """
 
     klucz: str
     etykieta_pl: str
     jednostka: str
     element_ref: str | None
     wartosci: tuple[float, ...]
+    przestrzen: PrzestrzenSygnalu = PrzestrzenSygnalu.WYJSCIE
+
+    @property
+    def klucz_pelny(self) -> str:
+        """Jednoznaczny identyfikator sygnału, np. ``state.p_pu`` / ``output.p_pu``."""
+        return f"{self.przestrzen.value}.{self.klucz}"
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "klucz": self.klucz,
+            "klucz_pelny": self.klucz_pelny,
+            "przestrzen": self.przestrzen.value,
             "etykieta_pl": self.etykieta_pl,
             "jednostka": self.jednostka,
             "element_ref": self.element_ref,
@@ -142,8 +194,12 @@ class DiagnostykaSolvera:
     """``||f(x0, y0)||`` — dowód (lub jego brak), że start jest w równowadze."""
     blad: BladSolvera | None = None
     """Wypełnione DOKŁADNIE wtedy, gdy ``zbiegl`` jest ``False``."""
+    czas_zadany_s: float = 0.0
+    """Koniec przedziału, który symulacja miała policzyć (``requested_end_time``)."""
     czas_osiagniety_s: float = 0.0
     """Do której chwili symulacja realnie doszła (przy błędzie < żądany koniec)."""
+    kompletnosc: KompletnoscPrzebiegu = KompletnoscPrzebiegu.PELNY
+    """Czy przebieg pokrywa ŻĄDANY przedział — patrz ``KompletnoscPrzebiegu``."""
     kroki_skrocone: int = 0
     """Ile kroków zostało skróconych, żeby trafić dokładnie w zdarzenie/koniec."""
 
@@ -154,6 +210,15 @@ class DiagnostykaSolvera:
             raise ValueError(
                 "Wynik niezbieżny MUSI nieść opis błędu — sam `zbiegl=False` "
                 "nie pozwala odróżnić rozjechanego Newtona od osobliwej sieci."
+            )
+        # PREDYKATY PARAMI: „przebieg pełny" i „doszedł do żądanego końca" muszą
+        # pochodzić z jednego źródła prawdy, inaczej wynik urwany w 0,4 s mógłby
+        # nadal deklarować kompletność dla okna 2,0 s.
+        niedomkniety = self.czas_osiagniety_s < self.czas_zadany_s - _TOLERANCJA_CZASU_S
+        if niedomkniety and self.kompletnosc is KompletnoscPrzebiegu.PELNY:
+            raise ValueError(
+                f"Przebieg kończy się w {self.czas_osiagniety_s} s, a żądano "
+                f"{self.czas_zadany_s} s — nie wolno oznaczyć go jako PELNY."
             )
 
     def to_dict(self) -> dict[str, Any]:
@@ -167,7 +232,9 @@ class DiagnostykaSolvera:
             "zbiegl": self.zbiegl,
             "norma_pochodnej_w_t0": self.norma_pochodnej_w_t0,
             "blad": self.blad.to_dict() if self.blad is not None else None,
+            "czas_zadany_s": self.czas_zadany_s,
             "czas_osiagniety_s": self.czas_osiagniety_s,
+            "kompletnosc": self.kompletnosc.value,
             "kroki_skrocone": self.kroki_skrocone,
         }
 
@@ -189,13 +256,36 @@ class WynikDynamiczny:
         "ani zwalidowaną symulacją fizyczną."
     )
 
-    def sygnal(self, klucz: str, element_ref: str | None = None) -> Sygnal:
-        """Pobierz przebieg po kluczu (i opcjonalnie elemencie)."""
-        for s in self.sygnaly:
-            if s.klucz == klucz and (element_ref is None or s.element_ref == element_ref):
-                return s
-        dostepne = sorted({f"{s.klucz}@{s.element_ref}" for s in self.sygnaly})
-        raise KeyError(f"Brak sygnału {klucz}@{element_ref}. Dostępne: {dostepne}")
+    def sygnal(
+        self,
+        klucz: str,
+        element_ref: str | None = None,
+        przestrzen: PrzestrzenSygnalu | None = None,
+    ) -> Sygnal:
+        """Pobierz przebieg po kluczu (i opcjonalnie elemencie oraz przestrzeni).
+
+        Gdy klucz występuje w OBU przestrzeniach dla tego samego elementu (np.
+        ``p_pu`` falownika: wyjście i stan), pominięcie ``przestrzen`` jest
+        błędem GŁOŚNYM. Milczące wybranie jednej z nich byłoby zgadywaniem, o
+        którą wielkość fizyczną pytał konsument.
+        """
+        trafienia = [
+            s
+            for s in self.sygnaly
+            if s.klucz == klucz
+            and (element_ref is None or s.element_ref == element_ref)
+            and (przestrzen is None or s.przestrzen is przestrzen)
+        ]
+        if len(trafienia) == 1:
+            return trafienia[0]
+        if not trafienia:
+            dostepne = sorted({f"{s.klucz_pelny}@{s.element_ref}" for s in self.sygnaly})
+            raise KeyError(f"Brak sygnału {klucz}@{element_ref}. Dostępne: {dostepne}")
+        kolidujace = sorted(s.klucz_pelny for s in trafienia)
+        raise KeyError(
+            f"Sygnał {klucz}@{element_ref} jest niejednoznaczny — pasuje do "
+            f"{kolidujace}. Podaj `przestrzen`, żeby wskazać, o którą wielkość chodzi."
+        )
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -223,10 +313,24 @@ def odcisk(payload: Any) -> str:
 
 @dataclass
 class ZbieraczPrzebiegow:
-    """Akumulator przebiegów w trakcie symulacji (kolejność deterministyczna)."""
+    """Akumulator przebiegów w trakcie symulacji (kolejność deterministyczna).
 
-    _dane: dict[tuple[str, str | None], list[float]] = field(default_factory=dict)
-    _meta: dict[tuple[str, str | None], tuple[str, str]] = field(default_factory=dict)
+    WYKRYWA KOLIZJĘ zamiast ją mieszać. Klucz akumulatora to trójka
+    ``(przestrzen, klucz, element_ref)``; dwa zapisy tej samej trójki w jednej
+    chwili próbkowania są błędem, nie „dopisaniem kolejnej wartości". Poprzednia
+    wersja kluczowała na parze bez przestrzeni, więc wyjście ``p_pu`` i stan
+    ``p_pu`` tego samego falownika lądowały w JEDNYM ciągu naprzemiennie —
+    i wyglądało to jak poprawny, tylko dwa razy dłuższy przebieg.
+    """
+
+    _dane: dict[tuple[str, str, str | None], list[float]] = field(default_factory=dict)
+    _meta: dict[tuple[str, str, str | None], tuple[str, str]] = field(default_factory=dict)
+    _ostatnia_probka: dict[tuple[str, str, str | None], int] = field(default_factory=dict)
+    _numer_probki: int = -1
+
+    def rozpocznij_probke(self) -> None:
+        """Otwórz nową chwilę próbkowania — od tej pory każdy sygnał raz."""
+        self._numer_probki += 1
 
     def dodaj(
         self,
@@ -236,23 +340,32 @@ class ZbieraczPrzebiegow:
         element_ref: str | None = None,
         etykieta_pl: str = "",
         jednostka: str = "",
+        przestrzen: PrzestrzenSygnalu = PrzestrzenSygnalu.WYJSCIE,
     ) -> None:
-        k = (klucz, element_ref)
+        k = (przestrzen.value, klucz, element_ref)
+        if self._ostatnia_probka.get(k) == self._numer_probki:
+            raise KolizjaSygnaluError(
+                f"Sygnał {przestrzen.value}.{klucz}@{element_ref} zapisany DWA RAZY "
+                f"w próbce nr {self._numer_probki}. Dwie wielkości dzielą tożsamość "
+                "sygnału — przebieg byłby przeplotem dwóch różnych serii."
+            )
         if k not in self._dane:
             self._dane[k] = []
             self._meta[k] = (etykieta_pl or klucz, jednostka)
         self._dane[k].append(float(wartosc))
+        self._ostatnia_probka[k] = self._numer_probki
 
     def sygnaly(self) -> tuple[Sygnal, ...]:
         return tuple(
             Sygnal(
                 klucz=klucz,
-                etykieta_pl=self._meta[(klucz, ref)][0],
-                jednostka=self._meta[(klucz, ref)][1],
+                etykieta_pl=self._meta[(przestrzen, klucz, ref)][0],
+                jednostka=self._meta[(przestrzen, klucz, ref)][1],
                 element_ref=ref,
                 wartosci=tuple(wartosci),
+                przestrzen=PrzestrzenSygnalu(przestrzen),
             )
-            for (klucz, ref), wartosci in sorted(
-                self._dane.items(), key=lambda para: (para[0][0], para[0][1] or "")
+            for (przestrzen, klucz, ref), wartosci in sorted(
+                self._dane.items(), key=lambda para: (para[0][0], para[0][1], para[0][2] or "")
             )
         )

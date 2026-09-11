@@ -79,13 +79,36 @@ class ReadinessReport(BaseModel):
         return next((i for i in self.items if i.calculation_type == calc_type), None)
 
     def overall_status(self) -> ReadinessStatus:
-        """Globalny status gotowości projektu."""
+        """Globalny status gotowości projektu — FAIL-CLOSED względem braku modułu.
+
+        ``ready`` znaczy: KAŻDA analiza właściwa dla tego projektu ma dostępną
+        zdolność numeryczną ORAZ komplet wymaganych danych. Nic innego.
+
+        Poprzednia wersja zaliczała ``no_module`` do statusów „nie przeszkadza"
+        razem z ``ready`` i ``n_a``, więc projekt, w którym DZIESIĘĆ z dziesięciu
+        analiz nie ma modułu obliczeniowego, meldował ``ready``. To jest zdanie
+        semantycznie fałszywe: brak solvera nie jest gotowością do liczenia, tylko
+        jej przeciwieństwem. ``n_a`` jest czym innym — „ta analiza nie dotyczy tego
+        projektu" NIE obniża gotowości, bo nie ma czego liczyć z założenia.
+
+        Rozstrzygnięcie: brak modułu obniża status do ``no_module`` (gdy to jedyna
+        przeszkoda) albo do ``partial`` (gdy występuje razem z brakami danych).
+        Podniesienie do ``ready`` jest niemożliwe z konstrukcji, a nie przez
+        dyscyplinę czytającego.
+        """
         statuses = [i.status for i in self.items]
         if any(s == "blocked" for s in statuses):
             return "blocked"
-        if any(s == "partial" for s in statuses):
+        brak_modulu = any(s == "no_module" for s in statuses)
+        czesciowe = any(s == "partial" for s in statuses)
+        if czesciowe:
             return "partial"
-        if all(s in ("ready", "n_a", "no_module") for s in statuses):
+        if brak_modulu:
+            # Sam brak zdolności numerycznej — dane mogą być komplet, ale nie ma
+            # czym policzyć. To NIE jest `partial` (nie brakuje danych) i tym
+            # bardziej nie jest `ready`.
+            return "no_module"
+        if all(s in ("ready", "n_a") for s in statuses):
             return "ready"
         return "partial"
 

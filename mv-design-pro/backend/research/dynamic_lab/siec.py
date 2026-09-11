@@ -67,13 +67,28 @@ class Galaz:
         return 1.0 / z
 
 
+#: Źródło bocznika, który należy do MODELU sieci, a nie do zdarzenia. Boczniki
+#: o tym źródle przeżywają każde zdjęcie zwarcia — to jest bateria kondensatorów,
+#: dławik kompensacyjny, stały shunt linii.
+ZRODLO_MODEL = "model"
+
+
 @dataclass(frozen=True)
 class Bocznik:
-    """Admitancja bocznikowa szyny (kompensacja, ale też ZWARCIE przez ``Zf``)."""
+    """Admitancja bocznikowa szyny (kompensacja, ale też ZWARCIE przez ``Zf``).
+
+    ``zrodlo`` jest TOŻSAMOŚCIĄ bocznika, nie etykietą opisową. Bez niej zdjęcie
+    zwarcia usuwało WSZYSTKIE boczniki szyny — a więc także baterię kondensatorów,
+    która istniała przed zwarciem i nie miała z nim nic wspólnego. Sieć po
+    zdjęciu zwarcia nie wracała wtedy do stanu sprzed zwarcia, tylko do sieci
+    zubożonej o cudzą kompensację, i każdy wynik po tej chwili dotyczył innej
+    sieci niż deklarowana (defekt E1 audytu).
+    """
 
     szyna: str
     g_pu: float = 0.0
     b_pu: float = 0.0
+    zrodlo: str = ZRODLO_MODEL
 
     def admitancja(self) -> complex:
         return complex(self.g_pu, self.b_pu)
@@ -140,9 +155,25 @@ class TopologiaSieci:
         """Nowa topologia z dodanym bocznikiem (np. zwarcie przez impedancję)."""
         return replace(self, boczniki=[*self.boczniki, bocznik])
 
-    def bez_bocznikow_na(self, szyna: str) -> TopologiaSieci:
-        """Nowa topologia bez boczników na wskazanej szynie (zdjęcie zwarcia)."""
-        return replace(self, boczniki=[b for b in self.boczniki if b.szyna != szyna])
+    def bez_bocznika_o_zrodle(self, zrodlo: str) -> TopologiaSieci:
+        """Nowa topologia bez bocznika o WSKAZANEJ tożsamości.
+
+        Zastępuje dawne ``bez_bocznikow_na(szyna)``, które kasowało wszystko na
+        szynie. Nieistniejące źródło jest błędem GŁOŚNYM: zdjęcie zwarcia,
+        którego nie ma, znaczy, że scenariusz opisuje inną sieć niż liczona.
+        """
+        zostaja = [b for b in self.boczniki if b.zrodlo != zrodlo]
+        if len(zostaja) == len(self.boczniki):
+            dostepne = sorted({b.zrodlo for b in self.boczniki})
+            raise ValueError(
+                f"Brak bocznika o źródle „{zrodlo}" + "” — nie ma czego zdjąć. "
+                f"Boczniki w modelu: {dostepne}."
+            )
+        return replace(self, boczniki=zostaja)
+
+    def zrodla_bocznikow_na(self, szyna: str) -> tuple[str, ...]:
+        """Tożsamości boczników na szynie — w kolejności deterministycznej."""
+        return tuple(sorted({b.zrodlo for b in self.boczniki if b.szyna == szyna}))
 
     def z_wylaczona_galezia(self, od_szyny: str, do_szyny: str) -> TopologiaSieci:
         """Nowa topologia z wyłączoną gałęzią (wyłączenie linii/wyłącznika)."""
