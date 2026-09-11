@@ -622,15 +622,30 @@ def test_wszystkie_integratory_zbiegaja_z_ogranicznikiem(integrator: str, x_f_pu
 
 
 def test_zwarcie_bliskie_metalicznemu_lamie_nasycenie_a_nie_impedancje() -> None:
-    """Tu ogranicznik REALNIE psuje zbieżność — ale algebry sieci, nie integratora.
+    """Granica zbieżności nasycenia — i DOWÓD, że jest własnością SOLVERA, nie fizyki.
 
-    Źródło prądowe wpięte w niemal zerową impedancję zwarcia zostawia napięcie
-    szyny bez dobrze uwarunkowanego rozwiązania: iteracja sieci przestaje zbiegać.
-    Zmierzone: model bez ogranicznika i obie nastawy impedancji wirtualnej liczą
-    się do zwarcia METALICZNEGO (``x_f = 0``) włącznie; nasycenie zadania
-    (``i_max = 1,2``) pada poniżej progu zawężonego bisekcją do przedziału
-    podanego w komunikacie asercji. Próg rośnie z limitem prądowym — im większy
-    prąd wymuszony, tym płytsze zwarcie wystarczy.
+    CO TEN TEST MÓWIŁ WCZEŚNIEJ I DLACZEGO TO BYŁO MYLĄCE (korekta 2026-09-11).
+    Do globalizacji solvera sieci test opisywał „próg zbieżności", który miał
+    rosnąć z limitem prądowym: ``i_max = 1,2`` padało poniżej ``x_f ≈ 0,0045``,
+    a ``i_max = 1,5`` już przy ``x_f = 0,01``. Brzmiało to jak orzeczenie o
+    MODELU („źródło prądowe w niemal zerowej impedancji nie ma dobrze
+    uwarunkowanego rozwiązania").
+
+    Po zamianie czystego Newtona na Newtona tłumionego (nawrót niemonotoniczny
+    GLL + zapasowy kierunek Levenberga–Marquardta, `dynamic_lab.siec`) TEN SAM
+    model liczy się w CAŁEJ zmierzonej siatce ``i_max ∈ {0,9; 1,2; 1,5; 2,0; 3,0}``
+    × ``x_f ∈ {0,01; 0,005; 0,003; 0,001; 0,0}`` — ze zwarciem METALICZNYM
+    włącznie — z JEDNYM wyjątkiem: ``(i_max = 1,2, x_f = 0,003)``. Wyjątek NIE
+    jest monotoniczny: te same ``i_max`` przy PŁYTSZYM ``x_f = 0,001`` i przy
+    ``x_f = 0`` zbiegają.
+
+    WNIOSEK, KTÓRY JEST TU ORZECZENIEM: dawny „próg" był artefaktem metody, nie
+    własnością zadania. Rozwiązanie istniało; nie umiał do niego dojść solver.
+    Dlatego ten test nie pilnuje już progu — pilnuje DWÓCH faktów: (a) że
+    warianty bez nasycenia liczą się do zwarcia metalicznego włącznie,
+    (b) że po globalizacji nasycenie też się liczy w całej siatce poza jednym
+    punktem, który zostaje PRZYPIĘTY jako zmierzony, żeby jego zniknięcie albo
+    rozlanie się na sąsiadów nie przeszło w milczeniu.
     """
     for nazwa, strategia in (
         ("bez ogranicznika", None),
@@ -653,23 +668,28 @@ def test_zwarcie_bliskie_metalicznemu_lamie_nasycenie_a_nie_impedancje() -> None
             ), wynik.diagnostyka.blad
         return wynik.diagnostyka.zbiegl
 
-    # Monotoniczność: większy wymuszony prąd = wcześniejsza utrata zbieżności.
-    assert zbiega(0.9, 0.003), "i_max=0,9 miało jeszcze zbiegać przy x_f=0,003"
-    assert not zbiega(1.2, 0.003), "i_max=1,2 miało już nie zbiegać przy x_f=0,003"
-    assert zbiega(1.2, 0.01), "i_max=1,2 miało zbiegać przy x_f=0,01"
-    assert not zbiega(1.5, 0.01), "i_max=1,5 miało już nie zbiegać przy x_f=0,01"
+    #: Siatka zmierzona 2026-09-11 po globalizacji solvera.
+    siatka_i_max = (0.9, 1.2, 1.5, 2.0, 3.0)
+    siatka_x_f = (0.01, 0.005, 0.003, 0.001, 0.0)
+    #: JEDYNY punkt siatki, który nie zbiega — przypięty, bo jego zniknięcie
+    #: albo rozlanie się na sąsiadów jest informacją o zmianie metody.
+    trudny = (1.2, 0.003)
 
-    dol, gora = 0.003, 0.01  # dol: nie zbiega, gora: zbiega
-    for _ in range(8):
-        srodek = 0.5 * (dol + gora)
-        if zbiega(1.2, srodek):
-            gora = srodek
-        else:
-            dol = srodek
-    assert 0.004 < dol < gora < 0.005, (
-        f"Próg zbieżności nasycenia (i_max=1,2) zmierzony w przedziale "
-        f"({dol:.6f}, {gora:.6f}) p.u."
+    niezbiezne = [
+        (i_max, x_f) for i_max in siatka_i_max for x_f in siatka_x_f if not zbiega(i_max, x_f)
+    ]
+    assert niezbiezne == [trudny], (
+        f"Zbiór punktów niezbieżnych zmierzono jako {niezbiezne}, oczekiwano "
+        f"dokładnie [{trudny}]. Zmiana w którąkolwiek stronę znaczy, że metoda "
+        f"rozwiązywania sieci się zmieniła — zaktualizuj ten pomiar RAZEM z "
+        f"docstringiem, nie zamiast niego."
     )
+
+    # Strona pozytywna orzeczenia „to nie fizyka": ZWARCIE METALICZNE liczy się
+    # dla KAŻDEGO limitu prądowego. Gdyby zadanie było istotnie osobliwe przy
+    # x_f → 0, to właśnie tutaj by się rozsypało.
+    for i_max in siatka_i_max:
+        assert zbiega(i_max, 0.0), f"i_max={i_max}: zwarcie metaliczne przestało zbiegać"
 
 
 def test_ogranicznik_oslabia_sztywnosc_a_ranking_zalezy_od_glebokosci() -> None:
@@ -727,8 +747,17 @@ def test_ogranicznik_skraca_najdluzsze_zwarcie_z_synchronizmem(trwanie_s: float)
         (wybieg kąta 11,3° bez ogranicznika, 19,0° / 24,3° / 22,2° z nim);
       - zwarcie 0,50 s: bez ogranicznika nadal zachowany (53,6°), a każda
         strategia go traci — impedancyjne przez poślizg kąta (503,6° i 572,7°),
-        nasycenie przez awarię solvera (``BrakZbieznosciSieciError`` jeszcze w
-        czasie trwania zwarcia).
+        nasycenie przez awarię solvera sieci (``BrakZbieznosciSieciError``).
+
+    KIEDY PADA NASYCENIE — KOREKTA 2026-09-11. Przed globalizacją solvera sieci
+    awaria wypadała JESZCZE W CZASIE TRWANIA zwarcia (okno 0,5–1,0 s) i test tego
+    pilnował. Po zamianie czystego Newtona na tłumionego (nawrót niemonotoniczny
+    GLL + kierunek Levenberga–Marquardta) solver PRZECHODZI przez zwarcie i pada
+    dopiero w wybiegu POZWARCIOWYM: zmierzone ``t = 1,4320`` s, czyli 0,43 s po
+    zdjęciu zwarcia. To jest zmiana na lepsze i fizycznie czytelniejsza: awaria
+    zbiega się teraz z ucieczką kąta, a nie z samym zapadem napięcia. Test pilnuje
+    więc faktu (awaria solvera zamiast czystego poślizgu) i CHWILI zmierzonej,
+    a nie założonej.
     """
     bez = przebieg(None, x_f_pu=0.01, trwanie_s=trwanie_s, czas_koncowy_s=2.0)
     assert not stracil_synchronizm(bez), zmierz(bez)
@@ -746,9 +775,19 @@ def test_ogranicznik_skraca_najdluzsze_zwarcie_z_synchronizmem(trwanie_s: float)
                 blad = wynik.diagnostyka.blad
                 assert blad is not None and blad.klasa == "BrakZbieznosciSieciError", blad
                 assert blad.faza == "calkowanie", blad
-                assert (
-                    0.5 < blad.czas_s < 0.5 + trwanie_s
-                ), f"awaria miała nastąpić w czasie trwania zwarcia: t={blad.czas_s:.4f} s"
+                # ZMIERZONE (2026-09-11, po globalizacji solvera): awaria w
+                # wybiegu POZWARCIOWYM, t = 1,4320 s. Przedział ±0,05 s jest
+                # ciasny CELOWO — przesunięcie chwili awarii znaczy zmianę
+                # metody rozwiązywania sieci albo modelu, a jedno i drugie ma
+                # być widoczne jako liczba, nie jako „test nadal zielony".
+                assert blad.czas_s > 0.5 + trwanie_s, (
+                    f"awaria wypadła JESZCZE W ZWARCIU (t={blad.czas_s:.4f} s) — "
+                    f"solver sieci przestał przechodzić przez zapad"
+                )
+                assert abs(blad.czas_s - 1.4320) < 0.05, (
+                    f"chwila awarii solvera przesunęła się z 1,4320 s na "
+                    f"{blad.czas_s:.4f} s — zaktualizuj pomiar w docstringu"
+                )
             else:
                 delta = _serie(wynik, "delta_rad", "D")
                 assert np.degrees(np.max(np.abs(delta - delta[0]))) > 180.0, nazwa

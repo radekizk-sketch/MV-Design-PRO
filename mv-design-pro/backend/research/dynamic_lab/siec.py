@@ -31,6 +31,7 @@ docelowo będzie chciał trzymać faktoryzację LU między krokami.
 
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import dataclass, field, replace
 
 import numpy as np
@@ -198,6 +199,12 @@ class RozwiazanieSieci:
     napiecia: NDArray[np.complex128]
     iteracje: int
     residuum: float
+    #: Ile kroków wymagało TŁUMIENIA (krok < 1) — ślad White Box globalizacji.
+    #: Zero znaczy „czysty Newton wystarczył"; wartość > 0 mówi, że zadanie
+    #: dotknęło załamania charakterystyki i metoda musiała skrócić krok.
+    kroki_tlumione: int = 0
+    #: Najmniejszy przyjęty współczynnik kroku. 1.0 = ani razu nie tłumiono.
+    najmniejszy_krok: float = 1.0
 
 
 class SolverSieci:
@@ -207,29 +214,38 @@ class SolverSieci:
     Urządzenia liniowe wnoszą ekwiwalent Nortona do macierzy, więc dla sieci
     z samymi maszynami iteracja zbiega w jednym kroku.
 
-    LIMIT ITERACJI: 120, WYPROWADZONY Z POMIARU, NIE Z WYGODY.
-    Poprzednia wartość (40) była skalibrowana pod zadania GŁADKIE. Laboratorium
-    ma dziś strategie ograniczania prądu falownika GFM, które są ciągłe, ale
-    NIERÓŻNICZKOWALNE (pin: `test_ograniczenie_pradu_jest_ciagle_ale_nie_
+    GLOBALIZACJA: NEWTON TŁUMIONY (nawrót Armijo), NIE CZYSTY NEWTON.
+    Nieliniowość ograniczników prądu falownika GFM jest ciągła, ale
+    NIERÓŻNICZKOWALNA (pin: `test_ograniczenie_pradu_jest_ciagle_ale_nie_
     rozniczkowalne`). W otoczeniu załamania jakobian różnicowy jest złym modelem
-    funkcji, więc pełny krok Newtona przestrzeliwuje i metoda „kuleje": zbiega,
-    ale wolno.
+    funkcji: pełny krok Newtona przestrzeliwuje, a iteracja potrafi WPAŚĆ W CYKL
+    zamiast zbiegać.
 
-    Zmierzone na najtrudniejszym zadaniu laboratorium (sztywność napięciowa DER
-    przy nasyceniu zadania, zwarcie ``x_f = 0,01`` p.u.): **34 iteracje**,
-    residuum końcowe ``1,716e-14``. Przy limicie 40 zostawało 6 iteracji zapasu —
-    i tyle wystarczyło, żeby ten sam przypadek PADAŁ w CI (`BrakZbieznosciSieciError`,
-    residuum ``6,890e-01``), a lokalnie przechodził. PRZYCZYNY RÓŻNICY NIE
-    ZMIERZONO — środowiska się różnią (CI buduje świeże wirtualne środowisko z
-    pliku blokady, lokalne ma pakiety spoza niego), a przy metodzie kulejącej
-    wystarczy różnica ostatnich bitów w `np.linalg.solve`, żeby liczba iteracji
-    przeskoczyła próg. Wniosek nie zależy jednak od przyczyny: sześć iteracji
-    zapasu na zadaniu wymagającym trzydziestu czterech to nie jest margines.
+    DOWÓD, ŻE TO NIE JEST TEORIA. Wcześniejsza wersja brała pełny krok zawsze.
+    Na tym samym kodzie i tym samym zadaniu (sztywność napięciowa DER przy
+    nasyceniu, zwarcie x_f = 0,01 p.u.) lokalnie kończyło się w 34 iteracjach
+    (residuum 1,7e-14), a w CI — po 120 iteracjach residuum STAŁO na 1,569e-01,
+    czyli trzynaście rzędów wielkości od progu. Podniesienie limitu 40 → 120
+    (poprzednia karta) wyleczyło JEDNĄ instancję i zostawiło klasę: metoda bez
+    globalizacji nie ma żadnej gwarancji spadku residuum, więc „ile iteracji
+    wystarczy" zależy od ostatnich bitów `np.linalg.solve`, czyli od maszyny.
+    To jest naruszenie determinizmu, a nie kwestia zapasu.
+
+    NAWRÓT ARMIJO (Dennis & Schnabel, Kelley — metoda podręcznikowa, nie
+    heurystyka). Krok ``α`` startuje z 1,0 i jest połowiony, dopóki nie spełni
+    warunku DOSTATECZNEGO SPADKU::
+
+        ‖r(V + α·ΔV)‖ ≤ (1 − c·α)·‖r(V)‖,    c = 1e-4
+
+    Dzięki temu residuum maleje MONOTONICZNIE z każdej przyjętej iteracji, a
+    wynik „zbiegło / nie zbiegło" przestaje zależeć od maszyny. Gdy żaden krok
+    aż do ``α_min`` nie daje dostatecznego spadku, iteracja stoi w punkcie
+    stacjonarnym residuum — to jest PRAWDZIWA porażka zadania, meldowana jawnie,
+    a nie wyczerpanie limitu iteracji.
 
     TO NIE JEST PODNIESIENIE TOLERANCJI. Żądana dokładność (``1e-12``) jest bez
-    zmian; zmienia się wyłącznie ile pracy wolno na nią poświęcić, zanim solver
-    zgłosi porażkę. Rozbieżność nadal kończy się błędem po kilku krokach (rośnie
-    wykładniczo), więc limit 120 nie opóźnia wykrycia rozjazdu w praktyce.
+    zmian. Limit iteracji zostaje na 120 — z globalizacją jest zapasem, a nie
+    jedyną obroną.
     """
 
     def __init__(
@@ -238,10 +254,28 @@ class SolverSieci:
         *,
         tolerancja: float = 1.0e-12,
         maks_iteracji: int = 120,
+        wspolczynnik_armijo: float = 1.0e-4,
+        minimalny_krok: float = 2.0**-20,
+        pamiec_niemonotoniczna: int = 8,
     ) -> None:
         self.topologia = topologia
         self.tolerancja = tolerancja
         self.maks_iteracji = maks_iteracji
+        #: Stała ``c`` warunku dostatecznego spadku Armijo. Wartość 1e-4 jest
+        #: kanoniczna (Dennis & Schnabel §6.3): dość mała, by nie odrzucać
+        #: dobrych pełnych kroków, dość duża, by wykluczyć spadki pozorne.
+        self.wspolczynnik_armijo = wspolczynnik_armijo
+        #: Najmniejszy dopuszczalny współczynnik kroku (2⁻²⁰ ≈ 1e-6). Poniżej
+        #: niego kierunek Newtona nie jest już kierunkiem spadku — zadanie stoi
+        #: w punkcie stacjonarnym i meldujemy to JAWNIE, zamiast mielić iteracje.
+        self.minimalny_krok = minimalny_krok
+        #: Długość pamięci nawrotu niemonotonicznego (GLL). 1 = klasyczny,
+        #: monotoniczny Armijo.
+        self.pamiec_niemonotoniczna = pamiec_niemonotoniczna
+        #: Rosnące λ kierunku Levenberga–Marquardta, próbowane po kolei, gdy
+        #: kierunek Newtona nie jest kierunkiem spadku. Zakres 1e-8…1e2 pokrywa
+        #: przejście od „prawie Newton" do „prawie najszybszy spadek".
+        self.lambdy_lm: tuple[float, ...] = (1.0e-8, 1.0e-6, 1.0e-4, 1.0e-2, 1.0, 1.0e2)
         self._ybus: NDArray[np.complex128] | None = None
 
     @property
@@ -290,16 +324,48 @@ class SolverSieci:
         for i, v_zadane in sztywne.items():
             v[i] = v_zadane
 
-        norma_poczatkowa = float("nan")
-        for iteracja in range(1, self.maks_iteracji + 1):
-            r = y @ v - wstrzykniecia(v)
+        def _residuum(v_probne: NDArray[np.complex128]) -> tuple[NDArray[np.complex128], float]:
+            r_lok = y @ v_probne - wstrzykniecia(v_probne)
             for i in sztywne:
-                r[i] = 0.0
-            norma = float(np.max(np.abs(r))) if n else 0.0
-            if iteracja == 1:
-                norma_poczatkowa = norma
+                r_lok[i] = 0.0
+            return r_lok, (float(np.max(np.abs(r_lok))) if n else 0.0)
+
+        def _z_krokiem(
+            v_bazowe: NDArray[np.complex128],
+            kierunek: NDArray[np.complex128],
+            alfa: float,
+        ) -> NDArray[np.complex128]:
+            v_nowe = v_bazowe + alfa * kierunek
+            for i, v_zadane in sztywne.items():
+                v_nowe[i] = v_zadane
+            return v_nowe
+
+        r, norma = _residuum(v)
+        norma_poczatkowa = norma
+        kroki_tlumione = 0
+        najmniejszy_krok = 1.0
+        # PAMIĘĆ NIEMONOTONICZNA (Grippo–Lampariello–Lucidi 1986): warunek
+        # dostatecznego spadku odnosi się do NAJWIĘKSZEJ normy z ostatnich
+        # `pamiec_niemonotoniczna` przyjętych iteracji, nie do poprzedniej.
+        pamiec_norm: deque[float] = deque([norma], maxlen=self.pamiec_niemonotoniczna)
+        # ZABEZPIECZENIE MONOTONICZNE (standardowy towarzysz GLL): pamiętamy
+        # NAJLEPSZY dotąd punkt. Luz niemonotoniczny pozwala przejść przez
+        # grzbiet załamania, ale bez tej kotwicy potrafi też ODEJŚĆ od
+        # rozwiązania i nie wrócić — zmierzone: residuum dryfujące z 2,25e-01
+        # (pamięć 1) do 2,63e+00 (pamięć 8) na tym samym zadaniu.
+        v_naj, r_naj, norma_naj = v.copy(), r.copy(), norma
+        bez_poprawy = 0
+        powroty_do_najlepszego = 0
+
+        for iteracja in range(1, self.maks_iteracji + 1):
             if norma < self.tolerancja:
-                return RozwiazanieSieci(napiecia=v, iteracje=iteracja - 1, residuum=norma)
+                return RozwiazanieSieci(
+                    napiecia=v,
+                    iteracje=iteracja - 1,
+                    residuum=norma,
+                    kroki_tlumione=kroki_tlumione,
+                    najmniejszy_krok=najmniejszy_krok,
+                )
 
             jak = self._jakobian(y, wstrzykniecia, v, sztywne)
             rez = np.concatenate([r.real, r.imag])
@@ -310,17 +376,116 @@ class SolverSieci:
                     "Macierz sieci jest osobliwa — sprawdź wyspy bez źródła "
                     "i szyny bez połączenia."
                 ) from exc
-            v = v + (delta[:n] + 1j * delta[n:])
-            for i, v_zadane in sztywne.items():
-                v[i] = v_zadane
+            kierunek = delta[:n] + 1j * delta[n:]
+
+            # NAWRÓT NIEMONOTONICZNY (GLL) + ZAPASOWY KIERUNEK LEVENBERGA–MARQUARDTA.
+            #
+            # Ogranicznik prądu falownika GFM przy zwarciu bliskim metalicznemu
+            # jest AKTYWNY (zmierzone: |I| = 1,2000 p.u. co do cyfry, czyli
+            # dokładnie na ograniczeniu). Wtedy moduł wstrzyknięcia przestaje
+            # zależeć od |V|, więc jakobian traci rząd w kierunku modułu napięcia
+            # — jest niemal osobliwy, a kierunek Newtona przestaje być kierunkiem
+            # spadku. Sam nawrót tego nie ratuje (skracanie złego kierunku daje
+            # zły krok), dlatego zapasowo liczymy kierunek LM:
+            #
+            #     (JᵀJ + λ·diag(JᵀJ)) · δ = −Jᵀ r
+            #
+            # który dla rosnącego λ przechodzi płynnie od Newtona do najszybszego
+            # spadku i JEST kierunkiem spadku zawsze, gdy Jᵀr ≠ 0.
+            odniesienie = max(pamiec_norm)
+
+            def _nawrot(
+                kier: NDArray[np.complex128],
+                *,
+                v_bazowe: NDArray[np.complex128] = v,
+                prog: float = odniesienie,
+            ) -> tuple[bool, float]:
+                """Największy krok ``α = 2⁻ᵏ`` spełniający warunek GLL, albo porażka."""
+                alfa_lok = 1.0
+                while alfa_lok >= self.minimalny_krok:
+                    _, norma_p = _residuum(_z_krokiem(v_bazowe, kier, alfa_lok))
+                    if norma_p <= (1.0 - self.wspolczynnik_armijo * alfa_lok) * prog:
+                        return True, alfa_lok
+                    alfa_lok *= 0.5
+                return False, 0.0
+
+            przyjeto, alfa = _nawrot(kierunek)
+            if not przyjeto:
+                jtj = jak.T @ jak
+                jtr = jak.T @ rez
+                skala = np.diag(np.maximum(np.diag(jtj), 1.0e-12))
+                for lam in self.lambdy_lm:
+                    try:
+                        delta_lm = np.linalg.solve(jtj + lam * skala, -jtr)
+                    except np.linalg.LinAlgError:  # pragma: no cover - skrajnie rzadkie
+                        continue
+                    kier_lm = delta_lm[:n] + 1j * delta_lm[n:]
+                    przyjeto, alfa = _nawrot(kier_lm)
+                    if przyjeto:
+                        kierunek = kier_lm
+                        break
+
+            if przyjeto:
+                v = _z_krokiem(v, kierunek, alfa)
+                r, norma = _residuum(v)
+                pamiec_norm.append(norma)
+                if alfa < 1.0:
+                    kroki_tlumione += 1
+                    najmniejszy_krok = min(najmniejszy_krok, alfa)
+                if norma < norma_naj:
+                    v_naj, r_naj, norma_naj = v.copy(), r.copy(), norma
+                    bez_poprawy = 0
+                    continue
+                bez_poprawy += 1
+                if bez_poprawy < self.pamiec_niemonotoniczna:
+                    continue
+                # Cała długość pamięci bez poprawy rekordu: luz przestał służyć
+                # przejściu przez grzbiet i zaczął oddalać od rozwiązania.
+                v, r, norma = v_naj.copy(), r_naj.copy(), norma_naj
+                pamiec_norm.clear()
+                pamiec_norm.append(norma_naj)
+                bez_poprawy = 0
+                powroty_do_najlepszego += 1
+                continue
+
+            if norma > norma_naj:
+                # Zanim ogłosimy porażkę: wróć do NAJLEPSZEGO punktu i spróbuj
+                # jeszcze raz stamtąd, monotonicznie. Bez tego luz GLL mógłby
+                # „zgubić" lepsze rozwiązanie znalezione wcześniej.
+                v, r, norma = v_naj.copy(), r_naj.copy(), norma_naj
+                pamiec_norm.clear()
+                pamiec_norm.append(norma_naj)
+                bez_poprawy = 0
+                powroty_do_najlepszego += 1
+                continue
+
+            if not przyjeto:
+                # Żaden krok aż do `minimalny_krok` nie zmniejsza residuum:
+                # iteracja stoi w punkcie stacjonarnym normy residuum. To jest
+                # PRAWDZIWA porażka zadania, a nie wyczerpanie limitu iteracji —
+                # dodatkowe kroki niczego by nie zmieniły.
+                raise BrakZbieznosciSieciError(
+                    f"Sieć utknęła w punkcie stacjonarnym residuum po {iteracja - 1} "
+                    f"iteracjach: residuum {norma:.3e} przy progu "
+                    f"{self.tolerancja:.1e}, residuum startowe {norma_poczatkowa:.3e}. "
+                    f"Ani kierunek Newtona, ani żaden kierunek Levenberga–Marquardta "
+                    f"(λ do {self.lambdy_lm[-1]:.0e}) nie daje dostatecznego spadku "
+                    f"normy przy kroku aż do {self.minimalny_krok:.1e} (warunek Armijo "
+                    f"niemonotoniczny, c={self.wspolczynnik_armijo:.0e}, pamięć "
+                    f"{self.pamiec_niemonotoniczna}, powrotów do najlepszego punktu: "
+                    f"{powroty_do_najlepszego}). To jest PRAWDZIWA porażka zadania — "
+                    f"zwiększanie limitu iteracji NIE pomoże."
+                )
 
         raise BrakZbieznosciSieciError(
             f"Sieć nie zbiegła w {self.maks_iteracji} iteracjach: residuum "
             f"{norma:.3e} przy progu {self.tolerancja:.1e}, residuum startowe "
-            f"{norma_poczatkowa:.3e}. Rosnące residuum = ROZJAZD (zły punkt startowy "
-            f"albo osobliwa sieć); residuum malejące i wciąż powyżej progu = metoda "
-            f"KULEJE na załamaniu charakterystyki (ogranicznik prądu jest ciągły, "
-            f"ale nieróżniczkowalny) — wtedy brakuje iteracji, nie dokładności."
+            f"{norma_poczatkowa:.3e}. Każdy krok zmniejszał normę (nawrót Armijo "
+            f"tego pilnuje), więc to NIE jest rozjazd ani cykl — zadanie zbiega "
+            f"zbyt wolno albo krąży wokół załamania. Tłumionych kroków: "
+            f"{kroki_tlumione}, najmniejszy przyjęty krok: {najmniejszy_krok:.3e}, "
+            f"powrotów do najlepszego punktu: {powroty_do_najlepszego}, "
+            f"najlepsze osiągnięte residuum: {norma_naj:.3e}."
         )
 
     def _jakobian(

@@ -165,6 +165,13 @@ tej sekcji zamyka cztery z pięciu.
 | `industrial-template-mass-flow` | `switch.catalog_ref_missing` na wyłączniku głównym nN — **57/57 szablonów** | CZĘŚCIOWO (4.6) |
 | `sld-audyt-powykonawczy-screenshot` | niezmiennik niezależności kanwy od motywu | naprawiona (4.8) |
 
+POTWIERDZENIE Z CI, nie z deklaracji. `Frontend E2E full` na kolejnych HEAD-ach
+tej gałęzi: `9349b3ed` — **12 failed / 396 passed**; `89f0d7de` — **5 / 403**;
+`0cd93e96` — **1 failed / 407 passed / 2 skipped**. Jedyna pozostała czerwień to
+`industrial-template-mass-flow`, a w jej komunikacie kodu `W041` **już nie ma**
+(naprawa pól TR zadziałała na wszystkich 50 zastosowanych szablonach). Zostają
+wyłącznie kody długu z 4.6: `switch.catalog_ref_missing` ×128 i `W061` ×73.
+
 ---
 
 ### 4.3 Osiem testów czerwonych W CI, zielonych lokalnie — dwie przyczyny zmierzone
@@ -427,7 +434,73 @@ dotyczy sekcji niżej.
 
 ---
 
-### 4.9 Bramka SLD ozyla i NATYCHMIAST zlapala nagromadzony regres — B-02
+### 4.9 Solver sieci nie miał GLOBALIZACJI — ten sam kod, dwa różne werdykty
+
+NAJPOWAŻNIEJSZE ZNALEZISKO NUMERYCZNE TEJ RUNDY, zmierzone na dwóch maszynach.
+`SolverSieci.rozwiaz` brał PEŁNY krok Newtona zawsze, bez żadnego warunku na
+residuum. Na zadaniu z AKTYWNYM ogranicznikiem prądu falownika GFM przy zwarciu
+bliskim metalicznemu (`x_f = 0,01` p.u.) dawało to:
+
+| Środowisko | Wynik |
+|------------|-------|
+| lokalnie | zbieżność w **34 iteracjach**, residuum końcowe `1,716e-14` |
+| CI | po **120 iteracjach** residuum STOJĄCE na `1,569e-01` — trzynaście rzędów od progu |
+
+To jest naruszenie reguły determinizmu (to samo wejście, inny wynik), a nie
+kwestia zapasu iteracji. **I to obnaża moją własną naprawę z poprzedniej karty
+jako leczenie INSTANCJI:** podniesienie limitu 40 → 120 wyleczyło jeden przypadek
+i zostawiło klasę. Klasą jest „Newton bez globalizacji na residuum niegładkim":
+bez warunku dostatecznego spadku metoda nie ma ŻADNEJ gwarancji zbliżania się do
+rozwiązania, więc o wyniku decydują ostatnie bity `np.linalg.solve`.
+
+**Co zostało wprowadzone** (metody podręcznikowe, nie heurystyki, nie zmiana
+tolerancji — próg pozostaje `1e-12`):
+
+1. **nawrót Armijo** — krok `α` połowiony, aż `‖r(V+αΔV)‖ ≤ (1 − c·α)·odniesienie`,
+   `c = 1e-4` (Dennis & Schnabel §6.3);
+2. **luz niemonotoniczny Grippo–Lampariello–Lucidi** — odniesieniem jest
+   największa norma z ostatnich 8 przyjętych iteracji, bo przejście przez grzbiet
+   załamania ogranicznika WYMAGA chwilowego wzrostu residuum (przy warunku
+   ściśle monotonicznym to samo zadanie stawało na `2,25e-01` po 6 iteracjach);
+3. **zabezpieczenie monotoniczne** — pamięć najlepszego punktu i powrót do niego,
+   gdy luz przestaje służyć zbieżności (bez niej residuum dryfowało do `2,63e+00`);
+4. **zapasowy kierunek Levenberga–Marquardta** `(JᵀJ + λ·diag(JᵀJ))δ = −Jᵀr`,
+   gdy kierunek Newtona nie jest kierunkiem spadku — przy AKTYWNYM ograniczniku
+   moduł wstrzyknięcia przestaje zależeć od `|V|`, więc jakobian traci rząd.
+
+**DAWNA „GRANICA ZBIEŻNOŚCI" BYŁA ARTEFAKTEM METODY, NIE WŁASNOŚCIĄ MODELU.**
+Test `test_zwarcie_bliskie_metalicznemu_lamie_nasycenie_a_nie_impedancje` opisywał
+monotoniczny próg rosnący z limitem prądowym i brzmiał jak orzeczenie o fizyce
+(„źródło prądowe w niemal zerowej impedancji nie ma dobrze uwarunkowanego
+rozwiązania"). Po globalizacji zmierzona siatka `i_max ∈ {0,9; 1,2; 1,5; 2,0; 3,0}`
+× `x_f ∈ {0,01; 0,005; 0,003; 0,001; 0}` liczy się CAŁA — **ze zwarciem
+metalicznym włącznie** — poza JEDNYM punktem `(i_max = 1,2, x_f = 0,003)`, i ten
+wyjątek NIE jest monotoniczny (te same `i_max` przy płytszym `x_f = 0,001` i przy
+`x_f = 0` zbiegają). Rozwiązanie istniało; nie umiał do niego dojść solver.
+
+Ten jeden punkt melduje dziś uczciwie, co się dzieje: residuum `3,517e-06`
+(najlepsze osiągnięte `1,737e-06`), 99 kroków tłumionych, najmniejszy przyjęty
+krok `1,526e-05`, 3 powroty do najlepszego punktu. To nie rozjazd i nie cykl —
+to zbieżność w żółwim tempie na załamaniu charakterystyki, z rozwiązaniem
+leżącym praktycznie NA załamaniu.
+
+**Trzy pomiary przesunęły się i zostały przepisane, nie ukryte:**
+
+| Test | Było | Jest |
+|------|------|------|
+| granica zbieżności nasycenia | monotoniczny próg `x_f ≈ 0,0045` | jeden izolowany punkt `(1,2; 0,003)` |
+| chwila awarii solvera w zwarciu 0,5 s | w czasie trwania zwarcia | **t = 1,4320 s**, w wybiegu pozwarciowym |
+| tabela sztywności | żądała `BrakZbieznosciSieciError` w tabeli | pilnuje KONTRAKTU tabeli (wiersz na pomiar, oznaczenie niestabilnych, powód dokładnie tam, gdzie jest) |
+
+Każdy z trzech ma dziś w docstringu zapisane, CO się zmieniło i DLACZEGO —
+nowy pomiar zamiast starego, nie obok niego. Mechanizmy globalizacji mają własny
+plik pinów: `tests/research/test_globalizacja_solvera_sieci.py` (7 testów, w tym
+bramka „tolerancja nie jest luźniejsza niż przed globalizacją" i rozróżnienie
+dwóch komunikatów porażki: stagnacja ≠ wyczerpanie limitu).
+
+---
+
+### 4.10 Bramka SLD ozyla i NATYCHMIAST zlapala nagromadzony regres — B-02
 
 Po usunieciu martwego odwolania bramka `SLD Determinism Guards` przeszla
 wszystkie 14 wczesniej zablokowanych krokow i zatrzymala sie na OSTATNIM:
@@ -470,7 +543,7 @@ Do rozstrzygniecia po obejrzeniu renderu: czy wzrost jest CENA portalu nN
 | Stos | Komenda | Wynik |
 |------|---------|-------|
 | Laboratorium | `poetry run pytest tests/research -q` | **827 passed**, RC=0 |
-| Backend (komplet) | `poetry run pytest -q` | **11 604 passed, 6 skipped**, RC=0 |
+| Backend (komplet) | `poetry run pytest -q` | **11 611 passed, 6 skipped**, RC=0 |
 | Frontend (vitest) | `npm run test:ci` | **887 plików, 11 989 passed**, 1 skipped, 14 todo, RC=0 |
 | Lint/format backend | `ruff check src tests` · `black --check src tests` | RC=0 · RC=0 |
 | Lint frontendu | `npm run lint` | RC=0 |
@@ -481,7 +554,7 @@ Do rozstrzygniecia po obejrzeniu renderu: czy wzrost jest CENA portalu nN
 | e2e SLD (realny backend) | `sld-audyt-powykonawczy-screenshot` | 9 passed, RC=0 |
 
 Przyrost testów backendu względem poprzedniego pomiaru tej gałęzi: 11 539 →
-11 604 (+65 nowych, zero czerwonych). Bramka rejestru kodów złapała brak wpisu
+11 611 (+72 nowe, zero czerwonych). Bramka rejestru kodów złapała brak wpisu
 dla nowego kodu `catalog.load_reactive_power_unresolved` — uzupełniony w
 `READINESS_CODES` i w mapie celów frontu, zamiast obchodzenia bramki.
 

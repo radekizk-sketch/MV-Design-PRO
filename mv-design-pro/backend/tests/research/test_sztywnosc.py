@@ -621,14 +621,47 @@ def test_swiezy_silnik_nie_dziedziczy_stanu_po_poprzednim() -> None:
 def test_tabela_zawiera_kazdy_pomiar_i_oznacza_niestabilne(
     pomiary: tuple[PomiarIntegratora, ...],
 ) -> None:
-    """Tabela jest jedynym miejscem, z którego liczby trafiają do meldunku."""
+    """Tabela jest jedynym miejscem, z którego liczby trafiają do meldunku.
+
+    KOREKTA 2026-09-11. Test żądał wcześniej DOSŁOWNIE łańcucha
+    ``"BrakZbieznosciSieciError"`` w tabeli — czyli zakładał, że przynajmniej
+    jeden przypadek siatki padnie awarią solvera sieci. Po globalizacji solvera
+    (nawrót niemonotoniczny + kierunek Levenberga–Marquardta, `dynamic_lab.siec`)
+    ten sam przypadek już nie pada: niestabilność integratora nadal występuje i
+    nadal jest oznaczona, ale nie przez błąd solvera.
+
+    Dlatego test pilnuje teraz KONTRAKTU tabeli, a nie historycznego wyniku:
+    każdy pomiar ma swój wiersz, niestabilność jest oznaczona, a kolumna „uwaga"
+    niesie powód DOKŁADNIE tych przebiegów, które go mają. Asercja na konkretną
+    klasę wyjątku wiązała test z metodą rozwiązywania sieci — a to nie jest jego
+    przedmiot.
+    """
     tabela = tabela_porownania(pomiary)
     linie = tabela.splitlines()
     assert len(linie) == len(pomiary) + 2
-    assert "NIE" in tabela
-    assert "BrakZbieznosciSieciError" in tabela
     for nazwa in sorted(INTEGRATORY):
         assert f"`{nazwa}`" in tabela
+
+    niestabilne = [p for p in pomiary if not p.stabilny]
+    assert niestabilne, (
+        "Siatka pomiarowa nie zawiera ANI JEDNEGO przypadku niestabilnego — "
+        "tabela nie ma czego oznaczać, więc test niczego nie broni. Rozszerz "
+        "siatkę kroków albo horyzont."
+    )
+    assert tabela.count("| NIE |") == len(niestabilne), (
+        f"Oznaczono {tabela.count('| NIE |')} przebiegów jako niestabilne, "
+        f"a zmierzono {len(niestabilne)}."
+    )
+    # PREDYKATY PARAMI: powód niepowodzenia jest w tabeli DOKŁADNIE wtedy, gdy
+    # jest w pomiarze — ani „uwaga" bez powodu, ani powód zgubiony po drodze.
+    for p in pomiary:
+        wiersz = next(
+            w for w in linie[2:] if w.startswith(f"| `{p.nazwa}` | {p.krok_s * 1000:.2f} ")
+        )
+        if p.powod_niepowodzenia:
+            assert p.powod_niepowodzenia in wiersz, (p.nazwa, p.krok_s, wiersz)
+        else:
+            assert wiersz.endswith("|  |"), f"uwaga bez powodu: {wiersz}"
 
 
 def test_raport_laczy_widmo_tabele_i_iteracje() -> None:
