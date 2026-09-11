@@ -481,7 +481,7 @@ def complete_station_loads_from_nn_feeders(
     so this migration closes that gap deterministically at the ENM boundary.
 
     Tabliczka dokładanego odbioru (P oraz Q/cosφ) pochodzi WYŁĄCZNIE z pozycji
-    katalogowej — patrz `_catalog_load_reactive_power`. Gdy katalog nie
+    katalogowej — patrz `moc_bierna_odbioru_katalogowego`. Gdy katalog nie
     rozstrzyga mocy biernej, odbiór nie powstaje w ogóle.
 
     PREDYKATY PARAMI (karta NAPRAWA-B, znalezisko #3). Ta migracja jest
@@ -539,7 +539,7 @@ def complete_station_loads_from_nn_feeders(
     # żeby wszystkie dokładane odbiory dostały ten sam, deterministyczny komplet
     # danych tabliczkowych.
     load_type = get_default_mv_catalog().get_load_type(DEFAULT_LOAD_CATALOG_REF)
-    reactive_power = _catalog_load_reactive_power(load_type, DEFAULT_LOAD_KW / 1000.0)
+    reactive_power = moc_bierna_odbioru_katalogowego(load_type, DEFAULT_LOAD_KW / 1000.0)
     if load_type is None or reactive_power is None:
         # Brak kanonu katalogu dla mocy biernej ⇒ NIE materializujemy odbioru.
         # Cicha wartość Q = 0 przy zadeklarowanym katalogu to phantom cosφ
@@ -651,13 +651,30 @@ Q_SOURCE_CATALOG_COS_PHI = "KATALOG_COS_PHI"
 Q_SOURCE_CATALOG_NO_REACTIVE = "KATALOG_BEZ_MOCY_BIERNEJ"
 
 
-def _catalog_load_reactive_power(
+def moc_bierna_odbioru_katalogowego(
     load_type: LoadType | None,
     p_mw: float,
 ) -> tuple[float, str] | None:
     """Moc bierna odbioru katalogowego [Mvar] + znacznik jej źródła.
 
-    Hierarchia źródeł (parytet z naprawionym ``add_nn_load``, V12K-050):
+    JEDNO ŹRÓDŁO PRAWDY dla hierarchii Q odbioru katalogowego. Wołają ją OBAJ
+    pisarze odbioru z pozycji katalogu: migracja legacy pól nN
+    (``complete_station_loads_from_nn_feeders``, niżej w tym module) oraz
+    operacja domenowa ``enm.domain_operations_v2.add_nn_load``, czyli droga
+    realnego projektanta. Do 2026-09-11 ten docstring deklarował „parytet z
+    naprawionym ``add_nn_load``" — i deklaracja była NIEPRAWDZIWA: operacja
+    pobierała pozycję katalogu WYŁĄCZNIE po to, żeby sprawdzić jej istnienie
+    (``_, blad = _pozycja_katalogu(...)``), po czym zapisywała ``q_mvar`` z
+    samego payloadu. Zmierzone na żywym backendzie: odbiór związany z
+    ``load_przem_75kw`` (katalog: ``q_kvar = 28,0``) trafiał do modelu jako
+    ``q_mvar = 0.0``, ``materialized_params = null``, przy
+    ``parameter_source = "CATALOG"`` i ``source_mode = "KATALOG"`` — dokładnie
+    phantom cosφ V12K-050, przed którym ostrzega ta funkcja, tyle że wpuszczony
+    drugimi drzwiami. Deklaracja bez przypiętego testu jest groźniejsza niż sam
+    defekt, bo wyłącza czujność — teraz parytet pilnuje
+    ``tests/enm/test_add_nn_load_katalog_q.py``.
+
+    Hierarchia źródeł (V12K-050):
 
     1. jawne ``q_kvar`` pozycji katalogowej wygrywa bez przeliczeń
        (np. ``load_przem_75kw`` podaje 28 kvar wprost);

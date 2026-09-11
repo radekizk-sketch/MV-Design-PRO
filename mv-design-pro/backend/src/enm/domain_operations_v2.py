@@ -35,7 +35,10 @@ from network_model.catalog.types import CatalogBinding
 from network_model.solvers import cable_ampacity_derating as cable_derating
 
 from . import der_sn_validation as der_val
-from .catalog_completion import NN_FIELD_ORIGIN_OPERACJA_DOMENOWA
+from .catalog_completion import (
+    NN_FIELD_ORIGIN_OPERACJA_DOMENOWA,
+    moc_bierna_odbioru_katalogowego,
+)
 from .domain_operations import (
     FUNKCJA_POMIARU_DOMYSLNA_POLA_DOKLADANEGO,
     POLE_BLOKU_FABRYCZNEGO,
@@ -2529,6 +2532,53 @@ def add_sn_bay_from_catalog(enm: dict[str, Any], payload: dict[str, Any]) -> dic
     return add_sn_bay(enm, payload_pola)
 
 
+def _meta_wiazania_aparatu_pola_nn(
+    payload: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    """Klucze meta wpisu `nn_field_specs`, którymi promocja materializuje aparat.
+
+    KLASA, NIE INSTANCJA (przegląd 2026-08-01, pomiar 2026-09-11). Promocja pól
+    nN (`enm/migrations/nn_field_specs_promocja.migruj`) CZYTA z meta wpisu
+    `catalog_binding`/`catalog_bindings` i buduje `SwitchBranch` z `catalog_ref`,
+    `source_mode: KATALOG` i `materialized_params`. Czytelnik istniał, ale w
+    klasie czterech pisarzy `nn_field_specs` tylko DWA go karmiły
+    (`domain_operations._build_nn_field_specs` — wyłącznik główny nN, oraz
+    `_append_converter_field_if_needed` — pole przekształtnika). Dwa pozostałe,
+    OBA za jedynym publicznym write-pathem pola nN (`add_nn_outgoing_field`,
+    role FEEDER i SOURCE), nie miały drogi przekazania wiązania: aparat odpływu
+    powstawał z `catalog_ref = None`, `source_mode = "MIGRACJA"`, a gotowość
+    inżynierska meldowała `switch.catalog_ref_missing` + `W061` BEZ ŻADNEJ
+    operacji, którą projektant mógłby to naprawić przy tworzeniu pola.
+
+    ZMIERZONE PRZED NAPRAWĄ (żywy backend, `add_nn_outgoing_field` →
+    `engineering-readiness`): `ready=False`, kody `['W002', 'W061',
+    'switch.catalog_ref_missing']`, element `nn/<seed>/feeder_device`.
+
+    Wiązanie jest OPCJONALNE (pole bez wskazanego aparatu to poprawny stan
+    pośredni — tak samo jak po stronie SN), ale wskazane MUSI istnieć: inaczej
+    migawka deklarowałaby `KATALOG` przy martwej pozycji (`_blad_aparatu_pola`).
+
+    Zwraca ``(klucze_meta, None)`` albo ``({}, odpowiedź_błędu)``.
+    """
+    binding = payload.get("catalog_binding")
+    if not isinstance(binding, dict):
+        return {}, None
+    blad = _blad_aparatu_pola(
+        binding,
+        namespace=_PRZESTRZEN_APARATU_POLA_NN,
+        opis_pl="Aparat pola nN",
+    )
+    if blad is not None:
+        return {}, blad
+    meta: dict[str, Any] = {
+        "catalog_binding": _wiazanie_w_przestrzeni(binding, _PRZESTRZEN_APARATU_POLA_NN)
+    }
+    catalog_item_id = _catalog_item_id(binding)
+    if catalog_item_id:
+        meta["apparatus_catalog_ref"] = catalog_item_id
+    return meta, None
+
+
 def _add_nn_outgoing_field_internal(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Wewnętrzny zapis odpływu nN do meta.nn_field_specs."""
     bus_nn_ref = payload.get("bus_nn_ref")
@@ -2558,6 +2608,9 @@ def _add_nn_outgoing_field_internal(enm: dict[str, Any], payload: dict[str, Any]
         }
     )
     feeder_ref = _make_id("nn", seed, "outgoing")
+    meta_wiazania, blad_wiazania = _meta_wiazania_aparatu_pola_nn(payload)
+    if blad_wiazania is not None:
+        return blad_wiazania
     field_spec = _build_field_spec(
         field_ref=feeder_ref,
         name=payload.get("field_name") or "Odpływ nN",
@@ -2565,6 +2618,7 @@ def _add_nn_outgoing_field_internal(enm: dict[str, Any], payload: dict[str, Any]
         bus_ref=bus_nn_ref,
         tags=list(payload.get("tags") or []),
         meta={
+            **meta_wiazania,
             "feeder_role": payload.get("feeder_role", "ODPLYW_NN"),
             # Karta NAPRAWA-B, znalezisko #3: znacznik pochodzenia — TO SAMO
             # pole czyta `enm.catalog_completion._pochodzi_z_operacji_domenowej`,
@@ -2625,6 +2679,9 @@ def _append_nn_source_meta_field(enm: dict[str, Any], payload: dict[str, Any]) -
         }
     )
     field_ref = _make_id("nn", seed, "source_field")
+    meta_wiazania, blad_wiazania = _meta_wiazania_aparatu_pola_nn(payload)
+    if blad_wiazania is not None:
+        return blad_wiazania
     field_spec = _build_field_spec(
         field_ref=field_ref,
         name=payload.get("field_name") or f"Pole źródłowe nN ({kind})",
@@ -2632,6 +2689,7 @@ def _append_nn_source_meta_field(enm: dict[str, Any], payload: dict[str, Any]) -
         bus_ref=bus_nn_ref,
         tags=["nn_source_field"],
         meta={
+            **meta_wiazania,
             "source_field_kind": kind,
             # Karta NAPRAWA-B, znalezisko #3 — patrz komentarz w
             # `_add_nn_outgoing_field_internal` (ten sam znacznik, ten sam
@@ -2701,8 +2759,12 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     # Odbiór bez pozycji katalogowej jest kanoniczny (`EKSPERCKI_RECZNY`), ale
     # WSKAZANA pozycja musi ISTNIEĆ — inaczej odbiór deklaruje w migawce
     # `source_mode: KATALOG` / `parameter_source: CATALOG` przy martwej referencji.
+    tabliczka_katalogu: dict[str, Any] = {}
+    zrodlo_q: str | None = None
+    cos_phi_katalogu: float | None = None
+    cos_phi_mode_katalogu: str | None = None
     if catalog_ref:
-        _, blad_katalogu = _pozycja_katalogu(
+        tabliczka_katalogu, blad_katalogu = _pozycja_katalogu(
             namespace=przestrzen_katalogu,
             catalog_ref=catalog_ref,
             catalog_binding=catalog_binding,
@@ -2710,6 +2772,49 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         )
         if blad_katalogu is not None:
             return blad_katalogu
+
+        # TABLICZKA KATALOGU TRAFIA DO MODELU, NIE TYLKO DO WALIDACJI ISTNIENIA
+        # (pomiar 2026-09-11). Pozycja była pobierana i WYRZUCANA (`_, blad = ...`),
+        # więc odbiór związany z `load_przem_75kw` (katalog: q_kvar = 28,0) szedł
+        # do rozpływu z Q = 0 przy `parameter_source: CATALOG` — phantom cosφ
+        # V12K-050 w drodze REALNEGO PROJEKTANTA, mimo że bliźniacza migracja
+        # legacy (`catalog_completion.complete_station_loads_from_nn_feeders`)
+        # broniła się przed nim od dawna. Hierarchia Q ma jedno źródło prawdy:
+        # `moc_bierna_odbioru_katalogowego`, wspólne dla obu pisarzy.
+        #
+        # PIERWSZEŃSTWO: deklaracja projektanta (`reactive_power_kvar` albo
+        # `cos_phi` w payloadzie) wygrywa z tabliczką — formularz opisuje
+        # KONKRETNĄ instalację, katalog tylko typ. Katalog uzupełnia to, czego
+        # formularz nie powiedział; nigdy nie nadpisuje tego, co powiedział.
+        if reactive_power_kvar is None:
+            try:
+                p_mw_deklarowane = float(active_power_kw) / 1000.0
+            except (TypeError, ValueError):
+                p_mw_deklarowane = 0.0
+            pozycja_odbioru = get_default_mv_catalog().get_load_type(catalog_ref)
+            rozwiazanie = moc_bierna_odbioru_katalogowego(pozycja_odbioru, p_mw_deklarowane)
+            if rozwiazanie is None:
+                # Parytet z migracją: brak kanonu katalogu dla mocy biernej ⇒
+                # NIE zapisujemy cichego Q = 0 pod pieczątką „CATALOG". Odbiór
+                # ekspercki (bez pozycji) ma tę drogę otwartą — to świadoma
+                # deklaracja projektanta, a nie milczenie katalogu.
+                return _error_response(
+                    (
+                        f"Pozycja katalogu '{catalog_ref}' nie rozstrzyga mocy biernej "
+                        "odbioru (brak q_kvar i brak cosφ) — podaj "
+                        "'reactive_power_kvar' albo 'cos_phi' w formularzu."
+                    ),
+                    "catalog.load_reactive_power_unresolved",
+                )
+            q_mvar_katalogu, zrodlo_q = rozwiazanie
+            reactive_power_kvar = q_mvar_katalogu * 1000.0
+            if pozycja_odbioru is not None:
+                # cosφ tabliczkowy NIE jest polem solverowym kontraktu OBCIAZENIE
+                # (`MATERIALIZATION_CONTRACTS`), więc nie ma go w `tabliczka_katalogu`
+                # — bierzemy go z pozycji katalogu, bo to on rozstrzyga gałąź
+                # hierarchii, gdy `q_kvar` milczy.
+                cos_phi_katalogu = pozycja_odbioru.cos_phi
+                cos_phi_mode_katalogu = pozycja_odbioru.cos_phi_mode
 
     original_feeder_bus_ref = _field_station_bus_ref(enm, feeder_ref)
     if not original_feeder_bus_ref:
@@ -2762,11 +2867,30 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             "cos_phi": payload.get("cos_phi"),
         },
     }
-    # Klucz dopisywany WARUNKOWO: odbiór stałomocowy zapisuje się dokładnie tak
-    # jak przed tą zmianą (bez `materialized_params`), więc istniejące projekty
-    # i ich odciski pozostają nietknięte.
-    if zip_odbioru is not None:
-        nowy_odbior["materialized_params"] = zip_odbioru
+    # Klucz dopisywany WARUNKOWO: odbiór stałomocowy BEZ pozycji katalogowej
+    # zapisuje się dokładnie tak jak przed tą zmianą (bez `materialized_params`),
+    # więc istniejące projekty eksperckie i ich odciski pozostają nietknięte.
+    #
+    # ŚLAD WHITE BOX MATERIALIZACJI (parytet z `catalog_completion._build_default_load`,
+    # które zapisuje ten sam komplet): gdy Q przyszło z tabliczki, model niesie
+    # JAWNIE, z której pozycji i KTÓRĄ gałęzią hierarchii — bez tego rekord
+    # twierdziłby „parametry z katalogu", a audyt nie miałby jak sprawdzić, czy
+    # 28 kvar to `q_kvar` pozycji, czy przeliczenie z cosφ.
+    slad_katalogu: dict[str, Any] = {}
+    if zrodlo_q is not None:
+        slad_katalogu = {
+            "catalog_item_id": catalog_ref,
+            "q_kvar": reactive_power_kvar,
+            "q_source": zrodlo_q,
+        }
+        if tabliczka_katalogu.get("p_kw") is not None:
+            slad_katalogu["catalog_p_kw"] = tabliczka_katalogu["p_kw"]
+        if cos_phi_katalogu is not None:
+            slad_katalogu["catalog_cos_phi"] = float(cos_phi_katalogu)
+        if cos_phi_mode_katalogu:
+            slad_katalogu["catalog_cos_phi_mode"] = str(cos_phi_mode_katalogu)
+    if zip_odbioru is not None or slad_katalogu:
+        nowy_odbior["materialized_params"] = {**slad_katalogu, **(zip_odbioru or {})}
 
     new_enm = kopia_graniczna_enm(enm)
     new_enm.setdefault("loads", []).append(nowy_odbior)

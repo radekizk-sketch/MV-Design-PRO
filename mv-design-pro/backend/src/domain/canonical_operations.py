@@ -1448,6 +1448,22 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "modal": "CatalogPicker",
         },
     ),
+    "catalog.load_reactive_power_unresolved": ReadinessCodeSpec(
+        code="catalog.load_reactive_power_unresolved",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Pozycja katalogu odbioru nie rozstrzyga mocy biernej (brak q_kvar i brak "
+            "cosφ) — podaj moc bierną albo cosφ w formularzu odbioru"
+        ),
+        fix_action_id="fix_load_reactive_power",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "reactive_power_kvar",
+        },
+    ),
     # Import — mandatory catalog mapping
     "import.catalog_mapping_required": ReadinessCodeSpec(
         code="import.catalog_mapping_required",

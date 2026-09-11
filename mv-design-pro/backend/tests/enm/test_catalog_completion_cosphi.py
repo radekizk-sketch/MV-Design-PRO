@@ -6,7 +6,15 @@ zapisywał mu `q_mvar = 0.0`. Rekord twierdził „parametry z katalogu" i niós
 cosφ 0,92 w `materialized_params` oraz `meta`, a do rozpływu szło cosφ = 1,0 —
 mapowanie ENM→solver czyta wyłącznie `Load.q_mvar`. Skutek: spadek napięcia na
 szynie nN zaniżony ~2,6× na KAŻDEJ stacji z kreatora. To ta sama klasa defektu,
-którą V12K-050 nazwał „phantom cosφ" i zamknął dla `add_nn_load`.
+którą V12K-050 nazwał „phantom cosφ".
+
+KOREKTA 2026-09-11. To zdanie brzmiało wcześniej „…i zamknął dla `add_nn_load`" —
+i było NIEPRAWDZIWE. Pomiar na żywym backendzie pokazał, że operacja domenowa
+`add_nn_load` pobierała pozycję katalogu wyłącznie do sprawdzenia jej istnienia
+i zapisywała `q_mvar` z samego payloadu: odbiór związany z `load_przem_75kw`
+(katalog: q_kvar = 28,0) trafiał do modelu z Q = 0 pod pieczątką
+`parameter_source: CATALOG`. Klasa była więc zamknięta w JEDNYM z dwóch pisarzy.
+Drugi zamyka `tests/enm/test_add_nn_load_katalog_q.py`.
 
 Testy pilnują trzech rzeczy naraz:
   * arytmetyki tabliczkowej (hierarchia źródeł Q: jawne q_kvar → cosφ → brak),
@@ -34,9 +42,9 @@ from enm.catalog_completion import (
     Q_SOURCE_CATALOG_COS_PHI,
     Q_SOURCE_CATALOG_NO_REACTIVE,
     Q_SOURCE_CATALOG_Q_KVAR,
-    _catalog_load_reactive_power,
     complete_catalog_defaults,
     complete_station_loads_from_nn_feeders,
+    moc_bierna_odbioru_katalogowego,
 )
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
@@ -166,7 +174,7 @@ def test_moc_bierna_wyprowadzona_z_katalogowego_cos_phi() -> None:
     assert load_type.q_kvar is None, "Pozycja katalogowa nie może podawać Q jawnie w tym teście."
     assert load_type.cos_phi == 0.92
 
-    rozwiazanie = _catalog_load_reactive_power(load_type, p_mw)
+    rozwiazanie = moc_bierna_odbioru_katalogowego(load_type, p_mw)
 
     assert rozwiazanie is not None
     q_mvar, zrodlo = rozwiazanie
@@ -182,7 +190,7 @@ def test_jawne_q_kvar_katalogu_wygrywa_nad_wyprowadzeniem_z_cos_phi() -> None:
     assert load_type.q_kvar == 28.0
     assert load_type.cos_phi == 0.94
 
-    rozwiazanie = _catalog_load_reactive_power(load_type, 0.075)
+    rozwiazanie = moc_bierna_odbioru_katalogowego(load_type, 0.075)
 
     assert rozwiazanie is not None
     q_mvar, zrodlo = rozwiazanie
@@ -195,18 +203,18 @@ def test_jawny_kanon_katalogu_bez_mocy_biernej_daje_zero() -> None:
     """`cos_phi_mode == "BRAK"` to JAWNA deklaracja katalogu, nie cisza."""
     load_type = LoadType(id="probny", name="Probny", p_kw=30.0, cos_phi=None, cos_phi_mode="BRAK")
 
-    rozwiazanie = _catalog_load_reactive_power(load_type, 0.03)
+    rozwiazanie = moc_bierna_odbioru_katalogowego(load_type, 0.03)
 
     assert rozwiazanie == (0.0, Q_SOURCE_CATALOG_NO_REACTIVE)
 
 
 def test_brak_q_i_cos_phi_nie_daje_cichego_zera() -> None:
     """Brak kanonu katalogu ⇒ brak rozstrzygnięcia (None), nigdy Q = 0."""
-    assert _catalog_load_reactive_power(None, 0.03) is None
+    assert moc_bierna_odbioru_katalogowego(None, 0.03) is None
     bez_danych = LoadType(id="probny", name="Probny", p_kw=30.0, cos_phi=None, cos_phi_mode="IND")
-    assert _catalog_load_reactive_power(bez_danych, 0.03) is None
+    assert moc_bierna_odbioru_katalogowego(bez_danych, 0.03) is None
     zly_cos_phi = LoadType(id="probny", name="Probny", p_kw=30.0, cos_phi=0.0, cos_phi_mode="IND")
-    assert _catalog_load_reactive_power(zly_cos_phi, 0.03) is None
+    assert moc_bierna_odbioru_katalogowego(zly_cos_phi, 0.03) is None
 
 
 def test_odbior_nie_powstaje_gdy_katalog_nie_rozstrzyga_mocy_biernej(
