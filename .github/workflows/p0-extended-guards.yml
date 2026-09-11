@@ -62,8 +62,31 @@ jobs:
       # na czystym HEAD (weryfikacja lokalna przy przenosinach z martwego
       # katalogu mv-design-pro/.github/workflows); trace_determinism wymaga
       # wyłącznie pydantic (import modeli domeny, bez cięższych zależności).
-      - name: Zależności trace guard (pydantic)
-        run: pip install pydantic
+      # ZALEZNOSCI GUARDOW IMPORTUJACYCH WARSTWE DOMENY — KOMPLET, ZMIERZONY.
+      #
+      # DEFEKT (2026-09-02 .. 2026-09-11, naprawiony tutaj): instalowany byl sam
+      # `pydantic`, a `protection_fuse_band_guard.py` ciagnie lancuch importow
+      # `protection.curves` -> `network_model.core.graph` -> `networkx` ->
+      # `network_model.core.ybus` -> `numpy`. Guard konczyl sie
+      # `ModuleNotFoundError: No module named 'networkx'`, wiec workflow
+      # przerywal sie na tym kroku, a 12 KOLEJNYCH GUARDOW NIGDY SIE NIE
+      # WYKONYWALO. Bramka byla czerwona z powodu srodowiska, nie naruszenia —
+      # czyli w najgorszym mozliwym stanie: sygnalizowala alarm, ktory nic nie
+      # znaczyl, i jednoczesnie nie chronila 12 inwariantow.
+      #
+      # Czerwone rowniez na `main` (7e84753a, a1ab2959) tym samym sladem stosu,
+      # a zielone jeszcze na 2031fc75 — dlug wniesiony przez #472, nie przez ta
+      # galaz. Naprawiany tutaj, bo wykryty tutaj (CLAUDE.md § Zero-Debt pkt 1).
+      #
+      # Lista jest ZMIERZONA, nie zgadnieta: instalowane po jednym az do RC=0
+      # w czystym venv z samym `pydantic` (odtworzenie srodowiska CI). Po
+      # naprawie WSZYSTKIE 52 kroki guardowe tego workflowu daja RC=0.
+      #
+      # Dlaczego nie `poetry install` calego backendu: guardy sa kontrola
+      # statyczna i maja biec na lekkim interpreterze w kilkanascie sekund;
+      # pelna instalacja to inny workflow (`python-tests.yml`).
+      - name: Zależności guardów domenowych (zmierzony komplet)
+        run: pip install pydantic networkx numpy scipy
 
       # Karta N-D5-FUSE: bezpiecznik topikowy nie moze byc liczony wzorem IDMT
       # przekaznika (IEC 60255) — jego pasmo (IEC 60282-1) pochodzi z karty

@@ -65,9 +65,21 @@ jobs:
         working-directory: mv-design-pro/frontend
         run: npx vitest run --no-file-parallelism src/ui/sld/v2/geometry/__tests__/portAnchoredGeometry.substrate.test.ts --reporter=verbose
 
-      - name: Run StationInternalView tests (PR-6)
-        working-directory: mv-design-pro/frontend
-        run: npx vitest run --no-file-parallelism src/ui/sld/v2/__tests__/StationInternalView.test.tsx --reporter=verbose
+      # KROK USUNIETY (2026-09-11), NIE WYCISZONY. Commit 08ccf7c9 („Slice E:
+      # kasacja martwego legacy StationInternalView/panelu wynikow nN") skasowal
+      # komponent `StationInternalView` wraz z jego testem jako martwy kod i
+      # postawil w jego miejsce guard architektury domeny nN. Odwolanie w tym
+      # workflowie zostalo — a `vitest` na nieistniejacym pliku konczy sie
+      # „No test files found, exiting with code 1".
+      #
+      # SKUTEK ZMIERZONY: bramka byla czerwona na `main` od 2026-09-01, a
+      # 14 KOLEJNYCH KROKOW (SldCommandService, ports, caly komplet kontraktow
+      # SLD v3 i odbior renderu) NIE WYKONALO SIE ANI RAZU. Najgrozniejszy
+      # wariant defektu CI: alarm bez tresci i jednoczesny brak ochrony 14
+      # inwariantow rdzenia produktu.
+      #
+      # Przedmiot kroku NIE ISTNIEJE, wiec krok znika. To nie jest oslabienie
+      # bramki — bramka nie dzialala; usuniecie martwego odwolania ja przywraca.
 
       - name: Run SldCommandService tests (PR-13)
         working-directory: mv-design-pro/frontend
