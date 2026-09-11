@@ -305,9 +305,32 @@ class WynikDynamiczny:
         return odcisk(self.to_dict())
 
 
+class NieserializowalnyLadunekError(TypeError):
+    """Ładunek odcisku zawiera wartość, której nie da się zapisać deterministycznie."""
+
+
 def odcisk(payload: Any) -> str:
-    """Deterministyczny SHA-256 z kanonicznego JSON."""
-    tekst = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+    """Deterministyczny SHA-256 z kanonicznego JSON — BEZ awaryjnego ``str``.
+
+    Poprzednia wersja miała ``default=str``, co dla obiektu bez własnego
+    ``__str__`` daje ``"<... object at 0x7fd630701150>"`` — czyli ADRES W PAMIĘCI
+    wpisany do skrótu. Odcisk przestawał wtedy być deterministyczny (ten sam
+    ładunek w dwóch procesach dawał różne skróty), a wyglądał na policzony:
+    funkcja nie zgłaszała niczego, zwracała poprawny szesnastkowy ciąg.
+
+    To jest naruszenie reguły determinizmu przez CICHE przybliżenie, więc
+    zamiast zapisywać cokolwiek, funkcja odmawia i mówi, czego nie umie zapisać.
+    Dziś żadna ścieżka tego nie trafia (``zastosowane`` niesie same skalary) —
+    ale „dziś nie trafia" to nie to samo, co „nie może trafić".
+    """
+    try:
+        tekst = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    except TypeError as wyjatek:
+        raise NieserializowalnyLadunekError(
+            f"Ładunek odcisku zawiera wartość niezapisywalną kanonicznie: {wyjatek}. "
+            "Awaryjne `str()` wpisałoby do skrótu adres obiektu w pamięci, "
+            "czyniąc odcisk niedeterministycznym bez żadnego sygnału."
+        ) from wyjatek
     return hashlib.sha256(tekst.encode("utf-8")).hexdigest()
 
 

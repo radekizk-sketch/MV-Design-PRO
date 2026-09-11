@@ -41,6 +41,7 @@ from numpy.typing import NDArray
 
 from dynamic_lab.konwencje import F_BAZOWA_HZ, OMEGA_S
 from dynamic_lab.siec import Bocznik, TopologiaSieci
+from dynamic_lab.tozsamosc import pole_artefakt
 
 #: Poniżej tego napięcia rozkład prądu na składową czynną/bierną traci sens
 #: (faza napięcia jest nieokreślona) — patrz `_ogranicz_prad`.
@@ -324,6 +325,9 @@ class JednostkaSterowanaPQ:
     def nazwy_stanow(self) -> tuple[str, ...]:
         return ("p_wyjscia_pu", "q_wyjscia_pu")
 
+    def jednostki_stanow(self) -> tuple[str, ...]:
+        return ("p.u.", "p.u.")
+
     def pochodne_ze_zadaniem(
         self,
         x: NDArray[np.float64],
@@ -400,12 +404,23 @@ class MagazynEnergiiBESS:
     przy `ogranicz_okregiem`. Dodatkowo ogranicznik PRĄDU (``krotnosc_pradu_max``),
     bo przy zapadzie napięcia ta sama moc wymaga większego prądu.
 
-    RÓWNOWAGA — ISTOTNE I NIEOCZYWISTE. Magazyn oddający moc NIE JEST w stanie
-    ustalonym: ``d(soc)/dt != 0``. Dla ``P = 0.5`` p.u. przy 100 MVA i 10 MWh jest
-    to 1,4e-3 1/s, czyli o trzy rzędy więcej niż tolerancja równowagi silnika.
-    Dlatego ``inicjalizuj`` zwraca stan UCZCIWY, a `SilnikRMS` odrzuca taki punkt
-    startowy — i tak ma być. Równowagą jest wyłącznie magazyn o ``P = 0`` (może
-    przy tym oddawać moc bierną: ``Q`` nie zużywa energii zmagazynowanej).
+    RÓWNOWAGA — ISTOTNE I NIEOCZYWISTE. Magazyn oddający moc nie jest w równowadze
+    ENERGETYCZNEJ: ``d(soc)/dt != 0``. Dla ``P = 0.5`` p.u. przy 100 MVA i 10 MWh
+    jest to 1,4e-3 1/s, czyli o trzy rzędy więcej niż tolerancja równowagi silnika.
+
+    KOREKTA (pakiet D audytu). Poprzednia redakcja tego akapitu kończyła się
+    zdaniem „`SilnikRMS` odrzuca taki punkt startowy — i tak ma być", a test
+    pinował to jako zachowanie zamierzone. To było BŁĘDNE: normalnym punktem pracy
+    magazynu jest praca z niezerową mocą, a symulacja krótkookresowa musi móc od
+    niego wystartować. Dryf zapasu energii nie jest brakiem równowagi
+    elektromechanicznej — jest bilansem energii.
+
+    Rozstrzygnięcie: ``soc`` jest zadeklarowany jako STAN ZASOBOWY
+    (``stany_zasobowe``), więc nie wchodzi do warunku ``||f_szybkie|| = 0``, a jego
+    pochodna jest raportowana OSOBNO (``SilnikRMS.norma_pochodnej_zasobowej``).
+    Równowagi wymagają nadal WSZYSTKIE stany szybkie: tor P/Q i PLL. Nie jest to
+    podniesienie tolerancji — tolerancja stanów szybkich pozostaje bez zmian, a
+    magazyn oddający moc przy niezbieżnym PLL nadal zostanie odrzucony.
 
     CZEGO TEN MODEL NIE MA (jawnie): sprawności ładowania/rozładowania i strat
     falownika (SOC całkuje moc na zaciskach AC, nie energię ogniw), samorozładowania,
@@ -482,6 +497,19 @@ class MagazynEnergiiBESS:
 
     def nazwy_stanow(self) -> tuple[str, ...]:
         return ("p_wyjscia_pu", "q_wyjscia_pu", "soc", "theta_pll_rad", "omega_pll_pu")
+
+    def stany_zasobowe(self) -> tuple[str, ...]:
+        """``soc`` jest zapasem energii, nie zmienną elektromechaniczną.
+
+        Jego pochodna jest niezerowa zawsze, gdy magazyn oddaje albo pobiera moc
+        — to jest bilans energii, a nie brak równowagi. Warunkowi ``f = 0``
+        podlegają pozostałe cztery stany: tor P/Q i PLL.
+        """
+        return ("soc",)
+
+    def jednostki_stanow(self) -> tuple[str, ...]:
+        """Jednostki DEKLAROWANE PRZEZ MODEL — ``soc`` jest niemianowany."""
+        return ("p.u.", "p.u.", "1", "rad", "p.u.")
 
     def czestotliwosc_zmierzona_hz(self, x: NDArray[np.float64]) -> float:
         """Częstotliwość WIDZIANA PRZEZ URZĄDZENIE (wyjście całkujące PLL) [Hz].
@@ -694,6 +722,20 @@ class RegulatorElektrowniPPC:
             nazwy += [f"{j.ref}.{n}" for n in j.nazwy_stanow()]
         return tuple(nazwy)
 
+    def jednostki_stanow(self) -> tuple[str, ...]:
+        """Jednostki składane z deklaracji jednostek podrzędnych — jedna prawda.
+
+        Kolejność musi odpowiadać ``nazwy_stanow`` co do pozycji, więc obie
+        metody przechodzą po tej samej liście ``self.jednostki``. Gdyby moduł
+        podrzędny zmienił liczbę stanów, niespójność wyjdzie natychmiast
+        w ``konwencje.jednostki_stanow`` (kontrola długości), a nie jako cicho
+        przesunięte etykiety.
+        """
+        jednostki = ["p.u.", "p.u."]
+        for j in self.jednostki:
+            jednostki += list(j.jednostki_stanow())
+        return tuple(jednostki)
+
     def _wycinki(self) -> list[slice]:
         wycinki: list[slice] = []
         pozycja = 2
@@ -892,9 +934,33 @@ class MaszynaDwustronnieZasilana3Rzedu:
     u_wirnika_max_pu: float = 0.35
     """Napięciowa granica przekształtnika częściowej mocy (~|poślizg|·U)."""
     i_wirnika_max_pu: float = 1.2
-    _v_r0: complex = field(default=0j, repr=False)
-    _i_r_zadane: complex = field(default=0j, repr=False)
-    _t_m: float = field(default=0.0, repr=False)
+    _v_r0: complex = pole_artefakt(
+        default=0j,
+        repr=False,
+        powod=(
+            "wartość wyliczona przez `inicjalizuj` z punktu pracy (rozpływ), nie "
+            "parametr modelu — punkt pracy jest osobną osią tożsamości "
+            "(TozsamoscScenariusza)"
+        ),
+    )
+    _i_r_zadane: complex = pole_artefakt(
+        default=0j,
+        repr=False,
+        powod=(
+            "wartość wyliczona przez `inicjalizuj` z punktu pracy (rozpływ), nie "
+            "parametr modelu — punkt pracy jest osobną osią tożsamości "
+            "(TozsamoscScenariusza)"
+        ),
+    )
+    _t_m: float = pole_artefakt(
+        default=0.0,
+        repr=False,
+        powod=(
+            "wartość wyliczona przez `inicjalizuj` z punktu pracy (rozpływ), nie "
+            "parametr modelu — punkt pracy jest osobną osią tożsamości "
+            "(TozsamoscScenariusza)"
+        ),
+    )
 
     def __post_init__(self) -> None:
         if self.h_s <= 0.0:
@@ -938,6 +1004,10 @@ class MaszynaDwustronnieZasilana3Rzedu:
 
     def nazwy_stanow(self) -> tuple[str, ...]:
         return ("e_prim_re_pu", "e_prim_im_pu", "omega_wirnika_pu")
+
+    def jednostki_stanow(self) -> tuple[str, ...]:
+        """Składowe SEM przejściowej w p.u.; prędkość wirnika w p.u."""
+        return ("p.u.", "p.u.", "p.u.")
 
     @staticmethod
     def _sem(x: NDArray[np.float64]) -> complex:

@@ -14,7 +14,7 @@ pozwoliła powstać defektowi P0-01: status nadany deklaracją, nie pomiarem.
 
 HIPOTEZA SPRAWDZANA TUTAJ
 -------------------------
-Że da się zrobić inaczej: żeby „to jest zwalidowana symulacja" było
+Że da się zrobić inaczej: żeby „to jest zwalidowana symulacja” było
 **funkcją danych**, a nie literałem. Wtedy:
 
 - model bez zapisanego dowodu walidacji NIE MOŻE dostać stopnia dowodowego;
@@ -26,6 +26,24 @@ HIPOTEZA SPRAWDZANA TUTAJ
 Klucz jest w ostatnim punkcie listy: dowód nie jest atrybutem MODELU, tylko
 relacją między MODELEM, ZAKRESEM i PUNKTEM PRACY, w którym pytamy.
 
+DWIE ZASADY KONSTRUKCYJNE (po audycie kontradyktoryjnym)
+--------------------------------------------------------
+1. **Tożsamość jest WYPROWADZANA z definicji, nie wypisywana ręcznie.**
+   ``DowodWalidacji.odcisk`` liczy się z KOMPLETU pól dataklasy przez
+   ``tozsamosc.odcisk``. Poprzednia wersja składała odcisk z sześciu ręcznie
+   wybranych pozycji i **gubiła ``zakres``**: dwa dowody o zakresach
+   ``napiecie_pu=(0.9, 1.1)`` i ``(0.1, 1.3)`` miały IDENTYCZNY odcisk, a z
+   metryk brała dwie liczby, więc podmiana metryki na inną o tych samych
+   liczbach też była niewidoczna. Pole dołożone do dowodu w przyszłości wchodzi
+   do odcisku samo — zapomnienie nie może już zawęzić tożsamości.
+
+2. **Brak danych NIE JEST pokryciem.** Każda oś ``ZakresWalidacji`` odpowiada na
+   pytanie „czy ten dowód obejmuje TEN punkt pracy” trójwartościowo: obejmuje /
+   nie obejmuje / nie da się potwierdzić. Trzeci przypadek — dowód ogranicza oś,
+   a punkt pracy nie zna swojej współrzędnej — kończy się BRAKIEM POKRYCIA.
+   Poprzednia wersja zaczynała od ``if wartosc is None: return None``, czyli
+   nieznane SCR czytała jako „brak zastrzeżeń” (UNKNOWN → covered).
+
 CZEGO TEN PROTOTYP NIE ROBI
 ---------------------------
 Nie zastępuje `provenance.py`, nie nadaje niczego produkcji i świadomie NIE
@@ -35,11 +53,39 @@ dało się pomylić prototypu z kontraktem (pilnuje tego `research_isolation_gua
 
 from __future__ import annotations
 
-import hashlib
-import json
+import dataclasses
 from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from typing import Any
+
+from dynamic_lab.tozsamosc import (
+    KonfiguracjaSolvera,
+    PunktPracy,
+    TozsamoscScenariusza,
+    odcisk,
+)
+
+__all__ = [
+    "DowodWalidacji",
+    "KonfiguracjaSolvera",
+    "MetrykiAkceptacji",
+    "NiezadeklarowanaOsZakresuError",
+    "OrzeczenieDowodowe",
+    "OsZakresu",
+    "PrzypadekWalidacji",
+    "PunktPracy",
+    "RejestrDowodow",
+    "RodzajOsi",
+    "StopienDowodowy",
+    "TozsamoscImplementacji",
+    "TozsamoscModelu",
+    "TozsamoscParametrow",
+    "TozsamoscProfiluWymagan",
+    "TozsamoscScenariusza",
+    "TrybOrzekania",
+    "Wyrocznia",
+    "ZakresWalidacji",
+]
 
 
 class StopienDowodowy(StrEnum):
@@ -51,9 +97,26 @@ class StopienDowodowy(StrEnum):
     NIE_SYMULOWANO = "NIE_SYMULOWANO"
 
 
-def _odcisk(payload: Any) -> str:
-    tekst = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
-    return hashlib.sha256(tekst.encode("utf-8")).hexdigest()
+class TrybOrzekania(StrEnum):
+    """O co pytamy: o zgodność fizyczną modelu czy o dowód wobec wymagania.
+
+    Rozdzielenie jest konieczne, bo te dwa pytania mają różny domyślny wynik przy
+    braku danych. Pytanie FIZYCZNE wolno zadać bez profilu wymagań (interesuje
+    nas model, nie norma). Pytanie REGULACYJNE bez wskazanej redakcji wymagań nie
+    ma treści — i musi być odrzucone, a nie potraktowane jak brak zastrzeżeń.
+    """
+
+    FIZYCZNY = "FIZYCZNY"
+    REGULACYJNY = "REGULACYJNY"
+
+
+class NiezadeklarowanaOsZakresuError(RuntimeError):
+    """Wymiar ``ZakresWalidacji`` bez deklaracji wiązania z punktem pracy.
+
+    Bezpiecznik na PRZYSZŁOŚĆ: nowy wymiar dołożony do zakresu bez deklaracji
+    (``os_zakresu``) nie może być cicho pominięty przy sprawdzaniu pokrycia, bo
+    pominięty wymiar = wymiar nieograniczający = dowód szerszy, niż zmierzono.
+    """
 
 
 @dataclass(frozen=True)
@@ -62,7 +125,7 @@ class TozsamoscImplementacji:
 
     Rozdzielenie tożsamości implementacji od tożsamości parametrów jest
     odpowiedzią na konkretną lukę: przy jednym wspólnym odcisku „ten sam
-    parametr + nowy kod" dawało STARY dowód nadal ważny. Przepisanie równania
+    parametr + nowy kod” dawało STARY dowód nadal ważny. Przepisanie równania
     stojana bez zmiany ani jednej stałej jest dokładnie tym przypadkiem — i jest
     zmianą, po której dowód walidacji musi wygasnąć.
 
@@ -79,49 +142,77 @@ class TozsamoscImplementacji:
 
     @property
     def odcisk(self) -> str:
-        return _odcisk(
-            {
-                "klasa": self.klasa,
-                "wersja_publiczna": self.wersja_publiczna,
-                "odcisk_kodu": self.odcisk_kodu,
-            }
-        )
+        return odcisk(self)
 
 
 @dataclass(frozen=True)
 class TozsamoscParametrow:
-    """CZYM liczy — zestaw nastaw modelu."""
+    """CZYM liczy — komplet nastaw modelu, REKURENCYJNIE.
 
-    parametry: dict[str, float]
+    ``parametry`` to dowolna struktura: płaska mapa nastaw albo CAŁY obiekt
+    urządzenia. Postać kanoniczna (``tozsamosc.postac_kanoniczna``) schodzi w głąb
+    dataklas, więc AVR, governor, PLL, ogranicznik GFM i parametry magazynu
+    wchodzą do odcisku bez dopisywania jakiejkolwiek gałęzi per model.
+
+    Poprzednia wersja przyjmowała ``dict[str, float]``, czyli PŁASKIE skalary —
+    dokładnie tak, jak robi to dziś ``SilnikRMS._tozsamosci`` (pola skalarne plus
+    ręczny ``getattr(u, "maszyna")``). Przy takim odcisku zmiana ``k_a`` AVR-a
+    albo pasma PLL była niewidoczna: dwa biegi różniące się regulatorem miały
+    identyczną tożsamość parametrów.
+    """
+
+    parametry: Any
+
+    @classmethod
+    def z_obiektu(cls, obiekt: Any) -> TozsamoscParametrow:
+        """Tożsamość WYPROWADZONA z obiektu urządzenia (dataklasy), rekurencyjnie."""
+        return cls(parametry=obiekt)
 
     @property
     def odcisk(self) -> str:
-        return _odcisk({"parametry": self.parametry})
+        return odcisk(self)
 
 
 @dataclass(frozen=True)
 class TozsamoscProfiluWymagan:
-    """WOBEC CZEGO orzekamy — wersja normy albo profilu operatora.
+    """WOBEC CZEGO orzekamy — redakcja normy albo profilu operatora.
 
     Dowód walidacji modelu i obowiązujące wymaganie to dwie różne rzeczy, ale
     orzeczenie zależy od OBU: model zwalidowany wobec profilu z 2024 nie dowodzi
     spełnienia wymagania z redakcji z 2026. Bez tej osi rejestr milcząco
     zakładałby, że norma się nie zmienia.
+
+    ``tresc`` jest OBOWIĄZKOWA i niepusta, a ``odcisk_tresci`` liczy się z niej
+    deterministycznie. Powód: etykieta wersji jest deklaracją człowieka. Operator
+    potrafi poprawić wartość progu w dokumencie, zostawiając „2026.1” — i dowód
+    wystawiony wobec starej treści dalej wyglądałby na ważny. Odcisk treści
+    zamyka tę drogę: zmiana JAKIEJKOLWIEK wartości profilu zmienia tożsamość,
+    niezależnie od tego, co napisano w polu wersji.
     """
 
     identyfikator: str
     wersja: str
     obowiazuje_od: str
+    tresc: Any
+    """Kanoniczna TREŚĆ profilu (progi, obwiednie, wymagania) — nie sama etykieta."""
+
+    def __post_init__(self) -> None:
+        if not str(self.identyfikator).strip() or not str(self.wersja).strip():
+            raise ValueError("Profil wymagań musi mieć identyfikator i wersję.")
+        if not self.tresc:
+            raise ValueError(
+                "Profil wymagań bez treści nie jest profilem — sama etykieta wersji "
+                "jest deklaracją, a deklaracji nie da się porównać z modelem."
+            )
+
+    @property
+    def odcisk_tresci(self) -> str:
+        """Odcisk SAMEJ treści — rozstrzyga o zgodności niezależnie od etykiety wersji."""
+        return odcisk(self.tresc)
 
     @property
     def odcisk(self) -> str:
-        return _odcisk(
-            {
-                "identyfikator": self.identyfikator,
-                "wersja": self.wersja,
-                "obowiazuje_od": self.obowiazuje_od,
-            }
-        )
+        return odcisk(self)
 
 
 @dataclass(frozen=True)
@@ -130,7 +221,7 @@ class TozsamoscModelu:
 
     ``odcisk`` łączy OBIE osie, więc zmiana którejkolwiek gubi stary dowód.
     Osie są rozdzielone, żeby dało się powiedzieć, KTÓRA się zmieniła
-    (``co_sie_zmienilo``) — komunikat „dowód nie pasuje" bez tego jest
+    (``co_sie_zmienilo``) — komunikat „dowód nie pasuje” bez tego jest
     bezużyteczny dla inżyniera.
     """
 
@@ -139,7 +230,7 @@ class TozsamoscModelu:
 
     @classmethod
     def prosta(
-        cls, *, klasa: str, wersja: str, odcisk_kodu: str, parametry: dict[str, float]
+        cls, *, klasa: str, wersja: str, odcisk_kodu: str, parametry: Any
     ) -> TozsamoscModelu:
         """Skrót konstrukcyjny dla przypadków testowych i prototypowych."""
         return cls(
@@ -147,6 +238,22 @@ class TozsamoscModelu:
                 klasa=klasa, wersja_publiczna=wersja, odcisk_kodu=odcisk_kodu
             ),
             parametry=TozsamoscParametrow(parametry=parametry),
+        )
+
+    @classmethod
+    def z_urzadzenia(cls, urzadzenie: Any, *, wersja: str, odcisk_kodu: str) -> TozsamoscModelu:
+        """Tożsamość modelu wyprowadzona z OBIEKTU urządzenia laboratorium.
+
+        Klasa bierze się z typu obiektu, a parametry z jego pól — rekurencyjnie,
+        łącznie z regulatorami, pętlą synchronizacji i strategią ogranicznika.
+        """
+        return cls(
+            implementacja=TozsamoscImplementacji(
+                klasa=type(urzadzenie).__name__,
+                wersja_publiczna=wersja,
+                odcisk_kodu=odcisk_kodu,
+            ),
+            parametry=TozsamoscParametrow.z_obiektu(urzadzenie),
         )
 
     @property
@@ -159,12 +266,7 @@ class TozsamoscModelu:
 
     @property
     def odcisk(self) -> str:
-        return _odcisk(
-            {
-                "implementacja": self.implementacja.odcisk,
-                "parametry": self.parametry.odcisk,
-            }
-        )
+        return odcisk(self)
 
     def co_sie_zmienilo(self, inny: TozsamoscModelu) -> tuple[str, ...]:
         """Nazwij OŚ różnicy między dwiema tożsamościami."""
@@ -179,63 +281,193 @@ class TozsamoscModelu:
         return tuple(roznice)
 
 
+class RodzajOsi(StrEnum):
+    """Jak oś ogranicza: przedziałem liczbowym czy zbiorem dopuszczonych wartości."""
+
+    PRZEDZIAL = "PRZEDZIAL"
+    ZBIOR = "ZBIOR"
+
+
+KLUCZ_OSI = "os_zakresu"
+"""Klucz metadanych pola ``ZakresWalidacji`` niosący wiązanie z punktem pracy."""
+
+
+@dataclass(frozen=True)
+class OsZakresu:
+    """Deklaracja wymiaru zakresu: etykieta, wiązanie z punktem pracy, rodzaj."""
+
+    etykieta_pl: str
+    atrybut_punktu: str
+    rodzaj: RodzajOsi
+
+
+def os_zakresu(
+    *,
+    etykieta_pl: str,
+    atrybut_punktu: str,
+    rodzaj: RodzajOsi,
+    default: Any = dataclasses.MISSING,
+    default_factory: Any = dataclasses.MISSING,
+) -> Any:
+    """Zadeklaruj wymiar zakresu walidacji (patrz ``NiezadeklarowanaOsZakresuError``)."""
+    metadane = {KLUCZ_OSI: OsZakresu(etykieta_pl, atrybut_punktu, rodzaj)}
+    if default_factory is not dataclasses.MISSING:
+        return field(metadata=metadane, default_factory=default_factory)
+    return field(metadata=metadane, default=default)
+
+
 @dataclass(frozen=True)
 class ZakresWalidacji:
-    """Obszar, w którym dowód OBOWIĄZUJE — poza nim nie obowiązuje.
+    """Obszar, w którym dowód OBOWIĄZUJE — poza nim i POZA WIEDZĄ nie obowiązuje.
 
-    Każdy wymiar jest przedziałem domkniętym. Wymiar nieustalony (``None``)
-    znaczy „nie badano", a NIE „dowolny": pytanie o punkt pracy w takim wymiarze
-    kończy się brakiem pokrycia. To jest różnica między dowodem a życzeniem.
+    Każdy wymiar jest deklarowany przez ``os_zakresu``: niesie etykietę, nazwę
+    atrybutu ``PunktPracy`` i rodzaj ograniczenia. ``braki_pokrycia`` iteruje po
+    WSZYSTKICH polach dataklasy, więc:
+
+    - wymiar dołożony w przyszłości BEZ deklaracji podnosi wyjątek zamiast zostać
+      pominięty (pominięty wymiar = wymiar nieograniczający = dowód szerszy, niż
+      zmierzono);
+    - wymiar nieustalony (``None`` / pusty zbiór) znaczy „nie badano”, a NIE
+      „dowolny”;
+    - wymiar ograniczony, ale o NIEZNANEJ współrzędnej punktu pracy, daje BRAK
+      POKRYCIA — „nie wiem, gdzie jestem” nie jest dowodem, że jestem w zakresie.
     """
 
-    napiecie_pu: tuple[float, float] | None = None
-    moc_pu: tuple[float, float] | None = None
-    scr: tuple[float, float] | None = None
-    rodzaje_zdarzen: frozenset[str] = frozenset()
+    napiecie_pu: tuple[float, float] | None = os_zakresu(
+        etykieta_pl="napięcie",
+        atrybut_punktu="napiecie_pu",
+        rodzaj=RodzajOsi.PRZEDZIAL,
+        default=None,
+    )
+    moc_pu: tuple[float, float] | None = os_zakresu(
+        etykieta_pl="moc",
+        atrybut_punktu="moc_pu",
+        rodzaj=RodzajOsi.PRZEDZIAL,
+        default=None,
+    )
+    scr: tuple[float, float] | None = os_zakresu(
+        etykieta_pl="SCR",
+        atrybut_punktu="scr",
+        rodzaj=RodzajOsi.PRZEDZIAL,
+        default=None,
+    )
+    rodzaje_zdarzen: frozenset[str] = os_zakresu(
+        etykieta_pl="rodzaj zdarzenia",
+        atrybut_punktu="rodzaj_zdarzenia",
+        rodzaj=RodzajOsi.ZBIOR,
+        default=frozenset(),
+    )
 
-    def _poza(
-        self, nazwa: str, wartosc: float | None, przedzial: tuple[float, float] | None
-    ) -> str | None:
-        if wartosc is None:
-            return None
-        if przedzial is None:
-            return f"{nazwa}: model nie był walidowany w tym wymiarze"
-        dol, gora = przedzial
-        if not (dol <= wartosc <= gora):
-            return f"{nazwa} = {wartosc:g} poza zakresem walidacji [{dol:g}, {gora:g}]"
-        return None
+    def __post_init__(self) -> None:
+        for pole, os in self._osie():
+            if os.rodzaj is not RodzajOsi.PRZEDZIAL:
+                continue
+            przedzial = getattr(self, pole)
+            if przedzial is None:
+                continue
+            dol, gora = przedzial
+            if dol > gora:
+                raise ValueError(
+                    f"{os.etykieta_pl}: przedział walidacji [{dol:g}, {gora:g}] jest "
+                    "odwrócony — taki zakres nie obejmuje żadnego punktu."
+                )
+
+    @classmethod
+    def _osie(cls) -> tuple[tuple[str, OsZakresu], ...]:
+        """Wymiary zakresu WYPROWADZONE z definicji dataklasy — bez listy ręcznej."""
+        osie: list[tuple[str, OsZakresu]] = []
+        for pole in dataclasses.fields(cls):
+            os = pole.metadata.get(KLUCZ_OSI)
+            if not isinstance(os, OsZakresu):
+                raise NiezadeklarowanaOsZakresuError(
+                    f"Wymiar `{pole.name}` zakresu walidacji nie ma deklaracji "
+                    "`os_zakresu(...)`. Wymiar bez deklaracji byłby przy sprawdzaniu "
+                    "pokrycia pominięty, czyli dowód obowiązywałby SZERZEJ, niż go "
+                    "zmierzono. Zadeklaruj wiązanie z `PunktPracy` albo usuń pole."
+                )
+            osie.append((pole.name, os))
+        return tuple(osie)
 
     def braki_pokrycia(self, punkt: PunktPracy) -> tuple[str, ...]:
-        """Wypisz powody, dla których dowód NIE obejmuje tego punktu pracy."""
-        powody = [
-            self._poza("napięcie", punkt.napiecie_pu, self.napiecie_pu),
-            self._poza("moc", punkt.moc_pu, self.moc_pu),
-            self._poza("SCR", punkt.scr, self.scr),
-        ]
-        if (
-            punkt.rodzaj_zdarzenia is not None
-            and punkt.rodzaj_zdarzenia not in self.rodzaje_zdarzen
-        ):
-            powody.append(f"zdarzenie „{punkt.rodzaj_zdarzenia}" + "” nie było objęte walidacją")
-        return tuple(p for p in powody if p is not None)
+        """Wypisz powody, dla których dowód NIE obejmuje tego punktu pracy.
 
+        Pusta krotka = dowód obejmuje punkt. Każdy inny wynik to odmowa z
+        uzasadnieniem — także wtedy, gdy przyczyną jest brak danych o punkcie
+        pracy, a nie wyjście poza zakres.
+        """
+        powody: list[str] = []
+        for pole, os in self._osie():
+            if not hasattr(punkt, os.atrybut_punktu):
+                raise NiezadeklarowanaOsZakresuError(
+                    f"Wymiar `{pole}` wskazuje atrybut `{os.atrybut_punktu}`, którego "
+                    "`PunktPracy` nie ma — deklaracja osi rozjechała się z punktem pracy."
+                )
+            ograniczenie = getattr(self, pole)
+            wartosc = getattr(punkt, os.atrybut_punktu)
+            powod = (
+                self._brak_w_przedziale(os, ograniczenie, wartosc)
+                if os.rodzaj is RodzajOsi.PRZEDZIAL
+                else self._brak_w_zbiorze(os, ograniczenie, wartosc)
+            )
+            if powod is not None:
+                powody.append(powod)
+        return tuple(powody)
 
-@dataclass(frozen=True)
-class PunktPracy:
-    """Warunki, w których PYTAMY o przydatność dowodową."""
+    @staticmethod
+    def _brak_w_przedziale(
+        os: OsZakresu, przedzial: tuple[float, float] | None, wartosc: float | None
+    ) -> str | None:
+        if przedzial is None:
+            return f"{os.etykieta_pl}: model nie był walidowany w tym wymiarze"
+        dol, gora = przedzial
+        if wartosc is None:
+            return (
+                f"{os.etykieta_pl}: dowód obowiązuje w [{dol:g}, {gora:g}], a punkt "
+                f"pracy nie zna tej wartości — nie można potwierdzić pokrycia"
+            )
+        if not (dol <= wartosc <= gora):
+            return f"{os.etykieta_pl} = {wartosc:g} poza zakresem walidacji [{dol:g}, {gora:g}]"
+        return None
 
-    napiecie_pu: float | None = None
-    moc_pu: float | None = None
-    scr: float | None = None
-    rodzaj_zdarzenia: str | None = None
+    @staticmethod
+    def _brak_w_zbiorze(
+        os: OsZakresu, dopuszczone: frozenset[str], wartosc: str | None
+    ) -> str | None:
+        if not dopuszczone:
+            return f"{os.etykieta_pl}: model nie był walidowany w tym wymiarze"
+        if wartosc is None:
+            objete = ", ".join(sorted(dopuszczone))
+            return (
+                f"{os.etykieta_pl}: dowód obejmuje [{objete}], a punkt pracy nie podaje "
+                f"tej wartości — nie można potwierdzić pokrycia"
+            )
+        if wartosc not in dopuszczone:
+            return f"zdarzenie „{wartosc}” nie było objęte walidacją"
+        return None
 
 
 @dataclass(frozen=True)
 class MetrykiAkceptacji:
-    """Tolerancje ustalone PRZED biegiem — inaczej dowód dopasowuje się do wyniku."""
+    """Tolerancje ustalone PRZED biegiem — inaczej dowód dopasowuje się do wyniku.
 
+    ``nazwa`` jest obowiązkowa i wchodzi do odcisku dowodu. Bez niej metryka to
+    dwie gołe liczby: podmiana „maksymalne odchylenie kąta” na „RMS błędu
+    napięcia” przy tych samych liczbach była dla odcisku niewidoczna, choć
+    orzekała o czymś zupełnie innym.
+    """
+
+    nazwa: str
     maks_blad_wzgledny: float
     zmierzony_blad_wzgledny: float
+
+    def __post_init__(self) -> None:
+        if not self.nazwa.strip():
+            raise ValueError(
+                "Metryka akceptacji bez nazwy nie mówi, CO zmierzono — dwie gołe "
+                "liczby nie odróżniają błędu kąta od błędu napięcia."
+            )
+        if self.maks_blad_wzgledny < 0.0 or self.zmierzony_blad_wzgledny < 0.0:
+            raise ValueError(f"{self.nazwa}: błędy nie mogą być ujemne")
 
     @property
     def spelnione(self) -> bool:
@@ -252,19 +484,46 @@ class Wyrocznia:
 
 
 @dataclass(frozen=True)
+class PrzypadekWalidacji:
+    """Jeden przypadek walidacyjny: nazwa + TOŻSAMOŚĆ tego, co policzono.
+
+    Nazwa sama w sobie jest etykietą („SMIB H=4”) i nie mówi, na jakiej migawce,
+    w jakim punkcie pracy i przy jakich nastawach solvera policzono bieg. Dowód
+    złożony z takich etykiet jest nieodtwarzalny i nieobalalny, więc scenariusz
+    jest tu OBOWIĄZKOWY.
+    """
+
+    nazwa: str
+    scenariusz: TozsamoscScenariusza
+
+    def __post_init__(self) -> None:
+        if not self.nazwa.strip():
+            raise ValueError("Przypadek walidacyjny musi mieć nazwę.")
+
+    @property
+    def klucz_porzadkowy(self) -> tuple[str, str]:
+        return (self.nazwa, self.scenariusz.odcisk)
+
+
+@dataclass(frozen=True)
 class DowodWalidacji:
     """Zapis walidacji: kto, czym, wobec czego, w jakim zakresie i z jakim wynikiem.
 
     Dowód można WYCOFAĆ (``wycofany``) — bo wykrycie błędu w wyroczni albo w
     samej walidacji zdarza się częściej niż zmiana modelu, a bez możliwości
     cofnięcia jedynym sposobem byłoby udawanie, że model się zmienił.
+
+    ``odcisk`` liczy się z KOMPLETU pól (patrz nagłówek modułu, zasada 1), więc
+    obejmuje zakres, pełną tożsamość modelu, wyrocznię z wersją i metodą, komplet
+    metryk z nazwami, listę przypadków wraz z ich scenariuszami, profil wymagań
+    wraz z odciskiem jego treści oraz stan wycofania.
     """
 
     model: TozsamoscModelu
     wyrocznia: Wyrocznia
     zakres: ZakresWalidacji
     metryki: tuple[MetrykiAkceptacji, ...]
-    przypadki: tuple[str, ...]
+    przypadki: tuple[PrzypadekWalidacji, ...]
     profil_wymagan: TozsamoscProfiluWymagan | None = None
     """Wobec jakiej redakcji normy/profilu walidowano. ``None`` = walidacja
     czysto fizyczna, niezwiązana z konkretnym wymaganiem."""
@@ -284,6 +543,17 @@ class DowodWalidacji:
             )
         if not self.metryki:
             raise ValueError("Dowód walidacji bez metryk akceptacji nie jest dowodem.")
+        klucze = [p.klucz_porzadkowy for p in self.przypadki]
+        if len(set(klucze)) != len(klucze):
+            raise ValueError(
+                "Ten sam przypadek (nazwa + scenariusz) występuje w dowodzie wielokrotnie "
+                "— licznik przypadków mierzyłby wtedy powtórzenia, nie pokrycie."
+            )
+        # Porządek kanoniczny: dowód o tych samych przypadkach podanych w innej
+        # kolejności jest TYM SAMYM dowodem i musi mieć ten sam odcisk.
+        object.__setattr__(
+            self, "przypadki", tuple(sorted(self.przypadki, key=lambda p: p.klucz_porzadkowy))
+        )
 
     @property
     def wszystkie_metryki_spelnione(self) -> bool:
@@ -291,25 +561,12 @@ class DowodWalidacji:
 
     @property
     def odcisk(self) -> str:
-        return _odcisk(
-            {
-                "model": self.model.odcisk,
-                "wyrocznia": [self.wyrocznia.nazwa, self.wyrocznia.wersja, self.wyrocznia.metoda],
-                "profil_wymagan": (
-                    self.profil_wymagan.odcisk if self.profil_wymagan is not None else None
-                ),
-                "wycofany": self.wycofany,
-                "przypadki": sorted(self.przypadki),
-                "metryki": [
-                    [m.maks_blad_wzgledny, m.zmierzony_blad_wzgledny] for m in self.metryki
-                ],
-            }
-        )
+        return odcisk(self)
 
 
 @dataclass(frozen=True)
 class OrzeczenieDowodowe:
-    """Wynik pytania „czy to jest dowód TUTAJ" — zawsze z uzasadnieniem."""
+    """Wynik pytania „czy to jest dowód TUTAJ” — zawsze z uzasadnieniem."""
 
     stopien: StopienDowodowy
     powody: tuple[str, ...]
@@ -331,7 +588,7 @@ class RejestrDowodow:
     Jeden model może mieć WIELE dowodów o różnych zakresach (np. osobny zestaw
     benchmarków dla sieci sztywnej i osobny dla słabej). Orzeczenie sprawdza je
     wszystkie i wystarczy JEDEN pokrywający punkt pracy — ale suma zakresów NIE
-    jest sumą mnogościową „na oko": każdy dowód musi pokrywać punkt SAMODZIELNIE.
+    jest sumą mnogościową „na oko”: każdy dowód musi pokrywać punkt SAMODZIELNIE.
     Sklejanie dwóch częściowych pokryć w jedno pełne byłoby ekstrapolacją między
     zakresami, czyli twierdzeniem, którego nikt nie zmierzył.
     """
@@ -362,6 +619,7 @@ class RejestrDowodow:
         punkt: PunktPracy,
         *,
         profil: TozsamoscProfiluWymagan | None = None,
+        tryb: TrybOrzekania = TrybOrzekania.FIZYCZNY,
     ) -> OrzeczenieDowodowe:
         """Czy wynik TEGO modelu w TYM punkcie wobec TEGO profilu jest dowodem.
 
@@ -370,7 +628,22 @@ class RejestrDowodow:
         pierwszy napotkany objaw. Gdy żaden dowód nie pokrywa punktu, powody
         zbierają odmowy WSZYSTKICH kandydatów — inżynier musi wiedzieć, czego
         brakuje w każdym z nich, a nie tylko w pierwszym.
+
+        W trybie REGULACYJNYM brak wskazanego profilu wymagań jest odmową
+        (fail-closed): pytanie „czy to dowodzi zgodności” bez podanej redakcji
+        wymagań nie ma treści, a milcząca zgoda byłaby dowodem z niczego.
         """
+        if tryb is TrybOrzekania.REGULACYJNY and profil is None:
+            return OrzeczenieDowodowe(
+                stopien=StopienDowodowy.MODEL_NIEZWALIDOWANY,
+                powody=(
+                    "Pytanie w trybie dowodu regulacyjnego bez wskazanej redakcji "
+                    "wymagań — nie ma wobec czego orzekać. Brak profilu NIE jest "
+                    "zgodnością.",
+                ),
+                odcisk_dowodu=None,
+            )
+
         kandydaci = self._dowody.get(model.odcisk, [])
         if not kandydaci:
             powody = [
@@ -411,7 +684,7 @@ class RejestrDowodow:
     def _podpowiedz_o_innej_tozsamosci(self, model: TozsamoscModelu) -> list[str]:
         """Jeżeli istnieje dowód dla POKREWNEJ tożsamości — powiedz, co się różni.
 
-        Bez tego komunikat „brak dowodu" nie odróżnia modelu nigdy
+        Bez tego komunikat „brak dowodu” nie odróżnia modelu nigdy
         niewalidowanego od modelu, któremu ktoś właśnie zmienił jedną stałą.
         """
         for dowody in self._dowody.values():
@@ -436,7 +709,8 @@ class RejestrDowodow:
             return f"dowód WYCOFANY — {dowod.powod_wycofania_pl}"
         if not dowod.wszystkie_metryki_spelnione:
             niespelnione = [
-                f"błąd {m.zmierzony_blad_wzgledny:.2e} > tolerancja " f"{m.maks_blad_wzgledny:.2e}"
+                f"{m.nazwa}: błąd {m.zmierzony_blad_wzgledny:.2e} > tolerancja "
+                f"{m.maks_blad_wzgledny:.2e}"
                 for m in dowod.metryki
                 if not m.spelnione
             ]
@@ -448,6 +722,17 @@ class RejestrDowodow:
                     f"dotyczy {profil.identyfikator} {profil.wersja}"
                 )
             if dowod.profil_wymagan.odcisk != profil.odcisk:
+                if dowod.profil_wymagan.odcisk_tresci != profil.odcisk_tresci and (
+                    dowod.profil_wymagan.identyfikator,
+                    dowod.profil_wymagan.wersja,
+                ) == (profil.identyfikator, profil.wersja):
+                    return (
+                        f"profil {profil.identyfikator} {profil.wersja} ma INNĄ TREŚĆ niż "
+                        f"ta, wobec której walidowano (odcisk treści "
+                        f"{dowod.profil_wymagan.odcisk_tresci[:12]}… vs "
+                        f"{profil.odcisk_tresci[:12]}…) — etykieta wersji się nie zmieniła, "
+                        "wymaganie tak"
+                    )
                 return (
                     f"dowód dotyczy {dowod.profil_wymagan.identyfikator} "
                     f"{dowod.profil_wymagan.wersja}, a pytanie "

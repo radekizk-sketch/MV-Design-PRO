@@ -25,7 +25,7 @@ import pytest
 from dynamic_lab.benchmarki import siec_sn_z_der
 from dynamic_lab.regulatory import RegulatorNapiecia, RegulatorTurbiny
 from dynamic_lab.siec import Galaz, TopologiaSieci
-from dynamic_lab.silnik import ModelDynamiczny, RownowagaNieosiagnietaError, SilnikRMS
+from dynamic_lab.silnik import ModelDynamiczny, SilnikRMS
 from dynamic_lab.urzadzenia import (
     FalownikGFL,
     MaszynaSynchroniczna4Rzedu,
@@ -159,18 +159,57 @@ def test_magazyn_startuje_w_rownowadze(soc: float, q_pu: float) -> None:
 
 
 @pytest.mark.parametrize("p_pu", [0.35, -0.35])
-def test_magazyn_oddajacy_moc_nie_jest_rownowaga(p_pu: float) -> None:
-    """UCZCIWOŚĆ MODELU: magazyn pod obciążeniem NIE jest w stanie ustalonym.
+def test_magazyn_oddajacy_moc_startuje_z_dryfem_soc(p_pu: float) -> None:
+    """Magazyn pod obciążeniem JEST poprawnym punktem startowym — SOC dryfuje.
 
-    ``d(soc)/dt = -P·S/(3600·E)`` jest różne od zera dla każdego niezerowego ``P``,
-    więc silnik MUSI odrzucić taki punkt startowy. Model, który by go przyjął,
-    twierdziłby, że energia się nie zmienia — czyli że magazyn jest źródłem
-    nieskończonym. To jest dokładnie różnica między zdolnością a deklaracją.
+    KOREKTA KANONU (pakiet D audytu) — poprzednia wersja tego testu wymagała, żeby
+    silnik ODRZUCIŁ taki punkt, i nazywała to uczciwością modelu. Intencja była
+    słuszna (magazyn nie może udawać źródła nieskończonego), ale wniosek błędny:
+    praca z niezerową mocą jest NORMALNYM punktem pracy magazynu, a symulacja
+    krótkookresowa musi móc od niego wystartować. Odrzucanie go czyniło model
+    bezużytecznym dokładnie tam, gdzie jest potrzebny.
+
+    Intencja jest zachowana, tylko sprawdzana wprost: zamiast żądać odmowy,
+    sprawdzamy, że (a) stany SZYBKIE są w równowadze, (b) SOC faktycznie dryfuje,
+    (c) dryf ma właściwy ZNAK i WARTOŚĆ z bilansu energii. Magazyn nadal nie może
+    udawać źródła nieskończonego — ale dowodzi tego liczba, a nie wyjątek.
     """
     model, moce = _model_na_sieci_benchmarkowej(_magazyn(), complex(p_pu, 0.0))
     silnik = SilnikRMS(model)
-    with pytest.raises(RownowagaNieosiagnietaError):
-        silnik.inicjalizuj(moce)
+    x0 = silnik.inicjalizuj(moce)
+
+    assert silnik.norma_pochodnej(x0) < TOL_ROWNOWAGI, "tor P/Q i PLL muszą być w równowadze"
+    dryf = silnik.norma_pochodnej_zasobowej(x0)
+    assert dryf > 1.0e-5, "SOC magazynu pod obciążeniem MUSI się zmieniać"
+
+    magazyn = next(u for u in model.urzadzenia if isinstance(u, MagazynEnergiiBESS))
+    wycinek = silnik.uklad.wycinki[magazyn.ref]
+    d_soc = float(silnik.pochodne(x0, 0.0)[wycinek][2])
+    # Konwencja generatorowa: P > 0 to rozładowanie, więc SOC maleje.
+    assert (d_soc < 0.0) if p_pu > 0 else (d_soc > 0.0)
+    oczekiwany = -p_pu * magazyn.s_bazowa_mva / (3600.0 * magazyn.e_pojemnosc_mwh)
+    assert d_soc == pytest.approx(oczekiwany, rel=0.05)
+
+
+def test_bilans_energii_magazynu_zgadza_sie_po_symulacji() -> None:
+    """ΔSOC·E vs −∫P dt — magazyn nie jest źródłem nieskończonym, i to MIERZYMY."""
+    model, moce = _model_na_sieci_benchmarkowej(_magazyn(), complex(0.30, 0.0))
+    silnik = SilnikRMS(model, integrator="rk4", krok_s=0.01)
+    x0 = silnik.inicjalizuj(moce)
+    wynik = silnik.symuluj(x0, czas_koncowy_s=10.0)
+
+    magazyn = next(u for u in model.urzadzenia if isinstance(u, MagazynEnergiiBESS))
+    czas = np.array(wynik.czas_s)
+    soc = _tablica(wynik, "soc", magazyn.ref)
+    moc = _tablica(wynik, "p_pu", magazyn.ref, PrzestrzenSygnalu.WYJSCIE)
+
+    delta_mwh = float(soc[-1] - soc[0]) * magazyn.e_pojemnosc_mwh
+    energia_mwh = -float(np.trapz(moc, czas)) * magazyn.s_bazowa_mva / 3600.0
+    blad_wzgledny = abs(delta_mwh - energia_mwh) / abs(energia_mwh)
+    assert blad_wzgledny < 0.01, (
+        f"ΔSOC·E = {delta_mwh:.6e} MWh vs −∫P dt = {energia_mwh:.6e} MWh "
+        f"(błąd {blad_wzgledny:.2%})"
+    )
 
 
 def test_magazyn_bez_energii_odrzuca_dyspozycje_rozladowania() -> None:

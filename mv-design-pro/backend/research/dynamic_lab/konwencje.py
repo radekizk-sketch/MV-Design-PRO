@@ -159,3 +159,38 @@ def jednostki_stanow(urzadzenie: object) -> tuple[str, ...]:
             f"dla {len(nazwy)} stanów — deklaracja niespójna z modelem."
         )
     return zadeklarowane
+
+
+def stany_zasobowe(urzadzenie: object) -> frozenset[str]:
+    """Stany ZASOBOWE urządzenia — wolnozmienne, nieobjęte warunkiem równowagi.
+
+    Stan zasobowy to zmienna opisująca zapas energii (SOC magazynu, poziom
+    zbiornika, ilość paliwa), której pochodna jest NIEZEROWA z samej definicji
+    pracy urządzenia. Magazyn oddający 0,5 p.u. przy 100 MVA i 10 MWh ma
+    ``d(soc)/dt = 1,4e-3 1/s`` — o trzy rzędy więcej niż tolerancja równowagi
+    elektromechanicznej, i nie jest to żaden błąd, tylko bilans energii.
+
+    DLACZEGO TO JEST POTRZEBNE. Silnik sprawdzał ``max|f(x0)|`` po WSZYSTKICH
+    stanach, więc BESS pracujący z niezerową mocą nie mógł być punktem startowym
+    symulacji krótkookresowej — a to jest jego normalny punkt pracy. Podniesienie
+    tolerancji „żeby przeszło" byłoby gorsze niż defekt: uciszyłoby również realny
+    brak równowagi toru elektrycznego. Rozwiązaniem jest ROZRÓŻNIENIE, nie
+    rozluźnienie: stany szybkie muszą spełniać ``f = 0``, zasobowe mogą dryfować
+    i ich pochodna jest raportowana OSOBNO.
+
+    Model, który nic nie deklaruje, ma zbiór pusty — czyli wszystkie jego stany
+    podlegają warunkowi równowagi. Domyślna odpowiedź jest więc OSTRZEJSZA,
+    a nie łagodniejsza: nowy model nie może przypadkiem wymknąć się kontroli.
+    """
+    deklaracja = getattr(urzadzenie, "stany_zasobowe", None)
+    if deklaracja is None:
+        return frozenset()
+    nazwy = set(urzadzenie.nazwy_stanow())  # type: ignore[attr-defined]
+    zadeklarowane = frozenset(deklaracja())
+    nieznane = zadeklarowane - nazwy
+    if nieznane:
+        raise ValueError(
+            f"{type(urzadzenie).__name__}: zadeklarowano jako zasobowe stany, "
+            f"których model nie ma: {sorted(nieznane)}."
+        )
+    return zadeklarowane

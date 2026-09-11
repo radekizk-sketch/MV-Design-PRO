@@ -19,6 +19,8 @@ Testy niżej padłyby na wersji sprzed naprawy.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 import pytest
 from dynamic_lab.benchmarki import smib
@@ -146,12 +148,25 @@ def test_zerowy_czas_koncowy_jest_odrzucany() -> None:
 # ---------------------------------------------------------------------------
 
 
+@dataclass
 class _UrzadzenieZwracajaceNan:
-    """Urządzenie testowe psujące się w zadanej chwili — deterministycznie."""
+    """Urządzenie testowe psujące się w zadanej chwili — deterministycznie.
 
-    def __init__(self, ref: str, szyna: str) -> None:
-        self.ref = ref
-        self.szyna = szyna
+    JEST DATAKLASĄ ŚWIADOMIE. Od wpięcia rekurencyjnej tożsamości parametrów
+    (`tozsamosc.odcisk`) urządzenie musi mieć postać kanoniczną — inaczej wynik
+    nie potrafi podać jego odcisku i operacja kończy się
+    `NieserializowalnyParametrError`. Zwykła klasa z `__init__` tego nie spełnia.
+
+    To NIE jest obejście pod test, tylko wyrównanie atrapy do kontraktu, który
+    spełniają wszystkie urządzenia laboratorium: dzięki temu atrapa ćwiczy tę
+    samą ścieżkę odcisku, co model produkcyjny, zamiast omijać ją przez bycie
+    innym rodzajem obiektu. Gdyby ktoś napisał REALNE urządzenie jako zwykłą
+    klasę, dostanie ten sam błąd — i tak ma być, bo odcisk liczony z `vars()`
+    był ślepy na obiekty zagnieżdżone.
+    """
+
+    ref: str
+    szyna: str
 
     def nazwy_stanow(self) -> tuple[str, ...]:
         return ("stan_a", "stan_b")

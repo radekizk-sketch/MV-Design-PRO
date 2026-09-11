@@ -120,14 +120,66 @@ def test_jednostka_nie_jest_wspolnym_napisem_dla_wszystkich_stanow() -> None:
     assert "p.u./rad" not in jednostki
 
 
-def test_model_bez_deklaracji_jednostek_melduje_brak_zamiast_zgadywac() -> None:
-    """Brak deklaracji ma być WIDOCZNY, a nie zastąpiony wspólnym napisem."""
+def test_jednostki_pochodza_z_deklaracji_modelu() -> None:
+    """Model deklaruje jednostki swoich stanów — nie są zgadywane z nazwy."""
     wynik = _wynik_z_falownikiem()
     stany = [s for s in wynik.sygnaly if s.przestrzen is PrzestrzenSygnalu.STAN]
     assert stany
     for s in stany:
         assert s.jednostka != "p.u./rad"
-        assert s.jednostka in {JEDNOSTKA_NIEZNANA, "p.u.", "rad", "1", "Hz", "s"}
+        assert (
+            s.jednostka != JEDNOSTKA_NIEZNANA
+        ), f"{s.klucz_pelny}: model nie zadeklarował jednostki tego stanu"
+
+
+def test_kat_predkosc_i_soc_maja_ROZNE_jednostki() -> None:
+    """Sedno defektu B2: jeden napis „p.u./rad" opisywał trzy różne wielkości.
+
+    Magazyn ma naraz kąt PLL (rad), prędkość PLL (p.u.) i SOC (liczba
+    niemianowana). Jeżeli wszystkie trzy mają tę samą etykietę, deklaracja
+    jednostki nie niesie żadnej informacji.
+    """
+    from dynamic_lab.urzadzenia_oze import MagazynEnergiiBESS
+
+    magazyn = MagazynEnergiiBESS(ref="BAT", szyna="DER", e_pojemnosc_mwh=1.0, s_bazowa_mva=100.0)
+    pary = dict(zip(magazyn.nazwy_stanow(), magazyn.jednostki_stanow(), strict=True))
+    assert pary["theta_pll_rad"] == "rad"
+    assert pary["omega_pll_pu"] == "p.u."
+    assert pary["soc"] == "1"
+    assert len({pary["theta_pll_rad"], pary["omega_pll_pu"], pary["soc"]}) == 3
+
+
+def test_model_bez_deklaracji_melduje_brak_zamiast_zgadywac() -> None:
+    """Fail-closed dla modelu, który jednostek NIE deklaruje.
+
+    Brak deklaracji musi być widoczny w wyniku, a nie zastąpiony wspólnym
+    napisem sugerującym, że jednostka jest znana.
+    """
+    from dynamic_lab.konwencje import jednostki_stanow
+
+    class ModelBezDeklaracji:
+        def nazwy_stanow(self) -> tuple[str, ...]:
+            return ("a", "b")
+
+    assert jednostki_stanow(ModelBezDeklaracji()) == (
+        JEDNOSTKA_NIEZNANA,
+        JEDNOSTKA_NIEZNANA,
+    )
+
+
+def test_niespojna_deklaracja_jednostek_jest_bledem_glosnym() -> None:
+    """Przesunięte etykiety są gorsze niż ich brak — liczba musi się zgadzać."""
+    from dynamic_lab.konwencje import jednostki_stanow
+
+    class ModelNiespojny:
+        def nazwy_stanow(self) -> tuple[str, ...]:
+            return ("a", "b", "c")
+
+        def jednostki_stanow(self) -> tuple[str, ...]:
+            return ("p.u.", "rad")
+
+    with pytest.raises(ValueError, match="niespójna z modelem"):
+        jednostki_stanow(ModelNiespojny())
 
 
 # ---------------------------------------------------------------------------
@@ -208,3 +260,21 @@ def test_przebieg_urwany_oznaczony_poprawnie_jest_dopuszczalny() -> None:
     assert d.kompletnosc is KompletnoscPrzebiegu.PRZERWANY_BLEDEM
     assert d.czas_osiagniety_s < d.czas_zadany_s
     assert np.isfinite(d.czas_zadany_s)
+
+
+def test_odcisk_odmawia_zamiast_wpisac_adres_obiektu() -> None:
+    """Determinizm: awaryjne ``str()`` wpisywało do skrótu adres w pamięci.
+
+    ``default=str`` dla obiektu bez własnego ``__str__`` daje
+    ``"<... object at 0x7fd630701150>"``. Skrót wyglądał na policzony, a ten sam
+    ładunek w dwóch procesach dawał RÓŻNE wartości — ciche naruszenie reguły
+    determinizmu, którego nic nie sygnalizowało.
+    """
+    from dynamic_lab.wynik import NieserializowalnyLadunekError, odcisk
+
+    class BezSerializacji:
+        pass
+
+    assert odcisk({"a": 1, "b": "x"}) == odcisk({"b": "x", "a": 1})
+    with pytest.raises(NieserializowalnyLadunekError, match="niedeterministycznym"):
+        odcisk({"obiekt": BezSerializacji()})

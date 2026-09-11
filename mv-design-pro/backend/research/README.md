@@ -56,6 +56,7 @@ z defektów P0 audytu: model nazwany „6-rzędowym" miał 2 stany).
 | `dynamic_lab/wzorzec_zewnetrzny.py` | dowód **C1/W3**: porównanie z NIEZALEŻNYM narzędziem (ANDES) — wymaga `pip install andes` |
 | `dynamic_lab/wzorzec_genrou.py` | dowód **C1/W3** dla modelu 4. rzędu i regulatorów: ANDES GENROU (+SEXS, +TGOV1) — z ZMIERZONYM zakresem zgodności (tłumiki, nasycenie) zamiast założonego |
 | `dynamic_lab/wzorzec_natywny.py` | walidacja MAPOWANIA parametrów na przypadku autorstwa ANDES (`cases/smib/SMIB.xlsx`) — sprawdza, czy rozumiemy wejście |
+| `dynamic_lab/tozsamosc.py` | deterministyczna TOŻSAMOŚĆ: postać kanoniczna parametrów (rekurencyjnie po dataklasach, z jawną deklaracją pól pomijanych), odcisk scenariusza (migawka + punkt pracy + nastawy solvera + harmonogram) i odcisk topologii (wszystko, co wchodzi do Ybus) |
 | `dynamic_lab/dowod_walidacji.py` | PROTOTYP D-09: stopień dowodowy WYPROWADZANY z zakresu walidacji, nie nadawany |
 
 Testy: `backend/tests/research/` (uruchamiane przez zwykły bieg pytest).

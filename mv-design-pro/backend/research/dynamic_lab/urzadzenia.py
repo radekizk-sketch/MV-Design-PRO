@@ -16,7 +16,7 @@ istniała w produkcyjnym silniku, gdzie napięcie było stałą 1,0 p.u.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Protocol
 
 import numpy as np
@@ -24,6 +24,7 @@ from numpy.typing import NDArray
 
 from dynamic_lab.konwencje import OMEGA_S, dq_z_sieci, siec_z_dq
 from dynamic_lab.regulatory import RegulatorNapiecia, RegulatorTurbiny
+from dynamic_lab.tozsamosc import pole_artefakt, pole_opisowe
 
 
 class UrzadzenieDynamiczne(Protocol):
@@ -111,6 +112,10 @@ class MaszynaSynchroniczna4Rzedu:
 
     def nazwy_stanow(self) -> tuple[str, ...]:
         return ("delta_rad", "omega_pu", "e_q_prim_pu", "e_d_prim_pu")
+
+    def jednostki_stanow(self) -> tuple[str, ...]:
+        """Jednostki DEKLAROWANE PRZEZ MODEL — kąt w radianach, reszta w p.u."""
+        return ("rad", "p.u.", "p.u.", "p.u.")
 
     def prady_dq(
         self, e_d_prim: float, e_q_prim: float, v_szyny: complex, delta: float
@@ -233,8 +238,20 @@ class ZespolSynchroniczny:
     maszyna: MaszynaSynchroniczna4Rzedu
     avr: RegulatorNapiecia | None = None
     governor: RegulatorTurbiny | None = None
-    _efd_stale: float = 0.0
-    _pm_stale: float = 0.0
+    _efd_stale: float = pole_artefakt(
+        default=0.0,
+        powod=(
+            "wartość wyliczona przez `inicjalizuj` z punktu pracy, nie nastawa modelu "
+            "— punkt pracy jest osobną osią tożsamości (TozsamoscScenariusza)"
+        ),
+    )
+    _pm_stale: float = pole_artefakt(
+        default=0.0,
+        powod=(
+            "wartość wyliczona przez `inicjalizuj` z punktu pracy, nie nastawa modelu "
+            "— punkt pracy jest osobną osią tożsamości (TozsamoscScenariusza)"
+        ),
+    )
 
     @property
     def ref(self) -> str:
@@ -246,6 +263,10 @@ class ZespolSynchroniczny:
 
     def nazwy_stanow(self) -> tuple[str, ...]:
         return (*self.maszyna.nazwy_stanow(), "efd_pu", "pm_pu")
+
+    def jednostki_stanow(self) -> tuple[str, ...]:
+        """Jednostki maszyny + regulatorów; składane z deklaracji maszyny."""
+        return (*self.maszyna.jednostki_stanow(), "p.u.", "p.u.")
 
     def pochodne(self, x: NDArray[np.float64], v_szyny: complex) -> NDArray[np.float64]:
         efd = float(x[4])
@@ -358,6 +379,9 @@ class FalownikGFL:
 
     def nazwy_stanow(self) -> tuple[str, ...]:
         return ("p_pu", "q_pu")
+
+    def jednostki_stanow(self) -> tuple[str, ...]:
+        return ("p.u.", "p.u.")
 
     def _q_cel(self, v_mod: float) -> float:
         odchylka = self.v_ref_pu - v_mod
@@ -557,7 +581,13 @@ class KandydatOgraniczeniaImpedancjaWirtualna:
     """Wzmocnienie pętli impedancji wirtualnej [p.u. impedancji na p.u. nadmiaru
     prądu]. BEZ wartości domyślnej, bo to ONO rozstrzyga, czy limit jest twardy,
     czy miękki (patrz kres górny wyżej)."""
-    nazwa: str = "impedancja_wirtualna"
+    nazwa: str = pole_opisowe(
+        default="impedancja_wirtualna",
+        powod=(
+            "etykieta strategii dla człowieka — tożsamość strategii niesie jej KLASA, "
+            "która wchodzi do postaci kanonicznej"
+        ),
+    )
 
     def __post_init__(self) -> None:
         if self.i_max_pu <= 0.0:
@@ -674,7 +704,13 @@ class KandydatOgraniczeniaNasycenieZadania:
     ``FalownikGFL`` nie ma odpowiednika tej gałęzi w ogóle — poniżej 1e-6 p.u.
     zwraca zerowy prąd, zanim dojdzie do ograniczania. Przypięta równość trzech
     kopii dotyczy więc napięć powyżej 1e-6 p.u. i tylko tyle wolno o niej mówić."""
-    nazwa: str = "nasycenie_zadania_pradu"
+    nazwa: str = pole_opisowe(
+        default="nasycenie_zadania_pradu",
+        powod=(
+            "etykieta strategii dla człowieka — tożsamość strategii niesie jej KLASA, "
+            "która wchodzi do postaci kanonicznej"
+        ),
+    )
 
     def __post_init__(self) -> None:
         if self.i_max_pu <= 0.0:
@@ -787,18 +823,31 @@ class FalownikGFM:
     x_wirtualna_pu: float = 0.15
     ogranicznik: OgranicznikPraduGFM | None = None
     """EKSPERYMENTALNA strategia ograniczenia prądu albo ``None`` (brak granicy)."""
-    tozsamosc_ogranicznika: str = field(init=False, default="brak")
+    tozsamosc_ogranicznika: str = pole_artefakt(
+        init=False,
+        default="brak",
+        powod=(
+            "pole WYPROWADZONE z obiektu `ogranicznik`, który sam wchodzi do postaci "
+            "kanonicznej rekurencyjnie — liczenie go dwa razy niczego nie rozróżnia"
+        ),
+    )
     """Skalarny opis ogranicznika WYPROWADZONY z obiektu strategii w
     ``__post_init__``.
 
     PO CO. ``SilnikRMS._tozsamosci`` bierze do odcisku parametrów wyłącznie pola
-    skalarne (``int|float|str|bool``), więc obiekt ``ogranicznik`` sam z siebie do
-    odcisku NIE WCHODZI — dwa biegi z różnymi strategiami miałyby ten sam odcisk i
-    porównanie ich straciłoby wartość dowodową (to jest ta sama klasa defektu, co
-    „ten sam model policzył co innego, bo zmieniono parametr"). Pole jest
+    skalarne (``int|float|str|bool``), więc tam obiekt ``ogranicznik`` sam z siebie
+    do odcisku NIE WCHODZI — dwa biegi z różnymi strategiami miałyby ten sam odcisk
+    i porównanie ich straciłoby wartość dowodową (to jest ta sama klasa defektu, co
+    „ten sam model policzył co innego, bo zmieniono parametr”). Pole jest
     WYPROWADZONE, nie wpisywane ręcznie, a strategie są niemutowalne
     (``frozen=True``), więc nie może się rozjechać z rzeczywistością.
     Pinuje ``test_tozsamosc_modelu_rozroznia_strategie_ogranicznika``.
+
+    ZAKRES WAŻNOŚCI TEGO OBEJŚCIA. Dotyczy WYŁĄCZNIE odcisku liczonego w
+    ``silnik.py``. Tożsamość dowodowa (``tozsamosc.postac_kanoniczna``) schodzi w
+    obiekt ``ogranicznik`` rekurencyjnie, więc tam ten skrót jest zbędny i jest
+    zadeklarowany jako artefakt — inaczej ta sama informacja wchodziłaby do odcisku
+    dwa razy, raz w postaci pełnej, raz w postaci sklejonego łańcucha.
     """
 
     def __post_init__(self) -> None:
@@ -813,6 +862,10 @@ class FalownikGFM:
 
     def nazwy_stanow(self) -> tuple[str, ...]:
         return ("delta_rad", "omega_pu", "p_f_pu", "q_f_pu")
+
+    def jednostki_stanow(self) -> tuple[str, ...]:
+        """Kąt wirtualny w radianach; prędkość i moce filtrowane w p.u."""
+        return ("rad", "p.u.", "p.u.", "p.u.")
 
     def _z_wirtualna(self) -> complex:
         return complex(self.r_wirtualna_pu, self.x_wirtualna_pu)
@@ -893,8 +946,10 @@ class OdbiorStalejMocy:
     szyna: str
     p_pu: float
     q_pu: float = 0.0
-    _stan: NDArray[np.float64] = field(
-        default_factory=lambda: np.zeros(0, dtype=np.float64), repr=False
+    _stan: NDArray[np.float64] = pole_artefakt(
+        default_factory=lambda: np.zeros(0, dtype=np.float64),
+        repr=False,
+        powod="wektor stanu chwilowego (model bezstanowy — stan pusty), nie parametr",
     )
 
     def nazwy_stanow(self) -> tuple[str, ...]:

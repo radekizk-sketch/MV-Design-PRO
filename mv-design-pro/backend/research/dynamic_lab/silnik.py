@@ -25,8 +25,15 @@ import numpy as np
 from numpy.typing import NDArray
 
 from dynamic_lab.calkowanie import INTEGRATORY, Integrator
-from dynamic_lab.konwencje import czestotliwosc_hz, jednostki_stanow
+from dynamic_lab.konwencje import czestotliwosc_hz, jednostki_stanow, stany_zasobowe
 from dynamic_lab.siec import SolverSieci, TopologiaSieci
+from dynamic_lab.tozsamosc import (
+    KonfiguracjaSolvera,
+    PunktPracy,
+    TozsamoscScenariusza,
+    odcisk_topologii,
+)
+from dynamic_lab.tozsamosc import odcisk as odcisk_kanoniczny
 from dynamic_lab.wynik import (
     KONTRAKT,
     BladSolvera,
@@ -36,9 +43,12 @@ from dynamic_lab.wynik import (
     TozsamoscModelu,
     WynikDynamiczny,
     ZbieraczPrzebiegow,
-    odcisk,
 )
 from dynamic_lab.zdarzenia import HarmonogramZdarzen
+
+
+class PunktPracyNiespojnyZRozplywemError(RuntimeError):
+    """Urządzenie nie oddaje mocy, którą przyjął rozpływ — punkt startowy fikcyjny."""
 
 
 class RownowagaNieosiagnietaError(RuntimeError):
@@ -98,12 +108,14 @@ class SilnikRMS:
         krok_s: float = 0.005,
         tolerancja_sieci: float = 1.0e-12,
         tolerancja_rownowagi: float = 1.0e-6,
+        tolerancja_mocy: float = 1.0e-6,
         probkowanie_co: int = 1,
     ) -> None:
         self.model = model
         self.integrator = INTEGRATORY[integrator] if isinstance(integrator, str) else integrator
         self.krok_s = krok_s
         self.tolerancja_rownowagi = tolerancja_rownowagi
+        self.tolerancja_mocy = tolerancja_mocy
         self.probkowanie_co = max(1, probkowanie_co)
         self.solver_sieci = SolverSieci(model.topologia, tolerancja=tolerancja_sieci)
         self.uklad = UkladStanu.zbuduj(model.urzadzenia)
@@ -206,8 +218,22 @@ class SilnikRMS:
     def inicjalizuj(self, moce_zadane: dict[str, complex]) -> NDArray[np.float64]:
         """Pełna inicjalizacja: rozpływ → punkt pracy urządzeń → stany regulatorów.
 
-        Po inicjalizacji weryfikuje ``||f(x0, y0)|| <= tolerancja_rownowagi`` i
-        podnosi ``RownowagaNieosiagnietaError``, jeśli warunek nie zachodzi.
+        SPRAWDZANE SĄ TRZY WARUNKI, nie jeden (pakiet D audytu). ``f(x0) = 0`` samo
+        w sobie NIE dowodzi, że punkt startowy jest spójny z rozpływem:
+
+          1. ``||f_szybkie(x0, y0)|| <= tolerancja_rownowagi`` — równowaga stanów
+             ELEKTROMECHANICZNYCH. Stany ZASOBOWE (SOC magazynu) są z tego warunku
+             wyłączone, bo ich pochodna jest niezerowa z definicji pracy urządzenia
+             — patrz ``konwencje.stany_zasobowe``. Wyłączenie jest ROZRÓŻNIENIEM,
+             nie rozluźnieniem tolerancji: pochodna zasobowa jest liczona i
+             raportowana osobno, a nie ukrywana.
+          2. algebra sieci ``g(x0, V0) = 0`` — z ``rozplyw_ustalony``.
+          3. ``|S_rzeczywiste(x0, V0) - S_rozplywu| <= tolerancja_mocy`` — czy
+             urządzenie FAKTYCZNIE oddaje moc, którą przyjął rozpływ. Bez tego
+             warunku falownik z ogranicznikiem prądu, dla którego ``|S/V| > i_max``,
+             przechodził inicjalizację: jego stany stały na zadanej wartości, więc
+             ``ẋ = 0``, a wstrzyknięcie do sieci było PRZYCIĘTE. Punkt startowy
+             opisywał wtedy inny punkt pracy niż rozpływ i nic tego nie zgłaszało.
         """
         v0 = self.rozplyw_ustalony(moce_zadane)
         idx = self.model.topologia.indeks
@@ -218,19 +244,89 @@ class SilnikRMS:
                 continue
             s = moce_zadane.get(u.ref, 0j)  # type: ignore[attr-defined]
             x0[wycinek] = u.inicjalizuj(complex(v0[idx[u.szyna]]), s)  # type: ignore[attr-defined]
+
         norma = self.norma_pochodnej(x0)
         if norma > self.tolerancja_rownowagi:
             raise RownowagaNieosiagnietaError(
-                f"||f(x0,y0)|| = {norma:.3e} > {self.tolerancja_rownowagi:.1e}. "
+                f"||f_szybkie(x0,y0)|| = {norma:.3e} > {self.tolerancja_rownowagi:.1e}. "
                 "Punkt startowy nie jest równowagą — przebieg byłby artefaktem rozruchu."
             )
+
+        niespojne = self.residua_mocy(x0, v0, moce_zadane)
+        for ref, roznica in sorted(niespojne.items()):
+            if roznica > self.tolerancja_mocy:
+                raise PunktPracyNiespojnyZRozplywemError(
+                    f"{ref}: |S_rzeczywiste - S_rozplywu| = {roznica:.3e} p.u. > "
+                    f"{self.tolerancja_mocy:.1e}. Urządzenie NIE oddaje mocy przyjętej "
+                    "przez rozpływ (najczęściej: ogranicznik prądu przycina wstrzyknięcie). "
+                    "Ciche przyjęcie takiego punktu dawałoby przebieg opisujący inny "
+                    "punkt pracy niż deklarowany."
+                )
         return x0
 
+    def residua_mocy(
+        self,
+        x: NDArray[np.float64],
+        v: NDArray[np.complex128],
+        moce_zadane: dict[str, complex],
+    ) -> dict[str, float]:
+        """``|S_rzeczywiste - S_zadane|`` per urządzenie [p.u.] — wspólny inwariant.
+
+        Liczone dla urządzeń, dla których rozpływ PODAŁ moc; reszta nie ma z czym
+        być porównana. Jeden mechanizm dla wszystkich modeli — bez wyjątków
+        per typ urządzenia.
+        """
+        idx = self.model.topologia.indeks
+        wynik: dict[str, float] = {}
+        for u in self.model.urzadzenia:
+            ref = u.ref  # type: ignore[attr-defined]
+            if ref not in moce_zadane:
+                continue
+            wycinek = self.uklad.wycinki[ref]
+            v_szyny = complex(v[idx[u.szyna]])  # type: ignore[attr-defined]
+            i = u.wstrzykniecie(x[wycinek], v_szyny)  # type: ignore[attr-defined]
+            s_rzeczywiste = v_szyny * np.conj(i)
+            wynik[ref] = float(abs(s_rzeczywiste - moce_zadane[ref]))
+        return wynik
+
+    def _maska_stanow_szybkich(self) -> NDArray[np.bool_]:
+        """Które pozycje wektora stanu podlegają warunkowi równowagi."""
+        maska = np.ones(self.uklad.dlugosc, dtype=bool)
+        for u in self.model.urzadzenia:
+            wycinek = self.uklad.wycinki[u.ref]  # type: ignore[attr-defined]
+            zasobowe = stany_zasobowe(u)
+            if not zasobowe:
+                continue
+            for przesuniecie, nazwa in enumerate(u.nazwy_stanow()):  # type: ignore[attr-defined]
+                if nazwa in zasobowe:
+                    maska[wycinek.start + przesuniecie] = False
+        return maska
+
     def norma_pochodnej(self, x: NDArray[np.float64]) -> float:
-        """``||f(x, y(x))||_inf`` — miara oddalenia od równowagi."""
+        """``||f_szybkie(x, y(x))||_inf`` — oddalenie od równowagi ELEKTROMECHANICZNEJ.
+
+        Stany zasobowe są pominięte; ich pochodne zwraca ``norma_pochodnej_zasobowej``.
+        """
         if self.uklad.dlugosc == 0:
             return 0.0
-        return float(np.max(np.abs(self.pochodne(x, 0.0))))
+        pochodne = np.abs(self.pochodne(x, 0.0))[self._maska_stanow_szybkich()]
+        if pochodne.size == 0:
+            return 0.0
+        return float(np.max(pochodne))
+
+    def norma_pochodnej_zasobowej(self, x: NDArray[np.float64]) -> float:
+        """``||f_zasobowe(x, y(x))||_inf`` — dryf zapasu energii, raportowany OSOBNO.
+
+        Niezerowa wartość NIE jest błędem: magazyn oddający moc musi tracić SOC.
+        Wartość jest w wyniku po to, żeby dryf dało się skonfrontować z bilansem
+        energii, a nie po to, żeby go ukryć.
+        """
+        if self.uklad.dlugosc == 0:
+            return 0.0
+        pochodne = np.abs(self.pochodne(x, 0.0))[~self._maska_stanow_szybkich()]
+        if pochodne.size == 0:
+            return 0.0
+        return float(np.max(pochodne))
 
     # -- symulacja ------------------------------------------------------------
 
@@ -445,30 +541,8 @@ class SilnikRMS:
             modele=self._tozsamosci(),
             zdarzenia=tuple(zastosowane),
             diagnostyka=diagnostyka,
-            odcisk_scenariusza=odcisk(
-                {
-                    "zdarzenia": zastosowane,
-                    "krok_s": self.krok_s,
-                    "czas_koncowy_s": czas_koncowy_s,
-                    "integrator": self.integrator.nazwa,
-                }
-            ),
-            odcisk_topologii=odcisk(
-                {
-                    "szyny": list(self.model.topologia.szyny),
-                    "galezie": [
-                        [
-                            g.od_szyny,
-                            g.do_szyny,
-                            g.r_pu,
-                            g.x_pu,
-                            g.b_poprzeczna_pu,
-                            g.zalaczona,
-                        ]
-                        for g in self.model.topologia.galezie
-                    ],
-                }
-            ),
+            odcisk_scenariusza=self._odcisk_scenariusza(czas_koncowy_s, harmonogram),
+            odcisk_topologii=self._odcisk_topologii(),
         )
 
     def _zapisz_probki(
@@ -543,28 +617,70 @@ class SilnikRMS:
                         przestrzen=PrzestrzenSygnalu.WYJSCIE,
                     )
 
+    def _odcisk_topologii(self) -> str:
+        """Odcisk topologii — KOMPLET tego, co wchodzi do ``Ybus``, plus baza mocy.
+
+        Poprzednia wersja składała ręcznie szyny i gałęzie, więc była ślepa na
+        boczniki (bateria kondensatorów!), szyny sztywne i bazę mocy. Dwie sieci
+        o RÓŻNYCH macierzach ``Ybus`` dostawały ten sam odcisk topologii, czyli
+        wynik twierdził, że policzono tę samą sieć. Inwariant „różne Ybus =>
+        różne odciski" jest przypięty w ``test_tozsamosc.py``.
+        """
+        return odcisk_topologii(self.model.topologia, s_bazowa_mva=self.model.s_bazowa_mva)
+
+    def _odcisk_scenariusza(self, czas_koncowy_s: float, harmonogram: HarmonogramZdarzen) -> str:
+        """Odcisk scenariusza — razem z MIGAWKĄ wejścia i nastawami solvera.
+
+        Poprzednia wersja brała ``{zdarzenia, krok_s, czas_koncowy_s, integrator}``,
+        więc ten sam harmonogram policzony na INNEJ sieci miał ten sam odcisk
+        scenariusza. To jest dokładnie luka, przed którą odcisk ma chronić:
+        pozwalała podstawić pod jeden scenariusz bieg z innego wejścia.
+        """
+        return TozsamoscScenariusza(
+            odcisk_migawki=self._odcisk_topologii(),
+            # Punkt pracy biegu laboratoryjnego nie jest tu znany jako wielkość
+            # normatywna (SCR/rodzaj zdarzenia są interpretacją, nie wejściem
+            # solvera), więc pozostaje NIEZNANY — a `PunktPracy` traktuje `None`
+            # jako „nie wiadomo", nie „dowolne". Wypełnia go warstwa, która wie:
+            # rejestr dowodów przy budowie `PrzypadekWalidacji`.
+            punkt_pracy=PunktPracy(),
+            konfiguracja=KonfiguracjaSolvera(
+                integrator=self.integrator.nazwa,
+                krok_s=self.krok_s,
+                tolerancja_sieci=self.solver_sieci.tolerancja,
+                tolerancja_rownowagi=self.tolerancja_rownowagi,
+                maks_iteracji_sieci=self.solver_sieci.maks_iteracji,
+                probkowanie_co=self.probkowanie_co,
+            ),
+            czas_koncowy_s=float(czas_koncowy_s),
+            harmonogram=tuple(harmonogram.zdarzenia),
+        ).odcisk
+
     def _tozsamosci(self) -> tuple[TozsamoscModelu, ...]:
+        """Tożsamości modeli — z REKURENCYJNEJ postaci kanonicznej, nie z pól skalarnych.
+
+        Poprzednia wersja budowała odcisk z ``vars(u)`` odsianych do typów
+        skalarnych plus RĘCZNIE doklejonego ``getattr(u, "maszyna")``. Była więc
+        ślepa na wszystko, co siedzi w obiekcie zagnieżdżonym poza tym jednym
+        wyjątkiem: AVR, governor, PLL, ogranicznik GFM, moduły PPC, parametry
+        BESS. Zmiana stałej regulatora napięcia z ``k_a = 200`` na ``400`` dawała
+        TEN SAM odcisk — czyli dwa fizycznie różne biegi były dla wyniku
+        nierozróżnialne.
+
+        Teraz liczy to ``tozsamosc.odcisk_parametrow_urzadzenia``, który schodzi
+        rekurencyjnie po ``dataclasses.fields()``. Nowy model nie wymaga
+        dopisania gałęzi — a artefakty runtime są z odcisku wyłączane DEKLARACJĄ
+        przy polu, nie zgadywaniem po nazwie.
+        """
         wynik = []
         for u in self.model.urzadzenia:
-            parametry = {
-                k: v
-                for k, v in vars(u).items()
-                if isinstance(v, int | float | str | bool) and not k.startswith("_")
-            }
-            wewnetrzny = getattr(u, "maszyna", None)
-            if wewnetrzny is not None:
-                parametry |= {
-                    f"maszyna.{k}": v
-                    for k, v in vars(wewnetrzny).items()
-                    if isinstance(v, int | float | str | bool)
-                }
             wynik.append(
                 TozsamoscModelu(
                     element_ref=u.ref,  # type: ignore[attr-defined]
                     klasa_modelu=type(u).__name__,
                     liczba_stanow=len(u.nazwy_stanow()),  # type: ignore[attr-defined]
                     nazwy_stanow=tuple(u.nazwy_stanow()),  # type: ignore[attr-defined]
-                    odcisk_parametrow=odcisk(parametry),
+                    odcisk_parametrow=odcisk_kanoniczny(u),
                 )
             )
         return tuple(wynik)
