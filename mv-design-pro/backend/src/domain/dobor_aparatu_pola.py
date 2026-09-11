@@ -49,21 +49,10 @@ GRANICA_NN_KV = 1.0
 PRZESTRZEN_APARAT_NN = "APARAT_NN"
 PRZESTRZEN_APARAT_SN = "APARAT_SN"
 
-#: Szereg napięć najwyższych urządzenia ``U_m`` wg IEC 60038 tab. 3 / IEC 62271-1,
-#: przypisany do napięcia znamionowego sieci ``U_n``. Aparat SN dobiera się do
-#: ``U_m`` sieci, nie do ``U_n``: rodzina „12 / 17,5 / 24 kV" JEST z definicji
-#: normy napięciem najwyższym urządzenia, więc sieć 15 kV wymaga aparatu 17,5 kV,
-#: a NIE 12 kV. Mapa jest ZAMKNIĘTA — napięcie spoza szeregu nie dostaje
-#: domyślnego ``U_m``, tylko odmowę doboru (patrz `napiecie_najwyzsze_sieci_kv`).
-SZEREG_U_M_KV: dict[float, float] = {
-    3.0: 3.6,
-    6.0: 7.2,
-    10.0: 12.0,
-    15.0: 17.5,
-    20.0: 24.0,
-    30.0: 36.0,
-    35.0: 40.5,
-}
+#: Wartość zwracana, gdy napięcia szyny NIE DA SIĘ ustalić. Osobna stała, a nie
+#: ``None`` ani nazwa rodziny: „nie wiem" musi być odróżnialne zarówno od „to nN",
+#: jak i od „to SN", bo prowadzi do INNEJ decyzji — zablokowania wiązania.
+PRZESTRZEN_NIEUSTALONA = "NIEUSTALONA"
 
 #: Rodzaje aparatu w katalogu APARAT_NN / APARAT_SN dla ról pola.
 RODZAJ_WYLACZNIK_GLOWNY_NN = "WYLACZNIK_GLOWNY"
@@ -117,21 +106,6 @@ def prad_znamionowy_a(*, moc_mva: float, napiecie_kv: float) -> float | None:
     return moc_mva * 1.0e6 / (math.sqrt(3.0) * napiecie_kv * 1.0e3)
 
 
-def napiecie_najwyzsze_sieci_kv(napiecie_znamionowe_kv: float) -> float | None:
-    """``U_m`` sieci SN wg szeregu IEC; ``None`` dla napięcia spoza szeregu.
-
-    Świadomie BEZ zaokrąglania „do najbliższego wyższego": sieć o napięciu,
-    którego nie ma w szeregu normy, jest sygnałem błędu danych albo zakresu
-    nieobsługiwanego przez produkt. Domyślenie ``U_m`` byłoby wtedy zgadnięciem
-    klasy izolacji aparatu — dokładnie tym, czego zakazuje zasada zero
-    fabrykacji.
-    """
-    for u_n, u_m in SZEREG_U_M_KV.items():
-        if math.isclose(napiecie_znamionowe_kv, u_n, rel_tol=1e-9, abs_tol=1e-9):
-            return u_m
-    return None
-
-
 def przestrzen_aparatu_dla_napiecia(napiecie_kv: float | None) -> str:
     """Przestrzeń katalogu aparatu pola WYNIKAJĄCA z napięcia szyny.
 
@@ -143,17 +117,19 @@ def przestrzen_aparatu_dla_napiecia(napiecie_kv: float | None) -> str:
       3. promocja wpisu do realnego łącznika
          (`enm.migrations.nn_field_specs_promocja`).
 
-    Rozjazd któregokolwiek z nich kończył się TAK SAMO i po cichu: wiązanie
-    aparatu SN nie materializowało się w przestrzeni nN, więc łącznik powstawał
-    bez ``catalog_ref`` i gotowość meldowała `switch.catalog_ref_missing` —
-    mimo że pole wiązanie MIAŁO. Dlatego reguła jest tu, a nie w trzech
-    miejscach „które dziś się zgadzają".
+    NIEZNANE NAPIĘCIE NIE JEST DOWODEM NISKIEGO NAPIĘCIA (korekta po recenzji
+    niezależnej — mutacja „ustaw napięcie szyny na nieznane" PRZEŻYŁA, bo
+    funkcja zwracała wtedy ``APARAT_NN``). Brak informacji o szynie to brak
+    informacji, a nie przesłanka: wiązanie aparatu 690 V do szyny, o której nic
+    nie wiadomo, jest tym samym błędem klasy, co wiązanie go do szyny 15 kV.
+    Dlatego nieustalone napięcie daje `PRZESTRZEN_NIEUSTALONA`, a wołający MUSI
+    z tego zrobić brak wiązania i blokadę gotowości — nigdy domyślną rodzinę.
 
-    Szyna nieznana (``None``) daje ``APARAT_NN``: dotyczy wyłącznie ścieżek,
-    które i tak przerwą się dalej na braku szyny — to nie jest domyślny poziom
-    napięcia dla realnego pola.
+    Napięcie niedodatnie traktujemy tak samo jak brak: nie jest napięciem szyny.
     """
-    if napiecie_kv is None or napiecie_kv <= GRANICA_NN_KV:
+    if napiecie_kv is None or not napiecie_kv > 0:
+        return PRZESTRZEN_NIEUSTALONA
+    if napiecie_kv <= GRANICA_NN_KV:
         return PRZESTRZEN_APARAT_NN
     return PRZESTRZEN_APARAT_SN
 
@@ -257,13 +233,27 @@ def dobierz_aparat_nn(
 def dobierz_aparat_sn(
     *, napiecie_szyny_kv: float, prad_roboczy_a: float, rodzaj: str = RODZAJ_WYLACZNIK_SN
 ) -> WynikDoboru:
-    """Aparat pola SN: ``U_m(aparatu) ≥ U_m(sieci)``, potem ``I_n ≥ I_rob``.
+    """Aparat pola SN: ``U_m(aparatu) ≥ U_n(szyny)``, potem ``I_n ≥ I_rob``.
 
-    ``U_n`` aparatu SN JEST jego ``U_m`` z definicji IEC 62271-1 — rodzina
-    „12 / 17,5 / 24 kV" to szereg napięć najwyższych urządzenia, nie napięć
-    pracy. Dlatego sieć 15 kV wymaga aparatu 17,5 kV: pozycja 12 kV ma za niską
-    klasę izolacji, choć „12 > 15" nikomu nie przyjdzie do głowy sprawdzać, a
-    „12 kV do sieci 15 kV" wygląda znajomo.
+    REGUŁA JEST KANONICZNA I WSPÓLNA, NIE WŁASNA (korekta po recenzji
+    niezależnej, P1-DELTA-06). Poprzednia wersja odwzorowywała napięcie sieci na
+    ``U_m`` przez ZAMKNIĘTĄ mapę szeregu IEC 60038 (3/6/10/15/20/30/35 kV), przez
+    co sieci 11, 22 i 33 kV — standardowe w tym samym szeregu — dostawały odmowę
+    doboru. Recenzent wykonał te trzy przypadki niezależnie.
+
+    Głębszy problem był architektoniczny: repozytorium MA JUŻ regułę „czy aparat
+    pasuje do tej szyny" w `network_model.catalog.switchgear.family_validation.
+    czy_rodzina_obsluguje_napiecie` — ``U_m(urządzenia) ≥ U_n(sieci)`` z
+    podstawą PN-EN 62271-1 (napięcie znamionowe urządzenia jest GÓRNĄ granicą
+    najwyższego napięcia sieci, dla której urządzenie zaprojektowano). Moja mapa
+    była DRUGIM, niezależnym warunkiem na to samo pytanie — i węższym. Teraz
+    stosujemy tę samą nierówność, więc zakres napięć produktu wynika z tego, co
+    katalog REALNIE zawiera, a nie z osobnej listy, którą ktoś musi pamiętać.
+
+    Sieć 15 kV nadal nie dostanie aparatu 12 kV: ``12 ≥ 15`` jest fałszem.
+    Sieć 11 kV dostanie klasę 12 kV, sieć 22 kV — klasę 24 kV. Dla napięcia,
+    którego nie pokrywa ŻADNA klasa w katalogu, odpowiedź jest jawna i mówi,
+    jaka klasa byłaby potrzebna — nie „napięcie spoza szeregu".
 
     RODZAJ APARATU JEST CZĘŚCIĄ DOBORU. Domyślnym rodzajem jest WYŁĄCZNIK, bo
     pole źródłowe DER musi dać się otworzyć przy zwarciu, do którego samo
@@ -273,16 +263,12 @@ def dobierz_aparat_sn(
     katalog = _katalog()
     if katalog is None:
         return WynikDoboru(None, None, "Katalog niedostępny.")
-
-    u_m_sieci = napiecie_najwyzsze_sieci_kv(napiecie_szyny_kv)
-    if u_m_sieci is None:
+    if not napiecie_szyny_kv > 0:
         return WynikDoboru(
             None,
             None,
-            f"Napięcie znamionowe szyny {napiecie_szyny_kv:.3f} kV nie występuje w szeregu "
-            f"IEC 60038 ({', '.join(f'{u:g}' for u in sorted(SZEREG_U_M_KV))} kV), więc nie da "
-            f"się wskazać wymaganego napięcia najwyższego urządzenia U_m. Dobór nie jest "
-            f"wykonywany — domyślenie klasy izolacji byłoby zgadywaniem.",
+            f"Napięcie szyny {napiecie_szyny_kv} kV nie jest napięciem sieci — dobór nie jest "
+            f"wykonywany.",
         )
 
     rodzina = [
@@ -293,16 +279,19 @@ def dobierz_aparat_sn(
             None, None, f"W katalogu APARAT_SN nie ma rodziny aparatów rodzaju '{rodzaj}'."
         )
 
-    w_klasie = [a for a in rodzina if float(a.u_n_kv) >= u_m_sieci]
+    # `u_n_kv` aparatu SN JEST jego `U_m` — konwencja katalogu opisana w
+    # `mv_switch_catalog`: rodzina „12 / 17,5 / 24 kV" to szereg napięć
+    # najwyższych urządzenia z definicji normy, nie napięć pracy.
+    w_klasie = [a for a in rodzina if float(a.u_n_kv) >= napiecie_szyny_kv]
     if not w_klasie:
         najwyzsze = max(float(a.u_n_kv) for a in rodzina)
         return WynikDoboru(
             None,
             None,
-            f"Sieć {napiecie_szyny_kv:.3f} kV wymaga aparatu o U_m ≥ {u_m_sieci:.1f} kV, a "
-            f"najwyższa klasa w rodzinie '{rodzaj}' katalogu APARAT_SN to {najwyzsze:.1f} kV. "
+            f"Szyna {napiecie_szyny_kv:.3f} kV wymaga aparatu o U_m ≥ {napiecie_szyny_kv:.3f} kV, "
+            f"a najwyższa klasa w rodzinie '{rodzaj}' katalogu APARAT_SN to {najwyzsze:.1f} kV. "
             f"Pole powstaje bez wiązania — związanie aparatu o niższej klasie izolacji byłoby "
-            f"fabrykacją.",
+            f"fabrykacją. Uzupełnij katalog o klasę pokrywającą to napięcie.",
         )
 
     wybrany, najwiekszy_a = _wybierz_najmniejszy(w_klasie, prad_wymagany_a=prad_roboczy_a)
@@ -311,17 +300,17 @@ def dobierz_aparat_sn(
             None,
             None,
             f"Prąd roboczy pola wynosi {prad_roboczy_a:.0f} A i przekracza największą pozycję "
-            f"rodziny '{rodzaj}' w klasie U_m ≥ {u_m_sieci:.1f} kV "
+            f"rodziny '{rodzaj}' w klasie U_m ≥ {napiecie_szyny_kv:.3f} kV "
             f"({(najwiekszy_a or 0.0):.0f} A). Pole powstaje bez wiązania — dobranie mniejszego "
             f"aparatu byłoby fabrykacją urządzenia niezdolnego do przewodzenia prądu roboczego.",
         )
     return WynikDoboru(
         PRZESTRZEN_APARAT_SN,
         wybrany.id,
-        f"Prąd roboczy {prad_roboczy_a:.0f} A na szynie {napiecie_szyny_kv:.3f} kV "
-        f"(U_m sieci {u_m_sieci:.1f} kV wg IEC 60038); z pozycji rodziny '{rodzaj}' o "
-        f"U_m ≥ {u_m_sieci:.1f} kV dobrano najmniejszą o I_n ≥ prądu roboczego: {wybrany.id} "
-        f"({wybrany.i_n_a:.0f} A, U_m = {wybrany.u_n_kv:.1f} kV).",
+        f"Prąd roboczy {prad_roboczy_a:.0f} A na szynie {napiecie_szyny_kv:.3f} kV; z pozycji "
+        f"rodziny '{rodzaj}' o U_m ≥ napięcia szyny (PN-EN 62271-1) dobrano najmniejszą o "
+        f"I_n ≥ prądu roboczego: {wybrany.id} ({wybrany.i_n_a:.0f} A, "
+        f"U_m = {wybrany.u_n_kv:.1f} kV).",
         kryteria_odlozone=(KRYTERIUM_ICU, KRYTERIUM_SELEKTYWNOSC),
     )
 
@@ -367,6 +356,14 @@ def dobierz_aparat_pola_zrodlowego(
         )
     if przestrzen == PRZESTRZEN_APARAT_SN:
         return dobierz_aparat_sn(napiecie_szyny_kv=napiecie_szyny_kv, prad_roboczy_a=prad)
+    if przestrzen == PRZESTRZEN_NIEUSTALONA:
+        return WynikDoboru(
+            None,
+            None,
+            "Napięcia szyny nie da się ustalić, więc nie wiadomo, do której rodziny "
+            "aparatury należy to pole. Dobór nie jest wykonywany: przypisanie rodziny nN "
+            "przy braku informacji byłoby zgadywaniem klasy napięciowej.",
+        )
     return WynikDoboru(
         None,
         None,

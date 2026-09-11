@@ -26,6 +26,7 @@ jawnie nazwana DOMYŚLNA SYSTEMOWA — stan „nikt nie podał danych".
 from __future__ import annotations
 
 import ast
+import math
 import pathlib
 
 import pytest
@@ -35,6 +36,8 @@ from network_model.core.wklad_zwarciowy_przeksztaltnika import (
     K_SC_DOMYSLNY_SYSTEMOWY,
     K_SC_ZRODLO_DEKLARACJA,
     K_SC_ZRODLO_DOMYSLNE,
+    K_SC_ZRODLO_NIEPOPRAWNE,
+    deklaracja_k_sc,
     wspolczynnik_wkladu_zwarciowego,
 )
 
@@ -46,37 +49,79 @@ KORZEN_SRC = pathlib.Path(__file__).resolve().parents[3] / "src"
 # ---------------------------------------------------------------------------
 
 
+#: PEŁNA MACIERZ AKCEPTACJI (§22 zlecenia remediacji). Trzy stany, nie dwa:
+#: brak danej, deklaracja i dana PODANA, ale niemożliwa do przyjęcia. Pierwsza
+#: wersja miała dwa stany, więc każda wartość, której predykat nie umiał przyjąć,
+#: cicho stawała się domyślką — i ``+Inf`` przechodziło jako DEKLARACJA, bo
+#: warunek brzmiał wyłącznie ``> 0``. Recenzent niezależny wykonał ten przypadek.
+MACIERZ_AKCEPTACJI: tuple[tuple[str, object, float, str], ...] = (
+    ("brak (None)", None, K_SC_DOMYSLNY_SYSTEMOWY, K_SC_ZRODLO_DOMYSLNE),
+    ("dodatnia 1.35", 1.35, 1.35, K_SC_ZRODLO_DEKLARACJA),
+    ("dodatnia 1.0", 1.0, 1.0, K_SC_ZRODLO_DEKLARACJA),
+    ("dodatnia 2.5", 2.5, 2.5, K_SC_ZRODLO_DEKLARACJA),
+    ("zero int", 0, K_SC_DOMYSLNY_SYSTEMOWY, K_SC_ZRODLO_NIEPOPRAWNE),
+    ("zero float", 0.0, K_SC_DOMYSLNY_SYSTEMOWY, K_SC_ZRODLO_NIEPOPRAWNE),
+    ("ujemna", -1.2, K_SC_DOMYSLNY_SYSTEMOWY, K_SC_ZRODLO_NIEPOPRAWNE),
+    ("bool True", True, K_SC_DOMYSLNY_SYSTEMOWY, K_SC_ZRODLO_NIEPOPRAWNE),
+    ("bool False", False, K_SC_DOMYSLNY_SYSTEMOWY, K_SC_ZRODLO_NIEPOPRAWNE),
+    ("NaN", float("nan"), K_SC_DOMYSLNY_SYSTEMOWY, K_SC_ZRODLO_NIEPOPRAWNE),
+    ("+Inf", float("inf"), K_SC_DOMYSLNY_SYSTEMOWY, K_SC_ZRODLO_NIEPOPRAWNE),
+    ("-Inf", float("-inf"), K_SC_DOMYSLNY_SYSTEMOWY, K_SC_ZRODLO_NIEPOPRAWNE),
+    ("tekst liczbowy", "1.35", K_SC_DOMYSLNY_SYSTEMOWY, K_SC_ZRODLO_NIEPOPRAWNE),
+    ("tekst niepoprawny", "abc", K_SC_DOMYSLNY_SYSTEMOWY, K_SC_ZRODLO_NIEPOPRAWNE),
+)
+
+
 @pytest.mark.parametrize(
-    ("wejscie", "oczekiwana_wartosc", "oczekiwane_zrodlo"),
-    [
-        (1.35, 1.35, K_SC_ZRODLO_DEKLARACJA),
-        (1.0, 1.0, K_SC_ZRODLO_DEKLARACJA),
-        (2.5, 2.5, K_SC_ZRODLO_DEKLARACJA),
-        (None, K_SC_DOMYSLNY_SYSTEMOWY, K_SC_ZRODLO_DOMYSLNE),
-        (0, K_SC_DOMYSLNY_SYSTEMOWY, K_SC_ZRODLO_DOMYSLNE),
-        (0.0, K_SC_DOMYSLNY_SYSTEMOWY, K_SC_ZRODLO_DOMYSLNE),
-        (-1.2, K_SC_DOMYSLNY_SYSTEMOWY, K_SC_ZRODLO_DOMYSLNE),
-        ("1.35", K_SC_DOMYSLNY_SYSTEMOWY, K_SC_ZRODLO_DOMYSLNE),
-        (True, K_SC_DOMYSLNY_SYSTEMOWY, K_SC_ZRODLO_DOMYSLNE),
-        (False, K_SC_DOMYSLNY_SYSTEMOWY, K_SC_ZRODLO_DOMYSLNE),
-    ],
+    ("opis", "wejscie", "oczekiwana_wartosc", "oczekiwane_zrodlo"),
+    MACIERZ_AKCEPTACJI,
+    ids=[wiersz[0] for wiersz in MACIERZ_AKCEPTACJI],
 )
 def test_predykat_akceptacji_jest_jeden_dla_wszystkich_torow(
-    wejscie: object, oczekiwana_wartosc: float, oczekiwane_zrodlo: str
+    opis: str, wejscie: object, oczekiwana_wartosc: float, oczekiwane_zrodlo: str
 ) -> None:
-    """Zero, ujemna, tekst i ``bool`` to BRAK DANYCH — nie okazja do korekty.
+    """Jeden predykat, trzy rozróżnialne stany — pełna macierz, nie przykłady.
 
     ROZJAZD, KTÓRY TO ZAMYKA: ``data.get("k_sc", 1.1)`` przyjmowało zero i
     wartości ujemne (dając wkład zwarciowy 0 albo ujemny), a
     ``isinstance(...) and k_sc > 0`` w innym torze je odrzucało. Ta sama dana
     dawała różny wynik zależnie od tego, którędy weszła do modelu.
 
-    ``bool`` ma własny przypadek, bo jest podklasą ``int``: bez jawnej gałęzi
-    ``True`` przeszłoby jako deklaracja ``k_sc = 1.0``.
+    ``bool`` ma własne wiersze, bo jest podklasą ``int``: bez jawnej gałęzi
+    ``True`` przeszłoby jako deklaracja ``k_sc = 1.0``. ``±Inf`` i ``NaN`` mają
+    własne, bo poprzedni predykat sprawdzał WYŁĄCZNIE ``> 0`` — ``NaN > 0`` jest
+    fałszem (wpadał do domyślki „przypadkiem"), a ``+Inf > 0`` prawdą (przechodził
+    jako deklaracja, dając ``I_k = inf``). Ta asymetria była defektem.
     """
     wartosc, zrodlo = wspolczynnik_wkladu_zwarciowego(wejscie)
     assert wartosc == pytest.approx(oczekiwana_wartosc)
     assert zrodlo == oczekiwane_zrodlo
+
+
+def test_wartosc_zwracana_jest_zawsze_skonczona_i_dodatnia() -> None:
+    """Żaden tor nie dostaje ``NaN`` ani ``Inf`` do rachunku — nawet przy złym wejściu.
+
+    O niemiarodajności mówi ZNACZNIK, nie sama liczba: gdyby predykat zwracał
+    ``inf`` dla wejścia ``inf``, każdy konsument musiałby pamiętać o własnym
+    sprawdzeniu skończoności, a pierwszy, który zapomni, wpuści ``inf`` do
+    wyniku zwarciowego.
+    """
+    for _, wejscie, _, _ in MACIERZ_AKCEPTACJI:
+        wartosc, _ = wspolczynnik_wkladu_zwarciowego(wejscie)
+        assert math.isfinite(wartosc) and wartosc > 0.0, f"{wejscie!r} -> {wartosc}"
+
+
+def test_deklaracja_k_sc_odsiewa_dokladnie_to_samo() -> None:
+    """`deklaracja_k_sc` i `wspolczynnik_wkladu_zwarciowego` MUSZĄ zgadzać się co do zbioru.
+
+    PREDYKATY PARAMI: to dwie funkcje odpowiadające na to samo pytanie „czy to
+    jest deklaracja". Rozjazd między nimi oznaczałby, że model rdzenia zapisuje
+    deklarację, której ślad nie uznaje (albo odwrotnie).
+    """
+    for _, wejscie, _, oczekiwane_zrodlo in MACIERZ_AKCEPTACJI:
+        deklaracja = deklaracja_k_sc(wejscie)
+        czy_deklaracja = oczekiwane_zrodlo == K_SC_ZRODLO_DEKLARACJA
+        assert (deklaracja is not None) == czy_deklaracja, f"{wejscie!r} -> {deklaracja!r}"
 
 
 # ---------------------------------------------------------------------------

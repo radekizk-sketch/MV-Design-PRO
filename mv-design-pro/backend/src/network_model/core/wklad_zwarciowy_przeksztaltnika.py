@@ -7,32 +7,30 @@ przekształtnika i pochodzi z karty producenta albo z certyfikatu jednostki
 wytwórczej — nie z rodzaju technologii.
 
 DEFEKT, KTÓRY TEN MODUŁ ZAMYKA (pomiar 2026-09-11). Liczba ``1.1`` była wpisana
-NA SZTYWNO w DZIEWIĘCIU niezależnych miejscach (dwie klasy rdzenia po dwa wpisy,
-ich `from_dict`, mapowanie ENM i dwa tory `analysis_run`), bez jednego zdania
-uzasadnienia w całym repozytorium. Jednocześnie:
+NA SZTYWNO w DZIEWIĘCIU niezależnych miejscach, bez jednego zdania uzasadnienia
+w całym repozytorium, a ślad proweniencji oznaczał ją jako daną katalogową.
 
-  * `solver_input/builder.py` deklaruje we własnym docstringu niezmiennik
-    „NO heuristics, NO default physical values, NO data guessing";
-  * `SourceKind.DEFAULT_FORBIDDEN` istnieje w kontrakcie proweniencji i NIE BYŁ
-    emitowany ANI RAZU — obietnica bez testu;
-  * ślad proweniencji oznaczał ``k_sc`` jako ``CATALOG`` ze ścieżką
-    ``converter_types[<ref>]``, mimo że ŻADEN typ katalogu takiego pola nie ma;
-  * `MaterializedSourceParams.k_sc` istnieje w kontrakcie (i w lustrze TS), ale
-    żadna operacja domenowa go nie zapisuje — pole bez producenta.
+TRZY STANY, NIE DWA (korekta po recenzji niezależnej, P1-DELTA-04). Pierwsza
+wersja miała wyłącznie „deklaracja" i „domyślka", więc KAŻDA wartość, której nie
+umiała przyjąć, cicho stawała się domyślką. To zrównywało dwie ZUPEŁNIE różne
+sytuacje:
 
-Efekt: wkład zwarciowy KAŻDEGO źródła OZE w produkcie brał się z liczby, której
-nikt nie wybrał ani nie widział, a audyt pokazywał ją jako daną katalogową.
-Wynik trafia do doboru aparatury i nastaw zabezpieczeń.
+  * nikt nie podał danej (brak) — stan normalny, obsługiwany domyślką jawnie
+    oznaczoną w śladzie;
+  * ktoś podał daną NIEPOPRAWNĄ (``NaN``, ``±Inf``, zero, wartość ujemna, tekst,
+    ``bool``) — to błąd danych wejściowych, a nie brak.
 
-CZEGO TEN MODUŁ NIE ROBI. Nie orzeka, że ``1.1`` jest wartością normatywną —
-takiego przypisu nie da się tu uczciwie postawić bez dokumentu normy w ręku, a
-zmyślona podstawa normatywna byłaby gorsza niż jawnie nazwana domyślka. Wartość
-zostaje jako DOMYŚLNA SYSTEMOWA, czyli stan „nikt nie podał danych", i tak jest
-raportowana w śladzie. Rozstrzygnięcie, czy ma blokować gotowość, czy tylko
-ostrzegać, należy do właściciela — jest opisane w audycie, nie przesądzone tutaj.
+Zrównanie ich miało zmierzony skutek: ``+Inf`` przechodziło jako DEKLARACJA
+(bo predykat sprawdzał wyłącznie ``> 0``), dając ``I_k = inf`` z etykietą
+„użytkownik to podał". Recenzent wykonał ten przypadek niezależnie.
+
+Stan trzeci ``DANE_NIEPOPRAWNE`` MUSI docierać do warstwy gotowości jako
+blokada — nigdy jako proweniencja katalogowa ani nadpisanie.
 """
 
 from __future__ import annotations
+
+import math
 
 #: Wartość używana, gdy nikt nie podał współczynnika: ANI karta producenta, ANI
 #: użytkownik. NIE jest to wartość normatywna ani „typowa dla technologii" —
@@ -40,32 +38,57 @@ from __future__ import annotations
 #: żeby nie dało się go zmienić w jednym miejscu i przeoczyć w ośmiu innych.
 K_SC_DOMYSLNY_SYSTEMOWY: float = 1.1
 
-#: Znacznik pochodzenia współczynnika w śladzie White Box. Rozróżnienie jest
-#: całym sensem tej zmiany: wynik policzony z deklaracji producenta i wynik
-#: policzony z domyślki systemowej mają RÓŻNĄ wiarygodność, a do tej pory ślad
-#: pokazywał oba tak samo.
+#: Znaczniki pochodzenia współczynnika w śladzie White Box. Rozróżnienie jest
+#: całym sensem tego modułu: wynik policzony z deklaracji producenta, wynik
+#: policzony z domyślki systemowej i wynik, którego danej wejściowej NIE DA SIĘ
+#: przyjąć, mają RÓŻNĄ wiarygodność i różne skutki dla gotowości.
 K_SC_ZRODLO_DEKLARACJA = "DEKLARACJA"
 K_SC_ZRODLO_DOMYSLNE = "DOMYSLNE_SYSTEMOWE"
+K_SC_ZRODLO_NIEPOPRAWNE = "DANE_NIEPOPRAWNE"
+
+
+def _jest_liczba_skonczona_dodatnia(wartosc: object) -> bool:
+    """Czy wartość nadaje się na współczynnik: liczba SKOŃCZONA i dodatnia.
+
+    ``bool`` odrzucamy jawnie, bo jest podklasą ``int`` — bez tej gałęzi ``True``
+    przeszłoby jako ``k_sc = 1.0``, czyli jako deklaracja, której nikt nie złożył.
+
+    ``math.isfinite`` odrzuca ``NaN`` i obie nieskończoności JEDNYM warunkiem.
+    Poprzednia wersja sprawdzała wyłącznie ``> 0``: ``NaN > 0`` jest fałszem, więc
+    wpadał do domyślki „przypadkiem", a ``+Inf > 0`` jest prawdą, więc przechodził
+    jako deklaracja. Ta asymetria była defektem, nie decyzją.
+
+    GÓRNEGO OGRANICZENIA NIE NAKŁADAMY. Nie ma podstawy inżynierskiej, którą
+    dałoby się tu uczciwie zacytować, a wymyślony próg odrzucałby poprawne
+    deklaracje producentów. Zakres dopuszczalny bada `network_model.validation`
+    na gotowym modelu, tam gdzie jest kontekst.
+    """
+    if isinstance(wartosc, bool):
+        return False
+    if not isinstance(wartosc, int | float):
+        return False
+    return math.isfinite(float(wartosc)) and float(wartosc) > 0.0
 
 
 def wspolczynnik_wkladu_zwarciowego(wartosc: object) -> tuple[float, str]:
-    """Zwróć ``(k_sc, znacznik_pochodzenia)`` dla podanej (albo brakującej) danej.
+    """Zwróć ``(k_sc, znacznik_pochodzenia)`` — JEDEN predykat dla wszystkich torów.
 
-    JEDEN predykat akceptacji dla wszystkich torów. Wcześniej każde z dziewięciu
-    miejsc sprawdzało co innego — ``data.get("k_sc", 1.1)`` przyjmowało zero i
-    wartości ujemne, a ``isinstance(...) and k_sc > 0`` je odrzucało. Dwa różne
-    warunki na tę samą daną to defekt czekający na dane brzegowe: ``k_sc = 0``
-    dawało wkład zwarciowy równy zeru w jednym torze i ``1.1`` w drugim.
+    Wcześniej każdy tor sprawdzał co innego: ``data.get("k_sc", 1.1)``
+    przyjmowało zero i wartości ujemne, a ``isinstance(...) and k_sc > 0`` je
+    odrzucało. Ta sama dana dawała różny wynik zależnie od tego, którędy weszła
+    do modelu.
 
-    Wartość dodatnia jest DEKLARACJĄ; brak, zero, wartość ujemna i typ inny niż
-    liczbowy to BRAK DANYCH — nie okazja do „poprawienia" liczby po cichu.
+    Zwracana wartość liczbowa jest ZAWSZE skończona i dodatnia — także w stanie
+    ``DANE_NIEPOPRAWNE``, żeby żaden tor nie musiał radzić sobie z ``NaN``. O tym,
+    że tej liczby NIE WOLNO użyć jako danej miarodajnej, mówi ZNACZNIK, nie sama
+    liczba; konsumuje go warstwa gotowości
+    (`network_model.core.zdolnosci_wkladu_zwarciowego`).
     """
-    if isinstance(wartosc, bool):
-        # `bool` jest podklasą `int` — bez tej gałęzi `True` przeszłoby jako 1.0.
+    if _jest_liczba_skonczona_dodatnia(wartosc):
+        return float(wartosc), K_SC_ZRODLO_DEKLARACJA  # type: ignore[arg-type]
+    if wartosc is None:
         return K_SC_DOMYSLNY_SYSTEMOWY, K_SC_ZRODLO_DOMYSLNE
-    if isinstance(wartosc, int | float) and float(wartosc) > 0.0:
-        return float(wartosc), K_SC_ZRODLO_DEKLARACJA
-    return K_SC_DOMYSLNY_SYSTEMOWY, K_SC_ZRODLO_DOMYSLNE
+    return K_SC_DOMYSLNY_SYSTEMOWY, K_SC_ZRODLO_NIEPOPRAWNE
 
 
 def deklaracja_k_sc(wartosc: object) -> float | None:
@@ -73,11 +96,13 @@ def deklaracja_k_sc(wartosc: object) -> float | None:
 
     Modele rdzenia przechowują DEKLARACJĘ (``None`` = nikt nie podał), a wartość
     użytą w rachunku i znacznik pochodzenia WYPROWADZAJĄ z niej właściwościami.
-    Ta funkcja jest jedynym miejscem, w którym dane wejściowe zamieniają się w
-    deklarację — bez niej każdy tor miałby własny warunek akceptacji, a to jest
-    ten sam defekt, który tu naprawiamy.
+
+    UWAGA NA ZAKRES TEJ FUNKCJI: sprowadza ona stan ``DANE_NIEPOPRAWNE`` do
+    ``None``, bo model rdzenia nie ma pola na „wartość, której nie da się
+    przyjąć". Kontrolę poprawności danych wejściowych robi warstwa, która te dane
+    PRZYJMUJE (operacja domenowa), i ona melduje błąd — tutaj chodzi wyłącznie o
+    to, żeby niepoprawna liczba nie trafiła do rachunku.
     """
-    _, zrodlo = wspolczynnik_wkladu_zwarciowego(wartosc)
-    if zrodlo != K_SC_ZRODLO_DEKLARACJA:
+    if not _jest_liczba_skonczona_dodatnia(wartosc):
         return None
     return float(wartosc)  # type: ignore[arg-type]

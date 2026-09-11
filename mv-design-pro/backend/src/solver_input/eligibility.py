@@ -15,6 +15,13 @@ from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import NodeType
 from network_model.core.switch import SwitchType
+from network_model.core.zdolnosci_wkladu_zwarciowego import (
+    ZdolnoscMiarodajna,
+    kod_blokady_dla_pochodzenia,
+    komunikat_blokady,
+    wklad_jest_miarodajny,
+    zdolnosc_zalezy_od_wkladu_zwarciowego,
+)
 from solver_input.contracts import (
     AnalysisEligibilityEntry,
     EligibilityMap,
@@ -154,6 +161,59 @@ def _check_common_blockers(
     return blockers, warnings
 
 
+#: Odwzorowanie typu analizy na zdolność inżynierską z kontraktu miarodajności.
+#: JAWNE, nie po nazwie: `SolverAnalysisType` jest listą bieżących endpointów, a
+#: `ZdolnoscMiarodajna` — listą zdolności. Zgadywanie odpowiedniości po tekście
+#: rozjechałoby się przy pierwszej zmianie nazwy po którejkolwiek stronie.
+_ZDOLNOSC_DLA_ANALIZY: dict[SolverAnalysisType, ZdolnoscMiarodajna] = {
+    SolverAnalysisType.SHORT_CIRCUIT_3F: ZdolnoscMiarodajna.SHORT_CIRCUIT_3F,
+    SolverAnalysisType.SHORT_CIRCUIT_1F: ZdolnoscMiarodajna.SHORT_CIRCUIT_1F,
+    SolverAnalysisType.PROTECTION: ZdolnoscMiarodajna.PROTECTION,
+    SolverAnalysisType.LOAD_FLOW: ZdolnoscMiarodajna.LOAD_FLOW,
+}
+
+
+def blokady_wkladu_zwarciowego(
+    graph: NetworkGraph,
+    zdolnosc: ZdolnoscMiarodajna,
+) -> list[SolverInputIssue]:
+    """Blokady wynikające z NIEMIARODAJNEGO współczynnika wkładu zwarciowego.
+
+    DECYZJA WŁAŚCICIELA (P0-DELTA-03): wynik policzony z domyślki systemowej
+    ``k_sc`` nie może być skonsumowany jako dana miarodajna. Poprzednia wersja
+    oznaczała domyślkę w śladzie i na tym poprzestawała — recenzent niezależny
+    wykonał przypadek, w którym ten sam graf dawał ``eligible=True`` dla zwarcia
+    z ``k_sc = 1.1`` w ładunku. Znacznik bez konsumenta nie jest granicą.
+
+    ZAKRES ŚWIADOMIE WĄSKI: zdolności, do których równań wkład zwarciowy NIE
+    wchodzi (rozpływ, topologia, schemat, edycja), pozostają nietknięte —
+    sprawdza to `zdolnosc_zalezy_od_wkladu_zwarciowego`, a nie warunek lokalny.
+
+    ŹRÓDŁO WYŁĄCZONE Z RUCHU NIE BLOKUJE. Falownik ``in_service=False`` nie
+    dokłada prądu do zwarcia, więc brak jego deklaracji nie czyni wyniku
+    niemiarodajnym. Predykat „czynne" jest ten sam, którym solver decyduje o
+    uwzględnieniu wkładu.
+    """
+    if not zdolnosc_zalezy_od_wkladu_zwarciowego(zdolnosc):
+        return []
+    blokady: list[SolverInputIssue] = []
+    for source in sorted(graph.inverter_sources.values(), key=lambda s: s.id):
+        if not source.in_service:
+            continue
+        if wklad_jest_miarodajny(source.k_sc_zrodlo):
+            continue
+        blokady.append(
+            SolverInputIssue(
+                code=kod_blokady_dla_pochodzenia(source.k_sc_zrodlo),
+                severity=SolverInputIssueSeverity.BLOCKER,
+                message=komunikat_blokady(ref_zrodla=source.id, k_sc_zrodlo=source.k_sc_zrodlo),
+                element_ref=source.id,
+                field_path=f"inverter_sources[ref_id={source.id}].k_sc",
+            )
+        )
+    return blokady
+
+
 def check_eligibility(
     graph: NetworkGraph,
     catalog: CatalogRepository | None,
@@ -165,6 +225,11 @@ def check_eligibility(
     Returns EligibilityResult with eligible=True only if no BLOCKER issues exist.
     """
     blockers, warnings = _check_common_blockers(graph, catalog)
+
+    # Granica miarodajności danych wejściowych — patrz `blokady_wkladu_zwarciowego`.
+    zdolnosc = _ZDOLNOSC_DLA_ANALIZY.get(analysis_type)
+    if zdolnosc is not None:
+        blockers.extend(blokady_wkladu_zwarciowego(graph, zdolnosc))
 
     if analysis_type == SolverAnalysisType.PROTECTION:
         # Protection analysis (overcurrent v1, IEC 60255 IDMT) consumes SC results

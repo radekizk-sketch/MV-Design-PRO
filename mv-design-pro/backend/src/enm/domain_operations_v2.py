@@ -25,6 +25,7 @@ from dataclasses import dataclass
 from typing import Any, cast
 
 from domain.dobor_aparatu_pola import (
+    PRZESTRZEN_NIEUSTALONA,
     dobierz_aparat_pola_zrodlowego,
     przestrzen_aparatu_dla_napiecia,
 )
@@ -36,6 +37,7 @@ from network_model.catalog.switchgear import (
     family_supports_voltage,
 )
 from network_model.catalog.types import CatalogBinding
+from network_model.core.wklad_zwarciowy_przeksztaltnika import deklaracja_k_sc
 from network_model.solvers import cable_ampacity_derating as cable_derating
 
 from . import der_sn_validation as der_val
@@ -361,9 +363,12 @@ def _przestrzen_aparatu_pola(enm: dict[str, Any], bus_ref: str) -> str:
     690 V. Szyna, na której pole powstaje, jest tu JEDYNYM źródłem prawdy —
     nie wariant przyłączenia zadeklarowany w żądaniu.
 
-    Szyna nieznana (referencja spoza modelu) daje APARAT_NN: to zachowanie
-    dotychczasowe i dotyczy wyłącznie ścieżek, które i tak przerwą się dalej na
-    braku szyny — nie jest domyślnym poziomem napięcia dla realnego pola.
+    SZYNA NIEZNANA DAJE `PRZESTRZEN_NIEUSTALONA`, NIE APARAT_NN (korekta po
+    recenzji niezależnej). Poprzednio brak informacji o szynie był traktowany
+    jak dowód niskiego napięcia — mutacja „ustaw napięcie szyny na nieznane"
+    PRZEŻYŁA, bo wiązanie i tak lądowało w rodzinie nN. Brak danych nie jest
+    przesłanką: wołający musi z `NIEUSTALONA` zrobić brak wiązania, a nie
+    domyślną rodzinę.
     """
     return przestrzen_aparatu_dla_napiecia(_bus_voltage_kv(enm, bus_ref))
 
@@ -4544,12 +4549,26 @@ def _build_converter_materialized_params(
     # Bez tego przypisania `MaterializedSourceParams.k_sc` było polem bez
     # producenta: kontrakt (i jego lustro w TypeScript) je miały, ale nic go nie
     # zapisywało, więc `enm.mapping` zawsze czytało `None` i wpadało w domyślkę.
-    # Zapisujemy WYŁĄCZNIE wartość dodatnią — brak, zero i wartość ujemna
-    # zostają brakiem danych, nie okazją do wpisania liczby zastępczej.
+    #
+    # BRAK DANEJ I DANA NIEPOPRAWNA TO DWIE RÓŻNE SPRAWY (korekta po recenzji
+    # niezależnej, P1-DELTA-04). Brak (`None`) jest stanem normalnym: gotowość
+    # zablokuje zdolności zwarciowe i powie, czego brakuje. Ale wartość PODANA,
+    # której nie da się przyjąć (``NaN``, ``±Inf``, zero, ujemna, ``bool``,
+    # tekst), to błąd danych wejściowych — i musi być ZAMELDOWANY tutaj, w
+    # warstwie, która te dane przyjmuje. Ciche sprowadzenie jej do „brak"
+    # gubiłoby informację, że ktoś próbował coś zadeklarować i się nie udało.
     k_sc_zadania = payload.get("k_sc")
-    if isinstance(k_sc_zadania, int | float) and not isinstance(k_sc_zadania, bool):
-        if float(k_sc_zadania) > 0.0:
-            tabliczka["k_sc"] = float(k_sc_zadania)
+    if k_sc_zadania is not None:
+        k_sc_deklaracja = deklaracja_k_sc(k_sc_zadania)
+        if k_sc_deklaracja is None:
+            return {}, _error_response(
+                f"Współczynnik wkładu zwarciowego k_sc = {k_sc_zadania!r} nie jest liczbą "
+                f"skończoną i dodatnią. Podaj wartość z karty producenta albo certyfikatu "
+                f"jednostki wytwórczej, albo pomiń pole — wtedy zdolności zwarciowe zostaną "
+                f"zablokowane do czasu uzupełnienia danej.",
+                "converter.k_sc_invalid",
+            )
+        tabliczka["k_sc"] = k_sc_deklaracja
 
     rozbieznosci = rozbieznosci_tabliczki(
         payload.get("materialized_params"),
@@ -5903,6 +5922,16 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
     # SN, więc jego aparat istnieje w APARAT_SN i sprawdzanie go w APARAT_NN
     # odrzucałoby poprawną pozycję jako nieistniejącą.
     przestrzen_aparatu_pola = _przestrzen_aparatu_pola(enm, bus_nn_ref)
+    if przestrzen_aparatu_pola == PRZESTRZEN_NIEUSTALONA:
+        # Napięcia szyny nie da się ustalić — nie wiadomo, w której rodzinie
+        # katalogu sprawdzać aparat. Meldujemy to jawnie zamiast sprawdzać w nN
+        # „bo trzeba gdzieś": zgoda wydana w złej rodzinie jest gorsza niż brak
+        # zgody, bo wygląda jak sprawdzona.
+        return _error_response(
+            f"Nie da się ustalić napięcia szyny '{bus_nn_ref}', więc nie wiadomo, do której "
+            f"rodziny aparatury należy pole źródłowe. Uzupełnij napięcie szyny w modelu.",
+            "converter.bus_voltage_unresolved",
+        )
     blad_aparatu = _blad_aparatu_pola(
         (
             (payload.get("source_field") or {}).get("catalog_binding")
@@ -5918,9 +5947,19 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
     # Prąd pola liczy się z CAŁEJ mocy przyłączonej za tym aparatem: jedno
     # wywołanie z `quantity = N` reprezentuje N jednostek na tej samej szynie,
     # więc aparat pola prowadzi ich sumę, nie moc pojedynczej jednostki.
+    #
+    # BEZ WŁASNEJ DOMYŚLKI (korekta po recenzji: bramka V12K „solver_input
+    # substitute" zgłosiła tu podstawienie liczby za nieobecną daną wejściową).
+    # `_resolve_converter_defaults` normalizuje `quantity` do liczby całkowitej
+    # ≥ 1 i wpisuje ją do `meta` w KAŻDEJ ze swoich trzech gałęzi technologii,
+    # więc druga domyślka w tym miejscu nie zabezpieczała przed niczym — tylko
+    # udawała, że dana bywa nieobecna. Czytamy wartość WPROST: gdyby kontrakt
+    # `meta` się zmienił, ma to wybuchnąć głośno, a nie zostać po cichu
+    # zastąpione jedynką. Gwarancję przypina
+    # `test_meta_quantity_jest_zawsze_dodatnia_liczba_calkowita`.
     moc_pola_mva: float | None = _as_float(materialized_params.get("sn_mva"))
     if moc_pola_mva is not None:
-        moc_pola_mva *= max(1, int(meta.get("quantity") or 1))
+        moc_pola_mva *= int(meta["quantity"])
 
     new_enm = kopia_graniczna_enm(enm)
     field_ref, created_field_ids, field_events = _append_converter_field_if_needed(

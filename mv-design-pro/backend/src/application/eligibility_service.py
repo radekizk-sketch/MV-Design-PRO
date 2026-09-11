@@ -35,6 +35,7 @@ from domain.eligibility_models import (
     build_eligibility_result,
 )
 from enm.fix_actions import FixAction
+from enm.mapping import _FULL_CONVERTER_SC_GEN_TYPES
 from enm.models import (
     Cable,
     EnergyNetworkModel,
@@ -44,6 +45,14 @@ from enm.models import (
 )
 from enm.pole_transformatorowe import pasmo_napieciowe
 from enm.validator import ReadinessResult
+from network_model.core.wklad_zwarciowy_przeksztaltnika import (
+    wspolczynnik_wkladu_zwarciowego,
+)
+from network_model.core.zdolnosci_wkladu_zwarciowego import (
+    kod_blokady_dla_pochodzenia,
+    komunikat_blokady,
+    wklad_jest_miarodajny,
+)
 
 # Karta G-22: FAULT_LOOP_NN/SWZ_NN reużywają `_transformer_loop_impedance`
 # (kompletność danych transformatora dla impedancji pętli L-PE/L-PEN) i
@@ -153,6 +162,7 @@ class EligibilityService:
 
         # B6: source short-circuit params
         self._check_source_sc_params(enm, blockers)
+        self._check_wklad_zwarciowy_falownikow(enm, blockers)
 
         return build_eligibility_result(
             analysis_type=AnalysisType.SC_3F,
@@ -184,6 +194,7 @@ class EligibilityService:
         self._check_branch_impedance(enm, blockers)
         self._check_transformer_uk(enm, blockers)
         self._check_source_sc_params(enm, blockers)
+        self._check_wklad_zwarciowy_falownikow(enm, blockers)
 
         # C1: Z0 on branches
         self._check_branch_z0(enm, blockers)
@@ -224,6 +235,7 @@ class EligibilityService:
         self._check_branch_impedance(enm, blockers)
         self._check_transformer_uk(enm, blockers)
         self._check_source_sc_params(enm, blockers)
+        self._check_wklad_zwarciowy_falownikow(enm, blockers)
 
         # D1: Z2 (negative sequence) data on branches
         # Per IEC 60909, for overhead lines Z2 = Z1 is standard, but we
@@ -542,6 +554,58 @@ class EligibilityService:
                         ),
                     )
                 )
+
+    @staticmethod
+    def _check_wklad_zwarciowy_falownikow(
+        enm: EnergyNetworkModel,
+        blockers: list[AnalysisEligibilityIssue],
+    ) -> None:
+        """Blokada, gdy CZYNNE źródło falownikowe nie ma DEKLAROWANEGO ``k_sc``.
+
+        DRUGA STRONA TEJ SAMEJ GRANICY (korekta po recenzji niezależnej,
+        P0-DELTA-03). Produkt ma DWIE warstwy gotowości odpowiadające na to samo
+        pytanie: `solver_input.eligibility` (poziom grafu, kontrakt wejścia
+        solvera) i ta usługa (poziom ENM, macierz widoczna dla projektanta).
+        Naprawa tylko jednej zostawiłaby drugą otwartą — to jest dokładnie
+        wzorzec „ta sama reguła w dwóch ścieżkach", który kanon nazywa defektem.
+
+        JEDNA REGUŁA, DWA WYWOŁANIA: o tym, CZY dana jest miarodajna, rozstrzyga
+        `zdolnosci_wkladu_zwarciowego.wklad_jest_miarodajny`, a nie lokalny
+        warunek. Tutaj zostaje wyłącznie odczyt tabliczki i zamiana odpowiedzi na
+        blokadę w formacie tej macierzy.
+
+        ZBIÓR RODZAJÓW JEDNOSTEK JEST TEN SAM, CO W MAPOWANIU: czytamy
+        `_FULL_CONVERTER_SC_GEN_TYPES` z `enm.mapping` — to jedyne miejsce, które
+        decyduje, która jednostka trafia do grafu jako źródło prądowe
+        ``k_sc · I_n``. Własna lista rozjechałaby się przy pierwszym nowym typie,
+        a blokada omijałaby akurat te jednostki, które wkład wnoszą.
+
+        ŹRÓDŁO WYŁĄCZONE Z RUCHU NIE BLOKUJE — nie dokłada prądu do zwarcia.
+        """
+        for generator in enm.generators:
+            if not getattr(generator, "in_service", True):
+                continue
+            if generator.gen_type not in _FULL_CONVERTER_SC_GEN_TYPES:
+                continue
+            tabliczka = generator.materialized_params or {}
+            _, zrodlo = wspolczynnik_wkladu_zwarciowego(tabliczka.get("k_sc"))
+            if wklad_jest_miarodajny(zrodlo):
+                continue
+            blockers.append(
+                AnalysisEligibilityIssue(
+                    code=kod_blokady_dla_pochodzenia(zrodlo),
+                    severity=IssueSeverity.BLOCKER,
+                    message_pl=komunikat_blokady(ref_zrodla=generator.ref_id, k_sc_zrodlo=zrodlo),
+                    element_ref=generator.ref_id,
+                    element_type="generator",
+                    fix_action=FixAction(
+                        action_type="OPEN_MODAL",
+                        element_ref=generator.ref_id,
+                        modal_type="ConverterSourceModal",
+                        payload_hint={"required": "k_sc"},
+                    ),
+                )
+            )
 
     @staticmethod
     def _check_source_sc_params(

@@ -66,15 +66,46 @@ def test_brak_deklaracji_nie_wpisuje_liczby() -> None:
     assert "k_sc" not in _tabliczka(snapshot)
 
 
-@pytest.mark.parametrize("wartosc", [0, 0.0, -1.5, "1.4", True, False, None])
-def test_dane_nieakceptowalne_nie_staja_sie_deklaracja(wartosc: object) -> None:
-    """Zero, ujemna, tekst i ``bool`` to BRAK DANYCH — jeden predykat, ten sam.
+@pytest.mark.parametrize(
+    "wartosc",
+    [0, 0.0, -1.5, "1.4", "abc", True, False, float("nan"), float("inf"), float("-inf")],
+)
+def test_deklaracja_niemozliwa_do_przyjecia_jest_BLEDEM_a_nie_cichym_brakiem(
+    wartosc: object,
+) -> None:
+    """KOREKTA PO RECENZJI NIEZALEŻNEJ (P1-DELTA-04).
 
-    ILOCZYN CECH, nie przykład z karty: ``bool`` ma własny przypadek, bo jest
-    podklasą ``int`` i bez jawnej gałęzi ``True`` przeszłoby jako ``k_sc = 1.0``,
-    czyli jako deklaracja, której nikt nie złożył.
+    Poprzednia wersja tego testu żądała, żeby niepoprawna wartość CICHO stała się
+    brakiem danych — i przypinała tym samym defekt. Brak (`None`) i dana podana,
+    ale niemożliwa do przyjęcia, to dwie różne sprawy: pierwsza jest stanem
+    normalnym, druga błędem wejścia. Zrównanie ich gubiło informację, że ktoś
+    próbował coś zadeklarować i mu się nie udało.
+
+    ILOCZYN CECH: ``bool`` ma własne przypadki, bo jest podklasą ``int`` (bez
+    jawnej gałęzi ``True`` przeszłoby jako ``k_sc = 1.0``); ``+Inf`` ma własny,
+    bo poprzedni predykat sprawdzał wyłącznie ``> 0`` i przepuszczał go jako
+    deklarację, dając ``I_k = inf`` z etykietą „użytkownik to podał" — ten
+    przypadek recenzent wykonał niezależnie.
     """
-    snapshot = _zastosuj(_payload_zrodla(_siec_ze_stacja(), catalog_ref=REF_BESS, k_sc=wartosc))
+    enm = _siec_ze_stacja()
+    wynik = execute_domain_operation(
+        enm_dict=enm,
+        op_name="add_converter_source",
+        payload=_payload_zrodla(enm, catalog_ref=REF_BESS, k_sc=wartosc),
+    )
+    assert wynik.get("error"), f"Wartość {wartosc!r} została przyjęta bez błędu"
+    assert wynik.get("error_code") == "converter.k_sc_invalid", wynik.get("error_code")
+
+
+def test_pominiecie_pola_nie_jest_bledem() -> None:
+    """DRUGA STRONA PREDYKATU: brak deklaracji to stan normalny, nie awaria.
+
+    Bez tego przypadku bramka wyżej przechodziłaby też dla implementacji, która
+    ŻĄDA ``k_sc`` przy każdym źródle — a to zablokowałoby TWORZENIE modelu
+    zamiast zablokować zdolności zwarciowe, czyli przeniosłoby granicę w złe
+    miejsce.
+    """
+    snapshot = _zastosuj(_payload_zrodla(_siec_ze_stacja(), catalog_ref=REF_BESS))
     assert "k_sc" not in _tabliczka(snapshot)
 
 

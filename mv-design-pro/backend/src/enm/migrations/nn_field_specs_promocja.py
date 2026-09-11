@@ -54,7 +54,10 @@ import hashlib
 import json
 from typing import Any
 
-from domain.dobor_aparatu_pola import przestrzen_aparatu_dla_napiecia
+from domain.dobor_aparatu_pola import (
+    PRZESTRZEN_NIEUSTALONA,
+    przestrzen_aparatu_dla_napiecia,
+)
 from enm.models import Bus, EnergyNetworkModel, Substation, SwitchBranch
 from network_model.catalog.materialization import materialize_catalog_binding
 from network_model.catalog.repository import get_default_mv_catalog
@@ -157,6 +160,13 @@ def _materializuj_aparat(
     if not isinstance(item_id, str) or not item_id.strip():
         return None, None, None
     przestrzen = przestrzen_aparatu_dla_napiecia(napiecie_szyny_kv)
+    if przestrzen == PRZESTRZEN_NIEUSTALONA:
+        # Napięcia szyny nie da się ustalić — materializacja w DOWOLNEJ rodzinie
+        # byłaby zgadywaniem klasy napięciowej. Łącznik powstaje bez
+        # `catalog_ref`, więc gotowość zgłosi `switch.catalog_ref_missing` i
+        # projektant zobaczy, że czegoś brakuje. To jest zamierzony fail-closed:
+        # cicha materializacja w nN dawała wiązanie WYGLĄDAJĄCE na sprawdzone.
+        return None, None, None
     binding = CatalogBinding.from_dict(
         {
             "catalog_namespace": przestrzen,
