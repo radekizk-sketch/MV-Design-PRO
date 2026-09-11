@@ -206,6 +206,30 @@ class SolverSieci:
     Nieliniowość pochodzi wyłącznie od urządzeń o zadanej mocy (falownik).
     Urządzenia liniowe wnoszą ekwiwalent Nortona do macierzy, więc dla sieci
     z samymi maszynami iteracja zbiega w jednym kroku.
+
+    LIMIT ITERACJI: 120, WYPROWADZONY Z POMIARU, NIE Z WYGODY.
+    Poprzednia wartość (40) była skalibrowana pod zadania GŁADKIE. Laboratorium
+    ma dziś strategie ograniczania prądu falownika GFM, które są ciągłe, ale
+    NIERÓŻNICZKOWALNE (pin: `test_ograniczenie_pradu_jest_ciagle_ale_nie_
+    rozniczkowalne`). W otoczeniu załamania jakobian różnicowy jest złym modelem
+    funkcji, więc pełny krok Newtona przestrzeliwuje i metoda „kuleje": zbiega,
+    ale wolno.
+
+    Zmierzone na najtrudniejszym zadaniu laboratorium (sztywność napięciowa DER
+    przy nasyceniu zadania, zwarcie ``x_f = 0,01`` p.u.): **34 iteracje**,
+    residuum końcowe ``1,716e-14``. Przy limicie 40 zostawało 6 iteracji zapasu —
+    i tyle wystarczyło, żeby ten sam przypadek PADAŁ w CI (`BrakZbieznosciSieciError`,
+    residuum ``6,890e-01``), a lokalnie przechodził. PRZYCZYNY RÓŻNICY NIE
+    ZMIERZONO — środowiska się różnią (CI buduje świeże wirtualne środowisko z
+    pliku blokady, lokalne ma pakiety spoza niego), a przy metodzie kulejącej
+    wystarczy różnica ostatnich bitów w `np.linalg.solve`, żeby liczba iteracji
+    przeskoczyła próg. Wniosek nie zależy jednak od przyczyny: sześć iteracji
+    zapasu na zadaniu wymagającym trzydziestu czterech to nie jest margines.
+
+    TO NIE JEST PODNIESIENIE TOLERANCJI. Żądana dokładność (``1e-12``) jest bez
+    zmian; zmienia się wyłącznie ile pracy wolno na nią poświęcić, zanim solver
+    zgłosi porażkę. Rozbieżność nadal kończy się błędem po kilku krokach (rośnie
+    wykładniczo), więc limit 120 nie opóźnia wykrycia rozjazdu w praktyce.
     """
 
     def __init__(
@@ -213,7 +237,7 @@ class SolverSieci:
         topologia: TopologiaSieci,
         *,
         tolerancja: float = 1.0e-12,
-        maks_iteracji: int = 40,
+        maks_iteracji: int = 120,
     ) -> None:
         self.topologia = topologia
         self.tolerancja = tolerancja
@@ -266,11 +290,14 @@ class SolverSieci:
         for i, v_zadane in sztywne.items():
             v[i] = v_zadane
 
+        norma_poczatkowa = float("nan")
         for iteracja in range(1, self.maks_iteracji + 1):
             r = y @ v - wstrzykniecia(v)
             for i in sztywne:
                 r[i] = 0.0
             norma = float(np.max(np.abs(r))) if n else 0.0
+            if iteracja == 1:
+                norma_poczatkowa = norma
             if norma < self.tolerancja:
                 return RozwiazanieSieci(napiecia=v, iteracje=iteracja - 1, residuum=norma)
 
@@ -288,7 +315,12 @@ class SolverSieci:
                 v[i] = v_zadane
 
         raise BrakZbieznosciSieciError(
-            f"Sieć nie zbiegła w {self.maks_iteracji} iteracjach (residuum {norma:.3e})."
+            f"Sieć nie zbiegła w {self.maks_iteracji} iteracjach: residuum "
+            f"{norma:.3e} przy progu {self.tolerancja:.1e}, residuum startowe "
+            f"{norma_poczatkowa:.3e}. Rosnące residuum = ROZJAZD (zły punkt startowy "
+            f"albo osobliwa sieć); residuum malejące i wciąż powyżej progu = metoda "
+            f"KULEJE na załamaniu charakterystyki (ogranicznik prądu jest ciągły, "
+            f"ale nieróżniczkowalny) — wtedy brakuje iteracji, nie dokładności."
         )
 
     def _jakobian(

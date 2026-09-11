@@ -777,3 +777,58 @@ def test_tozsamosc_modelu_rozroznia_strategie_ogranicznika() -> None:
         powtorzony.tozsamosc_ogranicznika
         != FalownikGFM(ref="D", szyna="DER", ogranicznik=MIEKKI).tozsamosc_ogranicznika
     )
+
+
+# ---------------------------------------------------------------------------
+# MARGINES ZBIEŻNOŚCI SOLVERA SIECI — pilnowany, nie zakładany
+# ---------------------------------------------------------------------------
+
+
+def test_najtrudniejsze_zadanie_sieci_ma_margines_iteracji() -> None:
+    """Liczba iteracji na najtrudniejszym zadaniu laboratorium jest MIERZONA.
+
+    PO CO. Ograniczniki prądu falownika GFM są ciągłe, ale NIERÓŻNICZKOWALNE
+    (pin: `test_ograniczenie_pradu_jest_ciagle_ale_nie_rozniczkowalne`), więc w
+    otoczeniu załamania jakobian różnicowy jest złym modelem funkcji i Newton
+    „kuleje" — zbiega, ale wolno. Zmierzone: sztywność napięciowa DER przy
+    nasyceniu zadania i zwarciu ``x_f = 0,01`` p.u. potrzebuje **34 iteracji**
+    (residuum końcowe ``1,716e-14``).
+
+    Przy poprzednim limicie 40 zostawało 6 iteracji zapasu — i tyle wystarczyło,
+    żeby ten sam przypadek PADAŁ w CI (`BrakZbieznosciSieciError`, residuum
+    ``6,890e-01``), a lokalnie przechodził. Zapas przestał więc być własnością
+    zakładaną i stał się WIELKOŚCIĄ PILNOWANĄ: gdy zadanie zacznie wymagać
+    więcej niż połowy limitu, ten test zaświeci ZANIM zaświeci CI na innej
+    maszynie.
+    """
+    from dynamic_lab.siec import SolverSieci
+
+    oryginal = SolverSieci.rozwiaz
+    zuzyte: list[int] = []
+
+    def z_pomiarem(self, wstrzykniecia, v_start, **kw):
+        wynik = oryginal(self, wstrzykniecia, v_start, **kw)
+        zuzyte.append(wynik.iteracje)
+        return wynik
+
+    SolverSieci.rozwiaz = z_pomiarem  # type: ignore[method-assign]
+    try:
+        limit = SolverSieci(_topologia()).maks_iteracji
+        for _, strategia in (("bez ogranicznika", None), *STRATEGIE):
+            for x_f_pu in (None, *GLEBOKOSCI):
+                sztywnosc_napieciowa_pu(strategia, x_f_pu=x_f_pu)
+    finally:
+        SolverSieci.rozwiaz = oryginal  # type: ignore[method-assign]
+
+    najwiecej = max(zuzyte)
+    assert najwiecej <= limit // 2, (
+        f"Najtrudniejsze zadanie sieci zużywa {najwiecej} z {limit} iteracji — "
+        f"powyżej połowy limitu. Zapas przestał być marginesem: ta sama sieć na "
+        f"innej maszynie (inna biblioteka algebry, inne ostatnie bity) może "
+        f"przekroczyć limit i zgłosić brak zbieżności."
+    )
+    # Strona pozytywna: zadanie MUSI być nietrywialne, inaczej test niczego nie broni.
+    assert najwiecej > 10, (
+        f"Najtrudniejsze zadanie zużywa tylko {najwiecej} iteracji — scenariusz "
+        "przestał ćwiczyć załamanie charakterystyki ogranicznika."
+    )

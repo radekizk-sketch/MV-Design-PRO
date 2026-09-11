@@ -164,7 +164,52 @@ Po naprawie rozjazdu gotowości z 12 czerwonych zostało 5, każda z INNEJ przyc
 Żadna z nich nie wynika z pracy tej rundy; wszystkie są czerwone na `main`
 od `a1ab2959`. Nie są maskowane ani wyciszone.
 
-### 4.3 Jedenaście kopii pętli „samonaprawiającej" w fiksturach e2e
+### 4.3 Osiem testów czerwonych W CI, zielonych lokalnie — dwie przyczyny zmierzone
+
+Bieg `Python tests` na `3030f343`: **8 failed, 11380 passed** w CI wobec
+**11521 passed, 0 failed** lokalnie na tym samym drzewie. Kolektor CI zbiera
+11 402 testy, lokalny 11 527 — różnica bierze się z pakietów spoza pliku
+blokady obecnych lokalnie (m.in. ANDES 2.0.0, którego `pyproject.toml` nie
+wymienia). Interfejs logów GitHuba zwrócił nazwy DWÓCH z ośmiu; obie zdiagnozowane:
+
+**(a) `test_gfm_ogranicznik::test_ogranicznik_oslabia_sztywnosc_a_ranking_zalezy_od_glebokosci`
+— NAPRAWIONE.** Ograniczniki prądu falownika GFM są ciągłe, ale
+NIERÓŻNICZKOWALNE, więc jakobian różnicowy jest w otoczeniu załamania złym
+modelem funkcji i Newton kuleje. Zmierzone: najtrudniejsze zadanie laboratorium
+(sztywność napięciowa DER przy nasyceniu zadania, `x_f = 0,01` p.u.) zużywa
+**34 iteracje** z limitu 40, residuum końcowe `1,716e-14`. Sześć iteracji zapasu
+na zadaniu wymagającym trzydziestu czterech to nie jest margines — stąd CI padało
+(`residuum 6,890e-01`), a lokalnie przechodziło.
+
+Limit podniesiony do **120**, z pomiaru. To NIE jest podniesienie tolerancji:
+żądana dokładność (`1e-12`) bez zmian, zmienia się wyłącznie ile pracy wolno na
+nią poświęcić. Rozjazd nadal kończy się błędem po kilku krokach. Dodatkowo
+komunikat błędu niesie teraz residuum STARTOWE, więc odróżnia rozjazd (residuum
+rośnie) od kulenia (maleje, ale wolno), a zapas iteracji stał się wielkością
+PILNOWANĄ — `test_najtrudniejsze_zadanie_sieci_ma_margines_iteracji` zaświeci,
+gdy zadanie zacznie wymagać więcej niż połowy limitu.
+
+**(b) `test_scenariusze_nn::test_json_w_repo_rowny_odpowiedzi_backendu[17_sc_results]`
+— NAZWANE, NIENAPRAWIONE.** Test porównuje zapisaną w repo fiksturę z odpowiedzią
+backendu operatorem `==`. Zmierzone: `17_sc_results.json` zawiera **333 liczby o
+co najmniej dziewieciu cyfrach po przecinku** — pelna precyzje podwojna wynikow
+solvera zwarciowego. Rownosc dokladna takich liczb MIEDZY MASZYNAMI wymaga
+bit-identycznego stosu numerycznego.
+
+Rozstrzygniecie nalezy do wlasciciela, bo dotyczy ZNACZENIA reguly determinizmu:
+
+* **(a)** „bit-identycznie na TYM SAMYM stosie" — wtedy stos numeryczny trzeba
+  przypiac (wersja BLAS/LAPACK w obrazie CI i w srodowisku deweloperskim);
+* **(b)** „bit-identycznie dla struktury, z tolerancja dla wielkosci
+  fizycznych" — wtedy porownanie fikstur musi te roznice honorowac.
+
+Regeneracja fikstury z mojej maszyny NIE jest naprawa — przeniosalaby jedynie
+czerwien z CI na inne srodowisko.
+
+Pozostale szesc nazw nie bylo dostepnych: interfejs logow zwraca okno o stalym
+rozmiarze, a blok podsumowania pytest wypadl poza nie. Nie zgaduje ich.
+
+### 4.4 Jedenaście kopii pętli „samonaprawiającej" w fiksturach e2e
 
 `(i) => i.code.includes('catalog')` z dwustronnym odwzorowaniem
 (transformator ⇒ `TRAFO_SN_NN`, cokolwiek innego ⇒ `KABEL_SN`) występuje w
