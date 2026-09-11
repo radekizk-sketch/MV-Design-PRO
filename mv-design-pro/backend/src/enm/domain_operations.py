@@ -5124,6 +5124,33 @@ def _build_nn_field_specs(
     nn_main_ref = _make_id("stn", station_seed, "nn_main_breaker")
     feeders = nn_block.get("outgoing_feeders_nn", [])
     feeder_count = nn_block.get("outgoing_feeders_nn_count", len(feeders))
+    # WIĄZANIE KATALOGOWE WYŁĄCZNIKA GŁÓWNEGO nN — DROGA, KTÓREJ NIE BYŁO.
+    #
+    # Zmierzony defekt (2026-09-11): odpływy nN mogły nieść `catalog_bindings`
+    # z ładunku operacji (niżej), pole SN MUSI je nieść
+    # (`_sn_field_apparatus_catalog_ref` odrzuca brak jawnym błędem), a wyłącznik
+    # główny nN nie miał ŻADNEJ drogi, żeby je dostać. Promocja wpisu tworzyła
+    # więc `breaker` bez `catalog_ref`, a kontrola domenowa słusznie stawiała
+    # blokadę `switch.catalog_ref_missing` — modelu zbudowanego przez samą
+    # operację NIE DAŁO SIĘ doprowadzić do gotowości z poziomu jej ładunku.
+    #
+    # To jest ta sama klasa, którą przegląd 2026-08-01 zapisał jako „bramkowano
+    # transformator, ale nie źródło nN ani aparat pola": brama katalogowa
+    # egzekwowana dla SN, opcjonalna dla odpływów nN, NIEOSIĄGALNA dla
+    # wyłącznika głównego nN.
+    #
+    # Tutaj wiązanie staje się MOŻLIWE, jeszcze nie WYMAGANE. Uczynienie go
+    # wymaganym (symetria z SN) jest zmianą łamiącą kontrakt dla każdego
+    # istniejącego wywołania i wymaga decyzji właściciela — nazwane w
+    # `docs/audit/` zamiast cichego przepchnięcia.
+    main_bindings = nn_block.get("main_breaker_catalog_bindings")
+    if not isinstance(main_bindings, dict):
+        main_breaker = nn_block.get("main_breaker")
+        if isinstance(main_breaker, dict):
+            kandydat = main_breaker.get("catalog_bindings") or main_breaker.get("catalog_binding")
+            main_bindings = kandydat if isinstance(kandydat, dict) else None
+        else:
+            main_bindings = None
     nn_field_specs = [
         _build_field_spec(
             field_ref=nn_main_ref,
@@ -5131,6 +5158,7 @@ def _build_nn_field_specs(
             bay_role="IN",
             bus_ref=nn_bus_id,
             tags=["nn_main_breaker"],
+            meta=({"catalog_bindings": main_bindings} if main_bindings else None),
         )
     ]
     for idx in range(max(feeder_count, len(feeders))):

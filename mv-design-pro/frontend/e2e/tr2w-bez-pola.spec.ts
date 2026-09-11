@@ -171,6 +171,18 @@ async function buildStationNetworkBezPolaTr(
     station_type: 'B',
     insert_at: { value: 0.5 },
     station: { sn_voltage_kv: 15.0, nn_voltage_kv: 0.4 },
+    // WIAZANIE KATALOGOWE WYLACZNIKA GLOWNEGO nN — sciezka realnego uzytkownika.
+    // Bez niego operacja tworzy `breaker` bez `catalog_ref`, a kontrola domenowa
+    // slusznie stawia blokade `switch.catalog_ref_missing` (Catalog Binding Rule).
+    // Fixture tego nie widzial, bo koncowka `engineering-readiness` nie znala
+    // kontroli domenowych i meldowala `ready: true` mimo blokady — rozjazd
+    // naprawiony 2026-09-11 (jedno zrodlo werdyktu gotowosci).
+    nn_block: {
+      main_breaker_catalog_bindings: {
+        catalog_namespace: 'APARAT_NN',
+        catalog_item_id: 'cb_nn_400a',
+      },
+    },
     // KOMPLETNOSC-POLA-TR (klasa B — CELOWY model niekompletny): TU pola roli
     // 'TR' NIE MA i mieć nie może. Ten spec jest jedynym miejscem, w ktorym
     // sprawdzamy uczciwy stan niekompletny: rysunek pokazuje transformator z

@@ -70,7 +70,12 @@ from enm.canonical_analysis import (
 from enm.dziennik_zmian import wpisy_od as wpisy_dziennika_od
 from enm.hash import compute_enm_hash
 from enm.models import EnergyNetworkModel
-from enm.severity import empty_severity_counts, is_failed_status
+from enm.severity import (
+    SEVERITY_BLOCKER,
+    empty_severity_counts,
+    is_blocking_severity,
+    is_failed_status,
+)
 from enm.store import ZrodloZmiany, blokada_przypadku
 from enm.store import get_enm as _get_enm
 from enm.store import set_enm as _set_enm
@@ -92,7 +97,12 @@ from enm.topology_ops import (
     update_protection,
 )
 from enm.v2_projection import project_enm_v1_to_v2
-from enm.validator import ENMValidator, ValidationResult
+from enm.validator import (
+    ENMValidator,
+    ReadinessResult,
+    ValidationIssue,
+    ValidationResult,
+)
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
@@ -261,11 +271,15 @@ def get_enm_topology(case_id: str) -> dict[str, Any]:
 
 @router.get("/{case_id}/enm/readiness")
 def get_enm_readiness(case_id: str) -> dict[str, Any]:
-    """Zwróć macierz gotowości dla wszystkich typów analiz."""
+    """Zwróć macierz gotowości dla wszystkich typów analiz.
+
+    WERDYKT Z JEDNEGO ŹRÓDŁA (`_build_readiness`) — patrz
+    `get_engineering_readiness`, gdzie opisany jest zmierzony rozjazd.
+    """
     enm = _get_enm(case_id)
     validator = ENMValidator()
     validation = validator.validate(enm)
-    readiness = validator.readiness(validation)
+    readiness, _domenowe = _gotowosc_domenowa(enm, validation)
 
     has_protection_data = bool(enm.protection_assignments) or (
         bool(enm.bays) and any(b.protection_ref is not None for b in enm.bays)
@@ -644,6 +658,54 @@ def _bay_device_withstand(
 # ---------------------------------------------------------------------------
 
 
+def _gotowosc_domenowa(
+    enm: EnergyNetworkModel, validation: ValidationResult
+) -> tuple[ReadinessResult, list[ValidationIssue]]:
+    """Gotowość WERDYKTOWA modelu — z tego samego źródła, co odpowiedź operacji.
+
+    ZMIERZONY ROZJAZD (2026-09-11, przypadek e2e, ENM rewizja 10, ten sam model):
+
+        POST .../enm/domain-ops (refresh_snapshot)  ->  ready=False,
+            blokada `switch.catalog_ref_missing` na `nn/.../feeder_device`
+        GET  .../engineering-readiness              ->  ready=True,  0 blokad
+        GET  .../enm/readiness                      ->  ready=True,  0 blokad
+
+    Przyczyna: `ENMValidator` nie zna KONTROLI DOMENOWYCH, które
+    `enm.domain_operations._build_readiness` dokłada ponad walidator — wiązania
+    katalogowego łączników (Catalog Binding Rule, reguła NIENARUSZALNA),
+    transformatora blokowego DER przekształtnikowego, portów i stanu łącznika
+    punktów odgałęźnych. Dwie ścieżki tej samej prawdy, a rozjazd był w stronę
+    FAIL-OPEN: końcówki agregujące meldowały gotowość modelu, którego warstwa
+    domenowa gotowym NIE uznaje. Chip powłoki (czytający operację) mówił
+    „Model: w budowie", panel gotowości (czytający końcówkę) — „zwalidowany".
+
+    Werdykt pochodzi teraz z `_build_readiness`, czyli z tej samej funkcji, którą
+    wykonuje operacja domenowa. Lista `issues` końcówki nadal pochodzi z
+    walidatora (niesie `wizard_step_hint`, `suggested_fix` i kanon), a blokady
+    domenowe dokładane są do niej jawnie — inaczej końcówka meldowałaby
+    `ready=False` bez ANI JEDNEGO problemu w liście, czyli werdykt bez powodu.
+    """
+    from enm.domain_operations import _build_readiness
+
+    surowa, _fix = _build_readiness(enm.model_dump(mode="json"))
+    znane = {(i.code, i.element_refs[0] if i.element_refs else None) for i in validation.issues}
+    domenowe = [
+        ValidationIssue(
+            code=str(pozycja.get("code", "")),
+            severity=SEVERITY_BLOCKER,
+            message_pl=str(pozycja.get("message_pl", "")),
+            element_refs=([pozycja["element_ref"]] if pozycja.get("element_ref") else []),
+        )
+        for pozycja in surowa.get("blockers", [])
+        if (str(pozycja.get("code", "")), pozycja.get("element_ref")) not in znane
+    ]
+    blokady = [i for i in validation.issues if is_blocking_severity(i.severity)] + domenowe
+    return (
+        ReadinessResult(ready=bool(surowa.get("ready", False)), blockers=blokady),
+        domenowe,
+    )
+
+
 @router.get("/{case_id}/engineering-readiness")
 def get_engineering_readiness(case_id: str) -> dict[str, Any]:
     """Agregacyjny endpoint inżynierskiej gotowości modelu.
@@ -656,10 +718,14 @@ def get_engineering_readiness(case_id: str) -> dict[str, Any]:
     enm = _get_enm(case_id)
     validator = ENMValidator()
     validation = validator.validate(enm)
-    readiness = validator.readiness(validation)
+    readiness, domenowe = _gotowosc_domenowa(enm, validation)
+    # Werdykt i lista problemów MUSZĄ pochodzić z tego samego zbioru: końcówka
+    # meldująca `ready=False` bez ani jednego problemu w `issues` dawałaby
+    # werdykt bez powodu, a panel gotowości nie miałby czego pokazać.
+    wszystkie_problemy = [*validation.issues, *domenowe]
 
     issues_out: list[dict[str, Any]] = []
-    for issue in validation.issues:
+    for issue in wszystkie_problemy:
         item: dict[str, Any] = {
             "code": issue.code,
             "severity": issue.severity,
@@ -681,7 +747,7 @@ def get_engineering_readiness(case_id: str) -> dict[str, Any]:
         issues_out.append(item)
 
     by_severity = empty_severity_counts()
-    for issue in validation.issues:
+    for issue in wszystkie_problemy:
         by_severity[issue.severity] = by_severity.get(issue.severity, 0) + 1
 
     return {
@@ -719,7 +785,7 @@ def get_analysis_eligibility(case_id: str) -> dict[str, Any]:
     enm = _get_enm(case_id)
     validator = ENMValidator()
     validation = validator.validate(enm)
-    readiness = validator.readiness(validation)
+    readiness, _domenowe = _gotowosc_domenowa(enm, validation)
 
     service = EligibilityService()
     matrix = service.compute_matrix(
