@@ -24,13 +24,22 @@ from dataclasses import dataclass, field, replace
 import numpy as np
 from numpy.typing import NDArray
 
-from dynamic_lab.calkowanie import INTEGRATORY, Integrator
+from dynamic_lab.calkowanie import (
+    INTEGRATORY,
+    DziennikRzutowan,
+    Integrator,
+    OgraniczenieStanu,
+    WynikKrokuNieliniowego,
+    z_niezmiennikami,
+)
 from dynamic_lab.konwencje import czestotliwosc_hz, jednostki_stanow, stany_zasobowe
 from dynamic_lab.siec import SolverSieci, TopologiaSieci
 from dynamic_lab.tozsamosc import (
     KonfiguracjaSolvera,
     PunktPracy,
     TozsamoscScenariusza,
+    nastawy_punktu_pracy,
+    odcisk_implementacji,
     odcisk_topologii,
 )
 from dynamic_lab.tozsamosc import odcisk as odcisk_kanoniczny
@@ -40,6 +49,7 @@ from dynamic_lab.wynik import (
     DiagnostykaSolvera,
     KompletnoscPrzebiegu,
     PrzestrzenSygnalu,
+    RzutowanieStanu,
     TozsamoscModelu,
     WynikDynamiczny,
     ZbieraczPrzebiegow,
@@ -119,6 +129,14 @@ class SilnikRMS:
         self.probkowanie_co = max(1, probkowanie_co)
         self.solver_sieci = SolverSieci(model.topologia, tolerancja=tolerancja_sieci)
         self.uklad = UkladStanu.zbuduj(model.urzadzenia)
+        self.ograniczenia_stanu = self._zbierz_ograniczniki()
+        """Niezmienniki dyskretne stanów ZADEKLAROWANE PRZEZ URZĄDZENIA modelu.
+
+        Integrator nie zna urządzeń, a urządzenia nie znają wektora globalnego —
+        spotykają się tutaj, bo `UkladStanu` jest jedynym miejscem, które zna
+        przesunięcia. Model bez ograniczników daje krotkę pustą i wtedy bieg nie
+        zakłada nakładki: nakładka bez treści sugerowałaby ochronę, której nie ma.
+        """
         self._ewaluacje = 0
         self._maks_residuum = 0.0
         self._maks_iteracji_sieci = 0
@@ -471,6 +489,17 @@ class SilnikRMS:
         self._maks_iteracji_sieci = 0
         self._v_zatwierdzone = None if self._v_startowe is None else self._v_startowe.copy()
         self.solver_sieci.ustaw_topologie(self._kopia_topologii_modelu())
+        # WEJSCIE ZAGADNIENIA POCZATKOWEGO LICZONE TUTAJ, NIE PRZY BUDOWIE WYNIKU.
+        # `y(0) = V0` jest warunkiem POCZATKOWYM, wiec musi powstac na topologii
+        # STARTOWEJ w chwili t = 0. Pierwsza wersja (commit e3756aa6) liczyla je
+        # dopiero przy skladaniu wyniku — czyli PO petli zdarzen, gdy solver
+        # trzyma topologie pozwarciowa. Bylo to bledne semantycznie (V0 innej
+        # sieci niz start) i wywracalo bieg: rozwiazanie sieci przy x0 na
+        # topologii zwarciowej rozjezdza sie, a `BrakZbieznosciSieciError`
+        # WYCIEKAL z `symuluj()` zamiast trafic do `diagnostyka.blad`.
+        # Zmierzone: `test_zwarcie_bliskie_metalicznemu_lamie_nasycenie_a_nie_
+        # impedancje` padal z residuum 3,090e+00.
+        wejscie_zagadnienia = self._wejscie_zagadnienia_poczatkowego(x0)
 
         norma_t0 = self.norma_pochodnej(x0)
         siatka = self.siatka_czasu(czas_koncowy_s, harmonogram)
@@ -481,6 +510,8 @@ class SilnikRMS:
             if abs((b - a) - self.krok_s) > self.krok_s * self._TOLERANCJA_CZASU
         )
 
+        integrator_biegu, dziennik_rzutowan = self._integrator_biegu()
+        sprawozdania: list[WynikKrokuNieliniowego] = []
         zbieracz = ZbieraczPrzebiegow()
         zastosowane: list[dict[str, object]] = []
         topologia = self.model.topologia
@@ -541,7 +572,12 @@ class SilnikRMS:
                 break
             dt = siatka[krok + 1] - t
             try:
-                x, _ = self.integrator.krok(self.pochodne, x, t, dt)
+                # KROK ZE SPRAWOZDANIEM, NIE SAM KROK. Bez sprawozdania wynik nie
+                # miał jak odróżnić kroku, który osiągnął żądaną tolerancję, od
+                # kroku zatrzymanego na podłodze numerycznej — jądro Newtona
+                # zwracało obie drogi tą samą wartością.
+                x, sprawozdanie = integrator_biegu.krok_ze_sprawozdaniem(self.pochodne, x, t, dt)
+                sprawozdania.append(sprawozdanie)
             except Exception as wyjatek:  # noqa: BLE001 - zapisujemy PRZYCZYNĘ
                 blad = BladSolvera(
                     klasa=type(wyjatek).__name__,
@@ -575,7 +611,7 @@ class SilnikRMS:
                 break
 
         diagnostyka = DiagnostykaSolvera(
-            integrator=self.integrator.nazwa,
+            integrator=integrator_biegu.nazwa,
             krok_s=self.krok_s,
             liczba_krokow=n_krokow,
             ewaluacje_pochodnych=self._ewaluacje,
@@ -592,6 +628,26 @@ class SilnikRMS:
                 else KompletnoscPrzebiegu.PRZERWANY_BLEDEM
             ),
             kroki_skrocone=kroki_skrocone,
+            kroki_scisle_zbiezne=sum(1 for s in sprawozdania if s.strict_convergence),
+            kroki_na_podlodze_numerycznej=sum(1 for s in sprawozdania if not s.strict_convergence),
+            najgorsze_rho=max((s.rho for s in sprawozdania), default=0.0),
+            rzutowania_stanu=(
+                ()
+                if dziennik_rzutowan is None
+                else tuple(
+                    RzutowanieStanu(
+                        chwila_s=z.chwila_s,
+                        indeks=z.indeks,
+                        nazwa=z.nazwa,
+                        znaczenie=z.znaczenie,
+                        wartosc_przed=z.wartosc_przed,
+                        wartosc_po=z.wartosc_po,
+                        granica=z.granica,
+                    )
+                    for z in dziennik_rzutowan.zapisy
+                )
+            ),
+            niezmienniki_stanu_egzekwowane=len(self.ograniczenia_stanu),
         )
         return WynikDynamiczny(
             kontrakt=KONTRAKT,
@@ -600,8 +656,11 @@ class SilnikRMS:
             modele=self._tozsamosci(),
             zdarzenia=tuple(zastosowane),
             diagnostyka=diagnostyka,
-            odcisk_scenariusza=self._odcisk_scenariusza(czas_koncowy_s, harmonogram, x0),
+            odcisk_scenariusza=self._odcisk_scenariusza(
+                czas_koncowy_s, harmonogram, wejscie_zagadnienia, integrator_biegu
+            ),
             odcisk_topologii=self._odcisk_topologii(),
+            odcisk_implementacji=odcisk_implementacji(),
         )
 
     def _zapisz_probki(
@@ -619,6 +678,20 @@ class SilnikRMS:
                 element_ref=szyna,
                 etykieta_pl="Napięcie",
                 jednostka="p.u.",
+                przestrzen=PrzestrzenSygnalu.WYJSCIE,
+            )
+            # KĄT NAPIĘCIA — bez niego wyniku NIE DA SIĘ PODWAŻYĆ. Kontrakt
+            # deklaruje, że wynik ma dać się odtworzyć i obalić, a z samych
+            # modułów napięć nie odtworzy się ani rozpływu mocy w gałęziach, ani
+            # bilansu mocy, ani prawa prądowego Kirchhoffa: wszystkie trzy
+            # wymagają FAZY. Kąt jest w ramie sieci, ta sama konwencja co
+            # `konwencje` (rama wirująca synchronicznie).
+            zbieracz.dodaj(
+                "u_kat_rad",
+                float(np.angle(v[idx[szyna]])),
+                element_ref=szyna,
+                etykieta_pl="Kąt napięcia",
+                jednostka="rad",
                 przestrzen=PrzestrzenSygnalu.WYJSCIE,
             )
         for u in self.model.urzadzenia:
@@ -676,6 +749,56 @@ class SilnikRMS:
                         przestrzen=PrzestrzenSygnalu.WYJSCIE,
                     )
 
+    def _zbierz_ograniczniki(self) -> tuple[OgraniczenieStanu, ...]:
+        """Ograniczniki stanu WSZYSTKICH urządzeń, przeliczone na indeksy globalne.
+
+        KLASA, NIE INSTANCJA. Nie ma tu listy klas ani mapy „nazwa stanu ->
+        granica": pytamy KAŻDE urządzenie, czy deklaruje ograniczniki, i podajemy
+        mu jego przesunięcie w wektorze globalnym. Nowy model wnosi swoje granice
+        samym zadeklarowaniem metody — nie trzeba dopisywać niczego tutaj, więc
+        nie ma jak o nim zapomnieć.
+
+        Urządzenie, które metody nie ma, nie deklaruje nic. To jest odpowiedź
+        UCZCIWA, nie domyślnie łagodna: brak deklaracji znaczy „ten model nie ma
+        ograniczników", a nie „ograniczniki są, tylko ich nie znamy". Modele bez
+        granic stałych (`FalownikGFM` — moce filtrowane śledzą MIERZONE
+        wstrzyknięcie, którego kres ``|V|·i_max`` nie jest stały;
+        `MaszynaSynchroniczna4Rzedu` — brak ogranicznika urządzenia;
+        `MaszynaDwustronnieZasilana3Rzedu` — przekształtnik nasyca NAPIĘCIE
+        wirnika, czyli wejście, a nie stan) nie deklarują jej świadomie.
+        """
+        zebrane: list[OgraniczenieStanu] = []
+        for u in self.model.urzadzenia:
+            deklaracja = getattr(u, "ograniczniki_stanu", None)
+            if deklaracja is None:
+                continue
+            wycinek = self.uklad.wycinki[u.ref]  # type: ignore[attr-defined]
+            for ogr in deklaracja(wycinek.start):
+                if not wycinek.start <= ogr.indeks < wycinek.stop:
+                    raise ValueError(
+                        f"{u.ref}: ogranicznik „{ogr.nazwa}” wskazuje indeks "  # type: ignore[attr-defined]
+                        f"{ogr.indeks} poza własnym wycinkiem "
+                        f"[{wycinek.start}, {wycinek.stop}) — urządzenie ograniczałoby "
+                        "stan cudzego modelu."
+                    )
+                zebrane.append(ogr)
+        return tuple(zebrane)
+
+    def _integrator_biegu(self) -> tuple[Integrator, DziennikRzutowan | None]:
+        """Integrator TEGO biegu + jego własny dziennik rzutowań.
+
+        Dziennik powstaje NA BIEG, nie na silnik: wspólny dziennik przenosiłby
+        rzutowania z poprzedniej symulacji do następnej, czyli dokładnie ta
+        zależność od historii obiektu, którą usuwa `symuluj`.
+        """
+        if not self.ograniczenia_stanu:
+            return self.integrator, None
+        dziennik = DziennikRzutowan()
+        return (
+            z_niezmiennikami(self.integrator, self.ograniczenia_stanu, dziennik=dziennik),
+            dziennik,
+        )
+
     def _kopia_topologii_modelu(self) -> TopologiaSieci:
         """Świeża, niezależna kopia topologii modelu na potrzeby JEDNEGO biegu.
 
@@ -715,6 +838,19 @@ class SilnikRMS:
         sama sieć przy ``P_G = 0,2`` i ``P_G = 0,9`` dawała więc TEN SAM odcisk,
         choć to dwa różne zagadnienia dynamiczne.
 
+        NASTAWY PUNKTU PRACY CZYTANE Z URZĄDZEŃ, NIE Z PAMIĘCI INICJALIZACJI.
+        ``dyspozycja`` to moce zadane w chwili ``inicjalizuj``; ``nastawy`` to
+        wartości OBOWIĄZUJĄCE TERAZ (``V_ref`` wzbudnicy, ``P_zadane``
+        elektrowni, ``E_ref`` falownika GFM). Rozróżnienie nie jest formalne:
+        scenariusz „limit eksportu zaczyna wiązać" zmienia
+        ``RegulatorElektrowniPPC.p_zadane_pu`` PO inicjalizacji, więc wartość
+        zapamiętana przy starcie nie opisuje biegu, który się wykona.
+
+        Nastawy wypadły z tożsamości MODELU (patrz `RolaPola.NASTAWA_PUNKTU_PRACY`),
+        bo inaczej inicjalizacja zmieniałaby model. Ta sama deklaracja przy polu
+        wprowadza je TUTAJ — jedno źródło prawdy dla obu skutków, więc nie da się
+        wypaść z modelu i nie wejść do biegu.
+
         Wartości zaokrąglone do 12 cyfr znaczących, żeby odcisk nie zmieniał się
         od ostatniego bitu reprezentacji przy tym samym zagadnieniu.
         """
@@ -727,6 +863,13 @@ class SilnikRMS:
             "dyspozycja": {
                 ref: [_l(moc.real), _l(moc.imag)] for ref, moc in sorted(self._moce_zadane.items())
             },
+            "nastawy": {
+                u.ref: nastawy_punktu_pracy(u)  # type: ignore[attr-defined]
+                for u in sorted(
+                    self.model.urzadzenia,
+                    key=lambda u: u.ref,  # type: ignore[attr-defined,no-any-return]
+                )
+            },
             "x0": [_l(v) for v in np.asarray(x0, dtype=np.float64).tolist()],
             "v0": [[_l(v.real), _l(v.imag)] for v in np.asarray(v0).tolist()],
         }
@@ -735,7 +878,8 @@ class SilnikRMS:
         self,
         czas_koncowy_s: float,
         harmonogram: HarmonogramZdarzen,
-        x0: NDArray[np.float64],
+        wejscie_zagadnienia: dict[str, object],
+        integrator_biegu: Integrator,
     ) -> str:
         """Odcisk scenariusza — razem z MIGAWKĄ wejścia i nastawami solvera.
 
@@ -753,16 +897,21 @@ class SilnikRMS:
             # rejestr dowodów przy budowie `PrzypadekWalidacji`.
             punkt_pracy=PunktPracy(),
             konfiguracja=KonfiguracjaSolvera(
-                integrator=self.integrator.nazwa,
+                # NAZWA TEGO, CO SIĘ WYKONAŁO, nie tego, co wpisano w konstruktorze.
+                # Bieg z egzekwowanymi niezmiennikami stanu nazywa się
+                # „<metoda>+niezmienniki" i jest INNYM biegiem numerycznie — odcisk
+                # scenariusza musi je rozróżniać, bo rzutowanie zmienia trajektorię.
+                integrator=integrator_biegu.nazwa,
                 krok_s=self.krok_s,
                 tolerancja_sieci=self.solver_sieci.tolerancja,
                 tolerancja_rownowagi=self.tolerancja_rownowagi,
                 maks_iteracji_sieci=self.solver_sieci.maks_iteracji,
                 probkowanie_co=self.probkowanie_co,
+                dopuszczaj_zastoj=bool(getattr(self.integrator, "dopuszczaj_zastoj", False)),
             ),
             czas_koncowy_s=float(czas_koncowy_s),
             harmonogram=tuple(harmonogram.zdarzenia),
-            parametry=self._wejscie_zagadnienia_poczatkowego(x0),
+            parametry=wejscie_zagadnienia,
         ).odcisk
 
     def _tozsamosci(self) -> tuple[TozsamoscModelu, ...]:

@@ -23,6 +23,7 @@ from functools import cache
 import numpy as np
 import pytest
 from dynamic_lab.benchmarki import siec_sn_z_der
+from dynamic_lab.konwencje import ogranicz_do_przedzialu, ogranicz_okregiem, ogranicz_prad
 from dynamic_lab.regulatory import RegulatorNapiecia, RegulatorTurbiny
 from dynamic_lab.siec import Galaz, TopologiaSieci
 from dynamic_lab.silnik import ModelDynamiczny, SilnikRMS
@@ -40,9 +41,6 @@ from dynamic_lab.urzadzenia_oze import (
     PozaZakresemWaznosciModeluError,
     RegulatorElektrowniPPC,
     SkokObciazeniaBocznikowego,
-    _ogranicz,
-    _ogranicz_prad,
-    ogranicz_okregiem,
 )
 from dynamic_lab.wynik import PrzestrzenSygnalu, WynikDynamiczny
 from dynamic_lab.zdarzenia import (
@@ -465,18 +463,29 @@ def test_priorytet_rozstrzyga_ktora_skladowa_ustepuje(priorytet_biernej: bool) -
 def test_ogranicznik_pradu_zgadza_sie_z_ogranicznikiem_falownika_gfl(
     v_mod: float, p_pu: float, q_pu: float
 ) -> None:
-    """Docstring twierdzi, że oba ograniczniki opisują tę samą fizykę — to jest dowód.
+    """Falownik GFL i moduły OZE liczą prąd JEDNĄ funkcją — to jest dowód.
 
-    Dwie implementacje w dwóch plikach są długiem, dopóki nikt nie sprawdza, czy
-    dają ten sam wynik; ten test zamienia deklarację w sprawdzalną własność
-    (iloczyn: głębokość zapadu × rozkład P/Q).
+    HISTORIA TEGO TESTU. Do 2026-09 ta sama fizyka (rzut prądu na okrąg z
+    priorytetem składowej) istniała w laboratorium w TRZECH kopiach: tutaj,
+    w `urzadzenia.FalownikGFL.wstrzykniecie` i w
+    `urzadzenia.KandydatOgraniczeniaNasycenieZadania`. Test pilnował, żeby kopie
+    się nie rozjechały — i wykrył, że jedna JUŻ się rozjechała: gałąź
+    ``priorytet_biernej=False`` w `FalownikGFL` skalowała cały wektor
+    proporcjonalnie (czyli zachowywała współczynnik mocy) zamiast zachować
+    składową czynną i poświęcić bierną, jak robiły pozostałe dwie. Flaga nazywała
+    się „priorytet biernej", a jej zaprzeczenie nie dawało priorytetu czynnej.
+
+    Dziś kopia jest JEDNA (`konwencje.ogranicz_prad`), więc ten test przestał być
+    porównaniem dwóch implementacji, a stał się sprawdzeniem, że `FalownikGFL`
+    faktycznie z niej korzysta — czyli że nikt nie wniósł czwartej kopii pod
+    pozorem optymalizacji. Iloczyn cech bez zmian: głębokość zapadu × rozkład P/Q.
     """
     napiecie = v_mod * complex(math.cos(0.2), math.sin(0.2))
     i_max = 1.2
     gfl = FalownikGFL(ref="D", szyna="B", i_max_pu=i_max, priorytet_biernej=True)
     z_gfl = gfl.wstrzykniecie(np.array([p_pu, q_pu], dtype=np.float64), napiecie)
     zadany = complex(np.conj(complex(p_pu, q_pu) / napiecie))
-    moj = _ogranicz_prad(zadany, napiecie, i_max, priorytet_biernej=True)
+    moj = ogranicz_prad(zadany, napiecie, i_max, priorytet_biernej=True)
     # Tolerancja 1e-7, nie 1e-12, i to jest wynik POMIARU, nie ostrożności:
     # `FalownikGFL` dzieli liczby zespolone numpy, ta funkcja — wbudowane liczby
     # Pythona, a oba używają innego algorytmu dzielenia. Różnica rzędu 1e-16 jest
@@ -498,7 +507,7 @@ def test_prad_magazynu_nie_przekracza_ogranicznika(v_mod: float) -> None:
 def test_ogranicznik_odrzuca_odwrocony_przedzial() -> None:
     """Odwrócony przedział cicho zwracałby granicę dolną — to byłby ogranicznik-atrapa."""
     with pytest.raises(ValueError, match="Pusty przedział"):
-        _ogranicz(0.5, 1.0, 0.0)
+        ogranicz_do_przedzialu(0.5, 1.0, 0.0)
 
 
 def test_ogranicznik_okregu_odrzuca_niedodatnia_moc() -> None:

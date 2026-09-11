@@ -46,6 +46,7 @@ from dataclasses import dataclass
 import numpy as np
 import pytest
 from dynamic_lab.calkowanie import INTEGRATORY
+from dynamic_lab.konwencje import ogranicz_prad
 from dynamic_lab.siec import Galaz, TopologiaSieci
 from dynamic_lab.silnik import ModelDynamiczny, SilnikRMS
 from dynamic_lab.urzadzenia import (
@@ -56,7 +57,6 @@ from dynamic_lab.urzadzenia import (
     OdbiorStalejMocy,
     PunktPracyPozaOgranicznikiemError,
 )
-from dynamic_lab.urzadzenia_oze import _ogranicz_prad
 from dynamic_lab.wynik import WynikDynamiczny
 from dynamic_lab.zdarzenia import HarmonogramZdarzen, ZdjecieZwarcia, ZwarcieTrojfazowe
 
@@ -359,18 +359,18 @@ def test_nasycenie_zadania_daje_twardy_limit_dla_kazdej_pary_sem_i_napiecia() ->
 
 
 def test_nasycenie_zadania_zgadza_sie_z_ogranicznikami_gfl_i_oze() -> None:
-    """Ta sama fizyka w TRZECH miejscach musi dać ten sam wynik — inaczej to trzy fizyki.
+    """Trzy miejsca, JEDNA funkcja — i to jest sprawdzone, nie zadeklarowane.
 
-    Rzut prądu na okrąg z priorytetem składowej biernej istnieje w laboratorium
-    już dwa razy (``FalownikGFL.wstrzykniecie`` i ``urzadzenia_oze._ogranicz_prad``);
-    ta strategia jest trzecią kopią. Duplikacja jest DŁUGIEM — ten test pilnuje,
-    żeby dług nie stał się rozjazdem fizyki, dopóki właściciel nie zdecyduje,
-    gdzie ta funkcja ma mieszkać.
+    HISTORIA. Rzut prądu na okrąg z priorytetem składowej istniał w laboratorium
+    w trzech kopiach (`FalownikGFL.wstrzykniecie`, `urzadzenia_oze._ogranicz_prad`
+    i ta strategia). Dług został spłacony: fizyka mieszka w
+    `konwencje.ogranicz_prad`, a wszystkie trzy miejsca ją wołają. Test został,
+    bo pilnuje czegoś innego niż wcześniej — że nikt nie wniósł czwartej kopii.
 
     ZAKRES RÓWNOŚCI. Sprawdzane są napięcia od 0,15 p.u. w górę. Poniżej ~1e-6
-    p.u. trzy kopie i tak NIE są równoważne (GFL zwraca wtedy prąd zerowy, zanim
-    dojdzie do ograniczania), więc obietnica równości ograniczona jest do zakresu,
-    w którym ją zmierzono — deklaracja szersza byłaby fałszywą pewnością.
+    p.u. `FalownikGFL` zwraca prąd zerowy, zanim dojdzie do ograniczania, więc
+    obietnica równości ograniczona jest do zakresu, w którym ją zmierzono —
+    deklaracja szersza byłaby fałszywą pewnością.
     """
     strategia = KandydatOgraniczeniaNasycenieZadania(i_max_pu=I_MAX, priorytet_biernej=True)
     for v in (complex(0.95, 0.1), complex(0.4, -0.2), complex(0.15, 0.0)):
@@ -386,12 +386,52 @@ def test_nasycenie_zadania_zgadza_sie_z_ogranicznikami_gfl_i_oze() -> None:
                 v_szyny=v,
                 z_wirtualna=Z_WIRTUALNA,
             )
-            oze = _ogranicz_prad(i_zadany, v, I_MAX, priorytet_biernej=True)
+            oze = ogranicz_prad(i_zadany, v, I_MAX, priorytet_biernej=True)
             moc = v * np.conj(i_zadany)
             gfl = FalownikGFL(ref="G", szyna="B", i_max_pu=I_MAX, priorytet_biernej=True)
             z_gfl = gfl.wstrzykniecie(np.array([moc.real, moc.imag], dtype=np.float64), v)
             assert abs(moj - oze) < 1.0e-12, (v, i_zadany, moj, oze)
             assert abs(moj - z_gfl) < 1.0e-9, (v, i_zadany, moj, z_gfl)
+
+
+@pytest.mark.parametrize(
+    ("i_zadany", "v"),
+    [
+        (complex(1.8, 1.8), complex(0.95, 0.1)),
+        (complex(2.0, 0.5), complex(0.4, -0.2)),
+        (complex(-1.5, 2.0), complex(0.6, 0.3)),
+    ],
+)
+def test_priorytet_czynnej_zachowuje_czynna_a_nie_wspolczynnik_mocy(
+    i_zadany: complex, v: complex
+) -> None:
+    """``priorytet_biernej=False`` MUSI znaczyć „priorytet czynnej", nie „skaluj oba".
+
+    ZMIERZONY DEFEKT (naprawiony 2026-09). `FalownikGFL.wstrzykniecie` w gałęzi
+    ``not priorytet_biernej`` skalowała cały wektor: ``I * i_max/|I|``, czyli
+    zachowywała WSPÓŁCZYNNIK MOCY. Dwie pozostałe kopie tej samej reguły
+    (`urzadzenia_oze` i `KandydatOgraniczeniaNasycenieZadania`) zachowywały
+    składową czynną i poświęcały bierną. Dla ``I = 2+2j`` względem fazy napięcia
+    i ``i_max = 1`` dawało to ``(0,707; 0,707)`` zamiast ``(1,000; 0,000)`` —
+    czyli 29 % mniej mocy czynnej z urządzenia, któremu kazano ją utrzymać.
+    Flaga nazywała jedno, a jej zaprzeczenie robiło co innego.
+
+    Iloczyn cech: głębokość zapadu × ćwiartka zadania (w tym ujemna czynna).
+    """
+    ogr = ogranicz_prad(i_zadany, v, I_MAX, priorytet_biernej=False)
+    faza = v / abs(v)
+    wzgledny_zadany = i_zadany / faza
+    wzgledny_ogr = ogr / faza
+    assert abs(ogr) <= I_MAX + 1.0e-12
+    # Składowa czynna zachowana w całości albo ograniczona do kresu — nigdy
+    # zmniejszona „proporcjonalnie" tylko po to, żeby utrzymać bierną.
+    oczekiwana_czynna = max(min(wzgledny_zadany.real, I_MAX), -I_MAX)
+    assert wzgledny_ogr.real == pytest.approx(oczekiwana_czynna, abs=1.0e-12)
+    # Ta sama liczba musi wyjść z falownika GFL — czyli GFL naprawdę woła tę funkcję.
+    gfl = FalownikGFL(ref="G", szyna="B", i_max_pu=I_MAX, priorytet_biernej=False)
+    moc = v * np.conj(i_zadany)
+    z_gfl = gfl.wstrzykniecie(np.array([moc.real, moc.imag], dtype=np.float64), v)
+    assert abs(ogr - z_gfl) < 1.0e-9
 
 
 def test_ogranicznik_odrzuca_bezsensowne_nastawy() -> None:

@@ -123,17 +123,13 @@ class KryteriumZbieznosci:
         n = len(x_biezace)
         if self.atol_na_stan is not None:
             if len(self.atol_na_stan) != n:
-                raise ValueError(
-                    f"atol_na_stan ma {len(self.atol_na_stan)} pozycji dla {n} stanów"
-                )
+                raise ValueError(f"atol_na_stan ma {len(self.atol_na_stan)} pozycji dla {n} stanów")
             atol = np.asarray(self.atol_na_stan, dtype=np.float64)
         else:
             atol = np.full(n, self.atol, dtype=np.float64)
         if self.skale_stanow is not None:
             if len(self.skale_stanow) != n:
-                raise ValueError(
-                    f"skale_stanow ma {len(self.skale_stanow)} pozycji dla {n} stanów"
-                )
+                raise ValueError(f"skale_stanow ma {len(self.skale_stanow)} pozycji dla {n} stanów")
             skale = np.abs(np.asarray(self.skale_stanow, dtype=np.float64))
         else:
             skale = np.maximum(np.abs(x_poczatkowe), np.abs(x_biezace))
@@ -437,7 +433,10 @@ def _krok_niejawny(
         integrator.dziennik.zapisz(wynik)
     if wynik.status is StatusKroku.FAILED:
         raise BrakZbieznosciIntegratoraError(wynik.przyczyna)
-    if wynik.status is StatusKroku.STAGNATED_AT_NUMERICAL_FLOOR and not integrator.dopuszczaj_zastoj:
+    if (
+        wynik.status is StatusKroku.STAGNATED_AT_NUMERICAL_FLOOR
+        and not integrator.dopuszczaj_zastoj
+    ):
         raise BrakZbieznosciIntegratoraError(
             f"{wynik.przyczyna} Bieg NIE jest kontynuowany: kontynuacja po zastoju "
             f"wymaga jawnej konfiguracji (dopuszczaj_zastoj=True + dziennik), bo "
@@ -551,9 +550,7 @@ def _newton_niejawny(
                     and najmniejsza_norma < norma_poczatkowa
                     and udzial <= _UDZIAL_PODLOGI
                 )
-                status = (
-                    StatusKroku.STAGNATED_AT_NUMERICAL_FLOOR if plateau else StatusKroku.FAILED
-                )
+                status = StatusKroku.STAGNATED_AT_NUMERICAL_FLOOR if plateau else StatusKroku.FAILED
                 przyczyna = (
                     (
                         f"Residuum przestało maleć po {iteracje} iteracjach i stanęło na "

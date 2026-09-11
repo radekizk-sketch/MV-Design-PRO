@@ -22,9 +22,17 @@ from typing import Protocol
 import numpy as np
 from numpy.typing import NDArray
 
-from dynamic_lab.konwencje import OMEGA_S, dq_z_sieci, siec_z_dq
+from dynamic_lab.calkowanie import OgraniczenieStanu
+from dynamic_lab.konwencje import (
+    OMEGA_S,
+    BazyMocy,
+    dq_z_sieci,
+    ogranicz_okregiem,
+    ogranicz_prad,
+    siec_z_dq,
+)
 from dynamic_lab.regulatory import RegulatorNapiecia, RegulatorTurbiny
-from dynamic_lab.tozsamosc import pole_artefakt, pole_opisowe
+from dynamic_lab.tozsamosc import pole_artefakt, pole_nastawa, pole_opisowe
 
 
 class UrzadzenieDynamiczne(Protocol):
@@ -83,8 +91,20 @@ class MaszynaSynchroniczna4Rzedu:
     w równaniach stojana. Model 6. rzędu wymaga dołożenia tłumików — to jest
     rozszerzenie tej klasy, a nie przemianowanie jej.
 
-    Parametry podawane na BAZIE MASZYNY; przeliczenie na bazę sieci wykonuje
-    ``ZespolSynchroniczny`` przez ``BazyMocy`` (jawnie).
+    BAZA PARAMETRÓW — NA BAZIE SIECI, I TO JEST WYMAGANIE, NIE UWAGA.
+    Wszystkie pola tej klasy (``h_s``, reaktancje, ``d_tlumienie``) są w p.u.
+    BAZY SIECI. Katalog producenta podaje je na bazie MASZYNY, więc przeliczenie
+    trzeba wykonać PRZED zbudowaniem obiektu — służy do tego konstruktor
+    `z_bazy_maszyny`, który bierze `konwencje.BazyMocy` i robi to jawnie.
+
+    KOREKTA (2026-09). Poprzednia redakcja twierdziła: „Parametry podawane na
+    BAZIE MASZYNY; przeliczenie na bazę sieci wykonuje ``ZespolSynchroniczny``
+    przez ``BazyMocy`` (jawnie)". Było to FAŁSZYWE w dwóch miejscach naraz:
+    ``ZespolSynchroniczny`` nigdy nie wołał ``BazyMocy`` (w całym laboratorium
+    nie było ANI JEDNEGO wywołania poza testami), a zdanie przeczyło opisowi
+    pola ``h_s`` dwie linijki niżej („NA BAZIE SIECI (już przeliczona)").
+    Deklaracja bez pokrycia w kodzie jest groźniejsza od jej braku, bo wyłącza
+    czujność: czytelnik miał prawo sądzić, że ktoś przelicza za niego.
     """
 
     ref: str
@@ -109,6 +129,46 @@ class MaszynaSynchroniczna4Rzedu:
             raise ValueError(f"{self.ref}: reaktancje przejściowe muszą być > 0")
         if self.xd_pu < self.xd_prim_pu or self.xq_pu < self.xq_prim_pu:
             raise ValueError(f"{self.ref}: reaktancja przejściowa > synchronicznej")
+
+    @classmethod
+    def z_bazy_maszyny(
+        cls,
+        *,
+        ref: str,
+        szyna: str,
+        bazy: BazyMocy,
+        h_s: float,
+        d_tlumienie: float = 0.0,
+        ra_pu: float = 0.0,
+        xd_pu: float = 1.8,
+        xq_pu: float = 1.7,
+        xd_prim_pu: float = 0.3,
+        xq_prim_pu: float = 0.55,
+        td0_prim_s: float = 8.0,
+        tq0_prim_s: float = 0.4,
+    ) -> MaszynaSynchroniczna4Rzedu:
+        """Zbuduj maszynę z parametrów KATALOGOWYCH (baza maszyny), przeliczając je.
+
+        Katalog producenta podaje ``H``, reaktancje i tłumienie na bazie mocy
+        MASZYNY. Ten konstruktor wykonuje przeliczenie jednym wywołaniem
+        `konwencje.BazyMocy`, czyli w miejscu, w którym widać obie bazy naraz —
+        i dzięki temu nie da się go przeoczyć ani wykonać „w połowie".
+
+        Stałe czasowe (``Td0'``, ``Tq0'``) NIE są przeliczane: czas nie ma bazy.
+        """
+        return cls(
+            ref=ref,
+            szyna=szyna,
+            h_s=bazy.bezwladnosc_na_baze_sieci(h_s),
+            d_tlumienie=bazy.tlumienie_na_baze_sieci(d_tlumienie),
+            ra_pu=bazy.impedancja_na_baze_sieci(ra_pu),
+            xd_pu=bazy.impedancja_na_baze_sieci(xd_pu),
+            xq_pu=bazy.impedancja_na_baze_sieci(xq_pu),
+            xd_prim_pu=bazy.impedancja_na_baze_sieci(xd_prim_pu),
+            xq_prim_pu=bazy.impedancja_na_baze_sieci(xq_prim_pu),
+            td0_prim_s=td0_prim_s,
+            tq0_prim_s=tq0_prim_s,
+        )
 
     def nazwy_stanow(self) -> tuple[str, ...]:
         return ("delta_rad", "omega_pu", "e_q_prim_pu", "e_d_prim_pu")
@@ -238,14 +298,14 @@ class ZespolSynchroniczny:
     maszyna: MaszynaSynchroniczna4Rzedu
     avr: RegulatorNapiecia | None = None
     governor: RegulatorTurbiny | None = None
-    _efd_stale: float = pole_artefakt(
+    _efd_stale: float = pole_nastawa(
         default=0.0,
         powod=(
             "wartość wyliczona przez `inicjalizuj` z punktu pracy, nie nastawa modelu "
             "— punkt pracy jest osobną osią tożsamości (TozsamoscScenariusza)"
         ),
     )
-    _pm_stale: float = pole_artefakt(
+    _pm_stale: float = pole_nastawa(
         default=0.0,
         powod=(
             "wartość wyliczona przez `inicjalizuj` z punktu pracy, nie nastawa modelu "
@@ -278,6 +338,25 @@ class ZespolSynchroniczny:
         d_efd = self.avr.pochodna(efd, v_t) if self.avr is not None else 0.0
         d_pm = self.governor.pochodna(pm, omega) if self.governor is not None else 0.0
         return np.array([*d_masz, d_efd, d_pm], dtype=np.float64)
+
+    def ograniczniki_stanu(self, przesuniecie: int) -> tuple[OgraniczenieStanu, ...]:
+        """Niezmienniki dyskretne stanów regulatorów: ``efd_pu`` (4) i ``pm_pu`` (5).
+
+        Granice deklarują SAME regulatory (`RegulatorNapiecia.ogranicznik_stanu`,
+        `RegulatorTurbiny.ogranicznik_stanu`) — zespół podaje im tylko pozycję
+        stanu w wektorze, bo układ wektora jest jego wiedzą. Gdyby liczby
+        powtórzyć tutaj, byłyby drugą prawdą o tym samym ograniczniku.
+
+        Zespół bez regulatora nie deklaruje nic: stan istnieje, ale nie ma
+        urządzenia, które by go ograniczało — ``Efd`` jest wtedy stałą z punktu
+        pracy (``_efd_stale``) i jego pochodna wynosi zero.
+        """
+        ograniczenia: list[OgraniczenieStanu] = []
+        if self.avr is not None:
+            ograniczenia.append(self.avr.ogranicznik_stanu(przesuniecie + 4))
+        if self.governor is not None:
+            ograniczenia.append(self.governor.ogranicznik_stanu(przesuniecie + 5))
+        return tuple(ograniczenia)
 
     def wstrzykniecie(self, x: NDArray[np.float64], v_szyny: complex) -> complex:
         return self.maszyna.wstrzykniecie(x[:4], v_szyny)
@@ -355,11 +434,32 @@ class FalownikGFL:
     s_zn_pu: float = 1.0
     t_p_s: float = 0.05
     t_q_s: float = 0.05
-    p_ref_pu: float = 0.0
-    q_ref_pu: float = 0.0
+    p_ref_pu: float = pole_nastawa(
+        default=0.0,
+        powod=(
+            "moc czynna zadana falownika — wyliczana przez `inicjalizuj` z punktu pracy rozpływu, więc NIE jest "
+            "definicją urządzenia; wchodzi do tożsamości BIEGU jako nastawa punktu "
+            "pracy, nie do tożsamości MODELU"
+        ),
+    )
+    q_ref_pu: float = pole_nastawa(
+        default=0.0,
+        powod=(
+            "moc bierna zadana falownika — wyliczana przez `inicjalizuj` z punktu pracy rozpływu, więc NIE jest "
+            "definicją urządzenia; wchodzi do tożsamości BIEGU jako nastawa punktu "
+            "pracy, nie do tożsamości MODELU"
+        ),
+    )
     k_qu: float = 0.0
     strefa_martwa_u_pu: float = 0.0
-    v_ref_pu: float = 1.0
+    v_ref_pu: float = pole_nastawa(
+        default=1.0,
+        powod=(
+            "napięcie odniesienia statyzmu Q(U) — wyliczana przez `inicjalizuj` z punktu pracy rozpływu, więc NIE jest "
+            "definicją urządzenia; wchodzi do tożsamości BIEGU jako nastawa punktu "
+            "pracy, nie do tożsamości MODELU"
+        ),
+    )
     i_max_pu: float = 1.2
     priorytet_biernej: bool = True
     u_frt_pu: float = 0.85
@@ -409,29 +509,58 @@ class FalownikGFL:
         i_pozostaly = math.sqrt(max(self.i_max_pu**2 - i_q_frt**2, 0.0))
         p_frt = min(self.p_ref_pu, i_pozostaly * v_mod)
         w = self.udzial_frt(v_mod)
-        p_cel = (1.0 - w) * p_norm + w * p_frt
-        q_cel = (1.0 - w) * q_norm + w * q_frt
+        # OGRANICZENIE ŻĄDANIA OKRĘGIEM — ta sama reguła, co w `JednostkaSterowanaPQ`
+        # i `MagazynEnergiiBESS`. Patrz nagłówek klasy: bez niej stan `q_pu` jest
+        # NIEOGRANICZONY, bo statyzm Q(U) rośnie liniowo z odchyłką napięcia.
+        p_cel, q_cel = ogranicz_okregiem(
+            (1.0 - w) * p_norm + w * p_frt,
+            (1.0 - w) * q_norm + w * q_frt,
+            self.s_zn_pu,
+            priorytet_biernej=self.priorytet_biernej,
+        )
         return np.array([(p_cel - p) / self.t_p_s, (q_cel - q) / self.t_q_s], dtype=np.float64)
 
+    def ograniczniki_stanu(self, przesuniecie: int) -> tuple[OgraniczenieStanu, ...]:
+        """Niezmienniki dyskretne stanów ``p_pu`` i ``q_pu``.
+
+        Kwadrat ``[-s_zn, s_zn]^2`` jest zbiorem niezmienniczym przepływu ścisłego,
+        bo cel obu torów przechodzi przez `ogranicz_okregiem` (uzasadnienie tam).
+        """
+        znaczenie = (
+            "moc {0} wystawiana przez falownik [p.u.]: ograniczona mocą pozorną "
+            "modułu (okrąg |S| <= s_zn)"
+        )
+        return (
+            OgraniczenieStanu(
+                indeks=przesuniecie + 0,
+                dol=-self.s_zn_pu,
+                gora=self.s_zn_pu,
+                nazwa="p_pu",
+                znaczenie=znaczenie.format("czynna"),
+            ),
+            OgraniczenieStanu(
+                indeks=przesuniecie + 1,
+                dol=-self.s_zn_pu,
+                gora=self.s_zn_pu,
+                nazwa="q_pu",
+                znaczenie=znaczenie.format("bierna"),
+            ),
+        )
+
     def wstrzykniecie(self, x: NDArray[np.float64], v_szyny: complex) -> complex:
+        """Prąd wstrzykiwany [p.u.], po nasyceniu prądowym przekształtnika.
+
+        Ogranicznik jest WSPÓLNY z modułami OZE (`konwencje.ogranicz_prad`).
+        Wcześniej ta sama reguła istniała tutaj i w `urzadzenia_oze` jako dwie
+        niezależne kopie, a ich zgodności pilnował test — czyli dwie ścieżki tej
+        samej fizyki. Teraz jest jedna.
+        """
         v_mod = abs(v_szyny)
         if v_mod < 1.0e-6:
             return 0j
         p, q = float(x[0]), float(x[1])
-        i = np.conj(complex(p, q) / v_szyny)
-        modul = abs(i)
-        if modul <= self.i_max_pu or modul < 1.0e-12:
-            return complex(i)
-        # Nasycenie prądowe: skalowanie z priorytetem składowej biernej.
-        if not self.priorytet_biernej:
-            return complex(i * (self.i_max_pu / modul))
-        faza_v = v_szyny / v_mod
-        i_wzgl = i / faza_v
-        i_czynna, i_bierna = i_wzgl.real, i_wzgl.imag
-        i_bierna_ogr = max(min(i_bierna, self.i_max_pu), -self.i_max_pu)
-        zapas = math.sqrt(max(self.i_max_pu**2 - i_bierna_ogr**2, 0.0))
-        i_czynna_ogr = max(min(i_czynna, zapas), -zapas)
-        return complex(complex(i_czynna_ogr, i_bierna_ogr) * faza_v)
+        i = complex(np.conj(complex(p, q) / v_szyny))
+        return ogranicz_prad(i, v_szyny, self.i_max_pu, priorytet_biernej=self.priorytet_biernej)
 
     def inicjalizuj(self, v_szyny: complex, s_zadane: complex) -> NDArray[np.float64]:
         self.p_ref_pu = s_zadane.real
@@ -815,9 +944,30 @@ class FalownikGFM:
     h_wirtualna_s: float = 4.0
     d_p: float = 20.0
     t_f_s: float = 0.02
-    p_ref_pu: float = 0.0
-    q_ref_pu: float = 0.0
-    e_ref_pu: float = 1.0
+    p_ref_pu: float = pole_nastawa(
+        default=0.0,
+        powod=(
+            "moc czynna zadana falownika GFM — wyliczana przez `inicjalizuj` z punktu pracy rozpływu, więc NIE jest "
+            "definicją urządzenia; wchodzi do tożsamości BIEGU jako nastawa punktu "
+            "pracy, nie do tożsamości MODELU"
+        ),
+    )
+    q_ref_pu: float = pole_nastawa(
+        default=0.0,
+        powod=(
+            "moc bierna zadana falownika GFM — wyliczana przez `inicjalizuj` z punktu pracy rozpływu, więc NIE jest "
+            "definicją urządzenia; wchodzi do tożsamości BIEGU jako nastawa punktu "
+            "pracy, nie do tożsamości MODELU"
+        ),
+    )
+    e_ref_pu: float = pole_nastawa(
+        default=1.0,
+        powod=(
+            "moduł SEM za impedancją wirtualną — wyliczana przez `inicjalizuj` z punktu pracy rozpływu, więc NIE jest "
+            "definicją urządzenia; wchodzi do tożsamości BIEGU jako nastawa punktu "
+            "pracy, nie do tożsamości MODELU"
+        ),
+    )
     k_qv: float = 0.05
     r_wirtualna_pu: float = 0.01
     x_wirtualna_pu: float = 0.15

@@ -294,23 +294,52 @@ def test_odcisk_niesie_KLASE_obiektu() -> None:
 
 
 def test_inwentarz_pominiec_w_laboratorium_jest_ZAMKNIETY() -> None:
-    """Spis pól wyłączonych z tożsamości — lista ZAMKNIĘTA, pilnowana testem.
+    """Spis pól wyłączonych z tożsamości MODELU — lista ZAMKNIĘTA, pilnowana testem.
 
     Nowe wyłączenie musi być świadome: jeżeli ten test zaświeci, ktoś właśnie
     wyprowadził pole poza tożsamość modelu. Każde wyłączenie ma tu powód i musi
     dać się obronić — deklaracja bez przypiętego sprawdzenia byłaby obietnicą,
     nie mechanizmem.
+
+    AKTUALIZACJA (§5 audytu rundy 3, 2026-09-11): doszła trzecia rola,
+    ``NASTAWA_PUNKTU_PRACY``, i to jest zmiana KANONU, nie rozluźnienie listy.
+    Nastawa (``V_ref`` wzbudnicy, ``P_zadane`` elektrowni, ``E_ref`` falownika)
+    jest wyliczana przez ``inicjalizuj`` z rozpływu, więc wpisana do tożsamości
+    MODELU sprawiała, że sama czynność uruchomienia zmieniała model — zmierzone
+    przed naprawą: 5 z 6 klas urządzeń zmieniało swój odcisk po ``inicjalizuj``.
+
+    Wyłączenie nastawy z modelu NIE jest jej zniknięciem: ta sama deklaracja
+    przy polu wprowadza ją do tożsamości BIEGU (`silnik` czyta wartości
+    OBOWIĄZUJĄCE w chwili startu). Rozróżnienie ról jest więc tu sprawdzane
+    ŁĄCZNIE z rolą — pole przeniesione z ``NASTAWA_PUNKTU_PRACY`` na ``ARTEFAKT``
+    zaświeci ten test, bo wypadłoby wtedy z OBU tożsamości.
     """
     oczekiwane = {
-        ("ZespolSynchroniczny", "_efd_stale", RolaPola.ARTEFAKT),
-        ("ZespolSynchroniczny", "_pm_stale", RolaPola.ARTEFAKT),
+        # ARTEFAKT — stan chwilowy albo pole robocze: poza modelem i poza biegiem,
+        # bo stan jest już opisany wektorem `x0`.
         ("FalownikGFM", "tozsamosc_ogranicznika", RolaPola.ARTEFAKT),
         ("OdbiorStalejMocy", "_stan", RolaPola.ARTEFAKT),
+        # OPIS — etykieta dla człowieka, nie wchodzi do żadnego równania.
         ("KandydatOgraniczeniaImpedancjaWirtualna", "nazwa", RolaPola.OPIS),
         ("KandydatOgraniczeniaNasycenieZadania", "nazwa", RolaPola.OPIS),
-        ("MaszynaDwustronnieZasilana3Rzedu", "_v_r0", RolaPola.ARTEFAKT),
-        ("MaszynaDwustronnieZasilana3Rzedu", "_i_r_zadane", RolaPola.ARTEFAKT),
-        ("MaszynaDwustronnieZasilana3Rzedu", "_t_m", RolaPola.ARTEFAKT),
+        # NASTAWA_PUNKTU_PRACY — wyliczana z rozpływu: poza modelem, W BIEGU.
+        ("ZespolSynchroniczny", "_efd_stale", RolaPola.NASTAWA_PUNKTU_PRACY),
+        ("ZespolSynchroniczny", "_pm_stale", RolaPola.NASTAWA_PUNKTU_PRACY),
+        ("RegulatorNapiecia", "v_ref_pu", RolaPola.NASTAWA_PUNKTU_PRACY),
+        ("RegulatorTurbiny", "p_ref_pu", RolaPola.NASTAWA_PUNKTU_PRACY),
+        ("FalownikGFL", "p_ref_pu", RolaPola.NASTAWA_PUNKTU_PRACY),
+        ("FalownikGFL", "q_ref_pu", RolaPola.NASTAWA_PUNKTU_PRACY),
+        ("FalownikGFL", "v_ref_pu", RolaPola.NASTAWA_PUNKTU_PRACY),
+        ("FalownikGFM", "p_ref_pu", RolaPola.NASTAWA_PUNKTU_PRACY),
+        ("FalownikGFM", "q_ref_pu", RolaPola.NASTAWA_PUNKTU_PRACY),
+        ("FalownikGFM", "e_ref_pu", RolaPola.NASTAWA_PUNKTU_PRACY),
+        ("MagazynEnergiiBESS", "p_ref_pu", RolaPola.NASTAWA_PUNKTU_PRACY),
+        ("MagazynEnergiiBESS", "q_ref_pu", RolaPola.NASTAWA_PUNKTU_PRACY),
+        ("RegulatorElektrowniPPC", "p_zadane_pu", RolaPola.NASTAWA_PUNKTU_PRACY),
+        ("RegulatorElektrowniPPC", "q_zadane_pu", RolaPola.NASTAWA_PUNKTU_PRACY),
+        ("MaszynaDwustronnieZasilana3Rzedu", "_v_r0", RolaPola.NASTAWA_PUNKTU_PRACY),
+        ("MaszynaDwustronnieZasilana3Rzedu", "_i_r_zadane", RolaPola.NASTAWA_PUNKTU_PRACY),
+        ("MaszynaDwustronnieZasilana3Rzedu", "_t_m", RolaPola.NASTAWA_PUNKTU_PRACY),
     }
     import dynamic_lab.regulatory as modul_regulatory
     import dynamic_lab.siec as modul_siec

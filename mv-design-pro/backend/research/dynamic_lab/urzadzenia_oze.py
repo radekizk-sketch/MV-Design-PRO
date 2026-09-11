@@ -39,81 +39,17 @@ from typing import ClassVar, Protocol
 import numpy as np
 from numpy.typing import NDArray
 
-from dynamic_lab.konwencje import F_BAZOWA_HZ, OMEGA_S
+from dynamic_lab.calkowanie import OgraniczenieStanu
+from dynamic_lab.konwencje import (
+    F_BAZOWA_HZ,
+    OMEGA_S,
+    PROG_NAPIECIA_PU,
+    ogranicz_do_przedzialu,
+    ogranicz_okregiem,
+    ogranicz_prad,
+)
 from dynamic_lab.siec import Bocznik, TopologiaSieci
-from dynamic_lab.tozsamosc import pole_artefakt
-
-#: Poniżej tego napięcia rozkład prądu na składową czynną/bierną traci sens
-#: (faza napięcia jest nieokreślona) — patrz `_ogranicz_prad`.
-PROG_NAPIECIA_PU = 1.0e-9
-
-
-def _ogranicz(wartosc: float, dol: float, gora: float) -> float:
-    if dol > gora:
-        raise ValueError(f"Pusty przedział ograniczenia: [{dol}, {gora}]")
-    return max(dol, min(gora, wartosc))
-
-
-def ogranicz_okregiem(
-    p_pu: float, q_pu: float, s_max_pu: float, *, priorytet_biernej: bool
-) -> tuple[float, float]:
-    """Ogranicz zadanie ``(P, Q)`` do OKRĘGU ``|S| <= s_max_pu``.
-
-    DLACZEGO OKRĄG, A NIE PROSTOKĄT (decyzja, nie gust). Granicą falownika jest
-    prąd zaworów, a ``|I| = |S| / |U|`` — czyli ograniczenie jest z natury na
-    MODULE mocy pozornej. Prostokąt (``|P| <= S`` i ``|Q| <= S`` niezależnie)
-    dopuszcza punkt ``P = Q = S``, w którym ``|S| = √2 · s_max``: 41 % przeciążenia
-    prądowego. To nie byłoby „konserwatywne uproszczenie", tylko przekroczenie
-    granicy termicznej zapisane w modelu — czyli wynik dowodzący zdolności,
-    której urządzenie nie ma.
-
-    ``priorytet_biernej`` rozstrzyga, która składowa ustępuje przy nasyceniu.
-    """
-    if s_max_pu <= 0.0:
-        raise ValueError("s_max_pu musi być > 0")
-    if math.hypot(p_pu, q_pu) <= s_max_pu:
-        return p_pu, q_pu
-    if priorytet_biernej:
-        q_ogr = _ogranicz(q_pu, -s_max_pu, s_max_pu)
-        zapas = math.sqrt(max(s_max_pu**2 - q_ogr**2, 0.0))
-        return _ogranicz(p_pu, -zapas, zapas), q_ogr
-    p_ogr = _ogranicz(p_pu, -s_max_pu, s_max_pu)
-    zapas = math.sqrt(max(s_max_pu**2 - p_ogr**2, 0.0))
-    return p_ogr, _ogranicz(q_pu, -zapas, zapas)
-
-
-def _ogranicz_prad(
-    i_zadany: complex, v_szyny: complex, i_max_pu: float, *, priorytet_biernej: bool
-) -> complex:
-    """Ogranicz moduł prądu falownika, z priorytetem zadeklarowanej składowej.
-
-    Rozkład na składową czynną i bierną liczony jest WZGLĘDEM FAZY NAPIĘCIA szyny
-    — ta sama konwencja co w `urzadzenia.FalownikGFL`; oba ograniczniki opisują tę
-    samą fizykę i muszą dawać ten sam wynik dla tych samych danych (pinuje to test
-    `test_ogranicznik_pradu_zgadza_sie_z_ogranicznikiem_falownika_gfl`).
-
-    Przy zaniku napięcia faza jest nieokreślona — wtedy skalowany jest cały wektor,
-    bo rozkład na składowe nie ma odniesienia.
-    """
-    if i_max_pu <= 0.0:
-        raise ValueError("i_max_pu musi być > 0")
-    modul = abs(i_zadany)
-    if modul <= i_max_pu or modul < 1.0e-12:
-        return i_zadany
-    v_mod = abs(v_szyny)
-    if v_mod < PROG_NAPIECIA_PU:
-        return i_zadany * (i_max_pu / modul)
-    faza = v_szyny / v_mod
-    wzgledny = i_zadany / faza
-    if priorytet_biernej:
-        i_bierny = _ogranicz(wzgledny.imag, -i_max_pu, i_max_pu)
-        zapas = math.sqrt(max(i_max_pu**2 - i_bierny**2, 0.0))
-        i_czynny = _ogranicz(wzgledny.real, -zapas, zapas)
-    else:
-        i_czynny = _ogranicz(wzgledny.real, -i_max_pu, i_max_pu)
-        zapas = math.sqrt(max(i_max_pu**2 - i_czynny**2, 0.0))
-        i_bierny = _ogranicz(wzgledny.imag, -zapas, zapas)
-    return complex(complex(i_czynny, i_bierny) * faza)
+from dynamic_lab.tozsamosc import pole_nastawa
 
 
 def _sprawdz_wykonalnosc_punktu_pracy(
@@ -342,11 +278,40 @@ class JednostkaSterowanaPQ:
         p, q = float(x[0]), float(x[1])
         return np.array([(p_cel - p) / self.t_p_s, (q_cel - q) / self.t_q_s], dtype=np.float64)
 
+    def ograniczniki_stanu(self, przesuniecie: int) -> tuple[OgraniczenieStanu, ...]:
+        """Niezmienniki dyskretne stanów ``p_wyjscia_pu`` (0) i ``q_wyjscia_pu`` (1).
+
+        Kwadrat ``[-s_zn, s_zn]^2`` jest zbiorem niezmienniczym przepływu ścisłego,
+        bo cel obu torów przechodzi przez `ogranicz_okregiem` (uzasadnienie tam).
+        """
+        return (
+            OgraniczenieStanu(
+                indeks=przesuniecie + 0,
+                dol=-self.s_zn_pu,
+                gora=self.s_zn_pu,
+                nazwa="p_wyjscia_pu",
+                znaczenie=(
+                    "moc czynna wystawiana przez moduł przekształtnikowy [p.u.]: "
+                    "ograniczona mocą pozorną modułu (okrąg |S| <= s_zn_pu)"
+                ),
+            ),
+            OgraniczenieStanu(
+                indeks=przesuniecie + 1,
+                dol=-self.s_zn_pu,
+                gora=self.s_zn_pu,
+                nazwa="q_wyjscia_pu",
+                znaczenie=(
+                    "moc bierna wystawiana przez moduł przekształtnikowy [p.u.]: "
+                    "ograniczona mocą pozorną modułu (okrąg |S| <= s_zn_pu)"
+                ),
+            ),
+        )
+
     def wstrzykniecie(self, x: NDArray[np.float64], v_szyny: complex) -> complex:
         if abs(v_szyny) < PROG_NAPIECIA_PU:
             return 0j
         i = complex(np.conj(complex(float(x[0]), float(x[1])) / v_szyny))
-        return _ogranicz_prad(i, v_szyny, self.i_max_pu, priorytet_biernej=self.priorytet_biernej)
+        return ogranicz_prad(i, v_szyny, self.i_max_pu, priorytet_biernej=self.priorytet_biernej)
 
     def inicjalizuj(self, v_szyny: complex, s_zadane: complex) -> NDArray[np.float64]:
         p0, q0 = ogranicz_okregiem(
@@ -370,11 +335,18 @@ class MagazynEnergiiBESS:
     NAZWY STANÓW SĄ ROZŁĄCZNE Z KLUCZAMI PRZEBIEGÓW — i to nie jest kosmetyka.
     `SilnikRMS._zapisz_probki` zapisuje pod kluczem ``p_pu@ref`` moc FAKTYCZNIE
     wstrzykniętą, a osobno każdy stan pod jego własną nazwą. Model, którego stan
-    nazywa się ``p_pu`` (tak ma `urzadzenia.FalownikGFL`), dostaje więc DWIE próbki
-    na krok pod tym samym kluczem: przebieg jest dwa razy dłuższy od osi czasu i
-    miesza dwie RÓŻNE wielkości — moc zadaną i moc oddaną, które przy nasyceniu
+    nazywa się ``p_pu`` (tak ma `urzadzenia.FalownikGFL`), wysyła więc do zbieracza
+    DWIE wielkości o tej samej nazwie: moc zadaną i moc oddaną, które przy nasyceniu
     prądowym się rozjeżdżają. Tutaj stan nazywa się inaczej, więc ``p_pu@ref`` jest
-    jednoznacznie mocą oddaną. Naprawa samego zbieracza należy do `silnik.py`.
+    jednoznacznie mocą oddaną.
+
+    AKTUALIZACJA (pakiet B audytu): zbieracz został naprawiony —
+    `wynik.ZbieraczPrzebiegow` kluczuje na TRÓJCE ``(przestrzeń, klucz, ref)``
+    i odrzuca kolizję (`KolizjaSygnaluError`) zamiast mieszać serie. Rozłączne
+    nazwy stanów pozostają dobrą praktyką (czytelność `state.p_pu` vs
+    `output.p_pu`), ale nie są już JEDYNĄ ochroną. Poprzednia redakcja tego
+    akapitu kończyła się zdaniem „Naprawa samego zbieracza należy do `silnik.py`"
+    — było prawdziwe, gdy je pisano, i przestało być po naprawie.
 
     RÓWNANIA
         f_zmierzona = F_BAZOWA_HZ * omega_pll            (wyjście CAŁKUJĄCE PLL)
@@ -456,8 +428,22 @@ class MagazynEnergiiBESS:
     """Domyślnie priorytet MOCY CZYNNEJ: usługą magazynu jest energia. Wartość jest
     STAŁA — model nie ma trybu FRT przełączającego priorytet przy zapadzie."""
     pll: PetlaSynchronizacjiPLL = field(default_factory=PetlaSynchronizacjiPLL)
-    p_ref_pu: float = 0.0
-    q_ref_pu: float = 0.0
+    p_ref_pu: float = pole_nastawa(
+        default=0.0,
+        powod=(
+            "moc czynna zadana magazynu — wyliczana przez `inicjalizuj` z punktu pracy rozpływu, więc NIE jest "
+            "definicją urządzenia; wchodzi do tożsamości BIEGU jako nastawa punktu "
+            "pracy, nie do tożsamości MODELU"
+        ),
+    )
+    q_ref_pu: float = pole_nastawa(
+        default=0.0,
+        powod=(
+            "moc bierna zadana magazynu — wyliczana przez `inicjalizuj` z punktu pracy rozpływu, więc NIE jest "
+            "definicją urządzenia; wchodzi do tożsamości BIEGU jako nastawa punktu "
+            "pracy, nie do tożsamości MODELU"
+        ),
+    )
 
     def __post_init__(self) -> None:
         if self.e_pojemnosc_mwh <= 0.0:
@@ -536,8 +522,8 @@ class MagazynEnergiiBESS:
     def dostepnosc_energii(self, soc: float) -> tuple[float, float]:
         """``(dostępność rozładowania, dostępność ładowania)`` w [0, 1]."""
         return (
-            _ogranicz((soc - self.soc_min) / self.pasmo_soc, 0.0, 1.0),
-            _ogranicz((self.soc_max - soc) / self.pasmo_soc, 0.0, 1.0),
+            ogranicz_do_przedzialu((soc - self.soc_min) / self.pasmo_soc, 0.0, 1.0),
+            ogranicz_do_przedzialu((self.soc_max - soc) / self.pasmo_soc, 0.0, 1.0),
         )
 
     def cel_mocy(
@@ -553,11 +539,60 @@ class MagazynEnergiiBESS:
 
     # -- kontrakt urządzenia --------------------------------------------------
 
+    def ograniczniki_stanu(self, przesuniecie: int) -> tuple[OgraniczenieStanu, ...]:
+        """Niezmienniki dyskretne: ``p_wyjscia_pu`` (0), ``q_wyjscia_pu`` (1), ``soc`` (2).
+
+        TOR P/Q — kwadrat ``[-s_falownika, s_falownika]^2``, bo cel obu torów
+        przechodzi przez `ogranicz_okregiem` (uzasadnienie niezmienniczości tam).
+
+        SOC — przedział ``[0, 1]`` jest DEFINICJĄ stanu naładowania, nie nastawą:
+        ``soc`` poza nim nie jest „poza zakresem regulacji", tylko wielkością
+        niefizyczną. Okno pracy ``[soc_min, soc_max]`` celowo NIE jest tu
+        deklarowane: przy dostępności energii gasnącej dopiero na granicy okna,
+        a mocy zmieniającej się z opóźnieniem ``T_p``, przepływ ścisły przekracza
+        ``soc_min`` o ``P·T_p·S_base/(3600·E)`` — dla 1 p.u., 100 MVA, 0,05 s
+        i 10 MWh jest to 1,4e-4. Okno nie jest więc zbiorem niezmienniczym
+        przepływu ścisłego i rzutowanie na nie dokładałoby fizykę, której model
+        nie ma. Przedział ``[0, 1]`` jest niezmienniczy z tym samym marginesem.
+        """
+        return (
+            OgraniczenieStanu(
+                indeks=przesuniecie + 0,
+                dol=-self.s_falownika_pu,
+                gora=self.s_falownika_pu,
+                nazwa="p_wyjscia_pu",
+                znaczenie=(
+                    "moc czynna wystawiana przez falownik magazynu [p.u.]: ograniczona "
+                    "mocą pozorną falownika (okrąg |S| <= s_falownika_pu)"
+                ),
+            ),
+            OgraniczenieStanu(
+                indeks=przesuniecie + 1,
+                dol=-self.s_falownika_pu,
+                gora=self.s_falownika_pu,
+                nazwa="q_wyjscia_pu",
+                znaczenie=(
+                    "moc bierna wystawiana przez falownik magazynu [p.u.]: ograniczona "
+                    "mocą pozorną falownika (okrąg |S| <= s_falownika_pu)"
+                ),
+            ),
+            OgraniczenieStanu(
+                indeks=przesuniecie + 2,
+                dol=0.0,
+                gora=1.0,
+                nazwa="soc",
+                znaczenie=(
+                    "stan naładowania [1]: udział zgromadzonej energii w pojemności "
+                    "magazynu — wielkość z definicji zawarta w [0, 1]"
+                ),
+            ),
+        )
+
     def wstrzykniecie(self, x: NDArray[np.float64], v_szyny: complex) -> complex:
         if abs(v_szyny) < PROG_NAPIECIA_PU:
             return 0j
         i = complex(np.conj(complex(float(x[0]), float(x[1])) / v_szyny))
-        return _ogranicz_prad(i, v_szyny, self.i_max_pu, priorytet_biernej=self.priorytet_biernej)
+        return ogranicz_prad(i, v_szyny, self.i_max_pu, priorytet_biernej=self.priorytet_biernej)
 
     def moc_rzeczywista(self, x: NDArray[np.float64], v_szyny: complex) -> complex:
         """Moc faktycznie oddana do sieci — PO ograniczniku prądowym."""
@@ -678,8 +713,22 @@ class RegulatorElektrowniPPC:
     t_telemetrii_s: float = 0.3
     strategia: str = "proporcjonalna"
     limit_eksportu_pu: float | None = None
-    p_zadane_pu: float = 0.0
-    q_zadane_pu: float = 0.0
+    p_zadane_pu: float = pole_nastawa(
+        default=0.0,
+        powod=(
+            "polecenie mocy czynnej elektrowni — wyliczana przez `inicjalizuj` z punktu pracy rozpływu, więc NIE jest "
+            "definicją urządzenia; wchodzi do tożsamości BIEGU jako nastawa punktu "
+            "pracy, nie do tożsamości MODELU"
+        ),
+    )
+    q_zadane_pu: float = pole_nastawa(
+        default=0.0,
+        powod=(
+            "polecenie mocy biernej elektrowni — wyliczana przez `inicjalizuj` z punktu pracy rozpływu, więc NIE jest "
+            "definicją urządzenia; wchodzi do tożsamości BIEGU jako nastawa punktu "
+            "pracy, nie do tożsamości MODELU"
+        ),
+    )
 
     STRATEGIE: ClassVar[tuple[str, ...]] = ("proporcjonalna", "priorytetowa")
 
@@ -754,8 +803,8 @@ class RegulatorElektrowniPPC:
         jest eksportem i nie może być nim ograniczany.
         """
         zdolnosc = self.moc_zainstalowana_pu
-        p_cel = _ogranicz(self.p_zadane_pu, -zdolnosc, zdolnosc)
-        q_cel = _ogranicz(self.q_zadane_pu, -zdolnosc, zdolnosc)
+        p_cel = ogranicz_do_przedzialu(self.p_zadane_pu, -zdolnosc, zdolnosc)
+        q_cel = ogranicz_do_przedzialu(self.q_zadane_pu, -zdolnosc, zdolnosc)
         if self.limit_eksportu_pu is not None:
             p_cel = min(p_cel, self.limit_eksportu_pu)
         return p_cel, q_cel
@@ -800,6 +849,52 @@ class RegulatorElektrowniPPC:
                 x[wycinek], v_szyny, p_zadane_pu=p_zad, q_zadane_pu=q_zad
             )
         return dx
+
+    def ograniczniki_stanu(self, przesuniecie: int) -> tuple[OgraniczenieStanu, ...]:
+        """Niezmienniki dyskretne: polecenia elektrowni + PROPAGACJA z modułów.
+
+        Regulator nie kopiuje granic swoich modułów — pyta o nie te moduły, z ich
+        własnym przesunięciem w wektorze (`_wycinki`). Dzięki temu dołożenie
+        magazynu do elektrowni od razu wnosi jego okno SOC, bez dopisywania
+        czegokolwiek tutaj.
+
+        Granice POLECEŃ biorą się z `cel_plantu`: zadanie jest ograniczane mocą
+        zainstalowaną, a dla kierunku eksportu dodatkowo ``limit_eksportu_pu``.
+        Górna granica ``p_polecenie_pu`` jest więc mniejsza z tych dwóch — jedno
+        źródło prawdy z `cel_plantu`, nie druga redakcja tej samej reguły.
+        """
+        zdolnosc = self.moc_zainstalowana_pu
+        gora_p = (
+            zdolnosc if self.limit_eksportu_pu is None else min(zdolnosc, self.limit_eksportu_pu)
+        )
+        ograniczenia: list[OgraniczenieStanu] = [
+            OgraniczenieStanu(
+                indeks=przesuniecie + 0,
+                dol=-zdolnosc,
+                gora=gora_p,
+                nazwa="p_polecenie_pu",
+                znaczenie=(
+                    "polecenie mocy czynnej elektrowni [p.u.]: ograniczone mocą "
+                    "zainstalowaną, a w kierunku eksportu także limitem eksportu"
+                ),
+            ),
+            OgraniczenieStanu(
+                indeks=przesuniecie + 1,
+                dol=-zdolnosc,
+                gora=zdolnosc,
+                nazwa="q_polecenie_pu",
+                znaczenie=(
+                    "polecenie mocy biernej elektrowni [p.u.]: ograniczone mocą "
+                    "zainstalowaną elektrowni"
+                ),
+            ),
+        ]
+        for jednostka, wycinek in zip(self.jednostki, self._wycinki(), strict=True):
+            deklaracja = getattr(jednostka, "ograniczniki_stanu", None)
+            if deklaracja is None:
+                continue
+            ograniczenia.extend(deklaracja(przesuniecie + wycinek.start))
+        return tuple(ograniczenia)
 
     def wstrzykniecie(self, x: NDArray[np.float64], v_szyny: complex) -> complex:
         prad = 0j
@@ -934,7 +1029,7 @@ class MaszynaDwustronnieZasilana3Rzedu:
     u_wirnika_max_pu: float = 0.35
     """Napięciowa granica przekształtnika częściowej mocy (~|poślizg|·U)."""
     i_wirnika_max_pu: float = 1.2
-    _v_r0: complex = pole_artefakt(
+    _v_r0: complex = pole_nastawa(
         default=0j,
         repr=False,
         powod=(
@@ -943,7 +1038,7 @@ class MaszynaDwustronnieZasilana3Rzedu:
             "(TozsamoscScenariusza)"
         ),
     )
-    _i_r_zadane: complex = pole_artefakt(
+    _i_r_zadane: complex = pole_nastawa(
         default=0j,
         repr=False,
         powod=(
@@ -952,7 +1047,7 @@ class MaszynaDwustronnieZasilana3Rzedu:
             "(TozsamoscScenariusza)"
         ),
     )
-    _t_m: float = pole_artefakt(
+    _t_m: float = pole_nastawa(
         default=0.0,
         repr=False,
         powod=(

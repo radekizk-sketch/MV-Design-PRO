@@ -65,6 +65,7 @@ from __future__ import annotations
 import dataclasses
 import hashlib
 import json
+import pathlib
 from collections.abc import Mapping, Sequence
 from enum import Enum, StrEnum
 from typing import TYPE_CHECKING, Any
@@ -84,7 +85,28 @@ class RolaPola(StrEnum):
 
     PARAMETR_FIZYCZNY = "parametr_fizyczny"
     ARTEFAKT = "artefakt"
-    """Stan chwilowy, wartość wyliczona w trakcie biegu, pole wyprowadzone."""
+    """Stan chwilowy albo pole robocze — poza tożsamością MODELU i poza tożsamością BIEGU.
+
+    Stan chwilowy jest już opisany wektorem ``x0``, więc wpisanie go drugi raz do
+    tożsamości biegu byłoby liczeniem tej samej wielkości dwa razy."""
+    NASTAWA_PUNKTU_PRACY = "nastawa_punktu_pracy"
+    """Nastawa WYPROWADZONA Z PUNKTU PRACY — poza tożsamością MODELU, ale W tożsamości BIEGU.
+
+    DLACZEGO TO JEST OSOBNA ROLA, A NIE ARTEFAKT. Nastawa (``V_ref`` wzbudnicy,
+    ``P_ref`` falownika, ``P_zadane`` elektrowni) nie jest definicją urządzenia:
+    ten sam generator pracuje raz przy ``V_ref = 1,00``, raz przy ``1,02``, a
+    ``inicjalizuj`` wylicza ją z rozpływu. Wpisana do tożsamości MODELU sprawia,
+    że inicjalizacja ZMIENIA model (zmierzone: 5 z 6 klas urządzeń zmieniało swój
+    odcisk po ``inicjalizuj``).
+
+    Ale nastawa ZMIENIA WYNIK, więc musi być w tożsamości BIEGU — i to nie
+    wartością zapamiętaną przy inicjalizacji, tylko OBOWIĄZUJĄCĄ w chwili startu
+    symulacji. Scenariusz „limit eksportu zaczyna wiązać" zmienia
+    ``RegulatorElektrowniPPC.p_zadane_pu`` PO inicjalizacji; gdyby nastawa
+    wypadła z obu tożsamości, dwa fizycznie różne biegi miałyby ten sam odcisk.
+
+    PREDYKATY PARAMI: jedna deklaracja przy polu decyduje o OBU skutkach naraz —
+    wypadnięciu z modelu i wejściu do biegu. Nie da się mieć jednego bez drugiego."""
     OPIS = "opis"
     """Etykieta czytana przez człowieka — nie wpływa na żadne równanie."""
 
@@ -140,6 +162,18 @@ def pole_artefakt(
     return _pole(RolaPola.ARTEFAKT, powod, default, default_factory, init, repr)
 
 
+def pole_nastawa(
+    *,
+    powod: str,
+    default: Any = dataclasses.MISSING,
+    default_factory: Any = dataclasses.MISSING,
+    init: bool = True,
+    repr: bool = True,  # noqa: A002 - zgodność nazwy z `dataclasses.field`
+) -> Any:
+    """Zadeklaruj pole jako NASTAWĘ PUNKTU PRACY: poza modelem, w tożsamości biegu."""
+    return _pole(RolaPola.NASTAWA_PUNKTU_PRACY, powod, default, default_factory, init, repr)
+
+
 def pole_opisowe(
     *,
     powod: str,
@@ -171,6 +205,57 @@ def spis_pominietych(typ: type) -> tuple[tuple[str, RolaPola, str], ...]:
         for p in dataclasses.fields(typ)
         if rola_pola(p) is not RolaPola.PARAMETR_FIZYCZNY
     )
+
+
+def nastawy_punktu_pracy(obiekt: Any) -> dict[str, Any]:
+    """Nastawy punktu pracy OBOWIĄZUJĄCE TERAZ, ze ścieżką pola jako kluczem.
+
+    Schodzi rekurencyjnie po dataklasach i sekwencjach, więc sięga po nastawy
+    zagnieżdżone (``avr.v_ref_pu`` zespołu wytwórczego, ``jednostki[0].p_ref_pu``
+    elektrowni) bez wymieniania ich nigdzie z nazwy. Nowy model z nastawą wnosi ją
+    samą deklaracją pola — nie ma listy, o którą można zapomnieć.
+
+    Wartości są w postaci kanonicznej, więc nadają się wprost do odcisku.
+    """
+    zebrane: dict[str, Any] = {}
+    _zbierz_nastawy(obiekt, "", zebrane, [])
+    return dict(sorted(zebrane.items()))
+
+
+def _zbierz_nastawy(wartosc: Any, prefiks: str, cel: dict[str, Any], stos: list[int]) -> None:
+    if wartosc is None or isinstance(wartosc, bool | int | float | str | complex | Enum):
+        return
+    identyfikator = id(wartosc)
+    if identyfikator in stos:
+        raise CyklicznaStrukturaError(
+            f"Cykl w strukturze nastaw na {prefiks or '<korzeń>'} — odcisk nie istnieje."
+        )
+    stos.append(identyfikator)
+    try:
+        if dataclasses.is_dataclass(wartosc) and not isinstance(wartosc, type):
+            for pole in dataclasses.fields(wartosc):
+                sciezka = f"{prefiks}{pole.name}"
+                podwartosc = getattr(wartosc, pole.name)
+                rola = rola_pola(pole)
+                if rola is RolaPola.NASTAWA_PUNKTU_PRACY:
+                    cel[sciezka] = postac_kanoniczna(podwartosc)
+                    continue
+                if rola is not RolaPola.PARAMETR_FIZYCZNY:
+                    # ARTEFAKT i OPIS nie wchodzą do tożsamości biegu ani nie mogą
+                    # ukryć nastawy w środku: stan chwilowy nie jest strukturą modelu.
+                    continue
+                _zbierz_nastawy(podwartosc, f"{sciezka}.", cel, stos)
+            return
+        if isinstance(wartosc, Mapping):
+            for klucz, podwartosc in wartosc.items():
+                _zbierz_nastawy(podwartosc, f"{prefiks}[{_tekst(_kanon(klucz, []))}].", cel, stos)
+            return
+        if isinstance(wartosc, Sequence) and not isinstance(wartosc, str | bytes | bytearray):
+            for nr, podwartosc in enumerate(wartosc):
+                _zbierz_nastawy(podwartosc, f"{prefiks}[{nr}].", cel, stos)
+            return
+    finally:
+        stos.pop()
 
 
 def postac_kanoniczna(obiekt: Any) -> Any:
@@ -222,7 +307,8 @@ def _kanon(wartosc: Any, stos: list[int]) -> Any:
         f"Wartość typu {_nazwa_typu(type(wartosc))} nie ma postaci kanonicznej. "
         "Jeżeli to parametr fizyczny — rozszerz `postac_kanoniczna`. Jeżeli to stan "
         "chwilowy, wartość wyliczana albo etykieta — zadeklaruj pole przez "
-        "`pole_artefakt(...)` / `pole_opisowe(...)` z powodem. Ciche pominięcie "
+        "`pole_artefakt(...)` / `pole_nastawa(...)` / `pole_opisowe(...)` z powodem. "
+        "Ciche pominięcie "
         "jest zakazane, bo czyni odciski fałszywie zgodnymi."
     )
 
@@ -273,6 +359,15 @@ class KonfiguracjaSolvera:
     tolerancja_rownowagi: float
     maks_iteracji_sieci: int
     probkowanie_co: int = 1
+    dopuszczaj_zastoj: bool = False
+    """Czy bieg wolno było kontynuować po zatrzymaniu Newtona na podłodze numerycznej.
+
+    To jest NASTAWA SOLVERA zmieniająca wynik, więc należy do tożsamości biegu:
+    ten sam model, ten sam krok i ten sam harmonogram policzone raz z ``False``
+    i raz z ``True`` mogą dać różne trajektorie (w pierwszym wypadku bieg kończy
+    się wyjątkiem, w drugim — kontynuuje z residuum powyżej progu). Odcisk, który
+    tego nie rozróżnia, pozwala podstawić bieg tolerancyjny pod dowód o
+    tolerancji ścisłej."""
 
     def __post_init__(self) -> None:
         if self.krok_s <= 0.0:
@@ -357,3 +452,54 @@ def odcisk_topologii(topologia: TopologiaSieci, *, s_bazowa_mva: float) -> str:
     if s_bazowa_mva <= 0.0:
         raise ValueError("s_bazowa_mva musi być > 0")
     return odcisk({"topologia": topologia, "s_bazowa_mva": s_bazowa_mva})
+
+
+# ---------------------------------------------------------------------------
+# TOŻSAMOŚĆ IMPLEMENTACJI — odcisk KODU, który policzył wynik
+# ---------------------------------------------------------------------------
+
+
+def _policz_odcisk_implementacji() -> str:
+    """SHA-256 treści WSZYSTKICH modułów pakietu — liczony, nie deklarowany."""
+    katalog = pathlib.Path(__file__).resolve().parent
+    czesci: list[str] = []
+    for sciezka in sorted(katalog.glob("*.py"), key=lambda s: s.name):
+        tresc = sciezka.read_bytes()
+        czesci.append(f"{sciezka.name}:{hashlib.sha256(tresc).hexdigest()}")
+    return hashlib.sha256("\n".join(czesci).encode("utf-8")).hexdigest()
+
+
+_ODCISK_IMPLEMENTACJI: str | None = None
+
+
+def odcisk_implementacji() -> str:
+    """Odcisk KODU laboratorium: nazwy i treści wszystkich modułów ``dynamic_lab``.
+
+    PO CO. Tożsamość modelu i tożsamość scenariusza opisują, CO liczono. Nie
+    mówią nic o tym, CZYM liczono. Ta sama sieć, ten sam punkt pracy i ten sam
+    harmonogram dadzą inny wynik po zmianie równania w solverze, po poprawce w
+    ograniczniku prądu albo po zmianie kryterium zbieżności — a wszystkie trzy
+    odciski pozostaną identyczne. Wynik bez odcisku implementacji daje się więc
+    przypisać do kodu, który go NIE policzył, i nikt tego nie wykryje.
+
+    DLACZEGO Z TREŚCI PLIKÓW, A NIE Z NUMERU WERSJI. Numer wersji jest
+    DEKLARACJĄ: ktoś musi go podnieść i nikt nie sprawdza, czy to zrobił.
+    Odcisk treści jest POMIAREM — zmiana jednego znaku w jednym module zmienia
+    go automatycznie, także wtedy (a zwłaszcza wtedy), gdy autor zmiany uznał ją
+    za nieistotną. To jest ta sama zasada, co „deklaracja bez testu to fałszywa
+    pewność", zastosowana do wersjonowania.
+
+    ZAKRES JEST WĄSKI I TO JEST ŚWIADOME: liczone są wyłącznie moduły pakietu
+    ``dynamic_lab``. Odcisk NIE obejmuje wersji Pythona, NumPy ani sprzętu —
+    te wchodzą do zakresu ważności wyniku (`dowod_walidacji`), nie do tożsamości
+    implementacji. Obiecywanie tu bit-zgodności między maszynami byłoby
+    obietnicą, której ten mechanizm nie dotrzymuje.
+
+    Wartość jest liczona RAZ na proces: pliki źródłowe nie zmieniają się w
+    trakcie biegu, a policzenie ich przy każdym wyniku zamieniłoby odcisk w
+    koszt wejścia/wyjścia proporcjonalny do liczby symulacji.
+    """
+    global _ODCISK_IMPLEMENTACJI
+    if _ODCISK_IMPLEMENTACJI is None:
+        _ODCISK_IMPLEMENTACJI = _policz_odcisk_implementacji()
+    return _ODCISK_IMPLEMENTACJI

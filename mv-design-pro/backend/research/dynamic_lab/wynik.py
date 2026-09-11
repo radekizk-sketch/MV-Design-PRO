@@ -67,6 +67,14 @@ class KolizjaSygnaluError(RuntimeError):
     """Dwa zapisy TEGO SAMEGO sygnału w jednej chwili — dane by się przeplotły."""
 
 
+class NiezgodnaDlugoscPrzebieguError(ValueError):
+    """Przebieg ma inną liczbę próbek niż oś czasu — nie da się go odczytać."""
+
+
+class NiemonotonicznaOsCzasuError(ValueError):
+    """Oś czasu nie rośnie ściśle — chwila powtórzona albo cofnięta."""
+
+
 #: Tolerancja porównań czasu w diagnostyce [s].
 _TOLERANCJA_CZASU_S = 1.0e-9
 
@@ -180,6 +188,48 @@ class BladSolvera:
 
 
 @dataclass(frozen=True)
+class RzutowanieStanu:
+    """Ślad JEDNEGO rzutowania stanu na przedział dopuszczalny urządzenia.
+
+    PO CO W WYNIKU, A NIE TYLKO W LOGU INTEGRATORA. Rzutowanie znaczy, że krok
+    wyszedł poza zbiór niezmienniczy przepływu ścisłego — czyli że w TYM kroku
+    metoda spadła do rzędu 1, a błąd lokalny ma rozmiar ``nadmiar``. Konsument
+    wyniku musi móc to zobaczyć, żeby nie wziąć przebiegu trzymającego się granicy
+    za dowód, że model sam w niej został.
+
+    Typ jest ZDUBLOWANY względem ``calkowanie.ZapisRzutowania`` świadomie: kontrakt
+    wyniku nie importuje warstwy numerycznej, bo wtedy przestałby być czytelny bez
+    niej. Mapowanie robi `silnik.SilnikRMS` — w jednym miejscu.
+    """
+
+    chwila_s: float
+    indeks: int
+    nazwa: str
+    znaczenie: str
+    wartosc_przed: float
+    wartosc_po: float
+    granica: str
+    """``"dol"`` albo ``"gora"``."""
+
+    @property
+    def nadmiar(self) -> float:
+        """O ile krok wyszedł poza dopuszczalny przedział."""
+        return abs(self.wartosc_przed - self.wartosc_po)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "chwila_s": self.chwila_s,
+            "indeks": self.indeks,
+            "nazwa": self.nazwa,
+            "znaczenie": self.znaczenie,
+            "wartosc_przed": self.wartosc_przed,
+            "wartosc_po": self.wartosc_po,
+            "granica": self.granica,
+            "nadmiar": self.nadmiar,
+        }
+
+
+@dataclass(frozen=True)
 class DiagnostykaSolvera:
     """Czy wynikowi wolno ufać od strony NUMERYCZNEJ (to nie to samo co fizycznie)."""
 
@@ -202,6 +252,34 @@ class DiagnostykaSolvera:
     """Czy przebieg pokrywa ŻĄDANY przedział — patrz ``KompletnoscPrzebiegu``."""
     kroki_skrocone: int = 0
     """Ile kroków zostało skróconych, żeby trafić dokładnie w zdarzenie/koniec."""
+    kroki_scisle_zbiezne: int = 0
+    """Ile kroków całkowania osiągnęło ŻĄDANĄ tolerancję (``rho <= 1``).
+
+    Metody jawne nie rozwiązują równania nieliniowego, więc każdy ich krok jest
+    ścisły z definicji — dla nich ta liczba równa się ``liczba_krokow``."""
+    kroki_na_podlodze_numerycznej: int = 0
+    """Ile kroków ZATRZYMAŁO SIĘ na podłodze numerycznej powyżej żądanej tolerancji.
+
+    Krok taki jest kontynuowany wyłącznie przy jawnej zgodzie
+    (``dopuszczaj_zastoj=True`` + dziennik). NIEZEROWA wartość oznacza, że wynik
+    NIE spełnia zadeklarowanej tolerancji — i to musi być widoczne w wyniku, a nie
+    tylko w logu integratora. Przed tą zmianą jądro Newtona zwracało sukces DWIEMA
+    drogami (``||r|| < tol`` oraz zastój z ``||r|| < 10^4 * tol``) tą samą wartością;
+    zmierzone na siatce 410 przypadków: 93 zwróciły sukces z residuum powyżej progu
+    ścisłego, największe ``1,2494e-06`` przy progu ``1,0e-09`` (1249×)."""
+    najgorsze_rho: float = 0.0
+    """Największe residuum SKALOWANE spośród kroków (``rho <= 1`` = tolerancja ścisła)."""
+    rzutowania_stanu: tuple[RzutowanieStanu, ...] = ()
+    """Rzutowania stanu na przedział dopuszczalny urządzenia — patrz ``RzutowanieStanu``.
+
+    Pusta krotka znaczy „niezmiennik trzymał się sam". Niepusta NIE jest błędem,
+    ale JEST informacją, że krok był na tyle duży, iż wyszedł poza zbiór
+    niezmienniczy przepływu ścisłego — czyli że rząd metody w tym kroku spadł."""
+    niezmienniki_stanu_egzekwowane: int = 0
+    """Ile ograniczników stanu urządzeń pilnował integrator tego biegu.
+
+    ZERO przy modelu, który ograniczniki deklaruje, znaczyłoby, że nakładka nie
+    została wpięta — dlatego liczba jest w wyniku, a nie tylko w konfiguracji."""
 
     def __post_init__(self) -> None:
         if self.zbiegl and self.blad is not None:
@@ -220,6 +298,36 @@ class DiagnostykaSolvera:
                 f"Przebieg kończy się w {self.czas_osiagniety_s} s, a żądano "
                 f"{self.czas_zadany_s} s — nie wolno oznaczyć go jako PELNY."
             )
+        if self.kroki_scisle_zbiezne < 0 or self.kroki_na_podlodze_numerycznej < 0:
+            raise ValueError("Liczniki kroków nie mogą być ujemne")
+        policzone = self.kroki_scisle_zbiezne + self.kroki_na_podlodze_numerycznej
+        if self.zbiegl and policzone != self.liczba_krokow:
+            raise ValueError(
+                f"Bieg zbieżny ma {self.liczba_krokow} kroków, a sprawozdania opisują "
+                f"{policzone} ({self.kroki_scisle_zbiezne} ścisłych + "
+                f"{self.kroki_na_podlodze_numerycznej} na podłodze). Każdy przyjęty krok "
+                "MUSI mieć sprawozdanie — inaczej „wszystkie kroki ścisłe” byłoby "
+                "twierdzeniem o krokach, których nikt nie policzył."
+            )
+        if self.najgorsze_rho < 0.0:
+            raise ValueError("rho nie może być ujemne")
+        # PREDYKATY PARAMI: status kroku i osiągnięte rho pochodzą z jednego
+        # sprawozdania, więc nie wolno im się rozjechać.
+        if self.kroki_na_podlodze_numerycznej == 0 and self.najgorsze_rho > 1.0:
+            raise ValueError(
+                f"Żaden krok nie zgłosił zastoju, a najgorsze rho = {self.najgorsze_rho} > 1. "
+                "Status kroku i osiągnięte residuum muszą pochodzić z tego samego "
+                "sprawozdania."
+            )
+
+    @property
+    def kazdy_krok_scisle_zbiezny(self) -> bool:
+        """Czy KAŻDY przyjęty krok osiągnął żądaną tolerancję.
+
+        Jedyne miejsce, w którym wolno powiedzieć „bieg spełnia zadeklarowaną
+        tolerancję". Samo ``zbiegl`` tego NIE znaczy: bieg dopuszczający zastój
+        kończy się bez wyjątku, mając kroki powyżej progu."""
+        return self.zbiegl and self.kroki_na_podlodze_numerycznej == 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -236,6 +344,11 @@ class DiagnostykaSolvera:
             "czas_osiagniety_s": self.czas_osiagniety_s,
             "kompletnosc": self.kompletnosc.value,
             "kroki_skrocone": self.kroki_skrocone,
+            "kroki_scisle_zbiezne": self.kroki_scisle_zbiezne,
+            "kroki_na_podlodze_numerycznej": self.kroki_na_podlodze_numerycznej,
+            "najgorsze_rho": self.najgorsze_rho,
+            "rzutowania_stanu": [r.to_dict() for r in self.rzutowania_stanu],
+            "niezmienniki_stanu_egzekwowane": self.niezmienniki_stanu_egzekwowane,
         }
 
 
@@ -251,10 +364,64 @@ class WynikDynamiczny:
     diagnostyka: DiagnostykaSolvera
     odcisk_scenariusza: str
     odcisk_topologii: str
+    odcisk_implementacji: str = ""
+    """Odcisk KODU, który policzył ten wynik — patrz `tozsamosc.odcisk_implementacji`.
+
+    Tożsamość modelu i scenariusza mówią, CO liczono; ten odcisk mówi, CZYM.
+    Bez niego wynik da się przypisać do kodu, który go nie policzył: poprawka w
+    solverze, w ograniczniku prądu albo w kryterium zbieżności zmienia przebieg,
+    nie ruszając żadnego z pozostałych odcisków.
+
+    Pusty napis znaczy „wynik zbudowany poza silnikiem" (import, konwersja,
+    ręcznie złożony przypadek testowy) i jest uczciwym meldunkiem braku —
+    wpisanie tam bieżącego odcisku byłoby TWIERDZENIEM, że ten kod policzył
+    dane, których nie widział."""
     uwaga_dowodowa_pl: str = (
         "Wynik z laboratorium badawczego. NIE jest dowodem regulacyjnym "
         "ani zwalidowaną symulacją fizyczną."
     )
+
+    def __post_init__(self) -> None:
+        """RÓWNOLEGŁOŚĆ SERII: jedna próbka na sygnał na każdą chwilę osi czasu.
+
+        PO CO TO JEST MECHANIZMEM, A NIE UMOWĄ. Przebieg o innej długości niż oś
+        czasu nie jest „trochę niekompletny" — jest NIEINTERPRETOWALNY: nie
+        wiadomo, którym chwilom odpowiadają jego wartości, a wykres i tak się
+        narysuje. Laboratorium miało już taki defekt: zbieracz kluczował sygnały
+        bez przestrzeni, więc wyjście ``p_pu`` i stan ``p_pu`` falownika trafiały
+        do JEDNEGO ciągu naprzemiennie. Seria była DWA RAZY dłuższa od osi czasu,
+        a testy radziły sobie braniem co drugiej próbki — czyli utrwalały defekt.
+        Kolizję łapie dziś ``ZbieraczPrzebiegow``, ale kontrakt wyniku nie może
+        opierać się na tym, że ktoś inny się nie pomylił: ``WynikDynamiczny`` da
+        się zbudować z dowolnego źródła.
+
+        Sprawdzane są TRZY własności, bo każda z osobna przechodzi przy naruszeniu
+        pozostałych: długość serii, ścisła monotoniczność osi czasu i
+        jednoznaczność tożsamości sygnału.
+        """
+        n = len(self.czas_s)
+        for s in self.sygnaly:
+            if len(s.wartosci) != n:
+                raise NiezgodnaDlugoscPrzebieguError(
+                    f"Sygnał {s.klucz_pelny}@{s.element_ref} ma {len(s.wartosci)} próbek "
+                    f"przy osi czasu o {n} chwilach. Przebieg o innej długości niż oś "
+                    "czasu nie ma jednoznacznego przypisania wartości do chwil."
+                )
+        for a, b in zip(self.czas_s[:-1], self.czas_s[1:], strict=True):
+            if not b > a:
+                raise NiemonotonicznaOsCzasuError(
+                    f"Oś czasu nie rośnie ściśle: {a} -> {b}. Powtórzona albo cofnięta "
+                    "chwila czyni przebieg nieinterpretowalnym (dwie wartości tej samej "
+                    "wielkości w tej samej chwili)."
+                )
+        tozsamosci = [(s.przestrzen.value, s.klucz, s.element_ref) for s in self.sygnaly]
+        if len(set(tozsamosci)) != len(tozsamosci):
+            powtorzone = sorted({poz for poz in tozsamosci if tozsamosci.count(poz) > 1})
+            raise KolizjaSygnaluError(
+                f"Dwa sygnały o tej samej tożsamości (przestrzeń, klucz, element): "
+                f"{powtorzone}. Tożsamość sygnału musi być jednoznaczna, inaczej "
+                "``sygnal()`` zgaduje, o którą wielkość pytał konsument."
+            )
 
     def sygnal(
         self,
@@ -296,6 +463,7 @@ class WynikDynamiczny:
             "zdarzenia": list(self.zdarzenia),
             "diagnostyka": self.diagnostyka.to_dict(),
             "odcisk_scenariusza": self.odcisk_scenariusza,
+            "odcisk_implementacji": self.odcisk_implementacji,
             "odcisk_topologii": self.odcisk_topologii,
             "uwaga_dowodowa_pl": self.uwaga_dowodowa_pl,
         }
