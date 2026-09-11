@@ -246,6 +246,41 @@ czerwien z CI na inne srodowisko.
 Pozostale szesc nazw nie bylo dostepnych: interfejs logow zwraca okno o stalym
 rozmiarze, a blok podsumowania pytest wypadl poza nie. Nie zgaduje ich.
 
+**POSTĘP ZMIERZONY W CI (aktualizacja po globalizacji solvera, 4.9).** Liczba
+czerwonych testów `Python tests` na kolejnych HEAD-ach tej gałęzi:
+
+| HEAD | Wynik CI |
+|------|----------|
+| `78d60d84` | **9 failed** / 11 467 passed / 14 skipped |
+| `f453334c` | **7 failed** / 11 476 passed / 14 skipped |
+
+Dwie czerwienie, które zniknęły, to DOKŁADNIE te dwie nazwane wyżej jako (a):
+`test_gfm_ogranicznik::test_ogranicznik_oslabia_sztywnosc_a_ranking_zalezy_od_glebokosci`
+i `test_najtrudniejsze_zadanie_sieci_ma_margines_iteracji`. Ich przyczyną nie był
+jednak zapas iteracji, jak zakładała pierwsza diagnoza — tylko BRAK GLOBALIZACJI
+metody (patrz 4.9, gdzie ta diagnoza jest skorygowana wraz z dowodem).
+
+Siedem pozostałych to ten sam mechanizm co (b): porównanie zapisanych fikstur z
+wynikiem solvera operatorem `==`. Ich rozstrzygnięcie nadal należy do właściciela,
+bo dotyczy ZNACZENIA reguły determinizmu, a nie jednego testu.
+
+**MECHANIZM POTWIERDZONY DRUGIM POMIAREM — I DOWÓD, ŻE „7" NIE JEST WŁASNOŚCIĄ
+KODU.** Pełna suita uruchomiona na TEJ SAMEJ maszynie, tym samym kodzie i tym
+samym środowisku, z jedyną zmienną `OPENBLAS_NUM_THREADS`:
+
+| Liczba wątków BLAS | Wynik pełnej suity |
+|---|---|
+| domyślna (4 rdzenie) | **11 611 passed, 6 skipped, 0 failed** |
+| 1 | **11 609 passed, 6 skipped, 2 failed** |
+| CI (inny procesor, inne jądro BLAS) | **11 476 passed, 14 skipped, 7 failed** |
+
+Obie czerwienie przy jednym wątku to `test_scenariusze_nn::test_json_w_repo_rowny_odpowiedzi_backendu`
+dla scenariuszy `13_loads_via_fields` i `17_sc_results` — czyli DOKŁADNIE ta
+rodzina, co (b). LICZBA czerwonych fikstur (0 / 2 / 7) zależy więc od jądra
+obliczeniowego, a nie od kodu: to jest własność przyjętego SPOSOBU PORÓWNANIA,
+nie defekt w solverze ani w danych. Naprawa „przez regenerację fikstur" jest
+niemożliwa z definicji — przeniosłaby czerwień na następne środowisko.
+
 ### 4.4 Jedenaście kopii pętli „samonaprawiającej" w fiksturach e2e
 
 `(i) => i.code.includes('catalog')` z dwustronnym odwzorowaniem
@@ -558,12 +593,23 @@ Przyrost testów backendu względem poprzedniego pomiaru tej gałęzi: 11 539 �
 dla nowego kodu `catalog.load_reactive_power_unresolved` — uzupełniony w
 `READINESS_CODES` i w mapie celów frontu, zamiast obchodzenia bramki.
 
-**CI na GitHubie NIE jest w pełni zielone.** Na HEAD gałęzi zielone są: Physics
-Label Guard, Docs Integrity Guard, Architectural And Repo Hygiene Guard, P0
-Extended Guards, Frontend E2E smoke. Czerwona pozostaje `SLD Determinism Guards`
-— z powodu opisanego w 4.9 (sonda pionów, regres ODZIEDZICZONY, identyczny na
-`main`, werdykt wizualny należy do właściciela — bramka B-02). Pozostałe bramki
-w chwili pisania jeszcze biegną i ich wynik NIE jest tu deklarowany.
+**CI na GitHubie NIE jest w pełni zielone** — stan ZMIERZONY na HEAD `f453334c`,
+wszystkie dziewięć bramek ukończone:
+
+| Bramka | Wynik | Uwaga |
+|--------|-------|-------|
+| Physics Label Guard | ✅ success | |
+| Docs Integrity Guard | ✅ success | |
+| Architectural And Repo Hygiene Guard | ✅ success | |
+| P0 Extended Guards (V12K) | ✅ success | |
+| Frontend checks | ✅ success | |
+| Frontend E2E smoke | ✅ success | |
+| Python tests | ❌ 7 failed / 11 476 passed | równość bitowa fikstur — dług 4.3 |
+| Frontend E2E full | ❌ 1 failed / 407 passed | wiązanie wyłącznika nN — dług 4.6 |
+| SLD Determinism Guards | ❌ failure | sonda pionów — regres odziedziczony, B-02 (4.10) |
+
+Trzy czerwienie to TRZY NAZWANE DŁUGI, każdy z pomiarem i każdy z rozstrzygnięciem
+należącym do właściciela. Żadna nie jest maskowana, wyciszona ani obchodzona.
 
 Żaden wynik tej rundy nie jest zgłaszany jako „ACCEPTED"; kod pozostaje
 `UNVALIDATED_MODEL`, bez promocji do produkcji i bez `VALIDATED_SIMULATION`.
