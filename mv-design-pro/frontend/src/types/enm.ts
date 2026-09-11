@@ -203,6 +203,14 @@ export interface Cable extends BranchBase {
   return_conductor_cross_section_mm2?: number | null;
   return_conductor_material?: string | null;
   return_conductor_r_ohm_per_km_20c?: number | null;
+  /**
+   * Reaktancja żyły powrotnej PE/PEN. Pętla zwarcia L-PE/L-PEN wymaga R+jX żyły
+   * powrotnej z TEJ SAMEJ trasy co żyła fazowa — sama rezystancja nie wystarcza.
+   * Brak (null/undefined) oznacza DANĄ NIEZNANĄ, NIGDY domyślnego zera: backend
+   * (`fault_loop_builder`) odmawia liczenia pętli bez jawnej wartości
+   * (fail-closed, zero fabrykacji) — frontowi też nie wolno podstawić 0.
+   */
+  return_conductor_x_ohm_per_km?: number | null;
   return_conductor_jth_1s_a_per_mm2?: number | null;
   return_conductor_ith_1s_a?: number | null;
   rating?: BranchRating | null;

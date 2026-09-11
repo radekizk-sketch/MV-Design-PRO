@@ -286,8 +286,19 @@ class TestNcRfgComplianceChecker:
         t5 = next(r for r in report.test_results if r.test_id == "T5")
         assert t5.verdict == "fail"
 
-    def test_dynamic_t1_lvrt_returns_pass_or_fail(self) -> None:
-        """PR-16-impl: T1 LVRT teraz uruchamia FRT solver i daje pass/fail."""
+    def test_dynamic_t1_lvrt_never_yields_false_positive(self) -> None:
+        """T1 LVRT przechodzi przez silnik FRT, ale nie moze dac falszywego POZYTYWU.
+
+        INTENCJA (zachowana): T1 nie konczy sie juz `no_module` — realnie siega po
+        silnik FRT i zwraca konkretny werdykt z uzasadnieniem.
+
+        ZMIANA KANONU: wczesniej test dopuszczal `pass`. Werdykt `pass` powstawal
+        z `stayed_connected` silnika, ktory ignoruje modul wytworczy i dla HVRT
+        nie potrafi wypasc negatywnie. Zdolnosc `frt_hvrt.trajectory` nie ma
+        ustalonej poprawnosci fizycznej, wiec jej wynik nie wykazuje spelnienia
+        wymagania: dopuszczalne sa `fail` (sygnal problemu nie jest wyciszany)
+        albo `no_data` (brak dowodu) — nigdy `pass`.
+        """
         checker = NcRfgComplianceChecker()
         report = checker.check(
             operator_id="pse",
@@ -299,9 +310,12 @@ class TestNcRfgComplianceChecker:
             ),
         )
         t1 = next(r for r in report.test_results if r.test_id == "T1")
-        # Po PR-16-impl: realny solver daje pass/fail (nie no_module)
-        assert t1.verdict in {"pass", "fail"}
+        assert t1.verdict != "no_module"
+        assert t1.verdict in {"fail", "no_data"}
         assert t1.message_pl is not None
+        assert t1.evidence is not None
+        assert t1.evidence["regulatory_evidence_eligible"] is False
+        assert report.reporting_status == "not_reportable"
 
     def test_dynamic_t1_lvrt_no_data_when_no_curve(self) -> None:
         checker = NcRfgComplianceChecker()

@@ -405,3 +405,40 @@ def test_znacznik_dwie_linie_wyzej_nie_zwalnia() -> None:
         f"const x = '{_MOJIBAKE_A}';",
     ]
     assert len(znajdz_trafienia(linie)) == 1
+
+
+# ---------------------------------------------------------------------------
+# Dwa znaki zastepcze na koncu slowa (klasa dolozona 2026-09-10)
+# ---------------------------------------------------------------------------
+#
+# Naglowek modulu deklarowal klase "polska litera zamieniona na ASCII '?'" jako
+# pokryta, a regula `ZNAK_ZASTEPCZY_W_SLOWIE` wymaga litery po OBU stronach '?'.
+# Realny komunikat operatora ("Najpierw przepi[?][?]/usun[?][?] pola.") ma po
+# prawej stronie ukosnik, wiec przechodzil. Ponizsze testy pinuja obie strony
+# granicy: forme, ktora MUSI byc widziana, i formy skladniowe, ktorych ruszyc
+# nie wolno, bo z nich bierze sie falszywy alarm.
+
+
+def test_dwa_znaki_zapytania_po_literze_sa_trafieniem() -> None:
+    """Dokładny tekst z `enm/domain_operations.py` sprzed naprawy."""
+    # mojibake-guard: probka celowa — uszkodzony zapis JEST danymi tej asercji
+    assert len(znajdz_trafienia(["            \"Najpierw przepi??/usun?? pola.\","])) == 1
+
+
+def test_dwa_znaki_zapytania_w_docstringu_sa_trafieniem() -> None:
+    # mojibake-guard: probka celowa — uszkodzony zapis JEST danymi tej asercji
+    assert len(znajdz_trafienia(["        (operator musi najpierw przepi??/usun?? pola)"])) == 1
+
+
+def test_operator_nullish_ts_nie_jest_trafieniem() -> None:
+    """`a ?? b` to składnia TS, nie uszkodzone słowo — regula wymaga litery
+    BEZPOSREDNIO przed pierwszym znakiem zapytania."""
+    assert znajdz_trafienia(["const x = a ?? b;"]) == []
+    assert znajdz_trafienia(["  return wartosc ?? domyslna;"]) == []
+
+
+def test_zdanie_pytajne_i_pole_opcjonalne_nie_sa_trafieniem() -> None:
+    """Granica NAZWANA w module: pojedynczy '?' na koncu slowa zostaje poza
+    detekcja, bo pomiar dal 43 trafienia zdominowane przez te dwie formy."""
+    assert znajdz_trafienia(["Czy suma wkladow = calosc?"]) == []
+    assert znajdz_trafienia(["    station: { name, sn_voltage_kv?, nn_voltage_kv }"]) == []

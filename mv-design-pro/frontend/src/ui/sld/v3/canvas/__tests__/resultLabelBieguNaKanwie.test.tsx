@@ -46,9 +46,8 @@ const CANVAS_W = 1024;
 const CANVAS_H = 640;
 
 beforeEach(() => {
-  // @ts-expect-error jsdom shim
+  // jsdom nie implementuje URL.createObjectURL/revokeObjectURL — shim przed spy.
   if (typeof URL.createObjectURL !== 'function') URL.createObjectURL = () => 'blob:shim';
-  // @ts-expect-error jsdom shim
   if (typeof URL.revokeObjectURL !== 'function') URL.revokeObjectURL = () => {};
   useSnapshotStore.getState().reset();
   useSelectionStore.getState().clearSelection();

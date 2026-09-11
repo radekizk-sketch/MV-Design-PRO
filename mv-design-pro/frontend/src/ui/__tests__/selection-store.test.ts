@@ -12,7 +12,9 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useSelectionStore } from '../selection/store';
+import { act, renderHook } from '@testing-library/react';
+
+import { useCanEdit, useIsMutationBlocked, useSelectionStore } from '../selection/store';
 
 describe('Selection Store', () => {
   beforeEach(() => {
@@ -27,6 +29,12 @@ describe('Selection Store', () => {
   describe('Element Selection', () => {
     it('should select an element', () => {
       const { selectElement, selectedElement } = useSelectionStore.getState();
+
+      // Asercja wstepna przywrocona: `selectedElement` bylo destrukturyzowane,
+      // ale nigdy nieczytane (urwany dowod). Bez niej test przechodzilby takze
+      // wtedy, gdyby `clearSelection()` z `beforeEach` przestal czyscic wybor,
+      // bo sprawdzalby tylko stan PO akcji.
+      expect(selectedElement).toBeNull();
 
       selectElement({ id: 'bus-1', type: 'Bus', name: 'Szyna główna' });
 
@@ -200,40 +208,66 @@ describe('Selection Store', () => {
   });
 });
 
+/**
+ * INTENCJA (zachowana z poprzedniej wersji bloku): edycja modelu dozwolona w
+ * MODEL_EDIT, mutacje zablokowane w RESULT_VIEW, a `CASE_CONFIG` — alias
+ * zgodnosciowy — zachowuje sie jak MODEL_EDIT.
+ *
+ * CO SIE ZMIENILO I DLACZEGO: poprzednia wersja PRZEPISYWALA CIALA hookow do
+ * testu (`state.mode === 'RESULT_VIEW' || state.mode === 'CASE_CONFIG'`) i
+ * sprawdzala wlasna kopie predykatu, wiec nie dotykala produktu wcale. Kopia
+ * zostala w starym kanonie, w ktorym `CASE_CONFIG` bylo trybem RUCHOWYM. Dzis
+ * `CASE_CONFIG` to wylacznie alias WEJSCIOWY: `setMode` normalizuje go przez
+ * `normalizeOperatingMode` do `MODEL_EDIT`, a stan `mode` ma typ
+ * `RuntimeOperatingMode = 'MODEL_EDIT' | 'RESULT_VIEW'` — porownanie z
+ * 'CASE_CONFIG' nie mialo juz czesci wspolnej (TS2367 zglaszal martwa galaz).
+ * Teraz predykat ma JEDNO zrodlo prawdy — hook produkcyjny — a test go WYWOLUJE
+ * (`renderHook`), zamiast opisywac.
+ */
 describe('Selection Store Hooks', () => {
   describe('useCanEdit', () => {
-    it('should return true in MODEL_EDIT mode', async () => {
-      // Import dynamically to get fresh hook
-      const { useCanEdit } = await import('../selection/store');
+    it('should return true in MODEL_EDIT mode', () => {
+      const { result } = renderHook(() => useCanEdit());
 
-      useSelectionStore.getState().setMode('MODEL_EDIT');
+      act(() => useSelectionStore.getState().setMode('MODEL_EDIT'));
 
-      // Hooks need React context, so we test the store directly
-      const state = useSelectionStore.getState();
-      expect(state.mode === 'MODEL_EDIT').toBe(true);
+      expect(result.current).toBe(true);
+    });
+
+    it('should return false in RESULT_VIEW mode', () => {
+      const { result } = renderHook(() => useCanEdit());
+
+      act(() => useSelectionStore.getState().setMode('RESULT_VIEW'));
+
+      expect(result.current).toBe(false);
     });
   });
 
   describe('useIsMutationBlocked', () => {
-    it('should return false in MODEL_EDIT mode', async () => {
-      useSelectionStore.getState().setMode('MODEL_EDIT');
-      const state = useSelectionStore.getState();
-      const isBlocked = state.mode === 'RESULT_VIEW' || state.mode === 'CASE_CONFIG';
-      expect(isBlocked).toBe(false);
+    it('should return false in MODEL_EDIT mode', () => {
+      const { result } = renderHook(() => useIsMutationBlocked());
+
+      act(() => useSelectionStore.getState().setMode('MODEL_EDIT'));
+
+      expect(result.current).toBe(false);
     });
 
-    it('should return true in RESULT_VIEW mode', async () => {
-      useSelectionStore.getState().setMode('RESULT_VIEW');
-      const state = useSelectionStore.getState();
-      const isBlocked = state.mode === 'RESULT_VIEW' || state.mode === 'CASE_CONFIG';
-      expect(isBlocked).toBe(true);
+    it('should return true in RESULT_VIEW mode', () => {
+      const { result } = renderHook(() => useIsMutationBlocked());
+
+      act(() => useSelectionStore.getState().setMode('RESULT_VIEW'));
+
+      expect(result.current).toBe(true);
     });
 
-    it('should return false in CASE_CONFIG compatibility alias', async () => {
-      useSelectionStore.getState().setMode('CASE_CONFIG');
-      const state = useSelectionStore.getState();
-      const isBlocked = state.mode === 'RESULT_VIEW';
-      expect(isBlocked).toBe(false);
+    it('should return false in CASE_CONFIG compatibility alias', () => {
+      const { result } = renderHook(() => useIsMutationBlocked());
+
+      act(() => useSelectionStore.getState().setMode('CASE_CONFIG'));
+
+      expect(result.current).toBe(false);
+      // Alias jest normalizowany DO stanu ruchowego, a nie przechowywany.
+      expect(useSelectionStore.getState().mode).toBe('MODEL_EDIT');
     });
   });
 });

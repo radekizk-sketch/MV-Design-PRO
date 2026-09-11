@@ -194,6 +194,74 @@ describe('Property Grid Field Definitions', () => {
     });
   });
 
+  // Bloki dla Source i Load przywrocone: `getSourceFieldDefinitions` i
+  // `getLoadFieldDefinitions` byly IMPORTOWANE, ale nigdy nieczytane (TS6133),
+  // podczas gdy kazdy z pozostalych czterech typow ma tu swoj blok. Import bez
+  // uzycia to urwana asercja, nie zbedny import — dowod zostal przywrocony, a
+  // nie skasowany. Zakres asercji jak w blokach obok: sekcja parametrow
+  // wlasciwa dla typu + read-only wartosci obliczeniowych.
+  describe('Source Field Definitions', () => {
+    const sections = getSourceFieldDefinitions();
+
+    it('should have short_circuit section with editable source parameters', () => {
+      const scSection = sections.find((s) => s.id === 'short_circuit');
+      expect(scSection).toBeDefined();
+
+      const fieldKeys = scSection!.fields.map((f) => f.key);
+      expect(fieldKeys).toContain('sk_mva');
+      expect(fieldKeys).toContain('rx_ratio');
+      expect(fieldKeys).toContain('voltage_kv');
+
+      const skField = scSection!.fields.find((f) => f.key === 'sk_mva');
+      expect(skField!.editable).toBe(true);
+      expect(skField!.unit).toBe('MVA');
+    });
+
+    it('should keep calculated values read-only', () => {
+      const calculatedSection = sections.find((s) => s.id === 'calculated');
+      expect(calculatedSection).toBeDefined();
+
+      for (const field of calculatedSection!.fields) {
+        expect(field.editable).toBe(false);
+        expect(field.source).toBe('calculated');
+      }
+    });
+  });
+
+  describe('Load Field Definitions', () => {
+    const sections = getLoadFieldDefinitions();
+
+    it('should have electrical_params section with editable load parameters', () => {
+      const electricalSection = sections.find((s) => s.id === 'electrical_params');
+      expect(electricalSection).toBeDefined();
+
+      const fieldKeys = electricalSection!.fields.map((f) => f.key);
+      expect(fieldKeys).toContain('p_mw');
+      expect(fieldKeys).toContain('q_mvar');
+      expect(fieldKeys).toContain('cos_phi');
+
+      const pField = electricalSection!.fields.find((f) => f.key === 'p_mw');
+      expect(pField!.editable).toBe(true);
+      expect(pField!.unit).toBe('MW');
+
+      const loadTypeField = electricalSection!.fields.find((f) => f.key === 'load_type');
+      expect(loadTypeField!.type).toBe('enum');
+      expect(loadTypeField!.enumOptions).toContain('CONSTANT_POWER');
+      expect(loadTypeField!.enumOptions).toContain('CONSTANT_IMPEDANCE');
+      expect(loadTypeField!.enumOptions).toContain('ZIP');
+    });
+
+    it('should keep calculated values read-only', () => {
+      const calculatedSection = sections.find((s) => s.id === 'calculated');
+      expect(calculatedSection).toBeDefined();
+
+      for (const field of calculatedSection!.fields) {
+        expect(field.editable).toBe(false);
+        expect(field.source).toBe('calculated');
+      }
+    });
+  });
+
   describe('Field Units', () => {
     const lineSections = getLineBranchFieldDefinitions();
 

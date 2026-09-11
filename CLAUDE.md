@@ -790,7 +790,15 @@ python scripts/smoke_local.sh                     # Local smoke test
   aktualizuj tę listę, inaczej wróci fikcja):
   - `sld/v2/geometry/__tests__/layoutEngine.substrate.test.ts`
   - `sld/v2/geometry/__tests__/portAnchoredGeometry.substrate.test.ts`
-  - `sld/v2/__tests__/{ViewportController,LodPolicy,renderers,StationInternalView}.test.ts(x)`
+  - `sld/v2/__tests__/{ViewportController,LodPolicy,renderers}.test.ts(x)`
+    (korekta 2026-09-11: `StationInternalView.test.tsx` USUNIĘTY z listy —
+    komponent i jego test skasował commit `08ccf7c9` jako martwy kod, a
+    odwołanie zostało zarówno tutaj, jak i w `sld-determinism.yml`. Vitest na
+    nieistniejącym pliku kończy się „No test files found, exit 1", więc bramka
+    SLD była czerwona na `main` od 2026-09-01, a 14 KOLEJNYCH kroków tego
+    workflowu — cały komplet kontraktów SLD v3 i odbiór renderu — nie wykonało
+    się ani razu. Nazwa pliku w dokumencie i w workflowie to ta sama klasa
+    długu co poprzednio: lista spisana z pamięci zamiast z repo.)
   - `sld/v2/command/__tests__/SldCommandService.test.ts` · `sld/v2/core/__tests__/ports.test.ts`
   - `sld/v3/scene/__tests__/{lodContinuity,buildScene.sheetRows,buildScene.gpzCollapsed,busbarLabelClearance}.test.ts`
   - `sld/v3/canvas/__tests__/{minSymbolSize,kadrTresci,toolbarLayout,tozsamoscEtykiet}.contract.test.ts(x)`

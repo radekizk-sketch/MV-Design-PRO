@@ -22,6 +22,7 @@ import {
 import {
   katalogNcRfgFixture,
   widokHvrtWObwiedniFixture,
+  klasyfikacjaFrtDowodowa,
   widokLvrtWObwiedniFixture,
   widokModulWypadlFixture,
   widokPozaObwiedniaFixture,
@@ -135,10 +136,28 @@ describe('tabela scenariuszy', () => {
 });
 
 describe('werdyktCalosciFrt (agregacja słownikowa najgorszego)', () => {
-  it('„w obwiedni" → istotność ok', () => {
+  it('„w obwiedni" ze zdolności NIEPRZYDATNEJ DOWODOWO → ostrzeżenie, nie sukces', () => {
     const w = werdyktCalosciFrt(widokLvrtWObwiedniFixture());
-    expect(w.istotnosc).toBe('ok');
+    expect(w.istotnosc).toBe('warn');
     expect(w.tekst).toContain('odzwierciedla wymagania profilu');
+    expect(w.tekst).toContain('NIE stanowi dowodu');
+  });
+
+  it('„w obwiedni" ze zdolności PRZYDATNEJ DOWODOWO → istotność ok, bez dopisku', () => {
+    const w = werdyktCalosciFrt({
+      ...widokLvrtWObwiedniFixture(),
+      evidence: klasyfikacjaFrtDowodowa(),
+    });
+    expect(w.istotnosc).toBe('ok');
+    expect(w.tekst).not.toContain('NIE stanowi dowodu');
+  });
+
+  it('PUSTA lista scenariuszy nie jest sukcesem — nic nie sprawdzono', () => {
+    // Pułapka `all([]) === true` w wersji prezentacyjnej: poprzednia wersja
+    // zwracała dla pustej listy zielone „Model odzwierciedla wymagania".
+    const w = werdyktCalosciFrt({ ...widokLvrtWObwiedniFixture(), scenariusze: [] });
+    expect(w.istotnosc).toBe('warn');
+    expect(w.tekst).toContain('Brak scenariuszy');
   });
 
   it('„poza obwiednią" → istotność warn', () => {

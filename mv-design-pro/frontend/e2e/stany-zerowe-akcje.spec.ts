@@ -30,6 +30,7 @@ const KATALOG_ZRZUTOW = path.resolve(_dirname, '../../docs/audit/visual/flow-eks
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
 const TRAFO_ID = 'tr-sn-nn-15-04-630kva-dyn11';
+const NN_BREAKER_ID = 'cb_nn_400a';
 const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
 const CATALOG_VERSION = '2024.1';
 let opCounter = 0;
@@ -235,6 +236,14 @@ async function zbudujSiecGotowaDoObliczen(request: APIRequestContext, caseId: st
     station_type: 'B',
     insert_at: { value: 0.5 },
     station: { sn_voltage_kv: 15.0, nn_voltage_kv: 0.4 },
+    // WYLACZNIK GLOWNY nN Z WIAZANIEM KATALOGOWYM — tak, jak robi to realny
+    // uzytkownik. Bez tego operacja tworzy `breaker` bez `catalog_ref`, a
+    // kontrola domenowa slusznie stawia blokade `switch.catalog_ref_missing`.
+    // Wczesniej fixture tego nie widzial, bo koncowka `engineering-readiness`
+    // nie znala kontroli domenowych i meldowala `ready: true` mimo blokady.
+    nn_block: {
+      main_breaker_catalog_bindings: buildCatalogBinding('APARAT_NN', NN_BREAKER_ID),
+    },
     // KOMPLETNOSC-POLA-TR (klasa A): stacja SN/nN Z transformatorem — pole roli
     // 'TR' dopisane, bo realna rozdzielnia realizuje odejscie do transformatora
     // polem transformatorowym. Kreator stacji tworzy je domyslnie, wiec fixture

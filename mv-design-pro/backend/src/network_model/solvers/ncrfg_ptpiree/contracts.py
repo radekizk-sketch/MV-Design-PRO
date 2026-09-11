@@ -79,10 +79,21 @@ class NcRfgTraceStep(BaseModel):
 
 
 class NcRfgPtpireeTestDefinition(BaseModel):
+    """Definicja testu zgodności.
+
+    ``capability_id`` jest polem OBOWIĄZKOWYM i jest JEDYNYM źródłem klasyfikacji
+    dowodowej testu. Wcześniej klasyfikację doklejał każdy ewaluator osobno i
+    robiło to 8 ewaluatorów z 20 — a bramka dowodowa pomijała wyniki bez
+    klasyfikacji, więc 12 testów było dla niej niewidocznych. Powiązanie
+    zdolności z DEFINICJĄ, a nie z ewaluatorem, czyni pominięcie niemożliwym:
+    nie da się dodać testu bez zadeklarowania, na czym opiera się jego werdykt.
+    """
+
     test_id: str
     ability_pl: str
     procedure_basis_pl: str
     default_for_modules: list[str]
+    capability_id: str
     conditional_pl: str | None = None
 
 
@@ -96,6 +107,19 @@ class NcRfgPtpireeTestResult(BaseModel):
     metrics: dict[str, Any] = Field(default_factory=dict)
     trace_refs: list[str] = Field(default_factory=list)
     fix_actions: list[str] = Field(default_factory=list)
+    evidence: dict[str, Any] | None = None
+    """Klasyfikacja dowodowa zdolnosci liczacej ten test — ZAWSZE wypelniona.
+
+    Serializacja ``CapabilityEvidence`` z ``solver_input.provenance``, brana z
+    ``capability_id`` DEFINICJI testu, a nie doklejana przez ewaluator.
+
+    Typ dopuszcza ``None`` wylacznie ze wzgledu na zgodnosc deserializacji
+    starszych ladunkow. Wynik wytworzony przez ten solver ma to pole wypelnione
+    zawsze, a konsument MUSI traktowac ``None`` jako BRAK KLASYFIKACJI, czyli
+    stan nieprzydatny dowodowo — nigdy jako "wszystko w porzadku".
+    Poprzednia wersja bramki pomijala wyniki z ``None`` i przez to 12 z 20
+    testow bylo dla niej niewidocznych.
+    """
 
 
 class NcRfgPtpireeModuleResult(BaseModel):
@@ -114,6 +138,18 @@ class NcRfgPtpireeModuleResult(BaseModel):
     not_required_count: int
     overall_status: Literal["zgodny", "niezgodny", "brak_danych"]
     tests: list[NcRfgPtpireeTestResult]
+    reporting_status: Literal["reportable", "not_reportable"] = "not_reportable"
+    """Czy wynik modulu wolno przedstawic jako dowod regulacyjny.
+
+    Ta sama semantyka i to samo slownictwo co ``application.compliance
+    .source_compliance.SourceComplianceResult``. ``not_reportable`` oznacza, ze
+    pakiet nadaje sie do celow diagnostyczno-inzynierskich, ale NIE stanowi
+    dowodu spelnienia wymagania przylaczeniowego.
+    """
+    proof_status: Literal["complete", "incomplete"] = "incomplete"
+    evidence_limitations: list[str] = Field(default_factory=list)
+    """Maszynowo czytelne powody braku przydatnosci dowodowej (posortowane)."""
+    evidence_note_pl: str = ""
 
 
 class NcRfgPtpireeRunResult(BaseModel):
@@ -126,3 +162,9 @@ class NcRfgPtpireeRunResult(BaseModel):
     test_catalog: list[NcRfgPtpireeTestDefinition]
     white_box_trace: list[NcRfgTraceStep]
     report_pl: str
+    reporting_status: Literal["reportable", "not_reportable"] = "not_reportable"
+    """Zbiorcza przydatnosc dowodowa biegu — ``reportable`` tylko gdy KAZDY modul
+    jest ``reportable``. Konsument budujacy dokument regulacyjny czyta to pole."""
+    proof_status: Literal["complete", "incomplete"] = "incomplete"
+    evidence_limitations: list[str] = Field(default_factory=list)
+    evidence_note_pl: str = ""

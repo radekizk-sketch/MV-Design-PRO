@@ -45,8 +45,14 @@ def _enm_z_odcinkiem() -> dict[str, Any]:
                 "from_bus_ref": "bus-a",
                 "to_bus_ref": "bus-b",
                 "length_km": 1.0,
-                "r_ohm": 0.2,
-                "x_ohm": 0.1,
+                # `Cable` niesie impedancje JEDNOSTKOWE (na km); `r_ohm`/`x_ohm`
+                # nie istnieja na tym typie (sa na `SwitchBranch`/`Source`).
+                # Fikstura deklarowala je od poczatku i przez to NIE BYLA kablem
+                # modelu — operacja wciecia stacji podstawiala sobie 0,0 Ω/km,
+                # wiec test przechodzil na odcinku o zerowej impedancji.
+                # Dlugosc 1,0 km zachowuje sume omow z poprzedniego zapisu.
+                "r_ohm_per_km": 0.2,
+                "x_ohm_per_km": 0.1,
             }
         ],
         "transformers": [],

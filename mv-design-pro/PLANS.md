@@ -82,6 +82,196 @@ MV-DESIGN-PRO is a functional Medium Voltage network design and analysis system 
 
 ## 3. Active Work
 
+### 3.-4 Sesja 2026-09-10 — PAKIET DECYZYJNY D-01…D-13 + laboratorium badawcze — PRZEKAZANIE DO FABLE
+
+> **Zdanie kluczowe dla następnego agenta prowadzącego:**
+> **Trzynaście pozycji decyzyjnych zostało doprowadzonych do wykonanych
+> eksperymentów i zmierzonych wariantów. Żadna nie została rozstrzygnięta,
+> żaden kontrakt nie stał się kanoniczny, żadnej zdolności nie nadano statusu
+> dowodowego.**
+
+**Gałąź:** `claude/opus5-dynamic-prearchitecture-lab` (baza: gałąź containmentu).
+**Główny dokument:** `docs/plan/PAKIET_DECYZYJNY_DYNAMIKA_D01_D13_2026-09.md`.
+
+**Co powstało (poza produkcją, w izolacji strukturalnej).**
+`backend/research/dynamic_lab/` — 13 modułów, ~3 300 linii: warstwa algebraiczna
+sieci (Ybus, Norton, iteracja), pętla DAE z inicjalizacją i weryfikacją
+równowagi, cztery integratory za jednym kontraktem, zdarzenia zmieniające model
+sieci, pięć modeli urządzeń (maszyna 4. rzędu, zespół z AVR i turbiną, GFL, GFM,
+odbiór), ocena FRT z rozdzielonymi typami wymagania i wyniku, wyrocznia
+analityczna, drabina walidacyjna L0–L4 oraz **poziom 4 — wyrocznia zewnętrzna
+ANDES**. Katalog jest poza `pyproject.toml::packages`; `research_isolation_guard`
+(wpięty w `arch-guard.yml`) pilnuje, żeby produkcja go nie importowała.
+**Skasowanie tego katalogu nie psuje niczego produkcyjnego** — taka była idea.
+
+**Walidacja zewnętrzna (nowość względem §3.-3).** ANDES 2.0.0 (Apache-2.0) jako
+niezależna wyrocznia RMS z wartościami własnymi. Zgodność trójstronna na SMIB
+50 Hz: `delta0` 8,4e-09, `E'` 7,1e-09, `|V|` 7,5e-09, `f_oscylacji` 6,0e-06;
+wzór analityczny vs ANDES 3,9e-09. **Pułapka:** ANDES liczy domyślnie na 60 Hz,
+`ss.config.freq` nie działa, skuteczny jest `fn` przy urządzeniu; pominięcie
+daje 9,5 % błędu. Harness odrzuca niezgodną bazę wyjątkiem zamiast przeskalować.
+
+**Sprostowanie własnego audytu.** Karta §27.2 twierdziła, że dla stanu ustalonego
+„istnieje działający wzorzec" porównania z narzędziem zewnętrznym. Nieprawda:
+`pandapower` nie jest zależnością, nie ma go w CI, 10 funkcji testowych nie
+wykonuje się nigdy (`157 passed, 5 skipped` bez niego vs `167 passed` z nim).
+Sprostowanie w karcie jako **§0 ERRATA** — widoczne, nie przez cichą edycję.
+
+**Domknięcie D-00 (rozszerzenie §3.-3).** `tests/api/test_dynamic_evidence_bypass.py`
+(14 testów): inwentarz konsumentów wyprowadzony **skanem AST** `src/**` z
+pilnowaną kompletnością, iloczyn dokument × format (certyfikat i wniosek OSD ×
+JSON/DOCX/PDF), oraz kierunek przeciwny (klasa A nadal certyfikuje się legalnie).
+Mutacja kontrolna (`if False` w bramce) → 9 failed / 5 passed, czyli testy realnie
+mierzą bezpiecznik, a nie tylko przechodzą.
+
+**Zmierzone, przypięte testami własności fizyczne.** `CCT ∝ √H` (297/421/596 ms
+dla H = 2/4/8 — stosunki 1,4175 i 1,4157 wobec `√2 = 1,4142`), CCT malejące ze
+słabnięciem sieci (440/421/370 ms dla x = 0,05/0,15/0,40), GFL vs GFM jako
+**różne modele** (4 vs 9 sygnałów; GFL bez stanu kątowego, GFM z inercją
+wirtualną i odpowiedzią częstotliwościową 49,78…50,21 Hz).
+
+**Nowe ustalenie o produkcji (nie było w audycie).**
+`calculation_readiness/service.py:87` zwraca globalny status **`ready`**, gdy
+wszystkie pozycje są w `("ready", "n_a", "no_module")` — projekt, w którym KAŻDE
+obliczenie nie ma modułu numerycznego, raportuje gotowość. Zmierzony zasięg
+naprawy: **0 testów** (`10720 passed, 6 skipped, 0 failed` po usunięciu
+`"no_module"` z krotki, w izolowanym worktree). Reguła nie jest pinowana w żadną
+stronę. NIE zmieniona — wybór statusu docelowego jest decyzją o komunikacie dla
+projektanta.
+
+**Wykonane potwierdzenia (kody wyjścia łapane bezpośrednio, nie przez pipe):**
+- `poetry run pytest -q` (backend, pełna regresja) → **10736 passed, 6 skipped,
+  0 failed**, kod wyjścia 0
+- `pytest tests/research` → 91 passed (49 własności + 26 wyrocznia zewnętrzna
+  + 3 CCT + 13 prototyp modelu zaufania)
+- `poetry run python ../scripts/guardy_z_ci.py` → czerwone **dokładnie te same
+  cztery** guardy co na `7e84753a`; **żaden nowy nie zaczerwienił się**
+- `mypy` na zmienionych modułach produkcyjnych → Success; `mypy_ratchet_guard` → OK
+- `black --check src tests` oraz `black --check --config pyproject.toml ../scripts`
+  → czysto na wszystkich plikach tej transzy; `ruff check` → czysto
+- `docs_guard`, `utf8_mojibake_guard`, `local_truth_guard`,
+  `research_isolation_guard` → OK
+- mutacja kontrolna bezpiecznika D-00 (`if False` w bramce) → 9 failed / 5 passed,
+  czyli testy realnie mierzą bezpiecznik
+
+**Dług ZASTANY, zweryfikowany na punkcie odgałęzienia `7e84753a`** (czyli sprzed
+tej i poprzedniej sesji): czerwone `enm_contract_parity_guard`,
+`solver_input_substitute_guard`, `success_toast_guard`, `tsconfig_gate_guard`
+oraz 2 testy `scripts/test_solver_input_substitute_guard.py`. Nienaprawione
+świadomie — kontrakt sesji nakazuje zapisać zastaną czerwień precyzyjnie, a nie
+rozszerzać o nią zakres. **To jest dług otwarty, nie stan zaakceptowany.**
+
+---
+
+### 3.-3 Sesja 2026-09-10 — BEZPIECZNIK DOWODOWY warstwy dynamicznej (D-00 + α + β) — PRZEKAZANIE DO FABLE
+
+> **Zdanie kluczowe dla następnego agenta prowadzącego:**
+> **Zabezpieczenie dowodowe jest wdrożone; wymiana architektury symulacji
+> dynamicznej celowo NIE została rozpoczęta.**
+
+**Wejście:** karta audytowa `docs/plan/KARTA_MAX_DYNAMIC_SIMULATION_AUDIT_2026-09.md`
+(commit audytu `7ab9d7a0`, audytowany HEAD aplikacji `7e84753a`; 11×P0, 17×P1).
+**Gałąź wdrożenia:** `claude/opus5-dynamic-evidence-containment` (baza: `7ab9d7a0`).
+
+**Decyzja właściciela D-00 (wykonana):** FAIL CLOSED. Pozytywny certyfikat
+zgodności NC RfG NIE powstaje, gdy jego wniosek zależy od obecnych implementacji
+dynamicznych. Raport diagnostyczny nadal powstaje, ale jawnie mówi, że nie jest
+dowodem. Nie wybrano wariantu „żółta etykieta przy nadal wystawianym certyfikacie".
+
+**β — klasyfikacja dowodowa (rozszerzenie istniejącego mechanizmu).**
+`solver_input/provenance.py` dostał TRZECIĄ oś obok `SourceKind` i `FieldQuality`:
+`EvidenceTier` (`VALIDATED_SIMULATION` / `DECLARATION` / `UNVALIDATED_MODEL` /
+`NOT_SIMULATED`) + rejestr `classify_dynamic_capability()`. Nie powstał równoległy
+podsystem proweniencji. Dowodowy jest wyłącznie `VALIDATED_SIMULATION`;
+**dziś żadna zdolność dynamiczna nie jest dowodowa**, a zdolność nieznana
+rejestrowi jest domyślnie niedowodowa (fail-closed).
+
+Sklasyfikowane: `ncrfg_ptpiree.ride_through` (NOT_SIMULATED),
+`ncrfg_ptpiree.{p_recovery,reactive_current_frt,frequency_response}` (DECLARATION),
+`frt_hvrt.trajectory`, `stability_rms.{time_domain,small_signal}` (UNVALIDATED_MODEL),
+`dynamic_stability.fault_clear` (DECLARATION).
+
+**α — co bezpiecznik faktycznie blokuje.**
+1. `ncrfg_ptpiree` T14/T15 nie zwracają już `pass` bez przebiegu U(t) → `no_data`;
+   ślad White Box przestał podawać limit profilu jako wielkość „symulowaną".
+2. `application/ncrfg_compliance/checker.py` (druga ścieżka NC RfG) nie zamienia
+   `stayed_connected` silnika FRT na `pass`.
+3. `certyfikat_zgodnosci.zbierz_braki` ma **jawną, niezależną bramkę dowodową** na
+   `reporting_status` — działa nawet gdy wszystkie werdykty są pozytywne. Blokuje
+   równocześnie JSON, DOCX i PDF certyfikatu oraz — przez `wniosek_osd` — wniosek OSD.
+4. `_execute_dynamic_stability` przestał deklarować `proof_status=complete` /
+   `reporting_status=reportable`; statusy idą z klasyfikacji, nie ze stałej.
+5. Widoki diagnostyczne FRT (trajektorie, sekwencja) niosą `evidence` w danych.
+6. Końcówka `GET /api/ncrfg-tests/cases/{id}/compliance` wystawia
+   `reporting_status`/`proof_status` razem z `overall_pass`.
+7. `report_pl` (wolny tekst renderowany wprost w UI) nazywa się „Raport
+   diagnostyczny … NIE JEST DOWODEM ZGODNOŚCI".
+
+**Granica utrzymana — rozróżnienie 4 stanów.** „Wynik istnieje" ≠ „wynik jest
+pozytywny" ≠ „wynik jest dowodem" ≠ „wymaganie wykazane". Bezpiecznik działa
+w JEDNĄ stronę: blokuje fałszywy POZYTYW, ale **nie wycisza realnej niezgodności**
+— moduł z wykazaną niezgodnością pozostaje raportowalny i dokument ją stwierdza
+(pin: `test_niezgodnosc_pozostaje_raportowalna`). Moduł klasy A, którego pakiet
+nie wymaga żadnego testu ride-through, nadal certyfikuje się legalnie — bo jego
+wniosek nie opiera się na zdolnościach objętych kwarantanną.
+
+**Kwarantanna silników.** `stability_rms` i `frt_hvrt` NIE zostały usunięte ani
+„naprawione" — ich równania są nietknięte. Pozostają dostępne diagnostycznie.
+
+**Pokrycie regresyjne:** `backend/tests/test_dynamic_evidence_containment.py`
+(108 testów). Niezmiennik pisany jako ILOCZYN CECH (5 operatorów × 3 klasy modułu
+× 4 rodzaje DER × ścieżki konsumenta), nie jako powtórzenie przypadku z audytu.
+Kluczowy test `test_bezpiecznik_dziala_takze_gdy_wszystkie_testy_zwrocily_pozytyw`
+konstruuje wynik z samymi werdyktami `pass` i sprawdza, że bramka i tak blokuje.
+Osobno przypięta pułapka `all([]) == True`: raport bez ani jednego testu nie może
+być „raportowalny" (dowód przez nieobecność dowodu) — `NcRfgComplianceReport`
+wymaga niepustej listy testów.
+
+**Wykonane potwierdzenia (kody wyjścia łapane bezpośrednio):**
+- `poetry run pytest -q` → **10621 passed, 11 skipped, 0 failed** (kod wyjścia 0)
+- `poetry run mypy` (zmienione moduły) → Success; `mypy_ratchet_guard` → OK
+- `ruff check src tests` → czysto; `black --check` na plikach tej zmiany → czysto
+- guardy: arch, pcc_zero, domain_no_guessing, canonical_ops, readiness_codes,
+  catalog_binding, catalog_gate, audit_contract, repo_hygiene, solver_boundary,
+  load_flow/protection_no_heuristics, overlay_no_physics, trace_determinism,
+  fault_scenarios_determinism, ui_terminology, forbidden_ui_terms, no_codenames,
+  resultset_v1_schema, severity_contract, docs, local_truth, utf8_mojibake,
+  import_graph → **wszystkie OK**
+- frontend: `vitest` dla `ui2/oze` + `ui/ncrfg-tests` → 488 passed (0 plików
+  frontendu zmienionych w tej transzy)
+
+**Dług ZASTANY (NIE z tej transzy, nienaprawiony świadomie — poza zakresem):**
+- `black --check src tests` jest czerwony na commicie bazowym `7ab9d7a0` dla
+  DWÓCH niezwiązanych plików: `tests/application/analyses/lv_domain/test_audit.py`
+  i `.../scenariusze_nn.py`. Zweryfikowane przez `git stash` na bazie. Krok lintu
+  w `python-tests.yml` jest przez to czerwony niezależnie od tej zmiany.
+- Niespójność słownictwa: `proof_status` przyjmuje `partial` (PF/SC) albo
+  `incomplete` (source_compliance, NC RfG) — dwa literały na ten sam stan.
+- `frontend/src/ui/network-build/station-der/NcRfgComplianceBadge.tsx` liczy
+  własny werdykt „Zgodny NC RfG" po stronie klienta, bez backendu. Kod martwy
+  (jedyny konsument `DerValidationBanner.tsx` nie jest nigdzie importowany poza
+  własnym testem), ale to mina na przyszłość.
+- Dwie niekompatybilne numeracje testów NC RfG (P0-11 karty) — NIE ruszona:
+  ujednolicenie zmienia znaczenie identyfikatorów w dokumentach i jest decyzją
+  właściciela, nie skutkiem ubocznym bezpiecznika.
+
+**Granica zostawiona świadomie dla Fable (NIE zaczęte):** wybór modelu fizycznego
+i architektury — DAE vs ODE, topologia wektora stanu, model maszyny synchronicznej,
+GFL/GFM, regulatory AVR/governor/PSS, sprzężenie z Ybus, integrator, kontrakt
+wyniku dynamicznego z serią czasową, rejestr modeli dynamicznych, adapter wyroczni
+zewnętrznej. Materiał decyzyjny: §32–§37 karty audytowej (decyzje D-01…D-13).
+
+**Pliki istotnie zmienione:** `solver_input/provenance.py`,
+`network_model/solvers/ncrfg_ptpiree/{contracts,engine}.py`,
+`application/ncrfg_compliance/checker.py`,
+`application/analyses/{certyfikat_zgodnosci,frt_trajektorie,frt_sekwencja}.py`,
+`enm/canonical_analysis.py`, `api/ncrfg_ptpiree_tests.py`,
+`tests/test_dynamic_evidence_containment.py` (nowy) + 5 plików testowych
+przepisanych do obecnego kanonu (intencja zachowana, powód w komentarzu).
+
+**Ograniczenie środowiska:** zależności backendu doinstalowane w sesji
+(`poetry install --with dev`); pliki `pyproject.toml`/`poetry.lock` NIE zmienione.
+
 ### 3.-2 Sesja 2026-07-22 — ZWARCIA-PRO + zasada wywodów KaTeX (zamknięte programy)
 
 Pełny zapis: `docs/v12xx/REJESTR_KONFLIKTOW.md` V12K-098…V12K-120; dokumenty BINDING:

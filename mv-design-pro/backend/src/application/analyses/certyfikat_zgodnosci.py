@@ -8,6 +8,11 @@ czyli tej samej ścieżki, którą liczy macierz frontendu:
 ``api/ncrfg_ptpiree_tests.py:41`` oraz ``engine.py:208``). Serwis NIE przelicza
 żadnego testu — cytuje istniejące werdykty, ich podsumowania i odcisk wejścia.
 
+Bezpiecznik dowodowy: certyfikat NIE powstaje, gdy pakiet zgodności nie jest
+przydatny jako dowód regulacyjny (``reporting_status != "reportable"``) — także
+wtedy, gdy wszystkie testy zwróciły werdykt pozytywny. Werdykt pozytywny ze
+zdolności bez ustalonej poprawności fizycznej nie wykazuje spełnienia wymagania.
+
 Uczciwa bramka kompletności (wzór „lista braków przed generacją"):
 - werdykt ``no_data`` na teście wymaganym, brak klasy modułu lub moduł bez
   żadnego testu wymaganego → certyfikat NIE powstaje, zwracana jest lista
@@ -37,6 +42,7 @@ from network_model.solvers.ncrfg_ptpiree import (
     NcRfgPtpireeRunResult,
 )
 from pydantic import BaseModel, Field
+from solver_input.provenance import BRAK_DOWODU_PL
 
 try:  # pragma: no cover - zależy od środowiska
     from docx import Document
@@ -94,12 +100,30 @@ class CertyfikatBrakiError(Exception):
 def zbierz_braki(run_result: NcRfgPtpireeRunResult) -> list[str]:
     """Zbierz braki kompletności blokujące generację (deterministyczna kolejność).
 
-    Braki (per moduł, w kolejności macierzy):
-    - brak klasy modułu (``module_type == '?'``),
-    - moduł bez żadnego testu wymaganego (nie ma czego certyfikować),
-    - test wymagany z werdyktem ``no_data`` (brak danych do oceny).
+    Dwie NIEZALEŻNE bramki — obie muszą przepuścić, żeby certyfikat powstał:
+
+    1. **Bramka dowodowa** (``reporting_status``): czy wyniki, na których miałby
+       się oprzeć certyfikat, w ogóle wolno przedstawić jako dowód regulacyjny.
+       Sprawdzana JAWNIE, a nie pośrednio przez werdykty testów — werdykt
+       pozytywny ze zdolności bez ustalonej poprawności fizycznej nie może
+       otworzyć tej bramki. To jest bezpiecznik: gdyby test kiedykolwiek zaczął
+       ponownie zwracać ``pass`` bez zwalidowanego modelu, certyfikat nadal nie
+       powstanie, dopóki zdolność nie zostanie sklasyfikowana jako dowodowa.
+    2. **Bramka kompletności danych** (per moduł, w kolejności macierzy):
+       brak klasy modułu (``module_type == '?'``), moduł bez żadnego testu
+       wymaganego, test wymagany z werdyktem ``no_data``.
+
+    „Wynik istnieje", „wynik jest pozytywny" i „wynik jest dowodem" to trzy różne
+    stany; tylko trzeci uprawnia do wydania certyfikatu.
     """
     braki: list[str] = []
+    if run_result.reporting_status != "reportable":
+        powod = run_result.evidence_note_pl or (
+            f"{BRAK_DOWODU_PL}: wynik nie jest przydatny jako dowód regulacyjny."
+        )
+        braki.append(f"Pakiet zgodności: {powod}")
+        for ograniczenie in run_result.evidence_limitations:
+            braki.append(f"Pakiet zgodności: zdolność nieprzydatna dowodowo — {ograniczenie}.")
     for module in run_result.modules:
         etykieta = module.der_name or module.der_ref
         if module.module_type == "?":
@@ -119,6 +143,42 @@ def zbierz_braki(run_result: NcRfgPtpireeRunResult) -> list[str]:
                     f"({test.ability_pl}) — brak danych do oceny."
                 )
     return braki
+
+
+#: Etykiety podstawy werdyktu — po polsku, bez kodow projektowych.
+_PODSTAWA_PL: dict[tuple[str, str], str] = {
+    ("DECLARED_CONFIGURATION", "DECLARATION"): "deklaracja wnioskodawcy / karta katalogowa",
+    ("DECLARED_CONFIGURATION", "VALIDATED_SIMULATION"): "zwalidowana symulacja",
+    ("DYNAMIC_PERFORMANCE", "VALIDATED_SIMULATION"): "zwalidowana symulacja",
+    ("DYNAMIC_PERFORMANCE", "DECLARATION"): "deklaracja wnioskodawcy (bez symulacji)",
+    ("DYNAMIC_PERFORMANCE", "UNVALIDATED_MODEL"): "model bez ustalonej poprawnosci fizycznej",
+    ("DYNAMIC_PERFORMANCE", "NOT_SIMULATED"): "brak jakiejkolwiek symulacji",
+}
+
+
+def _podstawa_pl(evidence: dict | None) -> str:
+    """Jednozdaniowa podstawa werdyktu; brak klasyfikacji = jawny brak."""
+    if not evidence:
+        return "BRAK KLASYFIKACJI PODSTAWY"
+    klucz = (str(evidence.get("claim_kind")), str(evidence.get("tier")))
+    return _PODSTAWA_PL.get(klucz, f"{evidence.get('tier')} / {evidence.get('claim_kind')}")
+
+
+def _podstawa_dict(evidence: dict | None) -> dict:
+    """Maszynowo czytelna podstawa werdyktu (zawsze obecna, nigdy pusta cicho)."""
+    if not evidence:
+        return {
+            "capability_id": None,
+            "tier": None,
+            "claim_kind": None,
+            "przydatna_dowodowo": False,
+        }
+    return {
+        "capability_id": evidence.get("capability_id"),
+        "tier": evidence.get("tier"),
+        "claim_kind": evidence.get("claim_kind"),
+        "przydatna_dowodowo": bool(evidence.get("regulatory_evidence_eligible", False)),
+    }
 
 
 def build_certyfikat_view(
@@ -156,6 +216,12 @@ def build_certyfikat_view(
                 "werdykt": test.verdict,
                 "werdykt_pl": _WERDYKT_PL.get(test.verdict, test.verdict),
                 "wartosci_pl": test.summary_pl,
+                # NA CZYM opiera się ten werdykt. Bez tego wydany dokument nie
+                # pozwalał odczytać, które „spełnia" wynika z pomiaru, a które
+                # wyłącznie z deklaracji wnioskodawcy — czyli sam certyfikat
+                # gubił informację, którą bramka dowodowa właśnie zbadała.
+                "podstawa_pl": _podstawa_pl(test.evidence),
+                "podstawa": _podstawa_dict(test.evidence),
             }
             for test in module.tests
             if test.required or test.verdict != "not_required"
@@ -189,9 +255,28 @@ def build_certyfikat_view(
     projekt_zgodny = modulow_niezgodnych == 0
     operatorzy = sorted({m.operator_name_pl for m in run_result.modules})
 
+    podstawy = sorted(
+        {
+            (
+                str((test.evidence or {}).get("capability_id") or "BRAK"),
+                _podstawa_pl(test.evidence),
+            )
+            for module in run_result.modules
+            for test in module.tests
+            if test.required
+        }
+    )
     return {
         "kontrakt": CERTYFIKAT_CONTRACT,
         "tytul": CERTYFIKAT_TYTUL,
+        "podstawa_dowodowa": {
+            "opis_pl": (
+                "Na czym opieraja sie werdykty testow wymaganych. Certyfikat "
+                "moze powstac wylacznie wtedy, gdy KAZDA z tych podstaw jest "
+                "wystarczajaca dla rodzaju stawianego twierdzenia."
+            ),
+            "pozycje": [{"capability_id": cap, "podstawa_pl": opis} for cap, opis in podstawy],
+        },
         "identyfikacja": {
             "projekt": nazwa_projektu,
             "przypadek": nazwa_przypadku,
@@ -279,9 +364,12 @@ def render_certyfikat_docx(view: dict) -> bytes:
             f"Status: {module['status_pl']}"
         )
 
-        tabela = doc.add_table(rows=1, cols=4)
+        # Kolumna „Podstawa" jest obowiązkowa: bez niej wydany dokument nie
+        # pozwala odczytać, które „spełnia" wynika z pomiaru, a które wyłącznie
+        # z deklaracji wnioskodawcy.
+        tabela = doc.add_table(rows=1, cols=5)
         tabela.style = "Table Grid"
-        naglowki = ["Test", "Zdolność", "Werdykt", "Wartości"]
+        naglowki = ["Test", "Zdolność", "Werdykt", "Wartości", "Podstawa"]
         hdr = tabela.rows[0].cells
         for i, tekst in enumerate(naglowki):
             hdr[i].text = tekst
@@ -292,6 +380,7 @@ def render_certyfikat_docx(view: dict) -> bytes:
             row[1].text = test["nazwa_pl"]
             row[2].text = test["werdykt_pl"]
             row[3].text = test["wartosci_pl"]
+            row[4].text = str(test.get("podstawa_pl") or "BRAK KLASYFIKACJI PODSTAWY")
 
         dowod = module.get("dowod_certyfikatu")
         if dowod is not None:
@@ -402,7 +491,7 @@ def render_certyfikat_pdf(view: dict) -> bytes:
     y -= line_height
 
     # 4) Moduły — nagłówek, meta i tabela testów.
-    module_cols = [22 * mm, 55 * mm, 25 * mm, content_width - 102 * mm]
+    module_cols = [18 * mm, 45 * mm, 22 * mm, content_width - 130 * mm, 45 * mm]
     for module in view["moduly"]:
         ensure(line_height * 4)
         naglowek = module["der_name"] or module["der_ref"]
@@ -413,7 +502,7 @@ def render_certyfikat_pdf(view: dict) -> bytes:
             f"Napięcie: {module['voltage_kv']} kV  |  "
             f"Status: {module['status_pl']}"
         )
-        header = ["Test", "Zdolność", "Werdykt", "Wartości"]
+        header = ["Test", "Zdolność", "Werdykt", "Wartości", "Podstawa"]
         ensure(line_height)
         c.setFont("DejaVuSans-Bold", 9)
         col_x = left_margin
@@ -427,6 +516,7 @@ def render_certyfikat_pdf(view: dict) -> bytes:
                 str(test["nazwa_pl"]),
                 str(test["werdykt_pl"]),
                 str(test["wartosci_pl"]),
+                str(test.get("podstawa_pl") or "BRAK KLASYFIKACJI PODSTAWY"),
             ]
             wrapped = [
                 simpleSplit(cell, "DejaVuSans", 9, module_cols[i] - 2 * mm)

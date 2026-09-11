@@ -46,12 +46,19 @@ OSD_JSON = "/api/oze-analysis/osd-application"
 OSD_DOCX = "/api/oze-analysis/osd-application.docx"
 OSD_PDF = "/api/oze-analysis/osd-application.pdf"
 
+# Moduł typu A (0,8 MW): pakiet NC RfG dla klasy A nie wymaga testów
+# ride-through ani odbudowy P, więc NIE opiera się na zdolnościach dynamicznych
+# bez ustalonej poprawności fizycznej — certyfikat może dla niego legalnie
+# powstać. Wcześniej fikstura miała 2 MW (klasa B); po wprowadzeniu bezpiecznika
+# dowodowego klasa B jest blokowana i to jest zachowanie pożądane, sprawdzane
+# w `tests/api/test_dynamic_evidence_bypass.py` (nie „niżej" w tym pliku —
+# poprzednia wersja tego komentarza wskazywała test, którego nie było).
 _MODULE_FULL: dict = {
     "der_ref": "pv-1",
-    "der_name": "PV 2 MW",
+    "der_name": "PV 0,8 MW",
     "der_kind": "PV",
     "operator_id": "enea",
-    "p_max_kw": 2000,
+    "p_max_kw": 800,
     "p_min_kw": 100,
     "voltage_kv": 15,
     "certificate_status": "ptpiree_verified",
@@ -238,7 +245,7 @@ def test_braki_nieznany_bus_ref() -> None:
 
 
 def test_braki_modulow_nc_rfg() -> None:
-    ncrfg = _ncrfg({"p_recovery_time_s": None, "reactive_current_gain": None})
+    ncrfg = _ncrfg({"p_max_kw": 2000})
     braki = zbierz_braki_wniosku(_pf_run(), _sc_run(), "bus_nn", ncrfg)
     assert any(b.startswith("Zgodność NC RfG:") for b in braki)
     assert any("brak danych do oceny" in b for b in braki)
@@ -262,7 +269,7 @@ def test_kolejnosc_brakow_deterministyczna() -> None:
         _fake_run("short_circuit_sn", "FINISHED"),
         _fake_run("PF", "FINISHED"),
         "bus_nn",
-        _ncrfg({"p_recovery_time_s": None, "reactive_current_gain": None}),
+        _ncrfg({"p_max_kw": 2000}),
     )
     assert "nie jest rozpływem" in braki[0]
     assert "nie jest zwarciowy" in braki[1]

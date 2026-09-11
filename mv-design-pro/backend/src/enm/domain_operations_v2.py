@@ -35,7 +35,10 @@ from network_model.catalog.types import CatalogBinding
 from network_model.solvers import cable_ampacity_derating as cable_derating
 
 from . import der_sn_validation as der_val
-from .catalog_completion import NN_FIELD_ORIGIN_OPERACJA_DOMENOWA
+from .catalog_completion import (
+    NN_FIELD_ORIGIN_OPERACJA_DOMENOWA,
+    moc_bierna_odbioru_katalogowego,
+)
 from .domain_operations import (
     FUNKCJA_POMIARU_DOMYSLNA_POLA_DOKLADANEGO,
     POLE_BLOKU_FABRYCZNEGO,
@@ -51,6 +54,7 @@ from .domain_operations import (
     _error_response,
     _find_element,
     _find_legacy_field_element_collection,
+    _fizyka_odcinka,
     _make_id,
     _materialize_catalog_payload,
     _opt_float_any,
@@ -2528,6 +2532,53 @@ def add_sn_bay_from_catalog(enm: dict[str, Any], payload: dict[str, Any]) -> dic
     return add_sn_bay(enm, payload_pola)
 
 
+def _meta_wiazania_aparatu_pola_nn(
+    payload: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    """Klucze meta wpisu `nn_field_specs`, którymi promocja materializuje aparat.
+
+    KLASA, NIE INSTANCJA (przegląd 2026-08-01, pomiar 2026-09-11). Promocja pól
+    nN (`enm/migrations/nn_field_specs_promocja.migruj`) CZYTA z meta wpisu
+    `catalog_binding`/`catalog_bindings` i buduje `SwitchBranch` z `catalog_ref`,
+    `source_mode: KATALOG` i `materialized_params`. Czytelnik istniał, ale w
+    klasie czterech pisarzy `nn_field_specs` tylko DWA go karmiły
+    (`domain_operations._build_nn_field_specs` — wyłącznik główny nN, oraz
+    `_append_converter_field_if_needed` — pole przekształtnika). Dwa pozostałe,
+    OBA za jedynym publicznym write-pathem pola nN (`add_nn_outgoing_field`,
+    role FEEDER i SOURCE), nie miały drogi przekazania wiązania: aparat odpływu
+    powstawał z `catalog_ref = None`, `source_mode = "MIGRACJA"`, a gotowość
+    inżynierska meldowała `switch.catalog_ref_missing` + `W061` BEZ ŻADNEJ
+    operacji, którą projektant mógłby to naprawić przy tworzeniu pola.
+
+    ZMIERZONE PRZED NAPRAWĄ (żywy backend, `add_nn_outgoing_field` →
+    `engineering-readiness`): `ready=False`, kody `['W002', 'W061',
+    'switch.catalog_ref_missing']`, element `nn/<seed>/feeder_device`.
+
+    Wiązanie jest OPCJONALNE (pole bez wskazanego aparatu to poprawny stan
+    pośredni — tak samo jak po stronie SN), ale wskazane MUSI istnieć: inaczej
+    migawka deklarowałaby `KATALOG` przy martwej pozycji (`_blad_aparatu_pola`).
+
+    Zwraca ``(klucze_meta, None)`` albo ``({}, odpowiedź_błędu)``.
+    """
+    binding = payload.get("catalog_binding")
+    if not isinstance(binding, dict):
+        return {}, None
+    blad = _blad_aparatu_pola(
+        binding,
+        namespace=_PRZESTRZEN_APARATU_POLA_NN,
+        opis_pl="Aparat pola nN",
+    )
+    if blad is not None:
+        return {}, blad
+    meta: dict[str, Any] = {
+        "catalog_binding": _wiazanie_w_przestrzeni(binding, _PRZESTRZEN_APARATU_POLA_NN)
+    }
+    catalog_item_id = _catalog_item_id(binding)
+    if catalog_item_id:
+        meta["apparatus_catalog_ref"] = catalog_item_id
+    return meta, None
+
+
 def _add_nn_outgoing_field_internal(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Wewnętrzny zapis odpływu nN do meta.nn_field_specs."""
     bus_nn_ref = payload.get("bus_nn_ref")
@@ -2557,6 +2608,9 @@ def _add_nn_outgoing_field_internal(enm: dict[str, Any], payload: dict[str, Any]
         }
     )
     feeder_ref = _make_id("nn", seed, "outgoing")
+    meta_wiazania, blad_wiazania = _meta_wiazania_aparatu_pola_nn(payload)
+    if blad_wiazania is not None:
+        return blad_wiazania
     field_spec = _build_field_spec(
         field_ref=feeder_ref,
         name=payload.get("field_name") or "Odpływ nN",
@@ -2564,6 +2618,7 @@ def _add_nn_outgoing_field_internal(enm: dict[str, Any], payload: dict[str, Any]
         bus_ref=bus_nn_ref,
         tags=list(payload.get("tags") or []),
         meta={
+            **meta_wiazania,
             "feeder_role": payload.get("feeder_role", "ODPLYW_NN"),
             # Karta NAPRAWA-B, znalezisko #3: znacznik pochodzenia — TO SAMO
             # pole czyta `enm.catalog_completion._pochodzi_z_operacji_domenowej`,
@@ -2624,6 +2679,9 @@ def _append_nn_source_meta_field(enm: dict[str, Any], payload: dict[str, Any]) -
         }
     )
     field_ref = _make_id("nn", seed, "source_field")
+    meta_wiazania, blad_wiazania = _meta_wiazania_aparatu_pola_nn(payload)
+    if blad_wiazania is not None:
+        return blad_wiazania
     field_spec = _build_field_spec(
         field_ref=field_ref,
         name=payload.get("field_name") or f"Pole źródłowe nN ({kind})",
@@ -2631,6 +2689,7 @@ def _append_nn_source_meta_field(enm: dict[str, Any], payload: dict[str, Any]) -
         bus_ref=bus_nn_ref,
         tags=["nn_source_field"],
         meta={
+            **meta_wiazania,
             "source_field_kind": kind,
             # Karta NAPRAWA-B, znalezisko #3 — patrz komentarz w
             # `_add_nn_outgoing_field_internal` (ten sam znacznik, ten sam
@@ -2700,8 +2759,12 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     # Odbiór bez pozycji katalogowej jest kanoniczny (`EKSPERCKI_RECZNY`), ale
     # WSKAZANA pozycja musi ISTNIEĆ — inaczej odbiór deklaruje w migawce
     # `source_mode: KATALOG` / `parameter_source: CATALOG` przy martwej referencji.
+    tabliczka_katalogu: dict[str, Any] = {}
+    zrodlo_q: str | None = None
+    cos_phi_katalogu: float | None = None
+    cos_phi_mode_katalogu: str | None = None
     if catalog_ref:
-        _, blad_katalogu = _pozycja_katalogu(
+        tabliczka_katalogu, blad_katalogu = _pozycja_katalogu(
             namespace=przestrzen_katalogu,
             catalog_ref=catalog_ref,
             catalog_binding=catalog_binding,
@@ -2709,6 +2772,49 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         )
         if blad_katalogu is not None:
             return blad_katalogu
+
+        # TABLICZKA KATALOGU TRAFIA DO MODELU, NIE TYLKO DO WALIDACJI ISTNIENIA
+        # (pomiar 2026-09-11). Pozycja była pobierana i WYRZUCANA (`_, blad = ...`),
+        # więc odbiór związany z `load_przem_75kw` (katalog: q_kvar = 28,0) szedł
+        # do rozpływu z Q = 0 przy `parameter_source: CATALOG` — phantom cosφ
+        # V12K-050 w drodze REALNEGO PROJEKTANTA, mimo że bliźniacza migracja
+        # legacy (`catalog_completion.complete_station_loads_from_nn_feeders`)
+        # broniła się przed nim od dawna. Hierarchia Q ma jedno źródło prawdy:
+        # `moc_bierna_odbioru_katalogowego`, wspólne dla obu pisarzy.
+        #
+        # PIERWSZEŃSTWO: deklaracja projektanta (`reactive_power_kvar` albo
+        # `cos_phi` w payloadzie) wygrywa z tabliczką — formularz opisuje
+        # KONKRETNĄ instalację, katalog tylko typ. Katalog uzupełnia to, czego
+        # formularz nie powiedział; nigdy nie nadpisuje tego, co powiedział.
+        if reactive_power_kvar is None:
+            try:
+                p_mw_deklarowane = float(active_power_kw) / 1000.0
+            except (TypeError, ValueError):
+                p_mw_deklarowane = 0.0
+            pozycja_odbioru = get_default_mv_catalog().get_load_type(catalog_ref)
+            rozwiazanie = moc_bierna_odbioru_katalogowego(pozycja_odbioru, p_mw_deklarowane)
+            if rozwiazanie is None:
+                # Parytet z migracją: brak kanonu katalogu dla mocy biernej ⇒
+                # NIE zapisujemy cichego Q = 0 pod pieczątką „CATALOG". Odbiór
+                # ekspercki (bez pozycji) ma tę drogę otwartą — to świadoma
+                # deklaracja projektanta, a nie milczenie katalogu.
+                return _error_response(
+                    (
+                        f"Pozycja katalogu '{catalog_ref}' nie rozstrzyga mocy biernej "
+                        "odbioru (brak q_kvar i brak cosφ) — podaj "
+                        "'reactive_power_kvar' albo 'cos_phi' w formularzu."
+                    ),
+                    "catalog.load_reactive_power_unresolved",
+                )
+            q_mvar_katalogu, zrodlo_q = rozwiazanie
+            reactive_power_kvar = q_mvar_katalogu * 1000.0
+            if pozycja_odbioru is not None:
+                # cosφ tabliczkowy NIE jest polem solverowym kontraktu OBCIAZENIE
+                # (`MATERIALIZATION_CONTRACTS`), więc nie ma go w `tabliczka_katalogu`
+                # — bierzemy go z pozycji katalogu, bo to on rozstrzyga gałąź
+                # hierarchii, gdy `q_kvar` milczy.
+                cos_phi_katalogu = pozycja_odbioru.cos_phi
+                cos_phi_mode_katalogu = pozycja_odbioru.cos_phi_mode
 
     original_feeder_bus_ref = _field_station_bus_ref(enm, feeder_ref)
     if not original_feeder_bus_ref:
@@ -2761,11 +2867,30 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             "cos_phi": payload.get("cos_phi"),
         },
     }
-    # Klucz dopisywany WARUNKOWO: odbiór stałomocowy zapisuje się dokładnie tak
-    # jak przed tą zmianą (bez `materialized_params`), więc istniejące projekty
-    # i ich odciski pozostają nietknięte.
-    if zip_odbioru is not None:
-        nowy_odbior["materialized_params"] = zip_odbioru
+    # Klucz dopisywany WARUNKOWO: odbiór stałomocowy BEZ pozycji katalogowej
+    # zapisuje się dokładnie tak jak przed tą zmianą (bez `materialized_params`),
+    # więc istniejące projekty eksperckie i ich odciski pozostają nietknięte.
+    #
+    # ŚLAD WHITE BOX MATERIALIZACJI (parytet z `catalog_completion._build_default_load`,
+    # które zapisuje ten sam komplet): gdy Q przyszło z tabliczki, model niesie
+    # JAWNIE, z której pozycji i KTÓRĄ gałęzią hierarchii — bez tego rekord
+    # twierdziłby „parametry z katalogu", a audyt nie miałby jak sprawdzić, czy
+    # 28 kvar to `q_kvar` pozycji, czy przeliczenie z cosφ.
+    slad_katalogu: dict[str, Any] = {}
+    if zrodlo_q is not None:
+        slad_katalogu = {
+            "catalog_item_id": catalog_ref,
+            "q_kvar": reactive_power_kvar,
+            "q_source": zrodlo_q,
+        }
+        if tabliczka_katalogu.get("p_kw") is not None:
+            slad_katalogu["catalog_p_kw"] = tabliczka_katalogu["p_kw"]
+        if cos_phi_katalogu is not None:
+            slad_katalogu["catalog_cos_phi"] = float(cos_phi_katalogu)
+        if cos_phi_mode_katalogu:
+            slad_katalogu["catalog_cos_phi_mode"] = str(cos_phi_mode_katalogu)
+    if zip_odbioru is not None or slad_katalogu:
+        nowy_odbior["materialized_params"] = {**slad_katalogu, **(zip_odbioru or {})}
 
     new_enm = kopia_graniczna_enm(enm)
     new_enm.setdefault("loads", []).append(nowy_odbior)
@@ -3244,8 +3369,22 @@ def add_nn_section_coupler(enm: dict[str, Any], payload: dict[str, Any]) -> dict
     bus_refs = station.get("bus_refs") or []
     sekcje = [s for s in (station.get("nn_sections") or []) if isinstance(s, dict)]
     if sekcje:
-        ostatnia = max(sekcje, key=lambda s: s.get("order", 0))
-        last_order = ostatnia.get("order", 0)
+        # Numer porzadkowy sekcji jest STRUKTURA modelu, nie pomiarem, ale
+        # podstawienie zera za jego brak dawalo `last_order + 1 == 1`, czyli
+        # numer JUZ ZAJETY przez szyne glowna — cicha kolizja porzadku sekcji.
+        # Kazda sekcja tworzona w tym module `order` zapisuje (w. 3046/3348/3357),
+        # wiec jego brak znaczy rekord z zewnatrz, a nie przypadek roboczy.
+        if any(
+            not isinstance(s.get("order"), int) or isinstance(s.get("order"), bool) for s in sekcje
+        ):
+            return _error_response(
+                f"Rozdzielnica nN '{station_ref}' ma sekcję bez numeru porządkowego "
+                "(order). Kolejność sekcji musi wynikać z modelu, a nie z wartości "
+                "zastępczej.",
+                "nn.coupler_section_order_missing",
+            )
+        ostatnia = max(sekcje, key=lambda s: int(s["order"]))
+        last_order = int(ostatnia["order"])
         last_bus_ref = ostatnia.get("bus_ref")
     else:
         if not bus_refs:
@@ -3417,8 +3556,15 @@ def split_nn_segment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
             "nn.split_segment_not_nn_band",
         )
 
-    length_km = _opt_float_any(segment.get("length_km")) or 0.0
-    length_m_total = length_km * 1000.0
+    fizyka, brakujace_pole = _fizyka_odcinka(segment)
+    if fizyka is None:
+        return _error_response(
+            f"Odcinek '{segment_ref}' nie niesie wymaganej danej '{brakujace_pole}'. "
+            "Rozcięcie wymaga kompletu długość/R/X odcinka źródłowego — "
+            "operacja nie podstawia za nie liczby.",
+            "nn.split_segment_missing_physics",
+        )
+    length_m_total = fizyka["length_km"] * 1000.0
 
     split_at_m = _opt_float_any(payload.get("split_at_m"))
     if split_at_m is None:
@@ -3469,8 +3615,8 @@ def split_nn_segment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
         "from_bus_ref": from_bus_ref,
         "to_bus_ref": mid_bus_ref,
         "length_km": split_at_m / 1000.0,
-        "r_ohm_per_km": segment.get("r_ohm_per_km", 0.0),
-        "x_ohm_per_km": segment.get("x_ohm_per_km", 0.0),
+        "r_ohm_per_km": fizyka["r_ohm_per_km"],
+        "x_ohm_per_km": fizyka["x_ohm_per_km"],
         "status": segment.get("status", "closed"),
     }
     _copy_split_segment_fields(left_data, segment)
@@ -3490,8 +3636,8 @@ def split_nn_segment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
         "from_bus_ref": mid_bus_ref,
         "to_bus_ref": to_bus_ref,
         "length_km": (length_m_total - split_at_m) / 1000.0,
-        "r_ohm_per_km": segment.get("r_ohm_per_km", 0.0),
-        "x_ohm_per_km": segment.get("x_ohm_per_km", 0.0),
+        "r_ohm_per_km": fizyka["r_ohm_per_km"],
+        "x_ohm_per_km": fizyka["x_ohm_per_km"],
         "status": segment.get("status", "closed"),
     }
     _copy_split_segment_fields(right_data, segment)
@@ -3626,8 +3772,42 @@ def merge_nn_segments(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
                 "nn.merge_shared_bus_not_isolated",
             )
 
-    dlugosc_a = segment_a.get("length_km") or 0.0
-    dlugosc_b = segment_b.get("length_km") or 0.0
+    fizyka_a, brak_a = _fizyka_odcinka(segment_a)
+    if fizyka_a is None:
+        return _error_response(
+            f"Odcinek '{segment_a_ref}' nie niesie wymaganej danej '{brak_a}'. "
+            "Scalenie wymaga kompletu długość/R/X obu odcinków — "
+            "operacja nie podstawia za nie liczby.",
+            "nn.merge_segment_missing_physics",
+        )
+    fizyka_b, brak_b = _fizyka_odcinka(segment_b)
+    if fizyka_b is None:
+        return _error_response(
+            f"Odcinek '{segment_b_ref}' nie niesie wymaganej danej '{brak_b}'. "
+            "Scalenie wymaga kompletu długość/R/X obu odcinków — "
+            "operacja nie podstawia za nie liczby.",
+            "nn.merge_segment_missing_physics",
+        )
+    # PREDYKATY PARAMI (CLAUDE.md, regula KLASA §3). Warunek WEJSCIA do scalenia
+    # (ta sama pozycja katalogowa) i warunek WYJSCIA (impedancja jednostkowa
+    # scalonego kabla) musza pochodzic z JEDNEGO zrodla prawdy. Wczesniej
+    # scalony odcinek brał R/X WYLACZNIE z odcinka A i rozciagal je na sume
+    # dlugosci, a zgodnosc z odcinkiem B wynikala tylko z tego, ze brama
+    # katalogowa "dzis sie zgadza". Dane brzegowe, w ktorych sie nie zgadza,
+    # juz istnieja: `set_nn_cable_laying_conditions` przelicza R odcinka wzgledem
+    # warunkow ulozenia, wiec dwa odcinki tej samej pozycji katalogowej moga miec
+    # rozne R/km. Wtedy kopia z A po cichu kasowala impedancje odcinka B.
+    if (fizyka_a["r_ohm_per_km"], fizyka_a["x_ohm_per_km"]) != (
+        fizyka_b["r_ohm_per_km"],
+        fizyka_b["x_ohm_per_km"],
+    ):
+        return _error_response(
+            "Scalane odcinki mają różne impedancje jednostkowe (R/X na km) — "
+            "pojedyncza gałąź kabla nie może wyrazić obu naraz.",
+            "nn.merge_impedance_mismatch",
+        )
+    dlugosc_a = fizyka_a["length_km"]
+    dlugosc_b = fizyka_b["length_km"]
 
     seed = _compute_seed({"op": "merge_nn_segments", "a": segment_a_ref, "b": segment_b_ref})
     merged_ref = _make_id("nn", seed, "merged")
@@ -3654,8 +3834,8 @@ def merge_nn_segments(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
         "from_bus_ref": zewnetrzna_a,
         "to_bus_ref": zewnetrzna_b,
         "length_km": dlugosc_a + dlugosc_b,
-        "r_ohm_per_km": segment_a.get("r_ohm_per_km", 0.0),
-        "x_ohm_per_km": segment_a.get("x_ohm_per_km", 0.0),
+        "r_ohm_per_km": fizyka_a["r_ohm_per_km"],
+        "x_ohm_per_km": fizyka_a["x_ohm_per_km"],
         "status": "closed",
     }
     _copy_split_segment_fields(merged_data, segment_a)

@@ -372,6 +372,11 @@
   background: var(--mvd-ok-bg);
 }
 
+.mvd-frt-sekw-odznaka--warn {
+  border-color: var(--mvd-warn);
+  background: var(--mvd-warn-bg);
+}
+
 .mvd-frt-sekw-odznaka--err {
   border-color: var(--mvd-err);
   background: var(--mvd-err-bg);

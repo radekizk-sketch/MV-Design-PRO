@@ -129,11 +129,17 @@ def build_run_summary_json(run: CanonicalRun) -> dict[str, Any]:
     if run.analysis_type == "dynamic_stability":
         rows = build_dynamic_stability_results(run).get("rows", [])
         row = rows[0] if rows else {}
+        # `reporting_status` MUSI byc w podsumowaniu, bo sekcja "Podsumowanie"
+        # raportu drukuje ten slownik wprost. Bez niego dokument profilu OSD
+        # pokazywal samo `status: STABLE` dla przebiegu oznaczonego jako
+        # `not_reportable` — patrz `analysis_run_exports.wiersze_niedowodowe`.
         return {
             "row_count": len(rows),
             "status": row.get("status"),
             "stability_index": row.get("stability_index"),
             "limiting_factor": row.get("limiting_factor"),
+            "reporting_status": row.get("reporting_status"),
+            "proof_status": row.get("proof_status"),
         }
     if run.analysis_type == "source_compliance":
         rows = build_source_compliance_results(run).get("rows", [])

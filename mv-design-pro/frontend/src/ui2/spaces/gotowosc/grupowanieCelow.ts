@@ -236,6 +236,10 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'catalog.binding_version_missing': 'wspolne',
   'catalog.binding_missing': 'wspolne',
   'catalog.materialization_failed': 'wspolne',
+  // Tabliczka odbioru katalogowego bez mocy biernej (2026-09-11): pozycja
+  // katalogu nie niesie ani `q_kvar`, ani cosφ, więc `add_nn_load` odmawia
+  // zamiast zapisać ciche Q = 0 pod pieczątką „CATALOG" (phantom cosφ V12K-050).
+  'catalog.load_reactive_power_unresolved': 'wspolne',
   // Bramy katalogowe (karta W4, dług V12K-317). Do tej karty rejestr znał tylko
   // cztery kody przestrzeni `catalog.`, a bramy emitują ich siedemnaście więcej —
   // z `catalog.item_not_found` na czele, bo po ujednoliceniu parytetu torów

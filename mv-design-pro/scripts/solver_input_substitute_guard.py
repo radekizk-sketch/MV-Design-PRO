@@ -285,6 +285,21 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "network_model/catalog/materialization.py",
     "network_model/catalog/repository.py",
     "network_model/catalog/types.py",
+    # DWA KORZENIE DOLOZONE 2026-09-11 (bramka `Python tests`, krok testow
+    # guardow). Pin mapy zazadal o nie decyzji, gdy warstwa nN zaczela je
+    # importowac. Pomiar przyrostowy, ta sama metoda co wyzej: RAZEM +8 pol
+    # (1868 -> 1876) i ZERO nowych trafien — czysty zysk precyzji, wiec decyzja
+    # brzmi „do mapy", a nie „poza mapa".
+    #
+    # `lv_temperature_correction.py` deklaruje pola dekoracji WEJSCIA solvera
+    # zwarciowego (korekta R_theta wg IEC 60909 dla scenariusza MIN); to jest
+    # model danych wejsciowych, wiec jego pola musza byc w mapie, zeby bramka
+    # widziala ich podstawianie.
+    # `lv_mcb_bands_iec60898.py` deklaruje pasma wyzwolenia MCB (IEC 60898-1,
+    # Tabela 3) — stale NORMATYWNE, ale niesione polami modelu czytanymi przez
+    # warstwe objeta skanem.
+    "application/solvers/lv_temperature_correction.py",
+    "network_model/catalog/lv_mcb_bands_iec60898.py",
     "network_model/solvers/cable_ampacity_derating.py",
     "network_model/solvers/cable_voltage_drop.py",
     "network_model/solvers/conductor_thermal_withstand.py",
@@ -539,6 +554,15 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         # element bez podanej liczby jest jedna sztuka. Powod merytoryczny.
         "A:or:gen.n_parallel": 1,
         "A:or:trafo.n_parallel": 1,
+        # `branch.n_parallel` — DOKLADNIE ta sama klasa, co dwa wpisy wyzej, tylko
+        # dla galezi. `Cable.n_parallel: int | None = None` jest polem
+        # OPCJONALNYM (w odroznieniu od `length_km`/`r_ohm_per_km`/`x_ohm_per_km`,
+        # ktore sa wymagane), a `OverheadLine` nie ma go wcale — brak deklaracji
+        # torow rownoleglych znaczy JEDEN tor, a nie „nie wiadomo ile".
+        # Jedynka jest elementem neutralnym dzielenia `r/n`, wiec redukuje sie do
+        # zachowania sprzed dodania pola (komentarz przy odczycie to pinuje).
+        # Powod MERYTORYCZNY, nie dlug.
+        "A:or:branch.n_parallel": 1,
         # Moc bierna wytworcy -> 0 Mvar. Ta sama pozycja, co w moscie V12.6 wyzej
         # (jeden defekt, dwa mosty) — DLUG NAZWANY, do rozstrzygniecia razem.
         "A:or:gen.q_mvar": 1,
@@ -625,7 +649,6 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "F:dictget:p.load_scale": 1,
         "F:dictget:row.event_seq": 1,
         "F:dictget:run.base_mva": 1,
-        "F:dictget:run.c_factor": 1,
         "F:dictget:run.clearing_time_ms": 1,
         "F:dictget:run.during_fault_angle_deg": 1,
         "F:dictget:run.max_iter": 1,
@@ -741,10 +764,19 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     #     transformatora/generatora/UPS tworzonego z surowego payloadu
     #     kreatora — TA SAMA KLASA fabrykacji, co naprawiona w tej karcie dla
     #     `enm/topology_ops.py` (uhv_kv/ulv_kv/pk_kw) i `enm/catalog_completion.py`
-    #     (switch_rated_current_a), ale w PLIKU ZAKAZANYM do edycji. DLUG
-    #     NAZWANY, NIENAPRAWIALNY W TEJ SESJI (Zero-Debt pkt 4): wymaga
-    #     koordynacji z watkiem nN (ten sam plik jest w trakcie rownoleglej
-    #     pracy), nie decyzji syntaktycznej tej karty.
+    #     (switch_rated_current_a). Pozostaje DLUGIEM NAZWANYM.
+    #
+    # AKTUALIZACJA 2026-09-10. Powod odroczenia podany wyzej („PLIK ZAKAZANY do
+    # edycji … koordynacja z watkiem nN") WYGASL: watek nN scalil sie
+    # (merge `072ee0f4`, ostatnia zmiana obu plikow 2026-08-14), a wlasciciel
+    # zniosl twarda granice watkow. Odroczenie przezylo swoj powod i zamrazalo
+    # realna fabrykacje, wiec zostalo zdjete: `segment.length_km` (3),
+    # `segment.r_ohm_per_km` (5) i `segment.x_ohm_per_km` (5) sa NAPRAWIONE
+    # u zrodla — trzy operacje SN (`insert_station_on_segment_sn`,
+    # `_insert_branch_point_on_segment_sn`, `insert_section_switch_sn`) czytaja
+    # komplet dlugosc/R/X przez `_fizyka_odcinka` i MELDUJA brak zamiast
+    # podstawiac 0,0 Ω/km (kabel o zerowej impedancji) albo 1,0 km (dlugosc
+    # zmyslona). Wpisy zdjete z zapadki, bo dlug zmalal do zera.
     "enm/domain_operations.py": {
         "D:dictor:payload.dlugosc_m": 2,
         "D:dictor:payload.pk_kw": 1,
@@ -759,9 +791,6 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "F:dictget:seed.min_position": 1,
         "F:dictget:seed.neutral_position": 2,
         "F:dictget:seed.step_percent": 1,
-        "F:dictget:segment.length_km": 3,
-        "F:dictget:segment.r_ohm_per_km": 5,
-        "F:dictget:segment.x_ohm_per_km": 5,
     },
     # Karta RATCHET-DICT-READ (2026-08-13). `enm/domain_operations_v2.py` jest
     # ZAKAZANE do edycji W TEJ KARCIE (§0.4 ZAKAZY, ten sam powod, co
@@ -776,6 +805,14 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # pkt 4, ZAKAZY, watek nN).
     "enm/domain_operations_v2.py": {
         "D:dictor:genset_spec.rated_power_kw": 1,
+        # `payload.n_parallel` w `add_nn_cable_segment` — KARDYNALNOSC z payloadu
+        # operacji (ta sama klasa, co `A:or:branch.n_parallel` w `enm/mapping.py`
+        # i `payload.quantity` nizej): odcinek zamowiony bez podanej liczby torow
+        # jest jednym torem. Odczyt jest NATYCHMIAST domykany walidacja jawna
+        # (`int(...)` z lapaniem `TypeError/ValueError` -> blad operacji, a potem
+        # `n_parallel < 1` -> blad operacji), wiec dana niepoprawna nie przechodzi
+        # dalej jako liczba udajaca deklaracje. Powod MERYTORYCZNY, nie dlug.
+        "F:dictget:payload.n_parallel": 1,
         "D:dictor:payload.quantity": 1,
         "D:dictor:ups_spec.rated_power_kw": 1,
         "F:dictget:genset_spec.rated_power_kw": 1,

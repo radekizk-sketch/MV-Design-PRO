@@ -96,7 +96,13 @@ export function wierszeTabeliSekwencji(widok: WidokSekwencjiFrt): WierszTabeli[]
 // ---------------------------------------------------------------------------
 
 /** Istotność odznaki werdyktu sekwencji (wyłącznie prezentacja). */
-export type IstotnoscSekwencji = 'ok' | 'err';
+/**
+ * `warn` doszlo 2026-09-10: pozytyw pochodzacy ze zdolnosci nieprzydatnej
+ * dowodowo nie jest ani sukcesem (`ok`), ani naruszeniem (`err`) — to trzeci,
+ * odrebny stan. Bez niego prezentacja musialaby sklamac w jedna albo w druga
+ * strone.
+ */
+export type IstotnoscSekwencji = 'ok' | 'warn' | 'err';
 
 /** Werdykt sekwencji: tekst PL z backendu + istotność odznaki. */
 export interface WerdyktSekwencji {
@@ -111,8 +117,25 @@ const SEKW_W_OBWIEDNI = 'sekwencja w obwiedni';
  * Odznaka werdyktu sekwencji. Backend zwraca „sekwencja w obwiedni" (zaliczona)
  * albo „sekwencja niezaliczona — zapad N"; UI mapuje wyłącznie na kolor odznaki,
  * a tekst pozostaje dosłownie z backendu (`werdykt_sekwencji_pl`).
+ *
+ * NAPRAWA (2026-09-10): odznaka pokazywała ZIELONE „sekwencja w obwiedni" dla
+ * zdolności `frt_hvrt.trajectory`, którą rejestr proweniencji klasyfikuje jako
+ * model bez ustalonej poprawności fizycznej. Backend wystawia `evidence`;
+ * warstwa UI gubiła to pole. Pozytyw z wyniku nieprzydatnego dowodowo nie może
+ * być prezentowany jako zwykły pozytyw — zostaje ostrzeżeniem i mówi dlaczego.
+ * Werdykt NEGATYWNY nie jest zmiękczany: ostrzeżenie dowodowe nigdy nie
+ * maskuje naruszenia.
  */
 export function werdyktSekwencji(widok: WidokSekwencjiFrt): WerdyktSekwencji {
   const zaliczona = widok.werdykt_sekwencji_pl === SEKW_W_OBWIEDNI;
-  return { tekst: widok.werdykt_sekwencji_pl, istotnosc: zaliczona ? 'ok' : 'err' };
+  if (!zaliczona) {
+    return { tekst: widok.werdykt_sekwencji_pl, istotnosc: 'err' };
+  }
+  if (widok.evidence?.regulatory_evidence_eligible === true) {
+    return { tekst: widok.werdykt_sekwencji_pl, istotnosc: 'ok' };
+  }
+  return {
+    tekst: `${widok.werdykt_sekwencji_pl} — ${FRT_STRINGS.werdyktNieprzydatnyDowodowo}`,
+    istotnosc: 'warn',
+  };
 }

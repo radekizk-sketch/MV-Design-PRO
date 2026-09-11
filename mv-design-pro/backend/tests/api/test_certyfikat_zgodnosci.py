@@ -29,12 +29,18 @@ from network_model.solvers.ncrfg_ptpiree import (
     NcRfgPtpireeSolver,
 )
 
+# Moduł typu A (0,8 MW): pakiet NC RfG dla klasy A nie wymaga testów
+# ride-through ani odbudowy P, więc NIE opiera się na zdolnościach dynamicznych
+# bez ustalonej poprawności fizycznej — certyfikat może dla niego legalnie
+# powstać. Wcześniej fikstura miała 2 MW (klasa B); po wprowadzeniu bezpiecznika
+# dowodowego klasa B jest blokowana i to jest zachowanie pożądane, sprawdzane
+# osobnym testem niżej.
 _MODULE_FULL: dict = {
     "der_ref": "pv-1",
-    "der_name": "PV 2 MW",
+    "der_name": "PV 0,8 MW",
     "der_kind": "PV",
     "operator_id": "enea",
-    "p_max_kw": 2000,
+    "p_max_kw": 800,
     "p_min_kw": 100,
     "voltage_kv": 15,
     "certificate_status": "ptpiree_verified",
@@ -118,13 +124,20 @@ def test_certyfikat_pozytywny_werdykt_zgodny() -> None:
     assert view["kontrakt"] == "CertyfikatZgodnosciNcRfgV1"
     assert view["werdykt_zbiorczy"]["status"] == "zgodny"
     assert view["werdykt_zbiorczy"]["modulow_niezgodnych"] == 0
-    assert view["moduly"][0]["klasa"] == "B"
+    assert view["moduly"][0]["klasa"] == "A"
     assert view["odcisk_wejscia_sha256"]
 
 
 def test_certyfikat_negatywny_powstaje_z_werdyktem_niezgodnym() -> None:
+    """Werdykt negatywny NIE blokuje — dokument stwierdza stan niezgodności.
+
+    INTENCJA (zachowana). Scenariusz przeniesiony z testu T17 (prąd bierny FRT)
+    na T20 (THD_U): dla klasy A T17 nie jest wymagany, a T20 jest — i jest
+    kontrolą katalogową, nie zdolnością dynamiczną, więc pozostaje przydatny
+    dowodowo i może dać uczciwy werdykt negatywny.
+    """
     view = build_certyfikat_view(
-        _run_result(_module(reactive_current_gain=1.0)),
+        _run_result(_module(harmonic_thdu_percent=9.5)),
         nazwa_projektu="Projekt A",
     )
     assert view["werdykt_zbiorczy"]["status"] == "niezgodny"
@@ -133,14 +146,22 @@ def test_certyfikat_negatywny_powstaje_z_werdyktem_niezgodnym() -> None:
 
 
 def test_braki_blokuja_generacje_lista_pl() -> None:
-    run_result = _run_result(_module(p_recovery_time_s=None, reactive_current_gain=None))
+    """Brak danych na teście wymaganym blokuje generację i daje listę PL.
+
+    INTENCJA (zachowana). Scenariusz przeniesiony z T16/T17 na moduł klasy B,
+    gdzie ride-through (T14/T15) jest wymagany i — wobec braku przebiegu U(t) —
+    konczy sie `no_data`. Lista niesie zarówno brak danych, jak i jawną pozycję
+    bezpiecznika dowodowego.
+    """
+    run_result = _run_result(_module(p_max_kw=2000))
     with pytest.raises(CertyfikatBrakiError) as exc:
         build_certyfikat_view(run_result, nazwa_projektu="Projekt A")
     braki = exc.value.braki
     assert braki
     assert any("brak danych do oceny" in b for b in braki)
-    assert any("T16" in b for b in braki)
-    assert any("T17" in b for b in braki)
+    assert any("T14" in b for b in braki)
+    # Bezpiecznik dowodowy jest odrebna, jawna pozycja listy braków.
+    assert any("nieprzydatna dowodowo" in b for b in braki)
 
 
 def test_zbierz_braki_pusta_lista_gdy_komplet() -> None:
@@ -198,7 +219,7 @@ def test_endpoint_json_200_zgodny(client: TestClient) -> None:
 def test_endpoint_json_negatywny_200(client: TestClient) -> None:
     response = client.post(
         "/api/oze-analysis/compliance-certificate",
-        json=_payload(_module(reactive_current_gain=1.0)),
+        json=_payload(_module(harmonic_thdu_percent=9.5)),
     )
     assert response.status_code == 200
     assert response.json()["werdykt_zbiorczy"]["status"] == "niezgodny"
@@ -207,7 +228,7 @@ def test_endpoint_json_negatywny_200(client: TestClient) -> None:
 def test_endpoint_braki_422_z_lista(client: TestClient) -> None:
     response = client.post(
         "/api/oze-analysis/compliance-certificate",
-        json=_payload(_module(p_recovery_time_s=None, reactive_current_gain=None)),
+        json=_payload(_module(p_max_kw=2000)),
     )
     assert response.status_code == 422
     detail = response.json()["detail"]
@@ -254,7 +275,7 @@ def test_endpoint_docx_determinizm(client: TestClient) -> None:
 def test_endpoint_docx_braki_422(client: TestClient) -> None:
     response = client.post(
         "/api/oze-analysis/compliance-certificate.docx",
-        json=_payload(_module(p_recovery_time_s=None, reactive_current_gain=None)),
+        json=_payload(_module(p_max_kw=2000)),
     )
     assert response.status_code == 422
     assert "braki" in response.json()["detail"]
@@ -313,7 +334,7 @@ def test_endpoint_pdf_determinizm(client: TestClient) -> None:
 def test_endpoint_pdf_braki_422(client: TestClient) -> None:
     response = client.post(
         "/api/oze-analysis/compliance-certificate.pdf",
-        json=_payload(_module(p_recovery_time_s=None, reactive_current_gain=None)),
+        json=_payload(_module(p_max_kw=2000)),
     )
     assert response.status_code == 422
     assert "braki" in response.json()["detail"]

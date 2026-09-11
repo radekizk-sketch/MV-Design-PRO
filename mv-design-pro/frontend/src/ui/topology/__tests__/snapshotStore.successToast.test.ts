@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import * as fs from 'fs';
+import * as path from 'path';
 
 vi.mock('../domainApi', () => ({
   executeDomainOp: vi.fn(),
@@ -116,9 +118,63 @@ describe('operationSuccessMessages map', () => {
     // `Zapisano` dopisane w V12K-263 — jest forma DOKONANA (jak reszta listy),
     // a lista byla wyliczeniem czasownikow uzytych do tej pory, nie regula jezykowa.
     // Test zlapal moje dwa nowe komunikaty i to jest jego zamierzone dzialanie.
-    const perfectivePrefixes = /^(Dodano|Wstawiono|Przedłużono|Rozpoczęto|Zamknięto|Ustawiono|Zaktualizowano|Przypisano|Usunięto|Zmieniono|Obliczono|Zwalidowano|Utworzono|Uruchomiono|Porównano|Wyeksportowano|Powiązano|Zapisano)/;
+    const perfectivePrefixes = /^(Dodano|Wstawiono|Przedłużono|Rozpoczęto|Zamknięto|Ustawiono|Zaktualizowano|Przypisano|Usunięto|Zmieniono|Obliczono|Zwalidowano|Utworzono|Uruchomiono|Porównano|Wyeksportowano|Powiązano|Zapisano|Dołączono|Rozcięto|Scalono|Skopiowano)/;
     for (const [op, msg] of Object.entries(OPERATION_SUCCESS_MESSAGES)) {
       expect(msg, `${op}: "${msg}"`).toMatch(perfectivePrefixes);
     }
+  });
+});
+
+/**
+ * Parytet z kanonem backendu — DEKLARACJA PRZYPIĘTA TESTEM.
+ *
+ * Plik `operationSuccessMessages.ts` deklaruje, że pokrywa KAŻDĄ kanoniczną
+ * operację domenową. Do tej pory pilnowała tego wyłącznie bramka pythonowa
+ * (`scripts/success_toast_guard.py`), więc operacja dołożona w backendzie bez
+ * komunikatu przechodziła całą regresję frontendu na zielono i dopiero CI
+ * zapalało czerwień — po scaleniu, nie przy pisaniu kodu.
+ *
+ * Test czyta TEN SAM plik kanonu i TYM SAMYM wzorcem co bramka, więc nie da się
+ * go zaspokoić lustrem w TS, które samo mogłoby się rozjechać z backendem.
+ * Skutek: 16. operacja bez komunikatu (albo bez jawnego wpisu SILENT) zapala
+ * czerwień w `vitest`, nie dopiero w bramce pythonowej.
+ */
+const CANON_OPERACJI = path.join(
+  __dirname,
+  '..',
+  '..',
+  '..',
+  '..',
+  '..',
+  'backend',
+  'src',
+  'domain',
+  'canonical_operations.py',
+);
+
+function kanoniczneNazwyOperacji(): string[] {
+  const tresc = fs.readFileSync(CANON_OPERACJI, 'utf-8');
+  const nazwy = [...tresc.matchAll(/canonical_name="([a-z0-9_]+)"/g)].map((m) => m[1]);
+  return [...new Set(nazwy)].sort();
+}
+
+describe('operationSuccessMessages — parytet z kanonem operacji backendu', () => {
+  it('plik kanonu jest czytelny i niepusty (inaczej test milcząco nic nie sprawdza)', () => {
+    expect(fs.existsSync(CANON_OPERACJI)).toBe(true);
+    expect(kanoniczneNazwyOperacji().length).toBeGreaterThan(40);
+  });
+
+  it('KAŻDA operacja kanoniczna ma komunikat sukcesu albo jawny wpis SILENT', () => {
+    const bezPokrycia = kanoniczneNazwyOperacji().filter(
+      (op) => !(op in OPERATION_SUCCESS_MESSAGES) && !SILENT_OPERATIONS.has(op),
+    );
+    expect(bezPokrycia).toEqual([]);
+  });
+
+  it('operacja NIE MOŻE być jednocześnie opisana komunikatem i uznana za cichą', () => {
+    // Sprzeczne wpisy przechodzą bramkę pythonową (liczy sumę zbiorów), a w
+    // runtime wygrywa SILENT — komunikat byłby wtedy martwym tekstem.
+    const sprzeczne = [...SILENT_OPERATIONS].filter((op) => op in OPERATION_SUCCESS_MESSAGES);
+    expect(sprzeczne).toEqual([]);
   });
 });

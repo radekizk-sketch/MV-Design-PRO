@@ -13,6 +13,11 @@ import math
 from typing import Any
 
 from catalog.profiles.nc_rfg import load_nc_rfg_profile
+from solver_input.provenance import (
+    BRAK_DOWODU_PL,
+    CapabilityEvidence,
+    classify_dynamic_capability,
+)
 
 from .contracts import (
     NcRfgPtpireeModuleInput,
@@ -42,9 +47,68 @@ def _round(value: float, digits: int = 6) -> float:
     return round(value, digits)
 
 
+def _module_evidence_status(
+    required_tests: list[NcRfgPtpireeTestResult],
+) -> tuple[str, str, list[str], str]:
+    """Ustal przydatność dowodową modułu (fail-closed).
+
+    Zwraca ``(reporting_status, proof_status, evidence_limitations, note_pl)``.
+
+    Kryterium jest JEDNO: czy któryś wymagany test opiera się na zdolności
+    nieprzydatnej dowodowo. Werdykt (``pass``/``fail``) NIE wchodzi do tej oceny
+    — to celowe i istotne:
+
+    - „wymaganie NIE jest spełnione" to wynik WYKAZANY i w pełni raportowalny —
+      dokument ma prawo stwierdzić niezgodność (tak działa też
+      ``application.compliance.source_compliance``);
+    - „nie mamy dowodu" to zupełnie inny stan i tylko on odbiera raportowalność.
+
+    Mylenie tych dwóch stanów byłoby błędem symetrycznym do fałszywego wyniku
+    pozytywnego: raz ukrywałoby realną niezgodność, raz udawało dowód.
+    Kompletność danych (werdykty ``no_data``) jest osobną bramką po stronie
+    konsumenta dokumentu — patrz ``application.analyses.certyfikat_zgodnosci``.
+
+    NAPRAWA FAIL-OPEN (2026-09-10, znalezione przeglądem kontradyktoryjnym).
+    Pierwsza wersja tej bramki pomijała każdy wynik, którego ``evidence`` było
+    ``None`` — a klasyfikację doklejało 8 ewaluatorów z 20, więc 12 testów było
+    dla bramki NIEWIDOCZNYCH. Skutek zmierzony na HEAD: moduł klasy A z rodziny
+    ``PPM`` osiągał ``reportable``/``complete`` **nie mając ani jednego
+    sklasyfikowanego testu wymaganego**, a T18 (praca wyspowa, rozruch
+    autonomiczny, tłumienie oscylacji — trzy zdolności DYNAMICZNE orzekane
+    z trzech flag wejściowych) przechodził jako wymagany pozytyw.
+
+    Rejestr proweniencji był fail-closed, a jego KONSUMENT fail-open — czyli
+    dokładnie ten wzorzec „rozdziel szerzej, niż doklejasz z powrotem", przed
+    którym ostrzega reguła KLASA, NIE INSTANCJA. Teraz brak klasyfikacji JEST
+    ograniczeniem (``BRAK_KLASYFIKACJI``), a klasyfikację niesie DEFINICJA testu,
+    więc nie da się jej pominąć przez zapomnienie w ewaluatorze.
+    """
+    limitations = sorted(
+        {
+            (
+                f"{test.test_id}:BRAK_KLASYFIKACJI"
+                if test.evidence is None
+                else f"{test.test_id}:{test.evidence.get('tier')}"
+            )
+            for test in required_tests
+            if test.evidence is None
+            or not bool(test.evidence.get("regulatory_evidence_eligible", False))
+        }
+    )
+    if not limitations:
+        return "reportable", "complete", [], ""
+    note = (
+        f"{BRAK_DOWODU_PL}: wymagane testy opierają się na zdolnościach bez "
+        "ustalonej poprawności fizycznej albo wyłącznie na deklaracji "
+        "wnioskodawcy. Pakiet ma charakter diagnostyczno-inżynierski."
+    )
+    return "not_reportable", "incomplete", limitations, note
+
+
 TEST_CATALOG: list[NcRfgPtpireeTestDefinition] = [
     NcRfgPtpireeTestDefinition(
         test_id="T01",
+        capability_id="ncrfg_ptpiree.frequency_response",
         ability_pl="LFSM-O - ograniczanie mocy przy nadczęstotliwości",
         procedure_basis_pl="Zakres testów zgodności NC RfG dla PPM/SyPGM typu C i D; dla części A/B gdy brak certyfikatu.",
         default_for_modules=["C", "D"],
@@ -52,66 +116,77 @@ TEST_CATALOG: list[NcRfgPtpireeTestDefinition] = [
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T02",
+        capability_id="ncrfg_ptpiree.frequency_response",
         ability_pl="LFSM-U - zwiększanie mocy przy podczęstotliwości",
         procedure_basis_pl="Zakres testów zgodności NC RfG dla modułów typu C i D.",
         default_for_modules=["C", "D"],
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T03",
+        capability_id="ncrfg_ptpiree.frequency_response",
         ability_pl="FSM - regulacja częstotliwości w paśmie normalnym",
         procedure_basis_pl="Zakres testów zgodności NC RfG dla modułów typu C i D.",
         default_for_modules=["C", "D"],
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T04",
+        capability_id="ncrfg_ptpiree.frequency_response",
         ability_pl="Regulacja odbudowy częstotliwości",
         procedure_basis_pl="Zakres testów zgodności NC RfG dla modułów typu C i D.",
         default_for_modules=["C", "D"],
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T05",
+        capability_id="ncrfg_ptpiree.active_power_control",
         ability_pl="Możliwość regulacji mocy czynnej",
         procedure_basis_pl="Program ramowy testów PPM oraz sprawdzenia dodatkowe dla regulacji P.",
         default_for_modules=["B", "C", "D"],
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T06",
+        capability_id="ncrfg_ptpiree.reactive_voltage_mode",
         ability_pl="Tryb regulacji napięcia",
         procedure_basis_pl="Zakres testów zgodności PPM typu C i D.",
         default_for_modules=["C", "D"],
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T07",
+        capability_id="ncrfg_ptpiree.reactive_voltage_mode",
         ability_pl="Tryb regulacji mocy biernej Q",
         procedure_basis_pl="Zakres testów zgodności PPM typu C i D.",
         default_for_modules=["C", "D"],
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T08",
+        capability_id="ncrfg_ptpiree.reactive_voltage_mode",
         ability_pl="Tryb regulacji współczynnika mocy cosφ",
         procedure_basis_pl="Zakres testów zgodności PPM typu C i D.",
         default_for_modules=["C", "D"],
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T09",
+        capability_id="ncrfg_ptpiree.reactive_voltage_mode",
         ability_pl="Zdolność do generacji mocy biernej",
         procedure_basis_pl="Zakres testów zgodności PPM typu B, C i D.",
         default_for_modules=["B", "C", "D"],
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T10",
+        capability_id="ncrfg_ptpiree.power_limits",
         ability_pl="Potwierdzenie mocy maksymalnej PMAX",
         procedure_basis_pl="Sprawdzenia dodatkowe procedury PTPiREE dla typu B, C i D.",
         default_for_modules=["B", "C", "D"],
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T11",
+        capability_id="ncrfg_ptpiree.power_limits",
         ability_pl="Potwierdzenie mocy minimalnej PMIN",
         procedure_basis_pl="Sprawdzenia dodatkowe procedury PTPiREE dla typu B, C i D.",
         default_for_modules=["B", "C", "D"],
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T12",
+        capability_id="ncrfg_ptpiree.remote_power_command",
         ability_pl="Zaprzestanie generacji mocy czynnej",
         procedure_basis_pl="Dodatkowy test zgodności, wymagany dla typu A/B przy braku certyfikatu.",
         default_for_modules=[],
@@ -119,6 +194,7 @@ TEST_CATALOG: list[NcRfgPtpireeTestDefinition] = [
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T13",
+        capability_id="ncrfg_ptpiree.remote_power_command",
         ability_pl="Zmniejszenie generacji mocy czynnej",
         procedure_basis_pl="Dodatkowy test zgodności, wymagany dla typu B przy braku certyfikatu.",
         default_for_modules=[],
@@ -126,30 +202,35 @@ TEST_CATALOG: list[NcRfgPtpireeTestDefinition] = [
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T14",
+        capability_id="ncrfg_ptpiree.ride_through",
         ability_pl="LVRT - pozostanie w pracy przy zapadzie napięcia",
         procedure_basis_pl="Test FRT dla modułów B/C/D oraz profili operatora.",
         default_for_modules=["B", "C", "D"],
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T15",
+        capability_id="ncrfg_ptpiree.ride_through",
         ability_pl="HVRT - pozostanie w pracy przy wzroście napięcia",
         procedure_basis_pl="Test HVRT dla modułów B/C/D oraz profili operatora.",
         default_for_modules=["B", "C", "D"],
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T16",
+        capability_id="ncrfg_ptpiree.p_recovery",
         ability_pl="Odbudowa mocy czynnej po zakłóceniu",
         procedure_basis_pl="Wymaganie profilu operatora dla modułów B/C/D.",
         default_for_modules=["B", "C", "D"],
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T17",
+        capability_id="ncrfg_ptpiree.reactive_current_frt",
         ability_pl="Prąd bierny podczas FRT",
         procedure_basis_pl="Sprawdzenie wsparcia napięcia w czasie FRT.",
         default_for_modules=["B", "C", "D"],
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T18",
+        capability_id="ncrfg_ptpiree.extended_dynamic_capability",
         ability_pl="Praca wyspowa, rozruch autonomiczny i tłumienie oscylacji",
         procedure_basis_pl="Sprawdzenia dodatkowe wykonywane, gdy zdolność jest wymagana przez właściwego OS/OSP.",
         default_for_modules=[],
@@ -157,12 +238,14 @@ TEST_CATALOG: list[NcRfgPtpireeTestDefinition] = [
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T19",
+        capability_id="ncrfg_ptpiree.observability",
         ability_pl="Rejestracja zakłóceń i komunikacja z operatorem",
         procedure_basis_pl="Dane pomocnicze wymagane do wiarygodnego programu szczegółowego testów.",
         default_for_modules=["C", "D"],
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T20",
+        capability_id="ncrfg_ptpiree.harmonics",
         ability_pl="Jakość energii - THD_U źródła",
         procedure_basis_pl="Kontrola uzupełniająca dla przyłączenia PPM z falownikami.",
         default_for_modules=[],
@@ -210,6 +293,18 @@ class NcRfgPtpireeSolver:
         requested = {item.strip().upper() for item in request.requested_test_ids if item.strip()}
         modules = [self._run_module(module, trace, requested) for module in request.modules]
         report_pl = self._build_report(modules, request.procedure_version)
+        # Bieg jest dowodowy tylko wtedy, gdy KAŻDY moduł jest dowodowy —
+        # pojedynczy moduł bez dowodu unieważnia dowodowość całego pakietu.
+        run_reportable = bool(modules) and all(
+            module.reporting_status == "reportable" for module in modules
+        )
+        run_limitations = sorted(
+            {
+                f"{module.der_ref}:{item}"
+                for module in modules
+                for item in module.evidence_limitations
+            }
+        )
         envelope = {
             "contract": "NcRfgPtpireeTestResultV1",
             "procedure_version": request.procedure_version,
@@ -219,6 +314,17 @@ class NcRfgPtpireeSolver:
             "test_catalog": [definition.model_dump(mode="json") for definition in TEST_CATALOG],
             "white_box_trace": [step.model_dump(mode="json") for step in trace.steps],
             "report_pl": report_pl,
+            "reporting_status": "reportable" if run_reportable else "not_reportable",
+            "proof_status": "complete" if run_reportable else "incomplete",
+            "evidence_limitations": run_limitations,
+            "evidence_note_pl": (
+                ""
+                if run_reportable
+                else (
+                    f"{BRAK_DOWODU_PL}: pakiet NC RfG nie stanowi dowodu zgodności "
+                    "przyłączeniowej. Dopuszczalne użycie diagnostyczne i inżynierskie."
+                )
+            ),
         }
         return NcRfgPtpireeRunResult(
             **envelope,
@@ -249,6 +355,9 @@ class NcRfgPtpireeSolver:
             overall = "brak_danych"
         else:
             overall = "zgodny"
+        reporting_status, proof_status, limitations, note_pl = _module_evidence_status(
+            required_tests
+        )
         return NcRfgPtpireeModuleResult(
             der_ref=module.der_ref,
             der_name=module.der_name,
@@ -265,6 +374,10 @@ class NcRfgPtpireeSolver:
             not_required_count=not_required_count,
             overall_status=overall,
             tests=tests,
+            reporting_status=reporting_status,
+            proof_status=proof_status,
+            evidence_limitations=limitations,
+            evidence_note_pl=note_pl,
         )
 
     def _run_test(
@@ -359,9 +472,14 @@ class NcRfgPtpireeSolver:
         required: bool,
         reason: str,
     ) -> NcRfgPtpireeTestResult:
+        evidence = classify_dynamic_capability("ncrfg_ptpiree.frequency_response")
         if not module.has_pf_droop or module.droop_percent is None or module.dead_band_hz is None:
             return self._missing(
-                definition, required, reason, "Brak droop P(f) albo martwej strefy częstotliwości."
+                definition,
+                required,
+                reason,
+                "Brak droop P(f) albo martwej strefy częstotliwości.",
+                evidence=evidence,
             )
         droop_ref = profile.frequency_response.pf_droop_percent
         dead_ref = profile.frequency_response.dead_band_hz
@@ -405,10 +523,11 @@ class NcRfgPtpireeSolver:
             required,
             reason,
             ok,
-            f"Symulacja odpowiedzi częstotliwościowej: ΔP={_round(delta_p_kw, 2)} kW.",
+            f"Kontrola nastaw odpowiedzi częstotliwościowej: ΔP={_round(delta_p_kw, 2)} kW.",
             {"delta_p_kw": _round(delta_p_kw, 3), "frequency_hz": frequency_hz},
             [ref],
             ["Uzupełnij profil P(f) zgodny z profilem operatora."] if not ok else [],
+            evidence=evidence,
         )
 
     def _active_power_control(
@@ -632,6 +751,7 @@ class NcRfgPtpireeSolver:
         reason: str,
     ) -> NcRfgPtpireeTestResult:
         is_lvrt = definition.test_id == "T14"
+        kind_pl = "LVRT" if is_lvrt else "HVRT"
         has_curve = module.has_lvrt_curve if is_lvrt else module.has_hvrt_curve
         curve = profile.voltage_levels.lvrt if is_lvrt else profile.voltage_levels.hvrt
         if not has_curve or not module.has_dynamic_model or not curve:
@@ -641,43 +761,63 @@ class NcRfgPtpireeSolver:
                 reason,
                 "Brak krzywej FRT/HVRT, profilu operatora albo modelu dynamicznego.",
             )
-        if is_lvrt:
-            limiting = min(curve, key=lambda point: point.voltage_pu)
-            simulated_voltage = limiting.voltage_pu
-            margin = simulated_voltage - limiting.voltage_pu
-            ok = margin >= -1e-9
-            formula = "U_sim(t) >= U_LVRT,profile(t)"
-        else:
-            limiting = max(curve, key=lambda point: point.voltage_pu)
-            simulated_voltage = limiting.voltage_pu
-            margin = limiting.voltage_pu - simulated_voltage
-            ok = margin >= -1e-9
-            formula = "U_sim(t) <= U_HVRT,profile(t)"
+        # Ten test NIE symuluje przebiegu napięcia. Odczytuje wyłącznie punkt
+        # krytyczny obwiedni operatora i raportuje brak przebiegu U(t), z którym
+        # obwiednię można by porównać. Wcześniejsza wersja przypisywała wielkość
+        # "symulowaną" z tego samego limitu profilu i porównywała ją z nim samym,
+        # przez co margines wychodził tożsamościowo zerowy, werdykt zawsze `pass`,
+        # a ślad White Box prezentował limit normatywny jako wynik symulacji.
+        limiting = (
+            min(curve, key=lambda point: point.voltage_pu)
+            if is_lvrt
+            else max(curve, key=lambda point: point.voltage_pu)
+        )
+        evidence = classify_dynamic_capability("ncrfg_ptpiree.ride_through")
         ref = trace.add(
             definition.test_id,
             "ride_through_envelope",
-            formula,
+            "U_wymagane(t) = obwiednia profilu operatora  [brak przebiegu U_sym(t)]",
             {
                 "curve_points": [point.model_dump() for point in curve],
                 "has_dynamic_model": module.has_dynamic_model,
+                "evidence_tier": evidence.tier.value,
             },
-            f"U_sim = {simulated_voltage:.3f} p.u., U_lim = {limiting.voltage_pu:.3f} p.u.",
-            {"margin_pu": _round(margin, 6), "critical_time_s": limiting.time_s, "ok": ok},
-            "p.u. - p.u. = p.u.",
+            (
+                f"punkt krytyczny obwiedni {kind_pl}: U_wymagane = "
+                f"{limiting.voltage_pu:.3f} p.u. w t = {limiting.time_s} s"
+            ),
+            {
+                "required_voltage_pu": _round(limiting.voltage_pu, 6),
+                "critical_time_s": limiting.time_s,
+                "simulated_trajectory_available": False,
+            },
+            "p.u. (odczyt obwiedni profilu; bez porównania z przebiegiem)",
         )
-        return self._ok_fail(
+        return self._result(
             definition,
             required,
             reason,
-            ok,
-            f"{'LVRT' if is_lvrt else 'HVRT'}: margines {_round(margin, 4)} p.u. w punkcie {limiting.time_s}s.",
-            {"margin_pu": _round(margin, 6), "critical_time_s": limiting.time_s},
+            "no_data" if required else "not_required",
+            (
+                f"{kind_pl}: brak przebiegu U(t) do porównania z obwiednią operatora "
+                f"(punkt krytyczny {limiting.voltage_pu:.3f} p.u. w {limiting.time_s}s). "
+                "Zdolność przejścia przez zakłócenie nie została wykazana."
+            ),
+            {
+                "required_voltage_pu": _round(limiting.voltage_pu, 6),
+                "critical_time_s": limiting.time_s,
+                "simulated_trajectory_available": False,
+            },
             [ref],
             (
-                ["Wybierz profil FRT/HVRT i zwalidowany model dynamiczny urządzenia."]
-                if not ok
+                [
+                    "Wymagany zwalidowany model dynamiczny urządzenia i przebieg U(t) "
+                    "ze sprzężonej symulacji sieci; bez nich wynik nie jest dowodem."
+                ]
+                if required
                 else []
             ),
+            evidence=evidence,
         )
 
     def _p_recovery_test(
@@ -689,9 +829,14 @@ class NcRfgPtpireeSolver:
         required: bool,
         reason: str,
     ) -> NcRfgPtpireeTestResult:
+        evidence = classify_dynamic_capability("ncrfg_ptpiree.p_recovery")
         if module.p_recovery_time_s is None:
             return self._missing(
-                definition, required, reason, "Brak czasu odbudowy mocy czynnej po FRT."
+                definition,
+                required,
+                reason,
+                "Brak czasu odbudowy mocy czynnej po FRT.",
+                evidence=evidence,
             )
         required_time = profile.p_recovery_after_fault.p_recovery_time_s
         ok = module.p_recovery_time_s <= required_time
@@ -713,6 +858,7 @@ class NcRfgPtpireeSolver:
             {"p_recovery_time_s": module.p_recovery_time_s},
             [ref],
             ["Uzupełnij nastawy odbudowy P po FRT lub model dynamiczny."] if not ok else [],
+            evidence=evidence,
         )
 
     def _reactive_current_test(
@@ -723,9 +869,14 @@ class NcRfgPtpireeSolver:
         required: bool,
         reason: str,
     ) -> NcRfgPtpireeTestResult:
+        evidence = classify_dynamic_capability("ncrfg_ptpiree.reactive_current_frt")
         if module.reactive_current_gain is None:
             return self._missing(
-                definition, required, reason, "Brak wzmocnienia prądu biernego K_FRT."
+                definition,
+                required,
+                reason,
+                "Brak wzmocnienia prądu biernego K_FRT.",
+                evidence=evidence,
             )
         voltage_drop_pu = 0.5
         iq_pu = min(1.0, module.reactive_current_gain * voltage_drop_pu)
@@ -751,6 +902,7 @@ class NcRfgPtpireeSolver:
             {"iq_pu": _round(iq_pu, 4)},
             [ref],
             ["Ustaw K_FRT >= 2 albo wybierz model z szybkim wsparciem napięcia."] if not ok else [],
+            evidence=evidence,
         )
 
     def _extended_capability_test(
@@ -890,6 +1042,7 @@ class NcRfgPtpireeSolver:
         required: bool,
         reason: str,
         message: str,
+        evidence: CapabilityEvidence | None = None,
     ) -> NcRfgPtpireeTestResult:
         return self._result(
             definition,
@@ -900,6 +1053,7 @@ class NcRfgPtpireeSolver:
             {},
             [],
             [message] if required else [],
+            evidence=evidence,
         )
 
     def _ok_fail(
@@ -912,6 +1066,7 @@ class NcRfgPtpireeSolver:
         metrics: dict[str, Any],
         trace_refs: list[str],
         fix_actions: list[str] | None = None,
+        evidence: CapabilityEvidence | None = None,
     ) -> NcRfgPtpireeTestResult:
         return self._result(
             definition,
@@ -922,6 +1077,7 @@ class NcRfgPtpireeSolver:
             metrics,
             trace_refs,
             fix_actions or [],
+            evidence=evidence,
         )
 
     def _result(
@@ -934,7 +1090,21 @@ class NcRfgPtpireeSolver:
         metrics: dict[str, Any],
         trace_refs: list[str],
         fix_actions: list[str] | None = None,
+        evidence: CapabilityEvidence | None = None,
     ) -> NcRfgPtpireeTestResult:
+        # JEDNO ŹRÓDŁO PRAWDY: klasyfikacja pochodzi z DEFINICJI testu, nie od
+        # ewaluatora. Parametr `evidence` pozostaje wyłącznie jako nadpisanie dla
+        # przypadku, w którym ten sam test liczy inna zdolność — i musi wtedy
+        # dotyczyć TEJ SAMEJ zdolności, inaczej definicja i wynik rozjeżdżają się
+        # po cichu.
+        klasyfikacja = evidence or classify_dynamic_capability(definition.capability_id)
+        if evidence is not None and evidence.capability_id != definition.capability_id:
+            raise ValueError(
+                f"Test {definition.test_id}: ewaluator podał zdolność "
+                f"{evidence.capability_id!r}, a definicja deklaruje "
+                f"{definition.capability_id!r}. Dwa źródła prawdy o tym, na czym "
+                "opiera się werdykt, są zakazane."
+            )
         return NcRfgPtpireeTestResult(
             test_id=definition.test_id,
             ability_pl=definition.ability_pl,
@@ -945,21 +1115,42 @@ class NcRfgPtpireeSolver:
             metrics=metrics,
             trace_refs=trace_refs,
             fix_actions=fix_actions or [],
+            evidence=klasyfikacja.to_dict(),
         )
 
     def _build_report(self, modules: list[NcRfgPtpireeModuleResult], procedure_version: str) -> str:
+        reportable = bool(modules) and all(
+            module.reporting_status == "reportable" for module in modules
+        )
         lines = [
-            "Raport symulacyjny NC RfG / PTPiREE",
+            (
+                "Raport NC RfG / PTPiREE"
+                if reportable
+                else "Raport diagnostyczny NC RfG / PTPiREE (NIE JEST DOWODEM ZGODNOŚCI)"
+            ),
             f"Procedura: {procedure_version}",
             f"Solver: {NCRFG_PTPiREE_SOLVER_VERSION}",
-            "",
         ]
+        if not reportable:
+            lines.extend(
+                [
+                    f"Przydatność dowodowa: {BRAK_DOWODU_PL}.",
+                    (
+                        "Ocena dynamiczna w tym pakiecie nie stanowi dowodu spełnienia "
+                        "wymagań przyłączeniowych. Dokument służy celom diagnostycznym "
+                        "i inżynierskim."
+                    ),
+                ]
+            )
+        lines.append("")
         for module in modules:
             lines.extend(
                 [
                     f"Moduł: {module.der_name or module.der_ref}",
                     f"Operator: {module.operator_name_pl}; typ PGM: {module.module_type}; Pmax: {module.p_max_kw} kW",
                     f"Status: {module.overall_status}; wymagane: {module.required_count}; PASS: {module.pass_count}; FAIL: {module.fail_count}; brak danych: {module.no_data_count}",
+                    f"Przydatność dowodowa modułu: {module.reporting_status}"
+                    + (f" - {module.evidence_note_pl}" if module.evidence_note_pl else ""),
                 ]
             )
             for test in module.tests:

@@ -2838,6 +2838,33 @@ def _opt_float_any(value: object) -> float | None:
         return None
 
 
+_POLA_FIZYKI_ODCINKA: tuple[str, ...] = ("length_km", "r_ohm_per_km", "x_ohm_per_km")
+
+
+def _fizyka_odcinka(segment: dict[str, Any]) -> tuple[dict[str, float] | None, str]:
+    """Odczyt WYMAGANYCH danych fizycznych odcinka (kabel albo linia) — BEZ wartosci zastepczej.
+
+    `length_km`, `r_ohm_per_km` i `x_ohm_per_km` sa w modelu ENM
+    (`enm/models.py`) polami WYMAGANYMI — bez wartosci domyslnej — i to zarowno
+    na `Cable`, jak i na `OverheadLine`. Odcinek, ktory ich nie niesie, nie jest
+    odcinkiem sieci, tylko uszkodzonym rekordem.
+
+    Poprzednia forma (`segment.get("r_ohm_per_km", 0.0)`, uzyta w rozcieciu i
+    w scaleniu) zamieniala taki rekord na kabel o impedancji jednostkowej ZERO,
+    czyli na idealny zwieracz, ktory wchodzi wprost do pradu zwarciowego i do
+    spadku napiecia — bez jednego ostrzezenia i nieodroznialnie od pomiaru.
+    Zwracamy `(None, nazwa_pola)`, a wolajacy MELDUJE brak operacji
+    (`_error_response`); inwariant bramki `solver_input_substitute_guard`.
+    """
+    wartosci: dict[str, float] = {}
+    for pole in _POLA_FIZYKI_ODCINKA:
+        liczba = _opt_float_any(segment.get(pole))
+        if liczba is None:
+            return None, pole
+        wartosci[pole] = liczba
+    return wartosci, ""
+
+
 def _build_gpz_tap_changer(
     payload: dict[str, Any],
     *,
@@ -5097,6 +5124,33 @@ def _build_nn_field_specs(
     nn_main_ref = _make_id("stn", station_seed, "nn_main_breaker")
     feeders = nn_block.get("outgoing_feeders_nn", [])
     feeder_count = nn_block.get("outgoing_feeders_nn_count", len(feeders))
+    # WIĄZANIE KATALOGOWE WYŁĄCZNIKA GŁÓWNEGO nN — DROGA, KTÓREJ NIE BYŁO.
+    #
+    # Zmierzony defekt (2026-09-11): odpływy nN mogły nieść `catalog_bindings`
+    # z ładunku operacji (niżej), pole SN MUSI je nieść
+    # (`_sn_field_apparatus_catalog_ref` odrzuca brak jawnym błędem), a wyłącznik
+    # główny nN nie miał ŻADNEJ drogi, żeby je dostać. Promocja wpisu tworzyła
+    # więc `breaker` bez `catalog_ref`, a kontrola domenowa słusznie stawiała
+    # blokadę `switch.catalog_ref_missing` — modelu zbudowanego przez samą
+    # operację NIE DAŁO SIĘ doprowadzić do gotowości z poziomu jej ładunku.
+    #
+    # To jest ta sama klasa, którą przegląd 2026-08-01 zapisał jako „bramkowano
+    # transformator, ale nie źródło nN ani aparat pola": brama katalogowa
+    # egzekwowana dla SN, opcjonalna dla odpływów nN, NIEOSIĄGALNA dla
+    # wyłącznika głównego nN.
+    #
+    # Tutaj wiązanie staje się MOŻLIWE, jeszcze nie WYMAGANE. Uczynienie go
+    # wymaganym (symetria z SN) jest zmianą łamiącą kontrakt dla każdego
+    # istniejącego wywołania i wymaga decyzji właściciela — nazwane w
+    # `docs/audit/` zamiast cichego przepchnięcia.
+    main_bindings = nn_block.get("main_breaker_catalog_bindings")
+    if not isinstance(main_bindings, dict):
+        main_breaker = nn_block.get("main_breaker")
+        if isinstance(main_breaker, dict):
+            kandydat = main_breaker.get("catalog_bindings") or main_breaker.get("catalog_binding")
+            main_bindings = kandydat if isinstance(kandydat, dict) else None
+        else:
+            main_bindings = None
     nn_field_specs = [
         _build_field_spec(
             field_ref=nn_main_ref,
@@ -5104,6 +5158,7 @@ def _build_nn_field_specs(
             bay_role="IN",
             bus_ref=nn_bus_id,
             tags=["nn_main_breaker"],
+            meta=({"catalog_bindings": main_bindings} if main_bindings else None),
         )
     ]
     for idx in range(max(feeder_count, len(feeders))):
@@ -6019,7 +6074,15 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     # --- Krok 1: Topologia segmentu ---
     from_bus_ref = segment.get("from_bus_ref")
     to_bus_ref = segment.get("to_bus_ref")
-    length_km = segment.get("length_km", 1.0)
+    fizyka_segmentu, brakujace_pole = _fizyka_odcinka(segment)
+    if fizyka_segmentu is None:
+        return _error_response(
+            f"Odcinek nie niesie wymaganej danej '{brakujace_pole}'. "
+            "Wstawienie stacji wymaga kompletu długość/R/X odcinka dzielonego — "
+            "operacja nie podstawia za nie liczby.",
+            "station.insert.segment_missing_physics",
+        )
+    length_km = fizyka_segmentu["length_km"]
     segment_catalog_binding = segment.get("catalog_binding")
     catalog_ref = _resolve_catalog_ref(segment.get("catalog_ref"), segment_catalog_binding)
     segment_catalog_version = (
@@ -6156,8 +6219,8 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         "from_bus_ref": from_bus_ref,
         "to_bus_ref": sn_bus_id,
         "length_km": left_length,
-        "r_ohm_per_km": segment.get("r_ohm_per_km", 0.0),
-        "x_ohm_per_km": segment.get("x_ohm_per_km", 0.0),
+        "r_ohm_per_km": fizyka_segmentu["r_ohm_per_km"],
+        "x_ohm_per_km": fizyka_segmentu["x_ohm_per_km"],
         "status": "closed",
     }
     _copy_split_segment_fields(left_data, segment)
@@ -6194,8 +6257,8 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         "from_bus_ref": right_from_bus_id,
         "to_bus_ref": to_bus_ref,
         "length_km": right_length,
-        "r_ohm_per_km": segment.get("r_ohm_per_km", 0.0),
-        "x_ohm_per_km": segment.get("x_ohm_per_km", 0.0),
+        "r_ohm_per_km": fizyka_segmentu["r_ohm_per_km"],
+        "x_ohm_per_km": fizyka_segmentu["x_ohm_per_km"],
         "status": "closed",
     }
     _copy_split_segment_fields(right_data, segment)
@@ -6915,7 +6978,15 @@ def _insert_branch_point_on_segment_sn(
 
     switch_state = _normalize_branch_point_switch_state(payload.get("switch_state"))
     insert_at = payload.get("insert_at", {"mode": "RATIO", "value": 0.5})
-    length_km = float(segment.get("length_km", 0.0))
+    fizyka_segmentu, brakujace_pole = _fizyka_odcinka(segment)
+    if fizyka_segmentu is None:
+        return _error_response(
+            f"Odcinek nie niesie wymaganej danej '{brakujace_pole}'. "
+            "Wstawienie punktu odgałęzienia wymaga kompletu długość/R/X odcinka "
+            "dzielonego — operacja nie podstawia za nie liczby.",
+            "branch_point.segment_missing_physics",
+        )
+    length_km = fizyka_segmentu["length_km"]
     ratio = float(insert_at.get("value", 0.5))
     if insert_at.get("mode") == "ODLEGLOSC_OD_POCZATKU_M":
         ratio = float(insert_at.get("value", 0.0)) / (length_km * 1000.0) if length_km > 0 else 0.5
@@ -7034,8 +7105,8 @@ def _insert_branch_point_on_segment_sn(
                 "from_bus_ref": seg_from,
                 "to_bus_ref": seg_to,
                 "length_km": seg_len,
-                "r_ohm_per_km": segment.get("r_ohm_per_km", 0.0),
-                "x_ohm_per_km": segment.get("x_ohm_per_km", 0.0),
+                "r_ohm_per_km": fizyka_segmentu["r_ohm_per_km"],
+                "x_ohm_per_km": fizyka_segmentu["x_ohm_per_km"],
                 "status": "closed",
                 "catalog_ref": segment.get("catalog_ref"),
             }
@@ -7488,7 +7559,15 @@ def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
 
     from_bus_ref = segment.get("from_bus_ref")
     to_bus_ref = segment.get("to_bus_ref")
-    length_km = segment.get("length_km", 1.0)
+    fizyka_segmentu, brakujace_pole = _fizyka_odcinka(segment)
+    if fizyka_segmentu is None:
+        return _error_response(
+            f"Odcinek nie niesie wymaganej danej '{brakujace_pole}'. "
+            "Wstawienie łącznika sekcyjnego wymaga kompletu długość/R/X odcinka "
+            "dzielonego — operacja nie podstawia za nie liczby.",
+            "switch.segment_missing_physics",
+        )
+    length_km = fizyka_segmentu["length_km"]
     seg_type = segment.get("type", "cable")
 
     insert_mode = insert_at.get("mode", "RATIO")
@@ -7568,8 +7647,8 @@ def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
             "from_bus_ref": from_bus_ref,
             "to_bus_ref": switch_bus_ref,
             "length_km": left_length,
-            "r_ohm_per_km": segment.get("r_ohm_per_km", 0.0),
-            "x_ohm_per_km": segment.get("x_ohm_per_km", 0.0),
+            "r_ohm_per_km": fizyka_segmentu["r_ohm_per_km"],
+            "x_ohm_per_km": fizyka_segmentu["x_ohm_per_km"],
             "catalog_ref": segment.get("catalog_ref"),
             "status": "closed",
         },
@@ -7641,8 +7720,8 @@ def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
             "from_bus_ref": switch_bus2_ref,
             "to_bus_ref": to_bus_ref,
             "length_km": right_length,
-            "r_ohm_per_km": segment.get("r_ohm_per_km", 0.0),
-            "x_ohm_per_km": segment.get("x_ohm_per_km", 0.0),
+            "r_ohm_per_km": fizyka_segmentu["r_ohm_per_km"],
+            "x_ohm_per_km": fizyka_segmentu["x_ohm_per_km"],
             "catalog_ref": segment.get("catalog_ref"),
             "status": "closed",
         },
@@ -8668,7 +8747,7 @@ def add_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
     audit = [
         {
             "step": 1,
-            "action": f"Dodano sekcj? {side.upper()} '{section_id}' do stacji {substation_ref}",
+            "action": f"Dodano sekcję {side.upper()} '{section_id}' do stacji {substation_ref}",
             "element_id": section_id,
         }
     ]
@@ -8763,7 +8842,7 @@ def update_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
     audit = [
         {
             "step": 1,
-            "action": f"Zaktualizowano sekcj? {side.upper()} '{section_id}'",
+            "action": f"Zaktualizowano sekcję {side.upper()} '{section_id}'",
             "element_id": section_id,
         }
     ]
@@ -8779,12 +8858,12 @@ def update_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
 
 
 def delete_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Usuwa sekcj? GPZ ze stacji.
+    """Usuwa sekcję GPZ ze stacji.
 
     Walidacja:
       - sekcja musi istnie?
       - żadne `bay.gpz_section_id` w ENM nie może wskazywać na usuwaną sekcję
-        (operator musi najpierw przepi??/usun?? pola)
+        (operator musi najpierw przepiąć/usunąć pola)
 
     Payload:
       substation_ref: str
@@ -8826,7 +8905,7 @@ def delete_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
     if bays_using_section:
         return _error_response(
             f"Nie można usunąć sekcji '{section_id}': używana przez pola {bays_using_section}. "
-            "Najpierw przepi??/usun?? pola.",
+            "Najpierw przepiąć/usunąć pola.",
             "gpz_section.delete.in_use",
         )
 

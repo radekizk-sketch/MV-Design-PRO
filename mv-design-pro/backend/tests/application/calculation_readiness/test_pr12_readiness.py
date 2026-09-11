@@ -5,6 +5,9 @@ from __future__ import annotations
 from application.calculation_readiness.service import (
     CALCULATION_LABEL_PL,
     CalculationReadinessService,
+    CalculationType,
+    ReadinessReport,
+    ReadinessTypeReport,
 )
 from application.report_readiness.adapter import ReportReadinessAdapter
 from application.validation_problem.service import ValidationProblemService
@@ -293,3 +296,51 @@ class TestReportReadinessAdapter:
         fields = set(status.model_dump().keys())
         for forbidden_field in ("report_content", "fake_results", "fabricated"):
             assert forbidden_field not in fields
+
+
+# ---------------------------------------------------------------------------
+# Pakiet I audytu: `no_module` NIE podnosi gotowości do `ready`
+# ---------------------------------------------------------------------------
+
+
+class TestGotowoscFailClosed:
+    """`ready` znaczy „można policzyć", a nie „nic nie zgłosiło sprzeciwu".
+
+    Poprzednia agregacja traktowała `no_module` tak samo jak `n_a`, więc projekt
+    z dziesięcioma analizami BEZ modułu obliczeniowego meldował `ready`. Brak
+    solvera nie jest gotowością do liczenia — jest jej przeciwieństwem.
+    """
+
+    @staticmethod
+    def _raport(*statusy: str) -> ReadinessReport:
+        typy: list[CalculationType] = list(CALCULATION_LABEL_PL)[: len(statusy)]
+        return ReadinessReport(
+            items=[
+                ReadinessTypeReport(
+                    calculation_type=typ,
+                    label_pl=CALCULATION_LABEL_PL[typ],
+                    status=status,  # type: ignore[arg-type]
+                    missing_fields=[],
+                    blockers=[],
+                )
+                for typ, status in zip(typy, statusy, strict=True)
+            ]
+        )
+
+    def test_same_braki_modulu_nie_daja_ready(self) -> None:
+        raport = self._raport(*(["no_module"] * 10))
+        assert raport.overall_status() != "ready"
+        assert raport.overall_status() == "no_module"
+
+    def test_brak_modulu_obok_ready_nie_daje_ready(self) -> None:
+        assert self._raport("ready", "ready", "no_module").overall_status() == "no_module"
+
+    def test_nie_dotyczy_nie_obniza_gotowosci(self) -> None:
+        """`n_a` to co innego: analiza nie dotyczy projektu, więc nie ma czego liczyć."""
+        assert self._raport("ready", "n_a", "ready").overall_status() == "ready"
+
+    def test_brak_modulu_razem_z_brakiem_danych_daje_partial(self) -> None:
+        assert self._raport("ready", "no_module", "partial").overall_status() == "partial"
+
+    def test_blokada_wygrywa_ze_wszystkim(self) -> None:
+        assert self._raport("no_module", "partial", "blocked").overall_status() == "blocked"

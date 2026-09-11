@@ -96,12 +96,18 @@ TABLICZKA_PELNA: dict = {
     "ptpiree_certificate_condition": "Tylko z modułem sterowania SG-CTRL.",
 }
 
+# Moduł typu A (0,8 MW): pakiet NC RfG dla klasy A nie wymaga testów
+# ride-through ani odbudowy P, więc NIE opiera się na zdolnościach dynamicznych
+# bez ustalonej poprawności fizycznej — certyfikat może dla niego legalnie
+# powstać. Wcześniej fikstura miała 2 MW (klasa B); po wprowadzeniu bezpiecznika
+# dowodowego klasa B jest blokowana i to jest zachowanie pożądane, sprawdzane
+# osobnym testem niżej.
 _MODULE_FULL: dict = {
     "der_ref": _DER_REF,
-    "der_name": "PV 2 MW",
+    "der_name": "PV 0,8 MW",
     "der_kind": "PV",
     "operator_id": "enea",
-    "p_max_kw": 2000,
+    "p_max_kw": 800,
     "p_min_kw": 100,
     "voltage_kv": 15,
     "certificate_status": "ptpiree_verified",
@@ -145,7 +151,7 @@ def _przypadek_z_urzadzeniem(tabliczka: dict | None, *, ref_id: str = _DER_REF) 
             generators=[
                 Generator(
                     ref_id=ref_id,
-                    name="PV 2 MW",
+                    name="PV 0,8 MW",
                     bus_ref="bus_sn",
                     p_mw=2.0,
                     gen_type="pv_inverter",

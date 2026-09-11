@@ -810,6 +810,16 @@ API_CATALOG_BINDING_KEYS: frozenset[str] = frozenset(
         "catalog_bindings",
         # Znacznik migawki („pole czeka na wskazanie aparatu"), nie kanał wskazania.
         "requires_catalog_binding",
+        # WYŁĄCZNIK GŁÓWNY nN — ta sama rola co `catalog_bindings` odpływów nN:
+        # INTENCJA zapisywana w `meta` specyfikacji pola, materializowana dopiero
+        # przez promocję wpisu (`enm/migrations/nn_field_specs_promocja.py`,
+        # przestrzeń `APARAT_NN`). Dopisane 2026-09-11 razem z samą drogą: przed
+        # tą zmianą wyłącznik główny nN NIE MIAŁ ŻADNEGO kanału wskazania pozycji,
+        # więc operacja tworzyła `breaker` bez `catalog_ref` i model zbudowany
+        # przez samą operację nie dawał się doprowadzić do gotowości (blokada
+        # `switch.catalog_ref_missing`). Zmierzone: 128 takich łączników w jednym
+        # przebiegu e2e „50 szablonów stacji".
+        "main_breaker_catalog_bindings",
     }
 )
 

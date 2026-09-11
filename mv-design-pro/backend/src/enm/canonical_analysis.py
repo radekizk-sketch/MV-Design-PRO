@@ -75,6 +75,7 @@ from network_model.solvers.power_flow_types import (
 )
 from network_model.solvers.short_circuit_core import ShortCircuitType
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver
+from solver_input.provenance import classify_dynamic_capability
 
 
 def _canonicalize(value: Any) -> Any:
@@ -953,6 +954,14 @@ def _execute_dynamic_stability(run: CanonicalRun) -> None:
         ],
         "points": [point.to_dict() for point in trajectory],
     }
+    # Przydatnosc dowodowa wyprowadzona z klasyfikacji zdolnosci, nie zaszyta.
+    # Katy wirnika i wielkosci pozwarciowe tego biegu pochodza z opcji biegu
+    # (z wartosciami domyslnymi), a werdykt jest porownaniem progowym — to nie
+    # jest wykazanie stabilnosci, wiec bieg NIE jest raportowalny dowodowo.
+    # Wzorzec identyczny jak w `_execute_source_compliance` nizej: statusy ida
+    # z oceny, nie ze stalej.
+    stability_evidence = classify_dynamic_capability("dynamic_stability.fault_clear")
+    stability_reportable = stability_evidence.regulatory_evidence_eligible
     run.raw_result = {
         "analysis_type": "dynamic_stability",
         "scenario": scenario.to_dict(),
@@ -961,12 +970,15 @@ def _execute_dynamic_stability(run: CanonicalRun) -> None:
         "automation_trace": automation_trace.to_dict(),
         "topology_effect": topology_payload,
         "proof_ref": proof_ref,
-        "proof_status": "complete",
-        "proof_status_pl": "pelny",
-        "reporting_status": "reportable",
-        "reporting_status_pl": "raportowalny",
-        "dopuszczalnosc_raportowa": True,
-        "reporting_limitations": [],
+        "proof_status": "complete" if stability_reportable else "incomplete",
+        "proof_status_pl": "pelny" if stability_reportable else "niepelny",
+        "reporting_status": "reportable" if stability_reportable else "not_reportable",
+        "reporting_status_pl": ("raportowalny" if stability_reportable else "nieraportowalny"),
+        "dopuszczalnosc_raportowa": stability_reportable,
+        "reporting_limitations": (
+            [] if stability_reportable else [stability_evidence.rationale_pl]
+        ),
+        "evidence": stability_evidence.to_dict(),
     }
     run.white_box_trace = [
         {
@@ -978,8 +990,8 @@ def _execute_dynamic_stability(run: CanonicalRun) -> None:
             "method_basis": "DYNAMIC_STABILITY_FAULT_CLEAR_V1",
             "result": event.payload,
             "proof_ref": proof_ref,
-            "proof_status": "complete",
-            "reporting_status": "reportable",
+            "proof_status": "complete" if stability_reportable else "incomplete",
+            "reporting_status": ("reportable" if stability_reportable else "not_reportable"),
         }
         for index, event in enumerate(automation_trace.events, start=1)
     ]
@@ -2115,6 +2127,12 @@ def build_results_index(run: CanonicalRun) -> dict[str, Any]:
                             "unit": "pu",
                         },
                         {"key": "stability_index", "label_pl": "Wskaznik stabilnosci"},
+                        # Kolumny dowodowe — obecne w kontrakcie short_circuit i
+                        # source_compliance, brakowalo ich TUTAJ, wiec kazdy
+                        # konsument sterowany kolumnami (UI, eksport) gubil
+                        # status dowodowy przebiegu stabilnosci.
+                        {"key": "reporting_status", "label_pl": "Status raportowy"},
+                        {"key": "proof_status", "label_pl": "Status uzasadnienia"},
                     ],
                 },
                 {

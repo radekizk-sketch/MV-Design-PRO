@@ -79,6 +79,13 @@ def run_ncrfg_compliance_from_model(case_id: UUID, operator_id: str) -> dict[str
                 "total_tests": report.total_tests,
                 "passed_count": report.passed_count,
                 "no_module_count": report.no_module_count,
+                # Przydatność dowodowa MUSI wyjść razem z werdyktem. Bez tych pól
+                # konsument widzi samo `overall_pass` i nie ma jak odróżnić wyniku
+                # wykazanego od wyniku ze zdolności bez ustalonej poprawności.
+                "reporting_status": report.reporting_status,
+                "proof_status": report.proof_status,
+                "evidence_limitations": report.evidence_limitations,
+                "evidence_note_pl": report.evidence_note_pl,
             }
             for report in reports
         ],

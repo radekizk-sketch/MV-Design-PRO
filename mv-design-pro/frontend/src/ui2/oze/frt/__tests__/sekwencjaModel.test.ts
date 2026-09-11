@@ -10,6 +10,7 @@ import { serializujSekwencjeFrt } from '../../api';
 import { werdyktSekwencji, wierszeTabeliSekwencji } from '../sekwencjaModel';
 import {
   widokSekwencjiNiezaliczonaFixture,
+  klasyfikacjaFrtDowodowa,
   widokSekwencjiZaliczonaFixture,
 } from './fixtures';
 
@@ -29,10 +30,35 @@ describe('serializujSekwencjeFrt — kontrakt parametru sekwencja', () => {
 });
 
 describe('werdyktSekwencji — odznaka z tekstu backendu', () => {
-  it('„sekwencja w obwiedni" → istotność ok, tekst dosłownie', () => {
+  it('„sekwencja w obwiedni" ze zdolności NIEPRZYDATNEJ DOWODOWO → ostrzeżenie, nie sukces', () => {
+    // To jest stan FAKTYCZNY produktu: `frt_hvrt.trajectory` jest w rejestrze
+    // proweniencji modelem bez ustalonej poprawności fizycznej. Poprzednia
+    // wersja tego testu asertowała zielone `ok` — czyli pinowała defekt.
     const w = werdyktSekwencji(widokSekwencjiZaliczonaFixture());
+    expect(w.istotnosc).toBe('warn');
+    expect(w.tekst).toContain('sekwencja w obwiedni');
+    expect(w.tekst).toContain('NIE stanowi dowodu');
+  });
+
+  it('„sekwencja w obwiedni" ze zdolności PRZYDATNEJ DOWODOWO → istotność ok, tekst dosłownie', () => {
+    const w = werdyktSekwencji({
+      ...widokSekwencjiZaliczonaFixture(),
+      evidence: klasyfikacjaFrtDowodowa(),
+    });
     expect(w.istotnosc).toBe('ok');
     expect(w.tekst).toBe('sekwencja w obwiedni');
+  });
+
+  it('brak pola evidence (starsza odpowiedź) → ostrzeżenie, nigdy cichy sukces', () => {
+    const { evidence: _pominiete, ...bezDowodu } = widokSekwencjiZaliczonaFixture();
+    const w = werdyktSekwencji(bezDowodu);
+    expect(w.istotnosc).toBe('warn');
+  });
+
+  it('werdykt NEGATYWNY nie jest zmiękczany przez ostrzeżenie dowodowe', () => {
+    const w = werdyktSekwencji(widokSekwencjiNiezaliczonaFixture());
+    expect(w.istotnosc).toBe('err');
+    expect(w.tekst).not.toContain('NIE stanowi dowodu');
   });
 
   it('werdykt niezaliczony → istotność err, tekst dosłownie z backendu', () => {
