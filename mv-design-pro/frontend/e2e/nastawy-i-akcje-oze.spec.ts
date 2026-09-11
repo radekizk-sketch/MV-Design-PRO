@@ -33,6 +33,9 @@ const CABLE_ID = 'cable-tfk-yakxs-3x120';
 const TRAFO_ID = 'tr-sn-nn-15-04-630kva-dyn11';
 const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
 const CATALOG_VERSION = '2024.1';
+// Aparat pola nN i pozycja odbioru — realna droga katalogowa czesci nN stacji.
+const APARAT_NN_ID = 'cb_nn_400a';
+const ODBIOR_ID = 'load_przem_75kw';
 let opCounter = 0;
 let entityCounter = 0;
 
@@ -49,7 +52,9 @@ type DomainOpResponse = {
     transformers?: Array<{ ref_id: string }>;
     buses?: Array<{ ref_id: string; voltage_kv: number }>;
     substations?: Array<{ ref_id: string; bus_refs?: string[] }>;
+    loads?: Array<{ ref_id: string; p_mw?: number; q_mvar?: number }>;
   };
+  selection_hint?: { element_id?: string };
 };
 
 function buildCatalogBinding(catalogNamespace: string, catalogItemId: string) {
@@ -247,6 +252,62 @@ async function zbudujSiecGotowaDoObliczen(
       },
     });
   }
+
+
+  // ------------------------------------------------------------------
+  // ODBIOR nN — bez niego sieci NIE DA SIE policzyc rozplywem (pomiar 2026-09-11).
+  //
+  // Ta fikstura nazywa sie `zbudujSiecGotowaDoObliczen`, a budowala stacje SN/nN
+  // zasilajaca NIC: `loads: 0`, `generators: 0`. Domena melduje to wprost —
+  // `W003: "Brak odbiorow i generatorow — rozplyw mocy bedzie pusty"` z akcja
+  // naprawcza w kroku K6 — po czym `POST /runs {analysis_type: LOAD_FLOW}`
+  // odpowiada 409 `Analiza rozplywu mocy nie jest dostepna dla biezacego
+  // snapshotu ENM`. Petla samonaprawiajaca nizej tego nie lapala: filtruje
+  // wylacznie kody `*catalog*` i `E005`.
+  //
+  // Produkt ma racje, fikstura jej nie miala: projektant, ktory stawia stacje
+  // SN/nN, daje jej odplyw nN i odbior. Dlatego idziemy DROGA REALNA (dwie
+  // operacje kanoniczne), a nie oslabiamy bramki dostepnosci analizy.
+  const napieciaSzyn = new Map(
+    (op.snapshot?.buses ?? []).map((bus) => [bus.ref_id, bus.voltage_kv]),
+  );
+  const stacjaZczesciaNn = (op.snapshot?.substations ?? []).find((substation) =>
+    (substation.bus_refs ?? []).some((ref) => {
+      const kv = napieciaSzyn.get(ref) ?? 0;
+      return kv > 0 && kv < 1.0;
+    }),
+  );
+  expect(stacjaZczesciaNn, 'Fikstura nie zbudowala stacji SN/nN').toBeTruthy();
+  const szynaNn = (stacjaZczesciaNn?.bus_refs ?? []).find(
+    (ref) => (napieciaSzyn.get(ref) ?? 0) > 0 && (napieciaSzyn.get(ref) ?? 0) < 1.0,
+  ) as string;
+
+  // Aparat pola nN wskazany JAWNIE — bez wiazania promocja pol nN tworzy
+  // `feeder_device` z `source_mode: MIGRACJA`, a gotowosc slusznie stawia
+  // `W061` + `switch.catalog_ref_missing` (ta sama klasa co wylacznik glowny).
+  const odplyw = await executeDomainOp(request, caseId, 'add_nn_outgoing_field', {
+    station_ref: stacjaZczesciaNn?.ref_id,
+    bus_nn_ref: szynaNn,
+    field_name: 'Odplyw nN 1',
+    catalog_binding: buildCatalogBinding('APARAT_NN', APARAT_NN_ID),
+  });
+  const odplywRef = odplyw.selection_hint?.element_id as string;
+  expect(odplywRef, 'Operacja nie zwrocila referencji odplywu nN').toBeTruthy();
+
+  // Odbior z pozycji KATALOGU (Catalog Binding Rule): moc bierna schodzi z
+  // tabliczki (`load_przem_75kw`: q_kvar = 28,0), wiec rozplyw liczy przy
+  // cos fi 0,94, a nie 1,0.
+  op = await executeDomainOp(request, caseId, 'add_nn_load', {
+    station_ref: stacjaZczesciaNn?.ref_id,
+    bus_nn_ref: szynaNn,
+    feeder_ref: odplywRef,
+    load_kind: 'SKUPIONY',
+    connection_type: 'TROJFAZOWY',
+    active_power_kw: 75.0,
+    load_name: 'Odbior przemyslowy',
+    catalog_binding: buildCatalogBinding('OBCIAZENIE', ODBIOR_ID),
+  });
+  expect((op.snapshot?.loads ?? []).length).toBeGreaterThan(0);
 
   // Domknięcie ewentualnych blokerów gotowości (katalogi / impedancje).
   let readiness: OdczytGotowosci | null = null;

@@ -18,11 +18,14 @@
  * (źródło SN → magistrala → stacja SN/nN z transformatorem, BEZ kroku
  * dodania odbioru/Load) + pole SN roli `'TR'` (karta BUGI-PRODUKTU-E2E,
  * patrz komentarz przy `sn_fields` niżej — bez niego transformator NIE jest
- * NIGDZIE narysowany, mimo że poprawnie istnieje w modelu). ZALOŻENIE „sieć
- * bez agregatu 0,4 kV" z pierwszej wersji tej karty było BŁĘDNE: backend
- * materializuje „potrzeby własne" stacji (mały odbiór nN) bezwarunkowo przy
- * KAŻDYM tworzeniu transformatora — sieć WIĘC ma agregat, a `loadArrow` jest
- * dziś asercją POZYTYWNĄ; negatyw bramki (b) idzie przez brak źródła DER.
+ * NIGDZIE narysowany, mimo że poprawnie istnieje w modelu).
+ *
+ * KOREKTA 2026-09-11. Ten nagłówek twierdził wcześniej, że backend materializuje
+ * „potrzeby własne" stacji bezwarunkowo, więc sieć „WIĘC ma agregat" i `loadArrow`
+ * jest asercją pozytywną. Pomiar na żywym backendzie (ta sama sekwencja operacji)
+ * daje `loads: 0`: `_materialize_station_auxiliary_load` wymaga JAWNEGO bloku
+ * `station_auxiliary` w payloadzie, którego ten builder nie podaje. Sieć jest więc
+ * bez agregatu — zgodnie z nazwą buildera — a `loadArrow` wrócił do roli negatywu.
  *
  * Uruchomienie (WYŁĄCZNIE tak — patrz CLAUDE.md/karta):
  *   cd mv-design-pro/frontend && node ./scripts/playwright-run.mjs \
@@ -130,9 +133,11 @@ async function createProjectAndCase(
  * Sieć BEZ DER: źródło SN → magistrala (1 odcinek) → stacja SN/nN z
  * transformatorem. Żaden krok NIE dodaje generatora/PV/BESS — symbole DER
  * (np. `derPv`) nie mają prawa pojawić się na scenie ani w legendzie.
- * `loadArrow` ("Odbiór (zagregowany)") NA ODWRÓT: JEST obecny — backend
- * materializuje "potrzeby własne" stacji (mały odbiór nN) bezwarunkowo przy
- * każdym tworzeniu transformatora, żaden krok nie musi dodawać `Load` jawnie.
+ * `loadArrow` ("Odbiór (zagregowany)") TAK SAMO: żaden krok nie dodaje odbioru,
+ * więc nie ma prawa pojawić się w legendzie. Materializacja „potrzeb własnych"
+ * stacji (`_materialize_station_auxiliary_load`) wymaga JAWNEGO bloku
+ * `station_auxiliary` w payloadzie, którego ten builder nie podaje — zmierzone
+ * na żywym backendzie: `loads: 0` (korekta 2026-09-11, patrz nagłówek pliku).
  *
  * POLE 'TR' JEST WYMAGANE (karta BUGI-PRODUKTU-E2E, diagnoza root-cause).
  * Backend (`domain_operations.py::insert_station_on_segment_sn`) ZAWSZE łączy
@@ -294,14 +299,28 @@ test.describe('Legenda symboli na żądanie (K12)', () => {
     await expect(panel.getByTestId('sld-v3-legend-panel-item-transformer2W')).toBeVisible();
     await expect(panel.getByTestId('sld-v3-legend-panel-item-gridSource')).toBeVisible();
 
-    // Pozytyw (karta BUGI-PRODUKTU-E2E, POPRAWKA ZALOZENIA): backend materializuje
-    // "potrzeby wlasne" stacji — maly, ZAWSZE obecny odbior nN — bezwarunkowo przy
-    // KAZDYM tworzeniu transformatora (`_materialize_station_auxiliary_load`,
-    // `domain_operations.py::insert_station_on_segment_sn`, poza gestia pola `TR`).
-    // Ta siec WIEC ma agregat 0,4 kV — `loadArrow` to REALNY, nie fabrykowany wpis;
-    // dawna asercja negatywna byla oparta na blednym zalozeniu (patrz komentarz
-    // naglowka pliku).
-    await expect(panel.getByTestId('sld-v3-legend-panel-item-loadArrow')).toBeVisible();
+    // Negatyw #2 (KOREKTA 2026-09-11, pomiar): ta siec NIE MA odbioru, wiec
+    // "Odbior (zagregowany)" NIE MOZE byc wpisem legendy.
+    //
+    // Poprzednia wersja tego bloku twierdzila cos przeciwnego — ze backend
+    // materializuje potrzeby wlasne stacji "bezwarunkowo przy KAZDYM tworzeniu
+    // transformatora" — i asercja byla pozytywna. Twierdzenie bylo NIEPRAWDZIWE
+    // od chwili napisania: `_materialize_station_auxiliary_load` (wprowadzone tym
+    // samym commitem 4e9ca9d9) od poczatku zaczyna sie od
+    // `if not isinstance(aux, dict) or not aux: return None`, a ten builder nie
+    // podaje bloku `station_auxiliary`. Zmierzone na zywym backendzie ta sama
+    // sekwencja operacji: `loads: 0`. Spec byl przez to czerwony nieprzerwanie.
+    //
+    // Intencja bramki (b) — "legenda pokazuje WYLACZNIE symbole obecne w
+    // projekcie" — jest zachowana i wzmocniona: siec bez DER i bez odbioru daje
+    // DWA niezalezne negatywy, a nazwa buildera (`...WithoutDer`) i naglowek
+    // pliku ("BEZ kroku dodania odbioru/Load") znow opisuja to, co robi.
+    //
+    // PARA: pozytyw `loadArrow` (scena Z agregatem ⇒ wpis JEST) trzyma test
+    // jednostkowy `src/ui/sld/v3/sheet/__tests__/projectLegend.test.ts`. Bez tej
+    // pary sama negacja przepuscilaby legende, ktora nie pokazuje NICZEGO.
+    await expect(panel.getByTestId('sld-v3-legend-panel-item-loadArrow')).toHaveCount(0);
+    await expect(panel).not.toContainText('zagregowany');
 
     // Negatyw (zero fabrykacji, §0.3 karty): sieć NIE ma ŻADNEGO źródła DER —
     // "Instalacja fotowoltaiczna" nie może być wpisem legendy tego projektu.

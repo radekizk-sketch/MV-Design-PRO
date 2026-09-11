@@ -118,6 +118,25 @@ async function otworzKanwe(page: Page, lod: number, motyw: string): Promise<stri
   return bledy;
 }
 
+/** Tlo arkusza kanwy v3, odczytane z RENDERU (styl obliczony elementu kanwy). */
+async function tloArkusza(page: Page): Promise<string> {
+  return page.locator('[data-testid="sld-canvas-v3"]').first().evaluate((el) => {
+    const tlo = getComputedStyle(el).backgroundColor;
+    const m = tlo.match(/\d+/g);
+    if (!m || m.length < 3) return tlo;
+    return `#${m.slice(0, 3).map((v) => Number(v).toString(16).padStart(2, '0')).join('')}`
+      .toUpperCase();
+  });
+}
+
+/** Zmierzone tla arkusza, klucz `L<lod>_<motyw>` — wypelniane przez zrzuty. */
+const tloKanwy = new Map<string, string>();
+
+/** Tlo palety JASNEJ (`LIGHT_TECHNICAL_SLD_PALETTE.canvasBackground`). */
+const TLO_JASNE = '#FFFFFF';
+/** Tlo palety DYSPOZYTORSKIEJ (`colorTokens.CANVAS_BACKGROUND`). */
+const TLO_CIEMNE = '#0B0F14';
+
 test.describe('SLD — audyt powykonawczy: ekrany L0/L1/L2', () => {
   test.beforeAll(() => {
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -128,6 +147,11 @@ test.describe('SLD — audyt powykonawczy: ekrany L0/L1/L2', () => {
       test(`poziom L${lod} (${motyw})`, async ({ page }) => {
         await page.setViewportSize({ width: 1920, height: 1080 });
         const bledy = await otworzKanwe(page, lod, motyw);
+
+        // TLO KANWY ZMIERZONE Z RENDERU, nie zalozone (patrz niezmiennik nizej).
+        // Piksel (5,5) zrzutu lezy poza rysunkiem, wiec niesie dokladnie kolor
+        // arkusza — to on rozstrzyga, czy plik nazwany „light" jest jasny.
+        tloKanwy.set(`L${lod}_${motyw}`, await tloArkusza(page));
 
         await page.screenshot({
           path: path.join(OUTPUT_DIR, `sld_L${lod}_${motyw}.png`),
@@ -311,32 +335,50 @@ test.describe('SLD — audyt powykonawczy: ekrany L0/L1/L2', () => {
   }
 
   /**
-   * V12K-234: NIEZMIENNIK MOTYWU, zamiast komentarza w harnessie.
+   * NIEZMIENNIK MOTYWU — KOREKTA 2026-09-11 (pomiar pikselowy).
    *
-   * Kanwa v3 ma STALE tlo techniczne (`SLD_V3_BACKGROUND`) — swiadoma decyzja
-   * projektowa: rysunek techniczny nie reaguje na motyw interfejsu. Harness ustawia
-   * `data-theme` dla spojnosci strony oceny, ale render jest od niego niezalezny,
-   * wiec para zrzutow jasny/ciemny jest BAJTOWO IDENTYCZNA.
+   * Ten test do tej pory zadal, zeby para zrzutow jasny/ciemny byla BAJTOWO
+   * IDENTYCZNA: kanwa v3 miala miec stale tlo techniczne, wiec szesc plikow
+   * nazwanych „light"/„dark" nie niosloby zadnego pokrycia motywow i nazwa
+   * klamalaby przy ogledzinach materialu audytowego.
    *
-   * Dopoki to byl tylko komentarz, szesc plikow nazwanych „light" i „dark" sugerowalo
-   * pokrycie motywow, ktorego NIE MA — a przy ogledzinach materialu audytowego
-   * wygladalo to na defekt renderu (i tak wlasnie zostalo raz zdiagnozowane, blednie).
-   * Ten test zamienia decyzje w SPRAWDZANY FAKT: jesli kanwa kiedys zacznie reagowac
-   * na motyw, asercja padnie i wymusi decyzje — albo zrzuty maja sie roznic naprawde,
-   * albo duplikat trzeba usunac. Milczaca zmiana w zadna strone nie przejdzie.
+   * PRODUKT SIE ZMIENIL, NIEZMIENNIK ZOSTAL W TYLE. Kanwa v3 ma dzis DWIE
+   * palety ekranu (`ui/sld/v3/theme/palette.ts`): jasna techniczna z arkuszem
+   * `#FFFFFF` i dyspozytorska z `#0B0F14`, a `SldCanvasV3` honoruje prop
+   * `paletteMode` (pin: `canvas/__tests__/motywRenderuStatycznego.test.tsx`).
+   * Harness zrzutow podaje ten prop wprost. Pomiar pikselowy zrzutow (dekodowany
+   * PNG, nie porownanie bajtow skompresowanych): tlo `#FFFFFF` vs `#0B0F14`,
+   * roznica w 1080/1080 wierszach i 1920/1920 kolumnach dla KAZDEGO z L0/L1/L2.
+   *
+   * Niezmiennik idzie wiec w druga strone — i dopiero teraz pilnuje tego, po co
+   * powstal: nazwa pliku „light"/„dark" ma byc FAKTEM SPRAWDZONYM, a nie
+   * etykieta. Zadamy, zeby para sie ROZNILA i zeby tlo kazdego zrzutu bylo
+   * doklanie tlem deklarowanej palety.
+   *
+   * GEOMETRIA zostaje niezalezna od motywu — to orzeczenie ma wlasny pin po
+   * stronie jednostkowej (`v3/theme/__tests__/palette.test.ts`: „hash geometrii
+   * sceny identyczny niezaleznie od aktywnej palety"), wiec nie dubluje sie tutaj.
    */
-  test('niezmiennik: kanwa techniczna jest NIEZALEZNA od motywu (para zrzutow identyczna)', () => {
+  test('niezmiennik: para zrzutow jasny/ciemny NAPRAWDE rozni sie paleta', () => {
     for (const lod of POZIOMY) {
       const jasny = fs.readFileSync(path.join(OUTPUT_DIR, `sld_L${lod}_light.png`));
       const ciemny = fs.readFileSync(path.join(OUTPUT_DIR, `sld_L${lod}_dark.png`));
 
       expect(
         jasny.equals(ciemny),
-        `L${lod}: zrzuty jasny/ciemny ROZNIA sie, a kanwa v3 ma stale tlo techniczne. `
-          + 'Albo render zaczal reagowac na motyw (wtedy zaktualizuj ten niezmiennik i '
-          + 'opis w screenshot-harness-main.tsx), albo do zrzutu wszedl element chrome '
-          + 'harnessu, ktory do materialu audytowego nie nalezy.',
-      ).toBe(true);
+        `L${lod}: zrzuty jasny/ciemny sa IDENTYCZNE, wiec nazwy plikow obiecuja `
+          + 'pokrycie motywow, ktorego nie ma. Albo harness przestal podawac '
+          + '`paletteMode`, albo kanwa przestala go honorowac.',
+      ).toBe(false);
+
+      expect(
+        tloKanwy.get(`L${lod}_light`),
+        `L${lod}: arkusz motywu jasnego nie jest tlem palety jasnej`,
+      ).toBe(TLO_JASNE);
+      expect(
+        tloKanwy.get(`L${lod}_dark`),
+        `L${lod}: arkusz motywu ciemnego nie jest tlem palety dyspozytorskiej`,
+      ).toBe(TLO_CIEMNE);
     }
   });
 });
