@@ -469,13 +469,28 @@ Do rozstrzygniecia po obejrzeniu renderu: czy wzrost jest CENA portalu nN
 
 | Stos | Komenda | Wynik |
 |------|---------|-------|
-| Laboratorium | `poetry run pytest tests/research -q` | 827 passed, RC=0 |
-| Backend (komplet) | `poetry run pytest -q` | patrz stopka commita |
+| Laboratorium | `poetry run pytest tests/research -q` | **827 passed**, RC=0 |
+| Backend (komplet) | `poetry run pytest -q` | **11 604 passed, 6 skipped**, RC=0 |
+| Frontend (vitest) | `npm run test:ci` | **887 plików, 11 989 passed**, 1 skipped, 14 todo, RC=0 |
 | Lint/format backend | `ruff check src tests` · `black --check src tests` | RC=0 · RC=0 |
+| Lint frontendu | `npm run lint` | RC=0 |
 | Typy frontendu | `npx tsc --noEmit` | RC=0 |
-| Bramka SLD | 18 kroków vitest z `sld-determinism.yml` | 18/18 RC=0 |
-| Bramka P0 | 52 kroki guardowe w venv odwzorowującym CI | 52/52 RC=0 |
+| Guardy (venv CI) | `catalog_*`, `readiness_codes`, `audit_contract`, `arch`, `docs`, `utf8`, `repo_hygiene`, `solver_input_substitute`, `api_lifecycle`, `severity_contract` | wszystkie RC=0 |
+| e2e OZE (realny backend) | `kreator-oze-max` + `nastawy-i-akcje-oze` | 3 passed, RC=0 |
+| e2e legenda (realny backend) | `legenda-na-zadanie` | 3 passed, RC=0 |
+| e2e SLD (realny backend) | `sld-audyt-powykonawczy-screenshot` | 9 passed, RC=0 |
 
-**CI na GitHubie nie jest zielone** — patrz 4.2. Żaden wynik tej rundy nie jest
-zgłaszany jako „ACCEPTED"; kod pozostaje `UNVALIDATED_MODEL`, bez promocji do
-produkcji i bez `VALIDATED_SIMULATION`.
+Przyrost testów backendu względem poprzedniego pomiaru tej gałęzi: 11 539 →
+11 604 (+65 nowych, zero czerwonych). Bramka rejestru kodów złapała brak wpisu
+dla nowego kodu `catalog.load_reactive_power_unresolved` — uzupełniony w
+`READINESS_CODES` i w mapie celów frontu, zamiast obchodzenia bramki.
+
+**CI na GitHubie NIE jest w pełni zielone.** Na HEAD gałęzi zielone są: Physics
+Label Guard, Docs Integrity Guard, Architectural And Repo Hygiene Guard, P0
+Extended Guards, Frontend E2E smoke. Czerwona pozostaje `SLD Determinism Guards`
+— z powodu opisanego w 4.9 (sonda pionów, regres ODZIEDZICZONY, identyczny na
+`main`, werdykt wizualny należy do właściciela — bramka B-02). Pozostałe bramki
+w chwili pisania jeszcze biegną i ich wynik NIE jest tu deklarowany.
+
+Żaden wynik tej rundy nie jest zgłaszany jako „ACCEPTED"; kod pozostaje
+`UNVALIDATED_MODEL`, bez promocji do produkcji i bez `VALIDATED_SIMULATION`.
