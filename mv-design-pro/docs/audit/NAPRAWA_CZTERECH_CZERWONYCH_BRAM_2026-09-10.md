@@ -154,6 +154,7 @@ fabrykację — zostało zdjęte, a nieaktualne uzasadnienie w zapadce poprawion
 
 Znalezisko uboczne. Nagłówek modułu deklaruje klasę „polska litera zamieniona na
 ASCII '?'" jako pokrytą, a reguła wymaga litery po **obu** stronach `?`. Realny
+<!-- mojibake-guard: probka celowa — uszkodzony zapis JEST przedmiotem tego akapitu -->
 komunikat operatora `"Najpierw przepi??/usun?? pola."` w `enm/domain_operations.py`
 przechodził, bo po prawej stronie stoi ukośnik. Deklaracja szersza niż detekcja
 jest groźniejsza niż sama luka (KLASA §4).
