@@ -20,6 +20,7 @@ from network_model.catalog.repository import CatalogRepository
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.voltage_factor import c_for_node
+from network_model.core.wklad_zwarciowy_przeksztaltnika import K_SC_ZRODLO_DEKLARACJA
 from solver_input.contracts import (
     SOLVER_INPUT_CONTRACT_VERSION,
     BranchPayload,
@@ -302,16 +303,39 @@ def _build_inverter_payloads(
             source_kind = SourceKind.DERIVED
             src_ref = SourceRef(derivation_rule="instance_parameters")
 
-        for field_name, value, unit in [
-            ("in_rated_a", source.in_rated_a, "A"),
-            ("k_sc", source.k_sc, ""),
+        # PROWENIENCJA PER POLE, NIE PER ELEMENT.
+        #
+        # DEFEKT ZMIERZONY (2026-09-11): obie dane dostawały znacznik z JEDNEJ
+        # decyzji „czy źródło jest związane z katalogiem", więc dla związanego
+        # falownika `k_sc` meldowało `CATALOG` ze ścieżką
+        # `converter_types[<ref>]` — mimo że ŻADEN typ katalogu pola `k_sc` nie
+        # ma i wartość pochodziła z domyślki systemowej wpisanej na sztywno.
+        # Audytor czytający ślad widział daną producenta tam, gdzie producent
+        # niczego nie podał. To jest naruszenie White Box groźniejsze niż sama
+        # domyślka: domyślkę widać, fałszywy znacznik ją UKRYWA.
+        #
+        # `in_rated_a` wynika z tabliczki (moc i napięcie), więc dla źródła
+        # związanego z katalogiem jego znacznik zostaje bez zmian.
+        if source.k_sc_zrodlo == K_SC_ZRODLO_DEKLARACJA:
+            k_sc_kind = source_kind
+            k_sc_ref = src_ref
+        else:
+            # Kategoria z kontraktu proweniencji, do tej pory NIE emitowana ani
+            # razu (obietnica bez testu — patrz docstring modułu o zakazie
+            # domyślnych wartości fizycznych). Tu dostaje pierwsze użycie.
+            k_sc_kind = SourceKind.DEFAULT_FORBIDDEN
+            k_sc_ref = SourceRef(derivation_rule="k_sc_domyslny_systemowy_bez_podstawy_katalogowej")
+
+        for field_name, value, unit, kind, ref in [
+            ("in_rated_a", source.in_rated_a, "A", source_kind, src_ref),
+            ("k_sc", source.k_sc_efektywny, "", k_sc_kind, k_sc_ref),
         ]:
             trace_entries.append(
                 ProvenanceEntry(
                     element_ref=source.id,
                     field_path=f"inverter_sources[ref_id={source.id}].{field_name}",
-                    source_kind=source_kind,
-                    source_ref=src_ref,
+                    source_kind=kind,
+                    source_ref=ref,
                     value_hash=compute_value_hash(value),
                     unit=unit if unit else None,
                 )
@@ -324,7 +348,7 @@ def _build_inverter_payloads(
                 bus_ref=source.node_id,
                 converter_kind=(source.converter_kind.value if source.converter_kind else None),
                 in_rated_a=source.in_rated_a,
-                k_sc=source.k_sc,
+                k_sc=source.k_sc_efektywny,
                 contributes_negative_sequence=source.contributes_negative_sequence,
                 contributes_zero_sequence=source.contributes_zero_sequence,
                 in_service=source.in_service,

@@ -1267,6 +1267,14 @@ class AddConverterSourcePayload(_FrozenBase):
     # (build_der_compliance_from_generator → NcRfgComplianceChecker). Brak → False.
     has_lvrt_curve: bool | None = None
     has_hvrt_curve: bool | None = None
+    # Współczynnik wkładu zwarciowego ``I_k = k_sc · I_n`` z karty producenta
+    # albo certyfikatu jednostki wytwórczej. NIE da się go wziąć z katalogu:
+    # zależy od ogranicznika prądu konkretnego egzemplarza, a pomiar
+    # 2026-09-11 pokazał, że żadna ze 176 pozycji przekształtników nie niesie
+    # ani `sc_model`, ani samego `k_sc`. Brak deklaracji NIE jest błędem —
+    # ślad White Box oznacza wtedy wartość jako DOMYŚLNĄ SYSTEMOWĄ
+    # (`SourceKind.DEFAULT_FORBIDDEN`), więc wiadomo, na czym wynik stoi.
+    k_sc: float | None = None
     bess_mode: str | None = None
     soc_min_percent: float | None = None
     soc_max_percent: float | None = None

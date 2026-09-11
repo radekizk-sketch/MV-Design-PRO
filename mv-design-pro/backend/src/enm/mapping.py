@@ -34,6 +34,7 @@ from network_model.core.inverter import InverterSource
 from network_model.core.machine import AsynchronousMachineSource, SynchronousMachineSource
 from network_model.core.node import Node, NodeType
 from network_model.core.switch import Switch, SwitchState, SwitchType
+from network_model.core.wklad_zwarciowy_przeksztaltnika import deklaracja_k_sc
 from network_model.core.ybus import AdmittanceMatrixBuilder
 from network_model.solvers.power_flow_zip import (
     ZipCoeffs,
@@ -486,7 +487,6 @@ def _add_generator_sc_sources(
             if sr_mva is None:
                 continue
             in_rated_a = sr_mva * 1.0e6 / (math.sqrt(3.0) * un_kv * 1.0e3)
-            k_sc = mp.get("k_sc")
             graph.add_inverter_source(
                 InverterSource(
                     id=gen.ref_id,
@@ -495,7 +495,7 @@ def _add_generator_sc_sources(
                     type_ref=gen.catalog_ref,
                     converter_kind=_FULL_CONVERTER_SC_GEN_TYPES[gen_type],
                     in_rated_a=in_rated_a,
-                    k_sc=float(k_sc) if isinstance(k_sc, int | float) and k_sc > 0 else 1.1,
+                    k_sc=deklaracja_k_sc(mp.get("k_sc")),
                     contributes_negative_sequence=True,
                     contributes_zero_sequence=False,
                 )

@@ -34,6 +34,7 @@ from network_model.catalog import CatalogRepository
 from network_model.catalog.types import ConverterKind
 from network_model.core import InverterSource, NetworkGraph, create_network_snapshot
 from network_model.core.branch import Branch, LineBranch, TransformerBranch
+from network_model.core.wklad_zwarciowy_przeksztaltnika import deklaracja_k_sc
 from network_model.solvers import ShortCircuitIEC60909Solver, ShortCircuitType
 from network_model.solvers.machine_sc_iec60909 import compute_machine_contributions
 from network_model.solvers.power_flow_inverter import inverter_control_from_params
@@ -641,7 +642,7 @@ class AnalysisRunService:
                 type_ref=payload.get("type_ref"),
                 converter_kind=self._parse_converter_kind(payload.get("converter_kind")),
                 in_rated_a=float(payload.get("in_rated_a", 0.0)),
-                k_sc=float(payload.get("k_sc", 1.1)),
+                k_sc=deklaracja_k_sc(payload.get("k_sc")),
                 contributes_negative_sequence=bool(
                     payload.get("contributes_negative_sequence", False)
                 ),
@@ -840,7 +841,7 @@ class AnalysisRunService:
                 node_id=str(source.get("node_id")),
                 type_ref=payload.get("type_ref"),
                 in_rated_a=float(payload.get("in_rated_a", 0.0)),
-                k_sc=float(payload.get("k_sc", 1.1)),
+                k_sc=deklaracja_k_sc(payload.get("k_sc")),
                 contributes_negative_sequence=bool(
                     payload.get("contributes_negative_sequence", False)
                 ),

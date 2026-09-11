@@ -4364,7 +4364,18 @@ _POLA_CERTYFIKATU_PTPIREE: tuple[str, ...] = (
 #: Pola tabliczki, których katalog NIE niesie (wybór ruchowy projektanta) —
 #: wyłączone z porównania z deklaracją payloadu, bo nie mają odpowiednika
 #: katalogowego, wobec którego mogłyby się rozjechać.
-_POLA_TABLICZKI_SPOZA_KATALOGU: frozenset[str] = frozenset({"operation_mode"})
+#: Pola tabliczki, których NIE wnosi katalog, więc nie podlegają kontroli
+#: rozbieżności „formularz kontra pozycja katalogowa".
+#:
+#: `k_sc` dołącza tu z konkretnego powodu: współczynnik wkładu zwarciowego
+#: zależy od ogranicznika prądu KONKRETNEGO egzemplarza i pochodzi z karty
+#: producenta albo certyfikatu jednostki wytwórczej, a nie z rodzaju
+#: technologii — żaden typ katalogu przekształtnika go nie niesie (pomiar
+#: 2026-09-11: 0 z 176 pozycji ma `sc_model`, a pola `k_sc` typ w ogóle nie ma).
+#: Pole kontraktu `MaterializedSourceParams.k_sc` istniało, ale ŻADNA operacja
+#: go nie zapisywała, więc deklaracja projektanta nie miała jak dotrzeć do
+#: solvera i wkład zwarciowy KAŻDEGO źródła OZE brał się z domyślki systemowej.
+_POLA_TABLICZKI_SPOZA_KATALOGU: frozenset[str] = frozenset({"operation_mode", "k_sc"})
 
 
 def _certyfikat_ptpiree_z_katalogu(namespace: str, catalog_ref: str) -> dict[str, Any]:
@@ -4528,6 +4539,17 @@ def _build_converter_materialized_params(
         }
 
     tabliczka.update(_certyfikat_ptpiree_z_katalogu(namespace, catalog_ref))
+
+    # DEKLARACJA WSPÓŁCZYNNIKA WKŁADU ZWARCIOWEGO — droga z żądania do modelu.
+    # Bez tego przypisania `MaterializedSourceParams.k_sc` było polem bez
+    # producenta: kontrakt (i jego lustro w TypeScript) je miały, ale nic go nie
+    # zapisywało, więc `enm.mapping` zawsze czytało `None` i wpadało w domyślkę.
+    # Zapisujemy WYŁĄCZNIE wartość dodatnią — brak, zero i wartość ujemna
+    # zostają brakiem danych, nie okazją do wpisania liczby zastępczej.
+    k_sc_zadania = payload.get("k_sc")
+    if isinstance(k_sc_zadania, int | float) and not isinstance(k_sc_zadania, bool):
+        if float(k_sc_zadania) > 0.0:
+            tabliczka["k_sc"] = float(k_sc_zadania)
 
     rozbieznosci = rozbieznosci_tabliczki(
         payload.get("materialized_params"),

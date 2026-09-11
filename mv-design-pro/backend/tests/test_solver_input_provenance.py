@@ -5,6 +5,7 @@ INVARIANT: Every technical/numerical field in payload has a trace entry
 with source_kind documenting its origin.
 """
 
+import pytest
 from network_model.catalog.repository import CatalogRepository
 from network_model.catalog.types import ConverterKind
 from network_model.core.branch import (
@@ -182,7 +183,6 @@ def _make_network_with_inverter() -> tuple[NetworkGraph, CatalogRepository]:
             type_ref="conv-pv-100",
             converter_kind=ConverterKind.PV,
             in_rated_a=350.0,
-            k_sc=1.1,
         )
     )
 
@@ -348,7 +348,18 @@ class TestSolverInputProvenance:
         assert "lt-afl70" in env.provenance_summary.catalog_refs_used
 
     def test_inverter_with_type_ref_has_catalog_trace(self):
-        """Inverter source with type_ref has CATALOG trace entries."""
+        """Dana WYNIKAJĄCA z katalogu dostaje CATALOG — ale tylko ona.
+
+        KOREKTA 2026-09-11. Poprzednia wersja żądała ``CATALOG`` dla KAŻDEGO
+        wpisu śladu falownika związanego z katalogiem — i tym samym PRZYPINAŁA
+        defekt: ``k_sc`` nie pochodzi z żadnej pozycji katalogu (pomiar: 0 ze 176
+        typów przekształtników ma `sc_model`, a pola `k_sc` typ w ogóle nie ma),
+        więc znacznik ``CATALOG`` ze ścieżką ``converter_types[<ref>]`` był
+        nieprawdą w audycie. Fałszywy znacznik jest groźniejszy niż sama
+        domyślka: domyślkę widać, znacznik ją UKRYWA.
+
+        ``in_rated_a`` zostaje przy ``CATALOG`` — wynika z tabliczki pozycji.
+        """
         graph, catalog = _make_network_with_inverter()
 
         env = build_solver_input(
@@ -359,12 +370,61 @@ class TestSolverInputProvenance:
             analysis_type=SolverAnalysisType.SHORT_CIRCUIT_3F,
         )
 
-        pv_traces = [t for t in env.trace if t.element_ref == "pv_1"]
-        assert len(pv_traces) > 0
+        slady = {t.field_path.rsplit(".", 1)[-1]: t for t in env.trace if t.element_ref == "pv_1"}
+        assert "in_rated_a" in slady and "k_sc" in slady, slady.keys()
+        assert slady["in_rated_a"].source_kind == "CATALOG"
 
-        # type_ref is set → CATALOG source kind
-        for trace in pv_traces:
-            assert trace.source_kind == "CATALOG"
+    def test_wspolczynnik_zwarciowy_bez_deklaracji_jest_DEFAULT_FORBIDDEN(self):
+        """Domyślka systemowa MUSI być widoczna w śladzie jako domyślka.
+
+        `solver_input/builder.py` deklaruje we własnym docstringu „NO default
+        physical values", a `SourceKind.DEFAULT_FORBIDDEN` istniał w kontrakcie i
+        NIE BYŁ emitowany ANI RAZU — obietnica bez testu. To jest jej test.
+        """
+        graph, catalog = _make_network_with_inverter()
+
+        env = build_solver_input(
+            graph=graph,
+            catalog=catalog,
+            case_id="c",
+            enm_revision="r",
+            analysis_type=SolverAnalysisType.SHORT_CIRCUIT_3F,
+        )
+
+        k_sc = next(
+            t for t in env.trace if t.element_ref == "pv_1" and t.field_path.endswith(".k_sc")
+        )
+        assert (
+            k_sc.source_kind == "DEFAULT_FORBIDDEN"
+        ), "Współczynnik bez deklaracji producenta udaje daną katalogową"
+
+    def test_zadeklarowany_wspolczynnik_zwarciowy_nie_jest_DEFAULT_FORBIDDEN(self):
+        """DRUGA STRONA PREDYKATU: deklaracja nie może być piętnowana jak domyślka.
+
+        Bez tego przypadku bramka wyżej przechodziłaby też dla implementacji,
+        która oznacza ``DEFAULT_FORBIDDEN`` ZAWSZE — czyli dla takiej, w której
+        deklaracja projektanta nadal niczego nie zmienia.
+        """
+        graph, catalog = _make_network_with_inverter()
+        graph.inverter_sources["pv_1"].k_sc = 1.35
+
+        env = build_solver_input(
+            graph=graph,
+            catalog=catalog,
+            case_id="c",
+            enm_revision="r",
+            analysis_type=SolverAnalysisType.SHORT_CIRCUIT_3F,
+        )
+
+        k_sc = next(
+            t for t in env.trace if t.element_ref == "pv_1" and t.field_path.endswith(".k_sc")
+        )
+        assert k_sc.source_kind == "CATALOG"
+        falowniki = env.payload["inverter_sources"]
+        wpis = next(p for p in falowniki if p["ref_id"] == "pv_1")
+        assert wpis["k_sc"] == pytest.approx(
+            1.35
+        ), "Deklaracja dotarła do śladu, ale NIE do ładunku solvera — to phantom"
 
     def test_trace_entries_are_sorted(self):
         """Trace entries are sorted by (element_ref, field_path)."""

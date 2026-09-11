@@ -17,6 +17,11 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
+from network_model.core.wklad_zwarciowy_przeksztaltnika import (
+    K_SC_DOMYSLNY_SYSTEMOWY,
+    wspolczynnik_wkladu_zwarciowego,
+)
+
 
 class GeneratorType(Enum):
     """
@@ -84,7 +89,7 @@ class GeneratorSN:
     cos_phi: float = 0.9
     internal_impedance_pu: complex = complex(0.0, 0.0)
     transformer_ref: str | None = None
-    k_sc: float = 1.1
+    k_sc: float = K_SC_DOMYSLNY_SYSTEMOWY
     in_service: bool = True
 
     @property
@@ -203,7 +208,7 @@ class GeneratorSN:
             cos_phi=float(data.get("cos_phi", 0.9)),
             internal_impedance_pu=impedance,
             transformer_ref=data.get("transformer_ref"),
-            k_sc=float(data.get("k_sc", 1.1)),
+            k_sc=wspolczynnik_wkladu_zwarciowego(data.get("k_sc"))[0],
             in_service=bool(data.get("in_service", True)),
         )
 
@@ -239,7 +244,7 @@ class GeneratorNN:
     control_mode: ControlMode = ControlMode.STALY_COS_PHI
     power_limit_kw: float | None = None
     profile_p_t: tuple | None = None
-    k_sc: float = 1.1
+    k_sc: float = K_SC_DOMYSLNY_SYSTEMOWY
     in_service: bool = True
 
     @property
@@ -307,6 +312,6 @@ class GeneratorNN:
                 float(data["power_limit_kw"]) if data.get("power_limit_kw") is not None else None
             ),
             profile_p_t=profile,
-            k_sc=float(data.get("k_sc", 1.1)),
+            k_sc=wspolczynnik_wkladu_zwarciowego(data.get("k_sc"))[0],
             in_service=bool(data.get("in_service", True)),
         )

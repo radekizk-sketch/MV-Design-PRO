@@ -566,6 +566,14 @@ export interface AddConverterSourcePayload {
   power_setpoint_mw: number | null;
   q_min_mvar: number | null;
   q_max_mvar: number | null;
+  /**
+   * Współczynnik wkładu zwarciowego `I_k = k_sc · I_n` z karty producenta albo
+   * certyfikatu jednostki wytwórczej. Katalog go NIE niesie (zależy od
+   * ogranicznika prądu konkretnego egzemplarza), więc deklaruje go projektant.
+   * Brak deklaracji nie jest błędem — ślad White Box oznacza wtedy wartość jako
+   * domyślną systemową, więc wiadomo, na czym stoi wynik zwarciowy.
+   */
+  k_sc: number | null;
   bess_mode: string | null;
   soc_min_percent: number | null;
   soc_max_percent: number | null;

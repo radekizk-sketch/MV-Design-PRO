@@ -5,7 +5,6 @@ the-model pattern as ozeArchetypes2a.ts. Run: poetry run python scripts/emit_sld
 
 from __future__ import annotations
 
-import json
 import os
 import sys
 
@@ -35,7 +34,6 @@ _OUT = os.path.normpath(
         "sldNetwork53.ts",
     )
 )
-
 
 
 def main() -> None:
