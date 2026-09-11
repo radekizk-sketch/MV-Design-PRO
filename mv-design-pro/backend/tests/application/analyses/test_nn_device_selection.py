@@ -789,13 +789,32 @@ class TestZbierzKandydatowZKatalogu:
             assert k.zdolnosc_wylaczania_ka == mcb_typy[k.id].icn_ka
 
     def test_mccb_nastawy_resolwowane_z_katalogu_karta_d1(self) -> None:
-        """Karta D1: WSZYSTKIE 11 rekordów MCCB (WYLACZNIK_GLOWNY/ODPLYWOWY)
-        niosą nastawy resolwowane do GÓRNEGO krańca zakresu regulacji —
-        `ir_a=1,0×In` (górny kraniec `ir_range`), `ii_a=15×In`."""
+        """Karta D1: KAŻDY rekord MCCB (WYLACZNIK_GLOWNY/ODPLYWOWY) niesie nastawy
+        resolwowane do GÓRNEGO krańca zakresu regulacji — `ir_a=1,0×In` (górny
+        kraniec `ir_range`), `ii_a=15×In`.
+
+        POKRYCIE LICZONE Z KATALOGU, NIE PRZYPIĘTE LICZBĄ. Poprzednia wersja
+        żądała dokładnie 11 kandydatów i wywalała się przy KAŻDYM rozszerzeniu
+        rodziny — a rozszerzenie o zweryfikowane pozycje producenta jest
+        pożądane, nie regresyjne (import ABB SACE Emax 2 dołożył ramy
+        2000–4000 A). Zamiast liczby pilnujemy WŁASNOŚCI, która była prawdziwym
+        celem: zbiór kandydatów MCCB pokrywa DOKŁADNIE rodzinę wyłączników nN
+        katalogu, więc pętla niżej nie może stać się pusta ani wybiórcza.
+        """
         catalog = get_default_mv_catalog()
         aparaty = {t.id: t for t in catalog.list_lv_apparatus_types()}
         mccb = [k for k in zbierz_kandydatow_z_katalogu(catalog) if k.kind == KIND_MCCB]
-        assert len(mccb) == 11, f"Oczekiwano 11 kandydatów MCCB, jest {len(mccb)}"
+        z_katalogu = {
+            t.id
+            for t in aparaty.values()
+            if t.device_kind in ("WYLACZNIK_GLOWNY", "WYLACZNIK_ODPLYWOWY")
+        }
+        assert {k.id for k in mccb} == z_katalogu, (
+            "Zbiór kandydatów MCCB rozjechał się z rodziną wyłączników nN katalogu: "
+            f"brakuje {sorted(z_katalogu - {k.id for k in mccb})}, "
+            f"nadmiarowe {sorted({k.id for k in mccb} - z_katalogu)}"
+        )
+        assert len(mccb) >= 11, f"Rodzina skurczyła się do {len(mccb)} pozycji"
         for k in mccb:
             aparat = aparaty[k.id]
             assert aparat.ir_range is not None, f"{k.id}: brak ir_range w katalogu (regresja D1)"

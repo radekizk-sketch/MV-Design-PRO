@@ -68,6 +68,7 @@ from tests.enm.test_brama_katalogowa_operacji_v2 import (
     REF_APARAT_NN,
     REF_APARAT_SN,
     REF_BESS,
+    REF_BESS_SN,
     REF_CT,
     REF_FW,
     REF_KABEL_DER,
@@ -169,6 +170,40 @@ def _payload_konwerter_obca(snapshot: dict[str, Any]) -> dict[str, Any]:
             "catalog_binding": _wiazanie(REF_APARAT_NN),
         },
     )
+
+
+def _payload_konwerter_sn_obca(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Przekształtnik SN przez transformator blokowy — pole źródłowe na szynie 15 kV.
+
+    ILOCZYN CECH, NIE DRUGI PRZYKŁAD. Wariant `nn_side` wyżej dowodzi, że pole
+    na szynie 0,4 kV dostaje znacznik ``APARAT_NN``. Ten przypadek bierze DRUGĄ
+    wartość tej samej cechy — szynę SN — i sprawdza, że znacznik idzie za
+    NAPIĘCIEM SZYNY (``APARAT_SN``), a nie za nazwą „pole źródłowe nN".
+
+    Przed naprawą znacznik był zaszyty na ``APARAT_NN`` we wszystkich trzech
+    ogniwach łańcucha, więc wiązanie aparatu 17,5 kV nie materializowało się i
+    łącznik powstawał BEZ ``catalog_ref``. Deklaracja w payloadzie jest CUDZA
+    (``LINIA_SN``) — dowodzi, że znacznika nie bierzemy z żądania.
+    """
+    payload = _payload_zrodla(
+        snapshot,
+        catalog_ref=REF_BESS_SN,
+        technologia="BESS",
+        catalog_binding=_wiazanie(REF_BESS_SN),
+        connection_variant="block_transformer",
+        placement="NEW_FIELD",
+        source_field={
+            "source_field_kind": "BESS",
+            "field_name": "Pole magazynu SN",
+            "catalog_binding": _wiazanie(REF_APARAT_SN),
+        },
+    )
+    # `bus_nn_ref` CELOWO usunięty: przy wariancie blokowym stronę transformatora
+    # wybiera operacja, porównując napięcie katalogowe przekształtnika z `uhv_kv`
+    # i `ulv_kv`. Podanie szyny z zewnątrz omijałoby dokładnie tę regułę, którą
+    # ten przypadek ma sprawdzić.
+    payload.pop("bus_nn_ref", None)
+    return payload
 
 
 def _payload_der_sn_obca(snapshot: dict[str, Any]) -> dict[str, Any]:
@@ -290,6 +325,17 @@ def _znaczniki_konwertera(snapshot: dict[str, Any]) -> dict[str, str | None]:
     }
 
 
+def _znaczniki_konwertera_sn(snapshot: dict[str, Any]) -> dict[str, str | None]:
+    generator = _jedyny(snapshot.get("generators") or [], "generator")
+    pole = _pole_nn_zrodlowe(snapshot)
+    return {
+        "generator": _znacznik(generator),
+        "pole.catalog_binding": ((pole.get("meta") or {}).get("catalog_binding") or {}).get(
+            "catalog_namespace"
+        ),
+    }
+
+
 def _znaczniki_der_sn(snapshot: dict[str, Any]) -> dict[str, str | None]:
     generator = _jedyny(snapshot.get("generators") or [], "generator")
     transformator = _po_tagu(snapshot, "transformers", "der_block_transformer")
@@ -394,10 +440,24 @@ ZNACZNIKI: tuple[ZnacznikPochodzenia, ...] = (
     ZnacznikPochodzenia(
         "add_converter_source|nn_side",
         "add_converter_source",
-        ("add_converter_source",),
+        ("add_converter_source", "_append_converter_field_if_needed"),
         _payload_konwerter_obca,
         _znaczniki_konwertera,
         {"generator": "ZRODLO_NN_BESS", "pole_nn.catalog_binding": "APARAT_NN"},
+    ),
+    ZnacznikPochodzenia(
+        "add_converter_source|sn_przez_transformator_blokowy",
+        "add_converter_source",
+        ("add_converter_source", "_append_converter_field_if_needed"),
+        _payload_konwerter_sn_obca,
+        _znaczniki_konwertera_sn,
+        # Znacznik SAMEGO przekształtnika idzie z TECHNOLOGII (mapa
+        # `_PRZESTRZEN_ZRODLA_PRZEKSZTALTNIKOWEGO`), więc pozostaje
+        # `ZRODLO_NN_BESS` także dla przyłączenia przez transformator blokowy —
+        # to ta sama przestrzeń, z której materializuje się jego tabliczka.
+        # Znacznik APARATU POLA idzie z NAPIĘCIA SZYNY i tu właśnie różni się
+        # od wariantu nn_side: `APARAT_SN`, nie `APARAT_NN`.
+        {"generator": "ZRODLO_NN_BESS", "pole.catalog_binding": "APARAT_SN"},
     ),
     ZnacznikPochodzenia(
         "add_converter_source|der_sn",

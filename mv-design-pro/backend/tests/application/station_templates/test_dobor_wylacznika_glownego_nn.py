@@ -22,10 +22,8 @@ from __future__ import annotations
 import math
 
 import pytest
-from application.station_templates.apply import (
-    _napiecie_lacznikowe_kv,
-    dobierz_wylacznik_glowny_nn,
-)
+from application.station_templates.apply import dobierz_wylacznik_glowny_nn
+from domain.dobor_aparatu_pola import _napiecie_aparatu_nn_kv as _napiecie_lacznikowe_kv
 from network_model.catalog import get_default_mv_catalog
 
 

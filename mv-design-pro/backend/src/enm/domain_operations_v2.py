@@ -24,6 +24,10 @@ import math
 from dataclasses import dataclass
 from typing import Any, cast
 
+from domain.dobor_aparatu_pola import (
+    dobierz_aparat_pola_zrodlowego,
+    przestrzen_aparatu_dla_napiecia,
+)
 from network_model.catalog.materialization import materialize_catalog_binding
 from network_model.catalog.mv_ptpiree_catalog import annotate_with_ptpiree_status
 from network_model.catalog.repository import get_default_mv_catalog
@@ -339,6 +343,29 @@ def _catalog_item_id(binding: dict[str, Any] | None) -> str | None:
 #: migawki muszą pytać o TĘ SAMĄ przestrzeń (V12K-316 dług 4).
 _PRZESTRZEN_APARATU_POLA_SN = "APARAT_SN"
 _PRZESTRZEN_APARATU_POLA_NN = "APARAT_NN"
+_PRZESTRZEN_APARATU_POLA_SN = "APARAT_SN"
+
+#: Wersja pozycji katalogowej wpisywana do wiązań powstałych z DOBORU (nie z
+#: żądania). Ta sama wartość, którą operacje stosują dla wiązań bez jawnej
+#: wersji (patrz `_normalizuj_wiazanie`) — jedno źródło, nie druga stała.
+_WERSJA_KATALOGU_DOMYSLNA = "2024.1"
+
+
+def _przestrzen_aparatu_pola(enm: dict[str, Any], bus_ref: str) -> str:
+    """Przestrzeń katalogu aparatu pola WYNIKAJĄCA z napięcia szyny.
+
+    Pole na szynie nN (≤ 1 kV wg IEC 60038) wiąże aparat z rodziny APARAT_NN,
+    pole na szynie SN — z APARAT_SN. Przed tą funkcją przestrzeń była ZASZYTA na
+    APARAT_NN w każdej ścieżce zapisu pola, więc pole źródłowe przekształtnika
+    przyłączonego przez transformator blokowy (szyna 15 kV) żądało aparatu
+    690 V. Szyna, na której pole powstaje, jest tu JEDYNYM źródłem prawdy —
+    nie wariant przyłączenia zadeklarowany w żądaniu.
+
+    Szyna nieznana (referencja spoza modelu) daje APARAT_NN: to zachowanie
+    dotychczasowe i dotyczy wyłącznie ścieżek, które i tak przerwą się dalej na
+    braku szyny — nie jest domyślnym poziomem napięcia dla realnego pola.
+    """
+    return przestrzen_aparatu_dla_napiecia(_bus_voltage_kv(enm, bus_ref))
 
 
 def _wiazanie_w_przestrzeni(binding: object, namespace: str) -> dict[str, Any] | None:
@@ -4658,6 +4685,8 @@ def _append_converter_field_if_needed(
     technology: str,
     connection_variant: str,
     payload: dict[str, Any],
+    przestrzen_aparatu: str,
+    moc_zrodla_mva: float | None = None,
 ) -> tuple[str | None, list[str], list[dict[str, Any]]] | tuple[None, None, None]:
     placement = payload.get("placement")
     if not isinstance(placement, str):
@@ -4697,16 +4726,49 @@ def _append_converter_field_if_needed(
     source_field = payload.get("source_field")
     source_field_payload = source_field if isinstance(source_field, dict) else {}
     field_meta = {"source_field_kind": source_field_payload.get("source_field_kind") or technology}
+    # PRZESTRZEŃ KATALOGU PRZYCHODZI OD WOŁAJĄCEGO — policzona RAZ, z napięcia
+    # szyny, tą samą wartością, którą wołający sprawdził istnienie aparatu.
+    #
+    # DEFEKT ZMIERZONY (2026-09-11, apply 57 szablonów): pole źródłowe
+    # przekształtnika zapisywało wiązanie ZAWSZE w przestrzeni APARAT_NN, choć
+    # 66 z 78 takich pól w bibliotece siedzi na szynie 15 kV (przyłączenie przez
+    # transformator blokowy) i wymaga aparatu SN. Aparat 690 V na szynie 15 kV
+    # to ta sama klasa fabrykacji, co wyłącznik główny dobrany po samym prądzie.
     apparatus_binding = source_field_payload.get("catalog_binding")
+    uzasadnienie_doboru: str | None = None
+    if not isinstance(apparatus_binding, dict) and moc_zrodla_mva:
+        # Wołający nie wskazał aparatu — dobieramy go z mocy źródła i napięcia
+        # szyny. To NIE jest domyślna pozycja „na wszelki wypadek": brak
+        # dopasowania zostawia pole bez wiązania i blokadę gotowości.
+        napiecie_szyny = _bus_voltage_kv(new_enm, bus_nn_ref)
+        if napiecie_szyny is not None:
+            wynik = dobierz_aparat_pola_zrodlowego(
+                przestrzen=przestrzen_aparatu,
+                napiecie_szyny_kv=napiecie_szyny,
+                moc_zrodla_mva=float(moc_zrodla_mva),
+            )
+            uzasadnienie_doboru = wynik.uzasadnienie
+            if wynik.dobrano:
+                # Znacznik pochodzenia to TA SAMA nazwa, która wybrała rodzinę do
+                # doboru — nie druga wartość „wyliczona z wyniku". `_wiazanie_w_przestrzeni`
+                # niżej i tak nadpisze kategorię tą nazwą; trzymamy ją tu, żeby
+                # struktura mówiła prawdę o jednym źródle.
+                apparatus_binding = {
+                    "catalog_namespace": przestrzen_aparatu,
+                    "catalog_item_id": wynik.pozycja,
+                    "catalog_item_version": _WERSJA_KATALOGU_DOMYSLNA,
+                }
     if isinstance(apparatus_binding, dict):
         # Wiązanie zapisane do pola niesie przestrzeń, w której sprawdzono ISTNIENIE
-        # aparatu (`_blad_aparatu_pola`, APARAT_NN) — nie tę zadeklarowaną w żądaniu.
+        # aparatu (`_blad_aparatu_pola`) — nie tę zadeklarowaną w żądaniu.
         field_meta["catalog_binding"] = _wiazanie_w_przestrzeni(
-            apparatus_binding, _PRZESTRZEN_APARATU_POLA_NN
+            apparatus_binding, przestrzen_aparatu
         )
         catalog_item_id = apparatus_binding.get("catalog_item_id")
         if isinstance(catalog_item_id, str) and catalog_item_id.strip():
             field_meta["apparatus_catalog_ref"] = catalog_item_id.strip()
+    if uzasadnienie_doboru:
+        field_meta["uzasadnienie_doboru_aparatu"] = uzasadnienie_doboru
 
     field_spec = _build_field_spec(
         field_ref=field_ref,
@@ -5812,19 +5874,31 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
     prefix = technology.lower()
     generator_ref = _make_id(prefix, source_seed, "converter")
 
-    # Aparat pola źródłowego nN — sprawdzany PRZED mutacją modelu, żeby zła
+    # Aparat pola źródłowego — sprawdzany PRZED mutacją modelu, żeby zła
     # referencja nie zostawiła w migawce pola z martwym `apparatus_catalog_ref`.
+    # Przestrzeń bierze się z NAPIĘCIA SZYNY, nie z założenia „pole źródłowe =
+    # nN": przekształtnik przyłączony przez transformator blokowy wisi na szynie
+    # SN, więc jego aparat istnieje w APARAT_SN i sprawdzanie go w APARAT_NN
+    # odrzucałoby poprawną pozycję jako nieistniejącą.
+    przestrzen_aparatu_pola = _przestrzen_aparatu_pola(enm, bus_nn_ref)
     blad_aparatu = _blad_aparatu_pola(
         (
             (payload.get("source_field") or {}).get("catalog_binding")
             if isinstance(payload.get("source_field"), dict)
             else None
         ),
-        namespace=_PRZESTRZEN_APARATU_POLA_NN,
-        opis_pl="Aparat pola źródłowego nN",
+        namespace=przestrzen_aparatu_pola,
+        opis_pl="Aparat pola źródłowego",
     )
     if blad_aparatu is not None:
         return blad_aparatu
+
+    # Prąd pola liczy się z CAŁEJ mocy przyłączonej za tym aparatem: jedno
+    # wywołanie z `quantity = N` reprezentuje N jednostek na tej samej szynie,
+    # więc aparat pola prowadzi ich sumę, nie moc pojedynczej jednostki.
+    moc_pola_mva: float | None = _as_float(materialized_params.get("sn_mva"))
+    if moc_pola_mva is not None:
+        moc_pola_mva *= max(1, int(meta.get("quantity") or 1))
 
     new_enm = kopia_graniczna_enm(enm)
     field_ref, created_field_ids, field_events = _append_converter_field_if_needed(
@@ -5834,6 +5908,8 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
         technology=technology,
         connection_variant=connection_variant,
         payload=payload,
+        przestrzen_aparatu=przestrzen_aparatu_pola,
+        moc_zrodla_mva=moc_pola_mva,
     )
     if field_ref is None and payload.get("placement") == "EXISTING_FIELD":
         return _error_response(

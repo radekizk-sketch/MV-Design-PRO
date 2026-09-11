@@ -54,6 +54,7 @@ import hashlib
 import json
 from typing import Any
 
+from domain.dobor_aparatu_pola import przestrzen_aparatu_dla_napiecia
 from enm.models import Bus, EnergyNetworkModel, Substation, SwitchBranch
 from network_model.catalog.materialization import materialize_catalog_binding
 from network_model.catalog.repository import get_default_mv_catalog
@@ -81,8 +82,6 @@ META_KLUCZ_GALAZ_ROLA_POLA = "nn_field_migrowana_rola"
 #: RĘCZNIE bez wiązania zostaje BLOCKER, ta z migracji (dane historyczne,
 #: których katalog nigdy nie widział) — WARNING.
 META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA = "nn_promocja_bez_wiazania_katalogowej"
-
-_NAMESPACE_APARAT_NN = "APARAT_NN"
 
 
 def _canonical_json(data: object) -> str:
@@ -125,25 +124,42 @@ def wymaga_migracji(enm: EnergyNetworkModel) -> bool:
 
 def _materializuj_aparat(
     catalog_binding_raw: object,
-) -> tuple[dict[str, Any] | None, str | None]:
-    """Zmaterializuj wiązanie katalogowe aparatu pola (APARAT_NN), gdy dane są.
+    *,
+    napiecie_szyny_kv: float | None,
+) -> tuple[dict[str, Any] | None, str | None, str | None]:
+    """Zmaterializuj wiązanie katalogowe aparatu pola, gdy dane są.
 
-    Zwraca (materialized_params, catalog_item_id) albo (None, None), gdy
-    wiązania brak lub materializacja się nie powiodła — migracja NIGDY nie
-    podnosi wyjątku (przebiega przy KAŻDYM odczycie modelu, `enm/store.py`).
+    PRZESTRZEŃ KATALOGU Z NAPIĘCIA SZYNY, NIE ZE STAŁEJ. Funkcja materializowała
+    KAŻDE wiązanie w przestrzeni ``APARAT_NN``, niezależnie od tego, na jakiej
+    szynie pole wisi. Pole źródłowe przekształtnika przyłączonego przez
+    transformator blokowy siedzi na szynie SN, więc jego aparat istnieje w
+    ``APARAT_SN`` — materializacja w nN nie znajdowała pozycji, wracała
+    ``(None, None)`` i łącznik powstawał BEZ ``catalog_ref``. Skutek widoczny
+    dla projektanta: `switch.catalog_ref_missing` na polu, które wiązanie
+    MIAŁO (pomiar 2026-09-11: 66 aparatów w 19 szablonach DER).
+
+    Regułę „napięcie szyny → przestrzeń" trzyma `domain.dobor_aparatu_pola`,
+    wspólnie z zapisem pola i kontrolą istnienia aparatu — trzy ogniwa tego
+    samego łańcucha czytają JEDNO źródło, zamiast mieć trzy zgodne kopie.
+
+    Zwraca (materialized_params, catalog_item_id, catalog_namespace) albo
+    (None, None, None), gdy wiązania brak lub materializacja się nie powiodła —
+    migracja NIGDY nie podnosi wyjątku (przebiega przy KAŻDYM odczycie modelu,
+    `enm/store.py`).
     """
     if not isinstance(catalog_binding_raw, dict):
-        return None, None
+        return None, None, None
     item_id = (
         catalog_binding_raw.get("catalog_item_id")
         or catalog_binding_raw.get("catalog_ref")
         or catalog_binding_raw.get("item_id")
     )
     if not isinstance(item_id, str) or not item_id.strip():
-        return None, None
+        return None, None, None
+    przestrzen = przestrzen_aparatu_dla_napiecia(napiecie_szyny_kv)
     binding = CatalogBinding.from_dict(
         {
-            "catalog_namespace": _NAMESPACE_APARAT_NN,
+            "catalog_namespace": przestrzen,
             "catalog_item_id": item_id.strip(),
             "catalog_item_version": catalog_binding_raw.get("catalog_item_version") or "2024.1",
             "materialize": True,
@@ -152,15 +168,15 @@ def _materializuj_aparat(
     try:
         wynik = materialize_catalog_binding(binding, get_default_mv_catalog())
     except Exception:
-        return None, None
+        return None, None, None
     if not wynik.success:
-        return None, None
+        return None, None, None
     parametry = {
         "catalog_item_id": binding.catalog_item_id,
         "catalog_item_version": binding.catalog_item_version or None,
         **wynik.solver_fields,
     }
-    return parametry, binding.catalog_item_id
+    return parametry, binding.catalog_item_id, przestrzen
 
 
 def migruj(enm: EnergyNetworkModel) -> tuple[EnergyNetworkModel, bool]:
@@ -222,7 +238,9 @@ def migruj(enm: EnergyNetworkModel) -> tuple[EnergyNetworkModel, bool]:
             catalog_binding_raw = (spec.get("meta") or {}).get("catalog_binding")
             if catalog_binding_raw is None:
                 catalog_binding_raw = (spec.get("meta") or {}).get("catalog_bindings")
-            materialized_params, catalog_item_id = _materializuj_aparat(catalog_binding_raw)
+            materialized_params, catalog_item_id, przestrzen_aparatu = _materializuj_aparat(
+                catalog_binding_raw, napiecie_szyny_kv=station_bus.voltage_kv
+            )
 
             branch_meta: dict[str, Any] = {
                 META_KLUCZ_GALAZ_ZRODLO_FIELD_REF: field_ref,
@@ -239,7 +257,7 @@ def migruj(enm: EnergyNetworkModel) -> tuple[EnergyNetworkModel, bool]:
                 to_bus_ref=downstream_bus_ref,
                 status="closed",
                 catalog_ref=catalog_item_id,
-                catalog_namespace=_NAMESPACE_APARAT_NN if catalog_item_id else None,
+                catalog_namespace=przestrzen_aparatu if catalog_item_id else None,
                 source_mode="KATALOG" if catalog_item_id else "MIGRACJA",
                 parameter_source="CATALOG" if catalog_item_id else None,
                 materialized_params=materialized_params,
