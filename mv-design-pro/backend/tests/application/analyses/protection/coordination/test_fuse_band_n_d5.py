@@ -74,6 +74,9 @@ WARIANT_DLA_NORMY: dict[CurveStandard, str] = {
 }
 
 
+from tests.utils.proweniencja_zwarciowa import snapshot_bez_falownikow
+
+
 def _urzadzenie(
     typ: ProtectionDeviceType,
     *,
@@ -496,6 +499,11 @@ def test_api_odrzuca_niezgodna_pare_norma_wariant(standard: str, wariant: str) -
             ],
             "fault_currents": [{"location_id": "L1", "ik_max_3f_a": 5000.0, "ik_min_3f_a": 1200.0}],
             "operating_currents": [{"location_id": "L1", "i_operating_a": 40.0}],
+            # GRANICA AUTORYTETU (recenzja niezalezna runda 2): koordynacja nie
+            # przyjmuje juz golych pradow zwarciowych bez modelu, z ktorego
+            # wynikaja. Model bez zrodel falownikowych jest tu wlasciwy — wklad
+            # falownikowy nie wchodzi wtedy do rownan zwarciowych.
+            "snapshot": snapshot_bez_falownikow(),
         },
     )
 
@@ -547,6 +555,11 @@ def test_api_tcc_nie_zwraca_punktow_dla_bezpiecznika(standard_zgloszony: str) ->
             ],
             "fault_currents": [{"location_id": "L1", "ik_max_3f_a": 5000.0, "ik_min_3f_a": 1200.0}],
             "operating_currents": [{"location_id": "L1", "i_operating_a": 40.0}],
+            # GRANICA AUTORYTETU (recenzja niezalezna runda 2): koordynacja nie
+            # przyjmuje juz golych pradow zwarciowych bez modelu, z ktorego
+            # wynikaja. Model bez zrodel falownikowych jest tu wlasciwy — wklad
+            # falownikowy nie wchodzi wtedy do rownan zwarciowych.
+            "snapshot": snapshot_bez_falownikow(),
         },
     )
     assert odpowiedz.status_code == 201

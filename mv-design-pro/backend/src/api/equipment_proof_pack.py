@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from api.schemas.equipment_proof import DeviceRatingPayload, EquipmentProofRequest
+from application.autorytet_zwarciowy import proweniencja_ze_snapshotu
 from application.equipment_proof.catalog_bridge import resolve_um_icu_from_catalog
 from application.equipment_proof.proof_pack import build_equipment_proof_pack
 from application.equipment_proof.types import DeviceRating, EquipmentProofInput
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, HTTPException, Response, status
+from network_model.core.autorytet_wyniku_zwarciowego import BrakAutorytetuWyniku
 
 router = APIRouter(prefix="/api/equipment-proof", tags=["equipment-proof"])
 
@@ -47,6 +49,16 @@ def _device_rating_from_payload(payload_device: DeviceRatingPayload) -> DeviceRa
 
 @router.post("/pack")
 def download_equipment_proof_pack(payload: EquipmentProofRequest) -> Response:
+    """Pakiet dowodowy doboru aparatury — WYŁĄCZNIE z wejścia o znanej proweniencji.
+
+    OBEJŚCIE, KTÓRE TO ZAMYKA (odtworzone przed naprawą, recenzja niezależna
+    runda 2): to żądanie przyjmowało ``required_fault_results`` jako gołe liczby
+    i wystawiało kompletny pakiet dowodowy, nie pytając, skąd pochodzą. Przy
+    ``run_id`` wskazującym bieg, którego nigdy nie było, dowód i tak powstawał.
+
+    Proweniencji NIE DEKLARUJE KLIENT — serwer wyprowadza ją z podanego modelu.
+    Brak modelu to brak śladu, czyli odmowa (fail-closed), a nie domniemanie.
+    """
     proof_input = EquipmentProofInput(
         project_id=payload.project_id,
         case_id=payload.case_id,
@@ -54,7 +66,17 @@ def download_equipment_proof_pack(payload: EquipmentProofRequest) -> Response:
         connection_node_id=payload.connection_node_id,
         device=_device_rating_from_payload(payload.device),
         required_fault_results=payload.required_fault_results,
+        proweniencja=proweniencja_ze_snapshotu(payload.snapshot),
     )
-    filename, pack_bytes = build_equipment_proof_pack(proof_input)
+    try:
+        filename, pack_bytes = build_equipment_proof_pack(proof_input)
+    except BrakAutorytetuWyniku as brak:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "powod": "WEJSCIE_NIEMIARODAJNE",
+                "blokady": [b.to_dict() for b in brak.blokady],
+            },
+        ) from brak
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
     return Response(content=pack_bytes, media_type="application/zip", headers=headers)

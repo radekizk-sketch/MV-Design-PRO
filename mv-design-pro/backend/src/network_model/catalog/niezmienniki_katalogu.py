@@ -25,7 +25,10 @@ akurat mamy. Fałszywa pewność reguły jest droższa niż jej brak.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+from dataclasses import dataclass
 from enum import StrEnum
+from typing import Any
 
 
 class KlasaNiezmiennika(StrEnum):
@@ -36,6 +39,10 @@ class KlasaNiezmiennika(StrEnum):
     OGRANICZENIE_ZAKRESU_PRODUKTU = "OGRANICZENIE_ZAKRESU_PRODUKTU"
     WIARYGODNOSC = "WIARYGODNOSC"
 
+
+#: Zapas na zaokrąglenia przy porównaniach „nie większe niż" — dane katalogowe
+#: bywają podane z inną precyzją niż wielkość, z którą je zestawiamy.
+LUZ_POROWNANIA: float = 1.0001
 
 #: Klasy, których złamanie jest TWARDĄ odmową.
 KLASY_TWARDE: frozenset[KlasaNiezmiennika] = frozenset(
@@ -66,6 +73,17 @@ PRZEKLASYFIKOWANE: dict[str, tuple[KlasaNiezmiennika, str]] = {
         "kolumny przy imporcie — i o tym ma powiedzieć ostrzeżenie, a nie "
         "odmowa wczytania pozycji.",
     ),
+    "Icw <= Icu (nN)": (
+        KlasaNiezmiennika.WIARYGODNOSC,
+        "IEC 60947-2 definiuje Ics JAWNIE jako procent Icu (§4.3.5.2.2) — i ta "
+        "relacja zostaje twarda. Dla Icw takiej definicji NIE MA: norma opisuje "
+        "je osobno (§4.3.5.4), jako wytrzymałość krótkotrwałą wyłącznika "
+        "kategorii B przez zadany czas, a nie jako ułamek zdolności wyłączalnej. "
+        "Icw i Icu to różne zdolności (przewodzenie bez uszkodzenia kontra "
+        "przerwanie prądu) i porównywać je wolno wyłącznie dla tego samego "
+        "wariantu, napięcia i czasu. Globalna nierówność po całej rodzinie nN "
+        "nie ma podstawy normowej.",
+    ),
     "Icw <= Icu (SN)": (
         KlasaNiezmiennika.WIARYGODNOSC,
         "Icw (wytrzymałość krótkotrwała) i Icu (zdolność wyłączalna) to RÓŻNE "
@@ -90,3 +108,125 @@ PRZEKLASYFIKOWANE: dict[str, tuple[KlasaNiezmiennika, str]] = {
         "była kontrolą jednostki, a nie wielkością normowaną.",
     ),
 }
+
+
+# ---------------------------------------------------------------------------
+# Strukturalny wynik przeglądu wiarygodności (§ remediacji: odstępstwo widoczne
+# maszynowo, nie wydrukiem testu)
+# ---------------------------------------------------------------------------
+
+#: Stabilne kody reguł wiarygodności. Kod jest tożsamością odstępstwa w
+#: raportach i w porównaniach między przebiegami — nazwa reguły jest opisem dla
+#: człowieka i wolno ją przeredagować, kodu nie.
+KODY_REGUL_WIARYGODNOSCI: dict[str, str] = {
+    "R0 >= R1": "KAT-W-001",
+    "P0 < Pk": "KAT-W-002",
+    "Icw <= Icu (SN)": "KAT-W-003",
+    "Icw <= Icu (nN)": "KAT-W-004",
+    "0 < R/X < 1": "KAT-W-005",
+    "0 < i0% < 10": "KAT-W-006",
+}
+
+
+@dataclass(frozen=True)
+class OdstepstwoWiarygodnosci:
+    """Jedna pozycja katalogu łamiąca regułę klasy ``WIARYGODNOSC``."""
+
+    kod: str
+    regula: str
+    pozycja_id: str
+    opis_wartosci: str
+
+    def to_dict(self) -> dict[str, str]:
+        return {
+            "kod": self.kod,
+            "regula": self.regula,
+            "pozycja_id": self.pozycja_id,
+            "opis_wartosci": self.opis_wartosci,
+        }
+
+
+@dataclass(frozen=True)
+class WynikPrzegladuWiarygodnosci:
+    """Wynik przeglądu — MASZYNOWY, nie wydruk na stdout.
+
+    DLACZEGO TO ISTNIEJE. Po przeklasyfikowaniu pięciu reguł na ostrzeżenia
+    odstępstwo przestało zatrzymywać cokolwiek — i w pierwszej wersji było
+    widoczne wyłącznie jako tekst wypisany przez test do przechwytywanego
+    stdout. Przy zielonym przebiegu nie powstawał żaden artefakt, więc zdanie
+    „reguła nadal raportuje odstępstwa" było operacyjnie puste. Tutaj wynik jest
+    obiektem: da się go policzyć, porównać między wersjami katalogu i dołączyć
+    do raportu, a `bez_odstepstw` jest jednym, sprawdzalnym predykatem.
+    """
+
+    odstepstwa: tuple[OdstepstwoWiarygodnosci, ...]
+    sprawdzone_reguly: tuple[str, ...]
+
+    @property
+    def bez_odstepstw(self) -> bool:
+        return not self.odstepstwa
+
+    def wedlug_kodu(self) -> dict[str, int]:
+        liczniki: dict[str, int] = {}
+        for o in self.odstepstwa:
+            liczniki[o.kod] = liczniki.get(o.kod, 0) + 1
+        return dict(sorted(liczniki.items()))
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "sprawdzone_reguly": list(self.sprawdzone_reguly),
+            "liczba_odstepstw": len(self.odstepstwa),
+            "wedlug_kodu": self.wedlug_kodu(),
+            "odstepstwa": [o.to_dict() for o in self.odstepstwa],
+        }
+
+
+def klasa_reguly(regula: str) -> KlasaNiezmiennika:
+    """Klasa reguły. Reguła spoza rejestru przeklasyfikowania jest TWARDA.
+
+    Domyślna twardość jest celowa: nowa reguła dopisana bez decyzji o jej mocy
+    ma zachowywać się jak bramka, a nie po cichu wejść na stronę ostrzeżeń.
+    """
+    wpis = PRZEKLASYFIKOWANE.get(regula)
+    return wpis[0] if wpis else KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA
+
+
+def regula_jest_twarda(regula: str) -> bool:
+    return klasa_reguly(regula) in KLASY_TWARDE
+
+
+def przeglad_wiarygodnosci_aparatury_nn(
+    pozycje: Iterable[Any],
+) -> WynikPrzegladuWiarygodnosci:
+    """Przegląd reguł klasy ``WIARYGODNOSC`` dla aparatury nN.
+
+    Dziś obejmuje jedną regułę (``Icw ≤ Icu``), bo tylko ona została dla tej
+    rodziny przeklasyfikowana. Funkcja zwraca jednak WYNIK ZBIORCZY z listą
+    sprawdzonych reguł, żeby dopisanie kolejnej nie wymagało zmiany kształtu
+    odpowiedzi ani konsumentów.
+
+    ZERO ODMOWY. Reguła wiarygodności NIGDY nie podnosi wyjątku — jej złamanie
+    jest sygnałem „do przeglądu", a decyzję podejmuje człowiek z kartą producenta
+    w ręku.
+    """
+    regula = "Icw <= Icu (nN)"
+    kod = KODY_REGUL_WIARYGODNOSCI[regula]
+    odstepstwa: list[OdstepstwoWiarygodnosci] = []
+    for p in pozycje:
+        icw = getattr(p, "icw_ka", None)
+        icu = getattr(p, "i_cu_ka", None)
+        if icw is None or icu is None:
+            continue
+        if icw > icu * LUZ_POROWNANIA:
+            odstepstwa.append(
+                OdstepstwoWiarygodnosci(
+                    kod=kod,
+                    regula=regula,
+                    pozycja_id=str(getattr(p, "id", "?")),
+                    opis_wartosci=f"Icw = {icw} kA, Icu = {icu} kA",
+                )
+            )
+    return WynikPrzegladuWiarygodnosci(
+        odstepstwa=tuple(odstepstwa),
+        sprawdzone_reguly=(regula,),
+    )

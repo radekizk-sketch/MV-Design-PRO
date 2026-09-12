@@ -28,3 +28,10 @@ class EquipmentProofRequest(BaseModel):
     connection_node_id: str = Field(..., min_length=1)
     device: DeviceRatingPayload
     required_fault_results: dict[str, Any]
+    #: Snapshot ENM, z którego pochodzą wielkości w ``required_fault_results``.
+    #: Pole jest opcjonalne SKŁADNIOWO, ale nie znaczeniowo: bez niego serwer nie
+    #: ma jak ustalić, czy wkład zwarciowy źródeł falownikowych opiera się na
+    #: deklaracji producenta, więc odmawia wystawienia dowodu (fail-closed).
+    #: Nie jest to pole „zaufania" — serwer wyprowadza proweniencję z modelu sam,
+    #: klient nie może jej zadeklarować.
+    snapshot: dict[str, Any] | None = None

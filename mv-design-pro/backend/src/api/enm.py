@@ -750,11 +750,35 @@ def get_engineering_readiness(case_id: str) -> dict[str, Any]:
     for issue in wszystkie_problemy:
         by_severity[issue.severity] = by_severity.get(issue.severity, 0) + 1
 
+    # KAŻDA DECYZJA GOTOWOŚCI WSKAZUJE ZDOLNOŚĆ (korekta po drugiej recenzji
+    # niezależnej, P1-DELTA-08). Poprzednia odpowiedź niosła gołe `ready`, a
+    # pomiar pokazał rozjazd nie do obrony: 57/57 szablonów miało `ready=True`,
+    # podczas gdy 26 z nich (wszystkie z OZE) miało prawidłowo ZABLOKOWANE
+    # zwarcie 3F z braku deklaracji k_sc. Obie liczby były prawdziwe, ale
+    # globalna etykieta „gotowy inżyniersko" mogła zostać użyta jako ogólne
+    # potwierdzenie — czego wiążąca decyzja właściciela zabrania.
+    #
+    # Dlatego pole nazywa teraz TO, CO MIERZY: kompletność strukturalną modelu.
+    # Odpowiedź na pytanie „czy wolno policzyć X" jest osobna i per zdolność.
+    macierz = (
+        EligibilityService().compute_matrix(enm=enm, readiness=readiness, case_id=case_id).to_dict()
+    )
+    zdolnosci = {
+        str(wpis.get("analysis_type")): {
+            "dostepna": wpis.get("status") == "ELIGIBLE",
+            "blokady": wpis.get("blockers", []),
+        }
+        for wpis in macierz.get("matrix", [])
+    }
+
     return {
         "case_id": case_id,
         "enm_revision": enm.header.revision,
         "status": validation.status,
-        "ready": readiness.ready,
+        # Kompletność STRUKTURALNA — czy model jest zbudowany i spójny. NIE jest
+        # to zgoda na żadną analizę: tę niesie wyłącznie mapa `zdolnosci`.
+        "kompletnosc_modelu": ("MODEL_COMPLETE" if readiness.ready else "MODEL_INCOMPLETE"),
+        "zdolnosci": zdolnosci,
         "validation": validation.model_dump(mode="json"),
         "readiness": readiness.model_dump(mode="json"),
         "issues": issues_out,

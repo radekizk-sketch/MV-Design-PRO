@@ -181,8 +181,11 @@ def test_trzy_drogi_daja_ten_sam_werdykt(klient: TestClient, wiazanie, opis: str
     inzynierska = klient.get(f"/api/cases/{PRZYPADEK}/engineering-readiness").json()
     macierz = klient.get(f"/api/cases/{PRZYPADEK}/enm/readiness").json()
 
-    assert inzynierska["ready"] == z_operacji["ready"], (
-        f"{opis}: /engineering-readiness mówi {inzynierska['ready']}, "
+    # Ta sama decyzja, nowa nazwa pola: `kompletnosc_modelu` mowi DOKLADNIE to,
+    # co mierzyl dawny `ready` — czy model jest strukturalnie kompletny.
+    kompletny = inzynierska["kompletnosc_modelu"] == "MODEL_COMPLETE"
+    assert kompletny == z_operacji["ready"], (
+        f"{opis}: /engineering-readiness mówi {inzynierska['kompletnosc_modelu']}, "
         f"operacja domenowa {z_operacji['ready']}"
     )
     assert macierz["readiness"]["ready"] == z_operacji["ready"], (
@@ -206,7 +209,7 @@ def test_blokada_domenowa_gasi_gotowosc_we_wszystkich_trzech_drogach(klient: Tes
     assert "switch.catalog_ref_missing" in kody_operacji
 
     inzynierska = klient.get(f"/api/cases/{PRZYPADEK}/engineering-readiness").json()
-    assert inzynierska["ready"] is False
+    assert inzynierska["kompletnosc_modelu"] == "MODEL_INCOMPLETE"
     blokady = [i for i in inzynierska["issues"] if i["severity"] == "BLOCKER"]
     assert any(i["code"] == "switch.catalog_ref_missing" for i in blokady), (
         "Werdykt negatywny bez POWODU w liście problemów — panel gotowości nie "
@@ -227,9 +230,10 @@ def test_werdykt_i_lista_problemow_sa_spojne(klient: TestClient) -> None:
         set_enm(PRZYPADEK, EnergyNetworkModel.model_validate(_model(wiazanie_lacznika=wiazanie)))
         dane = klient.get(f"/api/cases/{PRZYPADEK}/engineering-readiness").json()
         liczba_blokad = dane["by_severity"]["BLOCKER"]
-        assert dane["ready"] == (
-            liczba_blokad == 0
-        ), f"wiazanie={wiazanie!r}: ready={dane['ready']} przy {liczba_blokad} blokadach"
+        assert (dane["kompletnosc_modelu"] == "MODEL_COMPLETE") == (liczba_blokad == 0), (
+            f"wiazanie={wiazanie!r}: {dane['kompletnosc_modelu']} przy "
+            f"{liczba_blokad} blokadach"
+        )
         assert len(dane["readiness"]["blockers"]) == liczba_blokad
 
 
@@ -244,4 +248,37 @@ def test_zdolnosc_analiz_nie_moze_przewyzszac_gotowosci(klient: TestClient) -> N
     macierz = klient.get(f"/api/cases/{PRZYPADEK}/analysis-eligibility")
     assert macierz.status_code == 200, macierz.text
     gotowosc = klient.get(f"/api/cases/{PRZYPADEK}/engineering-readiness").json()
-    assert gotowosc["ready"] is False
+    assert gotowosc["kompletnosc_modelu"] == "MODEL_INCOMPLETE"
+
+
+def test_kompletnosc_modelu_nie_jest_zgoda_na_analize(klient: TestClient) -> None:
+    """P1-DELTA-08: model kompletny strukturalnie ≠ model gotowy do KAŻDEJ analizy.
+
+    CO ODRZUCIŁA RECENZJA. Endpoint niósł gołe ``ready``. Pomiar pokazał rozjazd
+    nie do obrony: 57/57 szablonów miało ``ready=True``, a jednocześnie 26 z nich
+    (wszystkie z OZE) miało PRAWIDŁOWO zablokowane zwarcie 3F z braku deklaracji
+    ``k_sc``. Obie liczby były prawdziwe — ale globalna etykieta „gotowy
+    inżyniersko" dawała się użyć jako ogólne potwierdzenie, czego wiążąca decyzja
+    właściciela zabrania.
+
+    Ten przypadek pilnuje SAMEGO KONTRAKTU, nie dzisiejszych liczb:
+      * pola ``ready`` bez przymiotnika NIE MA w odpowiedzi,
+      * kompletność strukturalna nazywa się tym, czym jest,
+      * każda decyzja o analizie wskazuje ZDOLNOŚĆ.
+    """
+    set_enm(
+        PRZYPADEK, EnergyNetworkModel.model_validate(_model(wiazanie_lacznika="sw-cb-test-001"))
+    )
+    dane = klient.get(f"/api/cases/{PRZYPADEK}/engineering-readiness").json()
+
+    assert "ready" not in dane, (
+        "Gołe `ready` wróciło do odpowiedzi. To jest dokładnie ta etykieta, która "
+        "zawyżała komunikat produktu — decyzja gotowości MUSI wskazywać zdolność."
+    )
+    assert dane["kompletnosc_modelu"] in {"MODEL_COMPLETE", "MODEL_INCOMPLETE"}
+
+    zdolnosci = dane["zdolnosci"]
+    assert zdolnosci, "Mapa zdolności jest pusta — nie ma czym zastąpić globalnego werdyktu."
+    for nazwa, wpis in zdolnosci.items():
+        assert isinstance(wpis["dostepna"], bool), nazwa
+        assert isinstance(wpis["blokady"], list), nazwa

@@ -45,6 +45,11 @@ K_SC_DOMYSLNY_SYSTEMOWY: float = 1.1
 K_SC_ZRODLO_DEKLARACJA = "DEKLARACJA"
 K_SC_ZRODLO_DOMYSLNE = "DOMYSLNE_SYSTEMOWE"
 K_SC_ZRODLO_NIEPOPRAWNE = "DANE_NIEPOPRAWNE"
+#: Czynniki są każdy z osobna poprawne, ale ich ILOCZYN wychodzi poza zakres
+#: liczb skończonych (P1-DELTA-07). Znacznik osobny od DANE_NIEPOPRAWNE, bo
+#: wadliwa jest PARA, a nie żadna z wartości z osobna — komunikat musi to
+#: powiedzieć, inaczej projektant szuka błędu w niewłaściwym polu.
+K_SC_ZRODLO_POZA_DZIEDZINA = "POZA_DZIEDZINA_WYNIKU"
 
 
 def _jest_liczba_skonczona_dodatnia(wartosc: object) -> bool:
@@ -106,3 +111,36 @@ def deklaracja_k_sc(wartosc: object) -> float | None:
     if not _jest_liczba_skonczona_dodatnia(wartosc):
         return None
     return float(wartosc)  # type: ignore[arg-type]
+
+
+def prad_wkladu_zwarciowego(k_sc: object, i_n_a: object) -> tuple[float, str]:
+    """Zwróć ``(I_k, znacznik)`` dla ``I_k = k_sc · I_n`` — z kontrolą DZIEDZINY WYNIKU.
+
+    DLACZEGO NIE WYSTARCZY SPRAWDZIĆ CZYNNIKÓW (P1-DELTA-07, recenzja niezależna).
+    Skończoność czynników NIE domyka mnożenia w arytmetyce IEEE-754: recenzent
+    wykonał ``k_sc = 1e308`` przy ``I_n = 1000 A`` i dostał ``I_k = inf`` przy
+    znaczniku ``DEKLARACJA``. Obie liczby wejściowe przechodziły każdy predykat
+    wejściowy, bo każda z osobna jest skończona i dodatnia — wadliwy był dopiero
+    ich iloczyn, czyli pierwsza wielkość FIZYCZNA rachunku.
+
+    ŚWIADOMIE BEZ ARBITRALNEGO PROGU ``k_sc``. Właściciel zakazał wymyślania
+    uniwersalnego maksimum bez podstawy inżynierskiej i ten zakaz jest tu
+    respektowany: nie porównujemy ``k_sc`` z żadną wymyśloną liczbą. Sprawdzamy
+    WYŁĄCZNIE to, co jest matematycznie sprawdzalne bez wiedzy o producencie —
+    czy wynik działania należy do dziedziny liczb skończonych dodatnich.
+
+    Zwracana wartość jest ZAWSZE skończona (przy przepełnieniu wraca iloczyn
+    domyślki i prądu znamionowego), żeby żaden tor nie musiał radzić sobie z
+    ``inf``. O tym, że tej liczby NIE WOLNO użyć, mówi znacznik.
+    """
+    k_sc_wartosc, znacznik = wspolczynnik_wkladu_zwarciowego(k_sc)
+
+    if not _jest_liczba_skonczona_dodatnia(i_n_a):
+        # Prąd znamionowy jest daną źródła, nie współczynnika: brak/zero/wartość
+        # niepoprawna nie zmienia pochodzenia k_sc, ale nie da też wkładu.
+        return 0.0, znacznik
+
+    iloczyn = k_sc_wartosc * float(i_n_a)  # type: ignore[arg-type]
+    if not math.isfinite(iloczyn) or iloczyn <= 0.0:
+        return K_SC_DOMYSLNY_SYSTEMOWY * float(i_n_a), K_SC_ZRODLO_POZA_DZIEDZINA  # type: ignore[arg-type]
+    return iloczyn, znacznik

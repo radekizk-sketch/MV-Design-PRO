@@ -245,7 +245,15 @@ def _klasyfikacja(
     if zewnetrzne + projektowe == liczba:
         # Pozycja o źródle projektowym/OSD jest kompletna tak samo jak pozycja z
         # kartą producenta — po prostu jej źródłem nie jest producent.
-        return "FIELD_COMPLETE_SOURCE_VERIFIED"
+        # NAZWA MÓWI DOKŁADNIE TYLE, ILE MIERZYMY (korekta po drugiej recenzji
+        # niezależnej, P2-DELTA-09). Poprzednia nazwa brzmiała SOURCE_VERIFIED,
+        # a wykonywany pomiar sprawdzał WYŁĄCZNIE, czy któreś z pól odwołania do
+        # dokumentu jest niepustym tekstem. Rekord z `source_url="x"` dostawał
+        # klasę sugerującą weryfikację źródła — nikt nie sprawdzał osiągalności
+        # dokumentu, producenta, zgodności modelu ani powiązania wartości z
+        # dokumentem. Nazwa silniejsza od pomiaru jest groźniejsza niż brak
+        # pomiaru, bo wyłącza czujność czytającego.
+        return "FIELD_COMPLETE_SOURCE_REFERENCED"
     if zewnetrzne + projektowe == 0:
         return "FIELD_COMPLETE_BEZ_ZRODLA_ZEWNETRZNEGO"
     return "FIELD_COMPLETE_ZRODLA_MIESZANE"

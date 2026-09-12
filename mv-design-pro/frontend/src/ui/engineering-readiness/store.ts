@@ -89,8 +89,22 @@ export function useReadinessStatus(): 'OK' | 'WARN' | 'FAIL' | null {
   return useEngineeringReadinessStore((state) => state.data?.status ?? null);
 }
 
-export function useReadinessReady(): boolean {
-  return useEngineeringReadinessStore((state) => state.data?.ready ?? false);
+/**
+ * Kompletnosc STRUKTURALNA modelu — nie mylic ze zgoda na analize.
+ *
+ * Zwraca `false` przy braku danych: nieznany stan NIE jest potwierdzeniem.
+ */
+export function useModelKompletny(): boolean {
+  return useEngineeringReadinessStore(
+    (state) => state.data?.kompletnosc_modelu === 'MODEL_COMPLETE',
+  );
+}
+
+/** Dostepnosc KONKRETNEJ zdolnosci. Brak wpisu = brak zgody (fail-closed). */
+export function useZdolnoscDostepna(zdolnosc: string): boolean {
+  return useEngineeringReadinessStore(
+    (state) => state.data?.zdolnosci?.[zdolnosc]?.dostepna ?? false,
+  );
 }
 
 export function useReadinessBySeverity(): Record<ReadinessSeverity, number> {

@@ -4,6 +4,9 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from application.analyses.design_synth.canonical import canonicalize_json
+from network_model.core.autorytet_wyniku_zwarciowego import (
+    ProweniencjaWynikuZwarciowego,
+)
 
 
 @dataclass(frozen=True)
@@ -48,6 +51,13 @@ class EquipmentProofInput:
     connection_node_id: str
     device: DeviceRating
     required_fault_results: dict[str, Any]
+    #: Pochodzenie wielkości zwarciowych w ``required_fault_results``.
+    #: ``None`` = nie podano i JEST to blokada (fail-closed), nie przepustka —
+    #: dowód doboru aparatury z liczb nieznanego pochodzenia był obejściem,
+    #: które recenzja niezależna nazwała wprost (patrz `autorytet_wyniku_zwarciowego`).
+    #: Poza `to_dict()`: proweniencja jest wejściem decyzji, nie treścią dowodu,
+    #: a payload pakietu ma zostać bajt-w-bajt taki, jak przed tą deltą.
+    proweniencja: ProweniencjaWynikuZwarciowego | None = None
 
     def to_dict(self) -> dict[str, Any]:
         payload = {

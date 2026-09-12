@@ -574,11 +574,32 @@ export interface ReadinessIssue {
 /**
  * Engineering Readiness API response.
  */
+/** Kompletnosc STRUKTURALNA modelu — NIE jest zgoda na jakakolwiek analize. */
+export type KompletnoscModelu = 'MODEL_COMPLETE' | 'MODEL_INCOMPLETE';
+
+/** Dostepnosc pojedynczej zdolnosci wraz z powodami blokady. */
+export interface DostepnoscZdolnosci {
+  dostepna: boolean;
+  blokady: unknown[];
+}
+
 export interface EngineeringReadinessResponse {
   case_id: string;
   enm_revision: number;
   status: 'OK' | 'WARN' | 'FAIL';
-  ready: boolean;
+  /**
+   * ZASTAPILO gole `ready` (P1-DELTA-08, druga recenzja niezalezna).
+   *
+   * Pomiar pokazal rozjazd nie do obrony: 57/57 szablonow mialo `ready=true`,
+   * a jednoczesnie 26 z nich (wszystkie z OZE) mialo PRAWIDLOWO zablokowane
+   * zwarcie 3F z braku deklaracji `k_sc`. Obie liczby byly prawdziwe, ale
+   * globalna etykieta „gotowy inzyniersko" dawala sie czytac jako ogolne
+   * potwierdzenie. Pole nazywa teraz to, co mierzy; zgode na konkretna analize
+   * niesie wylacznie `zdolnosci`.
+   */
+  kompletnosc_modelu: KompletnoscModelu;
+  /** Kazda decyzja gotowosci wskazuje ZDOLNOSC — klucz to typ analizy. */
+  zdolnosci: Record<string, DostepnoscZdolnosci>;
   issues: ReadinessIssue[];
   total_count: number;
   by_severity: Record<ReadinessSeverity, number>;

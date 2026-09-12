@@ -25,6 +25,14 @@ from infrastructure.persistence.repositories import (
 )
 from infrastructure.persistence.unit_of_work import build_uow_factory
 
+# GRANICA AUTORYTETU (recenzja niezalezna runda 2): generatory dowodu nie
+# wystawiaja artefaktu z wejscia nieznanego pochodzenia. Te testy badaja TRESC
+# i DETERMINIZM pakietow, wiec podaja model bez zrodel falownikowych — wtedy
+# wklad falownikowy nie wchodzi do rownan i proweniencja jest miarodajna z
+# powodu merytorycznego. Przypadki DER maja wlasne testy granicy w
+# tests/api/test_granica_autorytetu_downstream.py.
+from tests.utils.proweniencja_zwarciowa import snapshot_bez_falownikow
+
 
 def _build_sc3f_proof():
     test_input = SC3FInput(
@@ -164,6 +172,7 @@ def test_sc_asymmetrical_pack_api_returns_bundle_zip(tmp_path):
         "tk_s": 1.0,
         "m_factor": 1.0,
         "n_factor": 0.0,
+        "snapshot": snapshot_bez_falownikow(),
     }
     response = client.post("/api/proof/sc-asymmetrical/pack", json=payload)
     assert response.status_code == 200
@@ -606,6 +615,7 @@ def test_sc_asymmetrical_pack_jest_deterministyczny_bajt_w_bajt(tmp_path):
         "tk_s": 1.0,
         "m_factor": 1.0,
         "n_factor": 0.0,
+        "snapshot": snapshot_bez_falownikow(),
     }
 
     pierwszy = client.post("/api/proof/sc-asymmetrical/pack", json=payload)
@@ -647,6 +657,7 @@ def test_pakiet_dowodowy_aparatury_bez_oznaczen_roboczych(tmp_path):
             "ith_ka": 8.0,
             "tk_s": 1.0,
         },
+        "snapshot": snapshot_bez_falownikow(),
     }
 
     response = client.post("/api/equipment-proof/pack", json=payload)
@@ -694,6 +705,7 @@ def test_pakiet_dowodowy_wylacznik_sn_z_type_ref_bez_jawnych_um_icu_czyta_katalo
             "ith_ka": 15.0,
             "tk_s": 1.0,
         },
+        "snapshot": snapshot_bez_falownikow(),
     }
 
     response = client.post("/api/equipment-proof/pack", json=payload)
@@ -737,6 +749,7 @@ def test_pakiet_dowodowy_rozlacznik_sn_z_type_ref_daje_nie_dotyczy_dla_icu(tmp_p
             "ith_ka": 8.0,
             "tk_s": 1.0,
         },
+        "snapshot": snapshot_bez_falownikow(),
     }
 
     response = client.post("/api/equipment-proof/pack", json=payload)
@@ -779,6 +792,7 @@ def test_pakiet_dowodowy_jawne_um_icu_klienta_nadrzedne_wobec_katalogu(tmp_path)
             "ith_ka": 8.0,
             "tk_s": 1.0,
         },
+        "snapshot": snapshot_bez_falownikow(),
     }
 
     response = client.post("/api/equipment-proof/pack", json=payload)

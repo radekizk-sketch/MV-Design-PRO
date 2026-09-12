@@ -22,6 +22,8 @@ from application.proof_engine.types import (
     SymbolDefinition,
     UnitCheckResult,
 )
+from network_model.core.autorytet_wyniku_zwarciowego import wymagaj_autorytetu
+from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
 
 STATUS_PASS = "PASS"
 STATUS_FAIL = "FAIL"
@@ -42,8 +44,21 @@ class EquipmentProofBundle:
 
 
 class EquipmentProofGenerator:
+    #: Pakiet doboru aparatury realizuje JEDNOCZEŚNIE dwie zdolności miarodajne:
+    #: dobiera zdolność wyłączalną (I_cu wobec I"k) i stanowi dowód wytrzymałości
+    #: zwarciowej (I_dyn, I_th). Obie muszą mieć miarodajne wejście, więc obie są
+    #: sprawdzane — sprawdzenie jednej zostawiłoby drugą otwartą.
+    ZDOLNOSCI = (
+        ZdolnoscMiarodajna.BREAKING_CAPACITY_SELECTION,
+        ZdolnoscMiarodajna.SC_WITHSTAND_EVIDENCE,
+    )
+
     @classmethod
     def generate(cls, proof_input: EquipmentProofInput) -> EquipmentProofBundle:
+        # PIERWSZA INSTRUKCJA, NIE OSTATNIA: dowód nie powstaje wcale, gdy wejście
+        # nie jest miarodajne. Gdyby bramka stała za obliczeniem, artefakt już by
+        # istniał i ktoś mógłby go wyprowadzić inną drogą.
+        wymagaj_autorytetu(cls.ZDOLNOSCI, proof_input.proweniencja)
         checks = cls._evaluate_checks(proof_input)
         result = cls._build_result(proof_input, checks)
         proof_document = cls._build_proof_document(proof_input, result, checks)

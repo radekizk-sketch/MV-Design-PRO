@@ -27,6 +27,7 @@ from enum import StrEnum
 from network_model.core.wklad_zwarciowy_przeksztaltnika import (
     K_SC_ZRODLO_DEKLARACJA,
     K_SC_ZRODLO_NIEPOPRAWNE,
+    K_SC_ZRODLO_POZA_DZIEDZINA,
 )
 
 
@@ -84,6 +85,10 @@ ZDOLNOSCI_NIEZALEZNE_OD_WKLADU_ZWARCIOWEGO: frozenset[ZdolnoscMiarodajna] = froz
 KOD_BLOKADY_K_SC_DOMYSLNY = "SI-110"
 #: Kod blokady — deklaracja podana, ale niemożliwa do przyjęcia (NaN, ±Inf, 0, …).
 KOD_BLOKADY_K_SC_NIEPOPRAWNY = "SI-111"
+#: Kod blokady — czynniki poprawne, ale iloczyn ``k_sc · I_n`` wychodzi poza
+#: dziedzinę liczb skończonych (P1-DELTA-07). Osobny kod, bo osobna naprawa:
+#: projektant ma poprawić PARĘ danych znamionowych, nie sam współczynnik.
+KOD_BLOKADY_K_SC_POZA_DZIEDZINA = "SI-114"
 
 
 def zdolnosc_zalezy_od_wkladu_zwarciowego(zdolnosc: ZdolnoscMiarodajna) -> bool:
@@ -94,8 +99,9 @@ def zdolnosc_zalezy_od_wkladu_zwarciowego(zdolnosc: ZdolnoscMiarodajna) -> bool:
 def wklad_jest_miarodajny(k_sc_zrodlo: str) -> bool:
     """Czy współczynnik o tym pochodzeniu wolno uznać za daną miarodajną.
 
-    Miarodajna jest WYŁĄCZNIE deklaracja. Domyślka systemowa i dana niepoprawna
-    są obie niemiarodajne — różni je przyczyna i komunikat, nie skutek.
+    Miarodajna jest WYŁĄCZNIE deklaracja. Domyślka systemowa, dana niepoprawna i
+    para wychodząca poza dziedzinę wyniku są niemiarodajne — różni je przyczyna i
+    komunikat, nie skutek.
     """
     return k_sc_zrodlo == K_SC_ZRODLO_DEKLARACJA
 
@@ -104,11 +110,19 @@ def kod_blokady_dla_pochodzenia(k_sc_zrodlo: str) -> str:
     """Kod blokady odpowiadający przyczynie niemiarodajności."""
     if k_sc_zrodlo == K_SC_ZRODLO_NIEPOPRAWNE:
         return KOD_BLOKADY_K_SC_NIEPOPRAWNY
+    if k_sc_zrodlo == K_SC_ZRODLO_POZA_DZIEDZINA:
+        return KOD_BLOKADY_K_SC_POZA_DZIEDZINA
     return KOD_BLOKADY_K_SC_DOMYSLNY
 
 
 def komunikat_blokady(*, ref_zrodla: str, k_sc_zrodlo: str) -> str:
     """Komunikat blokady — mówi, CZEGO brakuje i SKĄD to wziąć."""
+    if k_sc_zrodlo == K_SC_ZRODLO_POZA_DZIEDZINA:
+        return (
+            f"Źródło falownikowe '{ref_zrodla}': iloczyn współczynnika wkładu zwarciowego "
+            f"k_sc i prądu znamionowego I_n wykracza poza zakres liczb skończonych, więc "
+            f"pierwsza wielkość fizyczna rachunku nie istnieje. Popraw dane znamionowe źródła."
+        )
     if k_sc_zrodlo == K_SC_ZRODLO_NIEPOPRAWNE:
         return (
             f"Źródło falownikowe '{ref_zrodla}' ma niemożliwą do przyjęcia deklarację "

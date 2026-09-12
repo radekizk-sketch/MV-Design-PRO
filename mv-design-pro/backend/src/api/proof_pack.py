@@ -8,6 +8,7 @@ from typing import Any
 from uuid import UUID
 
 from api.dependencies import get_uow_factory
+from application.autorytet_zwarciowy import proweniencja_ze_snapshotu
 from application.proof_engine.packs.sc_asymmetrical import (
     SCAsymmetricalPackInput,
     SCAsymmetricalProofPack,
@@ -16,6 +17,11 @@ from application.proof_engine.packs.sc_symmetrical import SC3FPackInput, SC3FPro
 from application.proof_engine.proof_pack import ProofPackContext, resolve_mv_design_pro_version
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
+from network_model.core.autorytet_wyniku_zwarciowego import (
+    BrakAutorytetuWyniku,
+    wymagaj_autorytetu,
+)
+from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/proof", tags=["proof-pack"])
@@ -45,6 +51,10 @@ class SCAsymmetricalPackRequest(BaseModel):
     tk_s: float = 1.0
     m_factor: float = 1.0
     n_factor: float = 0.0
+    #: Snapshot ENM, z którego pochodzą impedancje Z1/Z2/Z0 tego żądania.
+    #: Opcjonalny SKŁADNIOWO, wymagany ZNACZENIOWO — bez niego serwer nie ustali
+    #: proweniencji wkładu falownikowego i odmówi wystawienia dowodu.
+    snapshot: dict[str, Any] | None = None
 
 
 @router.get("/{project_id}/{case_id}/{run_id}/pack")
@@ -76,6 +86,7 @@ def _extract_snapshot_id(payload: dict) -> str:
 
 @router.post("/sc-asymmetrical/pack")
 def download_sc_asymmetrical_pack(payload: SCAsymmetricalPackRequest) -> Response:
+    _wymagaj_miarodajnego_wejscia(payload.snapshot)
     context = ProofPackContext(
         project_id=payload.project_id,
         case_id=payload.case_id,
@@ -143,6 +154,34 @@ class SCContributionsRequest(BaseModel):
 
 
 # Odwolania normowe sekcji wywodu (ZWARCIA-PRO F3 pkt 8).
+
+#: Pakiet dowodowy zwarciowy realizuje zdolności miarodajne: jest dowodem
+#: wytrzymałości zwarciowej i materiałem dowodu regulacyjnego. Obie wymagają
+#: miarodajnego wejścia, więc obie są sprawdzane jednym wywołaniem bramki.
+_ZDOLNOSCI_PAKIETU_ZWARCIOWEGO = (
+    ZdolnoscMiarodajna.SC_WITHSTAND_EVIDENCE,
+    ZdolnoscMiarodajna.REGULATORY_EVIDENCE,
+)
+
+
+def _wymagaj_miarodajnego_wejscia(snapshot: dict[str, Any] | None) -> None:
+    """Bramka autorytetu dla generatorów dowodu zwarciowego.
+
+    Proweniencja jest WYPROWADZANA ze snapshotu, nie deklarowana przez klienta.
+    Brak snapshotu albo snapshot nieczytelny = brak śladu = odmowa.
+    """
+    try:
+        wymagaj_autorytetu(_ZDOLNOSCI_PAKIETU_ZWARCIOWEGO, proweniencja_ze_snapshotu(snapshot))
+    except BrakAutorytetuWyniku as brak:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "powod": "WEJSCIE_NIEMIARODAJNE",
+                "blokady": [b.to_dict() for b in brak.blokady],
+            },
+        ) from brak
+
+
 _NORMA_IEC_60909 = "IEC 60909-0:2016"
 _NORMA_IEC_60909_66 = "IEC 60909-0:2016 §6.6"
 
@@ -340,7 +379,12 @@ def sc3f_contributions(payload: SCContributionsRequest) -> dict[str, Any]:
 
     Dostawca danych sekcji „Wklady" ekranu zwarc (dotad pass-through bez
     dostawcy). Deterministyczny: siec bez maszyn → pusta lista wkladow.
+
+    Odpowiedź niesie ślad WHITE BOX wkładów zwarciowych, który jest wprost
+    materiałem doboru zdolności wyłączalnej — dlatego przechodzi tę samą bramkę
+    autorytetu co pakiet dowodowy.
     """
+    _wymagaj_miarodajnego_wejscia(payload.snapshot)
     from enm.mapping import _ref_to_uuid, map_enm_to_network_graph
     from enm.models import EnergyNetworkModel
     from network_model.solvers.machine_sc_iec60909 import compute_machine_contributions
@@ -385,7 +429,12 @@ def download_sc3f_pack(payload: SC3FPackRequest) -> Response:
 
     Domyka lukę: 3F nie miało pakietu dowodowego. Rozbicie per-maszyna (μ/q/i_b)
     dołączane, gdy sieć zawiera maszyny wirujące / DER (G-SCM F1/F2).
+
+    Wejście przechodzi bramkę autorytetu: pakiet dowodowy jest artefaktem
+    miarodajnym, więc nie powstaje z modelu, w którym wkład zwarciowy źródła
+    falownikowego opiera się na domyślce systemowej.
     """
+    _wymagaj_miarodajnego_wejscia(payload.snapshot)
     context = ProofPackContext(
         project_id=payload.project_id,
         case_id=payload.case_id,

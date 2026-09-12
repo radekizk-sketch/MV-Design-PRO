@@ -200,13 +200,13 @@ def blokady_wkladu_zwarciowego(
     for source in sorted(graph.inverter_sources.values(), key=lambda s: s.id):
         if not source.in_service:
             continue
-        if wklad_jest_miarodajny(source.k_sc_zrodlo):
+        if wklad_jest_miarodajny(source.wklad_zrodlo):
             continue
         blokady.append(
             SolverInputIssue(
-                code=kod_blokady_dla_pochodzenia(source.k_sc_zrodlo),
+                code=kod_blokady_dla_pochodzenia(source.wklad_zrodlo),
                 severity=SolverInputIssueSeverity.BLOCKER,
-                message=komunikat_blokady(ref_zrodla=source.id, k_sc_zrodlo=source.k_sc_zrodlo),
+                message=komunikat_blokady(ref_zrodla=source.id, k_sc_zrodlo=source.wklad_zrodlo),
                 element_ref=source.id,
                 field_path=f"inverter_sources[ref_id={source.id}].k_sc",
             )

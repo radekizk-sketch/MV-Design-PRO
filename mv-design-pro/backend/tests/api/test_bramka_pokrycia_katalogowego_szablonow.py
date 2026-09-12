@@ -123,9 +123,14 @@ def test_szablon_osiaga_pelna_gotowosc_inzynierska(app_client: Any, template_id:
     blokady = [
         p for p in (gotowosc.get("issues") or []) if str(p.get("severity")).upper() == "BLOCKER"
     ]
+    # KOMPLETNOSC STRUKTURALNA, NIE „GOTOWOSC" BEZ PRZYMIOTNIKA (P1-DELTA-08).
+    # Endpoint nie niesie juz golego `ready`: ta sama liczba 57/57 opisywala
+    # kompletnosc modelu, a dawala sie czytac jako ogolne potwierdzenie gotowosci
+    # inzynierskiej — mimo ze 26 szablonow DER mialo prawidlowo ZABLOKOWANE
+    # zwarcie 3F. Zdolnosci sa mierzone osobno, w czesci (c) tego pliku.
     assert (
-        gotowosc.get("ready") is True
-    ), f"Szablon '{template_id}': ready={gotowosc.get('ready')}, blokady=" + "; ".join(
+        gotowosc.get("kompletnosc_modelu") == "MODEL_COMPLETE"
+    ), f"Szablon '{template_id}': {gotowosc.get('kompletnosc_modelu')}, blokady=" + "; ".join(
         f"{p.get('code')} @ {p.get('element_ref')}" for p in blokady
     )
     assert not blokady, [p.get("code") for p in blokady]

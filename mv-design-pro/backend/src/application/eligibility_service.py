@@ -21,6 +21,9 @@ ARCHITECTURE:
 
 from __future__ import annotations
 
+import math
+from typing import Any
+
 from application.analyses.fault_loop.service import (
     _NON_TN_SYSTEMS,
     _transformer_loop_impedance,
@@ -35,7 +38,11 @@ from domain.eligibility_models import (
     build_eligibility_result,
 )
 from enm.fix_actions import FixAction
-from enm.mapping import _FULL_CONVERTER_SC_GEN_TYPES
+from enm.mapping import (
+    _FULL_CONVERTER_SC_GEN_TYPES,
+    _gen_rated_apparent_mva,
+    _gen_rated_voltage_kv,
+)
 from enm.models import (
     Cable,
     EnergyNetworkModel,
@@ -46,7 +53,7 @@ from enm.models import (
 from enm.pole_transformatorowe import pasmo_napieciowe
 from enm.validator import ReadinessResult
 from network_model.core.wklad_zwarciowy_przeksztaltnika import (
-    wspolczynnik_wkladu_zwarciowego,
+    prad_wkladu_zwarciowego,
 )
 from network_model.core.zdolnosci_wkladu_zwarciowego import (
     kod_blokady_dla_pochodzenia,
@@ -588,7 +595,15 @@ class EligibilityService:
             if generator.gen_type not in _FULL_CONVERTER_SC_GEN_TYPES:
                 continue
             tabliczka = generator.materialized_params or {}
-            _, zrodlo = wspolczynnik_wkladu_zwarciowego(tabliczka.get("k_sc"))
+            # DZIEDZINA WYNIKU, NIE TYLKO WEJŚCIA (P1-DELTA-07): znacznik liczony
+            # z PARY (k_sc, I_n), bo iloczyn dwóch skończonych liczb bywa
+            # nieskończony. I_n wyprowadzamy TĄ SAMĄ drogą co `enm.mapping`
+            # (S_r i U_n przez jej własne funkcje), żeby oba tory nie mogły się
+            # rozjechać — własny wzór byłby drugą prawdą o tej samej wielkości.
+            zrodlo = prad_wkladu_zwarciowego(
+                tabliczka.get("k_sc"),
+                _prad_znamionowy_falownika_a(enm, generator, tabliczka),
+            )[1]
             if wklad_jest_miarodajny(zrodlo):
                 continue
             blockers.append(
@@ -1056,3 +1071,22 @@ class EligibilityService:
                     ),
                 )
             )
+
+
+def _prad_znamionowy_falownika_a(
+    enm: EnergyNetworkModel,
+    generator: Any,
+    tabliczka: dict[str, Any],
+) -> float | None:
+    """``I_n`` źródła falownikowego — wyprowadzony jak w `enm.mapping`.
+
+    Zwraca ``None``, gdy któregoś ze składników nie da się ustalić; wtedy
+    kontrola dziedziny iloczynu nie ma czego sprawdzać i zostaje sam znacznik
+    pochodzenia ``k_sc``. To jest uczciwy stan zerowy, nie domyślka.
+    """
+    napiecia = {b.ref_id: b.voltage_kv for b in enm.buses}
+    un_kv = _gen_rated_voltage_kv(generator, tabliczka, napiecia)
+    sr_mva = _gen_rated_apparent_mva(generator, tabliczka)
+    if un_kv is None or sr_mva is None or un_kv <= 0.0:
+        return None
+    return sr_mva * 1.0e6 / (math.sqrt(3.0) * un_kv * 1.0e3)

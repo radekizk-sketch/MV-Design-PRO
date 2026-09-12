@@ -42,18 +42,36 @@ jej byłoby utratą sygnału, a utrzymanie jako bramki — fałszywą pewności�
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
+from dataclasses import dataclass
 from typing import Any
 
 import pytest
 from network_model.catalog.niezmienniki_katalogu import (
     PRZEKLASYFIKOWANE,
     KlasaNiezmiennika,
+    przeglad_wiarygodnosci_aparatury_nn,
+    regula_jest_twarda,
 )
 from network_model.catalog.repository import get_default_mv_catalog
 
 #: Zapas na zaokrąglenia przy porównaniach „nie większe niż" — dane katalogowe
 #: bywają podane z inną precyzją niż wielkość, z którą je zestawiamy.
 LUZ = 1.0001
+
+
+@dataclass(frozen=True)
+class _AparatSyntetyczny:
+    """Rekord SYNTETYCZNY do badania samej reguły, nie danych producenta.
+
+    Istnieje wyłącznie po to, żeby dało się sprawdzić OBIE strony predykatu bez
+    dopisywania zmyślonych pozycji do żywego katalogu — brief zakazuje wymyślania
+    danych producenta, a badanie reguły wymaga rekordu, którego w katalogu nie ma.
+    """
+
+    id: str
+    ics_ka: float | None
+    i_cu_ka: float | None
+    icw_ka: float | None
 
 
 def _naruszenia(pozycje: Iterable[Any], warunek: Callable[[Any], bool]) -> list[str]:
@@ -72,11 +90,23 @@ def _sprawdz(pozycje: Iterable[Any], warunek: Callable[[Any], bool], regula: str
 
 
 def test_aparatura_nn_spelnia_relacje_zdolnosci_zwarciowych() -> None:
-    """``Ics ≤ Icu`` i ``Icw ≤ Icu`` — inaczej rekord opisuje aparat niemożliwy.
+    """``Ics ≤ Icu`` zostaje TWARDA — wynika wprost z definicji normy.
 
-    ``Ics`` (zdolność eksploatacyjna) i ``Icw`` (wytrzymałość krótkotrwała) są z
-    definicji normy ograniczone przez ``Icu``. Rekord, który to łamie, przeszedłby
-    dobór i dałby zawyżoną ocenę wytrzymałości rozdzielnicy.
+    KOREKTA PO DRUGIEJ RECENZJI NIEZALEŻNEJ. Poprzednia wersja tego testu
+    trzymała w jednej klamrze dwie relacje o RÓŻNEJ mocy:
+
+      * ``Ics ≤ Icu`` — IEC 60947-2 §4.3.5.2.2 definiuje Ics JAKO PROCENT Icu
+        (25/50/75/100 %). Relacja jest częścią definicji wielkości, więc rekord,
+        który ją łamie, opisuje aparat niemożliwy. Bramka zostaje twarda.
+      * ``Icw ≤ Icu`` — takiej definicji NIE MA. Icw (§4.3.5.4) to wytrzymałość
+        krótkotrwała wyłącznika kategorii B przez zadany czas; Icu to zdolność
+        wyłączalna. To są różne zdolności i zestawiać je wolno wyłącznie dla tego
+        samego wariantu, napięcia i czasu. Globalna nierówność po całej rodzinie
+        nN nie miała podstawy normowej — przeniesiona do przeglądu wiarygodności.
+
+    Recenzent zakwestionował dokładnie to zlepienie: SN zostało przeklasyfikowane
+    w poprzedniej rundzie, nN zostało twarde, więc zastrzeżenie było zamknięte
+    tylko w połowie.
     """
     lv = get_default_mv_catalog().list_lv_apparatus_types()
     _sprawdz(
@@ -84,11 +114,57 @@ def test_aparatura_nn_spelnia_relacje_zdolnosci_zwarciowych() -> None:
         lambda a: a.ics_ka <= a.i_cu_ka * LUZ,
         "Ics <= Icu",
     )
-    _sprawdz(
-        [a for a in lv if a.icw_ka is not None and a.i_cu_ka is not None],
-        lambda a: a.icw_ka <= a.i_cu_ka * LUZ,
-        "Icw <= Icu",
+
+
+def test_relacja_icw_icu_nn_nie_jest_juz_twarda_bramka() -> None:
+    """PIN NA SAMEJ KLASYFIKACJI, nie na jej dzisiejszym wyniku.
+
+    Bez tego przypadku ktoś mógłby przywrócić twardą bramkę i nic by nie
+    zaprotestowało — bo na bieżących danych obie wersje przechodzą tak samo.
+    """
+    assert not regula_jest_twarda("Icw <= Icu (nN)")
+    assert regula_jest_twarda("Ics <= Icu")
+    assert PRZEKLASYFIKOWANE["Icw <= Icu (nN)"][0] is KlasaNiezmiennika.WIARYGODNOSC
+
+
+def test_nietypowy_rekord_icw_ponad_icu_przechodzi_jako_ostrzezenie() -> None:
+    """DRUGA STRONA PREDYKATU: rekord nietypowy, ale dopuszczalny, NIE jest odrzucany.
+
+    Brief wymaga obu stron: rekord niepoprawny ma polec, rekord nietypowy ale
+    legalny ma przejść. Aparat kategorii B o Icw równym albo bliskim Icu jest
+    realny (wyłączniki powietrzne ACB tak właśnie się deklaruje), więc twarda
+    bramka odrzucałaby poprawną kartę producenta.
+    """
+    wynik = przeglad_wiarygodnosci_aparatury_nn(
+        [_AparatSyntetyczny(id="ACB-SYNT", ics_ka=50.0, i_cu_ka=50.0, icw_ka=55.0)]
     )
+    assert not wynik.bez_odstepstw
+    assert wynik.wedlug_kodu() == {"KAT-W-004": 1}
+    assert wynik.odstepstwa[0].pozycja_id == "ACB-SYNT"
+
+
+def test_rekord_lamiacy_relacje_normowa_nadal_jest_bledem() -> None:
+    """``Ics > Icu`` MUSI polec — to jest rekord aparatu niemożliwego."""
+    with pytest.raises(AssertionError, match="Ics <= Icu"):
+        _sprawdz(
+            [_AparatSyntetyczny(id="ZLY", ics_ka=60.0, i_cu_ka=50.0, icw_ka=50.0)],
+            lambda a: a.ics_ka <= a.i_cu_ka * LUZ,
+            "Ics <= Icu",
+        )
+
+
+def test_przeglad_wiarygodnosci_zywego_katalogu_daje_wynik_maszynowy() -> None:
+    """Odstępstwo jest OBIEKTEM, nie tekstem na stdout.
+
+    Wcześniej reguła po przeklasyfikowaniu raportowała odstępstwa wyłącznie
+    wydrukiem w teście — przy zielonym przebiegu nie powstawał żaden artefakt,
+    więc zdanie „nadal raportuje" było operacyjnie puste.
+    """
+    wynik = przeglad_wiarygodnosci_aparatury_nn(get_default_mv_catalog().list_lv_apparatus_types())
+    jako_slownik = wynik.to_dict()
+    assert "liczba_odstepstw" in jako_slownik
+    assert jako_slownik["sprawdzone_reguly"] == ["Icw <= Icu (nN)"]
+    assert jako_slownik["liczba_odstepstw"] == len(wynik.odstepstwa)
 
 
 def test_aparatura_nn_ma_dodatni_prad_i_spojna_klase_napieciowa() -> None:

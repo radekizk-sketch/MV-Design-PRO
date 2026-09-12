@@ -219,29 +219,29 @@ cd mv-design-pro/backend && poetry run python scripts/inwentarz_katalogow.py
 
 | Rodzina | N | kompl. pól | dok. zewn. | źródło projektowe | etykieta wewn. | Klasa |
 |---------|---|-----------|-----------|------------------|----------------|-------|
-| ptpiree_generator_certificates | 6887 | — | 6887 | 0 | 0 | FIELD_COMPLETE_SOURCE_VERIFIED |
+| ptpiree_generator_certificates | 6887 | — | 6887 | 0 | 0 | FIELD_COMPLETE_SOURCE_REFERENCED |
 | transformer_types | 192 | 100 % | 37 | 0 | 0 | FIELD_COMPLETE_ZRODLA_MIESZANE |
 | converter_types | 176 | 100 % | 1 | 0 | 175 | FIELD_COMPLETE_ZRODLA_MIESZANE |
 | inverter_types | 176 | 100 % | 1 | 0 | 175 | FIELD_COMPLETE_ZRODLA_MIESZANE |
 | pv_inverter_types | 66 | 100 % | 1 | 0 | 65 | FIELD_COMPLETE_ZRODLA_MIESZANE |
 | bess_inverter_types | 64 | 100 % | 0 | 0 | 64 | FIELD_COMPLETE_BEZ_ZRODLA_ZEWNETRZNEGO |
 | cable_types | 63 | 100 % | 58 | 4 | 1 | FIELD_COMPLETE_ZRODLA_MIESZANE |
-| lv_breaker_mcb_types | 60 | 100 % | 60 | 0 | 0 | FIELD_COMPLETE_SOURCE_VERIFIED |
+| lv_breaker_mcb_types | 60 | 100 % | 60 | 0 | 0 | FIELD_COMPLETE_SOURCE_REFERENCED |
 | mv_apparatus_types | 48 | 100 % | 20 | 0 | 0 | FIELD_COMPLETE_ZRODLA_MIESZANE |
 | switch_equipment_types | 48 | 100 % | 20 | 0 | 0 | FIELD_COMPLETE_ZRODLA_MIESZANE |
-| lv_fuse_link_types | 30 | 100 % | 30 | 0 | 0 | FIELD_COMPLETE_SOURCE_VERIFIED |
+| lv_fuse_link_types | 30 | 100 % | 30 | 0 | 0 | FIELD_COMPLETE_SOURCE_REFERENCED |
 | line_types | 26 | 100 % | 25 | 0 | 1 | FIELD_COMPLETE_ZRODLA_MIESZANE |
-| source_system_types | 22 | 100 % | 0 | 22 | 0 | FIELD_COMPLETE_SOURCE_VERIFIED |
+| source_system_types | 22 | 100 % | 0 | 22 | 0 | FIELD_COMPLETE_SOURCE_REFERENCED |
 | lv_apparatus_types | 18 | 100 % | 15 | 0 | 0 | FIELD_COMPLETE_ZRODLA_MIESZANE |
-| lv_cable_types | 17 | 100 % | 17 | 0 | 0 | FIELD_COMPLETE_SOURCE_VERIFIED |
-| vt_types | 13 | 100 % | 13 | 0 | 0 | FIELD_COMPLETE_SOURCE_VERIFIED |
-| ct_types | 12 | 100 % | 12 | 0 | 0 | FIELD_COMPLETE_SOURCE_VERIFIED |
+| lv_cable_types | 17 | 100 % | 17 | 0 | 0 | FIELD_COMPLETE_SOURCE_REFERENCED |
+| vt_types | 13 | 100 % | 13 | 0 | 0 | FIELD_COMPLETE_SOURCE_REFERENCED |
+| ct_types | 12 | 100 % | 12 | 0 | 0 | FIELD_COMPLETE_SOURCE_REFERENCED |
 | protection_device_types | 12 | 100 % | 0 | 0 | 12 | FIELD_COMPLETE_BEZ_ZRODLA_ZEWNETRZNEGO |
-| surge_arrester_types | 12 | 100 % | 12 | 0 | 0 | FIELD_COMPLETE_SOURCE_VERIFIED |
-| protection_curves | 8 | — | 8 | 0 | 0 | FIELD_COMPLETE_SOURCE_VERIFIED |
-| protection_setting_templates | 8 | — | 8 | 0 | 0 | FIELD_COMPLETE_SOURCE_VERIFIED |
+| surge_arrester_types | 12 | 100 % | 12 | 0 | 0 | FIELD_COMPLETE_SOURCE_REFERENCED |
+| protection_curves | 8 | — | 8 | 0 | 0 | FIELD_COMPLETE_SOURCE_REFERENCED |
+| protection_setting_templates | 8 | — | 8 | 0 | 0 | FIELD_COMPLETE_SOURCE_REFERENCED |
 | shunt_capacitor_types | 5 | 100 % | 0 | 0 | 5 | FIELD_COMPLETE_BEZ_ZRODLA_ZEWNETRZNEGO |
-| load_types | 3 | 100 % | 0 | 3 | 0 | FIELD_COMPLETE_SOURCE_VERIFIED |
+| load_types | 3 | 100 % | 0 | 3 | 0 | FIELD_COMPLETE_SOURCE_REFERENCED |
 
 **Kompletność pól wymaganych wynosi 100 % w KAŻDEJ rodzinie** — licząc PER
 ZDOLNOŚĆ, którą rodzina zasila, i biorąc NAJGORSZĄ z nich (korekta po recenzji:

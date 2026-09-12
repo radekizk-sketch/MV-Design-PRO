@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from network_model.catalog.types import ConverterKind
 from network_model.core.wklad_zwarciowy_przeksztaltnika import (
     deklaracja_k_sc,
+    prad_wkladu_zwarciowego,
     wspolczynnik_wkladu_zwarciowego,
 )
 
@@ -61,10 +62,30 @@ class InverterSource:
 
     @property
     def ik_sc_a(self) -> float:
+        """RMS wkład prądowy do zwarcia ``I_k = k_sc · I_n`` — ZAWSZE skończony.
+
+        KOREKTA PO RECENZJI NIEZALEŻNEJ (P1-DELTA-07). Poprzednia wersja mnożyła
+        wprost, więc para skończonych, dodatnich, każda z osobna poprawnych
+        wartości (``k_sc = 1e308``, ``I_n = 1000 A``) dawała ``inf`` — i to ``inf``
+        oznaczony jako pochodzący z DEKLARACJI. Nieskończoność wchodziła stąd do
+        serializacji, składania wyniku zwarciowego i doboru aparatury.
+
+        Kontrola dziedziny wyniku siedzi w
+        `wklad_zwarciowy_przeksztaltnika.prad_wkladu_zwarciowego`, czyli w tym
+        samym module co predykat wejściowy — dwa warunki opisujące tę samą daną
+        muszą pochodzić z jednego źródła prawdy.
         """
-        Zwraca RMS wkład prądowy do zwarcia: Ik = k_sc * In.
+        return prad_wkladu_zwarciowego(self.k_sc, self.in_rated_a)[0]
+
+    @property
+    def wklad_zrodlo(self) -> str:
+        """Pochodzenie WKŁADU (nie samego współczynnika) — z kontrolą dziedziny.
+
+        Różni się od `k_sc_zrodlo` dokładnie w jednym przypadku: deklaracja jest
+        poprawna, ale iloczyn z prądem znamionowym wychodzi poza zakres liczb
+        skończonych. To ten znacznik czyta warstwa gotowości i autorytetu.
         """
-        return self.k_sc_efektywny * self.in_rated_a
+        return prad_wkladu_zwarciowego(self.k_sc, self.in_rated_a)[1]
 
     def to_dict(self) -> dict:
         """

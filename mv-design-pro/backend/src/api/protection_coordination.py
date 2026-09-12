@@ -37,6 +37,7 @@ from application.analyses.protection.coordination.models import (
     FaultCurrentData,
     OperatingCurrentData,
 )
+from application.autorytet_zwarciowy import proweniencja_ze_snapshotu
 from domain.protection_device import (
     CurveStandard,
     OvercurrentProtectionSettings,
@@ -47,6 +48,11 @@ from domain.protection_device import (
 )
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import Response
+from network_model.core.autorytet_wyniku_zwarciowego import (
+    BrakAutorytetuWyniku,
+    wymagaj_autorytetu,
+)
+from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
 from protection.curves.iec_curves import IECCurveType
 from protection.curves.ieee_curves import IEEECurveType
 from pydantic import BaseModel, Field
@@ -146,6 +152,10 @@ class RunCoordinationRequest(BaseModel):
     config: CoordinationConfigRequest | None = None
     pf_run_id: str | None = None
     sc_run_id: str | None = None
+    #: Snapshot ENM, z którego pochodzą prądy zwarciowe w ``fault_currents``.
+    #: Opcjonalny SKŁADNIOWO, wymagany ZNACZENIOWO: bez modelu serwer nie ustali
+    #: proweniencji wkładu falownikowego i odmawia koordynacji (fail-closed).
+    snapshot: dict[str, Any] | None = None
 
 
 class CoordinationSummaryResponse(BaseModel):
@@ -364,6 +374,25 @@ def run_coordination_analysis(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=" ".join(blockers),
         )
+
+    # GRANICA AUTORYTETU (recenzja niezależna runda 2). Koordynacja zabezpieczeń
+    # jest zdolnością MIARODAJNĄ: jej wynikiem są nastawy, które ktoś wprowadzi do
+    # przekaźnika. Przed tą bramką prądy zwarciowe przychodziły jako gołe liczby w
+    # żądaniu i nikt nie pytał, z jakiego modelu wynikają — wystarczyło je podać,
+    # żeby dostać werdykt selektywności.
+    try:
+        wymagaj_autorytetu(
+            (ZdolnoscMiarodajna.PROTECTION_COORDINATION,),
+            proweniencja_ze_snapshotu(request.snapshot),
+        )
+    except BrakAutorytetuWyniku as brak:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "powod": "WEJSCIE_NIEMIARODAJNE",
+                "blokady": [b.to_dict() for b in brak.blokady],
+            },
+        ) from brak
 
     # Convert request to domain models
     devices = tuple(_convert_device(d) for d in request.devices)

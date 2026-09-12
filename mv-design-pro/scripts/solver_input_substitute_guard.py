@@ -300,6 +300,17 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     # warstwe objeta skanem.
     "application/solvers/lv_temperature_correction.py",
     "network_model/catalog/lv_mcb_bands_iec60898.py",
+    # KORZEN DOLOZONY 2026-09-12 (bramka `Python tests`, pin mapy). Silnik doboru
+    # aparatu pola wszedl do importow warstwy objetej skanem przy naprawie klasy
+    # napieciowej DER i pin `test_kazdy_model_czytany_przez_zakres_jest_w_mapie`
+    # zazadal o niego DECYZJI. Pomiar przyrostowy, ta sama metoda co wyzej:
+    # modul deklaruje 4 pola (`przestrzen`, `pozycja`, `uzasadnienie`,
+    # `kryteria_odlozone`) i ZERO z tych nazw wystepuje dzis jako odczyt atrybutu
+    # w `network_model/solvers/**` ani w `solver_input/**` — czyli +0 trafien i
+    # +0 kolizji. Decyzja brzmi wiec „do mapy", a nie „poza mapa": zasieg rosnie
+    # bez halasu, a przyszle `wynik.pozycja or "cos"` w warstwie solverow zostanie
+    # zlapane. Wpis do `MODEL_ROOTS_POZA_MAPA` bylby tu slabszy bez zadnego zysku.
+    "domain/dobor_aparatu_pola.py",
     "network_model/solvers/cable_ampacity_derating.py",
     "network_model/solvers/cable_voltage_drop.py",
     "network_model/solvers/conductor_thermal_withstand.py",

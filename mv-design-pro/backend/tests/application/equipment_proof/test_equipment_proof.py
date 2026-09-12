@@ -7,6 +7,8 @@ from application.equipment_proof import (
 )
 from application.equipment_proof.proof_pack import build_equipment_proof_pack
 
+from tests.utils.proweniencja_zwarciowa import proweniencja_bez_falownikow
+
 
 def _base_input() -> EquipmentProofInput:
     device = DeviceRating(
@@ -35,6 +37,11 @@ def _base_input() -> EquipmentProofInput:
         connection_node_id="BoundaryNode-1",
         device=device,
         required_fault_results=required,
+        # GRANICA AUTORYTETU (recenzja niezależna runda 2): generator nie wystawia
+        # dowodu z wejścia nieznanego pochodzenia. Te testy badają TREŚĆ dowodu,
+        # więc podają model bez źródeł falownikowych — wtedy wkład falownikowy nie
+        # wchodzi do równań i proweniencja jest miarodajna z powodu merytorycznego.
+        proweniencja=proweniencja_bez_falownikow(),
     )
 
 
@@ -70,6 +77,7 @@ def test_equipment_proof_fail_missing_field():
             meta=device.meta,
         ),
         required_fault_results=proof_input.required_fault_results,
+        proweniencja=proof_input.proweniencja,
     )
     bundle = EquipmentProofGenerator.generate(proof_input)
     check = _find_check(bundle, "Icu")
@@ -90,6 +98,7 @@ def test_equipment_proof_idyn_uses_ip_proxy_when_missing_idyn():
         connection_node_id=proof_input.connection_node_id,
         device=proof_input.device,
         required_fault_results=required,
+        proweniencja=proof_input.proweniencja,
     )
     bundle = EquipmentProofGenerator.generate(proof_input)
     check = _find_check(bundle, "Idyn")
@@ -120,6 +129,7 @@ def _input_with_device(base: EquipmentProofInput, **device_over) -> EquipmentPro
         connection_node_id=base.connection_node_id,
         device=DeviceRating(**fields),
         required_fault_results=base.required_fault_results,
+        proweniencja=base.proweniencja,
     )
 
 

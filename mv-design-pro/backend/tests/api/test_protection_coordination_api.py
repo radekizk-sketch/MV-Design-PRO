@@ -27,6 +27,8 @@ import pytest
 
 pytest.importorskip("fastapi")
 
+from tests.utils.proweniencja_zwarciowa import snapshot_bez_falownikow  # noqa: E402
+
 
 def _device(
     device_id: str,
@@ -86,6 +88,12 @@ def _reference_payload() -> dict[str, Any]:
             {"location_id": "bus_1", "i_operating_a": 150.0},
             {"location_id": "bus_2", "i_operating_a": 120.0},
         ],
+        # GRANICA AUTORYTETU (recenzja niezalezna runda 2): koordynacja jest
+        # zdolnoscia MIARODAJNA — jej wynikiem sa nastawy, ktore ktos wprowadzi do
+        # przekaznika. Pradow zwarciowych nie wolno juz podac jako golych liczb bez
+        # modelu, z ktorego wynikaja. Model bez zrodel falownikowych jest tu
+        # wlasciwy: wklad falownikowy nie wchodzi wtedy do rownan.
+        "snapshot": snapshot_bez_falownikow(),
     }
 
 
