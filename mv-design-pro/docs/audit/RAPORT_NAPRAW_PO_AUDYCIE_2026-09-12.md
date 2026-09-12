@@ -89,18 +89,29 @@ E' = P_m·X_przed / (V_s·sin δ₀)      [z warunku równowagi, nie z narzędzi
 
 ## 4. BILANS ENERGII MAGAZYNU — POMIARY
 
-Reszta bilansu po naprawie, drabina kroku (rozładowanie):
+Reszta bilansu po naprawie, drabina kroku (rozładowanie, ubytek zasobu
+4,0000e-03 MWh), **wszystkie szczeble WEWNĄTRZ dziedziny ważności**:
 
-| krok | reszta względna |
-|---|---|
-| 10 ms | 9,83e-04 |
-| 5 ms | 4,42e-04 |
-| 2,5 ms | 1,10e-04 |
-| 1,25 ms | −2,28e-05 |
+| krok | reszta [MWh] | reszta względna |
+|---|---|---|
+| 5 ms | +2,0434e-07 | +5,11e-05 |
+| 2,5 ms | +3,7929e-07 | +9,48e-05 |
+| 1,25 ms | −6,5409e-08 | −1,64e-05 |
+| 0,625 ms | −1,2633e-09 | −3,16e-07 |
 
-Spadek 43× przy ośmiokrotnym zagęszczeniu i ZMIANA ZNAKU dowodzą, że reszta jest
-błędem KWADRATURY, a nie systematycznym nadmiarem energii. Tolerancja 2,0e-03
-ustalona a priori, powyżej zmierzonego maksimum.
+Zmiana znaku i spadek do 1,3e-09 MWh dowodzą, że reszta jest błędem KWADRATURY,
+a nie systematycznym nadmiarem energii. Tolerancja 2,0e-03 ustalona a priori,
+powyżej zmierzonego maksimum.
+
+**KOREKTA WŁASNA WOBEC POPRZEDNIEJ WERSJI TEGO RAPORTU.** Pierwsza drabina
+zaczynała się od 10 ms i podawała reszty 9,83e-04 … −2,28e-05. Te liczby były
+zmierzone POZA dziedziną ważności modelu: dla konfiguracji tych biegów
+(`E = 0,010 MWh`, `S = 100 MVA`, `pasmo_soc = 0,02`) granica wynosi
+`pasmo·3600·E/(S_fal·S_baza) = 7,2 ms`, więc szczebel 10 ms przeskakiwał całe
+pasmo rampy i schodził poniżej `soc_min`. Reszta bilansu opisywała wtedy
+przebieg, który nie dotrzymywał okna pracy. Po przesunięciu drabiny do wnętrza
+dziedziny reszty są o trzy rzędy mniejsze. Defekt wskazała recenzja niezależna
+(P1-DELTA-27); moje pierwotne pomiary §1 były w tej części nieważne.
 
 ---
 
@@ -227,6 +238,53 @@ Bieg dla `9999a934` był w toku w chwili pisania; NIE deklaruję jego wyniku.
 
 Pomiar lokalny pełnego backendu (`poetry run pytest -q`, ta sama komenda co CI):
 **12228 passed, 6 skipped, 0 failed w 2788 s.**
+
+---
+
+## 10a. NAPRAWY PO RECENZJI HEAD `7fd4a8de` (czwarta runda)
+
+Recenzja `7fd4a8de` wskazała cztery defekty W MOJEJ PRACY, każdy z wykonywalnym
+kontrprzykładem. Wszystkie ODTWORZONE i naprawione; kontrprzykłady przypięte
+testami.
+
+**P0-DELTA-24 — proweniencja tylko z biegu MAX.** `wejscie_koordynacji_z_biegow`
+budowało dwa wiązania i dwie mapy prądów, ale proweniencję brało wyłącznie z
+migawki biegu maksymalnego. Bieg MIN z `DEFAULT_FORBIDDEN` przechodził, a jego
+prąd ustanawiał ocenę CZUŁOŚCI zabezpieczenia — wbrew jawnej decyzji właściciela.
+Naprawa: znaczniki OBU migawek są sumowane; zastrzeżenie któregokolwiek biegu
+jest zastrzeżeniem koordynacji, bo koordynacja konsumuje oba prądy.
+
+**P0-DELTA-25 — NaN poza pierwszym wierszem autoryzował dowolny prąd.** Wiązanie
+liczyło się z wiersza PIERWSZEGO, a mapa prądów z WSZYSTKICH przez
+`float(wartosc)` bez kontroli skończoności. `NaN` wchodził do mapy, a
+`abs(podany − NaN) > tolerancja` jest FAŁSZEM dla każdego `podany` — więc
+999999 A dla MAX i 1 A dla MIN przechodziły bez jednej różnicy. To jest reguła
+KLASA, NIE INSTANCJA złamana przeze mnie: kontrola pierwszego wiersza nie jest
+kontrolą wierszy. Naprawa: jeden predykat `_prad_koordynacji` używany PRZY
+BUDOWIE mapy i PRZY PORÓWNANIU, po obu stronach; wiersze odrzucone są NAZWANE, a
+nie milcząco pomijane (brak w mapie wyglądałby jak brak lokalizacji w biegu).
+
+**P1-DELTA-26 — skalowanie tolerancji dawało fałszywe `STRICT_CONVERGENCE`.**
+Mój `wspolczynnik_kroku = (dt/0,005)^(rzad+1)` skalował tolerancję TAKŻE W GÓRĘ,
+bez ograniczenia. ZMIERZONE (`x' = −x`, `dt = 1 s`, trapez): współczynnik
+8,000e+06, waga 0,808, zwrócone `x = 0` (czysty predyktor) wobec dokładnego 1/3,
+residuum 0,5 — i status ZBIEŻNOŚCI ŚCISŁEJ. Krok, który nie rozwiązał równania w
+ogóle, meldował sukces; defekt tej samej klasy, którą §2 miał zamknąć, tyle że
+wprowadzony przez naprawę rzędu metody. Naprawa: `min(1,0; …)` — skalowanie
+wolno tylko ZAOSTRZAĆ. `atol`/`rtol` są tolerancją najluźniejszą dopuszczalną;
+krok dłuższy od kalibracyjnego nie jest powodem, żeby przyjąć większe residuum.
+
+**P1-DELTA-27 — okno SOC nie było niezmiennikiem DYSKRETNYM.** Bramka energii
+czyni okno niezmiennikiem przepływu ŚCISŁEGO, i tak było napisane. Przepływ
+dyskretny o kroku stałym może jednak przeskoczyć całe pasmo rampy: ZMIERZONE
+`soc0 = 0,50`, `dt = 10 ms` → `soc = 0,08397634` przy `soc_min = 0,10`. Naprawa:
+urządzenie deklaruje GRANICĘ WAŻNOŚCI
+`krok_maksymalny_s = pasmo·3600·E/(S_fal·S_baza·max(1/η_roz, η_ład))`, a silnik
+odrzuca bieg poza nią — głośno, przed obliczeniem. Po naprawie `dt = 10 ms` jest
+ODRZUCANY, a `dt = 0,5 ms` kończy dokładnie na `soc = 0,10000000`.
+
+Skutek uboczny, zaraportowany w §4: moja pierwotna drabina bilansu energii
+zaczynała się od 10 ms, czyli POZA tą granicą — tamte liczby były nieważne.
 
 ---
 

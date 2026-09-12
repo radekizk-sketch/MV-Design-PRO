@@ -113,12 +113,35 @@ def wspolczynnik_kroku(dt: float, rzad: int) -> float:
 
     Skalowanie jest bezwymiarowe (iloraz dwóch czasów), więc nie zmienia jednostek
     ``atol`` ani ``rtol``.
+
+    SKALOWANIE TYLKO ZAOSTRZA — NIGDY NIE LUZUJE (recenzja niezależna).
+    Pierwsza wersja zwracała ``(dt/DT_KALIBRACJI_S)**(rzad+1)`` BEZ ograniczenia z
+    góry, więc dla kroku większego od kalibracyjnego tolerancja ROSŁA. ZMIERZONY
+    kontrprzykład (``x' = -x``, ``x0 = 1``, ``dt = 1 s``, trapez)::
+
+        wspolczynnik            = 8,000e+06
+        waga efektywna          = 0,808
+        x1 zwrócone (predyktor) = 0,0
+        x1 dokładne             = 1/3
+        |residuum|              = 0,5
+        rho                     = 0,619  ->  STRICT_CONVERGENCE
+
+    czyli krok, który nie rozwiązał równania W OGÓLE (został na predyktorze),
+    meldował zbieżność ŚCISŁĄ. To jest dokładnie ta klasa defektu, przeciwko
+    której powstał plan naprawy §2 — tyle że wprowadzona przez naprawę rzędu
+    metody.
+
+    ``atol``/``rtol`` są tolerancją NOMINALNĄ, czyli NAJLUŹNIEJSZĄ dopuszczalną.
+    Krok dłuższy od kalibracyjnego nie jest powodem, żeby przyjąć większe
+    residuum — jest powodem, żeby ten krok odrzucić. Dlatego współczynnik jest
+    obcięty do 1,0 z góry: poniżej kalibracji zaostrza (i o to chodziło), powyżej
+    nie zmienia nic.
     """
     if dt <= 0.0:
         raise ValueError(f"Krok musi być dodatni, jest {dt!r}.")
     if rzad < 1:
         raise ValueError(f"Rząd metody musi być >= 1, jest {rzad!r}.")
-    return float((dt / DT_KALIBRACJI_S) ** (rzad + 1))
+    return min(1.0, float((dt / DT_KALIBRACJI_S) ** (rzad + 1)))
 
 
 @dataclass(frozen=True)

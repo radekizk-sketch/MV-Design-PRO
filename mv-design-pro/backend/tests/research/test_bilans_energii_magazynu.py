@@ -35,7 +35,19 @@ from dynamic_lab.urzadzenia_oze import MagazynEnergiiBESS
 from dynamic_lab.wynik import PrzestrzenSygnalu
 
 S_BAZOWA_MVA = 100.0
-KROKI_S = (0.010, 0.005, 0.0025, 0.00125)
+KROKI_S = (0.005, 0.0025, 0.00125, 0.000625)
+"""Drabina kroku — WEWNĄTRZ dziedziny ważności modelu.
+
+KOREKTA PO RECENZJI NIEZALEŻNEJ (P1-DELTA-27). Pierwsza wersja zaczynała od
+10 ms. Dla domyślnej konfiguracji tych biegów (``E = 0,010 MWh``,
+``S_baza = 100 MVA``, ``pasmo_soc = 0,02``) granica ważności wynosi
+``pasmo·3600·E/(S_fal·S_baza) = 7,2 ms``, więc szczebel 10 ms leżał POZA nią:
+jeden krok zmieniał ``soc`` bardziej niż szerokość pasma rampy, czyli przeskakiwał
+całe pasmo i wychodził poniżej ``soc_min``. Reszta bilansu zmierzona na takim
+biegu opisywała przebieg, który nie dotrzymywał okna pracy.
+
+Drabina zachowuje ośmiokrotną rozpiętość i intencję (jak reszta bilansu skaluje
+się z krokiem), ale każdy szczebel leży teraz wewnątrz dziedziny."""
 """Cztery kroki z planu naprawy — każdy kolejny o połowę mniejszy.
 
 Ciąg połówkowy jest potrzebny, żeby ODRÓŻNIĆ błąd modelu od błędu dyskretyzacji:
@@ -415,3 +427,91 @@ def test_bilans_ze_sprawnosciami_na_pelnym_biegu(
     assert abs(r["niezbilansowanie_mwh"]) <= TOLERANCJA_BILANSU_WZGL * skala
     assert r["soc_min_osiagniety"] >= 0.1 - 1.0e-6
     assert r["soc_max_osiagniety"] <= 0.9 + 1.0e-6
+
+
+# ---------------------------------------------------------------------------
+# Okno SOC jako niezmiennik DYSKRETNY, nie tylko ciągły
+# (recenzja niezależna, P1-DELTA-27)
+# ---------------------------------------------------------------------------
+
+
+def test_krok_przekraczajacy_pasmo_jest_ODRZUCANY_a_nie_liczony() -> None:
+    """Niezmiennik przepływu ŚCISŁEGO nie jest niezmiennikiem przepływu DYSKRETNEGO.
+
+    KONTRPRZYKŁAD RECENZENTA, odtworzony. Bramka energii zeruje moc na granicy,
+    więc dla przepływu ścisłego ``d(soc)/dt = 0`` i okno jest niezmiennicze — i
+    tak było napisane w `ograniczniki_stanu`. Dla kroku STAŁEGO to nie wystarcza:
+    gdy jeden krok zmienia ``soc`` bardziej niż szerokość pasma rampy, całe pasmo
+    zostaje przeskoczone, bo między próbkami nie ma żadnej ewaluacji.
+
+    ZMIERZONE (``E = 0,001 MWh``, ``S = 100 MVA``, ``p = 0,5 pu``,
+    ``soc_min = 0,10``, ``pasmo = 0,02``)::
+
+        soc0 = 0,11, RK4 dt = 0,01000 s -> soc = 0,07527778   (poniżej soc_min)
+        soc0 = 0,50, RK4 dt = 0,01000 s -> soc = 0,08397634   (poniżej soc_min)
+
+    Granica ważności dla tej konfiguracji: ``pasmo·3600·E/(S_fal·S_baza) =
+    7,2e-04 s``. Dawne testy tego nie łapały, bo miały krok dostatecznie krótki
+    względem pasma — czyli badały wyłącznie wnętrze dziedziny.
+
+    Odrzucenie jest GŁOŚNE i przed biegiem: para (model, krok) leży poza
+    zakresem, dla którego laboratorium cokolwiek obiecuje. Cichy przebieg
+    wyglądałby wiarygodnie i obiecywał energię, której model zabrania użyć.
+    """
+    from dynamic_lab.silnik import KrokPozaDziedzinaError
+
+    magazyn = MagazynEnergiiBESS(
+        ref="BAT",
+        szyna="BAT",
+        e_pojemnosc_mwh=0.001,
+        s_bazowa_mva=100.0,
+        soc_poczatkowy=0.5,
+        soc_min=0.10,
+        soc_max=0.90,
+        pasmo_soc=0.02,
+    )
+    granica = magazyn.krok_maksymalny_s()
+    assert granica == pytest.approx(7.2e-4, rel=1e-9)
+
+    topo = TopologiaSieci(
+        szyny=("BAT", "SYS"),
+        galezie=[Galaz("BAT", "SYS", 0.01, 0.05)],
+        szyny_sztywne={"SYS": complex(1.0, 0.0)},
+    )
+    model = ModelDynamiczny(topologia=topo, urzadzenia=[magazyn], s_bazowa_mva=100.0)
+
+    # STRONA ODRZUCENIA: krok recenzenta.
+    silnik_zly = SilnikRMS(model, integrator="rk4", krok_s=0.01)
+    x0 = silnik_zly.inicjalizuj({"BAT": complex(0.5, 0.0)})
+    with pytest.raises(KrokPozaDziedzinaError, match="granicę ważności"):
+        silnik_zly.symuluj(x0, czas_koncowy_s=0.05)
+
+    # DRUGA STRONA PREDYKATU: krok wewnątrz dziedziny liczy się i TRZYMA okno.
+    silnik_dobry = SilnikRMS(model, integrator="rk4", krok_s=0.0005)
+    x0 = silnik_dobry.inicjalizuj({"BAT": complex(0.5, 0.0)})
+    wynik = silnik_dobry.symuluj(x0, czas_koncowy_s=0.05)
+    soc = np.asarray(wynik.sygnal("soc", "BAT").wartosci, dtype=np.float64)
+    assert (
+        float(soc.min()) >= magazyn.soc_min - 1.0e-9
+    ), f"soc zszedł do {float(soc.min()):.8f} poniżej soc_min = {magazyn.soc_min}"
+
+
+def test_granica_waznosci_zaostrza_sie_ze_sprawnoscia_rozladowania() -> None:
+    """Straty rozładowania PRZYSPIESZAJĄ zużycie zasobu, więc skracają krok.
+
+    Bez tego członu granica byłaby policzona dla magazynu bezstratnego i
+    przepuszczałaby krok, przy którym magazyn ze stratami pasmo przeskakuje.
+    """
+    wspolne = {
+        "ref": "BAT",
+        "szyna": "BAT",
+        "e_pojemnosc_mwh": 0.001,
+        "s_bazowa_mva": 100.0,
+        "pasmo_soc": 0.02,
+    }
+    bezstratny = MagazynEnergiiBESS(**wspolne)
+    ze_stratami = MagazynEnergiiBESS(**wspolne, sprawnosc_rozladowania=0.5)
+    assert ze_stratami.krok_maksymalny_s() < bezstratny.krok_maksymalny_s()
+    assert ze_stratami.krok_maksymalny_s() == pytest.approx(
+        bezstratny.krok_maksymalny_s() / 2.0, rel=1e-12
+    )

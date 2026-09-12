@@ -627,6 +627,50 @@ class MagazynEnergiiBESS:
 
     # -- kontrakt urządzenia --------------------------------------------------
 
+    def krok_maksymalny_s(self) -> float:
+        r"""Największy krok, przy którym okno SOC pozostaje zbiorem NIEZMIENNICZYM.
+
+        DLACZEGO TO ISTNIEJE (recenzja niezależna, P1-DELTA-27). Bramka energii
+        zeruje moc na granicy okna, więc dla przepływu ŚCISŁEGO ``d(soc)/dt = 0``
+        i okno jest niezmiennicze. Dla przepływu DYSKRETNEGO o kroku stałym to
+        nie wystarcza: jeżeli jeden krok zmienia ``soc`` bardziej niż wynosi
+        szerokość pasma rampy, całe pasmo zostaje PRZESKOCZONE — moc nie zdąży
+        zostać zredukowana, bo między próbkami nie ma żadnej ewaluacji.
+
+        ZMIERZONY kontrprzykład recenzenta (``E = 0,001 MWh``, ``S = 100 MVA``,
+        ``p = 0,5 pu``, ``soc0 = 0,11``, ``soc_min = 0,10``, ``pasmo = 0,02``)::
+
+            RK4  dt = 0,01000 s -> soc = 0,07527778   (poniżej soc_min!)
+            RK4  dt = 0,00500 s -> soc = 0,09263889
+            RK4  dt = 0,00250 s -> soc = 0,10000000
+
+        Wynik zależy WIELKOŚCIOWO od kroku, a system obiecuje energię, której
+        model operacyjnie zabrania użyć.
+
+        WARUNEK. Największa możliwa szybkość zmiany SOC bierze się z mocy
+        ograniczonej falownikiem:
+
+        .. math::
+
+            \left|\frac{d\,soc}{dt}\right|_{max}
+                = \frac{S_{fal} \cdot S_{baza}}{3600 \cdot E}
+                \cdot \max\!\left(\frac{1}{\eta_{roz}},\ \eta_{lad}\right)
+
+        więc żeby krok nie przeskoczył pasma rampy, musi zachodzić
+        ``dt · |d(soc)/dt|_max <= pasmo_soc``.
+
+        Zwracana wartość jest GRANICĄ WAŻNOŚCI, nie zaleceniem: powyżej niej
+        laboratorium nie ma podstaw twierdzić, że okno jest dotrzymane, i mówi to
+        wprost zamiast zwrócić przebieg wyglądający wiarygodnie.
+        """
+        szybkosc_maks = (
+            self.s_falownika_pu
+            * self.s_bazowa_mva
+            / (3600.0 * self.e_pojemnosc_mwh)
+            * max(1.0 / self.sprawnosc_rozladowania, self.sprawnosc_ladowania)
+        )
+        return self.pasmo_soc / szybkosc_maks
+
     def ograniczniki_stanu(self, przesuniecie: int) -> tuple[OgraniczenieStanu, ...]:
         """Niezmienniki dyskretne: ``p_wyjscia_pu`` (0), ``q_wyjscia_pu`` (1), ``soc`` (2).
 

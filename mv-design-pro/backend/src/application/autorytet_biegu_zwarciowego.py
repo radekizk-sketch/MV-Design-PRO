@@ -23,6 +23,7 @@ brak punktu zwarcia w wyniku — każdy z tych stanów jest ODMOWĄ, nie przepus
 
 from __future__ import annotations
 
+import math
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
@@ -244,6 +245,13 @@ class WejscieKoordynacjiZBiegow:
     wiazanie_min: WiazanieWynikuZwarciowego
     prady_max_a: dict[str, float]
     prady_min_a: dict[str, float]
+    wartosci_odrzucone: tuple[str, ...] = ()
+    """Wiersze biegów, których prądu NIE wolno użyć — z podaniem przyczyny.
+
+    Puste znaczy „każdy wiersz obu biegów niósł liczbę nadającą się do
+    koordynacji". Niepuste MUSI zablokować wynik autorytatywny: wiersz z
+    ``NaN`` nie jest wierszem bez prądu, tylko wierszem, którego prąd nie jest
+    liczbą — a to inna informacja i inna decyzja."""
 
 
 def _identyfikatory_wiersza(wiersz: Mapping[str, Any], grafy: Mapping[str, Any]) -> tuple[str, ...]:
@@ -261,24 +269,64 @@ def _identyfikatory_wiersza(wiersz: Mapping[str, Any], grafy: Mapping[str, Any])
     return tuple(dict.fromkeys(x for x in (wezel, element) if x))
 
 
-def _prady_zwarciowe_biegu(bieg: Any) -> dict[str, float]:
-    """``identyfikator lokalizacji -> I''k [A]`` z artefaktu biegu.
+def _prad_koordynacji(wartosc: Any) -> float | None:
+    """Prąd nadający się do koordynacji albo ``None`` — JEDEN predykat.
+
+    Używany PRZY BUDOWIE mapy i PRZY PORÓWNANIU z żądaniem. Dwa niezależne
+    sprawdzenia tej samej własności rozjeżdżają się przy pierwszej wartości
+    brzegowej — a tutaj wartością brzegową jest ``NaN``, który przechodzi przez
+    KAŻDE porównanie jako fałsz.
+    """
+    try:
+        liczba = float(wartosc)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(liczba) or liczba <= 0.0:
+        return None
+    return liczba
+
+
+def _prady_zwarciowe_biegu(bieg: Any, opis_biegu: str) -> tuple[dict[str, float], tuple[str, ...]]:
+    """``identyfikator lokalizacji -> I''k [A]`` z artefaktu biegu + ODRZUCONE.
 
     Pierwszy wiersz wygrywa — tak samo jak w widoku ekranu; kolejność wyników
     biegu jest deterministyczna, więc odwzorowanie też.
+
+    KAŻDY WIERSZ, NIE PIERWSZY (recenzja niezależna, P0-DELTA-25). Poprzednia
+    wersja wołała ``float(wartosc)`` bez kontroli skończoności dla wszystkich
+    wierszy poza pierwszym (tylko pierwszy wchodził do wiązania wyniku). ``NaN``
+    wchodził wtedy do mapy, a porównanie ``abs(podany - NaN) > tolerancja`` jest
+    FAŁSZEM dla każdego ``podany`` — więc dowolny prąd z żądania przechodził jako
+    „zgodny z biegiem". Zmierzony kontrprzykład recenzenta: ``999999 A`` dla MAX i
+    ``1 A`` dla MIN, obie przyjęte bez jednej różnicy.
+
+    To jest ta sama reguła KLASA, NIE INSTANCJA, którą ten moduł stosuje gdzie
+    indziej: kontrola nałożona na wiersz PIERWSZY nie jest kontrolą nałożoną na
+    wiersze.
     """
     artefakt = bieg.raw_result or {}
     grafy = (artefakt.get("graph") or {}).get("nodes") or {}
     mapa: dict[str, float] = {}
-    for wiersz in artefakt.get("results", []) or []:
+    odrzucone: list[str] = []
+    for numer, wiersz in enumerate(artefakt.get("results", []) or []):
         if not isinstance(wiersz, Mapping):
             continue
-        wartosc = wiersz.get("ikss_a")
-        if wartosc is None:
+        surowa = wiersz.get("ikss_a")
+        if surowa is None:
             continue
-        for ident in _identyfikatory_wiersza(wiersz, grafy):
-            mapa.setdefault(ident, float(wartosc))
-    return mapa
+        liczba = _prad_koordynacji(surowa)
+        identyfikatory = _identyfikatory_wiersza(wiersz, grafy)
+        if liczba is None:
+            odrzucone.append(
+                f"bieg {opis_biegu}, wiersz {numer} "
+                f"({', '.join(identyfikatory) or 'bez identyfikatora'}): prąd "
+                f"zwarciowy {surowa!r} nie jest skończoną liczbą dodatnią, więc "
+                f"nie może potwierdzić żadnej wartości koordynacji"
+            )
+            continue
+        for ident in identyfikatory:
+            mapa.setdefault(ident, liczba)
+    return mapa, tuple(odrzucone)
 
 
 def _scenariusz_biegu(bieg: Any) -> str:
@@ -335,12 +383,33 @@ def wejscie_koordynacji_z_biegow(
             wynik=pierwszy,
         )
 
+    prady_max, odrzucone_max = _prady_zwarciowe_biegu(bieg_max, "maksymalny")
+    prady_min, odrzucone_min = _prady_zwarciowe_biegu(bieg_min, "minimalny")
+
+    # PROWENIENCJA Z OBU BIEGÓW, NIE Z MAKSYMALNEGO (recenzja, P0-DELTA-24).
+    # Poprzednia wersja brała ją wyłącznie z migawki biegu MAX. Bieg MIN mógł
+    # wtedy nieść `DEFAULT_FORBIDDEN`, a koordynacja i tak dostawała proweniencję
+    # `DEKLARACJA` i używała minimalnego prądu — czyli wynik, którego właściciel
+    # jawnie zakazał, ustanawiał nastawę czułości.
+    #
+    # Znaczniki obu migawek są SUMOWANE: zastrzeżenie któregokolwiek biegu jest
+    # zastrzeżeniem koordynacji, bo koordynacja konsumuje OBA prądy. Suma, a nie
+    # wybór jednego — wybór wymagałby uzasadnienia, którego nie ma: nie istnieje
+    # powód, dla którego wkład DER miałby być miarodajny w jednym scenariuszu i
+    # nieistotny w drugim.
+    proweniencja_max = proweniencja_ze_snapshotu(bieg_max.snapshot)
+    proweniencja_min = proweniencja_ze_snapshotu(bieg_min.snapshot)
+    proweniencja_obu = ProweniencjaWynikuZwarciowego.ze_znacznikow(
+        tuple(proweniencja_max.znaczniki_k_sc) + tuple(proweniencja_min.znaczniki_k_sc)
+    )
+
     return WejscieKoordynacjiZBiegow(
-        proweniencja=proweniencja_ze_snapshotu(bieg_max.snapshot),
+        proweniencja=proweniencja_obu,
         wiazanie_max=wiazanie(bieg_max),
         wiazanie_min=wiazanie(bieg_min),
-        prady_max_a=_prady_zwarciowe_biegu(bieg_max),
-        prady_min_a=_prady_zwarciowe_biegu(bieg_min),
+        prady_max_a=prady_max,
+        prady_min_a=prady_min,
+        wartosci_odrzucone=odrzucone_max + odrzucone_min,
     )
 
 
@@ -358,7 +427,11 @@ def niezgodnosci_pradow_koordynacji(
     wejscie: WejscieKoordynacjiZBiegow, prady_zadania: Iterable[Mapping[str, Any]]
 ) -> tuple[str, ...]:
     """Czym prądy z żądania różnią się od prądów biegów. Pusto = to te same liczby."""
-    roznice: list[str] = []
+    # WARTOŚCI ODRZUCONE IDĄ PIERWSZE. Wiersz, którego prąd nie jest liczbą, nie
+    # może zostać „potwierdzony" żadną wartością z żądania — a bez tej pozycji
+    # jego brak w mapie wyglądałby jak brak lokalizacji w biegu, czyli inna
+    # przyczyna i mylący komunikat.
+    roznice: list[str] = list(wejscie.wartosci_odrzucone)
     for pozycja in prady_zadania:
         lokalizacja = str(pozycja.get("location_id") or "")
         for klucz, mapa, opis in (
@@ -367,6 +440,16 @@ def niezgodnosci_pradow_koordynacji(
         ):
             podany = pozycja.get(klucz)
             if podany is None:
+                continue
+            # WARTOŚĆ Z ŻĄDANIA TEŻ MUSI BYĆ LICZBĄ. `abs(NaN - x) > tolerancja`
+            # jest fałszem, więc bez tego sprawdzenia `NaN` w żądaniu przechodził
+            # jako zgodny z każdym prądem biegu — ta sama dziura, tylko z drugiej
+            # strony porównania.
+            if _prad_koordynacji(podany) is None:
+                roznice.append(
+                    f"{lokalizacja}.{klucz}: podana wartość {podany!r} nie jest "
+                    f"skończoną liczbą dodatnią"
+                )
                 continue
             z_biegu = mapa.get(lokalizacja)
             if z_biegu is None:

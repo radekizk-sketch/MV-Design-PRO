@@ -58,6 +58,14 @@ from dynamic_lab.wynik import (
 from dynamic_lab.zdarzenia import HarmonogramZdarzen
 
 
+class KrokPozaDziedzinaError(ValueError):
+    """Krok biegu przekracza granicę ważności zadeklarowaną przez urządzenie.
+
+    Odrzucenie WEJŚCIA, nie niepowodzenie biegu: para (model, krok) leży poza
+    zakresem, dla którego laboratorium cokolwiek obiecuje.
+    """
+
+
 class PunktPracyNiespojnyZRozplywemError(RuntimeError):
     """Urządzenie nie oddaje mocy, którą przyjął rozpływ — punkt startowy fikcyjny."""
 
@@ -446,6 +454,48 @@ class SilnikRMS:
 
     # -- symulacja ------------------------------------------------------------
 
+    def _sprawdz_krok_wobec_dziedziny_urzadzen(self) -> None:
+        """Krok biegu wobec DZIEDZINY WAŻNOŚCI zadeklarowanej przez urządzenia.
+
+        PO CO (recenzja niezależna, P1-DELTA-27). Niezmiennik utrzymywany FIZYKĄ
+        — przez zerowanie pochodnej na granicy — jest niezmiennikiem przepływu
+        ŚCISŁEGO. Przepływ DYSKRETNY o kroku stałym dotrzymuje go tylko wtedy, gdy
+        krok jest dostatecznie krótki wobec pasma, w którym pochodna maleje do
+        zera. Przy kroku dłuższym całe pasmo zostaje przeskoczone w jednym skoku i
+        okno przestaje obowiązywać — cicho, z przebiegiem wyglądającym poprawnie.
+
+        Urządzenie, które ma taką granicę, deklaruje ją metodą
+        ``krok_maksymalny_s``. Urządzenia bez tej metody nie są sprawdzane: brak
+        deklaracji znaczy „ten model nie ma pasma, które da się przeskoczyć", a nie
+        „nie sprawdzajmy". Kontrola jest więc OPT-IN po stronie modelu i nie
+        wymaga, żeby silnik znał fizykę urządzeń.
+
+        Zgłoszenie jest GŁOŚNE (wyjątek przed biegiem), a nie zapisem w wyniku:
+        to jest odrzucenie WEJŚCIA — para (model, krok) leży poza dziedziną, dla
+        której laboratorium cokolwiek obiecuje. Ta sama granica, co przy
+        `_wejscie_zagadnienia_poczatkowego`.
+        """
+        naruszenia: list[str] = []
+        for u in self.model.urzadzenia:
+            metoda = getattr(u, "krok_maksymalny_s", None)
+            if metoda is None:
+                continue
+            granica = float(metoda())
+            if self.krok_s > granica:
+                naruszenia.append(
+                    f"{getattr(u, 'ref', '?')}: krok {self.krok_s:g} s przekracza "
+                    f"granicę ważności {granica:.6g} s — przy tym kroku przepływ "
+                    f"dyskretny przeskakuje pasmo, w którym pochodna maleje do zera, "
+                    f"więc okno pracy przestaje być zbiorem niezmienniczym"
+                )
+        if naruszenia:
+            raise KrokPozaDziedzinaError(
+                "Krok biegu leży poza dziedziną ważności modelu:\n  - "
+                + "\n  - ".join(naruszenia)
+                + "\nSkróć krok albo zmień parametry urządzenia. Wynik policzony "
+                "przy tym kroku wyglądałby wiarygodnie i nie dotrzymywał okna."
+            )
+
     def _etykiety_stanow(self) -> tuple[str, ...]:
         """Nazwy WSZYSTKICH współrzędnych wektora stanu, w kolejności układu.
 
@@ -557,6 +607,7 @@ class SilnikRMS:
         właściciela.
         """
         harmonogram = harmonogram or HarmonogramZdarzen([])
+        self._sprawdz_krok_wobec_dziedziny_urzadzen()
         self._ewaluacje = 0
         self._maks_residuum = 0.0
         self._maks_iteracji_sieci = 0

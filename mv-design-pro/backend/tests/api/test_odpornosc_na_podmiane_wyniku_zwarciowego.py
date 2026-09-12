@@ -398,3 +398,144 @@ def test_kazdy_znacznik_warstwy_wkladu_ma_rozstrzygniecie_w_autorytecie() -> Non
         "Znacznik nie może być jednocześnie blokujący i bez zastrzeżeń: "
         f"{sorted(set(_KOMUNIKAT_ZNACZNIKA) & set(ZNACZNIKI_BEZ_ZASTRZEZEN))}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Koordynacja z DWÓCH biegów: kontrprzykłady recenzji niezależnej
+# (P0-DELTA-24 — proweniencja tylko z MAX; P0-DELTA-25 — NaN poza pierwszym wierszem)
+# ---------------------------------------------------------------------------
+
+
+def test_NaN_w_dowolnym_wierszu_biegu_nie_autoryzuje_zadnego_pradu() -> None:
+    """P0-DELTA-25: kontrola pierwszego wiersza NIE jest kontrolą wierszy.
+
+    KONTRPRZYKŁAD RECENZENTA, odtworzony. Wiązanie wyniku liczy się z wiersza
+    PIERWSZEGO, a mapa prądów budowała się z WSZYSTKICH przez ``float(wartosc)``
+    bez kontroli skończoności. ``NaN`` w drugim wierszu wchodził więc do mapy, a
+    ponieważ ``abs(podany - NaN) > tolerancja`` jest FAŁSZEM dla każdego
+    ``podany``, dowolna wartość z żądania przechodziła jako „potwierdzona przez
+    bieg". Zmierzone przez recenzenta: 999999 A dla MAX i 1 A dla MIN — zero
+    zgłoszonych różnic.
+
+    Fizycznie: zawyżony MAX i zaniżony MIN fałszują OBA końce oceny
+    zabezpieczenia naraz — selektywność i czułość.
+    """
+    from application.autorytet_biegu_zwarciowego import (
+        WejscieKoordynacjiZBiegow,
+        niezgodnosci_pradow_koordynacji,
+    )
+    from network_model.core.autorytet_wyniku_zwarciowego import ProweniencjaWynikuZwarciowego
+    from network_model.core.wiazanie_wyniku_zwarciowego import WiazanieWynikuZwarciowego
+
+    class _Bieg:
+        id = "BIEG"
+        snapshot_hash = "H"
+        snapshot: dict = {}
+
+        def __init__(self, wiersze):
+            self.raw_result = {"results": wiersze, "graph": {"nodes": {}}}
+
+    from application.autorytet_biegu_zwarciowego import _prady_zwarciowe_biegu
+
+    wiersze = [
+        {"fault_node_id": "PIERWSZY", "ikss_a": 1000.0},
+        {"fault_node_id": "TARGET", "ikss_a": float("nan")},
+    ]
+    mapa, odrzucone = _prady_zwarciowe_biegu(_Bieg(wiersze), "maksymalny")
+    # NaN NIE wchodzi do mapy i jest nazwany, a nie milcząco pominięty.
+    assert "TARGET" not in mapa
+    assert any("TARGET" in x and "nie jest skończoną liczbą" in x for x in odrzucone), odrzucone
+
+    wiazanie = WiazanieWynikuZwarciowego.z_biegu(
+        run_id="BIEG", snapshot_id="H", punkt_zwarcia="PIERWSZY", migawka_wejscia={}, wynik={}
+    )
+    wejscie = WejscieKoordynacjiZBiegow(
+        proweniencja=ProweniencjaWynikuZwarciowego.ze_znacznikow(("DEKLARACJA",)),
+        wiazanie_max=wiazanie,
+        wiazanie_min=wiazanie,
+        prady_max_a=mapa,
+        prady_min_a=mapa,
+        wartosci_odrzucone=odrzucone,
+    )
+    roznice = niezgodnosci_pradow_koordynacji(
+        wejscie, [{"location_id": "TARGET", "ik_max_3f_a": 999999.0, "ik_min_3f_a": 1.0}]
+    )
+    assert roznice, "Arbitralne prądy przeszły jako zgodne z biegiem niosącym NaN."
+
+
+def test_NaN_w_ZADANIU_takze_nie_przechodzi() -> None:
+    """DRUGA STRONA PORÓWNANIA — ta sama dziura, tylko z przeciwnej strony.
+
+    ``abs(NaN - z_biegu) > tolerancja`` jest fałszem niezależnie od tego, KTÓRA
+    strona jest NaN. Kontrola wyłącznie po stronie biegu zostawiłaby otwartą tę
+    samą drogę dla wartości podanej w żądaniu.
+    """
+    from application.autorytet_biegu_zwarciowego import (
+        WejscieKoordynacjiZBiegow,
+        niezgodnosci_pradow_koordynacji,
+    )
+    from network_model.core.autorytet_wyniku_zwarciowego import ProweniencjaWynikuZwarciowego
+    from network_model.core.wiazanie_wyniku_zwarciowego import WiazanieWynikuZwarciowego
+
+    wiazanie = WiazanieWynikuZwarciowego.z_biegu(
+        run_id="B", snapshot_id="H", punkt_zwarcia="X", migawka_wejscia={}, wynik={}
+    )
+    wejscie = WejscieKoordynacjiZBiegow(
+        proweniencja=ProweniencjaWynikuZwarciowego.ze_znacznikow(("DEKLARACJA",)),
+        wiazanie_max=wiazanie,
+        wiazanie_min=wiazanie,
+        prady_max_a={"X": 1000.0},
+        prady_min_a={"X": 500.0},
+    )
+    for zla in (float("nan"), float("inf"), -1.0, 0.0):
+        roznice = niezgodnosci_pradow_koordynacji(
+            wejscie, [{"location_id": "X", "ik_max_3f_a": zla}]
+        )
+        assert roznice, f"Wartość {zla!r} z żądania przeszła jako zgodna z biegiem."
+
+
+def test_DEFAULT_FORBIDDEN_w_biegu_MIN_blokuje_koordynacje() -> None:
+    """P0-DELTA-24: proweniencja z OBU biegów, nie z maksymalnego.
+
+    KONTRPRZYKŁAD RECENZENTA, odtworzony. ``wejscie_koordynacji_z_biegow``
+    budowało dwa wiązania i dwie mapy prądów, ale proweniencję brało WYŁĄCZNIE z
+    migawki biegu MAX. Bieg MIN z domyślką systemową ``k_sc`` przechodził więc
+    niezauważony, a jego prąd — którego właściciel jawnie zakazał jako podstawy
+    decyzji — ustanawiał ocenę CZUŁOŚCI zabezpieczenia.
+
+    Znaczniki są SUMOWANE, bo koordynacja konsumuje OBA prądy: nie istnieje
+    powód, dla którego wkład DER miałby być miarodajny w scenariuszu maksymalnym
+    i nieistotny w minimalnym.
+    """
+    from application.autorytet_zwarciowy import proweniencja_ze_snapshotu
+    from network_model.core.autorytet_wyniku_zwarciowego import (
+        KOD_BLOKADY_K_SC_DOMYSLNY,
+        blokady_autorytetu,
+    )
+    from network_model.core.wklad_zwarciowy_przeksztaltnika import (
+        K_SC_ZRODLO_DEKLARACJA,
+        K_SC_ZRODLO_DOMYSLNE,
+    )
+    from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
+
+    from tests.utils.bieg_zwarciowy import snapshot_sn_z_falownikiem
+
+    # MAX z deklaracją producenta, MIN z domyślką systemową — dokładnie jak w
+    # kontrprzykładzie recenzenta.
+    prow_max = proweniencja_ze_snapshotu(snapshot_sn_z_falownikiem(k_sc=1.35))
+    prow_min = proweniencja_ze_snapshotu(snapshot_sn_z_falownikiem(k_sc=None))
+    assert K_SC_ZRODLO_DEKLARACJA in prow_max.znaczniki_k_sc
+    assert K_SC_ZRODLO_DOMYSLNE in prow_min.znaczniki_k_sc
+
+    # Sam MAX nie ma zastrzeżeń — to jest właśnie pułapka poprzedniej wersji.
+    assert not blokady_autorytetu(ZdolnoscMiarodajna.PROTECTION_COORDINATION, prow_max)
+
+    # SUMA znaczników obu biegów blokuje — i nazywa przyczynę.
+    from network_model.core.autorytet_wyniku_zwarciowego import ProweniencjaWynikuZwarciowego
+
+    prow_obu = ProweniencjaWynikuZwarciowego.ze_znacznikow(
+        tuple(prow_max.znaczniki_k_sc) + tuple(prow_min.znaczniki_k_sc)
+    )
+    blokady = blokady_autorytetu(ZdolnoscMiarodajna.PROTECTION_COORDINATION, prow_obu)
+    assert blokady, "Domyślka w biegu MIN nie zablokowała koordynacji."
+    assert any(b.kod == KOD_BLOKADY_K_SC_DOMYSLNY for b in blokady), [b.kod for b in blokady]

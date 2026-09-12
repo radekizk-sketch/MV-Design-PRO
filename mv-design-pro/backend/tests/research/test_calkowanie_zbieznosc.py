@@ -491,3 +491,41 @@ def test_rzad_rk4_jest_MIERZONY_na_drabinie_a_nie_czytany_z_etykiety() -> None:
         f"Dryf całki pierwszej przy 1 ms wynosi {dryfy[-1]:.3e}; prawdziwe rk4 daje "
         f"4,46e-14, a metoda rzędu 2 pod etykietą rzędu 4 dała 1,42e-08."
     )
+
+
+def test_skalowanie_tolerancji_NIGDY_nie_luzuje_powyzej_nominalu() -> None:
+    """Zapadka na kontrprzykład recenzji: krok duży nie może kupować tolerancji.
+
+    ZMIERZONE PRZED NAPRAWĄ (``x' = -x``, ``x0 = 1``, ``dt = 1 s``, trapez)::
+
+        wspolczynnik_kroku(1,0; 2) = 8,000e+06
+        waga efektywna             = 0,808
+        x1 zwrócone                = 0,0        (czysty predyktor!)
+        x1 dokładne                = 1/3
+        |residuum|                 = 0,5
+        status                     = STRICT_CONVERGENCE
+
+    Krok, który nie rozwiązał równania w ogóle, meldował zbieżność ŚCISŁĄ —
+    defekt wprowadzony przez naprawę rzędu metody, dokładnie tej klasy, którą
+    plan naprawy §2 miał zamknąć.
+
+    ``atol``/``rtol`` są tolerancją NAJLUŹNIEJSZĄ dopuszczalną; krok dłuższy od
+    kalibracyjnego nie jest powodem, żeby przyjąć większe residuum.
+    """
+    assert wspolczynnik_kroku(DT_KALIBRACJI_S * 200.0, rzad=2) == 1.0
+    assert wspolczynnik_kroku(DT_KALIBRACJI_S * 2.0, rzad=4) == 1.0
+    assert wspolczynnik_kroku(DT_KALIBRACJI_S, rzad=2) == pytest.approx(1.0)
+
+    def f(x: NDArray[np.float64], t: float) -> NDArray[np.float64]:
+        return -x
+
+    x1, sprawozdanie = TrapezNiejawny().krok_ze_sprawozdaniem(
+        f, np.array([1.0], dtype=np.float64), 0.0, 1.0
+    )
+    # Równanie kroku trapezu dla x'=-x: x1 = x0 + dt/2 (−x0 − x1) => x1 = 1/3.
+    assert float(x1[0]) == pytest.approx(1.0 / 3.0, rel=1e-9), (
+        f"x1 = {float(x1[0])!r}; wartość 0,0 znaczy, że iteracja została na "
+        f"predyktorze, a mimo to zameldowała zbieżność."
+    )
+    assert sprawozdanie.status is StatusKroku.STRICT_CONVERGENCE
+    assert sprawozdanie.rho <= 1.0
