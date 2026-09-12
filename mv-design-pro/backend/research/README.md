@@ -59,5 +59,22 @@ z defektów P0 audytu: model nazwany „6-rzędowym" miał 2 stany).
 | `dynamic_lab/tozsamosc.py` | deterministyczna TOŻSAMOŚĆ: postać kanoniczna parametrów (rekurencyjnie po dataklasach, z jawną deklaracją pól pomijanych), odcisk scenariusza (migawka + punkt pracy + nastawy solvera + harmonogram) i odcisk topologii (wszystko, co wchodzi do Ybus) |
 | `dynamic_lab/dowod_walidacji.py` | PROTOTYP D-09: stopień dowodowy WYPROWADZANY z zakresu walidacji, nie nadawany |
 | `dynamic_lab/wzorzec_trajektoria.py` | dowód **C1/W3 w dziedzinie czasu**: błąd trajektorii PUNKT PO PUNKCIE wobec ANDES (`TDS`, nie `EIG`) na wyłączeniu jednego z dwóch torów równoległych — domyka wiersz „NIE ZMIERZONY” z §5.2 pakietu decyzyjnego |
+| `dynamic_lab/mutacje.py` | rama KAMPANII MUTACYJNEJ: nazwany defekt + wskazany detektor; trzy wyniki (ZABITA / PRZEZYLA / BLAD_WYKONANIA), bo wyjatek w scenariuszu nie jest zabiciem |
+| `dynamic_lab/katalog_mutacji.py` | konkretne mutacje wpiete w DZIALAJACE detektory laboratorium (fizyka, numeryka, kontrakt, tozsamosc) |
 
 Testy: `backend/tests/research/` (uruchamiane przez zwykły bieg pytest).
+
+## Uprzaz kwalifikacyjna
+
+`backend/research/kwalifikacja.py` uruchamia komplet pomiarow JEDNYM poleceniem i
+zwraca raport maszynowy (JSON): residua inicjalizacji, stan wyroczni zewnetrznych,
+blad trajektorii wobec ANDES, porownanie integratorow, czas krytyczny zwarcia i
+wynik kampanii mutacyjnej.
+
+```bash
+python backend/research/kwalifikacja.py            # pelny bieg (~35 s)
+python backend/research/kwalifikacja.py --szybko   # bez CCT i porownania metod
+```
+
+Kod wyjscia mowi o LUKACH KWALIFIKACJI (przezyta mutacja krytyczna), nie o
+„sukcesie”. Raport NIE nadaje statusu dowodowego i nie moze go nadac.

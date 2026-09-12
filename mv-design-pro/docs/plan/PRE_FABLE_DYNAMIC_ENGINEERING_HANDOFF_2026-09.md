@@ -154,6 +154,81 @@ raportowane.
 **Odtworzenie:** `pytest backend/tests/research/test_wzorzec_trajektoria.py`
 (pomijane bez ANDES — pominięta wyrocznia nie jest walidacją).
 
+### 3.3 RAMA KAMPANII MUTACYJNEJ (`dynamic_lab/mutacje.py`, `katalog_mutacji.py`)
+
+Laboratorium nie miało ramy mutacyjnej — dwa testy wspominały mutacje ad hoc.
+
+**Zasada:** mutacja wprowadza NAZWANY defekt i ma przypisany DETEKTOR. Mutacja
+bez wskazanego detektora nie ma prawa powstać (walidacja przy budowie).
+
+**Trzy wyniki, nie dwa.** `BLAD_WYKONANIA` jest osobny od `PRZEZYLA`: mutacja,
+która wysypała się przy budowie scenariusza, nie dowodzi, że detektor działa —
+dowodzi, że scenariusz jest zepsuty. Zliczanie jej jako zabicia zawyżałoby wynik.
+Przypięte testem `test_wyjatek_w_mutacji_nie_liczy_sie_jako_zabicie`.
+
+**Wynik kampanii: 16/16 zabitych, 0 luk krytycznych.**
+
+| Klasa | Mutacje | Przykładowy detektor |
+|---|---|---|
+| FIZYKA | 4 | tożsamość gałęzi + Ybus; `‖f(x₀,y₀)‖` w inicjalizacji |
+| NUMERYKA | 4 | rozłączne stany `StatusKroku`; przebiegi euler vs rk4 |
+| KONTRAKT | 4 | `NiezgodnaDlugoscPrzebieguError`; walidacja zdarzenia przy budowie |
+| TOZSAMOSC | 4 | `odcisk_topologii`; `SilnikRMS.siatka_czasu` |
+
+**Uczciwość pomiaru:** pierwszy bieg dał 14/16 z dwoma `BLAD_WYKONANIA` — obie
+porażki były w MOICH scenariuszach (zła sygnatura `czestotliwosc_hz`
+i `odcisk_topologii`), nie w laboratorium. Rama zadziałała dokładnie tak, jak ma:
+nie policzyła ich jako zabić.
+
+### 3.4 UPRZĄŻ KWALIFIKACYJNA (`research/kwalifikacja.py`)
+
+Jedno polecenie, raport maszynowy (JSON). Dowody laboratorium były rozsiane po
+866 testach; rekonstruowanie z nich stanu ręcznie to praca, przy której łatwo
+przeoczyć brak — a brak jest tu najważniejszą informacją.
+
+```bash
+python backend/research/kwalifikacja.py            # pełny bieg, ~35 s
+python backend/research/kwalifikacja.py --szybko   # bez CCT i porównania metod
+```
+
+**Zawartość raportu** (zmierzona, nie zadeklarowana):
+
+| Sekcja | Wynik z biegu pełnego |
+|---|---|
+| status dowodowy | `UNVALIDATED_MODEL` (uprząż NIE promuje) |
+| odcisk implementacji | SHA-256 treści 24 modułów |
+| residua inicjalizacji | SMIB 8,33e-17; sieć SN z DER 0,0 |
+| wyrocznie zewnętrzne | ANDES 2.0.0 DOSTĘPNA, pandapower 3.5.4 DOSTĘPNA |
+| trajektoria vs ANDES | max\|Δδ\| 4,10e-05 rad; max\|Δω\| 9,95e-07 p.u. |
+| czas krytyczny zwarcia | 0,4209 s dla `H = 4 s` |
+| kampania mutacyjna | 16/16, 0 luk krytycznych |
+
+**CCT 0,4209 s** zgadza się z wartością 422 ms z §19.1 pakietu decyzyjnego —
+niezależne potwierdzenie, że uprząż jest wpięta w rzeczywistą maszynerię, a nie
+liczy czegoś obok.
+
+**Porównanie integratorów potwierdza DEKLAROWANE rzędy** (błąd wobec odniesienia):
+
+| integrator | krok 2 ms | krok 10 ms | stosunek | rząd |
+|---|---|---|---|---|
+| euler_jawny | 1,513e-02 | 1,119e-01 | 7,4 | 1 |
+| euler_niejawny | 1,262e-02 | 4,545e-02 | 3,6 | 1 |
+| trapez_niejawny | 4,011e-05 | 1,002e-03 | 25,0 | **2** (5²=25) |
+| rk4 | 1,438e-09 | 9,015e-07 | 627 | **4** (5⁴=625) |
+
+**Kod wyjścia mówi o LUKACH, nie o sukcesie:** `1` gdy przeżyła mutacja
+krytyczna, `0` w przeciwnym razie. Zielony bieg znaczy „zmierzone i spójne",
+nigdy „zwalidowane".
+
+**Defekt znaleziony i naprawiony w samej uprzęży.** Pierwsza wersja czytała pola
+wyniku porównania integratorów przez `getattr(..., None)` i wypisywała `null`
+dla KAŻDEJ pozycji — raport miał właściwy kształt i ani jednej liczby. To jest
+dokładnie ta klasa cichej porażki, którą uprząż ma wykrywać. Poprawione na odczyt
+wprost z kontraktu (zmiana kontraktu wywala raport głośno) i przypięte testem
+`test_porownanie_integratorow_niesie_LICZBY_a_nie_null`.
+
+---
+
 ---
 
 ## 4. USTALENIE ARCHITEKTONICZNE — kontrakt integratora wyklucza metody wielokrokowe
@@ -189,11 +264,13 @@ BDF-a przez OPCJĘ B „żeby był" cofnęłoby naprawiony defekt.
 
 | Pozycja | Stan |
 |---|---|
-| moduły | 21 (20 istniejących + `wzorzec_trajektoria.py`) |
-| testy badawcze | 834 passed → po dołożeniu: patrz §7 |
-| izolacja od produkcji | `research_isolation_guard` PASSED (801 plików produkcyjnych, 21 badawczych) |
+| moduły | 23 (20 istniejących + `wzorzec_trajektoria.py`, `mutacje.py`, `katalog_mutacji.py`) + uprząż `kwalifikacja.py` |
+| testy badawcze | **866 passed, 0 failed** (przed tą sesją: 834) |
+| izolacja od produkcji | `research_isolation_guard` PASSED (801 plików produkcyjnych, 24 badawcze) |
 | wyrocznie zewnętrzne | ANDES 2.0.0 (zainstalowany, WYKONANY), pandapower 3.5.4 (używany w `wzorzec_zewnetrzny`) |
 | status dowodowy | `UNVALIDATED_MODEL`; D-00 FAIL CLOSED nietknięty |
+| kampania mutacyjna | 16/16 zabitych, 0 luk krytycznych |
+| uprząż jednokomendowa | `research/kwalifikacja.py`, bieg pełny ~35 s |
 
 ---
 
@@ -217,6 +294,7 @@ errata #3 pakietu decyzyjnego — **nie** rozstrzygam go tym dokumentem.
 | Pozycja | Powód |
 |---|---|
 | BDF2/BDF3 | wymaga decyzji o kontrakcie integratora — §4 |
+| rama mutacyjna i uprząż | **ZROBIONE** — §3.3 i §3.4 |
 | drugi rdzeń DAE (schemat jednoczesny) | zbudowany i **skasowany**; duplikacja dojrzałego laboratorium — §0.1 |
 | walidacja PSS, nasycenia, ograniczników AVR wobec ANDES | brak odpowiedników w modelach obu narzędzi (pakiet decyzyjny §5.1) |
 | uzupełnienie profili normatywnych OSD | wymaga danych normatywnych, których nie mam; zakaz fabrykacji |
