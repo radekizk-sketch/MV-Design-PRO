@@ -163,15 +163,36 @@ class ZdjecieZwarcia:
 
 @dataclass(frozen=True)
 class WylaczenieGalezi:
-    """Otwarcie wyłącznika / wyłączenie linii — REALNA zmiana topologii."""
+    """Otwarcie wyłącznika / wyłączenie linii — REALNA zmiana topologii.
+
+    ADRESOWANIE. ``ident`` wskazuje gałąź JEDNOZNACZNIE i jest drogą właściwą,
+    zwłaszcza przy torach równoległych. Para szyn zostaje dopuszczona dla
+    układów, w których jest jednoznaczna; gdy wskazuje więcej niż jedną
+    załączoną gałąź, `TopologiaSieci` zgłasza błąd zamiast zgadywać.
+
+    DLACZEGO TO JEST WAŻNE. Przed naprawą para szyn wyłączała WSZYSTKIE tory
+    między wskazanymi rozdzielniami naraz (pętla bez przerwania), co przy dwóch
+    liniach 0,40 p.u. dawało ``Ybus[0,0]`` = ``0j`` zamiast ``−2,5j`` — maszyna
+    była odcinana od systemu zamiast tracić jeden tor. Błąd był cichy.
+    """
 
     czas_s: float
-    od_szyny: str
-    do_szyny: str
+    od_szyny: str = ""
+    do_szyny: str = ""
+    ident: str = ""
     priorytet: int = 30
     opis: str = "wyłączenie gałęzi"
 
+    def __post_init__(self) -> None:
+        if not self.ident and not (self.od_szyny and self.do_szyny):
+            raise ValueError(
+                "WylaczenieGalezi wymaga albo `ident` gałęzi, albo pary szyn "
+                "(`od_szyny`, `do_szyny`)."
+            )
+
     def zastosuj(self, topologia: TopologiaSieci) -> TopologiaSieci:
+        if self.ident:
+            return topologia.z_wylaczona_galezia_po_id(self.ident)
         return topologia.z_wylaczona_galezia(self.od_szyny, self.do_szyny)
 
 

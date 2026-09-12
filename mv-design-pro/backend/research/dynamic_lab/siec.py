@@ -60,6 +60,15 @@ class Galaz:
     x_pu: float
     b_poprzeczna_pu: float = 0.0
     zalaczona: bool = True
+    ident: str = ""
+    """Tożsamość gałęzi. Pusta = nadana deterministycznie przez `TopologiaSieci`.
+
+    PO CO. Para szyn NIE JEST tożsamością: dwa tory równoległe między tymi
+    samymi rozdzielniami to układ zwyczajny w sieci SN, a „wyłącz gałąź A–B"
+    jest wtedy poleceniem niejednoznacznym. Bocznik dostał własne ``zrodlo``
+    już wcześniej (`bez_bocznika_o_zrodle` zastąpiło kasowanie wszystkiego na
+    szynie) — gałąź została wtedy pominięta i ten defekt tu zamykamy.
+    """
 
     def admitancja_szeregowa(self) -> complex:
         z = complex(self.r_pu, self.x_pu)
@@ -121,6 +130,43 @@ class TopologiaSieci:
         for s in self.szyny_sztywne:
             if s not in znane:
                 raise ValueError(f"Szyna sztywna {s} nie istnieje")
+        self._nadaj_tozsamosci_galezi()
+
+    def _nadaj_tozsamosci_galezi(self) -> None:
+        """Nadaj brakujące tożsamości gałęzi — deterministycznie i jednoznacznie.
+
+        Gałąź podana bez ``ident`` dostaje ``"<od>-<do>#<n>"``, gdzie ``n`` jest
+        numerem wystąpienia tej pary w kolejności podania. Dzięki temu dwa tory
+        równoległe mają RÓŻNE tożsamości bez wymuszania zmiany na wszystkich
+        istniejących wywołaniach, a numeracja jest powtarzalna (ta sama lista =
+        te same tożsamości).
+
+        Tożsamości podane jawnie muszą być jednoznaczne — powtórzenie jest
+        błędem GŁOŚNYM, bo dwie gałęzie o tej samej nazwie znaczą, że scenariusz
+        opisuje inną sieć niż liczona.
+        """
+        licznik: dict[tuple[str, str], int] = {}
+        nowe: list[Galaz] = []
+        for g in self.galezie:
+            if g.ident:
+                nowe.append(g)
+                continue
+            para = (g.od_szyny, g.do_szyny)
+            licznik[para] = licznik.get(para, 0) + 1
+            nowe.append(replace(g, ident=f"{g.od_szyny}-{g.do_szyny}#{licznik[para]}"))
+        identy = [g.ident for g in nowe]
+        powtorzone = sorted({i for i in identy if identy.count(i) > 1})
+        if powtorzone:
+            raise ValueError(
+                f"Powtórzone tożsamości gałęzi: {powtorzone}. Dwie gałęzie o tej samej "
+                f"nazwie są nieodróżnialne dla zdarzeń topologicznych."
+            )
+        self.galezie = nowe
+
+    @property
+    def identy_galezi(self) -> tuple[str, ...]:
+        """Tożsamości gałęzi w kolejności podania — do diagnostyki scenariusza."""
+        return tuple(g.ident for g in self.galezie)
 
     @property
     def indeks(self) -> dict[str, int]:
@@ -176,20 +222,62 @@ class TopologiaSieci:
         """Tożsamości boczników na szynie — w kolejności deterministycznej."""
         return tuple(sorted({b.zrodlo for b in self.boczniki if b.szyna == szyna}))
 
-    def z_wylaczona_galezia(self, od_szyny: str, do_szyny: str) -> TopologiaSieci:
-        """Nowa topologia z wyłączoną gałęzią (wyłączenie linii/wyłącznika)."""
+    def z_wylaczona_galezia_po_id(self, ident: str) -> TopologiaSieci:
+        """Nowa topologia z wyłączoną gałęzią o WSKAZANEJ tożsamości.
+
+        To jest właściwa droga adresowania zdarzenia topologicznego: jednoznaczna
+        także przy torach równoległych.
+        """
         nowe: list[Galaz] = []
         trafiono = False
         for g in self.galezie:
-            para = {g.od_szyny, g.do_szyny}
-            if para == {od_szyny, do_szyny} and g.zalaczona:
+            if g.ident == ident:
+                if not g.zalaczona:
+                    raise ValueError(
+                        f"Gałąź \u201e{ident}\u201d jest już wyłączona — powtórne "
+                        "wyłączenie znaczy, że scenariusz opisuje inną sieć niż liczona."
+                    )
                 nowe.append(replace(g, zalaczona=False))
                 trafiono = True
             else:
                 nowe.append(g)
         if not trafiono:
-            raise ValueError(f"Brak załączonej gałęzi {od_szyny}<->{do_szyny}")
+            raise ValueError(
+                f"Brak gałęzi o tożsamości \u201e{ident}\u201d. "
+                f"Gałęzie w modelu: {list(self.identy_galezi)}."
+            )
         return replace(self, galezie=nowe)
+
+    def z_wylaczona_galezia(self, od_szyny: str, do_szyny: str) -> TopologiaSieci:
+        """Wyłączenie gałęzi wskazanej PARĄ SZYN — wyłącznie gdy jest jednoznaczna.
+
+        DEFEKT, KTÓRY TA WERSJA ZAMYKA (odtworzony, nie wydedukowany). Poprzednia
+        pętla nie miała przerwania: przy DWÓCH torach równoległych między tymi
+        samymi szynami „wyłącz gałąź GEN–SYS" wyłączało OBA naraz. Pomiar na
+        dwóch torach po 0,40 p.u.: ``Ybus[0,0]`` przechodziło z ``−5j`` na ``0j``,
+        czyli maszyna zostawała ODCIĘTA od systemu zamiast stracić jeden tor.
+        Skutek był CICHY — żadnego błędu, a przebieg wyglądał jak utrata
+        synchronizmu po wyłączeniu linii.
+
+        Teraz para szyn jest dopuszczalna tylko wtedy, gdy wskazuje dokładnie
+        jedną załączoną gałąź. Niejednoznaczność jest błędem głośnym i odsyła do
+        `z_wylaczona_galezia_po_id`, bo to ona jest właściwym adresowaniem.
+        """
+        pasujace = [
+            g
+            for g in self.galezie
+            if {g.od_szyny, g.do_szyny} == {od_szyny, do_szyny} and g.zalaczona
+        ]
+        if not pasujace:
+            raise ValueError(f"Brak załączonej gałęzi {od_szyny}<->{do_szyny}")
+        if len(pasujace) > 1:
+            raise ValueError(
+                f"Para szyn {od_szyny}<->{do_szyny} wskazuje {len(pasujace)} załączonych "
+                f"gałęzi ({[g.ident for g in pasujace]}) — polecenie jest niejednoznaczne. "
+                f"Użyj `z_wylaczona_galezia_po_id(ident)`: tor równoległy wyłącza się "
+                f"pojedynczo, a nie w komplecie."
+            )
+        return self.z_wylaczona_galezia_po_id(pasujace[0].ident)
 
 
 @dataclass

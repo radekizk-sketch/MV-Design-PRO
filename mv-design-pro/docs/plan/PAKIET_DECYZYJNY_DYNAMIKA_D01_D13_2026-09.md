@@ -340,12 +340,66 @@ błąd JEDNEJ wielkości, a nie wspólna miara. Rozdzielone:
 | **Błąd napięcia — kąt** | `arg(V_gen)` vs ANDES | 5,4e-08 |
 | **Błąd częstotliwości małosygnałowej** | `f_osc` z trajektorii vs wartość własna ANDES | 6,0e-06 |
 | **Błąd wzoru analitycznego** | `ωₙ = √(ω_s·P_s/2H)` vs wartość własna ANDES | 3,9e-09 |
-| **Błąd trajektorii (punkt po punkcie)** | — | **NIE ZMIERZONY** |
+| **Błąd trajektorii (punkt po punkcie)** | δ(t) i ω(t) vs ANDES `TDS` na wspólnej siatce | **ZMIERZONE 2026-09-12** — patrz §5.2a |
 
-Ostatni wiersz jest istotny: porównywane są *wielkości skalarne wyprowadzone z*
-trajektorii, a nie trajektoria z trajektorią. Porównanie punkt-po-punkcie
-wymagałoby wyeksportowania przebiegu z ANDES na wspólnej siatce i nie zostało
-zrobione.
+Ostatni wiersz był istotny: porównywane były *wielkości skalarne wyprowadzone z*
+trajektorii, a nie trajektoria z trajektorią. Ten brak został **domknięty** —
+patrz sekcja niżej.
+
+### 5.2a Błąd trajektorii punkt po punkcie — POMIAR (uzupełnienie 2026-09-12)
+
+**Co się zmieniło.** Dotychczasowe porównania uruchamiały w ANDES wyłącznie
+`PFlow` i `EIG`, więc po stronie wzorca trajektoria NIE POWSTAWAŁA w ogóle.
+Nowy moduł `dynamic_lab/wzorzec_trajektoria.py` uruchamia `TDS` po obu stronach
+i porównuje przebieg z przebiegiem na wspólnej, równomiernej siatce.
+
+**Przypadek.** SMIB o DWÓCH torach równoległych (`x = 0,30` p.u. każdy),
+maszyna klasyczna (GENCLS po stronie ANDES), `H = 4 s`, `P = 0,50` p.u.
+Zaburzenie: **wyłączenie jednego toru** w `t = 1,0 s` (reaktancja korytarza
+0,15 → 0,30 p.u.). Wybór celowy: maszyna zostaje przyłączona, zmiana jest czysto
+topologiczna (bez modelu bocznika zwarciowego), a amplituda kołysania wychodzi
+rzędu 8,8° — czyli poza zakresem, w którym wystarczyłaby zgodność małosygnałowa.
+
+**Wynik przy kroku 1 ms po obu stronach:**
+
+| Wielkość | max \|Δ\| | RMS | max \|Δ\| / zakres |
+|---|---|---|---|
+| kąt wirnika δ | 4,102e-05 rad | 2,203e-05 rad | 2,68e-04 |
+| prędkość ω | 9,947e-07 p.u. | 5,487e-07 p.u. | 2,56e-04 |
+| punkt pracy δ₀ | 3,676e-09 rad | — | — |
+
+**Drabina kroku — błąd maleje, ale ma PODŁOGĘ:**
+
+| krok | max \|Δδ\| [rad] |
+|---|---|
+| 4 ms | 1,838e-04 |
+| 2 ms | 6,899e-05 |
+| 1 ms | 4,102e-05 |
+| 0,5 ms | 3,354e-05 |
+
+Spadek 4 ms → 1 ms wynosi 4,5×, ale 1 ms → 0,5 ms już tylko 1,22×: błąd wychodzi
+na podłogę około **3e-05 rad** zamiast dążyć do zera.
+
+**Czego ta podłoga NIE jest:** błędem równań (widmo zgadza się do 1e-08) ani
+błędem punktu pracy (3,7e-09 rad). **Zmierzone prawdopodobne źródło:** ANDES
+zagęszcza krok w otoczeniu przełączenia — `min dt = 1e-04 s` niezależnie od
+zadanego `tstep` — a laboratorium przechodzi przez tę chwilę krokiem stałym.
+Różnica dotyczy więc **traktowania nieciągłości**, nie fizyki. Nie zostało to
+rozstrzygnięte do końca i tak jest raportowane: podłoga jest **wynikiem**, nie
+usterką pomiaru.
+
+**Odtworzenie:** `pytest backend/tests/research/test_wzorzec_trajektoria.py`
+(pomijane bez ANDES — pominięta wyrocznia nie jest walidacją).
+
+**Defekt znaleziony przy budowie tego przypadku.** Był to pierwszy scenariusz
+laboratorium wymagający dwóch gałęzi RÓWNOLEGŁYCH. Wyszło, że
+`TopologiaSieci.z_wylaczona_galezia(od, do)` adresowało gałąź parą szyn i
+wyłączało **wszystkie** tory między nimi naraz (pętla bez przerwania), a `Galaz`
+nie miała żadnej tożsamości. Pomiar: dwa tory po 0,40 p.u., `Ybus[0,0]`
+przechodziło z `−5j` prosto na `0j` — maszyna była **odcinana od systemu**
+zamiast tracić jeden tor, i to CICHO. Naprawione: `Galaz.ident` (nadawany
+deterministycznie), `z_wylaczona_galezia_po_id`, a para szyn jest odtąd
+dopuszczalna tylko gdy jednoznaczna. Regresja: `tests/research/test_tory_rownolegle.py`.
 
 ### 5.3 Trzecia oś — zachowanie DUŻOSYGNAŁOWE
 
