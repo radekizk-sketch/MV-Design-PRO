@@ -182,6 +182,46 @@ def _falszywa_zbieznosc_scisla() -> AbstractContextManager[None]:
     return patch.object(calkowanie, "_sprawozdanie_metody_jawnej", zmutowany)
 
 
+def _rk4_degradowane_do_rzedu_drugiego() -> AbstractContextManager[None]:
+    """``Rk4`` liczy punktem środkowym (rząd 2), ale nadal deklaruje ``rzad = 4``.
+
+    MUTANT C RECENZJI NIEZALEŻNEJ (P1-DELTA-19), który PRZEŻYŁ kampanię na
+    1ff13df9 razem z kompletem testów autora; recenzent zmierzył wtedy rzędy
+    2,055 / 2,027 / 2,014 pod etykietą rzędu 4.
+
+    Sedno defektu: etykieta ``rzad`` jest DEKLARACJĄ. Sonda musi MIERZYĆ rząd na
+    drabinie kroku, bo sprawdzenie etykiety sprawdza wyłącznie samą siebie.
+    """
+    import dynamic_lab.calkowanie as calkowanie
+
+    def krok_ze_sprawozdaniem(
+        self: Any, f: Any, x: NDArray[np.float64], t: float, dt: float
+    ) -> tuple[NDArray[np.float64], Any]:
+        k1 = f(x, t)
+        k2 = f(x + 0.5 * dt * k1, t + 0.5 * dt)
+        x1 = x + dt * k2
+        return x1, calkowanie._sprawozdanie_metody_jawnej(2, x1, metoda=self.nazwa)
+
+    return patch.object(calkowanie.Rk4, "krok_ze_sprawozdaniem", krok_ze_sprawozdaniem)
+
+
+def _przebieg_przyjmuje_wadliwa_os_czasu() -> AbstractContextManager[None]:
+    """``Przebieg`` przestaje sprawdzać oś czasu i wartości.
+
+    P1-DELTA-20 recenzji niezależnej: katalog mutacji NIE ATAKOWAŁ klasy
+    ``Przebieg`` w ogóle, a to ona decyduje, czy porównanie z wzorcem liczy się
+    na danych poprawnych. Bez kontroli oś niemonotoniczna, duplikat chwili i NaN
+    przechodzą, a ``numpy.interp`` zwraca dla nich liczby — porównanie wygląda
+    wtedy na wykonane.
+    """
+    from dynamic_lab import wzorzec_trajektoria
+
+    def bez_kontroli(self: Any) -> None:
+        return None
+
+    return patch.object(wzorzec_trajektoria.Przebieg, "__post_init__", bez_kontroli)
+
+
 def _tolerancja_kroku_przestaje_zalezec_od_kroku() -> AbstractContextManager[None]:
     """Tolerancja równania kroku znów STAŁA, niezależna od ``dt``.
 
@@ -344,7 +384,17 @@ SONDY_BILANSU = ("tests/research/test_bilans_energii_magazynu.py",)
 SONDY_TOPOLOGII = ("tests/research/test_tory_rownolegle.py",)
 SONDY_TOZSAMOSCI = ("tests/research/test_tozsamosc_implementacji.py",)
 SONDY_FIZYKI = ("tests/research/test_niezmienniki_fizyczne.py",)
+#: Sonda rzędu metody: JEDEN plik, bo mierzy OBIE potrzebne wielkości — TEMPO
+#: spadku dryfu (iloraz > 16) oraz jego WIELKOŚĆ (< 1e-12 przy 1 ms).
+#:
+#: Wersja pośrednia dokładała tu `test_wzorzec_trajektoria.py` „dla wielkości".
+#: Było to nadmiarowe po dopisaniu asercji wielkości do pliku pierwszego, a przy
+#: tym KOSZTOWNE: tamten plik uruchamia ANDES TDS (zmierzone ~280 s na bieg), a
+#: kampania wykonuje KAŻDĄ sondę dwukrotnie — raz kontrolnie bez mutacji, raz z
+#: mutacją. Weryfikacja trzech mutacji przekroczyła przez to 1500 s i została
+#: zabita. Sonda, której nikt nie doczeka, nie chroni niczego.
 SONDY_RZEDU_METODY = ("tests/research/test_calkowanie_zbieznosc.py",)
+SONDY_TRAJEKTORII = ("tests/research/test_wzorzec_trajektoria.py",)
 
 
 def mutacje_laboratorium() -> tuple[Mutacja, ...]:
@@ -412,6 +462,24 @@ def mutacje_laboratorium() -> tuple[Mutacja, ...]:
             oczekiwany_detektor="drabina kroku po całce pierwszej (rząd metody)",
             sondy=SONDY_RZEDU_METODY,
             zastosuj=_tolerancja_kroku_przestaje_zalezec_od_kroku,
+        ),
+        Mutacja(
+            ident="M-NUM-05",
+            opis="RK4 liczy metodą rzędu 2, zachowując deklarację rzad=4",
+            klasa=KlasaDefektu.NUMERYKA,
+            zakres="dynamic_lab.calkowanie.Rk4.krok_ze_sprawozdaniem",
+            oczekiwany_detektor="pomiar rzędu na drabinie kroku (całka pierwsza)",
+            sondy=SONDY_RZEDU_METODY,
+            zastosuj=_rk4_degradowane_do_rzedu_drugiego,
+        ),
+        Mutacja(
+            ident="M-KON-04",
+            opis="Przebieg przyjmuje oś czasu niemonotoniczną, z duplikatem i NaN",
+            klasa=KlasaDefektu.KONTRAKT,
+            zakres="dynamic_lab.wzorzec_trajektoria.Przebieg.__post_init__",
+            oczekiwany_detektor="kontrola osi czasu przy budowie przebiegu",
+            sondy=SONDY_TRAJEKTORII,
+            zastosuj=_przebieg_przyjmuje_wadliwa_os_czasu,
         ),
         Mutacja(
             ident="M-FIZ-01",

@@ -430,3 +430,64 @@ def test_rzad_trapezu_jest_osiagalny_po_zageszczeniu_kroku() -> None:
         f"równania kroku wyszedł ponad błąd obcięcia, czyli że tolerancja przestała "
         f"być skalowana krokiem."
     )
+
+
+def test_rzad_rk4_jest_MIERZONY_na_drabinie_a_nie_czytany_z_etykiety() -> None:
+    """Rząd metody = POMIAR na drabinie kroku, nigdy pole ``rzad``.
+
+    ZAPADKA NA MUTANTA C RECENZJI NIEZALEŻNEJ (P1-DELTA-19). Podmiana
+    ``Rk4.krok`` na metodę punktu środkowego (rząd 2) przy POZOSTAWIENIU
+    deklaracji ``rzad = 4`` przeżyła kampanię i wszystkie testy autora na
+    1ff13df9; recenzent zmierzył wtedy rzędy 2,055 / 2,027 / 2,014.
+
+    Etykieta ``rzad`` jest DEKLARACJĄ i nie może być dowodem sama dla siebie —
+    to ta sama reguła, przez którą odcisk implementacji liczy się z treści
+    plików, a nie z numeru wersji. Tutaj rząd wychodzi z pomiaru dryfu całki
+    pierwszej maszyny klasycznej (wyrocznia ANALITYCZNA, bez ANDES).
+
+    ZMIERZONE, obie strony:
+
+        rk4 prawdziwe:   4 ms -> 5,20e-11   2 ms -> 1,66e-12   1 ms -> 4,46e-14
+                         ilorazy: 31,33  37,19
+        rk4 zmutowane
+        (punkt środkowy): 4 ms -> 9,17e-07  2 ms -> 1,14e-07  1 ms -> 1,42e-08
+                         ilorazy:  8,03   8,05
+
+    PIERWSZY PRÓG BYŁ ZA LUŹNY I TO JEST ZMIERZONE. Postawiłem go na 8,
+    rozumując „metoda rzędu 2 daje iloraz ≈4". Mutant dał 8,03 — czyli przeszedł
+    o trzy setne. Powód: dryf CAŁKI dla punktu środkowego skaluje się tu jak
+    ``dt^3``, o rząd lepiej niż jego błąd rozwiązania. Wniosek ogólny: progu dla
+    metody rzędu p nie wolno wyprowadzać z rzędu BŁĘDU ROZWIĄZANIA, bo mierzona
+    wielkość ma własny rząd — trzeba go ZMIERZYĆ po obu stronach.
+
+    Próg 16 (= 2^4) leży w środku zmierzonej luki: prawdziwe rk4 ma zapas ~2x w
+    górę (31 i 37), mutant ~2x w dół (8,0). Dodatkowo sprawdzana jest SAMA
+    WIELKOŚĆ dryfu — sześć rzędów różnicy (4,46e-14 wobec 1,42e-08) rozdziela te
+    przypadki znacznie pewniej niż jakikolwiek iloraz.
+    """
+    przypadek = PrzypadekTrajektorii()
+    q_gen_pu = 0.01877644271298366
+
+    dryfy: list[float] = []
+    for krok_s in (0.004, 0.002, 0.001):
+        przebiegi, delta0 = przebiegi_laboratorium(
+            przypadek, q_gen_pu=q_gen_pu, krok_s=krok_s, integrator="rk4"
+        )
+        dryfy.append(
+            dryf_niezmiennika(
+                przypadek, przebiegi, zrodlo="sonda-rk4", krok_s=krok_s, delta0_rad=delta0
+            ).maks_dryf_bezwzgledny
+        )
+
+    ilorazy = [a / b for a, b in zip(dryfy[:-1], dryfy[1:], strict=True)]
+    assert all(i > 16.0 for i in ilorazy), (
+        f"Ilorazy dryfu przy połowieniu kroku {ilorazy} dla metody deklarującej "
+        f"rząd 4. Wartość ≈8 znaczy, że działa metoda rzędu 2 pod etykietą rzędu 4 "
+        f"(zmierzone dla punktu środkowego: 8,03 i 8,05). Dryf: {dryfy}."
+    )
+    # WIELKOŚĆ, nie tylko tempo. Iloraz mówi o rzędzie, ale metoda o poprawnym
+    # rzędzie i sześć rzędów gorszej dokładności też jest defektem.
+    assert dryfy[-1] < 1.0e-12, (
+        f"Dryf całki pierwszej przy 1 ms wynosi {dryfy[-1]:.3e}; prawdziwe rk4 daje "
+        f"4,46e-14, a metoda rzędu 2 pod etykietą rzędu 4 dała 1,42e-08."
+    )

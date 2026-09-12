@@ -47,6 +47,7 @@ from dynamic_lab.mutacje import uruchom_kampanie  # noqa: E402
 from dynamic_lab.silnik import SilnikRMS  # noqa: E402
 from dynamic_lab.sonda_mutacyjna import wykonaj_sondy_w_podprocesie  # noqa: E402
 from dynamic_lab.tozsamosc import odcisk_implementacji  # noqa: E402
+from dynamic_lab.walidacja import WyroczniaRownychPol  # noqa: E402
 
 #: Wyrocznie zewnętrzne, o które pytamy przy każdym biegu.
 WYROCZNIE_ZEWNETRZNE: tuple[tuple[str, str], ...] = (
@@ -160,17 +161,50 @@ def _porownanie_integratorow(szybko: bool) -> dict[str, Any]:
     }
 
 
+#: Dopuszczalny błąd względny CCT wobec zamkniętego wzoru równych pól.
+#: Wyprowadzony z ROZDZIELCZOŚCI bisekcji (0,005 s przy CCT ≈ 0,42 s daje 1,2 %),
+#: a nie dobrany pod wynik — patrz `tests/research/test_cct_wyrocznia.py`.
+TOLERANCJA_CCT_WZGLEDNA = 0.015
+
+
 def _czas_krytyczny(szybko: bool) -> dict[str, Any]:
-    """CCT z symulacji kontra zamknięty wzór kryterium równych pól."""
+    """CCT z symulacji KONTRA zamknięty wzór kryterium równych pól.
+
+    PORÓWNANIE JEST WYKONYWANE, NIE ZAPOWIADANE (recenzja niezależna,
+    P2-DELTA-22). Poprzednia wersja miała ten docstring i zwracała wyłącznie
+    ``cct_symulacja_s`` — zapowiedź wyroczni bez wyroczni. Wartość analityczna
+    istniała w laboratorium (``WyroczniaRownychPol``) i była używana w testach,
+    więc raport pomijał porównanie, które dało się zrobić jedną linią.
+    """
     if szybko:
         return {"stan": "POMINIETE", "powod": "tryb --szybko"}
     h_s, x_linii = 4.0, 0.15
     cct_symulacja = czas_krytyczny_zwarcia(h_s=h_s, x_linii_pu=x_linii, dokladnosc_s=0.005)
+
+    # Wyrocznia budowana Z PUNKTU PRACY LABORATORIUM. Gdyby `delta0` i `E'`
+    # pochodziły z osobnego rachunku, porównywalibyśmy dwie różne konfiguracje.
+    model, moce = smib(h_s=h_s, x_linii_pu=x_linii)
+    silnik = SilnikRMS(model, integrator="rk4", krok_s=0.004)
+    x0 = silnik.inicjalizuj(moce)
+    wyrocznia = WyroczniaRownychPol(
+        e_prim_pu=float(x0[2]),
+        v_sys_pu=1.0,
+        x_calkowite_pu=0.30 + x_linii,
+        delta0_rad=float(x0[0]),
+        p0_pu=0.5,
+        h_s=h_s,
+    )
+    cct_analityczny = wyrocznia.czas_krytyczny_s
+    blad_wzgledny = abs(cct_symulacja - cct_analityczny) / cct_analityczny
     return {
         "stan": "WYKONANE",
         "h_s": h_s,
         "x_linii_pu": x_linii,
         "cct_symulacja_s": cct_symulacja,
+        "cct_analityczny_s": cct_analityczny,
+        "blad_wzgledny": blad_wzgledny,
+        "tolerancja_wzgledna": TOLERANCJA_CCT_WZGLEDNA,
+        "zgodne": blad_wzgledny <= TOLERANCJA_CCT_WZGLEDNA,
     }
 
 
@@ -189,6 +223,50 @@ def _kampania_mutacyjna(wykonaj_sondy: Any) -> dict[str, Any]:
     znaczyć (plan naprawy §4).
     """
     return uruchom_kampanie(mutacje_laboratorium(), wykonaj_sondy=wykonaj_sondy).to_dict()
+
+
+def _luki_kwalifikacji(raport: dict[str, Any]) -> list[str]:
+    """LUKI, czyli powody, dla których uprząż NIE jest zielona.
+
+    PO CO TO ISTNIEJE (recenzja niezależna, P2-DELTA-22). Kod wyjścia zależał
+    WYŁĄCZNIE od przeżytych mutacji krytycznych. Znaczyło to, że dowolnie duży
+    błąd trajektorii, CCT rozjechany z wzorem zamkniętym albo niezbieżna pozycja
+    porównania integratorów dawały kod 0 — uprząż mierzyła, ale nie orzekała, a
+    raport z liczbami poza wszelkim sensem wyglądał tak samo jak raport dobry.
+
+    Każda pozycja niżej ma JAWNE kryterium w miejscu, które ją liczy; tu są
+    tylko zbierane. POMINIĘTE nie jest luką — pominięcie jest widoczne osobno
+    i nie wolno go mylić z porażką ani z sukcesem.
+    """
+    luki: list[str] = []
+
+    mutacje = raport["mutacje"]
+    if mutacje["przezyly_krytyczne"]:
+        luki.append(f"Mutacje krytyczne, które przeżyły: {mutacje['przezyly_krytyczne']}")
+    if not mutacje["liczba_mutacji"]:
+        luki.append("Kampania mutacyjna jest PUSTA — 0/0 nie jest wynikiem dodatnim.")
+
+    trajektoria = raport["trajektoria_vs_andes"]
+    if trajektoria["stan"] == "WYKONANE" and trajektoria.get("status") == "niezgodne":
+        luki.append(f"Trajektoria wobec wzorca: NIEZGODNE — {trajektoria.get('niespelnione')}")
+
+    cct = raport["czas_krytyczny_zwarcia"]
+    if cct["stan"] == "WYKONANE" and not cct["zgodne"]:
+        luki.append(
+            f"CCT rozjeżdża się z kryterium równych pól: błąd względny "
+            f"{cct['blad_wzgledny']:.3e} > {cct['tolerancja_wzgledna']:.3e}"
+        )
+
+    integratory = raport["porownanie_integratorow"]
+    if integratory["stan"] == "WYKONANE":
+        niezbiezne = [p for p in integratory["pozycje"] if not p["zbiegl"]]
+        if niezbiezne:
+            luki.append(
+                f"Porównanie integratorów: pozycje niezbieżne "
+                f"{[(p['integrator'], p['krok_s']) for p in niezbiezne]}"
+            )
+
+    return luki
 
 
 def zbierz_raport(*, szybko: bool = False, wykonaj_sondy: Any = None) -> dict[str, Any]:
@@ -216,12 +294,18 @@ def zbierz_raport(*, szybko: bool = False, wykonaj_sondy: Any = None) -> dict[st
         "czas_krytyczny_zwarcia": _czas_krytyczny(szybko),
         "mutacje": mutacje,
     }
+    raport["luki_kwalifikacji"] = _luki_kwalifikacji(raport)
     raport["czas_biegu_s"] = round(time.monotonic() - start, 3)
     raport["podsumowanie"] = {
         "mutacje_zabite": f"{mutacje['zabite']}/{mutacje['liczba_mutacji']}",
         "luki_krytyczne": mutacje["przezyly_krytyczne"],
         "najgorsza_norma_pochodnej": raport["residua_inicjalizacji"]["najgorsza_norma_pochodnej"],
         "dowod_zewnetrzny_wykonany": raport["trajektoria_vs_andes"]["stan"] == "WYKONANE",
+        # UWAGA: `wyrocznie_zewnetrzne` mówi o DOSTĘPNOŚCI pakietów. Wykonany
+        # jest wyłącznie ANDES TDS; porównania pandapower ta uprząż NIE
+        # przeprowadza, więc obecność pakietu nie jest dowodem rozpływu
+        # (recenzja niezależna, P2-DELTA-23).
+        "rozplyw_pandapower_wykonany": False,
         "werdykt_trajektorii": raport["trajektoria_vs_andes"].get("status", "POMINIETE"),
     }
     return raport
@@ -241,9 +325,15 @@ def main() -> int:
     else:
         print(tresc)
 
-    # Kod wyjścia mówi o LUKACH KWALIFIKACJI, nie o „sukcesie". Przeżyta mutacja
-    # krytyczna jest luką i musi być widoczna w CI jako czerwień.
-    return 1 if raport["mutacje"]["przezyly_krytyczne"] else 0
+    # Kod wyjścia mówi o LUKACH KWALIFIKACJI, nie o „sukcesie". Luką jest KAŻDY
+    # zmierzony wynik poza własnym kryterium — nie tylko przeżyta mutacja.
+    # Zawężenie tego warunku do samych mutacji sprawiało, że uprząż mierzyła, ale
+    # nie orzekała (recenzja niezależna, P2-DELTA-22).
+    if raport["luki_kwalifikacji"]:
+        for luka in raport["luki_kwalifikacji"]:
+            print(f"LUKA KWALIFIKACJI: {luka}", file=sys.stderr)
+        return 1
+    return 0
 
 
 if __name__ == "__main__":

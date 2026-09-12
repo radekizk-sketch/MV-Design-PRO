@@ -45,7 +45,8 @@ z defektów P0 audytu: model nazwany „6-rzędowym" miał 2 stany).
 | `dynamic_lab/urzadzenia_oze.py` | prototypy **D-07** i **D-12**: magazyn ze stanem energii (SOC) i regulacją częstotliwościową, regulator elektrowni (PPC) z limitem eksportu ocenianym w PCC, maszyna dwustronnie zasilana 3. rzędu BEZ crowbaru (z jawnym zakresem ważności) |
 | `dynamic_lab/regulatory.py` | AVR, governor — pętle ZAMKNIĘTE, z ogranicznikami i anti-windup |
 | `dynamic_lab/zdarzenia.py` | harmonogram zdarzeń (zwarcie, wyłączenie, zmiana topologii) |
-| `dynamic_lab/calkowanie.py` | integratory (jawne i niejawne) za wspólnym kontraktem |
+| `dynamic_lab/calkowanie.py` | integratory (jawne i niejawne) za wspólnym kontraktem; tolerancja równania kroku SKALOWANA KROKIEM (`wspolczynnik_kroku`), bo stała czyniła rząd metody nieosiągalnym poniżej pewnego `dt` — zagęszczanie kroku POGARSZAŁO wynik |
+| `dynamic_lab/skonczonosc.py` | JEDNO miejsce, w którym NaN i Inf są łapane: `wymagaj_skonczonosci` zgłasza wartość niepoprawną w chwili POWSTANIA, z indeksami i nazwami stanów jako DANYMI wyjątku (nie tylko w komunikacie), żeby kontrakt wyniku mógł podać adres defektu bez parsowania tekstu |
 | `dynamic_lab/silnik.py` | pętla DAE: `ẋ = f(x,y,u,p,t)`, `0 = g(x,y,u,p,t)`; inicjalizacja: rozpływ → punkt pracy → stany regulatorów → weryfikacja `‖f(x₀,y₀)‖` |
 | `dynamic_lab/wynik.py` | kandydat kontraktu wyniku dynamicznego (szereg czasowy + tożsamość) |
 | `dynamic_lab/walidacja.py` | metryki zgodności + wyrocznie analityczne (W2): wahania małosygnałowe i CCT z kryterium równych pól |
@@ -60,6 +61,7 @@ z defektów P0 audytu: model nazwany „6-rzędowym" miał 2 stany).
 | `dynamic_lab/dowod_walidacji.py` | PROTOTYP D-09: stopień dowodowy WYPROWADZANY z zakresu walidacji, nie nadawany |
 | `dynamic_lab/wzorzec_trajektoria.py` | **cross-check NUMERYCZNY** trajektorii wobec ANDES (`TDS`, nie `EIG`) na wyłączeniu jednego z dwóch torów równoległych: błąd punkt-po-punkcie raportowany ODCINKAMI (przed / okno przełączenia / po), z zakazem ekstrapolacji, kontrolą osi czasu i formalnym kryterium odbioru. Rozstrzyga, CZYJ jest błąd, przez TRZECIEGO ARBITRA — całkę pierwszą maszyny klasycznej przy `D = 0`. **Nie jest walidacją fizyczną**: oba narzędzia całkują to samo równanie |
 | `dynamic_lab/mutacje.py` | rama KAMPANII MUTACYJNEJ: nazwany defekt + wskazany detektor; trzy wyniki (ZABITA / PRZEZYLA / BLAD_WYKONANIA), bo wyjatek w scenariuszu nie jest zabiciem |
+| `dynamic_lab/sonda_mutacyjna.py` | WYKONAWCA sond kampanii: uruchamia pytest w procesie POTOMNYM z podmianą kodu, osobno dla biegu kontrolnego (bez mutacji) i zmutowanego — bez kontroli bazowej „zabicie" nie znaczy nic, bo sonda mogła być czerwona już wcześniej |
 | `dynamic_lab/katalog_mutacji.py` | konkretne mutacje wpiete w DZIALAJACE detektory laboratorium (fizyka, numeryka, kontrakt, tozsamosc) |
 
 Testy: `backend/tests/research/` (uruchamiane przez zwykły bieg pytest).
