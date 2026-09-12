@@ -275,7 +275,18 @@ describe('useAppStateStore', () => {
           snapshot: makeCalculationReadySnapshot(),
           readiness: {
             ready: false,
-            blockers: [{ code: 'catalog.ref_missing', message_pl: 'Brak katalogu' }],
+            blockers: [
+              {
+                code: 'catalog.ref_missing',
+                message_pl: 'Brak katalogu',
+                // KOMPLET pól kontraktu `ReadinessEntry`. Fikstura bez
+                // `element_ref` i `severity` nie odwzorowywała odpowiedzi
+                // serwera, więc test przechodził na kształcie, którego produkt
+                // nigdy nie dostaje (TS2739).
+                element_ref: 'trafo_1',
+                severity: 'BLOCKER',
+              },
+            ],
             warnings: [],
             summary: { blocker_count: 1, warning_count: 0 },
             checked_at: '2026-01-01T00:00:00Z',

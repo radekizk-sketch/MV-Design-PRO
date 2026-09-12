@@ -23,13 +23,21 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from dynamic_lab.calkowanie import (
+    DT_KALIBRACJI_S,
     INTEGRATORY,
+    PODLOGA_WAGI_EPS,
     BrakZbieznosciIntegratoraError,
     DziennikKrokow,
     EulerNiejawny,
     KryteriumZbieznosci,
     StatusKroku,
     TrapezNiejawny,
+    wspolczynnik_kroku,
+)
+from dynamic_lab.wzorzec_trajektoria import (
+    PrzypadekTrajektorii,
+    dryf_niezmiennika,
+    przebiegi_laboratorium,
 )
 from numpy.typing import NDArray
 
@@ -262,7 +270,7 @@ def test_kryterium_daje_kazdemu_stanowi_wlasna_wage() -> None:
     """Kąt [rad], prędkość [p.u.], SOC [1] i SEM [p.u.] nie mogą dzielić progu."""
     kryterium = KryteriumZbieznosci(atol_na_stan=(1e-9, 1e-9, 1e-10, 1e-8), rtol=1e-7)
     x = np.array([0.5, 1.0, 0.8, 2.5])
-    wagi = kryterium.wagi(x, x)
+    wagi = kryterium.wagi(x, x, dt=DT_KALIBRACJI_S, rzad=2)
     assert len(set(np.round(wagi, 15))) == 4, "cztery stany, cztery różne wagi"
     assert wagi[3] > wagi[1] > wagi[0], "waga rośnie ze skalą stanu"
 
@@ -271,7 +279,7 @@ def test_skala_moze_pochodzic_z_deklaracji_modelu() -> None:
     """Model wie, jaka jest skala jego stanu — i może ją podać zamiast dynamiki kroku."""
     kryterium = KryteriumZbieznosci(skale_stanow=(1.0, 1.0, 1.0, 3.0))
     x = np.array([1.0e-6, 1.0e-6, 1.0e-6, 1.0e-6])
-    wagi = kryterium.wagi(x, x)
+    wagi = kryterium.wagi(x, x, dt=DT_KALIBRACJI_S, rzad=2)
     assert wagi[0] == pytest.approx(1.0e-9 + 1.0e-7 * 1.0)
     assert wagi[3] == pytest.approx(1.0e-9 + 1.0e-7 * 3.0)
 
@@ -279,10 +287,10 @@ def test_skala_moze_pochodzic_z_deklaracji_modelu() -> None:
 def test_kryterium_odrzuca_deklaracje_niespojna_z_liczba_stanow() -> None:
     kryterium = KryteriumZbieznosci(skale_stanow=(1.0, 1.0))
     with pytest.raises(ValueError, match="skale_stanow"):
-        kryterium.wagi(np.zeros(3), np.zeros(3))
+        kryterium.wagi(np.zeros(3), np.zeros(3), dt=DT_KALIBRACJI_S, rzad=2)
     kryterium = KryteriumZbieznosci(atol_na_stan=(1.0e-9,))
     with pytest.raises(ValueError, match="atol_na_stan"):
-        kryterium.wagi(np.zeros(3), np.zeros(3))
+        kryterium.wagi(np.zeros(3), np.zeros(3), dt=DT_KALIBRACJI_S, rzad=2)
 
 
 def test_kryterium_odrzuca_niedodatnie_tolerancje() -> None:
@@ -303,8 +311,122 @@ def test_maly_stan_nie_jest_badany_progiem_duzego_stanu() -> None:
     kryterium = KryteriumZbieznosci(atol=1.0e-12, rtol=1.0e-7)
     x = np.array([1.0e-3, 100.0])
     residuum = np.array([1.0e-8, 0.0])
-    assert kryterium.rho(residuum, x, x) > 1.0
+    assert kryterium.rho(residuum, x, x, dt=DT_KALIBRACJI_S, rzad=2) > 1.0
     stary_prog = 1.0e-9 * max(1.0, float(np.max(np.abs(x))))
     assert (
         float(np.max(np.abs(residuum))) < stary_prog
     ), "dokumentacja defektu: stare kryterium bezwzględne przepuściłoby to residuum"
+
+
+# ---------------------------------------------------------------------------
+# Tolerancja SKALOWANA KROKIEM — rząd metody osiągalny dla KAŻDEGO kroku
+# ---------------------------------------------------------------------------
+
+
+def test_wspolczynnik_kroku_jest_jednoscia_przy_kroku_kalibracji() -> None:
+    """Kalibracja musi być punktem, w którym `atol` znaczy dokładnie `atol`."""
+    assert wspolczynnik_kroku(DT_KALIBRACJI_S, rzad=2) == pytest.approx(1.0)
+    assert wspolczynnik_kroku(DT_KALIBRACJI_S, rzad=4) == pytest.approx(1.0)
+
+
+def test_wspolczynnik_kroku_zaostrza_tolerancje_wraz_z_krokiem() -> None:
+    """Krótszy krok => ostrzejsza tolerancja, wykładnik = rzad + 1.
+
+    To jest sedno naprawy: błąd rozwiązania równania kroku kumuluje się liniowo z
+    LICZBĄ kroków, więc tolerancja stała sprawiała, że ZAGĘSZCZANIE KROKU
+    POGARSZAŁO wynik. Skalowanie `dt^(rzad+1)` trzyma ten błąd poniżej błędu
+    obcięcia niezależnie od `dt`.
+    """
+    assert wspolczynnik_kroku(DT_KALIBRACJI_S / 2, rzad=2) == pytest.approx(1.0 / 8.0)
+    assert wspolczynnik_kroku(DT_KALIBRACJI_S / 4, rzad=2) == pytest.approx(1.0 / 64.0)
+    # Metoda wyższego rzędu wymaga OSTRZEJSZEJ tolerancji przy tym samym kroku,
+    # bo jej błąd obcięcia jest mniejszy — luźniejsza zjadłaby cały jej zysk.
+    assert wspolczynnik_kroku(DT_KALIBRACJI_S / 2, rzad=4) < wspolczynnik_kroku(
+        DT_KALIBRACJI_S / 2, rzad=2
+    )
+
+
+def test_wspolczynnik_kroku_odrzuca_dane_bez_sensu() -> None:
+    with pytest.raises(ValueError, match="Krok musi być dodatni"):
+        wspolczynnik_kroku(0.0, rzad=2)
+    with pytest.raises(ValueError, match="Rząd metody"):
+        wspolczynnik_kroku(0.001, rzad=0)
+
+
+def test_waga_nie_schodzi_ponizej_podlogi_zaokraglen() -> None:
+    """Skalowanie nie może zażądać dokładności poniżej szumu reprezentacji.
+
+    Bez podłogi krok dostatecznie krótki dawałby wagę poniżej ``eps``, czyli
+    warunek niespełnialny — a wtedy KAŻDY krok byłby meldowany jako zastój i
+    naprawa rzędu metody zamieniłaby się w awarię biegu.
+    """
+    kryterium = KryteriumZbieznosci(atol=1.0e-9, rtol=1.0e-7)
+    x = np.array([1.0, 2.0])
+    podloga = PODLOGA_WAGI_EPS * float(np.finfo(np.float64).eps) * np.maximum(np.abs(x), 1.0)
+    wagi = kryterium.wagi(x, x, dt=1.0e-9, rzad=4)
+    assert np.all(wagi >= podloga * (1.0 - 1.0e-12))
+    assert np.all(np.isfinite(wagi))
+
+
+def test_rzad_trapezu_jest_osiagalny_po_zageszczeniu_kroku() -> None:
+    """POMIAR, nie deklaracja: połowienie kroku daje ~4x mniejszy błąd trapezu.
+
+    ZAPADKA NA DEFEKT, KTÓRY TA ZMIANA USUWA. Przy wadze STAŁEJ błąd trapezu na
+    tym zagadnieniu ROSŁ przy zagęszczaniu kroku. Zmierzony dryf całki pierwszej
+    (SMIB, D = 0, horyzont 4 s), kroki 4/2/1/0,5 ms::
+
+        waga stała:      2,545e-08  6,365e-09  7,569e-06  1,545e-05
+                         ilorazy:      4,00       0,00       0,49
+        waga skalowana:  2,545e-08  6,365e-09  1,591e-09  3,979e-10
+                         ilorazy:      4,00       4,00       4,00
+
+    Metoda deklarująca ``rzad = 2`` zachowywała się więc miejscami jak metoda o
+    rzędzie UJEMNYM, a żaden test tego nie widział.
+
+    DLACZEGO SONDA WYGLĄDA WŁAŚNIE TAK — trzy próby, dwie ODRZUCONE jako ślepe:
+
+    1. Oscylator harmoniczny z rozwiązaniem zamkniętym: ZMIERZONO identyczne
+       wyniki przed naprawą i po niej (błędy 2,134e-06 … 5,216e-10, ilorazy 16,00
+       w obu przypadkach). Dla zagadnienia LINIOWEGO Newton trafia w rozwiązanie
+       w jednej iteracji z dokładnością zaokrągleń, więc tolerancja NIGDY nie
+       wiąże i defekt jest niewidoczny.
+    2. Wahadło nieliniowe z zachowaną energią: również bez różnicy (dryf
+       3,386e-04 … 5,294e-06, ilorazy 4,00 w obu przypadkach). Newton zbiega
+       kwadratowo, więc pierwsza iteracja spełniająca ``rho <= 1`` schodzi zwykle
+       DUŻO poniżej progu — przy analitycznej ``f`` residuum ląduje przy
+       zaokrągleniach niezależnie od tolerancji.
+    3. REALNY silnik: ``f`` rozwiązuje algebrę sieci, więc niesie własny szum na
+       poziomie tolerancji tamtego solvera, a jakobian liczony różnicą przednią
+       ten szum wzmacnia (patrz „DRABINA TOLERANCJI" w ``_newton_niejawny``).
+       Dopiero tutaj residuum osiągalne jest porównywalne z progiem, więc próg
+       naprawdę rozstrzyga — i dopiero tutaj sonda widzi defekt.
+
+    Punkty 1 i 2 zostawiono w tym opisie celowo: test, który przechodzi zarówno
+    z defektem, jak i bez niego, jest gorszy niż brak testu, bo wyłącza czujność.
+
+    WYROCZNIA JEST ANALITYCZNA, NIE NARZĘDZIOWA: całka pierwsza maszyny
+    klasycznej przy ``D = 0``. Ten test nie potrzebuje ANDES i nie jest pomijany,
+    gdy wzorca nie ma.
+    """
+    przypadek = PrzypadekTrajektorii()
+    # Punkt pracy podany WPROST — sonda bada całkowanie, nie zgodność rozpływów.
+    q_gen_pu = 0.01877644271298366
+
+    dryfy: list[float] = []
+    for krok_s in (0.004, 0.002, 0.001):
+        przebiegi, delta0 = przebiegi_laboratorium(
+            przypadek, q_gen_pu=q_gen_pu, krok_s=krok_s, integrator="trapez_niejawny"
+        )
+        dryfy.append(
+            dryf_niezmiennika(
+                przypadek, przebiegi, zrodlo="sonda", krok_s=krok_s, delta0_rad=delta0
+            ).maks_dryf_bezwzgledny
+        )
+
+    ilorazy = [a / b for a, b in zip(dryfy[:-1], dryfy[1:], strict=True)]
+    assert all(i > 3.0 for i in ilorazy), (
+        f"Iloraz dryfu całki pierwszej przy połowieniu kroku {ilorazy} — rząd 2 "
+        f"wymaga ~4. Dryf: {dryfy}. Wartość poniżej 3 znaczy, że błąd rozwiązania "
+        f"równania kroku wyszedł ponad błąd obcięcia, czyli że tolerancja przestała "
+        f"być skalowana krokiem."
+    )

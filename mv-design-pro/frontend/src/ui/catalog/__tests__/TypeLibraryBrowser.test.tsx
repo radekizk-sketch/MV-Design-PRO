@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { TypeLibraryBrowser } from '../TypeLibraryBrowser';
 import * as catalogApi from '../api';
 import type { CatalogListItem } from '../api';
-import type { TypeCategory } from '../types';
+import type { PtpireeGeneratorCertificateCatalogType, TypeCategory } from '../types';
 
 vi.mock('../api');
 
@@ -188,13 +188,28 @@ const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
     },
   ],
   MEASUREMENT_TRANSFORMER: [
+    // KATEGORIA ZWRACA PRZEKŁADNIKI PRĄDOWE I NAPIĘCIOWE (`api.ts`:
+    // `[...fetchCtTypes(), ...fetchVtTypes()]`), a nie jeden rekord „zestawu".
+    // Poprzednia fikstura miała `measurement_kind: 'COMBINED'` — wartość spoza
+    // kontraktu i pole spoza unii `CatalogListItem` (TS2353), więc test opisywał
+    // dane, których serwer nigdy nie zwraca.
     {
-      id: 'mt-001',
-      name: 'Zestaw pomiarowy',
+      id: 'ct-001',
+      name: 'Przekładnik prądowy 200/5',
       manufacturer: 'MeasureTech',
-      measurement_kind: 'COMBINED',
-      accuracy_class: '0.5 / 5P20',
+      ratio_primary_a: 200,
+      ratio_secondary_a: 5,
+      accuracy_class: '5P20',
       burden_va: 30,
+    },
+    {
+      id: 'vt-001',
+      name: 'Przekładnik napięciowy 15000/100',
+      manufacturer: 'MeasureTech',
+      ratio_primary_v: 15000,
+      ratio_secondary_v: 100,
+      accuracy_class: '0.5',
+      burden_va: 50,
     },
   ],
   PV_INVERTER: [
@@ -385,18 +400,40 @@ describe('TypeLibraryBrowser', () => {
 });
 
 describe('TypeLibraryBrowser — wykaz certyfikatów PTPiREE (strona serwerowa, dług 5 z V12K-321)', () => {
-  const pozycjeStrony: CatalogListItem[] = [
+  // KOMPLET pól kontraktu `PtpireeGeneratorCertificateCatalogType`. Poprzednia
+  // fikstura była typowana jako `CatalogListItem[]` z czterema polami, więc nie
+  // dawała się podstawić pod `fetchPtpireeGeneratorCertificatesPage` (TS2322) —
+  // a test i tak „przechodził", bo sprawdzał wyłącznie nazwy widoczne na ekranie.
+  const pozycjeStrony: PtpireeGeneratorCertificateCatalogType[] = [
     {
       id: 'wipwc-1-2-w3254',
       name: 'Huawei SUN2000-215KTL-H3',
       manufacturer: 'Huawei Digital Power',
+      model: 'SUN2000-215KTL-H3',
+      device_type: 'PV_INVERTER',
       document_number: 'DEKRA/2025/3254',
+      document_acceptance_date: '2025-03-14',
+      wos_version: '2.1',
+      wipwc_version: '1.2',
+      ppm_scope: 'B',
+      source_url: 'https://ptpiree.pl/wipwc/1-2-w3254',
+      manufacturer_key: 'huawei-digital-power',
+      model_key: 'sun2000-215ktl-h3',
     },
     {
       id: 'wipwc-1-2-w0001',
       name: 'Afore HNS3000TL',
       manufacturer: 'Afore New Energy',
+      model: 'HNS3000TL',
+      device_type: 'PV_INVERTER',
       document_number: 'TUV/2024/0001',
+      document_acceptance_date: '2024-07-02',
+      wos_version: '2.0',
+      wipwc_version: '1.2',
+      ppm_scope: 'A',
+      source_url: 'https://ptpiree.pl/wipwc/1-2-w0001',
+      manufacturer_key: 'afore-new-energy',
+      model_key: 'hns3000tl',
     },
   ];
 

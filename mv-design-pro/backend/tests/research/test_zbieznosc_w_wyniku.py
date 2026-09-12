@@ -21,6 +21,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from dynamic_lab.calkowanie import (
+    DT_KALIBRACJI_S,
     INTEGRATORY,
     DziennikKrokow,
     EulerNiejawny,
@@ -236,8 +237,8 @@ def test_kryterium_komponentowe_nie_zeruje_sie_dla_stanu_bliskiego_zeru() -> Non
     kryterium = KryteriumZbieznosci()
     x = np.array([0.5, 1.0, 0.8, 2.5])
     maly = np.array([1.0e-12, 1.0, 0.8, 2.5])
-    wagi_duze = kryterium.wagi(x, x)
-    wagi_male = kryterium.wagi(maly, maly)
+    wagi_duze = kryterium.wagi(x, x, dt=DT_KALIBRACJI_S, rzad=2)
+    wagi_male = kryterium.wagi(maly, maly, dt=DT_KALIBRACJI_S, rzad=2)
     assert wagi_male[0] < wagi_duze[0]
     assert wagi_male[0] > 0.0
 

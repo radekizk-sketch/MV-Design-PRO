@@ -68,8 +68,7 @@ SHA256_DOKUMENTU = "4502f57f72a92209798e1792b415709d4ba8f40993c1bfb054d824f68958
 DOKUMENT = {
     "producent": "ABB",
     "tytul": (
-        "SACE Emax 2 — Low voltage air circuit-breakers, "
-        "Technical catalogue, Edition 2017.01"
+        "SACE Emax 2 — Low voltage air circuit-breakers, " "Technical catalogue, Edition 2017.01"
     ),
     "numer_dokumentu": "1SDC200023D0205",
     "url": (
@@ -99,9 +98,17 @@ _WIERSZ = re.compile(
 #: Tabela zbiorcza str. 2/3 — kolejność poziomów wykonania w kolumnach.
 #: Odczytana z wiersza „Performance levels" tej strony: ``BNSHNSHVH V X``.
 _POZIOMY_ZBIORCZEJ = (
-    ("E2.2", "B"), ("E2.2", "N"), ("E2.2", "S"), ("E2.2", "H"),
-    ("E4.2", "N"), ("E4.2", "S"), ("E4.2", "H"), ("E4.2", "V"),
-    ("E6.2", "H"), ("E6.2", "V"), ("E6.2", "X"),
+    ("E2.2", "B"),
+    ("E2.2", "N"),
+    ("E2.2", "S"),
+    ("E2.2", "H"),
+    ("E4.2", "N"),
+    ("E4.2", "S"),
+    ("E4.2", "H"),
+    ("E4.2", "V"),
+    ("E6.2", "H"),
+    ("E6.2", "V"),
+    ("E6.2", "X"),
 )
 
 
@@ -288,7 +295,9 @@ def zbuduj_wyciag(sciezka_pdf: Path) -> dict[str, Any]:
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p.add_argument("--pdf", required=True, type=Path, help="katalog techniczny ABB (PDF)")
     p.add_argument("--wyjscie", type=Path, help="plik wyciągu JSON do zapisania")
     p.add_argument(

@@ -1,353 +1,461 @@
-"""Katalog mutacji z DZIAŁAJĄCYMI detektorami laboratorium.
+"""Katalog mutacji — REALNE podmiany wykonywanego kodu laboratorium.
 
-KOD BADAWCZY — patrz `backend/research/README.md`.
+KOD BADAWCZY — patrz `backend/research/README.md`. Nie jest dowodem regulacyjnym.
 
-Każda pozycja wprowadza nazwany defekt i sprawdza, czy KONKRETNY mechanizm
-laboratorium go złapie. Mutacja, której detektor nie istnieje, ma prawo tu
-przeżyć — to jest informacja o luce kwalifikacji, a nie porażka narzędzia.
+CO SIĘ ZMIENIŁO WZGLĘDEM POPRZEDNIEJ WERSJI (audyt niezależny, plan naprawy §4).
+Poprzedni katalog miał 16 pozycji i meldował „16/16 zabitych", a jego mutacje NIE
+ZMIENIAŁY KODU. Sprawdzały:
 
-Mutacje działają na KOPIACH danych scenariusza; żaden moduł laboratorium nie
-jest podmieniany w locie.
+* typy wyjątków — ``issubclass(NiezgodnaDlugoscPrzebieguError, ValueError)``,
+* wartości wyliczeń — ``StatusKroku.FAILED is not StatusKroku.STRICT_CONVERGENCE``,
+* etykiety i deklaracje rejestrów.
+
+Zarzut audytu dawał się sprawdzić wprost: po usunięciu walidacji wyniku albo po
+zastąpieniu odcisku implementacji stałym SHA kampania NADAL meldowała 16/16, bo
+żadna „mutacja" tych miejsc nie dotykała.
+
+KAŻDA POZYCJA TEGO KATALOGU:
+
+1. nazywa ZAKRES — dokładnie ten element kodu, który podmienia,
+2. instaluje defekt jako podmianę realnie wykonywanej funkcji/metody,
+3. wskazuje SONDY — testy laboratorium, które mają paść pod tym defektem,
+4. jest uruchamiana z KONTROLĄ BAZOWĄ (te same sondy bez mutacji).
+
+DZIEWIĘĆ DEFEKTÓW WYMIENIONYCH W PLANIE NAPRAWY jest pokrytych jeden do jednego:
+brak walidacji czasu, brak walidacji długości kanałów, akceptacja NaN/Inf,
+fałszywa zbieżność ścisła, zmiana znaku w równaniu wahań, usunięcie limitu
+energii magazynu, stały odcisk implementacji, błędna obsługa gałęzi równoległych,
+błędne adresowanie zdarzeń.
 """
 
 from __future__ import annotations
 
-import math
+from collections.abc import Iterator
+from contextlib import AbstractContextManager, contextmanager
+from typing import Any
+from unittest.mock import patch
 
 import numpy as np
+from numpy.typing import NDArray
 
-from dynamic_lab.benchmarki import smib
-from dynamic_lab.calkowanie import INTEGRATORY, StatusKroku
-from dynamic_lab.konwencje import czestotliwosc_hz
 from dynamic_lab.mutacje import KlasaDefektu, Mutacja
-from dynamic_lab.siec import Galaz, TopologiaSieci
-from dynamic_lab.silnik import SilnikRMS
-from dynamic_lab.tozsamosc import odcisk_implementacji, odcisk_topologii
-from dynamic_lab.wynik import (
-    NiemonotonicznaOsCzasuError,
-    NiezgodnaDlugoscPrzebieguError,
-)
-from dynamic_lab.zdarzenia import HarmonogramZdarzen, WylaczenieGalezi
+
+# ---------------------------------------------------------------------------
+# KONTRAKT WYNIKU — walidacje, bez których wynik jest nieinterpretowalny
+# ---------------------------------------------------------------------------
 
 
-def _korytarz_dwutorowy() -> TopologiaSieci:
-    return TopologiaSieci(
-        szyny=("GEN", "SYS"),
-        galezie=[
-            Galaz("GEN", "SYS", r_pu=0.0, x_pu=0.40),
-            Galaz("GEN", "SYS", r_pu=0.0, x_pu=0.40),
-        ],
-        szyny_sztywne={"SYS": complex(1.0, 0.0)},
+def _bez_kontroli_czasu() -> AbstractContextManager[None]:
+    """Usuwa kontrolę ŚCISŁEJ MONOTONICZNOŚCI osi czasu z kontraktu wyniku.
+
+    Pozostałe kontrole zostają — mutacja ma być PUNKTOWA, inaczej nie wiadomo,
+    która z nich zabiła.
+    """
+    from dynamic_lab.skonczonosc import wymagaj_skonczonosci
+    from dynamic_lab.wynik import (
+        KolizjaSygnaluError,
+        NiezgodnaDlugoscPrzebieguError,
+        WynikDynamiczny,
     )
 
+    def zmutowany(self: Any) -> None:
+        n = len(self.czas_s)
+        wymagaj_skonczonosci(self.czas_s, co="oś czasu", gdzie=self.kontrakt)
+        for sygnal in self.sygnaly:
+            wymagaj_skonczonosci(
+                sygnal.wartosci,
+                co="przebieg",
+                gdzie=f"{sygnal.klucz_pelny}@{sygnal.element_ref}",
+            )
+        for s in self.sygnaly:
+            if len(s.wartosci) != n:
+                raise NiezgodnaDlugoscPrzebieguError("mutacja: kontrola długości zachowana")
+        # MUTACJA: pętla sprawdzająca `b > a` USUNIĘTA.
+        tozsamosci = [(s.przestrzen.value, s.klucz, s.element_ref) for s in self.sygnaly]
+        if len(set(tozsamosci)) != len(tozsamosci):
+            raise KolizjaSygnaluError("mutacja: kontrola kolizji zachowana")
 
-# ---------------------------------------------------------------------------
-# FIZYKA
-# ---------------------------------------------------------------------------
+    return patch.object(WynikDynamiczny, "__post_init__", zmutowany)
 
 
-def _m_wylaczenie_rozpina_korytarz() -> bool:
-    """M-FIZ-01: wyłączenie JEDNEGO toru nie może rozpiąć korytarza dwutorowego.
+def _bez_kontroli_dlugosci_kanalow() -> AbstractContextManager[None]:
+    """Usuwa kontrolę RÓWNOLEGŁOŚCI SERII (długość przebiegu = długość osi czasu)."""
+    from dynamic_lab.skonczonosc import wymagaj_skonczonosci
+    from dynamic_lab.wynik import (
+        KolizjaSygnaluError,
+        NiemonotonicznaOsCzasuError,
+        WynikDynamiczny,
+    )
 
-    Detektor: tożsamość gałęzi + zakaz niejednoznacznego adresowania parą szyn.
-    To jest defekt ODTWORZONY na tym laboratorium: pętla bez przerwania
-    wyłączała oba tory, a ``Ybus[0,0]`` szło z ``−5j`` prosto na ``0j``.
+    def zmutowany(self: Any) -> None:
+        wymagaj_skonczonosci(self.czas_s, co="oś czasu", gdzie=self.kontrakt)
+        for sygnal in self.sygnaly:
+            wymagaj_skonczonosci(
+                sygnal.wartosci,
+                co="przebieg",
+                gdzie=f"{sygnal.klucz_pelny}@{sygnal.element_ref}",
+            )
+        # MUTACJA: pętla sprawdzająca `len(s.wartosci) != n` USUNIĘTA.
+        for a, b in zip(self.czas_s[:-1], self.czas_s[1:], strict=True):
+            if not b > a:
+                raise NiemonotonicznaOsCzasuError("mutacja: kontrola monotoniczności zachowana")
+        tozsamosci = [(s.przestrzen.value, s.klucz, s.element_ref) for s in self.sygnaly]
+        if len(set(tozsamosci)) != len(tozsamosci):
+            raise KolizjaSygnaluError("mutacja: kontrola kolizji zachowana")
+
+    return patch.object(WynikDynamiczny, "__post_init__", zmutowany)
+
+
+def _zdarzenie_ignoruje_tozsamosc() -> AbstractContextManager[None]:
+    """Zdarzenie wyłącza PIERWSZĄ załączoną gałąź zamiast wskazanej tożsamością.
+
+    To jest defekt adresowania w najczystszej postaci: scenariusz mówi „wyłącz
+    KABEL-A", a model wyłącza to, co akurat leży pierwsze w liście.
     """
-    topo = _korytarz_dwutorowy()
-    przed = topo.zbuduj_ybus()[0, 0]
-    po = topo.z_wylaczona_galezia_po_id("GEN-SYS#1").zbuduj_ybus()[0, 0]
-    # Korytarz ma nadal przewodzić: dokładnie połowa admitancji.
-    return abs(po - przed / 2.0) < 1.0e-12 and abs(po) > 0.0
+    from dynamic_lab.siec import TopologiaSieci
+    from dynamic_lab.zdarzenia import WylaczenieGalezi
 
+    def zmutowany(self: Any, topologia: TopologiaSieci) -> TopologiaSieci:
+        for galaz in topologia.galezie:
+            if galaz.zalaczona:
+                return topologia.z_wylaczona_galezia_po_id(galaz.ident)
+        raise ValueError("mutacja: brak załączonej gałęzi")
 
-def _m_para_szyn_nie_zgaduje() -> bool:
-    """M-FIZ-02: niejednoznaczne adresowanie MUSI być głośne, nie domyślne."""
-    topo = _korytarz_dwutorowy()
-    try:
-        topo.z_wylaczona_galezia("GEN", "SYS")
-    except ValueError:
-        return True
-    return False
-
-
-def _m_punkt_startowy_nie_jest_rownowaga() -> bool:
-    """M-FIZ-03: stan początkowy niebędący równowagą MUSI zostać odrzucony.
-
-    Detektor: kontrola ``‖f(x₀,y₀)‖`` w inicjalizacji. Bez niej symulacja bez
-    żadnego zaburzenia rusza z miejsca, a obserwator widzi przebieg przejściowy
-    bez źródła fizycznego.
-    """
-    model, moce = smib()
-    silnik = SilnikRMS(model, integrator="rk4", krok_s=0.005)
-    x0 = silnik.inicjalizuj(moce)
-    # MUTACJA: przesunięcie kąta o 5° psuje równowagę.
-    x_zepsute = x0.copy()
-    x_zepsute[0] += math.radians(5.0)
-    norma_rownowagi = silnik.norma_pochodnej(x0)
-    norma_zepsuta = silnik.norma_pochodnej(x_zepsute)
-    return norma_rownowagi < 1.0e-8 < norma_zepsuta
-
-
-def _m_bezwladnosc_wplywa_na_dynamike() -> bool:
-    """M-FIZ-04: zmiana stałej bezwładności MUSI zmienić przebieg.
-
-    Detektor: sam przebieg. Gdyby ``H`` nie wchodziło do równania ruchu (klasyczny
-    błąd „parametr czytany, ale nieużywany"), oba biegi byłyby identyczne.
-    """
-    przebiegi = []
-    for h_s in (2.0, 8.0):
-        model, moce = smib(h_s=h_s)
-        silnik = SilnikRMS(model, integrator="rk4", krok_s=0.002)
-        x0 = silnik.inicjalizuj(moce)
-        x_start = x0.copy()
-        x_start[0] += math.radians(2.0)
-        wynik = silnik.symuluj(x_start, czas_koncowy_s=1.0)
-        przebiegi.append(np.asarray(wynik.sygnal("delta_rad", "G1").wartosci))
-    roznica = float(np.max(np.abs(przebiegi[0] - przebiegi[1])))
-    return roznica > 1.0e-3
+    return patch.object(WylaczenieGalezi, "zastosuj", zmutowany)
 
 
 # ---------------------------------------------------------------------------
-# NUMERYKA
+# NUMERYKA — skończoność i status zbieżności
 # ---------------------------------------------------------------------------
 
 
-def _m_status_kroku_rozroznia_zastoj() -> bool:
-    """M-NUM-01: zastój iteracji NIE MOŻE być meldowany jako ścisła zbieżność."""
+def _akceptuje_nan_i_inf() -> AbstractContextManager[None]:
+    """``wymagaj_skonczonosci`` przestaje cokolwiek wymagać.
+
+    Podmieniane jest JEDNO miejsce, przez które przechodzą wszystkie kontrole
+    skończoności laboratorium — dlatego ta mutacja bada, czy to miejsce jest
+    naprawdę jedynym źródłem prawdy, czy tylko tak wygląda.
+    """
+    import dynamic_lab.calkowanie as calkowanie
+    import dynamic_lab.silnik as silnik
+    import dynamic_lab.skonczonosc as skonczonosc
+    import dynamic_lab.wynik as wynik
+
+    def zmutowany(*_args: Any, **_kwargs: Any) -> None:
+        return None
+
+    @contextmanager
+    def instaluj() -> Iterator[None]:
+        with (
+            patch.object(skonczonosc, "wymagaj_skonczonosci", zmutowany),
+            patch.object(calkowanie, "wymagaj_skonczonosci", zmutowany),
+            patch.object(silnik, "wymagaj_skonczonosci", zmutowany),
+            patch.object(wynik, "wymagaj_skonczonosci", zmutowany),
+        ):
+            yield
+
+    return instaluj()
+
+
+def _falszywa_zbieznosc_scisla() -> AbstractContextManager[None]:
+    """Krok metody jawnej melduje ``STRICT_CONVERGENCE`` BEZWARUNKOWO.
+
+    Dokładnie stan sprzed naprawy §2: „nie ma układu nieliniowego, więc nie ma
+    czego nie zbiec" stosowane też wtedy, gdy krok nie wyprodukował liczb.
+    """
+    import dynamic_lab.calkowanie as calkowanie
+
+    def zmutowany(
+        ewaluacje: int, x1: NDArray[np.float64], *, metoda: str
+    ) -> calkowanie.WynikKrokuNieliniowego:
+        return calkowanie.WynikKrokuNieliniowego(
+            status=calkowanie.StatusKroku.STRICT_CONVERGENCE,
+            kryterium=calkowanie.KRYTERIUM_DOMYSLNE,
+            rho=0.0,
+            residuum_maks=0.0,
+            iteracje=0,
+            ewaluacje_jakobianu=0,
+            ewaluacje_f=ewaluacje,
+            przyczyna="mutacja: status bezwarunkowy",
+        )
+
+    return patch.object(calkowanie, "_sprawozdanie_metody_jawnej", zmutowany)
+
+
+def _tolerancja_kroku_przestaje_zalezec_od_kroku() -> AbstractContextManager[None]:
+    """Tolerancja równania kroku znów STAŁA, niezależna od ``dt``.
+
+    Odtworzenie defektu ZNALEZIONEGO przy okazji §5 i naprawionego u źródła.
+    Przy stałej tolerancji błąd rozwiązania równania kroku kumuluje się liniowo z
+    liczbą kroków, a błąd obcięcia maleje jak ``dt^p`` — poniżej pewnego kroku
+    wygrywa pierwszy i ZAGĘSZCZANIE KROKU POGARSZA WYNIK. Zmierzony dryf całki
+    pierwszej (trapez, SMIB): 2,54e-08 -> 6,36e-09 -> 7,57e-06 -> 1,55e-05.
+
+    Mutacja istnieje, bo kampania TEGO NIE ZŁAPAŁA: defekt przeżył komplet
+    dziesięciu mutacji i wyszedł dopiero z pomiaru drabiny kroku. Luka pokrycia
+    wykryta w ten sposób jest wpisywana do katalogu, a nie odnotowywana.
+    """
+    import dynamic_lab.calkowanie as calkowanie
+
+    def zmutowany(dt: float, rzad: int) -> float:
+        return 1.0
+
+    return patch.object(calkowanie, "wspolczynnik_kroku", zmutowany)
+
+
+def _rzutowanie_przyjmuje_wartosci_niepoprawne() -> AbstractContextManager[None]:
+    """Nakładka niezmienników RZUTUJE ``NaN`` na granicę przedziału.
+
+    Odtworzenie mechanizmu sprzed naprawy §2: ``NaN`` przechodził przez predykat
+    przedziału jako „poza zakresem", a przez wybór granicy jako „za duży".
+    """
+    from dynamic_lab.calkowanie import IntegratorZNiezmiennikami, ZapisRzutowania
+
+    def zmutowany(self: Any, x1: NDArray[np.float64], chwila_s: float) -> NDArray[np.float64]:
+        wynik = x1
+        for ogr in self.ograniczenia:
+            wartosc = float(wynik[ogr.indeks])
+            if ogr.dol <= wartosc <= ogr.gora:
+                continue
+            granica = "dol" if wartosc < ogr.dol else "gora"
+            nowa = ogr.dol if wartosc < ogr.dol else ogr.gora
+            if wynik is x1:
+                wynik = x1.copy()
+            wynik[ogr.indeks] = nowa
+            self.dziennik.zapisz(
+                ZapisRzutowania(
+                    chwila_s=chwila_s,
+                    indeks=ogr.indeks,
+                    nazwa=ogr.nazwa,
+                    znaczenie=ogr.znaczenie,
+                    wartosc_przed=wartosc,
+                    wartosc_po=nowa,
+                    granica=granica,
+                )
+            )
+        return wynik
+
+    return patch.object(IntegratorZNiezmiennikami, "_rzutuj", zmutowany)
+
+
+# ---------------------------------------------------------------------------
+# FIZYKA — równanie ruchu, energia magazynu, topologia
+# ---------------------------------------------------------------------------
+
+
+def _odwrocony_znak_w_rownaniu_wahan() -> AbstractContextManager[None]:
+    """``d(delta)/dt = -OMEGA_S·(omega - 1)`` — zgubiony znak w równaniu wahań.
+
+    Klasyczny defekt symulacji: przebieg nadal wygląda jak oscylacja, więc oko
+    go nie łapie. Łapie go dopiero sprawdzenie równania na ZAPISANEJ trajektorii.
+    """
+    from dynamic_lab.konwencje import OMEGA_S
+    from dynamic_lab.urzadzenia import MaszynaSynchroniczna4Rzedu
+
+    oryginalna = MaszynaSynchroniczna4Rzedu.pochodne_bez_regulatorow
+
+    def zmutowany(
+        self: Any,
+        x: NDArray[np.float64],
+        v_szyny: complex,
+        *,
+        pm_pu: float,
+        efd_pu: float,
+    ) -> NDArray[np.float64]:
+        dx = oryginalna(self, x, v_szyny, pm_pu=pm_pu, efd_pu=efd_pu).copy()
+        # MUTACJA: znak pierwszego równania ruchu odwrócony.
+        dx[0] = -OMEGA_S * (float(x[1]) - 1.0)
+        return dx
+
+    return patch.object(MaszynaSynchroniczna4Rzedu, "pochodne_bez_regulatorow", zmutowany)
+
+
+def _magazyn_bez_limitu_energii() -> AbstractContextManager[None]:
+    """Bramka okna SOC przestaje ograniczać moc — magazyn oddaje bez końca.
+
+    Defekt P0 z §1 w czystej postaci: zapas energii istnieje jako stan, ale nie
+    wpływa na moc, więc wsparcie częstotliwości trwa w nieskończoność.
+    """
+    from dynamic_lab.urzadzenia_oze import MagazynEnergiiBESS
+
+    def zmutowany(self: Any, soc: float, p_pu: float) -> float:
+        return 1.0
+
+    return patch.object(MagazynEnergiiBESS, "bramka_energii", zmutowany)
+
+
+def _wylaczenie_rozpina_korytarz() -> AbstractContextManager[None]:
+    """Wyłączenie gałęzi po tożsamości wyłącza WSZYSTKIE gałęzie tej pary szyn.
+
+    Odtworzenie defektu sprzed naprawy: przy dwóch torach równoległych
+    „wyłącz jeden tor" odcinało maszynę od systemu.
+    """
+    from dataclasses import replace
+
+    from dynamic_lab.siec import TopologiaSieci
+
+    def zmutowany(self: Any, ident: str) -> TopologiaSieci:
+        cel = next((g for g in self.galezie if g.ident == ident), None)
+        if cel is None:
+            raise ValueError(f"Brak gałęzi o tożsamości „{ident}”.")
+        para = {cel.od_szyny, cel.do_szyny}
+        nowe = [
+            replace(g, zalaczona=False) if {g.od_szyny, g.do_szyny} == para else g
+            for g in self.galezie
+        ]
+        return replace(self, galezie=nowe)
+
+    return patch.object(TopologiaSieci, "z_wylaczona_galezia_po_id", zmutowany)
+
+
+# ---------------------------------------------------------------------------
+# TOŻSAMOŚĆ — odcisk implementacji
+# ---------------------------------------------------------------------------
+
+
+def _staly_odcisk_implementacji() -> AbstractContextManager[None]:
+    """``odcisk_implementacji`` zwraca STAŁĄ zamiast skrótu treści modułów.
+
+    Zarzut audytu wprost: „po zastąpieniu odcisku stałym SHA kampania nadal
+    zgłasza 16/16". Ta mutacja robi dokładnie to.
+    """
+    import dynamic_lab.tozsamosc as tozsamosc
+
+    def zmutowany() -> str:
+        return "0" * 64
+
+    @contextmanager
+    def instaluj() -> Iterator[None]:
+        with (
+            patch.object(tozsamosc, "odcisk_implementacji", zmutowany),
+            patch.object(tozsamosc, "_policz_odcisk_implementacji", zmutowany),
+        ):
+            yield
+
+    return instaluj()
+
+
+# ---------------------------------------------------------------------------
+# KATALOG
+# ---------------------------------------------------------------------------
+
+SONDY_KONTRAKTU = ("tests/research/test_skonczonosc_i_zbieznosc.py",)
+SONDY_BILANSU = ("tests/research/test_bilans_energii_magazynu.py",)
+SONDY_TOPOLOGII = ("tests/research/test_tory_rownolegle.py",)
+SONDY_TOZSAMOSCI = ("tests/research/test_tozsamosc_implementacji.py",)
+SONDY_FIZYKI = ("tests/research/test_niezmienniki_fizyczne.py",)
+SONDY_RZEDU_METODY = ("tests/research/test_calkowanie_zbieznosc.py",)
+
+
+def mutacje_laboratorium() -> tuple[Mutacja, ...]:
+    """Komplet mutacji. Kolejność jest stabilna — raport ma być porównywalny."""
     return (
-        StatusKroku.STAGNATED_AT_NUMERICAL_FLOOR is not StatusKroku.STRICT_CONVERGENCE
-        and StatusKroku.FAILED is not StatusKroku.STRICT_CONVERGENCE
+        Mutacja(
+            ident="M-KON-01",
+            opis="Kontrakt wyniku przestaje sprawdzać ścisłą monotoniczność osi czasu",
+            klasa=KlasaDefektu.KONTRAKT,
+            zakres="dynamic_lab.wynik.WynikDynamiczny.__post_init__",
+            oczekiwany_detektor="WynikDynamiczny.__post_init__ → NiemonotonicznaOsCzasuError",
+            sondy=SONDY_KONTRAKTU,
+            zastosuj=_bez_kontroli_czasu,
+        ),
+        Mutacja(
+            ident="M-KON-02",
+            opis="Kontrakt wyniku przestaje sprawdzać długość przebiegów",
+            klasa=KlasaDefektu.KONTRAKT,
+            zakres="dynamic_lab.wynik.WynikDynamiczny.__post_init__",
+            oczekiwany_detektor="WynikDynamiczny.__post_init__ → NiezgodnaDlugoscPrzebieguError",
+            sondy=SONDY_KONTRAKTU,
+            zastosuj=_bez_kontroli_dlugosci_kanalow,
+        ),
+        Mutacja(
+            ident="M-KON-03",
+            opis="Zdarzenie topologiczne ignoruje tożsamość i wyłącza pierwszą gałąź",
+            klasa=KlasaDefektu.KONTRAKT,
+            zakres="dynamic_lab.zdarzenia.WylaczenieGalezi.zastosuj",
+            oczekiwany_detektor="test permutacji rekordów — to samo zdarzenie, ten sam komponent",
+            sondy=SONDY_TOPOLOGII,
+            zastosuj=_zdarzenie_ignoruje_tozsamosc,
+        ),
+        Mutacja(
+            ident="M-NUM-01",
+            opis="Laboratorium akceptuje NaN i Inf we wszystkich kontrolach skończoności",
+            klasa=KlasaDefektu.NUMERYKA,
+            zakres="dynamic_lab.skonczonosc.wymagaj_skonczonosci (4 miejsca importu)",
+            oczekiwany_detektor="wymagaj_skonczonosci → WartoscNieskonczonaError",
+            sondy=SONDY_KONTRAKTU,
+            zastosuj=_akceptuje_nan_i_inf,
+        ),
+        Mutacja(
+            ident="M-NUM-02",
+            opis="Krok metody jawnej melduje zbieżność ścisłą bezwarunkowo",
+            klasa=KlasaDefektu.NUMERYKA,
+            zakres="dynamic_lab.calkowanie._sprawozdanie_metody_jawnej",
+            oczekiwany_detektor="kontrola skończoności stanu po kroku",
+            sondy=SONDY_KONTRAKTU,
+            zastosuj=_falszywa_zbieznosc_scisla,
+        ),
+        Mutacja(
+            ident="M-NUM-03",
+            opis="Nakładka niezmienników rzutuje NaN na granicę przedziału",
+            klasa=KlasaDefektu.NUMERYKA,
+            zakres="dynamic_lab.calkowanie.IntegratorZNiezmiennikami._rzutuj",
+            oczekiwany_detektor="kontrola skończoności przed rzutowaniem",
+            sondy=SONDY_KONTRAKTU,
+            zastosuj=_rzutowanie_przyjmuje_wartosci_niepoprawne,
+        ),
+        Mutacja(
+            ident="M-NUM-04",
+            opis="Tolerancja równania kroku przestaje być skalowana krokiem",
+            klasa=KlasaDefektu.NUMERYKA,
+            zakres="dynamic_lab.calkowanie.wspolczynnik_kroku",
+            oczekiwany_detektor="drabina kroku po całce pierwszej (rząd metody)",
+            sondy=SONDY_RZEDU_METODY,
+            zastosuj=_tolerancja_kroku_przestaje_zalezec_od_kroku,
+        ),
+        Mutacja(
+            ident="M-FIZ-01",
+            opis="Odwrócony znak w pierwszym równaniu ruchu wirnika",
+            klasa=KlasaDefektu.FIZYKA,
+            zakres="dynamic_lab.urzadzenia.MaszynaSynchroniczna4Rzedu.pochodne_bez_regulatorow",
+            oczekiwany_detektor="sprawdzenie równania ruchu na zapisanej trajektorii",
+            sondy=SONDY_FIZYKI,
+            zastosuj=_odwrocony_znak_w_rownaniu_wahan,
+        ),
+        Mutacja(
+            ident="M-FIZ-02",
+            opis="Magazyn traci ograniczenie energią — bramka okna SOC zawsze przepuszcza",
+            klasa=KlasaDefektu.FIZYKA,
+            zakres="dynamic_lab.urzadzenia_oze.MagazynEnergiiBESS.bramka_energii",
+            oczekiwany_detektor="bilans ΔE_zasobu = ∫P_AC dt oraz granice okna SOC",
+            sondy=SONDY_BILANSU,
+            zastosuj=_magazyn_bez_limitu_energii,
+        ),
+        Mutacja(
+            ident="M-FIZ-03",
+            opis="Wyłączenie jednego toru rozpina cały korytarz dwutorowy",
+            klasa=KlasaDefektu.FIZYKA,
+            zakres="dynamic_lab.siec.TopologiaSieci.z_wylaczona_galezia_po_id",
+            oczekiwany_detektor="test korytarza dwutorowego — Ybus po wyłączeniu jednego toru",
+            sondy=SONDY_TOPOLOGII,
+            zastosuj=_wylaczenie_rozpina_korytarz,
+        ),
+        Mutacja(
+            ident="M-TOZ-01",
+            opis="Odcisk implementacji jest stałą zamiast skrótu treści modułów",
+            klasa=KlasaDefektu.TOZSAMOSC,
+            zakres="dynamic_lab.tozsamosc.odcisk_implementacji",
+            oczekiwany_detektor="test: zmiana jednego znaku w module zmienia odcisk",
+            sondy=SONDY_TOZSAMOSCI,
+            zastosuj=_staly_odcisk_implementacji,
+        ),
     )
 
 
-def _m_rzad_integratora_jest_mierzalny() -> bool:
-    """M-NUM-02: integratory o różnym rzędzie MUSZĄ dawać różny błąd.
-
-    Detektor: porównanie na tym samym kroku. Gdyby rząd był tylko etykietą,
-    Euler jawny i RK4 dałyby ten sam przebieg.
-    """
-    wyniki = {}
-    for nazwa in ("euler_jawny", "rk4"):
-        model, moce = smib()
-        silnik = SilnikRMS(model, integrator=nazwa, krok_s=0.01)
-        x0 = silnik.inicjalizuj(moce)
-        x_start = x0.copy()
-        x_start[0] += math.radians(2.0)
-        wynik = silnik.symuluj(x_start, czas_koncowy_s=1.0)
-        wyniki[nazwa] = np.asarray(wynik.sygnal("delta_rad", "G1").wartosci)
-    return float(np.max(np.abs(wyniki["euler_jawny"] - wyniki["rk4"]))) > 1.0e-6
-
-
-def _m_rejestr_integratorow_deklaruje_rzad() -> bool:
-    """M-NUM-03: każdy integrator zna swój rząd i to, czy jest jawny."""
-    return all(
-        isinstance(i.rzad, int) and i.rzad >= 1 and isinstance(i.jawny, bool)
-        for i in INTEGRATORY.values()
-    )
-
-
-def _m_baza_czestotliwosci_jest_uzywana() -> bool:
-    """M-NUM-04: prędkość w p.u. MUSI przeliczać się na częstotliwość, nie być etykietą.
-
-    Detektor: `konwencje.czestotliwosc_hz`. Funkcja przyjmuje prędkość w p.u., więc
-    odchyłka prędkości MUSI dawać odchyłkę częstotliwości — gdyby zwracała stałą
-    bazową, przebieg częstotliwości w wyniku byłby płaski niezależnie od dynamiki.
-    """
-    f_synchroniczna = czestotliwosc_hz(1.0)
-    f_podniesiona = czestotliwosc_hz(1.01)
-    return f_synchroniczna > 0.0 and abs(f_podniesiona - f_synchroniczna * 1.01) < 1.0e-9
-
-
-# ---------------------------------------------------------------------------
-# KONTRAKT
-# ---------------------------------------------------------------------------
-
-
-def _m_kanal_krotszy_odrzucony() -> bool:
-    """M-KON-01: przebieg o niezgodnej długości kanału nie może powstać."""
-    return issubclass(NiezgodnaDlugoscPrzebieguError, ValueError)
-
-
-def _m_czas_niemonotoniczny_odrzucony() -> bool:
-    """M-KON-02: cofnięta oś czasu nie może powstać."""
-    return issubclass(NiemonotonicznaOsCzasuError, ValueError)
-
-
-def _m_zdarzenie_bez_adresu_odrzucone() -> bool:
-    """M-KON-03: zdarzenie, które nie wskazuje CZEGO dotyczy, nie ma prawa powstać."""
-    try:
-        WylaczenieGalezi(czas_s=1.0)
-    except ValueError:
-        return True
-    return False
-
-
-def _m_zdarzenie_na_nieistniejacy_cel() -> bool:
-    """M-KON-04: literówka w celu zdarzenia MUSI być głośna, nie cicha."""
-    topo = _korytarz_dwutorowy()
-    try:
-        WylaczenieGalezi(czas_s=1.0, ident="NIE_MA_TAKIEJ").zastosuj(topo)
-    except ValueError:
-        return True
-    return False
-
-
-# ---------------------------------------------------------------------------
-# TOŻSAMOŚĆ
-# ---------------------------------------------------------------------------
-
-
-def _m_odcisk_topologii_reaguje_na_zmiane() -> bool:
-    """M-TOZ-01: zmiana topologii MUSI zmienić jej odcisk.
-
-    Detektor: `odcisk_topologii`. Odcisk niereagujący na wyłączenie gałęzi
-    pozwoliłby wynikowi twierdzić, że policzono inną sieć niż policzono.
-    """
-    topo = _korytarz_dwutorowy()
-    przed = odcisk_topologii(topo, s_bazowa_mva=100.0)
-    po = odcisk_topologii(topo.z_wylaczona_galezia_po_id("GEN-SYS#1"), s_bazowa_mva=100.0)
-    return przed != po
-
-
-def _m_odcisk_implementacji_jest_trescia() -> bool:
-    """M-TOZ-02: odcisk implementacji jest SHA treści, nie deklarowanym numerem."""
-    odcisk = odcisk_implementacji()
-    return len(odcisk) == 64 and all(c in "0123456789abcdef" for c in odcisk)
-
-
-def _m_tory_rownolegle_maja_rozne_tozsamosci() -> bool:
-    """M-TOZ-03: dwa tory na tej samej parze szyn MUSZĄ być rozróżnialne."""
-    identy = _korytarz_dwutorowy().identy_galezi
-    return len(set(identy)) == len(identy) == 2
-
-
-def _m_zdarzenie_nie_jest_przeskakiwane() -> bool:
-    """M-TOZ-04: siatka czasu MUSI zawierać chwilę zdarzenia.
-
-    Detektor: `SilnikRMS.siatka_czasu`. Krok przelatujący nad chwilą zdarzenia
-    dałby przebieg, w którym zdarzenie zaszło w innej chwili niż zapisano — a
-    norma residuum tego nie pokaże.
-    """
-    model, _ = smib()
-    silnik = SilnikRMS(model, integrator="rk4", krok_s=0.07)
-    harmonogram = HarmonogramZdarzen([WylaczenieGalezi(czas_s=0.5, od_szyny="GEN", do_szyny="SYS")])
-    siatka = silnik.siatka_czasu(1.0, harmonogram)
-    return any(abs(t - 0.5) < 1.0e-9 for t in siatka)
-
-
-#: Komplet mutacji laboratorium. Rozszerzanie jest zamierzone — każda nowa
-#: pozycja musi nieść NAZWANY detektor.
-KATALOG_MUTACJI: tuple[Mutacja, ...] = (
-    Mutacja(
-        "M-FIZ-01",
-        "Wyłączenie jednego toru rozpina korytarz",
-        KlasaDefektu.FIZYKA,
-        "tożsamość gałęzi + Ybus po zmianie topologii",
-        _m_wylaczenie_rozpina_korytarz,
-    ),
-    Mutacja(
-        "M-FIZ-02",
-        "Niejednoznaczna para szyn wybiera po cichu",
-        KlasaDefektu.FIZYKA,
-        "kontrola jednoznaczności w z_wylaczona_galezia",
-        _m_para_szyn_nie_zgaduje,
-    ),
-    Mutacja(
-        "M-FIZ-03",
-        "Punkt startowy niebędący równowagą",
-        KlasaDefektu.FIZYKA,
-        "kontrola ‖f(x0,y0)‖ w inicjalizacji",
-        _m_punkt_startowy_nie_jest_rownowaga,
-    ),
-    Mutacja(
-        "M-FIZ-04",
-        "Bezwładność czytana, ale nieużywana",
-        KlasaDefektu.FIZYKA,
-        "przebieg dla dwóch wartości H",
-        _m_bezwladnosc_wplywa_na_dynamike,
-    ),
-    Mutacja(
-        "M-NUM-01",
-        "Zastój meldowany jako zbieżność",
-        KlasaDefektu.NUMERYKA,
-        "rozłączne stany StatusKroku",
-        _m_status_kroku_rozroznia_zastoj,
-    ),
-    Mutacja(
-        "M-NUM-02",
-        "Rząd metody jest tylko etykietą",
-        KlasaDefektu.NUMERYKA,
-        "porównanie przebiegów euler_jawny vs rk4",
-        _m_rzad_integratora_jest_mierzalny,
-    ),
-    Mutacja(
-        "M-NUM-03",
-        "Integrator bez zadeklarowanego rzędu",
-        KlasaDefektu.NUMERYKA,
-        "rejestr INTEGRATORY",
-        _m_rejestr_integratorow_deklaruje_rzad,
-    ),
-    Mutacja(
-        "M-NUM-04",
-        "Częstotliwość bazowa jako stała ozdobna",
-        KlasaDefektu.NUMERYKA,
-        "konwencje.czestotliwosc_hz",
-        _m_baza_czestotliwosci_jest_uzywana,
-    ),
-    Mutacja(
-        "M-KON-01",
-        "Kanał niezgodnej długości",
-        KlasaDefektu.KONTRAKT,
-        "NiezgodnaDlugoscPrzebieguError",
-        _m_kanal_krotszy_odrzucony,
-    ),
-    Mutacja(
-        "M-KON-02",
-        "Cofnięta oś czasu",
-        KlasaDefektu.KONTRAKT,
-        "NiemonotonicznaOsCzasuError",
-        _m_czas_niemonotoniczny_odrzucony,
-    ),
-    Mutacja(
-        "M-KON-03",
-        "Zdarzenie bez wskazanego celu",
-        KlasaDefektu.KONTRAKT,
-        "walidacja WylaczenieGalezi przy budowie",
-        _m_zdarzenie_bez_adresu_odrzucone,
-    ),
-    Mutacja(
-        "M-KON-04",
-        "Zdarzenie na nieistniejący cel",
-        KlasaDefektu.KONTRAKT,
-        "kontrola celu w topologii",
-        _m_zdarzenie_na_nieistniejacy_cel,
-    ),
-    Mutacja(
-        "M-TOZ-01",
-        "Odcisk topologii nie reaguje na zmianę",
-        KlasaDefektu.TOZSAMOSC,
-        "odcisk_topologii",
-        _m_odcisk_topologii_reaguje_na_zmiane,
-    ),
-    Mutacja(
-        "M-TOZ-02",
-        "Odcisk implementacji jako numer wersji",
-        KlasaDefektu.TOZSAMOSC,
-        "odcisk_implementacji z treści plików",
-        _m_odcisk_implementacji_jest_trescia,
-    ),
-    Mutacja(
-        "M-TOZ-03",
-        "Tory równoległe nierozróżnialne",
-        KlasaDefektu.TOZSAMOSC,
-        "deterministyczne nadanie ident",
-        _m_tory_rownolegle_maja_rozne_tozsamosci,
-    ),
-    Mutacja(
-        "M-TOZ-04",
-        "Zdarzenie przeskoczone krokiem",
-        KlasaDefektu.TOZSAMOSC,
-        "SilnikRMS.siatka_czasu",
-        _m_zdarzenie_nie_jest_przeskakiwane,
-    ),
-)
+def mutacja_po_identyfikatorze(ident: str) -> Mutacja:
+    """Mutacja o danym identyfikatorze — wejście procesu potomnego sond."""
+    for mutacja in mutacje_laboratorium():
+        if mutacja.ident == ident:
+            return mutacja
+    dostepne = ", ".join(m.ident for m in mutacje_laboratorium())
+    raise KeyError(f"Nieznana mutacja „{ident}”. Dostępne: {dostepne}")

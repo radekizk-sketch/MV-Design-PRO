@@ -5,11 +5,15 @@ import { ReadinessLivePanel } from '../ReadinessLivePanel';
 import type { ReadinessIssue, FixAction } from '../../types';
 
 function makeFixAction(): FixAction {
+  // POLA KONTRAKTU `FixAction`, nie wymyślone nazwy. Poprzednia fikstura miała
+  // `type`, `target_element_id` i `payload` — trzy klucze, których kontrakt nie
+  // zna (TS2353), więc test opisywał akcję naprawczą w kształcie, którego
+  // produkt nigdy nie wystawia.
   return {
-    type: 'OPEN_MODAL',
+    action_type: 'OPEN_MODAL',
+    element_ref: 'line_sn_1',
     modal_type: 'catalog_select',
-    target_element_id: 'line_sn_1',
-    payload: { panel: 'Katalog' },
+    payload_hint: { panel: 'Katalog' },
   };
 }
 
@@ -50,7 +54,11 @@ describe('ReadinessLivePanel — integracja działań naprawczych', () => {
     fireEvent.click(screen.getByText('Skonfiguruj'));
     expect(onFixAction).toHaveBeenCalledTimes(1);
     expect(onFixAction).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'OPEN_MODAL', modal_type: 'catalog_select' }),
+      // Pole kontraktu nazywa się `action_type`, nie `type`. Asercja pytała o
+      // klucz, którego `FixAction` nie ma — `objectContaining` z nieistniejącym
+      // polem przechodziło, dopóki fikstura też go miała, więc test sprawdzał
+      // zgodność DWÓCH BŁĘDÓW ze sobą, a nie z kontraktem produktu.
+      expect.objectContaining({ action_type: 'OPEN_MODAL', modal_type: 'catalog_select' }),
       'line_sn_1',
     );
 
@@ -106,6 +114,8 @@ describe('ReadinessLivePanel — kanoniczny priorytet (V12K-206)', () => {
         ]}
         status="FAIL"
         loading={false}
+        onNavigateToElement={() => {}}
+        onFixAction={() => {}}
       />,
     );
 
@@ -127,6 +137,8 @@ describe('ReadinessLivePanel — kanoniczny priorytet (V12K-206)', () => {
         ]}
         status="FAIL"
         loading={false}
+        onNavigateToElement={() => {}}
+        onFixAction={() => {}}
       />,
     );
 
@@ -146,6 +158,8 @@ describe('ReadinessLivePanel — kanoniczny priorytet (V12K-206)', () => {
         ]}
         status="FAIL"
         loading={false}
+        onNavigateToElement={() => {}}
+        onFixAction={() => {}}
       />,
     );
 

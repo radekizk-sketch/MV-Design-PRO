@@ -58,7 +58,7 @@ z defektów P0 audytu: model nazwany „6-rzędowym" miał 2 stany).
 | `dynamic_lab/wzorzec_natywny.py` | walidacja MAPOWANIA parametrów na przypadku autorstwa ANDES (`cases/smib/SMIB.xlsx`) — sprawdza, czy rozumiemy wejście |
 | `dynamic_lab/tozsamosc.py` | deterministyczna TOŻSAMOŚĆ: postać kanoniczna parametrów (rekurencyjnie po dataklasach, z jawną deklaracją pól pomijanych), odcisk scenariusza (migawka + punkt pracy + nastawy solvera + harmonogram) i odcisk topologii (wszystko, co wchodzi do Ybus) |
 | `dynamic_lab/dowod_walidacji.py` | PROTOTYP D-09: stopień dowodowy WYPROWADZANY z zakresu walidacji, nie nadawany |
-| `dynamic_lab/wzorzec_trajektoria.py` | dowód **C1/W3 w dziedzinie czasu**: błąd trajektorii PUNKT PO PUNKCIE wobec ANDES (`TDS`, nie `EIG`) na wyłączeniu jednego z dwóch torów równoległych — domyka wiersz „NIE ZMIERZONY” z §5.2 pakietu decyzyjnego |
+| `dynamic_lab/wzorzec_trajektoria.py` | **cross-check NUMERYCZNY** trajektorii wobec ANDES (`TDS`, nie `EIG`) na wyłączeniu jednego z dwóch torów równoległych: błąd punkt-po-punkcie raportowany ODCINKAMI (przed / okno przełączenia / po), z zakazem ekstrapolacji, kontrolą osi czasu i formalnym kryterium odbioru. Rozstrzyga, CZYJ jest błąd, przez TRZECIEGO ARBITRA — całkę pierwszą maszyny klasycznej przy `D = 0`. **Nie jest walidacją fizyczną**: oba narzędzia całkują to samo równanie |
 | `dynamic_lab/mutacje.py` | rama KAMPANII MUTACYJNEJ: nazwany defekt + wskazany detektor; trzy wyniki (ZABITA / PRZEZYLA / BLAD_WYKONANIA), bo wyjatek w scenariuszu nie jest zabiciem |
 | `dynamic_lab/katalog_mutacji.py` | konkretne mutacje wpiete w DZIALAJACE detektory laboratorium (fizyka, numeryka, kontrakt, tozsamosc) |
 

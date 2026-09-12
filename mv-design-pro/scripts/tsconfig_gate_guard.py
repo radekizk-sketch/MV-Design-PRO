@@ -186,7 +186,19 @@ POMIJANE_KATALOGI = {
 #     w `coverage-matrix.test.ts`, TS6133 urwane asercje w
 #     `property-grid.test.ts` i `power-flow-comparison.test.ts`, TS2345
 #     zawężona sygnatura mocka w `downloadSldExport.test.ts`).
-BUDZET_BLEDOW_POZA_BRAMKA = 356
+#   * Pomiar 2026-09-12 (plan naprawy §8): 356 -> 344. Naprawione U ŹRÓDŁA,
+#     bez wyciszeń, w sześciu plikach testowych, które opisywały dane w kształcie
+#     NIEISTNIEJĄCYM w kontraktach produktu: nieużywane importy typów
+#     (`type-catalog.test.ts`), fikstura `ReadinessEntry` bez `element_ref`
+#     i `severity` (`app-state/store.test.ts`), przekładnik „COMBINED" spoza unii
+#     `CatalogListItem` i wykaz PTPiREE bez wymaganych pól
+#     (`TypeLibraryBrowser.test.tsx`), zawężenie typu przez zmienne lokalne
+#     zamiast przez predykat w `boolean` (`api-sorting.test.ts`), `afterEach`
+#     zwracający `VitestUtils` (`converterTypesPtpiree.test.ts`), niewpięta stała
+#     oczekiwań (`EngineeringReadinessPanel.test.ts` — dopisana asercja, nie
+#     skasowana stała) oraz `FixAction` o polach `type`/`target_element_id`/
+#     `payload`, których kontrakt nie zna (`readinessLivePanel.integration.test.tsx`).
+BUDZET_BLEDOW_POZA_BRAMKA = 344
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

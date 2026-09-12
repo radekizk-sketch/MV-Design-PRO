@@ -422,7 +422,7 @@ def test_znacznik_dwie_linie_wyzej_nie_zwalnia() -> None:
 def test_dwa_znaki_zapytania_po_literze_sa_trafieniem() -> None:
     """Dokładny tekst z `enm/domain_operations.py` sprzed naprawy."""
     # mojibake-guard: probka celowa — uszkodzony zapis JEST danymi tej asercji
-    assert len(znajdz_trafienia(["            \"Najpierw przepi??/usun?? pola.\","])) == 1
+    assert len(znajdz_trafienia(['            "Najpierw przepi??/usun?? pola.",'])) == 1
 
 
 def test_dwa_znaki_zapytania_w_docstringu_sa_trafieniem() -> None:

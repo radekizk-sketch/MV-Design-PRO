@@ -170,9 +170,24 @@ class BladSolvera:
     stan_skonczony: bool
     """Czy wektor stanu był skończony tuż przed niepowodzeniem (NaN/Inf = False)."""
     stany_niesksonczone: tuple[str, ...] = ()
-    """Nazwy stanów (``urzadzenie.stan``), które przestały być skończone."""
+    """ADRES wielkości niepoprawnej: nazwy stanów (``urzadzenie.stan``), których
+    dotyczy niepowodzenie. CZEGO dotyczy — wartości stanu czy jego pochodnej —
+    mówi ``wielkosc_niesksonczona``; bez tej pary pole było mylące."""
     szyny_niesksonczone: tuple[str, ...] = ()
     """Szyny, których napięcie przestało być skończone."""
+    wielkosc_niesksonczona: str = ""
+    """KTÓRA WIELKOŚĆ nie była skończona: ``"pochodna stanu"``, ``"stan po kroku"``,
+    ``"residuum algebry sieci"``… Pusty napis znaczy „niepowodzenie nie było
+    utratą skończoności" (np. przekroczony limit iteracji sieci).
+
+    DLACZEGO TO POLE ISTNIEJE. Bez niego ``stan_skonczony = True`` stało obok
+    ``stany_niesksonczone = ("U1.stan_a",)`` i para wyglądała na sprzeczną, choć
+    opisywała stan świata całkowicie spójny: WEKTOR STANU jest skończony, a
+    niepoprawna jest jego POCHODNA. Odkąd kontrola skończoności działa w miejscu
+    POWSTANIA wartości (plan naprawy §2), to jest przypadek typowy, nie brzegowy —
+    NaN jest łapany, zanim zdąży wejść do stanu. Dwa pola opisujące „to samo"
+    innymi słowami są defektem czekającym na czytelnika; jedno pole nazywające
+    wielkość rozstrzyga to u źródła."""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -186,6 +201,7 @@ class BladSolvera:
             "stan_skonczony": self.stan_skonczony,
             "stany_niesksonczone": list(self.stany_niesksonczone),
             "szyny_niesksonczone": list(self.szyny_niesksonczone),
+            "wielkosc_niesksonczona": self.wielkosc_niesksonczona,
         }
 
 
@@ -242,8 +258,14 @@ class DiagnostykaSolvera:
     maks_residuum_sieci: float
     maks_iteracji_sieci: int
     zbiegl: bool
-    norma_pochodnej_w_t0: float
-    """``||f(x0, y0)||`` — dowód (lub jego brak), że start jest w równowadze."""
+    norma_pochodnej_w_t0: float | None
+    """``||f(x0, y0)||`` — dowód (lub jego brak), że start jest w równowadze.
+
+    ``None`` znaczy NIE ZMIERZONO, i jest to jedyna uczciwa wartość, gdy pochodna
+    w punkcie startowym nie jest liczbą skończoną. Zero mówiłoby „start idealnie
+    w równowadze" o biegu, który nie policzył ani jednej pochodnej; ``NaN``
+    łamałby kontrakt diagnostyki (plan naprawy §2: liczby diagnostyki też muszą
+    być liczbami). Przyczyna braku pomiaru stoi wtedy w ``blad``."""
     blad: BladSolvera | None = None
     """Wypełnione DOKŁADNIE wtedy, gdy ``zbiegl`` jest ``False``."""
     czas_zadany_s: float = 0.0
@@ -291,12 +313,19 @@ class DiagnostykaSolvera:
         for nazwa, wartosc in (
             ("krok_s", self.krok_s),
             ("maks_residuum_sieci", self.maks_residuum_sieci),
-            ("norma_pochodnej_w_t0", self.norma_pochodnej_w_t0),
             ("czas_zadany_s", self.czas_zadany_s),
             ("czas_osiagniety_s", self.czas_osiagniety_s),
             ("najgorsze_rho", self.najgorsze_rho),
         ):
             wymagaj_skonczonosci(wartosc, co=nazwa, gdzie="diagnostyka solvera")
+        # POMIAR ALBO JAWNY BRAK POMIARU — trzeciej możliwości nie ma. `None`
+        # przechodzi, bo znaczy „nie zmierzono"; liczba musi być skończona.
+        if self.norma_pochodnej_w_t0 is not None:
+            wymagaj_skonczonosci(
+                self.norma_pochodnej_w_t0,
+                co="norma_pochodnej_w_t0",
+                gdzie="diagnostyka solvera",
+            )
         if self.zbiegl and self.blad is not None:
             raise ValueError("Wynik zbieżny nie może nieść opisu błędu")
         if not self.zbiegl and self.blad is None:

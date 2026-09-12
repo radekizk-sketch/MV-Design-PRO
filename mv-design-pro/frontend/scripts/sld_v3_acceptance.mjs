@@ -480,7 +480,12 @@ const EXPECTED_STATION_COUNT = 53;
 // (pomiar w docstringu `formatRatedVoltageKv`). Gęstość tuszu po zmianie: L0
 // referencyjna 1,67 % → 1,66 %, L0 długi ciąg 2,03 % → 2,03 % (bez zmiany).
 // Zero nowych kolizji jakiegokolwiek rodzaju (ten skrypt zielony).
-const VERTICAL_LENGTH_BASELINE = { 0: 22440, 1: 39448, 2: 39448 };
+// JEDNO ŹRÓDŁO PRAWDY (plan naprawy §8). Baseline żył wcześniej w DWÓCH
+// miejscach — tutaj i w `scene/__tests__/buildScene.test.ts` — i po zmianie
+// „LV DOMAIN PROJECTION" zaktualizowano tylko test, przez co ten skrypt był
+// czerwony na wartości opisującej poprzedni układ. Historia podniesień zostaje
+// w komentarzach powyżej; WARTOŚĆ jest importowana.
+import { VERTICAL_LENGTH_BASELINE } from '../src/ui/sld/v3/scene/verticalLengthBaseline.ts';
 
 /**
  * SCHEMAT-10 S6 (V12K-137) — funkcja kosztu layoutu (recenzja ekspercka pkt 3):

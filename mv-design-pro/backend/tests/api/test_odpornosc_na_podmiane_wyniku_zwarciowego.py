@@ -293,3 +293,108 @@ def test_pole_spoza_kontraktu_wielkosci_jest_zglaszane(
     tresc = odp.json()["detail"]
     assert tresc["powod"] == "WYNIK_NIEZGODNY_Z_BIEGIEM"
     assert any("idyn_ka" in n for n in tresc["niezgodnosci"]), tresc["niezgodnosci"]
+
+
+# ---------------------------------------------------------------------------
+# Znacznik proweniencji spoza ZAMKNIĘTEJ listy — fail-closed
+# (recenzja niezależna, P2-DELTA-16: mutacja „nieznany znacznik" PRZEŻYŁA)
+# ---------------------------------------------------------------------------
+
+
+def test_nieznany_znacznik_proweniencji_blokuje_zamiast_byc_pominiety() -> None:
+    """Znacznik, którego warstwa nie zna, NIE MOŻE znaczyć „w porządku".
+
+    ZMIERZONE PRZED NAPRAWĄ (recenzja niezależna na HEAD 64004a5d)::
+
+        ProweniencjaWynikuZwarciowego.ze_znacznikow(("NIEZNANY_ZNACZNIK",))
+        -> wynik_jest_miarodajny(REGULATORY_EVIDENCE) == True
+
+    Przyczyną było ciche ``continue`` dla znacznika bez wpisu w tablicy
+    komunikatów. Skutek jest gorszy, niż wygląda: KAŻDY nowy znacznik dodany w
+    warstwie wkładu zwarciowego domyślnie NIE BLOKOWAŁBY niczego, dopóki ktoś nie
+    dopisałby go w drugim miejscu. W tej samej rundzie takich znaczników przybyło
+    dwa, więc nie jest to przypadek hipotetyczny.
+    """
+    from network_model.core.autorytet_wyniku_zwarciowego import (
+        KOD_BLOKADY_ZNACZNIK_NIEZNANY,
+        ProweniencjaWynikuZwarciowego,
+        blokady_autorytetu,
+        wynik_jest_miarodajny,
+    )
+    from network_model.core.zdolnosci_wkladu_zwarciowego import (
+        ZDOLNOSCI_ZALEZNE_OD_WKLADU_ZWARCIOWEGO,
+        ZdolnoscMiarodajna,
+    )
+
+    proweniencja = ProweniencjaWynikuZwarciowego.ze_znacznikow(("NIEZNANY_ZNACZNIK",))
+
+    # ZAKRES: wyłącznie zdolności ZALEŻNE od wkładu zwarciowego. LOAD_FLOW,
+    # TOPOLOGY, SLD i EDITING są od niego niezależne z założenia i blokada k_sc
+    # ich nie dotyczy — żądanie blokady także tam byłoby rozszerzeniem bramki
+    # poza jej podstawę.
+    assert ZDOLNOSCI_ZALEZNE_OD_WKLADU_ZWARCIOWEGO, "Pusty zbiór zdolności zależnych."
+    for zdolnosc in sorted(ZDOLNOSCI_ZALEZNE_OD_WKLADU_ZWARCIOWEGO, key=str):
+        blokady = blokady_autorytetu(zdolnosc, proweniencja)
+        assert not wynik_jest_miarodajny(
+            zdolnosc, proweniencja
+        ), f"{zdolnosc}: nieznany znacznik przeszedł jako brak zastrzeżeń."
+        assert any(
+            b.kod == KOD_BLOKADY_ZNACZNIK_NIEZNANY for b in blokady
+        ), f"{zdolnosc}: blokada jest, ale nie nazywa przyczyny — {[b.kod for b in blokady]}"
+
+    # KONTROLA PRZECIWNA: zdolność NIEZALEŻNA pozostaje nietknięta.
+    niezalezne = set(ZdolnoscMiarodajna) - set(ZDOLNOSCI_ZALEZNE_OD_WKLADU_ZWARCIOWEGO)
+    for zdolnosc in niezalezne:
+        assert wynik_jest_miarodajny(zdolnosc, proweniencja), (
+            f"{zdolnosc} nie zależy od wkładu zwarciowego, więc znacznik k_sc nie "
+            f"może jej blokować — bramka rozlała się poza swoją podstawę."
+        )
+
+
+def test_znacznik_deklaracji_nadal_przechodzi_bo_lista_jest_ZAMKNIETA_a_nie_pusta() -> None:
+    """DRUGA STRONA PREDYKATU: fail-closed nie może blokować wszystkiego.
+
+    Bez tego testu naprawa „blokuj nieznane" przechodziłaby także w wersji
+    blokującej KAŻDY znacznik — czyli wyłączającej cały tor wyniku miarodajnego.
+    """
+    from network_model.core.autorytet_wyniku_zwarciowego import (
+        ProweniencjaWynikuZwarciowego,
+        wynik_jest_miarodajny,
+    )
+    from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
+
+    proweniencja = ProweniencjaWynikuZwarciowego.ze_znacznikow(("DEKLARACJA",))
+    assert wynik_jest_miarodajny(ZdolnoscMiarodajna.BREAKING_CAPACITY_SELECTION, proweniencja)
+
+
+def test_kazdy_znacznik_warstwy_wkladu_ma_rozstrzygniecie_w_autorytecie() -> None:
+    """KLASA, NIE INSTANCJA: listy muszą być KOMPLETNE i ROZŁĄCZNE.
+
+    Deklaracja „lista ZAMKNIĘTA" bez tego testu jest obietnicą. Test wyprowadza
+    zbiór znaczników z warstwy, która je WYSTAWIA, i wymaga, żeby każdy miał
+    rozstrzygnięcie w warstwie, która je KONSUMUJE — dokładnie jeden raz.
+    Znacznik, który wypadłby z obu list, wróciłby do cichego przepuszczania;
+    znacznik w obu naraz znaczyłby dwie sprzeczne rzeczy o tym samym stanie.
+    """
+    from network_model.core import wklad_zwarciowy_przeksztaltnika as wklad
+    from network_model.core.autorytet_wyniku_zwarciowego import (
+        _KOMUNIKAT_ZNACZNIKA,
+        ZNACZNIKI_BEZ_ZASTRZEZEN,
+    )
+
+    wystawiane = {
+        wartosc
+        for nazwa, wartosc in vars(wklad).items()
+        if nazwa.startswith("K_SC_ZRODLO_") and isinstance(wartosc, str)
+    }
+    assert wystawiane, "Nie znaleziono ani jednego znacznika w warstwie wkładu."
+
+    rozstrzygane = set(_KOMUNIKAT_ZNACZNIKA) | set(ZNACZNIKI_BEZ_ZASTRZEZEN)
+    assert wystawiane <= rozstrzygane, (
+        f"Znaczniki bez rozstrzygnięcia w warstwie autorytetu: "
+        f"{sorted(wystawiane - rozstrzygane)}"
+    )
+    assert not (set(_KOMUNIKAT_ZNACZNIKA) & set(ZNACZNIKI_BEZ_ZASTRZEZEN)), (
+        "Znacznik nie może być jednocześnie blokujący i bez zastrzeżeń: "
+        f"{sorted(set(_KOMUNIKAT_ZNACZNIKA) & set(ZNACZNIKI_BEZ_ZASTRZEZEN))}"
+    )

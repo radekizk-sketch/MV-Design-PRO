@@ -10,12 +10,36 @@ klasa cichej porażki, którą uprząż ma wykrywać, więc musi być przypięta
 from __future__ import annotations
 
 import pytest
-from kwalifikacja import zbierz_raport
+from dynamic_lab.mutacje import WynikSondy
+from kwalifikacja import WYKONAWCA_SOND_DOMYSLNY, zbierz_raport
+
+
+def _sondy_zastepcze(sondy, mutacja):
+    """Wykonawca sond dla testów KSZTAŁTU raportu — nie uruchamia podprocesów.
+
+    Realna kampania to dwadzieścia przebiegów pytest w procesach potomnych (61 s
+    na tym laboratorium). Uruchamianie jej po to, żeby sprawdzić, czy raport ma
+    właściwe pola, byłoby mierzeniem czegoś innego niż deklaruje test. Że wartość
+    DOMYŚLNA jest realna, pilnuje `test_uprzaz_domyslnie_uruchamia_realne_sondy`.
+    """
+    return WynikSondy(przeszly=mutacja is None, slad="", polecenie="sondy zastępcze")
 
 
 @pytest.fixture(scope="module")
 def raport():
-    return zbierz_raport(szybko=True)
+    return zbierz_raport(szybko=True, wykonaj_sondy=_sondy_zastepcze)
+
+
+def test_uprzaz_domyslnie_uruchamia_realne_sondy() -> None:
+    """Uprząż z atrapą zamiast sond meldowałaby zabicia bez uruchomienia czegokolwiek.
+
+    Pin jest konieczny, bo wykonawca jest wstrzykiwalny: bez tego testu podmiana
+    domyślnej wartości na atrapę przeszłaby niezauważona, a raport nadal
+    wyglądałby jak pomiar.
+    """
+    from dynamic_lab.sonda_mutacyjna import wykonaj_sondy_w_podprocesie
+
+    assert WYKONAWCA_SOND_DOMYSLNY is wykonaj_sondy_w_podprocesie
 
 
 def test_raport_nie_nadaje_statusu_dowodowego(raport) -> None:

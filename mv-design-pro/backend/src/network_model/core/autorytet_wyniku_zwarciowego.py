@@ -72,6 +72,20 @@ KOD_BLOKADY_WYNIK_BEZ_SLADU = "SI-112"
 #: podał liczby świadomie, a produkt ma powiedzieć, czego brakuje (modelu).
 KOD_BLOKADY_WYNIK_Z_PAYLOADU = "SI-113"
 
+KOD_BLOKADY_ZNACZNIK_NIEZNANY = "SI-115"
+"""Znacznik proweniencji spoza ZAMKNIĘTEJ listy — wynik niemiarodajny.
+
+FAIL-CLOSED, BO INACZEJ LISTA NIE JEST ZAMKNIĘTA. Pierwsza wersja pomijała
+znacznik, którego nie znała (``if wpis is None: continue``), więc dowolny napis
+niebędący żadnym ze znanych znaczników przechodził jako brak zastrzeżeń.
+ZMIERZONE na HEAD 64004a5d: ``ze_znacznikow(("NIEZNANY_ZNACZNIK",))`` dawało
+``wynik_jest_miarodajny(REGULATORY_EVIDENCE) == True``.
+
+Milczenie o znaczniku, którego się nie rozumie, jest najgorszą z możliwych
+odpowiedzi: nowy znacznik dodany w warstwie wkładu (a takich przybyło w tej
+rundzie dwa) automatycznie NIE BLOKOWAŁBY niczego, dopóki ktoś nie dopisałby go
+tutaj — czyli domyślnym zachowaniem nowego ostrzeżenia byłoby jego zignorowanie."""
+
 
 class ZrodloWynikuZwarciowego(StrEnum):
     """Skąd wzięły się wielkości zwarciowe podane konsumentowi."""
@@ -183,6 +197,13 @@ def _znacznik_zrodla(zrodlo: Any) -> str:
     return prad_wkladu_zwarciowego(deklaracja, getattr(zrodlo, "in_rated_a", None))[1]
 
 
+ZNACZNIKI_BEZ_ZASTRZEZEN: frozenset[str] = frozenset({K_SC_ZRODLO_DEKLARACJA})
+"""Znaczniki, które NIE wnoszą zastrzeżenia — lista ZAMKNIĘTA i rozłączna z
+kluczami ``_KOMUNIKAT_ZNACZNIKA``. Rozłączność i kompletność wobec zbioru
+znaczników wystawianych przez warstwę wkładu są PRZYPIĘTE TESTEM: gdyby jakiś
+znacznik wypadł z obu list, wróciłoby ciche przepuszczanie, a gdyby wpadł do obu
+— o tym samym stanie orzekałyby dwie sprzeczne reguły."""
+
 _KOMUNIKAT_ZNACZNIKA: dict[str, tuple[str, str]] = {
     K_SC_ZRODLO_DOMYSLNE: (
         KOD_BLOKADY_K_SC_DOMYSLNY,
@@ -256,6 +277,25 @@ def blokady_autorytetu(
     for znacznik in sorted(set(proweniencja.znaczniki_k_sc)):
         wpis = _KOMUNIKAT_ZNACZNIKA.get(znacznik)
         if wpis is None:
+            # ZNACZNIK NIEZNANY => BLOKADA, nie pominięcie. Lista znaczników
+            # bezpiecznych jest ZAMKNIĘTA (`ZNACZNIKI_BEZ_ZASTRZEZEN`) i
+            # rozłączna z listą blokujących; wszystko poza ich sumą jest dla
+            # tej warstwy nierozpoznane, a nierozpoznane nie może znaczyć „w
+            # porządku".
+            if znacznik in ZNACZNIKI_BEZ_ZASTRZEZEN:
+                continue
+            blokady.append(
+                BlokadaAutorytetu(
+                    kod=KOD_BLOKADY_ZNACZNIK_NIEZNANY,
+                    zdolnosc=zdolnosc,
+                    komunikat_pl=(
+                        f"Wynik zwarciowy niesie znacznik pochodzenia "
+                        f'„{znacznik}", którego ta warstwa nie zna, więc nie '
+                        f"potrafi ocenić, czy wynik wolno użyć do tej decyzji. "
+                        f"Wynik nieoceniony nie jest wynikiem przyjętym."
+                    ),
+                )
+            )
             continue
         kod, komunikat = wpis
         blokady.append(BlokadaAutorytetu(kod=kod, zdolnosc=zdolnosc, komunikat_pl=komunikat))

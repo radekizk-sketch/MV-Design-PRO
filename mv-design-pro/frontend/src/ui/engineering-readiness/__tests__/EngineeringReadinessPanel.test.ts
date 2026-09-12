@@ -171,6 +171,24 @@ describe('EngineeringReadinessPanel filtering', () => {
     expect(computed).toEqual(BY_SEVERITY_MIXED);
   });
 
+  it('should count issues by severity for a blocker-only set', () => {
+    // ZBIÓR SAMYCH BLOKERÓW jest przypadkiem brzegowym zliczania: pola
+    // IMPORTANT i INFO muszą zostać ZEROWE, a nie zniknąć. Wzorzec
+    // `BY_SEVERITY_THREE_BLOCKERS` istniał w tym pliku od początku, ale NIC go
+    // nie używało — czyli sprawdzenie było zadeklarowane i nigdy nie wykonane
+    // (`tsc` zgłaszał to jako TS6133). Dopisanie asercji jest naprawą u źródła;
+    // skasowanie stałej ukryłoby lukę zamiast ją zamknąć.
+    const computed: Record<ReadinessSeverity, number> = {
+      BLOCKER: 0,
+      IMPORTANT: 0,
+      INFO: 0,
+    };
+    for (const issue of THREE_BLOCKERS) {
+      computed[issue.severity]++;
+    }
+    expect(computed).toEqual(BY_SEVERITY_THREE_BLOCKERS);
+  });
+
   it('should filter by single severity', () => {
     const filter: ReadinessSeverity = 'BLOCKER';
     const filtered = MIXED_ISSUES.filter((i) => i.severity === filter);

@@ -63,6 +63,23 @@ class KlasaNiezmiennika(StrEnum):
     to samo co „ma mniejszą moc".
     """
 
+    NIESKLASYFIKOWANA = "NIESKLASYFIKOWANA"
+    """Reguła BEZ decyzji o podstawie — egzekwowana twardo, ale NIE NAZWANA.
+
+    ROZDZIELENIE MOCY OD TWIERDZENIA (recenzja niezależna, P2-DELTA-17).
+    Poprzednio reguła spoza rejestru dostawała ``KONIECZNOSC_FIZYCZNA``.
+    Domyślna TWARDOŚĆ była i pozostaje słuszna — nowa reguła ma działać jak
+    bramka, a nie po cichu wejść na stronę ostrzeżeń. Ale przy okazji padało
+    TWIERDZENIE, którego nikt nie postawił: że złamanie reguły oznacza wielkość
+    fizycznie niemożliwą. To jest zdanie o fizyce, a nie o egzekwowaniu, i nie
+    wolno go generować domyślnie — dokładnie tak jak nie wolno fabrykować k_sc
+    czy uk%.
+
+    Ta klasa rozdziela oba pytania: MOC jest twarda (należy do ``KLASY_TWARDE``),
+    a KLASYFIKACJA mówi wprost „nie rozstrzygnięto". Reguła, która ma być nazwana
+    koniecznością fizyczną, musi trafić do rejestru z uzasadnieniem.
+    """
+
 
 #: Zapas na zaokrąglenia przy porównaniach „nie większe niż" — dane katalogowe
 #: bywają podane z inną precyzją niż wielkość, z którą je zestawiamy.
@@ -76,6 +93,7 @@ KLASY_TWARDE: frozenset[KlasaNiezmiennika] = frozenset(
         KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
         KlasaNiezmiennika.WYMOG_NORMOWY,
         KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
+        KlasaNiezmiennika.NIESKLASYFIKOWANA,
     }
 )
 
@@ -218,13 +236,21 @@ class WynikPrzegladuWiarygodnosci:
 
 
 def klasa_reguly(regula: str) -> KlasaNiezmiennika:
-    """Klasa reguły. Reguła spoza rejestru przeklasyfikowania jest TWARDA.
+    """Klasa reguły. Reguła spoza rejestru jest TWARDA, ale NIESKLASYFIKOWANA.
 
-    Domyślna twardość jest celowa: nowa reguła dopisana bez decyzji o jej mocy
-    ma zachowywać się jak bramka, a nie po cichu wejść na stronę ostrzeżeń.
+    DWA PYTANIA, DWIE ODPOWIEDZI. „Jak mocno egzekwować" i „czym ta reguła jest"
+    to nie to samo, a poprzednia wersja odpowiadała na oba jedną wartością
+    ``KONIECZNOSC_FIZYCZNA``. Egzekwowanie twarde jest bezpiecznym domyślnym
+    wyborem; nazwanie reguły koniecznością fizyczną jest TWIERDZENIEM o świecie,
+    którego domyślnie postawić nie wolno (recenzja niezależna: „To nie jest dowód
+    klasyfikacji; to twardy domysł").
+
+    ``NIESKLASYFIKOWANA`` należy do ``KLASY_TWARDE``, więc moc egzekwowania nie
+    ulega zmianie — zmienia się tylko to, że reguła bez decyzji przestaje udawać
+    regułę z decyzją.
     """
     wpis = PRZEKLASYFIKOWANE.get(regula)
-    return wpis[0] if wpis else KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA
+    return wpis[0] if wpis else KlasaNiezmiennika.NIESKLASYFIKOWANA
 
 
 def byla_regula_za_mocna(regula: str) -> bool:

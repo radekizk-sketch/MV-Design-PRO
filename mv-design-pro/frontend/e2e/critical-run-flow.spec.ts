@@ -286,13 +286,26 @@ test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -
   }
 
   // Krok 6: Gotowość i ewentualne domknięcie blokerów katalogowych
-  let readiness: { ready: boolean; status: string; issues?: Array<{ code: string; element_ref?: string | null }> } | null = null;
+  // KSZTAŁT ODPOWIEDZI PO NAPRAWIE GLOBALNEGO `ready` (recenzja niezależna,
+  // P1-DELTA-08): końcówka nie niesie już jednej etykiety „gotowy inżyniersko".
+  // Niesie KOMPLETNOŚĆ STRUKTURALNĄ modelu (`kompletnosc_modelu`) oraz mapę
+  // ZDOLNOŚCI (`zdolnosci`) — bo 57/57 szablonów miało `ready=true`, podczas gdy
+  // 26 z nich miało prawidłowo ZABLOKOWANE zwarcie 3F z braku deklaracji k_sc.
+  // Ten test pyta więc o to, co go faktycznie dotyczy: czy model jest kompletny
+  // ORAZ czy wolno policzyć analizę, którą za chwilę uruchamia (SC_3F).
+  type OdpowiedzGotowosci = {
+    kompletnosc_modelu: 'MODEL_COMPLETE' | 'MODEL_INCOMPLETE';
+    zdolnosci?: Record<string, { dostepna: boolean; blokady?: unknown[] }>;
+    status: string;
+    issues?: Array<{ code: string; element_ref?: string | null }>;
+  };
+  let readiness: OdpowiedzGotowosci | null = null;
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const readinessResponse = await request.get(`${BACKEND_BASE}/api/cases/${caseId}/engineering-readiness`);
     expect(readinessResponse.ok()).toBeTruthy();
-    readiness = (await readinessResponse.json()) as { ready: boolean; status: string; issues?: Array<{ code: string; element_ref?: string | null }> };
+    readiness = (await readinessResponse.json()) as OdpowiedzGotowosci;
 
-    if (readiness.ready) {
+    if (readiness.kompletnosc_modelu === 'MODEL_COMPLETE') {
       break;
     }
 
@@ -325,7 +338,16 @@ test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -
     }
   }
 
-  expect(readiness?.ready).toBe(true);
+  expect(readiness?.kompletnosc_modelu).toBe('MODEL_COMPLETE');
+  // ZDOLNOŚĆ, NIE ETYKIETA OGÓLNA. Krok 7 uruchamia SC_3F, więc to właśnie ta
+  // zdolność musi być dostępna; kompletność modelu sama w sobie nie jest zgodą
+  // na żadną analizę (P1-DELTA-08). Blokady są wypisywane w komunikacie, żeby
+  // czerwień e2e mówiła, CZEGO brakuje, a nie tylko że coś nie wyszło.
+  const zdolnoscSc3f = readiness?.zdolnosci?.SC_3F;
+  expect(
+    zdolnoscSc3f?.dostepna,
+    `SC_3F niedostępne; blokady: ${JSON.stringify(zdolnoscSc3f?.blokady ?? [])}`,
+  ).toBe(true);
 
   const enmBeforeResponse = await request.get(`${BACKEND_BASE}/api/cases/${caseId}/enm`);
   expect(enmBeforeResponse.ok()).toBeTruthy();

@@ -24,7 +24,13 @@ import { test, expect, type APIRequestContext, type Page } from '@playwright/tes
  *  domykania blokerow byl NIETYPOWANY (`issues` na `never`, argumenty `filter` na
  *  implicit any). Typ nazwany jednym bytem usuwa i rzutowanie w ciemno, i 6 bledow. */
 type OdczytGotowosci = {
-  ready: boolean;
+  // KONTRAKT PO NAPRAWIE GLOBALNEGO `ready` (recenzja niezależna, P1-DELTA-08):
+  // końcówka `engineering-readiness` nie niesie już jednej etykiety „gotowy
+  // inżyniersko". Niesie KOMPLETNOŚĆ STRUKTURALNĄ modelu oraz osobną mapę
+  // ZDOLNOŚCI — bo 57/57 szablonów miało `ready=true`, podczas gdy 26 z nich
+  // miało prawidłowo ZABLOKOWANE zwarcie 3F z braku deklaracji k_sc.
+  kompletnosc_modelu: 'MODEL_COMPLETE' | 'MODEL_INCOMPLETE';
+  zdolnosci?: Record<string, { dostepna: boolean; blokady?: unknown[] }>;
   issues?: Array<{ code: string; element_ref?: string | null }>;
 };
 
@@ -315,7 +321,7 @@ async function zbudujSiecGotowaDoObliczen(
     const readinessResponse = await request.get(`${BACKEND_BASE}/api/cases/${caseId}/engineering-readiness`);
     expect(readinessResponse.ok()).toBeTruthy();
     readiness = (await readinessResponse.json()) as OdczytGotowosci;
-    if (readiness?.ready) break;
+    if (readiness?.kompletnosc_modelu === 'MODEL_COMPLETE') break;
 
     for (const issue of (readiness?.issues ?? []).filter((i) => i.code.includes('catalog') && i.element_ref)) {
       const isTrafo = issue.code.includes('transformer');
@@ -336,7 +342,7 @@ async function zbudujSiecGotowaDoObliczen(
       });
     }
   }
-  expect(readiness?.ready).toBe(true);
+  expect(readiness?.kompletnosc_modelu).toBe('MODEL_COMPLETE');
   return { stationSnBusRefs };
 }
 

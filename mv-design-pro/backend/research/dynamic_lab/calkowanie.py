@@ -71,6 +71,56 @@ class StatusKroku(StrEnum):
     """Rozbieżność albo wyczerpanie iteracji bez postępu. ZAWSZE podnosi wyjątek."""
 
 
+#: Krok, przy którym ``atol`` i ``rtol`` mają DOKŁADNIE swoją nominalną wartość.
+#: Jest to domyślny krok silnika (``SilnikRMS.krok_s``), więc kalibracja odnosi się
+#: do biegu typowego, a nie do liczby wybranej bez związku z czymkolwiek.
+DT_KALIBRACJI_S: float = 0.005
+
+#: Dolna granica wagi wyrażona w epsilonach maszynowych skali stanu. Poniżej niej
+#: residuum jest szumem zaokrągleń, więc żądanie byłoby nie do spełnienia i
+#: zamieniałoby każdy krok w zastój.
+PODLOGA_WAGI_EPS: float = 100.0
+
+
+def wspolczynnik_kroku(dt: float, rzad: int) -> float:
+    """``(dt / DT_KALIBRACJI_S) ** (rzad + 1)`` — tolerancja SKALOWANA KROKIEM.
+
+    PO CO, ZMIERZONE. Do tej zmiany waga kryterium była STAŁA i BEZWZGLĘDNA,
+    niezależna od ``dt``. Ponieważ błąd rozwiązania równania kroku kumuluje się
+    liniowo z LICZBĄ kroków (``N = T/dt``), a błąd obcięcia maleje jak ``dt^p``,
+    poniżej pewnego kroku wygrywał ten pierwszy — i wynik ZAGĘSZCZANIA KROKU stawał
+    się GORSZY. Zmierzony dryf całki pierwszej maszyny klasycznej (SMIB, D = 0,
+    horyzont 4 s, ``trapez_niejawny``)::
+
+        waga stała (atol 1e-9, rtol 1e-7):   4 ms -> 2,54e-08
+                                             1 ms -> 7,57e-06   (300x GORZEJ)
+                                           0,5 ms -> 1,55e-05   (610x GORZEJ)
+
+        waga zaostrzona 1000x:               4 ms -> 2,54e-08
+                                             1 ms -> 1,59e-09   (16x lepiej)
+                                           0,5 ms -> 3,98e-10   (4x lepiej)
+
+    Druga kolumna to DOKŁADNIE ``O(dt^2)`` obiecane przez ``TrapezNiejawny.rzad``;
+    pierwsza jest jego zaprzeczeniem. Zaostrzenie o kolejne dwa rzędy (atol 1e-14)
+    nie zmieniło już nic, więc przy zaostrzonej wadze błąd rozwiązania kroku jest
+    pomijalny i zostaje samo obcięcie.
+
+    Defekt nie polegał więc na „za luźnej stałej", tylko na tym, że stała NIE MOŻE
+    być poprawna dla wszystkich kroków: rozdzielenie tych dwóch błędów zależy od
+    ``dt``. Skalowanie ``dt^(rzad+1)`` stawia tolerancję rozwiązania poniżej błędu
+    obcięcia kroku DLA KAŻDEGO ``dt``, więc rząd metody jest osiągalny w całym
+    zakresie — aż do podłogi zaokrągleń, którą nakłada ``PODLOGA_WAGI_EPS``.
+
+    Skalowanie jest bezwymiarowe (iloraz dwóch czasów), więc nie zmienia jednostek
+    ``atol`` ani ``rtol``.
+    """
+    if dt <= 0.0:
+        raise ValueError(f"Krok musi być dodatni, jest {dt!r}.")
+    if rzad < 1:
+        raise ValueError(f"Rząd metody musi być >= 1, jest {rzad!r}.")
+    return float((dt / DT_KALIBRACJI_S) ** (rzad + 1))
+
+
 @dataclass(frozen=True)
 class KryteriumZbieznosci:
     """Kryterium KOMPONENTOWE zbieżności: ``rho = max_i |r_i| / (atol_i + rtol*skala_i)``.
@@ -119,9 +169,21 @@ class KryteriumZbieznosci:
             raise ValueError("każda skala_stanow musi być > 0")
 
     def wagi(
-        self, x_poczatkowe: NDArray[np.float64], x_biezace: NDArray[np.float64]
+        self,
+        x_poczatkowe: NDArray[np.float64],
+        x_biezace: NDArray[np.float64],
+        *,
+        dt: float,
+        rzad: int,
     ) -> NDArray[np.float64]:
-        """Wagi ``atol_i + rtol*skala_i`` — mianownik kryterium, jedna na stan."""
+        """Wagi ``(atol_i + rtol*skala_i) * wspolczynnik_kroku(dt, rzad)``.
+
+        ``dt`` i ``rzad`` są WYMAGANE, a nie opcjonalne z wartością domyślną.
+        Wartość domyślna dawałaby dwa zachowania tej samej metody — skalowane i
+        nieskalowane — zależnie od tego, czy wołający pamiętał je podać; pierwszy,
+        który zapomni, dostaje po cichu starą, wadliwą wagę (patrz pomiar w
+        ``wspolczynnik_kroku``). Jedno zachowanie, jedna droga.
+        """
         n = len(x_biezace)
         if self.atol_na_stan is not None:
             if len(self.atol_na_stan) != n:
@@ -135,13 +197,22 @@ class KryteriumZbieznosci:
             skale = np.abs(np.asarray(self.skale_stanow, dtype=np.float64))
         else:
             skale = np.maximum(np.abs(x_poczatkowe), np.abs(x_biezace))
-        return atol + self.rtol * skale
+        surowe = (atol + self.rtol * skale) * wspolczynnik_kroku(dt, rzad)
+        # PODŁOGA ZAOKRĄGLEŃ. Waga poniżej szumu reprezentacji jest żądaniem
+        # niewykonalnym: iteracja nie zbiegnie nigdy i KAŻDY krok zostanie
+        # zaklasyfikowany jako zastój. Skalowanie krokiem ma przywracać rząd
+        # metody, a nie zamieniać bieg w serię niepowodzeń.
+        podloga = PODLOGA_WAGI_EPS * float(np.finfo(np.float64).eps) * np.maximum(skale, 1.0)
+        return np.maximum(surowe, podloga)
 
     def rho(
         self,
         residuum: NDArray[np.float64],
         x_poczatkowe: NDArray[np.float64],
         x_biezace: NDArray[np.float64],
+        *,
+        dt: float,
+        rzad: int,
     ) -> float:
         """Residuum SKALOWANE. ``rho <= 1`` to zbieżność ścisła.
 
@@ -152,7 +223,9 @@ class KryteriumZbieznosci:
         w miejscu, w którym jest znana.
         """
         wymagaj_skonczonosci(residuum, co="residuum", gdzie="kryterium zbieżności")
-        return float(np.max(np.abs(residuum) / self.wagi(x_poczatkowe, x_biezace)))
+        return float(
+            np.max(np.abs(residuum) / self.wagi(x_poczatkowe, x_biezace, dt=dt, rzad=rzad))
+        )
 
 
 KRYTERIUM_DOMYSLNE = KryteriumZbieznosci()
@@ -425,6 +498,12 @@ _ZASTOJ_POD_RZAD = 3
 
 
 class _IntegratorNiejawny(Protocol):
+    rzad: int
+    """Rząd metody — wchodzi do SKALOWANIA tolerancji równania kroku.
+
+    Tolerancja rozwiązania musi leżeć poniżej błędu obcięcia, a ten zależy od
+    rzędu. Metoda, która nie deklaruje rzędu, nie umie skalibrować własnej
+    tolerancji — dlatego rząd jest częścią protokołu, nie szczegółem klasy."""
     kryterium: KryteriumZbieznosci
     maks_iteracji: int
     dopuszczaj_zastoj: bool
@@ -448,6 +527,7 @@ def _krok_niejawny(
         dt,
         wagi=wagi,
         kryterium=integrator.kryterium,
+        rzad=integrator.rzad,
         maks=integrator.maks_iteracji,
     )
     if integrator.dziennik is not None:
@@ -474,6 +554,7 @@ def _newton_niejawny(
     *,
     wagi: tuple[float, float],
     kryterium: KryteriumZbieznosci,
+    rzad: int,
     maks: int,
 ) -> tuple[NDArray[np.float64], WynikKrokuNieliniowego]:
     """Wspólne jądro metod niejawnych: ``x1 = x0 + dt*(a*f(x0) + b*f(x1))``.
@@ -554,7 +635,7 @@ def _newton_niejawny(
             residuum, co="residuum równania kroku", gdzie=f"krok niejawny, iteracja {iteracje}"
         )
         norma = float(np.max(np.abs(residuum)))
-        rho = kryterium.rho(residuum, x, x1)
+        rho = kryterium.rho(residuum, x, x1, dt=dt, rzad=rzad)
         if norma_poczatkowa == float("inf"):
             norma_poczatkowa = norma
         najmniejsza_norma = min(najmniejsza_norma, norma)

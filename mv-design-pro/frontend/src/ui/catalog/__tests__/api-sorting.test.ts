@@ -33,9 +33,14 @@ function sortTypes<T extends { id: string; name: string; manufacturer?: string }
     } else if (!hasB) {
       return -1; // a goes before b (null)
     } else {
-      // Both have manufacturer - compare
-      if (a.manufacturer < b.manufacturer) return -1;
-      if (a.manufacturer > b.manufacturer) return 1;
+      // Both have manufacturer - compare.
+      // Zawezenie typu przez ZMIENNE LOKALNE, nie przez `hasA`/`hasB`: predykat
+      // zapisany w osobnym `boolean` nie zawezza pola obiektu, wiec `tsc`
+      // widzial tu `string | undefined` mimo sprawdzenia (TS18048).
+      const producentA = a.manufacturer ?? '';
+      const producentB = b.manufacturer ?? '';
+      if (producentA < producentB) return -1;
+      if (producentA > producentB) return 1;
     }
 
     // name

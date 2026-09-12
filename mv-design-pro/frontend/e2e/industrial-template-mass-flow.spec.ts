@@ -331,10 +331,16 @@ test('pełny przepływ przemysłowy: 50 szablonów stacji, OZE, analizy, dowody 
   );
   expect(readinessResponse.ok()).toBeTruthy();
   const readiness = (await readinessResponse.json()) as {
-    ready: boolean;
+  // KONTRAKT PO NAPRAWIE GLOBALNEGO `ready` (recenzja niezależna, P1-DELTA-08):
+    // końcówka `engineering-readiness` nie niesie już jednej etykiety „gotowy
+    // inżyniersko". Niesie KOMPLETNOŚĆ STRUKTURALNĄ modelu oraz osobną mapę
+    // ZDOLNOŚCI — bo 57/57 szablonów miało `ready=true`, podczas gdy 26 z nich
+    // miało prawidłowo ZABLOKOWANE zwarcie 3F z braku deklaracji k_sc.
+    kompletnosc_modelu: 'MODEL_COMPLETE' | 'MODEL_INCOMPLETE';
+    zdolnosci?: Record<string, { dostepna: boolean; blokady?: unknown[] }>;
     issues?: Array<{ code: string; severity?: string }>;
   };
-  expect(readiness.ready, JSON.stringify(readiness.issues ?? [])).toBe(true);
+  expect(readiness?.kompletnosc_modelu, JSON.stringify(readiness.issues ?? [])).toBe('MODEL_COMPLETE');
 
   const scRunResponse = await request.post(
     `${BACKEND_BASE}/api/execution/study-cases/${seed.caseId}/runs`,

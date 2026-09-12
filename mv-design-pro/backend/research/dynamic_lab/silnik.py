@@ -34,7 +34,7 @@ from dynamic_lab.calkowanie import (
 )
 from dynamic_lab.konwencje import czestotliwosc_hz, jednostki_stanow, stany_zasobowe
 from dynamic_lab.siec import SolverSieci, TopologiaSieci
-from dynamic_lab.skonczonosc import wymagaj_skonczonosci
+from dynamic_lab.skonczonosc import WartoscNieskonczonaError, wymagaj_skonczonosci
 from dynamic_lab.tozsamosc import (
     KonfiguracjaSolvera,
     PunktPracy,
@@ -220,12 +220,18 @@ class SilnikRMS:
                     x[wycinek], complex(v[idx[u.szyna]])
                 )
                 # POCHODNA URZĄDZENIA — sprawdzana per urządzenie, bo tylko tutaj
-                # wiadomo, który model ją policzył. Integrator zobaczyłby wektor
-                # zbiorczy i mógłby co najwyżej podać indeks stanu.
+                # wiadomo, który model ją policzył ORAZ jak nazywają się jej
+                # współrzędne. Integrator zobaczyłby wektor zbiorczy i mógłby co
+                # najwyżej podać indeks; wynik meldowałby wtedy „coś jest NaN",
+                # czyli dokładnie to zdanie, przeciwko któremu ta kontrola powstała.
                 wymagaj_skonczonosci(
                     pochodna_urzadzenia,
                     co="pochodna stanu",
                     gdzie=f"urządzenie {u.ref}",  # type: ignore[attr-defined]
+                    etykiety=[
+                        f"{u.ref}.{nazwa}"  # type: ignore[attr-defined]
+                        for nazwa in u.nazwy_stanow()  # type: ignore[attr-defined]
+                    ],
                 )
                 dx[wycinek] = pochodna_urzadzenia
         return dx
@@ -440,17 +446,57 @@ class SilnikRMS:
 
     # -- symulacja ------------------------------------------------------------
 
-    def _stany_niesksonczone(self, x: NDArray[np.float64]) -> tuple[str, ...]:
-        """Nazwy stanów, które przestały być skończone — adres defektu, nie flaga."""
-        zle: list[str] = []
+    def _etykiety_stanow(self) -> tuple[str, ...]:
+        """Nazwy WSZYSTKICH współrzędnych wektora stanu, w kolejności układu.
+
+        JEDNO źródło nazw dla całego silnika: używa go zarówno lokalizacja
+        defektu, jak i zapora skończoności po kroku. Dwie niezależne pętle
+        budujące „tę samą" listę rozjeżdżają się przy pierwszym urządzeniu o
+        nietypowym układzie stanów.
+        """
+        etykiety = [""] * self.uklad.dlugosc
         for u in self.model.urzadzenia:
             wycinek = self.uklad.wycinki[u.ref]  # type: ignore[attr-defined]
-            nazwy = u.nazwy_stanow()  # type: ignore[attr-defined]
-            for i, nazwa in enumerate(nazwy):
-                wartosc = float(x[wycinek.start + i])
-                if not np.isfinite(wartosc):
-                    zle.append(f"{u.ref}.{nazwa}")  # type: ignore[attr-defined]
-        return tuple(zle)
+            for i, nazwa in enumerate(u.nazwy_stanow()):  # type: ignore[attr-defined]
+                etykiety[wycinek.start + i] = f"{u.ref}.{nazwa}"  # type: ignore[attr-defined]
+        return tuple(etykiety)
+
+    def _stany_niesksonczone(self, x: NDArray[np.float64]) -> tuple[str, ...]:
+        """Nazwy stanów, które przestały być skończone — adres defektu, nie flaga."""
+        etykiety = self._etykiety_stanow()
+        return tuple(etykiety[i] for i in range(self.uklad.dlugosc) if not np.isfinite(float(x[i])))
+
+    @staticmethod
+    def _wielkosc_niesksonczona(wyjatek: BaseException | None) -> str:
+        """Nazwa wielkości, która utraciła skończoność — WPROST z wyjątku.
+
+        Nie z komunikatu przez parsowanie i nie z osobnej mapy faz: `co` jest
+        polem `WartoscNieskonczonaError`, więc jest to ta sama wartość, którą
+        widać w komunikacie. Inne niepowodzenia (limit iteracji, osobliwa
+        macierz) zwracają pusty napis, bo nie są utratą skończoności.
+        """
+        return str(getattr(wyjatek, "co", "") or "")
+
+    def _etykiety_niesksonczone(
+        self, wyjatek: BaseException | None, x: NDArray[np.float64]
+    ) -> tuple[str, ...]:
+        """Adres defektu: nazwy stanów, które NIE są skończone.
+
+        JEDEN PREDYKAT NA DWÓCH ŹRÓDŁACH, nie dwa niezależne. Wartość niepoprawna
+        może zostać wykryta w DWÓCH miejscach o różnym stanie wiedzy:
+
+        * przy POCHODNEJ — wtedy ``x`` jest jeszcze skończony, a nazwy niesie
+          wyjątek (``WartoscNieskonczonaError.etykiety``);
+        * po KROKU — wtedy nazwy wynikają ze ``x``.
+
+        Liczenie ich zawsze ze ``x`` (tak było do tej zmiany) zwracało pustą
+        krotkę dla pierwszego przypadku, czyli gubiło lokalizację dokładnie tam,
+        gdzie kontrola skończoności zadziałała najwcześniej.
+        """
+        etykiety = getattr(wyjatek, "etykiety", ())
+        if etykiety:
+            return tuple(etykiety)
+        return self._stany_niesksonczone(x)
 
     def _szyny_niesksonczone(self, v: NDArray[np.complex128] | None) -> tuple[str, ...]:
         if v is None:
@@ -526,9 +572,40 @@ class SilnikRMS:
         # WYCIEKAL z `symuluj()` zamiast trafic do `diagnostyka.blad`.
         # Zmierzone: `test_zwarcie_bliskie_metalicznemu_lamie_nasycenie_a_nie_
         # impedancje` padal z residuum 3,090e+00.
+        # GRANICA MIĘDZY „WYJĄTEK" A „BŁĄD W WYNIKU" — jeden predykat, jedno miejsce.
+        #
+        # Pytanie rozstrzygające brzmi: CZY ZAGADNIENIE POCZĄTKOWE W OGÓLE ISTNIEJE?
+        # Odpowiada na nie wyznaczenie `y(0) = V0` poniżej i nikt inny:
+        #
+        #   * `x0` albo `y0` NIE DAJĄ SIĘ WYZNACZYĆ (algebra sieci rozbieżna,
+        #     wstrzyknięcie albo napięcie niepoprawne) -> nie ma zagadnienia, więc
+        #     nie ma biegu ANI wyniku, który mógłby cokolwiek zaraportować. To jest
+        #     odrzucenie WEJŚCIA i wychodzi WYJĄTKIEM, tak samo jak scenariusz
+        #     nieobsługiwany (`NieobslugiwaneZdarzenieError`);
+        #   * zagadnienie ISTNIEJE, ale rozwiązania nie da się kontynuować (pochodna
+        #     niepoprawna, Newton rozbieżny, krok wywrócony) -> bieg RUSZA i melduje
+        #     przyczynę w `diagnostyka.blad`, z fazą, chwilą, krokiem i adresem stanu.
+        #
+        # Bez tej granicy ta sama sytuacja — wartość nieskończona w trakcie biegu —
+        # wracała do wołającego dwiema drogami zależnie od tego, KTÓRA wielkość ją
+        # niosła: wyjątkiem dla prądu i napięcia, wynikiem dla pochodnej. Konsument
+        # musiałby obsłużyć obie, a każdy, kto obsłuży jedną, ma cichy defekt.
         wejscie_zagadnienia = self._wejscie_zagadnienia_poczatkowego(x0)
 
-        norma_t0 = self.norma_pochodnej(x0)
+        # NORMA POCHODNEJ W t0 JEST POMIAREM DIAGNOSTYCZNYM, NIE WARUNKIEM BIEGU.
+        # Gdy pochodna w punkcie startowym nie jest liczbą skończoną, nie ma
+        # czego zmierzyć — i to jest `None`, a nie `0.0` ani `NaN`. Zero byłoby
+        # FABRYKACJĄ („start w idealnej równowadze"), NaN wywracałby kontrakt
+        # diagnostyki, a wyjątek wyciekający z `symuluj()` odbierałby wynikowi
+        # jedyne miejsce, w którym przyczyna daje się zapisać (ten sam defekt,
+        # co udokumentowany wyżej wyciek `BrakZbieznosciSieciError`).
+        # Bieg mimo to RUSZA: pierwszy krok pętli natrafi na tę samą wartość i
+        # zbuduje `BladSolvera` z kompletem kontekstu — fazą, chwilą, krokiem i
+        # nazwą stanu. Jeden błąd, jedno miejsce, pełny adres.
+        try:
+            norma_t0: float | None = self.norma_pochodnej(x0)
+        except WartoscNieskonczonaError:
+            norma_t0 = None
         siatka = self.siatka_czasu(czas_koncowy_s, harmonogram)
         n_krokow = len(siatka) - 1
         kroki_skrocone = sum(
@@ -587,8 +664,9 @@ class SilnikRMS:
                     numer_kroku=krok,
                     residuum_sieci=self._maks_residuum,
                     stan_skonczony=bool(np.all(np.isfinite(x))),
-                    stany_niesksonczone=self._stany_niesksonczone(x),
+                    stany_niesksonczone=self._etykiety_niesksonczone(wyjatek, x),
                     szyny_niesksonczone=self._szyny_niesksonczone(v),
+                    wielkosc_niesksonczona=self._wielkosc_niesksonczona(wyjatek),
                 )
                 break
             self.zatwierdz_punkt_pracy(v)
@@ -605,6 +683,22 @@ class SilnikRMS:
                 # zwracało obie drogi tą samą wartością.
                 x, sprawozdanie = integrator_biegu.krok_ze_sprawozdaniem(self.pochodne, x, t, dt)
                 sprawozdania.append(sprawozdanie)
+                # ZAPORA POSTKROKOWA W TYM SAMYM `try`, NIE OBOK NIEGO.
+                # Integratory z rejestru sprawdzają skończoność same, więc dla nich
+                # ta linia nigdy nie zadziała. Zadziała dla integratora WŁASNEGO,
+                # wstrzykniętego obiektem — i wtedy musi dać wynik NIEODRÓŻNIALNY
+                # od wykrycia w źródle. Poprzednia wersja budowała tu drugi obiekt
+                # `BladSolvera` z WYMYŚLONĄ nazwą klasy „NieskonczonyStanError",
+                # która nie odpowiadała żadnemu wyjątkowi w kodzie: ten sam stan
+                # świata miał więc dwie różne nazwy zależnie od tego, kto go
+                # zauważył pierwszy (reguła KLASA, NIE INSTANCJA — jedno zjawisko,
+                # jedna nazwa).
+                wymagaj_skonczonosci(
+                    x,
+                    co="stan po kroku",
+                    gdzie=f"zapora integratora {integrator_biegu.nazwa}",
+                    etykiety=self._etykiety_stanow(),
+                )
             except Exception as wyjatek:  # noqa: BLE001 - zapisujemy PRZYCZYNĘ
                 blad = BladSolvera(
                     klasa=type(wyjatek).__name__,
@@ -615,25 +709,9 @@ class SilnikRMS:
                     numer_kroku=krok,
                     residuum_sieci=self._maks_residuum,
                     stan_skonczony=bool(np.all(np.isfinite(x))),
-                    stany_niesksonczone=self._stany_niesksonczone(x),
+                    stany_niesksonczone=self._etykiety_niesksonczone(wyjatek, x),
                     szyny_niesksonczone=self._szyny_niesksonczone(v),
-                )
-                break
-            if not np.all(np.isfinite(x)):
-                blad = BladSolvera(
-                    klasa="NieskonczonyStanError",
-                    komunikat=(
-                        "Integrator zwrócił stan zawierający NaN/Inf — równania "
-                        "urządzenia albo krok są niewłaściwe."
-                    ),
-                    faza="calkowanie",
-                    czas_s=siatka[krok + 1],
-                    krok_s=dt,
-                    numer_kroku=krok,
-                    residuum_sieci=self._maks_residuum,
-                    stan_skonczony=False,
-                    stany_niesksonczone=self._stany_niesksonczone(x),
-                    szyny_niesksonczone=self._szyny_niesksonczone(v),
+                    wielkosc_niesksonczona=self._wielkosc_niesksonczona(wyjatek),
                 )
                 break
 

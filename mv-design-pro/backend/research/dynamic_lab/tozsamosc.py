@@ -448,10 +448,28 @@ def odcisk_topologii(topologia: TopologiaSieci, *, s_bazowa_mva: float) -> str:
     Baza mocy jest osobnym argumentem, bo ``TopologiaSieci`` jej nie zna
     (trzyma ją ``silnik.ModelDynamiczny``), a p.u. bez bazy nie ma znaczenia
     fizycznego.
+
+    KOLEJNOŚĆ REKORDÓW NIE JEST TOŻSAMOŚCIĄ (audyt niezależny, plan naprawy §6;
+    zmierzone). Gałęzie i boczniki trafiały do odcisku w kolejności podania, więc
+    TA SAMA sieć zapisana w innej kolejności dawała INNY odcisk — czyli dwa różne
+    „biegi" dla jednego modelu, a porównanie ich wyników byłoby porównaniem rzeczy
+    uznanych za nieporównywalne. Pomiar: dwa tory ``KABEL-A``/``KABEL-B`` między
+    GEN i SYS dawały odciski ``0e5baedc…`` i ``0ddbe1b0…`` zależnie od kolejności
+    listy.
+
+    Dlatego przed policzeniem odcisku obie listy są PORZĄDKOWANE po tożsamości:
+    gałęzie po ``ident``, boczniki po parze ``(szyna, zrodlo)``. Obie kolejności
+    są fizycznie nieznaczące — ``Ybus`` sumuje wkłady. Kolejność SZYN zostaje bez
+    zmian, bo ona WYZNACZA indeksy macierzy i jest znacząca.
     """
     if s_bazowa_mva <= 0.0:
         raise ValueError("s_bazowa_mva musi być > 0")
-    return odcisk({"topologia": topologia, "s_bazowa_mva": s_bazowa_mva})
+    kanoniczna = dataclasses.replace(
+        topologia,
+        galezie=sorted(topologia.galezie, key=lambda g: g.ident),
+        boczniki=sorted(topologia.boczniki, key=lambda b: (b.szyna, b.zrodlo)),
+    )
+    return odcisk({"topologia": kanoniczna, "s_bazowa_mva": s_bazowa_mva})
 
 
 # ---------------------------------------------------------------------------

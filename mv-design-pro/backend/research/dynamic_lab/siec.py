@@ -61,13 +61,27 @@ class Galaz:
     b_poprzeczna_pu: float = 0.0
     zalaczona: bool = True
     ident: str = ""
-    """Tożsamość gałęzi. Pusta = nadana deterministycznie przez `TopologiaSieci`.
+    """TOŻSAMOŚĆ KOMPONENTU — identyfikator kabla/linii/transformatora.
 
-    PO CO. Para szyn NIE JEST tożsamością: dwa tory równoległe między tymi
-    samymi rozdzielniami to układ zwyczajny w sieci SN, a „wyłącz gałąź A–B"
-    jest wtedy poleceniem niejednoznacznym. Bocznik dostał własne ``zrodlo``
-    już wcześniej (`bez_bocznika_o_zrodle` zastąpiło kasowanie wszystkiego na
-    szynie) — gałąź została wtedy pominięta i ten defekt tu zamykamy.
+    PO CO. Para szyn NIE JEST tożsamością: dwa tory równoległe między tymi samymi
+    rozdzielniami to układ zwyczajny w sieci SN, a „wyłącz gałąź A–B" jest wtedy
+    poleceniem niejednoznacznym.
+
+    KOREKTA (audyt niezależny, plan naprawy §6). Poprzednia wersja nadawała
+    brakującą tożsamość jako ``"<od>-<do>#<n>"``, gdzie ``n`` było NUMEREM
+    WYSTĄPIENIA W KOLEJNOŚCI PODANIA. Tożsamość zależała więc od kolejności
+    rekordów: permutacja listy gałęzi zamieniała ``A-B#1`` z ``A-B#2`` miejscami,
+    a harmonogram mówiący „wyłącz A-B#1" po permutacji wyłączał INNY tor. To nie
+    jest tożsamość, tylko pozycja w liście.
+
+    Dziś:
+
+    * gałąź JEDYNA między swoją parą szyn dostaje ``"<od>-<do>"`` (bez numeru) —
+      nazwa zależy wyłącznie od danych gałęzi, więc permutacja jej nie zmienia;
+    * gałąź w układzie RÓWNOLEGŁYM musi mieć ``ident`` podany JAWNIE — to jest
+      identyfikator komponentu (numer kabla, oznaczenie pola), którego model
+      laboratorium nie ma prawa wymyślić;
+    * powtórzony ``ident`` jest błędem głośnym.
     """
 
     def admitancja_szeregowa(self) -> complex:
@@ -133,27 +147,47 @@ class TopologiaSieci:
         self._nadaj_tozsamosci_galezi()
 
     def _nadaj_tozsamosci_galezi(self) -> None:
-        """Nadaj brakujące tożsamości gałęzi — deterministycznie i jednoznacznie.
+        """Uzupełnij brakujące tożsamości gałęzi — NIEZALEŻNIE OD KOLEJNOŚCI.
 
-        Gałąź podana bez ``ident`` dostaje ``"<od>-<do>#<n>"``, gdzie ``n`` jest
-        numerem wystąpienia tej pary w kolejności podania. Dzięki temu dwa tory
-        równoległe mają RÓŻNE tożsamości bez wymuszania zmiany na wszystkich
-        istniejących wywołaniach, a numeracja jest powtarzalna (ta sama lista =
-        te same tożsamości).
+        DEFEKT, KTÓRY TA WERSJA ZAMYKA (audyt niezależny, plan naprawy §6).
+        Poprzednia wersja numerowała gałęzie bez ``ident`` w kolejności podania
+        (``"<od>-<do>#<n>"``). Tożsamość zależała więc od KOLEJNOŚCI REKORDÓW:
+        permutacja listy zamieniała ``A-B#1`` z ``A-B#2``, więc harmonogram
+        „wyłącz A-B#1" po permutacji wyłączał DRUGI tor — cicho, bez błędu,
+        z przebiegiem wyglądającym poprawnie.
 
-        Tożsamości podane jawnie muszą być jednoznaczne — powtórzenie jest
-        błędem GŁOŚNYM, bo dwie gałęzie o tej samej nazwie znaczą, że scenariusz
-        opisuje inną sieć niż liczona.
+        Reguła po naprawie:
+
+        1. gałąź JEDYNA między swoją parą szyn (w ujęciu NIEUPORZĄDKOWANYM, bo
+           ``A→B`` i ``B→A`` to ta sama para fizyczna) dostaje ``"<od>-<do>"``;
+           nazwa zależy wyłącznie od danych tej gałęzi,
+        2. gałąź w układzie RÓWNOLEGŁYM bez jawnego ``ident`` jest błędem —
+           laboratorium nie ma prawa wymyślić numeru kabla,
+        3. powtórzony ``ident`` jest błędem, bo dwie gałęzie o tej samej nazwie
+           są nieodróżnialne dla zdarzeń topologicznych.
         """
-        licznik: dict[tuple[str, str], int] = {}
-        nowe: list[Galaz] = []
+        pary: dict[frozenset[str], int] = {}
         for g in self.galezie:
-            if g.ident:
-                nowe.append(g)
-                continue
-            para = (g.od_szyny, g.do_szyny)
-            licznik[para] = licznik.get(para, 0) + 1
-            nowe.append(replace(g, ident=f"{g.od_szyny}-{g.do_szyny}#{licznik[para]}"))
+            para = frozenset((g.od_szyny, g.do_szyny))
+            pary[para] = pary.get(para, 0) + 1
+
+        bez_tozsamosci_w_rownolegle = sorted(
+            f"{g.od_szyny}<->{g.do_szyny}"
+            for g in self.galezie
+            if not g.ident and pary[frozenset((g.od_szyny, g.do_szyny))] > 1
+        )
+        if bez_tozsamosci_w_rownolegle:
+            raise ValueError(
+                f"Tory równoległe bez jawnej tożsamości: {sorted(set(bez_tozsamosci_w_rownolegle))}. "
+                "Numer nadany po kolejności rekordów NIE JEST tożsamością — permutacja "
+                "listy zamieniłaby tory miejscami, a zdarzenie topologiczne wyłączyłoby "
+                "inny niż zamierzony. Podaj `ident` z identyfikatora komponentu "
+                "(numer kabla, oznaczenie pola)."
+            )
+
+        nowe = [
+            g if g.ident else replace(g, ident=f"{g.od_szyny}-{g.do_szyny}") for g in self.galezie
+        ]
         identy = [g.ident for g in nowe]
         powtorzone = sorted({i for i in identy if identy.count(i) > 1})
         if powtorzone:

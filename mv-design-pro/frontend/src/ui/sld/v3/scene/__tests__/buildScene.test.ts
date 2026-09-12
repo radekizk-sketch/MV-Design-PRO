@@ -69,6 +69,7 @@ import {
 } from '../buildScene';
 import { overlapProbe } from '../../layout/labels';
 import { sheetRowStationIds, trunkThicknessGaps } from '../buildScene';
+import { VERTICAL_LENGTH_BASELINE } from '../verticalLengthBaseline';
 import { SEGMENT_STROKE_WIDTH } from '../../compose/preview';
 import { buildSldDataFromSnapshot } from '../../../v2/canvas/enmToSldAdapter';
 import { SYMBOL_DEFS } from '../../symbols/defs';
@@ -1121,9 +1122,14 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // jawny portal ma pierwszeństwo przed minimalizacją pionów (spec §15.1
     // „redukcja jest ograniczeniem MIĘKKIM"); zero nowych kolizji
     // (`kosztSceny`, `sceneConformance`, `junction_dot_probe` 0 luk).
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(22672);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(45656);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(45656);
+    // WARTOŚCI Z JEDNEGO ŹRÓDŁA (plan naprawy §8): baseline żył wcześniej TU
+    // i w `scripts/sld_v3_acceptance.mjs`. Po zmianie „LV DOMAIN PROJECTION"
+    // zaktualizowano wyłącznie ten test, a skrypt odbioru został przy starych
+    // liczbach — workflow „SLD Determinism Guards" był od tego dnia czerwony.
+    // Historia podniesień zostaje w komentarzu powyżej; LICZBY są importowane.
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(VERTICAL_LENGTH_BASELINE[0]);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(VERTICAL_LENGTH_BASELINE[1]);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(VERTICAL_LENGTH_BASELINE[2]);
   });
 });
 

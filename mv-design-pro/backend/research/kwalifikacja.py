@@ -42,9 +42,10 @@ from dynamic_lab.benchmarki import (  # noqa: E402
     siec_sn_z_der,
     smib,
 )
-from dynamic_lab.katalog_mutacji import KATALOG_MUTACJI  # noqa: E402
+from dynamic_lab.katalog_mutacji import mutacje_laboratorium  # noqa: E402
 from dynamic_lab.mutacje import uruchom_kampanie  # noqa: E402
 from dynamic_lab.silnik import SilnikRMS  # noqa: E402
+from dynamic_lab.sonda_mutacyjna import wykonaj_sondy_w_podprocesie  # noqa: E402
 from dynamic_lab.tozsamosc import odcisk_implementacji  # noqa: E402
 
 #: Wyrocznie zewnętrzne, o które pytamy przy każdym biegu.
@@ -87,17 +88,28 @@ def _stan_wyroczni_zewnetrznych() -> dict[str, Any]:
     }
 
 
-def _porownanie_trajektorii() -> dict[str, Any]:
-    """Błąd trajektorii punkt-po-punkcie wobec ANDES (jeśli dostępny)."""
+def _porownanie_trajektorii(szybko: bool) -> dict[str, Any]:
+    """Trajektoria wobec ANDES — ODCINKAMI, z werdyktem wg jawnego kryterium.
+
+    CO TO MIERZY, A CZEGO NIE. Jest to cross-check NUMERYCZNY dwóch implementacji
+    tego samego modelu klasycznego, nie walidacja fizyczna — i wynik mówi to
+    wprost w polu ``czego_status_NIE_znaczy``. Werdykt
+    ``ZGODNE_W_GRANICACH_WZORCA`` znaczy „w granicach niepewności WŁASNEJ wzorca,
+    zmierzonej całką pierwszą", i niczego ponadto.
+
+    W trybie ``--szybko`` drabina kroku jest pomijana (osiem biegów wzorca i
+    laboratorium), a status zostaje NIEROZSTRZYGNIĘTY tam, gdzie drabina była
+    potrzebna — brak pomiaru jest raportowany jako brak, nie jako zgodność.
+    """
     if importlib.util.find_spec("andes") is None:
         return {
             "stan": "POMINIETE",
             "powod": "ANDES niezainstalowany — porównanie trajektorii NIE wykonane.",
         }
-    from dynamic_lab.wzorzec_trajektoria import porownaj_trajektorie
+    from dynamic_lab.wzorzec_trajektoria import odbior_trajektorii
 
-    wynik = porownaj_trajektorie(krok_wzorca_s=0.001, krok_laboratorium_s=0.001)
-    return {"stan": "WYKONANE", **wynik.to_dict()}
+    ocena = odbior_trajektorii(integrator="rk4", z_drabina=not szybko)
+    return {"stan": "WYKONANE", **ocena.to_dict()}
 
 
 def _residua_inicjalizacji() -> dict[str, Any]:
@@ -162,14 +174,32 @@ def _czas_krytyczny(szybko: bool) -> dict[str, Any]:
     }
 
 
-def _kampania_mutacyjna() -> dict[str, Any]:
-    return uruchom_kampanie(KATALOG_MUTACJI).to_dict()
+#: Domyślny wykonawca sond kampanii: REALNE podmiany kodu w procesach potomnych.
+#: Wystawiony jako stała, żeby dało się go PRZYPIĄĆ testem — uprząż, w której
+#: ktoś podmieniłby go na atrapę, meldowałaby zabicia bez uruchomienia czegokolwiek.
+WYKONAWCA_SOND_DOMYSLNY = wykonaj_sondy_w_podprocesie
 
 
-def zbierz_raport(*, szybko: bool = False) -> dict[str, Any]:
-    """Pełny raport kwalifikacyjny laboratorium."""
+def _kampania_mutacyjna(wykonaj_sondy: Any) -> dict[str, Any]:
+    """Kampania na REALNYCH podmianach kodu, każda z kontrolą bazową.
+
+    Kosztowna z definicji: każda mutacja to dwa przebiegi sond w procesach
+    potomnych (pomiar: 61 s dla dziesięciu mutacji). Taniej się nie da bez
+    rezygnacji z kontroli bazowej, a bez niej „zabicie" przestaje cokolwiek
+    znaczyć (plan naprawy §4).
+    """
+    return uruchom_kampanie(mutacje_laboratorium(), wykonaj_sondy=wykonaj_sondy).to_dict()
+
+
+def zbierz_raport(*, szybko: bool = False, wykonaj_sondy: Any = None) -> dict[str, Any]:
+    """Pełny raport kwalifikacyjny laboratorium.
+
+    ``wykonaj_sondy`` istnieje WYŁĄCZNIE po to, żeby testy uprzęży nie musiały
+    uruchamiać dwudziestu procesów potomnych pytest dla sprawdzenia KSZTAŁTU
+    raportu. Wartość domyślna jest realna; że jest realna, pilnuje osobny test.
+    """
     start = time.monotonic()
-    mutacje = _kampania_mutacyjna()
+    mutacje = _kampania_mutacyjna(wykonaj_sondy or WYKONAWCA_SOND_DOMYSLNY)
     raport: dict[str, Any] = {
         "kontrakt": "RaportKwalifikacyjnyLaboratoriumV1",
         "status_dowodowy": "UNVALIDATED_MODEL",
@@ -181,7 +211,7 @@ def zbierz_raport(*, szybko: bool = False) -> dict[str, Any]:
         "tryb": "szybki" if szybko else "pelny",
         "wyrocznie_zewnetrzne": _stan_wyroczni_zewnetrznych(),
         "residua_inicjalizacji": _residua_inicjalizacji(),
-        "trajektoria_vs_andes": _porownanie_trajektorii(),
+        "trajektoria_vs_andes": _porownanie_trajektorii(szybko),
         "porownanie_integratorow": _porownanie_integratorow(szybko),
         "czas_krytyczny_zwarcia": _czas_krytyczny(szybko),
         "mutacje": mutacje,
@@ -192,6 +222,7 @@ def zbierz_raport(*, szybko: bool = False) -> dict[str, Any]:
         "luki_krytyczne": mutacje["przezyly_krytyczne"],
         "najgorsza_norma_pochodnej": raport["residua_inicjalizacji"]["najgorsza_norma_pochodnej"],
         "dowod_zewnetrzny_wykonany": raport["trajektoria_vs_andes"]["stan"] == "WYKONANE",
+        "werdykt_trajektorii": raport["trajektoria_vs_andes"].get("status", "POMINIETE"),
     }
     return raport
 

@@ -42,7 +42,13 @@ type DomainOpResponse = {
 };
 
 type ReadinessResponse = {
-  ready: boolean;
+  // KONTRAKT PO NAPRAWIE GLOBALNEGO `ready` (recenzja niezależna, P1-DELTA-08):
+  // końcówka `engineering-readiness` nie niesie już jednej etykiety „gotowy
+  // inżyniersko". Niesie KOMPLETNOŚĆ STRUKTURALNĄ modelu oraz osobną mapę
+  // ZDOLNOŚCI — bo 57/57 szablonów miało `ready=true`, podczas gdy 26 z nich
+  // miało prawidłowo ZABLOKOWANE zwarcie 3F z braku deklaracji k_sc.
+  kompletnosc_modelu: 'MODEL_COMPLETE' | 'MODEL_INCOMPLETE';
+  zdolnosci?: Record<string, { dostepna: boolean; blokady?: unknown[] }>;
   by_severity?: Record<string, number>;
   issues?: Array<{
     code: string;
@@ -263,7 +269,7 @@ test('drzewo topologii i panel gotowości pokazują TĘ SAMĄ blokadę — i gas
 
   // ŹRÓDŁO 1 (serwer): blokada istnieje i wskazuje szyny obecne w drzewie.
   const gotowoscPrzed = await pobierzGotowosc(request, seed.caseId);
-  expect(gotowoscPrzed.ready).toBe(false);
+  expect(gotowoscPrzed?.kompletnosc_modelu).toBe('MODEL_INCOMPLETE');
   expect(blokadySerwera(gotowoscPrzed)).toBeGreaterThan(0);
 
   const szyny = await szynyDrzewa(request, seed.caseId);

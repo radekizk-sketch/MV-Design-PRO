@@ -182,7 +182,30 @@ class _UrzadzenieZwracajaceNan:
 
 
 def test_nan_z_modelu_jest_zlokalizowany_co_do_stanu() -> None:
-    """„Model wyrzucił NaN" musi wskazywać KTÓRY stan, nie tylko że coś padło."""
+    """„Model wyrzucił NaN" musi wskazywać KTÓRY stan, nie tylko że coś padło.
+
+    INTENCJA TESTU BEZ ZMIAN, ASERCJE PRZEPISANE DO OBECNEGO KANONU (plan
+    naprawy §2). Do wpięcia kontroli skończoności NaN z modelu przechodził przez
+    integrator, wchodził do WEKTORA STANU i był wykrywany dopiero po kroku —
+    stąd poprzednie asercje ``stan_skonczony is False``, ``czas_s > 0.0`` i
+    ``klasa == "NieskonczonyStanError"``. Wszystkie trzy opisywały nie fizykę,
+    tylko OPÓŹNIENIE wykrycia.
+
+    Teraz wartość niepoprawna jest zgłaszana w miejscu POWSTANIA, czyli przy
+    pochodnej urządzenia. Skutki, wszystkie zmierzone:
+
+    * ``stan_skonczony`` jest ``True`` — i tak ma być, bo wektor stanu NAPRAWDĘ
+      jest jeszcze skończony; niepoprawna jest jego POCHODNA. Rozróżnienie niesie
+      nowe pole ``wielkosc_niesksonczona``;
+    * ``czas_s`` wynosi 0,0 — awaria zachodzi w pierwszym kroku, a nie po nim;
+    * klasa błędu to ``WartoscNieskonczonaError``, czyli nazwa wyjątku, który
+      NAPRAWDĘ padł. Poprzednia nazwa ``NieskonczonyStanError`` nie odpowiadała
+      żadnej klasie w kodzie — była napisem budowanym w silniku obok wyjątku,
+      więc to samo zjawisko miało dwie nazwy zależnie od miejsca wykrycia.
+
+    Nienaruszalne pozostaje to, PO CO ten test istnieje: wynik ma podać ADRES
+    defektu (``U1.stan_a``, nie ``U1.stan_b``), a nie samo „coś padło".
+    """
     topo = TopologiaSieci(
         szyny=("A", "SYS"),
         galezie=[Galaz("A", "SYS", 0.01, 0.10)],
@@ -195,11 +218,21 @@ def test_nan_z_modelu_jest_zlokalizowany_co_do_stanu() -> None:
     assert wynik.diagnostyka.zbiegl is False
     assert blad is not None
     assert blad.faza == "calkowanie"
-    assert blad.stan_skonczony is False
+    assert blad.klasa == "WartoscNieskonczonaError"
+    # ADRES defektu — sedno tego testu, niezmienione od pierwszej wersji.
     assert "U1.stan_a" in blad.stany_niesksonczone
     assert "U1.stan_b" not in blad.stany_niesksonczone
-    assert blad.czas_s > 0.0
+    # WIELKOŚĆ niepoprawna: pochodna, nie stan. Para tych dwóch pól jest jedyną
+    # spójną odpowiedzią na pytanie „co dokładnie nie jest liczbą".
+    assert blad.wielkosc_niesksonczona == "pochodna stanu"
+    assert blad.stan_skonczony is True
+    assert blad.czas_s == pytest.approx(0.0)
+    assert blad.numer_kroku == 0
     assert blad.krok_s == pytest.approx(0.01)
+    # Norma pochodnej w t0 NIE ZOSTAŁA ZMIERZONA — i mówi to wprost, zamiast
+    # podawać 0,0 („start w idealnej równowadze") o biegu, który nie policzył
+    # ani jednej poprawnej pochodnej.
+    assert wynik.diagnostyka.norma_pochodnej_w_t0 is None
 
 
 def test_wynik_zbiezny_nie_niesie_bledu() -> None:
@@ -238,8 +271,12 @@ def test_blad_wchodzi_do_odcisku_wyniku() -> None:
     silnik = SilnikRMS(model, integrator="rk4", krok_s=0.01, tolerancja_rownowagi=1e9)
     wynik = silnik.symuluj(np.array([0.0, 0.0]), czas_koncowy_s=0.1)
     slownik = wynik.to_dict()
-    assert slownik["diagnostyka"]["blad"]["klasa"] == "NieskonczonyStanError"
+    # Nazwa klasy jest nazwą WYJĄTKU, który padł — patrz uzasadnienie przy
+    # `test_nan_z_modelu_jest_zlokalizowany_co_do_stanu`.
+    assert slownik["diagnostyka"]["blad"]["klasa"] == "WartoscNieskonczonaError"
     assert slownik["diagnostyka"]["blad"]["stany_niesksonczone"] == ["U1.stan_a"]
+    assert slownik["diagnostyka"]["blad"]["wielkosc_niesksonczona"] == "pochodna stanu"
+    assert slownik["diagnostyka"]["norma_pochodnej_w_t0"] is None
 
 
 # ---------------------------------------------------------------------------

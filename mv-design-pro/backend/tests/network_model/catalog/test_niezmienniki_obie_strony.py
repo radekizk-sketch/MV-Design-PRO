@@ -188,7 +188,11 @@ def test_kazda_klasa_niezmiennika_ma_przypisana_moc() -> None:
 
     assert KLASY_TWARDE | KLASY_MIEKKIE == set(KlasaNiezmiennika)
     assert not (KLASY_TWARDE & KLASY_MIEKKIE), "klasa nie może być twarda i miękka naraz"
-    assert len(KlasaNiezmiennika) == 5
+    # SZEŚĆ KLAS. Szósta (`NIESKLASYFIKOWANA`) doszła po recenzji niezależnej
+    # (P2-DELTA-17): rozdziela MOC egzekwowania od TWIERDZENIA o podstawie reguły.
+    # Liczba jest tu po to, żeby dopisanie klasy wymagało świadomej decyzji o jej
+    # mocy — dlatego rośnie razem z przypisaniem, a nie zamiast niego.
+    assert len(KlasaNiezmiennika) == 6
 
 
 @pytest.mark.parametrize(
@@ -219,9 +223,21 @@ def test_reguly_wymienione_w_audycie_nie_sa_prawami_fizyki(regula: str) -> None:
     assert len(uzasadnienie) > 80, uzasadnienie
 
 
-def test_regula_spoza_rejestru_pozostaje_twarda_i_nie_jest_zdegradowana() -> None:
-    """DRUGA STRONA PREDYKATU — nowa reguła nie wchodzi cicho na stronę ostrzeżeń."""
+def test_regula_spoza_rejestru_jest_twarda_ale_NIE_NAZWANA() -> None:
+    """DRUGA STRONA PREDYKATU — i rozdzielenie MOCY od TWIERDZENIA.
+
+    INTENCJA BEZ ZMIAN, ASERCJA PRZEPISANA (recenzja niezależna, P2-DELTA-17).
+    Test od początku pilnował, żeby nowa reguła NIE weszła cicho na stronę
+    ostrzeżeń — i to zostaje: ``regula_jest_twarda`` nadal musi być prawdą.
+
+    Zmienia się nazwa, którą taka reguła dostaje. Poprzednio było to
+    ``KONIECZNOSC_FIZYCZNA``, czyli twierdzenie „złamanie tej reguły oznacza
+    wielkość, która nie może istnieć". Nikt takiego twierdzenia dla reguły spoza
+    rejestru nie postawił — recenzja nazwała to wprost „twardym domysłem".
+    Rozdzielenie: moc zostaje twarda, klasyfikacja mówi ``NIESKLASYFIKOWANA``.
+    """
     from network_model.catalog.niezmienniki_katalogu import (
+        KLASY_TWARDE,
         KlasaNiezmiennika,
         byla_regula_za_mocna,
         klasa_reguly,
@@ -229,6 +245,12 @@ def test_regula_spoza_rejestru_pozostaje_twarda_i_nie_jest_zdegradowana() -> Non
     )
 
     nowa = "Un > 0"
-    assert klasa_reguly(nowa) is KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA
+    # MOC: bez zmian — bramka, nie ostrzeżenie.
     assert regula_jest_twarda(nowa)
+    assert KlasaNiezmiennika.NIESKLASYFIKOWANA in KLASY_TWARDE
+    # TWIERDZENIE: żadne. Reguła bez decyzji nie udaje reguły z decyzją.
+    assert klasa_reguly(nowa) is KlasaNiezmiennika.NIESKLASYFIKOWANA
+    assert klasa_reguly(nowa) is not KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA
     assert not byla_regula_za_mocna(nowa)
+    # Reguła Z rejestru nadal dostaje swoją realną klasę, nie zastępczą.
+    assert klasa_reguly("R0 >= R1") is KlasaNiezmiennika.WIARYGODNOSC

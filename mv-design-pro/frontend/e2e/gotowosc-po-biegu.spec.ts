@@ -49,7 +49,13 @@ type DomainOpResponse = {
 };
 
 type ReadinessResponse = {
-  ready: boolean;
+  // KONTRAKT PO NAPRAWIE GLOBALNEGO `ready` (recenzja niezależna, P1-DELTA-08):
+  // końcówka `engineering-readiness` nie niesie już jednej etykiety „gotowy
+  // inżyniersko". Niesie KOMPLETNOŚĆ STRUKTURALNĄ modelu oraz osobną mapę
+  // ZDOLNOŚCI — bo 57/57 szablonów miało `ready=true`, podczas gdy 26 z nich
+  // miało prawidłowo ZABLOKOWANE zwarcie 3F z braku deklaracji k_sc.
+  kompletnosc_modelu: 'MODEL_COMPLETE' | 'MODEL_INCOMPLETE';
+  zdolnosci?: Record<string, { dostepna: boolean; blokady?: unknown[] }>;
   by_severity?: Record<string, number>;
   issues?: Array<{ code: string; element_ref?: string | null; severity?: string }>;
 };
@@ -218,7 +224,7 @@ async function zbudujSiecGotowaDoObliczen(
   let readiness: ReadinessResponse | null = null;
   for (let attempt = 0; attempt < 5; attempt += 1) {
     readiness = await pobierzGotowosc(request, caseId);
-    if (readiness.ready) break;
+    if (readiness?.kompletnosc_modelu === 'MODEL_COMPLETE') break;
     for (const issue of (readiness.issues ?? []).filter(
       (i) => i.code.includes('catalog') && i.element_ref,
     )) {
@@ -243,7 +249,7 @@ async function zbudujSiecGotowaDoObliczen(
       });
     }
   }
-  expect(readiness?.ready).toBe(true);
+  expect(readiness?.kompletnosc_modelu).toBe('MODEL_COMPLETE');
 
   return segmentRefs;
 }
@@ -297,7 +303,7 @@ test('wynik biegu przy modelu z blokadą: chip pokazuje gotowość BIEŻĄCEGO m
     switch_ref: segmentRefs[0],
   });
   const gotowosc = await pobierzGotowosc(request, caseId);
-  expect(gotowosc.ready).toBe(false);
+  expect(gotowosc?.kompletnosc_modelu).toBe('MODEL_INCOMPLETE');
   expect(blokadySerwera(gotowosc)).toBeGreaterThan(0);
 
   // ZIMNE wejście na link przebiegu — świeży kontekst przeglądarki (zero

@@ -33,7 +33,7 @@ drugi zatrzymuje pracę, pierwszy trafia do wniosków.
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 
 import numpy as np
 from numpy.typing import NDArray
@@ -45,7 +45,41 @@ class WartoscNieskonczonaError(FloatingPointError):
     Dziedziczy po ``FloatingPointError``, a nie po ``ValueError``: to nie jest
     zła DANA WEJŚCIOWA (te odrzucają walidatory modelu), tylko wynik rachunku,
     który wyszedł poza dziedzinę liczb zmiennoprzecinkowych.
+
+    ADRES DEFEKTU JEST DANĄ, NIE TYLKO TEKSTEM. Pierwsza wersja niosła pozycje
+    wyłącznie w komunikacie — czytelnym dla człowieka i bezużytecznym dla kodu,
+    który ma z tego zbudować pole kontraktu wyniku. Skutek był ZMIERZONY:
+    po wpięciu kontroli skończoności do ``SilnikRMS.pochodne`` NaN był łapany
+    już przy POCHODNEJ, więc lokalizacja liczona ze STANU (``x`` jest w tej
+    chwili jeszcze skończony) zwracała pustą krotkę. Wynik meldował „bieg
+    przerwany", nie mówiąc KTÓRY stan go przerwał — czyli tracił dokładnie tę
+    informację, dla której kontrola powstała.
+
+    Dlatego wyjątek niesie:
+
+    ``pozycje``
+        indeksy niepoprawnych elementów (krotka krotek — wymiar tablicy);
+    ``etykiety``
+        NAZWY tych elementów, gdy wołający je zna (np. ``("G1.delta_rad",)``);
+        pusta krotka znaczy „wołający nie podał nazw", nigdy „nazw nie ma";
+    ``co`` / ``gdzie``
+        opis wielkości i miejsca, ten sam co w komunikacie.
     """
+
+    def __init__(
+        self,
+        komunikat: str,
+        *,
+        pozycje: tuple[tuple[int, ...], ...] = (),
+        etykiety: tuple[str, ...] = (),
+        co: str = "",
+        gdzie: str = "",
+    ) -> None:
+        super().__init__(komunikat)
+        self.pozycje = pozycje
+        self.etykiety = etykiety
+        self.co = co
+        self.gdzie = gdzie
 
 
 def _opis_miejsca(co: str, gdzie: str) -> str:
@@ -57,6 +91,7 @@ def wymagaj_skonczonosci(
     *,
     co: str,
     gdzie: str = "",
+    etykiety: Sequence[str] | None = None,
 ) -> None:
     """Podnieś ``WartoscNieskonczonaError``, jeżeli cokolwiek nie jest skończone.
 
@@ -68,22 +103,50 @@ def wymagaj_skonczonosci(
     Komunikat wskazuje INDEKSY niepoprawnych pozycji, a nie tylko fakt: przy
     stanie o kilkunastu współrzędnych „coś jest NaN" nie pozwala znaleźć modelu,
     który go wyprodukował.
+
+    ``etykiety`` podaje się tam, gdzie wołający ZNA nazwy kolejnych elementów
+    (silnik zna nazwy stanów urządzenia, integrator już nie). Wtedy komunikat
+    mówi ``G1.delta_rad`` zamiast ``[0]``, a wyjątek niesie te nazwy jako daną —
+    dzięki czemu kontrakt wyniku może je przepisać do ``stany_niesksonczone``
+    BEZ parsowania tekstu. Długość niezgodna z liczbą elementów jest BŁĘDEM
+    wołającego i podnosi ``ValueError``: etykiety przesunięte o jeden wskazują
+    niewłaściwy stan, czyli są gorsze niż ich brak.
     """
     tablica = np.asarray(wartosci)
     if tablica.size == 0:
         return
+    if etykiety is not None and len(etykiety) != tablica.size:
+        raise ValueError(
+            f"{_opis_miejsca(co, gdzie)}: podano {len(etykiety)} etykiet dla "
+            f"{tablica.size} wartości — etykieta wskazująca nie ten element jest "
+            f"gorsza niż brak etykiet."
+        )
     skonczone = np.isfinite(tablica)
     if bool(np.all(skonczone)):
         return
     zle = np.argwhere(~skonczone)
-    pozycje = ", ".join(
-        f"[{', '.join(str(int(i)) for i in idx)}] = {tablica[tuple(idx)]!r}" for idx in zle[:8]
+    krotki = tuple(tuple(int(i) for i in idx) for idx in zle)
+    nazwy = (
+        tuple(etykiety[int(np.ravel_multi_index(idx, tablica.shape))] for idx in krotki)
+        if etykiety is not None
+        else ()
     )
-    reszta = "" if len(zle) <= 8 else f" (i {len(zle) - 8} dalszych)"
+
+    def _adres(numer: int, idx: tuple[int, ...]) -> str:
+        if nazwy:
+            return f"{nazwy[numer]} = {tablica[idx]!r}"
+        return f"[{', '.join(str(i) for i in idx)}] = {tablica[idx]!r}"
+
+    pozycje = ", ".join(_adres(numer, idx) for numer, idx in enumerate(krotki[:8]))
+    reszta = "" if len(krotki) <= 8 else f" (i {len(krotki) - 8} dalszych)"
     raise WartoscNieskonczonaError(
         f"{_opis_miejsca(co, gdzie)}: wartość nie jest liczbą skończoną — {pozycje}{reszta}. "
         "NaN/Inf nie wolno rzutować, porównywać ani przyjąć za wynik: przebieg "
-        "wyglądający rozsądnie po cichej podmianie jest gorszy niż brak przebiegu."
+        "wyglądający rozsądnie po cichej podmianie jest gorszy niż brak przebiegu.",
+        pozycje=krotki,
+        etykiety=nazwy,
+        co=co,
+        gdzie=gdzie,
     )
 
 

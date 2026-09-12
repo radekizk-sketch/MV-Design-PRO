@@ -27,7 +27,12 @@ function mockFetch(map: Record<string, unknown>) {
   );
 }
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  // Blok, nie wyrażenie: `vi.unstubAllGlobals()` zwraca `VitestUtils`, a
+  // `afterEach` oczekuje `Awaitable<void>` — strzałka bez klamer zwracała więc
+  // wartość niezgodną z kontraktem (TS2322). Zachowanie bez zmian.
+  vi.unstubAllGlobals();
+});
 
 describe('fetchConverterTypes — certyfikat PTPiREE (PV/BESS)', () => {
   it('PV: przenosi ptpiree_certificate_ref + status na ConverterType', async () => {

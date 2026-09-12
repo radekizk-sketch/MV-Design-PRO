@@ -25,6 +25,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from dynamic_lab.calkowanie import (
+    DT_KALIBRACJI_S,
     INTEGRATORY,
     KRYTERIUM_DOMYSLNE,
     KryteriumZbieznosci,
@@ -42,6 +43,7 @@ from dynamic_lab.skonczonosc import (
 from dynamic_lab.urzadzenia_oze import MagazynEnergiiBESS
 from dynamic_lab.wynik import (
     DiagnostykaSolvera,
+    KompletnoscPrzebiegu,
     PrzestrzenSygnalu,
     Sygnal,
     WynikDynamiczny,
@@ -146,6 +148,28 @@ def test_nakladka_niezmiennikow_NIE_RZUTUJE_wartosci_niepoprawnej(wartosc: float
 
 
 @pytest.mark.parametrize("wartosc", WARTOSCI_NIESKONCZONE)
+def test_krok_BEZ_sprawozdania_tez_nie_rzutuje_wartosci_niepoprawnej(wartosc: float) -> None:
+    """Druga ścieżka nakładki: ``krok()`` NIE przechodzi przez sprawozdanie kroku.
+
+    LUKA ZNALEZIONA PRZEZ KAMPANIĘ MUTACYJNĄ (mutacja M-NUM-03, plan naprawy §4).
+    Przy pierwszym przebiegu kampanii mutacja przywracająca rzutowanie ``NaN`` na
+    granicę PRZEŻYŁA: testy nakładki wołały wyłącznie ``krok_ze_sprawozdaniem``,
+    a tam kontrola skończoności stanu stoi już w `_sprawozdanie_metody_jawnej` i
+    podnosi wyjątek WCZEŚNIEJ. Ścieżka ``krok()`` — używana wszędzie tam, gdzie
+    wołający nie potrzebuje sprawozdania — nie była badana wcale, więc jej jedyny
+    strażnik (kontrola przed rzutowaniem) mógł zniknąć niezauważony.
+    """
+
+    def pochodna(x: np.ndarray, t: float) -> np.ndarray:
+        return np.array([wartosc], dtype=np.float64)
+
+    integrator = z_niezmiennikami("rk4", _OGRANICZENIE)
+    with pytest.raises(WartoscNieskonczonaError, match="przed rzutowaniem"):
+        integrator.krok(pochodna, np.array([0.5], dtype=np.float64), 0.0, 0.01)
+    assert integrator.dziennik.bez_rzutowan
+
+
+@pytest.mark.parametrize("wartosc", WARTOSCI_NIESKONCZONE)
 @pytest.mark.parametrize("integrator", ["euler_niejawny", "trapez_niejawny"])
 def test_metoda_niejawna_zglasza_przyczyne_a_nie_drabine_tolerancji(
     wartosc: float, integrator: str
@@ -182,17 +206,28 @@ def test_kryterium_zbieznosci_nie_porownuje_wartosci_niepoprawnej(wartosc: float
     residuum = np.array([wartosc], dtype=np.float64)
     with pytest.raises(WartoscNieskonczonaError, match="residuum"):
         KRYTERIUM_DOMYSLNE.rho(
-            residuum, np.array([1.0], dtype=np.float64), np.array([1.0], dtype=np.float64)
+            residuum,
+            np.array([1.0], dtype=np.float64),
+            np.array([1.0], dtype=np.float64),
+            dt=DT_KALIBRACJI_S,
+            rzad=2,
         )
 
 
 def test_kryterium_zbieznosci_dziala_dla_residuum_poprawnego() -> None:
-    """DRUGA STRONA PREDYKATU — kryterium musi nadal liczyć rho."""
+    """DRUGA STRONA PREDYKATU — kryterium musi nadal liczyć rho.
+
+    Krok równy ``DT_KALIBRACJI_S`` dobrany świadomie: przy nim współczynnik
+    skalowania wynosi dokładnie 1, więc ``atol`` znaczy to, co deklaruje, i test
+    sprawdza SAMO kryterium, nie kalibrację.
+    """
     kryterium = KryteriumZbieznosci(atol=1.0e-9, rtol=0.0)
     rho = kryterium.rho(
         np.array([1.0e-9], dtype=np.float64),
         np.array([1.0], dtype=np.float64),
         np.array([1.0], dtype=np.float64),
+        dt=DT_KALIBRACJI_S,
+        rzad=2,
     )
     assert rho == pytest.approx(1.0)
 
@@ -235,9 +270,7 @@ def _model_z_magazynem() -> tuple[ModelDynamiczny, MagazynEnergiiBESS]:
         galezie=[Galaz("BAT", "SYS", 0.01, 0.05)],
         szyny_sztywne={"SYS": complex(1.0, 0.0)},
     )
-    magazyn = MagazynEnergiiBESS(
-        ref="BAT", szyna="BAT", e_pojemnosc_mwh=1.0, s_bazowa_mva=100.0
-    )
+    magazyn = MagazynEnergiiBESS(ref="BAT", szyna="BAT", e_pojemnosc_mwh=1.0, s_bazowa_mva=100.0)
     return (
         ModelDynamiczny(topologia=topologia, urzadzenia=[magazyn], s_bazowa_mva=100.0),
         magazyn,
@@ -270,7 +303,26 @@ def test_niepoprawna_moc_magazynu_zatrzymuje_bieg(
 def test_niepoprawna_pochodna_urzadzenia_zatrzymuje_bieg(
     monkeypatch: pytest.MonkeyPatch, wartosc: float
 ) -> None:
-    """Iniekcja w POCHODNĄ URZĄDZENIA — komunikat musi wskazać, KTÓRE urządzenie."""
+    """Iniekcja w POCHODNĄ URZĄDZENIA — bieg zatrzymany i ADRES defektu w wyniku.
+
+    INTENCJA BEZ ZMIAN, DROGA MELDUNKU PRZEPISANA DO KANONU SILNIKA. Pierwsza
+    wersja żądała wyjątku z ``symuluj()``. Było to niespójne z pozostałymi
+    niepowodzeniami biegu (rozbieżny Newton, osobliwa macierz, limit iteracji),
+    które silnik od dawna melduje przez ``diagnostyka.blad`` — a wyciek wyjątku
+    z ``symuluj()`` jest w tym module udokumentowany jako DEFEKT (patrz komentarz
+    o ``BrakZbieznosciSieciError``). Skutkiem było zgłaszanie JEDNEGO zjawiska —
+    wartości nieskończonej w trakcie biegu — dwiema drogami zależnie od tego,
+    która wielkość ją niosła.
+
+    Granica przebiega po pytaniu „czy zagadnienie początkowe istnieje":
+    niepoprawny PRĄD albo NAPIĘCIE uniemożliwiają wyznaczenie ``y(0)``, więc
+    zagadnienia nie ma i leci wyjątek (dwa testy obok). Niepoprawna POCHODNA
+    zostawia ``x0`` i ``y0`` policzone i skończone — zagadnienie istnieje, więc
+    bieg rusza i melduje przyczynę w wyniku.
+
+    Test sprawdza to, po co powstał: bieg NIE UCHODZI za zbieżny, a wynik
+    wskazuje URZĄDZENIE i STAN.
+    """
     model, magazyn = _model_z_magazynem()
     silnik = SilnikRMS(model, integrator="rk4", krok_s=0.005)
     x0 = silnik.inicjalizuj({"BAT": complex(0.3, 0.0)})
@@ -279,9 +331,57 @@ def test_niepoprawna_pochodna_urzadzenia_zatrzymuje_bieg(
         return np.array([wartosc, 0.0, 0.0, 0.0, 0.0], dtype=np.float64)
 
     monkeypatch.setattr(magazyn, "pochodne", pochodne_zepsute)
-    with pytest.raises(WartoscNieskonczonaError) as blad:
-        silnik.symuluj(x0, czas_koncowy_s=0.05)
-    assert "BAT" in str(blad.value)
+    wynik = silnik.symuluj(x0, czas_koncowy_s=0.05)
+
+    blad = wynik.diagnostyka.blad
+    assert wynik.diagnostyka.zbiegl is False
+    assert blad is not None
+    assert blad.klasa == "WartoscNieskonczonaError"
+    assert blad.faza == "calkowanie"
+    assert blad.wielkosc_niesksonczona == "pochodna stanu"
+    assert "BAT" in blad.komunikat
+    # ADRES: pierwszy stan magazynu, nie „któryś".
+    assert blad.stany_niesksonczone
+    assert all(nazwa.startswith("BAT.") for nazwa in blad.stany_niesksonczone)
+    # Bieg NIE dostaje statusu pełnego przebiegu ani zmierzonej normy startowej.
+    assert wynik.diagnostyka.kompletnosc is KompletnoscPrzebiegu.PRZERWANY_BLEDEM
+    assert wynik.diagnostyka.norma_pochodnej_w_t0 is None
+
+
+def test_granica_wyjatek_kontra_blad_w_wyniku_jest_jednym_predykatem() -> None:
+    """REGUŁA, nie przypadek: co wychodzi wyjątkiem, a co wynikiem.
+
+    Ten test istnieje, bo dwa poprzednie i trzy sąsiednie opisują DWIE różne
+    drogi meldunku. Bez przypięcia samej reguły wyglądałyby na niekonsekwencję,
+    a pierwsza zmiana w silniku rozjechałaby je po cichu (deklaracja bez testu
+    jest fałszywą pewnością).
+
+    REGUŁA: rozstrzyga ISTNIENIE zagadnienia początkowego ``(x₀, y₀)``.
+    Nieobliczalne ``y₀`` -> wyjątek (nie ma biegu). Obliczalne ``y₀`` i zerwana
+    kontynuacja -> wynik z ``diagnostyka.blad`` (bieg był, nie doszedł).
+    """
+    model, magazyn = _model_z_magazynem()
+    silnik = SilnikRMS(model, integrator="rk4", krok_s=0.005)
+    x0 = silnik.inicjalizuj({"BAT": complex(0.3, 0.0)})
+
+    # STRONA „NIE MA ZAGADNIENIA": prąd niepoprawny => `y0` nie istnieje.
+    oryginalne_wstrzykniecie = magazyn.wstrzykniecie
+    magazyn.wstrzykniecie = lambda x, v: complex(float("nan"), 0.0)  # type: ignore[method-assign]
+    try:
+        with pytest.raises(WartoscNieskonczonaError):
+            silnik.symuluj(x0, czas_koncowy_s=0.05)
+    finally:
+        magazyn.wstrzykniecie = oryginalne_wstrzykniecie  # type: ignore[method-assign]
+
+    # STRONA „ZAGADNIENIE JEST, BIEG SIĘ URWAŁ": pochodna niepoprawna.
+    oryginalne_pochodne = magazyn.pochodne
+    magazyn.pochodne = lambda x, v: np.full(5, float("nan"))  # type: ignore[method-assign]
+    try:
+        wynik = silnik.symuluj(x0, czas_koncowy_s=0.05)
+    finally:
+        magazyn.pochodne = oryginalne_pochodne  # type: ignore[method-assign]
+    assert wynik.diagnostyka.blad is not None
+    assert wynik.diagnostyka.zbiegl is False
 
 
 @pytest.mark.parametrize("wartosc", WARTOSCI_NIESKONCZONE)
@@ -299,9 +399,7 @@ def test_niepoprawne_napiecie_sieci_zatrzymuje_bieg(
         wynik = oryginalny(wstrzykniecia, start)
         zepsute = wynik.napiecia.copy()
         zepsute[0] = complex(wartosc, 0.0)
-        return type(wynik)(
-            napiecia=zepsute, residuum=wynik.residuum, iteracje=wynik.iteracje
-        )
+        return type(wynik)(napiecia=zepsute, residuum=wynik.residuum, iteracje=wynik.iteracje)
 
     monkeypatch.setattr(silnik.solver_sieci, "rozwiaz", rozwiaz_zepsuty)
     with pytest.raises(WartoscNieskonczonaError, match="napięcia sieci"):
