@@ -50,6 +50,18 @@ K_SC_ZRODLO_NIEPOPRAWNE = "DANE_NIEPOPRAWNE"
 #: wadliwa jest PARA, a nie żadna z wartości z osobna — komunikat musi to
 #: powiedzieć, inaczej projektant szuka błędu w niewłaściwym polu.
 K_SC_ZRODLO_POZA_DZIEDZINA = "POZA_DZIEDZINA_WYNIKU"
+#: Prąd znamionowy źródła jest nieobecny, zerowy, ujemny albo nieskończony —
+#: więc WKŁADU NIE DA SIĘ POLICZYĆ. Znacznik osobny od pozostałych, bo wadliwa
+#: jest inna dana (tabliczka źródła, nie współczynnik) i inna jest naprawa.
+#:
+#: KOREKTA (audyt niezależny, plan naprawy §3). Poprzednia wersja zwracała w tej
+#: sytuacji ``(0.0, znacznik_k_sc)``: źródło bez prądu znamionowego wnosiło
+#: 0 A i ZACHOWYWAŁO znacznik DEKLARACJA, więc wynik zwarciowy pozostawał w
+#: pełni miarodajny. Brak danej znamionowej udawał wtedy wkład zerowy — a to
+#: dwie różne rzeczy: „nie wnosi prądu" jest twierdzeniem fizycznym, „nie wiem,
+#: ile wnosi" jest brakiem danych. Zerowy wkład ZANIŻA prąd zwarciowy, więc
+#: przepuszczał aparat o za małej zdolności wyłączalnej.
+K_SC_ZRODLO_PRAD_NIEPOPRAWNY = "PRAD_ZNAMIONOWY_NIEPOPRAWNY"
 
 
 def _jest_liczba_skonczona_dodatnia(wartosc: object) -> bool:
@@ -136,9 +148,11 @@ def prad_wkladu_zwarciowego(k_sc: object, i_n_a: object) -> tuple[float, str]:
     k_sc_wartosc, znacznik = wspolczynnik_wkladu_zwarciowego(k_sc)
 
     if not _jest_liczba_skonczona_dodatnia(i_n_a):
-        # Prąd znamionowy jest daną źródła, nie współczynnika: brak/zero/wartość
-        # niepoprawna nie zmienia pochodzenia k_sc, ale nie da też wkładu.
-        return 0.0, znacznik
+        # BRAK DANEJ TO NIE JEST WKŁAD ZEROWY. Zwracana liczba pozostaje 0,0,
+        # bo żadnej innej nie da się uczciwie policzyć, ale znacznik mówi, że
+        # to jest BRAK — i warstwa gotowości ma go zablokować, zamiast przyjąć
+        # zaniżony prąd zwarciowy za wynik.
+        return 0.0, K_SC_ZRODLO_PRAD_NIEPOPRAWNY
 
     iloczyn = k_sc_wartosc * float(i_n_a)  # type: ignore[arg-type]
     if not math.isfinite(iloczyn) or iloczyn <= 0.0:

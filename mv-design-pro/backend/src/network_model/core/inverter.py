@@ -81,9 +81,17 @@ class InverterSource:
     def wklad_zrodlo(self) -> str:
         """Pochodzenie WKŁADU (nie samego współczynnika) — z kontrolą dziedziny.
 
-        Różni się od `k_sc_zrodlo` dokładnie w jednym przypadku: deklaracja jest
-        poprawna, ale iloczyn z prądem znamionowym wychodzi poza zakres liczb
-        skończonych. To ten znacznik czyta warstwa gotowości i autorytetu.
+        Różni się od `k_sc_zrodlo` w DWÓCH przypadkach, i oba dotyczą prądu
+        znamionowego, a nie współczynnika:
+
+        1. deklaracja poprawna, ale ILOCZYN z prądem znamionowym wychodzi poza
+           zakres liczb skończonych (``POZA_DZIEDZINA_WYNIKU``),
+        2. prąd znamionowy jest nieobecny, zerowy, ujemny albo nieskończony, więc
+           wkładu NIE DA SIĘ policzyć (``PRAD_ZNAMIONOWY_NIEPOPRAWNY``, plan
+           naprawy §3 — wcześniej wracało 0 A ze znacznikiem DEKLARACJA, czyli
+           brak danej udawał wkład zerowy i ZANIŻAŁ prąd zwarciowy).
+
+        To ten znacznik czyta warstwa gotowości i autorytetu.
         """
         return prad_wkladu_zwarciowego(self.k_sc, self.in_rated_a)[1]
 

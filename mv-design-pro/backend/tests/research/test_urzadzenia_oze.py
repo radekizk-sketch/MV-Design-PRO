@@ -377,35 +377,50 @@ def test_okno_soc_ogranicza_wlasciwy_kierunek(
     Ogranicznik działający symetrycznie („na granicy nic nie wolno") uniemożliwiłby
     naładowanie rozładowanego magazynu — i przeszedłby test badający tylko jeden
     kierunek.
+
+    KOREKTA (audyt niezależny, plan naprawy §1). Test pytał o ``cel_mocy``, czyli o
+    NASTAWĘ regulatora. Bramka energii stała wtedy właśnie tam — i to był defekt:
+    moc wystawiana jest STANEM z opóźnieniem ``T_p``, więc magazyn oddawał jeszcze
+    ``P·T_p`` energii, której nie miał, a ten test tego NIE WIDZIAŁ. Pytamy teraz o
+    MOC NA ZACISKACH, bo tylko ona rozstrzyga bilans energii. Intencja bez zmian:
+    ograniczenie kierunkowe, oba kierunki, obie granice i środek okna.
     """
     magazyn = _magazyn(soc_poczatkowy=soc, soc_min=0.1, soc_max=0.9)
-    x = np.array([0.0, 0.0, soc, 0.0, 1.0], dtype=np.float64)
-    p_cel, _ = magazyn.cel_mocy(x, p_zadane_pu=p_zadane, q_zadane_pu=0.0)
+    napiecie = complex(1.0, 0.0)
+    # Stan toru mocy USTAWIONY na żądaną wartość: tak wygląda przepływ po
+    # zakończeniu przejścia toru P, czyli sytuacja, w której defekt żył.
+    x = np.array([p_zadane, 0.0, soc, 0.0, 1.0], dtype=np.float64)
+    p_zaciskow = magazyn.moc_rzeczywista(x, napiecie).real
     if oczekiwany_znak == 0.0:
-        assert p_cel == pytest.approx(0.0)
+        assert p_zaciskow == pytest.approx(0.0)
     else:
-        assert math.copysign(1.0, p_cel) == oczekiwany_znak
-        assert abs(p_cel) == pytest.approx(abs(p_zadane))
+        assert math.copysign(1.0, p_zaciskow) == oczekiwany_znak
+        assert abs(p_zaciskow) == pytest.approx(abs(p_zadane))
 
 
-def test_pasmo_soc_czyni_cel_ciaglym_a_zerowe_pasmo_jest_odrzucane() -> None:
+def test_pasmo_soc_czyni_moc_zaciskow_ciagla_a_zerowe_pasmo_jest_odrzucane() -> None:
     """Deklaracja z docstringa („pasmo czyni pochodną ciągłą") MUSI mieć test.
 
-    Skok zadania mocy na granicy okna wywraca metody niejawne — to jest zmierzony
-    mechanizm z `FalownikGFL`. Tutaj sprawdzamy, że przejście jest ciągłe: maksymalny
-    przyrost celu na siatce SOC jest proporcjonalny do kroku siatki, a nie skokowy.
+    Skok mocy na granicy okna wywraca metody niejawne — to jest zmierzony mechanizm
+    z `FalownikGFL`. Sprawdzamy, że przejście jest ciągłe: maksymalny przyrost MOCY
+    NA ZACISKACH na siatce SOC jest proporcjonalny do kroku siatki, a nie skokowy.
+
+    KOREKTA (plan naprawy §1): bramka energii przeszła z celu regulatora na moc
+    faktycznie wystawianą, więc ciągłość trzeba badać tam, gdzie bramka działa.
+    Badanie ciągłości celu byłoby dziś badaniem funkcji, która bramki nie zawiera.
     """
     magazyn = _magazyn(soc_min=0.1, soc_max=0.9, pasmo_soc=0.02)
+    napiecie = complex(1.0, 0.0)
     siatka = np.linspace(0.05, 0.25, 2001)
-    cele = []
+    moce = []
     for soc in siatka:
-        x = np.array([0.0, 0.0, soc, 0.0, 1.0], dtype=np.float64)
-        cele.append(magazyn.cel_mocy(x, p_zadane_pu=0.8, q_zadane_pu=0.0)[0])
-    skoki = np.abs(np.diff(np.array(cele)))
+        x = np.array([0.8, 0.0, soc, 0.0, 1.0], dtype=np.float64)
+        moce.append(magazyn.moc_rzeczywista(x, napiecie).real)
+    skoki = np.abs(np.diff(np.array(moce)))
     krok_siatki = float(siatka[1] - siatka[0])
     assert float(skoki.max()) < 2.0 * 0.8 * krok_siatki / 0.02
-    assert cele[0] == pytest.approx(0.0)
-    assert cele[-1] == pytest.approx(0.8)
+    assert moce[0] == pytest.approx(0.0)
+    assert moce[-1] == pytest.approx(0.8)
 
     with pytest.raises(ValueError, match="pasmo_soc"):
         _magazyn(pasmo_soc=0.0)

@@ -28,6 +28,7 @@ from network_model.core.wklad_zwarciowy_przeksztaltnika import (
     K_SC_ZRODLO_DEKLARACJA,
     K_SC_ZRODLO_NIEPOPRAWNE,
     K_SC_ZRODLO_POZA_DZIEDZINA,
+    K_SC_ZRODLO_PRAD_NIEPOPRAWNY,
 )
 
 
@@ -89,6 +90,11 @@ KOD_BLOKADY_K_SC_NIEPOPRAWNY = "SI-111"
 #: dziedzinę liczb skończonych (P1-DELTA-07). Osobny kod, bo osobna naprawa:
 #: projektant ma poprawić PARĘ danych znamionowych, nie sam współczynnik.
 KOD_BLOKADY_K_SC_POZA_DZIEDZINA = "SI-114"
+#: Kod blokady — prąd znamionowy źródła falownikowego jest nieobecny, zerowy,
+#: ujemny albo nieskończony, więc wkładu NIE DA SIĘ policzyć (plan naprawy §3).
+#: Osobny kod, bo osobna naprawa: projektant ma uzupełnić daną tabliczkową
+#: źródła, a nie współczynnik.
+KOD_BLOKADY_PRAD_ZNAMIONOWY_NIEPOPRAWNY = "SI-115"
 
 
 def zdolnosc_zalezy_od_wkladu_zwarciowego(zdolnosc: ZdolnoscMiarodajna) -> bool:
@@ -112,11 +118,20 @@ def kod_blokady_dla_pochodzenia(k_sc_zrodlo: str) -> str:
         return KOD_BLOKADY_K_SC_NIEPOPRAWNY
     if k_sc_zrodlo == K_SC_ZRODLO_POZA_DZIEDZINA:
         return KOD_BLOKADY_K_SC_POZA_DZIEDZINA
+    if k_sc_zrodlo == K_SC_ZRODLO_PRAD_NIEPOPRAWNY:
+        return KOD_BLOKADY_PRAD_ZNAMIONOWY_NIEPOPRAWNY
     return KOD_BLOKADY_K_SC_DOMYSLNY
 
 
 def komunikat_blokady(*, ref_zrodla: str, k_sc_zrodlo: str) -> str:
     """Komunikat blokady — mówi, CZEGO brakuje i SKĄD to wziąć."""
+    if k_sc_zrodlo == K_SC_ZRODLO_PRAD_NIEPOPRAWNY:
+        return (
+            f"Źródło falownikowe '{ref_zrodla}' nie ma poprawnego prądu znamionowego I_n "
+            f"(wymagana liczba skończona i dodatnia), więc jego wkładu zwarciowego NIE DA SIĘ "
+            f"policzyć. Wkład zerowy ZANIŻYŁBY prąd zwarciowy i przepuścił aparat o za małej "
+            f"zdolności wyłączalnej — uzupełnij daną tabliczkową źródła."
+        )
     if k_sc_zrodlo == K_SC_ZRODLO_POZA_DZIEDZINA:
         return (
             f"Źródło falownikowe '{ref_zrodla}': iloczyn współczynnika wkładu zwarciowego "

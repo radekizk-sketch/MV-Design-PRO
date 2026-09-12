@@ -50,6 +50,7 @@ from network_model.core.wklad_zwarciowy_przeksztaltnika import (
     K_SC_ZRODLO_DOMYSLNE,
     K_SC_ZRODLO_NIEPOPRAWNE,
     K_SC_ZRODLO_POZA_DZIEDZINA,
+    K_SC_ZRODLO_PRAD_NIEPOPRAWNY,
     prad_wkladu_zwarciowego,
     wspolczynnik_wkladu_zwarciowego,
 )
@@ -57,6 +58,7 @@ from network_model.core.zdolnosci_wkladu_zwarciowego import (
     KOD_BLOKADY_K_SC_DOMYSLNY,
     KOD_BLOKADY_K_SC_NIEPOPRAWNY,
     KOD_BLOKADY_K_SC_POZA_DZIEDZINA,
+    KOD_BLOKADY_PRAD_ZNAMIONOWY_NIEPOPRAWNY,
     ZDOLNOSCI_ZALEZNE_OD_WKLADU_ZWARCIOWEGO,
     ZdolnoscMiarodajna,
 )
@@ -198,6 +200,13 @@ _KOMUNIKAT_ZNACZNIKA: dict[str, tuple[str, str]] = {
         "Iloczyn współczynnika wkładu zwarciowego i prądu znamionowego źródła "
         "wykracza poza zakres liczb skończonych. Popraw dane znamionowe źródła "
         "falownikowego.",
+    ),
+    K_SC_ZRODLO_PRAD_NIEPOPRAWNY: (
+        KOD_BLOKADY_PRAD_ZNAMIONOWY_NIEPOPRAWNY,
+        "Źródło falownikowe nie ma poprawnego prądu znamionowego I_n, więc jego "
+        "wkładu zwarciowego nie da się policzyć. Wkład zerowy zaniżyłby prąd zwarciowy "
+        "i przepuścił aparat o za małej zdolności wyłączalnej — uzupełnij dane "
+        "tabliczkowe źródła.",
     ),
 }
 

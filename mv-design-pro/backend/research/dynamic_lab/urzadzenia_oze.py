@@ -351,11 +351,17 @@ class MagazynEnergiiBESS:
     RÓWNANIA
         f_zmierzona = F_BAZOWA_HZ * omega_pll            (wyjście CAŁKUJĄCE PLL)
         ΔP_f  = -(Δf_poza_strefą / F_BAZOWA_HZ) / statyzm_f * s_falownika_pu
-        P_żąd = P_zad + ΔP_f
-        P_cel = P_żąd * dostępność_energii(soc)          (patrz niżej)
+        P_cel = P_zad + ΔP_f
         (P_cel, Q_cel) ograniczone OKRĘGIEM |S| <= s_falownika_pu
         dP/dt = (P_cel - P)/T_p,  dQ/dt = (Q_cel - Q)/T_q
-        d(soc)/dt = -P_rzeczywiste * s_bazowa_mva / (3600 * e_pojemnosc_mwh)
+        P_AC  = P * bramka_energii(soc, znak P)          (BRAMKA ENERGII — patrz niżej)
+        (P_AC, Q) ograniczone PRĄDEM |I| <= i_max_pu
+        d(soc)/dt = -P_rzeczywiste * w(P_rzeczywiste) * s_bazowa_mva
+                    / (3600 * e_pojemnosc_mwh)
+        w(P) = 1 / sprawnosc_rozladowania   dla P > 0    (z ogniw ubywa WIĘCEJ,
+                                                          niż trafia na zaciski)
+        w(P) = sprawnosc_ladowania          dla P <= 0   (do ogniw trafia MNIEJ,
+                                                          niż pobrano z sieci)
 
     ZNAK SOC. Konwencja generatorowa: ``P > 0`` to ROZŁADOWANIE, więc ``soc``
     maleje. Mnożnik ``s_bazowa_mva`` przelicza p.u. na MW, dzielnik ``3600``
@@ -363,9 +369,30 @@ class MagazynEnergiiBESS:
     (liczona z faktycznie wstrzykniętego prądu), a nie moc zadana — inaczej przy
     zapadzie napięcia magazyn rozładowywałby energię, której nie oddał.
 
-    OGRANICZENIE ENERGIĄ (to jest sedno modelu)
+    BRAMKA ENERGII DZIAŁA NA MOCY ODDANEJ, NIE NA CELU REGULATORA (to jest sedno)
         dostępność rozładowania = clamp((soc - soc_min)/pasmo_soc, 0, 1)
         dostępność ładowania    = clamp((soc_max - soc)/pasmo_soc, 0, 1)
+        P_AC = P_stanu * (dostępność rozładowania  gdy P_stanu > 0
+                          dostępność ładowania      w przeciwnym razie)
+
+    KOREKTA (niezależny audyt, plan naprawy §1). Poprzednia wersja mnożyła przez
+    dostępność wyłącznie CEL regulatora, a moc wystawiana jest STANEM z opóźnieniem
+    ``T_p``. Gdy ``soc`` przechodzi pasmo szybciej, niż tór mocy zdąży zareagować
+    (dla 10 MWh przy 100 MVA pasmo 0,02 przechodzi się w 14 ms, a ``T_p`` = 50 ms),
+    magazyn oddał jeszcze ok. ``P·T_p`` energii, której nie ma. ZMIERZONE: zasób
+    użyteczny 4,000 kWh, oddane 4,5968 kWh, nadmiar 0,5968 kWh — TEN SAM przy
+    dt = 0,010 / 0,005 / 0,0025 / 0,00125 s, czyli błąd MODELU, nie dyskretyzacji.
+
+    Rzutowanie samego ``soc`` na okno przy niezmienionej mocy jest ZAKAZANE: tworzy
+    energię z niczego. Dlatego bramka mnoży moc FAKTYCZNIE WYSTAWIANĄ — tę samą,
+    która wchodzi do algebry sieci, do zapisu przebiegu i do równania SOC (JEDNO
+    źródło prawdy: `bramka_energii`). Na granicy okna ``d(soc)/dt = 0``, więc okno
+    jest zbiorem NIEZMIENNICZYM przepływu ścisłego, a nie deklaracją.
+
+    Bramka dotyczy wyłącznie MOCY CZYNNEJ. Przekształtnik z rozładowanymi ogniwami
+    nadal reguluje moc bierną (praca kompensatorowa) — bramkowanie Q odbierałoby
+    zdolność, którą urządzenie realnie ma.
+
     Pasmo przejścia jest niezerowe świadomie: skokowe odcięcie czyni ``f``
     nieciągłą, a nieciągłość ``f`` wywraca zbieżność metod niejawnych — to samo
     zjawisko, które w `FalownikGFL` wymusiło pasmo przejścia trybu FRT. Fizycznie
@@ -394,8 +421,11 @@ class MagazynEnergiiBESS:
     podniesienie tolerancji — tolerancja stanów szybkich pozostaje bez zmian, a
     magazyn oddający moc przy niezbieżnym PLL nadal zostanie odrzucony.
 
-    CZEGO TEN MODEL NIE MA (jawnie): sprawności ładowania/rozładowania i strat
-    falownika (SOC całkuje moc na zaciskach AC, nie energię ogniw), samorozładowania,
+    CZEGO TEN MODEL NIE MA (jawnie): sprawności ZALEŻNEJ od punktu pracy, temperatury
+    i stanu naładowania (sprawności są stałymi skalarami, a wartość domyślna 1,0
+    oznacza jawnie zadeklarowany BRAK strat — nie „typową" sprawność, bo sprawność
+    konkretnego magazynu jest danymi producenta, nie stałą modelu), strat postojowych
+    falownika, samorozładowania,
     zależności mocy dyspozycyjnej od SOC i temperatury, degradacji, modelu napięcia
     ogniwa i prądu DC, trybu FRT z przełączeniem priorytetu, pracy wyspowej w trybie
     tworzenia sieci (to jest źródło PRĄDOWE — odpowiednikiem napięciowym jest
@@ -416,6 +446,17 @@ class MagazynEnergiiBESS:
     soc_min: float = 0.1
     soc_max: float = 0.9
     pasmo_soc: float = 0.02
+    sprawnosc_rozladowania: float = 1.0
+    """Sprawność rozładowania (ogniwa → zaciski AC), (0, 1].
+
+    Wartość domyślna 1,0 jest JAWNĄ DEKLARACJĄ BRAKU STRAT, a nie „typową"
+    sprawnością — sprawność konkretnego magazynu jest danymi producenta i musi
+    ją podać wołający. Wpisanie tu „typowych" 0,95 byłoby zgadywaniem wielkości,
+    która rozstrzyga bilans energii.
+    """
+    sprawnosc_ladowania: float = 1.0
+    """Sprawność ładowania (zaciski AC → ogniwa), (0, 1]. Uzasadnienie wartości
+    domyślnej — jak przy `sprawnosc_rozladowania`."""
     t_p_s: float = 0.05
     t_q_s: float = 0.05
     statyzm_f: float = 0.05
@@ -461,6 +502,18 @@ class MagazynEnergiiBESS:
                 f"{self.ref}: pasmo_soc musi być > 0 — zerowe pasmo czyni pochodną "
                 "nieciągłą na granicy okna SOC i wywraca metody niejawne."
             )
+        for nazwa, wartosc in (
+            ("sprawnosc_rozladowania", self.sprawnosc_rozladowania),
+            ("sprawnosc_ladowania", self.sprawnosc_ladowania),
+        ):
+            # Warunek jest pisany jako `not (0 < w <= 1)`, a nie `w <= 0 or w > 1`,
+            # bo NaN przechodzi przez KAŻDE porównanie — i cicho stałby się mnożnikiem
+            # równania bilansu, produkując NaN w SOC zamiast błędu danych.
+            if not 0.0 < float(wartosc) <= 1.0:
+                raise ValueError(
+                    f"{self.ref}: {nazwa} = {wartosc} poza (0, 1] — sprawność > 1 jest "
+                    "perpetuum mobile, <= 0 jest brakiem modelu, NaN jest brakiem danych"
+                )
         if self.t_p_s <= 0.0 or self.t_q_s <= 0.0:
             raise ValueError(f"{self.ref}: stałe czasowe muszą być > 0")
         if self.statyzm_f <= 0.0:
@@ -526,15 +579,50 @@ class MagazynEnergiiBESS:
             ogranicz_do_przedzialu((self.soc_max - soc) / self.pasmo_soc, 0.0, 1.0),
         )
 
+    def bramka_energii(self, soc: float, p_pu: float) -> float:
+        """JEDYNE miejsce, w którym okno SOC ogranicza moc czynną. Mnożnik w [0, 1].
+
+        Bramka jest KIERUNKOWA: magazyn pusty nie oddaje, ale wolno go ładować;
+        pełny nie przyjmuje, ale wolno go rozładować. Ogranicznik symetryczny
+        („na granicy nic nie wolno") uniemożliwiłby wyjście z granicy i przeszedłby
+        test badający jeden kierunek.
+
+        Wywołują ją DOKŁADNIE dwa miejsca — `wstrzykniecie` (bo stąd płynie moc do
+        sieci, do zapisu przebiegu i do równania SOC) oraz `inicjalizuj` (sprawdzenie
+        wykonalności punktu pracy). `cel_mocy` jej NIE wywołuje świadomie: warunek
+        WEJŚCIA w ograniczenie i warunek WYJŚCIA z niego muszą pochodzić z jednego
+        źródła prawdy, a podwójne przyłożenie tej samej rampy dałoby kształt ``a²``
+        niezgodny z równaniem wypisanym w docstringu klasy.
+        """
+        rozladowanie, ladowanie = self.dostepnosc_energii(soc)
+        return rozladowanie if p_pu > 0.0 else ladowanie
+
+    def waga_sprawnosci(self, p_ac_pu: float) -> float:
+        """Przelicznik mocy na ZACISKACH na moc po stronie OGNIW.
+
+        Rozładowanie (``P > 0``): z ogniw ubywa ``P / η_roz`` — straty pokrywa zasób.
+        Ładowanie (``P <= 0``): do ogniw trafia ``|P| · η_ład`` — straty giną po drodze.
+        Iloczyn ``P · waga`` jest ciągły w zerze (obie gałęzie dają 0), więc pochodna
+        SOC pozostaje ciągła; załamanie w ``P = 0`` jest tej samej klasy co załamania
+        ograniczników i nie psuje metod niejawnych.
+        """
+        if p_ac_pu > 0.0:
+            return 1.0 / self.sprawnosc_rozladowania
+        return self.sprawnosc_ladowania
+
     def cel_mocy(
         self, x: NDArray[np.float64], *, p_zadane_pu: float, q_zadane_pu: float
     ) -> tuple[float, float]:
-        """Osiągalny cel ``(P, Q)`` po regulacji f, ograniczeniu energią i okręgu."""
+        """Cel ``(P, Q)`` toru regulacji po regulacji f i ograniczeniu OKRĘGIEM.
+
+        Okno SOC NIE wchodzi tutaj — wchodzi do mocy faktycznie wystawianej
+        (`bramka_energii`). To nie jest pominięcie: bramkowanie samego celu było
+        defektem P0, bo moc wystawiana jest STANEM z opóźnieniem ``T_p`` i przez ten
+        czas płynęła energia, której w zasobie nie ma.
+        """
         p_zadane = p_zadane_pu + self.wklad_czestotliwosciowy_pu(self.czestotliwosc_zmierzona_hz(x))
-        rozladowanie, ladowanie = self.dostepnosc_energii(float(x[2]))
-        p_dostepne = p_zadane * (rozladowanie if p_zadane > 0.0 else ladowanie)
         return ogranicz_okregiem(
-            p_dostepne, q_zadane_pu, self.s_falownika_pu, priorytet_biernej=self.priorytet_biernej
+            p_zadane, q_zadane_pu, self.s_falownika_pu, priorytet_biernej=self.priorytet_biernej
         )
 
     # -- kontrakt urządzenia --------------------------------------------------
@@ -547,13 +635,22 @@ class MagazynEnergiiBESS:
 
         SOC — przedział ``[0, 1]`` jest DEFINICJĄ stanu naładowania, nie nastawą:
         ``soc`` poza nim nie jest „poza zakresem regulacji", tylko wielkością
-        niefizyczną. Okno pracy ``[soc_min, soc_max]`` celowo NIE jest tu
-        deklarowane: przy dostępności energii gasnącej dopiero na granicy okna,
-        a mocy zmieniającej się z opóźnieniem ``T_p``, przepływ ścisły przekracza
-        ``soc_min`` o ``P·T_p·S_base/(3600·E)`` — dla 1 p.u., 100 MVA, 0,05 s
-        i 10 MWh jest to 1,4e-4. Okno nie jest więc zbiorem niezmienniczym
-        przepływu ścisłego i rzutowanie na nie dokładałoby fizykę, której model
-        nie ma. Przedział ``[0, 1]`` jest niezmienniczy z tym samym marginesem.
+        niefizyczną.
+
+        Okno pracy ``[soc_min, soc_max]`` NIE jest tu deklarowane — i nie może być.
+        Rzutowanie ``soc`` na okno przy NIEZMIENIONEJ mocy tworzyłoby energię z
+        niczego: stan skakałby na granicę, a moc płynęłaby dalej. Okno jest
+        utrzymywane FIZYKĄ, nie rzutowaniem: `bramka_energii` zeruje moc czynną na
+        granicy, więc ``d(soc)/dt = 0`` i okno jest zbiorem NIEZMIENNICZYM przepływu
+        ścisłego (pin: `test_rozladowanie_zatrzymuje_sie_na_dolnej_granicy_okna` i
+        `test_ladowanie_zatrzymuje_sie_na_gornej_granicy_okna`).
+
+        KOREKTA. Poprzednia redakcja uzasadniała brak rzutowania na okno tym, że
+        przepływ ścisły przekracza ``soc_min`` o ``P·T_p·S_base/(3600·E)``. Opis
+        mechanizmu był trafny, wniosek — nie: przekroczenie nie było dopuszczalnym
+        marginesem, tylko defektem bilansu energii (plan naprawy §1). Rzutowanie na
+        ``[0, 1]`` zostaje jako zabezpieczenie DEFINICYJNE — chroni przed stanem
+        niefizycznym, gdy punkt startowy leży poza oknem.
         """
         return (
             OgraniczenieStanu(
@@ -589,13 +686,21 @@ class MagazynEnergiiBESS:
         )
 
     def wstrzykniecie(self, x: NDArray[np.float64], v_szyny: complex) -> complex:
+        """Prąd wstrzykiwany do sieci — po BRAMCE ENERGII i po ograniczniku prądu.
+
+        Bramka jest przyłożona TUTAJ, a nie do celu regulatora, bo to jest jedyne
+        miejsce, przez które moc trafia jednocześnie do algebry sieci, do zapisu
+        przebiegu i do równania SOC. Przyłożona gdzie indziej rozjechałaby te trzy
+        wielkości — i dokładnie to było defektem P0.
+        """
         if abs(v_szyny) < PROG_NAPIECIA_PU:
             return 0j
-        i = complex(np.conj(complex(float(x[0]), float(x[1])) / v_szyny))
+        p_zaciskow = float(x[0]) * self.bramka_energii(float(x[2]), float(x[0]))
+        i = complex(np.conj(complex(p_zaciskow, float(x[1])) / v_szyny))
         return ogranicz_prad(i, v_szyny, self.i_max_pu, priorytet_biernej=self.priorytet_biernej)
 
     def moc_rzeczywista(self, x: NDArray[np.float64], v_szyny: complex) -> complex:
-        """Moc faktycznie oddana do sieci — PO ograniczniku prądowym."""
+        """Moc faktycznie oddana do sieci — po bramce energii i ograniczniku prądu."""
         return complex(v_szyny * np.conj(self.wstrzykniecie(x, v_szyny)))
 
     def pochodne_ze_zadaniem(
@@ -610,7 +715,12 @@ class MagazynEnergiiBESS:
         p, q = float(x[0]), float(x[1])
         d_theta, d_omega = self.pll.pochodne(float(x[3]), float(x[4]), v_szyny)
         p_rzeczywiste = self.moc_rzeczywista(x, v_szyny).real
-        d_soc = -p_rzeczywiste * self.s_bazowa_mva / (3600.0 * self.e_pojemnosc_mwh)
+        d_soc = (
+            -p_rzeczywiste
+            * self.waga_sprawnosci(p_rzeczywiste)
+            * self.s_bazowa_mva
+            / (3600.0 * self.e_pojemnosc_mwh)
+        )
         return np.array(
             [(p_cel - p) / self.t_p_s, (q_cel - q) / self.t_q_s, d_soc, d_theta, d_omega],
             dtype=np.float64,
@@ -638,12 +748,13 @@ class MagazynEnergiiBESS:
             self.s_falownika_pu,
             priorytet_biernej=self.priorytet_biernej,
         )
-        rozladowanie, ladowanie = self.dostepnosc_energii(self.soc_poczatkowy)
-        p0 = p0 * (rozladowanie if p0 > 0.0 else ladowanie)
+        # Stanem toru mocy jest wartość NIEBRAMKOWANA (nastawa regulatora); do sieci
+        # trafia iloczyn z bramką — i to jego porównujemy z zadaniem rozpływu.
+        p_zaciskow = p0 * self.bramka_energii(self.soc_poczatkowy, p0)
         _sprawdz_wykonalnosc_punktu_pracy(
             self.ref,
             s_zadane,
-            p0,
+            p_zaciskow,
             q0,
             f"okrąg falownika {self.s_falownika_pu:.3f} p.u. oraz okno SOC "
             f"[{self.soc_min:.2f}, {self.soc_max:.2f}] przy soc = {self.soc_poczatkowy:.3f}",
