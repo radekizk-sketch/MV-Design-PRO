@@ -288,6 +288,36 @@ zaczynała się od 10 ms, czyli POZA tą granicą — tamte liczby były nieważ
 
 ---
 
+## 10b. NAPRAWY PO RECENZJI HEAD `24c8883d` (piąta runda)
+
+**P1-DELTA-33 — pominięty pomiar zrównywał się z kwalifikacją.** `_luki_kwalifikacji`
+dodawało lukę dla trajektorii wyłącznie przy `stan="WYKONANE"` i
+`status="niezgodne"`; `POMINIETE` przechodziło. Bieg bez ANDES, bez CCT i bez
+porównania integratorów kończył się kodem 0. Mój własny komentarz mówił „nie
+wolno mylić pominięcia ani z porażką, ani z sukcesem" — przy DWÓCH stanach to
+zdanie jest niewykonalne, bo każdy brak musi wpaść do jednego z nich.
+
+Naprawa: `StatusKwalifikacji` o trzech stanach — `ZAKWALIFIKOWANE` (kod 0),
+`NIEKOMPLETNE` (kod 2, wymagany pomiar pominięty albo nierozstrzygnięty),
+`ODRZUCONE` (kod 1, pomiar wykonany i poza kryterium). Braki zbierane osobno od
+luk przez `_braki_kwalifikacji`.
+
+**P1-DELTA-34 — błąd integratora i residuum inicjalizacji mierzone, ale nie
+bramkowane.** `zbiegl` mówi o ITERACJI, nie o dokładności: pozycja z
+`zbiegl=True` i błędem `1e99` przechodziła, a `residua_inicjalizacji` nie było
+czytane w ogóle. Naprawa: dwa progi z uzasadnieniem NIE dobranym pod pomiar —
+`MAKS_NORMA_POCHODNEJ_W_T0 = 1e-6` (to tolerancja równowagi, której używa sam
+silnik, więc próg, po którym laboratorium samo orzeka „start w równowadze";
+zmierzone 8,3267e-17 i 0,0) oraz `MAKS_BLAD_INTEGRATORA_RAD = 1e-2` (kąt kołysze
+się o rząd 1 rad, więc 1 % sygnału; zmierzone 1,438e-09 … 1,002e-03 — trzy rzędy
+zapasu). Wartości niepoprawne (`NaN`, `Inf`) są jawnie odrzucane, bo
+`NaN > próg` jest fałszem.
+
+Oba kontrprzykłady recenzenta odtworzone i przypięte testami (`tests/research/
+test_kwalifikacja.py`, 12 passed).
+
+---
+
 ## 11. PROBLEMY NIEROZSTRZYGNIĘTE
 
 ### 11.1 Siedem czerwonych testów backendu w CI — NIEODTWARZALNE LOKALNIE

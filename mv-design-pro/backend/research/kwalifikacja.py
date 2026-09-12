@@ -28,9 +28,11 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import math
 import pathlib
 import sys
 import time
+from enum import StrEnum
 from typing import Any
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
@@ -225,18 +227,71 @@ def _kampania_mutacyjna(wykonaj_sondy: Any) -> dict[str, Any]:
     return uruchom_kampanie(mutacje_laboratorium(), wykonaj_sondy=wykonaj_sondy).to_dict()
 
 
+#: Największe dopuszczalne ``||f(x0, y0)||`` przy inicjalizacji. Wartość NIE jest
+#: dobrana pod pomiar: to tolerancja równowagi, której używa sam silnik
+#: (`SilnikRMS.tolerancja_rownowagi`), czyli próg, po którym laboratorium samo
+#: orzeka „start jest w równowadze". Zmierzone: SMIB 8,3267e-17, sieć SN z DER 0,0.
+MAKS_NORMA_POCHODNEJ_W_T0 = 1.0e-6
+
+#: Największy dopuszczalny błąd pozycji porównania integratorów [rad]. Kąt wirnika
+#: kołysze się w tych przypadkach o rząd 1 rad, więc błąd 1e-2 rad to 1 % sygnału:
+#: powyżej tego bieg nie mówi już nic o kołysaniu, które miał opisać. Zmierzone:
+#: trapez 4,011e-05 … 1,002e-03, rk4 1,438e-09 … 9,015e-07 — trzy rzędy zapasu.
+MAKS_BLAD_INTEGRATORA_RAD = 1.0e-2
+
+
+class StatusKwalifikacji(StrEnum):
+    """Trzy stany, nie dwa (recenzja niezależna, P1-DELTA-33).
+
+    Poprzednia wersja zbierała wyłącznie LUKI, a pominięty albo nierozstrzygnięty
+    pomiar luką nie był — co samo w sobie było słuszne. Skutek jednak był taki, że
+    kod wyjścia wynosił 0, czyli pominięcie ZRÓWNYWAŁO SIĘ z kwalifikacją. Zdanie
+    z komentarza („nie wolno mylić pominięcia ani z porażką, ani z sukcesem")
+    wymaga TRZECIEGO stanu, bo przy dwóch każdy brak musi wpaść do jednego z nich.
+    """
+
+    ZAKWALIFIKOWANE = "ZAKWALIFIKOWANE"
+    """Każdy wymagany pomiar WYKONANY i mieszczący się we własnym kryterium."""
+    NIEKOMPLETNE = "NIEKOMPLETNE"
+    """Wymagany pomiar pominięty albo nierozstrzygnięty — brak dowodu, nie porażka."""
+    ODRZUCONE = "ODRZUCONE"
+    """Pomiar wykonany i POZA kryterium — to jest porażka kwalifikacji."""
+
+
+def _braki_kwalifikacji(raport: dict[str, Any]) -> list[str]:
+    """Wymagane pomiary, których NIE MA albo są nierozstrzygnięte.
+
+    Brak dowodu nie jest dowodem braku ani dowodem posiadania — dlatego zbierany
+    osobno od luk i dlatego daje własny status i własny kod wyjścia.
+    """
+    braki: list[str] = []
+    for klucz, opis in (
+        ("trajektoria_vs_andes", "porównanie trajektorii z wzorcem zewnętrznym"),
+        ("czas_krytyczny_zwarcia", "czas krytyczny zwarcia wobec kryterium równych pól"),
+        ("porownanie_integratorow", "porównanie integratorów"),
+    ):
+        sekcja = raport.get(klucz) or {}
+        stan = sekcja.get("stan")
+        if stan != "WYKONANE":
+            braki.append(f"{opis}: {stan or 'BRAK SEKCJI'} — pomiar nie został wykonany")
+        elif sekcja.get("status") == "nierozstrzygniete":
+            braki.append(
+                f"{opis}: NIEROZSTRZYGNIĘTE — {sekcja.get('nierozstrzygniete') or 'bez podanej przyczyny'}"
+            )
+    return braki
+
+
 def _luki_kwalifikacji(raport: dict[str, Any]) -> list[str]:
-    """LUKI, czyli powody, dla których uprząż NIE jest zielona.
+    """LUKI, czyli pomiary WYKONANE i leżące POZA własnym kryterium.
 
     PO CO TO ISTNIEJE (recenzja niezależna, P2-DELTA-22). Kod wyjścia zależał
     WYŁĄCZNIE od przeżytych mutacji krytycznych. Znaczyło to, że dowolnie duży
     błąd trajektorii, CCT rozjechany z wzorem zamkniętym albo niezbieżna pozycja
-    porównania integratorów dawały kod 0 — uprząż mierzyła, ale nie orzekała, a
-    raport z liczbami poza wszelkim sensem wyglądał tak samo jak raport dobry.
+    porównania integratorów dawały kod 0 — uprząż mierzyła, ale nie orzekała.
 
-    Każda pozycja niżej ma JAWNE kryterium w miejscu, które ją liczy; tu są
-    tylko zbierane. POMINIĘTE nie jest luką — pominięcie jest widoczne osobno
-    i nie wolno go mylić z porażką ani z sukcesem.
+    POMIAR POMINIĘTY NIE JEST LUKĄ — jest BRAKIEM i idzie do
+    ``_braki_kwalifikacji``. Rozdzielenie jest konieczne, żeby „nie zmierzono"
+    nie zrównało się z „zmierzono i dobrze".
     """
     luki: list[str] = []
 
@@ -265,6 +320,34 @@ def _luki_kwalifikacji(raport: dict[str, Any]) -> list[str]:
                 f"Porównanie integratorów: pozycje niezbieżne "
                 f"{[(p['integrator'], p['krok_s']) for p in niezbiezne]}"
             )
+        # WIELKOŚĆ BŁĘDU, NIE TYLKO FLAGA ZBIEŻNOŚCI (recenzja, P1-DELTA-34).
+        # Pozycja może zbiec i mieć błąd dowolnie duży — „zbiegł" mówi o
+        # iteracji, nie o dokładności.
+        za_duze = [
+            p
+            for p in integratory["pozycje"]
+            if not math.isfinite(float(p["blad_max_vs_odniesienie"]))
+            or float(p["blad_max_vs_odniesienie"]) > MAKS_BLAD_INTEGRATORA_RAD
+        ]
+        if za_duze:
+            luki.append(
+                f"Porównanie integratorów: błąd powyżej {MAKS_BLAD_INTEGRATORA_RAD:g} rad "
+                f"albo niepoprawny — "
+                f"{[(p['integrator'], p['krok_s'], p['blad_max_vs_odniesienie']) for p in za_duze]}"
+            )
+
+    # RESIDUUM INICJALIZACJI BYŁO MIERZONE I NIEBRAMKOWANE (recenzja, P1-DELTA-34).
+    # Bieg startujący daleko od równowagi opisuje przebieg, którego nikt nie zadał:
+    # kołysanie bierze się wtedy z niespójnego punktu startowego, a nie ze zdarzenia.
+    residua = raport.get("residua_inicjalizacji") or {}
+    najgorsza = residua.get("najgorsza_norma_pochodnej")
+    if najgorsza is None:
+        luki.append("Residua inicjalizacji: brak pomiaru w raporcie")
+    elif not math.isfinite(float(najgorsza)) or float(najgorsza) > MAKS_NORMA_POCHODNEJ_W_T0:
+        luki.append(
+            f"Residuum inicjalizacji {float(najgorsza):.3e} przekracza "
+            f"{MAKS_NORMA_POCHODNEJ_W_T0:g} — start nie jest w równowadze"
+        )
 
     return luki
 
@@ -295,6 +378,16 @@ def zbierz_raport(*, szybko: bool = False, wykonaj_sondy: Any = None) -> dict[st
         "mutacje": mutacje,
     }
     raport["luki_kwalifikacji"] = _luki_kwalifikacji(raport)
+    raport["braki_kwalifikacji"] = _braki_kwalifikacji(raport)
+    raport["status_kwalifikacji"] = (
+        StatusKwalifikacji.ODRZUCONE
+        if raport["luki_kwalifikacji"]
+        else (
+            StatusKwalifikacji.NIEKOMPLETNE
+            if raport["braki_kwalifikacji"]
+            else StatusKwalifikacji.ZAKWALIFIKOWANE
+        )
+    ).value
     raport["czas_biegu_s"] = round(time.monotonic() - start, 3)
     raport["podsumowanie"] = {
         "mutacje_zabite": f"{mutacje['zabite']}/{mutacje['liczba_mutacji']}",
@@ -329,10 +422,17 @@ def main() -> int:
     # zmierzony wynik poza własnym kryterium — nie tylko przeżyta mutacja.
     # Zawężenie tego warunku do samych mutacji sprawiało, że uprząż mierzyła, ale
     # nie orzekała (recenzja niezależna, P2-DELTA-22).
-    if raport["luki_kwalifikacji"]:
-        for luka in raport["luki_kwalifikacji"]:
-            print(f"LUKA KWALIFIKACJI: {luka}", file=sys.stderr)
+    for luka in raport["luki_kwalifikacji"]:
+        print(f"LUKA KWALIFIKACJI: {luka}", file=sys.stderr)
+    for brak in raport["braki_kwalifikacji"]:
+        print(f"BRAK DOWODU: {brak}", file=sys.stderr)
+    # TRZY STANY, TRZY KODY. Kod 0 znaczy „każdy wymagany pomiar wykonany i w
+    # kryterium". Pominięcie ma własny kod, bo zrównanie go z zerem czyniłoby
+    # brak dowodu nieodróżnialnym od dowodu.
+    if raport["status_kwalifikacji"] == StatusKwalifikacji.ODRZUCONE.value:
         return 1
+    if raport["status_kwalifikacji"] == StatusKwalifikacji.NIEKOMPLETNE.value:
+        return 2
     return 0
 
 

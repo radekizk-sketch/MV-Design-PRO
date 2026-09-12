@@ -111,3 +111,114 @@ def test_porownanie_integratorow_niesie_LICZBY_a_nie_null() -> None:
 def test_kod_wyjscia_mowi_o_lukach_a_nie_o_sukcesie(raport) -> None:
     """Zielony bieg uprzęży znaczy „brak luk krytycznych", nie „zwalidowane"."""
     assert raport["podsumowanie"]["luki_krytyczne"] == raport["mutacje"]["przezyly_krytyczne"]
+
+
+# ---------------------------------------------------------------------------
+# Trzy stany kwalifikacji + bramkowanie KAŻDEJ mierzonej wielkości
+# (recenzja niezależna, P1-DELTA-33 i P1-DELTA-34)
+# ---------------------------------------------------------------------------
+
+
+def _raport_minimalny(**nadpisz):
+    podstawa = {
+        "mutacje": {"przezyly_krytyczne": [], "liczba_mutacji": 13},
+        "trajektoria_vs_andes": {"stan": "WYKONANE", "status": "zgodne_w_granicach_wzorca"},
+        "czas_krytyczny_zwarcia": {"stan": "WYKONANE", "zgodne": True},
+        "porownanie_integratorow": {
+            "stan": "WYKONANE",
+            "pozycje": [
+                {
+                    "integrator": "rk4",
+                    "krok_s": 0.002,
+                    "zbiegl": True,
+                    "blad_max_vs_odniesienie": 1.438e-09,
+                }
+            ],
+        },
+        "residua_inicjalizacji": {"najgorsza_norma_pochodnej": 8.3267e-17},
+    }
+    podstawa.update(nadpisz)
+    return podstawa
+
+
+def test_pominiety_pomiar_NIE_jest_kwalifikacja() -> None:
+    """P1-DELTA-33: brak dowodu nie może dać kodu 0.
+
+    KONTRPRZYKŁAD RECENZENTA, odtworzony. `_luki_kwalifikacji` dodawało lukę dla
+    trajektorii wyłącznie przy ``stan="WYKONANE"`` i ``status="niezgodne"``;
+    ``POMINIETE`` przechodziło, więc bieg bez ANDES, bez CCT i bez porównania
+    integratorów kończył się kodem 0 — czyli pominięcie ZRÓWNYWAŁO SIĘ z
+    kwalifikacją.
+
+    Rozstrzyga TRZECI stan: zdanie „nie wolno mylić pominięcia ani z porażką, ani
+    z sukcesem" jest niewykonalne przy dwóch stanach, bo każdy brak musi wtedy
+    wpaść do jednego z nich.
+    """
+    from kwalifikacja import _braki_kwalifikacji, _luki_kwalifikacji
+
+    raport = _raport_minimalny(
+        trajektoria_vs_andes={"stan": "POMINIETE"},
+        czas_krytyczny_zwarcia={"stan": "POMINIETE"},
+        porownanie_integratorow={"stan": "POMINIETE"},
+    )
+    # Pominięcie NIE jest luką — i to zostaje.
+    assert _luki_kwalifikacji(raport) == []
+    # ...ale JEST brakiem, nazwanym co do pozycji.
+    braki = _braki_kwalifikacji(raport)
+    assert len(braki) == 3, braki
+    assert all("nie został wykonany" in b for b in braki), braki
+
+
+def test_status_nierozstrzygniety_takze_nie_jest_kwalifikacja() -> None:
+    """Porównanie WYKONANE, ale bez werdyktu, to nadal brak dowodu."""
+    from kwalifikacja import _braki_kwalifikacji
+
+    raport = _raport_minimalny(
+        trajektoria_vs_andes={
+            "stan": "WYKONANE",
+            "status": "nierozstrzygniete",
+            "nierozstrzygniete": ["odcinek po zdarzeniu bez pokrycia"],
+        }
+    )
+    braki = _braki_kwalifikacji(raport)
+    assert any("NIEROZSTRZYGNIĘTE" in b for b in braki), braki
+
+
+def test_blad_integratora_i_residuum_sa_BRAMKOWANE_a_nie_tylko_mierzone() -> None:
+    """P1-DELTA-34: „zbiegł" mówi o iteracji, nie o dokładności.
+
+    KONTRPRZYKŁAD RECENZENTA: pozycja z ``zbiegl=True`` i błędem ``1e99`` oraz
+    residuum inicjalizacji ``1e99`` przechodziły bez jednej luki — obie wielkości
+    były liczone i drukowane, ale żadna nie miała kryterium.
+    """
+    from kwalifikacja import _luki_kwalifikacji
+
+    raport = _raport_minimalny(
+        porownanie_integratorow={
+            "stan": "WYKONANE",
+            "pozycje": [
+                {
+                    "integrator": "rk4",
+                    "krok_s": 0.002,
+                    "zbiegl": True,
+                    "blad_max_vs_odniesienie": 1e99,
+                }
+            ],
+        },
+        residua_inicjalizacji={"najgorsza_norma_pochodnej": 1e99},
+    )
+    luki = _luki_kwalifikacji(raport)
+    assert any("błąd powyżej" in x for x in luki), luki
+    assert any("Residuum inicjalizacji" in x for x in luki), luki
+
+    # DRUGA STRONA PREDYKATU: wartości zmierzone realnie muszą przechodzić.
+    assert _luki_kwalifikacji(_raport_minimalny()) == []
+
+
+def test_wartosci_niepoprawne_tez_sa_luka_a_nie_przechodza_przez_porownanie() -> None:
+    """``NaN > próg`` jest fałszem — bez jawnej kontroli przeszedłby jako zgodny."""
+    from kwalifikacja import _luki_kwalifikacji
+
+    for zla in (float("nan"), float("inf")):
+        raport = _raport_minimalny(residua_inicjalizacji={"najgorsza_norma_pochodnej": zla})
+        assert any("Residuum inicjalizacji" in x for x in _luki_kwalifikacji(raport)), zla
