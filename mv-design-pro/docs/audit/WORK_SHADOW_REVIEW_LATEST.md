@@ -1,301 +1,305 @@
 # MV-DESIGN-PRO — INDEPENDENT WORK SHADOW REVIEW
 
-Data przeglądu: 2026-09-12  
-Tryb: READ-ONLY wobec kodu audytowanego; mutacje wyłącznie w izolowanych kopiach  
+Data przeglądu: 2026-09-12
+Tryb: READ-ONLY wobec kodu audytowanego; kontrprzykłady i próby wyłącznie poza kodem produktu
 Znaczenie checkpointu: kod przejrzany, niezaakceptowany; zakres oczekujący zachowany
 
 ## REVIEW RANGE
 
-Base:  
-`64004a5d0f6f05f96677c95e307444e984b39dcc`
-
-Head:  
+REVIEW_BASE_SHA:
 `1ff13df9e475c75b50f04d017c8e155e9cd2bce5`
 
-Merge base:  
-`64004a5d0f6f05f96677c95e307444e984b39dcc`
+REVIEW_HEAD_SHA:
+`7fd4a8de5fa8b9cdd01b02f5d54444f1dfd10ff4`
 
-Opus branch:  
+Merge base:
+`1ff13df9e475c75b50f04d017c8e155e9cd2bce5`
+
+Opus branch:
 `claude/max-dynamic-audit-kzbivg`
 
-Zaobserwowany tip gałęzi:  
-`07e3e16bf4a49ce6365c0bfcb54b76d06747eb28`; dwa commity po REVIEW_HEAD_SHA zapisują wyłącznie poprzedni raport audytowy.
+PR:
+NONE dla tej gałęzi. Powiązany PR #475 dotyczy starszej gałęzi `claude/opus5-dynamic-physics-audit-fixes` i HEAD `1e96202535abb0acfb123ebac8a49dae430e792c`.
 
-PR:  
-NONE dla tej gałęzi. Powiązany PR #475 pozostaje otwarty na `claude/opus5-dynamic-physics-audit-fixes`, HEAD `1e96202535abb0acfb123ebac8a49dae430e792c`, i nie obejmuje tej delty.
-
-Zakres delty: jeden commit implementacyjny, 7 plików, 1064 dodane i 3 usunięte linie. Dodano ramę mutacyjną, katalog 16 scenariuszy, jednokomendową uprząż kwalifikacyjną, testy i dokumentację. Nie zmieniono równań urządzeń, sieci ani integratorów.
+Stan zdalnej gałęzi sprawdzono przez `git ls-remote`: tip był równy REVIEW_HEAD_SHA. Delta ma 10 commitów, z czego cztery są implementacyjne: `56018f44` (BESS), `6acb008b` (skończoność i wiązanie biegu), `8835b0bd` (dwa biegi koordynacji i klasy reguł katalogowych), `148cbb4a` (ANDES, tolerancja kroku, kampania mutacyjna). Pozostałe commity są scaleniami albo zapisami raportów audytowych. Łącznie delta obejmuje 74 pliki, około 8004 dodanych i 1356 usuniętych linii.
 
 ## EXECUTIVE VERDICT
 
 **REJECT CURRENT DELTA**
 
-Uprząż odtwarza część podanych pomiarów: 16/16 według własnego katalogu, residuum inicjalizacji SMIB `8,3267e-17`, CCT `0,420879 s`, błąd względem ANDES `4,1022e-05 rad` dla kąta oraz `9,9472e-07 p.u.` dla prędkości. Niezależna wyrocznia potwierdziła także rząd 4 RK4, rząd 2 trapezów oraz lokalne KCL badanego SMIB.
+Delta zamyka kilka poprzednich wad w ograniczonym zakresie: NaN nie jest już rzutowany na granicę z `STRICT_CONVERGENCE`; porównywarka trajektorii odrzuca NaN, duplikaty, niemonotoniczny czas i ekstrapolację; jawnie nazwane gałęzie równoległe zachowują tożsamość; pięć nieuniwersalnych reguł katalogowych jest miękkimi ostrzeżeniami; globalne pole `ready` zastąpiono kompletnością modelu i mapą zdolności.
 
-Twierdzenie „16/16 zabitych, 0 luk krytycznych” zostało jednak sfalsyfikowane. Trzy rzeczywiste mutacje kodu — usunięcie walidacji wyniku, stały odcisk implementacji oraz zastąpienie RK4 metodą drugiego rzędu przy zachowaniu etykiety `rzad=4` — nadal dały 16/16 i przeszły wszystkie 15 nowych testów autora. Kampania nie wprowadza większości defektów opisanych nazwą; sprawdza własności poprawnego kodu, typy wyjątków albo etykiety.
+Nie można jednak przyjąć delty. W autorytatywnej koordynacji zabezpieczeń proweniencja jest wyprowadzana wyłącznie z biegu MAX. Bieg MIN może mieć `DEFAULT_FORBIDDEN`, a system nadal zwraca proweniencję `DEKLARACJA` i używa jego prądu. Dodatkowo NaN w dowolnym wierszu poza pierwszym przechodzi do mapy prądów i dzięki semantyce porównań IEEE akceptuje dowolną wartość z żądania. Oba kontrprzykłady naruszają wiążącą decyzję właściciela dotyczącą `k_sc` i wejść koordynacji.
 
-Uprząż nie obejmuje bilansu energii BESS ani odporności na NaN/Inf. Oba wcześniejsze defekty odtworzono ponownie na REVIEW_HEAD_SHA. BESS oddał lub przyjął około `0,165848 kWh` przy zmianie zasobu tylko `0,040 kWh`, a NaN został rzutowany na granicę z `STRICT_CONVERGENCE`.
+Skalowanie tolerancji Newtona przez `(dt/0,005)^(p+1)` ma nieograniczoną stronę dla dużych kroków: trapez dla `x'=-x`, `dt=1 s` zwraca predyktor `x=0` jako `STRICT_CONVERGENCE`, choć dokładnym pierwiastkiem równania kroku jest `1/3`, a residuum wynosi `0,5`. Nowa bramka energii BESS zachowuje bilans równania stanu, ale nie jest niezmiennikiem dyskretnym: dla dozwolonej konfiguracji krok przeskakuje poniżej `soc_min` i zużywa ponad trzykrotnie dostępny zapas operacyjny.
 
-## POZIOMY WERYFIKACJI
+Twierdzenie „wszystko zielone” jest fałszywe dla dokładnego SHA: 7 kontroli GitHub jest zielonych, 3 czerwone. Lokalna uprząż recenzenta zakończyła się kodem 1 i uczciwie wykazała brak ANDES, pandapower oraz pytest; nie wolno z tego biegu wyprowadzać pomiaru 11/11 ani 16/16.
 
-- IMPLEMENTED: TAK — rama, katalog, raport JSON i testy istnieją.
-- SOFTWARE-VERIFIED: CZĘŚCIOWO — nowe testy autora 15/15 przechodzą, lecz nie zabijają rzeczywistych mutantów; CI dokładnego SHA ma 5 czerwonych i 5 zielonych kontroli.
-- MATHEMATICALLY VERIFIED: CZĘŚCIOWO — rzędy metod potwierdzone dla równań gładkich i badanego zdarzenia SMIB.
-- NUMERICALLY VERIFIED: CZĘŚCIOWO — niezależna wyrocznia potwierdza RK4/trapez i KCL, lecz kontrakt NaN/Inf oraz klasyfikacja zbieżności są wadliwe.
-- PHYSICALLY SUPPORTED: CZĘŚCIOWO — klasyczny SMIB i topologia dwutorowa mają wsparcie ilościowe.
-- PHYSICALLY VALIDATED: NIE — zakres nie obejmuje regulatorów, ograniczników, BESS, GFL/GFM, DFIG, FRT i pełnych zdarzeń zwarciowych.
+## LEVELS OF VERIFICATION
+
+- IMPLEMENTED: TAK — opisane moduły i bramki istnieją.
+- SOFTWARE-VERIFIED: CZĘŚCIOWO — CI ma 7 sukcesów i 3 porażki; celowane kontrprzykłady ujawniają dwa obejścia autorytetu.
+- MATHEMATICALLY VERIFIED: CZĘŚCIOWO — równania BESS są energetycznie spójne wewnątrz kroku, lecz tolerancja niejawnego równania nie zachowuje znaczenia dla dużych `dt`.
+- NUMERICALLY VERIFIED: REFUTED dla pełnego kontraktu — istnieje ścisła zbieżność z residuum `0,5` i błędem stanu `1/3`.
+- PHYSICALLY SUPPORTED: CZĘŚCIOWO — ograniczona maszyna klasyczna i jawna topologia dwutorowa mają wsparcie; konfiguracja BESS może przekroczyć granicę operacyjną.
+- PHYSICALLY VALIDATED: NIE.
 - PRODUCTION-READY: NIE.
 - REGULATORY-EVIDENCE-READY: NIE.
 
 ## NEW P0/P1
 
-### P1-DELTA-19 — kampania mutacyjna daje fałszywie dodatnie 16/16
+### P0-DELTA-24 — `DEFAULT_FORBIDDEN` w biegu MIN nie blokuje koordynacji
 
-Subsystem: verification / mutation testing / numerical and evidence integrity.
+- Subsystem: short-circuit authority / protection coordination.
+- Claim under test: oba prądy używane do koordynacji — MAX i MIN — mają miarodajną proweniencję `k_sc`.
+- Independent evidence: `wejscie_koordynacji_z_biegow()` buduje dwa wiązania i dwie mapy prądów, lecz zwraca `proweniencja_ze_snapshotu(bieg_max.snapshot)` tylko dla MAX. Endpoint następnie wywołuje `wymagaj_autorytetu(PROTECTION_COORDINATION, wejscie.proweniencja)`. Snapshot MIN nie jest sprawdzany pod kątem `k_sc`.
+- Executable reproduction: dwa zakończone biegi tego samego `snapshot_hash`; MAX zawiera znacznik `DEKLARACJA` i `10000 A`, MIN zawiera `DEFAULT_FORBIDDEN` i `5000 A`. Wynik sondy:
 
-Claim under test: każda pozycja katalogu wprowadza nazwany defekt i sprawdza, czy rzeczywisty detektor go zabija.
-
-Independent evidence:
-
-1. `M-KON-01` i `M-KON-02` wyłącznie sprawdzają `issubclass(..., ValueError)`; nie konstruują błędnego wyniku.
-2. `M-TOZ-02` sprawdza wyłącznie 64 znaki szesnastkowe; stałe `"0" * 64` przechodzi.
-3. `M-NUM-02` sprawdza tylko, czy Euler i obiekt nazwany RK4 dają różne przebiegi; nie mierzy rzędu.
-4. `M-NUM-01` porównuje tożsamość elementów enum; nie wywołuje zastoju Newtona.
-5. `M-FIZ-03` mierzy różnicę norm po ręcznym przesunięciu kąta, ale nie sprawdza odrzucenia złego punktu startowego.
-
-Reproduction w izolowanych kopiach:
-
-```text
-MUTANT A: zastąp WynikDynamiczny.__post_init__ przez pass
-wynik: krótki kanał ACCEPTED; odwrócony czas ACCEPTED;
-kampania: 16/16 ZABITA; testy autora: 15 passed.
-
-MUTANT B: odcisk_implementacji() -> "0" * 64
-wynik: stały odcisk zaakceptowany;
-kampania: 16/16 ZABITA.
-
-MUTANT C: Rk4.krok zastąpiony metodą punktu środkowego rzędu 2,
-przy pozostawieniu deklaracji rzad=4
-niezależnie zmierzony rząd: 2,055; 2,027; 2,014;
-kampania: 16/16 ZABITA; testy autora: 15 passed.
+```json
+{"case":"min_default_forbidden","max_marker":"DEKLARACJA","min_marker":"DEFAULT_FORBIDDEN","authority_returned":["DEKLARACJA"],"differences":[]}
 ```
 
-Klasy `KONTRAKT` i `TOZSAMOSC` są dodatkowo wyłączone z `KLASY_KRYTYCZNE`; przeżycie w tych klasach nie powoduje niezerowego kodu wyjścia. Pusta kampania zwraca `bez_luk_krytycznych=True`.
+- Why it matters physically: prąd minimalny służy do czułości zabezpieczenia. Wynik zależny od nieautorytatywnego, domyślnego wkładu DER może ustanowić nastawę i twierdzenie o ochronie, mimo że właściciel jawnie tego zakazał.
+- Do existing Opus tests detect it: NIE; testy wymagają dwóch biegów i wspólnej migawki, ale nie różnej proweniencji MAX/MIN.
+- Acceptance test: każdy konsumowany bieg musi mieć własną, wyprowadzoną proweniencję. Dowolny `DEFAULT_FORBIDDEN`, brak śladu, nieznany znacznik, niepoprawny `I_n` lub wynik poza dziedziną w MAX albo MIN musi zablokować autorytatywną koordynację. Niezależne zdolności LOAD_FLOW/TOPOLOGY/SLD/EDITING pozostają dostępne.
+- Resolution: **SOL CAN RESOLVE**.
 
-Why it matters: raport może deklarować pełne zabicie mutacji mimo usunięcia mechanizmów chroniących interpretowalność trajektorii, tożsamość implementacji i teoretyczny rząd metody. Daje to fałszywą podstawę decyzji o gotowości.
+### P0-DELTA-25 — NaN poza pierwszym wierszem biegu autoryzuje dowolny prąd koordynacji
 
-Do existing Opus tests detect it: NIE. Wszystkie 15 nowych testów przeszły na mutancie A i C.
+- Subsystem: result contract / evidence binding / protection coordination.
+- Claim under test: każda wartość prądu w mapie koordynacji jest skończona i zgodna z zapisanym biegiem.
+- Independent evidence: wiązanie MAX/MIN jest liczone wyłącznie z pierwszego wiersza. `_prady_zwarciowe_biegu()` wykonuje `float(wartosc)` bez `isfinite` dla wszystkich kolejnych wierszy. Porównanie liczy `abs(podany - NaN)`; wynikiem jest NaN, a `NaN > tolerancja` jest fałszem. Endpoint konstruuje `FaultCurrentData` z wartości żądania, nie z mapy biegu.
+- Executable reproduction: pierwszy wiersz każdego biegu jest poprawny, drugi `TARGET` ma `ikss_a=NaN`; żądanie podaje arbitralne `999999 A` dla MAX i `1 A` dla MIN. Wynik:
 
-Acceptance test: każdy katalogowy mutant ma zmieniać rzeczywisty kod lub rzeczywiste wejście w sposób realizujący opisany defekt. Mutant musi przeżyć, jeśli odpowiadający detektor zostanie usunięty. Rząd należy mierzyć na drabinie kroku, walidację wyniku przez konstrukcję wadliwego wyniku, zbieżność przez rzeczywisty przypadek zastoju, a odcisk przez zmianę treści kodu i test zmienności. Pusta kampania i każde przeżycie P0/P1 muszą blokować kwalifikację.
+```json
+{"run_max_target":"nan","run_min_target":"nan","request":[{"location_id":"TARGET","ik_max_3f_a":999999.0,"ik_min_3f_a":1.0}],"differences":[]}
+```
 
-SOL CAN RESOLVE.
+- Why it matters physically: arbitralne prądy mogą wejść do nastaw, selektywności i oceny czułości pod etykietą potwierdzenia przez solver. Zawyżenie MAX i zaniżenie MIN może jednocześnie fałszować oba końce oceny zabezpieczenia.
+- Do existing Opus tests detect it: NIE; nowe testy NaN dotyczą laboratorium dynamicznego i pierwszego wiązanego wiersza, nie mapy wielowierszowej koordynacji.
+- Acceptance test: walidować kompletny artefakt obu biegów przed zbudowaniem jakiejkolwiek mapy; każda wymagana wielkość musi być obecna, skończona i dodatnia w odpowiedniej dziedzinie. Porównanie musi jawnie odrzucać nieskończone wartości po obu stronach. Koordynacja powinna konsumować liczby z biegu, a payload traktować wyłącznie jako echo.
+- Resolution: **SOL CAN RESOLVE**.
 
-### P1-DELTA-20 — porównywarka trajektorii akceptuje niepełne i wadliwe osie czasu
+### P1-DELTA-26 — skalowanie tolerancji daje fałszywe `STRICT_CONVERGENCE` dla dużego kroku
 
-Subsystem: external oracle / trajectory evidence.
-
-Claim under test: błąd punkt-po-punkcie jest obliczany na wspólnym, poprawnym i kompletnym zakresie danych.
-
-Independent executable evidence:
+- Subsystem: implicit integration / nonlinear convergence.
+- Claim under test: `STRICT_CONVERGENCE` znaczy rozwiązanie równania kroku w zadanej dokładności.
+- Independent evidence: `wspolczynnik_kroku=(dt/0.005)^(rzad+1)` skaluje tolerancję także w górę, bez ograniczenia. Dla trapezów i `dt=1` współczynnik wynosi `8·10^6`, więc predyktor może przejść bez jednej korekty Newtona.
+- Executable reproduction:
 
 ```python
-Przebieg([1, 2], [10, 20]).na_siatce([0, 1, 2, 3])
-# [10, 10, 20, 20] — cicha ekstrapolacja wartościami brzegowymi
-
-Przebieg([0, 1, 1, 2], [0, 1, 99, 2]).na_siatce([1])
-# [99] — duplikat czasu zaakceptowany
-
-Przebieg([0, 2, 1], [0, 2, 1]).na_siatce([1.5])
-# [1] — niemonotoniczna oś zaakceptowana
-
-Przebieg([0, 1], [0, NaN]).na_siatce([0.5])
-# [NaN]
+x, d = TrapezNiejawny().krok_ze_sprawozdaniem(
+    lambda x, t: -x, np.array([1.0]), 0.0, 1.0
+)
 ```
 
-Przyczyną jest bezpośrednie użycie `numpy.interp` bez walidacji skończoności, ścisłej monotoniczności, równoległości serii i pełnego pokrycia wspólnej siatki.
+Wynik: `x=0`, `iterations=1`, `status=STRICT_CONVERGENCE`, `rho=0.6188118812`, `residual=0.5`. Dokładne rozwiązanie algebraicznego równania trapezów to `(1-dt/2)/(1+dt/2)=1/3`; błąd `0.3333333333`. Dla `dt=2` kod zwraca `x=-1`, residuum `2`, błąd `1`, nadal `STRICT_CONVERGENCE`.
+- Why it matters mathematically: status nie opisuje rozwiązania własnego równania metody. Stabilność A-stabilnego schematu nie ma znaczenia, jeśli równanie kroku nie jest rozwiązywane.
+- Do existing Opus tests detect it: NIE; drabiny autora obejmują małe kroki wokół kalibracji.
+- Acceptance test: tolerancja rozwiązania równania kroku nie może stawać się luźniejsza od jawnie uzasadnionego kryterium przy zwiększaniu `dt`; przypadek liniowy musi osiągać pierwiastek do zadanej tolerancji albo zgłaszać niezbieżność, nigdy ścisły sukces z residuum `O(1)`.
+- Resolution: **SOL CAN RESOLVE**.
 
-Why it matters: skrócona lub uszkodzona wyrocznia może wytworzyć pozornie kompletny przebieg; wartości spoza zakresu są powielane, zamiast blokować wniosek. To narusza fail-closed evidence.
+### P1-DELTA-27 — okno SOC nie jest niezmiennikiem dyskretnym
 
-Do existing Opus tests detect it: NIE. Katalog mutacji nie atakuje klasy `Przebieg` z porównania ANDES.
+- Subsystem: BESS / energy / integration.
+- Claim under test: kierunkowa bramka energii uniemożliwia wykorzystanie zasobu poniżej `soc_min` i powyżej `soc_max`.
+- Independent evidence: ciągła prawa strona zeruje moc na granicy, lecz stałokrokowy RK4 i trapez mogą przeskoczyć całe pasmo rampy. Ograniczenie stanu rzutuje dopiero do `[0,1]`, nie do `[soc_min,soc_max]`; brak warunku na `dt`, pojemność, moc i szerokość pasma.
+- Executable reproduction: `E=0.001 MWh`, `Sbase=100 MVA`, `p=0.5 pu`, `soc0=0.11`, `soc_min=0.10`, `pasmo_soc=0.02`.
 
-Acceptance test: konstrukcja `Przebieg` odrzuca NaN/Inf, nierówne długości, duplikaty i niemonotoniczny czas. Porównanie musi wymagać pełnego pokrycia żądanego okna i zakazywać ekstrapolacji. Brak pokrycia daje stan nierozstrzygnięty, nie metrykę zgodności.
+```text
+RK4 dt=0.01000: soc_final=0.07527778, energia AC=0.03472222 kWh,
+                 dostępny zapas do soc_min=0.01000000 kWh
+RK4 dt=0.00500: soc_final=0.09263889
+RK4 dt=0.00250: soc_final=0.10000000
+trapez dt=0.01000: soc_final=0.07527778
+```
 
-SOL CAN RESOLVE.
+Pełny silnik dla `soc0=0.5`, `dt=0.01` zwrócił `converged=true` i `soc_final=0.08397634 < 0.1`. Bilans mocy i pochodnej jest teraz spójny, ale system wykorzystuje zastrzeżony zapas poniżej operacyjnej granicy.
+- Why it matters physically: limit SOC jest częścią zdolności BESS, a nie sugestią. Wynik zależy jakościowo od kroku i może obiecać energię, której model operacyjnie zabrania użyć.
+- Do existing Opus tests detect it: NIE; przypadki autora mają krok dostatecznie mały względem stałej czasowej pasma.
+- Acceptance test: wykazać nieprzekraczanie obu granic dla jawnie zadanej dziedziny `dt·P·S/(3600·E·pasmo)` albo zastosować dokładne trafienie/komplementarność/adaptację. Dla rozładowania i ładowania sprawdzić `ΔE` wobec całki mocy oraz brak mocy skierowanej poza okno.
+- Resolution: **SOL CAN RESOLVE**.
 
-### P1-DELTA-21 — deklaracja „wszystko zielone” jest niezgodna z CI dokładnego SHA
+### P1-DELTA-28 — odcisk implementacji historycznego biegu jest rekonstruowany z bieżącego kodu
 
-Subsystem: CI / completion evidence.
+- Subsystem: evidence identity / reproducibility.
+- Claim under test: wiązanie wskazuje kod, który rzeczywiście policzył zapisany wynik.
+- Independent evidence: `WiazanieWynikuZwarciowego.z_biegu()` jest wywoływane dopiero przy konsumpcji historycznego biegu. `rg` w `backend/src` pokazuje brak zapisu wiązania przy tworzeniu biegu; jedyne produkcyjne wywołania powstają w `application/autorytet_biegu_zwarciowego.py`. `odcisk_implementacji_zwarciowej()` czyta bieżące pliki i cache procesu. Po zmianie solvera stary wynik dostaje odcisk nowego kodu.
+- Reproduction logic: (1) zapisać bieg przy kodzie A; (2) nie zmieniać jego `raw_result`; (3) uruchomić konsumenta przy kodzie B; (4) most tworzy wiązanie z odciskiem B i `niezgodnosci()` wobec B jest puste. Nie istnieje utrwalony odcisk A, z którym można porównać.
+- Why it matters: wynik historyczny może zostać przypisany implementacji, która go nie policzyła. To unieważnia reprodukowalną tożsamość dowodu, choć nie jest podpisem odpornym na administratora magazynu.
+- Do existing Opus tests detect it: NIE; testy tworzą i konsumują wiązanie w tej samej wersji procesu.
+- Acceptance test: utrwalić identyfikator implementacji oraz wiązanie w atomowym artefakcie biegu podczas obliczenia. Konsument ma porównywać zapis z bieżącym kodem i nie może sam nadawać staremu wynikowi nowej tożsamości.
+- Resolution: **SOL CAN RESOLVE**.
 
-Claim under test: HEAD `1ff13df9` ma wszystkie kontrole zielone.
+### P1-DELTA-29 — twierdzenie „wszystko zielone” nie odpowiada CI dokładnego SHA
 
-Independent evidence z GitHub dla dokładnego SHA:
-
-- `pytest`, job `103536265970`: FAILURE; 11928 testów backendu, 15 pominiętych, następnie black wykazał 3 niesformatowane skrypty i zakończył job kodem 1;
-- `frontend`, job `103536265334`: FAILURE; 947 + 25 testów przeszło, ale bramka typów wykazała 16 naruszeń TypeScript;
-- `SLD Contract Tests (Vitest)`, job `103536265300`: FAILURE; `vertical_length_probe` przekroczył wartości bazowe;
-- `critical-real-backend-e2e`, job `103536265132`: FAILURE; 1 failed, 1 passed;
-- `full-real-backend-e2e`, job `103536265409`: FAILURE; 17 failed, 391 passed;
-- pięć pozostałych kontroli: SUCCESS.
-
-Porównanie z bazą `64004a5d`: także 5 czerwonych i 5 zielonych kontroli. Większość długu jest odziedziczona; delta C go nie naprawia. Nie ma podstaw do przypisania wszystkich czerwieni nowemu commitowi, ale twierdzenie „wszystko zielone” jest fałszywe.
-
-Why it matters: completion claim nie odpowiada stanowi integracyjnemu artefaktu na GitHub. Lokalny wybór podzbioru testów nie zastępuje CI dokładnego SHA.
-
-Do existing Opus tests detect it: CI samo wykrywa czerwień; raport Opusa jej nie odzwierciedla.
-
-Acceptance test: dla dokładnego implementation HEAD przedstawić zakończone wyniki wszystkich wymaganych workflowów i sklasyfikować każdą czerwień. „Wszystko zielone” wolno deklarować wyłącznie przy kompletnym zielonym zestawie.
-
-SOL CAN RESOLVE.
+- Subsystem: CI / completion evidence.
+- Claim under test: cały zestaw integracyjny dla REVIEW_HEAD_SHA jest zielony.
+- Independent evidence: dokładny SHA ma 10 zakończonych kontroli: 7 SUCCESS, 3 FAILURE.
+  - `pytest`: `7 failed, 12063 passed, 15 skipped`; czerwienie dotyczą siedmiu oczekiwanych fixture JSON nN i są odziedziczone względem poprzedniego znanego stanu.
+  - `full-real-backend-e2e`: `1 failed, 407 passed, 2 skipped`; industrial flow zwrócił około `101081462 B`, ponad limit `60 MiB`; klasa odziedziczona.
+  - `Architecture and catalog-first repo hygiene`: nowa deterministyczna regresja dokumentacyjna — README izolacji badań nie wymienia `dynamic_lab/skonczonosc.py` i `dynamic_lab/sonda_mutacyjna.py`.
+- Why it matters: lokalne podzbiory testów nie dowodzą zielonego artefaktu integracyjnego, a jedna czerwień została wprowadzona przez bieżącą deltę.
+- Do existing Opus tests detect it: TAK — CI pokazuje porażki; claim ich nie klasyfikuje.
+- Acceptance test: dopiero komplet zielonych wymaganych checków exact SHA albo jawna klasyfikacja każdej czerwieni bez deklaracji „wszystko zielone”.
+- Resolution: **SOL CAN RESOLVE**.
 
 ## NEW P2
 
-### P2-DELTA-22 — uprząż kwalifikacyjna nie ma kryteriów akceptacji metryk
+### P2-DELTA-30 — research isolation guard nie zna dwóch nowych modułów
 
-`kwalifikacja.py` raportuje błędy ANDES, residua, CCT i porównanie integratorów, ale kod wyjścia zależy wyłącznie od `przezyly_krytyczne`. Dowolnie duży błąd trajektorii, brak wymaganej dokładności, brak porównania CCT z wartością analityczną albo niezbieżna pozycja integratora nie tworzą negatywnego werdyktu. Docstring `_czas_krytyczny` zapowiada porównanie z zamkniętym wzorem równych pól, lecz zwracany dokument zawiera tylko CCT z symulacji.
+Nowe `dynamic_lab/skonczonosc.py` i `dynamic_lab/sonda_mutacyjna.py` nie zostały dopisane do `backend/research/README.md`. Dedykowany guard kończy się czerwienią. Jest to wprowadzona, deterministyczna wada śladu izolacji, nie wada fizyki.
 
-To jest użyteczna uprząż pomiarowa, ale nie kwalifikacyjna bramka przyjęcia. Status `UNVALIDATED_MODEL` ogranicza skutki, dlatego ustalenie ma P2, a nie P1.
+### P2-DELTA-31 — bieżący katalog ma 11 mutacji, więc claim `16/16` nie opisuje HEAD
 
-### P2-DELTA-23 — dostępność pandapower nie dowodzi wykonania wyroczni w danym biegu
+`mutacje_laboratorium()` zawiera 11 obiektów `Mutacja`, nie 16. Lokalny pełny bieg uprzęży nie miał pytest i prawidłowo oznaczył wszystkie 11 jako `SONDA_NIEWIARYGODNA`, dając kod wyjścia 1; ANDES i pandapower także były jawnie `POMINIETA`. Nie jest to dowód, że mutacje przeżywają w środowisku CI, ale jest dowodem, że liczba `16/16` nie jest aktualną kardynalnością katalogu i nie została w tym runtime odtworzona.
 
-Sekcja `wyrocznie_zewnetrzne` sprawdza `find_spec` i import wersji. Uprząż wykonuje ANDES TDS, lecz sama nie wykonuje porównania pandapower. Pole `dowod_zewnetrzny_mozliwy` jest uczciwie nazwane „możliwy”; nie wolno przekształcać go w twierdzenie o wykonanym dowodzie przepływu mocy.
+### P2-DELTA-32 — twarde `Ics <= Icu` pozostaje maszynowo niesklasyfikowane
 
-## INDEPENDENT NUMERICAL AND PHYSICAL EVIDENCE
+Dokumentacja kodu nazywa `Ics <= Icu` wymogiem normowym IEC 60947-2, lecz `klasa_reguly("Ics <= Icu (nN)")` zwraca `NIESKLASYFIKOWANA`, `hard=true`. Twardość jest zachowana, ale system nie rejestruje deklarowanej podstawy normowej. To luka audytowalności, nie kontrprzykład samej relacji.
 
-### Odtworzenie uprzęży
+## k_sc READINESS VERDICT
 
-Środowisko recenzenta: Python 3.12.14, NumPy 2.3.5, SciPy 1.18.1, ANDES 2.0.0, pandapower 3.5.4.
+**REFUTED DLA CAŁEGO ŁAŃCUCHA AUTORYTATYWNEGO.**
 
-- pełna uprząż bez zewnętrznych pakietów: 13,65 s, 16/16, residuum SMIB `8,3267e-17`, sieć SN z DER `0`, CCT `0,42087890625 s`;
-- po instalacji ANDES/pandapower: ANDES rzeczywiście wykonany; max `|Δδ|=4,1021671e-05 rad`, RMS `2,2025190e-05 rad`, max `|Δω|=9,9472002e-07 p.u.`, błąd punktu pracy `3,6759290e-09 rad`.
+Pozytywne ustalenia:
 
-### Niezależna wyrocznia równań SMIB
+- `DEFAULT_FORBIDDEN` jest blokadą SI-110 dla zdolności zależnych od zwarcia;
+- zestaw zależny obejmuje SC 3F/1F, ochronę, dobór zdolności wyłączalnej, koordynację, dowód wytrzymałości i dowód regulacyjny;
+- LOAD_FLOW, TOPOLOGY, SLD i EDITING są jawnie niezależne i nie są blokowane;
+- pojedynczy bieg pakietu doboru aparatury pobiera liczby z zapisanego biegu, a nie z payloadu;
+- `k_sc·I_n=Inf` dostaje stan poza dziedziną zamiast autorytatywnego wyniku.
 
-Użyto zredukowanych równań:
+Ustalenie negatywne rozstrzygające: koordynacja używa dwóch biegów, ale autoryzuje tylko proweniencję MAX. `DEFAULT_FORBIDDEN` w MIN przechodzi. W połączeniu z P0-DELTA-25 system nie spełnia decyzji właściciela dla ochrony i dowodów zależnych od tej ścieżki. Wartość domyślna może pozostać w obliczeniu eksploracyjnym tylko z widocznym znacznikiem i bez możliwości podania wyniku jako wejścia autorytatywnego; aktualny kontrprzykład pokazuje, że tej separacji nie ma.
 
-`dδ/dt = 2π f_b (ω - 1)`
+## CATALOG INVARIANT VERDICT
 
-`dω/dt = [P_m - E'/(X'_d + X_l) sin δ] / (2H)`
+Niezależna klasyfikacja pięciu wskazanych reguł:
 
-Rozwiązanie referencyjne: SciPy DOP853, `rtol=2,3e-14`, `atol=2e-15`, `max_step=0,005 s`; zdarzenie rozdzielono dokładnie w `t=1 s`.
+| Reguła | Klasyfikacja profesorska | Uzasadnienie |
+|---|---|---|
+| `R0 >= R1` | PLAUSIBILITY GUARD ONLY | Konstrukcja ekranu, żyły powrotnej i droga ziemna mogą dać nietypową relację; nie jest to prawo fizyki. |
+| `P0 < Pk` | PLAUSIBILITY GUARD ONLY | Typowe dla transformatorów rozdzielczych, ale nie uniwersalne dla wszystkich rodzin i punktów odniesienia temperatury. |
+| `Icw <= Icu` | PLAUSIBILITY GUARD ONLY | Zdolność krótkotrwałego przewodzenia i zdolność wyłączalna są różnymi znamionami; globalna nierówność nie wynika z definicji. |
+| `0 < R/X < 1` | PLAUSIBILITY GUARD ONLY | Sieć SN bywa indukcyjna, lecz poprawny równoważnik rezystancyjny może mieć `R/X >= 1`; brak zadeklarowanej domeny produktu. |
+| `0 < i0% < 10` | PLAUSIBILITY GUARD ONLY | Zakres jest sensowny dla typowych transformatorów rozdzielczych, nie dla wszystkich konstrukcji specjalnych. |
 
-Obserwowane rzędy dla `dt=20, 10, 5, 2,5 ms`:
+Implementacja zwraca dla wszystkich tych reguł `WIARYGODNOSC`, `hard=false`, `was_too_strong=true`. Jest to zgodne z klasyfikacją niezależną. `Ics <= Icu` może być twardą relacją normową dla tego samego aparatu i warunków znamionowych, lecz baza normowa powinna być zapisana maszynowo, nie tylko w komentarzu.
 
-- RK4, odcinek gładki: `4,010; 4,003; 4,000`;
-- RK4, zdarzenie dokładnie na siatce: `4,002; 4,004; 4,002`;
-- trapez, odcinek gładki: `1,994; 1,999; 2,000`;
-- trapez, zdarzenie: `1,997; 1,999; 2,000`.
+## 57/57 — TRUTHFULNESS AND PRECISE SCOPE
 
-Najgorsze lokalne residuum KCL badanego SMIB: około `9,94e-13 p.u.`, znormalizowane około `2,64e-12`; błąd zgodności mocy zespolonej około `9,97e-13 p.u.`. Czas i punkt wystąpienia są zapisane w surowym artefakcie reprodukcji.
+`57/57` jest prawdziwe wyłącznie jako metryka badanego zestawu szablonów:
 
-### Lokalizacja podłogi ANDES
+- 57/57 materializuje się przez testowaną ścieżkę API;
+- 57/57 nie ma `switch.catalog_ref_missing`;
+- 57/57 ma strukturalnie kompletny model według obecnego kontraktu;
+- 57/57 jest eligible dla LOAD_FLOW;
+- tylko 31/57 jest eligible dla SC_3F; 26 szablonów DER jest zamierzenie zablokowanych przez brak miarodajnego `k_sc`.
 
-Dla `dt=4, 2, 1, 0,5, 0,25 ms` błąd kąta ANDES względem niezależnego rozwiązania wyniósł odpowiednio:
+Pole globalne `ready` zostało usunięte z endpointu na rzecz `kompletnosc_modelu` i mapy `zdolnosci`; E2E zostały zmigrowane do nowego kontraktu. To zamyka wcześniejsze zlepienie stanów w jednym boole'u.
 
-`1,838e-4; 6,897e-5; 4,098e-5; 3,352e-5; 3,486e-5 rad`.
-
-Błąd przed zdarzeniem pozostał około `3,57e-9 rad`; maksymalny błąd występował po zdarzeniu. ANDES stosował w pobliżu przełączenia krok `0,1 ms`. Laboratorium RK4 względem tej samej wyroczni spadło z `1,55e-8` do `2,14e-13 rad`. Dowód lokalizuje podłogę w ścieżce ANDES/semantyce przełączenia tego przypadku, lecz nie rozstrzyga dokładnego mechanizmu wewnętrznego ANDES.
-
-## PRIOR OPEN / CLOSED
-
-### Nadal otwarte i ponownie odtworzone
-
-- P0-DELTA-01, energia BESS: dla rozładowania przy `dt=0,00125 s` energia sieci `0,165847882 kWh`, zmiana zasobu `0,040000000 kWh`, residuum `0,125847882 kWh`; 1484 rzutowania. Dla ładowania wyniki mają przeciwne znaki i tę samą wartość błędu. Błąd nie zanika dla dt od 10 do 1,25 ms. W punkcie wewnętrznym bez rzutowania residuum było poniżej `2,2e-11 kWh`, więc defekt wiąże się z semantyką granicy, nie z samą jednostką całki.
-- P1-DELTA-02, NaN: jawny krok z `dSOC/dt=NaN` został rzutowany do `1,0` i oznaczony `STRICT_CONVERGENCE`; po wstrzyknięciu NaN do silnika wynik miał `zbiegl=True`, `kazdy_krok_scisle_zbiezny=True`, dwa rzutowania i skończone sygnały.
-
-### Nadal otwarte, poza zmienionym zakresem
-
-- P0-DELTA-12: snapshot proweniencji nie jest związany z konsumowanymi liczbami zwarciowymi i nieistniejącym `run_id`;
-- P0-DELTA-13: niepoprawny lub nieskończony `I_n` DER może dać autoryzowany wkład 0 A;
-- re-inicjalizacja po topologii zwarciowej: historyczny pomiar `max Δx0=1,09421789`;
-- pełny audyt baz BESS urządzenie–sieć;
-- samodzielnie konstruowalne evidence i FRT dla brakujących kanałów;
-- stabilna tożsamość nienazwanych gałęzi przy zmianie porządku danych;
-- migracja kontraktu readiness w E2E;
-- walidacja regulatorów AVR/governor, PSS, nasycenia, ograniczników i modeli DER.
-
-### Zamknięte w poprzedniej delcie, potwierdzone w ograniczonym zakresie
-
-- wyłączenie jednego jawnie nazwanego toru `TOR_B` pozostawia drugi tor czynny;
-- rząd RK4 i trapezu dla gładkiego klasycznego SMIB oraz zdarzenia trafiającego dokładnie w siatkę;
-- porównanie trajektorii z ANDES jest rzeczywiście wykonywane, gdy ANDES jest dostępny.
+`57/57` nie dowodzi 23/23 rodzin katalogowych production-ready, prawdziwości wartości producenta, osiągalności źródła, poprawności CT/VT, Icu, selektywności, `k_sc`, ani gotowości regulacyjnej. `FIELD_COMPLETE_SOURCE_REFERENCED` znaczy tylko: pola kompletne i istnieje referencja. Rekord z kompletnymi polami, lecz bez niezależnie weryfikowalnej proweniencji producenta, nie jest production-verified. Każde użycie „57/57 production-ready” albo „23/23 zweryfikowane produkcyjnie” nadal przeceniałoby dowód.
 
 ## PHYSICS SCORE
 
-**PARTIALLY SUPPORTED**
-
-Klasyczny SMIB, wpływ bezwładności i topologia dwutorowa mają ilościowe wsparcie. Bilans zasobowy BESS jest refutowany, a pozostałe urządzenia i regulatory nie zostały w tym zakresie niezależnie zwalidowane.
+**PARTIALLY SUPPORTED.** Jawna tożsamość torów równoległych i badany model klasyczny mają wsparcie. BESS nie zachowuje operacyjnego okna SOC dla całej dopuszczonej domeny kroku. Brak niezależnego uruchomienia ANDES w tym runtime; wcześniejszych liczb nie przedstawia się jako nowego pomiaru.
 
 ## MATHEMATICS SCORE
 
-**PARTIALLY SUPPORTED**
-
-Niezależne równania zredukowanego SMIB odtwarzają punkt pracy i dynamikę laboratorium. Kampania nie dowodzi poprawności ogólnych równań urządzeń, a ogranicznik BESS narusza spójność równania stanu z mocą elektryczną.
+**PARTIALLY SUPPORTED.** Bilans pochodnej SOC z mocą AC jest poprawiony i w sondzie bez rzutowania residuum energii było rzędu `1e-20 MWh`. Nieograniczone skalowanie tolerancji sprawia jednak, że predykat `rho<=1` przestaje znaczyć małe residuum równania dla dużego kroku.
 
 ## NUMERICAL SCORE
 
-**PARTIALLY SUPPORTED**
-
-RK4 i trapez osiągają rzędy teoretyczne, a KCL/PQ badanego SMIB są na poziomie około `1e-12 p.u.`. NaN/Inf może jednak stać się ścisłą zbieżnością, a nowa kampania nie wykrywa degradacji RK4 do rzędu 2.
+**REFUTED.** `STRICT_CONVERGENCE` z residuum `0.5` i błędem rozwiązania kroku `1/3` jest wykonywalnym kontrprzykładem. Dla małych kroków `0.005–0.5 s` ten sam liniowy przypadek dochodził do dokładnego pierwiastka, co lokalizuje defekt w skalowaniu, nie w formule trapezów.
 
 ## ENERGY / NETWORK SCORE
 
-**REFUTED**
-
-Lokalna sieć SMIB spełnia KCL i bilans mocy z małym residuum. Fizyczny bilans energii BESS na obu granicach SOC pozostaje rażąco naruszony, dlatego łączny wynik nie może być wyższy.
+**PARTIALLY SUPPORTED.** Nowe równanie BESS nie tworzy już rozjazdu między mocą elektryczną i pochodną SOC w obrębie kroku, ale przeskok poniżej `soc_min` wykorzystuje energię spoza zadeklarowanego okna. Tożsamość nazwanych gałęzi równoległych jest poprawiona. Nie wykonano w tej delcie pełnego audytu KCL każdej sieci ani obu stron wszystkich limiterów.
 
 ## CATALOG ENGINEERING SCORE
 
-**UNRESOLVED FOR CURRENT DELTA**
-
-Delta C nie zmienia katalogów ani gotowości szablonów. Poprzednie ustalenia pozostają: 57/57 oznacza co najwyżej kompletność szablonów/capability, a nie 23/23 rodzin z niezależnie zweryfikowaną proweniencją producenta.
+**PARTIALLY SUPPORTED.** Pięć nieuniwersalnych nierówności poprawnie działa jako ostrzeżenie; `57/57` rozdzielono od zdolności SC i od 23 rodzin. Nadal nie ma niezależnej kwalifikacji wszystkich źródeł i danych producenta, a twarde reguły poza rejestrem pozostają `NIESKLASYFIKOWANA`.
 
 ## CI DELTA
 
-Względem REVIEW_BASE_SHA liczba kontroli pozostaje bez zmiany: 5 zielonych i 5 czerwonych. Nowa delta zwiększyła liczbę przechodzących testów backendu, ale nie ustanowiła zielonego CI.
+Dokładny REVIEW_HEAD_SHA: 7 zielonych, 3 czerwone kontrole.
 
-- backend: `11928 passed, 15 skipped`; końcowa czerwień przez black dla 3 skryptów — dług odziedziczony względem bazy;
-- frontend: testy funkcjonalne zielone, 16 błędów bramki typów — odziedziczone;
-- SLD: `vertical_length_probe` nadal czerwony — odziedziczony;
-- critical E2E: 1 failed / 1 passed — odziedziczona migracja readiness;
-- full E2E: 17 failed / 391 passed — odziedziczone;
-- nowa kampania badawcza: celowane testy 15/15 zielone, lecz nieskuteczne wobec wykonanych mutantów.
+Zielone: V12K Extended Invariant Guards, critical-real-backend-e2e, SLD Guards (Python), Documentation integrity, blokada pól fizycznych w modalach, frontend, SLD Contract Tests.
+
+Czerwone:
+
+- `pytest`: 7 failed / 12063 passed / 15 skipped — odziedziczony zestaw fixture JSON nN;
+- `full-real-backend-e2e`: 1 failed / 407 passed / 2 skipped — odziedziczony limit rozmiaru odpowiedzi industrial flow;
+- `Architecture and catalog-first repo hygiene`: wprowadzona deterministycznie przez brak dwóch nowych modułów w README izolacji badań.
+
+Względem poprzedniego review stan CI poprawił się ilościowo, ale nie jest całkowicie zielony. Nie przypisano czerwieni produktowej delcie bez dowodu.
 
 ## MUTATION STATUS
 
-- usunięcie walidacji `WynikDynamiczny`: **SURVIVED** — kampania 16/16, testy autora 15/15;
-- stały odcisk implementacji: **SURVIVED** — kampania 16/16;
-- RK4 zastąpione metodą drugiego rzędu z etykietą rzędu 4: **SURVIVED** — kampania 16/16, testy autora 15/15;
-- rzeczywiste wyłączenie jednego jawnie nazwanego toru: **KILLED** przez pomiar Ybus;
-- wyjątek scenariusza mutacyjnego nie jest liczony jako zabicie: **KILLED** na poziomie mechaniki ramy.
+- NaN rzutowany na granicę z `STRICT_CONVERGENCE`: **KILLED** — obecny kod podnosi `WartoscNieskonczonaError` przed rzutowaniem.
+- Niepełna/niemonotoniczna/NaN trajektoria i ekstrapolacja: **KILLED** — konstruktor albo interpolator odmawia.
+- Wyłączenie jednego jawnie nazwanego toru jako wyłączenie całego korytarza: **KILLED** przez nową tożsamość i test permutacji; pełnego biegu pytest nie odtworzono lokalnie.
+- MIN z `DEFAULT_FORBIDDEN`, MAX z deklaracją: **SURVIVED** — wejście koordynacji zwraca proweniencję deklarowaną.
+- NaN w drugim wierszu wyniku koordynacji: **SURVIVED** — dowolny payload przechodzi porównanie.
+- Duży krok trapezów, residuum `O(1)`: **SURVIVED** — status `STRICT_CONVERGENCE`.
+- Przeskok BESS poniżej `soc_min`: **SURVIVED** dla `dt=0.01` i `0.005`, znika po zagęszczeniu.
+- Katalog autora: 11 mutacji na tym HEAD. Lokalnie 0/11 było miarodajnie zabitych, bo pytest nie był zainstalowany; rama poprawnie oznaczyła wszystkie sondy jako niewiarygodne i zwróciła kod 1. Nie jest to wynik mutacyjny produktu, lecz fail-closed środowiska.
 
-Wynik niezależny: 3 istotne mutacje przeżyły. Deklaracja „0 luk krytycznych” jest refutowana.
+## PRIOR OPEN / CLOSED
+
+### Zamknięte lub istotnie ograniczone w obecnej delcie
+
+- poprzednie NaN -> projekcja -> `STRICT_CONVERGENCE`: zamknięte w celowanym kontrprzykładzie;
+- poprzedni brak sprzężenia mocy BESS z energią: zamknięty dla ciągłej prawej strony; zastąpiony nowym P1 dotyczącym niezmiennika dyskretnego;
+- porównywarka trajektorii przyjmująca ekstrapolację, duplikaty, niemonotoniczny czas i NaN: zamknięte;
+- anonimowe gałęzie równoległe: obecnie jawny identyfikator jest wymagany, a adresowanie po parze odmawia przy niejednoznaczności;
+- globalne `ready=57/57`: pole usunięte i zastąpione capability map.
+
+### Nadal otwarte poza rozstrzygniętym zakresem
+
+- re-inicjalizacja po zwarciu/topologii: poprzedni pomiar `max Δx0=1.09421789` nie został w tej delcie niezależnie zamknięty;
+- pełny audyt baz BESS urządzenie–sieć, RMS/peak i MVA/MWh;
+- samodzielnie konstruowalne evidence/FRT, brakujące kanały i pełne pokrycie czasu;
+- trwała tożsamość implementacji historycznych wyników;
+- regulatory AVR/governor, anti-windup, PSS, nasycenie i limitery;
+- schemat rozdzielony DAE kontra jednoczesny;
+- profile normatywne OSD — brak danych i obowiązuje zakaz fabrykacji;
+- niezależna kwalifikacja producenta dla 23 rodzin katalogowych.
 
 ## UNRESOLVED PROFESSORIAL QUESTIONS
 
-1. Czy architektura integratora ma pozostać jednokrokowa, czy zostać rozszerzona o jawny, niemutowalny stan historii dla BDF? **SOL CAN RESOLVE** przez przygotowanie dwóch kontraktów i benchmarków; decyzja Fable.
-2. Jaką semantykę stanu i mocy przy granicy SOC przyjąć: dokładne wykrycie czasu trafienia, ograniczenie mocy w prawych stronach równania czy układ komplementarności? **ASTRA ESCALATION RECOMMENDED** tylko jeśli po pomiarach pozostaną dwie równoważne interpretacje architektoniczne. Obecny defekt i wymóg zachowania energii są jednoznaczne i nie wymagają Astry.
-3. Jaka część podłogi około `3e-5 rad` wynika z kolejności Toggle w ANDES, a jaka z algorytmu TDS? **SOL CAN RESOLVE** przez porównanie stanów bezpośrednio przed i po zdarzeniu oraz ujednolicenie semantyki przełączenia.
-4. Jakie progi akceptacji mają obowiązywać dla trajektorii, energii, KCL i modeli z ogranicznikami? **SOL CAN RESOLVE** po ustanowieniu zakresu użycia i niezależnego budżetu błędów.
+1. Jaka jest jawna, dopuszczona dziedzina stosunku `dt·P·S/(3600·E·pasmo_soc)` i jak ma być egzekwowana? **SOL CAN RESOLVE** pomiarem stabilności i kontraktem domeny.
+2. Czy integrator ma pozostać jednokrokowy, czy otrzymać jawny, niemutowalny stan historii dla BDF? To decyzja architektoniczna, nie warunek naprawy obecnych P0/P1. **SOL CAN RESOLVE** przez dwa prototypy kontraktów i benchmarki.
+3. Jakie kryterium akceptacji ma obowiązywać dla podłogi błędu ANDES i czy wzorzec o mierzalnym tłumieniu numerycznym może być komparatorem amplitudy? **SOL CAN RESOLVE** przez niezależną trzecią wyrocznię oraz budżet błędu; ANDES nie był dostępny w tym runtime.
+4. Jak utrwalać tożsamość kodu i danych biegu tak, aby konsument historyczny nie rekonstruował jej wstecznie? **SOL CAN RESOLVE** przez wersjonowany artefakt wyniku.
 
-## ESCALATION
+## ASTRA ESCALATION
 
-Brak pakietu ASTRA. Nowe P1 mają jednoznaczne wykonywalne kontrprzykłady i mogą zostać rozwiązane przez SOL/Opus. P0 bilansu BESS jest fizycznie jednoznaczny: moc elektryczna i pochodna zasobu muszą opisywać ten sam przepływ energii.
+Brak. Nowe P0/P1 mają jednoznaczne kontrprzykłady i nie przedstawiają dwóch równorzędnych interpretacji matematycznych lub fizycznych. **SOL CAN RESOLVE**.
 
-## REPRODUCTION ARTIFACTS
+## EXACT REPRODUCTIONS AND EVIDENCE
 
-Lokalne artefakty recenzenta, niewprowadzane do kodu produktu:
+Wszystkie sondy wykonano poza kodem produktu na czystym, odłączonym worktree REVIEW_HEAD_SHA.
 
-- `audit_1ff.py` — trzy izolowane kampanie oraz bilans BESS;
-- `trajectory_1ff.py` — niezależna wyrocznia DOP853, drabina rzędu, KCL/PQ;
-- `andes_floor_1ff.py` — lokalizacja podłogi błędu ANDES;
-- `projection_nan.py` — NaN → rzutowanie → STRICT_CONVERGENCE;
-- `qualification_andes_1ff.json` — pełny raport z ANDES 2.0.0;
-- `independent_results_1ff.jsonl`, `trajectory_1ff.jsonl`, `andes_floor_1ff.jsonl` — surowe wyniki.
+```bash
+# Fałszywa zbieżność trapezów
+PYTHONPATH=mv-design-pro/backend/research python - <<'PY'
+import numpy as np
+from dynamic_lab.calkowanie import TrapezNiejawny
+x,d=TrapezNiejawny().krok_ze_sprawozdaniem(lambda x,t:-x,np.array([1.]),0.,1.)
+print(x,d.status,d.rho,d.residuum_maks,d.iteracje)
+PY
 
-Repozytorium audytowane po eksperymentach: czyste; mutacje wykonano poza jego drzewem.
+# Pełna uprząż; w runtime recenzenta kończy się rc=1 fail-closed
+PYTHONPATH=research:src python research/kwalifikacja.py
+```
+
+Skrypty recenzenta: `probe_7fd.py` (BESS), `probe_sc_7fd.py` (MIN provenance i NaN), `probe_numeric_7fd.jsonl` (trapezy), `probe_invariants_7fd.json` (klasy reguł), `qualification_7fd.json` (pełna uprząż). Nie zostały dodane do repozytorium.
+
+Repozytorium audytowane przed zapisem raportu było czyste. Zapis audytu modyfikuje wyłącznie dwa dozwolone pliki raportowe.
 
 ## REVIEWER CHECKPOINT
 
-`LAST_VERIFIED_SHA = 1ff13df9e475c75b50f04d017c8e155e9cd2bce5`
+`LAST_VERIFIED_SHA = 7fd4a8de5fa8b9cdd01b02f5d54444f1dfd10ff4`
 
-Checkpoint oznacza zakres przejrzany, nie przyjęty. `pending_from_base` pozostaje otwarte zgodnie z sekcją PRIOR OPEN.
+Checkpoint oznacza „delta przejrzana”, nie „zaakceptowana”. `pending_from_base` pozostaje otwarte dla pozycji wymienionych w PRIOR OPEN oraz nowych P0/P1.
