@@ -34,6 +34,7 @@ from dynamic_lab.calkowanie import (
 )
 from dynamic_lab.konwencje import czestotliwosc_hz, jednostki_stanow, stany_zasobowe
 from dynamic_lab.siec import SolverSieci, TopologiaSieci
+from dynamic_lab.skonczonosc import wymagaj_skonczonosci
 from dynamic_lab.tozsamosc import (
     KonfiguracjaSolvera,
     PunktPracy,
@@ -166,9 +167,18 @@ class SilnikRMS:
             i = np.zeros(len(v), dtype=np.complex128)
             for u in self.model.urzadzenia:
                 wycinek = self.uklad.wycinki[u.ref]  # type: ignore[attr-defined]
-                i[idx[u.szyna]] += u.wstrzykniecie(  # type: ignore[attr-defined]
+                wklad = u.wstrzykniecie(  # type: ignore[attr-defined]
                     x[wycinek], complex(v[idx[u.szyna]])
                 )
+                # PRĄD URZĄDZENIA — pierwsza wielkość fizyczna kroku. Sprawdzany TU,
+                # a nie po zsumowaniu: suma z ``NaN`` też jest ``NaN``, ale nie
+                # mówi, KTÓRE urządzenie go wyprodukowało (plan naprawy §2).
+                wymagaj_skonczonosci(
+                    wklad,
+                    co="prąd wstrzykiwany",
+                    gdzie=f"urządzenie {u.ref} na szynie {u.szyna}",  # type: ignore[attr-defined]
+                )
+                i[idx[u.szyna]] += wklad
             return i
 
         return funkcja
@@ -181,6 +191,14 @@ class SilnikRMS:
             else np.ones(len(self.model.topologia.szyny), dtype=np.complex128)
         )
         wynik = self.solver_sieci.rozwiaz(self._wstrzykniecia(x), start)
+        # NAPIĘCIA SIECI — wejście KAŻDEGO modelu urządzenia w tym kroku. Napięcie
+        # ``NaN`` rozlewa się na wszystkie pochodne i wszystkie zapisane przebiegi,
+        # a ``max(self._maks_residuum, NaN)`` zwraca pierwszy argument, więc
+        # diagnostyka biegu NIE odnotowałaby nawet pogorszenia residuum.
+        wymagaj_skonczonosci(wynik.napiecia, co="napięcia sieci", gdzie="rozwiązanie algebry")
+        wymagaj_skonczonosci(
+            wynik.residuum, co="residuum algebry sieci", gdzie="rozwiązanie algebry"
+        )
         self._maks_residuum = max(self._maks_residuum, wynik.residuum)
         self._maks_iteracji_sieci = max(self._maks_iteracji_sieci, wynik.iteracje)
         return wynik.napiecia
@@ -198,9 +216,18 @@ class SilnikRMS:
         for u in self.model.urzadzenia:
             wycinek = self.uklad.wycinki[u.ref]  # type: ignore[attr-defined]
             if wycinek.stop > wycinek.start:
-                dx[wycinek] = u.pochodne(  # type: ignore[attr-defined]
+                pochodna_urzadzenia = u.pochodne(  # type: ignore[attr-defined]
                     x[wycinek], complex(v[idx[u.szyna]])
                 )
+                # POCHODNA URZĄDZENIA — sprawdzana per urządzenie, bo tylko tutaj
+                # wiadomo, który model ją policzył. Integrator zobaczyłby wektor
+                # zbiorczy i mógłby co najwyżej podać indeks stanu.
+                wymagaj_skonczonosci(
+                    pochodna_urzadzenia,
+                    co="pochodna stanu",
+                    gdzie=f"urządzenie {u.ref}",  # type: ignore[attr-defined]
+                )
+                dx[wycinek] = pochodna_urzadzenia
         return dx
 
     # -- inicjalizacja --------------------------------------------------------

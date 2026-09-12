@@ -29,6 +29,8 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
+from dynamic_lab.skonczonosc import wymagaj_skonczonosci
+
 KONTRAKT = "DynamicResultSetKandydatV1"
 
 
@@ -282,6 +284,19 @@ class DiagnostykaSolvera:
     została wpięta — dlatego liczba jest w wyniku, a nie tylko w konfiguracji."""
 
     def __post_init__(self) -> None:
+        # LICZBY DIAGNOSTYKI TEŻ MUSZĄ BYĆ LICZBAMI (plan naprawy §2). ``NaN`` w
+        # ``maks_residuum_sieci`` albo w ``najgorsze_rho`` przechodził przez KAŻDE
+        # porównanie poniżej jako fałsz, więc wynik z rozjechaną numeryką wyglądał
+        # na wynik o doskonałej diagnostyce.
+        for nazwa, wartosc in (
+            ("krok_s", self.krok_s),
+            ("maks_residuum_sieci", self.maks_residuum_sieci),
+            ("norma_pochodnej_w_t0", self.norma_pochodnej_w_t0),
+            ("czas_zadany_s", self.czas_zadany_s),
+            ("czas_osiagniety_s", self.czas_osiagniety_s),
+            ("najgorsze_rho", self.najgorsze_rho),
+        ):
+            wymagaj_skonczonosci(wartosc, co=nazwa, gdzie="diagnostyka solvera")
         if self.zbiegl and self.blad is not None:
             raise ValueError("Wynik zbieżny nie może nieść opisu błędu")
         if not self.zbiegl and self.blad is None:
@@ -400,6 +415,20 @@ class WynikDynamiczny:
         jednoznaczność tożsamości sygnału.
         """
         n = len(self.czas_s)
+        # SKOŃCZONOŚĆ PRZED WSZYSTKIM INNYM (plan naprawy §2). Wynik z ``NaN`` w osi
+        # czasu albo w przebiegu jest NIEINTERPRETOWALNY tak samo jak przebieg o
+        # złej długości — z tą różnicą, że długość rzuca się w oczy, a ``NaN``
+        # rysuje się jako przerwa w wykresie i bywa brany za „brak danych".
+        # Kontrola osi czasu idzie PRZED kontrolą monotoniczności: ``not b > a``
+        # dla ``NaN`` też podnosi wyjątek, ale z komunikatem o monotoniczności,
+        # czyli wskazującym złą przyczynę.
+        wymagaj_skonczonosci(self.czas_s, co="oś czasu", gdzie=self.kontrakt)
+        for sygnal in self.sygnaly:
+            wymagaj_skonczonosci(
+                sygnal.wartosci,
+                co="przebieg",
+                gdzie=f"{sygnal.klucz_pelny}@{sygnal.element_ref}",
+            )
         for s in self.sygnaly:
             if len(s.wartosci) != n:
                 raise NiezgodnaDlugoscPrzebieguError(

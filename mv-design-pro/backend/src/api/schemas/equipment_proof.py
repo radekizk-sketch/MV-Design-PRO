@@ -27,7 +27,10 @@ class EquipmentProofRequest(BaseModel):
     run_id: str = Field(..., min_length=1)
     connection_node_id: str = Field(..., min_length=1)
     device: DeviceRatingPayload
-    required_fault_results: dict[str, Any]
+    #: ECHO wielkości zwarciowych, nie ich źródło (plan naprawy §3). Serwer bierze
+    #: liczby z biegu wskazanego przez ``run_id``; to pole wolno pominąć, a jeżeli
+    #: zostanie podane, musi się z nimi zgadzać — rozbieżność jest odmową.
+    required_fault_results: dict[str, Any] | None = None
     #: Snapshot ENM, z którego pochodzą wielkości w ``required_fault_results``.
     #: Pole jest opcjonalne SKŁADNIOWO, ale nie znaczeniowo: bez niego serwer nie
     #: ma jak ustalić, czy wkład zwarciowy źródeł falownikowych opiera się na

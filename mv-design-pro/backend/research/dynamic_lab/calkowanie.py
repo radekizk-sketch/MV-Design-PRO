@@ -44,6 +44,8 @@ from typing import Protocol
 import numpy as np
 from numpy.typing import NDArray
 
+from dynamic_lab.skonczonosc import wymagaj_skonczonosci
+
 Pochodna = Callable[[NDArray[np.float64], float], NDArray[np.float64]]
 
 
@@ -141,7 +143,15 @@ class KryteriumZbieznosci:
         x_poczatkowe: NDArray[np.float64],
         x_biezace: NDArray[np.float64],
     ) -> float:
-        """Residuum SKALOWANE. ``rho <= 1`` to zbieżność ścisła."""
+        """Residuum SKALOWANE. ``rho <= 1`` to zbieżność ścisła.
+
+        ``NaN`` w residuum daje ``rho = NaN``, a ``NaN <= 1`` jest fałszem — więc
+        sam warunek zbieżności by go nie przepuścił. Przepuszczał go warunek
+        POSTĘPU (``NaN > 0,5 * poprzednia`` też jest fałszem), przez co iteracja
+        nie widziała ani zbieżności, ani zastoju. Zgłoszenie tutaj nazywa przyczynę
+        w miejscu, w którym jest znana.
+        """
+        wymagaj_skonczonosci(residuum, co="residuum", gdzie="kryterium zbieżności")
         return float(np.max(np.abs(residuum) / self.wagi(x_poczatkowe, x_biezace)))
 
 
@@ -234,13 +244,24 @@ class Integrator(Protocol):
         ...
 
 
-def _sprawozdanie_metody_jawnej(ewaluacje: int) -> WynikKrokuNieliniowego:
+def _sprawozdanie_metody_jawnej(
+    ewaluacje: int, x1: NDArray[np.float64], *, metoda: str
+) -> WynikKrokuNieliniowego:
     """Sprawozdanie kroku JAWNEGO: nie ma układu nieliniowego, więc nie ma czego nie zbiec.
 
     Status ``STRICT_CONVERGENCE`` jest tu twierdzeniem o ROZWIĄZANIU UKŁADU
     NIELINIOWEGO (rozwiązany dokładnie, bo go nie ma), a nie o błędzie metody —
     ten dla metod jawnych bywa duży i mierzy go ``benchmarki``/``sztywnosc``.
+
+    SKOŃCZONOŚĆ JEST WARUNKIEM TEGO TWIERDZENIA (audyt niezależny, plan naprawy
+    §2). Poprzednia wersja zwracała ``STRICT_CONVERGENCE`` BEZWARUNKOWO, nie
+    oglądając wyniku kroku. Odtworzone na HEAD: pochodna zwracająca ``NaN`` dawała
+    stan ``NaN`` ze statusem ``STRICT_CONVERGENCE`` i ``rho = 0,0``; z nakładką
+    niezmienników stan wracał SKOŃCZONY (zrzutowany na granicę), więc silnik
+    melduje bieg jako zbieżny. „Nie ma czego nie zbiec" jest prawdą wyłącznie
+    wtedy, gdy krok w ogóle WYPRODUKOWAŁ liczby.
     """
+    wymagaj_skonczonosci(x1, co="stan po kroku", gdzie=metoda)
     return WynikKrokuNieliniowego(
         status=StatusKroku.STRICT_CONVERGENCE,
         kryterium=KRYTERIUM_DOMYSLNE,
@@ -270,7 +291,7 @@ class EulerJawny:
         self, f: Pochodna, x: NDArray[np.float64], t: float, dt: float
     ) -> tuple[NDArray[np.float64], WynikKrokuNieliniowego]:
         x1, ewaluacje = self.krok(f, x, t, dt)
-        return x1, _sprawozdanie_metody_jawnej(ewaluacje)
+        return x1, _sprawozdanie_metody_jawnej(ewaluacje, x1, metoda=self.nazwa)
 
 
 @dataclass(frozen=True)
@@ -294,7 +315,7 @@ class Rk4:
         self, f: Pochodna, x: NDArray[np.float64], t: float, dt: float
     ) -> tuple[NDArray[np.float64], WynikKrokuNieliniowego]:
         x1, ewaluacje = self.krok(f, x, t, dt)
-        return x1, _sprawozdanie_metody_jawnej(ewaluacje)
+        return x1, _sprawozdanie_metody_jawnej(ewaluacje, x1, metoda=self.nazwa)
 
 
 @dataclass(frozen=True)
@@ -503,6 +524,13 @@ def _newton_niejawny(
             przyczyna="stan pusty: układ nieliniowy zerowego wymiaru",
         )
     f0 = f(x, t)
+    # SKOŃCZONOŚĆ SPRAWDZANA W MIEJSCU POWSTANIA, nie po pętli (plan naprawy §2).
+    # Bez tego ``NaN`` w pochodnej przechodził cały bieg iteracji: ``norma`` staje
+    # się ``NaN``, warunek postępu ``NaN > 0,5*poprzednia`` jest FAŁSZEM, więc
+    # licznik zastoju nigdy nie rośnie — i metoda pali komplet iteracji, żeby na
+    # końcu zgłosić „nie zbiegła w 50 iteracjach". Komunikat wskazywał wtedy
+    # drabinę tolerancji zamiast prawdziwej przyczyny.
+    wymagaj_skonczonosci(f0, co="pochodna f(x, t)", gdzie="krok niejawny, punkt startowy")
     ewaluacje = 1
     ewaluacje_jak = 0
     x1 = x + dt * f0
@@ -518,7 +546,13 @@ def _newton_niejawny(
         f1 = f(x1, t + dt)
         ewaluacje += 1
         iteracje += 1
+        wymagaj_skonczonosci(
+            f1, co="pochodna f(x1, t+dt)", gdzie=f"krok niejawny, iteracja {iteracje}"
+        )
         residuum = x1 - x - dt * (a * f0 + b * f1)
+        wymagaj_skonczonosci(
+            residuum, co="residuum równania kroku", gdzie=f"krok niejawny, iteracja {iteracje}"
+        )
         norma = float(np.max(np.abs(residuum)))
         rho = kryterium.rho(residuum, x, x1)
         if norma_poczatkowa == float("inf"):
@@ -592,11 +626,17 @@ def _newton_niejawny(
             ewaluacje += 1
             jak[:, j] = (f_pert - f1) / h
         ewaluacje_jak += 1
+        wymagaj_skonczonosci(
+            jak, co="jakobian różnicowy", gdzie=f"krok niejawny, iteracja {iteracje}"
+        )
         g_jak = np.eye(n) - dt * b * jak
         try:
             delta = np.linalg.solve(g_jak, -residuum)
         except np.linalg.LinAlgError as exc:  # pragma: no cover - zależy od danych
             raise BrakZbieznosciIntegratoraError("Jakobian integratora osobliwy") from exc
+        wymagaj_skonczonosci(
+            delta, co="poprawka Newtona", gdzie=f"krok niejawny, iteracja {iteracje}"
+        )
         x1 = x1 + delta
 
     return x1, WynikKrokuNieliniowego(
@@ -750,6 +790,23 @@ class IntegratorZNiezmiennikami:
         return self._rzutuj(x1, t + dt), wynik
 
     def _rzutuj(self, x1: NDArray[np.float64], chwila_s: float) -> NDArray[np.float64]:
+        """Rzutowanie na przedziały — WYŁĄCZNIE dla wartości skończonych.
+
+        DEFEKT, KTÓRY TO ZAMYKA (audyt niezależny, plan naprawy §2; odtworzony na
+        HEAD). Poprzednia wersja pytała ``if ogr.dol <= wartosc <= ogr.gora``, co
+        dla ``NaN`` daje fałsz w obu porównaniach, a następnie
+        ``"dol" if wartosc < ogr.dol else "gora"``, co dla ``NaN`` daje ``"gora"``.
+        ``NaN`` był więc RZUTOWANY na górną granicę: stan wracał skończony, krok
+        dostawał ``STRICT_CONVERGENCE``, a dziennik rzutowań zapisywał
+        ``x0: nan -> 1.0``. Awaria numeryczna zamieniała się w prawdopodobnie
+        wyglądający przebieg.
+
+        ``NaN`` nie jest ani w przedziale, ani poza nim — jest brakiem wartości,
+        więc nie ma czego rzutować. Kontrola jest PRZED pętlą, na całym wektorze:
+        stan nieskończony w jednej współrzędnej unieważnia krok, a nie tylko tę
+        współrzędną.
+        """
+        wymagaj_skonczonosci(x1, co="stan po kroku przed rzutowaniem", gdzie=self.nazwa)
         wynik = x1
         for ogr in self.ograniczenia:
             wartosc = float(wynik[ogr.indeks])

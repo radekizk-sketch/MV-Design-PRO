@@ -31,6 +31,7 @@ from infrastructure.persistence.unit_of_work import build_uow_factory
 # wklad falownikowy nie wchodzi do rownan i proweniencja jest miarodajna z
 # powodu merytorycznego. Przypadki DER maja wlasne testy granicy w
 # tests/api/test_granica_autorytetu_downstream.py.
+from tests.utils.bieg_zwarciowy import bieg_zwarciowy_domyslny
 from tests.utils.proweniencja_zwarciowa import snapshot_bez_falownikow
 
 
@@ -635,12 +636,13 @@ def test_pakiet_dowodowy_aparatury_bez_oznaczen_roboczych(tmp_path):
     """
     import re
 
-    client, data = _prepare_api_client(tmp_path)
+    client, _ = _prepare_api_client(tmp_path)
+    bieg = bieg_zwarciowy_domyslny(case_id="PRZYPADEK-NAZWY-PLIKU", un_v=15000.0)
     payload = {
-        "project_id": str(data["project_id"]),
-        "case_id": str(data["case_id"]),
-        "run_id": str(data["run_id"]),
-        "connection_node_id": "bus-main",
+        "project_id": "PROJEKT-TESTOWY",
+        "case_id": bieg.case_id,
+        "run_id": bieg.run_id,
+        "connection_node_id": bieg.punkt_zwarcia,
         "device": {
             "device_id": "wyl-01",
             "name_pl": "Wylacznik pola liniowego",
@@ -650,14 +652,7 @@ def test_pakiet_dowodowy_aparatury_bez_oznaczen_roboczych(tmp_path):
             "i_th_ka": 20.0,
             "t_th_s": 1.0,
         },
-        "required_fault_results": {
-            "u_kv": 15.0,
-            "ikss_ka": 8.0,
-            "ip_ka": 20.0,
-            "ith_ka": 8.0,
-            "tk_s": 1.0,
-        },
-        "snapshot": snapshot_bez_falownikow(),
+        "required_fault_results": bieg.echo_wielkosci(),
     }
 
     response = client.post("/api/equipment-proof/pack", json=payload)
@@ -684,28 +679,26 @@ def test_pakiet_dowodowy_wylacznik_sn_z_type_ref_bez_jawnych_um_icu_czyta_katalo
     """
     import json as _json
 
-    client, data = _prepare_api_client(tmp_path)
+    client, _ = _prepare_api_client(tmp_path)
+    # Aparat 17,5 kV, bo punkt zwarcia jest na szynie SN 15 kV REALNEGO biegu.
+    # Poprzednia wersja podawała wymagania z powietrza (10 kV / 15 kA) i dobierała
+    # do nich aparat 12 kV — po naprawie §3 wielkości pochodzą z biegu, więc aparat
+    # musi pasować do sieci, a nie do wymyślonej liczby.
+    bieg = bieg_zwarciowy_domyslny(case_id="PRZYPADEK-KATALOG-WYLACZNIK", un_v=15000.0)
     payload = {
-        "project_id": str(data["project_id"]),
-        "case_id": str(data["case_id"]),
-        "run_id": str(data["run_id"]),
-        "connection_node_id": "bus-main",
+        "project_id": "PROJEKT-TESTOWY",
+        "case_id": bieg.case_id,
+        "run_id": bieg.run_id,
+        "connection_node_id": bieg.punkt_zwarcia,
         "device": {
             "device_id": "wyl-vd4-01",
             "name_pl": "Wylacznik pola liniowego VD4",
-            "type_ref": "sw-cb-abb-vd4-12kv-630a",
+            "type_ref": "sw-cb-abb-vd4-17kv-630a",
             "i_dyn_ka": 50.0,
             "i_th_ka": 20.0,
             "t_th_s": 1.0,
         },
-        "required_fault_results": {
-            "u_kv": 10.0,
-            "ikss_ka": 15.0,
-            "ip_ka": 20.0,
-            "ith_ka": 15.0,
-            "tk_s": 1.0,
-        },
-        "snapshot": snapshot_bez_falownikow(),
+        "required_fault_results": bieg.echo_wielkosci(),
     }
 
     response = client.post("/api/equipment-proof/pack", json=payload)
@@ -713,10 +706,12 @@ def test_pakiet_dowodowy_wylacznik_sn_z_type_ref_bez_jawnych_um_icu_czyta_katalo
     assert response.status_code == 200
     with zipfile.ZipFile(io.BytesIO(response.content)) as archiwum:
         dokument = _json.loads(archiwum.read("proof_pack/proof.json").decode("utf-8"))
-    # VD4 12kV 630A z katalogu: U_m=12kV >= 10kV wymagane; I_cu=20kA >= 15kA -> PASS.
+    # VD4 17,5 kV 630 A z katalogu: U_m = 17,5 kV >= 15 kV szyny; I_cu = 20 kA
+    # wobec I''k policzonego przez solver (ok. 9,9 kA) -> PASS. Sedno testu bez
+    # zmian: wartości U_m i I_cu SCHODZĄ Z KATALOGU, nie z payloadu.
     u_m_value = next(v for v in dokument["steps"][0]["input_values"] if v["symbol"] == "U_m")
     icu_value = next(v for v in dokument["steps"][0]["input_values"] if v["symbol"] == "I_{cu}")
-    assert u_m_value["value"] == 12.0
+    assert u_m_value["value"] == 17.5
     assert icu_value["value"] == 20.0
     assert dokument["summary"]["key_results"]["u_m_ok"]["value"] == "PASS"
     assert dokument["summary"]["key_results"]["icu_ok"]["value"] == "PASS"
@@ -728,28 +723,24 @@ def test_pakiet_dowodowy_rozlacznik_sn_z_type_ref_daje_nie_dotyczy_dla_icu(tmp_p
     """
     import json as _json
 
-    client, data = _prepare_api_client(tmp_path)
+    client, _ = _prepare_api_client(tmp_path)
+    # Rozłącznik 24 kV, bo punkt zwarcia jest na szynie SN 15 kV REALNEGO biegu
+    # (katalog nie ma rozłącznika ABB NAL na 17,5 kV).
+    bieg = bieg_zwarciowy_domyslny(case_id="PRZYPADEK-KATALOG-ROZLACZNIK", un_v=15000.0)
     payload = {
-        "project_id": str(data["project_id"]),
-        "case_id": str(data["case_id"]),
-        "run_id": str(data["run_id"]),
-        "connection_node_id": "bus-main",
+        "project_id": "PROJEKT-TESTOWY",
+        "case_id": bieg.case_id,
+        "run_id": bieg.run_id,
+        "connection_node_id": bieg.punkt_zwarcia,
         "device": {
             "device_id": "rozl-nal-01",
             "name_pl": "Rozlacznik pola liniowego ABB NAL",
-            "type_ref": "sw-ls-abb-nal-12kv-400a",
+            "type_ref": "sw-ls-abb-nal-24kv-400a",
             "i_dyn_ka": 50.0,
             "i_th_ka": 20.0,
             "t_th_s": 1.0,
         },
-        "required_fault_results": {
-            "u_kv": 10.0,
-            "ikss_ka": 8.0,
-            "ip_ka": 20.0,
-            "ith_ka": 8.0,
-            "tk_s": 1.0,
-        },
-        "snapshot": snapshot_bez_falownikow(),
+        "required_fault_results": bieg.echo_wielkosci(),
     }
 
     response = client.post("/api/equipment-proof/pack", json=payload)
@@ -769,12 +760,13 @@ def test_pakiet_dowodowy_jawne_um_icu_klienta_nadrzedne_wobec_katalogu(tmp_path)
     """
     import json as _json
 
-    client, data = _prepare_api_client(tmp_path)
+    client, _ = _prepare_api_client(tmp_path)
+    bieg = bieg_zwarciowy_domyslny(case_id="PRZYPADEK-KATALOG-NADPISANIE", un_v=15000.0)
     payload = {
-        "project_id": str(data["project_id"]),
-        "case_id": str(data["case_id"]),
-        "run_id": str(data["run_id"]),
-        "connection_node_id": "bus-main",
+        "project_id": "PROJEKT-TESTOWY",
+        "case_id": bieg.case_id,
+        "run_id": bieg.run_id,
+        "connection_node_id": bieg.punkt_zwarcia,
         "device": {
             "device_id": "wyl-override-01",
             "name_pl": "Wylacznik z jawnym nadpisaniem",
@@ -785,14 +777,7 @@ def test_pakiet_dowodowy_jawne_um_icu_klienta_nadrzedne_wobec_katalogu(tmp_path)
             "i_th_ka": 20.0,
             "t_th_s": 1.0,
         },
-        "required_fault_results": {
-            "u_kv": 10.0,
-            "ikss_ka": 8.0,
-            "ip_ka": 20.0,
-            "ith_ka": 8.0,
-            "tk_s": 1.0,
-        },
-        "snapshot": snapshot_bez_falownikow(),
+        "required_fault_results": bieg.echo_wielkosci(),
     }
 
     response = client.post("/api/equipment-proof/pack", json=payload)

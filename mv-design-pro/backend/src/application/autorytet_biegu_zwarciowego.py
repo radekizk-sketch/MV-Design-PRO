@@ -50,6 +50,18 @@ RODZAJE_BIEGU_ZWARCIOWEGO: frozenset[str] = frozenset(
 )
 
 
+#: Kontrakt ECHA: klucz konsumenta -> (pole wyniku solvera, mnożnik jednostek).
+#: Lista ZAMKNIĘTA i wspólna dla przeliczenia i dla wykrywania pól nieznanych —
+#: dwie listy, które „dziś się zgadzają", są defektem czekającym na dane brzegowe.
+KLUCZE_ECHA: dict[str, tuple[str, float]] = {
+    "u_kv": ("un_v", 1000.0),
+    "ikss_ka": ("ikss_a", 1000.0),
+    "ip_ka": ("ip_a", 1000.0),
+    "ith_ka": ("ith_a", 1000.0),
+    "tk_s": ("tk_s", 1.0),
+}
+
+
 class BiegNiemiarodajnyError(Exception):
     """Bieg nie może być źródłem liczb dla decyzji miarodajnej.
 
@@ -78,27 +90,39 @@ class WejscieZwarcioweZBiegu:
         ``None`` (konsument nic nie przysłał) jest w porządku — bierzemy liczby
         biegu. Przysłane i RÓŻNE nie są w porządku: konsument zamierzał użyć
         czegoś innego, niż policzył solver, i musi się o tym dowiedzieć.
+
+        KLUCZ SPOZA LISTY TEŻ JEST NIEZGODNOŚCIĄ. Pole, którego nie umiemy
+        porównać, nie wchodzi do odcisku — więc ciche przyjęcie go znaczyłoby
+        „przysłałeś liczbę, zignorowaliśmy ją i nic o tym nie powiedzieliśmy".
+        To jest ta sama klasa milczenia, przez którą wielkości z żądania
+        wchodziły do dowodu.
         """
         if echo is None:
             return ()
-        return self.wiazanie.niezgodnosci(wynik=_wielkosci_z_echa(echo, self.wielkosci))
+        nieznane = sorted(k for k in echo if k not in KLUCZE_ECHA)
+        roznice = list(self.wiazanie.niezgodnosci(wynik=_wielkosci_z_echa(echo, self.wielkosci)))
+        if nieznane:
+            roznice.append(
+                f"pola spoza kontraktu wielkości zwarciowych: {', '.join(nieznane)} — "
+                f"porównywalne są wyłącznie {', '.join(sorted(KLUCZE_ECHA))}"
+            )
+        return tuple(roznice)
 
 
 def _wielkosci_z_echa(echo: Mapping[str, Any], wzorzec: Mapping[str, Any]) -> dict[str, Any]:
     """Przełóż echo konsumenta na pola odcisku, zachowując pola spoza echa.
 
-    Konsument przysyła wielkości w kiloamperach i pod własnymi kluczami
-    (``ikss_ka``, ``ip_ka``, ``ith_ka``); odcisk liczy się z pól solvera w
-    amperach. Przeliczenie jest tutaj, w warstwie aplikacji, bo jest mapowaniem
+    Konsument przysyła wielkości w kilo- (``u_kv``, ``ikss_ka``, ``ip_ka``,
+    ``ith_ka``); odcisk liczy się z pól solvera w jednostkach podstawowych
+    (``un_v`` w woltach, prądy w amperach). LISTA JEST ZAMKNIĘTA i pokrywa
+    KOMPLET wielkości, które konsument może przysłać — pole pominięte tutaj
+    przechodziłoby przez porównanie bez zmiany odcisku, czyli podmiana w nim
+    byłaby niewidoczna (dokładnie to zdarzyło się przy pierwszym przebiegu dla
+    ``u_kv``). Przeliczenie jest tutaj, w warstwie aplikacji, bo jest mapowaniem
     kontraktu — nie fizyką.
     """
     przeliczone = dict(wzorzec)
-    for klucz_echa, klucz_pola, mnoznik in (
-        ("ikss_ka", "ikss_a", 1000.0),
-        ("ip_ka", "ip_a", 1000.0),
-        ("ith_ka", "ith_a", 1000.0),
-        ("tk_s", "tk_s", 1.0),
-    ):
+    for klucz_echa, (klucz_pola, mnoznik) in KLUCZE_ECHA.items():
         if klucz_echa not in echo or echo[klucz_echa] is None:
             continue
         try:

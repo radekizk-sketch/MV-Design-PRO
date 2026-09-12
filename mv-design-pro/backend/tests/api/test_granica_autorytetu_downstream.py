@@ -26,6 +26,7 @@ from tests.enm.test_brama_katalogowa_operacji_v2 import (
     _payload_zrodla,
     _siec_ze_stacja,
 )
+from tests.utils.bieg_zwarciowy import BiegZwarciowyTestowy, bieg_zwarciowy_domyslny
 
 
 @pytest.fixture(scope="module")
@@ -50,35 +51,47 @@ def _snapshot_z_falownikiem(*, k_sc: float | None) -> dict[str, Any]:
     return wynik["snapshot"]
 
 
-def _zadanie_doboru_aparatury(snapshot: dict[str, Any] | None) -> dict[str, Any]:
-    """Żądanie, które PRZED naprawą zwracało gotowy dowód z liczb z powietrza."""
-    zadanie: dict[str, Any] = {
+def _zadanie_doboru_aparatury(bieg: BiegZwarciowyTestowy | None) -> dict[str, Any]:
+    """Żądanie doboru aparatury — bez biegu albo z REALNYM biegiem.
+
+    KOREKTA (plan naprawy §3). Poprzednia wersja przysyłała liczby z powietrza i
+    ``run_id="BIEG-KTORY-NIGDY-NIE-ISTNIAL"``, a testowała wyłącznie bramkę k_sc.
+    Bramka k_sc przepuszczała te liczby, bo dotyczy MODELU, nie WYNIKU — i to był
+    defekt §3. Teraz wielkości pochodzą z biegu, więc żądanie też musi z niego
+    pochodzić; ``None`` znaczy „konsument nie wskazał żadnego biegu".
+    """
+    if bieg is None:
+        return {
+            "project_id": "p1",
+            "case_id": "c1",
+            "run_id": "BIEG-KTORY-NIGDY-NIE-ISTNIAL",
+            "connection_node_id": "n1",
+            "device": {
+                "device_id": "d1",
+                "name_pl": "Wylacznik SN",
+                "u_m_kv": 24.0,
+                "i_cu_ka": 25.0,
+                "i_dyn_ka": 63.0,
+                "i_th_ka": 25.0,
+                "t_th_s": 1.0,
+            },
+        }
+    return {
         "project_id": "p1",
-        "case_id": "c1",
-        "run_id": "BIEG-KTORY-NIGDY-NIE-ISTNIAL",
-        "connection_node_id": "n1",
+        "case_id": bieg.case_id,
+        "run_id": bieg.run_id,
+        "connection_node_id": bieg.punkt_zwarcia,
         "device": {
             "device_id": "d1",
             "name_pl": "Wylacznik SN",
             "u_m_kv": 24.0,
-            "i_cu_ka": 25.0,
-            "i_dyn_ka": 63.0,
-            "i_th_ka": 25.0,
+            "i_cu_ka": 100.0,
+            "i_dyn_ka": 250.0,
+            "i_th_ka": 100.0,
             "t_th_s": 1.0,
         },
-        # Liczby dobrane tak, zeby KAZDE kryterium wypadlo PASS — gdyby bramka
-        # nie dzialala, klient dostalby dowod POTWIERDZAJACY dobor aparatu.
-        "required_fault_results": {
-            "u_n_kv": 15.0,
-            "i_cu_ka": 1.0,
-            "i_dyn_ka": 2.0,
-            "i_th_ka": 1.0,
-            "t_th_s": 1.0,
-        },
+        "required_fault_results": bieg.echo_wielkosci(),
     }
-    if snapshot is not None:
-        zadanie["snapshot"] = snapshot
-    return zadanie
 
 
 # ---------------------------------------------------------------------------
@@ -86,32 +99,43 @@ def _zadanie_doboru_aparatury(snapshot: dict[str, Any] | None) -> dict[str, Any]
 # ---------------------------------------------------------------------------
 
 
-def test_M4_dowod_doboru_aparatury_bez_modelu_jest_odrzucony(klient: TestClient) -> None:
-    """Brak modelu = brak śladu = odmowa. To jest dokładnie odtworzone obejście."""
+def test_M4_dowod_doboru_aparatury_bez_biegu_jest_odrzucony(klient: TestClient) -> None:
+    """Brak biegu = brak wyniku = odmowa. To jest dokładnie odtworzone obejście.
+
+    KOREKTA (plan naprawy §3): wcześniej ten przypadek mówił „brak modelu" i
+    sprawdzał SI-112. Odmowa następuje teraz WCZEŚNIEJ i z mocniejszego powodu:
+    bez wskazanego biegu nie ma liczb, które można by ocenić — więc nie ma czego
+    autoryzować. Blokadę k_sc na modelu BIEGU pinuje kolejny przypadek.
+    """
     odp = klient.post("/api/equipment-proof/pack", json=_zadanie_doboru_aparatury(None))
     assert odp.status_code == 422, odp.text
     tresc = odp.json()["detail"]
-    assert tresc["powod"] == "WEJSCIE_NIEMIARODAJNE"
-    assert {b["kod"] for b in tresc["blokady"]} == {"SI-112"}
-    assert {b["zdolnosc"] for b in tresc["blokady"]} == {
-        "BREAKING_CAPACITY_SELECTION",
-        "SC_WITHSTAND_EVIDENCE",
-    }
+    assert tresc["powod"] == "BIEG_NIE_ISTNIEJE"
+    assert "bieg" in tresc["komunikat_pl"].lower()
 
 
 def test_M4_dowod_doboru_aparatury_bez_deklaracji_k_sc_jest_odrzucony(
     klient: TestClient,
 ) -> None:
-    """Model PODANY, ale wkład falownika z domyślki systemowej — nadal odmowa.
+    """Bieg PODANY, ale wkład falownika z domyślki systemowej — nadal odmowa.
 
-    To jest różnica między „nie podałeś modelu" a „podałeś model, w którym brakuje
-    danej producenta". Obie kończą się odmową, ale z RÓŻNYM kodem — inaczej
-    projektant nie wie, czego szukać.
+    To jest różnica między „nie wskazałeś biegu" a „wskazałeś bieg policzony na
+    modelu, w którym brakuje danej producenta". Obie kończą się odmową, ale z
+    RÓŻNYM kodem — inaczej projektant nie wie, czego szukać.
+
+    Proweniencja jest wyprowadzana z migawki TEGO biegu, nie z migawki dołączonej
+    do żądania: migawka w żądaniu mówiłaby o modelu, który tych liczb nie policzył.
     """
-    snapshot = _snapshot_z_falownikiem(k_sc=None)
-    odp = klient.post("/api/equipment-proof/pack", json=_zadanie_doboru_aparatury(snapshot))
+    bieg = bieg_zwarciowy_domyslny(case_id="PRZYPADEK-M4-BEZ-DEKLARACJI", k_sc=None)
+    odp = klient.post("/api/equipment-proof/pack", json=_zadanie_doboru_aparatury(bieg))
     assert odp.status_code == 422, odp.text
-    assert {b["kod"] for b in odp.json()["detail"]["blokady"]} == {"SI-110"}
+    tresc = odp.json()["detail"]
+    assert tresc["powod"] == "WEJSCIE_NIEMIARODAJNE"
+    assert {b["kod"] for b in tresc["blokady"]} == {"SI-110"}
+    assert {b["zdolnosc"] for b in tresc["blokady"]} == {
+        "BREAKING_CAPACITY_SELECTION",
+        "SC_WITHSTAND_EVIDENCE",
+    }
 
 
 def test_M4_dowod_doboru_aparatury_z_deklaracja_producenta_powstaje(
@@ -122,8 +146,8 @@ def test_M4_dowod_doboru_aparatury_z_deklaracja_producenta_powstaje(
     Bez tego przypadku naprawa mogłaby polegać na wyłączeniu endpointu i nikt by
     nie zauważył, że produkt przestał wystawiać dowody w ogóle.
     """
-    snapshot = _snapshot_z_falownikiem(k_sc=1.35)
-    odp = klient.post("/api/equipment-proof/pack", json=_zadanie_doboru_aparatury(snapshot))
+    bieg = bieg_zwarciowy_domyslny(case_id="PRZYPADEK-M4-Z-DEKLARACJA", k_sc=1.35)
+    odp = klient.post("/api/equipment-proof/pack", json=_zadanie_doboru_aparatury(bieg))
     assert odp.status_code == 200, odp.text
     assert odp.headers["content-type"] == "application/zip"
     assert odp.content[:2] == b"PK"
