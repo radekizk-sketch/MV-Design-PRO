@@ -1,426 +1,301 @@
 # MV-DESIGN-PRO — INDEPENDENT WORK SHADOW REVIEW
 
 Data przeglądu: 2026-09-12  
-Tryb: READ-ONLY wobec kodu produkcyjnego; niezależna reprodukcja w lokalnym, odłączonym klonie  
-Reviewer checkpoint: implementacyjny HEAD zweryfikowany, niezaakceptowany; niewykonany zakres zachowany
+Tryb: READ-ONLY wobec kodu audytowanego; mutacje wyłącznie w izolowanych kopiach  
+Znaczenie checkpointu: kod przejrzany, niezaakceptowany; zakres oczekujący zachowany
 
 ## REVIEW RANGE
 
 Base:  
-49bf0ab639eea4856e18db85a95e5aa78a25e118
+`64004a5d0f6f05f96677c95e307444e984b39dcc`
 
 Head:  
-64004a5d0f6f05f96677c95e307444e984b39dcc
+`1ff13df9e475c75b50f04d017c8e155e9cd2bce5`
 
 Merge base:  
-49bf0ab639eea4856e18db85a95e5aa78a25e118
+`64004a5d0f6f05f96677c95e307444e984b39dcc`
 
 Opus branch:  
-claude/max-dynamic-audit-kzbivg
+`claude/max-dynamic-audit-kzbivg`
+
+Zaobserwowany tip gałęzi:  
+`07e3e16bf4a49ce6365c0bfcb54b76d06747eb28`; dwa commity po REVIEW_HEAD_SHA zapisują wyłącznie poprzedni raport audytowy.
 
 PR:  
-NONE dla tej gałęzi. Powiązany PR #475 pozostaje otwarty na claude/opus5-dynamic-physics-audit-fixes, HEAD 1e96202535abb0acfb123ebac8a49dae430e792c; nie obejmuje bieżącej delty.
+NONE dla tej gałęzi. Powiązany PR #475 pozostaje otwarty na `claude/opus5-dynamic-physics-audit-fixes`, HEAD `1e96202535abb0acfb123ebac8a49dae430e792c`, i nie obejmuje tej delty.
 
-Commity zakresu:
-
-- 554e9c725846778547baa18d251f8103f7bda0ba — zapis poprzedniego raportu, bez delty implementacyjnej;
-- b2dbd37666ce08941213f0e9bd41c5d3093f5921 — aktualizacja poprzedniego raportu, bez delty implementacyjnej;
-- e6c9e6bad98f08ebbb1f7d405013db66e2cae2cf — Milestone A: granica autorytetu wyniku zwarciowego i gotowość per zdolność;
-- 64004a5d0f6f05f96677c95e307444e984b39dcc — Milestone B: tory równoległe i porównanie trajektorii z ANDES.
-
-Zakres merytoryczny: dwa ostatnie commity. Nie reaudytowano całego repozytorium.
+Zakres delty: jeden commit implementacyjny, 7 plików, 1064 dodane i 3 usunięte linie. Dodano ramę mutacyjną, katalog 16 scenariuszy, jednokomendową uprząż kwalifikacyjną, testy i dokumentację. Nie zmieniono równań urządzeń, sieci ani integratorów.
 
 ## EXECUTIVE VERDICT
 
-REJECT CURRENT DELTA
+**REJECT CURRENT DELTA**
 
-Remediacja jest częściowa. Usunięto globalne pole ready, dodano rzeczywiste punkty wywołania bramki dla czterech konsumentów downstream, zamknięto przepełnienie k_sc razy I_n dla dodatniego skończonego I_n oraz naprawiono ciche wyłączenie wszystkich torów równoległych.
+Uprząż odtwarza część podanych pomiarów: 16/16 według własnego katalogu, residuum inicjalizacji SMIB `8,3267e-17`, CCT `0,420879 s`, błąd względem ANDES `4,1022e-05 rad` dla kąta oraz `9,9472e-07 p.u.` dla prędkości. Niezależna wyrocznia potwierdziła także rząd 4 RK4, rząd 2 trapezów oraz lokalne KCL badanego SMIB.
 
-Nie domknięto jednak podstawowej własności łańcucha dowodowego. Snapshot służący do wyprowadzenia proweniencji nie jest związany z liczbami zwarciowymi, run_id ani snapshot_id, które konsument interpretuje. Poprawny snapshot może więc autoryzować liczby z powietrza. Ponadto walidacja wkładu uznaje za miarodajne źródło z deklarowanym k_sc, lecz z zerowym, ujemnym, NaN albo Inf prądem znamionowym; wkład zostaje wtedy cicho zastąpiony wartością 0 A. Oba defekty mogą zaniżyć albo dowolnie zmienić wynik będący podstawą doboru aparatury, nastaw zabezpieczeń i dowodu.
+Twierdzenie „16/16 zabitych, 0 luk krytycznych” zostało jednak sfalsyfikowane. Trzy rzeczywiste mutacje kodu — usunięcie walidacji wyniku, stały odcisk implementacji oraz zastąpienie RK4 metodą drugiego rzędu przy zachowaniu etykiety `rzad=4` — nadal dały 16/16 i przeszły wszystkie 15 nowych testów autora. Kampania nie wprowadza większości defektów opisanych nazwą; sprawdza własności poprawnego kodu, typy wyjątków albo etykiety.
 
-Warstwa dynamiczna pozostaje UNVALIDATED_MODEL. Nowe porównanie z ANDES wspiera tylko klasyczny SMIB/GENCLS bez regulatorów, dla wyłączenia jednego toru oraz kanałów delta i omega. Nie uzasadnia statusu VALIDATED_SIMULATION ani dowodu NC RfG.
+Uprząż nie obejmuje bilansu energii BESS ani odporności na NaN/Inf. Oba wcześniejsze defekty odtworzono ponownie na REVIEW_HEAD_SHA. BESS oddał lub przyjął około `0,165848 kWh` przy zmianie zasobu tylko `0,040 kWh`, a NaN został rzutowany na granicę z `STRICT_CONVERGENCE`.
 
 ## POZIOMY WERYFIKACJI
 
-- IMPLEMENTED: TAK — bramki downstream, capability-scoped readiness, kontrola przepełnienia, identyfikatory gałęzi, porównanie ANDES.
-- SOFTWARE-VERIFIED: CZĘŚCIOWO — testy celowane autora istnieją; pełne CI na HEAD jest czerwone.
-- MATHEMATICALLY VERIFIED: CZĘŚCIOWO — iloczyn k_sc razy I_n jest kontrolowany na przepełnienie, ale dziedzina I_n nie jest przenoszona do autorytetu.
-- NUMERICALLY VERIFIED: CZĘŚCIOWO — zmierzono drabinę kroku dla jednego SMIB; występuje nierozstrzygnięta podłoga błędu około 3e-5 rad i brak rozdzielonego kryterium akceptacji dla zdarzenia.
-- PHYSICALLY SUPPORTED: CZĘŚCIOWO — klasyczna maszyna na jednym zdarzeniu topologicznym.
-- PHYSICALLY VALIDATED: NIE.
+- IMPLEMENTED: TAK — rama, katalog, raport JSON i testy istnieją.
+- SOFTWARE-VERIFIED: CZĘŚCIOWO — nowe testy autora 15/15 przechodzą, lecz nie zabijają rzeczywistych mutantów; CI dokładnego SHA ma 5 czerwonych i 5 zielonych kontroli.
+- MATHEMATICALLY VERIFIED: CZĘŚCIOWO — rzędy metod potwierdzone dla równań gładkich i badanego zdarzenia SMIB.
+- NUMERICALLY VERIFIED: CZĘŚCIOWO — niezależna wyrocznia potwierdza RK4/trapez i KCL, lecz kontrakt NaN/Inf oraz klasyfikacja zbieżności są wadliwe.
+- PHYSICALLY SUPPORTED: CZĘŚCIOWO — klasyczny SMIB i topologia dwutorowa mają wsparcie ilościowe.
+- PHYSICALLY VALIDATED: NIE — zakres nie obejmuje regulatorów, ograniczników, BESS, GFL/GFM, DFIG, FRT i pełnych zdarzeń zwarciowych.
 - PRODUCTION-READY: NIE.
 - REGULATORY-EVIDENCE-READY: NIE.
 
 ## NEW P0/P1
 
-### P0-DELTA-12 — snapshot autoryzuje liczby, których nie wyprowadzono z tego snapshotu
+### P1-DELTA-19 — kampania mutacyjna daje fałszywie dodatnie 16/16
 
-Subsystem: short-circuit authority / equipment selection / protection coordination / evidence.
+Subsystem: verification / mutation testing / numerical and evidence integrity.
 
-Claim under test: proweniencji nie da się zadeklarować; wynik zależny od zwarcia wymaga miarodajnej proweniencji wejścia.
+Claim under test: każda pozycja katalogu wprowadza nazwany defekt i sprawdza, czy rzeczywisty detektor go zabija.
 
 Independent evidence:
 
-- api/equipment_proof_pack.py wyprowadza proweniencję z payload.snapshot, ale required_fault_results kopiuje niezależnie z payloadu.
-- api/protection_coordination.py wyprowadza proweniencję z request.snapshot, ale fault_currents kopiuje niezależnie z requestu.
-- api/proof_pack.py dla sc-asymmetrical wyprowadza proweniencję z snapshotu, ale Z1/Z2/Z0, napięcia, c_factor i run_id bierze niezależnie z payloadu.
-- Żadna z tych dróg nie sprawdza, że liczby są wynikiem solvera dla tego snapshotu, że run_id istnieje ani że snapshot_id odpowiada snapshotowi.
-- Test autora test_M4_dowod_doboru_aparatury_z_deklaracja_producenta_powstaje używa jawnie run_id=BIEG-KTORY-NIGDY-NIE-ISTNIAL oraz liczb dobranych ręcznie, a po dołączeniu snapshotu z k_sc=1.35 oczekuje HTTP 200 i ZIP. Test nie zabija obejścia; formalizuje je jako zachowanie dodatnie.
+1. `M-KON-01` i `M-KON-02` wyłącznie sprawdzają `issubclass(..., ValueError)`; nie konstruują błędnego wyniku.
+2. `M-TOZ-02` sprawdza wyłącznie 64 znaki szesnastkowe; stałe `"0" * 64` przechodzi.
+3. `M-NUM-02` sprawdza tylko, czy Euler i obiekt nazwany RK4 dają różne przebiegi; nie mierzy rzędu.
+4. `M-NUM-01` porównuje tożsamość elementów enum; nie wywołuje zastoju Newtona.
+5. `M-FIZ-03` mierzy różnicę norm po ręcznym przesunięciu kąta, ale nie sprawdza odrzucenia złego punktu startowego.
 
-Reproduction:
+Reproduction w izolowanych kopiach:
 
-    cd mv-design-pro/backend
-    pytest -q tests/api/test_granica_autorytetu_downstream.py::test_M4_dowod_doboru_aparatury_z_deklaracja_producenta_powstaje
+```text
+MUTANT A: zastąp WynikDynamiczny.__post_init__ przez pass
+wynik: krótki kanał ACCEPTED; odwrócony czas ACCEPTED;
+kampania: 16/16 ZABITA; testy autora: 15 passed.
 
-Następnie, przy niezmienionym snapshotcie, zmienić required_fault_results, fault_currents albo Z1/Z2/Z0 na arbitralne wartości. Obecna bramka nadal przepuszcza, ponieważ czyta wyłącznie klasyfikację k_sc ze snapshotu.
+MUTANT B: odcisk_implementacji() -> "0" * 64
+wynik: stały odcisk zaakceptowany;
+kampania: 16/16 ZABITA.
 
-Why it matters physically/mathematically:
+MUTANT C: Rk4.krok zastąpiony metodą punktu środkowego rzędu 2,
+przy pozostawieniu deklaracji rzad=4
+niezależnie zmierzony rząd: 2,055; 2,027; 2,014;
+kampania: 16/16 ZABITA; testy autora: 15 passed.
+```
 
-Wartości I″k, ip, Ith i impedancje sekwencyjne są wielkościami zależnymi od pełnej topologii, parametrów i punktu zwarcia. Sam fakt, że niezależny snapshot zawiera deklarowane k_sc, nie dowodzi, że podane liczby pochodzą z tego modelu. Można uzyskać fałszywie dodatni dobór zdolności wyłączalnej, fałszywą koordynację albo pakiet regulacyjny dla nieistniejącego biegu.
+Klasy `KONTRAKT` i `TOZSAMOSC` są dodatkowo wyłączone z `KLASY_KRYTYCZNE`; przeżycie w tych klasach nie powoduje niezerowego kodu wyjścia. Pusta kampania zwraca `bez_luk_krytycznych=True`.
 
-Do existing Opus tests detect it: NIE. Test dodatni M4 wprost oczekuje sukcesu dla fałszywego run_id i arbitralnych liczb.
+Why it matters: raport może deklarować pełne zabicie mutacji mimo usunięcia mechanizmów chroniących interpretowalność trajektorii, tożsamość implementacji i teoretyczny rząd metody. Daje to fałszywą podstawę decyzji o gotowości.
 
-Acceptance test:
+Do existing Opus tests detect it: NIE. Wszystkie 15 nowych testów przeszły na mutancie A i C.
 
-- stały snapshot plus zmiana choć jednej wielkości wyniku poza artefaktem solvera musi zostać odrzucona;
-- konsument musi pobierać wynik przez zweryfikowaną tożsamość run/snapshot/implementation albo sam wyliczać wielkości z przekazanego snapshotu;
-- hash lub podpis musi obejmować pełny wynik, scenariusz, punkt zwarcia i implementację, nie samą obecność deklaracji k_sc;
-- nieistniejący run_id nie może wytworzyć dowodu autorytatywnego.
+Acceptance test: każdy katalogowy mutant ma zmieniać rzeczywisty kod lub rzeczywiste wejście w sposób realizujący opisany defekt. Mutant musi przeżyć, jeśli odpowiadający detektor zostanie usunięty. Rząd należy mierzyć na drabinie kroku, walidację wyniku przez konstrukcję wadliwego wyniku, zbieżność przez rzeczywisty przypadek zastoju, a odcisk przez zmianę treści kodu i test zmienności. Pusta kampania i każde przeżycie P0/P1 muszą blokować kwalifikację.
 
 SOL CAN RESOLVE.
 
-### P0-DELTA-13 — niepoprawny prąd znamionowy DER daje autorytatywny wkład 0 A
+### P1-DELTA-20 — porównywarka trajektorii akceptuje niepełne i wadliwe osie czasu
 
-Subsystem: DER short-circuit contribution / readiness / breaking capacity.
+Subsystem: external oracle / trajectory evidence.
 
-Claim under test: kontrola dziedziny wyniku blokuje każdą parę danych, dla której fizyczny wkład nie istnieje.
+Claim under test: błąd punkt-po-punkcie jest obliczany na wspólnym, poprawnym i kompletnym zakresie danych.
 
 Independent executable evidence:
 
-Uruchomiono na odłączonym klonie HEAD 64004a5d:
+```python
+Przebieg([1, 2], [10, 20]).na_siatce([0, 1, 2, 3])
+# [10, 10, 20, 20] — cicha ekstrapolacja wartościami brzegowymi
 
-    python - <<'PY'
-    import sys
-    sys.path.insert(0, 'mv-design-pro/backend/src')
-    from network_model.core.inverter import InverterSource
-    from network_model.core.autorytet_wyniku_zwarciowego import (
-        ProweniencjaWynikuZwarciowego, wynik_jest_miarodajny
-    )
-    from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
+Przebieg([0, 1, 1, 2], [0, 1, 99, 2]).na_siatce([1])
+# [99] — duplikat czasu zaakceptowany
 
-    class G:
-        def __init__(self, s):
-            self.inverter_sources = {s.id: s}
+Przebieg([0, 2, 1], [0, 2, 1]).na_siatce([1.5])
+# [1] — niemonotoniczna oś zaakceptowana
 
-    for i_n in [0.0, float('nan'), float('inf'), -100.0]:
-        s = InverterSource(id='DER-1', node_id='n', k_sc=1.35, in_rated_a=i_n)
-        p = ProweniencjaWynikuZwarciowego.z_grafu(G(s))
-        print(i_n, s.ik_sc_a, s.wklad_zrodlo,
-              wynik_jest_miarodajny(
-                  ZdolnoscMiarodajna.BREAKING_CAPACITY_SELECTION, p
-              ))
-    PY
+Przebieg([0, 1], [0, NaN]).na_siatce([0.5])
+# [NaN]
+```
 
-Observed:
+Przyczyną jest bezpośrednie użycie `numpy.interp` bez walidacji skończoności, ścisłej monotoniczności, równoległości serii i pełnego pokrycia wspólnej siatki.
 
-    0.0    0.0 DEKLARACJA True
-    nan    0.0 DEKLARACJA True
-    inf    0.0 DEKLARACJA True
-    -100.0 0.0 DEKLARACJA True
+Why it matters: skrócona lub uszkodzona wyrocznia może wytworzyć pozornie kompletny przebieg; wartości spoza zakresu są powielane, zamiast blokować wniosek. To narusza fail-closed evidence.
 
-Cause:
+Do existing Opus tests detect it: NIE. Katalog mutacji nie atakuje klasy `Przebieg` z porównania ANDES.
 
-prad_wkladu_zwarciowego odrzuca niepoprawne i_n_a przez zwrot 0.0, lecz zachowuje znacznik pochodzenia samego k_sc. _znacznik_zrodla i blokady_autorytetu widzą DEKLARACJA i przepuszczają wynik.
-
-Why it matters:
-
-Aktywne źródło falownikowe może zostać usunięte z bilansu zwarciowego przez wadliwą wartość znamionową, a wynik nadal ma status miarodajny. Zaniżenie I″k może skutkować doborem aparatu o niewystarczającej zdolności wyłączalnej albo błędną oceną czułości zabezpieczenia.
-
-Do existing Opus tests detect it: NIE. Macierz autora bada przepełnienie tylko przy dodatnim I_n; brak przypadków 0, wartości ujemnej, NaN i Inf z poprawnym k_sc.
-
-Acceptance test:
-
-Każdy czynny DER musi mieć skończone, dodatnie I_n wyprowadzone z kompletnych i spójnych S_n oraz U_n. Brak albo niepoprawność dowolnego składnika musi dawać blocker autorytetu, nigdy wkład 0 A z DEKLARACJA.
+Acceptance test: konstrukcja `Przebieg` odrzuca NaN/Inf, nierówne długości, duplikaty i niemonotoniczny czas. Porównanie musi wymagać pełnego pokrycia żądanego okna i zakazywać ekstrapolacji. Brak pokrycia daje stan nierozstrzygnięty, nie metrykę zgodności.
 
 SOL CAN RESOLVE.
 
-### P1-DELTA-14 — automatyczna tożsamość toru zależy od kolejności rekordów
+### P1-DELTA-21 — deklaracja „wszystko zielone” jest niezgodna z CI dokładnego SHA
 
-Subsystem: event engine / parallel branches / scenario identity.
+Subsystem: CI / completion evidence.
 
-Claim under test: identyfikator wskazuje rzeczywisty komponent i pozostaje deterministyczny.
+Claim under test: HEAD `1ff13df9` ma wszystkie kontrole zielone.
 
-Independent executable evidence:
+Independent evidence z GitHub dla dokładnego SHA:
 
-    cd <detached-clone>
-    python - <<'PY'
-    import sys
-    sys.path.insert(0, 'mv-design-pro/backend/research')
-    from dynamic_lab.siec import Galaz, TopologiaSieci
+- `pytest`, job `103536265970`: FAILURE; 11928 testów backendu, 15 pominiętych, następnie black wykazał 3 niesformatowane skrypty i zakończył job kodem 1;
+- `frontend`, job `103536265334`: FAILURE; 947 + 25 testów przeszło, ale bramka typów wykazała 16 naruszeń TypeScript;
+- `SLD Contract Tests (Vitest)`, job `103536265300`: FAILURE; `vertical_length_probe` przekroczył wartości bazowe;
+- `critical-real-backend-e2e`, job `103536265132`: FAILURE; 1 failed, 1 passed;
+- `full-real-backend-e2e`, job `103536265409`: FAILURE; 17 failed, 391 passed;
+- pięć pozostałych kontroli: SUCCESS.
 
-    def topo(xs):
-        return TopologiaSieci(
-            szyny=('A','B'),
-            galezie=[Galaz('A','B',0.0,x) for x in xs],
-            szyny_sztywne={'B':1+0j},
-        )
+Porównanie z bazą `64004a5d`: także 5 czerwonych i 5 zielonych kontroli. Większość długu jest odziedziczona; delta C go nie naprawia. Nie ma podstaw do przypisania wszystkich czerwieni nowemu commitowi, ale twierdzenie „wszystko zielone” jest fałszywe.
 
-    for xs in [(0.4,0.8),(0.8,0.4)]:
-        t=topo(xs)
-        po=t.z_wylaczona_galezia_po_id('A-B#1')
-        print(xs, [(g.ident,g.x_pu) for g in t.galezie],
-              [(g.ident,g.x_pu) for g in po.galezie if g.zalaczona],
-              po.zbuduj_ybus()[0,0])
-    PY
+Why it matters: completion claim nie odpowiada stanowi integracyjnemu artefaktu na GitHub. Lokalny wybór podzbioru testów nie zastępuje CI dokładnego SHA.
 
-Observed:
+Do existing Opus tests detect it: CI samo wykrywa czerwień; raport Opusa jej nie odzwierciedla.
 
-    (0.4,0.8) -> A-B#1 oznacza x=0.4; po zdarzeniu pozostaje x=0.8; Y00=-1.25j
-    (0.8,0.4) -> A-B#1 oznacza x=0.8; po zdarzeniu pozostaje x=0.4; Y00=-2.5j
-
-Why it matters:
-
-Przestawienie kolejności serializacji tego samego zestawu fizycznych torów zmienia komponent dotknięty zdarzeniem i wynik Ybus. Numer wystąpienia jest pozycją w liście, nie tożsamością aparatu/kabla. Naprawiono wyłączenie obu torów, ale nie zapewniono stabilnej tożsamości rzeczywistego komponentu.
-
-Do existing Opus tests detect it: NIE. Test sprawdza wyłącznie, że identyczna kolejność daje identyczne nazwy.
-
-Acceptance test:
-
-Dwa tory o różnych parametrach muszą zachować własne identyfikatory po permutacji kolejności, serializacji/deserializacji i odbudowie modelu; zdarzenie na identyfikatorze ma prowadzić do tego samego fizycznego toru i tej samej macierzy Ybus.
-
-SOL CAN RESOLVE.
-
-### P1-DELTA-15 — zmiana kontraktu readiness zepsuła krytyczny przepływ E2E
-
-Subsystem: engineering-readiness API / frontend integration.
-
-Claim under test: usunięcie globalnego ready zostało przeprowadzone jako spójna migracja kontraktu.
-
-Evidence:
-
-Na HEAD 64004a5d critical-real-backend-e2e zakończył się failure. Dokładny błąd:
-
-    frontend/e2e/critical-run-flow.spec.ts:328
-    expect(readiness?.ready).toBe(true)
-    Expected: true
-    Received: undefined
-
-Backend i typy UI usunęły ready na rzecz kompletnosc_modelu oraz zdolnosci, ale krytyczny test rzeczywistego przepływu nadal czyta stary kontrakt.
-
-Why it matters:
-
-Samo usunięcie niejednoznacznego ready jest poprawne merytorycznie, lecz niekompletna migracja rozrywa kontrakt na realnej ścieżce case → readiness → run. Czerwony test jest deterministyczną regresją bieżącej delty, nie argumentem za przywróceniem globalnego ready.
-
-Do existing Opus tests detect it: TAK — critical-real-backend-e2e.
-
-Acceptance test:
-
-Krytyczny przepływ musi wybierać i asertywnie sprawdzać konkretną zdolność, np. LOAD_FLOW, oraz osobno kompletnosc_modelu. Nie wolno odtwarzać globalnego ready jako skrótu.
+Acceptance test: dla dokładnego implementation HEAD przedstawić zakończone wyniki wszystkich wymaganych workflowów i sklasyfikować każdą czerwień. „Wszystko zielone” wolno deklarować wyłącznie przy kompletnym zielonym zestawie.
 
 SOL CAN RESOLVE.
 
 ## NEW P2
 
-### P2-DELTA-16 — obiekt proweniencji pozostaje samodzielnie konstruowalny i fail-open dla nieznanego znacznika
+### P2-DELTA-22 — uprząż kwalifikacyjna nie ma kryteriów akceptacji metryk
 
-ProweniencjaWynikuZwarciowego jest publiczną dataklasą, a ze_znacznikow przyjmuje dowolny Iterable[str]. blokady_autorytetu ignoruje znaczniki spoza _KOMUNIKAT_ZNACZNIKA.
+`kwalifikacja.py` raportuje błędy ANDES, residua, CCT i porównanie integratorów, ale kod wyjścia zależy wyłącznie od `przezyly_krytyczne`. Dowolnie duży błąd trajektorii, brak wymaganej dokładności, brak porównania CCT z wartością analityczną albo niezbieżna pozycja integratora nie tworzą negatywnego werdyktu. Docstring `_czas_krytyczny` zapowiada porównanie z zamkniętym wzorem równych pól, lecz zwracany dokument zawiera tylko CCT z symulacji.
 
-Wykonana reprodukcja:
+To jest użyteczna uprząż pomiarowa, ale nie kwalifikacyjna bramka przyjęcia. Status `UNVALIDATED_MODEL` ogranicza skutki, dlatego ustalenie ma P2, a nie P1.
 
-    ProweniencjaWynikuZwarciowego.ze_znacznikow(('DEKLARACJA',))
-    ProweniencjaWynikuZwarciowego.ze_znacznikow(('NIEZNANY_ZNACZNIK',))
-    ProweniencjaWynikuZwarciowego.ze_znacznikow(())
+### P2-DELTA-23 — dostępność pandapower nie dowodzi wykonania wyroczni w danym biegu
 
-Każdy z trzech obiektów zwrócił True dla REGULATORY_EVIDENCE.
+Sekcja `wyrocznie_zewnetrzne` sprawdza `find_spec` i import wersji. Uprząż wykonuje ANDES TDS, lecz sama nie wykonuje porównania pandapower. Pole `dowod_zewnetrzny_mozliwy` jest uczciwie nazwane „możliwy”; nie wolno przekształcać go w twierdzenie o wykonanym dowodzie przepływu mocy.
 
-To nie jest obecnie bezpośrednie obejście HTTP, ale refutuje twierdzenie kodu, że proweniencji nie da się zadeklarować. Nieznany znacznik powinien być fail-closed. Istniejące testy nie zabijają tej mutacji.
+## INDEPENDENT NUMERICAL AND PHYSICAL EVIDENCE
 
-### P2-DELTA-17 — raport maszynowy obejmuje tylko Icw <= Icu dla aparatury nN
+### Odtworzenie uprzęży
 
-Sześć reguł przeklasyfikowano do WIARYGODNOSC, lecz produkcyjny WynikPrzegladuWiarygodnosci implementuje wyłącznie Icw <= Icu (nN). R0 >= R1, P0 < Pk, Icw <= Icu (SN), 0 < R/X < 1 oraz 0 < i0% < 10 pozostają przede wszystkim kontrolami testowymi, a nie kompletnym artefaktem przeglądu katalogu.
+Środowisko recenzenta: Python 3.12.14, NumPy 2.3.5, SciPy 1.18.1, ANDES 2.0.0, pandapower 3.5.4.
 
-Dodatkowo klasa_reguly dla każdej nieznanej nazwy zwraca KONIECZNOSC_FIZYCZNA. To nie jest dowód klasyfikacji; to twardy domysł. Nowa reguła bez jawnej decyzji może zostać błędnie nazwana koniecznością fizyczną.
+- pełna uprząż bez zewnętrznych pakietów: 13,65 s, 16/16, residuum SMIB `8,3267e-17`, sieć SN z DER `0`, CCT `0,42087890625 s`;
+- po instalacji ANDES/pandapower: ANDES rzeczywiście wykonany; max `|Δδ|=4,1021671e-05 rad`, RMS `2,2025190e-05 rad`, max `|Δω|=9,9472002e-07 p.u.`, błąd punktu pracy `3,6759290e-09 rad`.
 
-### P2-DELTA-18 — porównanie ANDES nie ma ustalonego kryterium akceptacji i nie rozdziela błędu zdarzenia od odcinka gładkiego
+### Niezależna wyrocznia równań SMIB
 
-Zmierzono błędy delta i omega na wspólnej siatce, lecz drabina 4/2/1/0.5 ms osiąga podłogę około 3e-5 rad. Autor wskazuje zagęszczanie kroku ANDES przy zdarzeniu jako prawdopodobną przyczynę, ale nie wykonał rozdzielnego pomiaru na odcinkach gładkich przed i po zdarzeniu ani wspólnej semantyki chwili przełączenia. Brak też niezależnie ustalonego progu akceptacji.
+Użyto zredukowanych równań:
 
-Testy z ANDES są pomijane, gdy wyrocznia nie jest zainstalowana. Bieżący CI ma 15 skipped i nie dostarcza w tym raporcie dowodu, że ANDES TDS został wykonany w CI. Lokalny wynik autora pozostaje wsparciem badawczym, nie walidacją produkcyjną.
+`dδ/dt = 2π f_b (ω - 1)`
 
-## k_sc READINESS VERDICT
+`dω/dt = [P_m - E'/(X'_d + X_l) sin δ] / (2H)`
 
-PARTIALLY SUPPORTED, NOT PRODUCTION-READY.
+Rozwiązanie referencyjne: SciPy DOP853, `rtol=2,3e-14`, `atol=2e-15`, `max_step=0,005 s`; zdarzenie rozdzielono dokładnie w `t=1 s`.
 
-Co zostało zamknięte:
+Obserwowane rzędy dla `dt=20, 10, 5, 2,5 ms`:
 
-- brak k_sc i domyślka 1.1 blokują świeże SHORT_CIRCUIT_3F, SHORT_CIRCUIT_1F i PROTECTION;
-- nowe punkty wywołania obejmują BREAKING_CAPACITY_SELECTION, PROTECTION_COORDINATION, SC_WITHSTAND_EVIDENCE i REGULATORY_EVIDENCE;
-- LOAD_FLOW, TOPOLOGY, SLD i EDITING pozostają niezależne;
-- przepełnienie skończonego dodatniego k_sc razy skończone dodatnie I_n zwraca skończony wynik roboczy i znacznik SI-114, więc nie jest autoryzowane.
+- RK4, odcinek gładki: `4,010; 4,003; 4,000`;
+- RK4, zdarzenie dokładnie na siatce: `4,002; 4,004; 4,002`;
+- trapez, odcinek gładki: `1,994; 1,999; 2,000`;
+- trapez, zdarzenie: `1,997; 1,999; 2,000`.
 
-Co pozostaje otwarte:
+Najgorsze lokalne residuum KCL badanego SMIB: około `9,94e-13 p.u.`, znormalizowane około `2,64e-12`; błąd zgodności mocy zespolonej około `9,97e-13 p.u.`. Czas i punkt wystąpienia są zapisane w surowym artefakcie reprodukcji.
 
-- snapshot nie jest związany z konsumowanymi liczbami ani run_id;
-- niepoprawne I_n daje autoryzowany wkład 0 A;
-- samodzielnie skonstruowane i nieznane znaczniki proweniencji są fail-open;
-- system nie dowodzi, że deklaracja k_sc pochodzi od producenta; dowodzi jedynie, że liczba została podana.
+### Lokalizacja podłogi ANDES
 
-Decyzja właściciela nie jest jeszcze spełniona w sensie end-to-end. System-default k_sc nie przechodzi bezpośredniej bramki, lecz wynik autorytatywny nadal można uzyskać z liczb niepowiązanych z modelem.
+Dla `dt=4, 2, 1, 0,5, 0,25 ms` błąd kąta ANDES względem niezależnego rozwiązania wyniósł odpowiednio:
 
-## CATALOG INVARIANT VERDICT
+`1,838e-4; 6,897e-5; 4,098e-5; 3,352e-5; 3,486e-5 rad`.
 
-Klasyfikacja pięciu wskazanych reguł jako ostrzeżeń wiarygodności jest zasadniczo poprawna:
+Błąd przed zdarzeniem pozostał około `3,57e-9 rad`; maksymalny błąd występował po zdarzeniu. ANDES stosował w pobliżu przełączenia krok `0,1 ms`. Laboratorium RK4 względem tej samej wyroczni spadło z `1,55e-8` do `2,14e-13 rad`. Dowód lokalizuje podłogę w ścieżce ANDES/semantyce przełączenia tego przypadku, lecz nie rozstrzyga dokładnego mechanizmu wewnętrznego ANDES.
 
-- R0 >= R1 — PLAUSIBILITY GUARD ONLY.
-- P0 < Pk — PLAUSIBILITY GUARD ONLY.
-- Icw <= Icu — PLAUSIBILITY GUARD ONLY bez dodatkowego ograniczenia do konkretnej rodziny, wariantu, napięcia i czasu. Ics <= Icu pozostaje normatywną relacją rodziny IEC 60947-2.
-- 0 < R/X < 1 — R > 0 i X > 0 mogą być ograniczeniem zdefiniowanej domeny modelu; samo R/X < 1 jest PLAUSIBILITY GUARD ONLY, dopóki zakres produktu nie zostanie jawnie zawężony.
-- 0 < i0% < 10 — dodatniość jest prawidłową kontrolą danych dla modelowanego transformatora; granica 10% jest PLAUSIBILITY GUARD ONLY.
+## PRIOR OPEN / CLOSED
 
-Nie stwierdzono nowej zbyt silnej twardej bramki dla tych pięciu reguł. Nie wolno jednak nazywać nowych, niezarejestrowanych reguł koniecznościami fizycznymi przez domyślną klasyfikację.
+### Nadal otwarte i ponownie odtworzone
 
-## 57/57 VERDICT
+- P0-DELTA-01, energia BESS: dla rozładowania przy `dt=0,00125 s` energia sieci `0,165847882 kWh`, zmiana zasobu `0,040000000 kWh`, residuum `0,125847882 kWh`; 1484 rzutowania. Dla ładowania wyniki mają przeciwne znaki i tę samą wartość błędu. Błąd nie zanika dla dt od 10 do 1,25 ms. W punkcie wewnętrznym bez rzutowania residuum było poniżej `2,2e-11 kWh`, więc defekt wiąże się z semantyką granicy, nie z samą jednostką całki.
+- P1-DELTA-02, NaN: jawny krok z `dSOC/dt=NaN` został rzutowany do `1,0` i oznaczony `STRICT_CONVERGENCE`; po wstrzyknięciu NaN do silnika wynik miał `zbiegl=True`, `kazdy_krok_scisle_zbiezny=True`, dwa rzutowania i skończone sygnały.
 
-Claim is truthful only in a narrow sense.
+### Nadal otwarte, poza zmienionym zakresem
 
-Po tej delcie globalne ready zostało usunięte. 57/57 może uczciwie oznaczać:
+- P0-DELTA-12: snapshot proweniencji nie jest związany z konsumowanymi liczbami zwarciowymi i nieistniejącym `run_id`;
+- P0-DELTA-13: niepoprawny lub nieskończony `I_n` DER może dać autoryzowany wkład 0 A;
+- re-inicjalizacja po topologii zwarciowej: historyczny pomiar `max Δx0=1,09421789`;
+- pełny audyt baz BESS urządzenie–sieć;
+- samodzielnie konstruowalne evidence i FRT dla brakujących kanałów;
+- stabilna tożsamość nienazwanych gałęzi przy zmianie porządku danych;
+- migracja kontraktu readiness w E2E;
+- walidacja regulatorów AVR/governor, PSS, nasycenia, ograniczników i modeli DER.
 
-- kompletność strukturalną wymaganych pól szablonów;
-- możliwość materializacji modelu;
-- w poprzednim pomiarze dostępność capability LOAD_FLOW dla wszystkich 57 szablonów.
+### Zamknięte w poprzedniej delcie, potwierdzone w ograniczonym zakresie
 
-57/57 nie dowodzi:
-
-- 23/23 rodzin katalogowych zweryfikowanych produkcyjnie;
-- zgodności każdej wartości z kartą konkretnego producenta;
-- gotowości zwarciowej każdego szablonu;
-- gotowości do doboru aparatury, koordynacji zabezpieczeń albo dowodu regulacyjnego;
-- fizycznej walidacji modeli dynamicznych.
-
-Samo SOURCE_REFERENCED oznacza obecność referencji źródłowej, nie niezależną weryfikację treści. Kompletne pola bez weryfikowalnej proweniencji producenta nie są danymi production-verified.
-
-Current overstatement:
-
-- nazwa globalnego pola ready została usunięta — wcześniejsze przeszacowanie jest zamknięte na poziomie schematu;
-- dokument PRE_FABLE nazywa pakiet gotowym do decyzji architektonicznej, nie produkcyjnie gotowym, co jest dopuszczalne;
-- twierdzenie o domknięciu wszystkich znalezisk drugiej recenzji jest nieprawdziwe z powodu P0-DELTA-12 i P0-DELTA-13;
-- twierdzenie, że proweniencji nie da się zadeklarować, jest zbyt mocne.
+- wyłączenie jednego jawnie nazwanego toru `TOR_B` pozostawia drugi tor czynny;
+- rząd RK4 i trapezu dla gładkiego klasycznego SMIB oraz zdarzenia trafiającego dokładnie w siatkę;
+- porównanie trajektorii z ANDES jest rzeczywiście wykonywane, gdy ANDES jest dostępny.
 
 ## PHYSICS SCORE
 
-PARTIALLY SUPPORTED
+**PARTIALLY SUPPORTED**
 
-Wsparcie: poprawne pozostawienie jednego toru w Ybus i zgodność klasycznego SMIB z ANDES dla delta/omega.
-
-Ograniczenia: brak walidacji regulatorów, ograniczników, zwarć, napięć i mocy; autorytatywny wkład DER może zostać wyzerowany przez niepoprawne I_n.
+Klasyczny SMIB, wpływ bezwładności i topologia dwutorowa mają ilościowe wsparcie. Bilans zasobowy BESS jest refutowany, a pozostałe urządzenia i regulatory nie zostały w tym zakresie niezależnie zwalidowane.
 
 ## MATHEMATICS SCORE
 
-PARTIALLY SUPPORTED
+**PARTIALLY SUPPORTED**
 
-Kontrola skończoności iloczynu k_sc razy I_n jest matematycznie właściwa dla dodatnich czynników. Dziedzina pary jest jednak niepełna, bo niepoprawny drugi czynnik nie propaguje blokady. Nowe porównanie trajektorii nie ustanawia ogólnej równoważności modeli.
+Niezależne równania zredukowanego SMIB odtwarzają punkt pracy i dynamikę laboratorium. Kampania nie dowodzi poprawności ogólnych równań urządzeń, a ogranicznik BESS narusza spójność równania stanu z mocą elektryczną.
 
 ## NUMERICAL SCORE
 
-UNRESOLVED
+**PARTIALLY SUPPORTED**
 
-Zmierzono rzeczywisty błąd punkt-po-punkcie i jego zależność od kroku, co jest wartościowe. Obserwowany iloraz błędów 2.66, 1.68 i 1.22 nie daje stałego rzędu metody, a błąd zdarzeniowy nie został oddzielony od odcinków gładkich. Brak kryterium akceptacji oraz niezależnego wykonania ANDES w tej recenzji.
+RK4 i trapez osiągają rzędy teoretyczne, a KCL/PQ badanego SMIB są na poziomie około `1e-12 p.u.`. NaN/Inf może jednak stać się ścisłą zbieżnością, a nowa kampania nie wykrywa degradacji RK4 do rzędu 2.
 
 ## ENERGY / NETWORK SCORE
 
-REFUTED
+**REFUTED**
 
-Naprawa torów równoległych usuwa jedno lokalne naruszenie topologii. Jednocześnie P0-DELTA-13 pozwala cicho usunąć czynny wkład DER z bilansu zwarciowego, a P0-DELTA-12 pozwala połączyć dowolne liczby z niezależnym snapshotem. To uniemożliwia uznanie wyniku zwarciowego za miarodajny end-to-end.
-
-Wcześniejszy P0 BESS pozostaje otwarty i nie był dotknięty deltą.
+Lokalna sieć SMIB spełnia KCL i bilans mocy z małym residuum. Fizyczny bilans energii BESS na obu granicach SOC pozostaje rażąco naruszony, dlatego łączny wynik nie może być wyższy.
 
 ## CATALOG ENGINEERING SCORE
 
-PARTIALLY SUPPORTED
+**UNRESOLVED FOR CURRENT DELTA**
 
-Rozróżnienie twardych wymogów od reguł wiarygodności jest poprawione. 57/57 zostało oddzielone od 23/23. Brakuje pełnego maszynowego artefaktu ostrzeżeń dla pięciu z sześciu przeklasyfikowanych reguł oraz niezależnego potwierdzenia danych producenta.
+Delta C nie zmienia katalogów ani gotowości szablonów. Poprzednie ustalenia pozostają: 57/57 oznacza co najwyżej kompletność szablonów/capability, a nie 23/23 rodzin z niezależnie zweryfikowaną proweniencją producenta.
 
 ## CI DELTA
 
-Stan pobrany dla 64004a5d 2026-09-12 po zakończeniu głównego pytest:
+Względem REVIEW_BASE_SHA liczba kontroli pozostaje bez zmiany: 5 zielonych i 5 czerwonych. Nowa delta zwiększyła liczbę przechodzących testów backendu, ale nie ustanowiła zielonego CI.
 
-Zielone:
-
-- V12K Extended Invariant Guards;
-- SLD Guards (Python);
-- Architecture and catalog-first repo hygiene;
-- Documentation integrity check;
-- Blokada pól fizycznych w modalach.
-
-Czerwone:
-
-- pytest: 7 failed, 11906 passed, 15 skipped. Te same siedem rodzin fixture JSON nN co wcześniej; różnice projection_hash i wartości zmiennoprzecinkowych. Z dostępnego dowodu nie wynika nowa regresja tej delty — klasyfikacja: inherited/numerical fixture debt.
-- SLD Contract Tests (Vitest): vertical_length_probe, wartości 22672 > 22440 i 45656 > 39448. Delta nie zmienia SLD; klasyfikacja: inherited regression/debt.
-- critical-real-backend-e2e: readiness.ready jest undefined po usunięciu pola. Klasyfikacja: introduced deterministic contract regression, P1-DELTA-15.
-
-W toku w chwili utrwalenia:
-
-- full-real-backend-e2e;
-- frontend.
-
-Deklaracja dokumentu o 12031 backend tests i 11989 frontend tests bez błędów odnosi się do pomiaru lokalnego Milestone A i nie jest stanem pełnego CI bieżącego HEAD.
+- backend: `11928 passed, 15 skipped`; końcowa czerwień przez black dla 3 skryptów — dług odziedziczony względem bazy;
+- frontend: testy funkcjonalne zielone, 16 błędów bramki typów — odziedziczone;
+- SLD: `vertical_length_probe` nadal czerwony — odziedziczony;
+- critical E2E: 1 failed / 1 passed — odziedziczona migracja readiness;
+- full E2E: 17 failed / 391 passed — odziedziczone;
+- nowa kampania badawcza: celowane testy 15/15 zielone, lecz nieskuteczne wobec wykonanych mutantów.
 
 ## MUTATION STATUS
 
-Nowe mutacje/kontrprzykłady:
+- usunięcie walidacji `WynikDynamiczny`: **SURVIVED** — kampania 16/16, testy autora 15/15;
+- stały odcisk implementacji: **SURVIVED** — kampania 16/16;
+- RK4 zastąpione metodą drugiego rzędu z etykietą rzędu 4: **SURVIVED** — kampania 16/16, testy autora 15/15;
+- rzeczywiste wyłączenie jednego jawnie nazwanego toru: **KILLED** przez pomiar Ybus;
+- wyjątek scenariusza mutacyjnego nie jest liczony jako zabicie: **KILLED** na poziomie mechaniki ramy.
 
-- k_sc=1e308, I_n=1000 A — KILLED w zakresie autorytetu: ik pozostaje skończony, znacznik SI-114 blokuje wynik.
-- poprawne k_sc plus I_n=0/NaN/Inf/ujemne — SURVIVED: 0 A, DEKLARACJA, authoritative=True.
-- stały poprawny snapshot plus arbitralna zmiana required_fault_results/fault_currents/Z1-Z2-Z0 — SURVIVED na podstawie wykonywalnej ścieżki i dodatniego testu HTTP autora.
-- nieznany znacznik proweniencji — SURVIVED: brak blokady.
-- permutacja dwóch nierównych torów bez jawnych identyfikatorów — SURVIVED: A-B#1 wskazuje inny fizyczny tor, Ybus po zdarzeniu zmienia się z -1.25j na -2.5j.
-- wyłączenie wszystkich torów przez adresowanie parą szyn — KILLED: niejednoznaczność daje błąd, a adresowanie po ident wyłącza jeden tor.
-
-## PREVIOUS FINDINGS STATUS
-
-Nadal otwarte, niedotknięte deltą:
-
-- P0-DELTA-01: projekcja SOC do zera bez ograniczenia elektrycznej energii; 0.165847882 kWh wobec zasobu 0.040 kWh, błąd nie znika z dt.
-- P1-DELTA-02: projekcja NaN na górną granicę z STRICT_CONVERGENCE.
-- re-inicjalizacja po zwarciu: max delta x0=1.09421789.
-- NaN/Inf w kontrakcie wyników dynamicznych.
-- niespójności baz BESS.
-- samodzielnie konstruowane evidence/FRT i niepełne związanie implementacji.
-- model-form risk limiterów AVR/governor.
-- brak prawa do VALIDATED_SIMULATION i dowodu NC RfG.
-
-Częściowo zamknięte:
-
-- identity zdarzeń dla torów równoległych: zamknięto ciche wyłączenie wszystkich; stabilna tożsamość rzeczywistego komponentu pozostaje otwarta.
-- k_sc downstream: dodano punkty wywołania, lecz łańcuch wyniku do snapshotu pozostaje otwarty.
-- P1-DELTA-07: przepełnienie iloczynu przy dodatnim skończonym I_n zamknięte; niepoprawne I_n ujawniło nowy P0.
-- P1-DELTA-08: globalne ready usunięte; migracja E2E nieukończona.
+Wynik niezależny: 3 istotne mutacje przeżyły. Deklaracja „0 luk krytycznych” jest refutowana.
 
 ## UNRESOLVED PROFESSORIAL QUESTIONS
 
-1. Czy artefakt wyniku zwarciowego posiada kanoniczny, niepodrabialny związek z pełnym snapshotem, operating point, fault location, solver implementation i liczbowym payloadem wyniku? Obecna delta takiego związku nie pokazuje.  
-SOL CAN RESOLVE.
+1. Czy architektura integratora ma pozostać jednokrokowa, czy zostać rozszerzona o jawny, niemutowalny stan historii dla BDF? **SOL CAN RESOLVE** przez przygotowanie dwóch kontraktów i benchmarków; decyzja Fable.
+2. Jaką semantykę stanu i mocy przy granicy SOC przyjąć: dokładne wykrycie czasu trafienia, ograniczenie mocy w prawych stronach równania czy układ komplementarności? **ASTRA ESCALATION RECOMMENDED** tylko jeśli po pomiarach pozostaną dwie równoważne interpretacje architektoniczne. Obecny defekt i wymóg zachowania energii są jednoznaczne i nie wymagają Astry.
+3. Jaka część podłogi około `3e-5 rad` wynika z kolejności Toggle w ANDES, a jaka z algorytmu TDS? **SOL CAN RESOLVE** przez porównanie stanów bezpośrednio przed i po zdarzeniu oraz ujednolicenie semantyki przełączenia.
+4. Jakie progi akceptacji mają obowiązywać dla trajektorii, energii, KCL i modeli z ogranicznikami? **SOL CAN RESOLVE** po ustanowieniu zakresu użycia i niezależnego budżetu błędów.
 
-2. Jaki jest jawny kontrakt dla braku albo niepoprawności S_n/U_n/I_n czynnego DER i dlaczego obecnie wkład 0 A jest oznaczony DEKLARACJA?  
-SOL CAN RESOLVE.
+## ESCALATION
 
-3. Czy identyfikatory gałęzi bez jawnego ident mają być trwałe poza pojedynczym obiektem w pamięci? Jeśli tak, numer wystąpienia nie spełnia wymagania.  
-SOL CAN RESOLVE.
+Brak pakietu ASTRA. Nowe P1 mają jednoznaczne wykonywalne kontrprzykłady i mogą zostać rozwiązane przez SOL/Opus. P0 bilansu BESS jest fizycznie jednoznaczny: moc elektryczna i pochodna zasobu muszą opisywać ten sam przepływ energii.
 
-4. Jaki próg akceptacji obowiązuje dla błędu trajektorii ANDES oraz jaki jest obserwowany rząd na odcinkach gładkich osobno przed zdarzeniem, po zdarzeniu i w oknie zdarzenia?  
-SOL CAN RESOLVE.
+## REPRODUCTION ARTIFACTS
 
-5. Czy pięć pozostałych reguł wiarygodności ma być widocznych w produkcyjnym raporcie katalogowym, czy wyłącznie w testach?  
-SOL CAN RESOLVE.
+Lokalne artefakty recenzenta, niewprowadzane do kodu produktu:
 
-## ASTRA ESCALATION
+- `audit_1ff.py` — trzy izolowane kampanie oraz bilans BESS;
+- `trajectory_1ff.py` — niezależna wyrocznia DOP853, drabina rzędu, KCL/PQ;
+- `andes_floor_1ff.py` — lokalizacja podłogi błędu ANDES;
+- `projection_nan.py` — NaN → rzutowanie → STRICT_CONVERGENCE;
+- `qualification_andes_1ff.json` — pełny raport z ANDES 2.0.0;
+- `independent_results_1ff.jsonl`, `trajectory_1ff.jsonl`, `andes_floor_1ff.jsonl` — surowe wyniki.
 
-NIE ZALECA SIĘ.
+Repozytorium audytowane po eksperymentach: czyste; mutacje wykonano poza jego drzewem.
 
-Nowe P0/P1 są jednoznacznymi defektami łańcucha danych, dziedziny wejścia i tożsamości komponentu. Nie ma dwóch równie wiarygodnych interpretacji matematycznych lub fizycznych wymagających GPT-6 Astra.
+## REVIEWER CHECKPOINT
 
-## REVIEW CHECKPOINT
+`LAST_VERIFIED_SHA = 1ff13df9e475c75b50f04d017c8e155e9cd2bce5`
 
-LAST_VERIFIED_SHA: 64004a5d0f6f05f96677c95e307444e984b39dcc
-
-Uwaga: LAST_VERIFIED_SHA oznacza koniec przejrzanej delty, nie akceptację. pending_from_base pozostaje co najmniej od 1e96202535abb0acfb123ebac8a49dae430e792c dla wcześniejszych nierozstrzygniętych problemów dynamicznych, BESS, event/evidence i walidacji fizycznej.
+Checkpoint oznacza zakres przejrzany, nie przyjęty. `pending_from_base` pozostaje otwarte zgodnie z sekcją PRIOR OPEN.
