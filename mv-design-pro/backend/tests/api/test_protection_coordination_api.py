@@ -19,6 +19,7 @@ przez warstwe API i sprawdzaja ksztalt/status odpowiedzi.
 from __future__ import annotations
 
 import hashlib
+import itertools
 import time
 from typing import Any
 from uuid import uuid4
@@ -27,7 +28,7 @@ import pytest
 
 pytest.importorskip("fastapi")
 
-from tests.utils.proweniencja_zwarciowa import snapshot_bez_falownikow  # noqa: E402
+from tests.utils.bieg_zwarciowy import BiegiKoordynacjiTestowe, biegi_koordynacji  # noqa: E402
 
 
 def _device(
@@ -59,41 +60,53 @@ def _device(
     }
 
 
-def _reference_payload() -> dict[str, Any]:
-    """Siec referencyjna: dwa urzadzenia w lancuchu selektywnosci (dol/gora)."""
-    downstream_id = str(uuid4())
-    upstream_id = str(uuid4())
+_LICZNIK_PRZYPADKOW = itertools.count()
+
+
+def _reference_payload(biegi: BiegiKoordynacjiTestowe | None = None) -> dict[str, Any]:
+    """Siec referencyjna: dwa urzadzenia w lancuchu selektywnosci (dol/gora).
+
+    KOREKTA (audyt niezalezny, plan naprawy §3). Poprzednia wersja podawala prady
+    zwarciowe jako GOLE LICZBY (5000/2000 A i 3000/1200 A) przy modelu bez zrodel
+    falownikowych. Bramka k_sc je przepuszczala, bo dotyczy MODELU, nie WYNIKU —
+    wiec ten test przypinal dokladnie ten ksztalt zadania, ktory byl defektem.
+
+    Prady pochodza teraz z DWOCH REALNYCH biegow zwarciowych (maksymalnego i
+    minimalnego) policzonych na tej samej migawce. Nastawy zabezpieczen (pickup,
+    mnoznik czasowy) pozostaja decyzja inzyniera i sa WYPROWADZONE z realnych
+    pradow, zeby lancuch selektywnosci nadal cos badal: zabezpieczenie dolne ma
+    nizszy rozruch i krotszy czas niz gorne.
+    """
+    if biegi is None:
+        biegi = biegi_koordynacji(case_id=f"KOORDYNACJA-{next(_LICZNIK_PRZYPADKOW)}")
+    dolna, gorna = biegi.lokalizacje
+    # Rozruch z REALNEGO pradu roboczego lokalizacji, nie z liczby wpisanej recznie.
+    prad_roboczy_dol = biegi.prady_min_a[dolna] / 10.0
+    prad_roboczy_gora = biegi.prady_min_a[gorna] / 10.0
     return {
         "devices": [
             _device(
-                downstream_id,
+                str(uuid4()),
                 name="Zabezpieczenie_dolne",
-                location_element_id="bus_1",
-                pickup_current_a=400.0,
+                location_element_id=dolna,
+                pickup_current_a=round(prad_roboczy_dol * 1.5, 3),
                 time_multiplier=0.3,
             ),
             _device(
-                upstream_id,
+                str(uuid4()),
                 name="Zabezpieczenie_gorne",
-                location_element_id="bus_2",
-                pickup_current_a=600.0,
+                location_element_id=gorna,
+                pickup_current_a=round(prad_roboczy_gora * 1.5, 3),
                 time_multiplier=0.5,
             ),
         ],
-        "fault_currents": [
-            {"location_id": "bus_1", "ik_max_3f_a": 5000.0, "ik_min_3f_a": 2000.0},
-            {"location_id": "bus_2", "ik_max_3f_a": 3000.0, "ik_min_3f_a": 1200.0},
-        ],
+        "fault_currents": biegi.pozycje_pradow(),
         "operating_currents": [
-            {"location_id": "bus_1", "i_operating_a": 150.0},
-            {"location_id": "bus_2", "i_operating_a": 120.0},
+            {"location_id": dolna, "i_operating_a": round(prad_roboczy_dol, 3)},
+            {"location_id": gorna, "i_operating_a": round(prad_roboczy_gora, 3)},
         ],
-        # GRANICA AUTORYTETU (recenzja niezalezna runda 2): koordynacja jest
-        # zdolnoscia MIARODAJNA — jej wynikiem sa nastawy, ktore ktos wprowadzi do
-        # przekaznika. Pradow zwarciowych nie wolno juz podac jako golych liczb bez
-        # modelu, z ktorego wynikaja. Model bez zrodel falownikowych jest tu
-        # wlasciwy: wklad falownikowy nie wchodzi wtedy do rownan.
-        "snapshot": snapshot_bez_falownikow(),
+        "sc_run_id": biegi.run_id_max,
+        "sc_run_id_min": biegi.run_id_min,
     }
 
 

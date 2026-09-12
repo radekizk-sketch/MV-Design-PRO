@@ -225,7 +225,14 @@ export interface RunCoordinationRequest {
   operating_currents: OperatingCurrentData[];
   config?: CoordinationConfig;
   pf_run_id?: string;
+  /**
+   * Bieg zwarciowy MAKSYMALNY — źródło `ik_max_3f_a`. Wymagany znaczeniowo:
+   * backend odrzuca żądanie bez niego (`BIEG_NIE_WSKAZANY`), bo prądy podane w
+   * żądaniu nie mają wtedy czym być potwierdzone (plan naprawy §3).
+   */
   sc_run_id?: string;
+  /** Bieg zwarciowy MINIMALNY — źródło `ik_min_3f_a`. Wymagany tak samo. */
+  sc_run_id_min?: string;
 }
 
 export interface CoordinationConfig {

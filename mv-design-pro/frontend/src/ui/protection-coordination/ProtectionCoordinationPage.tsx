@@ -57,7 +57,7 @@ import {
   fetchCurrentCaseSnapshot,
   fetchShortCircuitResults,
 } from '../results-inspector/api';
-import { podzielWierszeNaPrzypadki, zbudujPradyKoordynacji } from './pradyZBiegow';
+import { wybierzBiegiScenariuszy, zbudujPradyKoordynacji } from './pradyZBiegow';
 import type { BrakDanejPradowej } from './pradyZBiegow';
 import { lokalizacjeKoordynacji } from './lokalizacjeZModelu';
 import type { LokalizacjaModelu } from './lokalizacjeZModelu';
@@ -464,6 +464,15 @@ export function ProtectionCoordinationPage() {
   });
   // F-K4 faza 3b: braki danych prądowych z biegów (uczciwy stan zamiast atrapy).
   const [brakiPradowe, setBrakiPradowe] = useState<readonly BrakDanejPradowej[]>([]);
+  /**
+   * Identyfikatory biegów, z których pochodzą prądy — WYSYŁANE do serwera.
+   * Bez nich serwer nie ma czym potwierdzić liczb i odmawia koordynacji
+   * (plan naprawy §3: nastawy powstają z wyniku solvera, nie z żądania).
+   */
+  const [biegiScenariuszy, setBiegiScenariuszy] = useState<{
+    max: string | null;
+    min: string | null;
+  }>({ max: null, min: null });
   // K5-B (H-2): wykonawca nastaw E-28 — urządzenia i nastawy żyją w konfiguracji
   // PRZYPADKU (`ProtectionConfig.overrides`, klucz per urządzenie), nie w useState.
   // `ostatniaKonfiguracja` trzyma pełny ProtectionConfig z ostatniego GET/PUT —
@@ -598,11 +607,16 @@ export function ProtectionCoordinationPage() {
     let anulowane = false;
 
     void (async () => {
-      const wierszeZwarciowe: ShortCircuitRowLite[] = [];
+      // PARA (SKĄD, CO), nie sama pula wierszy (plan naprawy §3). Wcześniej
+      // wiersze ze WSZYSTKICH biegów lądowały w jednej puli, więc marginesy mogły
+      // powstać z prądów policzonych na dwóch RÓŻNYCH migawkach modelu — a takie
+      // porównanie nie znaczy nic. Backend odrzuca dziś taką parę, ale klient nie
+      // może przysyłać czegoś, o czym z góry wiadomo, że jest bez sensu.
+      const biegiZWierszami: { id: string; rows: ShortCircuitRowLite[] }[] = [];
       for (const bieg of biegiZwarciowe) {
         try {
           const wynik = await fetchShortCircuitResults(bieg.id);
-          wierszeZwarciowe.push(...wynik.rows);
+          biegiZWierszami.push({ id: bieg.id, rows: wynik.rows });
         } catch {
           // Brak wyniku biegu = brak danych; nie zastępujemy go niczym.
         }
@@ -616,16 +630,17 @@ export function ProtectionCoordinationPage() {
         }
       }
       if (anulowane) return;
-      const { max, min } = podzielWierszeNaPrzypadki(wierszeZwarciowe);
+      const { biegMax, biegMin } = wybierzBiegiScenariuszy(biegiZWierszami);
       const prady = zbudujPradyKoordynacji({
         // V12K-262: urządzenie bez wskazanego elementu pomijamy TUTAJ, żeby nie
         // raportować mu „braku prądu zwarciowego" — prawdziwym brakiem jest
         // lokalizacja, i to mówi osobna bramka. Dwa różne braki, dwa komunikaty.
         urzadzenia: state.devices.filter((d) => d.location_element_id.trim() !== ''),
-        wierszeMax: max,
-        wierszeMin: min,
+        wierszeMax: biegMax?.rows ?? [],
+        wierszeMin: biegMin?.rows ?? [],
         wierszeGalezi,
       });
+      setBiegiScenariuszy({ max: biegMax?.id ?? null, min: biegMin?.id ?? null });
       setState((prev) => ({
         ...prev,
         faultCurrents: [...prady.faultCurrents],
@@ -796,6 +811,10 @@ export function ProtectionCoordinationPage() {
         fault_currents: state.faultCurrents,
         operating_currents: state.operatingCurrents,
         config: DEFAULT_CONFIG,
+        // SKĄD POCHODZĄ PRĄDY — bez tych identyfikatorów serwer nie ma czym
+        // potwierdzić liczb i odmawia (plan naprawy §3).
+        sc_run_id: biegiScenariuszy.max ?? undefined,
+        sc_run_id_min: biegiScenariuszy.min ?? undefined,
       });
 
       const result = await getCoordinationResult(summary.run_id);
@@ -815,7 +834,7 @@ export function ProtectionCoordinationPage() {
         error: err instanceof Error ? err.message : LABELS.status.error,
       }));
     }
-  }, [projectId, state.devices, state.faultCurrents, state.operatingCurrents]);
+  }, [projectId, state.devices, state.faultCurrents, state.operatingCurrents, biegiScenariuszy]);
   uruchomAnalize.current = () => void handleRunAnalysis();
 
   // Get editing device

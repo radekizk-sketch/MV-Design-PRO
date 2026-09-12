@@ -165,3 +165,70 @@ def test_kazde_przeklasyfikowanie_powoluje_sie_na_pomiar() -> None:
         if not any(znak.isdigit() for znak in uzasadnienie)
     ]
     assert not bez_pomiaru, f"Przeklasyfikowania bez pomiaru w uzasadnieniu: {bez_pomiaru}"
+
+
+# ---------------------------------------------------------------------------
+# §7 planu naprawy — KOMPLET klasyfikacji reguł katalogowych
+# ---------------------------------------------------------------------------
+
+
+def test_kazda_klasa_niezmiennika_ma_przypisana_moc() -> None:
+    """Suma klas twardych i miękkich musi pokrywać KOMPLET klas.
+
+    Klasa bez przypisanej mocy zachowywałaby się jak twarda przez `KLASY_TWARDE`
+    liczone dopełnieniem albo jak miękka przez pominięcie — i nikt nie wiedziałby
+    która, dopóki nie złamie jej realny rekord katalogu. Deklaracja „pięć klas,
+    każda z jawną mocą" bez tego testu jest fałszywą pewnością.
+    """
+    from network_model.catalog.niezmienniki_katalogu import (
+        KLASY_MIEKKIE,
+        KLASY_TWARDE,
+        KlasaNiezmiennika,
+    )
+
+    assert KLASY_TWARDE | KLASY_MIEKKIE == set(KlasaNiezmiennika)
+    assert not (KLASY_TWARDE & KLASY_MIEKKIE), "klasa nie może być twarda i miękka naraz"
+    assert len(KlasaNiezmiennika) == 5
+
+
+@pytest.mark.parametrize(
+    "regula",
+    ["R0 >= R1", "P0 < Pk", "Icw <= Icu (SN)", "Icw <= Icu (nN)", "0 < R/X < 1", "0 < i0% < 10"],
+)
+def test_reguly_wymienione_w_audycie_nie_sa_prawami_fizyki(regula: str) -> None:
+    """Sześć reguł nazwanych w audycie NIE MOŻE być twardą bramką.
+
+    Plan naprawy §7 wymienia je wprost: ``R0 >= R1``, ``P0 < Pk``,
+    ``Icw <= Icu``, ``0 < R/X < 1``, ``0 < i0% < 10``. Każda opisuje relację
+    TYPOWĄ dla dotychczasowego zbioru danych, nie konieczność fizyczną — twarda
+    bramka odrzuciłaby poprawny rekord spoza tego zbioru.
+    """
+    from network_model.catalog.niezmienniki_katalogu import (
+        PRZEKLASYFIKOWANE,
+        byla_regula_za_mocna,
+        klasa_reguly,
+        regula_jest_twarda,
+    )
+
+    assert not regula_jest_twarda(regula)
+    assert byla_regula_za_mocna(regula)
+    klasa, uzasadnienie = PRZEKLASYFIKOWANE[regula]
+    assert klasa is klasa_reguly(regula)
+    # UZASADNIENIE, NIE SAMA DECYZJA. Degradacja bez podanego powodu jest
+    # nieodróżnialna od wyciszenia niewygodnej reguły.
+    assert len(uzasadnienie) > 80, uzasadnienie
+
+
+def test_regula_spoza_rejestru_pozostaje_twarda_i_nie_jest_zdegradowana() -> None:
+    """DRUGA STRONA PREDYKATU — nowa reguła nie wchodzi cicho na stronę ostrzeżeń."""
+    from network_model.catalog.niezmienniki_katalogu import (
+        KlasaNiezmiennika,
+        byla_regula_za_mocna,
+        klasa_reguly,
+        regula_jest_twarda,
+    )
+
+    nowa = "Un > 0"
+    assert klasa_reguly(nowa) is KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA
+    assert regula_jest_twarda(nowa)
+    assert not byla_regula_za_mocna(nowa)

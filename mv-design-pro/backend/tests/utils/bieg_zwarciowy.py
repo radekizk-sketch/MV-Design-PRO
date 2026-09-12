@@ -139,3 +139,105 @@ def bieg_zwarciowy_domyslny(
         project_id=project_id,
         un_v=un_v,
     )
+
+
+@dataclass(frozen=True)
+class BiegiKoordynacjiTestowe:
+    """Para biegów zwarciowych (MAX i MIN) na TYM SAMYM modelu — wejście koordynacji.
+
+    Koordynacja potrzebuje obu scenariuszy: maksymalnego (selektywność) i
+    minimalnego (czułość). Kanoniczny bieg liczy jeden scenariusz, więc miarodajna
+    koordynacja wymaga dwóch biegów policzonych na tej samej migawce.
+    """
+
+    bieg_max: CanonicalRun
+    bieg_min: CanonicalRun
+    lokalizacje: tuple[str, ...]
+    prady_max_a: dict[str, float]
+    prady_min_a: dict[str, float]
+
+    @property
+    def run_id_max(self) -> str:
+        return str(self.bieg_max.id)
+
+    @property
+    def run_id_min(self) -> str:
+        return str(self.bieg_min.id)
+
+    def pozycje_pradow(self, *nadpisania: dict[str, Any]) -> list[dict[str, Any]]:
+        """Pozycje ``fault_currents`` zbudowane WYŁĄCZNIE z liczb obu biegów."""
+        pozycje = [
+            {
+                "location_id": lokalizacja,
+                "ik_max_3f_a": self.prady_max_a[lokalizacja],
+                "ik_min_3f_a": self.prady_min_a[lokalizacja],
+            }
+            for lokalizacja in self.lokalizacje
+        ]
+        for nadpisanie, pozycja in zip(nadpisania, pozycje, strict=False):
+            pozycja.update(nadpisanie)
+        return pozycje
+
+
+def biegi_koordynacji(
+    *,
+    case_id: str,
+    k_sc: float | None = 1.35,
+    project_id: str = "PROJEKT-TESTOWY",
+    un_v: float | None = 15000.0,
+    liczba_lokalizacji: int = 2,
+) -> BiegiKoordynacjiTestowe:
+    """Dwa REALNE biegi zwarciowe (MAX i MIN) na tym samym modelu SN.
+
+    Lokalizacje wybierane są po RÓŻNYM prądzie zwarciowym: łańcuch selektywności
+    bez różnicy prądów nie bada niczego, bo oba zabezpieczenia widziałyby to samo.
+    """
+    from enm.canonical_analysis import create_run, execute_run
+
+    snapshot = snapshot_sn_z_falownikiem(k_sc=k_sc)
+    set_enm(case_id, EnergyNetworkModel.model_validate(snapshot))
+
+    bieg_max = run_short_circuit_now(case_id=case_id, project_id=project_id)
+    bieg_min = execute_run(
+        create_run(
+            case_id=case_id,
+            analysis_type="short_circuit_sn",
+            project_id=project_id,
+            options={"scenario": "min"},
+        ).id
+    )
+    for bieg, opis in ((bieg_max, "maksymalny"), (bieg_min, "minimalny")):
+        if bieg.status != "FINISHED":
+            raise AssertionError(
+                f"Bieg {opis} nie zakończył się: {bieg.status} {bieg.error_message}"
+            )
+
+    def mapa(bieg: CanonicalRun) -> dict[str, float]:
+        wynik: dict[str, float] = {}
+        for wiersz in (bieg.raw_result or {}).get("results") or []:
+            if un_v is not None and abs(float(wiersz.get("un_v", 0.0)) - un_v) >= 1.0:
+                continue
+            wynik[str(wiersz["fault_node_id"])] = float(wiersz["ikss_a"])
+        return wynik
+
+    prady_max = mapa(bieg_max)
+    prady_min = mapa(bieg_min)
+    wspolne = sorted(set(prady_max) & set(prady_min), key=lambda k: (-prady_max[k], k))
+    rozne: list[str] = []
+    for lokalizacja in wspolne:
+        if all(abs(prady_max[lokalizacja] - prady_max[x]) > 1.0 for x in rozne):
+            rozne.append(lokalizacja)
+        if len(rozne) == liczba_lokalizacji:
+            break
+    if len(rozne) < liczba_lokalizacji:
+        raise AssertionError(
+            f"Model testowy ma {len(rozne)} lokalizacji o różnym prądzie zwarciowym, "
+            f"a potrzeba {liczba_lokalizacji}"
+        )
+    return BiegiKoordynacjiTestowe(
+        bieg_max=bieg_max,
+        bieg_min=bieg_min,
+        lokalizacje=tuple(rozne),
+        prady_max_a={k: prady_max[k] for k in rozne},
+        prady_min_a={k: prady_min[k] for k in rozne},
+    )

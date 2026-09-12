@@ -74,9 +74,6 @@ WARIANT_DLA_NORMY: dict[CurveStandard, str] = {
 }
 
 
-from tests.utils.proweniencja_zwarciowa import snapshot_bez_falownikow
-
-
 def _urzadzenie(
     typ: ProtectionDeviceType,
     *,
@@ -499,15 +496,14 @@ def test_api_odrzuca_niezgodna_pare_norma_wariant(standard: str, wariant: str) -
             ],
             "fault_currents": [{"location_id": "L1", "ik_max_3f_a": 5000.0, "ik_min_3f_a": 1200.0}],
             "operating_currents": [{"location_id": "L1", "i_operating_a": 40.0}],
-            # GRANICA AUTORYTETU (recenzja niezalezna runda 2): koordynacja nie
-            # przyjmuje juz golych pradow zwarciowych bez modelu, z ktorego
-            # wynikaja. Model bez zrodel falownikowych jest tu wlasciwy — wklad
-            # falownikowy nie wchodzi wtedy do rownan zwarciowych.
-            "snapshot": snapshot_bez_falownikow(),
+            # BEZ BIEGOW SWIADOMIE. Ten przypadek bada KOLEJNOSC: blad KSZTALTU
+            # zadania (niezgodna para norma/wariant) ma zostac zgloszony jako 400
+            # z naprawialnym zdaniem PRZED bramka autorytetu, ktora zwrocilaby 422
+            # i wskazala projektantowi inna przyczyne niz rzeczywista.
         },
     )
 
-    assert odpowiedz.status_code == 400
+    assert odpowiedz.status_code == 400, odpowiedz.text
     detail = odpowiedz.json()["detail"]
     assert wariant in detail
     assert "Dozwolone warianty" in detail
@@ -526,9 +522,16 @@ def test_api_tcc_nie_zwraca_punktow_dla_bezpiecznika(standard_zgloszony: str) ->
     from api.main import app
     from fastapi.testclient import TestClient
 
+    from tests.utils.bieg_zwarciowy import biegi_koordynacji
+
     klient = TestClient(app)
     projekt = str(uuid4())
     urzadzenie = str(uuid4())
+    # GRANICA AUTORYTETU (plan naprawy §3): prady zwarciowe pochodza z DWOCH
+    # REALNYCH biegow (maksymalnego i minimalnego), nie z liczb w zadaniu. Liczby
+    # wpisane recznie byly dokladnie tym ksztaltem, ktory audyt nazwal defektem.
+    biegi = biegi_koordynacji(case_id=f"BEZPIECZNIK-{standard_zgloszony}", liczba_lokalizacji=1)
+    lokalizacja = biegi.lokalizacje[0]
 
     odpowiedz = klient.post(
         f"/api/protection-coordination/projects/{projekt}/run",
@@ -538,7 +541,7 @@ def test_api_tcc_nie_zwraca_punktow_dla_bezpiecznika(standard_zgloszony: str) ->
                     "id": urzadzenie,
                     "name": "Bezpiecznik ETI VV 12 kV 63 A",
                     "device_type": "FUSE",
-                    "location_element_id": "L1",
+                    "location_element_id": lokalizacja,
                     "settings": {
                         "stage_51": {
                             "enabled": True,
@@ -553,16 +556,13 @@ def test_api_tcc_nie_zwraca_punktow_dla_bezpiecznika(standard_zgloszony: str) ->
                     },
                 }
             ],
-            "fault_currents": [{"location_id": "L1", "ik_max_3f_a": 5000.0, "ik_min_3f_a": 1200.0}],
-            "operating_currents": [{"location_id": "L1", "i_operating_a": 40.0}],
-            # GRANICA AUTORYTETU (recenzja niezalezna runda 2): koordynacja nie
-            # przyjmuje juz golych pradow zwarciowych bez modelu, z ktorego
-            # wynikaja. Model bez zrodel falownikowych jest tu wlasciwy — wklad
-            # falownikowy nie wchodzi wtedy do rownan zwarciowych.
-            "snapshot": snapshot_bez_falownikow(),
+            "fault_currents": biegi.pozycje_pradow(),
+            "operating_currents": [{"location_id": lokalizacja, "i_operating_a": 40.0}],
+            "sc_run_id": biegi.run_id_max,
+            "sc_run_id_min": biegi.run_id_min,
         },
     )
-    assert odpowiedz.status_code == 201
+    assert odpowiedz.status_code == 201, odpowiedz.text
     run_id = odpowiedz.json()["run_id"]
 
     tcc = klient.get(f"/api/protection-coordination/{run_id}/tcc")

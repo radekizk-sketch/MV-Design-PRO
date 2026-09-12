@@ -32,24 +32,60 @@ from typing import Any
 
 
 class KlasaNiezmiennika(StrEnum):
-    """Moc reguły — rozstrzyga, czy złamanie jest odmową, czy ostrzeżeniem."""
+    """Moc reguły — rozstrzyga, czy złamanie jest odmową, czy ostrzeżeniem.
+
+    PIĘĆ KLAS, NIE CZTERY (audyt niezależny, plan naprawy §7). Cztery pierwsze
+    mówią, CZYM reguła jest; piąta mówi, czym reguła BYŁA i dlaczego przestała.
+    Bez niej historia przeklasyfikowania mieszała się z klasyfikacją bieżącą:
+    reguła zdegradowana do wiarygodności wyglądała tak samo jak reguła, która
+    wiarygodnością była od początku — a to dwie różne informacje dla czytającego
+    rejestr i dla recenzenta sprawdzającego, czy degradacja miała podstawę.
+    """
 
     KONIECZNOSC_FIZYCZNA = "KONIECZNOSC_FIZYCZNA"
+    """Złamanie oznacza wielkość, która nie może istnieć (np. moc ujemna)."""
+
     WYMOG_NORMOWY = "WYMOG_NORMOWY"
+    """Relacja ZDEFINIOWANA w normie, z przywołaniem paragrafu."""
+
     OGRANICZENIE_ZAKRESU_PRODUKTU = "OGRANICZENIE_ZAKRESU_PRODUKTU"
+    """Granica dziedziny MV-DESIGN-PRO — poza nią produkt nie deklaruje wyniku."""
+
     WIARYGODNOSC = "WIARYGODNOSC"
+    """Strażnik prawdopodobieństwa danej: sygnał „do przeglądu", nigdy odmowa."""
+
+    REGULA_ZA_MOCNA = "REGULA_ZA_MOCNA"
+    """Reguła, która była egzekwowana MOCNIEJ, niż ma podstawę.
+
+    Klasa HISTORYCZNA i sprawozdawcza: opisuje ustalenie audytu, nie bieżącą moc
+    reguły. Każdy wpis z tą klasą MUSI nieść klasę docelową w
+    ``PRZEKLASYFIKOWANE`` — inaczej reguła nie miałaby żadnej mocy, a to nie jest
+    to samo co „ma mniejszą moc".
+    """
 
 
 #: Zapas na zaokrąglenia przy porównaniach „nie większe niż" — dane katalogowe
 #: bywają podane z inną precyzją niż wielkość, z którą je zestawiamy.
 LUZ_POROWNANIA: float = 1.0001
 
-#: Klasy, których złamanie jest TWARDĄ odmową.
+#: Klasy, których złamanie jest TWARDĄ odmową. Zbiór wymieniony JAWNIE, a nie
+#: liczony jako dopełnienie: dopełnienie wciągnęłoby każdą nową klasę na stronę
+#: „odmawiaj", czyli w stronę, której nikt nie zadeklarował.
 KLASY_TWARDE: frozenset[KlasaNiezmiennika] = frozenset(
     {
         KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
         KlasaNiezmiennika.WYMOG_NORMOWY,
         KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
+    }
+)
+
+#: Klasy, których złamanie jest WYŁĄCZNIE sygnałem do przeglądu. Suma z
+#: `KLASY_TWARDE` musi pokrywać KOMPLET klas — pilnuje tego test
+#: `test_kazda_klasa_niezmiennika_ma_przypisana_moc`.
+KLASY_MIEKKIE: frozenset[KlasaNiezmiennika] = frozenset(
+    {
+        KlasaNiezmiennika.WIARYGODNOSC,
+        KlasaNiezmiennika.REGULA_ZA_MOCNA,
     }
 )
 
@@ -189,6 +225,18 @@ def klasa_reguly(regula: str) -> KlasaNiezmiennika:
     """
     wpis = PRZEKLASYFIKOWANE.get(regula)
     return wpis[0] if wpis else KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA
+
+
+def byla_regula_za_mocna(regula: str) -> bool:
+    """Czy reguła została ZDEGRADOWANA względem swojej pierwotnej mocy.
+
+    Odpowiedź jest wyprowadzona z REJESTRU przeklasyfikowania, nie z osobnej
+    listy: dwie listy, które „dziś się zgadzają", rozjeżdżają się przy pierwszym
+    dopisanym wpisie. Każdy wpis rejestru jest z definicji ustaleniem „reguła
+    była za mocna" — rejestr powstał wyłącznie po to, żeby takie ustalenia
+    zapisywać wraz z uzasadnieniem.
+    """
+    return regula in PRZEKLASYFIKOWANE
 
 
 def regula_jest_twarda(regula: str) -> bool:

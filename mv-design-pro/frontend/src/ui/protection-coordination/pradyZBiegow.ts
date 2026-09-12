@@ -184,3 +184,58 @@ export function podzielWierszeNaPrzypadki(wiersze: readonly ShortCircuitRow[]): 
   }
   return { max, min, bezWspolczynnika };
 }
+
+/** Bieg zwarciowy z identyfikatorem — para (skąd, co) zamiast samych wierszy. */
+export interface BiegZwarciowyLite {
+  readonly id: string;
+  readonly rows: readonly ShortCircuitRow[];
+}
+
+/** Który bieg jest scenariuszem maksymalnym, a który minimalnym. */
+export interface BiegiScenariuszy {
+  readonly biegMax: BiegZwarciowyLite | null;
+  readonly biegMin: BiegZwarciowyLite | null;
+  readonly nieprzypisane: readonly string[];
+}
+
+/**
+ * Wybór JEDNEGO biegu maksymalnego i JEDNEGO minimalnego spośród zakończonych.
+ *
+ * PO CO TO ISTNIEJE (audyt niezależny, plan naprawy §3). Ekran zlewał wiersze ze
+ * WSZYSTKICH biegów zwarciowych w jedną pulę i dzielił ją po współczynniku `c`.
+ * Pula mogła więc mieszać wyniki policzone na RÓŻNYCH migawkach modelu, a
+ * marginesy liczone między prądami z dwóch różnych sieci nie znaczą nic. Backend
+ * odrzuca dziś taką parę (`BIEGI_Z_ROZNYCH_MODELI`), ale klient nie może
+ * przysyłać czegoś, o czym z góry wiadomo, że jest bez sensu — i musi umieć
+ * powiedzieć, KTÓRY bieg dał które liczby.
+ *
+ * Scenariusz biegu wyprowadzamy z jego WIERSZY (współczynnik `c`), nie z nazwy
+ * ani z kolejności: `c >= 1` to scenariusz maksymalny, `c < 1` minimalny. Bieg o
+ * wierszach niejednorodnych albo bez `c` jest NIEPRZYPISANY — zgadywanie
+ * fałszowałoby albo selektywność, albo czułość.
+ *
+ * Przy kilku biegach tego samego scenariusza wygrywa PIERWSZY z listy; lista
+ * przychodzi z API posortowana malejąco po czasie utworzenia, więc jest to
+ * bieg najnowszy.
+ */
+export function wybierzBiegiScenariuszy(
+  biegi: readonly BiegZwarciowyLite[],
+): BiegiScenariuszy {
+  let biegMax: BiegZwarciowyLite | null = null;
+  let biegMin: BiegZwarciowyLite | null = null;
+  const nieprzypisane: string[] = [];
+
+  for (const bieg of biegi) {
+    const { max, min, bezWspolczynnika } = podzielWierszeNaPrzypadki(bieg.rows);
+    const jednorodnyMax = max.length > 0 && min.length === 0 && bezWspolczynnika.length === 0;
+    const jednorodnyMin = min.length > 0 && max.length === 0 && bezWspolczynnika.length === 0;
+    if (jednorodnyMax) {
+      if (biegMax === null) biegMax = bieg;
+    } else if (jednorodnyMin) {
+      if (biegMin === null) biegMin = bieg;
+    } else {
+      nieprzypisane.push(bieg.id);
+    }
+  }
+  return { biegMax, biegMin, nieprzypisane };
+}

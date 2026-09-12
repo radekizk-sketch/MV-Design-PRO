@@ -26,7 +26,12 @@ from tests.enm.test_brama_katalogowa_operacji_v2 import (
     _payload_zrodla,
     _siec_ze_stacja,
 )
-from tests.utils.bieg_zwarciowy import BiegZwarciowyTestowy, bieg_zwarciowy_domyslny
+from tests.utils.bieg_zwarciowy import (
+    BiegiKoordynacjiTestowe,
+    BiegZwarciowyTestowy,
+    bieg_zwarciowy_domyslny,
+    biegi_koordynacji,
+)
 
 
 @pytest.fixture(scope="module")
@@ -158,40 +163,87 @@ def test_M4_dowod_doboru_aparatury_z_deklaracja_producenta_powstaje(
 # ---------------------------------------------------------------------------
 
 
-def _zadanie_koordynacji(snapshot: dict[str, Any] | None) -> dict[str, Any]:
-    zadanie: dict[str, Any] = {
+def _zadanie_koordynacji(biegi: BiegiKoordynacjiTestowe | None) -> dict[str, Any]:
+    """Żądanie koordynacji — bez biegów albo z REALNĄ parą (MAX, MIN).
+
+    KOREKTA (plan naprawy §3): poprzednia wersja podawała prądy 5000/2000 A jako
+    gołe liczby przy dowolnej migawce. Bramka k_sc je przepuszczała, bo dotyczy
+    MODELU, nie WYNIKU — czyli test przypinał kształt, który był defektem.
+    """
+    if biegi is None:
+        return {
+            "devices": [
+                {
+                    "id": "22222222-2222-2222-2222-222222222222",
+                    "name": "Zabezpieczenie pola",
+                    "device_type": "RELAY",
+                    "location_element_id": "bus_1",
+                    "settings": {
+                        "stage_51": {
+                            "enabled": True,
+                            "pickup_current_a": 400.0,
+                            "curve_settings": {
+                                "standard": "IEC",
+                                "variant": "SI",
+                                "pickup_current_a": 400.0,
+                                "time_multiplier": 0.3,
+                            },
+                        }
+                    },
+                }
+            ],
+            "fault_currents": [
+                {"location_id": "bus_1", "ik_max_3f_a": 5000.0, "ik_min_3f_a": 2000.0}
+            ],
+            "operating_currents": [
+                {"location_id": "bus_1", "i_operating_a": 50.0, "i_max_operating_a": 80.0}
+            ],
+        }
+    lokalizacja = biegi.lokalizacje[0]
+    prad_roboczy = biegi.prady_min_a[lokalizacja] / 10.0
+    return {
         "devices": [
             {
                 "id": "22222222-2222-2222-2222-222222222222",
                 "name": "Zabezpieczenie pola",
                 "device_type": "RELAY",
-                "location_element_id": "bus_1",
+                "location_element_id": lokalizacja,
                 "settings": {
                     "stage_51": {
                         "enabled": True,
-                        "pickup_current_a": 400.0,
+                        "pickup_current_a": round(prad_roboczy * 1.5, 3),
                         "curve_settings": {
                             "standard": "IEC",
                             "variant": "SI",
-                            "pickup_current_a": 400.0,
+                            "pickup_current_a": round(prad_roboczy * 1.5, 3),
                             "time_multiplier": 0.3,
                         },
                     }
                 },
             }
         ],
-        "fault_currents": [{"location_id": "bus_1", "ik_max_3f_a": 5000.0, "ik_min_3f_a": 2000.0}],
-        "operating_currents": [
-            {"location_id": "bus_1", "i_operating_a": 50.0, "i_max_operating_a": 80.0}
+        "fault_currents": [
+            {
+                "location_id": lokalizacja,
+                "ik_max_3f_a": biegi.prady_max_a[lokalizacja],
+                "ik_min_3f_a": biegi.prady_min_a[lokalizacja],
+            }
         ],
+        "operating_currents": [
+            {"location_id": lokalizacja, "i_operating_a": round(prad_roboczy, 3)}
+        ],
+        "sc_run_id": biegi.run_id_max,
+        "sc_run_id_min": biegi.run_id_min,
     }
-    if snapshot is not None:
-        zadanie["snapshot"] = snapshot
-    return zadanie
 
 
 def test_M5_koordynacja_z_pradami_z_powietrza_jest_odrzucona(klient: TestClient) -> None:
-    """Nastawy zabezpieczeń trafiają do przekaźnika — wejście musi mieć proweniencję."""
+    """Nastawy zabezpieczeń trafiają do przekaźnika — wejście musi mieć proweniencję.
+
+    KOREKTA (plan naprawy §3): odmowa następuje teraz WCZEŚNIEJ i z mocniejszego
+    powodu niż brak proweniencji modelu — bez wskazanego biegu nie ma czym
+    potwierdzić prądów, więc nie ma czego autoryzować.
+    """
     odp = klient.post(
         "/api/protection-coordination/projects/11111111-1111-1111-1111-111111111111/run",
         json=_zadanie_koordynacji(None),
@@ -202,28 +254,46 @@ def test_M5_koordynacja_z_pradami_z_powietrza_jest_odrzucona(klient: TestClient)
     # liste bledow pol, nie powod bramki. Bez tej asercji test przechodzilby
     # przy KAZDYM zle zbudowanym zadaniu i nie dowodzilby niczego o granicy.
     assert isinstance(tresc, dict), tresc
-    assert tresc["powod"] == "WEJSCIE_NIEMIARODAJNE"
-    assert {b["zdolnosc"] for b in tresc["blokady"]} == {"PROTECTION_COORDINATION"}
+    assert tresc["powod"] == "BIEG_NIE_WSKAZANY"
+
+
+def test_M5_koordynacja_z_podmieniona_liczba_jest_odrzucona(klient: TestClient) -> None:
+    """Biegi WSKAZANE, ale prąd w żądaniu inny niż policzony — to jest podmiana."""
+    biegi = biegi_koordynacji(case_id="PRZYPADEK-M5-PODMIANA")
+    zadanie = _zadanie_koordynacji(biegi)
+    zadanie["fault_currents"][0]["ik_max_3f_a"] *= 1.01
+    odp = klient.post(
+        "/api/protection-coordination/projects/11111111-1111-1111-1111-111111111111/run",
+        json=zadanie,
+    )
+    assert odp.status_code == 422, odp.text
+    tresc = odp.json()["detail"]
+    assert tresc["powod"] == "PRADY_NIEZGODNE_Z_BIEGIEM"
+    assert tresc["niezgodnosci"]
 
 
 def test_M5_koordynacja_bez_deklaracji_k_sc_jest_odrzucona(klient: TestClient) -> None:
-    snapshot = _snapshot_z_falownikiem(k_sc=None)
+    """Biegi policzone na modelu BEZ deklaracji k_sc — prądy się zgadzają, ale
+    pochodzą z domyślki systemowej, więc nastaw z nich nie wolno wyprowadzić."""
+    biegi = biegi_koordynacji(case_id="PRZYPADEK-M5-BEZ-DEKLARACJI", k_sc=None)
     odp = klient.post(
         "/api/protection-coordination/projects/11111111-1111-1111-1111-111111111111/run",
-        json=_zadanie_koordynacji(snapshot),
+        json=_zadanie_koordynacji(biegi),
     )
     assert odp.status_code == 422, odp.text
     tresc = odp.json()["detail"]
     assert isinstance(tresc, dict), tresc
+    assert tresc["powod"] == "WEJSCIE_NIEMIARODAJNE"
     assert {b["kod"] for b in tresc["blokady"]} == {"SI-110"}
+    assert {b["zdolnosc"] for b in tresc["blokady"]} == {"PROTECTION_COORDINATION"}
 
 
 def test_M5_koordynacja_z_deklaracja_przechodzi_bramke(klient: TestClient) -> None:
     """Z deklaracją producenta bramka autorytetu przestaje być powodem odmowy."""
-    snapshot = _snapshot_z_falownikiem(k_sc=1.35)
+    biegi = biegi_koordynacji(case_id="PRZYPADEK-M5-Z-DEKLARACJA", k_sc=1.35)
     odp = klient.post(
         "/api/protection-coordination/projects/11111111-1111-1111-1111-111111111111/run",
-        json=_zadanie_koordynacji(snapshot),
+        json=_zadanie_koordynacji(biegi),
     )
     assert odp.status_code != 422, odp.text
 

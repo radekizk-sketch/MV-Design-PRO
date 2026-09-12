@@ -15,6 +15,7 @@ import {
   podzielWierszeNaPrzypadki,
   pradyRoboczeZRozplywu,
   pradyZwarcioweZBiegu,
+  wybierzBiegiScenariuszy,
   zbudujPradyKoordynacji,
 } from '../pradyZBiegow';
 
@@ -198,5 +199,50 @@ describe('podzielWierszeNaPrzypadki — klasyfikacja po współczynniku c (IEC 6
       { location_id: 'bus/sn/1', ik_max_3f_a: 8400, ik_min_3f_a: 3100 },
     ]);
     expect(wynik.braki).toEqual([]);
+  });
+});
+
+describe('wybierzBiegiScenariuszy', () => {
+  it('wskazuje bieg maksymalny i minimalny po współczynniku c jego wierszy', () => {
+    const wynik = wybierzBiegiScenariuszy([
+      { id: 'bieg-max', rows: [wierszSC({ c_factor: 1.1 }), wierszSC({ c_factor: 1.1 })] },
+      { id: 'bieg-min', rows: [wierszSC({ c_factor: 0.95 })] },
+    ]);
+    expect(wynik.biegMax?.id).toBe('bieg-max');
+    expect(wynik.biegMin?.id).toBe('bieg-min');
+    expect(wynik.nieprzypisane).toEqual([]);
+  });
+
+  it('bieg o wierszach NIEJEDNORODNYCH nie jest przypisany do żadnego scenariusza', () => {
+    // Zgadywanie scenariusza fałszowałoby albo selektywność (za mały Ik_max),
+    // albo czułość (za duży Ik_min) — dlatego taki bieg wypada z wyboru.
+    const wynik = wybierzBiegiScenariuszy([
+      { id: 'bieg-mieszany', rows: [wierszSC({ c_factor: 1.1 }), wierszSC({ c_factor: 0.95 })] },
+    ]);
+    expect(wynik.biegMax).toBeNull();
+    expect(wynik.biegMin).toBeNull();
+    expect(wynik.nieprzypisane).toEqual(['bieg-mieszany']);
+  });
+
+  it('bieg bez współczynnika c nie jest przypisany', () => {
+    const wynik = wybierzBiegiScenariuszy([
+      { id: 'bieg-bez-c', rows: [wierszSC({ c_factor: null as unknown as number })] },
+    ]);
+    expect(wynik.biegMax).toBeNull();
+    expect(wynik.nieprzypisane).toEqual(['bieg-bez-c']);
+  });
+
+  it('przy kilku biegach tego samego scenariusza wygrywa PIERWSZY z listy', () => {
+    const wynik = wybierzBiegiScenariuszy([
+      { id: 'nowszy', rows: [wierszSC({ c_factor: 1.1 })] },
+      { id: 'starszy', rows: [wierszSC({ c_factor: 1.1 })] },
+    ]);
+    expect(wynik.biegMax?.id).toBe('nowszy');
+  });
+
+  it('pusta lista biegów daje brak obu scenariuszy, a nie wybór domyślny', () => {
+    const wynik = wybierzBiegiScenariuszy([]);
+    expect(wynik.biegMax).toBeNull();
+    expect(wynik.biegMin).toBeNull();
   });
 });

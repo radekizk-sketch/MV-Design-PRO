@@ -37,7 +37,11 @@ from application.analyses.protection.coordination.models import (
     FaultCurrentData,
     OperatingCurrentData,
 )
-from application.autorytet_zwarciowy import proweniencja_ze_snapshotu
+from application.autorytet_biegu_zwarciowego import (
+    BiegNiemiarodajnyError,
+    niezgodnosci_pradow_koordynacji,
+    wejscie_koordynacji_z_biegow,
+)
 from domain.protection_device import (
     CurveStandard,
     OvercurrentProtectionSettings,
@@ -151,10 +155,16 @@ class RunCoordinationRequest(BaseModel):
     operating_currents: list[OperatingCurrentRequest]
     config: CoordinationConfigRequest | None = None
     pf_run_id: str | None = None
+    #: Bieg zwarciowy MAKSYMALNY — źródło ``ik_max_3f_a``. Opcjonalny SKŁADNIOWO,
+    #: wymagany ZNACZENIOWO: bez niego prądy w żądaniu nie mają czym być
+    #: potwierdzone i koordynacja jest odmawiana (plan naprawy §3).
     sc_run_id: str | None = None
-    #: Snapshot ENM, z którego pochodzą prądy zwarciowe w ``fault_currents``.
-    #: Opcjonalny SKŁADNIOWO, wymagany ZNACZENIOWO: bez modelu serwer nie ustali
-    #: proweniencji wkładu falownikowego i odmawia koordynacji (fail-closed).
+    #: Bieg zwarciowy MINIMALNY — źródło ``ik_min_3f_a``. Kanoniczny bieg liczy
+    #: JEDEN scenariusz, więc czułość i selektywność wymagają DWÓCH biegów.
+    sc_run_id_min: str | None = None
+    #: Snapshot ENM — pole historyczne, już NIEŹRÓDŁO proweniencji. Proweniencja
+    #: wkładu falownikowego pochodzi z migawki BIEGU, bo to ona wyprodukowała
+    #: prądy; migawka dołączona do żądania mówiłaby o modelu, który ich nie liczył.
     snapshot: dict[str, Any] | None = None
 
 
@@ -375,15 +385,62 @@ def run_coordination_analysis(
             detail=" ".join(blockers),
         )
 
-    # GRANICA AUTORYTETU (recenzja niezależna runda 2). Koordynacja zabezpieczeń
-    # jest zdolnością MIARODAJNĄ: jej wynikiem są nastawy, które ktoś wprowadzi do
-    # przekaźnika. Przed tą bramką prądy zwarciowe przychodziły jako gołe liczby w
-    # żądaniu i nikt nie pytał, z jakiego modelu wynikają — wystarczyło je podać,
-    # żeby dostać werdykt selektywności.
+    # KSZTAŁT WEJŚCIA PRZED AUTORYTETEM — ta sama kolejność, co dla
+    # `_check_run_eligibility` wyżej. Niezgodna para (norma, wariant) jest błędem
+    # DANYCH ŻĄDANIA i ma własny, naprawialny komunikat 400; zgłoszenie zamiast
+    # niego odmowy autorytetu (422) wskazywałoby projektantowi niewłaściwą
+    # przyczynę. Bramka autorytetu nic na tym nie traci: 400 też znaczy, że
+    # analiza się NIE wykonała.
+    devices = tuple(_convert_device(d) for d in request.devices)
+
+    # GRANICA AUTORYTETU — DWIE BRAMKI, OBIE KONIECZNE.
+    #
+    # Bramka pierwsza (recenzja niezależna runda 2): proweniencja wkładu
+    # falownikowego. Bramka druga (audyt niezależny, plan naprawy §3): prądy
+    # zwarciowe przychodziły jako GOŁE LICZBY w żądaniu i nikt nie pytał, skąd
+    # pochodzą — wystarczyło je podać, żeby dostać werdykt selektywności. Pierwsza
+    # bramka bez drugiej przepuszczała liczby z powietrza policzone na dobrym
+    # modelu; druga bez pierwszej — liczby z biegu policzonego z domyślki k_sc.
+    try:
+        wejscie = wejscie_koordynacji_z_biegow(
+            run_id_max=request.sc_run_id, run_id_min=request.sc_run_id_min
+        )
+    except BiegNiemiarodajnyError as brak:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"powod": brak.powod, "komunikat_pl": brak.komunikat_pl},
+        ) from brak
+
+    # PRĄDY ROBOCZE POZOSTAJĄ NIEZWIĄZANE — i to jest ZMIERZONY brak, nie
+    # przeoczenie. Przestrzenie identyfikatorów są rozłączne: prąd zwarciowy jest
+    # kluczowany WĘZŁEM zwarcia, prąd roboczy GAŁĘZIĄ rozpływu. Pomiar na modelu
+    # testowym (stacja SN z falownikiem): 12 kluczy zwarciowych, 6 roboczych,
+    # część wspólna ZEROWA. Kontrakt koordynacji ma jedno pole `location_id` na
+    # obie wielkości, więc związanie prądu roboczego tym samym kluczem odrzuciłoby
+    # KAŻDE realne żądanie. Domknięcie wymaga relacji „zabezpieczenie → chroniona
+    # gałąź" w modelu, której model dziś nie niesie — to decyzja produktowa, nie
+    # poprawka w tym pliku. Zapisane w raporcie naprawy jako pozycja otwarta.
+    niezgodnosci = niezgodnosci_pradow_koordynacji(
+        wejscie, [pozycja.model_dump() for pozycja in request.fault_currents]
+    )
+    if niezgodnosci:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "powod": "PRADY_NIEZGODNE_Z_BIEGIEM",
+                "komunikat_pl": (
+                    "Prądy zwarciowe podane w żądaniu różnią się od prądów policzonych w "
+                    "biegach. Nastawy powstają z wyniku solvera — przelicz biegi albo popraw "
+                    "dane w żądaniu."
+                ),
+                "niezgodnosci": list(niezgodnosci),
+            },
+        )
+
     try:
         wymagaj_autorytetu(
             (ZdolnoscMiarodajna.PROTECTION_COORDINATION,),
-            proweniencja_ze_snapshotu(request.snapshot),
+            wejscie.proweniencja,
         )
     except BrakAutorytetuWyniku as brak:
         raise HTTPException(
@@ -395,8 +452,6 @@ def run_coordination_analysis(
         ) from brak
 
     # Convert request to domain models
-    devices = tuple(_convert_device(d) for d in request.devices)
-
     fault_currents = tuple(
         FaultCurrentData(
             location_id=f.location_id,

@@ -23,7 +23,7 @@ brak punktu zwarcia w wyniku — każdy z tych stanów jest ODMOWĄ, nie przepus
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
@@ -141,14 +141,21 @@ def _wiersz_dla_punktu(artefakt: Mapping[str, Any], punkt_zwarcia: str) -> dict[
     return None
 
 
-def wejscie_zwarciowe_z_biegu(*, run_id: str, punkt_zwarcia: str) -> WejscieZwarcioweZBiegu:
-    """Miarodajne wejście zwarciowe wyprowadzone z ZAPISANEGO biegu.
+def bieg_zwarciowy_miarodajny(run_id: str | None) -> Any:
+    """Zwróć ZAPISANY bieg zwarciowy albo odmów — JEDNO miejsce wszystkich kontroli.
 
-    Podnosi ``BiegNiemiarodajnyError`` przy każdym stanie, w którym liczb nie da
-    się uczciwie wskazać. Nie zwraca „pustego wejścia": brak biegu to odmowa.
+    Trzy stany odmowy są ROZŁĄCZNE, bo różni je naprawa: biegu nie ma (przelicz),
+    bieg jest innego rodzaju (wskaż zwarciowy), bieg nie jest zakończony (poczekaj).
+    Jeden wspólny kod odmowy kazałby projektantowi zgadywać, który z trzech.
     """
     from enm.canonical_analysis import get_run
 
+    if run_id is None or not str(run_id).strip():
+        raise BiegNiemiarodajnyError(
+            "BIEG_NIE_WSKAZANY",
+            "Nie wskazano biegu zwarciowego. Wielkości zwarciowe wchodzące do decyzji "
+            "miarodajnej pochodzą z zapisanego biegu, nie z żądania.",
+        )
     try:
         identyfikator = UUID(str(run_id))
     except (TypeError, ValueError) as exc:
@@ -177,7 +184,16 @@ def wejscie_zwarciowe_z_biegu(*, run_id: str, punkt_zwarcia: str) -> WejscieZwar
             f"Bieg '{run_id}' ma stan '{bieg.status}'. Wielkości niezakończonego biegu nie są "
             "wynikiem — poczekaj na zakończenie albo przelicz ponownie.",
         )
+    return bieg
 
+
+def wejscie_zwarciowe_z_biegu(*, run_id: str, punkt_zwarcia: str) -> WejscieZwarcioweZBiegu:
+    """Miarodajne wejście zwarciowe wyprowadzone z ZAPISANEGO biegu.
+
+    Podnosi ``BiegNiemiarodajnyError`` przy każdym stanie, w którym liczb nie da
+    się uczciwie wskazać. Nie zwraca „pustego wejścia": brak biegu to odmowa.
+    """
+    bieg = bieg_zwarciowy_miarodajny(run_id)
     artefakt = bieg.raw_result or {}
     wiersz = _wiersz_dla_punktu(artefakt, punkt_zwarcia)
     if wiersz is None:
@@ -207,3 +223,169 @@ def wejscie_zwarciowe_z_biegu(*, run_id: str, punkt_zwarcia: str) -> WejscieZwar
         wiazanie=wiazanie,
         wielkosci=wielkosci_do_odcisku(wiersz),
     )
+
+
+# ---------------------------------------------------------------------------
+# Koordynacja zabezpieczeń — prądy z DWÓCH biegów (maksymalnego i minimalnego)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class WejscieKoordynacjiZBiegow:
+    """Prądy zwarciowe koordynacji wyprowadzone z dwóch ZAPISANYCH biegów.
+
+    Koordynacja potrzebuje DWÓCH scenariuszy: maksymalnego (selektywność,
+    wytrzymałość) i minimalnego (czułość). Kanoniczny bieg liczy JEDEN scenariusz,
+    więc miarodajna koordynacja wymaga dwóch biegów — i obu trzeba dowieść.
+    """
+
+    proweniencja: ProweniencjaWynikuZwarciowego
+    wiazanie_max: WiazanieWynikuZwarciowego
+    wiazanie_min: WiazanieWynikuZwarciowego
+    prady_max_a: dict[str, float]
+    prady_min_a: dict[str, float]
+
+
+def _identyfikatory_wiersza(wiersz: Mapping[str, Any], grafy: Mapping[str, Any]) -> tuple[str, ...]:
+    """Identyfikatory, po których wolno dopasować wiersz do lokalizacji urządzenia.
+
+    Kolejność i zbiór są TE SAME co w widoku, który czyta ekran koordynacji
+    (`canonical_analysis.build_short_circuit_results`: ``target_id`` = węzeł
+    zwarcia, ``element_id`` = element modelu albo węzeł). Gdyby backend
+    dopasowywał inaczej niż ekran, ta sama lokalizacja trafiałaby na inny wiersz
+    po obu stronach — i porównanie „liczba z żądania wobec liczby biegu" byłoby
+    porównaniem dwóch różnych punktów sieci.
+    """
+    wezel = str(wiersz.get("fault_node_id") or "")
+    element = str((grafy.get(wezel) or {}).get("element_id") or "") or wezel
+    return tuple(dict.fromkeys(x for x in (wezel, element) if x))
+
+
+def _prady_zwarciowe_biegu(bieg: Any) -> dict[str, float]:
+    """``identyfikator lokalizacji -> I''k [A]`` z artefaktu biegu.
+
+    Pierwszy wiersz wygrywa — tak samo jak w widoku ekranu; kolejność wyników
+    biegu jest deterministyczna, więc odwzorowanie też.
+    """
+    artefakt = bieg.raw_result or {}
+    grafy = (artefakt.get("graph") or {}).get("nodes") or {}
+    mapa: dict[str, float] = {}
+    for wiersz in artefakt.get("results", []) or []:
+        if not isinstance(wiersz, Mapping):
+            continue
+        wartosc = wiersz.get("ikss_a")
+        if wartosc is None:
+            continue
+        for ident in _identyfikatory_wiersza(wiersz, grafy):
+            mapa.setdefault(ident, float(wartosc))
+    return mapa
+
+
+def _scenariusz_biegu(bieg: Any) -> str:
+    """``MAX`` albo ``MIN`` — z artefaktu biegu, nie z nazwy ani z domysłu."""
+    return str((bieg.raw_result or {}).get("scenario") or "MAX").upper()
+
+
+def wejscie_koordynacji_z_biegow(
+    *, run_id_max: str | None, run_id_min: str | None
+) -> WejscieKoordynacjiZBiegow:
+    """Prądy koordynacji z biegu MAKSYMALNEGO i MINIMALNEGO — obu wymaganych.
+
+    KONTROLE, KAŻDA Z WŁASNĄ PRZYCZYNĄ:
+    - oba biegi istnieją, są zwarciowe i zakończone (`bieg_zwarciowy_miarodajny`),
+    - bieg maksymalny niesie scenariusz MAX, minimalny — MIN; zamiana miejscami
+      dałaby czułość liczoną z prądu maksymalnego, czyli werdykt zawyżony,
+    - oba biegi mają TĘ SAMĄ migawkę modelu; prądy z dwóch różnych sieci opisują
+      dwa różne układy, a marginesy między nimi nie znaczą nic.
+    """
+    bieg_max = bieg_zwarciowy_miarodajny(run_id_max)
+    bieg_min = bieg_zwarciowy_miarodajny(run_id_min)
+
+    for bieg, oczekiwany, opis in (
+        (bieg_max, "MAX", "maksymalny"),
+        (bieg_min, "MIN", "minimalny"),
+    ):
+        rzeczywisty = _scenariusz_biegu(bieg)
+        if rzeczywisty != oczekiwany:
+            raise BiegNiemiarodajnyError(
+                "SCENARIUSZ_BIEGU_NIEZGODNY",
+                f"Bieg wskazany jako {opis} niesie scenariusz '{rzeczywisty}', "
+                f"a wymagany jest '{oczekiwany}'. Czułość liczona z prądu maksymalnego "
+                "albo selektywność z minimalnego dałaby werdykt bez pokrycia w fizyce.",
+            )
+
+    if bieg_max.snapshot_hash != bieg_min.snapshot_hash:
+        raise BiegNiemiarodajnyError(
+            "BIEGI_Z_ROZNYCH_MODELI",
+            f"Bieg maksymalny opisuje model {bieg_max.snapshot_hash[:16]}…, a minimalny "
+            f"{bieg_min.snapshot_hash[:16]}…. Marginesy liczone między prądami z dwóch "
+            "różnych sieci nie znaczą nic — przelicz oba scenariusze na tym samym modelu.",
+        )
+
+    from application.autorytet_zwarciowy import proweniencja_ze_snapshotu
+
+    def wiazanie(bieg: Any) -> WiazanieWynikuZwarciowego:
+        wiersze = (bieg.raw_result or {}).get("results") or []
+        pierwszy = dict(wiersze[0]) if wiersze else {}
+        return WiazanieWynikuZwarciowego.z_biegu(
+            run_id=str(bieg.id),
+            snapshot_id=bieg.snapshot_hash,
+            punkt_zwarcia=str(pierwszy.get("fault_node_id") or "brak"),
+            migawka_wejscia=bieg.snapshot or {},
+            wynik=pierwszy,
+        )
+
+    return WejscieKoordynacjiZBiegow(
+        proweniencja=proweniencja_ze_snapshotu(bieg_max.snapshot),
+        wiazanie_max=wiazanie(bieg_max),
+        wiazanie_min=wiazanie(bieg_min),
+        prady_max_a=_prady_zwarciowe_biegu(bieg_max),
+        prady_min_a=_prady_zwarciowe_biegu(bieg_min),
+    )
+
+
+#: Ile prąd podany w żądaniu może się różnić od prądu biegu, żeby uznać go za TEN
+#: SAM. Wartość wynika z drogi liczby: bieg → widok (A → kA, dzielenie przez 1000)
+#: → ekran → żądanie (kA → A, mnożenie przez 1000). Podwójne przeliczenie przez
+#: 1000 w double daje błąd względny rzędu 1e-16; próg 1e-9 jest o siedem rzędów
+#: luźniejszy, a nadal o dziewięć rzędów ostrzejszy niż jakakolwiek PODMIANA
+#: wartości inżynierskiej. NIE jest to tolerancja fizyczna — to margines
+#: przeliczenia jednostek.
+TOLERANCJA_WZGLEDNA_PRADU = 1.0e-9
+
+
+def niezgodnosci_pradow_koordynacji(
+    wejscie: WejscieKoordynacjiZBiegow, prady_zadania: Iterable[Mapping[str, Any]]
+) -> tuple[str, ...]:
+    """Czym prądy z żądania różnią się od prądów biegów. Pusto = to te same liczby."""
+    roznice: list[str] = []
+    for pozycja in prady_zadania:
+        lokalizacja = str(pozycja.get("location_id") or "")
+        for klucz, mapa, opis in (
+            ("ik_max_3f_a", wejscie.prady_max_a, "maksymalny"),
+            ("ik_min_3f_a", wejscie.prady_min_a, "minimalny"),
+        ):
+            podany = pozycja.get(klucz)
+            if podany is None:
+                continue
+            z_biegu = mapa.get(lokalizacja)
+            if z_biegu is None:
+                roznice.append(
+                    f"{lokalizacja}: bieg {opis} nie zawiera prądu zwarciowego dla tej "
+                    "lokalizacji — nie ma czym potwierdzić podanej wartości"
+                )
+                continue
+            odchylka = abs(float(podany) - z_biegu)
+            if odchylka > TOLERANCJA_WZGLEDNA_PRADU * max(abs(z_biegu), 1.0):
+                roznice.append(
+                    f"{lokalizacja}.{klucz}: podano {float(podany):.6f} A, "
+                    f"bieg {opis} policzył {z_biegu:.6f} A"
+                )
+        for klucz in ("ik_max_2f_a", "ik_min_1f_a"):
+            if pozycja.get(klucz) is not None:
+                roznice.append(
+                    f"{lokalizacja}.{klucz}: wielkość niezwiązana z żadnym biegiem — "
+                    "kanoniczny bieg zwarciowy liczy zwarcie trójfazowe, więc prądu "
+                    "dwufazowego ani jednofazowego nie ma czym potwierdzić"
+                )
+    return tuple(roznice)
