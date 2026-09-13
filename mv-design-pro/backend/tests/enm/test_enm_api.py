@@ -349,6 +349,9 @@ class TestRunDispatch:
         jedno połączenie klienta (izolacja `_izolowana_baza_przebiegow`).
         """
         from api.analysis_runs import router as analysis_runs_router
+        from infrastructure.persistence.repositories.canonical_run_repository import (
+            KLUCZE_ROZPLYWU,
+        )
 
         case_id = "test-case-run-slim-rozplyw"
         _seed_enm(case_id, _valid_enm_payload("SC slim rozplyw"))
@@ -363,7 +366,11 @@ class TestRunDispatch:
         assert response.status_code == 200
         dane = response.json()
         wiersz = dane["results"][0]
-        assert "branch_contributions" not in wiersz
+        # KLASA, NIE INSTANCJA (2026-09-05): żaden klucz klasy „ładunek per gałąź"
+        # (wkłady I ich ślad WHITE BOX) nie wraca w świeżym wierszu — sam ślad
+        # `branch_flow_trace` dawał 105 MB odpowiedzi na sieci 50 stacji.
+        for klucz in KLUCZE_ROZPLYWU:
+            assert klucz not in wiersz, klucz
         assert wiersz["branch_contributions_available"] is True
 
         rozplyw = klient.get(
@@ -372,6 +379,8 @@ class TestRunDispatch:
         )
         assert rozplyw.status_code == 200
         assert rozplyw.json()["branch_contributions"] is not None
+        # Ślad podziału prądu tego punktu jest osiągalny tą samą końcówką.
+        assert rozplyw.json()["branch_flow_trace"], "ślad WHITE BOX podziału musi być dostępny"
 
 
 class TestDomainOpsCatalogPolicy:

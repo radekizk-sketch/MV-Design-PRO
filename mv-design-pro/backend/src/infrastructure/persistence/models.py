@@ -554,6 +554,14 @@ class CanonicalRunBranchFlowORM(Base):
     contributions_json: Mapped[list[dict[str, Any]]] = mapped_column(
         DeterministicJSON(), nullable=False
     )
+    #: Ślad WHITE BOX podziału prądu (`results[].branch_flow_trace`, TH-1) — ta sama
+    #: klasa ładunku co wkłady, więc ten sam wiersz tabeli. Kolumna ADDYTYWNA
+    #: (nullable): wiersze zapisane przed jej dodaniem czytają się jako `None`
+    #: (uczciwy brak śladu, nie pusta lista); dokładana do istniejącej bazy przez
+    #: `db.init_db` (`_dolacz_kolumny_addytywne`).
+    branch_flow_trace_json: Mapped[list[dict[str, Any]] | None] = mapped_column(
+        DeterministicJSON(), nullable=True
+    )
 
 
 class AnalysisRunIndexORM(Base):

@@ -222,22 +222,49 @@ defekt znaleziony przy tej naprawie.
 
 ## 10. STAN CI DLA DOKŁADNEGO SHA
 
-**`7fd4a8de` (poprzedni push): 7 zielonych, 3 czerwone.**
+### `367a81a1` — POBRANE Z CI, NIE Z PAMIĘCI (2026-09-13)
 
-| workflow | stan | klasyfikacja |
+Ostatni SHA, dla którego komplet workflowów zdążył się wykonać. **7 zielonych,
+2 czerwone.**
+
+| workflow | wynik | treść |
 |---|---|---|
-| Frontend E2E smoke | ✅ | **NAPRAWIONE** (było czerwone — migracja readiness) |
-| SLD Determinism Guards | ✅ | **NAPRAWIONE** (było czerwone — `vertical_length_probe`) |
-| Frontend checks | ✅ | **NAPRAWIONE** (było czerwone — 16 naruszeń bramki typów) |
-| Docs Integrity / Physics Label / P0 Extended / (arch po naprawie) | ✅ | zielone |
-| Architectural And Repo Hygiene | ❌ | **REGRESJA WŁASNA** — brak dwóch modułów w inwentarzu; naprawione w `9999a934` |
-| Python tests | ❌ | 7 failed / 12063 passed — patrz §11 |
-| Frontend E2E full | ❌ | 1 failed / 407 passed (było 17 failed / 391) — patrz §11 |
+| SLD Determinism Guards (2 zadania) | ✅ | komplet kontraktów SLD v2/v3 + odbiór renderu wykonany |
+| Frontend checks | ✅ | type-check, lint, vitest, 5 guardów |
+| Frontend E2E smoke | ✅ | krytyczna ścieżka + etykiety tożsamości |
+| P0 Extended Guards (V12K) | ✅ | 57 kroków |
+| Architectural And Repo Hygiene | ✅ | arch + hygiene + research isolation |
+| Docs Integrity Guard | ✅ | |
+| Physics Label Guard | ✅ | |
+| **Python tests** | ❌ | **7 failed, 12077 passed, 15 skipped** (1574,9 s) |
+| **Frontend E2E full** | ❌ | **1 failed, 407 passed, 2 skipped** (33,5 min) |
 
-Bieg dla `9999a934` był w toku w chwili pisania; NIE deklaruję jego wyniku.
+Obie czerwienie mają teraz przyczynę zmierzoną i naprawę w tej gałęzi:
+- 7 czerwonych backendu = `test_json_w_repo_rowny_odpowiedzi_backendu` — odcisk
+  projekcji nN nad surowymi liczbami podwójnej precyzji (§10c). Podpis w
+  dzienniku CI: `z1_ohm {'r': 0.10000000000000002, 'x': 0.4999999999999999}`.
+- 1 czerwona E2E = bramka rozmiaru odpowiedzi, 100 908 315 B wobec 62 914 560 B
+  (§11.2).
 
-Pomiar lokalny pełnego backendu (`poetry run pytest -q`, ta sama komenda co CI):
-**12228 passed, 6 skipped, 0 failed w 2788 s.**
+**Czego ten raport NIE twierdzi.** Nie twierdzę, że po naprawach CI jest zielone
+— biegu dla SHA z naprawami w chwili pisania nie ma. Zieleń wolno ogłosić
+dopiero z dziennika CI dla dokładnego SHA, nie z regresji lokalnej.
+
+### Pomiary lokalne (nie zastępują CI)
+
+| pomiar | wynik |
+|---|---|
+| pełna regresja backendu, `OPENBLAS_NUM_THREADS=1` (konfiguracja INNA niż ta, która wygenerowała fixtury) | 12245 passed, 6 skipped, 0 failed, 2783 s |
+| warstwy dotknięte portem (`tests/infrastructure`, `tests/enm`, `tests/api`) | 2990 passed, 202 s |
+| front — konsumenci fixtur nN | 252/252 |
+| `test_scenariusze_nn.py` (55, w tym 4 nowe pinujące) | 55/55 |
+
+### Historycznie: `7fd4a8de`
+
+7 zielonych, 3 czerwone. Naprawione wtedy: Frontend E2E smoke (migracja
+readiness), SLD Determinism (`vertical_length_probe`), Frontend checks (16
+naruszeń bramki typów). Regresja własna `Architectural And Repo Hygiene` (brak
+dwóch modułów w inwentarzu) naprawiona w `9999a934`.
 
 ---
 
@@ -457,19 +484,46 @@ Stan po naprawie potwierdzam wyłącznie biegiem CI dla dokładnego SHA (§10);
 zielone testy lokalne nie są tu dowodem, bo to właśnie lokalna zieleń przy
 czerwonym CI była objawem defektu.
 
-### 11.2 Odpowiedź świeżego biegu zwarciowego: 96,4 MiB wobec bramki 60 MB
-`e2e/industrial-template-mass-flow.spec.ts:438`. Bramka jest skalibrowana
-pomiarem (22,9 MiB stan poprawny; 339,3 MiB z regresją rozpływu inline), więc
-podniesienie progu jest zakazane.
+### 11.2 Odpowiedź świeżego biegu zwarciowego 96,2 MiB wobec bramki 60 MB — ROZSTRZYGNIĘTE POMIAREM
+`e2e/industrial-template-mass-flow.spec.ts:438`. Bieg CI dla `367a81a1`:
+**1 failed / 407 passed / 2 skipped**, jedyna porażka to ta asercja —
+**100 908 315 B** wobec limitu 62 914 560 B.
 
-**Ustalone:** to NIE jest skutek tej delty. Na `1ff13df9` ta sama specyfikacja
-padała WCZEŚNIEJ, na `readiness.ready`; naprawa kontraktu gotowości pozwoliła jej
-dojść do asercji rozmiaru. Defekt był **maskowany** przez wcześniejszą porażkę.
-Sprawdzone również, że pieczęć wyniku zwarciowego (§3) nie trafia do wierszy
-wyniku — nie jest źródłem przyrostu.
+**Poprzedni stan tej sekcji: „nierozstrzygnięte — który klucz odpowiada za
+przyrost".** Zmierzyłem to. Rozkład rozmiaru wiersza świeżego biegu
+(sieć referencyjna `demo_oze_sc`, 90 wierszy, `poetry run python` na ładunku
+`wiersze_swiezego_biegu_bez_rozplywu`):
 
-**Nierozstrzygnięte:** który klucz odpowiedzi odpowiada za przyrost 22,9 → 96,4 MiB.
-Wymaga odtworzenia sieci 50 stacji i pomiaru rozmiaru per klucz.
+| klucz | udział |
+|---|---|
+| **`branch_flow_trace`** | **68,3 %** |
+| `white_box_trace` | 23,5 % |
+| `contributions` | 5,6 % |
+| `proof_binding` | 0,8 % |
+| reszta (≈20 kluczy) | < 2 % |
+
+**Przyczyna źródłowa — KLASA, NIE INSTANCJA w cudzej karcie.** Odchudzenie
+V12K-284 wycinało z wiersza WYŁĄCZNIE `branch_contributions`. `branch_flow_trace`
+(ślad WHITE BOX podziału prądu, TH-1) to **ten sam ładunek per gałąź jednego
+punktu zwarcia** — rośnie tak samo z liczbą punktów i gałęzi, a jest ok. 5×
+większy od wkładów, które objaśnia. Karta naprawiła nazwaną instancję, nie klasę.
+
+**Naprawa istnieje i została przeniesiona.** Commit `1e9f21c5` (gałęzie
+`claude/mv-design-pro-donor-audit-vnuqd1` i `…twin-audit-u4lhy0`) rozpoznał
+dokładnie tę klasę i wyciął ją w całości (`KLUCZE_ROZPLYWU` = wkłady + ślad;
+ślad przenoszony bajtowo do osobnej tabeli; oddawany tą samą końcówką rozpływu
+co wkłady; kolumna addytywna nullable + dokładanie kolumn w `init_db`).
+**Nie jest przodkiem tej gałęzi** — moja gałąź nigdy go nie dostała. Przeniesiony
+`git cherry-pick` bez konfliktów.
+
+**Pomiar po przeniesieniu, ta sama sieć i ta sama funkcja:**
+5807,7 KiB → **1837,7 KiB** (64,5 KiB/wiersz → 20,4 KiB/wiersz), czyli **3,16×**
+mniej; `branch_flow_trace` znika z wiersza. Przeniesione na pomiar CI:
+100 908 315 B / 3,16 ≈ **31,9 MB** wobec bramki 62 914 560 B. To
+EKSTRAPOLACJA, nie pomiar — potwierdzeniem jest wyłącznie bieg E2E full dla
+nowego SHA, i tylko jego wynik wolno cytować jako dowód.
+
+**Limit 60 MB NIETKNIĘTY.** Żaden próg nie został podniesiony.
 
 ### 11.3 Otwarte z recenzji, poza zakresem tej rundy
 Re-inicjalizacja po topologii zwarciowej (`max Δx0 = 1,09421789`), pełny audyt baz
@@ -484,9 +538,9 @@ ograniczników.
 | poziom | stan | uzasadnienie |
 |---|---|---|
 | IMPLEMENTED | **TAK** | kod istnieje i jest wpięty w ścieżki użytkownika |
-| SOFTWARE-VERIFIED | **CZĘŚCIOWO** | lokalnie 12228 passed / 0 failed; CI dokładnego SHA ma czerwień (§10, §11) |
+| SOFTWARE-VERIFIED | **CZĘŚCIOWO** | lokalnie 12245 passed / 0 failed (także przy zmienionej konfiguracji BLAS); CI ostatniego zmierzonego SHA `367a81a1` ma dwie czerwienie, obie z naprawą w gałęzi, ale BEZ potwierdzenia biegiem CI (§10, §10c, §11.2) |
 | MATHEMATICALLY VERIFIED | **CZĘŚCIOWO** | całka pierwsza, rzędy metod i bilans energii potwierdzone; ogólna poprawność równań urządzeń NIE |
-| NUMERICALLY VERIFIED | **CZĘŚCIOWO** | rzędy zmierzone na drabinie, NaN/Inf domknięte; determinizm `projection_hash` międzyśrodowiskowo REFUTOWANY (§11.1) |
+| NUMERICALLY VERIFIED | **CZĘŚCIOWO** | rzędy zmierzone na drabinie, NaN/Inf domknięte; determinizm `projection_hash` międzyśrodowiskowo był REFUTOWANY i został naprawiony u źródła z pomiarem marginesu (§10c) — potwierdzenie należy do CI, nie do tego dokumentu. Bitowa powtarzalność solvera zwarciowego MIĘDZY mikroarchitekturami pozostaje NIEOSIĄGALNA (`np.linalg.inv`); kontrakt mówi teraz o zadeklarowanej precyzji, a nie o ostatnim bicie |
 | PHYSICALLY SUPPORTED | **CZĘŚCIOWO** | klasyczny SMIB, jedno zdarzenie topologiczne, dwa kanały |
 | PHYSICALLY VALIDATED | **NIE** | brak pomiaru na obiekcie; oba narzędzia całkują to samo równanie |
 | PRODUCTION-READY | **NIE** | — |

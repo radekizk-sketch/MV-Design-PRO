@@ -4,7 +4,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any
 
-from sqlalchemy import Engine, create_engine, event
+from sqlalchemy import Engine, create_engine, event, inspect, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from .models import Base
@@ -66,3 +66,42 @@ def session_scope(session_factory: sessionmaker[Session]) -> Iterator[Session]:
 
 def init_db(engine: Engine) -> None:
     Base.metadata.create_all(engine)
+    _dolacz_kolumny_addytywne(engine)
+
+
+def _dolacz_kolumny_addytywne(engine: Engine) -> None:
+    """Dołóż do ISTNIEJĄCYCH tabel kolumny, których `create_all` nie tworzy.
+
+    `Base.metadata.create_all` tworzy tylko BRAKUJĄCE TABELE — kolumna dopisana do
+    modelu ORM nie trafia do bazy, która tę tabelę już ma (baza deweloperska
+    `mv_design_pro.db`, baza e2e). Bez tego kroku pierwszy zapis kończył się
+    `OperationalError: table … has no column named …`, a stan „model zna kolumnę,
+    baza nie" był niewidoczny w testach (te budują bazę od zera).
+
+    Reguła jest wąska i jawna: dokładane są WYŁĄCZNIE kolumny dopuszczające NULL
+    (`ALTER TABLE … ADD COLUMN`, składnia wspólna dla SQLite i PostgreSQL). Kolumna
+    NOT NULL bez wartości domyślnej w istniejącej tabeli to ZMIANA SCHEMATU, nie
+    dołożenie — kończy się jawnym błędem, żeby nikt nie dostał bazy w stanie
+    pośrednim. Typ kolumny jest kompilowany dialektem silnika (ten sam, którym
+    `create_all` tworzy tabele od zera), więc obie drogi dają tę samą definicję.
+    """
+    inspektor = inspect(engine)
+    istniejace_tabele = set(inspektor.get_table_names())
+    for tabela in Base.metadata.sorted_tables:
+        if tabela.name not in istniejace_tabele:
+            continue
+        obecne = {kolumna["name"] for kolumna in inspektor.get_columns(tabela.name)}
+        for kolumna in tabela.columns:
+            if kolumna.name in obecne:
+                continue
+            if not kolumna.nullable and kolumna.server_default is None:
+                raise RuntimeError(
+                    f"Kolumna {tabela.name}.{kolumna.name} jest NOT NULL bez wartosci "
+                    "domyslnej — nie da sie jej dolozyc do istniejacej tabeli bez zmiany "
+                    "schematu; to nie jest kolumna addytywna."
+                )
+            typ = kolumna.type.compile(dialect=engine.dialect)
+            with engine.begin() as polaczenie:
+                polaczenie.execute(
+                    text(f'ALTER TABLE "{tabela.name}" ADD COLUMN "{kolumna.name}" {typ}')
+                )
