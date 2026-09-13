@@ -44,10 +44,10 @@ wyłącznie na odniesieniach poziomu N0.
 | 6. Walidacja governora | **IMPLEMENTED_AND_TESTED** | tamże |
 | 7. Walidacja PSS | **IMPLEMENTED_AND_TESTED** | tamże + `StabilizatorSystemowy` w `regulatory.py` |
 | 8. Model-form risk ograniczników i nasyceń | **IMPLEMENTED_AND_TESTED** | `research/dynamic_lab/ryzyko_postaci_modelu.py` (26 pozycji), bramka kompletnosci skanem AST |
-| 9. Uprząż porównania postaci modelu | **PROTOTYPED_WITH_MEASUREMENTS** | dwie strategie ogranicznika GFM z pomiarami; uogólniona uprząż dla pozostałych 10 pozycji — NIE zbudowana |
-| 10. Audyt równań urządzeń przez wykonanie | **PROTOTYPED_WITH_MEASUREMENTS** | pokryty dla AVR/governor/PSS i baz magazynu; dla maszyny, falowników i DFIG — poziom W1/W2 bez systematycznego przebiegu równanie-po-równaniu |
-| 11. Przypadek wielourządzeniowy | **PROTOTYPED_WITH_MEASUREMENTS** | `siec_sn_z_der` (2 falowniki + odbiór) użyta jako baza testów §4; brak dedykowanego benchmarku z pomiarem interakcji |
-| 12. Przypadek wieloźródłowy / wielozdarzeniowy | **RESERVED_FOR_FABLE_DECISION** | wymaga rozstrzygnięcia, czym jest tożsamość zdarzenia przy permutacji — patrz §4 tego dokumentu |
+| 9. Uprząż porównania postaci modelu | **IMPLEMENTED_AND_TESTED** | `research/dynamic_lab/porownanie_postaci.py`, `tests/research/test_porownanie_postaci.py` (7 testów); pierwszy pomiar: priorytet składowej |
+| 10. Audyt równań urządzeń przez wykonanie | **PROTOTYPED_WITH_MEASUREMENTS** | pokryty dla AVR/governora/PSS (postać zamknięta + transmitancja), baz magazynu i sprzężenia P–Q w ograniczniku okręgu; dla maszyny, falowników i DFIG — poziom W1/W2 bez systematycznego przebiegu równanie-po-równaniu |
+| 11. Przypadek wielourządzeniowy | **IMPLEMENTED_AND_TESTED** | `tests/research/test_wielozrodlowy_wielozdarzeniowy.py` (14 testów): maszyna z AVR/governorem + falownik ze statyzmem Q(U) + odbiór, sprzężenie zmierzone w obie strony |
+| 12. Przypadek wieloźródłowy / wielozdarzeniowy | **IMPLEMENTED_AND_TESTED** | tamże: niezmienniczość wyniku wobec WSZYSTKICH permutacji harmonogramu, w tym zdarzeń równoczesnych o tym samym priorytecie, dla trzech integratorów |
 | 13. Taksonomia klas odniesienia | **IMPLEMENTED_AND_TESTED** | oś N w `research/dynamic_lab/drabina.py` + testy |
 | 14. Macierz pokrycia walidacyjnego | **IMPLEMENTED_AND_TESTED** | `research/dynamic_lab/macierz_pokrycia.py` (19 testów) |
 | 15. Uprząż kwalifikacyjna — jedno polecenie | **IMPLEMENTED_AND_TESTED** | `research/kwalifikacja.py`, rozszerzona o macierz pokrycia i inwentarz ryzyka |
@@ -69,6 +69,7 @@ VALIDATED" — patrz §5.
 | `dynamic_lab/frt_z_biegu.py` (568 w.) | Ocena FRT konsumująca `WynikDynamiczny`: kanały deklarowane per kryterium, zamknięty słownik powodów nieorzekalności, własności biegu jako warunek orzekania. |
 | `dynamic_lab/ryzyko_postaci_modelu.py` (629 w.) | 26 pozycji inwentarza ograniczników z klasyfikacją ryzyka postaci; bramka kompletności skanem drzewa składni. |
 | `dynamic_lab/macierz_pokrycia.py` (293 w.) | 15 zdolności × najmocniejszy dowód; „brak danych" nigdy nie daje potwierdzenia. |
+| `dynamic_lab/porownanie_postaci.py` (≈210 w.) | Uprząż §9: dwa warianty tym samym zadaniem, różnica mierzona kanał po kanale; NIE wybiera postaci (brak pola „zalecany" przypięty testem). |
 | `dynamic_lab/regulatory.py` (+119 w.) | `StabilizatorSystemowy` (PSS1A: washout + 2× lead-lag) z WYPROWADZONĄ postacią stanową; wejście PSS do uchybu AVR PRZED ogranicznikiem. |
 | `dynamic_lab/drabina.py` | Trzecia oś: niezależność odniesienia N0–N4. |
 | `dynamic_lab/frt.py` (+43 w.) | `PrzebiegPraduWsparcia.z_mocy_biernej` — ta sama tożsamość `I_q = Q/|V|`, inne wejście, zgodność przypięta testem. |
@@ -106,8 +107,23 @@ walidacja_fizyczna:                   false
 ograniczniki_z_niezmierzona_alternatywa: 10
 ```
 
-**Inwentarz ryzyka postaci (26 pozycji):** postać wymuszona — 11; alternatywa
-zmierzona — 5; **alternatywa NIEZMIERZONA — 10**; luka modelu — 1.
+**Inwentarz ryzyka postaci (26 pozycji), po pomiarze §9:** postać wymuszona — 11;
+alternatywa zmierzona — 7 (było 5); **alternatywa NIEZMIERZONA — 8** (było 10);
+luka modelu — 1.
+
+**Pomiar §9 — priorytet składowej w ograniczniku prądu.** Sieć SN z dwoma
+falownikami, zwarcie na SN2, trapez niejawny, krok 2 ms:
+
+| Zakłócenie | max &#124;ΔU&#124; na DER2 | max &#124;ΔI&#124; | Wniosek |
+|---|---|---|---|
+| `x_f = 0,30` p.u. (płytkie) | **0,000000** | 0,000000 | ogranicznik nieaktywny — postacie NIEROZRÓŻNIALNE |
+| `x_f = 0,10` p.u. (głębokie) | **0,0622 p.u.** | 0,195 p.u. | priorytet czynnej dobija do 1,200 p.u., priorytet biernej zatrzymuje się na 1,005 |
+
+Maksima wypadają w chwili 0,512 s, czyli W ZWARCIU. To są dwie liczby opisujące
+cały mechanizm ryzyka postaci: **test napisany na płytkim zakłóceniu przechodzi
+identycznie dla obu postaci i niczego o nich nie orzeka.** Werdykt FRT zależy od
+napięcia na zaciskach — 0,0622 p.u. różnicy wynikającej wyłącznie z wyboru
+postaci sterowania jest wielkością tego samego rzędu co marginesy obwiedni LVRT.
 
 **Granica ważności odkryta przy okazji:** zwarcie o `x_f = 0,05` p.u. na szynie
 z odbiorem stałej mocy (`P = −0,5` p.u.) **nie ma rozwiązania algebraicznego** —
@@ -134,16 +150,30 @@ Druga w kolejności: **priorytet składowej w ograniczniku prądu** (biernej vs
 czynnej, ewentualnie zmienny w czasie). Dotyczy pięciu pozycji naraz, bo reguła
 jest wspólna dla wszystkich przekształtników.
 
-### 4.2 Tożsamość zdarzenia przy permutacji (§12)
+### 4.2 Tożsamość zdarzenia przy permutacji (§12) — ROZSTRZYGNIĘTE POMIAREM, NIE wymaga Fable
 
-Przypadek wieloźródłowy/wielozdarzeniowy wymaga rozstrzygnięcia, **czym jest
-tożsamość zdarzenia, gdy dwa zdarzenia wypadają w tej samej chwili**. Dziś
-harmonogram jest listą; permutacja listy o równych czasach daje inny porządek
-zastosowania, a więc potencjalnie inny wynik przy tej samej specyfikacji
-fizycznej. Możliwe rozstrzygnięcia (żadne nie jest oczywiste):
-porządek kanoniczny po typie zdarzenia; odrzucenie równoczesności jako
-niedookreślonej; wprowadzenie jawnego priorytetu w zdarzeniu. Wybór zmienia
-kontrakt tożsamości biegu, więc nie jest decyzją wykonawczą.
+Ta pozycja była w pierwszej redakcji dokumentu zapisana jako decyzja
+architektoniczna. **Pomiar pokazał, że nią nie jest** — wynik jest już dziś
+niezmienniczy wobec permutacji harmonogramu i da się to udowodnić, a nie tylko
+postulować. Zmierzone odciskiem SHA-256 z surowego `repr` wszystkich przebiegów:
+
+| Przypadek | Permutacji | Różnych wyników |
+|---|---|---|
+| dwa zdarzenia równoczesne RÓŻNYCH typów (zwarcie + wyłączenie toru) | 6 | **1** |
+| dwa zdarzenia równoczesne TEGO SAMEGO typu (zwarcia na dwóch szynach) | 24 | **1** |
+| zwarcie i jego zdjęcie na tej samej szynie w tej samej chwili | 2 | **1** (= bieg bez zdarzeń) |
+
+Drugi wiersz jest istotniejszy od pierwszego: tam o kolejności decydują
+priorytety typów, tu wyłącznie indeks wstawienia — więc niezmienniczość wynika z
+PRZEMIENNOŚCI samych operacji i musiała być zmierzona. Trzeci wiersz jest
+konsekwencją priorytetów (zwarcie 10 przed zdjęciem 20): para znosi się do sieci
+zdrowej. Konsekwencja została nazwana w teście, żeby nikt nie odkrywał jej na
+własnym scenariuszu.
+
+**Do rozważenia dla Fable (opcjonalne, nie blokujące):** czy specyfikacja
+zdegenerowana z trzeciego wiersza ma się rozstrzygać po cichu, czy być odrzucana
+jako niedookreślona. Dziś rozstrzyga się deterministycznie — a determinizm był
+warunkiem, nie preferencją.
 
 ### 4.3 Awans osi „PHYSICALLY VALIDATED" — zależność zewnętrzna
 
@@ -170,10 +200,13 @@ ale wymaga decyzji, które narzędzie jest odniesieniem dla falowników.
    bieg szybki statusem `NIEKOMPLETNE`, bo pominięte pomiary są meldowane jako
    pominięte — brak dowodu nie zamienia się w jego posiadanie przez to, że nic
    się nie wywaliło.
-3. **Nie zbudowała uogólnionej uprzęży porównania postaci (§9)** dla dziesięciu
-   pozycji z niezmierzoną alternatywą. Dla dwóch strategii ogranicznika GFM taka
-   uprząż istnieje i ma pomiary; uogólnienie wymaga zaimplementowania
-   alternatywnych postaci, a każda z nich jest osobnym modelem fizycznym.
+3. **Nie zmierzyła ośmiu pozostałych pozycji z niezmierzoną alternatywą.**
+   Uprząż §9 istnieje i jest ogólna, ale pomiar wymaga, żeby alternatywna postać
+   BYŁA ZAIMPLEMENTOWANA — a każda z nich jest osobnym modelem fizycznym
+   (wygaszanie liniowe przy krańcu SOC, histereza, ograniczenie okręgiem na
+   poziomie elektrowni, wariant bez rezerwacji prądu FRT). Zmierzono to, co dało
+   się zmierzyć bez dopisywania nowej fizyki: priorytet składowej, bo obie jego
+   postacie już istniały w kodzie.
 4. **Nie tknęła CI ani produkcyjnego `src/`** — cała praca jest w
    `backend/research/`, odizolowana strukturalnie (`research_isolation_guard`).
 
@@ -189,5 +222,5 @@ ale wymaga decyzji, które narzędzie jest odniesieniem dla falowników.
   objęte bramką mypy w CI (CI liczy `mypy src`), więc nie jest to regresja CI.
   Naprawa: zadeklarować składowe protokołów jako właściwości tylko do odczytu.
   Nowe moduły tej transzy mają **0 błędów**.
-* **Dziesięć ograniczników z niezmierzoną alternatywą** — wyliczone wyżej,
-  wymienione imiennie w `INWENTARZ`.
+* **Osiem ograniczników z niezmierzoną alternatywą** — wymienione imiennie w
+  `INWENTARZ`, każdy z podanym powodem, dlaczego pomiaru dziś nie da się wykonać.
