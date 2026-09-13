@@ -4,34 +4,32 @@ Data: 2026-09-13. Tryb: adversarial, evidence-based; READ-ONLY wobec kodu produk
 
 ## REVIEW RANGE
 
-- REVIEW_BASE_SHA: `3cfc75a11729aeec01b0b5ea8dfb258a622c3e06`
-- REVIEW_HEAD_SHA: `a6ee782cfb8b7735a389a4b3ae64287031ae1333`
-- Rodzic HEAD: `6931a935a0e262358e825664d42d3defeb843375`
-- Merge base zakresu: `3cfc75a11729aeec01b0b5ea8dfb258a622c3e06`
+- REVIEW_BASE_SHA: `a6ee782cfb8b7735a389a4b3ae64287031ae1333`
+- REVIEW_HEAD_SHA: `575ce8263c7794d72ca6b5385730f4d2995067b5`
+- Rodzic HEAD: `5d2cdfbbb7bcf43737060441ed33337a561af699`
+- Merge base zakresu: `a6ee782cfb8b7735a389a4b3ae64287031ae1333`
 - Branch: `claude/max-dynamic-audit-kzbivg`
-- PR: NONE. PR #475 pozostaje otwarty dla starszej gałęzi `claude/opus5-dynamic-physics-audit-fixes`, HEAD `1e96202535abb0acfb123ebac8a49dae430e792c`.
+- PR: NONE dla bieżącej gałęzi. PR #475 pozostaje otwarty dla `claude/opus5-dynamic-physics-audit-fixes`, HEAD `1e96202535abb0acfb123ebac8a49dae430e792c`, baza `main@7e84753adbc4b0e50de9a1fd4f1022f1cfd01903`.
 
-Zmiany wykonawcze po bazie: `f70df04e` — jawne zawężenie typów przy mapowaniu A→kA w pakiecie dowodowym aparatury; `a6ee782c` — naprawy P1-DELTA-41 i P2-DELTA-42. Pozostałe commity w zakresie są raportowe/scalające. Nie reaudytowano repozytorium poza zależnościami zmienionych miejsc.
+Zakres po bazie zawiera trzy commity dokumentacyjne: dwa utrwalające poprzedni shadow review oraz `575ce826`, który zapisuje wyniki CI dla dokładnego SHA `a6ee782c`. Porównanie GitHub wykazało wyłącznie trzy pliki dokumentacyjne: bieżący raport, jego kopię niezmienną oraz raport napraw. Brak zmian kodu wykonawczego, testów, progów i fixtures; nie reaudytowano repozytorium.
 
 ## EXECUTIVE VERDICT
 
 **ACCEPT CONDITIONALLY**
 
-Oba dokładne znaleziska ostatniej recenzji zostały naprawione i niezależnie sfalsyfikowane ponownymi kontrprzykładami. Komplet 16 pozycji z `zbiegl="false"`, `"true"`, `1` albo `None` jest teraz odrzucany; tylko dokładne logiczne `True` kwalifikuje. Brak pola `zbiegl` albo błędu daje kontrolowany werdykt, nie `KeyError`.
+Nowa delta jest wyłącznie dowodowa. Niezależne zapytanie do GitHub Actions potwierdziło dziewięć przebiegów `push` dla dokładnego SHA `a6ee782cfb8b7735a389a4b3ae64287031ae1333`; wszystkie zakończyły się `completed/success`. Zamknięty jest zatem warunek poprzedniej recenzji dotyczący braku CI dla dokładnego SHA. Poprzednie zapytanie zwracające 0 przebiegów obejmowało jedynie przebiegi związane z pull requestem, podczas gdy gałąź nie ma PR.
 
-Naprawa wyścigu DDL po błędzie `ALTER` wykonuje świeży odczyt schematu i tłumi wyjątek wyłącznie wtedy, gdy inny proces rzeczywiście utworzył oczekiwaną kolumnę. To zamyka dokładny wyścig bez dopasowywania komunikatu i bez fail-open dla ogólnej awarii DDL.
-
-Warunki akceptacji: brak niezależnego uruchomienia testów SQLAlchemy/pytest i brak CI dla dokładnego HEAD uniemożliwiają poziom SOFTWARE-VERIFIED całej delty. Akceptacja dotyczy wyłącznie obecnych napraw, nie całej gałęzi. Dynamika nadal jest `UNVALIDATED_MODEL`; wcześniejsze P0/P1 pozostają otwarte. Nie wolno nadawać statusu `VALIDATED_SIMULATION`, produkcyjnego, regulacyjnego ani dowodu NC RfG.
+Nie stwierdzono nowej zmiany fizyki, matematyki, metod numerycznych, energii, sieci ani katalogów. Zieleń CI dowodzi wykonania objętych workflowami kontroli programowych; nie dowodzi poprawności fizycznej, walidacji modelu, gotowości produkcyjnej ani dowodowej. Dynamika pozostaje `UNVALIDATED_MODEL`. Zakaz promocji do `VALIDATED_SIMULATION`, produkcji, dowodu NC RfG i wyniku regulacyjnego pozostaje bez zmian.
 
 ## LEVELS OF VERIFICATION
 
-- IMPLEMENTED: TAK dla P1-DELTA-41, P2-DELTA-42 i jawnego zawężenia typów A→kA.
-- SOFTWARE-VERIFIED: CZĘŚCIOWO; niezależne sondy Python dla kwalifikacji wykonane, testów pytest/persistence/API nie wykonano z powodu brakujących zależności.
-- MATHEMATICALLY VERIFIED: BEZ ZMIANY; delta nie zmienia równań ani estymacji rzędu.
-- NUMERICALLY VERIFIED: SUPPORTED dla domeny flagi kwalifikacji; brak nowej weryfikacji metod całkowania.
-- PHYSICALLY SUPPORTED: BEZ NOWEGO DOWODU; mapowanie A→kA zachowuje współczynnik `1/1000` i odmawia wartości nieliczbowych.
+- IMPLEMENTED: TAK dla napraw w `a6ee782c`; bieżąca delta nie zmienia implementacji.
+- SOFTWARE-VERIFIED: TAK DLA ZAKRESU OBJĘTEGO DZIEWIĘCIOMA WORKFLOWAMI na dokładnym `a6ee782c`; nie obejmuje niewdrożonych pozycji ani nierozstrzygniętych własności fizycznych.
+- MATHEMATICALLY VERIFIED: BEZ ZMIANY; nie dodano nowego dowodu równań ani bilansów.
+- NUMERICALLY VERIFIED: CZĘŚCIOWO; zachowują ważność wcześniejsze pomiary dla gładkiego SMIB i naprawionej bramki kwalifikacji, lecz zdarzenia, limitery i podłoga ANDES pozostają otwarte.
+- PHYSICALLY SUPPORTED: BEZ NOWEGO DOWODU.
 - PHYSICALLY VALIDATED: NIE.
-- PRODUCTION-READY: NIE dla dynamiki; migracja DDL wymaga jeszcze wykonania w pełnym środowisku.
+- PRODUCTION-READY: NIE dla dynamiki.
 - REGULATORY-EVIDENCE-READY: NIE.
 
 ## NEW P0/P1
@@ -40,102 +38,83 @@ Brak nowych P0/P1 w badanej delcie.
 
 ## NEW P2
 
-Brak nowego P2. Zastrzeżenie do P2-DELTA-42 pozostaje wyłącznie zakresowe: runtime nie zawiera SQLAlchemy, więc kodu migracji i testu dwuprocesowego nie uruchomiono bezpośrednio. Analiza kodu potwierdza jednak zachowanie fail-closed.
-
-## INDEPENDENT VERIFICATION OF FIXES
-
-### P1-DELTA-41 — CLOSED FOR EXACT REPRODUCTION
-
-Uruchomiono ten sam pełny iloczyn 4 metod × 4 kroki z siedmioma wariantami:
-
-| wariant `zbiegl` / pola | wynik | luki | wyjątek |
-|---|---:|---:|---:|
-| dokładne `True` | `ZAKWALIFIKOWANE` | 0 | nie |
-| `"false"` | `ODRZUCONE` | 16 | nie |
-| `"true"` | `ODRZUCONE` | 16 | nie |
-| `1` | `ODRZUCONE` | 16 | nie |
-| `None` | `ODRZUCONE` | 16 | nie |
-| brak `zbiegl` | `ODRZUCONE` | 16 | nie |
-| brak `blad_max_vs_odniesienie` | `ODRZUCONE` | 16 | nie |
-
-Kod używa wartownika `_BRAK`, następnie wymaga `zbiegl is True`. Własne, nieosłonięte przebiegi po `p["zbiegl"]` i `p["blad_max_vs_odniesienie"]`, które powodowały `KeyError`, zostały usunięte. Testy autora obejmują dziewięć niedozwolonych wartości/typów, oba brakujące pola i stronę pozytywną.
-
-### P2-DELTA-42 — CLOSED BY LOGIC; RUNTIME PARTIAL
-
-W kodzie sprzed naprawy sekwencja `inspect → ALTER TABLE ADD COLUMN` była podatna na TOCTOU. Niezależny model SQLite z barierą przed odczytem schematu, odpowiadający pozycji bariery testu autora, wykonano 50 razy; każdy bieg dał jeden `OK` i jeden `OperationalError`, więc wyścig jest rzeczywisty i odtwarzalny.
-
-Nowy kod łapie `SQLAlchemyError`, ponownie odczytuje kolumny z nowego inspektora i:
-
-- gdy kolumna istnieje — uznaje, że konkurencyjny proces osiągnął cel;
-- gdy kolumny nie ma — ponownie zgłasza oryginalny wyjątek.
-
-Nie znaleziono ścieżki, która tłumiłaby awarię bez potwierdzenia stanu. Test autora sprawdza także pojedynczą kolumnę, zachowanie starego wiersza i `None` dla nowego pola. W tym runtime brak SQLAlchemy uniemożliwił bezpośrednie wykonanie testu.
-
-### Mapowanie wielkości zwarciowych A→kA
-
-`f70df04e` odrzuca `bool` i wartości nieliczbowe, zachowuje `None` jako uczciwy brak i dla `int|float` stosuje `float(wartosc)/1000.0`. Jest to właściwe wymiarowo. Nie dodano wartości zastępczej ani domyślnej. Import produkcyjnego modułu nie był możliwy w runtime (`networkx` nie jest zainstalowany), więc ocena jest statyczna.
+Brak nowych P2. Commit `575ce826` prawidłowo ogranicza znaczenie zielonego CI i nie deklaruje walidacji fizycznej ani produkcyjnej.
 
 ## PHYSICS SCORE
 
-**UNRESOLVED DLA MODELI / SUPPORTED DLA MAPOWANIA JEDNOSTEK.** Delta nie zmienia modeli maszyny, DER, BESS, sieci ani zdarzeń. Konwersja A→kA jest fizycznie poprawna, a typy nieliczbowe nie są fabrykowane jako wartości zwarciowe. To nie waliduje źródła ani proweniencji samego wyniku.
+**UNRESOLVED.** Delta nie zmienia modeli maszyny, DER, BESS, sieci, zdarzeń ani regulatorów. Zielone testy nie są niezależną wyrocznią fizyczną i nie zamykają wcześniejszych problemów z historią, BESS, FRT ani DAE.
 
 ## MATHEMATICS SCORE
 
-**PARTIALLY SUPPORTED, BEZ NOWEJ ZMIANY MODELU.** Warunek `zbiegl is True` jest poprawnym domknięciem dziedziny logicznej. Delta nie zmienia wzoru rzędu, równań DAE, regulatorów, ograniczników ani bilansów.
+**PARTIALLY SUPPORTED.** Nie pojawiły się nowe równania. Wcześniejsze analityczne i wykonawcze kontrole pozostają ważne wyłącznie w swoim zakresie. Brak dowodu pełnej równoważności zmienionych modeli z referencją fizyczną.
 
 ## NUMERICAL SCORE
 
-**PARTIALLY SUPPORTED.** Usunięto false-positive kwalifikacji wynikający z niejawnej prawdziwości typów oraz wyjątki przy brakujących polach. Nie powtórzono drabiny integratorów, ponieważ jej kod nie zmienił się względem zweryfikowanego `3cfc75a1`; poprzedni pomiar gładkiego SMIB pozostaje ważny tylko dla tego zakresu. Zdarzenia i przejścia limiterów nadal są nierozstrzygnięte.
+**PARTIALLY SUPPORTED.** CI potwierdza, że kontrolowane testy numeryczne i bramki programowe przechodzą na dokładnym SHA. Nie rozstrzyga obserwowanej podłogi błędu wobec ANDES, semantyki przełączeń, rzędu na zdarzeniach i przejściach limiterów ani split-versus-simultaneous DAE.
 
 ## ENERGY / NETWORK SCORE
 
-**UNRESOLVED DLA DELTY.** Brak zmian w bilansie BESS, KCL, P/Q, Ybus i per-unit. Nie powtórzono audytu energii ani lokalnych residuów. Wcześniejsze problemy pozostają w `pending_from_base`.
+**UNRESOLVED.** Brak nowej delty w KCL, P/Q, Ybus, per-unit i bilansie BESS. Nie wykonano nowego audytu energii ani lokalnych residuów, ponieważ kod tych obszarów nie zmienił się. Otwarty zakres pozostaje w `pending_from_base`.
 
 ## CATALOG ENGINEERING SCORE
 
-**UNRESOLVED DLA DELTY.** Brak zmian katalogowych. `57/57` kompletności szablonów nadal nie jest dowodem produkcyjnej weryfikacji 23 rodzin ani proweniencji producenta.
+**UNRESOLVED.** Brak nowej delty katalogowej. `57/57` kompletności szablonów nadal dowodzi kompletności pól/modelu szablonowego, a nie produkcyjnej weryfikacji 23 rodzin, wartości producenta ani proweniencji. Brak danych nie może być zastępowany wartością domyślną.
 
 ## CI DELTA
 
-Dla dokładnego `a6ee782cfb8b7735a389a4b3ae64287031ae1333` GitHub zwrócił 0 workflow runs i 0 commit statuses (`state=pending`, `total_count=0`). Gałąź nie ma PR; PR #475 nadal wskazuje starszy HEAD `1e962025...`. Deklarowane przez Opusa wyniki `62 passed`, `1750 passed`, `13/13` oraz zielone guardy nie mają niezależnego potwierdzenia z CI dla badanego SHA.
+Niezależnie pobrano kolekcję GitHub Actions z filtrem `head_sha=a6ee782cfb8b7735a389a4b3ae64287031ae1333`. Otrzymano dokładnie dziewięć przebiegów, wszystkie `event=push`, `status=completed`, `conclusion=success`:
 
-Lokalnie:
+| Workflow | Run ID | Wynik |
+|---|---:|---|
+| Python tests | 34737852730 | success |
+| Frontend checks | 34737852749 | success |
+| Frontend E2E smoke | 34737852757 | success |
+| Frontend E2E full | 34737852709 | success |
+| SLD Determinism Guards | 34737852706 | success |
+| P0 Extended Guards (V12K invariants) | 34737852767 | success |
+| Architectural And Repo Hygiene Guard | 34737852727 | success |
+| Docs Integrity Guard | 34737852738 | success |
+| Physics Label Guard (Catalog-First) | 34737852719 | success |
 
-- kontrprzykłady kwalifikacji wykonano bezpośrednio i uzyskano wyniki z tabeli;
-- `pytest`, SQLAlchemy, networkx, ANDES i pandapower nie są dostępne, więc nie udaje się wykonania pełnego zestawu;
-- nie klasyfikuje się braku zależności jako regresji kodu.
+Wszystkie przebiegi utworzono 2026-09-13 o 04:25:28–04:25:29 UTC. Commit-status API zwraca `state=pending, total_count=0`, ponieważ te wyniki są GitHub Checks/Actions, a nie klasycznymi commit statuses; nie jest to sprzeczność.
+
+Dla dokumentacyjnego HEAD `575ce826` niezależnie potwierdzono siedem zakończonych powodzeniem workflowów. Dwa E2E nie zostały uruchomione dla tej dokumentacyjnej zmiany; brak ich uruchomienia nie jest klasyfikowany jako regresja kodu.
+
+CI delta względem poprzedniej recenzji: z „brak widocznego CI dla dokładnego SHA” do „9/9 dostępnych workflowów dla dokładnego SHA zakończonych powodzeniem”. Klasyfikacja: pozytywna zmiana dowodu programowego, nie dowód poprawności fizycznej.
 
 ## MUTATION STATUS
 
-- `zbiegl="false"`: **KILLED** — 16 jawnych luk, `ODRZUCONE`.
+Brak nowych mutacji w delcie dokumentacyjnej. Zachowują ważność wyniki ostatniej niezależnej recenzji:
+
+- `zbiegl="false"`: **KILLED** — `ODRZUCONE`, 16 luk.
 - `zbiegl="true"`: **KILLED**.
-- `zbiegl=1`: **KILLED**, mimo że `1 == True`; użycie `is True` poprawnie rozróżnia typ.
+- `zbiegl=1`: **KILLED**.
 - `zbiegl=None`: **KILLED**.
 - brak `zbiegl`: **KILLED BY VERDICT**, bez wyjątku.
-- brak błędu: **KILLED BY VERDICT**, bez wyjątku.
-- dokładne `True`: **ACCEPTED BY GATE** — kontrola przeciw stałemu odrzucaniu.
-- wyścig DDL na kodzie sprzed naprawy: **REPRODUCED 50/50** w równoważnej sekwencji SQLite.
-- pełna kampania 13 mutacji autora: **NOT REPRODUCED** w tym runtime.
+- brak `blad_max_vs_odniesienie`: **KILLED BY VERDICT**, bez wyjątku.
+- dokładne `True`: zaakceptowane jako kontrola strony pozytywnej.
+- wyścig DDL kodu sprzed naprawy: **REPRODUCED 50/50** w równoważnej sekwencji SQLite.
+- pełna kampania autora: nie została ponownie wykonana w tym runtime; sama zieleń CI nie zastępuje oceny adekwatności mutantów.
 
 ## PRIOR FINDINGS — STATUS
 
 ### Zamknięte lub ograniczone
 
-- P1-DELTA-41: **CLOSED FOR EXACT REPRODUCTION**.
-- P2-DELTA-42: **CLOSED BY CODE LOGIC; DIRECT SQLALCHEMY RUNTIME PENDING**.
+- P1-DELTA-41: **CLOSED FOR EXACT REPRODUCTION AND CI-SUPPORTED**.
+- P2-DELTA-42: **CLOSED BY CODE LOGIC AND CI-SUPPORTED**; niezależny runtime SQLAlchemy pozostawał niedostępny w poprzednim środowisku.
 - P1-DELTA-39 i P2-DELTA-40: wcześniejsze dokładne reprodukcje pozostają zamknięte.
 - P1-DELTA-35/36, P1-DELTA-26/27/33/34: wcześniejsze dokładne reprodukcje pozostają zamknięte w opisanym zakresie.
-- P0-DELTA-24 i P0-DELTA-25: IMPLEMENTED/STATICALLY VERIFIED; pełny runtime nadal nierozstrzygnięty.
+- P0-DELTA-24 i P0-DELTA-25: IMPLEMENTED/STATICALLY VERIFIED; pełny niezależny runtime nadal nierozstrzygnięty.
 
-### Nadal otwarte P0/P1/P2
+### Nadal otwarte P0/P1/P2 i zakres profesorski
 
 - P1-DELTA-28: historyczny wynik może otrzymać odcisk bieżącej implementacji przy konsumpcji.
 - P2-DELTA-37: NaN w parametrach BESS może ominąć ochronę granicy kroku.
-- P2-DELTA-38: deklaracje 16/16 kontra wykonywalny katalog kwalifikacji 13 mutacji.
+- P2-DELTA-38: rozbieżność deklaracji 16/16 z wykonywalnym katalogiem 13 mutacji.
 - Re-inicjalizacja i zależność od historii po zwarciu/topologii: wcześniejszy `max Delta x0=1.09421789`.
 - Pełna kontrola NaN/Inf wejść i wyników.
 - Bazy BESS/per-unit i bilans energii po obu granicach SOC.
-- Tożsamość eventów i równoległych gałęzi poza naprawionym przypadkiem jednego toru.
+- Tożsamość zdarzeń i równoległych gałęzi poza naprawionym przypadkiem jednego toru.
 - Samodzielnie konstruowane evidence/FRT, kompletność czasu i brakujące kanały.
 - AVR/governor/PSS, nasycenie, anti-windup i zwalnianie ograniczników.
 - Schemat DAE rozdzielony kontra jednoczesny oraz podłoga porównania ANDES.
@@ -144,45 +123,72 @@ Lokalnie:
 
 ## UNRESOLVED PROFESSORIAL QUESTIONS
 
-1. Jak formalnie walidować kompletny schemat całego raportu przed obliczeniem werdyktu, poza naprawionym polem `zbiegl`? **SOL CAN RESOLVE**.
-2. Jaki rząd i tolerancję wymagać osobno na zdarzeniach i przejściach limiterów? **SOL CAN RESOLVE**.
+1. Jak formalnie walidować kompletny schemat raportu kwalifikacyjnego przed obliczeniem werdyktu? **SOL CAN RESOLVE**.
+2. Jaki rząd i tolerancję wymagać osobno na zdarzeniach oraz przejściach limiterów? **SOL CAN RESOLVE**.
 3. Jaka część podłogi ANDES wynika z semantyki zdarzenia/adaptacyjnego kroku, a jaka z różnicy modelu? **SOL CAN RESOLVE**.
 4. Jak trwale związać historyczny wynik z odciskiem implementacji, która go policzyła? **SOL CAN RESOLVE**.
 5. Czy produkcyjne wdrożenie PostgreSQL wymaga wersjonowanej migracji zamiast automatycznego DDL przy starcie? **SOL CAN RESOLVE**.
+6. Czy wszystkie wcześniejsze P0/P1 mają niezależne testy akceptacyjne, a nie wyłącznie testy autora? **SOL CAN RESOLVE**.
 
 ## ASTRA ESCALATION
 
-Brak. Naprawy są jednoznaczne; nie ma nierozstrzygniętego nowego P0/P1 z dwiema wiarygodnymi interpretacjami. **SOL CAN RESOLVE**.
+Brak. Bieżąca delta nie zawiera niejednoznacznego problemu P0/P1 z dwiema wiarygodnymi interpretacjami. **SOL CAN RESOLVE**.
 
 ## EXACT REPRODUCTIONS AND EVIDENCE
 
-```bash
-git rev-parse HEAD
-# a6ee782cfb8b7735a389a4b3ae64287031ae1333
-git show -s --format='%P' HEAD
-# 6931a935a0e262358e825664d42d3defeb843375
-git merge-base 3cfc75a11729aeec01b0b5ea8dfb258a622c3e06 HEAD
-# 3cfc75a11729aeec01b0b5ea8dfb258a622c3e06
+Odczyt bieżącej gałęzi:
 
-cd mv-design-pro
-PYTHONPATH=backend/research:backend python - <<'PY'
-# Zbuduj pełne 16 rekordów jak w raporcie 3cfc75a1 i dla wariantów
-# True, "false", "true", 1, None oraz braków pól wywołaj kolejno:
-# _luki_kwalifikacji(r), _braki_kwalifikacji(r).
-# Wyniki: True -> ZAKWALIFIKOWANE; wszystkie złe/brakujące -> ODRZUCONE,
-# 16 luk, 0 braków, bez wyjątku.
-PY
-
-python -m pytest -q backend/tests/research/test_kwalifikacja.py
-# No module named pytest
+```text
+GET /repos/radekizk-sketch/MV-Design-PRO/branches/claude/max-dynamic-audit-kzbivg
+HEAD = 575ce8263c7794d72ca6b5385730f4d2995067b5
+message = docs(audit): CI dla dokladnego SHA a6ee782c — dziewiec workflowow, dziewiec success
 ```
 
-Model wyścigu DDL: dwa procesy SQLite, wspólna stara baza, bariera przed `PRAGMA table_info`, następnie warunkowy `ALTER TABLE ADD COLUMN`; 50 uruchomień kodu sprzed naprawy dało `Counter({('OK','OperationalError'): 50})`.
+Porównanie inkrementalne:
 
-Repozytorium wykonawcze nie zostało zmodyfikowane. Raport przygotowano w odłączonym worktree wyłącznie w dozwolonej ścieżce audytu.
+```text
+GET /repos/radekizk-sketch/MV-Design-PRO/compare/
+    a6ee782cfb8b7735a389a4b3ae64287031ae1333...
+    575ce8263c7794d72ca6b5385730f4d2995067b5
+
+status = ahead
+ahead_by = 3
+files =
+  mv-design-pro/docs/audit/RAPORT_NAPRAW_PO_AUDYCIE_2026-09-12.md
+  mv-design-pro/docs/audit/WORK_SHADOW_REVIEW_LATEST.md
+  mv-design-pro/docs/audit/work-reviews/
+    WORK_SHADOW_REVIEW_a6ee782cfb8b7735a389a4b3ae64287031ae1333.md
+```
+
+Weryfikacja CI dokładnego SHA:
+
+```text
+GET /repos/radekizk-sketch/MV-Design-PRO/actions/runs
+    ?head_sha=a6ee782cfb8b7735a389a4b3ae64287031ae1333
+    &per_page=100
+
+total_count = 9
+dla każdego run:
+  event = push
+  status = completed
+  conclusion = success
+```
+
+Weryfikacja PR:
+
+```text
+GET /repos/radekizk-sketch/MV-Design-PRO/pulls/475
+state = open
+head.ref = claude/opus5-dynamic-physics-audit-fixes
+head.sha = 1e96202535abb0acfb123ebac8a49dae430e792c
+base.ref = main
+base.sha = 7e84753adbc4b0e50de9a1fd4f1022f1cfd01903
+```
+
+Repozytorium wykonawcze nie zostało zmodyfikowane. Nie zmieniono kodu, testów, progów ani fixtures. Utrwalono wyłącznie dozwolone pliki audytowe.
 
 ## REVIEWER CHECKPOINT
 
-`LAST_VERIFIED_SHA = a6ee782cfb8b7735a389a4b3ae64287031ae1333`
+`LAST_VERIFIED_SHA = 575ce8263c7794d72ca6b5385730f4d2995067b5`
 
 `pending_from_base` pozostaje otwarte dla wszystkich niewykonanych kontroli i wcześniejszych problemów wymienionych powyżej. Checkpoint nie oznacza akceptacji całej gałęzi.
