@@ -570,6 +570,36 @@ iloczyn manifestu z wartościami zmierzonymi na drabinie.
 
 ---
 
+## 10e. REGRESJA WŁASNA ODSŁONIĘTA PRZEZ NAPRAWĘ PYTEST (zapadka typów)
+
+Bieg CI dla `3cfc75a1` pokazał, że **pytest przeszedł** (7 czerwonych z §10c
+zniknęło), a padł krok **Mypy Ratchet Guard**:
+
+```
+src/api/equipment_proof_pack.py:64: error: Argument 1 to "float" has
+incompatible type "object"; expected "str | Buffer | SupportsFloat | SupportsIndex"
+FAILED: dlug typow UROSL o 1 (0 -> 1).
+```
+
+**To jest MOJA regresja**, wprowadzona w `6acb008b` (§2/§3) i przeżywająca
+kilka biegów CI **wyłącznie dlatego, że krok zapadki nigdy się nie wykonał**:
+pytest padał wcześniej, a wszystkie kroki 8–28 szły jako `skipped`. Dokładnie
+ten sam wzorzec maskowania co przy bramce rozmiaru odpowiedzi (§11.2) —
+naprawa jednej rzeczy odsłania następną, która cały czas tam była.
+
+**Naprawa u źródła, nie wyciszeniem.** `na_kilo` robiło `float(wartosc)` na
+słowniku `dict[str, object]`. Zawężenie jest teraz jawne, a wartość nieliczbowa
+ODMAWIA z komunikatem nazywającym klucz i typ — nie staje się cicho `None` ani
+zerem, bo wielkość zwarciowa wzięta z niczego jest fabrykacją. `bool` jest
+odrzucany osobno (`isinstance(True, int)` to prawda, a `True` → 0,001 kA byłoby
+liczbą wziętą znikąd).
+
+**Kontrola bazowa przypięta:** `test_mapowanie_jednostek_odmawia_wartosci_nieliczbowej`
+pada na zachowaniu sprzed naprawy (stary kod przyjmował `"23748"` i `True`
+bez słowa) i przechodzi po niej; `mypy_ratchet_guard` 0 błędów.
+
+---
+
 ## 11. PROBLEMY NIEROZSTRZYGNIĘTE
 
 ### 11.1 Siedem czerwonych testów backendu w CI — ROZSTRZYGNIĘTE, patrz §10c

@@ -60,8 +60,21 @@ def _wielkosci_kontraktu_klienta(wielkosci_biegu: dict[str, object]) -> dict[str
     """
 
     def na_kilo(klucz: str) -> float | None:
+        # ZAWĘŻENIE JAWNE, nie `float(object)`. `wielkosci_biegu` jest słownikiem
+        # `object`, bo pochodzi z surowego ładunku biegu — mypy słusznie odmawiał
+        # konwersji. Wartość nieliczbowa NIE staje się tu cicho ani `None`, ani
+        # zerem: to byłaby fabrykacja wielkości zwarciowej. Leci wyjątek nazywający
+        # klucz i typ, czyli dokładnie to, co robiło wcześniej `float(...)` —
+        # tyle że teraz z komunikatem, po którym widać, co przyszło.
         wartosc = wielkosci_biegu.get(klucz)
-        return None if wartosc is None else float(wartosc) / 1000.0
+        if wartosc is None:
+            return None
+        if isinstance(wartosc, bool) or not isinstance(wartosc, int | float):
+            raise TypeError(
+                f'Wielkość biegu „{klucz}" ma typ {type(wartosc).__name__}, a mapowanie '
+                f"jednostek kontraktu doboru aparatury wymaga liczby — nie zgadujemy."
+            )
+        return float(wartosc) / 1000.0
 
     wynik: dict[str, object] = {}
     for klucz_klienta, wartosc in (

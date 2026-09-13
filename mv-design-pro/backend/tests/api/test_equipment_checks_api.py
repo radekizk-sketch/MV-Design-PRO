@@ -370,3 +370,34 @@ def test_koncowki_sa_deterministyczne(klient: TestClient) -> None:
     a = klient.post("/api/solver/ct-burden-check", json=payload).json()
     b = klient.post("/api/solver/ct-burden-check", json=payload).json()
     assert a == b
+
+
+# ---------------------------------------------------------------------------
+# MAPOWANIE JEDNOSTEK KONTRAKTU DOBORU APARATURY — wartość nieliczbowa
+# ---------------------------------------------------------------------------
+
+
+def test_mapowanie_jednostek_odmawia_wartosci_nieliczbowej() -> None:
+    """Wielkość biegu o typie nieliczbowym NIE MOŻE stać się cicho zerem ani None.
+
+    DŁUG, KTÓRY ZAMYKA TEN TEST. `na_kilo` robiło `float(wartosc)` na słowniku
+    `dict[str, object]` — mypy słusznie odmawiał (`Argument 1 to "float" has
+    incompatible type "object"`), a błąd przeżył kilka biegów CI, bo krok
+    zapadki typów NIGDY SIĘ NIE WYKONAŁ: pytest padał wcześniej i wszystkie
+    kolejne kroki szły jako `skipped`. Naprawa zapadki możliwa była dopiero po
+    naprawieniu pytest — dokładnie ten sam wzorzec maskowania, co przy bramce
+    rozmiaru odpowiedzi.
+
+    Zawężenie typu musi ODMAWIAĆ, nie podstawiać liczbę: wielkość zwarciowa
+    wzięta z niczego jest fabrykacją.
+    """
+    from api.equipment_proof_pack import _wielkosci_kontraktu_klienta
+
+    # Wartość poprawna: mapowanie A -> kA bez zmiany fizyki.
+    assert _wielkosci_kontraktu_klienta({"ikss_a": 23748.0})["ikss_ka"] == pytest.approx(23.748)
+    # Brak klucza to uczciwy brak, nie zero.
+    assert "ikss_ka" not in _wielkosci_kontraktu_klienta({})
+
+    for zla in ("23748", [23748.0], {"a": 1}, object(), True):
+        with pytest.raises(TypeError, match="wymaga liczby"):
+            _wielkosci_kontraktu_klienta({"ikss_a": zla})
