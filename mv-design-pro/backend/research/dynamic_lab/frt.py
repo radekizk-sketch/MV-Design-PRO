@@ -443,6 +443,49 @@ class PrzebiegPraduWsparcia:
             raise ValueError("Przebieg wymaga co najmniej dwóch próbek")
 
     @classmethod
+    def z_mocy_biernej(
+        cls,
+        *,
+        czas_s: Iterable[float],
+        moc_bierna_pu: Iterable[float],
+        napiecie_modul_pu: Iterable[float],
+        zrodlo: str,
+        element_ref: str,
+    ) -> PrzebiegPraduWsparcia:
+        """Zbuduj przebieg z ``Q(t)`` i ``|V|(t)`` — TA SAMA definicja, inne wejście.
+
+        DLACZEGO TO NIE JEST DRUGA PRAWDA. Wyprowadzenie w
+        ``prad_wsparcia_z_fazora`` kończy się TOŻSAMOŚCIĄ ``I_q_wsparcie = Q/|V|``
+        — nie przybliżeniem i nie inną konwencją. Ta droga liczy dokładnie tę
+        tożsamość, a zgodność obu konstruktorów dla dowolnych fazorów jest
+        PRZYPIĘTA testem (``test_oba_konstruktory_pradu_wsparcia_daja_to_samo``),
+        a nie zadeklarowana tutaj.
+
+        Wejście po ``Q`` i ``|V|`` jest konieczne, bo ślad biegu laboratorium
+        zapisuje MODUŁ prądu urządzenia, nie jego fazor — z samego ``|I|`` fazy
+        nie da się odtworzyć, a zgadnięcie jej byłoby fabrykacją.
+        """
+        czasy = tuple(float(t) for t in czas_s)
+        moce = tuple(float(q) for q in moc_bierna_pu)
+        napiecia = tuple(float(u) for u in napiecie_modul_pu)
+        if not (len(czasy) == len(moce) == len(napiecia)):
+            raise ValueError("Niezgodne długości osi czasu, mocy biernej i napięcia")
+        wartosci: list[float] = []
+        for t, q, u in zip(czasy, moce, napiecia, strict=True):
+            if not np.isfinite(u) or u <= 0.0:
+                raise ValueError(
+                    f"Prąd wsparcia jest zdefiniowany względem FAZY napięcia — w chwili "
+                    f"{t} s moduł napięcia wynosi {u!r} i fazy nie ma. Zwarcie metaliczne "
+                    f"na zaciskach modułu to fizycznie brak tej wielkości, a nie zero."
+                )
+            if not np.isfinite(q):
+                raise ValueError(f"Moc bierna w chwili {t} s nie jest liczbą skończoną")
+            wartosci.append(q / u)
+        return cls(
+            czas_s=czasy, wartosci_pu=tuple(wartosci), zrodlo=zrodlo, element_ref=element_ref
+        )
+
+    @classmethod
     def z_fazorow(
         cls,
         *,
