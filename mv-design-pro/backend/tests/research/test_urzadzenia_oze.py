@@ -22,7 +22,7 @@ from functools import cache
 
 import numpy as np
 import pytest
-from dynamic_lab.benchmarki import siec_sn_z_der
+from dynamic_lab.benchmarki import harmonogram_zwarcia, siec_sn_z_der
 from dynamic_lab.konwencje import ogranicz_do_przedzialu, ogranicz_okregiem, ogranicz_prad
 from dynamic_lab.regulatory import RegulatorNapiecia, RegulatorTurbiny
 from dynamic_lab.siec import Galaz, TopologiaSieci
@@ -1293,3 +1293,122 @@ def test_pll_przy_zaniku_napiecia_nie_zgaduje_fazy() -> None:
     """Bez napięcia nie ma pomiaru fazy — model zamraża błąd zamiast go wymyślać."""
     pll = PetlaSynchronizacjiPLL()
     assert pll.blad_fazy(complex(0.0, 0.0), 0.3) == 0.0
+
+
+# ---------------------------------------------------------------------------
+# §11.3/8 — POSTAĆ OGRANICZNIKA: dwa miejsca wskazane przez inwentarz ryzyka
+# ---------------------------------------------------------------------------
+
+
+def test_gfl_rezerwuje_prad_frt_przed_podzialem() -> None:
+    """Prąd wsparcia FRT jest rezerwowany PRZED podziałem reszty — nie po.
+
+    To jest wybór POSTACI, nie parametru: wymaganie kodeksowe dotyczy składowej
+    BIERNEJ, więc reszta okręgu przypada mocy czynnej, a nie odwrotnie.
+    Wariant „podziel, potem dołóż FRT" dałby przekroczenie okręgu albo cichą
+    redukcję wsparcia — a oba wyglądają tak samo w przebiegu.
+
+    Sprawdzane WYPROWADZENIEM, nie liczbą z biegu: przy zapadzie do ``v`` żądany
+    prąd bierny to ``min(k_frt·(V_ref − v), i_max)``, więc na czynną zostaje
+    ``sqrt(i_max² − i_q²)``, czyli moc ``P = min(P_ref, sqrt(...)·v)``.
+    """
+    falownik = FalownikGFL(
+        ref="DER",
+        szyna="B",
+        p_ref_pu=0.9,
+        q_ref_pu=0.0,
+        i_max_pu=1.2,
+        k_frt=2.0,
+        u_frt_pu=0.85,
+        pasmo_przejscia_frt_pu=0.0,  # pełny tryb FRT, bez mieszania — izoluje badaną regułę
+        s_zn_pu=1.2,
+    )
+    v_mod = 0.5
+    x = np.array([0.0, 0.0])
+    pochodne = falownik.pochodne(x, complex(v_mod, 0.0))
+    # cel = pochodna * stała czasowa (bo x = 0)
+    p_cel = float(pochodne[0]) * falownik.t_p_s
+    q_cel = float(pochodne[1]) * falownik.t_q_s
+
+    i_q = min(falownik.k_frt * (falownik.v_ref_pu - v_mod), falownik.i_max_pu)
+    q_oczekiwane = i_q * v_mod
+    i_pozostaly = math.sqrt(max(falownik.i_max_pu**2 - i_q**2, 0.0))
+    p_oczekiwane = min(falownik.p_ref_pu, i_pozostaly * v_mod)
+
+    assert q_cel == pytest.approx(q_oczekiwane, rel=1e-12)
+    assert p_cel == pytest.approx(p_oczekiwane, rel=1e-12)
+    # ...i rezerwacja NAPRAWDĘ ogranicza czynną: bez niej byłoby P_ref.
+    assert p_cel < falownik.p_ref_pu - 1e-6
+    # ...a całość mieści się w okręgu prądowym urządzenia.
+    assert math.hypot(p_cel, q_cel) <= falownik.i_max_pu * v_mod + 1e-9
+
+
+@pytest.mark.parametrize("integrator", ["euler_jawny", "rk4", "euler_niejawny", "trapez_niejawny"])
+def test_stany_pq_przekstaltnikow_nie_wychodza_poza_ogranicznik(integrator: str) -> None:
+    """Iloczyn cech: TRZY rodziny przekształtników x CZTERY integratory.
+
+    Rzutowanie stanu zadeklarowane przez urządzenie ma trzymać dla KAŻDEJ metody,
+    a nie dla tej, na której akurat napisano test. Sprawdzany jest KWADRAT granic
+    zadeklarowanych przez samo urządzenie (`ograniczniki_stanu`), bo to on — a nie
+    okrąg — jest zbiorem niezmienniczym przepływu ścisłego dla torów P i Q.
+
+    `JednostkaSterowanaPQ` NIE MA szyny (jest modułem wewnątrz elektrowni), więc
+    jej rodzina jest ćwiczona przez `RegulatorElektrowniPPC` — czyli dokładnie
+    tak, jak występuje w modelu, a nie w sztucznej konfiguracji wymyślonej pod test.
+    """
+    topologia = TopologiaSieci(
+        szyny=("SZT", "B"),
+        galezie=[Galaz("SZT", "B", 0.02, 0.08)],
+        szyny_sztywne={"SZT": complex(1.0, 0.0)},
+    )
+    przypadki = (
+        (
+            FalownikGFL(ref="GFL", szyna="B", s_zn_pu=1.0, p_ref_pu=0.4, k_qu=5.0),
+            {"GFL": complex(0.4, 0.0)},
+        ),
+        (
+            MagazynEnergiiBESS(
+                ref="BESS",
+                szyna="B",
+                e_pojemnosc_mwh=10.0,
+                s_bazowa_mva=S_BAZOWA_MVA,
+                s_falownika_pu=1.0,
+            ),
+            {"BESS": complex(0.4, 0.0)},
+        ),
+        (
+            RegulatorElektrowniPPC(
+                ref="PPC",
+                szyna="B",
+                jednostki=[JednostkaSterowanaPQ(ref="PV1", s_zn_pu=1.0)],
+                limit_eksportu_pu=0.8,
+            ),
+            {"PPC": complex(0.4, 0.0)},
+        ),
+    )
+    for urzadzenie, moce in przypadki:
+        model = ModelDynamiczny(topologia=topologia, urzadzenia=[urzadzenie])
+        silnik = SilnikRMS(model, integrator=integrator, krok_s=0.05)
+        granice = {(o.nazwa, o.indeks): (o.dol, o.gora) for o in silnik.ograniczenia_stanu}
+        assert granice, f"{type(urzadzenie).__name__} nie zadeklarował ŻADNEGO ogranicznika"
+        x0 = silnik.inicjalizuj(moce)
+        wynik = silnik.symuluj(
+            x0,
+            czas_koncowy_s=1.0,
+            harmonogram=harmonogram_zwarcia(
+                szyna="B", chwila_s=0.2, czas_trwania_s=0.15, x_f_pu=0.3
+            ),
+        )
+        assert (
+            wynik.diagnostyka.zbiegl
+        ), f"{type(urzadzenie).__name__} / {integrator}: brak zbieżności"
+        nazwy = urzadzenie.nazwy_stanow()
+        for indeks, (nazwa, (dol, gora)) in enumerate(
+            ((n, granice[(n, i)]) for i, n in enumerate(nazwy) if (n, i) in granice)
+        ):
+            _ = indeks
+            seria = np.asarray(wynik.sygnal(nazwa, urzadzenie.ref, PrzestrzenSygnalu.STAN).wartosci)
+            assert np.all(seria >= dol - 1e-9) and np.all(seria <= gora + 1e-9), (
+                f"{type(urzadzenie).__name__} / {integrator}: stan {nazwa} wyszedł poza "
+                f"[{dol}, {gora}] (zakres przebiegu: {float(seria.min())} … {float(seria.max())})"
+            )
