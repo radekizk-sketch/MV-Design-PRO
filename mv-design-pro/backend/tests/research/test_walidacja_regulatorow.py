@@ -177,6 +177,54 @@ def test_avr_wejscie_i_zejscie_z_ogranicznika(granica: str) -> None:
         assert pochodna_po_powrocie > 0.0
 
 
+@pytest.mark.parametrize(
+    ("efd_wymagane", "oczekiwane"),
+    [(9.0, 5.0), (-3.0, 0.0), (2.5, 2.5)],
+)
+def test_avr_punkt_startowy_lezy_W_OGRANICZNIKU(efd_wymagane: float, oczekiwane: float) -> None:
+    """Anti-windup obowiązuje TAKŻE w chwili zero — inicjalizacja nie jest wyjątkiem.
+
+    DLACZEGO TEN TEST ISTNIEJE (uczciwie): kampania mutacyjna §5 wykazała, że
+    mutacja „usuń rzutowanie w `stan_ustalony`" PRZEŻYWAŁA komplet 35 testów.
+    Przeżywała, bo wszystkie one startowały z punktu pracy leżącego wewnątrz
+    zakresu wzbudnicy — czyli sprawdzały mechanizm wyłącznie tam, gdzie nic nie
+    robi. Bez tego testu maszyna o wymaganiu ``Efd`` ponad sufitem startowałaby
+    poza ogranicznikiem, a niezmiennik dyskretny ściągnąłby ją w pierwszym kroku,
+    dając skok wzbudzenia NIEMAJĄCY przyczyny fizycznej.
+
+    Zakres pokrywa oba przekroczenia i przypadek wewnętrzny — inaczej test
+    dowodziłby tylko jednej gałęzi rzutowania (błąd tej samej klasy co wyżej).
+    """
+    avr = RegulatorNapiecia(k_a=200.0, t_a_s=0.05, efd_min=0.0, efd_max=5.0)
+    efd0, v_ref = avr.stan_ustalony(efd_wymagane=efd_wymagane, v_t_pu=1.0)
+    assert efd0 == pytest.approx(oczekiwane)
+    assert avr.efd_min <= efd0 <= avr.efd_max
+
+    # Dobrane ``V_ref`` musi dawać RÓWNOWAGĘ w tym właśnie (ograniczonym) punkcie:
+    # rzutowanie bez korekty nastawy dałoby stan w zakresie, ale nie w równowadze.
+    zestrojony = RegulatorNapiecia(
+        k_a=avr.k_a, t_a_s=avr.t_a_s, efd_min=avr.efd_min, efd_max=avr.efd_max, v_ref_pu=v_ref
+    )
+    assert zestrojony.pochodna(efd0, 1.0) == pytest.approx(0.0, abs=1e-12)
+
+
+def test_governor_punkt_startowy_lezy_W_OGRANICZNIKU() -> None:
+    """Ta sama własność po stronie turbiny — bo to ta sama KLASA, nie ten sam przypadek."""
+    governor = RegulatorTurbiny(r_statyzm=0.05, t_g_s=0.5, p_min_pu=0.2, p_max_pu=1.2)
+    for pm_wymagane, oczekiwane in ((2.0, 1.2), (-0.5, 0.2), (0.8, 0.8)):
+        pm0, p_ref = governor.stan_ustalony(pm_wymagane=pm_wymagane)
+        assert pm0 == pytest.approx(oczekiwane)
+        assert governor.p_min_pu <= pm0 <= governor.p_max_pu
+        zestrojony = RegulatorTurbiny(
+            r_statyzm=governor.r_statyzm,
+            t_g_s=governor.t_g_s,
+            p_min_pu=governor.p_min_pu,
+            p_max_pu=governor.p_max_pu,
+            p_ref_pu=p_ref,
+        )
+        assert zestrojony.pochodna(pm0, 1.0) == pytest.approx(0.0, abs=1e-12)
+
+
 def test_avr_zadanie_nie_wychodzi_poza_ogranicznik_nawet_przy_glebokim_zapadzie() -> None:
     """Bez ograniczenia żądania ``K_a·(V_ref - V_t)`` sięga ~88 p.u. (pomiar z modułu)."""
     avr = RegulatorNapiecia(k_a=200.0, t_a_s=0.05, efd_min=0.0, efd_max=5.0, v_ref_pu=1.0)

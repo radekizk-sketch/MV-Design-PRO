@@ -18,6 +18,7 @@ from __future__ import annotations
 import dataclasses
 from dataclasses import dataclass, replace
 
+import numpy as np
 import pytest
 from dynamic_lab.dowod_walidacji import (
     DowodWalidacji,
@@ -37,6 +38,12 @@ from dynamic_lab.dowod_walidacji import (
     ZakresWalidacji,
     os_zakresu,
 )
+from dynamic_lab.pomiar_zgodnosci import (
+    PomiarSfabrykowanyError,
+    PomiarZgodnosci,
+    RodzajMetryki,
+    zmierz_zgodnosc,
+)
 from dynamic_lab.regulatory import RegulatorNapiecia
 from dynamic_lab.siec import Bocznik, Galaz, TopologiaSieci
 from dynamic_lab.tozsamosc import odcisk_topologii, postac_kanoniczna
@@ -47,6 +54,7 @@ from dynamic_lab.urzadzenia import (
     MaszynaSynchroniczna4Rzedu,
     ZespolSynchroniczny,
 )
+from dynamic_lab.wzorzec_trajektoria import Przebieg
 
 ANDES = Wyrocznia(nazwa="ANDES", wersja="2.0.0", metoda="wartości własne")
 
@@ -85,10 +93,51 @@ def _przypadki(*nazwy: str, migawka: str = "migawka-smib-c1") -> tuple[Przypadek
     )
 
 
+def _przebiegi(blad: float) -> tuple[Przebieg, Przebieg]:
+    """Para przebiegów o ZADANYM błędzie względnym — wzorzec i badany.
+
+    Wzorzec jest rampą 0 → 1, więc jego rozpiętość (mianownik błędu względnego)
+    wynosi dokładnie 1,0. Badany jest przesunięty o stałą, więc maksymalny błąd
+    względny równa się tej stałej — test dostaje liczbę, której chce, ale przez
+    POMIAR, nie przez wpisanie.
+    """
+    czas = np.linspace(0.0, 2.0, 41, dtype=np.float64)
+    wzorzec = Przebieg(czas_s=czas, wartosci=czas / 2.0, jednostka="rad", zrodlo="wzorzec-testowy")
+    badany = Przebieg(
+        czas_s=czas, wartosci=czas / 2.0 + blad, jednostka="rad", zrodlo="badany-testowy"
+    )
+    return badany, wzorzec
+
+
+def _pomiar(
+    blad: float = 1.0e-8,
+    *,
+    nazwa: str = "maksymalne odchylenie kąta wirnika",
+    migawka: str = "migawka-smib-c1",
+    scenariusz: TozsamoscScenariusza | None = None,
+) -> PomiarZgodnosci:
+    badany, wzorzec = _przebiegi(blad)
+    return zmierz_zgodnosc(
+        nazwa=nazwa,
+        rodzaj=RodzajMetryki.MAKS_BLAD_WZGLEDNY,
+        badany=badany,
+        wzorzec=wzorzec,
+        okno_s=(0.0, 2.0),
+        scenariusz=scenariusz if scenariusz is not None else _scenariusz(migawka=migawka),
+    )
+
+
 def _metryka(
-    blad: float = 1.0e-8, *, nazwa: str = "maksymalne odchylenie kąta wirnika"
+    blad: float = 1.0e-8,
+    *,
+    nazwa: str = "maksymalne odchylenie kąta wirnika",
+    migawka: str = "migawka-smib-c1",
+    scenariusz: TozsamoscScenariusza | None = None,
 ) -> MetrykiAkceptacji:
-    return MetrykiAkceptacji(nazwa=nazwa, maks_blad_wzgledny=1.0e-4, zmierzony_blad_wzgledny=blad)
+    return MetrykiAkceptacji(
+        maks_blad_wzgledny=1.0e-4,
+        pomiar=_pomiar(blad, nazwa=nazwa, migawka=migawka, scenariusz=scenariusz),
+    )
 
 
 def _profil(
@@ -552,8 +601,38 @@ def test_podmiana_metryki_o_TYCH_SAMYCH_liczbach_zmienia_odcisk() -> None:
 
 
 def test_metryka_bez_nazwy_jest_odrzucana() -> None:
+    """Nazwa mieszka teraz w POMIARZE — i tam jest egzekwowana."""
+    badany, wzorzec = _przebiegi(1.0e-8)
     with pytest.raises(ValueError, match="bez nazwy"):
-        MetrykiAkceptacji(nazwa="  ", maks_blad_wzgledny=1e-4, zmierzony_blad_wzgledny=1e-8)
+        zmierz_zgodnosc(
+            nazwa="  ",
+            rodzaj=RodzajMetryki.MAKS_BLAD_WZGLEDNY,
+            badany=badany,
+            wzorzec=wzorzec,
+            okno_s=(0.0, 2.0),
+            scenariusz=_scenariusz(),
+        )
+
+
+def test_metryki_NIE_DA_SIE_zlozyc_z_wpisanej_liczby() -> None:
+    """Sedno §11.3/3: dowód bez uruchomienia symulacji ma być NIEOSIĄGALNY tą drogą.
+
+    Przed naprawą ta konstrukcja była legalna i dawała kompletny, przechodzący
+    walidację dowód z zerowym błędem.
+    """
+    with pytest.raises(PomiarSfabrykowanyError):
+        PomiarZgodnosci(
+            nazwa="maksymalne odchylenie kąta wirnika",
+            rodzaj=RodzajMetryki.MAKS_BLAD_WZGLEDNY,
+            wartosc=0.0,
+            okno_s=(0.0, 2.0),
+            odcisk_scenariusza=_scenariusz().odcisk,
+            odcisk_badanego="x",
+            odcisk_wzorca="y",
+            probki_badanego=(0.0, 1.0),
+            probki_wzorca=(0.0, 1.0),
+            siatka_s=(0.0, 1.0),
+        )
 
 
 def test_odcisk_dowodu_siega_w_ZAGNIEZDZONE_parametry_modelu() -> None:
@@ -759,28 +838,33 @@ def test_tryb_fizyczny_bez_profilu_nadal_odpowiada() -> None:
 
 def test_zmiana_MIGAWKI_przypadku_zmienia_odcisk_dowodu() -> None:
     """Ten sam benchmark policzony na innej sieci to inny dowód."""
-    a = replace(_dowod(), przypadki=_przypadki("SMIB H=4", migawka="migawka-1"))
-    b = replace(_dowod(), przypadki=_przypadki("SMIB H=4", migawka="migawka-2"))
+    a = replace(
+        _dowod(),
+        metryki=(_metryka(migawka="migawka-1"),),
+        przypadki=_przypadki("SMIB H=4", migawka="migawka-1"),
+    )
+    b = replace(
+        _dowod(),
+        metryki=(_metryka(migawka="migawka-2"),),
+        przypadki=_przypadki("SMIB H=4", migawka="migawka-2"),
+    )
     assert a.odcisk != b.odcisk
 
 
 def test_zmiana_KONFIGURACJI_SOLVERA_przypadku_zmienia_odcisk_dowodu() -> None:
     """Różnica wyniku bywa różnicą nastaw solvera, nie fizyki — musi być w tożsamości."""
     bazowy = _dowod()
+    scenariusz_innego_kroku = TozsamoscScenariusza(
+        odcisk_migawki="migawka-smib-c1",
+        punkt_pracy=PUNKT_W_ZAKRESIE,
+        konfiguracja=dataclasses.replace(KONFIGURACJA, krok_s=0.0005),
+        czas_koncowy_s=2.0,
+        parametry={"czas_trwania_zwarcia_s": 0.12},
+    )
     inny_krok = replace(
         bazowy,
-        przypadki=(
-            PrzypadekWalidacji(
-                nazwa="SMIB H=4",
-                scenariusz=TozsamoscScenariusza(
-                    odcisk_migawki="migawka-smib-c1",
-                    punkt_pracy=PUNKT_W_ZAKRESIE,
-                    konfiguracja=dataclasses.replace(KONFIGURACJA, krok_s=0.0005),
-                    czas_koncowy_s=2.0,
-                    parametry={"czas_trwania_zwarcia_s": 0.12},
-                ),
-            ),
-        ),
+        metryki=(_metryka(scenariusz=scenariusz_innego_kroku),),
+        przypadki=(PrzypadekWalidacji(nazwa="SMIB H=4", scenariusz=scenariusz_innego_kroku),),
     )
     ten_sam_krok = replace(bazowy, przypadki=_przypadki("SMIB H=4"))
     assert inny_krok.odcisk != ten_sam_krok.odcisk
@@ -795,6 +879,7 @@ def test_ten_sam_benchmark_na_dwoch_scenariuszach_to_dwa_przypadki() -> None:
     """Nazwa nie jest tożsamością przypadku — scenariusz jest jej częścią."""
     dowod = replace(
         _dowod(),
+        metryki=(_metryka(migawka="migawka-1"),),
         przypadki=(
             PrzypadekWalidacji(nazwa="SMIB H=4", scenariusz=_scenariusz(migawka="migawka-1")),
             PrzypadekWalidacji(nazwa="SMIB H=4", scenariusz=_scenariusz(migawka="migawka-2")),
@@ -824,7 +909,7 @@ def _dowod_dla(urzadzenie: object, *, migawka: str = "migawka-smib-c1") -> Dowod
         model=_tozsamosc(urzadzenie),
         wyrocznia=ANDES,
         zakres=_zakres(),
-        metryki=(_metryka(),),
+        metryki=(_metryka(migawka=migawka),),
         przypadki=_przypadki("SMIB H=4", migawka=migawka),
     )
 

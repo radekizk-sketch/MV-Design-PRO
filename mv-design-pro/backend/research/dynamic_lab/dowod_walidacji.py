@@ -58,6 +58,7 @@ from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from typing import Any
 
+from dynamic_lab.pomiar_zgodnosci import PomiarNiepowiazanyError, PomiarZgodnosci
 from dynamic_lab.tozsamosc import (
     KonfiguracjaSolvera,
     PunktPracy,
@@ -72,6 +73,8 @@ __all__ = [
     "NiezadeklarowanaOsZakresuError",
     "OrzeczenieDowodowe",
     "OsZakresu",
+    "PomiarNiepowiazanyError",
+    "PomiarZgodnosci",
     "PrzypadekWalidacji",
     "PunktPracy",
     "RejestrDowodow",
@@ -448,26 +451,44 @@ class ZakresWalidacji:
 
 @dataclass(frozen=True)
 class MetrykiAkceptacji:
-    """Tolerancje ustalone PRZED biegiem — inaczej dowód dopasowuje się do wyniku.
+    """Tolerancja ustalona PRZED biegiem + POMIAR, którego nie da się wpisać.
 
-    ``nazwa`` jest obowiązkowa i wchodzi do odcisku dowodu. Bez niej metryka to
-    dwie gołe liczby: podmiana „maksymalne odchylenie kąta” na „RMS błędu
-    napięcia” przy tych samych liczbach była dla odcisku niewidoczna, choć
-    orzekała o czymś zupełnie innym.
+    ROZDZIELENIE RÓL. ``maks_blad_wzgledny`` jest DECYZJĄ człowieka podjętą przed
+    biegiem — literał jest tu właściwy, bo próg nie jest wynikiem pomiaru.
+    Zmierzony błąd jest WYNIKIEM i pochodzi wyłącznie z ``PomiarZgodnosci``,
+    który potrafi wytworzyć tylko ``pomiar_zgodnosci.zmierz_zgodnosc``.
+
+    DLACZEGO. Poprzednia wersja brała ``zmierzony_blad_wzgledny`` jako goły float
+    od wołającego, więc kompletny, przechodzący walidację dowód dawało się złożyć
+    BEZ URUCHOMIENIA SYMULACJI — wpisując zero. Cała szczelność reszty modelu
+    zaufania (odcisk z kompletu pól, brak danych ≠ pokrycie, wycofywanie) nie
+    miała wtedy znaczenia, bo fałszowało się wejście, a nie wnioskowanie.
+
+    Nazwa metryki NIE jest tu osobnym polem: bierze się z pomiaru. Dwie nazwy —
+    jedna w metryce, druga w pomiarze — byłyby drugą prawdą o tym samym.
     """
 
-    nazwa: str
     maks_blad_wzgledny: float
-    zmierzony_blad_wzgledny: float
+    pomiar: PomiarZgodnosci
 
     def __post_init__(self) -> None:
-        if not self.nazwa.strip():
+        if self.maks_blad_wzgledny < 0.0:
+            raise ValueError(f"{self.nazwa}: próg akceptacji nie może być ujemny")
+        if not self.pomiar.spojny():
             raise ValueError(
-                "Metryka akceptacji bez nazwy nie mówi, CO zmierzono — dwie gołe "
-                "liczby nie odróżniają błędu kąta od błędu napięcia."
+                f"{self.nazwa}: deklarowana wartość pomiaru ({self.pomiar.wartosc!r}) "
+                f"nie zgadza się z przeliczoną z jego własnych próbek "
+                f"({self.pomiar.przelicz()!r}). Pomiar niespójny wewnętrznie nie jest "
+                f"pomiarem — ktoś podmienił albo liczbę, albo dane."
             )
-        if self.maks_blad_wzgledny < 0.0 or self.zmierzony_blad_wzgledny < 0.0:
-            raise ValueError(f"{self.nazwa}: błędy nie mogą być ujemne")
+
+    @property
+    def nazwa(self) -> str:
+        return self.pomiar.nazwa
+
+    @property
+    def zmierzony_blad_wzgledny(self) -> float:
+        return self.pomiar.wartosc
 
     @property
     def spelnione(self) -> bool:
@@ -543,6 +564,15 @@ class DowodWalidacji:
             )
         if not self.metryki:
             raise ValueError("Dowód walidacji bez metryk akceptacji nie jest dowodem.")
+        odciski_przypadkow = {p.scenariusz.odcisk for p in self.przypadki}
+        for metryka in self.metryki:
+            if metryka.pomiar.odcisk_scenariusza not in odciski_przypadkow:
+                raise PomiarNiepowiazanyError(
+                    f'Metryka „{metryka.nazwa}" została zmierzona na scenariuszu '
+                    f"{metryka.pomiar.odcisk_scenariusza[:12]}…, którego NIE MA wśród "
+                    f"przypadków tego dowodu. Dowód orzekałby wtedy o biegu, którego "
+                    f"nie obejmuje — a wyglądałby na kompletny."
+                )
         klucze = [p.klucz_porzadkowy for p in self.przypadki]
         if len(set(klucze)) != len(klucze):
             raise ValueError(
