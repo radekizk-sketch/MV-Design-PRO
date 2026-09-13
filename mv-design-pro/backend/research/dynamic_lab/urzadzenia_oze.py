@@ -627,6 +627,26 @@ class MagazynEnergiiBESS:
 
     # -- kontrakt urządzenia --------------------------------------------------
 
+    def tempo_soc_na_jednostke_mocy(self) -> float:
+        """``dSOC/dt`` na jednostkę mocy w p.u. [1/s na p.u.] — JEDEN przelicznik.
+
+        DŁUG ZAMKNIĘTY TU (plan pre-Fable §2: „zakaz powielonego niejawnego
+        skalowania"). Wyrażenie ``s_bazowa_mva / (3600 · e_pojemnosc_mwh)``
+        stało w modelu DWA RAZY: w pochodnej ``d_soc`` i w
+        `krok_maksymalny_s`, który z niego wyprowadza granicę ważności kroku.
+        Dwie kopie tego samego przelicznika to dwie okazje do rozjazdu — i
+        rozjazd byłby wyjątkowo podstępny, bo granica ważności liczona INNYM
+        mnożnikiem niż fizyka meldowałaby „krok jest bezpieczny" dla kroku,
+        przy którym model łamie okno pracy.
+
+        Wykryte kontrolą mutacyjną: mutacja usuwająca ``s_bazowa_mva``
+        podstawiona w jedno z tych miejsc zabijała tylko część testów, bo drugie
+        miejsce nadal liczyło poprawnie.
+
+        Jednostki: ``[MVA] / ([s/h] · [MWh]) = 1/s`` na jednostkę mocy p.u.
+        """
+        return self.s_bazowa_mva / (3600.0 * self.e_pojemnosc_mwh)
+
     def krok_maksymalny_s(self) -> float:
         r"""Największy krok, przy którym okno SOC pozostaje zbiorem NIEZMIENNICZYM.
 
@@ -665,8 +685,7 @@ class MagazynEnergiiBESS:
         """
         szybkosc_maks = (
             self.s_falownika_pu
-            * self.s_bazowa_mva
-            / (3600.0 * self.e_pojemnosc_mwh)
+            * self.tempo_soc_na_jednostke_mocy()
             * max(1.0 / self.sprawnosc_rozladowania, self.sprawnosc_ladowania)
         )
         return self.pasmo_soc / szybkosc_maks
@@ -762,8 +781,7 @@ class MagazynEnergiiBESS:
         d_soc = (
             -p_rzeczywiste
             * self.waga_sprawnosci(p_rzeczywiste)
-            * self.s_bazowa_mva
-            / (3600.0 * self.e_pojemnosc_mwh)
+            * self.tempo_soc_na_jednostke_mocy()
         )
         return np.array(
             [(p_cel - p) / self.t_p_s, (q_cel - q) / self.t_q_s, d_soc, d_theta, d_omega],
