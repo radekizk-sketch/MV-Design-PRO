@@ -172,7 +172,7 @@ INWENTARZ: tuple[PozycjaOgranicznika, ...] = (
         wielkosc_pl="moduł prądu przekształtnika",
         jednostka="p.u.",
         postac=PostacOgranicznika.OKRAG_Z_PRIORYTETEM,
-        klasa_ryzyka=KlasaRyzyka.ALTERNATYWA_NIEZMIERZONA,
+        klasa_ryzyka=KlasaRyzyka.ALTERNATYWA_ZMIERZONA,
         alternatywy_pl=(
             "priorytet składowej czynnej zamiast biernej",
             "skalowanie całego wektora bez rozkładu na składowe",
@@ -184,10 +184,9 @@ INWENTARZ: tuple[PozycjaOgranicznika, ...] = (
             "jest cały wektor — rozkład na składowe nie ma wtedy odniesienia."
         ),
         pomiar_pl=(
-            "NIE ZMIERZONO: różnica trajektorii między priorytetem biernej i czynnej "
-            "przy tym samym I_max nie została policzona na żadnym benchmarku."
+            "ZMIERZONE uprzężą §11.3/9 (sieć SN z dwoma falownikami, zwarcie na SN2, trapez niejawny, krok 2 ms). Zapad PŁYTKI (x_f = 0,30 p.u.): różnica DOKŁADNIE ZEROWA we wszystkich pięciu kanałach — ogranicznik nieaktywny, postacie NIEROZRÓŻNIALNE. Zapad GŁĘBOKI (x_f = 0,10 p.u.): max |ΔU| = 0,0622 p.u. na zaciskach DER2, max |ΔI| = 0,195 p.u. (priorytet czynnej dobija do 1,200 p.u., priorytet biernej zatrzymuje się na 1,005), max |ΔQ| = 0,052 p.u. — wszystkie maksima w chwili 0,512 s, czyli W ZWARCIU."
         ),
-        test_przypinajacy="test_priorytet_rozstrzyga_ktora_skladowa_ustepuje",
+        test_przypinajacy="test_zapad_GLEBOKI_odroznia_postacie_i_podaje_LICZBE",
     ),
     PozycjaOgranicznika(
         identyfikator="clamp-podstawowy",
@@ -352,7 +351,12 @@ INWENTARZ: tuple[PozycjaOgranicznika, ...] = (
             "Prąd wsparcia FRT jest rezerwowany PRZED podziałem reszty, bo wymaganie "
             "kodeksowe dotyczy składowej biernej, nie sumy."
         ),
-        pomiar_pl="NIE ZMIERZONO różnicy wobec wariantu bez rezerwacji.",
+        pomiar_pl=(
+            "Priorytet składowej: ZMIERZONY (patrz `okrag-pradu-falownika` — 0,0622 p.u. "
+            "na napięciu zacisków przy głębokim zapadzie). Natomiast sama REZERWACJA "
+            "prądu FRT: NIE ZMIERZONO różnicy wobec wariantu bez rezerwacji — to osobna "
+            "decyzja o postaci, której alternatywa nie jest zaimplementowana."
+        ),
         test_przypinajacy="test_gfl_rezerwuje_prad_frt_przed_podzialem",
     ),
     PozycjaOgranicznika(
@@ -362,11 +366,14 @@ INWENTARZ: tuple[PozycjaOgranicznika, ...] = (
         wielkosc_pl="moduł prądu wstrzykiwanego (nasycenie zaworów)",
         jednostka="p.u.",
         postac=PostacOgranicznika.OKRAG_Z_PRIORYTETEM,
-        klasa_ryzyka=KlasaRyzyka.ALTERNATYWA_NIEZMIERZONA,
+        klasa_ryzyka=KlasaRyzyka.ALTERNATYWA_ZMIERZONA,
         alternatywy_pl=("priorytet czynnej", "skalowanie wektora bez rozkładu"),
         uzasadnienie_pl="Ogranicznik WSPÓLNY z modułami OZE — jedna reguła, nie dwie.",
-        pomiar_pl="NIE ZMIERZONO (dziedziczy po `okrag-pradu-falownika`).",
-        test_przypinajacy="test_ogranicznik_pradu_zgadza_sie_z_ogranicznikiem_falownika_gfl",
+        pomiar_pl=(
+            "ZMIERZONE uprzężą §11.3/9 (sieć SN z dwoma falownikami, zwarcie na SN2, trapez niejawny, krok 2 ms). Zapad PŁYTKI (x_f = 0,30 p.u.): różnica DOKŁADNIE ZEROWA we wszystkich pięciu kanałach — ogranicznik nieaktywny, postacie NIEROZRÓŻNIALNE. Zapad GŁĘBOKI (x_f = 0,10 p.u.): max |ΔU| = 0,0622 p.u. na zaciskach DER2, max |ΔI| = 0,195 p.u. (priorytet czynnej dobija do 1,200 p.u., priorytet biernej zatrzymuje się na 1,005), max |ΔQ| = 0,052 p.u. — wszystkie maksima w chwili 0,512 s, czyli W ZWARCIU. Pomiar wykonano WŁAŚNIE na tej ścieżce (falownik GFL), więc jest to "
+            "pomiar własny tej pozycji, a nie odziedziczony."
+        ),
+        test_przypinajacy="test_zapad_GLEBOKI_odroznia_postacie_i_podaje_LICZBE",
     ),
     PozycjaOgranicznika(
         identyfikator="gfl-rzutowanie-stanow",
@@ -457,7 +464,12 @@ INWENTARZ: tuple[PozycjaOgranicznika, ...] = (
         klasa_ryzyka=KlasaRyzyka.ALTERNATYWA_NIEZMIERZONA,
         alternatywy_pl=("priorytet czynnej",),
         uzasadnienie_pl="Wspólna reguła przekształtnika (konwencje), nie druga prawda.",
-        pomiar_pl="NIE ZMIERZONO (dziedziczy po `okrag-mocy-pozornej`).",
+        pomiar_pl=(
+            "NIE ZMIERZONO dla TEJ rodziny. Rząd zjawiska jest znany z pomiaru na "
+            "falowniku GFL (`okrag-pradu-falownika`: 0,0622 p.u. na napięciu zacisków), "
+            "ale jednostka PQ ma inne stałe czasowe i inny domyślny priorytet, więc "
+            "przeniesienie liczby byłoby ekstrapolacją, nie pomiarem."
+        ),
         test_przypinajacy="test_magazyn_odrzuca_dyspozycje_ponad_moc_falownika",
     ),
     PozycjaOgranicznika(
@@ -470,7 +482,11 @@ INWENTARZ: tuple[PozycjaOgranicznika, ...] = (
         klasa_ryzyka=KlasaRyzyka.ALTERNATYWA_NIEZMIERZONA,
         alternatywy_pl=("priorytet czynnej", "skalowanie wektora bez rozkładu"),
         uzasadnienie_pl="Wspólna reguła przekształtnika.",
-        pomiar_pl="NIE ZMIERZONO (dziedziczy po `okrag-pradu-falownika`).",
+        pomiar_pl=(
+            "NIE ZMIERZONO dla TEJ rodziny. Rząd zjawiska znany z pomiaru na falowniku "
+            "GFL (`okrag-pradu-falownika`), ale magazyn ma domyślnie priorytet CZYNNEJ "
+            "(odwrotnie niż GFL), więc kierunek różnicy może być inny."
+        ),
         test_przypinajacy="test_prad_magazynu_nie_przekracza_ogranicznika",
     ),
     PozycjaOgranicznika(
@@ -551,7 +567,11 @@ INWENTARZ: tuple[PozycjaOgranicznika, ...] = (
         klasa_ryzyka=KlasaRyzyka.ALTERNATYWA_NIEZMIERZONA,
         alternatywy_pl=("priorytet czynnej", "skalowanie wektora bez rozkładu"),
         uzasadnienie_pl="Wspólna reguła przekształtnika.",
-        pomiar_pl="NIE ZMIERZONO (dziedziczy po `okrag-pradu-falownika`).",
+        pomiar_pl=(
+            "NIE ZMIERZONO dla TEJ rodziny. Rząd zjawiska znany z pomiaru na falowniku "
+            "GFL (`okrag-pradu-falownika`), ale magazyn ma domyślnie priorytet CZYNNEJ "
+            "(odwrotnie niż GFL), więc kierunek różnicy może być inny."
+        ),
         test_przypinajacy="test_prad_magazynu_nie_przekracza_ogranicznika",
     ),
     PozycjaOgranicznika(
