@@ -641,6 +641,67 @@ def _luki_kwalifikacji(raport: dict[str, Any]) -> list[str]:
     return luki
 
 
+def _macierz_pokrycia() -> dict[str, Any]:
+    """Pokrycie ZDOLNOSCI, nie lista dowodow — patrz `dynamic_lab.macierz_pokrycia`.
+
+    Wchodzi do raportu, bo brak jest tu najwazniejsza informacja, a rejestr
+    dowodow czytany bez mapy zdolnosci zawsze wyglada dobrze.
+    """
+    from dynamic_lab.drabina import NiezaleznoscOdniesienia, czy_walidacja_fizyczna
+    from dynamic_lab.macierz_pokrycia import MACIERZ, StatusPokrycia, pokrycie
+
+    pozycje = []
+    for zdolnosc in MACIERZ:
+        p = pokrycie(zdolnosc.identyfikator)
+        pozycje.append(
+            {
+                "zdolnosc": zdolnosc.identyfikator,
+                "opis_pl": zdolnosc.opis_pl,
+                "status": p.status.value,
+                "niezaleznosc": (
+                    None
+                    if p.najmocniejsza_niezaleznosc is None
+                    else p.najmocniejsza_niezaleznosc.value
+                ),
+                "potwierdzona": p.potwierdzona,
+                "dowody": [q.identyfikator for q in p.pozycje],
+            }
+        )
+    return {
+        "pozycje": pozycje,
+        "zdolnosci_razem": len(pozycje),
+        "bez_zadnego_dowodu": [w["zdolnosc"] for w in pozycje if w["status"] == "brak_dowodu"],
+        "bez_dowodu_o_wartosci": [w["zdolnosc"] for w in pozycje if not w["potwierdzona"]],
+        "z_wyrocznia_zewnetrzna": [
+            w["zdolnosc"]
+            for w in pozycje
+            if w["status"] == StatusPokrycia.WYROCZNIA_ZEWNETRZNA.value
+        ],
+        "najmocniejsza_niezaleznosc": max(
+            (w["niezaleznosc"] for w in pozycje if w["niezaleznosc"]),
+            default=None,
+        ),
+        "walidacja_fizyczna": czy_walidacja_fizyczna(),
+        "poziom_pomiaru_na_obiekcie": NiezaleznoscOdniesienia.POMIAR_NA_OBIEKCIE.value,
+    }
+
+
+def _ryzyko_postaci_modelu() -> dict[str, Any]:
+    """Inwentarz ogranicznikow z klasyfikacja ryzyka postaci — patrz §11.3/8."""
+    from dynamic_lab.ryzyko_postaci_modelu import INWENTARZ, KlasaRyzyka
+
+    wg_klasy = {
+        klasa.value: [p.identyfikator for p in INWENTARZ if p.klasa_ryzyka is klasa]
+        for klasa in KlasaRyzyka
+    }
+    return {
+        "pozycje_razem": len(INWENTARZ),
+        "wg_klasy_ryzyka": wg_klasy,
+        "alternatywy_niezmierzone": wg_klasy[KlasaRyzyka.ALTERNATYWA_NIEZMIERZONA.value],
+        "luki_modelu": wg_klasy[KlasaRyzyka.LUKA_MODELU.value],
+    }
+
+
 def zbierz_raport(*, szybko: bool = False, wykonaj_sondy: Any = None) -> dict[str, Any]:
     """Pełny raport kwalifikacyjny laboratorium.
 
@@ -665,6 +726,8 @@ def zbierz_raport(*, szybko: bool = False, wykonaj_sondy: Any = None) -> dict[st
         "porownanie_integratorow": _porownanie_integratorow(szybko),
         "czas_krytyczny_zwarcia": _czas_krytyczny(szybko),
         "mutacje": mutacje,
+        "macierz_pokrycia": _macierz_pokrycia(),
+        "ryzyko_postaci_modelu": _ryzyko_postaci_modelu(),
     }
     raport["luki_kwalifikacji"] = _luki_kwalifikacji(raport)
     raport["braki_kwalifikacji"] = _braki_kwalifikacji(raport)
@@ -689,6 +752,20 @@ def zbierz_raport(*, szybko: bool = False, wykonaj_sondy: Any = None) -> dict[st
         # (recenzja niezależna, P2-DELTA-23).
         "rozplyw_pandapower_wykonany": False,
         "werdykt_trajektorii": raport["trajektoria_vs_andes"].get("status", "POMINIETE"),
+        # POKRYCIE JAKO LICZBA, nie jako wrazenie. Mianownik jest podany, bo
+        # „8 zdolnosci bez dowodu o wartosci" bez niego nie znaczy nic.
+        "zdolnosci_bez_dowodu_o_wartosci": (
+            f"{len(raport['macierz_pokrycia']['bez_dowodu_o_wartosci'])}"
+            f"/{raport['macierz_pokrycia']['zdolnosci_razem']}"
+        ),
+        "zdolnosci_z_wyrocznia_zewnetrzna": (
+            f"{len(raport['macierz_pokrycia']['z_wyrocznia_zewnetrzna'])}"
+            f"/{raport['macierz_pokrycia']['zdolnosci_razem']}"
+        ),
+        "walidacja_fizyczna": raport["macierz_pokrycia"]["walidacja_fizyczna"],
+        "ograniczniki_z_niezmierzona_alternatywa": len(
+            raport["ryzyko_postaci_modelu"]["alternatywy_niezmierzone"]
+        ),
     }
     return raport
 

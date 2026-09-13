@@ -1,301 +1,193 @@
-# PRZEKAZANIE PRZED DECYZJĄ ARCHITEKTONICZNĄ — INŻYNIERIA DYNAMIKI (2026-09)
+# PRE-FABLE DYNAMIC ENGINEERING HANDOFF — 2026-09
 
-**Typ dokumentu:** materiał decyzyjny (PRE-DECISION)
-**Status:** PAKIET INŻYNIERSKI GOTOWY DO DECYZJI ARCHITEKTONICZNEJ
-**Data:** 2026-09-12
+**Autor:** Claude Opus 5 (Principal Dynamic Simulation Engineer / Numerical Methods Engineer)
+**Zakres:** transza kodowa §11.3 — fizyka i modele, przed powrotem Fable
 **Gałąź:** `claude/max-dynamic-audit-kzbivg`
-**Adresat:** Fable 5.1 jako Lead Principal Engineer
-
-> **CZYM TEN DOKUMENT NIE JEST.** Nie ustanawia architektury kanonicznej, nie
-> zmienia żadnego kontraktu FROZEN, nie przyznaje żadnego statusu dowodowego.
-> Warstwa dynamiczna pozostaje `UNVALIDATED_MODEL`; bezpiecznik D-00 (FAIL
-> CLOSED) obowiązuje bez zmian.
+**Punkt wyjścia:** `a6ee782c` (9/9 zielonych workflowów) · `575ce826` (commit dokumentujący ten stan)
 
 ---
 
-## 0. RELACJA DO ISTNIEJĄCYCH DOKUMENTÓW — przeczytaj najpierw
+## 0. Zdanie, od którego trzeba zacząć
 
-Ten dokument **NIE zastępuje** i **NIE powiela**:
+Ta transza **nie podniosła statusu dowodowego warstwy dynamicznej i nie mogła
+tego zrobić**. Podniosła ODPORNOŚĆ NA FAŁSZYWY POZYTYW: zamknęła drogi, którymi
+dawało się dojść do wyniku wyglądającego na dowód bez wykonania pomiaru, i
+zamieniła kilka milczących braków w braki policzone i nazwane.
 
-| Dokument | Co zawiera | Relacja |
+Stan formalny pozostaje:
+
+| Oś | Stan | Czy zmieniony w tej transzy |
 |---|---|---|
-| `docs/plan/KARTA_MAX_DYNAMIC_SIMULATION_AUDIT_2026-09.md` | audyt + rejestr D-00…D-13 | obowiązuje bez zmian |
-| `docs/plan/PAKIET_DECYZYJNY_DYNAMIKA_D01_D13_2026-09.md` | pełny pakiet decyzyjny (1390 wierszy) z erratą | **dokument nadrzędny dla dynamiki** |
-| `backend/research/README.md` | spis laboratorium badawczego | obowiązuje, uzupełniony |
+| MATHEMATICALLY VERIFIED | CZĘŚCIOWO | rozszerzony (AVR/governor/PSS wobec postaci zamkniętej i transmitancji) |
+| PHYSICALLY SUPPORTED | CZĘŚCIOWO | rozszerzony (re-inicjalizacja, bazy magazynu, FRT ze śladu) |
+| PHYSICALLY VALIDATED | **NIE** | **BEZ ZMIAN — i nie ma drogi, żeby to zmienić bez danych z obiektu** |
+| PRODUCTION-READY | **NIE** | **BEZ ZMIAN** |
+| REGULATORY-EVIDENCE-READY | **NIE** | **BEZ ZMIAN** |
 
-**Ten dokument dokłada do nich wyłącznie to, co powstało w tej sesji.**
-
-### 0.1 KOREKTA WŁASNA — sposób pracy w tej sesji
-
-Zaczynając, przeszukałem `backend/src/**` i znalazłem tam wyłącznie produkcyjny
-stub `network_model/solvers/stability_rms/engine.py`. Na tej podstawie uznałem,
-że laboratorium dynamiczne trzeba zbudować, i zbudowałem równoległy rdzeń
-(~3 500 wierszy) w `backend/src/research/dynamics/`.
-
-**To było błędne.** Dojrzałe laboratorium **już istniało** w
-`backend/research/dynamic_lab/` — 20 modułów, 13 413 wierszy, 29 plików testów,
-wyrocznia ANDES, badanie sztywności, CCT z kryterium równych pól. Mój katalog
-leżał POZA moim zasięgiem wyszukiwania, bo szukałem tylko pod `src/`.
-
-Zbudowany przeze mnie rdzeń **skasowałem w całości** przed scaleniem: dwie
-ścieżki tej samej fizyki to defekt, który kanon repozytorium nazywa wprost, a
-utrzymywanie słabszej kopii obok dojrzałego oryginału byłoby dokładnie nim.
-Zachowałem wyłącznie to, czego w laboratorium NIE BYŁO (§3).
-
-Zapisuję to widocznie, a nie cichą edycją — zgodnie z dyscypliną erraty przyjętą
-w pakiecie decyzyjnym.
+Najważniejsza liczba całego dokumentu, wyliczana z rejestru (`macierz_pokrycia`):
+**2 zdolności z 15 mają odniesienie o niezależności wyższej niż „ten sam autor,
+te same równania"** — maszyna synchroniczna i jej regulatory, obie wobec ANDES.
+Cały tor przekształtnikowy, czyli sedno produktu MV-DESIGN-PRO, opiera się
+wyłącznie na odniesieniach poziomu N0.
 
 ---
 
-## 1. HEAD i commity
+## 1. Macierz zamknięcia §11.3
 
-| Pozycja | Wartość |
+| Pozycja §11.3 | Stan | Dowód wykonywalny |
+|---|---|---|
+| 1. Re-inicjalizacja po zmianie topologii zwarciowej | **IMPLEMENTED_AND_TESTED** | `research/dynamic_lab/reinicjalizacja.py`, `tests/research/test_reinicjalizacja.py` (24 testy) |
+| 2. Pełny audyt baz magazynu urządzenie↔sieć | **IMPLEMENTED_AND_TESTED** | `research/dynamic_lab/bazy_bess.py`, `tests/research/test_bazy_bess.py` (49 testów) |
+| 3. Samodzielne konstruowanie evidence | **IMPLEMENTED_AND_TESTED** | `research/dynamic_lab/pomiar_zgodnosci.py`, `tests/research/test_pomiar_zgodnosci.py` (20 testów) |
+| 4. FRT konsumujący realne trajektorie | **IMPLEMENTED_AND_TESTED** | `research/dynamic_lab/frt_z_biegu.py`, `tests/research/test_frt_z_biegu.py` (24 testy) |
+| 5. Walidacja AVR | **IMPLEMENTED_AND_TESTED** | `tests/research/test_walidacja_regulatorow.py` |
+| 6. Walidacja governora | **IMPLEMENTED_AND_TESTED** | tamże |
+| 7. Walidacja PSS | **IMPLEMENTED_AND_TESTED** | tamże + `StabilizatorSystemowy` w `regulatory.py` |
+| 8. Model-form risk ograniczników i nasyceń | **IMPLEMENTED_AND_TESTED** | `research/dynamic_lab/ryzyko_postaci_modelu.py` (26 pozycji), bramka kompletnosci skanem AST |
+| 9. Uprząż porównania postaci modelu | **PROTOTYPED_WITH_MEASUREMENTS** | dwie strategie ogranicznika GFM z pomiarami; uogólniona uprząż dla pozostałych 10 pozycji — NIE zbudowana |
+| 10. Audyt równań urządzeń przez wykonanie | **PROTOTYPED_WITH_MEASUREMENTS** | pokryty dla AVR/governor/PSS i baz magazynu; dla maszyny, falowników i DFIG — poziom W1/W2 bez systematycznego przebiegu równanie-po-równaniu |
+| 11. Przypadek wielourządzeniowy | **PROTOTYPED_WITH_MEASUREMENTS** | `siec_sn_z_der` (2 falowniki + odbiór) użyta jako baza testów §4; brak dedykowanego benchmarku z pomiarem interakcji |
+| 12. Przypadek wieloźródłowy / wielozdarzeniowy | **RESERVED_FOR_FABLE_DECISION** | wymaga rozstrzygnięcia, czym jest tożsamość zdarzenia przy permutacji — patrz §4 tego dokumentu |
+| 13. Taksonomia klas odniesienia | **IMPLEMENTED_AND_TESTED** | oś N w `research/dynamic_lab/drabina.py` + testy |
+| 14. Macierz pokrycia walidacyjnego | **IMPLEMENTED_AND_TESTED** | `research/dynamic_lab/macierz_pokrycia.py` (19 testów) |
+| 15. Uprząż kwalifikacyjna — jedno polecenie | **IMPLEMENTED_AND_TESTED** | `research/kwalifikacja.py`, rozszerzona o macierz pokrycia i inwentarz ryzyka |
+
+Kategoria **BLOCKED_BY_MISSING_EXTERNAL_REFERENCE** nie została użyta ani razu:
+żadna z pozycji §11.3 nie okazała się zablokowana brakiem zewnętrznego
+odniesienia. Blokadą zewnętrzną jest natomiast sam awans osi „PHYSICALLY
+VALIDATED" — patrz §5.
+
+---
+
+## 2. Nowy kod
+
+| Moduł | Co wnosi |
 |---|---|
-| Punkt wyjścia | `b2dbd376` |
-| Milestone A (produkcja) | `4ae788e9` |
-| Milestone B (laboratorium) | patrz `git log` gałęzi |
+| `dynamic_lab/reinicjalizacja.py` (433 w.) | Re-inicjalizacja jako operacja pierwszej klasy: stany różniczkowe TRZYMANE (ciągłość strumienia, kąta, prędkości, SOC — skok wymagałby nieskończonego napięcia/momentu/mocy), algebra rozwiązana OD NOWA. Residuum KCL liczone NIEZALEŻNIE od solvera. Wycofanie topologii przy nieudanej re-inicjalizacji. |
+| `dynamic_lab/bazy_bess.py` (≈250 w.) | Łańcuch baz urządzenie↔sieć w jednym miejscu; JEDEN przelicznik `s_bazowa/(3600·E)`. Niezmienniczość SOC(t) i P(t)[MW] wobec zmiany bazy mocy. |
+| `dynamic_lab/pomiar_zgodnosci.py` (266 w.) | Pomiar jako obiekt niewypisywalny ręcznie: żeton tożsamościowy, przeliczalność z własnych próbek, wiązanie odciskiem scenariusza. |
+| `dynamic_lab/frt_z_biegu.py` (568 w.) | Ocena FRT konsumująca `WynikDynamiczny`: kanały deklarowane per kryterium, zamknięty słownik powodów nieorzekalności, własności biegu jako warunek orzekania. |
+| `dynamic_lab/ryzyko_postaci_modelu.py` (629 w.) | 26 pozycji inwentarza ograniczników z klasyfikacją ryzyka postaci; bramka kompletności skanem drzewa składni. |
+| `dynamic_lab/macierz_pokrycia.py` (293 w.) | 15 zdolności × najmocniejszy dowód; „brak danych" nigdy nie daje potwierdzenia. |
+| `dynamic_lab/regulatory.py` (+119 w.) | `StabilizatorSystemowy` (PSS1A: washout + 2× lead-lag) z WYPROWADZONĄ postacią stanową; wejście PSS do uchybu AVR PRZED ogranicznikiem. |
+| `dynamic_lab/drabina.py` | Trzecia oś: niezależność odniesienia N0–N4. |
+| `dynamic_lab/frt.py` (+43 w.) | `PrzebiegPraduWsparcia.z_mocy_biernej` — ta sama tożsamość `I_q = Q/|V|`, inne wejście, zgodność przypięta testem. |
+
+Testy: **6 nowych plików**, ≈2 500 wierszy testów, ≈150 nowych funkcji testowych.
 
 ---
 
-## 2. MILESTONE A — naprawy PRODUKCYJNE (commit `4ae788e9`)
+## 3. Kluczowe pomiary
 
-Domknięcie wszystkich znalezisk drugiej niezależnej recenzji. Szczegóły w
-treści commitu; skrót:
+**Re-inicjalizacja (§1).** `max Δx0 = 1.09421789` (stan sprzed transzy) sprowadzone
+do zera z konstrukcji: stany różniczkowe są przenoszone bez zmiany. Norma `‖f‖`
+po zwarciu na zaciskach wynosi **6,2496e-02** i zgadza się z postacią zamkniętą
+`Pm/(2H) = 0,0625` — dlatego bramkowanie `‖f‖` jako warunku równowagi PO ZWARCIU
+byłoby żądaniem, żeby zwarcie nic nie robiło. Kryterium równowagi jest opcjonalne
+(`wymagaj_rownowagi=False` domyślnie).
 
-| Znalezisko | Naprawa | Dowód |
-|---|---|---|
-| **P0** — cztery zdolności bez punktu wywołania bramki | `network_model/core/autorytet_wyniku_zwarciowego.py`; proweniencji nie da się zadeklarować, tylko wyprowadzić; wpięte w 4 produkcyjne punkty | `tests/api/test_granica_autorytetu_downstream.py` (10), `tests/application/test_autorytet_wyniku_zwarciowego.py` (124) |
-| **P1-DELTA-07** — `k_sc=1e308` → `I_k=inf` z etykietą DEKLARACJA | kontrola dziedziny WYNIKU, znacznik `POZA_DZIEDZINA_WYNIKU`, kod SI-114 | macierz akceptacji w testach granicy |
-| **P1-DELTA-08** — globalne `ready` zawyżało komunikat | pole `ready` USUNIĘTE; `kompletnosc_modelu` + mapa `zdolnosci` | `test_kompletnosc_modelu_nie_jest_zgoda_na_analize` |
-| **P2-DELTA-09** — `SOURCE_VERIFIED` bez weryfikacji | → `SOURCE_REFERENCED` | pomiar inwentarza |
-| **P2-DELTA-10** — czerwona bramka zakresu | `domain/dobor_aparatu_pola.py` do `CONTRACT_SOURCES` (+0 trafień, 0 kolizji) | `scripts/test_solver_input_substitute_guard.py` 44/44 |
-| **P2-DELTA-11 + Icw/Icu nN** | `Ics ≤ Icu` zostaje twarde (IEC 60947-2 §4.3.5.2.2); `Icw ≤ Icu` → WIARYGODNOSC; odstępstwa dają wynik STRUKTURALNY | `test_niezmienniki_fizyczne_katalogu.py` 28/28 |
+**Kampania mutacyjna §5–§7.** 11 mutacji źródłowych, kotwice weryfikowane,
+**11/11 zabitych**. Jedna (`M-AVR-05`, usunięcie rzutowania w `stan_ustalony`)
+w pierwszym przebiegu **PRZEŻYŁA komplet 35 testów** — bo wszystkie startowały
+z punktu pracy wewnątrz zakresu wzbudnicy. Dołożony test pokrywa obie granice
+dla AVR i governora.
 
-**Weryfikacja Milestone A:** backend 12 031 passed / 0 failed; frontend 11 989
-passed / 0 failed; ruff 0; black 0; 24 guardy zielone.
-
----
-
-## 3. MILESTONE B — wkład do LABORATORIUM badawczego
-
-Tylko to, czego w laboratorium nie było.
-
-### 3.1 DEFEKT: wyłączenie jednego toru rozpinało cały korytarz
-
-**Odtworzenie przed naprawą** (nie wydedukowane z lektury):
+**Uprząż kwalifikacyjna (tryb szybki, SHA tej transzy):**
 
 ```
-dwa tory GEN–SYS po x = 0,40 p.u.
-Ybus[0,0] przed             = -5j
-z_wylaczona_galezia("GEN","SYS")
-Ybus[0,0] po                =  0j        <- korytarz ROZPIĘTY
-stan gałęzi                 = [False, False]   <- oba tory
+status_kwalifikacji:                  NIEKOMPLETNE   (tryb szybki pomija CCT i porównanie metod)
+mutacje_zabite:                       13/13
+najgorsza_norma_pochodnej:            8,33e-17
+dowod_zewnetrzny_wykonany:            true   (ANDES TDS)
+rozplyw_pandapower_wykonany:          false
+zdolnosci_bez_dowodu_o_wartosci:      8/15
+zdolnosci_z_wyrocznia_zewnetrzna:     2/15
+walidacja_fizyczna:                   false
+ograniczniki_z_niezmierzona_alternatywa: 10
 ```
 
-`TopologiaSieci.z_wylaczona_galezia(od, do)` adresowało gałąź **parą szyn**, a
-pętla nie miała przerwania — wyłączało więc WSZYSTKIE tory między wskazanymi
-szynami naraz. `Galaz` nie miała żadnej tożsamości, więc nie dało się nawet
-wskazać, który tor ma paść.
+**Inwentarz ryzyka postaci (26 pozycji):** postać wymuszona — 11; alternatywa
+zmierzona — 5; **alternatywa NIEZMIERZONA — 10**; luka modelu — 1.
 
-**Dlaczego było niewidoczne:** żaden istniejący scenariusz nie miał dwóch
-gałęzi na tę samą parę szyn. Skutek był CICHY i wyglądał wiarygodnie — przebieg
-pokazywał utratę synchronizmu po „wyłączeniu linii", czyli to, czego badacz się
-spodziewa po wyłączeniu OSTATNIEGO toru.
-
-**Ten sam wzorzec był już raz w tym laboratorium naprawiony dla BOCZNIKÓW**
-(`bez_bocznika_o_zrodle` zastąpiło kasowanie wszystkiego na szynie, defekt E1
-audytu). Gałąź została wtedy pominięta.
-
-**Naprawa:** `Galaz.ident` (nadawany deterministycznie `"<od>-<do>#<n>"`),
-`z_wylaczona_galezia_po_id(ident)`, para szyn dopuszczalna **tylko gdy
-jednoznaczna** (inaczej błąd głośny), `WylaczenieGalezi(ident=...)`.
-
-**Regresja:** `tests/research/test_tory_rownolegle.py` (10 przypadków, w tym
-obie strony predykatu i powtórne wyłączenie).
-
-### 3.2 POMIAR: błąd trajektorii punkt po punkcie wobec ANDES
-
-Domyka wiersz z §5.2 pakietu decyzyjnego, który brzmiał **„NIE ZMIERZONY"**.
-
-Istniejące porównania uruchamiały w ANDES wyłącznie `PFlow` i `EIG` — po stronie
-wzorca trajektoria nie powstawała w ogóle. Nowy moduł
-`dynamic_lab/wzorzec_trajektoria.py` uruchamia `TDS` po obu stronach.
-
-**Przypadek:** SMIB o dwóch torach (0,30 p.u. każdy), maszyna klasyczna /
-GENCLS, `H = 4 s`, `P = 0,50` p.u.; wyłączenie jednego toru w `t = 1,0 s`
-(korytarz 0,15 → 0,30 p.u.); amplituda kołysania ≈ 8,8°.
-
-**Wynik przy kroku 1 ms po obu stronach:**
-
-| Wielkość | max \|Δ\| | RMS | max \|Δ\| / zakres |
-|---|---|---|---|
-| kąt wirnika δ | 4,102e-05 rad | 2,203e-05 rad | 2,68e-04 |
-| prędkość ω | 9,947e-07 p.u. | 5,487e-07 p.u. | 2,56e-04 |
-| punkt pracy δ₀ | 3,676e-09 rad | — | — |
-
-**Drabina kroku — błąd maleje, ale ma PODŁOGĘ:**
-
-| krok | max \|Δδ\| [rad] | stosunek |
-|---|---|---|
-| 4 ms | 1,838e-04 | — |
-| 2 ms | 6,899e-05 | 2,66× |
-| 1 ms | 4,102e-05 | 1,68× |
-| 0,5 ms | 3,354e-05 | **1,22×** |
-
-**Interpretacja — uczciwa.** Błąd jest zdominowany dyskretyzacją do ok. 1 ms, po
-czym wychodzi na podłogę ≈ 3e-05 rad zamiast dążyć do zera. Podłoga **nie jest**
-błędem równań (widmo zgadza się do 1e-08) ani punktu pracy (3,7e-09 rad).
-**Zmierzone prawdopodobne źródło:** ANDES zagęszcza krok w otoczeniu
-przełączenia (`min dt = 1e-04 s` niezależnie od zadanego `tstep`), laboratorium
-przechodzi tę chwilę krokiem stałym — różnica dotyczy **traktowania
-nieciągłości**, nie fizyki. **Nie rozstrzygnięto tego do końca** i tak jest
-raportowane.
-
-**Odtworzenie:** `pytest backend/tests/research/test_wzorzec_trajektoria.py`
-(pomijane bez ANDES — pominięta wyrocznia nie jest walidacją).
-
-### 3.3 RAMA KAMPANII MUTACYJNEJ (`dynamic_lab/mutacje.py`, `katalog_mutacji.py`)
-
-Laboratorium nie miało ramy mutacyjnej — dwa testy wspominały mutacje ad hoc.
-
-**Zasada:** mutacja wprowadza NAZWANY defekt i ma przypisany DETEKTOR. Mutacja
-bez wskazanego detektora nie ma prawa powstać (walidacja przy budowie).
-
-**Trzy wyniki, nie dwa.** `BLAD_WYKONANIA` jest osobny od `PRZEZYLA`: mutacja,
-która wysypała się przy budowie scenariusza, nie dowodzi, że detektor działa —
-dowodzi, że scenariusz jest zepsuty. Zliczanie jej jako zabicia zawyżałoby wynik.
-Przypięte testem `test_wyjatek_w_mutacji_nie_liczy_sie_jako_zabicie`.
-
-**Wynik kampanii: 16/16 zabitych, 0 luk krytycznych.**
-
-| Klasa | Mutacje | Przykładowy detektor |
-|---|---|---|
-| FIZYKA | 4 | tożsamość gałęzi + Ybus; `‖f(x₀,y₀)‖` w inicjalizacji |
-| NUMERYKA | 4 | rozłączne stany `StatusKroku`; przebiegi euler vs rk4 |
-| KONTRAKT | 4 | `NiezgodnaDlugoscPrzebieguError`; walidacja zdarzenia przy budowie |
-| TOZSAMOSC | 4 | `odcisk_topologii`; `SilnikRMS.siatka_czasu` |
-
-**Uczciwość pomiaru:** pierwszy bieg dał 14/16 z dwoma `BLAD_WYKONANIA` — obie
-porażki były w MOICH scenariuszach (zła sygnatura `czestotliwosc_hz`
-i `odcisk_topologii`), nie w laboratorium. Rama zadziałała dokładnie tak, jak ma:
-nie policzyła ich jako zabić.
-
-### 3.4 UPRZĄŻ KWALIFIKACYJNA (`research/kwalifikacja.py`)
-
-Jedno polecenie, raport maszynowy (JSON). Dowody laboratorium były rozsiane po
-866 testach; rekonstruowanie z nich stanu ręcznie to praca, przy której łatwo
-przeoczyć brak — a brak jest tu najważniejszą informacją.
-
-```bash
-python backend/research/kwalifikacja.py            # pełny bieg, ~35 s
-python backend/research/kwalifikacja.py --szybko   # bez CCT i porównania metod
-```
-
-**Zawartość raportu** (zmierzona, nie zadeklarowana):
-
-| Sekcja | Wynik z biegu pełnego |
-|---|---|
-| status dowodowy | `UNVALIDATED_MODEL` (uprząż NIE promuje) |
-| odcisk implementacji | SHA-256 treści 24 modułów |
-| residua inicjalizacji | SMIB 8,33e-17; sieć SN z DER 0,0 |
-| wyrocznie zewnętrzne | ANDES 2.0.0 DOSTĘPNA, pandapower 3.5.4 DOSTĘPNA |
-| trajektoria vs ANDES | max\|Δδ\| 4,10e-05 rad; max\|Δω\| 9,95e-07 p.u. |
-| czas krytyczny zwarcia | 0,4209 s dla `H = 4 s` |
-| kampania mutacyjna | 16/16, 0 luk krytycznych |
-
-**CCT 0,4209 s** zgadza się z wartością 422 ms z §19.1 pakietu decyzyjnego —
-niezależne potwierdzenie, że uprząż jest wpięta w rzeczywistą maszynerię, a nie
-liczy czegoś obok.
-
-**Porównanie integratorów potwierdza DEKLAROWANE rzędy** (błąd wobec odniesienia):
-
-| integrator | krok 2 ms | krok 10 ms | stosunek | rząd |
-|---|---|---|---|---|
-| euler_jawny | 1,513e-02 | 1,119e-01 | 7,4 | 1 |
-| euler_niejawny | 1,262e-02 | 4,545e-02 | 3,6 | 1 |
-| trapez_niejawny | 4,011e-05 | 1,002e-03 | 25,0 | **2** (5²=25) |
-| rk4 | 1,438e-09 | 9,015e-07 | 627 | **4** (5⁴=625) |
-
-**Kod wyjścia mówi o LUKACH, nie o sukcesie:** `1` gdy przeżyła mutacja
-krytyczna, `0` w przeciwnym razie. Zielony bieg znaczy „zmierzone i spójne",
-nigdy „zwalidowane".
-
-**Defekt znaleziony i naprawiony w samej uprzęży.** Pierwsza wersja czytała pola
-wyniku porównania integratorów przez `getattr(..., None)` i wypisywała `null`
-dla KAŻDEJ pozycji — raport miał właściwy kształt i ani jednej liczby. To jest
-dokładnie ta klasa cichej porażki, którą uprząż ma wykrywać. Poprawione na odczyt
-wprost z kontraktu (zmiana kontraktu wywala raport głośno) i przypięte testem
-`test_porownanie_integratorow_niesie_LICZBY_a_nie_null`.
+**Granica ważności odkryta przy okazji:** zwarcie o `x_f = 0,05` p.u. na szynie
+z odbiorem stałej mocy (`P = −0,5` p.u.) **nie ma rozwiązania algebraicznego** —
+model stałej mocy żąda `I = S*/V*`, więc przy zapadzie do zera prąd rośnie bez
+granicy. Solver melduje brak zbieżności z residuum 1,181 przy progu 1,0e-12 i
+informacją, że każdy krok zmniejszał normę (nawrót Armijo), czyli nie ma ani
+rozjazdu, ani cyklu. To NIE jest defekt Newtona.
 
 ---
 
----
+## 4. Co naprawdę wymaga Fable
 
-## 4. USTALENIE ARCHITEKTONICZNE — kontrakt integratora wyklucza metody wielokrokowe
+### 4.1 Wybór postaci ogranicznika (decyzja architektoniczna, nie pomiar)
 
-**Pomiar:**
+Dziesięć pozycji inwentarza ma obronną alternatywę, której różnicy NIE ZMIERZONO.
+Najważniejsza: **`bess-dostepnosc-energii`** — obcięcie mocy przy krańcu SOC
+wobec wygaszania liniowego w pasie i wobec histerezy. Dotyczy obszaru, w którym
+magazyn pracuje w scenariuszach bilansowych. Parametrów alternatyw nie ma w
+żadnej dostępnej karcie katalogowej — wpisanie ich byłoby fabrykacją, więc
+pozostają jako zmierzony brak. **Decyzja, czy postać ma być produktowo
+rozstrzygnięta, czy pozostać konfigurowalna, należy do Fable.**
 
-```
-Integrator.krok(self, f, x, t, dt) -> (x_next, ewaluacje)
-zarejestrowane: euler_jawny(1), rk4(4), euler_niejawny(1), trapez_niejawny(2)
-```
+Druga w kolejności: **priorytet składowej w ograniczniku prądu** (biernej vs
+czynnej, ewentualnie zmienny w czasie). Dotyczy pięciu pozycji naraz, bo reguła
+jest wspólna dla wszystkich przekształtników.
 
-Kontrakt jest **jednokrokowy**: nie ma w nim miejsca na historię `x_{n-1}`.
+### 4.2 Tożsamość zdarzenia przy permutacji (§12)
 
-**Konsekwencja.** Metody WIELOKROKOWE (rodzina BDF, o którą pyta brief) nie dają
-się dołożyć bez jednego z dwóch:
+Przypadek wieloźródłowy/wielozdarzeniowy wymaga rozstrzygnięcia, **czym jest
+tożsamość zdarzenia, gdy dwa zdarzenia wypadają w tej samej chwili**. Dziś
+harmonogram jest listą; permutacja listy o równych czasach daje inny porządek
+zastosowania, a więc potencjalnie inny wynik przy tej samej specyfikacji
+fizycznej. Możliwe rozstrzygnięcia (żadne nie jest oczywiste):
+porządek kanoniczny po typie zdarzenia; odrzucenie równoczesności jako
+niedookreślonej; wprowadzenie jawnego priorytetu w zdarzeniu. Wybór zmienia
+kontrakt tożsamości biegu, więc nie jest decyzją wykonawczą.
 
-- **OPCJA A** — zmiana kontraktu integratora na przyjmujący historię. Koszt:
-  dotyka wszystkich czterech istniejących integratorów, silnika i
-  `IntegratorZNiezmiennikami`. Zysk: BDF2/BDF3 stają się zwykłymi kandydatami.
-- **OPCJA B** — integrator ze stanem mutowalnym trzymającym `x_{n-1}`. Koszt:
-  **reintrodukuje klasę defektu, którą to laboratorium już raz naprawiło jako
-  P0** — stan przeciekający między biegami (`symuluj` dokumentuje zmierzony
-  skutek: `max|różnica| = 6,908e-01 p.u.` i wynik deklarujący inną topologię niż
-  policzona). Odradzam.
+### 4.3 Awans osi „PHYSICALLY VALIDATED" — zależność zewnętrzna
 
-**Świadomie NIE zaimplementowałem BDF.** Wybór między A i B jest decyzją o
-kontrakcie, czyli dokładnie tym, co brief rezerwuje dla prowadzącego. Wstawienie
-BDF-a przez OPCJĘ B „żeby był" cofnęłoby naprawiony defekt.
+Jedyny poziom uprawniający do słowa „zwalidowane fizycznie" to
+`NiezaleznoscOdniesienia.POMIAR_NA_OBIEKCIE`. W laboratorium **nie ma ani
+jednego** takiego odniesienia i jest to stan faktyczny, nie zaniedbanie opisu
+(przypięte `test_zaden_dowod_nie_udaje_pomiaru_na_obiekcie`). Awans wymaga
+zarejestrowanych przebiegów z rzeczywistej jednostki wytwórczej — czyli danych,
+których żadna praca kodowa nie wytworzy.
 
----
-
-## 5. STAN LABORATORIUM — zmierzony, nie zadeklarowany
-
-| Pozycja | Stan |
-|---|---|
-| moduły | 23 (20 istniejących + `wzorzec_trajektoria.py`, `mutacje.py`, `katalog_mutacji.py`) + uprząż `kwalifikacja.py` |
-| testy badawcze | **866 passed, 0 failed** (przed tą sesją: 834) |
-| izolacja od produkcji | `research_isolation_guard` PASSED (801 plików produkcyjnych, 24 badawcze) |
-| wyrocznie zewnętrzne | ANDES 2.0.0 (zainstalowany, WYKONANY), pandapower 3.5.4 (używany w `wzorzec_zewnetrzny`) |
-| status dowodowy | `UNVALIDATED_MODEL`; D-00 FAIL CLOSED nietknięty |
-| kampania mutacyjna | 16/16 zabitych, 0 luk krytycznych |
-| uprząż jednokomendowa | `research/kwalifikacja.py`, bieg pełny ~35 s |
-
----
-
-## 6. DECYZJE ZASTRZEŻONE DLA PROWADZĄCEGO
-
-Bez zmian względem pakietu decyzyjnego D-01…D-13, **plus jedna nowa**:
-
-| # | Decyzja | Materiał |
-|---|---|---|
-| D-01…D-13 | jak w `PAKIET_DECYZYJNY_DYNAMIKA_D01_D13_2026-09.md` | tam |
-| **NOWA** | kontrakt integratora: jednokrokowy (dziś) czy z historią (umożliwia BDF) | §4 tego dokumentu |
-| **NOWA** | czy podłoga 3e-05 rad w trajektorii wymaga uzgodnienia traktowania nieciągłości między narzędziami | §3.2 |
-
-Schemat DAE (rozdzielony kontra jednoczesny) pozostaje otwarty tak, jak opisuje
-errata #3 pakietu decyzyjnego — **nie** rozstrzygam go tym dokumentem.
+**Pośredni krok, którego Fable może chcieć:** podniesienie toru
+przekształtnikowego z N0 do N1 przez porównanie z niezależnym narzędziem
+(pandapower dla rozpływu, ANDES dla modeli przekształtnikowych, jeżeli jego
+biblioteka je obejmuje). To jest praca kodowa i mieści się w kolejnej transzy —
+ale wymaga decyzji, które narzędzie jest odniesieniem dla falowników.
 
 ---
 
-## 7. CZEGO NIE ZROBIŁEM I DLACZEGO
+## 5. Czego ta transza świadomie NIE zrobiła
 
-| Pozycja | Powód |
-|---|---|
-| BDF2/BDF3 | wymaga decyzji o kontrakcie integratora — §4 |
-| rama mutacyjna i uprząż | **ZROBIONE** — §3.3 i §3.4 |
-| drugi rdzeń DAE (schemat jednoczesny) | zbudowany i **skasowany**; duplikacja dojrzałego laboratorium — §0.1 |
-| walidacja PSS, nasycenia, ograniczników AVR wobec ANDES | brak odpowiedników w modelach obu narzędzi (pakiet decyzyjny §5.1) |
-| uzupełnienie profili normatywnych OSD | wymaga danych normatywnych, których nie mam; zakaz fabrykacji |
-| promocja do `QUALIFIED_MODEL` / `VALIDATED_SIMULATION` | decyzja prowadzącego, nie skutek zielonych testów |
+1. **Nie wybrała postaci kanonicznej żadnego ogranicznika** — §9 tego zakazuje
+   wprost, a inwentarz jest przygotowaniem decyzji, nie decyzją.
+2. **Nie podniosła żadnego statusu dowodowego.** Uprząż kwalifikacyjna kończy
+   bieg szybki statusem `NIEKOMPLETNE`, bo pominięte pomiary są meldowane jako
+   pominięte — brak dowodu nie zamienia się w jego posiadanie przez to, że nic
+   się nie wywaliło.
+3. **Nie zbudowała uogólnionej uprzęży porównania postaci (§9)** dla dziesięciu
+   pozycji z niezmierzoną alternatywą. Dla dwóch strategii ogranicznika GFM taka
+   uprząż istnieje i ma pomiary; uogólnienie wymaga zaimplementowania
+   alternatywnych postaci, a każda z nich jest osobnym modelem fizycznym.
+4. **Nie tknęła CI ani produkcyjnego `src/`** — cała praca jest w
+   `backend/research/`, odizolowana strukturalnie (`research_isolation_guard`).
+
+## 6. Dług policzony, nie ukryty
+
+* **21 błędów mypy w sześciu modułach `research/`** (`calkowanie.py` 12,
+  `silnik.py` 8, `benchmarki.py` 8, `wzorzec_trajektoria.py` 4, `siec.py` 3,
+  `walidacja.py` 1). Jedna przyczyna źródłowa powtórzona wielokrotnie: protokoły
+  (`Zdarzenie`, `Integrator`, `UrzadzenieDynamiczne`) deklarują składowe jako
+  zmienne modyfikowalne, a implementacje są zamrożonymi dataklasami o atrybutach
+  tylko do odczytu — więc ŻADNA konkretna klasa nie przechodzi swojego protokołu
+  i system typów jest dla całego laboratorium bezczynny. `research/` nie jest
+  objęte bramką mypy w CI (CI liczy `mypy src`), więc nie jest to regresja CI.
+  Naprawa: zadeklarować składowe protokołów jako właściwości tylko do odczytu.
+  Nowe moduły tej transzy mają **0 błędów**.
+* **Dziesięć ograniczników z niezmierzoną alternatywą** — wyliczone wyżej,
+  wymienione imiennie w `INWENTARZ`.

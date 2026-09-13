@@ -613,3 +613,43 @@ def test_tylko_dokladne_True_kwalifikuje() -> None:
     bramki odrzucającej WSZYSTKO."""
     assert _stan(_z_pozycjami(_pozycje_pelne())) == "ZAKWALIFIKOWANE"
     assert all(p["zbiegl"] is True for p in _pozycje_pelne())
+
+
+# ---------------------------------------------------------------------------
+# §11.3/15 — REJESTRY WCHODZĄ DO PAKIETU JEDNEGO POLECENIA
+# ---------------------------------------------------------------------------
+
+
+def test_raport_niesie_MACIERZ_POKRYCIA_a_nie_tylko_liste_dowodow(raport) -> None:
+    """Rejestr dowodów bez mapy zdolności zawsze wygląda dobrze — patrz §11.3/14.
+
+    Dlatego pakiet jednego polecenia musi nieść POKRYCIE, a nie wyłącznie to, co
+    zostało zmierzone: im mniej zbadano, tym krótsza lista braków w samym rejestrze.
+    """
+    macierz = raport["macierz_pokrycia"]
+    assert macierz["zdolnosci_razem"] >= 15
+    assert isinstance(macierz["bez_dowodu_o_wartosci"], list)
+    assert macierz["walidacja_fizyczna"] is False
+    # Pokrycie ma być liczbą w podsumowaniu, nie tylko w sekcji szczegółowej.
+    assert "/" in raport["podsumowanie"]["zdolnosci_bez_dowodu_o_wartosci"]
+    assert "/" in raport["podsumowanie"]["zdolnosci_z_wyrocznia_zewnetrzna"]
+    assert raport["podsumowanie"]["walidacja_fizyczna"] is False
+
+
+def test_raport_niesie_INWENTARZ_RYZYKA_POSTACI(raport) -> None:
+    """Ograniczniki z niezmierzoną alternatywą to policzalny brak, nie wrażenie."""
+    ryzyko = raport["ryzyko_postaci_modelu"]
+    assert ryzyko["pozycje_razem"] >= 20
+    assert ryzyko["luki_modelu"] == ["gfm-bez-ogranicznika"]
+    assert len(ryzyko["alternatywy_niezmierzone"]) == (
+        raport["podsumowanie"]["ograniczniki_z_niezmierzona_alternatywa"]
+    )
+    assert raport["podsumowanie"]["ograniczniki_z_niezmierzona_alternatywa"] > 0
+
+
+def test_pokrycie_w_raporcie_ZGADZA_SIE_z_rejestrem_zrodlowym(raport) -> None:
+    """Raport nie może być mocniejszy (ani słabszy) niż rejestr, z którego liczy."""
+    from dynamic_lab.macierz_pokrycia import MACIERZ, pokrycie
+
+    z_rejestru = {z.identyfikator for z in MACIERZ if not pokrycie(z.identyfikator).potwierdzona}
+    assert set(raport["macierz_pokrycia"]["bez_dowodu_o_wartosci"]) == z_rejestru
