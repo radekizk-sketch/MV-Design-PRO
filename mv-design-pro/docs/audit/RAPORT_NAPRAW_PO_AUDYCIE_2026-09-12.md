@@ -222,49 +222,52 @@ defekt znaleziony przy tej naprawie.
 
 ## 10. STAN CI DLA DOKŁADNEGO SHA
 
-### `367a81a1` — POBRANE Z CI, NIE Z PAMIĘCI (2026-09-13)
+### `a6ee782c` — DZIEWIĘĆ ZIELONYCH, ZERO CZERWONYCH (pobrane z CI 2026-09-13)
 
-Ostatni SHA, dla którego komplet workflowów zdążył się wykonać. **7 zielonych,
-2 czerwone.**
-
-| workflow | wynik | treść |
+| workflow | run id | wynik |
 |---|---|---|
-| SLD Determinism Guards (2 zadania) | ✅ | komplet kontraktów SLD v2/v3 + odbiór renderu wykonany |
-| Frontend checks | ✅ | type-check, lint, vitest, 5 guardów |
-| Frontend E2E smoke | ✅ | krytyczna ścieżka + etykiety tożsamości |
-| P0 Extended Guards (V12K) | ✅ | 57 kroków |
-| Architectural And Repo Hygiene | ✅ | arch + hygiene + research isolation |
-| Docs Integrity Guard | ✅ | |
-| Physics Label Guard | ✅ | |
-| **Python tests** | ❌ | **7 failed, 12077 passed, 15 skipped** (1574,9 s) |
-| **Frontend E2E full** | ❌ | **1 failed, 407 passed, 2 skipped** (33,5 min) |
+| Python tests | 34737852730 | ✅ success |
+| Frontend checks | 34737852749 | ✅ success |
+| Frontend E2E smoke | 34737852757 | ✅ success |
+| Frontend E2E full | 34737852709 | ✅ success |
+| SLD Determinism Guards | 34737852706 | ✅ success |
+| P0 Extended Guards (V12K) | 34737852767 | ✅ success |
+| Architectural And Repo Hygiene | 34737852727 | ✅ success |
+| Docs Integrity Guard | 34737852738 | ✅ success |
+| Physics Label Guard | 34737852719 | ✅ success |
 
-Obie czerwienie mają teraz przyczynę zmierzoną i naprawę w tej gałęzi:
-- 7 czerwonych backendu = `test_json_w_repo_rowny_odpowiedzi_backendu` — odcisk
-  projekcji nN nad surowymi liczbami podwójnej precyzji (§10c). Podpis w
-  dzienniku CI: `z1_ohm {'r': 0.10000000000000002, 'x': 0.4999999999999999}`.
-- 1 czerwona E2E = bramka rozmiaru odpowiedzi, 100 908 315 B wobec 62 914 560 B
-  (§11.2).
+**Co to znaczy, a czego NIE znaczy.** Znaczy, że dla tego dokładnego SHA
+wszystkie dziewięć workflowów zakończyło się `success` — łącznie z krokiem
+`Run pytest`, `Mypy Ratchet Guard` i `Format i lint backendu`, które w
+poprzednich biegach albo padały, albo NIGDY SIĘ NIE WYKONAŁY (patrz §10e).
+NIE znaczy poprawności fizycznej, matematycznej ani gotowości produkcyjnej —
+poziomy weryfikacji zostają takie, jakie są w §12, i żaden nie został
+podniesiony.
 
-**Czego ten raport NIE twierdzi.** Nie twierdzę, że po naprawach CI jest zielone
-— biegu dla SHA z naprawami w chwili pisania nie ma. Zieleń wolno ogłosić
-dopiero z dziennika CI dla dokładnego SHA, nie z regresji lokalnej.
+### Droga do tego stanu — cztery SHA, mierzone po kolei
 
-### Pomiary lokalne (nie zastępują CI)
+| SHA | Python tests | E2E full | pozostałe 7 |
+|---|---|---|---|
+| `367a81a1` | ❌ 7 failed / 12077 passed | ❌ 1 failed / 407 passed (100 908 315 B) | ✅ |
+| `3cfc75a1` | ❌ pytest ✅, padła zapadka typów | ✅ 408 passed / 0 failed | ✅ |
+| `f70df04e` | (bieg zastąpiony przez `a6ee782c`) | — | — |
+| `a6ee782c` | ✅ | ✅ | ✅ |
+
+Każdy krok tej tabeli to osobna, nazwana przyczyna: §10c (odcisk projekcji nN),
+§11.2 (klasa ładunku per gałąź), §10e (regresja typów odsłonięta przez naprawę
+pytest).
+
+### Pomiary lokalne (NIE zastępują CI)
 
 | pomiar | wynik |
 |---|---|
-| pełna regresja backendu, `OPENBLAS_NUM_THREADS=1` (konfiguracja INNA niż ta, która wygenerowała fixtury) | 12245 passed, 6 skipped, 0 failed, 2783 s |
-| warstwy dotknięte portem (`tests/infrastructure`, `tests/enm`, `tests/api`) | 2990 passed, 202 s |
+| pełna regresja backendu na drzewie `a6ee782c` | **12302 passed, 6 skipped, 0 failed**, 2822 s |
+| pełna regresja przy `OPENBLAS_NUM_THREADS=1` (inna konfiguracja niż generująca fixtury) | 12245 passed, 0 failed |
+| `tests/research/test_kwalifikacja.py` | 62 passed, 848 s |
+| `tests/infrastructure` + `tests/enm` | 1750 passed |
+| `tests/api` + `tests/proof_engine` | 1596 passed |
 | front — konsumenci fixtur nN | 252/252 |
-| `test_scenariusze_nn.py` (55, w tym 4 nowe pinujące) | 55/55 |
-
-### Historycznie: `7fd4a8de`
-
-7 zielonych, 3 czerwone. Naprawione wtedy: Frontend E2E smoke (migracja
-readiness), SLD Determinism (`vertical_length_probe`), Frontend checks (16
-naruszeń bramki typów). Regresja własna `Architectural And Repo Hygiene` (brak
-dwóch modułów w inwentarzu) naprawiona w `9999a934`.
+| realna uprząż kwalifikacji end-to-end | `luki=[]`, `braki=[]`, ZAKWALIFIKOWANE, 16 pozycji, 13/13 mutacji |
 
 ---
 
@@ -732,7 +735,7 @@ ograniczników.
 | poziom | stan | uzasadnienie |
 |---|---|---|
 | IMPLEMENTED | **TAK** | kod istnieje i jest wpięty w ścieżki użytkownika |
-| SOFTWARE-VERIFIED | **CZĘŚCIOWO** | lokalnie 12245 passed / 0 failed (także przy zmienionej konfiguracji BLAS); CI ostatniego zmierzonego SHA `367a81a1` ma dwie czerwienie, obie z naprawą w gałęzi, ale BEZ potwierdzenia biegiem CI (§10, §10c, §11.2) |
+| SOFTWARE-VERIFIED | **TAK dla zakresu tej gałęzi** | CI dla dokładnego `a6ee782c`: dziewięć workflowów, dziewięć `success` (§10); lokalnie 12302 passed / 0 failed, a przy zmienionej konfiguracji BLAS 12245 passed / 0 failed. NIE obejmuje to pozycji wymienionych w §11.3 jako otwarte — tam nie ma ani kodu, ani testu, więc zieleń o nich nie mówi nic |
 | MATHEMATICALLY VERIFIED | **CZĘŚCIOWO** | całka pierwsza, rzędy metod i bilans energii potwierdzone; ogólna poprawność równań urządzeń NIE |
 | NUMERICALLY VERIFIED | **CZĘŚCIOWO** | rzędy zmierzone na drabinie, NaN/Inf domknięte; determinizm `projection_hash` międzyśrodowiskowo był REFUTOWANY i został naprawiony u źródła z pomiarem marginesu (§10c) — potwierdzenie należy do CI, nie do tego dokumentu. Bitowa powtarzalność solvera zwarciowego MIĘDZY mikroarchitekturami pozostaje NIEOSIĄGALNA (`np.linalg.inv`); kontrakt mówi teraz o zadeklarowanej precyzji, a nie o ostatnim bicie |
 | PHYSICALLY SUPPORTED | **CZĘŚCIOWO** | klasyczny SMIB, jedno zdarzenie topologiczne, dwa kanały |
