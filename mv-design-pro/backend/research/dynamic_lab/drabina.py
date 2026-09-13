@@ -79,6 +79,63 @@ class PoziomWyroczni(StrEnum):
     """
 
 
+class NiezaleznoscOdniesienia(StrEnum):
+    """Oś N — JAK NIEZALEŻNE od naszej implementacji jest odniesienie.
+
+    DLACZEGO TO JEST TRZECIA OŚ, A NIE UŚCIŚLENIE OSI W. Bo poziom wyroczni mówi
+    o RODZAJU odniesienia (kształt / własność / wzór / narzędzie), a nie o jego
+    niezależności. Wzór analityczny wyprowadzony przez tego samego człowieka,
+    który napisał model, i narzędzie zewnętrzne realizujące TE SAME równania
+    standardowe to dwa różne poziomy W — ale ta sama luka: wspólny błąd
+    koncepcyjny przechodzi przez oba.
+
+    Ta oś istnieje po to, żeby „to samo równanie, inny kod" NIE MOGŁO uchodzić za
+    niezależną walidację fizyczną. Zdania o walidacji fizycznej wolno wypowiadać
+    dopiero od ``INNE_ROWNANIA_INNY_KOD`` w górę, a o zgodności z obiektem —
+    wyłącznie od ``POMIAR_NA_OBIEKCIE`` (patrz ``czy_walidacja_fizyczna``).
+    """
+
+    TEN_SAM_AUTOR_TE_SAME_ROWNANIA = "N0"
+    """Odniesienie wyprowadzone przez autora modelu z tych samych równań.
+
+    Wykrywa błędy ALGEBRY i implementacji. NIE wykrywa błędu postaci modelu:
+    jeżeli równanie jest nie to, wzór i kod mylą się zgodnie.
+    """
+
+    TE_SAME_ROWNANIA_INNY_KOD = "N1"
+    """Niezależna implementacja TYCH SAMYCH równań standardowych (np. ANDES GENROU).
+
+    Wykrywa błędy implementacji, całkowania i interpretacji parametrów. NIE
+    wykrywa błędu wspólnego dla obu implementacji — a taki istnieje zawsze, gdy
+    obie realizują ten sam model podręcznikowy. To jest dokładnie sytuacja, której
+    nie wolno nazywać „walidacją fizyczną".
+    """
+
+    INNE_ROWNANIA_INNY_KOD = "N2"
+    """Odniesienie o INNEJ postaci modelu (np. model wyższego rzędu, EMT wobec RMS).
+
+    Wykrywa część błędów postaci modelu — bo różnica postaci przestaje być
+    wspólna. Nadal nie jest zgodnością z obiektem.
+    """
+
+    WARTOSC_Z_LITERATURY = "N3"
+    """Liczba opublikowana w recenzowanym źródle, z podaną redakcją i miejscem.
+
+    Niezależna od nas w całości (autor, równania, kod, dane), ale opisuje CUDZY
+    obiekt i CUDZE warunki — zgodność jest argumentem, nie dowodem dla tej sieci.
+    Wymaga wypełnienia ``zrodlo_odniesienia``; bez cytatu „literatura" jest
+    słowem, nie odniesieniem.
+    """
+
+    POMIAR_NA_OBIEKCIE = "N4"
+    """Zarejestrowany przebieg z rzeczywistej jednostki wytwórczej.
+
+    JEDYNY poziom, na którym wolno powiedzieć „zwalidowane fizycznie". W tym
+    laboratorium NIE WYSTĘPUJE ANI RAZ i jest to stan faktyczny, nie zaniedbanie
+    opisu — przypięte ``test_zaden_dowod_nie_udaje_pomiaru_na_obiekcie``.
+    """
+
+
 @dataclass(frozen=True)
 class PozycjaDrabiny:
     """Jeden dowód: co liczy, wobec czego sprawdza, czym jest realizowany."""
@@ -89,11 +146,40 @@ class PozycjaDrabiny:
     opis_pl: str
     realizacja: str
     """Nazwa funkcji/testu, który ten dowód wykonuje."""
+    niezaleznosc: NiezaleznoscOdniesienia = NiezaleznoscOdniesienia.TEN_SAM_AUTOR_TE_SAME_ROWNANIA
+    """Oś N — patrz `NiezaleznoscOdniesienia`. Wartość domyślna jest NAJSŁABSZA
+    świadomie: pominięcie deklaracji ma zaniżać, a nie zawyżać siłę dowodu."""
+    zrodlo_odniesienia: str = ""
+    """Cytat źródła — OBOWIĄZKOWY dla N3 i N4, pusty dla pozostałych."""
+
+    def __post_init__(self) -> None:
+        wymaga_zrodla = {
+            NiezaleznoscOdniesienia.WARTOSC_Z_LITERATURY,
+            NiezaleznoscOdniesienia.POMIAR_NA_OBIEKCIE,
+        }
+        if self.niezaleznosc in wymaga_zrodla and not self.zrodlo_odniesienia.strip():
+            raise ValueError(
+                f"{self.identyfikator}: poziom niezależności {self.niezaleznosc.value} bez "
+                f"podanego źródła jest słowem, nie odniesieniem."
+            )
+        if self.niezaleznosc not in wymaga_zrodla and self.zrodlo_odniesienia.strip():
+            raise ValueError(
+                f"{self.identyfikator}: źródło podane przy poziomie "
+                f"{self.niezaleznosc.value} sugeruje niezależność, której ten dowód nie ma."
+            )
+        if (
+            self.wyrocznia is PoziomWyroczni.W3_WYROCZNIA_ZEWNETRZNA
+            and self.niezaleznosc is NiezaleznoscOdniesienia.TEN_SAM_AUTOR_TE_SAME_ROWNANIA
+        ):
+            raise ValueError(
+                f"{self.identyfikator}: wyrocznia ZEWNĘTRZNA z niezależnością N0 jest "
+                f"sprzecznością — narzędzie zewnętrzne ma co najmniej własny kod."
+            )
 
     @property
     def etykieta(self) -> str:
-        """Np. ``C1/W3`` — jednoznacznie, bez kolizji „poziomu 4"."""
-        return f"{self.zlozonosc.value}/{self.wyrocznia.value}"
+        """Np. ``C1/W3/N1`` — trzy osie, bo dwie nie wystarczały."""
+        return f"{self.zlozonosc.value}/{self.wyrocznia.value}/{self.niezaleznosc.value}"
 
 
 #: Rejestr dowodów laboratorium. Lista jest ZAMKNIĘTA — pilnuje jej
@@ -125,6 +211,7 @@ DRABINA: tuple[PozycjaDrabiny, ...] = (
         identyfikator="punkt-pracy-i-wahania-andes",
         zlozonosc=ZlozonoscPrzypadku.C1_MASZYNA_NA_SZYNIE_SZTYWNEJ,
         wyrocznia=PoziomWyroczni.W3_WYROCZNIA_ZEWNETRZNA,
+        niezaleznosc=NiezaleznoscOdniesienia.TE_SAME_ROWNANIA_INNY_KOD,
         opis_pl="δ0, E', V oraz częstotliwość wahań wobec wartości własnych ANDES",
         realizacja="tests/research/test_wzorzec_zewnetrzny.py",
     ),
@@ -197,6 +284,7 @@ DRABINA: tuple[PozycjaDrabiny, ...] = (
         identyfikator="mapowanie-na-przypadku-natywnym",
         zlozonosc=ZlozonoscPrzypadku.C1_MASZYNA_NA_SZYNIE_SZTYWNEJ,
         wyrocznia=PoziomWyroczni.W3_WYROCZNIA_ZEWNETRZNA,
+        niezaleznosc=NiezaleznoscOdniesienia.TE_SAME_ROWNANIA_INNY_KOD,
         opis_pl=(
             "Interpretacja pól M/xd1/fn/D odtwarza wartość własną przypadku "
             "AUTORSTWA ANDES (cases/smib/SMIB.xlsx) — walidacja mapowania, nie fizyki"
@@ -207,6 +295,7 @@ DRABINA: tuple[PozycjaDrabiny, ...] = (
         identyfikator="dynamika-4-rzedu-andes-genrou",
         zlozonosc=ZlozonoscPrzypadku.C1_MASZYNA_NA_SZYNIE_SZTYWNEJ,
         wyrocznia=PoziomWyroczni.W3_WYROCZNIA_ZEWNETRZNA,
+        niezaleznosc=NiezaleznoscOdniesienia.TE_SAME_ROWNANIA_INNY_KOD,
         opis_pl=(
             "Punkt pracy i PEŁNE widmo modelu 4. rzędu (Td0', Tq0', sprzężenie E' "
             "z prądem) wobec ANDES GENROU zredukowanego do dwuosiowego"
@@ -217,6 +306,7 @@ DRABINA: tuple[PozycjaDrabiny, ...] = (
         identyfikator="regulatory-andes-sexs-tgov1",
         zlozonosc=ZlozonoscPrzypadku.C1_MASZYNA_NA_SZYNIE_SZTYWNEJ,
         wyrocznia=PoziomWyroczni.W3_WYROCZNIA_ZEWNETRZNA,
+        niezaleznosc=NiezaleznoscOdniesienia.TE_SAME_ROWNANIA_INNY_KOD,
         opis_pl=(
             "AVR i governor — część wspólna z ANDES SEXS i TGOV1 (lead-lag "
             "unieczynniony, ograniczniki nieaktywne, więc anti-windup poza zakresem)"
@@ -244,7 +334,79 @@ DRABINA: tuple[PozycjaDrabiny, ...] = (
         ),
         realizacja="test_ogranicznik_skraca_najdluzsze_zwarcie_z_synchronizmem",
     ),
+    PozycjaDrabiny(
+        identyfikator="pss-odpowiedz-czestotliwosciowa",
+        zlozonosc=ZlozonoscPrzypadku.C0_JEDNO_ROWNANIE,
+        wyrocznia=PoziomWyroczni.W2_WYROCZNIA_ANALITYCZNA,
+        opis_pl=(
+            "Amplituda i faza stabilizatora wobec analitycznego H(jw) dla 0,3/0,8/1,5/2,5 Hz "
+            "(demodulacja synchroniczna; rel=0,02 i 3 stopnie)"
+        ),
+        realizacja="test_pss_odpowiedz_czestotliwosciowa_ZGADZA_SIE_Z_TRANSMITANCJA",
+    ),
+    PozycjaDrabiny(
+        identyfikator="reinicjalizacja-po-topologii",
+        zlozonosc=ZlozonoscPrzypadku.C3_ZDARZENIE_ZMIENIAJACE_SIEC,
+        wyrocznia=PoziomWyroczni.W1_WLASNOSC,
+        opis_pl=(
+            "Stany rozniczkowe ciagle przez zdarzenie, algebra rozwiazana od nowa; residuum "
+            "KCL liczone NIEZALEZNIE od solvera, nie czytane z jego meldunku"
+        ),
+        realizacja="tests/research/test_reinicjalizacja.py",
+    ),
+    PozycjaDrabiny(
+        identyfikator="frt-ocena-ze-sladu",
+        zlozonosc=ZlozonoscPrzypadku.C4_SIEC_SN_Z_DER,
+        wyrocznia=PoziomWyroczni.W1_WLASNOSC,
+        opis_pl=(
+            "Ocena FRT konsumuje slad realnego biegu; ujecie kanalu, skrocenie okna albo "
+            "brak zbieznosci daje NIEROZSTRZYGALNE z maszynowym powodem, nigdy SPELNIA"
+        ),
+        realizacja="tests/research/test_frt_z_biegu.py",
+    ),
+    PozycjaDrabiny(
+        identyfikator="ppc-limit-eksportu",
+        zlozonosc=ZlozonoscPrzypadku.C4_SIEC_SN_Z_DER,
+        wyrocznia=PoziomWyroczni.W1_WLASNOSC,
+        opis_pl="Limit eksportu elektrowni jest dotrzymany w PCC dla obu strategii alokacji",
+        realizacja="test_limit_eksportu_jest_dotrzymany_w_pcc",
+    ),
+    PozycjaDrabiny(
+        identyfikator="jednostka-pq-niezmienniki",
+        zlozonosc=ZlozonoscPrzypadku.C2_WIELE_URZADZEN,
+        wyrocznia=PoziomWyroczni.W1_WLASNOSC,
+        opis_pl=(
+            "Stany P i Q trzech rodzin przekstaltnikow nie wychodza poza granice "
+            "zadeklarowane przez urzadzenie — iloczyn: rodzina x cztery integratory x zwarcie"
+        ),
+        realizacja="test_stany_pq_przekstaltnikow_nie_wychodza_poza_ogranicznik",
+    ),
+    PozycjaDrabiny(
+        identyfikator="odbior-stalej-mocy-granica-waznosci",
+        zlozonosc=ZlozonoscPrzypadku.C3_ZDARZENIE_ZMIENIAJACE_SIEC,
+        wyrocznia=PoziomWyroczni.W2_WYROCZNIA_ANALITYCZNA,
+        opis_pl=(
+            "Model stalej mocy zada I = S*/V*, wiec przy zapadzie do zera uklad algebraiczny "
+            "NIE MA rozwiazania — zmierzone przerwanie w chwili zwarcia, residuum 1,181 "
+            "przy progu 1,0e-12"
+        ),
+        realizacja="test_zwarcie_metaliczne_na_szynie_z_odbiorem_STALEJ_MOCY_nie_ma_rozwiazania",
+    ),
 )
+
+
+def pozycje_o_niezaleznosci(poziom: NiezaleznoscOdniesienia) -> tuple[PozycjaDrabiny, ...]:
+    return tuple(p for p in DRABINA if p.niezaleznosc is poziom)
+
+
+def czy_walidacja_fizyczna() -> bool:
+    """Czy w rejestrze jest CHOĆ JEDEN dowód uprawniający do słowa „zwalidowane fizycznie".
+
+    Uprawnia wyłącznie ``POMIAR_NA_OBIEKCIE``. Funkcja istnieje po to, żeby
+    odpowiedź na to pytanie była WYLICZANA z rejestru, a nie przepisywana
+    ręcznie do meldunków — przepisywana rozjeżdża się przy pierwszej zmianie.
+    """
+    return any(p.niezaleznosc is NiezaleznoscOdniesienia.POMIAR_NA_OBIEKCIE for p in DRABINA)
 
 
 def pozycje_o_wyroczni(poziom: PoziomWyroczni) -> tuple[PozycjaDrabiny, ...]:

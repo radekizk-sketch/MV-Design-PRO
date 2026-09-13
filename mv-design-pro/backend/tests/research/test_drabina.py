@@ -16,8 +16,11 @@ from pathlib import Path
 import pytest
 from dynamic_lab.drabina import (
     DRABINA,
+    NiezaleznoscOdniesienia,
     PoziomWyroczni,
+    PozycjaDrabiny,
     ZlozonoscPrzypadku,
+    czy_walidacja_fizyczna,
     podsumowanie,
     pozycje_o_wyroczni,
 )
@@ -30,10 +33,16 @@ def test_identyfikatory_sa_unikalne() -> None:
     assert len(identyfikatory) == len(set(identyfikatory))
 
 
-def test_etykieta_jest_jednoznaczna_i_ma_obie_osie() -> None:
-    """`C1/W3` nie może być mylone z `C4/W1` — kolizja „poziomu 4" była właśnie tym."""
+def test_etykieta_jest_jednoznaczna_i_ma_WSZYSTKIE_TRZY_osie() -> None:
+    """`C1/W3` nie mogło być mylone z `C4/W1` — a dziś dochodzi oś niezależności.
+
+    Trzecia oś (N) powstała, bo dwie nie odróżniały „wzór mój wobec mojego kodu"
+    od „narzędzie cudze wobec mojego kodu realizujące TE SAME równania" — a to
+    jest różnica między wykryciem błędu implementacji a wykryciem błędu postaci
+    modelu.
+    """
     for pozycja in DRABINA:
-        assert re.fullmatch(r"C[0-4]/W[0-3]", pozycja.etykieta), pozycja.etykieta
+        assert re.fullmatch(r"C[0-4]/W[0-3]/N[0-4]", pozycja.etykieta), pozycja.etykieta
 
 
 def test_kazda_realizacja_istnieje() -> None:
@@ -89,3 +98,83 @@ def test_moduly_nie_uzywaja_juz_kolidujacego_nazewnictwa(nazwa_modulu: str) -> N
     tresc = (modul.__doc__ or "").lower()
     assert "poziom 4" not in tresc
     assert "l0–l4" not in tresc and "l0-l4" not in tresc
+
+
+# ---------------------------------------------------------------------------
+# §11.3/13 — OŚ NIEZALEŻNOŚCI: czego NIE WOLNO nazwać walidacją fizyczną
+# ---------------------------------------------------------------------------
+
+
+def test_zaden_dowod_nie_udaje_pomiaru_na_obiekcie() -> None:
+    """Stan faktyczny: laboratorium NIE MA ani jednego przebiegu z rzeczywistej jednostki.
+
+    Test istnieje po to, żeby ten stan był EGZEKWOWANY, a nie tylko opisany:
+    wpisanie N4 bez dołożenia realnych danych pomiarowych ma czerwienić bramkę.
+    """
+    z_pomiarem = [
+        p for p in DRABINA if p.niezaleznosc is NiezaleznoscOdniesienia.POMIAR_NA_OBIEKCIE
+    ]
+    assert not z_pomiarem, (
+        "Pozycje deklarujące pomiar na obiekcie: "
+        + ", ".join(p.identyfikator for p in z_pomiarem)
+        + ". Jeżeli takie dane faktycznie są, ten test trzeba zmienić RAZEM z nimi."
+    )
+
+
+def test_walidacja_fizyczna_jest_NIEOSIAGNIETA_i_modul_to_MOWI() -> None:
+    """Najmocniejszy dowód w rejestrze to N1 — „te same równania, inny kod".
+
+    §11.3/13 stawia to wprost: „te same równania, inny kod" NIE MOŻE uchodzić za
+    niezależną walidację fizyczną. Tu jest to sprawdzane liczbą, a nie zdaniem.
+    """
+    najmocniejszy = max(p.niezaleznosc.value for p in DRABINA)
+    assert najmocniejszy == "N1", (
+        f"Najmocniejszy poziom niezależności w rejestrze to {najmocniejszy}. Jeżeli "
+        f"podniesiono go świadomie, ten test wymaga zmiany razem z uzasadnieniem."
+    )
+    assert czy_walidacja_fizyczna() is False
+
+
+def test_zrodlo_jest_WYMAGANE_dla_literatury_i_pomiaru() -> None:
+    """Poziom niezależności bez cytatu jest deklaracją, nie odniesieniem."""
+    with pytest.raises(ValueError, match="bez\\s+podanego źródła|bez podanego źródła"):
+        PozycjaDrabiny(
+            identyfikator="x",
+            zlozonosc=ZlozonoscPrzypadku.C0_JEDNO_ROWNANIE,
+            wyrocznia=PoziomWyroczni.W2_WYROCZNIA_ANALITYCZNA,
+            opis_pl="x",
+            realizacja="test_x",
+            niezaleznosc=NiezaleznoscOdniesienia.WARTOSC_Z_LITERATURY,
+        )
+
+
+def test_zrodlo_przy_slabym_poziomie_jest_odrzucane() -> None:
+    """Druga strona: cytat dopięty do dowodu N0 sugerowałby niezależność, której nie ma."""
+    with pytest.raises(ValueError, match="niezależność, której ten dowód nie ma"):
+        PozycjaDrabiny(
+            identyfikator="x",
+            zlozonosc=ZlozonoscPrzypadku.C0_JEDNO_ROWNANIE,
+            wyrocznia=PoziomWyroczni.W2_WYROCZNIA_ANALITYCZNA,
+            opis_pl="x",
+            realizacja="test_x",
+            zrodlo_odniesienia="Kundur, Power System Stability and Control, 1994",
+        )
+
+
+def test_wyrocznia_zewnetrzna_nie_moze_miec_niezaleznosci_N0() -> None:
+    """Narzędzie zewnętrzne ma co najmniej własny kod — inaczej nie jest zewnętrzne."""
+    with pytest.raises(ValueError, match="sprzeczność|sprzecznoscia|sprzecznością"):
+        PozycjaDrabiny(
+            identyfikator="x",
+            zlozonosc=ZlozonoscPrzypadku.C1_MASZYNA_NA_SZYNIE_SZTYWNEJ,
+            wyrocznia=PoziomWyroczni.W3_WYROCZNIA_ZEWNETRZNA,
+            opis_pl="x",
+            realizacja="test_x",
+            niezaleznosc=NiezaleznoscOdniesienia.TEN_SAM_AUTOR_TE_SAME_ROWNANIA,
+        )
+
+
+def test_podsumowanie_pokazuje_os_niezaleznosci() -> None:
+    """Meldunek ma nieść trzecią oś — inaczej czytelnik jej nie zobaczy."""
+    tabela = podsumowanie()
+    assert "/N0" in tabela or "/N1" in tabela
