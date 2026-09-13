@@ -31,7 +31,11 @@ from dynamic_lab.konwencje import (
     ogranicz_prad,
     siec_z_dq,
 )
-from dynamic_lab.regulatory import RegulatorNapiecia, RegulatorTurbiny
+from dynamic_lab.regulatory import (
+    RegulatorNapiecia,
+    RegulatorTurbiny,
+    StabilizatorSystemowy,
+)
 from dynamic_lab.tozsamosc import pole_artefakt, pole_nastawa, pole_opisowe
 
 
@@ -287,7 +291,13 @@ class MaszynaSynchroniczna4Rzedu:
 class ZespolSynchroniczny:
     """Zespół wytwórczy: maszyna + AVR + governor, z pętlami ZAMKNIĘTYMI.
 
-    STANY (6): ``[delta, omega, e_q_prim, e_d_prim, efd, pm]``
+    STANY (6 bez PSS): ``[delta, omega, e_q_prim, e_d_prim, efd, pm]``
+    STANY (9 z PSS):   ``[..., efd, pm, pss_x_w, pss_x_1, pss_x_2]``
+
+    Stabilizator jest OPCJONALNY i dokłada swoje stany NA KOŃCU wektora, więc
+    układ pierwszych sześciu pozycji nie zmienia się — zespół bez PSS ma
+    identyczny wektor stanu i identyczną trajektorię jak przed dodaniem tej
+    opcji (przypięte testem równoważności ``v_pss = 0``).
 
     Domknięcie strukturalne: ``Efd`` i ``Pm`` są STANAMI tego zespołu i są
     podawane maszynie jako wejścia w tym samym wywołaniu, w którym regulatory
@@ -298,6 +308,7 @@ class ZespolSynchroniczny:
     maszyna: MaszynaSynchroniczna4Rzedu
     avr: RegulatorNapiecia | None = None
     governor: RegulatorTurbiny | None = None
+    pss: StabilizatorSystemowy | None = None
     _efd_stale: float = pole_nastawa(
         default=0.0,
         powod=(
@@ -322,11 +333,17 @@ class ZespolSynchroniczny:
         return self.maszyna.szyna
 
     def nazwy_stanow(self) -> tuple[str, ...]:
-        return (*self.maszyna.nazwy_stanow(), "efd_pu", "pm_pu")
+        podstawa = (*self.maszyna.nazwy_stanow(), "efd_pu", "pm_pu")
+        if self.pss is None:
+            return podstawa
+        return (*podstawa, *self.pss.nazwy_stanow())
 
     def jednostki_stanow(self) -> tuple[str, ...]:
         """Jednostki maszyny + regulatorów; składane z deklaracji maszyny."""
-        return (*self.maszyna.jednostki_stanow(), "p.u.", "p.u.")
+        podstawa = (*self.maszyna.jednostki_stanow(), "p.u.", "p.u.")
+        if self.pss is None:
+            return podstawa
+        return (*podstawa, *self.pss.jednostki_stanow())
 
     def pochodne(self, x: NDArray[np.float64], v_szyny: complex) -> NDArray[np.float64]:
         efd = float(x[4])
@@ -335,9 +352,16 @@ class ZespolSynchroniczny:
         # SPRZĘŻENIE ZWROTNE: pomiar z rzeczywistego rozwiązania, nie ze stałej.
         v_t = abs(v_szyny)
         omega = float(x[1])
-        d_efd = self.avr.pochodna(efd, v_t) if self.avr is not None else 0.0
+        if self.pss is not None:
+            x_w, x_1, x_2 = float(x[6]), float(x[7]), float(x[8])
+            v_pss = self.pss.wyjscie(x_w, x_1, x_2, omega)
+            d_pss: tuple[float, ...] = self.pss.pochodne(x_w, x_1, x_2, omega)
+        else:
+            v_pss = 0.0
+            d_pss = ()
+        d_efd = self.avr.pochodna(efd, v_t, v_pss) if self.avr is not None else 0.0
         d_pm = self.governor.pochodna(pm, omega) if self.governor is not None else 0.0
-        return np.array([*d_masz, d_efd, d_pm], dtype=np.float64)
+        return np.array([*d_masz, d_efd, d_pm, *d_pss], dtype=np.float64)
 
     def ograniczniki_stanu(self, przesuniecie: int) -> tuple[OgraniczenieStanu, ...]:
         """Niezmienniki dyskretne stanów regulatorów: ``efd_pu`` (4) i ``pm_pu`` (5).
@@ -356,6 +380,8 @@ class ZespolSynchroniczny:
             ograniczenia.append(self.avr.ogranicznik_stanu(przesuniecie + 4))
         if self.governor is not None:
             ograniczenia.append(self.governor.ogranicznik_stanu(przesuniecie + 5))
+        if self.pss is not None:
+            ograniczenia.extend(self.pss.ograniczniki_stanu(przesuniecie + 6))
         return tuple(ograniczenia)
 
     def wstrzykniecie(self, x: NDArray[np.float64], v_szyny: complex) -> complex:
@@ -389,17 +415,21 @@ class ZespolSynchroniczny:
             pm0 = pm_wym
         self._efd_stale = efd0
         self._pm_stale = pm0
-        return np.array(
-            [
-                pp["delta_rad"],
-                pp["omega_pu"],
-                pp["e_q_prim_pu"],
-                pp["e_d_prim_pu"],
-                efd0,
-                pm0,
-            ],
-            dtype=np.float64,
-        )
+        stany: list[float] = [
+            pp["delta_rad"],
+            pp["omega_pu"],
+            pp["e_q_prim_pu"],
+            pp["e_d_prim_pu"],
+            efd0,
+            pm0,
+        ]
+        if self.pss is not None:
+            # Zera — washout ma zerowe wzmocnienie DC, więc v_pss(0) = 0 i punkt
+            # pracy pozostaje TEN SAM co bez stabilizatora. Gdyby stan startowy
+            # był niezerowy, PSS dokładałby sygnał w chwili t=0 i przesuwał
+            # wzbudzenie względem rozpływu, który je wyznaczył.
+            stany.extend(self.pss.stan_ustalony())
+        return np.array(stany, dtype=np.float64)
 
 
 @dataclass

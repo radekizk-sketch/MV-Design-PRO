@@ -138,7 +138,7 @@ class RegulatorNapiecia:
         if self.efd_min > self.efd_max:
             raise ValueError("efd_min > efd_max")
 
-    def pochodna(self, efd: float, v_t_pu: float) -> float:
+    def pochodna(self, efd: float, v_t_pu: float, v_pss_pu: float = 0.0) -> float:
         """dEfd/dt [p.u./s] przy zmierzonym napięciu zaciskowym ``v_t_pu``.
 
         OGRANICZNIK DZIAŁA NA ŻĄDANIE, NIE TYLKO NA POCHODNĄ — to jest istotne
@@ -156,6 +156,14 @@ class RegulatorNapiecia:
         chwili zwarcia. Ograniczenie żądania bounduje pochodną do
         ``(efd_max - efd)/T_a`` i usuwa przyczynę.
 
+        WEJŚCIE STABILIZATORA (``v_pss_pu``) WCHODZI DO UCHYBU, PRZED OGRANICZNIK.
+        To jest decyzja fizyczna, nie kosmetyczna: stabilizator moduluje ŻĄDANIE
+        wzbudnicy, a nie jej wyjście, więc nie może wypchnąć ``Efd`` ponad sufit
+        napięciowy — sufit obowiązuje tak samo z PSS, jak i bez niego. Wstrzyknięcie
+        za ogranicznikiem (``cel + v_pss``) dałoby wzbudzenie powyżej ceilingu, czyli
+        moc, której wzbudnica nie ma. Domyślne ``0.0`` oznacza „brak stabilizatora"
+        i jest DOKŁADNIE równoważne układowi bez PSS (przypięte testem).
+
         DLACZEGO NIE MA TU ZEROWANIA POCHODNEJ NA GRANICY. Poprzednia wersja
         kończyła się warunkiem ``if (efd >= efd_max and d > 0) or (efd <= efd_min
         and d < 0): return 0.0``. Ten warunek był MARTWY: skoro ``cel`` leży w
@@ -169,7 +177,7 @@ class RegulatorNapiecia:
         — zmierzone na governorze, patrz `RegulatorTurbiny.pochodna`.
         Martwość jest przypięta testem ``test_zerowanie_pochodnej_bylo_martwe``.
         """
-        cel = _ogranicz(self.k_a * (self.v_ref_pu - v_t_pu), self.efd_min, self.efd_max)
+        cel = _ogranicz(self.k_a * (self.v_ref_pu - v_t_pu + v_pss_pu), self.efd_min, self.efd_max)
         return (cel - efd) / self.t_a_s
 
     def ogranicznik_stanu(self, indeks: int) -> OgraniczenieStanu:
@@ -286,3 +294,110 @@ class RegulatorTurbiny:
         """Punkt pracy: zwraca ``(pm0, p_ref)`` zapewniające ``dPm/dt = 0`` przy omega=1."""
         pm0 = _ogranicz(pm_wymagane, self.p_min_pu, self.p_max_pu)
         return pm0, pm0
+
+
+@dataclass(frozen=True)
+class StabilizatorSystemowy:
+    """PSS: washout + dwa człony korekcyjne (lead-lag), wejście ``Δω``.
+
+    Implementowana transmitancja (JEDNA, i jest nazwana):
+
+        v_pss(s) = K_s * (s*T_w)/(1 + s*T_w)
+                       * (1 + s*T_1)/(1 + s*T_2)
+                       * (1 + s*T_3)/(1 + s*T_4) * Δω(s)
+
+    czyli PSS1A ze wzbudzeniem prędkościowym, BEZ członu torsyjnego (ramp-tracking)
+    i BEZ filtru pasmowo-zaporowego. Nazwa mówi, co jest zaimplementowane.
+
+    POSTAĆ STANOWA — WYPROWADZENIE (nie deklaracja)
+    -----------------------------------------------
+    Washout ``y_w = K_s*sT_w/(1+sT_w) * Δω`` zapisujemy przez stan ``x_w``:
+
+        (1 + sT_w) * y_w = K_s * s*T_w * Δω
+        y_w = K_s*Δω - x_w,      gdzie   T_w * dx_w/dt = K_s*Δω - x_w
+
+    Sprawdzenie: dy_w/dt = K_s*dΔω/dt - dx_w/dt = K_s*dΔω/dt - (K_s*Δω - x_w)/T_w,
+    czyli T_w*dy_w/dt + y_w = K_s*T_w*dΔω/dt. To jest dokładnie washout.
+
+    Człon lead-lag ``y = (1+sT_1)/(1+sT_2) * u`` przez stan ``x_1``:
+
+        T_2 * dx_1/dt = u - x_1
+        y = (T_1/T_2)*u + (1 - T_1/T_2)*x_1
+
+    Sprawdzenie: T_2*dy/dt + y = (T_1/T_2)*(T_2*du/dt) + (T_1/T_2)*u
+    + (1-T_1/T_2)*(u - x_1) + (1-T_1/T_2)*x_1 = T_1*du/dt + u. Zgadza się.
+
+    WZMOCNIENIE DC JEST ZEROWE (washout), więc w punkcie pracy ``Δω = 0`` i
+    ``x_w = x_1 = x_2 = 0`` daje ``v_pss = 0`` DOKŁADNIE. To warunek konieczny:
+    stabilizator, który w punkcie pracy dokłada niezerowy sygnał, przesuwałby
+    rozpływ mocy i unieważniał inicjalizację (defekt tej samej klasy co P0-04).
+
+    Ograniczniki ``[v_min_pu, v_max_pu]`` działają na WYJŚCIU, nie na stanach —
+    dlatego ``ograniczniki_stanu`` zwraca pustą krotkę (patrz tam).
+    """
+
+    k_s: float = 10.0
+    t_w_s: float = 10.0
+    t_1_s: float = 0.15
+    t_2_s: float = 0.03
+    t_3_s: float = 0.15
+    t_4_s: float = 0.03
+    v_min_pu: float = -0.10
+    v_max_pu: float = 0.10
+
+    def __post_init__(self) -> None:
+        for nazwa in ("t_w_s", "t_2_s", "t_4_s"):
+            if getattr(self, nazwa) <= 0.0:
+                raise ValueError(f"{nazwa} musi być > 0")
+        if self.t_1_s < 0.0 or self.t_3_s < 0.0:
+            raise ValueError("t_1_s i t_3_s muszą być >= 0")
+        if self.v_min_pu > self.v_max_pu:
+            raise ValueError("v_min_pu > v_max_pu")
+
+    def nazwy_stanow(self) -> tuple[str, str, str]:
+        return ("pss_x_w", "pss_x_1", "pss_x_2")
+
+    def jednostki_stanow(self) -> tuple[str, str, str]:
+        return ("p.u.", "p.u.", "p.u.")
+
+    def pochodne(
+        self, x_w: float, x_1: float, x_2: float, omega_pu: float
+    ) -> tuple[float, float, float]:
+        """``(dx_w/dt, dx_1/dt, dx_2/dt)`` [p.u./s] przy prędkości ``omega_pu``.
+
+        Wejściem jest PRĘDKOŚĆ ZE STANU maszyny — argument funkcji, nie pole
+        słownika. Dokładnie to odróżnia tę implementację od defektu P0-05, w
+        którym regulator czytał prędkość ze słownika stałych i nie mógł tłumić.
+        """
+        delta_omega = omega_pu - 1.0
+        d_x_w = (self.k_s * delta_omega - x_w) / self.t_w_s
+        y_w = self.k_s * delta_omega - x_w
+        d_x_1 = (y_w - x_1) / self.t_2_s
+        y_1 = (self.t_1_s / self.t_2_s) * y_w + (1.0 - self.t_1_s / self.t_2_s) * x_1
+        d_x_2 = (y_1 - x_2) / self.t_4_s
+        return d_x_w, d_x_1, d_x_2
+
+    def wyjscie(self, x_w: float, x_1: float, x_2: float, omega_pu: float) -> float:
+        """``v_pss`` [p.u.] — sygnał dodawany do uchybu AVR, PO ograniczeniu."""
+        delta_omega = omega_pu - 1.0
+        y_w = self.k_s * delta_omega - x_w
+        y_1 = (self.t_1_s / self.t_2_s) * y_w + (1.0 - self.t_1_s / self.t_2_s) * x_1
+        y_2 = (self.t_3_s / self.t_4_s) * y_1 + (1.0 - self.t_3_s / self.t_4_s) * x_2
+        return _ogranicz(y_2, self.v_min_pu, self.v_max_pu)
+
+    def stan_ustalony(self) -> tuple[float, float, float]:
+        """Punkt pracy: zera. Washout ma zerowe wzmocnienie DC, więc ``v_pss = 0``."""
+        return (0.0, 0.0, 0.0)
+
+    def ograniczniki_stanu(self, przesuniecie: int) -> tuple[OgraniczenieStanu, ...]:
+        """PUSTA krotka — i to jest stwierdzenie merytoryczne, nie brak implementacji.
+
+        Ograniczenie PSS jest ograniczeniem WYJŚCIA (``v_min_pu``/``v_max_pu``),
+        realizowanym w ``wyjscie``. Stany ``x_w``, ``x_1``, ``x_2`` są stanami
+        filtru — nie mają granicy fizycznej, więc rzutowanie ich na jakikolwiek
+        przedział byłoby wymyśloną liczbą. ``przesuniecie`` jest przyjmowane, by
+        sygnatura była taka sama jak u regulatorów mających ograniczniki, i by
+        wołający nie musiał rozgałęziać kodu.
+        """
+        _ = przesuniecie
+        return ()
