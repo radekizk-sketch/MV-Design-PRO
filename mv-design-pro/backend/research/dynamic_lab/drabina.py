@@ -392,6 +392,28 @@ DRABINA: tuple[PozycjaDrabiny, ...] = (
         ),
         realizacja="test_zwarcie_metaliczne_na_szynie_z_odbiorem_STALEJ_MOCY_nie_ma_rozwiazania",
     ),
+    PozycjaDrabiny(
+        identyfikator="uklad-wielozrodlowy-interakcja",
+        zlozonosc=ZlozonoscPrzypadku.C2_WIELE_URZADZEN,
+        wyrocznia=PoziomWyroczni.W1_WLASNOSC,
+        opis_pl=(
+            "Trzy rodzaje zrodel dynamiki na jednej sieci (maszyna z AVR i governorem, "
+            "falownik ze statyzmem Q(U), odbior stalej mocy): perturbacja parametru "
+            "KAZDEGO z nich zmienia przebiegi POZOSTALYCH przez algebre sieci"
+        ),
+        realizacja="tests/research/test_wielozrodlowy_wielozdarzeniowy.py",
+    ),
+    PozycjaDrabiny(
+        identyfikator="permutacja-harmonogramu-bez-wplywu",
+        zlozonosc=ZlozonoscPrzypadku.C3_ZDARZENIE_ZMIENIAJACE_SIEC,
+        wyrocznia=PoziomWyroczni.W1_WLASNOSC,
+        opis_pl=(
+            "Wynik NIE zalezy od kolejnosci podania zdarzen — wszystkie permutacje "
+            "harmonogramu z dwoma zdarzeniami ROWNOCZESNYMI daja identyczny odcisk "
+            "przebiegow, dla kazdego z trzech integratorow"
+        ),
+        realizacja="test_permutacja_harmonogramu_NIE_zmienia_wyniku",
+    ),
 )
 
 

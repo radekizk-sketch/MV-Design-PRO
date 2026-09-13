@@ -172,13 +172,17 @@ MACIERZ: tuple[Zdolnosc, ...] = (
         identyfikator="algebra-sieci",
         opis_pl="Rozwiązanie algebry sieci (Ybus, Newton z globalizacją)",
         klasy_zrodlowe=(),
-        dowody=("interakcja-dwoch-maszyn",),
+        dowody=("interakcja-dwoch-maszyn", "uklad-wielozrodlowy-interakcja"),
     ),
     Zdolnosc(
         identyfikator="zdarzenia-i-topologia",
         opis_pl="Zdarzenia zmieniające model: zwarcie, zdjęcie zwarcia, wyłączenie gałęzi",
         klasy_zrodlowe=(),
-        dowody=("zdarzenie-zmienia-siec", "cct-rowne-pola"),
+        dowody=(
+            "zdarzenie-zmienia-siec",
+            "cct-rowne-pola",
+            "permutacja-harmonogramu-bez-wplywu",
+        ),
     ),
     Zdolnosc(
         identyfikator="calkowanie-i-sztywnosc",
