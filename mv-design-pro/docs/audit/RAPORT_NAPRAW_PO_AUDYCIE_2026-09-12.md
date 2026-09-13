@@ -318,46 +318,144 @@ test_kwalifikacja.py`, 12 passed).
 
 ---
 
+## 10c. DETERMINIZM ODCISKU PROJEKCJI nN — POMIAR OBALIŁ MOJĄ WŁASNĄ DIAGNOZĘ (szósta runda)
+
+**KOREKTA POPRZEDNIEJ SEKCJI §11.1 TEGO RAPORTU.** Napisałem tam, że siedem
+czerwonych testów w CI jest „NIEODTWARZALNE LOKALNIE" i że przyczyną jest
+„różnica ścieżki zbieżności solvera iteracyjnego między budowami BLAS/CPU",
+po czym świadomie odłożyłem naprawę jako decyzję produktową. **Oba zdania były
+niepełne, a pierwsze wprost fałszywe.** Defekt jest odtwarzalny lokalnie jedną
+zmienną środowiskową. Nie znalazłem tego wcześniej, bo powtarzałem ten sam bieg
+zamiast zmienić warunki biegu — powtórzenie nie jest pomiarem.
+
+### Pomiar, który to rozstrzygnął
+
+Ta sama maszyna, ten sam kod, jedyna różnica to liczba wątków BLAS:
+
+```
+OPENBLAS_NUM_THREADS=1  →  fixt_t1.json
+OPENBLAS_NUM_THREADS=4  →  fixt_t4.json
+```
+
+| wielkość | wynik |
+|---|---|
+| wartości zmiennoprzecinkowych w 18 scenariuszach | **9081** |
+| różnic t1 vs t4 | **26** |
+| maksimum różnicy | **2 ULP (3,242e-16 względnie)** |
+| powtarzalność w obrębie jednej konfiguracji | **bit w bit** (t1≡t1b, t4≡t4b) |
+
+Czyli: wynik jest deterministyczny dla ustalonego środowiska i **niedeterministyczny
+między środowiskami**. To nie jest wada modelu ani „dług fikstur".
+
+### Przyczyna źródłowa
+
+`network_model/solvers/short_circuit_core.build_zbus` liczy `np.linalg.inv(y_bus)`.
+LAPACK/BLAS dobiera blokowanie i kolejność redukcji do liczby wątków oraz do
+mikroarchitektury procesora, a dodawanie zmiennoprzecinkowe nie jest łączne.
+`projection_hash` był liczony jako SHA-256 nad `json.dumps` z **surowych**
+`repr(float)`, więc jeden ostatni bit zamieniał odcisk w całkowicie inny ciąg.
+Odcisk obiecywał tożsamość, której nie potrafił dotrzymać — to naruszenie
+Determinism Rule (CLAUDE.md §7), a nie usterka testu.
+
+Druga ścieżka numeryczna jest GORSZA: `16_stale_result` niesie wynik rozpływu,
+czyli solvera iteracyjnego, gdzie wartość jest określona najwyżej do ścieżki
+zbieżności. Dziennik CI dla `4c0ab856` pokazał tam różnice do **5,3e-12
+względnie** (2,346974077487094 wobec 2,3469740774995858) — cztery rzędy powyżej
+szumu BLAS ścieżki zwarciowej.
+
+### Naprawa
+
+`normalizuj_projekcje` (jedyny punkt kanonizacji fixtury, wspólny dla skryptu
+eksportu i dla testu) kwantyzuje **każdą** liczbę do `CYFRY_ZNACZACE_FIXTURY`
+cyfr znaczących PRZED policzeniem odcisku — więc hash liczy się dokładnie z tych
+liczb, które trafiają do pliku. Kwantyzacja przez formatowanie dziesiętne
+(`f"{x:.4e}"`), nie przez `math.log10`, bo log10 sam może chybić o 1 ULP przy
+potędze dziesiątki i wybrać inny wykładnik.
+
+Zakres zmiany jest zamknięty w migawce fixtury: `normalizuj_projekcje` i tak
+podmieniała już `run_id`, znaczniki czasu i sygnaturę oraz przeliczała odcisk,
+więc hash w pliku nigdy nie był hashem odpowiedzi produkcyjnej. **Kontrakt
+`LvDomainProjectionV1` ani ładunek zwracany przez `/projection/v1` nie zmieniają
+się.** Front czyta `projection_hash` wyłącznie jako nieprzezroczysty ciąg
+(`LvDomainView.tsx:527`, atrybut `data-projection-hash`) i nigdy go nie przelicza.
+
+### Dlaczego 5 cyfr znaczących — z pomiaru marginesu, nie z rachunku ryzyka
+
+Kwantyzacja chroni tylko wtedy, gdy wartość nie leży przy granicy zaokrąglenia.
+Zmierzony najmniejszy **względny** margines do granicy w całym korpusie:
+
+| cyfry znaczące | min. margines | zapas wobec szumu 5,3e-12 |
+|---|---|---|
+| 4 | 1,298e-07 | 24 500× |
+| **5** | **2,816e-08** | **5 300×** |
+| 6 | 1,558e-09 | 294× |
+| 7 | 8,393e-11 | 16× |
+
+Przy 7 cyfrach pojedynczy inny procesor znów przerzuca odcisk. Przy 5 cyfrach
+rozdzielczość prądu 23,748 A wynosi 0,001 A — o rzędy wielkości poniżej
+dokładności jakiegokolwiek pomiaru i poniżej tego, co pokazuje UI.
+
+Grubiej NIE znaczy bezpieczniej, i to również jest pomiar: przy 3 cyfrach
+wartość katalogowa 0,022150000000000003 Ω leży **dokładnie** na granicy między
+0,0221 a 0,0222 (margines 9,2e-17 — zero). Okrągła liczba z katalogu trafia w
+węzeł zgrubnej siatki częściej niż wynik obliczenia.
+
+### Dowód wykonywalny (kontrola bazowa dla każdej sondy)
+
+`TestKwantyzacjaFixtur`, cztery testy, każdy z potwierdzoną zabójczością:
+
+| mutacja | co pada | dlaczego to właściwa sonda |
+|---|---|---|
+| `kwantyzuj_liczby` → tożsamość | `test_szum_miedzymaszynowy_nie_zmienia_ani_liczb_ani_odcisku` | odtworzenie defektu: szum 5,3e-12 na KAŻDEJ liczbie zmienia odcisk |
+| `CYFRY = 3` (zbyt zgrubnie) | `test_zmiana_inzynierska_nadal_przebija_przez_kwantyzacje` + `test_fixtury_w_repo_sa_juz_skwantowane` + margines | bramka przestaje rozróżniać zmianę 1e-3 względnie |
+| `CYFRY = 7` (zbyt ciasno) | `test_kazda_liczba_ma_margines_do_granicy_zaokraglenia` | margines spada do 16× szumu |
+| stan docelowy | — | 55/55 zielonych |
+
+**Defekt w mojej własnej sondie, wykryty przez kontrolę bazową.** Pierwsza wersja
+testu marginesu mierzyła wartości **już skwantowane** (fikstura `projekcje`), więc
+każda z nich siedziała dokładnie na węźle siatki i „margines" wychodził maksymalny
+niezależnie od tego, jak ciasna jest siatka — mutacja `CYFRY = 7` przeszła.
+Rozdzieliłem fiksturę na `projekcje_surowe` (pełna precyzja, prosto z solverów)
+i `projekcje`; margines mierzy się wyłącznie na surowych. Drugi defekt tej samej
+klasy: test „zmiana inżynierska przebija" asertował „cokolwiek w ładunku się
+zmieniło", co przy kilku tysiącach liczb jest zawsze prawdą — przepisany na
+asercję **wartość po wartości**.
+
+### Inwentarz KLASY (nie instancji)
+
+Klasa defektu: **artefakt zatwierdzony w repo porównywany bajt w bajt ze świeżo
+policzonym ładunkiem niosącym liczby zmiennoprzecinkowe z algebry liniowej.**
+Wszystkie takie porównania w backendzie:
+
+| miejsce | wystawione na szum? | dowód |
+|---|---|---|
+| `test_scenariusze_nn.py::test_json_w_repo_rowny_odpowiedzi_backendu` | **TAK** | 7/18 czerwonych w CI; odtworzone lokalnie liczbą wątków |
+| `test_sc_asymmetrical_golden.py::test_matches_golden_artifacts` | nie | zielony w CI (inna maszyna) i przy `THREADS=1` |
+| `test_pack_parity.py` | nie | porównuje pliki z plikami, nic nie liczy |
+| `test_companions_generated.py` | nie | zielony w CI i przy `THREADS=1` |
+| `test_ptpiree_wykaz_snapshot.py` | nie | dane katalogowe, bez solvera |
+| `test_report_export.py` | nie | zielony w CI i przy `THREADS=1` |
+| `solver_diff_guard.py` | nie | hashuje **pliki źródłowe**, nie wyniki |
+
+Sonda (zmiana liczby wątków BLAS) ma **potwierdzoną czułość**: wykryła prawdziwy
+defekt w pierwszej pozycji tabeli, więc jej czysty wynik dla pozostałych pozycji
+jest informacją, a nie ciszą.
+
+---
+
 ## 11. PROBLEMY NIEROZSTRZYGNIĘTE
 
-### 11.1 Siedem czerwonych testów backendu w CI — NIEODTWARZALNE LOKALNIE
-`tests/application/analyses/lv_domain/test_scenariusze_nn.py::TestKazdyScenariusz::test_json_w_repo_rowny_odpowiedzi_backendu[…]`
-— siedem parametrów. Lokalnie **przechodzą**; w CI **padają**.
+### 11.1 Siedem czerwonych testów backendu w CI — ROZSTRZYGNIĘTE, patrz §10c
+Wcześniejsza treść tej sekcji („NIEODTWARZALNE LOKALNIE", przyczyna w zbieżności
+solvera iteracyjnego, naprawa odłożona jako decyzja produktowa) została
+**obalona własnym pomiarem** i zastąpiona sekcją §10c. Zostawiam ślad korekty
+zamiast cichej podmiany: defekt jest odtwarzalny zmienną `OPENBLAS_NUM_THREADS`,
+przyczyną jest `np.linalg.inv` w budowie Z-bus, a naprawa nie wymagała zmiany
+kontraktu — mieści się w kanonizacji migawki fixtury.
 
-Zmierzona przyczyna (z dziennika CI, różnice `Full diff`):
-
-| fikstura w repo | odpowiedź backendu w CI | różnica względna |
-|---|---|---|
-| 113.93319427114858 | 113.93319427114918 | 5e-15 |
-| 2.346974077487094 | 2.3469740774995858 | 5e-12 |
-| −0.0758892784527454 | −0.07588927845414428 | 1,8e-11 |
-| 0.9978833528059766 | 0.9978833528061506 | 1,7e-13 |
-
-To NIE jest „dług fikstur”. To **różnica ścieżki zbieżności solvera iteracyjnego
-między budowami BLAS/CPU**. Test porównuje `json.loads(fixture) == projekcja`
-BIT W BIT na pełnej precyzji, a `projection_hash` jest liczony PO tej samej
-pełnej precyzji — więc odcisk dziedziczy szum ostatnich cyfr i **nie jest stabilny
-między środowiskami**, co przeczy jego roli tożsamości.
-
-Tolerancje solverów w tej ścieżce: `power_flow_types` 1e-8, `power_flow_unbalanced`
-1e-6, `solver_input/contracts` 1e-6 — czyli wartości są wyznaczone najwyżej do
-~8 cyfr znaczących. Obserwowany rozrzut (≤2e-11 względnie) leży GŁĘBOKO poniżej
-tolerancji, czyli w zakresie nieokreślonym przez solver.
-
-**Dlaczego NIE naprawiłem tego w tej rundzie (świadoma decyzja, nie przeoczenie).**
-Naturalna naprawa — zaokrąglenie zmiennoprzecinkowych w `normalizuj_projekcje`
-(to już JEST punkt kanonizacji: podmienia `run_id`, znaczniki czasu i sygnaturę,
-po czym przelicza `projection_hash`) — ma wadę, którą trzeba nazwać, a nie ukryć:
-„zaokrąglij i porównaj dokładnie” NIE jest odporne, bo wartość leżąca przy granicy
-zaokrąglenia nadal przeskakuje pod wpływem szumu. Przy kroku zaokrąglenia 1e-9
-względnie i szumie 2e-11 prawdopodobieństwo przeskoku to ~2% na wartość — przy
-tysiącach wartości to pewność, tyle że rzadka i nieregularna. Uczciwa naprawa to
-albo porównanie z TOLERANCJĄ (struktura dokładnie, liczby względnie), albo
-kanonizacja z jawnie przyjętym ryzykiem granicy — a `projection_hash` jest
-tożsamością widzianą przez frontend, więc zmiana jego kanonizacji jest zmianą
-KONTRAKTU. To jest decyzja produktowa właściciela, nie wybór wykonawcy, i wymaga
-zgody przed wykonaniem. Zaokrąglenie fikstur „żeby było zielono” jest wprost
-zakazane przez §8 planu napraw.
+Stan po naprawie potwierdzam wyłącznie biegiem CI dla dokładnego SHA (§10);
+zielone testy lokalne nie są tu dowodem, bo to właśnie lokalna zieleń przy
+czerwonym CI była objawem defektu.
 
 ### 11.2 Odpowiedź świeżego biegu zwarciowego: 96,4 MiB wobec bramki 60 MB
 `e2e/industrial-template-mass-flow.spec.ts:438`. Bramka jest skalibrowana
