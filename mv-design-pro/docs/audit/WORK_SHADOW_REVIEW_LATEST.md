@@ -1,194 +1,196 @@
 # MV-DESIGN-PRO — INDEPENDENT WORK SHADOW REVIEW
 
-Data: 2026-09-13. Tryb: adversarial, evidence-based; READ-ONLY wobec kodu produkcyjnego. Zmieniono wyłącznie dozwolone pliki raportowe. Checkpoint oznacza wykonanie przeglądu, nie akceptację całej gałęzi ani zamknięcie zakresu `pending_from_base`.
+Data przeglądu: 2026-09-13. Tryb: niezależny, adversarial, evidence-based. Kod, testy, progi i fixtures pozostawiono bez zmian; eksperymenty wykonano w izolowanym worktree. Checkpoint oznacza wykonanie przeglądu, nie akceptację całej gałęzi ani zamknięcie `pending_from_base`.
 
 ## REVIEW RANGE
 
-- REVIEW_BASE_SHA: `a6ee782cfb8b7735a389a4b3ae64287031ae1333`
-- REVIEW_HEAD_SHA: `575ce8263c7794d72ca6b5385730f4d2995067b5`
-- Rodzic HEAD: `5d2cdfbbb7bcf43737060441ed33337a561af699`
-- Merge base zakresu: `a6ee782cfb8b7735a389a4b3ae64287031ae1333`
+- REVIEW_BASE_SHA: `575ce8263c7794d72ca6b5385730f4d2995067b5`
+- REVIEW_HEAD_SHA: `b55cd086d74071cd5f6c873c93809045c02001ca`
+- Rodzic HEAD: `74f2f17f3d73cc98fcd088127047562742d70caa`
+- Merge base: `575ce8263c7794d72ca6b5385730f4d2995067b5`
 - Branch: `claude/max-dynamic-audit-kzbivg`
-- PR: NONE dla bieżącej gałęzi. PR #475 pozostaje otwarty dla `claude/opus5-dynamic-physics-audit-fixes`, HEAD `1e96202535abb0acfb123ebac8a49dae430e792c`, baza `main@7e84753adbc4b0e50de9a1fd4f1022f1cfd01903`.
+- PR bieżącej gałęzi: brak. PR #475 pozostaje odrębnym PR dla `claude/opus5-dynamic-physics-audit-fixes`, HEAD `1e96202535abb0acfb123ebac8a49dae430e792c`.
 
-Zakres po bazie zawiera trzy commity dokumentacyjne: dwa utrwalające poprzedni shadow review oraz `575ce826`, który zapisuje wyniki CI dla dokładnego SHA `a6ee782c`. Porównanie GitHub wykazało wyłącznie trzy pliki dokumentacyjne: bieżący raport, jego kopię niezmienną oraz raport napraw. Brak zmian kodu wykonawczego, testów, progów i fixtures; nie reaudytowano repozytorium.
+Zakres: 14 commitów, 31 plików, około 7850 dodań i 415 usunięć. Dwa pierwsze commity utrwalały poprzedni audyt; 12 kolejnych wprowadziło m.in. re-inicjalizację algebraiczną, jawne bazy BESS, FRT ze śladu biegu, pomiar/evidence, walidację AVR/governor/PSS, ryzyko postaci modelu, układy wieloźródłowe i wielozdarzeniowe oraz rozszerzoną kwalifikację.
 
 ## EXECUTIVE VERDICT
 
-**ACCEPT CONDITIONALLY**
+**REJECT CURRENT DELTA**
 
-Nowa delta jest wyłącznie dowodowa. Niezależne zapytanie do GitHub Actions potwierdziło dziewięć przebiegów `push` dla dokładnego SHA `a6ee782cfb8b7735a389a4b3ae64287031ae1333`; wszystkie zakończyły się `completed/success`. Zamknięty jest zatem warunek poprzedniej recenzji dotyczący braku CI dla dokładnego SHA. Poprzednie zapytanie zwracające 0 przebiegów obejmowało jedynie przebiegi związane z pull requestem, podczas gdy gałąź nie ma PR.
-
-Nie stwierdzono nowej zmiany fizyki, matematyki, metod numerycznych, energii, sieci ani katalogów. Zieleń CI dowodzi wykonania objętych workflowami kontroli programowych; nie dowodzi poprawności fizycznej, walidacji modelu, gotowości produkcyjnej ani dowodowej. Dynamika pozostaje `UNVALIDATED_MODEL`. Zakaz promocji do `VALIDATED_SIMULATION`, produkcji, dowodu NC RfG i wyniku regulacyjnego pozostaje bez zmian.
+Delta wnosi wartościowe mechanizmy badawcze i ma 9/9 zielonych workflowów, ale niezależne kontrprzykłady obalają trzy istotne deklaracje odbiorowe: diagnostyka re-inicjalizacji zeruje rzeczywistą zmianę napięcia, kontrakt wspólnej bazy BESS nie jest egzekwowany na granicy modelu, a kampania mutacyjna nie jest samowystarczalna bez opcjonalnego ANDES. Są to nowe P1, z czego błąd bazowy daje trwałą niespójność mocy i energii. Zieleń CI nie podnosi dynamiki do `VALIDATED_SIMULATION`, `PRODUCTION-READY` ani dowodu NC RfG.
 
 ## LEVELS OF VERIFICATION
 
-- IMPLEMENTED: TAK dla napraw w `a6ee782c`; bieżąca delta nie zmienia implementacji.
-- SOFTWARE-VERIFIED: TAK DLA ZAKRESU OBJĘTEGO DZIEWIĘCIOMA WORKFLOWAMI na dokładnym `a6ee782c`; nie obejmuje niewdrożonych pozycji ani nierozstrzygniętych własności fizycznych.
-- MATHEMATICALLY VERIFIED: BEZ ZMIANY; nie dodano nowego dowodu równań ani bilansów.
-- NUMERICALLY VERIFIED: CZĘŚCIOWO; zachowują ważność wcześniejsze pomiary dla gładkiego SMIB i naprawionej bramki kwalifikacji, lecz zdarzenia, limitery i podłoga ANDES pozostają otwarte.
-- PHYSICALLY SUPPORTED: BEZ NOWEGO DOWODU.
-- PHYSICALLY VALIDATED: NIE.
-- PRODUCTION-READY: NIE dla dynamiki.
-- REGULATORY-EVIDENCE-READY: NIE.
+- IMPLEMENTED: **TAK** dla deklarowanych modułów i testów.
+- SOFTWARE-VERIFIED: **CZĘŚCIOWO**; 9/9 CI jest zielone, lecz niezależne kontrprzykłady wykryły błędy poza asercjami autora.
+- MATHEMATICALLY VERIFIED: **NIE** dla pełnej delty; kontrakt baz BESS dopuszcza dwie sprzeczne interpretacje tej samej wartości p.u.
+- NUMERICALLY VERIFIED: **CZĘŚCIOWO**; wyniki gładkiego SMIB są wspierające, ale diagnostyka zdarzeń i samowystarczalność mutacji są wadliwe.
+- PHYSICALLY SUPPORTED: **CZĘŚCIOWO**; identyfikacja gałęzi i część porównań z ANDES są użyteczne.
+- PHYSICALLY VALIDATED: **NIE**.
+- PRODUCTION-READY: **NIE** dla laboratorium dynamicznego.
+- REGULATORY-EVIDENCE-READY: **NIE**.
 
-## NEW P0/P1
+## NOWE P0/P1
 
-Brak nowych P0/P1 w badanej delcie.
+### P1-B55-01 — diagnostyka re-inicjalizacji raportuje `delta_y=0`, mimo rzeczywistej zmiany napięć
 
-## NEW P2
+**Twierdzenie.** `reinicjalizuj` zatwierdza nowy punkt pracy przed obliczeniem różnicy napięć. `_napiecia_odniesienia` odczytuje już nadpisane `_v_zatwierdzone`, więc diagnostyka porównuje `v_po` z `v_po` i może fałszywie dowodzić ciągłości części algebraicznej.
 
-Brak nowych P2. Commit `575ce826` prawidłowo ogranicza znaczenie zielonego CI i nie deklaruje walidacji fizycznej ani produkcyjnej.
+**Dowód wykonywalny.** Dla zmiany topologii niezależny scenariusz dał:
+
+```text
+actual_delta_y = 1.012071499245066
+reported_delta_y = 0.0
+reported_per_bus = (('GEN', 0.0), ('SYS', 0.0))
+v_before = [1.00928872+0.075j, 1.0+0.0j]
+v_after  = [7.50100929e-07-1.00928797e-05j, 1.0+0.0j]
+```
+
+**Reprodukcja.** Zainicjalizować silnik i zachować kopię `v_before`; wymusić zmianę topologii; wywołać `reinicjalizuj`; porównać `max(abs(v_after-v_before))` z diagnostycznym `delta_y`. Kontrprzykład jest niezależny od testu autora.
+
+**Kryterium odbioru.** Snapshot stanu algebraicznego musi powstać przed każdą mutacją/zatwierdzeniem. Dla zmian niezerowych raportowana norma ma zgadzać się z normą obliczoną z zachowanego snapshotu w jawnej tolerancji. Test ma zabijać mutację zamieniającą `v_before` na `v_after`.
+
+### P1-B55-02 — wspólna baza BESS jest opisana, lecz nie jest egzekwowana przez `ModelDynamiczny`
+
+**Twierdzenie.** `MagazynEnergiiBESS` deklaruje wymóg `s_bazowa_mva == ModelDynamiczny.s_bazowa_mva`, ale konstruktor modelu nie weryfikuje tej równości. Ten sam sygnał `p=0.5 p.u.` oznacza wtedy inną moc po stronie sieci i zasobu.
+
+**Dowód wykonywalny.** Model o bazie 100 MVA przyjął BESS o bazie 50 MVA:
+
+```text
+model_constructed = True
+P_ac_pu = 0.5
+P_ac_network_MW = 50.0
+P_resource_inferred_MW = 25.0
+energy_ratio = 0.5
+```
+
+Błąd skali wynosi 2:1 i nie maleje przy `dt -> 0`; jest błędem modelowania/jednostek, nie całkowania.
+
+**Reprodukcja.** Utworzyć `ModelDynamiczny(s_bazowa_mva=100)` i dołączyć BESS z `s_bazowa_mva=50`, wymusić `p=0.5`, następnie przeliczyć moc na MW obiema bazami i całkę energii tym samym śladem czasu.
+
+**Kryterium odbioru.** Konstrukcja/uruchomienie ma fail-closed dla niezgodnych baz albo wykonywać jedno jawne, audytowalne przeskalowanie w miejscu granicznym. Testy muszą obejmować ładowanie i rozładowanie, oba ograniczenia SOC, sprawność, jednostki MW/MWh i wykazać błąd bilansu malejący zgodnie z rzędem metody na gładkich odcinkach.
+
+### P1-B55-03 — deklaracja kompletnej kampanii mutacyjnej zależy od opcjonalnego ANDES
+
+**Twierdzenie.** `test_wzorzec_trajektoria.py` ma modułowe `pytest.importorskip("andes")`. Bez ANDES pomijany jest cały moduł, także wcześniejsze sondy niewymagające tej biblioteki. Mutant `M-KON-04` wskazuje cały plik jako jedyną sondę, zatem szybka kwalifikacja nie potwierdza deklarowanego kompletu.
+
+**Dowód wykonywalny.** W izolowanym Pythonie 3.12 z NumPy 1.26.4 i pytest 7.4.4, bez ANDES:
+
+```text
+PYTHONPATH=research .venv/bin/python research/kwalifikacja.py --szybko
+exit = 1
+LUKA KWALIFIKACJI: ['M-KON-04']
+mutacje_zabite = 12/13
+przezyly = 1
+M-KON-04 = SONDA_NIEWIARYGODNA
+baseline = 1 skipped
+```
+
+Pozostałe 12 mutacji zostało zabitych. Wynik 12/13 jest właściwym zakresem tej niezależnej kampanii; nie raportowano wyjątku jako zabicia.
+
+**Reprodukcja.** Uruchomić kwalifikację w środowisku spełniającym zależności podstawowe, lecz bez ANDES. Sprawdzić liczbę zebranych testów i wynik każdego mutanta.
+
+**Kryterium odbioru.** Import opcjonalnej wyroczni przenieść do testów wymagających ANDES albo rozdzielić pliki. `M-KON-04` musi mieć co najmniej jedną niezależną, obowiązkową sondę. W środowisku bez ANDES kampania ma jawnie rozdzielać `KILLED`, `SURVIVED`, `NOT_RUN` i `ORACLE_UNAVAILABLE`; nie może deklarować pełnego wyniku.
+
+## NOWE P2
+
+### P2-B55-04 — „ALL schedule permutations” jest twierdzeniem szerszym niż wykonany eksperyment
+
+Testy wyczerpująco enumerują jedynie permutacje trzech konkretnych zdarzeń (6), dwóch równoczesnych zwarć w wybranym układzie (24) oraz jeden przypadek `fault+clear`. Nie stanowi to dowodu dla wszystkich harmonogramów, typów zdarzeń, kolizji identyfikatorów i operacji nieprzemiennych. Należy raportować „all permutations of the enumerated finite scenarios”, a nie własność ogólną.
 
 ## PHYSICS SCORE
 
-**UNRESOLVED.** Delta nie zmienia modeli maszyny, DER, BESS, sieci, zdarzeń ani regulatorów. Zielone testy nie są niezależną wyrocznią fizyczną i nie zamykają wcześniejszych problemów z historią, BESS, FRT ani DAE.
+**PARTIALLY SUPPORTED.** Jawna tożsamość równoległych gałęzi usuwa wcześniejsze ciche rozpinanie całego korytarza dla badanego przypadku. Nie ma jednak pełnej walidacji modeli maszyny, GFL/GFM, DFIG, AVR/governor/PSS i ograniczników względem danych urządzeń. Błąd wspólnej bazy BESS obala pełną spójność fizyczną delty.
 
 ## MATHEMATICS SCORE
 
-**PARTIALLY SUPPORTED.** Nie pojawiły się nowe równania. Wcześniejsze analityczne i wykonawcze kontrole pozostają ważne wyłącznie w swoim zakresie. Brak dowodu pełnej równoważności zmienionych modeli z referencją fizyczną.
+**PARTIALLY SUPPORTED.** Residua punktu pracy i wybrane równania regulatorów mają pomiary wspierające. Nie wykonano kompletnego przejścia równanie-po-równaniu dla maszyny, falowników i DFIG, a dopuszczona niezgodność baz oznacza brak jednoznacznego odwzorowania p.u. -> SI.
 
 ## NUMERICAL SCORE
 
-**PARTIALLY SUPPORTED.** CI potwierdza, że kontrolowane testy numeryczne i bramki programowe przechodzą na dokładnym SHA. Nie rozstrzyga obserwowanej podłogi błędu wobec ANDES, semantyki przełączeń, rzędu na zdarzeniach i przejściach limiterów ani split-versus-simultaneous DAE.
+**PARTIALLY SUPPORTED.** Dla gładkiego odcinka zmierzono oczekiwane rzędy: trapez około 25× przy pięciokrotnym zagęszczeniu i RK4 około 627×. Nie wolno przenosić tego na nieciągłości. Drabina ANDES 4 ms -> 0,5 ms spadła z `1.838e-4` do `3.354e-5 rad`, lecz ostatni iloraz tylko 1,22×; zbieżność do zera nie została wykazana. Dodatkowo diagnostyka re-inicjalizacji ukrywa niezerowy skok algebraiczny.
 
 ## ENERGY / NETWORK SCORE
 
-**UNRESOLVED.** Brak nowej delty w KCL, P/Q, Ybus, per-unit i bilansie BESS. Nie wykonano nowego audytu energii ani lokalnych residuów, ponieważ kod tych obszarów nie zmienił się. Otwarty zakres pozostaje w `pending_from_base`.
+**REFUTED dla deklaracji jednolitego łańcucha baz; PARTIALLY SUPPORTED dla naprawy gałęzi równoległych.** Kontrprzykład 100/50 MVA powoduje trwały błąd mocy i energii 2:1. Identyfikator gałęzi poprawia wybiórcze wyłączenie jednego toru, ale ogólne zdarzenia nakładające się, kolizje identity, KCL lokalne i bilans BESS po obu stronach ograniczeń pozostają w zakresie otwartym.
 
 ## CATALOG ENGINEERING SCORE
 
-**UNRESOLVED.** Brak nowej delty katalogowej. `57/57` kompletności szablonów nadal dowodzi kompletności pól/modelu szablonowego, a nie produkcyjnej weryfikacji 23 rodzin, wartości producenta ani proweniencji. Brak danych nie może być zastępowany wartością domyślną.
+**UNRESOLVED.** Delta nie dostarcza nowych, niezależnie zweryfikowanych źródeł producentów dla znamion, CT/VT, zabezpieczeń ani topologii SN–TR–nN. Kompletność modelu/katalogu nie jest równoznaczna z weryfikacją źródła. Nadal obowiązuje zakaz fikcyjnych wartości i aparatów, w szczególności głównego wyłącznika stacji blokowej bez rozdzielnicy.
 
 ## CI DELTA
 
-Niezależnie pobrano kolekcję GitHub Actions z filtrem `head_sha=a6ee782cfb8b7735a389a4b3ae64287031ae1333`. Otrzymano dokładnie dziewięć przebiegów, wszystkie `event=push`, `status=completed`, `conclusion=success`:
+Dla dokładnego `b55cd086d74071cd5f6c873c93809045c02001ca` potwierdzono 9/9 `completed/success`:
 
-| Workflow | Run ID | Wynik |
+| Workflow | Run ID | Klasyfikacja |
 |---|---:|---|
-| Python tests | 34737852730 | success |
-| Frontend checks | 34737852749 | success |
-| Frontend E2E smoke | 34737852757 | success |
-| Frontend E2E full | 34737852709 | success |
-| SLD Determinism Guards | 34737852706 | success |
-| P0 Extended Guards (V12K invariants) | 34737852767 | success |
-| Architectural And Repo Hygiene Guard | 34737852727 | success |
-| Docs Integrity Guard | 34737852738 | success |
-| Physics Label Guard (Catalog-First) | 34737852719 | success |
+| Python tests | 34769549909 | zielony |
+| Frontend checks | 34769549929 | zielony |
+| Frontend E2E smoke | 34769549923 | zielony |
+| Frontend E2E full | 34769549912 | zielony |
+| SLD Determinism Guards | 34769549943 | zielony |
+| P0 Extended Guards | 34769549953 | zielony |
+| Architectural And Repo Hygiene Guard | 34769549941 | zielony |
+| Docs Integrity Guard | 34769549937 | zielony |
+| Physics Label Guard | 34769549888 | zielony |
 
-Wszystkie przebiegi utworzono 2026-09-13 o 04:25:28–04:25:29 UTC. Commit-status API zwraca `state=pending, total_count=0`, ponieważ te wyniki są GitHub Checks/Actions, a nie klasycznymi commit statuses; nie jest to sprzeczność.
-
-Dla dokumentacyjnego HEAD `575ce826` niezależnie potwierdzono siedem zakończonych powodzeniem workflowów. Dwa E2E nie zostały uruchomione dla tej dokumentacyjnej zmiany; brak ich uruchomienia nie jest klasyfikowany jako regresja kodu.
-
-CI delta względem poprzedniej recenzji: z „brak widocznego CI dla dokładnego SHA” do „9/9 dostępnych workflowów dla dokładnego SHA zakończonych powodzeniem”. Klasyfikacja: pozytywna zmiana dowodu programowego, nie dowód poprawności fizycznej.
+Niezależny celowany bieg na nieprzypiętej najnowszej wersji NumPy: `149 passed, 1 failed`; błąd wynikał z braku `np.trapz`. Klasyfikacja: **środowiskowa/zgodność wersji**, nie wykazana regresja repozytorium, ponieważ lock używa NumPy 1.26.4. Po przypięciu NumPy 1.26.4 nie odtworzono tego błędu. Zielone CI nie obala P1-B55-01..03, gdyż odpowiednie kontrprzykłady nie są asercjami tych workflowów.
 
 ## MUTATION STATUS
 
-Brak nowych mutacji w delcie dokumentacyjnej. Zachowują ważność wyniki ostatniej niezależnej recenzji:
+Zakres niezależny: izolowane środowisko Python 3.12, NumPy 1.26.4, pytest 7.4.4, bez ANDES, `kwalifikacja.py --szybko`.
 
-- `zbiegl="false"`: **KILLED** — `ODRZUCONE`, 16 luk.
-- `zbiegl="true"`: **KILLED**.
-- `zbiegl=1`: **KILLED**.
-- `zbiegl=None`: **KILLED**.
-- brak `zbiegl`: **KILLED BY VERDICT**, bez wyjątku.
-- brak `blad_max_vs_odniesienie`: **KILLED BY VERDICT**, bez wyjątku.
-- dokładne `True`: zaakceptowane jako kontrola strony pozytywnej.
-- wyścig DDL kodu sprzed naprawy: **REPRODUCED 50/50** w równoważnej sekwencji SQLite.
-- pełna kampania autora: nie została ponownie wykonana w tym runtime; sama zieleń CI nie zastępuje oceny adekwatności mutantów.
+- 12/13: **KILLED**.
+- `M-KON-04`: **SURVIVED / SONDA_NIEWIARYGODNA** w tym środowisku, ponieważ jedyna sonda została pominięta modułowo.
+- ANDES-dependent scope: **NOT RUN — ORACLE UNAVAILABLE**.
+- Deklarowane przez autora 16/16: nie przyjęto jako niezależnie odtworzonego wyniku; katalog wykonywalny w badanym trybie zawierał 13 pozycji.
 
-## PRIOR FINDINGS — STATUS
+## STARE PROBLEMY — STATUS
 
-### Zamknięte lub ograniczone
+### Zamknięte lub istotnie ograniczone
 
-- P1-DELTA-41: **CLOSED FOR EXACT REPRODUCTION AND CI-SUPPORTED**.
-- P2-DELTA-42: **CLOSED BY CODE LOGIC AND CI-SUPPORTED**; niezależny runtime SQLAlchemy pozostawał niedostępny w poprzednim środowisku.
-- P1-DELTA-39 i P2-DELTA-40: wcześniejsze dokładne reprodukcje pozostają zamknięte.
-- P1-DELTA-35/36, P1-DELTA-26/27/33/34: wcześniejsze dokładne reprodukcje pozostają zamknięte w opisanym zakresie.
-- P0-DELTA-24 i P0-DELTA-25: IMPLEMENTED/STATICALLY VERIFIED; pełny niezależny runtime nadal nierozstrzygnięty.
+- Ciche wyłączenie obu równoległych torów przy wskazaniu jednego: **CLOSED dla jednoznacznego `Galaz.ident` i badanego scenariusza**.
+- Pomiar trajektorii punkt-po-punkcie względem ANDES: **IMPLEMENTED / SOFTWARE-MEASURED** dla SMIB; nie jest walidacją wszystkich modeli.
+- Punkt pracy i residua dla badanych przypadków: **SOFTWARE-VERIFIED** w podanym zakresie.
+- P0/P1 dotyczące produkcyjnej proweniencji zwarciowej, `k_sc=1e308`, globalnego `ready` i nazewnictwa `SOURCE_REFERENCED`: pozostają zamknięte w zakresie wcześniejszych kontrprzykładów; bieżąca delta ich nie pogorszyła.
 
-### Nadal otwarte P0/P1/P2 i zakres profesorski
+### Nadal otwarte
 
-- P1-DELTA-28: historyczny wynik może otrzymać odcisk bieżącej implementacji przy konsumpcji.
-- P2-DELTA-37: NaN w parametrach BESS może ominąć ochronę granicy kroku.
-- P2-DELTA-38: rozbieżność deklaracji 16/16 z wykonywalnym katalogiem 13 mutacji.
-- Re-inicjalizacja i zależność od historii po zwarciu/topologii: wcześniejszy `max Delta x0=1.09421789`.
-- Pełna kontrola NaN/Inf wejść i wyników.
-- Bazy BESS/per-unit i bilans energii po obu granicach SOC.
-- Tożsamość zdarzeń i równoległych gałęzi poza naprawionym przypadkiem jednego toru.
-- Samodzielnie konstruowane evidence/FRT, kompletność czasu i brakujące kanały.
-- AVR/governor/PSS, nasycenie, anti-windup i zwalnianie ograniczników.
-- Schemat DAE rozdzielony kontra jednoczesny oraz podłoga porównania ANDES.
-- Produkcyjna proweniencja katalogów, CT/VT, zabezpieczenia i topologia SN–TR–nN.
-- Kolizja kodu `SI-115` jako luka śledzenia.
+- Re-inicjalizacja po zwarciu: wcześniejsze `max delta x0=1.09421789`; nowa diagnostyka `delta_y` jest dodatkowo obalona przez P1-B55-01.
+- Kompletny kontrakt NaN/Inf wejść i wyników.
+- Bazy BESS i bilans energii: nowy P1-B55-02 pokazuje lukę na rzeczywistej granicy `ModelDynamiczny`.
+- Identity zdarzeń i gałęzi poza jednoznacznym przypadkiem naprawionym przez `Galaz.ident`.
+- Samodzielnie konstruowane evidence/FRT, pełne pokrycie czasu, brakujące kanały i łańcuch dowodowy.
+- Globalizacja Newtona, stagnacja i kontrola niezbieżności.
+- Rząd całkowania na zdarzeniach i przejściach limiterów, osobno od odcinków gładkich.
+- PSS, nasycenie, ograniczniki AVR, anti-windup i zwalnianie ograniczeń.
+- Schemat DAE rozdzielony kontra jednoczesny.
+- Podłoga około `3e-5 rad` względem ANDES i nieuzgodniona semantyka nieciągłości.
+- Profile normatywne OSD i dowód NC RfG: brak danych zewnętrznych, zakaz fabrykacji.
+- Pełna proweniencja katalogów, CT/VT, zabezpieczeń i topologii SN–TR–nN.
 
 ## UNRESOLVED PROFESSORIAL QUESTIONS
 
-1. Jak formalnie walidować kompletny schemat raportu kwalifikacyjnego przed obliczeniem werdyktu? **SOL CAN RESOLVE**.
-2. Jaki rząd i tolerancję wymagać osobno na zdarzeniach oraz przejściach limiterów? **SOL CAN RESOLVE**.
-3. Jaka część podłogi ANDES wynika z semantyki zdarzenia/adaptacyjnego kroku, a jaka z różnicy modelu? **SOL CAN RESOLVE**.
-4. Jak trwale związać historyczny wynik z odciskiem implementacji, która go policzyła? **SOL CAN RESOLVE**.
-5. Czy produkcyjne wdrożenie PostgreSQL wymaga wersjonowanej migracji zamiast automatycznego DDL przy starcie? **SOL CAN RESOLVE**.
-6. Czy wszystkie wcześniejsze P0/P1 mają niezależne testy akceptacyjne, a nie wyłącznie testy autora? **SOL CAN RESOLVE**.
+1. Czy snapshot części algebraicznej ma być elementem transakcji zdarzenia i kiedy dokładnie następuje `commit` nowego punktu? **SOL CAN RESOLVE**.
+2. Czy niezgodność bazy urządzenia z bazą sieci ma być odrzucana, czy jawnie przeliczana przez jeden kanoniczny adapter? **SOL CAN RESOLVE**.
+3. Jak zdefiniować bilans energii BESS przy trafieniu w SOC min/max wewnątrz kroku, aby moc elektryczna i zasób były ograniczone w tej samej chwili? **SOL CAN RESOLVE**.
+4. Jak rozdzielić obowiązkowe sondy mutacyjne od opcjonalnych wyroczni ANDES i raportować `NOT_RUN` bez fałszywego `KILLED`? **SOL CAN RESOLVE**.
+5. Jaka wspólna semantyka czasu zdarzenia i interpolacji jest wymagana do oceny podłogi błędu ANDES? **SOL CAN RESOLVE**.
+6. Czy kontrakt integratora pozostaje jednokrokowy, czy ma otrzymać jawny, niemutowalny kontekst historii dla BDF? Decyzja architektoniczna właściciela; nie blokuje napraw P1.
+7. Jakie dokładne kanały, źródła danych obiektowych i kryteria OSD są wymagane przed jakąkolwiek promocją do dowodu NC RfG? Decyzja właściciela i dane zewnętrzne.
 
 ## ASTRA ESCALATION
 
-Brak. Bieżąca delta nie zawiera niejednoznacznego problemu P0/P1 z dwiema wiarygodnymi interpretacjami. **SOL CAN RESOLVE**.
+Brak. Nowe P1 mają jednoznaczne kontrprzykłady i kryteria naprawy. **SOL CAN RESOLVE**.
 
-## EXACT REPRODUCTIONS AND EVIDENCE
+## EXACT REPRODUCTIONS AND LIMITS
 
-Odczyt bieżącej gałęzi:
+Eksperymenty wykonano w odłączonym worktree `/workspace/scratch/d840d6907656/review-b55`; audytowany kod nie został zmieniony. W oryginalnym checkout pozostawiono bez zmian istniejący, niezwiązany z audytem zmodyfikowany plik graficzny.
 
-```text
-GET /repos/radekizk-sketch/MV-Design-PRO/branches/claude/max-dynamic-audit-kzbivg
-HEAD = 575ce8263c7794d72ca6b5385730f4d2995067b5
-message = docs(audit): CI dla dokladnego SHA a6ee782c — dziewiec workflowow, dziewiec success
-```
-
-Porównanie inkrementalne:
-
-```text
-GET /repos/radekizk-sketch/MV-Design-PRO/compare/
-    a6ee782cfb8b7735a389a4b3ae64287031ae1333...
-    575ce8263c7794d72ca6b5385730f4d2995067b5
-
-status = ahead
-ahead_by = 3
-files =
-  mv-design-pro/docs/audit/RAPORT_NAPRAW_PO_AUDYCIE_2026-09-12.md
-  mv-design-pro/docs/audit/WORK_SHADOW_REVIEW_LATEST.md
-  mv-design-pro/docs/audit/work-reviews/
-    WORK_SHADOW_REVIEW_a6ee782cfb8b7735a389a4b3ae64287031ae1333.md
-```
-
-Weryfikacja CI dokładnego SHA:
-
-```text
-GET /repos/radekizk-sketch/MV-Design-PRO/actions/runs
-    ?head_sha=a6ee782cfb8b7735a389a4b3ae64287031ae1333
-    &per_page=100
-
-total_count = 9
-dla każdego run:
-  event = push
-  status = completed
-  conclusion = success
-```
-
-Weryfikacja PR:
-
-```text
-GET /repos/radekizk-sketch/MV-Design-PRO/pulls/475
-state = open
-head.ref = claude/opus5-dynamic-physics-audit-fixes
-head.sha = 1e96202535abb0acfb123ebac8a49dae430e792c
-base.ref = main
-base.sha = 7e84753adbc4b0e50de9a1fd4f1022f1cfd01903
-```
-
-Repozytorium wykonawcze nie zostało zmodyfikowane. Nie zmieniono kodu, testów, progów ani fixtures. Utrwalono wyłącznie dozwolone pliki audytowe.
+Nie wykonano pełnej walidacji urządzeń, HIL, prób obiektowych ani potwierdzenia OSD. Nie utożsamia się zgodności z ANDES dla jednego benchmarku z walidacją fizyczną całego laboratorium. Nie nadano statusu `VALIDATED_SIMULATION`, `PRODUCTION-READY` ani `REGULATORY-EVIDENCE-READY`.
 
 ## REVIEWER CHECKPOINT
 
-`LAST_VERIFIED_SHA = 575ce8263c7794d72ca6b5385730f4d2995067b5`
+`LAST_VERIFIED_SHA = b55cd086d74071cd5f6c873c93809045c02001ca`
 
-`pending_from_base` pozostaje otwarte dla wszystkich niewykonanych kontroli i wcześniejszych problemów wymienionych powyżej. Checkpoint nie oznacza akceptacji całej gałęzi.
+`pending_from_base` pozostaje otwarte dla wszystkich niewykonanych kontroli oraz problemów wymienionych w sekcji „Nadal otwarte”. Przesunięcie checkpointu nie oznacza akceptacji gałęzi.
