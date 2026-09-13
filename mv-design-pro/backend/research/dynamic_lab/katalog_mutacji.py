@@ -2,9 +2,15 @@
 
 KOD BADAWCZY — patrz `backend/research/README.md`. Nie jest dowodem regulacyjnym.
 
+LICZEBNOŚĆ BIEŻĄCA: **13 mutacji**, wszystkie realnie podmieniające wykonywany
+kod. Każda liczba „16" poniżej opisuje KATALOG POPRZEDNI, USUNIĘTY — nie jest
+deklaracją o tym katalogu (recenzja niezależna, P2-DELTA-38: czytelnik wziął ten
+akapit historyczny za bieżący stan). Bieżącą liczbę melduje wyłącznie uprząż,
+polem ``liczba_mutacji`` w raporcie; nigdzie nie jest zaszyta w dokumentacji.
+
 CO SIĘ ZMIENIŁO WZGLĘDEM POPRZEDNIEJ WERSJI (audyt niezależny, plan naprawy §4).
-Poprzedni katalog miał 16 pozycji i meldował „16/16 zabitych", a jego mutacje NIE
-ZMIENIAŁY KODU. Sprawdzały:
+Poprzedni, USUNIĘTY katalog miał 16 pozycji i meldował „16/16 zabitych", a jego
+mutacje NIE ZMIENIAŁY KODU. Sprawdzały:
 
 * typy wyjątków — ``issubclass(NiezgodnaDlugoscPrzebieguError, ValueError)``,
 * wartości wyliczeń — ``StatusKroku.FAILED is not StatusKroku.STRICT_CONVERGENCE``,

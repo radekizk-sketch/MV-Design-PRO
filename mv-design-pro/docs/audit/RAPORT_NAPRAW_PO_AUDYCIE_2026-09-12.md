@@ -470,6 +470,106 @@ jest informacją, a nie ciszą.
 
 ---
 
+## 10d. NAPRAWY PO RECENZJI HEAD `367a81a1` (siódma runda)
+
+Recenzja `367a81a1` zamknęła dokładne kontrprzykłady P1-DELTA-35/36 i otworzyła
+**P1-DELTA-39**: naprawa dotknęła INSTANCJI, nie KLASY. To ten sam błąd
+metodyczny, przed którym ostrzega reguła „KLASA, NIE INSTANCJA" w CLAUDE.md —
+u mnie powtórzony po raz kolejny.
+
+### P1-DELTA-39 — niekompletna albo niedozwolona populacja dawała `ZAKWALIFIKOWANE`
+
+Trzy kontrprzykłady recenzenta ODTWORZONE co do wyniku, plus czwarty znaleziony
+przy odtwarzaniu:
+
+| populacja benchmarku | przed | po |
+|---|---|---|
+| dwie pozycje RK4, brak obu Eulerów i trapezu | ZAKWALIFIKOWANE | **NIEKOMPLETNE** |
+| błąd `0.0` na wszystkich pozycjach RK4 | ZAKWALIFIKOWANE | **ODRZUCONE** |
+| błąd ujemny + metoda `ghost` spoza rejestru | ZAKWALIFIKOWANE | **ODRZUCONE** |
+| **duplikat szczebla** (znaleziony przeze mnie) | **`ZeroDivisionError`** | **ODRZUCONE** |
+
+Duplikat wywracał ocenę wyjątkiem: `log(dt2/dt1)` dla równych kroków to zero.
+Wyjątek w bramce nie jest ani blokadą, ani przepustką — jest awarią oceny.
+
+**Przyczyna źródłowa.** `_braki_kwalifikacji` wymagało tylko, by lista pozycji
+była NIEPUSTA. `_luki_rzedu_integratorow` iterowało po nazwach OBECNYCH w
+raporcie i nigdy nie porównywało ich ze zbiorem oczekiwanym. Warunek `blad > 0`
+był FILTREM, nie kryterium: zero i wartości ujemne znikały z oceny i nie
+tworzyły naruszenia, a zbiór pusty nie daje luk. „Niepusty" nie znaczy
+„kompletny i dziedzinowo poprawny".
+
+**Naprawa.** Jawny MANIFEST BENCHMARKU (`KROKI_DRABINY_KWALIFIKACJI_S`,
+`RZAD_OCZEKIWANY_METODY`) i jedno przejście `_pozycje_benchmarku`, które dzieli
+populację na rekordy dozwolone, luki i braki:
+- iloczyn metod i szczebli musi wystąpić DOKŁADNIE RAZ — brak → BRAK
+  (NIEKOMPLETNE), duplikat → LUKA (ODRZUCONE);
+- metoda spoza manifestu i szczebel spoza drabiny → LUKA;
+- błąd musi być skończony i DODATNI — zero w tym benchmarku nie oznacza metody
+  dokładnej (żaden z czterech schematów nie odtwarza odniesienia co do bitu),
+  tylko utratę danych porównania → LUKA;
+- rejestr integratorów i manifest to DWIE niezależne deklaracje tego samego —
+  rozjazd w którąkolwiek stronę jest LUKĄ, a metoda dołożona do rejestru i
+  nieobjęta manifestem też (nowa metoda ma wejść do benchmarku, nie ominąć go).
+
+### P2-DELTA-40 — rząd z dwóch punktów i z ocenianej metadanej
+
+**Drabina czteroszczeblowa.** `(0,008 / 0,004 / 0,002 / 0,001 s)` zamiast pary
+`(0,002 / 0,010)`. Cztery szczeble dają TRZY ilorazy na metodę. Koszt: 16 pozycji
+w 33 s, czyli praktycznie tyle co poprzednio.
+
+Zmierzone odchylenie rzędu obserwowanego od oczekiwanego, od pary najrzadszej do
+najgęstszej:
+
+| metoda | rząd | pary sąsiednie | odchylenia |
+|---|---|---|---|
+| `euler_jawny` | 1 | 1,2831 / 1,1369 / 1,0669 | 0,283 → 0,067 |
+| `euler_niejawny` | 1 | 0,7631 / 0,8753 / 0,9361 | 0,237 → 0,064 |
+| `trapez_niejawny` | 2 | 1,9989 / 1,9998 / 1,9999 | ≤ 0,0011 |
+| `rk4` | 4 | 4,0024 / 4,0013 / 4,0024 | ≤ 0,0024 |
+
+Obie metody Eulera mają odchylenie MALEJĄCE wraz z zagęszczaniem kroku — to jest
+dowód wejścia w obszar asymptotyczny, którego dwie próbki dać nie mogły. Stąd
+drugie, ciaśniejsze pasmo `MAKS_ODCHYLENIE_RZEDU_NAJGESTSZA_PARA = 0,25` na parze
+najgęstszej (zapas 3,7× wobec 0,0669) obok `MAKS_ODCHYLENIE_RZEDU = 0,5` na
+każdej parze (zapas 1,77× wobec 0,283).
+
+**Rząd oczekiwany przypięty poza metadaną implementacji.** `RZAD_OCZEKIWANY_METODY`
+żyje w uprzęży kwalifikacji, nie jest czytany z `INTEGRATORY[nazwa].rzad` —
+jednoczesna zmiana algorytmu i jego etykiety zachowałaby zgodność i bramka nie
+zauważyłaby niczego. Obie deklaracje są porównywane; rozjazd jest luką.
+
+### P2-DELTA-38 — „16/16" w dokumentacji
+
+To NIE jest deklaracja o bieżącym katalogu, tylko akapit historyczny opisujący
+katalog POPRZEDNI, usunięty właśnie za to, że meldował 16/16 nie dotykając kodu.
+Bieżąca liczba (13) jest meldowana wyłącznie przez uprząż polem `liczba_mutacji`
+i nigdzie nie jest zaszyta. Skoro jednak czytelnik wziął ten akapit za stan
+bieżący, akapit był źle napisany — docstring `katalog_mutacji.py` zaczyna się
+teraz od jawnej liczebności bieżącej i od zastrzeżenia, że każde „16" poniżej
+dotyczy katalogu usuniętego.
+
+### Dowód wykonywalny
+
+| sprawdzenie | wynik |
+|---|---|
+| `tests/research/test_kwalifikacja.py` (50 testów, w tym 13 nowych) | **50 passed, 853 s** |
+| realna uprząż `research/kwalifikacja.py` end-to-end | `luki=[]`, `braki=[]`, **ZAKWALIFIKOWANE**, 822 s |
+| mutacje zabite | 13/13 |
+| najgorsza norma pochodnej w `t0` | 8,3267e-17 |
+
+Nowe testy pokrywają ILOCZYN CECH, nie przykład z karty: brakujący szczebel
+sprawdzany jest dla **każdej z 16 komórek** (metoda × krok), degradacja rzędu dla
+**każdej z czterech metod**, a błąd poza dziedziną dla sześciu wartości
+(`0.0`, `-1.0`, `-5.0`, `nan`, `inf`, `-inf`).
+
+**Defekt w mojej własnej fiksturze, który to umożliwił.** `_raport_minimalny()`
+miała DWIE pozycje RK4 — czyli test „logiki kwalifikacji" nigdy nie widział
+populacji niekompletnej, bo sam był niekompletny. Fikstura niesie teraz pełny
+iloczyn manifestu z wartościami zmierzonymi na drabinie.
+
+---
+
 ## 11. PROBLEMY NIEROZSTRZYGNIĘTE
 
 ### 11.1 Siedem czerwonych testów backendu w CI — ROZSTRZYGNIĘTE, patrz §10c
