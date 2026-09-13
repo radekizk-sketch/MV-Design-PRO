@@ -558,3 +558,58 @@ def test_drabina_ma_co_najmniej_trzy_ilorazy_bledow() -> None:
     assert all(
         abs(i - 2.0) < 1e-9 for i in ilorazy
     ), f"drabina ma być geometryczna dt, dt/2, dt/4, dt/8 — ilorazy {ilorazy}"
+
+
+# ---------------------------------------------------------------------------
+# DZIEDZINA FLAGI ZBIEŻNOŚCI (recenzja niezależna, P1-DELTA-41)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "zbiegl",
+    ["false", "true", "", 1, 0, 1.0, None, [], object()],
+    ids=[
+        "tekst_false",
+        "tekst_true",
+        "tekst_pusty",
+        "int_1",
+        "int_0",
+        "float_1",
+        "none",
+        "lista",
+        "obiekt",
+    ],
+)
+def test_zbiegl_spoza_typu_logicznego_nie_kwalifikuje(zbiegl) -> None:
+    """P1-DELTA-41: liczyła się PRAWDZIWOŚĆ obiektu, nie jego typ.
+
+    KONTRPRZYKŁAD RECENZENTA: komplet 16 rekordów z ``zbiegl="false"`` — tekst
+    niepusty, czyli prawdziwy w Pythonie — przechodził i selekcję danych, i
+    listę pozycji niezbieżnych, dając ZAKWALIFIKOWANE. Zdeserializowany obiekt
+    dowodowy potrafi zakodować porażkę literalnie jako tekst; bramka ma ją wtedy
+    odczytać jako porażkę.
+
+    ILOCZYN CECH: sprawdzane są OBIE strony prawdziwości (``"false"`` prawdziwe,
+    ``0`` fałszywe) oraz typy, które mogłyby wyjść z JSON-a albo z ręcznie
+    sklejonego raportu.
+    """
+    pozycje = [dict(p, zbiegl=zbiegl) for p in _pozycje_pelne()]
+    assert _stan(_z_pozycjami(pozycje)) != "ZAKWALIFIKOWANE"
+
+
+@pytest.mark.parametrize("pole", ["zbiegl", "blad_max_vs_odniesienie"])
+def test_brak_wymaganego_pola_daje_werdykt_a_nie_wyjatek(pole: str) -> None:
+    """Rekord bez pola kończył bramkę nieobsłużonym `KeyError`.
+
+    Wyjątek nie jest werdyktem: bramka ma ODMÓWIĆ, a nie się wywrócić — inaczej
+    nie odróżnisz awarii oceny od braku dowodu.
+    """
+    pozycje = [{k: v for k, v in p.items() if k != pole} for p in _pozycje_pelne()]
+    assert _stan(_z_pozycjami(pozycje)) != "ZAKWALIFIKOWANE"
+
+
+def test_tylko_dokladne_True_kwalifikuje() -> None:
+    """Druga strona predykatu — bez niej test powyżej przechodziłby także dla
+    bramki odrzucającej WSZYSTKO."""
+    assert _stan(_z_pozycjami(_pozycje_pelne())) == "ZAKWALIFIKOWANE"
+    assert all(p["zbiegl"] is True for p in _pozycje_pelne())

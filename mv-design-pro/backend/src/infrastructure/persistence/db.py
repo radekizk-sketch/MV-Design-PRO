@@ -5,6 +5,7 @@ from contextlib import contextmanager
 from typing import Any
 
 from sqlalchemy import Engine, create_engine, event, inspect, text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from .models import Base
@@ -101,7 +102,25 @@ def _dolacz_kolumny_addytywne(engine: Engine) -> None:
                     "schematu; to nie jest kolumna addytywna."
                 )
             typ = kolumna.type.compile(dialect=engine.dialect)
-            with engine.begin() as polaczenie:
-                polaczenie.execute(
-                    text(f'ALTER TABLE "{tabela.name}" ADD COLUMN "{kolumna.name}" {typ}')
-                )
+            try:
+                with engine.begin() as polaczenie:
+                    polaczenie.execute(
+                        text(f'ALTER TABLE "{tabela.name}" ADD COLUMN "{kolumna.name}" {typ}')
+                    )
+            except SQLAlchemyError:
+                # WYŚCIG MIĘDZY PROCESAMI (recenzja niezależna, P2-DELTA-42).
+                # Odczyt schematu i `ALTER TABLE` to dwie osobne operacje, a
+                # blokada repozytorium jest PROCESOWA — przy równoległym starcie
+                # (rolling deployment, dwa workery e2e) oba procesy widzą brak
+                # kolumny, po czym drugi dostaje „duplicate column".
+                #
+                # Sukces innego procesu nie jest naszą porażką, ale NIE
+                # ZAKŁADAMY tego po treści komunikatu (różni się między SQLite a
+                # PostgreSQL i między wersjami). POTWIERDZAMY stan świeżym
+                # odczytem schematu: jeśli kolumna jest — cel osiągnięty; jeśli
+                # jej nie ma — błąd leci dalej nietknięty, bo to już nie wyścig,
+                # tylko realna awaria DDL.
+                if kolumna.name not in {
+                    istniejaca["name"] for istniejaca in inspect(engine).get_columns(tabela.name)
+                }:
+                    raise

@@ -418,6 +418,11 @@ def _braki_kwalifikacji(raport: dict[str, Any]) -> list[str]:
     return braki
 
 
+#: Wartownik odróżniający BRAK pola od pola o wartości `None` — `dict.get`
+#: z domyślnym `None` zlewa oba przypadki, a to dwa różne defekty danych.
+_BRAK = object()
+
+
 def _pozycje_benchmarku(
     pozycje: Iterable[Mapping[str, Any]],
 ) -> tuple[dict[tuple[str, float], float], list[str], list[str]]:
@@ -462,11 +467,26 @@ def _pozycje_benchmarku(
             continue
         widziane.add(klucz)
 
-        if not pozycja.get("zbiegl"):
-            # Pozycja niezbieżna JEST pomiarem — o wyniku „nie zbiegł". Zgłasza
-            # ją `_luki_kwalifikacji` jako lukę (ODRZUCONE) i to jest jedyne
-            # miejsce jej klasyfikacji; tutaj wypada wyłącznie z danych do oceny
-            # rzędu, bez drugiego wpisu pod inną kategorią.
+        # DZIEDZINA `zbiegl`: WYŁĄCZNIE dokładne `True` (recenzja, P1-DELTA-41).
+        # Poprzednio liczyła się PRAWDZIWOŚĆ obiektu, więc tekst „false" —
+        # niepusty, czyli prawdziwy w Pythonie — ustanawiał pozytywną
+        # kwalifikację całego kompletu 16 rekordów. Zdeserializowany obiekt
+        # dowodowy potrafi zakodować porażkę literalnie jako tekst; bramka ma
+        # ją wtedy ODCZYTAĆ jako porażkę, a nie jako sukces.
+        zbiegl = pozycja.get("zbiegl", _BRAK)
+        if zbiegl is _BRAK:
+            luki.append(
+                f"Porównanie integratorów: {nazwa} przy kroku {krok:g} s nie niesie pola "
+                f'„zbiegl" — rekord bez werdyktu zbieżności nie jest pomiarem'
+            )
+            continue
+        if zbiegl is not True:
+            luki.append(
+                f"Porównanie integratorów: {nazwa} przy kroku {krok:g} s ma "
+                f'„zbiegl" = {zbiegl!r} ({type(zbiegl).__name__}); dozwolone jest '
+                f"WYŁĄCZNIE logiczne True — pozycja niezbieżna albo wartość spoza "
+                f"dziedziny nie jest pomiarem błędu"
+            )
             continue
         try:
             blad = float(pozycja["blad_max_vs_odniesienie"])
@@ -592,24 +612,14 @@ def _luki_kwalifikacji(raport: dict[str, Any]) -> list[str]:
 
     integratory = raport["porownanie_integratorow"]
     if integratory["stan"] == "WYKONANE":
-        niezbiezne = [p for p in integratory["pozycje"] if not p["zbiegl"]]
-        if niezbiezne:
-            luki.append(
-                f"Porównanie integratorów: pozycje niezbieżne "
-                f"{[(p['integrator'], p['krok_s']) for p in niezbiezne]}"
-            )
-        # WIELKOŚĆ BŁĘDU, NIE TYLKO FLAGA ZBIEŻNOŚCI (recenzja, P1-DELTA-34).
-        # „Zbiegł\" mówi o ITERACJI, nie o dokładności.
-        niepoprawne = [
-            p
-            for p in integratory["pozycje"]
-            if not math.isfinite(float(p["blad_max_vs_odniesienie"]))
-        ]
-        if niepoprawne:
-            luki.append(
-                f"Porównanie integratorów: błąd niepoprawny (NaN/Inf) — "
-                f"{[(p['integrator'], p['krok_s']) for p in niepoprawne]}"
-            )
+        # JEDNO MIEJSCE OCENY POPULACJI (recenzja, P1-DELTA-41). Stały tu dwa
+        # osobne przebiegi — po niezbieżnych i po błędach NaN/Inf — czytające
+        # `p["zbiegl"]` i `p["blad_max_vs_odniesienie"]` BEZ OSŁONY: rekord bez
+        # pola kończył bramkę nieobsłużonym `KeyError` zamiast werdyktem. Oba
+        # sprawdzenia robi teraz `_pozycje_benchmarku` (wołane przez
+        # `_luki_rzedu_integratorow`) razem z dziedziną `zbiegl` i dziedziną
+        # błędu. Dwa niezależne przebiegi po tej samej populacji to dokładnie ta
+        # klasa długu, którą zamyka reguła „predykaty parami".
         # RZĄD OBSERWOWANY WOBEC ZADEKLAROWANEGO (recenzja, P1-DELTA-36).
         # Bezwzględny próg wspólny dla metod różnego rzędu odrzucał własny
         # benchmark; metoda rzędu 1 MA mieć większy błąd niż metoda rzędu 4.

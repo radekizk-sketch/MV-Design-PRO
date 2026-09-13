@@ -10,6 +10,7 @@ co dotąd i musi być czytelny także ze starych baz — bez migracji danych.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -567,3 +568,100 @@ def test_init_db_odmawia_kolumny_not_null_bez_domyslnej(tmp_path: Any) -> None:
     with pytest.raises(RuntimeError, match="contributions_json"):
         init_db(engine)
     engine.dispose()
+
+
+# ---------------------------------------------------------------------------
+# WYŚCIG DDL MIĘDZY PROCESAMI (recenzja niezależna, P2-DELTA-42)
+# ---------------------------------------------------------------------------
+
+
+def _inicjalizuj_w_podprocesie(sciezka_bazy: str, bariera_start: Any) -> str:
+    """Ciało procesu potomnego: czekaj na barierę, potem `init_db`.
+
+    Bariera USTAWIA WYŚCIG — bez niej procesy startują po kolei i defekt nie ma
+    jak się pokazać. Pierwszy proces dokłada kolumnę, drugi trafia na
+    „duplicate column\" dokładnie w oknie między odczytem schematu a ALTER-em.
+    """
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "src"))
+    from infrastructure.persistence.db import create_engine_from_url, init_db
+
+    silnik = create_engine_from_url(f"sqlite:///{sciezka_bazy}")
+    bariera_start.wait()
+    try:
+        init_db(silnik)
+    except Exception as blad:  # noqa: BLE001 — celem jest KLASA błędu, nie jego typ
+        return f"{type(blad).__name__}: {blad}"
+    return "OK"
+
+
+def test_dwa_procesy_dokladaja_kolumne_addytywna_bez_wyscigu(tmp_path) -> None:
+    """Dwa niezależne procesy inicjalizujące STARĄ bazę równocześnie — oba OK.
+
+    DEFEKT ZAMKNIĘTY TU. `_dolacz_kolumny_addytywne` czyta schemat i wykonuje
+    `ALTER TABLE ADD COLUMN` jako DWIE osobne operacje, a blokada repozytorium
+    jest PROCESOWA — nie obejmuje dwóch instancji aplikacji. Przy równoległym
+    starcie (rolling deployment, dwa workery e2e) oba procesy widzą brak
+    kolumny, po czym drugi dostaje `duplicate column`. Zmierzone przez
+    recenzenta: ``[('OK',''), ('OperationalError','duplicate column name:
+    branch_flow_trace_json')]``.
+
+    Naprawa nie polega na dopasowaniu treści komunikatu (różni się między
+    SQLite a PostgreSQL), tylko na POTWIERDZENIU stanu: jeśli po nieudanym
+    ALTER-ze kolumna jest — cel osiągnięty; jeśli jej nie ma — błąd leci dalej.
+
+    Test sprawdza też, że schemat kończy z JEDNĄ kolumną i że dane sprzed
+    dołożenia przeżywają — sam brak wyjątku nie dowodzi poprawnego schematu.
+    """
+    import multiprocessing as mp
+
+    sciezka = tmp_path / "stara.db"
+    silnik = create_engine_from_url(f"sqlite:///{sciezka}")
+    init_db(silnik)
+
+    # Cofnij bazę do stanu SPRZED kolumny addytywnej i zostaw w niej wiersz,
+    # żeby było widać, czy dołożenie kolumny nie gubi danych.
+    with silnik.begin() as polaczenie:
+        polaczenie.execute(
+            text(
+                "INSERT INTO canonical_run_branch_flows (run_id, fault_node_id, contributions_json) VALUES (:r, :f, :c)"
+            ),
+            {"r": str(uuid4()), "f": "wezel-sprzed-kolumny", "c": "[]"},
+        )
+        polaczenie.execute(
+            text("ALTER TABLE canonical_run_branch_flows DROP COLUMN branch_flow_trace_json")
+        )
+    silnik.dispose()
+    assert "branch_flow_trace_json" not in {
+        k["name"]
+        for k in inspect(create_engine_from_url(f"sqlite:///{sciezka}")).get_columns(
+            "canonical_run_branch_flows"
+        )
+    }
+
+    kontekst = mp.get_context("spawn")
+    with kontekst.Manager() as menedzer:
+        bariera = menedzer.Barrier(2)
+        with kontekst.Pool(2) as pula:
+            wyniki = pula.starmap(
+                _inicjalizuj_w_podprocesie, [(str(sciezka), bariera), (str(sciezka), bariera)]
+            )
+    assert wyniki == ["OK", "OK"], wyniki
+
+    kolumny = [
+        k["name"]
+        for k in inspect(create_engine_from_url(f"sqlite:///{sciezka}")).get_columns(
+            "canonical_run_branch_flows"
+        )
+    ]
+    assert kolumny.count("branch_flow_trace_json") == 1, kolumny
+    silnik_po = create_engine_from_url(f"sqlite:///{sciezka}")
+    with silnik_po.begin() as polaczenie:
+        wiersze = list(
+            polaczenie.execute(
+                text("SELECT fault_node_id, branch_flow_trace_json FROM canonical_run_branch_flows")
+            )
+        )
+    assert [w[0] for w in wiersze] == ["wezel-sprzed-kolumny"], wiersze
+    assert wiersze[0][1] is None, "wiersz sprzed kolumny ma uczciwy brak, nie pustą listę"

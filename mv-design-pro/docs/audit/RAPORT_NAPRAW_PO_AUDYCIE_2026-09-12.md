@@ -600,6 +600,70 @@ bez słowa) i przechodzi po niej; `mypy_ratchet_guard` 0 błędów.
 
 ---
 
+## 10f. NAPRAWY PO RECENZJI HEAD `3cfc75a1` (ósma runda)
+
+Recenzja `3cfc75a1` potwierdziła, że P1-DELTA-39 i P2-DELTA-40 są zamknięte dla
+swoich reprodukcji, i wskazała, że **klasa false-positive nadal jest otwarta** —
+tym razem po stronie TYPU, nie kompletności.
+
+### P1-DELTA-41 — tekstowe `zbiegl="false"` ustanawiało pozytywną kwalifikację
+
+Liczyła się PRAWDZIWOŚĆ obiektu (`if not pozycja.get("zbiegl")`), nie jego typ.
+Tekst `"false"` jest niepusty, czyli prawdziwy w Pythonie. Zmierzone przed
+naprawą i po:
+
+| `zbiegl` | przed | po |
+|---|---|---|
+| `True` | ZAKWALIFIKOWANE | ZAKWALIFIKOWANE |
+| `"false"` | **ZAKWALIFIKOWANE** | **ODRZUCONE** |
+| `"true"` | **ZAKWALIFIKOWANE** | **ODRZUCONE** |
+| `1` | **ZAKWALIFIKOWANE** | **ODRZUCONE** |
+| `0` / `None` | ODRZUCONE | ODRZUCONE |
+| brak pola `zbiegl` | **`KeyError`** | **ODRZUCONE** |
+| brak pola błędu | **`KeyError`** | **ODRZUCONE** |
+
+Dwa ostatnie wiersze to osobny defekt tej samej klasy: bramka kończyła
+NIEOBSŁUŻONYM wyjątkiem zamiast werdyktem. Wyjątek nie jest werdyktem — nie
+odróżnisz po nim awarii oceny od braku dowodu.
+
+**Naprawa.** Dziedzina `zbiegl` to WYŁĄCZNIE logiczne `True`; każda inna wartość
+i każdy inny typ dają lukę nazywającą wartość i jej typ. Brak pola odróżniony od
+pola o wartości `None` wartownikiem `_BRAK` (bo `dict.get` z domyślnym `None`
+zlewa dwa różne defekty danych w jeden).
+
+**Usunięte dwa zastane przebiegi po tej samej populacji.** `_luki_kwalifikacji`
+miało własne pętle po niezbieżnych i po błędach NaN/Inf, czytające
+`p["zbiegl"]` i `p["blad_max_vs_odniesienie"]` BEZ OSŁONY — i to one rzucały
+`KeyError`. Oba sprawdzenia robi teraz `_pozycje_benchmarku`, czyli JEDNO
+miejsce oceny populacji. Dwa niezależne przebiegi po tym samym zbiorze to
+dokładnie klasa długu, którą zamyka reguła „predykaty parami".
+
+### P2-DELTA-42 — wyścig DDL między procesami przy dokładaniu kolumny
+
+Odziedziczone z portu `1e9f21c5`: `_dolacz_kolumny_addytywne` czyta schemat i
+wykonuje `ALTER TABLE ADD COLUMN` jako DWIE osobne operacje, a blokada
+repozytorium jest PROCESOWA. Przy równoległym starcie oba procesy widzą brak
+kolumny, drugi dostaje `duplicate column`.
+
+**Odtworzone dwoma realnymi procesami z barierą** (bariera ustawia wyścig — bez
+niej procesy idą po kolei i defekt się nie pokazuje):
+
+```
+['OperationalError: (sqlite3.OperationalError) duplicate column name:
+  branch_flow_trace_json …', 'OK']
+```
+
+**Naprawa bez dopasowywania treści komunikatu** (różni się między SQLite a
+PostgreSQL i między wersjami): po nieudanym `ALTER` schemat jest odczytywany
+ŚWIEŻO i jeśli kolumna JEST — cel osiągnięty; jeśli jej nie ma — wyjątek leci
+dalej nietknięty, bo to już nie wyścig, tylko realna awaria DDL.
+
+Test sprawdza też, że schemat kończy z DOKŁADNIE JEDNĄ kolumną i że wiersz
+zapisany przed jej dołożeniem przeżywa z uczciwym `None` — sam brak wyjątku nie
+dowodzi poprawnego schematu.
+
+---
+
 ## 11. PROBLEMY NIEROZSTRZYGNIĘTE
 
 ### 11.1 Siedem czerwonych testów backendu w CI — ROZSTRZYGNIĘTE, patrz §10c
