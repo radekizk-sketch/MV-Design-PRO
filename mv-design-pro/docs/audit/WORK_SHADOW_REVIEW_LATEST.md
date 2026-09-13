@@ -1,219 +1,188 @@
 # MV-DESIGN-PRO — INDEPENDENT WORK SHADOW REVIEW
 
-Data: 2026-09-13. Tryb: adversarial, evidence-based; READ-ONLY wobec kodu produkcyjnego. Zmieniono wyłącznie dozwolone pliki raportowe. Checkpoint oznacza wykonanie przeglądu, nie akceptację ani zamknięcie niewykonanych kontroli.
+Data: 2026-09-13. Tryb: adversarial, evidence-based; READ-ONLY wobec kodu produkcyjnego. Zmieniono wyłącznie dozwolone pliki raportowe. Checkpoint oznacza wykonanie przeglądu, nie akceptację całej gałęzi ani zamknięcie zakresu `pending_from_base`.
 
 ## REVIEW RANGE
 
-- REVIEW_BASE_SHA: `367a81a17e478f9dbea6f6b0a03bf191ba9318ba`
-- REVIEW_HEAD_SHA: `3cfc75a11729aeec01b0b5ea8dfb258a622c3e06`
-- Rodzic HEAD: `7ec36075378168e446018330d4dc1ad68779cd14`
-- Merge base zakresu: `367a81a17e478f9dbea6f6b0a03bf191ba9318ba`
+- REVIEW_BASE_SHA: `3cfc75a11729aeec01b0b5ea8dfb258a622c3e06`
+- REVIEW_HEAD_SHA: `a6ee782cfb8b7735a389a4b3ae64287031ae1333`
+- Rodzic HEAD: `6931a935a0e262358e825664d42d3defeb843375`
+- Merge base zakresu: `3cfc75a11729aeec01b0b5ea8dfb258a622c3e06`
 - Branch: `claude/max-dynamic-audit-kzbivg`
-- PR: NONE. PR #475 pozostaje otwarty dla starszej gałęzi `claude/opus5-dynamic-physics-audit-fixes`, HEAD `1e96202535abb0acfb123ebac8a49dae430e792c`; nie obejmuje badanego HEAD.
+- PR: NONE. PR #475 pozostaje otwarty dla starszej gałęzi `claude/opus5-dynamic-physics-audit-fixes`, HEAD `1e96202535abb0acfb123ebac8a49dae430e792c`.
 
-Delta zawiera commity raportowe oraz trzy zmiany wykonawcze: kwantyzację wyłącznie eksportowanych fixtures nN, wydzielenie `branch_flow_trace` z ciężkiego wiersza biegu i naprawę manifestu/drabiny kwalifikacji integratorów. Nie reaudytowano całego repozytorium.
+Zmiany wykonawcze po bazie: `f70df04e` — jawne zawężenie typów przy mapowaniu A→kA w pakiecie dowodowym aparatury; `a6ee782c` — naprawy P1-DELTA-41 i P2-DELTA-42. Pozostałe commity w zakresie są raportowe/scalające. Nie reaudytowano repozytorium poza zależnościami zmienionych miejsc.
 
 ## EXECUTIVE VERDICT
 
-**REJECT CURRENT DELTA**
+**ACCEPT CONDITIONALLY**
 
-P1-DELTA-39 i P2-DELTA-40 są naprawione dla dokładnych wcześniejszych reprodukcji: manifest wymaga teraz 4 metod × 4 kroki, odrzuca nieznane/duplikaty/zero/ujemne/NaN/Inf, a rząd jest liczony na trzech parach sąsiednich z oczekiwaniem przypiętym poza rejestrem implementacji. Niezależnie wykonana populacja 16/16 ma dodatnie, skończone błędy i oczekiwane rzędy na gładkim przypadku SMIB.
+Oba dokładne znaleziska ostatniej recenzji zostały naprawione i niezależnie sfalsyfikowane ponownymi kontrprzykładami. Komplet 16 pozycji z `zbiegl="false"`, `"true"`, `1` albo `None` jest teraz odrzucany; tylko dokładne logiczne `True` kwalifikuje. Brak pola `zbiegl` albo błędu daje kontrolowany werdykt, nie `KeyError`.
 
-Klasa false-positive pozostaje jednak otwarta. Pole `zbiegl` nie ma sprawdzanego typu: tekst `"false"` jest prawdziwy w Pythonie. Komplet 16 rekordów z `zbiegl="false"` przechodzi zarówno selekcję danych, jak i listę pozycji niezbieżnych, dając `ZAKWALIFIKOWANE`. Brak pól `zbiegl` albo `blad_max_vs_odniesienie` powoduje niekontrolowany `KeyError` zamiast jawnego werdyktu fail-closed.
+Naprawa wyścigu DDL po błędzie `ALTER` wykonuje świeży odczyt schematu i tłumi wyjątek wyłącznie wtedy, gdy inny proces rzeczywiście utworzył oczekiwaną kolumnę. To zamyka dokładny wyścig bez dopasowywania komunikatu i bez fail-open dla ogólnej awarii DDL.
 
-Wydzielenie `branch_flow_trace` zachowuje wspólny klucz `(run_id, fault_node_id)`, tę samą transakcję i uczciwe `None` dla starych danych; nie znaleziono nowego błędu fizycznego ani energetycznego w tej zmianie. Automatyczne DDL podczas `init_db` ma jednak wyścig między procesami.
-
-Warstwa dynamiczna pozostaje `UNVALIDATED_MODEL`; nie jest `VALIDATED_SIMULATION`, dowodem NC RfG, produkcyjnym ani regulacyjnym dowodem.
+Warunki akceptacji: brak niezależnego uruchomienia testów SQLAlchemy/pytest i brak CI dla dokładnego HEAD uniemożliwiają poziom SOFTWARE-VERIFIED całej delty. Akceptacja dotyczy wyłącznie obecnych napraw, nie całej gałęzi. Dynamika nadal jest `UNVALIDATED_MODEL`; wcześniejsze P0/P1 pozostają otwarte. Nie wolno nadawać statusu `VALIDATED_SIMULATION`, produkcyjnego, regulacyjnego ani dowodu NC RfG.
 
 ## LEVELS OF VERIFICATION
 
-- IMPLEMENTED: TAK dla manifestu 16 pozycji, czterostopniowej drabiny, kwantyzacji fixtures i wydzielonego śladu.
-- SOFTWARE-VERIFIED: CZĘŚCIOWO; wykonano bezpośrednie sondy Python i rzeczywistą drabinę. `pytest` nie jest dostępny w runtime.
-- MATHEMATICALLY VERIFIED: TAK dla wzoru rzędu i jego użycia na zmierzonych dodatnich błędach gładkiego przypadku; NIE dla całej dynamiki.
-- NUMERICALLY VERIFIED: CZĘŚCIOWO; rzędy gładkiego SMIB wspierane pomiarem, ale parser dowodu daje false-positive.
-- PHYSICALLY SUPPORTED: BEZ NOWEGO DOWODU MODELU; delta nie zmienia równań urządzeń.
+- IMPLEMENTED: TAK dla P1-DELTA-41, P2-DELTA-42 i jawnego zawężenia typów A→kA.
+- SOFTWARE-VERIFIED: CZĘŚCIOWO; niezależne sondy Python dla kwalifikacji wykonane, testów pytest/persistence/API nie wykonano z powodu brakujących zależności.
+- MATHEMATICALLY VERIFIED: BEZ ZMIANY; delta nie zmienia równań ani estymacji rzędu.
+- NUMERICALLY VERIFIED: SUPPORTED dla domeny flagi kwalifikacji; brak nowej weryfikacji metod całkowania.
+- PHYSICALLY SUPPORTED: BEZ NOWEGO DOWODU; mapowanie A→kA zachowuje współczynnik `1/1000` i odmawia wartości nieliczbowych.
 - PHYSICALLY VALIDATED: NIE.
-- PRODUCTION-READY: NIE dla dynamiki i kwalifikacji.
+- PRODUCTION-READY: NIE dla dynamiki; migracja DDL wymaga jeszcze wykonania w pełnym środowisku.
 - REGULATORY-EVIDENCE-READY: NIE.
 
 ## NEW P0/P1
 
-### P1-DELTA-41 — tekstowe `zbiegl="false"` ustanawia pozytywną kwalifikację
-
-- Subsystem: research qualification / numerical evidence contract.
-- Claim under test: pełny manifest oraz walidacja dziedziny uniemożliwiają zakwalifikowanie niezbieżnych wyników.
-- Independent evidence: `kwalifikacja.py:465` używa prawdziwości obiektu (`if not pozycja.get("zbiegl")`), a `kwalifikacja.py:595` robi to samo przy wykrywaniu niezbieżności. Nie ma warunku `type(zbiegl) is bool`. Niepusty tekst `"false"` jest prawdziwy.
-- Reproduction:
-
-```bash
-cd mv-design-pro
-PYTHONPATH=backend/research:backend python - <<'PY'
-from kwalifikacja import _luki_kwalifikacji, _braki_kwalifikacji, KROKI_DRABINY_KWALIFIKACJI_S
-e={
- 'euler_jawny':{.008:8.099443e-2,.004:3.328120e-2,.002:1.513408e-2,.001:7.223967e-3},
- 'euler_niejawny':{.008:3.930221e-2,.004:2.315824e-2,.002:1.262421e-2,.001:6.597803e-3},
- 'trapez_niejawny':{.008:6.411643e-4,.004:1.604116e-4,.002:4.010749e-5,.001:1.002742e-5},
- 'rk4':{.008:3.692011e-7,.004:2.303647e-8,.002:1.438481e-9,.001:8.975262e-11}}
-p=[{'integrator':m,'krok_s':h,'zbiegl':'false','blad_max_vs_odniesienie':e[m][h]}
-   for m in e for h in KROKI_DRABINY_KWALIFIKACJI_S]
-r={'mutacje':{'przezyly_krytyczne':[],'liczba_mutacji':13},
-   'trajektoria_vs_andes':{'stan':'WYKONANE','status':'zgodne_w_granicach_wzorca'},
-   'czas_krytyczny_zwarcia':{'stan':'WYKONANE','zgodne':True},
-   'porownanie_integratorow':{'stan':'WYKONANE','pozycje':p},
-   'residua_inicjalizacji':{'najgorsza_norma_pochodnej':8.3267e-17}}
-l,b=_luki_kwalifikacji(r),_braki_kwalifikacji(r)
-print(l,b,'ODRZUCONE' if l else ('NIEKOMPLETNE' if b else 'ZAKWALIFIKOWANE'))
-PY
-```
-
-Wynik zmierzony: `[] [] ZAKWALIFIKOWANE`.
-
-- Why it matters: ręcznie skonstruowany lub zdeserializowany obiekt dowodowy może kodować porażkę literalnie jako `"false"`, a bramka odczyta go jako sukces. Jest to bezpośredni false-positive łańcucha evidence → verdict.
-- Existing Opus tests: NIE. Testy używają wyłącznie właściwych wartości logicznych.
-- Expected engineering property: `zbiegl` musi należeć do jawnego typu/domeny; tylko dokładne `True` może wejść do oceny rzędu. Każdy inny typ/wartość musi dać kontrolowane `ODRZUCONE` lub `NIEKOMPLETNE`.
-- Acceptance test: pełny iloczyn 16 pozycji z `"false"`, `"true"`, `1`, `0`, `None` i brakiem pola nie może uzyskać kwalifikacji; brak pola nie może kończyć nieobsłużonym wyjątkiem.
-- Resolution: **SOL CAN RESOLVE**.
+Brak nowych P0/P1 w badanej delcie.
 
 ## NEW P2
 
-### P2-DELTA-42 — automatyczne dodawanie kolumn w `init_db` nie jest bezpieczne między procesami
+Brak nowego P2. Zastrzeżenie do P2-DELTA-42 pozostaje wyłącznie zakresowe: runtime nie zawiera SQLAlchemy, więc kodu migracji i testu dwuprocesowego nie uruchomiono bezpośrednio. Analiza kodu potwierdza jednak zachowanie fail-closed.
 
-- Subsystem: persistence/schema evolution.
-- Evidence: `db.py:88-106` wykonuje osobno `inspect/get_columns`, a następnie `ALTER TABLE ADD COLUMN`; blokada repozytorium jest procesowa i nie obejmuje dwóch instancji aplikacji. Dwa procesy mogą oba zobaczyć brak kolumny, po czym drugi dostaje `duplicate column`.
-- Independent reproduction równoważnej sekwencji SQLite (bariera po odczycie schematu): dwa procesy zwróciły `[('OK',''), ('OperationalError','duplicate column name: branch_flow_trace_json')]`.
-- Impact: wyścig dostępności przy równoległym starcie/rolling deployment; nie zmienia wyniku fizycznego, dlatego P2, ale przeczy produkcyjnej odporności migracji.
-- Existing tests: NIE; sprawdzają sekwencyjną idempotencję jednego procesu.
-- Acceptance test: dwa niezależne procesy inicjalizujące starą bazę równocześnie kończą sukcesem, a schemat zawiera jedną poprawną kolumnę i zachowane dane.
-- Resolution: **SOL CAN RESOLVE**.
+## INDEPENDENT VERIFICATION OF FIXES
+
+### P1-DELTA-41 — CLOSED FOR EXACT REPRODUCTION
+
+Uruchomiono ten sam pełny iloczyn 4 metod × 4 kroki z siedmioma wariantami:
+
+| wariant `zbiegl` / pola | wynik | luki | wyjątek |
+|---|---:|---:|---:|
+| dokładne `True` | `ZAKWALIFIKOWANE` | 0 | nie |
+| `"false"` | `ODRZUCONE` | 16 | nie |
+| `"true"` | `ODRZUCONE` | 16 | nie |
+| `1` | `ODRZUCONE` | 16 | nie |
+| `None` | `ODRZUCONE` | 16 | nie |
+| brak `zbiegl` | `ODRZUCONE` | 16 | nie |
+| brak `blad_max_vs_odniesienie` | `ODRZUCONE` | 16 | nie |
+
+Kod używa wartownika `_BRAK`, następnie wymaga `zbiegl is True`. Własne, nieosłonięte przebiegi po `p["zbiegl"]` i `p["blad_max_vs_odniesienie"]`, które powodowały `KeyError`, zostały usunięte. Testy autora obejmują dziewięć niedozwolonych wartości/typów, oba brakujące pola i stronę pozytywną.
+
+### P2-DELTA-42 — CLOSED BY LOGIC; RUNTIME PARTIAL
+
+W kodzie sprzed naprawy sekwencja `inspect → ALTER TABLE ADD COLUMN` była podatna na TOCTOU. Niezależny model SQLite z barierą przed odczytem schematu, odpowiadający pozycji bariery testu autora, wykonano 50 razy; każdy bieg dał jeden `OK` i jeden `OperationalError`, więc wyścig jest rzeczywisty i odtwarzalny.
+
+Nowy kod łapie `SQLAlchemyError`, ponownie odczytuje kolumny z nowego inspektora i:
+
+- gdy kolumna istnieje — uznaje, że konkurencyjny proces osiągnął cel;
+- gdy kolumny nie ma — ponownie zgłasza oryginalny wyjątek.
+
+Nie znaleziono ścieżki, która tłumiłaby awarię bez potwierdzenia stanu. Test autora sprawdza także pojedynczą kolumnę, zachowanie starego wiersza i `None` dla nowego pola. W tym runtime brak SQLAlchemy uniemożliwił bezpośrednie wykonanie testu.
+
+### Mapowanie wielkości zwarciowych A→kA
+
+`f70df04e` odrzuca `bool` i wartości nieliczbowe, zachowuje `None` jako uczciwy brak i dla `int|float` stosuje `float(wartosc)/1000.0`. Jest to właściwe wymiarowo. Nie dodano wartości zastępczej ani domyślnej. Import produkcyjnego modułu nie był możliwy w runtime (`networkx` nie jest zainstalowany), więc ocena jest statyczna.
 
 ## PHYSICS SCORE
 
-**UNRESOLVED DLA MODELI / SUPPORTED DLA BRAKU ZMIANY.** Delta nie zmienia równań maszyny, DER, BESS, AVR/governora ani zdarzeń. Wynik drabiny potwierdza zachowanie algorytmu na jednym gładkim SMIB, nie fizyczną adekwatność modelu. Wydzielenie śladu zwarciowego nie zmienia jego liczb ani adresowania punktu.
+**UNRESOLVED DLA MODELI / SUPPORTED DLA MAPOWANIA JEDNOSTEK.** Delta nie zmienia modeli maszyny, DER, BESS, sieci ani zdarzeń. Konwersja A→kA jest fizycznie poprawna, a typy nieliczbowe nie są fabrykowane jako wartości zwarciowe. To nie waliduje źródła ani proweniencji samego wyniku.
 
 ## MATHEMATICS SCORE
 
-**PARTIALLY SUPPORTED.** Dla każdej pary dodatnich błędów i kroków zastosowano poprawny estymator `p=log(e2/e1)/log(h2/h1)`. Manifest oczekiwanego rzędu jest teraz odrębny od metadanych integratora. Nie ma nowej niezależnej analizy DAE, limiterów ani modeli urządzeń.
+**PARTIALLY SUPPORTED, BEZ NOWEJ ZMIANY MODELU.** Warunek `zbiegl is True` jest poprawnym domknięciem dziedziny logicznej. Delta nie zmienia wzoru rzędu, równań DAE, regulatorów, ograniczników ani bilansów.
 
 ## NUMERICAL SCORE
 
-**PARTIALLY SUPPORTED.** Niezależny bieg 4 metod × 4 kroki dał:
-
-- Euler jawny: `p = 1.06694, 1.13691, 1.28312`; błąd przy 1 ms `7.22397e-3 rad`.
-- Euler niejawny: `p = 0.93614, 0.87533, 0.76309`; błąd `6.59780e-3 rad`.
-- trapez: `p = 1.99992, 1.99983, 1.99892`; błąd `1.00274e-5 rad`.
-- RK4: `p = 4.00245, 4.00130, 4.00242`; błąd `8.97526e-11 rad`.
-
-To wspiera teoretyczne rzędy na odcinku gładkim. Nie obejmuje zdarzeń ani przejść ograniczników. P1-DELTA-41 refutuje odporność samego werdyktu kwalifikacyjnego.
+**PARTIALLY SUPPORTED.** Usunięto false-positive kwalifikacji wynikający z niejawnej prawdziwości typów oraz wyjątki przy brakujących polach. Nie powtórzono drabiny integratorów, ponieważ jej kod nie zmienił się względem zweryfikowanego `3cfc75a1`; poprzedni pomiar gładkiego SMIB pozostaje ważny tylko dla tego zakresu. Zdarzenia i przejścia limiterów nadal są nierozstrzygnięte.
 
 ## ENERGY / NETWORK SCORE
 
-**UNRESOLVED DLA DELTY.** Nie zmieniono równań energii/KCL/PQ/per-unit. Nie powtórzono pełnego bilansu BESS ani lokalnych residuów wszystkich szyn. Wydzielony `branch_flow_trace` pozostaje diagnostyką, nie niezależnym bilansem sieciowym.
+**UNRESOLVED DLA DELTY.** Brak zmian w bilansie BESS, KCL, P/Q, Ybus i per-unit. Nie powtórzono audytu energii ani lokalnych residuów. Wcześniejsze problemy pozostają w `pending_from_base`.
 
 ## CATALOG ENGINEERING SCORE
 
-**UNRESOLVED DLA DELTY.** Brak zmian danych katalogowych. Kwantyzacja dotyczy eksportowanych fixtures prezentacyjno-regresyjnych, nie rekordów katalogu ani wyników produkcyjnych. Kompletność `57/57` nadal nie oznacza produkcyjnej weryfikacji 23 rodzin ani proweniencji producenta.
-
-## REVIEW OF OTHER DELTA CLAIMS
-
-### Kwantyzacja fixtures nN
-
-Zakres jest ograniczony do skryptu eksportu i wygenerowanych fixtures. Odcisk jest liczony po tej samej skwantowanej treści. Pięć cyfr znaczących usuwa wskazany szum `5.3e-12` z dużym zapasem, a test autora wymaga wykrycia każdej niezerowej zmiany względnej `1e-3`. Nie jest to dowód dokładności solvera ani prawo do kwantyzacji produkcyjnego wyniku. W tym ograniczonym znaczeniu claim deterministycznych fixtures jest **SUPPORTED**.
-
-### Wydzielenie `branch_flow_trace`
-
-Ślad oraz wkłady są rozdzielane razem, zapisywane w tym samym wierszu kluczowanym `(run_id,fault_node_id)` i tej samej transakcji. Odczyt starych rekordów zwraca `None`, nie pusty ślad. Nie znaleziono false-positive fizycznego/evidence wynikającego z samego wydzielenia. Testów persistence nie wykonano z powodu braku SQLAlchemy/pytest w runtime; ocena jest statyczna plus kontrprzykład DDL z P2-DELTA-42.
+**UNRESOLVED DLA DELTY.** Brak zmian katalogowych. `57/57` kompletności szablonów nadal nie jest dowodem produkcyjnej weryfikacji 23 rodzin ani proweniencji producenta.
 
 ## CI DELTA
 
-Dla dokładnego `3cfc75a11729aeec01b0b5ea8dfb258a622c3e06` GitHub zwrócił 0 workflow runs i 0 commit statuses (`state=pending`, `total_count=0`). Gałąź nie ma PR. PR #475 nadal wskazuje `1e962025...`. Deklaracja „wszystko zielone” nie ma dla badanego HEAD niezależnego potwierdzenia GitHub.
+Dla dokładnego `a6ee782cfb8b7735a389a4b3ae64287031ae1333` GitHub zwrócił 0 workflow runs i 0 commit statuses (`state=pending`, `total_count=0`). Gałąź nie ma PR; PR #475 nadal wskazuje starszy HEAD `1e962025...`. Deklarowane przez Opusa wyniki `62 passed`, `1750 passed`, `13/13` oraz zielone guardy nie mają niezależnego potwierdzenia z CI dla badanego SHA.
 
 Lokalnie:
 
-- `python -m pytest ...` → `No module named pytest`.
-- jednokomendowa `research/kwalifikacja.py` wykonała się w `28.581 s`, jawnie podała brak ANDES i pandapower, `0/13` wiarygodnych zabić (sondy niewiarygodne z powodu braku pytest), `status_kwalifikacji=ODRZUCONE`; zachowanie fail-closed jest poprawne.
-- niezależna drabina 16 pozycji została wykonana bez pytest; wartości podano wyżej.
-
-Nie potwierdzono deklarowanych `12 063 + 11 989 + 866` testów ani `16/16` mutacji w tym runtime. W aktualnym katalogu kwalifikacji widocznych jest 13 mutacji.
+- kontrprzykłady kwalifikacji wykonano bezpośrednio i uzyskano wyniki z tabeli;
+- `pytest`, SQLAlchemy, networkx, ANDES i pandapower nie są dostępne, więc nie udaje się wykonania pełnego zestawu;
+- nie klasyfikuje się braku zależności jako regresji kodu.
 
 ## MUTATION STATUS
 
-- Poprzedni mutant „brak metody/kroku”: **KILLED** — manifest zgłasza brak.
-- Poprzednie mutanty `error=0`, `error<0`, NaN/Inf, nieznana metoda i duplikat: **KILLED**.
-- Rozjazd oczekiwanego rzędu manifest/rejestr: **KILLED** przez jawną kontrolę.
-- `zbiegl="false"` w pełnych 16 rekordach: **SURVIVED** — `ZAKWALIFIKOWANE`.
-- Brak `zbiegl`: **KILLED BY EXCEPTION**, ale wynik to niekontrolowany `KeyError`, nie prawidłowy werdykt.
-- Brak `blad_max_vs_odniesienie`: **KILLED BY EXCEPTION**, analogicznie `KeyError`.
-- Pełna kampania autora: **NOT REPRODUCED**; lokalnie wszystkie 13 sond sklasyfikowano `SONDA_NIEWIARYGODNA`, a nie `KILLED`, ponieważ brak pytest. Uprząż poprawnie nie liczy wyjątku środowiskowego jako zabicia.
+- `zbiegl="false"`: **KILLED** — 16 jawnych luk, `ODRZUCONE`.
+- `zbiegl="true"`: **KILLED**.
+- `zbiegl=1`: **KILLED**, mimo że `1 == True`; użycie `is True` poprawnie rozróżnia typ.
+- `zbiegl=None`: **KILLED**.
+- brak `zbiegl`: **KILLED BY VERDICT**, bez wyjątku.
+- brak błędu: **KILLED BY VERDICT**, bez wyjątku.
+- dokładne `True`: **ACCEPTED BY GATE** — kontrola przeciw stałemu odrzucaniu.
+- wyścig DDL na kodzie sprzed naprawy: **REPRODUCED 50/50** w równoważnej sekwencji SQLite.
+- pełna kampania 13 mutacji autora: **NOT REPRODUCED** w tym runtime.
 
 ## PRIOR FINDINGS — STATUS
 
 ### Zamknięte lub ograniczone
 
-- P1-DELTA-39: **CLOSED FOR EXACT PRIOR REPRODUCTIONS**; manifest 16 pozycji i dziedzina błędu działają. Klasa walidacji schematu pozostaje otwarta jako P1-DELTA-41.
-- P2-DELTA-40: **CLOSED FOR SMOOTH BENCHMARK**; cztery kroki i trzy ilorazy są wykonane, oczekiwany rząd przypięty osobno.
-- P1-DELTA-35/36: wcześniejsze dokładne reprodukcje pozostają zamknięte.
-- P0-DELTA-24 (proweniencja tylko z MAX) i P0-DELTA-25 (NaN w dalszym wierszu SC): IMPLEMENTED/STATICALLY VERIFIED; pełny runtime nadal nierozstrzygnięty.
-- P1-DELTA-26, P1-DELTA-27, P1-DELTA-33/34: dokładne reprodukcje pozostają zamknięte; P2-DELTA-37 nadal otwarty.
+- P1-DELTA-41: **CLOSED FOR EXACT REPRODUCTION**.
+- P2-DELTA-42: **CLOSED BY CODE LOGIC; DIRECT SQLALCHEMY RUNTIME PENDING**.
+- P1-DELTA-39 i P2-DELTA-40: wcześniejsze dokładne reprodukcje pozostają zamknięte.
+- P1-DELTA-35/36, P1-DELTA-26/27/33/34: wcześniejsze dokładne reprodukcje pozostają zamknięte w opisanym zakresie.
+- P0-DELTA-24 i P0-DELTA-25: IMPLEMENTED/STATICALLY VERIFIED; pełny runtime nadal nierozstrzygnięty.
 
 ### Nadal otwarte P0/P1/P2
 
 - P1-DELTA-28: historyczny wynik może otrzymać odcisk bieżącej implementacji przy konsumpcji.
 - P2-DELTA-37: NaN w parametrach BESS może ominąć ochronę granicy kroku.
-- P2-DELTA-38: dokumentacja/deklaracje mówiły 16/16, wykonywalny katalog kwalifikacji ma 13 mutacji.
+- P2-DELTA-38: deklaracje 16/16 kontra wykonywalny katalog kwalifikacji 13 mutacji.
 - Re-inicjalizacja i zależność od historii po zwarciu/topologii: wcześniejszy `max Delta x0=1.09421789`.
 - Pełna kontrola NaN/Inf wejść i wyników.
 - Bazy BESS/per-unit i bilans energii po obu granicach SOC.
 - Tożsamość eventów i równoległych gałęzi poza naprawionym przypadkiem jednego toru.
 - Samodzielnie konstruowane evidence/FRT, kompletność czasu i brakujące kanały.
 - AVR/governor/PSS, nasycenie, anti-windup i zwalnianie ograniczników.
-- Schemat DAE rozdzielony kontra jednoczesny i podłoga porównania ANDES.
+- Schemat DAE rozdzielony kontra jednoczesny oraz podłoga porównania ANDES.
 - Produkcyjna proweniencja katalogów, CT/VT, zabezpieczenia i topologia SN–TR–nN.
 - Kolizja kodu `SI-115` jako luka śledzenia.
 
 ## UNRESOLVED PROFESSORIAL QUESTIONS
 
-1. Czy kontrakt raportu ma formalny schemat typów przed obliczeniem werdyktu, czy dowolny `dict` pozostaje akceptowany? **SOL CAN RESOLVE**.
-2. Jaki rząd i tolerancję wymaga się osobno na zdarzeniach oraz przejściach limiterów? **SOL CAN RESOLVE**.
+1. Jak formalnie walidować kompletny schemat całego raportu przed obliczeniem werdyktu, poza naprawionym polem `zbiegl`? **SOL CAN RESOLVE**.
+2. Jaki rząd i tolerancję wymagać osobno na zdarzeniach i przejściach limiterów? **SOL CAN RESOLVE**.
 3. Jaka część podłogi ANDES wynika z semantyki zdarzenia/adaptacyjnego kroku, a jaka z różnicy modelu? **SOL CAN RESOLVE**.
-4. Jak ma być wersjonowana i synchronizowana ewolucja schematu bazy w wieloprocesowym wdrożeniu? **SOL CAN RESOLVE**.
-5. Jak trwale związać historyczny wynik z odciskiem implementacji, która go policzyła? **SOL CAN RESOLVE**.
+4. Jak trwale związać historyczny wynik z odciskiem implementacji, która go policzyła? **SOL CAN RESOLVE**.
+5. Czy produkcyjne wdrożenie PostgreSQL wymaga wersjonowanej migracji zamiast automatycznego DDL przy starcie? **SOL CAN RESOLVE**.
 
 ## ASTRA ESCALATION
 
-Brak. P1-DELTA-41 jest jednoznacznie odtwarzalny; nie istnieją dwie wiarygodne interpretacje matematyczne. **SOL CAN RESOLVE**.
+Brak. Naprawy są jednoznaczne; nie ma nierozstrzygniętego nowego P0/P1 z dwiema wiarygodnymi interpretacjami. **SOL CAN RESOLVE**.
 
 ## EXACT REPRODUCTIONS AND EVIDENCE
 
 ```bash
 git rev-parse HEAD
-# 3cfc75a11729aeec01b0b5ea8dfb258a622c3e06
+# a6ee782cfb8b7735a389a4b3ae64287031ae1333
 git show -s --format='%P' HEAD
-# 7ec36075378168e446018330d4dc1ad68779cd14
-git merge-base 367a81a17e478f9dbea6f6b0a03bf191ba9318ba HEAD
-# 367a81a17e478f9dbea6f6b0a03bf191ba9318ba
+# 6931a935a0e262358e825664d42d3defeb843375
+git merge-base 3cfc75a11729aeec01b0b5ea8dfb258a622c3e06 HEAD
+# 3cfc75a11729aeec01b0b5ea8dfb258a622c3e06
 
 cd mv-design-pro
-PYTHONPATH=backend/research:backend python research/kwalifikacja.py
-# status_kwalifikacji=ODRZUCONE; czas 28.581 s;
-# ANDES/Pandapower POMINIETA; mutacje 0/13, SONDA_NIEWIARYGODNA (brak pytest).
-
 PYTHONPATH=backend/research:backend python - <<'PY'
-import math
-from kwalifikacja import _porownanie_integratorow
-p=_porownanie_integratorow(False)['pozycje']
-for m in sorted({x['integrator'] for x in p}):
- v=sorted((x['krok_s'],x['blad_max_vs_odniesienie']) for x in p if x['integrator']==m)
- o=[math.log(e2/e1)/math.log(h2/h1) for (h1,e1),(h2,e2) in zip(v,v[1:])]
- print(m,v[0][1],o)
+# Zbuduj pełne 16 rekordów jak w raporcie 3cfc75a1 i dla wariantów
+# True, "false", "true", 1, None oraz braków pól wywołaj kolejno:
+# _luki_kwalifikacji(r), _braki_kwalifikacji(r).
+# Wyniki: True -> ZAKWALIFIKOWANE; wszystkie złe/brakujące -> ODRZUCONE,
+# 16 luk, 0 braków, bez wyjątku.
 PY
+
+python -m pytest -q backend/tests/research/test_kwalifikacja.py
+# No module named pytest
 ```
 
-Reprodukcja P1-DELTA-41 znajduje się w jego karcie. Reprodukcja P2-DELTA-42 użyła dwóch procesów SQLite zsynchronizowanych barierą po `PRAGMA table_info` i przed identycznym `ALTER TABLE ADD COLUMN`; jeden zakończył sukcesem, drugi `OperationalError: duplicate column name: branch_flow_trace_json`.
+Model wyścigu DDL: dwa procesy SQLite, wspólna stara baza, bariera przed `PRAGMA table_info`, następnie warunkowy `ALTER TABLE ADD COLUMN`; 50 uruchomień kodu sprzed naprawy dało `Counter({('OK','OperationalError'): 50})`.
 
 Repozytorium wykonawcze nie zostało zmodyfikowane. Raport przygotowano w odłączonym worktree wyłącznie w dozwolonej ścieżce audytu.
 
 ## REVIEWER CHECKPOINT
 
-`LAST_VERIFIED_SHA = 3cfc75a11729aeec01b0b5ea8dfb258a622c3e06`
+`LAST_VERIFIED_SHA = a6ee782cfb8b7735a389a4b3ae64287031ae1333`
 
-`pending_from_base` pozostaje otwarte dla wszystkich niewykonanych kontroli i wcześniejszych problemów wymienionych powyżej. Checkpoint nie oznacza akceptacji.
+`pending_from_base` pozostaje otwarte dla wszystkich niewykonanych kontroli i wcześniejszych problemów wymienionych powyżej. Checkpoint nie oznacza akceptacji całej gałęzi.
