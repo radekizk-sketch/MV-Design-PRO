@@ -124,6 +124,8 @@ def _raport_minimalny(**nadpisz):
         "mutacje": {"przezyly_krytyczne": [], "liczba_mutacji": 13},
         "trajektoria_vs_andes": {"stan": "WYKONANE", "status": "zgodne_w_granicach_wzorca"},
         "czas_krytyczny_zwarcia": {"stan": "WYKONANE", "zgodne": True},
+        # DWIE pozycje na metodę, bo rzędu nie da się zmierzyć z jednego kroku —
+        # wartości REALNE z benchmarku laboratorium, nie wymyślone.
         "porownanie_integratorow": {
             "stan": "WYKONANE",
             "pozycje": [
@@ -131,8 +133,14 @@ def _raport_minimalny(**nadpisz):
                     "integrator": "rk4",
                     "krok_s": 0.002,
                     "zbiegl": True,
-                    "blad_max_vs_odniesienie": 1.438e-09,
-                }
+                    "blad_max_vs_odniesienie": 1.438481e-09,
+                },
+                {
+                    "integrator": "rk4",
+                    "krok_s": 0.010,
+                    "zbiegl": True,
+                    "blad_max_vs_odniesienie": 9.014917e-07,
+                },
             ],
         },
         "residua_inicjalizacji": {"najgorsza_norma_pochodnej": 8.3267e-17},
@@ -208,8 +216,35 @@ def test_blad_integratora_i_residuum_sa_BRAMKOWANE_a_nie_tylko_mierzone() -> Non
         residua_inicjalizacji={"najgorsza_norma_pochodnej": 1e99},
     )
     luki = _luki_kwalifikacji(raport)
-    assert any("błąd powyżej" in x for x in luki), luki
+    # Pojedyncza pozycja: rzędu nie da się zmierzyć — to BRAK pomiaru, nie zgoda.
+    # (Komunikat zmienił się przy naprawie P1-DELTA-36: kryterium bezwzględne
+    # zastąpił rząd obserwowany plus wielkość na kroku najgęstszym.)
+    assert any("rzędu nie da się zmierzyć" in x for x in luki), luki
     assert any("Residuum inicjalizacji" in x for x in luki), luki
+
+    # WIELKOŚĆ ABSURDALNA przy POPRAWNYM rzędzie też musi zostać złapana —
+    # inaczej samo kryterium rzędu przepuszczałoby przebieg niosący nic.
+    raport_absurd = _raport_minimalny(
+        porownanie_integratorow={
+            "stan": "WYKONANE",
+            "pozycje": [
+                {
+                    "integrator": "rk4",
+                    "krok_s": 0.002,
+                    "zbiegl": True,
+                    "blad_max_vs_odniesienie": 1e99,
+                },
+                {
+                    "integrator": "rk4",
+                    "krok_s": 0.010,
+                    "zbiegl": True,
+                    "blad_max_vs_odniesienie": 1e99 * 5.0**4,
+                },
+            ],
+        }
+    )
+    luki_absurd = _luki_kwalifikacji(raport_absurd)
+    assert any("najgęstszym kroku" in x for x in luki_absurd), luki_absurd
 
     # DRUGA STRONA PREDYKATU: wartości zmierzone realnie muszą przechodzić.
     assert _luki_kwalifikacji(_raport_minimalny()) == []
@@ -222,3 +257,113 @@ def test_wartosci_niepoprawne_tez_sa_luka_a_nie_przechodza_przez_porownanie() ->
     for zla in (float("nan"), float("inf")):
         raport = _raport_minimalny(residua_inicjalizacji={"najgorsza_norma_pochodnej": zla})
         assert any("Residuum inicjalizacji" in x for x in _luki_kwalifikacji(raport)), zla
+
+
+def test_WYKONANE_bez_werdyktu_i_bez_pozycji_NIE_jest_kwalifikacja() -> None:
+    """P1-DELTA-35: `WYKONANE` nie znaczy „zmierzone".
+
+    KONTRPRZYKŁAD RECENZENTA. `_braki_kwalifikacji` sprawdzało tylko
+    ``stan != "WYKONANE"`` oraz DOKŁADNIE ``status == "nierozstrzygniete"``, więc
+    sekcja bez pola `status`, sekcja ze statusem nieznanym i porównanie z PUSTĄ
+    listą pozycji przechodziły jako kwalifikacja. Pusta lista nie daje żadnych
+    naruszeń, więc „zero błędów" wychodziło z braku danych, nie z ich jakości.
+
+    To jest SIÓDMY raz w tej sesji, gdy naprawiłem INSTANCJĘ zamiast KLASY:
+    poprzednia runda zamknęła `POMINIETE` i `nierozstrzygniete`, czyli dwa
+    wymienione przypadki, a nie zbiór „status, którego nie rozpoznajemy".
+    """
+    from kwalifikacja import _braki_kwalifikacji
+
+    baza = {
+        "mutacje": {"przezyly_krytyczne": [], "liczba_mutacji": 13},
+        "czas_krytyczny_zwarcia": {"stan": "WYKONANE", "zgodne": True},
+        "residua_inicjalizacji": {"najgorsza_norma_pochodnej": 0.0},
+    }
+    raport = dict(
+        baza,
+        trajektoria_vs_andes={"stan": "WYKONANE"},
+        porownanie_integratorow={"stan": "WYKONANE", "pozycje": []},
+    )
+    braki = _braki_kwalifikacji(raport)
+    assert any("brak wymaganego pola" in b for b in braki), braki
+    assert any("zero pozycji" in b for b in braki), braki
+
+
+def test_status_spoza_zamknietego_zbioru_nie_jest_statusem_dobrym() -> None:
+    """Werdykt, którego uprząż nie umie odczytać, nie może liczyć się na plus."""
+    from kwalifikacja import STATUSY_ROZPOZNAWANE, _braki_kwalifikacji
+
+    raport = {
+        "mutacje": {"przezyly_krytyczne": [], "liczba_mutacji": 13},
+        "trajektoria_vs_andes": {"stan": "WYKONANE", "status": "dowolny_nieznany"},
+        "czas_krytyczny_zwarcia": {"stan": "WYKONANE", "zgodne": True},
+        "porownanie_integratorow": {
+            "stan": "WYKONANE",
+            "pozycje": [
+                {
+                    "integrator": "rk4",
+                    "krok_s": 0.002,
+                    "zbiegl": True,
+                    "blad_max_vs_odniesienie": 1.4e-9,
+                },
+                {
+                    "integrator": "rk4",
+                    "krok_s": 0.010,
+                    "zbiegl": True,
+                    "blad_max_vs_odniesienie": 9.0e-7,
+                },
+            ],
+        },
+        "residua_inicjalizacji": {"najgorsza_norma_pochodnej": 0.0},
+    }
+    assert any("spoza zamkniętego zbioru" in b for b in _braki_kwalifikacji(raport)), raport
+    assert "zgodne_w_granicach_wzorca" in STATUSY_ROZPOZNAWANE
+
+
+def test_kryterium_integratorow_MIERZY_RZAD_a_nie_bezwzgledny_blad() -> None:
+    """P1-DELTA-36: jeden próg bezwzględny odrzucał WŁASNY benchmark.
+
+    KOREKTA MOJEGO BŁĘDU. Próg 1e-2 rad dobrałem z liczb RK4 i trapezu
+    (1,438e-09 … 1,002e-03), które akurat miałem przepisane w raporcie, i NIE
+    uruchomiłem pełnej uprzęży po dołożeniu bramki. Zestaw zawiera także dwie
+    metody Eulera o błędach 1,262e-02 … 1,119e-01 rad — całkowicie poprawnych dla
+    rzędu 1 — więc kryterium odrzucało niezmieniony benchmark laboratorium
+    deterministycznie.
+
+    Jeden próg bezwzględny dla metod RÓŻNEGO RZĘDU jest błędny co do zasady:
+    metoda rzędu 1 przy 10 ms MA mieć błąd rzędu 0,1 rad. Kryterium porównuje
+    więc rząd OBSERWOWANY z ZADEKLAROWANYM — ta sama reguła co w §5.
+
+    ZMIERZONE odchylenia: euler_jawny 0,243, euler_niejawny 0,204, rk4 0,002,
+    trapez 0,001.
+    """
+    from kwalifikacja import MAKS_ODCHYLENIE_RZEDU, _luki_rzedu_integratorow
+
+    # REALNE wartości benchmarku — muszą przechodzić.
+    rzeczywiste = [
+        {"integrator": "euler_jawny", "krok_s": 0.002, "blad_max_vs_odniesienie": 1.513408e-02},
+        {"integrator": "euler_jawny", "krok_s": 0.010, "blad_max_vs_odniesienie": 1.119439e-01},
+        {"integrator": "euler_niejawny", "krok_s": 0.002, "blad_max_vs_odniesienie": 1.262421e-02},
+        {"integrator": "euler_niejawny", "krok_s": 0.010, "blad_max_vs_odniesienie": 4.544961e-02},
+        {"integrator": "rk4", "krok_s": 0.002, "blad_max_vs_odniesienie": 1.438481e-09},
+        {"integrator": "rk4", "krok_s": 0.010, "blad_max_vs_odniesienie": 9.014917e-07},
+        {"integrator": "trapez_niejawny", "krok_s": 0.002, "blad_max_vs_odniesienie": 4.010749e-05},
+        {"integrator": "trapez_niejawny", "krok_s": 0.010, "blad_max_vs_odniesienie": 1.001828e-03},
+    ]
+    assert (
+        _luki_rzedu_integratorow(rzeczywiste) == []
+    ), "Kryterium odrzuca WŁASNY, niezmieniony benchmark laboratorium."
+
+    # DRUGA STRONA: degradacja rzędu MUSI zostać złapana.
+    zdegradowane = [
+        {"integrator": "rk4", "krok_s": 0.002, "blad_max_vs_odniesienie": 1.0e-6},
+        {"integrator": "rk4", "krok_s": 0.010, "blad_max_vs_odniesienie": 2.5e-5},
+    ]
+    luki = _luki_rzedu_integratorow(zdegradowane)
+    assert any("deklaruje rząd 4" in x and "rząd 2.000" in x for x in luki), luki
+
+    # Jedna pozycja nie daje rzędu — to BRAK pomiaru, nie cicha zgoda.
+    assert _luki_rzedu_integratorow(
+        [{"integrator": "rk4", "krok_s": 0.002, "blad_max_vs_odniesienie": 1.0e-9}]
+    ), "Pojedyncza pozycja przeszła bez zmierzenia rzędu."
+    assert MAKS_ODCHYLENIE_RZEDU == 0.5

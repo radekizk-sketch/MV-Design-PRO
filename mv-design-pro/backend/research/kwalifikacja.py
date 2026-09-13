@@ -32,6 +32,7 @@ import math
 import pathlib
 import sys
 import time
+from collections.abc import Iterable, Mapping
 from enum import StrEnum
 from typing import Any
 
@@ -44,6 +45,7 @@ from dynamic_lab.benchmarki import (  # noqa: E402
     siec_sn_z_der,
     smib,
 )
+from dynamic_lab.calkowanie import INTEGRATORY  # noqa: E402
 from dynamic_lab.katalog_mutacji import mutacje_laboratorium  # noqa: E402
 from dynamic_lab.mutacje import uruchom_kampanie  # noqa: E402
 from dynamic_lab.silnik import SilnikRMS  # noqa: E402
@@ -233,11 +235,61 @@ def _kampania_mutacyjna(wykonaj_sondy: Any) -> dict[str, Any]:
 #: orzeka „start jest w równowadze". Zmierzone: SMIB 8,3267e-17, sieć SN z DER 0,0.
 MAKS_NORMA_POCHODNEJ_W_T0 = 1.0e-6
 
-#: Największy dopuszczalny błąd pozycji porównania integratorów [rad]. Kąt wirnika
-#: kołysze się w tych przypadkach o rząd 1 rad, więc błąd 1e-2 rad to 1 % sygnału:
-#: powyżej tego bieg nie mówi już nic o kołysaniu, które miał opisać. Zmierzone:
-#: trapez 4,011e-05 … 1,002e-03, rk4 1,438e-09 … 9,015e-07 — trzy rzędy zapasu.
-MAKS_BLAD_INTEGRATORA_RAD = 1.0e-2
+#: Dopuszczalne odchylenie RZĘDU OBSERWOWANEGO od rzędu zadeklarowanego.
+#:
+#: KOREKTA WŁASNEGO BŁĘDU (recenzja niezależna, P1-DELTA-36). Pierwsza wersja
+#: bramkowała BEZWZGLĘDNY błąd pozycji progiem 1e-2 rad, uzasadniając go
+#: pomiarami RK4 i trapezu (1,438e-09 … 1,002e-03). Zestaw porównania zawiera
+#: jednak TAKŻE dwie metody Eulera, a ich błędy — całkowicie poprawne dla rzędu 1
+#: — wynoszą 1,262e-02 … 1,119e-01 rad. Próg odrzucał więc DETERMINISTYCZNIE
+#: własny, niezmieniony benchmark laboratorium. Nie zauważyłem tego, bo dobrałem
+#: próg z liczb, które akurat miałem przepisane w raporcie, i nie uruchomiłem
+#: pełnej uprzęży po dołożeniu bramki.
+#:
+#: Jeden próg bezwzględny dla metod RÓŻNEGO RZĘDU jest zresztą błędny co do
+#: zasady: metoda rzędu 1 przy kroku 10 ms MA mieć błąd rzędu 0,1 rad i nie jest
+#: to defekt, tylko jej definicja. Sensowne kryterium porównuje rząd OBSERWOWANY
+#: z ZADEKLAROWANYM (`Integrator.rzad`) — czyli sprawdza, czy metoda zachowuje
+#: się jak ta, za którą się podaje. To ta sama reguła, co w §5: rząd się MIERZY,
+#: nie czyta z etykiety.
+#:
+#: ZMIERZONE (kroki 2 ms i 10 ms, horyzont 2 s):
+#:   euler_jawny     rząd 1 -> obserwowany 1,243  (odchylenie 0,243)
+#:   euler_niejawny  rząd 1 -> obserwowany 0,796  (odchylenie 0,204)
+#:   rk4             rząd 4 -> obserwowany 4,002  (odchylenie 0,002)
+#:   trapez_niejawny rząd 2 -> obserwowany 1,999  (odchylenie 0,001)
+#: Pasmo 0,5 daje zapas ponad dwukrotny wobec najgorszego odchylenia, a złapałoby
+#: degradację o cały rząd (np. RK4 liczące jak metoda rzędu 2: odchylenie 2,0).
+MAKS_ODCHYLENIE_RZEDU = 0.5
+
+#: Największy dopuszczalny błąd pozycji NAJGĘSTSZEJ [rad] — miara WIELKOŚCI,
+#: uzupełniająca kryterium rzędu.
+#:
+#: Sam rząd nie wystarcza: metoda z błędem 1e99 przy obu krokach, skalującym się
+#: jak ``dt^4``, ma rząd obserwowany 4 i przeszłaby kontrolę rzędu, nie mówiąc o
+#: zagadnieniu nic. Potrzebna jest więc druga miara — ale NIE druga stała
+#: dobrana per metoda, bo to był właśnie defekt P1-DELTA-36.
+#:
+#: Ten próg wynika z SYGNAŁU, nie z metody, więc stosuje się jednakowo do
+#: wszystkich: kąt wirnika kołysze się w tych przypadkach o rząd 1 rad, a błąd
+#: porównywalny z amplitudą znaczy, że przebieg nie opisuje kołysania. Dlatego
+#: liczy się go WYŁĄCZNIE na kroku najgęstszym, gdzie każda metoda ma prawo być
+#: najbliżej odniesienia.
+#:
+#: ZMIERZONE na kroku 2 ms: euler_jawny 1,513e-02, euler_niejawny 1,262e-02,
+#: rk4 1,438e-09, trapez 4,011e-05 — najgorsza legalna wartość ma 33-krotny zapas.
+MAKS_BLAD_NA_NAJGESTSZYM_KROKU_RAD = 0.5
+
+
+#: Statusy werdyktu, które ta uprząż ROZPOZNAJE. Zbiór ZAMKNIĘTY: status spoza
+#: niego nie jest statusem dobrym, tylko werdyktem, którego uprząż nie umie
+#: odczytać — a nieodczytanego werdyktu nie wolno liczyć jako pozytywny.
+STATUSY_ROZPOZNAWANE: frozenset[str] = frozenset(
+    {"zgodne_w_granicach_wzorca", "niezgodne", "nierozstrzygniete"}
+)
+
+#: Statusy, które NIE rozstrzygają — idą do braków, nie do luk.
+STATUSY_BEZ_ROZSTRZYGNIECIA: frozenset[str] = frozenset({"nierozstrzygniete"})
 
 
 class StatusKwalifikacji(StrEnum):
@@ -265,20 +317,89 @@ def _braki_kwalifikacji(raport: dict[str, Any]) -> list[str]:
     osobno od luk i dlatego daje własny status i własny kod wyjścia.
     """
     braki: list[str] = []
-    for klucz, opis in (
-        ("trajektoria_vs_andes", "porównanie trajektorii z wzorcem zewnętrznym"),
-        ("czas_krytyczny_zwarcia", "czas krytyczny zwarcia wobec kryterium równych pól"),
-        ("porownanie_integratorow", "porównanie integratorów"),
+    for klucz, opis, wymagane in (
+        ("trajektoria_vs_andes", "porównanie trajektorii z wzorcem zewnętrznym", ("status",)),
+        (
+            "czas_krytyczny_zwarcia",
+            "czas krytyczny zwarcia wobec kryterium równych pól",
+            ("zgodne",),
+        ),
+        ("porownanie_integratorow", "porównanie integratorów", ("pozycje",)),
     ):
         sekcja = raport.get(klucz) or {}
         stan = sekcja.get("stan")
         if stan != "WYKONANE":
             braki.append(f"{opis}: {stan or 'BRAK SEKCJI'} — pomiar nie został wykonany")
-        elif sekcja.get("status") == "nierozstrzygniete":
+            continue
+        # POLA WYMAGANE — `WYKONANE` bez werdyktu nie jest wykonanym pomiarem.
+        for pole in wymagane:
+            if sekcja.get(pole) is None:
+                braki.append(f'{opis}: brak wymaganego pola „{pole}" mimo stanu WYKONANE')
+        # POPULACJA NIEPUSTA — lista zero pozycji nie daje żadnych naruszeń, więc
+        # bez tego warunku pusty benchmark przechodziłby jako bezbłędny.
+        if "pozycje" in wymagane and not (sekcja.get("pozycje") or []):
+            braki.append(f"{opis}: zero pozycji porównania — nie ma czego oceniać")
+        # ZAMKNIĘTY ZBIÓR STATUSÓW — status nieznany NIE jest statusem dobrym.
+        status = sekcja.get("status")
+        if status is not None and status not in STATUSY_ROZPOZNAWANE:
             braki.append(
-                f"{opis}: NIEROZSTRZYGNIĘTE — {sekcja.get('nierozstrzygniete') or 'bez podanej przyczyny'}"
+                f'{opis}: status „{status}" spoza zamkniętego zbioru '
+                f"{sorted(STATUSY_ROZPOZNAWANE)} — nierozpoznanego werdyktu nie wolno "
+                f"czytać jako pozytywnego"
+            )
+        elif status in STATUSY_BEZ_ROZSTRZYGNIECIA:
+            braki.append(
+                f"{opis}: NIEROZSTRZYGNIĘTE — "
+                f"{sekcja.get('nierozstrzygniete') or 'bez podanej przyczyny'}"
             )
     return braki
+
+
+def _luki_rzedu_integratorow(pozycje: Iterable[Mapping[str, Any]]) -> list[str]:
+    """Rząd OBSERWOWANY każdej metody wobec jej rzędu ZADEKLAROWANEGO.
+
+    Rząd liczony z dwóch kroków tej samej metody: ``p = log(e2/e1)/log(dt2/dt1)``.
+    Metoda z jedną pozycją nie ma z czego dać rzędu — i to jest BRAK pomiaru,
+    zgłaszany jako luka, a nie milczące przejście.
+    """
+    po_metodzie: dict[str, list[tuple[float, float]]] = {}
+    for p in pozycje:
+        blad = float(p["blad_max_vs_odniesienie"])
+        if math.isfinite(blad) and blad > 0.0:
+            po_metodzie.setdefault(str(p["integrator"]), []).append((float(p["krok_s"]), blad))
+
+    luki: list[str] = []
+    for nazwa, pary in sorted(po_metodzie.items()):
+        if len(pary) < 2:
+            luki.append(
+                f"Porównanie integratorów: {nazwa} ma {len(pary)} pozycję — rzędu "
+                f"nie da się zmierzyć z jednego kroku"
+            )
+            continue
+        pary.sort()
+        (dt1, e1), (dt2, e2) = pary[0], pary[-1]
+        # WIELKOŚĆ na kroku NAJGĘSTSZYM — rząd poprawny przy absurdalnej stałej
+        # przeszedłby samo kryterium rzędu.
+        if e1 > MAKS_BLAD_NA_NAJGESTSZYM_KROKU_RAD:
+            luki.append(
+                f"Porównanie integratorów: {nazwa} ma na najgęstszym kroku "
+                f"({dt1:g} s) błąd {e1:.3e} rad, powyżej "
+                f"{MAKS_BLAD_NA_NAJGESTSZYM_KROKU_RAD:g} rad — porównywalny z "
+                f"amplitudą kołysania, więc przebieg nie opisuje zagadnienia"
+            )
+        rzad_obserwowany = math.log(e2 / e1) / math.log(dt2 / dt1)
+        integrator = INTEGRATORY.get(nazwa)
+        if integrator is None:
+            luki.append(f"Porównanie integratorów: {nazwa} nie jest w rejestrze integratorów")
+            continue
+        odchylenie = abs(rzad_obserwowany - integrator.rzad)
+        if odchylenie > MAKS_ODCHYLENIE_RZEDU:
+            luki.append(
+                f"Porównanie integratorów: {nazwa} deklaruje rząd {integrator.rzad}, "
+                f"a zachowuje się jak rząd {rzad_obserwowany:.3f} "
+                f"(odchylenie {odchylenie:.3f} > {MAKS_ODCHYLENIE_RZEDU:g})"
+            )
+    return luki
 
 
 def _luki_kwalifikacji(raport: dict[str, Any]) -> list[str]:
@@ -321,20 +442,21 @@ def _luki_kwalifikacji(raport: dict[str, Any]) -> list[str]:
                 f"{[(p['integrator'], p['krok_s']) for p in niezbiezne]}"
             )
         # WIELKOŚĆ BŁĘDU, NIE TYLKO FLAGA ZBIEŻNOŚCI (recenzja, P1-DELTA-34).
-        # Pozycja może zbiec i mieć błąd dowolnie duży — „zbiegł" mówi o
-        # iteracji, nie o dokładności.
-        za_duze = [
+        # „Zbiegł" mówi o ITERACJI, nie o dokładności.
+        niepoprawne = [
             p
             for p in integratory["pozycje"]
             if not math.isfinite(float(p["blad_max_vs_odniesienie"]))
-            or float(p["blad_max_vs_odniesienie"]) > MAKS_BLAD_INTEGRATORA_RAD
         ]
-        if za_duze:
+        if niepoprawne:
             luki.append(
-                f"Porównanie integratorów: błąd powyżej {MAKS_BLAD_INTEGRATORA_RAD:g} rad "
-                f"albo niepoprawny — "
-                f"{[(p['integrator'], p['krok_s'], p['blad_max_vs_odniesienie']) for p in za_duze]}"
+                f"Porównanie integratorów: błąd niepoprawny (NaN/Inf) — "
+                f"{[(p['integrator'], p['krok_s']) for p in niepoprawne]}"
             )
+        # RZĄD OBSERWOWANY WOBEC ZADEKLAROWANEGO (recenzja, P1-DELTA-36).
+        # Bezwzględny próg wspólny dla metod różnego rzędu odrzucał własny
+        # benchmark; metoda rzędu 1 MA mieć większy błąd niż metoda rzędu 4.
+        luki.extend(_luki_rzedu_integratorow(integratory["pozycje"]))
 
     # RESIDUUM INICJALIZACJI BYŁO MIERZONE I NIEBRAMKOWANE (recenzja, P1-DELTA-34).
     # Bieg startujący daleko od równowagi opisuje przebieg, którego nikt nie zadał:
