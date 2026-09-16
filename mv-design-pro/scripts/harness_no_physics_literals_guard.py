@@ -106,7 +106,7 @@ WZORZEC_RECZNEGO_RUN_ID = re.compile(r"""\b(run_id|id)\s*:\s*'run-[^']*'""")
 #: uzasadnienia w commicie (nowy literał fizyki dołożony do harnessu jest
 #: naruszeniem karty, nie przypadkiem).
 PROG: dict[str, tuple[int, int]] = {
-    "creator-harness-main.tsx": (164, 42),
+    "creator-harness-main.tsx": (164, 40),
     "screenshot-harness-main.tsx": (2, 1),
 }
 

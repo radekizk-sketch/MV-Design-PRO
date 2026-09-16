@@ -2866,7 +2866,9 @@ function Harness() {
   else if (creator === 'walidacja')
     node = (
       <SekcjaWalidacji
-        przebieg={{ id: 'run-lf-1', analysis_type: 'LOAD_FLOW', status: 'DONE' } as unknown as ExecutionRun}
+        przebieg={{
+          id: walidacjaScenyWynik.context.run_id, analysis_type: 'LOAD_FLOW', status: 'DONE',
+        } as unknown as ExecutionRun}
         trybZaawansowania="expert"
         onOtworzDowod={() => undefined}
       />
@@ -2966,7 +2968,9 @@ function Harness() {
   else if (creator === 'migotanie')
     node = (
       <SekcjaMigotania
-        przebieg={{ id: 'run-sc-5', analysis_type: 'SC_3F', status: 'DONE' } as unknown as ExecutionRun}
+        przebieg={{
+          id: migotanieScenyWynik.context.run_id, analysis_type: 'SC_3F', status: 'DONE',
+        } as unknown as ExecutionRun}
         trybZaawansowania="expert"
         onOtworzDowod={() => undefined}
       />
@@ -2978,6 +2982,10 @@ function Harness() {
   else if (creator === 'odbior') node = <KreatorOdbioruNn />;
   else if (creator === 'zrodlo') node = <KreatorZrodloZasilania />;
   else if (creator === 'cieplna')
+    // `id: 'run-sc-7'` CELOWO nieruszone (spójne z RUN_KONTRAKT_SCENY.cieplna
+    // powyżej — ta sama etykieta wariantu K3-B3 „nieaktualne", nie
+    // identyfikator liczonego biegu; treść sekcji czyta OSOBNY, już realny
+    // endpoint `/api/quality/conductor-thermal-withstand`).
     node = (
       <SekcjaWytrzymaloscCieplna
         przebieg={{ id: 'run-sc-7', analysis_type: 'SC_3F', status: 'DONE' } as unknown as ExecutionRun}
@@ -2988,7 +2996,9 @@ function Harness() {
   else if (creator === 'arcflash') {
     node = (
       <SekcjaArcFlash
-        przebieg={{ id: 'run-sc-1', analysis_type: 'SC_3F', status: 'DONE' } as unknown as ExecutionRun}
+        przebieg={{
+          id: arcflashScenyWynik.context.run_id, analysis_type: 'SC_3F', status: 'DONE',
+        } as unknown as ExecutionRun}
         trybZaawansowania="expert"
         onOtworzDowod={() => undefined}
       />
