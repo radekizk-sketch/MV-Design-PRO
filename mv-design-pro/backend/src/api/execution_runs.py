@@ -56,7 +56,7 @@ class RunResponse(BaseModel):
     started_at: str | None = None
     finished_at: str | None = None
     error_message: str | None = None
-    # TODO-UI2 §1 p. 10: rewizja modelu, na której policzono bieg (koperta CV-2,
+    # KARTA-UI2 §1 p. 10: rewizja modelu, na której policzono bieg (koperta CV-2,
     # `None` = bieg sprzed rejestru koperty), oraz pochodzenie biegu (kiedy/z
     # jakiej migawki) — pola addytywne, `to_execution_dict` już je niesie.
     model_revision: int | None = None

@@ -333,6 +333,31 @@ class TestListRunsEndpoint:
         assert data["count"] == 2
         assert len(data["runs"]) == 2
 
+    def test_list_runs_carries_model_revision_created_at_snapshot_hash(
+        self, client, registered_case
+    ):
+        """TODO-UI2 §1 p. 10: „pochodzenie" biegu (kto/kiedy/z jakiej migawki) w
+        odpowiedzi listy — `model_revision` z koperty CV-2 (`_seed_valid_enm`
+        zasiewa `header.revision: 1`), `created_at`/`snapshot_hash` z rekordu
+        biegu wprost (pola WYMAGANE `CanonicalRun`, nigdy None dla biegu
+        utworzonego normalną ścieżką API)."""
+        created = client.post(
+            f"/api/execution/study-cases/{registered_case}/runs",
+            json={"analysis_type": "SC_3F", "solver_input": {"v": 1}},
+        )
+        assert created.status_code == 201, created.text
+        body = created.json()
+        assert body["model_revision"] == 1
+        assert body["created_at"]
+        assert body["snapshot_hash"]
+
+        response = client.get(f"/api/execution/study-cases/{registered_case}/runs")
+        assert response.status_code == 200
+        [run] = response.json()["runs"]
+        assert run["model_revision"] == 1
+        assert run["created_at"]
+        assert run["snapshot_hash"]
+
 
 class TestExecuteRunEndpoint:
     def test_execute_run_success(self, client, registered_case):
