@@ -87,16 +87,21 @@ async function prowadzScene(page: Page, creator: string): Promise<void> {
     // (prądowa PRZEKROCZENIE); werdykty renderowane domyślnie.
     const tabela = page.getByTestId('mvd-fazowy-tabela-faz');
     await expect(tabela).toBeVisible();
-    await expect(tabela).toContainText('8,660');
-    await expect(tabela).toContainText('99,8');
+    // Liczby z REALNEGO biegu backendu (phase_state_sn, scena stan-fazowy,
+    // karta HARNESS-RESZTA) — ua_kv=8,646754…, ib_a=78,0 (prąd fazy B z opcji
+    // scenariusza), current_unbalance_percent=29,39 (alert solvera).
+    await expect(tabela).toContainText('8,647');
+    await expect(tabela).toContainText('78,0');
     const asymetrie = page.getByTestId('mvd-fazowy-asymetrie');
-    await expect(asymetrie).toContainText('12,70');
+    await expect(asymetrie).toContainText('29,39');
     await expect(asymetrie).toContainText('PRZEKROCZENIE');
   } else {
     // wyniki-stabilnosc: werdykt STABILNY + statusy kryteriów (checks) → ślad
     // automatyki OTWARTY (natywny klik).
+    // Wskaznik z REALNEGO biegu backendu (dynamic_stability, scena
+    // stabilnosc, karta HARNESS-RESZTA): stability_index=0,685417.
     await expect(page.getByTestId('mvd-stabilnosc-werdykt-status')).toContainText('STABILNY');
-    await expect(page.getByTestId('mvd-stabilnosc-wskaznik')).toContainText('0,812');
+    await expect(page.getByTestId('mvd-stabilnosc-wskaznik')).toContainText('0,685');
     await expect(page.getByTestId('mvd-stabilnosc-wielkosci')).toContainText('spełnione');
     await page.getByTestId('mvd-stabilnosc-slad-btn').click();
     await expect(page.getByTestId('mvd-stabilnosc-zdarzenia')).toBeVisible();
