@@ -150,6 +150,31 @@ nawigacji B-02 (obszar „Zwarcia i zabezpieczenia" + zakładka „Zwarcia"). Ob
 (`c307e95f`: komparator fixtur z tolerancją 1e-6 + kwantyzacja `WerdyktProjektowy.to_dict()`; helper `otworzZakladkeWynikow`
 w 7 specach) — patrz §F „W3 fala 3 — dowody" i §G „W3 fala 3 — granice" (3)–(4). Stan CI po pushu fali 3: kolejny wpis.
 
+**Stan 2026-09-16, szczyt `a8bb926d` (fala 3 W3 + V12.7 + S-1/S-4 + HARNESS-ZWARCIA + evidence; push 08:32 UTC): 7/9 workflowów
+zielonych, 2 czerwone** — Frontend checks (push `35074319485`, run 3511; PR `35074325783`, run 3512), E2E smoke (`35074319497`
+/ `35074325807`), SLD Determinism (`35074319502` / `35074325779`), Docs (`35074319499` / `35074325892`), Arch (`35074319490` /
+`35074325811`), P0 Extended (`35074319480` / `35074325788`), Physics Label (`35074319494` / `35074325689`) zielone;
+**Python tests: push CZERWONY (`35074319487`, run 5030), PR TEGO SAMEGO commitu ZIELONY (`35074325684`, run 5031)** — 5 failed:
+`tests/ci/test_fixtury_harnessu.py::test_json_w_repo_rowny_odpowiedzi_backendu[zwarcia_{wyniki,rozplyw,pasmo}_scena_zwarcia]`
+(+ parytet skrótów): fixtury harnessu z realnego biegu zwarciowego nieprzenośne między runnerami w trzech postaciach —
+`direction` gałęzi wyprowadzany ze znaku prądu rzędu 1e-18 kA (szum arytmetyki, różny znak na różnych maszynach),
+`result_hash` liczony z surowych floatów, tekst granic sanity z `repr(float)`. Klasa (§34): **projekcja nieciągła na szumie
+numerycznym** — kwantyzacja kontraktu (M0-2) chroniła hash kontraktu, ale nie trzy miejsca, w których projekcja ENM/API
+odczytuje surowy wynik solvera zanim go skwantyzuje. Naprawa klasy CI-FIXTURY-PRZENOSNOSC (`9dd4c55c`, solver FROZEN
+nietknięty): pas martwy `PROG_PRADU_ZEROWEGO_KA = 1e-9` w projekcji rozpływu zwarciowego (kierunek „brak" poniżej progu;
+FE renderuje parę bez strzałki), `result_hash` z `kwantyzuj_kontrakt(raw_result)`, teksty granic ze stałą precyzją
+(`{:.3f}`/`{:g}`), 4 testy klasy `tests/enm/test_rozplyw_zwarciowy_przenosnosc.py`, fixtury i złote hashe przeliczone
+(157/336 wpisów różni się wyłącznie szkieletem, `liczby` bit w bit). **Frontend E2E full CZERWONY** (push `35074319475`,
+run 444; PR `35074325752`, run 445): 5 failed / 422 passed — `flow-ekspert-screenshot` scena `uwaga` light/dark (ekran „Co
+wymaga uwagi" pokazywał „sieć w normie" dla zapisanego wyniku rozpływu BEZ `kryteria_napiecia` — pusta lista przekroczeń bez
+progu nie jest dowodem normy; naprawa: jawny stan „Brak podstaw do oceny napięć" z następnym krokiem, predykat parą
+z `przekroczeniaRozplywu`) i `zwarcia` light/dark (spec cytował ręczne liczby sprzed HARNESS-ZWARCIA; przepisany na wartości
+z fixtury realnego biegu), `lv-domain-screenshot` Kadr 02 (limit testu 180 s: asercja na fantomowy testid
+`lv-domain-node-anchor:eq:` połknięta `.catch(() => undefined)` paliła pełny limit asercji 45 s w każdym z sześciu przebiegów
+motyw×poziom — 6 × 45 s > 180 s; od `017b9eca` limit asercji 20 s → 45 s uwidocznił wadę; naprawa: realna asercja kotwicy
+`data-shared="true"`), `pasma-rozplywu-jakosc` (lokalne przekroczenie 20 s w helperze nawigacji poniżej limitu z pomiaru —
+usunięte, obowiązuje 45 s z konfiguracji). Stan CI po pushu odbioru S-2/S-3: kolejny wpis.
+
 ## B. Ochrona gałęzi `main` (§36) — **OWNER ACTION P0**
 
 Pomiar (GitHub API `list_branches`, 2026-09-04): `main` → `protected: false`; łącznie ponad 400 gałęzi (`claude/*`, `codex/*`, `kopia/*`), żadna chroniona. Sesja agenta nie ma uprawnień administracyjnych do włączenia ochrony (brak narzędzia w MCP; wymaga roli admin repozytorium).
