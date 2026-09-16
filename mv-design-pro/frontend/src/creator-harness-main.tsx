@@ -95,6 +95,15 @@ import zwarciaWynikiScenyZwarcia from './harness-fixtures/generated/zwarcia_wyni
 import zwarciaWkladyScenyZwarcia from './harness-fixtures/generated/zwarcia_wklady_scena_zwarcia.json';
 import zwarciaRozplywScenyZwarcia from './harness-fixtures/generated/zwarcia_rozplyw_scena_zwarcia.json';
 import zwarciaPasmoScenyZwarcia from './harness-fixtures/generated/zwarcia_pasmo_scena_zwarcia.json';
+// HARNESS-RESZTA (2026-09-16): sceny "wyniki-stan-fazowy"/"wyniki-stabilnosc"
+// (E-31/E-32) karmione WYLACZNIE wynikami REALNEGO biegu backendu
+// (phase_state_sn / dynamic_stability na sieci zlotej,
+// `eksport_fixtur_harnessu.py` — DOKLADNIE tymi funkcjami, ktore woluja
+// koncowki `/results/phase-state`, `/results/dynamic-stability`,
+// `/results/automation-trace`) — zero recznie wpisanych liczb fizycznych.
+import stanFazowyScenyWyniki from './harness-fixtures/generated/stan_fazowy_scena_wyniki.json';
+import stabilnoscScenyWyniki from './harness-fixtures/generated/stabilnosc_scena_wyniki.json';
+import stabilnoscScenySlad from './harness-fixtures/generated/stabilnosc_scena_slad.json';
 import { REWIZJA_SIECI_ZLOTEJ, migawkaSieciZlotej } from './harness-fixtures/migawkaSieciZlotej';
 import { EkranOceny } from './ui2/wyniki/ocena';
 import { SekcjaSilySieci } from './ui2/oze/pulpit';
@@ -383,120 +392,10 @@ const ZBIEZNOSC_SNAPSHOT = {
   protection_assignments: [],
 };
 
-// E-31 „Stan fazowy SN" (ui2/wyniki/stan-fazowy): wiersz kanoniczny (napięcia/
-// prądy/straty per faza, asymetrie + flagi solvera).
-const STAN_FAZOWY_WYNIK = {
-  run_id: 'run-ps-1',
-  rows: [
-    {
-      target_id: 'bus-1',
-      element_id: 'BUS-SN-01',
-      target_name: 'BUS-SN-01',
-      ua_kv: 8.66,
-      ub_kv: 8.61,
-      uc_kv: 8.6,
-      ia_a: 101.5,
-      ib_a: 99.8,
-      ic_a: 100.2,
-      phase_losses_kw: { A: 1.031, B: 0.996, C: 1.004 },
-      voltage_unbalance_percent: 0.42,
-      current_unbalance_percent: 12.7,
-      losses_unbalance_percent: 2.1,
-      flags: {
-        has_fault: false,
-        has_open_phase: false,
-        faulted_phases: [],
-        open_phases: [],
-        voltage_unbalance_alert: false,
-        current_unbalance_alert: true,
-        losses_unbalance_alert: false,
-      },
-      proof_ref: 'proof-ps-1',
-      proof_status: 'complete',
-      proof_status_pl: 'pełny',
-      reporting_status: 'reportable',
-      reporting_status_pl: 'raportowalny',
-      dopuszczalnosc_raportowa: true,
-      reporting_limitations: [],
-    },
-  ],
-};
-
-// E-32 „Stabilność dynamiczna" (ui2/wyniki/stabilnosc): werdykt STABLE ze
-// statusami kryteriów (checks) + ślad automatyki (zdarzenia + efekt topologii).
-const STABILNOSC_WYNIK = {
-  run_id: 'run-dyn',
-  rows: [
-    {
-      scenario_id: 'dyn-1',
-      source_id: 'src/pv/1',
-      faulted_element_id: 'line/gpz/1',
-      cleared_by_element_ids: ['cb-main'],
-      stable: true,
-      status: 'STABLE',
-      criteria_version: 'dynamic_stability_fault_clear_v1',
-      stability_index: 0.812,
-      clearing_time_ms: 120,
-      max_clearing_time_ms: 150,
-      clearing_margin_ms: 30,
-      angle_swing_deg: 65,
-      post_fault_voltage_pu: 0.97,
-      post_fault_frequency_pu: 0.99,
-      limiting_factor: 'angle_swing',
-      violated_checks: [],
-      checks: {
-        clearing_time: true,
-        angle_swing: true,
-        voltage_recovery: true,
-        frequency_recovery: true,
-      },
-      // Karta W2 pkt 1: kryteria oceny progowej — komplet jawnych pól scenariusza
-      // niesie też ich pochodzenie (przyjęte w opcjach biegu, nie zaszyte).
-      threshold_criteria: [
-        {
-          key: 'max_clearing_time_ms',
-          label_pl: 'Maksymalny czas wyłączenia zwarcia',
-          value: 150,
-          unit: 'ms',
-          source_pl: 'Kryterium przyjęte w opcjach biegu tej analizy.',
-        },
-        {
-          key: 'max_angle_swing_deg',
-          label_pl: 'Maksymalne wychylenie kąta mocy',
-          value: 120,
-          unit: '°',
-          source_pl: 'Kryterium przyjęte w opcjach biegu tej analizy.',
-        },
-        {
-          key: 'min_voltage_recovery_pu',
-          label_pl: 'Minimalne napięcie po zwarciu',
-          value: 0.95,
-          unit: 'p.u.',
-          source_pl: 'Kryterium przyjęte w opcjach biegu tej analizy.',
-        },
-        {
-          key: 'min_frequency_recovery_pu',
-          label_pl: 'Minimalna częstotliwość po zwarciu',
-          value: 0.98,
-          unit: 'p.u.',
-          source_pl: 'Kryterium przyjęte w opcjach biegu tej analizy.',
-        },
-      ],
-      reporting_status_pl: 'raportowalny',
-      proof_status_pl: 'pelny',
-      reporting_limitations: [],
-    },
-  ],
-};
-
-const STABILNOSC_SLAD = {
-  run_id: 'run-dyn',
-  topology_effect: { network_state: 'ISLANDED_SECTION', outage_scope: 'SECTION' },
-  rows: [
-    { event_seq: 2, event_type: 'FAULT_APPLIED', element_id: 'line/gpz/1', detail: 'Fault applied' },
-    { event_seq: 1, event_type: 'AUTOMATION_STARTED', element_id: null, detail: 'Start' },
-  ],
-};
+// E-31 „Stan fazowy SN" (ui2/wyniki/stan-fazowy) i E-32 „Stabilność
+// dynamiczna" (ui2/wyniki/stabilnosc): fixtury z REALNEGO biegu backendu —
+// `stanFazowyScenyWyniki`/`stabilnoscScenyWyniki`/`stabilnoscScenySlad`
+// zaimportowane u góry pliku (HARNESS-RESZTA, 2026-09-16).
 
 /**
  * Scena E-28 „Koordynacja zabezpieczeń" (V12K-262). Do tej pory ekran TCC nie miał
@@ -949,7 +848,7 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     if (url.includes('/power-flow-runs/') && url.endsWith('/trace')) return jsonOK(ZBIEZNOSC_SLAD);
     if (url.includes('/power-flow-runs/')) return jsonOK(ZBIEZNOSC_HEADER);
   } else if (creator === 'wyniki-stan-fazowy') {
-    if (url.includes('/results/phase-state')) return jsonOK(STAN_FAZOWY_WYNIK);
+    if (url.includes('/results/phase-state')) return jsonOK(stanFazowyScenyWyniki);
   } else if (creator === 'koordynacja') {
     // Dwa OSOBNE biegi zwarciowe (kanoniczny bieg liczy jeden scenariusz `c`):
     // maksymalny dla selektywnosci, minimalny dla czulosci.
@@ -1075,8 +974,8 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     if (url.includes('/instrument-transformers')) return jsonOK(DOBOR_PRZEKLADNIKOW_WIAZANIA);
     if (url.includes('/protection-functions')) return jsonOK(DOBOR_FUNKCJI_WIAZANIA);
   } else if (creator === 'wyniki-stabilnosc') {
-    if (url.endsWith('/results/dynamic-stability')) return jsonOK(STABILNOSC_WYNIK);
-    if (url.endsWith('/results/automation-trace')) return jsonOK(STABILNOSC_SLAD);
+    if (url.endsWith('/results/dynamic-stability')) return jsonOK(stabilnoscScenyWyniki);
+    if (url.endsWith('/results/automation-trace')) return jsonOK(stabilnoscScenySlad);
   }
 
   // Kontrakt przebiegu dla znacznika świeżości nagłówka (V12K-264, rozszerzenie
@@ -3933,13 +3832,14 @@ if (creator === 'arcflash') {
     ],
   } as never);
 } else if (creator === 'wyniki-stan-fazowy') {
-  // Scena E-31 (karta Z-1): zakończony przebieg stanu fazowego (PHASE_STATE_SN).
+  // Scena E-31 (karta Z-1): zakończony przebieg stanu fazowego (PHASE_STATE_SN)
+  // — identyfikator z fixtury REALNEGO biegu backendu (HARNESS-RESZTA).
   useShellStore.setState({ advancementMode: 'expert' });
   useAppStateStore.getState().setActiveProject('proj-demo', 'Przyłączenie farmy PV 8 MW');
   useExecutionRunsStore.setState({
     runs: [
       {
-        id: 'run-ps-1',
+        id: stanFazowyScenyWyniki.run_id,
         analysis_type: 'PHASE_STATE_SN',
         status: 'DONE',
         finished_at: '2026-07-20T11:00:00Z',
@@ -3948,12 +3848,13 @@ if (creator === 'arcflash') {
     ],
   } as never);
 } else if (creator === 'wyniki-stabilnosc') {
-  // Scena E-32 (karta Z-1): zakończony przebieg stabilności (DYNAMIC_STABILITY).
+  // Scena E-32 (karta Z-1): zakończony przebieg stabilności (DYNAMIC_STABILITY)
+  // — identyfikator z fixtury REALNEGO biegu backendu (HARNESS-RESZTA).
   useShellStore.setState({ advancementMode: 'expert' });
   useExecutionRunsStore.setState({
     runs: [
       {
-        id: 'run-dyn',
+        id: stabilnoscScenyWyniki.run_id,
         analysis_type: 'DYNAMIC_STABILITY',
         status: 'DONE',
         finished_at: '2026-07-21T10:00:00Z',
