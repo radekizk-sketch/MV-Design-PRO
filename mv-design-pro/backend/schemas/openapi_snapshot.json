@@ -9811,6 +9811,17 @@
       "title": "Analysis Type",
       "type": "string"
      },
+     "created_at": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Created At"
+     },
      "error_message": {
       "anyOf": [
        {
@@ -9836,6 +9847,28 @@
      "id": {
       "title": "Id",
       "type": "string"
+     },
+     "model_revision": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Model Revision"
+     },
+     "snapshot_hash": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Snapshot Hash"
      },
      "solver_input_hash": {
       "title": "Solver Input Hash",

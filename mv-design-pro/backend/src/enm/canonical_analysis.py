@@ -541,6 +541,7 @@ class CanonicalRun:
     def to_execution_dict(self) -> dict[str, Any]:
         analysis_type = _execution_analysis_type_for_run(self)
         status = STATUS_WYKONAWCZY[self.status]
+        koperta = self.koperta
         return {
             "id": str(self.id),
             "study_case_id": self.case_id,
@@ -550,6 +551,12 @@ class CanonicalRun:
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "finished_at": self.finished_at.isoformat() if self.finished_at else None,
             "error_message": self.error_message,
+            # TODO-UI2 §1 p. 10: „Rewizja modelu" + „pochodzenie" (kiedy/z jakiej
+            # migawki) biegu — z koperty rewizji (`envelope`, CV-2), gdy zapisana;
+            # `None` dla biegów sprzed rejestru koperty (dana, nie 0 fabrykowane).
+            "model_revision": koperta.model_revision if koperta is not None else None,
+            "created_at": self.created_at.isoformat(),
+            "snapshot_hash": self.snapshot_hash,
         }
 
 
