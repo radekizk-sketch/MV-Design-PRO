@@ -22,6 +22,7 @@ export const EDYCJA_PARAMETROW_STRINGS = {
   kluczPlaceholder: 'np. tap_position',
   wartosc: 'Wartość',
   wartoscPlaceholder: 'np. 2, true, null',
+  wartoscZeSlownika: '— wybierz wartość ze słownika —',
   dodajWiersz: 'Dodaj parametr',
   usunWiersz: 'Usuń',
   powod: 'Uzasadnienie zmiany (opcjonalnie)',

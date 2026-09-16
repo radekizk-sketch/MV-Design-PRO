@@ -46,6 +46,7 @@ import {
   type OdgaleznieFormData,
   type RodzajOdcinka,
 } from './odgaleznieModel';
+import { OPCJE_UZIEMIENIA_EKRANU } from '../../../types/uziemienie';
 import { ODGALEZIENIE_STRINGS as T } from './strings';
 
 const KROKI: readonly KrokKreatora[] = [
@@ -346,6 +347,16 @@ export function KreatorOdgalezienia() {
               wylaczone={rodzajZablokowany}
               testid="mvd-kreator-odgalezienie-rodzaj"
             />
+            {rodzaj === 'cable' ? (
+              <PoleWyboru
+                etykieta={T.ekranUziemienie}
+                wartosc={dane.screen_bonding}
+                onZmiana={(v) => zmien('screen_bonding', v as OdgaleznieFormData['screen_bonding'])}
+                opcje={OPCJE_UZIEMIENIA_EKRANU}
+                pomoc={T.ekranUziemieniePomoc}
+                testid="mvd-kreator-odgalezienie-ekran"
+              />
+            ) : null}
             <PoleLiczbowe
               etykieta={T.dlugosc}
               jednostka="km"

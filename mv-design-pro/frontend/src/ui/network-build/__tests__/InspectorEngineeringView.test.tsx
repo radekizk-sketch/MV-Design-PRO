@@ -566,7 +566,7 @@ describe('InspectorEngineeringView', () => {
               whole_power_path_ok: true,
             },
             earth_fault_path: {
-              neutral_grounding_mode: 'rezystor',
+              neutral_grounding_mode: 'resistor_grounded',
               zero_sequence_current_source: 'suma_ct',
               zero_sequence_voltage_source: 'otwarty_trojkat_vt',
               closure_path_elements: [],
@@ -844,7 +844,7 @@ describe('InspectorEngineeringView', () => {
               whole_power_path_ok: true,
             },
             earth_fault_path: {
-              neutral_grounding_mode: 'rezystor',
+              neutral_grounding_mode: 'resistor_grounded',
               zero_sequence_current_source: 'suma_ct',
               zero_sequence_voltage_source: 'otwarty_trojkat_vt',
               closure_path_elements: [],

@@ -471,7 +471,6 @@ export interface SourceSystemCatalogType extends CatalogType {
   sk3_min_mva?: number | null;
   ik3_min_ka?: number | null;
   rx_ratio_min?: number | null;
-  earthing_system?: string;
   short_circuit_model?: string;
   operator_name?: string;
   supply_role?: string;

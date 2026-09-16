@@ -276,7 +276,8 @@ export function getTransformerBranchFieldDefinitions(): PropertySection[] {
         { key: 'pk_kw', label: 'Straty obciążeniowe Pk', value: 0, type: 'number', unit: 'kW', editable: false, source: 'type' },
         { key: 'i0_percent', label: 'Prąd jałowy i0%', value: 0, type: 'number', unit: '%', editable: false, source: 'type' },
         { key: 'p0_kw', label: 'Straty jałowe P0', value: 0, type: 'number', unit: 'kW', editable: false, source: 'type' },
-        { key: 'vector_group', label: 'Grupa połączeń', value: 'Dyn11', type: 'string', editable: false, source: 'type' },
+        // W5-A: grupa połączeń WYŁĄCZNIE z typu katalogowego — szablon bez domyślnego Dyn11.
+        { key: 'vector_group', label: 'Grupa połączeń', value: '', type: 'string', editable: false, source: 'type' },
       ],
     },
     {

@@ -8,6 +8,7 @@
  * po zapisie flow łańcuchuje realną KOLEJNĄ operację (następny krok).
  */
 
+import type { UziemienieEkranuKabla } from '../../../types/uziemienie';
 import { normalizeCatalogBinding, normalizeSegmentNamespace } from '../../../ui/network-build/forms/catalogPayload';
 import type { CableVoltageDropRequest } from '../../../ui/network-build/forms/cableVoltageDropApi';
 import type { TrunkBranchKind } from '../../../ui/network-build/semanticValidator';
@@ -19,6 +20,8 @@ export type RodzajOdcinka = 'KABEL' | 'LINIA';
 export interface MagistralaFormData {
   rodzaj: RodzajOdcinka;
   catalog_ref: string | null;
+  /** W5-A: układ uziemienia ekranu kabla (pusty = nie zadeklarowano; tylko dla KABEL). */
+  screen_bonding: UziemienieEkranuKabla | '';
   dlugosc_m: number | null;
   nazwa: string;
   /** Prąd obciążenia do podglądu ΔU [A] (domyślnie prąd znamionowy wybranego typu). */
@@ -38,6 +41,7 @@ export interface BladPola {
 export const DANE_DOMYSLNE: MagistralaFormData = {
   rodzaj: 'KABEL',
   catalog_ref: null,
+  screen_bonding: '',
   dlugosc_m: 500,
   nazwa: '',
   prad_a: null,
@@ -203,6 +207,8 @@ export function zbudujPayload(
       dlugosc_m: data.dlugosc_m,
       catalog_binding: normalizeCatalogBinding(data.catalog_ref, namespace),
       ...(data.nazwa.trim() ? { name: data.nazwa.trim() } : {}),
+      // W5-A: deklaracja ekranu tylko dla kabla i tylko gdy wybrana (zero fantomów).
+      ...(segmentKind === 'KABEL' && data.screen_bonding ? { screen_bonding: data.screen_bonding } : {}),
     },
   };
   if (kontekst.trunk_id?.trim()) payload.trunk_id = kontekst.trunk_id.trim();

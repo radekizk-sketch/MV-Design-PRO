@@ -16,6 +16,11 @@ export const POLE_STRINGS = {
   rola: 'Rola pola',
   rolaPomoc: 'Rola pola wyznacza wymagane zabezpieczenia (np. 50/51/67, 87T, 27/59/81 dla OZE).',
 
+  rolaUziemnika: 'Rola uziemnika pola',
+  rolaUziemnikaPomoc:
+    'Typologia uziemienia (spec SLD §12.5): uziemnik pola, uziemienie ekranów kabla, konstrukcji '
+    + 'albo punktu neutralnego. Domyślnie wg szablonu pola (uziemnik pola); rola bez uziemnika w torze '
+    + 'jest odrzucana przez backend.',
   aparat: 'Rodzaj aparatu',
   aparatPomoc: 'Wyłącznik łączy przy zwarciu (pola z 50/51/67); rozłącznik/odłącznik bez zwarcia.',
 

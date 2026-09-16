@@ -5,12 +5,21 @@
  * Discriminated union on Branch.type.
  */
 
+import type {
+  RolaUziemnika,
+  TypPunktuNeutralnego,
+  UkladSieciNn,
+  UziemienieEkranuKabla,
+} from './uziemienie';
+
 // ---------------------------------------------------------------------------
 // Supporting types
 // ---------------------------------------------------------------------------
 
+/** Sposób pracy punktu neutralnego — JEDYNY typ (W5-A): nośniki `Transformer.hv_neutral`/
+ *  `lv_neutral` i `Source.neutral_grounding`. `Bus.grounding` skasowane (migracja backendu). */
 export interface GroundingConfig {
-  type: 'isolated' | 'petersen_coil' | 'directly_grounded' | 'resistor_grounded';
+  type: TypPunktuNeutralnego;
   r_ohm?: number | null;
   x_ohm?: number | null;
 }
@@ -161,7 +170,6 @@ export interface Bus extends ENMElement {
   frequency_hz?: number | null;
   phase_system: '3ph';
   zone?: string | null;
-  grounding?: GroundingConfig | null;
   nominal_limits?: BusLimits | null;
 }
 
@@ -219,6 +227,8 @@ export interface OverheadLine extends BranchBase {
 
 export interface Cable extends BranchBase {
   type: 'cable';
+  /** W5-A: układ uziemienia ekranu (deklaracja projektanta); brak = układ odniesienia katalogu. */
+  screen_bonding?: UziemienieEkranuKabla | null;
   length_km: number;
   r_ohm_per_km: number;
   x_ohm_per_km: number;
@@ -350,6 +360,8 @@ export interface Transformer extends ENMElement {
   vector_group?: string | null;
   hv_neutral?: GroundingConfig | null;
   lv_neutral?: GroundingConfig | null;
+  /** W5-A: układ sieci nN zasilanej z tego transformatora (jedyny nośnik; brak = odmowa E063). */
+  lv_earthing_system?: UkladSieciNn | null;
   tap_position?: number | null;
   tap_min?: number | null;
   tap_max?: number | null;
@@ -384,6 +396,8 @@ export interface Source extends ENMElement {
   source_side?: 'SN' | 'HV_110' | null;
   substation_ref?: string | null;
   gpz_section_id?: string | null;
+  /** W5-A: opis punktu neutralnego sieci SN zasilanej z równoważnika (fizyka czyta r0/x0 | z0/z1). */
+  neutral_grounding?: GroundingConfig | null;
   sk3_mva?: number | null;
   ik3_ka?: number | null;
   r_ohm?: number | null;
@@ -706,7 +720,7 @@ export interface BayPrimaryDevice {
    *  konstrukcja / punkt neutralny / gałąź ogranicznika. Lustro
    *  `backend/src/enm/models.py::BayPrimaryDevice.earthing_role`. `null`/brak
    *  = dana niedostarczona (generyczny uziemnik, zero domysłu). */
-  earthing_role?: 'field_earth' | 'cable_screen' | 'structure' | 'neutral_point' | 'surge_ground' | null;
+  earthing_role?: RolaUziemnika | null;
 }
 
 export interface BayMeasurements {
@@ -985,7 +999,8 @@ export interface BayPowerFlowSourceContribution {
 }
 
 export interface BayEarthFaultPath {
-  neutral_grounding_mode: 'izolowany' | 'cewka_petersena' | 'rezystor' | 'bezposrednio_uziemiony' | 'nieznany';
+  /** W5-A: literały `GroundingConfig.type`; `null` = punkt neutralny nieokreślony w modelu. */
+  neutral_grounding_mode: TypPunktuNeutralnego | null;
   zero_sequence_current_source: 'suma_ct' | 'przekladnik_ferrantiego' | 'zewnetrzne' | 'brak';
   zero_sequence_voltage_source: 'otwarty_trojkat_vt' | 'uzwojenie_resztkowe_vt' | 'obliczone' | 'brak';
   closure_path_elements: string[];
@@ -1426,7 +1441,7 @@ export interface V2SwitchingStateSnapshot {
 
 export interface V2ZeroSequenceConfig {
   element_ref: string;
-  element_kind: 'branch' | 'source' | 'transformer' | 'bus';
+  element_kind: 'branch' | 'source' | 'transformer';
   r0: number | null;
   x0: number | null;
   b0: number | null;

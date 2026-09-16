@@ -2,6 +2,7 @@
  * BayCard - kanoniczna karta pola SN oparta o field read-model V10.
  */
 
+import { etykietaPunktuNeutralnegoPL } from '../../../types/uziemienie';
 import { useCallback, useMemo } from 'react';
 import { ObjectCard, type CardAction, type CardSection } from './ObjectCard';
 import { useFieldReadModel, type FieldReadModelItem } from '../../field/useFieldReadModel';
@@ -213,7 +214,6 @@ export function BayCard({ elementId }: { elementId: string }) {
           severity: bus ? undefined : 'error',
         },
         { key: 'bus_voltage', label: 'Napięcie nominalne', value: bus?.voltage_kv ?? null, unit: 'kV' },
-        { key: 'bus_grounding', label: 'Uziemienie szyny', value: bus?.grounding?.type ?? null },
       ],
     };
 
@@ -498,7 +498,9 @@ export function BayCard({ elementId }: { elementId: string }) {
         {
           key: 'earth_fault_path',
           label: 'Tor ziemnozwarciowy',
-          value: projectResults?.earth_fault_path?.neutral_grounding_mode ?? null,
+          value: projectResults?.earth_fault_path
+            ? etykietaPunktuNeutralnegoPL(projectResults.earth_fault_path.neutral_grounding_mode)
+            : null,
         },
         {
           key: 'whole_power_path_ok',

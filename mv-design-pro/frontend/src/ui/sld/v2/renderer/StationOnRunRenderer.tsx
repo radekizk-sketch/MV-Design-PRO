@@ -23,6 +23,7 @@ import {
   type MiniBlockDerBadge,
 } from './MiniBlockRmuRenderer';
 import type { StationFootprintType } from './MiniBlockFootprints';
+import type { UkladSieciNn } from '../../../../types/uziemienie';
 import type { StationTransformerUnit } from '../../../network-build/stationTransformerSelection';
 
 // K30-4: enlarged for industrial readability (24+ px symbols @ LOD-2).
@@ -123,6 +124,8 @@ export interface StationOnRunRendererProps {
   /** K30-62: vector group transformatora (Dyn5, Yd11, Yzn11) per IEC 60076-1.
    *  Industrial SLD pokazuje vector group obok TR symbol. */
   readonly transformerVectorGroup?: string | null;
+  /** W5-A: układ sieci nN stacji (PN-EN 60364-1 § 312) z `Transformer.lv_earthing_system`. */
+  readonly earthingScheme?: UkladSieciNn | null;
   /** K30-44: aktualne odchylenie napięcia od nominalnego [%] — z LF results.
    *  Renderer dobiera ring colour station code badge per PN-EN 50160:
    *   - |ΔU| ≤ 2%  → green (energized OK)
@@ -192,6 +195,7 @@ export function StationOnRunRenderer(props: StationOnRunRendererProps): JSX.Elem
         busVoltageKv={props.busVoltageKv ?? null}
         isNop={props.isNop ?? false}
         transformerVectorGroup={props.transformerVectorGroup ?? null}
+        earthingScheme={props.earthingScheme ?? null}
         viewportScale={props.viewportScale}
       />
     );

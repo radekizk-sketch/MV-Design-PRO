@@ -13,6 +13,7 @@
 import { useCallback, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
+import { useGrupyPolaczen } from '../../../ui/catalog/useGrupyPolaczen';
 import { useActiveOperationContext, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import type { ElementType } from '../../../ui/types';
@@ -25,16 +26,35 @@ import {
   KreatorSiatka,
   PanelTeorii,
   PoleTekstowe,
+  PoleWyboru,
   RzadWartosci,
   useSelekcjaPoOperacji,
   type WierszGotowosci,
 } from '../rama';
+import {
+  ETYKIETA_PL_UZIEMIENIA_EKRANU,
+  UKLADY_SIECI_NN,
+  UZIEMIENIA_EKRANU_KABLA,
+} from '../../../types/uziemienie';
 import { EDYCJA_PARAMETROW_STRINGS as T } from './strings';
 
 interface WierszParametru {
   klucz: string;
   wartosc: string;
 }
+
+type OpcjaSlownika = { id: string; etykieta: string };
+
+/**
+ * W5-A: klucze o WARTOŚCIACH ZE SŁOWNIKA kontraktu — dla nich pole wartości to lista
+ * (ta sama, którą waliduje backend: `Transformer.lv_earthing_system`, `Cable.screen_bonding`,
+ * `Transformer.vector_group` ze słownika IEC 60076-1 z `GET /api/catalog/grupy-polaczen`).
+ * Wartość spoza słownika i tak odrzuci backend — lista ma ją uczynić niemożliwą, nie tylko błędną.
+ */
+const SLOWNIKI_STATYCZNE: Readonly<Record<string, readonly OpcjaSlownika[]>> = {
+  lv_earthing_system: UKLADY_SIECI_NN.map((id) => ({ id, etykieta: id })),
+  screen_bonding: UZIEMIENIA_EKRANU_KABLA.map((id) => ({ id, etykieta: `${id} — ${ETYKIETA_PL_UZIEMIENIA_EKRANU[id]}` })),
+};
 
 function readString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
@@ -67,6 +87,21 @@ export function KreatorEdycjiParametrow() {
   ]);
   const [powod, setPowod] = useState('');
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
+  // Brak słownika z backendu = pole tekstowe (backend i tak waliduje E-W5-02).
+  const grupySlownik = useGrupyPolaczen();
+  const grupyPolaczen = useMemo<readonly OpcjaSlownika[] | null>(
+    () => (grupySlownik ? grupySlownik.map((id) => ({ id, etykieta: id })) : null),
+    [grupySlownik],
+  );
+
+  const slownikDlaKlucza = useCallback(
+    (klucz: string): readonly OpcjaSlownika[] | null => {
+      const k = klucz.trim();
+      if (k === 'vector_group') return grupyPolaczen;
+      return SLOWNIKI_STATYCZNE[k] ?? null;
+    },
+    [grupyPolaczen],
+  );
 
   const wypelnione = useMemo(
     () => wiersze.filter((w) => w.klucz.trim() && w.wartosc.trim() !== ''),
@@ -175,13 +210,23 @@ export function KreatorEdycjiParametrow() {
               placeholder={T.kluczPlaceholder}
               testid={`mvd-kreator-edycja-klucz-${i}`}
             />
-            <PoleTekstowe
-              etykieta={T.wartosc}
-              wartosc={w.wartosc}
-              onZmiana={(v) => zmienWiersz(i, 'wartosc', v)}
-              placeholder={T.wartoscPlaceholder}
-              testid={`mvd-kreator-edycja-wartosc-${i}`}
-            />
+            {slownikDlaKlucza(w.klucz) ? (
+              <PoleWyboru
+                etykieta={T.wartosc}
+                wartosc={w.wartosc}
+                onZmiana={(v) => zmienWiersz(i, 'wartosc', v)}
+                opcje={[{ id: '', etykieta: T.wartoscZeSlownika }, ...(slownikDlaKlucza(w.klucz) ?? [])]}
+                testid={`mvd-kreator-edycja-wartosc-${i}`}
+              />
+            ) : (
+              <PoleTekstowe
+                etykieta={T.wartosc}
+                wartosc={w.wartosc}
+                onZmiana={(v) => zmienWiersz(i, 'wartosc', v)}
+                placeholder={T.wartoscPlaceholder}
+                testid={`mvd-kreator-edycja-wartosc-${i}`}
+              />
+            )}
             {wiersze.length > 1 ? (
               <button
                 type="button"

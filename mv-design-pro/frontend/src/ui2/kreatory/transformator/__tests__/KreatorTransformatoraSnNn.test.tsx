@@ -94,6 +94,7 @@ const { fetchTransformerTypesMock } = vi.hoisted(() => ({
 vi.mock('../../../../ui/catalog/api', () => ({
   getCatalogErrorMessage: () => 'błąd katalogu',
   fetchTransformerTypes: () => fetchTransformerTypesMock(),
+  fetchGrupyPolaczen: () => Promise.resolve(['Dyn5', 'Dyn11', 'Yzn5']),
 }));
 
 vi.mock('../../../../ui/network-build/forms/transformerRatedCurrentsApi', () => ({
@@ -129,6 +130,29 @@ describe('KreatorTransformatoraSnNn — realna ścieżka', () => {
 
   afterEach(() => cleanup());
 
+  it('grupa połączeń: pokazuje wartość z katalogu i wysyła tylko jawny wybór ze słownika', async () => {
+    executeDomainOperationMock.mockResolvedValue({ error: null, selection_hint: null });
+    render(<KreatorTransformatoraSnNn />);
+    const pole = screen.getByTestId('mvd-kreator-transformator-grupa') as HTMLSelectElement;
+    expect(pole).toBeDisabled(); // bez typu z katalogu nie ma czego nadpisywać
+    await pickType();
+    await waitFor(() => expect(pole).not.toBeDisabled());
+    await waitFor(() => {
+      expect(Array.from(pole.options).map((o) => o.value)).toEqual(['', 'Dyn5', 'Dyn11', 'Yzn5']);
+    });
+    expect(pole.options[0].textContent).toContain('Dyn5'); // grupa z rekordu katalogu
+
+    await userEvent.selectOptions(pole, 'Yzn5');
+    await userEvent.click(screen.getByTestId('mvd-kreator-transformator-zapisz'));
+    await waitFor(() => {
+      expect(executeDomainOperationMock).toHaveBeenCalledWith(
+        'case-1',
+        'add_transformer_sn_nn',
+        expect.objectContaining({ vector_group: 'Yzn5' }),
+      );
+    });
+  });
+
   it('tworzy transformator z kontekstem stacji (bez regulacji) i wiąże ze schematem', async () => {
     executeDomainOperationMock.mockResolvedValue({
       error: null,
@@ -153,6 +177,8 @@ describe('KreatorTransformatoraSnNn — realna ścieżka', () => {
     });
     const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
     expect(payload).not.toHaveProperty('transformer_regulation_type');
+    // W5-A: bez jawnego wyboru grupa zostaje z katalogu — payload jej nie niesie.
+    expect(payload).not.toHaveProperty('vector_group');
     expect(closeFormMock).toHaveBeenCalled();
     // Wielokierunkowe wiązanie (V12K-073): nowy transformator zaznaczony,
     // SLD wycentrowany, przejście na schemat.

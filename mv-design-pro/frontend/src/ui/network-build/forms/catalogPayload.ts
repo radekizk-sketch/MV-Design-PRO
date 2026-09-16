@@ -6,11 +6,6 @@ import {
 } from '../../shared/stationTypeLabels';
 
 export type ManualSourceShortCircuitMode = 'SHORT_CIRCUIT_POWER' | 'IMPEDANCE';
-export type GpzGroundingType =
-  | 'isolated'
-  | 'resistor_grounded'
-  | 'petersen_coil'
-  | 'solid_grounded';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;

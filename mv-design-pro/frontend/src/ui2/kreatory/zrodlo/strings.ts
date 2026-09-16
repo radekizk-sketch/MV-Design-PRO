@@ -302,7 +302,7 @@ export const ZRODLO_STRINGS = {
     { id: 'resistor_grounded', etykieta: 'Rezystorowe (R w punkcie 0)' },
     { id: 'isolated', etykieta: 'Izolowane (IT)' },
     { id: 'petersen_coil', etykieta: 'Cewka Petersena (kompensacja)' },
-    { id: 'solid_grounded', etykieta: 'Bezpośrednie (TN)' },
+    { id: 'directly_grounded', etykieta: 'Bezpośrednie (sztywne)' },
   ],
   liczby1do4: [
     { id: '1', etykieta: '1' },

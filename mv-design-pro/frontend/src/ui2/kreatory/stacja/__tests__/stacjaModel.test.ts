@@ -368,7 +368,7 @@ describe('stacjaModel — payload', () => {
 
   it('blok nn_earthing niesie układ sieci nN + typ punktu neutralnego (G-STK-1)', () => {
     const payload = zbudujPayload(
-      dane({ nn_earthing_system: 'IT', neutral_point: 'isolated' }),
+      dane({ uklad_sieci_nn: 'IT', neutral_point: 'isolated' }),
       kontekst(),
       rozdzielnica('branch'),
     );
@@ -403,22 +403,42 @@ describe('stacjaModel — payload', () => {
     expect(zPw.station_auxiliary).toEqual({ active_power_kw: 5, cos_phi: 0.9 });
   });
 
-  it('rezystancja uziemienia tylko dla wariantu impedancyjnego (rezystor/cewka)', () => {
+  it('impedancja uziemienia tylko dla wariantu impedancyjnego: rezystor → lv_r_ohm, cewka → lv_x_ohm', () => {
     // Rezystor + R podane → lv_r_ohm w payloadzie (przecinek PL → liczba).
     const zRezystorem = zbudujPayload(
-      dane({ neutral_point: 'resistor_grounded', neutral_r_ohm: '12,5' }),
+      dane({ neutral_point: 'resistor_grounded', neutral_impedance_ohm: '12,5' }),
       kontekst(),
       rozdzielnica('branch'),
     );
     expect((zRezystorem.nn_earthing as Record<string, unknown>).lv_r_ohm).toBe(12.5);
+    expect(zRezystorem.nn_earthing as Record<string, unknown>).not.toHaveProperty('lv_x_ohm');
 
-    // Bezpośrednio uziemiony + R w polu → R IGNOROWANE (nie dotyczy tego wariantu).
+    // W5-A: cewka Petersena → reaktancja dławika pod `lv_x_ohm` (składowa dominująca),
+    // nigdy jako rezystancja — backend liczy Z_N = R_N + jX_N z właściwych kluczy.
+    const zCewka = zbudujPayload(
+      dane({ neutral_point: 'petersen_coil', neutral_impedance_ohm: '150' }),
+      kontekst(),
+      rozdzielnica('branch'),
+    );
+    expect((zCewka.nn_earthing as Record<string, unknown>).lv_x_ohm).toBe(150);
+    expect(zCewka.nn_earthing as Record<string, unknown>).not.toHaveProperty('lv_r_ohm');
+
+    // Bezpośrednio uziemiony + wartość w polu → IGNOROWANA (nie dotyczy tego wariantu).
     const bezposredni = zbudujPayload(
-      dane({ neutral_point: 'directly_grounded', neutral_r_ohm: '12,5' }),
+      dane({ neutral_point: 'directly_grounded', neutral_impedance_ohm: '12,5' }),
       kontekst(),
       rozdzielnica('branch'),
     );
     expect(bezposredni.nn_earthing as Record<string, unknown>).not.toHaveProperty('lv_r_ohm');
+  });
+
+  it('walidacja: uziemienie impedancyjne bez składowej dominującej = błąd nazwany (ten sam predykat co backend)', () => {
+    const bledyRezystor = walidujFormularz(dane({ neutral_point: 'resistor_grounded', neutral_impedance_ohm: '' }));
+    expect(bledyRezystor.some((b) => b.field === 'neutral_impedance_ohm' && b.message.includes('R_N'))).toBe(true);
+    const bledyCewka = walidujFormularz(dane({ neutral_point: 'petersen_coil', neutral_impedance_ohm: '0' }));
+    expect(bledyCewka.some((b) => b.field === 'neutral_impedance_ohm' && b.message.includes('X_N'))).toBe(true);
+    const bezBledu = walidujFormularz(dane({ neutral_point: 'directly_grounded', neutral_impedance_ohm: '' }));
+    expect(bezBledu.some((b) => b.field === 'neutral_impedance_ohm')).toBe(false);
   });
 
   it('payload niesie sn_fields i station.switchgear z wyboru rozdzielnicy', () => {

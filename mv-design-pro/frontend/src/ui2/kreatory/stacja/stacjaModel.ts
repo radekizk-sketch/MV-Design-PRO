@@ -13,6 +13,11 @@
  */
 
 import { normalizeCatalogBinding } from '../../../ui/network-build/forms/catalogPayload';
+import {
+  PUNKTY_NEUTRALNE_IMPEDANCYJNE,
+  type TypPunktuNeutralnego,
+  type UkladSieciNn,
+} from '../../../types/uziemienie';
 import { KRYTERIA_STRINGS } from '../../kryteria';
 import {
   SN_FIELD_ROLE_TO_BAY_KIND,
@@ -83,14 +88,11 @@ export const NAPIECIA_NN_CUSTOM_KV = [0.4, 0.5, 0.69, 0.8, 1, 3.15, 6, 6.3] as c
 export const DOMYSLNE_NAPIECIE_NN_KV = 0.4;
 export const DOMYSLNA_LICZBA_ODPLYWOW_NN = 2;
 
-/** Układ sieci nN (uziemienie) — kontrakt operacji `nn_earthing.lv_system`. */
-export type UkladSieciNn = 'TN-S' | 'TN-C-S' | 'TN-C' | 'TT' | 'IT';
-/** Typ pracy punktu neutralnego — kontrakt `enm.models.GroundingConfig.type`. */
-export type PunktNeutralny =
-  | 'directly_grounded'
-  | 'resistor_grounded'
-  | 'petersen_coil'
-  | 'isolated';
+/** Układ sieci nN (`nn_earthing.lv_system` → `Transformer.lv_earthing_system`) i typ pracy
+ *  punktu neutralnego (`GroundingConfig.type`) — literały wspólne z `types/uziemienie.ts`
+ *  (przypięte do OpenAPI backendu), nie druga lista w kreatorze. */
+export type { UkladSieciNn } from '../../../types/uziemienie';
+export type PunktNeutralny = TypPunktuNeutralnego;
 
 /** Typ konstrukcji stacji (B-5) — parytet z `Substation.construction_type`. */
 export type TypKonstrukcji =
@@ -204,11 +206,11 @@ export interface StacjaFormData {
   /** Konfiguracja strony nN (odbiorcza vs źródło PV za transformatorem). */
   nn_configuration: NnConfiguration;
   /** Układ sieci nN (uziemienie) — G-STK-1. */
-  nn_earthing_system: UkladSieciNn;
+  uklad_sieci_nn: UkladSieciNn;
   /** Typ pracy punktu neutralnego transformatora (strona nN) — G-STK-1. */
   neutral_point: PunktNeutralny;
-  /** Rezystancja uziemienia punktu neutralnego [Ω] — tekst PL (przecinek). */
-  neutral_r_ohm: string;
+  /** Impedancja uziemienia punktu neutralnego [Ω] — R_N rezystora albo X_N dławika (tekst PL, przecinek). */
+  neutral_impedance_ohm: string;
   /** Napięcie nN odbioru [kV] — steruje doborem transformatora (LOAD_NN). */
   nn_voltage_kv: number;
   /** Referencja katalogowa falownika PV (tylko dla PV_INVERTER). */
@@ -274,9 +276,9 @@ export const DANE_DOMYSLNE: StacjaFormData = {
   nn_configuration: 'LOAD_NN',
   // Domyślnie TN-C-S z bezpośrednio uziemionym punktem neutralnym — typowy układ
   // dystrybucyjny nN (PN-HD 60364). Projektant zmienia świadomie.
-  nn_earthing_system: 'TN-C-S',
+  uklad_sieci_nn: 'TN-C-S',
   neutral_point: 'directly_grounded',
-  neutral_r_ohm: '',
+  neutral_impedance_ohm: '',
   nn_voltage_kv: DOMYSLNE_NAPIECIE_NN_KV,
   source_converter_ref: null,
   catalog_ref: null,
@@ -398,6 +400,20 @@ export function walidujFormularz(
   }
   if (!data.manufacturer_ref?.trim()) {
     errors.push({ field: 'manufacturer_ref', message: 'Wybierz producenta rozdzielnicy SN.' });
+  }
+  // W5-A: ten sam predykat co backend (`blad_konfiguracji_uziemienia`) — uziemienie
+  // impedancyjne bez składowej dominującej to odmowa operacji, więc nazywamy ją tu.
+  if (
+    PUNKTY_NEUTRALNE_IMPEDANCYJNE.has(data.neutral_point)
+    && liczbaDodatniaPL(data.neutral_impedance_ohm) === null
+  ) {
+    errors.push({
+      field: 'neutral_impedance_ohm',
+      message:
+        data.neutral_point === 'petersen_coil'
+          ? 'Cewka Petersena wymaga dodatniej reaktancji dławika X_N [Ω].'
+          : 'Uziemienie przez rezystor wymaga dodatniej rezystancji R_N [Ω].',
+    });
   }
   if (snFields !== undefined && !czyRozdzielnicaKompletna(snFields)) {
     errors.push({
@@ -963,12 +979,6 @@ export interface WyborRozdzielnicy {
   snFields: readonly StationSnFieldTemplate[];
 }
 
-/** Punkty neutralne impedancyjne — dla nich R jest istotne (rezystor/cewka). */
-const PUNKTY_IMPEDANCYJNE: ReadonlySet<PunktNeutralny> = new Set([
-  'resistor_grounded',
-  'petersen_coil',
-]);
-
 /** Parsuje dodatnią liczbę z przecinkiem PL; `null` gdy puste/nieliczbowe/≤0. */
 function liczbaDodatniaPL(surowy: string): number | null {
   const tekst = surowy.trim();
@@ -993,18 +1003,22 @@ function blokPotrzebWlasnych(data: StacjaFormData): Record<string, unknown> | nu
 
 /**
  * Buduje blok `nn_earthing` (G-STK-1): układ sieci nN + typ pracy punktu
- * neutralnego + opcjonalna rezystancja uziemienia (tylko dla wariantów
- * impedancyjnych). Mapuje 1:1 na kontrakt operacji (`GroundingConfig.type` +
- * `lv_system`); R spływa jako `lv_r_ohm`. ZERO fabrykacji: R tylko gdy podane.
+ * neutralnego + impedancja uziemienia dla wariantów impedancyjnych. Mapuje 1:1
+ * na kontrakt operacji (`GroundingConfig.type` + `lv_system`); składowa
+ * DOMINUJĄCA spływa pod właściwym kluczem: rezystor → `lv_r_ohm`, cewka
+ * Petersena → `lv_x_ohm` (do W5-A reaktancja dławika szła jako rezystancja).
+ * ZERO fabrykacji: wartość tylko gdy podana; brak nazywa `walidujFormularz`.
  */
 function blokUziemienia(data: StacjaFormData): Record<string, unknown> | null {
   const blok: Record<string, unknown> = {
-    lv_system: data.nn_earthing_system,
+    lv_system: data.uklad_sieci_nn,
     neutral_point: data.neutral_point,
   };
-  if (PUNKTY_IMPEDANCYJNE.has(data.neutral_point)) {
-    const r = liczbaDodatniaPL(data.neutral_r_ohm);
-    if (r !== null) blok.lv_r_ohm = r;
+  if (PUNKTY_NEUTRALNE_IMPEDANCYJNE.has(data.neutral_point)) {
+    const wartosc = liczbaDodatniaPL(data.neutral_impedance_ohm);
+    if (wartosc !== null) {
+      blok[data.neutral_point === 'petersen_coil' ? 'lv_x_ohm' : 'lv_r_ohm'] = wartosc;
+    }
   }
   return blok;
 }

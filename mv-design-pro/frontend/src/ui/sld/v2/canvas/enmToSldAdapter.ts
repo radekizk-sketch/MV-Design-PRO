@@ -40,6 +40,7 @@ import type {
   ProtectionAssignment,
   Measurement,
 } from '../../../../types/enm';
+import type { UkladSieciNn } from '../../../../types/uziemienie';
 import { buildOltcAnnotation } from './oltcGlyph';
 import { pickStationBus, STATION_LV_VOLTAGE_LIMIT_KV } from '../../shared/stationBusResolution';
 import type { GpzRendererProps } from '../renderer/GpzRenderer';
@@ -3711,6 +3712,7 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
         nnVoltageKv: stationSldDetails.nnVoltageKv,
         aggregatedLvLoad: stationSldDetails.aggregatedLvLoad,
         transformerVectorGroup: stationSldDetails.transformerVectorGroup,
+        earthingScheme: stationSldDetails.earthingScheme,
         ...(isNop ? { isNop: true } : {}),
         ...(cumKm > 0 ? { distanceFromGpzKm: Math.round(cumKm * 100) / 100 } : {}),
       });
@@ -3763,6 +3765,7 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
         nnVoltageKv: stationSldDetails.nnVoltageKv,
         aggregatedLvLoad: stationSldDetails.aggregatedLvLoad,
         transformerVectorGroup: stationSldDetails.transformerVectorGroup,
+        earthingScheme: stationSldDetails.earthingScheme,
       });
       stationSequence += 1;
     });
@@ -3803,6 +3806,9 @@ interface StationMiniBlockDetails {
   /** K30-62: vector group transformatora (np. "Dyn5", "Yd11"). Real
    *  industrial SLD pokazuje vector group obok TR symbol per IEC 60076-1. */
   readonly transformerVectorGroup: string | null;
+  /** W5-A: układ sieci nN stacji (`Transformer.lv_earthing_system` transformatora
+   *  zasilającego; PN-EN 60364-1 § 312) — `null` = niezadeklarowany / różne. */
+  readonly earthingScheme: UkladSieciNn | null;
   /** P0.8 nN (seam A8 §9.2.1): sekcje szyny nN z odpływami RZECZYWISTYMI
    *  (aparat + odbiorca, gdy model je niesie) — `[]` gdy stacja bez szyny nN
    *  (uczciwy brak, zero fabrykacji sekcji). NIEZALEŻNE od `aggregatedLvLoad`
@@ -3931,7 +3937,25 @@ function buildStationMiniBlockDetails(
     nnVoltageKv,
     aggregatedLvLoad,
     transformerVectorGroup: inferTransformerVectorGroup(snapshot, transformerRefs),
+    earthingScheme: inferEarthingScheme(snapshot, transformerRefs),
   };
+}
+
+/**
+ * W5-A: układ sieci nN stacji z transformatorów zasilających — JEDEN wspólny
+ * układ albo `null` (brak deklaracji / transformatory deklarują różne układy —
+ * wtedy schemat nie zgaduje). Ten sam predykat co `enm/uklad_sieci_nn.py::uklad_nn_stacji`.
+ */
+function inferEarthingScheme(
+  snapshot: EnergyNetworkModel,
+  transformerRefs: readonly string[],
+): UkladSieciNn | null {
+  const uklady = new Set<UkladSieciNn>();
+  for (const ref of transformerRefs) {
+    const tr = (snapshot.transformers ?? []).find((t) => t.ref_id === ref || t.id === ref);
+    if (tr?.lv_earthing_system) uklady.add(tr.lv_earthing_system);
+  }
+  return uklady.size === 1 ? [...uklady][0] : null;
 }
 
 /**

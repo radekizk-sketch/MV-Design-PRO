@@ -242,7 +242,20 @@ const SKLADOWE_SNAPSHOT = {
         meta: {},
         voltage_kv: 15,
         phase_system: '3ph',
-        grounding: { type: 'petersen_coil', x_ohm: 120 },
+      },
+    ],
+    // W5-A: punkt neutralny sieci SN żyje na ŹRÓDLE stojącym na szynie
+    // (`Source.neutral_grounding`), nie na szynie — `Bus.grounding` skasowane.
+    sources: [
+      {
+        id: 's1',
+        ref_id: 'src/gpz',
+        name: 'Zasilanie GPZ',
+        tags: [],
+        meta: {},
+        bus_ref: 'bus/gpz/sn',
+        model: 'short_circuit_power',
+        neutral_grounding: { type: 'petersen_coil', x_ohm: 120 },
       },
     ],
     transformers: [],
@@ -696,7 +709,7 @@ const DOBOR_FUNKCJI_WIAZANIA = {
   bay_ref: 'bay-pv-1',
   fakty: {
     connection_side: 'SN',
-    neutral_grounding_mode: 'cewka_petersena',
+    neutral_grounding_mode: 'petersen_coil',
     zero_sequence_current_source: 'przekladnik_ferrantiego',
     zero_sequence_voltage_source: 'brak',
   },

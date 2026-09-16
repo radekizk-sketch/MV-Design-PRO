@@ -80,6 +80,7 @@ import {
   type RodzajOdcinka,
   type StanOceny,
 } from './magistralaModel';
+import { OPCJE_UZIEMIENIA_EKRANU } from '../../../types/uziemienie';
 import { MAGISTRALA_STRINGS as T } from './strings';
 import { StanSpadkuNapiecia } from './StanSpadkuNapiecia';
 
@@ -682,6 +683,16 @@ export function KreatorMagistralaSn() {
               testid="mvd-kreator-magistrala-nazwa"
             />
           </KreatorSiatka>
+          {dane.rodzaj === 'KABEL' ? (
+            <PoleWyboru
+              etykieta={T.ekranUziemienie}
+              wartosc={dane.screen_bonding}
+              onZmiana={(v) => zmien('screen_bonding', v as MagistralaFormData['screen_bonding'])}
+              opcje={OPCJE_UZIEMIENIA_EKRANU}
+              pomoc={T.ekranUziemieniePomoc}
+              testid="mvd-kreator-magistrala-ekran"
+            />
+          ) : null}
           <PoleKatalogu
             etykieta={T.typKatalog}
             wartosc={dane.catalog_ref}

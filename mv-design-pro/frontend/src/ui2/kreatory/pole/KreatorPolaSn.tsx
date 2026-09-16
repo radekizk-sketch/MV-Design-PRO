@@ -47,6 +47,7 @@ import {
   maSzablonProducenta,
   maSzyne,
   rolaLabel,
+  OPCJE_ROLI_UZIEMNIKA,
   walidujFormularz,
   wyborPomiaruLabel,
   zbudujPayload,
@@ -358,6 +359,14 @@ export function KreatorPolaSn() {
                 testid="mvd-kreator-pole-nazwa"
               />
             </KreatorSiatka>
+            <PoleWyboru
+              etykieta={T.rolaUziemnika}
+              wartosc={dane.earthing_role}
+              onZmiana={(v) => zmien('earthing_role', v as PolaSnFormData['earthing_role'])}
+              opcje={OPCJE_ROLI_UZIEMNIKA}
+              pomoc={T.rolaUziemnikaPomoc}
+              testid="mvd-kreator-pole-rola-uziemnika"
+            />
             {dane.bay_role === 'MEASUREMENT' ? (
               <>
                 <KreatorInfo>{T.rodzajPomiaruPomoc}</KreatorInfo>

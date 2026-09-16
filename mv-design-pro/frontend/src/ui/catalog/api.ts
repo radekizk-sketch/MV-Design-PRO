@@ -224,6 +224,16 @@ export async function fetchTransformerTypes(): Promise<TransformerType[]> {
   return fetchCatalogJson<TransformerType[]>('/api/catalog/transformer-types');
 }
 
+/**
+ * W5-A (F-4/G6): slownik grup polaczen transformatora wg IEC 60076-1 — JEDNO zrodlo
+ * (`enm/grupa_polaczen.py`: walidator E-W5-02, OpenAPI, ta lista). Front nie niesie
+ * wlasnej kopii literalow grup.
+ */
+export async function fetchGrupyPolaczen(): Promise<string[]> {
+  const body = await fetchCatalogJson<{ grupy: string[] }>('/api/catalog/grupy-polaczen');
+  return Array.isArray(body?.grupy) ? body.grupy : [];
+}
+
 export async function fetchTapChangers(): Promise<TapChangerCatalogType[]> {
   return fetchCatalogJson<TapChangerCatalogType[]>('/api/v1/catalog/audit2/tap-changers');
 }

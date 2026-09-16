@@ -17,6 +17,7 @@
  * Certyfikat PTPiREE spływa z pól katalogu falownika (ConverterType.ptpiree_*).
  */
 
+import type { UziemienieEkranuKabla } from '../../../types/uziemienie';
 import { CANONICAL_CATALOG_VERSION } from '../../../ui/catalog/catalogBinding';
 import { normalizeCatalogBinding } from '../../../ui/network-build/forms/catalogPayload';
 import type { ConverterType } from '../../../ui/catalog/types';
@@ -607,6 +608,8 @@ export interface DerSnFormData {
   mv_field_name: string | null;
   mv_cable_catalog_ref: string | null;
   mv_cable_length_km: number | null;
+  /** W5-A: układ uziemienia ekranu kabla SN przyłączeniowego (brak = układ odniesienia katalogu). */
+  mv_cable_screen_bonding: UziemienieEkranuKabla | null;
   /**
    * V12K-207 (karta F-K7): warunki UŁOŻENIA kabla przyjęte w doborze obciążalności.
    * `null` = warunki katalogowe (bez korekty) — wtedy pole NIE jedzie do payloadu i
@@ -637,6 +640,7 @@ export const DANE_DER_SN_DOMYSLNE: DerSnFormData = {
   mv_field_name: null,
   mv_cable_catalog_ref: null,
   mv_cable_length_km: null,
+  mv_cable_screen_bonding: null,
   mv_cable_laying_conditions: null,
 };
 
@@ -763,6 +767,8 @@ export function zbudujDerTopology(data: DerSnFormData, mvBusRef: string): DerTop
       cable_catalog_ref: data.mv_cable_catalog_ref,
       cable_catalog_binding: normalizeCatalogBinding(data.mv_cable_catalog_ref, 'KABEL_SN'),
       cable_length_km: data.mv_cable_length_km,
+      // W5-A: deklaracja układu ekranu — backend `add_der` czyta `cable_screen_bonding`.
+      cable_screen_bonding: data.mv_cable_screen_bonding,
       // V12K-207: założenie doboru jedzie z modelem, żeby raport zgodności policzył
       // propozycję dla TYCH SAMYCH warunków (inaczej zgłosiłby fałszywe odstępstwo).
       // Warunki katalogowe = brak korekty, więc wtedy pola nie wysyłamy w ogóle.

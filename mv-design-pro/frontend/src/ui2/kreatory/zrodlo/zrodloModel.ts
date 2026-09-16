@@ -10,10 +10,8 @@
  */
 
 import type { WierszGotowosci } from '../rama';
-import type {
-  GpzGroundingType,
-  ManualSourceShortCircuitMode,
-} from '../../../ui/network-build/forms/catalogPayload';
+import type { ManualSourceShortCircuitMode } from '../../../ui/network-build/forms/catalogPayload';
+import { PUNKTY_NEUTRALNE_IMPEDANCYJNE, type TypPunktuNeutralnego } from '../../../types/uziemienie';
 import { normalizeCatalogBinding } from '../../../ui/network-build/forms/catalogPayload';
 import type { MVApparatusType, SourceSystemCatalogType } from '../../../ui/catalog/types';
 import type {
@@ -84,7 +82,7 @@ export interface GridSourceFormData {
   r0_ohm: number | null;
   x0_ohm: number | null;
   z0_z1_ratio: number | null;
-  grounding_type: GpzGroundingType;
+  grounding_type: TypPunktuNeutralnego;
   grounding_r_ohm: number | null;
   grounding_x_ohm: number | null;
   thermal_time_s: number;
@@ -567,14 +565,24 @@ function buildZeroSequence(data: GridSourceFormData) {
   };
 }
 
+/** `GroundingConfig` 1:1 z kontraktem backendu (`Source.neutral_grounding`) — literały wspólne
+ *  (`types/uziemienie.ts`), bez własnego aliasu uziemienia sztywnego. Składowa dominująca tylko dla
+ *  wariantów impedancyjnych; backend odrzuca brak R_N / X_N (predykat `blad_konfiguracji_uziemienia`). */
 function buildGrounding(data: GridSourceFormData) {
-  const groundingType = data.grounding_type === 'solid_grounded' ? 'directly_grounded' : data.grounding_type;
-  const grounding: { type: GpzGroundingType | 'directly_grounded'; r_ohm?: number | null; x_ohm?: number | null } = {
-    type: groundingType,
+  const grounding: { type: TypPunktuNeutralnego; r_ohm?: number | null; x_ohm?: number | null } = {
+    type: data.grounding_type,
   };
-  if (groundingType === 'resistor_grounded') grounding.r_ohm = data.grounding_r_ohm;
-  if (groundingType === 'petersen_coil') grounding.x_ohm = data.grounding_x_ohm;
+  if (data.grounding_type === 'resistor_grounded') grounding.r_ohm = data.grounding_r_ohm;
+  if (data.grounding_type === 'petersen_coil') grounding.x_ohm = data.grounding_x_ohm;
   return grounding;
+}
+
+/** Brak składowej dominującej impedancji punktu neutralnego (R_N rezystora / X_N dławika). */
+export function brakImpedancjiUziemienia(data: GridSourceFormData): boolean {
+  if (!PUNKTY_NEUTRALNE_IMPEDANCYJNE.has(data.grounding_type)) return false;
+  return data.grounding_type === 'petersen_coil'
+    ? !isPositive(data.grounding_x_ohm)
+    : !isPositive(data.grounding_r_ohm);
 }
 
 function buildManualEquivalent(data: GridSourceFormData): Record<string, unknown> {
@@ -708,7 +716,7 @@ export function wierszeGotowosci(data: GridSourceFormData): WierszGotowosci[] {
     ['Parametry zwarciowe', hasShortCircuitInput ? 'kompletne' : 'brak', 'Kompletne'],
     [
       'Uziemienie neutralnego',
-      data.grounding_type === 'resistor_grounded' && !isPositive(data.grounding_r_ohm) ? 'brak' : 'kompletne',
+      brakImpedancjiUziemienia(data) ? 'brak' : 'kompletne',
       'Kompletne',
     ],
     ['Parametry normowe', 'kompletne', 'Kompletne'],
@@ -804,7 +812,7 @@ export function zbudujOznaczenieGpz(sourceName: string): string {
   return `GPZ-${(token || 'SN').toUpperCase()}-01`;
 }
 
-export function opisUziemienia(type: GpzGroundingType): string {
+export function opisUziemienia(type: TypPunktuNeutralnego): string {
   switch (type) {
     case 'resistor_grounded':
       return 'Najczęściej stosowane w SN. Rezystor ogranicza prąd zwarcia 1-faz do bezpiecznej wartości (zwykle 100-1000 A). Wymaga zabezpieczeń 51G/67N na polach.';
@@ -812,7 +820,7 @@ export function opisUziemienia(type: GpzGroundingType): string {
       return 'Sieć IT — punkt neutralny nieuziemiony. Bardzo mały prąd zwarcia 1-faz (pojemnościowy). Wymaga ciągłej kontroli izolacji.';
     case 'petersen_coil':
       return 'Cewka rezonansowa (Petersena) kompensuje prąd pojemnościowy. Niemal zerowy prąd zwarcia doziemnego. Zalecane dla rozległych sieci SN kablowych.';
-    case 'solid_grounded':
+    case 'directly_grounded':
       return 'Sztywne uziemienie. Bardzo duże prądy zwarcia 1-faz. Wymaga aparatury o wysokim Ik″ i pełnej koordynacji zabezpieczeń ziemnozwarciowych.';
     default:
       return 'Wybierz typ uziemienia.';

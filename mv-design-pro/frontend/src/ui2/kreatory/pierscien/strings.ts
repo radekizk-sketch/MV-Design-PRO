@@ -26,6 +26,11 @@ export const PIERSCIEN_STRINGS = {
   ],
   dlugosc: 'Długość odcinka',
   dlugoscPomoc: 'Długość odcinka domykającego pętlę [m] — wpływa na impedancję pierścienia.',
+  ekranUziemienie: 'Uziemienie ekranu kabla',
+  ekranUziemieniePomoc:
+    'Deklaracja układu uziemienia ekranu kabla (jednostronne / dwustronne / krzyżowe). '
+    + 'Katalogowe R0/X0 obowiązują dla układu odniesienia typu — rozjazd nazywa walidator '
+    + '(W-W5-01), nigdy nie przelicza (brak geometrii ułożenia).',
 
   nopTytul: 'Punkt normalnie otwarty (NOP)',
   nopPomoc:

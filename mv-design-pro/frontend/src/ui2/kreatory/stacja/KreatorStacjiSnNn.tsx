@@ -72,6 +72,7 @@ import {
 } from '../../../ui/network-build/networkBuildStore';
 import { scheduleNextOperationForm } from '../../../ui/network-build/trunkContinuation';
 import { selectBusOptions, useSnapshotStore } from '../../../ui/topology/snapshotStore';
+import { PUNKTY_NEUTRALNE_IMPEDANCYJNE } from '../../../types/uziemienie';
 import {
   KreatorGotowosc,
   KreatorInfo,
@@ -345,8 +346,7 @@ export function KreatorStacjiSnNn() {
 
   const isZrodlo = czyZrodloNn(dane.nn_configuration);
   // Rezystancja uziemienia istotna tylko dla wariantów impedancyjnych (G-STK-1).
-  const punktImpedancyjny =
-    dane.neutral_point === 'resistor_grounded' || dane.neutral_point === 'petersen_coil';
+  const punktImpedancyjny = PUNKTY_NEUTRALNE_IMPEDANCYJNE.has(dane.neutral_point);
   const isCustomNn = dane.nn_configuration === 'CUSTOM_NN';
   const zrodloTeksty =
     dane.nn_configuration === 'PV_INVERTER'
@@ -2448,9 +2448,9 @@ export function KreatorStacjiSnNn() {
           <KreatorInfo>{T.uziemienieOpis}</KreatorInfo>
           <PoleWyboru
             etykieta={T.uziemienieUklad}
-            wartosc={dane.nn_earthing_system}
+            wartosc={dane.uklad_sieci_nn}
             opcje={T.uziemienieUkladOpcje}
-            onZmiana={(v) => zmien('nn_earthing_system', v as StacjaFormData['nn_earthing_system'])}
+            onZmiana={(v) => zmien('uklad_sieci_nn', v as StacjaFormData['uklad_sieci_nn'])}
             pomoc={T.uziemienieUkladPomoc}
             testid="mvd-kreator-stacja-uklad-nn"
           />
@@ -2464,11 +2464,13 @@ export function KreatorStacjiSnNn() {
           />
           {punktImpedancyjny ? (
             <PoleTekstowe
-              etykieta={T.uziemienieRezystancja}
-              wartosc={dane.neutral_r_ohm}
-              onZmiana={(v) => zmien('neutral_r_ohm', v)}
+              etykieta={dane.neutral_point === 'petersen_coil' ? T.uziemienieReaktancja : T.uziemienieRezystancja}
+              wartosc={dane.neutral_impedance_ohm}
+              onZmiana={(v) => zmien('neutral_impedance_ohm', v)}
               placeholder={T.uziemienieRezystancjaPlaceholder}
               pomoc={T.uziemienieRezystancjaPomoc}
+              wymagane
+              blad={bladDlaPola('neutral_impedance_ohm')}
               testid="mvd-kreator-stacja-rezystancja-uziemienia"
             />
           ) : null}

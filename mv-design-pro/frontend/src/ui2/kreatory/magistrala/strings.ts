@@ -22,6 +22,11 @@ export const MAGISTRALA_STRINGS = {
   typKabelBlad: 'Nie udało się pobrać katalogu kabli SN.',
   typLiniaBlad: 'Nie udało się pobrać katalogu linii SN.',
   typPomoc: 'Typ wnosi rezystancję, reaktancję i prąd znamionowy — wartości z katalogu, nie z ręki.',
+  ekranUziemienie: 'Uziemienie ekranu kabla',
+  ekranUziemieniePomoc:
+    'Deklaracja układu uziemienia ekranu kabla (jednostronne / dwustronne / krzyżowe). '
+    + 'Katalogowe R0/X0 obowiązują dla układu odniesienia typu — rozjazd nazywa walidator '
+    + '(W-W5-01), nigdy nie przelicza (brak geometrii ułożenia).',
 
   nazwa: 'Nazwa odcinka',
   nazwaPlaceholder: 'np. Magistrala A / odcinek 1',

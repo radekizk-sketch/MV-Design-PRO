@@ -7,6 +7,7 @@
  */
 
 import { normalizeCatalogBinding } from '../../../ui/network-build/forms/catalogPayload';
+import { ETYKIETA_PL_ROLI_UZIEMNIKA, ROLE_UZIEMNIKA, type RolaUziemnika } from '../../../types/uziemienie';
 
 export type RolaPola = 'IN' | 'OUT' | 'FEEDER' | 'TR' | 'COUPLER' | 'MEASUREMENT' | 'OZE';
 export type RodzajAparatu = 'BREAKER' | 'DISCONNECTOR' | 'LOAD_SWITCH' | 'MEASUREMENT';
@@ -69,6 +70,8 @@ export interface PolaSnFormData {
   switchgear_family_ref: string | null;
   bay_template_ref: string | null;
   manufacturer_ref: string | null;
+  /** W5-A: rola uziemnika pola (`BayPrimaryDevice.earthing_role`); pusty = wg szablonu (uziemnik pola). */
+  earthing_role: RolaUziemnika | '';
 }
 
 export interface BladPola {
@@ -96,6 +99,7 @@ export const DANE_DOMYSLNE: PolaSnFormData = {
   switchgear_family_ref: null,
   bay_template_ref: null,
   manufacturer_ref: null,
+  earthing_role: '',
 };
 
 /**
@@ -193,8 +197,19 @@ export function zbudujPayload(
     switchgear_family_ref: data.switchgear_family_ref?.trim() || undefined,
     bay_template_ref: data.bay_template_ref?.trim() || undefined,
     manufacturer_ref: data.manufacturer_ref?.trim() || undefined,
+    // W5-A: rola uziemnika tylko gdy projektant ją wybrał (backend odrzuca rolę bez uziemnika w torze).
+    earthing_role: data.earthing_role || undefined,
   };
 }
+
+/** Opcje roli uziemnika pola — bez `surge_ground` (to gałąź ogranicznika, nie uziemnika). */
+export const OPCJE_ROLI_UZIEMNIKA: ReadonlyArray<{ id: string; etykieta: string }> = [
+  { id: '', etykieta: 'wg szablonu pola (uziemnik pola)' },
+  ...ROLE_UZIEMNIKA.filter((rola) => rola !== 'surge_ground').map((rola) => ({
+    id: rola,
+    etykieta: ETYKIETA_PL_ROLI_UZIEMNIKA[rola],
+  })),
+];
 
 /** Kompletność powiązania producenckiego (szablon pola). */
 export function maSzablonProducenta(data: PolaSnFormData): boolean {

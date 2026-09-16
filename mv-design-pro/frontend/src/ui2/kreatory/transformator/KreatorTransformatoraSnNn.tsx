@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStateStore } from '../../../ui/app-state';
 import { fetchTransformerTypes, getCatalogErrorMessage } from '../../../ui/catalog/api';
 import type { TransformerType } from '../../../ui/catalog/types';
+import { useGrupyPolaczen } from '../../../ui/catalog/useGrupyPolaczen';
 import { useActiveOperationContext, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import {
   fetchTransformerRatedCurrents,
@@ -132,6 +133,14 @@ export function KreatorTransformatoraSnNn() {
   }, []);
 
   const params = useMemo(() => parametryZKatalogu(dane.catalog_ref, typy), [dane.catalog_ref, typy]);
+  const grupyPolaczen = useGrupyPolaczen();
+  const opcjeGrup = useMemo(
+    () => [
+      { id: '', etykieta: T.grupaZKatalogu(params?.vector_group ?? null) },
+      ...(grupyPolaczen ?? []).map((g) => ({ id: g, etykieta: g })),
+    ],
+    [grupyPolaczen, params],
+  );
 
   useEffect(() => {
     const zapytanie = zbudujZapytaniePodgladu(params);
@@ -270,6 +279,7 @@ export function KreatorTransformatoraSnNn() {
       <RzadWartosci etykieta={T.paramMoc} wartosc={fmtMva(params.rated_power_mva)} />
       <RzadWartosci etykieta={T.paramNapiecia} wartosc={`${fmtKv(params.voltage_hv_kv)} / ${fmtKv(params.voltage_lv_kv)}`} />
       <RzadWartosci etykieta={T.paramUk} wartosc={fmtPct(params.uk_percent)} />
+      <RzadWartosci etykieta={T.paramGrupa} wartosc={dane.vector_group ?? params.vector_group ?? '—'} />
       <RzadWartosci etykieta={T.paramZaczepy} wartosc={`${params.tap_min}…${params.tap_max}`} />
     </KreatorSiatka>
   ) : null;
@@ -367,6 +377,15 @@ export function KreatorTransformatoraSnNn() {
             testid="mvd-kreator-transformator-nazwa"
           />
           {paramReadout}
+          <PoleWyboru
+            etykieta={T.grupaPolaczen}
+            wartosc={dane.vector_group ?? ''}
+            onZmiana={(v) => zmien('vector_group', v || null)}
+            opcje={opcjeGrup}
+            pomoc={T.grupaPomoc}
+            wylaczone={!dane.catalog_ref}
+            testid="mvd-kreator-transformator-grupa"
+          />
           <PanelTeorii
             tytul={T.teoriaSzynyTytul}
             opis={T.teoriaSzynyOpis}

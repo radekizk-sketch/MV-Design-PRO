@@ -5,6 +5,7 @@
 
 import type { FixActionSurfaceDescriptor } from './fixActionSurface';
 import type { PhaseSet } from './enm';
+import type { UziemienieEkranuKabla } from './uziemienie';
 
 // --- Envelope ---
 export interface DomainOpEnvelope {
@@ -340,6 +341,8 @@ export interface AddNNCableSegmentPayload {
   catalog_ref?: string | null;
   cable_laying_conditions?: NNCableLayingConditionsPayload | null;
   name?: string | null;
+  /** W5-A: układ uziemienia ekranu kabla (deklaracja projektanta; brak = układ odniesienia katalogu). */
+  screen_bonding?: UziemienieEkranuKabla | null;
 }
 
 export interface AddNNDistributionBoardPayload {
@@ -516,6 +519,8 @@ export interface DerMvFieldConfigurationSpec {
   cable_catalog_ref: string | null;
   cable_catalog_binding: CatalogBindingPayload | null;
   cable_length_km: number | null;
+  /** W5-A: układ uziemienia ekranu kabla SN (deklaracja; null = układ odniesienia katalogu). */
+  cable_screen_bonding?: UziemienieEkranuKabla | null;
   /**
    * V12K-207 (karta F-K7): warunki UŁOŻENIA kabla przyjęte w doborze obciążalności —
    * ADDYTYWNE (brak/null → backend przyjmuje warunki katalogowe, czyli zachowanie

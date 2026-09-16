@@ -6,6 +6,7 @@
  * ZERO fizyki w UI. Zastępuje legacy `AddConverterSourceForm` (kontrakt payloadu 1:1).
  */
 
+import type { UziemienieEkranuKabla } from '../../../types/uziemienie';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
@@ -402,6 +403,10 @@ export function KreatorZrodlaOze() {
   // raport zgodności liczy potem propozycję dla tego samego założenia.
   const zmienWarunkiUlozenia = useCallback((v: CableLayingConditions | null) => {
     setDerSn((p) => ({ ...p, mv_cable_laying_conditions: v }));
+  }, []);
+
+  const zmienEkranKabla = useCallback((v: UziemienieEkranuKabla | null) => {
+    setDerSn((p) => ({ ...p, mv_cable_screen_bonding: v }));
   }, []);
 
   const onZastosujDobor = useCallback(
@@ -944,6 +949,7 @@ export function KreatorZrodlaOze() {
             onCableLengthChange={zmienDlugoscKabla}
             onVectorGroupChange={zmienGrupePolaczen}
             onLayingConditionsChange={zmienWarunkiUlozenia}
+            onScreenBondingChange={zmienEkranKabla}
             onZastosuj={onZastosujDobor}
             applied={derSnZastosowany}
           />

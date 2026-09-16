@@ -405,6 +405,12 @@ export const OZE_STRINGS = {
   doborWarunkiUlozeniaNiedostepne:
     'Nie udało się pobrać listy warunków ułożenia — dobór policzy się dla warunków '
     + 'katalogowych i tak też zostanie opisany.',
+  // W5-A: układ uziemienia ekranu kabla SN przyłączeniowego (deklaracja, nie przeliczenie).
+  doborEkranUziemienie: 'Uziemienie ekranu kabla SN',
+  doborEkranUziemieniePomoc:
+    'Deklaracja układu uziemienia ekranu kabla (jednostronne / dwustronne / krzyżowe). '
+    + 'Katalogowe R0/X0 obowiązują dla układu odniesienia typu — rozjazd nazywa walidator '
+    + '(W-W5-01), nigdy nie przelicza (brak geometrii ułożenia).',
   doborObciazalnoscKatalogowa: 'Obciążalność katalogowa Iz',
   doborObciazalnoscSkorygowana: 'Obciążalność po korekcie I′z',
   doborZalozenieObciazalnosci: 'Założenie obciążalności',

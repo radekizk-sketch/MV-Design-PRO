@@ -22,6 +22,11 @@ export const ODGALEZIENIE_STRINGS = {
     { id: 'line_overhead', etykieta: 'Linia napowietrzna SN' },
   ],
   rodzajPomoc: 'Kabel dla toru kablowego (ZKSN, stacje kablowe); linia napowietrzna dla słupów.',
+  ekranUziemienie: 'Uziemienie ekranu kabla',
+  ekranUziemieniePomoc:
+    'Deklaracja układu uziemienia ekranu kabla (jednostronne / dwustronne / krzyżowe). '
+    + 'Katalogowe R0/X0 obowiązują dla układu odniesienia typu — rozjazd nazywa walidator '
+    + '(W-W5-01), nigdy nie przelicza (brak geometrii ułożenia).',
   dlugosc: 'Długość odgałęzienia',
   dlugoscPomoc: 'Długość pierwszego odcinka [km] — wpływa na spadek napięcia i straty.',
 

@@ -97,7 +97,20 @@ const SNAPSHOT_ODPOWIEDZ = {
         meta: {},
         voltage_kv: 15,
         phase_system: '3ph',
-        grounding: { type: 'petersen_coil', x_ohm: 120 },
+      },
+    ],
+    // W5-A: uziemienie punktu neutralnego sieci SN żyje na ŹRÓDLE stojącym na szynie
+    // (`Source.neutral_grounding`), nie na szynie — `Bus.grounding` skasowane.
+    sources: [
+      {
+        id: 's1',
+        ref_id: 'src/gpz',
+        name: 'Zasilanie GPZ',
+        tags: [],
+        meta: {},
+        bus_ref: 'bus/gpz/sn',
+        model: 'short_circuit_power',
+        neutral_grounding: { type: 'petersen_coil', x_ohm: 120 },
       },
     ],
     transformers: [],
@@ -183,7 +196,7 @@ describe('EkranSkladowych — dane przebiegu 1F (fetch 1:1 z endpointami)', () =
     render(<EkranSkladowych />);
     const sekcja = await screen.findByTestId('mvd-skladowe-uziemienie-punktu');
     expect(sekcja).toHaveTextContent('cewka Petersena');
-    expect(screen.getByTestId('mvd-skladowe-uziemienie-siec')).toHaveTextContent('Szyna GPZ');
+    expect(screen.getByTestId('mvd-skladowe-uziemienie-siec')).toHaveTextContent('Zasilanie GPZ');
   });
 
   it('werdykt raportowalności wybranego punktu (PL z backendu)', async () => {

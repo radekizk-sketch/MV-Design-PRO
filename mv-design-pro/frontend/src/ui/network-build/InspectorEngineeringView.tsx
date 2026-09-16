@@ -14,6 +14,7 @@
  * BINDING: 100% PL etykiety.
  */
 
+import { etykietaPunktuNeutralnegoPL } from '../../types/uziemienie';
 import { useCallback, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
 import { BayWindowSchematic } from '../field/BayWindowSchematic';
@@ -343,7 +344,9 @@ function buildBaySections(
           {
             key: 'earth_fault',
             label: 'Tor ziemnozwarciowy',
-            value: projectResults?.earth_fault_path?.neutral_grounding_mode ?? null,
+            value: projectResults?.earth_fault_path
+              ? etykietaPunktuNeutralnegoPL(projectResults.earth_fault_path.neutral_grounding_mode)
+              : null,
           },
           {
             key: 'whole_path',

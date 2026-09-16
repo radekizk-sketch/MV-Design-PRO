@@ -34,7 +34,8 @@ import type {
   TransformerType,
 } from '../../../ui/catalog/types';
 import { validateCatalogFirst } from '../../../ui/network-build/forms/catalogFirstRules';
-import { catalogRefFromInput, type GpzGroundingType } from '../../../ui/network-build/forms/catalogPayload';
+import { catalogRefFromInput } from '../../../ui/network-build/forms/catalogPayload';
+import type { TypPunktuNeutralnego } from '../../../types/uziemienie';
 import {
   fetchGridSourcePreview,
   type GridSourcePreviewResponse,
@@ -932,7 +933,7 @@ export function KreatorZrodloZasilania() {
             <PoleWyboru
               etykieta={T.uziemienie}
               wartosc={dane.grounding_type}
-              onZmiana={(v) => zmien('grounding_type', v as GpzGroundingType)}
+              onZmiana={(v) => zmien('grounding_type', v as TypPunktuNeutralnego)}
               opcje={T.typyUziemienia}
               pomoc={opisUziemienia(dane.grounding_type)}
               testid="mvd-kreator-zrodlo-uziemienie"

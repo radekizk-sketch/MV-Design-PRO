@@ -1137,7 +1137,8 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // (`accept:sld-v3`, `vertical_length_by_cause_probe`, karta CI-C): CAŁA
     // delta w „rezerwacja-kanalu" (L0 22264→20528, L1/L2 43672→41936) i
     // „footprint" (L0/L1/L2 88→80 / 1688→1680); „jog-trasy" i
-    // „slupek-terminalny" BEZ zmian. Metadane E063 (`nn_earthing_system`,
+    // „slupek-terminalny" BEZ zmian. Metadane E063 (uklad nN stacji — od W5-A
+    // `Transformer.lv_earthing_system`,
     // 20 stacji) NIE wpływają na geometrię — potwierdzone grepem: pole nie
     // występuje w żadnym module `layout/`/`scene/` (tylko w danych fixtury i w
     // kreatorze stacji ui2, niezwiązanym z SLD). Reguła „nie-rosnąca" (§15.1)

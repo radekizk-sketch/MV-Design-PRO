@@ -72,9 +72,16 @@ describe('zbudujPayloadZrodla — kontrakt operacji add_grid_source_sn', () => {
     expect(payload.manual_equivalent).toMatchObject({ short_circuit_input_side: 'HV_110', sk3_hv_mva: 2500 });
   });
 
-  it('mapuje uziemienie bezpośrednie solid_grounded → directly_grounded', () => {
-    const payload = zbudujPayloadZrodla(daneKompletne({ grounding_type: 'solid_grounded' }));
-    expect(payload.grounding).toMatchObject({ type: 'directly_grounded' });
+  it('uziemienie bezpośrednie: literał kontraktu directly_grounded 1:1, bez R/X (W5-A)', () => {
+    const payload = zbudujPayloadZrodla(daneKompletne({ grounding_type: 'directly_grounded' }));
+    expect(payload.grounding).toEqual({ type: 'directly_grounded' });
+  });
+
+  it('cewka Petersena niesie x_ohm (składowa dominująca dławika), rezystor r_ohm', () => {
+    const cewka = zbudujPayloadZrodla(daneKompletne({ grounding_type: 'petersen_coil', grounding_x_ohm: 150 }));
+    expect(cewka.grounding).toEqual({ type: 'petersen_coil', x_ohm: 150 });
+    const rezystor = zbudujPayloadZrodla(daneKompletne({ grounding_type: 'resistor_grounded', grounding_r_ohm: 12 }));
+    expect(rezystor.grounding).toEqual({ type: 'resistor_grounded', r_ohm: 12 });
   });
 
   it('niesie parametry zwarciowe SN (sk3_mva + rx_ratio) i składową zerową', () => {

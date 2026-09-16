@@ -23,7 +23,7 @@ const ODPOWIEDZ = {
     ik_ka: null,
     ip_ka: null,
     run_ref_zwarciowy: null,
-    tryb_uziemienia: 'cewka_petersena',
+    tryb_uziemienia: 'petersen_coil',
     zrodlo_napiecia_zerowego: 'otwarty_trojkat_vt',
     zrodlo_wejsc_urzadzenia: 'szereg_preferowany_IEC_60255_1',
   },

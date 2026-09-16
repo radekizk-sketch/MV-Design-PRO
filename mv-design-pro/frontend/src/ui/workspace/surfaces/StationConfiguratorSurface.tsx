@@ -46,6 +46,7 @@ import { navigateToAnalysis } from '../../navigation/routes';
 import { stationPublicIdentity } from '../../shared/publicTechnicalLabels';
 import { buildCatalogBinding, CANONICAL_CATALOG_VERSION } from '../../catalog/catalogBinding';
 import { fetchTransformerTypes, getCatalogErrorMessage } from '../../catalog/api';
+import { useGrupyPolaczen } from '../../catalog/useGrupyPolaczen';
 import type { TransformerType } from '../../catalog/types';
 import type { WorkspaceSurfaceDescriptor } from '../types';
 import { selectStationDistributionTransformers } from '../../network-build/stationTransformerSelection';
@@ -687,6 +688,8 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
   const [wizardKind, setWizardKind] = useState<AddDerKindRequest | null>(null);
   const [wizardResetKey, setWizardResetKey] = useState(0);
   const [transformerTypes, setTransformerTypes] = useState<TransformerType[]>([]);
+  // W5-A (F-4): grupa połączeń wyłącznie ze słownika IEC 60076-1 backendu.
+  const grupyPolaczen = useGrupyPolaczen();
   const [transformerCatalogLoading, setTransformerCatalogLoading] = useState(false);
   const [transformerCatalogError, setTransformerCatalogError] = useState<string | null>(null);
   const requestedAddDerKind = readAddDerKindRequest(surface.routeState.payload?.addDerKind);
@@ -979,6 +982,34 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     [activeCaseId, executeDomainOperation, stationTransformers, transformerTypes],
   );
 
+  // W5-A: dotąd `vectorGroup` z karty transformatora nigdzie nie trafiał (phantom) —
+  // teraz zapis do modelu tą samą operacją co korekta ekspercka (backend odmawia
+  // wartości spoza słownika kodem `transformer.invalid_vector_group`).
+  const handleChangeTransformerVectorGroup = useCallback(
+    async (transformerId: string, vectorGroup: string | null | undefined) => {
+      if (!vectorGroup) return;
+      if (!activeCaseId) {
+        notify('Wybierz aktywny przypadek obliczeniowy.', 'warning');
+        return;
+      }
+      try {
+        const response = await executeDomainOperation(activeCaseId, 'update_element_parameters', {
+          element_ref: transformerId,
+          parameters: { vector_group: vectorGroup },
+        });
+        if (response?.error) {
+          notify(response.error, 'error');
+        }
+      } catch (error) {
+        notify(
+          error instanceof Error ? error.message : 'Nie udało się zapisać grupy połączeń.',
+          'error',
+        );
+      }
+    },
+    [activeCaseId, executeDomainOperation],
+  );
+
   const handleShowOnSld = useCallback(
     (derId: string) => {
       // Naprawa hmi.1: przekazujemy derId jako entityRef do SLD aby skupić
@@ -1116,11 +1147,15 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
         transformerCatalogOptions: stationTransformerCatalogOptions,
         transformerCatalogLoading,
         transformerCatalogError,
+        vectorGroupOptions: grupyPolaczen,
         tapChangers,
         onAddTransformer: handleAddTransformer,
         onChange: (transformerId: string, changes: Partial<StationConfigTransformerRow>) => {
           if ('catalogRef' in changes) {
             void handleAssignTransformerCatalog(transformerId, changes.catalogRef);
+          }
+          if ('vectorGroup' in changes) {
+            void handleChangeTransformerVectorGroup(transformerId, changes.vectorGroup);
           }
           if ('tapChangerCatalogRef' in changes) {
             mutateAudit2({

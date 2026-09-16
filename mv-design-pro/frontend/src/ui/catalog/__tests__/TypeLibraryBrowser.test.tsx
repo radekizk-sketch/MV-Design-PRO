@@ -84,7 +84,6 @@ const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
       operator_name: 'OSD Północ',
       supply_role: 'GPZ',
       short_circuit_model: 'THEVENIN',
-      earthing_system: 'RESISTIVE',
       voltage_rating_kv: 15,
       sk3_mva: 350,
       rx_ratio: 0.15,

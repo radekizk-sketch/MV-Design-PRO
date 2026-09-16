@@ -31,8 +31,6 @@ interface GpzData {
   hvRX: number | null;
   transformerCatalogId: string;
   transformerNominalMva: number | null;
-  transformerUkPercent: number | null;
-  transformerVectorGroup: string;
   sectionsCount: number;
   hasCoupler: boolean;
   busbarSystem: string;
@@ -62,8 +60,6 @@ function emptyGpzData(): GpzData {
     hvRX: null,
     transformerCatalogId: DEFAULT_TRAFO_110_CATALOG_ID,
     transformerNominalMva: null,
-    transformerUkPercent: null,
-    transformerVectorGroup: 'YNyn0',
     sectionsCount: 2,
     hasCoupler: true,
     busbarSystem: 'pojedynczy sekcjonowany',
@@ -283,19 +279,9 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
               onChange={(v) => setData((d) => ({ ...d, transformerNominalMva: v }))}
               placeholder="25 / 40 / 63"
             />
-            <NumberField
-              label="uk"
-              unit="%"
-              value={data.transformerUkPercent}
-              onChange={(v) => setData((d) => ({ ...d, transformerUkPercent: v }))}
-              placeholder="np. 12,5"
-            />
-            <Field
-              label="Układ połączeń (grupa)"
-              value={data.transformerVectorGroup}
-              onChange={(v) => setData((d) => ({ ...d, transformerVectorGroup: v }))}
-              placeholder="YNyn0 / Dyn5 / Dyn11"
-            />
+            {/* W5-A: u_k i grupa połączeń to TABLICZKA z pozycji katalogowej wybranej wyżej —
+                wolne pola tekstowe (z domyślną „YNyn0") były fantomem: nic ich nie czytało,
+                a grupa spoza słownika IEC 60076-1 nie ma prawa wejść do modelu. */}
           </div>
         )}
 

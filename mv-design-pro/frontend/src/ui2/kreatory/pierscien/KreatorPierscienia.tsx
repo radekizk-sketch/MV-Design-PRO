@@ -43,6 +43,7 @@ import {
   type PierscienFormData,
   type RodzajOdcinka,
 } from './pierscienModel';
+import { OPCJE_UZIEMIENIA_EKRANU } from '../../../types/uziemienie';
 import { PIERSCIEN_STRINGS as T } from './strings';
 
 const KROKI: readonly KrokKreatora[] = [
@@ -305,6 +306,16 @@ export function KreatorPierscienia() {
               opcje={T.rodzajOpcje}
               testid="mvd-kreator-pierscien-rodzaj"
             />
+            {dane.rodzaj === 'KABEL' ? (
+              <PoleWyboru
+                etykieta={T.ekranUziemienie}
+                wartosc={dane.screen_bonding}
+                onZmiana={(v) => zmien('screen_bonding', v as PierscienFormData['screen_bonding'])}
+                opcje={OPCJE_UZIEMIENIA_EKRANU}
+                pomoc={T.ekranUziemieniePomoc}
+                testid="mvd-kreator-pierscien-ekran"
+              />
+            ) : null}
             <PoleLiczbowe
               etykieta={T.dlugosc}
               wartosc={dane.dlugosc_m}

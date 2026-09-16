@@ -34,7 +34,6 @@ const snapshot = {
       ref_id: 'bus-1',
       name: 'Szyna SN 1',
       voltage_kv: 15,
-      grounding: { type: 'rezystancyjne' },
     },
   ],
   branches: [
@@ -193,7 +192,7 @@ vi.mock('../../field/useFieldReadModel', () => ({
           source_contributions_sc: [{ source_ref: 'src-grid' }],
           source_contributions_pf: [],
           verification: { whole_power_path_ok: true },
-          earth_fault_path: { neutral_grounding_mode: 'rezystor' },
+          earth_fault_path: { neutral_grounding_mode: 'resistor_grounded' },
           proof_binding: {
             proof_ref: 'proof:bay_ref_1:run-1',
             primary_result_refs: ['run-1'],
@@ -320,7 +319,7 @@ vi.mock('../../field/useFieldReadModel', () => ({
           source_contributions_sc: [{ source_ref: 'src-grid' }],
           source_contributions_pf: [],
           verification: { whole_power_path_ok: true },
-          earth_fault_path: { neutral_grounding_mode: 'rezystor' },
+          earth_fault_path: { neutral_grounding_mode: 'resistor_grounded' },
           proof_binding: {
             proof_ref: 'proof:bay_ref_1:run-1',
             primary_result_refs: ['run-1'],

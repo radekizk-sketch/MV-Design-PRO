@@ -308,8 +308,8 @@ export interface CanonicalGpzHvSystemSource {
 }
 
 export interface GpzCanonicalRendererProps {
-  /** Sposób pracy punktu neutralnego sieci SN (V12K-219) — wyprowadzony z
-   *  `Bus.grounding` szyny SN GPZ. `null`/brak = model uziemienia nieokreślony
+  /** Sposób pracy punktu neutralnego sieci SN (V12K-219 / W5-A) — wyprowadzony z
+   *  `Source.neutral_grounding` źródła GPZ. `null`/brak = model uziemienia nieokreślony
    *  i wtedy schemat NIE rysuje niczego (zero domysłu: „brak danej" to nie to
    *  samo co „sieć izolowana", a pomyłka zmienia prąd doziemny o rzędy
    *  wielkości). Rysowany przy szynie, bo przy transformatorze o dolnej stronie

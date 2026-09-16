@@ -57,6 +57,8 @@ export interface StationConfigTransformerCardProps {
   readonly transformerCatalogOptions?: Readonly<Record<string, readonly StationTransformerCatalogOption[]>>;
   readonly transformerCatalogLoading?: boolean;
   readonly transformerCatalogError?: string | null;
+  /** W5-A (F-4): słownik grup połączeń IEC 60076-1 z backendu (`useGrupyPolaczen`); `null` = niedostępny. */
+  readonly vectorGroupOptions?: readonly string[] | null;
   /** Karta FAB-L: katalog przełączników zaczepów — ze snapshotu audytu 2. */
   readonly tapChangers: readonly TapChangerItem[];
   readonly onChange?: (transformerId: string, changes: Partial<StationConfigTransformerRow>) => void;
@@ -108,6 +110,7 @@ export function StationConfigTransformerCard(
     transformerCatalogOptions = {},
     transformerCatalogLoading = false,
     transformerCatalogError = null,
+    vectorGroupOptions = null,
     tapChangers,
     onChange,
     onAddTransformer,
@@ -249,13 +252,21 @@ export function StationConfigTransformerCard(
                 </select>
               </label>
               <label className="flex flex-col">
-                <span className="text-scada-muted">Grupa połączeń</span>
-                <input
+                <span className="text-scada-muted">Grupa połączeń (IEC 60076-1)</span>
+                <select
                   data-testid={`tr-vector-${tr.transformerId}`}
                   value={tr.vectorGroup ?? ''}
-                  onChange={(e) => onChange?.(tr.transformerId, { vectorGroup: e.target.value })}
+                  onChange={(e) => onChange?.(tr.transformerId, { vectorGroup: e.target.value || null })}
                   className="rounded border border-scada-border bg-scada-bg px-1 py-0.5 font-mono"
-                />
+                >
+                  {!tr.vectorGroup ? <option value="">— brak grupy —</option> : null}
+                  {tr.vectorGroup && !(vectorGroupOptions ?? []).includes(tr.vectorGroup) ? (
+                    <option value={tr.vectorGroup}>{tr.vectorGroup}</option>
+                  ) : null}
+                  {(vectorGroupOptions ?? []).map((g) => (
+                    <option key={g} value={g}>{g}</option>
+                  ))}
+                </select>
               </label>
               <label className="flex flex-col">
                 <span className="text-scada-muted">u_k [%]</span>

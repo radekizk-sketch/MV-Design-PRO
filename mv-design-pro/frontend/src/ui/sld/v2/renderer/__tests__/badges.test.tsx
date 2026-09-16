@@ -1,48 +1,10 @@
-import { describe, expect, it, vi } from 'vitest';
-import { render, fireEvent } from '@testing-library/react';
-import { EarthingBadge } from '../EarthingBadge';
+import { describe, expect, it } from 'vitest';
+import { render } from '@testing-library/react';
 import { EquipmentProofBadge, computeEquipmentProofStatus } from '../EquipmentProofBadge';
 
 function svgWrap(children: React.ReactNode) {
   return <svg>{children}</svg>;
 }
-
-describe('EarthingBadge', () => {
-  it('renderuje TN z kodem', () => {
-    const { container } = render(svgWrap(<EarthingBadge type="TN" x={100} y={100} />));
-    expect(container.querySelector('[data-testid="earthing-badge-TN"]')).toBeTruthy();
-    expect(container.textContent).toContain('TN');
-  });
-
-  it('renderuje IT z żółtym kolorem', () => {
-    const { container } = render(svgWrap(<EarthingBadge type="IT" x={100} y={100} />));
-    expect(container.querySelector('[data-testid="earthing-badge-IT"]')).toBeTruthy();
-  });
-
-  it('Petersen wyświetla PC code', () => {
-    const { container } = render(svgWrap(<EarthingBadge type="PETERSEN" x={100} y={100} />));
-    expect(container.textContent).toContain('PC');
-  });
-
-  it('Resistor z R [Ω]', () => {
-    const { container } = render(svgWrap(<EarthingBadge type="RESISTOR" x={100} y={100} r_ohm={40} />));
-    expect(container.querySelector('[data-testid="earthing-value-RESISTOR"]')).toBeTruthy();
-    expect(container.textContent).toContain('40 Ω');
-  });
-
-  it('Petersen z X [Ω]', () => {
-    const { container } = render(svgWrap(<EarthingBadge type="PETERSEN" x={100} y={100} x_ohm={150} />));
-    expect(container.textContent).toContain('150 Ω');
-  });
-
-  it('onClick wywoływane', () => {
-    const onClick = vi.fn();
-    const { container } = render(svgWrap(<EarthingBadge type="TN" x={0} y={0} onClick={onClick} />));
-    const badge = container.querySelector('[data-testid="earthing-badge-TN"]') as SVGElement;
-    badge.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    expect(onClick).toHaveBeenCalled();
-  });
-});
 
 describe('EquipmentProofBadge', () => {
   it('OK status - zielona ikona ✓', () => {
