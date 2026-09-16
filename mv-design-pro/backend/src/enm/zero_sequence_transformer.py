@@ -45,6 +45,11 @@ Założenia (jawne, IEC 60909-0 § 3.3.3 / § 6):
     ``isolated`` → brak uziemienia (zacisk otwarty). Gdy brak jawnej
     konfiguracji ``GroundingConfig`` — uziemienie wynika z litery neutralnej w
     grupie (N/n obecne → uziemienie bezpośrednie Z_N=0; brak → nieuziemione).
+    W5-A (E-W5-03): konfiguracja uziemiająca na uzwojeniu BEZ litery N/n
+    (trójkąt, gwiazda bez wyprowadzonego punktu) = odmowa nazwana ``ValueError``
+    — litera rozstrzyga o dostępności punktu neutralnego, config o sposobie
+    jego uziemienia; grupa spoza słownika IEC 60076-1 (`enm/grupa_polaczen.py`)
+    = odmowa nazwana (E-W5-02).
 
     Brak ``vector_group`` (None) → połączenie OTWARTE (uczciwy brak danych; TR
     nie wnosi wkładu do Z0 — zachowanie sprzed karty dla TR bez grupy).
@@ -52,14 +57,19 @@ Założenia (jawne, IEC 60909-0 § 3.3.3 / § 6):
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 from enum import Enum
 
 from network_model.core.ybus import S_BASE_MVA
-from network_model.pochodne import impedancja_z_napiecia_i_mocy_ohm, kw_na_mw
+from network_model.pochodne import (
+    impedancja_punktu_neutralnego_ohm,
+    impedancja_rozproszenia_transformatora_pu,
+    impedancja_z_napiecia_i_mocy_ohm,
+)
 
+from .grupa_polaczen import parsuj_grupe_polaczen
 from .models import GroundingConfig, Transformer
+from .uziemienie import blad_konfiguracji_uziemienia, uziemienie_grounded
 
 
 class WindingZeroSeq(Enum):
@@ -99,33 +109,6 @@ class TransformerZeroSeqModel:
     trace: list[dict]
 
 
-def _parse_vector_group(vector_group: str) -> tuple[str, bool, str, bool]:
-    """Parsuje grupę wektorową → (hv_type, hv_neutral_letter, lv_type, lv_neutral_letter).
-
-    hv_type/lv_type ∈ {'Y','D','Z'}. Litera neutralna: 'N' (HV) / 'n' (LV).
-    Przykłady: 'Dyn11' → ('D',False,'Y',True); 'YNyn0' → ('Y',True,'Y',True);
-    'YNd11' → ('Y',True,'D',False); 'Yyn0' → ('Y',False,'Y',True).
-    """
-    cleaned = "".join(ch for ch in vector_group if ch.isalpha())
-    hv_chars = ""
-    lv_chars = ""
-    for ch in cleaned:
-        if ch.isupper():
-            # Strona HV kończy się, gdy pojawia się pierwsza mała litera (LV).
-            if lv_chars:
-                break
-            hv_chars += ch
-        else:
-            lv_chars += ch
-    if not hv_chars or not lv_chars:
-        raise ValueError(f"Nieprawidłowa grupa wektorowa: {vector_group!r}")
-    hv_type = hv_chars[0]
-    hv_neutral = "N" in hv_chars
-    lv_type = lv_chars[0].upper()
-    lv_neutral = "n" in lv_chars
-    return hv_type, hv_neutral, lv_type, lv_neutral
-
-
 def _neutral_grounded_and_zn(
     grounding: GroundingConfig | None,
     neutral_letter_present: bool,
@@ -135,58 +118,40 @@ def _neutral_grounded_and_zn(
 ) -> tuple[bool, complex]:
     """Zwraca (uziemiony?, Z_N [Ω]) na podstawie GroundingConfig / litery neutralnej.
 
-    Priorytet: jawna GroundingConfig > litera neutralna w grupie. 'isolated' →
-    brak uziemienia. Brak configu i brak litery → nieuziemione.
+    W5-A (E-W5-03, decyzja F-4): LITERA GRUPY rozstrzyga o DOSTĘPNOŚCI punktu
+    neutralnego, jawna konfiguracja — o SPOSOBIE jego uziemienia. Konfiguracja
+    uziemiająca (bezpośrednio / rezystor / dławik) na uzwojeniu bez wyprowadzonego
+    punktu neutralnego (trójkąt, gwiazda bez N/n) jest odmową NAZWANĄ, nie
+    pierwszeństwem configu (tak było do tej karty: fizyka „uziemiała trójkąt").
+    ``isolated`` na takim uzwojeniu jest dozwolone — mówi to samo, co litera.
+    Brak configu → uziemienie wynika z litery (bezpośrednie, Z_N = 0).
 
     ZERO fabrykacji (audyt fizyki, fala F): 'resistor_grounded' i 'petersen_coil'
-    to urządzenia z NIEZEROWĄ, dominującą impedancją ograniczającą prąd doziemny
-    (rezystor NER: R rzędu dziesiątek-setek Ω; dławik Petersena: X rzędu
-    dziesiątek-setek Ω, dostrojony do pojemności sieci). Brakująca wartość tej
-    ISTOTNEJ składowej NIE MOŻE być cicho podstawiona zerem — to zamieniłoby
-    uziemienie impedancyjne w bezpośrednie (Z_N=0) i SZTUCZNIE ZAWYŻYŁO prąd
-    zwarcia doziemnego I''k1 (fizyka odwrotna: sieć skompensowana/rezystancyjna
-    ma CELOWO mały prąd doziemny). Składowa PRZECIWNA (X dla rezystora, R —
-    tłumienie dławika — dla cewki Petersena) jest fizycznie zwykle pomijalna i
-    tam 0 Ω jest uzasadnionym założeniem domyślnym (jak w v126_academic.py
-    ``petersen_residual_damping`` default 0.0), więc pozostaje dozwolona.
+    to urządzenia z NIEZEROWĄ, dominującą impedancją ograniczającą prąd doziemny.
+    Brak tej składowej NIE MOŻE być cicho podstawiony zerem — predykat
+    `enm.uziemienie.blad_konfiguracji_uziemienia` jest ten sam, który czyta
+    walidator (E-W5-01) i operacje domenowe (odmowa na wejściu).
     """
-    if grounding is not None:
-        if grounding.type == "isolated":
-            return False, 0j
-        if grounding.type == "directly_grounded":
-            return True, 0j
-        if grounding.type == "resistor_grounded":
-            if grounding.r_ohm is None:
-                raise ValueError(
-                    f"Transformator {trafo_ref}: uziemienie punktu neutralnego "
-                    f"({side}) typu 'resistor_grounded' wymaga rezystancji R_N "
-                    "[Ω] (GroundingConfig.r_ohm). Brak wartości — nie wolno "
-                    "przyjmować R_N=0 (to byłoby uziemienie bezpośrednie, nie "
-                    "rezystancyjne). Podaj r_ohm rezystora NER."
-                )
-            # `is None`, nie `or`: rezystor NER z jawnie podaną reaktancją 0 Ω to
-            # dana, a nie brak. Wartości obie formy dają dziś tę samą, ale operator
-            # `or` nie odróżnia zera od braku — a to jest dokładnie ta klasa, która
-            # w moście wejść V12.6 kasowała jawne 0,0 Ω aparatu (MOST-WEJSCIA-V126).
-            return True, complex(
-                grounding.r_ohm, grounding.x_ohm if grounding.x_ohm is not None else 0.0
-            )
-        # petersen_coil: reaktancja X_N jest wielkością dostrajaną do pojemności
-        # sieci (dominuje Z0) i MUSI być podana; rezystancja tłumienia dławika
-        # (r_ohm) może być pominięta (0 Ω — brak jawnie podanych strat dławika).
-        if grounding.x_ohm is None:
-            raise ValueError(
-                f"Transformator {trafo_ref}: uziemienie punktu neutralnego "
-                f"({side}) typu 'petersen_coil' wymaga reaktancji dławika X_N "
-                "[Ω] (GroundingConfig.x_ohm). Brak wartości — nie wolno "
-                "przyjmować X_N=0 (to byłoby uziemienie bezpośrednie, nie "
-                "przez cewkę Petersena). Podaj x_ohm dławika ziemnozwarciowego."
-            )
-        return True, complex(
-            grounding.r_ohm if grounding.r_ohm is not None else 0.0, grounding.x_ohm
+    if grounding is None:
+        return neutral_letter_present, 0j
+    if grounding.type == "isolated":
+        return False, 0j
+    if uziemienie_grounded(grounding.type) and not neutral_letter_present:
+        raise ValueError(
+            f"Transformator {trafo_ref}: uzwojenie {side} nie ma wyprowadzonego punktu "
+            f"neutralnego (litera grupy połączeń bez {'N' if side == 'HV' else 'n'}), "
+            f"a konfiguracja deklaruje uziemienie '{grounding.type}'. Fizyka nie uziemia "
+            "uzwojenia bez punktu neutralnego — popraw grupę połączeń albo usuń "
+            "konfigurację (E-W5-03)."
         )
-    # Brak jawnej konfiguracji: uziemienie wynika z litery neutralnej (bezpośrednie).
-    return neutral_letter_present, 0j
+    blad = blad_konfiguracji_uziemienia(grounding.type, grounding.r_ohm, grounding.x_ohm)
+    if blad is not None:
+        raise ValueError(
+            f"Transformator {trafo_ref}: uziemienie punktu neutralnego ({side}) — {blad}."
+        )
+    if grounding.type == "directly_grounded":
+        return True, 0j
+    return True, impedancja_punktu_neutralnego_ohm(grounding.r_ohm, grounding.x_ohm)
 
 
 def _classify_winding(
@@ -204,13 +169,10 @@ def _classify_winding(
 def _z_t_leakage_pu_sn(trafo: Transformer) -> complex:
     """Impedancja rozproszenia (składowa zgodna) w per-unit na S_rT.
 
-    z = uk/100; r = (pk/1000)/Sn; x = sqrt(z² - r²).
+    z = uk/100; r = (pk/1000)/Sn; x = sqrt(z² - r²) — formuła w JEDNYM miejscu
+    (`network_model/pochodne/skladowe_zerowe.py`, bit w bit ta sama kolejność działań).
     """
-    z_pu = trafo.uk_percent / 100.0
-    r_pu = kw_na_mw(trafo.pk_kw) / trafo.sn_mva if trafo.sn_mva > 0 else 0.0
-    disc = z_pu * z_pu - r_pu * r_pu
-    x_pu = math.sqrt(disc) if disc > 0 else 0.0
-    return complex(r_pu, x_pu)
+    return impedancja_rozproszenia_transformatora_pu(trafo.uk_percent, trafo.pk_kw, trafo.sn_mva)
 
 
 def _zn_pu_base(zn_ohm: complex, u_side_kv: float) -> complex:
@@ -257,7 +219,13 @@ def build_transformer_zero_seq_model(trafo: Transformer) -> TransformerZeroSeqMo
             trace=tracer.to_list(),
         )
 
-    hv_type, hv_n_letter, lv_type, lv_n_letter = _parse_vector_group(trafo.vector_group)
+    grupa = parsuj_grupe_polaczen(trafo.vector_group)
+    hv_type, hv_n_letter, lv_type, lv_n_letter = (
+        grupa.gn_typ,
+        grupa.gn_punkt_neutralny,
+        grupa.dn_typ,
+        grupa.dn_punkt_neutralny,
+    )
     hv_grounded, zn_hv_ohm = _neutral_grounded_and_zn(
         trafo.hv_neutral, hv_n_letter, trafo_ref=trafo.ref_id, side="HV"
     )

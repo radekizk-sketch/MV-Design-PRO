@@ -12,7 +12,6 @@ from .field_device import (
 from .field_device import (
     DeviceTypeV1 as FieldDeviceTypeV1,
 )
-from .grounding import Grounding
 from .limits import Limits
 from .models import (
     Network,
@@ -93,7 +92,6 @@ __all__ = [
     "ElementScopeV1",
     "ElementTypeV1",
     "ExportManifestV1",
-    "Grounding",
     "AnalysisRun",
     "InspectorFactV1",
     "Limits",

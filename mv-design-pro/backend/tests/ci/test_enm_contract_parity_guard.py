@@ -71,15 +71,20 @@ def test_guard_liczy_pola_literalowe_dziedziczone_z_branchbase(capsys) -> None:
     pole Literal z zachowanym parytetem zbioru wartosci podnosi licznik 115 -> 116.
     Karta W5-D (2026-09-16) dodaje `Load.phases: PhaseSet | None` (fazy przylaczenia
     odbioru `"ABC" | "A" | "B" | "C" | "AB" | "BC" | "CA"`, czytane przez rozplyw
-    niesymetryczny) z lustrem `PhaseSet` w `types/enm.ts` — licznik 116 -> 117."""
+    niesymetryczny) z lustrem `PhaseSet` w `types/enm.ts` — licznik 116 -> 117.
+
+    Karta W5-A (2026-09-16) dodaje DWA pola Literal z lustrem w `types/enm.ts`
+    (`types/uziemienie.ts`, pin do snapshotu OpenAPI): `Transformer.lv_earthing_system:
+    UkladSieciNn | None` (uklad sieci nN — dawniej worek `meta`) i `Cable.screen_bonding:
+    UziemienieEkranuKabla | None` (uklad uziemienia ekranu kabla) — licznik 117 -> 119 (po W5-D)."""
     guard.main()
     wyjscie = capsys.readouterr().out
     import re
 
     dopasowanie = re.search(r"parytet wartosci\): (\d+)", wyjscie)
     assert dopasowanie is not None, wyjscie
-    assert int(dopasowanie.group(1)) == 117, (
-        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 117 — "
+    assert int(dopasowanie.group(1)) == 119, (
+        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 119 — "
         "sprawdz, czy pola dziedziczone z bazy warunkowej (BranchBase) nie sa "
         "znowu cicho pomijane (spadek), albo opisz nowe pole Literal w docstringu "
         "tego testu i podnies licznik z uzasadnieniem (wzrost)."

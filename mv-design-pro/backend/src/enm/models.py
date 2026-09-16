@@ -8,18 +8,43 @@ Jedno źródło prawdy dla projektu (case-bound).
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, get_args
 from uuid import UUID, uuid4
 
+from network_model.core.uziemienie import (
+    RolaUziemnika,
+    TypPunktuNeutralnego,
+    UziemienieEkranuKabla,
+)
 from pydantic import BaseModel, Field, model_validator
+
+from .uziemienie import migruj_uziemienie_slownika
 
 # ---------------------------------------------------------------------------
 # Supporting types
 # ---------------------------------------------------------------------------
 
+#: Układ uziemienia sieci nN (IEC 60364-1 § 312.2) — JEDYNA definicja zbioru
+#: literałów (karta W5-A §1 p. 2). Enum solvera pętli zwarcia
+#: (`network_model/solvers/fault_loop_iec60364.py::NetworkType`, FROZEN) jest
+#: kontraktem solvera; JEDNA funkcja mapująca żyje w `solver_input/uklad_sieci_nn.py`
+#: z testem równości obu zbiorów. Front czyta ten literał ze snapshotu OpenAPI.
+UkladSieciNn = Literal["TN-S", "TN-C-S", "TN-C", "TT", "IT"]
+#: Jedyna definicja słownika układów nN (literał wyżej); krotka dla predykatów,
+#: migracji i komunikatów — nigdy druga lista literałów w innym module.
+UKLADY_SIECI_NN: tuple[str, ...] = get_args(UkladSieciNn)
+
 
 class GroundingConfig(BaseModel):
-    type: Literal["isolated", "petersen_coil", "directly_grounded", "resistor_grounded"]
+    """Sposób pracy punktu neutralnego — JEDYNY typ w systemie (W5-A §1 p. 1).
+
+    Nośniki: ``Transformer.hv_neutral``/``lv_neutral`` (punkt gwiazdowy uzwojenia
+    z wyprowadzonym neutralnym) i ``Source.neutral_grounding`` (punkt neutralny
+    sieci SN zasilanej z równoważnika GPZ). Zero kopii: ``Bus.grounding`` i
+    ``substation.meta["grounding"]`` skasowane z migracją przy wczytaniu.
+    """
+
+    type: TypPunktuNeutralnego
     r_ohm: float | None = None
     x_ohm: float | None = None
 
@@ -198,7 +223,6 @@ class Bus(ENMElement):
     frequency_hz: float | None = None
     phase_system: Literal["3ph"] = "3ph"
     zone: str | None = None
-    grounding: GroundingConfig | None = None
     nominal_limits: BusLimits | None = None
 
 
@@ -307,6 +331,11 @@ class Cable(BranchBase):
     # `Transformer.n_parallel` (Z/n, Sn*n) — zero nowej heurystyki, standardowe
     # łączenie równoległe impedancji identycznych torów.
     n_parallel: int | None = None
+    # W5-A (F9): układ uziemienia ekranu kabla — dana PROJEKTOWA bez fabrykacji
+    # fizyki. Katalogowe r0/x0 dotyczą układu odniesienia producenta
+    # (`CableType.z0_reference_bonding`); rozjazd = ostrzeżenie walidatora
+    # W-W5-01, nigdy przeliczenie (brak geometrii ułożenia). None = niezadeklarowany.
+    screen_bonding: UziemienieEkranuKabla | None = None
 
 
 class SwitchBranch(BranchBase):
@@ -376,9 +405,18 @@ class Transformer(ENMElement):
     pk_kw: float
     p0_kw: float | None = None
     i0_percent: float | None = None
+    # Grupa połączeń ze słownika IEC 60076-1 (`enm/grupa_polaczen.py`). Typ
+    # pozostaje `str`, żeby zastany zapis spoza słownika wczytał się i został
+    # NAZWANY przez walidator (E-W5-02 z nawigacją naprawczą), a nie zniknął przy
+    # `model_validate` (migawka odrzucona = projekt bez modelu).
     vector_group: str | None = None
     hv_neutral: GroundingConfig | None = None
     lv_neutral: GroundingConfig | None = None
+    # W5-A §1 p. 2: układ sieci nN zasilanej z tego transformatora — pole
+    # TYPOWANE w miejsce dawnego klucza meta stacji z układem nN (skasowane z
+    # migracją). Brak = odmowa nazwana (E063 / ELIG_FLNN_MISSING_EARTHING_SYSTEM),
+    # nigdy domyślka.
+    lv_earthing_system: UkladSieciNn | None = None
     # G-STK-6: liczba identycznych jednostek pracujących równolegle w polu
     # transformatorowym. None/1 = pojedynczy transformator (bez zmiany fizyki).
     # Agregacja: n jednostek → impedancja zastępcza Z/n (mapper skaluje Sn×n).
@@ -418,6 +456,11 @@ class Source(ENMElement):
     source_side: Literal["SN", "HV_110"] | None = None
     sn_voltage_kv: float | None = None
     voltage_hv_kv: float | None = None
+    # W5-A §1 p. 1: opis inżynierski punktu neutralnego sieci SN zasilanej z tego
+    # równoważnika (GPZ). Fizyka czyta, jak dotąd, `r0_ohm`/`x0_ohm` | `z0_z1_ratio`;
+    # kreator GPZ wyprowadza je z (Z_T0 + 3·Z_N) w `pochodne/skladowe_zerowe.py`
+    # i zapisuje OBA: opis i liczby (proweniencja `WYPROWADZONE` w `meta`).
+    neutral_grounding: GroundingConfig | None = None
     sk3_hv_mva: float | None = None
     sk3_mva: float | None = None
     ik3_ka: float | None = None
@@ -1158,16 +1201,9 @@ class BayPrimaryDevice(BaseModel):
     # uziemienie ekranów kabla / konstrukcji / punktu neutralnego / gałąź
     # ogranicznika. None = dana niedostarczona (rysunek: generyczny uziemnik,
     # zero domysłu).
-    earthing_role: (
-        Literal[
-            "field_earth",
-            "cable_screen",
-            "structure",
-            "neutral_point",
-            "surge_ground",
-        ]
-        | None
-    ) = None
+    # W5-A: jeden słownik ról (`network_model/core/uziemienie.py::RolaUziemnika`) —
+    # ten sam czyta pisarz w `add_sn_bay` (payload `earthing_role`) i front.
+    earthing_role: RolaUziemnika | None = None
 
 
 class BayMeasurements(BaseModel):
@@ -1466,13 +1502,9 @@ class BayPowerFlowSourceContribution(BaseModel):
 
 
 class BayEarthFaultPath(BaseModel):
-    neutral_grounding_mode: Literal[
-        "izolowany",
-        "cewka_petersena",
-        "rezystor",
-        "bezposrednio_uziemiony",
-        "nieznany",
-    ] = "nieznany"
+    # W5-A §1 p. 1: ten sam słownik co `GroundingConfig.type` (koniec polskich
+    # literałów w kontrakcie; etykiety PL w prezentacji). None = nieznany.
+    neutral_grounding_mode: TypPunktuNeutralnego | None = None
     zero_sequence_current_source: Literal[
         "suma_ct", "przekladnik_ferrantiego", "zewnetrzne", "brak"
     ] = "brak"
@@ -1680,6 +1712,23 @@ class EnergyNetworkModel(BaseModel):
     # `None` poza odciskiem (`enm/hash.py::_strip_uuids`), więc modele bez sekcji
     # zachowują dotychczasowe hashe co do bajtu.
     katalog_projektu: KatalogProjektu | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _migracja_uziemienia_przy_wczytaniu(cls, data: Any) -> Any:
+        """W5-A: jedna reprezentacja uziemienia — migracja ZASTANEGO zapisu.
+
+        `Bus.grounding` → `Source.neutral_grounding`, `substation.meta
+        ["nn_earthing_system"]` → `Transformer.lv_earthing_system`, klucze
+        `meta["grounding"|"zero_sequence"]` usuwane. Jedno miejsce dla KAŻDEJ
+        drogi wczytania (magazyn, rewizje, migawki biegów, import archiwum,
+        operacje domenowe) — bez tego pole skasowane z modelu ginęłoby cicho
+        (`extra='ignore'`). Utraty nazywa raport (`enm/uziemienie.py`); wpis
+        do dziennika robi magazyn (`enm/store.py`).
+        """
+        if isinstance(data, dict):
+            return migruj_uziemienie_slownika(data, uklady_nn=UKLADY_SIECI_NN)[0]
+        return data
 
 
 # Phase 0B-1: rebuild Bay aby ForwardRef "BayRuntimeState | None" rozwiązał

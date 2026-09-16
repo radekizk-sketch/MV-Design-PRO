@@ -39,6 +39,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
+from network_model.core.uziemienie import TypPunktuNeutralnego
 from network_model.pochodne import mva_na_kva
 
 #: Wersja katalogow audytu 2 = DATA PRZEGLADU PROWENIENCJI (ISO-8601).
@@ -1123,15 +1124,12 @@ def get_block_transformer(btr_id: str) -> BlockTransformerItem | None:
 # parytet obu warstw pilnuje `tests/network_model/test_audit2_katalogi_parytet.py`.
 
 
-GroundingType = Literal["isolated", "petersen_coil", "resistor_grounded", "directly_grounded"]
-
-
 @dataclass(frozen=True)
 class MvNeutralGroundingItem:
     id: str
     catalog_namespace: str
     catalog_version: str
-    grounding_type: GroundingType
+    grounding_type: TypPunktuNeutralnego
     label_pl: str
     description_pl: str
     #: Rezystancja uziemienia [Ohm] definiujaca wariant (gdy resistor_grounded).
@@ -1269,7 +1267,7 @@ def select_block_transformers_for_der(
 
 
 def is_vt_voltage_factor_valid_for_grounding(
-    voltage_factor: float, grounding_type: GroundingType
+    voltage_factor: float, grounding_type: TypPunktuNeutralnego
 ) -> tuple[bool, str]:
     """Walidacja F_v przekladnika napieciowego wobec uziemienia sieci (IEC 61869-3 tab. 2).
 
@@ -1287,13 +1285,8 @@ def is_vt_voltage_factor_valid_for_grounding(
     """
     from domain.dobor_przekladnika import wymagany_wspolczynnik_napieciowy
 
-    tryb = {
-        "isolated": "izolowany",
-        "petersen_coil": "cewka_petersena",
-        "resistor_grounded": "rezystor",
-        "directly_grounded": "bezposrednio_uziemiony",
-    }.get(grounding_type)
-    wymagany = wymagany_wspolczynnik_napieciowy(tryb, "faza_ziemia")
+    # W5-A: jeden slownik typow punktu neutralnego — bez mapowania na literaly PL.
+    wymagany = wymagany_wspolczynnik_napieciowy(grounding_type, "faza_ziemia")
     if wymagany is None:
         return False, f"Nieznany typ uziemienia: {grounding_type}"
     if voltage_factor < wymagany:

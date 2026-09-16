@@ -54,9 +54,13 @@ def test_rejestr_pol_addytywnych_nazywa_pola_k7() -> None:
     # literatury ze slackiem ≠ 1,0 p.u.) — to samo prawo: brak (None) poza odciskiem.
     # W5-D: `Load.phases` (brak = odbior trojfazowy symetryczny) — ta sama regula
     # (test pisarzy i odcisku: `tests/enm/test_load_phases_w5d.py`).
+    # W5-A: opis punktu neutralnego źródła, układ nN transformatora i układ ekranu
+    # kabla — to samo prawo (migawki bez tych danych haszują jak przed kartą).
     assert _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE == {
-        "sources": ("sk3_min_mva", "ik3_min_ka", "rx_ratio_min", "u_set_pu"),
+        "sources": ("sk3_min_mva", "ik3_min_ka", "rx_ratio_min", "u_set_pu", "neutral_grounding"),
         "loads": ("phases",),
+        "transformers": ("lv_earthing_system",),
+        "branches": ("screen_bonding",),
     }
 
 

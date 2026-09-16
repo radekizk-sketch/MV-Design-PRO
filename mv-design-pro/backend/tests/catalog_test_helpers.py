@@ -29,7 +29,6 @@ def gpz_materialized_params(
         "sk3_mva": sk3_mva,
         "rx_ratio": rx_ratio,
         "short_circuit_model": "short_circuit_power",
-        "earthing_system": "PUNKT_NEUTRALNY_UZIEMIONY",
         "supply_role": "ZASILANIE_SYSTEMOWE",
         "manufacturer": "OSD",
         "series": "Warunki zasilania GPZ",

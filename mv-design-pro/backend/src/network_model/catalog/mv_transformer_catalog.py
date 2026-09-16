@@ -1113,7 +1113,7 @@ def _polish_transformer(
     *,
     voltage_hv_kv: float = 15.0,
     voltage_lv_kv: float = 0.4,
-    vector_group: str = "Dyn11",
+    vector_group: str,
     series: str = "",
     source_reference: str = "Karta katalogowa producenta / PTPiRE",
 ) -> dict[str, Any]:
@@ -1158,6 +1158,7 @@ TRANSFORMER_POLISH_PTPIRE: list[dict[str, Any]] = [
         i0_percent=2.0,
         series="TPMnR",
         source_reference="WZL Kędzierzyn-Koźle katalog TPMnR 2024 / Rozp. UE 2019/1783 Tier 2",
+        vector_group="Dyn11",
     ),
     _polish_transformer(
         "wzl-tpmnr-400-15-04",
@@ -1170,6 +1171,7 @@ TRANSFORMER_POLISH_PTPIRE: list[dict[str, Any]] = [
         i0_percent=1.6,
         series="TPMnR",
         source_reference="WZL Kędzierzyn-Koźle katalog TPMnR 2024 / Rozp. UE 2019/1783 Tier 2",
+        vector_group="Dyn11",
     ),
     _polish_transformer(
         "wzl-tpmnr-630-15-04",
@@ -1182,6 +1184,7 @@ TRANSFORMER_POLISH_PTPIRE: list[dict[str, Any]] = [
         i0_percent=1.3,
         series="TPMnR",
         source_reference="WZL Kędzierzyn-Koźle katalog TPMnR 2024 / Rozp. UE 2019/1783 Tier 2",
+        vector_group="Dyn11",
     ),
     _polish_transformer(
         "wzl-tpmnr-1000-15-04",
@@ -1194,6 +1197,7 @@ TRANSFORMER_POLISH_PTPIRE: list[dict[str, Any]] = [
         i0_percent=1.1,
         series="TPMnR",
         source_reference="WZL Kędzierzyn-Koźle katalog TPMnR 2024 / Rozp. UE 2019/1783 Tier 2",
+        vector_group="Dyn11",
     ),
     _polish_transformer(
         "wzl-tpmnr-1600-15-04",
@@ -1206,6 +1210,7 @@ TRANSFORMER_POLISH_PTPIRE: list[dict[str, Any]] = [
         i0_percent=0.9,
         series="TPMnR",
         source_reference="WZL Kędzierzyn-Koźle katalog TPMnR 2024 / Rozp. UE 2019/1783 Tier 2",
+        vector_group="Dyn11",
     ),
     # ZPUE Trafo Wloszczowa — TZH/TZE hermetyczne
     _polish_transformer(
@@ -1219,6 +1224,7 @@ TRANSFORMER_POLISH_PTPIRE: list[dict[str, Any]] = [
         i0_percent=2.5,
         series="TZH",
         source_reference="ZPUE Trafo katalog TZH/TZE 2024 / PTPiRE WiPWC",
+        vector_group="Dyn11",
     ),
     _polish_transformer(
         "zpue-tzh-250-15-04",
@@ -1231,6 +1237,7 @@ TRANSFORMER_POLISH_PTPIRE: list[dict[str, Any]] = [
         i0_percent=2.0,
         series="TZH",
         source_reference="ZPUE Trafo katalog TZH/TZE 2024 / PTPiRE WiPWC",
+        vector_group="Dyn11",
     ),
     _polish_transformer(
         "zpue-tzh-400-15-04",
@@ -1243,6 +1250,7 @@ TRANSFORMER_POLISH_PTPIRE: list[dict[str, Any]] = [
         i0_percent=1.6,
         series="TZH",
         source_reference="ZPUE Trafo katalog TZH/TZE 2024 / PTPiRE WiPWC",
+        vector_group="Dyn11",
     ),
     _polish_transformer(
         "zpue-tzh-630-15-04",
@@ -1255,6 +1263,7 @@ TRANSFORMER_POLISH_PTPIRE: list[dict[str, Any]] = [
         i0_percent=1.3,
         series="TZH",
         source_reference="ZPUE Trafo katalog TZH/TZE 2024 / PTPiRE WiPWC",
+        vector_group="Dyn11",
     ),
     _polish_transformer(
         "zpue-tzh-1000-15-04",
@@ -1267,6 +1276,7 @@ TRANSFORMER_POLISH_PTPIRE: list[dict[str, Any]] = [
         i0_percent=1.1,
         series="TZH",
         source_reference="ZPUE Trafo katalog TZH/TZE 2024 / PTPiRE WiPWC",
+        vector_group="Dyn11",
     ),
     # Energen Polska — TONr suche zywiczne
     _polish_transformer(
@@ -1280,6 +1290,7 @@ TRANSFORMER_POLISH_PTPIRE: list[dict[str, Any]] = [
         i0_percent=1.4,
         series="TONr",
         source_reference="Energen Polska katalog TONr 2024 / IEC 60076-11",
+        vector_group="Dyn11",
     ),
     _polish_transformer(
         "energen-tonr-1000-15-04",
@@ -1292,6 +1303,7 @@ TRANSFORMER_POLISH_PTPIRE: list[dict[str, Any]] = [
         i0_percent=1.2,
         series="TONr",
         source_reference="Energen Polska katalog TONr 2024 / IEC 60076-11",
+        vector_group="Dyn11",
     ),
     _polish_transformer(
         "energen-tonr-1600-15-04",
@@ -1304,6 +1316,7 @@ TRANSFORMER_POLISH_PTPIRE: list[dict[str, Any]] = [
         i0_percent=1.0,
         series="TONr",
         source_reference="Energen Polska katalog TONr 2024 / IEC 60076-11",
+        vector_group="Dyn11",
     ),
     # Trafocomp - typowe rozmiary
     _polish_transformer(
@@ -1317,6 +1330,7 @@ TRANSFORMER_POLISH_PTPIRE: list[dict[str, Any]] = [
         i0_percent=2.3,
         series="T",
         source_reference="Trafocomp katalog 2024",
+        vector_group="Dyn11",
     ),
     _polish_transformer(
         "trafocomp-t-400-15-04",
@@ -1329,6 +1343,7 @@ TRANSFORMER_POLISH_PTPIRE: list[dict[str, Any]] = [
         i0_percent=1.6,
         series="T",
         source_reference="Trafocomp katalog 2024",
+        vector_group="Dyn11",
     ),
     _polish_transformer(
         "trafocomp-t-1000-15-04",
@@ -1341,5 +1356,6 @@ TRANSFORMER_POLISH_PTPIRE: list[dict[str, Any]] = [
         i0_percent=1.1,
         series="T",
         source_reference="Trafocomp katalog 2024",
+        vector_group="Dyn11",
     ),
 ]

@@ -43,7 +43,7 @@ from enm.dziennik_zmian import przygotuj_dopisanie as przygotuj_wpis_dziennika
 from enm.hash import compute_enm_hash
 from enm.migrations.nn_field_specs_promocja import migruj as promuj_nn_field_specs
 from enm.migrations.punkt_przylaczenia_der import migruj as migruj_punkt_przylaczenia
-from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from enm.models import UKLADY_SIECI_NN, EnergyNetworkModel, ENMDefaults, ENMHeader
 from enm.rewizje import (
     PrzygotowanaRewizja,
     dostepne_rewizje,
@@ -61,6 +61,7 @@ from enm.scenariusze import (
     przenies_katalog_scenariuszy_pod_klucz,
     usun_wszystkie_scenariusze,
 )
+from enm.uziemienie import RaportMigracjiUziemienia, raport_migracji_uziemienia
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +140,7 @@ def _case_path(klucz: str) -> Path:
     return _store_dir() / f"{digest}.json"
 
 
-def _load_persisted_enm(klucz: str) -> EnergyNetworkModel | None:
+def _surowa_migawka_z_nosnika(klucz: str) -> dict[str, Any] | None:
     path = _case_path(klucz)
     if not path.exists():
         return None
@@ -150,12 +151,30 @@ def _load_persisted_enm(klucz: str) -> EnergyNetworkModel | None:
     if not isinstance(payload, dict):
         return None
     snapshot = payload.get("snapshot")
-    if not isinstance(snapshot, dict):
+    return snapshot if isinstance(snapshot, dict) else None
+
+
+def _load_persisted_enm(klucz: str) -> EnergyNetworkModel | None:
+    snapshot = _surowa_migawka_z_nosnika(klucz)
+    if snapshot is None:
         return None
     try:
         return EnergyNetworkModel.model_validate(snapshot)
     except ValueError:
         return None
+
+
+def _raport_migracji_uziemienia_z_nosnika(klucz: str) -> RaportMigracjiUziemienia | None:
+    """W5-A: co migracja uziemienia (walidator modelu) zrobiła z migawką z nośnika.
+
+    Sama migracja biegnie w `EnergyNetworkModel` (jedno miejsce dla każdej drogi
+    wczytania); magazyn liczy raport z TEJ SAMEJ surowej migawki, żeby utratę
+    (np. `Bus.grounding` bez źródła) nazwać w dzienniku zmian, a nie zgubić cicho.
+    """
+    snapshot = _surowa_migawka_z_nosnika(klucz)
+    if snapshot is None:
+        return None
+    return raport_migracji_uziemienia(snapshot, uklady_nn=UKLADY_SIECI_NN)
 
 
 def _persist_enm(klucz: str, enm: EnergyNetworkModel) -> None:
@@ -233,9 +252,11 @@ def _get_enm_pod_blokada(klucz: str) -> EnergyNetworkModel:
     # tworzy model domyslny, migruje format i uzupelnia dane katalogowe, a wynik
     # ZAPISUJE (`set_enm` nizej). Bez blokady dwa rownolegle odczyty swiezego
     # przypadku utworzylyby dwa rozne modele domyslne.
+    raport_uziemienia: RaportMigracjiUziemienia | None = None
     if klucz not in _enm_store:
         persisted = _load_persisted_enm(klucz)
         if persisted is not None:
+            raport_uziemienia = _raport_migracji_uziemienia_z_nosnika(klucz)
             _enm_store[klucz] = persisted
             _uzgodnij_po_wczytaniu(klucz, persisted)
         else:
@@ -265,6 +286,20 @@ def _get_enm_pod_blokada(klucz: str) -> EnergyNetworkModel:
         _enm_store[klucz] = zmigrowany_nn
 
     completed, changed = complete_catalog_defaults(_enm_store[klucz])
+    # W5-A: migracja uziemienia do jednej reprezentacji wykonała się w walidatorze
+    # modelu przy wczytaniu; tu jej skutek trafia do dziennika zmian jako rewizja z
+    # nazwanym opisem (przeniesione / UTRACONE / usunięte klucze meta), a utrata
+    # dodatkowo do logu — model po migracji jest ZAPISYWANY, więc biegnie raz.
+    if raport_uziemienia is not None and raport_uziemienia.zmieniono:
+        if raport_uziemienia.utracone:
+            logger.warning(
+                "migracja_uziemienia klucz=%s UTRACONE=%s", klucz, raport_uziemienia.utracone
+            )
+        return set_enm(
+            klucz,
+            completed,
+            zrodlo_zmiany=ZrodloZmiany(operacja=None, opis_pl=raport_uziemienia.opis_pl()),
+        )
     if changed or zmieniona_nazwa or zmieniona_promocja_nn:
         return set_enm(klucz, completed)
     return _enm_store[klucz]

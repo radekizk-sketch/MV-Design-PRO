@@ -828,6 +828,10 @@ class CableType:
     r0_ohm_per_km: float | None = None
     x0_ohm_per_km: float | None = None
     b0_siemens_per_km: float | None = None
+    # W5-A (F9): uklad uziemienia ekranu, dla ktorego producent podal r0/x0
+    # (`single_end` / `both_ends` / `cross_bonded`). None = producent nie podal —
+    # walidator W-W5-01 nazywa to przy zadeklarowanym `Cable.screen_bonding`.
+    z0_reference_bonding: str | None = None
     max_temperature_c: float = 90.0
     # Karta F-K1 faza 6: temperatura GRANICZNA zyly przy zwarciu [°C]. Razem z
     # `max_temperature_c` (temperatura robocza) tworzy pare, ktora uzasadnia
@@ -941,6 +945,7 @@ class CableType:
             "r0_ohm_per_km": self.r0_ohm_per_km,
             "x0_ohm_per_km": self.x0_ohm_per_km,
             "b0_siemens_per_km": self.b0_siemens_per_km,
+            "z0_reference_bonding": self.z0_reference_bonding,
             "max_temperature_c": self.max_temperature_c,
             "short_circuit_temperature_c": self.short_circuit_temperature_c,
             "number_of_cores": self.number_of_cores,
@@ -1004,6 +1009,11 @@ class CableType:
             b0_siemens_per_km=(
                 float(data["b0_siemens_per_km"])
                 if data.get("b0_siemens_per_km") is not None
+                else None
+            ),
+            z0_reference_bonding=(
+                str(data["z0_reference_bonding"])
+                if data.get("z0_reference_bonding") is not None
                 else None
             ),
             max_temperature_c=wymagany_float(data, "max_temperature_c", context="CableType"),
@@ -1085,7 +1095,9 @@ class TransformerType:
     # zmienia wynik jakościowo, nie tylko ilościowo). Konsument grupy
     # (składowa zerowa) przy `None` zgłasza BLOCKER
     # `transformer.vector_group_missing` dla analiz doziemnych/niesymetrycznych.
-    vector_group: str | None = "Dyn11"
+    # W5-A (F-4/G6): domyślne "Dyn11" SKASOWANE także dla konstrukcji bezpośredniej
+    # — rekord katalogu deklaruje grupę ze słownika IEC 60076-1 albo jej nie ma.
+    vector_group: str | None = None
     cooling_class: str | None = None
     tap_min: int = -5
     tap_max: int = 5
@@ -3643,7 +3655,6 @@ class SourceSystemType:
     sk3_min_mva: float | None = None
     ik3_min_ka: float | None = None
     rx_ratio_min: float | None = None
-    earthing_system: str | None = None
     short_circuit_model: str = "short_circuit_power"
     operator_name: str | None = None
     supply_role: str | None = None
@@ -3668,7 +3679,6 @@ class SourceSystemType:
             "sk3_min_mva": self.sk3_min_mva,
             "ik3_min_ka": self.ik3_min_ka,
             "rx_ratio_min": self.rx_ratio_min,
-            "earthing_system": self.earthing_system,
             "short_circuit_model": self.short_circuit_model,
             "operator_name": self.operator_name,
             "supply_role": self.supply_role,
@@ -3701,7 +3711,6 @@ class SourceSystemType:
             rx_ratio_min=(
                 float(data["rx_ratio_min"]) if data.get("rx_ratio_min") is not None else None
             ),
-            earthing_system=data.get("earthing_system"),
             short_circuit_model=str(data.get("short_circuit_model", "short_circuit_power")),
             operator_name=data.get("operator_name"),
             supply_role=data.get("supply_role"),

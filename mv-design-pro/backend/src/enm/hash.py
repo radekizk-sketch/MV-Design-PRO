@@ -59,18 +59,47 @@ _ELEMENT_KEYS = (
 _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
     # CV-4.3 K7: dane zwarciowe scenariusza MIN zrodla sieciowego (IEC 60909-0 eq. 6 z c_min).
     # + napięcie zadane szyny bilansującej (bliźniaki literatury ze slackiem ≠ 1,0 p.u.).
-    "sources": ("sk3_min_mva", "ik3_min_ka", "rx_ratio_min", "u_set_pu"),
+    # + W5-A: opis punktu neutralnego sieci SN zasilanej z równoważnika (jedyny
+    # nośnik po kasacji `Bus.grounding`; migawki bez opisu haszują jak przed kartą).
+    "sources": ("sk3_min_mva", "ik3_min_ka", "rx_ratio_min", "u_set_pu", "neutral_grounding"),
     # Karta W5-D (F-1): fazy przylaczenia odbioru. `None` = odbior trojfazowy
     # symetryczny (jedyne znaczenie, jakie `Load` mial przed karta) — poza odciskiem;
     # wskazana faza zmienia wynik rozplywu niesymetrycznego, wiec zmienia odcisk.
     "loads": ("phases",),
+    # W5-A: układ sieci nN typowany na transformatorze (w miejsce
+    # dawnego klucza meta stacji) i układ uziemienia ekranu kabla.
+    "transformers": ("lv_earthing_system",),
+    "branches": ("screen_bonding",),
 }
+
+#: W5-A: pola SKASOWANE z modelu, ktore odcisk ZACHOWUJE jako `null`. Przed kasacja
+#: `model_dump` wypisywal `"grounding": null` na KAZDEJ szynie i ten `null` wchodzil
+#: do odcisku; zniknięcie klucza zmieniloby odcisk kazdej migawki z szyna, a rewizje
+#: (`enm/rewizje.py`) weryfikuja tresc hashem — cala historia stalaby sie
+#: „uszkodzona". Odciski modeli sa zamrozone (Determinism Rule), wiec kanoniczna
+#: postac elementu pod hash niesie skasowany klucz jako `null`. Szyna, ktora MIALA
+#: wartosc, zmienia odcisk (wartosc przeniesiona na `Source.neutral_grounding`) —
+#: to zmiana swiadoma, nazwana w raporcie migracji (`enm/uziemienie.py`).
+#: Przypiete testem `tests/enm/test_hash_w5_uziemienie.py`.
+_POLA_SKASOWANE_W_ODCISKU: dict[str, tuple[str, ...]] = {"buses": ("grounding",)}
+
+
+def _postac_kanoniczna_elementu(item: dict[str, Any], key: str) -> None:
+    """JEDNA regula postaci elementu pod odcisk (trzy hashe pelne + semantyczny):
+    bez `id`, bez pol addytywnych o wartosci `None`, ze skasowanymi polami jako `null`."""
+    item.pop("id", None)
+    for pole in _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE.get(key, ()):
+        if pole in item and item[pole] is None:
+            del item[pole]
+    for pole in _POLA_SKASOWANE_W_ODCISKU.get(key, ()):
+        item.setdefault(pole, None)
 
 
 def _strip_uuids(payload: dict[str, Any]) -> dict[str, Any]:
     """Postac kanoniczna elementow pod hash: bez losowych `id` (UUID — `ref_id` jest
-    tozsamoscia) i bez pol addytywnych o wartosci `None`
-    (`_POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE`). JEDYNE miejsce tej reguly — wolaja ja
+    tozsamoscia), bez pol addytywnych o wartosci `None`
+    (`_POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE`) i ze skasowanymi polami jako `null`
+    (`_POLA_SKASOWANE_W_ODCISKU`). JEDYNE miejsce tej reguly — wolaja ja
     `compute_enm_hash`, `_input_payload` i `hash_migawki_enm`, wiec trzy odciski
     nie moga sie rozjechac."""
     # W1: sekcja `katalog_projektu` jest addytywna — brak sekcji i `None` to ten sam
@@ -79,13 +108,9 @@ def _strip_uuids(payload: dict[str, Any]) -> dict[str, Any]:
         payload.pop("katalog_projektu", None)
     for key in _ELEMENT_KEYS:
         if key in payload and isinstance(payload[key], list):
-            pola_gdy_none = _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE.get(key, ())
             for item in payload[key]:
                 if isinstance(item, dict):
-                    item.pop("id", None)
-                    for pole in pola_gdy_none:
-                        if pole in item and item[pole] is None:
-                            del item[pole]
+                    _postac_kanoniczna_elementu(item, key)
     return payload
 
 
@@ -112,7 +137,7 @@ def _strip_keys(payload: dict[str, Any], keys: tuple[str, ...]) -> None:
 
 # semantic_hash: topologia, role, pasma napieciowe, catalog_ref
 # Excluded: parametry obliczeniowe (R/X/B/Z0/Z2), dlugosci, ratingi, switching state
-_SEMANTIC_INCLUDE_BUS = ("ref_id", "name", "voltage_kv", "zone", "grounding")
+_SEMANTIC_INCLUDE_BUS = ("ref_id", "name", "voltage_kv", "zone")
 _SEMANTIC_INCLUDE_BRANCH = (
     "ref_id",
     "name",
@@ -139,6 +164,9 @@ _SEMANTIC_INCLUDE_SOURCE = (
     "catalog_ref",
     "catalog_namespace",
     "gpz_section_id",
+    # W5-A: sposób pracy punktu neutralnego sieci SN jest semantyką sieci (przed
+    # kartą niósł ją klucz `grounding` szyny w tej samej projekcji).
+    "neutral_grounding",
 )
 _SEMANTIC_INCLUDE_GENERATOR = (
     "ref_id",
@@ -181,28 +209,42 @@ _SEMANTIC_INCLUDE_SUBSTATION = (
 )
 
 
-def _project(item: dict[str, Any], include: tuple[str, ...]) -> dict[str, Any]:
-    return {k: item[k] for k in include if k in item}
+def _project(item: dict[str, Any], include: tuple[str, ...], key: str) -> dict[str, Any]:
+    """Projekcja semantyczna elementu + ta sama postac kanoniczna co hashe pelne
+    (W5-A: `Bus.grounding` skasowane → w projekcji jako `null`, jak przed karta;
+    `Source.neutral_grounding` = `None` → poza projekcja, jak kazde pole addytywne)."""
+    wynik = {k: item[k] for k in include if k in item}
+    _postac_kanoniczna_elementu(wynik, key)
+    return wynik
 
 
 def _semantic_payload(enm: EnergyNetworkModel) -> dict[str, Any]:
     raw = enm.model_dump(mode="json", exclude={"header"})
     return {
-        "buses": [_project(b, _SEMANTIC_INCLUDE_BUS) for b in raw.get("buses", [])],
-        "branches": [_project(b, _SEMANTIC_INCLUDE_BRANCH) for b in raw.get("branches", [])],
-        "transformers": [
-            _project(t, _SEMANTIC_INCLUDE_TRANSFORMER) for t in raw.get("transformers", [])
+        "buses": [_project(b, _SEMANTIC_INCLUDE_BUS, "buses") for b in raw.get("buses", [])],
+        "branches": [
+            _project(b, _SEMANTIC_INCLUDE_BRANCH, "branches") for b in raw.get("branches", [])
         ],
-        "sources": [_project(s, _SEMANTIC_INCLUDE_SOURCE) for s in raw.get("sources", [])],
-        "generators": [_project(g, _SEMANTIC_INCLUDE_GENERATOR) for g in raw.get("generators", [])],
-        "loads": [_project(ld, _SEMANTIC_INCLUDE_LOAD) for ld in raw.get("loads", [])],
+        "transformers": [
+            _project(t, _SEMANTIC_INCLUDE_TRANSFORMER, "transformers")
+            for t in raw.get("transformers", [])
+        ],
+        "sources": [
+            _project(s, _SEMANTIC_INCLUDE_SOURCE, "sources") for s in raw.get("sources", [])
+        ],
+        "generators": [
+            _project(g, _SEMANTIC_INCLUDE_GENERATOR, "generators")
+            for g in raw.get("generators", [])
+        ],
+        "loads": [_project(ld, _SEMANTIC_INCLUDE_LOAD, "loads") for ld in raw.get("loads", [])],
         "shunt_capacitors": [
-            _project(sc, _SEMANTIC_INCLUDE_SHUNT_CAPACITOR)
+            _project(sc, _SEMANTIC_INCLUDE_SHUNT_CAPACITOR, "shunt_capacitors")
             for sc in raw.get("shunt_capacitors", [])
         ],
-        "bays": [_project(b, _SEMANTIC_INCLUDE_BAY) for b in raw.get("bays", [])],
+        "bays": [_project(b, _SEMANTIC_INCLUDE_BAY, "bays") for b in raw.get("bays", [])],
         "substations": [
-            _project(s, _SEMANTIC_INCLUDE_SUBSTATION) for s in raw.get("substations", [])
+            _project(s, _SEMANTIC_INCLUDE_SUBSTATION, "substations")
+            for s in raw.get("substations", [])
         ],
     }
 

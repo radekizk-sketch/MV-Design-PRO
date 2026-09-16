@@ -18,6 +18,7 @@ from network_model.pochodne import prad_z_mocy_pozornej_ka
 from pydantic import BaseModel
 
 from .fix_actions import FixAction
+from .grupa_polaczen import GRUPY_POLACZEN_IEC60076, grupa_polaczen_poprawna, parsuj_grupe_polaczen
 from .interlock_rules import earthing_interlock_violation
 from .migrations.nn_field_specs_promocja import (
     META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA,
@@ -50,6 +51,8 @@ from .severity import (
     severity_rank,
 )
 from .topology import derive
+from .uklad_sieci_nn import transformatory_bez_ukladu_nn
+from .uziemienie import blad_konfiguracji_uziemienia, uziemienie_grounded
 from .zrodlo_zwarcie import PASMO_U_SET_PU, dane_zwarciowe_zrodla, u_set_pu_w_pasmie
 
 # V12S-007: voltage band thresholds (kV).
@@ -129,6 +132,8 @@ class ENMValidator:
         self._check_transformer_sn_bay(enm, issues)
         # P0.1 nN (karta P0.1, C §5): topologia obwodow nN — E060-E064/W060/W062
         self._check_nn_topology(enm, issues)
+        # W5-A: jedna reprezentacja uziemienia — E-W5-01..03, W-W5-01
+        self._check_uziemienie_w5(enm, issues)
 
         # Deterministic sort: severity_rank → code → first element_ref
         issues.sort(
@@ -1816,6 +1821,214 @@ class ENMValidator:
     # P0.1 nN: topologia obwodow nN (E060-E064, W060, W062)
     # ------------------------------------------------------------------
 
+    def _check_uziemienie_w5(self, enm: EnergyNetworkModel, issues: list[ValidationIssue]) -> None:
+        """W5-A: spojnosc jednej reprezentacji uziemienia punktu neutralnego.
+
+        E-W5-01 - konfiguracja punktu neutralnego niespojna z fizyka, ktora ja
+               czyta (JEDEN predykat `enm/uziemienie.py`, ten sam co operacje
+               domenowe i model skladowej zerowej): rezystor bez R_N, dlawik bez
+               X_N (zrodlo, hv_neutral, lv_neutral); zrodlo SN opisane jako
+               `isolated` z podanym SKONCZONYM Z0 (r0/x0 albo z0/z1) — opis i
+               liczby mowia co innego; zrodlo SN opisane jako uziemione bez
+               zadnych liczb Z0 — solver 1F pominalby bocznik zerowy, czyli
+               liczyl siec izolowana wbrew opisowi.
+        E-W5-02 - grupa polaczen transformatora spoza slownika IEC 60076-1
+               (`enm/grupa_polaczen.py`; ten sam slownik czyta OpenAPI i front).
+        E-W5-03 - uziemienie (typ uziemiony) na uzwojeniu, ktorego litera grupy nie
+               wyprowadza punktu neutralnego (bez N/n, np. `D`, `Y`, `Z`) — brak
+               fizycznego zacisku do uziemienia; decyzja F-4: litera rozstrzyga.
+        W-W5-01 - kabel z zadeklarowanym ukladem uziemienia ekranu innym niz uklad
+               odniesienia katalogowych r0/x0 (`materialized_params.z0_reference_bonding`)
+               albo katalog bez ukladu odniesienia — skladowa zerowa kabla NIE jest
+               przeliczana (brak geometrii ulozenia), rozjazd jest nazwany.
+        """
+        bus_by_ref = {b.ref_id: b for b in enm.buses}
+
+        def _fix(ref: str, modal: str, pole: str) -> FixAction:
+            return FixAction(
+                action_type="OPEN_MODAL",
+                element_ref=ref,
+                modal_type=modal,
+                payload_hint={"required": pole},
+            )
+
+        # --- zrodla: Source.neutral_grounding vs r0/x0 | z0_z1 ---------------
+        for source in enm.sources:
+            cfg = source.neutral_grounding
+            if cfg is None:
+                continue
+            blad = blad_konfiguracji_uziemienia(cfg.type, cfg.r_ohm, cfg.x_ohm)
+            if blad is not None:
+                issues.append(
+                    ValidationIssue(
+                        code="E-W5-01",
+                        severity=SEVERITY_BLOCKER,
+                        message_pl=f"Zrodlo '{source.ref_id}': {blad}.",
+                        element_refs=[source.ref_id],
+                        wizard_step_hint="K1",
+                        suggested_fix="Uzupelnij impedancje punktu neutralnego zrodla.",
+                        fix_action=_fix(source.ref_id, "SourceModal", "neutral_grounding"),
+                    )
+                )
+                continue
+            bus = bus_by_ref.get(source.bus_ref)
+            po_stronie_sn = (
+                source.source_side != "HV_110"
+                and bus is not None
+                and _voltage_band(bus.voltage_kv) == "SN"
+            )
+            if not po_stronie_sn:
+                continue
+            ma_z0 = (
+                source.r0_ohm is not None
+                or source.x0_ohm is not None
+                or source.z0_z1_ratio is not None
+            )
+            if cfg.type == "isolated" and ma_z0:
+                issues.append(
+                    ValidationIssue(
+                        code="E-W5-01",
+                        severity=SEVERITY_BLOCKER,
+                        message_pl=(
+                            f"Zrodlo '{source.ref_id}': punkt neutralny opisany jako izolowany, "
+                            "a podano skonczona impedancje zerowa (r0/x0 albo z0/z1) — opis i "
+                            "liczby sa sprzeczne (siec izolowana nie ma bocznika zerowego)."
+                        ),
+                        element_refs=[source.ref_id],
+                        wizard_step_hint="K1",
+                        suggested_fix=(
+                            "Usun r0/x0 (z0/z1) zrodla albo zmien typ punktu neutralnego."
+                        ),
+                        fix_action=_fix(source.ref_id, "SourceModal", "neutral_grounding"),
+                    )
+                )
+            elif uziemienie_grounded(cfg.type) and not ma_z0:
+                issues.append(
+                    ValidationIssue(
+                        code="E-W5-01",
+                        severity=SEVERITY_BLOCKER,
+                        message_pl=(
+                            f"Zrodlo '{source.ref_id}': punkt neutralny opisany jako uziemiony "
+                            f"({cfg.type}), a zrodlo nie ma impedancji zerowej (r0/x0 albo z0/z1) — "
+                            "zwarcie 1F liczyloby siec bez bocznika zerowego zrodla, wbrew opisowi."
+                        ),
+                        element_refs=[source.ref_id],
+                        wizard_step_hint="K1",
+                        suggested_fix=(
+                            "Podaj r0/x0 (z0/z1) zrodla albo zbuduj GPZ kreatorem z transformatorem "
+                            "WN/SN — Z0 zostanie wyprowadzone z opisu punktu neutralnego."
+                        ),
+                        fix_action=_fix(source.ref_id, "SourceModal", "zero_sequence"),
+                    )
+                )
+
+        # --- transformatory: grupa polaczen, punkty neutralne -----------------
+        for trafo in enm.transformers:
+            grupa = None
+            if trafo.vector_group is not None:
+                if not grupa_polaczen_poprawna(trafo.vector_group):
+                    issues.append(
+                        ValidationIssue(
+                            code="E-W5-02",
+                            severity=SEVERITY_BLOCKER,
+                            message_pl=(
+                                f"Transformator '{trafo.ref_id}': grupa polaczen "
+                                f"'{trafo.vector_group}' spoza slownika IEC 60076-1 "
+                                f"({len(GRUPY_POLACZEN_IEC60076)} grup)."
+                            ),
+                            element_refs=[trafo.ref_id],
+                            wizard_step_hint="K6",
+                            suggested_fix="Wybierz grupe polaczen ze slownika IEC 60076-1.",
+                            fix_action=_fix(trafo.ref_id, "TransformerModal", "vector_group"),
+                        )
+                    )
+                else:
+                    grupa = parsuj_grupe_polaczen(trafo.vector_group)
+            for strona, cfg, pole in (
+                ("gornego (SN/WN)", trafo.hv_neutral, "hv_neutral"),
+                ("dolnego (nN/SN)", trafo.lv_neutral, "lv_neutral"),
+            ):
+                if cfg is None:
+                    continue
+                blad = blad_konfiguracji_uziemienia(cfg.type, cfg.r_ohm, cfg.x_ohm)
+                if blad is not None:
+                    issues.append(
+                        ValidationIssue(
+                            code="E-W5-01",
+                            severity=SEVERITY_BLOCKER,
+                            message_pl=(
+                                f"Transformator '{trafo.ref_id}', punkt neutralny uzwojenia "
+                                f"{strona}: {blad}."
+                            ),
+                            element_refs=[trafo.ref_id],
+                            wizard_step_hint="K6",
+                            suggested_fix="Uzupelnij impedancje punktu neutralnego.",
+                            fix_action=_fix(trafo.ref_id, "TransformerModal", pole),
+                        )
+                    )
+                    continue
+                if grupa is None or not uziemienie_grounded(cfg.type):
+                    continue
+                punkt_dostepny = (
+                    grupa.gn_punkt_neutralny if pole == "hv_neutral" else grupa.dn_punkt_neutralny
+                )
+                litera = grupa.gn_typ if pole == "hv_neutral" else grupa.dn_typ
+                if not punkt_dostepny:
+                    issues.append(
+                        ValidationIssue(
+                            code="E-W5-03",
+                            severity=SEVERITY_BLOCKER,
+                            message_pl=(
+                                f"Transformator '{trafo.ref_id}': uziemienie ({cfg.type}) "
+                                f"uzwojenia {strona}, ktorego litera grupy '{litera}' "
+                                f"({trafo.vector_group}) nie wyprowadza punktu neutralnego — "
+                                "brak zacisku N do uziemienia."
+                            ),
+                            element_refs=[trafo.ref_id],
+                            wizard_step_hint="K6",
+                            suggested_fix=(
+                                "Wybierz grupe z wyprowadzonym punktem neutralnym (YN/yn/ZN/zn) "
+                                "albo usun konfiguracje uziemienia tej strony."
+                            ),
+                            fix_action=_fix(trafo.ref_id, "TransformerModal", pole),
+                        )
+                    )
+
+        # --- kable: uklad uziemienia ekranu vs uklad odniesienia katalogu -----
+        for branch in enm.branches:
+            if not isinstance(branch, Cable) or branch.screen_bonding is None:
+                continue
+            params = (
+                branch.materialized_params if isinstance(branch.materialized_params, dict) else {}
+            )
+            odniesienie = params.get("z0_reference_bonding")
+            if odniesienie == branch.screen_bonding:
+                continue
+            issues.append(
+                ValidationIssue(
+                    code="W-W5-01",
+                    severity=SEVERITY_IMPORTANT,
+                    message_pl=(
+                        f"Kabel '{branch.ref_id}': zadeklarowany uklad uziemienia ekranu "
+                        f"'{branch.screen_bonding}' "
+                        + (
+                            f"rozni sie od ukladu odniesienia katalogowych r0/x0 '{odniesienie}'"
+                            if odniesienie is not None
+                            else "bez ukladu odniesienia katalogowych r0/x0 (typ nie deklaruje "
+                            "z0_reference_bonding)"
+                        )
+                        + " — skladowa zerowa kabla nie jest przeliczana; wynik 1F/2FG "
+                        "obowiazuje dla ukladu odniesienia."
+                    ),
+                    element_refs=[branch.ref_id],
+                    wizard_step_hint="K3",
+                    suggested_fix=(
+                        "Dobierz typ kabla z r0/x0 dla tego ukladu ekranu albo zmien deklaracje."
+                    ),
+                    fix_action=_fix(branch.ref_id, "BranchModal", "screen_bonding"),
+                )
+            )
+
     def _check_nn_topology(self, enm: EnergyNetworkModel, issues: list[ValidationIssue]) -> None:
         """P0.1 nN (karta P0.1; C §5; D LV-INV-01/03/11/12).
 
@@ -1836,9 +2049,11 @@ class ENMValidator:
                grupuje CALE pasmo „nN" (<1 kV) jako JEDNO pasmo (0,4 kV i 0,69 kV
                nalezą do tego samego pasma), wiec nie wykrywa mieszania
                poziomow WEWNATRZ pasma (LV-INV-11).
-        E063 - stacja zasilajaca odbiory nN, ktora nie deklaruje ukladu
-               uziemienia sieci nN (meta.nn_earthing_system) — wymagane dla
-               kryterium SWZ/ochrony przeciwporazeniowej (IEC 60364-4-41).
+        E063 - transformator SN/nN stacji zasilajacej odbiory/generatory nN bez
+               ukladu uziemienia sieci nN (`Transformer.lv_earthing_system`, W5-A
+               §1 p. 2 — JEDEN predykat `enm/uklad_sieci_nn.py`, ten sam co
+               ELIG_FLNN_MISSING_EARTHING_SYSTEM) — wymagane dla kryterium
+               SWZ/ochrony przeciwporazeniowej (IEC 60364-4-41).
         E064 - ProtectionAssignment.breaker_ref wskazuje galaz, ktorej NIE MA w
                modelu (LV-INV-03 — zabezpieczenie musi byc fizycznie w torze;
                kontrola ogolna, nie ograniczona do pasma nN — dowolna dolaczajaca
@@ -2019,34 +2234,25 @@ class ENMValidator:
                 )
             )
 
-        # --- E063: uklad uziemienia sieci nN stacji z odbiorami nN ------------
-        for sub in enm.substations:
-            bus_refs_stacji = set(sub.bus_refs)
-            ma_odbior_nn = any(
-                load.bus_ref in bus_refs_stacji and _bus_w_pasmie_nn(load.bus_ref)
-                for load in enm.loads
-            )
-            if not ma_odbior_nn:
-                continue
-            sub_meta = sub.meta if isinstance(sub.meta, dict) else {}
-            if sub_meta.get("nn_earthing_system"):
-                continue
+        # --- E063: uklad uziemienia sieci nN transformatora stacji z odbiorami nN
+        for sub, trafo in transformatory_bez_ukladu_nn(enm):
             issues.append(
                 ValidationIssue(
                     code="E063",
                     severity=SEVERITY_BLOCKER,
                     message_pl=(
-                        f"Stacja '{sub.ref_id}' zasila odbiory nN, ale nie deklaruje "
-                        f"ukladu uziemienia sieci nN (meta.nn_earthing_system)."
+                        f"Transformator '{trafo.ref_id}' stacji '{sub.ref_id}' zasila "
+                        f"odbiory nN, ale nie deklaruje ukladu uziemienia sieci nN "
+                        f"(lv_earthing_system)."
                     ),
-                    element_refs=[sub.ref_id],
+                    element_refs=[trafo.ref_id, sub.ref_id],
                     wizard_step_hint="K6",
                     suggested_fix=("Wybierz uklad uziemienia sieci nN (TN-S/TN-C/TN-C-S/TT/IT)."),
                     fix_action=FixAction(
                         action_type="OPEN_MODAL",
-                        element_ref=sub.ref_id,
-                        modal_type="SubstationModal",
-                        payload_hint={"required": "nn_earthing_system"},
+                        element_ref=trafo.ref_id,
+                        modal_type="TransformerModal",
+                        payload_hint={"required": "lv_earthing_system"},
                     ),
                 )
             )

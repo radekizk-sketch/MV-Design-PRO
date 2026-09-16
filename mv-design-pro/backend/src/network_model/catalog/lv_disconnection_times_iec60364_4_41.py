@@ -24,7 +24,7 @@ nigdzie modelowana) — uproszczenie JAWNE, udokumentowane tu i w
 
 STATUS: TN — używane przez moduł SWZ (fault_loop solver obsługuje wyłącznie
 TN-S/TN-C-S/TN-C, zob. ``application/analyses/fault_loop/service.py::
-_NON_TN_SYSTEMS``). TT — tabela KOMPLETNA (struktura + dane niezależnie od
+układy TT/IT (`solver_input.uklad_sieci_nn.uklad_tn`)``). TT — tabela KOMPLETNA (struktura + dane niezależnie od
 użycia, zgodnie z zasadą rejestru G), ale NIE jest jeszcze czytana przez
 werdykt SWZ (pętla TT wymaga innej fizyki — RA·IΔn, nie pętli L-PE/L-PEN;
 luka G-12, P1). Odczyt tabeli TT bez solvera TT byłby fasadą — dlatego
