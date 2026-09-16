@@ -382,6 +382,7 @@ export async function fetchConverterTypes(): Promise<ConverterType[]> {
       pmax_mw: item.p_max_kw / 1000,
       cosphi_min: item.cos_phi_min,
       cosphi_max: item.cos_phi_max,
+      k_sc: item.k_sc ?? null,
       // Certyfikat PTPiREE — z rekordu katalogowego (backend annotate_with_ptpiree_status)
       // → materialized_params + ocena zgodności NC RfG. Bez tego link certyfikatu ginął.
       ptpiree_status: item.ptpiree_status,
@@ -403,6 +404,7 @@ export async function fetchConverterTypes(): Promise<ConverterType[]> {
       sn_mva: (item.s_n_kva ?? Math.max(item.p_charge_kw, item.p_discharge_kw)) / 1000,
       pmax_mw: item.p_discharge_kw / 1000,
       e_kwh: item.e_kwh,
+      k_sc: item.k_sc ?? null,
       ptpiree_status: item.ptpiree_status,
       ptpiree_certificate_ref: item.ptpiree_certificate_ref ?? null,
       ptpiree_document_number: item.ptpiree_document_number ?? null,

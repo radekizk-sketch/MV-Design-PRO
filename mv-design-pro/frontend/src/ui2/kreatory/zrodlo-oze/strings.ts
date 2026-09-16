@@ -72,6 +72,8 @@ export const OZE_STRINGS = {
   // O7: jawna semantyka liczby jednostek — zestaw i suma mocy pozornej z tabliczki.
   paramZestaw: 'Zestaw jednostek',
   paramMocAgregat: 'Moc pozorna S (agregat)',
+  paramKsc: 'k_sc (udział zwarciowy)',
+  paramKscBrak: 'brak — wprowadź z karty producenta',
   ptpireeTytul: 'Certyfikat PTPiREE',
   ptpireeBrak: 'Falownik bez powiązanego certyfikatu PTPiREE — ocena zgodności NC RfG wymaga uzupełnienia.',
 

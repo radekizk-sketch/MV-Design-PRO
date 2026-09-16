@@ -37,6 +37,7 @@ interface ConverterFixture {
   readonly control_mode?: string;
   readonly qmin_mvar?: number;
   readonly qmax_mvar?: number;
+  readonly k_sc?: number | null;
 }
 
 // Karta FAB-J: krzywe P(f) fikstury reprezentują ich REALNY zapis (audit2
@@ -1039,6 +1040,31 @@ describe('Katalog urządzeń DER — wyłącznie z backendu, zero listy zastępc
     // `PV_INVERTER_CATALOG` USUNIĘTY z `catalogs.ts` (karta FAB-J) — rozjazd
     // strukturalnie niemożliwy; sprawdzamy mimo to prefiks jego dawnych id.
     expect(container.innerHTML).not.toContain('pv_inv_');
+  });
+
+  it('karta S-2 AUTORYTET: k_sc z karty producenta pokazany wprost w szczegółach urządzenia, brak deklaracji pokazuje jawny stan „brak"', async () => {
+    const zKsc = [
+      { id: 'conv-pv-ksc-a', name: 'Konwerter z k_sc', kind: 'PV' as const, un_kv: 0.4, pmax_mw: 0.1, sn_mva: 0.1, manufacturer: 'TestCo', k_sc: 1.15 },
+      { id: 'conv-pv-ksc-b', name: 'Konwerter bez k_sc', kind: 'PV' as const, un_kv: 0.4, pmax_mw: 0.1, sn_mva: 0.1, manufacturer: 'TestCo' },
+    ];
+    render(
+      <AddDerWizard isOpen stationId="s" stationName="S" derKind="PV" projectId="p" onClose={vi.fn()} />,
+      { PV: zKsc, BESS: [], WIND: [] },
+    );
+    fireEvent.click(screen.getByTestId('variant-nN'));
+    fireEvent.click(screen.getByTestId('add-der-next'));
+    fireEvent.click(screen.getByTestId('add-der-next'));
+    await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
+
+    fireEvent.change(screen.getByTestId('add-der-device'), { target: { value: 'conv-pv-ksc-a' } });
+    await waitFor(() => expect(screen.getByTestId('add-der-device-details')).toBeInTheDocument());
+    expect(screen.getByTestId('add-der-device-details')).toHaveTextContent('1.15');
+
+    fireEvent.change(screen.getByTestId('add-der-device'), { target: { value: 'conv-pv-ksc-b' } });
+    await waitFor(() =>
+      expect(screen.getByTestId('add-der-device-details')).toHaveTextContent(
+        'brak — wprowadź z karty producenta',
+      ));
   });
 
   it('zmiana technologii po wyborze urządzenia: wybór wyczyszczony, lista nowej technologii, zero wycieku poprzedniej', async () => {

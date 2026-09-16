@@ -688,6 +688,14 @@ export function KreatorZrodlaOze() {
           etykieta={T.paramPmax}
           wartosc={`${(wybranyKonwerter.pmax_mw * liczbaJednostek).toFixed(3)} MW`}
         />
+        <RzadWartosci
+          etykieta={T.paramKsc}
+          wartosc={
+            typeof wybranyKonwerter.k_sc === 'number' && Number.isFinite(wybranyKonwerter.k_sc)
+              ? wybranyKonwerter.k_sc.toFixed(2)
+              : T.paramKscBrak
+          }
+        />
       </KreatorSiatka>
     </>
   ) : null;

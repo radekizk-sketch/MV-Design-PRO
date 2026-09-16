@@ -126,6 +126,12 @@ export interface ConverterType extends CatalogType {
   qmax_mvar?: number;
   cosphi_min?: number;
   cosphi_max?: number;
+  /**
+   * Wspolczynnik udzialu zwarciowego z karty producenta (Ik = k_sc * In, IEC 60909-0).
+   * `null`/brak = domyslka systemowa 1.1 (karta S-2 AUTORYTET) — wynik zwarciowy
+   * oparty na domyslce NIE jest miarodajny dla doboru aparatury/nastaw/dowodu.
+   */
+  k_sc?: number | null;
   e_kwh?: number;
   model?: string;
   control_mode?: string | null;
@@ -336,6 +342,7 @@ export interface PVInverterCatalogType extends CatalogType {
   voltage_lv_kv?: number;
   cos_phi_min?: number;
   cos_phi_max?: number;
+  k_sc?: number | null;
   control_mode?: string;
   grid_code?: string;
   dynamic_profile_id?: string | null;
@@ -358,6 +365,7 @@ export interface BESSInverterCatalogType extends CatalogType {
   p_charge_kw: number;
   p_discharge_kw: number;
   e_kwh: number;
+  k_sc?: number | null;
   s_n_kva?: number;
   un_kv?: number;
   u_n_kv?: number;

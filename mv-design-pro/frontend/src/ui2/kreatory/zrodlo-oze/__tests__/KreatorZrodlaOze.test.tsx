@@ -319,6 +319,30 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     expect(closeFormMock).toHaveBeenCalled();
   });
 
+  it('karta S-2 AUTORYTET: k_sc z karty producenta pokazany wprost w kroku katalogu, brak deklaracji pokazuje jawny stan „brak"', async () => {
+    fetchConverterTypesMock.mockResolvedValue([
+      { ...DOMYSLNE_KONWERTERY[0], id: 'conv-pv-ksc-a', k_sc: 1.15 },
+      { ...DOMYSLNE_KONWERTERY[0], id: 'conv-pv-ksc-b', k_sc: null },
+    ]);
+    render(<KreatorZrodlaOze />);
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await waitFor(() => {
+      expect(screen.getByTestId('mvd-kreator-oze-konwerter')).toBeInTheDocument();
+    });
+
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-konwerter'), 'conv-pv-ksc-a');
+    await waitFor(() => {
+      expect(screen.getByTestId('mvd-kreator-oze-katalog')).toHaveTextContent('1.15');
+    });
+
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-konwerter'), 'conv-pv-ksc-b');
+    await waitFor(() => {
+      expect(screen.getByTestId('mvd-kreator-oze-katalog')).toHaveTextContent(
+        'brak — wprowadź z karty producenta',
+      );
+    });
+  });
+
   it('po zapisie renderuje raport zgodności i BOM z backendu 1:1 (D4 wymaganie 13+BOM)', async () => {
     executeDomainOperationMock.mockResolvedValue({ error: null });
     uruchomAutoBiegMock.mockResolvedValue('DONE');

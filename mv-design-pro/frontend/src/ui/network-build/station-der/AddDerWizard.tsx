@@ -88,6 +88,12 @@ type DerDeviceCatalogItem = {
   readonly qmax_mvar?: number | null;
   readonly cosphi_min?: number | null;
   readonly cosphi_max?: number | null;
+  /**
+   * Wspolczynnik udzialu zwarciowego z karty producenta (Ik = k_sc * In, IEC 60909-0).
+   * `null` = brak deklaracji → domyslka systemowa 1.1 (karta S-2 AUTORYTET); wynik
+   * zwarciowy oparty na domyslce NIE jest miarodajny dla doboru aparatury.
+   */
+  readonly k_sc?: number | null;
   readonly e_kwh?: number | null;
   readonly control_mode?: string | null;
   readonly grid_code?: string | null;
@@ -506,6 +512,7 @@ function mapBackendConverterToDerDevice(item: ConverterType): DerDeviceCatalogIt
     qmax_mvar: item.qmax_mvar ?? null,
     cosphi_min: item.cosphi_min ?? null,
     cosphi_max: item.cosphi_max ?? null,
+    k_sc: item.k_sc ?? null,
     e_kwh: item.e_kwh ?? null,
     control_mode: item.control_mode ?? null,
     grid_code: item.grid_code ?? null,
@@ -2022,6 +2029,14 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                     <CatalogMetric label="Sn" value={selectedDevice.s_n_kva ? formatKva(selectedDevice.s_n_kva) : '-'} />
                     <CatalogMetric label="Q min/max" value={`${formatMvar(selectedDevice.qmin_mvar)} / ${formatMvar(selectedDevice.qmax_mvar)}`} />
                     <CatalogMetric label="cos phi" value={`${selectedDevice.cosphi_min ?? '-'} / ${selectedDevice.cosphi_max ?? '-'}`} />
+                    <CatalogMetric
+                      label="k_sc (udział zwarciowy)"
+                      value={
+                        typeof selectedDevice.k_sc === 'number' && Number.isFinite(selectedDevice.k_sc)
+                          ? selectedDevice.k_sc.toFixed(2)
+                          : 'brak — wprowadź z karty producenta'
+                      }
+                    />
                     <CatalogMetric label="Sterowanie" value={selectedDevice.control_mode ?? '-'} />
                     <CatalogMetric label="NC RfG" value={selectedDevice.grid_code ?? '-'} />
                     <CatalogMetric
