@@ -668,6 +668,13 @@ def _gpz_feeder_enm_z_falownikiem() -> EnergyNetworkModel:
     sciezka = BACKEND_DIR.parent / "frontend" / "public" / "test-fixtures" / "gpzFeeder.enm.json"
     surowy = json.loads(sciezka.read_text(encoding="utf-8"))
     enm = EnergyNetworkModel.model_validate(surowy["enm"])
+    # W5-A: transformator zasilajacy odbiory nN musi DEKLAROWAC uklad sieci nN
+    # (walidator E063 blokuje bieg bez niego; fixtura SLD tej deklaracji nie niesie,
+    # bo kanwa nie liczy). Scena harnessu deklaruje jawnie TN-C-S dla kazdego
+    # transformatora SN/nN kopii — to dana wejsciowa sceny, nie domyslka produktu.
+    for transformator in enm.transformers:
+        if transformator.ulv_kv < 1.0 and transformator.lv_earthing_system is None:
+            transformator.lv_earthing_system = "TN-C-S"
     enm.generators = [
         *enm.generators,
         Generator(
