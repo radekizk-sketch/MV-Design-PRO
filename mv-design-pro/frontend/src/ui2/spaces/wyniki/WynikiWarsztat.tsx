@@ -38,8 +38,6 @@ import { EkranZwarc } from '../../wyniki/zwarcia';
 import { jestDawnymHubem } from '../../wyniki/analizy';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
-import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
-import { useStudyCasesStore } from '../../../ui/study-cases/store';
 import {
   EkranFrt,
   EkranKompensacji,
@@ -88,23 +86,6 @@ export interface WynikiWarsztatProps {
   pozostale: ReactNode;
   /** Nawigacja do przestrzeni „Dokumentacja" (pulpit OZE — decyzja AppRoot). */
   onOtworzDokumentacje: () => void;
-}
-
-/** Parametry zwarciowe konfiguracji aktywnego przypadku — tylko gdy aktywny
- * przebieg należy do tego przypadku (uczciwość źródła danych). */
-function useZalozeniaZwarcioweAktywnegoPrzypadku(): {
-  wspolczynnikC?: number;
-  czasCieplnyS?: number;
-} {
-  const activeRunId = useAppStateStore((s) => s.activeRunId);
-  const przebiegi = useExecutionRunsStore((s) => s.runs);
-  const activeCase = useStudyCasesStore((s) => s.activeCase);
-  const przebieg = activeRunId ? przebiegi.find((r) => r.id === activeRunId) : undefined;
-  if (!przebieg || !activeCase || przebieg.study_case_id !== activeCase.id) return {};
-  return {
-    wspolczynnikC: activeCase.config?.c_factor_max ?? undefined,
-    czasCieplnyS: activeCase.config?.thermal_time_seconds ?? undefined,
-  };
 }
 
 /** Porównanie A/B (E12.1) dla aktywnego projektu — bez projektu uczciwy stan pusty. */
@@ -224,7 +205,6 @@ export function WynikiWarsztat({
   useEffect(() => {
     if (!zakladkaDostepna(zakladka, trybZaawansowania)) setZakladkaWybrana('ocena');
   }, [zakladka, trybZaawansowania]);
-  const zalozeniaZwarciowe = useZalozeniaZwarcioweAktywnegoPrzypadku();
 
   // Nawigacja ręczna (klik/klawiatura/2×klik w ekranach jednego przebiegu):
   // wejście na „Dowód obliczeń" bez deep-linku wraca do aktywnego przebiegu —
@@ -368,18 +348,13 @@ export function WynikiWarsztat({
         {/* EKRAN-N1 (D8): powierzchnia zdolności enumeracji kontyngencji N-1 —
             zakres wybiera inżynier, bieg startuje jawnym przyciskiem. */}
         {zakladka === 'kontyngencje' && (
-          <EkranKontyngencji trybZaawansowania={trybZaawansowania} />
+          <EkranKontyngencji trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
         )}
         {zakladka === 'skladowe' && <EkranSkladowych />}
         {zakladka === 'stan-fazowy' && <EkranStanuFazowego />}
         {zakladka === 'stabilnosc' && <EkranStabilnosci />}
         {zakladka === 'zwarcia' && (
-          <EkranZwarc
-            trybZaawansowania={trybZaawansowania}
-            onOtworzDowod={otworzDowod}
-            wspolczynnikC={zalozeniaZwarciowe.wspolczynnikC}
-            czasCieplnyS={zalozeniaZwarciowe.czasCieplnyS}
-          />
+          <EkranZwarc trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
         )}
         {/* K8: dostawca zakładkowy dla wygaszonej trasy mostu #protection-results
             (dawniej: generyczna tabela analityczna powierzchni E-35 bez treści
@@ -422,20 +397,33 @@ export function WynikiWarsztat({
         )}
         {zakladka === 'zdolnosc' && <EkranZdolnosci trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'ranking' && <EkranRankingu trybZaawansowania={trybZaawansowania} />}
-        {zakladka === 'krzywe' && <EkranKrzywych trybZaawansowania={trybZaawansowania} />}
-        {zakladka === 'obszar' && <EkranObszaruPQ trybZaawansowania={trybZaawansowania} />}
-        {zakladka === 'studium' && <KreatorStudium trybZaawansowania={trybZaawansowania} />}
-        {zakladka === 'frt' && <EkranFrt trybZaawansowania={trybZaawansowania} />}
-        {zakladka === 'osd' && <EkranOsd trybZaawansowania={trybZaawansowania} />}
+        {zakladka === 'krzywe' && (
+          <EkranKrzywych trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
+        )}
+        {zakladka === 'obszar' && (
+          <EkranObszaruPQ trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
+        )}
+        {zakladka === 'studium' && (
+          <KreatorStudium trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
+        )}
+        {zakladka === 'frt' && (
+          <EkranFrt trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
+        )}
+        {zakladka === 'osd' && (
+          <EkranOsd trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
+        )}
         {zakladka === 'kompensacja' && (
           <EkranKompensacji
             trybZaawansowania={trybZaawansowania}
             preselekcjaWezla={elementKompensacji}
             onPreselekcjaSkonsumowana={() => setElementKompensacji(null)}
+            onOtworzDowod={otworzDowod}
           />
         )}
         {zakladka === 'wniosek' && <EkranWniosku trybZaawansowania={trybZaawansowania} />}
-        {zakladka === 'lom' && <EkranLom trybZaawansowania={trybZaawansowania} />}
+        {zakladka === 'lom' && (
+          <EkranLom trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
+        )}
         {zakladka === 'pulpit-oze' && (
           <PulpitOze
             trybZaawansowania={trybZaawansowania}

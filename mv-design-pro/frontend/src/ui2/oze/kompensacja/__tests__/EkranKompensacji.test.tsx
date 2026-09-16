@@ -50,7 +50,7 @@ afterEach(() => {
 
 describe('EkranKompensacji — brak przebiegu rozpływu (kryterium 1)', () => {
   it('bez zakończonego rozpływu pokazuje instrukcję, bez formularza i bez wywołania API', () => {
-    render(<EkranKompensacji trybZaawansowania="basic" />);
+    render(<EkranKompensacji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     expect(screen.getByTestId('mvd-komp-brak-przebiegu')).toHaveTextContent(
       'Brak zakończonego przebiegu rozpływu mocy',
     );
@@ -63,14 +63,14 @@ describe('EkranKompensacji — jawny bieg (kryterium 1)', () => {
   beforeEach(ustawGotowyRozplyw);
 
   it('z przebiegiem pokazuje formularz i stan „uruchom", nie woła API przed kliknięciem', () => {
-    render(<EkranKompensacji trybZaawansowania="basic" />);
+    render(<EkranKompensacji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     expect(screen.getByTestId('mvd-komp-parametry')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-komp-idle')).toBeInTheDocument();
     expect(pobierzDobor).not.toHaveBeenCalled();
   });
 
   it('przycisk biegu jest zablokowany bez wyboru węzła', () => {
-    render(<EkranKompensacji trybZaawansowania="basic" />);
+    render(<EkranKompensacji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     expect(screen.getByTestId('mvd-komp-oblicz')).toBeDisabled();
     fireEvent.click(screen.getByTestId('mvd-komp-oblicz'));
     expect(pobierzDobor).not.toHaveBeenCalled();
@@ -78,7 +78,7 @@ describe('EkranKompensacji — jawny bieg (kryterium 1)', () => {
 
   it('po wyborze węzła bieg woła API z przebiegiem, węzłem, domyślnym cosφ (0,95) i bez nocy', async () => {
     pobierzDobor.mockResolvedValue(widokKompensacjiFixture());
-    render(<EkranKompensacji trybZaawansowania="basic" />);
+    render(<EkranKompensacji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     fireEvent.change(screen.getByTestId('mvd-komp-wezel'), { target: { value: 'bus-a' } });
     fireEvent.click(screen.getByTestId('mvd-komp-oblicz'));
     expect(await screen.findByTestId('mvd-komp-wynik')).toBeInTheDocument();
@@ -92,7 +92,7 @@ describe('EkranKompensacji — jawny bieg (kryterium 1)', () => {
 
   it('błąd końcówki → jawny stan błędu z komunikatem PL (detail)', async () => {
     pobierzDobor.mockRejectedValue(new Error('Wskazana szyna punktu przyłączenia nie istnieje w modelu: bus-x.'));
-    render(<EkranKompensacji trybZaawansowania="basic" />);
+    render(<EkranKompensacji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     fireEvent.change(screen.getByTestId('mvd-komp-wezel'), { target: { value: 'bus-a' } });
     fireEvent.click(screen.getByTestId('mvd-komp-oblicz'));
     expect(await screen.findByTestId('mvd-komp-blad')).toHaveTextContent(
@@ -106,7 +106,7 @@ describe('EkranKompensacji — rozdział dwóch cosφ + baseline (wymóg właśc
 
   async function uruchomBieg(widok = widokKompensacjiFixture()) {
     pobierzDobor.mockResolvedValue(widok);
-    render(<EkranKompensacji trybZaawansowania="basic" />);
+    render(<EkranKompensacji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     fireEvent.change(screen.getByTestId('mvd-komp-wezel'), { target: { value: 'bus-a' } });
     fireEvent.click(screen.getByTestId('mvd-komp-oblicz'));
     await screen.findByTestId('mvd-komp-wynik');
@@ -186,7 +186,7 @@ describe('EkranKompensacji — werdykt doboru (kryterium 1.2)', () => {
 
   async function uruchomBieg(widok = widokKompensacjiFixture()) {
     pobierzDobor.mockResolvedValue(widok);
-    render(<EkranKompensacji trybZaawansowania="basic" />);
+    render(<EkranKompensacji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     fireEvent.change(screen.getByTestId('mvd-komp-wezel'), { target: { value: 'bus-a' } });
     fireEvent.click(screen.getByTestId('mvd-komp-oblicz'));
     await screen.findByTestId('mvd-komp-wynik');
@@ -216,7 +216,7 @@ describe('EkranKompensacji — scenariusz nocny (kryterium 1.3)', () => {
 
   it('przełącznik nocny wysyła uwzglednij_noc=true i odsłania kolumny nocne', async () => {
     pobierzDobor.mockResolvedValue(widokNocFixture());
-    render(<EkranKompensacji trybZaawansowania="basic" />);
+    render(<EkranKompensacji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     fireEvent.change(screen.getByTestId('mvd-komp-wezel'), { target: { value: 'bus-a' } });
     fireEvent.click(screen.getByTestId('mvd-komp-noc'));
     fireEvent.click(screen.getByTestId('mvd-komp-oblicz'));
@@ -240,7 +240,7 @@ describe('EkranKompensacji — tryb ekspercki i ślad', () => {
 
   async function uruchomBieg(tryb: 'basic' | 'expert') {
     pobierzDobor.mockResolvedValue(widokKompensacjiFixture());
-    render(<EkranKompensacji trybZaawansowania={tryb} />);
+    render(<EkranKompensacji trybZaawansowania={tryb} onOtworzDowod={vi.fn()} />);
     fireEvent.change(screen.getByTestId('mvd-komp-wezel'), { target: { value: 'bus-a' } });
     fireEvent.click(screen.getByTestId('mvd-komp-oblicz'));
     await screen.findByTestId('mvd-komp-wynik');
@@ -281,7 +281,7 @@ describe('EkranKompensacji — pętla werdykt → kreator kompensatora (K5-A / H
     const { useNetworkBuildStore } = await import('../../../../ui/network-build/networkBuildStore');
     const { useShellStore } = await import('../../../shell/useShellStore');
     pobierzDobor.mockResolvedValue(widokKompensacjiFixture());
-    render(<EkranKompensacji trybZaawansowania="basic" />);
+    render(<EkranKompensacji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     fireEvent.change(screen.getByTestId('mvd-komp-wezel'), { target: { value: 'bus-a' } });
     fireEvent.click(screen.getByTestId('mvd-komp-oblicz'));
     await screen.findByTestId('mvd-komp-wynik');
@@ -307,7 +307,7 @@ describe('EkranKompensacji — pętla werdykt → kreator kompensatora (K5-A / H
 
   it('brak doboru: akcja kreatora nie jest renderowana (zero martwych klików)', async () => {
     pobierzDobor.mockResolvedValue(widokBrakDoboruFixture());
-    render(<EkranKompensacji trybZaawansowania="basic" />);
+    render(<EkranKompensacji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     fireEvent.change(screen.getByTestId('mvd-komp-wezel'), { target: { value: 'bus-a' } });
     fireEvent.click(screen.getByTestId('mvd-komp-oblicz'));
     await screen.findByTestId('mvd-komp-wynik');
@@ -326,6 +326,7 @@ describe('EkranKompensacji — pre-selekcja węzła z deep-linku (R2-B)', () => 
         trybZaawansowania="basic"
         preselekcjaWezla="bus-b"
         onPreselekcjaSkonsumowana={skonsumowano}
+        onOtworzDowod={vi.fn()}
       />,
     );
     // Węzeł z deep-linku wybrany bez ręcznego wyboru; żądanie skonsumowane.
@@ -350,6 +351,7 @@ describe('EkranKompensacji — pre-selekcja węzła z deep-linku (R2-B)', () => 
         trybZaawansowania="basic"
         preselekcjaWezla="bus-x"
         onPreselekcjaSkonsumowana={skonsumowano}
+        onOtworzDowod={vi.fn()}
       />,
     );
     expect(screen.getByTestId('mvd-komp-wezel')).toHaveValue('');
@@ -361,13 +363,23 @@ describe('EkranKompensacji — pre-selekcja węzła z deep-linku (R2-B)', () => 
 
   it('żądanie jednorazowe: po konsumpcji ręczna zmiana węzła nie jest nadpisywana', () => {
     const { rerender } = render(
-      <EkranKompensacji trybZaawansowania="basic" preselekcjaWezla="bus-b" />,
+      <EkranKompensacji
+        trybZaawansowania="basic"
+        preselekcjaWezla="bus-b"
+        onOtworzDowod={vi.fn()}
+      />,
     );
     expect(screen.getByTestId('mvd-komp-wezel')).toHaveValue('bus-b');
     // Inżynier zmienia węzeł natywnie; ponowny render z TYM SAMYM (nieczyszczonym)
     // żądaniem nie może cofnąć ręcznego wyboru.
     fireEvent.change(screen.getByTestId('mvd-komp-wezel'), { target: { value: 'bus-a' } });
-    rerender(<EkranKompensacji trybZaawansowania="basic" preselekcjaWezla="bus-b" />);
+    rerender(
+      <EkranKompensacji
+        trybZaawansowania="basic"
+        preselekcjaWezla="bus-b"
+        onOtworzDowod={vi.fn()}
+      />,
+    );
     expect(screen.getByTestId('mvd-komp-wezel')).toHaveValue('bus-a');
   });
 });

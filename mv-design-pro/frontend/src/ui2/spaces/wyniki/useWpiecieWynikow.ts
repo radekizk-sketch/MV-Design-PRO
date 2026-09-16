@@ -1,8 +1,7 @@
 /**
- * Wpięcie store'ów wyników w nową powłokę (scalenia U3 #1–#2 — zamyka
- * TODO-KARTA E8.1/E8.2 „populacja store'u"): okna wyników (TabelaSzyn,
- * EkranZwarc) czytają store'y wyłącznie do odczytu, a ładowanie danych
- * uruchamia ta warstwa integracyjna — dokładnie te same akcje store'ów,
+ * Wpięcie store'ów wyników w powłokę (scalenia U3 #1–#2): okna wyników
+ * (TabelaSzyn, EkranZwarc) czytają store'y wyłącznie do odczytu, a ładowanie
+ * danych uruchamia ta warstwa integracyjna — dokładnie te same akcje store'ów,
  * które w starym wejściu wołały okna inspektorów:
  * - rozpływ: `selectRun` + `loadResults` (`ui/power-flow-results/store.ts:109-184`),
  * - zwarcia: `selectRun` + `loadShortCircuitResults`

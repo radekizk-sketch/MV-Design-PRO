@@ -2880,25 +2880,11 @@ function Harness() {
   else if (creator === 'rozplyw')
     node = <EkranRozplywu trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
   else if (creator === 'zwarcia')
-    node = (
-      <EkranZwarc
-        trybZaawansowania="expert"
-        onOtworzDowod={() => undefined}
-        wspolczynnikC={1.1}
-        czasCieplnyS={1.0}
-      />
-    );
+    node = <EkranZwarc trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
   else if (creator === 'zwarcia-rozplyw')
     // Karta Z-3: tryb ekspercki — kolumna „źródło" widoczna (rozróżnienie
     // „sieć nadrzędna" vs identyfikator falownika w sekcji RozplywZwarciowy).
-    node = (
-      <EkranZwarc
-        trybZaawansowania="expert"
-        onOtworzDowod={() => undefined}
-        wspolczynnikC={1.0}
-        czasCieplnyS={1.0}
-      />
-    );
+    node = <EkranZwarc trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
   else if (creator === 'porownanie')
     node = <EkranPorownania projektId="proj-demo" trybZaawansowania="expert" />;
   else if (creator === 'kompensacja')
@@ -2911,9 +2897,11 @@ function Harness() {
         trybZaawansowania="expert"
         preselekcjaWezla="bus_sn_b"
         onPreselekcjaSkonsumowana={() => undefined}
+        onOtworzDowod={() => undefined}
       />
     );
-  else if (creator === 'lom') node = <EkranLom trybZaawansowania="expert" />;
+  else if (creator === 'lom')
+    node = <EkranLom trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
   else if (creator === 'wiazania')
     node = (
       <PvSourceSurface
@@ -2937,7 +2925,8 @@ function Harness() {
         }
       />
     );
-  else if (creator === 'frt') node = <EkranFrt trybZaawansowania="expert" />;
+  else if (creator === 'frt')
+    node = <EkranFrt trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
   else if (creator === 'oltc') node = <EkranBadanOltc />;
   else if (creator === 'macierz') node = <MacierzNcRfg trybZaawansowania="expert" />;
   else if (creator === 'koordynacja') node = <EkranKoordynacji />;
@@ -2947,7 +2936,7 @@ function Harness() {
   else if (creator === 'wyniki-stabilnosc') node = <EkranStabilnosci />;
   else if (creator === 'kompensacja-wynik')
     // V-B: bez preselekcji — spec wybiera wezel i klika „Oblicz" natywnie.
-    node = <EkranKompensacji trybZaawansowania="expert" />;
+    node = <EkranKompensacji trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
   else if (creator === 'sila-sieci') node = <SekcjaSilySieci trybEkspercki />;
   else if (creator === 'odbior-zgodnosc')
     node = <EkranOdbioru trybZaawansowania="expert" onOtworzDowod={() => undefined} />;

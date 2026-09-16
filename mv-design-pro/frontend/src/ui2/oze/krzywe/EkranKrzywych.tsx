@@ -107,9 +107,11 @@ function StanPanel({
 function WynikPokrycia({
   dane,
   trybZaawansowania,
+  onOtworzDowod,
 }: {
   dane: WidokPokryciaPQ;
   trybZaawansowania: AdvancementMode;
+  onOtworzDowod: (ref: string) => void;
 }) {
   const trybEkspercki = trybZaawansowania === 'expert';
   const [sladWidoczny, setSladWidoczny] = useState(false);
@@ -178,7 +180,7 @@ function WynikPokrycia({
       <TabelaWynikow
         kolumny={kolumny}
         wiersze={wiersze}
-        onOtworzDowod={() => undefined}
+        onOtworzDowod={onOtworzDowod}
         trybZaawansowania={trybZaawansowania}
       />
 
@@ -419,9 +421,12 @@ function SekcjaWiazanKrzywych() {
 
 export interface EkranKrzywychProps {
   trybZaawansowania: AdvancementMode;
+  /** 2× klik na wartości z dowodem → zakładka „Dowód obliczeń" (realny dostawca
+   * z rodzica, `WynikiWarsztat`), nie zaślepka. */
+  onOtworzDowod: (ref: string) => void;
 }
 
-export function EkranKrzywych({ trybZaawansowania }: EkranKrzywychProps) {
+export function EkranKrzywych({ trybZaawansowania, onOtworzDowod }: EkranKrzywychProps) {
   const [katalog, setKatalog] = useState<StanZasobu<KatalogPQ>>({ rodzaj: 'idle' });
   const [wybranyTyp, setWybranyTyp] = useState('');
   const [wybranyOperator, setWybranyOperator] = useState('');
@@ -600,7 +605,11 @@ export function EkranKrzywych({ trybZaawansowania }: EkranKrzywychProps) {
             />
           ) : (
             <>
-              <WynikPokrycia dane={stan.dane} trybZaawansowania={trybZaawansowania} />
+              <WynikPokrycia
+                dane={stan.dane}
+                trybZaawansowania={trybZaawansowania}
+                onOtworzDowod={onOtworzDowod}
+              />
               {/* Akcja wyjściowa PO biegu — dopiero zweryfikowana krzywa ma
                   sens jako profil zgodności modułu. */}
               <SekcjaWiazanKrzywych />

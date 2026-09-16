@@ -108,9 +108,11 @@ function StanPanel({
 function WynikOsd({
   dane,
   trybZaawansowania,
+  onOtworzDowod,
 }: {
   dane: WidokOdpowiedziOsd;
   trybZaawansowania: AdvancementMode;
+  onOtworzDowod: (ref: string) => void;
 }) {
   const trybEkspercki = trybZaawansowania === 'expert';
   const [sladWidoczny, setSladWidoczny] = useState(false);
@@ -187,7 +189,7 @@ function WynikOsd({
       <TabelaWynikow
         kolumny={kolumny}
         wiersze={wiersze}
-        onOtworzDowod={() => undefined}
+        onOtworzDowod={onOtworzDowod}
         trybZaawansowania={trybZaawansowania}
       />
 
@@ -329,9 +331,12 @@ function SekcjaTrybuPracy({ sourceRef }: { sourceRef: string }) {
 
 export interface EkranOsdProps {
   trybZaawansowania: AdvancementMode;
+  /** 2× klik na wartości z dowodem → zakładka „Dowód obliczeń" (realny dostawca
+   * z rodzica, `WynikiWarsztat`), nie zaślepka. */
+  onOtworzDowod: (ref: string) => void;
 }
 
-export function EkranOsd({ trybZaawansowania }: EkranOsdProps) {
+export function EkranOsd({ trybZaawansowania, onOtworzDowod }: EkranOsdProps) {
   const runs = useExecutionRunsStore((s) => s.runs);
   const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
   const runId = useMemo(() => wybierzPrzebiegRozplywu(runs, activeRunId), [runs, activeRunId]);
@@ -647,7 +652,11 @@ export function EkranOsd({ trybZaawansowania }: EkranOsdProps) {
             />
           ) : (
             <>
-              <WynikOsd dane={stan.dane} trybZaawansowania={trybZaawansowania} />
+              <WynikOsd
+                dane={stan.dane}
+                trybZaawansowania={trybZaawansowania}
+                onOtworzDowod={onOtworzDowod}
+              />
               {/* Akcja wyjściowa PO biegu — tryb pracy źródła, którego dotyczyła
                   symulacja (ref z odpowiedzi backendu). */}
               <SekcjaTrybuPracy sourceRef={stan.dane.source.ref_id} />

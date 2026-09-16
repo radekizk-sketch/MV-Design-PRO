@@ -93,9 +93,11 @@ function StanPanel({
 function WynikTrajektorii({
   dane,
   trybZaawansowania,
+  onOtworzDowod,
 }: {
   dane: WidokTrajektoriiFrt;
   trybZaawansowania: AdvancementMode;
+  onOtworzDowod: (ref: string) => void;
 }) {
   const trybEkspercki = isModeAtLeast(trybZaawansowania, 'expert');
 
@@ -166,7 +168,7 @@ function WynikTrajektorii({
       <TabelaWynikow
         kolumny={kolumny}
         wiersze={wiersze}
-        onOtworzDowod={() => undefined}
+        onOtworzDowod={onOtworzDowod}
         trybZaawansowania={trybZaawansowania}
       />
 
@@ -202,9 +204,13 @@ function WynikTrajektorii({
 
 export interface EkranFrtProps {
   trybZaawansowania: AdvancementMode;
+  /** 2× klik na wartości z dowodem → zakładka „Dowód obliczeń" (wzorzec wspólny,
+   * `ui2/wyniki/wzorzec`). Realny dostawca z rodzica (`WynikiWarsztat`), nie
+   * zaślepka — wpięty też do zagnieżdżonej `SekcjaSekwencjiZapadow`. */
+  onOtworzDowod: (ref: string) => void;
 }
 
-export function EkranFrt({ trybZaawansowania }: EkranFrtProps) {
+export function EkranFrt({ trybZaawansowania, onOtworzDowod }: EkranFrtProps) {
   const ders = useStationDerStore((state) => selectAllDers(state));
   const moduly = useMemo<OpcjaModuluFrt[]>(() => opcjeModulowFrt(ders), [ders]);
   // K6 / H-5: stan zerowy strumienia OZE prowadzi do dodania modulu wytworczego.
@@ -426,7 +432,11 @@ export function EkranFrt({ trybZaawansowania }: EkranFrtProps) {
             />
           ) : (
             <>
-              <WynikTrajektorii dane={stan.dane} trybZaawansowania={trybZaawansowania} />
+              <WynikTrajektorii
+                dane={stan.dane}
+                trybZaawansowania={trybZaawansowania}
+                onOtworzDowod={onOtworzDowod}
+              />
               {/* K5-B (H-3 pkt 4): pętla werdykt → zgodność. Klucz = id modułu
                   DER (`wybranyModul`) — ta sama tożsamość co kolumny macierzy
                   NC RfG (`zbudujModuly` → der.id). Werdykt POCHODZI z biegu
@@ -456,6 +466,7 @@ export function EkranFrt({ trybZaawansowania }: EkranFrtProps) {
             derRef={derRef}
             operatorId={wybranyOperator}
             trybZaawansowania={trybZaawansowania}
+            onOtworzDowod={onOtworzDowod}
           />
         </>
       ) : null}

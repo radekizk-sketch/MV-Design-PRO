@@ -85,9 +85,11 @@ function StanPanel({
 function WynikSekwencji({
   dane,
   trybZaawansowania,
+  onOtworzDowod,
 }: {
   dane: WidokSekwencjiFrt;
   trybZaawansowania: AdvancementMode;
+  onOtworzDowod: (ref: string) => void;
 }) {
   const trybEkspercki = isModeAtLeast(trybZaawansowania, 'expert');
   // Ślad WHITE BOX kontekstu siły sieci — NA ŻĄDANIE (domyślnie zwinięty).
@@ -114,7 +116,7 @@ function WynikSekwencji({
       <TabelaWynikow
         kolumny={kolumny}
         wiersze={wiersze}
-        onOtworzDowod={() => undefined}
+        onOtworzDowod={onOtworzDowod}
         trybZaawansowania={trybZaawansowania}
       />
 
@@ -210,12 +212,16 @@ export interface SekcjaSekwencjiZapadowProps {
   /** Operator OSD (z górnego doboru) — pusty łańcuch blokuje bieg. */
   operatorId: string;
   trybZaawansowania: AdvancementMode;
+  /** 2× klik na wartości z dowodem → zakładka „Dowód obliczeń" (realny dostawca
+   * z `EkranFrt`, nie zaślepka). */
+  onOtworzDowod: (ref: string) => void;
 }
 
 export function SekcjaSekwencjiZapadow({
   derRef,
   operatorId,
   trybZaawansowania,
+  onOtworzDowod,
 }: SekcjaSekwencjiZapadowProps) {
   const [zapady, setZapady] = useState<ParaZapaduFrt[]>([ZAPAD_DOMYSLNY]);
   const [wybranyRun, setWybranyRun] = useState('');
@@ -455,7 +461,11 @@ export function SekcjaSekwencjiZapadow({
               testid="mvd-frt-sekw-brak-modelu"
             />
           ) : (
-            <WynikSekwencji dane={stan.dane} trybZaawansowania={trybZaawansowania} />
+            <WynikSekwencji
+              dane={stan.dane}
+              trybZaawansowania={trybZaawansowania}
+              onOtworzDowod={onOtworzDowod}
+            />
           )}
         </>
       )}

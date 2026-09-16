@@ -24,7 +24,7 @@ import { useNetworkBuildStore } from '../network-build/networkBuildStore';
 import { OPERATION_FORM_REGISTRY } from './operationFormRegistry';
 import { useSelectionStore } from '../selection';
 import { useSnapshotStore } from '../topology/snapshotStore';
-import { navigateToNetworkBuild, navigateToReport } from '../navigation/routes';
+import { navigateToNetworkBuild, navigateToProof, navigateToReport } from '../navigation/routes';
 import {
   useStationDerStore,
   selectAllDers,
@@ -1860,7 +1860,10 @@ function ComplianceSurface() {
   const trybZaawansowania = useShellStore((state) => state.advancementMode);
   return (
     <div data-testid="compliance-surface" className="space-y-4">
-      <EkranFrt trybZaawansowania={trybZaawansowania} />
+      <EkranFrt
+        trybZaawansowania={trybZaawansowania}
+        onOtworzDowod={(ref) => navigateToProof({ selectionId: ref })}
+      />
     </div>
   );
 }

@@ -49,7 +49,7 @@ afterEach(() => {
 
 describe('EkranObszaruPQ — brak przebiegu rozpływu (kryterium 1)', () => {
   it('bez zakończonego rozpływu pokazuje instrukcję, bez formularza i bez wywołania API', async () => {
-    render(<EkranObszaruPQ trybZaawansowania="basic" />);
+    render(<EkranObszaruPQ trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     // Montaż pobiera katalog konwerterów (mikrotaski), ale bez przebiegu
     // formularz (a z nim select typów) nie jest renderowany — skutek fetchu nie
     // ma reprezentacji w UI, więc nie ma na co czekać przez findBy*/waitFor.
@@ -68,7 +68,7 @@ describe('EkranObszaruPQ — jawny bieg (kryterium 1)', () => {
   beforeEach(ustawGotowyRozplyw);
 
   it('z przebiegiem pokazuje formularz i stan „uruchom", nie woła API przed kliknięciem', async () => {
-    render(<EkranObszaruPQ trybZaawansowania="basic" />);
+    render(<EkranObszaruPQ trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     // Realny stan końcowy montażu: katalog konwerterów wczytany → opcja typu
     // falownika w selekcie nakładki (domyka aktualizację stanu w act).
     await screen.findByRole('option', { name: /Sungrow/ });
@@ -78,7 +78,7 @@ describe('EkranObszaruPQ — jawny bieg (kryterium 1)', () => {
   });
 
   it('przycisk biegu jest zablokowany bez wyboru węzła', async () => {
-    render(<EkranObszaruPQ trybZaawansowania="basic" />);
+    render(<EkranObszaruPQ trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     // Realny stan końcowy montażu: opcja typu z katalogu (jak wyżej).
     await screen.findByRole('option', { name: /Sungrow/ });
     expect(screen.getByTestId('mvd-obszar-oblicz')).toBeDisabled();
@@ -88,7 +88,7 @@ describe('EkranObszaruPQ — jawny bieg (kryterium 1)', () => {
 
   it('po wyborze węzła bieg woła API z przebiegiem, węzłem i domyślnymi parametrami siatki', async () => {
     pobierzObszar.mockResolvedValue(widokObszaruFixture());
-    render(<EkranObszaruPQ trybZaawansowania="basic" />);
+    render(<EkranObszaruPQ trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     fireEvent.change(screen.getByTestId('mvd-obszar-wezel'), { target: { value: 'bus-a' } });
     fireEvent.click(screen.getByTestId('mvd-obszar-oblicz'));
     expect(await screen.findByTestId('mvd-obszar-wynik')).toBeInTheDocument();
@@ -104,7 +104,7 @@ describe('EkranObszaruPQ — jawny bieg (kryterium 1)', () => {
 
   it('zmienione parametry siatki trafiają do zapytania', async () => {
     pobierzObszar.mockResolvedValue(widokObszaruFixture());
-    render(<EkranObszaruPQ trybZaawansowania="basic" />);
+    render(<EkranObszaruPQ trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     fireEvent.change(screen.getByTestId('mvd-obszar-wezel'), { target: { value: 'bus-a' } });
     fireEvent.change(screen.getByTestId('mvd-obszar-step-p'), { target: { value: '1' } });
     fireEvent.change(screen.getByTestId('mvd-obszar-max-q'), { target: { value: '8' } });
@@ -115,7 +115,7 @@ describe('EkranObszaruPQ — jawny bieg (kryterium 1)', () => {
 
   it('błąd końcówki → jawny stan błędu z komunikatem', async () => {
     pobierzObszar.mockRejectedValue(new Error('422 zły przebieg'));
-    render(<EkranObszaruPQ trybZaawansowania="basic" />);
+    render(<EkranObszaruPQ trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     fireEvent.change(screen.getByTestId('mvd-obszar-wezel'), { target: { value: 'bus-a' } });
     fireEvent.click(screen.getByTestId('mvd-obszar-oblicz'));
     expect(await screen.findByTestId('mvd-obszar-blad')).toHaveTextContent('422 zły przebieg');
@@ -127,7 +127,7 @@ describe('EkranObszaruPQ — tabela, wykres i założenia (kryteria 2, 3, 4)', (
 
   async function uruchomBieg() {
     pobierzObszar.mockResolvedValue(widokObszaruFixture());
-    render(<EkranObszaruPQ trybZaawansowania="basic" />);
+    render(<EkranObszaruPQ trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     fireEvent.change(screen.getByTestId('mvd-obszar-wezel'), { target: { value: 'bus-a' } });
     fireEvent.click(screen.getByTestId('mvd-obszar-oblicz'));
     await screen.findByTestId('mvd-obszar-wynik');
@@ -163,7 +163,7 @@ describe('EkranObszaruPQ — nakładka krzywej producenta (kryterium 2)', () => 
 
   it('wybór typu falownika z krzywą dokłada serie producenta na wykresie', async () => {
     pobierzObszar.mockResolvedValue(widokObszaruFixture());
-    render(<EkranObszaruPQ trybZaawansowania="basic" />);
+    render(<EkranObszaruPQ trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     fireEvent.change(screen.getByTestId('mvd-obszar-wezel'), { target: { value: 'bus-a' } });
     fireEvent.click(screen.getByTestId('mvd-obszar-oblicz'));
     await screen.findByTestId('mvd-obszar-wynik');
@@ -183,7 +183,7 @@ describe('EkranObszaruPQ — tryb ekspercki (identyfikatory)', () => {
 
   async function uruchomBieg(tryb: 'basic' | 'expert') {
     pobierzObszar.mockResolvedValue(widokObszaruFixture());
-    render(<EkranObszaruPQ trybZaawansowania={tryb} />);
+    render(<EkranObszaruPQ trybZaawansowania={tryb} onOtworzDowod={vi.fn()} />);
     fireEvent.change(screen.getByTestId('mvd-obszar-wezel'), { target: { value: 'bus-a' } });
     fireEvent.click(screen.getByTestId('mvd-obszar-oblicz'));
     await screen.findByTestId('mvd-obszar-wynik');
@@ -207,7 +207,7 @@ describe('EkranObszaruPQ — zapis ograniczeń Q generatora (K5-B / H-3 pkt 3)',
 
   async function uruchomBieg() {
     pobierzObszar.mockResolvedValue(widokObszaruFixture());
-    render(<EkranObszaruPQ trybZaawansowania="basic" />);
+    render(<EkranObszaruPQ trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     fireEvent.change(screen.getByTestId('mvd-obszar-wezel'), { target: { value: 'bus-a' } });
     fireEvent.click(screen.getByTestId('mvd-obszar-oblicz'));
     await screen.findByTestId('mvd-obszar-wynik');

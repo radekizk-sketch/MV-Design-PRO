@@ -169,9 +169,11 @@ function SzczegolPola({ pole }: { pole: PoleLom | null }) {
 function WynikLom({
   dane,
   trybZaawansowania,
+  onOtworzDowod,
 }: {
   dane: WidokOchronyLom;
   trybZaawansowania: AdvancementMode;
+  onOtworzDowod: (ref: string) => void;
 }) {
   const trybEkspercki = trybZaawansowania === 'expert';
   const [wybrany, setWybrany] = useState<string | null>(null);
@@ -202,7 +204,7 @@ function WynikLom({
         zalozenia={naZalozeniaLom(dane.zalozenia_pl)}
         kolumny={KOLUMNY_LOM}
         wiersze={naWierszeLom(dane.fields)}
-        onOtworzDowod={() => undefined}
+        onOtworzDowod={onOtworzDowod}
         trybZaawansowania={trybZaawansowania}
         kluczWiersza={KLUCZ_WIERSZA_LOM}
         onWybierzWiersz={setWybrany}
@@ -266,9 +268,12 @@ function WynikLom({
 
 export interface EkranLomProps {
   trybZaawansowania: AdvancementMode;
+  /** 2× klik na wartości z dowodem → zakładka „Dowód obliczeń" (realny dostawca
+   * z rodzica, `WynikiWarsztat`), nie zaślepka. */
+  onOtworzDowod: (ref: string) => void;
 }
 
-export function EkranLom({ trybZaawansowania }: EkranLomProps) {
+export function EkranLom({ trybZaawansowania, onOtworzDowod }: EkranLomProps) {
   const aktywnyPrzypadek = useActiveCase();
   const caseId = aktywnyPrzypadek?.id ?? null;
   // K6 / H-5: bez aktywnego zakresu obliczeń jedyny sensowny krok to jego wybór.
@@ -328,7 +333,7 @@ export function EkranLom({ trybZaawansowania }: EkranLomProps) {
           testid="mvd-lom-blad"
         />
       ) : (
-        <WynikLom dane={dane} trybZaawansowania={trybZaawansowania} />
+        <WynikLom dane={dane} trybZaawansowania={trybZaawansowania} onOtworzDowod={onOtworzDowod} />
       )}
     </div>
   );

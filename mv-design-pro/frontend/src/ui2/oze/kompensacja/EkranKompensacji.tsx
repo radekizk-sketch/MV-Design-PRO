@@ -120,9 +120,11 @@ function NotaCosfi({ konwencja }: { konwencja: string }) {
 function WynikKompensacji({
   dane,
   trybZaawansowania,
+  onOtworzDowod,
 }: {
   dane: WidokDoboruKompensacji;
   trybZaawansowania: AdvancementMode;
+  onOtworzDowod: (ref: string) => void;
 }) {
   const trybEkspercki = trybZaawansowania === 'expert';
   const [sladWidoczny, setSladWidoczny] = useState(false);
@@ -234,7 +236,7 @@ function WynikKompensacji({
       <TabelaWynikow
         kolumny={kolumny}
         wiersze={wiersze}
-        onOtworzDowod={() => undefined}
+        onOtworzDowod={onOtworzDowod}
         trybZaawansowania={trybZaawansowania}
       />
 
@@ -339,12 +341,16 @@ export interface EkranKompensacjiProps {
   preselekcjaWezla?: string | null;
   /** Sygnał konsumpcji pre-selekcji (żądanie jednorazowe — rodzic czyści). */
   onPreselekcjaSkonsumowana?: () => void;
+  /** 2× klik na wartości z dowodem → zakładka „Dowód obliczeń" (realny dostawca
+   * z rodzica, `WynikiWarsztat`), nie zaślepka. */
+  onOtworzDowod: (ref: string) => void;
 }
 
 export function EkranKompensacji({
   trybZaawansowania,
   preselekcjaWezla = null,
   onPreselekcjaSkonsumowana,
+  onOtworzDowod,
 }: EkranKompensacjiProps) {
   const runs = useExecutionRunsStore((s) => s.runs);
   const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
@@ -527,7 +533,11 @@ export function EkranKompensacji({
               testid="mvd-komp-blad"
             />
           ) : (
-            <WynikKompensacji dane={stan.dane} trybZaawansowania={trybZaawansowania} />
+            <WynikKompensacji
+              dane={stan.dane}
+              trybZaawansowania={trybZaawansowania}
+              onOtworzDowod={onOtworzDowod}
+            />
           )}
         </>
       )}

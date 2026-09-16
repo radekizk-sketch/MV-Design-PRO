@@ -69,7 +69,7 @@ function ustawKatalogGotowy() {
 }
 
 async function wczytajISkonfiguruj(tryb: 'basic' | 'expert' = 'basic') {
-  render(<EkranKrzywych trybZaawansowania={tryb} />);
+  render(<EkranKrzywych trybZaawansowania={tryb} onOtworzDowod={vi.fn()} />);
   await screen.findByTestId('mvd-krzywe-dobor');
   fireEvent.change(screen.getByTestId('mvd-krzywe-typ'), { target: { value: TYP_Z_KRZYWA } });
   fireEvent.change(screen.getByTestId('mvd-krzywe-operator'), { target: { value: 'pse' } });
@@ -81,13 +81,13 @@ afterEach(() => vi.clearAllMocks());
 describe('EkranKrzywych — wczytanie katalogu', () => {
   it('błąd katalogu → jawny stan błędu, bez formularza doboru', async () => {
     pobierzKonwertery.mockRejectedValue(new Error('500 katalog'));
-    render(<EkranKrzywych trybZaawansowania="basic" />);
+    render(<EkranKrzywych trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     expect(await screen.findByTestId('mvd-krzywe-katalog-blad')).toHaveTextContent('500 katalog');
     expect(screen.queryByTestId('mvd-krzywe-dobor')).not.toBeInTheDocument();
   });
 
   it('po wczytaniu pokazuje dobór typu i operatora oraz stan „uruchom"', async () => {
-    render(<EkranKrzywych trybZaawansowania="basic" />);
+    render(<EkranKrzywych trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     expect(await screen.findByTestId('mvd-krzywe-dobor')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-krzywe-idle')).toBeInTheDocument();
     expect(pobierzPokrycie).not.toHaveBeenCalled();
@@ -96,7 +96,7 @@ describe('EkranKrzywych — wczytanie katalogu', () => {
 
 describe('EkranKrzywych — typ bez krzywej producenta (kryterium 1)', () => {
   it('wybór typu bez krzywej → uczciwy komunikat, bieg zablokowany, bez API', async () => {
-    render(<EkranKrzywych trybZaawansowania="basic" />);
+    render(<EkranKrzywych trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     await screen.findByTestId('mvd-krzywe-dobor');
     fireEvent.change(screen.getByTestId('mvd-krzywe-typ'), { target: { value: TYP_BEZ_KRZYWEJ } });
     fireEvent.change(screen.getByTestId('mvd-krzywe-operator'), { target: { value: 'pse' } });
@@ -107,7 +107,7 @@ describe('EkranKrzywych — typ bez krzywej producenta (kryterium 1)', () => {
   });
 
   it('lista typów oznacza typ bez krzywej adnotacją „brak krzywej producenta"', async () => {
-    render(<EkranKrzywych trybZaawansowania="basic" />);
+    render(<EkranKrzywych trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     await screen.findByTestId('mvd-krzywe-dobor');
     expect(screen.getByTestId('mvd-krzywe-typ')).toHaveTextContent('brak krzywej producenta');
   });
