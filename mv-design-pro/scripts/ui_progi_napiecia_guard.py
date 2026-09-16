@@ -37,7 +37,7 @@ specyfikator modulu re-eksportu — te SAME wzorce pomijania co
 `ui_no_physics_guard.py` (ten sam kontrakt "linia bez efektu w czasie
 wykonania nie jest defektem tej klasy").
 
-ALLOWLIST (per plik+linia, uzasadniona): wpis dopuszczony WYLACZNIE gdy liczba
+ALLOWLIST (per plik+tresc linii, uzasadniona): wpis dopuszczony WYLACZNIE gdy liczba
 NIE jest kryterium oceny wyniku sieci — parametr sterowania DER (krzywa
 Q(U)/cosφ(P)/FRT, nastawa regulacji zrodla), wspolczynnik napieciowy `c`
 IEC 60909 (c_max/c_min), albo nastawa/zalecany zakres przekaznika
@@ -65,108 +65,114 @@ SCAN_DIRS = [
 ]
 
 # Explicit allowlist (measured 2026-09-16, karta W3-J). Keyed by
-# (repo-relative path, 1-based line number) — nie caly plik, zeby nowe
-# trafienie w INNEJ linii allowlistowanego pliku nadal bylo zlapane.
-ALLOWLIST: dict[tuple[str, int], str] = {
+# (repo-relative path, TRESC trafionej linii po `strip()`) — nie caly plik,
+# zeby nowe trafienie w INNEJ linii allowlistowanego pliku nadal bylo zlapane.
+# Klucz po tresci, nie po numerze linii (odbior 2026-09-16, klasa): klucz
+# (plik, nr linii) osierocal wpisy przy kazdym przesunieciu linii w pliku bez
+# zmiany tresci — zmierzone trzy razy jednego dnia (W3-J 528/558 -> 527/557,
+# S-1, S-2 104/111/527/557 -> 106/113/529/559), za kazdym razem czerwony guard
+# na drzewie scalonym bez zadnej nowej liczby w UI. Zmiana TRESCI linii nadal
+# osieroca wpis (to wlasciwy sygnal: allowlistowany literal sie zmienil).
+ALLOWLIST: dict[tuple[str, str], str] = {
     (
         "frontend/src/ui/network-build/forms/profiles/CosPhiOfPProfileForm.tsx",
-        23,
+        "{ p_pu: 1.0, cos_phi: 0.95 },",
     ): "domyslny punkt krzywej cosφ(P) falownika (parametr sterowania DER), nie kryterium oceny wyniku sieci",
     (
         "frontend/src/ui/network-build/station-der/frtEnvelopeValidator.ts",
-        57,
+        "{ timeS: 60.0, voltagePu: 0.95 },",
     ): "punkt krzywej obwiedni FRT (parametr sterowania/katalogowy DER), nie kryterium oceny wyniku sieci",
     (
         "frontend/src/ui/network-build/station-der/frtEnvelopeValidator.ts",
-        64,
+        "{ timeS: 60.0, voltagePu: 1.10 },",
     ): "jw. — drugi punkt krzywej obwiedni FRT",
     (
         "frontend/src/ui/network-build/station-der/antiIslandingValidator.ts",
-        64,
+        "overVoltagePu: 1.10,",
     ): "domyslna nastawa przekaznika anti-islanding (parametr sterowania DER), nie kryterium oceny wyniku sieci",
     (
         "frontend/src/ui/network-build/station-der/antiIslandingValidator.ts",
-        91,
+        "if (settings.underVoltagePu < 0.5 || settings.underVoltagePu > 0.95) {",
     ): "sanity zalecanego zakresu nastawy przekaznika anti-islanding (wejscie urzadzenia), nie ocena wyniku solvera",
     (
         "frontend/src/ui/network-build/station-der/antiIslandingValidator.ts",
-        93,
+        "`Ustawienie 27 (under-voltage) ${settings.underVoltagePu} p.u. poza zalecanym zakresem 0.5-0.95.`,",
     ): "tekst komunikatu o jw. zalecanym zakresie nastawy",
     (
         "frontend/src/ui/network-build/station-der/antiIslandingValidator.ts",
-        99,
+        "if (settings.overVoltagePu < 1.05 || settings.overVoltagePu > 1.20) {",
     ): "sanity zalecanego zakresu nastawy przekaznika anti-islanding (jw., prog gorny)",
     (
         "frontend/src/ui/network-build/station-der/antiIslandingValidator.ts",
-        101,
+        "`Ustawienie 59 (over-voltage) ${settings.overVoltagePu} p.u. poza zalecanym zakresem 1.05-1.20.`,",
     ): "tekst komunikatu o jw. zalecanym zakresie nastawy (prog gorny)",
     (
         "frontend/src/ui/network-build/forms/inverterModeHelper.ts",
-        78,
+        "if (sorted[0].uPu > 0.9) {",
     ): "walidacja ksztaltu krzywej sterowania Q(U) falownika (parametr DER), nie kryterium oceny wyniku sieci",
     (
         "frontend/src/ui/network-build/forms/inverterModeHelper.ts",
-        79,
+        "issues.push(`Krzywa Q(U) musi zaczynać się przy U ≤ 0.9 p.u. Obecnie: ${sorted[0].uPu}.`);",
     ): "tekst komunikatu o jw. wymaganym ksztalcie krzywej Q(U)",
     (
         "frontend/src/ui/network-build/forms/inverterModeHelper.ts",
-        81,
+        "if (sorted[sorted.length - 1].uPu < 1.1) {",
     ): "jw. — koniec krzywej Q(U)",
     (
         "frontend/src/ui/network-build/forms/inverterModeHelper.ts",
-        82,
+        "issues.push(`Krzywa Q(U) musi kończyć się przy U ≥ 1.1 p.u. Obecnie: ${sorted[sorted.length - 1].uPu}.`);",
     ): "tekst komunikatu o jw. (koniec krzywej Q(U))",
     (
         "frontend/src/ui/network-build/forms/profiles/QofUProfileForm.tsx",
-        32,
+        "{ u_pu: 0.95, q_mvar: -0.5 },",
     ): "domyslny punkt krzywej sterowania Q(U) falownika (parametr DER), nie kryterium oceny wyniku sieci",
     (
         "frontend/src/ui/network-build/forms/profiles/QofUProfileForm.tsx",
-        34,
+        "{ u_pu: 1.05, q_mvar: 0.5 },",
     ): "jw. — drugi domyslny punkt krzywej Q(U)",
     (
         "frontend/src/ui2/kreatory/zrodlo-oze/zrodloOzeModel.ts",
-        309,
+        "} else if (data.u_set_pu < 0.9 || data.u_set_pu > 1.1) {",
     ): "walidacja pasma nastawy regulacji napiecia zrodla OZE (parametr sterowania DER), nie kryterium wyniku sieci",
     (
         "frontend/src/ui2/kreatory/zrodlo-oze/zrodloOzeModel.ts",
-        310,
+        "errors.push({ field: 'u_set_pu', message: 'Nastawa napięcia musi mieścić się w paśmie [0,9; 1,1] pu.' });",
     ): "tekst komunikatu o jw. paśmie nastawy",
     (
         "frontend/src/ui2/kreatory/zrodlo-oze/zrodloOzeModel.ts",
-        447,
+        "cosPhi: 0.95, // ±0.95 typowe wymaganie NC RfG dla modułów typu B/C",
     ): "domyslna wartosc cosφ — typowe wymaganie NC RfG dla modulow typu B/C (parametr sterowania DER)",
     (
         "frontend/src/ui2/kreatory/zrodlo-oze/zrodloOzeModel.ts",
-        449,
+        "quDeadbandLowPu: 0.95, // dolna granica napięciowego pasma nieczułości Q(U)",
     ): "domyslna dolna granica pasma nieczulosci Q(U) zrodla OZE (parametr sterowania DER)",
     (
         "frontend/src/ui2/kreatory/zrodlo-oze/zrodloOzeModel.ts",
-        450,
+        "quDeadbandHighPu: 1.05, // górna granica napięciowego pasma nieczułości Q(U)",
     ): "domyslna gorna granica pasma nieczulosci Q(U) zrodla OZE (parametr sterowania DER)",
     (
         "frontend/src/ui2/kreatory/zrodlo-oze/strings.ts",
-        104,
+        "+ '0,95–1,05 pu (NC RfG). Puste = punkt 1,0/1,0 (reakcja natychmiastowa przy dowolnej odchyłce).',",
     ): "opis pasma nieczulosci Q(U) NC RfG (parametr sterowania DER) w formularzu zrodla OZE",
     (
         "frontend/src/ui2/kreatory/zrodlo-oze/strings.ts",
-        111,
+        "+ 'Pasmo dopuszczalne: 0,9–1,1 pu.',",
     ): "jw. — opis dopuszczalnego pasma nastawy regulacji napiecia",
     (
         "frontend/src/ui2/kreatory/zrodlo-oze/strings.ts",
-        527,  # 528 -> 527 po S-1/S-4 (kasacja etykiety no_module wyzej w pliku; odbior 2026-09-16)
+        "+ 'pasmo 0,95–1,05 pu, statyzm dobierany przez OSD. Reakcja tylko poza pasmem.',",
     ): "jw. — opis pasma statyzmu regulacji napiecia zrodla OZE",
     (
         "frontend/src/ui2/kreatory/zrodlo-oze/strings.ts",
-        557,  # 558 -> 557, jw.
+        "+ 'trybach regulacji mocy biernej (voltage_control_modes) — poza tym pasmem nastawa 0,9–1,1 pu.',",
     ): "jw. — opis pasma nastawy w trybach regulacji mocy biernej",
     (
         "frontend/src/ui2/kreatory/kompensator/strings.ts",
-        90,
+        "+ '(1,0; 1,0) = wartość katalogowa; przy napięciu 0,9 pu bateria oddaje tylko ~0,81 Qn, przy '",
     ): "przykladowa wartosc w tekscie edukacyjnym o zaleznosci Q kompensatora od napiecia (nie prog klasyfikacji)",
     (
         "frontend/src/ui2/kreatory/kompensator/strings.ts",
-        91,
+        "+ '1,05 pu ~1,10 Qn. Rzeczywistą moc bierną w punkcie pracy liczy rozpływ dla napięcia z sieci.',",
     ): "jw. — kontynuacja przykladu edukacyjnego",
 }
 
@@ -229,11 +235,11 @@ def _relative_path_str(path: Path) -> str | None:
         return None
 
 
-def _is_allowlisted(path: Path, line_no: int) -> bool:
+def _is_allowlisted(path: Path, line_content: str) -> bool:
     rel = _relative_path_str(path)
     if rel is None:
         return False
-    return (rel, line_no) in ALLOWLIST
+    return (rel, line_content.strip()) in ALLOWLIST
 
 
 def scan_file(path: Path) -> list[tuple[int, str]]:
@@ -274,7 +280,7 @@ def scan_tree(scan_dirs: list[Path]) -> list[tuple[Path, int, str]]:
     return [
         (path, line_no, line_content)
         for path, line_no, line_content in scan_tree_raw(scan_dirs)
-        if not _is_allowlisted(path, line_no)
+        if not _is_allowlisted(path, line_content)
     ]
 
 
@@ -282,19 +288,19 @@ def check_allowlist_freshness(raw_hits: list[tuple[Path, int, str]]) -> list[str
     """Zapadka swiezosci ALLOWLIST — kazdy wpis musi nadal odpowiadac
     REALNEMU dzisiejszemu trafieniu (ten sam kontrakt co
     `ui_no_physics_guard.py::check_allowlist_freshness`)."""
-    covered: set[tuple[str, int]] = set()
-    for path, line_no, _content in raw_hits:
-        if _is_allowlisted(path, line_no):
+    covered: set[tuple[str, str]] = set()
+    for path, _line_no, content in raw_hits:
+        if _is_allowlisted(path, content):
             rel = _relative_path_str(path)
             if rel is not None:
-                covered.add((rel, line_no))
+                covered.add((rel, content.strip()))
 
     violations: list[str] = []
-    for (rel_path, line_no), reason in sorted(ALLOWLIST.items()):
-        if (rel_path, line_no) in covered:
+    for (rel_path, tresc), reason in sorted(ALLOWLIST.items()):
+        if (rel_path, tresc) in covered:
             continue
         violations.append(
-            f"[ui-progi-napiecia-wpis-osierocony] ALLOWLIST[({rel_path!r}, {line_no})] "
+            f"[ui-progi-napiecia-wpis-osierocony] ALLOWLIST[({rel_path!r}, {tresc!r})] "
             "nie odpowiada juz zadnemu trafieniu wzorca progu napieciowego w dzisiejszym "
             f"drzewie — usun ten wpis (uzasadnienie bylo: {reason})"
         )
@@ -314,7 +320,7 @@ def main() -> int:
     all_violations = [
         (path, line_no, line_content)
         for path, line_no, line_content in raw_hits
-        if not _is_allowlisted(path, line_no)
+        if not _is_allowlisted(path, line_content)
     ]
     freshness_violations = check_allowlist_freshness(raw_hits)
 
@@ -332,7 +338,9 @@ def main() -> int:
         )
 
     if freshness_violations:
-        print("UI-PROGI-NAPIECIA-GUARD ALLOWLIST FRESHNESS VIOLATIONS:", file=sys.stderr)
+        print(
+            "UI-PROGI-NAPIECIA-GUARD ALLOWLIST FRESHNESS VIOLATIONS:", file=sys.stderr
+        )
         for violation in freshness_violations:
             print(f"  {violation}", file=sys.stderr)
 

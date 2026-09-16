@@ -93,18 +93,23 @@ def test_ui_allowlist_matches_measured_baseline():
 
 
 def test_ui_allowlist_entries_are_not_stale():
-    """Every ALLOWLIST entry must correspond to an actual current raw hit at
-    that exact (path, line) -- a stale entry would mean the underlying code
-    moved/changed and the exception is no longer verified against real code.
+    """Every ALLOWLIST entry must correspond to an actual current raw hit with
+    that exact (path, line content) -- a stale entry would mean the underlying
+    code changed and the exception is no longer verified against real code.
+    Klucz po tresci (2026-09-16): przesuniecie linii bez zmiany tresci NIE
+    osieroca wpisu, zmiana tresci -- tak.
     """
-    for (rel_path, line_no), reason in ui_no_physics_guard.ALLOWLIST.items():
-        assert reason, f"allowlist entry {rel_path}:{line_no} must have a reason"
+    for (rel_path, tresc), reason in ui_no_physics_guard.ALLOWLIST.items():
+        assert reason, f"allowlist entry {rel_path}:{tresc!r} must have a reason"
         full_path = ui_no_physics_guard.REPO_ROOT / rel_path
         assert full_path.is_file(), f"allowlisted path does not exist: {rel_path}"
-        hit_lines = {ln for ln, _content, _pattern in ui_no_physics_guard.scan_file(full_path)}
+        hit_lines = {
+            content.strip()
+            for _ln, content, _pattern in ui_no_physics_guard.scan_file(full_path)
+        }
         assert (
-            line_no in hit_lines
-        ), f"allowlist entry {rel_path}:{line_no} is stale (no longer a raw hit)"
+            tresc in hit_lines
+        ), f"allowlist entry {rel_path}:{tresc!r} is stale (no longer a raw hit)"
 
 
 def test_allowlist_is_scoped_to_exact_line_not_whole_file(tmp_path: Path, monkeypatch):
@@ -130,7 +135,7 @@ def test_allowlist_is_scoped_to_exact_line_not_whole_file(tmp_path: Path, monkey
         {
             (
                 "frontend/src/ui/network-build/station-der/protection-catalogs.ts",
-                1,
+                "export const ALLOWED = 15 / Math.sqrt(3); // pretend allowlisted line 1",
             ): "c: test fixture, pretend catalog constant",
         },
     )
@@ -437,7 +442,8 @@ USUNIETE_RACHUNKI = [
     ),
     (
         "measurementBurdenValidator — rezystancja przewodow wtornych",
-        "const rp = (2 * CU_RESISTIVITY_OHM_MM2_PER_M * cableLengthM) / " "cableCrossSectionMm2;",
+        "const rp = (2 * CU_RESISTIVITY_OHM_MM2_PER_M * cableLengthM) / "
+        "cableCrossSectionMm2;",
     ),
     (
         "lfDerivedMetrics — obciazenie liczone z ampacyjnosci",
@@ -450,7 +456,9 @@ USUNIETE_RACHUNKI = [
 ]
 
 
-@pytest.mark.parametrize("opis,linia", USUNIETE_RACHUNKI, ids=[o for o, _ in USUNIETE_RACHUNKI])
+@pytest.mark.parametrize(
+    "opis,linia", USUNIETE_RACHUNKI, ids=[o for o, _ in USUNIETE_RACHUNKI]
+)
 def test_guard_lapie_kazdy_rachunek_usuniety_karta_k7b(
     opis: str, linia: str, tmp_path: Path
 ) -> None:

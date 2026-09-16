@@ -45,7 +45,10 @@ def test_main_is_green_on_repo() -> None:
 def test_check_allowlist_freshness_catches_orphaned_entry(monkeypatch) -> None:
     """Wpis ALLOWLIST bez pokrycia w surowych trafieniach -> naruszenie z NAZWA
     wpisu (sciezka + numer linii), nie cichy no-op."""
-    orphan_key = ("frontend/src/ui/nigdy/nie-istniejacy-plik.ts", 999)
+    orphan_key = (
+        "frontend/src/ui/nigdy/nie-istniejacy-plik.ts",
+        "const z = reactanceOhm * lengthKm;",
+    )
     monkeypatch.setattr(
         guard,
         "ALLOWLIST",
@@ -57,19 +60,26 @@ def test_check_allowlist_freshness_catches_orphaned_entry(monkeypatch) -> None:
     assert len(violations) == 1
     assert "[ui-no-physics-wpis-osierocony]" in violations[0]
     assert repr(orphan_key[0]) in violations[0]
-    assert str(orphan_key[1]) in violations[0]
+    assert repr(orphan_key[1]) in violations[0]
 
 
-def test_check_allowlist_freshness_accepts_covered_entry(monkeypatch, tmp_path: Path) -> None:
+def test_check_allowlist_freshness_accepts_covered_entry(
+    monkeypatch, tmp_path: Path
+) -> None:
     """Wpis z pokryciem w surowych trafieniach NIE jest zgloszony jako sierota."""
     monkeypatch.setattr(guard, "REPO_ROOT", tmp_path)
-    covered_key = ("frontend/src/ui/x.ts", 10)
+    covered_key = ("frontend/src/ui/x.ts", "reactanceOhm * lengthKm")
     monkeypatch.setattr(guard, "ALLOWLIST", {covered_key: "b: pokryty wpis testowy"})
-    hit = (tmp_path / covered_key[0], covered_key[1], "reactanceOhm * lengthKm", "wzorzec")
+    hit = (tmp_path / covered_key[0], 10, "reactanceOhm * lengthKm", "wzorzec")
 
-    violations = guard.check_allowlist_freshness([hit])
-
-    assert violations == []
+    assert guard.check_allowlist_freshness([hit]) == []
+    # Klucz po tresci: ta sama linia pod innym numerem nadal pokryta (klasa
+    # przesuniecia linii), zmieniona tresc pod tym samym numerem — sierota.
+    assert guard.check_allowlist_freshness([(hit[0], 42, hit[2], "wzorzec")]) == []
+    assert (
+        len(guard.check_allowlist_freshness([(hit[0], 10, "inna * tresc", "wzorzec")]))
+        == 1
+    )
 
 
 def test_orphaned_entry_but_real_violations_still_reported_bit_identical(
@@ -93,7 +103,9 @@ def test_orphaned_entry_but_real_violations_still_reported_bit_identical(
     raw_hits = guard.scan_tree_raw([physics_file.parent])
     filtered = guard.scan_tree([physics_file.parent])
 
-    assert raw_hits == filtered, "bez ALLOWLIST surowy i filtrowany zbior musza byc identyczne"
+    assert (
+        raw_hits == filtered
+    ), "bez ALLOWLIST surowy i filtrowany zbior musza byc identyczne"
     flagged_lines = {line_no for _p, line_no, _c, _pat in filtered}
     assert 2 in flagged_lines
 
@@ -106,9 +118,10 @@ def test_main_returns_1_when_allowlist_entry_is_orphaned(monkeypatch) -> None:
         guard,
         "ALLOWLIST",
         {
-            ("frontend/src/ui/nigdy/nie-istniejacy-plik.ts", 999): (
-                "b: wpis-sierota wstrzykniety testem"
-            )
+            (
+                "frontend/src/ui/nigdy/nie-istniejacy-plik.ts",
+                "const z = reactanceOhm * lengthKm;",
+            ): ("b: wpis-sierota wstrzykniety testem")
         },
     )
     assert guard.main() == 1

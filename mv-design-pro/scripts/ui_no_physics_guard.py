@@ -104,11 +104,14 @@ SCAN_DIRS = [
 ]
 
 # Explicit allowlist for frontend/src/ui/** (H-1, measured 2026-07-22).
-# Keyed by (repo-relative path, 1-based line number) — NOT whole-file, so a new
-# violation appearing on a different line of an allowlisted file is still
-# caught. Every entry carries its classification (b = false positive,
+# Keyed by (repo-relative path, TRESC trafionej linii po strip()) — NOT
+# whole-file, so a new violation appearing on a different line of an
+# allowlisted file is still caught. Klucz po tresci, nie po numerze linii
+# (odbior 2026-09-16, ta sama klasa co `ui_progi_napiecia_guard`): klucz
+# (plik, nr linii) osieracal wpisy przy kazdym przesunieciu linii bez zmiany
+# tresci; zmiana TRESCI linii nadal osieroca wpis (wlasciwy sygnal). Every entry carries its classification (b = false positive,
 # c = justified catalog-constant exception) and a one-line reason.
-ALLOWLIST: dict[tuple[str, int], str] = {
+ALLOWLIST: dict[tuple[str, str], str] = {
     # PONOWNY POMIAR 2026-07-28 (V12K-267). Bylo 18 wpisow / 22 surowych trafien,
     # jest 5 wpisow / 5 trafien. Trzynascie wpisow wskazywalo na
     # station-der/protection-catalogs.ts (katalog przekladnikow napieciowych VT).
@@ -128,74 +131,74 @@ ALLOWLIST: dict[tuple[str, int], str] = {
     # docs/v12xx/REJESTR_KONFLIKTOW.md) skasowala cala biblioteke kontraktow
     # (zero konsumentow zmierzone na obu galeziach). Pomiar bazowy 16 -> 13.
     # sldCanonKit.tsx — string template building a display label.
-    (
-        "frontend/src/ui/sld/v2/station-rozdzielnia/canon/sldCanonKit.tsx",
-        55,
-    ): "b: string template building a display label ('VT . ${primary}/root3'), computes nothing",
     # ozeTypes.ts — trailing comment documenting a field's meaning.
-    (
-        "frontend/src/ui/sld/v2/station-rozdzielnia/companions/ozeTypes.ts",
-        49,
-    ): "b: trailing line comment documenting a field's meaning, not code",
     # =========================================================================
     # K7-B (2026-07-31) — trafienia NOWYCH wzorcow (rodzina zwarciowa / IDMT /
     # dobor / THD). Pomiar PO przeniesieniu i usunieciu fizyki: ui/** 18 surowych
     # trafien / 14 unikalnych linii, ui2/** 1; 0 klasy (a). Kazdy wpis nazywa
     # swoja klase i powod.
     # =========================================================================
+    # KD-1 (2026-07-31): numer wiersza zdryfował po wcześniejszych edycjach
+    # pliku — guard był CZERWONY na gałęzi bazowej. Wpis dotyczy TEGO SAMEGO
+    # napisu (opis analizy w katalogu ekranów), tylko pod aktualnym wierszem.
+    # CV-4.2 (2026-09-05): kolejny dryf o 1 wiersz (dodanie `activeCaseId`
+    # z `useAppStateStore` WCZEŚNIEJ w pliku, przy przepięciu P12 na bieg
+    # kanoniczny) — TEN SAM napis, wiersz 2633 → 2632.
+    # K2 (2026-09-09): kolejny dryf o 1 wiersz (usunięcie case 'E-39'/importu
+    # ReferenceNetworkSurface WCZEŚNIEJ w pliku) — TEN SAM napis, wiersz 2632 → 2631.
+    # Karta S-1/S-4 (W6-0): kolejny dryf o 1 wiersz (rozwinięcie komentarza
+    # `ComplianceSurface` WCZEŚNIEJ w pliku, usunięcie literału `no_module`
+    # z prozy — no_module_zero_guard) — TEN SAM napis, wiersz 2631 → 2632.
+    # Karta WB-ROZPLYW: numer wiersza zdryfował po dopisaniu kontraktu
+    # `branch_flow_trace`/hooka `useRozplywZwarciowy` WCZEŚNIEJ w pliku
+    # (ślad WHITE BOX podziału prądu zwarciowego, TH-1). Wpis dotyczy TEGO
+    # SAMEGO napisu (skalowanie A→kA), tylko pod aktualnym wierszem.
+    # W3-G3 (2026-09-10): kolejny dryf o 1 wiersz (dodanie `ShortCircuitResults`
+    # do importu typów WCZEŚNIEJ w pliku, dla hooka `usePasmoZwarcia` — karta
+    # pasma MIN/MAX zwarcia) — TEN SAM napis, wiersz 81 → 82.
+    (
+        "frontend/src/ui/sld/v2/station-rozdzielnia/canon/sldCanonKit.tsx",
+        "return `VT · ${primary}/√3`;",
+    ): "b: string template building a display label ('VT . ${primary}/root3'), computes nothing",
+    (
+        "frontend/src/ui/sld/v2/station-rozdzielnia/companions/ozeTypes.ts",
+        "readonly usn_v: number; // secondary nominal voltage [V] (line value; phase = usn/√3)",
+    ): "b: trailing line comment documenting a field's meaning, not code",
     (
         "frontend/src/ui/canon/technicalDebtRegistry.ts",
-        71,
+        "'poetry run pytest tests/test_power_flow_gauss_seidel.py tests/test_power_flow_fast_decoupled.py tests/test_short_circuit_iec60909.py -q',",
     ): "b: string z komendą powłoki ('pytest tests/test_short_circuit_iec60909.py') — ukośnik jest separatorem ścieżki",
     (
         "frontend/src/ui/protection-curves/itCurveAdapter.ts",
-        80,
+        "current_multiple: pickup > 0 ? p.i_a / pickup : 0,",
     ): "b: normalizacja osi X wykresu TCC (krotność I/Ip) na punktach krzywej otrzymanych z backendu — skalowanie osi, wprost dozwolone w kontrakcie tego strażnika",
     (
         "frontend/src/ui/sld/v2/canvas/SldShortCircuitOverlay.tsx",
-        256,
+        ": '(brak ip/Ith)'}",
     ): "b: literał tekstowy stanu pustego ('(brak ip/Ith)') — nazywa brak danej, niczego nie liczy",
     (
         "frontend/src/ui/sld/v2/renderer/EquipmentProofBadge.tsx",
-        30,
+        "warning: { color: '#ffd166', label: 'Aparat na granicy wytrzymałości (>80% Ith/Idyn)', icon: '⚠' },",
     ): "b: etykieta legendy odznaki ('>80% Ith/Idyn') — napis w słowniku kolorów",
     (
         "frontend/src/ui/sld/v2/renderer/EquipmentProofBadge.tsx",
-        97,
+        "worstUtil = Math.max(worstUtil, calculated_Ith_kA / rated_Ith_kA);",
     ): "b: wykorzystanie = iloraz DWÓCH wielkości policzonych przez backend (Ith obliczone / Ith znamionowe z pakietu dowodowego aparatu) — procent, nie wzór; brak stałej normowej i brak trzeciej wielkości",
     (
         "frontend/src/ui/sld/v2/renderer/EquipmentProofBadge.tsx",
-        100,
+        "worstUtil = Math.max(worstUtil, calculated_Idyn_kA / rated_Idyn_kA);",
     ): "b: jw. dla kryterium dynamicznego (Idyn obliczone / Idyn znamionowe)",
     (
         "frontend/src/ui/sld/v2/station-rozdzielnia/StationRozdzielniaSN.tsx",
-        1225,
+        "derivation DATA is preserved in the companions (model.shortCircuit /",
     ): "b: kontynuacja wielolinijkowego komentarza JSX ({/* ... */}) — poza zasięgiem reguł pomijania, które widzą pojedynczą linię",
     (
-        # KD-1 (2026-07-31): numer wiersza zdryfował po wcześniejszych edycjach
-        # pliku — guard był CZERWONY na gałęzi bazowej. Wpis dotyczy TEGO SAMEGO
-        # napisu (opis analizy w katalogu ekranów), tylko pod aktualnym wierszem.
-        # CV-4.2 (2026-09-05): kolejny dryf o 1 wiersz (dodanie `activeCaseId`
-        # z `useAppStateStore` WCZEŚNIEJ w pliku, przy przepięciu P12 na bieg
-        # kanoniczny) — TEN SAM napis, wiersz 2633 → 2632.
-        # K2 (2026-09-09): kolejny dryf o 1 wiersz (usunięcie case 'E-39'/importu
-        # ReferenceNetworkSurface WCZEŚNIEJ w pliku) — TEN SAM napis, wiersz 2632 → 2631.
-        # Karta S-1/S-4 (W6-0): kolejny dryf o 1 wiersz (rozwinięcie komentarza
-        # `ComplianceSurface` WCZEŚNIEJ w pliku, usunięcie literału `no_module`
-        # z prozy — no_module_zero_guard) — TEN SAM napis, wiersz 2631 → 2632.
         "frontend/src/ui/workspace/WorkspaceSurfaceRouter.tsx",
-        2632,
+        "descriptionPl: 'IEC 60909, Ik″/ip/Ith z śladem Y-bus + Z-thevenin.',",
     ): "b: opis analizy w katalogu ekranów ('IEC 60909, Ik″/ip/Ith z śladem Y-bus') — napis",
     (
-        # Karta WB-ROZPLYW: numer wiersza zdryfował po dopisaniu kontraktu
-        # `branch_flow_trace`/hooka `useRozplywZwarciowy` WCZEŚNIEJ w pliku
-        # (ślad WHITE BOX podziału prądu zwarciowego, TH-1). Wpis dotyczy TEGO
-        # SAMEGO napisu (skalowanie A→kA), tylko pod aktualnym wierszem.
-        # W3-G3 (2026-09-10): kolejny dryf o 1 wiersz (dodanie `ShortCircuitResults`
-        # do importu typów WCZEŚNIEJ w pliku, dla hooka `usePasmoZwarcia` — karta
-        # pasma MIN/MAX zwarcia) — TEN SAM napis, wiersz 81 → 82.
         "frontend/src/ui2/wyniki/zwarcia/api.ts",
-        82,
+        "pradKA: c.ikss_partial_a / 1000,",
     ): "b: przeliczenie jednostki A→kA wartości otrzymanej z backendu (ikss_partial_a / 1000) — wprost dozwolone skalowanie jednostek",
 }
 
@@ -203,7 +206,9 @@ ALLOWLIST: dict[tuple[str, int], str] = {
 # `reactanceOhmPerKm`). Multiplying/dividing these is network physics.
 # K7-B: + resistivity / conductivity — the removed earthing-grid (IEEE 80) and
 # instrument-transformer-burden code multiplied exactly those.
-_IMPEDANCE_FAMILY = r"\w*(?:impedance|admittance|reactance|susceptance|resistivity|conductivity)\w*"
+_IMPEDANCE_FAMILY = (
+    r"\w*(?:impedance|admittance|reactance|susceptance|resistivity|conductivity)\w*"
+)
 
 # K7-B: short-circuit / withstand quantities. Case-insensitive, because real
 # identifiers came in every spelling (`i_th_1s_ka`, `calculated_Ith_kA`,
@@ -350,11 +355,11 @@ def _relative_path_str(path: Path) -> str | None:
         return None
 
 
-def _is_allowlisted(path: Path, line_no: int) -> bool:
+def _is_allowlisted(path: Path, line_content: str) -> bool:
     rel = _relative_path_str(path)
     if rel is None:
         return False
-    return (rel, line_no) in ALLOWLIST
+    return (rel, line_content.strip()) in ALLOWLIST
 
 
 def scan_file(path: Path) -> list[tuple[int, str, str]]:
@@ -415,7 +420,7 @@ def scan_tree(scan_dirs: list[Path]) -> list[tuple[Path, int, str, str]]:
     return [
         (path, line_no, line_content, pattern)
         for path, line_no, line_content, pattern in scan_tree_raw(scan_dirs)
-        if not _is_allowlisted(path, line_no)
+        if not _is_allowlisted(path, line_content)
     ]
 
 
@@ -441,19 +446,19 @@ def check_allowlist_freshness(
     parami, KLASA-NIE-INSTANCJA S3 — nie ma drugiej, rownoleglej definicji
     "trafienie odpowiada wpisowi").
     """
-    covered: set[tuple[str, int]] = set()
-    for path, line_no, _content, _pattern in raw_hits:
-        if _is_allowlisted(path, line_no):
+    covered: set[tuple[str, str]] = set()
+    for path, _line_no, content, _pattern in raw_hits:
+        if _is_allowlisted(path, content):
             rel = _relative_path_str(path)
             if rel is not None:
-                covered.add((rel, line_no))
+                covered.add((rel, content.strip()))
 
     violations: list[str] = []
-    for (rel_path, line_no), reason in sorted(ALLOWLIST.items()):
-        if (rel_path, line_no) in covered:
+    for (rel_path, tresc), reason in sorted(ALLOWLIST.items()):
+        if (rel_path, tresc) in covered:
             continue
         violations.append(
-            f"[ui-no-physics-wpis-osierocony] ALLOWLIST[({rel_path!r}, {line_no})] "
+            f"[ui-no-physics-wpis-osierocony] ALLOWLIST[({rel_path!r}, {tresc!r})] "
             "nie odpowiada juz zadnemu trafieniu wzorca fizyki w dzisiejszym drzewie "
             f"— usun ten wpis (uzasadnienie bylo: {reason})"
         )
@@ -463,7 +468,8 @@ def check_allowlist_freshness(
 def main() -> int:
     if not any(d.exists() for d in SCAN_DIRS):
         print(
-            "ui-no-physics-guard: no scan directory found: " + ", ".join(str(d) for d in SCAN_DIRS),
+            "ui-no-physics-guard: no scan directory found: "
+            + ", ".join(str(d) for d in SCAN_DIRS),
             file=sys.stderr,
         )
         return 2
@@ -472,7 +478,7 @@ def main() -> int:
     all_violations = [
         (path, line_no, line_content, pattern)
         for path, line_no, line_content, pattern in raw_hits
-        if not _is_allowlisted(path, line_no)
+        if not _is_allowlisted(path, line_content)
     ]
     freshness_violations = check_allowlist_freshness(raw_hits)
 
