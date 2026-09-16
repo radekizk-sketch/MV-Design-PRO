@@ -18,6 +18,7 @@ from network_model.core.uziemienie import (
 )
 from pydantic import BaseModel, Field, model_validator
 
+from .dynamika_modele import ParametryDynamiczne
 from .uziemienie import migruj_uziemienie_slownika
 
 # ---------------------------------------------------------------------------
@@ -621,6 +622,16 @@ class Generator(ENMElement):
     """
     Referencja do stacji (ref_id substacji).
     Wymagana dla wariantu 'nn_side' (wskazuje stacje SN/nN).
+    """
+
+    dynamika: ParametryDynamiczne | None = None
+    """
+    Parametry dynamiczne zrodla (karta W6-1 SS0 p.1, `enm/dynamika_modele.py`).
+    `None` = brak danych wejsciowych DAE — NIGDY domyslka systemowa. Wymagany
+    blok jest unia dyskryminowana po `rodzina` (synchroniczna/GFL/GFM/magazyn/
+    wiatr_typ_1..4), kazdy z WYMAGANA proweniencja. Zero fizyki: pole niesie
+    wylacznie dane wejsciowe konsumowane przez solver W6-2
+    (`network_model/solvers/dynamika/`, jeszcze nie istnieje w tej karcie).
     """
 
     @model_validator(mode="after")

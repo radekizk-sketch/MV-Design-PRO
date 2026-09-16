@@ -66,7 +66,7 @@ import shutil
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any, Literal
 from uuid import NAMESPACE_URL, uuid5
 
 from domain.fault_scenario import FaultScenario
@@ -152,6 +152,196 @@ class Nastawa(BaseModel):
         if self.p_mw is None and self.q_mvar is None:
             raise ValueError("Nastawa bez zadnej wartosci (p_mw/q_mvar) nie jest nadpisaniem")
         return self
+
+
+# ---------------------------------------------------------------------------
+# Zdarzenia dynamiczne (karta W6-1 SS0 p.5) — harmonogram czytany przez solver
+# W6-2 (`network_model/solvers/dynamika/`, nie istnieje w tej karcie). ZERO
+# fizyki tutaj: `apply_scenario` NIE stosuje tych zdarzen do migawki (scenariusz
+# statyczny — out_of_service/setpoints — pozostaje jedynym stanem POCZATKOWYM;
+# harmonogram jest danymi wejsciowymi solvera czasowego, nie druga sciezka
+# mutacji modelu).
+# ---------------------------------------------------------------------------
+
+#: Odleglosc gorna horyzontu symulacji dynamicznej (s) — RMS krotkoterminowe
+#: (stabilnosc, FRT), nie QSTS (profile godzinowe wchodza w W6-6 jako osobna
+#: encja `ProfilCzasowy`, poza tym kontraktem).
+_MAX_HORYZONT_DYNAMIKI_S = 600.0
+
+
+class Zwarcie(BaseModel):
+    """Zwarcie w wezle — 3F w W6-2; 2F/1F/2FZ modelowane w W6-4 (skladowe
+    symetryczne); tu WYLACZNIE ksztalt danych, solver decyduje co umie policzyc."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    rodzaj: Literal["zwarcie"] = "zwarcie"
+    t_s: float = Field(ge=0.0, le=_MAX_HORYZONT_DYNAMIKI_S)
+    bus_ref: str = Field(min_length=1)
+    typ: Literal["3F", "2F", "1F", "2FZ"]
+    r_f_ohm: float = Field(ge=0.0, le=100_000.0)
+    x_f_ohm: float = Field(ge=0.0, le=100_000.0)
+    t_usuniecia_s: float | None = Field(default=None, ge=0.0, le=_MAX_HORYZONT_DYNAMIKI_S)
+
+    @model_validator(mode="after")
+    def _usuniecie_po_zwarciu(self) -> Zwarcie:
+        if self.t_usuniecia_s is not None and self.t_usuniecia_s <= self.t_s:
+            raise ValueError(
+                f"Zwarcie: t_usuniecia_s ({self.t_usuniecia_s}) musi byc pozniej niz "
+                f"t_s ({self.t_s}) — zwarcie nie moze byc usuniete przed wystapieniem."
+            )
+        return self
+
+
+class WylaczenieGalezi(BaseModel):
+    """Otwarcie lacznika/galezi w chwili t_s (harmonogram, nie mutacja migawki)."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    rodzaj: Literal["wylaczenie_galezi"] = "wylaczenie_galezi"
+    t_s: float = Field(ge=0.0, le=_MAX_HORYZONT_DYNAMIKI_S)
+    element_ref: str = Field(min_length=1)
+
+
+class ZalaczenieGalezi(BaseModel):
+    """Zamkniecie lacznika/galezi w chwili t_s."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    rodzaj: Literal["zalaczenie_galezi"] = "zalaczenie_galezi"
+    t_s: float = Field(ge=0.0, le=_MAX_HORYZONT_DYNAMIKI_S)
+    element_ref: str = Field(min_length=1)
+
+
+class OdlaczenieZrodla(BaseModel):
+    """Odlaczenie zrodla (generatora/zrodla sieciowego) od sieci w chwili t_s."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    rodzaj: Literal["odlaczenie_zrodla"] = "odlaczenie_zrodla"
+    t_s: float = Field(ge=0.0, le=_MAX_HORYZONT_DYNAMIKI_S)
+    ref_id: str = Field(min_length=1)
+
+
+class SkokObciazenia(BaseModel):
+    """Skokowa zmiana mocy odbioru/zrodla w chwili t_s (delta wzgledem stanu
+    poczatkowego scenariusza — solver dodaje delte do punktu pracy z rozplywu)."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    rodzaj: Literal["skok_obciazenia"] = "skok_obciazenia"
+    t_s: float = Field(ge=0.0, le=_MAX_HORYZONT_DYNAMIKI_S)
+    ref_id: str = Field(min_length=1)
+    delta_p_mw: float = Field(ge=-100_000.0, le=100_000.0)
+    delta_q_mvar: float = Field(ge=-100_000.0, le=100_000.0)
+
+
+class KomendaRegulacji(BaseModel):
+    """Zmiana nastawy regulatora zrodla w chwili t_s — reuzywa `Nastawa`
+    (jedno zrodlo prawdy ksztaltu nastawy: scenariusz statyczny i harmonogram
+    dynamiczny nadpisuja p_mw/q_mvar tym samym kontraktem)."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    rodzaj: Literal["komenda_regulacji"] = "komenda_regulacji"
+    t_s: float = Field(ge=0.0, le=_MAX_HORYZONT_DYNAMIKI_S)
+    ref_id: str = Field(min_length=1)
+    nastawa: Nastawa
+
+
+class Synchronizacja(BaseModel):
+    """Synchronizacja zrodla z siecia (zalaczenie na szyne pod napieciem) w t_s."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    rodzaj: Literal["synchronizacja"] = "synchronizacja"
+    t_s: float = Field(ge=0.0, le=_MAX_HORYZONT_DYNAMIKI_S)
+    ref_id: str = Field(min_length=1)
+    bus_ref: str = Field(min_length=1)
+
+
+ZdarzenieDynamiczne = Annotated[
+    Zwarcie
+    | WylaczenieGalezi
+    | ZalaczenieGalezi
+    | OdlaczenieZrodla
+    | SkokObciazenia
+    | KomendaRegulacji
+    | Synchronizacja,
+    Field(discriminator="rodzaj"),
+]
+
+
+class ScenariuszDynamiczny(BaseModel):
+    """Harmonogram zdarzen czasowych scenariusza (karta W6-1 SS0 p.5).
+
+    Kolejnosc kanoniczna = (t_s, indeks) — `zdarzenia_uporzadkowane` sortuje
+    STABILNIE po t_s (Python `sorted` jest stabilny, wiec remisy zachowuja
+    kolejnosc zapisu = "indeks"), zeby solver W6-2 czytal zawsze ten sam
+    porzadek niezaleznie od kolejnosci podanej przez wolajacego.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    horyzont_s: float = Field(gt=0.0, le=_MAX_HORYZONT_DYNAMIKI_S)
+    krok_wyjscia_s: float = Field(gt=0.0, le=_MAX_HORYZONT_DYNAMIKI_S)
+    zdarzenia: tuple[ZdarzenieDynamiczne, ...] = ()
+
+    @model_validator(mode="after")
+    def _spojnosc_harmonogramu(self) -> ScenariuszDynamiczny:
+        if self.krok_wyjscia_s > self.horyzont_s:
+            raise ValueError(
+                f"ScenariuszDynamiczny: krok_wyjscia_s ({self.krok_wyjscia_s}) nie moze "
+                f"byc wiekszy niz horyzont_s ({self.horyzont_s})."
+            )
+        for zdarzenie in self.zdarzenia:
+            if zdarzenie.t_s > self.horyzont_s:
+                raise ValueError(
+                    f"ScenariuszDynamiczny: zdarzenie {zdarzenie.rodzaj!r} w t_s="
+                    f"{zdarzenie.t_s} wykracza poza horyzont_s ({self.horyzont_s})."
+                )
+            if (
+                isinstance(zdarzenie, Zwarcie)
+                and zdarzenie.t_usuniecia_s is not None
+                and zdarzenie.t_usuniecia_s > self.horyzont_s
+            ):
+                raise ValueError(
+                    f"ScenariuszDynamiczny: zwarcie w t_s={zdarzenie.t_s} ma "
+                    f"t_usuniecia_s={zdarzenie.t_usuniecia_s} poza horyzont_s "
+                    f"({self.horyzont_s})."
+                )
+        return self
+
+    @property
+    def zdarzenia_uporzadkowane(self) -> tuple[ZdarzenieDynamiczne, ...]:
+        """Kolejnosc kanoniczna (t_s, indeks) — sort stabilny po t_s."""
+        return tuple(sorted(self.zdarzenia, key=lambda z: z.t_s))
+
+    def tresc(self) -> dict[str, Any]:
+        """Kanoniczna tresc do hasha scenariusza — kolejnosc ZAPISU (nie
+        posortowana): dwa scenariusze z tymi samymi zdarzeniami w innej
+        kolejnosci zapisu maja INNY hash (kolejnosc jest czescia tresci,
+        `indeks` w "(t_s, indeks)" to pozycja zapisu)."""
+        return {
+            "horyzont_s": self.horyzont_s,
+            "krok_wyjscia_s": self.krok_wyjscia_s,
+            "zdarzenia": [z.model_dump(mode="json") for z in self.zdarzenia],
+        }
+
+
+#: Referencje elementu wymagane przez kazdy rodzaj zdarzenia — (atrybut, opis)
+#: uzywane przez `_waliduj_zdarzenia_dynamiczne` (jedno zrodlo prawdy predykatu
+#: "ref istnieje w modelu", zamiast siedmiu odrebnych sprawdzen).
+def _refy_zdarzenia(zdarzenie: Any) -> tuple[tuple[str, str], ...]:
+    if isinstance(zdarzenie, Zwarcie):
+        return (("bus_ref", zdarzenie.bus_ref),)
+    if isinstance(zdarzenie, WylaczenieGalezi | ZalaczenieGalezi):
+        return (("element_ref", zdarzenie.element_ref),)
+    if isinstance(zdarzenie, OdlaczenieZrodla | SkokObciazenia | KomendaRegulacji):
+        return (("ref_id", zdarzenie.ref_id),)
+    if isinstance(zdarzenie, Synchronizacja):
+        return (("ref_id", zdarzenie.ref_id), ("bus_ref", zdarzenie.bus_ref))
+    raise AssertionError(f"Nieznany rodzaj zdarzenia: {zdarzenie!r}")  # pragma: no cover
 
 
 def _domyslne_ziarno(dane: Any, prefiks: str) -> Any:
@@ -244,6 +434,14 @@ class OperatingScenario(BaseModel):
     injections: tuple[Wstrzyk, ...] = ()
     probe_shunts: tuple[SondaKondensatora, ...] = ()
     fault_spec: FaultScenario | None = None
+    dynamika: ScenariuszDynamiczny | None = None
+    """
+    Harmonogram zdarzen czasowych (karta W6-1 SS0 p.5). `None` = brak scenariusza
+    dynamicznego (domyslne — addytywne). `apply_scenario` NIE stosuje tych
+    zdarzen do migawki (solver W6-2 czyta harmonogram bezposrednio) — scenariusz
+    statyczny (`out_of_service`/`setpoints`) pozostaje jedynym stanem
+    POCZATKOWYM migawki efektywnej.
+    """
 
     @model_validator(mode="after")
     def _bez_duplikatow(self) -> OperatingScenario:
@@ -275,7 +473,14 @@ class OperatingScenario(BaseModel):
         )
 
     def tresc(self) -> dict[str, Any]:
-        """Kanoniczna tresc nadpisan (to, co wchodzi do hasha)."""
+        """Kanoniczna tresc nadpisan (to, co wchodzi do hasha).
+
+        Karta W6-1 SS0 p.5: "hash scenariusza obejmuje blok" `dynamika` — klucz
+        WYLACZNIE gdy blok jest ustawiony (wzorzec `branch_contributions_mode`
+        w `opcje_biegu_ze_scenariusza` ponizej): scenariusz BEZ dynamiki ma
+        bajtowo TA SAMA tresc/hash co przed ta karta (zero zmiany istniejacych
+        odciskow scenariuszy w magazynie).
+        """
         return {
             "kind": self.kind.value,
             "out_of_service": list(self.out_of_service),
@@ -287,6 +492,7 @@ class OperatingScenario(BaseModel):
             "injections": [w.model_dump(mode="json") for w in self.injections],
             "probe_shunts": [s.model_dump(mode="json") for s in self.probe_shunts],
             "fault_spec": _tresc_zwarcia(self.fault_spec),
+            **({"dynamika": self.dynamika.tresc()} if self.dynamika is not None else {}),
         }
 
     @property
@@ -395,6 +601,40 @@ def _bateria_sondy(sonda: SondaKondensatora) -> dict[str, Any]:
     ).model_dump(mode="json")
 
 
+def _waliduj_zdarzenia_dynamiczne(snapshot: dict[str, Any], scenariusz: OperatingScenario) -> None:
+    """Refy harmonogramu dynamicznego istnieja w migawce PO nadpisaniach statycznych
+    (karta W6-1 SS0 p.5: "refy istnieja w modelu... nigdy cichy skip" — ten sam
+    predykat co `_wymagaj_szyny`/`_znajdz_kolekcje` powyzej, zastosowany do
+    zdarzen zamiast do out_of_service/injections/probe_shunts: KLASA, nie
+    instancja jednego sprawdzenia).
+
+    Walidacja WYLACZNIE — `apply_scenario` NIE stosuje zdarzen do migawki (solver
+    W6-2 czyta harmonogram bezposrednio), wiec funkcja nic nie zwraca i niczego
+    nie mutuje; podnosi `ScenariuszNieprzystajeError` przy pierwszym brakujacym
+    ref (deterministyczna kolejnosc: `zdarzenia_uporzadkowane`, nie kolejnosc
+    zapisu — zeby blad byl stabilny niezaleznie od zmiany kolejnosci pol
+    wejsciowych o tym samym tresci)."""
+    dynamika = scenariusz.dynamika
+    assert dynamika is not None  # wolane wylacznie gdy blok ustawiony
+    for zdarzenie in dynamika.zdarzenia_uporzadkowane:
+        for atrybut, ref in _refy_zdarzenia(zdarzenie):
+            if atrybut == "bus_ref":
+                if ref not in _indeks_elementow(snapshot, "buses"):
+                    raise ScenariuszNieprzystajeError(
+                        scenariusz.scenario_id,
+                        ref,
+                        f"zdarzenie '{zdarzenie.rodzaj}' (t_s={zdarzenie.t_s}): brak takiej szyny",
+                    )
+            else:
+                if _znajdz_kolekcje(snapshot, ref) is None:
+                    raise ScenariuszNieprzystajeError(
+                        scenariusz.scenario_id,
+                        ref,
+                        f"zdarzenie '{zdarzenie.rodzaj}' (t_s={zdarzenie.t_s}): "
+                        "brak elementu w zadnej kolekcji",
+                    )
+
+
 def _przeskaluj(p_mw: float, mnoznik: float) -> float:
     # `0.0` zapisane wprost: `(-1.5) * 0.0 == -0.0` roznilby JSON migawki od
     # jawnego wyzerowania generacji (semantyka „noc": moc czynna rowna zero).
@@ -501,6 +741,9 @@ def apply_scenario(
                 )
             )
         snapshot["shunt_capacitors"] = lista
+
+    if scenariusz.dynamika is not None:
+        _waliduj_zdarzenia_dynamiczne(snapshot, scenariusz)
 
     snapshot_hash = base_hash if not nadpisania else hash_migawki_enm(snapshot)
     return EffectiveNetworkSnapshot(
