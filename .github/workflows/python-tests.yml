@@ -94,6 +94,12 @@ jobs:
       - name: Readiness Dictionary Guard
         working-directory: mv-design-pro
         run: python scripts/readiness_dictionary_guard.py
+      # Karta W6-1 SS0 p.1/p.3: kontrakt parametrow dynamicznych (ENM +
+      # katalog der_dynamic) nie moze niesc zadnej domyslki liczbowej na
+      # polu fizycznym — AST po obu miejscach, ktore dziela ten sam ksztalt.
+      - name: Dynamika Zero-Default Guard
+        working-directory: mv-design-pro
+        run: python scripts/dynamika_zero_default_guard.py
       # CV-2-W: status wynikow PRZYPADKU jest wyprowadzany z jego biegow i koperty
       # rewizji (application/study_case/status_wynikow.py). Kolumna
       # `study_cases.result_status` to dane zastane — zaden kod jej nie pisze.
