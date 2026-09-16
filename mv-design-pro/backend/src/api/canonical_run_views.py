@@ -513,9 +513,46 @@ def build_branch_results_response(run: CanonicalRun) -> dict[str, Any]:
     return payload
 
 
+def _c_factor_biegu_zwarcia(run: CanonicalRun) -> dict[str, Any]:
+    """Współczynnik napięciowy c ZAPISANY na biegu — jawny override ALBO
+    auto-per-węzeł (`enm/assembler.zloz_wejscie_zwarcia`: `options.get("c_factor")`
+    `None` -> AUTO z pasma napięciowego węzła, wartość -> OVERRIDE płaski).
+    Karta UI2 p.7: bez tego pola front nie ma jak odróżnić "policzono z c
+    z konfiguracji tego biegu" od domysłu — `EkranZwarc` czytał c z AKTYWNEGO
+    przypadku, nie z biegu, którego wynik ogląda (dwie różne rzeczy)."""
+    jawny = run.options.get("c_factor")
+    if jawny is not None:
+        return {"tryb": "jawny", "wartosc": float(jawny)}
+    return {"tryb": "auto_per_wezel", "wartosc": None}
+
+
+def _thermal_time_biegu_zwarcia(run: CanonicalRun) -> dict[str, Any]:
+    """Czas cieplny [s] ZAPISANY na biegu; brak w opcjach = wartość, którą
+    assembler FAKTYCZNIE zastosował (`zloz_wejscie_zwarcia`:
+    `float(options.get("thermal_time_seconds", 1.0))`) — oznaczona jawnie jako
+    domyślna assemblera, nie ukryta jako gdyby pochodziła z opcji biegu."""
+    jawny = run.options.get("thermal_time_seconds")
+    if jawny is not None:
+        return {"wartosc": float(jawny), "pochodzenie": "opcje_biegu"}
+    return {"wartosc": 1.0, "pochodzenie": "domyslna_assemblera"}
+
+
+def build_konfiguracja_biegu_zwarcia(run: CanonicalRun) -> dict[str, Any]:
+    """Konfiguracja ZAPISANA na biegu zwarciowym (karta UI2 p.7) —
+    addytywna projekcja `run.options` (ZAPISANE opcje, nie AKTYWNY przypadek
+    obliczeniowy). `metoda` jest stałą normatywną rodziny solvera (IEC 60909
+    solver_input/eligibility) — nie zgadywanie, jedyna metoda SC w tym repo."""
+    return {
+        "c_factor": _c_factor_biegu_zwarcia(run),
+        "thermal_time_seconds": _thermal_time_biegu_zwarcia(run),
+        "metoda": "IEC 60909",
+    }
+
+
 def build_short_circuit_results_response(run: CanonicalRun) -> dict[str, Any]:
     payload = build_short_circuit_results(run)
     payload["analysis_case_context"] = build_analysis_case_context(run)
+    payload["konfiguracja_biegu"] = build_konfiguracja_biegu_zwarcia(run)
     return payload
 
 

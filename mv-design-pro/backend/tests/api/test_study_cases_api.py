@@ -148,3 +148,43 @@ def test_protection_config_second_put_replaces_device_setting(app_client) -> Non
     odczyt = get_resp.json()["overrides"]
     assert odczyt["coordination_device:dev-1"]["settings"]["stage_51"]["pickup_current_a"] == 180.0
     assert odczyt["TMS"] == {"value": 0.3}
+
+
+def test_protection_config_unknown_template_ref_rejected(app_client) -> None:
+    """P14c (naprawa u źródła, guard klasy TODO/FIXME): trasa PUT .../protection-config
+    obiecuje w docstringu i w mapowaniu wyjątków 422 „template_ref musi istnieć w
+    katalogu" — serwis miał TODO zamiast realnej walidacji („trust the frontend
+    validation"). `template_ref` nieznany katalogowi zabezpieczeń → 422, nie 200."""
+    case_id = _utworz_projekt_i_przypadek(app_client)
+
+    put_resp = app_client.put(
+        f"/api/study-cases/{case_id}/protection-config",
+        json={
+            "template_ref": "nieistniejacy_szablon_zzz",
+            "template_fingerprint": None,
+            "library_manifest_ref": None,
+            "overrides": {},
+        },
+    )
+    assert put_resp.status_code == 422
+    assert "nieistniejacy_szablon_zzz" in put_resp.json()["detail"]
+
+
+def test_protection_config_known_template_ref_accepted(app_client) -> None:
+    """Predykat parami z `test_protection_config_unknown_template_ref_rejected`:
+    JEDNO źródło prawdy (`get_protection_template`, katalog domyślny MV) — ref
+    ZNANY katalogowi (`template_ref_oc_ef_500`, `mv_auxiliary_catalog.py`) musi
+    przejść ten sam warunek wejścia, którego brak odrzucił ref nieznany."""
+    case_id = _utworz_projekt_i_przypadek(app_client)
+
+    put_resp = app_client.put(
+        f"/api/study-cases/{case_id}/protection-config",
+        json={
+            "template_ref": "template_ref_oc_ef_500",
+            "template_fingerprint": None,
+            "library_manifest_ref": None,
+            "overrides": {},
+        },
+    )
+    assert put_resp.status_code == 200
+    assert put_resp.json()["template_ref"] == "template_ref_oc_ef_500"

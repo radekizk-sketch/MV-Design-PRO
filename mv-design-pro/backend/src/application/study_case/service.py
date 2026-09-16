@@ -454,8 +454,19 @@ class StudyCaseService:
             if case is None:
                 raise StudyCaseNotFoundError(str(case_id))
 
-            # TODO P14c: Validate template_ref exists in catalog
-            # For now, we trust the frontend validation
+            # Walidacja P14c: template_ref musi istnieć w katalogu zabezpieczeń,
+            # gdy podany — kontrakt trasy PUT .../protection-config to obiecuje
+            # (422 przy braku, patrz api/study_cases.py). Reużycie odczytu
+            # katalogu z biegu kanonicznego (CV-3.3-B), nie nowa ścieżka.
+            if template_ref is not None:
+                from application.protection_analysis.catalog_lookup import (
+                    get_protection_template,
+                )
+
+                if get_protection_template(uow, template_ref) is None:
+                    raise ValueError(
+                        f"Szablon nastaw zabezpieczeń '{template_ref}' " "nie istnieje w katalogu"
+                    )
 
             # Create new ProtectionConfig
             now = datetime.now(UTC)
