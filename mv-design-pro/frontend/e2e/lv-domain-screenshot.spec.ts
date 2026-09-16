@@ -81,8 +81,13 @@ const KADRY: readonly Kadr[] = [
       await expect(page.locator('[data-testid="lv-domain-node-QBC"] [data-symbol-family="cad"] [fill]:not([fill="none"])')).toHaveCount(0);
       await atrybut(page, 'lv-domain-edge-QBC#a', 'data-energization', 'ENERGIZED');
       await atrybut(page, 'lv-domain-edge-QBC#b', 'data-energization', 'ENERGIZED');
-      await atrybut(page, 'lv-domain-node-anchor:eq:', 'data-shared', 'true').catch(() => undefined);
+      // Jedna kotwica SN wspólna dla obu transformatorów (upstream_system_id „sn").
+      // Bez połykania asercji: poprzednia postać czekała na fantomowy testid
+      // `lv-domain-node-anchor:eq:` z `.catch(() => undefined)` — nie sprawdzała
+      // niczego, a każdy z sześciu przebiegów motyw×poziom palił pełny limit
+      // asercji (6 × 45 s > 180 s limitu testu; CI run 444, 2026-09-16).
       await expect(page.locator('[data-node-kind="anchorBar"]')).toHaveCount(1);
+      await expect(page.locator('[data-node-kind="anchorBar"]').first()).toHaveAttribute('data-shared', 'true');
     },
   },
   {

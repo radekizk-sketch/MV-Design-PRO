@@ -60,8 +60,13 @@ test.describe('flow-ekspert:screenshot', () => {
           await expect(page.getByTestId('pulpit-osd-limit')).toBeVisible();
           await expect(page.getByTestId('pulpit-osd-werdykt')).toContainText('przekracza');
         } else if (scena === 'uwaga') {
-          await expect(page.getByTestId('mvd-cwu-lista')).toBeVisible();
-          await expect(page.getByTestId('mvd-cwu-podsumowanie')).toContainText('2');
+          // Scena zasiewa wynik rozpływu BEZ `kryteria_napiecia` (karta W3-J: próg
+          // wyłącznie z odpowiedzi biegu) — uczciwy stan „brak podstaw do oceny",
+          // nie „sieć w normie" (CI run 444, 2026-09-16). Lista przekroczeń z realnego
+          // biegu backendu wraca w tej scenie z kartą HARNESS-RESZTA.
+          await expect(page.getByTestId('mvd-cwu-brak-kryteriow')).toBeVisible();
+          await expect(page.getByTestId('mvd-cwu-brak-kryteriow')).toContainText('Brak podstaw do oceny');
+          await expect(page.getByTestId('mvd-cwu-w-normie')).toHaveCount(0);
         } else if (scena === 'swiezosc') {
           await expect(page.getByTestId('mvd-casebar')).toBeVisible();
           await expect(page.getByTestId('mvd-casebar-results')).toContainText('nieaktualne');
@@ -81,18 +86,22 @@ test.describe('flow-ekspert:screenshot', () => {
         } else if (scena === 'zwarcia') {
           // R3-B: sekcja wkladow dla domyslnego punktu z realnego dostawcy
           // (endpoint SC3F contributions, podmieniony fetch).
-          await expect(page.getByTestId('mvd-zwarcia-wklady')).toContainText('Falownik PV 4 MW');
+          // Scena karmiona fixturą REALNEGO biegu backendu (HARNESS-ZWARCIA, złota sieć
+          // CGMES): jedyna maszyna wirująca to „Generator synchroniczny" (gen_sync);
+          // punkt domyślny Szyna SN: Z_k = 1,0640 Ω, κ = 1,861 (fixtura
+          // harness-fixtures/generated/zwarcia_wyniki_scena_zwarcia.json, parytet w CI).
+          await expect(page.getByTestId('mvd-zwarcia-wklady')).toContainText('Generator synchroniczny');
           // ZWARCIA-PRO F1: panel „Bilans IEC 60909" + kolumny impedancyjne (ekspert).
-          await expect(page.getByTestId('mvd-zwarcia-bilans')).toContainText('0,7777 Ω');
-          await expect(page.getByTestId('mvd-zwarcia-bilans')).toContainText('1,728');
+          await expect(page.getByTestId('mvd-zwarcia-bilans')).toContainText('1,0640 Ω');
+          await expect(page.getByTestId('mvd-zwarcia-bilans')).toContainText('1,861');
           await expect(page.getByTestId('mvd-wyn-th-kappa')).toBeVisible();
           // F2: rozwiniecie wkladu maszyny (klik wiersza tabeli wkladow -> mu/q/Ib).
           await page
             .getByTestId('mvd-zwarcia-wklady')
             .getByTestId('mvd-wyn-tabela')
-            .getByText('Falownik PV 4 MW')
+            .getByText('Generator synchroniczny')
             .click();
-          await expect(page.getByTestId('mvd-zwarcia-wklad-szczegol')).toContainText('0,756');
+          await expect(page.getByTestId('mvd-zwarcia-wklad-szczegol')).toContainText('0,705');
           // F3: wywod SEKCYJNY na zadanie — akordeon z norma; klik sekcji wkladu
           // -> kroki KaTeX; checklista walidacji IEC.
           await page.getByTestId('mvd-zwarcia-wklady-slad-btn').click();

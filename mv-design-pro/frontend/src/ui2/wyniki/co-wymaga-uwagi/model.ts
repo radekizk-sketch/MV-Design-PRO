@@ -176,6 +176,14 @@ export interface RejestrPrzekroczen {
   /** Czy istnieje jakikolwiek zakończony przebieg (rozróżnia „brak przebiegu"
    * od „sieć w normie" — uczciwe stany zerowe, FLOW §0). */
   maPrzebieg: boolean;
+  /**
+   * Wynik rozpływu istnieje, ale nie niesie `kryteria_napiecia` (starszy
+   * zapisany bieg sprzed W3-J albo zasiew bez kryteriów): napięć NIE DA SIĘ
+   * ocenić. To osobny stan ekranu „brak podstaw do oceny", nigdy „sieć w normie"
+   * (pusta lista przekroczeń bez progu nie jest dowodem poprawności — zasada
+   * normowa B-02: brak wiarygodnej podstawy = BRAK PODSTAW DO OCENY).
+   */
+  brakKryteriowNapiec: boolean;
 }
 
 /**
@@ -232,5 +240,17 @@ export function useRejestrPrzekroczen(): RejestrPrzekroczen {
   const maPrzebieg =
     wynikRozplywu !== null || przebiegi.some((przebieg) => przebieg.status === 'DONE');
 
-  return { przekroczenia, maPrzebieg };
+  const brakKryteriowNapiec = brakKryteriowRozplywu(wynikRozplywu);
+
+  return { przekroczenia, maPrzebieg, brakKryteriowNapiec };
+}
+
+/**
+ * Czy wynik rozpływu istnieje bez kryteriów napięciowych — para predykatów z
+ * `przekroczeniaRozplywu` (ten sam warunek `!kryteria` decyduje tam o pustej
+ * liście, tu o stanie „brak podstaw"): jedno źródło prawdy, bez drugiej,
+ * niezależnej definicji „brak kryteriów".
+ */
+export function brakKryteriowRozplywu(wynik: PowerFlowResultV1 | null): boolean {
+  return wynik !== null && !wynik.kryteria_napiecia;
 }

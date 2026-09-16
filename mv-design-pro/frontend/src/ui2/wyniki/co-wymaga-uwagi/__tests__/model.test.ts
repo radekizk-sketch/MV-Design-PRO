@@ -5,7 +5,8 @@
  */
 import { describe, it, expect } from 'vitest';
 
-import { przekroczeniaRozplywu, przekroczeniaWerdyktu, przekroczeniaZbieznosci } from '../model';
+import { brakKryteriowRozplywu,
+  przekroczeniaRozplywu, przekroczeniaWerdyktu, przekroczeniaZbieznosci } from '../model';
 import type { OdpowiedzOceny, PozycjaOceny } from '../../ocena/api';
 import { CO_WYMAGA_UWAGI_STRINGS as T } from '../strings';
 import { busResultFixture, powerFlowResultFixture } from '../../rozplyw/__tests__/fixtures';
@@ -61,6 +62,17 @@ describe('przekroczeniaRozplywu — konsolidacja przekroczeń napięć szyn', ()
   it('jest deterministyczne: to samo wejście → identyczne wyjście', () => {
     const wynik = powerFlowResultFixture();
     expect(przekroczeniaRozplywu(wynik)).toEqual(przekroczeniaRozplywu(wynik));
+  });
+
+  it('brakKryteriowRozplywu: para predykatów z przekroczeniaRozplywu (brak kryteriów = brak podstaw, nie norma)', () => {
+    const bez = powerFlowResultFixture({
+      kryteria_napiecia: undefined,
+      bus_results: [busResultFixture({ bus_id: 'SZ-ST2', v_pu: 0.5 })],
+    });
+    expect(brakKryteriowRozplywu(bez)).toBe(true);
+    expect(przekroczeniaRozplywu(bez)).toEqual([]);
+    expect(brakKryteriowRozplywu(powerFlowResultFixture())).toBe(false);
+    expect(brakKryteriowRozplywu(null)).toBe(false);
   });
 
   it('karta W3-J: bez kryteriów w wyniku (starszy zapisany bieg) → pusta lista, nie domyślny próg', () => {

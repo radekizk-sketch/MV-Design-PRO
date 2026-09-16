@@ -30,7 +30,7 @@ import { CO_WYMAGA_UWAGI_STRINGS as T } from './strings';
 import './coWymagaUwagi.css';
 
 export function EkranCoWymagaUwagi() {
-  const { przekroczenia, maPrzebieg } = useRejestrPrzekroczen();
+  const { przekroczenia, maPrzebieg, brakKryteriowNapiec } = useRejestrPrzekroczen();
   const poprawWModelu = usePoprawWModelu();
   const setWynikiTab = useShellStore((s) => s.setWynikiTab);
   // K6 / H-5: stan zerowy „brak przebiegu" uruchamia bieg rozpływu — to on
@@ -61,7 +61,15 @@ export function EkranCoWymagaUwagi() {
         </div>
       )}
 
-      {maPrzebieg && przekroczenia.length === 0 && (
+      {maPrzebieg && przekroczenia.length === 0 && brakKryteriowNapiec && (
+        <div className="mvd-cwu-pusty" data-testid="mvd-cwu-brak-kryteriow">
+          <p className="mvd-cwu-pusty-glowny">{T.brakKryteriow}</p>
+          <p className="mvd-cwu-pusty-krok">{T.brakKryteriowKrok}</p>
+          <PrzyciskAkcjiStanu akcja={akcjaBiegu} testid="mvd-cwu-brak-kryteriow" />
+        </div>
+      )}
+
+      {maPrzebieg && przekroczenia.length === 0 && !brakKryteriowNapiec && (
         <div className="mvd-cwu-pusty mvd-cwu-ok" data-testid="mvd-cwu-w-normie">
           <p className="mvd-cwu-pusty-glowny">{T.siecWNormie}</p>
           <p className="mvd-cwu-pusty-krok">{T.siecWNormieKrok}</p>
