@@ -569,3 +569,440 @@ pierwszy ekran ma odpowiadać „co i na jakiej podstawie policzę?”, a drugi 
 
 Wtedy oba ekrany przestają być katalogiem funkcji i zaczynają tworzyć jeden spójny ciąg pracy inżynierskiej.
 ```
+
+---
+
+## Załącznik B — werdykt B-02 (8,5/10) i dyrektywa „PROFESSIONAL ENGINEERING PRESENTATION PASS V12.7" (właściciel, 2026-09-16, verbatim)
+
+**Status:** wiążąca dla karty V12.7 (kontrakt KaTeX w UI, metadane produkcyjne poza pierwszym planem, werdykt nie
+szerszy niż zakres oceny, wiarygodność ≠ spełnienie); wykonanie w toku (karta V12.7, ten sam wątek). Tekst poniżej jest
+cytatem właściciela — nie edytować.
+
+Po poprawkach kierunek jest zdecydowanie właściwy. Nie robiłbym już kolejnej przebudowy tych ekranów. Teraz potrzebna jest warstwa profesjonalizacji prezentacji inżynierskiej, a nie następna zmiana układu.
+
+Moja ocena obecnego stanu: 8,5/10. Największy postęp widać w rozdzieleniu „Analiz specjalistycznych” od „Oceny technicznej wyników”, grupowaniu analiz według znaczenia inżynierskiego, pokazaniu pytania inżynierskiego, zakresu, wielkości i podstawy oceny oraz w bardzo dobrym ekranie końcowego wyniku z rozdzieleniem wyniku, wiarygodności i następnego kroku. To już zaczyna przypominać narzędzie projektanta sieci, a nie interfejs demonstracyjny.
+
+Najważniejsze uwagi, które jeszcze bym wprowadził:
+
+* Wzory są obecnie największą słabością wizualną. Fragmenty typu U_dot ≤ U_dot,dop, sqrt(...), Z_grid(f), Re Z_conv,min czy wzory zapisane ciągiem w „Podstawie oceny” wyglądają jak debugowanie solvera. Każdy wzór widoczny dla projektanta powinien być renderowany przez KaTeX/LaTeX, z prawidłowymi indeksami, ułamkami, pierwiastkami, symbolami greckimi i jednostkami.
+* Metadane produkcyjne nie powinny dominować ekranu. UUID, odcisk deterministyczny, hash danych wejściowych, wewnętrzna wersja solvera itp. są potrzebne do reprodukowalności, ale to warstwa audytowa/serwisowa, nie informacja inżynierska. Na głównym ekranie projektant powinien widzieć przede wszystkim przypadek, rewizję modelu, czas obliczenia, parametry wejściowe, wyniki i kryteria. Hashy nie trzeba usuwać z backendu ani z pakietu dowodowego — trzeba je usunąć z pierwszego planu UI.
+* Ekran parametrów ma trochę podwójną reprezentację tego samego kontraktu: najpierw długa lista „WYMAGANE/OPCJONALNE”, a potem te same pola formularza. W trybie podstawowym wystarczy formularz z oznaczeniem statusu przy polach oraz zbiorcze „11/11 danych wymaganych”. Pełny kontrakt można zostawić w trybie eksperckim.
+* Bardzo dobrze, że wynik typu „2,25614%” jest oddzielony od informacji „brak progu normatywnego”. To trzeba zachować. Wiarygodność obliczeniowa i spełnienie wymagania technicznego/normatywnego muszą pozostać dwiema niezależnymi osiami.
+* W „Doborze uziemienia” uważałbym na sformułowanie „uziom niezgodny”. Jeżeli solver sprawdził tylko część kryteriów, bardziej precyzyjne byłoby np. „NIE SPEŁNIA kryterium dopuszczalnego napięcia dotykowego”. Dopiero kompletna ocena wszystkich wymaganych kryteriów uzasadnia werdykt dotyczący całego układu uziemiającego.
+* „Pełna jawność obliczeń”, „Pakiet dowodowy” i „Surowy zapis odpowiedzi solvera” powinny mieć jasną hierarchię. Projektant potrzebuje wyprowadzenia matematycznego, audyt potrzebuje pakietu dowodowego, a surowy zapis API/solver payload powinien być dostępny wyłącznie w trybie eksperckim lub serwisowym.
+
+Poniżej daję prompt, który nie przebudowuje ponownie ekranów, tylko doprowadza je do poziomu profesjonalnego narzędzia inżynierskiego.
+
+# MV-DESIGN-PRO — B-02 / W3-E
+# ANALIZY SPECJALISTYCZNE + OCENA TECHNICZNA WYNIKÓW
+# PROFESSIONAL ENGINEERING PRESENTATION PASS
+# V12.7
+<rola>
+Działaj jako Lead Principal Engineer, System Architect oraz właściciel jakości
+warstwy inżynierskiej MV-DESIGN-PRO.
+Aktualny kierunek ekranów:
+1. „Analizy specjalistyczne”,
+2. formularz i gotowość analizy,
+3. wynik pojedynczej analizy,
+4. „Ocena techniczna wyników”
+jest ZAAKCEPTOWANY.
+Nie wykonuj kolejnego redesignu.
+Nie zmieniaj ponownie architektury informacji bez wykazanej potrzeby.
+Nie przebudowuj poprawnie działającego backendu.
+Wykonaj ukierunkowany etap profesjonalizacji prezentacji
+inżynierskiej i redukcji informacji implementacyjnych widocznych
+dla zwykłego użytkownika.
+</rola>
+# 1. NOWY TRWAŁY KONTRAKT UI — MATEMATYKA
+To jest trwała zasada MV-DESIGN-PRO.
+WSZYSTKIE wzory, równania, zależności fizyczne, kryteria,
+nierówności i symbole matematyczne prezentowane użytkownikowi
+mają być renderowane profesjonalnie przez KaTeX/LaTeX.
+Nie pokazuj użytkownikowi surowych zapisów programistycznych typu:
+    U_dot <= U_dot,dop
+    sqrt(...)
+    Z_grid(f)
+    Re Z_conv,min
+    U_h = Y_h^-1 * I_h
+    sum(...)
+    I_res / I_C
+jeżeli zapis reprezentuje zależność matematyczną.
+Powinno to być prezentowane odpowiednio jako matematyka, np.:
+    U_{\mathrm{dot}} \leq U_{\mathrm{dot,dop}}
+    U_h = Y_h^{-1} I_h
+    THD_U =
+    \frac{\sqrt{\sum_{h=2}^{H} U_h^2}}{U_1}\cdot100\%
+    Z_{\mathrm{grid}}(f)
+    \Re\{Z_{\mathrm{conv,min}}\}
+    \frac{I_{\mathrm{res}}}{I_C}
+Wzory:
+- KaTeX/LaTeX;
+- prawidłowe indeksy dolne i górne;
+- prawidłowe ułamki;
+- prawidłowe pierwiastki;
+- symbole greckie jako symbole matematyczne;
+- jednostki typograficznie odseparowane od wartości;
+- zmienne kursywą zgodnie z konwencją matematyczną;
+- opisy i skróty wielkości pismem prostym tam, gdzie właściwe;
+- czytelne równania blokowe dla ważniejszych zależności;
+- zapis liniowy tylko dla bardzo prostych symboli.
+Nie implementuj własnego parsera wzorów, jeżeli istniejąca
+warstwa KaTeX może realizować ten kontrakt.
+Nie zmieniaj matematyki solvera.
+Zmiana dotyczy prezentacji istniejącej prawdy obliczeniowej.
+Ta zasada ma zostać zapisana w kanonicznym kontrakcie UI/UX
+projektu, a nie pozostać jedynie instrukcją bieżącej sesji.
+# 2. ROZDZIEL INFORMACJĘ INŻYNIERSKĄ OD PRODUKCYJNEJ
+Podstawowy interfejs projektanta ma prezentować informację
+INŻYNIERSKĄ.
+Nie eksponuj w głównych ekranach roboczych informacji
+implementacyjnych takich jak:
+- UUID przebiegu;
+- pełny hash/odcisk deterministyczny;
+- hash danych wejściowych;
+- wewnętrzne identyfikatory rekordów;
+- techniczne identyfikatory payloadów;
+- nazwy kluczy kontraktu API;
+- surowe identyfikatory solvera;
+- inne metadane produkcyjno-serwisowe.
+To nie oznacza ich usuwania z systemu.
+Muszą pozostać dostępne tam, gdzie są potrzebne do:
+- reprodukowalności;
+- audytu;
+- diagnostyki;
+- pakietu dowodowego;
+- obsługi serwisowej;
+- korelacji logów.
+W normalnym widoku projektanta pokazuj zamiast tego:
+- nazwę analizy;
+- przypadek obliczeniowy;
+- rewizję modelu;
+- wariant pracy;
+- stan przebiegu;
+- datę/czas wykonania;
+- wersję metody obliczeniowej, jeśli ma znaczenie inżynierskie;
+- dane wejściowe;
+- wynik;
+- kryterium;
+- margines;
+- podstawę techniczną;
+- wiarygodność;
+- wniosek projektowy.
+Pełne identyfikatory techniczne mogą znajdować się w:
+    Ekspercki → Informacje audytowe
+lub
+    Pakiet dowodowy → Metadane reprodukowalności.
+Nie mieszaj warstwy projektowej z telemetrią systemu.
+# 3. ANALIZY SPECJALISTYCZNE — ZACHOWAĆ OBECNY KIERUNEK
+Aktualne grupowanie kart według znaczenia inżynierskiego jest
+właściwe.
+Zachowaj m.in.:
+- Jakość energii i stabilność przekształtników;
+- Uziemienia, punkt neutralny i izolacja;
+- Aparatura i stany przejściowe;
+- Niezawodność i niepewność wyniku.
+Każda karta powinna nadal odpowiadać projektantowi:
+1. jakie pytanie inżynierskie rozstrzyga;
+2. jaki zakres bada;
+3. jakie główne wielkości wyznacza;
+4. według jakiego kryterium ocenia;
+5. czy ma komplet danych.
+Nie skracaj treści do marketingowego opisu.
+Jednocześnie wszystkie zależności matematyczne wewnątrz kart
+przenieś do renderowania KaTeX.
+# 4. STAN DANYCH NA KARCIE
+Obecne:
+    STAN DANYCH: brakuje danych: 1
+    warunek niespełniony
+jest właściwym kierunkiem.
+Uczyń status bardziej operacyjny.
+Jeżeli analiza nie jest gotowa:
+    BRAKUJE 1 DANEJ WYMAGANEJ
+przycisk może prowadzić do formularza, ale nie powinien sugerować,
+że obliczenie zostanie wykonane.
+Dopuszczalne:
+    Uzupełnij dane
+    Otwórz analizę
+zależnie od przyjętej konwencji.
+Jeżeli dane są kompletne:
+    DANE KOMPLETNE
+    GOTOWOŚĆ POTWIERDZONA
+i wtedy:
+    Uruchom analizę
+Nie pozwalaj, aby identyczny wygląd sugerował tę samą gotowość.
+# 5. FORMULARZ DANYCH — USUŃ ZBĘDNĄ DUPLIKACJĘ
+Aktualny ekran pokazuje:
+A. pełną listę wymaganych/opcjonalnych danych,
+B. następnie te same dane jako pola formularza.
+To jest użyteczne audytowo, ale za ciężkie dla zwykłego
+projektanta.
+W trybie PODSTAWOWYM:
+- oznaczenie WYMAGANE/OPCJONALNE umieść przy etykiecie pola;
+- pokaż podsumowanie:
+      Dane wymagane: 11/11
+      Dane opcjonalne: 1/3
+      Gotowość: potwierdzona
+- brakujące pole wyróżnij bezpośrednio w formularzu.
+Pełną tabelę/kontrakt danych pozostaw w trybie EKSPERCKIM
+lub w rozwijanej sekcji:
+    Kontrakt danych analizy
+Nie usuwaj tej informacji z systemu.
+# 6. DOMYŚLNE WARTOŚCI SOLVERA
+Sekcja „Domyślne solvera” jest wartościowa tylko wtedy, gdy
+rzeczywiście istnieją parametry domyślne.
+Jeżeli:
+    Solver nie stosuje w tej analizie parametrów
+    z wartością domyślną.
+nie twórz dużego pustego bloku.
+Zastosuj kompaktową informację.
+Jeżeli wartość domyślna istnieje, pokaż jednoznacznie:
+- parametr;
+- wartość;
+- jednostkę;
+- źródło;
+- czy została użyta;
+- wpływ na wynik.
+Nie ukrywaj domyślnie przyjętych wartości obliczeniowych.
+# 7. GOTOWOŚĆ
+Obecna sekcja „Gotowość” jest dobra i należy ją zachować.
+Musi odpowiadać na dwa pytania:
+    Czy solver może wykonać analizę?
+oraz:
+    Na jakiej podstawie stwierdzono gotowość?
+Lista warunków nie może być pozorowana przez frontend.
+Musi pochodzić z tej samej reguły backendowej, która decyduje
+o możliwości uruchomienia solvera.
+# 8. KRYTERIA OCENY — PROFESJONALNY ZAPIS
+Sekcja „Kryteria oceny” jest jednym z najważniejszych elementów
+White Box.
+Zachowaj kolumny:
+- Wielkość;
+- Symbol;
+- Warunek;
+- Wartość graniczna;
+- Jednostka;
+- Podstawa.
+Ale:
+SYMBOL i WARUNEK muszą korzystać z KaTeX.
+Przykład zamiast:
+    U_dot <= U_dot,dop
+pokazuj:
+    U_{\mathrm{dot}}
+    \leq
+    U_{\mathrm{dot,dop}}
+Jeżeli wartość dopuszczalna wynika ze wzoru, nie wciskaj całego
+równania do jednej komórki tekstowej.
+Pokaż profesjonalny wzór matematyczny z opisem parametrów.
+Podstawę podawaj osobno, np.:
+    IEEE 80 — metoda Sveraka
+    PN-EN 50522
+Nie przedstawiaj źródła jako fragmentu programistycznego.
+# 9. WYNIK ANALIZY — ZACHOWAĆ STRUKTURĘ
+Aktualna struktura:
+    Wynik oceny
+    Wielkości wynikowe
+    Wiarygodność wyniku
+    Wniosek projektowy — następny krok
+    Pełna jawność obliczeń
+    Pakiet dowodowy
+jest właściwa.
+Nie przebudowuj jej.
+Popraw prezentację.
+# 10. NIE NADAWAJ ZBYT SZEROKIEGO WERDYKTU
+Nie wydawaj werdyktu dotyczącego całego urządzenia lub układu,
+jeżeli solver zbadał tylko pojedyncze kryterium.
+Przykład:
+NIE:
+    uziom niezgodny
+jeżeli sprawdzono wyłącznie napięcie dotykowe.
+Preferuj:
+    NIE SPEŁNIA KRYTERIUM
+    DOPUSZCZALNEGO NAPIĘCIA DOTYKOWEGO
+i poniżej:
+    U_dot = ...
+    U_dot,dop = ...
+    przekroczenie = ...
+Dopiero jeżeli komplet kontraktu oceny uziemienia został wykonany,
+dopuszczalny jest zbiorczy werdykt dotyczący układu uziemiającego.
+Ta sama reguła dotyczy:
+- transformatora;
+- kabla;
+- zabezpieczenia;
+- przyłącza;
+- źródła OZE;
+- jakości energii;
+- stabilności.
+# 11. WARTOŚĆ — GRANICA — MARGINES
+Tam, gdzie istnieje kryterium, wynik powinien tworzyć spójną
+trójkę:
+    wartość obliczona
+    wartość graniczna
+    margines
+Przykład:
+    U_dot = 2,50 kV
+    U_dot,dop = 0,921 kV
+    \Delta U =
+    U_{\mathrm{dot,dop}} -
+    U_{\mathrm{dot}}
+lub procentowe przekroczenie:
+    \delta =
+    \frac{
+      U_{\mathrm{dot}} - U_{\mathrm{dot,dop}}
+    }{
+      U_{\mathrm{dot,dop}}
+    }\cdot100\%
+Nie każ projektantowi ręcznie porównywać dwóch liczb.
+# 12. WIARYGODNOŚĆ ≠ SPEŁNIENIE WYMAGANIA
+Zachowaj twarde rozdzielenie:
+A. WIARYGODNOŚĆ OBLICZENIA
+od
+B. OCENA SPEŁNIENIA KRYTERIUM.
+Możliwy jest wynik:
+    wynik wiarygodny
+jednocześnie:
+    NIE SPEŁNIA WYMAGANIA
+Możliwy jest także:
+    wynik wiarygodny
+oraz:
+    BRAK PODSTAW DO OCENY SPEŁNIENIA WYMAGANIA
+Nie wolno automatycznie przekształcać braku kryterium
+normatywnego w wynik pozytywny ani negatywny.
+# 13. ANALIZA NIEPEWNOŚCI — ZACHOWAĆ
+Aktualny ekran analizy niepewności jest dobrym przykładem
+właściwego rozdzielenia wartości liczbowej od kryterium.
+Zachowaj:
+- wartość niepewności;
+- metodę jej wyznaczenia;
+- ranking parametrów wejściowych;
+- procentowy udział w całkowitej niepewności;
+- wniosek, który parametr warto doprecyzować.
+Wszystkie wzory niepewności renderuj w KaTeX.
+Nie przedstawiaj wyniku jako zgodności normatywnej,
+jeżeli solver nie ma takiego kontraktu.
+# 14. PEŁNA JAWNOŚĆ OBLICZEŃ
+„Pełna jawność obliczeń” ma być materiałem INŻYNIERSKIM.
+Dla każdego kroku:
+    wzór
+        ↓
+    dane
+        ↓
+    podstawienie
+        ↓
+    wynik
+        ↓
+    sprawdzenie jednostek
+        ↓
+    ocena kryterium
+WZÓR i PODSTAWIENIE mają być KaTeX.
+Przykład:
+    R_g =
+    \frac{V}{I}
+a nie:
+    R_g = V / I
+dla złożonych zależności.
+White Box ma wyglądać jak profesjonalny arkusz obliczeń
+projektowych, nie dump zmiennych programu.
+# 15. PAKIET DOWODOWY
+Rozróżnij:
+PEŁNA JAWNOŚĆ OBLICZEŃ
+= materiał czytelny dla inżyniera;
+PAKIET DOWODOWY
+= materiał audytowy zapewniający reprodukowalność;
+SUROWY ZAPIS SOLVERA
+= warstwa diagnostyczna dla dewelopera/serwisu.
+Nie mieszaj tych trzech poziomów.
+Surowy zapis odpowiedzi solvera nie powinien znajdować się
+na pierwszym poziomie zwykłego ekranu projektanta.
+# 16. OCENA TECHNICZNA WYNIKÓW
+Aktualna tabela oceny technicznej jest właściwym kierunkiem.
+Zachowaj:
+- Przedmiot oceny;
+- Wielkość;
+- Wartość obliczona;
+- Wartość odniesienia/graniczna;
+- Margines;
+- Podstawa oceny;
+- Wynik oceny;
+- Wniosek.
+Wiersze niespełniające kryterium mogą być subtelnie wyróżnione.
+Nie zamieniaj tabeli na zestaw dekoracyjnych kart.
+Dla porównania wielu elementów tabela jest właściwym
+narzędziem inżynierskim.
+# 17. TYPOGRAFIA I PROFESJONALIZM
+Doprowadź oba motywy:
+- jasny techniczny;
+- ciemny dyspozytorski
+do jednakowej jakości.
+Sprawdź szczególnie:
+- kontrast tekstu pomocniczego;
+- wielkość tekstu tabel;
+- odstępy między sekcjami;
+- wyrównanie liczb;
+- jednostki;
+- indeksy;
+- równania;
+- długość wierszy;
+- widoczność statusów.
+Matematyka powinna wyglądać jak dokumentacja obliczeniowa
+elektroenergetyczna, nie jak kod źródłowy.
+# 18. CZEGO NIE ROBIĆ
+Nie:
+- przebudowuj ponownie całej nawigacji;
+- zmieniaj nazw zaakceptowanych sekcji bez potrzeby;
+- twórz kolejnego równoległego modelu danych;
+- duplikuj kontraktu backendu w frontendzie;
+- kopiuj wzorów jako zwykłego tekstu;
+- usuwaj hashy i UUID z warstwy audytowej;
+- pokazuj hashy i UUID na głównych ekranach projektanta;
+- zastępuj kryteriów inżynierskich ogólnym zielonym/czerwonym
+  statusem;
+- wydawaj szerszego werdyktu niż zakres wykonanej analizy;
+- twórz atrap danych;
+- zmieniaj solvera tylko po to, aby poprawić wygląd UI.
+# 19. ACCEPTANCE CONTRACT
+Etap można uznać za ukończony dopiero, gdy:
+A. żadna znacząca zależność matematyczna w analizach
+   specjalistycznych nie jest pokazywana jako surowy zapis
+   programistyczny;
+B. KaTeX działa dla:
+   - kart analiz,
+   - kryteriów,
+   - wyników,
+   - pełnej jawności obliczeń,
+   - podstawień,
+   - raportu ekranowego;
+C. zwykły ekran projektanta nie pokazuje UUID ani pełnych hashy;
+D. metadane reprodukowalności pozostają dostępne w pakiecie
+   dowodowym/trybie audytowym;
+E. wiarygodność wyniku jest niezależna od oceny spełnienia
+   wymagania;
+F. werdykt nie wykracza poza faktycznie sprawdzony zakres;
+G. formularz nie duplikuje bez potrzeby pełnego kontraktu danych
+   w trybie podstawowym;
+H. oba motywy zachowują czytelność matematyki i tabel;
+I. istniejące testy fizyki i solverów pozostają zielone;
+J. nowe testy UI obejmują co najmniej:
+   - renderowanie KaTeX,
+   - brak surowych hashy/UUID w widoku podstawowym,
+   - dostępność metadanych w warstwie audytowej,
+   - poprawne rozdzielenie reliability/compliance,
+   - brak szerszego werdyktu niż dostępny zakres oceny.
+# 20. WYNIK PRACY
+Nie kończ na raporcie z audytu.
+Zbadaj rzeczywistą implementację.
+Wprowadź potrzebne poprawki.
+Uruchom testy proporcjonalne do zakresu zmian.
+Pokaż evidence.
+Na końcu podaj:
+1. zmienione powierzchnie;
+2. kontrakt KaTeX/LaTeX;
+3. miejsca usunięcia metadanych produkcyjnych z UI;
+4. sposób zachowania ich w pakiecie audytowym;
+5. poprawione werdykty;
+6. testy;
+7. unresolved, jeśli istnieją.
+Nie wykonuj kolejnego redesignu.
+Celem jest doprowadzenie zaakceptowanej architektury ekranów
+do jakości produkcyjnego narzędzia projektowego.
+
+Dodałem też tę zasadę do kontekstu MV-DESIGN-PRO: matematyka widoczna w UI ma być pełnym KaTeX/LaTeX, a główna powierzchnia projektanta ma pokazywać informację inżynierską, nie UUID-y, hashe i metadane implementacyjne. Metadanych nie należy niszczyć — ich właściwym miejscem jest warstwa dowodowa/audytowa.

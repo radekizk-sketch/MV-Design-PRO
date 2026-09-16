@@ -382,3 +382,91 @@ a `kryterium.slad.length` na `undefined` wywracało całą kartę gotowości wyt
 czerwone); atrapa uzupełniona, `maKsztaltKryterium` w `DoborPrzekladnikowSekcja.tsx` sprawdza pola W3-B (nazwany błąd kształtu zamiast
 białego ekranu), test klasy. **Reguła odbioru:** łańcuch przedpushowy obejmuje odtąd specy harnessu (`wszystkie-sceny-screenshot`,
 `creator-screenshot`, `dowody-oze-screenshot`) obok ścieżki krytycznej. Dowody: evidence §F.
+
+### Odbiór fali 3 (TRACE-V2, W3-G3, W3-G2, W3-G1) — 2026-09-10/16 — UCZCIWOŚĆ
+
+**Model:** cztery podkarty wykonane przez agentów w osobnych worktree (baza `beaa59bb` po fali 2; TRACE-V2 z bazy `a1b40e9a`),
+commity BEZ push; odbiór Fable w worktree `fable-f3` = cherry-pick na `b89c13b3` (szczyt gałęzi po B-02), 14 commitów
+(`e6c734aa` TRACE-V2; `1e69141d`/`a986edf5` W3-G3; `7419832e`/`f0257cc2`/`1a647a96`/`d4d67b1a`/`3baa50ce` W3-G2;
+`24272aee`/`8b4705a6`/`fdaf800b`/`67b8bc5f`/`4c52f0b9`/`a0373c59` W3-G1) + commit odbioru `c307e95f`; sygnatury agentów przepisane
+na sygnaturę sesji (drzewo bit w bit identyczne przed i po przepisaniu). Pominięte świadomie: commity „lint ×3" agentów
+(`2f9e2658`, `4ef4d579`, `2407119c`) — ich treść była już na `20890e88`; kasacje z `2f9e2658` (przypadkowo doklejone do lintu,
+zgłoszone przez agenta) wzięte osobnym, uczciwie nazwanym commitem `24272aee`.
+
+**Konflikty cherry-picka (KLASA jak w falach 1–2):** `scripts/legacy_public_path_guard.py` + self-test (bramka wskrzeszenia
+TRACE-V2 i bramka sierot W3-G1 w tym samym regionie — scalone z PEŁNYCH wersji, `py_compile` + self-testy + guard po każdym
+scaleniu), `ui2/wyniki/jakosc/{EkranJakosci.tsx,strings.ts,ekranJakosci.test.tsx}` (G1 `SekcjaPorownaniaMetod` + G2
+`SekcjaPasmRozplywu` — oba importy i oba JSX), `scripts/solver_input_substitute_guard.py` (+11 linii zapadki G2) i self-test
+(piny z pomiaru na drzewie scalonym, niżej), `scripts/tsconfig_gate_guard.py` (budżet z pomiaru), `backend/schemas/openapi_snapshot.json`
+(regenerowany testem po wszystkich kartach), `docs/analysis/TRACE_ASIS_MAP.md` (skasowany przez TRACE-V2, modyfikowany przez B-02 —
+kasacja wygrywa).
+
+**Pomiar zapadek na drzewie scalonym (nie arytmetyka z kart):** `solver_input_substitute_guard`: pola 3506 → 3506 — równość jest
+ZBIEGIEM trzech zmian (−19 pól ze skasowanych źródeł kontraktów `domain/trace_v2/*`, +10 `analysis/sanity_bounds/power_flow_bounds.py`
+W3-G2, +9 pasma MIN/MAX W3-G3 — zbiory pól zdiffowane na obu drzewach), pliki 486 → 479 (−8 TRACE-V2, +1
+`application/analyses/power_flow_reconstruction.py` W3-G1), zapadka 58/260 → 57/258 (wpis `trace_emitters/protection_emitter.py`
+zdjęty razem z plikiem), `application` 236 → 229; `tsconfig_gate`: 119 → 121 na drzewie scalonym (2 nowe błędy typów testu W3-G1
+`sekcjaPorownaniaMetod.test.tsx`) → naprawa u źródła + 2 pre-existing w plikach dotkniętych przez W3 (`fixtures.ts`
+`PozycjaCieplna`/`normy`/`aktualnosc` z rachunkiem 1:1, `ekranZwarc.test.tsx` `wklady` jako `Record`) → **117** (budżet z pomiaru;
+agent W3-G3 pinował 126 na swojej bazie — anachronizm, patrz evidence §G).
+
+#### TRACE-V2 (2026-09-10) — kasacja martwego klastra „ślad v2" — UCZCIWOŚĆ
+Wykonane: `domain/trace_v2/**` (5 plików), `application/trace_emitters/**` (6), `application/trace_export/**` (2), 5 plików testów,
+`scripts/trace_ui_leak_guard.py` (+ krok CI), typy FE `ui/proof/trace-v2/**`, dokumenty (12 w diffie — komunikat commitu „13"
+niedokładny, nazwane w recenzji); bramka wskrzeszenia `check_trace_v2_resurrection` (katalogi backendu, katalog FE, definicje klas,
+importy z prefiksów, typy TS przejęte po `trace_ui_leak_guard`). Martwość klastra potwierdzona niezależnie (0 konsumentów
+produkcyjnych). **Recenzja → naprawione przy odbiorze:** `FORBIDDEN_TRACE_V2_CLASS_NAMES` pokrywał 8 z 17 klas klastra (z drzewa
+sprzed kasacji `git show 583c686a^`) — zbiór = pełny inwentarz 17 klas (test równości z inwentarzem + test parametryczny
+wskrzeszenia KAŻDEJ klasy pod obcą ścieżką; self-testy guarda 107 passed).
+
+#### W3-G3 (2026-09-10) — pasmo MIN/MAX zwarcia — UCZCIWOŚĆ
+Wykonane: `enm/canonical_analysis.py::pasmo_min_max_zwarcia` (dobór pary: bieg siostrzany zapisany — najświeższy, remis
+identyfikatorem — albo wariant w pamięci `bieg_wariantu` na migawce kotwicy; odmowy nazwane: `wspolczynnik_c_recznie_ustawiony`,
+`kotwica_jest_wariantem_scenariusza`, `blad_solvera_wariantu:<Wyjątek>`), trasa `GET /api/analysis-runs/{id}/results/short-circuit/pasmo`
+(strona `obliczony_na_zadanie` bez fabrykowanego `run_id`, `bieg_bazowy_id` zamiast), sekcja `PasmoMinMax` w ekranie zwarć z parą
+wierszy MAX/MIN i akcją „Uruchom scenariusz". **Recenzja → naprawione przy odbiorze:** gałąź `blad_solvera_wariantu:*` była
+deklaracją „nigdy cichy" bez testu → test × {kotwica MAX, MIN} (atrapa `wykonaj_bieg_w_pamieci` po zapisaniu kotwicy); odmowa
+„kotwica-wariant" × {MAX, MIN}; remis czasów kandydatów → identyfikator (deterministyczny wybór), razem 16 passed; ostrzeżenia
+`act(...)` „celowo zaakceptowane" w `9611fca9` zdjęte u źródła (klasa: 3 pliki testów renderujące `EkranZwarc` — wspólny
+`renderEkranZwarc.tsx`, 0 ostrzeżeń, 155 passed). Znalezisko: `application/solvers/short_circuit_binding.py::execute_short_circuit`
+— 0 konsumentów produkcyjnych, 5 harnessów testowych parytetu; typ wyniku konsumowany przez chroniony `short_circuit_to_resultset_v1.py`
+→ ten sam klaster B-01 co OD-18 (addendum OD-18 w mapie §7), nie kasacja jednostronna.
+
+#### W3-G2 (2026-09-10) — pasma zdrowego rozsądku rozpływu — UCZCIWOŚĆ
+Wykonane: `analysis/sanity_bounds/power_flow_bounds.py` (napięcia ±10 % Un PN-EN 50160 — pasmo WIARYGODNOŚCI, obciążenia ≤ In
+katalogu wyłącznie linie/kable, straty ≤ próg z uzasadnieniem; bieg niezbieżny → wszystko „dane niekompletne", nigdy werdykt),
+`application/analyses/sanity_bounds.py::build_power_flow_sanity_bounds_view` (rozszerzenie addytywne `GET /api/quality/sanity-bounds`
+na PF), `application/analyses/power_flow_reconstruction.py` (jedno miejsce rekonstrukcji wyniku PF z biegu), sekcja `SekcjaPasmRozplywu`
+w ekranie „Jakość", e2e na realnym backendzie. **Recenzja → naprawione przy odbiorze:** brak testów serwisowych → obciążenie
+gałęzi poza zakresem (izolacja osi), transformatory poza pasmem prądowym (dowód nie-vacuous na sieci złotej), linia `status=open`
+poza oceną (23 passed); inwentarz KLASY progów napięciowych niekompletny (frontend `rozplyw/strings.ts` 0,95/1,05 z błędną podstawą
+„EN 50160", `ui/voltage-profile/**` martwe, `normativeLabels.ts`, fabrykowana krzywa `WykresSpadku.tsx`; backend `NormativeConfig`
+5/10 %, `energy_validation` kopia, `reactive_adequacy` 0,95/1,05, `power_flow/violations.py` bez konsumentów) → **karta W3-J**
+(agent, baza `c307e95f`) — jedno źródło kryteriów napięciowych, API niesie kryteria do UI, kasacje martwych z bramkami. Defekt
+solvera NR nazwany przez wykonawcę (zbieżność do U ≈ 1e-17 kV na szynie 110 kV przy jawnym równoważniku górnego napięcia,
+`slack_p_mw` ≈ 5713 MW; sekcja POPRAWNIE oznacza „poza zakresem wiarygodności") → **OD-19** (B-01), nie tylko w komunikacie commitu.
+
+#### W3-G1 (2026-09-10) — metoda rozpływu jako jawna opcja — UCZCIWOŚĆ
+Wykonane: `solver_method` w opcjach biegu → tor kanoniczny (`_execute_power_flow`) dla NR/GS/FD z metodą w kopercie wyniku i
+śladzie; warianty (`bieg_wariantu`, N-1) dziedziczą metodę bazy; wariant PF pakietu nastaw (`protection_settings/batch_run.py`)
+jawnie NR; selektor metody w przestrzeni „Obliczenia" (`solver_input.solver_method`), sekcja walidacji krzyżowej NR↔FD w ekranie
+„Jakość" (odkrycie po śladzie, poczwórny stan zerowy, akcje uruchomienia drugą metodą przez `akcjeStanuZerowego`), kasacja sierot
+`CaseConfigPage.tsx`/`PowerFlowRunDialog.tsx` z bramką `check_w3g1_run_trigger_orphan_resurrection`. Pomiar: golden ENM = wyrocznia
+NR (GS/FD nie zbiegają na tej sieci nawet przy `max_iter` 200/100) — testy klasy dowodzą PROPAGACJI tożsamości metody, nie numeryki
+(poza granicą karty, B-01). **Recenzja → naprawione przy odbiorze:** test wariantu PF pakietu nastaw (NR w opcjach, kopercie i
+śladzie mimo obcej metody w opcjach kotwicy; warianty SC bez dziedziczenia metody; 24 passed); hook `useAkcjaUruchomObliczenie`
+z opcjonalnym nadpisaniem zgodny z `DowodPrzebiegu` B-02 (jeden argument); nieużyta dyrektywa `eslint-disable` (reguła
+`exhaustive-deps` jest `off` — inwentarz: zero dyrektyw dla reguł wyłączonych na całej powierzchni lintowanej).
+
+**Czerwone CI na `b89c13b3` naprawione KLASĄ przy tym odbiorze:** (1) `Python tests` (run 34467401727): dwie fixtury sceny
+werdyktu z REALNEGO rozpływu/zwarcia rozjechały się między maszynami na 10.–11. cyfrze (`8.913153836959333` vs
+`8.913153836847659`) — szum solvera ~1e-10 względnie przekracza ziarno kwantyzacji ADR-018 (9 cyfr), więc porównanie fixtur ma
+TOLERANCJĘ (szkielet dokładnie, float rel/abs 1e-6) dla KAŻDEJ fixtury + pin komparatora, a kontrakt werdyktu jest kwantyzowany w
+`WerdyktProjektowy.to_dict` (jedno miejsce dla API i eksportu); (2) `Frontend E2E full` (run 34467401705): `getByRole('tab',
+{name: /Zwarcia/})` po dwupoziomowej nawigacji B-02 trafiał w 2 elementy — 5 miejsc w 4 specach + 4 bezpośrednie kliki zakładek w
+specach fali 3 przepięte na `otworzZakladkeWynikow` (zero `getByRole('tab')` w e2e; 7 speców / 14 testów zielone na realnym backendzie).
+
+**Dowody pełnego łańcucha na drzewie odbioru:** evidence §F „W3 fala 3 — dowody". Karty otwarte po fali 3: **W3-J** (agent,
+w toku), **V12.7** (karta prezentacji inżynierskiej po werdykcie B-02 8,5/10 — `docs/plan/KARTA_B02_POWIERZCHNIE_ANALITYCZNE_2026-09.md`
+§7), OD-19 (B-01).
+

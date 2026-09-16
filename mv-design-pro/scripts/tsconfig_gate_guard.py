@@ -247,7 +247,13 @@ POMIJANE_KATALOGI = {
 #: U ZRODLA (typy zgodne z implementacja, zero wyciszen); ta sama naprawa zdjela
 #: tez wczesniejszy blad `c[0]` w `EkranKoordynacji.test.tsx` (ten sam mock bez
 #: parametru) — pomiar guardem po naprawie: 126 -> 119, zapadka w dol.
-BUDZET_BLEDOW_POZA_BRAMKA = 119
+#: Odbior fali 3 W3 (2026-09-16, drzewo `c307e95f`): poprawki recenzji G1/G2/G3 naprawily
+#: u zrodla dwa bledy typow w testach poza bramka (`sekcjaPorownaniaMetod.test.tsx` —
+#: typ mocka `createAndExecuteRun` jako `Mock<[caseId, request], Promise<ExecutionRun>>`
+#: zamiast `ReturnType<typeof vi.fn>`; fikstura `CIEPLNA_FIXTURE` uzupelniona o pola
+#: kontraktu zamiast rzutowania) — pomiar guardem w lancuchu przedpushowym: 119 -> 117,
+#: zapadka w dol (guard sam zameldowal `[dlug-zmalal]`).
+BUDZET_BLEDOW_POZA_BRAMKA = 117
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

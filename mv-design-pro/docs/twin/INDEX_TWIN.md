@@ -23,6 +23,7 @@
 11. [SLD_SYMBOL_SYSTEM_PLAN.md](./SLD_SYMBOL_SYSTEM_PLAN.md) — plan pakietu symboli R3 (§160) CURRENT → PROPOSED, procedura zatwierdzenia (B-02).
 12. [MV_DESIGN_PRO_PERFORMANCE_PLAN.md](./MV_DESIGN_PRO_PERFORMANCE_PLAN.md) — pomiary bazowe, budżety S/M/L, plan per warstwa (§179 poz. 14).
 13. [MV_DESIGN_PRO_MIGRATION_PLAN.md](./MV_DESIGN_PRO_MIGRATION_PLAN.md) — FAZA F (§161–§166): fazy M0–M7, wycinki (stara/nowa/most/testy/cutover/usunięcie), trzy wycinki pionowe, rejestr sieci G01–G17, bramki ≥ 9/10, KEEP/REPLACE/DELETE.
+14. [../plan/SYNTEZA_DOMKNIECIA_PRODUKTU_2026-09.md](../plan/SYNTEZA_DOMKNIECIA_PRODUKTU_2026-09.md) — synteza domknięcia produktu (2026-09-16): §2 zastępuje §5.7 architektury symulacji dla dynamiki (nowy pakiet `dynamika/` zamiast rozszerzania `stability_rms`), klasyfikacja wątku badawczego, W6-0…W6-8.
 
 ## ADR (PROPOSED; `../adr/`)
 
