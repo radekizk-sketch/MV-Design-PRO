@@ -457,5 +457,16 @@
       "result_rules_version": "result_rules_v12_5",
       "ruleset_version": "result_rules_v12_5"
     }
+  },
+  "konfiguracja_biegu": {
+    "c_factor": {
+      "tryb": "auto_per_wezel",
+      "wartosc": null
+    },
+    "thermal_time_seconds": {
+      "wartosc": 1.0,
+      "pochodzenie": "domyslna_assemblera"
+    },
+    "metoda": "IEC 60909"
   }
 }
