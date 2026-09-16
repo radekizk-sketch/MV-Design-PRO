@@ -1316,7 +1316,22 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # Odbior obu kart na jednym drzewie (2026-09-16, po W3-J i V12.7 razem): POMIAR guardem
     # na drzewie scalonym = 3521 (zbiory nazw pol obu kart rozlaczne — sprawdzone
     # pomiarem, nie arytmetyka: liczba nizej pochodzi z biegu guarda na tym drzewie).
-    assert "Pol kontraktow wejsciowych: 3521." in wyjscie, wyjscie
+    # Karta S-1/S-4 (W6-0, dowod dynamiczny): POMIAR guardem 3506 -> 3517 (+11
+    # nazw pol, deduplikowanych przez guard w calym repo — nie prosta suma
+    # nowych AnnAssign). Nowe struktury: `solver_input/provenance.py::
+    # CapabilityEvidence` (capability_id, tier, rationale_pl, audit_ref,
+    # claim_kind), `solver_input/dowod_ncrfg.py::OcenaDowodowaModulu`/
+    # `OcenaDowodowaBiegu` (reporting_status, proof_status, evidence_
+    # limitations, evidence_note_pl, per_module, evidence_by_test) oraz nowe
+    # pola addytywne `api/ncrfg_ptpiree_tests.py::NcRfgPtpireeRunResponse`
+    # (reporting_status, proof_status, evidence_limitations, evidence_note_pl,
+    # evidence_per_module, evidence_by_test) — zero podstawien liczby za brak
+    # danych wejsciowych (PASS niezmieniony), pliki/zapadka/wykluczenia bez
+    # zmian (nowy plik `dowod_ncrfg.py` NIE jest w zapadce dlugu ani w
+    # wykluczeniach — zero formul fizycznych, czysta interpretacja rejestru).
+    # Odbior S-1/S-4 na tym samym drzewie (2026-09-16, po W3-J + V12.7): POMIAR guardem na
+    # drzewie scalonym = 3532 (liczba z biegu guarda na tym drzewie, nie z arytmetyki kart).
+    assert "Pol kontraktow wejsciowych: 3532." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1335,7 +1350,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # skasowane w calosci; +1 W3-G1: `application/analyses/power_flow_reconstruction.py`).
         # Karta V12.7 (2026-09-16): 479 -> 480 (+1 nowy modul `application/analyses/
         # v126_wzory.py` — rejestr wzorow LaTeX kroku sladu, karta §0.1).
-        "Przeskanowano 480 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta S-1/S-4 (W6-0): 479 -> 480 (+1 nowy plik `solver_input/dowod_ncrfg.py`).
+        # Odbior na jednym drzewie (2026-09-16): oba nowe pliki razem -> 481 (pomiar guardem).
+        "Przeskanowano 481 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1359,7 +1376,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     per_korzen = [
         "  network_model: pliki_skanowane=137, dlug=14 plikow/suma 77, "
         "wykluczenia=3 plikow/suma 6",
-        "  solver_input: pliki_skanowane=10, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
+        # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
+        # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki).
+        "  solver_input: pliki_skanowane=11, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
         "  enm: pliki_skanowane=41, dlug=8 plikow/suma 76, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),

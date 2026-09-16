@@ -180,8 +180,11 @@ ALLOWLIST: dict[tuple[str, int], str] = {
         # kanoniczny) — TEN SAM napis, wiersz 2633 → 2632.
         # K2 (2026-09-09): kolejny dryf o 1 wiersz (usunięcie case 'E-39'/importu
         # ReferenceNetworkSurface WCZEŚNIEJ w pliku) — TEN SAM napis, wiersz 2632 → 2631.
+        # Karta S-1/S-4 (W6-0): kolejny dryf o 1 wiersz (rozwinięcie komentarza
+        # `ComplianceSurface` WCZEŚNIEJ w pliku, usunięcie literału `no_module`
+        # z prozy — no_module_zero_guard) — TEN SAM napis, wiersz 2631 → 2632.
         "frontend/src/ui/workspace/WorkspaceSurfaceRouter.tsx",
-        2631,
+        2632,
     ): "b: opis analizy w katalogu ekranów ('IEC 60909, Ik″/ip/Ith z śladem Y-bus') — napis",
     (
         # Karta WB-ROZPLYW: numer wiersza zdryfował po dopisaniu kontraktu

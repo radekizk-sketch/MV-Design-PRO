@@ -206,6 +206,13 @@ jobs:
       - name: Solver diff (hasze referencyjne solwerow)
         run: $GUARD_PY scripts/solver_diff_guard.py
 
+      # === Karta S-1/S-4 (W6-0): stopien dowodowy i koniec stanu no_module ===
+      - name: Stopien dowodowy — literaly reportable/complete poza rejestrem
+        run: $GUARD_PY scripts/evidence_status_guard.py
+
+      - name: Brak modulu — no_module przestaje istniec jako stan gotowosci
+        run: $GUARD_PY scripts/no_module_zero_guard.py
+
       # === UX: zywe akcje, uczciwe stany zerowe, jezyk ===
       - name: Dead click (akcje bez obslugi)
         run: $GUARD_PY scripts/dead_click_guard.py
