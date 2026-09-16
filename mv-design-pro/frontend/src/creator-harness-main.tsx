@@ -2919,17 +2919,19 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     return originalFetch('/api/ncrfg-tests/run', init);
   }
   if (url.includes('/api/ncrfg-tests/cases/') && url.includes('/compliance')) {
-    // Zgodność przekrojowa przypadku (W3-D) czyta committed ENM, którego harness nie
-    // ma — odpowiedź liczy `scripts/eksport_fixtur_harnessu.py` tym samym checkerem,
-    // co trasa `run_ncrfg_compliance_from_model`. Para predykatów (KLASA, NIE
-    // INSTANCJA): raporty MUSZĄ opisywać moduły zasiane w tej scenie — rozjazd
+    // Zgodność przekrojowa przypadku (karta S-3, dawniej W3-D) czyta committed ENM,
+    // którego harness nie ma — odpowiedź liczy `scripts/eksport_fixtur_harnessu.py`
+    // TĄ SAMĄ funkcją (`zgodnosc_ncrfg_przypadku`: most model → wejście solvera +
+    // solver kanoniczny + koperta dowodowa S-1), co trasa
+    // `run_ncrfg_compliance_from_model`. Para predykatów (KLASA, NIE INSTANCJA):
+    // moduły biegu MUSZĄ opisywać moduły zasiane w tej scenie — rozjazd
     // ref/mocy/napięcia to odmowa 409 (łapie ją bramka „Nie udało się" specu),
     // nie cicha atrapa z poprzedniego zasiewu.
     const zasiane = selectAllDers(useStationDerStore.getState())
       .map((der) => `${der.id}|${der.nominal_power_kw}|${der.connection_voltage_kv}`)
       .sort();
-    const zAtrapy = zgodnoscPrzekrojowaScenyMacierz.reports
-      .map((raport) => `${raport.der_ref}|${raport.p_max_kw}|${raport.voltage_kv}`)
+    const zAtrapy = (zgodnoscPrzekrojowaScenyMacierz.bieg?.modules ?? [])
+      .map((modul) => `${modul.der_ref}|${modul.p_max_kw}|${modul.voltage_kv}`)
       .sort();
     if (zasiane.join(';') !== zAtrapy.join(';')) {
       return new Response(

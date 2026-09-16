@@ -418,14 +418,19 @@ export function MacierzNcRfg({
         </div>
       ) : null}
 
-      {/* W3-D (2026-09-09): zgodnosc przekrojowa — wszystkie DER modelu naraz,
-          liczona na zywo z ENM (`GET /api/ncrfg-tests/cases/{case_id}/compliance`),
-          niezaleznie od macierzy per DER ponizej (ktora wymaga recznego biegu).
-          Konsument kanonu, ktory wczesniej nie mial zadnego ekranu ui2. */}
+      {/* Karta S-3 (2026-09-16, jeden tor NC RfG; dawniej W3-D): zgodnosc przekrojowa
+          — wszystkie DER modelu naraz, liczona z ENM TYM SAMYM solverem i w TYM SAMYM
+          kontrakcie co bieg macierzy (`GET /api/ncrfg-tests/cases/{case_id}/compliance`),
+          niezaleznie od recznego biegu ponizej. Odeslanie „Pokaz w macierzy" wybiera
+          modul w panelu/kolumnie macierzy per DER (ten sam mechanizm co klik naglowka). */}
       <SekcjaZgodnosciPrzekrojowej
         caseId={aktywnyPrzypadek}
         operatorId={operatorId}
         nazwyModulow={nazwyModulowPrzekrojowe}
+        onWybierzModul={(derRef) => {
+          setWybranyModul(derRef);
+          setWybranaKomorka(null);
+        }}
       />
 
       {certyfikat || certBraki || certBlad || certLadowanie ? (

@@ -1,31 +1,81 @@
 /*
- * Model sekcji "Zgodność przekrojowa przypadku" (karta W3-D, 2026-09-09).
- * Iloczyn cech stanu (KLASA NIE INSTANCJA): {caseId obecny/brak} ×
- * {ładowanie tak/nie} × {błąd tak/nie} × {wynik brak/der_count=0/der_count>0}.
+ * Model sekcji "Zgodność przekrojowa przypadku" (karta S-3, 2026-09-16 — jeden tor
+ * NC RfG). Iloczyn cech stanu (KLASA NIE INSTANCJA): {caseId obecny/brak} ×
+ * {ładowanie tak/nie} × {błąd tak/nie} × {wynik brak / der_count=0 bez pominiętych /
+ * der_count=0 z pominiętymi / der_count>0}; wiersze i liczniki przez JEDEN model
+ * werdyktu macierzy (`macierzModel.ts`), nie drugi.
  */
 import { describe, expect, it } from 'vitest';
 
-import type { NcRfgCaseComplianceResponse, NcRfgComplianceReport } from '../../../../ui/ncrfg-tests/api';
+import type {
+  NcRfgCaseComplianceResponse,
+  NcRfgModuleResult,
+  NcRfgRunResult,
+  NcRfgTestResult,
+} from '../../../../ui/ncrfg-tests/api';
 import {
+  brakiZgodnosciPrzekrojowej,
   nazwaModuluPrzekrojowego,
   podsumowanieZgodnosciPrzekrojowej,
   rozwiazStanZgodnosciPrzekrojowej,
-  testyNiespelnione,
+  stopienDowodowyModulu,
+  wierszeZgodnosciPrzekrojowej,
 } from '../zgodnoscPrzekrojowaModel';
 
-function raport(over: Partial<NcRfgComplianceReport>): NcRfgComplianceReport {
+function test(over: Partial<NcRfgTestResult>): NcRfgTestResult {
   return {
+    test_id: 'T14',
+    ability_pl: 'LVRT',
+    required: true,
+    required_reason_pl: 'Wymagany dla modułu typu B.',
+    verdict: 'pass',
+    summary_pl: 'LVRT: margines 0 p.u.',
+    metrics: {},
+    trace_refs: [],
+    fix_actions: [],
+    ...over,
+  };
+}
+
+function modul(over: Partial<NcRfgModuleResult>): NcRfgModuleResult {
+  return {
+    der_ref: 'pv-1',
+    der_name: 'PV z biegu',
     operator_id: 'enea',
     operator_name_pl: 'Enea Operator',
-    der_ref: 'pv-1',
     module_type: 'B',
-    p_max_kw: 500,
+    module_family: 'PPM',
+    p_max_kw: 1935,
     voltage_kv: 15,
-    test_results: [],
-    overall_pass: true,
-    total_tests: 0,
-    passed_count: 0,
-    no_module_count: 0,
+    required_count: 2,
+    pass_count: 2,
+    fail_count: 0,
+    no_data_count: 0,
+    not_required_count: 18,
+    overall_status: 'zgodny',
+    tests: [],
+    ...over,
+  };
+}
+
+function bieg(modules: NcRfgModuleResult[], over: Partial<NcRfgRunResult> = {}): NcRfgRunResult {
+  return {
+    contract: 'NcRfgPtpireeTestResultV1',
+    procedure_version: 'PTPiREE Procedura testowania v3.0',
+    solver_version: 'ncrfg-ptpiree-whitebox-1.0',
+    input_hash: 'in',
+    deterministic_hash: 'det',
+    modules,
+    certificate_evidence: [],
+    reporting_status: 'reportable',
+    proof_status: 'complete',
+    evidence_limitations: [],
+    evidence_note_pl: '',
+    evidence_per_module: {},
+    evidence_by_test: {},
+    test_catalog: [],
+    white_box_trace: [],
+    report_pl: '',
     ...over,
   };
 }
@@ -35,7 +85,8 @@ function odpowiedz(over: Partial<NcRfgCaseComplianceResponse>): NcRfgCaseComplia
     case_id: 'case-1',
     operator_id: 'enea',
     der_count: 0,
-    reports: [],
+    pominiete: [],
+    bieg: null,
     ...over,
   };
 }
@@ -46,7 +97,7 @@ describe('rozwiazStanZgodnosciPrzekrojowej — iloczyn cech', () => {
       { ladowanie: false, blad: null, wynik: null },
       { ladowanie: true, blad: null, wynik: null },
       { ladowanie: false, blad: 'X', wynik: null },
-      { ladowanie: false, blad: null, wynik: odpowiedz({ der_count: 3 }) },
+      { ladowanie: false, blad: null, wynik: odpowiedz({ der_count: 3, bieg: bieg([modul({})]) }) },
     ]) {
       expect(rozwiazStanZgodnosciPrzekrojowej({ caseId: null, ...cechy })).toBe('brak_przypadku');
     }
@@ -54,12 +105,7 @@ describe('rozwiazStanZgodnosciPrzekrojowej — iloczyn cech', () => {
 
   it('błąd ma pierwszeństwo nad ładowaniem i wynikiem, gdy caseId jest', () => {
     expect(
-      rozwiazStanZgodnosciPrzekrojowej({
-        caseId: 'case-1',
-        ladowanie: true,
-        blad: 'sieć padła',
-        wynik: null,
-      }),
+      rozwiazStanZgodnosciPrzekrojowej({ caseId: 'case-1', ladowanie: true, blad: 'sieć padła', wynik: null }),
     ).toBe('blad');
     expect(
       rozwiazStanZgodnosciPrzekrojowej({
@@ -80,76 +126,155 @@ describe('rozwiazStanZgodnosciPrzekrojowej — iloczyn cech', () => {
     ).toBe('ladowanie');
   });
 
-  it('brak_der: wynik przyszedł, der_count === 0', () => {
+  it('brak_der: solver nikogo nie objął I backend nikogo nie pominął', () => {
     expect(
       rozwiazStanZgodnosciPrzekrojowej({
         caseId: 'case-1',
         ladowanie: false,
         blad: null,
-        wynik: odpowiedz({ der_count: 0 }),
+        wynik: odpowiedz({ der_count: 0, pominiete: [], bieg: null }),
       }),
     ).toBe('brak_der');
   });
 
-  it('gotowe: wynik przyszedł, der_count > 0', () => {
+  it('gotowe: der_count=0, ale są DER pominięte z powodem — to treść, nie stan zerowy', () => {
     expect(
       rozwiazStanZgodnosciPrzekrojowej({
         caseId: 'case-1',
         ladowanie: false,
         blad: null,
-        wynik: odpowiedz({ der_count: 1, reports: [raport({})] }),
+        wynik: odpowiedz({
+          der_count: 0,
+          pominiete: [{ der_ref: 'pv-0', der_name: 'PV 0 MW', powod: 'brak_mocy', powod_pl: 'Moc nie jest dodatnia.' }],
+          bieg: null,
+        }),
+      }),
+    ).toBe('gotowe');
+  });
+
+  it('gotowe: bieg przyszedł, der_count > 0', () => {
+    expect(
+      rozwiazStanZgodnosciPrzekrojowej({
+        caseId: 'case-1',
+        ladowanie: false,
+        blad: null,
+        wynik: odpowiedz({ der_count: 1, bieg: bieg([modul({})]) }),
       }),
     ).toBe('gotowe');
   });
 });
 
-describe('podsumowanieZgodnosciPrzekrojowej', () => {
-  it('liczy zgodne/niezgodne z overall_pass, nie z jakiejkolwiek innej heurystyki', () => {
-    const wynik = podsumowanieZgodnosciPrzekrojowej([
-      raport({ der_ref: 'pv-1', overall_pass: true }),
-      raport({ der_ref: 'bess-1', overall_pass: false }),
-      raport({ der_ref: 'fw-1', overall_pass: false }),
+describe('wierszeZgodnosciPrzekrojowej + podsumowanieZgodnosciPrzekrojowej — jeden model werdyktu', () => {
+  it('moduły objęte biegiem w kolejności solvera, potem pominięte jako zablokowane (brak danych)', () => {
+    const wynik = odpowiedz({
+      der_count: 3,
+      bieg: bieg([
+        modul({ der_ref: 'pv-1', overall_status: 'zgodny', required_count: 8, pass_count: 8 }),
+        modul({ der_ref: 'bess-1', overall_status: 'niezgodny', required_count: 8, pass_count: 6, fail_count: 2 }),
+        modul({ der_ref: 'fw-1', overall_status: 'brak_danych', required_count: 8, pass_count: 3, no_data_count: 5 }),
+      ]),
+      pominiete: [{ der_ref: 'pv-0', der_name: 'PV bez mocy', powod: 'brak_mocy', powod_pl: 'Moc nie jest dodatnia.' }],
+    });
+    const wiersze = wierszeZgodnosciPrzekrojowej(wynik, { 'pv-1': 'PV Dach A' });
+    expect(wiersze.map((w) => [w.derRef, w.nazwa, w.overallStatus, w.zablokowany])).toEqual([
+      ['pv-1', 'PV Dach A', 'zgodny', false],
+      ['bess-1', 'PV z biegu', 'niezgodny', false],
+      ['fw-1', 'PV z biegu', 'brak_danych', false],
+      ['pv-0', 'PV bez mocy', 'brak_danych', true],
     ]);
-    expect(wynik).toEqual({ liczbaModulow: 3, zgodne: 1, niezgodne: 2 });
+    expect(podsumowanieZgodnosciPrzekrojowej(wiersze)).toEqual({
+      liczbaModulow: 4,
+      zgodne: 1,
+      niezgodne: 1,
+      brakDanych: 2,
+      wymaganeRazem: 24,
+      spelnioneRazem: 17,
+    });
   });
 
-  it('pusta lista raportów → zera, nie null/undefined', () => {
+  it('bieg null + pominięte → wyłącznie wiersze zablokowane z zerowymi licznikami', () => {
+    const wynik = odpowiedz({
+      der_count: 0,
+      bieg: null,
+      pominiete: [
+        { der_ref: 'a', der_name: null, powod: 'brak_napiecia', powod_pl: 'Brak szyny.' },
+        { der_ref: 'b', der_name: 'B', powod: 'brak_mocy', powod_pl: 'Brak mocy.' },
+      ],
+    });
+    const wiersze = wierszeZgodnosciPrzekrojowej(wynik, {});
+    expect(wiersze.map((w) => [w.derRef, w.nazwa, w.zablokowany, w.requiredCount])).toEqual([
+      ['a', 'a', true, 0],
+      ['b', 'B', true, 0],
+    ]);
+    expect(podsumowanieZgodnosciPrzekrojowej(wiersze)).toEqual({
+      liczbaModulow: 2,
+      zgodne: 0,
+      niezgodne: 0,
+      brakDanych: 2,
+      wymaganeRazem: 0,
+      spelnioneRazem: 0,
+    });
+  });
+
+  it('pusta lista wierszy → zera, nie null/undefined', () => {
     expect(podsumowanieZgodnosciPrzekrojowej([])).toEqual({
       liczbaModulow: 0,
       zgodne: 0,
       niezgodne: 0,
+      brakDanych: 0,
+      wymaganeRazem: 0,
+      spelnioneRazem: 0,
     });
   });
 });
 
-describe('testyNiespelnione', () => {
-  it('filtruje WYŁĄCZNIE fail i no_data — pass i no_module nie są "niespełnione"', () => {
-    const report = raport({
-      test_results: [
-        { test_id: 'T3', test_name_pl: 'Droop P(f)', verdict: 'pass', message_pl: null },
-        { test_id: 'T4', test_name_pl: 'Q(U)', verdict: 'fail', message_pl: 'Brak krzywej Q(U).' },
-        { test_id: 'T5', test_name_pl: 'cos φ', verdict: 'no_data', message_pl: 'Brak danych.' },
-        { test_id: 'T1', test_name_pl: 'LVRT', verdict: 'no_module', message_pl: 'Wymaga RMS.' },
-      ],
-    });
-    const wynik = testyNiespelnione(report);
-    expect(wynik.map((t) => t.test_id)).toEqual(['T4', 'T5']);
+describe('brakiZgodnosciPrzekrojowej — testy WYMAGANE z werdyktem fail/no_data', () => {
+  it('filtruje pass i not_required oraz fail testu NIEwymaganego (spójnie z licznikami solvera)', () => {
+    const b = bieg([
+      modul({
+        der_ref: 'bess-1',
+        tests: [
+          test({ test_id: 'T05', verdict: 'pass' }),
+          test({ test_id: 'T09', verdict: 'fail', ability_pl: 'Zdolność Q' }),
+          test({ test_id: 'T16', verdict: 'no_data', ability_pl: 'Odbudowa P', fix_actions: ['Uzupełnij czas odbudowy P.'] }),
+          test({ test_id: 'T04', verdict: 'fail', required: false }),
+          test({ test_id: 'T18', verdict: 'not_required', required: false }),
+        ],
+      }),
+      modul({ der_ref: 'pv-1', tests: [test({ test_id: 'T05', verdict: 'pass' })] }),
+    ]);
+    const braki = brakiZgodnosciPrzekrojowej(b, { 'bess-1': 'Magazyn 1' });
+    expect(braki.map((x) => [x.derRef, x.nazwa, x.testy.map((t) => t.test_id)])).toEqual([
+      ['bess-1', 'Magazyn 1', ['T09', 'T16']],
+    ]);
   });
 
-  it('brak testów niespełnionych → pusta lista', () => {
-    const report = raport({
-      test_results: [{ test_id: 'T3', test_name_pl: 'Droop P(f)', verdict: 'pass', message_pl: null }],
-    });
-    expect(testyNiespelnione(report)).toEqual([]);
+  it('brak biegu → pusta lista', () => {
+    expect(brakiZgodnosciPrzekrojowej(null, {})).toEqual([]);
   });
 });
 
-describe('nazwaModuluPrzekrojowego', () => {
-  it('zwraca nazwę ze słownika, gdy jest wpis', () => {
-    expect(nazwaModuluPrzekrojowego('pv-1', { 'pv-1': 'PV Dach A' })).toBe('PV Dach A');
+describe('stopienDowodowyModulu / nazwaModuluPrzekrojowego', () => {
+  it('czyta reporting_status z evidence_per_module biegu; brak oceny = null (nie „w porządku")', () => {
+    const b = bieg([modul({})], {
+      evidence_per_module: {
+        'pv-1': {
+          der_ref: 'pv-1',
+          reporting_status: 'not_reportable',
+          proof_status: 'incomplete',
+          evidence_limitations: ['T14:UNVALIDATED_MODEL'],
+          evidence_note_pl: 'Brak dowodu dla testów: T14:UNVALIDATED_MODEL.',
+        },
+      },
+    });
+    expect(stopienDowodowyModulu(b, 'pv-1')).toBe('not_reportable');
+    expect(stopienDowodowyModulu(b, 'nieznany')).toBeNull();
+    expect(stopienDowodowyModulu(null, 'pv-1')).toBeNull();
   });
 
-  it('zwraca sam der_ref, gdy słownik nie ma wpisu (uczciwy fallback, nie pusty string)', () => {
-    expect(nazwaModuluPrzekrojowego('pv-nieznany', { 'pv-1': 'PV Dach A' })).toBe('pv-nieznany');
+  it('nazwa: słownik macierzy › der_name biegu › sam der_ref', () => {
+    expect(nazwaModuluPrzekrojowego('pv-1', 'PV z biegu', { 'pv-1': 'PV Dach A' })).toBe('PV Dach A');
+    expect(nazwaModuluPrzekrojowego('pv-1', 'PV z biegu', {})).toBe('PV z biegu');
+    expect(nazwaModuluPrzekrojowego('pv-nieznany', null, { 'pv-1': 'PV Dach A' })).toBe('pv-nieznany');
   });
 });

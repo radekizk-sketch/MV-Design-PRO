@@ -120,12 +120,14 @@ export const MACIERZ_STRINGS = {
   certyfikatDowodData: 'Data akceptacji',
   certyfikatDowodWarunek: 'Warunek ważności',
 
-  // Zgodność przekrojowa przypadku (karta W3-D) — wszystkie DER naraz, liczona
-  // na żywo z modelu (bez ręcznego kompletowania zdolności jak w macierzy obok).
+  // Zgodność przekrojowa przypadku (karta S-3 — jeden tor NC RfG; dawniej W3-D):
+  // wszystkie DER naraz, liczone z modelu TYM SAMYM solverem i w TYM SAMYM
+  // kontrakcie co macierz obok (bez ręcznego kompletowania zdolności).
   zgodnoscPrzekrojowaTytul: 'Zgodność przekrojowa przypadku',
   zgodnoscPrzekrojowaOpis:
-    'Werdykt NC RfG liczony na żywo z bieżącego modelu dla wszystkich źródeł naraz — ' +
-    'bez ręcznego kompletowania zdolności modułu. Ten sam operator co macierz obok.',
+    'Werdykt NC RfG liczony z bieżącego modelu dla wszystkich źródeł naraz — ten sam ' +
+    'solver i ten sam kontrakt co macierz obok, bez ręcznego kompletowania zdolności; ' +
+    'brak danej w modelu = brak danych, nigdy wartość domyślna. Ten sam operator co macierz obok.',
   zgodnoscPrzekrojowaOdswiez: 'Odśwież',
   zgodnoscPrzekrojowaLadowanie: 'Sprawdzam zgodność…',
   zgodnoscPrzekrojowaBrakPrzypadku: 'Wybierz aktywny przypadek, aby sprawdzić zgodność przekrojową.',
@@ -136,10 +138,20 @@ export const MACIERZ_STRINGS = {
   zgodnoscPrzekrojowaOperator: 'Operator (profil zgodności)',
   zgodnoscPrzekrojowaWerdyktZgodny: 'zgodny',
   zgodnoscPrzekrojowaWerdyktNiezgodny: 'niezgodny',
+  zgodnoscPrzekrojowaWerdyktBrakDanych: 'brak danych',
   zgodnoscPrzekrojowaKolModul: 'Moduł',
-  zgodnoscPrzekrojowaKolWerdykt: 'Werdykt',
-  zgodnoscPrzekrojowaKolSpelnione: 'Spełnione / testy',
-  zgodnoscPrzekrojowaNiespelnioneTytul: 'Niespełnione wymagania',
+  zgodnoscPrzekrojowaKolWerdykt: 'Status modułu',
+  zgodnoscPrzekrojowaKolSpelnione: 'Spełnione / wymagane',
+  zgodnoscPrzekrojowaKolNiespelnione: 'Niespełnione',
+  zgodnoscPrzekrojowaKolBrakDanych: 'Brak danych',
+  zgodnoscPrzekrojowaKolDowod: 'Stopień dowodowy',
+  // Stopień dowodowy (karta S-1): etykiety `reporting_status` z backendu — bez oceny lokalnej.
+  zgodnoscPrzekrojowaDowodBiegu: 'Stopień dowodowy biegu',
+  zgodnoscPrzekrojowaDowodTak: 'wystarczający do zgłoszenia',
+  zgodnoscPrzekrojowaDowodNie: 'brak wystarczającego dowodu',
+  zgodnoscPrzekrojowaPokazWMacierzy: 'Pokaż w macierzy',
+  zgodnoscPrzekrojowaPominieteTytul: 'Moduły nieobjęte biegiem',
+  zgodnoscPrzekrojowaNiespelnioneTytul: 'Niespełnione wymagania i braki danych',
 
   // Panel modułu
   panelTytul: 'Dane wejściowe modułu',

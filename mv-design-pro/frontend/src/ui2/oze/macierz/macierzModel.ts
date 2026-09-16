@@ -16,6 +16,7 @@
 
 import type {
   NcRfgCertificateStatus,
+  NcRfgDerPominiety,
   NcRfgModuleInput,
   NcRfgModuleResult,
   NcRfgRunResult,
@@ -404,30 +405,70 @@ export function mapujMacierz(
   });
 }
 
+/**
+ * Podsumowanie modułu Z WYNIKU BIEGU — JEDEN rdzeń dla macierzy per DER
+ * (`podsumowanieModulu`) i sekcji „Zgodność przekrojowa przypadku"
+ * (`podsumowaniaZBiegu`): status, klasa i liczniki pochodzą WYŁĄCZNIE z
+ * `NcRfgModuleResult` solvera; moduł zablokowany (brak mocy/napięcia) albo bez
+ * wyniku → `brak_danych` z zerowymi licznikami (karta S-3: jeden model werdyktu).
+ */
+export function podsumowanieModuluZWyniku(
+  w: NcRfgModuleResult | null,
+  derRef: string,
+  nazwa: string,
+  zablokowany: boolean,
+): PodsumowanieModulu {
+  return {
+    derRef,
+    nazwa,
+    overallStatus: zablokowany ? 'brak_danych' : (w?.overall_status ?? 'brak_danych'),
+    moduleType: zablokowany ? null : (w?.module_type ?? null),
+    requiredCount: zablokowany ? 0 : (w?.required_count ?? 0),
+    passCount: zablokowany ? 0 : (w?.pass_count ?? 0),
+    failCount: zablokowany ? 0 : (w?.fail_count ?? 0),
+    noDataCount: zablokowany ? 0 : (w?.no_data_count ?? 0),
+    zablokowany,
+  };
+}
+
 /** Podsumowanie per moduł (z wyniku biegu; moduł zablokowany → brak danych). */
 export function podsumowanieModulu(
   opis: OpisModulu,
   wynik: NcRfgRunResult | null,
 ): PodsumowanieModulu {
   const zablokowany = opis.powodBlokady !== null;
-  const w = zablokowany ? null : znajdzWynikModulu(wynik, opis.derRef);
-  return {
-    derRef: opis.derRef,
-    nazwa: opis.nazwa,
-    overallStatus: zablokowany ? 'brak_danych' : (w?.overall_status ?? 'brak_danych'),
-    moduleType: w?.module_type ?? null,
-    requiredCount: w?.required_count ?? 0,
-    passCount: w?.pass_count ?? 0,
-    failCount: w?.fail_count ?? 0,
-    noDataCount: w?.no_data_count ?? 0,
+  return podsumowanieModuluZWyniku(
+    zablokowany ? null : znajdzWynikModulu(wynik, opis.derRef),
+    opis.derRef,
+    opis.nazwa,
     zablokowany,
-  };
+  );
 }
 
-/** Podsumowanie całego projektu — agregacja z wyniku biegu i modułów. */
-export function podsumowanieProjektu(
-  moduly: readonly OpisModulu[],
-  wynik: NcRfgRunResult | null,
+/**
+ * Podsumowania modułów z biegu zgodności PRZYPADKU (`NcRfgCaseComplianceResponse`):
+ * moduły objęte biegiem w kolejności solvera (= kolejność DER w modelu), potem DER
+ * pominięte przez backend (brak mocy/napięcia) jako zablokowane. Nazwa ze
+ * słownika macierzy (`der_ref → nazwa`), inaczej `der_name` z biegu, inaczej sam
+ * `der_ref` (uczciwy fallback, nigdy pusty tekst).
+ */
+export function podsumowaniaZBiegu(
+  bieg: NcRfgRunResult | null,
+  pominiete: readonly NcRfgDerPominiety[],
+  nazwyModulow: Readonly<Record<string, string>>,
+): PodsumowanieModulu[] {
+  const objete = (bieg?.modules ?? []).map((m) =>
+    podsumowanieModuluZWyniku(m, m.der_ref, nazwyModulow[m.der_ref] ?? m.der_name ?? m.der_ref, false),
+  );
+  const zablokowane = pominiete.map((p) =>
+    podsumowanieModuluZWyniku(null, p.der_ref, nazwyModulow[p.der_ref] ?? p.der_name ?? p.der_ref, true),
+  );
+  return [...objete, ...zablokowane];
+}
+
+/** Agregacja podsumowań modułów → podsumowanie projektu (jedna arytmetyka liczników). */
+export function agregujPodsumowania(
+  podsumowania: readonly PodsumowanieModulu[],
 ): PodsumowanieProjektu {
   let zgodne = 0;
   let niezgodne = 0;
@@ -435,8 +476,7 @@ export function podsumowanieProjektu(
   let wymaganeRazem = 0;
   let spelnioneRazem = 0;
 
-  for (const modul of moduly) {
-    const p = podsumowanieModulu(modul, wynik);
+  for (const p of podsumowania) {
     wymaganeRazem += p.requiredCount;
     spelnioneRazem += p.passCount;
     if (p.overallStatus === 'zgodny') zgodne += 1;
@@ -445,11 +485,33 @@ export function podsumowanieProjektu(
   }
 
   return {
-    liczbaModulow: moduly.length,
+    liczbaModulow: podsumowania.length,
     zgodne,
     niezgodne,
     brakDanych,
     wymaganeRazem,
     spelnioneRazem,
   };
+}
+
+/** Podsumowanie całego projektu — agregacja z wyniku biegu i modułów. */
+export function podsumowanieProjektu(
+  moduly: readonly OpisModulu[],
+  wynik: NcRfgRunResult | null,
+): PodsumowanieProjektu {
+  return agregujPodsumowania(moduly.map((modul) => podsumowanieModulu(modul, wynik)));
+}
+
+/**
+ * Testy WYMAGANE modułu, których wymóg nie jest spełniony (`fail`) albo nie ma
+ * danych do oceny (`no_data`) — lista akcji naprawczych sekcji przekrojowej i
+ * dokumentów. Werdykt `pass`/`not_required` nie jest brakiem; test niewymagany z
+ * werdyktem `fail` (solver liczy go informacyjnie) też nie — liczniki solvera
+ * (`fail_count`/`no_data_count`) liczą tylko wymagane i ta funkcja jest z nimi
+ * spójna (predykaty parami).
+ */
+export function testyNiespelnione(modul: NcRfgModuleResult): readonly NcRfgTestResult[] {
+  return modul.tests.filter(
+    (test) => test.required && (test.verdict === 'fail' || test.verdict === 'no_data'),
+  );
 }

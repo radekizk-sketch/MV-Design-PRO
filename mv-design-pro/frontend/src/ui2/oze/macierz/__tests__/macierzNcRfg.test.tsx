@@ -22,11 +22,18 @@ import {
 vi.mock('../../../../ui/ncrfg-tests/api', () => ({
   fetchNcRfgTestCatalog: vi.fn(() => Promise.resolve(katalogFixture())),
   runNcRfgPtpireeTests: vi.fn(() => Promise.resolve(wynikFixture())),
-  // W3-D: sekcja "Zgodność przekrojowa przypadku" pobiera niezależnie od biegu
-  // macierzy — domyślnie brak DER (odpowiedź uczciwa, zero fabrykacji), testy
-  // dedykowane sekcji (sekcjaZgodnosciPrzekrojowej.test.tsx) pokrywają dane/błąd.
+  // S-3 (dawniej W3-D): sekcja "Zgodność przekrojowa przypadku" pobiera niezależnie
+  // od biegu macierzy — domyślnie brak DER (odpowiedź uczciwa: `bieg: null`, zero
+  // fabrykacji), testy dedykowane sekcji (sekcjaZgodnosciPrzekrojowej.test.tsx)
+  // pokrywają dane/błąd.
   fetchNcRfgCaseCompliance: vi.fn(() =>
-    Promise.resolve({ case_id: 'case-oze-1', operator_id: 'enea', der_count: 0, reports: [] }),
+    Promise.resolve({
+      case_id: 'case-oze-1',
+      operator_id: 'enea',
+      der_count: 0,
+      pominiete: [],
+      bieg: null,
+    }),
   ),
 }));
 

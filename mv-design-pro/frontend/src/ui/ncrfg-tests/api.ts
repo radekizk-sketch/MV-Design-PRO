@@ -173,45 +173,35 @@ export interface NcRfgRunResult {
 }
 
 /**
- * Zgodność NC RfG przekrojowo dla WSZYSTKICH DER przypadku naraz (karta W3-D,
- * 2026-09-09) — kontrakt `GET /api/ncrfg-tests/cases/{case_id}/compliance`
- * (`application/ncrfg_compliance/checker.py::NcRfgComplianceChecker`, ten sam
- * kanon co macierz per moduł). Liczona NA ŻYWO z committed ENM
- * (`build_der_compliance_list_from_enm` — most model → zgodność, zero
- * fabrykacji wejścia); ZASTĘPUJE trzecią, uboższą ścieżkę
- * `application/compliance/source_compliance.py` (skasowaną razem z tą kartą),
- * która porównywała punkty krzywych bez modelu dynamicznego urządzenia.
+ * DER modelu, którego solver NIE objął biegiem zgodności przypadku (karta S-3):
+ * brak dodatniej mocy albo brak napięcia szyny przyłączenia. Ten sam słownik
+ * powodów co blokada modułu w macierzy (`macierzModel.ts::PowodBlokady`) —
+ * jeden model werdyktu, nie drugi.
  */
-export type NcRfgComplianceVerdict = 'pass' | 'fail' | 'no_data' | 'no_module';
-
-export interface NcRfgComplianceTestResult {
-  readonly test_id: string;
-  readonly test_name_pl: string;
-  readonly verdict: NcRfgComplianceVerdict;
-  readonly message_pl: string | null;
-}
-
-/** Pełen raport zgodności jednego DER (`NcRfgComplianceReport.model_dump`). */
-export interface NcRfgComplianceReport {
-  readonly operator_id: string;
-  readonly operator_name_pl: string;
+export interface NcRfgDerPominiety {
   readonly der_ref: string;
-  /** Klasa modułu A/B/C/D wg klasyfikacji P/U operatora; "?" gdy nieklasyfikowalny. */
-  readonly module_type: string;
-  readonly p_max_kw: number;
-  readonly voltage_kv: number;
-  readonly test_results: readonly NcRfgComplianceTestResult[];
-  readonly overall_pass: boolean;
-  readonly total_tests: number;
-  readonly passed_count: number;
-  readonly no_module_count: number;
+  readonly der_name: string | null;
+  readonly powod: 'brak_mocy' | 'brak_napiecia';
+  readonly powod_pl: string;
 }
 
+/**
+ * Zgodność NC RfG WSZYSTKICH DER przypadku naraz (karta S-3, 2026-09-16 —
+ * „jeden tor NC RfG") — kontrakt `GET /api/ncrfg-tests/cases/{case_id}/compliance`.
+ * Backend buduje wejścia solvera Z committed ENM (`application/ncrfg_compliance/
+ * model_bridge.py`, zero fabrykacji: brak danej = no_data) i uruchamia TEN SAM
+ * `NcRfgPtpireeSolver`, co bieg macierzy `runNcRfgPtpireeTests`; `bieg` to TEN SAM
+ * kontrakt `NcRfgRunResult` (z polami dowodowymi karty S-1) opakowany per przypadek.
+ * `bieg === null` DOKŁADNIE wtedy, gdy `der_count === 0` (solver wymaga ≥ 1 modułu —
+ * pusty bieg z fabrykowanym odciskiem byłby fałszem).
+ */
 export interface NcRfgCaseComplianceResponse {
   readonly case_id: string;
   readonly operator_id: string;
+  /** Liczba DER objętych biegiem (= `bieg.modules.length`). */
   readonly der_count: number;
-  readonly reports: readonly NcRfgComplianceReport[];
+  readonly pominiete: readonly NcRfgDerPominiety[];
+  readonly bieg: NcRfgRunResult | null;
 }
 
 async function getJson<T>(url: string): Promise<T> {

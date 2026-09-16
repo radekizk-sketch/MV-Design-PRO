@@ -17,7 +17,11 @@ export {
   zbudujWejscieModulu,
   mapujMacierz,
   podsumowanieModulu,
+  podsumowanieModuluZWyniku,
+  podsumowaniaZBiegu,
+  agregujPodsumowania,
   podsumowanieProjektu,
+  testyNiespelnione,
   rozwiazNapiecieKv,
   rozwiazCertyfikat,
 } from './macierzModel';
@@ -37,12 +41,11 @@ export type {
 } from './macierzModel';
 export {
   rozwiazStanZgodnosciPrzekrojowej,
+  wierszeZgodnosciPrzekrojowej,
   podsumowanieZgodnosciPrzekrojowej,
-  testyNiespelnione,
+  brakiZgodnosciPrzekrojowej,
+  stopienDowodowyModulu,
   nazwaModuluPrzekrojowego,
 } from './zgodnoscPrzekrojowaModel';
-export type {
-  StanZgodnosciPrzekrojowej,
-  PodsumowanieZgodnosciPrzekrojowej,
-} from './zgodnoscPrzekrojowaModel';
+export type { StanZgodnosciPrzekrojowej, BrakiModulu } from './zgodnoscPrzekrojowaModel';
 export { MACIERZ_STRINGS } from './strings';
