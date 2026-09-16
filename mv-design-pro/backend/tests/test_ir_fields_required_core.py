@@ -116,9 +116,26 @@ class TestGeneratorNNRequiredFields:
 class TestInverterSourceRequiredFields:
     _dane = {"id": "inv_1", "name": "Inv 1", "node_id": "bus_3", "in_rated_a": 60.0, "k_sc": 1.1}
 
-    @pytest.mark.parametrize("pole", ["in_rated_a", "k_sc"])
+    @pytest.mark.parametrize("pole", ["in_rated_a"])
     def test_missing_field_raises(self, pole: str) -> None:
         _brakujace_pole(InverterSource.from_dict, self._dane, pole)
+
+    def test_brak_k_sc_nie_jest_bledem_ir_tylko_brakiem_deklaracji(self) -> None:
+        """Karta S-2 AUTORYTET (k_sc DEFAULT_FORBIDDEN): `k_sc` PRZESTAJE być
+        polem wymaganym IR — do tej karty brak klucza podnosił
+        `BrakujacePoleIRError` tak samo jak dla `in_rated_a`, co uniemożliwiało
+        odróżnienie „brak deklaracji" od „dana wymagana pominięta". Teraz brak
+        klucza daje `k_sc=None` (patrz `InverterSource.k_sc_zrodlo`/
+        `k_sc_efektywny`) — surowa wartość NIE jest po cichu podstawiana 1,1;
+        dopiero pochodna `k_sc_efektywny` daje domyślkę systemową, oznaczoną
+        `wklad_zrodlo="DOMYSLNE_SYSTEMOWE"` (patrz
+        `tests/network_model/core/test_wklad_zwarciowy_przeksztaltnika.py`)."""
+        niepelne = dict(self._dane)
+        del niepelne["k_sc"]
+        zrodlo = InverterSource.from_dict(niepelne)
+        assert zrodlo.k_sc is None
+        assert zrodlo.k_sc_zrodlo == "DOMYSLNE_SYSTEMOWE"
+        assert zrodlo.k_sc_efektywny == 1.1
 
 
 class TestNodeRequiredFields:

@@ -23,6 +23,7 @@ Usage:
     )
 """
 
+import math
 import re
 import unicodedata
 from dataclasses import dataclass, field
@@ -377,6 +378,29 @@ def _card_schema_kwargs(data: dict[str, Any]) -> dict[str, Any]:
 # Consumed only by the coverage-verification service (application layer, zero
 # physics). NOT a solver field.
 # =============================================================================
+
+
+def _validate_katalogowy_k_sc(k_sc: float | None, *, kontekst: str) -> None:
+    """Walidacja k_sc na granicy katalogu — JEDNO miejsce dla trzech typów
+    (``ConverterType``/``PVInverterType``/``BESSInverterType``), reguła KLASA
+    NIE INSTANCJA (CLAUDE.md pkt 5, „uczciwość w obrębie jednego pliku").
+
+    DEFEKT NAPRAWIONY (karta S-2 AUTORYTET, znaleziony przy okazji): dawna
+    walidacja sprawdzała wyłącznie ``k_sc <= 0`` — ``NaN <= 0`` i ``+Inf <= 0``
+    są OBA fałszem, więc katalog przyjmowałby opublikowany typ z k_sc=NaN albo
+    k_sc=+Inf jako „poprawny", mimo że oba są fizycznie tak samo niedopuszczalne
+    jak zero i wartość ujemna. ``math.isfinite`` domyka NaN i obie
+    nieskończoności JEDNYM warunkiem. Dwie z trzech sióstr (``PVInverterType``,
+    ``BESSInverterType``) nie miały ŻADNEJ walidacji k_sc (brak
+    ``__post_init__``) — ta funkcja jest teraz wołana z wszystkich trzech.
+    """
+    if k_sc is None:
+        return
+    if not math.isfinite(k_sc) or k_sc <= 0:
+        raise ValueError(
+            "Wspolczynnik udzialu zwarciowego k_sc musi byc liczba skonczona > 0, "
+            f"otrzymano k_sc={k_sc!r} ({kontekst})."
+        )
 
 
 def _validate_pq_curve(pq_curve: tuple[tuple[float, float, float], ...]) -> None:
@@ -1297,9 +1321,12 @@ class ConverterType:
     # Inverter-card ("karta falownika") SC fault-model fields.
     # k_sc: manufacturer-card short-circuit current contribution factor
     # (Ik = k_sc * In, IEC 60909-0 for converter-connected units) — the value
-    # from the DATASHEET, never a normative default. None => enm/mapping.py
-    # falls back to the IEC-typical 1.1 as a REGISTERED assumption (WHITE BOX
-    # trace + `inverter.k_sc_assumed` readiness warning), never a silent number.
+    # from the DATASHEET, never a normative default (K_sc DEFAULT_FORBIDDEN,
+    # owner directive 2026-09-16). None => enm/mapping.py falls back to the
+    # IEC-typical 1.1 as a system default (WHITE BOX trace +
+    # `inverter.k_sc_default_forbidden` readiness warning), never a silent
+    # number; a value present-but-not-finite/positive is DANE_NIEPOPRAWNE
+    # (`network_model.core.wklad_zwarciowy_przeksztaltnika`), not a default.
     k_sc: float | None = None
     # The remaining fields feed the short-circuit solver beyond the simple
     # k_sc*In contribution. All optional (None) so published types round-trip
@@ -1398,10 +1425,7 @@ class ConverterType:
                 "Wspolczynnik emisji migotania flicker_c musi byc > 0, "
                 f"otrzymano flicker_c={self.flicker_c}."
             )
-        if self.k_sc is not None and self.k_sc <= 0:
-            raise ValueError(
-                f"Wspolczynnik udzialu zwarciowego k_sc musi byc > 0, otrzymano k_sc={self.k_sc}."
-            )
+        _validate_katalogowy_k_sc(self.k_sc, kontekst="ConverterType")
         if self.droop_p_f_percent is not None and self.droop_p_f_percent <= 0:
             raise ValueError(
                 "Statyzm P/f przeksztaltnika grid-forming (droop_p_f_percent) musi byc > 0, "
@@ -3728,8 +3752,10 @@ class PVInverterType:
     manufacturer: str | None = None
     dynamic_profile_id: str | None = None
     # Udział zwarciowy prądu z karty producenta (Ik = k_sc * In, IEC 60909-0).
-    # None => enm/mapping.py przyjmuje 1,1 jako ZAREJESTROWANE ZAŁOŻENIE (karta
-    # FAB-H) — patrz ConverterType.k_sc dla pełnego kontraktu tego pola.
+    # None => enm/mapping.py przyjmuje 1,1 jako DOMYŚLKĘ SYSTEMOWĄ (karta S-2
+    # AUTORYTET, dawniej FAB-H) — patrz ConverterType.k_sc dla pełnego
+    # kontraktu tego pola. Walidowane w `__post_init__` poniżej
+    # (`_validate_katalogowy_k_sc`) — musi być liczbą skończoną > 0.
     k_sc: float | None = None
     ptpiree_status: str | None = None
     ptpiree_certificate_ref: str | None = None
@@ -3752,6 +3778,11 @@ class PVInverterType:
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
+
+    def __post_init__(self) -> None:
+        """Walidacja k_sc (karta S-2 AUTORYTET, znalezisko przy okazji: ten typ
+        nie miał ŻADNEJ walidacji k_sc — patrz `_validate_katalogowy_k_sc`)."""
+        _validate_katalogowy_k_sc(self.k_sc, kontekst="PVInverterType")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -3858,8 +3889,10 @@ class BESSInverterType:
     manufacturer: str | None = None
     dynamic_profile_id: str | None = None
     # Udział zwarciowy prądu z karty producenta (Ik = k_sc * In, IEC 60909-0).
-    # None => enm/mapping.py przyjmuje 1,1 jako ZAREJESTROWANE ZAŁOŻENIE (karta
-    # FAB-H) — patrz ConverterType.k_sc dla pełnego kontraktu tego pola.
+    # None => enm/mapping.py przyjmuje 1,1 jako DOMYŚLKĘ SYSTEMOWĄ (karta S-2
+    # AUTORYTET, dawniej FAB-H) — patrz ConverterType.k_sc dla pełnego
+    # kontraktu tego pola. Walidowane w `__post_init__` poniżej
+    # (`_validate_katalogowy_k_sc`) — musi być liczbą skończoną > 0.
     k_sc: float | None = None
     ptpiree_status: str | None = None
     ptpiree_certificate_ref: str | None = None
@@ -3882,6 +3915,11 @@ class BESSInverterType:
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
+
+    def __post_init__(self) -> None:
+        """Walidacja k_sc (karta S-2 AUTORYTET, znalezisko przy okazji: ten typ
+        nie miał ŻADNEJ walidacji k_sc — patrz `_validate_katalogowy_k_sc`)."""
+        _validate_katalogowy_k_sc(self.k_sc, kontekst="BESSInverterType")
 
     def to_dict(self) -> dict[str, Any]:
         return {
