@@ -1279,8 +1279,8 @@ class AddConverterSourcePayload(_FrozenBase):
     # V12K-087 (G-OZE-B2): jawne deklaracje zdolności FRT (NC RfG) — czy jednostka
     # ma zaprogramowaną charakterystykę przejścia przez zanik (LVRT) i przepięcie
     # (HVRT). Nie da się wyprowadzić z karty katalogowej (envelope Q tylko), więc
-    # deklaruje je projektant. Konsumowane przez most zgodności NC RfG
-    # (build_der_compliance_from_generator → NcRfgComplianceChecker). Brak → False.
+    # deklaruje je projektant. Konsumowane przez most model → wejście solvera NC RfG
+    # (S-3: `ncrfg_compliance/model_bridge.py` → `NcRfgPtpireeModuleInput`). Brak → False.
     has_lvrt_curve: bool | None = None
     has_hvrt_curve: bool | None = None
     bess_mode: str | None = None

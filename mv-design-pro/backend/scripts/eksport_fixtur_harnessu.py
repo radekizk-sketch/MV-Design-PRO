@@ -8,8 +8,9 @@ zgodność przekrojowa NC RfG (`GET /api/ncrfg-tests/cases/{id}/compliance`)
 i werdykt projektowy (`GET /api/quality/design-verdict`). Ręczna kopia payloadu
 dryfowała już dwukrotnie (katalog NC RfG, klasy modułów sprzed OD-5), więc te
 atrapy NIE są pisane ręcznie: liczy je ten skrypt DOKŁADNIE tymi funkcjami,
-które wołają końcówki (`NcRfgComplianceChecker.check` + `model_dump`,
-`zbuduj_werdykt_projektowy`), i zapisuje JSON do
+które wołają końcówki (`zgodnosc_ncrfg_przypadku` — most model → solver
+kanoniczny NC RfG + koperta dowodowa, karta S-3; `zbuduj_werdykt_projektowy`),
+i zapisuje JSON do
 `frontend/src/harness-fixtures/generated/<nazwa>.json`.
 
 Dane wejściowe = zasiew sceny harnessu (jedno miejsce prawdy tu, sprawdzane
@@ -63,6 +64,7 @@ from enm.katalog_projektu import katalog_biezacy  # noqa: E402
 from enm.models import EnergyNetworkModel, ENMHeader  # noqa: E402
 from enm.store import reset_enm_store, set_enm  # noqa: E402
 from solver_input.v126_contracts import V126AnalysisType  # noqa: E402
+
 from tests.cgmes.golden_enm import build_golden_enm  # noqa: E402
 
 FIXTURES_DIR = BACKEND_DIR.parent / "frontend" / "src" / "harness-fixtures" / "generated"
