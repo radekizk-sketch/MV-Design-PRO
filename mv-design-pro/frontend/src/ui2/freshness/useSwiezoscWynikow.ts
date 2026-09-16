@@ -14,9 +14,13 @@
  * - frontend/src/ui/app-state/store.ts — useAppStateStore.activeCaseResultStatus
  *   ('NONE'|'FRESH'|'OUTDATED'): NONE -> 'brak', FRESH -> 'aktualne' (rewizjaDanej =
  *   bieżąca rewizjaModelu — status FRESH z definicji oznacza zgodność z modelem),
- *   OUTDATED -> 'nieaktualne' (rewizjaDanej NIEZNANA na starcie — store statusu nie
- *   przechowuje pary rewizji, tylko wyliczony status; brak zgadywania, patrz
- *   opisSwiezosci.ts TODO-KARTA).
+ *   OUTDATED -> 'nieaktualne' z REALNĄ rewizjaDanej z koperty rewizji (CV-2):
+ *   frontend/src/ui/study-cases/types.ts — StudyCase.rewizja_biegu (backend
+ *   `application/study_case/status_wynikow.py::status_wynikow_przypadku`,
+ *   wyprowadzone z biegów przypadku i koperty rewizji) — ta sama liczba, którą
+ *   pokazuje pasek przypadku (`ui2/shell/znacznikSwiezosci.ts`), więc oba
+ *   wskaźniki nigdy nie mówią rzeczy przeciwnych. `null` (case bez zakończonych
+ *   biegów) zostaje `undefined` — uczciwy brak, nie zgadywanie.
  *
  * Po zamontowaniu aktualizacje WYŁĄCZNIE przez zdarzenia magistrali (`ui2/events`),
  * bez odpytywania store'ów w pętli:
@@ -44,6 +48,7 @@
 import { useEffect, useState } from 'react';
 
 import { useAppStateStore } from '../../ui/app-state/store';
+import { useStudyCasesStore } from '../../ui/study-cases/store';
 import { useSnapshotStore } from '../../ui/topology/snapshotStore';
 import { subskrybuj } from '../events';
 import type { OpisSwiezosci } from './freshnessModel';
@@ -60,7 +65,11 @@ function stanPoczatkowy(): OpisSwiezosci {
     return { stan: 'aktualne', rewizjaDanej: rewizjaModelu, rewizjaModelu };
   }
   if (status === 'OUTDATED') {
-    return { stan: 'nieaktualne', rewizjaModelu, przyczyna: 'model-zmieniony' };
+    // CV-2: koperta rewizji na przypadku (`StudyCase.rewizja_biegu`) daje
+    // realną parę rewizji już na starcie hooka — bez zgadywania, bez czekania
+    // na kolejne zdarzenie magistrali (patrz nagłówek pliku).
+    const rewizjaDanej = useStudyCasesStore.getState().activeCase?.rewizja_biegu ?? undefined;
+    return { stan: 'nieaktualne', rewizjaDanej, rewizjaModelu, przyczyna: 'model-zmieniony' };
   }
   return { stan: 'brak', rewizjaModelu };
 }

@@ -14,13 +14,12 @@ import type { OpisSwiezosci } from './freshnessModel';
 export const BRAK_WYNIKOW_LABEL = 'brak wyników';
 
 /**
- * TODO-KARTA: rewizja danej pochodnej może być nieznana w chwili startu hooka
- * (status 'OUTDATED' z `useAppStateStore.activeCaseResultStatus` nie niesie pary
- * rewizji — patrz useSwiezoscWynikow.ts). Bez pary rewizji nie da się uczciwie
- * zbudować `znacznikNieaktualne(a, b)` (wymaga dwóch liczb) — poniższa etykieta jest
- * świadomie zdegradowanym, nie zmyślonym wariantem. Do doprecyzowania z zarządcą:
- * czy hook powinien sięgać dodatkowo po `StudyCase.revision` (ui/study-cases/types.ts),
- * aby mieć realną parę rewizji już na starcie.
+ * Rezerwowa etykieta na wypadek, gdy rewizja danej pochodnej NADAL jest
+ * nieznana mimo koperty rewizji (`StudyCase.rewizja_biegu` w `useSwiezoscWynikow.ts`
+ * — CV-2): przypadek bez ŻADNEGO zakończonego biegu (`activeCase` `null` albo
+ * `rewizja_biegu: null`). Bez pary rewizji nie da się uczciwie zbudować
+ * `znacznikNieaktualne(a, b)` (wymaga dwóch liczb) — ta etykieta jest świadomie
+ * zdegradowanym, nie zmyślonym wariantem.
  */
 export const NIEAKTUALNE_BEZ_PARY_LABEL = 'nieaktualne';
 
