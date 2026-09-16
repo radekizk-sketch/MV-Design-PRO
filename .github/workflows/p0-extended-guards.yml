@@ -111,6 +111,9 @@ jobs:
       - name: Forbidden UI terms
         run: $GUARD_PY scripts/forbidden_ui_terms_guard.py
 
+      - name: UI2 dead handlers (on*={() => undefined} / {noop})
+        run: $GUARD_PY scripts/ui2_dead_handler_guard.py
+
       - name: UTF-8 mojibake (UI/docs encoding)
         run: $GUARD_PY scripts/utf8_mojibake_guard.py
 
