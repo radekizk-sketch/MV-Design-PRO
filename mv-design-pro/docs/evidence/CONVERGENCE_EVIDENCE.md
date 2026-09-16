@@ -125,6 +125,31 @@ E2E-FULL-FIX-3 (`c844d481`, karta W3 §5 „Dogrywka odbioru fali 2") — bramka
 atrapy liczone z backendu, bieg NC RfG do realnego solvera, realny przypadek w scenie `stacja`; pushowana razem z falą 2
 (`ba401660`) — stan CI po pushu: kolejny wpis.
 
+**Stan 2026-09-10, szczyt `20890e88` (fala 2 + E2E-FULL-FIX-3 + odbiór `5e35abff` + poprawka eslint; push 07:40 UTC): 17/18 biegów
+zielonych** — na zdarzeniu `push`: Frontend checks (`34451122621`), Frontend E2E full (`34451122629`, run 398), E2E smoke
+(`34451122608`), SLD Determinism (`34451122574`), Docs (`34451122555`), Arch (`34451122769`), P0 Extended (`34451122547`),
+Physics Label (`34451122605`) zielone; **Python tests CZERWONY** (`34451122681`, run 4946: 1 failed / 14 407 passed —
+`tests/api/test_wspolbieznosc_biegow.py::test_lekkie_zadanie_przechodzi_w_trakcie_biegow[rozplyw-power-flow]`: partia 191 ms,
+sonda wysłała 5 zapytań, 3 obsłużone w locie < próg 5), podczas gdy bieg `pull_request` TEGO SAMEGO commitu (`34451128492`,
+run 4947) i pozostałe 8 workflowów PR zielone. Klasa (§34): **test czasowy zależny od maszyny** — trzecie pokolenie miary
+responsywności (licznik sond w locie z progiem z pomiaru 120 prób) upadło na CI, bo liczba prób sondy na partię jest funkcją
+maszyny (lokalnie 6–14, na runnerze 5); korekta W1 (24 szyny) była naprawą instancji. Naprawa klasy CI-WSPOLBIEZNOSC (ten
+odbiór): bramka deterministyczna bez zegara (biegi zaparkowane na spotkaniu w jedynym dyspozytorze fizyki, sonda musi wrócić
+przed zwolnieniem; iniekcja `async def execute_run` → 4/4 czerwone z nazwaną przyczyną, kod poprawny 6×4 zielone) — wiersz
+CI-WSPOLBIEZNOSC w `REJESTR_KONFLIKTOW.md`, dług V12K-325 rozstrzygnięty.
+
+**Stan 2026-09-10, szczyt `b89c13b3` (B-02/W3-E powierzchnie analityczne; push 10:41 UTC): 7/9 workflowów zielonych, 2 czerwone
+(w obu zdarzeniach push/PR identycznie)** — Docs (`34467396829`), Physics Label (`34467396969`), Arch (`34467396930`),
+P0 Extended (`34467396856`), SLD Determinism (`34467396864`), E2E smoke (`34467396830`), Frontend checks (`34467396851`)
+zielone; **Python tests CZERWONY** (`34467396834`, run 4948; PR `34467401727`, run 4949): 2 failed / 14 536 passed —
+`tests/ci/test_fixtury_harnessu.py::test_json_w_repo_rowny_odpowiedzi_backendu[werdykt_projektowy_scena_ocena|…_przekroczenia]`
+(fixtury werdyktu z realnego rozpływu/zwarcia rozjechane między maszynami na 10.–11. cyfrze); **Frontend E2E full CZERWONY**
+(`34467396871`, run 400; PR `34467401705`, run 401): 4 failed / 420 passed — `kd4-zrzuty-screenshot`, `kd6-zrzuty-screenshot`,
+`ogniwo-zwarcie-aparatura`, `parytety-fala2`: `getByRole('tab', {name: /Zwarcia/})` trafia w 2 elementy po dwupoziomowej
+nawigacji B-02 (obszar „Zwarcia i zabezpieczenia" + zakładka „Zwarcia"). Obie klasy naprawione u źródła w odbiorze fali 3
+(`c307e95f`: komparator fixtur z tolerancją 1e-6 + kwantyzacja `WerdyktProjektowy.to_dict()`; helper `otworzZakladkeWynikow`
+w 7 specach) — patrz §F „W3 fala 3 — dowody" i §G „W3 fala 3 — granice" (3)–(4). Stan CI po pushu fali 3: kolejny wpis.
+
 ## B. Ochrona gałęzi `main` (§36) — **OWNER ACTION P0**
 
 Pomiar (GitHub API `list_branches`, 2026-09-04): `main` → `protected: false`; łącznie ponad 400 gałęzi (`claude/*`, `codex/*`, `kopia/*`), żadna chroniona. Sesja agenta nie ma uprawnień administracyjnych do włączenia ochrony (brak narzędzia w MCP; wymaga roli admin repozytorium).
@@ -357,7 +382,7 @@ Metoda: `grep -n "@router\." backend/src/api/power_flow_runs.py` (15 tras potwie
 
 ## G. Ustalenia adwersaryjne (§38) — po każdej granicy
 
-**W3 fala 3 — granice (2026-09-16):** (1) „zielony spec podkarty = zielony ekran" OBALONE: W3-G3 dodała sekcję pasma z pobraniem po `runId`, a sceny harnessu zwarć niosły biegi-atrapy — pełny bieg e2e (152 testy) złapał 4 czerwone, których 6 specy podkart nie widziało; klasa = każda scena harnessu z ręcznymi liczbami solvera jest bombą dla każdej nowej sekcji ekranu; odpowiedź = fixtury z realnego biegu backendu (karta HARNESS-ZWARCIA-Z-BACKENDU), a nie atrapa końcówki pasma. (2) Zapadka `tsconfig_gate_guard` „w obie strony" zadziałała jak zaprojektowano: naprawy typów w testach poza bramką (recenzja G1/G2) obniżyły dług 119 → 117 i guard ODMÓWIŁ zielonego bez utrwalenia (budżet obniżony w tym samym odbiorze). (3) Parytet fixtur harnessu na CI (klasa z fali B-02): szum zmiennoprzecinkowy liczb kontraktu między maszynami → komparator z tolerancją 1e-6 + kwantyzacja `WerdyktProjektowy.to_dict()` (ADR-018) zamiast luzowania asercji; pin bool/int dokładny (KLASA: `True == 1` w Pythonie maskowałoby typ). (4) Nawigacja wynikowa dwupoziomowa po B-02 unieważniła lokatory zakładek w 7 specach fal 1–3 (strict mode: dwie zakładki o tej samej nazwie) — naprawione helperem `otworzZakladkeWynikow` (jedno miejsce), nie per spec.
+**W3 fala 3 — granice (2026-09-16):** (1) „zielony spec podkarty = zielony ekran" OBALONE: W3-G3 dodała sekcję pasma z pobraniem po `runId`, a sceny harnessu zwarć niosły biegi-atrapy — pełny bieg e2e (152 testy) złapał 4 czerwone, których 6 specy podkart nie widziało; klasa = każda scena harnessu z ręcznymi liczbami solvera jest bombą dla każdej nowej sekcji ekranu; odpowiedź = fixtury z realnego biegu backendu (karta HARNESS-ZWARCIA-Z-BACKENDU), a nie atrapa końcówki pasma. (2) Zapadka `tsconfig_gate_guard` „w obie strony" zadziałała jak zaprojektowano: naprawy typów w testach poza bramką (recenzja G1/G2) obniżyły dług 119 → 117 i guard ODMÓWIŁ zielonego bez utrwalenia (budżet obniżony w tym samym odbiorze). (3) Parytet fixtur harnessu na CI (klasa z fali B-02): szum zmiennoprzecinkowy liczb kontraktu między maszynami → komparator z tolerancją 1e-6 + kwantyzacja `WerdyktProjektowy.to_dict()` (ADR-018) zamiast luzowania asercji; pin bool/int dokładny (KLASA: `True == 1` w Pythonie maskowałoby typ). (4) Nawigacja wynikowa dwupoziomowa po B-02 unieważniła lokatory zakładek w 7 specach fal 1–3 (strict mode: dwie zakładki o tej samej nazwie) — naprawione helperem `otworzZakladkeWynikow` (jedno miejsce), nie per spec. (5) Odczyt CI przy odbiorze (nie lokalny bieg) ujawnił trzecią klasę: test czasowy `test_lekkie_zadanie_przechodzi_w_trakcie_biegow` czerwony na runnerze (run 4946, `20890e88`) i zielony w biegu PR tego samego commitu — „liczba sond w partii jest bezwymiarowa" była deklaracją bez testu na innej maszynie; odpowiedź = usunięcie czasu z werdyktu (spotkanie w oknie solvera, karta CI-WSPOLBIEZNOSC), nie trzecia kalibracja progu ani powiększenie modelu (to była naprawa instancji W1). Lekcja procesowa: lokalna zieleń pełnego `pytest` na 4 rdzeniach NIE jest dowodem odporności testu czasowego na inną maszynę — każdy test z zegarem w werdykcie to dług do przepisania, nie do „obserwacji".
 
 **W3 fala 1 — dowody (2026-09-10):** drzewo `a1b40e9a` (= `28854780` naprawa P0 Extended + `4750d101` odbiór W3-D/W3-A/W3-E + dokumenty odbioru), łańcuch `k3_weryfikacja.sh` po restarcie hosta (load ≈ 2): pełna regresja backendu `-m "not pandapower"` **12 948 passed / 1 skipped (bramka środowiskowa Postgres) / 1 xfailed (IEEE 34 PLANNED)** w 762 s; mypy **692 plików bez uwag**; wyrocznia pandapower **30 passed** (81 s); `guardy_z_ci.py` **87/87 guardów + lint 4/4 + 680 self-testów, KOMPLET ZIELONY** (w tym `port_binding_guard --strict` z argumentami workflowu — naprawa `28854780`); pełny vitest **894 plików, 12 166 passed / 14 todo** (1 656 s, zero czerwonych); e2e realny backend **3/3** (`critical-run-flow`, `critical-oze-evidence` z 2 nowymi punktami kontrolnymi W3-D, `import-arkusza-do-wynikow`; 57 s). Push `a1b40e9a` → CI do odczytu w §A.
 

@@ -32,34 +32,55 @@ sensowny prog. Mierzymy wiec ZYSK rownoleglosci wzgledem tego samego biegu
 wykonanego szeregowo, w tym samym procesie i na tej samej maszynie — stosunek
 jest odporny na predkosc maszyny.
 
-DRUGA, MOCNIEJSZA MIARA: NAKLADANIE SIE OKIEN. Kazde zadanie melduje wlasny
-znacznik wejscia i wyjscia; przy prawdziwej rownoleglosci okna czasowe zadan
-zachodza na siebie. Serializacja na petli zdarzen daje okna ROZLACZNE — i to
-wykrywa nawet wtedy, gdy stosunek czasow zmiesci sie w marginesie (np. gdy
-maszyna ma jeden rdzen, a GIL i tak przeplata watki).
+DRUGA MIARA — RESPONSYWNOSC — JEST DETERMINISTYCZNA, NIE CZASOWA (karta
+CI-WSPOLBIEZNOSC, 2026-09-16). Test responsywnosci PARKUJE biegi w oknie solvera
+na spotkaniu (`threading.Event` wstrzykniete w JEDYNY dyspozytor fizyki
+`enm.canonical_analysis._wykonaj_analize_biegu`), wysyla lekkie zadanie i pyta,
+czy zostalo obsluzone, ZANIM biegi zwolniono. Petla zdarzen zablokowana biegiem
+nie obsluzy niczego do konca biegu — sonda wraca dopiero po zwolnieniu, werdykt
+jest czerwony bez zadnego zegara. Petla wolna (bieg w puli watkow) obsluguje
+sonde w milisekundach, bo zaparkowane biegi NIE LICZA — nie ma rywalizacji o
+GIL, ktora psula pomiary czasowe. Po zwolnieniu biegi licza NAPRAWDE (200 i
+wynik z solvera) — sciezka uzytkownika jest ta sama, tylko zatrzymana na
+chwile w polowie.
 
-CZEGO TU NIE MA I DLACZEGO — ZADNEGO KWANTYLA OPOZNIENIA (pomiar 2026-08-08,
-320 pomiarow: kod poprawny i kod z COFNIETYM offloadem, maszyna bezczynna i
-przeciazona 6 procesami na 4 rdzeniach). Kwantyl opoznienia lekkiego zadania NIE
-ODROZNIA blokady petli od rywalizacji o procesor, i to w obie strony:
-  * przy DZIALAJACYM offloadzie ogon jest nieograniczony — sonda rywalizuje o
-    GIL z K watkami solvera, wiec pojedyncze zapytanie potrafi staknac na
-    setki ms (zmierzone maksimum 588 ms), mimo ze system obsluguje ja caly czas;
-  * przy ZABLOKOWANEJ petli proba KURCZY SIE do 1-4 zapytan, wiec kwantyl
-    liczony jest z trzech liczb i bywa NISKI (zmierzona mediana 1,35x
-    odniesienia) — kwantyl z takiej proby nie znaczy nic.
-Zmierzone nakladanie rozkladow: kazdy wariant ilorazu opoznienia (p50/p95 wobec
-odniesienia bez obciazenia w min/p10/p25/p50) mylil sie na 19-25 pomiarach na
-160. Odniesienie BEZ obciazenia zostalo zmierzone i ODRZUCONE POMIAREM: jest
-samo w sobie wielkoscia rzedu 2 ms, wiec jego wlasny szum (1,8-8,7 ms) jest
-wiekszy niz sygnal, ktory mialoby normowac.
+DLACZEGO NIE POMIAR CZASOWY — TRZY POKOLENIA CHWIEJNOSCI, WSZYSTKIE ZMIERZONE:
+  1. `p95 sondy < polowa czasu partii` (do 2026-08-08): odniesienie (czas
+     partii) skrocilo sie 4x po przyspieszeniach solvera, ogon opoznien sondy
+     (kwanty GIL, wywlaszczenia planisty) nie — 13 falszywych zapalen na 160
+     pomiarow. Kwantyl opoznienia NIE ODROZNIA blokady petli od rywalizacji o
+     procesor, i to w obie strony: przy dzialajacym offloadzie pojedyncze
+     zapytanie potrafi staknac na setki ms (zmierzone maksimum 588 ms), a przy
+     zablokowanej petli proba kurczy sie do 1-4 zapytan i kwantyl z trzech
+     liczb bywa NISKI (zmierzona mediana 1,35x odniesienia). Odniesienie bez
+     obciazenia (~2 ms) ma wlasny szum (1,8-8,7 ms) wiekszy niz sygnal.
+  2. Licznik sond obsluzonych OD POCZATKU DO KONCA w oknie jakiegos biegu, prog
+     5 z pomiaru 120 prob (karta CHWIEJNY-WSPOLBIEZNOSC, 2026-08-08): rozklady
+     byly ROZLACZNE na maszynie pomiarowej (poprawny kod: najgorzej 8, mediana
+     16; cofniety offload: 57 z 60 dalo 0, najgorzej 3). Zalozenie, ze liczba
+     sond w partii jest bezwymiarowa (czas partii w jednostkach okresu sondy
+     mierzonego w tych samych warunkach), UPADLO NA CI: run 34451122681
+     (Python tests 4946, 2026-09-10, commit 20890e88) — partia rozplywu 191 ms,
+     sonda zdazyla wyslac 5 zapytan, 3 obsluzone w locie < 5; bieg PR (4947)
+     tego samego commitu zielony. Okres sondy pod obciazeniem K watkow solvera
+     NIE skaluje sie z czasem partii jednakowo na kazdej maszynie (lokalnie
+     6-14 zapytan na partie, na runnerze CI 5). Korekta W1 (2026-09-09)
+     powiekszyla model do 24 szyn, zeby przywrocic rezim pomiaru — naprawa
+     INSTANCJI (dobor rozmiaru sieci pod maszyne), nie klasy.
+  3. Porzadek zakonczen przy K=1 z werdyktem z czestosci (15 prob, wiekszosc):
+     stabilny w pomiarze (98,75 % wobec 3,75 %), ale nadal STOCHASTYCZNY — te
+     same czestosci na innej maszynie nie sa niczym gwarantowane. Zastapiony ta
+     sama bramka deterministyczna przy K=1.
+Klasa wspolna trzech pokolen: kazda miara porownywala DWA CZASY zmierzone pod
+rywalizacja o procesor, a rywalizacja o procesor nie jest tym, co test ma
+wykrywac. Spotkanie w oknie solvera usuwa czas z werdyktu w ogole.
 
-CO ROZDZIELA TE DWA SWIATY: LICZBA OBSLUZONYCH ZADAN, NIE ICH CZAS. Blokada
-petli ogranicza liczbe okazji do obslugi (jedno oproznienie kolejki = jedna
-okazja) NIEZALEZNIE od predkosci maszyny i dlugosci partii; offload daje ich
-tyle, ile zmiesci sie w oknie. To wielkosc BEZWYMIAROWA — czas partii wyrazony
-w jednostkach wlasnego okresu obslugi sondy, mierzonych w tych samych warunkach
-— wiec predkosc maszyny skraca sie w niej tak samo jak w ilorazie czasow.
+CZEGO SPOTKANIE NIE MIERZY: przepustowosci (mierzy ja test determinizmu:
+iloraz partii rownoleglej i szeregowej z podloga bezwzgledna) ani blokad POZA
+oknem solvera (np. zapis wyniku wykonany na petli zdarzen przy koncowce
+`async def` z offloadem samego solvera) — dzis nie ma takiej sciezki:
+`execute_run` jest funkcja `def`, wiec CALA obsluga zadania idzie w puli
+watkow, a spotkanie siedzi wewnatrz tej obslugi.
 """
 
 from __future__ import annotations
@@ -68,6 +89,7 @@ import json
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
+from typing import Any
 
 import pytest
 from api.main import app
@@ -82,24 +104,26 @@ K_ROWNOLEGLYCH = 10
 #: dobrana pomiarem 2026-09-09 tak, zeby bieg szeregowy trwal kilkadziesiat ms.
 _LICZBA_SZYN_LANCUCHA = 24
 
-#: Ile lekkich zadan musi zostac obsluzonych OD POCZATKU DO KONCA w czasie, gdy
-#: co najmniej jeden ciezki bieg jest w locie.
-#:
-#: GRANICA WYPROWADZONA Z POMIARU, NIE Z GLOWY (2026-08-08, 120 pomiarow: 60 na
-#: kodzie poprawnym i 60 na kodzie z cofnietym offloadem; kazda polowa zebrana
-#: na maszynie bezczynnej ORAZ przeciazonej 6 procesami liczacymi na 4 rdzeniach,
-#: dla obu rodzajow biegu):
-#:   * offload dziala: najgorszy pomiar 8, piaty percentyl 9, mediana 16;
-#:   * offload cofniety: 57 z 60 pomiarow dalo 0, pozostale 1, 1 i 3 (najgorszy
-#:     przypadek 3).
-#: Rozkłady sa ROZLACZNE (0 nakladan na 120). Granica 5 to srednia geometryczna
-#: skrajnych obserwacji (3 i 8, pierwiastek z 24 = 4,9): zapas 1,6x do
-#: najgorszego pomiaru poprawnego kodu i 1,67x do najlepszego pomiaru kodu z
-#: blokada. Zapas jest symetryczny, bo rozrzut po obu stronach jest podobny.
-PROG_OBSLUZONYCH_W_LOCIE = 5
+#: Czas, w ktorym WSZYSTKIE biegi partii musza wejsc w okno solvera (parking na
+#: spotkaniu). Przy dzialajacym offloadzie K biegow wchodzi w ciagu milisekund
+#: (kazdy `execute_run` to odczyt biegu + jeden UPDATE przejecia, potem od razu
+#: dyspozytor); przy zablokowanej petli zdarzen drugi bieg nie wejdzie NIGDY,
+#: dopoki pierwszy nie wyjdzie — limit sluzy WYLACZNIE temu, zeby czerwony test
+#: skonczyl sie w skonczonym czasie z nazwana przyczyna, a nie zawisl.
+CZAS_NA_WEJSCIE_BIEGOW_S = 30.0
 
-#: Ile prob wykonuje pomiar porzadku zakonczen (patrz docstring testu).
-PROB_PORZADKU = 15
+#: Czas na obsluge lekkiego zadania, gdy biegi stoja w oknie solvera. Przy
+#: dzialajacym offloadzie petla zdarzen jest WOLNA, a zaparkowane biegi nie
+#: licza (czekaja na zdarzenie), wiec `GET /api/health` wraca w milisekundach
+#: na kazdej maszynie — nie ma rywalizacji o GIL, ktora psula pomiary czasowe.
+#: Limit placi wylacznie sciezka czerwona (zablokowana petla).
+CZAS_NA_SONDE_S = 10.0
+
+#: Zawor bezpieczenstwa spotkania: bieg zaparkowany w oknie solvera rusza sam po
+#: tym czasie, gdyby test nie zdazyl go zwolnic (wyjatek poza `finally`), zeby
+#: pula watkow klienta nigdy nie zawisla na zawsze. Dluzszy niz suma pozostalych
+#: limitow, wiec NIE decyduje o werdykcie ani w zielonym, ani w czerwonym biegu.
+ZAWOR_SPOTKANIA_S = 120.0
 
 
 def _reset_backend_state() -> None:
@@ -114,20 +138,18 @@ def _model_sn(nazwa: str) -> dict:
     """Model SN o rozmiarze MIERZALNYM — zrodlo GPZ, promieniowy lancuch kabli, odbiory.
 
     Rozmiar dobrany tak, zeby JEDEN bieg trwal kilkadziesiat ms (nie kilka), ale
-    nie wydluzal suity: miara jest wzgledna, wiec nie potrzebuje duzej sieci —
-    potrzebuje jednak okna partii DLUZSZEGO niz kilka okresow obslugi sondy,
-    inaczej licznik obsluzonych w locie traci margines.
+    nie wydluzal suity: test determinizmu i przepustowosci mierzy ILORAZ dwoch
+    partii w tym samym procesie, wiec nie potrzebuje duzej sieci, a test
+    responsywnosci (spotkanie w oknie solvera) od rozmiaru nie zalezy wcale.
 
-    KOREKTA ROZMIARU (W1, 2026-09-09). Pierwotny model (2 szyny, 1 kabel, 1 odbior)
-    dawal bieg ~15 ms szeregowo, partie K=10 ~190 ms i 6-14 zapytan sondy na
-    partie (pomiar 3x na obu drzewach: przed i po W1 identycznie — przyspieszenia
-    nie sa skutkiem W1, lecz PERF-SC-50 i memoizacji katalogu). Przy 6 zapytaniach
-    najgorszy pomiar poprawnego kodu spadal do 4 obsluzonych w locie — PONIZEJ
-    progu 5 wyprowadzonego z pomiaru przy biegu ~25 ms (docstring
-    `PROG_OBSLUZONYCH_W_LOCIE`). Lancuch `_LICZBA_SZYN_LANCUCHA` szyn przywraca
-    rezim, dla ktorego prog kalibrowano (bieg kilkadziesiat ms), bez zmiany progu
-    ani miary. Nazwy `bus-main`/`bus-load`/`branch-load`/`load-1`/`src-grid`
-    zachowane (pierwsze ogniwa lancucha), reszta ogniw numerowana.
+    HISTORIA ROZMIARU. Pierwotny model (2 szyny, 1 kabel, 1 odbior) dawal bieg
+    ~15 ms szeregowo; korekta W1 (2026-09-09) powiekszyla lancuch do
+    `_LICZBA_SZYN_LANCUCHA` szyn, zeby przywrocic rezim pomiaru licznika sond w
+    locie (bieg kilkadziesiat ms). Ta miara odeszla (karta CI-WSPOLBIEZNOSC,
+    docstring modulu), rozmiar zostal: kazda zmiana przesuwa czasy partii testu
+    przepustowosci bez zadnego zysku. Nazwy `bus-main`/`bus-load`/`branch-load`/
+    `load-1`/`src-grid` zachowane (pierwsze ogniwa lancucha), reszta ogniw
+    numerowana.
     """
     szyny: list[dict] = []
     galezie: list[dict] = []
@@ -498,196 +520,147 @@ def test_biegi_rownolegle_sa_deterministyczne(client: TestClient) -> None:
     )
 
 
+@pytest.mark.parametrize("liczba_biegow", (1, K_ROWNOLEGLYCH), ids=("K=1", f"K={K_ROWNOLEGLYCH}"))
 @pytest.mark.parametrize(("rodzaj", "sciezka"), RODZAJE_BIEGOW)
-def test_lekkie_zadanie_przechodzi_w_trakcie_biegow(
-    client: TestClient, rodzaj: str, sciezka: str
+def test_lekkie_zadanie_obsluzone_gdy_biegi_stoja_w_oknie_solvera(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    rodzaj: str,
+    sciezka: str,
+    liczba_biegow: int,
 ) -> None:
-    """MIARA „DONE" wprost z §3 planu 10x: lekkie zadanie zyje przy K=10 biegach.
+    """Lekkie zadanie jest obslugiwane, gdy K biegow STOI w oknie solvera.
 
-    Podczas gdy K=10 ciezkich biegow JEDNEGO rodzaju jest w locie, sonda wysyla
-    trywialne `GET /api/health`. Pytanie brzmi: czy lekkie zadanie DA SIE
-    obsluzyc, kiedy system liczy — bo to jest to, co projektant widzi jako „UI
-    zyje" albo „UI zamarlo".
+    MIARA „DONE" OSI WSPOLBIEZNOSCI (§3 planu 10x) BEZ ZEGARA. Projektant w
+    jednej sesji odpala kilka analiz i czyta model — UI ma zyc. Blokada petli
+    zdarzen (koncowka `async def` z blokujacym wnetrzem: solver CPU, sync
+    SQLAlchemy, IO pliku modelu) sprawia, ze KAZDE inne zadanie czeka do konca
+    biegu. Test odtwarza dokladnie te sytuacje deterministycznie:
 
-    DLACZEGO PER RODZAJ: koncowka, ktorej offload cofnieto, blokuje petle zdarzen
-    niezaleznie od tego, ze druga koncowka jest poprawna. Pomiar zbiorczy tego nie
-    widzi (druga koncowka oddaje sterowanie i sonda przechodzi). Parametryzacja
-    sprawia, ze KAZDA koncowka odpowiada za siebie.
+      1. K biegow (create POZA oknem pomiaru — bez solvera) rusza rownolegle
+         przez REALNA koncowke `POST /api/execution/runs/{id}/execute`.
+      2. W JEDYNYM dyspozytorze fizyki (`_wykonaj_analize_biegu`) kazdy bieg
+         melduje wejscie i PARKUJE na zdarzeniu `zwolnij` — jest „w locie" w
+         tym samym watku i w tym samym miejscu, w ktorym normalnie liczy
+         solver, tylko nie zuzywa procesora.
+      3. Gdy wszystkie K biegow stoja w oknie, test wysyla `GET /api/health` z
+         osobnego watku i czeka na odpowiedz najwyzej `CZAS_NA_SONDE_S`.
+      4. Zwalnia biegi. Biegi licza NAPRAWDE (200, wynik z solvera).
 
-    ASERCJA LICZY ZDARZENIA, NIE MILISEKUNDY. Liczymy sondy, ktorych CALE okno —
-    wyslanie i odpowiedz — miesci sie w oknie jakiegos biegu, czyli obsluzone
-    DOKLADNIE WTEDY, gdy solver liczyl. Warunek na POCZATEK jest tu nosny:
-    zapytanie, ktore czekalo juz zanim biegi ruszyly, i doczekalo sie odpowiedzi
-    dopiero po ich zakonczeniu, nie jest dowodem obslugi w trakcie liczenia —
-    jest dowodem przeciwnym. Wlasnie tak wyglada zablokowana petla: sonda staje
-    w kolejce za wszystkimi biegami i wraca dopiero po ostatnim z nich.
+    WERDYKT: sonda musi wrocic PRZED zwolnieniem biegow. Petla zdarzen wolna
+    (bieg w puli watkow — FastAPI odklada tam kazda koncowke `def`) obsluguje
+    sonde w milisekundach niezaleznie od maszyny, bo nic nie liczy. Petla
+    zablokowana biegiem nie obsluzy sondy, dopoki bieg nie wyjdzie z okna —
+    czyli dopiero po zwolnieniu: werdykt czerwony bez progu czasowego. Przy
+    K > 1 blokada ujawnia sie jeszcze wczesniej: drugi bieg nie wejdzie w okno,
+    dopoki pierwszy z niego nie wyjdzie, wiec „wszystkie K w oknie" nie
+    nastapi (asercja wejscia z nazwana liczba biegow w oknie).
 
-    CZEGO TA ASERCJA ZASTAPILA (karta CHWIEJNY-WSPOLBIEZNOSC, 2026-08-08).
-    Poprzednia postac brzmiala `p95 sondy < polowa czasu partii` i byla CHWIEJNA:
-    odniesieniem byl czas partii, a ten skrocil sie okolo czterokrotnie wobec
-    stanu, dla ktorego prog kalibrowano (bieg zwarciowy na tej sieci: 91,3 ms w
-    momencie wprowadzenia offloadu, 25 ms po pozniejszych przyspieszeniach —
-    m.in. memoizacji katalogu). Ogon opoznien sondy nie skrocil sie razem z nim,
-    bo wyznaczaja go kwanty GIL i wywlaszczenia planisty, a nie czas partii.
-    Zmierzony skutek: 13 falszywych zapalen na 160 pomiarow (a przy sieci
-    wiekszej — takze na maszynie BEZCZYNNEJ). Nie podniesiono progu, bo prog nie
-    byl przyczyna: mierzona wielkosc nie odrozniala blokady od rywalizacji o
-    procesor (uzasadnienie i liczby — docstring modulu).
+    DLACZEGO K=1 I K=10 OSOBNO: K=1 to najostrzejsza postac celu (pojedynczy
+    bieg nie moze zamrozic odczytu), K=10 dodaje wymaganie pojemnosci (K biegow
+    w locie NARAZ; limit puli watkow FastAPI/anyio to 40). DLACZEGO PER RODZAJ:
+    koncowka jest jedna, ale wykonawcy sa rozni (`_execute_power_flow`,
+    `_execute_short_circuit`) — regresja w jednym z nich nie moze schowac sie
+    za drugim (regula KLASA, NIE INSTANCJA zastosowana do testu).
 
-    ZMIERZONA MOC DETEKCYJNA nowej postaci (iniekcja: cofniecie offloadu na obu
-    koncowkach — `run_short_circuit` liczy w petli zamiast w puli, `run_power_flow`
-    z `def` na `async def`): 57 z 60 pomiarow dalo ZERO obsluzonych w locie,
-    najgorszy 3, wobec najgorszego 8 na kodzie poprawnym.
+    ZMIERZONA MOC DETEKCYJNA (2026-09-16, iniekcja: `execute_run` w
+    `api/execution_runs.py` przestawiona na `async def` — dokladnie ta
+    regresja, ktora offload ma wykluczac): 4 z 4 parametryzacji CZERWONE,
+    kazda z nazwana przyczyna — K=1: sonda nie wrocila przez 10 s i wrocila po
+    zwolnieniu (10,5-10,9 s na test); K=10: w okno weszl 1 z 10 biegow w 30 s
+    (32-35 s na test). Bez iniekcji: 6 kolejnych biegow 4 parametryzacji
+    zielone (12,7-18,1 s na komplet; K=10 zwarcie 1-10 s, reszta ponizej 1,2 s),
+    caly modul 5 passed. Werdykt nie zalezy od zadnego progu czasowego, wiec
+    liczby czasow sa informacja o koszcie, nie o marginesie.
+
+    CO TEN TEST ZASTAPIL (karta CI-WSPOLBIEZNOSC, 2026-09-16):
+    `test_lekkie_zadanie_przechodzi_w_trakcie_biegow` (licznik sond w locie,
+    prog 5 — chwiejny na CI) i `test_odczyt_nie_czeka_na_bieg_analizy` (porzadek
+    zakonczen z czestosci przy K=1 — stochastyczny). Historia i pomiary trzech
+    pokolen miar czasowych: docstring modulu.
     """
-    przypadki = [_nowy_przypadek(client) for _ in range(K_ROWNOLEGLYCH)]
-    biegi: dict[str, str] = {}
+    from enm import canonical_analysis
+
+    przypadki = [_nowy_przypadek(client) for _ in range(liczba_biegow)]
+    biegi: list[str] = []
     for i, case_id in enumerate(przypadki):
         _zasiej(case_id, f"Siec SN {rodzaj} {i}")
         # Rozgrzewka: pierwszy odczyt modelu wykonuje migracje i uzupelnia dane
         # katalogowe, wiec jest jednorazowo drozszy — nie ma go w pomiarze.
         assert client.get(f"/api/cases/{case_id}/enm/readiness").status_code == 200
         # `create_run` (bez solvera) POZA oknem pomiaru — patrz docstring modulu.
-        biegi[case_id] = _stworz_bieg(client, case_id, sciezka)
+        biegi.append(_stworz_bieg(client, case_id, sciezka))
 
-    okna_sondy: list[tuple[float, float]] = []
-    okna_biegow: list[tuple[float, float]] = []
+    oryginalny_dyspozytor = canonical_analysis._wykonaj_analize_biegu
     zamek = threading.Lock()
-    stop = threading.Event()
+    w_oknie: list[str] = []
+    wszystkie_w_oknie = threading.Event()
+    zwolnij = threading.Event()
 
-    def sonda() -> None:
-        while not stop.is_set():
-            start = time.perf_counter()
-            odp = client.get("/api/health")
-            koniec = time.perf_counter()
-            if odp.status_code == 200:
-                with zamek:
-                    okna_sondy.append((start, koniec))
-            time.sleep(0.002)
-
-    def wykonaj_bieg(case_id: str) -> int:
-        start = time.perf_counter()
-        kod = _wykonaj_bieg(client, biegi[case_id]).status_code
+    def dyspozytor_ze_spotkaniem(run: Any, graf: Any = None, uow_factory: Any = None) -> None:
+        """Ten sam dyspozytor, zatrzymany na progu okna solvera do zwolnienia."""
         with zamek:
-            okna_biegow.append((start, time.perf_counter()))
-        return kod
+            w_oknie.append(str(run.id))
+            if len(w_oknie) == liczba_biegow:
+                wszystkie_w_oknie.set()
+        zwolnij.wait(timeout=ZAWOR_SPOTKANIA_S)
+        oryginalny_dyspozytor(run, graf, uow_factory)
 
-    watek_sondy = threading.Thread(target=sonda, daemon=True)
-    watek_sondy.start()
-    start_partii = time.perf_counter()
-    try:
-        with ThreadPoolExecutor(max_workers=K_ROWNOLEGLYCH) as pula:
-            kody = list(pula.map(wykonaj_bieg, przypadki))
-        czas_partii = time.perf_counter() - start_partii
-    finally:
-        stop.set()
-        watek_sondy.join(timeout=10)
+    monkeypatch.setattr(canonical_analysis, "_wykonaj_analize_biegu", dyspozytor_ze_spotkaniem)
 
-    assert kody == [200] * K_ROWNOLEGLYCH, kody
+    konce_biegow: dict[str, float] = {}
 
-    obsluzone_w_locie = [
-        (start, koniec)
-        for start, koniec in okna_sondy
-        if any(
-            poczatek_biegu <= start and koniec <= koniec_biegu
-            for poczatek_biegu, koniec_biegu in okna_biegow
-        )
-    ]
-    assert len(obsluzone_w_locie) >= PROG_OBSLUZONYCH_W_LOCIE, (
-        f"W trakcie partii biegow '{rodzaj}' ({czas_partii * 1000:.0f} ms) lekkie "
-        f"zadanie zostalo obsluzone od poczatku do konca tylko "
-        f"{len(obsluzone_w_locie)} raz(y) — wymagane co najmniej "
-        f"{PROG_OBSLUZONYCH_W_LOCIE}. Sonda wykonala lacznie {len(okna_sondy)} "
-        "zapytan, wiec reszta czekala w kolejce za biegami: te biegi blokuja "
-        "obsluge innych zadan."
+    def wykonaj_bieg(run_id: str) -> int:
+        odp = _wykonaj_bieg(client, run_id)
+        with zamek:
+            konce_biegow[run_id] = time.perf_counter()
+        return odp.status_code
+
+    obsluzona_przed_zwolnieniem = False
+    with ThreadPoolExecutor(max_workers=liczba_biegow + 1) as pula:
+        przyszle_biegi = [pula.submit(wykonaj_bieg, run_id) for run_id in biegi]
+        try:
+            # Czekamy, az WSZYSTKIE biegi stana w oknie solvera. Bieg zakonczony
+            # PRZED wejsciem w okno (np. 404) konczy oczekiwanie od razu — jego
+            # kod trafia do meldunku zamiast 30-sekundowej ciszy.
+            termin = time.monotonic() + CZAS_NA_WEJSCIE_BIEGOW_S
+            while not wszystkie_w_oknie.wait(timeout=0.05):
+                if any(p.done() for p in przyszle_biegi) or time.monotonic() >= termin:
+                    break
+            with zamek:
+                liczba_w_oknie = len(w_oknie)
+            zakonczone_przed_oknem = [p.result() for p in przyszle_biegi if p.done()]
+            assert wszystkie_w_oknie.is_set(), (
+                f"W okno solvera weszlo {liczba_w_oknie} z {liczba_biegow} biegow "
+                f"'{rodzaj}' (limit {CZAS_NA_WEJSCIE_BIEGOW_S:.0f} s; biegi zakonczone "
+                f"przed wejsciem w okno, kody HTTP: {zakonczone_przed_oknem}) — biegi "
+                "wykonuja sie SZEREGOWO: pierwszy blokuje petle zdarzen (albo pule "
+                "watkow), wiec kolejne nie moga wystartowac, dopoki nie skonczy."
+            )
+
+            sonda = pula.submit(client.get, "/api/health")
+            try:
+                odp_sondy = sonda.result(timeout=CZAS_NA_SONDE_S)
+                koniec_sondy = time.perf_counter()
+                obsluzona_przed_zwolnieniem = True
+            except TimeoutError:
+                obsluzona_przed_zwolnieniem = False
+        finally:
+            zwolnij.set()
+        if not obsluzona_przed_zwolnieniem:
+            odp_sondy = sonda.result(timeout=ZAWOR_SPOTKANIA_S)
+            koniec_sondy = time.perf_counter()
+        kody = [p.result(timeout=ZAWOR_SPOTKANIA_S) for p in przyszle_biegi]
+
+    assert odp_sondy.status_code == 200, odp_sondy.text
+    assert obsluzona_przed_zwolnieniem, (
+        f"Sonda `GET /api/health` nie wrocila przez {CZAS_NA_SONDE_S:.0f} s, gdy "
+        f"{liczba_biegow} bieg(ow) '{rodzaj}' stalo w oknie solvera bez liczenia, a "
+        "wrocila dopiero po ich zwolnieniu — bieg blokuje petle zdarzen: kazde "
+        "inne zadanie (odczyt modelu, UI) czeka do konca biegu."
     )
-
-
-@pytest.mark.parametrize(("rodzaj", "sciezka"), RODZAJE_BIEGOW)
-def test_odczyt_nie_czeka_na_bieg_analizy(client: TestClient, rodzaj: str, sciezka: str) -> None:
-    """Trywialny odczyt konczy sie ZANIM skonczy sie rownolegly bieg analizy.
-
-    Najostrzejsza postac celu inzynierskiego osi, sprawdzana dla KAZDEJ koncowki
-    biegu osobno, przy K=1 (test wyzej robi to samo przy K=10). Gdy bieg blokuje
-    petle zdarzen, `GET /api/health` czeka na jego koniec — okno odczytu lezy
-    wtedy CALE po zakonczeniu biegu.
-
-    WERDYKT Z CZESTOSCI, NIE Z JEDNEJ PROBY. Porzadek zakonczen dwoch zdarzen
-    trwajacych rzedy milisekund jest z natury stochastyczny: pojedyncze
-    wywlaszczenie watku odczytu odwraca go bez zadnej regresji. Ale ODWRACA GO
-    RZADKO, a blokada petli odwraca go PRAWIE ZAWSZE — i wlasnie ta roznica
-    czestosci jest mierzalna stabilnie, w przeciwienstwie do pojedynczego
-    porownania. Dlatego test wykonuje `PROB_PORZADKU` prob i pyta o WIEKSZOSC.
-
-    ZMIERZONE CZESTOSCI (2026-08-08, 4 rdzenie, po 80 prob na rodzaj i stan):
-    offload dziala — 79/80 na maszynie bezczynnej i 79/80 pod obciazeniem
-    (98,75%); offload cofniety — 3/80 (3,75%). Przy 15 probach i progu „wiecej
-    niz polowa" prawdopodobienstwo pomylki w OBIE strony jest rzedu 1e-8: falszywe
-    zapalenie wymagaloby spadku czestosci ponizej ~70%, a falszywa zielen —
-    wzrostu z 3,75% do ponad 50%.
-
-    CO TA POSTAC ZASTAPILA (karta CHWIEJNY-WSPOLBIEZNOSC, 2026-08-08). Poprzednia
-    wersja rozstrzygala JEDNA probe na runde i miala furtke „bieg krotszy niz
-    50 ms => zagrozenie ograniczone, uznaj runde za zdana". Furtka byla progiem
-    BEZWZGLEDNYM, a bieg na tej sieci przyspieszyl do 16-55 ms — wiec zmierzone
-    79 na 80 prob konczylo sie furtka. Skutek byl gorszy niz chwiejnosc: przy
-    ZABLOKOWANEJ petli test przechodzil na zielono w 79 na 80 prob, bo bieg
-    miescil sie pod progiem, zanim ktokolwiek zdazyl sprawdzic porzadek. Bramka
-    przestala pilnowac czegokolwiek na szybkiej maszynie, a na wolnej zaczynala
-    rozstrzygac rzutem moneta. Furtki nie przeliczono na wielkosc wzgledna, bo
-    przeliczona odtwarzalaby te sama dziure — usunieto ja razem z pojedyncza
-    proba, a jej role (odpornosc na szum krotkich zdarzen) przejela czestosc.
-    """
-    case_id = _nowy_przypadek(client)
-    _zasiej(case_id, f"Siec SN — responsywnosc {rodzaj}")
-    # Rozgrzewka poza pomiarem (migracje + dane katalogowe przy pierwszym odczycie).
-    assert client.get(f"/api/cases/{case_id}/enm/readiness").status_code == 200
-
-    def probka() -> tuple[bool, bool]:
-        """(czy okna sie nalozyly, czy odczyt skonczyl sie przed biegiem)."""
-        znaczniki: dict[str, tuple[float, float]] = {}
-        # `create_run` (bez solvera) POZA oknem pomiaru, PRZED wyscigiem watkow
-        # — patrz docstring modulu; inaczej okno `bieg()` startowaloby pozniej
-        # niz okno `odczyt()` z powodu niezwiazanego z fizyka opoznienia.
-        run_id = _stworz_bieg(client, case_id, sciezka)
-
-        def bieg() -> int:
-            start = time.perf_counter()
-            odp = _wykonaj_bieg(client, run_id)
-            znaczniki["bieg"] = (start, time.perf_counter())
-            return odp.status_code
-
-        def odczyt() -> int:
-            # Bez zwloki: odczyt startuje rownoczesnie z biegiem, wiec nalozenie
-            # okien jest gwarantowane tak dlugo, jak bieg trwa dluzej niz start
-            # watku. Zwloka tylko zmniejszalaby szanse na nalozenie.
-            start = time.perf_counter()
-            odp = client.get("/api/health")
-            znaczniki["odczyt"] = (start, time.perf_counter())
-            return odp.status_code
-
-        with ThreadPoolExecutor(max_workers=2) as pula:
-            przyszly_bieg = pula.submit(bieg)
-            przyszly_odczyt = pula.submit(odczyt)
-            assert przyszly_bieg.result() == 200
-            assert przyszly_odczyt.result() == 200
-        _, koniec_biegu = znaczniki["bieg"]
-        poczatek_odczytu, koniec_odczytu = znaczniki["odczyt"]
-        return poczatek_odczytu <= koniec_biegu, koniec_odczytu < koniec_biegu
-
-    proby = [probka() for _ in range(PROB_PORZADKU)]
-    # Proba bez nalozenia okien nie niesie informacji o porzadku (bieg skonczyl
-    # sie zanim odczyt ruszyl) — nie liczy sie ani na korzysc, ani na niekorzysc.
-    rozstrzygajace = [porzadek for nalozenie, porzadek in proby if nalozenie]
-    assert len(rozstrzygajace) > PROB_PORZADKU // 2, (
-        f"Tylko {len(rozstrzygajace)} z {PROB_PORZADKU} prob dalo nalozenie okien "
-        f"biegu '{rodzaj}' i odczytu — pomiar nie mial czego rozstrzygac. To nie "
-        "jest werdykt o blokadzie, tylko brak pomiaru."
-    )
-
-    przed_biegiem = sum(rozstrzygajace)
-    assert przed_biegiem > len(rozstrzygajace) // 2, (
-        f"Odczyt /api/health skonczyl sie przed biegiem '{rodzaj}' tylko "
-        f"{przed_biegiem} raz(y) na {len(rozstrzygajace)} prob rozstrzygajacych — "
-        "wiekszosc lekkich odczytow czekala na koniec biegu, czyli ten bieg "
-        "blokuje petle zdarzen. Przy dzialajacym offloadzie zmierzono 98,75%."
+    assert kody == [200] * liczba_biegow, kody
+    assert koniec_sondy < min(konce_biegow.values()), (
+        "Sonda zakonczyla sie po pierwszym zakonczonym biegu, mimo ze biegi byly "
+        "zwolnione dopiero po jej powrocie — niespojny zapis znacznikow czasu."
     )
