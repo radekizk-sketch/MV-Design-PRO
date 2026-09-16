@@ -70,6 +70,12 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
     # dawnego klucza meta stacji) i układ uziemienia ekranu kabla.
     "transformers": ("lv_earthing_system",),
     "branches": ("screen_bonding",),
+    # Karta W6-1: parametry dynamiczne zrodla (kontrakt czasu RMS/DAE, unia
+    # dyskryminowana `ParametryDynamiczne`). `None` = brak wejscia zdefiniowanego
+    # dla przyszlego solvera W6-2 (jeszcze nie istnieje) — nie jest trescia modelu
+    # dzisiejszych biegow SC/PF; podana wartosc zmieni tylko przyszly bieg
+    # dynamika_rms, wiec dopiero wtedy zmienia odcisk.
+    "generators": ("dynamika",),
 }
 
 #: W5-A: pola SKASOWANE z modelu, ktore odcisk ZACHOWUJE jako `null`. Przed kasacja

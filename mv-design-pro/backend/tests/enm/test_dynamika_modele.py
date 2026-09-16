@@ -14,16 +14,16 @@ from enm.dynamika_modele import (
     Crowbar,
     Magazyn,
     MaszynaSynchroniczna,
+    ProweniencjaParametrow,
     PrzeksztaltnikGFL,
     PrzeksztaltnikGFM,
-    ProweniencjaParametrow,
     RegulacjaCzestotliwosciMagazynu,
     RegulatorNapiecia,
     RegulatorObrotow,
     StabilizatorSystemowy,
     TurbinaWiatrowa,
 )
-from enm.models import EnergyNetworkModel, ENMHeader, Bus, Generator
+from enm.models import Bus, EnergyNetworkModel, ENMHeader, Generator
 from pydantic import ValidationError
 
 # ---------------------------------------------------------------------------
@@ -36,106 +36,106 @@ def _prow(zrodlo: str = "karta_producenta") -> ProweniencjaParametrow:
 
 
 def _sm_komplet(**override) -> dict:
-    dane = dict(
-        proweniencja=_prow(),
-        s_n_mva=10.0,
-        h_s=3.0,
-        d_pu=1.0,
-        xd_pu=1.8,
-        xq_pu=1.7,
-        xd_prim_pu=0.3,
-        xq_prim_pu=0.4,
-        xd_bis_pu=0.2,
-        xq_bis_pu=0.25,
-        td0_prim_s=6.0,
-        tq0_prim_s=0.5,
-        td0_bis_s=0.03,
-        tq0_bis_s=0.05,
-        xl_pu=0.15,
-        nasycenie_s10=0.1,
-        nasycenie_s12=0.3,
-        ra_pu=0.003,
-    )
+    dane = {
+        "proweniencja": _prow(),
+        "s_n_mva": 10.0,
+        "h_s": 3.0,
+        "d_pu": 1.0,
+        "xd_pu": 1.8,
+        "xq_pu": 1.7,
+        "xd_prim_pu": 0.3,
+        "xq_prim_pu": 0.4,
+        "xd_bis_pu": 0.2,
+        "xq_bis_pu": 0.25,
+        "td0_prim_s": 6.0,
+        "tq0_prim_s": 0.5,
+        "td0_bis_s": 0.03,
+        "tq0_bis_s": 0.05,
+        "xl_pu": 0.15,
+        "nasycenie_s10": 0.1,
+        "nasycenie_s12": 0.3,
+        "ra_pu": 0.003,
+    }
     dane.update(override)
     return dane
 
 
 def _gfl_komplet(**override) -> dict:
-    dane = dict(
-        proweniencja=_prow(),
-        s_n_mva=1.0,
-        i_max_pu=1.2,
-        priorytet_ogranicznika="bierna",
-        pll_kp=50.0,
-        pll_ki=500.0,
-        reg_pradu_kp=1.0,
-        reg_pradu_ki=100.0,
-        k_frt=2.0,
-        prog_frt_pu=0.9,
-        tp_s=0.02,
-        tiq_s=0.02,
-        p_odbudowa_pu_na_s=1.0,
-        p_odbudowa_opoznienie_s=0.1,
-        droop_p_f_pu=0.04,
-        martwa_strefa_f_hz=0.02,
-        droop_q_u_pu=0.05,
-        martwa_strefa_u_pu=0.01,
-        u_min_ciagle_pu=0.85,
-        u_max_ciagle_pu=1.1,
-    )
+    dane = {
+        "proweniencja": _prow(),
+        "s_n_mva": 1.0,
+        "i_max_pu": 1.2,
+        "priorytet_ogranicznika": "bierna",
+        "pll_kp": 50.0,
+        "pll_ki": 500.0,
+        "reg_pradu_kp": 1.0,
+        "reg_pradu_ki": 100.0,
+        "k_frt": 2.0,
+        "prog_frt_pu": 0.9,
+        "tp_s": 0.02,
+        "tiq_s": 0.02,
+        "p_odbudowa_pu_na_s": 1.0,
+        "p_odbudowa_opoznienie_s": 0.1,
+        "droop_p_f_pu": 0.04,
+        "martwa_strefa_f_hz": 0.02,
+        "droop_q_u_pu": 0.05,
+        "martwa_strefa_u_pu": 0.01,
+        "u_min_ciagle_pu": 0.85,
+        "u_max_ciagle_pu": 1.1,
+    }
     dane.update(override)
     return dane
 
 
 def _gfm_komplet(**override) -> dict:
-    dane = dict(
-        proweniencja=_prow(),
-        s_n_mva=1.0,
-        tryb="droop",
-        mp_pu=0.04,
-        mq_pu=0.04,
-        h_wirtualne_s=4.0,
-        d_wirtualne_pu=10.0,
-        r_wirtualne_pu=0.02,
-        x_wirtualne_pu=0.1,
-        i_max_pu=1.3,
-        strategia_ograniczenia="impedancja_wirtualna",
-        tp_s=0.02,
-        tiq_s=0.02,
-    )
+    dane = {
+        "proweniencja": _prow(),
+        "s_n_mva": 1.0,
+        "tryb": "droop",
+        "mp_pu": 0.04,
+        "mq_pu": 0.04,
+        "h_wirtualne_s": 4.0,
+        "d_wirtualne_pu": 10.0,
+        "r_wirtualne_pu": 0.02,
+        "x_wirtualne_pu": 0.1,
+        "i_max_pu": 1.3,
+        "strategia_ograniczenia": "impedancja_wirtualna",
+        "tp_s": 0.02,
+        "tiq_s": 0.02,
+    }
     dane.update(override)
     return dane
 
 
 def _magazyn_komplet(**override) -> dict:
-    dane = dict(
-        proweniencja=_prow(),
-        e_n_kwh=1000.0,
-        p_ladowania_max_kw=500.0,
-        p_rozladowania_max_kw=500.0,
-        sprawnosc_ladowania=0.95,
-        sprawnosc_rozladowania=0.95,
-        soc_min=0.1,
-        soc_max=0.9,
-        soc_poczatkowy=0.5,
-        przeksztaltnik=PrzeksztaltnikGFL(**_gfl_komplet()),
-    )
+    dane = {
+        "proweniencja": _prow(),
+        "e_n_kwh": 1000.0,
+        "p_ladowania_max_kw": 500.0,
+        "p_rozladowania_max_kw": 500.0,
+        "sprawnosc_ladowania": 0.95,
+        "sprawnosc_rozladowania": 0.95,
+        "soc_min": 0.1,
+        "soc_max": 0.9,
+        "soc_poczatkowy": 0.5,
+        "przeksztaltnik": PrzeksztaltnikGFL(**_gfl_komplet()),
+    }
     dane.update(override)
     return dane
 
 
 def _wiatr_komplet(rodzina: str, **override) -> dict:
-    dane = dict(
-        rodzina=rodzina,
-        proweniencja=_prow(),
-        h_calkowite_s=5.0,
-        sztywnosc_walu_pu=80.0,
-        tlumienie_walu_pu=1.5,
-        poslizg_ustalony_pu=0.02,
-        pitch_tempo_deg_s=8.0,
-        pitch_min_deg=0.0,
-        pitch_max_deg=27.0,
-    )
+    dane = {
+        "rodzina": rodzina,
+        "proweniencja": _prow(),
+        "h_calkowite_s": 5.0,
+        "sztywnosc_walu_pu": 80.0,
+        "tlumienie_walu_pu": 1.5,
+        "poslizg_ustalony_pu": 0.02,
+        "pitch_tempo_deg_s": 8.0,
+        "pitch_min_deg": 0.0,
+        "pitch_max_deg": 27.0,
+    }
     if rodzina in ("wiatr_typ_3", "wiatr_typ_4"):
         dane["przeksztaltnik"] = PrzeksztaltnikGFL(**_gfl_komplet())
     dane.update(override)
@@ -156,16 +156,33 @@ class TestKompletKazdaRodzina:
         sm = MaszynaSynchroniczna(
             **_sm_komplet(
                 wzbudzenie=RegulatorNapiecia(
-                    typ="SEXS", ka=200.0, ta_s=0.02, tb_s=0.0, tc_s=0.0,
-                    efd_min_pu=-5.0, efd_max_pu=5.0,
+                    typ="SEXS",
+                    ka=200.0,
+                    ta_s=0.02,
+                    tb_s=0.0,
+                    tc_s=0.0,
+                    efd_min_pu=-5.0,
+                    efd_max_pu=5.0,
                 ),
                 turbina=RegulatorObrotow(
-                    typ="TGOV1", r_pu=0.05, t1_s=0.5, t2_s=1.0, t3_s=2.0,
-                    p_max_pu=1.1, p_min_pu=0.0,
+                    typ="TGOV1",
+                    r_pu=0.05,
+                    t1_s=0.5,
+                    t2_s=1.0,
+                    t3_s=2.0,
+                    p_max_pu=1.1,
+                    p_min_pu=0.0,
                 ),
                 stabilizator=StabilizatorSystemowy(
-                    typ="PSS1A", ks=10.0, tw_s=5.0, t1_s=0.5, t2_s=0.1,
-                    t3_s=0.5, t4_s=0.1, limit_min_pu=-0.1, limit_max_pu=0.1,
+                    typ="PSS1A",
+                    ks=10.0,
+                    tw_s=5.0,
+                    t1_s=0.5,
+                    t2_s=0.1,
+                    t3_s=0.5,
+                    t4_s=0.1,
+                    limit_min_pu=-0.1,
+                    limit_max_pu=0.1,
                 ),
             )
         )
@@ -200,7 +217,9 @@ class TestKompletKazdaRodzina:
         )
         assert mag.regulacja_f is not None
 
-    @pytest.mark.parametrize("rodzina", ["wiatr_typ_1", "wiatr_typ_2", "wiatr_typ_3", "wiatr_typ_4"])
+    @pytest.mark.parametrize(
+        "rodzina", ["wiatr_typ_1", "wiatr_typ_2", "wiatr_typ_3", "wiatr_typ_4"]
+    )
     def test_turbina_komplet_kazdy_typ_iec(self, rodzina):
         turbina = TurbinaWiatrowa(**_wiatr_komplet(rodzina))
         assert turbina.rodzina == rodzina
@@ -349,13 +368,21 @@ class TestNiespojnoscKrzyzowa:
 
     def test_sm_regulator_napiecia_limity_odwrocone(self):
         with pytest.raises(ValidationError):
-            RegulatorNapiecia(typ="SEXS", ka=200.0, ta_s=0.02, tb_s=0.0, tc_s=0.0,
-                               efd_min_pu=-1.0, efd_max_pu=-2.0)
+            RegulatorNapiecia(
+                typ="SEXS",
+                ka=200.0,
+                ta_s=0.02,
+                tb_s=0.0,
+                tc_s=0.0,
+                efd_min_pu=-1.0,
+                efd_max_pu=-2.0,
+            )
 
     def test_sm_regulator_obrotow_limity_odwrocone(self):
         with pytest.raises(ValidationError):
-            RegulatorObrotow(typ="TGOV1", r_pu=0.05, t1_s=0.5, t2_s=1.0, t3_s=2.0,
-                              p_max_pu=0.5, p_min_pu=0.9)
+            RegulatorObrotow(
+                typ="TGOV1", r_pu=0.05, t1_s=0.5, t2_s=1.0, t3_s=2.0, p_max_pu=0.5, p_min_pu=0.9
+            )
 
     def test_gfl_napiecie_ciagle_rowne_odrzucone(self):
         """Zakresy pol sa rozlaczne (u_min<=1.0, u_max>=1.0) — jedyny sposob na
@@ -379,8 +406,11 @@ class TestNiespojnoscKrzyzowa:
     def test_magazyn_moc_ladowania_przekracza_baze_przeksztaltnika(self):
         gfl = PrzeksztaltnikGFL(**_gfl_komplet(s_n_mva=0.3))
         with pytest.raises(ValidationError, match="p_ladowania_max_kw"):
-            Magazyn(**_magazyn_komplet(przeksztaltnik=gfl, p_ladowania_max_kw=500.0,
-                                        p_rozladowania_max_kw=250.0))
+            Magazyn(
+                **_magazyn_komplet(
+                    przeksztaltnik=gfl, p_ladowania_max_kw=500.0, p_rozladowania_max_kw=250.0
+                )
+            )
 
     def test_turbina_pitch_min_wiekszy_niz_pitch_max(self):
         with pytest.raises(ValidationError, match="pitch_min_deg"):
@@ -397,7 +427,9 @@ class TestNiespojnoscKrzyzowa:
 
     def test_turbina_typ2_z_przeksztaltnikiem_zabroniony(self):
         with pytest.raises(ValidationError, match="przeksztaltnik dotyczy wylacznie typ_3"):
-            TurbinaWiatrowa(**_wiatr_komplet("wiatr_typ_2", przeksztaltnik=PrzeksztaltnikGFL(**_gfl_komplet())))
+            TurbinaWiatrowa(
+                **_wiatr_komplet("wiatr_typ_2", przeksztaltnik=PrzeksztaltnikGFL(**_gfl_komplet()))
+            )
 
     def test_turbina_typ4_bez_przeksztaltnika_zabroniony(self):
         dane = _wiatr_komplet("wiatr_typ_4")
@@ -414,7 +446,12 @@ class TestNiespojnoscKrzyzowa:
 class TestProweniencja:
     @pytest.mark.parametrize(
         "zrodlo",
-        ["karta_producenta", "certyfikat_jednostki", "profil_typowy_normy", "deklaracja_uzytkownika"],
+        [
+            "karta_producenta",
+            "certyfikat_jednostki",
+            "profil_typowy_normy",
+            "deklaracja_uzytkownika",
+        ],
     )
     def test_kazde_dopuszczalne_zrodlo_buduje_sie(self, zrodlo):
         sm = MaszynaSynchroniczna(**_sm_komplet(proweniencja=_prow(zrodlo)))
@@ -481,8 +518,51 @@ class TestGeneratorDynamika:
         assert enm2.generators[0].dynamika.rodzina == "synchroniczna"
 
     def test_generator_bez_dynamiki_nie_niesie_klucza_po_exclude_none(self):
-        """Addytywnosc: brak dynamiki nie zmienia ksztaltu JSON istniejacych
-        generatorow (exclude_none=True pomija None)."""
+        """`model_dump(exclude_none=True)` recznie pomija `None` — WLASNOSC
+        pydantic, nie dowod stabilnosci odcisku (patrz test ponizej: zadna
+        funkcja hasza w `enm/hash.py` nie wola `exclude_none=True`)."""
         gen = Generator(ref_id="g1", name="G1", bus_ref="b1", p_mw=1.0)
         dumped = gen.model_dump(mode="json", exclude_none=True)
         assert "dynamika" not in dumped
+
+    def test_generator_bez_dynamiki_ma_ten_sam_odcisk_co_przed_karta(self):
+        """WLASCIWY dowod addytywnosci (KLASA NIE INSTANCJA §4 — deklaracja bez
+        testu jest falszywa pewnoscia): trzy funkcje hasza produkcyjnego
+        (`enm/hash.py`) NIE wolaja `exclude_none=True` — dumpuja PELNY model i
+        dopiero `_POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE` zdejmuje `None`. Test
+        powyzej tego nie sprawdzal (sprawdzal inna, nieuzywana przez hash sciezke
+        dumpu) — luka znaleziona pomiarem golden-registry PRZED/PO (55/56 sieci
+        bez zmiany odcisku po dopisaniu `"generators": ("dynamika",)` do
+        `_POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE`; rejestr pinowany osobno w
+        `tests/enm/test_hash_pola_addytywne.py`)."""
+        from enm.hash import compute_enm_hash, compute_input_hash, hash_migawki_enm
+
+        def _enm_z_generatorem(**pola: object) -> EnergyNetworkModel:
+            return EnergyNetworkModel(
+                header=ENMHeader(name="hash-generators-dynamika"),
+                buses=[Bus(ref_id="b1", name="B1", voltage_kv=15.0)],
+                generators=[Generator(ref_id="g1", name="G1", bus_ref="b1", p_mw=1.0, **pola)],
+            )
+
+        def _migawka_sprzed_karty(enm: EnergyNetworkModel) -> dict:
+            """Postac zrzutu sprzed W6-1: bez klucza `dynamika` na generatorze."""
+            dane = enm.model_dump(mode="json")
+            for gen in dane["generators"]:
+                gen.pop("dynamika", None)
+            return dane
+
+        bez_dynamiki = _enm_z_generatorem()
+        sprzed_karty = _migawka_sprzed_karty(bez_dynamiki)
+        assert hash_migawki_enm(bez_dynamiki.model_dump(mode="json")) == hash_migawki_enm(
+            sprzed_karty
+        )
+        assert compute_enm_hash(bez_dynamiki) == hash_migawki_enm(sprzed_karty)
+        assert compute_input_hash(bez_dynamiki) == compute_input_hash(
+            EnergyNetworkModel.model_validate(sprzed_karty)
+        )
+
+        z_dynamika = _enm_z_generatorem(dynamika=MaszynaSynchroniczna(**_sm_komplet()))
+        assert compute_enm_hash(bez_dynamiki) != compute_enm_hash(z_dynamika)
+        assert hash_migawki_enm(bez_dynamiki.model_dump(mode="json")) != hash_migawki_enm(
+            z_dynamika.model_dump(mode="json")
+        )
