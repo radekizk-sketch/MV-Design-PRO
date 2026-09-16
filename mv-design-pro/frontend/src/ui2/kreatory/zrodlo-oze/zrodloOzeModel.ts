@@ -157,9 +157,8 @@ export interface OzeFormData {
   // V12K-063: pasmo nieczułości P(f)/LFSM [Hz].
   lfsm_deadband_hz: number | null;
   // V12K-087 (G-OZE-B2): jawne zdolności FRT (NC RfG) — przejście przez zanik (LVRT)
-  // i przepięcie (HVRT). Deklaracja projektanta (nie z karty katalogowej). Konsumowane
-  // przez most model → wejście solvera NC RfG (karta S-3: `application/ncrfg_compliance/
-  // model_bridge.py` → `NcRfgPtpireeModuleInput.has_lvrt_curve/has_hvrt_curve`).
+  // i przepięcie (HVRT). Deklaracja projektanta (nie z karty katalogowej). Konsumowane przez
+  // most model → wejście solvera NC RfG (S-3: `ncrfg_compliance/model_bridge.py` → has_*_curve).
   has_lvrt_curve: boolean;
   has_hvrt_curve: boolean;
   bess_mode: TrybBess;

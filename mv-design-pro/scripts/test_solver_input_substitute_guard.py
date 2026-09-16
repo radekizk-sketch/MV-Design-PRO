@@ -1345,7 +1345,20 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # Odbior S-2 AUTORYTET na drzewie po W3-J + V12.7 + S-1/S-4 + HARNESS-ZWARCIA (2026-09-16):
     # POMIAR guardem na drzewie scalonym = 3548 (3532 + 16 pol S-2; zbiory nazw rozlaczne —
     # sprawdzone pomiarem, liczba z biegu guarda na tym drzewie, nie z arytmetyki kart).
-    assert "Pol kontraktow wejsciowych: 3548." in wyjscie, wyjscie
+    # Karta S-3 (W6-0, jeden tor NC RfG, 2026-09-16): POMIAR guardem 3532 -> 3534 (+2 nazwy
+    # pol deduplikowane w calym repo: `application/ncrfg_compliance/bieg.py::
+    # NcRfgCaseComplianceResponse` (case_id, operator_id, der_count, pominiete, bieg) i
+    # `model_bridge.py::NcRfgDerPominiety` (der_ref, der_name, powod, powod_pl) /
+    # `WejsciaZgodnosciZModelu` (modules, pominiete); `NcRfgPtpireeRunResponse`
+    # przeniesiony z api/ do application/ bez zmiany pol; drugi silnik `checker.py`
+    # (ComplianceTestResult/NcRfgComplianceReport/DerDataForCompliance) skasowany —
+    # jego nazwy pol byly juz zdeduplikowane z innymi kontraktami, wiec kasacja nie
+    # obniza licznika). Zero podstawien liczby za brak danych wejsciowych (PASS
+    # niezmieniony), pliki/zapadka/wykluczenia bez zmian.
+    # Odbior S-3 NC-RFG-JEDEN-TOR na drzewie po S-2 (2026-09-16): POMIAR guardem na drzewie
+    # scalonym = 3550 (3548 + 2 pola S-3: NcRfgCaseComplianceResponse/bieg.py; checker.py
+    # skasowany, bieg.py dodany - liczba plikow application 231 bez zmian netto).
+    assert "Pol kontraktow wejsciowych: 3550." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
