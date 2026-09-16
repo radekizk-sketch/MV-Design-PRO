@@ -6486,7 +6486,7 @@
     "type": "object"
    },
    "NcRfgPtpireeRunResponse": {
-    "description": "Wynik biegu POSZERZONY o dowód certyfikacji (dodatek karty P2).\n\nDziedziczy kontrakt solvera w całości — wszystkie istniejące pola zachowują\nnazwy, typy i wartości. Nowy jest WYŁĄCZNIE `certificate_evidence`, więc\nkonsument sprzed tej karty czyta dokładnie to samo, co czytał.",
+    "description": "Wynik biegu POSZERZONY o dowód certyfikacji (P2) i stopień dowodowy (S-1).\n\nDziedziczy kontrakt solvera w całości — wszystkie istniejące pola zachowują\nnazwy, typy i wartości. Nowe pola (`certificate_evidence`, `reporting_status`,\n`proof_status`, `evidence_limitations`, `evidence_note_pl`, `evidence_per_module`,\n`evidence_by_test`) są ADDYTYWNE — konsument sprzed tej karty czyta dokładnie\nto samo, co czytał. Ocena dowodowa liczona `ocena_dowodowa_biegu`\n(`solver_input.dowod_ncrfg`) — TĄ SAMĄ funkcją, którą czyta bramka\ncertyfikatu (`application/analyses/certyfikat_zgodnosci.py::zbierz_braki`).",
     "properties": {
      "certificate_evidence": {
       "default": [],
@@ -6505,6 +6505,40 @@
       "title": "Deterministic Hash",
       "type": "string"
      },
+     "evidence_by_test": {
+      "additionalProperties": {
+       "additionalProperties": {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       "type": "object"
+      },
+      "default": {},
+      "title": "Evidence By Test",
+      "type": "object"
+     },
+     "evidence_limitations": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Evidence Limitations",
+      "type": "array"
+     },
+     "evidence_note_pl": {
+      "default": "",
+      "title": "Evidence Note Pl",
+      "type": "string"
+     },
+     "evidence_per_module": {
+      "additionalProperties": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "default": {},
+      "title": "Evidence Per Module",
+      "type": "object"
+     },
      "input_hash": {
       "title": "Input Hash",
       "type": "string"
@@ -6520,8 +6554,18 @@
       "title": "Procedure Version",
       "type": "string"
      },
+     "proof_status": {
+      "default": "incomplete",
+      "title": "Proof Status",
+      "type": "string"
+     },
      "report_pl": {
       "title": "Report Pl",
+      "type": "string"
+     },
+     "reporting_status": {
+      "default": "not_reportable",
+      "title": "Reporting Status",
       "type": "string"
      },
      "solver_version": {

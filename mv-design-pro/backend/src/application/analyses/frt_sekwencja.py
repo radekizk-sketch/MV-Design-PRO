@@ -35,11 +35,16 @@ import hashlib
 import json
 from typing import Any
 
-from application.analyses.frt_trajektorie import _WERDYKT_W_OBWIEDNI, _verdict_pl
+from application.analyses.frt_trajektorie import (
+    _WERDYKT_W_OBWIEDNI,
+    _verdict_pl,
+    _widok_bez_modelu_dynamicznego,
+)
 from application.ncrfg_compliance.frt_input import build_frt_sekwencja_input
 from catalog.profiles.nc_rfg.loader import NcRfgProfile
 from network_model.catalog.types import ConverterType
 from network_model.solvers.frt_hvrt import FrtHvrtSolverAdapter
+from solver_input.provenance import classify_dynamic_capability
 
 # Zaokrąglenie wartości wyjściowych — determinizm i czytelność (jak D6).
 _ROUND = 6
@@ -133,6 +138,22 @@ def build_frt_sekwencja_view(
     if not valid:
         raise ValueError("Walidacja parametrów sekwencji: " + "; ".join(errors))
     result = adapter.run(solver_input)
+    if result.status == "no_module":
+        # Karta S-4 (W6-0): status solvera FROZEN `no_module` NIGDY nie dociera
+        # do FE — mapowany NA GRANICY na `blocked` (bezpiecznik granicy, patrz
+        # `application.analyses.frt_trajektorie._widok_bez_modelu_dynamicznego`).
+        return _widok_bez_modelu_dynamicznego(
+            result,
+            modul_der={
+                "id": converter.id,
+                "nazwa": converter.name,
+                "kind": converter.kind.value,
+                "pmax_mw": _round(converter.pmax_mw),
+                "un_kv": _round(converter.un_kv),
+            },
+            operator={"id": profile.operator_id, "nazwa": profile.operator_name_pl},
+            dodatkowe={"liczba_zapadow": 0, "zapady": []},
+        )
 
     # Wyniki per scenariusz — dopasowanie po scenario_id, kolejność wejścia (determinizm).
     results_by_id = {sc.scenario_id: sc for sc in result.scenario_results}
@@ -192,6 +213,8 @@ def build_frt_sekwencja_view(
             "nazwa": profile.operator_name_pl,
         },
         "status_solvera": result.status,
+        # Stopień dowodowy trajektorii (karta S-1 §0.9) — jak w D6 (trajektorie).
+        "ocena_dowodowa": classify_dynamic_capability("frt_hvrt.trajectory").to_dict(),
         "obwiednia_profilu": {
             "rodzaj": "lvrt",
             "opis": (

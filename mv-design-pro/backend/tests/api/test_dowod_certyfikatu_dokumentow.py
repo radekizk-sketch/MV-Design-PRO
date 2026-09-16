@@ -96,14 +96,20 @@ TABLICZKA_PELNA: dict = {
     "ptpiree_certificate_condition": "Tylko z modułem sterowania SG-CTRL.",
 }
 
+#: Karta S-1 (dowod dynamiczny): klasa A (215 kW/0,8 kV) — jedyna klasa BEZ
+#: testow dynamicznych T14-T17 w `default_for_modules` (nieprzydatnych
+#: dowodowo dzis, patrz `test_certyfikat_zgodnosci.py`) — z certyfikatem
+#: PTPiREE (precedens FAB-K) daje realna sciezke pozytywna dla testow tego
+#: pliku (przedmiotem sa dowody tabliczki/dokumenty, nie sama bramka
+#: dowodowa T01-T20, wiec fikstura wybiera klase omijajaca ta bramke).
 _MODULE_FULL: dict = {
     "der_ref": _DER_REF,
-    "der_name": "PV 2 MW",
+    "der_name": "PV 215 kW",
     "der_kind": "PV",
     "operator_id": "enea",
-    "p_max_kw": 2000,
-    "p_min_kw": 100,
-    "voltage_kv": 15,
+    "p_max_kw": 215,
+    "p_min_kw": 10,
+    "voltage_kv": 0.8,
     "certificate_status": "ptpiree_verified",
     "has_lvrt_curve": True,
     "has_hvrt_curve": True,

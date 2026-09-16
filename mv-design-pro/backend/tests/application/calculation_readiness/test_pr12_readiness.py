@@ -5,6 +5,9 @@ from __future__ import annotations
 from application.calculation_readiness.service import (
     CALCULATION_LABEL_PL,
     CalculationReadinessService,
+    ReadinessReport,
+    ReadinessStatus,
+    ReadinessTypeReport,
 )
 from application.report_readiness.adapter import ReportReadinessAdapter
 from application.validation_problem.service import ValidationProblemService
@@ -437,6 +440,53 @@ class TestCalculationReadinessService:
         # Zawsze pojawi się jakiś partial/blocked, więc overall ≠ ready
         overall = report.overall_status()
         assert overall in ("partial", "blocked")
+
+    def test_overall_status_no_module_literal_gone_from_type(self) -> None:
+        """Karta S-4 (W6-0): `no_module` przestaje istnieć jako `ReadinessStatus`
+        — brak modelu numerycznego jest mapowany NA GRANICY na `blocked`
+        (aplikacja: `application/analyses/frt_trajektorie.py`/`frt_sekwencja.py`),
+        nigdy jako osobny status gotowości."""
+        import typing
+
+        assert typing.get_args(ReadinessStatus) == ("ready", "partial", "blocked", "n_a")
+
+    def _raport(self, *statuses: ReadinessStatus) -> ReadinessReport:
+        return ReadinessReport(
+            items=[
+                ReadinessTypeReport(
+                    calculation_type="power_flow",
+                    label_pl=f"pozycja-{i}",
+                    status=status,
+                )
+                for i, status in enumerate(statuses)
+            ]
+        )
+
+    def test_overall_status_iloczyn_cech_fail_closed(self) -> None:
+        """Karta S-4 §0.7 (pin w obie strony): iloczyn {ready, n_a, partial,
+        blocked} × pozycje. `ready` WYŁĄCZNIE gdy KAŻDA pozycja jest `ready`
+        albo `n_a`; priorytet blocked > partial > ready; „każdy element bez
+        modelu ⇒ NIE ready" — brak modelu numeryczny jest mapowany na `blocked`
+        na granicy aplikacyjnej (nie ma już osobnego statusu `no_module`), więc
+        jest pokryty przez przypadek z `blocked` poniżej."""
+        # Pojedyncza pozycja, każdy status z osobna.
+        assert self._raport("ready").overall_status() == "ready"
+        assert self._raport("n_a").overall_status() == "ready"
+        assert self._raport("partial").overall_status() == "partial"
+        assert self._raport("blocked").overall_status() == "blocked"
+        # Wszystkie ready/n_a (dowolna kombinacja) ⇒ ready.
+        assert self._raport("ready", "n_a").overall_status() == "ready"
+        assert self._raport("n_a", "n_a", "ready").overall_status() == "ready"
+        # Jakikolwiek blocked wygrywa nad partial i ready/n_a (priorytet).
+        assert self._raport("ready", "blocked").overall_status() == "blocked"
+        assert self._raport("partial", "blocked").overall_status() == "blocked"
+        assert self._raport("blocked", "partial", "ready", "n_a").overall_status() == "blocked"
+        # Jakikolwiek partial (bez blocked) wygrywa nad ready/n_a.
+        assert self._raport("ready", "partial", "n_a").overall_status() == "partial"
+        # „Każdy element bez modelu ⇒ NIE ready": brak modelu numeryczny =
+        # `blocked` na granicy (der.dynamic_profile_missing) — projekt z
+        # choćby jedną taką pozycją NIGDY nie jest `ready`.
+        assert self._raport("ready", "ready", "blocked").overall_status() != "ready"
 
     def test_calculation_label_pl_for_all_types(self) -> None:
         for label in CALCULATION_LABEL_PL.values():

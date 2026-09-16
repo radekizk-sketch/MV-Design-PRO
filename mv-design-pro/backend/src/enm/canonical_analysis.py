@@ -107,6 +107,7 @@ from network_model.solvers.short_circuit_iec60909 import (
     ShortCircuitResult,
 )
 from network_model.solvers.v126_academic import V126AcademicSolver
+from solver_input.provenance import classify_dynamic_capability
 from solver_input.v126_contracts import V126AcademicInput, V126AnalysisType
 
 
@@ -1611,6 +1612,19 @@ def _execute_dynamic_stability(run: CanonicalRun) -> None:
         ],
         "points": [point.to_dict() for point in trajectory],
     }
+    # Karta S-1 (W6-0): stopien dowodowy WYPROWADZANY z rejestru dowodowego
+    # (`solver_input.provenance.classify_dynamic_capability`), nie zaszyty na
+    # sztywno. `dynamic_stability.fault_clear` jest dzis UNVALIDATED_MODEL: katy
+    # wirnika i wielkosci pozwarciowe pochodza z opcji biegu (z wartosciami
+    # domyslnymi), a werdykt jest porownaniem progowym wzgledem tych katow, nie
+    # wykazaniem stabilnosci calkowaniem rownan ruchu ukladu — wiec wynik NIE
+    # jest dowodem regulacyjnym, dopoki zdolnosc nie zostanie zwalidowana (OD-20).
+    ewidencja = classify_dynamic_capability("dynamic_stability.fault_clear")
+    proof_status = "complete" if ewidencja.regulatory_evidence_eligible else "incomplete"
+    reporting_status = "reportable" if ewidencja.regulatory_evidence_eligible else "not_reportable"
+    reporting_limitations: list[str] = (
+        [] if ewidencja.regulatory_evidence_eligible else [ewidencja.rationale_pl]
+    )
     run.raw_result = {
         "analysis_type": "dynamic_stability",
         "scenario": scenario.to_dict(),
@@ -1623,12 +1637,13 @@ def _execute_dynamic_stability(run: CanonicalRun) -> None:
         "automation_trace": automation_trace.to_dict(),
         "topology_effect": topology_payload,
         "proof_ref": proof_ref,
-        "proof_status": "complete",
-        "proof_status_pl": "pelny",
-        "reporting_status": "reportable",
-        "reporting_status_pl": "raportowalny",
-        "dopuszczalnosc_raportowa": True,
-        "reporting_limitations": [],
+        "proof_status": proof_status,
+        "proof_status_pl": "pelny" if proof_status == "complete" else "czesciowy",
+        "reporting_status": reporting_status,
+        "reporting_status_pl": "raportowalny" if reporting_status == "reportable" else "nieraportowalny",
+        "dopuszczalnosc_raportowa": ewidencja.regulatory_evidence_eligible,
+        "reporting_limitations": reporting_limitations,
+        "evidence": ewidencja.to_dict(),
     }
     run.white_box_trace = [
         {
@@ -1640,8 +1655,8 @@ def _execute_dynamic_stability(run: CanonicalRun) -> None:
             "method_basis": "DYNAMIC_STABILITY_FAULT_CLEAR_V1",
             "result": event.payload,
             "proof_ref": proof_ref,
-            "proof_status": "complete",
-            "reporting_status": "reportable",
+            "proof_status": proof_status,
+            "reporting_status": reporting_status,
         }
         for index, event in enumerate(automation_trace.events, start=1)
     ]
@@ -3498,6 +3513,7 @@ def build_dynamic_stability_results(run: CanonicalRun) -> dict[str, Any]:
                     "dopuszczalnosc_raportowa", True
                 ),
                 "reporting_limitations": (run.raw_result or {}).get("reporting_limitations", []),
+                "evidence": (run.raw_result or {}).get("evidence"),
             }
         ],
     }

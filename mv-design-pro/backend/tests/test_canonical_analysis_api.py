@@ -1085,6 +1085,24 @@ def test_dynamic_stability_run_exposes_results_and_automation_trace(client: Test
     assert stability_payload["analysis_case_context"]["rodzaj_przypadku"] == "PRACA_PO_ZAKLOCENIU"
     assert stability_payload["rows"][0]["status"] == "STABLE"
     assert stability_payload["rows"][0]["proof_ref"].startswith("proof:dynamic-stability:")
+    # Karta S-1 (W6-0): stopien dowodowy WYPROWADZANY z rejestru — werdykt
+    # progowy z katow opcji biegu NIE jest dowodem regulacyjnym (UNVALIDATED_
+    # MODEL), niezaleznie od tego, ze wynik fizyczny jest "STABLE".
+    row = stability_payload["rows"][0]
+    assert row["proof_status"] == "incomplete"
+    assert row["reporting_status"] == "not_reportable"
+    assert row["reporting_status_pl"] == "nieraportowalny"
+    assert row["dopuszczalnosc_raportowa"] is False
+    assert row["reporting_limitations"]
+    assert row["evidence"]["tier"] == "UNVALIDATED_MODEL"
+    assert row["evidence"]["capability_id"] == "dynamic_stability.fault_clear"
+    assert row["evidence"]["regulatory_evidence_eligible"] is False
+
+    trace_payload_stability = client.get(f"/api/analysis-runs/{run_id}/results/trace")
+    assert trace_payload_stability.status_code == 200
+    for step in trace_payload_stability.json()["white_box_trace"]:
+        assert step["proof_status"] == "incomplete"
+        assert step["reporting_status"] == "not_reportable"
 
     automation_trace = client.get(f"/api/analysis-runs/{run_id}/results/automation-trace")
     assert automation_trace.status_code == 200

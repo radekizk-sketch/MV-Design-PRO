@@ -6,8 +6,11 @@ Werdykty PL WYŁĄCZNIE z pól solvera (stayed_connected / margin_to_curve_pu).
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
 from application.analyses.frt_trajektorie import (
+    KOD_GOTOWOSCI_BRAK_MODELU_DYNAMICZNEGO,
     _WERDYKT_MODUL_WYPADL,
     _WERDYKT_POZA_OBWIEDNIA,
     _WERDYKT_W_OBWIEDNI,
@@ -16,7 +19,11 @@ from application.analyses.frt_trajektorie import (
 )
 from catalog.profiles.nc_rfg.loader import load_nc_rfg_profile
 from network_model.catalog.types import ConverterKind, ConverterType
-from network_model.solvers.frt_hvrt.contracts import FrtScenarioResult, FrtTrajectoryPoint
+from network_model.solvers.frt_hvrt.contracts import (
+    FrtHvrtResult,
+    FrtScenarioResult,
+    FrtTrajectoryPoint,
+)
 
 _PROFILE = load_nc_rfg_profile("pse")
 
@@ -205,3 +212,36 @@ def test_wywod_negative_margin_uses_strict_inequality() -> None:
     podstawienie = [k for k in kroki if k["latex"] and "p.u." in k["latex"]][0]
     assert "< 0" in podstawienie["latex"]
     assert "NIESPELNIONE" in podstawienie["tekst"]
+
+
+def test_no_module_status_mapped_to_blocked_at_boundary() -> None:
+    """Karta S-4 (W6-0): status solvera FROZEN `no_module` NIGDY nie dociera
+    do FE — mapowany NA GRANICY aplikacyjnej na `blocked` z nazwanym kodem
+    gotowości (`der.dynamic_profile_missing`, istniejący w rejestrze).
+    Solver deklaruje `no_module` w kontrakcie `FrtHvrtStatus` mimo że dziś
+    nigdy go nie zwraca — ten test wymusza gałąź granicy niezależnie od
+    aktualnego zachowania silnika (bezpiecznik przyszłościowy)."""
+    converter = _converter()
+    with patch(
+        "application.analyses.frt_trajektorie.FrtHvrtSolverAdapter.run",
+        return_value=FrtHvrtResult(
+            status="no_module",
+            no_module_reason_pl="Brak zdefiniowanego profilu dynamicznego DER.",
+        ),
+    ):
+        view = build_frt_trajectories_view(converter, _PROFILE, "lvrt")
+    assert view["status_solvera"] == "blocked"
+    assert view["kod_gotowosci"] == KOD_GOTOWOSCI_BRAK_MODELU_DYNAMICZNEGO
+    assert view["missing_fields_pl"] == ["Brak zdefiniowanego profilu dynamicznego DER."]
+    assert view["scenariusze"] == []
+    assert "no_module" not in str(view)
+
+
+def test_ocena_dowodowa_trajektorii_unvalidated_model() -> None:
+    """Karta S-1 §0.9: trajektoria FRT/HVRT niesie stopień dowodowy — dziś
+    UNVALIDATED_MODEL (funkcja zadana, nie rozwiązanie sieci), nieprzydatny
+    jako dowód regulacyjny."""
+    view = build_frt_trajectories_view(_converter(), _PROFILE, "lvrt")
+    assert view["ocena_dowodowa"]["capability_id"] == "frt_hvrt.trajectory"
+    assert view["ocena_dowodowa"]["tier"] == "UNVALIDATED_MODEL"
+    assert view["ocena_dowodowa"]["regulatory_evidence_eligible"] is False

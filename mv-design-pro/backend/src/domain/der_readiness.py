@@ -37,7 +37,7 @@ from enm.migrations.punkt_przylaczenia_der import (
 )
 from network_model.pochodne import mw_na_kw
 
-StatusOsi = Literal["ready", "partial", "blocked", "not_applicable", "no_module"]
+StatusOsi = Literal["ready", "partial", "blocked", "not_applicable"]
 StronaPrzylaczenia = Literal[
     "SN", "nN", "dedicated_transformer", "at_zksn", "at_branch_pole", "at_cable_joint"
 ]
@@ -304,7 +304,7 @@ def osie_gotowosci_der(we: WejscieGotowosciDer) -> list[OsGotowosci]:
 
 
 def _blokady_osi(os: str, we: WejscieGotowosciDer, status: StatusOsi) -> list[BlokadaOsi]:
-    if status in ("ready", "not_applicable", "no_module"):
+    if status in ("ready", "not_applicable"):
         return []
 
     ekran = _EKRAN_DLA_RODZAJU[we.der_kind]

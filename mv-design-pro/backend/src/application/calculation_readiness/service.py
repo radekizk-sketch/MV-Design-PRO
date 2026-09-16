@@ -41,8 +41,7 @@ CalculationType = Literal[
 ReadinessStatus = Literal[
     "ready",  # gotowe — można uruchomić
     "partial",  # częściowe — niektóre dane brakują
-    "blocked",  # zablokowane — kluczowe dane brakują
-    "no_module",  # brak modułu obliczeniowego (numerycznego)
+    "blocked",  # zablokowane — kluczowe dane brakują (w tym: brak modułu numerycznego)
     "n_a",  # nie dotyczy
 ]
 
@@ -70,7 +69,6 @@ class ReadinessTypeReport(BaseModel):
     missing_fields_pl: list[str] = Field(default_factory=list)
     blocking_object_refs: list[str] = Field(default_factory=list)
     recommended_action_pl: str | None = None
-    no_module_reason_pl: str | None = None
 
 
 class ReadinessReport(BaseModel):
@@ -82,15 +80,22 @@ class ReadinessReport(BaseModel):
         return next((i for i in self.items if i.calculation_type == calc_type), None)
 
     def overall_status(self) -> ReadinessStatus:
-        """Globalny status gotowości projektu."""
+        """Globalny status gotowości projektu — FAIL-CLOSED (karta S-4, W6-0).
+
+        `ready` WYŁĄCZNIE, gdy KAŻDY element ma status `ready` albo `n_a` —
+        brak modułu numerycznego dla któregokolwiek elementu (mapowany na
+        `blocked` na granicy aplikacyjnej, nie jako osobny status gotowości)
+        NIGDY nie liczy się jako gotowość. Priorytet: `blocked` > `partial` >
+        `ready`; nieznany/niekompletny stan domyślnie `blocked` (fail-closed).
+        """
         statuses = [i.status for i in self.items]
         if any(s == "blocked" for s in statuses):
             return "blocked"
         if any(s == "partial" for s in statuses):
             return "partial"
-        if all(s in ("ready", "n_a", "no_module") for s in statuses):
+        if all(s in ("ready", "n_a") for s in statuses):
             return "ready"
-        return "partial"
+        return "blocked"
 
 
 # ---------------------------------------------------------------------------

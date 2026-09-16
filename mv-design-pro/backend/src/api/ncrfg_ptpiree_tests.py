@@ -22,6 +22,7 @@ from network_model.solvers.ncrfg_ptpiree import (
     NcRfgPtpireeSolver,
 )
 from network_model.solvers.ncrfg_ptpiree.engine import TEST_CATALOG
+from solver_input.dowod_ncrfg import ocena_dowodowa_biegu
 
 router = APIRouter(prefix="/api/ncrfg-tests", tags=["ncrfg-ptpiree-tests"])
 _solver = NcRfgPtpireeSolver()
@@ -109,14 +110,27 @@ def run_ncrfg_compliance_from_model(
 
 
 class NcRfgPtpireeRunResponse(NcRfgPtpireeRunResult):
-    """Wynik biegu POSZERZONY o dowód certyfikacji (dodatek karty P2).
+    """Wynik biegu POSZERZONY o dowód certyfikacji (P2) i stopień dowodowy (S-1).
 
     Dziedziczy kontrakt solvera w całości — wszystkie istniejące pola zachowują
-    nazwy, typy i wartości. Nowy jest WYŁĄCZNIE `certificate_evidence`, więc
-    konsument sprzed tej karty czyta dokładnie to samo, co czytał.
+    nazwy, typy i wartości. Nowe pola (`certificate_evidence`, `reporting_status`,
+    `proof_status`, `evidence_limitations`, `evidence_note_pl`, `evidence_per_module`,
+    `evidence_by_test`) są ADDYTYWNE — konsument sprzed tej karty czyta dokładnie
+    to samo, co czytał. Ocena dowodowa liczona `ocena_dowodowa_biegu`
+    (`solver_input.dowod_ncrfg`) — TĄ SAMĄ funkcją, którą czyta bramka
+    certyfikatu (`application/analyses/certyfikat_zgodnosci.py::zbierz_braki`).
     """
 
     certificate_evidence: list[NcRfgCertificateEvidence] = []
+    # Domyślne wartości FAIL-CLOSED (evidence_status_guard): gdyby jakiś inny
+    # tor budowy tego modelu pominął wywołanie ocena_dowodowa_biegu, odpowiedź
+    # ma stan pesymistyczny — nigdy ciche "reportable"/"complete".
+    reporting_status: str = "not_reportable"
+    proof_status: str = "incomplete"
+    evidence_limitations: list[str] = []
+    evidence_note_pl: str = ""
+    evidence_per_module: dict[str, dict[str, Any]] = {}
+    evidence_by_test: dict[str, dict[str, dict[str, Any]]] = {}
 
 
 @router.post("/run", response_model=NcRfgPtpireeRunResponse)
@@ -133,9 +147,18 @@ def run_ncrfg_ptpiree_tests(
             detail=str(exc),
         ) from exc
     klucz_twin = None if case_id is None else klucz_twin_z_sciezki(str(case_id), http_request)
+    ocena = ocena_dowodowa_biegu(result)
     return NcRfgPtpireeRunResponse(
         **result.model_dump(),
         certificate_evidence=dowody_certyfikatu(
             klucz_twin, [module.der_ref for module in result.modules]
         ),
+        reporting_status=ocena.reporting_status,
+        proof_status=ocena.proof_status,
+        evidence_limitations=list(ocena.evidence_limitations),
+        evidence_note_pl=ocena.evidence_note_pl,
+        evidence_per_module={
+            der_ref: modul_ocena.to_dict() for der_ref, modul_ocena in ocena.per_module.items()
+        },
+        evidence_by_test=ocena.evidence_by_test,
     )

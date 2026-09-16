@@ -26,10 +26,45 @@ from application.ncrfg_compliance.frt_input import build_frt_hvrt_input
 from catalog.profiles.nc_rfg.loader import NcRfgProfile
 from network_model.catalog.types import ConverterType
 from network_model.solvers.frt_hvrt import FrtHvrtSolverAdapter
-from network_model.solvers.frt_hvrt.contracts import FrtScenario, FrtScenarioResult
+from network_model.solvers.frt_hvrt.contracts import FrtHvrtResult, FrtScenario, FrtScenarioResult
+from solver_input.provenance import classify_dynamic_capability
 
 # Zaokrąglenie wartości wyjściowych — determinizm i czytelność.
 _ROUND = 6
+
+# Karta S-4 (W6-0): kod gotowości ISTNIEJĄCY (`domain/canonical_operations.py::
+# READINESS_CODES`) — status solvera FROZEN `no_module` NIGDY nie dociera do
+# FE jako `status_solvera` (S-4: `no_module` przestaje istnieć jako stan poza
+# kontraktami FROZEN); mapowany NA GRANICY na `blocked` z tym kodem nazwanym.
+KOD_GOTOWOSCI_BRAK_MODELU_DYNAMICZNEGO = "der.dynamic_profile_missing"
+
+
+def _widok_bez_modelu_dynamicznego(
+    result: FrtHvrtResult,
+    *,
+    modul_der: dict[str, Any],
+    operator: dict[str, Any],
+    dodatkowe: dict[str, Any],
+) -> dict[str, Any]:
+    """Widok „brak modelu dynamicznego" — mapowanie granicy S-4 (karta S-1+S-4).
+
+    Solver FROZEN `FrtHvrtSolverAdapter` deklaruje status `no_module` w swoim
+    kontrakcie (`FrtHvrtStatus`), choć dziś nigdy go faktycznie nie zwraca
+    (`brak danych wejściowych` daje `input_invalid`, walidowane wejście —
+    wynikiem silnika). Ta funkcja jest bezpiecznikiem GRANICY: gdyby kiedyś
+    zwrócił, widok aplikacyjny NIGDY nie przepuszcza literału `no_module` do
+    FE — zamienia go na `blocked` z nazwanym, istniejącym kodem gotowości.
+    """
+    return {
+        "modul_der": modul_der,
+        "operator": operator,
+        "status_solvera": "blocked",
+        "kod_gotowosci": KOD_GOTOWOSCI_BRAK_MODELU_DYNAMICZNEGO,
+        "missing_fields_pl": [
+            result.no_module_reason_pl or "Brak modelu dynamicznego DER w wejściu solvera."
+        ],
+        **dodatkowe,
+    }
 
 # Werdykty PL per scenariusz — WYŁĄCZNIE z pól solvera.
 _WERDYKT_W_OBWIEDNI = "w obwiedni"
@@ -183,6 +218,15 @@ def build_frt_trajectories_view(
         {"czas_s": _round(pt.time_s), "napiecie_pu": _round(pt.voltage_pu)} for pt in curve_points
     ]
 
+    modul_der = {
+        "id": converter.id,
+        "nazwa": converter.name,
+        "kind": converter.kind.value,
+        "pmax_mw": _round(converter.pmax_mw),
+        "un_kv": _round(converter.un_kv),
+    }
+    operator = {"id": profile.operator_id, "nazwa": profile.operator_name_pl}
+
     # Bieg FROZEN solvera przez współdzieloną budowę wejścia (ta sama ścieżka co checker).
     solver_input = build_frt_hvrt_input(
         converter.id,
@@ -190,6 +234,13 @@ def build_frt_trajectories_view(
         scenario_id=f"{kind}_{converter.id}",
     )
     result = FrtHvrtSolverAdapter().run(solver_input)
+    if result.status == "no_module":
+        return _widok_bez_modelu_dynamicznego(
+            result,
+            modul_der=modul_der,
+            operator=operator,
+            dodatkowe={"test_kind": kind, "scenariusze": []},
+        )
 
     # Echo parametrow wejscia solvera per scenariusz — dopasowanie po scenario_id
     # (wzorzec ``wejscie_solvera`` z ``frt_sekwencja``).
@@ -233,19 +284,14 @@ def build_frt_trajectories_view(
         )
 
     return {
-        "modul_der": {
-            "id": converter.id,
-            "nazwa": converter.name,
-            "kind": converter.kind.value,
-            "pmax_mw": _round(converter.pmax_mw),
-            "un_kv": _round(converter.un_kv),
-        },
-        "operator": {
-            "id": profile.operator_id,
-            "nazwa": profile.operator_name_pl,
-        },
+        "modul_der": modul_der,
+        "operator": operator,
         "test_kind": kind,
         "status_solvera": result.status,
+        # Stopień dowodowy trajektorii (karta S-1 §0.9): trajektoria MVP jest
+        # funkcją zadaną parametryzowaną scenariuszem, nie rozwiązaniem sieci —
+        # UNVALIDATED_MODEL, nieprzydatne jako dowód regulacyjny (fail-closed).
+        "ocena_dowodowa": classify_dynamic_capability("frt_hvrt.trajectory").to_dict(),
         "obwiednia_profilu": {
             "rodzaj": kind,
             "opis": (
