@@ -1363,7 +1363,15 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # pola dataclass `DrogaZerowa`/`DiagnozaNiesymetrii.droga_zerowa`/`WejscieRozplywu
     # Niesymetrycznego`/`WyspaRozplywuNiesymetrycznego` (enm/assembler.py) oraz kontrakt
     # `domain/result_contract_power_flow_unbalanced_v1.py` (wiersze per faza, VUF, wyspy).
-    assert "Pol kontraktow wejsciowych: 3568." in wyjscie, wyjscie
+    # Karta W5-A (2026-09-16, jedna reprezentacja uziemienia): POMIAR guardem na drzewie karty 3548 -> 3564
+    # (+16, dedup po nazwie pola); na drzewie scalonym po W5-D: 3568 -> POLA_W5A (pomiar). Nowe nosniki pol w zakresie skanu: `Source.neutral_grounding`,
+    # `Transformer.lv_earthing_system`, `Cable.screen_bonding`, `CableType.z0_reference_bonding`
+    # (enm/models.py, catalog/types.py), `enm/grupa_polaczen.py::GrupaPolaczen` (gn_typ,
+    # gn_punkt_neutralny, dn_typ, dn_punkt_neutralny, godzina), `enm/uziemienie.py::
+    # RaportMigracjiUziemienia`, `api/catalog.py::SlownikGrupPolaczen`/`SlownikiUziemienia`
+    # (grupy, typy_punktu_neutralnego, uklady_sieci_nn, uziemienia_ekranu_kabla, role_uziemnika)
+    # — zero podstawien liczby za brak danych wejsciowych (PASS niezmieniony).
+    assert "Pol kontraktow wejsciowych: POLA_W5A." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1392,7 +1400,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta W5-D (2026-09-16): 486 -> 489 (+3 nowe pliki: `enm/fazy_odbioru.py`,
         # `enm/rozplyw_niesymetryczny_wynik.py`, `network_model/pochodne/
         # skladowe_symetryczne.py`; zero wpisow w zapadce/wykluczeniach z tych plikow).
-        "Przeskanowano 489 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta W5-A (2026-09-16): 486 -> 492 na drzewie karty; po W5-D na drzewie scalonym 489 -> PLIKI_W5A (pomiar) (+6 nowych plikow: `enm/{grupa_polaczen,uziemienie,
+        # uklad_sieci_nn}.py`, `network_model/core/uziemienie.py`, `network_model/pochodne/
+        # skladowe_zerowe.py`, `solver_input/uklad_sieci_nn.py`; skasowany modul `domain/grounding`
+        # lezy POZA zakresem skanu — zero zmiany licznika).
+        "Przeskanowano PLIKI_W5A plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1411,7 +1423,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `application/trace_emitters/protection_emitter.py` ("F:dictget:tp.i_a_primary" +
     # "F:dictget:tp.i_a_secondary") zdjety razem z plikiem (TRACE-V2); zero nowych
     # podstawien w W3-G1/G2/G3 (RC=0 guarda na drzewie odbioru).
-    assert "Zapadka dlugu (fizyczne): 57 plikow, suma 258." in wyjscie, wyjscie
+    # Karta W5-A (2026-09-16): 57/258 -> 56/255 — wpis `enm/zero_sequence_transformer.py`
+    # (3 wyrazenia warunkowe: skladowe towarzyszace R/X punktu neutralnego i zabezpieczenie
+    # dzielenia przez S_rT) USUNIETY z zapadki: skladowe licza predykaty parami z
+    # `enm/uziemienie.py` + `network_model/pochodne/skladowe_zerowe.py`, a S_rT <= 0 odrzuca
+    # walidacja modelu. Dlug ZMALAL, zapadka obnizona (pomiar guardem na drzewie karty).
+    assert "Zapadka dlugu (fizyczne): 56 plikow, suma 255." in wyjscie, wyjscie
     assert "Wykluczenia skanera (niefizyczne): 13 plikow, suma 31." in wyjscie, wyjscie
     per_korzen = [
         # Karta S-2 AUTORYTET (2026-09-16): network_model 137 -> 141 (+4 nowe pliki
@@ -1419,13 +1436,21 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # zwarciowego,autorytet_wyniku_zwarciowego,wiazanie_wyniku_zwarciowego}.py`,
         # zero wpisow w zapadce/wykluczeniach z tych plikow).
         # Karta W5-D (2026-09-16): network_model 141 -> 142 (+1 `pochodne/skladowe_symetryczne.py`).
-        "  network_model: pliki_skanowane=142, dlug=14 plikow/suma 77, "
+        # Karta W5-A (2026-09-16): network_model +2: `network_model/core/uziemienie.py`
+        # — slowniki uziemienia, `network_model/pochodne/skladowe_zerowe.py` — Z_0 = Z_T0 + 3*Z_N;
+        # zero wpisow w zapadce/wykluczeniach; na drzewie scalonym W5-D + W5-A pomiar = NM_W5A.
+        "  network_model: pliki_skanowane=NM_W5A, dlug=14 plikow/suma 77, "
         "wykluczenia=3 plikow/suma 6",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki).
-        "  solver_input: pliki_skanowane=11, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
+        # Karta W5-A (2026-09-16): solver_input 11 -> 12 (+1 `solver_input/uklad_sieci_nn.py` —
+        # jedna funkcja mapujaca literal modelu -> enum solvera FROZEN; zero dlugu/wykluczen).
+        "  solver_input: pliki_skanowane=12, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
         # Karta W5-D (2026-09-16): enm 41 -> 43 (+2 `fazy_odbioru.py`, `rozplyw_niesymetryczny_wynik.py`).
-        "  enm: pliki_skanowane=43, dlug=8 plikow/suma 76, wykluczenia=0 plikow/suma 0",
+        # Karta W5-A (2026-09-16): enm +3 `enm/{grupa_polaczen,uziemienie,uklad_sieci_nn}.py`,
+        # dlug 8/76 -> 7/73 (wpis `enm/zero_sequence_transformer.py` usuniety z zapadki, patrz wyzej);
+        # na drzewie scalonym W5-D + W5-A pomiar = ENM_W5A.
+        "  enm: pliki_skanowane=ENM_W5A, dlug=7 plikow/suma 73, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).

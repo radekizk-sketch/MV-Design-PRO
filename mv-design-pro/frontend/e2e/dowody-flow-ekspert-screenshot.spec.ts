@@ -63,7 +63,9 @@ async function prowadzScene(page: Page, creator: string): Promise<void> {
     expect(latexPodstawienia).toContain('1{,}7720');
     expect(latexPodstawienia).toContain('\\Omega');
     await expect(page.getByTestId('mvd-skladowe-tabela')).toContainText('1,7720');
-    await expect(page.getByTestId('mvd-skladowe-uziemienie-siec')).toContainText('Szyna GPZ');
+    // W5-A: wpis punktu neutralnego niesie ŹRÓDŁO stojące na szynie (`Source.neutral_grounding`),
+    // nie szynę (`Bus.grounding` skasowane) — fixtura harnessu `SKLADOWE_SNAPSHOT`.
+    await expect(page.getByTestId('mvd-skladowe-uziemienie-siec')).toContainText('Zasilanie GPZ');
   } else if (creator === 'wyniki-zbieznosc') {
     // Werdykt zbieżności (liczba iteracji) + bilans + pętla OLTC → ślad iteracji
     // OTWARTY (natywny klik przełącznika).

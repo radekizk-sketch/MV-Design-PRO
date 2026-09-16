@@ -38,7 +38,6 @@ const SOURCE_SYSTEM_TYPE = {
   sk3_mva: 310,
   ik3_ka: 11.9,
   rx_ratio: 0.12,
-  earthing_system: 'resistor_grounded',
   short_circuit_model: 'iec60909',
   operator_name: 'OSD',
   supply_role: 'primary',

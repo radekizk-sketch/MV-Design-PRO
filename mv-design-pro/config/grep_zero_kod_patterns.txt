@@ -1,0 +1,27 @@
+# version: W5-A (jedna reprezentacja uziemienia) — skasowane reprezentacje w KODZIE.
+# Postaci UŻYCIA (dostęp/klucz/identyfikator), nie każde słowo w komentarzu.
+# 1. Bus.grounding — dostęp w kodzie (backend: bus.grounding / szyna.grounding; front: bus?.grounding).
+\b(bus|szyna|b|snBus|szynaSn|szynaSN)\??\.grounding\b
+# 2. substation.meta["nn_earthing_system"] — klucz meta (słownik / kwarg / klucz obiektu TS).
+meta\[["']nn_earthing_system["']\]
+["']nn_earthing_system["']\s*[:=]
+\bnn_earthing_system\s*[:=]
+# 3. Domyślki i słowniki równoległe skasowane z fault_loop/domain_operations/eligibility.
+\b_DEFAULT_SYSTEM\b
+\b_SYSTEM_MAP\b
+\b_NON_TN_SYSTEMS\b
+\b_system_for_station\b
+\b_NN_EARTHING_SYSTEMS\b
+\b_NEUTRAL_POINT_TYPES\b
+# 4. Skasowane moduły/komponenty i literały spoza kontraktu.
+from domain\.grounding import
+domain/grounding\.py
+EarthingSystemSelector
+EarthingBadge
+EarthingInspector
+\bearthingTypes\b
+PUNKT_NEUTRALNY_UZIEMIONY
+\bsolid_grounded\b
+GpzGroundingType
+# 5. Polskie literały dawnego BayEarthFaultPath.neutral_grounding_mode w kodzie/testach.
+neutral_grounding_mode\s*[:=]\s*["'](izolowany|cewka_petersena|rezystor|bezposrednio_uziemiony|nieznany)["']

@@ -948,20 +948,13 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "B:ifexp:trafo.tap_position": 1,
         "B:ifexp:trafo.tap_step_percent": 1,
     },
-    # Skladowa zerowa transformatora. Dane OBOWIAZKOWE sa juz uczciwe: rezystor
-    # NER bez R_N i cewka Petersena bez X_N koncza sie `ValueError` z polskim
-    # powodem, bez zadnej wartosci zastepczej. W budzecie zostaja wylacznie
-    # skladowe TOWARZYSZACE (reaktancja rezystora, rezystancja tlumienia dlawika),
-    # ktorych pominiecie jest udokumentowanym uproszczeniem modelu, oraz
-    # zabezpieczenie dzielenia przez moc znamionowa.
-    "enm/zero_sequence_transformer.py": {
-        "B:ifexp:grounding.r_ohm": 1,
-        "B:ifexp:grounding.x_ohm": 1,
-        # `r_pu = (pk/1000)/Sn if Sn > 0 else 0.0` — ZABEZPIECZENIE DZIELENIA na
-        # danej niepoprawnej (Sn <= 0), nie podstawienie za brak. Powod
-        # merytoryczny; dana niepoprawna nalezy odrzucic walidacja modelu.
-        "B:ifexp:trafo.sn_mva": 1,
-    },
+    # Skladowa zerowa transformatora (`enm/zero_sequence_transformer.py`): dlug
+    # SPLACONY karta W5-A (2026-09-16) — skladowe punktu neutralnego licza predykaty
+    # parami z `enm/uziemienie.py` i `network_model/pochodne/skladowe_zerowe.py`
+    # (skladowa towarzyszaca = jawny `None` -> 0 w algebrze wielkosci pochodnych,
+    # nie wyrazenie warunkowe w tym module), a moc znamionowa <= 0 jest odrzucana
+    # walidacja modelu, nie zabezpieczana dzieleniem. Budzet 3 -> 0; wpis usuniety
+    # (zapadka tylko w dol: nowe wyrazenie warunkowe w tym pliku = naruszenie).
     # Rzut grafu domenowego na kanoniczna specyfikacje mocy wezla. `active_power`
     # jest `float | None`, gdzie `None` znaczy „wezel nie ma wstrzykniecia" — a
     # BRAK WSTRZYKNIECIA JEST ZEREM WATOW, nie brakiem pomiaru. Powod

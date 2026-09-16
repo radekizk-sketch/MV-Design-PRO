@@ -305,6 +305,12 @@ POMIJANE_KATALOGI = {
 #: TYPOWANE kontraktem `ExecutionRun` (naprawa U ZRODLA: zdjeta 1 zastana pozycja TS2698
 #: „Spread types may only be created from object types" i NIE dopisana nowa tego samego
 #: wzorca). Zapadka w dol: 114 -> 113.
+#: W5-A (2026-09-16): 114 -> 113 na drzewie karty — kasacja czterech martwych plikow frontu uziemienia
+#: (panel i selektor ukladu w `ui/topology`, ich typy, odznaka uziemienia w `ui/sld/v2/renderer`
+#: + testy; nazwy plikow pilnuje `grep_zero_guard` grupa `kod_`) zdjela jeden blad typow POZA
+#: bramka (pomiar guardem na drzewie karty); zapadka w dol, nie podnosic bez nowego pomiaru.
+#: Odbior W5-D + W5-A na drzewie scalonym (2026-09-16): pomiar guardem = TSG_W5A (obie zapadki w dol
+#: zdjely rozne pozycje).
 BUDZET_BLEDOW_POZA_BRAMKA = 113
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”

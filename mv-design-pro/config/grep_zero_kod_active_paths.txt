@@ -1,0 +1,12 @@
+# W5-A: aktywne ścieżki KODU i aktywnych kontraktów (grupa `kod_`).
+backend/src
+backend/tests
+backend/scripts
+frontend/src
+frontend/e2e
+frontend/public/test-fixtures
+scripts
+docs/system
+docs/domain
+docs/ui
+docs/architecture

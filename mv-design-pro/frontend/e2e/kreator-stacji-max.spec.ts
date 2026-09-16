@@ -67,6 +67,7 @@ type Substation = {
   name?: string;
   designation?: string | null;
   construction_type?: string | null;
+  transformer_refs?: string[];
   meta?: { field_specs?: Array<Record<string, unknown>> } | null;
 };
 
@@ -89,6 +90,9 @@ type Snapshot = {
   protection_assignments?: Array<{ ref_id: string; catalog_ref?: string | null; meta?: Record<string, unknown> }>;
   transformers?: Array<{
     ref_id: string;
+    // W5-A: jedyne nośniki układu sieci nN i punktu neutralnego nN.
+    lv_earthing_system?: string | null;
+    lv_neutral?: { type: string; r_ohm?: number | null; x_ohm?: number | null } | null;
     tap_changer?: {
       regulation_type?: string;
       current_position?: number;
@@ -396,6 +400,14 @@ test('K9-B: kreator stacji MAX — szablon → pola → CT/VT/przekaźnik → po
   await page.getByTestId('mvd-kreator-stacja-zaczepy-rodzaj').selectOption('DETC');
   await page.getByTestId('mvd-kreator-stacja-zaczepy-biezaca').fill('-1');
   await expect(page.getByTestId('mvd-kreator-stacja-zaczepy-krok')).toHaveValue('2.5');
+
+  // ---------------------------------------------------- W5-A: uziemienie (natywnie)
+  // Układ sieci nN i punkt neutralny nN z listy słownika (te same literały, które
+  // waliduje backend); rezystor wymaga R_N — wpisujemy, żeby zapis nie był odmową.
+  await przejdzDoKroku(page, 'Uziemienie i punkt neutralny');
+  await page.getByTestId('mvd-kreator-stacja-uklad-nn').selectOption('TN-S');
+  await page.getByTestId('mvd-kreator-stacja-punkt-neutralny').selectOption('resistor_grounded');
+  await page.getByTestId('mvd-kreator-stacja-rezystancja-uziemienia').fill('10');
   await przejdzDoKroku(page, 'Pomiar i zabezpieczenia pól');
 
   // ---------------------------------------------------------------- krok 7
@@ -483,6 +495,18 @@ test('K9-B: kreator stacji MAX — szablon → pola → CT/VT/przekaźnik → po
 
   const polaStacji = (stacja?.meta?.field_specs ?? []) as Array<Record<string, unknown>>;
   expect(polaStacji.length).toBeGreaterThan(0);
+
+  // W5-A: układ sieci nN i punkt neutralny nN NA TRANSFORMATORZE stacji (jedyne nośniki);
+  // meta stacji nie niesie kopii `nn_earthing_system`.
+  const transformatorStacji = (enm.transformers ?? []).find((t) =>
+    (stacja?.transformer_refs ?? []).includes(t.ref_id),
+  );
+  expect(transformatorStacji, 'transformator stacji w modelu').toBeTruthy();
+  expect(transformatorStacji?.lv_earthing_system).toBe('TN-S');
+  // Odpowiedź `/enm` serializuje pełny kontrakt `GroundingConfig` (składowa nieużywana = null).
+  expect(transformatorStacji?.lv_neutral).toMatchObject({ type: 'resistor_grounded', r_ohm: 10 });
+  expect(transformatorStacji?.lv_neutral?.x_ohm ?? null).toBeNull();
+  expect((stacja?.meta ?? {}) as Record<string, unknown>).not.toHaveProperty('nn_earthing_system');
 
   // B-12: KAŻDY aparat pola ma jawną referencję katalogową (żadnego domysłu).
   const aparaty = (enm.branches ?? []).filter((b) => (b.tags ?? []).includes('station_field_device'));

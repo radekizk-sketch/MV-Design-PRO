@@ -223,7 +223,7 @@ async function zbudujSiecGotowaDoObliczen(
     // i `legenda-na-zadanie.spec.ts`).
     station_auxiliary: { active_power_kw: 5.0, cos_phi: 0.95 },
     // Układ uziemienia sieci nN (G-STK-1) — WYMAGANY konsekwencją powyższego:
-    // stacja z odbiorem nN bez `meta.nn_earthing_system` jest E063 (BLOKER,
+    // stacja z odbiorem nN bez układu sieci nN na transformatorze (`Transformer.lv_earthing_system`, W5-A) jest E063 (BLOKER,
     // `enm/validator.py` — IEC 60364-4-41), a pętla domykania blokerów niżej
     // nie zna kodu E063, więc `readiness.ready` zostałby `false` na stałe.
     nn_earthing: { lv_system: 'TN-S' },

@@ -173,3 +173,23 @@ Kontekst docelowy: `docs/architecture/CANONICAL_TWIN_ARCHITECTURE.md:101` opisuj
 8. `v126_academic.py::_neutral_earthing_design` — parametr `neutral_grounding` pochodzi od użytkownika (`v126_katalog.py:620-631`); nie prześledzono, czy jakakolwiek trasa API podaje tam wartość wyprowadzoną z modelu.
 9. RCD — szukano `rcd|RCD|residual|różnicowo|roznicowo`; nie wykluczono innej nazwy PL (np. „wyłącznik ochronny", „RCBO").
 10. `BayOperatingState` — nie znaleziono pisarza; możliwe, że jest zapełniane wyłącznie z payloadu zewnętrznego (SCADA) nieobecnego w repo.
+
+## Stan PO W5-A (pomiar 2026-09-16 — ten sam skrypt grep co PRZED, drzewo worktree z bazy `5fbe6d9a` + W5-A; sekcje (a), (e), (f))
+
+| wielkość | PRZED | PO | uwaga |
+|---|---|---|---|
+| nośniki przechowywane uziemienia punktu neutralnego | 20 miejsc (14 backend + 6 frontend) | **2 nośniki JEDNEGO typu** `GroundingConfig`: `Transformer.hv_neutral/lv_neutral`, `Source.neutral_grounding` | projekcje czytające te nośniki (nie kopie): `v126_contracts._resolve_network_neutral`, `field_read_model`, E-29 składowe (`Source.neutral_grounding` + `Transformer.*_neutral`); typowane tym samym słownikiem: `BayEarthFaultPath.neutral_grounding_mode`, `MvNeutralGroundingItem.grounding_type`. Poza W5-A (świadomie): `mv_neutral_grounding_ref` (audyt 2), `v126_academic.py` (FROZEN, OD-24) |
+| słowniki wartości typu punktu neutralnego | 5 | **1** (`network_model/core/uziemienie.py::TYPY_PUNKTU_NEUTRALNEGO`; front `types/uziemienie.ts` pinowany testem do snapshotu OpenAPI przez `GET /api/catalog/slowniki-uziemienia`) | `PUNKT_NEUTRALNY_UZIEMIONY` 16 → 0, `solid_grounded` 6 → 0, `EarthingType` FE 1 → 0, literały PL `BayEarthFaultPath` → literały kontraktu |
+| definicje zbioru TN-S/TN-C-S/TN-C/TT/IT | 4 | **1 w modelu** (`enm/models.py::UkladSieciNn`) + enum solvera FROZEN `fault_loop_iec60364.NetworkType` z JEDNĄ funkcją mapującą (`solver_input/uklad_sieci_nn.py`) i testem równości zbiorów; front 1 (`types/uziemienie.ts`), SLD (`enmToSldAdapter`, 2 renderery) na tym samym typie | `_NN_EARTHING_SYSTEMS` 2 → 0, `LvEarthingType` skasowany |
+| `nn_earthing_system` w `backend/src` | 14 | 4 (moduł migracji `enm/uziemienie.py` — allowlista guarda; docstringi; kod odmowy `station.invalid_nn_earthing_system`) | `backend/tests`: 19 plików → 5 (migracja + asercje NIEobecności) |
+| `nn_earthing_system` w `frontend` | 62 | 2 (komentarz + asercja e2e, że meta stacji NIE niesie klucza) | — |
+| `_DEFAULT_SYSTEM` | 11 | 0 (poza iniekcją w self-teście guarda) | brak układu = odmowa `BRAK_UKLADU_NN` |
+| `Bus.grounding` — czytelnicy | 14 modułów | 0 (pole skasowane z modelu; w odcisku hasha `null`) | migracja → `Source.neutral_grounding` |
+| `meta["grounding"]`/`["zero_sequence"]` — pisarze/czytelnicy | 1 pisarz / 0 czytelników | 0 / 0 (klucze usuwane przy wczytaniu) | — |
+| `domain/grounding.py` | 1 re-eksport | plik skasowany | — |
+| FE `earthingTypes.ts`/`EarthingInspector.tsx`/`EarthingSystemSelector.tsx`/`EarthingBadge.tsx` | 69 trafień | 0 w kodzie (22 = dokumenty, w tym ten inwentarz i rejestr kasacji, + iniekcja self-testu guarda) | pliki + 4 testy skasowane |
+| `vector_group` — walidacja słownika | 0 reguł słownikowych (W004 tylko obecność) | `E-W5-02` + `E-W5-03` w walidatorze, odmowa przy zapisie w 2 operacjach, select w 3 miejscach frontu z `GET /api/catalog/grupy-polaczen` | domyślne `"Dyn11"` w `catalog/types.py` i `field-definitions.ts` skasowane; `enm/mapping.py` (rdzeń FROZEN) bez zmian — pomiar w meldunku |
+| `screen_bonding` / `z0_reference_bonding` / `cross_bonded` | 5 trafień (martwy typ FE) | 119 (model, katalog, operacje, walidator W-W5-01, kreatory ui2, testy) | jedyna deklaracja przeszła z martwego pliku FE do modelu |
+| `earthing_role` — pisarz `cable_screen` | 0 | 1 (kreator pola SN, `sn.bay_earthing_role_*`) | `RolaUziemnika` typowane |
+| bramki gotowości układu nN | 3 niezależne warunki | 1 predykat (`enm/uklad_sieci_nn.py::transformatory_bez_ukladu_nn`) w walidatorze, `eligibility_service`, `readiness_bridge` | E063 semantycznie rozszerzone o generatory nN |
+| rejestr sieci G00–G15 (pomiar PO, `tests/golden/registry.py`) | — | 0 źródeł z `neutral_grounding`, 0 szyn z kluczem `grounding`, 0 starych kluczy meta; układ nN na transformatorach: G04/G05 (26), G06 (2), G08 (1), G13 (`TN-S`), G00 (53) | golden `short_circuit_1f` bit w bit — migracja nie dotyka żadnej sieci rejestru |
