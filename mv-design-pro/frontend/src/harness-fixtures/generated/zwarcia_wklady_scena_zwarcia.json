@@ -193,11 +193,11 @@
       },
       {
         "pozycja_pl": "Determinizm kontraktu (input_hash)",
-        "wartosc_pl": "obecny: 82d934f228ef...",
+        "wartosc_pl": "obecny: 5c089230bb6b...",
         "status": "PASS"
       }
     ],
-    "input_hash": "82d934f228ef8fbee1243a0c57b01c87bc8c55d40f5e2752df951a2d200cd945"
+    "input_hash": "5c089230bb6be0f22542847a8a802f45e22dd0b7a6f824455f3ba41e0861a109"
   },
   "80c21edb-e0ec-5378-acd6-e90f5ec0bc57": {
     "standard": "IEC 60909-0:2016 §6.6",
@@ -393,11 +393,11 @@
       },
       {
         "pozycja_pl": "Determinizm kontraktu (input_hash)",
-        "wartosc_pl": "obecny: 67deb5a3f9b6...",
+        "wartosc_pl": "obecny: 92d2a142384a...",
         "status": "PASS"
       }
     ],
-    "input_hash": "67deb5a3f9b68366dccbb0e9b910653341672df12c6ce095acfe31aff940fbc6"
+    "input_hash": "92d2a142384a33f8c6bc80d5eca419ff7cb253bad3b938f612b600070eeac3a1"
   },
   "d70aff7b-d056-5804-acce-c9bc5707612b": {
     "standard": "IEC 60909-0:2016 §6.6",
@@ -593,11 +593,11 @@
       },
       {
         "pozycja_pl": "Determinizm kontraktu (input_hash)",
-        "wartosc_pl": "obecny: b023116b451c...",
+        "wartosc_pl": "obecny: 9d87cd6ed000...",
         "status": "PASS"
       }
     ],
-    "input_hash": "b023116b451c4a811ad8e3d03144624072ba25ec93a911fff8dcd9767ca15de0"
+    "input_hash": "9d87cd6ed0002d6761153345df70923e362168a0bc1e87cebbfd520c67485218"
   },
   "d93618a6-23da-5d59-ae10-a7242961b790": {
     "standard": "IEC 60909-0:2016 §6.6",
@@ -793,11 +793,11 @@
       },
       {
         "pozycja_pl": "Determinizm kontraktu (input_hash)",
-        "wartosc_pl": "obecny: b6194280238e...",
+        "wartosc_pl": "obecny: 9693ad032314...",
         "status": "PASS"
       }
     ],
-    "input_hash": "b6194280238ea944ad14ff52d029d6b8ee0a1181ba59925236da83ea7de3a0b6"
+    "input_hash": "9693ad03231436c78f39a54f3c12a478e7480a3f8b547bb758c9c0588d7522ee"
   },
   "e22c09ea-bf55-54b7-8c57-88efc2eb8989": {
     "standard": "IEC 60909-0:2016 §6.6",
@@ -993,10 +993,10 @@
       },
       {
         "pozycja_pl": "Determinizm kontraktu (input_hash)",
-        "wartosc_pl": "obecny: 0858b432e174...",
+        "wartosc_pl": "obecny: c0e3ff49b4cd...",
         "status": "PASS"
       }
     ],
-    "input_hash": "0858b432e174fda249308602a699212739ce5975987616a16d131324c955a716"
+    "input_hash": "c0e3ff49b4cd581a66ab6eaa083984e91946aa43049e192fb04db32df3b2876e"
   }
 }

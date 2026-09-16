@@ -299,7 +299,13 @@ POMIJANE_KATALOGI = {
 #: Odbior S-2 AUTORYTET na drzewie po W3-J + V12.7 + S-1/S-4 + HARNESS-ZWARCIA (2026-09-16):
 #: POMIAR guardem na drzewie scalonym = 114 (bez zmian; spadek 119 -> 117 zmierzony przez
 #: karte S-2 na jej bazie to ta sama para bledow, ktora odbior fali 3 zdjal wczesniej).
-BUDZET_BLEDOW_POZA_BRAMKA = 114
+#: Karta W5-D (2026-09-16): pomiar guardem na drzewie karty = 113. Karta dopisala 2 nowe
+#: pliki testow poza bramka bez bledow i przepisala fixtury przebiegow w
+#: `ui2/wyniki/stan-fazowy/__tests__/ekranStanuFazowego.test.tsx` z `as never` na obiekty
+#: TYPOWANE kontraktem `ExecutionRun` (naprawa U ZRODLA: zdjeta 1 zastana pozycja TS2698
+#: „Spread types may only be created from object types" i NIE dopisana nowa tego samego
+#: wzorca). Zapadka w dol: 114 -> 113.
+BUDZET_BLEDOW_POZA_BRAMKA = 113
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,
