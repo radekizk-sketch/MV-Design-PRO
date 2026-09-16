@@ -113,6 +113,28 @@ describe('E1.4 — integracja powłoki (shell + nav + inspector + events)', () =
           // wiec test ćwiczy realna sciezke danych powloki.
           return { ok: true, status: 200, json: async () => summaryZGpz() } as unknown as Response;
         }
+        if (url.includes('/enm/topology')) {
+          // KARTA-UI2 p.11: struktura (stacje/pola) dla trybu „administracyjny"
+          // — ten sam test-double wzorzec co /summary wyżej, zawsze WSZYSTKIE
+          // pola kontraktu `TopologyStructure` (backend `get_enm_topology` ma
+          // jeden zwrot bez early-return, więc żadna odpowiedź 200 nigdy nie
+          // gubi pola — pusta lista tutaj oznacza „brak struktury", nie brak
+          // KLUCZA, inaczej konsument dostaje `undefined` zamiast `[]`).
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              case_id: 'przypadek-testowy-id',
+              substations: [],
+              bays: [],
+              junctions: [],
+              corridors: [],
+              bus_count: 0,
+              branch_count: 0,
+              transformer_count: 0,
+            }),
+          } as unknown as Response;
+        }
         if (url.includes('/api/study-cases/project/') && url.endsWith('/active')) {
           return { ok: true, status: 204, json: async () => null } as unknown as Response;
         }
@@ -176,7 +198,40 @@ describe('E1.4 — integracja powłoki (shell + nav + inspector + events)', () =
     expect(screen.getByText('Model: rew. 6')).toBeTruthy();
   });
 
-  it('selektor trybów drzewa jest ukryty w U1 (decyzja E1.4 §2.2 — zero martwego UI)', async () => {
+  it('selektor trybów drzewa w przestrzeni "Model" ma 3 realne tryby i klik przełącza zaznaczenie (TODO-UI2 p.11 — zamknięcie decyzji E1.4 §2.2)', async () => {
+    // ZMIANA KANONU (zachowanie intencji „zero martwego UI"): w E1.4 selektor
+    // był UKRYTY, bo tryby „administracyjny"/„obwodowy" nie miały realnego
+    // dostawcy danych (renderowanie go byłoby martwym UI). TODO-UI2 p.11
+    // dostarczyło oba tryby (`ui2/nav/adapters/topologyTreeAdapter.ts`,
+    // `GET .../enm/topology` + `TopologyGraphSummary`) — selektor jest teraz
+    // REALNĄ funkcją, więc intencja „zero martwego UI" wymaga, żeby był
+    // WIDOCZNY i DZIAŁAJĄCY (nie ukryty), stąd odwrócenie asercji.
+    await renderujPowloke();
+    const selektor = screen.getByTestId('mvd-tree-mode');
+    expect(selektor).toBeInTheDocument();
+
+    const zasilania = screen.getByTestId('mvd-tree-mode-zasilania');
+    const administracyjny = screen.getByTestId('mvd-tree-mode-administracyjny');
+    const obwodowy = screen.getByTestId('mvd-tree-mode-obwodowy');
+    expect(zasilania).toHaveAttribute('aria-pressed', 'true');
+    expect(administracyjny).toHaveAttribute('aria-pressed', 'false');
+    expect(obwodowy).toHaveAttribute('aria-pressed', 'false');
+
+    // Natywny klik (Zero-Debt pkt 5) na trybie „administracyjny" realnie
+    // przełącza zaznaczenie — dowód, że kontrolka nie jest dekoracją.
+    fireEvent.click(administracyjny);
+    expect(administracyjny).toHaveAttribute('aria-pressed', 'true');
+    expect(zasilania).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('selektor trybów drzewa jest ukryty poza przestrzenią "Model" (nie każda przestrzeń ma tryby topologii)', async () => {
+    act(() => {
+      useShellStore.setState({ activeSpace: 'projekt' });
+      useAppStateStore.setState({
+        activeProjectId: 'projekt-testowy-id',
+        activeProjectName: 'projekt-testowy',
+      });
+    });
     await renderujPowloke();
     expect(screen.queryByTestId('mvd-tree-mode')).toBeNull();
   });
