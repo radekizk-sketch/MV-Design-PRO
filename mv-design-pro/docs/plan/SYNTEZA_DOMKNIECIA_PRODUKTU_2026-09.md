@@ -221,6 +221,21 @@ Podział wymagań wg rodzaju twierdzenia (A-2, rejestr `ClaimKind`):
   tryby Q/U/cosφ i zdolność bierna (z zastrzeżeniem: zdolność Q(P) da się WYKAZAĆ rozpływem — W6-5 promuje T09 do
   wyniku obliczonego), T10/T11 P_MAX/P_MIN, T12/T13 zaprzestanie/zmniejszenie generacji, T19 telemechanika/SCADA/
   rejestrator, T20 THD_U (z pomiaru/karty; W6-7 daje wynik obliczony z widma).
+**Pomiar dokumentu źródłowego (2026-09-16, Procedura testowania PTPiREE wer. 3.0, 15 stron, tekst wyekstrahowany z PDF):**
+Tabela 1 procedury NIE numeruje testów (brak `T01…T20`) — wymienia ZDOLNOŚCI per typ A/B/C/D i rodzinę (SyPGM / PPM /
+morskie PPM): sprawdzenia podstawowe = LFSM-O, LFSM-U, FSM, regulacja odbudowy częstotliwości, zdolność do pracy na
+potrzeby własne (SyPGM), zdolność do generacji mocy biernej, tłumienie oscylacji mocy (SyPGM typ D ≥ 20 MW wg WOS 2018),
+możliwość regulacji mocy czynnej, tryby regulacji napięcia / mocy biernej / współczynnika mocy; sprawdzenia dodatkowe =
+moc maksymalna, moc minimalna, praca wyspowa i rozruch autonomiczny (gdy wymagane przez OSP), zaprzestanie i
+zmniejszenie generacji (typ A/B bez certyfikatu). Testy zgodności są z zasady wykonywane NA OBIEKCIE z realnymi sygnałami;
+„symulacja" w procedurze oznacza symulację sygnału wymuszającego (np. częstotliwości), nie symulację modelu. Wniosek dla
+kanonu repo (`../analysis/NC_RFG_PTPiREE_TESTY_KANON.md` §3, numeracja T01–T20 jest WŁASNĄ numeracją repo, nie
+procedury): T01–T13 odpowiadają testom zgodności PTPiREE z Tabeli 1, natomiast T14–T18 (LVRT/HVRT, odbudowa P, prąd
+bierny podczas zwarcia, wyspa/rozruch/tłumienie) i T19–T20 (telemechanika, THD) są wymaganiami NC RfG potwierdzanymi
+CERTYFIKATEM albo SYMULACJĄ ZGODNOŚCI (NC RfG tytuł IV, symulacje zgodności dla PPM typu B/C/D), nie testem procedury —
+czyli dokładnie zdolnościami, których dowód wymaga ZWALIDOWANEJ symulacji (A-2, rejestr `ClaimKind`). Kanon dostaje tę
+klasyfikację w karcie S-3; program ramowy i IRiESD per OSD pozostają w OD-21.
+
 Program ramowy testów i „WOS 2025" jako zbiór szczegółowych wymagań operatora: pełna lista klauzul z datą obowiązywania
 i datą warunków przyłączenia wchodzi do profili jako dane wersjonowane (D-10(a)); **repo nie niesie treści programów
 ramowych PTPiREE ani IRiESD 2025 poza pięcioma profilami** — pozycja OD-21 (właściciel wskazuje dokumenty źródłowe
