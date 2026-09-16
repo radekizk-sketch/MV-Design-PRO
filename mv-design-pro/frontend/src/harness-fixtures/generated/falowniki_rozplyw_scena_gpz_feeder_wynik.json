@@ -1,0 +1,29 @@
+{
+  "run_id": "run-sc-scena-rozplyw-gpz-feeder",
+  "fault_type": "3F",
+  "fault_element_ref": "stn/980a625dd13777cd339a1a173a2a2864/station",
+  "flows": [
+    {
+      "branch_id": "seg/ac2e267391eabbcc94c58ee4ace01e6f/segment_L",
+      "branch_name": "Odcinek seg/ac2e267391eabbcc94c58ee4ace01e6f/segment_L",
+      "source_id": "THEVENIN_GRID",
+      "from_node_id": "gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn",
+      "from_node_name": "Szyna GPZ S1 15 kV",
+      "to_node_id": "stn/980a625dd13777cd339a1a173a2a2864/sn_bus",
+      "to_node_name": "Stacja S01 (typ B)",
+      "i_ka": 9.120809586194339,
+      "direction": "from_to"
+    },
+    {
+      "branch_id": "seg/c65b9d08fb6c84a5c80c518b45111a42/branch_segment_L",
+      "branch_name": "Odcinek seg/c65b9d08fb6c84a5c80c518b45111a42/branch_segment_L",
+      "source_id": "gen_pv_s02",
+      "from_node_id": "gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn",
+      "from_node_name": "Szyna GPZ S1 15 kV",
+      "to_node_id": "stn/0188f98f1309b5535301f05ec09e6133/sn_bus",
+      "to_node_name": "Stacja S02 (typ B)",
+      "i_ka": 0.016054228105759835,
+      "direction": "to_from"
+    }
+  ]
+}

@@ -328,6 +328,21 @@ def test_zwarcia_rozplyw_niesie_tor_sieci_nadrzednej_i_tor_falownika() -> None:
     assert any(zrodlo != "THEVENIN_GRID" for zrodlo in zrodla), "brak toru falownika w rozpływie"
     assert "gen_pv" in zrodla, zrodla
     _run_idy_nie_sa_uuid(rozplyw)
+    # Karta HARNESS-RESZTA (kontynuacja) — NAPOTKANY BŁĄD naprawiony u źródła
+    # (`_sc_rozplyw_galeziowy`): `branch_id`/`from_node_id`/`to_node_id` MUSZĄ
+    # być refami domenowymi (`Branch.ref_id`/`Bus.ref_id` sieci złotej), NIE
+    # kluczami wewnętrznymi grafu solvera — inaczej `buildFaultFlowOverlayFor
+    # Snapshot`/`buildFaultFlowOverlayFromScene` (kanwa v3, `ownerRef` sceny =
+    # `ref_id`) dostają PUSTĄ nakładkę na KAŻDEJ realnej sieci (zmierzone
+    # bezpośrednio przed naprawą). Sieć złota: refy gałęzi {"tr_hv_sn",
+    # "cab_main_b", "line_b_c", "tr_sn_nn"}, refy szyn {"bus_hv", "bus_sn_main",
+    # "bus_sn_b", "bus_sn_c", "bus_nn"} (`tests/cgmes/golden_enm.py`).
+    refy_galezi_zlotej = {"tr_hv_sn", "cab_main_b", "line_b_c", "tr_sn_nn"}
+    refy_szyn_zlotej = {"bus_hv", "bus_sn_main", "bus_sn_b", "bus_sn_c", "bus_nn"}
+    for wpis in wpisy:
+        assert wpis["branch_id"] in refy_galezi_zlotej, (wpis["branch_id"], wpisy)
+        assert wpis["from_node_id"] in refy_szyn_zlotej, (wpis["from_node_id"], wpisy)
+        assert wpis["to_node_id"] in refy_szyn_zlotej, (wpis["to_node_id"], wpisy)
 
 
 def test_zwarcia_pasmo_strona_max_jest_biegiem_kotwicy() -> None:
@@ -497,3 +512,75 @@ def test_stabilnosc_wyniki_i_slad_dziela_ten_sam_run_id_i_scenariusz() -> None:
         "POST_FAULT_TOPOLOGY_EFFECT",
         "DYNAMIC_STABILITY_EVALUATED",
     ]
+
+
+def test_falowniki_rozplyw_gpz_feeder_niesie_tor_gpz_i_tor_falownika_na_realnej_topologii() -> None:
+    """Karta HARNESS-RESZTA (kontynuacja) — ścieżka (b): `screenshot-harness-
+    main.tsx` `FAULT_FLOW_DEMO_INPUT` MUSI pochodzić z realnego biegu NA
+    topologii gpzFeeder (nie z innej sieci, jak dawna atrapa `run-sc-th1-demo`
+    pożyczająca liczby z testu TH-1). Dowód: oba refy gałęzi WYSTĘPUJĄ w
+    `gpzFeeder.enm.json`, oba prądy > 0, kierunki i źródła zgodne z fizyką
+    (sieć nadrzędna dominuje na torze do zwarcia; falownik płynie WSTECZ do
+    GPZ), `run_id` stabilny i nie jest surowym UUID."""
+    wynik = eksport.falowniki_rozplyw_scena_gpz_feeder_wynik()
+    assert wynik["run_id"] == eksport.RUN_ID_SCENY_ROZPLYW_ZWARCIOWY_GPZ_FEEDER
+    assert wynik["fault_type"] == "3F"
+    assert wynik["fault_element_ref"] == eksport._REF_STACJA_S01_GPZ_FEEDER
+    _run_idy_nie_sa_uuid(wynik)
+
+    sciezka_gpz_feeder = (
+        eksport.BACKEND_DIR.parent / "frontend" / "public" / "test-fixtures" / "gpzFeeder.enm.json"
+    )
+    tekst_gpz_feeder = sciezka_gpz_feeder.read_text(encoding="utf-8")
+
+    assert len(wynik["flows"]) == 2, wynik["flows"]
+    tor_gpz, tor_falownika = wynik["flows"]
+
+    assert tor_gpz["source_id"] == "THEVENIN_GRID"
+    assert tor_gpz["branch_name"] == f"Odcinek {eksport._REF_BRANCH_SEGMENT_L_S01}"
+    assert eksport._REF_BRANCH_SEGMENT_L_S01 in tekst_gpz_feeder, (
+        "branch_id toru sieci nadrzędnej musi być REF-em rzeczywiście "
+        "istniejącym w topologii renderowanej przez kanwę (gpzFeeder.enm.json)"
+    )
+    assert tor_gpz["direction"] == "from_to"
+    assert tor_gpz["i_ka"] > 1.0, "prąd sieci nadrzędnej musi być dominujący (rząd kA, nie A)"
+
+    assert tor_falownika["source_id"] == "gen_pv_s02"
+    assert tor_falownika["branch_name"] == f"Odcinek {eksport._REF_BRANCH_SEGMENT_L_S02}"
+    assert eksport._REF_BRANCH_SEGMENT_L_S02 in tekst_gpz_feeder, (
+        "branch_id toru falownika musi być REF-em rzeczywiście istniejącym "
+        "w topologii renderowanej przez kanwę (gpzFeeder.enm.json)"
+    )
+    assert tor_falownika["direction"] == "to_from", "falownik zasila zwarcie WSTECZ do GPZ"
+    assert 0.0 < tor_falownika["i_ka"] < tor_gpz["i_ka"], (
+        "wkład falownika musi być realny (>0) i mniejszy niż dominujący tor sieci "
+        "nadrzędnej — falownik 0,4 MW nie może przebić sieci 250 MVA"
+    )
+
+    # gpzFeeder.enm.json (fixtura WSPÓŁDZIELONA z kanwą) sam pozostaje NIETKNIĘTY
+    # przez tę kartę — zero generatorów w repo, falownik istnieje WYŁĄCZNIE w
+    # kopii w pamięci (`_gpz_feeder_enm_z_falownikiem`).
+    assert '"generators": []' in tekst_gpz_feeder or '"generators":[]' in tekst_gpz_feeder
+
+
+def test_falowniki_rozplyw_gpz_feeder_dominujacy_wplyw_ignoruje_szum_sprzezenia() -> None:
+    """`_dominujacy_wplyw_na_galezi` musi wybrać wpis o NAJWIĘKSZYM |i_ka| —
+    czerwona iniekcja: lista z jednym wpisem-szumem (kierunek przeciwny,
+    wartość znikoma) i jednym wpisem dominującym musi zwrócić dominujący,
+    niezależnie od kolejności w liście wejściowej."""
+    dominujacy = {
+        "branch_name": "Odcinek X",
+        "source_id": "DOMINUJACY",
+        "i_ka": 9.12,
+        "direction": "from_to",
+    }
+    szum = {
+        "branch_name": "Odcinek X",
+        "source_id": "SZUM",
+        "i_ka": -0.0005,
+        "direction": "to_from",
+    }
+    assert eksport._dominujacy_wplyw_na_galezi([szum, dominujacy], "X") == dominujacy
+    assert eksport._dominujacy_wplyw_na_galezi([dominujacy, szum], "X") == dominujacy
+    assert eksport._dominujacy_wplyw_na_galezi([szum], "Y") is None
+    assert eksport._dominujacy_wplyw_na_galezi([], "X") is None

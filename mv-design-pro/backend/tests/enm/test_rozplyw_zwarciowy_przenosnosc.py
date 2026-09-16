@@ -74,3 +74,53 @@ def test_tekst_werdyktu_sanity_bez_surowego_floata() -> None:
     assert w1.why_pl == w2.why_pl
     assert "4.612 kA" in w1.why_pl
     assert "4.611507" not in w1.why_pl
+
+
+# ---------------------------------------------------------------------------
+# Karta HARNESS-RESZTA (kontynuacja, 2026-09-16) — NAPOTKANY BŁĄD naprawiony
+# u źródła (Zero-Debt pkt 1: "masz naprawiać wszystkie napotkane błędy").
+#
+# `branch_id`/`from_node_id`/`to_node_id` z `_sc_rozplyw_galeziowy` niosły
+# KLUCZ WEWNĘTRZNY grafu solvera (świeży identyfikator per bieg — zmierzone:
+# `map_enm_to_network_graph` na TEJ SAMEJ sieci daje RÓŻNE klucze przy dwóch
+# niezależnych wywołaniach), NIE `ref_id` domenowy. Kanwa v3 wiąże strzałkę
+# rozpływu PO `ref_id` (`ownerRef` sceny — `orientedSegmentRefs`/
+# `chainSegmentRefs`, `ui/sld/v3/scene/buildScene.ts`), więc
+# `buildFaultFlowOverlayForSnapshot`/`usePokazZwarcieNaSchemacie` (akcja
+# „Pokaż na schemacie" ekranu zwarć) dostawały PUSTĄ nakładkę na KAŻDEJ
+# realnej sieci — zmierzone bezpośrednio (sonda na fixturze gpzFeeder +
+# falownik: `buildFaultFlowOverlayForSnapshot` zwracał `{}` przed naprawą).
+# Zero testu istniejącego (grep `usePokazZwarcieNaSchemacie` w `__tests__` —
+# ZERO wyników) łapał ten defekt — deklaracja bez testu (KLASA NIE INSTANCJA
+# §4). Wpis grafu niesie `element_id` = prawdziwy `ref_id` (ta sama klasa co
+# `target_id`/`element_id` wiersza zbiorczego `build_short_circuit_results`).
+# ---------------------------------------------------------------------------
+
+
+def test_branch_id_i_node_id_sa_ref_id_domenowym_gdy_wpis_grafu_go_niesie() -> None:
+    """CZERWONA INIEKCJA: wpis grafu BEZ `element_id` (stary kształt / sieć
+    testowa minimalna) daje klucz wewnętrzny (zachowanie sprzed naprawy —
+    uczciwy fallback, NIE regresja). Wpis grafu Z `element_id` (kształt
+    realnego biegu backendu) MUSI dać `ref_id` domenowy, NIE klucz wewnętrzny
+    — to jest DOKŁADNIE naprawiony defekt."""
+    węzły_bez_ref = {"a": {"name": "Szyna A"}, "b": {"name": "Szyna B"}}
+    gałęzie_bez_ref = {"g1": {"name": "Kabel A-B"}}
+    fallback = _sc_rozplyw_galeziowy([_wpis(5.0, "from_to")], węzły_bez_ref, gałęzie_bez_ref)
+    assert fallback is not None
+    assert fallback[0]["branch_id"] == "g1", "brak element_id → uczciwy fallback na klucz grafu"
+    assert fallback[0]["from_node_id"] == "a"
+    assert fallback[0]["to_node_id"] == "b"
+
+    węzły_z_ref = {
+        "a": {"name": "Szyna A", "element_id": "bus/a-realny"},
+        "b": {"name": "Szyna B", "element_id": "bus/b-realny"},
+    }
+    gałęzie_z_ref = {"g1": {"name": "Kabel A-B", "element_id": "cab/g1-realny"}}
+    naprawiony = _sc_rozplyw_galeziowy([_wpis(5.0, "from_to")], węzły_z_ref, gałęzie_z_ref)
+    assert naprawiony is not None
+    assert naprawiony[0]["branch_id"] == "cab/g1-realny", "MUSI być ref_id, nie klucz 'g1'"
+    assert naprawiony[0]["from_node_id"] == "bus/a-realny", "MUSI być ref_id, nie klucz 'a'"
+    assert naprawiony[0]["to_node_id"] == "bus/b-realny", "MUSI być ref_id, nie klucz 'b'"
+    # `branch_name`/`*_node_name` NIETKNIĘTE przez naprawę (już poprawne przed nią).
+    assert naprawiony[0]["branch_name"] == "Kabel A-B"
+    assert naprawiony[0]["from_node_name"] == "Szyna A"

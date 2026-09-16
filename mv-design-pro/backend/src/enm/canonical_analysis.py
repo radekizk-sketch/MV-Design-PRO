@@ -3314,20 +3314,39 @@ def _sc_rozplyw_galeziowy(
         return None
     flows: list[dict[str, Any]] = []
     for entry in raw:
-        branch_id = entry.get("branch_id")
-        branch = _wpis_grafu(graph_branches, branch_id)
-        from_id = entry.get("from_node_id")
-        to_id = entry.get("to_node_id")
+        branch_key = entry.get("branch_id")
+        branch = _wpis_grafu(graph_branches, branch_key)
+        from_key = entry.get("from_node_id")
+        to_key = entry.get("to_node_id")
+        from_wpis = _wpis_grafu(graph_nodes, from_key)
+        to_wpis = _wpis_grafu(graph_nodes, to_key)
         i_ka = _amps_to_ka(entry.get("i_contrib_a"))
         flows.append(
             {
-                "branch_id": branch_id,
-                "branch_name": branch.get("name") or branch_id,
+                # Karta HARNESS-RESZTA (kontynuacja, 2026-09-16) — NAPRAWA U ŹRÓDŁA
+                # (napotkany błąd, nie tylko własny — Zero-Debt pkt 1): `branch_id`
+                # niósł dotąd KLUCZ WEWNĘTRZNY grafu solvera (`entry["branch_id"]`,
+                # świeży identyfikator per bieg — DOWÓD: `map_enm_to_network_graph`
+                # na TEJ SAMEJ sieci dwukrotnie da RÓŻNE wartości, `element_id`
+                # WSPÓLNEGO wpisu grafu ZAWSZE równy `ref_id` domenowemu). Kanwa v3
+                # wiąże strzałkę PO `ref_id` (`ownerRef` sceny — `orientedSegmentRefs`/
+                # `chainSegmentRefs`, `ui/sld/v3/scene/buildScene.ts` — KAŻDE miejsce
+                # klucz grafu ≠ ref_id domenowy), więc `buildFaultFlowOverlayForSnapshot`
+                # z DOTYCHCZASOWYM `branch_id` dawał PUSTĄ nakładkę na KAŻDEJ realnej
+                # sieci — zmierzone bezpośrednio (sonda: klucz grafu na fixturze
+                # gpzFeeder+falownik → `buildFaultFlowOverlayForSnapshot` zwracał `{}`).
+                # `element_id` wpisu grafu NIESIE prawdziwy `ref_id` (ta sama klasa co
+                # `target_id`/`element_id` wiersza zbiorczego w `build_short_circuit_
+                # results` powyżej) — WYŁĄCZNIE projekcja prezentacyjna, zero nowej
+                # fizyki. Brak wpisu grafu (starszy zapis) → uczciwy fallback na klucz
+                # wewnętrzny (zachowanie sprzed naprawy, nie regresja pustego pola).
+                "branch_id": branch.get("element_id") or branch_key,
+                "branch_name": branch.get("name") or branch_key,
                 "source_id": entry.get("source_id"),
-                "from_node_id": from_id,
-                "from_node_name": _wpis_grafu(graph_nodes, from_id).get("name") or from_id,
-                "to_node_id": to_id,
-                "to_node_name": _wpis_grafu(graph_nodes, to_id).get("name") or to_id,
+                "from_node_id": from_wpis.get("element_id") or from_key,
+                "from_node_name": from_wpis.get("name") or from_key,
+                "to_node_id": to_wpis.get("element_id") or to_key,
+                "to_node_name": to_wpis.get("name") or to_key,
                 "i_ka": i_ka,
                 "direction": (
                     "brak"

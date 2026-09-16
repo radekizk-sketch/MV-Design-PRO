@@ -17,20 +17,28 @@ DLACZEGO ZAPADKA, A NIE „ZERO OD RAZU". Pomiar w chwili założenia (ta karta)
 `creator-harness-main.tsx` niesie WCIĄŻ dziesiątki bloków JSON pisanych
 ręcznie dla analiz, których backend NIE eksportuje jeszcze przez
 `eksport_fixtur_harnessu.py` (koordynacja zabezpieczeń, dobór przekładników,
-walidacja energetyczna, porównania A/B, siła sieci, kompensacja, migotanie,
-SSCI, zgodność powykonawcza, estymacja WLS, wytrzymałość cieplna przewodu) —
-zamknięcie WSZYSTKICH tych domen wymaga per-domena: realnego wejścia ENM,
-nowej funkcji eksportu, testu parytetu i przepięcia mocka. Wpięcie bramki
-zero-tolerancji TERAZ zapaliłoby CI na długo istniejącym stanie, co
-CLAUDE.md (Zero-Debt pkt 1) odróżnia od maskowania: to NIE jest wykluczenie
-pliku ani `continue-on-error` — narzędzie DZIAŁA NAPRAWDĘ i pilnuje, żeby
-literałów nie przybyło ANI JEDNEGO od tego pomiaru. Karta HARNESS-RESZTA
-zamknęła w tej sesji dziesięć scen (E-31 „stan fazowy SN", E-32 „stabilność
-dynamiczna", „siła-sieci", „migotanie", „kompensacja(-wynik)", „rozplyw",
-„walidacja", „uwaga", „cieplna", „arcflash" — usunięte ręcznie wpisane stałe
-i ręczne `run_id`, prog literałów fizyki 229→164 i ręcznych `run_id` 54→42 w
-`creator-harness-main.tsx`, zmierzone tym guardem) i obniżyła próg o tyle,
-ile realnie zdjęła — reszta zostaje NAZWANA, zmierzona i zamknięta w
+porównania A/B rozpływu i zabezpieczeń, SSCI, zgodność powykonawcza,
+estymacja WLS, składowe 1F, zbieżność rozpływu/OLTC, pulpit — rejestr pełny w
+meldunku karty) — zamknięcie WSZYSTKICH tych domen wymaga per-domena:
+realnego wejścia ENM, nowej funkcji eksportu, testu parytetu i przepięcia
+mocka. Wpięcie bramki zero-tolerancji TERAZ zapaliłoby CI na długo
+istniejącym stanie, co CLAUDE.md (Zero-Debt pkt 1) odróżnia od maskowania: to
+NIE jest wykluczenie pliku ani `continue-on-error` — narzędzie DZIAŁA
+NAPRAWDĘ i pilnuje, żeby literałów nie przybyło ANI JEDNEGO od tego pomiaru.
+
+STAN (2026-09-16, karta HARNESS-RESZTA + kontynuacja). `creator-harness-
+main.tsx`: jedenaście scen zamknięte na realny bieg backendu (E-31 „stan
+fazowy SN", E-32 „stabilność dynamiczna", „siła-sieci", „migotanie",
+„kompensacja(-wynik)", „rozplyw", „walidacja", „uwaga", „cieplna",
+„arcflash") — prog literałów fizyki 229→164, ręcznych `run_id` 54→40.
+`screenshot-harness-main.tsx`: DOMKNIĘTY DO ZERA (2→0 / 1→0) — scena
+`zwarcia-schemat` (karta Z-3) przeszła z liczb pożyczonych z innej sieci na
+REALNY bieg `short_circuit_sn` na kopii `gpzFeeder.enm.json` z dołożonym
+falownikiem; przy okazji naprawiony u źródła napotkany defekt klasy
+(`enm/canonical_analysis.py::_sc_rozplyw_galeziowy` niósł klucz wewnętrzny
+grafu solvera zamiast `ref_id` domenowego — nakładka strzałek dawała PUSTY
+wynik na KAŻDEJ realnej sieci, nie tylko w tym harnessie). Próg maleje o tyle,
+ile realnie zdjęto — reszta zostaje NAZWANA, zmierzona i zamknięta w
 kolejnych kartach tej samej klasy, nie cicho pominięta.
 
 CO ŁAPIE (dwie klasy wzorców, TYLKO w plikach `frontend/src/*harness-main.tsx`
@@ -107,11 +115,13 @@ WZORZEC_RECZNEGO_RUN_ID = re.compile(r"""\b(run_id|id)\s*:\s*'run-[^']*'""")
 #: naruszeniem karty, nie przypadkiem).
 PROG: dict[str, tuple[int, int]] = {
     "creator-harness-main.tsx": (164, 40),
-    "screenshot-harness-main.tsx": (2, 1),
+    "screenshot-harness-main.tsx": (0, 0),
 }
 
 
-def znajdz_naruszenia(tekst: str) -> tuple[list[tuple[int, str]], list[tuple[int, str]]]:
+def znajdz_naruszenia(
+    tekst: str,
+) -> tuple[list[tuple[int, str]], list[tuple[int, str]]]:
     """(literały fizyki, ręczne run_id) — każdy jako (nr linii, treść linii)."""
     literaly: list[tuple[int, str]] = []
     run_idy: list[tuple[int, str]] = []

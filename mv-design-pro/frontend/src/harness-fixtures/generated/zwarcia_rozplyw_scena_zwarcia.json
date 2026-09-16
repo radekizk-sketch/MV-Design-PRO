@@ -3,70 +3,70 @@
   "target_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
   "branch_contributions": [
     {
-      "branch_id": "158eec95-939b-5b35-97ad-9433334b5506",
-      "branch_name": "TR 15/0.4",
-      "source_id": "THEVENIN_GRID",
-      "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
-      "from_node_name": "Stacja B SN",
-      "to_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
-      "to_node_name": "Szyna nN",
-      "i_ka": 2.2137004483243453e-16,
-      "direction": "brak"
-    },
-    {
-      "branch_id": "158eec95-939b-5b35-97ad-9433334b5506",
-      "branch_name": "TR 15/0.4",
-      "source_id": "gen_pv",
-      "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
-      "from_node_name": "Stacja B SN",
-      "to_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
-      "to_node_name": "Szyna nN",
-      "i_ka": 0.01693560789622902,
-      "direction": "to_from"
-    },
-    {
-      "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
-      "branch_name": "TR 110/15",
-      "source_id": "THEVENIN_GRID",
-      "from_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
-      "from_node_name": "GPZ 110kV",
-      "to_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
-      "to_node_name": "Szyna SN",
-      "i_ka": 8.311609676631322,
-      "direction": "from_to"
-    },
-    {
-      "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
-      "branch_name": "TR 110/15",
-      "source_id": "gen_pv",
-      "from_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
-      "from_node_name": "GPZ 110kV",
-      "to_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
-      "to_node_name": "Szyna SN",
-      "i_ka": 1.8282807406207646e-18,
-      "direction": "brak"
-    },
-    {
-      "branch_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
+      "branch_id": "line_b_c",
       "branch_name": "Linia SN 1",
       "source_id": "THEVENIN_GRID",
-      "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+      "from_node_id": "bus_sn_b",
       "from_node_name": "Stacja B SN",
-      "to_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+      "to_node_id": "bus_sn_c",
       "to_node_name": "Stacja C SN",
       "i_ka": 0.6436033616984862,
       "direction": "to_from"
     },
     {
-      "branch_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
+      "branch_id": "line_b_c",
       "branch_name": "Linia SN 1",
       "source_id": "gen_pv",
-      "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+      "from_node_id": "bus_sn_b",
       "from_node_name": "Stacja B SN",
-      "to_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+      "to_node_id": "bus_sn_c",
       "to_node_name": "Stacja C SN",
       "i_ka": 1.9668632369481116e-18,
       "direction": "brak"
+    },
+    {
+      "branch_id": "tr_hv_sn",
+      "branch_name": "TR 110/15",
+      "source_id": "THEVENIN_GRID",
+      "from_node_id": "bus_hv",
+      "from_node_name": "GPZ 110kV",
+      "to_node_id": "bus_sn_main",
+      "to_node_name": "Szyna SN",
+      "i_ka": 8.311609676631322,
+      "direction": "from_to"
+    },
+    {
+      "branch_id": "tr_hv_sn",
+      "branch_name": "TR 110/15",
+      "source_id": "gen_pv",
+      "from_node_id": "bus_hv",
+      "from_node_name": "GPZ 110kV",
+      "to_node_id": "bus_sn_main",
+      "to_node_name": "Szyna SN",
+      "i_ka": 1.8282807406207646e-18,
+      "direction": "brak"
+    },
+    {
+      "branch_id": "tr_sn_nn",
+      "branch_name": "TR 15/0.4",
+      "source_id": "THEVENIN_GRID",
+      "from_node_id": "bus_sn_b",
+      "from_node_name": "Stacja B SN",
+      "to_node_id": "bus_nn",
+      "to_node_name": "Szyna nN",
+      "i_ka": 2.2137004483243453e-16,
+      "direction": "brak"
+    },
+    {
+      "branch_id": "tr_sn_nn",
+      "branch_name": "TR 15/0.4",
+      "source_id": "gen_pv",
+      "from_node_id": "bus_sn_b",
+      "from_node_name": "Stacja B SN",
+      "to_node_id": "bus_nn",
+      "to_node_name": "Szyna nN",
+      "i_ka": 0.01693560789622902,
+      "direction": "to_from"
     }
   ],
   "branch_flow_trace": [

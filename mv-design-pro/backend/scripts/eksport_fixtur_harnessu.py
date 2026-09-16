@@ -78,7 +78,7 @@ from enm.canonical_analysis import (  # noqa: E402
 )
 from enm.hash import compute_enm_hash  # noqa: E402
 from enm.katalog_projektu import katalog_biezacy  # noqa: E402
-from enm.models import EnergyNetworkModel, ENMHeader  # noqa: E402
+from enm.models import EnergyNetworkModel, ENMHeader, Generator  # noqa: E402
 from enm.store import reset_enm_store, set_enm  # noqa: E402
 from solver_input.v126_contracts import V126AnalysisType  # noqa: E402
 
@@ -603,6 +603,171 @@ def zwarcia_pasmo_scena_zwarcia() -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Karta HARNESS-RESZTA (kontynuacja, 2026-09-16) — `screenshot-harness-main.tsx`
+# `FAULT_FLOW_DEMO_INPUT` (karta Z-3, nakładka rozpływu prądu zwarciowego na
+# schemacie v3, `?overlay=faultflow&fixture=gpzFeeder`). Liczby `i_ka` były
+# PRZEPISANE z INNEJ sieci (test TH-1, `build_slack_radial_graph` + falownik
+# `INV-B`, `test_short_circuit_iec60909.py::
+# test_thevenin_addition_preserves_inverter_entries_byte_for_byte`) na
+# topologię gpzFeeder (14 szyn, 10 gałęzi, zweryfikowane bezpośrednio: WSZYSTKIE
+# refy węzłów/gałęzi demo występują w `gpzFeeder.enm.json`) — refy się zgadzały
+# (ta sama fixtura), ale WARTOŚCI prądu NIE POCHODZIŁY z biegu NA TEJ sieci
+# (gpzFeeder nie ma ANI JEDNEGO generatora — zweryfikowane: `generators: []`).
+# Naprawa (ścieżka (b) karty): KOPIA gpzFeeder.enm.json (TE SAME ref_id —
+# `gpzFeeder.enm.json` sam pozostaje NIETKNIĘTY, kanwa nadal renderuje
+# ORYGINAŁ, patrz `overlayFromFaultFlowDemo` w `screenshot-harness-main.tsx`:
+# `enm` renderowany i `input` z rozpływu to DWA NIEZALEŻNE argumenty
+# `buildFaultFlowOverlayForSnapshot`) z DOŁOŻONYM falownikiem PV na szynie nN
+# Stacji S02 (`stn/.../nn_bus`, TEN SAM wzorzec co `gen_pv` sieci złotej:
+# `gen_type="pv_inverter"`, `connection_variant="nn_side"`,
+# `catalog_ref="conv-pv-nn-0p5mw"`) — REALNY bieg `short_circuit_sn` na
+# zwarcie 3F w Stacji S01 daje OBA tory NA TEJ SAMEJ sieci naraz: sieć
+# nadrzędna (`THEVENIN_GRID`, gałąź `segment_L`, zmierzone: 9,121 kA — dawny
+# fabrykowany literał 5,552 kA) I falownik S02 (gałąź `branch_segment_L`,
+# `source_id="gen_pv_s02"`, prąd płynie WSTECZ do GPZ, zmierzone: 0,01605 kA —
+# dawny fabrykowany literał 0,024 kA) — dokładnie kształt, jaki
+# `FAULT_FLOW_DEMO_INPUT` próbował atrapować, teraz REALNY.
+# ---------------------------------------------------------------------------
+
+RUN_ID_SCENY_ROZPLYW_ZWARCIOWY_GPZ_FEEDER = "run-sc-scena-rozplyw-gpz-feeder"
+_UUID_SCENY_ROZPLYW_ZWARCIOWY_GPZ_FEEDER = uuid5(
+    NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_ROZPLYW_ZWARCIOWY_GPZ_FEEDER
+)
+
+#: Refy topologii gpzFeeder (`frontend/public/test-fixtures/gpzFeeder.enm.json`,
+#: NIETKNIĘTY plik — te refy są jego istniejącą treścią, przepisane tu WYŁĄCZNIE
+#: do adresowania biegu, nie nowa fizyka). Falownik dokładany na szynie nN
+#: Stacji S02 (za transformatorem stacji, jak `gen_pv` sieci złotej).
+_REF_BUS_NN_S02_GPZ_FEEDER = "stn/0188f98f1309b5535301f05ec09e6133/nn_bus"
+_REF_STACJA_S02_GPZ_FEEDER = "stn/0188f98f1309b5535301f05ec09e6133/station"
+#: Punkt zwarcia = szyna SN Stacji S01 (ta sama stacja, której znacznik
+#: pulsuje na kanwie — `FAULT_FLOW_DEMO_STATION_S01` w
+#: `screenshot-harness-main.tsx`, wartość IDENTYCZNA poniżej).
+_REF_BUS_SN_S01_GPZ_FEEDER = "stn/980a625dd13777cd339a1a173a2a2864/sn_bus"
+_REF_STACJA_S01_GPZ_FEEDER = "stn/980a625dd13777cd339a1a173a2a2864/station"
+#: Gałęzie „nagłówkowe" nakładki (te same dwie, które `FAULT_FLOW_DEMO_INPUT`
+#: zawsze pokazywał — tor GPZ→S01 i tor GPZ→S02 — zakres wizualny NIETKNIĘTY,
+#: żeby zmiana nie wymagała nowej bramki B-02: naprawiamy LICZBY, nie kompozycję
+#: zrzutu). Realny rozpływ niesie WIĘCEJ gałęzi/źródeł (9 gałęzi × 2 źródła —
+#: zmierzone), w tym wpisy o prądzie rzędu pojedynczych/dziesiątek A ze
+#: SPRZECZNYM tokenem kierunku względem dominanty tej samej gałęzi (sprzężenie
+#: numeryczne superpozycji źródeł, nie błąd solvera — `buildFaultFlowOverlayFromScene`,
+#: `ui/sld/v3/canvas/overlay.ts`, świadomie POMIJA gałąź z niejednoznacznym
+#: kierunkiem: `entries.some(direction !== direction) → continue`). Dlatego
+#: eksport bierze WYŁĄCZNIE wpis DOMINUJĄCY (największy |i_ka|) na KAŻDEJ z
+#: tych dwóch gałęzi (`_dominujacy_wplyw_na_galezi` niżej) — filtr wielkości,
+#: zero fabrykacji (obie liczby z TEGO SAMEGO realnego biegu).
+_REF_BRANCH_SEGMENT_L_S01 = "seg/ac2e267391eabbcc94c58ee4ace01e6f/segment_L"
+_REF_BRANCH_SEGMENT_L_S02 = "seg/c65b9d08fb6c84a5c80c518b45111a42/branch_segment_L"
+
+
+def _gpz_feeder_enm_z_falownikiem() -> EnergyNetworkModel:
+    """Kopia `frontend/public/test-fixtures/gpzFeeder.enm.json` (fixtura
+    WSPÓŁDZIELONA z kanwą SLD — NIETKNIĘTA, patrz nagłówek sekcji wyżej) z
+    DOŁOŻONYM falownikiem PV na szynie nN Stacji S02."""
+    sciezka = BACKEND_DIR.parent / "frontend" / "public" / "test-fixtures" / "gpzFeeder.enm.json"
+    surowy = json.loads(sciezka.read_text(encoding="utf-8"))
+    enm = EnergyNetworkModel.model_validate(surowy["enm"])
+    enm.generators = [
+        *enm.generators,
+        Generator(
+            ref_id="gen_pv_s02",
+            name="Falownik PV Stacja S02",
+            bus_ref=_REF_BUS_NN_S02_GPZ_FEEDER,
+            p_mw=0.4,
+            q_mvar=0.0,
+            gen_type="pv_inverter",
+            connection_variant="nn_side",
+            station_ref=_REF_STACJA_S02_GPZ_FEEDER,
+            catalog_ref="conv-pv-nn-0p5mw",
+        ),
+    ]
+    return enm
+
+
+def _bieg_sceny_rozplyw_zwarciowy_gpz_feeder() -> tuple[Any, str, str | None]:
+    """Bieg KOTWICY nakładki rozpływu prądu zwarciowego na topologii gpzFeeder
+    (karta HARNESS-RESZTA kontynuacja) — zwarcie 3F na szynie SN Stacji S01,
+    REALNY `short_circuit_sn` (ten sam tor `create_run`/`execute_run` co
+    `_bieg_sceny_zwarcia`), na kopii gpzFeeder Z FALOWNIKIEM (patrz
+    `_gpz_feeder_enm_z_falownikiem`). `reset_*` PRZED i PO — jak kotwica
+    `zwarcia`, nie zostawia stanu innym fixturom."""
+    reset_canonical_runs()
+    reset_enm_store()
+    try:
+        enm = _gpz_feeder_enm_z_falownikiem()
+        _fiksuj_niedeterminizm_sceny_zwarcia(enm)
+        set_enm(CASE_ID_HARNESSU, enm)
+        with (
+            patch(
+                "enm.canonical_analysis.uuid4",
+                return_value=_UUID_SCENY_ROZPLYW_ZWARCIOWY_GPZ_FEEDER,
+            ),
+            patch("enm.canonical_analysis.datetime", _ZegarStalyBiegu),
+        ):
+            run = execute_run(
+                create_run(
+                    case_id=CASE_ID_HARNESSU,
+                    klucz_twin=CASE_ID_HARNESSU,
+                    analysis_type="short_circuit_sn",
+                ).id
+            )
+        _fiksuj_niedeterminizm_sceny_zwarcia(enm)
+        rows = build_short_circuit_results(run)["rows"]
+        cel = next(row for row in rows if row["element_id"] == _REF_BUS_SN_S01_GPZ_FEEDER)
+        return run, cel["target_id"], cel["fault_type"]
+    finally:
+        reset_canonical_runs()
+        reset_enm_store()
+
+
+def _dominujacy_wplyw_na_galezi(
+    wplywy: list[dict[str, Any]], ref_galezi: str
+) -> dict[str, Any] | None:
+    """Wpis o NAJWIĘKSZYM |i_ka| na gałęzi `ref_galezi` (dopasowanie po
+    `branch_name` — `_sc_rozplyw_galeziowy` ustawia `"Odcinek " + ref_id`,
+    ten sam wzorzec nazewnictwa co reszta grafu przebiegu). `None`, gdy
+    gałąź nie niesie żadnego wpisu (uczciwy brak, wołający decyduje)."""
+    nazwa = f"Odcinek {ref_galezi}"
+    kandydaci = [w for w in wplywy if w["branch_name"] == nazwa and w["i_ka"] is not None]
+    if not kandydaci:
+        return None
+    return max(kandydaci, key=lambda w: abs(w["i_ka"]))
+
+
+def falowniki_rozplyw_scena_gpz_feeder_wynik() -> dict[str, Any]:
+    """`ShortCircuitFlowOverlayInput` (`ui/sld-overlay/ShortCircuitFlowOverlayAdapter.ts`)
+    dla nakładki rozpływu prądu zwarciowego `screenshot-harness-main.tsx`
+    (`overlayFromFaultFlowDemo` → `buildFaultFlowOverlayForSnapshot`, karta
+    Z-3) — REALNY rozpływ `build_short_circuit_rozplyw_response` (TA SAMA
+    funkcja, którą woła końcówka `results/short-circuit/rozplyw`) na zwarciu
+    Stacji S01 sieci gpzFeeder+falownik, ograniczony do wpisu DOMINUJĄCEGO na
+    KAŻDEJ z dwóch gałęzi nagłówkowych (patrz komentarz `_REF_BRANCH_SEGMENT_L_S01`
+    wyżej), przemianowany `branch_contributions` → `flows` (te same nazwy pól
+    — `ShortCircuitBranchFlowV1` 1:1 z `_sc_rozplyw_galeziowy`)."""
+    run, target_id, typ_zwarcia = _bieg_sceny_rozplyw_zwarciowy_gpz_feeder()
+    payload = build_short_circuit_rozplyw_response(run, target_id)
+    surowe_wplywy = payload.get("branch_contributions") or []
+    flows = [
+        wplyw
+        for wplyw in (
+            _dominujacy_wplyw_na_galezi(surowe_wplywy, _REF_BRANCH_SEGMENT_L_S01),
+            _dominujacy_wplyw_na_galezi(surowe_wplywy, _REF_BRANCH_SEGMENT_L_S02),
+        )
+        if wplyw is not None
+    ]
+    wynik: dict[str, Any] = {
+        "run_id": str(run.id),
+        "fault_type": typ_zwarcia,
+        "fault_element_ref": _REF_STACJA_S01_GPZ_FEEDER,
+        "flows": flows,
+    }
+    return _ustabilizuj_identyfikatory(
+        wynik, {str(run.id): RUN_ID_SCENY_ROZPLYW_ZWARCIOWY_GPZ_FEEDER}
+    )
+
+
+# ---------------------------------------------------------------------------
 # Karta HARNESS-RESZTA (2026-09-16) — sceny „wyniki-stan-fazowy" i
 # „wyniki-stabilnosc" (E-31/E-32 ekranu wynikow), karmione WYLACZNIE realnymi
 # biegami backendu (phase_state_sn / dynamic_stability) na sieci zlotej.
@@ -997,6 +1162,7 @@ FIXTURY: dict[str, Any] = {
     "zwarcia_wklady_scena_zwarcia": zwarcia_wklady_scena_zwarcia,
     "zwarcia_rozplyw_scena_zwarcia": zwarcia_rozplyw_scena_zwarcia,
     "zwarcia_pasmo_scena_zwarcia": zwarcia_pasmo_scena_zwarcia,
+    "falowniki_rozplyw_scena_gpz_feeder_wynik": falowniki_rozplyw_scena_gpz_feeder_wynik,
     "stan_fazowy_scena_wyniki": stan_fazowy_scena_wyniki,
     "stabilnosc_scena_wyniki": stabilnosc_scena_wyniki,
     "stabilnosc_scena_slad": stabilnosc_scena_slad,

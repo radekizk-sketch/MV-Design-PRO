@@ -7,16 +7,26 @@
  * scena `screenshot-harness.html?fixture=gpzFeeder&overlay=faultflow`).
  *
  * HARNESS-ZWARCIA-Z-BACKENDU (2026-09-16): tabela `zwarcia-rozplyw:screenshot`
- * niesie TERAZ liczby [kA] z REALNEGO biegu backendu (`short_circuit_sn` na
- * sieci złotej `build_golden_enm`, `eksport_fixtur_harnessu.py::
+ * niesie liczby [kA] z REALNEGO biegu backendu (`short_circuit_sn` na sieci
+ * złotej `build_golden_enm`, `eksport_fixtur_harnessu.py::
  * zwarcia_rozplyw_scena_zwarcia`) — punkt „Szyna SN" (pierwszy wg sortu
  * kanonicznego, bez preselekcji), tor sieci nadrzędnej (`THEVENIN_GRID`,
- * gałąź „TR 110/15") ORAZ tor falownika (`gen_pv`, gałąź „TR 15/0.4"). Schemat
- * `zwarcia-schemat:screenshot` NIE jest częścią tej karty (inny harness,
- * `screenshot-harness-main.tsx`/`FAULT_FLOW_DEMO_INPUT` — POZA kartą, dług
- * nazwany w meldunku wykonawcy) i zostaje na dawnej fixturze testu TH-1
- * (`build_slack_radial_graph` + falownik `INV-B`); od tej karty obie sceny
- * NIE dzielą już wspólnych liczb — każda ma WŁASNE realne źródło.
+ * gałąź „TR 110/15") ORAZ tor falownika (`gen_pv`, gałąź „TR 15/0.4").
+ *
+ * HARNESS-RESZTA (kontynuacja, 2026-09-16, ścieżka b): schemat
+ * `zwarcia-schemat:screenshot` DOMKNIĘTY — dawny dług (dawna fixtura testu
+ * TH-1, `build_slack_radial_graph` + falownik `INV-B`, liczby POŻYCZONE z
+ * INNEJ sieci niż renderowana) zastąpiony REALNYM biegiem `short_circuit_sn`
+ * na KOPII gpzFeeder z dołożonym falownikiem Stacji S02
+ * (`eksport_fixtur_harnessu.py::falowniki_rozplyw_scena_gpz_feeder_wynik`,
+ * `screenshot-harness-main.tsx`/`FAULT_FLOW_DEMO_INPUT`). Przy okazji
+ * naprawiony u źródła napotkany defekt klasy (`enm/canonical_analysis.py::
+ * _sc_rozplyw_galeziowy`): `branch_id`/`from_node_id`/`to_node_id` niosły
+ * klucz wewnętrzny grafu solvera zamiast `ref_id` domenowego — nakładka
+ * strzałek na KAŻDEJ realnej sieci wychodziła pusta przed naprawą (zmierzone
+ * sondą, `tests/enm/test_rozplyw_zwarciowy_przenosnosc.py`). Obie sceny nadal
+ * NIE dzielą wspólnych liczb — każda ma WŁASNE realne źródło (gpzFeeder+
+ * falownik S02 dla schematu, sieć złota dla tabeli).
  *
  * Wyjście: docs/audit/visual/flow-ekspert/zwarcia-{rozplyw,schemat}-{light,dark}.png.
  */
@@ -134,10 +144,11 @@ test.describe('zwarcia-schemat:screenshot', () => {
       await expect(overlayLayer.getByTestId('sld-v3-fault-point-marker-dot')).toBeVisible();
       await expect(overlayLayer.getByTestId('sld-v3-fault-point-marker-pulse')).toBeVisible();
 
-      // Etykiety UCZCIWE: tor Thevenina „5,6 kA", tor maszyny w amperach
-      // („24 A" — zaokrąglenie do „0,0 kA" fałszowałoby realny wkład).
-      await expect(overlayLayer).toContainText('5,6 kA');
-      await expect(overlayLayer).toContainText('24 A');
+      // Etykiety UCZCIWE: tor Thevenina „9,1 kA" (realny bieg gpzFeeder, GPZ
+      // 250 MVA), tor falownika w amperach („16 A" — falownik 0,4 MW Stacji
+      // S02; zaokrąglenie do „0,0 kA" fałszowałoby realny wkład).
+      await expect(overlayLayer).toContainText('9,1 kA');
+      await expect(overlayLayer).toContainText('16 A');
 
       // Kadr do oceny właściciela bez legendy symboli arkusza (nakładała się
       // na tor rozpływu w małej fixturze) — ukrycie CZYSTO prezentacyjne,
