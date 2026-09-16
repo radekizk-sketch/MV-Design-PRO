@@ -422,6 +422,24 @@ _LINE_NETWORKS: tuple[
 )
 
 
+#: Prefiks identyfikatorow rekordow benchmarkowych (K1.2: ``bench_<siec>_<element>``) —
+#: JEDYNY strukturalny znacznik odrozniajacy rekord literaturowy od wyrobu/profilu
+#: katalogowego (``verification_status``/``catalog_status`` REFERENCYJNY dzieli z profilami
+#: bez marki karty FAB-A, wiec NIE nadaje sie na predykat). Rekord benchmarkowy istnieje
+#: wylacznie po to, zeby budowniczy sieci wzorcowej mogl go przywolac po ``catalog_ref``;
+#: nigdy nie jest propozycja dla projektanta — listy katalogu widoczne w kreatorach,
+#: przegladarce typow i auto-rozwiazywaniu (``CatalogRepository.list_*``) go pomijaja.
+#: Pomiar 2026-09-16 (odbior W5-A): kreator zrodla GPZ oferowal jako PIERWSZA pozycje
+#: ``bench_ieee14bus_br15`` (135/14 kV, Yy0, P_k = 0 — dana literaturowa bez strat),
+#: a wyprowadzenie Z0 z opisu punktu neutralnego slusznie odmawialo (brak P_k).
+PREFIKS_BENCHMARKU = "bench_"
+
+
+def jest_rekordem_benchmarku(type_id: object) -> bool:
+    """Czy identyfikator typu katalogowego nalezy do benchmarku literaturowego (K1.2)."""
+    return str(type_id).startswith(PREFIKS_BENCHMARKU)
+
+
 def get_all_benchmark_line_records() -> list[dict]:
     """Rekordy LINIA_SN dla wszystkich linii/kabli benchmarkow (K1.2)."""
     records: list[dict] = []

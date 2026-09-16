@@ -6,6 +6,7 @@ from functools import lru_cache
 
 from network_model.pochodne import mva_na_kva, mw_na_kw
 
+from .mv_benchmark_catalog import jest_rekordem_benchmarku
 from .types import (
     BESSBatteryType,
     BESSInverterType,
@@ -569,13 +570,13 @@ class CatalogRepository:
         )
 
     def list_line_types(self) -> list[LineType]:
-        return self._sorted(self.line_types.values())
+        return self._sorted(self._bez_benchmarkow(self.line_types.values()))
 
     def list_cable_types(self) -> list[CableType]:
         return self._sorted(self.cable_types.values())
 
     def list_transformer_types(self) -> list[TransformerType]:
-        return self._sorted(self.transformer_types.values())
+        return self._sorted(self._bez_benchmarkow(self.transformer_types.values()))
 
     def list_switch_equipment_types(self) -> list[SwitchEquipmentType]:
         return self._sorted(self.switch_equipment_types.values())
@@ -706,13 +707,13 @@ class CatalogRepository:
         return self.surge_arrester_types.get(str(type_id))
 
     def list_shunt_capacitor_types(self) -> list[ShuntCapacitorType]:
-        return self._sorted(self.shunt_capacitor_types.values())
+        return self._sorted(self._bez_benchmarkow(self.shunt_capacitor_types.values()))
 
     def get_shunt_capacitor_type(self, type_id: str) -> ShuntCapacitorType | None:
         return self.shunt_capacitor_types.get(str(type_id))
 
     def list_synchronous_generator_types(self) -> list[SynchronousGeneratorType]:
-        return self._sorted(self.synchronous_generator_types.values())
+        return self._sorted(self._bez_benchmarkow(self.synchronous_generator_types.values()))
 
     def get_synchronous_generator_type(self, type_id: str) -> SynchronousGeneratorType | None:
         return self.synchronous_generator_types.get(str(type_id))
@@ -732,6 +733,14 @@ class CatalogRepository:
     @staticmethod
     def _sorted(values: Iterable) -> list:
         return sorted(values, key=lambda item: (str(item.name), str(item.id)))
+
+    @staticmethod
+    def _bez_benchmarkow(values: Iterable) -> list:
+        """Listy widoczne dla projektanta (kreatory, przegladarka typow, auto-rozwiazywanie)
+        pomijaja rekordy benchmarkow literaturowych (``bench_*``, K1.2) — te sa osiagalne
+        wylacznie po jawnym ``catalog_ref`` (``get_*_type``), bo nie sa wyrobem do doboru
+        (klasa: rekord literaturowy jako propozycja projektanta; pomiar 2026-09-16)."""
+        return [item for item in values if not jest_rekordem_benchmarku(item.id)]
 
     @staticmethod
     def _sorted_pl(values: Iterable) -> list:
