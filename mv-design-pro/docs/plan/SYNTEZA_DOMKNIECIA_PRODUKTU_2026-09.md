@@ -208,7 +208,7 @@ czas krytyczny zwarcia (CCT) jako wielkość projektowa.
 
 WOS = **właściwy operator systemu** (art. 41 NC RfG: ocena zgodności modułu przez cały okres eksploatacji, prawo
 żądania testów). Podstawa w repo: NC RfG (UE 2016/631), IRiESD pięciu operatorów (profile `catalog/profiles/nc_rfg/*.yaml`,
-sumy md5 różne — zakres różnic liczbowych do zmierzenia w W6-5), Procedura testowania modułów wytwarzania energii
+15 kluczy liczbowych, 0 różnic między pięcioma operatorami — pomiar 2026-09-16; zróżnicowanie pozorne do czasu OD-21), Procedura testowania modułów wytwarzania energii
 PTPiREE **wer. 3.0** (obowiązuje od 2026-01-01; źródło: https://ptpiree.pl/kodeksy-sieci/procedura-testowania/,
 plik https://ptpiree.pl/wp-content/uploads/2025/12/Procedura-testowania_wer_3.0.pdf) — repo już pinuje
 `procedure_version = "PTPiREE Procedura testowania v3.0"` i kanon T01–T20 (`../analysis/NC_RFG_PTPiREE_TESTY_KANON.md`).
@@ -541,7 +541,7 @@ nie produkt), **ODRZUCIĆ**.
 | **A-12** | Nowy rdzeń dynamiki = **nowy pakiet `network_model/solvers/dynamika/`** obok rdzeni FROZEN (DT-9); `stability_rms` i `frt_hvrt` usuwane po W6-5 (OD-20); do tego czasu ich wyniki są `UNVALIDATED_MODEL`/`NOT_SIMULATED`. | D-02(b), D-03, D-13(b) |
 | **A-13** | Kanoniczny wynik dynamiczny = osobny kontrakt `ResultSetDynamicV1` w tym samym rejestrze biegów (nie rozszerzenie FROZEN `ResultSetV1`); pakiety dowodowe dynamiki czytają go READ-ONLY. | D-08(b); DT-10 |
 | **A-14** | Kolejność rodzin urządzeń w W6-3: synchroniczne → GFL → GFM → BESS → wiatr → PPC (synchroniczne definiują problem stabilności i są dziś wykluczone przez readiness). | D-04(a), D-07(b) |
-| **A-15** | Wersjonowanie profili WOS/IRiESD: `version`, `valid_from`, `connection_conditions_date`, `clauses[]` w profilu; dokumenty cytują wersję; 5 profili do zmierzenia liczbowo w W6-5 (md5 różne, treść różnic niezmierzona). | D-10(a); P1-10 |
+| **A-15** | Wersjonowanie profili WOS/IRiESD: `version`, `valid_from`, `connection_conditions_date`, `clauses[]` w profilu; dokumenty cytują wersję; **Pomiar 2026-09-16:** 5 profili `catalog/profiles/nc_rfg/*.yaml` ma 15 kluczy liczbowych wymagań i **0 różnic między operatorami** (różnią się wyłącznie nagłówkiem tekstowym; PSE niesie dodatkowo progi klas modułów `threshold_kw_*`/`voltage_kv_max`) — „zróżnicowanie OSD" jest dziś pozorne (P1-10 potwierdzone); realne różnice IRiESD wchodzą z OD-21. | D-10(a); P1-10 |
 
 ### 4.2 Decyzje wymagające właściciela (nowe; rejestr w mapie §7)
 
