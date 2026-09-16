@@ -96,6 +96,29 @@ describe('UruchomObliczenie — jawny start przebiegu w przestrzeni „Obliczeni
     });
   });
 
+  it('W5-D: rodzaje w selektorze = SC_3F, LOAD_FLOW, PF_UNBALANCED z etykietami rejestru', () => {
+    render(<UruchomObliczenie />);
+    const selektor = screen.getByTestId('mvd-uruchom-obliczenie-rodzaj') as HTMLSelectElement;
+    expect(Array.from(selektor.options).map((o) => o.value)).toEqual([
+      'SC_3F',
+      'LOAD_FLOW',
+      'PF_UNBALANCED',
+    ]);
+    expect(Array.from(selektor.options).map((o) => o.textContent)).toContain('Rozpływ niesymetryczny');
+  });
+
+  it('W5-D: rozpływ niesymetryczny — natywny wybór i klik wołają tor biegu z PF_UNBALANCED, bez metody NR/GS/FD', async () => {
+    render(<UruchomObliczenie />);
+
+    await userEvent.selectOptions(screen.getByTestId('mvd-uruchom-obliczenie-rodzaj'), 'PF_UNBALANCED');
+    // Solver BFS nie zna metody NR/GS/FD — selektor metody NIE pojawia się.
+    expect(screen.queryByTestId('mvd-uruchom-obliczenie-metoda-blok')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByTestId('mvd-uruchom-obliczenie-przycisk'));
+
+    await waitFor(() => expect(createAndExecuteRun).toHaveBeenCalledTimes(1));
+    expect(createAndExecuteRun).toHaveBeenCalledWith(CASE_ID, { analysis_type: 'PF_UNBALANCED' });
+  });
+
   it('rozpływ mocy: selektor metody pokazuje trzy opcje solvera (NR domyślna, GS, FD)', async () => {
     render(<UruchomObliczenie />);
 

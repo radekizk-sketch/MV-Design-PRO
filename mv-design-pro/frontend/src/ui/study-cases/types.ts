@@ -236,6 +236,7 @@ export type ExecutionAnalysisType =
   | 'SC_2F_G'
   | 'LOAD_FLOW'
   | 'PHASE_STATE_SN'
+  | 'PF_UNBALANCED'
   | 'DYNAMIC_STABILITY';
 
 /**
@@ -289,6 +290,7 @@ export const ANALYSIS_TYPE_LABELS: Record<ExecutionAnalysisType, string> = {
   SC_2F_G: 'Zwarcie dwufazowe z ziemią (2F+Z)',
   LOAD_FLOW: 'Rozpływ mocy',
   PHASE_STATE_SN: 'Stan fazowy SN',
+  PF_UNBALANCED: 'Rozpływ niesymetryczny',
   DYNAMIC_STABILITY: 'Stabilność dynamiczna',
 };
 

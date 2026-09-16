@@ -321,4 +321,47 @@ describe('KreatorOdbioruNn — realna ścieżka', () => {
     expect(screen.getByTestId('mvd-kreator-odbior')).toHaveAttribute('data-status', 'gotowy');
     expect(screen.getByTestId('mvd-kreator-odbior-zapisz')).toBeEnabled();
   });
+
+  // W5-D: fazy przyłączenia — pole `Load.phases` modelu czytane przez rozpływ
+  // niesymetryczny. Natywny wybór w selektorze (Zero-Debt §5), payload z faz.
+  it('fazy (W5-D): selektor startuje bez wskazania, a zapis bez wyboru NIE wysyła `phases`', async () => {
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorOdbioruNn />);
+    await fill();
+    const selektor = screen.getByTestId('mvd-kreator-odbior-fazy') as HTMLSelectElement;
+    expect(selektor.value).toBe('');
+    expect(Array.from(selektor.options).map((o) => o.value)).toEqual([
+      '', 'ABC', 'A', 'B', 'C', 'AB', 'BC', 'CA',
+    ]);
+    // Wiersz kontroli mówi wprost, jak odbiór bez wskazania zostanie policzony.
+    expect(screen.getByTestId('mvd-kreator-odbior-gotowosc')).toHaveTextContent(
+      'nie wskazano — trójfazowy symetryczny',
+    );
+
+    await userEvent.click(screen.getByTestId('mvd-kreator-odbior-tryb-przel-reczny'));
+    await userEvent.click(screen.getByTestId('mvd-kreator-odbior-zapisz'));
+    await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
+    const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
+    expect(payload).not.toHaveProperty('phases');
+    expect(payload.connection_type).toBe('TROJFAZOWY');
+  });
+
+  it('fazy (W5-D): natywny wybór fazy A jedzie w payloadzie jako `phases`, connection_type jednofazowy', async () => {
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorOdbioruNn />);
+    await fill();
+    await userEvent.click(screen.getByTestId('mvd-kreator-odbior-tryb-przel-reczny'));
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-odbior-fazy'), 'A');
+    expect(screen.getByTestId('mvd-kreator-odbior-gotowosc')).toHaveTextContent('Jednofazowy L1 (faza A)');
+
+    await userEvent.click(screen.getByTestId('mvd-kreator-odbior-zapisz'));
+    await waitFor(() => {
+      expect(executeDomainOperationMock).toHaveBeenCalledWith(
+        'case-1',
+        'add_nn_load',
+        expect.objectContaining({ phases: 'A', connection_type: 'JEDNOFAZOWY' }),
+      );
+    });
+    expect(closeFormMock).toHaveBeenCalled();
+  });
 });

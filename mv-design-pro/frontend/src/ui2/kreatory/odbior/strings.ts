@@ -40,11 +40,27 @@ export const ODBIOR_STRINGS = {
     { id: 'SKUPIONY', etykieta: 'Skupiony' },
     { id: 'ROZPROSZONY', etykieta: 'Rozproszony' },
   ],
-  przylacze: 'Sposób przyłączenia',
-  przylaczeOpcje: [
-    { id: 'TROJFAZOWY', etykieta: 'Trójfazowy' },
-    { id: 'JEDNOFAZOWY', etykieta: 'Jednofazowy' },
+  // Fazy przyłączenia (W5-D) — pole `Load.phases` modelu; pozycja pusta = brak
+  // wskazania (odbiór liczony jako trójfazowy symetryczny). Identyfikatory
+  // 1:1 z `enm/models.py::PhaseSet`.
+  fazy: 'Fazy przyłączenia',
+  fazyOpcje: [
+    { id: '', etykieta: '— nie wskazano (trójfazowy symetryczny) —' },
+    { id: 'ABC', etykieta: 'Trójfazowy (L1, L2, L3)' },
+    { id: 'A', etykieta: 'Jednofazowy L1 (faza A)' },
+    { id: 'B', etykieta: 'Jednofazowy L2 (faza B)' },
+    { id: 'C', etykieta: 'Jednofazowy L3 (faza C)' },
+    { id: 'AB', etykieta: 'Międzyfazowy L1–L2 (AB)' },
+    { id: 'BC', etykieta: 'Międzyfazowy L2–L3 (BC)' },
+    { id: 'CA', etykieta: 'Międzyfazowy L3–L1 (CA)' },
   ],
+  fazyPomoc:
+    'Fazy czyta rozpływ niesymetryczny (napięcia i prądy per faza, VUF). Odbiór bez '
+    + 'wskazania liczy się jako trójfazowy symetryczny. Rozpływ niesymetryczny obsługuje '
+    + 'odbiory trójfazowe i faza–N (A/B/C); odbiór międzyfazowy (AB/BC/CA) zatrzyma ten '
+    + 'bieg nazwaną odmową z wskazaniem odbioru.',
+  wierszFazy: 'Fazy przyłączenia',
+  fazyNieWskazano: 'nie wskazano — trójfazowy symetryczny',
 
   // Model obciążenia (ZIP) — współczynniki czytane przez rozpływ mocy.
   zipTytul: 'Model obciążenia (ZIP)',
@@ -89,8 +105,9 @@ export const ODBIOR_STRINGS = {
   // Downstream.
   downstreamTytul: 'Co to uruchamia',
   downstreamOpis:
-    'Rozpływ mocy uwzględni odbiór (P i Q z cosφ); analizy łuku, bilansu energii '
-    + 'i strat oraz identyfikacja granic policzą jego wpływ.',
+    'Rozpływ mocy uwzględni odbiór (P i Q z cosφ); rozpływ niesymetryczny rozłoży go '
+    + 'na wskazane fazy; analizy łuku, bilansu energii i strat oraz identyfikacja '
+    + 'granic policzą jego wpływ.',
 
   // Kontrola.
   kontrolaTytul: 'Kontrola odbioru',

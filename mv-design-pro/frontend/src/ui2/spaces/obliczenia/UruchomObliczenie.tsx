@@ -11,8 +11,10 @@
  * ISTNIEJĄCY tor (`uruchomObliczenie` → `createAndExecuteRun` → oczekiwanie na
  * stan terminalny → wyniki). Zero nowych endpointów, zero fizyki w UI.
  *
- * Zakres wyboru = rozstrzygnięcie karty: zwarcie trójfazowe (SC_3F) i rozpływ
- * mocy (LOAD_FLOW) — dwa rodzaje, dla których cała ścieżka wyników (okna,
+ * Zakres wyboru = rozstrzygnięcie karty: zwarcie trójfazowe (SC_3F), rozpływ
+ * mocy (LOAD_FLOW) i — od karty W5-D — rozpływ niesymetryczny (PF_UNBALANCED,
+ * `rozplyw_niesymetryczny`, solver BFS per faza; wynik czyta ekran „Stan fazowy
+ * SN" jako drugie źródło) — rodzaje, dla których cała ścieżka wyników (okna,
  * dowód, werdykt) jest kompletna. Etykiety z rejestru `ANALYSIS_TYPE_LABELS`
  * (jedna prawda nazw analiz w aplikacji).
  *
@@ -33,8 +35,8 @@ import { ANALYSIS_TYPE_LABELS, type ExecutionAnalysisType } from '../../../ui/st
 import { useUruchomObliczenie } from './uruchomObliczenie';
 import { PRZYPADKI_STRINGS as T } from './strings';
 
-/** Rodzaje oferowane w wyborze (rozstrzygnięcie karty K6 §0.1). */
-const RODZAJE: readonly ExecutionAnalysisType[] = ['SC_3F', 'LOAD_FLOW'];
+/** Rodzaje oferowane w wyborze (rozstrzygnięcie karty K6 §0.1 + W5-D). */
+const RODZAJE: readonly ExecutionAnalysisType[] = ['SC_3F', 'LOAD_FLOW', 'PF_UNBALANCED'];
 
 /** Token solvera (`enm/canonical_analysis.py::_normalize_power_flow_solver_method`). */
 export type MetodaRozplywu = 'newton-raphson' | 'gauss-seidel' | 'fast-decoupled';

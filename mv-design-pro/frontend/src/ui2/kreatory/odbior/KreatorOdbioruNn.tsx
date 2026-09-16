@@ -55,7 +55,6 @@ import {
   zbudujPayload,
   zbudujZapytaniePodgladu,
   type BladPola,
-  type ConnectionType,
   type KontekstOdbioru,
   type LoadKind,
   type OdbiorFormData,
@@ -63,6 +62,13 @@ import {
 } from './odbiorModel';
 import { ODBIOR_STRINGS as T } from './strings';
 import { WykresTrojkatMocy } from './WykresTrojkatMocy';
+import type { PhaseSet } from '../../../types/enm';
+
+/** Etykieta wskazanych faz (z listy opcji — jedna prawda nazw) albo uczciwy brak. */
+function etykietaFaz(phases: PhaseSet | null): string {
+  if (phases === null) return T.fazyNieWskazano;
+  return T.fazyOpcje.find((o) => o.id === phases)?.etykieta ?? phases;
+}
 
 const KROKI: readonly KrokKreatora[] = [
   { id: 'dane', tytul: T.krokDane },
@@ -234,6 +240,9 @@ export function KreatorOdbioruNn() {
       stan: bledy.some((b) => b.field.startsWith('zip.')) ? 'brak' : 'kompletne',
       wartosc: czyZipDomyslny(dane.zip) ? T.zipModelStalaMoc : T.zipModelWlasny,
     },
+    // Brak wskazania faz NIE blokuje zapisu (odbiór trójfazowy symetryczny to
+    // pełnoprawny model) — wiersz mówi wprost, jak odbiór zostanie policzony.
+    { etykieta: T.wierszFazy, stan: 'kompletne', wartosc: etykietaFaz(dane.phases) },
     { etykieta: T.wierszPrad, stan: podglad ? 'kompletne' : 'ostrzezenie', wartosc: fmtA(podglad?.rated_current_a) },
   ];
 
@@ -399,11 +408,12 @@ export function KreatorOdbioruNn() {
               testid="mvd-kreator-odbior-rodzaj"
             />
             <PoleWyboru
-              etykieta={T.przylacze}
-              wartosc={dane.connection_type}
-              onZmiana={(v) => zmien('connection_type', v as ConnectionType)}
-              opcje={T.przylaczeOpcje}
-              testid="mvd-kreator-odbior-przylacze"
+              etykieta={T.fazy}
+              wartosc={dane.phases ?? ''}
+              onZmiana={(v) => zmien('phases', v === '' ? null : (v as PhaseSet))}
+              opcje={T.fazyOpcje}
+              pomoc={T.fazyPomoc}
+              testid="mvd-kreator-odbior-fazy"
             />
           </KreatorSiatka>
           <KreatorSekcja tytul={T.zipTytul} nota={T.zipNota} testid="mvd-kreator-odbior-zip">
@@ -517,6 +527,7 @@ export function KreatorOdbioruNn() {
               etykieta={T.zipWierszModel}
               wartosc={czyZipDomyslny(dane.zip) ? T.zipModelStalaMoc : T.zipModelWlasny}
             />
+            <RzadWartosci etykieta={T.wierszFazy} wartosc={etykietaFaz(dane.phases)} />
             <RzadWartosci etykieta={T.podgladI} wartosc={fmtA(podglad?.rated_current_a)} />
             <RzadWartosci etykieta={T.podgladS} wartosc={fmtKva(podglad?.apparent_power_kva)} />
           </KreatorSiatka>
