@@ -48,6 +48,13 @@ import { WZORZEC_STRINGS } from '../../../wyniki/wzorzec';
 import { grupyZWynikami, type OdpowiedzOceny } from '../../../wyniki/ocena';
 import ocenaFixture from '../../../../harness-fixtures/generated/werdykt_projektowy_scena_ocena.json';
 import { WynikiWarsztat } from '../WynikiWarsztat';
+import { hydratujPowloke } from '../../../shell/useHydratacjaPowloki';
+
+// Hydratacja K2 z serwera — w teście jednostkowym nie ma backendu; warsztat woła
+// ją WYŁĄCZNIE z przycisku „Wczytaj ponownie" stanu przejściowego.
+vi.mock('../../../shell/useHydratacjaPowloki', () => ({
+  hydratujPowloke: vi.fn(async () => {}),
+}));
 import { OBSZARY, ZAKLADKI } from '../obszary';
 import { WYNIKI_WARSZTAT_STRINGS as T } from '../strings';
 import { przebiegFixture, snapshotFixture } from './fixtures';
@@ -64,8 +71,14 @@ beforeEach(() => {
     loadShortCircuitResults: vi.fn(async () => {}),
     loadExtendedTrace: vi.fn(async () => {}),
   });
-  useExecutionRunsStore.setState({ runs: [], activeRunId: null });
+  useExecutionRunsStore.setState({
+    runs: [],
+    activeRunId: null,
+    activeStudyCaseId: null,
+    isLoadingRuns: false,
+  });
   useAppStateStore.setState({ activeRunId: null, activeProjectId: null, activeCaseId: null });
+  vi.mocked(hydratujPowloke).mockClear();
   useSnapshotStore.getState().reset();
   useStationDerStore.getState().reset();
   useShellStore.setState({ wynikiTab: null, wynikiTabElement: null });
@@ -707,5 +720,133 @@ describe('WynikiWarsztat — KLASA: każdy obszar i każda zakładka ma dostawc�
     // celowe usunięcie zakładki obniża próg razem z tą liczbą).
     expect(policzone).toBeGreaterThanOrEqual(32);
     expect(policzone).toBe(ZAKLADKI.length);
+  });
+});
+
+/**
+ * Klasa: zakładka STARTOWA warsztatu jest pochodną rodzaju aktywnego przebiegu,
+ * a rodzaj pochodzi z rejestru przebiegów, który po zimnym starcie hydratuje
+ * z serwera PO montażu (K2). Dopóki rejestr nie jest zsynchronizowany z aktywnym
+ * zakresem obliczeń, rodzaj jest NIEUSTALONY — warsztat nie może pokazać zakładki,
+ * którą za chwilę sam zmieni (fałszywy stan startowy: run CI 444 / łańcuch f6e —
+ * spec czytał `aria-selected` obszaru przed hydratacją i tracił zakładkę spod
+ * kursora). Iloczyn cech: zakres obliczeń {brak, jest} × rejestr {cudzy zakres,
+ * wczytywanie, zsynchronizowany} × wybór ręczny {brak, jest} × aktywny przebieg
+ * {brak, jest}.
+ */
+describe('WynikiWarsztat — start nieustalony do synchronizacji rejestru przebiegów (K3-A4)', () => {
+  const przebiegRozplywu = () => przebiegFixture({ id: 'run-lf-1' });
+
+  it('zimny start: przebieg + zakres, rejestr cudzego zakresu → stan przejściowy bez nawigacji; synchronizacja otwiera OD RAZU obszar rozpływu', () => {
+    useAppStateStore.setState({ activeRunId: 'run-lf-1', activeCaseId: 'case-1' });
+    useExecutionRunsStore.setState({ runs: [], activeStudyCaseId: null, isLoadingRuns: false });
+    render(<WynikiWarsztat {...props()} />);
+    expect(screen.getByTestId('mvd-wyniki-warsztat')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-wyniki-rejestr-wczytywanie')).toBeInTheDocument();
+    expect(document.querySelector('[data-testid^="mvd-wyniki-obszar-"]')).toBeNull();
+    expect(screen.queryByTestId('mvd-wyniki-zakladka-ocena')).not.toBeInTheDocument();
+    act(() => {
+      useExecutionRunsStore.setState({
+        runs: [przebiegRozplywu()],
+        activeStudyCaseId: 'case-1',
+        isLoadingRuns: false,
+      });
+    });
+    expect(screen.queryByTestId('mvd-wyniki-rejestr-wczytywanie')).not.toBeInTheDocument();
+    expect(screen.getByTestId('mvd-wyniki-obszar-rozplyw')).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByTestId('mvd-wyniki-zakladka-rozplyw')).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('rejestr aktywnego zakresu W TRAKCIE wczytywania → stan przejściowy; koniec wczytywania → nawigacja', () => {
+    useAppStateStore.setState({ activeRunId: 'run-lf-1', activeCaseId: 'case-1' });
+    useExecutionRunsStore.setState({ runs: [], activeStudyCaseId: 'case-1', isLoadingRuns: true });
+    render(<WynikiWarsztat {...props()} />);
+    expect(screen.getByTestId('mvd-wyniki-rejestr-wczytywanie')).toBeInTheDocument();
+    act(() => {
+      useExecutionRunsStore.setState({ runs: [przebiegRozplywu()], isLoadingRuns: false });
+    });
+    expect(screen.getByTestId('mvd-wyniki-obszar-rozplyw')).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('rejestr zsynchronizowany, lecz bez aktywnego przebiegu w nim (stary identyfikator) → rodzaj USTALONY jako brak: nawigacja na ocenie', () => {
+    useAppStateStore.setState({ activeRunId: 'run-z-innego-zakresu', activeCaseId: 'case-1' });
+    useExecutionRunsStore.setState({ runs: [], activeStudyCaseId: 'case-1', isLoadingRuns: false });
+    render(<WynikiWarsztat {...props()} />);
+    expect(screen.queryByTestId('mvd-wyniki-rejestr-wczytywanie')).not.toBeInTheDocument();
+    expect(screen.getByTestId('mvd-wyniki-zakladka-ocena')).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('bez zakresu obliczeń rejestr nie jest oczekiwany → nawigacja od razu (ocena), mimo aktywnego przebiegu', () => {
+    useAppStateStore.setState({ activeRunId: 'run-lf-1', activeCaseId: null });
+    useExecutionRunsStore.setState({ runs: [], activeStudyCaseId: null, isLoadingRuns: false });
+    render(<WynikiWarsztat {...props()} />);
+    expect(screen.queryByTestId('mvd-wyniki-rejestr-wczytywanie')).not.toBeInTheDocument();
+    expect(screen.getByTestId('mvd-wyniki-zakladka-ocena')).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('bez aktywnego przebiegu stan przejściowy nie występuje, choć rejestr jest niezsynchronizowany', () => {
+    useAppStateStore.setState({ activeRunId: null, activeCaseId: 'case-1' });
+    useExecutionRunsStore.setState({ runs: [], activeStudyCaseId: null, isLoadingRuns: true });
+    render(<WynikiWarsztat {...props()} />);
+    expect(screen.queryByTestId('mvd-wyniki-rejestr-wczytywanie')).not.toBeInTheDocument();
+    expect(screen.getByTestId('mvd-wyniki-zakladka-ocena')).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('ręczny wybór zakładki: nowy aktywny przebieg + przeładowanie rejestru NIE zasłania wyboru użytkownika stanem przejściowym', () => {
+    useAppStateStore.setState({ activeRunId: 'run-lf-1', activeCaseId: 'case-1' });
+    useExecutionRunsStore.setState({
+      runs: [przebiegRozplywu()],
+      activeStudyCaseId: 'case-1',
+      isLoadingRuns: false,
+    });
+    render(<WynikiWarsztat {...props()} />);
+    // „Porównanie A/B" bez projektu = statyczny stan pusty (zero ładowań w tle).
+    otworzZakladke('porownanie');
+    expect(screen.getByTestId('mvd-wyniki-zakladka-porownanie')).toHaveAttribute('aria-selected', 'true');
+    act(() => {
+      useAppStateStore.setState({ activeRunId: 'run-sc-2' });
+      useExecutionRunsStore.setState({ isLoadingRuns: true });
+    });
+    expect(screen.queryByTestId('mvd-wyniki-rejestr-wczytywanie')).not.toBeInTheDocument();
+    expect(screen.getByTestId('mvd-wyniki-zakladka-porownanie')).toHaveAttribute('aria-selected', 'true');
+    act(() => {
+      useExecutionRunsStore.setState({
+        runs: [przebiegRozplywu(), przebiegFixture({ id: 'run-sc-2', analysis_type: 'SC_3F' })],
+        isLoadingRuns: false,
+      });
+    });
+    expect(screen.getByTestId('mvd-wyniki-zakladka-porownanie')).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('bez wyboru ręcznego: nowy aktywny przebieg + przeładowanie rejestru → stan przejściowy, potem zakładka rodzaju nowego przebiegu', () => {
+    useAppStateStore.setState({ activeRunId: 'run-lf-1', activeCaseId: 'case-1' });
+    useExecutionRunsStore.setState({
+      runs: [przebiegRozplywu()],
+      activeStudyCaseId: 'case-1',
+      isLoadingRuns: false,
+    });
+    render(<WynikiWarsztat {...props()} />);
+    expect(screen.getByTestId('mvd-wyniki-obszar-rozplyw')).toHaveAttribute('aria-selected', 'true');
+    act(() => {
+      useAppStateStore.setState({ activeRunId: 'run-sc-2' });
+      useExecutionRunsStore.setState({ isLoadingRuns: true });
+    });
+    expect(screen.getByTestId('mvd-wyniki-rejestr-wczytywanie')).toBeInTheDocument();
+    act(() => {
+      useExecutionRunsStore.setState({
+        runs: [przebiegRozplywu(), przebiegFixture({ id: 'run-sc-2', analysis_type: 'SC_3F' })],
+        isLoadingRuns: false,
+      });
+    });
+    expect(screen.getByTestId('mvd-wyniki-obszar-zwarcia')).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('przycisk „Wczytaj ponownie" stanu przejściowego wymusza hydratację K2 (wyjście ze stanu po nieudanej hydratacji)', () => {
+    useAppStateStore.setState({ activeRunId: 'run-lf-1', activeCaseId: 'case-1' });
+    useExecutionRunsStore.setState({ runs: [], activeStudyCaseId: null, isLoadingRuns: false });
+    render(<WynikiWarsztat {...props()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Wczytaj ponownie' }));
+    expect(vi.mocked(hydratujPowloke)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(hydratujPowloke)).toHaveBeenCalledWith({ wymus: true });
   });
 });

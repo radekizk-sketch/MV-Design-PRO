@@ -2124,6 +2124,10 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 
 // --- Zaszczepienie stanu store ------------------------------------------
 useAppStateStore.setState({ activeCaseId: 'case-demo' } as never);
+// Rejestr przebiegów należy do aktywnego zakresu (jak po hydratacji K2) — bez
+// tej pary warsztat wyników uczciwie pokazuje stan „wczytywanie rejestru", a nie
+// sceny. Sceny z własnym zakresem zasiewają oba pola razem (pulpit, diagnoza).
+useExecutionRunsStore.setState({ activeStudyCaseId: 'case-demo' } as never);
 useSnapshotStore.setState({
   // S9-11 / W-5: znaczniki świeżości czytają JEDNO źródło rewizji bieżącego
   // modelu (`rewizjaBiezacegoModelu`), nie rewizję wyświetlanej migawki — sceny

@@ -28,6 +28,7 @@
 import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react';
 
 import type { AdvancementMode } from '../../shell/modeModel';
+import { hydratujPowloke } from '../../shell/useHydratacjaPowloki';
 import { useShellStore } from '../../shell/useShellStore';
 import { EkranBadanOltc } from '../../wyniki/oltc';
 import { EkranCoWymagaUwagi } from '../../wyniki/co-wymaga-uwagi';
@@ -132,21 +133,30 @@ export function WynikiWarsztat({
   pozostale,
   onOtworzDokumentacje,
 }: WynikiWarsztatProps) {
-  const { aktywnyRodzaj } = useWpiecieWynikow();
-  const [zakladka, setZakladka] = useState<ZakladkaId>(
-    aktywnyRodzaj === 'rozplyw' ? 'rozplyw' : aktywnyRodzaj === 'zwarcie' ? 'zwarcia' : 'ocena',
-  );
-  // K3-A4: po zimnym starcie rejestr przebiegów hydratuje z serwera PO montażu
-  // (K2, useHydratacjaPowloki) — `aktywnyRodzaj` zmienia się z null na
-  // 'rozplyw'/'zwarcie', a zakładka z inicjalizatora zostawała na ocenie.
-  // Dopóki użytkownik nie wybrał zakładki sam (klik/klawiatura/deep-link),
-  // doprowadzamy ją do rodzaju aktywnego przebiegu; ręczny wybór wygrywa.
-  const [zakladkaWybranaRecznie, setZakladkaWybranaRecznie] = useState(false);
-  useEffect(() => {
-    if (zakladkaWybranaRecznie) return;
-    if (aktywnyRodzaj === 'rozplyw') setZakladka('rozplyw');
-    else if (aktywnyRodzaj === 'zwarcie') setZakladka('zwarcia');
-  }, [aktywnyRodzaj, zakladkaWybranaRecznie]);
+  const { aktywnyRodzaj, rejestrZsynchronizowany } = useWpiecieWynikow();
+  const activeRunId = useAppStateStore((s) => s.activeRunId);
+  // K3-A4: zakładka STARTOWA jest pochodną rodzaju aktywnego przebiegu — po
+  // zimnym starcie rejestr przebiegów hydratuje z serwera PO montażu (K2,
+  // useHydratacjaPowloki), więc rodzaj zmienia się z null na 'rozplyw'/'zwarcie'.
+  // Pochodna liczona PRZY RENDERZE (nie efektem): zmiana rodzaju nie daje klatki
+  // z poprzednią zakładką, którą efekt dopiero by nadpisał. Ręczny wybór
+  // (klik/klawiatura/deep-link/2×klik) wygrywa i od tej chwili rodzaj przebiegu
+  // zakładki nie rusza.
+  const [zakladkaWybrana, setZakladkaWybrana] = useState<ZakladkaId | null>(null);
+  const zakladkaStartowa: ZakladkaId =
+    aktywnyRodzaj === 'rozplyw' ? 'rozplyw' : aktywnyRodzaj === 'zwarcie' ? 'zwarcia' : 'ocena';
+  const zakladka = zakladkaWybrana ?? zakladkaStartowa;
+  // Start NIEUSTALONY: jest aktywny przebieg, ale rejestr przebiegów nie jest
+  // jeszcze zsynchronizowany z aktywnym zakresem obliczeń (hydratacja K2 w toku
+  // albo nierozpoczęta). Warsztat nie pokazuje wtedy nawigacji: „Ocena" na
+  // ułamek sekundy i przeskok na „Rozpływ" to fałszywy stan startowy (klasa:
+  // spec e2e czytał `aria-selected` obszaru przed hydratacją, pomijał klik
+  // obszaru, a hydratacja zabierała mu zakładkę spod kursora — run CI 444).
+  const startNieustalony =
+    zakladkaWybrana === null
+    && activeRunId != null
+    && aktywnyRodzaj === null
+    && !rejestrZsynchronizowany;
   // Deep-link między-przestrzenny (np. hub Dokumentacji → generator studium OZE):
   // jednorazowe żądanie ze shell store; walidujemy id i czyścimy po konsumpcji.
   // R2-B: żądanie może nieść kontekst elementu (`wynikiTabElement`) —
@@ -171,9 +181,8 @@ export function WynikiWarsztat({
     // niedostępnej w bieżącym trybie jest konsumowane bez przełączenia
     // (inaczej brama byłaby dekoracją, a nie regułą).
     if (jestZakladka(wynikiTab) && zakladkaDostepna(wynikiTab, trybZaawansowania)) {
-      setZakladka(wynikiTab);
       // K3-A4: deep-link = jawny wybór celu — hydratacja K2 nie może go nadpisać.
-      setZakladkaWybranaRecznie(true);
+      setZakladkaWybrana(wynikiTab);
       if (wynikiTab === 'kompensacja' && wynikiTabElement) {
         setElementKompensacji(wynikiTabElement);
       }
@@ -207,14 +216,13 @@ export function WynikiWarsztat({
   const activeSurface = useNetworkBuildStore((s) => s.activeSurface);
   useEffect(() => {
     if (jestDawnymHubem(activeSurface)) return;
-    setZakladkaWybranaRecznie(true);
-    setZakladka('pozostale');
+    setZakladkaWybrana('pozostale');
   }, [activeSurface]);
 
   // V126-JEZYK: obniżenie trybu w trakcie pracy nie może zostawić otwartej
   // zakładki spoza toru — wracamy na ocenę (pierwsza zakładka warsztatu).
   useEffect(() => {
-    if (!zakladkaDostepna(zakladka, trybZaawansowania)) setZakladka('ocena');
+    if (!zakladkaDostepna(zakladka, trybZaawansowania)) setZakladkaWybrana('ocena');
   }, [zakladka, trybZaawansowania]);
   const zalozeniaZwarciowe = useZalozeniaZwarcioweAktywnegoPrzypadku();
 
@@ -226,9 +234,8 @@ export function WynikiWarsztat({
       setPrzebiegDowodu(null);
       setElementDowodu(null);
     }
-    // K3-A4: ręczny wybór użytkownika — hydratacja K2 przestaje sterować zakładką.
-    setZakladkaWybranaRecznie(true);
-    setZakladka(id);
+    // K3-A4: ręczny wybór użytkownika — rodzaj przebiegu przestaje sterować zakładką.
+    setZakladkaWybrana(id);
   };
 
   // Obszar = pochodna zakładki (jeden stan). Wejście w obszar otwiera jego
@@ -268,10 +275,34 @@ export function WynikiWarsztat({
   // innego niż aktywny — rozpływ vs zwarcia); bez wskazania = aktywny przebieg.
   const otworzDowod = (ref: string, runId?: string) => {
     setPrzebiegDowodu(runId ?? null);
-    setZakladkaWybranaRecznie(true);
-    setZakladka('dowod');
+    setZakladkaWybrana('dowod');
     setElementDowodu(ref || null);
   };
+
+  if (startNieustalony) {
+    // Uczciwy stan przejściowy zamiast fałszywej zakładki startowej; przycisk
+    // ponowienia = wyjście z tego stanu, gdy hydratacja K2 się nie powiodła
+    // (np. chwilowy błąd serwera przy sprawdzaniu projektu — K2 nie ponawia
+    // sama, dopóki backend nie przejdzie przez stan „błąd" → „połączono").
+    return (
+      <div className="mvd-wyniki-warsztat" data-testid="mvd-wyniki-warsztat">
+        <div
+          className="mvd-wyniki-pusty"
+          role="status"
+          data-testid="mvd-wyniki-rejestr-wczytywanie"
+        >
+          <p>{T.rejestrWczytywanie}</p>
+          <button
+            type="button"
+            className="mvd-btn"
+            onClick={() => void hydratujPowloke({ wymus: true })}
+          >
+            {T.rejestrWczytajPonownie}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mvd-wyniki-warsztat" data-testid="mvd-wyniki-warsztat">

@@ -45,4 +45,6 @@ export const WYNIKI_WARSZTAT_STRINGS = {
   porownanieBezProjektu: 'Otwórz projekt, aby porównywać przebiegi obliczeń.',
   zakladkaPozostale: 'Widoki klasyczne',
   dowodBezPrzebiegu: 'Analiza',
+  rejestrWczytywanie: 'Wczytywanie rejestru przebiegów aktywnego zakresu obliczeń…',
+  rejestrWczytajPonownie: 'Wczytaj ponownie',
 } as const;

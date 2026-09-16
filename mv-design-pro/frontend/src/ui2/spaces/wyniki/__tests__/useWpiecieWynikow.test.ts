@@ -26,8 +26,51 @@ beforeEach(() => {
   usePowerFlowResultsStore.setState({ selectRun: selectRunPf, loadResults });
   useResultsInspectorStore.getState().clearRun();
   useResultsInspectorStore.setState({ selectRun: selectRunSc, loadShortCircuitResults });
-  useExecutionRunsStore.setState({ runs: [], activeRunId: null });
-  useAppStateStore.setState({ activeRunId: null });
+  useExecutionRunsStore.setState({
+    runs: [],
+    activeRunId: null,
+    activeStudyCaseId: null,
+    isLoadingRuns: false,
+  });
+  useAppStateStore.setState({ activeRunId: null, activeCaseId: null });
+});
+
+/**
+ * Predykat synchronizacji rejestru przebiegów z aktywnym zakresem obliczeń —
+ * iloczyn cech: zakres {brak, jest} × rejestr {cudzy zakres, ten zakres} ×
+ * wczytywanie {nie, tak}. Konsument: warsztat wyników (start nieustalony).
+ */
+describe('useWpiecieWynikow — rejestrZsynchronizowany', () => {
+  it.each([
+    { zakres: null, rejestr: null, wczytywanie: false, oczekiwane: true },
+    { zakres: null, rejestr: 'case-inny', wczytywanie: true, oczekiwane: true },
+    { zakres: 'case-1', rejestr: null, wczytywanie: false, oczekiwane: false },
+    { zakres: 'case-1', rejestr: 'case-inny', wczytywanie: false, oczekiwane: false },
+    { zakres: 'case-1', rejestr: 'case-1', wczytywanie: true, oczekiwane: false },
+    { zakres: 'case-1', rejestr: 'case-1', wczytywanie: false, oczekiwane: true },
+  ])(
+    'zakres=$zakres rejestr=$rejestr wczytywanie=$wczytywanie → $oczekiwane',
+    ({ zakres, rejestr, wczytywanie, oczekiwane }) => {
+      useAppStateStore.setState({ activeCaseId: zakres });
+      useExecutionRunsStore.setState({ activeStudyCaseId: rejestr, isLoadingRuns: wczytywanie });
+      const { result } = renderHook(() => useWpiecieWynikow());
+      expect(result.current.rejestrZsynchronizowany).toBe(oczekiwane);
+    },
+  );
+
+  it('reaguje na synchronizację PO montażu (hydratacja K2: setActiveStudyCaseId + koniec wczytywania)', () => {
+    useAppStateStore.setState({ activeCaseId: 'case-1' });
+    const { result } = renderHook(() => useWpiecieWynikow());
+    expect(result.current.rejestrZsynchronizowany).toBe(false);
+    act(() => {
+      useExecutionRunsStore.setState({ activeStudyCaseId: 'case-1', isLoadingRuns: true });
+    });
+    expect(result.current.rejestrZsynchronizowany).toBe(false);
+    act(() => {
+      useExecutionRunsStore.setState({ isLoadingRuns: false });
+    });
+    expect(result.current.rejestrZsynchronizowany).toBe(true);
+  });
 });
 
 describe('useWpiecieWynikow — montaż', () => {
