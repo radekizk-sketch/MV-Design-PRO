@@ -497,13 +497,17 @@ def _resolve_der_dynamic_for_generator(gen):  # type: ignore[no-untyped-def]
         )
     if gen_type == "fw_scig":
         return resolve_der_dynamic_profile(
-            der_kind="FW", explicit_profile_id=explicit,
-            catalog_dynamic_profile_id=z_katalogu, converter_type="SCIG",
+            der_kind="FW",
+            explicit_profile_id=explicit,
+            catalog_dynamic_profile_id=z_katalogu,
+            converter_type="SCIG",
         )
     if gen_type == "fw_dfig":
         return resolve_der_dynamic_profile(
-            der_kind="FW", explicit_profile_id=explicit,
-            catalog_dynamic_profile_id=z_katalogu, converter_type="DFIG",
+            der_kind="FW",
+            explicit_profile_id=explicit,
+            catalog_dynamic_profile_id=z_katalogu,
+            converter_type="DFIG",
         )
     if gen_type in ("fw_pmsg", "wind_inverter"):
         return resolve_der_dynamic_profile(
@@ -614,7 +618,8 @@ def _check_stability(enm: EnergyNetworkModel) -> ReadinessTypeReport:
         recommended_action_pl=(
             f"Solver stabilności RMS dostępny (PR-15-impl). "
             f"{len(der_generators) + len(sync_generators)} źródeł dynamicznych z modelami "
-            "rozwiązanymi: " + ", ".join(zrodla_opis)
+            "rozwiązanymi: "
+            + ", ".join(zrodla_opis)
             + ("..." if len(resolved) > 3 else "")
             + ". Można uruchomić obliczenia."
         ),
@@ -673,9 +678,7 @@ def _check_dynamika_rms(enm: EnergyNetworkModel) -> ReadinessTypeReport:
     pozostałe 10 typów gotowości — rozszerzenie sygnatury o scenariusz jest
     poza zakresem tej karty, nazwane świadomie w meldunku)."""
     dynamiczne = [
-        g
-        for g in enm.generators
-        if g.gen_type in _DER_GEN_TYPES or g.gen_type == "synchronous"
+        g for g in enm.generators if g.gen_type in _DER_GEN_TYPES or g.gen_type == "synchronous"
     ]
     if not dynamiczne:
         return ReadinessTypeReport(

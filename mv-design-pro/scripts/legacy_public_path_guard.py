@@ -306,7 +306,12 @@ FORBIDDEN_W1_TABLE_NAMES = {
     "switch_equipment_types",
     "transformer_types",
 }
-W1_TABLENAME_PIN = 15
+# Karta W6-1 (2026-09-16): 15 -> 16, tabela `canonical_run_time_series`
+# (`CanonicalRunTimeSeriesORM`) — probki szeregow czasowych biegu
+# `dynamika_rms`, ten sam wzorzec co `canonical_run_branch_flows` (PERF-SC-50:
+# szeregi NIGDY inline w wierszu `canonical_runs`). Nowa tabela swiadoma, nie
+# resurekcja zadnej z `FORBIDDEN_W1_TABLE_NAMES` powyzej.
+W1_TABLENAME_PIN = 16
 W1_MODELS_RELATIVE_PATH = "infrastructure/persistence/models.py"
 
 # Karta KASACJA-DATA-MANAGER (2026-09-09) — bramka wskrzeszenia FRONTENDOWA (jedyna

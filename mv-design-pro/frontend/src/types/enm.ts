@@ -450,6 +450,190 @@ export interface Load extends ENMElement {
 }
 
 // ---------------------------------------------------------------------------
+// Parametry dynamiczne zrodel (karta W6-1) — lustro 1:1 `enm/dynamika_modele.py`.
+// Kontrakt wejsciowy DAE (Generator.dynamika); solver (W6-2) nie istnieje,
+// zero fizyki tutaj. Unia dyskryminowana po `rodzina`.
+// ---------------------------------------------------------------------------
+
+export type ZrodloProweniencjiDynamiki =
+  | 'karta_producenta'
+  | 'certyfikat_jednostki'
+  | 'profil_typowy_normy'
+  | 'deklaracja_uzytkownika';
+
+/** Pochodzenie bloku parametrow dynamicznych (SS0 p.2) — WYMAGANA na kazdym bloku rodziny. */
+export interface ProweniencjaParametrow {
+  zrodlo: ZrodloProweniencjiDynamiki;
+  odniesienie: string;
+  data?: string | null;
+}
+
+/** AVR (SEXS / IEEE ST1A / IEEE AC1A) — IEEE 421.5. */
+export interface RegulatorNapiecia {
+  typ: 'SEXS' | 'IEEE_ST1A' | 'IEEE_AC1A';
+  ka: number;
+  ta_s: number;
+  tb_s: number;
+  tc_s: number;
+  efd_min_pu: number;
+  efd_max_pu: number;
+}
+
+/** Turbina/regulator obrotow (TGOV1 / HYGOV). */
+export interface RegulatorObrotow {
+  typ: 'TGOV1' | 'HYGOV';
+  r_pu: number;
+  t1_s: number;
+  t2_s: number;
+  t3_s: number;
+  p_max_pu: number;
+  p_min_pu: number;
+}
+
+/** PSS1A — stabilizator systemowy tlumienia oscylacji. */
+export interface StabilizatorSystemowy {
+  typ: 'PSS1A';
+  ks: number;
+  tw_s: number;
+  t1_s: number;
+  t2_s: number;
+  t3_s: number;
+  t4_s: number;
+  limit_min_pu: number;
+  limit_max_pu: number;
+}
+
+/** Model maszyny synchronicznej 6. rzedu (Xd/X'd/X''d, Xq/X'q/X''q) — SS0 p.1.4. */
+export interface MaszynaSynchroniczna {
+  rodzina: 'synchroniczna';
+  proweniencja: ProweniencjaParametrow;
+  s_n_mva: number;
+  h_s: number;
+  d_pu: number;
+  xd_pu: number;
+  xq_pu: number;
+  xd_prim_pu: number;
+  xq_prim_pu: number;
+  xd_bis_pu: number;
+  xq_bis_pu: number;
+  td0_prim_s: number;
+  tq0_prim_s: number;
+  td0_bis_s: number;
+  tq0_bis_s: number;
+  xl_pu: number;
+  nasycenie_s10: number;
+  nasycenie_s12: number;
+  ra_pu: number;
+  wzbudzenie?: RegulatorNapiecia | null;
+  turbina?: RegulatorObrotow | null;
+  stabilizator?: StabilizatorSystemowy | null;
+}
+
+/** Priorytet skladowej ogranicznika pradu — WYMAGANY, bez domyslki (A-9). */
+export type PriorytetOgranicznika = 'bierna' | 'czynna';
+
+/** Przeksztaltnik grid-following: PLL, regulator pradu, ogranicznik FRT. */
+export interface PrzeksztaltnikGFL {
+  rodzina: 'przeksztaltnikowa_gfl';
+  proweniencja: ProweniencjaParametrow;
+  s_n_mva: number;
+  i_max_pu: number;
+  priorytet_ogranicznika: PriorytetOgranicznika;
+  pll_kp: number;
+  pll_ki: number;
+  reg_pradu_kp: number;
+  reg_pradu_ki: number;
+  k_frt: number;
+  prog_frt_pu: number;
+  tp_s: number;
+  tiq_s: number;
+  p_odbudowa_pu_na_s: number;
+  p_odbudowa_opoznienie_s: number;
+  droop_p_f_pu: number;
+  martwa_strefa_f_hz: number;
+  droop_q_u_pu: number;
+  martwa_strefa_u_pu: number;
+  u_min_ciagle_pu: number;
+  u_max_ciagle_pu: number;
+}
+
+/** Strategia ograniczenia GFM — WYMAGANA, bez domyslki. */
+export type StrategiaOgraniczeniaGfm = 'impedancja_wirtualna' | 'nasycenie_zadania';
+
+/** Przeksztaltnik grid-forming: droop/VSM, impedancja wirtualna. */
+export interface PrzeksztaltnikGFM {
+  rodzina: 'przeksztaltnikowa_gfm';
+  proweniencja: ProweniencjaParametrow;
+  s_n_mva: number;
+  tryb: 'droop' | 'vsm';
+  mp_pu: number;
+  mq_pu: number;
+  h_wirtualne_s: number;
+  d_wirtualne_pu: number;
+  r_wirtualne_pu: number;
+  x_wirtualne_pu: number;
+  i_max_pu: number;
+  strategia_ograniczenia: StrategiaOgraniczeniaGfm;
+  tp_s: number;
+  tiq_s: number;
+}
+
+/** Regulacja czestotliwosciowa magazynu (droop + rezerwa mocy). */
+export interface RegulacjaCzestotliwosciMagazynu {
+  droop_pu: number;
+  martwa_strefa_hz: number;
+  p_rezerwa_pu: number;
+}
+
+/** Magazyn energii (BESS) = energia + przeksztaltnik (SS0 p.1) — jedna baza mocy s_n_mva. */
+export interface Magazyn {
+  rodzina: 'magazyn';
+  proweniencja: ProweniencjaParametrow;
+  e_n_kwh: number;
+  p_ladowania_max_kw: number;
+  p_rozladowania_max_kw: number;
+  sprawnosc_ladowania: number;
+  sprawnosc_rozladowania: number;
+  soc_min: number;
+  soc_max: number;
+  soc_poczatkowy: number;
+  regulacja_f?: RegulacjaCzestotliwosciMagazynu | null;
+  przeksztaltnik: PrzeksztaltnikGFL | PrzeksztaltnikGFM;
+}
+
+/** Ochrona crowbar wirnika DFIG (typ 3). */
+export interface Crowbar {
+  prog_pradu_pu: number;
+  czas_zwloki_s: number;
+  czas_trwania_s: number;
+}
+
+export type TypIecTurbiny = 'wiatr_typ_1' | 'wiatr_typ_2' | 'wiatr_typ_3' | 'wiatr_typ_4';
+
+/** Turbina wiatrowa IEC 61400-27-1 (typ 1: SCIG, typ 2: WRIG, typ 3: DFIG, typ 4: pelny przeksztaltnik). */
+export interface TurbinaWiatrowa {
+  rodzina: TypIecTurbiny;
+  proweniencja: ProweniencjaParametrow;
+  h_calkowite_s: number;
+  sztywnosc_walu_pu: number;
+  tlumienie_walu_pu: number;
+  poslizg_ustalony_pu: number;
+  crowbar?: Crowbar | null;
+  pitch_tempo_deg_s: number;
+  pitch_min_deg: number;
+  pitch_max_deg: number;
+  przeksztaltnik?: PrzeksztaltnikGFL | null;
+}
+
+/** Unia dyskryminowana po `rodzina` — jeden blok parametrow dynamicznych zrodla. */
+export type ParametryDynamiczne =
+  | MaszynaSynchroniczna
+  | PrzeksztaltnikGFL
+  | PrzeksztaltnikGFM
+  | Magazyn
+  | TurbinaWiatrowa;
+
+// ---------------------------------------------------------------------------
 // Generator
 // ---------------------------------------------------------------------------
 
@@ -497,6 +681,13 @@ export interface Generator extends ENMElement {
    * Ustawiany przez backend przy bind profilem operatora. null = brak profilu.
    */
   nc_rfg_module?: 'A' | 'B' | 'C' | 'D' | null;
+
+  /**
+   * Parametry dynamiczne zrodla dla biegow czasowych RMS/DAE (karta W6-1).
+   * Kontrakt wejsciowy — rdzen solvera (W6-2) jeszcze nie istnieje, wiec kazdy
+   * bieg `dynamika_rms` konczy sie nazwana odmowa niezaleznie od tego pola.
+   */
+  dynamika?: ParametryDynamiczne | null;
 }
 
 /**

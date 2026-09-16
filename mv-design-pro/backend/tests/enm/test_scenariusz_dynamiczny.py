@@ -8,7 +8,7 @@ W6-2 (nieistniejacy w tej karcie) czyta harmonogram bezposrednio.
 from __future__ import annotations
 
 import pytest
-from enm.models import Bus, ENMHeader, EnergyNetworkModel, Generator, Load, OverheadLine
+from enm.models import Bus, EnergyNetworkModel, ENMHeader, Generator, Load, OverheadLine
 from enm.scenariusze import (
     KomendaRegulacji,
     Nastawa,
@@ -37,8 +37,14 @@ def enm() -> EnergyNetworkModel:
         ],
         branches=[
             OverheadLine(
-                ref_id="l1", name="Linia 1", from_bus_ref="b1", to_bus_ref="b2",
-                length_km=1.0, r_ohm_per_km=0.2, x_ohm_per_km=0.3, b_siemens_per_km=0.0,
+                ref_id="l1",
+                name="Linia 1",
+                from_bus_ref="b1",
+                to_bus_ref="b2",
+                length_km=1.0,
+                r_ohm_per_km=0.2,
+                x_ohm_per_km=0.3,
+                b_siemens_per_km=0.0,
             ),
         ],
         generators=[Generator(ref_id="g1", name="G1", bus_ref="b1", p_mw=1.0)],
@@ -95,24 +101,28 @@ class TestKazdyRodzajZdarzenia:
 class TestTPozaHoryzontem:
     def test_zdarzenie_w_horyzoncie_ok(self):
         ScenariuszDynamiczny(
-            horyzont_s=5.0, krok_wyjscia_s=0.1,
+            horyzont_s=5.0,
+            krok_wyjscia_s=0.1,
             zdarzenia=(WylaczenieGalezi(t_s=4.999, element_ref="l1"),),
         )
 
     def test_zdarzenie_poza_horyzontem_odrzucone(self):
         with pytest.raises(ValidationError, match="wykracza poza horyzont_s"):
             ScenariuszDynamiczny(
-                horyzont_s=1.0, krok_wyjscia_s=0.1,
+                horyzont_s=1.0,
+                krok_wyjscia_s=0.1,
                 zdarzenia=(WylaczenieGalezi(t_s=1.5, element_ref="l1"),),
             )
 
     def test_zwarcie_usuniecie_poza_horyzontem_odrzucone(self):
         with pytest.raises(ValidationError, match="t_usuniecia_s=.* poza horyzont_s"):
             ScenariuszDynamiczny(
-                horyzont_s=1.0, krok_wyjscia_s=0.1,
+                horyzont_s=1.0,
+                krok_wyjscia_s=0.1,
                 zdarzenia=(
-                    Zwarcie(t_s=0.5, bus_ref="b1", typ="3F", r_f_ohm=0.0, x_f_ohm=0.0,
-                            t_usuniecia_s=2.0),
+                    Zwarcie(
+                        t_s=0.5, bus_ref="b1", typ="3F", r_f_ohm=0.0, x_f_ohm=0.0, t_usuniecia_s=2.0
+                    ),
                 ),
             )
 
@@ -133,9 +143,12 @@ class TestTPozaHoryzontem:
 class TestRefNieistniejacy:
     def test_zwarcie_bus_ref_nieistniejacy(self, enm):
         scen = OperatingScenario(
-            scenario_id="s1", name="Zle zwarcie", kind=RodzajScenariusza.FAULT_STUDY,
+            scenario_id="s1",
+            name="Zle zwarcie",
+            kind=RodzajScenariusza.FAULT_STUDY,
             dynamika=ScenariuszDynamiczny(
-                horyzont_s=1.0, krok_wyjscia_s=0.1,
+                horyzont_s=1.0,
+                krok_wyjscia_s=0.1,
                 zdarzenia=(Zwarcie(t_s=0.1, bus_ref="brak", typ="3F", r_f_ohm=0.0, x_f_ohm=0.0),),
             ),
         )
@@ -144,9 +157,12 @@ class TestRefNieistniejacy:
 
     def test_wylaczenie_galezi_ref_nieistniejacy(self, enm):
         scen = OperatingScenario(
-            scenario_id="s2", name="Zle wylaczenie", kind=RodzajScenariusza.FAULT_STUDY,
+            scenario_id="s2",
+            name="Zle wylaczenie",
+            kind=RodzajScenariusza.FAULT_STUDY,
             dynamika=ScenariuszDynamiczny(
-                horyzont_s=1.0, krok_wyjscia_s=0.1,
+                horyzont_s=1.0,
+                krok_wyjscia_s=0.1,
                 zdarzenia=(WylaczenieGalezi(t_s=0.1, element_ref="brak"),),
             ),
         )
@@ -155,9 +171,12 @@ class TestRefNieistniejacy:
 
     def test_odlaczenie_zrodla_ref_nieistniejacy(self, enm):
         scen = OperatingScenario(
-            scenario_id="s3", name="Zle odlaczenie", kind=RodzajScenariusza.FAULT_STUDY,
+            scenario_id="s3",
+            name="Zle odlaczenie",
+            kind=RodzajScenariusza.FAULT_STUDY,
             dynamika=ScenariuszDynamiczny(
-                horyzont_s=1.0, krok_wyjscia_s=0.1,
+                horyzont_s=1.0,
+                krok_wyjscia_s=0.1,
                 zdarzenia=(OdlaczenieZrodla(t_s=0.1, ref_id="brak"),),
             ),
         )
@@ -166,9 +185,12 @@ class TestRefNieistniejacy:
 
     def test_synchronizacja_ref_id_ok_ale_bus_ref_nieistniejacy(self, enm):
         scen = OperatingScenario(
-            scenario_id="s4", name="Zla synchronizacja", kind=RodzajScenariusza.FAULT_STUDY,
+            scenario_id="s4",
+            name="Zla synchronizacja",
+            kind=RodzajScenariusza.FAULT_STUDY,
             dynamika=ScenariuszDynamiczny(
-                horyzont_s=1.0, krok_wyjscia_s=0.1,
+                horyzont_s=1.0,
+                krok_wyjscia_s=0.1,
                 zdarzenia=(Synchronizacja(t_s=0.1, ref_id="g1", bus_ref="brak"),),
             ),
         )
@@ -180,10 +202,13 @@ class TestRefNieistniejacy:
         ktorej harmonogram operuje — dynamiczne zdarzenie na nim jest tym
         samym brakiem co ref nigdy nieistniejacy (jedna migawka, jedna prawda)."""
         scen = OperatingScenario(
-            scenario_id="s5", name="Wylaczone + dynamika", kind=RodzajScenariusza.FAULT_STUDY,
+            scenario_id="s5",
+            name="Wylaczone + dynamika",
+            kind=RodzajScenariusza.FAULT_STUDY,
             out_of_service=("l1",),
             dynamika=ScenariuszDynamiczny(
-                horyzont_s=1.0, krok_wyjscia_s=0.1,
+                horyzont_s=1.0,
+                krok_wyjscia_s=0.1,
                 zdarzenia=(ZalaczenieGalezi(t_s=0.1, element_ref="l1"),),
             ),
         )
@@ -192,12 +217,21 @@ class TestRefNieistniejacy:
 
     def test_referencje_poprawne_apply_scenario_nie_mutuje_migawki(self, enm):
         scen = OperatingScenario(
-            scenario_id="s6", name="Dynamika poprawna", kind=RodzajScenariusza.FAULT_STUDY,
+            scenario_id="s6",
+            name="Dynamika poprawna",
+            kind=RodzajScenariusza.FAULT_STUDY,
             dynamika=ScenariuszDynamiczny(
-                horyzont_s=2.0, krok_wyjscia_s=0.1,
+                horyzont_s=2.0,
+                krok_wyjscia_s=0.1,
                 zdarzenia=(
-                    Zwarcie(t_s=0.1, bus_ref="b1", typ="3F", r_f_ohm=0.0, x_f_ohm=0.0,
-                            t_usuniecia_s=0.15),
+                    Zwarcie(
+                        t_s=0.1,
+                        bus_ref="b1",
+                        typ="3F",
+                        r_f_ohm=0.0,
+                        x_f_ohm=0.0,
+                        t_usuniecia_s=0.15,
+                    ),
                     SkokObciazenia(t_s=1.0, ref_id="ld1", delta_p_mw=0.2, delta_q_mvar=0.0),
                 ),
             ),
@@ -215,7 +249,8 @@ class TestRefNieistniejacy:
 class TestKolejnoscKanoniczna:
     def test_sortowanie_po_t_s(self):
         dyn = ScenariuszDynamiczny(
-            horyzont_s=5.0, krok_wyjscia_s=0.1,
+            horyzont_s=5.0,
+            krok_wyjscia_s=0.1,
             zdarzenia=(
                 WylaczenieGalezi(t_s=3.0, element_ref="l1"),
                 WylaczenieGalezi(t_s=1.0, element_ref="l1"),
@@ -253,29 +288,35 @@ class TestKolejnoscKanoniczna:
 
 class TestHash:
     def test_scenariusz_bez_dynamiki_hash_bez_klucza_dynamika(self):
-        scen = OperatingScenario(scenario_id="s1", name="Bez dynamiki", kind=RodzajScenariusza.NORMAL)
+        scen = OperatingScenario(
+            scenario_id="s1", name="Bez dynamiki", kind=RodzajScenariusza.NORMAL
+        )
         assert "dynamika" not in scen.tresc()
 
     def test_scenariusz_z_dynamika_hash_ma_klucz_dynamika(self):
         scen = OperatingScenario(
-            scenario_id="s1", name="Z dynamika", kind=RodzajScenariusza.FAULT_STUDY,
+            scenario_id="s1",
+            name="Z dynamika",
+            kind=RodzajScenariusza.FAULT_STUDY,
             dynamika=ScenariuszDynamiczny(horyzont_s=1.0, krok_wyjscia_s=0.1, zdarzenia=()),
         )
         assert "dynamika" in scen.tresc()
 
     def test_dwa_scenariusze_rozne_harmonogramy_rozny_hash(self):
-        base = dict(scenario_id="s1", name="X", kind=RodzajScenariusza.FAULT_STUDY)
+        base = {"scenario_id": "s1", "name": "X", "kind": RodzajScenariusza.FAULT_STUDY}
         a = OperatingScenario(
             **base,
             dynamika=ScenariuszDynamiczny(
-                horyzont_s=1.0, krok_wyjscia_s=0.1,
+                horyzont_s=1.0,
+                krok_wyjscia_s=0.1,
                 zdarzenia=(WylaczenieGalezi(t_s=0.1, element_ref="l1"),),
             ),
         )
         b = OperatingScenario(
             **base,
             dynamika=ScenariuszDynamiczny(
-                horyzont_s=1.0, krok_wyjscia_s=0.1,
+                horyzont_s=1.0,
+                krok_wyjscia_s=0.1,
                 zdarzenia=(WylaczenieGalezi(t_s=0.2, element_ref="l1"),),
             ),
         )
@@ -284,12 +325,13 @@ class TestHash:
     def test_ten_sam_harmonogram_ten_sam_hash_deterministycznie(self):
         def buduj():
             return OperatingScenario(
-                scenario_id="s1", name="X", kind=RodzajScenariusza.FAULT_STUDY,
+                scenario_id="s1",
+                name="X",
+                kind=RodzajScenariusza.FAULT_STUDY,
                 dynamika=ScenariuszDynamiczny(
-                    horyzont_s=1.0, krok_wyjscia_s=0.1,
-                    zdarzenia=(
-                        Zwarcie(t_s=0.1, bus_ref="b1", typ="3F", r_f_ohm=0.0, x_f_ohm=0.0),
-                    ),
+                    horyzont_s=1.0,
+                    krok_wyjscia_s=0.1,
+                    zdarzenia=(Zwarcie(t_s=0.1, bus_ref="b1", typ="3F", r_f_ohm=0.0, x_f_ohm=0.0),),
                 ),
             )
 
@@ -300,17 +342,26 @@ class TestHash:
         `dynamika`) ma zamrozony hash — wartosc zmierzona na tym kodzie i
         przypieta, zeby przyszla zmiana `tresc()` nie przeszla bez zauwazenia."""
         scen = OperatingScenario(
-            scenario_id="s1", name="Kontyngencja N-1", kind=RodzajScenariusza.N_1,
+            scenario_id="s1",
+            name="Kontyngencja N-1",
+            kind=RodzajScenariusza.N_1,
             out_of_service=("l1",),
         )
         assert scen.hash == "a60610dffc00e827a4efd5f765bf63dd70dc3a27a07318b74cdec5704c2f50e7"
 
     def test_tresc_bez_dynamiki_ma_dokladnie_te_same_klucze_co_przed_karta(self):
         scen = OperatingScenario(
-            scenario_id="s1", name="Kontyngencja N-1", kind=RodzajScenariusza.N_1,
+            scenario_id="s1",
+            name="Kontyngencja N-1",
+            kind=RodzajScenariusza.N_1,
             out_of_service=("l1",),
         )
         assert set(scen.tresc().keys()) == {
-            "kind", "out_of_service", "setpoints", "gen_scaling", "injections",
-            "probe_shunts", "fault_spec",
+            "kind",
+            "out_of_service",
+            "setpoints",
+            "gen_scaling",
+            "injections",
+            "probe_shunts",
+            "fault_spec",
         }

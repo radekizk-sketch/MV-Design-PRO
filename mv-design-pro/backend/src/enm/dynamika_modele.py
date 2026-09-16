@@ -50,6 +50,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
+from network_model.pochodne import mva_na_kva
 from pydantic import BaseModel, Field, model_validator
 
 # ---------------------------------------------------------------------------
@@ -225,16 +226,28 @@ class PrzeksztaltnikGFL(BaseModel):
 
     pll_kp: float = Field(gt=0.0, le=500.0, description="Wzmocnienie proporcjonalne PLL.")
     pll_ki: float = Field(gt=0.0, le=50000.0, description="Wzmocnienie calkujace PLL.")
-    reg_pradu_kp: float = Field(gt=0.0, le=100.0, description="Wzmocnienie proporcjonalne regulatora pradu.")
-    reg_pradu_ki: float = Field(gt=0.0, le=100000.0, description="Wzmocnienie calkujace regulatora pradu.")
-    k_frt: float = Field(ge=0.0, le=10.0, description="Wzmocnienie pradu biernego przy zapadzie (FRT).")
+    reg_pradu_kp: float = Field(
+        gt=0.0, le=100.0, description="Wzmocnienie proporcjonalne regulatora pradu."
+    )
+    reg_pradu_ki: float = Field(
+        gt=0.0, le=100000.0, description="Wzmocnienie calkujace regulatora pradu."
+    )
+    k_frt: float = Field(
+        ge=0.0, le=10.0, description="Wzmocnienie pradu biernego przy zapadzie (FRT)."
+    )
     prog_frt_pu: float = Field(ge=0.0, le=1.0, description="Prog napieciowy zadzialania FRT (pu).")
     tp_s: float = Field(gt=0.0, le=2.0, description="Stala czasowa filtru mocy czynnej (s).")
     tiq_s: float = Field(gt=0.0, le=2.0, description="Stala czasowa regulatora Iq (s).")
-    p_odbudowa_pu_na_s: float = Field(gt=0.0, le=20.0, description="Tempo odbudowy mocy czynnej (pu/s).")
-    p_odbudowa_opoznienie_s: float = Field(ge=0.0, le=5.0, description="Opoznienie startu odbudowy P (s).")
+    p_odbudowa_pu_na_s: float = Field(
+        gt=0.0, le=20.0, description="Tempo odbudowy mocy czynnej (pu/s)."
+    )
+    p_odbudowa_opoznienie_s: float = Field(
+        ge=0.0, le=5.0, description="Opoznienie startu odbudowy P (s)."
+    )
     droop_p_f_pu: float = Field(ge=0.0, le=0.2, description="Droop P/f (pu).")
-    martwa_strefa_f_hz: float = Field(ge=0.0, le=1.0, description="Martwa strefa czestotliwosci (Hz).")
+    martwa_strefa_f_hz: float = Field(
+        ge=0.0, le=1.0, description="Martwa strefa czestotliwosci (Hz)."
+    )
     droop_q_u_pu: float = Field(ge=0.0, le=0.2, description="Droop Q/U (pu).")
     martwa_strefa_u_pu: float = Field(ge=0.0, le=0.2, description="Martwa strefa napiecia (pu).")
     u_min_ciagle_pu: float = Field(ge=0.0, le=1.0, description="Dolna granica pracy ciaglej (pu).")
@@ -267,8 +280,12 @@ class PrzeksztaltnikGFM(BaseModel):
     mq_pu: float = Field(gt=0.0, le=0.2, description="Droop mocy biernej Q/U (pu).")
     h_wirtualne_s: float = Field(ge=0.0, le=20.0, description="Wirtualna stala inercji (s).")
     d_wirtualne_pu: float = Field(ge=0.0, le=100.0, description="Wirtualne tlumienie (pu).")
-    r_wirtualne_pu: float = Field(ge=0.0, le=1.0, description="Wirtualna rezystancja wyjsciowa (pu).")
-    x_wirtualne_pu: float = Field(ge=0.0, le=1.0, description="Wirtualna reaktancja wyjsciowa (pu).")
+    r_wirtualne_pu: float = Field(
+        ge=0.0, le=1.0, description="Wirtualna rezystancja wyjsciowa (pu)."
+    )
+    x_wirtualne_pu: float = Field(
+        ge=0.0, le=1.0, description="Wirtualna reaktancja wyjsciowa (pu)."
+    )
     i_max_pu: float = Field(ge=1.0, le=3.0, description="Maksymalny prad przeksztaltnika (pu).")
     strategia_ograniczenia: StrategiaOgraniczeniaGfm
     tp_s: float = Field(gt=0.0, le=2.0, description="Stala czasowa filtru mocy czynnej (s).")
@@ -284,7 +301,9 @@ class RegulacjaCzestotliwosciMagazynu(BaseModel):
     """Regulacja czestotliwosciowa magazynu (droop + rezerwa mocy)."""
 
     droop_pu: float = Field(gt=0.0, le=0.2, description="Droop P/f magazynu (pu).")
-    martwa_strefa_hz: float = Field(ge=0.0, le=1.0, description="Martwa strefa czestotliwosci (Hz).")
+    martwa_strefa_hz: float = Field(
+        ge=0.0, le=1.0, description="Martwa strefa czestotliwosci (Hz)."
+    )
     p_rezerwa_pu: float = Field(ge=0.0, le=1.0, description="Rezerwa mocy na regulacje f (pu).")
 
 
@@ -296,9 +315,13 @@ class Magazyn(BaseModel):
 
     e_n_kwh: float = Field(gt=0.0, le=2_000_000.0, description="Pojemnosc znamionowa (kWh).")
     p_ladowania_max_kw: float = Field(gt=0.0, le=500_000.0, description="Maks. moc ladowania (kW).")
-    p_rozladowania_max_kw: float = Field(gt=0.0, le=500_000.0, description="Maks. moc rozladowania (kW).")
+    p_rozladowania_max_kw: float = Field(
+        gt=0.0, le=500_000.0, description="Maks. moc rozladowania (kW)."
+    )
     sprawnosc_ladowania: float = Field(gt=0.0, le=1.0, description="Sprawnosc ladowania (pu).")
-    sprawnosc_rozladowania: float = Field(gt=0.0, le=1.0, description="Sprawnosc rozladowania (pu).")
+    sprawnosc_rozladowania: float = Field(
+        gt=0.0, le=1.0, description="Sprawnosc rozladowania (pu)."
+    )
     soc_min: float = Field(ge=0.0, le=1.0, description="Dolna granica SOC (pu).")
     soc_max: float = Field(ge=0.0, le=1.0, description="Gorna granica SOC (pu).")
     soc_poczatkowy: float = Field(ge=0.0, le=1.0, description="Poczatkowy SOC (pu).")
@@ -318,7 +341,12 @@ class Magazyn(BaseModel):
                 f"Magazyn: soc_poczatkowy ({self.soc_poczatkowy}) musi lezec w przedziale "
                 f"[soc_min={self.soc_min}, soc_max={self.soc_max}]."
             )
-        baza_kw = self.przeksztaltnik.s_n_mva * 1000.0
+        # Skalowanie jednostki (MVA->kVA, x*1000) jest CV-4.3 K4 wielkoscia
+        # pochodna, nie formula fizyczna — liczy ja `mva_na_kva` (kontrakt
+        # `network_model/pochodne/jednostki.py`, karta W3-F), zeby ta sama
+        # operacja nie miala drugiej, niezaleznej kopii poza pakietem pochodne
+        # (backend_no_physics_guard: rodzina J, skalowanie jednostek).
+        baza_kw = mva_na_kva(self.przeksztaltnik.s_n_mva)
         if self.p_rozladowania_max_kw > baza_kw:
             raise ValueError(
                 f"Magazyn: p_rozladowania_max_kw ({self.p_rozladowania_max_kw}) przekracza "
@@ -340,9 +368,13 @@ class Magazyn(BaseModel):
 class Crowbar(BaseModel):
     """Ochrona crowbar wirnika DFIG (typ 3)."""
 
-    prog_pradu_pu: float = Field(gt=1.0, le=5.0, description="Prog pradu wirnika zalaczajacy crowbar (pu).")
+    prog_pradu_pu: float = Field(
+        gt=1.0, le=5.0, description="Prog pradu wirnika zalaczajacy crowbar (pu)."
+    )
     czas_zwloki_s: float = Field(ge=0.0, le=1.0, description="Zwloka zalaczenia crowbar (s).")
-    czas_trwania_s: float = Field(gt=0.0, le=5.0, description="Czas trwania zalaczenia crowbar (s).")
+    czas_trwania_s: float = Field(
+        gt=0.0, le=5.0, description="Czas trwania zalaczenia crowbar (s)."
+    )
 
 
 TypIecTurbiny = Literal["wiatr_typ_1", "wiatr_typ_2", "wiatr_typ_3", "wiatr_typ_4"]
@@ -360,7 +392,9 @@ class TurbinaWiatrowa(BaseModel):
     tlumienie_walu_pu: float = Field(ge=0.0, le=10.0, description="Tlumienie walu (pu).")
     poslizg_ustalony_pu: float = Field(ge=-0.1, le=0.1, description="Poslizg ustalony (pu).")
     crowbar: Crowbar | None = None
-    pitch_tempo_deg_s: float = Field(gt=0.0, le=30.0, description="Tempo zmiany kata pitch (deg/s).")
+    pitch_tempo_deg_s: float = Field(
+        gt=0.0, le=30.0, description="Tempo zmiany kata pitch (deg/s)."
+    )
     pitch_min_deg: float = Field(ge=-10.0, le=10.0, description="Minimalny kat pitch (deg).")
     pitch_max_deg: float = Field(gt=0.0, le=90.0, description="Maksymalny kat pitch (deg).")
     przeksztaltnik: PrzeksztaltnikGFL | None = None

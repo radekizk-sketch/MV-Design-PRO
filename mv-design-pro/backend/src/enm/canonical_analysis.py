@@ -1775,9 +1775,7 @@ def build_dynamika_time_series(
         raise KeyError(f"Brak zapisanych szeregów czasowych dla biegu {run.id}")
     os_czasu_s, probki = wynik
     if klucze_kanalow and not probki:
-        raise KeyError(
-            f"Żaden z żądanych kanałów {klucze_kanalow} nie istnieje w biegu {run.id}"
-        )
+        raise KeyError(f"Żaden z żądanych kanałów {klucze_kanalow} nie istnieje w biegu {run.id}")
     return {"run_id": str(run.id), "os_czasu_s": os_czasu_s, "probki": probki}
 
 

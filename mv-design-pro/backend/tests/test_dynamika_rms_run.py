@@ -254,13 +254,23 @@ class TestBudowaWidokowOdczytu:
         wynik = ResultSetDynamicV1(
             run_id=str(run_id),
             wlasnosci_biegu=WlasnosciBieguV1(
-                zbiegl=True, kroki=10, kroki_odrzucone=0, max_residuum_f=1e-9,
-                max_residuum_g=1e-9, czas_obliczen_s=0.1, integrator="trapez_niejawny",
-                dt_s=0.001, tolerancja=1e-6,
+                zbiegl=True,
+                kroki=10,
+                kroki_odrzucone=0,
+                max_residuum_f=1e-9,
+                max_residuum_g=1e-9,
+                czas_obliczen_s=0.1,
+                integrator="trapez_niejawny",
+                dt_s=0.001,
+                tolerancja=1e-6,
             ),
             tozsamosc=TozsamoscBieguDynamicznegoV1(
-                odcisk_migawki="a", odcisk_punktu_pracy="b", odcisk_nastaw_solvera="c",
-                odcisk_harmonogramu="d", odcisk_implementacji="e", wersja_solvera="0.0.0",
+                odcisk_migawki="a",
+                odcisk_punktu_pracy="b",
+                odcisk_nastaw_solvera="c",
+                odcisk_harmonogramu="d",
+                odcisk_implementacji="e",
+                wersja_solvera="0.0.0",
             ),
         )
         raw_result = zbuduj_resultset_dynamiczny_v1(wynik, z_probkami=False)
@@ -321,9 +331,7 @@ class TestPersystencjaSzeregow:
 
         run_id = self._zapisany_bieg()
         with canonical_run_repository_scope() as repo:
-            repo.zapisz_szeregi_dynamiczne(
-                run_id, [0.0, 1.0], {"a": [1.0, 2.0], "b": [3.0, 4.0]}
-            )
+            repo.zapisz_szeregi_dynamiczne(run_id, [0.0, 1.0], {"a": [1.0, 2.0], "b": [3.0, 4.0]})
         run = _domyslny_canonical_run(run_id, "case-1", "dynamika_rms", {"kontrakt": "x"})
         wynik = build_dynamika_time_series(run, ["a"])
         assert set(wynik["probki"]) == {"a"}
@@ -412,18 +420,31 @@ class TestHttpEndpointyWynikow:
             run_id=str(run_id),
             kanaly=(
                 KanalDynamicznyV1(
-                    klucz="u_pu@bus-1", przestrzen="siec", jednostka="pu",
-                    element_ref="bus-1", opis_pl="Napiecie szyny 1",
+                    klucz="u_pu@bus-1",
+                    przestrzen="siec",
+                    jednostka="pu",
+                    element_ref="bus-1",
+                    opis_pl="Napiecie szyny 1",
                 ),
             ),
             wlasnosci_biegu=WlasnosciBieguV1(
-                zbiegl=True, kroki=5, kroki_odrzucone=0, max_residuum_f=1e-9,
-                max_residuum_g=1e-9, czas_obliczen_s=0.05, integrator="trapez_niejawny",
-                dt_s=0.001, tolerancja=1e-6,
+                zbiegl=True,
+                kroki=5,
+                kroki_odrzucone=0,
+                max_residuum_f=1e-9,
+                max_residuum_g=1e-9,
+                czas_obliczen_s=0.05,
+                integrator="trapez_niejawny",
+                dt_s=0.001,
+                tolerancja=1e-6,
             ),
             tozsamosc=TozsamoscBieguDynamicznegoV1(
-                odcisk_migawki="a", odcisk_punktu_pracy="b", odcisk_nastaw_solvera="c",
-                odcisk_harmonogramu="d", odcisk_implementacji="e", wersja_solvera="0.0.0",
+                odcisk_migawki="a",
+                odcisk_punktu_pracy="b",
+                odcisk_nastaw_solvera="c",
+                odcisk_harmonogramu="d",
+                odcisk_implementacji="e",
+                wersja_solvera="0.0.0",
             ),
         )
         raw_result = zbuduj_resultset_dynamiczny_v1(wynik, z_probkami=False)

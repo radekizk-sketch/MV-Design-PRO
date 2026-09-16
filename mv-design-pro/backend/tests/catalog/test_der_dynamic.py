@@ -82,8 +82,14 @@ class TestDefaultProfilesPresent:
     @pytest.mark.parametrize(
         "profil",
         [
-            DEFAULT_PV_GFL, DEFAULT_PV_GFM, DEFAULT_BESS_GFL, DEFAULT_BESS_GFM,
-            DEFAULT_WIND_TYPE_1, DEFAULT_WIND_TYPE_2, DEFAULT_WIND_TYPE_3, DEFAULT_WIND_TYPE_4,
+            DEFAULT_PV_GFL,
+            DEFAULT_PV_GFM,
+            DEFAULT_BESS_GFL,
+            DEFAULT_BESS_GFM,
+            DEFAULT_WIND_TYPE_1,
+            DEFAULT_WIND_TYPE_2,
+            DEFAULT_WIND_TYPE_3,
+            DEFAULT_WIND_TYPE_4,
         ],
     )
     def test_kazdy_profil_ma_proweniencje_typowa_normy(self, profil) -> None:
@@ -94,8 +100,14 @@ class TestDefaultProfilesPresent:
         """Naprawa fabrykacji SS0 p.3: dawna proweniencja cytowala SMA/Tesla/
         Vestas/GE bez zadnej karty katalogowej za tymi liczbami."""
         for profil in (
-            DEFAULT_PV_GFL, DEFAULT_PV_GFM, DEFAULT_BESS_GFL, DEFAULT_BESS_GFM,
-            DEFAULT_WIND_TYPE_1, DEFAULT_WIND_TYPE_2, DEFAULT_WIND_TYPE_3, DEFAULT_WIND_TYPE_4,
+            DEFAULT_PV_GFL,
+            DEFAULT_PV_GFM,
+            DEFAULT_BESS_GFL,
+            DEFAULT_BESS_GFM,
+            DEFAULT_WIND_TYPE_1,
+            DEFAULT_WIND_TYPE_2,
+            DEFAULT_WIND_TYPE_3,
+            DEFAULT_WIND_TYPE_4,
         ):
             for producent in ("SMA", "Tesla", "Vestas", "GE 5.0"):
                 assert producent not in profil.proweniencja.odniesienie
@@ -121,9 +133,15 @@ class TestBrakNumerycznychDomyslek:
         (None dla GFL — brak inercji wirtualnej jest FAKTEM fizycznym, nie
         brakiem danej)."""
         for nazwa, pole in InverterDynamicProfile.model_fields.items():
-            if nazwa in ("virtual_inertia_h_s", "profile_id", "profile_name_pl",
-                          "der_kind", "control_mode", "proweniencja",
-                          "iq_priority_during_fault"):
+            if nazwa in (
+                "virtual_inertia_h_s",
+                "profile_id",
+                "profile_name_pl",
+                "der_kind",
+                "control_mode",
+                "proweniencja",
+                "iq_priority_during_fault",
+            ):
                 continue
             assert pole.is_required(), f"InverterDynamicProfile.{nazwa} ma default"
         for nazwa, pole in WindTurbineDynamicProfile.model_fields.items():
@@ -231,8 +249,13 @@ class TestMapowanieNaParametryDynamiczneKanoniczne:
 
     def test_inverter_gfl_mapuje_sie_na_przeksztaltnik_gfl(self) -> None:
         blok = DEFAULT_PV_GFL.to_parametry_dynamiczne(
-            priorytet_ogranicznika="bierna", s_n_mva=1.0,
-            pll_kp=50.0, pll_ki=500.0, reg_pradu_kp=1.0, reg_pradu_ki=100.0, k_frt=2.0,
+            priorytet_ogranicznika="bierna",
+            s_n_mva=1.0,
+            pll_kp=50.0,
+            pll_ki=500.0,
+            reg_pradu_kp=1.0,
+            reg_pradu_ki=100.0,
+            k_frt=2.0,
         )
         assert blok.rodzina == "przeksztaltnikowa_gfl"
         assert blok.proweniencja == DEFAULT_PV_GFL.proweniencja
@@ -249,8 +272,14 @@ class TestMapowanieNaParametryDynamiczneKanoniczne:
 
     def test_wind_type3_z_argumentami_mapuje_sie_z_przeksztaltnikiem(self) -> None:
         blok = DEFAULT_WIND_TYPE_3.to_parametry_dynamiczne(
-            i_max_pu=1.2, priorytet_ogranicznika="czynna", s_n_mva=2.0,
-            pll_kp=40.0, pll_ki=400.0, reg_pradu_kp=1.0, reg_pradu_ki=80.0, k_frt=1.5,
+            i_max_pu=1.2,
+            priorytet_ogranicznika="czynna",
+            s_n_mva=2.0,
+            pll_kp=40.0,
+            pll_ki=400.0,
+            reg_pradu_kp=1.0,
+            reg_pradu_ki=80.0,
+            k_frt=1.5,
         )
         assert blok.przeksztaltnik is not None
         assert blok.przeksztaltnik.priorytet_ogranicznika == "czynna"
@@ -270,26 +299,30 @@ class TestPokrycieKatalogu:
         # Pomiar zapisany jawnie — spada tylko, gdy ktos USUNIE wskazanie (nie
         # rosnie sam z siebie): przypieta DOLNA granica, zeby ewentualny wzrost
         # pokrycia katalogu nie psul testu.
-        assert len(z_wyborem) >= 1, (
-            f"Pokrycie PV spadlo ponizej zmierzonego minimum: {len(z_wyborem)}/{len(pv_inverters)}"
-        )
+        assert (
+            len(z_wyborem) >= 1
+        ), f"Pokrycie PV spadlo ponizej zmierzonego minimum: {len(z_wyborem)}/{len(pv_inverters)}"
         for pv in z_wyborem:
             r = resolve_der_dynamic_profile(
-                der_kind="PV", catalog_dynamic_profile_id=pv.dynamic_profile_id,
+                der_kind="PV",
+                catalog_dynamic_profile_id=pv.dynamic_profile_id,
             )
-            assert r.profile is not None, f"PV {pv.id} niesie dynamic_profile_id, ale brak w rejestrze"
+            assert (
+                r.profile is not None
+            ), f"PV {pv.id} niesie dynamic_profile_id, ale brak w rejestrze"
 
     def test_pomiar_pokrycia_bess(self) -> None:
         catalog = get_default_mv_catalog()
         bess = catalog.list_bess_inverter_types()
         assert bess
         z_wyborem = [entry for entry in bess if entry.dynamic_profile_id]
-        assert len(z_wyborem) >= 1, (
-            f"Pokrycie BESS spadlo ponizej zmierzonego minimum: {len(z_wyborem)}/{len(bess)}"
-        )
+        assert (
+            len(z_wyborem) >= 1
+        ), f"Pokrycie BESS spadlo ponizej zmierzonego minimum: {len(z_wyborem)}/{len(bess)}"
         for entry in z_wyborem:
             r = resolve_der_dynamic_profile(
-                der_kind="BESS", catalog_dynamic_profile_id=entry.dynamic_profile_id,
+                der_kind="BESS",
+                catalog_dynamic_profile_id=entry.dynamic_profile_id,
             )
             assert r.profile is not None
 

@@ -127,7 +127,7 @@ function stubCatalogFetch(): void {
               v_min_continuous_pu: 0.9, v_max_continuous_pu: 1.1, frt_response_time_ms: 20,
               iq_max_during_fault_pu: 1.0, iq_priority_during_fault: true,
               p_recovery_rate_pu_per_s: 0.2, p_recovery_delay_ms: 0, virtual_inertia_h_s: null,
-              source_reference: 'Fikstura testowa', standard_compliance: ['IEC 61400-27'],
+              proweniencja: { zrodlo: 'profil_typowy_normy', odniesienie: 'IEEE 1547-2018 §5-8', data: null },
             },
           ],
         } as unknown as Response;

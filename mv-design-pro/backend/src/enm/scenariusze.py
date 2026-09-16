@@ -332,7 +332,7 @@ class ScenariuszDynamiczny(BaseModel):
 #: Referencje elementu wymagane przez kazdy rodzaj zdarzenia — (atrybut, opis)
 #: uzywane przez `_waliduj_zdarzenia_dynamiczne` (jedno zrodlo prawdy predykatu
 #: "ref istnieje w modelu", zamiast siedmiu odrebnych sprawdzen).
-def _refy_zdarzenia(zdarzenie: Any) -> tuple[tuple[str, str], ...]:
+def _refy_zdarzenia(zdarzenie: ZdarzenieDynamiczne) -> tuple[tuple[str, str], ...]:
     if isinstance(zdarzenie, Zwarcie):
         return (("bus_ref", zdarzenie.bus_ref),)
     if isinstance(zdarzenie, WylaczenieGalezi | ZalaczenieGalezi):

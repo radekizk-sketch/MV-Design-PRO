@@ -8989,6 +8989,12 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 "station_ref",
                 "meta",
                 "in_service",
+                # Karta W6-1: kontrakt parametrow dynamicznych (ParametryDynamiczne,
+                # unia dyskryminowana po `rodzina`). Zapis surowy tutaj — pelna
+                # walidacja (dyskryminator, proweniencja, walidatory krzyzowe) idzie
+                # przez `EnergyNetworkModel.model_validate` na granicy API (ten sam
+                # mechanizm co `limits`/`overrides`), zero zdublowanej walidacji.
+                "dynamika",
             },
             "substations": {
                 "name",

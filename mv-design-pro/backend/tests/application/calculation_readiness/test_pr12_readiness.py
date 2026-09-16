@@ -425,8 +425,11 @@ class TestCalculationReadinessService:
         enm = _minimal_enm_with_pf_data()
         enm.generators.append(
             Generator(
-                ref_id="pv_1", name="PV-01", bus_ref="bus_lv",
-                gen_type="pv_inverter", p_mw=1.0,
+                ref_id="pv_1",
+                name="PV-01",
+                bus_ref="bus_lv",
+                gen_type="pv_inverter",
+                p_mw=1.0,
                 materialized_params={"dynamic_model_ref": "default_pv_gfm"},
             ),
         )
@@ -486,16 +489,33 @@ class TestCalculationReadinessService:
 
         blok = MaszynaSynchroniczna(
             proweniencja=ProweniencjaParametrow(zrodlo="karta_producenta", odniesienie="DS-1"),
-            s_n_mva=10.0, h_s=3.0, d_pu=1.0, xd_pu=1.8, xq_pu=1.7,
-            xd_prim_pu=0.3, xq_prim_pu=0.4, xd_bis_pu=0.2, xq_bis_pu=0.25,
-            td0_prim_s=6.0, tq0_prim_s=0.5, td0_bis_s=0.03, tq0_bis_s=0.05,
-            xl_pu=0.15, nasycenie_s10=0.1, nasycenie_s12=0.3, ra_pu=0.003,
+            s_n_mva=10.0,
+            h_s=3.0,
+            d_pu=1.0,
+            xd_pu=1.8,
+            xq_pu=1.7,
+            xd_prim_pu=0.3,
+            xq_prim_pu=0.4,
+            xd_bis_pu=0.2,
+            xq_bis_pu=0.25,
+            td0_prim_s=6.0,
+            tq0_prim_s=0.5,
+            td0_bis_s=0.03,
+            tq0_bis_s=0.05,
+            xl_pu=0.15,
+            nasycenie_s10=0.1,
+            nasycenie_s12=0.3,
+            ra_pu=0.003,
         )
         enm = _minimal_enm_with_pf_data()
         enm.generators.append(
             Generator(
-                ref_id="sm_1", name="SM-01", bus_ref="bus_sn",
-                gen_type="synchronous", p_mw=5.0, dynamika=blok,
+                ref_id="sm_1",
+                name="SM-01",
+                bus_ref="bus_sn",
+                gen_type="synchronous",
+                p_mw=5.0,
+                dynamika=blok,
             ),
         )
         svc = CalculationReadinessService()
@@ -511,16 +531,33 @@ class TestCalculationReadinessService:
 
         blok = MaszynaSynchroniczna(
             proweniencja=ProweniencjaParametrow(zrodlo="karta_producenta", odniesienie="DS-1"),
-            s_n_mva=10.0, h_s=3.0, d_pu=1.0, xd_pu=1.8, xq_pu=1.7,
-            xd_prim_pu=0.3, xq_prim_pu=0.4, xd_bis_pu=0.2, xq_bis_pu=0.25,
-            td0_prim_s=6.0, tq0_prim_s=0.5, td0_bis_s=0.03, tq0_bis_s=0.05,
-            xl_pu=0.15, nasycenie_s10=0.1, nasycenie_s12=0.3, ra_pu=0.003,
+            s_n_mva=10.0,
+            h_s=3.0,
+            d_pu=1.0,
+            xd_pu=1.8,
+            xq_pu=1.7,
+            xd_prim_pu=0.3,
+            xq_prim_pu=0.4,
+            xd_bis_pu=0.2,
+            xq_bis_pu=0.25,
+            td0_prim_s=6.0,
+            tq0_prim_s=0.5,
+            td0_bis_s=0.03,
+            tq0_bis_s=0.05,
+            xl_pu=0.15,
+            nasycenie_s10=0.1,
+            nasycenie_s12=0.3,
+            ra_pu=0.003,
         )
         enm = _minimal_enm_with_pf_data()
         enm.generators.append(
             Generator(
-                ref_id="sm_1", name="SM-01", bus_ref="bus_sn",
-                gen_type="synchronous", p_mw=5.0, dynamika=blok,
+                ref_id="sm_1",
+                name="SM-01",
+                bus_ref="bus_sn",
+                gen_type="synchronous",
+                p_mw=5.0,
+                dynamika=blok,
             ),
         )
         svc = CalculationReadinessService()
@@ -569,8 +606,11 @@ class TestCalculationReadinessService:
         enm = _minimal_enm_with_pf_data()
         enm.generators.append(
             Generator(
-                ref_id="pv_1", name="PV-01", bus_ref="bus_lv",
-                gen_type="pv_inverter", p_mw=1.0,
+                ref_id="pv_1",
+                name="PV-01",
+                bus_ref="bus_lv",
+                gen_type="pv_inverter",
+                p_mw=1.0,
             ),
         )
         svc = CalculationReadinessService()
@@ -580,23 +620,42 @@ class TestCalculationReadinessService:
         assert "pv_1" in wynik.blocking_object_refs
 
     def test_dynamika_rms_ready_with_dynamika_and_pf_ready(self) -> None:
-        from enm.dynamika_modele import PrzeksztaltnikGFL, ProweniencjaParametrow
+        from enm.dynamika_modele import ProweniencjaParametrow, PrzeksztaltnikGFL
 
         blok = PrzeksztaltnikGFL(
-            proweniencja=ProweniencjaParametrow(zrodlo="profil_typowy_normy", odniesienie="IEEE 1547-2018"),
-            s_n_mva=1.0, i_max_pu=1.2,
+            proweniencja=ProweniencjaParametrow(
+                zrodlo="profil_typowy_normy", odniesienie="IEEE 1547-2018"
+            ),
+            s_n_mva=1.0,
+            i_max_pu=1.2,
             priorytet_ogranicznika="bierna",
-            pll_kp=50.0, pll_ki=500.0, reg_pradu_kp=1.0, reg_pradu_ki=100.0,
-            k_frt=2.0, prog_frt_pu=0.9, tp_s=0.02, tiq_s=0.02,
-            p_odbudowa_pu_na_s=1.0, p_odbudowa_opoznienie_s=0.1,
-            droop_p_f_pu=0.04, martwa_strefa_f_hz=0.02, droop_q_u_pu=0.05,
-            martwa_strefa_u_pu=0.01, u_min_ciagle_pu=0.85, u_max_ciagle_pu=1.1,
+            pll_kp=50.0,
+            pll_ki=500.0,
+            reg_pradu_kp=1.0,
+            reg_pradu_ki=100.0,
+            k_frt=2.0,
+            prog_frt_pu=0.9,
+            tp_s=0.02,
+            tiq_s=0.02,
+            p_odbudowa_pu_na_s=1.0,
+            p_odbudowa_opoznienie_s=0.1,
+            droop_p_f_pu=0.04,
+            martwa_strefa_f_hz=0.02,
+            droop_q_u_pu=0.05,
+            martwa_strefa_u_pu=0.01,
+            u_min_ciagle_pu=0.85,
+            u_max_ciagle_pu=1.1,
         )
         enm = _minimal_enm_with_pf_data()
         enm.generators.append(
             Generator(
-                ref_id="pv_1", name="PV-01", bus_ref="bus_lv",
-                gen_type="pv_inverter", p_mw=1.0, q_mvar=0.0, dynamika=blok,
+                ref_id="pv_1",
+                name="PV-01",
+                bus_ref="bus_lv",
+                gen_type="pv_inverter",
+                p_mw=1.0,
+                q_mvar=0.0,
+                dynamika=blok,
                 materialized_params={"control_mode": "STALY_COS_PHI"},
             ),
         )
@@ -615,17 +674,34 @@ class TestCalculationReadinessService:
 
         blok = MaszynaSynchroniczna(
             proweniencja=ProweniencjaParametrow(zrodlo="karta_producenta", odniesienie="DS-1"),
-            s_n_mva=10.0, h_s=3.0, d_pu=1.0, xd_pu=1.8, xq_pu=1.7,
-            xd_prim_pu=0.3, xq_prim_pu=0.4, xd_bis_pu=0.2, xq_bis_pu=0.25,
-            td0_prim_s=6.0, tq0_prim_s=0.5, td0_bis_s=0.03, tq0_bis_s=0.05,
-            xl_pu=0.15, nasycenie_s10=0.1, nasycenie_s12=0.3, ra_pu=0.003,
+            s_n_mva=10.0,
+            h_s=3.0,
+            d_pu=1.0,
+            xd_pu=1.8,
+            xq_pu=1.7,
+            xd_prim_pu=0.3,
+            xq_prim_pu=0.4,
+            xd_bis_pu=0.2,
+            xq_bis_pu=0.25,
+            td0_prim_s=6.0,
+            tq0_prim_s=0.5,
+            td0_bis_s=0.03,
+            tq0_bis_s=0.05,
+            xl_pu=0.15,
+            nasycenie_s10=0.1,
+            nasycenie_s12=0.3,
+            ra_pu=0.003,
         )
         enm = _empty_enm()
         enm.buses.append(Bus(ref_id="b1", name="Szyna 1", voltage_kv=15.0))
         enm.generators.append(
             Generator(
-                ref_id="sm_1", name="SM-01", bus_ref="b1",
-                gen_type="synchronous", p_mw=5.0, dynamika=blok,
+                ref_id="sm_1",
+                name="SM-01",
+                bus_ref="b1",
+                gen_type="synchronous",
+                p_mw=5.0,
+                dynamika=blok,
             ),
         )
         svc = CalculationReadinessService()

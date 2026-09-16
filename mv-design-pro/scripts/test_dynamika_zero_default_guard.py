@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from dynamika_zero_default_guard import ROOT, SCAN_FILES, znajdz_naruszenia  # noqa: E402
 
-_CZYSTA_KLASA = '''
+_CZYSTA_KLASA = """
 from pydantic import BaseModel, Field
 from typing import Literal
 
@@ -24,39 +24,39 @@ class Przyklad(BaseModel):
     proweniencja: str
     i_max_pu: float = Field(ge=1.0, le=3.0)
     virtual_inertia_h_s: float | None = Field(default=None, ge=0.0, le=20.0)
-'''
+"""
 
-_INIEKCJA_PLAIN_DEFAULT = '''
+_INIEKCJA_PLAIN_DEFAULT = """
 from pydantic import BaseModel
 
 
 class Zla1(BaseModel):
     h_s: float = 3.0
-'''
+"""
 
-_INIEKCJA_FIELD_DEFAULT_KWARG = '''
+_INIEKCJA_FIELD_DEFAULT_KWARG = """
 from pydantic import BaseModel, Field
 
 
 class Zla2(BaseModel):
     tp_s: float = Field(default=0.05, ge=0.001, le=2.0)
-'''
+"""
 
-_INIEKCJA_FIELD_DEFAULT_POZYCYJNY = '''
+_INIEKCJA_FIELD_DEFAULT_POZYCYJNY = """
 from pydantic import BaseModel, Field
 
 
 class Zla3(BaseModel):
     i_max_pu: float = Field(1.2, ge=1.0, le=3.0)
-'''
+"""
 
-_INIEKCJA_UJEMNA = '''
+_INIEKCJA_UJEMNA = """
 from pydantic import BaseModel, Field
 
 
 class Zla4(BaseModel):
     efd_min_pu: float = Field(default=-5.0, le=0.0)
-'''
+"""
 
 
 def test_czysta_klasa_zielona() -> None:
@@ -82,13 +82,13 @@ def test_iniekcje_wszystkich_postaci_czerwone() -> None:
 
 def test_none_default_nie_jest_naruszeniem() -> None:
     """`default=None` na `X | None` jest DOZWOLONY — to nie liczba."""
-    tresc = '''
+    tresc = """
 from pydantic import BaseModel, Field
 
 
 class Ok(BaseModel):
     crowbar: str | None = Field(default=None)
-'''
+"""
     with tempfile.TemporaryDirectory() as katalog:
         plik = Path(katalog) / "ok.py"
         plik.write_text(tresc, encoding="utf-8")
@@ -96,7 +96,7 @@ class Ok(BaseModel):
 
 
 def test_dyskryminator_tekstowy_nie_jest_naruszeniem() -> None:
-    tresc = '''
+    tresc = """
 from pydantic import BaseModel
 from typing import Literal
 
@@ -104,7 +104,7 @@ from typing import Literal
 class Wariant(BaseModel):
     rodzina: Literal["magazyn"] = "magazyn"
     tryb: Literal["droop"] = "droop"
-'''
+"""
     with tempfile.TemporaryDirectory() as katalog:
         plik = Path(katalog) / "wariant.py"
         plik.write_text(tresc, encoding="utf-8")

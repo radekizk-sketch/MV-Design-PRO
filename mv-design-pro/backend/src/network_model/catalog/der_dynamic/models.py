@@ -24,9 +24,8 @@ from typing import Literal
 
 from enm.dynamika_modele import (
     PriorytetOgranicznika,
-    PrzeksztaltnikGFL,
     ProweniencjaParametrow,
-    StrategiaOgraniczeniaGfm,
+    PrzeksztaltnikGFL,
     TurbinaWiatrowa,
 )
 from network_model.pochodne import ms_na_s
@@ -38,7 +37,9 @@ WindIecType = Literal["type_1", "type_2", "type_3", "type_4"]
 
 #: Rodzina `ParametryDynamiczne` (`enm.dynamika_modele`) docelowa dla `to_parametry_dynamiczne`
 #: per `iec_type` turbiny — jedno zrodlo prawdy dla mapowania IEC 61400-27 -> rodzina kanonu.
-_WIND_IEC_TO_RODZINA: dict[WindIecType, Literal["wiatr_typ_1", "wiatr_typ_2", "wiatr_typ_3", "wiatr_typ_4"]] = {
+_WIND_IEC_TO_RODZINA: dict[
+    WindIecType, Literal["wiatr_typ_1", "wiatr_typ_2", "wiatr_typ_3", "wiatr_typ_4"]
+] = {
     "type_1": "wiatr_typ_1",
     "type_2": "wiatr_typ_2",
     "type_3": "wiatr_typ_3",

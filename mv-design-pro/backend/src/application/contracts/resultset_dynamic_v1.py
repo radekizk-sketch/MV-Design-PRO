@@ -64,7 +64,9 @@ class ZdarzenieWykonaneV1(BaseModel):
     ref: str | None = None
     delta_x_max: float = Field(description="Maks. skok stanu rozniczkowego przy re-inicjalizacji.")
     delta_y_max: float = Field(description="Maks. skok stanu algebraicznego przy re-inicjalizacji.")
-    residuum_kcl_max: float = Field(description="Maks. residuum bilansu pradowego po re-inicjalizacji.")
+    residuum_kcl_max: float = Field(
+        description="Maks. residuum bilansu pradowego po re-inicjalizacji."
+    )
 
     model_config = {"frozen": True}
 
@@ -104,7 +106,9 @@ class MetrykaDynamicznaV1(BaseModel):
     klucz: str = Field(min_length=1)
     wartosc: float
     jednostka: str = Field(min_length=1)
-    wzor_ref: str | None = Field(default=None, description="Odniesienie do wzoru/rownania (WHITE BOX).")
+    wzor_ref: str | None = Field(
+        default=None, description="Odniesienie do wzoru/rownania (WHITE BOX)."
+    )
     element_ref: str | None = None
 
     model_config = {"frozen": True}
@@ -158,7 +162,9 @@ class ResultSetDynamicV1(BaseModel):
     model_config = {"frozen": True}
 
 
-def zbuduj_resultset_dynamiczny_v1(wynik: ResultSetDynamicV1, *, z_probkami: bool) -> dict[str, Any]:
+def zbuduj_resultset_dynamiczny_v1(
+    wynik: ResultSetDynamicV1, *, z_probkami: bool
+) -> dict[str, Any]:
     """Zserializuj `ResultSetDynamicV1` do slownika skwantyzowanego (DT-11).
 
     `z_probkami=False` (domyslne dla `CanonicalRun.raw_result`): `os_czasu_s`
