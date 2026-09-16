@@ -1,10 +1,17 @@
 /*
  * Karta przypadku obliczeniowego (W-501) — konfiguracja + sekcja „Założenia"
- * (JAWNE założenia: współczynnik napięciowy c, temperatura, stan łączeń;
- * „założenia są częścią wyniku" — AUDYT_RADY_SPECJALISTOW W-501). W pełni sterowana
- * propsami (pełny rekord `StudyCase` z konfiguracją). Parametry i etykiety z
- * ISTNIEJĄCYCH typów (`CONFIG_FIELD_LABELS`, `types.ts:194`); pola nieobecne w typie
- * (temperatura, stan łączeń) → wiersze „wkrótce" (bez zgadywania — karta §2).
+ * (JAWNE założenia: współczynnik napięciowy c; „założenia są częścią wyniku" —
+ * AUDYT_RADY_SPECJALISTOW W-501). W pełni sterowana propsami (pełny rekord
+ * `StudyCase` z konfiguracją). Parametry i etykiety z ISTNIEJĄCYCH typów
+ * (`CONFIG_FIELD_LABELS`, `types.ts:194`).
+ *
+ * TODO-UI2 §1 p. 10 (zamknięcie): „Temperatura przewodów" i „Stan łączeń" NIE są
+ * i NIE BĘDĄ polami `StudyCaseConfig` — temperatura nie istnieje w ogóle w modelu
+ * przypadku, a stan łączeniowy jest częścią `OperatingScenario` (CV-3.1), osobnego
+ * bytu od konfiguracji przypadku. Wiersze „wkrótce" dla tych dwóch założeń są
+ * SKASOWANE (dyrektywa właściciela „zero fabrykacji": kontrolka bez dostawcy w
+ * kontrakcie = fantom), nie relabelowane — sekcja „Założenia" pokazuje WYŁĄCZNIE
+ * współczynnik c (jedyne jawne założenie, które `StudyCaseConfig` faktycznie niesie).
  *
  * Status wyników renderowany jako tag PL (aktualne/nieaktualne/brak) — spójnie z
  * E15.2, RAZEM z przyczyną i listą zmian, które unieważniły wynik (CV-2-W:
@@ -139,16 +146,6 @@ export function KartaPrzypadku({ przypadek, ladowanie, blad }: KartaPrzypadkuPro
               <td>{T.zalozenieCMin}</td>
               <td className="mvd-num">{formatWartoscKonfiguracji('c_factor_min', config.c_factor_min)}</td>
               <td className="mvd-karta-pochodzenie">{T.pochodzenieKonfiguracja}</td>
-            </tr>
-            <tr data-testid="mvd-karta-zalozenie-temperatura">
-              <td>{T.zalozenieTemperatura}</td>
-              <td className="mvd-num mvd-wkrotce-wartosc">{T.brakWartosci}</td>
-              <td className="mvd-karta-pochodzenie mvd-wkrotce">{T.pochodzenieWkrotce}</td>
-            </tr>
-            <tr data-testid="mvd-karta-zalozenie-laczenia">
-              <td>{T.zalozenieStanLaczen}</td>
-              <td className="mvd-num mvd-wkrotce-wartosc">{T.brakWartosci}</td>
-              <td className="mvd-karta-pochodzenie mvd-wkrotce">{T.pochodzenieWkrotce}</td>
             </tr>
           </tbody>
         </table>

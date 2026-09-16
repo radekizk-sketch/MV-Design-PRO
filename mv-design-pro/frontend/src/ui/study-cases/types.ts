@@ -256,6 +256,17 @@ export interface ExecutionRun {
   started_at: string | null;
   finished_at: string | null;
   error_message: string | null;
+  /**
+   * Rewizja modelu, na której policzono bieg (koperta rewizji CV-2,
+   * `backend/src/enm/canonical_analysis.py::CanonicalRun.to_execution_dict`).
+   * `null` = bieg zapisany PRZED rejestrem koperty (dana, nie 0 fabrykowane) —
+   * TODO-UI2 §1 p. 10.
+   */
+  model_revision?: number | null;
+  /** Kiedy bieg powstał (pochodzenie — TODO-UI2 §1 p. 10). */
+  created_at?: string | null;
+  /** Odcisk migawki modelu, z której bieg policzono (pochodzenie). */
+  snapshot_hash?: string | null;
 }
 
 /**

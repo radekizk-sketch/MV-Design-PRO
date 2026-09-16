@@ -75,13 +75,12 @@ export const PRZYPADKI_STRINGS = {
   kolWartosc: 'Wartość',
   kolPochodzenie: 'Pochodzenie',
 
-  // Założenia — etykiety pierwszoplanowe
+  // Założenia — etykiety pierwszoplanowe (TODO-UI2 §1 p. 10: temperatura/stan
+  // łączeń SKASOWANE — StudyCaseConfig ich nie niesie i nie będzie nosić;
+  // kontrolka bez dostawcy w kontrakcie = fantom, nie „wkrótce")
   zalozenieCMax: 'Współczynnik napięciowy c (max)',
   zalozenieCMin: 'Współczynnik napięciowy c (min)',
-  zalozenieTemperatura: 'Temperatura przewodów',
-  zalozenieStanLaczen: 'Stan łączeń (konfiguracja pól)',
   pochodzenieKonfiguracja: 'Konfiguracja przypadku (IEC 60909)',
-  pochodzenieWkrotce: 'Wkrótce — brak źródła w konfiguracji przypadku',
 
   // Porównanie konfiguracji
   porownanieTytul: 'Porównanie konfiguracji przypadków',

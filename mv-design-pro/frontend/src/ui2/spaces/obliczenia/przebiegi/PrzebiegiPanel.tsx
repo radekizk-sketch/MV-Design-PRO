@@ -19,8 +19,10 @@
  *   Emituje: nic bezpośrednio — akcja „Pokaż wyniki" przez prop
  *     `onPokazWyniki(runId)` (integrator woła `setActiveRun` + zmianę
  *     przestrzeni, jak most `MostHistoriiPrzebiegow` przed wygaszeniem).
- *   Rewizja: rekord przebiegu nie niesie rewizji modelu z chwili liczenia
- *     (TODO-KARTA adaptera #2) — kolumna „Rewizja modelu" uczciwie „wkrótce".
+ *   Rewizja: rekord przebiegu niesie rewizję modelu z chwili liczenia
+ *     (`ExecutionRun.model_revision`, koperta CV-2 — TODO-UI2 §1 p. 10) —
+ *     kolumna „Rewizja modelu" pokazuje liczbę; biegi sprzed rejestru koperty
+ *     pokazują jawny powód braku, nie „wkrótce".
  *   Nawigacja: wchodzące — przestrzeń „Obliczenia" (zakładka przebiegów);
  *     wychodzące — `onPokazWyniki` (przestrzeń „Wyniki i dowody").
  *

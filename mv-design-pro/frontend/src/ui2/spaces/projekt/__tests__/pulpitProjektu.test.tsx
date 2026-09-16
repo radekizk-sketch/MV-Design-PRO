@@ -9,6 +9,7 @@ import { useAppStateStore } from '../../../../ui/app-state';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { useStudyCasesStore } from '../../../../ui/study-cases/store';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
+import * as studyCasesApi from '../../../../ui/study-cases/api';
 import {
   snapshotFixture,
   readinessZBlokadami,
@@ -16,6 +17,16 @@ import {
   activeCaseFixture,
   runFixture,
 } from './fixtures';
+
+// `useWszystkiePrzebiegiProjektu` (TODO-UI2 §1 p. 10) pobiera biegi WSZYSTKICH
+// przypadków przez `listRuns` per-przypadkowe — mock zwraca bieg K2 (aktywny
+// K2 fixture) dla K2, pustą listę dla pozostałych (rzeczywisty kształt API).
+vi.mock('../../../../ui/study-cases/api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../ui/study-cases/api')>();
+  return { ...actual, listRuns: vi.fn() };
+});
+
+const mockListRuns = vi.mocked(studyCasesApi.listRuns);
 
 function ustawGotowy() {
   useSnapshotStore.setState({
@@ -28,7 +39,11 @@ function ustawGotowy() {
       caseListItem('K1', 'Stan normalny', 'FRESH'),
       caseListItem('K2', 'Zwarcia maks.', 'OUTDATED', { is_active: true }),
     ],
-    activeCase: activeCaseFixture('FRESH'),
+    // rewizja_biegu = 7 dopasowana do snapshotFixture().header.revision (7) —
+    // FRESH oznacza wynik POLICZONY NA bieżącej rewizji modelu (wewnętrznie
+    // spójna fixture; TODO-UI2 §1 p. 10 ujawniło rozjazd 4≠7 dotąd niewidoczny,
+    // bo KafelSpojnosci fabrykował rewizjaDanej=rewizjaModelu zamiast porównywać).
+    activeCase: activeCaseFixture('FRESH', { rewizja_biegu: 7 }),
   });
   useExecutionRunsStore.setState({
     runs: [runFixture({ started_at: '2026-07-15T14:32:00Z', status: 'DONE' })],
@@ -52,6 +67,8 @@ beforeEach(() => {
   useSnapshotStore.setState({ snapshot: null, readiness: null, loading: false });
   useStudyCasesStore.setState({ cases: [], activeCase: null });
   useExecutionRunsStore.setState({ runs: [], activeStudyCaseId: null });
+  mockListRuns.mockReset();
+  mockListRuns.mockResolvedValue({ runs: [], count: 0 });
 });
 
 describe('PulpitProjektu — stany przestrzeni', () => {
@@ -265,13 +282,33 @@ describe('PulpitProjektu — kafle z danymi ze store read-only', () => {
     expect(screen.getByText('Zwarcia maks.')).toBeInTheDocument();
   });
 
-  it('„Ostatni przebieg" per wiersz tylko dla aktywnego przypadku (TODO-KARTA #3)', () => {
+  it('„Ostatni przebieg" per wiersz dla KAŻDEGO przypadku z historią (TODO-UI2 §1 p. 10: pełna historia, nie tylko aktywny)', async () => {
+    mockListRuns.mockImplementation(async (caseId: string) =>
+      caseId === 'K2'
+        ? { runs: [runFixture({ started_at: '2026-07-15T14:32:00Z', status: 'DONE' })], count: 1 }
+        : { runs: [], count: 0 },
+    );
     render(<PulpitProjektu {...props()} />);
-    // Aktywny K2 → czas przebiegu; K1 → „—".
+    // K2 ma bieg (mock) → czas przebiegu; K1 bez biegu → „—" (stan zerowy, nie luka danych).
     const wierszK2 = screen.getByText('Zwarcia maks.').closest('tr')!;
-    expect(within(wierszK2).getByText('2026-07-15 14:32')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(within(wierszK2).getByText('2026-07-15 14:32')).toBeInTheDocument();
+    });
     const wierszK1 = screen.getByText('Stan normalny').closest('tr')!;
     expect(within(wierszK1).getByText('—')).toBeInTheDocument();
+  });
+
+  it('„Ostatni przebieg": przypadek BEZ aktywnego przebiegu w store też dostaje historię z pełnego zbioru (K1 też ma bieg)', async () => {
+    mockListRuns.mockImplementation(async (caseId: string) =>
+      caseId === 'K1'
+        ? { runs: [runFixture({ id: 'run-k1', study_case_id: 'K1', started_at: '2026-07-10T09:15:00Z', status: 'DONE' })], count: 1 }
+        : { runs: [], count: 0 },
+    );
+    render(<PulpitProjektu {...props()} />);
+    const wierszK1 = screen.getByText('Stan normalny').closest('tr')!;
+    await waitFor(() => {
+      expect(within(wierszK1).getByText('2026-07-10 09:15')).toBeInTheDocument();
+    });
   });
 });
 

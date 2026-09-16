@@ -94,10 +94,22 @@ describe('PrzebiegiPanel — tabela z realnych typów (karta §3 kryterium 1)', 
     expect(w2).toHaveTextContent(T.wToku);
   });
 
-  it('kolumna „Rewizja modelu" uczciwie „wkrótce" (brak pola w rekordzie przebiegu)', () => {
+  it('kolumna „Rewizja modelu": bieg BEZ model_revision (sprzed rejestru koperty) pokazuje jawny powód braku', () => {
     render(<PrzebiegiPanel {...props()} />);
     expect(screen.getByText(T.kolRewizja)).toBeInTheDocument();
-    expect(screen.getByTestId('mvd-przebieg-rewizja-run-1')).toHaveTextContent(T.brakWartosci);
+    const komorka = screen.getByTestId('mvd-przebieg-rewizja-run-1');
+    expect(komorka).toHaveTextContent(T.brakWartosci);
+    expect(komorka).toHaveAttribute('title', T.pochodzenieBrakWRekordzie);
+  });
+
+  it('kolumna „Rewizja modelu": bieg Z model_revision (koperta CV-2) pokazuje liczbę', () => {
+    useExecutionRunsStore.setState({
+      runs: [...RUNS, runFixture({ id: 'run-3', analysis_type: 'SC_3F', model_revision: 12 })],
+    });
+    render(<PrzebiegiPanel {...props()} />);
+    const komorka = screen.getByTestId('mvd-przebieg-rewizja-run-3');
+    expect(komorka).toHaveTextContent('12');
+    expect(komorka).not.toHaveAttribute('title');
   });
 
   it('klik wiersza = selekcja + szczegóły przebiegu (gramatyka §2)', () => {

@@ -17,24 +17,30 @@
  * - Stan ładowania / błędu: `isLoadingRuns` (`runStore.ts:48`), `runError`
  *   (`runStore.ts:52`).
  *
- * TODO-KARTA (ograniczenia — brak źródła w typach read-only, karta §2 „NIE zgaduj"):
+ * STAN FAKTYCZNY (TODO-UI2 §1 p. 10, poprzednie ograniczenia #1/#2/#3):
  * 1. `runStore.runs` niesie przebiegi WYŁĄCZNIE dla `activeStudyCaseId`
- *    (`runStore.ts:87-97`) — pole ustawiane przez INNE komponenty (np.
- *    `ui/sld/SldAnalysisLauncher.tsx:205`), nie przez ten adapter (adapter jest
- *    read-only — karta §2). Ten sam udokumentowany kompromis co
- *    `ui2/spaces/projekt/pulpitAdapter.ts` TODO-KARTA #3: jeżeli `activeStudyCaseId`
- *    różni się od aktywnego przypadku w `app-state`, lista może być pusta albo
- *    dotyczyć innego przypadku niż wskazuje pasek aktywnego przypadku. Naprawa
- *    (np. jawna synchronizacja) wymagałaby wywołania akcji zmieniającej globalny
- *    kontekst współdzielony z innymi oknami — poza zakresem plików tej karty.
- * 2. „Rewizja modelu" (kolumna tabeli, karta §1) NIE jest polem `ExecutionRun`
- *    (`types.ts:234-243` — brak `revision`; pole `revision` istnieje wyłącznie na
- *    `StudyCase`, `types.ts:97`, i opisuje BIEŻĄCĄ rewizję przypadku, nie rewizję
- *    z chwili liczenia danego przebiegu) → renderowana jako „wkrótce" (karta §2).
- * 3. „Wartości parametrów wejściowych solvera" (surowe liczby) NIE są niesione
- *    przez `ExecutionRun` — dostępny jest wyłącznie `solver_input_hash` (odcisk
- *    SHA-256, dowód odtwarzalności WHITE BOX bez ekspozycji wartości) →
- *    renderowane jako „wkrótce".
+ *    (`runStore.ts:87-97`) — ALE synchronizacja tego pola z aktywnym przypadkiem
+ *    powłoki (`app-state.activeCaseId`) JUŻ ISTNIEJE: `useHydratacjaPowloki.ts`
+ *    (`ui2/shell/useHydratacjaPowloki.ts:123-126`, wołany z `AppRoot.tsx` na
+ *    KAŻDĄ zmianę `activeCaseId`, nie tylko zimny start) woła
+ *    `przebiegi.setActiveStudyCaseId(caseId)`, gdy różni się od bieżącego —
+ *    ta sama JEDNA akcja co dawny (nieistniejący dziś) `SldAnalysisLauncher`.
+ *    Poprzednia treść tego akapitu (jawna synchronizacja „poza zakresem")
+ *    powstała PRZED kartą K6/H-6, która to domknęła — sam adapter POZOSTAJE
+ *    read-only, nic tu nie trzeba dopisywać.
+ * 2. „Rewizja modelu" JEST teraz polem `ExecutionRun.model_revision` (koperta
+ *    rewizji CV-2, `backend/src/enm/canonical_analysis.py::to_execution_dict`,
+ *    `api/execution_runs.py::RunResponse` — addytywne, `null` dla biegów sprzed
+ *    rejestru koperty) — renderowana jako liczba albo, dla biegów sprzed
+ *    koperty, jawny stan „brak w rekordzie" (NIE „wkrótce": kontrakt istnieje,
+ *    ta konkretna wartość po prostu nie została zapisana).
+ * 3. „Wartości parametrów wejściowych solvera" (surowe liczby) NADAL nie są
+ *    niesione przez `ExecutionRun` — WYŁĄCZNIE `solver_input_hash` (odcisk
+ *    SHA-256, dowód odtwarzalności WHITE BOX bez ekspozycji wartości), i to
+ *    jest OSTATECZNY kształt kontraktu (odtwarzalność przez odcisk, nie przez
+ *    zrzut surowych parametrów) — kontrolka bez dostawcy jest fantomem
+ *    (dyrektywa właściciela „zero fabrykacji"), więc sekcja „wkrótce" z tym
+ *    wierszem jest SKASOWANA, nie relabelowana.
  */
 
 import { useState } from 'react';
@@ -82,6 +88,8 @@ export interface PrzebiegWiersz {
   czasTrwania: string;
   odcisk: string;
   blad: string | null;
+  /** Rewizja modelu, na której policzono bieg (koperta CV-2); `null` = bieg sprzed rejestru koperty. */
+  rewizjaModelu: number | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -102,6 +110,7 @@ export function mapujWiersze(runs: ExecutionRun[]): PrzebiegWiersz[] {
     czasTrwania: formatCzasTrwania(r.started_at, r.finished_at),
     odcisk: r.solver_input_hash,
     blad: r.error_message,
+    rewizjaModelu: r.model_revision ?? null,
   }));
 }
 

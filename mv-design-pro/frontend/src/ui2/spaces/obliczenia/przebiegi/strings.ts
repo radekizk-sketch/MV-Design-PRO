@@ -41,18 +41,19 @@ export const PRZEBIEGI_STRINGS = {
   // Szczegóły przebiegu
   szczegolyBrakWyboru: 'Wybierz przebieg z listy, aby zobaczyć jego szczegóły.',
   sekcjaParametry: 'Parametry przebiegu (odtwarzalność)',
-  sekcjaWkrotce: 'Dane niedostępne w rekordzie przebiegu',
   sekcjaTechniczna: 'Szczegóły techniczne',
   etykietaPoczatek: 'Początek',
   etykietaZakonczenie: 'Zakończenie',
   etykietaCzasTrwania: 'Czas trwania',
   etykietaOdcisk: 'Odcisk danych wejściowych (SHA-256)',
   etykietaRewizjaModelu: 'Rewizja modelu w chwili liczenia',
-  etykietaParametryWejsciowe: 'Wartości parametrów wejściowych solvera',
   etykietaBlad: 'Komunikat błędu',
   etykietaId: 'Identyfikator przebiegu',
   etykietaPrzypadekId: 'Identyfikator przypadku',
-  pochodzenieWkrotce: 'Wkrótce — brak źródła w rekordzie przebiegu',
+  // TODO-UI2 §1 p. 10: „Rewizja modelu" ma teraz kontrakt (`ExecutionRun.model_revision`,
+  // koperta CV-2) — `null` opisuje KONKRETNY zapisany bieg sprzed rejestru koperty,
+  // nie brak funkcji ("wkrótce" byłoby fałszywe: kontrakt istnieje i jest czytany).
+  pochodzenieBrakWRekordzie: 'Brak w rekordzie przebiegu (sprzed rejestru koperty rewizji)',
   wToku: 'w toku',
   brakWartosci: '—',
 
