@@ -143,7 +143,45 @@ EXCLUDED_RELATIVE_FILES = {
 # (`test_k0_nie_ma_wykluczenia`): wykluczał `K0` "przy okazji", bo obie
 # litery czytały ten sam warunek — deklaracja bez testu byłaby fałszywą
 # pewnością (reguła KLASA §4).
-CODENAME_PATTERN = re.compile(r"(?<![A-Za-z0-9])(?:[pP](?!0(?![A-Za-z0-9]))|K)\d+(?![A-Za-z0-9])")
+CODENAME_PATTERN = re.compile(
+    r"(?<![A-Za-z0-9])(?:[pP](?!0(?![A-Za-z0-9]))|K)\d+(?![A-Za-z0-9])"
+)
+
+# KRYPTONIMY KART W TEKŚCIE UŻYTKOWNIKA (odbiór S-2, 2026-09-16). Wzorzec `[pP]\d+`/`K\d+`
+# nie obejmuje identyfikatorów kart pisanych literami (`S-2`, `FAB-H`, `W3-J`, `CV-3.3-B2`),
+# a zmierzony przypadek przeszedł do UI: komunikat założenia k_sc w `enm/mapping.py`
+# brzmiał „ZAREJESTROWANE ZAŁOŻENIE (karta S-2 AUTORYTET, dawniej FAB-H): …" i trafiał
+# do listy założeń biegu zwarciowego czytanej przez projektanta. Reguła klasy: w tekście
+# użytkownika słowo „karta/karty/kartę/kartą/karcie" poprzedzające identyfikator pisany WIELKIMI
+# literami (z opcjonalnymi członami `-`/`.`) jest cytatem karty roboczej, nie treścią
+# inżynierską. „karta katalogowa", „karta producenta", „Karta techniczna" (dalej małe
+# litery) NIE są łapane z konstrukcji: wymagany jest identyfikator z wielkiej litery,
+# po którym nie następuje mała litera.
+# Identyfikator musi nieść cyfrę, myślnik albo kropkę (`S-2`, `W3-J`, `CV-3.3-B2`, `W2`,
+# `V12.7`, `PULPIT-NBA`): skrót inżynierski po słowie „karta" bez cyfry i myślnika
+# („kartę ZK", „kartę PV", „kartę BESS", „kartę FW" w menu SLD = karta techniczna
+# złącza/PV/magazynu/farmy; „karty NADAL" jako wyróżnienie) jest treścią, nie cytatem
+# — zmierzone na drzewie 2026-09-16: 6 takich napisów produktu. Zakres: tekst
+# użytkownika backendu (`*_pl`) i literały produktu frontendu; opisy testów
+# (`__tests__`, `.test.`, `.spec.`, `e2e/`) cytują karty jak komunikaty commitów
+# i użytkownik ich nie widzi — poza zakresem tego wzorca (patrz `is_test_path`).
+KARTA_PATTERN = re.compile(
+    r"(?<![A-Za-z0-9])[kK]ar(?:t[aeęąy]|cie)\s+([A-Z][A-Z0-9]*(?:[-.][A-Za-z0-9]+)*)(?![a-z])"
+)
+KARTA_IDENT_MARKER = re.compile(r"[0-9.\-]")
+
+
+def is_test_path(file_path: Path) -> bool:
+    """Plik testowy/spec/e2e — opis testu cytuje karty jak komunikat commita."""
+    tekst = file_path.as_posix()
+    return (
+        "/__tests__/" in tekst
+        or ".test." in file_path.name
+        or ".spec." in file_path.name
+        or "/e2e/" in tekst
+    )
+
+
 ALLOWED_TECHNICAL_TOKENS = {"p50", "p75", "p90", "p95", "p99"}
 
 #: Cytowania kart/bramek w OPISACH TESTÓW (`describe`/`it`/`test`) — patrz
@@ -192,7 +230,9 @@ def is_comment_line(line: str) -> bool:
     return any(pattern.match(trimmed) for pattern in COMMENT_LINE_PATTERNS)
 
 
-def find_codenames_in_strings(line: str, *, exempt_gate_citations: bool = False) -> list[str]:
+def find_codenames_in_strings(
+    line: str, *, exempt_gate_citations: bool = False, karta_scan: bool = True
+) -> list[str]:
     """Find codenames inside string literals in a line.
 
     `exempt_gate_citations` — TYLKO frontend (`scan_file`): dodatkowo pomija
@@ -213,6 +253,11 @@ def find_codenames_in_strings(line: str, *, exempt_gate_citations: bool = False)
             if exempt_gate_citations and lowered in GATE_CITATION_TOKENS:
                 continue
             matches.append(token)
+        # Kryptonim karty roboczej („karta S-2", „karty FAB-H") — patrz KARTA_PATTERN.
+        if karta_scan:
+            for karta_match in KARTA_PATTERN.finditer(string_content):
+                if KARTA_IDENT_MARKER.search(karta_match.group(1)):
+                    matches.append(karta_match.group())
     return matches
 
 
@@ -255,7 +300,9 @@ def scan_file(file_path: Path) -> list[Violation]:
             continue
 
         # Find codenames in string literals (frontend: gate-citation exemption applies)
-        codenames = find_codenames_in_strings(line, exempt_gate_citations=True)
+        codenames = find_codenames_in_strings(
+            line, exempt_gate_citations=True, karta_scan=not is_test_path(file_path)
+        )
         for codename in codenames:
             violations.append(
                 Violation(

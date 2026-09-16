@@ -62,7 +62,7 @@ export const POWODY_NIEPREZENTOWANIA: Record<RodzajNieprezentowany, string> = {
     + 'w danych i w normie — zapas mocy biernej z krotności mocy czynnej, margines P–U '
     + 'ze sztywności węzła, wskaźnik L z mnożnika 4. Ekran nie ma czego pokazać, '
     + 'dopóki wielkości nie zostaną policzone rozpływem na modelu przypadku '
-    + '(karta QU-FABRYKACJA, 2026-08-08).',
+    + '(pomiar 2026-08-08).',
   // Karta W3-E (2026-09-09, KARTA_W3 §0 rodzina D): duplikuje kanon
   // `application/analyses/hosting_capacity.py` (`GET /api/oze-analysis/
   // hosting-capacity`, ekran „OZE › Zdolność przyłączeniowa"), który liczy

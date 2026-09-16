@@ -183,7 +183,7 @@ export const TECHNICAL_DEBT_REGISTRY: readonly TechnicalDebtItem[] = [
     status: 'ZAMKNIĘTY',
     closedAt: '2026-09-09',
     scope:
-      'Karta K2 (CV-4.3): E-39 „Walidacja sieci referencyjnych" (ReferenceNetworkSurface) — ' +
+      'Kod ekranu K2 (drugie przydzielenie, kasacja CV-4.3): E-39 „Walidacja sieci referencyjnych" (ReferenceNetworkSurface) — ' +
       'drugie przydzielenie tego kodu (po Phase 0 #1 usunięciu „Historia i audyt") — USUŃ ' +
       'razem z całym backendem, którego był jedynym produkcyjnym ekranem.',
     decision:

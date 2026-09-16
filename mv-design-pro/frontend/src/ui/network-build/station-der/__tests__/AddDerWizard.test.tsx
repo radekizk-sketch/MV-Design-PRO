@@ -1042,7 +1042,7 @@ describe('Katalog urządzeń DER — wyłącznie z backendu, zero listy zastępc
     expect(container.innerHTML).not.toContain('pv_inv_');
   });
 
-  it('karta S-2 AUTORYTET: k_sc z karty producenta pokazany wprost w szczegółach urządzenia, brak deklaracji pokazuje jawny stan „brak"', async () => {
+  it('k_sc z karty producenta pokazany wprost w szczegółach urządzenia, brak deklaracji pokazuje jawny stan „brak"', async () => {
     const zKsc = [
       { id: 'conv-pv-ksc-a', name: 'Konwerter z k_sc', kind: 'PV' as const, un_kv: 0.4, pmax_mw: 0.1, sn_mva: 0.1, manufacturer: 'TestCo', k_sc: 1.15 },
       { id: 'conv-pv-ksc-b', name: 'Konwerter bez k_sc', kind: 'PV' as const, un_kv: 0.4, pmax_mw: 0.1, sn_mva: 0.1, manufacturer: 'TestCo' },

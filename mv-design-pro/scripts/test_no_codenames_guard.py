@@ -22,8 +22,10 @@ from no_codenames_guard import (
     ALLOWED_TECHNICAL_TOKENS,
     CODENAME_PATTERN,
     GATE_CITATION_TOKENS,
+    KARTA_PATTERN,
     find_codenames_in_strings,
     is_comment_line,
+    is_test_path,
     scan_backend_file,
     scan_file,
 )
@@ -291,7 +293,9 @@ const revision = "K30-38";
 describe('K11-B — nawigator kanwy', () => {
 });
 """
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".test.tsx", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".test.tsx", delete=False
+        ) as f:
             f.write(content)
             f.flush()
             path = Path(f.name)
@@ -361,7 +365,9 @@ class TestSkanBackendu:
         prozą czytaną przez projektanta, nigdy cytatem karty."""
         for token in ("K1", "K5", "K11", "K13"):
             naruszenia = self._skan(f'    message_pl="Krok ({token}) niekompletny"\n')
-            assert len(naruszenia) == 1, f"token {token} powinien byc zlapany w backendzie"
+            assert (
+                len(naruszenia) == 1
+            ), f"token {token} powinien byc zlapany w backendzie"
             assert naruszenia[0].match == token
 
     def test_kodename_w_tytule_dowodu_jest_naruszeniem(self):
@@ -454,7 +460,10 @@ class TestExcludedRelativeFilesFreshness:
     """
 
     def test_zielony_na_repo(self) -> None:
-        assert guard_module.check_excluded_relative_files_freshness(guard_module.REPO_ROOT) == []
+        assert (
+            guard_module.check_excluded_relative_files_freshness(guard_module.REPO_ROOT)
+            == []
+        )
 
     def test_wpis_ma_realne_trafienie_bez_wykluczenia(self) -> None:
         """Potwierdzenie POMIARU: jedyny dzisiejszy wpis (trade name z 'P3' w
@@ -462,7 +471,9 @@ class TestExcludedRelativeFilesFreshness:
         for rel_path in guard_module.EXCLUDED_RELATIVE_FILES:
             full_path = guard_module.REPO_ROOT / rel_path
             assert full_path.is_file(), f"brak pliku {rel_path!r}"
-            assert scan_file(full_path), f"EXCLUDED_RELATIVE_FILES[{rel_path!r}] to sierota"
+            assert scan_file(
+                full_path
+            ), f"EXCLUDED_RELATIVE_FILES[{rel_path!r}] to sierota"
 
     def test_lapie_brakujacy_plik(self, monkeypatch) -> None:
         monkeypatch.setattr(
@@ -471,7 +482,9 @@ class TestExcludedRelativeFilesFreshness:
             {"frontend/src/ui/nigdy/nieistniejacy_plik.ts"},
         )
 
-        naruszenia = guard_module.check_excluded_relative_files_freshness(guard_module.REPO_ROOT)
+        naruszenia = guard_module.check_excluded_relative_files_freshness(
+            guard_module.REPO_ROOT
+        )
 
         assert len(naruszenia) == 1
         assert "[no-codenames-wykluczenie-osierocone]" in naruszenia[0]
@@ -487,7 +500,9 @@ class TestExcludedRelativeFilesFreshness:
         plik = katalog / "czysty.ts"
         plik.write_text("export const MODEL = 'BEZ_KODENAME';\n", encoding="utf-8")
         monkeypatch.setattr(
-            guard_module, "EXCLUDED_RELATIVE_FILES", {"frontend/src/ui/katalog/czysty.ts"}
+            guard_module,
+            "EXCLUDED_RELATIVE_FILES",
+            {"frontend/src/ui/katalog/czysty.ts"},
         )
 
         naruszenia = guard_module.check_excluded_relative_files_freshness(tmp_path)
@@ -503,7 +518,9 @@ class TestExcludedRelativeFilesFreshness:
         plik = katalog / "z_kodename.ts"
         plik.write_text("export const MODEL = 'HD-P3-model';\n", encoding="utf-8")
         monkeypatch.setattr(
-            guard_module, "EXCLUDED_RELATIVE_FILES", {"frontend/src/ui/katalog/z_kodename.ts"}
+            guard_module,
+            "EXCLUDED_RELATIVE_FILES",
+            {"frontend/src/ui/katalog/z_kodename.ts"},
         )
 
         assert guard_module.check_excluded_relative_files_freshness(tmp_path) == []
@@ -520,3 +537,82 @@ class TestExcludedRelativeFilesFreshness:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestKartaPattern:
+    """Kryptonimy kart roboczych w tekście użytkownika (odbiór S-2, 2026-09-16).
+
+    Zmierzony przypadek: komunikat założenia k_sc w `enm/mapping.py` cytował
+    „(karta S-2 AUTORYTET, dawniej FAB-H)" i trafiał do listy założeń biegu
+    zwarciowego czytanej przez projektanta; wzorzec `[pP]\\d+`/`K\\d+` tego nie
+    obejmował. Iloczyn cech: {karta, karty, kartę, Karta} × {S-2, FAB-H, W3-J,
+    CV-3.3-B2} łapane; {karta katalogowa, karta producenta, Karta techniczna,
+    kartę katalogową} NIE łapane; wykrycie działa w polu `_pl` backendu i w
+    literale frontendu, a nie działa w komentarzu.
+    """
+
+    @pytest.mark.parametrize(
+        "tekst",
+        [
+            "ZAREJESTROWANE ZAŁOŻENIE (karta S-2 AUTORYTET): brak k_sc",
+            "patrz karty FAB-H",
+            "Karta W3-J wprowadza próg",
+            "zgodnie z kartą CV-3.3-B2",
+            "kartę HARNESS-RESZTA",
+            "w karcie S-2 opisano",
+        ],
+    )
+    def test_lapie_kryptonim_karty(self, tekst):
+        assert KARTA_PATTERN.search(tekst), tekst
+
+    @pytest.mark.parametrize(
+        "tekst",
+        [
+            "karta katalogowa przekształtnika nie niesie k_sc",
+            "Wpisz k_sc z karty producenta",
+            "Karta techniczna elementu",
+            "kartę katalogową uzupełnij",
+            "karta SN",
+            "Otwórz kartę ZK",
+            "Otwórz kartę PV",
+            "Otwórz kartę BESS",
+            "karty NADAL widoczne",
+        ],
+    )
+    def test_nie_lapie_tresci_inzynierskiej(self, tekst):
+        # Skrót inżynierski bez cyfry/myślnika po słowie „karta" (SN, ZK, PV, BESS,
+        # wyróżnienie NADAL) to treść, nie cytat karty — filtr KARTA_IDENT_MARKER.
+        assert find_codenames_in_strings(f'x = "{tekst}"') == [], tekst
+
+    def test_opis_testu_i_spec_poza_zakresem_wzorca_karty(self):
+        assert is_test_path(Path("frontend/src/ui/__tests__/a.test.tsx"))
+        assert is_test_path(Path("frontend/e2e/scena.spec.ts"))
+        assert not is_test_path(Path("frontend/src/ui2/wyniki/zwarcia/strings.ts"))
+        assert (
+            find_codenames_in_strings("it('karta W3-J: próg')", karta_scan=False) == []
+        )
+
+    def test_backend_pole_pl_z_kryptonimem_karty_jest_naruszeniem(self):
+        with tempfile.TemporaryDirectory() as katalog:
+            plik = Path(katalog) / "modul.py"
+            plik.write_text(
+                'message_pl = "ZAREJESTROWANE ZAŁOŻENIE (karta S-2 AUTORYTET): brak k_sc"\n',
+                encoding="utf-8",
+            )
+            naruszenia = scan_backend_file(plik)
+        assert [n.match for n in naruszenia] == ["karta S-2"]
+
+    def test_backend_komentarz_z_kryptonimem_karty_nie_jest_naruszeniem(self):
+        with tempfile.TemporaryDirectory() as katalog:
+            plik = Path(katalog) / "modul.py"
+            plik.write_text(
+                '# karta S-2 AUTORYTET: komentarz inżyniera\nmessage_pl = "brak k_sc"\n',
+                encoding="utf-8",
+            )
+            assert scan_backend_file(plik) == []
+
+    def test_frontend_literal_z_kryptonimem_karty_jest_naruszeniem(self):
+        assert find_codenames_in_strings("const t = 'patrz karty FAB-H';") == [
+            "karty FAB-H"
+        ]
+        assert find_codenames_in_strings("const t = 'karta katalogowa';") == []

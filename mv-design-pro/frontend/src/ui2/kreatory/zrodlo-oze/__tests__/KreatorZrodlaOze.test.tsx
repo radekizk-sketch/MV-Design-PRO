@@ -319,7 +319,7 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     expect(closeFormMock).toHaveBeenCalled();
   });
 
-  it('karta S-2 AUTORYTET: k_sc z karty producenta pokazany wprost w kroku katalogu, brak deklaracji pokazuje jawny stan „brak"', async () => {
+  it('k_sc z karty producenta pokazany wprost w kroku katalogu, brak deklaracji pokazuje jawny stan „brak"', async () => {
     fetchConverterTypesMock.mockResolvedValue([
       { ...DOMYSLNE_KONWERTERY[0], id: 'conv-pv-ksc-a', k_sc: 1.15 },
       { ...DOMYSLNE_KONWERTERY[0], id: 'conv-pv-ksc-b', k_sc: null },
