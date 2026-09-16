@@ -175,6 +175,14 @@ motyw×poziom — 6 × 45 s > 180 s; od `017b9eca` limit asercji 20 s → 45 s u
 `data-shared="true"`), `pasma-rozplywu-jakosc` (lokalne przekroczenie 20 s w helperze nawigacji poniżej limitu z pomiaru —
 usunięte, obowiązuje 45 s z konfiguracji). Stan CI po pushu odbioru S-2/S-3: kolejny wpis.
 
+**Stan 2026-09-16, szczyt `c7cb03ce` (S-2 + S-3 + CI-FIXTURY-PRZENOSNOSC + naprawy E2E full + evidence; push 14:10 UTC): 9/9
+workflowów zielonych W OBU zdarzeniach (push i PR)** — Python tests (push `35106698783`, run 5032; PR `35106709038`, run 5033),
+Frontend E2E full (push `35106698741`, run 446; PR `35106709366`, run 447), Frontend checks (`35106698542` / `35106708952`),
+E2E smoke (`35106698530` / `35106708719`), SLD Determinism (`35106698642` / `35106708985`), Docs (`35106698685` /
+`35106709025`), Arch (`35106698502` / `35106708713`), P0 Extended (`35106698720` / `35106708848`), Physics Label
+(`35106698605` / `35106708643`). Obie klasy z poprzedniego wpisu (nieprzenośność fixtur między runnerami, cztery przyczyny
+czerwieni E2E full) potwierdzone jako naprawione na CI, nie tylko lokalnie. Stan CI po pushu odbioru W5-A/W5-D: kolejny wpis.
+
 ## B. Ochrona gałęzi `main` (§36) — **OWNER ACTION P0**
 
 Pomiar (GitHub API `list_branches`, 2026-09-04): `main` → `protected: false`; łącznie ponad 400 gałęzi (`claude/*`, `codex/*`, `kopia/*`), żadna chroniona. Sesja agenta nie ma uprawnień administracyjnych do włączenia ochrony (brak narzędzia w MCP; wymaga roli admin repozytorium).
@@ -455,6 +463,76 @@ Metoda: `grep -n "@router\." backend/src/api/power_flow_runs.py` (15 tras potwie
   limitu 180 s). OpenAPI snapshot: 303 ścieżek / 222 schematów bez dryfu (S-3 kasuje 0 tras publicznych; `checker.py` był
   konsumowany wyłącznie przez trasę `/compliance`, która teraz idzie mostem). Sygnatury 4 commitów S-2 przepisane
   `msg_filter2.py` przed pushem (drzewo bit w bit — sprawdzone hashem drzewa; mapa SHA w scratchpadzie sesji).
+
+- 2026-09-16: **W5-D** (agent, worktree z bazy `5fbe6d9a`, 6 commitów, 70 plików +5651/−180; karta W5 §1 p. 5–6 + p. 12 OD-24;
+  odbiór architekta): solver FROZEN `power_flow_unbalanced.py` i oba jego testy bit w bit jak w bazie (`git diff` pusty);
+  konsumenci solvera PRZED 0 produkcyjnych → PO `enm/assembler.py` (jedyny producent `UnbalancedNetworkInput`, guard
+  `solver_input_assembler_guard` z ALLOWLISTĄ FROZEN + czerwona iniekcja), `enm/canonical_analysis.py`,
+  `enm/rozplyw_niesymetryczny_wynik.py`. Łańcuch: `Load.phases: PhaseSet | None` (hash: poza odciskiem gdy `None`; walidator
+  `enm/fazy_odbioru.py` wpięty w `add_nn_load`/`add_load_sn`/`update_element_parameters` — trzej pisarze, jeden predykat);
+  liściowy `network_model/pochodne/skladowe_symetryczne.py` (Z_s, Z_m); assembler z bazą JEDNEJ FAZY (S/3, U_LL/√3 —
+  zmierzone: baza trójfazowa daje spadki/straty dokładnie 1/3), `diagnoza_niesymetrii` = JEDEN predykat gotowości
+  `_check_asymmetry` i assemblera (predykaty parami), `DrogaZerowa` (wędrówka I0 odbiorów faza–N po drzewie; defekt własny
+  wykryty i naprawiony: pierwsza odmowa „OPEN + odbiór 1-f w wyspie" blokowała każdą realną sieć GPZ Yd11 → Dyn11 — fizycznie
+  I0 zamyka się w gwieździe Dyn11); odmowy nazwane (`power_flow.unbalanced_requires_radial`, `…_load_phases_unsupported`,
+  `…_element_unsupported`, `…_no_zero_sequence_path`, `branch.zero_sequence_missing` BEZ podstawiania Z0=Z1,
+  `transformer.vector_group_missing`) i założenia nazwane (model szeregowy transformatora, pominięta gałąź magnesująca
+  i poprzeczna, straty z impedancji własnej, I0 zamknięte / przez źródło); bieg `ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY` w jedynym
+  dyspozytorze, kontrakt `domain/result_contract_power_flow_unbalanced_v1.py` (addytywny, `rated_current_a: float | None`),
+  `GET /api/analysis-runs/{run_id}/results/rozplyw-niesymetryczny`; UI: rodzaj w „Obliczeniach" (bez selektora NR/GS/FD),
+  fazy w kreatorze odbioru nN (`connection_type` wyprowadzany z faz — jedna prawda), E-31 czyta bieg jako drugie źródło;
+  p. 12: `network_neutral` zawsze z modelu, brak = brak wiersza + warunek blokujący `ograniczniki.uziemienie_sieci_nieznane`.
+  Dowody: hashe ENM 56 sieci × 4 odciski PRZED/PO bit w bit (sha256 zbioru identyczne); parytet IEEE 34 z wyrocznią przez bieg
+  kanoniczny (xfail zdjęty): max|ΔU| 2,83e-4 pu (próg 5e-4), max|Δkąt| 0,0121°, stosunek spadków 3,00; sieć symetryczna vs NR
+  ≤ 1e-5 pu; determinizm dwóch biegów bit w bit; iloczyn cech drogi I0 {szyna nN/SN} × {Yd11 OPEN / YNd11 / YNyn0 / Dyn11 /
+  brak}. Regresja wykonawcy: pytest 15 061 passed / 0 failed (1447 s; pierwszy bieg 5 czerwonych — 4 fixtury harnessu bez
+  `zalozenia` k_sc z S-2 zregenerowane skryptem, pin Literal 116 → 117), mypy 675 plików 0, `guardy_z_ci.py` 90/90 + 914
+  self-testów, OpenAPI 304/220 (na bazie), vitest 896 plików / 12 310, e2e `rozplyw-niesymetryczny.spec.ts` 1/1 ×2
+  (krok w `frontend-e2e-smoke.yml`). Pominięcia nazwane: wiersz PF_UNBALANCED w `AnContextPanel` (kontrolka-phantom — wiersz
+  PHASE_STATE_SN tam już jest phantomem, dług do osobnej decyzji), r0 = 3·r1 w katalogu kabli gdy brak (zastane, decyzja
+  produktowa), `meta.connection_type` (0 konsumentów, dług nazwany), nakładka na SLD (poza kartą).
+
+- 2026-09-16: **Odbiór W5-D + W5-A + CERTYFIKAT-Z-KATALOGU + VITE-FS-ALLOW na jednym drzewie** (Fable, `fable-f6`; drzewo
+  `f3ec6320` = `c7cb03ce` + W5-D (6 cherry-picków + `20882845`) + W5-A (5 cherry-picków + `ba2404e2`/`025b7535`) + CERT
+  (`54293382`) + VITE (`f3ec6320`)). Konflikty W5-D×W5-A rozstrzygnięte SUMĄ obu kart i pomiarem: odcisk ENM (pola addytywne
+  poza hashem: `sources.neutral_grounding` + `loads.phases` + `transformers.lv_earthing_system` + `branches.screen_bonding`),
+  `pochodne/__init__` (składowe symetryczne + zerowe, `__all__` bez duplikatów: 52), parytet Literal 117 → **119**, most
+  izolacji V12.6 = kategoria punktu neutralnego ze ŹRÓDŁA GPZ albo transformatora (W5-A) i brak wiersza zamiast „isolated"
+  (W5-D p. 12) — pomocnik testu z sentinelem W5-D na nośniku `Source.neutral_grounding`, test ogranicznika na źródle zamiast
+  skasowanego `Bus.grounding`; `readiness_bridge` (W001 + E063/E-W5-01..03/W-W5-01); `update_element_parameters` (walidator faz +
+  słowniki transformatora/ekranu). Piny z pomiaru na drzewie scalonym: `test_solver_input_substitute_guard` pola 3550 → 3568
+  (W5-D) → **3584** (W5-A), pliki 486 → 489 → **495**, network_model 141 → 142 → **144**, solver_input 11 → **12**, enm 41 → 43
+  → **46**; `tsconfig_gate_guard` 114 → **112** (obie zapadki w dół zdjęły różne pozycje); allowlisty guardów kluczowane treścią —
+  bez przesunięć. Regeneracje skryptami: fixtury harnessu zwarć (tylko `proof_ref`/`snapshot_ref` po migracji uziemienia),
+  snapshot OpenAPI **306 ścieżek / 224 schematy**, słownik kodów gotowości. CERT (wykonawca + odbiór architekta: pytest
+  14 835/0, mypy 671 plików 0, OpenAPI bez dryfu — `materialized_params` to otwarty słownik, `guardy_z_ci` 91/91 + 959, vitest
+  894 plików / 12 295, e2e 28/28 na realnym backendzie): jeden predykat FE `statusCertyfikatuPtpiree` 1:1 z backendowym
+  `certificate_status_z_tabliczki`, zero `includes('ptpiree')` (guard `ptpiree_certificate_no_guess_guard` w P0 Extended +
+  6 self-testów z czerwoną iniekcją), `mergeStationDers` bez samodeklaracji (zmierzony defekt: lokalny `ptpiree_certificate_ref`
+  przeżywał synchronizację z modelu → naprawa wąska, test wąskości `readiness` przeżywa), fantomowy picker „zastosuj" skasowany
+  (zapis wyłącznie do lokalnego store), test maskujący defekt (`Etap5Der.test.tsx`) naprawiony u źródła. VITE: `server.fs.allow`
+  z realpath `node_modules` — pomiar PRZED 2 × 403 na czcionkach KaTeX przy dowiązanym `node_modules`, PO 0 × 403 (bez
+  `fs.strict: false`); przy okazji: komentarz z `/*` wewnątrz `//` psuł regex komentarzy blokowych `route_prefix_guard`
+  (fałszywe „proxy bez reguł" dla 15 tras) — przeformułowany. Łańcuch f6c na drzewie `f3ec6320` (15:23–16:31 UTC): pytest FULL
+  `-m "not pandapower"` **15 245 passed / 1 skipped / 30 deselected / 0 failed (1221 s)** — xfail IEEE 34 zdjęty (parytet
+  liczony przez bieg kanoniczny), +410 testów netto wobec f6b; pandapower **30 passed (95 s)**; `guardy_z_ci.py` **KOMPLET
+  ZIELONY + 964 self-testów (235 s)**; vitest FULL **891 plików / 12 276 passed / 14 todo** (−2 pliki: kasacje FE uziemienia
+  W5-A); e2e realny backend (31 speców = lista f6b + `rozplyw-niesymetryczny`, `kreator-zrodlo-uziemienie`,
+  `kreator-stacji-max`, `dowody-flow-ekspert-screenshot`, 2 workery): **199 passed / 1 failed** — `kreator-zrodlo-uziemienie`
+  (W5-A) na drzewie scalonym: `r0_ohm` nie wyprowadzone. Przyczyna zmierzona (nie zgadywana): kreator źródła GPZ oferował jako
+  PIERWSZĄ pozycję listy transformatorów WN/SN rekord benchmarku literaturowego `bench_ieee14bus_br15` (135/14 kV, Yy0,
+  P_k = 0 — dana literaturowa bez strat; K1.2 CV-4.3), a wyprowadzenie Z_0 = Z_T0 + 3·Z_N SŁUSZNIE odmawiało (brak P_k = brak
+  R_T, zero fabrykacji). Klasa: rekord benchmarku jako propozycja projektanta — we WSZYSTKICH czterech rodzajach z benchmarkami
+  (linie 127 rekordów, transformatory 20, kondensatory 1, generatory synchroniczne 22) i we wszystkich listach widocznych dla
+  projektanta (kreatory, przeglądarka typów, auto-rozwiązywanie `_resolve_*`). Naprawa u źródła (`76587d40`):
+  `PREFIKS_BENCHMARKU`/`jest_rekordem_benchmarku` w module benchmarków (jedyny strukturalny znacznik — `verification_status`
+  REFERENCYJNY dzieli 142 profili bez marki), `CatalogRepository.list_*` czterech rodzajów bez benchmarków (odczyt po `catalog_ref`
+  bez zmian — budowniczowie sieci wzorcowych), test iloczynu cech 4 rodzaje × {prefiks, lista bez benchmarków + odczyt po id,
+  brak prefiksu w rekordach producenckich, API bez benchmarków i z P_k > 0 dla każdego WN/SN}. Łańcuch f6d na drzewie
+  `76587d40` (16:50–17:24 UTC; drzewo `frontend/` bit w bit jak `f3ec6320` — hash poddrzewa `81011e93`, więc vitest z f6c
+  obowiązuje): pytest FULL **15 255 passed / 1 skipped / 30 deselected / 0 failed (879 s)**; pandapower **30 passed (92 s)**;
+  `guardy_z_ci.py` **97/97 guardów + lint + npm + 964 self-testów — KOMPLET ZIELONY**; e2e 31 speców **200 passed / 0 failed
+  (9,1 min)**. Sygnatury commitów wykonawców przepisane przed pushem (drzewo bit w bit).
 
 ## G. Ustalenia adwersaryjne (§38) — po każdej granicy
 
