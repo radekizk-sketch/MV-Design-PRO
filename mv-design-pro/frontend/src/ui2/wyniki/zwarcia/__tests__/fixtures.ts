@@ -8,6 +8,7 @@
  */
 
 import type {
+  KonfiguracjaBieguZwarcia,
   ShortCircuitBranchFlow,
   ShortCircuitResults,
   ShortCircuitRow,
@@ -344,6 +345,21 @@ export function zalozenieBieguFixture(
       + "źródle napięciowym — Ik''min(Q) = (c_min/c_max)·I''_kQmax; założenie "
       + 'niekonserwatywne dla czułości zabezpieczeń (Z_Qmin ≥ Z_Qmax).',
     scenariusz: 'MIN',
+    ...over,
+  };
+}
+
+/** Konfiguracja ZAPISANA na biegu (karta TODO-UI2 p.7) — kształt 1:1 odpowiedzi
+ * `api/canonical_run_views.py::build_konfiguracja_biegu_zwarcia`. Domyślnie
+ * `c_factor` jawny (najczęstsza ścieżka — scenariusz zwarciowy zawsze niesie
+ * jawny c, `enm/scenariusze.opcje_biegu_ze_scenariusza`). */
+export function konfiguracjaBieguFixture(
+  over: Partial<KonfiguracjaBieguZwarcia> = {},
+): KonfiguracjaBieguZwarcia {
+  return {
+    c_factor: { tryb: 'jawny', wartosc: 1.1 },
+    thermal_time_seconds: { wartosc: 1.0, pochodzenie: 'opcje_biegu' },
+    metoda: 'IEC 60909',
     ...over,
   };
 }

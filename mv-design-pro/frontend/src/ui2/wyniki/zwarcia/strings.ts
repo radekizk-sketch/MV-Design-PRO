@@ -57,7 +57,12 @@ export const ZWARCIA_STRINGS = {
   zalMetodaWartosc: 'IEC 60909',
   zalWspolczynnikC: 'Współczynnik napięciowy c',
   zalCzasCieplny: 'Czas cieplny',
-  zalWartoscZKonfiguracji: 'Wartość pochodzi z konfiguracji przebiegu — niedostępna w kontrakcie wyników (read-only).',
+  // Karta UI2 p.7: c/czas cieplny z ZAPISANEJ konfiguracji TEGO biegu
+  // (`konfiguracja_biegu` odpowiedzi), nie z aktywnego przypadku obliczeniowego.
+  zalWspolczynnikCAuto: 'dobierany automatycznie per węzeł',
+  zalWspolczynnikCAutoUwaga: 'Wartość c dobrana z pasma napięciowego każdego węzła (IEC 60909) — brak jednej wspólnej liczby dla całego biegu.',
+  zalCzasCieplnyDomyslny: 'Bieg nie miał jawnie ustawionego czasu cieplnego — zastosowano wartość domyślną solvera.',
+  zalKonfiguracjaBieguNiedostepna: 'Starszy zapis przebiegu sprzed uzupełnienia kontraktu — konfiguracja biegu niedostępna.',
 
   // Sekcja wkładów
   wkladyTytul: 'Wkłady do zwarcia',
@@ -249,8 +254,10 @@ export function rodzajZwarciaPL(faultType: string | null): string {
  * Słownik polskich etykiet flag wiersza zwarciowego (`ShortCircuitRow.flags`).
  * Spójny z kanoniczną pulą tokenów flag repozytorium
  * (`ui/results-inspector/types.ts:460-464`). Tokeny nierozpoznane pokazywane są
- * dosłownie (dane, nie literał UI). Docelowa pula flag zwarciowych = własność
- * backendu (patrz TODO-KARTA w `zwarciaModel.ts`).
+ * dosłownie (dane, nie literał UI). Docelowa pula flag zwarciowych jest
+ * WŁASNOŚCIĄ BACKENDU (dziś pusta — `enm/canonical_analysis.py`, pole `flags`
+ * emitowane jako `[]`); ten słownik NIE zgaduje tokenów, których backend
+ * jeszcze nie wysyła.
  */
 const FLAGI_ZWARCIA_PL: Record<string, string> = {
   SLACK: 'Węzeł bilansujący',

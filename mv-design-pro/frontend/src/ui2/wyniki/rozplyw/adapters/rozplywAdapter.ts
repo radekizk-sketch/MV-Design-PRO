@@ -12,22 +12,26 @@
  * - Store read-only: `usePowerFlowResultsStore.results` (`ui/power-flow-results/store.ts:44`),
  *   `runHeader.id` (`store.ts:41`, `PowerFlowRunHeader.id` `types.ts:28`).
  *
- * TODO-KARTA (ograniczenia — brak źródła w kontrakcie read-only, karta §2 „NIE zgaduj"):
- * 1. Świeżość (FreshnessBadge) wymaga LICZBOWEJ rewizji modelu z chwili liczenia.
- *    `PowerFlowResultV1`/`PowerFlowRunHeader` NIE niosą liczbowej rewizji — jedynie
- *    `result_status` (enum FRESH/OUTDATED, `types.ts:204-209`) i `input_hash`
- *    (`types.ts:34`). Mapowanie enum→liczba byłoby zgadywaniem → nagłówek TabelaSzyn
- *    NIE podaje rewizji (badge pominięty). Numeryczną świeżość dostarczy karta
- *    integracyjna (spięcie ze snapshot store'em modelu).
- * 2. Populacja store'u (`selectRun`/`loadResults`, `store.ts:109-184`) należy do
- *    okna inspektora rozpływu; ten adapter wyłącznie CZYTA `results` (read-only).
+ * ŚWIEŻOŚĆ NAGŁÓWKA (FreshnessBadge): `PowerFlowResultV1`/`PowerFlowRunHeader`
+ * same NIE niosą liczbowej rewizji z chwili liczenia — źródłem jest `useSwiezoscNaglowka(runId)`
+ * (`ui2/freshness`), który czyta `analysisCaseContext.rewizjaModelu` z kontraktu
+ * biegu (`useAnalysisRunContract`, V12K-264) niezależnie od kształtu wyniku PF.
+ * `TabelaSzyn`/`EkranRozplywu` wołają ten hook przy budowie `naglowek`, nie ten
+ * adapter (adapter zostaje czystymi funkcjami projekcji, zero Reacta/store'ów
+ * z wyjątkiem `useWynikRozplywu` niżej).
+ *
+ * Populacja store'u (`selectRun`/`loadResults`, `store.ts:109-184`) należy do
+ * okna inspektora rozpływu; ten adapter wyłącznie CZYTA `results` (read-only).
  *
  * DOWÓD PER-WARTOŚĆ (karta K3 / C1 — domknięcie `dowodRef`): wielkości tabel
  * (napięcia, kąty, moce, straty) pochodzą WPROST z wyników przebiegu rozpływu,
  * a ich wywód WHITE BOX niesie ślad tego przebiegu (zakładka „Dowód obliczeń").
  * Ref dowodu = identyfikator elementu z kontraktu (`bus_id`/`branch_id`) — jak we
- * wzorcu zwarciowym (`zwarciaModel.ts`: `element_id ?? target_id`); przygotowany
- * pod fokus kroku po `TraceStep.element_id` (TODO E9.x w `DowodPrzebiegu`).
+ * wzorcu zwarciowym (`zwarciaModel.ts`: `element_id ?? target_id`). Fokus kroku
+ * po tym ref-ie DOMKNIĘTY (karta KD-4, luka L-11): `DowodPrzebiegu.tsx`
+ * (`ui2/spaces/wyniki/`) przyjmuje `wskazanyElementRef` z 2× klika i woła
+ * `resolveTraceStepsForElement(slad, {id, name})` — generyczny dostawca po
+ * `TraceStep`, bez rozróżniania bus/branch (ten sam mechanizm dla obu tabel).
  * Wcześniejsza decyzja E8.1 (komórki bez `dowodRef`, bo brak `evidence_ref`
  * per szyna) została nadpisana kartą K3: kryterium jest realne odwołanie
  * elementowe w kontrakcie, nie osobne pole dowodowe.

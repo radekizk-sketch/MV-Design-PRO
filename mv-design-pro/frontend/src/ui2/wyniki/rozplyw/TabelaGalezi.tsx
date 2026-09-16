@@ -120,6 +120,15 @@ export function TabelaGalezi({
         kluczWiersza={KLUCZ_GALAZ}
         wybranyWiersz={wybranyWiersz}
         onWybierzWiersz={onWybierzWiersz}
+        // Karta UI2 p.6: typ elementu DLA SYNCHRONIZACJI Z SLD — reużywa
+        // DOKŁADNIE tę samą mapę obciążeń/`typElementuWalidacji` co akcja
+        // „Popraw w modelu" niżej (jedno źródło prawdy o typie gałęzi w tej
+        // tabeli). Gałąź bez pozycji walidacji → `undefined` (zero zgadywania
+        // Line vs Transformer bez realnych danych).
+        typElementuWiersza={(ref) => {
+          const poz = obciazenia?.get(ref);
+          return poz ? typElementuWalidacji(poz.checkType) ?? undefined : undefined;
+        }}
         // K1 / F-E6.3 + R3-A: rodzaj i typ elementu z REALNEGO `check_type`
         // pozycji walidacji (reuse mapowań `jakosc/jakoscModel.ts`):
         // BRANCH_LOADING → LineBranch/'obciazalnosc-galezi',

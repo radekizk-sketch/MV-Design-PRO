@@ -10,6 +10,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { SekcjaWytrzymaloscCieplna } from '../EkranJakosci';
 import { JAKOSC_STRINGS } from '../strings';
 import { przebiegTestowy } from './fixtures';
+import { useSelectionStore } from '../../../../ui/selection/store';
 import type {
   DowodCieplnyResponse,
   PozycjaCieplna,
@@ -166,6 +167,7 @@ function odpowiedzOk(body: unknown) {
 beforeEach(() => {
   fetchMock.mockReset();
   vi.stubGlobal('fetch', fetchMock);
+  useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
 });
 
 afterEach(() => {
@@ -409,6 +411,39 @@ describe('SekcjaWytrzymaloscCieplna — dowód kryterium (karta F-K1 faza 5)', (
     fireEvent.click(screen.getByText('Magistrala L-01'));
 
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-cieplna-dowod-blad')).toBeTruthy());
+  });
+});
+
+describe('SekcjaWytrzymaloscCieplna — zaznaczenie elementu niesie NAZWĘ, nie identyfikator techniczny (karta TODO-UI2 p.6, poprawka KLASA NIE INSTANCJA)', () => {
+  // `branch_id` ('cable_A') != `branch_name` ('Magistrala L-01') w fixturze —
+  // dokładnie kombinacja cech, w której defekt mógłby się schować (id-jako-nazwa
+  // przechodzi niezauważenie, gdy oba pola przypadkiem są sobie równe).
+  it('klik NATYWNY na wierszu zapisuje selekcję z branch_name, nie branch_id', async () => {
+    fetchMock.mockResolvedValue(odpowiedzOk(odpowiedz([pozycja()])));
+    render(<SekcjaWytrzymaloscCieplna {...props()} />);
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-cieplna')).toBeTruthy());
+
+    fireEvent.click(screen.getByText('Magistrala L-01'));
+
+    expect(useSelectionStore.getState().selectedElement).toMatchObject({
+      id: 'cable_A',
+      type: 'LineBranch',
+      name: 'Magistrala L-01',
+    });
+  });
+
+  it('przycisk „Popraw w modelu" zapisuje selekcję z branch_name, nie branch_id (regresja przed-istniejącego defektu, naprawiona w tej samej karcie)', async () => {
+    fetchMock.mockResolvedValue(odpowiedzOk(odpowiedz([pozycja({ status: 'FAIL' })])));
+    render(<SekcjaWytrzymaloscCieplna {...props()} />);
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-cieplna')).toBeTruthy());
+
+    fireEvent.click(screen.getByTestId('mvd-wyn-popraw'));
+
+    expect(useSelectionStore.getState().selectedElement).toMatchObject({
+      id: 'cable_A',
+      type: 'LineBranch',
+      name: 'Magistrala L-01',
+    });
   });
 });
 

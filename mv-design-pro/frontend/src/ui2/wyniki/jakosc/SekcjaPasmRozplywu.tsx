@@ -299,6 +299,15 @@ export function SekcjaPasmRozplywu({
         kluczWiersza={KLUCZ_NAPIECIA_WEZEL}
         onWybierzWiersz={setWybranaSzyna}
         wybranyWiersz={wybranaSzyna}
+        // Karta UI2 p.6: pasmo napięcia liczone per węzeł (Bus).
+        typElementuWiersza={() => 'Bus'}
+        // Poprawka KLASA NIE INSTANCJA: `KLUCZ_NAPIECIA_WEZEL` niesie `target_id`
+        // (techniczny), kolumna „Szyna" pokazuje `target_name ?? target_id` —
+        // ten sam `selektorNapiec`, którego już używa `SzczegolNapiecia` niżej.
+        nazwaElementuWiersza={(klucz) => {
+          const item = selektorNapiec.get(klucz);
+          return item ? item.target_name ?? item.target_id : undefined;
+        }}
       />
       <div className="mvd-jakosc-podsumowanie" data-testid="mvd-jakosc-pasma-napiecia-podsumowanie">
         <Chip etykieta={JAKOSC_STRINGS.podsumZweryfikowane} wartosc={dane.napiecia.summary.credible_count} istotnosc="ok" />
@@ -319,6 +328,17 @@ export function SekcjaPasmRozplywu({
         kluczWiersza={KLUCZ_OBCIAZENIA_GALAZ}
         onWybierzWiersz={setWybranaGalaz}
         wybranyWiersz={wybranaGalaz}
+        // Karta UI2 p.6: sekcja dotyczy WYŁĄCZNIE linii/kabli (nagłówek
+        // pliku: „Obciążenia gałęzi — linia/kabel"), nigdy transformatorów.
+        typElementuWiersza={() => 'LineBranch'}
+        // Poprawka KLASA NIE INSTANCJA: `KLUCZ_OBCIAZENIA_GALAZ` niesie
+        // `target_id` (techniczny), kolumna „Gałąź" pokazuje `target_name ??
+        // target_id` — ten sam `selektorObciazen`, którego już używa
+        // `SzczegolObciazenia` niżej.
+        nazwaElementuWiersza={(klucz) => {
+          const item = selektorObciazen.get(klucz);
+          return item ? item.target_name ?? item.target_id : undefined;
+        }}
       />
       <div className="mvd-jakosc-podsumowanie" data-testid="mvd-jakosc-pasma-obciazenia-podsumowanie">
         <Chip etykieta={JAKOSC_STRINGS.podsumZweryfikowane} wartosc={dane.obciazenia.summary.credible_count} istotnosc="ok" />

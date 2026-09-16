@@ -178,6 +178,15 @@ export function EkranSkladowych() {
               kluczWiersza={KLUCZ_PUNKT}
               onWybierzWiersz={setWybranyPunkt}
               wybranyWiersz={aktywnyPunkt}
+              // Karta UI2 p.6: ten sam typ 'Bus' co akcja „Pokaż na
+              // schemacie" niżej (punkty składowych = punkty zwarciowe = węzły).
+              typElementuWiersza={() => 'Bus'}
+              // Poprawka KLASA NIE INSTANCJA: `KLUCZ_PUNKT` niesie `target_id`
+              // (techniczny) — ta sama para pól, którą `onPoprawWModelu` niżej
+              // już rozwiązuje poprawnie przez `target_name ?? ref`.
+              nazwaElementuWiersza={(klucz) =>
+                rows.find((r) => r.target_id === klucz)?.target_name ?? undefined
+              }
               onPoprawWModelu={(klucz) => {
                 const wiersz = rows.find((r) => r.target_id === klucz);
                 const ref = wiersz?.element_id ?? klucz;

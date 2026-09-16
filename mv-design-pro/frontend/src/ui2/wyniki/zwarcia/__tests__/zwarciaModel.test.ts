@@ -30,6 +30,7 @@ import {
   uwagiZwarciaPL,
 } from '../strings';
 import {
+  konfiguracjaBieguFixture,
   shortCircuitResultsFixture,
   shortCircuitRowFixture,
   wkladyFixture,
@@ -121,9 +122,19 @@ describe('uwagiZwarciaPL — flagi na tekst uwag', () => {
   });
 });
 
-describe('naZalozeniaZwarc — założenia (metoda IEC 60909, c, czas cieplny)', () => {
-  it('metoda jest stałą normatywną; c i czas z propsów gdy podane', () => {
-    const zalozenia = naZalozeniaZwarc(1.1, 1.0);
+describe('naZalozeniaZwarc — założenia (metoda IEC 60909, c, czas cieplny) z konfiguracji ZAPISANEJ na biegu', () => {
+  // Karta TODO-UI2 p.7: `konfiguracja_biegu` to konfiguracja TEGO biegu
+  // (`api/canonical_run_views.py::build_konfiguracja_biegu_zwarcia`), nigdy
+  // aktywnego przypadku obliczeniowego — iloczyn cech: {c jawny / c auto-per-
+  // -węzeł} × {czas z opcji / czas domyślny assemblera} × {konfiguracja
+  // nieobecna (starszy zapis)}.
+  it('metoda jest stałą normatywną; c jawny i czas z opcji biegu', () => {
+    const zalozenia = naZalozeniaZwarc(
+      konfiguracjaBieguFixture({
+        c_factor: { tryb: 'jawny', wartosc: 1.1 },
+        thermal_time_seconds: { wartosc: 1.0, pochodzenie: 'opcje_biegu' },
+      }),
+    );
     expect(zalozenia[0]).toEqual({
       etykieta: ZWARCIA_STRINGS.zalMetoda,
       wartosc: 'IEC 60909',
@@ -132,18 +143,44 @@ describe('naZalozeniaZwarc — założenia (metoda IEC 60909, c, czas cieplny)',
       etykieta: ZWARCIA_STRINGS.zalWspolczynnikC,
       wartosc: fmtWspolczynnik(1.1),
     });
+    expect(zalozenia[1].uwaga).toBeUndefined();
     expect(zalozenia[2]).toMatchObject({
       etykieta: ZWARCIA_STRINGS.zalCzasCieplny,
       wartosc: fmtCzas(1.0),
       jednostka: ZWARCIA_STRINGS.jednS,
     });
+    expect(zalozenia[2].uwaga).toBeUndefined();
   });
 
-  it('brak c/czasu → „—" z uwagą o pochodzeniu (NIE zgaduj)', () => {
-    const zalozenia = naZalozeniaZwarc();
+  it('c auto-per-węzeł (brak jawnego override) → uczciwy opis, NIE liczba zmyślona', () => {
+    const zalozenia = naZalozeniaZwarc(
+      konfiguracjaBieguFixture({ c_factor: { tryb: 'auto_per_wezel', wartosc: null } }),
+    );
+    expect(zalozenia[1]).toMatchObject({
+      etykieta: ZWARCIA_STRINGS.zalWspolczynnikC,
+      wartosc: ZWARCIA_STRINGS.zalWspolczynnikCAuto,
+      uwaga: ZWARCIA_STRINGS.zalWspolczynnikCAutoUwaga,
+    });
+  });
+
+  it('czas cieplny domyślny assemblera (brak w opcjach biegu) → wartość NAZWANA jako domyślna', () => {
+    const zalozenia = naZalozeniaZwarc(
+      konfiguracjaBieguFixture({
+        thermal_time_seconds: { wartosc: 1.0, pochodzenie: 'domyslna_assemblera' },
+      }),
+    );
+    expect(zalozenia[2]).toMatchObject({
+      wartosc: fmtCzas(1.0),
+      uwaga: ZWARCIA_STRINGS.zalCzasCieplnyDomyslny,
+    });
+  });
+
+  it('konfiguracja biegu nieobecna (starszy zapis sprzed karty) → „—" z uwagą o pochodzeniu (NIE zgaduj)', () => {
+    const zalozenia = naZalozeniaZwarc(undefined);
     expect(zalozenia[1].wartosc).toBe(ZWARCIA_STRINGS.kreska);
-    expect(zalozenia[1].uwaga).toBe(ZWARCIA_STRINGS.zalWartoscZKonfiguracji);
+    expect(zalozenia[1].uwaga).toBe(ZWARCIA_STRINGS.zalKonfiguracjaBieguNiedostepna);
     expect(zalozenia[2].wartosc).toBe(ZWARCIA_STRINGS.kreska);
+    expect(zalozenia[2].uwaga).toBe(ZWARCIA_STRINGS.zalKonfiguracjaBieguNiedostepna);
     expect(zalozenia[2].jednostka).toBeUndefined();
   });
 
@@ -152,7 +189,7 @@ describe('naZalozeniaZwarc — założenia (metoda IEC 60909, c, czas cieplny)',
   it('dokłada wiersz na każde założenie biegu (raw_result.zalozenia) — treść z backendu', () => {
     const zalozenieA = zalozenieBieguFixture({ element_ref: 's1' });
     const zalozenieB = zalozenieBieguFixture({ element_ref: 's2', code: 'source.sk_min_missing' });
-    const zalozenia = naZalozeniaZwarc(1.1, 1.0, [zalozenieA, zalozenieB]);
+    const zalozenia = naZalozeniaZwarc(konfiguracjaBieguFixture(), [zalozenieA, zalozenieB]);
     expect(zalozenia).toHaveLength(5); // 3 bazowe + 2 ze źródeł
     expect(zalozenia[3]).toEqual({
       etykieta: ZWARCIA_STRINGS.zalozenieEtykieta('s1'),
@@ -163,8 +200,8 @@ describe('naZalozeniaZwarc — założenia (metoda IEC 60909, c, czas cieplny)',
   });
 
   it('bez założeń biegu (undefined/pusta lista) → tylko 3 wiersze bazowe (bez zmian)', () => {
-    expect(naZalozeniaZwarc(1.1, 1.0, undefined)).toHaveLength(3);
-    expect(naZalozeniaZwarc(1.1, 1.0, [])).toHaveLength(3);
+    expect(naZalozeniaZwarc(konfiguracjaBieguFixture(), undefined)).toHaveLength(3);
+    expect(naZalozeniaZwarc(konfiguracjaBieguFixture(), [])).toHaveLength(3);
   });
 });
 

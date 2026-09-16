@@ -14,6 +14,8 @@
  * syntetycznym zdarzeniem, maskowałby defekt realnej drogi użytkownika.
  */
 
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -22,6 +24,7 @@ import { KONTYNGENCJE_STRINGS as T } from '../strings';
 import { MACIERZ, MACIERZ_Z_NARUSZENIEM_BAZOWYM, ZAKRES } from './fixtures';
 import { useAppStateStore } from '../../../../ui/app-state/store';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
+import { useSelectionStore } from '../../../../ui/selection/store';
 import type { ExecutionRun } from '../../../../ui/study-cases/types';
 
 function przebieg(
@@ -72,6 +75,7 @@ async function zakresGotowy() {
 beforeEach(() => {
   useAppStateStore.setState({ activeRunId: null });
   useExecutionRunsStore.setState({ runs: [], activeRunId: null });
+  useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
 });
 
 afterEach(() => {
@@ -85,7 +89,7 @@ describe('EkranKontyngencji — stan zerowy', () => {
     vi.stubGlobal('fetch', spy);
     useExecutionRunsStore.setState({ runs: [przebieg('sc-1', 'SC_3F')], activeRunId: null });
 
-    render(<EkranKontyngencji trybZaawansowania="basic" />);
+    render(<EkranKontyngencji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
 
     expect(screen.getByTestId('mvd-n1-brak-przebiegu')).toHaveTextContent(T.brakPrzebiegu);
     expect(
@@ -102,7 +106,7 @@ describe('EkranKontyngencji — stan zerowy', () => {
     );
     useExecutionRunsStore.setState({ runs: [przebieg('pf-1', 'LOAD_FLOW')], activeRunId: 'pf-1' });
 
-    render(<EkranKontyngencji trybZaawansowania="basic" />);
+    render(<EkranKontyngencji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
 
     await waitFor(() => expect(screen.getByTestId('mvd-n1-zakres-blad')).toBeInTheDocument());
     expect(screen.getByTestId('mvd-n1-zakres-blad')).toHaveTextContent('422');
@@ -118,7 +122,7 @@ describe('EkranKontyngencji — zakres i koszt przed biegiem', () => {
   it('zapowiedź podaje koszt biegu pełnego LICZBAMI z backendu', async () => {
     mockFetch();
 
-    render(<EkranKontyngencji trybZaawansowania="basic" />);
+    render(<EkranKontyngencji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     await zakresGotowy();
 
     expect(screen.getByTestId('mvd-n1-koszt-kontyngencji')).toHaveTextContent('4');
@@ -129,7 +133,7 @@ describe('EkranKontyngencji — zakres i koszt przed biegiem', () => {
   it('koszt NIE jest wyrażony czasem (zakaz liczby zmyślonej)', async () => {
     mockFetch();
 
-    render(<EkranKontyngencji trybZaawansowania="basic" />);
+    render(<EkranKontyngencji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     await zakresGotowy();
 
     // Sedno: pomiar 2,64 s pochodzi z innego substratu — okno nie ma prawa go
@@ -142,7 +146,7 @@ describe('EkranKontyngencji — zakres i koszt przed biegiem', () => {
   it('bieg NIE startuje sam — dopóki nie ma kliku, końcówka macierzy nie jest wołana', async () => {
     const spy = mockFetch();
 
-    render(<EkranKontyngencji trybZaawansowania="basic" />);
+    render(<EkranKontyngencji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     await zakresGotowy();
 
     expect(wywolaniaBiegu(spy)).toHaveLength(0);
@@ -152,7 +156,7 @@ describe('EkranKontyngencji — zakres i koszt przed biegiem', () => {
     const uzytkownik = userEvent.setup();
     const spy = mockFetch();
 
-    render(<EkranKontyngencji trybZaawansowania="basic" />);
+    render(<EkranKontyngencji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     await zakresGotowy();
     await uzytkownik.click(screen.getByTestId('mvd-n1-policz'));
 
@@ -164,7 +168,7 @@ describe('EkranKontyngencji — zakres i koszt przed biegiem', () => {
     const uzytkownik = userEvent.setup();
     const spy = mockFetch();
 
-    render(<EkranKontyngencji trybZaawansowania="basic" />);
+    render(<EkranKontyngencji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     await zakresGotowy();
     await uzytkownik.click(screen.getByTestId('mvd-n1-tryb-wybrane'));
     await uzytkownik.click(screen.getByTestId('mvd-n1-element-tr_sn_nn'));
@@ -183,7 +187,7 @@ describe('EkranKontyngencji — zakres i koszt przed biegiem', () => {
     const uzytkownik = userEvent.setup();
     mockFetch();
 
-    render(<EkranKontyngencji trybZaawansowania="basic" />);
+    render(<EkranKontyngencji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     await zakresGotowy();
     await uzytkownik.click(screen.getByTestId('mvd-n1-tryb-wybrane'));
 
@@ -196,7 +200,7 @@ describe('EkranKontyngencji — zakres i koszt przed biegiem', () => {
     const uzytkownik = userEvent.setup();
     const spy = mockFetch();
 
-    render(<EkranKontyngencji trybZaawansowania="basic" />);
+    render(<EkranKontyngencji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     await zakresGotowy();
     await uzytkownik.click(screen.getByTestId('mvd-n1-tryb-wybrane'));
 
@@ -211,7 +215,7 @@ describe('EkranKontyngencji — zakres i koszt przed biegiem', () => {
     const uzytkownik = userEvent.setup();
     const spy = mockFetch();
 
-    render(<EkranKontyngencji trybZaawansowania="basic" />);
+    render(<EkranKontyngencji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     await zakresGotowy();
     await uzytkownik.click(screen.getByTestId('mvd-n1-tryb-wybrane'));
     await uzytkownik.click(screen.getByTestId('mvd-n1-zaznacz-wszystkie'));
@@ -230,7 +234,7 @@ describe('EkranKontyngencji — zakres i koszt przed biegiem', () => {
     const uzytkownik = userEvent.setup();
     mockFetch();
 
-    render(<EkranKontyngencji trybZaawansowania="basic" />);
+    render(<EkranKontyngencji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     await zakresGotowy();
     await uzytkownik.click(screen.getByTestId('mvd-n1-tryb-wybrane'));
     await uzytkownik.click(screen.getByTestId('mvd-n1-zaznacz-wszystkie'));
@@ -250,7 +254,7 @@ describe('EkranKontyngencji — odczyt macierzy', () => {
   async function policz(macierz: unknown = MACIERZ, tryb: 'basic' | 'expert' = 'basic') {
     const uzytkownik = userEvent.setup();
     mockFetch(macierz);
-    render(<EkranKontyngencji trybZaawansowania={tryb} />);
+    render(<EkranKontyngencji trybZaawansowania={tryb} onOtworzDowod={vi.fn()} />);
     await zakresGotowy();
     await uzytkownik.click(screen.getByTestId('mvd-n1-policz'));
     await waitFor(() => expect(screen.getByTestId('mvd-n1-bazowy')).toBeInTheDocument());
@@ -305,6 +309,36 @@ describe('EkranKontyngencji — odczyt macierzy', () => {
     expect(screen.getByTestId('mvd-n1-szczegoly-slad')).toHaveTextContent('nietknięty');
   });
 
+  it('klik NATYWNY na wierszu rankingu (transformator) zaznacza TransformerBranch — nie tylko otwiera szczegóły (karta TODO-UI2 p.6)', async () => {
+    const uzytkownik = await policz();
+
+    // Pozycja 1 rankingu (`tr_sn_nn`, element_kind="transformer") — ten sam
+    // klik, który otwiera szczegóły (test wyżej), MUSI dodatkowo zapisać
+    // zaznaczenie w jedynym store'ze `ui/selection` (reguła KLASA NIE INSTANCJA:
+    // ten sam mechanizm sprawdzony na obu rodzajach `element_kind` z rankingu).
+    await uzytkownik.click(screen.getByText('TR 15/0,4'));
+
+    expect(useSelectionStore.getState().selectedElement).toMatchObject({
+      id: 'tr_sn_nn',
+      type: 'TransformerBranch',
+      name: 'TR 15/0,4',
+    });
+  });
+
+  it('klik NATYWNY na wierszu rankingu (kabel) zaznacza LineBranch — element_kind rozstrzyga backend, zero zgadywania', async () => {
+    const uzytkownik = await policz();
+
+    // Pozycja 2 rankingu (`ka_magistrala`, element_kind="cable") — inny rodzaj
+    // niż wiersz transformatora wyżej, więc to NIE jest ten sam przypadek.
+    await uzytkownik.click(screen.getByText('Kabel magistralny'));
+
+    expect(useSelectionStore.getState().selectedElement).toMatchObject({
+      id: 'ka_magistrala',
+      type: 'LineBranch',
+      name: 'Kabel magistralny',
+    });
+  });
+
   it('szczegóły pokazują kryteria POMINIĘTE jawnie (brak danej nie udaje wyniku)', async () => {
     const uzytkownik = await policz();
     await uzytkownik.click(screen.getByText('TR 15/0,4'));
@@ -353,7 +387,7 @@ describe('EkranKontyngencji — odczyt macierzy', () => {
       }),
     );
 
-    render(<EkranKontyngencji trybZaawansowania="basic" />);
+    render(<EkranKontyngencji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     await zakresGotowy();
     await uzytkownik.click(screen.getByTestId('mvd-n1-policz'));
 
@@ -377,5 +411,14 @@ describe('EkranKontyngencji — odczyt macierzy', () => {
     expect(screen.getByTestId('mvd-n1-szczegoly-slad')).not.toHaveTextContent(
       T.sladWezelBilansujacy,
     );
+  });
+
+  it('onOtworzDowod jest realnym dostawcą z propsów, NIE zaślepką () => {} (regresja klasy guarda ui2_dead_handler_guard)', () => {
+    // Karta TODO-UI2 §0.4(iii): ten ekran renderował `onOtworzDowod={() => {}}`
+    // na wywołaniu wzorca — martwy klik na każdej przyszłej komórce z dowodem.
+    // Skan źródła (wzór `no-production-todo.test.ts`) pilnuje regresji do stubu.
+    const zrodlo = readFileSync(join(__dirname, '..', 'EkranKontyngencji.tsx'), 'utf-8');
+    expect(zrodlo).not.toMatch(/onOtworzDowod=\{\s*\(\)\s*=>\s*(undefined|\{\s*\})\s*\}/);
+    expect(zrodlo).toMatch(/onOtworzDowod=\{onOtworzDowod\}/);
   });
 });

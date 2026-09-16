@@ -21,6 +21,7 @@ import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { useSelectionStore } from '../../../../ui/selection/store';
 import { useShellStore } from '../../../shell/useShellStore';
 import type { ExecutionRun } from '../../../../ui/study-cases/types';
+import { INSPECTOR_STRINGS, znacznikNieaktualne } from '../../../inspector';
 import { EkranZbieznosci } from '../EkranZbieznosci';
 import { ZBIEZNOSC_STRINGS as T } from '../strings';
 import {
@@ -30,6 +31,17 @@ import {
   naZalozeniaZbieznosci,
   wybierzPrzebiegRozplywu,
 } from '../zbieznoscModel';
+
+// Karta TODO-UI2 p.9: znacznik świeżości nagłówka (`useSwiezoscNaglowka`, V12K-264)
+// czyta `analysisCaseContext.rewizjaModelu` z kontraktu przebiegu — mockowany
+// modułowo (jak `freshness/__tests__/useSwiezoscNaglowka.test.tsx` i
+// `rozplyw/__tests__/tabelaSzyn.test.tsx`), żeby nie kolidować z routingiem
+// URL istniejącego `mockFetchPrzebiegu` (power-flow-results API, nie
+// analysis-runs API).
+const kontraktMock = vi.fn(() => ({ data: null, isLoading: false, error: null }) as const);
+vi.mock('../../../../ui/workspace/analysisRunContract', () => ({
+  useAnalysisRunContract: (runId: string | null) => kontraktMock(runId),
+}));
 
 const RUN_LF: ExecutionRun = {
   id: 'run-lf-1',
@@ -205,9 +217,11 @@ beforeEach(() => {
   useAppStateStore.getState().reset();
   useExecutionRunsStore.getState().reset();
   usePowerFlowResultsStore.getState().reset();
-  useSnapshotStore.setState({ snapshot: null });
+  useSnapshotStore.setState({ snapshot: null, rewizjaBiezacegoModelu: null });
   useNetworkBuildStore.setState({ activeSurface: null, surfaceStack: [] });
   useShellStore.setState({ activeSpace: 'wyniki', wynikiTab: null, wynikiTabElement: null });
+  kontraktMock.mockClear();
+  kontraktMock.mockReturnValue({ data: null, isLoading: false, error: null });
 });
 
 afterEach(() => {
@@ -246,6 +260,61 @@ describe('EkranZbieznosci — rama prowadząca i uczciwe stany zerowe', () => {
     expect(screen.getByTestId('mvd-zbieznosc-brak-przebiegu')).toBeInTheDocument();
     await user.click(screen.getByTestId('mvd-zbieznosc-brak-przebiegu-akcja'));
     expect(useShellStore.getState().activeSpace).toBe('obliczenia');
+  });
+});
+
+describe('EkranZbieznosci — znacznik świeżości nagłówka (karta TODO-UI2 p.9, V12K-264)', () => {
+  // Ekran wcześniej NIE MIAŁ znacznika świeżości wcale (BRAK ZDOLNOŚCI, żaden
+  // import/wywołanie hooka) — dowód wpięcia `useSwiezoscNaglowka` + współdzielony
+  // `FreshnessBadge`, ten sam mechanizm co `EkranZwarc`/`TabelaSzyn`.
+  it('rewizja biegu ≠ bieżąca rewizja modelu → FreshnessBadge „nieaktualne (rew. a → b)"', async () => {
+    ustawKompletnyKontekst();
+    mockFetchPrzebiegu(wynikFixture(), sladFixture());
+    useSnapshotStore.setState({ rewizjaBiezacegoModelu: 5 });
+    kontraktMock.mockReturnValue({
+      data: { analysisCaseContext: { rewizjaModelu: 3 } },
+      isLoading: false,
+      error: null,
+    });
+
+    render(<EkranZbieznosci />);
+
+    expect(await screen.findByTestId('mvd-zbieznosc-swiezosc')).toHaveTextContent(
+      znacznikNieaktualne(3, 5),
+    );
+  });
+
+  it('rewizja biegu = bieżąca rewizja modelu → FreshnessBadge „aktualne"', async () => {
+    ustawKompletnyKontekst();
+    mockFetchPrzebiegu(wynikFixture(), sladFixture());
+    useSnapshotStore.setState({ rewizjaBiezacegoModelu: 5 });
+    kontraktMock.mockReturnValue({
+      data: { analysisCaseContext: { rewizjaModelu: 5 } },
+      isLoading: false,
+      error: null,
+    });
+
+    render(<EkranZbieznosci />);
+
+    expect(await screen.findByTestId('mvd-zbieznosc-swiezosc')).toHaveTextContent(
+      INSPECTOR_STRINGS.aktualne,
+    );
+  });
+
+  it('kontrakt biegu bez liczbowej rewizji (starszy zapis) → BRAK znacznika (zero zgadywania)', async () => {
+    ustawKompletnyKontekst();
+    mockFetchPrzebiegu(wynikFixture(), sladFixture());
+    useSnapshotStore.setState({ rewizjaBiezacegoModelu: 5 });
+    kontraktMock.mockReturnValue({
+      data: { analysisCaseContext: { rewizjaModelu: null } },
+      isLoading: false,
+      error: null,
+    });
+
+    render(<EkranZbieznosci />);
+
+    await screen.findByTestId('mvd-zbieznosc-werdykt');
+    expect(screen.queryByTestId('mvd-zbieznosc-swiezosc')).not.toBeInTheDocument();
   });
 });
 

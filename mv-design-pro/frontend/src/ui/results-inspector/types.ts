@@ -305,11 +305,48 @@ export interface ZalozenieBieguSlad {
 }
 
 /**
+ * Współczynnik napięciowy c ZAPISANY na biegu (karta UI2 p.7,
+ * `api/canonical_run_views.py::_c_factor_biegu_zwarcia`) — jawny override
+ * (`tryb: 'jawny'`, `wartosc` liczbą) albo dobór automatyczny per węzeł z jego
+ * pasma napięciowego (`tryb: 'auto_per_wezel'`, `wartosc: null` — nie ma
+ * jednej liczby, więc pole NIE jest fabrykowane).
+ */
+export interface CFactorBiegu {
+  tryb: 'jawny' | 'auto_per_wezel';
+  wartosc: number | null;
+}
+
+/**
+ * Czas cieplny [s] ZAPISANY na biegu — z opcji biegu (`pochodzenie:
+ * 'opcje_biegu'`) albo wartość, którą assembler faktycznie zastosował, gdy
+ * opcje jej nie niosły (`pochodzenie: 'domyslna_assemblera'` — 1,0 s nie jest
+ * ukrywana jako gdyby pochodziła z opcji biegu).
+ */
+export interface ThermalTimeBiegu {
+  wartosc: number;
+  pochodzenie: 'opcje_biegu' | 'domyslna_assemblera';
+}
+
+/**
+ * Konfiguracja ZAPISANA na biegu zwarciowym (karta UI2 p.7) — ZAWSZE
+ * konfiguracja TEGO biegu (`run.options`), NIGDY aktywnego przypadku
+ * obliczeniowego (który może się różnić od przypadku biegu po fakcie).
+ * `metoda` jest stałą normatywną rodziny solvera (jedyna metoda SC w repo).
+ */
+export interface KonfiguracjaBieguZwarcia {
+  c_factor: CFactorBiegu;
+  thermal_time_seconds: ThermalTimeBiegu;
+  metoda: string;
+}
+
+/**
  * Short-circuit results table.
  */
 export interface ShortCircuitResults {
   run_id: string;
   rows: ShortCircuitRow[];
+  /** Karta UI2 p.7 — addytywne, obecne na wszystkich biegach od tej karty. */
+  konfiguracja_biegu?: KonfiguracjaBieguZwarcia;
   analysis_case_context?: AnalysisCaseContext | null;
   /**
    * CV-4.3 K6/K7: ślad WHITE BOX wyprowadzenia Z_Q źródeł sieciowych biegu —

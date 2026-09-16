@@ -9,8 +9,7 @@
  *
  * Zero fizyki, zero mutacji; store czytany wyłącznie do odczytu
  * (`useWynikZwarciowy`). Wybór punktu zwarcia: NATYWNY wybór wiersza tabeli
- * (delta API wzorca zrealizowana — scalenie U3 #4 zamyka TODO-KARTĘ E8.2 A);
- * wiersz wybrany steruje sekcją wkładów.
+ * (delta API wzorca, scalenie U3 #4); wiersz wybrany steruje sekcją wkładów.
  */
 
 import { useMemo, useState } from 'react';
@@ -42,14 +41,11 @@ export interface EkranZwarcProps {
   trybZaawansowania: AdvancementMode;
   onOtworzDowod: (ref: string) => void;
   onEksport?: () => void;
-  /** Współczynnik napięciowy c z konfiguracji przebiegu (TODO-KARTA 3). */
-  wspolczynnikC?: number;
-  /** Czas cieplny [s] z konfiguracji przebiegu (TODO-KARTA 3). */
-  czasCieplnyS?: number;
   /**
-   * Wkłady źródeł per punkt zwarcia (klucz = target_id). Brak wpisu → sekcja
-   * wkładów pokazuje stan „dane niedostępne" (dane spoza kontraktu read-only —
-   * TODO-KARTA 1 w `zwarciaModel.ts`).
+   * Wkłady źródeł per punkt zwarcia (klucz = target_id) — nadpisanie TESTOWE,
+   * pierwszeństwo przed realnym dostawcą (`useWkladyZwarciowe`, endpoint
+   * `POST /api/proof/sc3f/contributions`). Produkcyjnie ekran pobiera wkłady
+   * sam; prop istnieje wyłącznie dla fixture'ów testów.
    */
   wklady?: Record<string, WkladZwarciowy[]>;
 }
@@ -58,8 +54,6 @@ export function EkranZwarc({
   trybZaawansowania,
   onOtworzDowod,
   onEksport,
-  wspolczynnikC,
-  czasCieplnyS,
   wklady,
 }: EkranZwarcProps) {
   const { wynik, runId } = useWynikZwarciowy();
@@ -123,7 +117,7 @@ export function EkranZwarc({
     <div data-testid="mvd-zwarcia-ekran">
       <EkranAnalizy
         naglowek={{ analizaPL: ZWARCIA_STRINGS.analiza, runId: runId ?? undefined, ...swiezosc }}
-        zalozenia={naZalozeniaZwarc(wspolczynnikC, czasCieplnyS, wynik.zalozenia)}
+        zalozenia={naZalozeniaZwarc(wynik.konfiguracja_biegu, wynik.zalozenia)}
         kolumny={KOLUMNY_ZWARC}
         wiersze={naWierszeZwarc(rows)}
         wykres={<WykresZwarc rows={rows} />}
@@ -133,6 +127,16 @@ export function EkranZwarc({
         kluczWiersza={KLUCZ_PUNKT}
         onWybierzWiersz={setWybranyPunkt}
         wybranyWiersz={aktywnyPunkt}
+        // Karta UI2 p.6: punkty zwarciowe toru kanonicznego SĄ węzłami
+        // sieci — ten sam typ, którego już używa siostrzana akcja „Pokaż na
+        // schemacie" tego ekranu (`pokazNaSchemacie.ts`: `type: 'Bus'`).
+        typElementuWiersza={() => 'Bus'}
+        // Poprawka KLASA NIE INSTANCJA: klucz wiersza (`KLUCZ_PUNKT`) niesie
+        // `target_id` (techniczny), a widoczna kolumna „Punkt" pokazuje
+        // `target_name` — inspektor musi dostać tę drugą wartość.
+        nazwaElementuWiersza={(punktId) =>
+          rows.find((r) => r.target_id === punktId)?.target_name ?? undefined
+        }
       />
 
       <div className="mvd-zwarcia-akcje" data-testid="mvd-zwarcia-akcje">

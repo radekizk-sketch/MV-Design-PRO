@@ -3,10 +3,21 @@ import { fireEvent, screen, within } from '@testing-library/react';
 import { EkranZwarc } from '../EkranZwarc';
 import { ZWARCIA_STRINGS } from '../strings';
 import { WZORZEC_STRINGS } from '../../wzorzec';
+import { INSPECTOR_STRINGS, znacznikNieaktualne } from '../../../inspector';
 import { useResultsInspectorStore } from '../../../../ui/results-inspector/store';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
-import { shortCircuitResultsFixture, wkladyFixture } from './fixtures';
+import { konfiguracjaBieguFixture, shortCircuitResultsFixture, wkladyFixture } from './fixtures';
 import { atrapaFetchPasma, renderEkranZwarc } from './renderEkranZwarc';
+
+// Karta UI2 p.9 (test klasy §2: {koperta obecna, koperta nieobecna} × {rozpływ,
+// zbieżność, ZWARCIA}) — trzeci człon macierzy, dotąd nietestowany w tym pliku
+// (blankietowa atrapa `fetch` 404 z `renderEkranZwarc.tsx` domyślnie tłumiła
+// realny `useAnalysisRunContract`, więc znacznik nigdy się nie pokazywał —
+// mockowany tu tak samo jak w `tabelaSzyn.test.tsx`/`ekranZbieznosci.test.tsx`).
+const kontraktMock = vi.fn();
+vi.mock('../../../../ui/workspace/analysisRunContract', () => ({
+  useAnalysisRunContract: (runId: string | null) => kontraktMock(runId),
+}));
 
 function props(over: Partial<Parameters<typeof EkranZwarc>[0]> = {}) {
   return {
@@ -22,6 +33,8 @@ beforeEach(() => {
   // atrapa i render z odczekaniem w `renderEkranZwarc.tsx` (jedno miejsce dla
   // wszystkich plików testów ekranu zwarć).
   atrapaFetchPasma();
+  kontraktMock.mockReset();
+  kontraktMock.mockReturnValue({ data: null, isLoading: false, error: null });
 });
 
 afterEach(() => {
@@ -85,6 +98,53 @@ describe('EkranZwarc — stan pusty (brak wyniku w store)', () => {
   });
 });
 
+describe('EkranZwarc — znacznik świeżości nagłówka (karta UI2 p.9, V12K-264)', () => {
+  // Dowód, że pozycja 2 historii domknięcia w `zwarciaModel.ts` ("FreshnessBadge
+  // się pokazuje") jest FAKTEM: `useSwiezoscNaglowka(runId)` musi być realnie
+  // wpięty w `naglowek`, nie tylko architektonicznie dostępny.
+  beforeEach(ustawWynik);
+
+  it('rewizja biegu ≠ bieżąca rewizja modelu → FreshnessBadge „nieaktualne (rew. a → b)"', async () => {
+    useSnapshotStore.setState({ rewizjaBiezacegoModelu: 5 } as never);
+    kontraktMock.mockReturnValue({
+      data: { analysisCaseContext: { rewizjaModelu: 3 } },
+      isLoading: false,
+      error: null,
+    });
+
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
+
+    expect(screen.getByText(znacznikNieaktualne(3, 5))).toBeInTheDocument();
+  });
+
+  it('rewizja biegu = bieżąca rewizja modelu → FreshnessBadge „aktualne"', async () => {
+    useSnapshotStore.setState({ rewizjaBiezacegoModelu: 5 } as never);
+    kontraktMock.mockReturnValue({
+      data: { analysisCaseContext: { rewizjaModelu: 5 } },
+      isLoading: false,
+      error: null,
+    });
+
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
+
+    expect(screen.getByText(INSPECTOR_STRINGS.aktualne)).toBeInTheDocument();
+  });
+
+  it('kontrakt biegu bez koperty rewizji (bieg sprzed CV-2) → BRAK znacznika (zero zgadywania)', async () => {
+    useSnapshotStore.setState({ rewizjaBiezacegoModelu: 5 } as never);
+    kontraktMock.mockReturnValue({
+      data: { analysisCaseContext: { rewizjaModelu: null } },
+      isLoading: false,
+      error: null,
+    });
+
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
+
+    expect(screen.queryByText(INSPECTOR_STRINGS.aktualne)).not.toBeInTheDocument();
+    expect(screen.queryByText(/nieaktualne/i)).not.toBeInTheDocument();
+  });
+});
+
 describe('EkranZwarc — konkretyzacja wzorca na realnym kształcie danych', () => {
   beforeEach(ustawWynik);
 
@@ -93,13 +153,50 @@ describe('EkranZwarc — konkretyzacja wzorca na realnym kształcie danych', () 
     expect(screen.getByText(ZWARCIA_STRINGS.analiza)).toBeInTheDocument();
   });
 
-  it('założenia: metoda IEC 60909 oraz c/czas z propsów', async () => {
-    await renderEkranZwarc(<EkranZwarc {...props({ wspolczynnikC: 1.1, czasCieplnyS: 1.0 })} />);
+  it('założenia: metoda IEC 60909 oraz c/czas z konfiguracji ZAPISANEJ na biegu (nie z aktywnego przypadku)', async () => {
+    // Karta TODO-UI2 p.7: c/czas cieplny pochodzą z `wynik.konfiguracja_biegu`
+    // (odpowiedź endpointu wyników TEGO biegu), nie z propsów zasilanych
+    // wcześniej aktywnym przypadkiem obliczeniowym.
+    useResultsInspectorStore.setState({
+      shortCircuitResults: shortCircuitResultsFixture({
+        konfiguracja_biegu: konfiguracjaBieguFixture({
+          c_factor: { tryb: 'jawny', wartosc: 1.1 },
+          thermal_time_seconds: { wartosc: 1.0, pochodzenie: 'opcje_biegu' },
+        }),
+      }),
+      selectedRunId: 'sc-run-1',
+    });
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
     const zalozenia = screen.getByTestId('mvd-wyn-zalozenia');
     expect(within(zalozenia).getByText(ZWARCIA_STRINGS.zalMetoda)).toBeInTheDocument();
     expect(within(zalozenia).getByText('IEC 60909')).toBeInTheDocument();
     expect(within(zalozenia).getByText(ZWARCIA_STRINGS.zalWspolczynnikC)).toBeInTheDocument();
     expect(within(zalozenia).getByText('1,10')).toBeInTheDocument();
+  });
+
+  it('założenia: c auto-per-węzeł (bez jawnego override) pokazuje uczciwy opis, nie liczbę', async () => {
+    useResultsInspectorStore.setState({
+      shortCircuitResults: shortCircuitResultsFixture({
+        konfiguracja_biegu: konfiguracjaBieguFixture({
+          c_factor: { tryb: 'auto_per_wezel', wartosc: null },
+        }),
+      }),
+      selectedRunId: 'sc-run-1',
+    });
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
+    const zalozenia = screen.getByTestId('mvd-wyn-zalozenia');
+    expect(within(zalozenia).getByText(ZWARCIA_STRINGS.zalWspolczynnikCAuto)).toBeInTheDocument();
+  });
+
+  it('założenia: brak konfiguracji biegu (starszy zapis) → kreska uczciwa, nie zgadnięta liczba', async () => {
+    useResultsInspectorStore.setState({
+      shortCircuitResults: shortCircuitResultsFixture({ konfiguracja_biegu: undefined }),
+      selectedRunId: 'sc-run-1',
+    });
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
+    const zalozenia = screen.getByTestId('mvd-wyn-zalozenia');
+    expect(within(zalozenia).getByText(ZWARCIA_STRINGS.zalWspolczynnikC)).toBeInTheDocument();
+    expect(within(zalozenia).getAllByText(ZWARCIA_STRINGS.kreska).length).toBeGreaterThan(0);
   });
 
   it('tabela: wiersz per punkt, wielkości Ik"/ip/Ith/Sk" z jednostkami w nagłówkach', async () => {

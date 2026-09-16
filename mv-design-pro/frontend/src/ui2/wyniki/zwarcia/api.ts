@@ -1,8 +1,8 @@
 /*
  * Dostawca WKŁADÓW ZWARCIOWYCH (R3-B / K3-G3, FLOW EKSPERT+ runda 3).
  *
- * Domyka TODO-KARTĘ 1 z `zwarciaModel.ts`: sekcja „Wkłady" miała pass-through
- * bez dostawcy danych. Realny dostawca = endpoint `POST /api/proof/sc3f/contributions`
+ * Zamyka pozycję 1 historii domknięcia w `zwarciaModel.ts`: sekcja „Wkłady" miała
+ * pass-through bez dostawcy danych. Realny dostawca = endpoint `POST /api/proof/sc3f/contributions`
  * (rozbicie maszynowe μ/q/i_b liczone serwerowo przez TEN SAM solver co pakiet
  * dowodowy SC3F — `compute_machine_contributions`, IEC 60909-0:2016 §6.6).
  * ZERO fizyki w UI: jedyna operacja to skalowanie jednostki prezentacji A → kA

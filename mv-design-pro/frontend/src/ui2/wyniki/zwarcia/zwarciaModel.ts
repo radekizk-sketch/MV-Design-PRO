@@ -13,7 +13,10 @@
  *   (`ui/results-inspector/store.ts:104`), `selectedRunId` (`store.ts:96`).
  * - Etykiety wielkości PL: `TRACE_VALUE_LABELS` (`types.ts:306-333`).
  *
- * TODO-KARTA (ograniczenia — brak źródła w kontrakcie read-only, karta §2 „NIE zgaduj"):
+ * HISTORIA DOMKNIĘCIA (dawne ograniczenia kontraktu read-only, karta §2 „NIE
+ * zgaduj") — WSZYSTKIE cztery pozycje niżej są dziś ZAMKNIĘTE; zapis zostaje
+ * jako mapowanie plik:linia realnego dostawcy każdej wartości (audyt „skąd to
+ * wzięło"), nie jako lista otwartych braków:
  * 1. WKŁADY ŹRÓDEŁ: DOMKNIĘTE (R3-B / K3-G3) — realny dostawca to endpoint
  *    `POST /api/proof/sc3f/contributions` (`zwarcia/api.ts`), rozbicie maszynowe
  *    per źródło (machine_type, Ir, Ik"/Ir, μ, q, Ib, wywód dyplomowy) renderuje
@@ -55,19 +58,22 @@
  *    każda wartość realnego śladu (SC/PF/branch_flow_trace) renderowała się
  *    jako pusta kreska (KLASA NIE INSTANCJA — naprawa u źródła, nie lokalna
  *    obejście w tej sekcji).
- * 2. ŚWIEŻOŚĆ (FreshnessBadge): kontrakt wyników zwarciowych nie niesie LICZBOWEJ
- *    rewizji modelu z chwili liczenia → nagłówek nie podaje rewizji (badge
- *    pominięty, jak w oknie rozpływu). Numeryczną świeżość dostarczy karta
- *    integracyjna (spięcie ze snapshot store'em modelu).
- * 3. ZAŁOŻENIA c / czas cieplny: wartości należą do konfiguracji przebiegu
- *    (`ShortCircuitConfigRequest.c_factor`/`thermal_time_seconds`,
- *    `api/fault_scenarios.py:75-76`), nie do kontraktu wyników. `EkranZwarc`
- *    przyjmuje je PRZEZ PROPS (zarządca podaje przy scaleniu); przy braku
- *    prezentowana jest „—" z uwagą o pochodzeniu. Metoda „IEC 60909" jest stałą
- *    normatywną rodziny solvera (nie zgadywanie).
+ * 2. ŚWIEŻOŚĆ (FreshnessBadge): DOMKNIĘTE (V12K-264/265) — `EkranZwarc` czyta
+ *    `useSwiezoscNaglowka(runId)` (ten sam mechanizm co okna rozpływu/zbieżności,
+ *    `ui2/freshness`), więc nagłówek podaje parę rewizji i panel przyczyn, gdy
+ *    wynik jest nieaktualny wobec modelu.
+ * 3. ZAŁOŻENIA c / czas cieplny: DOMKNIĘTE (karta UI2 p.7) — wartości
+ *    pochodzą z konfiguracji ZAPISANEJ NA TYM BIEGU (`konfiguracja_biegu`
+ *    odpowiedzi, `api/canonical_run_views.py::build_konfiguracja_biegu_zwarcia`),
+ *    nie z aktywnego przypadku obliczeniowego (mogą się różnić po fakcie) ani
+ *    z propsów. Pełny opis reguł prezentacji (tryb `auto_per_wezel`, starszy
+ *    zapis biegu bez pola, pochodzenie domyślnego czasu cieplnego) stoi przy
+ *    `naZalozeniaZwarc` niżej. Metoda „IEC 60909" jest stałą normatywną rodziny
+ *    solvera (nie zgadywanie).
  */
 
 import type {
+  KonfiguracjaBieguZwarcia,
   ShortCircuitBranchFlow,
   ShortCircuitResults,
   ShortCircuitRow,
@@ -197,10 +203,58 @@ export function naWierszeZwarc(rows: ShortCircuitRow[]): WierszTabeli[] {
   return rows.map(mapujWierszZwarcia);
 }
 
+/** Wiersz „Współczynnik napięciowy c" — z KONFIGURACJI TEGO BIEGU (nie z
+ * aktywnego przypadku obliczeniowego, karta UI2 p.7). Tryb `jawny` →
+ * liczba; `auto_per_wezel` → uczciwy opis (solver dobiera c per węzeł, nie ma
+ * jednej wspólnej wartości biegu); brak konfiguracji (starszy zapis) → „—".
+ */
+function wierszWspolczynnikaC(c: KonfiguracjaBieguZwarcia['c_factor'] | undefined): WierszZalozenia {
+  if (c === undefined) {
+    return {
+      etykieta: ZWARCIA_STRINGS.zalWspolczynnikC,
+      wartosc: ZWARCIA_STRINGS.kreska,
+      uwaga: ZWARCIA_STRINGS.zalKonfiguracjaBieguNiedostepna,
+    };
+  }
+  if (c.tryb === 'auto_per_wezel' || c.wartosc === null) {
+    return {
+      etykieta: ZWARCIA_STRINGS.zalWspolczynnikC,
+      wartosc: ZWARCIA_STRINGS.zalWspolczynnikCAuto,
+      uwaga: ZWARCIA_STRINGS.zalWspolczynnikCAutoUwaga,
+    };
+  }
+  return { etykieta: ZWARCIA_STRINGS.zalWspolczynnikC, wartosc: fmtWspolczynnik(c.wartosc) };
+}
+
+/** Wiersz „Czas cieplny" — z KONFIGURACJI TEGO BIEGU; `pochodzenie:
+ * 'domyslna_assemblera'` dostaje uwagę (1,0 s nie jest ukrywana jako gdyby
+ * pochodziła z jawnych opcji biegu — zero fabrykacji pochodzenia). */
+function wierszCzasuCieplnego(
+  t: KonfiguracjaBieguZwarcia['thermal_time_seconds'] | undefined,
+): WierszZalozenia {
+  if (t === undefined) {
+    return {
+      etykieta: ZWARCIA_STRINGS.zalCzasCieplny,
+      wartosc: ZWARCIA_STRINGS.kreska,
+      uwaga: ZWARCIA_STRINGS.zalKonfiguracjaBieguNiedostepna,
+    };
+  }
+  return {
+    etykieta: ZWARCIA_STRINGS.zalCzasCieplny,
+    wartosc: fmtCzas(t.wartosc),
+    jednostka: ZWARCIA_STRINGS.jednS,
+    uwaga: t.pochodzenie === 'domyslna_assemblera' ? ZWARCIA_STRINGS.zalCzasCieplnyDomyslny : undefined,
+  };
+}
+
 /**
- * Buduje sekcję ZAŁOŻENIA (W-602). Metoda „IEC 60909" — stała normatywna rodziny
- * solvera. Współczynnik c i czas cieplny pochodzą z konfiguracji przebiegu
- * (props); przy braku prezentowana jest „—" z uwagą o pochodzeniu (TODO-KARTA 3).
+ * Buduje sekcję ZAŁOŻENIA (W-602). Metoda / współczynnik c / czas cieplny
+ * pochodzą z `konfiguracja_biegu` odpowiedzi (`GET …/results/short-circuit`,
+ * `api/canonical_run_views.py::build_konfiguracja_biegu_zwarcia`) — konfiguracja
+ * ZAPISANA na TYM biegu, nigdy aktywnego przypadku obliczeniowego (karta
+ * UI2 p.7: przypadek aktywny może się różnić od przypadku biegu po
+ * fakcie — dwie różne rzeczy). Starszy zapis biegu sprzed tej karty → pole
+ * nieobecne → uczciwa kreska (bez zgadywania), metoda pozostaje stałą normatywną.
  *
  * CV-4.3 K7: `zalozeniaBiegu` (opcjonalny, `raw_result.zalozenia`) dokłada po
  * jednym wierszu na każde założenie biegu nazwane kodem gotowości (np. scenariusz
@@ -208,23 +262,13 @@ export function naWierszeZwarc(rows: ShortCircuitRow[]): WierszTabeli[] {
  * nigdy cicho. Brak/pusta lista = bieg bez założeń (wiersze bazowe bez zmian).
  */
 export function naZalozeniaZwarc(
-  wspolczynnikC?: number,
-  czasCieplnyS?: number,
+  konfiguracja: KonfiguracjaBieguZwarcia | undefined,
   zalozeniaBiegu?: readonly ZalozenieBieguSlad[],
 ): WierszZalozenia[] {
   const bazowe: WierszZalozenia[] = [
-    { etykieta: ZWARCIA_STRINGS.zalMetoda, wartosc: ZWARCIA_STRINGS.zalMetodaWartosc },
-    {
-      etykieta: ZWARCIA_STRINGS.zalWspolczynnikC,
-      wartosc: wspolczynnikC !== undefined ? fmtWspolczynnik(wspolczynnikC) : ZWARCIA_STRINGS.kreska,
-      uwaga: wspolczynnikC === undefined ? ZWARCIA_STRINGS.zalWartoscZKonfiguracji : undefined,
-    },
-    {
-      etykieta: ZWARCIA_STRINGS.zalCzasCieplny,
-      wartosc: czasCieplnyS !== undefined ? fmtCzas(czasCieplnyS) : ZWARCIA_STRINGS.kreska,
-      jednostka: czasCieplnyS !== undefined ? ZWARCIA_STRINGS.jednS : undefined,
-      uwaga: czasCieplnyS === undefined ? ZWARCIA_STRINGS.zalWartoscZKonfiguracji : undefined,
-    },
+    { etykieta: ZWARCIA_STRINGS.zalMetoda, wartosc: konfiguracja?.metoda ?? ZWARCIA_STRINGS.zalMetodaWartosc },
+    wierszWspolczynnikaC(konfiguracja?.c_factor),
+    wierszCzasuCieplnego(konfiguracja?.thermal_time_seconds),
   ];
   const zZaZrodel: WierszZalozenia[] = (zalozeniaBiegu ?? []).map((z) => ({
     etykieta: ZWARCIA_STRINGS.zalozenieEtykieta(z.element_ref),
@@ -338,7 +382,8 @@ export function naSlupkiIkss(rows: ShortCircuitRow[]): SlupekIkss[] {
 }
 
 // ---------------------------------------------------------------------------
-// Wkłady zwarciowe — projekcja prezentacyjna (dane przez props, patrz TODO-KARTA 1)
+// Wkłady zwarciowe — projekcja prezentacyjna (dostawca produkcyjny: `zwarcia/api.ts`
+// `useWkladyZwarciowe`; props `wklady` = nadpisanie testowe, patrz pozycja 1 wyżej)
 // ---------------------------------------------------------------------------
 
 /**

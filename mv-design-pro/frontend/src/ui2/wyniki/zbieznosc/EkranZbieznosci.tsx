@@ -29,6 +29,8 @@ import { usePowerFlowResultsStore } from '../../../ui/power-flow-results/store';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { useShellStore } from '../../shell/useShellStore';
+import { FreshnessBadge } from '../../inspector';
+import { useSwiezoscNaglowka } from '../../freshness';
 import { akcjaNaprawcza, SekcjaZalozen, usePoprawWModelu, WZORZEC_STRINGS } from '../wzorzec';
 import {
   naBilansPrzebiegu,
@@ -114,6 +116,12 @@ export function EkranZbieznosci() {
   const wierszeWysp = naWierszeWysp(sladAktualny);
   const wierszeModelu = naWierszeZaczepowModelu(snapshot);
   const poprawWModelu = usePoprawWModelu();
+  // Karta UI2 p.9: znacznik świeżości NAGŁÓWKA — ten sam hook współdzielony
+  // co EkranZwarc/TabelaSzyn (V12K-264), ten ekran wcześniej nie miał go wcale
+  // (BRAK ZDOLNOŚCI, nie regresja — brak jakiegokolwiek importu/wywołania).
+  const swiezosc = useSwiezoscNaglowka(przebieg?.id ?? null);
+  const maSwiezosc =
+    swiezosc.rewizjaModelu !== undefined && swiezosc.rewizjaDanych !== undefined;
 
   const otworzWyniki = (tab: string) => {
     setWynikiTab(tab);
@@ -126,6 +134,13 @@ export function EkranZbieznosci() {
         <span className="mvd-zbieznosc-lbl">{T.eyebrow}</span>
         <h3>{T.tytul}</h3>
         <p className="mvd-zbieznosc-cel">{T.cel}</p>
+        {maSwiezosc && (
+          <FreshnessBadge
+            rewizjaDanej={swiezosc.rewizjaDanych!}
+            rewizjaModelu={swiezosc.rewizjaModelu!}
+            testId="mvd-zbieznosc-swiezosc"
+          />
+        )}
       </header>
 
       {!activeProjectId ? (

@@ -25,8 +25,11 @@
  *   (`enm/mapping.py:_ref_to_uuid`), której kontrakt frontowy nie niesie —
  *   dlatego regulacja przebiegu i założenia modelu to DWIE osobne, uczciwie
  *   opisane tabele (bez zgadywania powiązania po stronie UI).
- * - Kontrakty nie niosą liczbowej rewizji modelu z chwili liczenia → nagłówek
- *   bez znacznika świeżości (jak adapter rozpływu, TODO-KARTA E8.1 pkt 1).
+ *
+ * ZNACZNIK ŚWIEŻOŚCI NAGŁÓWKA: `EkranZbieznosci` woła `useSwiezoscNaglowka(runId)`
+ * (`ui2/freshness`, ten sam hook co `EkranZwarc`/`TabelaSzyn`, V12K-264) i renderuje
+ * współdzielony `FreshnessBadge` — ten model NIE buduje znacznika sam (zero
+ * duplikacji reguły porównania rewizji).
  */
 
 import type { EnergyNetworkModel, Transformer } from '../../../types/enm';
