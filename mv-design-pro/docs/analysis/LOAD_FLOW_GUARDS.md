@@ -9,6 +9,15 @@
 > guard.py::SCAN_FILES`. Szczegóły → `docs/architecture/CONVERGENCE_ROADMAP.md`
 > CV-3.3-A2.
 >
+> **KOREKTA 2026-09-16 (karta W3-J):** nazwa skryptu „NoHeuristicsGuard (LF)"
+> niżej w dokumencie (`scripts/lf_no_heuristics_guard.py`) jest myląca — realny
+> plik to `scripts/load_flow_no_heuristics_guard.py` (patrz `CLAUDE.md`, sekcja
+> Guard Scripts). Przy okazji: `analysis/power_flow/violations.py`/
+> `violations_report.py` (wymienione niżej na liście plików skanowanych)
+> skasowane — jedno źródło progów napięciowych: `analysis/normative/
+> kryteria_napiecia.py`. Szczegóły → `docs/v12xx/REJESTR_KONFLIKTOW.md` wiersz
+> W3-J.
+>
 > **Status (pierwotny)**: BINDING (RUN #2A -- Load Flow closure)
 > **Date**: 2026-02-13
 > **Scope**: CI guards i invarianty dla bloku Load Flow
