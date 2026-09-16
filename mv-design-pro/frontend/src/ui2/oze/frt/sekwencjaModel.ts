@@ -113,6 +113,9 @@ const SEKW_W_OBWIEDNI = 'sekwencja w obwiedni';
  * a tekst pozostaje dosłownie z backendu (`werdykt_sekwencji_pl`).
  */
 export function werdyktSekwencji(widok: WidokSekwencjiFrt): WerdyktSekwencji {
-  const zaliczona = widok.werdykt_sekwencji_pl === SEKW_W_OBWIEDNI;
-  return { tekst: widok.werdykt_sekwencji_pl, istotnosc: zaliczona ? 'ok' : 'err' };
+  // `werdykt_sekwencji_pl` jest nieobecny WYŁĄCZNIE przy `status_solvera ===
+  // 'blocked'` (karta S-4) — wywołujący renderuje się tylko poza tym stanem.
+  const tekst = widok.werdykt_sekwencji_pl ?? '';
+  const zaliczona = tekst === SEKW_W_OBWIEDNI;
+  return { tekst, istotnosc: zaliczona ? 'ok' : 'err' };
 }

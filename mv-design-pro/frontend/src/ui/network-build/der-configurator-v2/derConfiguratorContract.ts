@@ -78,7 +78,8 @@ export interface DerReadinessAxis {
  *
  * Wymagane do uruchomienia danego typu analizy / wygenerowania danego
  * raportu. Każda oś musi mieć stan: 'ready' / 'partial' / 'blocked' /
- * 'no_module' (gdy brak implementacji w app — gap dla dewelopera).
+ * 'not_applicable' — brak modelu numerycznego dla danej osi jest 'blocked'
+ * z nazwanym kodem gotowości, nigdy osobnym stanem (ZASADA NR 1, karta S-4).
  */
 export const DER_READINESS_AXES: readonly DerReadinessAxis[] = [
   // Obliczenia (7 osi)

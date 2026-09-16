@@ -366,7 +366,7 @@ function buildBlockersForAxis(
   der: StationDerConnection,
   status: ReadinessAxisStatus,
 ): AggregatedReadinessAxis['blockers'] {
-  if (status === 'ready' || status === 'not_applicable' || status === 'no_module') return [];
+  if (status === 'ready' || status === 'not_applicable') return [];
   const blockers: MutableBlocker[] = [];
 
   switch (axis) {
@@ -749,10 +749,9 @@ export function zlozZBramkaModelu(
     }));
     return {
       ...os,
-      // Gorsza z dwóch ocen. `not_applicable` / `no_module` zostawiamy — bramka
-      // modelu nie czyni analizy DOTYCZĄCĄ wytwórcy, którego ona nie dotyczy.
-      status:
-        os.status === 'not_applicable' || os.status === 'no_module' ? os.status : 'blocked',
+      // Gorsza z dwóch ocen. `not_applicable` zostawiamy — bramka modelu nie
+      // czyni analizy DOTYCZĄCĄ wytwórcy, którego ona nie dotyczy.
+      status: os.status === 'not_applicable' ? os.status : 'blocked',
       blockers: [...os.blockers, ...powodyModelu],
     };
   });

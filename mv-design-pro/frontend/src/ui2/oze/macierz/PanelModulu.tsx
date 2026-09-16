@@ -13,6 +13,7 @@ import type {
   PochodzenieDanej,
   ZdolnosciModulu,
 } from './macierzModel';
+import type { OcenaDowodowaModuluNcRfg } from '../../../ui/ncrfg-tests/api';
 import {
   ETYKIETY_BLOKADY,
   ETYKIETY_POCHODZENIA,
@@ -94,6 +95,8 @@ export interface PanelModuluProps {
   readonly zdolnosci: ZdolnosciModulu;
   readonly pochodzenie: Readonly<Record<KluczZdolnosci, PochodzenieDanej>>;
   readonly numeryczne: NumeryczneModulu;
+  /** Ocena dowodowa modułu (karta S-1) — `null` bez biegu / bez wpisu dla modułu. */
+  readonly ocenaModulu: OcenaDowodowaModuluNcRfg | null;
   readonly onZmienZdolnosc: (klucz: KluczZdolnosci, wartosc: boolean) => void;
   readonly onZmienParametr: (klucz: KluczNumeryczny, wartosc: string) => void;
 }
@@ -103,6 +106,7 @@ export function PanelModulu({
   zdolnosci,
   pochodzenie,
   numeryczne,
+  ocenaModulu,
   onZmienZdolnosc,
   onZmienParametr,
 }: PanelModuluProps): JSX.Element {
@@ -110,6 +114,13 @@ export function PanelModulu({
     <section className="mvd-oze-panel" data-testid="mvd-oze-panel-modulu" aria-label={MACIERZ_STRINGS.panelTytul}>
       <h4>{MACIERZ_STRINGS.panelTytul}</h4>
       <p className="mvd-oze-panel-etyk">{opis.nazwa}</p>
+
+      {ocenaModulu && ocenaModulu.reporting_status === 'not_reportable' ? (
+        <div className="mvd-oze-blokada" data-testid="mvd-oze-panel-podstawa">
+          <span className="mvd-oze-panel-etyk">{MACIERZ_STRINGS.podstawaWerdyktu}</span>
+          <div style={{ marginTop: 4 }}>{ocenaModulu.evidence_note_pl}</div>
+        </div>
+      ) : null}
 
       <div className="mvd-oze-panel-blok">
         <div className="mvd-oze-metryka">

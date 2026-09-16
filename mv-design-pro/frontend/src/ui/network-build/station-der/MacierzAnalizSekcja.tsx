@@ -33,8 +33,6 @@ function statusPl(status: WierszMacierzy['status']): string {
       return 'dane brakujące';
     case 'not_applicable':
       return 'nie dotyczy';
-    case 'no_module':
-      return 'poza bieżącym modułem';
   }
 }
 

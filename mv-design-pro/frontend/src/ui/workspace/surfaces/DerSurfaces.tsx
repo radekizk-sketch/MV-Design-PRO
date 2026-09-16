@@ -621,8 +621,6 @@ function readinessPl(value: ReadinessAxisStatus): string {
       return 'wymaga wariantu katalogowego';
     case 'not_applicable':
       return 'nie dotyczy';
-    case 'no_module':
-      return 'zakres poza bieżącym modułem';
   }
 }
 

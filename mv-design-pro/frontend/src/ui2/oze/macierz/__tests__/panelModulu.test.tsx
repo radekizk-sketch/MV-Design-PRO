@@ -18,6 +18,7 @@ describe('PanelModulu', () => {
         zdolnosci={opis.zdolnosci}
         pochodzenie={opis.pochodzenieZdolnosci}
         numeryczne={opis.numeryczne}
+        ocenaModulu={null}
         onZmienZdolnosc={vi.fn()}
         onZmienParametr={vi.fn()}
       />,
@@ -37,6 +38,7 @@ describe('PanelModulu', () => {
         zdolnosci={opis.zdolnosci}
         pochodzenie={opis.pochodzenieZdolnosci}
         numeryczne={opis.numeryczne}
+        ocenaModulu={null}
         onZmienZdolnosc={onZmienZdolnosc}
         onZmienParametr={vi.fn()}
       />,
@@ -54,6 +56,7 @@ describe('PanelModulu', () => {
         zdolnosci={opis.zdolnosci}
         pochodzenie={opis.pochodzenieZdolnosci}
         numeryczne={opis.numeryczne}
+        ocenaModulu={null}
         onZmienZdolnosc={vi.fn()}
         onZmienParametr={onZmienParametr}
       />,
@@ -72,10 +75,58 @@ describe('PanelModulu', () => {
         zdolnosci={opis.zdolnosci}
         pochodzenie={opis.pochodzenieZdolnosci}
         numeryczne={opis.numeryczne}
+        ocenaModulu={null}
         onZmienZdolnosc={vi.fn()}
         onZmienParametr={vi.fn()}
       />,
     );
     expect(screen.getByTestId('mvd-oze-panel-blokada')).toBeInTheDocument();
+  });
+
+  it('moduł not_reportable (karta S-1) → widoczna podstawa werdyktu z ograniczeniami', () => {
+    const opis = opisZ();
+    render(
+      <PanelModulu
+        opis={opis}
+        zdolnosci={opis.zdolnosci}
+        pochodzenie={opis.pochodzenieZdolnosci}
+        numeryczne={opis.numeryczne}
+        ocenaModulu={{
+          der_ref: opis.derRef,
+          reporting_status: 'not_reportable',
+          proof_status: 'incomplete',
+          evidence_limitations: ['T14:NOT_SIMULATED'],
+          evidence_note_pl: 'BRAK WYSTARCZAJĄCEGO DOWODU SPEŁNIENIA WYMAGANIA dla testów: T14:NOT_SIMULATED.',
+        }}
+        onZmienZdolnosc={vi.fn()}
+        onZmienParametr={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('mvd-oze-panel-podstawa')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-oze-panel-podstawa')).toHaveTextContent(
+      'BRAK WYSTARCZAJĄCEGO DOWODU',
+    );
+  });
+
+  it('moduł reportable (karta S-1) → podstawa werdyktu NIE jest pokazywana', () => {
+    const opis = opisZ();
+    render(
+      <PanelModulu
+        opis={opis}
+        zdolnosci={opis.zdolnosci}
+        pochodzenie={opis.pochodzenieZdolnosci}
+        numeryczne={opis.numeryczne}
+        ocenaModulu={{
+          der_ref: opis.derRef,
+          reporting_status: 'reportable',
+          proof_status: 'complete',
+          evidence_limitations: [],
+          evidence_note_pl: 'Wszystkie wymagane testy oparte są o stopień dowodowy dopuszczalny do zgłoszenia.',
+        }}
+        onZmienZdolnosc={vi.fn()}
+        onZmienParametr={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId('mvd-oze-panel-podstawa')).not.toBeInTheDocument();
   });
 });

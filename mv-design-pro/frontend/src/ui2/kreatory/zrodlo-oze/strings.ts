@@ -313,7 +313,6 @@ export const OZE_STRINGS = {
     partial: 'częściowa',
     blocked: 'zablokowana',
     not_applicable: 'nie dotyczy',
-    no_module: 'brak modułu',
   } as Record<string, string>,
 
   // Panele teorii kroków 1–2 (V12K-066: standard „must-have")

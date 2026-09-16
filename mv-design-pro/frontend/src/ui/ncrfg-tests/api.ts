@@ -110,6 +110,31 @@ export interface NcRfgCertificateEvidence {
   readonly source_url: string | null;
 }
 
+/**
+ * Ocena dowodowa jednego testu (1:1 z `CapabilityEvidence.to_dict()`,
+ * `solver_input.provenance` — karta S-1). Trzecia oś proweniencji: czy WYNIK
+ * tego testu wolno przedstawić jako dowód spełnienia wymagania normatywnego.
+ */
+export interface OcenaDowodowaTestuNcRfg {
+  readonly capability_id: string | null;
+  readonly tier: string | null;
+  readonly tier_pl: string | null;
+  readonly claim_kind: string | null;
+  readonly claim_kind_pl: string | null;
+  readonly regulatory_evidence_eligible: boolean;
+  readonly rationale_pl: string;
+  readonly audit_ref: string;
+}
+
+/** Ocena dowodowa jednego modułu biegu NC RfG (1:1 z `OcenaDowodowaModulu.to_dict()`). */
+export interface OcenaDowodowaModuluNcRfg {
+  readonly der_ref: string;
+  readonly reporting_status: 'reportable' | 'not_reportable';
+  readonly proof_status: 'complete' | 'incomplete';
+  readonly evidence_limitations: readonly string[];
+  readonly evidence_note_pl: string;
+}
+
 export interface NcRfgRunResult {
   readonly contract: 'NcRfgPtpireeTestResultV1';
   readonly procedure_version: string;
@@ -119,6 +144,19 @@ export interface NcRfgRunResult {
   readonly modules: readonly NcRfgModuleResult[];
   /** Dowód certyfikatu per testowane urządzenie (pusty bez wskazania przypadku). */
   readonly certificate_evidence: readonly NcRfgCertificateEvidence[];
+  /**
+   * Stopień dowodowy biegu (karta S-1, W6-0) — `ocena_dowodowa_biegu`
+   * (`solver_input.dowod_ncrfg`), TA SAMA funkcja, którą czyta bramka
+   * certyfikatu. Kryterium: czy KTÓRYŚ test WYMAGANY któregokolwiek modułu
+   * opiera się na zdolności nieprzydatnej dowodowo (werdykt pass/fail NIE
+   * wchodzi do tej oceny).
+   */
+  readonly reporting_status: 'reportable' | 'not_reportable';
+  readonly proof_status: 'complete' | 'incomplete';
+  readonly evidence_limitations: readonly string[];
+  readonly evidence_note_pl: string;
+  readonly evidence_per_module: Readonly<Record<string, OcenaDowodowaModuluNcRfg>>;
+  readonly evidence_by_test: Readonly<Record<string, Readonly<Record<string, OcenaDowodowaTestuNcRfg>>>>;
   readonly test_catalog: readonly NcRfgTestDefinition[];
   readonly white_box_trace: readonly {
     readonly step: number;

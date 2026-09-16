@@ -120,7 +120,7 @@ function WynikSekwencji({
 
       <section className="mvd-frt-sekw-kontekst" data-testid="mvd-frt-sekw-kontekst">
         <h4 className="mvd-frt-sekw-kontekst-tytul">{FRT_STRINGS.sekwKontekstTytul}</h4>
-        {kontekst === null ? (
+        {kontekst == null ? (
           <p className="mvd-frt-sekw-kontekst-powod" data-testid="mvd-frt-sekw-kontekst-powod">
             {dane.kontekst_sily_sieci_powod_pl ?? FRT_STRINGS.kreska}
           </p>
@@ -440,6 +440,19 @@ export function SekcjaSekwencjiZapadow({
               opis={stan.komunikat}
               wariant="blad"
               testid="mvd-frt-sekw-blad"
+            />
+          ) : stan.dane.status_solvera === 'blocked' ? (
+            // Karta S-4: brak modelu dynamicznego solvera FROZEN mapowany NA
+            // GRANICY na `blocked` — panel dedykowany (uczciwy stan zerowy).
+            <StanPanel
+              komunikat={FRT_STRINGS.brakModeluTytul}
+              opis={
+                stan.dane.missing_fields_pl && stan.dane.missing_fields_pl.length > 0
+                  ? stan.dane.missing_fields_pl.join(' ')
+                  : FRT_STRINGS.brakModeluOpis
+              }
+              wariant="blad"
+              testid="mvd-frt-sekw-brak-modelu"
             />
           ) : (
             <WynikSekwencji dane={stan.dane} trybZaawansowania={trybZaawansowania} />

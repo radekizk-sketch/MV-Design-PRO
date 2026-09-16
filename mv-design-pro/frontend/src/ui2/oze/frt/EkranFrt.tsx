@@ -151,6 +151,12 @@ function WynikTrajektorii({
           <dt>{FRT_STRINGS.zalozeniaStatusSolvera}</dt>
           <dd>{etykietaStatusuFrt(dane.status_solvera)}</dd>
         </div>
+        {dane.ocena_dowodowa && (
+          <div className="mvd-frt-zal-para" data-testid="mvd-frt-ocena-dowodowa">
+            <dt>{FRT_STRINGS.zalozeniaPodstawa}</dt>
+            <dd>{dane.ocena_dowodowa.tier_pl ?? dane.ocena_dowodowa.tier}</dd>
+          </div>
+        )}
       </dl>
 
       <div className="mvd-frt-wykres-blok">
@@ -403,6 +409,20 @@ export function EkranFrt({ trybZaawansowania }: EkranFrtProps) {
               opis={stan.komunikat}
               wariant="blad"
               testid="mvd-frt-blad"
+            />
+          ) : stan.dane.status_solvera === 'blocked' ? (
+            // Karta S-4: brak modelu dynamicznego solvera FROZEN mapowany NA
+            // GRANICY na `blocked` — panel dedykowany (uczciwy stan zerowy),
+            // zamiast próby narysowania wykresu/tabeli z pustych danych.
+            <StanPanel
+              komunikat={FRT_STRINGS.brakModeluTytul}
+              opis={
+                stan.dane.missing_fields_pl && stan.dane.missing_fields_pl.length > 0
+                  ? stan.dane.missing_fields_pl.join(' ')
+                  : FRT_STRINGS.brakModeluOpis
+              }
+              wariant="blad"
+              testid="mvd-frt-brak-modelu"
             />
           ) : (
             <>

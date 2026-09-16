@@ -409,6 +409,15 @@ export function MacierzNcRfg({
         </div>
       ) : null}
 
+      {/* Karta S-1 (W6-0): baner biegu — stopień dowodowy z `ocena_dowodowa_biegu`.
+          Zero oceny lokalnej: `wynik.reporting_status` pochodzi z backendu. */}
+      {wynik && wynik.reporting_status === 'not_reportable' ? (
+        <div className="mvd-oze-blad" data-testid="mvd-oze-baner-brak-dowodu">
+          <strong>{MACIERZ_STRINGS.banerBrakDowoduTytul}</strong>
+          <p style={{ margin: '4px 0 0' }}>{wynik.evidence_note_pl}</p>
+        </div>
+      ) : null}
+
       {/* W3-D (2026-09-09): zgodnosc przekrojowa — wszystkie DER modelu naraz,
           liczona na zywo z ENM (`GET /api/ncrfg-tests/cases/{case_id}/compliance`),
           niezaleznie od macierzy per DER ponizej (ktora wymaga recznego biegu).
@@ -785,6 +794,7 @@ export function MacierzNcRfg({
                 zdolnosci={opisWybrany.zdolnosci}
                 pochodzenie={opisWybrany.pochodzenieZdolnosci}
                 numeryczne={opisWybrany.numeryczne}
+                ocenaModulu={wynik?.evidence_per_module[opisWybrany.derRef] ?? null}
                 onZmienZdolnosc={(klucz, wartosc) =>
                   zmienZdolnosc(opisWybrany.derRef, klucz, wartosc)
                 }

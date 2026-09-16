@@ -68,6 +68,20 @@ export function SzczegolWerdyktu({
             <p style={{ margin: '4px 0 0' }}>{komorka.wynik.summary_pl}</p>
           </div>
 
+          {komorka.ocenaDowodowa && (
+            <div className="mvd-oze-panel-blok" data-testid="mvd-oze-szczegol-podstawa">
+              <span className="mvd-oze-panel-etyk">{MACIERZ_STRINGS.podstawaWerdyktu}</span>
+              <p style={{ margin: '4px 0 0' }}>
+                {komorka.ocenaDowodowa.tier_pl ?? komorka.ocenaDowodowa.tier}
+              </p>
+              {!komorka.ocenaDowodowa.regulatory_evidence_eligible && (
+                <p className="mvd-oze-panel-etyk" style={{ margin: '4px 0 0' }}>
+                  {komorka.ocenaDowodowa.rationale_pl}
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="mvd-oze-panel-blok">
             <span className="mvd-oze-panel-etyk">{MACIERZ_STRINGS.wymaganie}</span>
             <p style={{ margin: '4px 0 0' }}>{komorka.wynik.required_reason_pl}</p>

@@ -230,6 +230,33 @@ export function wynikFixture(): NcRfgRunResult {
         source_url: null,
       },
     ],
+    // Karta S-1 (W6-0): ocena dowodowa biegu — fikstura „wszystko reportable"
+    // (żaden test poniżej nie jest w rejestrze dowodowym backendu, więc
+    // testy tego pliku nieświadome S-1 dalej widzą stan sprzed karty).
+    reporting_status: 'reportable',
+    proof_status: 'complete',
+    evidence_limitations: [],
+    evidence_note_pl:
+      'Wszystkie wymagane testy oparte są o stopień dowodowy dopuszczalny do zgłoszenia.',
+    evidence_per_module: {
+      'pv-1': {
+        der_ref: 'pv-1',
+        reporting_status: 'reportable',
+        proof_status: 'complete',
+        evidence_limitations: [],
+        evidence_note_pl:
+          'Wszystkie wymagane testy oparte są o stopień dowodowy dopuszczalny do zgłoszenia.',
+      },
+      'bess-1': {
+        der_ref: 'bess-1',
+        reporting_status: 'reportable',
+        proof_status: 'complete',
+        evidence_limitations: [],
+        evidence_note_pl:
+          'Wszystkie wymagane testy oparte są o stopień dowodowy dopuszczalny do zgłoszenia.',
+      },
+    },
+    evidence_by_test: {},
     test_catalog: katalogFixture().tests,
     white_box_trace: [
       {

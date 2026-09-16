@@ -17,6 +17,7 @@ import type { ExecutionAnalysisType, ExecutionRun, RunStatus } from '../../../..
 import { EkranFrt } from '../EkranFrt';
 import {
   katalogNcRfgFixture,
+  widokBrakModeluFixture,
   widokLvrtWObwiedniFixture,
   widokModulWypadlFixture,
   widokSekwencjiNiezaliczonaFixture,
@@ -175,6 +176,16 @@ describe('EkranFrt — jawny bieg (kryterium 1)', () => {
     expect(await screen.findByTestId('mvd-frt-blad')).toHaveTextContent(
       'nie istnieje w katalogu przekształtników',
     );
+  });
+
+  it('karta S-4: status_solvera "blocked" (no_module zmapowany na granicy) → panel dedykowany, nie wykres z pustych danych', async () => {
+    pobierzTrajektorie.mockResolvedValue(widokBrakModeluFixture());
+    await wczytajISkonfiguruj();
+    fireEvent.click(screen.getByTestId('mvd-frt-oblicz'));
+    expect(await screen.findByTestId('mvd-frt-brak-modelu')).toHaveTextContent(
+      'Brak modelu dynamicznego DER w wejściu solvera.',
+    );
+    expect(screen.queryByTestId('mvd-frt-wynik')).not.toBeInTheDocument();
   });
 });
 

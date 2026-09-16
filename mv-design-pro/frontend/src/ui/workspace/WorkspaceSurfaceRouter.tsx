@@ -1854,8 +1854,9 @@ function ComplianceSurface() {
   // kanoniczny E-26 „Charakterystyki FRT/LVRT/HVRT" ZOSTAJE, dostawcą UI jest
   // teraz `EkranFrt` (ui2, superset — dobór modułu+operatora, realny bieg
   // trajektorii z backendu, werdykt), zamiast dawnego statycznego widoku
-  // krzywych z zaślepką `no_module`. Tryb zaawansowania ze wspólnego store'a
-  // powłoki (Zustand globalny; identycznie jak zakładka `frt` warsztatu wyników).
+  // krzywych bez modelu dynamicznego (nieukończona zaślepka). Tryb
+  // zaawansowania ze wspólnego store'a powłoki (Zustand globalny; identycznie
+  // jak zakładka `frt` warsztatu wyników).
   const trybZaawansowania = useShellStore((state) => state.advancementMode);
   return (
     <div data-testid="compliance-surface" className="space-y-4">

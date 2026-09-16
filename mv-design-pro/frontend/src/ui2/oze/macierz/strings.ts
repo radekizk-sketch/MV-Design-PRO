@@ -69,6 +69,12 @@ export const MACIERZ_STRINGS = {
   szczegolTytul: 'Szczegół werdyktu',
   szczegolWybierz: 'Wybierz komórkę macierzy, aby zobaczyć uzasadnienie, metryki i akcje naprawcze.',
   uzasadnienie: 'Uzasadnienie',
+  // Stopień dowodowy testu (karta S-1, W6-0) — na czym opiera się werdykt.
+  podstawaWerdyktu: 'Podstawa werdyktu',
+  // Baner biegu, gdy `reporting_status === 'not_reportable'` (karta S-1 §0.9).
+  banerBrakDowoduTytul:
+    'Pakiet ma charakter diagnostyczno-inżynierski — BRAK WYSTARCZAJĄCEGO DOWODU '
+    + 'SPEŁNIENIA WYMAGANIA dla co najmniej jednego testu wymaganego.',
   wymaganie: 'Podstawa wymagania',
   metryki: 'Metryki',
   akcjeNaprawcze: 'Akcje naprawcze',

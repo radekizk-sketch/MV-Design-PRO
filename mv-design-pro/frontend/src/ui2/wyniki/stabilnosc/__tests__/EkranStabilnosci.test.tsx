@@ -378,6 +378,50 @@ describe('EkranStabilnosci — dane przebiegu (fetch 1:1 z endpointami)', () => 
     await user.click(screen.getByTestId('mvd-stabilnosc-powrot'));
     expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
   });
+
+  it('karta S-1: wynik nieraportowalny (UNVALIDATED_MODEL) pokazuje ograniczenia z rejestru', async () => {
+    const wynikNieraportowalny = {
+      run_id: 'run-dyn',
+      rows: [
+        {
+          ...WYNIK.rows[0],
+          proof_status_pl: 'czesciowy',
+          reporting_status_pl: 'nieraportowalny',
+          dopuszczalnosc_raportowa: false,
+          reporting_limitations: [
+            'Katy wirnika i wielkosci pozwarciowe pochodza z opcji biegu z '
+              + 'wartosciami domyslnymi; werdykt jest porownaniem progowym, nie '
+              + 'calkowaniem rownan ruchu ukladu — enm/canonical_analysis.py::'
+              + '_execute_dynamic_stability.',
+          ],
+        },
+      ],
+    };
+    mockFetchStabilnosci();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        const json = url.endsWith('/results/dynamic-stability/time-series')
+          ? PRZEBIEG
+          : url.endsWith('/results/dynamic-stability')
+            ? wynikNieraportowalny
+            : url.endsWith('/results/automation-trace')
+              ? SLAD
+              : null;
+        if (json === null) throw new Error(`Nieoczekiwany URL w teście: ${url}`);
+        return { ok: true, status: 200, json: async () => json } as Response;
+      }),
+    );
+    render(<EkranStabilnosci />);
+
+    expect(await screen.findByTestId('mvd-stabilnosc-raport-status')).toHaveTextContent(
+      'nieraportowalny',
+    );
+    expect(screen.getByTestId('mvd-stabilnosc-raport-ograniczenia')).toHaveTextContent(
+      'werdykt jest porownaniem progowym',
+    );
+  });
 });
 
 describe('EkranStabilnosci — przebieg czasowy na żądanie (ST-1)', () => {

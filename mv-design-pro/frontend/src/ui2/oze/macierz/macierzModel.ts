@@ -23,6 +23,7 @@ import type {
   NcRfgTestDefinition,
   NcRfgTestResult,
   NcRfgVerdict,
+  OcenaDowodowaTestuNcRfg,
 } from '../../../ui/ncrfg-tests/api';
 import type {
   DerKindUnified,
@@ -105,6 +106,11 @@ export interface KomorkaMacierzy {
   readonly wynik: NcRfgTestResult | null;
   /** Powód braku danych modułu (gdy stan === 'brak_danych_modul'). */
   readonly powodModulu: PowodBlokady | null;
+  /**
+   * Stopień dowodowy tego testu (karta S-1, W6-0) — z `evidence_by_test` biegu.
+   * `null` gdy stan !== 'wynik' (brak biegu / moduł zablokowany).
+   */
+  readonly ocenaDowodowa: OcenaDowodowaTestuNcRfg | null;
 }
 
 /** Wiersz macierzy = jeden wymóg/test × wszystkie moduły. */
@@ -368,6 +374,7 @@ export function mapujMacierz(
           werdykt: null,
           wynik: null,
           powodModulu: modul.powodBlokady,
+          ocenaDowodowa: null,
         };
       }
       const wynikModulu = znajdzWynikModulu(wynik, modul.derRef);
@@ -380,6 +387,7 @@ export function mapujMacierz(
           werdykt: null,
           wynik: null,
           powodModulu: null,
+          ocenaDowodowa: null,
         };
       }
       return {
@@ -389,6 +397,7 @@ export function mapujMacierz(
         werdykt: wynikTestu.verdict,
         wynik: wynikTestu,
         powodModulu: null,
+        ocenaDowodowa: wynik?.evidence_by_test[modul.derRef]?.[test.test_id] ?? null,
       };
     });
     return { test, komorki };

@@ -161,12 +161,7 @@ export const EMPTY_DER_PROFILES: DerProfileSelections = Object.freeze({
 });
 
 /** Status pojedynczej macierzy gotowości obliczeń per typ. */
-export type ReadinessAxisStatus =
-  | 'ready'
-  | 'partial'
-  | 'blocked'
-  | 'not_applicable'
-  | 'no_module';
+export type ReadinessAxisStatus = 'ready' | 'partial' | 'blocked' | 'not_applicable';
 
 /** Macierz gotowości obliczeń DER (14 osi). */
 export interface DerReadinessMatrix {
