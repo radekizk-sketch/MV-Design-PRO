@@ -355,3 +355,52 @@ def test_zwarcia_pasmo_strona_min_ma_ikss_mniejsze_niz_max_per_szyna() -> None:
     assert set(wiersze_max) == set(wiersze_min)
     for target_id, ikss_min in wiersze_min.items():
         assert ikss_min < wiersze_max[target_id], (target_id, ikss_min, wiersze_max[target_id])
+
+
+# ---------------------------------------------------------------------------
+# Karta HARNESS-RESZTA (2026-09-16) — sceny „wyniki-stan-fazowy"/
+# „wyniki-stabilnosc" (E-31/E-32), realny bieg backendu (phase_state_sn /
+# dynamic_stability na sieci złotej).
+# ---------------------------------------------------------------------------
+
+
+def test_stan_fazowy_ma_run_id_stabilny_i_pokazuje_alert_asymetrii() -> None:
+    wynik = eksport.stan_fazowy_scena_wyniki()
+    assert wynik["run_id"] == eksport.RUN_ID_SCENY_STAN_FAZOWY
+    _run_idy_nie_sa_uuid(wynik)
+    wiersz = wynik["rows"][0]
+    assert wiersz["element_id"] == "bus_sn_b"
+    # Dowod, ze scena COS demonstruje (nie tylko przechodzi bez bledu): prady
+    # fazowe z opcji sceny sa na tyle asymetryczne, ze solver zglasza alert.
+    assert wiersz["flags"]["current_unbalance_alert"] is True
+    assert wiersz["ia_a"] == 135.0
+    assert wiersz["ib_a"] == 78.0
+    assert wiersz["ic_a"] == 100.0
+
+
+def test_stabilnosc_wyniki_i_slad_dziela_ten_sam_run_id_i_scenariusz() -> None:
+    wyniki = eksport.stabilnosc_scena_wyniki()
+    slad = eksport.stabilnosc_scena_slad()
+    assert wyniki["run_id"] == eksport.RUN_ID_SCENY_STABILNOSC == slad["run_id"]
+    _run_idy_nie_sa_uuid(wyniki)
+    _run_idy_nie_sa_uuid(slad)
+    wiersz = wyniki["rows"][0]
+    assert wiersz["source_id"] == "gen_sync"
+    assert wiersz["faulted_element_id"] == "line_b_c"
+    assert wiersz["cleared_by_element_ids"] == ["fuse_c"]
+    assert wiersz["status"] == "STABLE"
+    # Karta S-1 (W6-0): zdolnosc dynamic_stability.fault_clear jest
+    # UNVALIDATED_MODEL — atrapa NIE MOZE pokazywac "pelny/raportowalny"
+    # (defekt starej, recznie wpisanej atrapy, naprawiony tu u zrodla).
+    assert wiersz["proof_status"] == "incomplete"
+    assert wiersz["reporting_status"] == "not_reportable"
+    assert wiersz["dopuszczalnosc_raportowa"] is False
+    assert wiersz["evidence"]["tier"] == "UNVALIDATED_MODEL"
+    typy_zdarzen = [row["event_type"] for row in slad["rows"]]
+    assert typy_zdarzen == [
+        "AUTOMATION_STARTED",
+        "FAULT_APPLIED",
+        "FAULT_CLEARED",
+        "POST_FAULT_TOPOLOGY_EFFECT",
+        "DYNAMIC_STABILITY_EVALUATED",
+    ]

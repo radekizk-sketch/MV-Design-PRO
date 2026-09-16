@@ -42,6 +42,9 @@ sys.path.insert(0, str(BACKEND_DIR / "src"))
 sys.path.insert(0, str(BACKEND_DIR))
 
 from api.canonical_run_views import (  # noqa: E402
+    build_automation_trace_results_response,
+    build_dynamic_stability_results_response,
+    build_phase_state_results_response,
     build_short_circuit_band_response,
     build_short_circuit_results_response,
     build_short_circuit_rozplyw_response,
@@ -572,6 +575,161 @@ def zwarcia_pasmo_scena_zwarcia() -> dict[str, Any]:
     return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_ZWARCIA})
 
 
+# ---------------------------------------------------------------------------
+# Karta HARNESS-RESZTA (2026-09-16) — sceny „wyniki-stan-fazowy" i
+# „wyniki-stabilnosc" (E-31/E-32 ekranu wynikow), karmione WYLACZNIE realnymi
+# biegami backendu (phase_state_sn / dynamic_stability) na sieci zlotej.
+# ---------------------------------------------------------------------------
+
+RUN_ID_SCENY_STAN_FAZOWY = "run-ps-scena-stan-fazowy"
+RUN_ID_SCENY_STABILNOSC = "run-dyn-scena-stabilnosc"
+
+#: `id` PRZYPIĘTY (uuid5 deterministyczny) obu biegów — jak `_UUID_KOTWICY_
+#: SCENY_ZWARCIA` powyżej: `proof_ref`/`reproducibility.result_hash` HASHUJĄ
+#: `run.id`, więc zamiana TEKSTOWA `_ustabilizuj_identyfikatory` nie cofa
+#: różnicy w WYNIKU hashowania dwóch RÓŻNYCH losowych `uuid4()` — bez tego
+#: `test_atrapa_jest_deterministyczna` jest czerwony (zmierzone bezpośrednio).
+_UUID_SCENY_STAN_FAZOWY = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_STAN_FAZOWY)
+_UUID_SCENY_STABILNOSC = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_STABILNOSC)
+
+#: Znacznik czasu STAŁY biegów `phase_state_sn`/`dynamic_stability` — obie
+#: analizy znakują `CanonicalRun.created_at` (`create_run`) i `.started_at`
+#: (`execute_run`) przez `datetime.now(UTC)`, a `phase_state_sn` DODATKOWO
+#: przenosi `run.started_at` do `PhaseStateSNProofPackInput.run_timestamp`,
+#: który wchodzi w `reproducibility.result_hash` — bez zamrożenia zegara
+#: `test_atrapa_jest_deterministyczna` jest czerwony (zmierzone bezpośrednio:
+#: dwa wywołania tej samej fixtury dawały dwa różne `result_hash`/`proof_ref`).
+_CZAS_BIEGU_STALY = datetime(2026, 9, 16, 9, 0, 0, tzinfo=UTC)
+
+
+class _ZegarStalyBiegu:
+    """Zamiennik `datetime` w `enm.canonical_analysis` na czas trwania jednego
+    biegu kotwicy — WYŁĄCZNIE `.now(...)` jest tu wywoływane w module (zmierzone
+    grepem: `datetime(` bez `.now` nie występuje), więc pełna podmiana nazwy
+    modułu jest bezpieczna i nie psuje żadnego innego użycia."""
+
+    @staticmethod
+    def now(tz: Any = None) -> datetime:  # noqa: ARG004 - kontrakt `datetime.now`
+        return _CZAS_BIEGU_STALY
+
+
+#: Docelowa szyna sceny stanu fazowego — `bus_sn_b` (siec zlota) niesie
+#: galaz zasilajaca `cab_main_b` i odbior `load_c` dalej w sieci, wiec
+#: asymetria pradow fazowych (opcje ponizej) ma widoczny wplyw na straty per
+#: faza. Pradyw fazowe A/B/C sa DANYMI WEJSCIOWYMI sceny (zalozenie
+#: projektanta — scenariusz obciazenia niezrownowazonego, TAKI SAM status jak
+#: `threshold_criteria` sceny stabilnosci nizej), nie wynikiem solvera; wynik
+#: (napiecia/straty/asymetrie/flagi) liczy REALNIE `PhaseStateSNSolver`
+#: (`_execute_phase_state_sn`, `enm/canonical_analysis.py`) — zero fabrykacji
+#: wyniku.
+_OPCJE_SCENY_STAN_FAZOWY: dict[str, Any] = {
+    "target_bus_ref": "bus_sn_b",
+    "load_current_a": [135.0, 78.0, 100.0],
+    "unbalance_alert_percent": 10.0,
+}
+
+
+def _bieg_sceny_stan_fazowy() -> Any:
+    """Bieg `phase_state_sn` KOTWICY sceny „wyniki-stan-fazowy" — tor kanoniczny
+    `create_run`/`execute_run` (jak `_werdykt_projektowy_scena`), na sieci
+    zlotej. `reset_*` PRZED i PO — nie zostawia stanu innym fixturom."""
+    reset_canonical_runs()
+    reset_enm_store()
+    try:
+        set_enm(CASE_ID_HARNESSU, build_golden_enm())
+        with (
+            patch("enm.canonical_analysis.uuid4", return_value=_UUID_SCENY_STAN_FAZOWY),
+            patch("enm.canonical_analysis.datetime", _ZegarStalyBiegu),
+        ):
+            return execute_run(
+                create_run(
+                    case_id=CASE_ID_HARNESSU,
+                    klucz_twin=CASE_ID_HARNESSU,
+                    analysis_type="phase_state_sn",
+                    options=_OPCJE_SCENY_STAN_FAZOWY,
+                ).id
+            )
+    finally:
+        reset_canonical_runs()
+        reset_enm_store()
+
+
+def stan_fazowy_scena_wyniki() -> dict[str, Any]:
+    """Odpowiedź `GET /api/analysis-runs/{id}/results/phase-state`
+    (`build_phase_state_results_response` — TA SAMA funkcja, którą woła
+    końcówka `api/analysis_runs.py::get_phase_state_results`)."""
+    run = _bieg_sceny_stan_fazowy()
+    widok = build_phase_state_results_response(run)
+    return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_STAN_FAZOWY})
+
+
+#: Elementy sceny stabilnosci — siec zlota: zwarcie na galezi `line_b_c`
+#: (odcinek Stacja B -> Stacja C), wylaczane bezpiecznikiem `fuse_c`, zrodlem
+#: obserwowanym jest maszyna synchroniczna `gen_sync` (jedyne zrodlo wirujace
+#: sieci zlotej — `PhaseClearSourceState` opisuje WYLACZNIE zrodla wirujace,
+#: falownik `gen_pv` fizycznie nie ma kata mocy). Katy/napiecie/czestotliwosc
+#: po zwarciu i stala czasowa odbudowy SA SCENARIUSZEM PRZYJETYM W OPCJACH
+#: BIEGU tej analizy (dokladnie tak, jak `threshold_criteria` dotychczasowej
+#: atrapy to dokumentowaly) — `evaluate_fault_clear_dynamic_stability` liczy
+#: REALNIE werdykt progowy i `build_automation_trace` slad automatyki z tych
+#: opcji (`_execute_dynamic_stability`), zero fabrykacji wyniku.
+_OPCJE_SCENY_STABILNOSC: dict[str, Any] = {
+    "scenario_id": "dyn-scena-stabilnosc",
+    "source_ref": "gen_sync",
+    "faulted_element_id": "line_b_c",
+    "cleared_by_element_ids": ["fuse_c"],
+    "clearing_time_ms": 120.0,
+    "pre_fault_angle_deg": 10.0,
+    "during_fault_angle_deg": 65.0,
+    "post_fault_angle_deg": 28.0,
+    "post_fault_voltage_pu": 0.97,
+    "post_fault_frequency_pu": 0.99,
+    "recovery_time_constant_s": 0.3,
+}
+
+
+def _bieg_sceny_stabilnosc() -> Any:
+    """Bieg `dynamic_stability` KOTWICY sceny „wyniki-stabilnosc" — tor
+    kanoniczny, na sieci zlotej. `reset_*` PRZED i PO."""
+    reset_canonical_runs()
+    reset_enm_store()
+    try:
+        set_enm(CASE_ID_HARNESSU, build_golden_enm())
+        with (
+            patch("enm.canonical_analysis.uuid4", return_value=_UUID_SCENY_STABILNOSC),
+            patch("enm.canonical_analysis.datetime", _ZegarStalyBiegu),
+        ):
+            return execute_run(
+                create_run(
+                    case_id=CASE_ID_HARNESSU,
+                    klucz_twin=CASE_ID_HARNESSU,
+                    analysis_type="dynamic_stability",
+                    options=_OPCJE_SCENY_STABILNOSC,
+                ).id
+            )
+    finally:
+        reset_canonical_runs()
+        reset_enm_store()
+
+
+def stabilnosc_scena_wyniki() -> dict[str, Any]:
+    """Odpowiedź `GET /api/analysis-runs/{id}/results/dynamic-stability`
+    (`build_dynamic_stability_results_response` — TA SAMA funkcja, którą woła
+    końcówka `api/analysis_runs.py::get_dynamic_stability_results`)."""
+    run = _bieg_sceny_stabilnosc()
+    widok = build_dynamic_stability_results_response(run)
+    return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_STABILNOSC})
+
+
+def stabilnosc_scena_slad() -> dict[str, Any]:
+    """Odpowiedź `GET /api/analysis-runs/{id}/results/automation-trace`
+    (`build_automation_trace_results_response` — TA SAMA funkcja, którą woła
+    końcówka `api/analysis_runs.py::get_automation_trace_results`)."""
+    run = _bieg_sceny_stabilnosc()
+    widok = build_automation_trace_results_response(run)
+    return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_STABILNOSC})
+
+
 #: Nazwa pliku → funkcja licząca odpowiedź (kolejność = kolejność eksportu).
 FIXTURY: dict[str, Any] = {
     "ncrfg_zgodnosc_przekrojowa_scena_macierz": zgodnosc_przekrojowa_sceny_macierz,
@@ -585,6 +743,9 @@ FIXTURY: dict[str, Any] = {
     "zwarcia_wklady_scena_zwarcia": zwarcia_wklady_scena_zwarcia,
     "zwarcia_rozplyw_scena_zwarcia": zwarcia_rozplyw_scena_zwarcia,
     "zwarcia_pasmo_scena_zwarcia": zwarcia_pasmo_scena_zwarcia,
+    "stan_fazowy_scena_wyniki": stan_fazowy_scena_wyniki,
+    "stabilnosc_scena_wyniki": stabilnosc_scena_wyniki,
+    "stabilnosc_scena_slad": stabilnosc_scena_slad,
 }
 
 

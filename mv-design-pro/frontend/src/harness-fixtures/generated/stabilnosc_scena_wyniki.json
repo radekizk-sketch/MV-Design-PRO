@@ -1,0 +1,154 @@
+{
+  "run_id": "run-dyn-scena-stabilnosc",
+  "rows": [
+    {
+      "scenario_id": "dyn-scena-stabilnosc",
+      "scenario_type": "FAULT_CLEAR",
+      "source_id": "gen_sync",
+      "faulted_element_id": "line_b_c",
+      "cleared_by_element_ids": [
+        "fuse_c"
+      ],
+      "stable": true,
+      "status": "STABLE",
+      "criteria_version": "dynamic_stability_fault_clear_v1",
+      "stability_index": 0.685417,
+      "clearing_time_ms": 120.0,
+      "max_clearing_time_ms": 150.0,
+      "clearing_margin_ms": 30.0,
+      "angle_swing_deg": 55.0,
+      "post_fault_voltage_pu": 0.97,
+      "post_fault_frequency_pu": 0.99,
+      "limiting_factor": "clearing_time",
+      "violated_checks": [],
+      "checks": {
+        "clearing_time": true,
+        "angle_swing": true,
+        "voltage_recovery": true,
+        "frequency_recovery": true
+      },
+      "source_kind": "generator",
+      "faulted_element_kind": "galaz_liniowa",
+      "threshold_criteria": [
+        {
+          "key": "max_clearing_time_ms",
+          "label_pl": "Maksymalny czas wyłączenia zwarcia",
+          "value": 150.0,
+          "unit": "ms",
+          "source_pl": "Kryterium przyjęte w opcjach biegu tej analizy (pole o tej samej nazwie w kontrakcie opcji) — repozytorium nie niesie cytatu normy dla tej wartości; próg jest edytowalny przez opcje biegu, nie zaszyty na stałe w solverze."
+        },
+        {
+          "key": "max_angle_swing_deg",
+          "label_pl": "Maksymalne wychylenie kąta mocy",
+          "value": 120.0,
+          "unit": "°",
+          "source_pl": "Kryterium przyjęte w opcjach biegu tej analizy (pole o tej samej nazwie w kontrakcie opcji) — repozytorium nie niesie cytatu normy dla tej wartości; próg jest edytowalny przez opcje biegu, nie zaszyty na stałe w solverze."
+        },
+        {
+          "key": "min_voltage_recovery_pu",
+          "label_pl": "Minimalne napięcie po zwarciu",
+          "value": 0.95,
+          "unit": "p.u.",
+          "source_pl": "Kryterium przyjęte w opcjach biegu tej analizy (pole o tej samej nazwie w kontrakcie opcji) — repozytorium nie niesie cytatu normy dla tej wartości; próg jest edytowalny przez opcje biegu, nie zaszyty na stałe w solverze."
+        },
+        {
+          "key": "min_frequency_recovery_pu",
+          "label_pl": "Minimalna częstotliwość po zwarciu",
+          "value": 0.98,
+          "unit": "p.u.",
+          "source_pl": "Kryterium przyjęte w opcjach biegu tej analizy (pole o tej samej nazwie w kontrakcie opcji) — repozytorium nie niesie cytatu normy dla tej wartości; próg jest edytowalny przez opcje biegu, nie zaszyty na stałe w solverze."
+        }
+      ],
+      "proof_ref": "proof:dynamic-stability:32749ceb758969a2b307cd3566f57e90df3cfe985b5f4893ecc09f5e83dbd58e",
+      "proof_status": "incomplete",
+      "proof_status_pl": "czesciowy",
+      "reporting_status": "not_reportable",
+      "reporting_status_pl": "nieraportowalny",
+      "dopuszczalnosc_raportowa": false,
+      "reporting_limitations": [
+        "Katy wirnika i wielkosci pozwarciowe pochodza z opcji biegu (z wartosciami domyslnymi); werdykt jest porownaniem progowym wzgledem tych katow, nie calkowaniem rownan ruchu ukladu — enm/canonical_analysis.py::_execute_dynamic_stability."
+      ],
+      "evidence": {
+        "capability_id": "dynamic_stability.fault_clear",
+        "tier": "UNVALIDATED_MODEL",
+        "tier_pl": "model_niezwalidowany",
+        "claim_kind": "DYNAMIC_PERFORMANCE",
+        "claim_kind_pl": "zachowanie_dynamiczne",
+        "regulatory_evidence_eligible": false,
+        "rationale_pl": "Katy wirnika i wielkosci pozwarciowe pochodza z opcji biegu (z wartosciami domyslnymi); werdykt jest porownaniem progowym wzgledem tych katow, nie calkowaniem rownan ruchu ukladu — enm/canonical_analysis.py::_execute_dynamic_stability.",
+        "audit_ref": "karta_s1_s4_dowod.md §0.5"
+      }
+    }
+  ],
+  "analysis_case_context": {
+    "case_ref": "case-demo",
+    "case_kind": "PRACA_PO_ZAKLOCENIU",
+    "rodzaj_przypadku": "PRACA_PO_ZAKLOCENIU",
+    "snapshot_ref": "3bb9b0c774d41911779ccc2e8f5e5e5bcb26370d2bd488d52d4b1668cb8b3ec6",
+    "rewizja_modelu": 1,
+    "variant_ref": null,
+    "run_ref": "run-dyn-scena-stabilnosc",
+    "proof_pack_ref": "proof-pack:run-dyn-scena-stabilnosc",
+    "quality_gate": "G4",
+    "applicability_scope": [
+      "DYNAMIC_STABILITY",
+      "AUTOMATION",
+      "REPORT"
+    ],
+    "completeness": "complete",
+    "completeness_legacy": "pelny",
+    "missing_prerequisites": [],
+    "assumptions": {
+      "source_assumptions_ref": "dynamic_fault_source_state",
+      "load_assumptions_ref": "sc_load_snapshot",
+      "switching_state_ref": null,
+      "grounding_assumptions_ref": "network_grounding_snapshot",
+      "temperature_assumptions_ref": "temperature_short_circuit",
+      "transformer_tap_assumptions_ref": "tap_frozen",
+      "ibg_assumptions_ref": "ibg_model_snapshot"
+    },
+    "lineage": {
+      "project_ref": null,
+      "run_ref": "run-dyn-scena-stabilnosc",
+      "analysis_type": "dynamic_stability",
+      "snapshot_ref": "3bb9b0c774d41911779ccc2e8f5e5e5bcb26370d2bd488d52d4b1668cb8b3ec6"
+    },
+    "reproducibility": {
+      "case_ref": "case-demo",
+      "analysis_case_ref": "case-demo",
+      "snapshot_ref": "3bb9b0c774d41911779ccc2e8f5e5e5bcb26370d2bd488d52d4b1668cb8b3ec6",
+      "enm_hash": "3bb9b0c774d41911779ccc2e8f5e5e5bcb26370d2bd488d52d4b1668cb8b3ec6",
+      "enm_snapshot_ref": "3bb9b0c774d41911779ccc2e8f5e5e5bcb26370d2bd488d52d4b1668cb8b3ec6",
+      "enm_projection_version": "v12xx.m1.1",
+      "variant_ref": null,
+      "operating_variant_ref": null,
+      "switching_snapshot_ref": null,
+      "solver_family": "dynamic_stability_fault_clear",
+      "solver_version": null,
+      "method_version": "canonical_run_v1",
+      "formula_set_version": "dynamic_stability_fault_clear_v1",
+      "standard_basis_ref": "DYNAMIC_STABILITY_FAULT_CLEAR_V1",
+      "input_hash": "8ae0eb332e000e5c7f53d697b76c0323ff7620b4e680de79d38231eb4907dc5f",
+      "result_hash": "3b20f6a9c17b686d83282acd1bae0bcce4c14f6b2c7a8bdd9a46605a10b2528d",
+      "domain_model_version": "1.0",
+      "bay_contract_version": "V12.5",
+      "results_contract_version": "V12.5",
+      "proof_renderer_version": "white_box_trace_v1",
+      "catalog_snapshot_ref": "3bb9b0c774d41911779ccc2e8f5e5e5bcb26370d2bd488d52d4b1668cb8b3ec6",
+      "catalog_materialization_ref": "catalog-materialization:6a434a7745908b6ce8dc427aec7483cf22a4e6e7b87d804b539e0c94e0bd62ec",
+      "catalog_materialization_hash": "6a434a7745908b6ce8dc427aec7483cf22a4e6e7b87d804b539e0c94e0bd62ec",
+      "catalog_materialization_status": "not_materialized",
+      "catalog_materialization_contract_version": "catalog_materialization_v1",
+      "catalog_schema_version": null,
+      "catalog_fingerprint": "5b73c71ecc41fef1f78fb6bc544d30f3d0fc2d8aec7cec7449877080d21f7e07",
+      "model_revision": 1,
+      "tolerance_policy_ref": "solver_tolerance/default",
+      "rounding_policy_ref": "rounding/default",
+      "quality_gate_policy_version": "v12_5_quality_gate",
+      "report_contract_version": "analysis_report_v2",
+      "export_generator_version": "v12_5_export_artifact/1.0",
+      "result_rules_version": "result_rules_v12_5",
+      "ruleset_version": "result_rules_v12_5"
+    }
+  }
+}
