@@ -22,11 +22,72 @@ eksport = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(eksport)
 
 
+#: Tolerancja liczb fixtur (ta sama klasa co parytet assemblera na CI, karta
+#: CI-PARYTET-2): szkielet (klucze, typy, długości list, teksty, liczby całkowite)
+#: DOKŁADNIE, liczby zmiennoprzecinkowe z tolerancją. Dowód klasy: CI run
+#: 34467401727 na b89c13b3 — dwie fixtury sceny werdyktu (wartości i marginesy z
+#: realnego rozpływu/zwarcia sieci złotej) rozjechały się między maszynami na
+#: 10.–11. cyfrze znaczącej (np. 8.913153836959333 vs 8.913153836847659), choć
+#: lokalnie test był zielony. Szum solvera (~1e-10 względnie) przekracza ziarno
+#: kwantyzacji ADR-018 (9 cyfr), więc samo zaokrąglenie nie zamyka klasy —
+#: potrzebna tolerancja porównania, dla KAŻDEJ fixtury z liczbami solvera.
+RTOL_FIXTUR = 1e-6
+ATOL_FIXTUR = 1e-6
+
+
+def roznice_z_tolerancja(zloty: object, teraz: object, sciezka: str = "$") -> list[str]:
+    """Lista ścieżek, na których fixtura z repo różni się od odpowiedzi backendu."""
+    if isinstance(zloty, bool) or isinstance(teraz, bool):
+        # `bool` jest częścią kontraktu (True != 1): typ i wartość dokładnie.
+        if type(zloty) is type(teraz) and zloty == teraz:
+            return []
+        return [f"{sciezka}: {zloty!r} != {teraz!r}"]
+    if isinstance(zloty, int | float) and isinstance(teraz, int | float):
+        if isinstance(zloty, int) and isinstance(teraz, int):
+            return [] if zloty == teraz else [f"{sciezka}: {zloty!r} != {teraz!r}"]
+        if abs(float(zloty) - float(teraz)) <= ATOL_FIXTUR + RTOL_FIXTUR * abs(float(zloty)):
+            return []
+        return [f"{sciezka}: {zloty!r} != {teraz!r} (poza tolerancją)"]
+    if isinstance(zloty, dict) and isinstance(teraz, dict):
+        if set(zloty) != set(teraz):
+            return [f"{sciezka}: klucze {sorted(set(zloty) ^ set(teraz))}"]
+        return [
+            r
+            for klucz in zloty
+            for r in roznice_z_tolerancja(zloty[klucz], teraz[klucz], f"{sciezka}.{klucz}")
+        ]
+    if isinstance(zloty, list) and isinstance(teraz, list):
+        if len(zloty) != len(teraz):
+            return [f"{sciezka}: długość listy {len(zloty)} != {len(teraz)}"]
+        return [
+            r
+            for i, (a, b) in enumerate(zip(zloty, teraz, strict=True))
+            for r in roznice_z_tolerancja(a, b, f"{sciezka}[{i}]")
+        ]
+    return [] if zloty == teraz else [f"{sciezka}: {zloty!r} != {teraz!r}"]
+
+
+def test_roznice_z_tolerancja_rozroznia_szum_od_regresji() -> None:
+    """Pin komparatora: szum ostatnich cyfr przechodzi, zmiana kształtu/typu/tekstu
+    i różnica ponad tolerancję — nie (deklaracja bez testu = fałszywa pewność)."""
+    assert roznice_z_tolerancja({"a": [8.913153836959333]}, {"a": [8.913153836847659]}) == []
+    assert roznice_z_tolerancja(1.0, 1.0 + 5e-6) != []
+    assert roznice_z_tolerancja({"a": 1}, {"a": 1.0}) == []
+    assert roznice_z_tolerancja(True, 1) != []
+    assert roznice_z_tolerancja({"a": 1}, {"b": 1}) != []
+    assert roznice_z_tolerancja([1, 2], [1]) != []
+    assert roznice_z_tolerancja("x", "y") != []
+    assert roznice_z_tolerancja(None, 0.0) != []
+
+
 @pytest.mark.parametrize("nazwa", sorted(eksport.FIXTURY))
 def test_json_w_repo_rowny_odpowiedzi_backendu(nazwa: str) -> None:
     sciezka = eksport.FIXTURES_DIR / f"{nazwa}.json"
     assert sciezka.exists(), f"brak {sciezka} — uruchom scripts/eksport_fixtur_harnessu.py"
-    assert json.loads(sciezka.read_text(encoding="utf-8")) == eksport.FIXTURY[nazwa]()
+    roznice = roznice_z_tolerancja(
+        json.loads(sciezka.read_text(encoding="utf-8")), eksport.FIXTURY[nazwa]()
+    )
+    assert roznice == [], "\n".join(roznice)
 
 
 @pytest.mark.parametrize("nazwa", sorted(eksport.FIXTURY))

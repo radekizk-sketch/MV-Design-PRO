@@ -12,6 +12,7 @@
  * Wszystkie interakcje to kliki natywne w żywej aplikacji, na realnym backendzie.
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { otworzZakladkeWynikow } from './nawigacjaWynikow';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -257,7 +258,7 @@ test('L-11: 2× klik na wartości z dowodem otwiera wywód ZAWĘŻONY do wskazan
   const kontekst = await przygotujKontekst(request);
 
   await otworzAplikacje(page, kontekst, `/#analysis?run=${kontekst.runId}`);
-  await page.getByRole('tab', { name: /Zwarcia/ }).click();
+  await otworzZakladkeWynikow(page, 'zwarcia');
   await expect(page.getByTestId('mvd-zwarcia-ekran')).toBeVisible({ timeout: 30000 });
 
   // Wartość z dowodem w tabeli punktów zwarciowych (natywny 2× klik).

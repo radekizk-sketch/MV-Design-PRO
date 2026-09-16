@@ -503,6 +503,27 @@ export const CIEPLNA_FIXTURE: WytrzymaloscCieplnaResponse = {
   fault_node_id: 'BUS-02',
   tk_s: 0.25,
   czasy_wylaczenia: { z_nastawy: 1, z_zalozenia: 0, razem: 1 },
+  // Podstawa normowa z punktem — 1:1 z `STANDARD_REFS` solvera
+  // (`network_model/solvers/conductor_thermal_withstand.py`).
+  normy: [
+    {
+      norma: 'PN-HD 60364-4-43',
+      punkt: '§ 434.5.2',
+      tresc_pl: 'Warunek adiabatyczny doboru przekroju ze względu na zwarcie: S ≥ √(I²·t) / k.',
+    },
+    {
+      norma: 'IEC 60949',
+      punkt: '§ 3, § 4',
+      tresc_pl:
+        'Obliczanie dopuszczalnych prądów zwarciowych kabli z uwzględnieniem nagrzewania nieadiabatycznego; podstawa wartości k dla par materiał żyły / izolacja.',
+    },
+  ],
+  aktualnosc: {
+    aktualny: true,
+    powod_pl: 'Wynik policzony dla bieżącej wersji modelu.',
+    model_hash: 'model-hash-1',
+    snapshot_hash: 'model-hash-1',
+  },
   ocena: {
     items: [
       {
@@ -529,6 +550,35 @@ export const CIEPLNA_FIXTURE: WytrzymaloscCieplnaResponse = {
           krzywa: 'IEC_SI',
           tms: 0.2,
         },
+        // Treść fizyczna kryterium (ten sam rachunek co w komentarzu fixtury):
+        // I²·t = 15 000² × 0,25 s = 56,25·10⁶ A²·s; k²·S² = (94 × 120)² = 127,24·10⁶ A²·s.
+        i2t_a2s: 56250000,
+        i2t_dopuszczalne_a2s: 127238400,
+        margines_procent: 55.8,
+        kryteria: [
+          {
+            kod: 'i2t',
+            nazwa_pl: 'Energia cieplna zwarcia',
+            warunek_pl: 'I²·t ≤ k²·S²',
+            wartosc: 56250000,
+            granica: 127238400,
+            jednostka: 'A²·s',
+            status: 'PASS',
+          },
+          {
+            kod: 'przekroj_minimalny',
+            nazwa_pl: 'Przekrój minimalny żyły',
+            warunek_pl: 'S ≥ S_min',
+            wartosc: 120,
+            granica: 79.8,
+            jednostka: 'mm²',
+            status: 'PASS',
+          },
+        ],
+        powod_decyzji_pl: 'I²·t = 56,25·10⁶ A²·s ≤ k²·S² = 127,24·10⁶ A²·s — zapas 55,8 %.',
+        zalecenia: [],
+        wrazliwosc: [],
+        uzasadnienie_k: null,
       },
     ],
     summary: { pass_count: 1, fail_count: 0, unavailable_count: 0 },

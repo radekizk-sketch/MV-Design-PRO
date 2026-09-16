@@ -70,6 +70,7 @@ from typing import Any
 
 from analysis.sanity_bounds.short_circuit_bounds import INCOMPLETE, OUT_OF_RANGE
 from application.analyses.energy_validation.service import build_energy_validation_view
+from application.analyses.kontrakt_liczb import kwantyzuj_kontrakt
 from application.analyses.raport_zgodnosci import build_compliance_report
 from application.analyses.sanity_bounds import build_sanity_bounds_view
 from application.analyses.warunki_przylaczenia import (
@@ -538,17 +539,29 @@ class WerdyktProjektowy:
         }
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            "werdykt": self.werdykt,
-            "case_id": self.case_id,
-            "model_hash": self.model_hash,
-            "pozycje": [pozycja.to_dict() for pozycja in self.pozycje],
-            "zrodla": [zrodlo.to_dict() for zrodlo in self.zrodla],
-            "podsumowanie": self.podsumowanie,
-            "ocena": self.ocena,
-            "grupy": [{"kod": kod, "nazwa_pl": nazwa} for kod, nazwa in GRUPY_KRYTERIOW],
-            "zakres_poza_automatem": [dict(wpis) for wpis in ZAKRES_POZA_AUTOMATEM],
-        }
+        """Kontrakt wyjściowy werdyktu — JEDNO miejsce dla API i eksportu fixtur.
+
+        ADR-018 (M0-2): liczby kontraktu WYJŚCIOWEGO kwantyzowane do 9 cyfr
+        znaczących przed serializacją — wartości/marginesy pochodzą z rozpływu i
+        zwarcia, których surowe `float` różnią się między maszynami (CI run
+        34467401727 na b89c13b3: dwie fixtury sceny werdyktu rozjechały się na
+        10.–11. cyfrze). Kwantyzacja nie zastępuje tolerancji porównania fixtur
+        (`tests/ci/test_fixtury_harnessu.py`): szum solvera ~1e-10 względnie
+        przekracza ziarno 1e-9, więc obie warstwy działają razem.
+        """
+        return kwantyzuj_kontrakt(
+            {
+                "werdykt": self.werdykt,
+                "case_id": self.case_id,
+                "model_hash": self.model_hash,
+                "pozycje": [pozycja.to_dict() for pozycja in self.pozycje],
+                "zrodla": [zrodlo.to_dict() for zrodlo in self.zrodla],
+                "podsumowanie": self.podsumowanie,
+                "ocena": self.ocena,
+                "grupy": [{"kod": kod, "nazwa_pl": nazwa} for kod, nazwa in GRUPY_KRYTERIOW],
+                "zakres_poza_automatem": [dict(wpis) for wpis in ZAKRES_POZA_AUTOMATEM],
+            }
+        )
 
 
 def _definicja(kryterium_id: str) -> DefinicjaKryterium:
@@ -1544,4 +1557,6 @@ def build_werdykt_projektowy_view(
         enm_snapshot=enm.model_dump(mode="json"),
         uow_factory=uow_factory,
     )
+    # Kwantyzacja kontraktu (ADR-018) siedzi w `WerdyktProjektowy.to_dict` — jedno
+    # miejsce dla tej końcówki i dla eksportu fixtur harnessu.
     return werdykt.to_dict()

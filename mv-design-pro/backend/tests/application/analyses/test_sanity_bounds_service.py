@@ -21,6 +21,7 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
+from application.analyses.power_flow_reconstruction import graf_z_biegu
 from application.analyses.sanity_bounds import (
     build_power_flow_sanity_bounds_view,
     build_sanity_bounds_view,
@@ -32,6 +33,7 @@ from enm.canonical_analysis import (
     reset_canonical_runs,
 )
 from enm.store import reset_enm_store, set_enm
+from network_model.core.branch import LineBranch, TransformerBranch
 
 from tests.cgmes.golden_enm import build_golden_enm
 
@@ -337,6 +339,93 @@ def test_pf_branch_missing_catalog_current_is_incomplete_not_zero_or_inf() -> No
         "zweryfikowany"
     }, "napięcia nietknięte"
     assert view["straty"]["status"] == "zweryfikowany", "straty nietknięte"
+
+
+def test_pf_branch_loading_out_of_range_is_isolated_to_that_branch() -> None:
+    """Oś 2 (odbiór fali 3 W3, 2026-09-10 — brakujący test z recenzji W3-G2):
+    prąd gałęzi PONAD In katalogu — „poza zakresem wiarygodności" TYLKO dla tej
+    gałęzi (obciążenie > 100 %, powód nazwany), reszta gałęzi i pozostałe osie
+    (napięcia, straty) bez zmian. Iloczyn cech: {absurdalny prąd} × {jedna
+    gałąź} × {niezależność osi}."""
+    run = _pf_run()
+    branch_id, current_ka = next(
+        (bid, value) for bid, value in run.raw_result["branch_current_ka"].items() if value
+    )
+    modified = dict(run.raw_result)
+    modified["branch_current_ka"] = dict(run.raw_result["branch_current_ka"])
+    modified["branch_current_ka"][branch_id] = current_ka * 1000.0
+    run2 = _synthetic_pf_run(snapshot=run.snapshot, raw_result=modified)
+
+    view = build_power_flow_sanity_bounds_view(run2)
+    item = next(i for i in view["obciazenia"]["items"] if i["target_id"] == branch_id)
+    assert item["status"] == "poza zakresem wiarygodności"
+    assert item["in_range"] is False
+    assert item["loading_pct"] > 100.0
+    assert item["current_ka"] == current_ka * 1000.0
+    assert item["rated_current_a"] > 0.0
+    assert "wątpliwy" in item["why_pl"]
+    assert view["obciazenia"]["summary"]["out_of_range_count"] == 1
+
+    inne = [i for i in view["obciazenia"]["items"] if i["target_id"] != branch_id]
+    assert inne and all(i["status"] == "zweryfikowany" for i in inne), "reszta gałęzi nietknięta"
+    assert {i["status"] for i in view["napiecia"]["items"]} == {
+        "zweryfikowany"
+    }, "napięcia nietknięte"
+    assert view["straty"]["status"] == "zweryfikowany", "straty nietknięte"
+
+
+def test_pf_transformers_are_not_assessed_by_current_band_but_lines_are() -> None:
+    """Filtr ``isinstance(branch, LineBranch)`` (odbiór fali 3 W3): transformator
+    ma wielkość znamionową MOC (Sn) — jego obciążenie ocenia ``energy_validation``
+    (inna klasa: zgodność projektowa), NIE pasmo prądowe In. Dowód NIE-vacuous:
+    graf biegu MA gałęzie transformatorowe i ŻADNA nie trafia do osi obciążeń,
+    a KAŻDA załączona linia/kabel — trafia."""
+    run = _pf_run()
+    graph = graf_z_biegu(run)
+    transformatory = {bid for bid, b in graph.branches.items() if isinstance(b, TransformerBranch)}
+    linie_zalaczone = {
+        bid for bid, b in graph.branches.items() if isinstance(b, LineBranch) and b.in_service
+    }
+    assert transformatory, "sieć wzorcowa bez transformatora — test byłby pusty"
+    assert linie_zalaczone
+
+    ocenione = {
+        i["target_id"] for i in build_power_flow_sanity_bounds_view(run)["obciazenia"]["items"]
+    }
+    assert ocenione == linie_zalaczone
+    assert ocenione.isdisjoint(transformatory)
+
+
+def test_pf_out_of_service_line_is_not_assessed_and_rest_untouched() -> None:
+    """Filtr ``branch.in_service`` (odbiór fali 3 W3): linia z ``status="open"``
+    w migawce (ENM → graf: ``in_service = status == "closed"``, ``enm/mapping.py``)
+    nie ma prądu do oceny — znika z osi obciążeń bez fabrykowania werdyktu
+    „0 % obciążenia"; pozostałe linie i osie bez zmian."""
+    run = _pf_run()
+    ref_wylaczonej = run.snapshot["branches"][0]["ref_id"]
+    mutated_branches = [dict(b) for b in run.snapshot["branches"]]
+    mutated_branches[0]["status"] = "open"
+    mutated_snapshot = dict(run.snapshot)
+    mutated_snapshot["branches"] = mutated_branches
+    run2 = _synthetic_pf_run(snapshot=mutated_snapshot, raw_result=run.raw_result)
+
+    graph = graf_z_biegu(run2)
+    wylaczone = {bid for bid, b in graph.branches.items() if not b.in_service}
+    assert len(wylaczone) == 1, "dokładnie jedna gałąź wyłączona z ruchu w grafie"
+    (id_wylaczonej,) = wylaczone
+    assert ref_wylaczonej in id_wylaczonej or graph.branches[id_wylaczonej].name == (
+        run.snapshot["branches"][0]["name"]
+    )
+
+    przed = build_power_flow_sanity_bounds_view(run)
+    po = build_power_flow_sanity_bounds_view(run2)
+    ocenione_po = {i["target_id"] for i in po["obciazenia"]["items"]}
+    assert id_wylaczonej not in ocenione_po
+    assert id_wylaczonej in {i["target_id"] for i in przed["obciazenia"]["items"]}
+    assert ocenione_po == {i["target_id"] for i in przed["obciazenia"]["items"]} - {id_wylaczonej}
+    assert all(i["status"] == "zweryfikowany" for i in po["obciazenia"]["items"])
+    assert po["napiecia"] == przed["napiecia"], "napięcia nietknięte"
+    assert po["straty"] == przed["straty"], "straty nietknięte"
 
 
 def test_pf_losses_out_of_range_is_isolated() -> None:

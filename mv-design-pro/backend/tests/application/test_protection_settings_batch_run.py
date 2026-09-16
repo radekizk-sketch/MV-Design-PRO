@@ -387,6 +387,55 @@ def test_zbuduj_wejscie_nastaw_nie_mutuje_migawki_kotwicy_pin_spojnosci() -> Non
 
 
 # ---------------------------------------------------------------------------
+# W3-G1 (2026-09-10): wariant rozplywu pakietu nastaw liczy sie ZAWSZE metoda
+# Newtona-Raphsona — jawnie w opcjach wariantu (`batch_run.py`), nie z domyslu
+# solvera ani z opcji kotwicy.
+# ---------------------------------------------------------------------------
+
+
+def test_wariant_rozplywu_nastaw_zawsze_metoda_nr_niezaleznie_od_opcji_kotwicy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Recenzja W3-G1 (odbior fali 3 W3): `batch_run.py` deklaruje w komentarzu,
+    ze metoda wariantu PF audytu 2 jest jawnie NR (powtarzalny dowod pakietu
+    nastaw, niezalezny od wyboru operatora gdzie indziej) — deklaracja bez
+    testu = falszywa pewnosc. Iloczyn cech: {kotwica z OBCA metoda w opcjach
+    (`solver_method: gauss-seidel`, jakby operator wybral GS gdzie indziej)} x
+    {wariant PF} — przechwycony wariant ma NR w opcjach, w kopercie wyniku
+    (`raw_result.solver_method`) i w sladzie (`power_flow_trace.solver_method`),
+    a warianty zwarciowe nie dziedzicza obcej metody (klucze jawne w
+    `_opcje_wariantu_zwarciowego`)."""
+    from application.protection_settings import batch_run as modul
+
+    przechwycone: list[CanonicalRun] = []
+    oryginal = modul.wykonaj_bieg_w_pamieci
+
+    def _szpieg(run: CanonicalRun, *args: object, **kwargs: object) -> object:
+        przechwycone.append(run)
+        return oryginal(run, *args, **kwargs)
+
+    monkeypatch.setattr(modul, "wykonaj_bieg_w_pamieci", _szpieg)
+    kotwica = _kotwica(_siec_promieniowa())
+    kotwica.options = {**kotwica.options, "solver_method": "gauss-seidel"}
+
+    wejscie = zbuduj_wejscie_nastaw(kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0)
+
+    assert wejscie.engine_input.i_load_max_a > 0
+    warianty_pf = [run for run in przechwycone if run.analysis_type == "PF"]
+    assert len(warianty_pf) == 1
+    wariant_pf = warianty_pf[0]
+    assert wariant_pf.options["solver_method"] == "newton-raphson"
+    assert wariant_pf.raw_result is not None
+    assert wariant_pf.raw_result["solver_method"] == "newton-raphson"
+    assert wariant_pf.raw_result["result_v1"]["converged"] is True
+    assert wariant_pf.power_flow_trace is not None
+    assert wariant_pf.power_flow_trace["solver_method"] == "newton-raphson"
+    warianty_sc = [run for run in przechwycone if run.analysis_type == "short_circuit_sn"]
+    assert len(warianty_sc) == 2
+    assert all("solver_method" not in run.options for run in warianty_sc)
+
+
+# ---------------------------------------------------------------------------
 # CV-4.2b: warianty nastaw licza TEN SAM model stacji co kotwica (para audytu 2
 # dziedziczona), a bez fabryki wolajacego odmawiaja jawnie.
 # ---------------------------------------------------------------------------

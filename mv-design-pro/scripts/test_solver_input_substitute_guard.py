@@ -1283,6 +1283,20 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `application/analyses/v126_katalog.py` — karty katalogu z sekcjami danych,
     # kryteriow i zakresu), pliki 484 -> 486 (+2: te same dwa moduly, nowe w tej karcie),
     # zapadka 58/260 i wykluczenia 13/31 bez zmian (zero nowych podstawien).
+    # Odbior fali 3 W3 (2026-09-10; drzewo b89c13b3 + TRACE-V2 + W3-G1/G2/G3): POMIAR
+    # guardem 3506 -> 3506 — rownosc jest ZBIEGIEM trzech zmian, nie brakiem zmian:
+    # -19 (TRACE-V2 skasowal trzy zrodla kontraktow `domain/trace_v2/{artifact,
+    # equation_registry_v2,math_spec_version}.py`: derived_in_adapter, eq_id,
+    # equation_steps, inputs_used, intermediate_values, latex_symbolic, major,
+    # math_spec_version, meaning_pl, minor, patch, run_hash, source_norm, subject_id,
+    # substituted_latex, symbolic_latex, trace_signature, valid_from_math_spec,
+    # variables), +10 (W3-G2 `analysis/sanity_bounds/power_flow_bounds.py`: actual_kv,
+    # lower_kv, upper_kv, deviation_pct, loading_pct, losses_active_mw,
+    # load_active_total_mw, losses_pct_of_load, threshold_pct, threshold_why_pl),
+    # +9 (W3-G3 pasmo MIN/MAX zwarcia w istniejacych zrodlach kontraktow: bieg_min,
+    # bieg_max, zrodlo_min, zrodlo_max, run_kotwicy_id, scenariusz_kotwicy,
+    # scenariusz_brakujacy, powod_niedostepnosci, typ_zwarcia). Zbiory pol PRZED/PO
+    # zdiffowane na obu drzewach (pomiar, nie arytmetyka z kart).
     assert "Pol kontraktow wejsciowych: 3506." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
@@ -1296,7 +1310,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # application/protection_current_resolver.py) na drzewie po K2: 504 -> 502.
         # B-02 / W3-E (2026-09-10): 484 -> 486 (+2 `application/analyses/v126_gotowosc.py`,
         # `application/analyses/v126_katalog.py`).
-        "Przeskanowano 486 plikow w zakresie: network_model, solver_input, enm, "
+        # Odbior fali 3 W3 (2026-09-10): 486 -> 479 (-8 TRACE-V2: `application/
+        # trace_emitters/{__init__,deterministic_ids,load_flow_emitter,protection_emitter,
+        # sc_emitter,wynik}.py` + `application/trace_export/{__init__,latex_generator}.py`
+        # skasowane w calosci; +1 W3-G1: `application/analyses/power_flow_reconstruction.py`).
+        "Przeskanowano 479 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1311,7 +1329,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # z ekranem). api 64 -> 63 plikow (api/reference_networks.py skasowany, zero wlasnego
     # wpisu w zapadce/wykluczeniach tego guarda). Globalna zapadka 61/280 -> 59/273,
     # wykluczenia 14/32 -> 13/31 — pomiar guardem na drzewie karty, zero nowych podstawien.
-    assert "Zapadka dlugu (fizyczne): 58 plikow, suma 260." in wyjscie, wyjscie
+    # Odbior fali 3 W3 (2026-09-10): 58/260 -> 57/258 — wpis skasowanego pliku
+    # `application/trace_emitters/protection_emitter.py` ("F:dictget:tp.i_a_primary" +
+    # "F:dictget:tp.i_a_secondary") zdjety razem z plikiem (TRACE-V2); zero nowych
+    # podstawien w W3-G1/G2/G3 (RC=0 guarda na drzewie odbioru).
+    assert "Zapadka dlugu (fizyczne): 57 plikow, suma 258." in wyjscie, wyjscie
     assert "Wykluczenia skanera (niefizyczne): 13 plikow, suma 31." in wyjscie, wyjscie
     per_korzen = [
         "  network_model: pliki_skanowane=137, dlug=14 plikow/suma 77, "
@@ -1319,7 +1341,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         "  solver_input: pliki_skanowane=10, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
         "  enm: pliki_skanowane=41, dlug=8 plikow/suma 76, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
-        "  application: pliki_skanowane=236, dlug=31 plikow/suma 93, "
+        # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
+        # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).
+        "  application: pliki_skanowane=229, dlug=30 plikow/suma 91, "
         "wykluczenia=4 plikow/suma 10",
         "  api: pliki_skanowane=62, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 15",
     ]

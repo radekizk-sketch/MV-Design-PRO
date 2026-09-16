@@ -5,10 +5,11 @@
  * — PODŁĄCZONE, nie zduplikowane). Interakcje przez render pełnego ekranu
  * (EkranZwarc), zgodnie z wzorcem `rozplywZwarciowy.test.tsx`.
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { screen, within } from '@testing-library/react';
 
 import { EkranZwarc } from '../EkranZwarc';
+import { atrapaFetchPasma, renderEkranZwarc } from './renderEkranZwarc';
 import { ZWARCIA_STRINGS, trybZrodlaSiecowegoPL } from '../strings';
 import { useResultsInspectorStore } from '../../../../ui/results-inspector/store';
 import {
@@ -29,18 +30,23 @@ function props() {
 }
 
 beforeEach(() => {
+  atrapaFetchPasma();
   useResultsInspectorStore.getState().reset();
 });
 
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
 describe('EkranZwarc — sekcja „Źródła sieciowe (Z_Q)" (CV-4.3 K6/K7)', () => {
-  it('ślad obecny (MAX + MIN z danymi) → tabela z wierszem na scenariusz', () => {
+  it('ślad obecny (MAX + MIN z danymi) → tabela z wierszem na scenariusz', async () => {
     useResultsInspectorStore.setState({
       shortCircuitResults: shortCircuitResultsFixture({
         zrodla_sieciowe: [zrodloSiecioweSladMaxFixture(), zrodloSiecioweSladMinZDanymiFixture()],
       }),
       selectedRunId: 'sc-run-1',
     });
-    render(<EkranZwarc {...props()} />);
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
 
     const sekcja = screen.getByTestId('mvd-zwarcia-zrodla');
     expect(within(sekcja).getByText(ZWARCIA_STRINGS.zrodlaTytul)).toBeInTheDocument();
@@ -52,19 +58,19 @@ describe('EkranZwarc — sekcja „Źródła sieciowe (Z_Q)" (CV-4.3 K6/K7)', ()
     expect(tabela.getByText(trybZrodlaSiecowegoPL('MOC_ZWARCIOWA_MIN'))).toBeInTheDocument();
   });
 
-  it('brak śladu (starszy wynik / bez źródła sieciowego) → uczciwy komunikat, zero fabrykacji', () => {
+  it('brak śladu (starszy wynik / bez źródła sieciowego) → uczciwy komunikat, zero fabrykacji', async () => {
     useResultsInspectorStore.setState({
       shortCircuitResults: shortCircuitResultsFixture(),
       selectedRunId: 'sc-run-1',
     });
-    render(<EkranZwarc {...props()} />);
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
 
     const sekcja = screen.getByTestId('mvd-zwarcia-zrodla');
     expect(within(sekcja).getByTestId('mvd-zwarcia-zrodla-brak')).toBeInTheDocument();
     expect(within(sekcja).getByText(ZWARCIA_STRINGS.zrodlaNiedostepne)).toBeInTheDocument();
   });
 
-  it('MIN bez własnych danych (Z_Q z MAX): tryb w tabeli nazywa brak danych, ORAZ sekcja ZAŁOŻENIA niesie wiersz z tego samego źródła (PODŁĄCZONE, nie zduplikowane)', () => {
+  it('MIN bez własnych danych (Z_Q z MAX): tryb w tabeli nazywa brak danych, ORAZ sekcja ZAŁOŻENIA niesie wiersz z tego samego źródła (PODŁĄCZONE, nie zduplikowane)', async () => {
     useResultsInspectorStore.setState({
       shortCircuitResults: shortCircuitResultsFixture({
         zrodla_sieciowe: [zrodloSiecioweSladMinBrakDanychFixture()],
@@ -72,7 +78,7 @@ describe('EkranZwarc — sekcja „Źródła sieciowe (Z_Q)" (CV-4.3 K6/K7)', ()
       }),
       selectedRunId: 'sc-run-1',
     });
-    render(<EkranZwarc {...props()} />);
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
 
     // 1. Ślad Z_Q: tryb nazywa wprost "dane MAX — brak własnych danych MIN".
     const sekcjaZrodel = screen.getByTestId('mvd-zwarcia-zrodla');

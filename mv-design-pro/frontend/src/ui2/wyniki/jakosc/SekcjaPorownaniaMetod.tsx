@@ -149,7 +149,8 @@ export function SekcjaPorownaniaMetod({ trybZaawansowania, onOtworzDowod }: Sekc
     return () => {
       anulowane = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- kandydaci pochodzi z kluczKandydatow (ten sam render)
+    // Zależność: klucz identyfikatorów kandydatów (ten sam render co `kandydaci`) —
+    // efekt rusza ponownie tylko, gdy zmieni się ZBIÓR biegów, nie tożsamość tablicy.
   }, [kluczKandydatow]);
 
   const akcjaObliczenia = useAkcjaPrzejdzDoPrzypadkow();

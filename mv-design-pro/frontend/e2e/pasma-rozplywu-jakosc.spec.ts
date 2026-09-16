@@ -27,6 +27,7 @@
  * zakończony bieg rozpływu.
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { otworzZakladkeWynikow } from './nawigacjaWynikow';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -369,7 +370,7 @@ test(
     await expect(page.getByTestId('mvd-wyniki-warsztat')).toBeVisible();
 
     // Ścieżka NATYWNA: klik zakładki „Jakość" (nie wymuszony stan store'u).
-    await page.getByTestId('mvd-wyniki-zakladka-jakosc').click();
+    await otworzZakladkeWynikow(page, 'jakosc');
     await expect(page.getByTestId('mvd-jakosc-ekran')).toBeVisible();
 
     // Sekcja karty W3-G2 pobiera dane z realnego backendu i renderuje pasma.

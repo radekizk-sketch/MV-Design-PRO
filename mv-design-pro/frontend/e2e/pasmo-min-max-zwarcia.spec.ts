@@ -18,6 +18,7 @@
  * segment_sn` → `insert_station_on_segment_sn`, pętla gotowości katalogowej).
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { otworzZakladkeWynikow } from './nawigacjaWynikow';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -251,7 +252,7 @@ async function kliknijOblicz(page: Page): Promise<void> {
 async function otworzZakladkeZwarcia(page: Page): Promise<void> {
   await page.getByRole('button', { name: /^Wyniki i dowody \d$/ }).click();
   await expect(page.getByTestId('mvd-wyniki-warsztat')).toBeVisible();
-  await page.getByTestId('mvd-wyniki-zakladka-zwarcia').click();
+  await otworzZakladkeWynikow(page, 'zwarcia');
   await expect(page.getByTestId('mvd-zwarcia-ekran')).toBeVisible({ timeout: 20000 });
 }
 

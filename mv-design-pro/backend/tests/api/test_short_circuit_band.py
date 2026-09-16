@@ -22,6 +22,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from api.main import app
+from enm import canonical_analysis
 from enm.canonical_analysis import (
     CanonicalRun,
     _execute_short_circuit,
@@ -246,10 +247,15 @@ def test_reczny_c_bez_pary_odmowa_nazwana(client: TestClient, scenariusz_kotwicy
     assert pasmo[scenariusz_kotwicy]["zrodlo"] == "biegu_zapisanego"
 
 
-def test_kotwica_wariant_scenariusza_odmowa_nazwana(client: TestClient) -> None:
+@pytest.mark.parametrize("scenariusz_kotwicy", ["max", "min"])
+def test_kotwica_wariant_scenariusza_odmowa_nazwana(
+    client: TestClient, scenariusz_kotwicy: str
+) -> None:
     """Kotwica sama jest wariantem scenariusza roboczego (koperta wersja 2,
     `scenario_ref`) — `bieg_wariantu` nie modeluje składania scenariuszy, więc
-    para jest NIEDOSTĘPNA z nazwanym powodem, nie cichym 500."""
+    para jest NIEDOSTĘPNA z nazwanym powodem, nie cichym 500. Iloczyn cech
+    (odbiór fali 3 W3, 2026-09-10): {kotwica-wariant} × {kotwica MAX / MIN} —
+    gałąź odmowy nie zależy od tego, którą stronę pasma niesie kotwica."""
     run_id = uuid4()
     koperta = zbuduj_koperte(
         project_id="proj-pasmo-min-max",
@@ -260,13 +266,48 @@ def test_kotwica_wariant_scenariusza_odmowa_nazwana(client: TestClient) -> None:
         scenario_ref=("scenariusz-testowy", 1),
         scenario_hash="hash-scenariusza",
     )
-    _zapisz_bieg(run_id, scenario="max", envelope=koperta.to_dict())
+    _zapisz_bieg(run_id, scenario=scenariusz_kotwicy, envelope=koperta.to_dict())
     pasmo = _pasmo(client, run_id)
 
-    assert pasmo["brakujacy_scenariusz"] == "MIN"
+    scenariusz_brakujacy = "MIN" if scenariusz_kotwicy == "max" else "MAX"
+    assert pasmo["brakujacy_scenariusz"] == scenariusz_brakujacy
     assert pasmo["powod_niedostepnosci"] == "kotwica_jest_wariantem_scenariusza"
     assert pasmo["powod_niedostepnosci_pl"]
-    assert pasmo["min"] is None
+    assert pasmo[scenariusz_brakujacy.lower()] is None
+    assert pasmo[scenariusz_kotwicy]["zrodlo"] == "biegu_zapisanego"
+
+
+@pytest.mark.parametrize("scenariusz_kotwicy", ["max", "min"])
+def test_blad_solvera_wariantu_odmowa_nazwana(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, scenariusz_kotwicy: str
+) -> None:
+    """Gałąź `blad_solvera_wariantu:<Wyjątek>` (`enm/canonical_analysis.py`,
+    `pasmo_min_max_zwarcia`): wariant przeciwnego scenariusza liczony w pamięci
+    kończy się wyjątkiem solvera — pasmo NIE jest cichym 500 ani pustą stroną
+    bez powodu, tylko odmową NAZWANĄ klasą wyjątku, z komunikatem PL
+    (`api/canonical_run_views.py::_powod_niedostepnosci_pasma_pl`). Recenzja
+    karty W3-G3 (odbiór fali 3 W3, 2026-09-10): deklaracja „nigdy cichy" stała
+    bez testu — deklaracja bez testu = fałszywa pewność (CLAUDE.md § KLASA, NIE
+    INSTANCJA pkt 4). Iloczyn cech: {błąd wariantu} × {kotwica MAX / MIN}."""
+    run_id = uuid4()
+    _zapisz_bieg(run_id, scenario=scenariusz_kotwicy)
+
+    def _wykonaj_z_bledem(*_args: object, **_kwargs: object) -> None:
+        raise RuntimeError("symulowana niezbieznosc wariantu")
+
+    # Atrapa DOPIERO po zapisaniu kotwicy — `_zapisz_bieg` liczy ją realnym
+    # solverem; podmieniamy wyłącznie wykonanie wariantu w pamięci.
+    monkeypatch.setattr(canonical_analysis, "wykonaj_bieg_w_pamieci", _wykonaj_z_bledem)
+    pasmo = _pasmo(client, run_id)
+
+    scenariusz_brakujacy = "MIN" if scenariusz_kotwicy == "max" else "MAX"
+    assert pasmo["brakujacy_scenariusz"] == scenariusz_brakujacy
+    assert pasmo["powod_niedostepnosci"] == "blad_solvera_wariantu:RuntimeError"
+    assert "błędem solvera" in pasmo["powod_niedostepnosci_pl"]
+    assert pasmo[scenariusz_brakujacy.lower()] is None
+    # Strona kotwicy zostaje dostępna mimo błędu wariantu (odmowa dotyczy pary).
+    assert pasmo[scenariusz_kotwicy]["zrodlo"] == "biegu_zapisanego"
+    assert pasmo[scenariusz_kotwicy]["run_id"] == str(run_id)
 
 
 def test_oba_biegi_zapisane_ta_sama_rewizja(client: TestClient) -> None:
@@ -330,6 +371,28 @@ def test_wybiera_najnowszy_gdy_kilku_kandydatow(client: TestClient) -> None:
     pasmo = _pasmo(client, run_max)
     assert pasmo["min"]["run_id"] == str(run_min_nowy)
     assert pasmo["min"]["run_id"] != str(run_min_stary)
+
+
+def test_remis_czasow_kandydatow_rozstrzyga_identyfikator(client: TestClient) -> None:
+    """{kilku kandydatów tej samej strony} × {identyczny znacznik czasu} — klucz
+    doboru `(czas, str(id))` (`pasmo_min_max_zwarcia`) rozstrzyga remis
+    identyfikatorem, więc wybór jest DETERMINISTYCZNY (ten sam przy każdym
+    odczycie, niezależnie od kolejności zapisu do bazy), a nie „ostatni, jaki
+    trafił się iteracji". Zalecenie recenzji W3-G3 (odbiór fali 3 W3)."""
+    run_max = uuid4()
+    kandydat_a = uuid4()
+    kandydat_b = uuid4()
+    ten_sam_czas = datetime(2026, 1, 1, 12, tzinfo=UTC)
+    _zapisz_bieg(run_max, scenario="max", utworzony=ten_sam_czas)
+    # Zapis w kolejności ODWROTNEJ do porządku identyfikatorów, żeby „ostatni
+    # zapisany" i „największy identyfikator" nie były tym samym biegiem.
+    pierwszy, drugi = sorted((kandydat_a, kandydat_b), key=str, reverse=True)
+    _zapisz_bieg(pierwszy, scenario="min", utworzony=ten_sam_czas)
+    _zapisz_bieg(drugi, scenario="min", utworzony=ten_sam_czas)
+
+    oczekiwany = max((kandydat_a, kandydat_b), key=str)
+    assert _pasmo(client, run_max)["min"]["run_id"] == str(oczekiwany)
+    assert _pasmo(client, run_max)["min"]["run_id"] == str(oczekiwany)
 
 
 def test_inny_typ_zwarcia_kandydata_odrzucony_dolicza_wariant(client: TestClient) -> None:

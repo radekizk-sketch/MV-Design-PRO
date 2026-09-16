@@ -12,6 +12,7 @@ import { test, expect, type APIRequestContext, type Page } from '@playwright/tes
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { otworzZakladkeWynikow } from './nawigacjaWynikow';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert');
@@ -286,7 +287,7 @@ test.describe('kd4:zrzuty', () => {
 
       await page.setViewportSize({ width: 1360, height: 980 });
       await otworz(page, scena, mode, `/#analysis?run=${scena.runId}`);
-      await page.getByRole('tab', { name: /Zwarcia/ }).click();
+      await otworzZakladkeWynikow(page, 'zwarcia');
       await expect(page.getByTestId('mvd-zwarcia-ekran')).toBeVisible({ timeout: 30000 });
       await page
         .getByRole('row', { name: new RegExp(escapeRegExp(scena.punktNazwa)) })

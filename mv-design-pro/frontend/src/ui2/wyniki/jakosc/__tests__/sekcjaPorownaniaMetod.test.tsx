@@ -5,7 +5,7 @@
  * (brak rozpływu / brak FD / brak NR / błąd) i renderowanie tabeli delty
  * per szyna z DANYCH backendu (tor P20c, reużyty — zero nowej fizyki).
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
@@ -13,7 +13,7 @@ import { SekcjaPorownaniaMetod } from '../SekcjaPorownaniaMetod';
 import { useAppStateStore } from '../../../../ui/app-state';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
-import type { ExecutionRun } from '../../../../ui/study-cases/types';
+import type { CreateRunRequest, ExecutionRun } from '../../../../ui/study-cases/types';
 import { fetchPowerFlowTrace } from '../../../../ui/power-flow-results/api';
 import type { PowerFlowTrace } from '../../../../ui/power-flow-results/types';
 import { createPowerFlowComparison } from '../../../../ui/power-flow-comparison/api';
@@ -132,12 +132,12 @@ function porownanie(over: Partial<PowerFlowComparisonResult> = {}): PowerFlowCom
   };
 }
 
-let createAndExecuteRun: ReturnType<typeof vi.fn>;
+let createAndExecuteRun: Mock<[caseId: string, request: CreateRunRequest], Promise<ExecutionRun>>;
 
 beforeEach(() => {
   mockedTrace.mockReset();
   mockedComparison.mockReset();
-  createAndExecuteRun = vi.fn(async (_caseId: string, request: { analysis_type: string }) =>
+  createAndExecuteRun = vi.fn(async (_caseId: string, _request: CreateRunRequest) =>
     bieg('nowy-bieg', '2026-09-10T13:00:00Z'),
   );
   useAppStateStore.setState({ activeProjectId: 'projekt-1', activeCaseId: CASE_ID });

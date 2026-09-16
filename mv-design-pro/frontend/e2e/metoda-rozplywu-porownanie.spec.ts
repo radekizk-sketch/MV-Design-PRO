@@ -18,6 +18,7 @@
  * DANYCH backendu (tor P20c).
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { otworzZakladkeWynikow } from './nawigacjaWynikow';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -273,7 +274,7 @@ test('metoda rozplywu jako opcja biegu + walidacja krzyzowa NR<->FD w ekranie Ja
   }, nrRunId);
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 90000 });
   await expect(page.getByTestId('mvd-wyniki-warsztat')).toBeVisible();
-  await page.getByTestId('mvd-wyniki-zakladka-jakosc').click();
+  await otworzZakladkeWynikow(page, 'jakosc');
   await expect(page.getByTestId('mvd-jakosc-ekran')).toBeVisible();
   await expect(page.getByTestId('mvd-jakosc-metody-brak-fd')).toBeVisible({ timeout: 15000 });
 
@@ -313,7 +314,7 @@ test('metoda rozplywu jako opcja biegu + walidacja krzyzowa NR<->FD w ekranie Ja
     window.location.hash = `#analysis?run=${runId}`;
   }, nrRunId);
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 90000 });
-  await page.getByTestId('mvd-wyniki-zakladka-jakosc').click();
+  await otworzZakladkeWynikow(page, 'jakosc');
   const sekcjaMetod = page.getByTestId('mvd-jakosc-metody');
   await expect(sekcjaMetod.getByTestId('mvd-wyn-tabela')).toBeVisible({ timeout: 20000 });
   await expect(sekcjaMetod.getByText('Newtona–Raphsona')).toBeVisible();

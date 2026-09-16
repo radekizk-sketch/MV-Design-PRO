@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import legacy_public_path_guard as guard
+import pytest
 
 
 def write_module(tmp_path: Path, name: str, content: str) -> Path:
@@ -673,7 +674,9 @@ def _patch_data_manager_dirs(monkeypatch, tmp_path, *, data_manager_dir=None) ->
     monkeypatch.setattr(guard, "ROOT", tmp_path)
     monkeypatch.setattr(guard, "FRONTEND_SRC_DIR", frontend_src)
     monkeypatch.setattr(
-        guard, "DATA_MANAGER_DIR", data_manager_dir or (frontend_src / "ui" / "data-manager")
+        guard,
+        "DATA_MANAGER_DIR",
+        data_manager_dir or (frontend_src / "ui" / "data-manager"),
     )
 
 
@@ -1481,6 +1484,67 @@ def test_guard_rejects_trace_v2_class_under_other_path_and_import_prefix(
     assert any("[resurrected-class]" in v and "class TraceDiffEngine" in v for v in violations)
 
 
+#: Inwentarz klas skasowanego klastra "slad v2" spisany z drzewa sprzed kasacji
+#: (`git show 583c686a^ -- backend/src/{domain/trace_v2,application/trace_emitters,
+#: application/trace_export}`, 12 plikow `.py`, 17 definicji `class`). Zbior guarda
+#: MUSI byc rowny temu inwentarzowi — recenzja karty TRACE-V2 (odbior fali 3 W3,
+#: 2026-09-10) wykryla, ze pierwotne 8 nazw pokrywalo polowe klastra, wiec
+#: `TraceValue` czy `TraceDiffResult` moglyby wrocic pod inna sciezka bez alarmu.
+TRACE_V2_KLASY_SKASOWANEGO_KLASTRA = {
+    "domain/trace_v2/artifact.py": (
+        "AnalysisTypeV2",
+        "TraceValue",
+        "TraceEquationStep",
+        "TraceArtifactV2",
+    ),
+    "domain/trace_v2/diff_engine.py": (
+        "TraceDiffEntry",
+        "TraceStepDiff",
+        "TraceDiffSummary",
+        "TraceDiffResult",
+        "TraceDiffEngine",
+    ),
+    "domain/trace_v2/equation_registry_v2.py": (
+        "EquationVariable",
+        "EquationEntryV2",
+        "EquationRegistryV2",
+    ),
+    "domain/trace_v2/math_spec_version.py": ("MathSpecVersion",),
+    "application/trace_emitters/load_flow_emitter.py": ("TraceEmitterLoadFlow",),
+    "application/trace_emitters/sc_emitter.py": ("TraceEmitterSC",),
+    "application/trace_emitters/protection_emitter.py": ("TraceEmitterProtection",),
+    "application/trace_export/latex_generator.py": ("LaTeXGenerator",),
+}
+
+
+def test_trace_v2_forbidden_class_names_cover_whole_deleted_cluster() -> None:
+    """Zbior zakazanych nazw = pelny inwentarz klas klastra (17), nie jego probka."""
+    inwentarz = {nazwa for nazwy in TRACE_V2_KLASY_SKASOWANEGO_KLASTRA.values() for nazwa in nazwy}
+    assert len(inwentarz) == 17
+    assert guard.FORBIDDEN_TRACE_V2_CLASS_NAMES == inwentarz
+
+
+@pytest.mark.parametrize(
+    "nazwa",
+    sorted(nazwa for nazwy in TRACE_V2_KLASY_SKASOWANEGO_KLASTRA.values() for nazwa in nazwy),
+)
+def test_guard_rejects_each_trace_v2_class_under_other_path(
+    nazwa: str, tmp_path, monkeypatch
+) -> None:
+    """Kazda z 17 klas klastra (nie tylko `TraceDiffEngine` z testu wyzej) wraca
+    pod obca sciezka bez importu z zakazanego prefiksu — i musi byc wykryta jako
+    definicja, bo to jedyna galaz guarda, ktora widzi przemianowany modul."""
+    src, _fe = _patch_trace_v2_tree(monkeypatch, tmp_path)
+    (src / "application").mkdir()
+    (src / "application" / "inny_modul.py").write_text(
+        f"class {nazwa}:\n    pass\n", encoding="utf-8"
+    )
+
+    violations = guard.check_trace_v2_resurrection()
+
+    assert [v for v in violations if "[resurrected-class]" in v and f"class {nazwa}" in v]
+
+
 def test_guard_does_not_fire_on_trace_v2_near_miss_import_prefix(tmp_path, monkeypatch) -> None:
     """Granica `startswith(prefix + ".")`: modul o nazwie zaczynajacej sie tak
     samo, ale bez kropki po prefiksie (`domain.trace_v2_experimental`), to INNY
@@ -1540,7 +1604,11 @@ def test_guard_ignores_orphaned_pycache_only_directories_for_trace_v2(
     osierocony po kasacji nie jest wskrzeszonym zrodlem; nie-TS plik pod
     katalogiem FE tez nie jest zrodlem (wzorce `*.ts`/`*.tsx`)."""
     src, fe = _patch_trace_v2_tree(monkeypatch, tmp_path)
-    for rel in ("domain/trace_v2", "application/trace_emitters", "application/trace_export"):
+    for rel in (
+        "domain/trace_v2",
+        "application/trace_emitters",
+        "application/trace_export",
+    ):
         cache = src / rel / "__pycache__"
         cache.mkdir(parents=True)
         (cache / "modul.cpython-311.pyc").write_bytes(b"\x00")

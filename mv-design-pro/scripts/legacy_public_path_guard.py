@@ -904,7 +904,10 @@ def check_data_manager_resurrection() -> list[str]:
 #: inżyniera): `backend/tests/golden/enm_builders/**` + `tests/golden/registry.py`.
 K2_REFERENCE_NETWORKS_BACKEND_DIR = "application/reference_networks"
 K2_REFERENCE_NETWORKS_API_MODULE = "api/reference_networks.py"
-FORBIDDEN_K2_MODULE_PREFIXES = ("application.reference_networks", "api.reference_networks")
+FORBIDDEN_K2_MODULE_PREFIXES = (
+    "application.reference_networks",
+    "api.reference_networks",
+)
 FORBIDDEN_K2_CLASS_NAMES = {"ReferenceNetwork"}
 K2_REFERENCE_NETWORKS_FRONTEND_DIR = FRONTEND_SRC_DIR / "ui" / "reference-networks"
 _TS_REFERENCE_NETWORK_SURFACE_DEF = re.compile(
@@ -1150,14 +1153,34 @@ TRACE_V2_BACKEND_RELATIVE_DIRS: dict[str, str] = {
     "application/trace_export": "generator LaTeX sladu v2 — skasowany karta TRACE-V2",
 }
 TRACE_V2_FRONTEND_DIR = FRONTEND_SRC_DIR / "ui" / "proof" / "trace-v2"
+#: PELNY inwentarz klas skasowanego klastra (17 definicji `class` w 12 plikach
+#: `.py` drzewa sprzed kasacji, `git show 583c686a^`, odbior fali 3 W3 2026-09-10;
+#: recenzja karty wykryla, ze pierwotny zbior 8 nazw pokrywal polowe klastra —
+#: KLASA, NIE INSTANCJA). Pin: `test_trace_v2_forbidden_class_names_cover_whole_
+#: deleted_cluster` w `scripts/test_legacy_public_path_guard.py`.
 FORBIDDEN_TRACE_V2_CLASS_NAMES = {
-    "TraceArtifactV2",
+    # domain/trace_v2/artifact.py
+    "AnalysisTypeV2",
+    "TraceValue",
     "TraceEquationStep",
-    "EquationRegistryV2",
+    "TraceArtifactV2",
+    # domain/trace_v2/diff_engine.py
+    "TraceDiffEntry",
+    "TraceStepDiff",
+    "TraceDiffSummary",
+    "TraceDiffResult",
     "TraceDiffEngine",
+    # domain/trace_v2/equation_registry_v2.py
+    "EquationVariable",
+    "EquationEntryV2",
+    "EquationRegistryV2",
+    # domain/trace_v2/math_spec_version.py
+    "MathSpecVersion",
+    # application/trace_emitters/{load_flow,sc,protection}_emitter.py
     "TraceEmitterLoadFlow",
     "TraceEmitterSC",
     "TraceEmitterProtection",
+    # application/trace_export/latex_generator.py
     "LaTeXGenerator",
 }
 FORBIDDEN_TRACE_V2_MODULE_PREFIXES = (
