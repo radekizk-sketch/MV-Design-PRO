@@ -138,8 +138,7 @@ def _etykieta_ograniczenia(test_id: str) -> str:
 def _nota_pl(ograniczenia: tuple[str, ...]) -> str:
     if not ograniczenia:
         return (
-            "Wszystkie wymagane testy oparte sa o stopien dowodowy dopuszczalny "
-            "do zgloszenia."
+            "Wszystkie wymagane testy oparte sa o stopien dowodowy dopuszczalny " "do zgloszenia."
         )
     return f"{BRAK_DOWODU_PL} dla testow: " + ", ".join(ograniczenia) + "."
 

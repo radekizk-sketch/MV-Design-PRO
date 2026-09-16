@@ -1640,7 +1640,9 @@ def _execute_dynamic_stability(run: CanonicalRun) -> None:
         "proof_status": proof_status,
         "proof_status_pl": "pelny" if proof_status == "complete" else "czesciowy",
         "reporting_status": reporting_status,
-        "reporting_status_pl": "raportowalny" if reporting_status == "reportable" else "nieraportowalny",
+        "reporting_status_pl": (
+            "raportowalny" if reporting_status == "reportable" else "nieraportowalny"
+        ),
         "dopuszczalnosc_raportowa": ewidencja.regulatory_evidence_eligible,
         "reporting_limitations": reporting_limitations,
         "evidence": ewidencja.to_dict(),

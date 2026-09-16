@@ -16,9 +16,9 @@ from application.analyses.frt_sekwencja import (
     build_frt_sekwencja_view,
 )
 from application.analyses.frt_trajektorie import (
-    KOD_GOTOWOSCI_BRAK_MODELU_DYNAMICZNEGO,
     _WERDYKT_MODUL_WYPADL,
     _WERDYKT_W_OBWIEDNI,
+    KOD_GOTOWOSCI_BRAK_MODELU_DYNAMICZNEGO,
 )
 from application.analyses.grid_strength import build_grid_strength_view
 from catalog.profiles.nc_rfg.loader import load_nc_rfg_profile

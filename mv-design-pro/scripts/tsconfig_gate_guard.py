@@ -273,6 +273,24 @@ POMIJANE_KATALOGI = {
 #: 1]` zamiast `.at(-1)`, bez zmiany semantyki) — pomiar po naprawie: 118.
 #: Odbior W3-J + V12.7 na jednym drzewie (2026-09-16): budzet z POMIARU guardem na drzewie
 #: scalonym (nie z arytmetyki kart): 114 — V12.7 wniosla 3 nowe bledy typow w fixturach testow poza bramka (nowe wymagane pola kontraktu symbol_latex/warunek_latex/zakres_oceny/margines_wzor_latex w ocena/model.test.ts i co-wymaga-uwagi/model.test.ts) i zdjela 2 (.at(-1)); przy odbiorze naprawione U ZRODLA (fixtury uzupelnione o pola kontraktu), pomiar po naprawie 114 (116 z drzewa W3-J - 2 zdjete .at(-1) = 114).
+#: Karta S-1/S-4 (W6-0, 2026-09-16): pelny bieg `guardy_z_ci.py` (obowiazkowy
+#: w DoD karty) zmierzyl 119 -> 117, powtorzone niezaleznie dwoma biegami
+#: `tsc` (sam guard w ramach sweepu + osobne wywolanie `zmierz_dlug()`) —
+#: NIE fluke przerwanego pomiaru. Karta S-1/S-4 dotyka w tej sesji 6 plikow
+#: kwalifikujacych sie „poza bramka" (`__tests__/fixtures.ts` w
+#: `ui2/oze/frt`, `ui2/oze/macierz`, `ui2/oze/wniosek`;
+#: `ui2/oze/frt/__tests__/EkranFrt.test.tsx`;
+#: `ui2/oze/macierz/__tests__/panelModulu.test.tsx`;
+#: `ui2/wyniki/stabilnosc/__tests__/EkranStabilnosci.test.tsx`) — WYLACZNIE
+#: dopiskami (zero usuniec, `git diff --stat` bez ani jednej linii „-"), a
+#: zaden z tych 6 plikow nie wystepuje w liscie 117 bledow POZA BRAMKA
+#: zmierzonej po zmianie. Spadek nie jest wiec przyczynowo zwiazany z kartą
+#: S-1/S-4 — to dlug PRZEDTEM juz nizszy niz zapisany budzet, napotkany przy
+#: obowiazkowym pelnym sweepie i naprawiony TU (CLAUDE.md Zero-Debt pkt 1:
+#: „kazdy NAPOTKANY blad naprawiasz — takze pre-existing"). Zapadka w dol:
+#: 119 -> 117.
+#: Odbior S-1/S-4 na drzewie po W3-J + V12.7 (2026-09-16): budzet z POMIARU guardem na drzewie
+#: scalonym — patrz liczba nizej (pomiar po ostatnim cherry-picku karty).
 BUDZET_BLEDOW_POZA_BRAMKA = 114
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”

@@ -66,7 +66,13 @@ _ALLOWLIST_BACKEND: tuple[str, ...] = (
 )
 _ALLOWLIST_FRONTEND: tuple[str, ...] = ("ui/ncrfg-tests/api.ts",)
 
-_TEST_MARKERS: tuple[str, ...] = ("__tests__/", ".test.ts", ".test.tsx", ".spec.ts", ".spec.tsx")
+_TEST_MARKERS: tuple[str, ...] = (
+    "__tests__/",
+    ".test.ts",
+    ".test.tsx",
+    ".spec.ts",
+    ".spec.tsx",
+)
 
 
 def _is_allowlisted(rel_path: str, allowlist: tuple[str, ...]) -> bool:
@@ -115,9 +121,7 @@ def scan() -> tuple[list[str], list[str]]:
         if not _TOKEN.search(content):
             continue
         if _is_allowlisted(rel, _ALLOWLIST_FRONTEND):
-            frontend_hits.add(
-                next(e for e in _ALLOWLIST_FRONTEND if rel == e or rel.startswith(e))
-            )
+            frontend_hits.add(next(e for e in _ALLOWLIST_FRONTEND if rel == e or rel.startswith(e)))
             continue
         for line_num, line in enumerate(content.split("\n"), start=1):
             if _TOKEN.search(line):
@@ -147,7 +151,10 @@ def main() -> int:
         print("=" * 70, file=sys.stderr)
         if violations:
             print(file=sys.stderr)
-            print(f"Literał 'no_module' poza dozwolonymi miejscami ({len(violations)}):", file=sys.stderr)
+            print(
+                f"Literał 'no_module' poza dozwolonymi miejscami ({len(violations)}):",
+                file=sys.stderr,
+            )
             for v in violations:
                 print(v, file=sys.stderr)
         if stale:

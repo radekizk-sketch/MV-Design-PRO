@@ -283,10 +283,12 @@ def build_certyfikat_view(
     podstawy = sorted(
         {
             (
-                str((ocena.evidence_by_test.get(module.der_ref, {}).get(test.test_id) or {}).get(
-                    "capability_id"
-                )
-                or "BRAK"),
+                str(
+                    (ocena.evidence_by_test.get(module.der_ref, {}).get(test.test_id) or {}).get(
+                        "capability_id"
+                    )
+                    or "BRAK"
+                ),
                 _podstawa_pl(ocena.evidence_by_test.get(module.der_ref, {}).get(test.test_id, {})),
             )
             for module in run_result.modules

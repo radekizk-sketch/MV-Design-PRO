@@ -66,6 +66,7 @@ def _widok_bez_modelu_dynamicznego(
         **dodatkowe,
     }
 
+
 # Werdykty PL per scenariusz — WYŁĄCZNIE z pól solvera.
 _WERDYKT_W_OBWIEDNI = "w obwiedni"
 _WERDYKT_POZA_OBWIEDNIA = "poza obwiednią"

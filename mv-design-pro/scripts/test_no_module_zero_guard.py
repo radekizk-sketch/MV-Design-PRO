@@ -23,7 +23,6 @@ from no_module_zero_guard import (  # noqa: E402
     scan,
 )
 
-
 # ---------------------------------------------------------------------------
 # scan() na prawdziwym repo — musi być czysty po karcie S-4.
 # ---------------------------------------------------------------------------
@@ -49,9 +48,7 @@ def test_is_allowlisted_dopasowanie_dokladne_pliku() -> None:
 
 
 def test_is_allowlisted_dopasowanie_po_prefiksie_katalogu() -> None:
-    assert _is_allowlisted(
-        "network_model/solvers/stability_rms/contracts.py", _ALLOWLIST_BACKEND
-    )
+    assert _is_allowlisted("network_model/solvers/stability_rms/contracts.py", _ALLOWLIST_BACKEND)
     assert _is_allowlisted("network_model/solvers/frt_hvrt/engine.py", _ALLOWLIST_BACKEND)
 
 

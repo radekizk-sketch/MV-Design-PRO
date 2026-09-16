@@ -10,10 +10,10 @@ from unittest.mock import patch
 
 import pytest
 from application.analyses.frt_trajektorie import (
-    KOD_GOTOWOSCI_BRAK_MODELU_DYNAMICZNEGO,
     _WERDYKT_MODUL_WYPADL,
     _WERDYKT_POZA_OBWIEDNIA,
     _WERDYKT_W_OBWIEDNI,
+    KOD_GOTOWOSCI_BRAK_MODELU_DYNAMICZNEGO,
     _verdict_pl,
     build_frt_trajectories_view,
 )

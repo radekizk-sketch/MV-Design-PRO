@@ -124,9 +124,7 @@ class _FunctionTracker(ast.NodeVisitor):
             )
             return
         self.hits.add((self.rel_path, func))
-        allowed = any(
-            path == self.rel_path and fn == func for path, fn, _reason in _ALLOWLIST
-        )
+        allowed = any(path == self.rel_path and fn == func for path, fn, _reason in _ALLOWLIST)
         if not allowed:
             location = f"{self.rel_path}:{node.lineno}"
             self.violations.append(
@@ -224,7 +222,10 @@ def _scan_file(path: Path) -> tuple[list[str], set[tuple[str, str]]]:
 
 def main() -> int:
     if not BACKEND_SRC.exists():
-        print(f"WARNING: {BACKEND_SRC} nie istnieje — nic do sprawdzenia.", file=sys.stderr)
+        print(
+            f"WARNING: {BACKEND_SRC} nie istnieje — nic do sprawdzenia.",
+            file=sys.stderr,
+        )
         return 0
 
     violations: list[str] = []
