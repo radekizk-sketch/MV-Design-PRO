@@ -64,6 +64,38 @@ describe('zbudujModuly — projekcja realnego źródła DER', () => {
     ]);
     expect(modul.certyfikat).toBe('ptpiree_verified');
   });
+
+  /**
+   * Karta CERTYFIKAT-Z-KATALOGU (zero fabrykacji, KLASA NIE INSTANCJA): status
+   * certyfikatu WYŁĄCZNIE z pola backendu (`ptpiree_status`/
+   * `ptpiree_certificate_ref`), nigdy z zawartości `device_catalog_ref`.
+   * Iloczyn cech pełny w `station-der/__tests__/certyfikatPtpiree.test.ts`;
+   * tu — dowód regresji na poziomie adaptera macierzy (`zbudujModuly`), który
+   * konsumuje predykat.
+   */
+  it('device_catalog_ref zawiera "ptpiree" w nazwie, ale backend NIE potwierdził → unknown (dawna fabrykacja usunięta)', () => {
+    const [modul] = zbudujModuly([
+      derFixture({
+        id: 'pv-1',
+        catalogs: { ptpiree_certificate_ref: null, ptpiree_status: null, device_catalog_ref: 'device-ptpiree-lookalike' },
+      }),
+    ]);
+    expect(modul.certyfikat).toBe('unknown');
+  });
+
+  it('ptpiree_status=POWIAZANY bez słowa "ptpiree" w device_catalog_ref → ptpiree_verified', () => {
+    const [modul] = zbudujModuly([
+      derFixture({
+        id: 'pv-1',
+        catalogs: {
+          ptpiree_certificate_ref: 'cert-huawei-215ktl',
+          ptpiree_status: 'POWIAZANY',
+          device_catalog_ref: 'conv-pv-card-huawei-sun2000-215ktl',
+        },
+      }),
+    ]);
+    expect(modul.certyfikat).toBe('ptpiree_verified');
+  });
 });
 
 describe('zbudujWejscieModulu — wejście biegu', () => {

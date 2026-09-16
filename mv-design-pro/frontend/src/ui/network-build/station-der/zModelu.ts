@@ -300,6 +300,10 @@ function derZGeneratora(
     // Materializacja urządzenia (PV/BESS/FW) niesie certyfikat PTPiREE 1:1 z
     // tabliczką falownika — pochodna, nie osobny wybór (`_certyfikat_ptpiree_z_katalogu`).
     ptpiree_certificate_ref: readString(materialized.ptpiree_certificate_ref),
+    // Karta CERTYFIKAT-Z-KATALOGU: status dopasowania ('POWIAZANY'/'NIEPOWIAZANY')
+    // z TEJ SAMEJ tabliczki — JEDYNE źródło `NcRfgCertificateStatus` prezentacji
+    // (`certyfikatPtpiree.ts`), zero zgadywania z nazwy referencji katalogowej.
+    ptpiree_status: readString(materialized.ptpiree_status),
     battery_catalog_ref: readString(materialized.battery_catalog_ref),
     ...materializedBindings,
   };
@@ -428,16 +432,50 @@ export function derSemanticKey(der: StationDerConnection): string {
   ].join('|');
 }
 
-/** Model wygrywa po `id`; rekord lokalny zostaje, o ile nie dubluje modelowego. */
+/**
+ * Model wygrywa po `id`; rekord lokalny zostaje, o ile nie dubluje modelowego.
+ *
+ * Karta CERTYFIKAT-Z-KATALOGU (2026-09-16, KLASA NIE INSTANCJA): dla `id`
+ * obecnego w migawce, `ptpiree_status`/`ptpiree_certificate_ref` sąWYŁĄCZNIE
+ * z rekordu MODELU, nigdy z rekordu lokalnego — te dwa pola są POCHODNĄ
+ * materializacji katalogowej (`DerCatalogSelections.ptpiree_status`), nie
+ * osobnym wyborem projektanta, więc lokalny zapis (dowolnego pochodzenia —
+ * dawny picker `DerSurfaces.tsx` USUNIĘTY tą samą kartą, przyszły kod, stan
+ * sprzed odświeżenia) nie może przeżyć synchronizacji jako „zweryfikowany".
+ * Zmierzone PRZED naprawą: `updateDerCatalogs(id, { ptpiree_certificate_ref })`
+ * na rekordzie o id modelu PRZEŻYWAŁO kolejną `synchronizujZModelu` z tą samą
+ * migawką (model bez certyfikatu) — wartość lokalna zostawała.
+ *
+ * Pozostałe pola (np. `readiness` liczone frontem — `updateDerReadiness`) NIE
+ * są tu dotknięte: to WĄSKA, nazwana naprawa jednej pary pól o jednym źródle
+ * prawdy, nie ogólna zmiana precedencji scalania.
+ */
 export function mergeStationDers(
   snapshotDers: readonly StationDerConnection[],
   localDers: readonly StationDerConnection[],
 ): readonly StationDerConnection[] {
   const byId = new Map<string, StationDerConnection>();
   const snapshotSemanticKeys = new Set(snapshotDers.map(derSemanticKey));
+  const snapshotById = new Map(snapshotDers.map((der) => [der.id, der]));
   snapshotDers.forEach((der) => byId.set(der.id, der));
   localDers.forEach((der) => {
     if (!byId.has(der.id) && snapshotSemanticKeys.has(derSemanticKey(der))) {
+      return;
+    }
+    const zModelu = snapshotById.get(der.id);
+    if (
+      zModelu
+      && (der.catalogs.ptpiree_status !== zModelu.catalogs.ptpiree_status
+        || der.catalogs.ptpiree_certificate_ref !== zModelu.catalogs.ptpiree_certificate_ref)
+    ) {
+      byId.set(der.id, {
+        ...der,
+        catalogs: {
+          ...der.catalogs,
+          ptpiree_status: zModelu.catalogs.ptpiree_status,
+          ptpiree_certificate_ref: zModelu.catalogs.ptpiree_certificate_ref,
+        },
+      });
       return;
     }
     byId.set(der.id, der);

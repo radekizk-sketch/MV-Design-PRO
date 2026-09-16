@@ -30,6 +30,7 @@ import type {
   DerKindUnified,
   StationDerConnection,
 } from '../../../ui/network-build/station-der';
+import { statusCertyfikatuPtpiree } from '../../../ui/network-build/station-der';
 
 // =============================================================================
 // Typy warstwy prezentacji
@@ -167,11 +168,16 @@ export function rozwiazNapiecieKv(der: StationDerConnection): number | null {
   return null;
 }
 
-/** Status certyfikatu z modelu/katalogu (wzór NcRfgTestsTab.tsx:134-138). */
+/**
+ * Status certyfikatu PTPiREE — JEDYNIE z pola backendu (karta
+ * CERTYFIKAT-Z-KATALOGU): patrz `station-der/certyfikatPtpiree.ts` dla
+ * pełnego uzasadnienia i parytetu z `certificate_status_z_tabliczki`
+ * (`application/ncrfg_compliance/model_bridge.py`). Dawny wzór zgadywał z
+ * nazwy referencji katalogowej (`device_catalog_ref?.includes('ptpiree')`) —
+ * fabrykacja usunięta.
+ */
 export function rozwiazCertyfikat(der: StationDerConnection): NcRfgCertificateStatus {
-  const ref = der.catalogs.ptpiree_certificate_ref;
-  const device = der.catalogs.device_catalog_ref;
-  return ref || device?.includes('ptpiree') ? 'ptpiree_verified' : 'unknown';
+  return statusCertyfikatuPtpiree(der);
 }
 
 // =============================================================================

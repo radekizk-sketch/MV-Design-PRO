@@ -88,6 +88,23 @@ export interface DerCatalogSelections {
    */
   readonly ptpiree_certificate_ref: string | null;
   /**
+   * Status dopasowania do wykazu PTPiREE — POCHODNA materializacji urządzenia
+   * (`materialized_params.ptpiree_status`, backend
+   * `network_model/catalog/mv_ptpiree_catalog.py::annotate_with_ptpiree_status`).
+   * `'POWIAZANY'` | `'NIEPOWIAZANY'` | `null` (tabliczka bez adnotacji — urządzenie
+   * spoza wykazu lub materializacja poza torem katalogowym).
+   *
+   * Karta CERTYFIKAT-Z-KATALOGU (zero fabrykacji): JEDYNE źródło statusu
+   * certyfikatu w warstwie prezentacji — `NcRfgCertificateStatus` wyprowadzany
+   * z tego pola (`station-der/certyfikatPtpiree.ts::statusCertyfikatuPtpiree`,
+   * ten sam predykat co backendowe
+   * `application/ncrfg_compliance/model_bridge.py::certificate_status_z_tabliczki`).
+   * NIGDY zgadywanie z nazwy referencji katalogowej (`device_catalog_ref?.includes('ptpiree')`
+   * był fabrykacją: rekord nazwany „ptpiree" bez adnotacji dawał fałszywy
+   * `ptpiree_verified`, rekord certyfikowany bez tego słowa w nazwie — fałszywy `unknown`).
+   */
+  readonly ptpiree_status: 'POWIAZANY' | 'NIEPOWIAZANY' | string | null;
+  /**
    * Bateria BESS (tylko BESS) — katalog `BATERIA_BESS` (`GET
    * /api/catalog/bess-battery-types`, FAB-J), wiązanie i walidacja istnienia
    * w żądaniu tworzenia (`battery_catalog_ref`, FAB-K).
@@ -120,6 +137,7 @@ export interface DerCatalogSelections {
 export const EMPTY_DER_CATALOGS: DerCatalogSelections = Object.freeze({
   device_catalog_ref: null,
   ptpiree_certificate_ref: null,
+  ptpiree_status: null,
   battery_catalog_ref: null,
   bay_catalog_ref: null,
   protection_catalog_ref: null,

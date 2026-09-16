@@ -43,6 +43,7 @@ function makeDer(overrides: Partial<StationDerConnection> = {}): StationDerConne
     catalogs: {
       device_catalog_ref: 'pv_inv_sma_2500',
       ptpiree_certificate_ref: null,
+      ptpiree_status: null,
       battery_catalog_ref: null,
       block_transformer_catalog_ref: null,
       bay_catalog_ref: null,

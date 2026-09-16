@@ -16,6 +16,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import { rozwiazNapiecieKv } from '../../../../ui2/oze/macierz/macierzModel';
+import { statusCertyfikatuPtpiree } from '../certyfikatPtpiree';
 import { selectAllDers, useStationDerStore } from '../store';
 import { EMPTY_DER_CATALOGS, EMPTY_DER_PROFILES, EMPTY_DER_READINESS } from '../types';
 import type { StationDerConnection } from '../types';
@@ -207,6 +208,67 @@ describe('synchronizujZModelu — model wygrywa, praca lokalna nie ginie', () =>
 
     expect(useStationDerStore.getState().ders).toBe(pierwszy);
   });
+
+  /**
+   * Karta CERTYFIKAT-Z-KATALOGU: ryzyko nazwane przy odbiorze karty — status
+   * certyfikatu PTPiREE jest POCHODNĄ katalogu, nie wyborem projektanta
+   * (`DerCatalogSelections.ptpiree_status`, `certyfikatPtpiree.ts`). Bez tej
+   * naprawy lokalny zapis (jakimkolwiek mechanizmem — store bez backendu)
+   * PRZEŻYWAŁBY synchronizację z modelem i `statusCertyfikatuPtpiree` zwracałby
+   * `'ptpiree_verified'` na podstawie DEKLARACJI, nie katalogu — DOKŁADNIE ta
+   * sama klasa fabrykacji co usunięte `includes('ptpiree')`, tylko innym
+   * mechanizmem (zapis zamiast zgadywania z nazwy).
+   */
+  it('samodeklarowany ptpiree_certificate_ref na id modelu NIE PRZEŻYWA ponownej synchronizacji', () => {
+    const dery = deryZModelu(migawka({ generators: [generatorPv()] as never }), null);
+    useStationDerStore.getState().synchronizujZModelu(dery);
+    useStationDerStore.getState().updateDerCatalogs('pv/111/converter', {
+      ptpiree_certificate_ref: 'samodeklarowany-fake',
+      ptpiree_status: 'POWIAZANY',
+    });
+    expect(
+      useStationDerStore.getState().ders['pv/111/converter']?.catalogs.ptpiree_certificate_ref,
+    ).toBe('samodeklarowany-fake');
+
+    // Ponowna synchronizacja TĄ SAMĄ migawką — model nadal nie ma certyfikatu.
+    useStationDerStore.getState().synchronizujZModelu(dery);
+    const wynik = useStationDerStore.getState().ders['pv/111/converter'];
+
+    expect(wynik?.catalogs.ptpiree_certificate_ref).toBeNull();
+    expect(wynik?.catalogs.ptpiree_status).toBeNull();
+    expect(statusCertyfikatuPtpiree(wynik!)).toBe('unknown');
+  });
+
+  it('readiness lokalna (updateDerReadiness) PRZEŻYWA synchronizację — naprawa jest WĄSKA, nie ogólna zmiana precedencji', () => {
+    const dery = deryZModelu(migawka({ generators: [generatorPv()] as never }), null);
+    useStationDerStore.getState().synchronizujZModelu(dery);
+    useStationDerStore.getState().updateDerReadiness('pv/111/converter', { sc_3f: 'ready' });
+    useStationDerStore.getState().synchronizujZModelu(dery);
+
+    expect(useStationDerStore.getState().ders['pv/111/converter']?.readiness.sc_3f).toBe('ready');
+  });
+
+  it('certyfikat Z MODELU (materialized_params.ptpiree_status) PRZEŻYWA synchronizację niezmieniony', () => {
+    const dery = deryZModelu(
+      migawka({
+        generators: [
+          generatorPv({
+            materialized_params: {
+              ptpiree_status: 'POWIAZANY',
+              ptpiree_certificate_ref: 'ptpiree-wipwc-1-2-row-3254',
+            },
+          }),
+        ] as never,
+      }),
+      null,
+    );
+    useStationDerStore.getState().synchronizujZModelu(dery);
+    useStationDerStore.getState().synchronizujZModelu(dery);
+    const wynik = useStationDerStore.getState().ders['pv/111/converter'];
+
+    expect(wynik?.catalogs.ptpiree_status).toBe('POWIAZANY');
+    expect(wynik?.catalogs.ptpiree_certificate_ref).toBe('ptpiree-wipwc-1-2-row-3254');
+  });
 });
 
 /**
@@ -326,6 +388,58 @@ describe('DER_MATERIALIZED_BINDING_KEYS / DER_MATERIALIZED_PROFILE_KEYS — pary
       expect(bezWartosci[0].profiles[klucz]).toBeNull();
     },
   );
+
+  /**
+   * Karta CERTYFIKAT-Z-KATALOGU: `ptpiree_status`/`ptpiree_certificate_ref` są
+   * specjalnym przypadkiem (jak `battery_catalog_ref`) — POZA pętlą
+   * `DER_MATERIALIZED_BINDING_KEYS`, bo backend je zapisuje WYŁĄCZNIE przy
+   * materializacji urządzenia (`_certyfikat_ptpiree_z_katalogu`), nigdy przez
+   * `set_der_catalog_bindings`. Test round-trip pilnuje, że oba pola tej samej
+   * adnotacji trafiają do `catalogs` NIEZALEŻNIE (jedno obecne bez drugiego nie
+   * jest realnym stanem backendu — `annotate_with_ptpiree_status` zapisuje je
+   * razem — ale odczyt frontu musi być odporny na oba osobno).
+   */
+  describe('ptpiree_status / ptpiree_certificate_ref — tabliczka certyfikatu PTPiREE', () => {
+    it('oba pola obecne w materialized_params → oba w catalogs', () => {
+      const dery = deryZModelu(
+        migawka({
+          generators: [
+            generatorPv({
+              materialized_params: {
+                ptpiree_status: 'POWIAZANY',
+                ptpiree_certificate_ref: 'ptpiree-wipwc-1-2-row-3254',
+              },
+            }),
+          ] as never,
+        }),
+        null,
+      );
+      expect(dery[0].catalogs.ptpiree_status).toBe('POWIAZANY');
+      expect(dery[0].catalogs.ptpiree_certificate_ref).toBe('ptpiree-wipwc-1-2-row-3254');
+    });
+
+    it('brak tabliczki certyfikatu → oba pola null (uczciwy stan zerowy, nie zgadywanie)', () => {
+      const dery = deryZModelu(
+        migawka({ generators: [generatorPv({ materialized_params: {} })] as never }),
+        null,
+      );
+      expect(dery[0].catalogs.ptpiree_status).toBeNull();
+      expect(dery[0].catalogs.ptpiree_certificate_ref).toBeNull();
+    });
+
+    it('ptpiree_status=NIEPOWIAZANY bez referencji → status NIEPOWIAZANY czytelny wprost (nie null)', () => {
+      const dery = deryZModelu(
+        migawka({
+          generators: [
+            generatorPv({ materialized_params: { ptpiree_status: 'NIEPOWIAZANY' } }),
+          ] as never,
+        }),
+        null,
+      );
+      expect(dery[0].catalogs.ptpiree_status).toBe('NIEPOWIAZANY');
+      expect(dery[0].catalogs.ptpiree_certificate_ref).toBeNull();
+    });
+  });
 
   describe('bess_operation_mode_refs — profil w KSZTAŁCIE LISTY (karta FAB-L)', () => {
     it('obecny w materialized_params.profiles → lista w profiles, brak → pusta tablica', () => {

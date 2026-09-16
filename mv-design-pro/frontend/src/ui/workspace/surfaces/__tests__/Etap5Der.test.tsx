@@ -570,8 +570,16 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     expect(screen.getByText('Regulacja PV')).toBeInTheDocument();
     expect(screen.getByText('FRT / LVRT / HVRT')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('der-card-tab-inverters'));
-    fireEvent.click(screen.getAllByText('zastosuj')[0]);
-    expect(screen.getByText('wybrano')).toBeInTheDocument();
+    // Karta CERTYFIKAT-Z-KATALOGU (2026-09-16, zero fabrykacji): dawny przycisk
+    // „zastosuj" pisał samodeklarowany certyfikat WYŁĄCZNIE do lokalnego store'u
+    // (backend go nigdy nie widział — `ptpiree_certificate_ref` nie jest w
+    // `DER_BINDING_KEYS`), więc klik dawał urządzeniu status „zweryfikowany" bez
+    // pokrycia w katalogu — USUNIĘTY jako fabrykacja (ta sama klasa co zgadywanie
+    // z nazwy w `rozwiazCertyfikat`/`inferCertificateStatus`). Panel jest teraz
+    // WYŁĄCZNIE do odczytu: bez generatora w modelu status jest uczciwie
+    // nieustalony, nie „do wyboru z listy".
+    expect(screen.queryByText('zastosuj')).not.toBeInTheDocument();
+    expect(screen.getByText(/nieustalony — brak dopasowania w katalogu/)).toBeInTheDocument();
     expect(screen.getByText('Zakres obliczeń')).toBeInTheDocument();
   });
 

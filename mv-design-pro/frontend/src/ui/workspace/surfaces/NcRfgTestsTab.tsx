@@ -13,6 +13,7 @@ import { useAppStateStore } from '../../app-state';
 import { notify } from '../../notifications/store';
 import {
   selectAllDers,
+  statusCertyfikatuPtpiree,
   useStationDerStore,
   type StationDerConnection,
 } from '../../network-build/station-der';
@@ -127,10 +128,14 @@ function parseOptionalNumber(value: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+/**
+ * Status certyfikatu PTPiREE — JEDYNIE z pola backendu (karta
+ * CERTYFIKAT-Z-KATALOGU): patrz `station-der/certyfikatPtpiree.ts`. Dawny
+ * wzór zgadywał z nazwy referencji katalogowej
+ * (`device_catalog_ref?.includes('ptpiree')`) — fabrykacja usunięta.
+ */
 function inferCertificateStatus(der: StationDerConnection): NcRfgCertificateStatus {
-  return der.catalogs.ptpiree_certificate_ref || der.catalogs.device_catalog_ref?.includes('ptpiree')
-    ? 'ptpiree_verified'
-    : 'unknown';
+  return statusCertyfikatuPtpiree(der);
 }
 
 function buildModuleInput(args: {

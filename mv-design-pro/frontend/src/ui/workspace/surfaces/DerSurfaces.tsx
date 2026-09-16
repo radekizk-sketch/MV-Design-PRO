@@ -42,6 +42,7 @@ import {
   selectAllDers,
   selectDerById,
   snPointKindForBus,
+  statusCertyfikatuPtpiree,
   useAudit2CatalogSnapshot,
   useBessBatteryTypes,
   useDerDynamicProfiles,
@@ -918,44 +919,21 @@ function PvInverterCatalogPanel({
     [certificateRegistry, query],
   );
   const filteredCertificates = matchingCertificates.slice(0, 24);
-  const storeDer = useStationDerStore((state) => selectDerById(state, der.id));
-  const attachDer = useStationDerStore((state) => state.attachDer);
-  const updateDerCatalogs = useStationDerStore((state) => state.updateDerCatalogs);
-  const updateDerReadiness = useStationDerStore((state) => state.updateDerReadiness);
-
-  const applyCertificate = useCallback((certificateRef: string) => {
-    const nextCatalogs = {
-      ...der.catalogs,
-      ptpiree_certificate_ref: certificateRef,
-    };
-    const now = der.updated_at || der.created_at || '1970-01-01T00:00:00Z';
-
-    if (!storeDer) {
-      attachDer({
-        id: der.id,
-        project_id: der.project_id,
-        station_id: der.station_id,
-        der_kind: der.der_kind,
-        name: der.name,
-        connection_side: der.connection_side,
-        bus_przylaczenia_ref: der.bus_przylaczenia_ref,
-        bay_ref: der.bay_ref,
-        transformer_ref: der.transformer_ref,
-        lv_busbar_ref: der.lv_busbar_ref,
-        sn_connection_bus_ref: der.sn_connection_bus_ref,
-        sn_connection_point_kind: der.sn_connection_point_kind,
-        connection_voltage_kv: der.connection_voltage_kv,
-        catalogs: nextCatalogs,
-        profiles: der.profiles,
-        nominal_power_kw: der.nominal_power_kw,
-        created_at: der.created_at || now,
-      });
-      updateDerReadiness(der.id, der.readiness);
-      return;
-    }
-
-    updateDerCatalogs(der.id, { ptpiree_certificate_ref: certificateRef }, now);
-  }, [attachDer, der, storeDer, updateDerCatalogs, updateDerReadiness]);
+  // Karta CERTYFIKAT-Z-KATALOGU (2026-09-16, zero fabrykacji): dawny
+  // `applyCertificate` pisał `ptpiree_certificate_ref` WYŁĄCZNIE do lokalnego
+  // store'u (`updateDerCatalogs`/`attachDer`) — backend NIGDY nie przyjmuje
+  // tego pola (nie ma go w `DER_BINDING_KEYS`, patrz `zModelu.ts`), bo status
+  // certyfikatu jest POCHODNĄ materializacji katalogowej
+  // (`_certyfikat_ptpiree_z_katalogu`), nie osobnym wyborem projektanta.
+  // Przycisk „zastosuj" dawał więc urządzeniu status „zweryfikowany" z KLIKU,
+  // nigdy nie docierając do backendu — dokładnie ta sama klasa fabrykacji co
+  // usunięte zgadywanie z nazwy (`rozwiazCertyfikat`/`inferCertificateStatus`),
+  // tylko innym mechanizmem (zapis zamiast odgadywania). Panel jest teraz
+  // WYŁĄCZNIE do odczytu: pokazuje status z backendu
+  // (`der.catalogs.ptpiree_status`/`ptpiree_certificate_ref`, przez
+  // `statusCertyfikatuPtpiree`) i pozwala PRZESZUKAĆ wykaz jako odniesienie —
+  // bez akcji, która udawałaby certyfikację.
+  const certyfikatStatus = statusCertyfikatuPtpiree(der);
 
   return (
     <section className="space-y-3">
@@ -966,6 +944,10 @@ function PvInverterCatalogPanel({
           <FieldRow label="Producent" value={inverterManufacturer ?? MISSING_DASH} />
           <FieldRow label="Napięcie urządzenia" value={inverterVoltage ?? MISSING_DASH} />
           <FieldRow label="Prąd zwarciowy falownika" value={faultCurrent} />
+          <FieldRow
+            label="Status w wykazie PTPiREE"
+            value={certyfikatStatus === 'ptpiree_verified' ? 'PTPiREE zweryfikowany (z katalogu)' : 'nieustalony — brak dopasowania w katalogu'}
+          />
           <FieldRow label="Certyfikat PTPiREE" value={formatPtpireeCertificateLabel(selectedCertificate)} />
           <FieldRow label="Zakres bazy źródłowej" value={ptpireeSourceSummary()} />
         </dl>
@@ -1020,7 +1002,7 @@ function PvInverterCatalogPanel({
                 <th className="py-2 pr-3 font-semibold">Dokument</th>
                 <th className="py-2 pr-3 font-semibold">WOS / PPM</th>
                 <th className="py-2 pr-3 font-semibold">Źródło</th>
-                <th className="py-2 text-right font-semibold">Akcja</th>
+                <th className="py-2 text-right font-semibold">Zgodność z modelem</th>
               </tr>
             </thead>
             <tbody>
@@ -1054,14 +1036,16 @@ function PvInverterCatalogPanel({
                       </a>
                     </td>
                     <td className="py-2 text-right">
-                      <button
-                        type="button"
-                        onClick={() => applyCertificate(item.id)}
-                        className="rounded border border-scada-border px-2 py-1 text-[11px] font-semibold text-scada-text hover:border-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
-                        disabled={selected}
-                      >
-                        {selected ? 'wybrano' : 'zastosuj'}
-                      </button>
+                      {/* Karta CERTYFIKAT-Z-KATALOGU: WYŁĄCZNIE odczyt — status pochodzi
+                          z backendu (der.catalogs.ptpiree_certificate_ref), nie z kliku
+                          na tej liście referencyjnej. */}
+                      {selected ? (
+                        <span className="rounded border border-emerald-400/50 bg-emerald-500/10 px-2 py-1 text-[11px] font-semibold text-emerald-700">
+                          zgodne z modelem
+                        </span>
+                      ) : (
+                        <span className="text-scada-muted">—</span>
+                      )}
                     </td>
                   </tr>
                 );

@@ -197,6 +197,13 @@ jobs:
       - name: UI — progi napieciowe (jedno zrodlo kryteriow)
         run: $GUARD_PY scripts/ui_progi_napiecia_guard.py
 
+      # Karta CERTYFIKAT-Z-KATALOGU (2026-09-16): status certyfikatu PTPiREE
+      # wylacznie z pola backendu (der.catalogs.ptpiree_status /
+      # ptpiree_certificate_ref) — zakaz zgadywania z nazwy referencji
+      # katalogowej (device_catalog_ref?.includes('ptpiree')).
+      - name: UI — certyfikat PTPiREE bez zgadywania z nazwy
+        run: $GUARD_PY scripts/ptpiree_certificate_no_guess_guard.py
+
       - name: Brak bezposrednich parametrow zwarcia
         run: $GUARD_PY scripts/no_direct_fault_params_guard.py
 

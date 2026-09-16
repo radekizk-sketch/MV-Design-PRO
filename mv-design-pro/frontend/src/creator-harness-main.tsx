@@ -3844,6 +3844,11 @@ if (creator === 'arcflash') {
           device_catalog_ref: 'conv-pv-card-huawei-sun2000-215ktl',
           ptpiree_certificate_ref:
             'ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3',
+          // Karta CERTYFIKAT-Z-KATALOGU: backend zapisuje `ptpiree_status`
+          // ZAWSZE razem z `ptpiree_certificate_ref` (jedna adnotacja,
+          // `annotate_with_ptpiree_status`) — scena harnessu odzwierciedla ten
+          // sam kształt tabliczki.
+          ptpiree_status: 'POWIAZANY',
           dynamic_model_ref: 'default_pv_gfl',
         },
         profiles: {
