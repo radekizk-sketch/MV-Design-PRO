@@ -14,11 +14,13 @@ from uuid import UUID
 
 from api.klucz_twin_dep import klucz_twin_z_sciezki
 from application.station_templates import (
+    TEMPLATE_CATEGORY_LABELS_PL,
     StationTemplate,
     TemplateCategory,
     get_template,
     list_templates,
     list_templates_by_category,
+    structural_fields,
 )
 from application.station_templates.apply import (
     TemplateApplyError,
@@ -343,7 +345,7 @@ def list_categories() -> dict[str, Any]:
         "categories": [
             {
                 "id": cat.value,
-                "label_pl": _CATEGORY_LABELS[cat],
+                "label_pl": TEMPLATE_CATEGORY_LABELS_PL[cat],
                 "icon": _CATEGORY_ICONS[cat],
                 "description_pl": _CATEGORY_DESCRIPTIONS[cat],
                 "template_count": counts.get(cat.value, 0),
@@ -364,7 +366,11 @@ def get_station_template(template_id: str) -> dict[str, Any]:
 
 
 def _to_summary(t: StationTemplate) -> dict[str, Any]:
-    """Lightweight summary dla list endpoint (no schema details)."""
+    """Lightweight summary dla list endpoint (bez `schema` — parametry
+    edytowalne) — ALE pola strukturalne (moc/napięcie/zastosowanie/kategorie
+    ról, KARTA-UI2 §1 p. 12) SĄ tu, bo to one zasilają filtr przeglądarki, a
+    ten czyta listę, nie szczegół. `structural_fields` jest tym samym
+    obliczeniem co w `StationTemplate.to_dict()` (jedno źródło prawdy)."""
     return {
         "id": t.id,
         "name_pl": t.name_pl,
@@ -374,21 +380,9 @@ def _to_summary(t: StationTemplate) -> dict[str, Any]:
         "nc_rfg_type": t.nc_rfg_type,
         "tags": list(t.tags),
         "icon": t.icon,
+        **structural_fields(t),
     }
 
-
-_CATEGORY_LABELS: dict[TemplateCategory, str] = {
-    TemplateCategory.TYPOWA_SN_NN: "Typowe stacje SN/nN",
-    TemplateCategory.SLUPOWA: "Stacje słupowe ZSP",
-    TemplateCategory.ZKSN_WNETRZOWA: "Stacje ZKSN wnętrzowe",
-    TemplateCategory.PROSUMENT_PV: "Mikroinstalacje PV prosument",
-    TemplateCategory.FARMA_PV: "Farmy PV SN",
-    TemplateCategory.BESS: "Magazyny BESS",
-    TemplateCategory.HYBRYDOWA: "Hybrydy PV + BESS",
-    TemplateCategory.PRZEMYSLOWA: "Przemysłowe odbiorcze",
-    TemplateCategory.WIATROWA: "Stacje OZE wiatrowe",
-    TemplateCategory.SEKCYJNA: "Stacje sekcyjne / pętlowe",
-}
 
 _CATEGORY_ICONS: dict[TemplateCategory, str] = {
     TemplateCategory.TYPOWA_SN_NN: "station-distribution",

@@ -17,11 +17,15 @@ import logging
 import re
 from typing import Any
 
-from application.station_templates.schema import StationTemplate
+from application.station_templates.schema import (
+    StationTemplate,
+    catalog_choice_rated_kva,
+    transformer_voltages_kv,
+)
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
 from enm.store import blokada_twin
-from network_model.pochodne import mva_na_kva, mw_na_kw
+from network_model.pochodne import mw_na_kw
 
 logger = logging.getLogger(__name__)
 
@@ -133,7 +137,7 @@ def _zastosuj_szablon_pod_blokada(
         for _ in range(max(0, nn_feeders_requested))
     ]
 
-    nn_voltage_kv = _transformer_lv_voltage_kv(transformer_ref) or 0.4
+    nn_voltage_kv = transformer_voltages_kv(transformer_ref)[1] or 0.4
     station_spec = {
         "name_pl": template.name_pl,
         "sn_voltage_kv": 15,
@@ -814,7 +818,7 @@ def _resolve_transformer_ref_for_template(
             (
                 (rating, ref)
                 for option in template.schema.transformer_options
-                for rating, ref in [_catalog_choice_rating_kva(option)]
+                for rating, ref in [catalog_choice_rated_kva(option)]
                 if rating is not None and ref is not None
             ),
             key=lambda item: item[0],
@@ -854,49 +858,6 @@ def _der_catalog_for_power(der_spec: Any, p_mw_each: float) -> str | None:
     if exact:
         return exact[0]
     return min(parsed, key=lambda item: (abs(item[0] - p_mw_each), item[0]))[1]
-
-
-def _transformer_lv_voltage_kv(transformer_ref: str | None) -> float | None:
-    """Katalogowa strona dolna wybranego transformatora [kV] — z REALNEGO
-    rekordu katalogu (nie z tokenu id): jedna prawda napięć, ta sama, którą
-    waliduje `station.insert` (`_validate_transformer_voltage_compatibility`).
-    `None` gdy brak referencji/rekordu — wołający stosuje dotychczasowy
-    domyślny poziom sieci nN."""
-    if not isinstance(transformer_ref, str) or not transformer_ref.strip():
-        return None
-    try:
-        from network_model.catalog import get_default_mv_catalog
-    except ImportError:
-        return None
-    catalog = get_default_mv_catalog()
-    item = catalog.get_transformer_type(transformer_ref)
-    if item is None:
-        return None
-    value = getattr(item, "voltage_lv_kv", None) or getattr(item, "ulv_kv", None)
-    if value is None:
-        return None
-    try:
-        parsed = float(value)
-    except (TypeError, ValueError):
-        return None
-    return parsed if parsed > 0 else None
-
-
-def _catalog_choice_rating_kva(option: Any) -> tuple[int | None, str | None]:
-    ref = getattr(option, "catalog_ref", None)
-    if not isinstance(ref, str):
-        return None, None
-    # Typoszereg blokowy falowników koduje moc tokenem MVA (`-3p15mva-`,
-    # `p` = separator dziesiętny `_catalog_token`) — bez tej gałęzi selektor
-    # DER-aware nie widział ratingu tych pozycji i spadał do pierwszej opcji
-    # listy (dobór TR ignorował moc szablonu).
-    mva_match = re.search(r"-(\d+(?:p\d+)?)mva-", ref.lower())
-    if mva_match is not None:
-        return int(round(mva_na_kva(float(mva_match.group(1).replace("p", "."))))), ref
-    match = re.search(r"-(\d+)kva-", ref.lower())
-    if match is None:
-        return None, ref
-    return int(match.group(1)), ref
 
 
 def _template_der_required_kva(

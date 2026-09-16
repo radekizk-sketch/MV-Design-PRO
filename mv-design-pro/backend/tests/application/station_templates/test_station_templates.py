@@ -6,6 +6,7 @@ import json
 
 import pytest
 from application.station_templates import (
+    TEMPLATE_CATEGORY_LABELS_PL,
     TemplateCategory,
     get_template,
     list_templates,
@@ -127,6 +128,92 @@ def test_template_dict_serialization() -> None:
     # Schema must expose DER options
     assert "der_options" in d["schema"]
     assert len(d["schema"]["der_options"]) > 0
+
+
+def test_structural_fields_present_for_every_template() -> None:
+    """TODO-UI2 §1 p. 12: pola strukturalne (moc/napięcie/zastosowanie/role)
+    z KATALOGU, nie z parsowania `name_pl` — iloczyn cech: WSZYSTKIE 57+
+    szablony × wszystkie pola. `rated_power_kva`/`voltage_hv_kv`/
+    `voltage_lv_kv` mogą być `None` tylko gdy katalog niedostępny w
+    środowisku (nie ten test — patrz test_apply_odgalezienie.py, który już
+    dowodzi dostępności katalogu w tym środowisku testowym) albo szablon bez
+    transformer_options (żaden z obecnych 57 — sprawdzone niżej)."""
+    templates = list_templates()
+    assert len(templates) >= 57
+    for t in templates:
+        d = t.to_dict()
+        for pole in (
+            "category_label_pl",
+            "rated_power_kva",
+            "voltage_hv_kv",
+            "voltage_lv_kv",
+            "bay_role_categories",
+        ):
+            assert pole in d, f"{t.id}: brak pola strukturalnego {pole!r}"
+        assert d["category_label_pl"] == TEMPLATE_CATEGORY_LABELS_PL[t.category], t.id
+        assert d["bay_role_categories"] == sorted({r.role for r in t.schema.sn_bay_roles}), t.id
+        # WSZYSTKIE 57 szablonów niosą >= 1 transformer_options (zmierzone) —
+        # katalogowa moc/napięcie musi być realną liczbą, nie None fabrykowanym.
+        assert len(t.schema.transformer_options) > 0, f"{t.id}: brak transformer_options"
+        assert (
+            d["rated_power_kva"] is not None
+        ), f"{t.id}: rated_power_kva=None mimo transformer_options"
+        assert (
+            d["voltage_hv_kv"] is not None
+        ), f"{t.id}: voltage_hv_kv=None mimo transformer_options"
+        assert (
+            d["voltage_lv_kv"] is not None
+        ), f"{t.id}: voltage_lv_kv=None mimo transformer_options"
+        assert d["rated_power_kva"] > 0
+        assert d["voltage_hv_kv"] > d["voltage_lv_kv"] > 0
+
+
+def test_structural_fields_parity_list_vs_detail() -> None:
+    """Reguła KLASA NIE INSTANCJA pkt 3 (predykaty parami z jednego źródła
+    prawdy): pola strukturalne w podsumowaniu listy (`_to_summary`, przez
+    `count_by_category`/API) muszą być IDENTYCZNE z `to_dict()` pełnego
+    szczegółu dla TEGO SAMEGO szablonu — inaczej filtr przeglądarki (czyta
+    listę) i karta szczegółu pokazywałyby różne liczby dla tego samego obiektu."""
+    from application.station_templates.schema import structural_fields
+
+    for t in list_templates():
+        pelny = t.to_dict()
+        podsumowanie = structural_fields(t)
+        for pole in podsumowanie:
+            assert pelny[pole] == podsumowanie[pole], f"{t.id}: rozjazd pola {pole!r}"
+
+
+def test_catalog_choice_rated_kva_parses_kva_and_mva_tokens() -> None:
+    """Token identyfikatora (NIE label_pl/name_pl) koduje moc, delimiter '-'
+    (konwencja realnego katalogu — zob. `tr-sn-nn-15-04-630kva-dyn11` w
+    `tpl_sn_nn_630kva`, zweryfikowane empirycznie): jednostka kVA wprost, MVA
+    z separatorem 'p' jako przecinek dziesiętny."""
+    from application.station_templates.schema import CatalogChoice, catalog_choice_rated_kva
+
+    kva, ref = catalog_choice_rated_kva(
+        CatalogChoice(
+            catalog_ref="tr-sn-nn-15-04-630kva-dyn11",
+            label_pl="TR 630 kVA",
+            namespace="mv_transformers",
+        )
+    )
+    assert (kva, ref) == (630, "tr-sn-nn-15-04-630kva-dyn11")
+
+    kva_mva, ref_mva = catalog_choice_rated_kva(
+        CatalogChoice(
+            catalog_ref="conv-pv-3p15mva-block", label_pl="3,15 MVA", namespace="mv_converters"
+        )
+    )
+    assert kva_mva == 3150
+    assert ref_mva == "conv-pv-3p15mva-block"
+
+    brak_tokenu, ref_brak = catalog_choice_rated_kva(
+        CatalogChoice(catalog_ref="tr-bez-moc-w-id", label_pl="X", namespace="mv_transformers")
+    )
+    assert brak_tokenu is None
+    assert ref_brak == "tr-bez-moc-w-id"
+
+    assert catalog_choice_rated_kva(object()) == (None, None)
 
 
 def test_nc_rfg_type_set_for_oze_templates() -> None:

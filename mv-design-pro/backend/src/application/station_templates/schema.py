@@ -15,8 +15,12 @@ Schema covers:
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from enum import StrEnum
+from typing import Any
+
+from network_model.pochodne import mva_na_kva
 
 
 class TemplateCategory(StrEnum):
@@ -32,6 +36,28 @@ class TemplateCategory(StrEnum):
     PRZEMYSLOWA = "przemyslowa"  # Odbiorcze przemysłowe
     WIATROWA = "wiatrowa"  # OZE wiatrowe
     SEKCYJNA = "sekcyjna"  # Sekcyjne / pętlowe
+
+
+#: Etykieta PL kategorii = pole strukturalne "zastosowanie" (KARTA-UI2 §1 p. 12:
+#: kontrakt dostaje pola strukturalne zastosowania/mocy/napięcia, nie parsuje
+#: `name_pl`). `category` jest ISTNIEJĄCYM polem `StationTemplate` (`to_dict`
+#: zwraca `category.value`) — front dotąd nie miał etykiety PL dla filtra.
+#: Promowane z `api/station_templates.py::_CATEGORY_LABELS` (ISTNIEJĄCY słownik
+#: dotąd używany WYŁĄCZNIE przez `/categories`, treść bez zmian) — warstwa
+#: schematu jest właściwym miejscem (API importuje z domeny, nie odwrotnie);
+#: `api/station_templates.py` importuje stąd zamiast trzymać drugą kopię.
+TEMPLATE_CATEGORY_LABELS_PL: dict[TemplateCategory, str] = {
+    TemplateCategory.TYPOWA_SN_NN: "Typowe stacje SN/nN",
+    TemplateCategory.SLUPOWA: "Stacje słupowe ZSP",
+    TemplateCategory.ZKSN_WNETRZOWA: "Stacje ZKSN wnętrzowe",
+    TemplateCategory.PROSUMENT_PV: "Mikroinstalacje PV prosument",
+    TemplateCategory.FARMA_PV: "Farmy PV SN",
+    TemplateCategory.BESS: "Magazyny BESS",
+    TemplateCategory.HYBRYDOWA: "Hybrydy PV + BESS",
+    TemplateCategory.PRZEMYSLOWA: "Przemysłowe odbiorcze",
+    TemplateCategory.WIATROWA: "Stacje OZE wiatrowe",
+    TemplateCategory.SEKCYJNA: "Stacje sekcyjne / pętlowe",
+}
 
 
 @dataclass(frozen=True)
@@ -173,6 +199,104 @@ class TemplateSchema:
     manufacturer_profile_default: str = "ZPUE_WLOSZCZOWA"
 
 
+def transformer_voltages_kv(transformer_ref: str | None) -> tuple[float | None, float | None]:
+    """Katalogowe napięcia GN/DN wybranego transformatora [kV] — z REALNEGO
+    rekordu katalogu (nie z tokenu id ani z `name_pl`): jedna prawda napięć,
+    ta sama którą waliduje `station.insert`
+    (`_validate_transformer_voltage_compatibility`). `(None, None)` gdy brak
+    referencji/rekordu/katalogu (moduł katalogu niezaimportowany w środowisku
+    — uczciwy brak, nie fabrykowana wartość).
+
+    Promowane z `apply.py::_transformer_lv_voltage_kv` (KARTA-UI2 §1 p. 12) —
+    ta sama logika, teraz w warstwie schematu i publiczna, żeby `StationTemplate
+    .to_dict()` mógł jej użyć bez importu z modułu apply (odwrotny kierunek
+    zależności — schema jest WEJŚCIEM apply, nie odwrotnie).
+    """
+    if not isinstance(transformer_ref, str) or not transformer_ref.strip():
+        return None, None
+    try:
+        from network_model.catalog import get_default_mv_catalog
+    except ImportError:
+        return None, None
+    catalog = get_default_mv_catalog()
+    item = catalog.get_transformer_type(transformer_ref)
+    if item is None:
+        return None, None
+
+    def _pole(*nazwy: str) -> float | None:
+        for nazwa in nazwy:
+            wartosc = getattr(item, nazwa, None)
+            if wartosc is None:
+                continue
+            try:
+                parsed = float(wartosc)
+            except (TypeError, ValueError):
+                continue
+            if parsed > 0:
+                return parsed
+        return None
+
+    return _pole("voltage_hv_kv", "uhv_kv"), _pole("voltage_lv_kv", "ulv_kv")
+
+
+def catalog_choice_rated_kva(option: Any) -> tuple[int | None, str | None]:
+    """Moc pozorna [kVA] zakodowana w typoszeregu `catalog_ref` (np.
+    ``tr_sn_nn_630kva_dyn11`` → 630, ``conv_pv_3p15mva_...`` → 3150 przez MVA).
+    `(None, ref)` gdy `catalog_ref` nie koduje mocy; `(None, None)` gdy
+    `option` nie niesie `catalog_ref` wcale.
+
+    Promowane z `apply.py::_catalog_choice_rating_kva` (KARTA-UI2 §1 p. 12) —
+    ten sam token, teraz publiczny w schema.py.
+    """
+    ref = getattr(option, "catalog_ref", None)
+    if not isinstance(ref, str):
+        return None, None
+    mva_match = re.search(r"-(\d+(?:p\d+)?)mva-", ref.lower())
+    if mva_match is not None:
+        return int(round(mva_na_kva(float(mva_match.group(1).replace("p", "."))))), ref
+    match = re.search(r"-(\d+)kva-", ref.lower())
+    if match is None:
+        return None, ref
+    return int(match.group(1)), ref
+
+
+def _domyslna_opcja_transformatora(schema: TemplateSchema) -> CatalogChoice | None:
+    """Wybrana domyślnie opcja transformatora szablonu (`default=True`),
+    albo pierwsza z listy gdy żadna nie jest oznaczona; `None` gdy szablon
+    nie niesie żadnej opcji transformatora (np. czysty punkt DER bez TR
+    dedykowanego)."""
+    for opcja in schema.transformer_options:
+        if opcja.default:
+            return opcja
+    return schema.transformer_options[0] if schema.transformer_options else None
+
+
+def structural_fields(template: StationTemplate) -> dict[str, Any]:
+    """Pola strukturalne (moc/napięcie/zastosowanie/kategorie ról) wspólne dla
+    `StationTemplate.to_dict()` (pełny szczegół) i podsumowania listy
+    (`api/station_templates.py::_to_summary`) — JEDNO źródło obliczenia,
+    żeby lista i szczegół nigdy nie rozjechały się dla tego samego szablonu
+    (reguła KLASA NIE INSTANCJA pkt 3: predykaty z jednego źródła prawdy).
+    Zob. `StationTemplate.to_dict` po znaczenie `None`/`[]`.
+    """
+    domyslny_tr = _domyslna_opcja_transformatora(template.schema)
+    moc_kva, _ = catalog_choice_rated_kva(domyslny_tr) if domyslny_tr is not None else (None, None)
+    napiecie_gn_kv, napiecie_dn_kv = (
+        transformer_voltages_kv(domyslny_tr.catalog_ref)
+        if domyslny_tr is not None
+        else (None, None)
+    )
+    return {
+        "category_label_pl": TEMPLATE_CATEGORY_LABELS_PL.get(
+            template.category, template.category.value
+        ),
+        "rated_power_kva": moc_kva,
+        "voltage_hv_kv": napiecie_gn_kv,
+        "voltage_lv_kv": napiecie_dn_kv,
+        "bay_role_categories": sorted({rola.role for rola in template.schema.sn_bay_roles}),
+    }
+
+
 @dataclass(frozen=True)
 class StationTemplate:
     """Single station template definition."""
@@ -188,7 +312,17 @@ class StationTemplate:
     icon: str = "station-default"  # Frontend icon hint
 
     def to_dict(self) -> dict:
-        """Serialize to JSON dict dla API."""
+        """Serialize to JSON dict dla API.
+
+        KARTA-UI2 §1 p. 12 (zamknięcie): `rated_power_kva`/`voltage_hv_kv`/
+        `voltage_lv_kv`/`bay_role_categories`/`category_label_pl` są polami
+        STRUKTURALNYMI (moc/napięcie/zastosowanie/kategorie ról) dodanymi na
+        żądanie karty — źródłem jest KATALOG (`transformer_voltages_kv`) i
+        token identyfikatora (`catalog_choice_rated_kva`), NIGDY parsowanie
+        `name_pl`. `None`/`[]` = dana niedostarczona (katalog niedostępny w
+        środowisku, szablon bez dedykowanego transformatora) — front pokazuje
+        uczciwy brak, nie fabrykuje liczby.
+        """
         return {
             "id": self.id,
             "name_pl": self.name_pl,
@@ -199,6 +333,7 @@ class StationTemplate:
             "schema": _schema_to_dict(self.schema),
             "tags": list(self.tags),
             "icon": self.icon,
+            **structural_fields(self),
         }
 
 
