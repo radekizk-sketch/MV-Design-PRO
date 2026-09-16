@@ -84,6 +84,17 @@ import gotowoscV126ScenyAkademickie from './harness-fixtures/generated/gotowosc_
 import gotowoscV126ScenyAkademickieParametry from './harness-fixtures/generated/gotowosc_v126_scena_akademickie_parametry.json';
 import werdyktProjektowyScenyOcena from './harness-fixtures/generated/werdykt_projektowy_scena_ocena.json';
 import werdyktProjektowyScenyOcenaPrzekroczenia from './harness-fixtures/generated/werdykt_projektowy_scena_ocena_przekroczenia.json';
+// HARNESS-ZWARCIA-Z-BACKENDU (2026-09-16): sceny „zwarcia"/„zwarcia-rozplyw"
+// karmione WYŁĄCZNIE wynikami REALNEGO biegu backendu (short_circuit_sn na
+// sieci złotej `build_golden_enm`, `eksport_fixtur_harnessu.py` — DOKŁADNIE
+// tymi funkcjami, które wołają końcówki `/results/short-circuit`,
+// `/results/short-circuit/rozplyw`, `/results/short-circuit/pasmo` i
+// `/api/proof/sc3f/contributions`) — zero ręcznie wpisanych liczb fizycznych,
+// zastępuje dawne `run-sc-2`/`run-sc-th1-demo`.
+import zwarciaWynikiScenyZwarcia from './harness-fixtures/generated/zwarcia_wyniki_scena_zwarcia.json';
+import zwarciaWkladyScenyZwarcia from './harness-fixtures/generated/zwarcia_wklady_scena_zwarcia.json';
+import zwarciaRozplywScenyZwarcia from './harness-fixtures/generated/zwarcia_rozplyw_scena_zwarcia.json';
+import zwarciaPasmoScenyZwarcia from './harness-fixtures/generated/zwarcia_pasmo_scena_zwarcia.json';
 import { REWIZJA_SIECI_ZLOTEJ, migawkaSieciZlotej } from './harness-fixtures/migawkaSieciZlotej';
 import { EkranOceny } from './ui2/wyniki/ocena';
 import { SekcjaSilySieci } from './ui2/oze/pulpit';
@@ -836,8 +847,10 @@ const DOBOR_PRZEKLADNIKOW_WIAZANIA = {
  */
 const RUN_KONTRAKT_SCENY: Record<string, string> = {
   cieplna: 'run-sc-7',
-  'zwarcia-rozplyw': 'run-sc-th1-demo',
-  zwarcia: 'run-sc-2',
+  // HARNESS-ZWARCIA-Z-BACKENDU: obie sceny czytają TEN SAM bieg kotwicy
+  // realnego backendu (`zwarciaWynikiScenyZwarcia.run_id`), nie ręczne id.
+  'zwarcia-rozplyw': zwarciaWynikiScenyZwarcia.run_id,
+  zwarcia: zwarciaWynikiScenyZwarcia.run_id,
   rozplyw: 'run-lf-1',
   walidacja: 'run-lf-1',
   estymacja: 'run-lf-6',
@@ -1191,124 +1204,31 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     );
   }
   if (url.includes('/api/proof/sc3f/contributions')) {
-    // Scena "zwarcia" (R3-B): rozbicie maszynowe — ksztalt 1:1 z
-    // `MachineShortCircuitResult.to_dict()` (pola konsumowane przez `naWklady`).
-    return new Response(
-      JSON.stringify({
-        contributions: [
-          { source_id: 'src-gpz', source_name: 'System (GPZ 110/15)', ikss_partial_a: 9620 },
-          {
-            source_id: 'gen-pv-1', source_name: 'Falownik PV 4 MW', ikss_partial_a: 1730,
-            machine_type: 'ASYNCHRONOUS', ir_a: 333, ratio_ik_ir: 5.2, mu: 0.756, q: 0.65, ib_a: 850,
-            wywod: [
-              {
-                tekst: 'Wspolczynnik zaniku mu (krzywa t_min = 0.10 s, par. 6.6.1): mu = 0.756',
-                latex: "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 5.20} = 0.756",
-              },
-              {
-                tekst: 'Prad wylaczeniowy symetryczny: Ib = 0.850 kA',
-                latex: "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.756 \\cdot 0.650 \\cdot 1.730\\;\\mathrm{kA} = 0.850\\;\\mathrm{kA}",
-              },
-            ],
-          },
-          { source_id: 'gen-bess-1', source_name: 'Magazyn BESS 2 MW', ikss_partial_a: 1130 },
-        ],
-        // Wywod DYPLOMOWY {tekst, latex} — ksztalt 1:1 z `_wywod_wkladow`
-        // (api/proof_pack.py) + `wywod_maszyny` solvera (kazdy krok: wzor
-        // ogolny -> podstawienie liczbowe -> wynik; zasada KaTeX 2026-07-22).
-        wywod: [
-          { tekst: 'Model: IEC 60909-0:2016 par. 6.6 — prady czesciowe maszyn + zanik (mu, q)', latex: null },
-          { tekst: "Punkt zwarcia: I''k (calkowity, z Z-bus) = 12.480 kA, c = 1.10, t_min = 0.10 s", latex: null },
-          { tekst: '— Falownik PV 4 MW (ASYNCHRONOUS) —', latex: null },
-          {
-            tekst: "Impedancja zastepcza maszyny: Z''m = 0.1150 + j1.1420 ohm",
-            latex: "Z''_m = 0.1150 + j\\,1.1420\\;\\Omega,\\qquad |Z''_m| = 1.1478\\;\\Omega",
-          },
-          {
-            tekst: 'Prad czesciowy maszyny (superpozycja Z-bus; przy zwarciu na zaciskach rownowazne c*Un/(sqrt(3)*Z\'\'))',
-            latex:
-              "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.0086}{0.0402 \\cdot 0.5102} \\cdot 3849\\;\\mathrm{A} = 1.730\\;\\mathrm{kA}",
-          },
-          {
-            tekst: "Krotnosc pradu znamionowego: I''k/Ir = 5.20",
-            latex: "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{1.730}{0.333} = 5.20",
-          },
-          {
-            tekst: 'Wspolczynnik zaniku mu (krzywa t_min = 0.10 s, par. 6.6.1): mu = 0.756',
-            latex: "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 5.20} = 0.756",
-          },
-          {
-            tekst: 'Wspolczynnik q silnika asynchronicznego (m = 1.950 MW/pare biegunow, par. 6.6.3): q = 0.650',
-            latex: 'q = 0.57 + 0.12\\,\\ln m = 0.57 + 0.12\\,\\ln(1.950) = 0.650',
-          },
-          {
-            tekst: 'Prad wylaczeniowy symetryczny: Ib = 0.850 kA',
-            latex:
-              "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.756 \\cdot 0.650 \\cdot 1.730\\;\\mathrm{kA} = 0.850\\;\\mathrm{kA}",
-          },
-          {
-            tekst: "Suma wkladow maszyn: I''k,M = 2.860 kA, I_b,M = 2.107 kA",
-            latex: "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}",
-          },
-          {
-            tekst: "Regula malych silnikow (par. 6.6): pomijalne gdy suma I''k,M <= 0.05 * I''k — NIESPELNIONA",
-            latex: null,
-          },
-        ],
-        // ZWARCIA-PRO F3: wywod sekcyjny (akordeon z norma) + checklista walidacji IEC.
-        wywod_sekcje: [
-          {
-            tytul: 'Dane wejsciowe i model',
-            norma: 'IEC 60909-0:2016',
-            kroki: [
-              { tekst: 'Model: IEC 60909-0:2016 par. 6.6 — prady czesciowe maszyn + zanik (mu, q)', latex: null },
-              { tekst: "Punkt zwarcia: I''k (calkowity, z Z-bus) = 12.480 kA, c = 1.10, t_min = 0.10 s", latex: null },
-            ],
-          },
-          {
-            tytul: 'Wklad: Falownik PV 4 MW',
-            norma: 'IEC 60909-0:2016 §6.6',
-            kroki: [
-              {
-                tekst: 'Prad czesciowy maszyny (superpozycja Z-bus)',
-                latex: "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.0086}{0.0402 \\cdot 0.5102} \\cdot 3849\\;\\mathrm{A} = 1.730\\;\\mathrm{kA}",
-              },
-              {
-                tekst: 'Wspolczynnik zaniku mu (krzywa t_min = 0.10 s): mu = 0.756',
-                latex: "\\mu = 0.62 + 0.72\\,e^{-0.32 \\cdot 5.20} = 0.756",
-              },
-              {
-                tekst: 'Prad wylaczeniowy symetryczny: Ib = 0.850 kA',
-                latex: "I_b = 0.756 \\cdot 0.650 \\cdot 1.730\\;\\mathrm{kA} = 0.850\\;\\mathrm{kA}",
-              },
-            ],
-          },
-          {
-            tytul: 'Suma wkladow i reguly',
-            norma: 'IEC 60909-0:2016 §6.6',
-            kroki: [
-              {
-                tekst: "Suma wkladow maszyn: I''k,M = 2.860 kA, I_b,M = 2.107 kA",
-                latex: "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}",
-              },
-              {
-                tekst: "Regula malych silnikow (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; prog 0.624 kA; obliczone 2.860 kA -> NIESPELNIONA (silniki niepomijalne w Ib)",
-                latex: "\\sum_m I''_{k,M} = 2.860\\;\\mathrm{kA} \\; > \\; 0.05 \\cdot 12.480\\;\\mathrm{kA} = 0.624\\;\\mathrm{kA} \\Rightarrow \\text{NIESPELNIONA}",
-              },
-            ],
-          },
-        ],
-        walidacja_iec: [
-          { pozycja_pl: 'Norma bazowa metody', wartosc_pl: 'IEC 60909-0:2016', status: 'INFO' },
-          { pozycja_pl: 'Wspolczynnik napieciowy c', wartosc_pl: 'c = 1.10 (z tego przebiegu)', status: 'INFO' },
-          { pozycja_pl: 'Metoda obliczenia wkladow', wartosc_pl: 'superpozycja Z-bus (prady czesciowe maszyn)', status: 'INFO' },
-          { pozycja_pl: 'Maszyny asynchroniczne', wartosc_pl: 'uwzglednione: 1 szt.', status: 'PASS' },
-          { pozycja_pl: 'Regula malych silnikow (5%)', wartosc_pl: 'NIESPELNIONA — silniki niepomijalne w Ib (2.860 > 0.624 kA)', status: 'FAIL' },
-          { pozycja_pl: 'Determinizm kontraktu (input_hash)', wartosc_pl: 'obecny: a1b2c3d4e5f6...', status: 'PASS' },
-        ],
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // Sceny "zwarcia"/"zwarcia-rozplyw" (HARNESS-ZWARCIA-Z-BACKENDU,
+    // 2026-09-16): mapa target_id -> odpowiedz REALNEGO backendu
+    // (`eksport_fixtur_harnessu.py::zwarcia_wklady_scena_zwarcia`, TA SAMA
+    // funkcja co koncowka `sc3f_contributions`) — zero recznie wpisanych
+    // liczb fizycznych. `fault_node_id` z ciala zadania POST, jak w realnym
+    // kliencie (`zwarcia/api.ts::fetchWkladyZwarciowe`).
+    const cialoWkladow = JSON.parse(String(init?.body ?? '{}')) as { fault_node_id?: string };
+    const wklady = (zwarciaWkladyScenyZwarcia as Record<string, unknown>)[cialoWkladow.fault_node_id ?? ''];
+    if (wklady) return jsonOK(wklady);
+  }
+  if (url.includes('/results/short-circuit/rozplyw')) {
+    // HARNESS-ZWARCIA-Z-BACKENDU: rozplyw galeziowy JEDNEGO punktu — ten,
+    // ktory `EkranZwarc` wybiera domyslnie (pierwszy wiersz wynikow) — realny
+    // bieg backendu (`zwarcia_rozplyw_scena_zwarcia`), tor sieci nadrzednej
+    // (THEVENIN_GRID) ORAZ tor falownika (gen_pv) RAZEM w `branch_contributions`,
+    // jak dotychczasowa scena Z-3 — bez zadnej recznej liczby.
+    const targetId = new URL(url, location.origin).searchParams.get('target_id');
+    if (targetId === zwarciaRozplywScenyZwarcia.target_id) return jsonOK(zwarciaRozplywScenyZwarcia);
+  }
+  if (url.includes('/results/short-circuit/pasmo')) {
+    // Pasmo MIN/MAX zwarcia (karta W3-G3, aneks D7) — TEN SAM bieg kotwicy;
+    // strona MIN `obliczony_na_zadanie` (bez wlasnego run_id) — realny ksztalt
+    // `dobierz_pasmo_min_max_zwarcia` (`eksport_fixtur_harnessu.py::
+    // zwarcia_pasmo_scena_zwarcia`).
+    return jsonOK(zwarciaPasmoScenyZwarcia);
   }
   if (url.includes('/power-flow-runs')) {
     // Scena "porownanie": lista zakonczonych przebiegow rozplywu projektu.
@@ -3688,61 +3608,25 @@ if (creator === 'arcflash') {
   } as never);
 } else if (creator === 'zwarcia') {
   // Wyniki zwarciowe z wkladami zrodel (R3-B/V12K-109): tabela punktow ze
-  // store'u read-only, wklady z podmienionego endpointu SC3F contributions.
+  // store'u read-only, wklady/rozplyw/pasmo z podmienionych koncowek.
+  // HARNESS-ZWARCIA-Z-BACKENDU (2026-09-16): fixtura REALNEGO biegu backendu
+  // (`eksport_fixtur_harnessu.py::zwarcia_wyniki_scena_zwarcia`, sc na sieci
+  // zlotej `build_golden_enm` — tor sieci nadrzednej + tor falownika `gen_pv`),
+  // zero recznie wpisanych liczb fizycznych.
   useResultsInspectorStore.setState({
-    shortCircuitResults: {
-      run_id: 'run-sc-2',
-      rows: [
-        // Pelny bilans IEC 60909 (ZWARCIA-PRO F1) — pola 1:1 z build_short_circuit_results.
-        { target_id: 'SZ-GPZ', element_id: 'SZ-GPZ', target_name: 'Szyna GPZ 15 kV', ikss_ka: 12.48, ip_ka: 31.2, ith_ka: 12.9, sk_mva: 324.2, fault_type: '3F', flags: [], rk_ohm: 0.0821, xk_ohm: 0.7734, zk_ohm: 0.7777, rx_ratio: 0.1062, xr_ratio: 9.4162, kappa: 1.7284, c_factor: 1.1, un_kv: 15.0, tk_s: 1.0, tb_s: 0.1, ib_ka: 12.31, ik_ka: 12.48, ik_thevenin_ka: 12.1, ik_inverters_ka: 0.38, i2t_ka2s: 166.41 },
-        { target_id: 'SZ-ST7', element_id: 'SZ-ST7', target_name: 'Szyna ST-7', ikss_ka: 6.05, ip_ka: 13.9, ith_ka: 6.2, sk_mva: 157.2, fault_type: '3F', flags: [], rk_ohm: 0.3105, xk_ohm: 1.5721, zk_ohm: 1.6025, rx_ratio: 0.1975, xr_ratio: 5.0633, kappa: 1.5602, c_factor: 1.1, un_kv: 15.0, tk_s: 1.0, tb_s: 0.1, ib_ka: 6.01, ik_ka: 6.05, ik_thevenin_ka: 5.9, ik_inverters_ka: 0.15, i2t_ka2s: 38.44 },
-        { target_id: 'SZ-PV2', element_id: 'SZ-PV2', target_name: 'Szyna PV-2', ikss_ka: 7.31, ip_ka: 17.4, ith_ka: 7.5, sk_mva: 189.9, fault_type: '3F', flags: [], rk_ohm: 0.221, xk_ohm: 1.3067, zk_ohm: 1.3253, rx_ratio: 0.1691, xr_ratio: 5.9136, kappa: 1.6014, c_factor: 1.1, un_kv: 15.0, tk_s: 1.0, tb_s: 0.1, ib_ka: 7.24, ik_ka: 7.31, ik_thevenin_ka: 7.05, ik_inverters_ka: 0.26, i2t_ka2s: 56.25 },
-      ],
-    },
-    selectedRunId: 'run-sc-2',
+    shortCircuitResults: zwarciaWynikiScenyZwarcia,
+    selectedRunId: zwarciaWynikiScenyZwarcia.run_id,
   } as never);
 } else if (creator === 'zwarcia-rozplyw') {
   // Karta Z-3 (dowody wizualne pkt 7 karty właściciela): sekcja „Rozpływ
-  // prądu zwarciowego" (RozplywZwarciowy) — tor Thevenina (sieć nadrzędna)
-  // + tor maszyny (falownik) RAZEM w `branch_contributions`, liczby [kA]
-  // przepisane 1:1 z realnego wyniku IEC 60909 solvera na fixturze testu
-  // TH-1 (`build_slack_radial_graph` + falownik `INV-B`, fault_node_id="C",
-  // `backend/tests/test_short_circuit_iec60909.py::
-  // test_thevenin_addition_preserves_inverter_entries_byte_for_byte`).
-  // Spójność liczb: suma wpisów Thevenina WCHODZĄCYCH do węzła zwarcia
-  // (jedyny wpis — gałąź L1) = ik_thevenin_ka (5,552132022553349 ≈
-  // 5,552132022553348 — różnica 1e-15, KCL do precyzji maszynowej solvera,
-  // jak w asercji backendu `pytest.approx(rel=1e-9, abs=1e-6)`).
+  // prądu zwarciowego" (RozplywZwarciowy) — TEN SAM bieg realny co scena
+  // „zwarcia" (HARNESS-ZWARCIA-Z-BACKENDU); punkt domyślny (pierwszy wiersz
+  // wg sortu kanonicznego, bez preselekcji) niesie tor sieci nadrzędnej
+  // (THEVENIN_GRID) ORAZ tor falownika (gen_pv) RAZEM w `branch_contributions`
+  // (podmieniony endpoint rozpływu), jak dotychczasowa scena Z-3.
   useResultsInspectorStore.setState({
-    shortCircuitResults: {
-      run_id: 'run-sc-th1-demo',
-      rows: [
-        {
-          target_id: 'BUS-OZE', element_id: 'EL-OZE', target_name: 'Szyna OZE 20 kV',
-          ikss_ka: 5.648132022553348, ip_ka: 11.440063189333824, ith_ka: 5.648132022553348,
-          sk_mva: 195.65703261838325, fault_type: '3F', flags: [],
-          rk_ohm: 0.5768040000000003, xk_ohm: 1.9981557370919767, zk_ohm: 2.079742581207968,
-          rx_ratio: 0.28866819001778815, xr_ratio: 3.4641849520668644, kappa: 1.4322162134453085,
-          c_factor: 1.0, un_kv: 20.0, tk_s: 1.0, tb_s: 0.1, ib_ka: 5.64813202955557,
-          ik_thevenin_ka: 5.552132022553348, ik_inverters_ka: 0.096, i2t_ka2s: 31.901395344192572,
-          branch_contributions: [
-            {
-              branch_id: 'BR-L1', branch_name: 'Linia OZE', source_id: 'THEVENIN_GRID',
-              from_node_id: 'BUS-GPZ', from_node_name: 'Szyna GPZ 20 kV',
-              to_node_id: 'BUS-OZE', to_node_name: 'Szyna OZE 20 kV',
-              i_ka: 5.552132022553349, direction: 'from_to',
-            },
-            {
-              branch_id: 'BR-L1', branch_name: 'Linia OZE', source_id: 'INV-B',
-              from_node_id: 'BUS-GPZ', from_node_name: 'Szyna GPZ 20 kV',
-              to_node_id: 'BUS-OZE', to_node_name: 'Szyna OZE 20 kV',
-              i_ka: 0.024, direction: 'to_from',
-            },
-          ],
-        },
-      ],
-    },
-    selectedRunId: 'run-sc-th1-demo',
+    shortCircuitResults: zwarciaWynikiScenyZwarcia,
+    selectedRunId: zwarciaWynikiScenyZwarcia.run_id,
   } as never);
 } else if (creator === 'sila-sieci') {
   // Runda dowodowa V-B: sekcja sily sieci (SCR/WSCR) pulpitu OZE — wymaga

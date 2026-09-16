@@ -6,14 +6,17 @@
  * overlayem zwarciowym (strzałki kierunku + znacznik pulse punktu zwarcia,
  * scena `screenshot-harness.html?fixture=gpzFeeder&overlay=faultflow`).
  *
- * Liczby [kA] obu scen pochodzą z JEDNEGO realnego wyniku IEC 60909 solvera
- * na fixturze testu TH-1 (`build_slack_radial_graph` + falownik `INV-B`,
- * `backend/tests/test_short_circuit_iec60909.py::
- * test_thevenin_addition_preserves_inverter_entries_byte_for_byte`) —
- * `creator-harness-main.tsx` (scena `zwarcia-rozplyw`) i
- * `screenshot-harness-main.tsx` (`FAULT_FLOW_DEMO_INPUT`) niosą TĘ SAMĄ
- * wartość Thevenina (5,552132022553349 kA ≈ ik_thevenin_ka) i maszyny
- * (0,024 kA) — jedna narracja, dwa realne render'y.
+ * HARNESS-ZWARCIA-Z-BACKENDU (2026-09-16): tabela `zwarcia-rozplyw:screenshot`
+ * niesie TERAZ liczby [kA] z REALNEGO biegu backendu (`short_circuit_sn` na
+ * sieci złotej `build_golden_enm`, `eksport_fixtur_harnessu.py::
+ * zwarcia_rozplyw_scena_zwarcia`) — punkt „Szyna SN" (pierwszy wg sortu
+ * kanonicznego, bez preselekcji), tor sieci nadrzędnej (`THEVENIN_GRID`,
+ * gałąź „TR 110/15") ORAZ tor falownika (`gen_pv`, gałąź „TR 15/0.4"). Schemat
+ * `zwarcia-schemat:screenshot` NIE jest częścią tej karty (inny harness,
+ * `screenshot-harness-main.tsx`/`FAULT_FLOW_DEMO_INPUT` — POZA kartą, dług
+ * nazwany w meldunku wykonawcy) i zostaje na dawnej fixturze testu TH-1
+ * (`build_slack_radial_graph` + falownik `INV-B`); od tej karty obie sceny
+ * NIE dzielą już wspólnych liczb — każda ma WŁASNE realne źródło.
  *
  * Wyjście: docs/audit/visual/flow-ekspert/zwarcia-{rozplyw,schemat}-{light,dark}.png.
  */
@@ -55,17 +58,21 @@ test.describe('zwarcia-rozplyw:screenshot', () => {
       await expect(sekcja).toContainText('Rozpływ prądu zwarciowego');
 
       const tabela = sekcja.getByTestId('mvd-wyn-tabela');
-      // Wiersz sieci nadrzędnej (Thevenin, kolumna „źródło" — tryb ekspercki).
+      // Kolumna „źródło" (tryb ekspercki) — nagłówek kolumny, niezależny od danych.
       await expect(sekcja.getByTestId('mvd-wyn-th-zrodlo')).toBeVisible();
+      // Wiersz sieci nadrzędnej (Thevenin, `source_id="THEVENIN_GRID"` -> PL).
       await expect(tabela).toContainText('sieć nadrzędna');
-      // Wiersz maszyny (identyfikator falownika, jak w kontrakcie backendu).
-      await expect(tabela).toContainText('INV-B');
-      // Prąd sieci nadrzędnej [kA] — format PL, przecinek dziesiętny.
-      await expect(tabela).toContainText('5,552');
-      // Prąd maszyny [kA].
-      await expect(tabela).toContainText('0,024');
-      // Nazwa gałęzi (wspólna dla obu wpisów — jedna linia niesie oba tory).
-      await expect(tabela).toContainText('Linia OZE');
+      // Wiersz maszyny (identyfikator falownika `gen_pv`, jak w kontrakcie backendu
+      // — `zrodloRozplywuPL` pokazuje surowy `source_id`, gdy nie jest THEVENIN_GRID).
+      await expect(tabela).toContainText('gen_pv');
+      // Prąd sieci nadrzędnej [kA] w torze dominującym (gałąź TR 110/15) — format PL.
+      await expect(tabela).toContainText('8,312');
+      // Prąd falownika [kA] w torze TR 15/0.4.
+      await expect(tabela).toContainText('0,017');
+      // Nazwy gałęzi realne (tor sieci nadrzędnej i tor falownika idą RÓŻNYMI
+      // gałęziami w tej sieci — inaczej niż w dawnej fixturze TH-1 z jedną linią).
+      await expect(tabela).toContainText('TR 110/15');
+      await expect(tabela).toContainText('TR 15/0.4');
 
       await page.waitForTimeout(200);
       expect(consoleErrors, `konsola bez błędów (${theme}): ${consoleErrors.join('; ')}`).toEqual([]);
