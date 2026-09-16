@@ -203,7 +203,9 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         description_pl="Dodanie obciążenia na szynie nN",
         target_layer="Domain / NetworkModel",
         required_fields=("target_nn_bus_ref",),
-        optional_fields=("load_type", "p_kw", "q_kvar", "cos_phi", "profile"),
+        # `phases` (W5-D, `enm/models.py::PhaseSet`): fazy przyłączenia odbioru;
+        # brak = trójfazowy symetryczny (jedyne dotychczasowe znaczenie odbioru).
+        optional_fields=("load_type", "p_kw", "q_kvar", "cos_phi", "profile", "phases"),
     ),
     "assign_catalog_to_element": OperationSpec(
         canonical_name="assign_catalog_to_element",
@@ -530,6 +532,8 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "load_name",
             "load_kind",
             "connection_type",
+            # W5-D: fazy przyłączenia (`PhaseSet`); brak = trójfazowy symetryczny.
+            "phases",
         ),
         creates_elements=True,
     ),
@@ -1565,6 +1569,161 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         level=ReadinessLevel.BLOCKER,
         message_pl="Analiza zablokowana przez niezaspokojone wymagania gotowości",
         fix_navigation={"panel": "readiness"},
+    ),
+    # ------------------------------------------------------------------
+    # Karta W5-D (F-1): rozpływ niesymetryczny jako bieg produktu —
+    # `enm/assembler.py::zloz_wejscie_rozplywu_niesymetrycznego` (emiter odmów i
+    # założeń) i `application/calculation_readiness/service.py::_check_asymmetry`
+    # (ta sama diagnoza `enm/assembler.py::diagnoza_niesymetrii` — predykaty parami).
+    # Solver FROZEN `network_model/solvers/power_flow_unbalanced.py` (BFS) jest
+    # radialny, ma odbiory per faza WYŁĄCZNIE w gwieździe (faza–przewód neutralny),
+    # stałomocowe, bez węzła PV, bez boczników, bez zaczepów i bez admitancji
+    # poprzecznej — każda z tych granic to ODMOWA NAZWANA (BLOCKER) albo ZAŁOŻENIE
+    # NAZWANE (WARNING w `raw_result.zalozenia`), nigdy ciche przybliżenie.
+    # ------------------------------------------------------------------
+    "power_flow.unbalanced_requires_radial": ReadinessCodeSpec(
+        code="power_flow.unbalanced_requires_radial",
+        area=ReadinessArea.ANALYSIS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Rozpływ niesymetryczny wymaga sieci promieniowej w scenariuszu — wyspa "
+            "zasilona ma oczko (pierścień zamknięty albo gałęzie równoległe); otwórz "
+            "punkt podziału albo łącznik"
+        ),
+        fix_navigation={"panel": "sld"},
+    ),
+    "power_flow.unbalanced_load_phases_unsupported": ReadinessCodeSpec(
+        code="power_flow.unbalanced_load_phases_unsupported",
+        area=ReadinessArea.ANALYSIS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Odbiór międzyfazowy (AB/BC/CA) nie ma reprezentacji w rozpływie "
+            "niesymetrycznym — solver zna wyłącznie odbiory faza–przewód neutralny "
+            "(A/B/C) i trójfazowe symetryczne"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "phases"},
+    ),
+    "power_flow.unbalanced_element_unsupported": ReadinessCodeSpec(
+        code="power_flow.unbalanced_element_unsupported",
+        area=ReadinessArea.ANALYSIS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Element modelu nie ma reprezentacji w rozpływie niesymetrycznym (BFS): "
+            "węzeł regulacji napięcia, bateria kondensatorów, zaczep poza znamionowym, "
+            "odbiór ZIP albo regulacja falownika"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry"},
+    ),
+    "power_flow.unbalanced_no_zero_sequence_path": ReadinessCodeSpec(
+        code="power_flow.unbalanced_no_zero_sequence_path",
+        area=ReadinessArea.ANALYSIS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Odbiór jednofazowy w wyspie z transformatorem bez drogi składowej zerowej "
+            "(gwiazda nieuziemiona lub trójkąt po obu stronach) — prąd powrotny nie ma "
+            "obwodu; uziem punkt neutralny albo zmień grupę połączeń"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "transformator"},
+    ),
+    "power_flow.unbalanced_shunt_admittance_omitted": ReadinessCodeSpec(
+        code="power_flow.unbalanced_shunt_admittance_omitted",
+        area=ReadinessArea.ANALYSIS,
+        priority=4,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Założenie biegu: admitancja poprzeczna (pojemność) gałęzi pominięta — "
+            "solver BFS rozpływu niesymetrycznego modeluje wyłącznie impedancję szeregową"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "b_siemens_per_km"},
+    ),
+    "power_flow.unbalanced_magnetising_branch_omitted": ReadinessCodeSpec(
+        code="power_flow.unbalanced_magnetising_branch_omitted",
+        area=ReadinessArea.ANALYSIS,
+        priority=4,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Założenie biegu: gałąź magnesująca transformatora (P0, i0) pominięta — "
+            "solver BFS rozpływu niesymetrycznego modeluje wyłącznie impedancję zwarcia"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "transformator"},
+    ),
+    # Pomiar W5-D (2026-09-16): FROZEN `power_flow_unbalanced.py` liczy straty gałęzi jako
+    # |I_φ|²·Z_s (impedancja WŁASNA), bez wyrazu wzajemnego Z_m·I_φ·ΣI_q* — dla obciążenia
+    # symetrycznego i Z0 = 3·Z1 (katalog) straty kabla są 5/3 strat NR (0,000687 vs
+    # 0,000412 MW na sieci testowej). Założenie NAZWANE w biegu, gdy jakakolwiek gałąź
+    # ma Z_m ≠ 0; korekta formuły to zmiana rdzenia FROZEN (B-01 — decyzja właściciela).
+    "power_flow.unbalanced_losses_self_impedance": ReadinessCodeSpec(
+        code="power_flow.unbalanced_losses_self_impedance",
+        area=ReadinessArea.ANALYSIS,
+        priority=4,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Założenie biegu: straty gałęzi liczone z impedancji własnej |I|²·R_s — solver "
+            "BFS pomija wyraz wzajemny, więc przy Z0 ≠ Z1 straty są przybliżone "
+            "(napięcia i prądy bez zmian)"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "r0_ohm_per_km"},
+    ),
+    "power_flow.unbalanced_transformer_series_model": ReadinessCodeSpec(
+        code="power_flow.unbalanced_transformer_series_model",
+        area=ReadinessArea.ANALYSIS,
+        priority=4,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Założenie biegu: transformator jako impedancja szeregowa per faza — składowa "
+            "zerowa odbiorów przenosi się przez grupę połączeń na stronę zasilającą "
+            "(wynik po stronie SN przybliżony)"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "transformator"},
+    ),
+    # Droga I0 odbioru faza–N zamknięta w uziemionym uzwojeniu transformatora (Dyn, YNd,
+    # YNyn z jedną stroną): powyżej tego transformatora fizycznie I0 nie płynie, a solver
+    # BFS (gałąź = macierz 3×3 szeregowa) przepuszcza go dalej — krawędzie powyżej
+    # dostają Z_m := 0 (bez sprzężenia faz) i są NAZWANE. Elementy = te krawędzie.
+    "power_flow.unbalanced_zero_sequence_confined": ReadinessCodeSpec(
+        code="power_flow.unbalanced_zero_sequence_confined",
+        area=ReadinessArea.ANALYSIS,
+        priority=4,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Założenie biegu: prąd powrotny odbioru jednofazowego zamyka się w uziemionym "
+            "uzwojeniu transformatora; krawędzie powyżej liczone bez sprzężenia faz "
+            "(Z_m = 0) — solver BFS nie odwzorowuje izolacji składowej zerowej przez "
+            "trójkąt/gwiazdę nieuziemioną"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "transformator", "focus": "vector_group"},
+    ),
+    # Droga I0 odbioru faza–N bez transformatora zamykającego (odbiór faza–N wprost na
+    # szynie źródła albo za samymi liniami/YNyn): powrót przez punkt neutralny źródła —
+    # model BFS ma źródło idealne uziemione. Elementy = źródła sieciowe.
+    "power_flow.unbalanced_zero_sequence_via_source": ReadinessCodeSpec(
+        code="power_flow.unbalanced_zero_sequence_via_source",
+        area=ReadinessArea.ANALYSIS,
+        priority=4,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Założenie biegu: prąd powrotny odbioru jednofazowego zamyka się przez punkt "
+            "neutralny źródła sieciowego (źródło idealne uziemione w modelu BFS) — "
+            "impedancja uziemienia sieci nie wchodzi do rozpływu"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "grounding"},
+    ),
+    # Brak składowej zerowej gałęzi (Z0): ten sam warunek, który walidator ENM zgłasza
+    # jako W001 (most `domain/readiness_bridge.py`). Do W5-D kanon nie miał tego kodu.
+    "branch.zero_sequence_missing": ReadinessCodeSpec(
+        code="branch.zero_sequence_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Gałąź nie ma składowej zerowej (R0/X0) — zwarcia doziemne i rozpływ "
+            "niesymetryczny nie mogą jej policzyć; uzupełnij parametry albo katalog"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "r0_ohm_per_km"},
     ),
     # Lokalizacja zwarcia scenariusza NA GAŁĘZI (BRANCH/BRANCH_POINT) — adapter
     # obliczeniowy dziś liczy zwarcie WYŁĄCZNIE dla POJEDYNCZEGO węzła grafu; punkt

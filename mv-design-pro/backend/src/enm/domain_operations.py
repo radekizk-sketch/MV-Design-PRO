@@ -42,6 +42,7 @@ from network_model.pochodne import (
     susceptancja_z_pojemnosci_s_per_km,
 )
 
+from .fazy_odbioru import KOD_BLEDU_FAZ, waliduj_fazy_odbioru
 from .katalog_projektu import BladKataloguProjektu, katalog_biezacy, kontekst_katalogu
 from .kopia_graniczna import kopia_graniczna_enm
 from .load_zip_model import KOD_BLEDU_ZIP, zip_odbioru_z_parametrow_materializacji
@@ -8798,6 +8799,13 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
         blad_zip = zip_odbioru_z_parametrow_materializacji(parameters["materialized_params"])
         if blad_zip is not None:
             return _error_response(blad_zip, KOD_BLEDU_ZIP)
+    # Karta W5-D (F-1): korekta faz przyłączenia odbioru przez TEN SAM walidator co
+    # kreator odbioru (`enm/fazy_odbioru.py`) — trzeci pisarz `Load.phases`, jeden
+    # predykat. `None` zdejmuje deklarację (odbiór wraca do trójfazowego symetrycznego).
+    if coll == "loads" and "phases" in parameters:
+        _, blad_faz = waliduj_fazy_odbioru(parameters["phases"])
+        if blad_faz is not None:
+            return _error_response(blad_faz, KOD_BLEDU_FAZ)
 
     new_enm = kopia_graniczna_enm(enm)
     for key, value in parameters.items():

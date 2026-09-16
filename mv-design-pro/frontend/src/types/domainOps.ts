@@ -4,6 +4,7 @@
  */
 
 import type { FixActionSurfaceDescriptor } from './fixActionSurface';
+import type { PhaseSet } from './enm';
 
 // --- Envelope ---
 export interface DomainOpEnvelope {
@@ -606,6 +607,12 @@ export interface AddNNLoadPayload {
   cos_phi: number | null;
   load_profile_ref: string | null;
   connection_type: NNConnectionType;
+  /**
+   * Fazy przyłączenia (W5-D, `AddNnLoad.phases` w `enm/domain_ops_models.py`):
+   * pomijane = trójfazowy symetryczny; `A`/`B`/`C` = jednofazowy faza–N;
+   * `AB`/`BC`/`CA` = międzyfazowy. Czyta je rozpływ niesymetryczny.
+   */
+  phases?: PhaseSet | null;
   load_name: string | null;
   load_label: string | null;
 }

@@ -52,8 +52,11 @@ def _migawka_sprzed_karty(enm: EnergyNetworkModel) -> dict:
 def test_rejestr_pol_addytywnych_nazywa_pola_k7() -> None:
     # K7: trzy pola MIN; + `u_set_pu` (napięcie zadane szyny bilansującej, bliźniaki
     # literatury ze slackiem ≠ 1,0 p.u.) — to samo prawo: brak (None) poza odciskiem.
+    # W5-D: `Load.phases` (brak = odbior trojfazowy symetryczny) — ta sama regula
+    # (test pisarzy i odcisku: `tests/enm/test_load_phases_w5d.py`).
     assert _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE == {
-        "sources": ("sk3_min_mva", "ik3_min_ka", "rx_ratio_min", "u_set_pu")
+        "sources": ("sk3_min_mva", "ik3_min_ka", "rx_ratio_min", "u_set_pu"),
+        "loads": ("phases",),
     }
 
 

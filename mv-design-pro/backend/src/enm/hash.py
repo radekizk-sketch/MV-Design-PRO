@@ -60,6 +60,10 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
     # CV-4.3 K7: dane zwarciowe scenariusza MIN zrodla sieciowego (IEC 60909-0 eq. 6 z c_min).
     # + napięcie zadane szyny bilansującej (bliźniaki literatury ze slackiem ≠ 1,0 p.u.).
     "sources": ("sk3_min_mva", "ik3_min_ka", "rx_ratio_min", "u_set_pu"),
+    # Karta W5-D (F-1): fazy przylaczenia odbioru. `None` = odbior trojfazowy
+    # symetryczny (jedyne znaczenie, jakie `Load` mial przed karta) — poza odciskiem;
+    # wskazana faza zmienia wynik rozplywu niesymetrycznego, wiec zmienia odcisk.
+    "loads": ("phases",),
 }
 
 

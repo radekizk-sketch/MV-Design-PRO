@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
+from enm.models import PhaseSet
 from pydantic import BaseModel
 
 # ---------------------------------------------------------------------------
@@ -1342,6 +1343,9 @@ class AddNNLoadPayload(_FrozenBase):
 
     connection_type: Literal["JEDNOFAZOWY", "TROJFAZOWY"]
     """Sposób przyłączenia (PL) — bez domyślnego."""
+
+    phases: PhaseSet | None = None
+    """Fazy przyłączenia (W5-D, `enm/models.py::PhaseSet`); brak = trójfazowy symetryczny."""
 
     load_name: str | None = None
     load_label: str | None = None

@@ -68,15 +68,18 @@ def test_guard_liczy_pola_literalowe_dziedziczone_z_branchbase(capsys) -> None:
     "ZABEZPIECZENIOWE"] | None` (ktore uzwojenie VT: pomiarowe/zabezpieczeniowe
     — pole VT-only, walidowane w `_validate_ctvt_variant_matches_measurement_type`)
     z lustrem `'POMIAROWE' | 'ZABEZPIECZENIOWE' | null` w `types/enm.ts` — nowe
-    pole Literal z zachowanym parytetem zbioru wartosci podnosi licznik 115 -> 116."""
+    pole Literal z zachowanym parytetem zbioru wartosci podnosi licznik 115 -> 116.
+    Karta W5-D (2026-09-16) dodaje `Load.phases: PhaseSet | None` (fazy przylaczenia
+    odbioru `"ABC" | "A" | "B" | "C" | "AB" | "BC" | "CA"`, czytane przez rozplyw
+    niesymetryczny) z lustrem `PhaseSet` w `types/enm.ts` — licznik 116 -> 117."""
     guard.main()
     wyjscie = capsys.readouterr().out
     import re
 
     dopasowanie = re.search(r"parytet wartosci\): (\d+)", wyjscie)
     assert dopasowanie is not None, wyjscie
-    assert int(dopasowanie.group(1)) == 116, (
-        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 116 — "
+    assert int(dopasowanie.group(1)) == 117, (
+        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 117 — "
         "sprawdz, czy pola dziedziczone z bazy warunkowej (BranchBase) nie sa "
         "znowu cicho pomijane (spadek), albo opisz nowe pole Literal w docstringu "
         "tego testu i podnies licznik z uzasadnieniem (wzrost)."

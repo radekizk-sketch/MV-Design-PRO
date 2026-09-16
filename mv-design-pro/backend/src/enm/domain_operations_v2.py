@@ -77,6 +77,7 @@ from .domain_operations import (
     wybor_bloku_fabrycznego,
 )
 from .exceptions import DomainInvariantError
+from .fazy_odbioru import KOD_BLEDU_FAZ, waliduj_fazy_odbioru
 from .katalog_projektu import katalog_biezacy
 from .kopia_graniczna import kopia_graniczna_enm
 from .load_zip_model import KOD_BLEDU_ZIP, zip_odbioru_z_payloadu
@@ -2617,6 +2618,13 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     if blad_zip is not None:
         return _error_response(blad_zip, KOD_BLEDU_ZIP)
 
+    # Karta W5-D (F-1): fazy przyłączenia (`Load.phases`) — jeden walidator dla
+    # wszystkich pisarzy odbioru (`enm/fazy_odbioru.py`). Brak = trójfazowy
+    # symetryczny: pole NIE jest dopisywane (migawka jak przed kartą).
+    fazy, blad_faz = waliduj_fazy_odbioru(payload.get("phases"))
+    if blad_faz is not None:
+        return _error_response(blad_faz, KOD_BLEDU_FAZ)
+
     # Karta FAB-D1 (D5 sibling): `Load.q_mvar` jest polem WYMAGANYM kontraktu
     # (`enm/models.py`) — bez jawnej mocy biernej i bez cosφ, z którego dałoby
     # się ją wyprowadzić, operacja NIE fabrykuje 0 Mvar (praca przy cosφ=1 to
@@ -2661,6 +2669,9 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     # i ich odciski pozostają nietknięte.
     if zip_odbioru is not None:
         nowy_odbior["materialized_params"] = zip_odbioru
+    # Ta sama zasada dla faz (W5-D): odbiór bez wskazanej fazy = migawka bez klucza.
+    if fazy is not None:
+        nowy_odbior["phases"] = fazy
 
     new_enm = kopia_graniczna_enm(enm)
     new_enm.setdefault("loads", []).append(nowy_odbior)
@@ -6161,6 +6172,11 @@ def add_load_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     if blad_zip is not None:
         return _error_response(blad_zip, KOD_BLEDU_ZIP)
 
+    # Karta W5-D (F-1): fazy przyłączenia — ten sam walidator co `add_nn_load`.
+    fazy, blad_faz = waliduj_fazy_odbioru(payload.get("phases"))
+    if blad_faz is not None:
+        return _error_response(blad_faz, KOD_BLEDU_FAZ)
+
     # Karta FAB-D1 (D5 sibling, jak `add_nn_load`): brak jawnej mocy biernej i
     # brak cosφ, z którego dałoby się ją wyprowadzić, NIE fabrykuje 0 Mvar.
     if reactive_power_kvar is None:
@@ -6194,6 +6210,9 @@ def add_load_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     }
     if zip_odbioru is not None:
         nowy_odbior["materialized_params"] = zip_odbioru
+    # Ta sama zasada dla faz (W5-D): odbiór bez wskazanej fazy = migawka bez klucza.
+    if fazy is not None:
+        nowy_odbior["phases"] = fazy
 
     new_enm = kopia_graniczna_enm(enm)
     new_enm.setdefault("loads", []).append(nowy_odbior)

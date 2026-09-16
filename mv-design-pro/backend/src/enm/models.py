@@ -24,6 +24,27 @@ class GroundingConfig(BaseModel):
     x_ohm: float | None = None
 
 
+#: Zbiór faz przyłączenia elementu (karta W5-D, decyzja F-1 `CANONICAL_TWIN_ARCHITECTURE.md`):
+#: trójfazowy `ABC`, jednofazowy do przewodu neutralnego `A`/`B`/`C`, międzyfazowy
+#: `AB`/`BC`/`CA`. JEDYNA definicja słownika faz w modelu — czytelnicy (assembler rozpływu
+#: niesymetrycznego, kreator odbioru nN, walidacja pisarzy odbioru) importują TEN typ,
+#: nie własną listę. Pole modelu z tym typem jest zawsze `PhaseSet | None`, a `None`
+#: znaczy „przyłączenie trójfazowe symetryczne" — jedyne znaczenie, jakie element bez
+#: pola faz miał kiedykolwiek; dzięki temu istniejące migawki zachowują odciski
+#: (`enm/hash.py::_POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE`).
+PhaseSet = Literal["ABC", "A", "B", "C", "AB", "BC", "CA"]
+
+#: Wartości `PhaseSet` jako krotka (do walidacji payloadów operacji domenowych i do
+#: budowy listy wyboru w UI z JEDNEGO źródła — bez drugiej listy literałów).
+FAZY_PRZYLACZENIA: tuple[str, ...] = ("ABC", "A", "B", "C", "AB", "BC", "CA")
+
+#: Fazy, które odbiór jednofazowy zasila względem przewodu neutralnego (kolejność
+#: A, B, C = L1, L2, L3). Odbiór `ABC`/`None` obciąża wszystkie trzy po równo;
+#: `AB`/`BC`/`CA` to odbiór międzyfazowy (bez przewodu neutralnego).
+FAZY_ODBIORU_JEDNOFAZOWEGO: frozenset[str] = frozenset({"A", "B", "C"})
+FAZY_ODBIORU_MIEDZYFAZOWEGO: frozenset[str] = frozenset({"AB", "BC", "CA"})
+
+
 class BusLimits(BaseModel):
     u_min_pu: float | None = None
     u_max_pu: float | None = None
@@ -432,6 +453,15 @@ class Load(ENMElement):
     p_mw: float
     q_mvar: float
     model: Literal["pq", "zip"] = "pq"
+    # Karta W5-D (F-1): fazy przyłączenia odbioru. `None` = odbiór trójfazowy
+    # symetryczny (jedyne dotychczasowe znaczenie `Load` — rozpływ NR i zwarcie
+    # nie czytają tego pola; czyta je WYŁĄCZNIE assembler rozpływu
+    # niesymetrycznego, `enm/assembler.py::zloz_wejscie_rozplywu_niesymetrycznego`).
+    # Pole addytywne: `None` poza odciskiem (`enm/hash.py`), więc migawki sprzed
+    # karty zachowują hashe bit w bit. Pisarze: `add_nn_load`/`add_load_sn`
+    # (`enm/domain_operations_v2.py`) i `update_element_parameters` — każdy przez
+    # JEDEN walidator `enm/fazy_odbioru.py::waliduj_fazy_odbioru`.
+    phases: PhaseSet | None = None
     catalog_ref: str | None = None
     catalog_namespace: str | None = None
     quantity: int | None = None

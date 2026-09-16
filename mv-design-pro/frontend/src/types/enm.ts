@@ -412,11 +412,20 @@ export interface Source extends ENMElement {
 // Load
 // ---------------------------------------------------------------------------
 
+/**
+ * Fazy przyłączenia odbioru (W5-D, `enm/models.py::PhaseSet`): `ABC` = trójfazowy
+ * symetryczny, `A`/`B`/`C` = jednofazowy faza–N, `AB`/`BC`/`CA` = międzyfazowy.
+ * Brak pola (`null`/`undefined`) = trójfazowy symetryczny — dokładnie jak przed
+ * W5-D (pole addytywne poza hashem ENM, gdy puste).
+ */
+export type PhaseSet = 'ABC' | 'A' | 'B' | 'C' | 'AB' | 'BC' | 'CA';
+
 export interface Load extends ENMElement {
   bus_ref: string;
   p_mw: number;
   q_mvar: number;
   model: 'pq' | 'zip';
+  phases?: PhaseSet | null;
   catalog_ref?: string | null;
   catalog_namespace?: string | null;
   quantity?: number | null;
