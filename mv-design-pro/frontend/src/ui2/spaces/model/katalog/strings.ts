@@ -27,7 +27,6 @@ export const STRINGS = {
   kartaPochodzenie: 'Pochodzenie danych',
   kartaBrakParametrow: 'Brak udokumentowanych parametrów dla tego typu.',
   producentNieznany: 'Producent nieznany',
-  wkrotce: 'wkrótce',
 
   pochodzenieZrodlo: 'Źródło danych',
   pochodzenieWeryfikacja: 'Status weryfikacji',

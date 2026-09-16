@@ -80,11 +80,30 @@ describe('KartaTechniczna', () => {
     expect(text).not.toContain('Pojemność energetyczna magazynu');
   });
 
-  it('pokazuje „wkrótce", gdy brak źródła danych w pozycji', () => {
+  it('pomija wiersz „Źródło danych", gdy brak źródła w pozycji (zero fabrykacji, bez „wkrótce")', () => {
     const bezZrodla = { id: 'x1', name: 'Typ bez metadanych', uk_percent: 6 };
     const { container } = render(
       <KartaTechniczna pozycja={bezZrodla} kategoria="TRANSFORMATOR" poleParametrow={['uk_percent']} />,
     );
-    expect(container.textContent ?? '').toContain('wkrótce');
+    const text = container.textContent ?? '';
+    // Ten sam wzorzec co pozostałe pola sekcji Pochodzenie (weryfikacja/status/norma):
+    // pole nieobecne w rekordzie → wiersz pominięty, nie zaślepka „wkrótce".
+    expect(text).not.toContain('Źródło danych');
+    expect(text).not.toContain('wkrótce');
+  });
+
+  it('pokazuje wiersz „Źródło danych" z realną wartością, gdy pozycja ją niesie', () => {
+    const zeZrodlem = {
+      id: 'x2',
+      name: 'Typ z metadanymi',
+      uk_percent: 6,
+      source_reference: 'Katalog producenta XYZ 2026',
+    };
+    const { container } = render(
+      <KartaTechniczna pozycja={zeZrodlem} kategoria="TRANSFORMATOR" poleParametrow={['uk_percent']} />,
+    );
+    const text = container.textContent ?? '';
+    expect(text).toContain('Źródło danych');
+    expect(text).toContain('Katalog producenta XYZ 2026');
   });
 });
