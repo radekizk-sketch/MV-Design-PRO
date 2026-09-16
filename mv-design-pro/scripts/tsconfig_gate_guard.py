@@ -309,9 +309,9 @@ POMIJANE_KATALOGI = {
 #: (panel i selektor ukladu w `ui/topology`, ich typy, odznaka uziemienia w `ui/sld/v2/renderer`
 #: + testy; nazwy plikow pilnuje `grep_zero_guard` grupa `kod_`) zdjela jeden blad typow POZA
 #: bramka (pomiar guardem na drzewie karty); zapadka w dol, nie podnosic bez nowego pomiaru.
-#: Odbior W5-D + W5-A na drzewie scalonym (2026-09-16): pomiar guardem = TSG_W5A (obie zapadki w dol
+#: Odbior W5-D + W5-A na drzewie scalonym (2026-09-16): pomiar guardem = 112 (obie zapadki w dol
 #: zdjely rozne pozycje).
-BUDZET_BLEDOW_POZA_BRAMKA = 113
+BUDZET_BLEDOW_POZA_BRAMKA = 112
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

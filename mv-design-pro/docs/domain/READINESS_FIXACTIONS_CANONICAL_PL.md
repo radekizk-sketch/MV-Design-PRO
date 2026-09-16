@@ -52,7 +52,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **129** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **134** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -66,6 +66,7 @@ Wszystkie **129** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `source.voltage_invalid` | SOURCES | 1 | BLOCKER | Nieprawidłowe napięcie źródła zasilania | panel: `inspector`, tab: `parametry`, focus: `voltage_kv` |
 | `connection.power_flow_missing` | SOURCES | 2 | WARNING | Brak zbieżnego biegu rozpływu — uruchom analizę rozpływu mocy, by ocenić warunki przyłączenia | panel: `analizy`, tab: `rozplyw` |
 | `connection.power_limit_missing` | SOURCES | 2 | WARNING | Brak mocy przyłączeniowej z warunków OSD — uzupełnij, by ocenić moc w punkcie przyłączenia | panel: `projekt`, tab: `przylaczenie`, focus: `moc_przylaczeniowa_mw` |
+| `earthing.neutral_grounding_inconsistent` | SOURCES | 2 | BLOCKER | Konfiguracja punktu neutralnego niespójna: rezystor bez R_N, dławik bez X_N albo punkt izolowany ze skończoną impedancją zerową — popraw typ i impedancję | panel: `inspector`, tab: `parametry`, focus: `neutral_grounding` |
 | `source.connection_missing` | SOURCES | 2 | BLOCKER | Źródło zasilania nie jest podłączone do szyny | panel: `inspector`, tab: `polaczenia` |
 | `source.multiple_grid_sources_in_island` | SOURCES | 2 | BLOCKER | Dwa lub więcej źródeł sieciowych w jednej wyspie — rozpływ mocy wymaga jednej szyny bilansującej na wyspę (otwórz sprzęgło albo pozostaw jedno źródło sieciowe w wyspie) | panel: `inspector`, tab: `polaczenia` |
 | `connection.cos_phi_required_missing` | SOURCES | 3 | WARNING | Brak wymaganego cosφ z warunków OSD — uzupełnij, by ocenić współczynnik mocy w punkcie przyłączenia | panel: `projekt`, tab: `przylaczenie`, focus: `wymagany_cos_phi` |
@@ -105,10 +106,13 @@ Wszystkie **129** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `conductor.thermal_data_missing` | CATALOGS | 2 | WARNING | Brak wytrzymałości cieplnej przewodu w katalogu (Ith/Jth dla 1 s) — uzupełnij pozycję katalogową | panel: `katalog`, tab: `kable`, focus: `ith_1s_a` |
 | `ct.rated_burden_missing` | CATALOGS | 2 | WARNING | Brak mocy znamionowej przekładnika prądowego w katalogu — uzupełnij pozycję katalogową | panel: `katalog`, tab: `ct`, focus: `burden_va` |
 | `protection.curve_library_ref_broken` | CATALOGS | 2 | WARNING | Powiązanie pozycji katalogowej z biblioteką charakterystyk wskazuje wpis, którego w bibliotece nie ma — dane katalogu wymagają poprawy | panel: `katalog`, tab: `zabezpieczenia` |
+| `transformer.neutral_grounding_not_accessible` | CATALOGS | 2 | BLOCKER | Uzwojenie transformatora nie ma wyprowadzonego punktu neutralnego, a konfiguracja deklaruje jego uziemienie — zmień grupę połączeń (N/n) albo usuń konfigurację uziemienia tej strony | panel: `inspector`, tab: `parametry`, focus: `lv_neutral` |
+| `transformer.vector_group_invalid` | CATALOGS | 2 | BLOCKER | Grupa połączeń transformatora spoza słownika IEC 60076-1 — wybierz grupę z listy (np. Dyn11, YNd11, Yzn5) | panel: `inspector`, tab: `parametry`, focus: `vector_group` |
 | `transformer.vector_group_missing` | CATALOGS | 2 | BLOCKER | Grupa połączeń transformatora nieznana — analizy doziemne/niesymetryczne (składowa zerowa) nie mogą wyznaczyć układu bez tej danej | panel: `katalog`, tab: `transformatory`, focus: `vector_group` |
 | `vt.rated_burden_missing` | CATALOGS | 2 | WARNING | Brak mocy znamionowej uzwojenia przekładnika napięciowego w katalogu — uzupełnij pozycję katalogową | panel: `katalog`, tab: `vt`, focus: `burden_va` |
 | `cable.insulation_data_missing` | CATALOGS | 3 | WARNING | Brak typu izolacji lub temperatury znamionowej kabla w katalogu — bez nich nie da się ocenić starzenia izolacji | panel: `katalog`, tab: `kable`, focus: `insulation_type` |
 | `cable.operating_temperature_missing` | CATALOGS | 3 | WARNING | Brak temperatury pracy żyły — podaj ją, by ocenić względne starzenie izolacji | panel: `inspector`, tab: `parametry`, focus: `temperatura_pracy_c` |
+| `cable.screen_bonding_reference_mismatch` | CATALOGS | 3 | WARNING | Zamodelowany układ uziemienia ekranu kabla różni się od układu, dla którego katalog podaje R0/X0 — składowa zerowa z katalogu dotyczy innego układu uziemienia ekranu | panel: `inspector`, tab: `parametry`, focus: `screen_bonding` |
 | `ct.accuracy_limit_missing` | CATALOGS | 3 | WARNING | Klasa przekładnika prądowego nie niesie współczynnika granicznego (rdzeń pomiarowy albo klasa nierozpoznana) — kryterium nasycenia nie ma zastosowania | panel: `katalog`, tab: `ct`, focus: `accuracy_class` |
 | `ct.winding_resistance_missing` | CATALOGS | 3 | WARNING | Brak rezystancji uzwojenia wtórnego przekładnika — współczynnik graniczny policzono wariantem uproszczonym (wynik optymistyczny) | panel: `katalog`, tab: `ct`, focus: `rct_ohm` |
 | `load.catalog_missing` | CATALOGS | 3 | WARNING | Obciążenie nie ma przypisanego katalogu | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
@@ -127,6 +131,7 @@ Wszystkie **129** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `station.type_invalid` | STATIONS | 2 | BLOCKER | Nieprawidłowy typ stacji | panel: `inspector`, tab: `parametry` |
 | `station.voltage_missing` | STATIONS | 2 | BLOCKER | Stacja nie ma zdefiniowanego napięcia | panel: `inspector`, tab: `parametry`, focus: `voltage_kv` |
 | `transformer.connection_missing` | STATIONS | 2 | BLOCKER | Transformator nie ma zdefiniowanego połączenia | panel: `inspector`, tab: `polaczenia` |
+| `transformer.lv_earthing_system_missing` | STATIONS | 2 | BLOCKER | Transformator SN/nN nie deklaruje układu uziemienia sieci nN (TN-S/TN-C-S/TN-C/TT/IT) — pętla zwarcia i SWZ nie mogą być liczone | panel: `inspector`, tab: `parametry`, focus: `lv_earthing_system` |
 | `apparatus.nn_catalog_missing` | STATIONS | 3 | BLOCKER | Aparat nN nie ma przypisanego katalogu | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
 | `apparatus.sn_catalog_missing` | STATIONS | 3 | BLOCKER | Aparat SN nie ma przypisanego katalogu | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
 | `earthing.electrode_data_missing` | STATIONS | 3 | WARNING | Brak danych uziomu (Z_E, r) — uzupełnij, by policzyć napięcia dotykowe/krokowe | panel: `inspector`, tab: `uziemienie`, focus: `earth_electrode` |
@@ -190,21 +195,21 @@ Wszystkie **129** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 
 | Poziom | Liczba kodów |
 |--------|---------------|
-| BLOCKER | 78 |
-| WARNING | 50 |
+| BLOCKER | 82 |
+| WARNING | 51 |
 | INFO | 1 |
-| **Razem** | **129** |
+| **Razem** | **134** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
-| SOURCES | 15 |
+| SOURCES | 16 |
 | TOPOLOGY | 6 |
-| CATALOGS | 45 |
-| STATIONS | 12 |
+| CATALOGS | 48 |
+| STATIONS | 13 |
 | GENERATORS | 22 |
 | PROTECTION | 9 |
 | ANALYSIS | 20 |
-| **Razem** | **129** |
+| **Razem** | **134** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 
