@@ -240,19 +240,38 @@ def build_v126_insulation_from_enm(enm: EnergyNetworkModel) -> list[V126Insulati
       ``mv_surge_arrester_catalog`` po ``catalog_ref`` — gdy brak karty,
       pola pozostają ``None`` (solver wykonuje dobór wstępny, udokumentowany);
     - U_m z karty katalogowej albo z poziomu napięcia szyny (typoszereg IEC);
-    - ``network_neutral`` z uziemienia punktu neutralnego (szyna lub
-      transformator) — gdy brak danych, kontraktowa wartość domyślna.
+    - ``network_neutral`` ZAWSZE z modelu (uziemienie punktu neutralnego szyny
+      albo transformatora, ``_resolve_network_neutral``) — karta W5-D p. 12
+      (OD-24): ogranicznik na szynie, której uziemienia model nie zna, NIE
+      dostaje wiersza z podstawioną wartością ``"isolated"`` (do W5-D most
+      fabrykował tu ``neutral or "isolated"``); taka szyna trafia do
+      ``ograniczniki_bez_uziemienia_sieci`` i blokuje gotowość koordynacji
+      izolacji warunkiem nazwanym (``application/analyses/v126_gotowosc.py``).
 
     Deduplikacja per (szyna, ``catalog_ref``) — ograniczniki fazowe w jednym
     miejscu dają jedno wejście koordynacji. Kolejność deterministyczna
     (kolejność pól w modelu).
     """
+    return _wejscia_izolacji(enm)[0]
+
+
+def ograniczniki_bez_uziemienia_sieci(enm: EnergyNetworkModel) -> tuple[str, ...]:
+    """``ref_id`` szyn z ogranicznikiem przepięć, dla których model nie niesie uziemienia
+    punktu neutralnego (ani szyna, ani transformator) — wejście koordynacji izolacji
+    NIE jest dla nich budowane (W5-D p. 12: zero podstawionego ``"isolated"``)."""
+    return _wejscia_izolacji(enm)[1]
+
+
+def _wejscia_izolacji(
+    enm: EnergyNetworkModel,
+) -> tuple[list[V126InsulationInput], tuple[str, ...]]:
     from network_model.catalog.mv_surge_arrester_catalog import get_all_surge_arrester_types
 
     catalog: dict[str, dict[str, Any]] = {
         str(record["id"]): record["params"] for record in get_all_surge_arrester_types()
     }
     bus_by_ref = {bus.ref_id: bus for bus in enm.buses}
+    bez_uziemienia: list[str] = []
 
     def _resolve_network_neutral(bus_ref: str) -> str | None:
         bus = bus_by_ref.get(bus_ref)
@@ -288,12 +307,17 @@ def build_v126_insulation_from_enm(enm: EnergyNetworkModel) -> list[V126Insulati
             return
         seen.add(dedup_key)
         neutral = _resolve_network_neutral(bus_ref)
+        if neutral is None:
+            # W5-D p. 12: brak uziemienia w modelu = brak wiersza, nie „isolated".
+            if bus_ref not in bez_uziemienia:
+                bez_uziemienia.append(bus_ref)
+            return
         if params is not None:
             rows.append(
                 V126InsulationInput(
                     location_bus_ref=bus_ref,
                     u_m_kv=float(params["u_m_kv"]),
-                    network_neutral=neutral or "isolated",
+                    network_neutral=neutral,
                     arrester_mcov_kv=float(params["mcov_kv"]),
                     arrester_residual_10ka_kv=float(params["u_residual_at_10ka_kv"]),
                     predicted_tov_kv=float(params["tov_10s_kv"]),
@@ -305,7 +329,7 @@ def build_v126_insulation_from_enm(enm: EnergyNetworkModel) -> list[V126Insulati
                 V126InsulationInput(
                     location_bus_ref=bus_ref,
                     u_m_kv=_nearest_standard_um_kv(bus.voltage_kv),
-                    network_neutral=neutral or "isolated",
+                    network_neutral=neutral,
                 )
             )
 
@@ -334,7 +358,7 @@ def build_v126_insulation_from_enm(enm: EnergyNetworkModel) -> list[V126Insulati
                     ref = item.get("catalog_ref")
                     _emit(spec_bus_ref, ref if isinstance(ref, str) else None)
 
-    return rows
+    return rows, tuple(bez_uziemienia)
 
 
 #: Aparat łączeniowy jest elementem SKUPIONYM: jego impedancja styku to omy, a nie

@@ -5,6 +5,7 @@ from network_model.catalog.mv_surge_arrester_catalog import get_all_surge_arrest
 from solver_input.v126_contracts import (
     build_v126_input_from_enm,
     build_v126_insulation_from_enm,
+    ograniczniki_bez_uziemienia_sieci,
 )
 
 _ARRESTER_ID = "arrester-abb-polim-d-24kv-10ka"
@@ -17,15 +18,23 @@ def _arrester_params(item_id: str) -> dict:
     raise AssertionError(f"Brak rekordu katalogu ogranicznika: {item_id}")
 
 
+#: W5-D p. 12: most NIE podstawia kategorii punktu neutralnego — model testowy niesie
+#: uziemienie (sieć skompensowana), chyba że test JAWNIE przekaże `bus_grounding=None`
+#: (przypadek „model milczy" → brak wiersza + szyna nazwana).
+_UZIEMIENIE_TESTU: dict = {"type": "petersen_coil", "x_ohm": 120.0}
+_BRAK = object()
+
+
 def _model(
     *,
     devices: list[dict],
     bus_voltage_kv: float = 20.0,
-    bus_grounding: dict | None = None,
+    bus_grounding: dict | None | object = _BRAK,
 ) -> EnergyNetworkModel:
     bus: dict = {"ref_id": "BUS_SN", "name": "Szyna SN", "voltage_kv": bus_voltage_kv}
-    if bus_grounding is not None:
-        bus["grounding"] = bus_grounding
+    uziemienie = _UZIEMIENIE_TESTU if bus_grounding is _BRAK else bus_grounding
+    if uziemienie is not None:
+        bus["grounding"] = uziemienie
     return EnergyNetworkModel.model_validate(
         {
             "header": ENMHeader(name="test-insulation").model_dump(),
@@ -98,10 +107,13 @@ def test_network_neutral_from_bus_grounding_resistor_is_earthed() -> None:
     assert rows[0].network_neutral == "earthed"
 
 
-def test_no_grounding_data_falls_back_to_contract_default() -> None:
-    model = _model(devices=[_arrester_device("QA1", _ARRESTER_ID)])
-    rows = build_v126_insulation_from_enm(model)
-    assert rows[0].network_neutral == "isolated"
+def test_no_grounding_data_emits_no_row_and_names_the_bus() -> None:
+    """Karta W5-D p. 12 (OD-24): do W5-D most podstawiał `"isolated"` za brak
+    uziemienia w modelu (fabrykacja kategorii TOV); teraz wiersz nie powstaje,
+    a szyna jest nazwana w `ograniczniki_bez_uziemienia_sieci` (gotowość blokuje)."""
+    model = _model(devices=[_arrester_device("QA1", _ARRESTER_ID)], bus_grounding=None)
+    assert build_v126_insulation_from_enm(model) == []
+    assert ograniczniki_bez_uziemienia_sieci(model) == ("BUS_SN",)
 
 
 def test_no_arrester_yields_empty_insulation() -> None:
@@ -183,6 +195,8 @@ def test_insulation_coordination_run_reads_arresters_from_model() -> None:
         case_id = case_resp.json()["id"]
 
         klucz = klucz_twin_dla_przypadku(case_id, client.app.state.uow_factory)
+        # W5-D p. 12: model MUSI nieść uziemienie punktu neutralnego — bez niego most
+        # nie buduje wiersza (nie podstawia „isolated"), a gotowość blokuje.
         set_enm(klucz, _model(devices=[_arrester_device("QA1", _ARRESTER_ID)]))
 
         created = client.post(

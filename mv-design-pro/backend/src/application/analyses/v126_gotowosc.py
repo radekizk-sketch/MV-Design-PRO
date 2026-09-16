@@ -42,6 +42,7 @@ from solver_input.v126_contracts import (
     build_v126_input_from_enm,
     generatory_przeksztaltnikowe_v126,
     odbiorcy_z_parametrow,
+    ograniczniki_bez_uziemienia_sieci,
     pominiete_zrodla_v126,
 )
 
@@ -670,6 +671,23 @@ def _warunki_izolacji(enm: EnergyNetworkModel, model: V126AcademicInput) -> list
                 spelniony=False,
                 elementy=bez_karty,
                 blokujacy=False,
+            )
+        )
+    # W5-D p. 12 (OD-24): ogranicznik na szynie bez uziemienia punktu neutralnego w
+    # modelu nie ma wiersza wejścia (most nie podstawia „isolated") — gotowość mówi
+    # to wprost i blokuje, zamiast liczyć koordynację na fabrykowanej kategorii TOV.
+    bez_uziemienia = ograniczniki_bez_uziemienia_sieci(enm)
+    if bez_uziemienia:
+        warunki.append(
+            Warunek(
+                kod="ograniczniki.uziemienie_sieci_nieznane",
+                opis_pl=(
+                    f"{len(bez_uziemienia)} miejsc z ogranicznikiem bez uziemienia punktu "
+                    "neutralnego sieci w modelu (szyna ani transformator nie deklarują) — "
+                    "kategoria TOV (sieć izolowana/uziemiona) nie może być przyjęta domyślnie"
+                ),
+                spelniony=False,
+                elementy=bez_uziemienia,
             )
         )
     return warunki

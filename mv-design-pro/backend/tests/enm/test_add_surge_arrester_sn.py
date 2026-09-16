@@ -105,6 +105,10 @@ def test_bridge_reads_arrester_from_field_spec_channel() -> None:
     result = _add(_enm_with_field(), {"field_ref": "POLE-IN", **_binding(_ARRESTER_ID)})
     snapshot = result["snapshot"]
     snapshot["header"] = ENMHeader(name="spd").model_dump()
+    # W5-D p. 12: most nie podstawia kategorii punktu neutralnego — model niesie uziemienie.
+    for bus in snapshot["buses"]:
+        if bus["ref_id"] == "BUS_SN":
+            bus["grounding"] = {"type": "petersen_coil", "x_ohm": 120.0}
     model = EnergyNetworkModel.model_validate(snapshot)
     rows = build_v126_insulation_from_enm(model)
     assert len(rows) == 1
