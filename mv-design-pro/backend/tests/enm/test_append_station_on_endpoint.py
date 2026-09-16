@@ -834,8 +834,9 @@ def test_endpoint_append_nn_earthing_materializes_neutral_grounding() -> None:
     # GroundingConfig zmaterializowany na neutralnym nN.
     assert tr["lv_neutral"] == {"type": "resistor_grounded", "r_ohm": 10.0}
     assert "hv_neutral" not in tr  # SN nie konfigurowany → brak
-    # Układ sieci nN zapisany jako etykieta interpretacyjna.
-    assert sub["meta"]["nn_earthing_system"] == "TN-S"
+    # W5-A: układ sieci nN NA TRANSFORMATORZE (jedyny nośnik), nie w meta stacji.
+    assert tr["lv_earthing_system"] == "TN-S"
+    assert "nn_earthing_system" not in (sub.get("meta") or {})
 
 
 def test_endpoint_append_station_auxiliary_materializes_nn_load() -> None:

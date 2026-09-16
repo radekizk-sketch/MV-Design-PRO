@@ -1292,14 +1292,14 @@
   "missing_data": [],
   "model_snapshot": {
     "case_id": "fixture-04_shared_upstream_boundary",
-    "model_hash": "a81efa6c5e3a1d764bbcc9760fcf9fd99c28ba023b9c74b042daf3d25bf560f6",
+    "model_hash": "2f46f47003ffed7ded161a74824191bcb513f2a11045d5ae9829ecc1e21fc47d",
     "operating_state_id": "b1ccf30bc602a0a74ab1f243ed3208caf9bba5ca1baf6199f08eb6d4030bb513",
     "revision": 1,
     "run_snapshot_hash": null,
     "scenario_id": "MAX",
     "station_ref": "stAB"
   },
-  "projection_hash": "501950aec80db51191fe28bd0d1b0893e0578c8d3b4ff5ba7d5092b71ed2eade",
+  "projection_hash": "bed8f97e447da493876d025b8e67db142b51fefed9628b22fd89446e8632757e",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -2803,12 +2803,12 @@
   "upstream_equivalents": [
     {
       "c_factor": 1.1,
-      "calculation_run_id": "b3bf2605-349b-5b50-9d5c-62aea64db025",
+      "calculation_run_id": "9e7e1670-69cb-5f89-9453-1324c42fdd01",
       "case_id": "fixture-04_shared_upstream_boundary",
-      "equivalent_id": "7e85b628-6250-53d3-8252-dec178bbb1ad",
+      "equivalent_id": "6836ac72-026a-58ad-a5c5-c7060a8ee558",
       "ikss_ka": 18.6825711,
       "missing_data": [],
-      "model_hash": "a81efa6c5e3a1d764bbcc9760fcf9fd99c28ba023b9c74b042daf3d25bf560f6",
+      "model_hash": "2f46f47003ffed7ded161a74824191bcb513f2a11045d5ae9829ecc1e21fc47d",
       "model_revision": 1,
       "note_pl": "Równoważnik Thevenina sieci SN w punkcie HV transformatora — granica wizualna domeny nN (L2) jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten snapshot jest dokładnie tym wejściem, którym solver pętli zwarcia nN liczy stronę SN (application.analyses.fault_loop).",
       "operating_state_id": "b1ccf30bc602a0a74ab1f243ed3208caf9bba5ca1baf6199f08eb6d4030bb513",
@@ -2843,12 +2843,12 @@
     },
     {
       "c_factor": 1.1,
-      "calculation_run_id": "538e0f0f-20d6-55a3-889f-1b210c0cc2ca",
+      "calculation_run_id": "4c27d536-c77f-505a-b4b0-caf6c57c77f1",
       "case_id": "fixture-04_shared_upstream_boundary",
-      "equivalent_id": "7e85b628-6250-53d3-8252-dec178bbb1ad",
+      "equivalent_id": "6836ac72-026a-58ad-a5c5-c7060a8ee558",
       "ikss_ka": 18.6825711,
       "missing_data": [],
-      "model_hash": "a81efa6c5e3a1d764bbcc9760fcf9fd99c28ba023b9c74b042daf3d25bf560f6",
+      "model_hash": "2f46f47003ffed7ded161a74824191bcb513f2a11045d5ae9829ecc1e21fc47d",
       "model_revision": 1,
       "note_pl": "Równoważnik Thevenina sieci SN w punkcie HV transformatora — granica wizualna domeny nN (L2) jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten snapshot jest dokładnie tym wejściem, którym solver pętli zwarcia nN liczy stronę SN (application.analyses.fault_loop).",
       "operating_state_id": "b1ccf30bc602a0a74ab1f243ed3208caf9bba5ca1baf6199f08eb6d4030bb513",

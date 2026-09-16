@@ -376,7 +376,7 @@ def _wynik_lub_odmowa(wykonaj: Any, run: CanonicalRun) -> dict[str, Any]:
 
 
 def zbierz_hashe(
-    sieci: list[tuple[str, EnergyNetworkModel]] | None = None
+    sieci: list[tuple[str, EnergyNetworkModel]] | None = None,
 ) -> dict[str, dict[str, Any]]:
     """Hashe PF + wariantów zwarć dla każdej sieci ENM rejestru (deterministyczne)."""
     wyniki: dict[str, dict[str, Any]] = {}

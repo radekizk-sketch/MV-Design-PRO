@@ -59,6 +59,7 @@ from application.analyses.fault_loop.service import (
     _find_station as find_station,  # reeksport publiczny (dzielony z upstream_equivalent.py)
 )
 from enm.models import Branch, Bus, EnergyNetworkModel, Substation, Transformer
+from enm.uklad_sieci_nn import uklad_nn_stacji
 from network_model.core.topologia import poziomy, przeglad_wszerz_od
 from network_model.core.voltage_factor import LV_BAND_LIMIT_KV
 
@@ -564,7 +565,9 @@ def build_lv_domain_view(enm: EnergyNetworkModel, station_ref: str) -> dict[str,
         "status": "OK",
         "station_ref": station_ref,
         "station_name": root.name,
-        "earthing_system": (root.meta or {}).get("nn_earthing_system") or None,
+        # W5-A: uklad sieci nN z transformatorow stacji (`lv_earthing_system`);
+        # jedna wartosc, gdy wszystkie transformatory nN stacji deklaruja te sama.
+        "earthing_system": uklad_nn_stacji(enm, root),
         "root_bus_refs": sorted(seed_bus_refs),
         "buses": [
             _bus_dict(

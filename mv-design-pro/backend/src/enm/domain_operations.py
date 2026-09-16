@@ -30,7 +30,12 @@ from network_model.catalog.materialization import materialize_catalog_binding
 if TYPE_CHECKING:
     from network_model.catalog.repository import CatalogRepository
 from network_model.catalog.types import CatalogBinding
+from network_model.core.uziemienie import TYPY_PUNKTU_NEUTRALNEGO, UZIEMIENIA_EKRANU_KABLA
 from network_model.pochodne import (
+    PROWENIENCJA_WYPROWADZONE,
+    impedancja_punktu_neutralnego_ohm,
+    impedancja_rozproszenia_transformatora_ohm,
+    impedancja_zerowa_zrodla_z_uziemienia_ohm,
     km_na_m,
     kva_na_mva,
     kvar_na_mvar,
@@ -43,11 +48,12 @@ from network_model.pochodne import (
 )
 
 from .fazy_odbioru import KOD_BLEDU_FAZ, waliduj_fazy_odbioru
+from .grupa_polaczen import GRUPY_POLACZEN_IEC60076, grupa_polaczen_poprawna
 from .katalog_projektu import BladKataloguProjektu, katalog_biezacy, kontekst_katalogu
 from .kopia_graniczna import kopia_graniczna_enm
 from .load_zip_model import KOD_BLEDU_ZIP, zip_odbioru_z_parametrow_materializacji
 from .migrations.nn_field_specs_promocja import META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA
-from .models import GEN_TYPES_PRZEKSZTALTNIKOWE, EnergyNetworkModel
+from .models import GEN_TYPES_PRZEKSZTALTNIKOWE, UKLADY_SIECI_NN, EnergyNetworkModel
 from .pole_katalogowe import (
     KOD_BLEDU_POLA_KATALOGOWEGO,
     NiezgodnoscKonfiguracjiError,
@@ -60,6 +66,7 @@ from .topology_ops import (
     create_node,
     delete_branch,
 )
+from .uziemienie import blad_konfiguracji_uziemienia, uziemienie_grounded
 from .validator import ENMValidator
 from .zrodlo_zwarcie import PASMO_U_SET_PU, u_set_pu_w_pasmie
 
@@ -2844,6 +2851,8 @@ def _copy_split_segment_fields(target: dict[str, Any], source: dict[str, Any]) -
         # tylko krotszymi. Brak na SN (pole nigdy nie ustawiane) — bez zmiany
         # zachowania istniejacych podzialow SN.
         "n_parallel",
+        # W5-A: układ uziemienia ekranu — obie połówki to ten sam kabel.
+        "screen_bonding",
     ):
         if source.get(key) is not None:
             target[key] = copy.deepcopy(source[key])
@@ -2867,6 +2876,39 @@ def _apply_explicit_segment_zero_sequence(
         value = source.get(payload_key)
         if isinstance(value, int | float):
             target[target_key] = float(value)
+
+
+def _apply_screen_bonding(
+    target: dict[str, Any],
+    segment_payload: dict[str, Any],
+) -> dict[str, Any] | None:
+    """W5-A (F9): układ uziemienia ekranu kabla — deklaracja projektanta.
+
+    ``screen_bonding`` ∈ {single_end, both_ends, cross_bonded} trafia na
+    ``Cable.screen_bonding``; katalogowe r0/x0 są odniesione do układu
+    ``CableType.z0_reference_bonding`` — rozjazd nazywa walidator (W-W5-01),
+    NIGDY przeliczenie (brak geometrii ułożenia). Linia napowietrzna nie ma
+    ekranu — deklaracja dla niej to błąd nazwany, nie cicho zignorowana dana.
+    Zwraca odpowiedź błędu operacji albo ``None``.
+    """
+    raw = segment_payload.get("screen_bonding")
+    if raw is None:
+        return None
+    wartosc = str(raw).strip()
+    if wartosc not in UZIEMIENIA_EKRANU_KABLA:
+        return _error_response(
+            f"Układ uziemienia ekranu kabla '{wartosc}' spoza słownika "
+            f"({', '.join(UZIEMIENIA_EKRANU_KABLA)}).",
+            "segment.invalid_screen_bonding",
+        )
+    if target.get("type") != "cable":
+        return _error_response(
+            "Układ uziemienia ekranu (screen_bonding) dotyczy wyłącznie kabla — "
+            "linia napowietrzna nie ma ekranu.",
+            "segment.invalid_screen_bonding",
+        )
+    target["screen_bonding"] = wartosc
+    return None
 
 
 def _apply_materialized_transformer_fields(
@@ -3765,14 +3807,13 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                     "source.already_exists",
                 )
 
-    allowed_grounding_types = {
-        "isolated",
-        "petersen_coil",
-        "directly_grounded",
-        "resistor_grounded",
-    }
+    # W5-A (jedna reprezentacja uziemienia): opis punktu neutralnego sieci SN
+    # zasilanej z równoważnika trafia WYŁĄCZNIE na `Source.neutral_grounding`
+    # (nie na szyny, nie do meta stacji). Słownik typów i predykat spójności
+    # (rezystor bez R_N, dławik bez X_N) są TE SAME, które czyta walidator
+    # (E-W5-01) i model składowej zerowej — odmowa nazwana na wejściu.
     grounding_payload = payload.get("grounding")
-    grounding_config = None
+    grounding_config: dict[str, Any] | None = None
     if grounding_payload is not None:
         if not isinstance(grounding_payload, dict):
             return _error_response(
@@ -3780,9 +3821,10 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 "source.invalid_grounding",
             )
         grounding_type = grounding_payload.get("type")
-        if grounding_type not in allowed_grounding_types:
+        if grounding_type not in TYPY_PUNKTU_NEUTRALNEGO:
             return _error_response(
-                "Typ uziemienia GPZ jest nieprawidłowy.",
+                "Typ uziemienia GPZ jest nieprawidłowy (dozwolone: "
+                f"{', '.join(TYPY_PUNKTU_NEUTRALNEGO)}).",
                 "source.invalid_grounding",
             )
         grounding_config = {"type": grounding_type}
@@ -3790,6 +3832,14 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             grounding_config["r_ohm"] = float(grounding_payload["r_ohm"])
         if isinstance(grounding_payload.get("x_ohm"), int | float):
             grounding_config["x_ohm"] = float(grounding_payload["x_ohm"])
+        blad_uziemienia_gpz = blad_konfiguracji_uziemienia(
+            grounding_type, grounding_config.get("r_ohm"), grounding_config.get("x_ohm")
+        )
+        if blad_uziemienia_gpz is not None:
+            return _error_response(
+                f"Uziemienie punktu neutralnego GPZ: {blad_uziemienia_gpz}.",
+                "source.invalid_grounding",
+            )
 
     zero_sequence_payload = payload.get("zero_sequence")
     zero_sequence_config: dict[str, bool | float] | None = None
@@ -3964,7 +4014,6 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 "name": gpz_section_bus_names[idx],
                 "voltage_kv": voltage_kv,
                 "zone": "GPZ",
-                "grounding": grounding_config,
                 "meta": {
                     "gpz_section_id": section["section_id"],
                     "gpz_section_order": section["order"],
@@ -4009,6 +4058,9 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
     # katalogowej — nigdy z niezależnego, fabrykowanego `or 110.0`.
     gpz_transformer_refs: list[str] = []
     gpz_hv_bus_refs: list[str] = []
+    # W5-A: tabliczka PIERWSZEGO transformatora WN/SN — dana wejściowa
+    # wyprowadzenia Z0 równoważnika z opisu punktu neutralnego (niżej).
+    gpz_pierwszy_transformator: tuple[str, dict[str, Any]] | None = None
     for index in range(transformer_count):
         order = index + 1
         hv_bus_ref = _make_id("gpz", seed, f"transformer/{order:03d}/bus_110")
@@ -4031,6 +4083,8 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         if isinstance(materialization, dict):
             return materialization
         transformer_binding_payload, transformer_materialized_params = materialization
+        if gpz_pierwszy_transformator is None:
+            gpz_pierwszy_transformator = (transformer_ref, transformer_materialized_params)
         # `voltage_hv_kv` jest polem WYMAGANYM kontraktu TransformerType
         # (network_model/catalog/types.py) — zawsze obecne po udanej
         # materializacji, więc szyna 110 kV dostaje realną daną katalogową.
@@ -4147,6 +4201,14 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             "catalog_role": "GPZ_110_SN",
         },
     }
+    if grounding_config is not None:
+        source_data["neutral_grounding"] = grounding_config
+        _wyprowadz_z0_zrodla_z_uziemienia(
+            grounding_config,
+            materialized_params,
+            voltage_kv=float(voltage_kv),
+            transformator=gpz_pierwszy_transformator,
+        )
     if binding_payload is not None:
         _apply_catalog_metadata(source_data, binding_payload, default_namespace="ZRODLO_SN")
     elif manual_source_mode:
@@ -4417,8 +4479,6 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             "meta": {
                 "gpz_section_count": len(gpz_sections),
                 "wn_sn_transformer_count": len(gpz_transformer_refs),
-                "grounding": grounding_config,
-                "zero_sequence": zero_sequence_config,
                 "short_circuit_mode": materialized_params.get("short_circuit_mode"),
                 "short_circuit_input_side": materialized_params.get(
                     "short_circuit_input_side", "SN"
@@ -4716,6 +4776,9 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
         branch_data, materialized_params, czestotliwosc_studium_hz(enm)
     )
     _apply_explicit_segment_zero_sequence(branch_data, segment)
+    blad_ekranu = _apply_screen_bonding(branch_data, segment)
+    if blad_ekranu is not None:
+        return blad_ekranu
 
     result = create_branch(new_enm, branch_data)
     if not result.success:
@@ -4788,73 +4851,206 @@ def _unique_default_station_name(enm: dict[str, Any], station_type_label: str) -
     return f"Stacja S{highest + 1:02d} (typ {station_type_label})"
 
 
-# Dozwolone typy pracy punktu neutralnego (kontrakt `enm.models.GroundingConfig`).
-_NEUTRAL_POINT_TYPES = frozenset(
-    {"isolated", "petersen_coil", "directly_grounded", "resistor_grounded"}
-)
-# Dozwolone układy sieci nN (etykieta interpretacyjna dla pętli zwarcia / raportu).
-_NN_EARTHING_SYSTEMS = frozenset({"TN-S", "TN-C-S", "TN-C", "TT", "IT"})
-
-
-def _build_neutral_grounding(earthing_block: dict[str, Any], *, side: str) -> dict[str, Any] | None:
+def _build_neutral_grounding(
+    earthing_block: dict[str, Any], *, side: str
+) -> tuple[dict[str, Any] | None, str | None]:
     """Zbuduj `GroundingConfig` punktu neutralnego z bloku uziemienia (G-STK-1).
 
     ``side`` = "lv" (nN) lub "hv" (SN). Odczytuje typ pracy punktu neutralnego
     (`neutral_point` / `{side}_neutral_point`) oraz impedancję uziemienia (R/X)
-    i zwraca słownik zgodny 1:1 z `enm.models.GroundingConfig` (typ + r_ohm/x_ohm)
-    albo ``None`` gdy strona nie ma skonfigurowanego uziemienia. Funkcja czysta,
-    ZERO fabrykacji: gdy typ nieprawidłowy/pusty → ``None`` (backend/model waliduje).
+    i zwraca ``(konfiguracja, None)`` — słownik zgodny 1:1 z
+    `enm.models.GroundingConfig` — albo ``(None, None)`` gdy strona nie ma
+    skonfigurowanego uziemienia. W5-A: typ spoza słownika albo konfiguracja
+    niespójna (rezystor bez R_N, dławik bez X_N — ten sam predykat co walidator
+    E-W5-01 i model składowej zerowej) to ``(None, komunikat)`` — odmowa nazwana,
+    nie cicha rezygnacja z uziemienia.
     """
     key = f"{side}_neutral_point"
     raw_type = earthing_block.get(key) or (
         earthing_block.get("neutral_point") if side == "lv" else None
     )
     grounding_type = str(raw_type or "").strip()
-    if grounding_type not in _NEUTRAL_POINT_TYPES:
-        return None
-    config: dict[str, Any] = {"type": grounding_type}
+    if not grounding_type:
+        return None, None
+    strona = "nN" if side == "lv" else "SN"
+    if grounding_type not in TYPY_PUNKTU_NEUTRALNEGO:
+        return None, (
+            f"Typ punktu neutralnego strony {strona} '{grounding_type}' spoza słownika "
+            f"({', '.join(TYPY_PUNKTU_NEUTRALNEGO)})."
+        )
     # R/X istotne tylko dla uziemienia przez rezystor/cewkę (impedancyjne).
     r_ohm = _as_positive_float(earthing_block.get(f"{side}_r_ohm"))
     x_ohm = _as_positive_float(earthing_block.get(f"{side}_x_ohm"))
+    blad = blad_konfiguracji_uziemienia(grounding_type, r_ohm, x_ohm)
+    if blad is not None:
+        return None, f"Punkt neutralny strony {strona}: {blad}."
+    config: dict[str, Any] = {"type": grounding_type}
     if r_ohm is not None:
         config["r_ohm"] = r_ohm
     if x_ohm is not None:
         config["x_ohm"] = x_ohm
-    return config
+    return config, None
+
+
+def _blad_slownikow_transformatora(parameters: dict[str, Any]) -> dict[str, Any] | None:
+    """W5-A: pola słownikowe transformatora sprawdzane PRZY ZAPISIE — ten sam predykat,
+    który czyta walidator (E-W5-02 grupa połączeń IEC 60076-1, E063 układ nN, spójność
+    R/X punktu neutralnego). Wartość spoza słownika = odmowa nazwana, nie awaria
+    modelu Pydantic przy następnym wczytaniu. Zwraca odpowiedź błędu albo ``None``."""
+    grupa = parameters.get("vector_group")
+    if grupa is not None and not grupa_polaczen_poprawna(grupa):
+        return _error_response(
+            f"Grupa połączeń '{grupa}' spoza słownika IEC 60076-1 "
+            f"({len(GRUPY_POLACZEN_IEC60076)} grup).",
+            "transformer.invalid_vector_group",
+        )
+    uklad = parameters.get("lv_earthing_system")
+    if uklad is not None and uklad not in UKLADY_SIECI_NN:
+        return _error_response(
+            f"Układ sieci nN '{uklad}' spoza słownika ({', '.join(UKLADY_SIECI_NN)}).",
+            "transformer.invalid_lv_earthing_system",
+        )
+    for klucz in ("hv_neutral", "lv_neutral"):
+        config = parameters.get(klucz)
+        if config is None:
+            continue
+        if not isinstance(config, dict):
+            return _error_response(
+                f"Konfiguracja punktu neutralnego '{klucz}' musi być słownikiem "
+                "{type, r_ohm, x_ohm}.",
+                "transformer.invalid_neutral_grounding",
+            )
+        if config.get("type") not in TYPY_PUNKTU_NEUTRALNEGO:
+            return _error_response(
+                f"{klucz}: typ punktu neutralnego '{config.get('type')}' spoza słownika "
+                f"({', '.join(TYPY_PUNKTU_NEUTRALNEGO)}).",
+                "transformer.invalid_neutral_grounding",
+            )
+        blad = blad_konfiguracji_uziemienia(
+            config.get("type"), config.get("r_ohm"), config.get("x_ohm")
+        )
+        if blad is not None:
+            return _error_response(f"{klucz}: {blad}", "transformer.invalid_neutral_grounding")
+    return None
 
 
 def _apply_station_neutral_grounding(
     tr_data: dict[str, Any],
     payload: dict[str, Any],
-    *,
-    station: str,
-    new_enm: dict[str, Any],
-) -> None:
+) -> dict[str, Any] | None:
     """Materializuj uziemienie punktu neutralnego transformatora stacji (G-STK-1).
 
     Odczytuje blok ``nn_earthing`` (z ``payload`` lub ``payload["station"]``) i
     ustawia ``GroundingConfig`` na ``lv_neutral`` (nN) oraz opcjonalnie
-    ``hv_neutral`` (SN). Układ sieci nN (TN-S/TT/IT…) zapisuje na
-    ``substation.meta.nn_earthing_system`` jako etykietę interpretacyjną dla
-    pętli zwarcia / raportu (G-STK-4). Addytywne: brak bloku → transformator bez
-    zmian. ZERO fizyki — konfiguracja spływa do istniejących konsumentów
-    (eligibility ``has_grounding``, pakiet dowodowy earthing, field read model).
+    ``hv_neutral`` (SN). Układ sieci nN (``lv_system``: TN-S/TN-C-S/TN-C/TT/IT)
+    zapisuje na ``Transformer.lv_earthing_system`` — JEDYNYM nośniku układu
+    (W5-A §1 p. 2; do tej karty lądował w ``substation.meta`` jako worek).
+    Addytywne: brak bloku → transformator bez zmian. Zwraca odpowiedź błędu
+    operacji (odmowa nazwana) albo ``None``. ZERO fizyki — konfiguracja spływa
+    do konsumentów (eligibility, pętla zwarcia, pakiet dowodowy, field read model).
     """
     earthing = payload.get("nn_earthing") or payload.get("station", {}).get("nn_earthing")
     if not isinstance(earthing, dict) or not earthing:
-        return
-    lv_grounding = _build_neutral_grounding(earthing, side="lv")
-    hv_grounding = _build_neutral_grounding(earthing, side="hv")
-    if lv_grounding is not None:
-        tr_data["lv_neutral"] = lv_grounding
-    if hv_grounding is not None:
-        tr_data["hv_neutral"] = hv_grounding
+        return None
+    for side, klucz in (("lv", "lv_neutral"), ("hv", "hv_neutral")):
+        config, blad = _build_neutral_grounding(earthing, side=side)
+        if blad is not None:
+            return _error_response(blad, "station.invalid_grounding")
+        if config is not None:
+            tr_data[klucz] = config
     system = str(earthing.get("lv_system") or "").strip()
-    if system in _NN_EARTHING_SYSTEMS:
-        for sub in new_enm.get("substations", []):
-            if sub.get("ref_id") == station:
-                sub.setdefault("meta", {})["nn_earthing_system"] = system
-                break
+    if system:
+        if system not in UKLADY_SIECI_NN:
+            return _error_response(
+                f"Układ sieci nN '{system}' spoza słownika ({', '.join(UKLADY_SIECI_NN)}).",
+                "station.invalid_nn_earthing_system",
+            )
+        tr_data["lv_earthing_system"] = system
+    return None
+
+
+def _wyprowadz_z0_zrodla_z_uziemienia(
+    grounding_config: dict[str, Any],
+    materialized_params: dict[str, Any],
+    *,
+    voltage_kv: float,
+    transformator: tuple[str, dict[str, Any]] | None,
+) -> None:
+    """W5-A: R0/X0 równoważnika GPZ WYPROWADZONE z opisu punktu neutralnego.
+
+    Z_0 = Z_T0 + 3·Z_N (IEC 60909-0 § 6), Z_T0 = Z_T pierwszego transformatora
+    WN/SN z katalogu (założenie JAWNE, to samo co ``enm/zero_sequence_transformer``:
+    katalog nie niesie odrębnej Z_T0), Z_N = R_N + jX_N z ``GroundingConfig``.
+    Algebra w ``network_model/pochodne/skladowe_zerowe.py``; tu wyłącznie
+    warunki i ślad White Box (wzór → dane → podstawienie → wynik) zapisany w
+    ``materialized_params["zero_sequence_provenance"]`` z proweniencją
+    ``WYPROWADZONE``. Fizyka źródła czyta, jak dotąd, ``r0_ohm``/``x0_ohm``.
+
+    NIE wyprowadza (zero fabrykacji), gdy: punkt neutralny izolowany (Z_0 = ∞;
+    źródło zostaje bez bocznika zerowego), liczby podano jawnie (payload
+    ``zero_sequence`` — DEKLARACJA projektanta/OSD wygrywa), równoważnik stoi
+    po stronie 110 kV (jego Z_0 to Z_0 sieci 110 kV, nie punkt neutralny SN),
+    albo brak transformatora WN/SN (brak Z_T0 — bez zgadywania).
+    """
+    typ = str(grounding_config.get("type"))
+    if not uziemienie_grounded(typ):
+        return
+    if materialized_params.get("short_circuit_input_side", "SN") == "HV_110":
+        return
+    if (
+        materialized_params.get("r0_ohm") is not None
+        or materialized_params.get("x0_ohm") is not None
+        or materialized_params.get("z0_z1_ratio") is not None
+    ):
+        return
+    if transformator is None:
+        return
+    transformer_ref, tabliczka = transformator
+    uk_percent = tabliczka.get("uk_percent")
+    pk_kw = tabliczka.get("pk_kw")
+    sn_mva = tabliczka.get("rated_power_mva")
+    if not (isinstance(uk_percent, int | float) and uk_percent > 0):
+        return
+    if not (isinstance(sn_mva, int | float) and sn_mva > 0):
+        return
+    # Straty obciążeniowe P_k są DANĄ katalogową, nie domyślką: bez nich nie ma R_T, a
+    # ciche 0.0 zaniżałoby R_0 równoważnika — brak = brak wyprowadzenia (walidator
+    # E-W5-01 melduje „punkt uziemiony bez Z0"), nigdy podstawienie liczby.
+    if not (isinstance(pk_kw, int | float) and pk_kw > 0):
+        return
+    pk_kw = float(pk_kw)
+    r_n_ohm = grounding_config.get("r_ohm")
+    x_n_ohm = grounding_config.get("x_ohm")
+    z_t0 = impedancja_rozproszenia_transformatora_ohm(
+        float(uk_percent), pk_kw, float(sn_mva), voltage_kv
+    )
+    z_n = impedancja_punktu_neutralnego_ohm(r_n_ohm, x_n_ohm)
+    z_0 = impedancja_zerowa_zrodla_z_uziemienia_ohm(z_t0, z_n)
+    materialized_params["r0_ohm"] = z_0.real
+    materialized_params["x0_ohm"] = z_0.imag
+    materialized_params["zero_sequence_provenance"] = {
+        "proweniencja": PROWENIENCJA_WYPROWADZONE,
+        "wzor": "Z_0 = Z_T0 + 3·Z_N; Z_T0 = Z_T = (u_k/100)·U²/S_rT, R_T = (P_k/S_rT)·U²/S_rT",
+        "zalozenie": (
+            "Z_T0 = Z_T pierwszego transformatora WN/SN (katalog nie niesie odrębnej "
+            "impedancji zerowej); Z_N z opisu punktu neutralnego równoważnika"
+        ),
+        "dane": {
+            "transformer_ref": transformer_ref,
+            "uk_percent": float(uk_percent),
+            "pk_kw": pk_kw,
+            "sn_mva": float(sn_mva),
+            "u_kv": voltage_kv,
+            "typ_punktu_neutralnego": typ,
+            "r_n_ohm": r_n_ohm,
+            "x_n_ohm": x_n_ohm,
+        },
+        "podstawienie": (
+            f"Z_T0 = {z_t0.real:.6g} + j{z_t0.imag:.6g} Ω; Z_N = {z_n.real:.6g} + j{z_n.imag:.6g} Ω; "
+            f"Z_0 = Z_T0 + 3·Z_N = {z_0.real:.6g} + j{z_0.imag:.6g} Ω"
+        ),
+        "wynik": {"r0_ohm": z_0.real, "x0_ohm": z_0.imag},
+    }
 
 
 def _apply_transformer_parallelism(
@@ -6772,7 +6968,9 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
             "pk_kw": 0.0,
         }
         _apply_transformer_parallelism(tr_data, transformer)
-        _apply_station_neutral_grounding(tr_data, payload, station=stn_id, new_enm=new_enm)
+        blad_uziemienia_stacji = _apply_station_neutral_grounding(tr_data, payload)
+        if blad_uziemienia_stacji is not None:
+            return blad_uziemienia_stacji
         materialization = _materialize_catalog_payload(
             catalog_ref=tr_catalog,
             catalog_binding=transformer_catalog_binding,
@@ -7664,6 +7862,9 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
         branch_data, materialized_params, czestotliwosc_studium_hz(enm)
     )
     _apply_explicit_segment_zero_sequence(branch_data, segment)
+    blad_ekranu = _apply_screen_bonding(branch_data, segment)
+    if blad_ekranu is not None:
+        return blad_ekranu
     result = create_branch(new_enm, branch_data)
     if not result.success:
         return _error_response("Nie udało się utworzyć odgałęzienia.", "branch.creation_failed")
@@ -8070,6 +8271,9 @@ def connect_secondary_ring_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
         default_namespace="KABEL_SN" if branch_type == "cable" else "LINIA_SN",
     )
     _apply_materialized_branch_fields(ring_data, materialized_params, czestotliwosc_studium_hz(enm))
+    blad_ekranu = _apply_screen_bonding(ring_data, segment)
+    if blad_ekranu is not None:
+        return blad_ekranu
     result = create_branch(new_enm, ring_data)
     if not result.success:
         return _error_response("Nie udało się zamknąć pierścienia.", "ring.creation_failed")
@@ -8384,6 +8588,15 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
     brak_pol_tr = _require_transformer_fields(tr_data, tr_ref)
     if brak_pol_tr is not None:
         return brak_pol_tr
+    # W5-A (F-4/G6): grupa połączeń wybrana jawnie w kreatorze nadpisuje wartość
+    # katalogu — wyłącznie ze słownika IEC 60076-1 (ten sam predykat co E-W5-02);
+    # katalogowa grupa zostaje w `materialized_params` jako ślad pochodzenia.
+    grupa_payload = payload.get("vector_group")
+    if grupa_payload is not None:
+        blad_grupy = _blad_slownikow_transformatora({"vector_group": grupa_payload})
+        if blad_grupy is not None:
+            return blad_grupy
+        tr_data["vector_group"] = str(grupa_payload).strip()
 
     # OLTC/DETC (V12K-048, G-TRF): materializuj kanoniczny TapChanger, gdy operator
     # zażądał regulacji. Reużycie proven helpera GPZ — każde pole mapuje na realne
@@ -8705,6 +8918,7 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 "b0_siemens_per_km",
                 "rating",
                 "insulation",
+                "screen_bonding",
                 "catalog_ref",
                 "parameter_source",
                 "overrides",
@@ -8725,6 +8939,7 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 "vector_group",
                 "hv_neutral",
                 "lv_neutral",
+                "lv_earthing_system",
                 "n_parallel",
                 "tap_position",
                 "tap_min",
@@ -8806,6 +9021,18 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
         _, blad_faz = waliduj_fazy_odbioru(parameters["phases"])
         if blad_faz is not None:
             return _error_response(blad_faz, KOD_BLEDU_FAZ)
+    # W5-A: pola słownikowe (grupa połączeń, układ nN, punkt neutralny, ekran kabla)
+    # sprawdzane tym samym predykatem co kreatory — korekta ekspercka nie ma
+    # osobnej, luźniejszej drogi zapisu.
+    if coll == "transformers":
+        blad_slownika = _blad_slownikow_transformatora(parameters)
+        if blad_slownika is not None:
+            return blad_slownika
+    if coll == "branches" and "screen_bonding" in parameters:
+        proba = {"type": current_element.get("type")}
+        blad_ekranu = _apply_screen_bonding(proba, {"screen_bonding": parameters["screen_bonding"]})
+        if blad_ekranu is not None:
+            return blad_ekranu
 
     new_enm = kopia_graniczna_enm(enm)
     for key, value in parameters.items():
@@ -9973,9 +10200,9 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         _apply_catalog_metadata(transformer, binding_payload, default_namespace="TRAFO_SN_NN")
         _apply_materialized_transformer_fields(transformer, materialized_params)
         # Uziemienie punktu neutralnego — PARYTET z insert (G-STK-1).
-        _apply_station_neutral_grounding(
-            transformer, payload, station=substation_ref, new_enm=new_enm
-        )
+        blad_uziemienia_stacji = _apply_station_neutral_grounding(transformer, payload)
+        if blad_uziemienia_stacji is not None:
+            return blad_uziemienia_stacji
         # Praca równoległa transformatorów — PARYTET z insert (G-STK-6).
         _apply_transformer_parallelism(transformer, transformer_payload)
         new_enm.setdefault("transformers", []).append(transformer)

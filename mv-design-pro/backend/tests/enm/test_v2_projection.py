@@ -33,7 +33,6 @@ def _sample_enm() -> EnergyNetworkModel:
                 ref_id="bus_b",
                 name="Szyna B",
                 voltage_kv=15.0,
-                grounding=GroundingConfig(type="petersen_coil", x_ohm=120.0),
             ),
         ],
         branches=[
@@ -89,6 +88,8 @@ def _sample_enm() -> EnergyNetworkModel:
                 rx_ratio=0.1,
                 r0_ohm=0.1,
                 x0_ohm=0.8,
+                # W5-A: opis punktu neutralnego sieci SN na ŹRÓDLE (dawniej `bus_b.grounding`).
+                neutral_grounding=GroundingConfig(type="petersen_coil", x_ohm=120.0),
                 catalog_ref="gpz.source",
             )
         ],
@@ -177,7 +178,8 @@ def test_projection_extracts_zero_sequence_configs():
     assert by_ref["cable_1"].quality_status == "pelna"
     assert by_ref["src_1"].x0 == 0.8
     assert by_ref["tr_1"].grounding_type == "resistor_grounded"
-    assert by_ref["bus_b"].grounding_type == "petersen_coil"
+    assert by_ref["src_1"].grounding_type == "petersen_coil"
+    assert "bus_b" not in by_ref  # W5-A: szyna nie niesie uziemienia
 
 
 def test_projection_warns_about_legacy_wind_type_and_missing_catalog():

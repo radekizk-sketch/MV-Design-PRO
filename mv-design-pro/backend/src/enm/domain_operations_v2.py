@@ -31,6 +31,7 @@ from network_model.catalog.switchgear import (
     family_supports_voltage,
 )
 from network_model.catalog.types import CatalogBinding
+from network_model.core.uziemienie import ROLE_UZIEMNIKA
 from network_model.pochodne import (
     km_na_m,
     kvar_na_mvar,
@@ -55,6 +56,7 @@ from .domain_operations import (
     _apply_catalog_metadata,
     _apply_materialized_branch_fields,
     _apply_materialized_transformer_fields,
+    _apply_screen_bonding,
     _build_field_spec,
     _canonical_sn_field_role,
     _compute_seed,
@@ -2018,6 +2020,29 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         )
     except NiezgodnoscKonfiguracjiError as blad:
         return _error_response(str(blad), _KOD_BLEDU_POLA_KATALOGOWEGO)
+    # W5-A: rola uziemnika pola — deklaracja PROJEKTANTA (typologia §12.5 spec SLD:
+    # uziemnik pola / uziemienie ekranów kabla / konstrukcji / punktu neutralnego).
+    # Szablon i katalog piszą `field_earth`; kreator pola może to nadpisać
+    # (np. `cable_screen` dla pola kablowego z uziemieniem ekranów). Rola bez
+    # uziemnika w torze pola to błąd nazwany, nie cicho zgubiona dana.
+    rola_uziemnika_raw = payload.get("earthing_role")
+    if rola_uziemnika_raw is not None:
+        rola_uziemnika = str(rola_uziemnika_raw).strip()
+        if rola_uziemnika not in ROLE_UZIEMNIKA:
+            return _error_response(
+                f"Rola uziemnika '{rola_uziemnika}' spoza słownika "
+                f"({', '.join(ROLE_UZIEMNIKA)}).",
+                "sn.bay_earthing_role_invalid",
+            )
+        uziemniki = [d for d in primary_devices_spec if d.get("kind") == "ES"]
+        if not uziemniki:
+            return _error_response(
+                "Pole nie ma uziemnika (ES) w torze pierwotnym — rola uziemnika nie ma "
+                "nośnika. Wybierz szablon/pole katalogowe z uziemnikiem albo pomiń rolę.",
+                "sn.bay_earthing_role_without_es",
+            )
+        for uziemnik in uziemniki:
+            uziemnik["earthing_role"] = rola_uziemnika
     if primary_devices_spec:
         producer_refs["primary_devices"] = primary_devices_spec
 
@@ -2879,6 +2904,9 @@ def _add_nn_cable_segment_internal(
         branch_data, materialized_params, czestotliwosc_studium_hz(enm)
     )
     branch_data["length_km"] = m_na_km(length_m)
+    blad_ekranu = _apply_screen_bonding(branch_data, payload)
+    if blad_ekranu is not None:
+        return blad_ekranu
 
     result = create_branch(new_enm, branch_data)
     if not result.success:
@@ -4881,6 +4909,7 @@ def _materialize_der_mv_cable(
     length_km: float,
     czestotliwosc_hz: float,
     laying_conditions: dict[str, Any] | None = None,
+    screen_bonding: object = None,
 ) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
     """Zmaterializuj kabel SN przyłączeniowy DER (katalog KABEL_SN), krótki odcinek.
 
@@ -4932,6 +4961,10 @@ def _materialize_der_mv_cable(
     _apply_catalog_metadata(branch_data, binding_payload, default_namespace=przestrzen_katalogu)
     _apply_materialized_branch_fields(branch_data, materialized_params, czestotliwosc_hz)
     branch_data["length_km"] = length_km
+    # W5-A: układ uziemienia ekranu — ta sama klasa co każdy inny kabel SN/nN.
+    blad_ekranu = _apply_screen_bonding(branch_data, {"screen_bonding": screen_bonding})
+    if blad_ekranu is not None:
+        return None, blad_ekranu
     return branch_data, None
 
 
@@ -5354,6 +5387,7 @@ def _add_converter_source_der_sn(
         length_km=cable_length_km,
         czestotliwosc_hz=czestotliwosc_studium_hz(enm),
         laying_conditions=laying_conditions,
+        screen_bonding=mv_field_cfg.get("cable_screen_bonding"),
     )
     if cable_error is not None:
         return cable_error

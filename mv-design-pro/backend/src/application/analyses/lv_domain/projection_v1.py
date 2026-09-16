@@ -37,7 +37,6 @@ from typing import Any
 
 from application.analyses.fault_loop.service import (
     _find_station,
-    _system_for_station,
     build_feeder_fault_loop_view_for_transformer,
     station_transformers,
 )
@@ -281,7 +280,8 @@ def _swz_snapshot(enm: EnergyNetworkModel, station_ref: str) -> dict[str, Any]:
             "status": "brak danych",
             "reason_pl": None,
             "missing_data": ["transformer"],
-            "network_system": _system_for_station(station),
+            # W5-A: układ nN niesie transformator — bez transformatora nie ma nośnika.
+            "network_system": None,
             "transformers": [],
         }
 

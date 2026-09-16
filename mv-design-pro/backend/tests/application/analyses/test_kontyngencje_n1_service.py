@@ -801,9 +801,15 @@ def test_remis_pelnej_dotkliwosci_rozstrzyga_element_ref_rosnaco() -> None:
 #: nazw BEZ ZMIAN. Formuła B=2πfC (`math.pi`, f=50.0 Hz ze studium) jest bit
 #: w bit identyczna z formułą sprzed migracji — rozjazd odcisku to WYŁĄCZNIE
 #: nowe pole, nie zmiana fizyki.
+#: W5-A (2026-09-16): odciski przeliczone ŚWIADOMIE — sieci gn01/gn03 niosą odtąd układ
+#: sieci nN na `Transformer.lv_earthing_system` (zamiast `substation.meta`), a szyny/meta
+#: GPZ nie niosą pustych kluczy `grounding`/`zero_sequence`. Dowód (skrypt porównawczy
+#: widoków nowy vs. model bez pola): różnią się WYŁĄCZNIE `context.snapshot_hash` i
+#: `input_hash` (odcisk treści modelu); `kontyngencje`, `ranking`, `podsumowanie`,
+#: `przypadek_bazowy` są identyczne co do bajtu — fizyka N-1 bez zmian.
 ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
-    "gn01_promieniowa": "f53274e473c056d5cb650951bf964e24831e31ad1addd57d1f96e16ef3d38d29",
-    "gn03_pierscien": "824c7e3eb94dd935e5388209a93197d26006d82d2eeba6a42a6efe835ee7de61",
+    "gn01_promieniowa": "5a99f85511779f7cdc471738239533b44fa0e61881bc7882c79cdfa30f3c13f0",
+    "gn03_pierscien": "3a2023b2425f60490a1be1b702ac2f478047c3a44da9420b6d3638c97a486c49",
 }
 
 

@@ -95,6 +95,7 @@ def _enm(
                 uk_percent=4.0,
                 pk_kw=6.5,
                 vector_group="Dyn11",
+                lv_earthing_system="TN-C-S",
             )
         ],
         branches=branches,
@@ -105,7 +106,6 @@ def _enm(
                 station_type="mv_lv",
                 bus_refs=["nn"],
                 transformer_refs=["tr"],
-                meta={"nn_earthing_system": "TN-C-S"},
             )
         ],
     )
@@ -175,7 +175,7 @@ def test_swz_it_system_not_applicable() -> None:
         catalog_namespace="APARAT_NN_MCB",
         materialized_params={"in_a": 16.0, "curve_class": "B"},
     )
-    enm.substations[0].meta["nn_earthing_system"] = "IT"
+    enm.transformers[0].lv_earthing_system = "IT"
     view = build_swz_view(enm, "stn", "b1", "ap1")
     assert view["status"] == "nie dotyczy"
 

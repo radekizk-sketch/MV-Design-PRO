@@ -59,14 +59,12 @@ from application.analyses.fault_loop.route import (
 # NIE zależą od ocenianego aparatu, więc liczą się RAZ, tą samą fizyką co
 # SWZ (zero drugiej ścieżki obliczeniowej pętli zwarcia).
 from application.analyses.fault_loop.service import (
-    _DEFAULT_SYSTEM,
-    _NON_TN_SYSTEMS,
-    _SYSTEM_MAP,
     _find_station,
-    _system_for_station,
     _transformer_loop_impedance,
     _upstream_thevenin_lv_component,
+    odmowa_ukladu_nn,
     resolve_transformer_for_bus,
+    uklad_nn_transformatora,
 )
 from application.analyses.swz.werdykt import (
     AparatZabezpieczajacy,
@@ -95,6 +93,7 @@ from network_model.solvers.protection_lv_curves import (
     compute_mcb_thermal_point,
     compute_mccb_point,
 )
+from solver_input.uklad_sieci_nn import typ_sieci_solvera
 
 # =============================================================================
 # STAN KRYTERIUM (trzeci stan obowiązkowy)
@@ -683,20 +682,18 @@ def _ik1_min_i_u0(
     if station is None:
         return None, None, ["station"], None
 
-    system = _system_for_station(station)
-    if system in _NON_TN_SYSTEMS:
-        return (
-            None,
-            None,
-            [],
-            f"Układ {system}: SWZ metodą pętli TN (IEC 60364-4-41) nie dotyczy.",
-        )
-
     # Transformator ZASILAJĄCY punkt (właściciel szyny po zamkniętych gałęziach),
     # nie „pierwszy transformator stacji" — klasa B-02 (stacja 2×TR, sekcja 2).
     trafo, transformer_missing = resolve_transformer_for_bus(enm, station, bus_ref)
     if trafo is None:
         return None, None, transformer_missing, None
+
+    # W5-A: układ sieci nN z transformatora zasilającego; brak/TT/IT = odmowa nazwana.
+    system = uklad_nn_transformatora(trafo)
+    odmowa = odmowa_ukladu_nn({}, system)
+    if odmowa is not None:
+        return None, None, list(odmowa.get("missing_data", [])), odmowa.get("reason_pl")
+    assert system is not None
 
     z_tr, missing = _transformer_loop_impedance(trafo)
     if z_tr is None:
@@ -713,7 +710,7 @@ def _ik1_min_i_u0(
         return None, None, ["route"], str(exc)
 
     phase_component, return_component = sum_phase_and_return_route(segments)
-    net_type, protection = _SYSTEM_MAP.get(system, _SYSTEM_MAP[_DEFAULT_SYSTEM])
+    net_type, protection = typ_sieci_solvera(system)
     u_phase_v = napiecie_fazowe_v(kv_na_v(trafo.ulv_kv))
 
     request = FaultLoopBuildRequest(

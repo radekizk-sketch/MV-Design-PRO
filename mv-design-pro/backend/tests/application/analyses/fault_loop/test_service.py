@@ -46,6 +46,7 @@ def _base_enm(branches: list, extra_buses: list[str]) -> EnergyNetworkModel:
                 uk_percent=4.0,
                 pk_kw=6.5,
                 vector_group="Dyn11",
+                lv_earthing_system="TN-C-S",
             )
         ],
         branches=branches,
@@ -56,7 +57,6 @@ def _base_enm(branches: list, extra_buses: list[str]) -> EnergyNetworkModel:
                 station_type="mv_lv",
                 bus_refs=["nn"],
                 transformer_refs=["tr"],
-                meta={"nn_earthing_system": "TN-C-S"},
             )
         ],
     )

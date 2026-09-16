@@ -149,6 +149,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "apparatus_kind",
             "gpz_section_id",
             "catalog_binding",
+            "earthing_role",
         ),
     ),
     "add_sn_bay_from_catalog": OperationSpec(
@@ -170,6 +171,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "gpz_section_id",
             "catalog_binding",
             "protection_ref",
+            "earthing_role",
         ),
     ),
     # --- Station & nN (6 operations) ---
@@ -596,6 +598,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "n_parallel",
             "name",
             "cable_laying_conditions",
+            "screen_bonding",
         ),
         creates_elements=True,
     ),
@@ -748,6 +751,19 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         level=ReadinessLevel.BLOCKER,
         message_pl="Nieprawidłowa moc zwarciowa źródła Sk3",
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "sk3_mva"},
+    ),
+    # W5-A: konfiguracja punktu neutralnego niespojna (walidator E-W5-01 — zrodlo
+    # GPZ i uzwojenia transformatora, jeden predykat `enm/uziemienie.py`).
+    "earthing.neutral_grounding_inconsistent": ReadinessCodeSpec(
+        code="earthing.neutral_grounding_inconsistent",
+        area=ReadinessArea.SOURCES,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Konfiguracja punktu neutralnego niespójna: rezystor bez R_N, dławik bez X_N "
+            "albo punkt izolowany ze skończoną impedancją zerową — popraw typ i impedancję"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "neutral_grounding"},
     ),
     "source.grid_supply_missing": ReadinessCodeSpec(
         code="source.grid_supply_missing",
@@ -1454,6 +1470,20 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "katalog", "tab": "kable", "focus": "insulation_type"},
     ),
+    # W5-A (F9): uklad uziemienia ekranu kabla inny niz uklad odniesienia
+    # katalogowych r0/x0 — walidator W-W5-01 (bez przeliczania: brak geometrii).
+    "cable.screen_bonding_reference_mismatch": ReadinessCodeSpec(
+        code="cable.screen_bonding_reference_mismatch",
+        area=ReadinessArea.CATALOGS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Zamodelowany układ uziemienia ekranu kabla różni się od układu, dla "
+            "którego katalog podaje R0/X0 — składowa zerowa z katalogu dotyczy "
+            "innego układu uziemienia ekranu"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "screen_bonding"},
+    ),
     "cable.operating_temperature_missing": ReadinessCodeSpec(
         code="cable.operating_temperature_missing",
         area=ReadinessArea.CATALOGS,
@@ -1505,6 +1535,46 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "(składowa zerowa) nie mogą wyznaczyć układu bez tej danej"
         ),
         fix_navigation={"panel": "katalog", "tab": "transformatory", "focus": "vector_group"},
+    ),
+    # W5-A (jedna reprezentacja uziemienia, F-4/G6): grupa polaczen spoza slownika
+    # IEC 60076-1 — walidator E-W5-02.
+    "transformer.vector_group_invalid": ReadinessCodeSpec(
+        code="transformer.vector_group_invalid",
+        area=ReadinessArea.CATALOGS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Grupa połączeń transformatora spoza słownika IEC 60076-1 — wybierz "
+            "grupę z listy (np. Dyn11, YNd11, Yzn5)"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "vector_group"},
+    ),
+    # W5-A: konfiguracja uziemienia na uzwojeniu bez wyprowadzonego punktu
+    # neutralnego (litera grupy bez N/n) — walidator E-W5-03.
+    "transformer.neutral_grounding_not_accessible": ReadinessCodeSpec(
+        code="transformer.neutral_grounding_not_accessible",
+        area=ReadinessArea.CATALOGS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Uzwojenie transformatora nie ma wyprowadzonego punktu neutralnego, a "
+            "konfiguracja deklaruje jego uziemienie — zmień grupę połączeń (N/n) albo "
+            "usuń konfigurację uziemienia tej strony"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "lv_neutral"},
+    ),
+    # W5-A §1 p. 2: uklad sieci nN typowany na transformatorze (walidator E063,
+    # gotowosc ELIG_FLNN_MISSING_EARTHING_SYSTEM) — brak = odmowa, nigdy TN-C-S.
+    "transformer.lv_earthing_system_missing": ReadinessCodeSpec(
+        code="transformer.lv_earthing_system_missing",
+        area=ReadinessArea.STATIONS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Transformator SN/nN nie deklaruje układu uziemienia sieci nN "
+            "(TN-S/TN-C-S/TN-C/TT/IT) — pętla zwarcia i SWZ nie mogą być liczone"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "lv_earthing_system"},
     ),
     "transformer.loading_factor_missing": ReadinessCodeSpec(
         code="transformer.loading_factor_missing",

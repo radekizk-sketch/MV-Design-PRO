@@ -240,8 +240,8 @@ def build_v126_insulation_from_enm(enm: EnergyNetworkModel) -> list[V126Insulati
       ``mv_surge_arrester_catalog`` po ``catalog_ref`` — gdy brak karty,
       pola pozostają ``None`` (solver wykonuje dobór wstępny, udokumentowany);
     - U_m z karty katalogowej albo z poziomu napięcia szyny (typoszereg IEC);
-    - ``network_neutral`` ZAWSZE z modelu (uziemienie punktu neutralnego szyny
-      albo transformatora, ``_resolve_network_neutral``) — karta W5-D p. 12
+    - ``network_neutral`` ZAWSZE z modelu (uziemienie punktu neutralnego
+      źródła GPZ (W5-A) albo transformatora, ``_resolve_network_neutral``) — karta W5-D p. 12
       (OD-24): ogranicznik na szynie, której uziemienia model nie zna, NIE
       dostaje wiersza z podstawioną wartością ``"isolated"`` (do W5-D most
       fabrykował tu ``neutral or "isolated"``); taka szyna trafia do
@@ -273,12 +273,22 @@ def _wejscia_izolacji(
     bus_by_ref = {bus.ref_id: bus for bus in enm.buses}
     bez_uziemienia: list[str] = []
 
+    def _stacja_szyny(bus_ref: str) -> str | None:
+        return next((s.ref_id for s in enm.substations if bus_ref in s.bus_refs), None)
+
     def _resolve_network_neutral(bus_ref: str) -> str | None:
-        bus = bus_by_ref.get(bus_ref)
-        if bus is not None and bus.grounding is not None:
-            mapped = _grounding_type_to_network_neutral(bus.grounding.type)
-            if mapped is not None:
-                return mapped
+        # W5-A: opis punktu neutralnego sieci SN niesie ZRODLO (GPZ) — na tej szynie
+        # albo w tej samej stacji (zrodlo po stronie 110 kV nie stoi na szynie SN).
+        stacja = _stacja_szyny(bus_ref)
+        for source in enm.sources:
+            if source.neutral_grounding is None:
+                continue
+            if source.bus_ref == bus_ref or (
+                stacja is not None and source.substation_ref == stacja
+            ):
+                mapped = _grounding_type_to_network_neutral(source.neutral_grounding.type)
+                if mapped is not None:
+                    return mapped
         for transformer in enm.transformers:
             if transformer.lv_bus_ref == bus_ref and transformer.lv_neutral is not None:
                 mapped = _grounding_type_to_network_neutral(transformer.lv_neutral.type)

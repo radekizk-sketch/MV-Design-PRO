@@ -83,6 +83,19 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     # warunek, ktory assembler rozplywu niesymetrycznego zglasza jako odmowe nazwana
     # (`enm/assembler.py::diagnoza_niesymetrii`) i ktory blokuje zwarcia 1F/2F-Z.
     "W001": "branch.zero_sequence_missing",
+    # W5-A (jedna reprezentacja uziemienia): transformator SN/nN bez ukladu sieci nN
+    # (`lv_earthing_system`) == ten sam fakt, ktory gotowosc petli zwarcia zglasza jako
+    # ELIG_FLNN_MISSING_EARTHING_SYSTEM (jeden predykat `enm/uklad_sieci_nn.py`).
+    "E063": "transformer.lv_earthing_system_missing",
+    # Konfiguracja punktu neutralnego niespojna (rezystor bez R_N, dlawik bez X_N,
+    # izolowany ze skonczona Z0) — zrodlo i transformator, jeden predykat.
+    "E-W5-01": "earthing.neutral_grounding_inconsistent",
+    # Grupa polaczen spoza slownika IEC 60076-1.
+    "E-W5-02": "transformer.vector_group_invalid",
+    # Uziemienie uzwojenia bez wyprowadzonego punktu neutralnego.
+    "E-W5-03": "transformer.neutral_grounding_not_accessible",
+    # Uklad uziemienia ekranu kabla inny niz uklad odniesienia katalogowych r0/x0.
+    "W-W5-01": "cable.screen_bonding_reference_mismatch",
 }
 
 # ---------------------------------------------------------------------------
@@ -164,10 +177,6 @@ KODY_WALIDATORA_BEZ_KANONU: dict[str, str] = {
         "Kanon nie ma kodu dla mieszania poziomow napiecia WEWNATRZ pasma nN — E020 "
         "(patrz wyzej) grupuje cale pasmo nN (<1 kV) jako JEDNO pasmo i nie wykrywa "
         "tego warunku."
-    ),
-    "E063": (
-        "Kanon nie ma kodu dla braku deklaracji ukladu uziemienia sieci nN stacji "
-        "(meta.nn_earthing_system) wymaganej kryterium SWZ (IEC 60364-4-41)."
     ),
     "E064": (
         "Kanon nie ma kodu dla ProtectionAssignment.breaker_ref wskazujacego galaz, "

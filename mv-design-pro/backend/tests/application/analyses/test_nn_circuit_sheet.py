@@ -83,6 +83,7 @@ def _siec_referencyjna() -> EnergyNetworkModel:
                 uk_percent=4.0,
                 pk_kw=6.5,
                 vector_group="Dyn11",
+                lv_earthing_system="TN-C-S",
                 catalog_ref="tr-630kva-referencyjny",
             )
         ],
@@ -217,7 +218,6 @@ def _siec_referencyjna() -> EnergyNetworkModel:
                 station_type="mv_lv",
                 bus_refs=["nn"],
                 transformer_refs=["tr"],
-                meta={"nn_earthing_system": "TN-C-S"},
             )
         ],
     )
@@ -379,8 +379,8 @@ class TestStanyTrzecie:
 
     def test_uklad_it_nie_dotyczy_swz_i_doboru(self) -> None:
         enm = _siec_referencyjna()
-        for s in enm.substations:
-            s.meta["nn_earthing_system"] = "IT"
+        for t in enm.transformers:
+            t.lv_earthing_system = "IT"
         wynik = build_nn_circuit_sheet(enm=enm, station_ref="stn")
         wiersz = next(w for w in wynik["wiersze"] if w["feeder_root_branch_ref"] == "ap_mcb")
         assert wiersz["swz"]["status"] == "nie dotyczy"

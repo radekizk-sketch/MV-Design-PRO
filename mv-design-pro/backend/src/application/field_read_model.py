@@ -29,7 +29,6 @@ from enm.models import (
     Branch,
     EnergyNetworkModel,
     Generator,
-    GroundingConfig,
     InterlockEntry,
     Measurement,
     ProtectionAssignment,
@@ -40,6 +39,7 @@ from enm.models import (
     SwitchBranch,
     Transformer,
 )
+from network_model.core.uziemienie import TypPunktuNeutralnego
 
 CANONICAL_BAY_ROLE_MAP: dict[str, str] = {
     "IN": "LINIA_IN",
@@ -1314,26 +1314,24 @@ def _resolve_neutral_grounding_mode(
     *,
     sources: list[Source],
     transformers: list[Transformer],
-) -> str:
+) -> TypPunktuNeutralnego | None:
+    """Sposob pracy punktu neutralnego przy szynie pola — ten sam slownik co
+    `GroundingConfig.type` (W5-A: koniec polskich literalow w kontrakcie).
+    Nosniki: punkt neutralny transformatora przy szynie, potem opis punktu
+    neutralnego zrodla (GPZ) na tej szynie."""
     for transformer in transformers:
         if transformer.hv_neutral is not None:
-            return _map_grounding_type(transformer.hv_neutral)
+            return transformer.hv_neutral.type
         if transformer.lv_neutral is not None:
-            return _map_grounding_type(transformer.lv_neutral)
-    # V12K-246: brak danych o punkcie neutralnym to „nieznany", NIE „bezposrednio
-    # uziemiony". Poprzedni domysl zamienial BRAK DANEJ w najmniej ostrozny werdykt:
-    # w sieci bezposrednio uziemionej prad zwarcia doziemnego jest duzy i mierzalny
-    # kryterium nadpradowym, wiec dobor zabezpieczen NIE zglaszal potrzeby kryterium
-    # kierunkowego — a polskie sieci SN sa w wiekszosci kompensowane albo uziemione
-    # przez rezystor. Obecnosc zrodla na szynie nie mowi NIC o sposobie uziemienia.
-    return "nieznany"
-
-
-def _map_grounding_type(grounding: GroundingConfig) -> str:
-    mapping = {
-        "isolated": "izolowany",
-        "petersen_coil": "cewka_petersena",
-        "resistor_grounded": "rezystor",
-        "directly_grounded": "bezposrednio_uziemiony",
-    }
-    return mapping.get(grounding.type, "nieznany")
+            return transformer.lv_neutral.type
+    for source in sources:
+        if source.neutral_grounding is not None:
+            return source.neutral_grounding.type
+    # V12K-246: brak danych o punkcie neutralnym to `None` (nieznany), NIE
+    # „bezposrednio uziemiony". Poprzedni domysl zamienial BRAK DANEJ w najmniej
+    # ostrozny werdykt: w sieci bezposrednio uziemionej prad zwarcia doziemnego jest
+    # duzy i mierzalny kryterium nadpradowym, wiec dobor zabezpieczen NIE zglaszal
+    # potrzeby kryterium kierunkowego — a polskie sieci SN sa w wiekszosci
+    # kompensowane albo uziemione przez rezystor. Obecnosc zrodla na szynie BEZ
+    # opisu punktu neutralnego nie mowi NIC o sposobie uziemienia.
+    return None

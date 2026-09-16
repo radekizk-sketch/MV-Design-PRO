@@ -170,16 +170,16 @@ def _ready_enm_with_z0() -> EnergyNetworkModel:
     utrwalała niepełny kontrakt fizyczny „Z0 gałęzi wystarcza do SC_1F".
     """
     bus2 = Bus(ref_id="bus_sn2", name="Szyna SN2", voltage_kv=15.0)
-    uziemiona_szyna = Bus(
-        ref_id="bus_sn",
-        name="Szyna SN",
-        voltage_kv=15.0,
-        grounding=GroundingConfig(type="petersen_coil", x_ohm=180.0),
+    szyna = Bus(ref_id="bus_sn", name="Szyna SN", voltage_kv=15.0)
+    # W5-A: nośnikiem opisu punktu neutralnego sieci SN jest ŹRÓDŁO (równoważnik GPZ),
+    # nie szyna — `Bus.grounding` skasowane (intencja V12K-219 bez zmian).
+    zrodlo = _valid_source_with_z0().model_copy(
+        update={"neutral_grounding": GroundingConfig(type="petersen_coil", x_ohm=180.0)}
     )
     return EnergyNetworkModel(
         header=_header("Ready with Z0"),
-        buses=[uziemiona_szyna, bus2],
-        sources=[_valid_source_with_z0()],
+        buses=[szyna, bus2],
+        sources=[zrodlo],
         branches=[_valid_branch(with_z0=True, with_catalog=True)],
         loads=[_valid_load()],
     )
@@ -740,18 +740,20 @@ class TestEligibilitySc1EarthingModel:
         assert row.status == EligibilityStatus.INELIGIBLE
         assert "ELIG_SC1_EARTHING_MODEL_INCOMPLETE" in [b.code for b in row.blockers]
 
-    def test_uziemienie_na_szynie_odblokowuje_sc1f(self):
-        """Pierwsza z dwóch równoprawnych dróg: konfiguracja uziemienia szyny."""
-        bus = Bus(
-            ref_id="bus_sn",
-            name="Szyna SN",
-            voltage_kv=15.0,
-            grounding=GroundingConfig(type="petersen_coil", x_ohm=180.0),
+    def test_uziemienie_na_zrodle_odblokowuje_sc1f(self):
+        """Pierwsza z dwóch równoprawnych dróg: punkt neutralny ŹRÓDŁA (równoważnik GPZ).
+
+        W5-A: `Bus.grounding` skasowane — szyna nie jest nośnikiem uziemienia; intencja
+        testu (V12K-219: droga „sieć SN uziemiona po stronie zasilania") bez zmian.
+        """
+        bus = Bus(ref_id="bus_sn", name="Szyna SN", voltage_kv=15.0)
+        zrodlo = _valid_source().model_copy(
+            update={"neutral_grounding": GroundingConfig(type="petersen_coil", x_ohm=180.0)}
         )
         enm = EnergyNetworkModel(
-            header=_header("Uziemienie na szynie"),
+            header=_header("Uziemienie na zrodle"),
             buses=[bus],
-            sources=[_valid_source()],
+            sources=[zrodlo],
         )
         assert "ELIG_SC1_EARTHING_MODEL_INCOMPLETE" not in [
             b.code for b in self._sc1_row(enm).blockers
@@ -762,7 +764,11 @@ class TestEligibilitySc1EarthingModel:
         uziemia się po stronie dolnej transformatora GPZ, nie na szynie."""
         bus2 = Bus(ref_id="bus_nn", name="Szyna nN", voltage_kv=0.4)
         trafo = _valid_transformer()
-        trafo = trafo.model_copy(update={"lv_neutral": {"type": "petersen_coil", "x_ohm": 180.0}})
+        # `model_copy(update=)` nie waliduje — podajemy typ kontraktu, nie surowy słownik
+        # (walidator E-W5-01 czyta `GroundingConfig`, jak każdy realny model po wczytaniu).
+        trafo = trafo.model_copy(
+            update={"lv_neutral": GroundingConfig(type="petersen_coil", x_ohm=180.0)}
+        )
         enm = EnergyNetworkModel(
             header=_header("Punkt neutralny transformatora"),
             buses=[_valid_bus(), bus2],

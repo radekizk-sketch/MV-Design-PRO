@@ -32,13 +32,26 @@ def _model(
     bus_grounding: dict | None | object = _BRAK,
 ) -> EnergyNetworkModel:
     bus: dict = {"ref_id": "BUS_SN", "name": "Szyna SN", "voltage_kv": bus_voltage_kv}
+    # W5-A: opis punktu neutralnego sieci SN niesie ŹRÓDŁO na szynie
+    # (`Source.neutral_grounding`), nie szyna — `Bus.grounding` skasowane.
+    # W5-D p. 12: domyślnie model NIESIE uziemienie; `bus_grounding=None` = model milczy.
     uziemienie = _UZIEMIENIE_TESTU if bus_grounding is _BRAK else bus_grounding
+    sources: list[dict] = []
     if uziemienie is not None:
-        bus["grounding"] = uziemienie
+        sources.append(
+            {
+                "ref_id": "SRC_SN",
+                "name": "Zasilanie SN",
+                "bus_ref": "BUS_SN",
+                "model": "short_circuit_power",
+                "neutral_grounding": uziemienie,
+            }
+        )
     return EnergyNetworkModel.model_validate(
         {
             "header": ENMHeader(name="test-insulation").model_dump(),
             "buses": [bus],
+            "sources": sources,
             "substations": [
                 {
                     "ref_id": "ST1",
@@ -89,19 +102,19 @@ def test_arrester_with_catalog_ref_maps_all_card_params() -> None:
     assert row.predicted_energy_kj_per_kv == params["energy_absorption_kj_per_kv"]
 
 
-def test_network_neutral_from_bus_grounding_petersen_is_isolated() -> None:
+def test_network_neutral_from_source_grounding_petersen_is_isolated() -> None:
     model = _model(
         devices=[_arrester_device("QA1", _ARRESTER_ID)],
-        bus_grounding={"type": "petersen_coil"},
+        source_grounding={"type": "petersen_coil", "x_ohm": 120.0},
     )
     rows = build_v126_insulation_from_enm(model)
     assert rows[0].network_neutral == "isolated"
 
 
-def test_network_neutral_from_bus_grounding_resistor_is_earthed() -> None:
+def test_network_neutral_from_source_grounding_resistor_is_earthed() -> None:
     model = _model(
         devices=[_arrester_device("QA1", _ARRESTER_ID)],
-        bus_grounding={"type": "resistor_grounded", "r_ohm": 40.0},
+        source_grounding={"type": "resistor_grounded", "r_ohm": 40.0},
     )
     rows = build_v126_insulation_from_enm(model)
     assert rows[0].network_neutral == "earthed"

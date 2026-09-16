@@ -6,7 +6,7 @@ Warstwa APLIKACJI: łączy ekstrakcję trasy + solver pętli zwarcia
 (``application.analyses.fault_loop``) z werdyktem SWZ (``.werdykt`` —
 interpretacja). Import prywatnych helperów ``fault_loop.service``
 (``_find_station``, ``resolve_station_transformer``, ``_transformer_loop_impedance``,
-``_upstream_thevenin_lv_component``, ``_system_for_station``) jest ŚWIADOMY —
+``_upstream_thevenin_lv_component``, ``uklad_nn_transformatora``) jest ŚWIADOMY —
 SWZ i widok pętli zwarcia dzielą DOKŁADNIE TĘ SAMĄ fizykę transformatora i
 upstream Thevenina (impedancja u źródła nN jest identyczna niezależnie od
 tego, czy pytamy o „pętlę w punkcie" czy o „SWZ dla obwodu"); duplikowanie
@@ -24,15 +24,13 @@ from application.analyses.fault_loop.route import (
     route_segments_min_scenario,
 )
 from application.analyses.fault_loop.service import (
-    _DEFAULT_SYSTEM,
-    _NON_TN_SYSTEMS,
-    _SYSTEM_MAP,
     _find_station,
-    _system_for_station,
     _transformer_loop_impedance,
     _upstream_thevenin_lv_component,
+    odmowa_ukladu_nn,
     resolve_station_transformer,
     resolve_transformer_for_bus,
+    uklad_nn_transformatora,
 )
 from enm.models import EnergyNetworkModel, FuseBranch, SwitchBranch
 from network_model.catalog.lv_mccb_settings_iec60947_2 import resolwuj_nastawy_mccb
@@ -43,6 +41,7 @@ from network_model.solvers.fault_loop_builder import (
     sum_phase_and_return_route,
 )
 from network_model.solvers.fault_loop_iec60364 import compute_fault_loop
+from solver_input.uklad_sieci_nn import typ_sieci_solvera
 
 from .werdykt import AparatZabezpieczajacy, ocen_swz
 
@@ -157,25 +156,13 @@ def build_swz_view(
             "breaker_ref": breaker_ref,
         }
 
-    system = _system_for_station(station)
     context: dict[str, Any] = {
         "station_ref": station_ref,
         "station_name": station.name,
-        "network_system": system,
+        "network_system": None,
         "bus_ref": bus_ref,
         "breaker_ref": breaker_ref,
     }
-
-    if system in _NON_TN_SYSTEMS:
-        return {
-            **context,
-            "status": "nie dotyczy",
-            "reason_pl": (
-                f"Układ {system}: SWZ metodą pętli TN (IEC 60364-4-41) nie dotyczy — "
-                "inny mechanizm ochrony przeciwporażeniowej."
-            ),
-            "missing_data": [],
-        }
 
     trafo, transformer_missing = (
         resolve_transformer_for_bus(enm, station, bus_ref)
@@ -184,6 +171,14 @@ def build_swz_view(
     )
     if trafo is None:
         return {**context, "status": "brak danych", "missing_data": transformer_missing}
+
+    # W5-A: układ sieci nN z transformatora ZASILAJĄCEGO; brak/TT/IT = odmowa nazwana.
+    system = uklad_nn_transformatora(trafo)
+    context["network_system"] = system
+    odmowa = odmowa_ukladu_nn(context, system)
+    if odmowa is not None:
+        return odmowa
+    assert system is not None
 
     z_tr, missing = _transformer_loop_impedance(trafo)
     if z_tr is None:
@@ -218,7 +213,7 @@ def build_swz_view(
         }
 
     phase_component, return_component = sum_phase_and_return_route(segments)
-    net_type, protection = _SYSTEM_MAP.get(system, _SYSTEM_MAP[_DEFAULT_SYSTEM])
+    net_type, protection = typ_sieci_solvera(system)
     u_phase_v = napiecie_fazowe_v(kv_na_v(trafo.ulv_kv))
 
     request = FaultLoopBuildRequest(

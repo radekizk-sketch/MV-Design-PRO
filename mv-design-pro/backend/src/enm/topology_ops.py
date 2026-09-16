@@ -177,8 +177,6 @@ def create_node(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult:
     }
     if "zone" in data:
         bus_data["zone"] = data["zone"]
-    if "grounding" in data:
-        bus_data["grounding"] = data["grounding"]
     enm.setdefault("buses", []).append(bus_data)
     return TopologyOpResult(True, enm, "create_node", issues, ref_id)
 
@@ -359,6 +357,8 @@ def create_branch(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
             # ulozonych rownolegle na tej samej trasie. Brak na SN — bez zmiany
             # zachowania istniejacych torow tworzenia gałęzi SN.
             "n_parallel",
+            # W5-A (F9): uklad uziemienia ekranu kabla — dana projektowa.
+            "screen_bonding",
         ):
             if key in data:
                 branch_data[key] = data[key]
@@ -526,6 +526,7 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
             "vector_group",
             "hv_neutral",
             "lv_neutral",
+            "lv_earthing_system",
             "n_parallel",
             "tap_position",
             "tap_min",
@@ -658,6 +659,7 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
             "z0_z1_ratio",
             "c_max",
             "c_min",
+            "neutral_grounding",
         ):
             if opt in data:
                 src_data[opt] = data[opt]

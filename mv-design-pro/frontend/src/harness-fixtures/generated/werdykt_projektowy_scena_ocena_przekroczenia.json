@@ -1,7 +1,7 @@
 {
   "werdykt": "NARUSZONE",
   "case_id": "case-demo",
-  "model_hash": "446d5b21892bca43972049b8c422cb3857bacea4c6f6c806bf08c0b34392cb82",
+  "model_hash": "53eee2f2b0bcee9859b1d988bafb7d352ac0db99cdac53fa689b66300d38650e",
   "pozycje": [
     {
       "kryterium_id": "pwp.moc_przylaczeniowa",
@@ -718,7 +718,7 @@
       "rodzaj": "PF",
       "run_id": "run-pf-scena-przekroczenia",
       "wykonano": "2026-09-10T08:00:00+00:00",
-      "snapshot_hash": "446d5b21892bca43972049b8c422cb3857bacea4c6f6c806bf08c0b34392cb82",
+      "snapshot_hash": "53eee2f2b0bcee9859b1d988bafb7d352ac0db99cdac53fa689b66300d38650e",
       "aktualny": true,
       "dostepny": true,
       "powod_pl": null
@@ -727,7 +727,7 @@
       "rodzaj": "short_circuit_sn",
       "run_id": "run-sc-scena-przekroczenia",
       "wykonano": "2026-09-10T08:00:00+00:00",
-      "snapshot_hash": "446d5b21892bca43972049b8c422cb3857bacea4c6f6c806bf08c0b34392cb82",
+      "snapshot_hash": "53eee2f2b0bcee9859b1d988bafb7d352ac0db99cdac53fa689b66300d38650e",
       "aktualny": true,
       "dostepny": true,
       "powod_pl": null
@@ -736,7 +736,7 @@
       "rodzaj": "model",
       "run_id": null,
       "wykonano": null,
-      "snapshot_hash": "446d5b21892bca43972049b8c422cb3857bacea4c6f6c806bf08c0b34392cb82",
+      "snapshot_hash": "53eee2f2b0bcee9859b1d988bafb7d352ac0db99cdac53fa689b66300d38650e",
       "aktualny": true,
       "dostepny": true,
       "powod_pl": null

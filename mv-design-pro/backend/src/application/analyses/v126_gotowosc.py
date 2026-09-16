@@ -256,14 +256,15 @@ def przedmiot_modelu(enm: EnergyNetworkModel) -> dict[str, Any]:
 
 
 def _uziemienie_z_modelu(enm: EnergyNetworkModel) -> tuple[str, str] | None:
-    """(typ uziemienia modelu, źródło PL) dla sieci SN — szyna 1–60 kV z uziemieniem,
-    potem punkt neutralny transformatora po stronie SN. `None` = model milczy."""
-    for bus in enm.buses:
-        if bus.grounding is not None and 1.0 < float(bus.voltage_kv) <= 60.0:
+    """(typ uziemienia modelu, źródło PL) dla sieci SN — opis punktu neutralnego
+    sieci SN na źródle (GPZ), potem punkt neutralny transformatora po stronie SN.
+    `None` = model milczy. W5-A: `Bus.grounding` skasowane."""
+    for source in enm.sources:
+        if source.neutral_grounding is not None:
             return (
-                bus.grounding.type,
-                f"uziemienie punktu neutralnego szyny {bus.name} "
-                f"({_OPIS_UZIEMIENIA_PL[bus.grounding.type]})",
+                source.neutral_grounding.type,
+                f"punkt neutralny sieci SN zasilanej ze źródła {source.name} "
+                f"({_OPIS_UZIEMIENIA_PL[source.neutral_grounding.type]})",
             )
     for tr in enm.transformers:
         for strona, konfiguracja, napiecie in (

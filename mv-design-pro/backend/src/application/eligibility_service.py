@@ -21,10 +21,7 @@ ARCHITECTURE:
 
 from __future__ import annotations
 
-from application.analyses.fault_loop.service import (
-    _NON_TN_SYSTEMS,
-    _transformer_loop_impedance,
-)
+from application.analyses.fault_loop.service import _transformer_loop_impedance
 from domain.eligibility_models import (
     AnalysisEligibilityIssue,
     AnalysisEligibilityMatrix,
@@ -43,13 +40,15 @@ from enm.models import (
     SwitchBranch,
 )
 from enm.pole_transformatorowe import pasmo_napieciowe
+from enm.uklad_sieci_nn import transformatory_bez_ukladu_nn
 from enm.validator import ReadinessResult
 from enm.zrodlo_zwarcie import dane_zwarciowe_zrodla
 from network_model.catalog.governance import brakuje_wymaganej_referencji, wymagalnosc_katalogu
+from solver_input.uklad_sieci_nn import uklad_tn
 
 # Karta G-22: FAULT_LOOP_NN/SWZ_NN reużywają `_transformer_loop_impedance`
-# (kompletność danych transformatora dla impedancji pętli L-PE/L-PEN) i
-# `_NON_TN_SYSTEMS` z `fault_loop.service` zamiast duplikować tę samą logikę
+# (kompletność danych transformatora dla impedancji pętli L-PE/L-PEN) z
+# `fault_loop.service` i `uklad_tn` z `solver_input` zamiast duplikować tę samą logikę
 # strukturalną pod inną nazwą — DOKŁADNIE ten sam wzorzec reużycia, jaki
 # `swz.service` już stosuje wobec `fault_loop.service` (zob. docstring tamtego
 # modułu, reguła KLASA NIE INSTANCJA). Eligibility NIE liczy Z-bus/solvera —
@@ -702,12 +701,15 @@ class EligibilityService:
         zapowiadał blokadę. Stan sprzed poprawki dopuszczał uruchomienie SC_1F
         bez podstawy fizycznej — to fabrykacja wyniku, nie ułatwienie.
 
-        Model uziemienia uznajemy za obecny, gdy niesie go SZYNA (``bus.grounding``)
-        ALBO punkt neutralny transformatora (``hv_neutral``/``lv_neutral``) — w
-        praktyce krajowej punkt neutralny sieci SN uziemia się właśnie po stronie
-        dolnej transformatora GPZ, więc obie drogi są równoprawne.
+        Model uziemienia uznajemy za obecny, gdy niesie go ZRODLO
+        (``Source.neutral_grounding`` — punkt neutralny sieci SN zasilanej z
+        rownowaznika GPZ) ALBO punkt neutralny transformatora
+        (``hv_neutral``/``lv_neutral``) — w praktyce krajowej punkt neutralny
+        sieci SN uziemia sie po stronie dolnej transformatora GPZ albo
+        transformatorem uziemiajacym na szynie, wiec obie drogi sa rownoprawne.
+        W5-A: `Bus.grounding` skasowane — szyna nie jest nosnikiem uziemienia.
         """
-        has_grounding = any(bus.grounding is not None for bus in enm.buses)
+        has_grounding = any(source.neutral_grounding is not None for source in enm.sources)
         has_trafo_neutral = any(
             trafo.hv_neutral is not None or trafo.lv_neutral is not None
             for trafo in enm.transformers
@@ -721,13 +723,13 @@ class EligibilityService:
                     message_pl=(
                         "Dane niekompletne: brak modelu uziemienia. "
                         "Zwarcie jednofazowe wymaga sposobu uziemienia punktu "
-                        "neutralnego — uzupełnij uziemienie szyny lub punkt "
-                        "neutralny transformatora, aby uruchomić obliczenie."
+                        "neutralnego — uzupełnij punkt neutralny źródła (GPZ) lub "
+                        "transformatora, aby uruchomić obliczenie."
                     ),
                     fix_action=FixAction(
                         action_type="OPEN_MODAL",
-                        modal_type="NodeModal",
-                        payload_hint={"required": "grounding"},
+                        modal_type="SourceModal",
+                        payload_hint={"required": "neutral_grounding"},
                     ),
                 )
             )
@@ -822,29 +824,30 @@ class EligibilityService:
 
         transformers_by_ref = {t.ref_id: t for t in enm.transformers}
 
-        for station in mv_lv_stations:
-            system = str((station.meta or {}).get("nn_earthing_system") or "")
-            if not system:
-                blockers.append(
-                    AnalysisEligibilityIssue(
-                        code="ELIG_FLNN_MISSING_EARTHING_SYSTEM",
-                        severity=IssueSeverity.BLOCKER,
-                        message_pl=(
-                            f"Stacja '{station.ref_id}' nie deklaruje układu "
-                            f"uziemienia sieci nN (TN-S/TN-C-S/TN-C/TT/IT). "
-                            f"Pętla zwarcia nN wymaga tej informacji."
-                        ),
-                        element_ref=station.ref_id,
-                        element_type="station",
-                        fix_action=FixAction(
-                            action_type="OPEN_MODAL",
-                            element_ref=station.ref_id,
-                            modal_type="StationModal",
-                            payload_hint={"required": "nn_earthing_system"},
-                        ),
-                    )
+        # W5-A §1 p. 2: JEDEN predykat braku ukladu nN (`enm/uklad_sieci_nn.py`),
+        # nosnik `Transformer.lv_earthing_system` — ten sam warunek co E063.
+        for station, trafo_bez_ukladu in transformatory_bez_ukladu_nn(enm, mv_lv_stations):
+            blockers.append(
+                AnalysisEligibilityIssue(
+                    code="ELIG_FLNN_MISSING_EARTHING_SYSTEM",
+                    severity=IssueSeverity.BLOCKER,
+                    message_pl=(
+                        f"Transformator '{trafo_bez_ukladu.ref_id}' stacji '{station.ref_id}' "
+                        f"nie deklaruje układu uziemienia sieci nN (TN-S/TN-C-S/TN-C/TT/IT). "
+                        f"Pętla zwarcia nN wymaga tej informacji."
+                    ),
+                    element_ref=trafo_bez_ukladu.ref_id,
+                    element_type="transformer",
+                    fix_action=FixAction(
+                        action_type="OPEN_MODAL",
+                        element_ref=trafo_bez_ukladu.ref_id,
+                        modal_type="TransformerModal",
+                        payload_hint={"required": "lv_earthing_system"},
+                    ),
                 )
+            )
 
+        for station in mv_lv_stations:
             trafo = next(
                 (
                     transformers_by_ref[ref]
@@ -875,7 +878,8 @@ class EligibilityService:
                 )
                 continue
 
-            if system in _NON_TN_SYSTEMS:
+            uklad = trafo.lv_earthing_system
+            if uklad is not None and not uklad_tn(uklad):
                 # TT/IT: solver pętli TN uczciwie zwraca "nie dotyczy" — dla
                 # TEJ stacji dalsze dane transformatora nie są wymagane.
                 continue

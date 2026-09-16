@@ -62,6 +62,7 @@ def _enm(
                 uk_percent=uk,
                 pk_kw=pk if pk is not None else 0.0,
                 vector_group=vector_group,
+                lv_earthing_system=system,
             )
         ],
         substations=[
@@ -71,7 +72,6 @@ def _enm(
                 station_type="mv_lv",
                 bus_refs=["nn"],
                 transformer_refs=["tr"],
-                meta={"nn_earthing_system": system},
             )
         ],
     )

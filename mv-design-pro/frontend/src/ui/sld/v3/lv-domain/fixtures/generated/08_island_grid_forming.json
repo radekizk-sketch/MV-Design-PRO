@@ -764,7 +764,7 @@
           "status": "brak_zrodla",
           "status_pl": "Brak elementu wnoszącego odniesienie N/PE do wyspy (punkt neutralny transformatora poza wyspą; źródło rozproszone nie deklaruje punktu neutralnego) — SWZ nieoceniane.",
           "swz_evaluable": false,
-          "system": "TN-C-S"
+          "system": null
         },
         "power_balance": {
           "basis_pl": "suma mocy znamionowych z modelu (dane źródłowe, nie wynik rozpływu)",
@@ -1528,14 +1528,14 @@
   "missing_data": [],
   "model_snapshot": {
     "case_id": "fixture-08_island_grid_forming",
-    "model_hash": "326c707bdf1231a88015d9e7af1db888497ff492c165e2432c6779f148f68e95",
+    "model_hash": "4962357eedacb8f4aa3e649f3be5cc352dd57a5c51218ed0485c6dc4f4634dfd",
     "operating_state_id": "bdb2b930431b3b709ed647d1b4a1c835cf7c7ca6aa2ccc60dafc59eeb301c798",
     "revision": 1,
     "run_snapshot_hash": null,
     "scenario_id": "MAX",
     "station_ref": "stW"
   },
-  "projection_hash": "deec600d8057828abf65ccfb99e65839684f6c6637bebe12af09e9bdaf54c346",
+  "projection_hash": "ae29d5f3fdfa1317cf54e0b68327d1682920363ab67cbe1e2833b480ab2ff907",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -2683,12 +2683,12 @@
   "upstream_equivalents": [
     {
       "c_factor": 1.1,
-      "calculation_run_id": "cf571761-bd3d-5640-9622-b8900efb0b55",
+      "calculation_run_id": "014c7a66-2516-5317-80bc-8662393f62e8",
       "case_id": "fixture-08_island_grid_forming",
-      "equivalent_id": "638284d2-ee51-5e4c-b3d4-8f1aa020cd79",
+      "equivalent_id": "3a454242-bbff-5296-a9ba-8a8082cf045c",
       "ikss_ka": 18.6825711,
       "missing_data": [],
-      "model_hash": "326c707bdf1231a88015d9e7af1db888497ff492c165e2432c6779f148f68e95",
+      "model_hash": "4962357eedacb8f4aa3e649f3be5cc352dd57a5c51218ed0485c6dc4f4634dfd",
       "model_revision": 1,
       "note_pl": "Równoważnik Thevenina sieci SN w punkcie HV transformatora — granica wizualna domeny nN (L2) jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten snapshot jest dokładnie tym wejściem, którym solver pętli zwarcia nN liczy stronę SN (application.analyses.fault_loop).",
       "operating_state_id": "bdb2b930431b3b709ed647d1b4a1c835cf7c7ca6aa2ccc60dafc59eeb301c798",

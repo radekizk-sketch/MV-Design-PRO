@@ -418,6 +418,12 @@ def build_gn04_sn_nn_oze() -> dict[str, Any]:
                 "sn_voltage_kv": 15.0,
                 "nn_voltage_kv": 0.4,
             },
+            # W5-A (E063 na transformatorze): stacja zasila sieć nN z falownikiem PV —
+            # układ sieci nN jest DANĄ modelu (`Transformer.lv_earthing_system`), nie
+            # domysłem; TN-C-S jak w `sld_substrate_52s` (typowy układ dystrybucyjny nN).
+            # Bez punktu neutralnego nN (brak `neutral_point`): składowa zerowa sieci
+            # referencyjnej pozostaje BEZ ZMIAN (złote hashe SC_1F/SC_2FG nietknięte).
+            "nn_earthing": {"lv_system": "TN-C-S"},
             "sn_fields": [
                 {"field_role": "LINIA_IN"},
                 {"field_role": "LINIA_OUT"},

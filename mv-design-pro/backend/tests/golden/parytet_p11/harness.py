@@ -116,7 +116,7 @@ def _payload_lub_odmowa(
 
 
 def zbierz_hashe(
-    sieci: list[tuple[str, EnergyNetworkModel]] | None = None
+    sieci: list[tuple[str, EnergyNetworkModel]] | None = None,
 ) -> dict[str, dict[str, Any]]:
     """Hashe payloadu P11 (PF + SC 3F/1F) dla każdej sieci ENM rejestru (deterministyczne)."""
     wyniki: dict[str, dict[str, Any]] = {}

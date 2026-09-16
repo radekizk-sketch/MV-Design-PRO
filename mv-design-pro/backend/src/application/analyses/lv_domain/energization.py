@@ -408,14 +408,6 @@ def _components(bus_refs: set[str], adjacency: dict[str, set[str]]) -> dict[str,
     return component_of
 
 
-def _earthing_system(station: Substation | None) -> str | None:
-    if station is None:
-        return None
-    meta = station.meta if isinstance(station.meta, dict) else {}
-    value = meta.get("nn_earthing_system")
-    return str(value) if value else None
-
-
 def build_energization_view(
     enm: EnergyNetworkModel,
     domain_bus_refs: set[str],
@@ -528,7 +520,6 @@ def build_energization_view(
         component = energized_component.get(bus_ref, frozenset({bus_ref}))
         grouped.setdefault(component, []).append(bus_ref)
 
-    earthing_system = _earthing_system(station)
     islands: list[Island] = []
     island_of_bus: dict[str, Island] = {}
     terminals: dict[str, TerminalState] = {}
@@ -720,14 +711,22 @@ def build_energization_view(
             neutral_source = declared[0] if declared else feeding_transformers[0]
         elif not is_islanded and nn_source_refs:
             neutral_source = nn_source_refs[0]
-        if earthing_system is None:
+        # W5-A: uklad sieci nN niesie TRANSFORMATOR wnoszacy odniesienie N/PE
+        # (`lv_earthing_system`), nie worek meta stacji.
+        earthing_system = (
+            transformer_by_ref[neutral_source].lv_earthing_system
+            if neutral_source in transformer_by_ref
+            else None
+        )
+        if neutral_source is not None and earthing_system is None:
             neutral = NeutralReference(
                 system=None,
                 source_ref=neutral_source,
                 status="brak_ukladu",
                 status_pl=(
-                    "Stacja nie deklaruje układu uziemienia sieci nN "
-                    "(meta.nn_earthing_system) — odniesienie N/PE nieokreślone."
+                    f"Element {neutral_source} wnoszący odniesienie N/PE nie deklaruje "
+                    "układu uziemienia sieci nN (lv_earthing_system) — odniesienie N/PE "
+                    "nieokreślone."
                 ),
                 swz_evaluable=False,
             )

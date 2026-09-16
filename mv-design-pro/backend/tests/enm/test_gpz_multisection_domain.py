@@ -57,8 +57,11 @@ def test_add_grid_source_sn_persists_multisection_gpz_contract():
     assert substation["meta"]["gpz_section_count"] == 2
     assert substation["meta"]["wn_sn_transformer_count"] == 2
     assert len(substation["meta"]["gpz_hv_bus_refs"]) == 2
-    assert substation["meta"]["grounding"]["type"] == "resistor_grounded"
-    assert substation["meta"]["zero_sequence"]["enabled"] is True
+    # W5-A: opis punktu neutralnego sieci SN WYŁĄCZNIE na źródle (`neutral_grounding`);
+    # meta stacji nie niesie kopii `grounding`/`zero_sequence`.
+    assert "grounding" not in substation["meta"]
+    assert "zero_sequence" not in substation["meta"]
+    assert source["neutral_grounding"] == {"type": "resistor_grounded", "r_ohm": 12.0}
     assert substation["meta"]["short_circuit_mode"] == "SHORT_CIRCUIT_POWER"
 
     assert sections[0]["name"] == "Sekcja A"
@@ -94,8 +97,11 @@ def test_add_grid_source_sn_persists_multisection_gpz_contract():
         assert transformer["meta"]["catalog_role"] == "TRANSFORMATOR_WN_SN"
 
     buses = {bus["ref_id"]: bus for bus in snapshot["buses"]}
-    assert buses[sections[0]["bus_ref"]]["grounding"]["type"] == "resistor_grounded"
-    assert buses[sections[1]["bus_ref"]]["grounding"]["type"] == "resistor_grounded"
+    # W5-A: szyny sekcji NIE niosą uziemienia (`Bus.grounding` skasowane).
+    assert "grounding" not in buses[sections[0]["bus_ref"]]
+    assert "grounding" not in buses[sections[1]["bus_ref"]]
+    # Jawne liczby Z0 z payloadu (DEKLARACJA) — bez wyprowadzania z opisu punktu neutralnego.
+    assert "zero_sequence_provenance" not in source["materialized_params"]
 
     field_specs = substation["meta"]["field_specs"]
     field_by_section = {field["gpz_section_id"]: field for field in field_specs}

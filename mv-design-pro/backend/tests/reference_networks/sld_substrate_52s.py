@@ -74,7 +74,7 @@ _GPZ_SOURCE_REF = "src-gpz-15kv-250mva-rx010"
 _TRAFO_STANDARD = "tr-sn-nn-15-04-630kva-dyn11"  # 630 kVA — standard load station
 _TRAFO_DER_LARGE = "tr-sn-nn-15-04-2500kva-dyn11"  # 2500 kVA — FW/large-DER station
 
-# Uklad sieci nN (E063, walidator ENM: `meta.nn_earthing_system`) — deklaracja
+# Uklad sieci nN (E063, walidator ENM: `Transformer.lv_earthing_system`) — deklaracja
 # JAWNA fikstury referencyjnej, nie cichy domysl walidatora/modelu (SUB-52s
 # par. 1). Wszystkie 53 stacje tego substratu sa stacjami rozdzielczymi
 # publicznymi SN/nN (linia napowietrzna/kablowa -> stacja -> odbior nN) —

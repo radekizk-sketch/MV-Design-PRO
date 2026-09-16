@@ -43,6 +43,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from domain.readiness_bridge import opis_kanoniczny
+from network_model.core.uziemienie import UZIEMIENIA_WYMAGAJACE_FV_19
 from network_model.pochodne import ka_na_a, napiecie_fazowe_v
 from network_model.solvers.equipment_checks.ct_burden_saturation import (
     CtBurdenInput,
@@ -548,7 +549,6 @@ PROG_NADWYMIAROWANIA_VT = 1.5
 #: neutralnego: napiecie faz zdrowych rosnie do napiecia miedzyfazowego, wiec norma
 #: wymaga wspolczynnika napieciowego 1,9 (IEC 61869-3 tab. 2). „rezystor" jest tu
 #: swiadomie: siec uziemiona przez rezystor NIE jest siecia skutecznie uziemiona.
-UZIEMIENIA_WYMAGAJACE_19: frozenset[str] = frozenset({"izolowany", "cewka_petersena", "rezystor"})
 
 #: Wspolczynnik ciagly — wystarcza przekladnikowi pracujacemu MIEDZY FAZAMI, bo zwarcie
 #: doziemne nie zmienia napiecia miedzyfazowego (IEC 61869-3 tab. 2).
@@ -565,7 +565,8 @@ class WymaganiaToruNapieciowego:
 
     #: Napiecie znamionowe sieci w tym punkcie [V] — z modelu (szyna pola).
     napiecie_sieci_v: float | None = None
-    #: Sposob uziemienia punktu neutralnego — z modelu; „nieznany" znaczy NIEZNANY.
+    #: Sposob uziemienia punktu neutralnego — z modelu (`GroundingConfig.type`);
+    #: `None` znaczy NIEZNANY (W5-A: koniec literalu nieznany).
     tryb_uziemienia: str | None = None
     #: Czy zwarcie doziemne jest wylaczane automatycznie — dana PROJEKTOWA; decyduje
     #: o CZASIE wspolczynnika napieciowego (30 s vs 8 h), nie o jego wartosci.
@@ -612,14 +613,14 @@ def wymagany_wspolczynnik_napieciowy(tryb: str | None, uklad: str | None = None)
     """
     if uklad == "miedzyfazowy":
         return WSPOLCZYNNIK_CIAGLY
-    if uklad is None and tryb is not None and tryb != "nieznany":
+    if uklad is None and tryb is not None:
         # Uklad nierozpoznany: nie wiadomo, ktora rodzina wymagan obowiazuje.
         return None
-    if tryb is None or tryb == "nieznany":
+    if tryb is None:
         return None
-    if tryb in UZIEMIENIA_WYMAGAJACE_19:
+    if tryb in UZIEMIENIA_WYMAGAJACE_FV_19:
         return WSPOLCZYNNIK_SIEC_MALOPRADOWA
-    if tryb == "bezposrednio_uziemiony":
+    if tryb == "directly_grounded":
         return WSPOLCZYNNIK_SIEC_UZIEMIONA
     return None
 

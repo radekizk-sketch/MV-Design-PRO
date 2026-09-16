@@ -53,9 +53,11 @@ def _zlota_siec_uziemiona_petersen() -> EnergyNetworkModel:
     obecność uziemienia w modelu × rodzaj analizy), nie tylko przypadek pusty.
     """
     enm = build_golden_enm().model_copy(deep=True)
-    for bus in enm.buses:
-        if bus.ref_id == "bus_sn_main":
-            bus.grounding = GroundingConfig(type="petersen_coil")
+    # W5-A: opis punktu neutralnego sieci SN niesie ŹRÓDŁO (GPZ), nie szyna; dławik
+    # gaszący wymaga X_N (predykat `blad_konfiguracji_uziemienia`).
+    for source in enm.sources:
+        if source.ref_id == "src_gpz":
+            source.neutral_grounding = GroundingConfig(type="petersen_coil", x_ohm=120.0)
     return enm
 
 
@@ -472,7 +474,7 @@ def test_detekcja_siec_z_uziemieniem_sn_proponuje_neutral_grounding_z_nazwanym_z
     wynik = ocen_gotowosc_v126(enm, V126AnalysisType.EARTH_FAULT_DETECTION, {})
     propozycja = wynik.proponowane["neutral_grounding"]
     assert propozycja.wartosc == "petersen_tuned"
-    assert "Szyna SN" in propozycja.zrodlo_pl
+    assert "punkt neutralny sieci SN" in propozycja.zrodlo_pl
     # Propozycja liczy się jako "obecna" -> warunek spełniony bez jawnego wejścia.
     warunek = next(w for w in wynik.warunki if w.kod == "parametr.neutral_grounding")
     assert warunek.spelniony is True
