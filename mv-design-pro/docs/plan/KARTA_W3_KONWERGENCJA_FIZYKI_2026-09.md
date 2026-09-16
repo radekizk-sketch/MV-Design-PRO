@@ -517,7 +517,12 @@ skasowanego `violations_report.py` wywoływało `verification_phantom_paths_guar
 IMPORCIE (0 testów zamiast 10), gdy nowy `StanSpadkuNapiecia` zaciągnął `useAkcjaUruchomObliczenie →
 przejdzDoPrzestrzeni → mostObszarow.ts` (moduł buduje tablicę `ROUTES.*.hash` na poziomie modułu) — naprawiony
 wzorcem `importOriginal` już ustalonym w repo (`rozplywZwarciowy.test.tsx`, `legacyPasekNarzedzi.test.tsx`);
-(6) formatowanie black/ruff na 4 własnych plikach (bez zmiany logiki).
+(6) formatowanie black/ruff na 4 własnych plikach (bez zmiany logiki); (7) kasacja całego katalogu
+`ui/voltage-profile/**` zostawiła w `CLAUDE.md` (korzeń repo) widmowy wpis `voltage-profile/` w wiążącym
+drzewie struktury — złapane przez `scripts/test_claude_md_struktura_guard.py` DOPIERO po zacommitowaniu
+(guard czyta `git ls-files`, czyli INDEKS — przed stage'owaniem kasacji wpis jeszcze się zgadzał, więc
+dwa wcześniejsze pełne biegi `guardy_z_ci.py` w tej samej sesji tego nie złapały); wpis usunięty, licznik
+modułów `ui/` skorygowany 53 → 52, osobny commit `0be5a0ba`.
 
 Weryfikacja agenta: pytest DoD (`tests/analysis tests/application/analyses tests/api tests/ci`) **2876 passed / 0 failed**;
 `test_kryteria_napiecia.py` 18/18 nowych; vitest celowany (32 pliki dotkniętych modułów) **529 passed / 0 failed**; tsc 0,
