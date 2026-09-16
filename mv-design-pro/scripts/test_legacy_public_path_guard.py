@@ -1873,3 +1873,153 @@ def test_guard_accepts_current_repo_state_w3j() -> None:
     """Integracyjny pin: bramka na PRAWDZIWYM drzewie repo (bez monkeypatch)
     musi byc czysta PO kasacji karty W3-J."""
     assert guard.check_w3j_voltage_criteria_resurrection() == []
+
+
+# =============================================================================
+# S-3 (2026-09-16) — jeden tor NC RfG: bramka wskrzeszenia drugiego silnika
+# zgodnosci (`application/ncrfg_compliance/checker.py`, T1–T18, `no_module`)
+# i martwej wyspy klienckiej `station-der/{NcRfgComplianceBadge,
+# DerValidationBanner,derPowerValidation}` + lustra kontraktu drugiego silnika
+# w `ui/ncrfg-tests/api.ts`. Iloczyn cech: {backend plik, backend klasa pod inna
+# sciezka} x {frontend plik wyspy, frontend definicja pod inna sciezka} x
+# {komentarz cytujacy nazwe = NIE definicja}.
+# =============================================================================
+
+
+def _patch_s3_tree(monkeypatch, tmp_path) -> tuple[Path, Path]:
+    src = tmp_path / "backend" / "src"
+    src.mkdir(parents=True)
+    fe = tmp_path / "frontend" / "src"
+    fe.mkdir(parents=True)
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", src)
+    monkeypatch.setattr(guard, "FRONTEND_SRC_DIR", fe)
+    return src, fe
+
+
+def test_guard_rejects_resurrected_s3_checker_module(tmp_path, monkeypatch) -> None:
+    src, _fe = _patch_s3_tree(monkeypatch, tmp_path)
+    (src / "application" / "ncrfg_compliance").mkdir(parents=True)
+    (src / "application" / "ncrfg_compliance" / "checker.py").write_text(
+        "x = 1\n", encoding="utf-8"
+    )
+
+    violations = guard.check_s3_ncrfg_second_engine_resurrection()
+
+    assert any(
+        "[resurrected-module]" in v and "application/ncrfg_compliance/checker.py" in v
+        for v in violations
+    )
+
+
+@pytest.mark.parametrize(
+    "nazwa",
+    sorted(guard.FORBIDDEN_S3_CLASS_NAMES),
+)
+def test_guard_rejects_resurrected_s3_class_under_other_path(
+    tmp_path, monkeypatch, nazwa: str
+) -> None:
+    """Klasa drugiego silnika moze wrocic pod INNYM plikiem — guard skanuje CALY
+    `backend/src`, nie tylko stara sciezke `checker.py`."""
+    src, _fe = _patch_s3_tree(monkeypatch, tmp_path)
+    (src / "application" / "sneaky").mkdir(parents=True)
+    (src / "application" / "sneaky" / "engine.py").write_text(
+        f"class {nazwa}:\n    pass\n", encoding="utf-8"
+    )
+
+    violations = guard.check_s3_ncrfg_second_engine_resurrection()
+
+    assert any("[resurrected-class]" in v and nazwa in v for v in violations)
+    assert not any("[resurrected-module]" in v for v in violations)
+
+
+@pytest.mark.parametrize("rel", sorted(guard.S3_FRONTEND_ISLAND_RELATIVE_PATHS))
+def test_guard_rejects_s3_frontend_island_file(tmp_path, monkeypatch, rel: str) -> None:
+    _src, fe = _patch_s3_tree(monkeypatch, tmp_path)
+    plik = fe / rel
+    plik.parent.mkdir(parents=True, exist_ok=True)
+    plik.write_text("export const x = 1;\n", encoding="utf-8")
+
+    violations = guard.check_s3_ncrfg_second_engine_resurrection()
+
+    assert any("[resurrected-module]" in v and rel in v for v in violations)
+
+
+@pytest.mark.parametrize(
+    ("nazwa", "definicja"),
+    [
+        ("NcRfgComplianceBadge", "export function NcRfgComplianceBadge() { return null; }"),
+        ("evaluateNcRfgCompliance", "export const evaluateNcRfgCompliance = () => null;"),
+        ("DerValidationBanner", "export default function DerValidationBanner() { return null; }"),
+        ("validateDerPowerVsTransformer", "export function validateDerPowerVsTransformer() {}"),
+        ("NcRfgComplianceVerdict", "export type NcRfgComplianceVerdict = 'pass' | 'no_module';"),
+        ("NcRfgComplianceReport", "export interface NcRfgComplianceReport { x: number }"),
+        ("NcRfgComplianceTestResult", "export interface NcRfgComplianceTestResult { x: number }"),
+    ],
+)
+def test_guard_rejects_resurrected_s3_definition_under_other_path(
+    tmp_path, monkeypatch, nazwa: str, definicja: str
+) -> None:
+    _src, fe = _patch_s3_tree(monkeypatch, tmp_path)
+    sneaky_dir = fe / "ui2" / "elsewhere"
+    sneaky_dir.mkdir(parents=True)
+    (sneaky_dir / "sneaky.tsx").write_text(definicja + "\n", encoding="utf-8")
+
+    violations = guard.check_s3_ncrfg_second_engine_resurrection()
+
+    assert any(
+        "[resurrected-definition]" in v and nazwa in v and "sneaky.tsx" in v for v in violations
+    )
+    assert not any("[resurrected-module]" in v for v in violations)
+
+
+def test_guard_does_not_fire_on_s3_names_in_comments_or_strings(tmp_path, monkeypatch) -> None:
+    src, fe = _patch_s3_tree(monkeypatch, tmp_path)
+    (src / "application" / "ncrfg_compliance").mkdir(parents=True)
+    (src / "application" / "ncrfg_compliance" / "model_bridge.py").write_text(
+        '"""Drugi silnik (NcRfgComplianceChecker, NcRfgComplianceReport) skasowany S-3."""\n'
+        "# DerDataForCompliance tez nie wraca\n"
+        "x = 1\n",
+        encoding="utf-8",
+    )
+    (fe / "ui2" / "oze").mkdir(parents=True)
+    (fe / "ui2" / "oze" / "notes.ts").write_text(
+        "/**\n * Kasacja S-3: NcRfgComplianceBadge, DerValidationBanner,\n"
+        " * validateDerPowerVsTransformer, NcRfgComplianceVerdict usuniete.\n */\n"
+        "// export type NcRfgComplianceReport nie wraca\n"
+        "export const cos_innego = 1;\n",
+        encoding="utf-8",
+    )
+
+    assert guard.check_s3_ncrfg_second_engine_resurrection() == []
+
+
+def test_guard_accepts_clean_tree_without_s3_resurrection(tmp_path, monkeypatch) -> None:
+    src, fe = _patch_s3_tree(monkeypatch, tmp_path)
+    (src / "application" / "ncrfg_compliance").mkdir(parents=True)
+    (src / "application" / "ncrfg_compliance" / "model_bridge.py").write_text(
+        "def build_ncrfg_module_inputs_from_enm(enm, *, operator_id):\n    return []\n",
+        encoding="utf-8",
+    )
+    (fe / "ui" / "ncrfg-tests").mkdir(parents=True)
+    (fe / "ui" / "ncrfg-tests" / "api.ts").write_text(
+        "export interface NcRfgCaseComplianceResponse { der_count: number }\n",
+        encoding="utf-8",
+    )
+
+    assert guard.check_s3_ncrfg_second_engine_resurrection() == []
+
+
+def test_guard_ignores_orphaned_pycache_only_directory_s3(tmp_path, monkeypatch) -> None:
+    src, _fe = _patch_s3_tree(monkeypatch, tmp_path)
+    pycache_dir = src / "application" / "ncrfg_compliance" / "__pycache__"
+    pycache_dir.mkdir(parents=True)
+    (pycache_dir / "checker.cpython-311.pyc").write_bytes(b"\x00")
+
+    assert guard.check_s3_ncrfg_second_engine_resurrection() == []
+
+
+def test_guard_accepts_current_repo_state_s3() -> None:
+    """Integracyjny pin: bramka na PRAWDZIWYM drzewie repo (bez monkeypatch)
+    musi byc czysta PO kasacji karty S-3."""
+    assert guard.check_s3_ncrfg_second_engine_resurrection() == []

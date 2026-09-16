@@ -548,6 +548,88 @@ W3G1_RUN_TRIGGER_ORPHAN_RELATIVE_PATHS: dict[str, str] = {
     ),
 }
 
+# Karta S-3 (2026-09-16, W6-0 „NC-RFG-JEDEN-TOR") — bramka wskrzeszenia DRUGIEGO
+# SILNIKA zgodnosci NC RfG i MARTWEJ WYSPY KLIENCKIEJ. Zgodnosc NC RfG miala
+# TRZY implementacje (synteza 2026-09 §0 p. 3): (1) solver kanoniczny
+# `network_model/solvers/ncrfg_ptpiree` (T01–T20, FROZEN, B-01 — ZOSTAJE, jedyny),
+# (2) `application/ncrfg_compliance/checker.py` — statyczny silnik 18 testow z
+# WLASNA numeracja T1–T18, werdyktem `no_module` i raportem
+# `NcRfgComplianceReport` (`overall_pass`/`passed_count`/`no_module_count`), zywy
+# przez `GET /api/ncrfg-tests/cases/{id}/compliance` → sekcja „Zgodnosc
+# przekrojowa" w `ui2/oze/macierz`; (3) `frontend/src/ui/network-build/station-der/
+# {NcRfgComplianceBadge.tsx, DerValidationBanner.tsx, derPowerValidation.ts}` —
+# wlasna checklista `compliant/audit_required/non_compliant` i progi 80 %/100 %
+# mocy DER vs transformator liczone W PRZEGLADARCE (fizyka w FE), 0 importerow
+# poza 3 wlasnymi testami (pomiar 2026-09-16). Sprawdzenie mocy DER vs
+# transformator ISTNIEJE w backendzie: `enm/der_sn_validation.py::
+# validate_transformer_power` (kod `converter.der_sn.moc_transformatora_
+# niewystarczajaca`), wolane przy operacji (`enm/domain_operations_v2.py`,
+# `add_converter_source` z TR blokowym) i na committed modelu
+# (`application/analyses/raport_zgodnosci.py`, pozycja `moc_transformatora`).
+#
+# Po S-3 trasa `/compliance` buduje `NcRfgPtpireeModuleInput` z committed ENM
+# (`application/ncrfg_compliance/model_bridge.py`) i uruchamia solver (1) —
+# odpowiedz = kontrakt biegu macierzy (`application/ncrfg_compliance/bieg.py`)
+# opakowany per przypadek. Sekcja przekrojowa czyta ten sam kontrakt co macierz.
+#
+# Sprawdzane: (1) `checker.py` nie istnieje, (2) zadna nazwa z
+# `FORBIDDEN_S3_CLASS_NAMES` nie wraca jako DEFINICJA (ast.ClassDef) gdziekolwiek w
+# `backend/src`, (3) zaden plik wyspy z `S3_FRONTEND_ISLAND_RELATIVE_PATHS` nie
+# istnieje, (4) zadna nazwa z `_TS_S3_FORBIDDEN_DEFS` nie wraca jako eksportowana
+# DEFINICJA (function/const/class/interface/type) gdziekolwiek w `frontend/src`
+# (komentarz cytujacy nazwe — jak ten naglowek — nie jest definicja).
+# `model_bridge.py` i `frt_input.py` ZOSTAJA (most model → solver, wejscia FRT dla
+# trajektorii/sekwencji) — celowo POZA tym sprawdzeniem.
+S3_CHECKER_RELATIVE_PATH = "application/ncrfg_compliance/checker.py"
+FORBIDDEN_S3_CLASS_NAMES = {
+    "NcRfgComplianceChecker",
+    "NcRfgComplianceReport",
+    "ComplianceTestResult",
+    "DerDataForCompliance",
+}
+S3_FRONTEND_ISLAND_RELATIVE_PATHS: dict[str, str] = {
+    "ui/network-build/station-der/NcRfgComplianceBadge.tsx": (
+        "wlasna checklista zgodnosci NC RfG w przegladarce "
+        "(compliant/audit_required/non_compliant) — kanon: solver ncrfg_ptpiree"
+    ),
+    "ui/network-build/station-der/DerValidationBanner.tsx": (
+        "baner skladajacy checkliste NC RfG i progi mocy DER vs TR liczone w FE"
+    ),
+    "ui/network-build/station-der/derPowerValidation.ts": (
+        "progi 80 %/100 % mocy DER vs transformator w FE — kanon: "
+        "enm/der_sn_validation.py::validate_transformer_power"
+    ),
+    "ui/network-build/station-der/__tests__/NcRfgComplianceBadge.test.tsx": (
+        "testy wyspy NcRfgComplianceBadge (bez komponentu do testowania)"
+    ),
+    "ui/network-build/station-der/__tests__/DerValidationBanner.test.tsx": (
+        "testy wyspy DerValidationBanner (bez komponentu do testowania)"
+    ),
+    "ui/network-build/station-der/__tests__/derPowerValidation.test.ts": (
+        "testy wyspy derPowerValidation (bez modulu do testowania)"
+    ),
+}
+_TS_S3_FORBIDDEN_DEFS: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
+    (
+        nazwa,
+        re.compile(
+            r"^[ \t]*export\s+(?:default\s+)?(?:function|const|class|interface|type)\s+"
+            + nazwa
+            + r"\b",
+            re.MULTILINE,
+        ),
+    )
+    for nazwa in (
+        "NcRfgComplianceBadge",
+        "evaluateNcRfgCompliance",
+        "DerValidationBanner",
+        "validateDerPowerVsTransformer",
+        "NcRfgComplianceVerdict",
+        "NcRfgComplianceReport",
+        "NcRfgComplianceTestResult",
+    )
+)
+
 
 def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8", errors="ignore")
@@ -1382,6 +1464,49 @@ def check_w3j_voltage_criteria_resurrection() -> list[str]:
     return violations
 
 
+def check_s3_ncrfg_second_engine_resurrection() -> list[str]:
+    """S-3 (2026-09-16): drugi silnik zgodnosci NC RfG (`checker.py`, T1–T18,
+    `no_module`) i martwa wyspa kliencka `station-der/{NcRfgComplianceBadge,
+    DerValidationBanner,derPowerValidation}` nie moga wrocic — jedyna
+    implementacja zgodnosci NC RfG to solver `network_model/solvers/ncrfg_ptpiree`
+    (T01–T20), a jedyny most z modelu to `application/ncrfg_compliance/
+    model_bridge.py` (ZOSTAJE, celowo poza tym sprawdzeniem)."""
+    violations: list[str] = []
+    checker = BACKEND_SRC_DIR / S3_CHECKER_RELATIVE_PATH
+    if zrodlo_istnieje(checker):
+        violations.append(
+            f"[resurrected-module] backend/src/{S3_CHECKER_RELATIVE_PATH}: drugi silnik "
+            "zgodnosci NC RfG (T1–T18, no_module) usuniety w S-3"
+        )
+    if BACKEND_SRC_DIR.exists():
+        for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+            tree = ast.parse(read_text(py_file), filename=str(py_file))
+            rel_path = py_file.relative_to(ROOT).as_posix()
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_S3_CLASS_NAMES:
+                    violations.append(
+                        f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
+                        "(drugi silnik zgodnosci NC RfG, usuniety w S-3) nie moze wrocic"
+                    )
+    for rel, label in S3_FRONTEND_ISLAND_RELATIVE_PATHS.items():
+        path = FRONTEND_SRC_DIR / rel
+        if zrodlo_istnieje(path, ("*.ts", "*.tsx")):
+            violations.append(f"[resurrected-module] frontend/src/{rel}: {label} (usuniety w S-3)")
+    if FRONTEND_SRC_DIR.exists():
+        for suffix in FORBIDDEN_DATA_MANAGER_TS_EXTENSIONS:
+            for ts_file in sorted(FRONTEND_SRC_DIR.rglob(f"*{suffix}")):
+                tekst = _bez_komentarzy_ts(read_text(ts_file))
+                rel_path = ts_file.relative_to(ROOT).as_posix()
+                for nazwa, wzorzec in _TS_S3_FORBIDDEN_DEFS:
+                    if wzorzec.search(tekst):
+                        violations.append(
+                            f"[resurrected-definition] {rel_path}: export {nazwa} "
+                            "(wyspa kliencka / lustro drugiego silnika NC RfG, usuniete "
+                            "w S-3) nie moze wrocic"
+                        )
+    return violations
+
+
 def main() -> int:
     violations = (
         check_legacy_public_paths()
@@ -1400,6 +1525,7 @@ def main() -> int:
         + check_trace_v2_resurrection()
         + check_w3g1_run_trigger_orphan_resurrection()
         + check_w3j_voltage_criteria_resurrection()
+        + check_s3_ncrfg_second_engine_resurrection()
     )
     if violations:
         print("legacy-public-path-guard: FAILED")
