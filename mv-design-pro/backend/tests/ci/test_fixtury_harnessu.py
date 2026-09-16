@@ -252,3 +252,84 @@ def test_werdykt_projektowy_scena_ocena_przekroczenia_ma_naruszenia() -> None:
     run_idy = _wartosci_run_id(werdykt)
     assert run_idy, "scena musi mieć co najmniej jeden run_id (dowód biegu)"
     assert not any(_WZORZEC_UUID.match(wartosc) for wartosc in run_idy), run_idy
+
+
+# ---------------------------------------------------------------------------
+# Karta HARNESS-ZWARCIA-Z-BACKENDU (2026-09-16) — sceny „zwarcia"/„zwarcia-
+# -rozplyw": wyniki/wkłady/rozpływ/pasmo z JEDNEGO realnego biegu backendu
+# (sieć złota `build_golden_enm`, §0.3 karty: testy kształtu).
+# ---------------------------------------------------------------------------
+
+
+def _run_idy_nie_sa_uuid(widok: dict) -> None:
+    """Pin wspólny trzem fixturom kotwicy: co najmniej jeden `run_id`
+    (dowód biegu) i ŻADEN nie jest surowym UUID (stabilizacja zadziałała)."""
+    run_idy = _wartosci_run_id(widok)
+    assert run_idy, "scena musi mieć co najmniej jeden run_id (dowód biegu)"
+    assert not any(_WZORZEC_UUID.match(wartosc) for wartosc in run_idy), run_idy
+
+
+def test_zwarcia_wyniki_ma_co_najmniej_dwa_punkty_zwarcia() -> None:
+    wyniki = eksport.zwarcia_wyniki_scena_zwarcia()
+    assert wyniki["run_id"] == eksport.RUN_ID_SCENY_ZWARCIA
+    assert len(wyniki["rows"]) >= 2
+    assert len({row["target_id"] for row in wyniki["rows"]}) == len(
+        wyniki["rows"]
+    ), "target_id musi być unikalny per punkt zwarcia"
+    _run_idy_nie_sa_uuid(wyniki)
+
+
+def test_zwarcia_wklady_pokrywaja_wszystkie_punkty_wynikow() -> None:
+    """KLASA, nie instancja: zbiór punktów mapy wkładów = zbiór punktów
+    wyników TEGO SAMEGO biegu — nowy punkt zwarcia bez wpisu w mapie byłby
+    czerwony tutaj, nie cichym „dane niedostępne" na ekranie."""
+    wyniki = eksport.zwarcia_wyniki_scena_zwarcia()
+    wklady = eksport.zwarcia_wklady_scena_zwarcia()
+    assert set(wklady) == {row["target_id"] for row in wyniki["rows"]}
+    for target_id, odpowiedz in wklady.items():
+        assert odpowiedz["fault_node_id"] == target_id
+        assert "contributions" in odpowiedz
+        assert (
+            len(odpowiedz["contributions"]) >= 1
+        ), "sieć złota niesie generator synchroniczny widoczny z każdego punktu"
+
+
+def test_zwarcia_rozplyw_niesie_tor_sieci_nadrzednej_i_tor_falownika() -> None:
+    """Karta W3-G3/Z-3: rozpływ gałęziowy MUSI pokazywać OBA tory — sieci
+    nadrzędnej (`THEVENIN_GRID`) i falownika (`gen_pv`) — inaczej fixtura nie
+    zastępuje uczciwie dawnej ręcznej sceny Z-3 (`run-sc-th1-demo`)."""
+    rozplyw = eksport.zwarcia_rozplyw_scena_zwarcia()
+    assert rozplyw["target_id"] == eksport.zwarcia_wyniki_scena_zwarcia()["rows"][0]["target_id"]
+    wpisy = rozplyw["branch_contributions"] or []
+    zrodla = {wpis["source_id"] for wpis in wpisy}
+    assert "THEVENIN_GRID" in zrodla, "brak toru sieci nadrzędnej w rozpływie"
+    assert any(zrodlo != "THEVENIN_GRID" for zrodlo in zrodla), "brak toru falownika w rozpływie"
+    assert "gen_pv" in zrodla, zrodla
+    _run_idy_nie_sa_uuid(rozplyw)
+
+
+def test_zwarcia_pasmo_strona_max_jest_biegiem_kotwicy() -> None:
+    pasmo = eksport.zwarcia_pasmo_scena_zwarcia()
+    assert pasmo["run_id_kotwicy"] == eksport.RUN_ID_SCENY_ZWARCIA
+    assert pasmo["brakujacy_scenariusz"] is None
+    assert pasmo["powod_niedostepnosci"] is None
+    assert pasmo["max"] is not None and pasmo["min"] is not None
+    assert pasmo["max"]["zrodlo"] == "biegu_zapisanego"
+    assert pasmo["max"]["run_id"] == eksport.RUN_ID_SCENY_ZWARCIA
+    assert pasmo["max"]["bieg_bazowy_id"] == eksport.RUN_ID_SCENY_ZWARCIA
+    # Strona MIN — kontrakt karty W3-G3: `obliczony_na_zadanie` dzieli `id` z
+    # kotwicą (bez własnego `run_id`), tak działa produkt (§0.1 karty).
+    assert pasmo["min"]["zrodlo"] == "obliczony_na_zadanie"
+    assert pasmo["min"]["run_id"] is None
+    assert pasmo["min"]["bieg_bazowy_id"] == eksport.RUN_ID_SCENY_ZWARCIA
+    _run_idy_nie_sa_uuid(pasmo)
+
+
+def test_zwarcia_pasmo_strona_min_ma_ikss_mniejsze_niz_max_per_szyna() -> None:
+    pasmo = eksport.zwarcia_pasmo_scena_zwarcia()
+    wiersze_max = {w["target_id"]: w["ikss_ka"] for w in pasmo["max"]["wynik"]["rows"]}
+    wiersze_min = {w["target_id"]: w["ikss_ka"] for w in pasmo["min"]["wynik"]["rows"]}
+    assert wiersze_max, "pasmo musi nieść co najmniej jedną szynę"
+    assert set(wiersze_max) == set(wiersze_min)
+    for target_id, ikss_min in wiersze_min.items():
+        assert ikss_min < wiersze_max[target_id], (target_id, ikss_min, wiersze_max[target_id])

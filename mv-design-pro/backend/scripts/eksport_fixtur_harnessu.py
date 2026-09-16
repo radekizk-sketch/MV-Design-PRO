@@ -30,13 +30,22 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
+from uuid import NAMESPACE_URL, uuid5
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_DIR / "src"))
 sys.path.insert(0, str(BACKEND_DIR))
 
+from api.canonical_run_views import (  # noqa: E402
+    build_short_circuit_band_response,
+    build_short_circuit_results_response,
+    build_short_circuit_rozplyw_response,
+)
+from api.proof_pack import SCContributionsRequest, sc3f_contributions  # noqa: E402
 from application.analyses.v126_gotowosc import odpowiedz_gotowosci  # noqa: E402
 from application.analyses.v126_katalog import katalog_do_dict  # noqa: E402
 from application.analyses.werdykt_projektowy import (  # noqa: E402
@@ -47,6 +56,7 @@ from application.ncrfg_compliance.checker import (  # noqa: E402
     NcRfgComplianceChecker,
 )
 from enm.canonical_analysis import (  # noqa: E402
+    build_short_circuit_results,
     create_run,
     execute_run,
     reset_canonical_runs,
@@ -55,7 +65,6 @@ from enm.hash import compute_enm_hash  # noqa: E402
 from enm.models import EnergyNetworkModel, ENMHeader  # noqa: E402
 from enm.store import reset_enm_store, set_enm  # noqa: E402
 from solver_input.v126_contracts import V126AnalysisType  # noqa: E402
-
 from tests.cgmes.golden_enm import build_golden_enm  # noqa: E402
 
 FIXTURES_DIR = BACKEND_DIR.parent / "frontend" / "src" / "harness-fixtures" / "generated"
@@ -347,6 +356,195 @@ def werdykt_projektowy_scena_ocena_przekroczenia() -> dict[str, Any]:
     return _werdykt_projektowy_scena(_zlota_siec_z_obciazeniem(8.0), "scena-przekroczenia")
 
 
+# ---------------------------------------------------------------------------
+# Karta HARNESS-ZWARCIA-Z-BACKENDU (2026-09-16) — sceny „zwarcia" i
+# „zwarcia-rozplyw" ekranu wyników zwarciowych, karmione WYŁĄCZNIE wynikami
+# REALNEGO biegu backendu (bez ręcznie wpisanych liczb fizycznych).
+# ---------------------------------------------------------------------------
+
+#: Identyfikator kotwicy scen `zwarcia`/`zwarcia-rozplyw` — JEDNA stała dla
+#: wszystkich czterech fixtur (wyniki/wkłady/rozpływ/pasmo). `bieg_wariantu`
+#: (strona MIN pasma, `enm/canonical_analysis.py`) DZIELI `id` z biegiem
+#: bazowym (`id=bazowy.id`, nie generuje nowego) — jedna zamiana tekstowa w
+#: `_ustabilizuj_identyfikatory` stabilizuje WSZYSTKIE wystąpienia naraz
+#: (`run_id`, `bieg_bazowy_id`, `run_id_kotwicy`, `proof_pack_ref`).
+RUN_ID_SCENY_ZWARCIA = "run-sc-scena-zwarcia"
+
+#: `id` PRZYPIĘTY (deterministyczny `uuid5`, NIE losowy `uuid4`) biegu kotwicy
+#: — `_short_circuit_proof_ref`/`reproducibility.result_hash`
+#: (`enm/canonical_analysis.py`) HASHUJĄ `run.id` (SHA-256), więc zamiana
+#: TEKSTOWA `_ustabilizuj_identyfikatory` (poniżej) nie potrafi cofnąć różnicy
+#: w WYNIKU hashowania dwóch RÓŻNYCH losowych `uuid4()` — dwa wywołania tej
+#: samej fixtury dawałyby dwa różne `proof_ref` (zmierzone: `test_atrapa_
+#: jest_deterministyczna` czerwony na `uuid4()` losowym). Przypinamy `id`
+#: PRZED wykonaniem (jedyne miejsce w skrypcie podmieniające `uuid4()` kanonu)
+#: zamiast naprawiać hash po fakcie — fizyka WYNIKU jest identyczna (id nie
+#: wchodzi do żadnej wielkości fizycznej), podmienia się WYŁĄCZNIE tożsamość
+#: biegu, jak reszta stabilizacji w tym pliku.
+_UUID_KOTWICY_SCENY_ZWARCIA = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_ZWARCIA)
+
+
+#: Znacznik czasu STABILNY nagłówka ENM (`ENMHeader.created_at`/`updated_at`,
+#: `default_factory=lambda: datetime.now(UTC)` w `enm/models.py`) — patrz
+#: docstring `_fiksuj_niedeterminizm_sceny_zwarcia` niżej.
+_CZAS_NAGLOWKA_SCENY_ZWARCIA = datetime(2026, 9, 16, 8, 0, 0, tzinfo=UTC)
+
+
+def _fiksuj_niedeterminizm_sceny_zwarcia(enm: EnergyNetworkModel) -> None:
+    """Nadpisuje pola ENM losowane PRZY KONSTRUKCJI, W MIEJSCU (modele ENM nie
+    są `frozen`) — DETERMINISTYCZNIE, bez zmiany żadnej wielkości fizycznej
+    ani tożsamości domenowej (`ref_id`):
+
+    1. `ENMElement.id` (`id: UUID = Field(default_factory=uuid4)`) — pole
+       NIEZALEŻNE od `ref_id` (tożsamość domenowa używana wszędzie indziej —
+       graf/solver/API czytają WYŁĄCZNIE `ref_id`, zmierzone:
+       `map_enm_to_network_graph`/`build_short_circuit_*` operują na
+       `ref_id`, nigdy na `id`) → `uuid5` z `ref_id` (stałego w budowniczym).
+    2. `ENMHeader.created_at`/`updated_at` (`default_factory=lambda:
+       datetime.now(UTC)`) → stała `_CZAS_NAGLOWKA_SCENY_ZWARCIA`.
+
+    Bez tego KAŻDA konstrukcja `build_golden_enm()` losuje inny komplet tych
+    pól; `_input_hash_wkladow` (`api/proof_pack.py`) hashuje CAŁY zrzut
+    snapshotu (w tym te pola) — dwa wywołania tej samej fixtury dawały dwa
+    różne `input_hash` (zmierzone: `test_atrapa_jest_deterministyczna`
+    czerwony, ślad diagnozy: `model_dump(mode="json")` dwóch niezależnych
+    `build_golden_enm()` różnił się najpierw na `branches[].id`, potem na
+    `header.created_at`/`updated_at` — usunięte po kolei, zmierzone do zera).
+
+    PODMIANA `unittest.mock.patch("enm.models.uuid4", ...)` NIE DZIAŁA dla
+    pkt 1 (zmierzone bezpośrednio) — Pydantic `Field(default_factory=uuid4)`
+    wiąże REFERENCJĘ DO OBIEKTU FUNKCJI w chwili DEFINICJI KLASY (import
+    modułu), nie odczytuje nazwy `uuid4` z przestrzeni modułu przy KAŻDYM
+    wywołaniu — podmiana nazwy PO imporcie nie ma żadnego efektu. Nadpisanie
+    PO konstrukcji jest więc jedynym miejscem skutecznym."""
+    for element in (
+        list(enm.buses)
+        + list(enm.sources)
+        + list(enm.transformers)
+        + list(enm.branches)
+        + list(enm.loads)
+        + list(enm.generators)
+        + list(enm.substations)
+    ):
+        element.id = uuid5(NAMESPACE_URL, f"mv-design-pro:harness:element-id:{element.ref_id}")
+    enm.header.created_at = _CZAS_NAGLOWKA_SCENY_ZWARCIA
+    enm.header.updated_at = _CZAS_NAGLOWKA_SCENY_ZWARCIA
+
+
+def _bieg_sceny_zwarcia() -> tuple[Any, EnergyNetworkModel, str]:
+    """Bieg zwarciowy KOTWICY scen `zwarcia`/`zwarcia-rozplyw` — realny
+    `short_circuit_sn` (tor kanoniczny `create_run`/`execute_run`, jak
+    `_werdykt_projektowy_scena` obok) na sieci złotej `build_golden_enm`
+    (jedyna sieć rejestru już importowana w tym skrypcie, z torem
+    falownikowym `gen_pv` @ `bus_nn` ORAZ maszyną synchroniczną `gen_sync`
+    @ `bus_sn_c` — rozpływ gałęziowy punktu domyślnego pokazuje tor sieci
+    nadrzędnej I tor falownika; sieć i bieg zmierzone i nazwane w meldunku
+    karty). Scenariusz domyślny (`options={}`) czytany jako MAX
+    (`_scenariusz_z_opcji`), więc `dobierz_pasmo_min_max_zwarcia` dobiera
+    stronę MIN wariantem w pamięci (kotwica bez ręcznego `c_factor`, bez
+    koperty scenariusza — stan normalny; kontrakt karty W3-G3). `id` biegu
+    PRZYPIĘTY na `_UUID_KOTWICY_SCENY_ZWARCIA` (patrz komentarz stałej) —
+    `bieg_wariantu` (strona MIN pasma) DZIELI ten sam `id` (nie generuje
+    nowego), więc nie potrzebuje własnej podmiany.
+
+    Punkt domyślny sceny = PIERWSZY wiersz wg sortu kanonicznego
+    (`target_id`, `build_short_circuit_results` sortuje rosnąco) — TEN SAM
+    punkt, który `EkranZwarc` wybiera domyślnie (`rows[0]`, żadna scena go nie
+    preselekcjonuje), więc fixtura rozpływu (JEDEN punkt, §0.1 karty) trafia
+    dokładnie w żądanie, które scena wyśle.
+
+    `reset_*` PRZED i PO — nie zostawia stanu innym fixturom (ten skrypt
+    liczy wiele scen w jednym procesie)."""
+    reset_canonical_runs()
+    reset_enm_store()
+    try:
+        enm = build_golden_enm()
+        _fiksuj_niedeterminizm_sceny_zwarcia(enm)
+        set_enm(CASE_ID_HARNESSU, enm)
+        with patch("enm.canonical_analysis.uuid4", return_value=_UUID_KOTWICY_SCENY_ZWARCIA):
+            run = execute_run(
+                create_run(
+                    case_id=CASE_ID_HARNESSU,
+                    klucz_twin=CASE_ID_HARNESSU,
+                    analysis_type="short_circuit_sn",
+                ).id
+            )
+        # `set_enm` odbija (materializuje) migawkę i przy tym ZNAKUJE
+        # `header.updated_at` na `datetime.now(UTC)` NA NOWO (zmierzone
+        # bezpośrednio: fixup sprzed `set_enm` NIE PRZETRWAŁ) — druga
+        # aplikacja fixupa PO wykonaniu biegu jest więc konieczna (ten sam
+        # `enm`, ta sama instancja, używana dalej przez
+        # `zwarcia_wklady_scena_zwarcia` do `model_dump()`).
+        _fiksuj_niedeterminizm_sceny_zwarcia(enm)
+        target_id = build_short_circuit_results(run)["rows"][0]["target_id"]
+        return run, enm, target_id
+    finally:
+        reset_canonical_runs()
+        reset_enm_store()
+
+
+def zwarcia_wyniki_scena_zwarcia() -> dict[str, Any]:
+    """Odpowiedź `GET /api/analysis-runs/{id}/results/short-circuit`
+    (`build_short_circuit_results_response` — TA SAMA funkcja, którą woła
+    końcówka `api/analysis_runs.py::get_short_circuit_results`), kształt 1:1
+    z tym, co czyta `useResultsInspectorStore.shortCircuitResults`."""
+    run, _enm, _target_id = _bieg_sceny_zwarcia()
+    widok = build_short_circuit_results_response(run)
+    return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_ZWARCIA})
+
+
+def zwarcia_wklady_scena_zwarcia() -> dict[str, Any]:
+    """Mapa `target_id → odpowiedź` `POST /api/proof/sc3f/contributions` dla
+    WSZYSTKICH punktów zwarcia biegu kotwicy — TĄ SAMĄ funkcją, którą woła
+    końcówka (`sc3f_contributions`, `api/proof_pack.py`), z DOKŁADNIE
+    domyślnymi parametrami klienta (`c_factor=1.10`, `t_min_s=0.10` —
+    `frontend/src/ui2/wyniki/zwarcia/api.ts::fetchWkladyZwarciowe` ich nie
+    nadpisuje).
+
+    Sieć złota niesie JEDNĄ maszynę konwencjonalną (`gen_sync`, synchroniczna)
+    — `compute_machine_contributions` rozbija WYŁĄCZNIE maszyny wirujące z
+    krzywą zaniku IEC 60909-0:2016 §6.6; falownik `gen_pv` fizycznie NIE MA
+    takiej krzywej (prąd ograniczony elektronicznie) i słusznie NIE pojawia
+    się w tej liście — jego wkład niesie osobno rozpływ gałęziowy
+    (`zwarcia_rozplyw_scena_zwarcia` + pole `ik_inverters_ka` wiersza), nie ta
+    końcówka. Zmierzone bezpośrednio (`compute_machine_contributions` na
+    KAŻDYM z 5 punktów sieci złotej) — nie założone."""
+    run, enm, _target_id = _bieg_sceny_zwarcia()
+    snapshot = enm.model_dump(mode="json")
+    rows = build_short_circuit_results(run)["rows"]
+    return {
+        row["target_id"]: sc3f_contributions(
+            SCContributionsRequest(snapshot=snapshot, fault_node_id=row["target_id"])
+        )
+        for row in rows
+    }
+
+
+def zwarcia_rozplyw_scena_zwarcia() -> dict[str, Any]:
+    """Odpowiedź `GET …/results/short-circuit/rozplyw?target_id=` dla punktu
+    zwarcia DOMYŚLNEGO sceny (`build_short_circuit_rozplyw_response` — TA SAMA
+    funkcja, którą woła końcówka `api/analysis_runs.py::
+    get_short_circuit_rozplyw`; sekcja `RozplywZwarciowy`) — niesie tor sieci
+    nadrzędnej (`THEVENIN_GRID`, przez gałąź `TR 110/15`) ORAZ tor falownika
+    (`gen_pv`, przez gałąź `TR 15/0.4`), jak dotychczasowa scena Z-3."""
+    run, _enm, target_id = _bieg_sceny_zwarcia()
+    widok = build_short_circuit_rozplyw_response(run, target_id)
+    return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_ZWARCIA})
+
+
+def zwarcia_pasmo_scena_zwarcia() -> dict[str, Any]:
+    """Odpowiedź `GET …/results/short-circuit/pasmo`
+    (`build_short_circuit_band_response` — TA SAMA funkcja, którą woła
+    końcówka `api/analysis_runs.py::get_short_circuit_band`; karta W3-G3).
+    Strona MAX = bieg kotwicy zapisany; strona MIN = `obliczony_na_zadanie`
+    (wariant w pamięci `bieg_wariantu` z TEJ SAMEJ migawki kotwicy — dzieli
+    `id` z kotwicą, więc jedna stabilizacja tekstowa zamienia OBA
+    `run_id`/`bieg_bazowy_id`/`run_id_kotwicy` naraz)."""
+    run, _enm, _target_id = _bieg_sceny_zwarcia()
+    widok = build_short_circuit_band_response(run)
+    return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_ZWARCIA})
+
+
 #: Nazwa pliku → funkcja licząca odpowiedź (kolejność = kolejność eksportu).
 FIXTURY: dict[str, Any] = {
     "ncrfg_zgodnosc_przekrojowa_scena_macierz": zgodnosc_przekrojowa_sceny_macierz,
@@ -356,6 +554,10 @@ FIXTURY: dict[str, Any] = {
     "gotowosc_v126_scena_akademickie_parametry": gotowosc_v126_scena_akademickie_parametry,
     "werdykt_projektowy_scena_ocena": werdykt_projektowy_scena_ocena,
     "werdykt_projektowy_scena_ocena_przekroczenia": werdykt_projektowy_scena_ocena_przekroczenia,
+    "zwarcia_wyniki_scena_zwarcia": zwarcia_wyniki_scena_zwarcia,
+    "zwarcia_wklady_scena_zwarcia": zwarcia_wklady_scena_zwarcia,
+    "zwarcia_rozplyw_scena_zwarcia": zwarcia_rozplyw_scena_zwarcia,
+    "zwarcia_pasmo_scena_zwarcia": zwarcia_pasmo_scena_zwarcia,
 }
 
 
