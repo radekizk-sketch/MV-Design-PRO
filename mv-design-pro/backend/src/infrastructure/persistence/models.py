@@ -447,6 +447,36 @@ class CanonicalRunBranchFlowORM(Base):
     )
 
 
+class CanonicalRunTimeSeriesORM(Base):
+    """Szereg czasowy JEDNEGO kanalu biegu dynamicznego — osobno od artefaktu biegu
+    (karta W6-1 SS0 p.6, wzorzec `CanonicalRunBranchFlowORM` — PERF-SC-50: nigdy
+    pelny szereg w wierszu biegu).
+
+    `ResultSetDynamicV1` zapisany w `canonical_runs.raw_result_json` niesie
+    WYLACZNIE metadane/metryki/tozsamosc (`os_czasu_s`/`probki` puste —
+    `zbuduj_resultset_dynamiczny_v1(..., z_probkami=False)`); probki kazdego
+    kanalu leza tutaj, jeden wiersz na (run_id, klucz_kanalu). API rozdziela
+    endpoint metadanych (bez probek) od endpointu `.../time-series` (na zadanie,
+    z filtrem `kanaly=`) — patrz `api/analysis_runs_dynamika.py`.
+    """
+
+    __tablename__ = "canonical_run_time_series"
+    __table_args__ = (Index("ix_canonical_run_time_series_run_id", "run_id"),)
+
+    run_id: Mapped[UUID] = mapped_column(
+        GUID(),
+        ForeignKey("canonical_runs.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    #: Klucz kanalu (`ResultSetDynamicV1.kanaly[].klucz`, np. "u_pu@b12").
+    klucz_kanalu: Mapped[str] = mapped_column(String(512), primary_key=True)
+    #: Wspolna os czasu biegu (sekundy) — ta sama dla wszystkich kanalow tego
+    #: biegu; powielona per wiersz (jak `contributions_json` dla wkladow) zeby
+    #: odczyt jednego kanalu nie wymagal JOIN-a do drugiej tabeli.
+    os_czasu_s_json: Mapped[list[float]] = mapped_column(DeterministicJSON(), nullable=False)
+    probki_json: Mapped[list[float]] = mapped_column(DeterministicJSON(), nullable=False)
+
+
 class RunBatchORM(Base):
     """Seria biegow kanonicznych (karta CV-3.3-C, R2). Zastepuje trzy slowniki
     w pamieci (`_batches`/`_case_batches`/`_pinned_hashes`,

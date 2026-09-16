@@ -14,7 +14,11 @@ from infrastructure.persistence.db import (
     init_db,
     session_scope,
 )
-from infrastructure.persistence.models import CanonicalRunBranchFlowORM, CanonicalRunORM
+from infrastructure.persistence.models import (
+    CanonicalRunBranchFlowORM,
+    CanonicalRunORM,
+    CanonicalRunTimeSeriesORM,
+)
 from infrastructure.persistence.time_utils import ensure_utc
 from sqlalchemy import Engine, delete, select, update
 from sqlalchemy.orm import Session, sessionmaker
@@ -326,6 +330,75 @@ class CanonicalRunRepository:
         )
         return self._session.execute(stmt).scalar_one_or_none()
 
+    def zapisz_szeregi_dynamiczne(
+        self,
+        run_id: UUID,
+        os_czasu_s: list[float],
+        probki: dict[str, list[float]],
+    ) -> None:
+        """Utrwal szeregi czasowe biegu `dynamika_rms` — osobno od artefaktu
+        biegu (karta W6-1 SS0 p.6, wzorzec `_zapisz_rozplyw`/`CanonicalRunBranchFlowORM`).
+
+        Pelna wymiana (usun wszystkie kanaly biegu, wstaw ponownie) — solver
+        czasowy (W6-2) liczy bieg raz i zapisuje raz, wiec nie ma czesciowej
+        aktualizacji do uzgadniania. Bieg nieutrwalony (brak wiersza nadrzednego,
+        np. bieg w pamieci testu/harnessu) — bez klucza obcego do przypiecia,
+        wywolanie jest cichym no-op (ten sam wzorzec co `zapisz_rozplyw_punktu`).
+        """
+        if self._session.get(CanonicalRunORM, run_id) is None:
+            return
+        self._session.execute(
+            delete(CanonicalRunTimeSeriesORM).where(CanonicalRunTimeSeriesORM.run_id == run_id)
+        )
+        for klucz_kanalu in sorted(probki):
+            self._session.add(
+                CanonicalRunTimeSeriesORM(
+                    run_id=run_id,
+                    klucz_kanalu=klucz_kanalu,
+                    os_czasu_s_json=list(os_czasu_s),
+                    probki_json=list(probki[klucz_kanalu]),
+                )
+            )
+
+    def get_szeregi_dynamiczne(
+        self,
+        run_id: UUID,
+        klucze_kanalow: list[str] | None = None,
+    ) -> tuple[list[float], dict[str, list[float]]] | None:
+        """Szeregi czasowe biegu `dynamika_rms` z osobnej tabeli.
+
+        Zwraca `None`, gdy bieg NIE MA zadnego zapisanego kanalu (bieg nigdy nie
+        policzony jako `dynamika_rms`, albo policzony bez zapisu szeregow) — to
+        ROZNY stan od "kanal zadany w `klucze_kanalow` nie istnieje wsrod
+        zapisanych" (ten drugi po prostu nie trafia do zwroconego slownika;
+        warstwa API tlumaczy oba stany na nazwany 404, patrz
+        `api/analysis_runs_dynamika.py`).
+        """
+        stmt = select(
+            CanonicalRunTimeSeriesORM.klucz_kanalu,
+            CanonicalRunTimeSeriesORM.os_czasu_s_json,
+            CanonicalRunTimeSeriesORM.probki_json,
+        ).where(CanonicalRunTimeSeriesORM.run_id == run_id)
+        if klucze_kanalow:
+            stmt = stmt.where(CanonicalRunTimeSeriesORM.klucz_kanalu.in_(klucze_kanalow))
+        wiersze = self._session.execute(stmt).all()
+        if not wiersze:
+            # Odroznij "bieg bez zadnego zapisanego kanalu" od "filtr nic nie trafil"
+            # — pelne zapytanie BEZ filtra rozstrzyga, czy bieg w ogole ma szeregi.
+            if klucze_kanalow:
+                istnieje = self._session.execute(
+                    select(CanonicalRunTimeSeriesORM.klucz_kanalu).where(
+                        CanonicalRunTimeSeriesORM.run_id == run_id
+                    )
+                ).first()
+                if istnieje is None:
+                    return None
+                return [], {}
+            return None
+        os_czasu_s = list(wiersze[0][1])
+        probki = {klucz: list(wartosci) for klucz, _, wartosci in wiersze}
+        return os_czasu_s, probki
+
     def claim_for_execution(self, run_id: UUID, *, started_at: datetime) -> bool:
         """Atomowo przejmij bieg do wykonania: cokolwiek-poza-terminalnym -> RUNNING.
 
@@ -457,10 +530,12 @@ class CanonicalRunRepository:
         }
 
     def clear_all(self) -> None:
-        # Rozpływ najpierw: w Postgresie klucz obcy z ON DELETE CASCADE zrobiłby to
-        # sam, ale SQLite (tor deweloperski/e2e) nie egzekwuje kluczy obcych bez
-        # PRAGMA — bez tego zostawałyby wiersze osierocone.
+        # Rozpływ i szeregi czasowe najpierw: w Postgresie klucz obcy z ON DELETE
+        # CASCADE zrobiłby to sam, ale SQLite (tor deweloperski/e2e) nie
+        # egzekwuje kluczy obcych bez PRAGMA — bez tego zostawałyby wiersze
+        # osierocone (karta W6-1: ta sama klasa problemu co branch flow).
         self._session.execute(delete(CanonicalRunBranchFlowORM))
+        self._session.execute(delete(CanonicalRunTimeSeriesORM))
         self._session.execute(delete(CanonicalRunORM))
 
     def _to_domain(self, row: CanonicalRunORM) -> CanonicalRun:

@@ -116,6 +116,8 @@ def _canonical_analysis_type(value: ExecutionAnalysisType) -> str:
         return "phase_state_sn"
     if value == ExecutionAnalysisType.DYNAMIC_STABILITY:
         return "dynamic_stability"
+    if value == ExecutionAnalysisType.DYNAMIKA_RMS:
+        return "dynamika_rms"
     # V12K-025: PROTECTION ma osobny endpoint (architektoniczna separacja
     # bo wymaga sc_run_id + protection_case_id). Realny silnik za
     # POST /protection-runs to application.protection_analysis.engine (tor

@@ -21,6 +21,8 @@ from api.canonical_run_views import (
     build_bus_results_response,
     build_dynamic_stability_results_response,
     build_dynamic_stability_time_series_response,
+    build_dynamika_results_response,
+    build_dynamika_time_series_response,
     build_extended_trace_response,
     build_phase_state_results_response,
     build_power_flow_unbalanced_results_response,
@@ -760,6 +762,34 @@ def get_dynamic_stability_time_series(run_id: UUID) -> dict[str, Any]:
     return canonicalize_json(
         build_dynamic_stability_time_series_response(_require_canonical_run(run_id))
     )
+
+
+@router.get("/analysis-runs/{run_id}/results/dynamika")
+def get_dynamika_results(run_id: UUID) -> dict[str, Any]:
+    """Metadane wyniku `dynamika_rms` (karta W6-1) — BEZ próbek szeregów
+    czasowych (`.../results/dynamika/time-series` poniżej, na żądanie)."""
+    run = _require_canonical_run(run_id)
+    try:
+        return canonicalize_json(build_dynamika_results_response(run))
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.get("/analysis-runs/{run_id}/results/dynamika/time-series")
+def get_dynamika_time_series(
+    run_id: UUID,
+    kanaly: str | None = Query(default=None, description="Lista kluczy kanałów, po przecinku."),
+) -> dict[str, Any]:
+    """Próbki szeregów czasowych biegu `dynamika_rms` na żądanie (SS0 p.6).
+
+    Brak biegu tego typu, brak zapisanych szeregów, albo żaden z żądanych
+    `kanaly` nie istnieje → 404 nazwany (zero cichej pustej odpowiedzi)."""
+    run = _require_canonical_run(run_id)
+    klucze = [k.strip() for k in kanaly.split(",") if k.strip()] if kanaly else None
+    try:
+        return canonicalize_json(build_dynamika_time_series_response(run, klucze))
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 
 @router.get("/analysis-runs/{run_id}/results/automation-trace")

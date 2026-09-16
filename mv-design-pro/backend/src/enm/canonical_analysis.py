@@ -463,6 +463,8 @@ def _execution_analysis_type_for_run(run: CanonicalRun) -> str:
         return "PHASE_STATE_SN"
     if run.analysis_type == "dynamic_stability":
         return "DYNAMIC_STABILITY"
+    if run.analysis_type == "dynamika_rms":
+        return "DYNAMIKA_RMS"
     if run.analysis_type == "protection_sn":
         return "PROTECTION"
     if run.analysis_type.startswith("v126:"):
@@ -997,6 +999,8 @@ def _wykonaj_analize_biegu(
         _execute_phase_state_sn(run)
     elif run.analysis_type == "dynamic_stability":
         _execute_dynamic_stability(run)
+    elif run.analysis_type == "dynamika_rms":
+        _execute_dynamika_rms(run)
     elif run.analysis_type == "protection_sn":
         _execute_protection(run, uow_factory)
     elif run.analysis_type.startswith("v126:"):
@@ -1693,6 +1697,88 @@ def _execute_dynamic_stability(run: CanonicalRun) -> None:
         for index, event in enumerate(automation_trace.events, start=1)
     ]
     run.power_flow_trace = None
+
+
+#: Kod gotowości odmowy biegu `dynamika_rms` (karta W6-1 SS0 p.7): rdzeń DAE
+#: (`network_model/solvers/dynamika/`) NIE ISTNIEJE jeszcze — W6-2 go podpina.
+#: Rejestr: `domain/canonical_operations.py::READINESS_CODES`.
+KOD_RDZEN_DYNAMIKI_NIEDOSTEPNY = "dynamika.rdzen_niedostepny"
+
+
+class OdmowaBieguDynamikiRms(ValueError):
+    """Odmowa biegu `dynamika_rms` — rdzeń solvera DAE nie istnieje (W6-1 przed W6-2).
+
+    Ta sama droga odmowy co pozostałe nazwane odmowy biegu
+    (`OdmowaBieguStabilnosciDynamicznej`, `OdmowaWejsciaRozplywu`): `execute_run`
+    łapie ją ogólnym `except Exception`, zapisuje status FAILED i komunikat PL
+    z kodem — BEZ FASADY (żaden liczbowy wynik, żaden fałszywy sukces).
+    """
+
+    def __init__(self, kod: str, komunikat: str) -> None:
+        super().__init__(f"{komunikat} (kod gotowości: {kod})")
+        self.kod = kod
+
+
+def _execute_dynamika_rms(run: CanonicalRun) -> None:
+    """Wykonawca `dynamika_rms` (karta W6-1) — ODMAWIA zawsze, bez fasady.
+
+    Karta W6-1 dostarcza WYŁĄCZNIE kontrakty (`ParametryDynamiczne`,
+    `ScenariuszDynamiczny`, `ResultSetDynamicV1`) i gotowość — rdzeń DAE
+    (`network_model/solvers/dynamika/`) jest zakresem W6-2 (B-01: nowy pakiet
+    obok rdzeni FROZEN, jeszcze nieutworzony). Rejestracja rodzaju biegu w
+    `api/v125_contracts.py` istnieje już teraz (kontrakt/metadane), ale ŻADEN
+    bieg tego typu nie może dziś zakończyć się wynikiem — odmowa jest jedynym
+    uczciwym zachowaniem (zero fabrykacji: brak solvera ≠ wynik zerowy/pusty).
+    """
+    raise OdmowaBieguDynamikiRms(
+        KOD_RDZEN_DYNAMIKI_NIEDOSTEPNY,
+        "Rdzeń solvera dynamiki czasowej (DAE) nie jest jeszcze wdrożony w tym "
+        "repozytorium — kontrakty (dane wejściowe, gotowość) są gotowe, ale "
+        "obliczenie nie może zostać wykonane.",
+    )
+
+
+def build_dynamika_results(run: CanonicalRun) -> dict[str, Any]:
+    """Metadane wyniku `dynamika_rms` BEZ próbek (karta W6-1 SS0 p.6).
+
+    Zwraca `ResultSetDynamicV1` zapisany w `run.raw_result` (kanały, metryki,
+    tożsamość, własności biegu, stopień dowodowy) — `os_czasu_s`/`probki`
+    ZAWSZE puste (szeregi w osobnej tabeli, endpoint `.../time-series`).
+    Brak wyniku (żaden bieg `dynamika_rms` nie kończy się dziś sukcesem — W6-1
+    przed W6-2) → `KeyError` (API tłumaczy na 404 nazwany, ten sam wzorzec co
+    `build_short_circuit_rozplyw`)."""
+    if run.analysis_type != "dynamika_rms":
+        raise KeyError(f"Przebieg nie jest bieg dynamiki czasowej: {run.id}")
+    if not run.raw_result:
+        raise KeyError(f"Brak wyniku dynamiki czasowej dla biegu {run.id}")
+    return {"run_id": str(run.id), **run.raw_result}
+
+
+def build_dynamika_time_series(
+    run: CanonicalRun, klucze_kanalow: list[str] | None = None
+) -> dict[str, Any]:
+    """Próbki szeregów czasowych biegu `dynamika_rms` na żądanie (SS0 p.6).
+
+    Czyta `canonical_run_time_series` (osobna tabela — PERF-SC-50: nigdy pełny
+    szereg w wierszu biegu). `klucze_kanalow` filtruje do podanych kluczy; brak
+    biegu tego typu, brak zapisanych szeregów, albo ŻADEN z żądanych kluczy nie
+    istnieje → `KeyError` (API: 404 nazwany, zero cichej pustej odpowiedzi)."""
+    if run.analysis_type != "dynamika_rms":
+        raise KeyError(f"Przebieg nie jest bieg dynamiki czasowej: {run.id}")
+    from infrastructure.persistence.repositories.canonical_run_repository import (
+        canonical_run_repository_scope,
+    )
+
+    with canonical_run_repository_scope() as repository:
+        wynik = repository.get_szeregi_dynamiczne(run.id, klucze_kanalow)
+    if wynik is None:
+        raise KeyError(f"Brak zapisanych szeregów czasowych dla biegu {run.id}")
+    os_czasu_s, probki = wynik
+    if klucze_kanalow and not probki:
+        raise KeyError(
+            f"Żaden z żądanych kanałów {klucze_kanalow} nie istnieje w biegu {run.id}"
+        )
+    return {"run_id": str(run.id), "os_czasu_s": os_czasu_s, "probki": probki}
 
 
 def _execute_v126(run: CanonicalRun) -> None:

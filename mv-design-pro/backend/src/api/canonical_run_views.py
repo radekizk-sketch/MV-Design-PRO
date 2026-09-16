@@ -37,6 +37,8 @@ from enm.canonical_analysis import (
     build_bus_results,
     build_dynamic_stability_results,
     build_dynamic_stability_time_series,
+    build_dynamika_results,
+    build_dynamika_time_series,
     build_extended_trace,
     build_phase_state_results,
     build_power_flow_unbalanced_results,
@@ -473,6 +475,22 @@ def build_dynamic_stability_results_response(run: CanonicalRun) -> dict[str, Any
 
 def build_dynamic_stability_time_series_response(run: CanonicalRun) -> dict[str, Any]:
     payload = build_dynamic_stability_time_series(run)
+    payload["analysis_case_context"] = build_analysis_case_context(run)
+    return payload
+
+
+def build_dynamika_results_response(run: CanonicalRun) -> dict[str, Any]:
+    """Metadane `ResultSetDynamicV1` (karta W6-1) — `KeyError` się propaguje (API: 404)."""
+    payload = build_dynamika_results(run)
+    payload["analysis_case_context"] = build_analysis_case_context(run)
+    return payload
+
+
+def build_dynamika_time_series_response(
+    run: CanonicalRun, klucze_kanalow: list[str] | None
+) -> dict[str, Any]:
+    """Próbki szeregów czasowych `dynamika_rms` (karta W6-1) — `KeyError` się propaguje (API: 404)."""
+    payload = build_dynamika_time_series(run, klucze_kanalow)
     payload["analysis_case_context"] = build_analysis_case_context(run)
     return payload
 
