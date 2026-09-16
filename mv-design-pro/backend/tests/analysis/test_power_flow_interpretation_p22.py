@@ -13,6 +13,10 @@ import json
 from datetime import datetime
 
 import pytest
+from analysis.normative.kryteria_napiecia import (
+    KRYTERIUM_OSTRZEZENIE_PROCENT,
+    KRYTERIUM_PRZEKROCZENIE_PROCENT,
+)
 from analysis.power_flow.result import PowerFlowResult
 from analysis.power_flow_interpretation import (
     INTERPRETATION_VERSION,
@@ -37,10 +41,15 @@ def sample_power_flow_result() -> PowerFlowResult:
         base_mva=100.0,
         slack_node_id="bus_slack",
         node_u_mag_pu={
+            # Karta W3-J: progi napieciowe sourcowane z analysis.normative.
+            # kryteria_napiecia (INFO<5%, 5-10% WARN, >=10% HIGH) — wartosci
+            # ponizej dobrane wewnatrz (nie na granicy) kazdego pasma; przypadki
+            # NA GRANICY (dokladnie 5,0% / 10,0%) sa w testach tie-breakera
+            # nizej (`test_ranking_tie_breaker_by_element_type` i sasiednie).
             "bus_a": 1.005,  # 0.5% deviation - INFO
-            "bus_b": 0.975,  # 2.5% deviation - WARN
-            "bus_c": 1.03,  # 3% deviation - WARN
-            "bus_d": 0.92,  # 8% deviation - HIGH
+            "bus_b": 0.94,  # 6% deviation - WARN
+            "bus_c": 1.09,  # 9% deviation - WARN
+            "bus_d": 0.85,  # 15% deviation - HIGH
             "bus_slack": 1.0,  # 0% deviation - INFO
         },
         node_angle_rad={
@@ -129,7 +138,7 @@ def test_voltage_severity_info(
     sample_power_flow_result: PowerFlowResult,
     sample_context: InterpretationContext,
 ) -> None:
-    """Test INFO severity for voltages with <2% deviation."""
+    """Test INFO severity for voltages with <5% deviation (KRYTERIUM_OSTRZEZENIE_PROCENT)."""
     builder = PowerFlowInterpretationBuilder(context=sample_context)
     result = builder.build(sample_power_flow_result, "run-1")
 
@@ -145,11 +154,11 @@ def test_voltage_severity_warn(
     sample_power_flow_result: PowerFlowResult,
     sample_context: InterpretationContext,
 ) -> None:
-    """Test WARN severity for voltages with 2-5% deviation."""
+    """Test WARN severity for voltages with 5-10% deviation."""
     builder = PowerFlowInterpretationBuilder(context=sample_context)
     result = builder.build(sample_power_flow_result, "run-1")
 
-    # Find bus_b (2.5% deviation) and bus_c (3% deviation)
+    # Find bus_b (6% deviation) and bus_c (9% deviation)
     bus_b_finding = next(f for f in result.voltage_findings if f.bus_id == "bus_b")
     bus_c_finding = next(f for f in result.voltage_findings if f.bus_id == "bus_c")
 
@@ -161,14 +170,46 @@ def test_voltage_severity_high(
     sample_power_flow_result: PowerFlowResult,
     sample_context: InterpretationContext,
 ) -> None:
-    """Test HIGH severity for voltages with >5% deviation."""
+    """Test HIGH severity for voltages with >=10% deviation."""
     builder = PowerFlowInterpretationBuilder(context=sample_context)
     result = builder.build(sample_power_flow_result, "run-1")
 
-    # Find bus_d (8% deviation)
+    # Find bus_d (15% deviation)
     bus_d_finding = next(f for f in result.voltage_findings if f.bus_id == "bus_d")
 
     assert bus_d_finding.severity == FindingSeverity.HIGH
+
+
+def test_voltage_severity_at_boundaries() -> None:
+    """Karta W3-J (iloczyn cech, 'na granicy'): deviation dokladnie na progu
+    KRYTERIUM_OSTRZEZENIE_PROCENT (5,0 %) klasyfikuje sie jako WARN (granica
+    NALEZY do wyzszego pasma — `< 5.0` warunkuje INFO, wiec `== 5.0` przechodzi
+    do WARN), a dokladnie na progu KRYTERIUM_PRZEKROCZENIE_PROCENT (10,0 %)
+    jako HIGH (jw., `< 10.0` warunkuje WARN)."""
+    pf_result = PowerFlowResult(
+        converged=True,
+        iterations=1,
+        tolerance=1e-8,
+        max_mismatch_pu=0.0,
+        base_mva=100.0,
+        slack_node_id="slack",
+        node_u_mag_pu={
+            "bus_warn_boundary": 1.0 + KRYTERIUM_OSTRZEZENIE_PROCENT / 100.0,  # dokladnie 5%
+            "bus_high_boundary": 1.0 + KRYTERIUM_PRZEKROCZENIE_PROCENT / 100.0,  # dokladnie 10%
+            "slack": 1.0,
+        },
+        node_angle_rad={"bus_warn_boundary": 0.0, "bus_high_boundary": 0.0, "slack": 0.0},
+        branch_s_from_mva={},
+        branch_s_to_mva={},
+    )
+
+    builder = PowerFlowInterpretationBuilder(context=None)
+    result = builder.build(pf_result, "run-boundaries")
+
+    warn_boundary = next(f for f in result.voltage_findings if f.bus_id == "bus_warn_boundary")
+    high_boundary = next(f for f in result.voltage_findings if f.bus_id == "bus_high_boundary")
+    assert warn_boundary.severity == FindingSeverity.WARN
+    assert high_boundary.severity == FindingSeverity.HIGH
 
 
 # =============================================================================
@@ -255,8 +296,10 @@ def test_trace_contains_thresholds(
 
     trace = result.trace
 
-    assert trace.thresholds.voltage_info_max_pct == 2.0
-    assert trace.thresholds.voltage_warn_max_pct == 5.0
+    # Karta W3-J: jedno zrodlo prawdy — progi porownane z realnymi stalymi
+    # `analysis.normative.kryteria_napiecia`, nie magiczna liczba.
+    assert trace.thresholds.voltage_info_max_pct == KRYTERIUM_OSTRZEZENIE_PROCENT
+    assert trace.thresholds.voltage_warn_max_pct == KRYTERIUM_PRZEKROCZENIE_PROCENT
     assert trace.interpretation_version == INTERPRETATION_VERSION
 
 
@@ -415,8 +458,13 @@ def test_ranking_tie_breaker_by_element_type() -> None:
     This ensures: branch_loading < voltage (alphabetically).
     """
     # Create PowerFlowResult with two findings that have same severity but different types
-    # bus_x: 3% deviation (WARN) -> magnitude = 3.0
-    # branch_y: losses such that magnitude = 3.0 kW (0.003 MW * 1000)
+    # Karta W3-J: magnitude = 5.0 dobrane NA GRANICY obu pasm jednoczesnie —
+    # voltage WARN zaczyna sie od dokladnie KRYTERIUM_OSTRZEZENIE_PROCENT (5.0,
+    # granica NALEZY do WARN) i branch WARN konczy sie na dokladnie
+    # BRANCH_LOSSES_WARN_MAX_KW (5.0, granica NALEZY do WARN) — jedyna wspolna
+    # wartosc, przy ktorej OBA pasma sa rownoczesnie WARN.
+    # bus_x: 5% deviation (WARN, na granicy) -> magnitude = 5.0
+    # branch_y: losses such that magnitude = 5.0 kW (0.005 MW * 1000, na granicy)
     pf_result = PowerFlowResult(
         converged=True,
         iterations=1,
@@ -425,7 +473,7 @@ def test_ranking_tie_breaker_by_element_type() -> None:
         base_mva=100.0,
         slack_node_id="slack",
         node_u_mag_pu={
-            "bus_x": 1.03,  # 3% deviation -> WARN, magnitude = 3.0
+            "bus_x": 1.05,  # 5% deviation -> WARN (na granicy), magnitude = 5.0
             "slack": 1.0,
         },
         node_angle_rad={
@@ -433,21 +481,21 @@ def test_ranking_tie_breaker_by_element_type() -> None:
             "slack": 0.0,
         },
         branch_s_from_mva={
-            # Branch with losses = 3.0 kW (0.003 MW), so magnitude after *1000 = 3.0
-            "branch_y": {"re": 0.0015, "im": 0.0},
+            # Branch with losses = 5.0 kW (0.005 MW), so magnitude after *1000 = 5.0
+            "branch_y": {"re": 0.0025, "im": 0.0},
         },
         branch_s_to_mva={
-            "branch_y": {"re": 0.0015, "im": 0.0},  # Total losses = 0.003 MW = 3 kW
+            "branch_y": {"re": 0.0025, "im": 0.0},  # Total losses = 0.005 MW = 5 kW
         },
     )
 
     builder = PowerFlowInterpretationBuilder(context=None)
     result = builder.build(pf_result, "run-tie-breaker")
 
-    # Both should be WARN with magnitude = 3.0
+    # Both should be WARN with magnitude = 5.0
     top_issues = result.summary.top_issues
 
-    # Filter to only WARN items with magnitude ~3.0
+    # Filter to only WARN items with magnitude ~5.0
     relevant_items = [item for item in top_issues if item.severity == FindingSeverity.WARN]
 
     # Should have at least 2 items (voltage and branch)
@@ -483,8 +531,8 @@ def test_ranking_tie_breaker_by_element_id() -> None:
         base_mva=100.0,
         slack_node_id="slack",
         node_u_mag_pu={
-            "bus_b": 1.03,  # 3% deviation -> WARN
-            "bus_a": 1.03,  # 3% deviation -> WARN (same magnitude)
+            "bus_b": 1.05,  # 5% deviation -> WARN (na granicy)
+            "bus_a": 1.05,  # 5% deviation -> WARN (same magnitude, na granicy)
             "slack": 1.0,
         },
         node_angle_rad={
@@ -525,9 +573,9 @@ def test_ranking_tie_breaker_determinism_multiple_runs() -> None:
         base_mva=100.0,
         slack_node_id="slack",
         node_u_mag_pu={
-            "bus_z": 1.03,  # 3% deviation
-            "bus_a": 1.03,  # Same
-            "bus_m": 1.03,  # Same
+            "bus_z": 1.05,  # 5% deviation -> WARN (na granicy)
+            "bus_a": 1.05,  # Same
+            "bus_m": 1.05,  # Same
             "slack": 1.0,
         },
         node_angle_rad={
@@ -537,12 +585,12 @@ def test_ranking_tie_breaker_determinism_multiple_runs() -> None:
             "slack": 0.0,
         },
         branch_s_from_mva={
-            "branch_x": {"re": 0.0015, "im": 0.0},
-            "branch_b": {"re": 0.0015, "im": 0.0},
+            "branch_x": {"re": 0.0025, "im": 0.0},
+            "branch_b": {"re": 0.0025, "im": 0.0},
         },
         branch_s_to_mva={
-            "branch_x": {"re": 0.0015, "im": 0.0},
-            "branch_b": {"re": 0.0015, "im": 0.0},
+            "branch_x": {"re": 0.0025, "im": 0.0},
+            "branch_b": {"re": 0.0025, "im": 0.0},
         },
     )
 

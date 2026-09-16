@@ -62,6 +62,14 @@ describe('przekroczeniaRozplywu — konsolidacja przekroczeń napięć szyn', ()
     const wynik = powerFlowResultFixture();
     expect(przekroczeniaRozplywu(wynik)).toEqual(przekroczeniaRozplywu(wynik));
   });
+
+  it('karta W3-J: bez kryteriów w wyniku (starszy zapisany bieg) → pusta lista, nie domyślny próg', () => {
+    const wynik = powerFlowResultFixture({
+      kryteria_napiecia: undefined,
+      bus_results: [busResultFixture({ bus_id: 'SZ-ST2', v_pu: 0.5 })],
+    });
+    expect(przekroczeniaRozplywu(wynik)).toEqual([]);
+  });
 });
 
 /*
@@ -142,7 +150,7 @@ describe('przekroczeniaWerdyktu — kryteria projektowe backendu (lit. a-c)', ()
   });
 
   it('odpowiedź niezgodna z kontraktem (brak tablicy pozycji) → brak pozycji, bez awarii', () => {
-    expect(przekroczeniaWerdyktu({} as WerdyktResponse, false)).toEqual([]);
+    expect(przekroczeniaWerdyktu({} as OdpowiedzOceny, false)).toEqual([]);
   });
 
   it('bierze WYŁĄCZNIE kryteria NARUSZONE (spełnione/niesprawdzone pomijane)', () => {

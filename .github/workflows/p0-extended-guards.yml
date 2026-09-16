@@ -190,6 +190,13 @@ jobs:
       - name: UI — no physics (warstwa prezentacji)
         run: $GUARD_PY scripts/ui_no_physics_guard.py
 
+      # Karta W3-J (2026-09-16): jedno zrodlo kryteriow napieciowych — zakaz
+      # zaszytych literalow progu napieciowego (0.95/1.05/0.9/1.1) w ui/**,
+      # ui2/**; osobny guard od ui_no_physics_guard.py (wlasny, waski pomiar
+      # ALLOWLIST, patrz docstring pliku).
+      - name: UI — progi napieciowe (jedno zrodlo kryteriow)
+        run: $GUARD_PY scripts/ui_progi_napiecia_guard.py
+
       - name: Brak bezposrednich parametrow zwarcia
         run: $GUARD_PY scripts/no_direct_fault_params_guard.py
 

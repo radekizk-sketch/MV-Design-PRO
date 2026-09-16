@@ -59,7 +59,6 @@ SCAN_TARGETS = [
     "backend/src/analysis/reporting",
     "backend/src/network_model/reporting",
     "backend/src/network_model/proof",
-    "backend/src/analysis/power_flow/violations_report.py",
     "backend/src/analysis/protection_curves_it/renderer_pdf.py",
     "backend/src/analysis/protection_curves_it/renderer_svg.py",
     "backend/src/application/analyses/dokument_studium.py",

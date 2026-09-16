@@ -71,8 +71,13 @@ export function TabelaSzyn({
         naglowek={{ analizaPL: ROZPLYW_STRINGS.analiza, runId: runId ?? undefined, ...swiezosc }}
         zalozenia={naZalozeniaRozplywu(wynik)}
         kolumny={KOLUMNY_SZYN}
-        wiersze={naWierszeSzyn(wynik.bus_results)}
-        wykres={<ProfilNapiecChart punkty={naProfilNapiec(wynik.bus_results)} />}
+        wiersze={naWierszeSzyn(wynik.bus_results, wynik.kryteria_napiecia)}
+        wykres={
+          <ProfilNapiecChart
+            punkty={naProfilNapiec(wynik.bus_results)}
+            kryteria={wynik.kryteria_napiecia}
+          />
+        }
         onOtworzDowod={onOtworzDowod}
         onEksport={onEksport}
         trybZaawansowania={trybZaawansowania}

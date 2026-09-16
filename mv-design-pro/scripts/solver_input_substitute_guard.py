@@ -444,6 +444,13 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "analysis/energy_validation/models.py",
     "analysis/grid_strength/models.py",
     "analysis/lf_sensitivity/builder.py",
+    # Karta W3-J (2026-09-16): jedno zrodlo kryteriow napieciowych — dataclass
+    # WYNIKU/KONTRAKTU (`KryteriaNapieciowe`, komplet stalych normatywnych),
+    # importowana bezposrednio przez `application/analyses/voltage_profile_view.py`
+    # i `api/canonical_run_views.py` (obie warstwy objete skanem) — ten sam wzorzec
+    # co `analysis/normative/models.py` obok, zaden z 9 pol nie jest atrybutem
+    # typu wbudowanego, wiec nie kwalifikuje sie do MODEL_ROOTS_POZA_MAPA.
+    "analysis/normative/kryteria_napiecia.py",
     "analysis/normative/models.py",
     "analysis/power_flow/result.py",
     "analysis/reactive_adequacy/models.py",

@@ -253,7 +253,18 @@ POMIJANE_KATALOGI = {
 #: zamiast `ReturnType<typeof vi.fn>`; fikstura `CIEPLNA_FIXTURE` uzupelniona o pola
 #: kontraktu zamiast rzutowania) — pomiar guardem w lancuchu przedpushowym: 119 -> 117,
 #: zapadka w dol (guard sam zameldowal `[dlug-zmalal]`).
-BUDZET_BLEDOW_POZA_BRAMKA = 117
+#: W3-J (2026-09-16, odbior na drzewie `474f847a` po fali 3): 117 -> 116. Trzy pliki testowe usuniete razem z martwym
+#: kodem, ktory testowaly (`ui2/kreatory/magistrala/__tests__/WykresSpadku.
+#: test.tsx`, `ui/voltage-profile/__tests__/{VoltageHeatmap,
+#: voltageProfileAnalyzer}.test.ts` — kasacja duplikatow kryteriow
+#: napieciowych, patrz karta), co obnizylo dlug POZA BRAMKA o czesc tej
+#: roznicy; jeden REALNY blad typu naprawiony U ZRODLA przy okazji (nie
+#: naprawa TEJ karty, ale napotkany w pliku, ktory karta i tak edytowala —
+#: `ui2/wyniki/co-wymaga-uwagi/__tests__/model.test.ts:153`, `{} as
+#: WerdyktResponse` odwolywal sie do nieistniejacego/niezaimportowanego typu;
+#: poprawny typ parametru `przekroczeniaWerdyktu` to `OdpowiedzOceny`, juz
+#: zaimportowany w tym pliku). Pomiar guardem po obu zmianach: 116.
+BUDZET_BLEDOW_POZA_BRAMKA = 116
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

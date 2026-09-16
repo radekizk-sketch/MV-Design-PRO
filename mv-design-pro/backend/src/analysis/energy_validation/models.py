@@ -19,6 +19,11 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
+from analysis.normative.kryteria_napiecia import (
+    KRYTERIUM_OSTRZEZENIE_PROCENT,
+    KRYTERIUM_PRZEKROCZENIE_PROCENT,
+)
+
 
 class EnergyCheckType(StrEnum):
     BRANCH_LOADING = "BRANCH_LOADING"
@@ -89,8 +94,9 @@ class EnergyValidationContext:
 class EnergyValidationConfig:
     loading_warn_pct: float = 80.0
     loading_fail_pct: float = 100.0
-    voltage_warn_pct: float = 5.0
-    voltage_fail_pct: float = 10.0
+    #: Jedno zrodlo prawdy: `analysis.normative.kryteria_napiecia` (karta W3-J).
+    voltage_warn_pct: float = KRYTERIUM_OSTRZEZENIE_PROCENT
+    voltage_fail_pct: float = KRYTERIUM_PRZEKROCZENIE_PROCENT
     loss_warn_pct: float = 5.0
     loss_fail_pct: float = 10.0
 

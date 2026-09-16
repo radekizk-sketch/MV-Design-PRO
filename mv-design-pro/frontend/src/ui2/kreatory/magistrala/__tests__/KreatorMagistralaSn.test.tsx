@@ -67,7 +67,14 @@ vi.mock('../../../../ui/selection', () => ({
     selector({ selectedElements: [], selectElement: selectElementMock }),
 }));
 
-vi.mock('../../../../ui/navigation/routes', () => ({
+// Karta W3-J (2026-09-16): `StanSpadkuNapiecia` (zastepca `WykresSpadku`) uzywa
+// `useAkcjaUruchomObliczenie` -> `przejdzDoPrzestrzeni` -> `ui2/legacy/mostObszarow.ts`,
+// ktory buduje tablice ROUTES.*.hash NA POZIOMIE MODULU — pelny mock (bez `importOriginal`)
+// zostawial `ROUTES`/`ALIAS_ROUTES` niezdefiniowane i wywalal caly plik testowy przy
+// imporcie. Wzorzec `importOriginal` jak w `ui2/wyniki/zwarcia/__tests__/rozplywZwarciowy.test.tsx`
+// i `ui2/legacy/__tests__/legacyPasekNarzedzi.test.tsx` — realny ROUTES, nadpisany tylko navigateToSld.
+vi.mock('../../../../ui/navigation/routes', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../../ui/navigation/routes')>()),
   navigateToSld: () => navigateToSldMock(),
 }));
 

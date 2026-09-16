@@ -5,6 +5,7 @@ from math import radians
 from typing import Any
 from uuid import UUID
 
+from analysis.normative.kryteria_napiecia import zbuduj_kryteria_napiecia
 from analysis.power_flow.result import PowerFlowResult
 from analysis.power_flow_interpretation import (
     InterpretationContext,
@@ -317,7 +318,13 @@ def get_power_flow_result(run: CanonicalRun) -> dict[str, Any]:
     result_v1 = (run.raw_result or {}).get("result_v1") or None
     if result_v1 is None:
         raise ValueError(f"Wyniki rozpływu mocy nie są dostępne dla przebiegu {run.id}")
-    return result_v1
+    # Karta W3-J: kryteria napięciowe ADDYTYWNE, budowane ŚWIEŻO z jednego źródła
+    # prawdy (`analysis.normative.kryteria_napiecia`) — to konfiguracja, nie wynik
+    # fizyczny biegu, więc nie jest przechowywana w `raw_result`. Kopia płytka
+    # (nie mutacja `result_v1` w miejscu): ten słownik jest referencją do wnętrza
+    # `run.raw_result`, a wołający (np. `build_power_flow_interpretation`) czyta
+    # go dalej — dopisanie klucza w miejscu przeciekałoby do zapisu biegu.
+    return {**result_v1, "kryteria_napiecia": zbuduj_kryteria_napiecia().to_dict()}
 
 
 def get_power_flow_trace(run: CanonicalRun) -> dict[str, Any]:

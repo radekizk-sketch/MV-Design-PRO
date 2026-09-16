@@ -31,9 +31,4 @@ export type {
   WynikRozplywu,
   PodsumowanieStratGalezi,
 } from './adapters/rozplywAdapter';
-export {
-  ROZPLYW_STRINGS,
-  NAPIECIE_MIN_PU,
-  NAPIECIE_MAX_PU,
-  napiecePozaZakresem,
-} from './strings';
+export { ROZPLYW_STRINGS, napiecePozaZakresem } from './strings';

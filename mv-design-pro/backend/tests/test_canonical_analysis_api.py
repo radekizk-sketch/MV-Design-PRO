@@ -689,6 +689,19 @@ def test_power_flow_read_and_export_endpoints_use_canonical_run(client: TestClie
     assert result_payload["bus_results"]
     assert result_payload["branch_results"]
 
+    # Karta W3-J: kryteria napięciowe ADDYTYWNE w widoku wyniku rozpływu,
+    # jedno źródło prawdy (`analysis.normative.kryteria_napiecia`).
+    kryteria = result_payload["kryteria_napiecia"]
+    assert kryteria["ostrzezenie_pct"] == 5.0
+    assert kryteria["przekroczenie_pct"] == 10.0
+    assert kryteria["ostrzezenie_min_pu"] == 0.95
+    assert kryteria["ostrzezenie_max_pu"] == 1.05
+    assert kryteria["przekroczenie_min_pu"] == 0.9
+    assert kryteria["przekroczenie_max_pu"] == 1.1
+    assert kryteria["pasmo_wiarygodnosci_pct"] == 10.0
+    assert "PN-EN 50160" in kryteria["podstawa_przekroczenie_pl"]
+    assert kryteria["podstawa_ostrzezenie_pl"]
+
     trace_response = client.get(f"/api/power-flow-runs/{run_id}/trace")
     assert trace_response.status_code == 200
     trace_payload = trace_response.json()

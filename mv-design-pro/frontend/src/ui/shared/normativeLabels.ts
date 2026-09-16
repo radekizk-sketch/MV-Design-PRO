@@ -80,22 +80,24 @@ export const NORMATIVE_TERMS = {
 
 /**
  * UI-01: Etykiety dla werdyktów napięciowych szyn
+ *
+ * Karta W3-J (2026-09-16): kryteria progowe usunięte stąd jako literały —
+ * `criteria` (0.95/1.05/0.90/1.10 zaszyte) było martwym polem (0 konsumentów,
+ * pomiar grepem), a `statusDescriptions.failLow`/`failHigh` niosły te same
+ * liczby jako TEKST, niezależnie od realnego progu. Oba miejsca sourcowane
+ * teraz z `KryteriaNapieciowe` przekazywanego przez wołającego
+ * (`PowerFlowResultsInspectorPage.tsx::getVoltageVerdict`) — zero progu
+ * wymyślonego w UI.
  */
 export const VOLTAGE_VERDICT_LABELS = {
-  // Kryteria
-  criteria: {
-    pass: '0.95 ≤ U_pu ≤ 1.05',
-    marginal: '(0.90 ≤ U_pu < 0.95) lub (1.05 < U_pu ≤ 1.10)',
-    fail: 'U_pu < 0.90 lub U_pu > 1.10',
-  },
-
   // Opisy stanów
   statusDescriptions: {
     pass: 'Napięcie w granicach dopuszczalnych',
     marginalLow: (deviationPct: string) => `Napięcie zaniżone o ${deviationPct}%`,
     marginalHigh: (deviationPct: string) => `Napięcie zawyżone o ${deviationPct}%`,
-    failLow: 'Napięcie poniżej granicy 0.90 p.u.',
-    failHigh: 'Napięcie powyżej granicy 1.10 p.u.',
+    failLow: (granicaPu: string) => `Napięcie poniżej granicy ${granicaPu} p.u.`,
+    failHigh: (granicaPu: string) => `Napięcie powyżej granicy ${granicaPu} p.u.`,
+    unavailable: 'Kryterium napięciowe niedostępne w tym wyniku.',
   },
 
   // Zalecenia operacyjne (CO DALEJ)
@@ -105,6 +107,7 @@ export const VOLTAGE_VERDICT_LABELS = {
     marginalHigh: 'Zweryfikuj możliwość obniżenia napięcia źródła lub zwiększenia obciążenia.',
     failLow: 'Podwyższ napięcie źródła, zmniejsz obciążenie lub wzmocnij sieć (przekrój, skrócenie trasy).',
     failHigh: 'Obniż napięcie źródła, zwiększ obciążenie lub zweryfikuj regulację transformatora.',
+    unavailable: 'Uruchom ponownie bieg rozpływu, aby uzyskać ocenę wobec kryterium napięciowego.',
   },
 } as const;
 

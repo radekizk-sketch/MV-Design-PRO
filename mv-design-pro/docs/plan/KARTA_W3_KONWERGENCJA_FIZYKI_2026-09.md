@@ -470,3 +470,58 @@ specach fali 3 przepięte na `otworzZakladkeWynikow` (zero `getByRole('tab')` w 
 w toku), **V12.7** (karta prezentacji inżynierskiej po werdykcie B-02 8,5/10 — `docs/plan/KARTA_B02_POWIERZCHNIE_ANALITYCZNE_2026-09.md`
 §7), OD-19 (B-01).
 
+### W3-J (2026-09-16) — Jedno źródło kryteriów napięciowych — UCZCIWOŚĆ
+
+**Wykonane (agent, worktree z bazy `c307e95f`; commit bez push):** recenzja karty W3-G2 („pasma zdrowego
+rozsądku rozpływu") wykryła KLASĘ: progi napięciowe (0,95/1,05/0,90/1,10 p.u. oraz 2%/5%/10%) zdefiniowane
+niezależnie w ≥6 miejscach backendu i 5 miejscach frontendu, z RÓŻNYMI liczbami dla pokrewnych pojęć i JEDNĄ
+BŁĘDNĄ atrybucją normatywną (`ui2/wyniki/rozplyw/strings.ts` przypisywał kryterium 5% wprost PN-EN 50160, która
+w rzeczywistości dopuszcza ±10% Un) oraz JEDNĄ fabrykacją (`WykresSpadku.tsx` — poglądowa krzywa matematyczna
+zamiast wyniku solvera). Własny inwentarz agenta (grep na drzewie karty, §0 pkt 1) POTWIERDZIŁ inwentarz karty
+w całości i ROZSZERZYŁ go o dwie lokalizacje nienazwane w karcie: `ui/inspector/InspectorPanel.tsx`
+(`buildBusLimitsSections`/`buildBusParametersSections` — dwie niezależne zaszyte pary „0,90 pu"/„1,10 pu") i
+`ui/power-flow-results/PowerFlowResultsInspectorPage.tsx` (`getVoltageVerdict`/`calculateNetworkVerdict`/
+`SummaryTab` — trzy niezależne miejsca czytające 0,95/1,05 wprost z wyniku).
+
+Jeden moduł źródłowy `analysis/normative/kryteria_napiecia.py`: `PASMO_WIARYGODNOSCI_PROCENT = 10.0` (PN-EN
+50160), `KRYTERIUM_OSTRZEZENIE_PROCENT = 5.0` (praktyka projektowa/IRiESD, uczciwie NIE przypisana PN-EN 50160),
+`KRYTERIUM_PRZEKROCZENIE_PROCENT = 10.0` (PN-EN 50160), każda z `podstawa_pl` cytowalną w UI; `pasmo_pu()`;
+`KryteriaNapieciowe` (9 pól) + `zbuduj_kryteria_napiecia()`. Konsumenci backendu przepięci z parytetem bit w bit
+zmierzonym (nie założonym): `NormativeConfig`, `EnergyValidationConfig` (druga kopia), `reactive_adequacy`
+(`DEFAULT_U_MIN/MAX_PU` wyprowadzone `pasmo_pu()`), `sanity_bounds/power_flow_bounds.py` (`PASMO_NAPIECIA_PROCENT`
+nazwa/wartość bit w bit), `power_flow_interpretation/builder.py` — trzecia, WŁASNA granica INFO (2,0%) bez
+podstawy SKASOWANA (dwie granice, obie sourcowane, nie trzy; kształt trójpoziomowy INFO/WARN/HIGH zostaje, obie
+granice 5%/10% mają teraz cytowaną podstawę; przetestowane dokładnie na progach). Kasacja martwych:
+`analysis/power_flow/violations.py` + `violations_report.py` + test (0 konsumentów), `ui/voltage-profile/**`
+(10 plików, 0 renderu poza modułem), `WykresSpadku.tsx` zastąpiony `StanSpadkuNapiecia.tsx` (uczciwy stan zerowy
++ akcja z rejestru `akcjeStanuZerowego`, zero liczb bez biegu) — bramka wskrzeszenia
+`legacy_public_path_guard.py::check_w3j_voltage_criteria_resurrection` (AST backend / regex frontend) + 9
+self-testów. API niesie `kryteria_napiecia` addytywnie (`canonical_run_views.py`, `voltage_profile_view.py`) —
+OpenAPI zweryfikowany BEZ dryfu (obie trasy `dict[str, Any]` bez `response_model`, potwierdzone bezpośrednio
+`test_snapshot_openapi_istnieje_i_jest_aktualny`). Front bez własnych progów: kasacja `NAPIECIE_MIN_PU/MAX_PU`
+(usuwa błędną atrybucję), `napiecePozaZakresem`/`ProfilNapiecChart`/`rozplywAdapter`/`co-wymaga-uwagi` czytają
+kryteria z odpowiedzi, uczciwy stan „niedostępne" bez pola; `InspectorPanel.tsx`/`PowerFlowResultsInspectorPage.tsx`
+(znaleziska własne) przepięte tą samą metodą, 4-stanowy status OK/WARNING/VIOLATION/UNAVAILABLE. Strażnik klasy
+nowy `scripts/ui_progi_napiecia_guard.py` (regex liczba×kontekst napięciowy, allowlista ~20 wpisów uzasadnionych
+merytorycznie, zapadka świeżości), wpięty w `p0-extended-guards.yml`; 15 self-testów.
+
+Naprawione PRZY OKAZJI (Zero-Debt, napotkane, nie z nazwy tej karty): (1) `{} as WerdyktResponse` w
+`co-wymaga-uwagi/__tests__/model.test.ts` — typ nigdy niezadeklarowany w repo, naprawiony na `OdpowiedzOceny`;
+(2) fikstura LV-domain `16_stale_result.json` nieświeża wobec nowego pola w `result_snapshot.voltage_profile` —
+zregenerowana WYŁĄCZNIE oficjalnym `eksport_fixtur_projekcji_nn.py` (jedyny zmieniony plik spośród 18
+scenariuszy, pomiar `git status`); (3) `tsconfig_gate_guard.py` — ratchet wykryty przy pracy (119→117 na drzewie
+karty), zbadany źródłowo, budżet obniżony do 116 z udokumentowaną deltą (bez związku przyczynowego z W3-J poza
+odkryciem przy tej samej regresji); (4) `scripts/export_codenames_guard.py::SCAN_TARGETS` — martwe odwołanie do
+skasowanego `violations_report.py` wywoływało `verification_phantom_paths_guard` na czerwono, usunięte u źródła;
+(5) `KreatorMagistralaSn.test.tsx` — pełny mock `ui/navigation/routes` (bez `importOriginal`) łamał się NA
+IMPORCIE (0 testów zamiast 10), gdy nowy `StanSpadkuNapiecia` zaciągnął `useAkcjaUruchomObliczenie →
+przejdzDoPrzestrzeni → mostObszarow.ts` (moduł buduje tablicę `ROUTES.*.hash` na poziomie modułu) — naprawiony
+wzorcem `importOriginal` już ustalonym w repo (`rozplywZwarciowy.test.tsx`, `legacyPasekNarzedzi.test.tsx`);
+(6) formatowanie black/ruff na 4 własnych plikach (bez zmiany logiki).
+
+Weryfikacja agenta: pytest DoD (`tests/analysis tests/application/analyses tests/api tests/ci`) **2876 passed / 0 failed**;
+`test_kryteria_napiecia.py` 18/18 nowych; vitest celowany (32 pliki dotkniętych modułów) **529 passed / 0 failed**; tsc 0,
+eslint 0; `guardy_z_ci.py` **86 guardow + lint 4/4 + npm 2/2 + 824 self-testy — KOMPLET ZIELONY (RC=0)**; e2e realny backend (`critical-run-flow`, `pasma-rozplywu-jakosc`,
+`creator-screenshot` — w tym scena `magistrala — teoria z wykresem`, `metoda-rozplywu-porownanie`) 22/22.
+Odbiór: evidence §F/§G, `docs/v12xx/REJESTR_KONFLIKTOW.md` wiersz W3-J, mapa domknięcia D4 (skorygowane
+„tylko zwarcia" na aktualny stan po W3-G2, zdjęte z listy wycinków W3) i domena 6 wiersz „Ekran Jakość".

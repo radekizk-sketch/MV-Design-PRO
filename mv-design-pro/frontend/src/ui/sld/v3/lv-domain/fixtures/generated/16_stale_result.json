@@ -966,7 +966,7 @@
     "scenario_id": "MAX",
     "station_ref": "stC"
   },
-  "projection_hash": "55439e8c04887418488a68f2add85845f88eb98ef1f46402eb6fcaf387458a83",
+  "projection_hash": "bd621ecf33a468ffc13ff6f77f15ee414a1fd191f3c4b11d2c082b1e160e05b5",
   "result_snapshot": {
     "analysis_type": "LOAD_FLOW",
     "overlay_payload": {
@@ -1699,6 +1699,17 @@
         "run_timestamp": "2026-09-02T00:00:00+00:00",
         "snapshot_id": null,
         "trace_id": null
+      },
+      "kryteria_napiecia": {
+        "ostrzezenie_max_pu": 1.05,
+        "ostrzezenie_min_pu": 0.95,
+        "ostrzezenie_pct": 5.0,
+        "pasmo_wiarygodnosci_pct": 10.0,
+        "podstawa_ostrzezenie_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+        "podstawa_przekroczenie_pl": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych) — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %.",
+        "przekroczenie_max_pu": 1.1,
+        "przekroczenie_min_pu": 0.9,
+        "przekroczenie_pct": 10.0
       },
       "rows": [
         {

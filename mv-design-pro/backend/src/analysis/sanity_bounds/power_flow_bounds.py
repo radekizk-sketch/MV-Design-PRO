@@ -43,6 +43,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from analysis.normative.kryteria_napiecia import PASMO_WIARYGODNOSCI_PROCENT
 from analysis.sanity_bounds.short_circuit_bounds import CREDIBLE, INCOMPLETE, OUT_OF_RANGE
 from network_model.pochodne import a_na_ka
 
@@ -57,7 +58,10 @@ NORMA_NAPIECIA_PL = (
 )
 
 #: Szerokość pasma wiarygodności napięcia [%] wokół Un (± PASMO_NAPIECIA_PROCENT).
-PASMO_NAPIECIA_PROCENT: float = 10.0
+#: Jedno źródło prawdy (karta W3-J): `analysis.normative.kryteria_napiecia.
+#: PASMO_WIARYGODNOSCI_PROCENT` — nazwa pola tego modułu i wynik (10.0)
+#: bit w bit bez zmian, wyłącznie źródło liczby jest wspólne.
+PASMO_NAPIECIA_PROCENT: float = PASMO_WIARYGODNOSCI_PROCENT
 
 #: Domyślny próg wiarygodności strat czynnych rozpływu, jako % sumy mocy czynnej
 #: odbiorów (JAWNY parametr — patrz ``evaluate_network_losses``, nie zaszyta

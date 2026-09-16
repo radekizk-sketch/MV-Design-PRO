@@ -1706,3 +1706,170 @@ def test_guard_accepts_current_repo_state_w3g1() -> None:
     `PowerFlowRunDialog.tsx` (+ jego test) nie istnieja w prawdziwym drzewie
     `frontend/src`."""
     assert guard.check_w3g1_run_trigger_orphan_resurrection() == []
+
+
+# =============================================================================
+# W3-J (2026-09-16) — jedno zrodlo kryteriow napieciowych: bramka wskrzeszenia
+# detektora naruszen napieciowych (backend) i modulu profilu napiec (frontend)
+# z progami 0,95/1,05/0,90/1,10 zaszytymi NIEZALEZNIE od
+# `analysis.normative.kryteria_napiecia`.
+# =============================================================================
+
+
+def _patch_w3j_tree(monkeypatch, tmp_path) -> tuple[Path, Path]:
+    src = tmp_path / "backend" / "src"
+    src.mkdir(parents=True)
+    fe = tmp_path / "frontend" / "src"
+    fe.mkdir(parents=True)
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", src)
+    monkeypatch.setattr(guard, "FRONTEND_SRC_DIR", fe)
+    monkeypatch.setattr(guard, "W3J_VOLTAGE_PROFILE_FRONTEND_DIR", fe / "ui" / "voltage-profile")
+    return src, fe
+
+
+def test_guard_rejects_resurrected_w3j_violations_module(tmp_path, monkeypatch) -> None:
+    src, _fe = _patch_w3j_tree(monkeypatch, tmp_path)
+    (src / "analysis" / "power_flow").mkdir(parents=True)
+    (src / "analysis" / "power_flow" / "violations.py").write_text(
+        "default_umin_pu = 0.95\ndefault_umax_pu = 1.05\n", encoding="utf-8"
+    )
+    (src / "analysis" / "power_flow" / "violations_report.py").write_text(
+        "x = 1\n", encoding="utf-8"
+    )
+
+    violations = guard.check_w3j_voltage_criteria_resurrection()
+
+    assert any(
+        "[resurrected-module]" in v and "analysis/power_flow/violations.py" in v for v in violations
+    )
+    assert any(
+        "[resurrected-module]" in v and "analysis/power_flow/violations_report.py" in v
+        for v in violations
+    )
+
+
+def test_guard_rejects_resurrected_w3j_class_under_other_path(tmp_path, monkeypatch) -> None:
+    """Klasa moze wrocic pod INNYM plikiem — guard skanuje CALY `backend/src`,
+    nie tylko stara sciezke `analysis/power_flow/violations.py`."""
+    src, _fe = _patch_w3j_tree(monkeypatch, tmp_path)
+    (src / "analysis" / "sneaky").mkdir(parents=True)
+    (src / "analysis" / "sneaky" / "detector.py").write_text(
+        "class VoltageViolationsDetector:\n    pass\n", encoding="utf-8"
+    )
+
+    violations = guard.check_w3j_voltage_criteria_resurrection()
+
+    assert any("[resurrected-class]" in v and "VoltageViolationsDetector" in v for v in violations)
+    # Stary plik nie istnieje w tym scenariuszu — [resurrected-module] nie pada.
+    assert not any("[resurrected-module]" in v for v in violations)
+
+
+def test_guard_rejects_resurrected_w3j_function_under_other_path(tmp_path, monkeypatch) -> None:
+    src, _fe = _patch_w3j_tree(monkeypatch, tmp_path)
+    (src / "analysis").mkdir(parents=True)
+    (src / "analysis" / "elsewhere.py").write_text(
+        "def export_violations_report_to_pdf():\n    pass\n", encoding="utf-8"
+    )
+
+    violations = guard.check_w3j_voltage_criteria_resurrection()
+
+    assert any(
+        "[resurrected-function]" in v and "export_violations_report_to_pdf" in v for v in violations
+    )
+
+
+def test_guard_rejects_w3j_voltage_profile_frontend_dir(tmp_path, monkeypatch) -> None:
+    _src, fe = _patch_w3j_tree(monkeypatch, tmp_path)
+    (fe / "ui" / "voltage-profile").mkdir(parents=True)
+    (fe / "ui" / "voltage-profile" / "utils.ts").write_text(
+        "export function checkVoltageViolation() { return null; }\n", encoding="utf-8"
+    )
+
+    violations = guard.check_w3j_voltage_criteria_resurrection()
+
+    assert any("ui/voltage-profile" in v and "[resurrected-module]" in v for v in violations)
+
+
+def test_guard_rejects_resurrected_w3j_component_under_other_path(tmp_path, monkeypatch) -> None:
+    _src, fe = _patch_w3j_tree(monkeypatch, tmp_path)
+    sneaky_dir = fe / "ui" / "elsewhere"
+    sneaky_dir.mkdir(parents=True)
+    (sneaky_dir / "sneaky.tsx").write_text(
+        "export function VoltageProfileChart() { return null; }\n", encoding="utf-8"
+    )
+
+    violations = guard.check_w3j_voltage_criteria_resurrection()
+
+    assert any(
+        "[resurrected-component]" in v and "VoltageProfileChart" in v and "sneaky.tsx" in v
+        for v in violations
+    )
+    assert not any("[resurrected-module]" in v for v in violations)
+
+
+def test_guard_rejects_resurrected_w3j_heatmap_legend_under_other_path(
+    tmp_path, monkeypatch
+) -> None:
+    _src, fe = _patch_w3j_tree(monkeypatch, tmp_path)
+    sneaky_dir = fe / "ui" / "elsewhere"
+    sneaky_dir.mkdir(parents=True)
+    (sneaky_dir / "sneaky2.tsx").write_text(
+        "export const VoltageHeatmapLegend = () => null;\n", encoding="utf-8"
+    )
+
+    violations = guard.check_w3j_voltage_criteria_resurrection()
+
+    assert any("[resurrected-component]" in v and "VoltageHeatmapLegend" in v for v in violations)
+
+
+def test_guard_does_not_fire_on_w3j_names_in_comments_or_strings(tmp_path, monkeypatch) -> None:
+    src, fe = _patch_w3j_tree(monkeypatch, tmp_path)
+    (src / "analysis").mkdir(parents=True)
+    (src / "analysis" / "notes.py").write_text(
+        "# VoltageViolationsDetector zostal skasowany karta W3-J\n"
+        "# export_violations_report_to_pdf tez\n"
+        "x = 1\n",
+        encoding="utf-8",
+    )
+    (fe / "ui" / "__tests__").mkdir(parents=True)
+    (fe / "ui" / "__tests__" / "notes.test.ts").write_text(
+        "/**\n * Kasacja 2026-09-16 (karta W3-J): `ui/voltage-profile/**`\n"
+        " * (VoltageProfileChart, VoltageHeatmapLegend) usuniete.\n */\n"
+        "// VoltageProfileChart nie wraca\n"
+        "export const cos_innego = 1;\n",
+        encoding="utf-8",
+    )
+
+    assert guard.check_w3j_voltage_criteria_resurrection() == []
+
+
+def test_guard_accepts_clean_tree_without_w3j_resurrection(tmp_path, monkeypatch) -> None:
+    src, fe = _patch_w3j_tree(monkeypatch, tmp_path)
+    (src / "analysis" / "normative").mkdir(parents=True)
+    (src / "analysis" / "normative" / "kryteria_napiecia.py").write_text(
+        "KRYTERIUM_OSTRZEZENIE_PROCENT = 5.0\n", encoding="utf-8"
+    )
+    (fe / "ui2" / "wyniki" / "rozplyw").mkdir(parents=True)
+    (fe / "ui2" / "wyniki" / "rozplyw" / "strings.ts").write_text(
+        "export const ROZPLYW_STRINGS = {};\n", encoding="utf-8"
+    )
+
+    assert guard.check_w3j_voltage_criteria_resurrection() == []
+
+
+def test_guard_ignores_orphaned_pycache_only_directory_w3j(tmp_path, monkeypatch) -> None:
+    """Osierocony `__pycache__/` (bytecode sprzed kasacji) nie jest zrodlem —
+    `zrodlo_istnieje` wymaga faktycznego pliku `*.py`, nie golego `exists()`."""
+    src, _fe = _patch_w3j_tree(monkeypatch, tmp_path)
+    pycache_dir = src / "analysis" / "power_flow" / "__pycache__"
+    pycache_dir.mkdir(parents=True)
+    (pycache_dir / "violations.cpython-311.pyc").write_bytes(b"\x00")
+
+    assert guard.check_w3j_voltage_criteria_resurrection() == []
+
+
+def test_guard_accepts_current_repo_state_w3j() -> None:
+    """Integracyjny pin: bramka na PRAWDZIWYM drzewie repo (bez monkeypatch)
+    musi byc czysta PO kasacji karty W3-J."""
+    assert guard.check_w3j_voltage_criteria_resurrection() == []

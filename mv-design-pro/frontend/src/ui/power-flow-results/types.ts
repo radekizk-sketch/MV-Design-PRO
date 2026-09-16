@@ -99,6 +99,39 @@ export interface PowerFlowSummary {
 }
 
 // =============================================================================
+// Kryteria napieciowe (karta W3-J) — jedno zrodlo prawdy
+// =============================================================================
+
+/**
+ * Komplet kryteriow napieciowych SN (karta W3-J, backend:
+ * `analysis/normative/kryteria_napiecia.py::KryteriaNapieciowe`). ADDYTYWNE,
+ * opcjonalne pole na `PowerFlowResultV1` (kontrakt FROZEN — pole addytywne,
+ * nie zmienia ksztaltu dla starszych konsumentow) i na odpowiedzi
+ * `GET /api/quality/voltage-profile`. Progi sa KONFIGURACJA (stale
+ * normatywne/projektowe), nie wynikiem fizycznym biegu — backend buduje je
+ * ŚWIEŻO przy kazdym odczycie, wiec pole jest praktycznie zawsze obecne;
+ * mimo to konsumenci FE MUSZA traktowac jego brak jako uczciwy stan
+ * "kryterium niedostepne" (nigdy domyslna liczbe), bo starsze zapisane
+ * eksporty/fixtury moga go nie niesc.
+ */
+export interface KryteriaNapieciowe {
+  /** Prog ostrzezenia [%] — kryterium PROJEKTOWE (NIE zapis normy wprost). */
+  ostrzezenie_pct: number;
+  /** Prog przekroczenia [%] — PN-EN 50160 wprost. */
+  przekroczenie_pct: number;
+  ostrzezenie_min_pu: number;
+  ostrzezenie_max_pu: number;
+  przekroczenie_min_pu: number;
+  przekroczenie_max_pu: number;
+  /** Podstawa kryterium ostrzezenia — cytat do wyswietlenia w UI. */
+  podstawa_ostrzezenie_pl: string;
+  /** Podstawa kryterium przekroczenia (PN-EN 50160) — cytat do wyswietlenia w UI. */
+  podstawa_przekroczenie_pl: string;
+  /** Pasmo wiarygodnosci wyniku solvera [%] (sanity-bounds, inne pytanie niz przekroczenie_pct). */
+  pasmo_wiarygodnosci_pct: number;
+}
+
+// =============================================================================
 // Full Result (PowerFlowResultV1)
 // =============================================================================
 
@@ -115,6 +148,8 @@ export interface PowerFlowResultV1 {
   bus_results: PowerFlowBusResult[];
   branch_results: PowerFlowBranchResult[];
   summary: PowerFlowSummary;
+  /** Karta W3-J — addytywne, patrz `KryteriaNapieciowe`. */
+  kryteria_napiecia?: KryteriaNapieciowe;
 }
 
 // =============================================================================

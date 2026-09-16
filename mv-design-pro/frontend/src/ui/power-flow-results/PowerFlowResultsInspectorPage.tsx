@@ -26,6 +26,7 @@ import type {
   BranchLoadingFinding,
   InterpretationRankedItem,
   FindingSeverity,
+  KryteriaNapieciowe,
 } from './types';
 import {
   POWER_FLOW_TAB_LABELS,
@@ -185,31 +186,54 @@ function getStatusBadgeClass(severity: 'info' | 'success' | 'warning'): string {
  * UI-01: Oblicza werdykt operacyjny dla napięcia szyny.
  * Werdykt zawiera: STATUS + DLACZEGO + CO DALEJ
  *
- * Kryteria:
- * - PASS (OK): 0.95 ≤ U_pu ≤ 1.05
- * - MARGINAL (NA GRANICY): 0.90 ≤ U_pu < 0.95 lub 1.05 < U_pu ≤ 1.10
- * - FAIL (NIE OK): U_pu < 0.90 lub U_pu > 1.10
+ * Kryteria (karta W3-J): WYŁĄCZNIE z `kryteria` (odpowiedź biegu,
+ * `analysis.normative.kryteria_napiecia`) — zero progu wymyślonego w UI.
+ * - PASS (OK): ostrzezenie_min_pu ≤ U_pu ≤ ostrzezenie_max_pu
+ * - MARGINAL (NA GRANICY): przekroczenie_min_pu ≤ U_pu < ostrzezenie_min_pu
+ *   lub ostrzezenie_max_pu < U_pu ≤ przekroczenie_max_pu
+ * - FAIL (NIE OK): U_pu < przekroczenie_min_pu lub U_pu > przekroczenie_max_pu
+ * `kryteria` nieobecne (starszy zapisany wynik sprzed karty W3-J) = uczciwy
+ * stan "niedostępne" (verdict ERROR — jedyny pre-istniejący stan tego typu
+ * w `CoordinationVerdict`), NIGDY domyślna liczba.
  *
  * Każdy werdykt zawiera:
- * - verdict: status (PASS/MARGINAL/FAIL)
+ * - verdict: status (PASS/MARGINAL/FAIL/ERROR)
  * - notes: DLACZEGO (przyczyna)
  * - recommendation: CO DALEJ (zalecenie operacyjne)
  */
-function getVoltageVerdict(v_pu: number): {
+/** Eksportowane dla testu jednostkowego (karta W3-J) — reszta modułu jest
+ * dead-code bez trasy renderu (patrz `ui2/legacy/mostObszarow.ts`: #power-flow-results
+ * przekierowuje na `ui2/wyniki/rozplyw`), więc pełny render nie jest
+ * proporcjonalny; klasyfikacja p.u. jest testowana bezpośrednio. */
+export function getVoltageVerdict(
+  v_pu: number,
+  kryteria: KryteriaNapieciowe | undefined,
+): {
   verdict: CoordinationVerdict;
   notes: string;
   recommendation: string;
 } {
   const voltageLabels = NormativeLabels.voltage;
 
-  if (v_pu >= 0.95 && v_pu <= 1.05) {
+  if (!kryteria) {
+    return {
+      verdict: 'ERROR',
+      notes: voltageLabels.statusDescriptions.unavailable,
+      recommendation: voltageLabels.recommendations.unavailable,
+    };
+  }
+
+  if (v_pu >= kryteria.ostrzezenie_min_pu && v_pu <= kryteria.ostrzezenie_max_pu) {
     return {
       verdict: 'PASS',
       notes: voltageLabels.statusDescriptions.pass,
       recommendation: voltageLabels.recommendations.pass,
     };
   }
-  if ((v_pu >= 0.90 && v_pu < 0.95) || (v_pu > 1.05 && v_pu <= 1.10)) {
+  if (
+    (v_pu >= kryteria.przekroczenie_min_pu && v_pu < kryteria.ostrzezenie_min_pu) ||
+    (v_pu > kryteria.ostrzezenie_max_pu && v_pu <= kryteria.przekroczenie_max_pu)
+  ) {
     const isLow = v_pu < 1.0;
     const deviationPct = Math.abs((v_pu - 1.0) * 100).toFixed(1);
     return {
@@ -223,11 +247,14 @@ function getVoltageVerdict(v_pu: number): {
     };
   }
   const isLow = v_pu < 1.0;
+  const granicaPu = isLow
+    ? kryteria.przekroczenie_min_pu.toFixed(2)
+    : kryteria.przekroczenie_max_pu.toFixed(2);
   return {
     verdict: 'FAIL',
     notes: isLow
-      ? voltageLabels.statusDescriptions.failLow
-      : voltageLabels.statusDescriptions.failHigh,
+      ? voltageLabels.statusDescriptions.failLow(granicaPu)
+      : voltageLabels.statusDescriptions.failHigh(granicaPu),
     recommendation: isLow
       ? voltageLabels.recommendations.failLow
       : voltageLabels.recommendations.failHigh,
@@ -449,12 +476,19 @@ function ResultStatusBar() {
   // UI-10: Calculate quick verdict for export button highlighting
   const overallVerdict = useMemo((): CoordinationVerdict | null => {
     if (!results || !results.converged) return null;
-    const { summary, bus_results, branch_results } = results;
-    // Quick check: if voltage range is within limits, consider it PASS
-    const voltageOk = summary.min_v_pu >= 0.95 && summary.max_v_pu <= 1.05;
+    const { summary, bus_results, branch_results, kryteria_napiecia } = results;
+    // Karta W3-J: bez kryteriow napieciowych (starszy zapisany wynik) nie da
+    // sie ocenic zakresu napiecia — bieg zbiezny bez podstaw do oceny
+    // napieciowej NIE jest tym samym co potwierdzona zgodnosc, ale tez nie
+    // jest znanym naruszeniem; oznaczenie eksportu pozostaje neutralne.
+    if (!kryteria_napiecia) return 'PASS';
+    // Quick check: if voltage range is within the warning criterion, consider it PASS
+    const voltageOk =
+      summary.min_v_pu >= kryteria_napiecia.ostrzezenie_min_pu &&
+      summary.max_v_pu <= kryteria_napiecia.ostrzezenie_max_pu;
     if (!voltageOk) {
       // Check if any bus/branch has FAIL
-      const hasFail = bus_results.some(b => getVoltageVerdict(b.v_pu).verdict === 'FAIL') ||
+      const hasFail = bus_results.some(b => getVoltageVerdict(b.v_pu, kryteria_napiecia).verdict === 'FAIL') ||
         branch_results.some(br => getBranchLoadingVerdict(null, br.losses_p_mw).verdict === 'FAIL');
       return hasFail ? 'FAIL' : 'MARGINAL';
     }
@@ -594,7 +628,7 @@ function BusResultsTable() {
           </thead>
           <tbody>
             {filteredRows.map((row: PowerFlowBusResult) => {
-              const voltageResult = getVoltageVerdict(row.v_pu);
+              const voltageResult = getVoltageVerdict(row.v_pu, results.kryteria_napiecia);
               return (
                 <tr key={row.bus_id} className="border-t border-slate-100 hover:bg-slate-50">
                   <td className="px-3 py-2 font-medium text-slate-800">
@@ -755,7 +789,8 @@ interface NetworkVerdictResult {
  */
 function calculateNetworkVerdict(
   busResults: PowerFlowBusResult[],
-  branchResults: PowerFlowBranchResult[]
+  branchResults: PowerFlowBranchResult[],
+  kryteriaNapiecia: KryteriaNapieciowe | undefined
 ): NetworkVerdictResult {
   const problems: NetworkProblem[] = [];
   const recommendations: string[] = [];
@@ -770,7 +805,7 @@ function calculateNetworkVerdict(
 
   // Analyze bus results
   for (const bus of busResults) {
-    const result = getVoltageVerdict(bus.v_pu);
+    const result = getVoltageVerdict(bus.v_pu, kryteriaNapiecia);
     if (result.verdict === 'PASS') {
       stats.busPass++;
     } else if (result.verdict === 'MARGINAL') {
@@ -862,7 +897,8 @@ function SummaryTab() {
   const networkVerdict = useMemo(
     () => calculateNetworkVerdict(
       results?.bus_results ?? [],
-      results?.branch_results ?? []
+      results?.branch_results ?? [],
+      results?.kryteria_napiecia
     ),
     [results]
   );
@@ -872,7 +908,13 @@ function SummaryTab() {
     return <EmptyState message={NormativeLabels.common.emptyStates.noResults} />;
   }
 
-  const { summary, converged, iterations_count, tolerance_used, base_mva, slack_bus_id } = results;
+  const { summary, converged, iterations_count, tolerance_used, base_mva, slack_bus_id, kryteria_napiecia } =
+    results;
+  // Karta W3-J: podswietlenie ostrzegawcze WYLACZNIE wobec kryterium z odpowiedzi
+  // biegu; brak kryteriow (starszy zapisany wynik) = brak podswietlenia (nie da
+  // sie ocenic bez progu).
+  const minVOstrzezenie = kryteria_napiecia ? summary.min_v_pu < kryteria_napiecia.ostrzezenie_min_pu : false;
+  const maxVOstrzezenie = kryteria_napiecia ? summary.max_v_pu > kryteria_napiecia.ostrzezenie_max_pu : false;
 
   return (
     <div className="space-y-4">
@@ -998,13 +1040,13 @@ function SummaryTab() {
         <div className="flex items-center gap-8">
           <div>
             <div className="text-xs text-slate-500">{NormativeLabels.common.powerFlowLabels.minV}</div>
-            <div className={`text-lg font-mono font-semibold ${summary.min_v_pu < 0.95 ? 'text-amber-600' : 'text-slate-900'}`}>
+            <div className={`text-lg font-mono font-semibold ${minVOstrzezenie ? 'text-amber-600' : 'text-slate-900'}`}>
               {formatNumber(summary.min_v_pu, 4)}
             </div>
           </div>
           <div>
             <div className="text-xs text-slate-500">{NormativeLabels.common.powerFlowLabels.maxV}</div>
-            <div className={`text-lg font-mono font-semibold ${summary.max_v_pu > 1.05 ? 'text-amber-600' : 'text-slate-900'}`}>
+            <div className={`text-lg font-mono font-semibold ${maxVOstrzezenie ? 'text-amber-600' : 'text-slate-900'}`}>
               {formatNumber(summary.max_v_pu, 4)}
             </div>
           </div>

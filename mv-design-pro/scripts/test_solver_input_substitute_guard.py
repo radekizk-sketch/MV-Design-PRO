@@ -1297,7 +1297,15 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # bieg_max, zrodlo_min, zrodlo_max, run_kotwicy_id, scenariusz_kotwicy,
     # scenariusz_brakujacy, powod_niedostepnosci, typ_zwarcia). Zbiory pol PRZED/PO
     # zdiffowane na obu drzewach (pomiar, nie arytmetyka z kart).
-    assert "Pol kontraktow wejsciowych: 3506." in wyjscie, wyjscie
+    # W3-J (2026-09-16; jedno zrodlo kryteriow napieciowych): POMIAR guardem 3506 -> 3515
+    # (+9: nowy plik `analysis/normative/kryteria_napiecia.py` dopisany do CONTRACT_SOURCES
+    # — dataclass `KryteriaNapieciowe` niesie ostrzezenie_pct, przekroczenie_pct,
+    # ostrzezenie_min_pu, ostrzezenie_max_pu, przekroczenie_min_pu, przekroczenie_max_pu,
+    # podstawa_ostrzezenie_pl, podstawa_przekroczenie_pl, pasmo_wiarygodnosci_pct). Plik
+    # zyje w `analysis/normative/`, poza 5 skanowanymi korzeniami tego guarda (network_model,
+    # solver_input, enm, application, api) — plikow_skanowanych/zapadka/wykluczenia per
+    # korzen bez zmian (pomiar guardem na drzewie karty, zero nowych podstawien).
+    assert "Pol kontraktow wejsciowych: 3515." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.

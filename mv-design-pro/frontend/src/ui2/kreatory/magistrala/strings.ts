@@ -161,14 +161,14 @@ export const MAGISTRALA_STRINGS = {
     + 'cieplnie ($I_{th} \\ge I_k \\cdot \\sqrt{t_k}$); spadek napięcia na całej magistrali powinien mieścić się w '
     + 'dopuszczalnym zakresie (typowo kilka %).',
   teoriaPodstawa: 'Podstawa: PN-EN 50160 (napięcie), N SEP-E-004 (linie i kable), IEC 60909 (zwarcia), IRiESD.',
-  teoriaJakCzytac:
-    'Linia = napięcie wzdłuż magistrali od źródła (1,0 pu) do końca odcinka. Nachylenie zależy '
-    + 'poglądowo od cosφ (niższy cosφ → stromszy spadek: większy udział składowej biernej na '
-    + 'reaktancji). Pasmo poniżej limitu = poza dopuszczalnym zakresem napięcia. Rzeczywisty ΔU '
-    + '(z katalogowego R/X, długości i obciążenia) liczy rozpływ mocy.',
-  wykresAria: 'Poglądowy profil napięcia wzdłuż magistrali w funkcji cosφ',
-  wykresOsX: 'Pozycja wzdłuż magistrali',
-  wykresOsU: 'Napięcie U [pu]',
-  wykresLimit: 'dopuszczalny limit',
-  wykresZrodlo: 'źródło',
+  // Karta W3-J (2026-09-16): usunięto fabrykowaną krzywą poglądową (SVG liczący
+  // „spadek 4% × (cosφ+sinφ)" bez podstawy fizycznej — R≈X to założenie
+  // WYMYŚLONE dla ilustracji, nie parametr katalogowy odcinka). Kreator NIE ma
+  // dostępu do wyniku rozpływu dla jeszcze niezapisanej magistrali, więc
+  // pokazuje uczciwy stan zamiast liczyć cokolwiek w UI.
+  spadekNiedostepnyTytul: 'Spadek napięcia policzy rozpływ mocy po zapisaniu magistrali.',
+  spadekNiedostepnyOpis:
+    'Rzeczywisty spadek napięcia (ΔU) na tym odcinku zależy od katalogowych parametrów R/X, '
+    + 'długości i obciążenia — wyznacza go solver rozpływu mocy dla zapisanego modelu sieci, '
+    + 'nie ten formularz. Zapisz magistralę, a następnie uruchom rozpływ, aby zobaczyć wynik.',
 } as const;

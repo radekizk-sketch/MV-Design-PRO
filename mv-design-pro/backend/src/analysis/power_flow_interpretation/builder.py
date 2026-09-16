@@ -9,8 +9,9 @@ KANON (BINDING):
 - 100% jezyk polski w description_pl
 - Brak norm, brak "OK / VIOLATION"
 
-REGULY SEVERITY (jawne, stale):
-- Voltage: |V - 1.0| < 2% -> INFO, 2-5% -> WARN, >5% -> HIGH
+REGULY SEVERITY (jawne, stale; napieciowe od karty W3-J sourcowane z
+`analysis.normative.kryteria_napiecia` — jedno zrodlo prawdy, patrz modul):
+- Voltage: |V - 1.0| < 5% -> INFO, 5-10% -> WARN, >10% -> HIGH
 - Branch loading: jesli dostepne dane o obciazeniu
 """
 
@@ -21,6 +22,10 @@ import logging
 from datetime import datetime
 from typing import TYPE_CHECKING
 
+from analysis.normative.kryteria_napiecia import (
+    KRYTERIUM_OSTRZEZENIE_PROCENT,
+    KRYTERIUM_PRZEKROCZENIE_PROCENT,
+)
 from analysis.power_flow_interpretation.models import (
     BranchLoadingFinding,
     FindingSeverity,
@@ -49,9 +54,17 @@ logger = logging.getLogger(__name__)
 # Version interpretacji - zmiana = nowa wersja
 INTERPRETATION_VERSION = "1.0.0"
 
-# Progi napieciowe (BINDING - stale)
-VOLTAGE_INFO_MAX_PCT = 2.0  # |V - 1.0| < 2% -> INFO
-VOLTAGE_WARN_MAX_PCT = 5.0  # 2-5% -> WARN, >5% -> HIGH
+# Progi napieciowe (BINDING - stale). Karta W3-J: jedno zrodlo prawdy
+# (`analysis.normative.kryteria_napiecia`) — dawna trzecia, WLASNA granica
+# INFO tego modulu (2.0 %) NIE miala cytowanej podstawy normatywnej i zostala
+# SKASOWANA (uczciwie: dwie granice, obie sourcowane z nazwanego kryterium,
+# nie trzy, z ktorych jedna byla zaszyta bez zrodla). Ksztalt pozostaje
+# TRZYPOZIOMOWY (INFO/WARN/HIGH): granica INFO<->WARN = kryterium OSTRZEZENIA
+# projektowe (5 %), granica WARN<->HIGH = kryterium PRZEKROCZENIA PN-EN 50160
+# (10 %) — obie granice maja teraz cytowana podstawe (patrz
+# `KRYTERIUM_OSTRZEZENIE_PODSTAWA_PL`/`KRYTERIUM_PRZEKROCZENIE_PODSTAWA_PL`).
+VOLTAGE_INFO_MAX_PCT = KRYTERIUM_OSTRZEZENIE_PROCENT  # |V - 1.0| < 5% -> INFO
+VOLTAGE_WARN_MAX_PCT = KRYTERIUM_PRZEKROCZENIE_PROCENT  # 5-10% -> WARN, >10% -> HIGH
 
 # Progi obciazenia galezi (opcjonalne - jesli brak danych o prądowosci znamionowej)
 # Te progi sa uzywane tylko jesli mamy dane o obciazeniu wzglednym
@@ -199,10 +212,10 @@ class PowerFlowInterpretationBuilder:
     def _classify_voltage_severity(self, deviation_pct: float) -> FindingSeverity:
         """Classify voltage deviation into severity level.
 
-        BINDING RULES:
-        - |V - 1.0| < 2% -> INFO
-        - 2-5% -> WARN
-        - >5% -> HIGH
+        BINDING RULES (karta W3-J — sourced from analysis.normative.kryteria_napiecia):
+        - |V - 1.0| < 5% (KRYTERIUM_OSTRZEZENIE_PROCENT) -> INFO
+        - 5-10% -> WARN
+        - >10% (KRYTERIUM_PRZEKROCZENIE_PROCENT) -> HIGH
         """
         if deviation_pct < VOLTAGE_INFO_MAX_PCT:
             return FindingSeverity.INFO
@@ -486,7 +499,7 @@ class PowerFlowInterpretationBuilder:
         )
 
         rules_applied = (
-            "VOLTAGE_DEVIATION: |V - 1.0| < 2% -> INFO, 2-5% -> WARN, >5% -> HIGH",
+            "VOLTAGE_DEVIATION: |V - 1.0| < 5% -> INFO, 5-10% -> WARN, >10% -> HIGH",
             f"BRANCH_LOSSES: <{BRANCH_LOSSES_INFO_MAX_KW}kW -> INFO, {BRANCH_LOSSES_INFO_MAX_KW}-{BRANCH_LOSSES_WARN_MAX_KW}kW -> WARN, >{BRANCH_LOSSES_WARN_MAX_KW}kW -> HIGH",
             "RANKING: severity DESC, magnitude DESC, element_type ASC, element_id ASC",
         )

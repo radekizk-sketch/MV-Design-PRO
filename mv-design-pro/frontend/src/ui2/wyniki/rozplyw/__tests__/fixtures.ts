@@ -8,12 +8,39 @@
  */
 
 import type {
+  KryteriaNapieciowe,
   PowerFlowBranchResult,
   PowerFlowBusResult,
   PowerFlowResultV1,
   PowerFlowRunHeader,
 } from '../../../../ui/power-flow-results/types';
 import type { WalidacjaItem, WalidacjaResponse } from '../../jakosc/api';
+
+/**
+ * Fixture kryteriów napięciowych (karta W3-J) — 1:1 z kontraktem
+ * `KryteriaNapieciowe` (`analysis/normative/kryteria_napiecia.py`
+ * ::zbuduj_kryteria_napiecia().to_dict()`). Wartości domyślne = liczby
+ * z jednego źródła prawdy (5 % ostrzeżenie, 10 % przekroczenie).
+ */
+export function kryteriaNapieciaFixture(
+  over: Partial<KryteriaNapieciowe> = {},
+): KryteriaNapieciowe {
+  return {
+    ostrzezenie_pct: 5.0,
+    przekroczenie_pct: 10.0,
+    ostrzezenie_min_pu: 0.95,
+    ostrzezenie_max_pu: 1.05,
+    przekroczenie_min_pu: 0.9,
+    przekroczenie_max_pu: 1.1,
+    podstawa_ostrzezenie_pl:
+      'Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby ' +
+      'napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un.',
+    podstawa_przekroczenie_pl:
+      'PN-EN 50160 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %.',
+    pasmo_wiarygodnosci_pct: 10.0,
+    ...over,
+  };
+}
 
 export function busResultFixture(over: Partial<PowerFlowBusResult> = {}): PowerFlowBusResult {
   return {
@@ -88,6 +115,7 @@ export function powerFlowResultFixture(
       slack_p_mw: 10.5,
       slack_q_mvar: 2.4,
     },
+    kryteria_napiecia: kryteriaNapieciaFixture(),
     ...over,
   };
 }

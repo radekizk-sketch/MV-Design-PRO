@@ -15,9 +15,10 @@
  * ŹRÓDŁA PRZEKROCZEŃ (wszystkie werdykty POCHODZĄ Z BACKENDU — zero fizyki,
  * zero progów wymyślonych w UI):
  * 1. Rozpływ mocy, napięcia szyn: `usePowerFlowResultsStore.results` → szyny poza
- *    normatywnym przedziałem (`napiecePozaZakresem`, ten sam werdykt co adapter
- *    `rozplyw/adapters/rozplywAdapter.ts`; stała normatywna EN 50160 jawna w
- *    `rozplyw/strings.ts`). Element = Bus.
+ *    kryterium ostrzeżenia (`napiecePozaZakresem`, ten sam werdykt co adapter
+ *    `rozplyw/adapters/rozplywAdapter.ts`; próg WYŁĄCZNIE z `results.kryteria_napiecia`
+ *    odpowiedzi biegu — karta W3-J, `analysis.normative.kryteria_napiecia`; brak
+ *    kryteriów w wyniku = brak pozycji, nie domyślny próg). Element = Bus.
  * 2. Rozpływ mocy, zbieżność: `results.converged === false` (pole kontraktu
  *    `PowerFlowResultV1`) → pozycja bez elementu modelu, z adresem = zakładka
  *    „Zbieżność" (istniejące okno diagnostyki `ui2/wyniki/zbieznosc`).
@@ -53,7 +54,7 @@ import type { RodzajPrzekroczenia } from '../wzorzec';
 import { fetchOcenaTechniczna, type PozycjaOceny, type OdpowiedzOceny } from '../ocena/api';
 import { rodzajPrzekroczeniaKryterium, typElementuKryterium } from '../ocena/model';
 import { subskrybuj } from '../../events';
-import { fmtPU, napiecePozaZakresem, NAPIECIE_MAX_PU } from '../rozplyw/strings';
+import { fmtPU, napiecePozaZakresem } from '../rozplyw/strings';
 import { CO_WYMAGA_UWAGI_STRINGS as T } from './strings';
 
 /** Znormalizowana pozycja przekroczenia (jedna linia rejestru). */
@@ -88,19 +89,23 @@ export interface Przekroczenie {
 /**
  * Kolektor przekroczeń rozpływu: szyny z napięciem poza przedziałem. Czysty
  * (bez React) — ten sam werdykt `napiecePozaZakresem`, którego używa adapter
- * tabeli szyn (spójność werdyktu ekran↔rejestr).
+ * tabeli szyn (spójność werdyktu ekran↔rejestr). Karta W3-J: próg WYŁĄCZNIE
+ * z `wynik.kryteria_napiecia`; brak kryteriów w wyniku (starszy zapisany
+ * bieg) = uczciwy brak pozycji (nie da się ocenić bez progu), nigdy domyślna
+ * liczba.
  */
 export function przekroczeniaRozplywu(wynik: PowerFlowResultV1 | null): Przekroczenie[] {
-  if (!wynik) return [];
+  const kryteria = wynik?.kryteria_napiecia;
+  if (!wynik || !kryteria) return [];
   return wynik.bus_results
-    .filter((r) => napiecePozaZakresem(r.v_pu))
+    .filter((r) => napiecePozaZakresem(r.v_pu, kryteria))
     .map((r) => ({
       klucz: `rozplyw::napiecie::${r.bus_id}`,
       analizaPL: T.analizaRozplyw,
       elementRef: r.bus_id,
       elementTyp: 'Bus' as ElementType,
       elementNazwa: r.bus_id,
-      opis: r.v_pu > NAPIECIE_MAX_PU ? T.opisNapiecieWysokie : T.opisNapiecieNiskie,
+      opis: r.v_pu > kryteria.ostrzezenie_max_pu ? T.opisNapiecieWysokie : T.opisNapiecieNiskie,
       wartosc: `${fmtPU(r.v_pu)} ${T.jednPU}`,
       rodzaj: 'napiecie' as RodzajPrzekroczenia,
     }));

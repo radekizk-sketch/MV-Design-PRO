@@ -81,7 +81,7 @@ import {
   type StanOceny,
 } from './magistralaModel';
 import { MAGISTRALA_STRINGS as T } from './strings';
-import { WykresSpadku } from './WykresSpadku';
+import { StanSpadkuNapiecia } from './StanSpadkuNapiecia';
 
 const KROKI: readonly KrokKreatora[] = [
   { id: 'typ', tytul: T.krokTyp },
@@ -742,10 +742,7 @@ export function KreatorMagistralaSn() {
             testid="mvd-kreator-magistrala-teoria"
           >
             <p className="mvd-teoria-opis">{T.teoriaOpisKabelLinia}</p>
-            <figure className="mvd-wykres-fig">
-              <WykresSpadku cosPhi={dane.cos_phi} />
-              <figcaption className="mvd-wykres-cap">{T.teoriaJakCzytac}</figcaption>
-            </figure>
+            <StanSpadkuNapiecia />
           </PanelTeorii>
         </KreatorSekcja>
       ) : null}

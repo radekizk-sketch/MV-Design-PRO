@@ -202,11 +202,24 @@ def test_voltage_profile_endpoint_returns_view(app_client) -> None:
     resp = app_client.get(VOLTAGE_PROFILE, params={"run_id": str(run_id)})
     assert resp.status_code == 200, resp.text
     data = resp.json()
-    assert set(data) >= {"context", "thresholds", "rows", "summary"}
+    assert set(data) >= {"context", "thresholds", "rows", "summary", "kryteria_napiecia"}
     assert len(data["rows"]) >= 5
     # `node_ref`/`worst_nn` pominięte -> klucz "segmenty" ADDYTYWNY, ZERO
     # wpływu na kształt odpowiedzi (karta P0.4 §0.3).
     assert "segmenty" not in data
+    # Karta W3-J: kryteria napięciowe ADDYTYWNE, jedno źródło prawdy
+    # (`analysis.normative.kryteria_napiecia`) — ten sam kształt co widok
+    # wyniku rozpływu (`GET /power-flow-runs/{id}/results`).
+    kryteria = data["kryteria_napiecia"]
+    assert kryteria["ostrzezenie_pct"] == 5.0
+    assert kryteria["przekroczenie_pct"] == 10.0
+    assert kryteria["ostrzezenie_min_pu"] == 0.95
+    assert kryteria["ostrzezenie_max_pu"] == 1.05
+    assert kryteria["przekroczenie_min_pu"] == 0.9
+    assert kryteria["przekroczenie_max_pu"] == 1.1
+    assert kryteria["pasmo_wiarygodnosci_pct"] == 10.0
+    assert "PN-EN 50160" in kryteria["podstawa_przekroczenie_pl"]
+    assert kryteria["podstawa_ostrzezenie_pl"]
 
 
 def _bus_nn_ref(rows: list[dict]) -> str:

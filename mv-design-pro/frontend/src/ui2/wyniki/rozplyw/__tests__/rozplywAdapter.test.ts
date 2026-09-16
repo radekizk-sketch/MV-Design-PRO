@@ -13,24 +13,18 @@ import {
   naWierszeSzyn,
   naZalozeniaRozplywu,
 } from '../adapters/rozplywAdapter';
-import {
-  fmtPU,
-  fmtTolerancja,
-  napiecePozaZakresem,
-  NAPIECIE_MAX_PU,
-  NAPIECIE_MIN_PU,
-  ROZPLYW_STRINGS,
-} from '../strings';
+import { fmtPU, fmtTolerancja, napiecePozaZakresem, ROZPLYW_STRINGS } from '../strings';
 import {
   branchResultFixture,
   busResultFixture,
+  kryteriaNapieciaFixture,
   powerFlowResultFixture,
   walidacjaItemFixture,
 } from './fixtures';
 
 describe('naWierszeSzyn — projekcja PowerFlowBusResult → wiersze wzorca (fixture 1:1)', () => {
   it('mapuje wszystkie pola wiersza szyny z formatem PL (przecinek dziesiętny)', () => {
-    const [w] = naWierszeSzyn([busResultFixture()]);
+    const [w] = naWierszeSzyn([busResultFixture()], kryteriaNapieciaFixture());
     expect(w[KLUCZ_SZYNA]).toEqual({ wartosc: 'SZ-GPZ' });
     expect(w.napiecie).toMatchObject({ wartosc: '1,0000', sortKey: 1.0, ostrzezenie: false });
     expect(w.kat).toEqual({ wartosc: '0,00', sortKey: 0.0, dowodRef: 'SZ-GPZ' });
@@ -39,7 +33,7 @@ describe('naWierszeSzyn — projekcja PowerFlowBusResult → wiersze wzorca (fix
   });
 
   it('K3/C1: każda wielkość wynikowa szyny niesie dowodRef = bus_id (2× klik → dowód WHITE BOX)', () => {
-    const [w] = naWierszeSzyn([busResultFixture({ bus_id: 'SZ-ST7' })]);
+    const [w] = naWierszeSzyn([busResultFixture({ bus_id: 'SZ-ST7' })], kryteriaNapieciaFixture());
     for (const klucz of ['napiecie', 'kat', 'pCzynna', 'pBierna'] as const) {
       expect(w[klucz].dowodRef).toBe('SZ-ST7');
     }
@@ -48,23 +42,38 @@ describe('naWierszeSzyn — projekcja PowerFlowBusResult → wiersze wzorca (fix
   });
 
   it('napięcie poniżej 0,95 p.u. → ostrzeżenie (tag), sortKey liczbowy zachowany', () => {
-    const [w] = naWierszeSzyn([busResultFixture({ bus_id: 'SZ-ST2', v_pu: 0.941 })]);
+    const [w] = naWierszeSzyn(
+      [busResultFixture({ bus_id: 'SZ-ST2', v_pu: 0.941 })],
+      kryteriaNapieciaFixture(),
+    );
     expect(w.napiecie).toMatchObject({ wartosc: '0,9410', ostrzezenie: true, sortKey: 0.941 });
   });
 
   it('napięcie powyżej 1,05 p.u. → ostrzeżenie', () => {
-    const [w] = naWierszeSzyn([busResultFixture({ v_pu: 1.062 })]);
+    const [w] = naWierszeSzyn([busResultFixture({ v_pu: 1.062 })], kryteriaNapieciaFixture());
     expect(w.napiecie).toMatchObject({ ostrzezenie: true });
   });
 
+  it('karta W3-J: bez kryteriów w wyniku (starszy zapisany bieg) → brak ostrzeżenia, nie domyślny próg', () => {
+    // v_pu = 0.941 przekraczałby próg ostrzeżenia GDYBY był dostępny — bez
+    // kryteriów adapter NIE MOŻE ocenić, więc uczciwie milczy (false), zamiast
+    // fabrykować werdykt z domyślnej liczby.
+    const [w] = naWierszeSzyn(
+      [busResultFixture({ bus_id: 'SZ-ST2', v_pu: 0.941 })],
+      undefined,
+    );
+    expect(w.napiecie).toMatchObject({ ostrzezenie: false });
+  });
+
   it('zachowuje kolejność szyn ze źródła (bez własnego sortowania)', () => {
-    const wiersze = naWierszeSzyn(powerFlowResultFixture().bus_results);
+    const wiersze = naWierszeSzyn(powerFlowResultFixture().bus_results, kryteriaNapieciaFixture());
     expect(wiersze.map((w) => w[KLUCZ_SZYNA].wartosc)).toEqual(['SZ-GPZ', 'SZ-ST1', 'SZ-ST2']);
   });
 
   it('jest deterministyczne: to samo wejście → identyczne wyjście', () => {
     const wejscie = powerFlowResultFixture().bus_results;
-    expect(naWierszeSzyn(wejscie)).toEqual(naWierszeSzyn(wejscie));
+    const kryteria = kryteriaNapieciaFixture();
+    expect(naWierszeSzyn(wejscie, kryteria)).toEqual(naWierszeSzyn(wejscie, kryteria));
   });
 });
 
@@ -92,12 +101,24 @@ describe('naZalozeniaRozplywu — założenia z parametrów przebiegu (W-602)', 
     expect(zalozenia[4].wartosc).toBe(ROZPLYW_STRINGS.zbieznoscNie);
   });
 
-  it('normatywny przedział napięcia jawnie ujawniony (WHITE BOX) z uwagą o normie', () => {
-    const zalozenia = naZalozeniaRozplywu(powerFlowResultFixture());
+  it('normatywny przedział napięcia jawnie ujawniony (WHITE BOX) WPROST z kryteriów biegu', () => {
+    const kryteria = kryteriaNapieciaFixture();
+    const zalozenia = naZalozeniaRozplywu(powerFlowResultFixture({ kryteria_napiecia: kryteria }));
     const przedzial = zalozenia[5];
-    expect(przedzial.wartosc).toBe(`${fmtPU(NAPIECIE_MIN_PU)}–${fmtPU(NAPIECIE_MAX_PU)}`);
+    expect(przedzial.wartosc).toBe(`${fmtPU(kryteria.ostrzezenie_min_pu)}–${fmtPU(kryteria.ostrzezenie_max_pu)}`);
     expect(przedzial.jednostka).toBe(ROZPLYW_STRINGS.jednPU);
-    expect(przedzial.uwaga).toBe(ROZPLYW_STRINGS.zalPrzedzialNapieciaUwaga);
+    expect(przedzial.uwaga).toBe(kryteria.podstawa_ostrzezenie_pl);
+  });
+
+  it('karta W3-J: bez kryteriów w wyniku (starszy zapisany bieg) → uczciwy stan „kryterium niedostępne", nie domyślna liczba', () => {
+    const zalozenia = naZalozeniaRozplywu(
+      powerFlowResultFixture({ kryteria_napiecia: undefined }),
+    );
+    const przedzial = zalozenia[5];
+    expect(przedzial.etykieta).toBe(ROZPLYW_STRINGS.zalPrzedzialNapiecia);
+    expect(przedzial.wartosc).toBe(ROZPLYW_STRINGS.kreska);
+    expect(przedzial.jednostka).toBeUndefined();
+    expect(przedzial.uwaga).toBe(ROZPLYW_STRINGS.zalPrzedzialNapieciaNiedostepne);
   });
 });
 
@@ -121,11 +142,17 @@ describe('KOLUMNY_SZYN — deklaratywne kolumny z jednostkami (jednostki zawsze)
     }
   });
 
-  it('progi normatywne są spójne z helperem napiecePozaZakresem', () => {
-    expect(napiecePozaZakresem(NAPIECIE_MIN_PU)).toBe(false);
-    expect(napiecePozaZakresem(NAPIECIE_MAX_PU)).toBe(false);
-    expect(napiecePozaZakresem(0.9499)).toBe(true);
-    expect(napiecePozaZakresem(1.0501)).toBe(true);
+  it('progi normatywne (z odpowiedzi biegu) są spójne z helperem napiecePozaZakresem', () => {
+    const kryteria = kryteriaNapieciaFixture();
+    expect(napiecePozaZakresem(kryteria.ostrzezenie_min_pu, kryteria)).toBe(false);
+    expect(napiecePozaZakresem(kryteria.ostrzezenie_max_pu, kryteria)).toBe(false);
+    expect(napiecePozaZakresem(0.9499, kryteria)).toBe(true);
+    expect(napiecePozaZakresem(1.0501, kryteria)).toBe(true);
+  });
+
+  it('karta W3-J: bez kryteriów napiecePozaZakresem zawsze zwraca false (uczciwe „nie da się ocenić")', () => {
+    expect(napiecePozaZakresem(0.5, undefined)).toBe(false);
+    expect(napiecePozaZakresem(1.5, undefined)).toBe(false);
   });
 });
 

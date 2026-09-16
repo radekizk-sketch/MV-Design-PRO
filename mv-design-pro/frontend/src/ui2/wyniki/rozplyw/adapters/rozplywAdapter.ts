@@ -43,6 +43,7 @@
  */
 
 import type {
+  KryteriaNapieciowe,
   PowerFlowBranchResult,
   PowerFlowBusResult,
   PowerFlowResultV1,
@@ -68,8 +69,6 @@ import {
   fmtStrataKw,
   fmtTolerancja,
   napiecePozaZakresem,
-  NAPIECIE_MAX_PU,
-  NAPIECIE_MIN_PU,
 } from '../strings';
 
 // ---------------------------------------------------------------------------
@@ -98,14 +97,19 @@ export interface PunktProfilu {
 
 /** Mapuje wiersze szyn na wiersze tabeli wzorca (kolejność ze źródła zachowana).
  * `dowodRef` = `bus_id` (K3/C1): 2× klik na wielkości wynikowej otwiera dowód
- * WHITE BOX przebiegu rozpływu — realne odwołanie z kontraktu, zero fabrykacji. */
-export function naWierszeSzyn(busResults: PowerFlowBusResult[]): WierszTabeli[] {
+ * WHITE BOX przebiegu rozpływu — realne odwołanie z kontraktu, zero fabrykacji.
+ * `kryteria` (karta W3-J): próg ostrzeżenia WYŁĄCZNIE z odpowiedzi backendu —
+ * brak kryteriów (starszy zapisany wynik) = komórka bez tagu ostrzeżenia. */
+export function naWierszeSzyn(
+  busResults: PowerFlowBusResult[],
+  kryteria: KryteriaNapieciowe | undefined,
+): WierszTabeli[] {
   return busResults.map((r) => ({
     [KLUCZ_SZYNA]: { wartosc: r.bus_id },
     napiecie: {
       wartosc: fmtPU(r.v_pu),
       sortKey: r.v_pu,
-      ostrzezenie: napiecePozaZakresem(r.v_pu),
+      ostrzezenie: napiecePozaZakresem(r.v_pu, kryteria),
       dowodRef: r.bus_id,
     },
     kat: { wartosc: fmtKat(r.angle_deg), sortKey: r.angle_deg, dowodRef: r.bus_id },
@@ -114,8 +118,13 @@ export function naWierszeSzyn(busResults: PowerFlowBusResult[]): WierszTabeli[] 
   }));
 }
 
-/** Buduje sekcję ZAŁOŻENIA z parametrów przebiegu (WHITE BOX, W-602). */
+/** Buduje sekcję ZAŁOŻENIA z parametrów przebiegu (WHITE BOX, W-602).
+ * Karta W3-J: przedział napięcia i jego podstawa normatywna pochodzą WPROST
+ * z `wynik.kryteria_napiecia` (odpowiedź backendu) — brak kryteriów w wyniku
+ * (starszy zapisany bieg sprzed karty W3-J) daje uczciwy stan „kryterium
+ * niedostępne", NIGDY domyślną liczbę. */
 export function naZalozeniaRozplywu(wynik: PowerFlowResultV1): WierszZalozenia[] {
+  const kryteria = wynik.kryteria_napiecia;
   return [
     { etykieta: ROZPLYW_STRINGS.zalMocBazowa, wartosc: fmtBaza(wynik.base_mva), jednostka: ROZPLYW_STRINGS.jednMVA },
     { etykieta: ROZPLYW_STRINGS.zalTolerancja, wartosc: fmtTolerancja(wynik.tolerance_used) },
@@ -125,12 +134,18 @@ export function naZalozeniaRozplywu(wynik: PowerFlowResultV1): WierszZalozenia[]
       etykieta: ROZPLYW_STRINGS.zalZbieznosc,
       wartosc: wynik.converged ? ROZPLYW_STRINGS.zbieznoscTak : ROZPLYW_STRINGS.zbieznoscNie,
     },
-    {
-      etykieta: ROZPLYW_STRINGS.zalPrzedzialNapiecia,
-      wartosc: `${fmtPU(NAPIECIE_MIN_PU)}–${fmtPU(NAPIECIE_MAX_PU)}`,
-      jednostka: ROZPLYW_STRINGS.jednPU,
-      uwaga: ROZPLYW_STRINGS.zalPrzedzialNapieciaUwaga,
-    },
+    kryteria
+      ? {
+          etykieta: ROZPLYW_STRINGS.zalPrzedzialNapiecia,
+          wartosc: `${fmtPU(kryteria.ostrzezenie_min_pu)}–${fmtPU(kryteria.ostrzezenie_max_pu)}`,
+          jednostka: ROZPLYW_STRINGS.jednPU,
+          uwaga: kryteria.podstawa_ostrzezenie_pl,
+        }
+      : {
+          etykieta: ROZPLYW_STRINGS.zalPrzedzialNapiecia,
+          wartosc: ROZPLYW_STRINGS.kreska,
+          uwaga: ROZPLYW_STRINGS.zalPrzedzialNapieciaNiedostepne,
+        },
   ];
 }
 

@@ -1281,6 +1281,107 @@ def check_w3g1_run_trigger_orphan_resurrection() -> list[str]:
     return violations
 
 
+# Karta W3-J (2026-09-16) — jedno zrodlo prawdy kryteriow napieciowych
+# (`analysis/normative/kryteria_napiecia.py`). Dwa niezalezne, zaszyte
+# duplikaty skasowane w calosci:
+#   (1) backend `analysis/power_flow/violations.py` + `violations_report.py`
+#       (`VoltageViolationsDetector` z domyslnymi `default_umin_pu=0.95` /
+#       `default_umax_pu=1.05` zaszytymi NIEZALEZNIE od kanonu; 0 konsumentow
+#       produkcyjnych poza wlasnym `__init__.py` — pomiar w meldunku karty),
+#   (2) frontend `ui/voltage-profile/**` (analizator/heatmap/wykres z wlasnymi
+#       progami 0,95/1,05/0,90/1,10; 0 miejsc renderu poza modulem — jedyne
+#       trafienia byly id zakladki checklisty w `ReadinessSection.tsx`, ktora
+#       NIE renderuje tego modulu, i test `no-zero-spam.test.ts`).
+W3J_BACKEND_MODULE_RELATIVE_PATHS = {
+    "analysis/power_flow/violations.py": (
+        "detektor naruszen napieciowych z progami 0,95/1,05 zaszytymi "
+        "niezaleznie od analysis.normative.kryteria_napiecia"
+    ),
+    "analysis/power_flow/violations_report.py": (
+        "eksport PDF detektora naruszen napieciowych (jw.)"
+    ),
+}
+FORBIDDEN_W3J_CLASS_NAMES = {
+    "VoltageViolationsDetector",
+    "VoltageViolationsResult",
+    "VoltageViolation",
+}
+FORBIDDEN_W3J_FUNCTION_NAMES = {
+    "export_violations_report_to_bytes",
+    "export_violations_report_to_pdf",
+    "add_violations_section_to_pdf",
+}
+W3J_VOLTAGE_PROFILE_FRONTEND_DIR = FRONTEND_SRC_DIR / "ui" / "voltage-profile"
+_TS_VOLTAGE_PROFILE_CHART_DEF = re.compile(
+    r"^[ \t]*export\s+(?:default\s+)?(?:function|const|class)\s+VoltageProfileChart\b",
+    re.MULTILINE,
+)
+_TS_VOLTAGE_HEATMAP_LEGEND_DEF = re.compile(
+    r"^[ \t]*export\s+(?:default\s+)?(?:function|const|class)\s+VoltageHeatmapLegend\b",
+    re.MULTILINE,
+)
+
+
+def check_w3j_voltage_criteria_resurrection() -> list[str]:
+    """Karta W3-J (2026-09-16): dwa niezalezne duplikaty kryteriow napieciowych
+    (progi 0,95/1,05/0,90/1,10 zaszyte poza jednym zrodlem prawdy) nie moga
+    wrocic. Sprawdzane: (1) `analysis/power_flow/violations.py` +
+    `violations_report.py` nie istnieja, (2) zadna z `FORBIDDEN_W3J_CLASS_NAMES`/
+    `FORBIDDEN_W3J_FUNCTION_NAMES` nie wraca jako DEFINICJA gdziekolwiek w
+    `backend/src`, (3) `frontend/src/ui/voltage-profile/**` nie istnieje,
+    (4) `VoltageProfileChart`/`VoltageHeatmapLegend` nie wracaja pod INNA
+    sciezka frontendu. `analysis/power_flow/{result,solver,types,analysis}.py`
+    (pozostala czesc pakietu PF v2 — `PowerFlowSolver`, `PowerFlowResult`,
+    limity `BusVoltageLimitSpec` skonfigurowane PRZEZ wolajacego) ZOSTAJA —
+    celowo POZA zakresem tego sprawdzenia, bo karta kasuje wylacznie
+    detektor/eksport z zaszytymi DOMYSLNYMI progami, nie caly pakiet."""
+    violations: list[str] = []
+    for rel, label in W3J_BACKEND_MODULE_RELATIVE_PATHS.items():
+        path = BACKEND_SRC_DIR / rel
+        if zrodlo_istnieje(path):
+            violations.append(f"[resurrected-module] backend/src/{rel}: {label} (usuniety w W3-J)")
+    if BACKEND_SRC_DIR.exists():
+        for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+            tree = ast.parse(read_text(py_file), filename=str(py_file))
+            rel_path = py_file.relative_to(ROOT).as_posix()
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_W3J_CLASS_NAMES:
+                    violations.append(
+                        f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
+                        "(detektor naruszen napieciowych, usuniety w W3-J) nie moze wrocic"
+                    )
+                if (
+                    isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+                    and node.name in FORBIDDEN_W3J_FUNCTION_NAMES
+                ):
+                    violations.append(
+                        f"[resurrected-function] {rel_path}:{node.lineno}: def {node.name} "
+                        "(eksport PDF detektora naruszen, usuniety w W3-J) nie moze wrocic"
+                    )
+    if zrodlo_istnieje(W3J_VOLTAGE_PROFILE_FRONTEND_DIR, ("*.ts", "*.tsx")):
+        violations.append(
+            "[resurrected-module] frontend/src/ui/voltage-profile: analizator/heatmap/wykres "
+            "profilu napiec z wlasnymi progami 0,95/1,05/0,90/1,10 (usuniety kartą W3-J, "
+            "2026-09-16) — nie odtwarzaj tego katalogu"
+        )
+    if FRONTEND_SRC_DIR.exists():
+        for suffix in FORBIDDEN_DATA_MANAGER_TS_EXTENSIONS:
+            for ts_file in sorted(FRONTEND_SRC_DIR.rglob(f"*{suffix}")):
+                tekst = _bez_komentarzy_ts(read_text(ts_file))
+                rel_path = ts_file.relative_to(ROOT).as_posix()
+                if _TS_VOLTAGE_PROFILE_CHART_DEF.search(tekst):
+                    violations.append(
+                        f"[resurrected-component] {rel_path}: export VoltageProfileChart "
+                        "(usuniety kartą W3-J) nie może wrócić"
+                    )
+                if _TS_VOLTAGE_HEATMAP_LEGEND_DEF.search(tekst):
+                    violations.append(
+                        f"[resurrected-component] {rel_path}: export VoltageHeatmapLegend "
+                        "(usuniety kartą W3-J) nie może wrócić"
+                    )
+    return violations
+
+
 def main() -> int:
     violations = (
         check_legacy_public_paths()
@@ -1298,6 +1399,7 @@ def main() -> int:
         + check_w3c2_line_overcurrent_setting_resurrection()
         + check_trace_v2_resurrection()
         + check_w3g1_run_trigger_orphan_resurrection()
+        + check_w3j_voltage_criteria_resurrection()
     )
     if violations:
         print("legacy-public-path-guard: FAILED")

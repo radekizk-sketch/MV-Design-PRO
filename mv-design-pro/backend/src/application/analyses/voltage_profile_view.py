@@ -30,6 +30,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from analysis.normative.kryteria_napiecia import zbuduj_kryteria_napiecia
 from analysis.normative.models import NormativeConfig
 from analysis.voltage_profile.builder import VoltageProfileBuilder
 from analysis.voltage_profile.models import VoltageProfileContext
@@ -222,6 +223,10 @@ def build_voltage_profile_view(
     )
     view = VoltageProfileBuilder(graph=graph, context=context).build(pf_result, NormativeConfig())
     payload = view.to_dict()
+    # Karta W3-J: kryteria napięciowe ADDYTYWNE, jedno źródło prawdy
+    # (`analysis.normative.kryteria_napiecia`) — konfiguracja, nie wynik
+    # fizyczny biegu, więc budowana świeżo przy każdym odczycie widoku.
+    payload["kryteria_napiecia"] = zbuduj_kryteria_napiecia().to_dict()
 
     if node_ref is not None:
         result_v1 = _power_flow_result_v1(run)
