@@ -3779,8 +3779,10 @@ class PVInverterType:
     ptpiree_certificate_condition: str | None = None
     """Referencja do profilu dynamicznego w `der_dynamic` (PR-15/16).
 
-    Brak wartości oznacza fallback do default per kind w resolverze
-    `resolve_der_dynamic_profile` — żaden DER nie zostanie bez modelu.
+    Karta W6-1 SS0 p.3 (kasacja "ZAWSZE zwraca profil"): brak wartości oznacza
+    `resolve_der_dynamic_profile(..., source="brak", profile=None)` — BRAK
+    modelu dynamicznego, nie cichy fallback. Readiness zgłasza to jako
+    BLOCKER `der.dynamic_profile_missing`.
     """
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog falownikow PV MV-DESIGN-PRO"
@@ -3916,8 +3918,10 @@ class BESSInverterType:
     ptpiree_certificate_condition: str | None = None
     """Referencja do profilu dynamicznego w `der_dynamic` (PR-15/16).
 
-    Brak wartości oznacza fallback do default per kind w resolverze
-    `resolve_der_dynamic_profile` — żaden DER nie zostanie bez modelu.
+    Karta W6-1 SS0 p.3 (kasacja "ZAWSZE zwraca profil"): brak wartości oznacza
+    `resolve_der_dynamic_profile(..., source="brak", profile=None)` — BRAK
+    modelu dynamicznego, nie cichy fallback. Readiness zgłasza to jako
+    BLOCKER `der.dynamic_profile_missing`.
     """
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog przeksztaltnikow BESS MV-DESIGN-PRO"
