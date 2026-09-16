@@ -5,9 +5,15 @@
  * store'ów przez adapter (shellStatus.ts). Tutaj żyją tylko: aktywna przestrzeń,
  * tryb zaawansowania, szerokości/zwinięcia paneli (per przestrzeń) oraz panel dolny.
  *
- * Trwałość: magazyn ustawień powłoki (localStorage) per przestrzeń. Wymiar
- * „per użytkownik" realizuje `userScope` (prefiks nazwy magazynu) — domyślnie
- * 'local' do czasu wpięcia tożsamości użytkownika w programie 10x (TODO-KARTA).
+ * Trwałość: magazyn ustawień powłoki (localStorage) per przestrzeń, pod stałym
+ * kluczem `'mvd-shell-ui-local'`. Klucz NIE ma wymiaru „per użytkownik" — backend
+ * nie wystawia żadnej trasy uwierzytelniania (zmierzone V12T-015, `docs/v12xx/
+ * REJESTR_DLUGU.md`: 0 tras `auth`/`/me` wśród 44 routerów `api/main.py`), więc
+ * ustawienia layoutu są dzielone przez każdego, kto otwiera powłokę w tej samej
+ * przeglądarce. Dodanie tożsamości użytkownika (i per-użytkownik prefiksu klucza)
+ * jest zakresem programu 10x F1 „auth/perimeter" — GRANICA PRODUKTU, nie luka tej
+ * karty: wymaga zaprojektowania całej warstwy sesji/ról, nie punktowej zmiany
+ * jednego stringa.
  */
 
 import { create } from 'zustand';
