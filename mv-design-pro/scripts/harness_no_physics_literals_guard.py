@@ -25,12 +25,13 @@ zero-tolerancji TERAZ zapaliłoby CI na długo istniejącym stanie, co
 CLAUDE.md (Zero-Debt pkt 1) odróżnia od maskowania: to NIE jest wykluczenie
 pliku ani `continue-on-error` — narzędzie DZIAŁA NAPRAWDĘ i pilnuje, żeby
 literałów nie przybyło ANI JEDNEGO od tego pomiaru. Karta HARNESS-RESZTA
-zamknęła w tej sesji dwie sceny (E-31 „stan fazowy SN", E-32 „stabilność
-dynamiczna" — usunięte stałe `STAN_FAZOWY_WYNIK`/`STABILNOSC_WYNIK`/
-`STABILNOSC_SLAD` i dwa ręczne `run-ps-1`/`run-dyn`, 121 linii zdjętych z
-`creator-harness-main.tsx` wg `git diff --stat`) i obniżyła próg o tyle, ile
-realnie zdjęła — reszta zostaje NAZWANA, zmierzona i zamknięta w kolejnych
-kartach tej samej klasy, nie cicho pominięta.
+zamknęła w tej sesji dziesięć scen (E-31 „stan fazowy SN", E-32 „stabilność
+dynamiczna", „siła-sieci", „migotanie", „kompensacja(-wynik)", „rozplyw",
+„walidacja", „uwaga", „cieplna", „arcflash" — usunięte ręcznie wpisane stałe
+i ręczne `run_id`, prog literałów fizyki 229→164 i ręcznych `run_id` 54→42 w
+`creator-harness-main.tsx`, zmierzone tym guardem) i obniżyła próg o tyle,
+ile realnie zdjęła — reszta zostaje NAZWANA, zmierzona i zamknięta w
+kolejnych kartach tej samej klasy, nie cicho pominięta.
 
 CO ŁAPIE (dwie klasy wzorców, TYLKO w plikach `frontend/src/*harness-main.tsx`
 — fixtury `harness-fixtures/generated/*.json` są WEJŚCIEM tych plików, nie
@@ -105,7 +106,7 @@ WZORZEC_RECZNEGO_RUN_ID = re.compile(r"""\b(run_id|id)\s*:\s*'run-[^']*'""")
 #: uzasadnienia w commicie (nowy literał fizyki dołożony do harnessu jest
 #: naruszeniem karty, nie przypadkiem).
 PROG: dict[str, tuple[int, int]] = {
-    "creator-harness-main.tsx": (218, 49),
+    "creator-harness-main.tsx": (164, 42),
     "screenshot-harness-main.tsx": (2, 1),
 }
 

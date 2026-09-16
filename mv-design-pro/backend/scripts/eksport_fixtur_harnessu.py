@@ -912,10 +912,18 @@ def rozplyw_scena_wynik() -> dict[str, Any]:
     """Odpowiedź `GET /api/power-flow-runs/{id}/results`
     (`PowerFlowResultV1` — `get_power_flow_result`, TA SAMA funkcja, którą
     woła końcówka `api/power_flow_runs.py::get_power_flow_results`), zasiew
-    scen „rozplyw"/„uwaga" (`usePowerFlowResultsStore`)."""
+    scen „rozplyw"/„uwaga" (`usePowerFlowResultsStore`). Klucz `run_id`
+    DOPISANY POZA kontraktem `PowerFlowResultV1` (który go nie niesie —
+    zmierzone: `get_power_flow_result` nie osadza `run.id` w tekście, więc
+    `_ustabilizuj_identyfikatory` niżej nie ma czego zamienić) — WYŁĄCZNIE
+    żeby harness miał stabilny, nie-losowy identyfikator dla
+    `runHeader.id` (ten sam wzorzec co syntetyczna koperta
+    `RUN_KONTRAKT_SCENY` w `creator-harness-main.tsx`: metadane harnessu,
+    nie fizyka wyniku)."""
     run = _bieg_sceny_rozplyw()
     widok = get_power_flow_result(run)
-    return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_ROZPLYW})
+    widok = _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_ROZPLYW})
+    return {**widok, "run_id": RUN_ID_SCENY_ROZPLYW}
 
 
 def walidacja_scena_wynik() -> dict[str, Any]:

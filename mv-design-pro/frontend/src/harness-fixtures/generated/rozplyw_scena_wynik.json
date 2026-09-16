@@ -104,5 +104,6 @@
     "podstawa_ostrzezenie_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
     "podstawa_przekroczenie_pl": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych) — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %.",
     "pasmo_wiarygodnosci_pct": 10.0
-  }
+  },
+  "run_id": "run-lf-scena-rozplyw"
 }

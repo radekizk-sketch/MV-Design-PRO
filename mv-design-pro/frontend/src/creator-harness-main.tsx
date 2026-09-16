@@ -104,6 +104,18 @@ import zwarciaPasmoScenyZwarcia from './harness-fixtures/generated/zwarcia_pasmo
 import stanFazowyScenyWyniki from './harness-fixtures/generated/stan_fazowy_scena_wyniki.json';
 import stabilnoscScenyWyniki from './harness-fixtures/generated/stabilnosc_scena_wyniki.json';
 import stabilnoscScenySlad from './harness-fixtures/generated/stabilnosc_scena_slad.json';
+// HARNESS-RESZTA (kontynuacja, 2026-09-16): sceny "sila-sieci"/"migotanie"
+// (short_circuit_sn z catalog_ref na gen_pv), "kompensacja(-wynik)"/
+// "rozplyw"/"walidacja"/"uwaga" (PF), "cieplna"/"arcflash" (reuzywaja bieg
+// kotwicy sceny "zwarcia") — WYLACZNIE realny bieg backendu.
+import silaSieciScenyWynik from './harness-fixtures/generated/sila_sieci_scena_wynik.json';
+import migotanieScenyWynik from './harness-fixtures/generated/migotanie_scena_wynik.json';
+import kompensacjaScenyWynik from './harness-fixtures/generated/kompensacja_scena_wynik.json';
+import rozplywScenyWynik from './harness-fixtures/generated/rozplyw_scena_wynik.json';
+import walidacjaScenyWynik from './harness-fixtures/generated/walidacja_scena_wynik.json';
+import cieplnaScenyWynik from './harness-fixtures/generated/cieplna_scena_wynik.json';
+import cieplnaScenyDowod from './harness-fixtures/generated/cieplna_scena_dowod.json';
+import arcflashScenyWynik from './harness-fixtures/generated/arcflash_scena_wynik.json';
 import { REWIZJA_SIECI_ZLOTEJ, migawkaSieciZlotej } from './harness-fixtures/migawkaSieciZlotej';
 import { EkranOceny } from './ui2/wyniki/ocena';
 import { SekcjaSilySieci } from './ui2/oze/pulpit';
@@ -758,17 +770,24 @@ const DOBOR_PRZEKLADNIKOW_WIAZANIA = {
  * (wariant NIEAKTUALNY, K3-B3).
  */
 const RUN_KONTRAKT_SCENY: Record<string, string> = {
+  // K3-B3: scena „cieplna" jest CELOWO wariantem NIEAKTUALNYM znacznika
+  // świeżości (migawka rev. 2 vs kontrakt biegu rev. 1, patrz zasiew sceny
+  // niżej) — 'run-sc-7' zostaje stałą etykietą TEGO scenariusza (nie
+  // identyfikatorem żadnego liczonego biegu), zmiana na realny run_id
+  // złamałaby dowodzony wariant „nieaktualne" bez żadnej korzyści (kontrakt
+  // treści cieplnej — `cieplna_scena_wynik.json` — czyta OSOBNY endpoint,
+  // niezależny od tej etykiety).
   cieplna: 'run-sc-7',
-  // HARNESS-ZWARCIA-Z-BACKENDU: obie sceny czytają TEN SAM bieg kotwicy
-  // realnego backendu (`zwarciaWynikiScenyZwarcia.run_id`), nie ręczne id.
+  // HARNESS-ZWARCIA-Z-BACKENDU / HARNESS-RESZTA: sceny czytają TEN SAM bieg
+  // kotwicy realnego backendu (`*.run_id`/`*.context.run_id`), nie ręczne id.
   'zwarcia-rozplyw': zwarciaWynikiScenyZwarcia.run_id,
   zwarcia: zwarciaWynikiScenyZwarcia.run_id,
-  rozplyw: 'run-lf-1',
-  walidacja: 'run-lf-1',
+  rozplyw: rozplywScenyWynik.run_id,
+  walidacja: walidacjaScenyWynik.context.run_id,
   estymacja: 'run-lf-6',
   'odbior-zgodnosc': 'run-lf-5',
-  arcflash: 'run-sc-1',
-  migotanie: 'run-sc-5',
+  arcflash: arcflashScenyWynik.context.run_id,
+  migotanie: migotanieScenyWynik.context.run_id,
 };
 
 const originalFetch = window.fetch.bind(window);
@@ -1047,73 +1066,13 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   }
 
   if (url.includes('/api/quality/energy-validation')) {
-    // Scena „walidacja" (R2-D): odpowiedz 1:1 z kontraktem backendu, w tym
-    // slad WHITE BOX per pozycja (R2-A) — ksztalt jak builder energy_validation.
-    return new Response(
-      JSON.stringify({
-        context: null,
-        config: { loading_warn_pct: 80, loading_fail_pct: 100, voltage_warn_pct: 5, voltage_fail_pct: 10, loss_warn_pct: 5, loss_fail_pct: 10 },
-        items: [
-          {
-            check_type: 'VOLTAGE_DEVIATION', target_id: 'SZ-ST7', target_name: 'Szyna ST-7',
-            observed_value: 12.0, unit: '%', limit_warn: 5.0, limit_fail: 10.0, margin_pct: 2.0,
-            status: 'FAIL', why_pl: 'Odchylenie napieciowe 12.00 % przekracza limit 10.0 %.',
-            white_box: [
-              {
-                tekst: 'Wzor: odchylenie = |U - U_n| / U_n * 100%',
-                latex: '\\delta U = \\frac{|U - U_n|}{U_n} \\cdot 100\\%',
-              },
-              { tekst: 'Dane: U = 13.2000 kV (wynik PF), U_n = 15.0000 kV', latex: null },
-              {
-                tekst: 'Wynik: odchylenie = 12.00 %',
-                latex: '\\delta U = \\frac{|13.2000 - 15.0000|}{15.0000} \\cdot 100\\% = 12.00\\%',
-              },
-              { tekst: 'Progi: ostrzezenie 5.0 %, przekroczenie 10.0 %', latex: null },
-              { tekst: 'Werdykt: PRZEKROCZENIE', latex: null },
-            ],
-          },
-          {
-            // Scena "rozplyw" (R3-A): werdykt FAIL transformatora w kolumnie obciazalnosci.
-            check_type: 'TRANSFORMER_LOADING', target_id: 'TR-1', target_name: 'Transformator TR-1',
-            observed_value: 104.0, unit: '%', limit_warn: 80.0, limit_fail: 100.0, margin_pct: -4.0,
-            status: 'FAIL', why_pl: 'Obciazenie transformatora 104.00 % przekracza limit 100.0 %.',
-            white_box: [
-              {
-                tekst: 'Wzor: obciazenie = max(|S_gora|, |S_dol|) / S_n * 100%',
-                latex: '\\varepsilon = \\frac{\\max(|S_{\\text{gora}}|, |S_{\\text{dol}}|)}{S_n} \\cdot 100\\%',
-              },
-              { tekst: 'Dane: |S_gora| = 1.6640 MVA, |S_dol| = 1.6380 MVA (wynik PF), S_n = 1.6000 MVA', latex: null },
-              {
-                tekst: 'Wynik: obciazenie = 104.00 %',
-                latex: '\\varepsilon = \\frac{1.6640}{1.6000} \\cdot 100\\% = 104.00\\%',
-              },
-              { tekst: 'Progi: ostrzezenie 80.0 %, przekroczenie 100.0 %', latex: null },
-              { tekst: 'Werdykt: PRZEKROCZENIE', latex: null },
-            ],
-          },
-          {
-            check_type: 'BRANCH_LOADING', target_id: 'L-14', target_name: 'Odcinek L-14',
-            observed_value: 90.0, unit: '%', limit_warn: 80.0, limit_fail: 100.0, margin_pct: -10.0,
-            status: 'WARNING', why_pl: 'Obciazenie 90.00 % powyzej progu ostrzegawczego 80.0 %.',
-            white_box: [
-              {
-                tekst: 'Wzor: obciazenie = |I| / I_n * 100%',
-                latex: '\\varepsilon = \\frac{|I|}{I_n} \\cdot 100\\%',
-              },
-              { tekst: 'Dane: |I| = 0.2295 kA (wynik PF), I_n = 0.2550 kA (dane galezi)', latex: null },
-              {
-                tekst: 'Wynik: obciazenie = 90.00 %',
-                latex: '\\varepsilon = \\frac{0.2295}{0.2550} \\cdot 100\\% = 90.00\\%',
-              },
-              { tekst: 'Progi: ostrzezenie 80.0 %, przekroczenie 100.0 %', latex: null },
-              { tekst: 'Werdykt: OSTRZEZENIE', latex: null },
-            ],
-          },
-        ],
-        summary: { pass_count: 5, warning_count: 1, fail_count: 2, not_computed_count: 0, worst_item_target_id: 'SZ-ST7', worst_item_margin_pct: 2.0 },
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // Karta HARNESS-RESZTA (kontynuacja): scena "walidacja" (uzywana tez
+    // przez "rozplyw" — kolumna obciazalnosci) — REALNY bieg backendu
+    // (eksport_fixtur_harnessu.py::walidacja_scena_wynik, TA SAMA funkcja co
+    // koncowka `build_energy_validation_view`) na PF biegu sieci zlotej z
+    // obciazeniem x8 (ten sam bieg co scena "rozplyw") — zero recznie
+    // wpisanych liczb fizycznych.
+    return jsonOK(walidacjaScenyWynik);
   }
   if (url.includes('/api/proof/sc3f/contributions')) {
     // Sceny "zwarcia"/"zwarcia-rozplyw" (HARNESS-ZWARCIA-Z-BACKENDU,
@@ -1284,337 +1243,28 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     );
   }
   if (url.includes('/api/oze-analysis/grid-strength')) {
-    // Scena "sila-sieci" (V-B): sila sieci SCR/WSCR — ksztalt 1:1 z
-    // `analysis/grid_strength/serializer.py::view_to_dict`; kroki WHITE BOX
-    // DOKLADNIE jak builder (SCR -> werdykt; WSCR z licznikiem/mianownikiem),
-    // liczby spojne: 189.9/8.0=23.7375; 45.0/20.0=2.25; WSCR=2419.2/784=3.0857.
-    return new Response(
-      JSON.stringify({
-        analysis_id: 'gs-demo-1',
-        context: {
-          project_name: 'Przyłączenie farmy PV 8 MW', case_name: 'Stan normalny',
-          run_timestamp: '2026-07-22T08:30:00Z', snapshot_id: 'snap-demo', trace_id: 'run-sc-4',
-        },
-        weak_threshold: 3.0,
-        very_weak_threshold: 2.0,
-        entries: [
-          {
-            bus_ref: 'SZ-PV2', nominal_kv: 15.0, s_sc_mva: 189.9, s_installed_mva: 8.0,
-            scr: 23.7375, verdict: 'mocna', is_weak: false,
-            why_pl: 'SCR = 23.7375 ≥ 3.0 — sieć mocna w węźle; klasyczne założenia pracy źródła falownikowego pozostają ważne.',
-            missing_data: [],
-            white_box: [
-              {
-                symbol: 'SCR',
-                formula_latex: "\\mathrm{SCR} = \\dfrac{S_{sc}''}{S_n}",
-                substitution_pl: 'SCR = 189.9 MVA / 8.0 MVA',
-                result_pl: 'SCR = 23.7375 (–)',
-              },
-              {
-                symbol: 'werdykt',
-                formula_latex: '\\mathrm{SCR} \\; \\geq \\; 3.0',
-                substitution_pl: 'próg słaby = 3.0; próg bardzo słaby = 2.0',
-                result_pl: 'sieć mocna',
-              },
-            ],
-            modules: [{ ref: 'gen-pv-1', name: 'Farma PV 8 MW', sn_mva: 8.0 }],
-          },
-          {
-            bus_ref: 'SZ-FW1', nominal_kv: 15.0, s_sc_mva: 45.0, s_installed_mva: 20.0,
-            scr: 2.25, verdict: 'słaba', is_weak: true,
-            why_pl: 'SCR = 2.25 (przedział [2.0; 3.0)) — sieć słaba w węźle. Wymagana ostrożność: weryfikacja stabilności impedancyjnej i interakcji regulatorów.',
-            missing_data: [],
-            white_box: [
-              {
-                symbol: 'SCR',
-                formula_latex: "\\mathrm{SCR} = \\dfrac{S_{sc}''}{S_n}",
-                substitution_pl: 'SCR = 45.0 MVA / 20.0 MVA',
-                result_pl: 'SCR = 2.25 (–)',
-              },
-              {
-                symbol: 'werdykt',
-                formula_latex: '\\mathrm{SCR} \\; \\lt \\; 3.0',
-                substitution_pl: 'próg słaby = 3.0; próg bardzo słaby = 2.0',
-                result_pl: 'sieć słaba',
-              },
-            ],
-            modules: [{ ref: 'gen-fw-1', name: 'Park wiatrowy 20 MVA', sn_mva: 20.0 }],
-          },
-          {
-            bus_ref: 'SZ-BS1', nominal_kv: null, s_sc_mva: null, s_installed_mva: 2.2,
-            scr: null, verdict: 'brak danych', is_weak: false,
-            why_pl: 'Brak mocy zwarciowej — SCR nieobliczony.',
-            missing_data: ['s_sc_mva'], white_box: [],
-            modules: [{ ref: 'gen-bess-1', name: 'Magazyn BESS 2 MW', sn_mva: 2.2 }],
-          },
-        ],
-        summary: {
-          total_buses: 3, weak_bus_count: 1, not_computed_count: 1,
-          wscr: 3.0857, wscr_verdict: 'mocna',
-          wscr_why_pl: 'WSCR = 3.0857 dla 2 źródeł — sieć mocna. WSCR ujmuje wzajemne oddziaływanie źródeł falownikowych w pobliżu (metodyka ERCOT).',
-          wscr_white_box: [
-            {
-              symbol: 'WSCR',
-              formula_latex: "\\mathrm{WSCR} = \\dfrac{\\sum_i S_{sc,i}'' \\cdot S_{n,i}}{\\left(\\sum_i S_{n,i}\\right)^2}",
-              substitution_pl: 'licznik Σ(S_sc·S_n) = 2419.2 MVA²; (Σ S_n)² = 784.0 MVA²',
-              result_pl: 'WSCR = 3.0857 (–), n = 2',
-            },
-          ],
-        },
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // Karta HARNESS-RESZTA (kontynuacja): scena "sila-sieci" — REALNY bieg
+    // backendu (eksport_fixtur_harnessu.py::sila_sieci_scena_wynik, TA SAMA
+    // funkcja co koncowka `build_grid_strength_view`) na biegu kotwicy scen
+    // "sila-sieci"/"migotanie" (siec zlota z catalog_ref na gen_pv) — zero
+    // recznie wpisanych liczb fizycznych.
+    return jsonOK(silaSieciScenyWynik);
   }
   if (url.includes('/api/oze-analysis/compensation-sizing')) {
-    // Scena "kompensacja-wynik" (V-B): dobor kompensacji PO obliczeniu — ksztalt
-    // 1:1 z `application/analyses/dobor_kompensacji.py::build_compensation_sizing_view`.
-    // Liczby spojne (P=1.2 MW, Q_load=0.84 Mvar, V=0.98 pu -> V²=0.96):
-    // baseline cosφ = 1.2/√(1.44+0.7056) = 0.82; kandydat 0.6 Mvar: Q_cap_eff =
-    // 0.6·0.96 = 0.58 -> Q_netto = 0.26 -> cosφ punktu = 0.98 ≥ 0.95 (DOBOR).
-    //
-    // Karta FAB-L (§0 L6, audyt): `catalog_ref` kandydatow (`cap-0v3`/`cap-0v6`/
-    // `cap-0v9`) NIE jest tu podmieniany na realny `KOMP_SN_*` z
-    // `GET /api/catalog/shunt-capacitor-types` (ta trasa nie jest i nigdy nie
-    // byla mockowana — idzie do realnego backendu juz dzis). To WYNIK ANALIZY
-    // (kategoria wyjatku (a) karty: solver/analysis result, terminalny,
-    // tylko-do-odczytu — nikt go nie odsyla z powrotem do pickera katalogu).
-    // Drabinka 0,3/0,6/0,9 Mvar demonstruje CELOWO trzy rozne werdykty (obie
-    // miary <prog, tylko punktowa ≥prog — V12K-040 B, prawie-jednostkowy
-    // wspolczynnik mocy z nadkompensacja) i nie ma odpowiednika w realnym
-    // katalogu (ktory ma tylko 0,6/1,2/1,8/2,4/3,6 Mvar) bez przeliczenia całej
-    // trójki na nowo — poza zakresem tej karty (dane katalogowe DER, nie
-    // kompensacja). Namiary faktycznie zapisywane do modelu (device_catalog_ref/
-    // battery_catalog_ref/dynamic_model_ref/protection_catalog_ref/ct_catalog_ref/
-    // ptpiree_certificate_ref) SĄ realne — patrz test parytetu.
-    return new Response(
-      JSON.stringify({
-        analysis: 'compensation_sizing',
-        context: { trace_id: 'run-lf-3', snapshot_id: 'snap-demo', case_name: 'Stan normalny' },
-        parameters: {
-          bus_ref: 'SZ-ST7', bus_name: 'Szyna ST-7', bus_voltage_kv: 15,
-          cos_phi_min: 0.95, uwzglednij_noc: false,
-        },
-        input_hash: 'komp-hash-a1b2c3',
-        baseline: {
-          cosfi_przekroju_dzien: 0.82, cosfi_przekroju_noc: null,
-          cosfi_punktu_dzien: 0.82, cosfi_punktu_noc: null,
-        },
-        candidates: [
-          {
-            catalog_ref: 'cap-0v3', name: 'Bateria SN 0,3 Mvar / 15 kV', rated_mvar: 0.3, rated_kv: 15,
-            cosfi_przekroju_dzien: 0.73, cosfi_przekroju_noc: null,
-            cosfi_punktu_dzien: 0.91, cosfi_punktu_noc: null,
-            p_point_day_mw: 1.2, q_przekroju_dzien_mvar: 1.13,
-            q_cap_eff_dzien_mvar: 0.29, q_netto_punktu_dzien_mvar: 0.55,
-            p_point_night_mw: null, q_przekroju_noc_mvar: null,
-            q_cap_eff_noc_mvar: null, q_netto_punktu_noc_mvar: null,
-            spelnia_dzien: false, spelnia_noc: null, spelnia: false,
-          },
-          {
-            catalog_ref: 'cap-0v6', name: 'Bateria SN 0,6 Mvar / 15 kV', rated_mvar: 0.6, rated_kv: 15,
-            // cosφ przekroju NISKIE (0.65 < 0.95), a kandydat SPELNIA — dobor
-            // sterowany cosφ PUNKTU (0.98 ≥ 0.95); wymog wlasciciela V12K-040 B.
-            cosfi_przekroju_dzien: 0.65, cosfi_przekroju_noc: null,
-            cosfi_punktu_dzien: 0.98, cosfi_punktu_noc: null,
-            p_point_day_mw: 1.2, q_przekroju_dzien_mvar: 1.42,
-            q_cap_eff_dzien_mvar: 0.58, q_netto_punktu_dzien_mvar: 0.26,
-            p_point_night_mw: null, q_przekroju_noc_mvar: null,
-            q_cap_eff_noc_mvar: null, q_netto_punktu_noc_mvar: null,
-            spelnia_dzien: true, spelnia_noc: null, spelnia: true,
-          },
-          {
-            catalog_ref: 'cap-0v9', name: 'Bateria SN 0,9 Mvar / 15 kV', rated_mvar: 0.9, rated_kv: 15,
-            cosfi_przekroju_dzien: 0.58, cosfi_przekroju_noc: null,
-            cosfi_punktu_dzien: 1.0, cosfi_punktu_noc: null,
-            p_point_day_mw: 1.2, q_przekroju_dzien_mvar: 1.7,
-            q_cap_eff_dzien_mvar: 0.86, q_netto_punktu_dzien_mvar: -0.02,
-            p_point_night_mw: null, q_przekroju_noc_mvar: null,
-            q_cap_eff_noc_mvar: null, q_netto_punktu_noc_mvar: null,
-            spelnia_dzien: true, spelnia_noc: null, spelnia: true,
-          },
-        ],
-        dobor: {
-          catalog_ref: 'cap-0v6', name: 'Bateria SN 0,6 Mvar / 15 kV', rated_mvar: 0.6, rated_kv: 15,
-          cosfi_punktu_dzien: 0.98, cosfi_punktu_noc: null,
-          cosfi_przekroju_dzien: 0.65, cosfi_przekroju_noc: null,
-        },
-        powod_braku: null,
-        // K10: ślad 1:1 z `application/analyses/dobor_kompensacji.py` — semantyka
-        // po polsku, wzory wyłącznie LaTeX `$...$` (zero kodów produkcji).
-        whitebox: {
-          pq_source:
-            'wypadkowy przepływ gałęzi zasilających punkt z wyniku rozpływu '
-            + '(koniec przy punkcie, suma po gałęziach incydentnych) przełożony '
-            + 'na znak kanoniczny przez adapter konwencji mocy biernej',
-          cosfi_przekroju:
-            'cosφ przepływu w przekroju sieciowym: '
-            + '$\\cos\\varphi_{\\text{przekroju}} = \\dfrac{|P|}{\\sqrt{P^{2} + '
-            + 'Q_{\\text{przekroju}}^{2}}}$; opisuje przekrój sieci, '
-            + 'NIE stopień skompensowania odbioru',
-          cosfi_punktu:
-            'cosφ punktu kompensowanego: '
-            + '$\\cos\\varphi_{\\text{punktu}} = \\dfrac{|P|}{\\sqrt{P^{2} + '
-            + 'Q_{\\text{netto}}^{2}}}$, $Q_{\\text{netto}} = Q_{\\text{odb}} - '
-            + 'Q_{\\text{bat}}$, $Q_{\\text{bat}} = \\sum Q_{\\text{zn}} \\cdot V^{2}$ '
-            + '(moc znamionowa baterii z katalogu, nie fizyka pola); PODSTAWA DOBORU',
-          konwencja_kanoniczna:
-            '$P>0$ — pobór mocy czynnej, $Q>0$ — pobór mocy biernej (indukcyjny), '
-            + '$Q<0$ — moc pojemnościowa',
-          decyzja:
-            'wynik rozpływu pozostaje nienaruszony (tylko odczyt); znak mocy '
-            + 'biernej interpretuje adapter konwencji — dobór nie modyfikuje '
-            + 'solvera ani wyniku',
-          candidate_count: 3,
-          night_scenario: null,
-        },
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // Karta HARNESS-RESZTA (kontynuacja): sceny "kompensacja"/"kompensacja-
+    // wynik" — REALNY bieg backendu (eksport_fixtur_harnessu.py::
+    // kompensacja_scena_wynik, TA SAMA funkcja co koncowka
+    // `build_compensation_sizing_view`) na PF biegu sieci zlotej, wezel
+    // bus_sn_b — zero recznie wpisanych liczb fizycznych.
+    return jsonOK(kompensacjaScenyWynik);
   }
   if (url.includes('/api/quality/flicker')) {
-    // Scena "migotanie" (V-B): ocena Pst/Plt/d — ksztalt 1:1 z
-    // `application/analyses/migotanie.py::build_migotanie_view` (kroki `_step`
-    // z `formula_latex` KaTeX). Liczby spojne miedzy krokami:
-    //   SZ-PV2 (Sk″=189.9): 19.5·4/189.9=0.4107; 13·5/189.9=0.3423;
-    //     Pst=(0.4107³+0.3423³)^(1/3)=0.4782; d=1·9.5/189.9·100=5.0026 %.
-    //   SZ-FW1 (Sk″=45): 6.8·8/45=1.2089 > 0.9 -> przekroczenie.
-    return new Response(
-      JSON.stringify({
-        analysis_id: 'mig-demo-1',
-        context: {
-          project_name: 'Przyłączenie farmy PV 8 MW', case_name: 'Stan normalny',
-          run_timestamp: '2026-07-22T08:40:00Z', snapshot_id: 'snap-demo', trace_id: 'run-sc-5',
-        },
-        config: {
-          flicker_summation_exponent_m: 3,
-          planning_level_pst: 0.9,
-          planning_level_plt: 0.7,
-          rvc_kmax: 1.0,
-        },
-        buses: [
-          {
-            bus_ref: 'SZ-PV2', nominal_kv: 15.0, sk_mva: 189.9,
-            modules: [
-              {
-                gen_ref: 'gen-pv-1', sn_mva: 4.0, flicker_c: 19.5, pst_i: 0.4107,
-                included: true, info_pl: null,
-                white_box: [
-                  {
-                    symbol: 'P_{st,i}',
-                    formula_latex: "P_{st,i} = c_i \\cdot \\dfrac{S_{n,i}}{S_{k}''}",
-                    substitution_pl: 'P_st_i = 19.5 · 4 / 189.9 MVA',
-                    result_pl: 'P_st_i = 0.4107',
-                  },
-                ],
-              },
-              {
-                gen_ref: 'gen-pv-2', sn_mva: 0.5, flicker_c: null, pst_i: null,
-                included: false,
-                info_pl: 'brak współczynnika emisji migotania w katalogu — moduł pominięty w sumowaniu',
-                white_box: [],
-              },
-              {
-                gen_ref: 'gen-fw-3', sn_mva: 5.0, flicker_c: 13.0, pst_i: 0.3423,
-                included: true, info_pl: null,
-                white_box: [
-                  {
-                    symbol: 'P_{st,i}',
-                    formula_latex: "P_{st,i} = c_i \\cdot \\dfrac{S_{n,i}}{S_{k}''}",
-                    substitution_pl: 'P_st_i = 13 · 5 / 189.9 MVA',
-                    result_pl: 'P_st_i = 0.3423',
-                  },
-                ],
-              },
-            ],
-            pst: 0.4782, plt: 0.4782, d_percent: 5.0026,
-            pst_limit: 0.9, plt_limit: 0.7,
-            verdict_pl: 'w granicach planowania',
-            zalozenia_pl: [
-              "Emisja pojedynczego źródła: Pst_i = c · Sn / Sk'' (c — współczynnik emisji "
-              + 'migotania z certyfikatu urządzenia; metodyka IEC 61400-21-1).',
-              'Sumowanie emisji wielu źródeł w węźle: Pst = (Σ Pst_i^m)^(1/m), wykładnik '
-              + 'm = 3 (sumowanie sześcienne wg IEC/TR 61000-3-7:2008, §5.2).',
-              'Plt = Pst — założenie konserwatywne dla ciągłej, ustalonej emisji źródeł OZE '
-              + '(równe wartości Pst w oknie 2 h dają Plt = Pst z definicji Plt).',
-              'Poziomy planowania dla SN: Pst = 0.9, Plt = 0.7 — wartości orientacyjne wg '
-              + 'IEC/TR 61000-3-7:2008, Tablica 1. Wiążące wymaganie ustala OSD.',
-              'Szybka zmiana napięcia d = kmax · Sn / Sk\'\' · 100, kmax = 1 (założenie '
-              + 'konserwatywne — załączenie pełnej mocy zainstalowanej w węźle; '
-              + 'IEC/TR 61000-3-7:2008, §5.5).',
-            ],
-            white_box: [
-              {
-                symbol: 'P_{st}',
-                formula_latex: 'P_{st} = \\left( \\sum_i P_{st,i}^{\\,m} \\right)^{1/m}, \\quad m = 3',
-                substitution_pl: 'P_st = (0.4107^3 + 0.3423^3)^(1/3)',
-                result_pl: 'P_st = 0.4782',
-              },
-              {
-                symbol: 'P_{lt}',
-                formula_latex: 'P_{lt} = P_{st}',
-                substitution_pl: 'P_lt = P_st = 0.4782 (emisja ciągła, założenie konserwatywne)',
-                result_pl: 'P_lt = 0.4782',
-              },
-              {
-                symbol: 'd',
-                formula_latex: "d = k_{max} \\cdot \\dfrac{S_{n}}{S_{k}''} \\cdot 100\\%",
-                substitution_pl: 'd = 1 · 9.5 / 189.9 · 100 %',
-                result_pl: 'd = 5.0026 %',
-              },
-            ],
-          },
-          {
-            bus_ref: 'SZ-FW1', nominal_kv: 15.0, sk_mva: 45.0,
-            modules: [
-              {
-                gen_ref: 'gen-fw-1', sn_mva: 8.0, flicker_c: 6.8, pst_i: 1.2089,
-                included: true, info_pl: null,
-                white_box: [
-                  {
-                    symbol: 'P_{st,i}',
-                    formula_latex: "P_{st,i} = c_i \\cdot \\dfrac{S_{n,i}}{S_{k}''}",
-                    substitution_pl: 'P_st_i = 6.8 · 8 / 45 MVA',
-                    result_pl: 'P_st_i = 1.2089',
-                  },
-                ],
-              },
-            ],
-            pst: 1.2089, plt: 1.2089, d_percent: 17.7778,
-            pst_limit: 0.9, plt_limit: 0.7,
-            verdict_pl: 'przekroczenie poziomu planowania',
-            zalozenia_pl: [
-              'Sumowanie emisji wielu źródeł w węźle: Pst = (Σ Pst_i^m)^(1/m), wykładnik '
-              + 'm = 3 (sumowanie sześcienne wg IEC/TR 61000-3-7:2008, §5.2).',
-              'Poziomy planowania dla SN: Pst = 0.9, Plt = 0.7 — wartości orientacyjne wg '
-              + 'IEC/TR 61000-3-7:2008, Tablica 1. Wiążące wymaganie ustala OSD.',
-            ],
-            white_box: [
-              {
-                symbol: 'P_{st}',
-                formula_latex: 'P_{st} = \\left( \\sum_i P_{st,i}^{\\,m} \\right)^{1/m}, \\quad m = 3',
-                substitution_pl: 'P_st = (1.2089^3)^(1/3)',
-                result_pl: 'P_st = 1.2089',
-              },
-              {
-                symbol: 'P_{lt}',
-                formula_latex: 'P_{lt} = P_{st}',
-                substitution_pl: 'P_lt = P_st = 1.2089 (emisja ciągła, założenie konserwatywne)',
-                result_pl: 'P_lt = 1.2089',
-              },
-              {
-                symbol: 'd',
-                formula_latex: "d = k_{max} \\cdot \\dfrac{S_{n}}{S_{k}''} \\cdot 100\\%",
-                substitution_pl: 'd = 1 · 8 / 45 · 100 %',
-                result_pl: 'd = 17.7778 %',
-              },
-            ],
-          },
-        ],
-        summary: { total_buses: 2, assessed_count: 2, exceeded_count: 1, not_assessed_count: 0 },
-        input_hash: 'mig-hash-demo',
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // Karta HARNESS-RESZTA (kontynuacja): scena "migotanie" — REALNY bieg
+    // backendu (eksport_fixtur_harnessu.py::migotanie_scena_wynik, TA SAMA
+    // funkcja co koncowka `build_migotanie_view`) na biegu kotwicy scen
+    // "sila-sieci"/"migotanie" (siec zlota z catalog_ref na gen_pv) — zero
+    // recznie wpisanych liczb fizycznych.
+    return jsonOK(migotanieScenyWynik);
   }
   if (url.includes('/api/quality/as-built-compliance')) {
     // Scena "odbior-zgodnosc" (V-B): raport zgodnosci powykonawczej — ksztalt
@@ -1980,845 +1630,26 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     });
   }
   if (url.includes('/api/quality/conductor-thermal-withstand/proof')) {
-    // Karta F-K1 faza 7: dowod LINII NAPOWIETRZNEJ. Krok 1 pokazuje rodzaj przewodu
-    // i zdanie o tym, CO wyznacza temperature graniczna — brak izolacji przewodu
-    // golego nie jest tu raportowany jako brak danej. Kroki WYLICZONE solverem
-    // `conductor_thermal_withstand.py` (AFL 6 70 mm², I = 5200 A, t = 1,0 s).
-    if (url.includes('linia-napowietrzna-3')) {
-      return new Response(JSON.stringify({
-          "run_id": "run-sc-7",
-          "branch_id": "linia-napowietrzna-3",
-          "branch_name": "Odgałęzienie napowietrzne L-03 (AFL 6 70 mm²)",
-          "status": "PASS",
-          "kroki": [
-            {
-              "step": 1,
-              "key": "conductor_thermal_k_factor",
-              "title": "Współczynnik materiałowy k żyły",
-              "formula_latex": "$$k = J_{th(1s)} \\quad \\left[\\frac{\\mathrm{A}\\sqrt{\\mathrm{s}}}{\\mathrm{mm^2}}\\right]$$",
-              "inputs": {
-                "rodzaj_przewodu": {
-                  "value": "przewód goły (linia napowietrzna)",
-                  "label": "Rodzaj przewodu"
-                },
-                "material_zyly": {
-                  "value": "AL_ST",
-                  "label": "Materiał żyły"
-                },
-                "izolacja": {
-                  "value": "brak — przewód goły",
-                  "label": "Izolacja"
-                },
-                "temp_poczatkowa_c": {
-                  "value": 70.0,
-                  "unit": "°C",
-                  "label": "Temperatura początkowa (robocza)"
-                },
-                "temp_koncowa_c": {
-                  "value": 200.0,
-                  "unit": "°C",
-                  "label": "Temperatura końcowa (zwarciowa)"
-                }
-              },
-              "substitution": "$$k = 88\\ \\frac{\\mathrm{A}\\sqrt{\\mathrm{s}}}{\\mathrm{mm^2}}$$",
-              "result": {
-                "k_a_s05_per_mm2": {
-                  "value": 88.0,
-                  "unit": "A·√s/mm²",
-                  "label": "Współczynnik k (= Jth dla 1 s)"
-                }
-              },
-              "notes": "k = Jth(1 s) — gęstość prądu zwarciowego dla 1 s z karty katalogowej (prąd na 1 mm² przekroju wytrzymywany przez 1 s). Źródło: PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3. Temperaturę graniczną przy zwarciu wyznacza utrata wytrzymałości mechanicznej żyły i dopuszczalna temperatura osprzętu (przewód goły nie ma izolacji). Rodzaj przewodu, materiał żyły i para temperatur pozwalają zweryfikować tę wartość."
-            },
-            {
-              "step": 2,
-              "key": "conductor_thermal_admissible",
-              "title": "Prąd dopuszczalny przewodu przy czasie trwania zwarcia",
-              "formula_latex": "$$I_{dop}(t) = I_{th(1s)} \\cdot \\sqrt{\\frac{1\\,\\mathrm{s}}{t}}$$",
-              "inputs": {
-                "ith_1s_a": {
-                  "value": 6160.0,
-                  "unit": "A",
-                  "label": "Wytrzymałość cieplna żyły dla 1 s"
-                },
-                "tk_s": {
-                  "value": 1.0,
-                  "unit": "s",
-                  "label": "Czas trwania zwarcia"
-                }
-              },
-              "substitution": "$$I_{dop} = \\frac{6160}{\\sqrt{1}} = 6160\\ \\mathrm{A}$$",
-              "result": {
-                "i_dop_a": {
-                  "value": 6160.0,
-                  "unit": "A",
-                  "label": "Prąd dopuszczalny przy czasie t"
-                }
-              },
-              "notes": "Nagrzewanie zwarciowe przyjmuje się za adiabatyczne, więc obowiązuje równoważna energia cieplna I²·t = const (IEC 60949)."
-            },
-            {
-              "step": 3,
-              "key": "conductor_thermal_criterion",
-              "title": "Sprawdzenie kryterium cieplnego (zapis prądowy)",
-              "formula_latex": "$$I_{th} \\le I_{dop}(t)$$",
-              "inputs": {
-                "ith_a": {
-                  "value": 5200.0,
-                  "unit": "A",
-                  "label": "Prąd zwarciowy ekwiwalentny cieplnie gałęzi"
-                },
-                "i_dop_a": {
-                  "value": 6160.0,
-                  "unit": "A",
-                  "label": "Prąd dopuszczalny przy czasie t"
-                }
-              },
-              "substitution": "$$5200\\ \\mathrm{A} \\le 6160\\ \\mathrm{A} \\quad\\Rightarrow\\quad 84{,}416\\ \\%$$",
-              "result": {
-                "utilization": {
-                  "value": 0.844156,
-                  "unit": "-",
-                  "label": "Wykorzystanie wytrzymałości cieplnej"
-                },
-                "margin_a": {
-                  "value": 960.0,
-                  "unit": "A",
-                  "label": "Zapas do prądu dopuszczalnego"
-                }
-              },
-              "notes": "Kryterium spełnione — przekrój wytrzyma zwarcie przez ten czas."
-            },
-            {
-              "step": 4,
-              "key": "conductor_thermal_energy",
-              "title": "Bilans energii cieplnej zwarcia",
-              "formula_latex": "$$I^2 t \\le k^2 S^2$$",
-              "inputs": {
-                "ith_a": {
-                  "value": 5200.0,
-                  "unit": "A",
-                  "label": "Prąd zwarciowy ekwiwalentny cieplnie gałęzi"
-                },
-                "tk_s": {
-                  "value": 1.0,
-                  "unit": "s",
-                  "label": "Czas trwania zwarcia"
-                },
-                "ith_1s_a": {
-                  "value": 6160.0,
-                  "unit": "A",
-                  "label": "Wytrzymałość cieplna żyły dla 1 s"
-                }
-              },
-              "substitution": "$$5200^2 \\cdot 1 = 2{,}704 \\cdot 10^{7}\\ \\mathrm{A^2s} \\le 3{,}7946 \\cdot 10^{7}\\ \\mathrm{A^2s}$$",
-              "result": {
-                "i2t_a2s": {
-                  "value": 27040000.0,
-                  "unit": "A²·s",
-                  "label": "Energia cieplna zwarcia I²t"
-                },
-                "i2t_dop_a2s": {
-                  "value": 37945600.0,
-                  "unit": "A²·s",
-                  "label": "Dopuszczalna energia cieplna żyły k²S²"
-                }
-              },
-              "notes": "Zapis energetyczny i prądowy to ta sama nierówność — muszą dać ten sam werdykt; rozjazd oznaczałby błąd rachunku."
-            },
-            {
-              "step": 5,
-              "key": "conductor_thermal_min_section",
-              "title": "Minimalny przekrój żyły z warunku cieplnego",
-              "formula_latex": "$$S_{min} = \\frac{I_{th} \\cdot \\sqrt{t}}{J_{th(1s)}}$$",
-              "inputs": {
-                "ith_a": {
-                  "value": 5200.0,
-                  "unit": "A",
-                  "label": "Prąd zwarciowy ekwiwalentny cieplnie gałęzi"
-                },
-                "tk_s": {
-                  "value": 1.0,
-                  "unit": "s",
-                  "label": "Czas trwania zwarcia"
-                },
-                "jth_1s_a_per_mm2": {
-                  "value": 88.0,
-                  "unit": "A/mm²",
-                  "label": "Gęstość prądu cieplnego dla 1 s"
-                },
-                "cross_section_mm2": {
-                  "value": 70.0,
-                  "unit": "mm²",
-                  "label": "Przekrój zastosowany"
-                }
-              },
-              "substitution": "$$S_{min} = \\frac{5200 \\cdot \\sqrt{1}}{88} = 59{,}091\\ \\mathrm{mm^2} \\quad ; \\quad S = 70\\ \\mathrm{mm^2} \\ge S_{min}$$",
-              "result": {
-                "s_min_mm2": {
-                  "value": 59.090909,
-                  "unit": "mm²",
-                  "label": "Minimalny wymagany przekrój"
-                }
-              },
-              "notes": "Zapis równoważny kryterium prądowemu — mówi wprost, jaki przekrój usunie naruszenie."
-            }
-          ]
-        }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-    // Scena "cieplna" (karta F-K1 faza 5): dowod kryterium dla galezi Z NASTAWA.
-    // Kroki 1:1 z solverem `conductor_thermal_withstand.py::_build_white_box_trace`
-    // i `wytrzymalosc_cieplna_przewodow.py::_krok_czasu`; liczby WYLICZONE tym
-    // solverem (nie wpisane recznie): I=15000 A, Is=600 A, TMS=0,2, krzywa SI ->
-    // t = 0,421085 s; I_dop = 13800/sqrt(0,421085) = 21266,4 A; 15000/21266,4 =
-    // 0,705338; S_min = 15000*sqrt(0,421085)/115 = 84,64 mm2.
-    return new Response(
-      JSON.stringify({
-        run_id: 'run-sc-7',
-        branch_id: 'kabel-magistrala-1',
-        branch_name: 'Magistrala L-01 (120 mm²)',
-        status: 'PASS',
-        kroki: [
-          {
-            step: 1,
-            key: 'conductor_thermal_time_source',
-            title: 'Czas trwania zwarcia z nastawy zabezpieczenia',
-            formula_latex: '$$t_k = \\mathrm{TMS} \\cdot \\frac{A}{(I/I_s)^{B} - 1}$$',
-            inputs: {
-              i_galezi_a: { value: 15000, unit: 'A', label: 'Prąd zwarciowy gałęzi' },
-              i_rozruchowy_a: { value: 600, unit: 'A', label: 'Próg rozruchowy zabezpieczenia' },
-              tms: { value: 0.2, unit: '-', label: 'Mnożnik czasowy nastawy' },
-            },
-            substitution:
-              '$$t_k = 0{,}2 \\cdot \\frac{0{,}14}{\\left(\\frac{15000}{600}\\right)^{0{,}02} - 1} = 0{,}421085\\ \\mathrm{s}$$',
-            result: { tk_s: { value: 0.421085, unit: 's', label: 'Czas trwania zwarcia' } },
-            notes:
-              'Czas z charakterystyki IEC_SI zabezpieczenia pola L-01 przy prądzie gałęzi 15000.0 A.',
-          },
-          {
-            step: 2,
-            key: 'conductor_thermal_admissible',
-            title: 'Prąd dopuszczalny przewodu przy czasie trwania zwarcia',
-            formula_latex: '$$I_{dop}(t) = I_{th(1s)} \\cdot \\sqrt{\\frac{1\\,\\mathrm{s}}{t}}$$',
-            inputs: {
-              ith_1s_a: { value: 13800, unit: 'A', label: 'Wytrzymałość cieplna żyły dla 1 s' },
-              tk_s: { value: 0.421085, unit: 's', label: 'Czas trwania zwarcia' },
-            },
-            substitution: '$$I_{dop} = \\frac{13800}{\\sqrt{0{,}421}} = 21266{,}4\\ \\mathrm{A}$$',
-            result: { i_dop_a: { value: 21266.410898, unit: 'A', label: 'Prąd dopuszczalny przy czasie t' } },
-            notes:
-              'Nagrzewanie zwarciowe przyjmuje się za adiabatyczne, więc obowiązuje równoważna energia cieplna I²·t = const (IEC 60949).',
-          },
-          {
-            step: 3,
-            key: 'conductor_thermal_criterion',
-            title: 'Sprawdzenie kryterium cieplnego',
-            formula_latex: '$$I_{th} \\le I_{dop}(t)$$',
-            inputs: {
-              ith_a: { value: 15000, unit: 'A', label: 'Prąd zwarciowy ekwiwalentny cieplnie gałęzi' },
-              i_dop_a: { value: 21266.410898, unit: 'A', label: 'Prąd dopuszczalny przy czasie t' },
-            },
-            substitution:
-              '$$15000\\ \\mathrm{A} \\le 21266{,}4\\ \\mathrm{A} \\quad\\Rightarrow\\quad 70{,}534\\ \\%$$',
-            result: {
-              utilization: { value: 0.705338, unit: '-', label: 'Wykorzystanie wytrzymałości cieplnej' },
-              margin_a: { value: 6266.410898, unit: 'A', label: 'Zapas do prądu dopuszczalnego' },
-            },
-            notes: 'Kryterium spełnione — przekrój wytrzyma zwarcie przez ten czas.',
-          },
-          {
-            step: 4,
-            key: 'conductor_thermal_min_section',
-            title: 'Minimalny przekrój żyły z warunku cieplnego',
-            formula_latex: '$$S_{min} = \\frac{I_{th} \\cdot \\sqrt{t}}{J_{th(1s)}}$$',
-            inputs: {
-              ith_a: { value: 15000, unit: 'A', label: 'Prąd zwarciowy ekwiwalentny cieplnie gałęzi' },
-              tk_s: { value: 0.421085, unit: 's', label: 'Czas trwania zwarcia' },
-              jth_1s_a_per_mm2: { value: 115, unit: 'A/mm²', label: 'Gęstość prądu cieplnego dla 1 s' },
-              cross_section_mm2: { value: 120, unit: 'mm²', label: 'Przekrój zastosowany' },
-            },
-            substitution:
-              '$$S_{min} = \\frac{15000 \\cdot \\sqrt{0{,}421}}{115} = 84{,}641\\ \\mathrm{mm^2} \\quad ; \\quad S = 120\\ \\mathrm{mm^2} \\ge S_{min}$$',
-            result: { s_min_mm2: { value: 84.640516, unit: 'mm²', label: 'Minimalny wymagany przekrój' } },
-            notes: 'Zapis równoważny kryterium prądowemu — mówi wprost, jaki przekrój usunie naruszenie.',
-          },
-        ],
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // Karta HARNESS-RESZTA (kontynuacja): dowod cieplny GALEZI Z NAJWIEKSZYM
+    // pradem zwarciowym biegu kotwicy sceny "zwarcia" — REALNY bieg backendu
+    // (eksport_fixtur_harnessu.py::cieplna_scena_dowod, TA SAMA funkcja co
+    // koncowka `zbuduj_dowod_cieplny`), zero recznie wpisanych liczb fizycznych.
+    if (url.includes(`branch_id=${cieplnaScenyDowod.branch_id}`)) return jsonOK(cieplnaScenyDowod);
   }
   if (url.includes('/api/quality/conductor-thermal-withstand')) {
-    // Scena "cieplna": ocena per galaz — ksztalt 1:1 z
-    // `wytrzymalosc_cieplna_przewodow.py::build_wytrzymalosc_cieplna_view`.
-    // Galaz 1 ma czas Z NASTAWY (0,421085 s), galaz 2 — z ZALOZENIA przypadku
-    // (1,0 s), bo jej aparat nie ma czynnego zabezpieczenia. Liczby wyliczone
-    // solverem: L-01 PASS (15000 <= 21266,4; S_min 84,64 mm2 < 120 mm2);
-    // L-02 FAIL (9200 > 8050 = 8050/sqrt(1); S_min 80 mm2 > 70 mm2).
-    return new Response(
-      JSON.stringify({
-        run_id: 'run-sc-7',
-        case_id: 'case-demo',
-        analysis_type: 'short_circuit_sn',
-        fault_node_id: 'SZ-ST7',
-        tk_s: 1.0,
-        czasy_wylaczenia: { z_nastawy: 1, z_zalozenia: 2, razem: 3 },
-        aktualnosc: {
-          aktualny: true,
-          powod_pl: 'Wynik policzony dla biezacej wersji modelu.',
-          model_hash: 'h-demo',
-          snapshot_hash: 'h-demo',
-        },
-        normy: [
-          {
-            norma: 'PN-HD 60364-4-43',
-            punkt: '§ 434.5.2',
-            tresc_pl:
-              'Warunek adiabatyczny doboru przekroju ze wzgledu na zwarcie: S ≥ √(I²·t) / k.',
-          },
-          {
-            norma: 'IEC 60949',
-            punkt: '§ 3, § 4',
-            tresc_pl:
-              'Obliczanie dopuszczalnych pradow zwarciowych kabli; podstawa wartosci k dla par material zyly / izolacja.',
-          },
-          {
-            norma: 'IEC 60909-0',
-            punkt: '§ 12',
-            tresc_pl: 'Prad ekwiwalentny cieplnie I_th = I″k·√(m+n) — to jego uzywa kryterium.',
-          },
-        ],
-        ocena: {
-          items: [
-            {
-              branch_id: 'kabel-magistrala-1',
-              branch_name: 'Magistrala L-01 (120 mm²)',
-              status: 'PASS',
-              i_fault_a: 15000,
-              i_permissible_a: 21266.410898,
-              utilization: 0.705338,
-              s_min_mm2: 84.640516,
-              applied_cross_section_mm2: 120,
-              missing_codes: [],
-              uzasadnienie_pl: null,
-              i2t_a2s: 94744125,
-              i2t_dopuszczalne_a2s: 190440000,
-              margines_procent: 29.4662,
-              kryteria: [
-                {
-                  kod: 'prad_dopuszczalny',
-                  nazwa_pl: 'Prąd zwarciowy wobec dopuszczalnego dla czasu t',
-                  warunek_pl: 'I_th ≤ I_dop(t) = I_th(1s)/√t',
-                  wartosc: 15000,
-                  granica: 21266.410898,
-                  jednostka: 'A',
-                  status: 'PASS',
-                },
-                {
-                  kod: 'energia_cieplna',
-                  nazwa_pl: 'Energia zwarcia wobec wytrzymałości żyły',
-                  warunek_pl: 'I²·t ≤ k²·S²',
-                  wartosc: 94744125,
-                  granica: 190440000,
-                  jednostka: 'A²·s',
-                  status: 'PASS',
-                },
-                {
-                  kod: 'przekroj_minimalny',
-                  nazwa_pl: 'Przekrój zastosowany wobec minimalnego z warunku cieplnego',
-                  warunek_pl: 'S ≥ S_min = √(I²·t)/k',
-                  wartosc: 120,
-                  granica: 84.640516,
-                  jednostka: 'mm²',
-                  status: 'PASS',
-                },
-              ],
-              powod_decyzji_pl: 'Wykorzystanie wytrzymałości cieplnej 70,5 % (zapas 29,5 %).',
-              zalecenia: [],
-              wrazliwosc: [
-                { parametr: 'czas_wylaczenia', nazwa_pl: 'Czas wyłączenia', mnoznik: 0.5, wartosc: 0.2105, jednostka: 's', wykorzystanie: 0.498749 },
-                { parametr: 'czas_wylaczenia', nazwa_pl: 'Czas wyłączenia', mnoznik: 1.0, wartosc: 0.4211, jednostka: 's', wykorzystanie: 0.705338 },
-                { parametr: 'czas_wylaczenia', nazwa_pl: 'Czas wyłączenia', mnoznik: 2.0, wartosc: 0.8422, jednostka: 's', wykorzystanie: 0.997496 },
-                { parametr: 'prad_zwarciowy', nazwa_pl: 'Prąd zwarciowy', mnoznik: 1.5, wartosc: 22500, jednostka: 'A', wykorzystanie: 1.058007 },
-                { parametr: 'przekroj', nazwa_pl: 'Przekrój żyły', mnoznik: 0.5, wartosc: 60, jednostka: 'mm²', wykorzystanie: 1.410677 },
-              ],
-              uzasadnienie_k: {
-                k_a_s05_per_mm2: 115,
-                tozsamosc_pl:
-                  'k = Jth(1 s) — gęstość prądu zwarciowego dla 1 s z karty katalogowej (prąd na 1 mm² przekroju wytrzymywany przez 1 s).',
-                material_zyly: 'CU',
-                izolacja: 'XLPE',
-                temp_poczatkowa_c: 90,
-                temp_koncowa_c: 250,
-                zrodlo_pl: 'IEC 60502-2 / IEC 60949',
-                braki_pl: [],
-                kompletne: true,
-              },
-              czas_wylaczenia: {
-                tk_s: 0.421085,
-                zrodlo: 'nastawa_zabezpieczenia',
-                powod_pl:
-                  'Czas z charakterystyki IEC_SI zabezpieczenia pola L-01 przy prądzie gałęzi 15000.0 A.',
-                urzadzenie_ref: 'CB-L01',
-                urzadzenie_nazwa: 'Wyłącznik pola L-01',
-                funkcja: 'overcurrent_51',
-                prad_galezi_a: 15000,
-                prad_rozruchowy_a: 600,
-                krzywa: 'IEC_SI',
-                tms: 0.2,
-              },
-            },
-            {
-              branch_id: 'kabel-odgalezienie-2',
-              branch_name: 'Odgałęzienie L-02 (70 mm²)',
-              status: 'FAIL',
-              i_fault_a: 9200,
-              i_permissible_a: 8050,
-              utilization: 1.142857,
-              s_min_mm2: 80,
-              applied_cross_section_mm2: 70,
-              missing_codes: [],
-              uzasadnienie_pl: null,
-              i2t_a2s: 84640000,
-              i2t_dopuszczalne_a2s: 64802500,
-              margines_procent: -14.2857,
-              kryteria: [
-                {
-                  kod: 'prad_dopuszczalny',
-                  nazwa_pl: 'Prąd zwarciowy wobec dopuszczalnego dla czasu t',
-                  warunek_pl: 'I_th ≤ I_dop(t) = I_th(1s)/√t',
-                  wartosc: 9200,
-                  granica: 8050,
-                  jednostka: 'A',
-                  status: 'FAIL',
-                },
-                {
-                  kod: 'energia_cieplna',
-                  nazwa_pl: 'Energia zwarcia wobec wytrzymałości żyły',
-                  warunek_pl: 'I²·t ≤ k²·S²',
-                  wartosc: 84640000,
-                  granica: 64802500,
-                  jednostka: 'A²·s',
-                  status: 'FAIL',
-                },
-                {
-                  kod: 'przekroj_minimalny',
-                  nazwa_pl: 'Przekrój zastosowany wobec minimalnego z warunku cieplnego',
-                  warunek_pl: 'S ≥ S_min = √(I²·t)/k',
-                  wartosc: 70,
-                  granica: 80,
-                  jednostka: 'mm²',
-                  status: 'FAIL',
-                },
-              ],
-              powod_decyzji_pl:
-                'Przekrój 70 mm² jest mniejszy od wymaganego 80,0 mm² z warunku cieplnego.',
-              zalecenia: [
-                {
-                  kod: 'zwieksz_przekroj',
-                  dzialanie_pl: 'Zwiększ przekrój żyły',
-                  wzor: 'S ≥ I·√t / k',
-                  wartosc_docelowa: 80,
-                  jednostka: 'mm²',
-                  wartosc_obecna: 70,
-                  skutek_pl:
-                    'Przekrój 80,0 mm² sprowadza wykorzystanie wytrzymałości do 100 %; typoszereg powyżej daje zapas.',
-                },
-                {
-                  kod: 'skroc_czas',
-                  dzialanie_pl: 'Skróć czas wyłączenia zwarcia (nastawa zabezpieczenia)',
-                  wzor: 't ≤ (k·S / I)²',
-                  wartosc_docelowa: 0.7656,
-                  jednostka: 's',
-                  wartosc_obecna: 1.0,
-                  skutek_pl:
-                    'Czas 0,766 s zamiast 1,000 s wystarczy, żeby obecny przekrój spełnił kryterium bez wymiany kabla.',
-                },
-                {
-                  kod: 'ogranicz_prad',
-                  dzialanie_pl: 'Ogranicz prąd zwarciowy w tym miejscu sieci',
-                  wzor: 'I ≤ k·S / √t',
-                  wartosc_docelowa: 8050,
-                  jednostka: 'A',
-                  wartosc_obecna: 9200,
-                  skutek_pl:
-                    'Prąd do 8050 A (np. dławik zwarciowy, podział sieci, inny punkt pracy) mieści się w wytrzymałości obecnego przekroju.',
-                },
-              ],
-              wrazliwosc: [
-                { parametr: 'czas_wylaczenia', nazwa_pl: 'Czas wyłączenia', mnoznik: 0.5, wartosc: 0.5, jednostka: 's', wykorzystanie: 0.808122 },
-                { parametr: 'czas_wylaczenia', nazwa_pl: 'Czas wyłączenia', mnoznik: 1.0, wartosc: 1.0, jednostka: 's', wykorzystanie: 1.142857 },
-                { parametr: 'prad_zwarciowy', nazwa_pl: 'Prąd zwarciowy', mnoznik: 0.75, wartosc: 6900, jednostka: 'A', wykorzystanie: 0.857143 },
-                { parametr: 'przekroj', nazwa_pl: 'Przekrój żyły', mnoznik: 1.5, wartosc: 105, jednostka: 'mm²', wykorzystanie: 0.761905 },
-              ],
-              uzasadnienie_k: {
-                k_a_s05_per_mm2: 115,
-                tozsamosc_pl:
-                  'k = Jth(1 s) — gęstość prądu zwarciowego dla 1 s z karty katalogowej (prąd na 1 mm² przekroju wytrzymywany przez 1 s).',
-                material_zyly: 'AL',
-                izolacja: 'XLPE',
-                temp_poczatkowa_c: 90,
-                temp_koncowa_c: 250,
-                zrodlo_pl: 'IEC 60502-2 / IEC 60949',
-                braki_pl: [],
-                kompletne: true,
-              },
-              czas_wylaczenia: {
-                tk_s: 1.0,
-                zrodlo: 'zalozenie_przypadku',
-                powod_pl:
-                  'Aparat Rozłącznik odgałęzienia nie ma przypisanego czynnego zabezpieczenia, więc czas zadziałania jest niewyznaczalny. Przyjęto założony czas przypadku obliczeniowego 1 s.',
-                urzadzenie_ref: null,
-                urzadzenie_nazwa: null,
-                funkcja: null,
-                prad_galezi_a: 9200,
-                prad_rozruchowy_a: null,
-                krzywa: null,
-                tms: null,
-              },
-            },
-            // Karta F-K1 faza 7: LINIA NAPOWIETRZNA (przewod goly) w tym samym widoku.
-            // Liczby WYLICZONE solverem `conductor_thermal_withstand.py` z danych
-            // katalogowych AFL 6 70/11 mm² (Jth = 88 A·√s/mm², S = 70 mm²,
-            // theta_b = 70 °C -> theta_k = 200 °C), NIE wpisane recznie:
-            //   Ith(1 s) = 88 · 70 = 6160 A; t = 1,0 s (zalozenie przypadku) ->
-            //   I_dop = 6160 A; I = 5200 A -> wykorzystanie 0,844156;
-            //   S_min = 5200·√1 / 88 = 59,0909 mm² < 70 mm² => PASS.
-            {
-              "branch_id": "linia-napowietrzna-3",
-              "branch_name": "Odgałęzienie napowietrzne L-03 (AFL 6 70 mm²)",
-              "status": "PASS",
-              "i_fault_a": 5200.0,
-              "i_permissible_a": 6160.0,
-              "utilization": 0.8441558441558441,
-              "s_min_mm2": 59.09090909090909,
-              "applied_cross_section_mm2": 70.0,
-              "missing_codes": [],
-              "uzasadnienie_pl": null,
-              "i2t_a2s": 27040000.0,
-              "i2t_dopuszczalne_a2s": 37945600.0,
-              "margines_procent": 15.58441558441559,
-              "kryteria": [
-                {
-                  "kod": "prad_dopuszczalny",
-                  "nazwa_pl": "Prąd zwarciowy wobec dopuszczalnego dla czasu t",
-                  "warunek_pl": "I_th ≤ I_dop(t) = I_th(1s)/√t",
-                  "wartosc": 5200.0,
-                  "granica": 6160.0,
-                  "jednostka": "A",
-                  "status": "PASS"
-                },
-                {
-                  "kod": "energia_cieplna",
-                  "nazwa_pl": "Energia zwarcia wobec wytrzymałości żyły",
-                  "warunek_pl": "I²·t ≤ k²·S²",
-                  "wartosc": 27040000.0,
-                  "granica": 37945600.0,
-                  "jednostka": "A²·s",
-                  "status": "PASS"
-                },
-                {
-                  "kod": "przekroj_minimalny",
-                  "nazwa_pl": "Przekrój zastosowany wobec minimalnego z warunku cieplnego",
-                  "warunek_pl": "S ≥ S_min = √(I²·t)/k",
-                  "wartosc": 70.0,
-                  "granica": 59.090909,
-                  "jednostka": "mm²",
-                  "status": "PASS"
-                }
-              ],
-              "powod_decyzji_pl": "Wykorzystanie wytrzymałości cieplnej 84,4 % (zapas 15,6 %).",
-              "zalecenia": [],
-              "wrazliwosc": [
-                {
-                  "parametr": "czas_wylaczenia",
-                  "nazwa_pl": "Czas wyłączenia",
-                  "mnoznik": 0.5,
-                  "wartosc": 0.5,
-                  "jednostka": "s",
-                  "wykorzystanie": 0.596908
-                },
-                {
-                  "parametr": "czas_wylaczenia",
-                  "nazwa_pl": "Czas wyłączenia",
-                  "mnoznik": 0.75,
-                  "wartosc": 0.75,
-                  "jednostka": "s",
-                  "wykorzystanie": 0.73106
-                },
-                {
-                  "parametr": "czas_wylaczenia",
-                  "nazwa_pl": "Czas wyłączenia",
-                  "mnoznik": 1.0,
-                  "wartosc": 1.0,
-                  "jednostka": "s",
-                  "wykorzystanie": 0.844156
-                },
-                {
-                  "parametr": "czas_wylaczenia",
-                  "nazwa_pl": "Czas wyłączenia",
-                  "mnoznik": 1.5,
-                  "wartosc": 1.5,
-                  "jednostka": "s",
-                  "wykorzystanie": 1.033876
-                },
-                {
-                  "parametr": "czas_wylaczenia",
-                  "nazwa_pl": "Czas wyłączenia",
-                  "mnoznik": 2.0,
-                  "wartosc": 2.0,
-                  "jednostka": "s",
-                  "wykorzystanie": 1.193817
-                },
-                {
-                  "parametr": "prad_zwarciowy",
-                  "nazwa_pl": "Prąd zwarciowy",
-                  "mnoznik": 0.5,
-                  "wartosc": 2600.0,
-                  "jednostka": "A",
-                  "wykorzystanie": 0.422078
-                },
-                {
-                  "parametr": "prad_zwarciowy",
-                  "nazwa_pl": "Prąd zwarciowy",
-                  "mnoznik": 0.75,
-                  "wartosc": 3900.0,
-                  "jednostka": "A",
-                  "wykorzystanie": 0.633117
-                },
-                {
-                  "parametr": "prad_zwarciowy",
-                  "nazwa_pl": "Prąd zwarciowy",
-                  "mnoznik": 1.0,
-                  "wartosc": 5200.0,
-                  "jednostka": "A",
-                  "wykorzystanie": 0.844156
-                },
-                {
-                  "parametr": "prad_zwarciowy",
-                  "nazwa_pl": "Prąd zwarciowy",
-                  "mnoznik": 1.25,
-                  "wartosc": 6500.0,
-                  "jednostka": "A",
-                  "wykorzystanie": 1.055195
-                },
-                {
-                  "parametr": "prad_zwarciowy",
-                  "nazwa_pl": "Prąd zwarciowy",
-                  "mnoznik": 1.5,
-                  "wartosc": 7800.0,
-                  "jednostka": "A",
-                  "wykorzystanie": 1.266234
-                },
-                {
-                  "parametr": "przekroj",
-                  "nazwa_pl": "Przekrój żyły",
-                  "mnoznik": 0.5,
-                  "wartosc": 35.0,
-                  "jednostka": "mm²",
-                  "wykorzystanie": 1.688312
-                },
-                {
-                  "parametr": "przekroj",
-                  "nazwa_pl": "Przekrój żyły",
-                  "mnoznik": 0.75,
-                  "wartosc": 52.5,
-                  "jednostka": "mm²",
-                  "wykorzystanie": 1.125541
-                },
-                {
-                  "parametr": "przekroj",
-                  "nazwa_pl": "Przekrój żyły",
-                  "mnoznik": 1.0,
-                  "wartosc": 70.0,
-                  "jednostka": "mm²",
-                  "wykorzystanie": 0.844156
-                },
-                {
-                  "parametr": "przekroj",
-                  "nazwa_pl": "Przekrój żyły",
-                  "mnoznik": 1.5,
-                  "wartosc": 105.0,
-                  "jednostka": "mm²",
-                  "wykorzystanie": 0.562771
-                },
-                {
-                  "parametr": "przekroj",
-                  "nazwa_pl": "Przekrój żyły",
-                  "mnoznik": 2.0,
-                  "wartosc": 140.0,
-                  "jednostka": "mm²",
-                  "wykorzystanie": 0.422078
-                }
-              ],
-              "uzasadnienie_k": {
-                "k_a_s05_per_mm2": 88.0,
-                "tozsamosc_pl": "k = Jth(1 s) — gęstość prądu zwarciowego dla 1 s z karty katalogowej (prąd na 1 mm² przekroju wytrzymywany przez 1 s).",
-                "rodzaj_przewodu": "PRZEWOD_GOLY",
-                "rodzaj_przewodu_pl": "przewód goły (linia napowietrzna)",
-                "material_zyly": "AL_ST",
-                "izolacja": "brak — przewód goły",
-                "granica_temperatury_pl": "Temperaturę graniczną przy zwarciu wyznacza utrata wytrzymałości mechanicznej żyły i dopuszczalna temperatura osprzętu (przewód goły nie ma izolacji).",
-                "temp_poczatkowa_c": 70.0,
-                "temp_koncowa_c": 200.0,
-                "zrodlo_pl": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
-                "braki_pl": [],
-                "kompletne": true
-              },
-              "czas_wylaczenia": {
-                "tk_s": 1.0,
-                "zrodlo": "zalozenie_przypadku",
-                "powod_pl": "Gałąź bez rozwiązanej nastawy zabezpieczenia — czas z przypadku obliczeniowego.",
-                "urzadzenie_ref": null,
-                "urzadzenie_nazwa": null,
-                "funkcja": null,
-                "prad_galezi_a": 5200.0,
-                "prad_rozruchowy_a": null,
-                "krzywa": null,
-                "tms": null
-              }
-            },
-          ],
-          summary: { pass_count: 2, fail_count: 1, unavailable_count: 0 },
-        },
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // Scena "cieplna": ocena per galaz — REALNY bieg backendu
+    // (eksport_fixtur_harnessu.py::cieplna_scena_wynik, TA SAMA funkcja co
+    // koncowka `build_wytrzymalosc_cieplna_view`) na biegu kotwicy sceny
+    // "zwarcia" (siec zlota) — zero recznie wpisanych liczb fizycznych.
+    return jsonOK(cieplnaScenyWynik);
   }
   if (url.includes('/api/quality/arc-flash')) {
-    // Scena "arcflash" (wzbogacona w rundzie dowodowej V-B): kroki WHITE BOX
-    // 1:1 z builderem `analysis/arc_flash/builder.py::_ieee_1584_result`
-    // (KrokArcFlash: symbol/formula_latex/substitution_pl/result_pl/
-    // unit_check_pl/table_ref). Liczby spojne z wynikami wierszy:
-    //   SN-1: I_bf=12.5 kA -> I_arc=11.8 kA; E=35.2 J/cm² = 8.413 cal/cm²
-    //         (35.2/4.184); AFB=1320 mm; SOI kat. 3 (8 < E ≤ 25 cal/cm²).
-    //   SN-2: I_bf=8.1 kA -> I_arc=7.7 kA; E=17.4 J/cm² = 4.1587 cal/cm²;
-    //         AFB=890 mm; SOI kat. 2 (4 < E ≤ 8 cal/cm²).
-    return new Response(
-      JSON.stringify({
-        analysis_id: 'af-demo',
-        context: null,
-        status: 'COMPUTED_IEEE_1584_OPEN_SOURCE',
-        status_label_pl: 'obliczony (IEEE 1584 open-source)',
-        results: [
-          {
-            bus_ref: 'Szyna SN-1', status: 'COMPUTED_IEEE_1584_OPEN_SOURCE', status_label_pl: 'obliczony (IEEE 1584 open-source)',
-            method: 'IEEE_1584_2018', electrode_config: 'VCB', i_bf_ka: 12.5, voltage_kv: 15.0, arc_time_s: 0.2,
-            conductor_gap_mm: 152, working_distance_mm: 455, i_arc_ka: 11.8, incident_energy_cal_cm2: 8.413,
-            incident_energy_joule_cm2: 35.2, arc_flash_boundary_mm: 1320, ppe_category: '3', ppe_table_provenance: 'norma_NFPA_70E',
-            provenance: 'ARC_FLASH_OPEN_SOURCE_PROVENANCE', provenance_caveat_pl: 'Wynik na współczynnikach open-source — wymaga weryfikacji z licencjonowaną normą IEEE 1584.',
-            why_pl: 'Arc Flash (konfiguracja VCB, IEEE 1584-2018): prąd łuku I_arc ≈ 11.8 kA (I_arc_min ≈ 10.34 kA), energia incydentu E ≈ 8.41 cal/cm² na odległości roboczej, granica łuku AFB ≈ 1320.0 mm, kategoria ŚOI = 3.',
-            missing_data: [],
-            white_box: [
-              {
-                symbol: 'I_arc',
-                formula_latex: "I_{arc,kotwa} = 10^{k_1+k_2\\lg I_{bf}+k_3\\lg G}\\cdot\\sum_{i} k_{i}\\,I_{bf}^{\\,p_i}\\;;\\quad I_{arc}=\\mathrm{interp}_{U}(\\cdot)\\;;\\quad I_{arc,min}=I_{arc}(1-0{,}5\\,\\mathrm{VarCf})",
-                substitution_pl: 'I_bf=12.5 kA, G=152.0 mm, U=15.0 kV [VCB]; kotwy: V14300=11.75 kA, V2700=10.9 kA, V600=8.7 kA; VarCf=0.247',
-                result_pl: 'I_arc = 11.8 kA, I_arc_min = 10.3427 kA (IEEE 1584-2018, współczynniki open-source)',
-                unit_check_pl: 'I_bf,I_arc w kA; G w mm; VarCf bezwymiarowe; interpolacja po U [kV].',
-                table_ref: 'I_arc[VCB, kotwy 600/2700/14300 V] (Tab.1) + VarCf[VCB] (Tab.2) = open_source_IEEE_1584',
-              },
-              {
-                symbol: 'CF',
-                formula_latex: 'CF = b_1\\,EES^2 + b_2\\,EES + b_3 \\quad(CF=1 \\text{ w otwartym powietrzu; } CF=1/x \\text{ obudowa płytka})',
-                substitution_pl: 'konfiguracja VCB (w obudowie Typical)',
-                result_pl: 'CF = 1.0841',
-                unit_check_pl: 'CF bezwymiarowe; EES w calach; mnożnik energii dla obudowy.',
-                table_ref: 'CF[Typical,VCB] (Tab.7) = open_source_IEEE_1584',
-              },
-              {
-                symbol: 'E',
-                formula_latex: "E_{kotwa} = \\tfrac{12{,}552}{50}\\,t\\cdot 10^{\\,x_2+x_3+x_4+x_5}\\;;\\quad x_4 = k_{11}\\lg I_{bf}+k_{13}\\lg I_{arc}+\\lg(1/CF)\\;;\\quad x_5 = k_{12}\\lg D\\;;\\quad E=\\mathrm{interp}_U(\\cdot)\\;[\\mathrm{J/cm^2}]",
-                substitution_pl: 'I_bf=12.5 kA, G=152.0 mm, t=200.0 ms, D=455.0 mm, CF=1.0841; kotwy: V14300=35.05 J/cm², V2700=32.6 J/cm², V600=27.6 J/cm²',
-                result_pl: 'E = 35.2 J/cm² = 8.413 cal/cm² (IEEE 1584-2018, współczynniki open-source)',
-                unit_check_pl: 'E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; interpolacja po U.',
-                table_ref: 'E[VCB, kotwy 600/2700/14300 V] (Tab.3/4/5) = open_source_IEEE_1584',
-              },
-              {
-                symbol: 'AFB',
-                formula_latex: "D_{AFB,kotwa} = \\left(\\frac{5{,}0208}{E/D^{k_{12}}}\\right)^{1/k_{12}}\\quad(\\mathrm{interp}_U);\\quad 5{,}0208\\,\\mathrm{J/cm^2}=1{,}2\\,\\mathrm{cal/cm^2}",
-                substitution_pl: 'E_próg = 1.2 cal/cm² = 5.0208 J/cm²; U=15.0 kV, D=455.0 mm',
-                result_pl: 'AFB = 1320.0 mm (IEEE 1584-2018, współczynniki open-source)',
-                unit_check_pl: 'D_AFB w mm; odległość, na której E spada do 1,2 cal/cm².',
-                table_ref: 'E[VCB] (odwrócone wzgl. D) (Tab.3/4/5) = open_source_IEEE_1584; próg 1,2 cal/cm² publiczny',
-              },
-              {
-                symbol: 'ŚOI',
-                formula_latex: '\\text{kategoria} = f_{NFPA\\,70E}(E)',
-                substitution_pl: 'E = 8.413 cal/cm²; tablica progów NFPA 70E: wypełniona',
-                result_pl: 'kategoria ŚOI = 3',
-                unit_check_pl: 'E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).',
-                table_ref: 'progi ŚOI = norma_NFPA_70E',
-              },
-            ],
-          },
-          {
-            bus_ref: 'Szyna SN-2', status: 'COMPUTED_IEEE_1584_OPEN_SOURCE', status_label_pl: 'obliczony (IEEE 1584 open-source)',
-            method: 'IEEE_1584_2018', electrode_config: 'VCB', i_bf_ka: 8.1, voltage_kv: 15.0, arc_time_s: 0.2,
-            conductor_gap_mm: 152, working_distance_mm: 455, i_arc_ka: 7.7, incident_energy_cal_cm2: 4.1587,
-            incident_energy_joule_cm2: 17.4, arc_flash_boundary_mm: 890, ppe_category: '2', ppe_table_provenance: 'norma_NFPA_70E',
-            provenance: 'ARC_FLASH_OPEN_SOURCE_PROVENANCE', provenance_caveat_pl: null,
-            why_pl: 'Arc Flash (konfiguracja VCB, IEEE 1584-2018): prąd łuku I_arc ≈ 7.7 kA (I_arc_min ≈ 6.75 kA), energia incydentu E ≈ 4.16 cal/cm² na odległości roboczej, granica łuku AFB ≈ 890.0 mm, kategoria ŚOI = 2.',
-            missing_data: [],
-            white_box: [
-              {
-                symbol: 'I_arc',
-                formula_latex: "I_{arc,kotwa} = 10^{k_1+k_2\\lg I_{bf}+k_3\\lg G}\\cdot\\sum_{i} k_{i}\\,I_{bf}^{\\,p_i}\\;;\\quad I_{arc}=\\mathrm{interp}_{U}(\\cdot)\\;;\\quad I_{arc,min}=I_{arc}(1-0{,}5\\,\\mathrm{VarCf})",
-                substitution_pl: 'I_bf=8.1 kA, G=152.0 mm, U=15.0 kV [VCB]; kotwy: V14300=7.66 kA, V2700=7.05 kA, V600=5.9 kA; VarCf=0.247',
-                result_pl: 'I_arc = 7.7 kA, I_arc_min = 6.7491 kA (IEEE 1584-2018, współczynniki open-source)',
-                unit_check_pl: 'I_bf,I_arc w kA; G w mm; VarCf bezwymiarowe; interpolacja po U [kV].',
-                table_ref: 'I_arc[VCB, kotwy 600/2700/14300 V] (Tab.1) + VarCf[VCB] (Tab.2) = open_source_IEEE_1584',
-              },
-              {
-                symbol: 'CF',
-                formula_latex: 'CF = b_1\\,EES^2 + b_2\\,EES + b_3 \\quad(CF=1 \\text{ w otwartym powietrzu; } CF=1/x \\text{ obudowa płytka})',
-                substitution_pl: 'konfiguracja VCB (w obudowie Typical)',
-                result_pl: 'CF = 1.0841',
-                unit_check_pl: 'CF bezwymiarowe; EES w calach; mnożnik energii dla obudowy.',
-                table_ref: 'CF[Typical,VCB] (Tab.7) = open_source_IEEE_1584',
-              },
-              {
-                symbol: 'E',
-                formula_latex: "E_{kotwa} = \\tfrac{12{,}552}{50}\\,t\\cdot 10^{\\,x_2+x_3+x_4+x_5}\\;;\\quad x_4 = k_{11}\\lg I_{bf}+k_{13}\\lg I_{arc}+\\lg(1/CF)\\;;\\quad x_5 = k_{12}\\lg D\\;;\\quad E=\\mathrm{interp}_U(\\cdot)\\;[\\mathrm{J/cm^2}]",
-                substitution_pl: 'I_bf=8.1 kA, G=152.0 mm, t=200.0 ms, D=455.0 mm, CF=1.0841; kotwy: V14300=17.32 J/cm², V2700=16.1 J/cm², V600=13.8 J/cm²',
-                result_pl: 'E = 17.4 J/cm² = 4.1587 cal/cm² (IEEE 1584-2018, współczynniki open-source)',
-                unit_check_pl: 'E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; interpolacja po U.',
-                table_ref: 'E[VCB, kotwy 600/2700/14300 V] (Tab.3/4/5) = open_source_IEEE_1584',
-              },
-              {
-                symbol: 'AFB',
-                formula_latex: "D_{AFB,kotwa} = \\left(\\frac{5{,}0208}{E/D^{k_{12}}}\\right)^{1/k_{12}}\\quad(\\mathrm{interp}_U);\\quad 5{,}0208\\,\\mathrm{J/cm^2}=1{,}2\\,\\mathrm{cal/cm^2}",
-                substitution_pl: 'E_próg = 1.2 cal/cm² = 5.0208 J/cm²; U=15.0 kV, D=455.0 mm',
-                result_pl: 'AFB = 890.0 mm (IEEE 1584-2018, współczynniki open-source)',
-                unit_check_pl: 'D_AFB w mm; odległość, na której E spada do 1,2 cal/cm².',
-                table_ref: 'E[VCB] (odwrócone wzgl. D) (Tab.3/4/5) = open_source_IEEE_1584; próg 1,2 cal/cm² publiczny',
-              },
-              {
-                symbol: 'ŚOI',
-                formula_latex: '\\text{kategoria} = f_{NFPA\\,70E}(E)',
-                substitution_pl: 'E = 4.1587 cal/cm²; tablica progów NFPA 70E: wypełniona',
-                result_pl: 'kategoria ŚOI = 2',
-                unit_check_pl: 'E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).',
-                table_ref: 'progi ŚOI = norma_NFPA_70E',
-              },
-            ],
-          },
-        ],
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // Karta HARNESS-RESZTA (kontynuacja): scena "arcflash" — REALNY bieg
+    // backendu (eksport_fixtur_harnessu.py::arcflash_scena_wynik, TA SAMA
+    // funkcja co koncowka `build_arc_flash_view`, IEEE 1584-2018) na biegu
+    // kotwicy sceny "zwarcia" (siec zlota) — zero recznie wpisanych liczb.
+    return jsonOK(arcflashScenyWynik);
   }
-  // `/api/ncrfg-tests/catalog` NIE jest tu mockowany (2026-09-05, odbiór E2E-FULL-FIX):
-  // katalog operatorów NC RfG (progi modułów, odpowiedź częstotliwościowa, zakres Q,
-  // odbudowa P, krzywe LVRT/HVRT) idzie do REALNEGO backendu przez proxy Vite — tak
-  // samo jak snapshot audytu 2 (`/api/audit2-catalogs/snapshot`). Ręczna kopia payloadu
-  // zdryfowała DWA razy (progi klas sprzed decyzji OD-5: 200 kW/10 MW zamiast 1 MW/50 MW;
-  // brak pól `reactive_power`/`ride_through`/`frequency_response`/`p_recovery_after_fault`
-  // dodanych kartą FAB-J) i wywracała sceny „wiazania" (DerSurfaceShell) oraz „oze"
-  // (krok zgodności czyta `ride_through`). Katalog jest bezstanowy i deterministyczny,
-  // więc druga prawda w harnessie nie ma uzasadnienia — backend jest jedynym źródłem.
   if (url.includes('/api/ncrfg-tests/run')) {
     // Scena „macierz" (E2E-FULL-FIX-3, 2026-09-10): bieg NC RfG/PTPiREE idzie do
     // REALNEGO solvera (bezstanowy i deterministyczny jak katalog wyżej). Dawna
@@ -3351,8 +2182,15 @@ function derDemo(
 }
 
 if (creator === 'arcflash') {
-  const run: ExecutionRun = { id: 'run-sc-1', analysis_type: 'SC_3F', status: 'DONE' } as unknown as ExecutionRun;
-  useExecutionRunsStore.setState({ runs: [run], activeRunId: 'run-sc-1' } as never);
+  // Karta HARNESS-RESZTA (kontynuacja): identyfikator biegu z REALNEGO biegu
+  // backendu (eksport_fixtur_harnessu.py::arcflash_scena_wynik, reuzywa
+  // kotwice sceny "zwarcia") — zero recznego run_id.
+  const run: ExecutionRun = {
+    id: arcflashScenyWynik.context.run_id, analysis_type: 'SC_3F', status: 'DONE',
+  } as unknown as ExecutionRun;
+  useExecutionRunsStore.setState({
+    runs: [run], activeRunId: arcflashScenyWynik.context.run_id,
+  } as never);
 } else if (creator === 'dokumentacja') {
   // Hub „Dokumentacja" (F-E8.1): pełny kontekst toru pracy — projekt, wariant,
   // wersja układu (rewizja + hash) i ZAKOŃCZONY przebieg → karty odblokowane
@@ -3460,19 +2298,13 @@ if (creator === 'arcflash') {
   useExecutionRunsStore.setState({ runs: [run], activeStudyCaseId: 'K1' } as never);
 } else if (creator === 'uwaga') {
   // Rejestr „Co wymaga uwagi" (A1/V12K-098 + kontekstowe akcje K1/V12K-101):
-  // dwa realne przekroczenia napięcia z wyniku rozpływu.
+  // Karta HARNESS-RESZTA (kontynuacja) — REALNY bieg backendu
+  // (eksport_fixtur_harnessu.py::rozplyw_scena_wynik, PF na sieci zlotej z
+  // obciazeniem x8, realne przekroczenia napiec), zero recznie wpisanych
+  // liczb fizycznych. TEN SAM bieg co scena "rozplyw" obok.
   usePowerFlowResultsStore.setState({
-    results: {
-      result_version: '1.0', converged: true, iterations_count: 5, tolerance_used: 1e-6,
-      base_mva: 100, slack_bus_id: 'SZ-GPZ',
-      bus_results: [
-        { bus_id: 'SZ-GPZ', v_pu: 1.0, angle_deg: 0, p_injected_mw: 6.4, q_injected_mvar: 1.9 },
-        { bus_id: 'SZ-ST7', v_pu: 0.941, angle_deg: -2.9, p_injected_mw: -1.2, q_injected_mvar: -0.4 },
-        { bus_id: 'SZ-PV2', v_pu: 1.062, angle_deg: 1.4, p_injected_mw: 3.9, q_injected_mvar: 0.2 },
-      ],
-      branch_results: [], summary: { total_losses_p_mw: 0.11, total_losses_q_mvar: 0.08, min_v_pu: 0.941, max_v_pu: 1.062, slack_p_mw: 6.4, slack_q_mvar: 1.9 },
-    },
-    runHeader: { id: 'run-lf-2' },
+    results: rozplywScenyWynik,
+    runHeader: { id: rozplywScenyWynik.run_id },
   } as never);
 } else if (creator === 'walidacja') {
   // Walidacja energetyczna ze sladem WHITE BOX per pozycja (R2-A/V12K-105);
@@ -3483,42 +2315,37 @@ if (creator === 'arcflash') {
   // Ekran wymaga zakonczonego przebiegu rozplywu (uczciwa blokada) — zasiew.
   // Scena "kompensacja-wynik" (V-B) reuzywa ten sam zasiew: spec wybiera wezel
   // i klika „Oblicz" natywnie (bez preselekcji), wynik z podmienionego fetch.
+  // Karta HARNESS-RESZTA (kontynuacja): identyfikator biegu i wezly
+  // (bus_sn_b/bus_sn_main/bus_nn) z REALNEGO biegu backendu
+  // (eksport_fixtur_harnessu.py::kompensacja_scena_wynik, PF sieci zlotej)
+  // — zero recznie wpisanych identyfikatorow/liczb.
   const runKomp: ExecutionRun = {
-    id: 'run-lf-3', analysis_type: 'LOAD_FLOW', status: 'DONE',
+    id: kompensacjaScenyWynik.context.run_id, analysis_type: 'LOAD_FLOW', status: 'DONE',
     started_at: '2026-07-22T08:00:00Z', finished_at: '2026-07-22T08:00:04Z',
   } as unknown as ExecutionRun;
-  useExecutionRunsStore.setState({ runs: [runKomp], activeRunId: 'run-lf-3' } as never);
+  useExecutionRunsStore.setState({
+    runs: [runKomp], activeRunId: kompensacjaScenyWynik.context.run_id,
+  } as never);
   useSnapshotStore.setState({
     snapshot: {
-      header: { name: 'Projekt demonstracyjny' },
+      header: { name: 'CGMES Golden Net' },
       substations: [], transformers: [], sources: [], loads: [], bays: [],
       buses: [
-        { ref_id: 'SZ-GPZ', name: 'Szyna GPZ 15 kV', voltage_kv: 15 },
-        { ref_id: 'SZ-ST7', name: 'Szyna ST-7', voltage_kv: 15 },
-        { ref_id: 'SZ-PV2', name: 'Szyna PV-2', voltage_kv: 15 },
+        { ref_id: 'bus_sn_main', name: 'Szyna SN', voltage_kv: 15 },
+        { ref_id: 'bus_sn_b', name: 'Stacja B SN', voltage_kv: 15 },
+        { ref_id: 'bus_sn_c', name: 'Stacja C SN', voltage_kv: 15 },
       ],
     },
   } as never);
 } else if (creator === 'rozplyw') {
   // Rozplyw z kolumna obciazalnosci (R3-A/V12K-110): wynik PF read-only +
   // werdykty z podmienionego endpointu walidacji (target_id = branch_id).
+  // Karta HARNESS-RESZTA (kontynuacja) — REALNY bieg backendu (eksport_
+  // fixtur_harnessu.py::rozplyw_scena_wynik, PF na sieci zlotej z
+  // obciazeniem x8), zero recznie wpisanych liczb fizycznych.
   usePowerFlowResultsStore.setState({
-    results: {
-      result_version: '1.0', converged: true, iterations_count: 5, tolerance_used: 1e-6,
-      base_mva: 100, slack_bus_id: 'SZ-GPZ',
-      bus_results: [
-        { bus_id: 'SZ-GPZ', v_pu: 1.0, angle_deg: 0, p_injected_mw: 6.4, q_injected_mvar: 1.9 },
-        { bus_id: 'SZ-ST7', v_pu: 0.941, angle_deg: -2.9, p_injected_mw: -1.2, q_injected_mvar: -0.4 },
-        { bus_id: 'SZ-PV2', v_pu: 1.062, angle_deg: 1.4, p_injected_mw: 3.9, q_injected_mvar: 0.2 },
-      ],
-      branch_results: [
-        { branch_id: 'L-14', from_bus_id: 'SZ-GPZ', to_bus_id: 'SZ-ST7', p_from_mw: 2.31, q_from_mvar: 0.72, p_to_mw: -2.28, q_to_mvar: -0.7, losses_p_mw: 0.031, losses_q_mvar: 0.018 },
-        { branch_id: 'TR-1', from_bus_id: 'SZ-ST7', to_bus_id: 'SZ-NN1', p_from_mw: 1.66, q_from_mvar: 0.5, p_to_mw: -1.64, q_to_mvar: -0.48, losses_p_mw: 0.021, losses_q_mvar: 0.02 },
-        { branch_id: 'L-2', from_bus_id: 'SZ-GPZ', to_bus_id: 'SZ-PV2', p_from_mw: -3.88, q_from_mvar: -0.19, p_to_mw: 3.9, q_to_mvar: 0.2, losses_p_mw: 0.019, losses_q_mvar: 0.011 },
-      ],
-      summary: { total_losses_p_mw: 0.071, total_losses_q_mvar: 0.049, min_v_pu: 0.941, max_v_pu: 1.062, slack_p_mw: 6.4, slack_q_mvar: 1.9 },
-    },
-    runHeader: { id: 'run-lf-1' },
+    results: rozplywScenyWynik,
+    runHeader: { id: rozplywScenyWynik.run_id },
   } as never);
 } else if (creator === 'zwarcia') {
   // Wyniki zwarciowe z wkladami zrodel (R3-B/V12K-109): tabela punktow ze
@@ -3545,10 +2372,15 @@ if (creator === 'arcflash') {
 } else if (creator === 'sila-sieci') {
   // Runda dowodowa V-B: sekcja sily sieci (SCR/WSCR) pulpitu OZE — wymaga
   // zakonczonego przebiegu zwarciowego; wywod white_box z grid-strength.
+  // Karta HARNESS-RESZTA (kontynuacja): identyfikator biegu z REALNEGO biegu
+  // backendu (eksport_fixtur_harnessu.py::sila_sieci_scena_wynik) — zero
+  // recznego run_id.
   const runSc: ExecutionRun = {
-    id: 'run-sc-4', analysis_type: 'SC_3F', status: 'DONE',
+    id: silaSieciScenyWynik.context.run_id, analysis_type: 'SC_3F', status: 'DONE',
   } as unknown as ExecutionRun;
-  useExecutionRunsStore.setState({ runs: [runSc], activeRunId: 'run-sc-4' } as never);
+  useExecutionRunsStore.setState({
+    runs: [runSc], activeRunId: silaSieciScenyWynik.context.run_id,
+  } as never);
 } else if (creator === 'odbior-zgodnosc') {
   // Runda dowodowa V-B: „Zgodnosc powykonawcza" — wymaga zakonczonego
   // przebiegu rozplywu (slad_pl per wiersz z podmienionego fetch).
